@@ -32,42 +32,80 @@ function parseSessionDetail(det, sportKey) {
   let minutes = 0, meters = 0;
 
   // Parse minutes : "Xcmin" ou "X min" ou "X×Ymin" → somme
-  const minMatches = det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*min/gi);
-  if (minMatches) {
-    minMatches.forEach(m => {
+  // Aussi capture les PLAGES "40-50min" → moyenne
+
+  // 1. Plages "40-50min" → moyenne
+  const rangeMatches = det.match(/(\d+)\s*-\s*(\d+)\s*min/gi);
+  if (rangeMatches) {
+    rangeMatches.forEach(m => {
+      const nums = m.match(/\d+/g).map(Number);
+      if (nums.length === 2) {
+        const avg = Math.round((nums[0] + nums[1]) / 2);
+        minutes += avg;
+      }
+    });
+  }
+
+  // 2. Répétitions "N×Mmin"
+  const repMatches = det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*min/gi);
+  if (repMatches) {
+    repMatches.forEach(m => {
       const [n, d] = m.match(/\d+/g).map(Number);
       minutes += n * d;
     });
   }
-  const singleMin = det.match(/(\d+)\s*min(?!\s*@)/gi);
+
+  // 3. Valeurs simples "60min", "45min" (hors plages déjà traitées)
+  const singleMin = det.match(/\b(\d+)\s*min(?!\s*-|@)/gi);
   if (singleMin) {
     singleMin.forEach(m => {
       const n = parseInt(m);
-      if (!minMatches || !det.includes(m.split('min')[0] + '×')) {
+      // Éviter les doubles comptes
+      const isRange = det.includes(`${n}-`) || det.includes(`-${n}`);
+      if (!isRange && (!repMatches || !m.match(/\d+\s*×/) && !m.match(/×\s*\d+/))) {
         minutes += n;
       }
     });
   }
 
   // Parse mètres : "Xm" ou "X×Ym" (nage)
-  const meterMatches = det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*m(?!\w)/gi);
-  if (meterMatches) {
-    meterMatches.forEach(m => {
+  // Aussi capture les PLAGES "600-1400m" → moyenne
+
+  // 1. Plages "600-1400m"
+  const meterRangeMatches = det.match(/(\d+)\s*-\s*(\d+)\s*m\b/gi);
+  if (meterRangeMatches) {
+    meterRangeMatches.forEach(m => {
+      const nums = m.match(/\d+/g).map(Number);
+      if (nums.length === 2) {
+        const avg = Math.round((nums[0] + nums[1]) / 2);
+        meters += avg;
+      }
+    });
+  }
+
+  // 2. Répétitions "N×Ym"
+  const meterRepMatches = det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*m\b/gi);
+  if (meterRepMatches) {
+    meterRepMatches.forEach(m => {
       const [n, d] = m.match(/\d+/g).map(Number);
       meters += n * d;
     });
   }
-  const singleMeter = det.match(/(\d+)\s*m\b/gi);
+
+  // 3. Valeurs simples "1500m" (hors plages et répétitions)
+  const singleMeter = det.match(/\b(\d+)\s*m\b/gi);
   if (singleMeter) {
     singleMeter.forEach(m => {
       const n = parseInt(m);
-      if (!meterMatches || !det.includes(n + '×')) {
+      const isRange = det.includes(`${n}-`) || det.includes(`-${n}`);
+      const isRep = det.includes(`${n}×`) || det.includes(`×${n}`);
+      if (!isRange && !isRep) {
         meters += n;
       }
     });
   }
 
-  // Ajouter échauffement/retour au calme estimés (nage surtout)
+  // Ajouter échauffement/retour au calme estimés
   if (sportKey === 'sw' && minutes === 0 && meters > 0) {
     minutes += 3; // très court pour warm/cool
   }

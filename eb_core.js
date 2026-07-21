@@ -176,9 +176,12 @@ function buildPlan(a){
       else if(slot==="off")S2.push({d:"rs",name:"OFF",det:"repos total"});
     } else if(sp==="tri"){
       const runInj=(a.injury||"").includes("course");
-      const swDetBeg=struct({ech:"200m souple",corps:"éducatifs (rattrapé, battements) + respiration, "+P(1,2)+" point technique",rec:"repos libre",rc:"100m relâché",note:"Technique à froid : qualité du geste avant tout."});
-      const swDetCSS=struct({ech:"300m + 4×50m éducatifs",corps:P(6,10)+"×100m @ "+sz.css,rec:"15-20s",rc:"200m souple",note:"Allure régulière, tous les 100m identiques."});
-      const swT=beginner?{name:"Nage technique",det:swDetBeg}:{name:"Nage seuil",det:swDetCSS};
+      // FIX cohérence TRI nage : escalader RÉELLEMENT vers distance cible du format
+      const swimDistCaps={S:{lo:300,hi:750},M:{lo:600,hi:1500},"70.3":{lo:950,hi:1900},Full:{lo:1900,hi:3800}}[fmt]||{lo:600,hi:1500};
+      const swimDist=P(swimDistCaps.lo,swimDistCaps.hi);
+      const swDetBeg=struct({ech:"200m souple",corps:"progression vers "+swimDist+"m total : fractionnée en blocs de 100-200m, éducatifs entre",rec:"repos libre entre séries",rc:"100m relâché",note:"Technique à froid : qualité du geste avant tout, distance progressive."});
+      const swDetCSS=struct({ech:"300m + 4×50m éducatifs",corps:swimDist+"m @ "+sz.css+" (fractionnée si besoin : "+Math.ceil(swimDist/200)+"×200m ou "+Math.ceil(swimDist/100)+"×100m)",rec:"15-20s",rc:"200m souple",note:"Distance cible atteinte, allure régulière. Fractionné = réponse à intensité."});
+      const swT=beginner?{name:"Nage technique (+dist)",det:swDetBeg}:{name:"Nage seuil (+dist)",det:swDetCSS};
       if(slot==="dur1"){ if(dbl)S2.push({d:"sw",name:swT.name+" (matin)",det:swT.det});
         if(phase==="base")S2.push({d:"bk",name:"Sweetspot vélo",det:struct({ech:"15min montée progressive",corps:P(2,3)+"×15min @ "+bz.ss,rec:"5min souple",rc:"10min décrassage",note:"Cadence 85-95 rpm, soutenu mais maîtrisé."})});
         else if(phase==="spec"||phase==="peak")S2.push({d:"bk",name:"Race-pace vélo",det:struct({ech:"15min progressif",corps:P(2,3)+"×"+P(20,40)+"min @ "+bz.rp,rec:"5min souple",rc:"10min décrassage",note:"L'allure que tu tiendras le jour J. Mémorise-la."})});
