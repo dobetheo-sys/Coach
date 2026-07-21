@@ -320,11 +320,40 @@ function buildPlan(a){
       }
     }
   }
+  // Parseur volume réel des séances (synchronise w.vol avec contenu réel)
+  function parseSessionDetail(det){
+    if(!det||typeof det!=="string")return{minutes:0,meters:0};
+    let minutes=0,meters=0;
+    const rangeMatches=det.match(/(\d+)\s*-\s*(\d+)\s*min/gi);
+    if(rangeMatches){rangeMatches.forEach(m=>{const nums=m.match(/\d+/g).map(Number);if(nums.length===2)minutes+=Math.round((nums[0]+nums[1])/2);});}
+    const repMatches=det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*min/gi);
+    if(repMatches){repMatches.forEach(m=>{const[n,d]=m.match(/\d+/g).map(Number);minutes+=n*d;});}
+    const singleMin=det.match(/\b(\d+)\s*min(?!\s*-|@)/gi);
+    if(singleMin){singleMin.forEach(m=>{const n=parseInt(m);const isRange=det.includes(`${n}-`)||det.includes(`-${n}`);if(!isRange&&(!repMatches||!m.match(/\d+\s*×/)))minutes+=n;});}
+    const meterRangeMatches=det.match(/(?<!\d[/:])(\d+)\s*-\s*(\d+)\s*m\b(?!\/)/gi);
+    if(meterRangeMatches){meterRangeMatches.forEach(m=>{const nums=m.match(/\d+/g).map(Number);if(nums.length===2&&nums[0]<nums[1])meters+=Math.round((nums[0]+nums[1])/2);});}
+    const meterRepMatches=det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*m\b(?!\/)/gi);
+    if(meterRepMatches){meterRepMatches.forEach(m=>{const[n,d]=m.match(/\d+/g).map(Number);if(!det.includes(`${d}m/`)&&!det.includes(`/${d}m`))meters+=n*d;});}
+    const singleMeter=det.match(/\b(\d{3,})\s*m(?!\s*\/)\b/gi);
+    if(singleMeter){singleMeter.forEach(m=>{const n=parseInt(m);const isRange=det.includes(`${n}-`)||det.includes(`-${n}`);const isRep=det.includes(`${n}×`)||det.includes(`×${n}`);const isAllure=det.includes(`/${n}m`)||det.includes(`${n}m/`);if(!isRange&&!isRep&&!isAllure)meters+=n;});}
+    return{minutes,meters};
+  }
+  function parseWeekVolume(week){
+    let totalMinutes=0,totalMeters=0;
+    if(!week.days)return 0;
+    week.days.forEach(day=>{if(!day.sessions)return;day.sessions.forEach(sess=>{if(sess.d!=="rs"){const p=parseSessionDetail(sess.det);totalMinutes+=p.minutes;totalMeters+=p.meters;}});});
+    let swimHours=0;if(totalMeters>0)swimHours=(totalMeters/1000)/3;
+    return Math.round(((totalMinutes/60)+swimHours)*10)/10;
+  }
+
   const wl=[];
   for(let w=0;w<weeks;w++){const ph=phases.find(p=>w>=p.start&&w<p.end)||phases[4];const prog=ph.weeks>1?(w-ph.start)/(ph.weeks-1):1;let vol;
     if(ph.id==="taper")vol=volPeak*0.7-(volPeak*0.4)*prog;else{const fl={base:0,dev:.35,spec:.6,peak:.85}[ph.id]??0,cl={base:.35,dev:.6,spec:.85,peak:1}[ph.id]??1;vol=volBase+(volPeak-volBase)*(fl+(cl-fl)*prog);}
     const wd=days.filter(d=>d.week===w+1);const isRW=wd.filter(d=>d.isR).length>=4;if(isRW)vol*=0.65;
-    wl.push({num:w+1,phase:ph,vol:Math.round(vol*10)/10,days:wd,isRecup:isRW});}
+    // SYNC: Calculer le volume réel à partir du contenu généré, puis utiliser comme w.vol
+    const volReal=parseWeekVolume({days:wd});
+    const volDisplay=volReal>0?volReal:Math.round(vol*10)/10; // Utiliser vol réel si parsé, sinon vol calculé
+    wl.push({num:w+1,phase:ph,vol:volDisplay,vol_declared:Math.round(vol*10)/10,vol_real:volReal,days:wd,isRecup:isRW});}
   return {weeks:wl,phases,volPeak,volBase,use10,totalWeeks:weeks};
 }
 
