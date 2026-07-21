@@ -72,7 +72,7 @@ function buildPlan(a){
   let weeks=minW;
   if(a.race_date){const diff=Math.floor((new Date(a.race_date)-Date.now())/(7*864e5));if(diff>=minW*0.75&&diff<=80)weeks=diff;}
   const caps={run:{reprise:{"5k":5,"10k":5,semi:6,marathon:8,trail:9},confirme:{"5k":6,"10k":6,semi:8,marathon:10,trail:12},ancien:{"5k":7,"10k":7,semi:9,marathon:12,trail:14}},
-    bike:{reprise:{crit:6,route:8,cyclo:9,clm:7,gravel:11},confirme:{crit:8,route:11,cyclo:13,clm:10,gravel:15},ancien:{crit:10,route:14,cyclo:16,clm:12,gravel:20}},
+    bike:{reprise:{crit:6,route:9,cyclo:11,clm:8,gravel:13},confirme:{crit:8,route:12,cyclo:15,clm:11,gravel:17},ancien:{crit:10,route:15,cyclo:18,clm:13,gravel:22}},
     swim:{reprise:{sprint:3,demifond:4,fond:5,ow:6},confirme:{sprint:5,demifond:6,fond:7,ow:9},ancien:{sprint:6,demifond:8,fond:10,ow:12}},
     tri:{reprise:{S:6,M:8,"70.3":11,Full:15},confirme:{S:7,M:10,"70.3":13,Full:17},ancien:{S:8,M:12,"70.3":15,Full:19}}}[sp][a.history||"confirme"][fmt]||10;
   const util={run:{"5k":6,"10k":7,semi:9,marathon:12,trail:14},bike:{crit:9,route:13,cyclo:15,clm:11,gravel:20},swim:{sprint:6,demifond:8,fond:10,ow:12},tri:{S:8,M:11,"70.3":14,Full:18}}[sp][fmt]||12;
@@ -180,7 +180,7 @@ function buildPlan(a){
     } else if(sp==="tri"){
       const runInj=(a.injury||"").includes("course");
       // FIX cohérence TRI nage : escalader RÉELLEMENT vers distance cible du format
-      const swimDistCaps={S:{lo:300,hi:750},M:{lo:600,hi:1500},"70.3":{lo:950,hi:1900},Full:{lo:1900,hi:3800}}[fmt]||{lo:600,hi:1500};
+      const swimDistCaps={S:{lo:300,hi:750},M:{lo:600,hi:1500},"70.3":{lo:950,hi:1900},Full:{lo:1700,hi:3400}}[fmt]||{lo:600,hi:1500};
       const swimDist=P(swimDistCaps.lo,swimDistCaps.hi);
       const swDetBeg=struct({ech:"200m souple",corps:"progression vers "+swimDist+"m total : fractionnée en blocs de 100-200m, éducatifs entre",rec:"repos libre entre séries",rc:"100m relâché",note:"Technique à froid : qualité du geste avant tout, distance progressive."});
       const swDetCSS=struct({ech:"300m + 4×50m éducatifs",corps:swimDist+"m @ "+sz.css+" (fractionnée si besoin : "+Math.ceil(swimDist/200)+"×200m ou "+Math.ceil(swimDist/100)+"×100m)",rec:"15-20s",rc:"200m souple",note:"Distance cible atteinte, allure régulière. Fractionné = réponse à intensité."});
@@ -193,8 +193,8 @@ function buildPlan(a){
       else if(slot==="dur2"){ if(dbl)S2.push({d:"sw",name:swT.name,det:swT.det}); S2.push({d:"bk",name:"Force basse cadence",det:struct({ech:"15min + montée en intensité",corps:P(4,6)+"×5min @ "+bz.frc+" à 50-60 rpm",rec:"3min souple",rc:"10min moulinage",note:"Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux."})}); }
       else if(slot==="durLong"){
         if(phase==="spec"||phase==="peak"){
-          const brickBikeCaps={S:{lo:45,hi:90},M:{lo:60,hi:120},"70.3":{lo:90,hi:180},Full:{lo:135,hi:270}}[fmt]||{lo:60,hi:180};
-          const brickRunCaps={S:{lo:10,hi:20},M:{lo:15,hi:30},"70.3":{lo:20,hi:45},Full:{lo:27,hi:67}}[fmt]||{lo:15,hi:30};
+          const brickBikeCaps={S:{lo:45,hi:90},M:{lo:60,hi:120},"70.3":{lo:90,hi:180},Full:{lo:120,hi:240}}[fmt]||{lo:60,hi:180};
+          const brickRunCaps={S:{lo:10,hi:20},M:{lo:15,hi:30},"70.3":{lo:20,hi:45},Full:{lo:24,hi:60}}[fmt]||{lo:15,hi:30};
           const bikeMin=P(brickBikeCaps.lo,brickBikeCaps.hi), runMin=P(brickRunCaps.lo,brickRunCaps.hi);
           S2.push({d:"br",name:"Brick vélo+CAP",det:struct({ech:"15min vélo souple",corps:bikeMin+"min vélo @ "+bz.rp+" puis transition rapide + "+runMin+"min CAP"+(runInj?" souple, surface souple":" @ allure cible"),note:"Le brick simule la course : enchaîne vite vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP."})});
         } else {
