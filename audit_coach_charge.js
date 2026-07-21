@@ -70,36 +70,42 @@ function parseSessionDetail(det, sportKey) {
 
   // Parse mètres : "Xm" ou "X×Ym" (nage)
   // Aussi capture les PLAGES "600-1400m" → moyenne
+  // ATTENTION: ignorer les "m" dans les allures du type "1'51/100m"
 
-  // 1. Plages "600-1400m"
-  const meterRangeMatches = det.match(/(\d+)\s*-\s*(\d+)\s*m\b/gi);
+  // 1. Plages "600-1400m" (hors contexte allure)
+  const meterRangeMatches = det.match(/(?<!\d[/:])(\d+)\s*-\s*(\d+)\s*m\b(?!\/)/gi);
   if (meterRangeMatches) {
     meterRangeMatches.forEach(m => {
       const nums = m.match(/\d+/g).map(Number);
-      if (nums.length === 2) {
+      if (nums.length === 2 && nums[0] < nums[1]) { // éviter inverse "51m-100m" du CSS
         const avg = Math.round((nums[0] + nums[1]) / 2);
         meters += avg;
       }
     });
   }
 
-  // 2. Répétitions "N×Ym"
-  const meterRepMatches = det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*m\b/gi);
+  // 2. Répétitions "N×Ym" (hors contexte allure)
+  const meterRepMatches = det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*m\b(?!\/)/gi);
   if (meterRepMatches) {
     meterRepMatches.forEach(m => {
       const [n, d] = m.match(/\d+/g).map(Number);
-      meters += n * d;
+      // Vérifier que ce n'est pas dans un contexte CSS ("100m/1'45")
+      if (!det.includes(`${d}m/`) && !det.includes(`/${d}m`)) {
+        meters += n * d;
+      }
     });
   }
 
-  // 3. Valeurs simples "1500m" (hors plages et répétitions)
-  const singleMeter = det.match(/\b(\d+)\s*m\b/gi);
+  // 3. Valeurs simples "Xcm" ou "X×Xcm" au début/seul:
+  // "1500m @" ou "3000m et" mais JAMAIS après "/" (allure)
+  const singleMeter = det.match(/\b(\d{3,})\s*m(?!\s*\/)\b/gi);
   if (singleMeter) {
     singleMeter.forEach(m => {
       const n = parseInt(m);
       const isRange = det.includes(`${n}-`) || det.includes(`-${n}`);
       const isRep = det.includes(`${n}×`) || det.includes(`×${n}`);
-      if (!isRange && !isRep) {
+      const isAllure = det.includes(`/${n}m`) || det.includes(`${n}m/`);
+      if (!isRange && !isRep && !isAllure) {
         meters += n;
       }
     });
