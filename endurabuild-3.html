@@ -776,6 +776,8 @@ function buildPlan(a){
       else if(slot==="recup")S2.push({d:"rs",name:"Récup active",det:"mobilité"});
       else if(slot==="off")S2.push({d:"rs",name:"OFF",det:"repos total"});
     }
+    // Lissage : à faible volume le scaling peut produire des séries à 1 répétition — "1×16min" se lit "16min"
+    S2.forEach(s=>{if(s.det)s.det=s.det.replace(/\b1×(?=\d)/g,"");});
     return S2;
   }
   function schema(phase,isRecup){

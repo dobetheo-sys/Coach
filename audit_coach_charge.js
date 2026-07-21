@@ -336,8 +336,9 @@ for (const [key, data] of Object.entries(results).sort()) {
   console.log(`  Volume déclaré: ${avgDeclared.toFixed(1)}h | Réel parsé: ${avgReal.toFixed(1)}h | Ratio: ${avgRatio.toFixed(2)}`);
   console.log(`  Part séance longue: ${avgLongPct.toFixed(1)}% (fenêtre format: ${longLow}-${longHigh}%)`);
 
-  // Micro-semaines (<4h au pic, ~3 séances) : la longue pèse légitimement plus, plafond +8 pts.
-  const longOut = s => s.longPct > (longHigh + (s.realHours < 4 ? 8 : 0)) || s.longPct < (longLow - (s.longFloorRelax || 0));
+  // Micro-semaines (<4h au pic, ~3 séances) : fenêtre élargie des deux côtés — la longue peut
+  // légitimement dominer (plafond +8) ou céder à la fréquence multi-sport (plancher -4).
+  const longOut = s => s.longPct > (longHigh + (s.realHours < 4 ? 8 : 0)) || s.longPct < (longLow - (s.longFloorRelax || 0) - (s.realHours < 4 ? 4 : 0));
   const problematic = data.samples.filter(s => s.ratio > alertHigh || s.ratio < alertLow || longOut(s));
   summary.volAlerts += data.samples.filter(s => s.ratio > alertHigh || s.ratio < alertLow).length;
   summary.longAlerts += data.samples.filter(longOut).length;
