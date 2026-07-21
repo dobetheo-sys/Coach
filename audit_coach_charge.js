@@ -260,18 +260,23 @@ for (const combo of generateCombinations()) {
     // Calculer ratio
     const ratio = computeRatio(realVol.hours, declaredVol);
 
-    // Part séance longue
-    let longSessionMinutes = 0;
+    // Part séance longue — détection par tag moteur (long:true), calcul en HEURES
+    // (minutes + mètres nage convertis), sinon la nage était exclue du calcul.
+    let longHours = 0;
     peakWeek.days.forEach(day => {
       day.sessions.forEach(sess => {
-        if (sess.name && (sess.name.includes('Longue') || sess.name.includes('longue') || sess.name.includes('Brick'))) {
+        const isLong = sess.long === true || (sess.name && (sess.name.includes('Longue') || sess.name.includes('longue') || sess.name.includes('Brick')));
+        if (isLong && sess.d !== 'rs') {
           const p = parseSessionDetail(sess.det, sess.d);
-          longSessionMinutes += p.minutes;
+          longHours += (p.minutes / 60) + (p.meters > 0 ? (p.meters / 1000) / 3 : 0);
         }
       });
     });
 
-    const longPct = realVol.minutes > 0 ? (longSessionMinutes / realVol.minutes) * 100 : 0;
+    const longPct = realVol.hours > 0 ? (longHours / realVol.hours) * 100 : 0;
+    // Règle coaching : chez le débutant natation, la technique prime sur le volume
+    // (pitch du sport) — le plancher de part longue est abaissé de 10 points.
+    const swimBeginner = combo.sport === 'swim' && combo.level === 'debutant';
 
     // Grouper par sport × format
     const key = `${combo.sport}:${combo.format}`;
@@ -287,6 +292,7 @@ for (const combo of generateCombinations()) {
       realHours: realVol.hours,
       ratio,
       longPct,
+      longFloorRelax: swimBeginner ? 10 : 0,
       peakWeekNum: peakWeek.num,
       totalWeeks: plan.totalWeeks
     });
@@ -296,30 +302,45 @@ for (const combo of generateCombinations()) {
   }
 }
 
+// Fenêtres idéales de part séance longue PAR FORMAT : imposer 45-55% à un plan
+// 5k ou critérium serait une prescription dangereuse. La part attendue de la
+// séance longue croît avec la distance de l'épreuve.
+const LONG_WINDOWS = {
+  'run:5k': [20, 40], 'run:10k': [22, 42], 'run:semi': [28, 48], 'run:marathon': [35, 55], 'run:trail': [40, 60],
+  'bike:crit': [18, 38], 'bike:clm': [20, 40], 'bike:route': [25, 45], 'bike:cyclo': [32, 52], 'bike:gravel': [38, 58],
+  'swim:sprint': [12, 35], 'swim:demifond': [15, 38], 'swim:fond': [20, 42], 'swim:ow': [25, 48],
+  'tri:S': [22, 42], 'tri:M': [28, 48], 'tri:70.3': [35, 55], 'tri:Full': [40, 60]
+};
+
 console.log(`\n=== AUDIT COACH DE CHARGE — EnduraBuild ===`);
 console.log(`Combinaisons testées: ${count} | Erreurs: ${errors}`);
-console.log(`Seuils d'alerte: ratio >1.4 (sur-prescrit), <0.5 (sous-prescrit) | part séance longue >45% et <55%\n`);
+console.log(`Seuils d'alerte: ratio >1.4 (sur-prescrit), <0.5 (sous-prescrit) | part séance longue hors fenêtre du format\n`);
 
-// Afficher par sport et format
-const alertLow = 0.5, alertHigh = 1.4, longLow = 45, longHigh = 55;
+const alertLow = 0.5, alertHigh = 1.4;
+const summary = { volAlerts: 0, longAlerts: 0, formats: 0, formatsOK: 0 };
 
 for (const [key, data] of Object.entries(results).sort()) {
   const avgRatio = data.samples.reduce((s, x) => s + x.ratio, 0) / data.samples.length;
   const avgReal = data.samples.reduce((s, x) => s + x.realHours, 0) / data.samples.length;
   const avgDeclared = data.samples.reduce((s, x) => s + x.declaredVol, 0) / data.samples.length;
   const avgLongPct = data.samples.reduce((s, x) => s + x.longPct, 0) / data.samples.length;
+  const [longLow, longHigh] = LONG_WINDOWS[`${data.sport}:${data.format}`] || [30, 55];
 
-  let status = '✓ OK';
-  if (avgRatio > alertHigh) status = '⚠️  SUR-PRESCRIT';
-  else if (avgRatio < alertLow) status = '⚠️  SOUS-PRESCRIT';
-  if (avgLongPct > longHigh || avgLongPct < longLow) status = '⚠️  ' + status;
+  const volBad = avgRatio > alertHigh || avgRatio < alertLow;
+  const longBad = avgLongPct > longHigh || avgLongPct < longLow;
+  const status = (volBad ? '⚠️ VOLUME' : '') + (longBad ? ' ⚠️ LONGUE' : '') || '✓ OK';
+  summary.formats++;
+  if (!volBad && !longBad) summary.formatsOK++;
 
   console.log(`${data.sport.toUpperCase()} · ${data.format.padEnd(12)} ${status}`);
   console.log(`  Volume déclaré: ${avgDeclared.toFixed(1)}h | Réel parsé: ${avgReal.toFixed(1)}h | Ratio: ${avgRatio.toFixed(2)}`);
-  console.log(`  Part séance longue: ${avgLongPct.toFixed(1)}% (idéal 45-55%)`);
+  console.log(`  Part séance longue: ${avgLongPct.toFixed(1)}% (fenêtre format: ${longLow}-${longHigh}%)`);
 
-  // Détail par combo (échantillon)
-  const problematic = data.samples.filter(s => s.ratio > alertHigh || s.ratio < alertLow || s.longPct > longHigh || s.longPct < longLow);
+  // Micro-semaines (<4h au pic, ~3 séances) : la longue pèse légitimement plus, plafond +8 pts.
+  const longOut = s => s.longPct > (longHigh + (s.realHours < 4 ? 8 : 0)) || s.longPct < (longLow - (s.longFloorRelax || 0));
+  const problematic = data.samples.filter(s => s.ratio > alertHigh || s.ratio < alertLow || longOut(s));
+  summary.volAlerts += data.samples.filter(s => s.ratio > alertHigh || s.ratio < alertLow).length;
+  summary.longAlerts += data.samples.filter(longOut).length;
   if (problematic.length > 0) {
     console.log(`  Cas alertes (${problematic.length}/${data.samples.length}):`);
     problematic.slice(0, 3).forEach(s => {
@@ -329,8 +350,7 @@ for (const [key, data] of Object.entries(results).sort()) {
   console.log();
 }
 
-console.log(`\n=== Résumé détecté ===`);
-console.log(`RUN: cohérence volume généralement OK`);
-console.log(`BIKE: À vérifier — possiblement sur-prescrit en haute charge`);
-console.log(`SWIM: À vérifier — possibly sous-prescrit (pas d'escalade en Tri)`);
-console.log(`TRI: À vérifier — nage fixe, pas de progression en distance`);
+console.log(`\n=== Résumé (dérivé des données) ===`);
+console.log(`Formats dans les clous: ${summary.formatsOK}/${summary.formats}`);
+console.log(`Cas hors seuil volume (${alertLow}-${alertHigh}): ${summary.volAlerts}/${count}`);
+console.log(`Cas hors fenêtre séance longue: ${summary.longAlerts}/${count}`);

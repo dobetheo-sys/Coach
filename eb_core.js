@@ -71,12 +71,16 @@ function buildPlan(a){
   const minW=cfg.minWeeks[fmt]||12;
   let weeks=minW;
   if(a.race_date){const diff=Math.floor((new Date(a.race_date)-Date.now())/(7*864e5));if(diff>=minW*0.75&&diff<=80)weeks=diff;}
-  const caps={run:{reprise:{"5k":5,"10k":5,semi:6,marathon:8,trail:9},confirme:{"5k":6,"10k":6,semi:8,marathon:10,trail:12},ancien:{"5k":7,"10k":7,semi:9,marathon:12,trail:14}},
-    bike:{reprise:{crit:14,route:9,cyclo:11,clm:8,gravel:13},confirme:{crit:8,route:12,cyclo:15,clm:11,gravel:17},ancien:{crit:10,route:15,cyclo:18,clm:13,gravel:22}},
-    swim:{reprise:{sprint:4,demifond:5,fond:7,ow:8},confirme:{sprint:6,demifond:8,fond:9,ow:12},ancien:{sprint:8,demifond:10,fond:13,ow:15}},
-    tri:{reprise:{S:6,M:8,"70.3":11,Full:22},confirme:{S:7,M:10,"70.3":13,Full:17},ancien:{S:8,M:12,"70.3":15,Full:19}}}[sp][a.history||"confirme"][fmt]||10;
+  const caps={run:{reprise:{"5k":4,"10k":5,semi:6,marathon:8,trail:9},confirme:{"5k":5,"10k":6,semi:8,marathon:10,trail:12},ancien:{"5k":6,"10k":7,semi:9,marathon:12,trail:14}},
+    bike:{reprise:{crit:6,route:9,cyclo:11,clm:8,gravel:13},confirme:{crit:8,route:12,cyclo:15,clm:11,gravel:17},ancien:{crit:10,route:15,cyclo:18,clm:13,gravel:22}},
+    swim:{reprise:{sprint:3,demifond:4,fond:5,ow:6},confirme:{sprint:5,demifond:6,fond:7,ow:9},ancien:{sprint:6,demifond:8,fond:10,ow:12}},
+    tri:{reprise:{S:6,M:8,"70.3":11,Full:15},confirme:{S:7,M:10,"70.3":13,Full:17},ancien:{S:8,M:12,"70.3":15,Full:19}}}[sp][a.history||"confirme"][fmt]||10;
   const util={run:{"5k":6,"10k":7,semi:9,marathon:12,trail:14},bike:{crit:9,route:13,cyclo:15,clm:11,gravel:20},swim:{sprint:6,demifond:8,fond:10,ow:12},tri:{S:8,M:11,"70.3":14,Full:18}}[sp][fmt]||12;
   const marg=(a.intent==="competition")?1.0:0.9;
+  // OPTION A — le contenu des séances dépend du volume disponible, pas seulement du format :
+  // si l'athlète a moins d'heures (vol_max, historique) que le format n'en demande (util),
+  // toutes les quantités prescrites (durées, répétitions, distances) sont réduites d'autant via P().
+  const sessionScale=Math.min(1,Math.min(parseInt(a.vol_max||"10"),caps,util)*marg/util);
   let volPeak=Math.round(Math.min(parseInt(a.vol_max||"10"),caps,util)*marg*10)/10;
   if(sp==="swim"&&a.level==="debutant")volPeak=Math.min(volPeak,4);
   // FIX SWIM : volume déclaré 4.5× trop haut car confond heures avec distance
@@ -105,7 +109,7 @@ function buildPlan(a){
     const _injImpactG=(a.injury||"").split(",").some(x=>["tibia","genou","pied","hanche","course"].includes(x));
     const _plioOK=(lvl!=="debutant")&&!finisher&&!_injImpactG;
     const G=phase==="base"?"+ 4-6 strides 15s":phase==="dev"?"+ gammes (genoux, talons-fesses)":(phase==="spec"||phase==="peak")?(_plioOK?"+ foulées bondissantes + strides":"+ gammes + strides (sans sauts)"):"";
-    const P=(lo,hi)=>Math.round(lo+(hi-lo)*prog);
+    const P=(lo,hi)=>Math.max(1,Math.round((lo+(hi-lo)*prog)*sessionScale));
     function struct(o){
       const parts=[];
       if(o.ech)parts.push("Échauffement "+o.ech);
@@ -126,12 +130,12 @@ function buildPlan(a){
       }
       else if(slot==="dur2"){ S2.push({d:"rn",name:phase==="base"?"Endurance soutenue":"Allure spécifique",det:struct({ech:"15min footing facile",corps:P(20,45)+"min "+(fmt==="marathon"||fmt==="trail"?"@ "+rz.mara:"@ "+rz.thr),rc:"5-10min retour au calme "+G,note:"Allure tenue et continue, sans à-coups."})}); }
       else if(slot==="durLong"){
-        const durCaps={"5k":{lo:40,hi:75},"10k":{lo:50,hi:90},semi:{lo:70,hi:130},marathon:{lo:90,hi:180},trail:{lo:120,hi:270}}[fmt]||{lo:60,hi:110};
+        const durCaps={"5k":{lo:40,hi:85},"10k":{lo:50,hi:90},semi:{lo:70,hi:130},marathon:{lo:90,hi:180},trail:{lo:120,hi:255}}[fmt]||{lo:60,hi:110};
         const durMin=P(durCaps.lo,durCaps.hi);
-        S2.push({d:"rn",name:"Sortie longue",det:struct({corps:durMin+"min @ "+rz.easy+((phase==="spec"||phase==="peak")&&!finisher?", derniers 15-20min @ allure cible":""),note:beginner?"Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK.":"Allure d'endurance, jamais forcée. La longue construit l'endurance de base."})});
+        S2.push({d:"rn",long:true,name:"Sortie longue",det:struct({corps:durMin+"min @ "+rz.easy+((phase==="spec"||phase==="peak")&&!finisher?", derniers 15-20min @ allure cible":""),note:beginner?"Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK.":"Allure d'endurance, jamais forcée. La longue construit l'endurance de base."})});
       }
       else if(slot==="facileR")S2.push({d:"rn",name:"Footing facile",det:P(30,50)+"min @ "+rz.easy+(G&&!injImp?" · termine par "+G.replace("+ ",""):"")+(beginner?" — 💡 allure de conversation, sans forcer":"")});
-      else if(slot==="facile2")S2.push({d:"rn",name:"Footing récup",det:"30min @ "+rz.rec});
+      else if(slot==="facile2")S2.push({d:"rn",name:"Footing récup",det:P(20,30)+"min @ "+rz.rec});
       else if(slot==="recup")S2.push({d:"rs",name:"Repos / mobilité",det:"marche, étirements"});
       else if(slot==="off")S2.push({d:"rs",name:"OFF",det:"repos total"});
     } else if(sp==="bike"){
@@ -145,12 +149,12 @@ function buildPlan(a){
       }
       else if(slot==="dur2")S2.push({d:"bk",name:climb?"Force en côte":"Force basse cadence",det:struct({ech:"15min + montée en intensité",corps:P(4,6)+"×5min @ "+bz.frc+" à 50-60 rpm"+(climb?" en côte":""),rec:"3min souple ou en redescendant",rc:"10min moulinage léger",note:"Gros braquet, cadence basse, mais sans forcer sur les genoux : c'est musculaire, pas cardio."})});
       else if(slot==="durLong"){
-        const durCaps={crit:{lo:60,hi:150},route:{lo:90,hi:180},clm:{lo:75,hi:165},cyclo:{lo:120,hi:240},gravel:{lo:150,hi:330}}[fmt]||{lo:90,hi:210};
+        const durCaps={crit:{lo:60,hi:150},route:{lo:90,hi:180},clm:{lo:75,hi:165},cyclo:{lo:120,hi:240},gravel:{lo:150,hi:360}}[fmt]||{lo:90,hi:210};
         const durMin=P(durCaps.lo,durCaps.hi);
-        S2.push({d:"bk",name:"Sortie longue",det:durMin+"min @ "+bz.z2+((fmt==="cyclo"||fmt==="gravel")?" · endurance":"")});
+        S2.push({d:"bk",long:true,name:"Sortie longue",det:durMin+"min @ "+bz.z2+((fmt==="cyclo"||fmt==="gravel")?" · endurance":"")});
       }
       else if(slot==="facileR")S2.push({d:"bk",name:"Endurance facile",det:P(45,90)+"min @ "+bz.z2});
-      else if(slot==="facile2")S2.push({d:"bk",name:"Récup active",det:"45min très souple"});
+      else if(slot==="facile2")S2.push({d:"bk",name:"Récup active",det:P(30,45)+"min très souple"});
       else if(slot==="recup")S2.push({d:"rs",name:"Repos / gainage",det:"mobilité"});
       else if(slot==="off")S2.push({d:"rs",name:"OFF",det:"repos total"});
     } else if(sp==="swim"){
@@ -167,10 +171,10 @@ function buildPlan(a){
       }
       else if(slot==="durLong"){
         const distCaps = beginner
-          ? {lo:200,hi:900}
+          ? (ow?{lo:400,hi:2400}:{lo:200,hi:1100}) // eau libre : même débutant, la distance continue doit monter (épreuve ≥1km, fractionnable)
           : ({sprint:{lo:600,hi:1400},demifond:{lo:1000,hi:2000},fond:{lo:1500,hi:3000},ow:{lo:1500,hi:4500}}[fmt]||{lo:1000,hi:2000});
         const distM=P(distCaps.lo,distCaps.hi);
-        S2.push({d:"sw",name:ow?"Volume + sighting":(beginner?"Volume aérobie":"Longue continue"),
+        S2.push({d:"sw",long:true,name:ow?"Volume + sighting":(beginner?"Volume aérobie":"Longue continue"),
           det:distM+"m @ "+sz.aero+(ow?" · navigation aux repères":"")+(beginner?" · fractionne en blocs de 100-200m si besoin, la continuité prime sur l'allure":"")});
       }
       else if(slot==="facileR"){
@@ -188,7 +192,7 @@ function buildPlan(a){
     } else if(sp==="tri"){
       const runInj=(a.injury||"").includes("course");
       // FIX cohérence TRI nage : escalader RÉELLEMENT vers distance cible du format
-      const swimDistCaps={S:{lo:300,hi:750},M:{lo:600,hi:1500},"70.3":{lo:950,hi:1900},Full:{lo:1700,hi:3400}}[fmt]||{lo:600,hi:1500};
+      const swimDistCaps={S:{lo:300,hi:750},M:{lo:600,hi:1500},"70.3":{lo:950,hi:1900},Full:{lo:1900,hi:3800}}[fmt]||{lo:600,hi:1500};
       const swimDist=P(swimDistCaps.lo,swimDistCaps.hi);
       const swDetBeg=struct({ech:"200m souple",corps:"progression vers "+swimDist+"m total : fractionnée en blocs de 100-200m, éducatifs entre",rec:"repos libre entre séries",rc:"100m relâché",note:"Technique à froid : qualité du geste avant tout, distance progressive."});
       const swDetCSS=struct({ech:"300m + 4×50m éducatifs",corps:swimDist+"m @ "+sz.css+" (fractionnée si besoin : "+Math.ceil(swimDist/200)+"×200m ou "+Math.ceil(swimDist/100)+"×100m)",rec:"15-20s",rc:"200m souple",note:"Distance cible atteinte, allure régulière. Fractionné = réponse à intensité."});
@@ -201,14 +205,14 @@ function buildPlan(a){
       else if(slot==="dur2"){ if(dbl)S2.push({d:"sw",name:swT.name,det:swT.det}); S2.push({d:"bk",name:"Force basse cadence",det:struct({ech:"15min + montée en intensité",corps:P(4,6)+"×5min @ "+bz.frc+" à 50-60 rpm",rec:"3min souple",rc:"10min moulinage",note:"Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux."})}); }
       else if(slot==="durLong"){
         if(phase==="spec"||phase==="peak"){
-          const brickBikeCaps={S:{lo:45,hi:90},M:{lo:60,hi:120},"70.3":{lo:90,hi:180},Full:{lo:120,hi:240}}[fmt]||{lo:60,hi:180};
-          const brickRunCaps={S:{lo:10,hi:20},M:{lo:15,hi:30},"70.3":{lo:20,hi:45},Full:{lo:24,hi:60}}[fmt]||{lo:15,hi:30};
+          const brickBikeCaps={S:{lo:45,hi:90},M:{lo:60,hi:120},"70.3":{lo:90,hi:210},Full:{lo:135,hi:330}}[fmt]||{lo:60,hi:180};
+          const brickRunCaps={S:{lo:10,hi:20},M:{lo:15,hi:30},"70.3":{lo:20,hi:55},Full:{lo:27,hi:75}}[fmt]||{lo:15,hi:30};
           const bikeMin=P(brickBikeCaps.lo,brickBikeCaps.hi), runMin=P(brickRunCaps.lo,brickRunCaps.hi);
-          S2.push({d:"br",name:"Brick vélo+CAP",det:struct({ech:"15min vélo souple",corps:bikeMin+"min vélo @ "+bz.rp+" puis transition rapide + "+runMin+"min CAP"+(runInj?" souple, surface souple":" @ allure cible"),note:"Le brick simule la course : enchaîne vite vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP."})});
+          S2.push({d:"br",long:true,name:"Brick vélo+CAP",det:struct({ech:"15min vélo souple",corps:bikeMin+"min vélo @ "+bz.rp+" puis transition rapide + "+runMin+"min CAP"+(runInj?" souple, surface souple":" @ allure cible"),note:"Le brick simule la course : enchaîne vite vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP."})});
         } else {
           const longRunCaps={S:{lo:30,hi:60},M:{lo:40,hi:75},"70.3":{lo:50,hi:100},Full:{lo:60,hi:140}}[fmt]||{lo:50,hi:100};
           const durMin=P(longRunCaps.lo,longRunCaps.hi);
-          S2.push({d:"rn",name:"Sortie longue CAP",det:struct({corps:durMin+"min @ "+rz.easy+(runInj?" sur surface souple":""),note:"Endurance fondamentale, allure facile et conversationnelle."})});
+          S2.push({d:"rn",long:true,name:"Sortie longue CAP",det:struct({corps:durMin+"min @ "+rz.easy+(runInj?" sur surface souple":""),note:"Endurance fondamentale, allure facile et conversationnelle."})});
         } }
       else if(slot==="facileR")S2.push({d:"rn",name:"Footing facile",det:"@ "+rz.easy+(runInj?" · court, surface souple":"")});
       else if(slot==="facile2")S2.push({d:"sw",name:swT.name+" courte",det:swT.det});
@@ -269,7 +273,13 @@ function buildPlan(a){
       }
     }
   }
-  const declSess=parseInt(a.sessions_max)||7;
+  // Budget séances implicite du volume : à faible dispo horaire, moins de séances
+  // (on ne prescrit pas 6 sorties/semaine à quelqu'un qui a 5h). Le swim est exclu :
+  // en natation la fréquence prime (séances courtes techniques), ses heures "génériques" sont gonflées.
+  const volBudget=Math.min(parseInt(a.vol_max||"10"),caps,util)*marg;
+  const avgSessH={run:1.15,bike:1.3,tri:1.2}[sp];
+  const volSessCap=avgSessH?Math.max(3,Math.round(volBudget/avgSessH)):7;
+  const declSess=Math.min(parseInt(a.sessions_max)||7,volSessCap);
   const budgetPerWeek=declSess;
   for(let w=1;w<=weeks;w++){
     const wd=days.filter(d=>d.week===w);
@@ -321,7 +331,9 @@ function buildPlan(a){
     if(active.length>=2&&faciles.length===0){
       const durs=active.filter(d=>d.charge==="dur"&&!d.forced);
       if(durs.length>=2){
-        const victim=durs[durs.length-1];
+        // Ne jamais sacrifier la sortie longue : convertir de préférence un dur non-longue
+        const nonLong=durs.filter(d=>d.slot!=="durLong");
+        const victim=nonLong.length?nonLong[nonLong.length-1]:durs[durs.length-1];
         victim.charge="facile";
         victim.slot=(sp==="run")?"facileR":(sp==="bike")?"facileR":(sp==="swim")?"facileR":"facileR";
         victim.sessions=sess(victim.slot,victim.phaseId,victim.prog||0);
@@ -364,6 +376,18 @@ function buildPlan(a){
   for(let w=0;w<weeks;w++){const ph=phases.find(p=>w>=p.start&&w<p.end)||phases[4];const prog=ph.weeks>1?(w-ph.start)/(ph.weeks-1):1;let vol;
     if(ph.id==="taper")vol=volPeak*0.7-(volPeak*0.4)*prog;else{const fl={base:0,dev:.35,spec:.6,peak:.85}[ph.id]??0,cl={base:.35,dev:.6,spec:.85,peak:1}[ph.id]??1;vol=volBase+(volPeak-volBase)*(fl+(cl-fl)*prog);}
     const wd=days.filter(d=>d.week===w+1);const isRW=wd.filter(d=>d.isR).length>=4;if(isRW)vol*=0.65;
+    // GARDE-FOU vol_max (boucle fermée) : si le contenu réel dépasse la dispo déclarée (+5%),
+    // retirer la plus petite séance facile, jusqu'à 2 fois.
+    if(!isRW){const volCapUser=parseInt(a.vol_max||"10");
+      for(let guard=0;guard<2;guard++){
+        if(parseWeekVolume({days:wd})<=volCapUser*1.05)break;
+        const fac=wd.filter(d=>d.charge==="facile"&&!d.forced&&d.sessions.some(s=>s.d!=="rs"));
+        if(!fac.length)break;
+        let smallest=fac[0],sv=Infinity;
+        fac.forEach(d=>{let h=0;d.sessions.forEach(s=>{if(s.d!=="rs"){const p=parseSessionDetail(s.det,s.d);h+=(p.minutes/60)+(p.meters>0?p.meters/3000:0);}});if(h<sv){sv=h;smallest=d;}});
+        smallest.charge="off";smallest.slot="off";smallest.sessions=[{d:"rs",name:"OFF (budget volume)",det:"repos — respect de ta disponibilité horaire déclarée"}];
+      }
+    }
     // SYNC: Calculer le volume réel à partir du contenu généré, puis utiliser comme w.vol
     const volReal=parseWeekVolume({days:wd});
     const volDisplay=volReal>0?volReal:Math.round(vol*10)/10; // Utiliser vol réel si parsé, sinon vol calculé
