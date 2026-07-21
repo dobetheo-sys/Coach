@@ -612,7 +612,7 @@ function buildPlan(a){
   if(a.race_date){const diff=Math.floor((new Date(a.race_date)-Date.now())/(7*864e5));if(diff>=minW*0.75&&diff<=80)weeks=diff;}
   const caps={run:{reprise:{"5k":5,"10k":5,semi:6,marathon:8,trail:9},confirme:{"5k":6,"10k":6,semi:8,marathon:10,trail:12},ancien:{"5k":7,"10k":7,semi:9,marathon:12,trail:14}},
     bike:{reprise:{crit:14,route:9,cyclo:11,clm:8,gravel:13},confirme:{crit:8,route:12,cyclo:15,clm:11,gravel:17},ancien:{crit:10,route:15,cyclo:18,clm:13,gravel:22}},
-    swim:{reprise:{sprint:3,demifond:4,fond:5,ow:6},confirme:{sprint:5,demifond:6,fond:7,ow:9},ancien:{sprint:6,demifond:8,fond:10,ow:12}},
+    swim:{reprise:{sprint:4,demifond:5,fond:7,ow:8},confirme:{sprint:6,demifond:8,fond:9,ow:12},ancien:{sprint:8,demifond:10,fond:13,ow:15}},
     tri:{reprise:{S:6,M:8,"70.3":11,Full:22},confirme:{S:7,M:10,"70.3":13,Full:17},ancien:{S:8,M:12,"70.3":15,Full:19}}}[sp][a.history||"confirme"][fmt]||10;
   const util={run:{"5k":6,"10k":7,semi:9,marathon:12,trail:14},bike:{crit:9,route:13,cyclo:15,clm:11,gravel:20},swim:{sprint:6,demifond:8,fond:10,ow:12},tri:{S:8,M:11,"70.3":14,Full:18}}[sp][fmt]||12;
   const marg=(a.intent==="competition")?1.0:0.9;
@@ -728,8 +728,16 @@ function buildPlan(a){
         S2.push({d:"sw",name:ow?"Volume + sighting":(beg?"Volume aérobie":"Longue continue"),
           det:distM+"m @ "+sz.aero+(ow?" · navigation aux repères":"")+(beg?" · fractionne en blocs de 100-200m si besoin, la continuité prime sur l'allure":"")});
       }
-      else if(slot==="facileR")S2.push({d:"sw",name:ow&&a.swim_limit==="peur"?"Aisance eau libre":"Technique souple",det:ow&&a.swim_limit==="peur"?"familiarisation, respiration, flottaison":"éducatifs @ "+sz.easy});
-      else if(slot==="facile2")S2.push({d:"sw",name:"Récup eau",det:"souple "+sz.easy});
+      else if(slot==="facileR"){
+        const techDistCaps=beg?{lo:200,hi:600}:{lo:400,hi:1000};
+        const techDist=P(techDistCaps.lo,techDistCaps.hi);
+        S2.push({d:"sw",name:ow&&a.swim_limit==="peur"?"Aisance eau libre":"Technique souple",det:ow&&a.swim_limit==="peur"?"familiarisation, respiration, flottaison":techDist+"m éducatifs @ "+sz.easy});
+      }
+      else if(slot==="facile2"){
+        const recDistCaps=beg?{lo:100,hi:400}:{lo:200,hi:600};
+        const recDist=P(recDistCaps.lo,recDistCaps.hi);
+        S2.push({d:"sw",name:"Récup eau",det:recDist+"m souple @ "+sz.easy});
+      }
       else if(slot==="recup")S2.push({d:"rs",name:"Repos / épaules",det:"étirements coiffe"});
       else if(slot==="off")S2.push({d:"rs",name:"OFF",det:"repos total"});
     } else if(sp==="tri"){
