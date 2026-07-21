@@ -329,7 +329,7 @@ function buildPlan(a){
     }
   }
   // Parseur volume réel des séances (synchronise w.vol avec contenu réel)
-  function parseSessionDetail(det){
+  function parseSessionDetail(det,sportKey){
     if(!det||typeof det!=="string")return{minutes:0,meters:0};
     let minutes=0,meters=0;
     const rangeMatches=det.match(/(\d+)\s*-\s*(\d+)\s*min/gi);
@@ -344,12 +344,18 @@ function buildPlan(a){
     if(meterRepMatches){meterRepMatches.forEach(m=>{const[n,d]=m.match(/\d+/g).map(Number);if(!det.includes(`${d}m/`)&&!det.includes(`/${d}m`))meters+=n*d;});}
     const singleMeter=det.match(/\b(\d{3,})\s*m(?!\s*\/)\b/gi);
     if(singleMeter){singleMeter.forEach(m=>{const n=parseInt(m);const isRange=det.includes(`${n}-`)||det.includes(`-${n}`);const isRep=det.includes(`${n}×`)||det.includes(`×${n}`);const isAllure=det.includes(`/${n}m`)||det.includes(`${n}m/`);if(!isRange&&!isRep&&!isAllure)meters+=n;});}
+    // Estimations échauffement/retour au calme non chiffrés en minutes
+    if(sportKey==="sw"&&minutes===0&&meters>0)minutes+=3;
+    if(sportKey==="sw"||sportKey==="rn"||sportKey==="bk"){
+      if(det.includes("Échauffement")||det.includes("échauffement"))minutes+=5;
+      if(det.includes("Retour au calme")||det.includes("retour au calme"))minutes+=5;
+    }
     return{minutes,meters};
   }
   function parseWeekVolume(week){
     let totalMinutes=0,totalMeters=0;
     if(!week.days)return 0;
-    week.days.forEach(day=>{if(!day.sessions)return;day.sessions.forEach(sess=>{if(sess.d!=="rs"){const p=parseSessionDetail(sess.det);totalMinutes+=p.minutes;totalMeters+=p.meters;}});});
+    week.days.forEach(day=>{if(!day.sessions)return;day.sessions.forEach(sess=>{if(sess.d!=="rs"){const p=parseSessionDetail(sess.det,sess.d);totalMinutes+=p.minutes;totalMeters+=p.meters;}});});
     let swimHours=0;if(totalMeters>0)swimHours=(totalMeters/1000)/3;
     return Math.round(((totalMinutes/60)+swimHours)*10)/10;
   }
