@@ -20,7 +20,7 @@ global.URL = { createObjectURL: () => 'blob:', revokeObjectURL: () => {} };
 
 // Charger eb_core.js via eval indirect (retient les exports)
 const coreCode = fs.readFileSync(path.join(__dirname, 'eb_core.js'), 'utf-8');
-(0, eval)(`(function() { ${coreCode}; global.S = S; global.SPORTS = SPORTS; global.buildPlan = buildPlan; global.hrZones = hrZones; global.bikeZones = bikeZones; global.runZones = runZones; global.swimZones = swimZones; })()`);
+(0, eval)(`(function() { ${coreCode}; global.SPORTS = SPORTS; global.buildPlan = buildPlan; global.hrZones = hrZones; global.bikeZones = bikeZones; global.runZones = runZones; global.swimZones = swimZones; })()`);
 
 const SPORTS = global.SPORTS;
 const buildPlan = global.buildPlan;

@@ -324,5 +324,5 @@ function buildPlan(a){
 
 // Export for Node.js
 if(typeof module!=="undefined"&&module.exports){
-  module.exports={S:{sport:null,answers:{}},SPORTS,buildPlan,hrZones,bikeZones,runZones,swimZones};
+  module.exports={SPORTS,buildPlan,hrZones,bikeZones,runZones,swimZones};
 }
