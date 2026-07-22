@@ -130,7 +130,7 @@ function buildPlan(a){
       }
       else if(slot==="dur2"){ S2.push({d:"rn",name:phase==="base"?"Endurance soutenue":"Allure spécifique",det:struct({ech:"15min footing facile",corps:P(20,45)+"min "+(fmt==="marathon"||fmt==="trail"?"@ "+rz.mara:"@ "+rz.thr),rc:"5-10min retour au calme "+G,note:"Allure tenue et continue, sans à-coups."})}); }
       else if(slot==="durLong"){
-        const durCaps={"5k":{lo:40,hi:85},"10k":{lo:50,hi:90},semi:{lo:70,hi:130},marathon:{lo:90,hi:180},trail:{lo:120,hi:255}}[fmt]||{lo:60,hi:110};
+        const durCaps={"5k":{lo:40,hi:74},"10k":{lo:50,hi:90},semi:{lo:70,hi:130},marathon:{lo:90,hi:180},trail:{lo:120,hi:255}}[fmt]||{lo:60,hi:110};
         const durMin=P(durCaps.lo,durCaps.hi);
         S2.push({d:"rn",long:true,name:"Sortie longue",det:struct({corps:durMin+"min @ "+rz.easy+((phase==="spec"||phase==="peak")&&!finisher?", derniers 15-20min @ allure cible":""),note:beginner?"Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK.":"Allure d'endurance, jamais forcée. La longue construit l'endurance de base."})});
       }
@@ -171,7 +171,7 @@ function buildPlan(a){
       }
       else if(slot==="durLong"){
         const distCaps = beginner
-          ? (ow?{lo:400,hi:2400}:{lo:200,hi:1100}) // eau libre : même débutant, la distance continue doit monter (épreuve ≥1km, fractionnable)
+          ? {lo:300,hi:850} // débutant nage : plafonné à 900m (C3 v4) quel que soit le format, technique > volume
           : ({sprint:{lo:600,hi:1400},demifond:{lo:1000,hi:2000},fond:{lo:1500,hi:3000},ow:{lo:1500,hi:4500}}[fmt]||{lo:1000,hi:2000});
         const distM=P(distCaps.lo,distCaps.hi);
         S2.push({d:"sw",long:true,name:ow?"Volume + sighting":(beginner?"Volume aérobie":"Longue continue"),
@@ -490,6 +490,32 @@ function buildPlan(a){
         const cap=(w2.phase.id==="taper"||w2.isRecup)?targetVol*0.62:targetVol*0.90;
         for(let g=0;g<8&&w2.vol>cap&&w2.vol>0;g++)scaleWeekAll(w2,Math.max(0.6,cap/w2.vol));
       });
+    }
+  }
+  // ===== POST-PASS GÉNÉRAL (tous sports) : C5 taper & C9 volPeak =====
+  // C5 : les séances de taper génèrent un contenu quasi complet (le prog de phase ne
+  //      réduit pas assez) → le taper réel ≈ pic. On rétrécit chaque semaine de taper
+  //      à ≤0.62× le pic réel (marge sous le seuil 0.7 du test).
+  // C9 : volPeak déclaré était théorique (dégonflé nage ×0.4, plafonné tri) alors que le
+  //      contenu réel le dépasse. On renvoie volPeak = pic réel (max semaine de charge).
+  {
+    const scaleContent=(wk,f)=>{wk.days.forEach(d=>d.sessions.forEach(s=>{
+      if(s.d==="rs")return;
+      if(s.d==="br")s.det=s.det.replace(/(\d+)(\s*min\s*vélo(?!\s*souple))/g,(_,n,u)=>Math.max(1,Math.round(n*f))+u).replace(/(Échauffement\s*)(\d+)(\s*min)/g,(_,p,n,u)=>p+Math.max(1,Math.round(n*f))+u).replace(/(\d+)(\s*min\s*CAP)/g,(_,n,u)=>Math.max(1,Math.round(n*f))+u);
+      else if(s.d==="sw")s.det=s.det.replace(/(?<![\/\d'×])(\d{3,})(\s*m\b)(?!in)/g,(_,n,u)=>Math.max(100,Math.round(n*f/25)*25)+u);
+      else s.det=s.det.replace(/(\d+)(\s*min)/g,(_,n,u)=>Math.max(1,Math.round(n*f))+u);
+    }));wk.vol=parseWeekVolume({days:wk.days});wk.vol_real=wk.vol;};
+    const chargeW=wl.filter(w=>!w.isRecup);
+    // Référence pic = semaines de charge HORS taper (sinon un taper gonflé fausse la cible).
+    const refW=chargeW.filter(w=>w.phase.id!=="taper");
+    if(refW.length){
+      const peakVol=Math.max(...refW.map(w=>w.vol));
+      wl.forEach(w=>{
+        if(w.isRecup||w.phase.id!=="taper")return;
+        const cap=peakVol*0.62;
+        for(let g=0;g<8&&w.vol>cap&&w.vol>0;g++)scaleContent(w,Math.max(0.4,cap/w.vol));
+      });
+      volPeak=Math.max(...chargeW.map(w=>w.vol));
     }
   }
   return {weeks:wl,phases,volPeak,volBase,use10,totalWeeks:weeks};
