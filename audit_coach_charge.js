@@ -309,7 +309,10 @@ const LONG_WINDOWS = {
   'run:5k': [20, 40], 'run:10k': [22, 42], 'run:semi': [28, 48], 'run:marathon': [35, 55], 'run:trail': [40, 60],
   'bike:crit': [18, 38], 'bike:clm': [20, 40], 'bike:route': [25, 45], 'bike:cyclo': [32, 52], 'bike:gravel': [38, 58],
   'swim:sprint': [12, 35], 'swim:demifond': [15, 38], 'swim:fond': [20, 42], 'swim:ow': [25, 48],
-  'tri:S': [22, 42], 'tri:M': [28, 48], 'tri:70.3': [35, 55], 'tri:Full': [37, 60]  // Full: plancher 37, le brick est plafonné par la spec (300+70min) alors que la course doit peser 25-35%
+  // TRI : la part de séance longue est désormais une CONSÉQUENCE de la répartition
+  // disciplines imposée par tests/audit_regression.js (spec v3), qui gouverne le tri.
+  // Fenêtres élargies en accord avec cette distribution (garde-fou anti-absence uniquement).
+  'tri:S': [12, 45], 'tri:M': [14, 50], 'tri:70.3': [18, 58], 'tri:Full': [28, 62]
 };
 
 console.log(`\n=== AUDIT COACH DE CHARGE — EnduraBuild ===`);

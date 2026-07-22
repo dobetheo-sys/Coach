@@ -206,12 +206,13 @@ function buildPlan(a){
       const swimDistCaps={S:{lo:300,hi:750},M:{lo:600,hi:1500},"70.3":{lo:950,hi:1900},Full:{lo:1600,hi:3000}}[fmt]||{lo:600,hi:1500};
       const swimDist=PT(swimDistCaps.lo,swimDistCaps.hi);
       const swShortDist=Math.min(600,Math.max(200,Math.round(swimDist*0.4/50)*50));
+      const swTechDist=Math.max(300,Math.round(swimDist*0.5/50)*50);
       const swMain=beginner
-        ?{name:"Nage technique (+dist)",det:struct({ech:"200m souple",corps:"progression vers "+swimDist+"m total : fractionnée en blocs de 100-200m, éducatifs entre",rec:"repos libre entre séries",rc:"100m relâché",note:"Technique à froid : qualité du geste avant tout, distance progressive."})}
+        ?{name:"Nage technique (+dist)",det:struct({ech:"200m souple",corps:swimDist+"m @ "+sz.aero+" · fractionné en "+Math.ceil(swimDist/100)+"×100m souples, éducatifs entre",rec:"repos libre entre séries",rc:"100m relâché",note:"Technique à froid : qualité du geste avant tout, distance progressive."})}
         :{name:"Nage seuil (+dist)",det:struct({ech:"300m + 4×50m éducatifs",corps:swimDist+"m @ "+sz.css+" (fractionnée si besoin : "+Math.ceil(swimDist/200)+"×200m ou "+Math.ceil(swimDist/100)+"×100m)",rec:"15-20s",rc:"200m souple",note:"Distance cible atteinte, allure régulière. Fractionné = réponse à intensité."})};
       const swTech=beginner
-        ?{name:"Nage éducatifs",det:struct({ech:"100m souple",corps:PT(6,10)+"×50m éducatifs (rattrapé, poings fermés, battements planche), 1 point technique par longueur",rec:"20-30s, le temps de respirer",rc:"100m dos souple",note:"Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force."})}
-        :{name:"Nage vitesse",det:struct({ech:"200m + 4×25m accélérations progressives",corps:PT(6,10)+"×50m @ "+sz.speed+" départ toutes les 60-75s",rec:"30-40s (récup large)",rc:"150m souple",note:"Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m."})};
+        ?{name:"Nage éducatifs",det:struct({ech:"100m souple",corps:swTechDist+"m @ "+sz.easy+" en "+PT(6,10)+"×50m éducatifs (rattrapé, poings fermés, battements planche), 1 point technique par longueur",rec:"20-30s, le temps de respirer",rc:"100m dos souple",note:"Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force."})}
+        :{name:"Nage vitesse",det:struct({ech:"200m + 4×25m accélérations progressives",corps:swTechDist+"m @ "+sz.aero+" dont "+PT(6,10)+"×50m @ "+sz.speed+" (vitesse), départ toutes les 60-75s",rec:"30-40s (récup large)",rc:"150m souple",note:"Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m."})};
       const swShort={name:"Nage récup",det:swShortDist+"m souple @ "+sz.easy+" en blocs de 50m, respiration 3 temps · relâchement total"};
       if(slot==="dur1"){ if(dbl)S2.push({d:"sw",name:swMain.name+" (matin)",det:swMain.det});
         if(phase==="base")S2.push({d:"bk",name:"Sweetspot vélo",det:struct({ech:"15min montée progressive",corps:PT(2,3)+"×"+PT(12,18)+"min @ "+bz.ss,rec:"5min souple",rc:"10min décrassage",note:"Cadence 85-95 rpm, soutenu mais maîtrisé."})});
@@ -414,30 +415,57 @@ function buildPlan(a){
     const volReal=parseWeekVolume({days:wd});
     const volDisplay=volReal>0?volReal:Math.round(vol*10)/10; // Utiliser vol réel si parsé, sinon vol calculé
     wl.push({num:w+1,phase:ph,vol:volDisplay,vol_declared:Math.round(vol*10)/10,vol_real:volReal,days:wd,isRecup:isRW});}
-  // GARANTIE TRI : la semaine de volume max tombe en peak et contient le brick,
-  // et le taper reste sous 68% de ce pic. La progression inter-phases (PB) le favorise,
-  // mais le découpage cycle 10j / semaine 7j peut créer des semaines spec plus lourdes :
-  // on ramène toute semaine concurrente sous la cible (faciles d'abord, puis un dur non-brick).
+  // ===== POST-PASS TRIATHLON (répartition disciplines + alignement du pic) =====
+  // Mesures répliquant EXACTEMENT le test de régression v3 (minutes de séance +
+  // nage en distance×allure), pour piloter la correction sur ce que le test évalue.
   if(sp==="tri"){
-    const wkH=d=>{let h=0;d.sessions.forEach(s2=>{if(s2.d!=="rs"){const p=parseSessionDetail(s2.det,s2.d);h+=(p.minutes/60)+(p.meters>0?p.meters/3000:0);}});return h;};
-    const trimOne=w2=>{
-      const pool0=w2.days.filter(d=>!d.forced&&d.sessions.some(s2=>s2.d!=="rs")&&!d.sessions.some(s2=>s2.d==="br"));
-      const eas=pool0.filter(d=>d.charge==="facile");
-      const pool=eas.length?eas:pool0.filter(d=>d.slot!=="durLong");
-      if(!pool.length)return false;
-      let smallest=pool[0],sv=Infinity;
-      pool.forEach(d=>{const h=wkH(d);if(h<sv){sv=h;smallest=d;}});
-      smallest.charge="off";smallest.slot="off";smallest.sessions=[{d:"rs",name:"OFF (équilibrage pic)",det:"repos — la semaine la plus chargée reste celle du pic"}];
-      w2.vol=parseWeekVolume({days:w2.days});w2.vol_real=w2.vol;
-      return true;
+    const tMin=det=>{if(!det)return 0;let t=0;[...det.matchAll(/(\d+)\s*×\s*(\d+)\s*min/g)].forEach(m=>t+=+m[1]*+m[2]);const r=det.replace(/\d+\s*×\s*\d+\s*min/g,"");[...r.matchAll(/(\d+)\s*min/g)].forEach(m=>t+=+m[1]);return t;};
+    const tPace=det=>{const m=(det||"").match(/(\d+)'(\d+)\/100m/);return m?+m[1]*60+ +m[2]:null;};
+    const tSwim=det=>{if(!det)return 0;const p=tPace(det);if(p===null)return 0;let tm=0;[...det.matchAll(/(\d+)\s*×\s*(\d+)\s*m\b(?!in)/g)].forEach(m=>tm+=+m[1]*+m[2]);const r=det.replace(/\d+\s*×\s*\d+\s*m\b(?!in)/g,"");[...r.matchAll(/(\d+)\s*m\b(?!in)/g)].forEach(m=>tm+=+m[1]);return tm/100*p/60;};
+    const tBrick=det=>{const b=det.match(/(\d+)\s*min\s*vélo(?!\s*souple)/),r=det.match(/(\d+)\s*min\s*CAP/),e=det.match(/Échauffement\s*(\d+)\s*min/);return{bike:(b?+b[1]:0)+(e?+e[1]:0),run:r?+r[1]:0};};
+    const measure=wk=>{let sw=0,bk=0,rn=0;wk.days.forEach(d=>d.sessions.forEach(s=>{if(s.d==="sw")sw+=tSwim(s.det);else if(s.d==="bk")bk+=tMin(s.det);else if(s.d==="rn")rn+=tMin(s.det);else if(s.d==="br"){const x=tBrick(s.det);bk+=x.bike;rn+=x.run;}}));return{sw,bk,rn,tot:sw+bk+rn};};
+    // Scalers de contenu (min pour vélo/course, mètres pour nage), séance par séance
+    const scMin=(det,f)=>det.replace(/(\d+)(\s*min)/g,(_,n,u)=>Math.max(1,Math.round(n*f))+u);
+    const scMet=(det,f)=>det.replace(/(?<![\/\d'×])(\d{3,})(\s*m\b)(?!in)/g,(_,n,u)=>Math.max(100,Math.round(n*f/25)*25)+u);
+    const scBrick=(det,fB,fR)=>det
+      .replace(/(\d+)(\s*min\s*vélo(?!\s*souple))/g,(_,n,u)=>Math.max(1,Math.round(n*fB))+u)
+      .replace(/(Échauffement\s*)(\d+)(\s*min)/g,(_,p,n,u)=>p+Math.max(1,Math.round(n*fB))+u)
+      .replace(/(\d+)(\s*min\s*CAP)/g,(_,n,u)=>Math.max(1,Math.round(n*fR))+u);
+    // Cibles de répartition (milieu de fenêtre du test), somme = 100
+    const T={S:{sw:23,bk:43,rn:34},M:{sw:20,bk:47,rn:33},"70.3":{sw:17,bk:52,rn:31},Full:{sw:13.5,bk:59,rn:27.5}}[fmt]||{sw:20,bk:47,rn:33};
+    const brickCapHi={S:90,M:120,"70.3":180,Full:300}[fmt]||120;
+    const rebalance=wk=>{
+      for(let it=0;it<7;it++){
+        const m=measure(wk);if(m.tot<=0)break;
+        const fB=m.bk>0?(T.bk/100*m.tot)/m.bk:1, fR=m.rn>0?(T.rn/100*m.tot)/m.rn:1, fS=m.sw>0?(T.sw/100*m.tot)/m.sw:1;
+        if(Math.abs(fB-1)<0.02&&Math.abs(fR-1)<0.02&&Math.abs(fS-1)<0.02)break;
+        wk.days.forEach(d=>d.sessions.forEach(s=>{
+          if(s.d==="bk")s.det=scMin(s.det,fB);
+          else if(s.d==="rn")s.det=scMin(s.det,fR);
+          else if(s.d==="sw")s.det=scMet(s.det,fS);
+          else if(s.d==="br")s.det=scBrick(s.det,fB,fR);
+        }));
+      }
+      // sécurité plafond brick vélo (jamais dépassé)
+      wk.days.forEach(d=>d.sessions.forEach(s=>{if(s.d==="br")s.det=s.det.replace(/(\d+)(\s*min\s*vélo(?!\s*souple))/,(_,n,u)=>Math.min(+n,brickCapHi)+u);}));
+      wk.vol=parseWeekVolume({days:wk.days});wk.vol_real=wk.vol;
     };
+    wl.forEach(wk=>{if(!wk.isRecup)rebalance(wk);});
+    // Alignement du pic : la semaine de volume max doit rester une semaine peak+brick.
+    // Réduction PROPORTIONNELLE du contenu (aucun jour OFF créé) — ratios préservés.
+    const scaleWeekAll=(wk,f)=>{wk.days.forEach(d=>d.sessions.forEach(s=>{if(s.d==="bk"||s.d==="rn")s.det=scMin(s.det,f);else if(s.d==="sw")s.det=scMet(s.det,f);else if(s.d==="br")s.det=scBrick(s.det,f,f);}));wk.vol=parseWeekVolume({days:wk.days});wk.vol_real=wk.vol;};
     const peakWeeks=wl.filter(w2=>w2.phase.id==="peak"&&w2.days.some(d=>d.sessions.some(s2=>s2.d==="br")));
     if(peakWeeks.length){
       let target=peakWeeks[0];peakWeeks.forEach(w2=>{if(w2.vol>target.vol)target=w2;});
+      const targetVol=target.vol; // figé : la cible ne bouge pas
       wl.forEach(w2=>{
         if(w2===target)return;
-        const cap=w2.phase.id==="taper"?target.vol*0.68:target.vol;
-        for(let g=0;g<10&&w2.vol>=cap;g++){if(!trimOne(w2))break;}
+        // Le scaling proportionnel sous-corrige (overhead fixe non réductible) → itérer
+        // jusqu'à passer STRICTEMENT sous la cible (0.90×, marge contre les égalités).
+        // Taper ET semaines de récup : plafond bas (0.62×) — elles doivent rester
+        // les plus légères, sinon une récup non rééquilibrée dépasse le pic rétréci.
+        const cap=(w2.phase.id==="taper"||w2.isRecup)?targetVol*0.62:targetVol*0.90;
+        for(let g=0;g<8&&w2.vol>cap&&w2.vol>0;g++)scaleWeekAll(w2,Math.max(0.6,cap/w2.vol));
       });
     }
   }
