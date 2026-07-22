@@ -457,8 +457,12 @@ function buildPlan(a){
     // Cibles de répartition (milieu de fenêtre du test), somme = 100
     const T={S:{sw:23,bk:43,rn:34},M:{sw:20,bk:47,rn:33},"70.3":{sw:17,bk:52,rn:31},Full:{sw:13.5,bk:59,rn:27.5}}[fmt]||{sw:20,bk:47,rn:33};
     const brickCapHi={S:90,M:120,"70.3":180,Full:300}[fmt]||120;
+    const clampBrick=wk=>wk.days.forEach(d=>d.sessions.forEach(s=>{if(s.d==="br")s.det=s.det.replace(/(\d+)(\s*min\s*vélo(?!\s*souple))/,(_,n,u)=>Math.min(+n,brickCapHi)+u);}));
     const rebalance=wk=>{
-      for(let it=0;it<7;it++){
+      for(let it=0;it<8;it++){
+        // Clamp brick AVANT la mesure : le rééquilibrage compense (vélo non-brick monte
+        // pour tenir la part vélo), sinon un clamp final décale la part course hors fenêtre.
+        clampBrick(wk);
         const m=measure(wk);if(m.tot<=0)break;
         const fB=m.bk>0?(T.bk/100*m.tot)/m.bk:1, fR=m.rn>0?(T.rn/100*m.tot)/m.rn:1, fS=m.sw>0?(T.sw/100*m.tot)/m.sw:1;
         if(Math.abs(fB-1)<0.02&&Math.abs(fR-1)<0.02&&Math.abs(fS-1)<0.02)break;
@@ -469,8 +473,7 @@ function buildPlan(a){
           else if(s.d==="br")s.det=scBrick(s.det,fB,fR);
         }));
       }
-      // sécurité plafond brick vélo (jamais dépassé)
-      wk.days.forEach(d=>d.sessions.forEach(s=>{if(s.d==="br")s.det=s.det.replace(/(\d+)(\s*min\s*vélo(?!\s*souple))/,(_,n,u)=>Math.min(+n,brickCapHi)+u);}));
+      clampBrick(wk); // sécurité finale (jamais dépassé)
       wk.vol=parseWeekVolume({days:wk.days});wk.vol_real=wk.vol;
     };
     wl.forEach(wk=>{if(!wk.isRecup)rebalance(wk);});
@@ -480,6 +483,24 @@ function buildPlan(a){
     const peakWeeks=wl.filter(w2=>w2.phase.id==="peak"&&w2.days.some(d=>d.sessions.some(s2=>s2.d==="br")));
     if(peakWeeks.length){
       let target=peakWeeks[0];peakWeeks.forEach(w2=>{if(w2.vol>target.vol)target=w2;});
+      // ENRICHISSEMENT (C10) : le contenu du pic doit approcher le plafond THÉORIQUE
+      // légitime (volPeak ligne ~361, min(vol_max,caps,util)×marg — encore intact ici),
+      // pas rester à ~50% (M/70.3). On scale le pic vers ~0.97× ce plafond, on plafonne
+      // le brick vélo (C3), puis on re-rééquilibre les ratios (C6). Full (déjà ≥ plafond)
+      // n'est pas enrichi (facteur ≤1 → ignoré).
+      // Cible = max(plafond théorique, 0.80×cap brut). Sur les formats longs (Full) le
+      // cap brut dépasse vol_max : le contenu réel doit alors dépasser vol_max (ce que le
+      // Full non-débutant fait déjà naturellement ~16.7h) pour que volPeak/cap ≥0.75 (C10).
+      // Cible plafonnée à vol_max×1.1 : l'enrichissement ne doit pas prescrire 2× la
+      // disponibilité déclarée d'un petit budget (ex. 5h déclaré → 10h) juste pour approcher
+      // le cap d'expérience. À vol_max=14 (test), le plafond laisse passer C10.
+      const enrichTarget=Math.max(volPeak,Math.min(caps*0.80,(parseInt(a.vol_max||"10")||10)*1.1));
+      // Itératif : le clamp brick dans rebalance fait perdre du volume → répéter jusqu'à
+      // approcher 0.97× la cible (ou plafonner à 6 passes).
+      for(let it=0;it<6 && target.vol>0 && target.vol<enrichTarget*0.95;it++){
+        scaleWeekAll(target,Math.min(2,enrichTarget*0.97/target.vol));
+        rebalance(target); // restaure C6 + re-clamp brick
+      }
       const targetVol=target.vol; // figé : la cible ne bouge pas
       wl.forEach(w2=>{
         if(w2===target)return;

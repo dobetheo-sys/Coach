@@ -64,6 +64,11 @@ function splitBrick(det){
   return {bike:(bikeM?parseInt(bikeM[1]):0)+(echM?parseInt(echM[1]):0), run:runM?parseInt(runM[1]):0};
 }
 
+const TRI_CAPS_TABLE={
+  reprise:{S:6,M:8,"70.3":11,Full:15}, confirme:{S:7,M:10,"70.3":13,Full:17}, ancien:{S:8,M:12,"70.3":15,Full:19}
+};
+const VOLPEAK_MIN_RATIO=0.75; // volPeak réel doit atteindre ≥75% du plafond théorique légitime (caps)
+
 function auditPlan(sport, format, history, level, intent){
   global.S.sport=sport;
   let plan;
@@ -161,6 +166,13 @@ function auditPlan(sport, format, history, level, intent){
       if(pBk<t.bk[0]||pBk>t.bk[1]) issues.push({crit:"C6_repartition_velo",value:pBk.toFixed(0),target:t.bk});
       if(pRn<t.rn[0]||pRn>t.rn[1]) issues.push({crit:"C6_repartition_course",value:pRn.toFixed(0),target:t.rn});
     }
+  }
+
+  // C10 : volPeak réel doit atteindre ≥75% du plafond théorique légitime (caps, lié à l'historique)
+  if(sport==="tri" && TRI_CAPS_TABLE[history] && TRI_CAPS_TABLE[history][format]){
+    const theoreticalCap = TRI_CAPS_TABLE[history][format];
+    const ratio = plan.volPeak / theoreticalCap;
+    if(ratio < VOLPEAK_MIN_RATIO) issues.push({crit:"C10_volpeak_sous_plafond", volPeak:plan.volPeak, theoreticalCap, ratio:ratio.toFixed(2)});
   }
 
   return {sport,format,history,level,intent,issues};
