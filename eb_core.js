@@ -267,6 +267,29 @@ function buildPlan(a){
     });
     if(t){t.charge="dur";t.slot="dur2";t.swapped=true;}
   });}
+  // FIX CIBLÉ (history=reprise, formats à phase peak courte : marathon/gravel/ow…) :
+  // le cycle use10 (10 jours) découple la cadence de récup des semaines, si bien que
+  // TOUTE la phase peak peut tomber sur des semaines de récup → la séance signature
+  // (slot durLong) est absente de la phase peak, voire aucune semaine peak de charge.
+  // Correctif borné au calcul des semaines de phase : si la phase peak ne contient
+  // aucune semaine de CHARGE portant durLong, on convertit sa dernière semaine en
+  // semaine de charge avec la signature. Auto-déclenché : no-op si la peak est déjà saine.
+  if((a.history||"confirme")==="reprise"){
+    const peakWeekNums=[...new Set(days.filter(d=>d.phaseId==="peak").map(d=>d.week))];
+    if(peakWeekNums.length){
+      const isChargeSig=wn=>{const wd=days.filter(d=>d.week===wn);return wd.filter(d=>d.isR).length<4 && wd.some(d=>d.slot==="durLong"&&!d.forced);};
+      if(!peakWeekNums.some(isChargeSig)){
+        const targetWk=Math.max(...peakWeekNums);
+        const wd=days.filter(d=>d.week===targetWk);
+        const tpl=[["dur","dur1"],["facile","facileR"],["dur","dur2"],["facile","facile2"],["dur","durLong"],["facile","facileR"],["off","off"]];
+        wd.forEach((d,idx)=>{
+          d.isR=false;d.wasHard=false;d.swapped=false;
+          if(d.forced){d.charge="off";d.slot="off";return;}
+          const t=tpl[idx]||["facile","facileR"];d.charge=t[0];d.slot=t[1];
+        });
+      }
+    }
+  }
   days.forEach(d=>{
     const ph=d.phase; const prog=ph.weeks>1?((d.week-1)-ph.start)/(ph.weeks-1):0.5;
     d.prog=Math.max(0,Math.min(1,prog));
