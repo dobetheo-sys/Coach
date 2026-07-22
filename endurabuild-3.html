@@ -712,7 +712,7 @@ function buildPlan(a){
     } else if(sp==="swim"){
       const shoulder=(a.injury||"").includes("epaule"), ow=a.milieu==="ow"||a.milieu==="mixte";
       if(slot==="dur1"){
-        if(beg)S2.push({d:"sw",name:"Technique + éducatifs",det:struct({ech:"200m souple",corps:"éducatifs variés (rattrapé, poings fermés, battements planche), "+P(1,2)+" point(s) technique",rec:"repos libre entre séries",rc:"100m relâché",note:"La technique se construit à froid, sans fatigue. Qualité > quantité."})});
+        if(beg)S2.push({d:"sw",name:"Technique + éducatifs",det:struct({ech:"200m souple",corps:P(6,10)+"×50m éducatifs variés (rattrapé, poings fermés, battements planche), "+P(1,2)+" point(s) technique",rec:"repos libre entre séries",rc:"100m relâché",note:"La technique se construit à froid, sans fatigue. Qualité > quantité."})});
         else if(shoulder)S2.push({d:"sw",name:"Seuil contrôlé (épaule)",det:struct({ech:"300m souple + 4×50m éducatifs",corps:P(6,8)+"×100m @ "+sz.css,rec:"20-30s",rc:"200m souple",note:"Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute."})});
         else S2.push({d:"sw",name:"Seuil CSS",det:struct({ech:"400m progressif + 4×50m éducatifs",corps:P(6,10)+"×100m @ "+sz.css,rec:"15-20s",rc:"200m souple",note:"Allure régulière sur tous les 100m. Le dernier doit ressembler au premier."})});
       }
@@ -745,40 +745,47 @@ function buildPlan(a){
       else if(slot==="recup")S2.push({d:"rs",name:"Repos / épaules",det:"étirements coiffe"});
       else if(slot==="off")S2.push({d:"rs",name:"OFF",det:"repos total"});
     } else if(sp==="tri"){
+      // ===== BRANCHE TRIATHLON — réécrite depuis la spec (tests/audit_regression.js) =====
+      // Règles : (1) chaque corps de séance porte une durée OU distance chiffrée ;
+      // (2) brick vélo ≤ S:90 / M:120 / 70.3:180 / Full:300 min, jamais dépassé ;
+      // (3) aucun contenu identique sous deux noms différents ;
+      // (4) le volume culmine en phase peak : progression INTER-phases strictement
+      //     croissante (le prog per-phase repartait de zéro → pics erratiques en spec) ;
+      // (5) taper ≈ 40-45% du contenu de peak (réduction >30%) et sans VO2max.
       const runInj=(a.injury||"").includes("course");
-      // FIX cohérence TRI nage : escalader RÉELLEMENT vers la distance cible du format
+      const PB={base:[0.35,0.55],dev:[0.55,0.75],spec:[0.75,0.9],peak:[0.9,1],taper:[0.35,0.45]}[phase]||[0.5,0.8];
+      const PT=(lo,hi)=>Math.max(1,Math.round((lo+(hi-lo)*(PB[0]+(PB[1]-PB[0])*prog))*sessionScale));
+      // — Nage : 3 contenus distincts (principal distance / technique-vitesse / récup courte)
       const swimDistCaps={S:{lo:300,hi:750},M:{lo:600,hi:1500},"70.3":{lo:950,hi:1900},Full:{lo:1900,hi:3800}}[fmt]||{lo:600,hi:1500};
-      const swimDist=P(swimDistCaps.lo,swimDistCaps.hi);
-      // FIX régression : 3 créneaux nage = 3 contenus réellement distincts
-      // (principal distance / technique-vitesse / récup courte), pas le même texte sous 3 noms.
+      const swimDist=PT(swimDistCaps.lo,swimDistCaps.hi);
       const swShortDist=Math.max(200,Math.round(swimDist*0.4/50)*50);
       const swMain=beg
         ?{name:"Nage technique (+dist)",det:struct({ech:"200m souple",corps:"progression vers "+swimDist+"m total : fractionnée en blocs de 100-200m, éducatifs entre",rec:"repos libre entre séries",rc:"100m relâché",note:"Technique à froid : qualité du geste avant tout, distance progressive."})}
         :{name:"Nage seuil (+dist)",det:struct({ech:"300m + 4×50m éducatifs",corps:swimDist+"m @ "+sz.css+" (fractionnée si besoin : "+Math.ceil(swimDist/200)+"×200m ou "+Math.ceil(swimDist/100)+"×100m)",rec:"15-20s",rc:"200m souple",note:"Distance cible atteinte, allure régulière. Fractionné = réponse à intensité."})};
       const swTech=beg
-        ?{name:"Nage éducatifs",det:struct({ech:"100m souple",corps:P(6,10)+"×50m éducatifs (rattrapé, poings fermés, battements planche), 1 point technique par longueur",rec:"20-30s, le temps de respirer",rc:"100m dos souple",note:"Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force."})}
-        :{name:"Nage vitesse",det:struct({ech:"200m + 4×25m accélérations progressives",corps:P(6,10)+"×50m @ "+sz.speed+" départ toutes les 60-75s",rec:"30-40s (récup large)",rc:"150m souple",note:"Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m."})};
+        ?{name:"Nage éducatifs",det:struct({ech:"100m souple",corps:PT(6,10)+"×50m éducatifs (rattrapé, poings fermés, battements planche), 1 point technique par longueur",rec:"20-30s, le temps de respirer",rc:"100m dos souple",note:"Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force."})}
+        :{name:"Nage vitesse",det:struct({ech:"200m + 4×25m accélérations progressives",corps:PT(6,10)+"×50m @ "+sz.speed+" départ toutes les 60-75s",rec:"30-40s (récup large)",rc:"150m souple",note:"Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m."})};
       const swShort={name:"Nage récup",det:swShortDist+"m souple @ "+sz.easy+" en blocs de 50m, respiration 3 temps · relâchement total"};
       if(slot==="dur1"){ if(dbl)S2.push({d:"sw",name:swMain.name+" (matin)",det:swMain.det});
-        if(phase==="base")S2.push({d:"bk",name:"Sweetspot vélo",det:struct({ech:"15min montée progressive",corps:P(2,3)+"×15min @ "+bz.ss,rec:"5min souple",rc:"10min décrassage",note:"Cadence 85-95 rpm, soutenu mais maîtrisé."})});
-        else if(phase==="spec"||phase==="peak")S2.push({d:"bk",name:"Race-pace vélo",det:struct({ech:"15min progressif",corps:P(2,3)+"×"+P(20,40)+"min @ "+bz.rp,rec:"5min souple",rc:"10min décrassage",note:"L'allure que tu tiendras le jour J. Mémorise-la."})});
-        else if(lvl==="debutant"||finisher)S2.push({d:"bk",name:"Tempo vélo",det:struct({ech:"15min souple",corps:P(2,3)+"×"+P(8,15)+"min @ "+bz.ss,rec:"4min souple",rc:"10min décrassage",note:"Confortablement soutenu, jamais dans le rouge."})}); 
-        else S2.push({d:"bk",name:"VO2max vélo",det:struct({ech:"20min progressif + 3 sprints",corps:P(4,6)+"×4min @ "+bz.vo2,rec:"4min récup",rc:"10min souple",note:"Intensité max tenable 4min, récup quasi complète entre."})}); }
-      else if(slot==="dur2"){ if(dbl)S2.push({d:"sw",name:swTech.name,det:swTech.det}); S2.push({d:"bk",name:"Force basse cadence",det:struct({ech:"15min + montée en intensité",corps:P(4,6)+"×5min @ "+bz.frc+" à 50-60 rpm",rec:"3min souple",rc:"10min moulinage",note:"Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux."})}); }
-      else if(slot==="durLong"){ 
-        // FIX cohérence : hérite de la logique validée sur vélo/course — le brick et la longue CAP
-        // doivent scaler avec le format tri (Sprint 20km vélo ≠ Ironman 180km vélo).
+        if(phase==="base")S2.push({d:"bk",name:"Sweetspot vélo",det:struct({ech:"15min montée progressive",corps:PT(2,3)+"×"+PT(12,18)+"min @ "+bz.ss,rec:"5min souple",rc:"10min décrassage",note:"Cadence 85-95 rpm, soutenu mais maîtrisé."})});
+        else if(phase==="spec"||phase==="peak")S2.push({d:"bk",name:"Race-pace vélo",det:struct({ech:"15min progressif",corps:PT(2,3)+"×"+PT(20,40)+"min @ "+bz.rp,rec:"5min souple",rc:"10min décrassage",note:"L'allure que tu tiendras le jour J. Mémorise-la."})});
+        else if(phase==="taper")S2.push({d:"bk",name:"Rappel race-pace",det:struct({ech:"10min progressif",corps:PT(2,3)+"×"+PT(6,10)+"min @ "+bz.rp,rec:"3min souple",rc:"5min décrassage",note:"Affûtage : on réveille l'allure course sans générer de fatigue. Court et précis."})});
+        else if(lvl==="debutant"||finisher)S2.push({d:"bk",name:"Tempo vélo",det:struct({ech:"15min souple",corps:PT(2,3)+"×"+PT(8,15)+"min @ "+bz.ss,rec:"4min souple",rc:"10min décrassage",note:"Confortablement soutenu, jamais dans le rouge."})});
+        else S2.push({d:"bk",name:"VO2max vélo",det:struct({ech:"20min progressif + 3 sprints",corps:PT(4,6)+"×4min @ "+bz.vo2,rec:"4min récup",rc:"10min souple",note:"Intensité max tenable 4min, récup quasi complète entre."})}); }
+      else if(slot==="dur2"){ if(dbl)S2.push({d:"sw",name:swTech.name,det:swTech.det}); S2.push({d:"bk",name:"Force basse cadence",det:struct({ech:"15min + montée en intensité",corps:PT(4,6)+"×5min @ "+bz.frc+" à 50-60 rpm",rec:"3min souple",rc:"10min moulinage",note:"Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux."})}); }
+      else if(slot==="durLong"){
         if(phase==="spec"||phase==="peak"){
-          const brickBikeCaps={S:{lo:45,hi:90},M:{lo:60,hi:120},"70.3":{lo:90,hi:210},Full:{lo:135,hi:330}}[fmt]||{lo:60,hi:180};
-          const brickRunCaps={S:{lo:10,hi:20},M:{lo:15,hi:30},"70.3":{lo:20,hi:55},Full:{lo:27,hi:75}}[fmt]||{lo:15,hi:30};
-          const bikeMin=P(brickBikeCaps.lo,brickBikeCaps.hi), runMin=P(brickRunCaps.lo,brickRunCaps.hi);
+          // Plafonds brick = spec stricte. PT ≤ hi par construction (bandes ≤1, scale ≤1) : jamais dépassé.
+          const brickBikeCaps={S:{lo:45,hi:90},M:{lo:60,hi:120},"70.3":{lo:90,hi:180},Full:{lo:150,hi:300}}[fmt]||{lo:60,hi:180};
+          const brickRunCaps={S:{lo:10,hi:20},M:{lo:15,hi:30},"70.3":{lo:20,hi:45},Full:{lo:30,hi:60}}[fmt]||{lo:15,hi:30};
+          const bikeMin=PT(brickBikeCaps.lo,brickBikeCaps.hi), runMin=PT(brickRunCaps.lo,brickRunCaps.hi);
           S2.push({d:"br",long:true,name:"Brick vélo+CAP",det:struct({ech:"15min vélo souple",corps:bikeMin+"min vélo @ "+bz.rp+" puis transition rapide + "+runMin+"min CAP"+(runInj?" souple, surface souple":" @ allure cible"),note:"Le brick simule la course : enchaîne vite vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP."})});
         } else {
           const longRunCaps={S:{lo:30,hi:60},M:{lo:40,hi:75},"70.3":{lo:50,hi:100},Full:{lo:60,hi:140}}[fmt]||{lo:50,hi:100};
-          const durMin=P(longRunCaps.lo,longRunCaps.hi);
+          const durMin=PT(longRunCaps.lo,longRunCaps.hi);
           S2.push({d:"rn",long:true,name:"Sortie longue CAP",det:struct({corps:durMin+"min @ "+rz.easy+(runInj?" sur surface souple":""),note:"Endurance fondamentale, allure facile et conversationnelle."})});
         } }
-      else if(slot==="facileR")S2.push({d:"rn",name:"Footing facile",det:"@ "+rz.easy+(runInj?" · court, surface souple":"")});
+      else if(slot==="facileR")S2.push({d:"rn",name:"Footing facile",det:PT(25,45)+"min @ "+rz.easy+(runInj?" · surface souple":"")});
       else if(slot==="facile2")S2.push({d:"sw",name:swShort.name+" courte",det:swShort.det});
       else if(slot==="recup")S2.push({d:"rs",name:"Récup active",det:"mobilité"});
       else if(slot==="off")S2.push({d:"rs",name:"OFF",det:"repos total"});
@@ -980,6 +987,33 @@ function buildPlan(a){
     const volReal=parseWeekVolume({days:wd});
     const volDisplay=volReal>0?volReal:Math.round(vol*10)/10;
     wl.push({num:w+1,phase:ph,vol:volDisplay,vol_declared:Math.round(vol*10)/10,vol_real:volReal,days:wd,isRecup:isRW});}
+  // GARANTIE TRI : la semaine de volume max tombe en peak et contient le brick,
+  // et le taper reste sous 68% de ce pic. La progression inter-phases (PB) le favorise,
+  // mais le découpage cycle 10j / semaine 7j peut créer des semaines spec plus lourdes :
+  // on ramène toute semaine concurrente sous la cible (faciles d'abord, puis un dur non-brick).
+  if(sp==="tri"){
+    const wkH=d=>{let h=0;d.sessions.forEach(s2=>{if(s2.d!=="rs"){const p=parseSessionDetail(s2.det,s2.d);h+=(p.minutes/60)+(p.meters>0?p.meters/3000:0);}});return h;};
+    const trimOne=w2=>{
+      const pool0=w2.days.filter(d=>!d.forced&&d.sessions.some(s2=>s2.d!=="rs")&&!d.sessions.some(s2=>s2.d==="br"));
+      const eas=pool0.filter(d=>d.charge==="facile");
+      const pool=eas.length?eas:pool0.filter(d=>d.slot!=="durLong");
+      if(!pool.length)return false;
+      let smallest=pool[0],sv=Infinity;
+      pool.forEach(d=>{const h=wkH(d);if(h<sv){sv=h;smallest=d;}});
+      smallest.charge="off";smallest.slot="off";smallest.sessions=[{d:"rs",name:"OFF (équilibrage pic)",det:"repos — la semaine la plus chargée reste celle du pic"}];
+      w2.vol=parseWeekVolume({days:w2.days});w2.vol_real=w2.vol;
+      return true;
+    };
+    const peakWeeks=wl.filter(w2=>w2.phase.id==="peak"&&w2.days.some(d=>d.sessions.some(s2=>s2.d==="br")));
+    if(peakWeeks.length){
+      let target=peakWeeks[0];peakWeeks.forEach(w2=>{if(w2.vol>target.vol)target=w2;});
+      wl.forEach(w2=>{
+        if(w2===target)return;
+        const cap=w2.phase.id==="taper"?target.vol*0.68:target.vol;
+        for(let g=0;g<10&&w2.vol>=cap;g++){if(!trimOne(w2))break;}
+      });
+    }
+  }
   // COURSES INTERMÉDIAIRES : repérer la semaine de chaque course, marquer + ajuster le volume
   const races=[];
   if(a.races==="oui"){
