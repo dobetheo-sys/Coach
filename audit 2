@@ -1,0 +1,24 @@
+Nouvelle approche : plutôt que corriger un bug à la fois, je veux que tu 
+RÉÉCRIS ENTIÈREMENT la branche triathlon (sp==="tri" dans sess() et le 
+calcul des phases associé), en partant des tests comme spécification, 
+PAS du code existant.
+
+Ne touche à RIEN d'autre — RUN, BIKE, SWIM (solo) sont validés propres 
+sur des dizaines de profils, n'y touche pas.
+
+Avant d'écrire une ligne de code de la branche tri, relis tests/
+audit_regression.js et les règles suivantes qu'il doit satisfaire :
+- Chaque séance a une durée OU une distance chiffrée, jamais ni l'un ni 
+  l'autre absent
+- Le brick vélo respecte les plafonds : S=45-90min, M=60-120min, 
+  70.3=90-180min, Full=150-300min (jamais dépassés, même de peu)
+- Aucune séance à noms différents ne partage un contenu identique
+- La semaine de volume le plus élevé de tout le plan doit tomber en 
+  phase "peak", jamais en "spec" ou ailleurs — et doit contenir le brick
+- Le taper doit réduire le volume d'au moins 40% par rapport au pic, et 
+  ne contient pas de séance à intensité maximale (VO2max)
+
+Écris la branche tri à partir de ces règles, puis fais tourner 
+audit_regression.js + les vérifications ci-dessus toi-même, et colle-moi 
+la sortie brute. Je testerai ensuite sur mon profil réel exact pour 
+confirmer.
