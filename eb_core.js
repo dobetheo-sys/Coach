@@ -201,9 +201,11 @@ function buildPlan(a){
       const PB={base:[0.35,0.55],dev:[0.55,0.75],spec:[0.75,0.9],peak:[0.9,1],taper:[0.35,0.45]}[phase]||[0.5,0.8];
       const PT=(lo,hi)=>Math.max(1,Math.round((lo+(hi-lo)*(PB[0]+(PB[1]-PB[0])*prog))*sessionScale));
       // — Nage : 3 contenus distincts (principal distance / technique-vitesse / récup courte)
-      const swimDistCaps={S:{lo:300,hi:750},M:{lo:600,hi:1500},"70.3":{lo:950,hi:1900},Full:{lo:1900,hi:3800}}[fmt]||{lo:600,hi:1500};
+      // Longue nage plafonnée à ~80% de la distance course sur Full (3000m = longue IM classique),
+      // récup nage plafonnée à 600m : la nage ne doit pas manger le volume course (cible course 25-35%).
+      const swimDistCaps={S:{lo:300,hi:750},M:{lo:600,hi:1500},"70.3":{lo:950,hi:1900},Full:{lo:1600,hi:3000}}[fmt]||{lo:600,hi:1500};
       const swimDist=PT(swimDistCaps.lo,swimDistCaps.hi);
-      const swShortDist=Math.max(200,Math.round(swimDist*0.4/50)*50);
+      const swShortDist=Math.min(600,Math.max(200,Math.round(swimDist*0.4/50)*50));
       const swMain=beginner
         ?{name:"Nage technique (+dist)",det:struct({ech:"200m souple",corps:"progression vers "+swimDist+"m total : fractionnée en blocs de 100-200m, éducatifs entre",rec:"repos libre entre séries",rc:"100m relâché",note:"Technique à froid : qualité du geste avant tout, distance progressive."})}
         :{name:"Nage seuil (+dist)",det:struct({ech:"300m + 4×50m éducatifs",corps:swimDist+"m @ "+sz.css+" (fractionnée si besoin : "+Math.ceil(swimDist/200)+"×200m ou "+Math.ceil(swimDist/100)+"×100m)",rec:"15-20s",rc:"200m souple",note:"Distance cible atteinte, allure régulière. Fractionné = réponse à intensité."})};
@@ -213,16 +215,17 @@ function buildPlan(a){
       const swShort={name:"Nage récup",det:swShortDist+"m souple @ "+sz.easy+" en blocs de 50m, respiration 3 temps · relâchement total"};
       if(slot==="dur1"){ if(dbl)S2.push({d:"sw",name:swMain.name+" (matin)",det:swMain.det});
         if(phase==="base")S2.push({d:"bk",name:"Sweetspot vélo",det:struct({ech:"15min montée progressive",corps:PT(2,3)+"×"+PT(12,18)+"min @ "+bz.ss,rec:"5min souple",rc:"10min décrassage",note:"Cadence 85-95 rpm, soutenu mais maîtrisé."})});
-        else if(phase==="spec"||phase==="peak")S2.push({d:"bk",name:"Race-pace vélo",det:struct({ech:"15min progressif",corps:PT(2,3)+"×"+PT(20,40)+"min @ "+bz.rp,rec:"5min souple",rc:"10min décrassage",note:"L'allure que tu tiendras le jour J. Mémorise-la."})});
+        else if(phase==="spec"||phase==="peak"){const rpCaps={S:{lo:20,hi:40},M:{lo:22,hi:45},"70.3":{lo:25,hi:55},Full:{lo:30,hi:60}}[fmt]||{lo:20,hi:40};
+          S2.push({d:"bk",name:"Race-pace vélo",det:struct({ech:"15min progressif",corps:PT(2,3)+"×"+PT(rpCaps.lo,rpCaps.hi)+"min @ "+bz.rp,rec:"5min souple",rc:"10min décrassage",note:"L'allure que tu tiendras le jour J. Mémorise-la."})});}
         else if(phase==="taper")S2.push({d:"bk",name:"Rappel race-pace",det:struct({ech:"10min progressif",corps:PT(2,3)+"×"+PT(6,10)+"min @ "+bz.rp,rec:"3min souple",rc:"5min décrassage",note:"Affûtage : on réveille l'allure course sans générer de fatigue. Court et précis."})});
         else if(lvl==="debutant"||finisher)S2.push({d:"bk",name:"Tempo vélo",det:struct({ech:"15min souple",corps:PT(2,3)+"×"+PT(8,15)+"min @ "+bz.ss,rec:"4min souple",rc:"10min décrassage",note:"Confortablement soutenu, jamais dans le rouge."})});
         else S2.push({d:"bk",name:"VO2max vélo",det:struct({ech:"20min progressif + 3 sprints",corps:PT(4,6)+"×4min @ "+bz.vo2,rec:"4min récup",rc:"10min souple",note:"Intensité max tenable 4min, récup quasi complète entre."})}); }
-      else if(slot==="dur2"){ if(dbl)S2.push({d:"sw",name:swTech.name,det:swTech.det}); S2.push({d:"bk",name:"Force basse cadence",det:struct({ech:"15min + montée en intensité",corps:PT(4,6)+"×5min @ "+bz.frc+" à 50-60 rpm",rec:"3min souple",rc:"10min moulinage",note:"Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux."})}); }
+      else if(slot==="dur2"){ if(dbl)S2.push({d:"sw",name:swTech.name,det:swTech.det}); S2.push({d:"bk",name:"Force basse cadence",det:struct({ech:"15min + montée en intensité",corps:PT(4,6)+"×"+({S:5,M:5,"70.3":6,Full:7}[fmt]||5)+"min @ "+bz.frc+" à 50-60 rpm",rec:"3min souple",rc:"10min moulinage",note:"Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux."})}); }
       else if(slot==="durLong"){
         if(phase==="spec"||phase==="peak"){
           // Plafonds brick = spec stricte. PT ≤ hi par construction (bandes ≤1, scale ≤1) : jamais dépassé.
           const brickBikeCaps={S:{lo:45,hi:90},M:{lo:60,hi:120},"70.3":{lo:90,hi:180},Full:{lo:150,hi:300}}[fmt]||{lo:60,hi:180};
-          const brickRunCaps={S:{lo:10,hi:20},M:{lo:15,hi:30},"70.3":{lo:20,hi:45},Full:{lo:30,hi:60}}[fmt]||{lo:15,hi:30};
+          const brickRunCaps={S:{lo:10,hi:20},M:{lo:12,hi:24},"70.3":{lo:16,hi:32},Full:{lo:35,hi:70}}[fmt]||{lo:15,hi:30};
           const bikeMin=PT(brickBikeCaps.lo,brickBikeCaps.hi), runMin=PT(brickRunCaps.lo,brickRunCaps.hi);
           S2.push({d:"br",long:true,name:"Brick vélo+CAP",det:struct({ech:"15min vélo souple",corps:bikeMin+"min vélo @ "+bz.rp+" puis transition rapide + "+runMin+"min CAP"+(runInj?" souple, surface souple":" @ allure cible"),note:"Le brick simule la course : enchaîne vite vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP."})});
         } else {
@@ -230,7 +233,8 @@ function buildPlan(a){
           const durMin=PT(longRunCaps.lo,longRunCaps.hi);
           S2.push({d:"rn",long:true,name:"Sortie longue CAP",det:struct({corps:durMin+"min @ "+rz.easy+(runInj?" sur surface souple":""),note:"Endurance fondamentale, allure facile et conversationnelle."})});
         } }
-      else if(slot==="facileR")S2.push({d:"rn",name:"Footing facile",det:PT(25,45)+"min @ "+rz.easy+(runInj?" · surface souple":"")});
+      else if(slot==="facileR"){const ftCaps={S:{lo:25,hi:45},M:{lo:15,hi:26},"70.3":{lo:14,hi:22},Full:{lo:50,hi:100}}[fmt]||{lo:25,hi:45};
+        S2.push({d:"rn",name:"Footing facile",det:PT(ftCaps.lo,ftCaps.hi)+"min @ "+rz.easy+(runInj?" · surface souple":"")});}
       else if(slot==="facile2")S2.push({d:"sw",name:swShort.name+" courte",det:swShort.det});
       else if(slot==="recup")S2.push({d:"rs",name:"Récup active",det:"mobilité"});
       else if(slot==="off")S2.push({d:"rs",name:"OFF",det:"repos total"});

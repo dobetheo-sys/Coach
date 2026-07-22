@@ -11,6 +11,8 @@
 //                     et contient le brick (tri uniquement)
 //  5. TAPER         — volume moyen des semaines taper réduit d'au moins 30% vs pic réel,
 //                     et aucune séance VO2max en taper (tri uniquement)
+//  6. RÉPARTITION   — semaine pic tri : course 20-38%, nage 8-30%, vélo 33-65% du volume
+//                     (cibles moyennes : course 25-35%, nage 10-25%, vélo 40-60%)
 "use strict";
 const path = process.argv[2];
 if(!path){ console.error("Usage: node tests/audit_regression.js <fichier.html>"); process.exit(2); }
@@ -53,12 +55,29 @@ function sessionBody(det){
 }
 const hasNumberedLoad = body => /\d+\s*(?:min\b|km\b|m\b)/i.test(body);
 
+// Volume approché d'une séance (minutes + mètres nage convertis à 3km/h)
+function sessHours(det){
+  if(!det) return 0;
+  let mi=0, me=0;
+  const rg=det.match(/(\d+)\s*-\s*(\d+)\s*min/gi);
+  if(rg) rg.forEach(x=>{const n=x.match(/\d+/g).map(Number); if(n.length===2) mi+=Math.round((n[0]+n[1])/2);});
+  const rp=det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*min/gi);
+  if(rp) rp.forEach(x=>{const [a,b]=x.match(/\d+/g).map(Number); mi+=a*b;});
+  const sg=det.match(/\b(\d+)\s*min(?!\s*-|@)/gi);
+  if(sg) sg.forEach(x=>{const n=parseInt(x); const ir=det.includes(n+"-")||det.includes("-"+n); if(!ir&&(!rp||!x.match(/\d+\s*×/))) mi+=n;});
+  const mp=det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*m\b(?!\/)/gi);
+  if(mp) mp.forEach(x=>{const [a,b]=x.match(/\d+/g).map(Number); if(!det.includes(b+"m/")&&!det.includes("/"+b+"m")) me+=a*b;});
+  const sm=det.match(/\b(\d{3,})\s*m(?!\s*\/)\b/gi);
+  if(sm) sm.forEach(x=>{const n=parseInt(x); const ir=det.includes(n+"-")||det.includes("-"+n); const ip=det.includes(n+"×")||det.includes("×"+n); const ia=det.includes("/"+n+"m")||det.includes(n+"m/"); if(!ir&&!ip&&!ia) me+=n;});
+  return (mi/60)+(me>0?(me/1000)/3:0);
+}
+
 function auditPlan(sport, format, history, level, intent){
   global.S.sport=sport;
   let plan;
   try{ plan=global.buildPlan(mkAnswers(sport,format,history,level,intent)); }
   catch(e){ return {sport,format,history,level,intent,error:String(e)}; }
-  const r={sport,format,history,level,intent,dup:[],noload:[],brick:[],peak:[],taper:[]};
+  const r={sport,format,history,level,intent,dup:[],noload:[],brick:[],peak:[],taper:[],split:[]};
   const chargeWeeks=plan.weeks.filter(w=>!w.isRecup);
 
   chargeWeeks.forEach(w=>{
@@ -104,6 +123,24 @@ function auditPlan(sport, format, history, level, intent){
         if(/VO2/.test(s.name||"")) r.taper.push({week:w.num,vo2:s.name});
       })));
     }
+    // 6. répartition disciplines sur la semaine pic
+    const acc={sw:0,bk:0,rn:0};
+    mx.days.forEach(d=>d.sessions.forEach(s=>{
+      if(s.d==="rs") return;
+      if(s.d==="br"){
+        const bb=s.det.match(/(\d+)min vélo/), br=s.det.match(/(\d+)min CAP/);
+        acc.bk+=((bb?parseInt(bb[1]):0)+15)/60; acc.rn+=(br?parseInt(br[1]):0)/60;
+      } else {
+        const h=sessHours(s.det);
+        if(s.d==="sw") acc.sw+=h; else if(s.d==="bk") acc.bk+=h; else if(s.d==="rn") acc.rn+=h;
+      }
+    }));
+    const tot=acc.sw+acc.bk+acc.rn;
+    if(tot>0){
+      const pc={sw:acc.sw/tot*100,bk:acc.bk/tot*100,rn:acc.rn/tot*100};
+      if(pc.rn<20||pc.rn>38||pc.sw<8||pc.sw>30||pc.bk<33||pc.bk>65)
+        r.split.push({week:mx.num,nage:Math.round(pc.sw)+"%",velo:Math.round(pc.bk)+"%",course:Math.round(pc.rn)+"%"});
+    }
   }
   return r;
 }
@@ -111,7 +148,7 @@ function auditPlan(sport, format, history, level, intent){
 const SF={ run:["5k","10k","semi","marathon","trail"], bike:["crit","route","clm","cyclo","gravel"],
   swim:["sprint","demifond","fond","ow"], tri:["S","M","70.3","Full"] };
 const HIST=["reprise","confirme","ancien"], LVL=["debutant","inter","avance"];
-const CRIT=[["dup","duplication contenu"],["noload","durée/distance manquante"],["brick","plafond brick dépassé"],["peak","semaine pic mal alignée"],["taper","taper insuffisant/VO2"]];
+const CRIT=[["dup","duplication contenu"],["noload","durée/distance manquante"],["brick","plafond brick dépassé"],["peak","semaine pic mal alignée"],["taper","taper insuffisant/VO2"],["split","répartition disciplines"]];
 
 let grandTotal=0;
 console.log("=== AUDIT DE RÉGRESSION v2 — 5 critères ===\n");
