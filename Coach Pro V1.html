@@ -373,7 +373,7 @@ function evalRules(a, tier){
     if(a.terrain==="montagne") add("terrain","Parcours","Montagneux — le W/kg est roi","Force en côte systématique, poids stratégique, pacing montée discipliné, descentes techniques.");
     else if(a.terrain==="vallonne") add("terrain","Parcours","Vallonné — relances","Travail de force, pacing à puissance variable, gestion des bosses au compteur.");
     else if(a.terrain==="plat") add("terrain","Parcours","Plat — puissance constante","Position aéro tenue, puissance régulière, travail au seuil et sweetspot.");
-    if(a.epreuve==="clm") add("clm","Spécificité CLM","Position & puissance seuil","Le contre-la-montre se gagne en position aéro à puissance constante : travail spécifique de tenue de position et de gestion d'effort au seuil.");
+    if(a.format==="clm") add("clm","Spécificité CLM","Position & puissance seuil","Le contre-la-montre se gagne en position aéro à puissance constante : travail spécifique de tenue de position et de gestion d'effort au seuil.");
   }
   if(sp==="swim"){
     if(a.milieu==="ow"||a.milieu==="mixte") add("ow","Eau libre","Compétences spécifiques","Navigation aux repères, nage en peloton, sighting, départ groupé — à travailler en plus de la condition pure.");
@@ -421,7 +421,7 @@ function evalRules(a, tier){
   // ---- PREMIUM commun ----
   if(a.sleep==="court") add("sleep","Sommeil","Plafond réduit ~15%","Moins de 6h30 : la récup limite, pas le temps. Volume ajusté + priorité sommeil.");
   if(a.life_load==="lourde") add("life","Charge de vie","Marge renforcée","Stress total élevé : récup plus fréquente, adaptation quotidienne assouplie.");
-  if(a.hrv==="oui") add("hrv","Garde-fou HRV","Décision automatique","HRV basse 2 matins → séance dure en facile. Filet anti-surentraînement.");
+  if(a.hrv==="oui") add("hrv","Garde-fou HRV","Ajustement au jour le jour","N'affecte pas le plan généré : règle d'auto-ajustement quotidien à appliquer toi-même (HRV basse 2 matins → passe ta séance dure en facile ce jour-là). Filet anti-surentraînement.");
 
   // ---- PREMIUM : renfo/gammes par sport ----
   if(sp==="run"){
@@ -437,7 +437,7 @@ function evalRules(a, tier){
     add("renfo","Renforcement","Transversal 3 sports","Renfo tibial (course), gainage position (vélo), coiffe (nage). Pliométrie progressive si pas de blessure active.");
   }
 
-  if(a.weight_lever==="oui"&&a.weight) add("poids","Levier poids","Optimisation périodisée","Paramètre de performance"+(sp==="bike"||sp==="run"?" (W/kg ou portage)":"")+", jamais une injonction. Déficit léger jours faciles, jamais en pic.");
+  if(a.weight_lever==="oui"&&a.weight) add("poids","Levier poids","Signalé — pas encore dans les séances","Paramètre de performance"+(sp==="bike"||sp==="run"?" (W/kg ou portage)":"")+", jamais une injonction. Aucun contenu nutritionnel n'est encore généré dans le plan : à travailler avec un professionnel.");
   if(a.sex==="F"){ add("fer","Ferritine","Bilan 3×/an","Risque de carence en fer élevé en endurance féminine."); if(a.cycle_sync==="oui") add("cyclep","Périodisation menstruelle","Intégrée","Séances clés sur phases favorables, intensité modulable."); }
   if(a.races==="oui") add("races","Courses intermédiaires","Hiérarchie A/B/C","Objectif C = on enchaîne. B = mini-affûtage. Récup placée juste après.");
   return R;
@@ -472,8 +472,7 @@ function buildFreeSteps(){
   if(cfg.terrains){
     steps.push({id:"terrain",title:S.sport==="bike"?"Le parcours":"Le terrain",eyebrow:"Gratuit — Où ça se joue",
       why:S.sport==="bike"?"Plat ou montagne ne se préparent pas pareil : force, braquets, pacing changent.":"Route, trail ou piste : l'impact, le dénivelé et le type de travail diffèrent.",
-      render(){return '<div class="q"><span class="q-label">Ton terrain principal</span><div class="opts" data-key="terrain">'+cfg.terrains.map(t=>opt(t[0],t[1])).join("")+'</div></div>'
-        +(S.sport==="bike"?'<div class="q"><span class="q-label">Type d\'épreuve</span><div class="opts" data-key="epreuve">'+cfg.formats.map(f=>opt(f[0],f[1])).join("")+'</div></div>':'');},
+      render(){return '<div class="q"><span class="q-label">Ton terrain principal</span><div class="opts" data-key="terrain">'+cfg.terrains.map(t=>opt(t[0],t[1])).join("")+'</div></div>';},
       valid(a){return a.terrain;}});
   }
   if(cfg.milieux){
@@ -627,7 +626,14 @@ function buildPlan(a){
   // Réduire volPeak de 60% (×0.4) pour matcher la réalité: 5.9h théorique → 2.4h réel
   if(sp==="swim")volPeak=Math.round(volPeak*0.4*10)/10;
   if(sp==="tri"&&a.level==="debutant"){/* le tri débutant nage reste limité côté nage, géré par la répartition */}
-  const volBase=Math.round(volPeak*0.58*10)/10;
+  // 1B — effets réels des indicateurs de récup (evalRules le promet, buildPlan doit le tenir).
+  // Sommeil court : plafond volume réduit ~15%. Charge de vie lourde : marge renforcée ~10%.
+  if(a.sleep==="court")volPeak=Math.round(volPeak*0.85*10)/10;
+  if(a.life_load==="lourde")volPeak=Math.round(volPeak*0.90*10)/10;
+  // Drapeau médical (douleur thoracique / vertiges / traitement CV) : AUCUNE intensité
+  // générée tant qu'un feu vert médical n'est pas fourni (promesse de sécurité d'evalRules).
+  const medHold=a.med_pain==="oui"||a.med_dizzy==="oui"||a.med_treat==="oui";
+  let volBase=Math.round(volPeak*0.58*10)/10;
   const phases=[{id:"base",nom:"Base",pct:.30,c:"#00b8d9"},{id:"dev",nom:"Développement",pct:.25,c:"#9b72ff"},{id:"spec",nom:"Spécifique",pct:.20,c:"#f0b429"},{id:"peak",nom:"Peak",pct:.15,c:"#e63946"},{id:"taper",nom:"Affûtage",pct:.10,c:"#00a376"}];
   let acc=0;phases.forEach(p=>{p.start=Math.round(acc*weeks);acc+=p.pct;p.end=Math.round(acc*weeks);p.weeks=p.end-p.start;});phases[4].end=weeks;
 
@@ -689,7 +695,7 @@ function buildPlan(a){
       else if(slot==="recup")S2.push({d:"rs",name:"Repos / mobilité",det:"marche, étirements"});
       else if(slot==="off")S2.push({d:"rs",name:"OFF",det:"repos total"});
     } else if(sp==="bike"){
-      const clm=a.epreuve==="clm", climb=a.terrain==="montagne"||a.terrain==="vallonne";
+      const clm=a.format==="clm", climb=a.terrain==="montagne"||a.terrain==="vallonne";
       if(slot==="dur1"){
         if(phase==="base")S2.push({d:"bk",name:"Sweetspot",det:struct({ech:"15min montée progressive",corps:P(2,3)+"×"+P(12,20)+"min @ "+bz.ss,rec:"5min souple",rc:"10min décrassage",note:"Effort soutenu mais maîtrisé, cadence 85-95 rpm. Tu dois pouvoir finir chaque bloc sans t'effondrer."})});
         else if(clm&&(phase==="spec"||phase==="peak"))S2.push({d:"bk",name:"Spécifique CLM (position)",det:struct({ech:"20min progressif en position normale",corps:P(2,3)+"×"+P(15,25)+"min @ "+bz.thr+" en position aéro tenue",rec:"5min souple, redresse-toi",rc:"10min décrassage",note:"Travaille la tenue de position autant que la puissance : c'est elle qui te fera gagner du temps."})});
@@ -763,11 +769,11 @@ function buildPlan(a){
       const swShortDist=Math.min(600,Math.max(200,Math.round(swimDist*0.4/50)*50));
       const swTechDist=Math.max(300,Math.round(swimDist*0.5/50)*50);
       const swMain=beg
-        ?{name:"Nage technique (+dist)",det:struct({ech:"200m souple",corps:swimDist+"m @ "+sz.aero+" · fractionné en "+Math.ceil(swimDist/100)+"×100m souples, éducatifs entre",rec:"repos libre entre séries",rc:"100m relâché",note:"Technique à froid : qualité du geste avant tout, distance progressive."})}
-        :{name:"Nage seuil (+dist)",det:struct({ech:"300m + 4×50m éducatifs",corps:swimDist+"m @ "+sz.css+" (fractionnée si besoin : "+Math.ceil(swimDist/200)+"×200m ou "+Math.ceil(swimDist/100)+"×100m)",rec:"15-20s",rc:"200m souple",note:"Distance cible atteinte, allure régulière. Fractionné = réponse à intensité."})};
+        ?{name:"Nage technique (+dist)",det:struct({ech:"200m souple",corps:swimDist+"m @ "+sz.aero+", fractionné en séries courtes souples, éducatifs entre",rec:"repos libre entre séries",rc:"100m relâché",note:"Technique à froid : qualité du geste avant tout, distance progressive."})}
+        :{name:"Nage seuil (+dist)",det:struct({ech:"300m + 4×50m éducatifs",corps:swimDist+"m @ "+sz.css+", fractionné en séries régulières si besoin",rec:"15-20s",rc:"200m souple",note:"Distance cible atteinte, allure régulière. Fractionné = réponse à intensité."})};
       const swTech=beg
-        ?{name:"Nage éducatifs",det:struct({ech:"100m souple",corps:swTechDist+"m @ "+sz.easy+" en "+PT(6,10)+"×50m éducatifs (rattrapé, poings fermés, battements planche), 1 point technique par longueur",rec:"20-30s, le temps de respirer",rc:"100m dos souple",note:"Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force."})}
-        :{name:"Nage vitesse",det:struct({ech:"200m + 4×25m accélérations progressives",corps:swTechDist+"m @ "+sz.aero+" dont "+PT(6,10)+"×50m @ "+sz.speed+" (vitesse), départ toutes les 60-75s",rec:"30-40s (récup large)",rc:"150m souple",note:"Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m."})};
+        ?{name:"Nage éducatifs",det:struct({ech:"100m souple",corps:swTechDist+"m @ "+sz.easy+", éducatifs variés (rattrapé, poings fermés, battements planche) par 50m, 1 point technique à la fois",rec:"20-30s",rc:"100m dos souple",note:"Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force."})}
+        :{name:"Nage vitesse",det:struct({ech:"200m + 4×25m accélérations progressives",corps:swTechDist+"m @ "+sz.aero+", dont la moitié en accélérations de 50m @ "+sz.speed,rec:"30-40s sur les 50m rapides",rc:"150m souple",note:"Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m."})};
       const swShort={name:"Nage récup",det:swShortDist+"m souple @ "+sz.easy+" en blocs de 50m, respiration 3 temps · relâchement total"};
       if(slot==="dur1"){ if(dbl)S2.push({d:"sw",name:swMain.name+" (matin)",det:swMain.det});
         if(phase==="base")S2.push({d:"bk",name:"Sweetspot vélo",det:struct({ech:"15min montée progressive",corps:PT(2,3)+"×"+PT(12,18)+"min @ "+bz.ss,rec:"5min souple",rc:"10min décrassage",note:"Cadence 85-95 rpm, soutenu mais maîtrisé."})});
@@ -848,6 +854,11 @@ function buildPlan(a){
       }
     }
   }
+  // medHold : convertir les jours d'intensité (dur1/dur2) en jours faciles avant génération.
+  // La sortie longue (durLong, endurance) est conservée ; on retire vo2max/seuil/vitesse.
+  if(medHold)days.forEach(d=>{
+    if(d.charge==="dur"&&(d.slot==="dur1"||d.slot==="dur2")){d.charge="facile";d.slot=(sp==="run")?"facile2":"facileR";}
+  });
   days.forEach(d=>{
     const ph=d.phase; const prog=ph.weeks>1?((d.week-1)-ph.start)/(ph.weeks-1):0.5;
     d.prog=Math.max(0,Math.min(1,prog));
@@ -891,20 +902,22 @@ function buildPlan(a){
   const volSessCap=avgSessH?Math.max(3,Math.round(volBudget/avgSessH)):7;
   const declSess=Math.min(parseInt(a.sessions_max)||7,volSessCap);
   const budgetPerWeek=declSess;
+  // Le nombre de jours actifs par semaine ne doit JAMAIS dépasser budgetPerWeek —
+  // y compris les semaines de récup (elles ont beaucoup de jours faciles). On retire
+  // d'abord les faciles, puis les durs non-signature, puis en dernier recours n'importe
+  // quel jour non forcé (le durLong/signature est retiré en tout dernier).
+  const toOff=d=>{d.charge="off";d.slot="off";d.sessions=[{d:"rs",name:"OFF (budget séances)",det:"repos — respect de ta disponibilité déclarée"}];};
   for(let w=1;w<=weeks;w++){
     const wd=days.filter(d=>d.week===w);
-    if(wd[0]?.isR)continue; // récup : on ne touche pas
-    let active=wd.filter(d=>d.charge!=="off"&&d.charge!=="recup");
-    let over=active.length-budgetPerWeek;
-    if(over>0){
-      // retirer en priorité les jours FACILES (jamais les durs ni la longue), du moins prioritaire au plus
-      const removable=active.filter(d=>d.charge==="facile"&&!d.forced);
-      // garder au moins 1 facile entre deux durs : retirer en alternance depuis la fin
-      for(let i=removable.length-1;i>=0&&over>0;i--){
-        removable[i].charge="off";removable[i].slot="off";removable[i].sessions=[{d:"rs",name:"OFF (budget séances)",det:"repos — respect de ta disponibilité déclarée"}];
-        over--;
-      }
-    }
+    const activeNow=()=>wd.filter(d=>d.charge!=="off"&&d.charge!=="recup");
+    let over=activeNow().length-budgetPerWeek;
+    if(over<=0)continue;
+    const fac=activeNow().filter(d=>d.charge==="facile"&&!d.forced);
+    for(let i=fac.length-1;i>=0&&over>0;i--){toOff(fac[i]);over--;}
+    if(over>0){const durs=activeNow().filter(d=>d.charge==="dur"&&!d.forced&&d.slot!=="durLong");
+      for(let i=durs.length-1;i>=0&&over>0;i--){toOff(durs[i]);over--;}}
+    if(over>0){const any=activeNow().filter(d=>!d.forced);
+      for(let i=any.length-1;i>=0&&over>0;i--){toOff(any[i]);over--;}}
   }
   // renfo/gammes par sport — DOIT rester dans le budget de séances déclaré
   const declMax=parseInt(a.sessions_max)||7;
@@ -975,12 +988,27 @@ function buildPlan(a){
     if(repMatches){repMatches.forEach(m=>{const[n,d]=m.match(/\d+/g).map(Number);minutes+=n*d;});}
     const singleMin=det.match(/\b(\d+)\s*min(?!\s*-|@)/gi);
     if(singleMin){singleMin.forEach(m=>{const n=parseInt(m);const isRange=det.includes(n+"-")||det.includes("-"+n);if(!isRange&&(!repMatches||!m.match(/\d+\s*×/)))minutes+=n;});}
-    const meterRangeMatches=det.match(/(?<!\d[/:])(\d+)\s*-\s*(\d+)\s*m\b(?!\/)/gi);
-    if(meterRangeMatches){meterRangeMatches.forEach(m=>{const nums=m.match(/\d+/g).map(Number);if(nums.length===2&&nums[0]<nums[1])meters+=Math.round((nums[0]+nums[1])/2);});}
-    const meterRepMatches=det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*m\b(?!\/)/gi);
-    if(meterRepMatches){meterRepMatches.forEach(m=>{const[n,d]=m.match(/\d+/g).map(Number);if(!det.includes(d+"m/")&&!det.includes("/"+d+"m"))meters+=n*d;});}
-    const singleMeter=det.match(/\b(\d{3,})\s*m(?!\s*\/)\b/gi);
-    if(singleMeter){singleMeter.forEach(m=>{const n=parseInt(m);const isRange=det.includes(n+"-")||det.includes("-"+n);const isRep=det.includes(n+"×")||det.includes("×"+n);const isAllure=det.includes("/"+n+"m")||det.includes(n+"m/");if(!isRange&&!isRep&&!isAllure)meters+=n;});}
+    // Bucket MÈTRES = natation uniquement (converti en heures via 3km/h ensuite).
+    if(sportKey==="sw"){
+      const meterRangeMatches=det.match(/(?<!\d[/:])(\d+)\s*-\s*(\d+)\s*m\b(?!\/)/gi);
+      if(meterRangeMatches){meterRangeMatches.forEach(m=>{const nums=m.match(/\d+/g).map(Number);if(nums.length===2&&nums[0]<nums[1])meters+=Math.round((nums[0]+nums[1])/2);});}
+      const meterRepMatches=det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*m\b(?!\/)/gi);
+      if(meterRepMatches){meterRepMatches.forEach(m=>{const[n,d]=m.match(/\d+/g).map(Number);if(!det.includes(d+"m/")&&!det.includes("/"+d+"m"))meters+=n*d;});}
+      const singleMeter=det.match(/\b(\d{3,})\s*m(?!\s*\/)\b/gi);
+      if(singleMeter){singleMeter.forEach(m=>{const n=parseInt(m);const isRange=det.includes(n+"-")||det.includes("-"+n);const isRep=det.includes(n+"×")||det.includes("×"+n);const isAllure=det.includes("/"+n+"m")||det.includes(n+"m/");if(!isRange&&!isRep&&!isAllure)meters+=n;});}
+    }
+    // FIX 2C : course/vélo — les blocs en DISTANCE (km ou m d'intervalle, ex "4×2km",
+    // "3×1000m") étaient ignorés (km) ou comptés comme nage (m). On les convertit en
+    // MINUTES via l'allure seuil connue (rz.thrRaw sec/km, défaut 330 si allure inconnue).
+    if(sportKey==="rn"||sportKey==="bk"){
+      const paceKm=(typeof rz!=="undefined"&&rz.thrRaw)?rz.thrRaw:330;
+      const kmRep=det.match(/(\d+)\s*(?:×|x)\s*(\d+(?:\.\d+)?)\s*km\b/gi);
+      if(kmRep)kmRep.forEach(m=>{const nums=m.match(/\d+(?:\.\d+)?/g).map(Number);minutes+=Math.round(nums[0]*nums[1]*paceKm/60);});
+      const kmSingle=det.match(/(?<![×x]\s?)\b(\d+(?:\.\d+)?)\s*km\b/gi);
+      if(kmSingle)kmSingle.forEach(m=>{const n=parseFloat(m);const isRep=new RegExp("[×x]\\s*"+n.toString().replace(".","\\.")+"\\s*km").test(det);if(!isRep)minutes+=Math.round(n*paceKm/60);});
+      const mRep=det.match(/(\d+)\s*(?:×|x)\s*(\d{3,})\s*m\b(?!\/)/gi);
+      if(mRep)mRep.forEach(m=>{const[n,d]=m.match(/\d+/g).map(Number);if(!det.includes(d+"m/")&&!det.includes("/"+d+"m"))minutes+=Math.round(n*d/1000*paceKm/60);});
+    }
     // Estimations échauffement/retour au calme non chiffrés en minutes
     if(sportKey==="sw"&&minutes===0&&meters>0)minutes+=3;
     if(sportKey==="sw"||sportKey==="rn"||sportKey==="bk"){
@@ -1065,7 +1093,7 @@ function buildPlan(a){
       // Cible plafonnée à vol_max×1.1 : l'enrichissement ne doit pas prescrire 2× la
       // disponibilité déclarée d'un petit budget (ex. 5h déclaré → 10h) juste pour approcher
       // le cap d'expérience. À vol_max=14 (test), le plafond laisse passer C10.
-      const enrichTarget=Math.max(volPeak,Math.min(caps*0.80,(parseInt(a.vol_max||"10")||10)*1.1));
+      const enrichTarget=Math.max(volPeak,Math.min(caps*0.80,(parseInt(a.vol_max||"10")||10)*1.1)*recupFactor);
       for(let it=0;it<6 && target.vol>0 && target.vol<enrichTarget*0.95;it++){
         scaleWeekAll(target,Math.min(2,enrichTarget*0.97/target.vol));
         rebalance(target);
@@ -1104,6 +1132,9 @@ function buildPlan(a){
       volPeak=Math.max(...chargeW.map(w=>w.vol));
     }
   }
+  // Recaler toute valeur dérivée de volPeak après sa réécriture par le post-pass
+  // (volBase = 0.58×volPeak, sinon volBase théorique peut dépasser le volPeak réel).
+  volBase=Math.round(volPeak*0.58*10)/10;
   // COURSES INTERMÉDIAIRES : repérer la semaine de chaque course, marquer + ajuster le volume
   const races=[];
   if(a.races==="oui"){
@@ -1141,7 +1172,7 @@ const QLABELS={intent:"Intention",format:"Objectif",terrain:"Terrain",epreuve:"�
   ftp_known:"FTP connue",ftp:"FTP",pace_known:"Allure connue",pace:"Allure seuil",css_known:"CSS connu",css:"CSS",history:"Historique",injury:"Blessures",
   sessions_max:"Séances max",vol_max:"Volume max",dispo:"Dispo",shift_ok:"Décalage",off_days:"Jours OFF",off_which:"Jours bloqués",doubles:"Doubles",
   sleep:"Sommeil",life_load:"Charge vie",hrv:"HRV",daily_burn:"Activité",weight_lever:"Levier poids",cycle_sync:"Cycle menstruel",races:"Courses inter.",age:"Âge",weight:"Poids",height:"Taille"};
-function ruleTrigger(id){return {intent:"intent",sante:"intent",duree:"format",medical:"med_treat",terrain:"terrain",clm:"epreuve",ow:"milieu",bassin:"milieu",
+function ruleTrigger(id){return {intent:"intent",sante:"intent",duree:"format",medical:"med_treat",terrain:"terrain",clm:"format",ow:"milieu",bassin:"milieu",
   tech:"level",recup:"history",inj:"injury",volume:"vol_max",sessions:"sessions_max",cycle:"shift_ok",polar:"doubles",
   sleep:"sleep",life:"life_load",hrv:"hrv",renfo:"hrv",gammes:"hrv",force:"hrv",tech_drill:"hrv",poids:"weight_lever",fer:"sex",cyclep:"cycle_sync",races:"races"}[id];}
 

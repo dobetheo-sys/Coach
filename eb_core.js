@@ -77,17 +77,25 @@ function buildPlan(a){
     tri:{reprise:{S:6,M:8,"70.3":11,Full:15},confirme:{S:7,M:10,"70.3":13,Full:17},ancien:{S:8,M:12,"70.3":15,Full:19}}}[sp][a.history||"confirme"][fmt]||10;
   const util={run:{"5k":6,"10k":7,semi:9,marathon:12,trail:14},bike:{crit:9,route:13,cyclo:15,clm:11,gravel:20},swim:{sprint:6,demifond:8,fond:10,ow:12},tri:{S:8,M:11,"70.3":14,Full:18}}[sp][fmt]||12;
   const marg=(a.intent==="competition")?1.0:0.9;
+  // 1B — effets réels des indicateurs de récup (evalRules le promet, buildPlan doit le tenir).
+  // Sommeil court : volume réduit ~15%. Charge de vie lourde : marge renforcée ~10%.
+  // Appliqué au CONTENU (recupFactor sur sessionScale) pour que le volPeak réel final baisse
+  // réellement — le seul plafond théorique était écrasé par le post-pass (volPeak = max réel).
+  const recupFactor=(a.sleep==="court"?0.85:1)*(a.life_load==="lourde"?0.90:1);
   // OPTION A — le contenu des séances dépend du volume disponible, pas seulement du format :
   // si l'athlète a moins d'heures (vol_max, historique) que le format n'en demande (util),
   // toutes les quantités prescrites (durées, répétitions, distances) sont réduites d'autant via P().
-  const sessionScale=Math.min(1,Math.min(parseInt(a.vol_max||"10"),caps,util)*marg/util);
-  let volPeak=Math.round(Math.min(parseInt(a.vol_max||"10"),caps,util)*marg*10)/10;
+  const sessionScale=Math.min(1,Math.min(parseInt(a.vol_max||"10"),caps,util)*marg/util)*recupFactor;
+  let volPeak=Math.round(Math.min(parseInt(a.vol_max||"10"),caps,util)*marg*recupFactor*10)/10;
   if(sp==="swim"&&a.level==="debutant")volPeak=Math.min(volPeak,4);
   // FIX SWIM : volume déclaré 4.5× trop haut car confond heures avec distance
   // SWIM 4000m = 1.3h réel, pas 5.9h théorique. Réduire volPeak de 60%
   if(sp==="swim")volPeak=Math.round(volPeak*0.4*10)/10;
   if(sp==="tri"&&a.level==="debutant"){/* le tri débutant nage reste limité côté nage, géré par la répartition */}
-  const volBase=Math.round(volPeak*0.58*10)/10;
+  // Drapeau médical (douleur thoracique / vertiges / traitement CV) : AUCUNE intensité
+  // générée tant qu'un feu vert médical n'est pas fourni (promesse de sécurité d'evalRules).
+  const medHold=a.med_pain==="oui"||a.med_dizzy==="oui"||a.med_treat==="oui";
+  let volBase=Math.round(volPeak*0.58*10)/10;
   const phases=[{id:"base",nom:"Base",pct:.30,c:"#00b8d9"},{id:"dev",nom:"Développement",pct:.25,c:"#9b72ff"},{id:"spec",nom:"Spécifique",pct:.20,c:"#f0b429"},{id:"peak",nom:"Peak",pct:.15,c:"#e63946"},{id:"taper",nom:"Affûtage",pct:.10,c:"#00a376"}];
   let acc=0;phases.forEach(p=>{p.start=Math.round(acc*weeks);acc+=p.pct;p.end=Math.round(acc*weeks);p.weeks=p.end-p.start;});phases[4].end=weeks;
 
@@ -139,7 +147,7 @@ function buildPlan(a){
       else if(slot==="recup")S2.push({d:"rs",name:"Repos / mobilité",det:"marche, étirements"});
       else if(slot==="off")S2.push({d:"rs",name:"OFF",det:"repos total"});
     } else if(sp==="bike"){
-      const clm=a.epreuve==="clm", climb=a.terrain==="montagne"||a.terrain==="vallonne";
+      const clm=a.format==="clm", climb=a.terrain==="montagne"||a.terrain==="vallonne";
       if(slot==="dur1"){
         if(phase==="base")S2.push({d:"bk",name:"Sweetspot",det:struct({ech:"15min montée progressive",corps:P(2,3)+"×"+P(12,20)+"min @ "+bz.ss,rec:"5min souple",rc:"10min décrassage",note:"Effort soutenu mais maîtrisé, cadence 85-95 rpm. Tu dois pouvoir finir chaque bloc sans t'effondrer."})});
         else if(clm&&(phase==="spec"||phase==="peak"))S2.push({d:"bk",name:"Spécifique CLM (position)",det:struct({ech:"20min progressif en position normale",corps:P(2,3)+"×"+P(15,25)+"min @ "+bz.thr+" en position aéro tenue",rec:"5min souple, redresse-toi",rc:"10min décrassage",note:"Travaille la tenue de position autant que la puissance : c'est elle qui te fera gagner du temps."})});
@@ -207,12 +215,14 @@ function buildPlan(a){
       const swimDist=PT(swimDistCaps.lo,swimDistCaps.hi);
       const swShortDist=Math.min(600,Math.max(200,Math.round(swimDist*0.4/50)*50));
       const swTechDist=Math.max(300,Math.round(swimDist*0.5/50)*50);
+      // Fractionnements QUALITATIFS (pas de "N×Mm" chiffré) : le total en mètres est la
+      // seule source de vérité, donc il reste cohérent même après scaling du post-pass.
       const swMain=beginner
-        ?{name:"Nage technique (+dist)",det:struct({ech:"200m souple",corps:swimDist+"m @ "+sz.aero+" · fractionné en "+Math.ceil(swimDist/100)+"×100m souples, éducatifs entre",rec:"repos libre entre séries",rc:"100m relâché",note:"Technique à froid : qualité du geste avant tout, distance progressive."})}
-        :{name:"Nage seuil (+dist)",det:struct({ech:"300m + 4×50m éducatifs",corps:swimDist+"m @ "+sz.css+" (fractionnée si besoin : "+Math.ceil(swimDist/200)+"×200m ou "+Math.ceil(swimDist/100)+"×100m)",rec:"15-20s",rc:"200m souple",note:"Distance cible atteinte, allure régulière. Fractionné = réponse à intensité."})};
+        ?{name:"Nage technique (+dist)",det:struct({ech:"200m souple",corps:swimDist+"m @ "+sz.aero+", fractionné en séries courtes souples, éducatifs entre",rec:"repos libre entre séries",rc:"100m relâché",note:"Technique à froid : qualité du geste avant tout, distance progressive."})}
+        :{name:"Nage seuil (+dist)",det:struct({ech:"300m + 4×50m éducatifs",corps:swimDist+"m @ "+sz.css+", fractionné en séries régulières si besoin",rec:"15-20s",rc:"200m souple",note:"Distance cible atteinte, allure régulière. Fractionné = réponse à intensité."})};
       const swTech=beginner
-        ?{name:"Nage éducatifs",det:struct({ech:"100m souple",corps:swTechDist+"m @ "+sz.easy+" en "+PT(6,10)+"×50m éducatifs (rattrapé, poings fermés, battements planche), 1 point technique par longueur",rec:"20-30s, le temps de respirer",rc:"100m dos souple",note:"Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force."})}
-        :{name:"Nage vitesse",det:struct({ech:"200m + 4×25m accélérations progressives",corps:swTechDist+"m @ "+sz.aero+" dont "+PT(6,10)+"×50m @ "+sz.speed+" (vitesse), départ toutes les 60-75s",rec:"30-40s (récup large)",rc:"150m souple",note:"Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m."})};
+        ?{name:"Nage éducatifs",det:struct({ech:"100m souple",corps:swTechDist+"m @ "+sz.easy+", éducatifs variés (rattrapé, poings fermés, battements planche) par 50m, 1 point technique à la fois",rec:"20-30s",rc:"100m dos souple",note:"Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force."})}
+        :{name:"Nage vitesse",det:struct({ech:"200m + 4×25m accélérations progressives",corps:swTechDist+"m @ "+sz.aero+", dont la moitié en accélérations de 50m @ "+sz.speed,rec:"30-40s sur les 50m rapides",rc:"150m souple",note:"Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m."})};
       const swShort={name:"Nage récup",det:swShortDist+"m souple @ "+sz.easy+" en blocs de 50m, respiration 3 temps · relâchement total"};
       if(slot==="dur1"){ if(dbl)S2.push({d:"sw",name:swMain.name+" (matin)",det:swMain.det});
         if(phase==="base")S2.push({d:"bk",name:"Sweetspot vélo",det:struct({ech:"15min montée progressive",corps:PT(2,3)+"×"+PT(12,18)+"min @ "+bz.ss,rec:"5min souple",rc:"10min décrassage",note:"Cadence 85-95 rpm, soutenu mais maîtrisé."})});
@@ -290,6 +300,11 @@ function buildPlan(a){
       }
     }
   }
+  // medHold : convertir les jours d'intensité (dur1/dur2) en jours faciles avant génération.
+  // La sortie longue (durLong, endurance) est conservée ; on retire vo2max/seuil/vitesse.
+  if(medHold)days.forEach(d=>{
+    if(d.charge==="dur"&&(d.slot==="dur1"||d.slot==="dur2")){d.charge="facile";d.slot=(sp==="run")?"facile2":"facileR";}
+  });
   days.forEach(d=>{
     const ph=d.phase; const prog=ph.weeks>1?((d.week-1)-ph.start)/(ph.weeks-1):0.5;
     d.prog=Math.max(0,Math.min(1,prog));
@@ -327,18 +342,22 @@ function buildPlan(a){
   const volSessCap=avgSessH?Math.max(3,Math.round(volBudget/avgSessH)):7;
   const declSess=Math.min(parseInt(a.sessions_max)||7,volSessCap);
   const budgetPerWeek=declSess;
+  // Le nombre de jours actifs par semaine ne doit JAMAIS dépasser budgetPerWeek —
+  // y compris les semaines de récup (elles ont beaucoup de jours faciles). On retire
+  // d'abord les faciles, puis les durs non-signature, puis en dernier recours n'importe
+  // quel jour non forcé (le durLong/signature est retiré en tout dernier).
+  const toOff=d=>{d.charge="off";d.slot="off";d.sessions=[{d:"rs",name:"OFF (budget séances)",det:"repos — respect de ta disponibilité déclarée"}];};
   for(let w=1;w<=weeks;w++){
     const wd=days.filter(d=>d.week===w);
-    if(wd[0]?.isR)continue;
-    let active=wd.filter(d=>d.charge!=="off"&&d.charge!=="recup");
-    let over=active.length-budgetPerWeek;
-    if(over>0){
-      const removable=active.filter(d=>d.charge==="facile"&&!d.forced);
-      for(let i=removable.length-1;i>=0&&over>0;i--){
-        removable[i].charge="off";removable[i].slot="off";removable[i].sessions=[{d:"rs",name:"OFF (budget séances)",det:"repos — respect de ta disponibilité déclarée"}];
-        over--;
-      }
-    }
+    const activeNow=()=>wd.filter(d=>d.charge!=="off"&&d.charge!=="recup");
+    let over=activeNow().length-budgetPerWeek;
+    if(over<=0)continue;
+    const fac=activeNow().filter(d=>d.charge==="facile"&&!d.forced);
+    for(let i=fac.length-1;i>=0&&over>0;i--){toOff(fac[i]);over--;}
+    if(over>0){const durs=activeNow().filter(d=>d.charge==="dur"&&!d.forced&&d.slot!=="durLong");
+      for(let i=durs.length-1;i>=0&&over>0;i--){toOff(durs[i]);over--;}}
+    if(over>0){const any=activeNow().filter(d=>!d.forced);
+      for(let i=any.length-1;i>=0&&over>0;i--){toOff(any[i]);over--;}}
   }
   const declMax=parseInt(a.sessions_max)||7;
   for(let w=1;w<=weeks;w++){
@@ -396,12 +415,27 @@ function buildPlan(a){
     if(repMatches){repMatches.forEach(m=>{const[n,d]=m.match(/\d+/g).map(Number);minutes+=n*d;});}
     const singleMin=det.match(/\b(\d+)\s*min(?!\s*-|@)/gi);
     if(singleMin){singleMin.forEach(m=>{const n=parseInt(m);const isRange=det.includes(`${n}-`)||det.includes(`-${n}`);if(!isRange&&(!repMatches||!m.match(/\d+\s*×/)))minutes+=n;});}
-    const meterRangeMatches=det.match(/(?<!\d[/:])(\d+)\s*-\s*(\d+)\s*m\b(?!\/)/gi);
-    if(meterRangeMatches){meterRangeMatches.forEach(m=>{const nums=m.match(/\d+/g).map(Number);if(nums.length===2&&nums[0]<nums[1])meters+=Math.round((nums[0]+nums[1])/2);});}
-    const meterRepMatches=det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*m\b(?!\/)/gi);
-    if(meterRepMatches){meterRepMatches.forEach(m=>{const[n,d]=m.match(/\d+/g).map(Number);if(!det.includes(`${d}m/`)&&!det.includes(`/${d}m`))meters+=n*d;});}
-    const singleMeter=det.match(/\b(\d{3,})\s*m(?!\s*\/)\b/gi);
-    if(singleMeter){singleMeter.forEach(m=>{const n=parseInt(m);const isRange=det.includes(`${n}-`)||det.includes(`-${n}`);const isRep=det.includes(`${n}×`)||det.includes(`×${n}`);const isAllure=det.includes(`/${n}m`)||det.includes(`${n}m/`);if(!isRange&&!isRep&&!isAllure)meters+=n;});}
+    // Bucket MÈTRES = natation uniquement (converti en heures via 3km/h ensuite).
+    if(sportKey==="sw"){
+      const meterRangeMatches=det.match(/(?<!\d[/:])(\d+)\s*-\s*(\d+)\s*m\b(?!\/)/gi);
+      if(meterRangeMatches){meterRangeMatches.forEach(m=>{const nums=m.match(/\d+/g).map(Number);if(nums.length===2&&nums[0]<nums[1])meters+=Math.round((nums[0]+nums[1])/2);});}
+      const meterRepMatches=det.match(/(\d+)\s*(?:×|x)\s*(\d+)\s*m\b(?!\/)/gi);
+      if(meterRepMatches){meterRepMatches.forEach(m=>{const[n,d]=m.match(/\d+/g).map(Number);if(!det.includes(`${d}m/`)&&!det.includes(`/${d}m`))meters+=n*d;});}
+      const singleMeter=det.match(/\b(\d{3,})\s*m(?!\s*\/)\b/gi);
+      if(singleMeter){singleMeter.forEach(m=>{const n=parseInt(m);const isRange=det.includes(`${n}-`)||det.includes(`-${n}`);const isRep=det.includes(`${n}×`)||det.includes(`×${n}`);const isAllure=det.includes(`/${n}m`)||det.includes(`${n}m/`);if(!isRange&&!isRep&&!isAllure)meters+=n;});}
+    }
+    // FIX 2C : course/vélo — les blocs en DISTANCE (km ou m d'intervalle, ex "4×2km",
+    // "3×1000m") étaient ignorés (km) ou comptés comme nage (m). On les convertit en
+    // MINUTES via l'allure seuil connue (rz.thrRaw sec/km, défaut 330 si allure inconnue).
+    if(sportKey==="rn"||sportKey==="bk"){
+      const paceKm=(typeof rz!=="undefined"&&rz.thrRaw)?rz.thrRaw:330;
+      const kmRep=det.match(/(\d+)\s*(?:×|x)\s*(\d+(?:\.\d+)?)\s*km\b/gi);
+      if(kmRep)kmRep.forEach(m=>{const nums=m.match(/\d+(?:\.\d+)?/g).map(Number);minutes+=Math.round(nums[0]*nums[1]*paceKm/60);});
+      const kmSingle=det.match(/(?<![×x]\s?)\b(\d+(?:\.\d+)?)\s*km\b/gi);
+      if(kmSingle)kmSingle.forEach(m=>{const n=parseFloat(m);const isRep=new RegExp("[×x]\\s*"+n.toString().replace(".","\\.")+"\\s*km").test(det);if(!isRep)minutes+=Math.round(n*paceKm/60);});
+      const mRep=det.match(/(\d+)\s*(?:×|x)\s*(\d{3,})\s*m\b(?!\/)/gi);
+      if(mRep)mRep.forEach(m=>{const[n,d]=m.match(/\d+/g).map(Number);if(!det.includes(`${d}m/`)&&!det.includes(`/${d}m`))minutes+=Math.round(n*d/1000*paceKm/60);});
+    }
     // Estimations échauffement/retour au calme non chiffrés en minutes
     if(sportKey==="sw"&&minutes===0&&meters>0)minutes+=3;
     if(sportKey==="sw"||sportKey==="rn"||sportKey==="bk"){
@@ -494,7 +528,7 @@ function buildPlan(a){
       // Cible plafonnée à vol_max×1.1 : l'enrichissement ne doit pas prescrire 2× la
       // disponibilité déclarée d'un petit budget (ex. 5h déclaré → 10h) juste pour approcher
       // le cap d'expérience. À vol_max=14 (test), le plafond laisse passer C10.
-      const enrichTarget=Math.max(volPeak,Math.min(caps*0.80,(parseInt(a.vol_max||"10")||10)*1.1));
+      const enrichTarget=Math.max(volPeak,Math.min(caps*0.80,(parseInt(a.vol_max||"10")||10)*1.1)*recupFactor);
       // Itératif : le clamp brick dans rebalance fait perdre du volume → répéter jusqu'à
       // approcher 0.97× la cible (ou plafonner à 6 passes).
       for(let it=0;it<6 && target.vol>0 && target.vol<enrichTarget*0.95;it++){
@@ -539,6 +573,9 @@ function buildPlan(a){
       volPeak=Math.max(...chargeW.map(w=>w.vol));
     }
   }
+  // Recaler toute valeur dérivée de volPeak après sa réécriture par le post-pass
+  // (volBase = 0.58×volPeak, sinon volBase théorique peut dépasser le volPeak réel).
+  volBase=Math.round(volPeak*0.58*10)/10;
   return {weeks:wl,phases,volPeak,volBase,use10,totalWeeks:weeks};
 }
 
