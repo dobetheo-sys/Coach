@@ -680,7 +680,7 @@ function buildPlan(a){
           S2.push({d:"rn",name:"Seuil doux",det:struct({ech:"15min footing très facile + 3 lignes droites",corps:P(2,4)+"×"+P(6,10)+"min @ "+rz.thr+(injImp?" sur surface souple":""),rec:"2-3min trot très lent",rc:"10min footing facile",note:"Le seuil doit rester «confortablement difficile» : tu peux dire quelques mots, pas tenir une conversation. Si ça pique, ralentis."})});
         } else if(phase==="base"){ S2.push({d:"rn",name:"Seuil progressif",det:struct({ech:"15min footing + 4 lignes droites",corps:P(3,4)+"×"+P(6,10)+"min @ "+rz.thr,rec:"2min trot",rc:"10min footing",note:"Allure soutenue mais maîtrisée, régulière du 1er au dernier bloc."})}); }
         else if(phase==="spec"||phase==="peak"){ S2.push({d:"rn",name:"Allure course spécifique",det:struct({ech:"15-20min progressif + gammes",corps:P(3,5)+"×"+(fmt==="5k"||fmt==="10k"?"1000m":"2km")+" @ "+(fmt==="marathon"?rz.mara:rz.thr),rec:"2-3min récup active",rc:"10min retour au calme",note:"C'est l'allure de ta course : mémorise la sensation, elle doit devenir automatique le jour J."})}); }
-        else { S2.push({d:"rn",name:"VO2max",det:struct({ech:"20min progressif + 4 lignes droites",corps:P(5,8)+"×3min @ "+rz.vo2,rec:"2min30 trot (récup quasi complète)",rc:"10min footing très facile",note:"Effort maximal soutenable 3min. La récup complète entre les blocs est essentielle pour tenir l'intensité."})}); } // VO2 réservé dev/inter+
+        else { S2.push({d:"rn",name:"VO2max",det:struct({ech:"20min progressif + 4 lignes droites",corps:P(5,8)+"×3min @ "+rz.vo2,rec:"2min30 trot",rc:"10min footing très facile",note:"Effort maximal soutenable 3min. La récup complète entre les blocs est essentielle pour tenir l'intensité."})}); } // VO2 réservé dev/inter+
       }
       else if(slot==="dur2"){ S2.push({d:"rn",name:phase==="base"?"Endurance soutenue":"Allure spécifique",det:struct({ech:"15min footing facile",corps:P(20,45)+"min "+(fmt==="marathon"||fmt==="trail"?"@ "+rz.mara:"@ "+rz.thr),rc:"5-10min retour au calme "+G,note:"Allure tenue et continue, sans à-coups."})}); }
       else if(slot==="durLong"){
@@ -702,7 +702,7 @@ function buildPlan(a){
         else if(clm&&(phase==="spec"||phase==="peak"))S2.push({d:"bk",name:"Spécifique CLM (position)",det:struct({ech:"20min progressif en position normale",corps:P(2,3)+"×"+P(15,25)+"min @ "+bz.thr+" en position aéro tenue",rec:"5min souple, redresse-toi",rc:"10min décrassage",note:"Travaille la tenue de position autant que la puissance : c'est elle qui te fera gagner du temps."})});
         else if(phase==="spec"||phase==="peak")S2.push({d:"bk",name:"Seuil / race-pace",det:struct({ech:"15min progressif",corps:P(2,4)+"×"+P(10,20)+"min @ "+bz.thr,rec:"5min souple",rc:"10min décrassage",note:"Allure de course soutenable ~1h. Régularité avant tout."})});
         else if(lvl==="debutant"||finisher)S2.push({d:"bk",name:"Tempo progressif",det:struct({ech:"15min souple",corps:P(2,3)+"×"+P(8,15)+"min @ "+bz.ss,rec:"4min très souple",rc:"10min décrassage",note:"Effort confortablement soutenu, sans jamais te mettre dans le rouge."})});
-        else S2.push({d:"bk",name:"VO2max",det:struct({ech:"20min progressif + 3 sprints courts",corps:P(4,6)+"×4min @ "+bz.vo2,rec:"4min récup (presque complète)",rc:"10min souple",note:"Intensité maximale tenable 4min. La récup longue permet de répéter la qualité."})});
+        else S2.push({d:"bk",name:"VO2max",det:struct({ech:"20min progressif + 3 sprints courts",corps:P(4,6)+"×4min @ "+bz.vo2,rec:"4min",rc:"10min souple",note:"Intensité maximale tenable 4min. La récup longue permet de répéter la qualité."})});
       }
       else if(slot==="dur2")S2.push({d:"bk",name:climb?"Force en côte":"Force basse cadence",det:struct({ech:"15min + montée en intensité",corps:P(4,6)+"×5min @ "+bz.frc+" à 50-60 rpm"+(climb?" en côte":""),rec:"3min souple ou en redescendant",rc:"10min moulinage léger",note:"Gros braquet, cadence basse, mais sans forcer sur les genoux : c'est musculaire, pas cardio."})});
       else if(slot==="durLong"){
@@ -726,7 +726,7 @@ function buildPlan(a){
       else if(slot==="dur2"){
         if(beg)S2.push({d:"sw",name:"Endurance technique",det:struct({ech:"200m souple",corps:"nage continue fractionnée (ex 8-12×50m) + 1 éducatif entre chaque",rec:"20-30s, le temps de respirer",rc:"100m très souple",note:"Priorité au geste, pas au chrono. Un seul point technique à la fois."})});
         else if(shoulder)S2.push({d:"sw",name:"Jambes + technique",det:"séries battements + éducatifs · épargne épaule"});
-        else S2.push({d:"sw",name:"Vitesse",det:struct({ech:"400m varié + 4×25m accélérations",corps:P(8,12)+"×50m @ "+sz.speed,rec:"30-40s (récup large)",rc:"200m souple",note:"Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage."})});
+        else S2.push({d:"sw",name:"Vitesse",det:struct({ech:"400m varié + 4×25m accélérations",corps:P(8,12)+"×50m @ "+sz.speed,rec:"30-40s",rc:"200m souple",note:"Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage."})});
       }
       else if(slot==="durLong"){
         // FIX cohérence : la séance longue nage doit porter une VRAIE distance progressive,
@@ -858,7 +858,10 @@ function buildPlan(a){
   // medHold : convertir les jours d'intensité (dur1/dur2) en jours faciles avant génération.
   // La sortie longue (durLong, endurance) est conservée ; on retire vo2max/seuil/vitesse.
   if(medHold)days.forEach(d=>{
-    if(d.charge==="dur"&&(d.slot==="dur1"||d.slot==="dur2")){d.charge="facile";d.slot=(sp==="run")?"facile2":"facileR";}
+    // Tri : le durLong = brick à allure course (intensité) → aussi converti. Run/bike/swim :
+    // le durLong est de l'endurance pure (sortie longue), conservé.
+    const stripLong=(sp==="tri");
+    if(d.charge==="dur"&&(d.slot==="dur1"||d.slot==="dur2"||(stripLong&&d.slot==="durLong"))){d.charge="facile";d.slot=(sp==="run")?"facile2":"facileR";}
   });
   days.forEach(d=>{
     const ph=d.phase; const prog=ph.weeks>1?((d.week-1)-ph.start)/(ph.weeks-1):0.5;
@@ -1047,7 +1050,9 @@ function buildPlan(a){
   // ===== POST-PASS TRIATHLON (répartition disciplines + alignement du pic) =====
   // Mesures répliquant EXACTEMENT le test de régression v3 (minutes de séance +
   // nage en distance×allure), pour piloter la correction sur ce que le test évalue.
-  if(sp==="tri"){
+  // Sauté quand medHold : ce rééquilibrage/enrichissement est conçu pour un plan de
+  // course structuré (brick, ratios cibles) — un plan de maintien médical reste tel quel.
+  if(sp==="tri"&&!medHold){
     const tMin=det=>{if(!det)return 0;let t=0;[...det.matchAll(/(\d+)\s*×\s*(\d+)\s*min/g)].forEach(m=>t+=+m[1]*+m[2]);const r=det.replace(/\d+\s*×\s*\d+\s*min/g,"");[...r.matchAll(/(\d+)\s*min/g)].forEach(m=>t+=+m[1]);return t;};
     const tPace=det=>{const m=(det||"").match(/(\d+)'(\d+)\/100m/);return m?+m[1]*60+ +m[2]:null;};
     const tSwim=det=>{if(!det)return 0;const p=tPace(det);if(p===null)return 0;let tm=0;[...det.matchAll(/(\d+)\s*×\s*(\d+)\s*m\b(?!in)/g)].forEach(m=>tm+=+m[1]*+m[2]);const r=det.replace(/\d+\s*×\s*\d+\s*m\b(?!in)/g,"");[...r.matchAll(/(\d+)\s*m\b(?!in)/g)].forEach(m=>tm+=+m[1]);return tm/100*p/60;};

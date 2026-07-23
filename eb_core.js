@@ -77,10 +77,15 @@ function buildPlan(a){
     tri:{reprise:{S:6,M:8,"70.3":11,Full:15},confirme:{S:7,M:10,"70.3":13,Full:17},ancien:{S:8,M:12,"70.3":15,Full:19}}}[sp][a.history||"confirme"][fmt]||10;
   const util={run:{"5k":6,"10k":7,semi:9,marathon:12,trail:14},bike:{crit:9,route:13,cyclo:15,clm:11,gravel:20},swim:{sprint:6,demifond:8,fond:10,ow:12},tri:{S:8,M:11,"70.3":14,Full:18}}[sp][fmt]||12;
   const marg=(a.intent==="competition")?1.0:0.9;
+  // Drapeau médical (douleur thoracique / vertiges / traitement CV) : AUCUNE intensité,
+  // et volume nettement allégé (endurance de maintien uniquement) tant qu'un feu vert
+  // médical n'est pas fourni. Défini tôt car il pilote sessionScale et l'enrichissement.
+  const medHold=a.med_pain==="oui"||a.med_dizzy==="oui"||a.med_treat==="oui";
   // 1B — effets réels des indicateurs de récup (evalRules le promet, buildPlan doit le tenir).
   // Sommeil court : volume réduit ~15%. Charge de vie lourde : marge renforcée ~10%.
-  // Appliqué au CONTENU (recupFactor sur sessionScale) pour que le volPeak réel final baisse
-  // réellement — le seul plafond théorique était écrasé par le post-pass (volPeak = max réel).
+  // Appliqué au CONTENU (sur sessionScale) pour que le volPeak réel final baisse réellement —
+  // le plafond théorique est écrasé par le post-pass. (medHold agit autrement : retrait de
+  // l'intensité + séances gardées à longueur normale, cf. plus bas — pas de rétrécissement ici.)
   const recupFactor=(a.sleep==="court"?0.85:1)*(a.life_load==="lourde"?0.90:1);
   // OPTION A — le contenu des séances dépend du volume disponible, pas seulement du format :
   // si l'athlète a moins d'heures (vol_max, historique) que le format n'en demande (util),
@@ -92,9 +97,6 @@ function buildPlan(a){
   // SWIM 4000m = 1.3h réel, pas 5.9h théorique. Réduire volPeak de 60%
   if(sp==="swim")volPeak=Math.round(volPeak*0.4*10)/10;
   if(sp==="tri"&&a.level==="debutant"){/* le tri débutant nage reste limité côté nage, géré par la répartition */}
-  // Drapeau médical (douleur thoracique / vertiges / traitement CV) : AUCUNE intensité
-  // générée tant qu'un feu vert médical n'est pas fourni (promesse de sécurité d'evalRules).
-  const medHold=a.med_pain==="oui"||a.med_dizzy==="oui"||a.med_treat==="oui";
   let volBase=Math.round(volPeak*0.58*10)/10;
   const phases=[{id:"base",nom:"Base",pct:.30,c:"#00b8d9"},{id:"dev",nom:"Développement",pct:.25,c:"#9b72ff"},{id:"spec",nom:"Spécifique",pct:.20,c:"#f0b429"},{id:"peak",nom:"Peak",pct:.15,c:"#e63946"},{id:"taper",nom:"Affûtage",pct:.10,c:"#00a376"}];
   let acc=0;phases.forEach(p=>{p.start=Math.round(acc*weeks);acc+=p.pct;p.end=Math.round(acc*weeks);p.weeks=p.end-p.start;});phases[4].end=weeks;
@@ -134,7 +136,7 @@ function buildPlan(a){
           S2.push({d:"rn",name:"Seuil doux",det:struct({ech:"15min footing très facile + 3 lignes droites",corps:P(2,4)+"×"+P(6,10)+"min @ "+rz.thr+(injImp?" sur surface souple":""),rec:"2-3min trot très lent",rc:"10min footing facile",note:"Le seuil doit rester «confortablement difficile» : tu peux dire quelques mots, pas tenir une conversation. Si ça pique, ralentis."})});
         } else if(phase==="base"){ S2.push({d:"rn",name:"Seuil progressif",det:struct({ech:"15min footing + 4 lignes droites",corps:P(3,4)+"×"+P(6,10)+"min @ "+rz.thr,rec:"2min trot",rc:"10min footing",note:"Allure soutenue mais maîtrisée, régulière du 1er au dernier bloc."})}); }
         else if(phase==="spec"||phase==="peak"){ S2.push({d:"rn",name:"Allure course spécifique",det:struct({ech:"15-20min progressif + gammes",corps:P(3,5)+"×"+(fmt==="5k"||fmt==="10k"?"1000m":"2km")+" @ "+(fmt==="marathon"?rz.mara:rz.thr),rec:"2-3min récup active",rc:"10min retour au calme",note:"C'est l'allure de ta course : mémorise la sensation, elle doit devenir automatique le jour J."})}); }
-        else { S2.push({d:"rn",name:"VO2max",det:struct({ech:"20min progressif + 4 lignes droites",corps:P(5,8)+"×3min @ "+rz.vo2,rec:"2min30 trot (récup quasi complète)",rc:"10min footing très facile",note:"Effort maximal soutenable 3min. La récup complète entre les blocs est essentielle pour tenir l'intensité."})}); }
+        else { S2.push({d:"rn",name:"VO2max",det:struct({ech:"20min progressif + 4 lignes droites",corps:P(5,8)+"×3min @ "+rz.vo2,rec:"2min30 trot",rc:"10min footing très facile",note:"Effort maximal soutenable 3min. La récup complète entre les blocs est essentielle pour tenir l'intensité."})}); }
       }
       else if(slot==="dur2"){ S2.push({d:"rn",name:phase==="base"?"Endurance soutenue":"Allure spécifique",det:struct({ech:"15min footing facile",corps:P(20,45)+"min "+(fmt==="marathon"||fmt==="trail"?"@ "+rz.mara:"@ "+rz.thr),rc:"5-10min retour au calme "+G,note:"Allure tenue et continue, sans à-coups."})}); }
       else if(slot==="durLong"){
@@ -153,7 +155,7 @@ function buildPlan(a){
         else if(clm&&(phase==="spec"||phase==="peak"))S2.push({d:"bk",name:"Spécifique CLM (position)",det:struct({ech:"20min progressif en position normale",corps:P(2,3)+"×"+P(15,25)+"min @ "+bz.thr+" en position aéro tenue",rec:"5min souple, redresse-toi",rc:"10min décrassage",note:"Travaille la tenue de position autant que la puissance : c'est elle qui te fera gagner du temps."})});
         else if(phase==="spec"||phase==="peak")S2.push({d:"bk",name:"Seuil / race-pace",det:struct({ech:"15min progressif",corps:P(2,4)+"×"+P(10,20)+"min @ "+bz.thr,rec:"5min souple",rc:"10min décrassage",note:"Allure de course soutenable ~1h. Régularité avant tout."})});
         else if(lvl==="debutant"||finisher)S2.push({d:"bk",name:"Tempo progressif",det:struct({ech:"15min souple",corps:P(2,3)+"×"+P(8,15)+"min @ "+bz.ss,rec:"4min très souple",rc:"10min décrassage",note:"Effort confortablement soutenu, sans jamais te mettre dans le rouge."})});
-        else S2.push({d:"bk",name:"VO2max",det:struct({ech:"20min progressif + 3 sprints courts",corps:P(4,6)+"×4min @ "+bz.vo2,rec:"4min récup (presque complète)",rc:"10min souple",note:"Intensité maximale tenable 4min. La récup longue permet de répéter la qualité."})});
+        else S2.push({d:"bk",name:"VO2max",det:struct({ech:"20min progressif + 3 sprints courts",corps:P(4,6)+"×4min @ "+bz.vo2,rec:"4min",rc:"10min souple",note:"Intensité maximale tenable 4min. La récup longue permet de répéter la qualité."})});
       }
       else if(slot==="dur2")S2.push({d:"bk",name:climb?"Force en côte":"Force basse cadence",det:struct({ech:"15min + montée en intensité",corps:P(4,6)+"×5min @ "+bz.frc+" à 50-60 rpm"+(climb?" en côte":""),rec:"3min souple ou en redescendant",rc:"10min moulinage léger",note:"Gros braquet, cadence basse, mais sans forcer sur les genoux : c'est musculaire, pas cardio."})});
       else if(slot==="durLong"){
@@ -175,7 +177,7 @@ function buildPlan(a){
       else if(slot==="dur2"){
         if(beginner)S2.push({d:"sw",name:"Endurance technique",det:struct({ech:"200m souple",corps:"nage continue fractionnée (ex 8-12×50m) + 1 éducatif entre chaque",rec:"20-30s, le temps de respirer",rc:"100m très souple",note:"Priorité au geste, pas au chrono. Un seul point technique à la fois."})});
         else if(shoulder)S2.push({d:"sw",name:"Jambes + technique",det:"séries battements + éducatifs · épargne épaule"});
-        else S2.push({d:"sw",name:"Vitesse",det:struct({ech:"400m varié + 4×25m accélérations",corps:P(8,12)+"×50m @ "+sz.speed,rec:"30-40s (récup large)",rc:"200m souple",note:"Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage."})});
+        else S2.push({d:"sw",name:"Vitesse",det:struct({ech:"400m varié + 4×25m accélérations",corps:P(8,12)+"×50m @ "+sz.speed,rec:"30-40s",rc:"200m souple",note:"Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage."})});
       }
       else if(slot==="durLong"){
         const distCaps = beginner
@@ -303,7 +305,10 @@ function buildPlan(a){
   // medHold : convertir les jours d'intensité (dur1/dur2) en jours faciles avant génération.
   // La sortie longue (durLong, endurance) est conservée ; on retire vo2max/seuil/vitesse.
   if(medHold)days.forEach(d=>{
-    if(d.charge==="dur"&&(d.slot==="dur1"||d.slot==="dur2")){d.charge="facile";d.slot=(sp==="run")?"facile2":"facileR";}
+    // Tri : le durLong = brick à allure course (intensité) → aussi converti. Run/bike/swim :
+    // le durLong est de l'endurance pure (sortie longue), conservé.
+    const stripLong=(sp==="tri");
+    if(d.charge==="dur"&&(d.slot==="dur1"||d.slot==="dur2"||(stripLong&&d.slot==="durLong"))){d.charge="facile";d.slot=(sp==="run")?"facile2":"facileR";}
   });
   days.forEach(d=>{
     const ph=d.phase; const prog=ph.weeks>1?((d.week-1)-ph.start)/(ph.weeks-1):0.5;
@@ -475,7 +480,9 @@ function buildPlan(a){
   // ===== POST-PASS TRIATHLON (répartition disciplines + alignement du pic) =====
   // Mesures répliquant EXACTEMENT le test de régression v3 (minutes de séance +
   // nage en distance×allure), pour piloter la correction sur ce que le test évalue.
-  if(sp==="tri"){
+  // Sauté quand medHold : ce rééquilibrage/enrichissement est conçu pour un plan de
+  // course structuré (brick, ratios cibles) — un plan de maintien médical reste tel quel.
+  if(sp==="tri"&&!medHold){
     const tMin=det=>{if(!det)return 0;let t=0;[...det.matchAll(/(\d+)\s*×\s*(\d+)\s*min/g)].forEach(m=>t+=+m[1]*+m[2]);const r=det.replace(/\d+\s*×\s*\d+\s*min/g,"");[...r.matchAll(/(\d+)\s*min/g)].forEach(m=>t+=+m[1]);return t;};
     const tPace=det=>{const m=(det||"").match(/(\d+)'(\d+)\/100m/);return m?+m[1]*60+ +m[2]:null;};
     const tSwim=det=>{if(!det)return 0;const p=tPace(det);if(p===null)return 0;let tm=0;[...det.matchAll(/(\d+)\s*×\s*(\d+)\s*m\b(?!in)/g)].forEach(m=>tm+=+m[1]*+m[2]);const r=det.replace(/\d+\s*×\s*\d+\s*m\b(?!in)/g,"");[...r.matchAll(/(\d+)\s*m\b(?!in)/g)].forEach(m=>tm+=+m[1]);return tm/100*p/60;};
@@ -528,7 +535,9 @@ function buildPlan(a){
       // Cible plafonnée à vol_max×1.1 : l'enrichissement ne doit pas prescrire 2× la
       // disponibilité déclarée d'un petit budget (ex. 5h déclaré → 10h) juste pour approcher
       // le cap d'expérience. À vol_max=14 (test), le plafond laisse passer C10.
-      const enrichTarget=Math.max(volPeak,Math.min(caps*0.80,(parseInt(a.vol_max||"10")||10)*1.1)*recupFactor);
+      // medHold : pas d'enrichissement — l'athlète est médicalement restreint, le pic
+      // reste au niveau du contenu allégé réel (sinon on gonfle les faciles en absurdités).
+      const enrichTarget=medHold?0:Math.max(volPeak,Math.min(caps*0.80,(parseInt(a.vol_max||"10")||10)*1.1)*recupFactor);
       // Itératif : le clamp brick dans rebalance fait perdre du volume → répéter jusqu'à
       // approcher 0.97× la cible (ou plafonner à 6 passes).
       for(let it=0;it<6 && target.vol>0 && target.vol<enrichTarget*0.95;it++){
