@@ -189,6 +189,12 @@ for(const sport of Object.keys(SF)){
   for(const format of SF[sport]) for(const history of HIST) for(const level of LVL) for(const intent of INT){
     n++; totalPlans++;
     const r=auditPlan(sport,format,history,level,intent);
+    if(r.error){
+      withIssues++; plansWithIssues++;
+      byCrit["CRASH:"+r.error]=(byCrit["CRASH:"+r.error]||0)+1;
+      localByCrit["CRASH:"+r.error]=(localByCrit["CRASH:"+r.error]||0)+1;
+      continue;
+    }
     if(r.issues && r.issues.length){
       withIssues++; plansWithIssues++;
       r.issues.forEach(i=>{ byCrit[i.crit]=(byCrit[i.crit]||0)+1; localByCrit[i.crit]=(localByCrit[i.crit]||0)+1; });

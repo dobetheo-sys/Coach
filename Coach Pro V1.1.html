@@ -615,21 +615,22 @@ function buildPlan(a){
     tri:{reprise:{S:6,M:8,"70.3":11,Full:15},confirme:{S:7,M:10,"70.3":13,Full:17},ancien:{S:8,M:12,"70.3":15,Full:19}}}[sp][a.history||"confirme"][fmt]||10;
   const util={run:{"5k":6,"10k":7,semi:9,marathon:12,trail:14},bike:{crit:9,route:13,cyclo:15,clm:11,gravel:20},swim:{sprint:6,demifond:8,fond:10,ow:12},tri:{S:8,M:11,"70.3":14,Full:18}}[sp][fmt]||12;
   const marg=(a.intent==="competition")?1.0:0.9;
+  // 1B — effets réels des indicateurs de récup (evalRules le promet, buildPlan doit le tenir).
+  // Sommeil court : volume réduit ~15%. Charge de vie lourde : marge renforcée ~10%.
+  // Appliqué au CONTENU (recupFactor sur sessionScale) pour que le volPeak réel final baisse
+  // réellement — le seul plafond théorique était écrasé par le post-pass (volPeak = max réel).
+  const recupFactor=(a.sleep==="court"?0.85:1)*(a.life_load==="lourde"?0.90:1);
   // OPTION A — le contenu des séances dépend du volume disponible, pas seulement du format :
   // si l'athlète a moins d'heures (vol_max, historique) que le format n'en demande (util),
   // toutes les quantités prescrites (durées, répétitions, distances) sont réduites d'autant via P().
-  const sessionScale=Math.min(1,Math.min(parseInt(a.vol_max||"10"),caps,util)*marg/util);
-  let volPeak=Math.round(Math.min(parseInt(a.vol_max||"10"),caps,util)*marg*10)/10;
+  const sessionScale=Math.min(1,Math.min(parseInt(a.vol_max||"10"),caps,util)*marg/util)*recupFactor;
+  let volPeak=Math.round(Math.min(parseInt(a.vol_max||"10"),caps,util)*marg*recupFactor*10)/10;
   // FIX: un débutant nageur est plafonné par sa TECHNIQUE, pas son historique (risque épaule + technique qui s'effondre)
   if(sp==="swim"&&a.level==="debutant")volPeak=Math.min(volPeak,4);
   // FIX ARCHITECTURAL SWIM: moteur calcule volPeak en heures génériques. SWIM: temps ≠ distance (100m@2m/s=50sec).
   // Réduire volPeak de 60% (×0.4) pour matcher la réalité: 5.9h théorique → 2.4h réel
   if(sp==="swim")volPeak=Math.round(volPeak*0.4*10)/10;
   if(sp==="tri"&&a.level==="debutant"){/* le tri débutant nage reste limité côté nage, géré par la répartition */}
-  // 1B — effets réels des indicateurs de récup (evalRules le promet, buildPlan doit le tenir).
-  // Sommeil court : plafond volume réduit ~15%. Charge de vie lourde : marge renforcée ~10%.
-  if(a.sleep==="court")volPeak=Math.round(volPeak*0.85*10)/10;
-  if(a.life_load==="lourde")volPeak=Math.round(volPeak*0.90*10)/10;
   // Drapeau médical (douleur thoracique / vertiges / traitement CV) : AUCUNE intensité
   // générée tant qu'un feu vert médical n'est pas fourni (promesse de sécurité d'evalRules).
   const medHold=a.med_pain==="oui"||a.med_dizzy==="oui"||a.med_treat==="oui";
