@@ -105,6 +105,11 @@ function buildPlan(a){
   const use10=(a.dispo==="quotidienne"&&a.shift_ok==="oui"&&nOff<2);
   const recupEvery=(a.history==="reprise")?3:4;
   const offW=(a.off_which||"").split(",").filter(Boolean);
+  // R3.9 — disponibilité à 4 états : { day, status:"dispo"|"blocked"|"social-ride"|
+  // "social-run"|"social-swim", durationMin, load }. Un créneau social ne génère pas de
+  // séance mais consomme la durée du budget de la semaine (voir injection plus bas).
+  const availMap={};
+  if(Array.isArray(a.availability))a.availability.forEach(x=>{if(x&&x.day)availMap[x.day]=x;});
   const inj=(a.injury||"").split(",").filter(x=>x&&x!=="aucune");
   const hz=hrZones(a.age,a.hr_max,a.hr_rest);
   const bz=bikeZones(parseInt(a.ftp),hz), rz=runZones(a.pace,hz), sz=swimZones(a.css);
@@ -330,7 +335,16 @@ function buildPlan(a){
     if(dic>=cycleLen){cyc++;dic=0;isR=(ph.id!=="taper")&&(sinceR>=recupEvery-1);if(isR)sinceR=0;else sinceR++;sch=schema(ph.id,isR);}
     const s=sch[dic]||{charge:"facile",slot:"facileR"};const jn=J[i%7];let ch=s.charge,sl=s.slot,forced=false;
     if(offW.includes(jn)){ch="off";sl="off";forced=true;}
-    days.push({week:w+1,jour:jn,cyc,jc:dic+1,charge:ch,slot:sl,forced,wasHard:(s.charge==="dur"&&forced),isR,phaseId:ph.id,phase:ph});dic++;
+    const av=availMap[jn];let social=null;
+    if(av){
+      if(av.status==="blocked"){ch="off";sl="off";forced=true;}
+      else if(typeof av.status==="string"&&av.status.indexOf("social")===0){
+        const hard=/seuil|vo2|intens|dur/i.test(av.load||"");
+        ch=hard?"dur":"facile";sl="social";forced=true;
+        social={durationMin:parseInt(av.durationMin)||60,load:av.load||"z2",disc:av.status.replace("social-","")};
+      }
+    }
+    days.push({week:w+1,jour:jn,cyc,jc:dic+1,charge:ch,slot:sl,forced,social,wasHard:(ch==="dur"&&forced),isR,phaseId:ph.id,phase:ph});dic++;
   }
   for(let w=1;w<=weeks;w++){const wd=days.filter(d=>d.week===w);wd.filter(d=>d.wasHard).forEach(()=>{
     const t=wd.find((d,i)=>{
@@ -382,7 +396,13 @@ function buildPlan(a){
     d.date=_iso(_end.getTime()-(totalDays-1-i)*_MS);
     d.sessions=sess(d.slot,d.phaseId,d.prog);
     const refs=refsAt(d.date);
-    d.sessions.forEach(s=>{if(s.steps&&s.steps.length)renderSess(s,refs);else if(s.min==null)s.min=(s.d==="rs")?0:0;});
+    if(d.social){ // R3.9 — créneau club : séance à durée FIXE (jamais scalée), comptée au volume
+      const disc=d.social.disc==="run"?"rn":d.social.disc==="swim"?"sw":"bk";
+      const zone=disc==="bk"?(/seuil/i.test(d.social.load)?"bk.thr":"bk.z2"):disc==="rn"?(/seuil/i.test(d.social.load)?"rn.thr":"rn.easy"):"sw.easy";
+      const nm={bk:"Sortie club vélo",rn:"Sortie club course",sw:"Créneau club nage"}[disc];
+      const so={d:disc,name:nm,social:true,note:"Créneau imposé (club) — décompté du budget de la semaine.",steps:[{role:"body",durationMin:disc==="sw"?null:d.social.durationMin,distanceM:disc==="sw"?Math.round(d.social.durationMin*100/(baseRefs.css||130)*60):null,zone:zone,intensity:intOf(zone),d:disc}]};
+      renderSess(so,refs);d.sessions=[so];
+    } else d.sessions.forEach(s=>{if(s.steps&&s.steps.length)renderSess(s,refs);else if(s.min==null)s.min=(s.d==="rs")?0:0;});
   });
   if(sp==="run"){
     const injImpact=(a.injury||"").split(",").some(x=>["tibia","genou","pied","hanche"].includes(x));
@@ -511,7 +531,7 @@ function buildPlan(a){
       else b.durationMin=Math.max(bd.floor,Math.min(bd.cap,Math.round(b.durationMin*f)));
     }
   }
-  const scaleWeekBody=(wd,f)=>wd.forEach(d=>d.sessions.forEach(s=>{if(s.steps)s.steps.forEach(b=>scaleBlock(b,f,s));}));
+  const scaleWeekBody=(wd,f)=>wd.forEach(d=>d.sessions.forEach(s=>{if(s.social)return;if(s.steps)s.steps.forEach(b=>scaleBlock(b,f,s));}));
   const clampWeekBody=wd=>scaleWeekBody(wd,1); // applique planchers/plafonds sans scaler
   // Courbe de charge normalisée (globale) : rampe base→peak, pic large (≥2 sem ≥0.9×pic),
   // taper strictement décroissant. Elle PILOTE le budget de chaque semaine (R3.3).
@@ -547,7 +567,7 @@ function buildPlan(a){
       const longH=wd.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+((s.long&&s.d!=="rs")?(s.min||0):0),0),0)/60;
       const nlH=vh-longH, room=Math.max(0,capH*1.0-longH);
       if(nlH<=0)break;
-      wd.forEach(d=>d.sessions.forEach(s=>{if(s.long||!s.steps)return;s.steps.forEach(b=>scaleBlock(b,room/nlH,s));}));
+      wd.forEach(d=>d.sessions.forEach(s=>{if(s.long||s.social||!s.steps)return;s.steps.forEach(b=>scaleBlock(b,room/nlH,s));}));
       renderWeek(wd);
     }
     const volReal=Math.round(weekMin(wd)/60*10)/10;
