@@ -573,7 +573,55 @@ function injuryOpts(){
   return arr.map(x=>opt(x[0],x[1])).join("");
 }
 
+// ===== R3.9 / R3.10 UI — disponibilité à 4 états + calculateurs de test terrain =====
+// Écrit directement dans S.answers.availability / S.answers.tests (des tableaux), que
+// buildPlan consomme tels quels (a = S.answers). Aucune modification des appels moteur.
+function ebAvailArr(){if(!Array.isArray(S.answers.availability))S.answers.availability=[];return S.answers.availability;}
+function ebAvailSet(day,val){
+  let arr=ebAvailArr().filter(x=>x.day!==day);
+  const disc={run:"social-run",bike:"social-ride",swim:"social-swim",tri:"social-ride"}[S.sport]||"social-ride";
+  const de=document.querySelector('[data-avdur="'+day+'"]');
+  if(val==="blocked")arr.push({day:day,status:"blocked"});
+  else if(val==="club-z2"||val==="club-seuil")arr.push({day:day,status:disc,durationMin:(de&&parseInt(de.value))||90,load:val==="club-seuil"?"seuil":"z2"});
+  S.answers.availability=arr;
+  if(de)de.style.display=(val.indexOf("club")===0)?"":"none";
+}
+function ebAvailDur(day,val){const e=ebAvailArr().find(x=>x.day===day);if(e)e.durationMin=parseInt(val)||90;}
+function ebParseT(v){const m=String(v||"").split(":");return m.length===2?(+m[0])*60+(+m[1]):parseFloat(v);}
+function ebAddTest(kind){
+  if(!Array.isArray(S.answers.tests))S.answers.tests=[];
+  const val=id=>{const el=document.getElementById(id);return el?el.value:"";};
+  const dt=val("ebTestDate")||new Date().toISOString().slice(0,10);
+  let t=null;
+  if(kind==="ftp")t=fieldTests.ftp(parseFloat(val("ebFtpP20")),dt);
+  else if(kind==="css")t=fieldTests.css(ebParseT(val("ebCss400")),ebParseT(val("ebCss50")),dt);
+  else if(kind==="cs")t=fieldTests.cs(parseFloat(val("ebCsD3")),parseFloat(val("ebCsD10")),dt);
+  else if(kind==="vma")t=fieldTests.vma(parseFloat(val("ebVmaD6")),dt);
+  if(t&&isFinite(t.value)){S.answers.tests.push(t);const b=document.getElementById("ebTestList");if(b)b.innerHTML=S.answers.tests.map(x=>"• "+x.type+" = "+x.value+" — "+x.date).join("<br>");}
+}
 const PREMIUM_STEPS_DEF=[
+  {id:"weekshape",title:"Contraintes de semaine",eyebrow:"Premium — Disponibilité",why:"Un jour bloqué ou une sortie club imposée : le moteur la décompte de ton budget au lieu de prescrire par-dessus. Tes zones peuvent aussi se caler sur un test récent.",
+   render(){
+     const days=["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+     const cur=d=>{const e=(S.answers.availability||[]).find(x=>x.day===d);if(!e)return"dispo";if(e.status==="blocked")return"blocked";return e.load==="seuil"?"club-seuil":"club-z2";};
+     const dur=d=>{const e=(S.answers.availability||[]).find(x=>x.day===d);return e&&e.durationMin?e.durationMin:90;};
+     let s='<div class="q"><span class="q-label">Chaque jour (optionnel)</span><div class="q-sub">Dispo = le moteur décide. Bloqué = repos imposé. Club = créneau à durée fixe, décompté du budget.</div>';
+     days.forEach(d=>{const v=cur(d);
+       const opts=[["dispo","Dispo"],["blocked","Bloqué"],["club-z2","Club (Z2)"],["club-seuil","Club (seuil)"]].map(o=>'<option value="'+o[0]+'"'+(v===o[0]?" selected":"")+'>'+o[1]+'</option>').join("");
+       s+='<div class="row" style="align-items:center;gap:8px;margin:4px 0"><span style="width:38px;font-weight:600">'+d+'</span>'
+         +'<select onchange="ebAvailSet(\''+d+'\',this.value)">'+opts+'</select>'
+         +'<input type="number" data-avdur="'+d+'" value="'+dur(d)+'" onchange="ebAvailDur(\''+d+'\',this.value)" placeholder="min" style="width:72px;display:'+(v.indexOf("club")===0?"":"none")+'"></div>';
+     });
+     s+='</div><div class="q"><span class="q-label">Test terrain récent (optionnel)</span><div class="q-sub">Le moteur cale tes zones dessus, et les recalcule automatiquement dès que tu ajoutes un test plus récent (les séances passées gardent l\'ancienne valeur).</div>'
+       +'<div class="q"><span class="q-label">Date du test</span><input type="date" id="ebTestDate"></div>'
+       +'<div class="row" style="gap:6px;flex-wrap:wrap"><input type="number" id="ebFtpP20" placeholder="P20 (W)" style="width:100px"><button type="button" class="opt" onclick="ebAddTest(\'ftp\')">FTP (0.95×P20)</button></div>'
+       +'<div class="row" style="gap:6px;flex-wrap:wrap"><input type="text" id="ebCss400" placeholder="400m m:ss" style="width:90px"><input type="text" id="ebCss50" placeholder="50m m:ss" style="width:90px"><button type="button" class="opt" onclick="ebAddTest(\'css\')">CSS nage</button></div>'
+       +'<div class="row" style="gap:6px;flex-wrap:wrap"><input type="number" id="ebCsD3" placeholder="3min (m)" style="width:90px"><input type="number" id="ebCsD10" placeholder="10min (m)" style="width:100px"><button type="button" class="opt" onclick="ebAddTest(\'cs\')">Allure seuil</button></div>'
+       +'<div class="row" style="gap:6px;flex-wrap:wrap"><input type="number" id="ebVmaD6" placeholder="6min (m)" style="width:100px"><button type="button" class="opt" onclick="ebAddTest(\'vma\')">VMA</button></div>'
+       +'<div id="ebTestList" class="q-sub" style="margin-top:6px"></div></div>';
+     return s;
+   },
+   valid(){return true;}},
   {id:"recovery",title:"Sommeil & vie",eyebrow:"Premium — Récupération",why:"Le sommeil est ton 1er outil de récup, le stress de vie consomme la même capacité. Ils modulent ton plafond.",
    render(){return '<div class="q"><span class="q-label">Sommeil moyen</span><div class="opts" data-key="sleep">'+opt("court","<6h30")+opt("moyen","6h30-7h30")+opt("bon",">7h30")+'</div></div>'
      +'<div class="q"><span class="q-label">Charge de vie</span><div class="opts" data-key="life_load">'+opt("legere","Légère")+opt("normale","Normale")+opt("lourde","Lourde")+'</div></div>';},
