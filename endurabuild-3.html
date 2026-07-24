@@ -1135,6 +1135,27 @@ function buildPlan(a){
   return {weeks:wl,phases,volPeak,volBase,use10,totalWeeks:weeks,races};
 }
 
+// ===== R3.10 — protocoles de test terrain (4 fonctions pures) → entrées a.tests (R3.8) =====
+const fieldTests={
+  css:(t400,t50,date)=>{const mps=350/(t400-t50);return{type:"css",value:Math.round(100/mps),date:date||null,source:"400m TT − 50m TT"};},
+  cs:(d3,d10,date)=>{const mps=(d10-d3)/420;return{type:"thrPace",value:Math.round(1000/mps),date:date||null,source:"3min max / 10min max"};},
+  vma:(d6,date)=>({type:"vma",value:Math.round(d6/100*10)/10,date:date||null,source:"6min max (demi-Cooper)"}),
+  ftp:(p20,date)=>({type:"ftp",value:Math.round(0.95*p20),date:date||null,source:"20min TT"})
+};
+// ===== §11 — contrat de sortie : plan en JSON structuré, indépendant du rendu HTML =====
+function planToJSON(a){
+  const p=buildPlan(a);
+  return {
+    meta:{sport:a.sport||S.sport,format:a.format,raceDate:a.race_date||null,volPeak:p.volPeak,volBase:p.volBase,totalWeeks:p.totalWeeks},
+    tests:Array.isArray(a.tests)?a.tests:[],
+    weeks:p.weeks.map(w=>({num:w.num,phase:w.phase.id,isRecup:w.isRecup,targetMin:Math.round((w.vol_declared||w.vol)*60),
+      days:w.days.map(d=>({date:d.date,sessions:d.sessions.filter(s=>s.d!=="rs").map(s=>({
+        d:s.d,name:s.name,long:!!s.long,min:Math.round(s.min||0),
+        steps:(s.steps||[]).map(st=>({role:st.role,reps:st.reps||1,durationMin:st.durationMin||null,distanceM:st.distanceM||null,intensity:st.intensity||null})),
+        det:s.det}))}))}))
+  };
+}
+
 /* ============================================================
    RENDU & NAVIGATION
    ============================================================ */
