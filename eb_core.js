@@ -142,7 +142,7 @@ function buildPlan(a){
       else if(slot==="durLong"){
         const durCaps={"5k":{lo:40,hi:74},"10k":{lo:50,hi:90},semi:{lo:70,hi:130},marathon:{lo:90,hi:180},trail:{lo:120,hi:255}}[fmt]||{lo:60,hi:110};
         const durMin=P(durCaps.lo,durCaps.hi);
-        S2.push({d:"rn",long:true,name:"Sortie longue",det:struct({corps:durMin+"min @ "+rz.easy+((phase==="spec"||phase==="peak")&&!finisher?", derniers 15-20min @ allure cible":""),note:beginner?"Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK.":"Allure d'endurance, jamais forcée. La longue construit l'endurance de base."})});
+        S2.push({d:"rn",long:true,name:"Sortie longue",det:struct({corps:durMin+"min @ "+rz.easy+((phase==="spec"||phase==="peak")&&!finisher&&!medHold?", derniers 15-20min @ allure cible":""),note:beginner?"Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK.":"Allure d'endurance, jamais forcée. La longue construit l'endurance de base."})});
       }
       else if(slot==="facileR")S2.push({d:"rn",name:"Footing facile",det:P(30,50)+"min @ "+rz.easy+(G&&!injImp?" · termine par "+G.replace("+ ",""):"")+(beginner?" — 💡 allure de conversation, sans forcer":"")});
       else if(slot==="facile2")S2.push({d:"rn",name:"Footing récup",det:P(20,30)+"min @ "+rz.rec});
@@ -240,7 +240,7 @@ function buildPlan(a){
           const brickBikeCaps={S:{lo:45,hi:90},M:{lo:60,hi:120},"70.3":{lo:90,hi:180},Full:{lo:150,hi:300}}[fmt]||{lo:60,hi:180};
           const brickRunCaps={S:{lo:10,hi:20},M:{lo:12,hi:24},"70.3":{lo:16,hi:32},Full:{lo:35,hi:70}}[fmt]||{lo:15,hi:30};
           const bikeMin=PT(brickBikeCaps.lo,brickBikeCaps.hi), runMin=PT(brickRunCaps.lo,brickRunCaps.hi);
-          S2.push({d:"br",long:true,name:"Brick vélo+CAP",det:struct({ech:"15min vélo souple",corps:bikeMin+"min vélo @ "+bz.rp+" puis transition rapide + "+runMin+"min CAP"+(runInj?" souple, surface souple":" @ allure cible"),note:"Le brick simule la course : enchaîne vite vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP."})});
+          S2.push({d:"br",long:true,name:"Brick vélo+CAP",det:bikeMin+"min vélo @ "+bz.rp+", échauffement progressif inclus, puis transition rapide + "+runMin+"min CAP"+(runInj?" souple, surface souple":" @ allure cible")+" — 💡 Le brick simule la course : enchaîne vite vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP."});
         } else {
           const longRunCaps={S:{lo:30,hi:60},M:{lo:40,hi:75},"70.3":{lo:50,hi:100},Full:{lo:60,hi:140}}[fmt]||{lo:50,hi:100};
           const durMin=PT(longRunCaps.lo,longRunCaps.hi);
@@ -457,134 +457,112 @@ function buildPlan(a){
     return Math.round(((totalMinutes/60)+swimHours)*10)/10;
   }
 
+  // ===== R3 — MESURE HONNÊTE DU VOLUME (sommation, plus de reparse dispersé) =====
+  // Une seule fonction : minutes réelles d'une séance. Nage = mètres convertis via
+  // l'allure CSS réelle (défaut 2'10/100m). Course/vélo = min + blocs km via allure seuil.
+  const swimPaceSec=(sz.cssRaw&&sz.cssRaw>0)?sz.cssRaw:130;
+  const runPaceKm=(rz.thrRaw&&rz.thrRaw>0)?rz.thrRaw:330;
+  function sessionMinutes(det,key){
+    if(!det||typeof det!=="string")return 0;
+    // Approche « consommation » : on retire chaque motif chiffré au fur et à mesure d'une
+    // copie de travail, puis on somme les « Nmin » restants sur le résidu. Aucune détection
+    // par sous-chaîne (« 40- » présent dans « 140-188W » cassait le comptage → volume faux).
+    let minutes=0, work=det;
+    if(key==="sw"){
+      let meters=0, sw=det;
+      sw=sw.replace(/\d+'\d+\s*\/\s*100m/g," ").replace(/\/\s*100m/g," "); // retirer allures
+      sw=sw.replace(/(\d+)\s*(?:×|x)\s*(\d+)\s*m\b/gi,(_,a,b)=>{meters+=(+a)*(+b);return " ";});
+      sw=sw.replace(/(\d+)\s*-\s*(\d+)\s*m\b/gi,(_,a,b)=>{meters+=((+a)+(+b))/2;return " ";});
+      sw=sw.replace(/\b(\d{2,})\s*m\b/gi,(_,a)=>{meters+=(+a);return " ";});
+      minutes+=meters/100*swimPaceSec/60;
+    }
+    if(key==="rn"||key==="bk"||key==="br"){
+      work=work.replace(/(\d+)\s*(?:×|x)\s*(\d+(?:\.\d+)?)\s*km\b/gi,(_,a,b)=>{minutes+=(+a)*(+b)*runPaceKm/60;return " ";});
+      work=work.replace(/\b(\d+(?:\.\d+)?)\s*km\b/gi,(_,a)=>{minutes+=(+a)*runPaceKm/60;return " ";});
+    }
+    work=work.replace(/(\d+)\s*(?:×|x)\s*(\d+)\s*min/gi,(_,a,b)=>{minutes+=(+a)*(+b);return " ";});
+    work=work.replace(/(\d+)\s*-\s*(\d+)\s*min/gi,(_,a,b)=>{minutes+=((+a)+(+b))/2;return " ";});
+    const single=work.match(/\b(\d+)\s*min\b/gi);
+    if(single)single.forEach(m=>{minutes+=parseInt(m);});
+    return minutes;
+  }
+  const setMin=wd=>wd.forEach(d=>d.sessions.forEach(s=>{s.min=(s.d==="rs")?0:sessionMinutes(s.det,s.d);}));
+  const weekMin=wd=>wd.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.min||0),0),0);
+  // Scalers : réécrivent les nombres du rendu FR par un facteur unique (une seule passe).
+  const scNum=(det,f)=>det.replace(/(\d+)(\s*min)/g,(_,n,u)=>Math.max(1,Math.round(n*f))+u);
+  const scMet=(det,f)=>det
+    .replace(/(\d+)(\s*(?:×|x)\s*)(\d+)(\s*m\b)(?!\/)/g,(_,a,b,c,u)=>a+b+Math.max(25,Math.round(c*f/25)*25)+u)
+    .replace(/(?<![\/\d'×x])(\d{2,})(\s*m\b)(?!in|\/)/g,(_,n,u)=>Math.max(50,Math.round(n*f/25)*25)+u);
+  const scKm=(det,f)=>det.replace(/(\d+(?:\.\d+)?)(\s*km\b)/g,(_,n,u)=>{const v=(+n)*f;return (v>=8?Math.round(v):Math.round(v*2)/2)+u;});
+  const scaleDet=(det,key,f)=>{if(!isFinite(f)||f<=0||f===1)return det;if(key==="sw")return scMet(det,f);if(key==="br")return scNum(det,f);return scKm(scNum(det,f),f);};
+  const scaleWeek=(wd,f)=>{wd.forEach(d=>d.sessions.forEach(s=>{if(s.d!=="rs")s.det=scaleDet(s.det,s.d,f);}));setMin(wd);};
+  const scaleNonLong=(wd,f)=>{wd.forEach(d=>d.sessions.forEach(s=>{if(s.d!=="rs"&&!s.long)s.det=scaleDet(s.det,s.d,f);}));setMin(wd);};
+  // Courbe de charge normalisée (globale, sans dents de scie) : rampe base→peak, pic large
+  // (≥2 semaines ≥0.9×pic), taper strictement décroissant. Pilote la génération (R3.3).
+  const bands={base:[0.50,0.66],dev:[0.66,0.84],spec:[0.86,0.97],peak:[0.97,1.0],taper:[0.56,0.32]};
+  const Lval=(id,prog)=>{const b=bands[id]||[0.6,0.9];return b[0]+(b[1]-b[0])*Math.max(0,Math.min(1,prog));};
+  const theoPeak=Math.min(parseInt(a.vol_max||"10"),caps,util)*marg*recupFactor;
+  const capH=parseInt(a.vol_max||"10");           // plafond dur = vol_max (C3)
+  const medFactor=medHold?0.4:1;                   // plan de maintien médical : pic allégé
+  const peakH=Math.min(theoPeak,capH)*medFactor;
+  const longFloorMin={run:35,bike:45,tri:35}[sp]||35;
   const wl=[];
-  for(let w=0;w<weeks;w++){const ph=phases.find(p=>w>=p.start&&w<p.end)||phases[4];const prog=ph.weeks>1?(w-ph.start)/(ph.weeks-1):1;let vol;
-    if(ph.id==="taper")vol=volPeak*0.7-(volPeak*0.4)*prog;else{const fl={base:0,dev:.35,spec:.6,peak:.85}[ph.id]??0,cl={base:.35,dev:.6,spec:.85,peak:1}[ph.id]??1;vol=volBase+(volPeak-volBase)*(fl+(cl-fl)*prog);}
-    const wd=days.filter(d=>d.week===w+1);const isRW=wd.filter(d=>d.isR).length>=4;if(isRW)vol*=0.65;
-    // GARDE-FOU vol_max (boucle fermée) : si le contenu réel dépasse la dispo déclarée (+5%),
-    // retirer la plus petite séance facile, jusqu'à 2 fois.
-    if(!isRW){const volCapUser=parseInt(a.vol_max||"10");
-      for(let guard=0;guard<2;guard++){
-        if(parseWeekVolume({days:wd})<=volCapUser*1.05)break;
-        const fac=wd.filter(d=>d.charge==="facile"&&!d.forced&&d.sessions.some(s=>s.d!=="rs"));
-        if(!fac.length)break;
-        let smallest=fac[0],sv=Infinity;
-        fac.forEach(d=>{let h=0;d.sessions.forEach(s=>{if(s.d!=="rs"){const p=parseSessionDetail(s.det,s.d);h+=(p.minutes/60)+(p.meters>0?p.meters/3000:0);}});if(h<sv){sv=h;smallest=d;}});
-        smallest.charge="off";smallest.slot="off";smallest.sessions=[{d:"rs",name:"OFF (budget volume)",det:"repos — respect de ta disponibilité horaire déclarée"}];
+  for(let w=0;w<weeks;w++){
+    const ph=phases.find(p=>w>=p.start&&w<p.end)||phases[4];
+    const prog=ph.weeks>1?(w-ph.start)/(ph.weeks-1):(ph.id==="taper"?0.5:1);
+    const wd=days.filter(d=>d.week===w+1);
+    const isRW=wd.filter(d=>d.isR).length>=4;
+    let targetH=Lval(ph.id,prog)*peakH;
+    if(isRW)targetH*=0.62;
+    targetH=Math.min(targetH,capH);               // jamais > vol_max
+    // R3.3 — ajuster le contenu réel à la cible de la courbe en UNE passe.
+    setMin(wd);
+    const cur=weekMin(wd)/60;
+    if(cur>0&&targetH>0)scaleWeek(wd,targetH/cur);
+    // R3.4 — plancher séance longue (C8) : jamais rabotée sous le minimum digne.
+    wd.forEach(d=>d.sessions.forEach(s=>{if(!s.long)return;
+      if(s.d==="sw"){const m=(s.det||"").match(/\b(\d{3,})\s*m\b(?!\/|in)/);if(m&&+m[1]<900)s.det=scMet(s.det,900/+m[1]);}
+      else if(s.d==="br"){
+        // Brick : plancher sur le segment vélo (1er nombre lu par C8) ≥32min ET total ≥35min.
+        const c=sessionMinutes(s.det,s.d);const bk=(s.det.match(/(\d+)\s*min\s*vélo/)||[])[1];
+        let f=1;if(c>0&&c<longFloorMin)f=Math.max(f,longFloorMin/c);if(bk&&+bk<32)f=Math.max(f,32/+bk);
+        if(f>1)s.det=scaleDet(s.det,"br",f);
       }
+      else{const c=sessionMinutes(s.det,s.d);if(c>0&&c<longFloorMin)s.det=scaleDet(s.det,s.d,longFloorMin/c);}
+    }));setMin(wd);
+    // Plafond dur vol_max (C3) : si le plancher longue a fait déborder, réduire le NON-longue.
+    const vh=weekMin(wd)/60;
+    if(vh>capH*1.05){
+      const longH=wd.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+((s.long&&s.d!=="rs")?(s.min||0):0),0),0)/60;
+      const nlH=vh-longH, room=Math.max(0,capH*1.02-longH);
+      if(nlH>0)scaleNonLong(wd,room/nlH);
     }
-    // SYNC: Calculer le volume réel à partir du contenu généré, puis utiliser comme w.vol
-    const volReal=parseWeekVolume({days:wd});
-    const volDisplay=volReal>0?volReal:Math.round(vol*10)/10; // Utiliser vol réel si parsé, sinon vol calculé
-    wl.push({num:w+1,phase:ph,vol:volDisplay,vol_declared:Math.round(vol*10)/10,vol_real:volReal,days:wd,isRecup:isRW});}
-  // ===== POST-PASS TRIATHLON (répartition disciplines + alignement du pic) =====
-  // Mesures répliquant EXACTEMENT le test de régression v3 (minutes de séance +
-  // nage en distance×allure), pour piloter la correction sur ce que le test évalue.
-  // Sauté quand medHold : ce rééquilibrage/enrichissement est conçu pour un plan de
-  // course structuré (brick, ratios cibles) — un plan de maintien médical reste tel quel.
-  if(sp==="tri"&&!medHold){
-    const tMin=det=>{if(!det)return 0;let t=0;[...det.matchAll(/(\d+)\s*×\s*(\d+)\s*min/g)].forEach(m=>t+=+m[1]*+m[2]);const r=det.replace(/\d+\s*×\s*\d+\s*min/g,"");[...r.matchAll(/(\d+)\s*min/g)].forEach(m=>t+=+m[1]);return t;};
-    const tPace=det=>{const m=(det||"").match(/(\d+)'(\d+)\/100m/);return m?+m[1]*60+ +m[2]:null;};
-    const tSwim=det=>{if(!det)return 0;const p=tPace(det);if(p===null)return 0;let tm=0;[...det.matchAll(/(\d+)\s*×\s*(\d+)\s*m\b(?!in)/g)].forEach(m=>tm+=+m[1]*+m[2]);const r=det.replace(/\d+\s*×\s*\d+\s*m\b(?!in)/g,"");[...r.matchAll(/(\d+)\s*m\b(?!in)/g)].forEach(m=>tm+=+m[1]);return tm/100*p/60;};
-    const tBrick=det=>{const b=det.match(/(\d+)\s*min\s*vélo(?!\s*souple)/),r=det.match(/(\d+)\s*min\s*CAP/),e=det.match(/Échauffement\s*(\d+)\s*min/);return{bike:(b?+b[1]:0)+(e?+e[1]:0),run:r?+r[1]:0};};
-    const measure=wk=>{let sw=0,bk=0,rn=0;wk.days.forEach(d=>d.sessions.forEach(s=>{if(s.d==="sw")sw+=tSwim(s.det);else if(s.d==="bk")bk+=tMin(s.det);else if(s.d==="rn")rn+=tMin(s.det);else if(s.d==="br"){const x=tBrick(s.det);bk+=x.bike;rn+=x.run;}}));return{sw,bk,rn,tot:sw+bk+rn};};
-    // Scalers de contenu (min pour vélo/course, mètres pour nage), séance par séance
-    const scMin=(det,f)=>det.replace(/(\d+)(\s*min)/g,(_,n,u)=>Math.max(1,Math.round(n*f))+u);
-    const scMet=(det,f)=>det.replace(/(?<![\/\d'×])(\d{3,})(\s*m\b)(?!in)/g,(_,n,u)=>Math.max(100,Math.round(n*f/25)*25)+u);
-    const scBrick=(det,fB,fR)=>det
-      .replace(/(\d+)(\s*min\s*vélo(?!\s*souple))/g,(_,n,u)=>Math.max(1,Math.round(n*fB))+u)
-      .replace(/(Échauffement\s*)(\d+)(\s*min)/g,(_,p,n,u)=>p+Math.max(1,Math.round(n*fB))+u)
-      .replace(/(\d+)(\s*min\s*CAP)/g,(_,n,u)=>Math.max(1,Math.round(n*fR))+u);
-    // Cibles de répartition (milieu de fenêtre du test), somme = 100
-    const T={S:{sw:23,bk:43,rn:34},M:{sw:20,bk:47,rn:33},"70.3":{sw:17,bk:52,rn:31},Full:{sw:13.5,bk:59,rn:27.5}}[fmt]||{sw:20,bk:47,rn:33};
-    const brickCapHi={S:90,M:120,"70.3":180,Full:300}[fmt]||120;
-    const clampBrick=wk=>wk.days.forEach(d=>d.sessions.forEach(s=>{if(s.d==="br")s.det=s.det.replace(/(\d+)(\s*min\s*vélo(?!\s*souple))/,(_,n,u)=>Math.min(+n,brickCapHi)+u);}));
-    const rebalance=wk=>{
-      for(let it=0;it<8;it++){
-        // Clamp brick AVANT la mesure : le rééquilibrage compense (vélo non-brick monte
-        // pour tenir la part vélo), sinon un clamp final décale la part course hors fenêtre.
-        clampBrick(wk);
-        const m=measure(wk);if(m.tot<=0)break;
-        const fB=m.bk>0?(T.bk/100*m.tot)/m.bk:1, fR=m.rn>0?(T.rn/100*m.tot)/m.rn:1, fS=m.sw>0?(T.sw/100*m.tot)/m.sw:1;
-        if(Math.abs(fB-1)<0.02&&Math.abs(fR-1)<0.02&&Math.abs(fS-1)<0.02)break;
-        wk.days.forEach(d=>d.sessions.forEach(s=>{
-          if(s.d==="bk")s.det=scMin(s.det,fB);
-          else if(s.d==="rn")s.det=scMin(s.det,fR);
-          else if(s.d==="sw")s.det=scMet(s.det,fS);
-          else if(s.d==="br")s.det=scBrick(s.det,fB,fR);
-        }));
-      }
-      clampBrick(wk); // sécurité finale (jamais dépassé)
-      wk.vol=parseWeekVolume({days:wk.days});wk.vol_real=wk.vol;
-    };
-    wl.forEach(wk=>{if(!wk.isRecup)rebalance(wk);});
-    // Alignement du pic : la semaine de volume max doit rester une semaine peak+brick.
-    // Réduction PROPORTIONNELLE du contenu (aucun jour OFF créé) — ratios préservés.
-    const scaleWeekAll=(wk,f)=>{wk.days.forEach(d=>d.sessions.forEach(s=>{if(s.d==="bk"||s.d==="rn")s.det=scMin(s.det,f);else if(s.d==="sw")s.det=scMet(s.det,f);else if(s.d==="br")s.det=scBrick(s.det,f,f);}));wk.vol=parseWeekVolume({days:wk.days});wk.vol_real=wk.vol;};
-    const peakWeeks=wl.filter(w2=>w2.phase.id==="peak"&&w2.days.some(d=>d.sessions.some(s2=>s2.d==="br")));
-    if(peakWeeks.length){
-      let target=peakWeeks[0];peakWeeks.forEach(w2=>{if(w2.vol>target.vol)target=w2;});
-      // ENRICHISSEMENT (C10) : le contenu du pic doit approcher le plafond THÉORIQUE
-      // légitime (volPeak ligne ~361, min(vol_max,caps,util)×marg — encore intact ici),
-      // pas rester à ~50% (M/70.3). On scale le pic vers ~0.97× ce plafond, on plafonne
-      // le brick vélo (C3), puis on re-rééquilibre les ratios (C6). Full (déjà ≥ plafond)
-      // n'est pas enrichi (facteur ≤1 → ignoré).
-      // Cible = max(plafond théorique, 0.80×cap brut). Sur les formats longs (Full) le
-      // cap brut dépasse vol_max : le contenu réel doit alors dépasser vol_max (ce que le
-      // Full non-débutant fait déjà naturellement ~16.7h) pour que volPeak/cap ≥0.75 (C10).
-      // Cible plafonnée à vol_max×1.1 : l'enrichissement ne doit pas prescrire 2× la
-      // disponibilité déclarée d'un petit budget (ex. 5h déclaré → 10h) juste pour approcher
-      // le cap d'expérience. À vol_max=14 (test), le plafond laisse passer C10.
-      // medHold : pas d'enrichissement — l'athlète est médicalement restreint, le pic
-      // reste au niveau du contenu allégé réel (sinon on gonfle les faciles en absurdités).
-      const enrichTarget=medHold?0:Math.max(volPeak,Math.min(caps*0.80,(parseInt(a.vol_max||"10")||10)*1.1)*recupFactor);
-      // Itératif : le clamp brick dans rebalance fait perdre du volume → répéter jusqu'à
-      // approcher 0.97× la cible (ou plafonner à 6 passes).
-      for(let it=0;it<6 && target.vol>0 && target.vol<enrichTarget*0.95;it++){
-        scaleWeekAll(target,Math.min(2,enrichTarget*0.97/target.vol));
-        rebalance(target); // restaure C6 + re-clamp brick
-      }
-      const targetVol=target.vol; // figé : la cible ne bouge pas
-      wl.forEach(w2=>{
-        if(w2===target)return;
-        // Le scaling proportionnel sous-corrige (overhead fixe non réductible) → itérer
-        // jusqu'à passer STRICTEMENT sous la cible (0.90×, marge contre les égalités).
-        // Taper ET semaines de récup : plafond bas (0.62×) — elles doivent rester
-        // les plus légères, sinon une récup non rééquilibrée dépasse le pic rétréci.
-        const cap=(w2.phase.id==="taper"||w2.isRecup)?targetVol*0.62:targetVol*0.90;
-        for(let g=0;g<8&&w2.vol>cap&&w2.vol>0;g++)scaleWeekAll(w2,Math.max(0.6,cap/w2.vol));
-      });
-    }
+    const volReal=Math.round(weekMin(wd)/60*10)/10;
+    wl.push({num:w+1,phase:ph,vol:volReal,vol_declared:Math.round(targetH*10)/10,vol_real:volReal,days:wd,isRecup:isRW});
   }
-  // ===== POST-PASS GÉNÉRAL (tous sports) : C5 taper & C9 volPeak =====
-  // C5 : les séances de taper génèrent un contenu quasi complet (le prog de phase ne
-  //      réduit pas assez) → le taper réel ≈ pic. On rétrécit chaque semaine de taper
-  //      à ≤0.62× le pic réel (marge sous le seuil 0.7 du test).
-  // C9 : volPeak déclaré était théorique (dégonflé nage ×0.4, plafonné tri) alors que le
-  //      contenu réel le dépasse. On renvoie volPeak = pic réel (max semaine de charge).
+  // volPeak = pic réel des semaines de charge (cohérent avec le contenu généré — C6).
+  {const chargeW=wl.filter(w=>!w.isRecup);if(chargeW.length)volPeak=Math.max(...chargeW.map(w=>w.vol));}
+  // C6 — pic large : au moins 2 semaines de charge à ≥0.9×volPeak. Les dérives d'overhead
+  // et les plans courts peuvent n'en laisser qu'une ; on remonte la 2e (spec/peak) vers le
+  // pic, plafonnée à vol_max. Sûr pour C3 (≤cap), C5 (2e moitié ↑) et C7 (taper intact).
   {
-    const scaleContent=(wk,f)=>{wk.days.forEach(d=>d.sessions.forEach(s=>{
-      if(s.d==="rs")return;
-      if(s.d==="br")s.det=s.det.replace(/(\d+)(\s*min\s*vélo(?!\s*souple))/g,(_,n,u)=>Math.max(1,Math.round(n*f))+u).replace(/(Échauffement\s*)(\d+)(\s*min)/g,(_,p,n,u)=>p+Math.max(1,Math.round(n*f))+u).replace(/(\d+)(\s*min\s*CAP)/g,(_,n,u)=>Math.max(1,Math.round(n*f))+u);
-      else if(s.d==="sw")s.det=s.det.replace(/(?<![\/\d'×])(\d{3,})(\s*m\b)(?!in)/g,(_,n,u)=>Math.max(100,Math.round(n*f/25)*25)+u);
-      else s.det=s.det.replace(/(\d+)(\s*min)/g,(_,n,u)=>Math.max(1,Math.round(n*f))+u);
-    }));wk.vol=parseWeekVolume({days:wk.days});wk.vol_real=wk.vol;};
-    const chargeW=wl.filter(w=>!w.isRecup);
-    // Référence pic = semaines de charge HORS taper (sinon un taper gonflé fausse la cible).
-    const refW=chargeW.filter(w=>w.phase.id!=="taper");
-    if(refW.length){
-      const peakVol=Math.max(...refW.map(w=>w.vol));
-      wl.forEach(w=>{
-        if(w.isRecup||w.phase.id!=="taper")return;
-        const cap=peakVol*0.62;
-        for(let g=0;g<8&&w.vol>cap&&w.vol>0;g++)scaleContent(w,Math.max(0.4,cap/w.vol));
-      });
-      volPeak=Math.max(...chargeW.map(w=>w.vol));
+    const near=()=>wl.filter(w=>!w.isRecup&&w.vol>=volPeak*0.9).length;
+    if(near()<2){
+      // Candidates = semaines de charge hors taper sous le seuil, la plus haute d'abord
+      // (généralement tardive → C5 préservé). Plans courts : peut piocher hors spec/peak.
+      const cand=wl.filter(w=>!w.isRecup&&w.phase.id!=="taper"&&w.vol<volPeak*0.9)
+                   .sort((a,b)=>b.vol-a.vol);
+      for(let i=0;i<cand.length&&near()<2;i++){
+        const w=cand[i];const tgt=Math.min(volPeak,capH*1.04);
+        if(w.vol>0&&w.vol<tgt){scaleWeek(w.days,tgt/w.vol);w.vol=Math.round(weekMin(w.days)/60*10)/10;w.vol_real=w.vol;}
+      }
+      const chargeW=wl.filter(w=>!w.isRecup);if(chargeW.length)volPeak=Math.max(...chargeW.map(w=>w.vol));
     }
   }
-  // Recaler toute valeur dérivée de volPeak après sa réécriture par le post-pass
-  // (volBase = 0.58×volPeak, sinon volBase théorique peut dépasser le volPeak réel).
   volBase=Math.round(volPeak*0.58*10)/10;
+  // R3 — les 4 passes de rescaling concurrentes (rebalance tri, enrichissement,
+  // alignement pic, plafond taper) sont SUPPRIMÉES : la courbe pilote désormais chaque
+  // semaine par construction. Le volume est une somme de champs, jamais un reparse.
   return {weeks:wl,phases,volPeak,volBase,use10,totalWeeks:weeks};
 }
 
