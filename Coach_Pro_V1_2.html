@@ -615,18 +615,23 @@ async function stravaImport(){
     const acts=await r.json();
     if(!Array.isArray(acts)||!acts.length){setS("Aucune activité récente trouvée.");return;}
     if(!Array.isArray(S.answers.tests))S.answers.tests=[];
-    const today=new Date().toISOString().slice(0,10),added=[];
+    const today=new Date().toISOString().slice(0,10),added=[],notes=[];
     const sport=a=>a.sport_type||a.type||"";
-    const rides=acts.filter(a=>/Ride/.test(sport(a))&&(a.moving_time||0)>=1200&&(a.weighted_average_watts||a.average_watts));
-    if(rides.length){const best=rides.reduce((m,a)=>Math.max(m,a.weighted_average_watts||a.average_watts||0),0);
+    // FTP : uniquement si une sortie porte de la PUISSANCE (la vitesse seule ne dit rien de la FTP).
+    const rides=acts.filter(a=>/Ride/.test(sport(a))&&(a.moving_time||0)>=1200);
+    const powRides=rides.filter(a=>a.weighted_average_watts||a.average_watts);
+    if(powRides.length){const best=powRides.reduce((m,a)=>Math.max(m,a.weighted_average_watts||a.average_watts||0),0);
       if(best>0){const ftp=Math.round(best*0.95);S.answers.tests.push({type:"ftp",value:ftp,date:today,source:"Strava (meilleure sortie ≥20min)"});added.push("FTP ≈ "+ftp+"W");}}
+    else if(rides.length)notes.push("FTP non estimée : pas de capteur de puissance sur tes sorties. Saisis-la, ou fais un test 20min ci-dessus.");
+    // Allure seuil : course récente la plus rapide EN MOYENNE — c'est un plancher conservateur
+    // si tes sorties sont faciles. Un vrai seuil vient du protocole 3min/10min.
     const runs=acts.filter(a=>/Run/.test(sport(a))&&(a.moving_time||0)>=1200&&(a.average_speed||0)>0);
     if(runs.length){const fast=runs.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
-      if(fast>0){const sk=Math.round(1000/fast);S.answers.tests.push({type:"thrPace",value:sk,date:today,source:"Strava (course la plus rapide)"});added.push("seuil ≈ "+_fk100(sk)+"/km");}}
-    const swims=acts.filter(a=>/Swim/.test(sport(a))&&(a.average_speed||0)>0);
+      if(fast>0){const sk=Math.round(1000/fast);S.answers.tests.push({type:"thrPace",value:sk,date:today,source:"Strava (course la plus rapide, estimation basse)"});added.push("allure de réf. ≈ "+_fk100(sk)+"/km");}}
+    const swims=acts.filter(a=>/Swim/.test(sport(a))&&(a.moving_time||0)>=600&&(a.average_speed||0)>0);
     if(swims.length){const fast=swims.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
       if(fast>0){const s100=Math.round(100/fast);S.answers.tests.push({type:"css",value:s100,date:today,source:"Strava (nage la plus rapide)"});added.push("CSS ≈ "+_fk100(s100)+"/100m");}}
-    setS(added.length?("Importé : "+added.join(" · ")+". <span class='q-sub'>Valeurs estimées — ajuste-les si besoin.</span>"):"Aucune donnée exploitable (puissance/allure) dans les activités récentes.");
+    setS((added.length?("Importé : "+added.join(" · ")+". <span class='q-sub'>Valeurs estimées à partir de tes séances — affine avec un test si besoin.</span>"):"Aucune donnée d'allure/puissance exploitable.")+(notes.length?("<br><span class='q-sub'>⚠ "+notes.join(" ")+"</span>"):""));
     const b=document.getElementById("ebTestList");if(b)b.innerHTML=(S.answers.tests||[]).map(x=>"• "+x.type+" = "+x.value+" — "+x.date+(x.source?" ("+x.source+")":"")).join("<br>");
   }catch(e){setS("Échec réseau (CORS ou token invalide). Tu peux saisir les tests à la main ci-dessus.");}
 }
