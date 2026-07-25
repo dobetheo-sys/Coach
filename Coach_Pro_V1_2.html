@@ -599,6 +599,37 @@ function ebAddTest(kind){
   else if(kind==="vma")t=fieldTests.vma(parseFloat(val("ebVmaD6")),dt);
   if(t&&isFinite(t.value)){S.answers.tests.push(t);const b=document.getElementById("ebTestList");if(b)b.innerHTML=S.answers.tests.map(x=>"• "+x.type+" = "+x.value+" — "+x.date).join("<br>");}
 }
+// ===== §10 — LECTURE Strava (OAuth 2.0, jeton personnel) : alimente a.tests (R3.8) =====
+// Lecture seule : on lit les activités récentes et on estime FTP / allure seuil / CSS.
+// Aucune écriture vers Strava. CORS supporté par l'API GET Strava avec un bearer token.
+const _fk100=s=>Math.floor(s/60)+"'"+String(Math.round(s%60)).padStart(2,"0");
+async function stravaImport(){
+  const tok=((document.getElementById("ebStravaTok")||{}).value||"").trim();
+  const st=document.getElementById("ebStravaStatus");
+  const setS=h=>{if(st)st.innerHTML=h;};
+  if(!tok){setS("Colle d'abord un token d'accès Strava (Réglages → Mon API, scope <b>activity:read</b>).");return;}
+  setS("Lecture de tes activités récentes…");
+  try{
+    const r=await fetch("https://www.strava.com/api/v3/athlete/activities?per_page=50",{headers:{Authorization:"Bearer "+tok}});
+    if(!r.ok){setS("Strava a refusé la requête ("+r.status+"). Vérifie le token et le scope activity:read.");return;}
+    const acts=await r.json();
+    if(!Array.isArray(acts)||!acts.length){setS("Aucune activité récente trouvée.");return;}
+    if(!Array.isArray(S.answers.tests))S.answers.tests=[];
+    const today=new Date().toISOString().slice(0,10),added=[];
+    const sport=a=>a.sport_type||a.type||"";
+    const rides=acts.filter(a=>/Ride/.test(sport(a))&&(a.moving_time||0)>=1200&&(a.weighted_average_watts||a.average_watts));
+    if(rides.length){const best=rides.reduce((m,a)=>Math.max(m,a.weighted_average_watts||a.average_watts||0),0);
+      if(best>0){const ftp=Math.round(best*0.95);S.answers.tests.push({type:"ftp",value:ftp,date:today,source:"Strava (meilleure sortie ≥20min)"});added.push("FTP ≈ "+ftp+"W");}}
+    const runs=acts.filter(a=>/Run/.test(sport(a))&&(a.moving_time||0)>=1200&&(a.average_speed||0)>0);
+    if(runs.length){const fast=runs.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
+      if(fast>0){const sk=Math.round(1000/fast);S.answers.tests.push({type:"thrPace",value:sk,date:today,source:"Strava (course la plus rapide)"});added.push("seuil ≈ "+_fk100(sk)+"/km");}}
+    const swims=acts.filter(a=>/Swim/.test(sport(a))&&(a.average_speed||0)>0);
+    if(swims.length){const fast=swims.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
+      if(fast>0){const s100=Math.round(100/fast);S.answers.tests.push({type:"css",value:s100,date:today,source:"Strava (nage la plus rapide)"});added.push("CSS ≈ "+_fk100(s100)+"/100m");}}
+    setS(added.length?("Importé : "+added.join(" · ")+". <span class='q-sub'>Valeurs estimées — ajuste-les si besoin.</span>"):"Aucune donnée exploitable (puissance/allure) dans les activités récentes.");
+    const b=document.getElementById("ebTestList");if(b)b.innerHTML=(S.answers.tests||[]).map(x=>"• "+x.type+" = "+x.value+" — "+x.date+(x.source?" ("+x.source+")":"")).join("<br>");
+  }catch(e){setS("Échec réseau (CORS ou token invalide). Tu peux saisir les tests à la main ci-dessus.");}
+}
 const PREMIUM_STEPS_DEF=[
   {id:"weekshape",title:"Contraintes de semaine",eyebrow:"Premium — Disponibilité",why:"Un jour bloqué ou une sortie club imposée : le moteur la décompte de ton budget au lieu de prescrire par-dessus. Tes zones peuvent aussi se caler sur un test récent.",
    render(){
@@ -618,7 +649,10 @@ const PREMIUM_STEPS_DEF=[
        +'<div class="row" style="gap:6px;flex-wrap:wrap"><input type="text" id="ebCss400" placeholder="400m m:ss" style="width:90px"><input type="text" id="ebCss50" placeholder="50m m:ss" style="width:90px"><button type="button" class="opt" onclick="ebAddTest(\'css\')">CSS nage</button></div>'
        +'<div class="row" style="gap:6px;flex-wrap:wrap"><input type="number" id="ebCsD3" placeholder="3min (m)" style="width:90px"><input type="number" id="ebCsD10" placeholder="10min (m)" style="width:100px"><button type="button" class="opt" onclick="ebAddTest(\'cs\')">Allure seuil</button></div>'
        +'<div class="row" style="gap:6px;flex-wrap:wrap"><input type="number" id="ebVmaD6" placeholder="6min (m)" style="width:100px"><button type="button" class="opt" onclick="ebAddTest(\'vma\')">VMA</button></div>'
-       +'<div id="ebTestList" class="q-sub" style="margin-top:6px"></div></div>';
+       +'<div id="ebTestList" class="q-sub" style="margin-top:6px"></div></div>'
+       +'<div class="q"><span class="q-label">Import Strava (lecture seule, optionnel)</span><div class="q-sub">Colle un token d\'accès Strava (Réglages Strava → « Mon API », scope <b>activity:read</b>). On lit tes activités récentes pour estimer FTP, allure seuil et CSS — <b>rien n\'est écrit</b> sur Strava.</div>'
+       +'<div class="row" style="gap:6px;flex-wrap:wrap"><input type="text" id="ebStravaTok" placeholder="token d\'accès Strava" style="flex:1;min-width:180px"><button type="button" class="opt" onclick="stravaImport()">Importer depuis Strava</button></div>'
+       +'<div id="ebStravaStatus" class="q-sub" style="margin-top:4px"></div></div>';
      return s;
    },
    valid(){return true;}},
