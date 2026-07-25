@@ -886,11 +886,14 @@ function buildPlan(a){
       const PT=(lo,hi)=>Math.max(1,Math.round((lo+(hi-lo)*(PB[0]+(PB[1]-PB[0])*prog))*sessionScale));
       const swimDistCaps={S:{lo:300,hi:750},M:{lo:600,hi:1500},"70.3":{lo:950,hi:1900},Full:{lo:1600,hi:3000}}[fmt]||{lo:600,hi:1500};
       const swimDist=PT(swimDistCaps.lo,swimDistCaps.hi);
+      // Angle mort couvert : la nage-volume tri est bornée par clé discipline+rôle (bnd),
+      // plancher/plafond progressif comme les autres séances de volume, source unique.
+      const triSwimVolCap={S:1050,M:2100,"70.3":3000,Full:4500}[fmt]||2100;
       const swShortDist=Math.min(600,Math.max(200,Math.round(swimDist*0.4/50)*50));
       const swTechDist=Math.max(300,Math.round(swimDist*0.5/50)*50);
       const swMain=beginner
-        ?{name:"Nage seuil technique (+dist)",note:"Technique d'abord, mais quelques 100m à allure seuil contrôlée pour préparer la course.",steps:[Wm(200,"souple"),Bd(1,swimDist,"sw.css","repos libre entre séries",", fractionné en séries régulières, éducatifs entre",false,"sw"),Cm(100,"relâché")]}
-        :{name:"Nage seuil (+dist)",note:"Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",steps:[Wm(300,"+ 4×50m éducatifs"),Bd(1,swimDist,"sw.css","15-20s",", fractionné en séries régulières si besoin",false,"sw"),Cm(200,"souple")]};
+        ?{name:"Nage seuil technique (+dist)",note:"Technique d'abord, mais quelques 100m à allure seuil contrôlée pour préparer la course.",steps:[Wm(200,"souple"),Object.assign(Bd(1,swimDist,"sw.css","repos libre entre séries",", fractionné en séries régulières, éducatifs entre",false,"sw"),{bnd:{floor:swimDistCaps.lo,cap:triSwimVolCap}}),Cm(100,"relâché")]}
+        :{name:"Nage seuil (+dist)",note:"Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",steps:[Wm(300,"+ 4×50m éducatifs"),Object.assign(Bd(1,swimDist,"sw.css","15-20s",", fractionné en séries régulières si besoin",false,"sw"),{bnd:{floor:swimDistCaps.lo,cap:triSwimVolCap}}),Cm(200,"souple")]};
       const swTech=beginner
         ?{name:"Nage éducatifs",note:"Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force.",steps:[Wm(100,"souple"),Bd(1,swTechDist,"sw.easy","20-30s",", éducatifs variés (rattrapé, poings fermés, battements planche) par 50m, 1 point technique à la fois",false,"sw"),Cm(100,"dos souple")]}
         :{name:"Nage vitesse",note:"Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m.",steps:[Wm(200,"+ 4×25m accélérations progressives"),Bd(1,swTechDist,"sw.aero","30-40s sur les 50m rapides",", dont la moitié en accélérations de 50m @ "+sz.speed,false,"sw"),Cm(150,"souple")]};
