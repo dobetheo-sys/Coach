@@ -205,6 +205,12 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 
 /* ===== DÉTAIL SÉANCE ===== */
 .gd-det{display:block;font-weight:500;font-size:11px;color:var(--text2);margin:2px 0 5px;line-height:1.4;}
+.doneBtn{border:2px solid var(--ink);background:#fff;border-radius:8px;font-size:11px;font-weight:800;line-height:1;padding:1px 5px;cursor:pointer;color:var(--muted);vertical-align:middle;}
+.doneBtn.done{background:#00a376;color:#fff;border-color:#00734f;}
+.load-card{border:3px solid var(--ink);border-radius:14px;background:#fff;padding:12px 12px 10px;margin:6px 0 20px;box-shadow:4px 4px 0 var(--ink);}
+.load-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;letter-spacing:.02em;margin-bottom:2px;}
+.load-leg{font-size:11px;font-weight:700;text-align:center;margin:2px 0 4px;}
+.load-sub{font-size:12px;color:var(--text2);line-height:1.5;}
 .gd{min-height:96px;}
 
 /* ===== IMPRESSION / EXPORT PDF ===== */
@@ -1319,6 +1325,38 @@ function planToJSON(a){
         det:s.det}))}))}))
   };
 }
+// ===== Suivi de charge : TSS estimé (sans capteur) → CTL/ATL/TSB (fitness/fatigue/forme) =====
+// IF (facteur d'intensité) par zone, dérivé des références relatives (ZDEF). TSS d'un bloc =
+// durée(h) × IF² × 100. Warmup/cooldown à IF 0.5. Aucune donnée capteur requise.
+const _IFZ={"bk.z2":.65,"bk.ss":.90,"bk.vo2":1.12,"bk.frc":.82,"bk.rp":.84,"bk.thr":1.0,
+  "rn.easy":.68,"rn.mara":.84,"rn.thr":.98,"rn.vo2":1.10,"rn.rec":.60,
+  "sw.easy":.65,"sw.aero":.75,"sw.css":.95,"sw.speed":1.08};
+function _blkMin(st){const r=st.reps||1;if(st.durationMin!=null)return r*st.durationMin;if(st.distanceM!=null)return st.d==="sw"?r*st.distanceM/100*2:r*st.distanceM/1000*5;return 0;}
+function estimateTSS(s){if(!s||!s.steps||!s.steps.length)return 0;let t=0;s.steps.forEach(st=>{const mn=_blkMin(st);const IF=st.role==="body"?(_IFZ[st.zone]||0.70):0.5;t+=(mn/60)*IF*IF*100;});return Math.round(t);}
+function loadSeries(plan){
+  const days=[];plan.weeks.forEach(w=>w.days.forEach(d=>{let tss=0;d.sessions.forEach(s=>{if(s.d!=="rs")tss+=estimateTSS(s);});days.push({week:w.num,jour:d.jour,tss:tss,recup:w.isRecup});}));
+  const seed=days.slice(0,7).reduce((a,d)=>a+d.tss,0)/7||0;let ctl=seed,atl=seed;const out=[];
+  days.forEach(d=>{const tsb=ctl-atl;ctl+=(d.tss-ctl)/42;atl+=(d.tss-atl)/7;out.push({week:d.week,ctl:ctl,atl:atl,tsb:tsb});});
+  // échantillon hebdo = dernière valeur de chaque semaine
+  const byWeek={};out.forEach(o=>byWeek[o.week]=o);
+  return Object.keys(byWeek).map(k=>byWeek[k]);
+}
+function loadChartSVG(plan){
+  const S2=loadSeries(plan);if(!S2.length)return"";
+  const W=Math.max(320,S2.length*22),H=150,PL=34,PR=10,PT=12,PB=22,iw=W-PL-PR,ih=H-PT-PB;
+  const maxL=Math.max(1,...S2.map(o=>Math.max(o.ctl,o.atl)));
+  const tsbMax=Math.max(10,...S2.map(o=>Math.abs(o.tsb)));
+  const x=i=>PL+(S2.length<2?iw/2:i/(S2.length-1)*iw);
+  const yL=v=>PT+ih-(v/maxL)*ih;              // CTL/ATL (0..max)
+  const yB=v=>PT+ih/2-(v/tsbMax)*(ih/2);      // TSB (centré sur 0)
+  const line=(sel,col,w)=>"<polyline fill=\"none\" stroke=\""+col+"\" stroke-width=\""+w+"\" points=\""+S2.map((o,i)=>x(i).toFixed(1)+","+sel(o).toFixed(1)).join(" ")+"\"/>";
+  let g="<svg viewBox=\"0 0 "+W+" "+H+"\" width=\"100%\" style=\"max-width:"+W+"px;display:block;margin:6px auto\" role=\"img\" aria-label=\"Courbe de charge CTL ATL TSB\">";
+  g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"#0002\" stroke-dasharray=\"3 3\"/>";
+  g+=line(o=>yB(o.tsb),"#00a376",2)+line(o=>yL(o.ctl),"#2e6bff",2.5)+line(o=>yL(o.atl),"#ff7a1a",1.8);
+  g+="<text x=\"2\" y=\""+(PT+8)+"\" font-size=\"9\" fill=\"#635b4a\">charge</text>";
+  g+="</svg>";
+  return g;
+}
 
 /* ============================================================
    RENDU & NAVIGATION
@@ -1446,16 +1484,23 @@ function renderPlan(){
   html+=driverBand(a);
   html+='<div class="ph-line">';plan.phases.forEach(p=>html+='<div class="ph-seg" style="flex:'+p.weeks+';background:'+p.c+'22;border-color:'+p.c+'"><span>'+p.nom+'</span><em>'+p.weeks+'sem</em></div>');html+='</div>';
   html+='<div class="vol-bars">';plan.weeks.forEach(w=>{const h=Math.max(8,Math.round(w.vol/plan.volPeak*52));html+='<div class="vb" style="height:'+h+'px;background:'+(w.isRecup?"#9b72ff":w.phase.c)+'" title="S'+w.num+' '+w.vol+'h"></div>';});html+='</div><div class="vol-cap">1 barre = 1 semaine · violet = récup</div>';
+  // Suivi de charge + compliance
+  let _totalS=0;plan.weeks.forEach(w=>w.days.forEach(d=>d.sessions.forEach(s=>{if(s.d!=="rs")_totalS++;})));
+  const _doneN=S.answers.done?Object.keys(S.answers.done).filter(k=>S.answers.done[k]).length:0;
+  html+='<div class="load-card"><div class="load-title">Charge estimée — fitness · fatigue · forme</div>'+loadChartSVG(plan)
+    +'<div class="load-leg"><span style="color:#2e6bff">▬ Fitness (CTL)</span> · <span style="color:#ff7a1a">▬ Fatigue (ATL)</span> · <span style="color:#00a376">▬ Forme (TSB)</span></div>'
+    +'<div class="load-sub">Estimée sans capteur, depuis la durée et l\'intensité de chaque séance (modèle TSS/CTL/ATL). La forme remonte à l\'affûtage — c\'est le but. Coche tes séances (○ → ✓) : <b>'+_doneN+' / '+_totalS+'</b> faites'+(_totalS?' ('+Math.round(_doneN/_totalS*100)+'%)':"")+'.</div></div>';
   const show=S.showAllWeeks?plan.weeks:[...plan.weeks.slice(0,3),plan.weeks[plan.weeks.length-1]];
   show.forEach((w,ix)=>{if(!S.showAllWeeks&&ix===3)html+='<div class="wk-skip">⋯ semaines 4 à '+(plan.totalWeeks-1)+' ⋯</div>';
     const raceTag=w.race?' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700">🏁 COURSE '+w.race+'</span>':(w.postRace?' <span style="color:#9b72ff;font-size:10px">↳ récup post-course</span>':"");
     html+='<div class="gw"><div class="gw-h"><b>Semaine '+w.num+'</b><span style="color:'+w.phase.c+'">'+w.phase.nom+'</span>'+raceTag+'<em>'+w.vol+'h'+(w.isRecup?" récup":"")+'</em></div><div class="gw-grid">';
-    w.days.forEach(d=>{const bg=d.sessions.map(s=>'<span>'+ic[s.d]+'</span>').join("");const nm=d.sessions.map(s=>'<b>'+s.name+'</b>'+(s.det?'<span class="gd-det">'+s.det+'</span>':"")).join("");
+    w.days.forEach(d=>{const bg=d.sessions.map(s=>'<span>'+ic[s.d]+'</span>').join("");const nm=d.sessions.map((s,si)=>{const k=w.num+"|"+d.jour+"|"+si;const dn=S.answers.done&&S.answers.done[k];const chk=s.d!=="rs"?'<button class="doneBtn'+(dn?" done":"")+'" type="button" data-dk="'+k+'" title="Marquer fait">'+(dn?"✓":"○")+'</button> ':"";return chk+'<b>'+s.name+'</b>'+(s.det?'<span class="gd-det">'+s.det+'</span>':"");}).join("");
       html+='<div class="gd '+d.charge+'"><div class="gd-top"><b>'+d.jour+'</b>'+(plan.use10?'<i>C'+d.cyc+'J'+d.jc+'</i>':"")+'</div><div class="gd-badges">'+bg+'</div><div class="gd-n">'+nm+'</div></div>';});
     html+='</div></div>';});
   html+='<div class="warn" style="background:var(--bg2)">Intensités calibrées sur tes données. Version complète : nutrition quotidienne, courses placées, checkpoints.</div>'
     +'<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="backBp" type="button">← Modifier</button><button class="btn gold" id="allW" type="button">'+(S.showAllWeeks?"Réduire":"Voir les "+plan.totalWeeks+" semaines")+'</button><button class="btn primary" id="prn" type="button">🖨 HTML</button><button class="btn" id="expIcs" type="button">📅 Agenda (.ics)</button><button class="btn" id="expJson" type="button">{ } JSON</button><button class="btn" id="restartBtn" type="button">Changer de sport</button></div></div>';
   $("screen").innerHTML=html;$("backBp").onclick=()=>{S.step=curSteps().length-1;renderStep();};$("allW").onclick=()=>{S.showAllWeeks=!S.showAllWeeks;renderPlan();window.scrollTo(0,0);};$("prn").onclick=()=>downloadPlan();$("expIcs").onclick=()=>exportICS();$("expJson").onclick=()=>exportJSON();$("restartBtn").onclick=()=>reset();
+  document.querySelectorAll(".doneBtn").forEach(b=>b.onclick=()=>{if(!S.answers.done)S.answers.done={};const k=b.dataset.dk;if(S.answers.done[k])delete S.answers.done[k];else S.answers.done[k]=true;ebSave();const sc=window.pageYOffset;renderPlan();window.scrollTo(0,sc);});
   refreshTrail();
 }
 // Bug 2/5 — brancher planToJSON (interopérabilité) + export .ics (agenda de l'athlète).
