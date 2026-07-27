@@ -101,7 +101,11 @@ verte/orange/rouge, ajustement du jour (remplacer/réduire/reposer, jamais rattr
 volume manqué), invariants de sécurité assertés par `npm run demo:readiness` (CI).
 
 **UI ↔ moteur V2 : BRANCHÉ.** `Coach_Pro_V1.5.html` génère via `EBV2.buildPlan`
-(bundle auto-testé de `src/`, legacy en repli), affiche les décisions du moteur et la
-carte « Forme du jour » (adaptation quotidienne). Voir ARCHITECTURE.md « Branchement UI ».
+(bundle auto-testé de `src/`, legacy en repli), affiche les décisions du moteur, la
+carte « Forme du jour » (adaptation quotidienne), et le dashboard « Répartition des
+intensités » (barres empilées facile/modéré/dur par semaine). **Boucle prévu/réel
+fermée** : les séances cochées (✓) nourrissent le calcul de fatigue de l'ajusteur
+(`completedFromDone`) — même contrat qu'un futur import Strava.
+Voir ARCHITECTURE.md « Branchement UI ».
 Chantiers restants : nutrition (avis nutritionniste requis), dashboard, gamification,
 partage, sources readiness FIT/Garmin.

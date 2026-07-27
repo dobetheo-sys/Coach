@@ -118,6 +118,22 @@ const snap = (s: Omit<ReadinessSnapshot, "date">, date: string): ReadinessSnapsh
   check("sous-réalisation 40% → aucune compensation, règle énoncée", adj.adjustedMinutes === adj.originalMinutes && adj.decisions.some((d) => d.id === "ADAPT-rattrapage"));
 }
 
+// ---- 8. Boucle prévu/réel via les ✓ de l'UI : peu coché → règle « jamais rattraper » ----
+{
+  const { adjustTodayV2, completedFromDone } = await import("../app/bridge.ts");
+  const { plan } = freshPlan();
+  const date = dateOf(plan, (d, w) => w.num === 3 && d.sessions.some((s) => s.d !== "rs"));
+  const done: Record<string, boolean> = {};
+  const w1 = plan.weeks[0];
+  const d1 = w1.days.find((d) => d.sessions.some((s) => s.d !== "rs"))!;
+  done[w1.num + "|" + d1.jour + "|" + d1.sessions.findIndex((s) => s.d !== "rs")] = true; // une seule séance cochée
+  const answers = { ...profile, done } as unknown as Record<string, unknown>;
+  const derived = completedFromDone(plan, answers, date);
+  check("✓ UI → séances réalisées dérivées (" + derived.length + " séance, " + (derived[0]?.minutes ?? 0) + "min)", derived.length === 1 && (derived[0]?.minutes ?? 0) > 0);
+  const res = adjustTodayV2("run", answers, { date, sleepQuality: "bon", energy: 80 });
+  check("  … sous-réalisation détectée → « on ne rattrape jamais »", res.adjustment.decisions.some((d) => d.id === "ADAPT-rattrapage"));
+}
+
 // ---- Invariants globaux : sur 30 jours × 3 états, jamais plus de minutes hors verte ----
 {
   const { plan, reasoned } = freshPlan();

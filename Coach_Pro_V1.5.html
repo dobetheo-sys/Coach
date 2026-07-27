@@ -1651,6 +1651,17 @@ function v2ExtrasHTML(plan){
       +'<div id="rdResult" style="margin-top:10px"></div></div>';
   }
   const v2=plan&&plan._v2;
+  if(v2&&v2.intensity){
+    const it=v2.intensity;
+    h+='<div class="load-card"><div class="load-title">\ud83c\udfaf R\u00e9partition des intensit\u00e9s \u2014 '+it.easyPct+'% facile \u00b7 '+it.modPct+'% mod\u00e9r\u00e9 \u00b7 '+it.hardPct+'% dur</div>';
+    const mx=Math.max(1,...it.weekly.map(w=>w.e+w.m+w.h));
+    h+='<div style="display:flex;align-items:flex-end;gap:3px;height:56px;margin:8px 0 4px">';
+    it.weekly.forEach(w=>{const t=w.e+w.m+w.h,H=Math.max(4,Math.round(t/mx*52));
+      const eh=Math.round(H*w.e/Math.max(1,t)),mh=Math.round(H*w.m/Math.max(1,t)),hh=Math.max(0,H-eh-mh);
+      h+='<div title="S'+w.num+' \u00b7 facile '+w.e+'min \u00b7 mod\u00e9r\u00e9 '+w.m+'min \u00b7 dur '+w.h+'min" style="flex:1;display:flex;flex-direction:column-reverse;height:'+H+'px">'
+        +'<div style="height:'+eh+'px;background:#00a376"></div><div style="height:'+mh+'px;background:#f0b429"></div><div style="height:'+hh+'px;background:#e63946"></div></div>';});
+    h+='</div><div class="load-sub"><span style="color:#00a376">\u25ac facile</span> \u00b7 <span style="color:#f0b429">\u25ac mod\u00e9r\u00e9</span> \u00b7 <span style="color:#e63946">\u25ac dur</span> \u2014 objectif manifeste : \u226570% de temps facile en semaines de charge (mesur\u00e9 : '+it.easyPct+'%).</div></div>';
+  }
   if(v2){
     h+='<details class="load-card" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+') \u2014 score d\u2019audit '+v2.score+'/100</summary><ul style="font-size:12px;line-height:1.6;margin:8px 0 0;padding-left:18px">';
     v2.decisions.forEach(d=>{h+='<li><b>'+d.what+' :</b> '+d.val+'<br><span style="color:#555">'+d.why+'</span></li>';});
@@ -3960,6 +3971,7 @@ function adjustDay(reasoned              , plan        , date        , snapshot 
 
 
 
+
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
 }
@@ -3970,18 +3982,53 @@ function toProfile(sport        , answers            )                 {
                     
                 
                            
+                                                                                                                              
  
+
+/** Les ✓ de l'UI (S.answers.done = {"sem|jour|idx": true}) → séances réellement effectuées.
+ *  Ferme la boucle prévu/réel : l'ajusteur recalcule la fatigue depuis ce qui a VRAIMENT
+ *  été fait (même logique qu'un import Strava — les minutes viennent du plan coché). */
+function completedFromDone(plan        , answers            , beforeDate        )                     {
+  const done = (answers.done || {})                           ;
+  const out                     = [];
+  if (!Object.keys(done).length) return out;
+  for (const w of plan.weeks)
+    for (const d of w.days) {
+      const dd = (d                     ).date;
+      if (!dd || dd >= beforeDate) continue;
+      d.sessions.forEach((s, si) => {
+        if (s.d === "rs" || !done[w.num + "|" + d.jour + "|" + si]) return;
+        out.push({ date: dd, d: s.d, minutes: Math.round(s.min || 0) });
+      });
+    }
+  return out;
+}
 
 /** Génère le plan via le moteur V2 (raisonne → génère → audite → répare) — forme V1Plan. */
 function buildPlanV2(sport        , answers            )                                {
   const res = generateAudited(toProfile(sport, answers));
   const plan = res.plan                                 ;
+  // Répartition des intensités par semaine (dashboard « manifeste ~80/20 »)
+  const refs = { cssSecPer100m: 130, thrPaceSecPerKm: 330 };
+  let cE = 0, cM = 0, cH = 0;
+  const weekly = plan.weeks.map((w) => {
+    let e = 0, m = 0, h = 0;
+    for (const d of w.days)
+      for (const s of d.sessions) {
+        const sp = intensitySplit(s, refs);
+        e += sp.easyMin; m += sp.modMin; h += sp.hardMin;
+      }
+    if (!w.isRecup && w.phase.id !== "taper") { cE += e; cM += m; cH += h; }
+    return { num: w.num, e: Math.round(e), m: Math.round(m), h: Math.round(h) };
+  });
+  const tot = Math.max(1, cE + cM + cH);
   plan._v2 = {
     decisions: res.decisions,
     warnings: res.warnings,
     repairs: res.repairs,
     score: res.audit.score,
     hardViolations: res.audit.hardViolations,
+    intensity: { easyPct: Math.round((cE / tot) * 100), modPct: Math.round((cM / tot) * 100), hardPct: Math.round((cH / tot) * 100), weekly },
   };
   return plan;
 }
@@ -3995,6 +4042,11 @@ function buildPlanV2(sport        , answers            )                        
 /** Adapte la journée `snapshot.date` à l'état de forme — « recalcul du matin ». */
 function adjustTodayV2(sport        , answers            , snapshot                   )                  {
   const { plan, reasoned } = generatePlan(toProfile(sport, answers));
+  // Boucle prévu/réel : les séances cochées dans l'UI nourrissent le calcul de fatigue
+  if (!snapshot.completed) {
+    const completed = completedFromDone(plan, answers, snapshot.date);
+    if (completed.length) snapshot = { ...snapshot, completed };
+  }
   const adjustment = adjustDay(reasoned, plan, snapshot.date, snapshot);
   let sessions                              = [];
   let jour                = null;
