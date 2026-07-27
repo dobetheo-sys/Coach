@@ -1661,6 +1661,33 @@ function v2ExtrasHTML(plan){
       +'<button class="btn primary" id="rdApply" type="button">Adapter ma journ\u00e9e</button></div>'
       +'<div id="rdResult" style="margin-top:10px"></div></div>';
   }
+  if(globalThis.EBV2&&globalThis.EBV2.predict){
+    try{
+      const pr=globalThis.EBV2.predict(S.sport,S.answers,plan);
+      if(pr.items.length||pr.advice.length){
+        h+='<div class="load-card"><div class="load-title">\ud83d\udd2e Pr\u00e9diction de course</div>';
+        pr.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
+        pr.advice.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0;color:#8a6d00">\u26a0 '+x+'</div>';});
+        h+='<div class="load-sub" style="color:#777">Fourchette, pas promesse \u2014 elle se resserre quand le plan est bien suivi (streak + charge accomplie).</div></div>';
+      }
+    }catch(e){console.warn(e);}
+  }
+  if(globalThis.EBV2&&globalThis.EBV2.progress){
+    const pgh=globalThis.EBV2.progress(plan,S.answers,new Date().toISOString().slice(0,10));
+    const doneW=pgh.weekly.filter(w=>w.complete);
+    if(doneW.length){
+      h+='<div class="load-card"><div class="load-title">\ud83d\udcd2 Historique \u2014 pr\u00e9vu vs r\u00e9el</div>';
+      doneW.slice(-8).forEach(w=>{
+        const pc=w.minTotal>0?Math.round(w.minDone/w.minTotal*100):0;
+        h+='<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12px">'
+          +'<span style="width:34px"><b>S'+w.num+'</b></span>'
+          +'<span style="width:20px">'+(w.ok?"\u2705":"\u25cb")+'</span>'
+          +'<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:10px;overflow:hidden"><div style="height:100%;width:'+pc+'%;background:'+(w.ok?"#00a376":"#f0b429")+'"></div></div>'
+          +'<span style="width:130px;text-align:right">'+w.done+'/'+w.total+' s\u00e9ances \u00b7 '+(Math.round(w.minDone/6)/10)+'/'+(Math.round(w.minTotal/6)/10)+'h</span></div>';
+      });
+      h+='<div class="load-sub" style="margin-top:4px">\u2705 = semaine r\u00e9guli\u00e8re (\u226580% des s\u00e9ances). Le r\u00e9el nourrit l\u2019ajusteur du matin \u2014 pas de rattrapage, jamais.</div></div>';
+    }
+  }
   const v2=plan&&plan._v2;
   if(v2&&v2.intensity){
     const it=v2.intensity;
@@ -3720,6 +3747,139 @@ function generateAudited(profile                , auditOpts                     
   return { plan: best.plan, audit: best.audit, warnings, repairs, decisions: reasoned.decisions };
 }
 
+// ===== src/engine/predictor.ts =====
+/**
+ * Prédiction de course — projection chiffrée en compétition (roadmap « dashboard »).
+ *
+ * Principes : un entraîneur ne promet jamais un chrono sec → FOURCHETTES, hypothèses
+ * affichées, et pas de chiffre quand la donnée manque (conseil de test à la place).
+ * Méthodes : course = Riegel (exposant 1.06) depuis l'allure seuil (~1h) ; natation =
+ * CSS × facteur de distance ; vélo = PUISSANCES cibles (le chrono dépend du parcours,
+ * on ne l'invente pas) ; tri = legs séparés avec facteur de fatigue par format.
+ * La fourchette se resserre si le plan est bien suivi (streak + charge accomplie).
+ */
+                                           
+
+                                 
+                                                            
+                                             
+              
+ 
+                             
+                          
+                                                               
+                        
+ 
+                              
+                                                    
+                       
+ 
+
+const RUN_KM                         = { "5k": 5, "10k": 10, semi: 21.0975, marathon: 42.195 };
+const SWIM_RACE                                                   = {
+  sprint: { dist: 100, factor: 0.9 },
+  demifond: { dist: 400, factor: 0.94 },
+  fond: { dist: 1500, factor: 1.0 },
+  ow: { dist: 1500, factor: 1.05 },
+};
+const BIKE_POWER                                                           = {
+  crit: { lo: 0.95, hi: 1.05, note: "critérium : au seuil et au-dessus par relances" },
+  clm: { lo: 0.93, hi: 1.0, note: "CLM : effort au seuil, régulier du départ à la ligne" },
+  route: { lo: 0.8, hi: 0.9, note: "course sur route : puissance normalisée, les pointes en plus" },
+  cyclo: { lo: 0.7, hi: 0.8, note: "cyclosportive : tempo durable, garder du grain pour la fin" },
+  gravel: { lo: 0.65, hi: 0.75, note: "gravel/ultra : endurance, la régularité bat la vitesse" },
+};
+const TRI_SWIM                                                   = {
+  S: { dist: 750, factor: 1.04 },
+  M: { dist: 1500, factor: 1.05 },
+  "70.3": { dist: 1900, factor: 1.06 },
+  Full: { dist: 3800, factor: 1.08 },
+};
+const TRI_BIKE                                             = {
+  S: { lo: 0.82, hi: 0.88 },
+  M: { lo: 0.78, hi: 0.85 },
+  "70.3": { lo: 0.72, hi: 0.8 },
+  Full: { lo: 0.65, hi: 0.73 },
+};
+const TRI_RUN                                                  = {
+  S: { km: 5, fatigue: 1.03 },
+  M: { km: 10, fatigue: 1.05 },
+  "70.3": { km: 21.0975, fatigue: 1.08 },
+  Full: { km: 42.195, fatigue: 1.13 },
+};
+
+const fmtT = (sec        )         => {
+  const s = Math.round(sec);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+  return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "'" + String(r).padStart(2, "0");
+};
+
+/** Riegel : temps sur D depuis l'allure seuil (tenable ~1h), t = 3600 × (D/D₁ₕ)^1.06 */
+function riegelSec(thrPaceSecPerKm        , distKm        )         {
+  const d1h = 3600 / thrPaceSecPerKm;
+  return 3600 * Math.pow(distKm / d1h, 1.06);
+}
+
+function predictRace(
+  sport        ,
+  format        ,
+  intent                    ,
+  refs                                               ,
+  opts              = {}
+)             {
+  const items                   = [];
+  const advice           = [];
+  const decisions             = [];
+  const D = (id        , what        , val        , why        ) => decisions.push({ id, what, val, why });
+
+  // Fourchette : ±3% de base ; ±2% si le plan est bien suivi ; décalée +3% en mode finisher.
+  const followed = (opts.pctLoad ?? 0) >= 60 && (opts.streakWeeks ?? 0) >= 3;
+  const spread = followed ? 0.02 : 0.03;
+  const shift = intent === "finir" ? 0.03 : 0;
+  if (followed) D("PRED-forme", "Fourchette resserrée", "±2%", "Plan bien suivi (streak ≥3 semaines, charge accomplie ≥60%) : la projection est plus fiable");
+  if (shift > 0) D("PRED-finisher", "Pacing conservateur", "+3%", "Objectif finisher : on vise l'arrivée en forme, pas la marge d'erreur");
+  const range = (sec        ) => fmtT(sec * (1 + shift - spread)) + "–" + fmtT(sec * (1 + shift + spread));
+
+  if (sport === "run") {
+    if (refs.thrPace > 0 && RUN_KM[format]) {
+      const t = riegelSec(refs.thrPace, RUN_KM[format]);
+      items.push({ leg: "Course", value: range(t), why: "Riegel depuis ton allure seuil (~1h), exposant 1.06 — la référence des prédictions route" });
+      D("PRED-run", "Méthode course", "Riegel ^1.06", "Extrapolation standard depuis l'allure tenable une heure");
+    } else if (format === "trail") {
+      advice.push("Trail : le chrono dépend du D+ et du terrain — repère fiable : allure Z2 à plat, marche assumée dans les pentes raides.");
+    } else advice.push("Renseigne ton allure seuil (test : 30min à fond, allure moyenne) pour obtenir une projection chiffrée.");
+  } else if (sport === "bike") {
+    const b = BIKE_POWER[format];
+    if (refs.ftp > 0 && b) {
+      items.push({ leg: "Vélo", value: Math.round(refs.ftp * b.lo) + "–" + Math.round(refs.ftp * b.hi) + "W", why: b.note + " — le chrono dépend du parcours, la puissance cible ne ment pas" });
+      D("PRED-bike", "Méthode vélo", "% FTP par format", "Prédire un chrono sans connaître le parcours serait mentir ; la puissance cible est transférable partout");
+    } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir tes puissances cibles de course.");
+  } else if (sport === "swim") {
+    const sw = SWIM_RACE[format];
+    if (refs.css > 0 && sw) {
+      const t = (sw.dist / 100) * refs.css * sw.factor;
+      items.push({ leg: "Natation (" + sw.dist + "m)", value: range(t), why: "CSS × " + sw.factor + (sw.factor < 1 ? " (les distances courtes se nagent plus vite que le seuil)" : sw.factor > 1 ? " (eau libre : navigation et peloton ralentissent)" : " (le 1500m se nage à l'allure CSS)") });
+      D("PRED-swim", "Méthode natation", "CSS × facteur distance", "Le Critical Swim Speed est l'allure soutenable — chaque distance de course a son facteur validé");
+    } else advice.push("Renseigne ton CSS (test : 400m et 200m chrono → CSS = 200m ÷ (t400−t200)) pour une projection chiffrée.");
+  } else if (sport === "tri") {
+    const sw = TRI_SWIM[format], bk = TRI_BIKE[format], rn = TRI_RUN[format];
+    if (refs.css > 0 && sw) {
+      const t = (sw.dist / 100) * refs.css * sw.factor;
+      items.push({ leg: "Natation " + sw.dist + "m", value: range(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" });
+    } else advice.push("CSS manquant → pas de projection natation (test 400/200m).");
+    if (refs.ftp > 0 && bk) {
+      items.push({ leg: "Vélo", value: Math.round(refs.ftp * bk.lo) + "–" + Math.round(refs.ftp * bk.hi) + "W", why: "l'intensité qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" });
+    } else advice.push("FTP manquante → pas de puissance cible vélo (test 20min × 0.95).");
+    if (refs.thrPace > 0 && rn) {
+      const t = riegelSec(refs.thrPace, rn.km) * rn.fatigue;
+      items.push({ leg: "CAP " + (rn.km >= 21 ? (rn.km > 22 ? "marathon" : "semi") : rn.km + "km"), value: range(t), why: "Riegel × " + rn.fatigue + " de fatigue post-vélo (facteur " + format + ")" });
+    } else advice.push("Allure seuil manquante → pas de projection CAP (test 30min).");
+    if (items.length) D("PRED-tri", "Méthode tri", "legs séparés", "Un total additionnerait les incertitudes ; chaque leg a sa méthode et sa fourchette");
+  }
+
+  return { items, advice, decisions };
+}
+
 // ===== src/readiness/readinessSource.ts =====
 /**
  * Source de readiness ENFICHABLE — Sprint 2 (roadmap amendée).
@@ -3983,6 +4143,7 @@ function adjustDay(reasoned              , plan        , date        , snapshot 
 
 
 
+
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
 }
@@ -4081,13 +4242,13 @@ function adjustTodayV2(sport        , answers            , snapshot             
                   
                      
                       
-                                                                      
+                                                                                                                            
  
 function progressV2(plan        , answers            , todayISO        )                 {
   const done = (answers.done || {})                           ;
   let totalMin = 0, doneMin = 0;
   const weekly = plan.weeks.map((w) => {
-    let t = 0, dn = 0, complete = true;
+    let t = 0, dn = 0, complete = true, wDone = 0, wTotal = 0;
     for (const d of w.days) {
       const dd = (d                     ).date || "";
       if (!dd || dd >= todayISO) complete = false;
@@ -4095,13 +4256,15 @@ function progressV2(plan        , answers            , todayISO        )        
         if (s.d === "rs") return;
         t++;
         totalMin += s.min || 0;
+        wTotal += s.min || 0;
         if (done[w.num + "|" + d.jour + "|" + si]) {
           dn++;
           doneMin += s.min || 0;
+          wDone += s.min || 0;
         }
       });
     }
-    return { num: w.num, done: dn, total: t, ok: t > 0 && dn / t >= 0.8, complete };
+    return { num: w.num, done: dn, total: t, ok: t > 0 && dn / t >= 0.8, complete, minDone: Math.round(wDone), minTotal: Math.round(wTotal) };
   });
   const completeWeeks = weekly.filter((w) => w.complete);
   let streakWeeks = 0;
@@ -4116,8 +4279,26 @@ function progressV2(plan        , answers            , todayISO        )        
     weekNow: Math.min(plan.totalWeeks, completeWeeks.length + 1),
     totalWeeks: plan.totalWeeks,
     streakWeeks,
-    weekly: weekly.map(({ num, done: dn, total, ok }) => ({ num, done: dn, total, ok })),
+    weekly,
   };
+}
+
+/** Prédiction de course — refs athlète + fiabilité issue du suivi réel (streak/charge). */
+function predictV2(sport        , answers            , plan                                )             {
+  const { reasoned, plan: p } = plan ? { reasoned: null, plan } : generatePlan(toProfile(sport, answers));
+  const refs = reasoned
+    ? reasoned.baseRefs
+    : { ftp: parseInt(String(answers.ftp || "")) || 0, thrPace: 0, css: 0 };
+  // Sans reasoned (plan fourni par l'UI), reconstruire les refs depuis les réponses
+  const parse = (v         ) => { const m = String(v || "").trim().split(/[:h.]/); return m.length === 2 ? parseInt(m[0]) * 60 + parseInt(m[1]) : 0; };
+  const finalRefs = reasoned ? refs : {
+    ftp: answers.ftp_known === "oui" ? parseInt(String(answers.ftp || "")) || 0 : 0,
+    thrPace: answers.pace_known === "oui" ? parse(answers.pace) : 0,
+    css: answers.css_known === "oui" ? parse(answers.css) : 0,
+  };
+  const today = new Date().toISOString().slice(0, 10);
+  const pg = progressV2(p, answers, today);
+  return predictRace(sport, String(answers.format || ""), String(answers.intent || "") || undefined, finalRefs, { pctLoad: pg.pctLoad, streakWeeks: pg.streakWeeks });
 }
 
 ;                                                                      
@@ -4126,6 +4307,7 @@ function progressV2(plan        , answers            , todayISO        )        
   adjustToday: adjustTodayV2,
   assessReadiness,
   progress: progressV2,
+  predict: predictV2,
   version: "v2-sprint4",
 };
 

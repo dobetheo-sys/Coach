@@ -28,6 +28,7 @@ const ORDER = [
   "src/generator/weekBuilder.ts",
   "src/generator/planGenerator.ts",
   "src/generator/repairLoop.ts",
+  "src/engine/predictor.ts",
   "src/readiness/readinessSource.ts",
   "src/readiness/dailyAdjuster.ts",
   "src/app/bridge.ts",
@@ -70,6 +71,8 @@ if (!adj.adjustment || !adj.adjustment.verdict) throw new Error("bundle invalide
 const pg = EBV2.progress(plan, answers, today);
 if (typeof pg.pctLoad !== "number" || pg.totalWeeks !== 16 || pg.streakWeeks !== 0 || pg.totalMin <= 0)
   throw new Error("bundle invalide : progress cassé");
+const pred = EBV2.predict("run", answers, plan);
+if (!pred.items.length || !/–/.test(pred.items[0].value)) throw new Error("bundle invalide : predict cassé");
 console.log("auto-test bundle : plan 16 semaines, score " + plan._v2.score + ", adaptation « " + adj.adjustment.verdict.level + " » OK");
 
 // ---- Injection entre marqueurs, après le </script> principal ----

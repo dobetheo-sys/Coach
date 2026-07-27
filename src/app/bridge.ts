@@ -8,6 +8,7 @@ import { intensitySplit } from "../engine/loadModel.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
+import { predictRace, type Prediction } from "../engine/predictor.ts";
 import { assessReadiness, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 
 interface AppAnswers extends Record<string, unknown> {
@@ -112,13 +113,13 @@ export interface ProgressReport {
   weekNow: number;
   totalWeeks: number;
   streakWeeks: number;
-  weekly: { num: number; done: number; total: number; ok: boolean }[];
+  weekly: { num: number; done: number; total: number; ok: boolean; complete: boolean; minDone: number; minTotal: number }[];
 }
 export function progressV2(plan: V1Plan, answers: AppAnswers, todayISO: string): ProgressReport {
   const done = (answers.done || {}) as Record<string, boolean>;
   let totalMin = 0, doneMin = 0;
   const weekly = plan.weeks.map((w) => {
-    let t = 0, dn = 0, complete = true;
+    let t = 0, dn = 0, complete = true, wDone = 0, wTotal = 0;
     for (const d of w.days) {
       const dd = (d as { date?: string }).date || "";
       if (!dd || dd >= todayISO) complete = false;
@@ -126,13 +127,15 @@ export function progressV2(plan: V1Plan, answers: AppAnswers, todayISO: string):
         if (s.d === "rs") return;
         t++;
         totalMin += s.min || 0;
+        wTotal += s.min || 0;
         if (done[w.num + "|" + d.jour + "|" + si]) {
           dn++;
           doneMin += s.min || 0;
+          wDone += s.min || 0;
         }
       });
     }
-    return { num: w.num, done: dn, total: t, ok: t > 0 && dn / t >= 0.8, complete };
+    return { num: w.num, done: dn, total: t, ok: t > 0 && dn / t >= 0.8, complete, minDone: Math.round(wDone), minTotal: Math.round(wTotal) };
   });
   const completeWeeks = weekly.filter((w) => w.complete);
   let streakWeeks = 0;
@@ -147,8 +150,26 @@ export function progressV2(plan: V1Plan, answers: AppAnswers, todayISO: string):
     weekNow: Math.min(plan.totalWeeks, completeWeeks.length + 1),
     totalWeeks: plan.totalWeeks,
     streakWeeks,
-    weekly: weekly.map(({ num, done: dn, total, ok }) => ({ num, done: dn, total, ok })),
+    weekly,
   };
+}
+
+/** Prédiction de course — refs athlète + fiabilité issue du suivi réel (streak/charge). */
+export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { _v2?: V2PlanMeta }): Prediction {
+  const { reasoned, plan: p } = plan ? { reasoned: null, plan } : generatePlan(toProfile(sport, answers));
+  const refs = reasoned
+    ? reasoned.baseRefs
+    : { ftp: parseInt(String(answers.ftp || "")) || 0, thrPace: 0, css: 0 };
+  // Sans reasoned (plan fourni par l'UI), reconstruire les refs depuis les réponses
+  const parse = (v: unknown) => { const m = String(v || "").trim().split(/[:h.]/); return m.length === 2 ? parseInt(m[0]) * 60 + parseInt(m[1]) : 0; };
+  const finalRefs = reasoned ? refs : {
+    ftp: answers.ftp_known === "oui" ? parseInt(String(answers.ftp || "")) || 0 : 0,
+    thrPace: answers.pace_known === "oui" ? parse(answers.pace) : 0,
+    css: answers.css_known === "oui" ? parse(answers.css) : 0,
+  };
+  const today = new Date().toISOString().slice(0, 10);
+  const pg = progressV2(p, answers, today);
+  return predictRace(sport, String(answers.format || ""), String(answers.intent || "") || undefined, finalRefs, { pctLoad: pg.pctLoad, streakWeeks: pg.streakWeeks });
 }
 
 declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
@@ -157,5 +178,6 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   adjustToday: adjustTodayV2,
   assessReadiness,
   progress: progressV2,
+  predict: predictV2,
   version: "v2-sprint4",
 };
