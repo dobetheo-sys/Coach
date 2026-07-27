@@ -89,7 +89,7 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
     const rn = bodies.find((b) => b.leg === "run")!;
     seg.push(
       bk.durationMin + "min vélo @ " + fmtInt(bk.zone as string, refs, hz) +
-        ", échauffement progressif inclus, puis transition rapide + " + rn.durationMin + "min CAP" +
+        ", dernier tiers @ allure course, échauffement progressif inclus, puis transition rapide + " + rn.durationMin + "min CAP" +
         (s.runInj ? " souple, surface souple" : " @ allure cible")
     );
   } else {

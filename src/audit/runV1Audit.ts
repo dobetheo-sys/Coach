@@ -68,6 +68,7 @@ interface ComboResult {
   beginnerLongRunOver3h: number;
   smallSwims: number;
   unexplainedSessions: number;
+  easyShare: number;
   estimatorGapMed: number | null;
   recupHeavier: number;
   adjacentHard: number;
@@ -133,6 +134,7 @@ for (const sport of Object.keys(v1.SPORTS)) {
             beginnerLongRunOver3h: audit.beginnerLongRunOver3h,
             smallSwims: audit.smallSwims,
             unexplainedSessions: audit.unexplainedSessions,
+            easyShare: audit.easyShare,
             estimatorGapMed: audit.estimatorGapMed,
             recupHeavier: audit.recupHeavierCount,
             adjacentHard: audit.adjacentHardDays,
@@ -210,6 +212,7 @@ md += "- Deux longues CAP consécutives : **" + results.filter((r) => r.consecut
 md += "- Sortie longue CAP >3h pour un débutant : **" + results.filter((r) => r.beginnerLongRunOver3h > 0).length + "** en échec\n";
 md += "- Séance piscine <750m pour un non-débutant : **" + results.filter((r) => r.smallSwims > 0).length + "** en échec\n";
 md += "- Séance sans objectif expliqué (Pourquoi/Bénéfice) : **" + results.filter((r) => r.unexplainedSessions > 0).length + "** en échec\n";
+md += "- Répartition des intensités : part facile <70% : **" + results.filter((r) => r.easyShare < 0.7).length + "** en échec (médiane " + (results.map((r) => r.easyShare).sort((a, b) => a - b)[Math.floor(results.length / 2)] * 100).toFixed(0) + "% de temps facile)\n";
 const gapsAll = results.map((r) => r.estimatorGapMed ?? 0).sort((a, b) => a - b);
 md += "\nRecoupement d'estimateurs : écart médian |nos minutes − s.min du générateur| par plan, médiane globale " +
   quantile(gapsAll, 0.5).toFixed(1) + "min (l'écart attendu vient de la récup inter-blocs, que le générateur ne compte pas).\n";

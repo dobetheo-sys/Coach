@@ -25,6 +25,7 @@ export interface V1Step {
   leg?: "bike" | "run"; // brick
   d?: string; // discipline du step (nage dans tri, CAP du brick…)
   bnd?: { floor: number; cap: number };
+  repCap?: number; // V2.2 — plafond de répétitions d'un bloc de qualité (le scaling ne le dépasse jamais)
   _min?: number;
 }
 

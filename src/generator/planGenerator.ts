@@ -58,16 +58,20 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
   function scaleBlock(b: V1Step, f: number, s: BoundedSession): void {
     if (b.role !== "body") return;
     const bd = blockBounds(b, s);
+    // V2.2 — répartition des intensités : un bloc de QUALITÉ ne dépasse jamais son gabarit
+    // (repCap). Sans lui, R3.3 déversait l'excédent de volume dans les intervalles
+    // (VO2 4-6×4min devenu 15×4min) au lieu des séances faciles — zone grise garantie.
+    const repMax = Math.min(15, b.repCap || 15);
     if (b.distanceM != null) {
       if ((b.reps || 1) > 1) {
         const tot = (b.reps || 1) * b.distanceM * f;
-        b.reps = Math.max(1, Math.min(15, Math.round(tot / b.distanceM)));
+        b.reps = Math.max(1, Math.min(repMax, Math.round(tot / b.distanceM)));
       } else b.distanceM = Math.max(bd.floor, Math.min(bd.cap, Math.round((b.distanceM * f) / 25) * 25));
     } else if (b.durationMin != null) {
       if ((b.reps || 1) > 1) {
         const tot = (b.reps || 1) * b.durationMin * f;
         b.durationMin = Math.max(bd.floor, Math.min(bd.cap, b.durationMin));
-        b.reps = Math.max(1, Math.min(15, Math.round(tot / b.durationMin)));
+        b.reps = Math.max(1, Math.min(repMax, Math.round(tot / b.durationMin)));
       } else b.durationMin = Math.max(bd.floor, Math.min(bd.cap, Math.round(b.durationMin * f)));
     }
     // C15 — protection débutant nage : aucune séance >850m, tous blocs confondus

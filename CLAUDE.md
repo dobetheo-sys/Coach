@@ -84,7 +84,8 @@ avoir un effet — sinon la documenter comme UI pure.
 ## État courant
 
 Audit **100% vert** : 486/486 combinaisons, 0 violation dure, 0 semaine hors bande [0.5, 1.4],
-0 alerte, score minimum 90. Couverture structurée 100%, promesses calibrées (C20/C22),
+0 alerte, **répartition des intensités mécanisée** (~80/20 : part facile ≥70%, médiane 83% —
+repCap V2.2 + brick Z2 + C18b). Couverture structurée 100%, promesses calibrées (C20/C22),
 affûtage garanti ≥40% de réduction (R3.13), règles du manifeste mécanisées. Seul signal
 résiduel documenté : l'écart de métrique récup inter-blocs (voir `ARCHITECTURE.md`) — ce
 n'est pas un défaut, ne pas le « corriger ».

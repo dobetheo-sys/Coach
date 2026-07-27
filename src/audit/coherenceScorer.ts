@@ -11,7 +11,7 @@
  * - part de la séance longue > 45-55% de la semaine → alerte
  */
 import type { V1Plan, V1Week } from "../harness/v1Harness.ts";
-import { sessionLoad, DEFAULT_REFS, type AthleteRefs, type SessionLoad } from "../engine/loadModel.ts";
+import { sessionLoad, intensitySplit, DEFAULT_REFS, type AthleteRefs, type SessionLoad } from "../engine/loadModel.ts";
 
 /** Plafonds brick vélo (audit 2, spec utilisateur) : "jamais dépassés, même de peu". */
 const BRICK_BIKE_BOUNDS: Record<string, [number, number]> = {
@@ -67,6 +67,7 @@ export interface PlanAudit {
   beginnerLongRunOver3h: number; // sortie longue CAP >3h pour un débutant — interdit
   smallSwims: number; // séance piscine <750m pour un non-débutant — interdit
   unexplainedSessions: number; // séance sans objectif expliqué (note/💡) — interdit
+  easyShare: number; // part du temps FACILE sur les semaines de charge — manifeste « répartition des intensités » (~80/20)
   estimatorGapMed: number | null; // |nos minutes − s.min| médian (sessions avec s.min)
   nominalSessionsTotal: number;
   coverage: number; // part des minutes prescrites issues d'un parsing fiable (full + rest)
@@ -271,6 +272,20 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   if (smallSwims > 0) hard.push(smallSwims + " séance(s) piscine <750m pour un non-débutant (manifeste)");
   if (unexplainedSessions > 0) hard.push(unexplainedSessions + " séance(s) sans objectif expliqué (manifeste)");
 
+  // ---- Manifeste : répartition des intensités (~80/20). Part FACILE du temps sur les
+  // ---- semaines de charge : <70% = zone grise installée (dur), 70-73% = borderline (souple).
+  let easyTot = 0, modTot = 0, hardTot = 0;
+  for (const w of plan.weeks) {
+    if (w.isRecup || w.phase.id === "taper") continue;
+    for (const d of w.days)
+      for (const s of d.sessions) {
+        const sp = intensitySplit(s, refs);
+        easyTot += sp.easyMin; modTot += sp.modMin; hardTot += sp.hardMin;
+      }
+  }
+  const easyShare = easyTot + modTot + hardTot > 0 ? easyTot / (easyTot + modTot + hardTot) : 1;
+  if (easyShare < 0.7) hard.push("répartition des intensités : " + Math.round(easyShare * 100) + "% de temps facile (<70% — zone grise, manifeste ~80/20)");
+
   // ---- Cohérence : une nage FACILE/RÉCUP ne dépasse jamais la « longue » de sa semaine
   // (une « Récup eau » de 2150m n'est pas une récup). Les séances de qualité (jours durs)
   // peuvent légitimement totaliser plus de mètres qu'une longue continue — exemptées.
@@ -324,6 +339,8 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
 
   score -= Math.min(20, adjacentHardDays * 10);
   score -= Math.min(10, recupHeavier * 5);
+  if (easyShare < 0.7) score -= 15;
+  else if (easyShare < 0.73) score -= 5;
   if (taperVsPeak !== null && taperVsPeak > 0.6) score -= 20;
   if (vo2InTaper > 0) score -= 15;
   if (brickCapViolations > 0) score -= 15;
@@ -356,6 +373,7 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
     beginnerLongRunOver3h,
     smallSwims,
     unexplainedSessions,
+    easyShare,
     estimatorGapMed: gaps.length > 0 ? gaps.sort((a, b) => a - b)[Math.floor(gaps.length / 2)] : null,
     nominalSessionsTotal: nominalTotal,
     coverage: totalPrescribed > 0 ? totalFull / totalPrescribed : 0,

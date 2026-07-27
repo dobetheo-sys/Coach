@@ -30,7 +30,7 @@ function baseProfile(): Omit<AthleteProfile, "sport" | "format"> {
 interface Row {
   sport: string; format: string; history: string; level: string; intent: string;
   score: number; peakRatio: number; peakDeclaredH: number; peakPrescribedH: number;
-  longShare: number; taperVsPeak: number | null; weeksOver: number; weeksUnder: number;
+  longShare: number; taperVsPeak: number | null; weeksOver: number; weeksUnder: number; easyShare: number;
   repairs: number; warnings: string[]; hardViolations: string[];
 }
 
@@ -58,7 +58,7 @@ for (const sport of Object.keys(SPORTS) as Sport[]) {
               sport, format, history, level, intent,
               score: a.score, peakRatio: a.peak.ratio, peakDeclaredH: a.peak.declaredMin / 60,
               peakPrescribedH: a.peak.prescribedMin / 60, longShare: a.peak.longShare,
-              taperVsPeak: a.taperVsPeak, weeksOver: a.weeksOver, weeksUnder: a.weeksUnder,
+              taperVsPeak: a.taperVsPeak, weeksOver: a.weeksOver, weeksUnder: a.weeksUnder, easyShare: a.easyShare,
               repairs: res.repairs.length, warnings: res.warnings, hardViolations: a.hardViolations,
             });
             if (!sampleDecisions && sport === "tri" && format === "70.3" && history === "confirme" && level === "inter" && intent === "competition") {
@@ -77,8 +77,8 @@ for (const sport of Object.keys(SPORTS) as Sport[]) {
 // ---------- Rapport ----------
 let md = "# Audit V2 (Sprint 1) — moteur de raisonnement + générateur\n\n";
 md += "Généré par `npm run audit:v2`. " + rows.length + " combinaisons via le moteur V2, scorées par l'auditeur inchangé. " + errors + " erreur(s).\n\n";
-md += "| Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Réparations | Score moyen |\n";
-md += "|---|---|---|---|---|---|---|---|---|---|---|\n";
+md += "| Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score moyen |\n";
+md += "|---|---|---|---|---|---|---|---|---|---|---|---|\n";
 const bySport = new Map<string, Row[]>();
 for (const r of rows) (bySport.get(r.sport) ?? bySport.set(r.sport, []).get(r.sport)!).push(r);
 for (const [sport, rs] of bySport) {
@@ -91,6 +91,7 @@ for (const [sport, rs] of bySport) {
     " | " + rs.reduce((s, r) => s + r.weeksOver + r.weeksUnder, 0) +
     " | " + q(rs.map((r) => r.taperVsPeak ?? 0), 0.5).toFixed(2) +
     " | " + rs.filter((r) => r.longShare > THRESHOLDS.longShareAlert).length +
+    " | " + pct(q(rs.map((r) => r.easyShare), 0.5)) +
     " | " + rs.reduce((s, r) => s + r.repairs, 0) +
     " | " + (rs.reduce((s, r) => s + r.score, 0) / rs.length).toFixed(0) + " |\n";
 }

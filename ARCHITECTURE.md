@@ -77,6 +77,9 @@ Les invariants sont marqués dans le code par leur identifiant. Ceux actuellemen
 | C22 | Progression lissée : jamais +10% entre semaines de charge (courbe déclarée) |
 | C23 | Sortie longue CAP ≤3h pour un débutant |
 | C24 | Piscine ≥750m par séance pour un non-débutant (plancher blocs distance 750) |
+| C18b | Un seul « VO2max course » garanti par semaine de peak tri (le second créneau reste footing) |
+| V2.1 | Sonde de capacité : la promesse déclarée suit ce que les plafonds de séance permettent |
+| V2.2 | `repCap` : un bloc de qualité ne dépasse jamais son gabarit — l'excédent de volume va aux séances faciles, pas en zone grise |
 
 La liste n'est pas exhaustive (certains C1–C14 vivent seulement dans le code) : en cas de
 doute, chercher `// C` et `// R3.` dans `Coach_Pro_V1.5.html`.
@@ -106,7 +109,8 @@ son objectif (`note`/💡) ; une nage facile/récup ne dépasse jamais la longue
 
 Garde-fous structurels : jamais deux jours durs adjacents ; semaine de récup jamais plus
 chargée que la précédente ; ratio prescrit/déclaré par semaine dans [0.5, 1.4] ; part du plus
-gros jour ≤55% de la semaine.
+gros jour ≤55% de la semaine. **Répartition des intensités** (manifeste ~80/20) : part du
+temps FACILE des semaines de charge ≥70% (dur), 70-73% toléré (souple) — médiane mesurée 83%.
 
 ### L'écart de métrique, documenté une fois pour toutes
 

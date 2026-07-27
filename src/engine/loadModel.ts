@@ -227,6 +227,48 @@ export function sessionLoad(s: RawSession, refs: AthleteRefs = DEFAULT_REFS): Se
   return sessionLoadFromText(s);
 }
 
+/** Répartition d'intensité d'une séance (manifeste : « répartition des intensités »).
+ * Facile = échauffement/retour au calme/récup inter-blocs/zones easy-rec-z2 ;
+ * modéré = tempo/sweetspot/race-pace/force/mara ; dur = vo2/seuil/vitesse/css + legs de brick. */
+export interface IntensitySplit {
+  easyMin: number;
+  modMin: number;
+  hardMin: number;
+}
+const HARD_SUFFIX = [".vo2", ".thr", ".speed", ".css"];
+const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
+export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS): IntensitySplit {
+  const out: IntensitySplit = { easyMin: 0, modMin: 0, hardMin: 0 };
+  if (!s.steps || !s.steps.length || s.d === "rs") {
+    out.easyMin = sessionLoad(s, refs).minutes; // texte/repos : compté facile (prudence)
+    return out;
+  }
+  for (const st of s.steps) {
+    const reps = st.reps || 1;
+    const stMin = st.durationMin
+      ? reps * st.durationMin
+      : st.distanceM
+        ? ((st.d || s.d) === "sw" ? (reps * st.distanceM * refs.cssSecPer100m) / 100 / 60 : (reps * st.distanceM * refs.thrPaceSecPerKm) / 1000 / 60)
+        : 0;
+    if (st.role !== "body") {
+      out.easyMin += stMin;
+      continue;
+    }
+    const zone = typeof st.zone === "string" ? st.zone : "";
+    // Brick : legs classés par leur zone (bk.rp = modéré) ; le leg CAP « allure cible » = modéré.
+    const cls = HARD_SUFFIX.some((z) => zone.endsWith(z))
+      ? "hard"
+      : MOD_SUFFIX.some((z) => zone.endsWith(z)) || st.leg === "run"
+        ? "mod"
+        : "easy";
+    if (cls === "hard") out.hardMin += stMin;
+    else if (cls === "mod") out.modMin += stMin;
+    else out.easyMin += stMin;
+    if (reps > 1) out.easyMin += recoveryMinFromText(st.recoveryText) * (reps - 1); // la récup est facile
+  }
+  return out;
+}
+
 /** Chemin texte historique (endurabuild-3, et recoupement) : minutes prescrites + traçabilité. */
 export function sessionLoadFromText(s: RawSession): SessionLoad {
   const flags: string[] = [];

@@ -122,6 +122,19 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     }
   });
 
+  // C18b — un seul « VO2max course » par semaine de peak : le second créneau facileR
+  // redevient footing (sinon 4 jours durs et une semaine de peak plus légère que la spec).
+  if (a.sport === "tri") {
+    for (let w = 1; w <= r.weeks; w++) {
+      const vo2Days = days.filter((d) => d.week === w && d.sessions.some((x) => x.name === "VO2max course"));
+      for (let i = 1; i < vo2Days.length; i++) {
+        const d = vo2Days[i];
+        d.sessions = buildSessions(ctx, "facileR", "spec", d.prog || 0);
+        for (const x of d.sessions) if (x.steps && x.steps.length) renderSess(x, refs, hz, r.baseRefs);
+      }
+    }
+  }
+
   applyRunImpactCap(r, days, refs, hz);
   applySessionBudget(r, days);
   applyStrengthGrafts(r, days);
