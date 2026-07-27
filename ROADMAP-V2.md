@@ -416,8 +416,10 @@ Décisions actées lors de la revue, intégrées en place ci-dessus :
 
 ## 🎓 Prochaines étapes
 1. ~~Valider cette architecture avec Claude Code~~ ✅ Revue faite, amendements intégrés
-2. **Commencer par Sprint 0** (auditeur + loadModel contre la V1)
-3. Sprint 1 (moteur + générateur avec boucle de réparation)
+2. ~~Sprint 0 (auditeur + loadModel contre la V1)~~ ✅ `npm run audit:v1` — spec exécutable, 486/486 vert
+3. ~~Sprint 1 (moteur + générateur avec boucle de réparation)~~ ✅ `npm run audit:v2` —
+   `TrainingReasoningEngine` + matrice de contraintes + générateur V1Plan-compatible,
+   sonde de capacité V2.1, réparation ciblée démontrée (`npm run demo:repair`)
 4. Tester avec profil athlète réel
 5. Itérer rapidement sur feedback utilisateur
-6. Ajouter la source readiness (manuel d'abord, Garmin si accès accordé)
+6. Sprint 2 : source readiness enfichable (manuel d'abord, Garmin si accès accordé)

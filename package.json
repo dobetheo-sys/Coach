@@ -5,7 +5,9 @@
   "type": "module",
   "description": "EnduraBuild V2 — moteur de plans d'entraînement (Sprint 0 : auditeur de cohérence + modèle de charge, exécutés contre la V1)",
   "scripts": {
-    "audit:v1": "node src/audit/runV1Audit.ts"
+    "audit:v1": "node src/audit/runV1Audit.ts",
+    "audit:v2": "node src/audit/runV2Audit.ts",
+    "demo:repair": "node src/audit/repairDemo.ts"
   },
   "engines": {
     "node": ">=22.18"

@@ -34,6 +34,9 @@ dépôt — historique git si besoin.
 - `npm run audit:v1` — audite les 486 combinaisons contre `Coach_Pro_V1.5.html`, écrit
   `audit-results/v1-audit.{json,md}`, **exit 1 à la moindre violation dure**. Zéro dépendance
   à installer (Node ≥22.18 exécute le TypeScript nativement). La CI l'exécute sur chaque push.
+- `npm run audit:v2` — mêmes 486 profils à travers le **moteur V2** (Sprint 1 :
+  raisonnement + génération + réparation), même auditeur, + comparatif V1.5 ↔ V2.
+- `npm run demo:repair` — preuve exécutable des garanties de la boucle de réparation.
 
 **Règle de travail n°1 : après toute modification du générateur, relancer l'audit et le
 laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont listées dans
@@ -81,5 +84,9 @@ affûtage garanti ≥40% de réduction (R3.13), règles du manifeste mécanisée
 résiduel documenté : l'écart de métrique récup inter-blocs (voir `ARCHITECTURE.md`) — ce
 n'est pas un défaut, ne pas le « corriger ».
 
-Prochaine grande étape : Sprint 1 de `ROADMAP-V2.md` (moteur de raisonnement + matrice de
-contraintes important le registre des règles).
+**Sprint 1 V2 : FAIT.** Le moteur de raisonnement (`src/engine/`) et le générateur V2
+(`src/generator/`) produisent les 486 plans à 0 violation dure via `npm run audit:v2`,
+avec sonde de capacité (V2.1 — la promesse suit ce que les plafonds permettent : nage
+V1.5 0.77 méd → 1.15 en V2) et boucle de réparation ciblée démontrée (`npm run demo:repair`).
+Prochaine grande étape : Sprint 2 de `ROADMAP-V2.md` (adaptation readiness quotidienne,
+source enfichable), puis brancher l'UI sur le moteur V2.

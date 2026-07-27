@@ -14,7 +14,10 @@ jobs:
         with:
           node-version: "22"
       # Zéro dépendance : Node 22 exécute le TypeScript nativement (type stripping).
-      # Le run échoue si une des 486 combinaisons a une violation dure
-      # (règles d'acceptation « audit 2 » : affûtage ≥40%, zéro VO2 en affûtage,
-      # bornes brick, pic en phase peak, séances chiffrées, récup/adjacence).
+      # Chaque run échoue si une des 486 combinaisons a une violation dure
+      # (règles « audit 2 » + manifeste note.md). v1 = produit Coach_Pro_V1.5.html ;
+      # v2 = moteur de raisonnement Sprint 1 ; demo:repair = garanties de la boucle
+      # de réparation (ciblée + meilleur-plan-avec-avertissements).
       - run: npm run audit:v1
+      - run: npm run audit:v2
+      - run: npm run demo:repair

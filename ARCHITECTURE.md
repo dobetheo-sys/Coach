@@ -129,9 +129,24 @@ ne pas « corriger » l'un pour l'autre.
 - **Après toute modification du générateur** : `npm run audit:v1` doit rester vert ; la CI
   refuse le rouge.
 
-## V2
+## Moteur V2 (Sprint 1) — raisonner → générer → auditer → réparer
 
-`ROADMAP-V2.md` décrit la cible (moteur raisonne → génère → audite → adapte, matrice de
-contraintes, readiness enfichable, réparation ciblée). Sprint 0 (auditeur + modèle de charge)
-est fait — c'est le code de `src/`. L'étape suivante est le Sprint 1 : `TrainingReasoningEngine`
-et matrice de contraintes important les caps validés V1.5 (le registre ci-dessus).
+Le moteur V2 vit dans `src/engine/` + `src/generator/`, en TypeScript modulaire zéro-dépendance.
+**Contrat de compatibilité** : il émet des plans à la forme V1Plan exacte, validés par
+l'auditeur INCHANGÉ (`npm run audit:v2` — mêmes 486 profils, mêmes règles, 0 violation dure).
+
+| Module | Rôle |
+|---|---|
+| `engine/types.ts` | Profil athlète typé (miroir S.answers), `Decision {id,what,val,why}`, ré-export du contrat V1Plan |
+| `engine/constraintMatrix.ts` | Le savoir V1.5 en DONNÉES avec provenance (caps, bandes, C15–C24, interdits du manifeste) |
+| `engine/reasoningEngine.ts` | `TrainingReasoningEngine.analyze(profil)` → décisions journalisées + paramètres du plan (durée, phases C19, pic, budget, courbe C22) |
+| `generator/sessionLibrary.ts` | Les gabarits de séances (port de `sess()`) : steps structurés, notes systématiques, bornes sourcées de la matrice |
+| `generator/renderer.ts` | `renderSess`/`stepMin`/ZDEF — même texte français que le produit, C13 |
+| `generator/weekBuilder.ts` | Schémas 7j/10j, redistribution sans adjacence, fix peak « reprise », neutralisation médicale, plafond d'impact course, budget de séances, greffes renfo, anti-collage, polarisation |
+| `generator/planGenerator.ts` | Pipeline : courbe (bands+C22) → scaling R3.3 borné → garde C3 → plancher C24 de séance → R3.13 → assemblage V1Plan. **V2.1 : sonde de capacité** — le moteur génère la semaine pic, mesure ce que les plafonds permettent réellement, et abaisse sa promesse si besoin (corrige l'écart V1.5 nage : 6.3h déclarées / 3.6h livrables → ratios ~1.15 en V2) |
+| `generator/repairLoop.ts` | `generateAudited()` : génère → audite → **réparations ciblées** (jamais de régénération aveugle — un générateur déterministe rebouclerait à l'identique), ≤3 itérations, sinon **meilleur plan + avertissements explicites** |
+| `audit/runV2Audit.ts` | Fuzz 486 combos du moteur V2 + tableau comparatif V1.5 ↔ V2 + journal de décisions d'un profil exemple → `audit-results/v2-audit.{json,md}` |
+| `audit/repairDemo.ts` | Preuve exécutable des deux garanties de la boucle (sabotage → réparation convergente ; irréparable → avertissements) — `npm run demo:repair`, en CI |
+
+Étapes suivantes : Sprint 2 de `ROADMAP-V2.md` (adaptation readiness quotidienne, source
+enfichable : saisie manuelle → FIT → Garmin si accès), puis brancher l'UI sur le moteur V2.
