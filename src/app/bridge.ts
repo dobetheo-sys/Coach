@@ -154,6 +154,33 @@ export function progressV2(plan: V1Plan, answers: AppAnswers, todayISO: string):
   };
 }
 
+/** Badges — célébrations au service de la régularité (jamais de culpabilisation :
+ *  un badge se gagne, il ne se perd pas ; aucun badge « raté » n'est affiché). */
+export interface Badge { id: string; icon: string; label: string; why: string }
+export function badgesV2(plan: V1Plan, answers: AppAnswers, todayISO: string): Badge[] {
+  const pg = progressV2(plan, answers, todayISO);
+  const out: Badge[] = [];
+  const cw = pg.weekly.filter((w) => w.complete);
+  if (cw.some((w) => w.ok)) out.push({ id: "premiere", icon: "🏁", label: "Première semaine régulière", why: "≥80% des séances faites sur une semaine complète" });
+  if (pg.streakWeeks >= 3) out.push({ id: "streak3", icon: "🔥", label: pg.streakWeeks + " semaines d'affilée", why: "La régularité est ta priorité n°3 — c'est elle qui fait progresser" });
+  if (pg.streakWeeks >= 6) out.push({ id: "streak6", icon: "🏆", label: "6+ semaines : métronome", why: "La constance sur la durée, la marque des athlètes qui arrivent au départ en forme" });
+  const base = plan.phases?.find((p) => p.id === "base");
+  if (base && base.weeks > 0 && cw.filter((w) => w.num <= base.end).length >= base.weeks && cw.filter((w) => w.num <= base.end).every((w) => w.ok))
+    out.push({ id: "bloc-base", icon: "🧱", label: "Bloc de base terminé", why: "Les fondations aérobies sont posées — tout le reste s'appuie dessus" });
+  if (pg.pctLoad >= 50) out.push({ id: "mi-parcours", icon: "⛰", label: "Mi-parcours de charge", why: "Plus de la moitié de la charge du plan est derrière toi" });
+  if (cw.length >= 2) {
+    const last = cw[cw.length - 1];
+    if (last.minDone > 0 && last.minDone > Math.max(...cw.slice(0, -1).map((w) => w.minDone))) out.push({ id: "record", icon: "📈", label: "Record de volume", why: "Ta plus grosse semaine réellement faite — construit, pas subie" });
+  }
+  for (const [i, w] of plan.weeks.entries()) {
+    if (w.isRecup && pg.weekly[i]?.complete && pg.weekly[i]?.ok) {
+      out.push({ id: "recup", icon: "😴", label: "Récup respectée", why: "La récupération EST un entraînement — la faire en entier demande plus de discipline que forcer" });
+      break;
+    }
+  }
+  return out;
+}
+
 /** Prédiction de course — refs athlète + fiabilité issue du suivi réel (streak/charge). */
 export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { _v2?: V2PlanMeta }): Prediction {
   const { reasoned, plan: p } = plan ? { reasoned: null, plan } : generatePlan(toProfile(sport, answers));
@@ -179,5 +206,6 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   assessReadiness,
   progress: progressV2,
   predict: predictV2,
+  badges: badgesV2,
   version: "v2-sprint4",
 };

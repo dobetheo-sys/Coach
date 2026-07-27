@@ -31,6 +31,13 @@ export interface ReadinessSnapshot {
   energy?: number; // 0-100 (équivalent Body Battery)
   feel?: Feel;
   completed?: CompletedSession[]; // séances réellement effectuées (7 derniers jours)
+  weather?: WeatherInfo; // prévision du jour (Open-Meteo côté app ; absent = pas d'effet)
+}
+
+/** Météo du jour — manifeste §6 : canicule → repos/intensité réduite, chaleur → tôt le matin, pluie → surface. */
+export interface WeatherInfo {
+  tmaxC?: number;
+  precipMm?: number;
 }
 
 export interface ReadinessSource {

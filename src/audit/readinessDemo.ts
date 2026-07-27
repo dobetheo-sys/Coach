@@ -134,6 +134,22 @@ const snap = (s: Omit<ReadinessSnapshot, "date">, date: string): ReadinessSnapsh
   check("  … sous-réalisation détectée → « on ne rattrape jamais »", res.adjustment.decisions.some((d) => d.id === "ADAPT-rattrapage"));
 }
 
+// ---- 9. Canicule (36°C) sur jour VO2 extérieur + signaux verts → verdict durci ----
+{
+  const { plan, reasoned } = freshPlan();
+  const date = dateOf(plan, (d, w) => !w.isRecup && d.sessions.some((s) => /VO2/i.test(s.name)));
+  const adj = adjustDay(reasoned, plan, date, snap({ sleepQuality: "bon", energy: 80, weather: { tmaxC: 36 } }, date));
+  check("canicule 36°C sur VO2 extérieur → verdict durci + consigne", adj.verdict.level === "orange" && adj.action === "reduce" && adj.decisions.some((d) => d.id === "ADAPT-canicule"), adj.verdict.level + "/" + adj.action);
+}
+
+// ---- 10. Pluie 8mm sur jour course + verte → séance gardée, consigne surface ----
+{
+  const { plan, reasoned } = freshPlan();
+  const date = dateOf(plan, (d) => d.charge === "facile" && d.sessions.some((s) => s.d === "rn"));
+  const adj = adjustDay(reasoned, plan, date, snap({ sleepQuality: "bon", energy: 80, weather: { tmaxC: 18, precipMm: 8 } }, date));
+  check("pluie 8mm → keep + consigne surface", adj.action === "keep" && adj.decisions.some((d) => d.id === "ADAPT-pluie"), adj.action);
+}
+
 // ---- Invariants globaux : sur 30 jours × 3 états, jamais plus de minutes hors verte ----
 {
   const { plan, reasoned } = freshPlan();

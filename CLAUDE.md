@@ -105,7 +105,9 @@ volume manqué), invariants de sécurité assertés par `npm run demo:readiness`
 carte « Forme du jour » (adaptation quotidienne), le dashboard « Répartition des
 intensités », la **prédiction de course** (fourchettes justifiées : Riegel/CSS/%FTP,
 resserrées si le plan est suivi), l'**historique prévu vs réel** par semaine, et la
-carte régularité/avancement (streak ≥80%, charge accomplie). **Boucle prévu/réel
+carte régularité/avancement (streak ≥80%, charge accomplie, badges gagnés-jamais-perdus).
+**Météo intégrée** (manifeste §6) : Open-Meteo sans clé côté client, dégradation propre —
+canicule ≥35°C durcit le verdict des séances extérieures, chaleur/pluie donnent des consignes. **Boucle prévu/réel
 fermée** : les séances cochées (✓) nourrissent le calcul de fatigue de l'ajusteur
 (`completedFromDone`) — même contrat qu'un futur import Strava.
 Voir ARCHITECTURE.md « Branchement UI ».

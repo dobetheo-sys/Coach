@@ -117,6 +117,23 @@ export function adjustDay(reasoned: ReasonedPlan, plan: V1Plan, date: string, sn
       D("ADAPT-rattrapage", "Volume manqué", Math.round(gap.doneMin) + "/" + Math.round(gap.plannedMin) + "min", "On ne rattrape JAMAIS le volume manqué : la semaine reprend comme prévu, sans compensation");
     }
   }
+  // Météo (manifeste §6) — la canicule durcit le verdict pour les séances en extérieur ;
+  // la chaleur et la pluie produisent des consignes, pas des interdictions.
+  const wx = snapshot.weather;
+  const outdoor = found ? found.day.sessions.some((s) => s.d === "rn" || s.d === "bk" || s.d === "br") : false;
+  if (wx?.tmaxC != null && found) {
+    if (wx.tmaxC >= 35 && outdoor) {
+      level = downgrade(level);
+      drivers.push("canicule prévue (" + Math.round(wx.tmaxC) + "°C)");
+      D("ADAPT-canicule", "Canicule", Math.round(wx.tmaxC) + "°C", "≥35°C : intensité réduite ou repos pour les séances extérieures — la piscine reste une excellente option aujourd'hui");
+    } else if (wx.tmaxC >= 30 && outdoor) {
+      drivers.push("forte chaleur (" + Math.round(wx.tmaxC) + "°C)");
+      D("ADAPT-chaleur", "Forte chaleur", Math.round(wx.tmaxC) + "°C", "Démarre tôt le matin, hydrate-toi, et réduis d'un cran si la dérive cardiaque monte");
+    }
+  }
+  if (wx?.precipMm != null && wx.precipMm >= 5 && found && found.day.sessions.some((s) => s.d === "rn")) {
+    D("ADAPT-pluie", "Pluie annoncée", Math.round(wx.precipMm) + "mm", "Surface glissante : évite piste peinte et racines, rallonge l'échauffement, foulée prudente");
+  }
   const verdict: ReadinessVerdict = { level, drivers };
 
   if (!found) {

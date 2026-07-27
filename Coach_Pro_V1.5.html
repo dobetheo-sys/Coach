@@ -1648,7 +1648,14 @@ function v2ExtrasHTML(plan){
         :'Coche tes s\u00e9ances (\u25cb \u2192 \u2713) : la r\u00e9gularit\u00e9 se construit semaine apr\u00e8s semaine, une s\u00e9ance loup\u00e9e est pardonn\u00e9e.')
       +'</div>'
       +'<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:14px;overflow:hidden"><div style="height:100%;width:'+pg.pctLoad+'%;background:#00a376"></div></div>'
-      +'<div class="load-sub" style="margin-top:4px">Semaine '+pg.weekNow+'/'+pg.totalWeeks+' \u00b7 <b>'+pg.pctLoad+'%</b> de la charge du plan accomplie ('+(Math.round(pg.doneMin/6)/10)+'h / '+(Math.round(pg.totalMin/6)/10)+'h)</div></div>';
+      +'<div class="load-sub" style="margin-top:4px">Semaine '+pg.weekNow+'/'+pg.totalWeeks+' \u00b7 <b>'+pg.pctLoad+'%</b> de la charge du plan accomplie ('+(Math.round(pg.doneMin/6)/10)+'h / '+(Math.round(pg.totalMin/6)/10)+'h)</div>';
+    if(globalThis.EBV2.badges){
+      const bd=globalThis.EBV2.badges(plan,S.answers,new Date().toISOString().slice(0,10));
+      if(bd.length){h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">';
+        bd.forEach(b=>{h+='<span title="'+b.why.replace(/"/g,"&quot;")+'" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:11px;background:#fff">'+b.icon+' '+b.label+'</span>';});
+        h+='</div>';}
+    }
+    h+='</div>';
   }
   if(globalThis.EBV2){
     const saved=(S.answers.readiness||{});
@@ -1708,15 +1715,27 @@ function v2ExtrasHTML(plan){
   }
   return h;
 }
-function applyReadiness(){
+// Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
+// pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
+function fetchWeather(){return new Promise(res=>{
+  if(!navigator.geolocation)return res(null);
+  const to=setTimeout(()=>res(null),3500);
+  navigator.geolocation.getCurrentPosition(pos=>{
+    fetch("https://api.open-meteo.com/v1/forecast?latitude="+pos.coords.latitude+"&longitude="+pos.coords.longitude+"&daily=temperature_2m_max,precipitation_sum&forecast_days=1&timezone=auto")
+      .then(r=>r.json()).then(j=>{clearTimeout(to);res({tmaxC:j.daily.temperature_2m_max[0],precipMm:j.daily.precipitation_sum[0]});})
+      .catch(()=>{clearTimeout(to);res(null);});
+  },()=>{clearTimeout(to);res(null);},{timeout:3000,maximumAge:600000});
+});}
+async function applyReadiness(){
   if(!globalThis.EBV2)return;
   const snap={date:new Date().toISOString().slice(0,10),
     sleepQuality:$("rdSleep").value,energy:parseInt($("rdEnergy").value),feel:$("rdFeel").value};
+  const wx=await fetchWeather();if(wx&&wx.tmaxC!=null)snap.weather=wx;
   S.answers.readiness={sleepQuality:snap.sleepQuality,energy:snap.energy,feel:snap.feel};ebSave();
   let res;try{res=globalThis.EBV2.adjustToday(S.sport,S.answers,snap);}catch(e){console.warn(e);return;}
   const v=res.adjustment.verdict,ic={verte:"\ud83d\udfe2",orange:"\ud83d\udfe0",rouge:"\ud83d\udd34"};
   const lbl={keep:"s\u00e9ance maintenue",reduce:"volume r\u00e9duit, structure conserv\u00e9e",replace:"qualit\u00e9 remplac\u00e9e par de l\u2019endurance",rest:"repos aujourd\u2019hui",off:"repos complet (aff\u00fbtage)"};
-  let h='<div class="why" style="margin:0">'+ic[v.level]+' <b>Readiness '+v.level+'</b> \u2014 '+lbl[res.adjustment.action]+'<br><span style="color:#555;font-size:12px">'+v.drivers.join(" \u00b7 ")+'</span></div>';
+  let h='<div class="why" style="margin:0">'+(snap.weather?'\ud83c\udf24 '+Math.round(snap.weather.tmaxC)+'\u00b0C pr\u00e9vus'+(snap.weather.precipMm>=5?' \u00b7 pluie':'')+'<br>':'')+ic[v.level]+' <b>Readiness '+v.level+'</b> \u2014 '+lbl[res.adjustment.action]+'<br><span style="color:#555;font-size:12px">'+v.drivers.join(" \u00b7 ")+'</span></div>';
   if(res.sessions.length)res.sessions.forEach(x=>{h+='<div style="font-size:12px;margin-top:6px"><b>'+(res.jour||"Aujourd\u2019hui")+' \u00b7 '+x.name+'</b><br>'+x.det+'</div>';});
   else h+='<div style="font-size:12px;margin-top:6px">Aucune s\u00e9ance planifi\u00e9e aujourd\u2019hui.</div>';
   $("rdResult").innerHTML=h;
@@ -3914,6 +3933,13 @@ function predictRace(
                                                      
               
                                                                                      
+                                                                                          
+ 
+
+/** Météo du jour — manifeste §6 : canicule → repos/intensité réduite, chaleur → tôt le matin, pluie → surface. */
+                              
+                 
+                    
  
 
                                   
@@ -4078,6 +4104,23 @@ function adjustDay(reasoned              , plan        , date        , snapshot 
     } else if (gap.ratio < 0.6) {
       D("ADAPT-rattrapage", "Volume manqué", Math.round(gap.doneMin) + "/" + Math.round(gap.plannedMin) + "min", "On ne rattrape JAMAIS le volume manqué : la semaine reprend comme prévu, sans compensation");
     }
+  }
+  // Météo (manifeste §6) — la canicule durcit le verdict pour les séances en extérieur ;
+  // la chaleur et la pluie produisent des consignes, pas des interdictions.
+  const wx = snapshot.weather;
+  const outdoor = found ? found.day.sessions.some((s) => s.d === "rn" || s.d === "bk" || s.d === "br") : false;
+  if (wx?.tmaxC != null && found) {
+    if (wx.tmaxC >= 35 && outdoor) {
+      level = downgrade(level);
+      drivers.push("canicule prévue (" + Math.round(wx.tmaxC) + "°C)");
+      D("ADAPT-canicule", "Canicule", Math.round(wx.tmaxC) + "°C", "≥35°C : intensité réduite ou repos pour les séances extérieures — la piscine reste une excellente option aujourd'hui");
+    } else if (wx.tmaxC >= 30 && outdoor) {
+      drivers.push("forte chaleur (" + Math.round(wx.tmaxC) + "°C)");
+      D("ADAPT-chaleur", "Forte chaleur", Math.round(wx.tmaxC) + "°C", "Démarre tôt le matin, hydrate-toi, et réduis d'un cran si la dérive cardiaque monte");
+    }
+  }
+  if (wx?.precipMm != null && wx.precipMm >= 5 && found && found.day.sessions.some((s) => s.d === "rn")) {
+    D("ADAPT-pluie", "Pluie annoncée", Math.round(wx.precipMm) + "mm", "Surface glissante : évite piste peinte et racines, rallonge l'échauffement, foulée prudente");
   }
   const verdict                   = { level, drivers };
 
@@ -4283,6 +4326,33 @@ function progressV2(plan        , answers            , todayISO        )        
   };
 }
 
+/** Badges — célébrations au service de la régularité (jamais de culpabilisation :
+ *  un badge se gagne, il ne se perd pas ; aucun badge « raté » n'est affiché). */
+                                                                               
+function badgesV2(plan        , answers            , todayISO        )          {
+  const pg = progressV2(plan, answers, todayISO);
+  const out          = [];
+  const cw = pg.weekly.filter((w) => w.complete);
+  if (cw.some((w) => w.ok)) out.push({ id: "premiere", icon: "🏁", label: "Première semaine régulière", why: "≥80% des séances faites sur une semaine complète" });
+  if (pg.streakWeeks >= 3) out.push({ id: "streak3", icon: "🔥", label: pg.streakWeeks + " semaines d'affilée", why: "La régularité est ta priorité n°3 — c'est elle qui fait progresser" });
+  if (pg.streakWeeks >= 6) out.push({ id: "streak6", icon: "🏆", label: "6+ semaines : métronome", why: "La constance sur la durée, la marque des athlètes qui arrivent au départ en forme" });
+  const base = plan.phases?.find((p) => p.id === "base");
+  if (base && base.weeks > 0 && cw.filter((w) => w.num <= base.end).length >= base.weeks && cw.filter((w) => w.num <= base.end).every((w) => w.ok))
+    out.push({ id: "bloc-base", icon: "🧱", label: "Bloc de base terminé", why: "Les fondations aérobies sont posées — tout le reste s'appuie dessus" });
+  if (pg.pctLoad >= 50) out.push({ id: "mi-parcours", icon: "⛰", label: "Mi-parcours de charge", why: "Plus de la moitié de la charge du plan est derrière toi" });
+  if (cw.length >= 2) {
+    const last = cw[cw.length - 1];
+    if (last.minDone > 0 && last.minDone > Math.max(...cw.slice(0, -1).map((w) => w.minDone))) out.push({ id: "record", icon: "📈", label: "Record de volume", why: "Ta plus grosse semaine réellement faite — construit, pas subie" });
+  }
+  for (const [i, w] of plan.weeks.entries()) {
+    if (w.isRecup && pg.weekly[i]?.complete && pg.weekly[i]?.ok) {
+      out.push({ id: "recup", icon: "😴", label: "Récup respectée", why: "La récupération EST un entraînement — la faire en entier demande plus de discipline que forcer" });
+      break;
+    }
+  }
+  return out;
+}
+
 /** Prédiction de course — refs athlète + fiabilité issue du suivi réel (streak/charge). */
 function predictV2(sport        , answers            , plan                                )             {
   const { reasoned, plan: p } = plan ? { reasoned: null, plan } : generatePlan(toProfile(sport, answers));
@@ -4308,6 +4378,7 @@ function predictV2(sport        , answers            , plan                     
   assessReadiness,
   progress: progressV2,
   predict: predictV2,
+  badges: badgesV2,
   version: "v2-sprint4",
 };
 
