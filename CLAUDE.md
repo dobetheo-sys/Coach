@@ -6,15 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Coach** (EnduraBuild) is a multisport training plan generator for triathlon, running, cycling, and swimming. It generates personalized training plans based on sport, event format, athlete level, and preparation duration.
 
-- **Type**: Single-file HTML/JavaScript application (~1100 lines)
-- **Primary File**: `endurabuild-3.html`
+- **Type**: Single-file HTML/JavaScript application (~1600 lines)
+- **Primary File**: `Coach_Pro_V1.5.html` — the current version. `endurabuild-3.html` is the legacy predecessor, kept for reference/diffing; do not develop on it.
 - **Language**: French (UI and code comments)
 - **Dependencies**: Google Fonts only (graceful degradation if unavailable)
-- **Deployment**: Fully self-contained, runs client-side in any modern browser
+- **Deployment**: Fully self-contained, runs client-side in any modern browser; state persisted in `localStorage` (`eb_state_v1`)
 
 A major V2 rewrite is planned — see [V2 Direction](#v2-direction-planned-rewrite) and `ROADMAP-V2.md`.
 
+## V1.5 Architecture (what changed vs the legacy file)
+
+V1.5 keeps the shared core described below (SPORTS config, `evalRules`, zone helpers, questionnaire flow) but reworks plan generation around **structured session steps** and **self-calibrating weekly volume**. Rule-ID comments (`R3.x`, `C1–C19`) mark invariants throughout — follow that convention when editing.
+
+- **Steps model (R3.2)**: sessions carry `steps: [{role: warmup|body|cooldown, durationMin|distanceM, reps, zone, recoveryText, bnd:{floor,cap}}]` built by helpers `W/Wm/B/Bd/C/Cm` in `sess()`. `renderSess()` is the *only* place text is produced; it also computes `s.min` (the generator's own duration estimate — note it excludes inter-block recovery time). No text reparsing anywhere.
+- **Volume curve pilots content (R3.3)**: normalized per-phase bands `{base:[0.50,0.68], dev:[0.68,0.92], spec:[0.94,1.0], peak:[1.0,1.0], taper:[0.55,0.30]}` × real peak hours give each week a target; an iterative pass (`scaleWeekBody`) scales body steps until the week's computed minutes match. Weeks store `vol_declared` (target) and `vol`/`vol_real` (computed). Floors/caps per block (`blockBounds`, R3.4b/R3.11/R3.12), beginner swim hard-capped at 850m/session (C15).
+- **Taper actually tapers**: the decreasing `taper` band shrinks content; **R3.13** additionally converts the lightest easy days to OFF when session floors (incompressible warm-ups/cool-downs, beginner caps) prevent the week from dropping below 55% of the real peak. **C19** guarantees ≥1 peak-phase week even on short plans (6-week 5k) where rounding used to produce an empty peak phase.
+- **Acceptance spec**: the repo file `audit 2` is the user's spec for V1.5 (taper ≥40% reduction, no VO2 in taper, brick bounds per format, max week in peak phase, every session quantified). These rules are mechanized in `src/audit/coherenceScorer.ts` and all pass on 486 combinations — keep them green.
+
 ## Architecture & Key Concepts
+
+> The flow, state object, SPORTS config, rule engine, and zone helpers below apply to both files. Session-building details (`struct()`, free-text `det`, the declared-volume formula) describe the **legacy** `endurabuild-3.html`; in V1.5 they are superseded by the steps model and R3.3 scaling described above.
 
 ### High-Level Flow
 
@@ -182,15 +193,16 @@ All validated by fuzzing 486 combinations (4 sports × formats × 3 historiques 
 
 ## Known Issues & TODO
 
-### V1 defects confirmed by the Sprint 0 audit (see `audit-results/`)
+### Current status (audit runs against `Coach_Pro_V1.5.html`)
 
-The "coach de charge" audit from note.md is **done** — run it with `npm run audit:v1` (486 combinations, ~100% parse coverage for run/bike). Confirmed defects, by severity:
+Run `npm run audit:v1` — 486 combinations, 100% structured coverage. All `audit 2` acceptance rules pass: **taper reduction ≥40% everywhere (0 failures), 0 VO2 in taper, 0 brick-bound violations, max week always in peak phase, 0 unquantified sessions, 0 adjacent hard days, 0 recovery weeks heavier than normal.** Peak ratios are tight (medians 1.05–1.13).
 
-1. **Taper is inoperative in 243/486 plans** — `sess()` never branches on the `taper` phase, so sessions stay full-size while declared volume drops (worst cases: 1.8h declared, ~7h prescribed in race week). Athletes would arrive fatigued on race day. Most serious finding; fix in V1 or cover in V2.
-2. **BIKE systematically over-prescribes** — median peak ratio 1.25, 33 peaks >1.4, 302 normal weeks out of band (all over). Worst: clm/reprise/debutant declares 5.9h, prescribes 10h.
-3. **SWIM under-prescribes** — median peak ratio 0.62, 20 peaks <0.5. The session library physically cannot fill the declared hours (fond/ancien: 10h declared → 3.9h prescribed).
-4. **90 combos have a recovery week heavier than the preceding week** (bike/swim) — the session-budget trim skips recovery weeks (`if(wd[0]?.isR)continue`).
-5. **Sessions with no prescribed volume** — tri easy runs ("@ pace", no minutes) and swim technique/recovery sessions (no meters): ~42 per tri plan. Counted at nominal values in the audit.
+Remaining known issue:
+- **Swim beginner under-prescription** (26 combos, all `level=debutant`): the R3.3 declared curve targets hours the C15 technique caps (850m/session) can never fill (e.g. 10h declared → ~2.3h prescribed). The *content* is correct — the *declared target* should be capped for beginners. Calibration work, not yet done.
+
+### Historical: defects found in legacy `endurabuild-3.html` (all resolved in V1.5)
+
+The Sprint 0 audit of the legacy file found: taper inoperative in 243/486 plans (no `taper` branch in `sess()`); bike over-prescribing (median peak ratio 1.25, 302 weeks out of band); swim under-prescribing (median 0.62); 90 recovery weeks heavier than normal weeks; ~42 unquantified sessions per tri plan. V1.5's steps model + R3.3 scaling fixed all of these; the last taper gaps (swim beginners, empty peak phase on 5k plans) were closed by R3.13 and C19.
 
 **Untreated Gisement**:
 - Triathlon swim doesn't use `durLong` progression — uses fixed 100m reps that never scale to race distance
@@ -247,12 +259,12 @@ The current `endurabuild-3.html` stays the working product during the transition
 
 ### Commands (V2 / Sprint 0)
 
-- `npm run audit:v1` — runs the coherence audit over all 486 V1 combinations; writes `audit-results/v1-audit.{json,md}` and prints the summary. No dependencies to install: Node ≥22.18 runs the TypeScript directly (native type stripping — keep the code to erasable syntax: no enums/namespaces, imports use explicit `.ts` extensions).
+- `npm run audit:v1` — runs the coherence audit over all 486 combinations against `Coach_Pro_V1.5.html`; writes `audit-results/v1-audit.{json,md}` and prints the summary. No dependencies to install: Node ≥22.18 runs the TypeScript directly (native type stripping — keep the code to erasable syntax: no enums/namespaces, imports use explicit `.ts` extensions). **Run this after any change to the generator and keep the acceptance rules at 0 failures.**
 
-Sprint 0 code layout (all TypeScript, `src/`):
-- `src/harness/v1Harness.ts` — loads the V1 engine from `endurabuild-3.html` into Node (script extraction by regex, `renderStep()` stripped, DOM stub, indirect eval with explicit export line — all the note.md pitfalls encoded)
-- `src/engine/loadModel.ts` — per-session prescribed-load quantification: sums N×M blocks + isolated minutes + warm-up/cool-down + inter-block recoveries; swim sums meters and converts via the `X'YY/100m` pace in the text. Never uses the isolated max. Reports parse confidence (`full`/`partial`/`nominal`/`rest`) per session.
-- `src/audit/coherenceScorer.ts` — bottom-up audit, independent of the generator: prescribed/declared ratio per week, long-session share, taper-vs-peak, recovery-heavier-than-normal, adjacent hard days; provisional /100 score with hard violations tracked separately.
+Audit code layout (all TypeScript, `src/`):
+- `src/harness/v1Harness.ts` — loads the engine from the HTML into Node (script extraction by regex; final init stripped — V1.5's localStorage-restore IIFE or the legacy bare `renderStep();`; DOM+localStorage stubs; indirect eval with explicit export line). Pass a path to `loadV1()` to audit the legacy file.
+- `src/engine/loadModel.ts` — per-session prescribed-load quantification, independent of the generator. V1.5 path: sums structured steps (duration×reps, distance via athlete pace refs) **plus inter-block recovery** (which the generator's own `s.min` excludes — expected estimator delta) and cross-checks against `s.min`. Legacy path: French text parsing (never the isolated max). Reports confidence per session.
+- `src/audit/coherenceScorer.ts` — bottom-up audit: prescribed/declared ratio per week (`vol_declared` is the promise), long-session share, the mechanized `audit 2` acceptance rules (taper ≥40% cut, no VO2 in taper, brick bounds, peak placement with 5% tolerance for metric noise), recovery/adjacency checks; hard violations tracked separately from the provisional /100 score.
 - `src/audit/runV1Audit.ts` — the 486-combination fuzz runner and report generator.
 
 ### Modifying Session Logic

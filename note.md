@@ -1,9 +1,24 @@
 # EnduraBuild — Contexte pour Claude Code
 
 ## L'outil
-Générateur de plans d'entraînement multisport (tri/run/bike/swim), 
-100% autonome dans endurabuild.html (1 seul bloc <script>, ~1100 lignes).
-Seule dépendance externe : Google Fonts (dégradation gracieuse).
+Générateur de plans d'entraînement multisport (tri/run/bike/swim),
+100% autonome dans **Coach_Pro_V1.5.html** (version courante, ~1600 lignes,
+steps structurés + courbe de charge R3.3). endurabuild-3.html = prédécesseur
+conservé pour référence. Seule dépendance externe : Google Fonts.
+
+## Affûtage — CORRIGÉ (V1.5 + R3.13/C19, validé par l'audit)
+Le bug majeur trouvé sur endurabuild-3 (243/486 plans sans affûtage réel) était
+déjà largement corrigé par la construction V1.5 (bande taper décroissante 0.55→0.30
+pilotant R3.3). Restaient 33 échecs (nageurs débutants, planchers incompressibles)
+et 27 plans 5k sans semaine de peak (arrondis de phases). Corrigés par :
+- **R3.13** : en affûtage, si les planchers empêchent de descendre sous 55% du pic,
+  la FRÉQUENCE cède — jours faciles les plus légers convertis en OFF.
+- **C19** : tout plan a ≥1 semaine de peak (le 5k 6 semaines prenait la dernière
+  semaine de spec).
+Résultat : 486/486 combinaisons passent TOUTES les règles d'acceptation de la spec
+« audit 2 » (réduction ≥40%, zéro VO2 en affûtage, bornes brick, pic en phase peak,
+toute séance chiffrée). Reste connu : sous-prescription nage DÉBUTANT (26 combos) —
+la courbe déclarée ignore les caps techniques C15 ; à calibrer.
 
 ## Corrections déjà faites (4 marqueurs "FIX cohérence" dans le code)
 Cause racine : le helper P(lo,hi) des séances longues ignorait `fmt` (format objectif).

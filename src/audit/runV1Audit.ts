@@ -1,17 +1,21 @@
 /**
- * runV1Audit — exécute l'audit « coach de charge » sur les 486 combinaisons V1
+ * runV1Audit — exécute l'audit « coach de charge » sur les 486 combinaisons
  * (4 sports × formats × 3 historiques × 3 niveaux × 3 intentions).
  *
- * Termine l'audit interrompu de note.md : volume réellement prescrit dans la
- * semaine du pic vs volume hebdo déclaré (w.vol), + part de la séance longue.
- * Suspects du premier passage (parseurs naïfs, invalides) : RUN ok (~1.00),
- * BIKE possiblement sur-prescrit, SWIM/TRI sous-prescrits.
+ * Cible : Coach_Pro_V1.5.html. Vérifie le ratio prescrit/déclaré (vol_declared),
+ * la part de la séance longue, ET les règles d'acceptation de la spec « audit 2 » :
+ * affûtage ≥40% de réduction vs pic, zéro VO2max en affûtage, bricks dans les
+ * bornes du format, semaine max en phase "peak" (avec brick en tri).
  */
 import { writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { loadV1 } from "../harness/v1Harness.ts";
 import { auditPlan, THRESHOLDS, type PlanAudit } from "./coherenceScorer.ts";
+import type { AthleteRefs } from "../engine/loadModel.ts";
+
+/** Mêmes valeurs que le profil canonique ci-dessous : css 1:55 → 115 s/100m, pace 4:30 → 270 s/km. */
+const REFS: AthleteRefs = { cssSecPer100m: 115, thrPaceSecPerKm: 270 };
 
 const HISTORIES = ["reprise", "confirme", "ancien"];
 const LEVELS = ["debutant", "inter", "avance"];
@@ -53,6 +57,11 @@ interface ComboResult {
   weeksUnder: number;
   taperRatio: number | null;
   taperVsPeak: number | null;
+  vo2InTaper: number;
+  brickCapViolations: number;
+  peakInPeakPhase: boolean;
+  peakHasBrick: boolean | null;
+  estimatorGapMed: number | null;
   recupHeavier: number;
   adjacentHard: number;
   coverage: number;
@@ -85,7 +94,7 @@ for (const sport of Object.keys(v1.SPORTS)) {
           const a = { ...baseAnswers(), format, history, level, intent };
           let audit: PlanAudit;
           try {
-            audit = auditPlan(v1.buildPlan(a));
+            audit = auditPlan(v1.buildPlan(a), { sport, format, refs: REFS });
           } catch (e) {
             errors++;
             console.error("ERREUR", sport, format, history, level, intent, e);
@@ -106,6 +115,11 @@ for (const sport of Object.keys(v1.SPORTS)) {
             weeksUnder: audit.weeksUnder,
             taperRatio: audit.taperRatio,
             taperVsPeak: audit.taperVsPeak,
+            vo2InTaper: audit.vo2InTaper,
+            brickCapViolations: audit.brickCapViolations,
+            peakInPeakPhase: audit.peakInPeakPhase,
+            peakHasBrick: audit.peakHasBrick,
+            estimatorGapMed: audit.estimatorGapMed,
             recupHeavier: audit.recupHeavierCount,
             adjacentHard: audit.adjacentHardDays,
             coverage: audit.coverage,
@@ -162,15 +176,21 @@ for (const [sport, rs] of bySport) {
     " |\n";
 }
 
-// ---------- Affûtage inopérant ----------
-const taperBroken = results.filter((r) => (r.taperVsPeak ?? 0) > 0.85);
-md += "\n## Affûtage\n\n";
-md +=
-  taperBroken.length +
-  "/" +
-  results.length +
-  " combinaisons ont une dernière semaine d'affûtage prescrite à >85% du pic (défaut V1 : `sess()` " +
-  "ne traite pas la phase `taper`, les séances restent pleine taille alors que le volume déclaré chute).\n";
+// ---------- Spec audit 2 ----------
+const taperBroken = results.filter((r) => (r.taperVsPeak ?? 0) > 0.6);
+const vo2Taper = results.filter((r) => r.vo2InTaper > 0);
+const brickBad = results.filter((r) => r.brickCapViolations > 0);
+const peakBad = results.filter((r) => !r.peakInPeakPhase);
+const brickMissing = results.filter((r) => r.peakHasBrick === false);
+md += "\n## Règles d'acceptation (spec « audit 2 »)\n\n";
+md += "- Affûtage <40% de réduction vs pic : **" + taperBroken.length + "/" + results.length + "** combinaisons en échec\n";
+md += "- VO2max en semaine d'affûtage : **" + vo2Taper.length + "** combinaisons en échec\n";
+md += "- Brick vélo hors bornes format : **" + brickBad.length + "** combinaisons en échec\n";
+md += "- Semaine max hors phase « peak » : **" + peakBad.length + "** combinaisons en échec\n";
+md += "- Tri : semaine max sans brick : **" + brickMissing.length + "** combinaisons en échec\n";
+const gapsAll = results.map((r) => r.estimatorGapMed ?? 0).sort((a, b) => a - b);
+md += "\nRecoupement d'estimateurs : écart médian |nos minutes − s.min du générateur| par plan, médiane globale " +
+  quantile(gapsAll, 0.5).toFixed(1) + "min (l'écart attendu vient de la récup inter-blocs, que le générateur ne compte pas).\n";
 
 // ---------- Pires cas par sport ----------
 md += "\n## Pires cas (ratio pic le plus extrême par sport)\n\n";

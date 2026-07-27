@@ -7,18 +7,24 @@ Seuils : sur-prescrit > 1.4, sous-prescrit < 0.5, alerte séance longue > 55% de
 
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Récup+lourde | Longue >55% | Sans volume/plan | Couverture | Score moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| tri | 108 | 1.05 | 0.84–1.25 | 0 | 0 | 8 | 0.61 | 0 | 3 | 42.3 | 70% | 96 |
-| run | 135 | 0.87 | 0.71–1.18 | 0 | 0 | 68 | 0.94 | 0 | 13 | 0.0 | 99% | 76 |
-| bike | 135 | 1.25 | 0.86–1.42 | 33 | 0 | 302 | 0.91 | 54 | 0 | 0.0 | 100% | 65 |
-| swim | 108 | 0.62 | 0.45–0.96 | 0 | 20 | 106 | 0.85 | 36 | 0 | 37.7 | 35% | 70 |
+| tri | 108 | 1.08 | 1.03–1.12 | 0 | 0 | 0 | 0.35 | 0 | 9 | 0.0 | 100% | 98 |
+| run | 135 | 1.13 | 1.08–1.20 | 0 | 0 | 0 | 0.36 | 0 | 0 | 0.0 | 100% | 99 |
+| bike | 135 | 1.09 | 1.07–1.10 | 0 | 0 | 0 | 0.40 | 0 | 0 | 0.0 | 100% | 100 |
+| swim | 108 | 1.05 | 0.32–1.10 | 0 | 26 | 178 | 0.42 | 0 | 0 | 0.0 | 100% | 87 |
 
-## Affûtage
+## Règles d'acceptation (spec « audit 2 »)
 
-243/486 combinaisons ont une dernière semaine d'affûtage prescrite à >85% du pic (défaut V1 : `sess()` ne traite pas la phase `taper`, les séances restent pleine taille alors que le volume déclaré chute).
+- Affûtage <40% de réduction vs pic : **0/486** combinaisons en échec
+- VO2max en semaine d'affûtage : **0** combinaisons en échec
+- Brick vélo hors bornes format : **0** combinaisons en échec
+- Semaine max hors phase « peak » : **0** combinaisons en échec
+- Tri : semaine max sans brick : **0** combinaisons en échec
+
+Recoupement d'estimateurs : écart médian |nos minutes − s.min du générateur| par plan, médiane globale 0.0min (l'écart attendu vient de la récup inter-blocs, que le générateur ne compte pas).
 
 ## Pires cas (ratio pic le plus extrême par sport)
 
-- **tri** : Full/reprise/inter/finir → ratio 1.35 (déclaré 9.0h, prescrit 12.2h), longue 53%
-- **run** : marathon/confirme/inter/competition → ratio 0.63 (déclaré 10.0h, prescrit 6.3h), longue 48%
-- **bike** : clm/reprise/debutant/finir → ratio 1.69 (déclaré 5.9h, prescrit 10.0h), longue 28%
-- **swim** : fond/ancien/inter/competition → ratio 0.39 (déclaré 10.0h, prescrit 3.9h), longue 26%
+- **tri** : M/reprise/debutant/competition → ratio 1.14 (déclaré 8.0h, prescrit 9.1h), longue 32%
+- **run** : 5k/confirme/debutant/finir → ratio 1.24 (déclaré 4.5h, prescrit 5.6h), longue 31%
+- **bike** : crit/reprise/debutant/finir → ratio 1.15 (déclaré 5.4h, prescrit 6.2h), longue 34%
+- **swim** : fond/ancien/debutant/competition → ratio 0.23 (déclaré 10.0h, prescrit 2.3h), longue 26%

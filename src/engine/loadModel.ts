@@ -11,10 +11,23 @@
  * Natation : sommer les mètres et convertir via l'allure X'YY/100m du texte.
  */
 
+export interface RawStep {
+  role: "warmup" | "body" | "cooldown";
+  durationMin?: number;
+  distanceM?: number;
+  reps?: number;
+  zone?: string | null;
+  recoveryText?: string;
+  leg?: "bike" | "run";
+  d?: string;
+}
+
 export interface RawSession {
   d: string; // rn | bk | sw | br | rs
   name: string;
   det: string;
+  steps?: RawStep[]; // V1.5 : structure chiffrée (prioritaire sur le texte)
+  min?: number; // estimation propre du générateur — recoupée, jamais crue
 }
 
 export type Confidence = "full" | "partial" | "nominal" | "rest";
@@ -24,7 +37,15 @@ export interface SessionLoad {
   meters: number | null; // natation uniquement
   confidence: Confidence;
   flags: string[];
+  generatorMin?: number; // s.min du générateur, pour le recoupement d'estimateurs
 }
+
+/** Références athlète pour convertir les distances en temps (mêmes entrées que stepMin V1.5, arithmétique à nous). */
+export interface AthleteRefs {
+  cssSecPer100m: number; // natation
+  thrPaceSecPerKm: number; // course (et CAP du brick)
+}
+export const DEFAULT_REFS: AthleteRefs = { cssSecPer100m: 130, thrPaceSecPerKm: 330 };
 
 /** Durées nominales quand rien n'est parsable (séance sans volume prescrit). */
 const NOMINAL_MIN: Record<string, number> = { rn: 40, bk: 60, sw: 30, br: 60, rs: 0 };
@@ -130,8 +151,84 @@ function segmentSwim(segRaw: string): { meters: number; recoveryMin: number; par
   return { meters, recoveryMin, parsed: parsedAny || meters > 0 };
 }
 
-/** Charge d'une séance V1 : minutes prescrites totales + traçabilité du parsing. */
-export function sessionLoad(s: RawSession): SessionLoad {
+/** Récup inter-blocs depuis recoveryText V1.5 ("2min trot", "15-20s", "repos libre…") en minutes. */
+function recoveryMinFromText(txt: string | undefined): number {
+  if (!txt) return 0;
+  const asMin = txt.match(/(\d+)(?:-(\d+))?\s*min(\d{2})?/);
+  if (asMin) return mid(Number(asMin[1]), asMin[2] ? Number(asMin[2]) : undefined) + (asMin[3] ? Number(asMin[3]) / 60 : 0);
+  const asSec = txt.match(/(\d+)(?:-(\d+))?\s*s\b/);
+  if (asSec) return mid(Number(asSec[1]), asSec[2] ? Number(asSec[2]) : undefined) / 60;
+  return 0; // "repos libre" et consorts : non chiffré, non compté
+}
+
+/** Minutes d'un step (hors récup), discipline du step ou de la séance. */
+function stepMinutes(st: RawStep, sessionD: string, refs: AthleteRefs): number {
+  const reps = st.reps || 1;
+  if (st.durationMin) return reps * st.durationMin;
+  if (st.distanceM) {
+    const d = st.d || sessionD;
+    if (d === "sw") return (reps * st.distanceM * refs.cssSecPer100m) / 100 / 60;
+    return (reps * st.distanceM * refs.thrPaceSecPerKm) / 1000 / 60;
+  }
+  return 0;
+}
+
+/**
+ * Chemin structuré V1.5 : somme des steps + récup inter-blocs.
+ * Différence méthodologique ASSUMÉE avec le stepMin du générateur : nous comptons
+ * la récup entre répétitions (N-1 × récup), lui non — l'écart est un constat, pas un bug.
+ * Échauffement chiffré : même clamp que renderSess (≤25min, ≤ corps) pour comparer à périmètre égal.
+ */
+export function sessionLoadFromSteps(s: RawSession, refs: AthleteRefs): SessionLoad {
+  const flags: string[] = [];
+  const steps = s.steps || [];
+  const bodies = steps.filter((x) => x.role === "body");
+  let bodyMin = 0;
+  let recovery = 0;
+  let meters = 0;
+  for (const b of bodies) {
+    bodyMin += stepMinutes(b, s.d, refs);
+    const reps = b.reps || 1;
+    if (reps > 1) recovery += recoveryMinFromText(b.recoveryText) * (reps - 1);
+    if ((b.d || s.d) === "sw" && b.distanceM) meters += (b.reps || 1) * b.distanceM;
+  }
+  let auxMin = 0;
+  for (const st of steps) {
+    if (st.role === "body") continue;
+    if (st.role === "warmup" && st.durationMin != null) {
+      auxMin += Math.min(st.durationMin, 25, Math.max(3, Math.round(bodyMin) || st.durationMin));
+    } else {
+      auxMin += stepMinutes(st, s.d, refs);
+    }
+    if ((st.d || s.d) === "sw" && st.distanceM) meters += st.distanceM;
+  }
+  const minutes = bodyMin + recovery + auxMin;
+  if (bodies.length > 0 && bodies.every((b) => b.durationMin == null && b.distanceM == null)) {
+    flags.push("séance à steps sans durée ni distance chiffrée : « " + s.name + " »");
+  }
+  if (typeof s.min === "number" && s.min > 0) {
+    const delta = minutes - s.min;
+    if (Math.abs(delta) > Math.max(10, s.min * 0.25)) {
+      flags.push("écart estimateur : nous " + minutes.toFixed(0) + "min vs générateur " + s.min + "min (« " + s.name + " »)");
+    }
+  }
+  return {
+    minutes,
+    meters: s.d === "sw" || meters > 0 ? meters || null : null,
+    confidence: "full",
+    flags,
+    generatorMin: s.min,
+  };
+}
+
+/** Charge d'une séance : chemin structuré V1.5 si steps présents, sinon parsing texte (endurabuild-3). */
+export function sessionLoad(s: RawSession, refs: AthleteRefs = DEFAULT_REFS): SessionLoad {
+  if (s.steps && s.steps.length > 0 && s.d !== "rs") return sessionLoadFromSteps(s, refs);
+  return sessionLoadFromText(s);
+}
+
+/** Chemin texte historique (endurabuild-3, et recoupement) : minutes prescrites + traçabilité. */
+export function sessionLoadFromText(s: RawSession): SessionLoad {
   const flags: string[] = [];
   const det = (s.det || "").split("— 💡")[0]; // la note pédago ne porte pas de volume
   const segments = det.split("·");

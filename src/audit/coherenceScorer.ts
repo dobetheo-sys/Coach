@@ -11,7 +11,15 @@
  * - part de la séance longue > 45-55% de la semaine → alerte
  */
 import type { V1Plan, V1Week } from "../harness/v1Harness.ts";
-import { sessionLoad, type SessionLoad } from "../engine/loadModel.ts";
+import { sessionLoad, DEFAULT_REFS, type AthleteRefs, type SessionLoad } from "../engine/loadModel.ts";
+
+/** Plafonds brick vélo (audit 2, spec utilisateur) : "jamais dépassés, même de peu". */
+const BRICK_BIKE_BOUNDS: Record<string, [number, number]> = {
+  S: [45, 90],
+  M: [60, 120],
+  "70.3": [90, 180],
+  Full: [150, 300],
+};
 
 export const THRESHOLDS = {
   overPrescribed: 1.4,
@@ -46,13 +54,24 @@ export interface PlanAudit {
   weeksOver: number; // semaines (hors récup/taper) au ratio > overPrescribed
   weeksUnder: number; // semaines (hors récup/taper) au ratio < underPrescribed
   taperRatio: number | null; // dernière semaine d'affûtage : prescrit/déclaré
-  taperVsPeak: number | null; // prescrit affûtage / prescrit pic (doit être << 1)
+  taperVsPeak: number | null; // prescrit affûtage / prescrit pic — audit 2 : ≤ 0.60 (réduction ≥40%)
+  vo2InTaper: number; // séances VO2max en semaine d'affûtage — audit 2 : interdit
+  brickCapViolations: number; // legs vélo de brick hors bornes format — audit 2
+  peakInPeakPhase: boolean; // la semaine max (minutes indépendantes) tombe en phase "peak" — audit 2
+  peakHasBrick: boolean | null; // tri uniquement : la semaine max contient le brick — audit 2
+  estimatorGapMed: number | null; // |nos minutes − s.min| médian (sessions avec s.min)
   nominalSessionsTotal: number;
   coverage: number; // part des minutes prescrites issues d'un parsing fiable (full + rest)
   flags: string[];
 }
 
-function auditWeek(w: V1Week): WeekAudit {
+export interface AuditOpts {
+  sport?: string;
+  format?: string;
+  refs?: AthleteRefs;
+}
+
+function auditWeek(w: V1Week, refs: AthleteRefs, gaps: number[], stepFlags: string[]): WeekAudit {
   let prescribed = 0;
   let longest = 0;
   let nominal = 0;
@@ -61,18 +80,21 @@ function auditWeek(w: V1Week): WeekAudit {
   for (const day of w.days) {
     let dayMin = 0;
     for (const s of day.sessions) {
-      const load = sessionLoad(s);
+      const load = sessionLoad(s, refs);
       loads.push(load);
       dayMin += load.minutes;
       if (load.confidence === "nominal") nominal++;
       // "rest" = minutes explicites d'un renfo greffé → parsing fiable aussi
       if (load.confidence === "full" || load.confidence === "rest") fullMin += load.minutes;
+      if (typeof load.generatorMin === "number" && load.generatorMin > 0) gaps.push(Math.abs(load.minutes - load.generatorMin));
+      for (const f of load.flags) if (f.startsWith("séance à steps") || f.startsWith("écart estimateur")) stepFlags.push("S" + w.num + " : " + f);
     }
     // La « séance longue » au sens de l'audit = le plus gros JOUR d'entraînement
     if (dayMin > longest) longest = dayMin;
     prescribed += dayMin;
   }
-  const declaredMin = w.vol * 60;
+  // V1.5 : vol_declared = promesse de la courbe (R3.3) ; endurabuild-3 : vol
+  const declaredMin = (w.vol_declared ?? w.vol) * 60;
   return {
     num: w.num,
     phaseId: w.phase.id,
@@ -87,11 +109,14 @@ function auditWeek(w: V1Week): WeekAudit {
   };
 }
 
-export function auditPlan(plan: V1Plan): PlanAudit {
-  const weeks = plan.weeks.map(auditWeek);
+export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
+  const refs = opts.refs ?? DEFAULT_REFS;
+  const gaps: number[] = [];
+  const stepFlags: string[] = [];
+  const weeks = plan.weeks.map((w) => auditWeek(w, refs, gaps, stepFlags));
   const hard: string[] = [];
   const soft: string[] = [];
-  const flags: string[] = [];
+  const flags: string[] = stepFlags.slice(0, 20);
 
   // ---- Contrainte dure : jamais deux jours durs adjacents ----
   const allDays = plan.weeks.flatMap((w) => w.days);
@@ -121,18 +146,69 @@ export function auditPlan(plan: V1Plan): PlanAudit {
   const weeksOver = normal.filter((w) => w.ratio > THRESHOLDS.overPrescribed).length;
   const weeksUnder = normal.filter((w) => w.ratio < THRESHOLDS.underPrescribed).length;
 
-  // ---- Affûtage : le déclaré chute, les séances suivent-elles ? ----
-  // Défaut V1 connu : sess() ne gère pas la phase "taper" → séances pleine taille.
+  // ---- Affûtage (audit 2) : réduction ≥40% vs pic, en minutes indépendantes ----
+  const peakByMin = candidates.reduce((a, b) => (b.prescribedMin > a.prescribedMin ? b : a), candidates[0]);
   const taperWeeks = weeks.filter((w) => w.phaseId === "taper");
   const lastTaper = taperWeeks.length > 0 ? taperWeeks[taperWeeks.length - 1] : null;
   const taperRatio = lastTaper ? lastTaper.ratio : null;
-  const taperVsPeak = lastTaper && peak.prescribedMin > 0 ? lastTaper.prescribedMin / peak.prescribedMin : null;
-  if (taperVsPeak !== null && taperVsPeak > 0.85) {
+  const taperVsPeak = lastTaper && peakByMin.prescribedMin > 0 ? lastTaper.prescribedMin / peakByMin.prescribedMin : null;
+  if (taperVsPeak !== null && taperVsPeak > 0.6) {
     hard.push(
-      "affûtage inopérant : dernière semaine prescrite à " +
+      "affûtage insuffisant : dernière semaine à " +
         Math.round(taperVsPeak * 100) +
-        "% du pic (l'athlète arrive fatigué le jour J)"
+        "% du pic (spec audit 2 : réduction ≥40%)"
     );
+  }
+
+  // ---- Audit 2 : pas de VO2max en affûtage ----
+  const taperNums = new Set(taperWeeks.map((w) => w.num));
+  let vo2InTaper = 0;
+  for (const w of plan.weeks) {
+    if (!taperNums.has(w.num)) continue;
+    for (const d of w.days)
+      for (const s of d.sessions) {
+        const zoneVO2 = (s.steps || []).some((st) => typeof st.zone === "string" && st.zone.endsWith(".vo2"));
+        if (zoneVO2 || /vo2/i.test(s.name)) {
+          vo2InTaper++;
+          flags.push("S" + w.num + " (taper) : séance VO2 « " + s.name + " »");
+        }
+      }
+  }
+  if (vo2InTaper > 0) hard.push(vo2InTaper + " séance(s) VO2max en semaine d'affûtage (interdit, spec audit 2)");
+
+  // ---- Audit 2 : bornes du brick vélo par format ----
+  let brickCapViolations = 0;
+  const bounds = opts.format ? BRICK_BIKE_BOUNDS[opts.format] : undefined;
+  for (const w of plan.weeks)
+    for (const d of w.days)
+      for (const s of d.sessions) {
+        if (!s.brick || !s.steps) continue;
+        const bike = s.steps.find((st) => st.leg === "bike");
+        if (!bike || bike.durationMin == null || !bounds) continue;
+        if (bike.durationMin > bounds[1] || bike.durationMin < bounds[0]) {
+          brickCapViolations++;
+          flags.push("S" + w.num + " : brick vélo " + bike.durationMin + "min hors bornes [" + bounds[0] + ", " + bounds[1] + "]");
+        }
+      }
+  if (brickCapViolations > 0) hard.push(brickCapViolations + " brick(s) vélo hors bornes format (spec audit 2)");
+
+  // ---- Audit 2 : la semaine max tombe en phase "peak" (et contient le brick en tri) ----
+  // Tolérance 5% : notre métrique compte la récup inter-blocs (le générateur non), ce qui
+  // gonfle les semaines à VO2 ; et les plans saturés par les caps (nage débutant) ont des
+  // semaines quasi égales. Échec seulement si une semaine hors peak DÉPASSE nettement le pic.
+  const peakPhaseBest = candidates.filter((w) => w.phaseId === "peak").reduce((a, b) => (b && b.prescribedMin > (a?.prescribedMin ?? 0) ? b : a), null as WeekAudit | null);
+  const peakInPeakPhase =
+    peakByMin.phaseId === "peak" || (!!peakPhaseBest && peakByMin.prescribedMin <= peakPhaseBest.prescribedMin * 1.05);
+  if (!peakInPeakPhase)
+    hard.push(
+      "semaine de volume max (S" + peakByMin.num + ", " + peakByMin.phaseId + ") dépasse la meilleure semaine peak de >5% (spec audit 2)"
+    );
+  let peakHasBrick: boolean | null = null;
+  if (opts.sport === "tri") {
+    const refWeekNum = peakByMin.phaseId === "peak" ? peakByMin.num : (peakPhaseBest ?? peakByMin).num;
+    const wk = plan.weeks.find((w) => w.num === refWeekNum);
+    peakHasBrick = !!wk && wk.days.some((d) => d.sessions.some((s) => !!s.brick));
+    if (!peakHasBrick) hard.push("tri : la semaine pic (S" + refWeekNum + ") ne contient pas le brick (spec audit 2)");
   }
 
   let score = 100;
@@ -162,7 +238,10 @@ export function auditPlan(plan: V1Plan): PlanAudit {
 
   score -= Math.min(20, adjacentHardDays * 10);
   score -= Math.min(10, recupHeavier * 5);
-  if (taperVsPeak !== null && taperVsPeak > 0.85) score -= 20;
+  if (taperVsPeak !== null && taperVsPeak > 0.6) score -= 20;
+  if (vo2InTaper > 0) score -= 15;
+  if (brickCapViolations > 0) score -= 15;
+  if (!peakInPeakPhase) score -= 10;
 
   const nominalTotal = weeks.reduce((n, w) => n + w.nominalSessions, 0);
   const totalPrescribed = weeks.reduce((n, w) => n + w.prescribedMin, 0);
@@ -180,6 +259,11 @@ export function auditPlan(plan: V1Plan): PlanAudit {
     weeksUnder,
     taperRatio,
     taperVsPeak,
+    vo2InTaper,
+    brickCapViolations,
+    peakInPeakPhase,
+    peakHasBrick,
+    estimatorGapMed: gaps.length > 0 ? gaps.sort((a, b) => a - b)[Math.floor(gaps.length / 2)] : null,
     nominalSessionsTotal: nominalTotal,
     coverage: totalPrescribed > 0 ? totalFull / totalPrescribed : 0,
     flags,
