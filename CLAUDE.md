@@ -209,10 +209,10 @@ All validated by fuzzing 486 combinations (4 sports × formats × 3 historiques 
 
 ### Pipeline (reason → generate → audit → adapt)
 
-1. **Reasoning engine** — analyzes athlete profile (FTP, VMA, CSS, level), constraints (schedule, equipment, climate), calendar (races, vacations), and injury history, producing a **constraint matrix** that guides generation.
-2. **Coherent generation** — polarized load/recovery weeks (85/15), sport-specific session variety, easy/moderate/hard intensity differentiation, auto-calculated nutrition.
-3. **Automatic audit** — a coherence score /100 checking volume progression (never +10%/week), acute:chronic load ratio, forbidden-pattern compliance, load/recovery alternation, 80/20 intensity split, and injury risk. **Score < 90 → regenerate automatically.**
-4. **Daily Garmin adaptation** — HRV (7-day rolling), sleep, Body Battery, Training Readiness, and actual completed sessions drive a morning recalculation that can replace, modify, or postpone the day's session (e.g., low HRV + bad sleep → swap VO2 for endurance).
+1. **Reasoning engine** — analyzes athlete profile (FTP, VMA, CSS, level), constraints (schedule, equipment, climate), calendar (races, vacations), and injury history, producing a **constraint matrix** that guides generation. The matrix imports V1's validated caps rather than re-deriving them.
+2. **Coherent generation** — load/recovery week alternation plus an **80/20 intensity distribution** (the canonical number; "85/15 polarized" was dropped as contradictory with the Sweet Spot/tempo session library), sport-specific variety, easy/moderate/hard differentiation.
+3. **Automatic audit** — a coherence score /100 checking volume progression (never +10%/week), acute:chronic load ratio, forbidden patterns, load/recovery alternation, 80/20 split, and injury risk. Safety rules (medical flags, forbidden patterns, injury caps) are **hard pass/fail blockers regardless of score**. **Score < 90 → targeted repair** (audit returns which checks failed and where; the generator fixes those weeks), with an iteration cap and a "best plan + explicit warnings" fallback for unsatisfiable constraints — never blind regeneration, which would loop forever with a deterministic generator. The audit must stay implementation-independent from the generator (bottom-up load computation from session texts).
+4. **Daily readiness adaptation** — HRV (7-day rolling), sleep, Body Battery, Training Readiness, and actual completed sessions drive a recalculation-on-open that can replace, modify, or postpone the day's session (e.g., low HRV + bad sleep → swap VO2 for endurance). **Readiness source is pluggable**: manual entry (MVP) → FIT upload → Garmin API *if access is granted* (Garmin Health API is a gated B2B program — not guaranteed). Strava covers completed activities but not HRV/sleep.
 
 ### Hard rules (apply to V2 generation, and worth respecting in V1 fixes too)
 
@@ -220,20 +220,22 @@ All validated by fuzzing 486 combinations (4 sports × formats × 3 historiques 
 - ❌ Never two demanding leg sessions back-to-back
 - ❌ Never two >2h sessions close together
 - ❌ Recovery weeks must never carry more load than normal weeks
-- Run sessions capped at 2h15 except specific race prep
-- Swim sessions: 1500m minimum advised, 2000–3500m ideal (shorter only with a clear technique objective)
+- Run sessions capped at 2h15 generically, with per-format exceptions encoded in the constraint matrix (marathon up to 3h, trail up to 4h30 — the validated V1 caps)
+- Swim sessions: 1500m minimum advised **for non-beginners only** (V1's beginner technique cap of 200–900m takes precedence), 2000–3500m ideal
 - Weekly volume progression never exceeds +10%
 
 ### Target stack and structure
 
-V2 is planned as **modular TypeScript** (not single-file HTML): `src/engine/` (reasoning, constraint matrix, progression), `src/generator/` (sessions, weeks, variety rules), `src/audit/` (scoring, validation, regeneration), `src/garmin/`, `src/nutrition/`, `src/analytics/`, with per-module unit tests and decision logging.
+V2 is planned as **modular TypeScript** (not single-file HTML): `src/engine/` (reasoning, constraint matrix, progression, **`loadModel.ts`** — the shared TSS-like load metric that progression checks, acute:chronic audit, and CTL/ATL analytics all depend on), `src/generator/` (sessions, weeks, variety rules), `src/audit/` (scoring, validation, repair), `src/readiness/` (pluggable source: manual/FIT/Garmin), `src/nutrition/`, `src/analytics/`. Persistence is localStorage-first with recalc-on-open; no backend through Sprint 2.
 
-### Sprint order
+Testing strategy: **property-based tests are central, not auxiliary** — generalize V1's 486-combination fuzz to the full input space (monotonic progression, no forbidden pattern, load within caps, audit ≥ threshold). Every constraint in the matrix carries provenance and justification, extending V1's `{id, what, val, why}` rule format.
 
-1. **Sprint 1**: Reasoning engine (`TrainingReasoningEngine`, constraint matrix) + session generator
-2. **Sprint 2**: Coherence audit/scoring + Garmin integration (API-ready architecture)
-3. **Sprint 3**: Nutrition (macros, carbs/hour, hydration) + analytics dashboard (CTL/ATL, predictions)
-4. **Sprint 4**: Gamification (badges, XP, pedagogical explanations) + sharing (PNG/PDF export, Instagram/Strava)
+### Sprint order (amended)
+
+0. **Sprint 0**: Coherence auditor + load model, run **against V1's `buildPlan`** via the note.md Node harness — finishes the interrupted V1 audit (peak-week volume vs declared; suspects: BIKE over-, SWIM/TRI under-prescribed) and becomes the executable spec for the V2 generator
+1. **Sprint 1**: Reasoning engine (`TrainingReasoningEngine`, constraint matrix importing V1 caps) + session generator with audit-driven repair loop
+2. **Sprint 2**: Daily readiness adaptation (manual-entry MVP, Strava for completed activities, Garmin if access granted)
+3. **Deferred** until generated plans consistently score ≥90: nutrition (needs nutritionist review before release), analytics dashboard, gamification, sharing
 
 ### V1 ↔ V2 relationship
 

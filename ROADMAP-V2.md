@@ -1,5 +1,8 @@
 # Synthèse : Refonte V2 du moteur de plans d'entraînement
 
+> **Document amendé suite à la revue d'architecture (2026-07)** — les corrections sont
+> intégrées en place et récapitulées dans la section « 📝 Amendements » en fin de document.
+
 ## 🎯 Vision globale
 Transformer l'appli d'un simple remplisseur de calendrier en **coach IA intelligent** qui raisonne avant de générer, valide automatiquement et s'adapte aux données de récupération en temps réel.
 
@@ -19,7 +22,8 @@ Transformer l'appli d'un simple remplisseur de calendrier en **coach IA intellig
 **Output : Matrice de contraintes** → guide la génération
 
 ### Phase 2 : Génération cohérente
-- Construire semaines de charge/décharge polarisées (85/15)
+- Construire l'alternance semaines de charge/décharge (concept distinct de la répartition d'intensité)
+- Répartition d'intensité **80/20** (pyramidale — chiffre canonique unique ; l'ancien « 85/15 polarisé » est abandonné car la bibliothèque de séances inclut Sweet Spot et tempo, incompatibles avec un modèle strictement polarisé)
 - Respecter les contraintes de variété (pas 2 longues CAP d'affilée, etc.)
 - Différencier intensités : facile / modérée / difficile
 - Calculer calories/macros automatiquement
@@ -33,10 +37,38 @@ Transformer l'appli d'un simple remplisseur de calendrier en **coach IA intellig
 - Répartition 80/20 des intensités
 - Risque blessure (charge jambes, impact CAP, etc.)
 
-**Si score < 90 → régénérer automatiquement**
+**Contraintes dures vs souples :** les règles de sécurité (drapeaux médicaux, interdictions
+strictes, caps blessure) sont **bloquantes indépendamment du score** — un plan à 91/100 qui
+viole le garde-fou médical est rejeté. Le score /100 ne pondère que les critères de qualité.
 
-### Phase 4 : Dynamique Garmin (adaptation quotidienne)
-**Input Garmin :**
+**Si score < 90 → réparation ciblée** (et non régénération aveugle) :
+- L'audit renvoie les contrôles en échec et les semaines concernées ; le générateur corrige
+  ces points précis. Une régénération aveugle avec un générateur déterministe reproduirait
+  le même plan et le même score → boucle infinie par construction.
+- Maximum d'itérations plafonné. Si les contraintes sont insatisfaisables (ex. 4h/sem
+  déclarées pour un Full), afficher le meilleur plan obtenu **avec avertissements
+  explicites** (« ce plan score 82 : ton volume disponible ne supporte pas cet objectif »).
+  C'est un output de coaching précieux, pas un échec.
+- **L'audit doit rester indépendant du générateur** : implémentation séparée, calcul
+  bottom-up de la charge réellement prescrite (somme des minutes/mètres des séances,
+  comme l'audit V1 de note.md). Sinon l'audit valide trivialement ses propres règles.
+
+### Phase 4 : Dynamique readiness (adaptation quotidienne)
+
+> ⚠️ **Risque produit — accès API Garmin non garanti :** HRV, Body Battery et Training
+> Readiness passent par le Garmin Health API, un programme B2B sous agrément qui peut ne
+> jamais être accordé à ce projet. Garmin Connect n'a pas d'API publique grand public.
+> **Architecture : source de readiness enfichable** (`readinessSource`), 3 niveaux :
+> 1. **Saisie manuelle (MVP)** — « comment as-tu dormi ? / FC du matin »
+> 2. **Upload de fichiers FIT**
+> 3. **API Garmin** si l'accès est accordé
+>
+> La logique d'ajustement ne dépend pas de la provenance des chiffres. Strava fournit les
+> séances réelles effectuées (utile pour l'écart prévu/réel) mais ni HRV ni sommeil.
+> « Recalcul chaque matin » signifie en pratique **recalcul à l'ouverture de l'appli**
+> (pas de backend requis pour les Sprints 0–2 ; persistance localStorage d'abord).
+
+**Input Garmin (ou source équivalente) :**
 - HRV (7-day rolling avg)
 - Sommeil (qualité, durée)
 - Body Battery
@@ -64,14 +96,18 @@ Transformer l'appli d'un simple remplisseur de calendrier en **coach IA intellig
 - **Réduction :** limiter place du seuil classique
 
 #### CAP (Course à pied)
-- **Volume :** max 2h15 sauf préparation spécifique
+- **Volume :** max 2h15 sauf préparation spécifique — exceptions **encodées par format dans
+  la matrice de contraintes** (marathon jusqu'à 3h, trail jusqu'à 4h30 : caps V1 validés
+  par fuzzing), sinon l'auditeur flaggerait toute longue marathon/trail légitime
 - **Séances :** Seuil, VMA, easy, long
 - **Risque :** limiter impact et blessure
 
 #### Natation
-- **Minimum conseillé :** 1500 m
+- **Minimum conseillé :** 1500 m — **non-débutants uniquement** : le débutant reste plafonné
+  200–900m par sa technique (cap V1 validé, risque épaule) quel que soit le format visé
 - **Idéal :** 2000–3500 m
-- **Technique :** plus courte seulement si objectif pédagogique clair
+- **Technique :** plus courte seulement si objectif pédagogique clair (cas explicite du
+  palier débutant)
 
 ### Interdictions strictes
 - ❌ Deux longues CAP consécutives
@@ -224,48 +260,45 @@ Les couleurs doivent refléter la charge réelle.
 
 ## 🚀 Priorisation pour implémentation
 
+### Sprint 0 (Spec exécutable) — l'auditeur d'abord
+0. **Auditeur de cohérence + modèle de charge, exécutés contre le buildPlan V1**
+   - `loadModel` (quantification TSS-like par sport) + `coherenceScorer`
+   - Harnais Node décrit dans note.md : extraction du `<script>`, eval indirect,
+     parseurs qui **somment** réellement minutes/mètres des séances
+   - Termine l'audit V1 interrompu : volume pic vs déclaré, part de la longue,
+     suspects connus (BIKE sur-prescrit ?, SWIM/TRI sous-prescrits ?)
+   - **L'auditeur devient la spec exécutable du générateur V2** : indépendant par
+     construction, testé sur des plans réels avant qu'une ligne du générateur n'existe
+
 ### Sprint 1 (Fondations)
 1. **Moteur de raisonnement** 
    - Classe `TrainingReasoningEngine`
-   - Matrice de contraintes
+   - Matrice de contraintes — **importe les caps V1 validés** (FIX cohérence, cap
+     débutant nage, accommodations blessures, garde-fou médical) au lieu de les re-dériver
    - Analyse de profil athlète
 
 2. **Générateur de séances**
    - Variété sport-spécifique
    - Différenciation intensités
    - Respect des interdictions
+   - **Boucle de réparation ciblée** pilotée par l'auditeur du Sprint 0 (pas de
+     régénération aveugle) + fallback « meilleur plan + avertissements »
 
-### Sprint 2 (Validation)
-3. **Audit automatique**
-   - Scoring de cohérence /100
-   - Métriques de validation
-   - Régénération automatique
+### Sprint 2 (Adaptation)
+3. **Adaptation readiness quotidienne**
+   - `readinessSource` enfichable : saisie manuelle (MVP) → FIT → API Garmin si accès
+   - Strava pour les séances réelles effectuées (écart prévu/réel)
+   - Adapter séances quotidiennes (remplacer, modifier, reporter)
+   - Persistance localStorage, recalcul à l'ouverture
 
-4. **Intégration Garmin**
-   - Architecture API-ready
-   - Récupération HRV, sommeil, Body Battery
-   - Adapter séances quotidiennes
-
-### Sprint 3 (Enrichissement)
-5. **Nutrition**
-   - Macros auto-calculées
-   - Glucides/heure pour longs efforts
-   - Hydratation par température
-
-6. **Dashboard analytique**
-   - Graphiques intensités
-   - Prédictions
-   - Prédiction performances
-
-### Sprint 4 (Gamification & Partage)
-7. **Gamification**
-   - Badges et progression
-   - Explications pédagogiques
-   - Taux d'avancement
-
-8. **Partage**
-   - Export PNG/PDF
-   - Intégration Instagram/Strava
+### Différé (après que l'audit score ≥90 de façon consistante sur plans générés)
+4. **Nutrition** — macros, glucides/heure, hydratation
+   - ⚠️ Frontière du conseil diététique : étendre l'avertissement de note.md
+     (« faire relire par un vrai coach ») à un(e) nutritionniste avant diffusion
+5. **Dashboard analytique** — graphiques intensités, CTL/ATL (réutilise `loadModel`),
+   prédiction performances
+6. **Gamification** — badges, progression, explications pédagogiques
+7. **Partage** — export PNG/PDF, intégration Instagram/Strava
 
 ---
 
@@ -283,7 +316,13 @@ Les couleurs doivent refléter la charge réelle.
 - Architecture modulaire (séparation concerns)
 - Types stricts (TypeScript)
 - Tests unitaires par module
-- Logging des décisions du moteur
+- **Tests par propriétés (stratégie centrale, pas annexe)** : généraliser le fuzzing V1
+  (486 combinaisons, progression monotone) à tout l'espace d'entrée — pour chaque profil
+  généré, asserter : progression monotone, aucune interdiction violée, charge sous les
+  caps, alternance charge/récup respectée, audit ≥ seuil. C'est le meilleur actif
+  d'ingénierie de la V1 ; le porter en V2 tel quel
+- Logging des décisions du moteur — reprendre le format V1 `{id, what, val, why}` :
+  chaque contrainte de la matrice porte sa provenance et sa justification
 - Traçabilité des modifications
 
 ### UX
@@ -303,6 +342,10 @@ src/
 │   ├── reasoningEngine.ts          # Moteur de raisonnement
 │   ├── constraintMatrix.ts         # Matrice de contraintes
 │   ├── progressionCalculator.ts    # Calcul progressions
+│   ├── loadModel.ts                # Quantification de charge (TSS-like) par sport
+│   │                               #   FONDATION PARTAGÉE : progression +10%, ratio
+│   │                               #   aiguë/chronique (audit) ET CTL/ATL (analytics)
+│   │                               #   dépendent tous du même métrique → Sprint 0
 │   └── ...
 ├── generator/
 │   ├── sessionGenerator.ts         # Génération séances
@@ -314,8 +357,10 @@ src/
 │   ├── validator.ts                # Validations
 │   ├── regenerator.ts              # Régénération auto
 │   └── ...
-├── garmin/
-│   ├── garminClient.ts             # API Garmin
+├── readiness/
+│   ├── readinessSource.ts          # Interface enfichable (manuel / FIT / API)
+│   ├── manualEntry.ts              # MVP : saisie manuelle
+│   ├── garminClient.ts             # API Garmin (si accès accordé)
 │   ├── dataAdapter.ts              # Adaptation données
 │   ├── dailyAdjuster.ts            # Ajustements quotidiens
 │   └── ...
@@ -337,9 +382,42 @@ tests/
 
 ---
 
+## 📝 Amendements (revue d'architecture, 2026-07)
+
+Décisions actées lors de la revue, intégrées en place ci-dessus :
+
+1. **Réparation ciblée, pas régénération** — un générateur déterministe re-produirait le
+   même plan (boucle infinie) ; l'audit renvoie les échecs précis, le générateur les
+   répare, avec plafond d'itérations et fallback « meilleur plan + avertissements »
+2. **Audit indépendant du générateur** — implémentation séparée, calcul bottom-up de la
+   charge prescrite ; sinon l'audit valide trivialement ses propres règles
+3. **80/20 canonique** — l'ancien « 85/15 polarisé » est abandonné (contradictoire avec
+   les séances Sweet Spot/tempo prescrites) ; distribution d'intensité et alternance
+   charge/décharge sont deux contraintes distinctes
+4. **Contraintes dures vs souples** — sécurité (médical, interdictions, blessures)
+   bloquante hors score ; le /100 ne pondère que la qualité
+5. **Minimum natation 1500m scoped non-débutants** — le cap technique débutant V1
+   (200–900m) prime
+6. **Caps CAP par format** — 2h15 générique, mais marathon 3h / trail 4h30 encodés dans
+   la matrice (caps V1 validés)
+7. **`loadModel` en fondation Sprint 0** — progression, ratio A:C et CTL/ATL dépendent
+   du même métrique de charge
+8. **Source readiness enfichable** — l'accès Garmin Health API (B2B, agrément) n'est pas
+   garanti ; MVP en saisie manuelle, la logique d'ajustement est agnostique de la source
+9. **Sprint 0 = auditeur d'abord, contre la V1** — termine l'audit interrompu de note.md
+   et fournit la spec exécutable de la V2
+10. **Nutrition/gamification/partage différés** — jusqu'à ce que les plans générés
+    scorent ≥90 de façon consistante ; avis nutritionniste requis avant diffusion du
+    module nutrition
+11. **Persistance localStorage d'abord, pas de backend Sprints 0–2** — « recalcul chaque
+    matin » = recalcul à l'ouverture de l'appli
+
+---
+
 ## 🎓 Prochaines étapes
-1. Valider cette architecture avec Claude Code
-2. Commencer par Sprint 1 (moteur + générateur)
-3. Tester avec profil athlète réel
-4. Itérer rapidement sur feedback utilisateur
-5. Ajouter Garmin dès que fondations stables
+1. ~~Valider cette architecture avec Claude Code~~ ✅ Revue faite, amendements intégrés
+2. **Commencer par Sprint 0** (auditeur + loadModel contre la V1)
+3. Sprint 1 (moteur + générateur avec boucle de réparation)
+4. Tester avec profil athlète réel
+5. Itérer rapidement sur feedback utilisateur
+6. Ajouter la source readiness (manuel d'abord, Garmin si accès accordé)
