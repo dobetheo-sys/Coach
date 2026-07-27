@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f1eadb">
+<title>EnduraBuild — Ton plan d'endurance raisonné</title>
+<meta name="description" content="Coach d'endurance raisonné : plan multisport justifié, adaptation quotidienne, prédiction de course.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><polygon points=%2250,12 92,85 8,85%22 fill=%22%23e63946%22/><polygon points=%2250,34 76,78 24,78%22 fill=%22%230c1016%22/></svg>">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/mobile.css">
+</head>
+<body>
+<div class="wrap">
+  <main class="main" role="main">
+    <div class="hero">
+      <h1>ENDURA<em>BUILD</em></h1>
+      <p>Chaque réponse oriente les questions suivantes et déclenche des règles de construction. À la fin : le squelette de ton plan, avec la justification de chaque choix.</p>
+      <span class="tier-badge free" id="tierBadge">● Profilage gratuit</span>
+    </div>
+    <nav class="progress" id="progress" aria-label="Progression du questionnaire" aria-hidden="true"></nav>
+    <div id="screen" role="region" aria-live="polite" aria-label="Contenu principal"></div>
+  </main>
+</div>
+<noscript><p style="padding:20px;font-family:sans-serif">EnduraBuild a besoin de JavaScript pour générer ton plan.</p></noscript>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

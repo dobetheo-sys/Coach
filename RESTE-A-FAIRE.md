@@ -22,11 +22,19 @@ auto-testé, legacy en repli) · docs (CLAUDE/ARCHITECTURE/ROADMAP) · CI 6 gard
 | **Avis nutritionniste** | Le module nutrition est volontairement bloqué tant qu'un(e) pro n'a pas validé l'approche (calories/macros/glucides-heure). Sans ça, on ne le code pas. |
 | **Décision infra pour Strava** | L'import automatique demande un relais OAuth (mini-backend ou service type Cloudflare Worker). À toi de dire si tu veux héberger ça — sinon on reste sur les ✓ manuels, qui marchent. |
 
+## 📱 NOUVEAU : PWA modulaire livrée (`endurabuild/`)
+
+Migration du monolithe en PWA zéro-build faite (brief `BRIEF_CLAUDE_CODE_MIGRATION_PWA.md`) :
+modules ES, mobile-first (cibles 44px), installable + offline (manifest + service worker),
+polices auto-hébergées en vrais woff2, export PNG ajouté, validée en navigateur réel et
+486/486 à l'audit. Voir `endurabuild/RAPPORT-MIGRATION-PWA.md`. **À toi : la tester sur
+téléphone** (étape 8 du brief) avant de retirer le monolithe.
+
 ## 🔧 Reste côté code — par ordre recommandé
 
 | # | Chantier | Effort | Bloqué par | Détail |
 |---|---|---|---|---|
-| 1 | **Export PNG / partage** | Petit | rien | Canvas depuis la semaine ou le plan rendu, bouton « partager ». L'export HTML/ICS/JSON existe déjà. |
+| ~~1~~ | ~~Export PNG / partage~~ | — | — | ✅ Fait (PWA : `js/export.js`, bouton 🖼 PNG dans le plan). |
 | 2 | **Import Strava automatique** | Moyen | ta décision infra | Le contrat `CompletedSession` est prêt (les ✓ l'utilisent déjà) ; il ne manque que le relais OAuth. Strava couvre les séances réalisées, PAS le sommeil/HRV (qui restent en saisie manuelle). |
 | 3 | **Source FIT (upload fichier)** | Moyen | rien | Parser le format FIT en zéro-dépendance est faisable mais dense. Alternative : accepter l'export CSV/GPX. Slot déjà prévu dans `ReadinessSource`. |
 | 4 | **Nutrition** | Moyen | avis nutritionniste | Calories, macros, glucides/heure sur les longues, hydratation par température (la météo est déjà là). Architecture prévue (`src/nutrition/` dans la roadmap). |

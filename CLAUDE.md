@@ -21,6 +21,7 @@ mieux qu'un plan dangereux. »
 |---|---|
 | `note.md` | Manifeste : vision, priorités, règles interdites, principes d'or |
 | `Coach_Pro_V1.5.html` | **Le produit** — application autonome (~1600 lignes), tout le moteur |
+| `endurabuild/` | **La PWA** — même produit en modules ES, mobile-first, installable/offline (voir son RAPPORT-MIGRATION-PWA.md) ; UI = source de vérité désormais |
 | `ARCHITECTURE.md` | Choix techniques : pipeline du moteur, registre des règles R3.x/Cn, auditeur, conventions |
 | `src/` + `npm run audit:v1` | L'auditeur de cohérence — la spec exécutable (486 combinaisons) |
 | `ROADMAP-V2.md` | La cible V2 (raisonner → générer → auditer → adapter) |

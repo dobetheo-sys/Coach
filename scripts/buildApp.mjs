@@ -11,7 +11,7 @@
  * `node scripts/buildApp.mjs`          → construit et écrit
  * `node scripts/buildApp.mjs --check`  → vérifie que le HTML committé est à jour (CI)
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -92,13 +92,22 @@ if (html.includes(START)) {
   out = html.slice(0, cut) + "\n" + block + html.slice(cut);
 }
 
+// La PWA charge le MÊME bundle auto-testé en fichier séparé (extraction fidèle par
+// construction : c'est la même génération depuis src/ que le HTML monolithique).
+const pwaEnginePath = join(root, "endurabuild", "js", "engine.js");
+
 if (process.argv.includes("--check")) {
   if (out !== html) {
     console.error("✗ Coach_Pro_V1.5.html n'est pas à jour avec src/ — lancer : npm run build:app");
     process.exit(1);
   }
-  console.log("✓ bundle à jour dans Coach_Pro_V1.5.html");
+  if (existsSync(pwaEnginePath) && readFileSync(pwaEnginePath, "utf8") !== bundle) {
+    console.error("✗ endurabuild/js/engine.js n'est pas à jour avec src/ — lancer : npm run build:app");
+    process.exit(1);
+  }
+  console.log("✓ bundle à jour dans Coach_Pro_V1.5.html" + (existsSync(pwaEnginePath) ? " et endurabuild/js/engine.js" : ""));
 } else {
   writeFileSync(htmlPath, out);
-  console.log("✓ bundle injecté dans Coach_Pro_V1.5.html (" + Math.round(bundle.length / 1024) + " Ko)");
+  if (existsSync(join(root, "endurabuild", "js"))) writeFileSync(pwaEnginePath, bundle);
+  console.log("✓ bundle injecté dans Coach_Pro_V1.5.html (" + Math.round(bundle.length / 1024) + " Ko)" + (existsSync(pwaEnginePath) ? " + endurabuild/js/engine.js" : ""));
 }
