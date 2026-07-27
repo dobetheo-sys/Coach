@@ -17,24 +17,25 @@ Corrigé par tables de bornes {lo,hi} par format, interpolées par prog :
 Validé par fuzzing 486 combinaisons (4 sports × formats × 3 historiques × 3 niveaux 
 × 3 intentions), 0 erreur, progression monotone partout.
 
-## Chantier en cours (interrompu)
-Audit "coach de charge" : vérifier que le volume réellement prescrit dans la 
-semaine du pic ≈ volume hebdo déclaré (w.vol), + part de la séance longue.
-Harnais Node à reconstruire. Pièges connus :
-- extraire le <script> du HTML, retirer le `renderStep();` final (par REGEX, 
-  pas par numéro de ligne)
-- eval INDIRECT `(0,eval)(code)` + ajouter à la chaîne évaluée :
-  `global.S=S; global.SPORTS=SPORTS; global.buildPlan=buildPlan;`
-  (les const/let top-level ne s'attachent pas à global)
-- stub DOM minimal requis (document/window/Blob/URL)
-- PARSEURS : sommer réellement les séances (N×Mmin + minutes isolées + 
-  échauffement/retour au calme), PAS le max isolé — le max sous-estime 
-  massivement les séances structurées. Pour la nage : sommer les mètres 
-  et convertir via l'allure X'YY/100m du texte.
-- Seuils indicatifs : ratio prescrit/déclaré >1.4 = sur-prescrit, 
-  <0.5 = sous-prescrit ; part séance longue >45-55% de la semaine = alerte.
-- Un premier passage (parseurs naïfs, résultats INVALIDES à refaire) suggérait :
-  RUN ok (~1.00), BIKE possiblement sur-prescrit, SWIM/TRI sous-prescrits.
+## Chantier TERMINÉ (Sprint 0 V2) — audit "coach de charge"
+Harnais reconstruit en TypeScript : `npm run audit:v1` (src/harness, src/engine/loadModel,
+src/audit). Tous les pièges listés ici sont encodés dans le code. Résultats
+(486 combinaisons, 0 erreur, couverture parsing run/bike ~100%) dans audit-results/ :
+- **RUN** : pics OK (méd 0.87), mais 50 semaines sur-prescrites / 18 sous- hors pic
+- **BIKE** : SUR-PRESCRIT confirmé — méd pic 1.25, 33 pics >1.4, 302 semaines
+  hors bande (toutes over), pire cas clm/reprise/debutant : 5.9h déclarées → 10h prescrites
+- **SWIM** : SOUS-PRESCRIT confirmé — méd pic 0.62, 20 pics <0.5 ; la bibliothèque
+  de séances ne peut physiquement pas remplir les heures déclarées (fond/ancien :
+  10h déclarées → 3.9h prescrites). Couverture 35% : beaucoup de séances SANS
+  métrage prescrit (Technique souple, Récup eau) — défaut V1 en soi.
+- **TRI** : sain au pic (méd 1.05), mais ~42 séances/plan sans durée prescrite
+  (footings "@ allure" sans minutes)
+- **DÉCOUVERTE MAJEURE (non cherchée)** : l'AFFÛTAGE EST INOPÉRANT dans 243/486
+  plans — sess() ne traite pas la phase "taper", les séances restent pleine
+  taille alors que le volume déclaré chute (ex : 1.8h déclarées, 7h prescrites).
+  L'athlète arrive fatigué le jour J. À corriger en V1 ou à couvrir en V2.
+- 90 combos (bike/swim) ont une semaine de récup plus chargée que la semaine
+  précédente : le budget de séances saute les semaines récup (`if(wd[0]?.isR)continue`).
 
 ## Gisement connu non traité
 Dans la branche TRIATHLON, la nage ne passe pas par durLong : répétitions 

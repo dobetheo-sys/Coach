@@ -182,13 +182,15 @@ All validated by fuzzing 486 combinations (4 sports × formats × 3 historiques 
 
 ## Known Issues & TODO
 
-### Current (From note.md)
+### V1 defects confirmed by the Sprint 0 audit (see `audit-results/`)
 
-**In-Progress Audit** (interrupted):
-- Verify that peak-week volume actually matches declared weekly capacity
-- Account for long-session proportion (should be 45–55% of weekly total)
-- Parsers currently naïve; results need validation
-- Initial findings suggest: RUN ok (~1.00), BIKE possibly over-prescribed, SWIM/TRI under-prescribed
+The "coach de charge" audit from note.md is **done** — run it with `npm run audit:v1` (486 combinations, ~100% parse coverage for run/bike). Confirmed defects, by severity:
+
+1. **Taper is inoperative in 243/486 plans** — `sess()` never branches on the `taper` phase, so sessions stay full-size while declared volume drops (worst cases: 1.8h declared, ~7h prescribed in race week). Athletes would arrive fatigued on race day. Most serious finding; fix in V1 or cover in V2.
+2. **BIKE systematically over-prescribes** — median peak ratio 1.25, 33 peaks >1.4, 302 normal weeks out of band (all over). Worst: clm/reprise/debutant declares 5.9h, prescribes 10h.
+3. **SWIM under-prescribes** — median peak ratio 0.62, 20 peaks <0.5. The session library physically cannot fill the declared hours (fond/ancien: 10h declared → 3.9h prescribed).
+4. **90 combos have a recovery week heavier than the preceding week** (bike/swim) — the session-budget trim skips recovery weeks (`if(wd[0]?.isR)continue`).
+5. **Sessions with no prescribed volume** — tri easy runs ("@ pace", no minutes) and swim technique/recovery sessions (no meters): ~42 per tri plan. Counted at nominal values in the audit.
 
 **Untreated Gisement**:
 - Triathlon swim doesn't use `durLong` progression — uses fixed 100m reps that never scale to race distance
@@ -242,6 +244,16 @@ Testing strategy: **property-based tests are central, not auxiliary** — genera
 The current `endurabuild-3.html` stays the working product during the transition. Domain knowledge already validated in V1 — the "FIX cohérence" distance caps, beginner-swimmer technique cap, injury accommodations, medical gating — must carry over into the V2 constraint matrix rather than being re-derived. The V1 known issues (peak-week volume audit, triathlon swim not scaling to race distance) are natural test cases for the V2 audit scorer.
 
 ## Development & Testing
+
+### Commands (V2 / Sprint 0)
+
+- `npm run audit:v1` — runs the coherence audit over all 486 V1 combinations; writes `audit-results/v1-audit.{json,md}` and prints the summary. No dependencies to install: Node ≥22.18 runs the TypeScript directly (native type stripping — keep the code to erasable syntax: no enums/namespaces, imports use explicit `.ts` extensions).
+
+Sprint 0 code layout (all TypeScript, `src/`):
+- `src/harness/v1Harness.ts` — loads the V1 engine from `endurabuild-3.html` into Node (script extraction by regex, `renderStep()` stripped, DOM stub, indirect eval with explicit export line — all the note.md pitfalls encoded)
+- `src/engine/loadModel.ts` — per-session prescribed-load quantification: sums N×M blocks + isolated minutes + warm-up/cool-down + inter-block recoveries; swim sums meters and converts via the `X'YY/100m` pace in the text. Never uses the isolated max. Reports parse confidence (`full`/`partial`/`nominal`/`rest`) per session.
+- `src/audit/coherenceScorer.ts` — bottom-up audit, independent of the generator: prescribed/declared ratio per week, long-session share, taper-vs-peak, recovery-heavier-than-normal, adjacent hard days; provisional /100 score with hard violations tracked separately.
+- `src/audit/runV1Audit.ts` — the 486-combination fuzz runner and report generator.
 
 ### Modifying Session Logic
 
