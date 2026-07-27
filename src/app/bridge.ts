@@ -101,10 +101,61 @@ export function adjustTodayV2(sport: string, answers: AppAnswers, snapshot: Read
   return { adjustment, sessions, jour };
 }
 
+/** Régularité & avancement — gamification au service de la priorité n°3 du manifeste.
+ *  Streak = semaines TERMINÉES consécutives avec ≥80% des séances faites (une séance
+ *  loupée est pardonnée — la régularité n'est pas la perfection). Avancement = part de
+ *  la CHARGE du plan accomplie (minutes cochées / minutes totales), pas un compte de séances. */
+export interface ProgressReport {
+  totalMin: number;
+  doneMin: number;
+  pctLoad: number;
+  weekNow: number;
+  totalWeeks: number;
+  streakWeeks: number;
+  weekly: { num: number; done: number; total: number; ok: boolean }[];
+}
+export function progressV2(plan: V1Plan, answers: AppAnswers, todayISO: string): ProgressReport {
+  const done = (answers.done || {}) as Record<string, boolean>;
+  let totalMin = 0, doneMin = 0;
+  const weekly = plan.weeks.map((w) => {
+    let t = 0, dn = 0, complete = true;
+    for (const d of w.days) {
+      const dd = (d as { date?: string }).date || "";
+      if (!dd || dd >= todayISO) complete = false;
+      d.sessions.forEach((s, si) => {
+        if (s.d === "rs") return;
+        t++;
+        totalMin += s.min || 0;
+        if (done[w.num + "|" + d.jour + "|" + si]) {
+          dn++;
+          doneMin += s.min || 0;
+        }
+      });
+    }
+    return { num: w.num, done: dn, total: t, ok: t > 0 && dn / t >= 0.8, complete };
+  });
+  const completeWeeks = weekly.filter((w) => w.complete);
+  let streakWeeks = 0;
+  for (let i = completeWeeks.length - 1; i >= 0; i--) {
+    if (completeWeeks[i].ok) streakWeeks++;
+    else break;
+  }
+  return {
+    totalMin: Math.round(totalMin),
+    doneMin: Math.round(doneMin),
+    pctLoad: totalMin > 0 ? Math.round((doneMin / totalMin) * 100) : 0,
+    weekNow: Math.min(plan.totalWeeks, completeWeeks.length + 1),
+    totalWeeks: plan.totalWeeks,
+    streakWeeks,
+    weekly: weekly.map(({ num, done: dn, total, ok }) => ({ num, done: dn, total, ok })),
+  };
+}
+
 declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
 (globalThis as Record<string, unknown>).EBV2 = {
   buildPlan: buildPlanV2,
   adjustToday: adjustTodayV2,
   assessReadiness,
-  version: "v2-sprint3",
+  progress: progressV2,
+  version: "v2-sprint4",
 };

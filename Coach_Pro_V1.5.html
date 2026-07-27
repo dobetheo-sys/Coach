@@ -1639,6 +1639,17 @@ buildPlan=function(a){
 // ===== Forme du jour (Sprint 2) : carte readiness + decisions du moteur =====
 function v2ExtrasHTML(plan){
   let h="";
+  if(globalThis.EBV2&&globalThis.EBV2.progress){
+    const pg=globalThis.EBV2.progress(plan,S.answers,new Date().toISOString().slice(0,10));
+    const fire=pg.streakWeeks>0?"\ud83d\udd25":"\ud83c\udf31";
+    h+='<div class="load-card"><div class="load-title">'+fire+' R\u00e9gularit\u00e9 & avancement</div>'
+      +'<div class="load-sub" style="margin:6px 0">'
+      +(pg.streakWeeks>0?'<b>'+pg.streakWeeks+' semaine'+(pg.streakWeeks>1?'s':'')+' de r\u00e9gularit\u00e9 d\u2019affil\u00e9e</b> (\u226580% des s\u00e9ances faites) \u2014 la r\u00e9gularit\u00e9 est ta priorit\u00e9 n\u00b03, continue !'
+        :'Coche tes s\u00e9ances (\u25cb \u2192 \u2713) : la r\u00e9gularit\u00e9 se construit semaine apr\u00e8s semaine, une s\u00e9ance loup\u00e9e est pardonn\u00e9e.')
+      +'</div>'
+      +'<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:14px;overflow:hidden"><div style="height:100%;width:'+pg.pctLoad+'%;background:#00a376"></div></div>'
+      +'<div class="load-sub" style="margin-top:4px">Semaine '+pg.weekNow+'/'+pg.totalWeeks+' \u00b7 <b>'+pg.pctLoad+'%</b> de la charge du plan accomplie ('+(Math.round(pg.doneMin/6)/10)+'h / '+(Math.round(pg.totalMin/6)/10)+'h)</div></div>';
+  }
   if(globalThis.EBV2){
     const saved=(S.answers.readiness||{});
     h+='<div class="load-card"><div class="load-title">\ud83c\udf21 Forme du jour \u2014 adapte ta s\u00e9ance</div>'
@@ -4059,12 +4070,63 @@ function adjustTodayV2(sport        , answers            , snapshot             
   return { adjustment, sessions, jour };
 }
 
+/** Régularité & avancement — gamification au service de la priorité n°3 du manifeste.
+ *  Streak = semaines TERMINÉES consécutives avec ≥80% des séances faites (une séance
+ *  loupée est pardonnée — la régularité n'est pas la perfection). Avancement = part de
+ *  la CHARGE du plan accomplie (minutes cochées / minutes totales), pas un compte de séances. */
+                                 
+                   
+                  
+                  
+                  
+                     
+                      
+                                                                      
+ 
+function progressV2(plan        , answers            , todayISO        )                 {
+  const done = (answers.done || {})                           ;
+  let totalMin = 0, doneMin = 0;
+  const weekly = plan.weeks.map((w) => {
+    let t = 0, dn = 0, complete = true;
+    for (const d of w.days) {
+      const dd = (d                     ).date || "";
+      if (!dd || dd >= todayISO) complete = false;
+      d.sessions.forEach((s, si) => {
+        if (s.d === "rs") return;
+        t++;
+        totalMin += s.min || 0;
+        if (done[w.num + "|" + d.jour + "|" + si]) {
+          dn++;
+          doneMin += s.min || 0;
+        }
+      });
+    }
+    return { num: w.num, done: dn, total: t, ok: t > 0 && dn / t >= 0.8, complete };
+  });
+  const completeWeeks = weekly.filter((w) => w.complete);
+  let streakWeeks = 0;
+  for (let i = completeWeeks.length - 1; i >= 0; i--) {
+    if (completeWeeks[i].ok) streakWeeks++;
+    else break;
+  }
+  return {
+    totalMin: Math.round(totalMin),
+    doneMin: Math.round(doneMin),
+    pctLoad: totalMin > 0 ? Math.round((doneMin / totalMin) * 100) : 0,
+    weekNow: Math.min(plan.totalWeeks, completeWeeks.length + 1),
+    totalWeeks: plan.totalWeeks,
+    streakWeeks,
+    weekly: weekly.map(({ num, done: dn, total, ok }) => ({ num, done: dn, total, ok })),
+  };
+}
+
 ;                                                                      
 (globalThis                           ).EBV2 = {
   buildPlan: buildPlanV2,
   adjustToday: adjustTodayV2,
   assessReadiness,
-  version: "v2-sprint3",
+  progress: progressV2,
+  version: "v2-sprint4",
 };
 
 })();

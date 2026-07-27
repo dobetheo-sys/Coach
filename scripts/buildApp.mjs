@@ -67,6 +67,9 @@ if (plan._v2.hardViolations.length > 0) throw new Error("bundle invalide : viola
 const today = plan.weeks[0].days.map((d) => d.date).find(Boolean);
 const adj = EBV2.adjustToday("run", answers, { date: today, sleepQuality: "mauvais", hrvStatus: "basse" });
 if (!adj.adjustment || !adj.adjustment.verdict) throw new Error("bundle invalide : adjustToday cassé");
+const pg = EBV2.progress(plan, answers, today);
+if (typeof pg.pctLoad !== "number" || pg.totalWeeks !== 16 || pg.streakWeeks !== 0 || pg.totalMin <= 0)
+  throw new Error("bundle invalide : progress cassé");
 console.log("auto-test bundle : plan 16 semaines, score " + plan._v2.score + ", adaptation « " + adj.adjustment.verdict.level + " » OK");
 
 // ---- Injection entre marqueurs, après le </script> principal ----
