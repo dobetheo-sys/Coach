@@ -229,3 +229,14 @@ writeFileSync(join(outDir, "v1-audit.md"), md);
 
 console.log(md);
 console.log("→ audit-results/v1-audit.json (" + results.length + " combinaisons)");
+
+// Mode garde-fou (CI) : toute violation dure ou erreur de génération fait échouer le run.
+const failing = results.filter((r) => r.hardViolations.length > 0);
+if (failing.length > 0 || errors > 0) {
+  console.error("\n✗ AUDIT ROUGE : " + failing.length + " combinaison(s) en violation dure, " + errors + " erreur(s).");
+  for (const r of failing.slice(0, 10))
+    console.error("  - " + [r.sport, r.format, r.history, r.level, r.intent].join("/") + " : " + r.hardViolations.join(" ; "));
+  process.exitCode = 1;
+} else {
+  console.log("✓ Audit vert : 0 violation dure sur " + results.length + " combinaisons.");
+}
