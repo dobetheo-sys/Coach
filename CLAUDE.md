@@ -39,6 +39,9 @@ dépôt — historique git si besoin.
 - `npm run demo:repair` — preuve exécutable des garanties de la boucle de réparation.
 - `npm run demo:readiness` — spec exécutable de l'adaptation quotidienne (Sprint 2) :
   scénarios de la roadmap assertés + invariants de sécurité.
+- `npm run build:app` — bundle le moteur V2 dans `Coach_Pro_V1.5.html` (auto-testé avant
+  écriture). **À relancer après toute modification de `src/`** ; `npm run check:app` (CI)
+  refuse un HTML désynchronisé.
 
 **Règle de travail n°1 : après toute modification du générateur, relancer l'audit et le
 laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont listées dans
@@ -95,4 +98,9 @@ V1.5 0.77 méd → 1.15 en V2) et boucle de réparation ciblée démontrée (`np
 source enfichable (saisie manuelle MVP → FIT → Garmin si accès), verdict motivé
 verte/orange/rouge, ajustement du jour (remplacer/réduire/reposer, jamais rattraper le
 volume manqué), invariants de sécurité assertés par `npm run demo:readiness` (CI).
-Prochaine grande étape : brancher l'UI de `Coach_Pro_V1.5.html` sur le moteur V2.
+
+**UI ↔ moteur V2 : BRANCHÉ.** `Coach_Pro_V1.5.html` génère via `EBV2.buildPlan`
+(bundle auto-testé de `src/`, legacy en repli), affiche les décisions du moteur et la
+carte « Forme du jour » (adaptation quotidienne). Voir ARCHITECTURE.md « Branchement UI ».
+Chantiers restants : nutrition (avis nutritionniste requis), dashboard, gamification,
+partage, sources readiness FIT/Garmin.

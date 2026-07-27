@@ -51,13 +51,15 @@ export interface V1Day {
 }
 export interface V1Week {
   num: number;
-  phase: { id: string; nom: string };
+  phase: { id: string; nom: string; c?: string };
   vol: number; // V1.5 : volume RÉEL calculé du contenu ; endurabuild-3 : volume déclaré
   vol_declared?: number; // V1.5 : cible de la courbe de charge (R3.3)
   vol_real?: number; // V1.5 : identique à vol
   days: V1Day[];
   isRecup: boolean;
   race?: string;
+  taperRace?: boolean;
+  postRace?: boolean;
 }
 export interface V1Plan {
   weeks: V1Week[];
@@ -65,6 +67,8 @@ export interface V1Plan {
   volBase: number;
   use10: boolean;
   totalWeeks: number;
+  phases?: { id: string; nom: string; pct: number; c: string; start: number; end: number; weeks: number }[];
+  races?: { date: string; prio: string }[];
 }
 export interface V1Engine {
   buildPlan: (a: Record<string, string>) => V1Plan;

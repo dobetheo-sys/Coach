@@ -225,12 +225,18 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
     const wk = wl.find((w) => w.num === wIdx + 1);
     if (wk) {
       wk.race = rc.prio;
-      if (rc.prio !== "C") wk.vol = Math.round(wk.vol * 0.75 * 10) / 10;
+      if (rc.prio !== "C") {
+        wk.vol = Math.round(wk.vol * 0.75 * 10) / 10;
+        wk.taperRace = true;
+      }
       const next = wl.find((w) => w.num === wk.num + 1);
-      if (next) next.vol = Math.round(next.vol * 0.7 * 10) / 10;
+      if (next) {
+        next.vol = Math.round(next.vol * 0.7 * 10) / 10;
+        next.postRace = true;
+      }
     }
   }
 
-  const plan = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks } as V1Plan;
+  const plan: V1Plan = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
   return { plan, reasoned: r };
 }

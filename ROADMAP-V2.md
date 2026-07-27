@@ -423,5 +423,7 @@ Décisions actées lors de la revue, intégrées en place ci-dessus :
 4. ~~Sprint 2 (moteur) : source readiness enfichable + ajusteur quotidien~~ ✅
    `src/readiness/` — verdict motivé verte/orange/rouge, remplacer/réduire/reposer,
    jamais de rattrapage, invariants assertés (`npm run demo:readiness`)
-5. Brancher l'UI de Coach_Pro_V1.5.html sur le moteur V2 (générateur + readiness)
+5. ~~Brancher l'UI de Coach_Pro_V1.5.html sur le moteur V2~~ ✅ bundle EBV2 auto-testé
+   (`npm run build:app`), carte « Forme du jour », décisions du moteur affichées,
+   legacy en repli, garde `check:app` en CI
 6. Tester avec profil athlète réel, itérer sur feedback utilisateur

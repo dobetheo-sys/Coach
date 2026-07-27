@@ -159,6 +159,27 @@ l'auditeur INCHANGÉ (`npm run audit:v2` — mêmes 486 profils, mêmes règles,
 « Recalcul chaque matin » = recalcul à l'ouverture de l'appli (pas de backend ; persistance
 localStorage côté produit).
 
-Étapes suivantes : brancher l'UI de `Coach_Pro_V1.5.html` sur le moteur V2 (générateur +
-readiness), puis les chantiers différés (nutrition — avis nutritionniste requis, dashboard,
-gamification, partage).
+## Branchement UI ↔ moteur V2 (`src/app/` + `scripts/buildApp.mjs`)
+
+Le produit reste UN fichier HTML autonome, mais sa génération passe par le moteur V2 :
+
+- **`src/app/bridge.ts`** — la SEULE surface exposée à l'UI (`globalThis.EBV2`) :
+  `buildPlan(sport, answers)` (→ V1Plan + `_v2 {decisions, warnings, score}`),
+  `adjustToday(sport, answers, snapshot)` (→ journée adaptée), `assessReadiness`.
+  Aucune logique métier dans l'UI (manifeste §9).
+- **`scripts/buildApp.mjs`** (`npm run build:app`, zéro dépendance) — concatène les modules
+  `src/` dans l'ordre des dépendances, retire types (node:module.stripTypeScriptTypes) et
+  imports/exports, enveloppe en IIFE, **auto-teste le bundle** (plan généré + adaptation)
+  avant d'écrire, puis l'injecte entre marqueurs `__EBV2_START__/__EBV2_END__` APRÈS le
+  script principal (le harnais d'audit extrait le premier `<script>` : il doit rester le
+  legacy). `npm run check:app` (CI) refuse un HTML désynchronisé des sources.
+- **Dans le HTML** : `buildPlan` est réassigné vers `EBV2.buildPlan` avec le générateur
+  legacy en REPLI ; `renderPlan` affiche la carte « 🌡 Forme du jour » (readiness → 
+  `adjustToday`) et le panneau « 🧠 Les décisions du moteur » (raisonnement + score d'audit).
+
+**Règle de travail : après toute modification de `src/`, lancer `npm run build:app`** —
+sinon `check:app` échoue en CI. Le générateur legacy dans le HTML est du code de repli :
+ne plus le faire évoluer (le moteur V2 est la source de vérité).
+
+Étapes suivantes : chantiers différés (nutrition — avis nutritionniste requis, dashboard,
+gamification, partage) et sources readiness FIT/Garmin quand l'accès existe.

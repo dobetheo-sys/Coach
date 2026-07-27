@@ -8,7 +8,9 @@
     "audit:v1": "node src/audit/runV1Audit.ts",
     "audit:v2": "node src/audit/runV2Audit.ts",
     "demo:repair": "node src/audit/repairDemo.ts",
-    "demo:readiness": "node src/audit/readinessDemo.ts"
+    "demo:readiness": "node src/audit/readinessDemo.ts",
+    "build:app": "node scripts/buildApp.mjs",
+    "check:app": "node scripts/buildApp.mjs --check"
   },
   "engines": {
     "node": ">=22.18"
