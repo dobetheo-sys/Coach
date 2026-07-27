@@ -17,8 +17,19 @@ et 27 plans 5k sans semaine de peak (arrondis de phases). Corrigés par :
   semaine de spec).
 Résultat : 486/486 combinaisons passent TOUTES les règles d'acceptation de la spec
 « audit 2 » (réduction ≥40%, zéro VO2 en affûtage, bornes brick, pic en phase peak,
-toute séance chiffrée). Reste connu : sous-prescription nage DÉBUTANT (26 combos) —
-la courbe déclarée ignore les caps techniques C15 ; à calibrer.
+toute séance chiffrée).
+
+## Calibrations complémentaires (C20/C21) — audit 100% vert
+- **C20** : la sous-prescription nage DÉBUTANT (26 combos, 10h promises / 2.3h
+  livrables) venait de la courbe déclarée qui ignorait les caps techniques C15.
+  La promesse est plafonnée à ~0.42h × séances/semaine (une séance C15 ≈ 25min).
+- **C21** : sur tri Full en REPRISE, le brick plein (300+70min) faisait 61% de la
+  semaine (alerte >55% de ce fichier). Plafonds brick ×0.8 pour « reprise », et le
+  leg CAP du brick gagne un vrai plafond par format (était non borné, 9999).
+État final : 0 violation dure sur 486 combos, 0 semaine hors bande [0.5, 1.4],
+0 alerte séance longue, score minimum 90. Seul signal restant : ~12 plans 5k à
+ratio pic ~1.23 (dans la bande) — écart de métrique (l'audit compte la récup
+inter-blocs, pas le générateur), pas un défaut.
 
 ## Corrections déjà faites (4 marqueurs "FIX cohérence" dans le code)
 Cause racine : le helper P(lo,hi) des séances longues ignorait `fmt` (format objectif).

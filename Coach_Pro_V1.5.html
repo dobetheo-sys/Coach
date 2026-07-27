@@ -1196,6 +1196,13 @@ function buildPlan(a){
   const renderWeek=wd=>wd.forEach(d=>{const refs=refsAt(d.date);d.sessions.forEach(s=>{if(s.steps&&s.steps.length)renderSess(s,refs);else if(s.min==null)s.min=0;});});
   // ===== R3.4b — planchers ET plafonds de séance (symétriques), par type et par format =====
   const CAP_BRICK={S:90,M:120,"70.3":180,Full:300};
+  const CAP_BRICK_RUN={S:20,M:24,"70.3":32,Full:70};
+  // C21 — athlète en REPRISE : le brick ne mange pas la semaine. Sur Full, un brick plein
+  // (300min vélo + 70min CAP) atteignait 61% du volume hebdo d'une reprise (note.md :
+  // alerte >55%) — la charge se concentre sur un seul jour, risque de blessure. Plafonds
+  // ×0.8 pour l'historique « reprise » ; les bornes format (audit 2) restent respectées
+  // (240min ∈ [150, 300] sur Full). Le leg CAP du brick gagne au passage un vrai plafond.
+  const _brickRF=(a.history==="reprise")?0.8:1;
   const CAP_SWIM={sprint:1400,demifond:2000,fond:3000,ow:4500,S:750,M:1500,"70.3":1900,Full:3000};
   const CAP_LONG={"5k":74,"10k":90,semi:130,marathon:180,trail:255,crit:150,route:180,clm:165,cyclo:240,gravel:360};
   // R3.11 — bornes dérivées de la MÊME source que la génération (b.bnd, posé depuis
@@ -1215,7 +1222,7 @@ function buildPlan(a){
       const fl=s.d==="bk"?35:30;
       return{floor:fl,cap:Math.max(fl,Math.round(b.bnd.cap*sc))};
     }
-    if(s.brick){if(b.leg==="bike")return{floor:32,cap:CAP_BRICK[fmt]||300};return{floor:8,cap:9999};}
+    if(s.brick){if(b.leg==="bike")return{floor:32,cap:Math.round((CAP_BRICK[fmt]||300)*_brickRF)};return{floor:8,cap:Math.round((CAP_BRICK_RUN[fmt]||70)*_brickRF)};}
     if(s.long){
       if(s.d==="sw")return{floor:820,cap:CAP_SWIM[fmt]||4500};
       if(s.d==="rn")return{floor:30,cap:CAP_LONG[fmt]||9999};
@@ -1252,7 +1259,12 @@ function buildPlan(a){
   const theoPeak=Math.min(parseInt(a.vol_max||"10"),caps,util)*marg*recupFactor;
   const capH=parseInt(a.vol_max||"10");           // plafond dur = vol_max (C3)
   const medFactor=medHold?0.4:1;                   // plan de maintien médical : pic allégé
-  const peakH=Math.min(theoPeak,capH)*medFactor;
+  let peakH=Math.min(theoPeak,capH)*medFactor;
+  // C20 — nage DÉBUTANT : la promesse suit la capacité réelle. Avec C15 (≤850m/séance,
+  // technique avant volume), une séance plafonne ≈25min (850m corps + échauffement/RC),
+  // soit ~0.42h × séances/semaine au maximum. Sans ce cap, la courbe déclarée promettait
+  // des heures que le contenu ne peut pas tenir (audit : 10h déclarées, 2.3h réelles).
+  if(sp==="swim"&&beginner)peakH=Math.min(peakH,(parseInt(a.sessions_max)||6)*0.42);
   const wl=[];
   let _maxChargeMin=0; // pic réel (minutes) des semaines de charge déjà générées — sert à R3.13
   for(let w=0;w<weeks;w++){

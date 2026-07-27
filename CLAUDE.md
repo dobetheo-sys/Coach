@@ -21,6 +21,7 @@ V1.5 keeps the shared core described below (SPORTS config, `evalRules`, zone hel
 - **Steps model (R3.2)**: sessions carry `steps: [{role: warmup|body|cooldown, durationMin|distanceM, reps, zone, recoveryText, bnd:{floor,cap}}]` built by helpers `W/Wm/B/Bd/C/Cm` in `sess()`. `renderSess()` is the *only* place text is produced; it also computes `s.min` (the generator's own duration estimate — note it excludes inter-block recovery time). No text reparsing anywhere.
 - **Volume curve pilots content (R3.3)**: normalized per-phase bands `{base:[0.50,0.68], dev:[0.68,0.92], spec:[0.94,1.0], peak:[1.0,1.0], taper:[0.55,0.30]}` × real peak hours give each week a target; an iterative pass (`scaleWeekBody`) scales body steps until the week's computed minutes match. Weeks store `vol_declared` (target) and `vol`/`vol_real` (computed). Floors/caps per block (`blockBounds`, R3.4b/R3.11/R3.12), beginner swim hard-capped at 850m/session (C15).
 - **Taper actually tapers**: the decreasing `taper` band shrinks content; **R3.13** additionally converts the lightest easy days to OFF when session floors (incompressible warm-ups/cool-downs, beginner caps) prevent the week from dropping below 55% of the real peak. **C19** guarantees ≥1 peak-phase week even on short plans (6-week 5k) where rounding used to produce an empty peak phase.
+- **Calibrated promises**: **C20** caps the declared curve for beginner swimmers at real capacity (~0.42h × weekly session budget — C15's 850m/session cap makes larger promises unfillable). **C21** scales brick caps ×0.8 for `history="reprise"` athletes (a full Ironman brick was 61% of their week) and gives the brick run leg a real per-format cap.
 - **Acceptance spec**: the repo file `audit 2` is the user's spec for V1.5 (taper ≥40% reduction, no VO2 in taper, brick bounds per format, max week in peak phase, every session quantified). These rules are mechanized in `src/audit/coherenceScorer.ts` and all pass on 486 combinations — keep them green.
 
 ## Architecture & Key Concepts
@@ -195,10 +196,9 @@ All validated by fuzzing 486 combinations (4 sports × formats × 3 historiques 
 
 ### Current status (audit runs against `Coach_Pro_V1.5.html`)
 
-Run `npm run audit:v1` — 486 combinations, 100% structured coverage. All `audit 2` acceptance rules pass: **taper reduction ≥40% everywhere (0 failures), 0 VO2 in taper, 0 brick-bound violations, max week always in peak phase, 0 unquantified sessions, 0 adjacent hard days, 0 recovery weeks heavier than normal.** Peak ratios are tight (medians 1.05–1.13).
+Run `npm run audit:v1` — 486 combinations, 100% structured coverage, **0 hard violations anywhere**. All `audit 2` acceptance rules pass: taper reduction ≥40% everywhere, 0 VO2 in taper, 0 brick-bound violations, max week always in peak phase, 0 unquantified sessions, 0 adjacent hard days, 0 recovery weeks heavier than normal, 0 weeks out of the [0.5, 1.4] prescribed/declared band, 0 long-day >55% alerts. Peak ratio medians 1.05–1.13; minimum score 90.
 
-Remaining known issue:
-- **Swim beginner under-prescription** (26 combos, all `level=debutant`): the R3.3 declared curve targets hours the C15 technique caps (850m/session) can never fill (e.g. 10h declared → ~2.3h prescribed). The *content* is correct — the *declared target* should be capped for beginners. Calibration work, not yet done.
+The only residual soft signal: ~12 short plans (5k) with peak ratios ~1.23 — inside the acceptable band; the gap is largely the auditor counting inter-block recovery time, which the generator's own metric excludes by design. Not a defect.
 
 ### Historical: defects found in legacy `endurabuild-3.html` (all resolved in V1.5)
 
