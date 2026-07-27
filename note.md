@@ -1,73 +1,213 @@
-# EnduraBuild — Contexte pour Claude Code
+1. Vision
+Cette application n'est PAS un générateur de séances.
 
-## L'outil
-Générateur de plans d'entraînement multisport (tri/run/bike/swim),
-100% autonome dans **Coach_Pro_V1.5.html** (version courante, ~1600 lignes,
-steps structurés + courbe de charge R3.3). endurabuild-3.html = prédécesseur
-conservé pour référence. Seule dépendance externe : Google Fonts.
+Elle est un coach sportif intelligent.
 
-## Affûtage — CORRIGÉ (V1.5 + R3.13/C19, validé par l'audit)
-Le bug majeur trouvé sur endurabuild-3 (243/486 plans sans affûtage réel) était
-déjà largement corrigé par la construction V1.5 (bande taper décroissante 0.55→0.30
-pilotant R3.3). Restaient 33 échecs (nageurs débutants, planchers incompressibles)
-et 27 plans 5k sans semaine de peak (arrondis de phases). Corrigés par :
-- **R3.13** : en affûtage, si les planchers empêchent de descendre sous 55% du pic,
-  la FRÉQUENCE cède — jours faciles les plus légers convertis en OFF.
-- **C19** : tout plan a ≥1 semaine de peak (le 5k 6 semaines prenait la dernière
-  semaine de spec).
-Résultat : 486/486 combinaisons passent TOUTES les règles d'acceptation de la spec
-« audit 2 » (réduction ≥40%, zéro VO2 en affûtage, bornes brick, pic en phase peak,
-toute séance chiffrée).
+Chaque décision doit être prise comme le ferait un entraîneur humain expérimenté.
 
-## Calibrations complémentaires (C20/C21) — audit 100% vert
-- **C20** : la sous-prescription nage DÉBUTANT (26 combos, 10h promises / 2.3h
-  livrables) venait de la courbe déclarée qui ignorait les caps techniques C15.
-  La promesse est plafonnée à ~0.42h × séances/semaine (une séance C15 ≈ 25min).
-- **C21** : sur tri Full en REPRISE, le brick plein (300+70min) faisait 61% de la
-  semaine (alerte >55% de ce fichier). Plafonds brick ×0.8 pour « reprise », et le
-  leg CAP du brick gagne un vrai plafond par format (était non borné, 9999).
-État final : 0 violation dure sur 486 combos, 0 semaine hors bande [0.5, 1.4],
-0 alerte séance longue, score minimum 90. Seul signal restant : ~12 plans 5k à
-ratio pic ~1.23 (dans la bande) — écart de métrique (l'audit compte la récup
-inter-blocs, pas le générateur), pas un défaut.
+Le moteur doit toujours privilégier :
 
-## Corrections déjà faites (4 marqueurs "FIX cohérence" dans le code)
-Cause racine : le helper P(lo,hi) des séances longues ignorait `fmt` (format objectif).
-Corrigé par tables de bornes {lo,hi} par format, interpolées par prog :
-- Swim durLong : débutant plafonné 200-900m ; sinon sprint 600-1400, 
-  demifond 1000-2000, fond 1500-3000, ow 1500-4500m
-- Run durLong : 5k 40-75, 10k 50-90, semi 70-130, marathon 90-180, trail 120-270 min
-- Bike durLong : crit 60-150, clm 75-165, route 90-180, cyclo 120-240, gravel 150-330 min
-- Tri durLong : brick vélo S 45-90 / M 60-120 / 70.3 90-180 / Full 150-300 min
-  + segment CAP S 10-20 / M 15-30 / 70.3 20-45 / Full 30-75 min
-Validé par fuzzing 486 combinaisons (4 sports × formats × 3 historiques × 3 niveaux 
-× 3 intentions), 0 erreur, progression monotone partout.
+- la cohérence
+- la progression
+- la santé
+- la personnalisation
 
-## Chantier TERMINÉ (Sprint 0 V2) — audit "coach de charge"
-Harnais reconstruit en TypeScript : `npm run audit:v1` (src/harness, src/engine/loadModel,
-src/audit). Tous les pièges listés ici sont encodés dans le code. Résultats
-(486 combinaisons, 0 erreur, couverture parsing run/bike ~100%) dans audit-results/ :
-- **RUN** : pics OK (méd 0.87), mais 50 semaines sur-prescrites / 18 sous- hors pic
-- **BIKE** : SUR-PRESCRIT confirmé — méd pic 1.25, 33 pics >1.4, 302 semaines
-  hors bande (toutes over), pire cas clm/reprise/debutant : 5.9h déclarées → 10h prescrites
-- **SWIM** : SOUS-PRESCRIT confirmé — méd pic 0.62, 20 pics <0.5 ; la bibliothèque
-  de séances ne peut physiquement pas remplir les heures déclarées (fond/ancien :
-  10h déclarées → 3.9h prescrites). Couverture 35% : beaucoup de séances SANS
-  métrage prescrit (Technique souple, Récup eau) — défaut V1 en soi.
-- **TRI** : sain au pic (méd 1.05), mais ~42 séances/plan sans durée prescrite
-  (footings "@ allure" sans minutes)
-- **DÉCOUVERTE MAJEURE (non cherchée)** : l'AFFÛTAGE EST INOPÉRANT dans 243/486
-  plans — sess() ne traite pas la phase "taper", les séances restent pleine
-  taille alors que le volume déclaré chute (ex : 1.8h déclarées, 7h prescrites).
-  L'athlète arrive fatigué le jour J. À corriger en V1 ou à couvrir en V2.
-- 90 combos (bike/swim) ont une semaine de récup plus chargée que la semaine
-  précédente : le budget de séances saute les semaines récup (`if(wd[0]?.isR)continue`).
+avant toute autre considération.
+2. Philosophie
+Une séance n'existe jamais seule.
 
-## Gisement connu non traité
-Dans la branche TRIATHLON, la nage ne passe pas par durLong : répétitions 
-fixes de 100m qui ne progressent jamais vers la distance de course. 
-À corriger (le nageur d'un Full devrait construire vers 3800m).
+Chaque séance appartient :
 
-## Avertissement
-Les bornes {lo,hi} sont des estimations raisonnables de non-expert, 
-à faire relire par un vrai coach avant diffusion large de l'outil.
+→ à une semaine
+→ à un cycle
+→ à une saison
+→ à un objectif.
+
+Toute modification doit préserver la cohérence globale.
+3. Hiérarchie des priorités
+Toujours respecter cet ordre.
+
+1 Santé
+2 Prévention des blessures
+3 Régularité
+4 Progression
+5 Performance
+6 Esthétique de l'interface
+7 Nouvelles fonctionnalités
+Une fonctionnalité ne doit jamais dégrader les quatre premiers points.
+4. Règles du moteur
+Le moteur réfléchit avant de générer.
+Étapes :
+Comprendre l'athlète
+
+↓
+
+Comprendre l'objectif
+
+↓
+
+Comprendre les contraintes
+
+↓
+
+Calculer la charge
+
+↓
+
+Construire les cycles
+
+↓
+
+Construire les semaines
+
+↓
+
+Construire les séances
+
+↓
+
+Vérifier
+
+↓
+
+Corriger
+
+↓
+
+Afficher
+L'affichage est toujours la dernière étape.
+5. Auto-validation
+Le moteur doit contrôler son travail.
+Checklist obligatoire :
+□ progression du volume
+
+□ répartition des intensités
+
+□ récupération suffisante
+
+□ alternance des charges
+
+□ cohérence des disciplines
+
+□ risque de blessure
+
+□ objectif respecté
+
+□ semaines équilibrées
+
+□ fatigue acceptable
+Si un point échoue :
+Le moteur corrige.
+
+Il ne demande jamais à l'utilisateur de corriger.
+6. Intelligence
+Le moteur ne doit jamais être statique.
+Chaque jour il peut modifier :
+les séances
+le volume
+les intensités
+les récupérations
+selon :
+Garmin
+météo
+calendrier
+fatigue
+blessures
+séances réellement réalisées.
+7. Les règles interdites
+Exemple :
+Interdit :
+
+deux longues sorties CAP consécutives
+
+deux séances jambes très lourdes
+
+une progression de volume incohérente
+
+une semaine récupération plus dure que la précédente
+
+une séance impossible à réaliser
+
+une sortie piscine de 600 m
+
+une sortie longue CAP de 3 h pour un débutant
+
+une séance dont l'objectif n'est pas expliqué
+Les règles doivent être nombreuses.
+8. UX
+Toujours répondre à trois questions.
+Pourquoi ?
+
+Comment ?
+
+Quel bénéfice ?
+Chaque séance doit expliquer :
+Pourquoi je fais ça.
+
+Pourquoi aujourd'hui.
+
+Ce que ça améliore.
+9. Architecture
+Très important.
+Séparer complètement :
+
+Moteur
+
+Base de données
+
+Calculs
+
+IA
+
+Interface
+
+Exports
+
+API Garmin
+
+API météo
+
+API calendrier
+Aucune logique métier dans les composants UI.
+Toute logique est centralisée dans le moteur.
+10. Règles de développement
+Chaque nouvelle fonctionnalité doit :
+
+être testable
+
+être indépendante
+
+être documentée
+
+ne jamais casser le moteur
+
+respecter toutes les règles précédentes.
+Les principes d'or
+Je terminerais par une dizaine de principes très courts, que Claude devra toujours respecter :
+Le moteur réfléchit avant d'agir.
+
+Chaque séance a un objectif.
+
+Chaque décision est justifiable.
+
+Le volume n'est jamais une finalité.
+
+La récupération est un entraînement.
+
+La personnalisation est obligatoire.
+
+La santé passe avant la performance.
+
+Le moteur apprend de l'athlète.
+
+Le moteur contrôle son propre travail.
+
+Un mauvais plan vaut mieux qu'un plan dangereux.
+
+Une fonctionnalité qui diminue la cohérence est refusée.
+
+Le moteur doit produire un plan qu'un entraîneur de haut niveau signerait sans hésiter.
+Une recommandation supplémentaire
+Je créerais deux fichiers distincts :
+CLAUDE.md : la vision, les principes, les règles immuables et la philosophie du projet.
+ARCHITECTURE.md : les choix techniques (structure des dossiers, moteur de planification, API Garmin, météo, calendrier, base de données, conventions de code, etc.).

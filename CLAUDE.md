@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Coach** (EnduraBuild) is a multisport training plan generator for triathlon, running, cycling, and swimming. It generates personalized training plans based on sport, event format, athlete level, and preparation duration.
 
 - **Type**: Single-file HTML/JavaScript application (~1600 lines)
-- **Primary File**: `Coach_Pro_V1.5.html` — the current version. `endurabuild-3.html` is the legacy predecessor, kept for reference/diffing; do not develop on it.
+- **Primary File**: `Coach_Pro_V1.5.html` — the current version. The legacy predecessor `endurabuild-3.html` was removed from the repo; retrieve it from git history if needed for diffing.
+- **Vision & principles**: `note.md` is the project manifesto (priorities hierarchy, forbidden rules, engine philosophy) — read it before making product decisions; it overrides technical convenience.
 - **Language**: French (UI and code comments)
 - **Dependencies**: Google Fonts only (graceful degradation if unavailable)
 - **Deployment**: Fully self-contained, runs client-side in any modern browser; state persisted in `localStorage` (`eb_state_v1`)
@@ -22,11 +23,11 @@ V1.5 keeps the shared core described below (SPORTS config, `evalRules`, zone hel
 - **Volume curve pilots content (R3.3)**: normalized per-phase bands `{base:[0.50,0.68], dev:[0.68,0.92], spec:[0.94,1.0], peak:[1.0,1.0], taper:[0.55,0.30]}` × real peak hours give each week a target; an iterative pass (`scaleWeekBody`) scales body steps until the week's computed minutes match. Weeks store `vol_declared` (target) and `vol`/`vol_real` (computed). Floors/caps per block (`blockBounds`, R3.4b/R3.11/R3.12), beginner swim hard-capped at 850m/session (C15).
 - **Taper actually tapers**: the decreasing `taper` band shrinks content; **R3.13** additionally converts the lightest easy days to OFF when session floors (incompressible warm-ups/cool-downs, beginner caps) prevent the week from dropping below 55% of the real peak. **C19** guarantees ≥1 peak-phase week even on short plans (6-week 5k) where rounding used to produce an empty peak phase.
 - **Calibrated promises**: **C20** caps the declared curve for beginner swimmers at real capacity (~0.42h × weekly session budget — C15's 850m/session cap makes larger promises unfillable). **C21** scales brick caps ×0.8 for `history="reprise"` athletes (a full Ironman brick was 61% of their week) and gives the brick run leg a real per-format cap.
-- **Acceptance spec**: the repo file `audit 2` is the user's spec for V1.5 (taper ≥40% reduction, no VO2 in taper, brick bounds per format, max week in peak phase, every session quantified). These rules are mechanized in `src/audit/coherenceScorer.ts` and all pass on 486 combinations — keep them green.
+- **Acceptance spec**: the V1.5 acceptance rules (taper ≥40% reduction, no VO2 in taper, brick bounds per format, max week in peak phase, every session quantified — originally the `audit 2` file, since removed; see git history) are mechanized in `src/audit/coherenceScorer.ts` and all pass on 486 combinations — keep them green, CI enforces this.
 
 ## Architecture & Key Concepts
 
-> The flow, state object, SPORTS config, rule engine, and zone helpers below apply to both files. Session-building details (`struct()`, free-text `det`, the declared-volume formula) describe the **legacy** `endurabuild-3.html`; in V1.5 they are superseded by the steps model and R3.3 scaling described above.
+> The flow, state object, SPORTS config, rule engine, and zone helpers below apply to V1.5 as well. Session-building details (`struct()`, free-text `det`, the declared-volume formula) describe the **legacy** `endurabuild-3.html` (now only in git history); in V1.5 they are superseded by the steps model and R3.3 scaling described above.
 
 ### High-Level Flow
 
