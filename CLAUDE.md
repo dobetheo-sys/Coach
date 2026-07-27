@@ -12,6 +12,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Dependencies**: Google Fonts only (graceful degradation if unavailable)
 - **Deployment**: Fully self-contained, runs client-side in any modern browser
 
+A major V2 rewrite is planned — see [V2 Direction](#v2-direction-planned-rewrite) and `ROADMAP-V2.md`.
+
 ## Architecture & Key Concepts
 
 ### High-Level Flow
@@ -200,6 +202,42 @@ All validated by fuzzing 486 combinations (4 sports × formats × 3 historiques 
 - **Plyometric work**: Bondissements restricted to solid profiles (inter+, non-finisher, no impact injury)
 - **Doubles sessions**: Tri-specific feature; doubles flag enables AM swim + PM bike/run combos
 - **Medical priority**: If any med flag set (pain, dizziness, treatment), no intensity generated until physician clearance
+
+## V2 Direction (Planned Rewrite)
+
+`ROADMAP-V2.md` (in French) defines the target architecture for the next generation of the tool: a **reason-then-generate-then-validate** engine, replacing the current direct questionnaire→plan pipeline. Read it before starting any structural work. Key points:
+
+### Pipeline (reason → generate → audit → adapt)
+
+1. **Reasoning engine** — analyzes athlete profile (FTP, VMA, CSS, level), constraints (schedule, equipment, climate), calendar (races, vacations), and injury history, producing a **constraint matrix** that guides generation.
+2. **Coherent generation** — polarized load/recovery weeks (85/15), sport-specific session variety, easy/moderate/hard intensity differentiation, auto-calculated nutrition.
+3. **Automatic audit** — a coherence score /100 checking volume progression (never +10%/week), acute:chronic load ratio, forbidden-pattern compliance, load/recovery alternation, 80/20 intensity split, and injury risk. **Score < 90 → regenerate automatically.**
+4. **Daily Garmin adaptation** — HRV (7-day rolling), sleep, Body Battery, Training Readiness, and actual completed sessions drive a morning recalculation that can replace, modify, or postpone the day's session (e.g., low HRV + bad sleep → swap VO2 for endurance).
+
+### Hard rules (apply to V2 generation, and worth respecting in V1 fixes too)
+
+- ❌ Never two consecutive long runs
+- ❌ Never two demanding leg sessions back-to-back
+- ❌ Never two >2h sessions close together
+- ❌ Recovery weeks must never carry more load than normal weeks
+- Run sessions capped at 2h15 except specific race prep
+- Swim sessions: 1500m minimum advised, 2000–3500m ideal (shorter only with a clear technique objective)
+- Weekly volume progression never exceeds +10%
+
+### Target stack and structure
+
+V2 is planned as **modular TypeScript** (not single-file HTML): `src/engine/` (reasoning, constraint matrix, progression), `src/generator/` (sessions, weeks, variety rules), `src/audit/` (scoring, validation, regeneration), `src/garmin/`, `src/nutrition/`, `src/analytics/`, with per-module unit tests and decision logging.
+
+### Sprint order
+
+1. **Sprint 1**: Reasoning engine (`TrainingReasoningEngine`, constraint matrix) + session generator
+2. **Sprint 2**: Coherence audit/scoring + Garmin integration (API-ready architecture)
+3. **Sprint 3**: Nutrition (macros, carbs/hour, hydration) + analytics dashboard (CTL/ATL, predictions)
+4. **Sprint 4**: Gamification (badges, XP, pedagogical explanations) + sharing (PNG/PDF export, Instagram/Strava)
+
+### V1 ↔ V2 relationship
+
+The current `endurabuild-3.html` stays the working product during the transition. Domain knowledge already validated in V1 — the "FIX cohérence" distance caps, beginner-swimmer technique cap, injury accommodations, medical gating — must carry over into the V2 constraint matrix rather than being re-derived. The V1 known issues (peak-week volume audit, triathlon swim not scaling to race distance) are natural test cases for the V2 audit scorer.
 
 ## Development & Testing
 
