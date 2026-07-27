@@ -7,7 +7,8 @@
   "scripts": {
     "audit:v1": "node src/audit/runV1Audit.ts",
     "audit:v2": "node src/audit/runV2Audit.ts",
-    "demo:repair": "node src/audit/repairDemo.ts"
+    "demo:repair": "node src/audit/repairDemo.ts",
+    "demo:readiness": "node src/audit/readinessDemo.ts"
   },
   "engines": {
     "node": ">=22.18"

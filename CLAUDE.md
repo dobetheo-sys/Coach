@@ -37,6 +37,8 @@ dépôt — historique git si besoin.
 - `npm run audit:v2` — mêmes 486 profils à travers le **moteur V2** (Sprint 1 :
   raisonnement + génération + réparation), même auditeur, + comparatif V1.5 ↔ V2.
 - `npm run demo:repair` — preuve exécutable des garanties de la boucle de réparation.
+- `npm run demo:readiness` — spec exécutable de l'adaptation quotidienne (Sprint 2) :
+  scénarios de la roadmap assertés + invariants de sécurité.
 
 **Règle de travail n°1 : après toute modification du générateur, relancer l'audit et le
 laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont listées dans
@@ -88,5 +90,9 @@ n'est pas un défaut, ne pas le « corriger ».
 (`src/generator/`) produisent les 486 plans à 0 violation dure via `npm run audit:v2`,
 avec sonde de capacité (V2.1 — la promesse suit ce que les plafonds permettent : nage
 V1.5 0.77 méd → 1.15 en V2) et boucle de réparation ciblée démontrée (`npm run demo:repair`).
-Prochaine grande étape : Sprint 2 de `ROADMAP-V2.md` (adaptation readiness quotidienne,
-source enfichable), puis brancher l'UI sur le moteur V2.
+
+**Sprint 2 V2 (moteur) : FAIT.** Adaptation readiness quotidienne dans `src/readiness/` :
+source enfichable (saisie manuelle MVP → FIT → Garmin si accès), verdict motivé
+verte/orange/rouge, ajustement du jour (remplacer/réduire/reposer, jamais rattraper le
+volume manqué), invariants de sécurité assertés par `npm run demo:readiness` (CI).
+Prochaine grande étape : brancher l'UI de `Coach_Pro_V1.5.html` sur le moteur V2.

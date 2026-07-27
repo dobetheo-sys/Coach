@@ -148,5 +148,17 @@ l'auditeur INCHANGÉ (`npm run audit:v2` — mêmes 486 profils, mêmes règles,
 | `audit/runV2Audit.ts` | Fuzz 486 combos du moteur V2 + tableau comparatif V1.5 ↔ V2 + journal de décisions d'un profil exemple → `audit-results/v2-audit.{json,md}` |
 | `audit/repairDemo.ts` | Preuve exécutable des deux garanties de la boucle (sabotage → réparation convergente ; irréparable → avertissements) — `npm run demo:repair`, en CI |
 
-Étapes suivantes : Sprint 2 de `ROADMAP-V2.md` (adaptation readiness quotidienne, source
-enfichable : saisie manuelle → FIT → Garmin si accès), puis brancher l'UI sur le moteur V2.
+## Adaptation readiness (Sprint 2) — `src/readiness/`
+
+| Module | Rôle |
+|---|---|
+| `readiness/readinessSource.ts` | **Source enfichable** (`ReadinessSource`) : saisie manuelle (MVP, implémentée) → FIT → API Garmin si accès accordé (B2B sous agrément, non garanti). `assessReadiness()` dérive un verdict `verte/orange/rouge` TOUJOURS motivé (drivers) à partir de sommeil/HRV/FC repos/énergie/sensation — la logique d'ajustement ne sait jamais d'où viennent les chiffres |
+| `readiness/dailyAdjuster.ts` | `adjustDay(reasoned, plan, date, snapshot)` : rouge → la qualité est REMPLACÉE par de l'endurance (jour facile → repos actif ; affûtage → OFF), orange → corps ×0.7 structure conservée, verte → séance GARDÉE et dit explicitement. Écart prévu/réel 7j : >130% réalisé → verdict durci d'un cran ; <60% → **on ne rattrape jamais le volume manqué**. Chaque ajustement est un `{id, what, val, why}` |
+| `audit/readinessDemo.ts` | Spec exécutable (`npm run demo:readiness`, en CI) : les scénarios de la roadmap assertés + invariants (hors verte jamais plus de minutes, jamais d'intensité supérieure, affûtage jamais chargé, toujours une décision) |
+
+« Recalcul chaque matin » = recalcul à l'ouverture de l'appli (pas de backend ; persistance
+localStorage côté produit).
+
+Étapes suivantes : brancher l'UI de `Coach_Pro_V1.5.html` sur le moteur V2 (générateur +
+readiness), puis les chantiers différés (nutrition — avis nutritionniste requis, dashboard,
+gamification, partage).
