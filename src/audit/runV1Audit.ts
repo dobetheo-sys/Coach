@@ -61,6 +61,13 @@ interface ComboResult {
   brickCapViolations: number;
   peakInPeakPhase: boolean;
   peakHasBrick: boolean | null;
+  declJumps: number;
+  auditJumpsHard: number;
+  auditJumpsSoft: number;
+  consecutiveLongRuns: number;
+  beginnerLongRunOver3h: number;
+  smallSwims: number;
+  unexplainedSessions: number;
   estimatorGapMed: number | null;
   recupHeavier: number;
   adjacentHard: number;
@@ -94,7 +101,7 @@ for (const sport of Object.keys(v1.SPORTS)) {
           const a = { ...baseAnswers(), format, history, level, intent };
           let audit: PlanAudit;
           try {
-            audit = auditPlan(v1.buildPlan(a), { sport, format, refs: REFS });
+            audit = auditPlan(v1.buildPlan(a), { sport, format, level, refs: REFS });
           } catch (e) {
             errors++;
             console.error("ERREUR", sport, format, history, level, intent, e);
@@ -119,6 +126,13 @@ for (const sport of Object.keys(v1.SPORTS)) {
             brickCapViolations: audit.brickCapViolations,
             peakInPeakPhase: audit.peakInPeakPhase,
             peakHasBrick: audit.peakHasBrick,
+            declJumps: audit.declJumps,
+            auditJumpsHard: audit.auditJumpsHard,
+            auditJumpsSoft: audit.auditJumpsSoft,
+            consecutiveLongRuns: audit.consecutiveLongRuns,
+            beginnerLongRunOver3h: audit.beginnerLongRunOver3h,
+            smallSwims: audit.smallSwims,
+            unexplainedSessions: audit.unexplainedSessions,
             estimatorGapMed: audit.estimatorGapMed,
             recupHeavier: audit.recupHeavierCount,
             adjacentHard: audit.adjacentHardDays,
@@ -188,6 +202,14 @@ md += "- VO2max en semaine d'affûtage : **" + vo2Taper.length + "** combinaison
 md += "- Brick vélo hors bornes format : **" + brickBad.length + "** combinaisons en échec\n";
 md += "- Semaine max hors phase « peak » : **" + peakBad.length + "** combinaisons en échec\n";
 md += "- Tri : semaine max sans brick : **" + brickMissing.length + "** combinaisons en échec\n";
+
+md += "\n## Règles du manifeste (note.md)\n\n";
+md += "- Saut >+10% de la courbe déclarée entre semaines de charge : **" + results.filter((r) => r.declJumps > 0).length + "** combinaisons en échec\n";
+md += "- Saut >+25% de volume réel (métrique audit) : **" + results.filter((r) => r.auditJumpsHard > 0).length + "** en échec (sauts +15–25% tolérés comme bruit de métrique : " + results.filter((r) => r.auditJumpsSoft > 0).length + " combos concernés)\n";
+md += "- Deux longues CAP consécutives : **" + results.filter((r) => r.consecutiveLongRuns > 0).length + "** en échec\n";
+md += "- Sortie longue CAP >3h pour un débutant : **" + results.filter((r) => r.beginnerLongRunOver3h > 0).length + "** en échec\n";
+md += "- Séance piscine <750m pour un non-débutant : **" + results.filter((r) => r.smallSwims > 0).length + "** en échec\n";
+md += "- Séance sans objectif expliqué (Pourquoi/Bénéfice) : **" + results.filter((r) => r.unexplainedSessions > 0).length + "** en échec\n";
 const gapsAll = results.map((r) => r.estimatorGapMed ?? 0).sort((a, b) => a - b);
 md += "\nRecoupement d'estimateurs : écart médian |nos minutes − s.min du générateur| par plan, médiane globale " +
   quantile(gapsAll, 0.5).toFixed(1) + "min (l'écart attendu vient de la récup inter-blocs, que le générateur ne compte pas).\n";

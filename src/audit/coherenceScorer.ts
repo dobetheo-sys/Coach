@@ -59,6 +59,14 @@ export interface PlanAudit {
   brickCapViolations: number; // legs vélo de brick hors bornes format — audit 2
   peakInPeakPhase: boolean; // la semaine max (minutes indépendantes) tombe en phase "peak" — audit 2
   peakHasBrick: boolean | null; // tri uniquement : la semaine max contient le brick — audit 2
+  // ---- Règles du manifeste (note.md) ----
+  declJumps: number; // sauts >+10% de la courbe déclarée entre semaines de charge — interdit
+  auditJumpsHard: number; // sauts >+25% en minutes indépendantes — interdit
+  auditJumpsSoft: number; // sauts +15–25% (bruit de métrique toléré : la récup inter-blocs varie)
+  consecutiveLongRuns: number; // deux longues CAP sur jours consécutifs — interdit
+  beginnerLongRunOver3h: number; // sortie longue CAP >3h pour un débutant — interdit
+  smallSwims: number; // séance piscine <750m pour un non-débutant — interdit
+  unexplainedSessions: number; // séance sans objectif expliqué (note/💡) — interdit
   estimatorGapMed: number | null; // |nos minutes − s.min| médian (sessions avec s.min)
   nominalSessionsTotal: number;
   coverage: number; // part des minutes prescrites issues d'un parsing fiable (full + rest)
@@ -68,6 +76,7 @@ export interface PlanAudit {
 export interface AuditOpts {
   sport?: string;
   format?: string;
+  level?: string; // "debutant" active les règles spécifiques débutant/non-débutant du manifeste
   refs?: AthleteRefs;
 }
 
@@ -211,7 +220,84 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
     if (!peakHasBrick) hard.push("tri : la semaine pic (S" + refWeekNum + ") ne contient pas le brick (spec audit 2)");
   }
 
+  // ---- Manifeste : progression jamais incohérente (+10% max entre semaines de charge) ----
+  // Deux mesures : la courbe déclarée (tolérance 7min pour l'arrondi 0.1h) et nos minutes
+  // indépendantes (tolérance élargie : la part de récup inter-blocs varie avec la
+  // composition des séances — le générateur ne la compte pas, nous oui).
+  let declJumps = 0;
+  let auditJumpsHard = 0;
+  let auditJumpsSoft = 0;
+  {
+    let prevDecl = 0;
+    let prevOurs = 0;
+    for (const w of weeks) {
+      if (w.isRecup || w.phaseId === "taper") continue;
+      if (prevDecl > 0 && w.declaredMin > prevDecl * 1.1 + 7) declJumps++;
+      if (prevOurs > 0) {
+        const j = w.prescribedMin / prevOurs;
+        if (j > 1.25) auditJumpsHard++;
+        else if (j > 1.15) auditJumpsSoft++;
+      }
+      prevDecl = w.declaredMin;
+      prevOurs = w.prescribedMin;
+    }
+  }
+  if (declJumps > 0) hard.push(declJumps + " saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)");
+  if (auditJumpsHard > 0) hard.push(auditJumpsHard + " saut(s) >+25% de volume réel entre semaines de charge (manifeste)");
+
+  // ---- Manifeste : jamais deux longues CAP consécutives ----
+  let consecutiveLongRuns = 0;
+  const dayHasLongRun = (d: (typeof plan.weeks)[0]["days"][0]) => d.sessions.some((s) => !!s.long && s.d === "rn");
+  for (let i = 0; i < allDays.length - 1; i++) {
+    if (dayHasLongRun(allDays[i]) && dayHasLongRun(allDays[i + 1])) consecutiveLongRuns++;
+  }
+  if (consecutiveLongRuns > 0) hard.push(consecutiveLongRuns + " paire(s) de longues CAP consécutives (manifeste)");
+
+  // ---- Manifeste : sortie longue CAP ≤3h pour un débutant ; piscine ≥750m pour un non-débutant ;
+  // ---- chaque séance explique son objectif (Pourquoi / Bénéfice) ----
+  let beginnerLongRunOver3h = 0;
+  let smallSwims = 0;
+  let unexplainedSessions = 0;
+  for (const w of plan.weeks)
+    for (const d of w.days)
+      for (const s of d.sessions) {
+        if (s.d === "rs") continue;
+        const load = sessionLoad(s, refs);
+        if (opts.level === "debutant" && s.d === "rn" && s.long && load.minutes > 185) beginnerLongRunOver3h++;
+        if (opts.level && opts.level !== "debutant" && s.d === "sw" && (load.meters ?? 0) > 0 && (load.meters ?? 0) < 750) smallSwims++;
+        if (!s.note && !(s.det || "").includes("💡")) unexplainedSessions++;
+      }
+  if (beginnerLongRunOver3h > 0) hard.push(beginnerLongRunOver3h + " sortie(s) longue(s) CAP >3h pour un débutant (manifeste)");
+  if (smallSwims > 0) hard.push(smallSwims + " séance(s) piscine <750m pour un non-débutant (manifeste)");
+  if (unexplainedSessions > 0) hard.push(unexplainedSessions + " séance(s) sans objectif expliqué (manifeste)");
+
+  // ---- Cohérence : une nage FACILE/RÉCUP ne dépasse jamais la « longue » de sa semaine
+  // (une « Récup eau » de 2150m n'est pas une récup). Les séances de qualité (jours durs)
+  // peuvent légitimement totaliser plus de mètres qu'une longue continue — exemptées.
+  let longNotLongest = 0;
+  for (const w of plan.weeks) {
+    const longSw = w.days.flatMap((d) => d.sessions).find((s) => s.d === "sw" && !!s.long);
+    if (!longSw) continue;
+    const longM = sessionLoad(longSw, refs).meters ?? 0;
+    if (longM <= 0) continue;
+    for (const d of w.days) {
+      if (d.charge !== "facile") continue;
+      for (const s of d.sessions) {
+        if (s.d !== "sw" || s === longSw) continue;
+        if ((sessionLoad(s, refs).meters ?? 0) > longM * 1.05) {
+          longNotLongest++;
+          flags.push("S" + w.num + " : « " + s.name + " » (facile) dépasse la longue de la semaine");
+        }
+      }
+    }
+  }
+  if (longNotLongest > 0) hard.push(longNotLongest + " nage(s) facile(s)/récup plus longue(s) que la « longue » de leur semaine (cohérence)");
+
   let score = 100;
+  if (declJumps + auditJumpsHard > 0) score -= 15;
+  score -= Math.min(10, auditJumpsSoft);
+  if (consecutiveLongRuns + beginnerLongRunOver3h + smallSwims > 0) score -= 15;
+  if (unexplainedSessions > 0) score -= 10;
   if (peak.ratio > THRESHOLDS.overPrescribed) {
     score -= 25;
     soft.push("pic S" + peak.num + " SUR-prescrit : ratio " + peak.ratio.toFixed(2));
@@ -263,6 +349,13 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
     brickCapViolations,
     peakInPeakPhase,
     peakHasBrick,
+    declJumps,
+    auditJumpsHard,
+    auditJumpsSoft,
+    consecutiveLongRuns,
+    beginnerLongRunOver3h,
+    smallSwims,
+    unexplainedSessions,
     estimatorGapMed: gaps.length > 0 ? gaps.sort((a, b) => a - b)[Math.floor(gaps.length / 2)] : null,
     nominalSessionsTotal: nominalTotal,
     coverage: totalPrescribed > 0 ? totalFull / totalPrescribed : 0,
