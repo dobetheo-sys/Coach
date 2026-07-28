@@ -1,0 +1,43 @@
+name: Audit de cohérence
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      # Zéro dépendance : Node 22 exécute le TypeScript nativement (type stripping).
+      # Chaque run échoue si une des 486 combinaisons a une violation dure
+      # (règles « audit 2 » + manifeste note.md). v1 = produit Coach_Pro_V1.5.html ;
+      # v2 = moteur de raisonnement Sprint 1 ; demo:repair = garanties de la boucle
+      # de réparation (ciblée + meilleur-plan-avec-avertissements).
+      - run: npm run audit:v1
+      - run: npm run audit:v2
+      - run: npm run demo:repair
+      - run: npm run demo:readiness
+      - run: npm run demo:fit
+      - run: npm run demo:nutrition
+      - run: npm run demo:retention
+      # Le bundle EBV2 committé dans le HTML doit correspondre aux sources src/
+      - run: npm run check:app
+
+  # E2E navigateur : les smokes de la PWA (check-in, R4, rétention, améliorations)
+  # tournent dans un vrai Chromium — Playwright est une devDependency de TEST
+  # uniquement, le produit et l'audit restent à zéro dépendance.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

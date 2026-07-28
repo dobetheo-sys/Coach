@@ -1,0 +1,25 @@
+{
+  "name": "coach-v2",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "EnduraBuild V2 — moteur de plans d'entraînement (Sprint 0 : auditeur de cohérence + modèle de charge, exécutés contre la V1)",
+  "scripts": {
+    "audit:v1": "node src/audit/runV1Audit.ts",
+    "audit:v2": "node src/audit/runV2Audit.ts",
+    "demo:repair": "node src/audit/repairDemo.ts",
+    "demo:readiness": "node src/audit/readinessDemo.ts",
+    "demo:fit": "node src/audit/fitDemo.ts",
+    "demo:nutrition": "node src/audit/nutritionDemo.ts",
+    "demo:retention": "node src/audit/retentionDemo.ts",
+    "build:app": "node scripts/buildApp.mjs",
+    "check:app": "node scripts/buildApp.mjs --check",
+    "test:e2e": "node tests/e2e/run-all.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  },
+  "engines": {
+    "node": ">=22.18"
+  }
+}

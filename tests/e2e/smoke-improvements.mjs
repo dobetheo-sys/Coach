@@ -1,0 +1,103 @@
+// Lot améliorations : échange de jours persistant (⇄), accessibilité des modales
+// (Échap + focus), saisie du résultat de course réel, historique des adaptations.
+import { startServer, launchBrowser, makeReporter, runnerStateV1 } from "./harness.mjs";
+
+const PORT = 8540;
+const server = await startServer(PORT);
+const { ok, info, report } = makeReporter();
+const browser = await launchBrowser();
+const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR" })).newPage();
+const errs = [];
+page.on("pageerror", (e) => errs.push(String(e)));
+page.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
+page.on("dialog", (d) => d.accept()); // confirm() éventuel (2 jours durs consécutifs) → garder
+
+await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "domcontentloaded" });
+const today = new Date().toISOString().slice(0, 10);
+const st = runnerStateV1({ readinessLog: [{ date: today, level: "orange", action: "reduce" }] });
+await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v1", JSON.stringify(s)); }, st);
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForTimeout(600);
+
+// ---- 1. Échange de jours (⇄) : deux taps, persistant, réversible ----
+const tabs = await page.locator("#ebTabbar .tabbtn").all();
+await tabs[4].click(); await page.waitForTimeout(250);
+ok((await page.locator("#screen [data-swap]").count()) === 7, "un bouton ⇄ par jour de la semaine courante");
+const before = await page.evaluate(async () => {
+  const { S } = await import("./js/state.js");
+  const t = new Date().toISOString().slice(0, 10);
+  const w = S.currentPlan.weeks.find((x) => x.days.some((d) => d.date === t)) || S.currentPlan.weeks[0];
+  return { num: w.num, days: w.days.map((d) => ({ jour: d.jour, names: d.sessions.map((s) => s.name).join("+") })) };
+});
+// choisir deux jours au contenu différent pour un échange observable
+let iA = 0, iB = 1;
+outer: for (let i = 0; i < before.days.length; i++)
+  for (let j = i + 1; j < before.days.length; j++)
+    if (before.days[i].names !== before.days[j].names) { iA = i; iB = j; break outer; }
+const jA = before.days[iA].jour, jB = before.days[iB].jour;
+await page.click('#screen [data-swap="' + before.num + "|" + jA + '"]'); await page.waitForTimeout(200);
+ok(/sélectionné/.test(await page.locator("#screen").textContent()), "1er tap : jour sélectionné, consigne affichée");
+await page.click('#screen [data-swap="' + before.num + "|" + jB + '"]'); await page.waitForTimeout(400);
+const after = await page.evaluate(async (wn) => {
+  const { S } = await import("./js/state.js");
+  const w = S.currentPlan.weeks.find((x) => x.num === wn);
+  return { swaps: S.answers.daySwaps, days: w.days.map((d) => ({ jour: d.jour, names: d.sessions.map((s) => s.name).join("+") })) };
+}, before.num);
+ok(Array.isArray(after.swaps) && after.swaps.length === 1, "échange persisté dans answers.daySwaps");
+ok(after.days[iA].names === before.days[iB].names && after.days[iB].names === before.days[iA].names, "les séances des deux jours sont bien échangées (" + jA + " ⇄ " + jB + ")");
+// persistance à travers une régénération complète
+const persisted = await page.evaluate(async (arg) => {
+  const { invalidatePlan, ensurePlan } = await import("./js/ui/tabs.js");
+  invalidatePlan();
+  const p = ensurePlan();
+  const w = p.weeks.find((x) => x.num === arg.wn);
+  return w.days.map((d) => ({ jour: d.jour, names: d.sessions.map((s) => s.name).join("+") }));
+}, { wn: before.num });
+ok(persisted[iA].names === before.days[iB].names, "l'échange survit à une régénération du plan (réappliqué)");
+// re-tap = annulation (retour à l'état d'origine)
+await page.click('#screen [data-swap="' + before.num + "|" + jA + '"]'); await page.waitForTimeout(150);
+await page.click('#screen [data-swap="' + before.num + "|" + jB + '"]'); await page.waitForTimeout(400);
+const reverted = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return (S.answers.daySwaps || []).length; });
+ok(reverted === 0, "refaire le même échange l'annule (réversible)");
+
+// ---- 2. Accessibilité des modales : Échap ferme, focus piégé ----
+const dbtn = page.locator('.doneBtn[data-rest="0"]:not(.done)').first();
+await dbtn.click(); await page.waitForTimeout(300);
+ok(await page.locator(".eb-overlay [aria-modal='true']").count() === 1, "modal feedback marquée aria-modal");
+const focusInModal = await page.evaluate(() => !!document.activeElement.closest(".eb-overlay"));
+ok(focusInModal, "le focus est déplacé dans la modal à l'ouverture");
+await page.keyboard.press("Escape"); await page.waitForTimeout(300);
+// Échap sur le feedback = passer le feedback (séance validée) → la célébration s'affiche
+ok(await page.locator(".eb-modal:has-text('Comment c’était')").count() === 0, "Échap ferme la modal feedback");
+if (await page.locator(".eb-overlay").count()) { await page.keyboard.press("Escape"); await page.waitForTimeout(200); }
+ok(await page.locator(".eb-overlay").count() === 0, "Échap ferme aussi la célébration");
+
+// ---- 3. Historique des adaptations (onglet Avancement) ----
+const t3 = await page.locator("#ebTabbar .tabbtn").all();
+await t3[2].click(); await page.waitForTimeout(250);
+const progTxt = await page.locator("#screen").textContent();
+ok(/Adaptations quotidiennes \(1 check-ins? · 1 ajustement/.test(progTxt), "carte « Adaptations quotidiennes » listée depuis readinessLog");
+
+// ---- 4. Résultat de course réel (calibration honnête) ----
+await page.evaluate(async (d) => {
+  const { S, ebSave } = await import("./js/state.js");
+  S.answers.race_date = d;
+  ebSave();
+  const { setTab } = await import("./js/ui/tabs.js");
+  setTab("progress");
+}, today);
+await page.waitForTimeout(300);
+ok(await page.locator("#pgRaceTime").count() === 1, "course passée → carte de saisie du chrono affichée");
+await page.fill("#pgRaceTime", "44:30");
+await page.click("#pgRaceSave"); await page.waitForTimeout(300);
+const raceTxt = await page.locator("#screen").textContent();
+ok(/Réalisé : 44:30/.test(raceTxt), "chrono réel enregistré et affiché");
+const rr = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.answers.raceResult; });
+ok(rr && rr.time === "44:30" && rr.date === today, "raceResult persisté avec la date de course");
+
+ok(errs.length === 0, "aucune erreur JS (" + errs.length + ")");
+if (errs.length) info(errs.slice(0, 4).join(" | "));
+
+server.close();
+await browser.close();
+process.exit(report());
