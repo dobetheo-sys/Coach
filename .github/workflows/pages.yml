@@ -1,0 +1,40 @@
+# Déploiement de la PWA (endurabuild/) sur GitHub Pages à chaque push sur main.
+# But : une URL publique à partager (amis testeurs) — sur téléphone, le navigateur
+# propose « Installer l'application » (Android/Chrome) ou « Sur l'écran d'accueil »
+# (iPhone/Safari) : l'app s'installe comme une app native, offline compris (service
+# worker), SANS APK ni store. Un vrai APK reste possible plus tard via PWABuilder,
+# qui a justement besoin de cette URL.
+name: Déploiement PWA (GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      # enablement: true — active Pages tout seul au premier passage ; si jamais le
+      # jeton n'y suffit pas : Settings → Pages → Source « GitHub Actions » (une fois).
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: endurabuild/
+      - id: deployment
+        uses: actions/deploy-pages@v4

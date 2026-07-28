@@ -19,6 +19,7 @@ auto-testé, legacy en repli) · docs (CLAUDE/ARCHITECTURE/ROADMAP) · CI 9 gard
 |---|---|
 | ~~Merger la PR #2~~ | ✅ Fait (28/07/2026) — `main` est à jour ; la suite du travail vit sur une nouvelle PR. |
 | **Tester avec ton profil réel** | Générer ton plan tri avec tes vrais seuils (FTP/allure/CSS), cocher tes séances une semaine, essayer « Forme du jour ». C'est l'étape 6 de la roadmap et le seul vrai juge. |
+| **Partager aux amis testeurs** | Après merge, la PWA se déploie seule sur GitHub Pages (`pages.yml`) : partage l'URL `https://dobetheo-sys.github.io/Coach/` — sur téléphone le navigateur propose « Installer l'application » (pas d'APK nécessaire ; APK possible plus tard via PWABuilder avec cette URL). Si le premier déploiement échoue : Settings → Pages → Source « GitHub Actions », une fois. |
 | **Déployer le relais Strava** | Le code serveur est LIVRÉ (`server/strava-relay.js` + `server/README.md`, ≈15 min) — mais créer l'application Strava (Client ID/Secret) et le compte Cloudflare exige tes identifiants : personne d'autre ne peut le faire. Sans ça, le jeton manuel continue de marcher. |
 | **Avis diététicien (conseil seulement)** | Les ESTIMATIONS sont livrées (dépense de base + entraînement + macros indicatives, décision du 28/07/2026, garde-fous en CI). Reste bloqué tant qu'un(e) pro n'a pas validé : le CONSEIL d'apport (cibles, menus) et le retrait des avertissements. |
 
