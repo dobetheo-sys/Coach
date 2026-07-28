@@ -176,6 +176,7 @@ export function renderTabProfile(plan) {
   html += row("pfVol", "Volume max (h/sem)", a.vol_max, "ex. 8");
   html += row("pfSess", "Séances max /sem", a.sessions_max, "ex. 5");
   html += row("pfWeight", "Poids (kg, optionnel)", a.weight, "affine le ravitaillement");
+  html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Rappel quotidien</span><input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label>';
   html += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
     + '<div id="pfMsg" class="load-sub" style="margin-top:6px"></div></div>';
 
@@ -280,13 +281,25 @@ export function renderTabProfile(plan) {
     }
     const vol = g("pfVol");
     if (vol !== null && vol !== "" && parseFloat(vol) > 0 && vol !== String(a.vol_max || "")) {
-      log("profil:vol_max", parseFloat(vol), a.vol_max != null ? parseFloat(a.vol_max) : null, () => { S.answers.vol_max = vol; }); changed++;
+      // R4.7 (spec §8) — garde-fou : +20% de volume d'un coup mérite un avertissement
+      // explicite. Un utilisateur sur-engagé qui déborde se blesse et désinstalle.
+      const prev = parseFloat(a.vol_max || 0);
+      if (prev > 0 && parseFloat(vol) > prev * 1.2 && !confirm("Tu passes de " + prev + "h à " + vol + "h (+" + Math.round((parseFloat(vol) / prev - 1) * 100) + "%). Une montée aussi rapide augmente le risque de blessure — le moteur lissera, mais es-tu sûr·e ?")) {
+        const el = $("pfVol"); if (el) el.value = a.vol_max || "";
+      } else {
+        log("profil:vol_max", parseFloat(vol), a.vol_max != null ? parseFloat(a.vol_max) : null, () => { S.answers.vol_max = vol; }); changed++;
+      }
     }
     const sess = g("pfSess");
     if (sess !== null && sess !== "" && parseInt(sess) > 0 && sess !== String(a.sessions_max || "")) {
       log("profil:sessions_max", parseInt(sess), a.sessions_max != null ? parseInt(a.sessions_max) : null, () => { S.answers.sessions_max = sess; }); changed++;
     }
     planChanged = changed;
+    const nt = g("pfNotif");
+    if (nt !== null && nt !== "" && nt !== String(a.notifyTime || "")) {
+      S.answers.notifyTime = nt; changed++; // rappel quotidien : réglage pur, pas de régénération
+      if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+    }
     const wgt = g("pfWeight");
     if (wgt !== null && wgt !== "" && parseFloat(wgt) > 0 && wgt !== String(a.weight || "")) {
       log("profil:weight", parseFloat(wgt), a.weight != null && a.weight !== "" ? parseFloat(a.weight) : null, () => { S.answers.weight = wgt; }); changed++;

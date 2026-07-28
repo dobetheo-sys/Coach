@@ -7,6 +7,8 @@ import { readinessCardHTML } from "./plan-view.js";
 import { applyReadiness, fetchWeather, readinessDoneToday } from "./readiness.js";
 import { nutritionJournalHTML, bindNutritionJournal } from "./nutrition-journal.js";
 import { avatarDataFor, avatarSVG } from "./avatar.js";
+import { celebrationMessage } from "./celebrations.js";
+import { missedSessionsCheck, notifySetupHTML, bindNotifySetup, scheduleDailyNotification, weeklyReviewHTML } from "../notifications.js";
 import { shareStory } from "../export.js";
 
 // R4.0 — boucle de base : validation → FEEDBACK ≤10s (RPE 1-10, ressenti, douleur) →
@@ -73,8 +75,8 @@ function showCongrats(plan, session, newBadge, todayISO) {
   ov.className = "eb-overlay";
   ov.innerHTML = '<div class="eb-modal" role="dialog" aria-label="Séance validée">'
     + '<div style="display:flex;justify-content:center">' + avatarSVG(av, 110) + "</div>"
-    + '<h2 style="text-align:center;margin:8px 0 2px">Bravo ! 🎉</h2>'
-    + '<div style="text-align:center;font-weight:700">' + session.name + "</div>"
+    + '<h2 style="text-align:center;margin:8px 0 2px;font-size:17px;line-height:1.35">' + celebrationMessage(session) + "</h2>"
+    + '<div style="text-align:center;font-weight:700;margin-top:6px">' + session.name + "</div>"
     + (session.det ? '<div style="text-align:center;font-size:12px;color:#635b4a;margin-top:2px">' + String(session.det).split("—")[0].slice(0, 60) + "</div>" : "")
     + (streak > 1 ? '<div style="text-align:center;margin-top:8px">🔥 <b>' + streak + " jours d’affilée</b> — le repos validé compte aussi</div>" : "")
     + (newBadge ? '<div style="text-align:center;margin-top:6px;color:#8a6d00;font-weight:700">' + newBadge.icon + " Badge débloqué : " + newBadge.label + "</div>" : "")
@@ -256,7 +258,10 @@ export function renderTabWeek(plan) {
     : w.postRace ? ' <span style="color:#9b72ff;font-size:10px">↳ récup post-course</span>' : "";
   let html = moment;
   html += painBannerHTML();
+  html += missedSessionsCheck(plan); // R4.10 — relance bienveillante (une fois, jamais de rafale)
   html += heroSessionHTML(plan, today);
+  html += weeklyReviewHTML(plan); // R4.10 — bilan hebdo (dimanche)
+  html += notifySetupHTML(); // R4.10 — réglage de l'heure du rappel (une fois)
   html += '<div class="card"><div class="eyebrow">Ta semaine</div>';
   html += '<div class="gw"><div class="gw-h"><b>Semaine ' + w.num + "</b><span style=\"color:" + (w.phase.c || "#555") + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + "</em></div>";
   html += '<div class="gw-grid">';
@@ -286,6 +291,8 @@ export function renderTabWeek(plan) {
   html += "</div>";
   $("screen").innerHTML = html;
   bindPainBanner(plan);
+  bindNotifySetup(plan, () => renderTabWeek(plan));
+  scheduleDailyNotification(plan);
   bindNutritionJournal(todayDay, today, () => renderTabWeek(plan));
   // Météo en différé : affine l'hydratation (chaleur → sodium) sans bloquer le rendu.
   if (todayDay) fetchWeather().then((wx) => {
