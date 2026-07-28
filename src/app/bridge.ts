@@ -12,6 +12,7 @@ import { predictRace, type Prediction } from "../engine/predictor.ts";
 import { assessReadiness, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes } from "../readiness/fitParser.ts";
 import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
+import { dailyEnergy, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
 import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
 
 interface AppAnswers extends Record<string, unknown> {
@@ -298,6 +299,29 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
   return predictRace(sport, String(answers.format || ""), String(answers.intent || "") || undefined, finalRefs, { pctLoad: pg.pctLoad, streakWeeks: pg.streakWeeks });
 }
 
+/** Estimation énergétique du jour (décision utilisateur 28/07/2026 — estimation, jamais
+ *  de conseil d'apport). Somme les dépenses N7 des séances du jour puis délègue à
+ *  l'estimateur ; null sans poids au Profil (l'UI renvoie vers le Profil). */
+function dailyEnergyV2(answers: AppAnswers, sessions?: { d: string; min?: number; long?: boolean }[] | null): DailyEnergyEstimate | null {
+  const w = parseFloat(String(answers.weight || ""));
+  if (!(w > 0)) return null;
+  let kcal: [number, number] = [0, 0];
+  let tMin = 0;
+  for (const s of sessions || []) {
+    if (!s || s.d === "rs") continue;
+    const a = nutritionForSession(s as never, { weightKg: w });
+    if (a) { kcal = [kcal[0] + a.kcal[0], kcal[1] + a.kcal[1]]; tMin += Math.round(s.min || 0); }
+  }
+  return dailyEnergy({
+    weightKg: w,
+    heightCm: parseFloat(String(answers.height || "")) || null,
+    age: parseInt(String(answers.age || "")) || null,
+    sex: typeof answers.sex === "string" ? answers.sex : null,
+    trainingKcal: kcal,
+    trainingMin: tMin,
+  });
+}
+
 declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
 (globalThis as Record<string, unknown>).EBV2 = {
   buildPlan: buildPlanV2,
@@ -311,5 +335,6 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   disciplines: DISCIPLINE_REGISTRY,
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
-  version: "v2-sprint8",
+  dailyEnergy: dailyEnergyV2,
+  version: "v2-sprint9",
 };

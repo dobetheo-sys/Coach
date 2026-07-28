@@ -18,6 +18,7 @@ import {
   FORBIDDEN_OUTPUT,
   type NutritionAdvice,
 } from "../nutrition/nutritionCalculator.ts";
+import { dailyEnergy, ENERGY_DISCLAIMER } from "../nutrition/energyEstimator.ts";
 
 let failures = 0;
 const check = (label: string, cond: boolean, detail?: string) => {
@@ -97,8 +98,32 @@ const forSess = nutritionForSession({ ...vo2, long: false }, { tempC: 26, weight
 check("nutritionForSession : séance générée → conseil complet", !!forSess && !!forSess.after && forSess.during.sodium);
 check("nutritionForSession : repos (rs) → null", nutritionForSession({ d: "rs", name: "Repos", det: "", min: 0 }) === null);
 
+// — 10. Estimation énergétique journalière (N8–N10, décision utilisateur 28/07/2026) :
+// une ESTIMATION de dépense + répartition indicative — jamais une cible d'apport.
+const full = dailyEnergy({ weightKg: 75, heightCm: 180, age: 35, sex: "H", trainingKcal: [600, 800], trainingMin: 75 });
+check("Énergie : profil complet → BMR plausible (~1500–2000 kcal/j)", !!full && full.bmr[0] >= 1500 && full.bmr[1] <= 2100 && !full.approximate);
+check("Énergie : total = vie quotidienne + entraînement, fourchettes ordonnées", !!full && full.total[0] === full.daily[0] + full.training[0] && full.total[0] <= full.total[1] && full.daily[0] >= full.bmr[0]);
+const noWeight = dailyEnergy({ weightKg: 0 });
+check("Énergie : sans poids → null (on n'estime jamais sur du vide)", noWeight === null);
+const partial = dailyEnergy({ weightKg: 62 });
+check("Énergie : taille/âge/sexe manquants → fourchette élargie et signalée", !!partial && partial.approximate && partial.bmr[1] - partial.bmr[0] > (full as NonNullable<typeof full>).bmr[1] - (full as NonNullable<typeof full>).bmr[0]);
+const eSweep = [full, partial, dailyEnergy({ weightKg: 55, sex: "F", age: 28, heightCm: 165, trainingKcal: [0, 0], trainingMin: 0 }), dailyEnergy({ weightKg: 95, trainingKcal: [1200, 1600], trainingMin: 150 })].filter((e): e is NonNullable<typeof e> => !!e);
+const eText = (e: (typeof eSweep)[number]): string => [e.macros.text, e.disclaimer, ...e.decisions.map((d) => d.what + " " + d.val + " " + d.why)].join(" ").toLowerCase();
+check("Énergie : jamais de vocabulaire de restriction (mots interdits)", eSweep.every((e) => FORBIDDEN_OUTPUT.every((w) => !eText(e).includes(w))));
+check("Énergie : avertissement renforcé (estimation ≠ consigne, diététicien)", eSweep.every((e) => e.disclaimer === ENERGY_DISCLAIMER && /pas une consigne/i.test(e.disclaimer) && /diététicien/i.test(e.disclaimer)));
+check("Énergie : présentée comme information, jamais une cible (N9)", eSweep.every((e) => e.decisions.some((d) => d.id === "N9" && /jamais une cible/.test(d.why))));
+check("Énergie : macros = répartition indicative, planchers de sécurité tenus", eSweep.every((e) => {
+  const w = e.macros.proteinG[0] / 1.2; // retrouve le poids depuis le plancher protéines
+  return e.macros.proteinG[0] >= Math.floor(1.2 * w) - 5 && e.macros.fatG[0] >= Math.floor((e.total[0] * 0.2) / 9) - 5 && e.macros.carbsG[0] >= 3 * w - 5 && /pas un menu/i.test(e.macros.text);
+}));
+check("Énergie : glucides suivent le volume du jour (repos < gros jour)", (() => {
+  const rest = dailyEnergy({ weightKg: 70, trainingMin: 0 }), big = dailyEnergy({ weightKg: 70, trainingMin: 150 });
+  return !!rest && !!big && rest.macros.carbsG[1] < big.macros.carbsG[1];
+})());
+check("Énergie : chaque estimation motivée (N8/N9/N10 avec sources)", eSweep.every((e) => ["N8", "N9", "N10"].every((id) => e.decisions.some((d) => d.id === id && d.why.length > 20))));
+
 if (failures) {
   console.error("\nDémo nutrition : " + failures + " garantie(s) en échec.");
   process.exit(1);
 }
-console.log("\nDémo nutrition : toutes les garanties tiennent (périmètre ravitaillement d'effort, jamais de restriction).");
+console.log("\nDémo nutrition : toutes les garanties tiennent (ravitaillement d'effort + estimation de dépense — jamais de cible d'apport, jamais de restriction).");

@@ -254,11 +254,12 @@ function ebParseT(v){const m=String(v||"").split(":");return m.length===2?(+m[0]
 // Lecture seule : on lit les activités récentes et on estime FTP / allure seuil / CSS.
 // Aucune écriture vers Strava. CORS supporté par l'API GET Strava avec un bearer token.
 const _fk100=s=>Math.floor(s/60)+"'"+String(Math.round(s%60)).padStart(2,"0");
-async function stravaImport(){
-  const tok=((document.getElementById("pfStravaTok")||{}).value||"").trim();
+async function stravaImport(oauthTok){
+  // Deux chemins vers le même import : token OAuth (relais serveur) ou jeton manuel collé.
+  const tok=(oauthTok||((document.getElementById("pfStravaTok")||{}).value||"")).trim();
   const st=document.getElementById("pfStravaMsg");
   const setS=h=>{if(st)st.innerHTML=h;};
-  if(!tok){setS("Colle d'abord un token d'accès Strava (Réglages → Mon API, scope <b>activity:read</b>).");return;}
+  if(!tok){setS("Colle d'abord un token d'accès Strava (Réglages → Mon API, scope <b>activity:read</b>) — ou connecte-toi via le relais ci-dessus.");return;}
   setS("Lecture de tes activités récentes…");
   try{
     const r=await fetch("https://www.strava.com/api/v3/athlete/activities?per_page=50",{headers:{Authorization:"Bearer "+tok}});

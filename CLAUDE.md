@@ -125,8 +125,14 @@ N1–N7 sourcées (ACSM/ISSN/Jeukendrup), glucides/h par durée-intensité, hydr
 température (météo), récupération, dépense estimée ; carte « 🥤 Ravitaillement » dans
 l'onglet Semaine, poids optionnel au Profil ; invariants (bornes dures, jamais de
 restriction, avertissement obligatoire) assertés par `npm run demo:nutrition` (CI).
-Le PÉRIMÈTRE s'arrête au ravitaillement : calories journalières/macros restent bloquées
-avis nutritionniste — ne pas étendre sans cette validation.
+**Périmètre étendu par décision utilisateur (28/07/2026)** : ESTIMATION de la dépense
+journalière (base Mifflin-St Jeor N8 + vie quotidienne N9 + entraînement N7) et
+répartition INDICATIVE des macros (N10, `src/nutrition/energyEstimator.ts`, carte
+« 🔥 Dépense estimée » dans Semaine, taille optionnelle au Profil). La frontière qui
+RESTE : jamais de cible d'apport, jamais de menu, jamais de conseil de nutrition à
+proprement parler — tout est présenté comme dépense/photographie des consensus,
+avertissement renforcé obligatoire, invariants en CI (`demo:nutrition`). Le CONSEIL
+nutritionnel reste bloqué avis diététicien — ne pas franchir cette ligne.
 **Écran d'accueil (PWA)** : l'onglet 📅 Semaine s'ouvre sur un check-in (sommeil/VFC/
 énergie/ressenti — VFC visible pour tous, plus de question premium séparée) ; aucune
 séance visible avant d'avoir répondu, une fois par jour (`S.answers.readiness.date`).
@@ -174,5 +180,11 @@ journal des verdicts readiness (carte Avancement), saisie du chrono de course r�
 (calibration face à la prédiction), modales accessibles (`js/ui/modal.js` — focus,
 Échap, aria), monolithe explicitement gelé (commentaire d'en-tête), **E2E Playwright
 en CI** (`tests/e2e/`, 4 suites, 74 assertions — seule devDependency, test uniquement).
-Chantiers restants : candidature API MyFitnessPal (humain), Strava OAuth + push
-serveur (même décision infra), avis nutritionniste pour la nutrition complète.
+**Strava OAuth livré** : relais serveur `server/strava-relay.js` (Cloudflare Worker
+zéro dépendance — seul composant serveur du projet, secret jamais côté client,
+liste blanche d'origines, tokens par fragment, sans état) + `server/README.md`
+(déploiement pas-à-pas) + PWA (`js/strava.js`, bouton « Se connecter avec Strava »
+au Profil, refresh auto, repli jeton manuel conservé). Reste HUMAIN : créer l'app
+Strava + déployer le worker (15 min, README).
+Chantiers restants : candidature API MyFitnessPal (humain), push serveur,
+avis diététicien pour le CONSEIL nutritionnel (les estimations sont livrées).
