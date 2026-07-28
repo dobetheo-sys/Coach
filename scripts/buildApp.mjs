@@ -32,6 +32,7 @@ const ORDER = [
   "src/readiness/readinessSource.ts",
   "src/readiness/fitParser.ts",
   "src/readiness/dailyAdjuster.ts",
+  "src/nutrition/nutritionCalculator.ts",
   "src/app/bridge.ts",
 ];
 
@@ -74,6 +75,8 @@ if (typeof pg.pctLoad !== "number" || pg.totalWeeks !== 16 || pg.streakWeeks !==
   throw new Error("bundle invalide : progress cassé");
 const pred = EBV2.predict("run", answers, plan);
 if (!pred.items.length || !/–/.test(pred.items[0].value)) throw new Error("bundle invalide : predict cassé");
+const nut = EBV2.sessionNutrition({ d: "rn", name: "Sortie longue", det: "", min: 160, long: true }, { tempC: 30, weightKg: 70 });
+if (!nut || !nut.during.sodium || !/professionnel/.test(nut.disclaimer)) throw new Error("bundle invalide : sessionNutrition cassé");
 console.log("auto-test bundle : plan 16 semaines, score " + plan._v2.score + ", adaptation « " + adj.adjustment.verdict.level + " » OK");
 
 // ---- Injection entre marqueurs, après le </script> principal ----

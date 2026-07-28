@@ -115,5 +115,12 @@ Voir ARCHITECTURE.md « Branchement UI ».
 **Import FIT** : upload d'un fichier d'activité de n'importe quelle montre (onglet Profil,
 parseur zéro-dépendance `src/readiness/fitParser.ts`, spec `npm run demo:fit` en CI) —
 références estimées au journal + séances réelles dans la fatigue de l'ajusteur.
-Chantiers restants : nutrition (avis nutritionniste requis), Strava OAuth (décision infra),
-API Garmin (agrément non garanti), partage.
+**Nutrition (ravitaillement d'effort)** : `src/nutrition/nutritionCalculator.ts` — règles
+N1–N7 sourcées (ACSM/ISSN/Jeukendrup), glucides/h par durée-intensité, hydratation par
+température (météo), récupération, dépense estimée ; carte « 🥤 Ravitaillement » dans
+l'onglet Semaine, poids optionnel au Profil ; invariants (bornes dures, jamais de
+restriction, avertissement obligatoire) assertés par `npm run demo:nutrition` (CI).
+Le PÉRIMÈTRE s'arrête au ravitaillement : calories journalières/macros restent bloquées
+avis nutritionniste — ne pas étendre sans cette validation.
+Chantiers restants : nutrition complète (avis nutritionniste requis), Strava OAuth
+(décision infra ; Garmin abandonné — choix utilisateur), partage.

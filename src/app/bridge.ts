@@ -11,6 +11,7 @@ import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
 import { predictRace, type Prediction } from "../engine/predictor.ts";
 import { assessReadiness, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes } from "../readiness/fitParser.ts";
+import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
 
 interface AppAnswers extends Record<string, unknown> {
   format?: string;
@@ -217,5 +218,6 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   predict: predictV2,
   badges: badgesV2,
   importFit: importFitBytes,
-  version: "v2-sprint5",
+  sessionNutrition: nutritionForSession,
+  version: "v2-sprint6",
 };

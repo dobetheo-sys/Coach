@@ -2,7 +2,7 @@
 // en cours, la coche des séances, et « Forme du jour » au plus près de l'action.
 import { S, $, ebSave } from "../state.js";
 import { readinessCardHTML } from "./plan-view.js";
-import { applyReadiness } from "./readiness.js";
+import { applyReadiness, fetchWeather } from "./readiness.js";
 
 const ic = { sw: "\u{1F3CA}", bk: "\u{1F6B4}", rn: "\u{1F3C3}", br: "\u{1F501}", rs: "\u{1F4AA}" };
 
@@ -35,6 +35,31 @@ export function momentHTML(plan, todayISO) {
   return "";
 }
 
+// Carte « Ravitaillement d'aujourd'hui » (module nutrition, périmètre ravitaillement
+// d'effort uniquement — voir src/nutrition/). La température vient de la météo déjà
+// intégrée (Open-Meteo) et arrive en différé : la carte se re-rend seule, dégrade
+// proprement sans réseau/géoloc. L'avertissement du moteur est TOUJOURS affiché.
+function nutritionCardHTML(day, tempC) {
+  if (!day || !globalThis.EBV2 || !globalThis.EBV2.sessionNutrition) return "";
+  const wkg = parseFloat(S.answers.weight) > 0 ? parseFloat(S.answers.weight) : null;
+  const advs = day.sessions
+    .map((s) => ({ s, a: globalThis.EBV2.sessionNutrition(s, { tempC: tempC == null ? null : tempC, weightKg: wkg }) }))
+    .filter((x) => x.a);
+  if (!advs.length) return "";
+  let h = '<div class="load-card" id="nutCard"><div class="load-title">\u{1F964} Ravitaillement d’aujourd’hui' + (tempC != null ? ' <span style="font-weight:400">· ' + Math.round(tempC) + "°C prévus</span>" : "") + "</div>";
+  advs.forEach(({ s, a }) => {
+    h += '<details style="margin-top:6px;font-size:12px"><summary style="cursor:pointer"><b>' + s.name + "</b> — "
+      + (a.during.carbsGPerH ? a.during.carbsGPerH[0] + "–" + a.during.carbsGPerH[1] + " g/h de glucides, " : "eau, ")
+      + a.during.drinkMlPerH[0] + "–" + a.during.drinkMlPerH[1] + " ml/h" + (a.during.sodium ? " + sodium" : "") + "</summary>"
+      + '<div style="margin:6px 0 0 2px;color:#3f3a30"><b>Avant :</b> ' + a.before
+      + "<br><b>Pendant :</b> " + a.during.text
+      + (a.after ? "<br><b>Après :</b> " + a.after : "")
+      + '<br><span style="color:#777">Dépense estimée ~' + a.kcal[0] + "–" + a.kcal[1] + " kcal" + (wkg ? "" : " (renseigne ton poids dans \u{1F4CB} Profil pour affiner)") + ".</span></div></details>";
+  });
+  h += '<div class="load-sub" style="margin-top:8px">' + advs[0].a.disclaimer + "</div></div>";
+  return h;
+}
+
 export function renderTabWeek(plan) {
   const w = currentWeek(plan);
   const raceTag = w.race
@@ -59,9 +84,18 @@ export function renderTabWeek(plan) {
     html += '<div class="gd ' + d.charge + (d.date === today ? " today" : "") + '"><div class="gd-top"><b>' + d.jour + "</b>" + mark + '</div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
   });
   html += "</div></div>";
+  const todayDay = w.days.find((d) => d.date === today) || null;
+  html += nutritionCardHTML(todayDay, null);
   html += readinessCardHTML();
   html += "</div>";
   $("screen").innerHTML = html;
+  // Météo en différé : affine l'hydratation (chaleur → sodium) sans bloquer le rendu.
+  if (todayDay) fetchWeather().then((wx) => {
+    const el = $("nutCard");
+    if (!el || !wx || wx.tmaxC == null) return;
+    const h = nutritionCardHTML(todayDay, wx.tmaxC);
+    if (h) el.outerHTML = h;
+  });
   const _rb = $("rdApply");
   if (_rb) _rb.onclick = applyReadiness;
   document.querySelectorAll("#screen .doneBtn").forEach((b) => {

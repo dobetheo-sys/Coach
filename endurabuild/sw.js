@@ -2,7 +2,7 @@
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
    une météo périmée est pire qu'une absence de météo). */
-const VERSION = "eb-pwa-v2"; // v2 : refonte en 4 onglets
+const VERSION = "eb-pwa-v3"; // v3 : ravitaillement (nutrition) + poids optionnel au profil
 const ASSETS = [
   "./",
   "./index.html",

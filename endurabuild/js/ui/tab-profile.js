@@ -21,6 +21,7 @@ function journalLabel(t) {
     case "cs": return "Vitesse critique " + esc(v);
     case "vma": return "VMA " + esc(v) + " km/h";
     case "profil:vol_max": return "Volume max " + esc(v) + "h/sem";
+    case "profil:weight": return "Poids " + esc(v) + " kg";
     case "profil:sessions_max": return esc(v) + " séances/sem max";
     default: return esc(t.type) + " = " + esc(v);
   }
@@ -50,6 +51,7 @@ export function renderTabProfile(plan) {
   if (sp === "swim" || sp === "tri") html += row("pfCss", "CSS (min:s /100m)", a.css_known === "oui" ? a.css : "", "ex. 1:55");
   html += row("pfVol", "Volume max (h/sem)", a.vol_max, "ex. 8");
   html += row("pfSess", "Séances max /sem", a.sessions_max, "ex. 5");
+  html += row("pfWeight", "Poids (kg, optionnel)", a.weight, "affine le ravitaillement");
   html += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
     + '<div id="pfMsg" class="load-sub" style="margin-top:6px"></div></div>';
 
@@ -111,7 +113,7 @@ export function renderTabProfile(plan) {
       S.answers.tests.push({ type, value, prev: prev != null && prev !== "" ? prev : undefined, date: today, source: "profil (modification manuelle)" });
       apply();
     };
-    let changed = 0;
+    let changed = 0, planChanged = 0; // le poids ne pilote PAS le plan (nutrition seulement) → pas de régénération pour lui
     const g = (id) => { const el = $(id); return el ? el.value.trim() : null; };
     const ftp = g("pfFtp");
     if (ftp !== null && ftp !== "" && parseInt(ftp) > 0 && ftp !== String(a.ftp_known === "oui" ? a.ftp : "")) {
@@ -133,11 +135,16 @@ export function renderTabProfile(plan) {
     if (sess !== null && sess !== "" && parseInt(sess) > 0 && sess !== String(a.sessions_max || "")) {
       log("profil:sessions_max", parseInt(sess), a.sessions_max != null ? parseInt(a.sessions_max) : null, () => { S.answers.sessions_max = sess; }); changed++;
     }
+    planChanged = changed;
+    const wgt = g("pfWeight");
+    if (wgt !== null && wgt !== "" && parseFloat(wgt) > 0 && wgt !== String(a.weight || "")) {
+      log("profil:weight", parseFloat(wgt), a.weight != null && a.weight !== "" ? parseFloat(a.weight) : null, () => { S.answers.weight = wgt; }); changed++;
+    }
     if (!changed) { const m = $("pfMsg"); if (m) m.textContent = "Aucun changement détecté."; return; }
-    invalidatePlan(); // le plan sera régénéré UNE fois, ici — pas au changement d'onglet
+    if (planChanged) invalidatePlan(); // le plan sera régénéré UNE fois, ici — pas au changement d'onglet
     ebSave();
     renderTabProfile(ensurePlan());
     const m = $("pfMsg");
-    if (m) m.textContent = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + " — plan régénéré, journal mis à jour.";
+    if (m) m.textContent = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + (planChanged ? " — plan régénéré, journal mis à jour." : " — journal mis à jour (le poids n’affecte que le ravitaillement, pas le plan).");
   };
 }

@@ -164,6 +164,40 @@ l'auditeur INCHANGÉ (`npm run audit:v2` — mêmes 486 profils, mêmes règles,
 « Recalcul chaque matin » = recalcul à l'ouverture de l'appli (pas de backend ; persistance
 localStorage côté produit).
 
+## Nutrition — ravitaillement d'effort (`src/nutrition/`)
+
+**Périmètre volontairement limité** (frontière du conseil diététique — priorité n°1 du
+manifeste) : le module couvre UNIQUEMENT le ravitaillement lié à la séance. Il ne prescrit
+JAMAIS d'apport calorique journalier, de macros de régime, ni de restriction/déficit —
+cette partie reste bloquée tant qu'un(e) nutritionniste n'a pas validé l'approche
+(RESTE-A-FAIRE « À TOI »). Chaque conseil sort avec un avertissement obligatoire
+(« ne remplace pas l'avis d'un professionnel ») que l'UI affiche tel quel.
+
+| Module | Rôle |
+|---|---|
+| `nutrition/nutritionCalculator.ts` | `sessionNutrition()` : glucides pendant l'effort, hydratation, récupération, dépense estimée — repères des consensus publiés (ACSM 2016/2007, ISSN 2017, Jeukendrup 2014), jamais d'invention maison. `classifyIntensity()` réutilise `intensitySplit` (SEUL classificateur d'intensité du moteur — pas de deuxième chemin). `nutritionForSession()` = point d'entrée UI (V1Session → conseil, `rs` → null) |
+| `audit/nutritionDemo.ts` | Spec exécutable (`npm run demo:nutrition`, en CI) : bornes dures + balayage 1440 entrées + invariants ci-dessous |
+
+### Registre des règles nutrition (`N1`–`N7`)
+
+| Id | Règle | Source |
+|---|---|---|
+| N1 | <1h (ou <1h15 facile) : aucun glucide nécessaire (rinçage de bouche possible si intense) | ACSM 2016 |
+| N2 | 1h–2h30 : 30–60 g/h de glucides | Jeukendrup 2014 |
+| N3 | >2h30 : 60–90 g/h, mix glucose:fructose au-delà de 60, tube digestif à entraîner | Jeukendrup 2014 |
+| N4 | Hydratation à la soif 400–800 ml/h ; chaleur (≥25°C) → +200 ml/h + sodium ; **plafond dur 1000 ml/h** (hyponatrémie) | ACSM 2007 |
+| N5 | Après dur/long : fenêtre 30–60 min, ~1–1.2 g/kg glucides + ~0.3 g/kg protéines (chiffré seulement si poids connu) | ISSN 2017 |
+| N6 | **Jamais à jeun** sur séance dure ou longue (hypoglycémie d'effort = risque évitable) | manifeste, priorité n°1 |
+| N7 | Dépense estimée en fourchette (MET × poids × durée) — une information, jamais une cible à compenser ni à creuser | compendium Ainsworth |
+
+Invariants assertés en CI : glucides ≤90 g/h et boisson ≤1000 ml/h quelles que soient les
+entrées ; avertissement toujours présent ; aucun vocabulaire de restriction en sortie
+(`FORBIDDEN_OUTPUT`) ; dur/long → jamais à jeun + récupération toujours proposée ; chaque
+conseil motivé `{id, what, val, why}`. Côté UI (PWA) : carte « 🥤 Ravitaillement
+d'aujourd'hui » dans l'onglet 📅 Semaine (température Open-Meteo en différé, dégrade
+proprement), poids optionnel dans 📋 Profil (journalisé `profil:weight`, n'affecte QUE le
+ravitaillement — le plan n'est pas régénéré).
+
 ## Branchement UI ↔ moteur V2 (`src/app/` + `scripts/buildApp.mjs`)
 
 Le produit reste UN fichier HTML autonome, mais sa génération passe par le moteur V2 :
