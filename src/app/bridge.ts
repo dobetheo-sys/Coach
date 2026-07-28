@@ -302,7 +302,11 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
   };
   const today = new Date().toISOString().slice(0, 10);
   const pg = progressV2(p, answers, today);
-  return predictRace(sport, String(answers.format || ""), String(answers.intent || "") || undefined, finalRefs, { pctLoad: pg.pctLoad, streakWeeks: pg.streakWeeks });
+  return predictRace(sport, String(answers.format || ""), String(answers.intent || "") || undefined, finalRefs, {
+    pctLoad: pg.pctLoad,
+    streakWeeks: pg.streakWeeks,
+    courseProfile: String(answers.course_profile || "") || undefined, // R6 — profil du parcours (Profil)
+  });
 }
 
 /** Estimation énergétique du jour (décision utilisateur 28/07/2026 — estimation, jamais

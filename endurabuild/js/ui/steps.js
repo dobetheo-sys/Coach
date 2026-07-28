@@ -1,7 +1,7 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
 import { CATS, HEROS, PREMIUM_STEPS_DEF, RULE_CAT, SPORTS, VLAB } from "../config.js";
-import { $, S, ebClear, ebSave } from "../state.js";
+import { $, S, ebActivate, ebClear, ebSave } from "../state.js";
 import { renderPlan } from "../ui/plan-view.js";
 import { hideTabs, invalidatePlan } from "../ui/tabs.js";
 import { buildPlan } from "../app.js";
@@ -309,13 +309,38 @@ function bindInputs(scope){
 }
 function refreshTrail(){ /* fil de décision retiré — remplacé par le bandeau visuel du plan */ }
 function refreshNav(){const st=curSteps()[S.step],b=$("nextBtn");if(b&&st)b.disabled=!st.valid(S.answers);}
+// R6 — pendant le questionnaire d'un NOUVEAU plan, on doit toujours pouvoir revenir au
+// plan en cours (retour utilisateur : « impossible de retourner à l'accueil »). Le
+// brouillon jamais terminé est retiré de la liste — pas de plan fantôme.
+function backToPlanTarget(){
+  if(!Array.isArray(S.plans))return null;
+  const cur=S.plans.find(p=>p.id===S.activePlanId);
+  return (cur&&cur.prevPlanId&&S.plans.find(p=>p.id===cur.prevPlanId&&p.onPlan))
+    ||S.plans.find(p=>p.id!==S.activePlanId&&p.onPlan)||null;
+}
+function backToPlanHTML(){
+  return backToPlanTarget()?'<div style="text-align:center;margin:10px 0"><button class="btn" id="ebBackToPlan" type="button" style="font-size:12px;padding:8px 16px">← Revenir à mon plan en cours</button></div>':"";
+}
+function bindBackToPlan(){
+  const b=$("ebBackToPlan");if(!b)return;
+  b.onclick=()=>{
+    const target=backToPlanTarget();if(!target)return;
+    const cur=S.plans.find(p=>p.id===S.activePlanId);
+    if(cur&&!cur.onPlan&&!S.onPlan)S.plans=S.plans.filter(p=>p.id!==cur.id); // brouillon abandonné
+    ebActivate(target.id);ebSave();
+    if(S.sport)document.body.dataset.sport=S.sport;
+    if(S.answers.intent)document.body.dataset.intent=S.answers.intent;
+    renderPlan();
+  };
+}
 function renderSportPick(){
   $("progress").innerHTML="";
   let html='<div class="card welcome"><div class="w-tri">🏁</div><h2>Quel plan veux-tu construire ?</h2>'
     +'<p>Un moteur de raisonnement par sport — choisis le tien, le questionnaire s\'adapte.</p><div class="sport-grid">';
   Object.entries(SPORTS).forEach(([k,c])=>{html+='<button class="sport-card" data-sport="'+k+'" type="button" style="--sa:'+c.accent+'"><span class="sc-ico">'+c.ico+'</span><span class="sc-nom">'+c.nom+'</span><span class="sc-pitch">'+c.pitch+'</span></button>';});
-  html+='</div></div>';
+  html+='</div></div>'+backToPlanHTML();
   $("screen").innerHTML=html;
+  bindBackToPlan();
   document.querySelectorAll(".sport-card").forEach(b=>b.onclick=()=>{S.sport=b.dataset.sport;document.body.dataset.sport=b.dataset.sport;S.started=true;S.step=0;renderStep();});
 }
 function renderStep(){
@@ -330,7 +355,9 @@ function renderStep(){
   if(S.step>=steps.length){renderBlueprint();return;}
   const st=steps[S.step];
   $("screen").innerHTML='<div class="card"><div class="eyebrow">'+st.eyebrow+'</div><h2>'+st.title+'</h2><div class="why">'+st.why+'</div>'+st.render()
-    +'<div class="nav"><button class="btn" id="prevBtn" type="button" '+(S.step===0&&S.tier==="free"?'style="visibility:hidden"':'')+'>← Retour</button><button class="btn primary" id="nextBtn" type="button">Continuer →</button></div></div>';
+    +'<div class="nav"><button class="btn" id="prevBtn" type="button" '+(S.step===0&&S.tier==="free"?'style="visibility:hidden"':'')+'>← Retour</button><button class="btn primary" id="nextBtn" type="button">Continuer →</button></div></div>'
+    +backToPlanHTML();
+  bindBackToPlan();
   bindInputs($("screen"));if(st.branches)st.branches(S.answers);
   $("prevBtn").onclick=()=>{if(S.step===0&&S.tier==="premium"){S.tier="free";S.step=buildFreeSteps().length;}else if(S.step===0){S.sport=null;S.started=false;document.body.dataset.sport="";}else S.step--;renderStep();};
   $("nextBtn").onclick=()=>{S.step++;renderStep();};

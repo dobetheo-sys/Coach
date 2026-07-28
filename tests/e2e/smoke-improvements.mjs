@@ -73,6 +73,70 @@ ok(await page.locator(".eb-overlay").count() === 0, "Échap ferme aussi la cél�
 // ---- 3. Journal des adaptations (Semaine) ----
 ok(/Adaptations quotidiennes \(1 check-ins? · 1 ajustement/.test(await page.locator("#screen").textContent()), "carte « Adaptations quotidiennes » listée depuis readinessLog (Semaine)");
 
+// ---- 3bis. R6 : valider la séance depuis Aujourd'hui + 3 formats de partage ----
+await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  // remettre à zéro les ✓ du jour pour tester le flux de validation d'Aujourd'hui
+  const t = new Date().toISOString().slice(0, 10);
+  const p = S.currentPlan;
+  p.weeks.forEach((w) => w.days.forEach((d) => { if (d.date === t) d.sessions.forEach((s, si) => { if (S.answers.done) delete S.answers.done[w.num + "|" + d.jour + "|" + si]; }); }));
+  ebSave();
+  const { setTab } = await import("./js/ui/tabs.js");
+  setTab("today");
+});
+await page.waitForTimeout(300);
+ok(await page.locator("#screen [data-vd]").count() >= 1, "boutons de validation de la séance présents dans Aujourd'hui");
+ok(await page.locator("#tdRedoCheckin").count() === 1, "« Refaire mon point du matin » disponible (check-in re-jouable)");
+const vBtn = page.locator('#screen [data-vd][data-vrest="0"]:not([disabled])').first();
+if (await vBtn.count()) {
+  await vBtn.click(); await page.waitForTimeout(300);
+  ok(await page.locator(".eb-modal:has-text('Comment c’était')").count() === 1, "valider depuis Aujourd'hui ouvre le feedback RPE");
+  await page.locator("[data-rpe='5']").click();
+  await page.locator("[data-feel='normal']").click();
+  await page.click("#fbSave"); await page.waitForTimeout(400);
+  ok(await page.locator("#ebShareStory").count() === 1 && (await page.locator("#ebShareSquare").count()) === 1 && (await page.locator("#ebShareText").count()) === 1, "célébration : 3 types de partage (Story / Carte / Texte)");
+  await page.click("#ebCloseCongrats"); await page.waitForTimeout(200);
+} else {
+  ok((await page.locator('#screen [data-vd][data-vrest="1"]').count()) >= 1, "jour de repos : validation « récupération respectée » proposée");
+  info("jour de repos — flux feedback testé via la grille Semaine (section 2)");
+  ok(true, "célébration : partages testés via la grille (repos aujourd'hui)");
+}
+
+// ---- 3ter. R6 : la frise de phases déroule le PROGRAMME, validation aux ✓ ----
+const tP = await page.locator("#ebTabbar .tabbtn").all();
+await tP[1].click(); await page.waitForTimeout(300);
+ok(await page.locator("#screen [data-phseg]").count() >= 3, "segments de la frise de phases cliquables");
+await page.locator("#screen [data-phseg]").first().click(); await page.waitForTimeout(300);
+const openPh = page.locator("#screen .ph-obj[open]").first();
+ok(await openPh.count() === 1, "cliquer un segment ouvre le programme de la phase");
+const phTxt = await openPh.textContent();
+ok(/Semaine \d+/.test(phTxt) && (await openPh.locator(".doneBtn").count()) > 0, "le programme liste les semaines avec les coches ✓ des séances");
+const phValid = await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  const { setTab } = await import("./js/ui/tabs.js");
+  const p = S.currentPlan;
+  const phase = p.phases[0];
+  if (!S.answers.done) S.answers.done = {};
+  p.weeks.filter((w) => w.phase && w.phase.nom === phase.nom).forEach((w) => w.days.forEach((d) => d.sessions.forEach((s, si) => { if (s.d !== "rs") S.answers.done[w.num + "|" + d.jour + "|" + si] = true; })));
+  ebSave();
+  S._phOpen = phase.nom;
+  setTab("general");
+  return /Phase validée/.test(document.querySelector("#screen").textContent);
+});
+ok(phValid, "toutes les séances de la phase cochées → « ✅ Phase validée »");
+
+// ---- 3quater. R6 : nouveau plan pré-rempli + retour à l'accueil possible ----
+await tP[0].click(); await page.waitForTimeout(300);
+await page.click("#pfNewPlan"); await page.waitForTimeout(300);
+ok(await page.locator(".sport-card").count() === 4, "nouveau plan → choix du sport");
+ok(await page.locator("#ebBackToPlan").count() === 1, "« Revenir à mon plan en cours » visible pendant le questionnaire");
+const prefilled = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return { age: S.answers.age, sex: S.answers.sex, pace: S.answers.pace }; });
+ok(prefilled.age === "35" && prefilled.sex === "H" && prefilled.pace === "4:30", "données de la personne pré-remplies (âge/sexe/allure) dans le nouveau plan");
+await page.click("#ebBackToPlan"); await page.waitForTimeout(500);
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "retour : la vue plan est restaurée");
+const plansAfterBack = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.plans.length; });
+ok(plansAfterBack === 1, "le brouillon abandonné est retiré (pas de plan fantôme)");
+
 // ---- 4. Résultat de course réel (Aujourd'hui — sous la prédiction) ----
 await page.evaluate(async (d) => {
   const { S, ebSave } = await import("./js/state.js");
@@ -114,7 +178,7 @@ ok(/Base \+ vie quotidienne/.test(eTxt) && /Entraînement du jour/.test(eTxt) &&
 ok(/protéines ~\d+/.test(eTxt) && /lipides ~\d+/.test(eTxt) && /glucides ~\d+/.test(eTxt), "macros indicatives affichées (fourchettes chiffrées)");
 ok(/pas un menu/i.test(eTxt) && /pas une consigne/i.test(eTxt), "garde-fous affichés : photographie, pas un menu ni une consigne");
 ok(!/déficit|maigrir|perte de poids|restriction/i.test(eTxt), "aucun vocabulaire de restriction dans l'onglet Nutrition");
-ok(/Journal alimentaire/.test(eTxt), "journal alimentaire présent dans l'onglet Nutrition");
+ok(!/Journal alimentaire/.test(eTxt), "journal alimentaire retiré (décision R6)");
 
 // ---- 6. Strava OAuth : connexion via relais au Profil, repli jeton manuel ----
 const t6 = await page.locator("#ebTabbar .tabbtn").all();

@@ -157,8 +157,7 @@ triathlon (séances validées), badges, efficience. Le monitoring en direct de l
 **R4 livré** (brief `BRIEF_CLAUDE_CODE_R4.md`, rapport `endurabuild/RAPPORT-R4.md`) :
 bandeau réserves moteur non-repliable (onglet Plan, acquitté à l'ouverture des décisions),
 records personnels (Profil, lecture seule), **multi-plans** (`S.plans`/`eb_state_v2`,
-migration auto v1, sélecteur au Profil), **journal nutrition** (Open Food Facts + import
-CSV MyFitnessPal + delta glucides ravito — toujours AUCUNE cible calorique), **avatar SVG**
+migration auto v1, sélecteur au Profil), **avatar SVG**
 personnalisable 100% traçable aux données (posture=7j réels, aura=streak, accessoires=
 badges, thème=accents sport), **félicitations + partage story** 1080×1920 (Web Share API,
 repli téléchargement). **Spec rétention livrée** (MESSAGE_CLAUDE_CODE_R4, rapport
@@ -199,3 +198,14 @@ Voir ARCHITECTURE.md « Refonte R5 ». Les anciens `tab-progress.js`/`tab-monito
 sont supprimés (contenu redistribué).
 Chantiers restants : candidature API MyFitnessPal (humain), push serveur,
 avis diététicien pour le CONSEIL nutritionnel (les estimations sont livrées).
+**R6 livré** (2e retour du fondateur) : fix avatar (div non fermé) + `html{overflow-x:hidden}`
+(barre d'onglets « disparue » = pan horizontal iOS), validation de séance DANS Aujourd'hui
+(gros boutons, même boucle feedback→célébration), **3 formats de partage** (story 9:16,
+carte 1:1, texte — `export.js`), frise de phases cliquable → déroule le PROGRAMME de la
+phase (coches ✓ incluses), **phase validée quand TOUTES ses séances sont cochées**,
+nouveau plan PRÉ-REMPLI (données de la personne) + bouton « Revenir à mon plan en cours »
+(brouillon abandonné retiré), **profil du parcours** (plat/vallonné/montagneux, Profil)
+→ prédiction course à pied ajustée et élargie (PRED-parcours), Strava en 1 bouton
+(relais par défaut dans `config.js` STRAVA_RELAY_DEFAULT — à renseigner au déploiement
+du worker ; URL en réglages avancés), « ↻ Refaire mon point du matin » (diaporama
+re-jouable), **journal alimentaire RETIRÉ** (décision utilisateur — module supprimé).

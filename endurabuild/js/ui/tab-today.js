@@ -7,7 +7,7 @@ import { S, $, ebSave } from "../state.js";
 import { checkinSlideshowHTML, bindCheckinSlideshow } from "./checkin.js";
 import { readinessDoneToday } from "./readiness.js";
 import { loadChartSVG, progressBarCardHTML, predictionCardHTML, intensityCardHTML, historyCardHTML } from "./plan-view.js";
-import { momentHTML, painBannerHTML, bindPainBanner, sickToggleHTML, bindSickToggle, heroSessionHTML } from "./tab-week.js";
+import { momentHTML, painBannerHTML, bindPainBanner, sickToggleHTML, bindSickToggle, heroSessionHTML, feedbackModal, showCongrats } from "./tab-week.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { missedSessionsCheck } from "../notifications.js";
 import { ensurePlan } from "./tabs.js";
@@ -58,6 +58,51 @@ function syncDoneFromChecklist(resSessions, plan, todayISO) {
   d.sessions.forEach((s, si) => { if (s.d !== "rs") S.answers.done[w.num + "|" + d.jour + "|" + si] = true; });
 }
 
+// R6 — VALIDATION de la séance depuis Aujourd'hui : gros bouton par séance planifiée du
+// jour (même clé « fait », même boucle feedback → célébration → partages que la grille).
+function todayValidateHTML(plan, todayISO) {
+  let w = null, d = null;
+  plan.weeks.forEach((wk) => wk.days.forEach((dd) => { if (dd.date === todayISO) { w = wk; d = dd; } }));
+  if (!w || !d) return "";
+  let h = "";
+  d.sessions.forEach((s, si) => {
+    const k = w.num + "|" + d.jour + "|" + si;
+    const dn = S.answers.done && S.answers.done[k];
+    const label = s.d === "rs" ? "Récupération respectée" : "Valider : " + s.name;
+    h += '<button type="button" class="btn ' + (dn ? "" : "primary") + '" data-vd="' + k + '" data-vrest="' + (s.d === "rs" ? 1 : 0) + '" style="width:100%;margin-top:8px;font-size:15px;padding:13px 16px"' + (dn ? " disabled" : "") + ">"
+      + (dn ? "✓ " + (s.d === "rs" ? "Repos validé" : "Séance validée — bravo") : "✓ " + label) + "</button>";
+  });
+  return h ? '<div class="card"><div class="eyebrow">Valider ma journée</div>' + h + "</div>" : "";
+}
+function bindTodayValidate(plan, todayISO) {
+  document.querySelectorAll("#screen [data-vd]").forEach((b) => {
+    b.onclick = () => {
+      const k = b.dataset.vd;
+      if (S.answers.done && S.answers.done[k]) return;
+      let badgesBefore = [];
+      try { badgesBefore = globalThis.EBV2.badges(plan, S.answers, todayISO); } catch (e) {}
+      if (!S.answers.done) S.answers.done = {};
+      S.answers.done[k] = true;
+      ebSave();
+      const parts = k.split("|");
+      const wk = plan.weeks.find((x) => String(x.num) === parts[0]);
+      const dy = wk && wk.days.find((x) => x.jour === parts[1]);
+      const sess = dy && dy.sessions[+parts[2]];
+      if (!sess) { renderTabToday(plan); return; }
+      const celebrate = () => {
+        let newBadge = null;
+        try {
+          const after = globalThis.EBV2.badges(plan, S.answers, todayISO);
+          newBadge = after.find((x) => !badgesBefore.some((y) => y.id === x.id)) || null;
+        } catch (e) {}
+        showCongrats(plan, sess, newBadge, todayISO);
+      };
+      if (sess.d === "rs") { renderTabToday(plan); celebrate(); }
+      else feedbackModal(plan, sess, k, () => { renderTabToday(plan); celebrate(); });
+    };
+  });
+}
+
 // Course passée → saisie du chrono réel face à la prédiction (calibration honnête).
 function raceResultCardHTML(plan) {
   const rd = S.answers.race_date, todayISO = new Date().toISOString().slice(0, 10);
@@ -104,6 +149,7 @@ export function renderTabToday(plan) {
   html += retestBannerHTML(today);
   html += missedSessionsCheck(plan);
   html += heroSessionHTML(plan, today); // la séance du jour, EN PREMIER
+  html += todayValidateHTML(plan, today); // R6 — valider directement ici (feedback → partages)
   html += todayChecklistHTML(resSessions, today);
   html += '<div class="card"><div class="eyebrow">Ta préparation</div>';
   html += predictionCardHTML(plan);
@@ -115,8 +161,19 @@ export function renderTabToday(plan) {
   html += intensityCardHTML(plan);
   html += historyCardHTML(plan);
   html += "</div>";
+  // R6 — le check-in du matin doit rester accessible : celui qui a déjà répondu (ou dont
+  // l'état vient d'une ancienne version) peut refaire son point sans attendre demain.
+  html += '<div style="text-align:center;margin:4px 0 10px"><button class="btn" id="tdRedoCheckin" type="button" style="font-size:12px;padding:6px 14px">↻ Refaire mon point du matin</button></div>';
   $("screen").innerHTML = html;
 
+  const redo = $("tdRedoCheckin");
+  if (redo) redo.onclick = () => {
+    delete S.answers.readiness; // la date saute → le diaporama revient (le journal des verdicts garde l'historique)
+    S._ck = null;
+    ebSave();
+    renderTabToday(plan);
+  };
+  bindTodayValidate(plan, today);
   bindPainBanner(plan, () => renderTabToday(plan));
   bindRetestBanner(today, () => renderTabToday(ensurePlan()));
   document.querySelectorAll("#screen [data-ck]").forEach((cb) => {

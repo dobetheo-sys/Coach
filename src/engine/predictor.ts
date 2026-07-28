@@ -23,7 +23,18 @@ export interface Prediction {
 export interface PredictOpts {
   pctLoad?: number; // % de charge du plan accomplie
   streakWeeks?: number;
+  courseProfile?: string; // "plat" | "vallonne" | "montagneux" — profil du parcours visé
 }
+
+// R6 — profil du parcours : un chrono à plat ne vaut rien sur un parcours vallonné.
+// Facteurs de temps course à pied (littérature GAP/expérience course sur route) :
+// vallonné ~+3–6 %, montagneux ~+8–15 % — appliqués en ÉLARGISSANT la fourchette
+// (l'incertitude monte avec le relief, on ne fait pas semblant du contraire).
+const COURSE_PROFILE_RUN: Record<string, { lo: number; hi: number; label: string }> = {
+  plat: { lo: 1.0, hi: 1.0, label: "parcours plat" },
+  vallonne: { lo: 1.03, hi: 1.06, label: "parcours vallonné" },
+  montagneux: { lo: 1.08, hi: 1.15, label: "parcours montagneux" },
+};
 
 const RUN_KM: Record<string, number> = { "5k": 5, "10k": 10, semi: 21.0975, marathon: 42.195 };
 const SWIM_RACE: Record<string, { dist: number; factor: number }> = {
@@ -89,11 +100,18 @@ export function predictRace(
   if (followed) D("PRED-forme", "Fourchette resserrée", "±2%", "Plan bien suivi (streak ≥3 semaines, charge accomplie ≥60%) : la projection est plus fiable");
   if (shift > 0) D("PRED-finisher", "Pacing conservateur", "+3%", "Objectif finisher : on vise l'arrivée en forme, pas la marge d'erreur");
   const range = (sec: number) => fmtT(sec * (1 + shift - spread)) + "–" + fmtT(sec * (1 + shift + spread));
+  // Fourchette COURSE À PIED avec profil de parcours (R6) — le relief élargit et décale.
+  const prof = opts.courseProfile && COURSE_PROFILE_RUN[opts.courseProfile] ? COURSE_PROFILE_RUN[opts.courseProfile] : null;
+  if (prof && prof.hi > 1) D("PRED-parcours", "Profil du parcours", prof.label, "Le relief ralentit et augmente l'incertitude : fourchette ×" + prof.lo + "–" + prof.hi + " sur les temps de course à pied");
+  const runRange = (sec: number) => prof
+    ? fmtT(sec * prof.lo * (1 + shift - spread)) + "–" + fmtT(sec * prof.hi * (1 + shift + spread))
+    : range(sec);
+  const profWhy = prof && prof.hi > 1 ? " · " + prof.label + " (+" + Math.round((prof.lo - 1) * 100) + "–" + Math.round((prof.hi - 1) * 100) + "%)" : "";
 
   if (sport === "run") {
     if (refs.thrPace > 0 && RUN_KM[format]) {
       const t = riegelSec(refs.thrPace, RUN_KM[format]);
-      items.push({ leg: "Course", value: range(t), why: "Riegel depuis ton allure seuil (~1h), exposant 1.06 — la référence des prédictions route" });
+      items.push({ leg: "Course", value: runRange(t), why: "Riegel depuis ton allure seuil (~1h), exposant 1.06 — la référence des prédictions route" + profWhy });
       D("PRED-run", "Méthode course", "Riegel ^1.06", "Extrapolation standard depuis l'allure tenable une heure");
     } else if (format === "trail") {
       advice.push("Trail : le chrono dépend du D+ et du terrain — repère fiable : allure Z2 à plat, marche assumée dans les pentes raides.");
@@ -122,7 +140,7 @@ export function predictRace(
     } else advice.push("FTP manquante → pas de puissance cible vélo (test 20min × 0.95).");
     if (refs.thrPace > 0 && rn) {
       const t = riegelSec(refs.thrPace, rn.km) * rn.fatigue;
-      items.push({ leg: "CAP " + (rn.km >= 21 ? (rn.km > 22 ? "marathon" : "semi") : rn.km + "km"), value: range(t), why: "Riegel × " + rn.fatigue + " de fatigue post-vélo (facteur " + format + ")" });
+      items.push({ leg: "CAP " + (rn.km >= 21 ? (rn.km > 22 ? "marathon" : "semi") : rn.km + "km"), value: runRange(t), why: "Riegel × " + rn.fatigue + " de fatigue post-vélo (facteur " + format + ")" + profWhy });
     } else advice.push("Allure seuil manquante → pas de projection CAP (test 30min).");
     if (items.length) D("PRED-tri", "Méthode tri", "legs séparés", "Un total additionnerait les incertitudes ; chaque leg a sa méthode et sa fourchette");
   }

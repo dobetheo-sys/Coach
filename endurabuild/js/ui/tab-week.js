@@ -54,13 +54,13 @@ function handleSwapClick(plan, wnum, jour) {
   renderTabWeek(np);
 }
 import { dailyContentHTML } from "./daily-content.js";
-import { shareStory } from "../export.js";
+import { shareStory, shareText } from "../export.js";
 
 // R4.0 — boucle de base : validation → FEEDBACK ≤10s (RPE 1-10, ressenti, douleur) →
 // célébration → teaser de la prochaine séance (la boucle se ferme sur le teaser, jamais
 // sur la récompense). Le feedback nourrit RÉELLEMENT l'ajusteur : RPE ≥8 hier = signal
 // annoncé demain ; douleur = intensité verrouillée (rouge forcé) tant que non levée.
-function feedbackModal(plan, session, k, onDone) {
+export function feedbackModal(plan, session, k, onDone) {
   document.querySelectorAll(".eb-overlay").forEach((e) => e.remove());
   const ov = document.createElement("div");
   ov.className = "eb-overlay";
@@ -113,7 +113,7 @@ function nextSessionTeaser(plan, todayISO) {
 }
 
 // Célébration (modal courte, partage story natif — repli téléchargement PNG).
-function showCongrats(plan, session, newBadge, todayISO) {
+export function showCongrats(plan, session, newBadge, todayISO) {
   document.querySelectorAll(".eb-overlay").forEach((e) => e.remove());
   let streak = 0; // R4.2 — série par JOUR (le repos validé compte autant qu'une séance)
   try { streak = globalThis.EBV2.adherence(plan, S.answers, todayISO).days || 0; } catch (e) {}
@@ -127,10 +127,12 @@ function showCongrats(plan, session, newBadge, todayISO) {
     + (session.det ? '<div style="text-align:center;font-size:12px;color:#635b4a;margin-top:2px">' + String(session.det).split("—")[0].slice(0, 60) + "</div>" : "")
     + (streak > 1 ? '<div style="text-align:center;margin-top:8px">🔥 <b>' + streak + " jours d’affilée</b> — le repos validé compte aussi</div>" : "")
     + (newBadge ? '<div style="text-align:center;margin-top:6px;color:#8a6d00;font-weight:700">' + newBadge.icon + " Badge débloqué : " + newBadge.label + "</div>" : "")
-    + '<div class="nav" style="justify-content:center;margin-top:14px;gap:10px;flex-wrap:wrap">'
-    + '<button class="btn gold" id="ebShareStory" type="button">📸 Partager en story</button>'
+    + '<div class="nav" style="justify-content:center;margin-top:14px;gap:8px;flex-wrap:wrap">'
+    + '<button class="btn gold" id="ebShareStory" type="button">📸 Story</button>'
+    + '<button class="btn gold" id="ebShareSquare" type="button">🖼 Carte</button>'
+    + '<button class="btn gold" id="ebShareText" type="button">💬 Texte</button>'
     + '<button class="btn" id="ebCloseCongrats" type="button">Fermer</button></div>'
-    + '<div class="load-sub" style="text-align:center;margin-top:6px">Image 9:16 générée localement — partage via la feuille de partage de ton téléphone.</div>'
+    + '<div class="load-sub" style="text-align:center;margin-top:6px">Story 9:16 · carte carrée 1:1 · ou résumé texte — généré localement, partagé via la feuille de ton téléphone.</div>'
     + nextSessionTeaser(plan, todayISO)
     + "</div>";
   document.body.appendChild(ov);
@@ -138,14 +140,22 @@ function showCongrats(plan, session, newBadge, todayISO) {
   const closeOv = () => { untrap(); ov.remove(); };
   ov.querySelector("#ebCloseCongrats").onclick = closeOv;
   ov.onclick = (e) => { if (e.target === ov) closeOv(); };
-  ov.querySelector("#ebShareStory").onclick = async () => {
-    const btn = ov.querySelector("#ebShareStory");
-    btn.disabled = true; btn.textContent = "Génération…";
-    try {
-      await shareStory({ sessionName: session.name, detail: session.det, sport: S.sport, streak, badge: newBadge, avatarSVG: avatarSVG(av, 520), accent: av.accent });
-    } catch (e) { console.warn(e); }
-    btn.disabled = false; btn.textContent = "📸 Partager en story";
+  // R6 — plusieurs types de partage : story 9:16, carte 1:1, texte (repli presse-papiers)
+  const shareOpts = { sessionName: session.name, detail: session.det, sport: S.sport, streak, badge: newBadge, avatarSVG: avatarSVG(av, 520), accent: av.accent };
+  const bindShare = (id, label, fn) => {
+    const btn = ov.querySelector(id);
+    if (btn) btn.onclick = async () => {
+      btn.disabled = true; btn.textContent = "…";
+      try { await fn(btn); } catch (e) { console.warn(e); }
+      btn.disabled = false; btn.textContent = label;
+    };
   };
+  bindShare("#ebShareStory", "📸 Story", () => shareStory(shareOpts, "story"));
+  bindShare("#ebShareSquare", "🖼 Carte", () => shareStory(shareOpts, "square"));
+  bindShare("#ebShareText", "💬 Texte", async (btn) => {
+    const r = await shareText(shareOpts);
+    if (r === "clipboard") btn.textContent = "Copié ✓";
+  });
 }
 
 const ic = { sw: "\u{1F3CA}", bk: "\u{1F6B4}", rn: "\u{1F3C3}", br: "\u{1F501}", rs: "\u{1F4AA}" };
