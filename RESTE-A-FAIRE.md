@@ -42,7 +42,7 @@ du jour). Plan généré UNE fois (`S.currentPlan`), 0 `buildPlan` au changement
 |---|---|---|---|---|
 | ~~1~~ | ~~Export PNG / partage~~ | — | — | ✅ Fait (PWA : `js/export.js`, bouton 🖼 PNG dans le plan). |
 | 2 | **Import Strava automatique** | Moyen | ta décision infra | Le contrat `CompletedSession` est prêt (les ✓ l'utilisent déjà) ; il ne manque que le relais OAuth. Strava couvre les séances réalisées, PAS le sommeil/HRV (qui restent en saisie manuelle). |
-| 3 | **Source FIT (upload fichier)** | Moyen | rien | Parser le format FIT en zéro-dépendance est faisable mais dense. Alternative : accepter l'export CSV/GPX. Slot déjà prévu dans `ReadinessSource`. |
+| ~~3~~ | ~~Source FIT (upload fichier)~~ | — | — | ✅ Fait : parseur FIT zéro-dépendance (`src/readiness/fitParser.ts`, spec `npm run demo:fit` en CI), bouton « 📂 Importer un fichier .FIT » dans l'onglet Profil — références (FTP/allure/CSS) au journal + séances réelles dans la fatigue de l'ajusteur (`fitSessions`, dédoublonnées avec les ✓). Sommeil/HRV restent en saisie manuelle (absents des FIT d'activité). |
 | 4 | **Nutrition** | Moyen | avis nutritionniste | Calories, macros, glucides/heure sur les longues, hydratation par température (la météo est déjà là). Architecture prévue (`src/nutrition/` dans la roadmap). |
 | 5 | **API Garmin (HRV/sommeil auto)** | Moyen | agrément Garmin Health API (B2B, non garanti) | La logique est prête et agnostique de la source — si l'accès arrive un jour, c'est un adaptateur à écrire, rien d'autre. |
 | ~~6~~ | ~~Célébrations « moment »~~ | — | — | ✅ Fait (PWA : bannières jour de course / veille de course / entrée en affûtage dans l'onglet 📅 Semaine, `momentHTML`). |

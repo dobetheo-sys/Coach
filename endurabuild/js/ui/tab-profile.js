@@ -61,7 +61,16 @@ export function renderTabProfile(plan) {
       html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:12px;align-items:baseline"><span style="width:78px;color:#635b4a">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:#777">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
     });
   } else {
-    html += '<div class="load-sub">Encore vide — il se remplira à chaque test (FTP, allure, CSS), import Strava, ou modification de profil ci-dessus.</div>';
+    html += '<div class="load-sub">Encore vide — il se remplira à chaque test (FTP, allure, CSS), import Strava/FIT, ou modification de profil ci-dessus.</div>';
+  }
+  // Import FIT (roadmap : source « upload fichier », sans compte ni réseau) — le fichier
+  // d'activité de n'importe quelle montre nourrit le journal (références) ET la fatigue
+  // de l'ajusteur (S.answers.fitSessions, même contrat que les ✓).
+  if (globalThis.EBV2 && globalThis.EBV2.importFit) {
+    html += '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+      + '<label class="btn" style="cursor:pointer;margin:0">📂 Importer un fichier .FIT<input type="file" id="pfFit" accept=".fit,.FIT" multiple style="display:none"></label>'
+      + '<span class="load-sub" style="margin:0">export de ta montre — lu ici, jamais envoyé</span></div>'
+      + '<div id="pfFitMsg" class="load-sub" style="margin-top:6px"></div>';
   }
   html += "</div>";
 
@@ -70,6 +79,31 @@ export function renderTabProfile(plan) {
 
   $("pfEdit").onclick = () => { S.step = curSteps().length - 1; renderStep(); };
   $("pfReset").onclick = () => reset();
+  const fitInput = $("pfFit");
+  if (fitInput) fitInput.onchange = async () => {
+    const msg = (t) => { const m = $("pfFitMsg"); if (m) m.innerHTML = t; };
+    const files = [...(fitInput.files || [])];
+    if (!files.length) return;
+    let nT = 0, nS = 0; const errs = [], notes = [];
+    if (!Array.isArray(S.answers.tests)) S.answers.tests = [];
+    if (!Array.isArray(S.answers.fitSessions)) S.answers.fitSessions = [];
+    for (const f of files) {
+      try {
+        const imp = globalThis.EBV2.importFit(await f.arrayBuffer());
+        imp.tests.forEach((t) => { S.answers.tests.push(t); nT++; });
+        imp.completed.forEach((c) => {
+          if (!S.answers.fitSessions.some((x) => x.date === c.date && x.d === c.d && x.minutes === c.minutes)) { S.answers.fitSessions.push(c); nS++; }
+        });
+        notes.push(...imp.notes);
+      } catch (e) { errs.push(esc(f.name) + " : " + esc(e && e.message || "illisible")); }
+    }
+    S.answers.fitSessions = S.answers.fitSessions.slice(-60); // borne : 60 dernières séances
+    ebSave();
+    if (nT) { invalidatePlan(); renderTabProfile(ensurePlan()); } // nouvelles réfs → régénération (une fois)
+    msg((nS || nT ? "✓ " + nS + " séance" + (nS > 1 ? "s" : "") + " importée" + (nS > 1 ? "s" : "") + " (nourrit la fatigue de « Forme du jour »)" + (nT ? " · " + nT + " référence" + (nT > 1 ? "s" : "") + " ajoutée" + (nT > 1 ? "s" : "") + " au journal" : "") + "." : "Aucune donnée exploitable.")
+      + (notes.length ? '<br><span style="color:#8a6d00">⚠ ' + notes.map(esc).join(" ") + "</span>" : "")
+      + (errs.length ? '<br><span style="color:#c0392b">' + errs.join("<br>") + "</span>" : ""));
+  };
   $("pfSave").onclick = () => {
     const today = new Date().toISOString().slice(0, 10);
     if (!Array.isArray(S.answers.tests)) S.answers.tests = [];

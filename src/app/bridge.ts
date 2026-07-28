@@ -10,6 +10,7 @@ import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
 import { predictRace, type Prediction } from "../engine/predictor.ts";
 import { assessReadiness, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
+import { importFitBytes } from "../readiness/fitParser.ts";
 
 interface AppAnswers extends Record<string, unknown> {
   format?: string;
@@ -85,9 +86,17 @@ export interface TodayAdjustment {
 /** Adapte la journée `snapshot.date` à l'état de forme — « recalcul du matin ». */
 export function adjustTodayV2(sport: string, answers: AppAnswers, snapshot: ReadinessSnapshot): TodayAdjustment {
   const { plan, reasoned } = generatePlan(toProfile(sport, answers));
-  // Boucle prévu/réel : les séances cochées dans l'UI nourrissent le calcul de fatigue
+  // Boucle prévu/réel : les séances cochées dans l'UI nourrissent le calcul de fatigue,
+  // complétées par les séances importées d'un fichier FIT (answers.fitSessions) —
+  // même contrat CompletedSession ; dédoublonnage date+sport (une séance cochée ET
+  // importée ne compte qu'une fois, on garde la version cochée du plan).
   if (!snapshot.completed) {
     const completed = completedFromDone(plan, answers, snapshot.date);
+    const fit = (answers.fitSessions || []) as CompletedSession[];
+    for (const f of fit) {
+      if (!f || !f.date || f.date >= snapshot.date || !f.minutes) continue;
+      if (!completed.some((c) => c.date === f.date && c.d === f.d)) completed.push(f);
+    }
     if (completed.length) snapshot = { ...snapshot, completed };
   }
   const adjustment = adjustDay(reasoned, plan, snapshot.date, snapshot);
@@ -207,5 +216,6 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   progress: progressV2,
   predict: predictV2,
   badges: badgesV2,
-  version: "v2-sprint4",
+  importFit: importFitBytes,
+  version: "v2-sprint5",
 };

@@ -30,6 +30,7 @@ const ORDER = [
   "src/generator/repairLoop.ts",
   "src/engine/predictor.ts",
   "src/readiness/readinessSource.ts",
+  "src/readiness/fitParser.ts",
   "src/readiness/dailyAdjuster.ts",
   "src/app/bridge.ts",
 ];

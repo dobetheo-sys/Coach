@@ -22,5 +22,6 @@ jobs:
       - run: npm run audit:v2
       - run: npm run demo:repair
       - run: npm run demo:readiness
+      - run: npm run demo:fit
       # Le bundle EBV2 committé dans le HTML doit correspondre aux sources src/
       - run: npm run check:app

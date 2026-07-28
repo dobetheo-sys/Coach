@@ -112,5 +112,8 @@ canicule ≥35°C durcit le verdict des séances extérieures, chaleur/pluie don
 fermée** : les séances cochées (✓) nourrissent le calcul de fatigue de l'ajusteur
 (`completedFromDone`) — même contrat qu'un futur import Strava.
 Voir ARCHITECTURE.md « Branchement UI ».
-Chantiers restants : nutrition (avis nutritionniste requis), dashboard, gamification,
-partage, sources readiness FIT/Garmin.
+**Import FIT** : upload d'un fichier d'activité de n'importe quelle montre (onglet Profil,
+parseur zéro-dépendance `src/readiness/fitParser.ts`, spec `npm run demo:fit` en CI) —
+références estimées au journal + séances réelles dans la fatigue de l'ajusteur.
+Chantiers restants : nutrition (avis nutritionniste requis), Strava OAuth (décision infra),
+API Garmin (agrément non garanti), partage.
