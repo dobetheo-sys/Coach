@@ -7,6 +7,7 @@ import { SPORTS, VLAB } from "../config.js";
 import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc } from "../state.js";
 import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js";
 import { renderPlan } from "./plan-view.js";
+import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 
 const _fmtSec = (s) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
@@ -17,7 +18,7 @@ const _fmtColon = (s) => Math.floor(s / 60) + ":" + String(Math.round(s % 60)).p
 // journal mais le plan généré ne changerait JAMAIS (bug corrigé : « chaque paramètre
 // doit influencer le plan »). Applique le test le PLUS RÉCENT de chaque type ; renvoie
 // le nombre de références effectivement mises à jour.
-function syncRefsFromTests() {
+export function syncRefsFromTests() {
   const tests = Array.isArray(S.answers.tests) ? S.answers.tests : [];
   const latest = (type) => tests.filter((t) => t.type === type && isFinite(t.value)).sort((x, y) => String(y.date || "").localeCompare(String(x.date || "")))[0];
   let n = 0;
@@ -183,6 +184,9 @@ export function renderTabProfile(plan) {
   // — Records personnels (R4-5, lecture seule)
   html += recordsHTML(plan, a);
 
+  // — Retest « boss fight » (R4.4) : planification ici, cycle complet dans 📅 Semaine
+  html += retestPlannerHTML();
+
   // — Journal d'évolution (S.answers.tests, trié du plus récent au plus ancien)
   const tests = Array.isArray(a.tests) ? [...a.tests].sort((x, y) => String(y.date || "").localeCompare(String(x.date || ""))) : [];
   html += '<div class="load-card"><div class="load-title">📒 Journal d’évolution</div>';
@@ -214,6 +218,7 @@ export function renderTabProfile(plan) {
   $("screen").innerHTML = html;
 
   bindPlansSelector();
+  bindRetestPlanner(() => renderTabProfile(ensurePlan()));
   $("pfEdit").onclick = () => { S.step = curSteps().length - 1; renderStep(); };
   $("pfReset").onclick = () => reset();
   const fitInput = $("pfFit");
@@ -224,6 +229,7 @@ export function renderTabProfile(plan) {
     let nT = 0, nS = 0; const errs = [], notes = [];
     if (!Array.isArray(S.answers.tests)) S.answers.tests = [];
     if (!Array.isArray(S.answers.fitSessions)) S.answers.fitSessions = [];
+    if (!Array.isArray(S.answers.fitRich)) S.answers.fitRich = [];
     for (const f of files) {
       try {
         const imp = globalThis.EBV2.importFit(await f.arrayBuffer());
@@ -231,10 +237,19 @@ export function renderTabProfile(plan) {
         imp.completed.forEach((c) => {
           if (!S.answers.fitSessions.some((x) => x.date === c.date && x.d === c.d && x.minutes === c.minutes)) { S.answers.fitSessions.push(c); nS++; }
         });
+        // R4.8 — métriques riches (FC/vitesse/puissance) conservées pour les récompenses
+        // d'EFFICIENCE (progrès à charge égale) : sans ces données, pas de récompense —
+        // plutôt rien qu'une récompense fausse.
+        (imp.sessions || []).forEach((s) => {
+          if (!s.date || s.avgHr == null) return;
+          if (!S.answers.fitRich.some((x) => x.date === s.date && x.sport === s.sport && x.minutes === s.minutes))
+            S.answers.fitRich.push({ date: s.date, sport: s.sport, minutes: s.minutes, avgHr: s.avgHr, avgSpeedMs: s.avgSpeedMs ?? null, avgPowerW: s.avgPowerW ?? null });
+        });
         notes.push(...imp.notes);
       } catch (e) { errs.push(esc(f.name) + " : " + esc(e && e.message || "illisible")); }
     }
     S.answers.fitSessions = S.answers.fitSessions.slice(-60); // borne : 60 dernières séances
+    S.answers.fitRich = S.answers.fitRich.slice(-60);
     const nRef = syncRefsFromTests(); // pousse le test le plus récent vers a.ftp/pace/css — sinon le moteur ne le voit jamais
     ebSave();
     if (nRef) { invalidatePlan(); renderTabProfile(ensurePlan()); } // référence(s) mise(s) à jour → régénération (une fois)

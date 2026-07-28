@@ -9,6 +9,9 @@ import { nutritionJournalHTML, bindNutritionJournal } from "./nutrition-journal.
 import { avatarDataFor, avatarSVG } from "./avatar.js";
 import { celebrationMessage } from "./celebrations.js";
 import { missedSessionsCheck, notifySetupHTML, bindNotifySetup, scheduleDailyNotification, weeklyReviewHTML } from "../notifications.js";
+import { retestBannerHTML, bindRetestBanner } from "./retest.js";
+import { ensurePlan } from "./tabs.js";
+import { dailyContentHTML } from "./daily-content.js";
 import { shareStory } from "../export.js";
 
 // R4.0 — boucle de base : validation → FEEDBACK ≤10s (RPE 1-10, ressenti, douleur) →
@@ -258,8 +261,10 @@ export function renderTabWeek(plan) {
     : w.postRace ? ' <span style="color:#9b72ff;font-size:10px">↳ récup post-course</span>' : "";
   let html = moment;
   html += painBannerHTML();
+  html += retestBannerHTML(today); // R4.4 — annonce J-7/veille/écran du jour J
   html += missedSessionsCheck(plan); // R4.10 — relance bienveillante (une fois, jamais de rafale)
   html += heroSessionHTML(plan, today);
+  html += dailyContentHTML(plan, today); // R4.9 — contenu du jour (anecdote/physio/stat/défi)
   html += weeklyReviewHTML(plan); // R4.10 — bilan hebdo (dimanche)
   html += notifySetupHTML(); // R4.10 — réglage de l'heure du rappel (une fois)
   html += '<div class="card"><div class="eyebrow">Ta semaine</div>';
@@ -291,6 +296,7 @@ export function renderTabWeek(plan) {
   html += "</div>";
   $("screen").innerHTML = html;
   bindPainBanner(plan);
+  bindRetestBanner(today, () => renderTabWeek(ensurePlan())); // le retest a pu régénérer le plan
   bindNotifySetup(plan, () => renderTabWeek(plan));
   scheduleDailyNotification(plan);
   bindNutritionJournal(todayDay, today, () => renderTabWeek(plan));

@@ -2883,6 +2883,7 @@ function nutritionForSession(
 
 
 
+
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
 }
@@ -3173,6 +3174,7 @@ function predictV2(sport        , answers            , plan                     
   badges: badgesV2,
   avatar: avatarV2,
   adherence: adherenceV2,
+  disciplines: DISCIPLINE_REGISTRY,
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
   version: "v2-sprint8",

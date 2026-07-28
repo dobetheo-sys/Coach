@@ -150,5 +150,16 @@ migration auto v1, sélecteur au Profil), **journal nutrition** (Open Food Facts
 CSV MyFitnessPal + delta glucides ravito — toujours AUCUNE cible calorique), **avatar SVG**
 personnalisable 100% traçable aux données (posture=7j réels, aura=streak, accessoires=
 badges, thème=accents sport), **félicitations + partage story** 1080×1920 (Web Share API,
-repli téléchargement). Chantiers restants : candidature API MyFitnessPal (humain),
-Strava OAuth (décision infra), avis nutritionniste pour la nutrition complète.
+repli téléchargement). **Spec rétention livrée** (MESSAGE_CLAUDE_CODE_R4, rapport
+`endurabuild/RAPPORT-R4-RETENTION.md`) : registre de disciplines (`src/engine/
+disciplineRegistry.ts`, trail en temps+D+/GAP/descente, extensibilité assertée),
+boucle validation→feedback RPE→célébration→teaser, drapeau douleur (rouge forcé,
+qualité verrouillée, levée confirmée), streak par JOUR (repos validable, gel
+douleur/maladie, jamais de récompense hors plan — `EBV2.adherence`, garde CI
+`demo:retention`), célébrations 15×4 ton sobre, retests « boss fight » (J-7 →
+protocole guidé → zones recalées en direct → régression sans langage d'échec),
+efficience à charge égale (fitRich), contenu du jour (90 anecdotes + physio par
+phase + stat perso + micro-défis), notifications honnêtes (pas de push app fermée
+sans backend). Chantiers restants : candidature API MyFitnessPal (humain),
+Strava OAuth + push serveur (même décision infra), avis nutritionniste pour la
+nutrition complète, déplacement de séance persistant (couche d'overrides).

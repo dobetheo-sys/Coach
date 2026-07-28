@@ -12,6 +12,7 @@ import { predictRace, type Prediction } from "../engine/predictor.ts";
 import { assessReadiness, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes } from "../readiness/fitParser.ts";
 import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
+import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
 
 interface AppAnswers extends Record<string, unknown> {
   format?: string;
@@ -307,6 +308,7 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   badges: badgesV2,
   avatar: avatarV2,
   adherence: adherenceV2,
+  disciplines: DISCIPLINE_REGISTRY,
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
   version: "v2-sprint8",

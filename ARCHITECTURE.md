@@ -324,3 +324,17 @@ Livraison détaillée dans `endurabuild/RAPPORT-R4.md`. Points structurants :
   (posture=7 jours réels, aura=streak, accessoires=badges, thème=accents sport).
 - **Partage story** (`export.js: storyBlob/shareStory`) : PNG 1080×1920, Web Share API
   avec repli téléchargement ; modal félicitations à la coche ○→✓ (`tab-week.js`).
+
+## Spec rétention (MESSAGE_CLAUDE_CODE_R4) — livraison
+
+Rapport détaillé : `endurabuild/RAPPORT-R4-RETENTION.md`. Points structurants :
+- `src/engine/disciplineRegistry.ts` — disciplines déclaratives (trail modulaire :
+  temps+D+, GAP, compétence descente, prudence excentrique) ; ajouter une discipline =
+  une entrée + gabarits, sans toucher au moteur (asserté).
+- `assessReadiness` : `painFlag` → rouge forcé ; `lastRpe ≥8` → signal annoncé. Le bridge
+  les injecte automatiquement depuis `answers` (aucun appelant ne peut les oublier).
+- `EBV2.adherence` — streak par jour (repos compris, gel douleur/maladie, zéro récompense
+  hors plan) ; garde CI `npm run demo:retention` (critères §14 de la spec).
+- PWA : `celebrations.js` (15×4), `retest.js` (cycle boss fight sur journal+syncRefs),
+  `daily-content.js` (90 anecdotes/physio par phase/stat perso/micro-défis, rotation
+  déterministe par date), `notifications.js` (limites sans backend documentées dans l'UI).

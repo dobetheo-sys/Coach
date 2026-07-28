@@ -83,7 +83,7 @@ async function storyBlob(o){
   grad.addColorStop(0,"#f1eadb");grad.addColorStop(1,acc+"33");
   x.fillStyle=grad;x.fillRect(0,0,W,H);
   x.fillStyle=acc;x.fillRect(0,0,W,18);x.fillRect(0,H-18,W,18);
-  x.fillStyle="#16130e";x.font="900 88px 'Archivo Black',sans-serif";x.fillText("SÉANCE FAITE ✔",70,190);
+  x.fillStyle="#16130e";x.font="900 88px 'Archivo Black',sans-serif";x.fillText(o.title||"SÉANCE FAITE ✔",70,190);
   x.fillStyle=acc;x.font="700 52px 'Space Grotesk',sans-serif";
   x.fillText((SPORTS[o.sport]?SPORTS[o.sport].ico+" "+SPORTS[o.sport].nom:o.sport||""),70,290);
   // avatar au centre (SVG → Image via blob URL, même origine)
