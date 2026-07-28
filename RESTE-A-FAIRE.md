@@ -59,6 +59,13 @@ jamais un chrono, jamais décroissant), checklist en direct de la séance du jou
 détaillé (comment faire le geste, pas juste son nom). Voir ARCHITECTURE.md « 5e onglet
 Suivi » et « Séances repliables ».
 
+**Refonte R5 faite** (premier retour du fondateur, ARCHITECTURE.md « Refonte R5 ») :
+check-in en diaporama coach, onglet central 🎯 Aujourd'hui (séance → prédiction → charge →
+avancement → intensités), Profil identité (avatar/XP/teaser + niveaux par discipline en
+tri + échéance + retest suggéré + records), Plan sans bandeau rouge avec phases cliquables
+en sous-objectifs validables, onglet 🥗 Nutrition dédié, bouton ✓ redessiné, séances
+partout cliquables avec affordance. E2E réécrits (109 assertions).
+
 **Lot améliorations fait** (ARCHITECTURE.md « Lot améliorations ») : ancrage `plan_start`
 (fin du bug « semaine 1 éternelle »), état partagé entre plans (douleur/maladie/readiness
 suivent la personne), sauvegarde/restauration JSON, auto-✓ depuis un FIT, échange de jours

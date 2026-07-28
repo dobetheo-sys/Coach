@@ -137,7 +137,9 @@ function readinessCardHTML(opts){
     +'<button class="btn primary" id="rdApply" type="button">'+(o.btnLabel||"Adapter ma journée")+'</button></div>'
     +'<div id="rdResult" style="margin-top:10px"></div></div>';
 }
-function progressCardsHTML(plan){
+// Refonte R5 : les cartes d'avancement sont désormais INDÉPENDANTES pour être
+// redistribuées entre onglets (Aujourd'hui/Plan/Profil) — même contenu, découpé.
+function progressBarCardHTML(plan){
   let h="";
   if(globalThis.EBV2&&globalThis.EBV2.progress){
     const pg=globalThis.EBV2.progress(plan,S.answers,new Date().toISOString().slice(0,10));
@@ -157,6 +159,10 @@ function progressCardsHTML(plan){
     }
     h+='</div>';
   }
+  return h;
+}
+function predictionCardHTML(plan){
+  let h="";
   if(globalThis.EBV2&&globalThis.EBV2.predict){
     try{
       const pr=globalThis.EBV2.predict(S.sport,S.answers,plan);
@@ -168,6 +174,10 @@ function progressCardsHTML(plan){
       }
     }catch(e){console.warn(e);}
   }
+  return h;
+}
+function historyCardHTML(plan){
+  let h="";
   if(globalThis.EBV2&&globalThis.EBV2.progress){
     const pgh=globalThis.EBV2.progress(plan,S.answers,new Date().toISOString().slice(0,10));
     const doneW=pgh.weekly.filter(w=>w.complete);
@@ -184,6 +194,10 @@ function progressCardsHTML(plan){
       h+='<div class="load-sub" style="margin-top:4px">\u2705 = semaine r\u00e9guli\u00e8re (\u226580% des s\u00e9ances). Le r\u00e9el nourrit l\u2019ajusteur du matin \u2014 pas de rattrapage, jamais.</div></div>';
     }
   }
+  return h;
+}
+function intensityCardHTML(plan){
+  let h="";
   const v2=plan&&plan._v2;
   if(v2&&v2.intensity){
     const it=v2.intensity;
@@ -196,10 +210,15 @@ function progressCardsHTML(plan){
         +'<div style="height:'+eh+'px;background:#00a376"></div><div style="height:'+mh+'px;background:#f0b429"></div><div style="height:'+hh+'px;background:#e63946"></div></div>';});
     h+='</div><div class="load-sub"><span style="color:#00a376">\u25ac facile</span> \u00b7 <span style="color:#f0b429">\u25ac mod\u00e9r\u00e9</span> \u00b7 <span style="color:#e63946">\u25ac dur</span> \u2014 objectif manifeste : \u226570% de temps facile en semaines de charge (mesur\u00e9 : '+it.easyPct+'%).</div></div>';
   }
+  return h;
+}
+function decisionsCardHTML(plan){
+  let h="";
+  const v2=plan&&plan._v2;
   if(v2){
     h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+') \u2014 score d\u2019audit '+v2.score+'/100</summary><ul style="font-size:12px;line-height:1.6;margin:8px 0 0;padding-left:18px">';
     v2.decisions.forEach(d=>{h+='<li><b>'+d.what+' :</b> '+d.val+'<br><span style="color:#555">'+d.why+'</span></li>';});
-    if(v2.warnings.length)h+='<li style="color:#c0392b"><b>R\u00e9serves :</b> '+v2.warnings.join(" ")+'</li>';
+    if(v2.warnings.length)h+='<li><b>Limites connues de ce plan :</b> '+v2.warnings.join(" ")+'</li>';
     h+='</ul></details>';
   }
   return h;
@@ -207,4 +226,4 @@ function progressCardsHTML(plan){
 // Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
 // pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
 
-export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, loadSeries, renderPlan, readinessCardHTML, progressCardsHTML };
+export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML };

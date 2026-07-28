@@ -9,6 +9,9 @@ import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js"
 import { renderPlan } from "./plan-view.js";
 import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
 import { stravaConnect, stravaAccessToken, stravaDisconnect } from "../strava.js";
+import { AVATAR_THEMES, avatarDataFor, avatarSVG } from "./avatar.js";
+import { shareStory } from "../export.js";
+import { evalRules, rulesGrouped } from "./steps.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 
 const _fmtSec = (s) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
@@ -162,11 +165,127 @@ function bindPlansSelector() {
   };
 }
 
+// ===== R5 — la gamification vit au Profil : avatar, niveau, XP, teaser du niveau
+// suivant (et niveaux intermédiaires par discipline en triathlon), badges, efficience.
+// L'XP reste 100% régularité (jamais un chrono, jamais décroissant) — inchangé.
+function avatarSectionHTML(plan, todayISO) {
+  if (!globalThis.EBV2 || !globalThis.EBV2.avatar) return "";
+  let av, adh = null;
+  try { av = globalThis.EBV2.avatar(plan, S.answers, todayISO); } catch (e) { return ""; }
+  try { adh = globalThis.EBV2.adherence(plan, S.answers, todayISO); } catch (e) {}
+  const visual = avatarDataFor(plan, todayISO);
+  const themes = AVATAR_THEMES.map(([k, c]) =>
+    '<button class="doneBtn" data-av-theme="' + k + '" type="button" title="' + (SPORTS[k] ? SPORTS[k].nom : k) + '" style="background:' + c + ";border-color:#16130e" + (S.answers.avatarTheme === k ? ";outline:3px solid #16130e;outline-offset:2px" : "") + '"> </button>').join(" ");
+  let h = '<div class="load-card"><div style="display:flex;align-items:center;gap:16px">'
+    + '<div id="avSvg">' + avatarSVG(visual, 96) + "</div>"
+    + '<div style="flex:1"><div style="font-weight:800;font-size:16px">' + av.icon + " " + av.name + '</div>'
+    + '<div style="font-size:11px;color:#777">Niveau ' + av.level + " · " + av.xp + " XP" + (av.xpToNext ? " (" + av.xpInLevel + "/" + av.xpToNext + " dans ce niveau)" : " · niveau maximum") + "</div>"
+    + '<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:12px;overflow:hidden;margin-top:6px"><div style="height:100%;width:' + av.progressPct + '%;background:linear-gradient(90deg,#00a376,#00b8d9)"></div></div>'
+    + (av.nextName ? '<div style="font-size:11px;margin-top:4px">Prochain niveau : <b>' + av.nextIcon + " " + av.nextName + "</b> — encore " + (av.xpToNext - av.xpInLevel) + " XP de régularité." : "")
+    + "</div></div>";
+  if (adh) {
+    if (adh.frozenToday) h += '<div class="load-sub" style="margin-top:8px">❄️ Série <b>gelée</b> (douleur ou maladie) : ' + adh.days + " jour" + (adh.days > 1 ? "s" : "") + " au compteur, rien n’est perdu.</div>";
+    else if (adh.days > 1) h += '<div style="margin-top:8px;font-size:13px">🔥 <b>Série : ' + adh.days + " jours</b> — repos validé compris.</div>";
+    else h += '<div class="load-sub" style="margin-top:8px">Nouvelle série — la régularité sur toute la préparation compte plus qu’une série parfaite.</div>';
+  }
+  h += disciplineLevelsHTML(plan);
+  h += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:700">Couleur du maillot :</span>' + themes
+    + '<button class="btn" id="avShare" type="button" style="margin-left:auto">📸 Partager</button></div>'
+    + '<div class="load-sub" style="margin-top:8px">Tout est traçable : posture = tes 7 derniers jours · aura = ta série · accessoires = tes badges. L’XP ne récompense que la régularité — jamais un chrono, jamais décroissant.</div></div>';
+  return h;
+}
+// Niveaux intermédiaires PAR DISCIPLINE (triathlon) : progression par nombre de séances
+// validées dans chaque sport — pur affichage, entièrement traçable aux ✓.
+const DISC_LEVELS = [[0, "Découverte"], [4, "Régulier"], [10, "Solide"], [20, "Affûté"], [35, "Machine"]];
+function disciplineLevelsHTML(plan) {
+  if (S.sport !== "tri") return "";
+  const done = S.answers.done || {};
+  const count = { sw: 0, bk: 0, rn: 0 };
+  plan.weeks.forEach((w) => w.days.forEach((d) => d.sessions.forEach((s, si) => {
+    const k = w.num + "|" + d.jour + "|" + si;
+    if (done[k] && count[s.d] !== undefined) count[s.d]++;
+    if (done[k] && s.d === "br") { count.bk++; count.rn++; } // le brick compte pour les deux
+  })));
+  const row = (ico, nom, n) => {
+    let idx = 0;
+    for (let i = 0; i < DISC_LEVELS.length; i++) if (n >= DISC_LEVELS[i][0]) idx = i;
+    const next = DISC_LEVELS[idx + 1];
+    const pct = next ? Math.min(100, Math.round(((n - DISC_LEVELS[idx][0]) / (next[0] - DISC_LEVELS[idx][0])) * 100)) : 100;
+    return '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px"><span style="width:20px">' + ico + '</span><span style="width:86px">' + nom + '</span><b style="width:76px">' + DISC_LEVELS[idx][1] + '</b>'
+      + '<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:#00a376"></div></div>'
+      + '<span style="width:82px;text-align:right;color:#777">' + (next ? n + "/" + next[0] + " → " + next[1] : n + " séances") + "</span></div>";
+  };
+  return '<div style="margin-top:10px"><div style="font-size:12px;font-weight:700">Par discipline (séances validées)</div>'
+    + row("🏊", "Natation", count.sw) + row("🚴", "Vélo", count.bk) + row("🏃", "Course", count.rn) + "</div>";
+}
+function badgesGalleryHTML(badges) {
+  if (!badges.length) return "";
+  const chips = badges.map((b) => '<span title="' + b.why.replace(/"/g, "&quot;") + '" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:11px;background:#fff">' + b.icon + " " + b.label + "</span>").join(" ");
+  return '<div class="load-card"><div class="load-title">🏅 Badges gagnés (' + badges.length + ')</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' + chips + "</div></div>";
+}
+// R4.8 — efficience : uniquement les progrès à charge égale (imports FIT), jamais le volume.
+function efficiencyHTML() {
+  const rich = Array.isArray(S.answers.fitRich) ? S.answers.fitRich : [];
+  if (rich.length < 2) return "";
+  const found = [];
+  const sorted = [...rich].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  for (let i = sorted.length - 1; i > 0 && found.length < 2; i--) {
+    const nu = sorted[i];
+    if (nu.avgHr == null) continue;
+    for (let j = i - 1; j >= 0; j--) {
+      const old = sorted[j];
+      if (old.sport !== nu.sport || old.avgHr == null) continue;
+      if (Math.abs(nu.minutes - old.minutes) > old.minutes * 0.15) continue;
+      const spdComparable = nu.avgSpeedMs != null && old.avgSpeedMs != null;
+      if (spdComparable && Math.abs(nu.avgSpeedMs - old.avgSpeedMs) <= old.avgSpeedMs * 0.02 && nu.avgHr <= old.avgHr - 3) {
+        found.push("Sortie comparable (" + Math.round(nu.minutes) + "min, même allure) : <b>−" + Math.round(old.avgHr - nu.avgHr) + " bpm</b> entre le " + old.date + " et le " + nu.date + ". Ton moteur devient plus économe.");
+        break;
+      }
+      if (spdComparable && Math.abs(nu.avgHr - old.avgHr) <= 3 && nu.avgSpeedMs >= old.avgSpeedMs * 1.02) {
+        found.push("Même durée, même FC (" + Math.round(nu.avgHr) + " bpm) : <b>+" + Math.round((nu.avgSpeedMs / old.avgSpeedMs - 1) * 100) + "% de vitesse</b> depuis le " + old.date + ". Efficience pure.");
+        break;
+      }
+    }
+  }
+  if (!found.length) return "";
+  return '<div class="load-card"><div class="load-title">📉 Efficience — les progrès qui comptent</div>'
+    + found.map((f) => '<div class="load-sub" style="margin-top:6px">' + f + "</div>").join("")
+    + '<div class="load-sub" style="margin-top:6px;color:#999">Comparé à charge égale uniquement (imports FIT) — jamais de récompense au volume.</div></div>';
+}
+// Échéance du plan : date de fin (course ou dernière semaine) + compte à rebours.
+function planDeadlineHTML(plan) {
+  const a = S.answers;
+  let end = a.race_date || "";
+  if (!end) {
+    const lastW = plan.weeks[plan.weeks.length - 1];
+    const lastD = lastW && lastW.days[lastW.days.length - 1];
+    end = (lastD && lastD.date) || "";
+  }
+  if (!end) return "";
+  const days = Math.ceil((new Date(end + "T00:00:00Z").getTime() - Date.now()) / 864e5);
+  return '<div class="load-sub" style="margin-top:6px">📆 Plan généré le <b>' + (a.plan_start || "?") + "</b> · échéance " + (a.race_date ? "🏁 course" : "fin de plan") + " le <b>" + end + "</b>" + (days >= 0 ? " — dans <b>" + days + " jour" + (days > 1 ? "s" : "") + "</b>." : " (passée).") + "</div>";
+}
+// Date de retest suggérée : dernière référence mesurée + 6 semaines (42 j) — jamais
+// imposée, c'est une suggestion à planifier dans la carte retest ci-dessous.
+function retestSuggestionHTML() {
+  const tests = Array.isArray(S.answers.tests) ? S.answers.tests.filter((t) => ["ftp", "thrPace", "css"].includes(t.type)) : [];
+  if (!tests.length) return '<div class="load-sub" style="margin-top:4px">💡 Suggestion : pas encore de référence mesurée — un premier test peut se planifier dès maintenant.</div>';
+  const last = tests.map((t) => String(t.date || "")).sort().pop();
+  if (!last) return "";
+  const sug = new Date(new Date(last + "T00:00:00Z").getTime() + 42 * 864e5).toISOString().slice(0, 10);
+  const overdue = sug <= new Date().toISOString().slice(0, 10);
+  return '<div class="load-sub" style="margin-top:4px">💡 Dernière référence mesurée le <b>' + last + "</b> → retest suggéré autour du <b>" + sug + "</b>" + (overdue ? " (c’est le moment !)" : "") + ".</div>";
+}
+
 export function renderTabProfile(plan) {
   const a = S.answers, sp = S.sport;
-  let html = '<div class="card"><div class="eyebrow">Profil — ' + SPORTS[sp].nom + "</div><h2>Tes réglages</h2>"
-    + '<div class="why">Modifie une valeur : le plan est régénéré et le changement est consigné dans ton journal d’évolution.</div>';
+  const todayISO = new Date().toISOString().slice(0, 10);
+  let html = '<div class="card"><div class="eyebrow">Profil — ' + SPORTS[sp].nom + "</div><h2>Toi, ton niveau, tes réglages</h2>";
+  // R5 — l'identité d'abord : avatar, niveau, XP, teaser du niveau suivant
+  html += avatarSectionHTML(plan, todayISO);
+  html += '<div class="why">Modifie une valeur : le plan est régénéré et le changement est consigné dans ton journal d’évolution.</div>';
   html += plansSelectorHTML();
+  html += planDeadlineHTML(plan);
   html += '<div class="bp-cat">' + summaryRows(a) + "</div>";
 
   // — Références physiologiques éditables (celles que le moteur lit : a.ftp / a.pace / a.css)
@@ -185,10 +304,16 @@ export function renderTabProfile(plan) {
   html += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
     + '<div id="pfMsg" class="load-sub" style="margin-top:6px"></div></div>';
 
-  // — Records personnels (R4-5, lecture seule)
+  // — Records personnels (R4-5, lecture seule) + badges + efficience (R5 : ici, pas
+  // dans un onglet à part — le Profil raconte qui tu es et ce que tu as construit)
   html += recordsHTML(plan, a);
+  let _badges = [];
+  if (globalThis.EBV2 && globalThis.EBV2.badges) { try { _badges = globalThis.EBV2.badges(plan, a, todayISO); } catch (e) {} }
+  html += badgesGalleryHTML(_badges);
+  html += efficiencyHTML();
 
-  // — Retest « boss fight » (R4.4) : planification ici, cycle complet dans 📅 Semaine
+  // — Retest « boss fight » (R4.4) : suggestion de date + planification
+  html += retestSuggestionHTML();
   html += retestPlannerHTML();
 
   // — Sauvegarde : tout vit dans localStorage — un navigateur nettoyé = tout perdu.
@@ -242,8 +367,32 @@ export function renderTabProfile(plan) {
     + '<div id="pfStravaMsg" class="load-sub" style="margin-top:4px"></div></div>';
   html += "</div>";
 
+  // — Conseils personnalisés (evalRules) : chaque réponse du questionnaire sans effet
+  // direct sur le plan reste VISIBLE ici (ferritine, cycle, garde-fous santé…).
+  const _rules = evalRules(a, S.tier);
+  if (_rules.length) {
+    html += '<details class="load-card"><summary class="load-title">🧭 Conseils personnalisés (' + _rules.length + ")</summary>"
+      + '<div style="margin-top:8px">' + rulesGrouped(_rules) + "</div></details>";
+  }
   html += '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="pfEdit" type="button">← Modifier mes réponses</button><button class="btn" id="pfReset" type="button">Changer de sport</button></div></div>';
   $("screen").innerHTML = html;
+
+  // Avatar : thème (accents sport) + partage — mêmes mécanismes que l'ancien onglet Suivi.
+  document.querySelectorAll("#screen [data-av-theme]").forEach((b) => {
+    b.onclick = () => { S.answers.avatarTheme = b.dataset.avTheme; ebSave(); renderTabProfile(plan); };
+  });
+  const _avShare = $("avShare");
+  if (_avShare) _avShare.onclick = async () => {
+    _avShare.disabled = true; _avShare.textContent = "Génération…";
+    let av2 = null, streak = 0;
+    try { av2 = globalThis.EBV2.avatar(plan, S.answers, todayISO); } catch (e) {}
+    try { streak = globalThis.EBV2.adherence(plan, S.answers, todayISO).days || 0; } catch (e) {}
+    const visual = avatarDataFor(plan, todayISO);
+    try {
+      await shareStory({ sessionName: av2 ? av2.icon + " " + av2.name + " · niveau " + av2.level : "Mon avatar", detail: "", sport: S.sport, streak, badge: null, avatarSVG: avatarSVG(visual, 520), accent: visual.accent });
+    } catch (e) { console.warn(e); }
+    _avShare.disabled = false; _avShare.textContent = "📸 Partager";
+  };
 
   bindPlansSelector();
   bindRetestPlanner(() => renderTabProfile(ensurePlan()));

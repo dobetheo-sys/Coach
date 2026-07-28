@@ -5,19 +5,24 @@ import { S, $, ebSave } from "../state.js";
 import { buildPlan } from "../app.js";
 import { renderTabProfile } from "./tab-profile.js";
 import { renderTabPlanGeneral } from "./tab-plan-general.js";
-import { renderTabProgress } from "./tab-progress.js";
-import { renderTabMonitor } from "./tab-monitor.js";
+import { renderTabToday } from "./tab-today.js";
 import { renderTabWeek } from "./tab-week.js";
+import { renderTabNutrition } from "./tab-nutrition.js";
 
+// Refonte R5 (retour utilisateur) : l'onglet CENTRAL 🎯 Aujourd'hui est l'écran du
+// quotidien (check-in diaporama → séance du jour → prédiction → charge → avancement),
+// mis en valeur dans la barre (classe tab-central). L'ancien Avancement y est fondu,
+// l'ancien Suivi est redistribué (avatar/badges → Profil, checklist → Aujourd'hui),
+// et 🥗 Nutrition devient un onglet à part entière.
 const TABS = [
   ["profile", "\u{1F4CB}", "Profil", renderTabProfile],
   ["general", "\u{1F5D3}", "Plan", renderTabPlanGeneral],
-  ["progress", "\u{1F4C8}", "Avancement", renderTabProgress],
-  ["monitor", "\u{1F3AE}", "Suivi", renderTabMonitor],
+  ["today", "\u{1F3AF}", "Aujourd’hui", renderTabToday],
   ["week", "\u{1F4C5}", "Semaine", renderTabWeek],
+  ["nutrition", "\u{1F957}", "Nutrition", renderTabNutrition],
 ];
 
-let activeTab = "week"; // défaut : l'écran du quotidien (le plus consulté)
+let activeTab = "today"; // défaut : l'onglet central — le point du matin d'abord
 
 /** Le SEUL endroit où le plan se (re)calcule. Invalidé par reset/Modifier/édition profil. */
 export function ensurePlan() {
@@ -54,7 +59,7 @@ export function invalidatePlan() {
 function tabbarHTML() {
   return TABS.map(
     ([id, ico, label]) =>
-      '<button type="button" role="tab" class="tabbtn' + (id === activeTab ? " active" : "") + '" data-tab="' + id + '" aria-selected="' + (id === activeTab) + '" aria-label="' + label + '">' +
+      '<button type="button" role="tab" class="tabbtn' + (id === activeTab ? " active" : "") + (id === "today" ? " tab-central" : "") + '" data-tab="' + id + '" aria-selected="' + (id === activeTab) + '" aria-label="' + label + '">' +
       '<span class="tabico" aria-hidden="true">' + ico + '</span><span class="tablbl">' + label + "</span></button>"
   ).join("");
 }
