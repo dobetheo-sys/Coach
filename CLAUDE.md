@@ -21,7 +21,7 @@ mieux qu'un plan dangereux. »
 |---|---|
 | `note.md` | Manifeste : vision, priorités, règles interdites, principes d'or |
 | `Coach_Pro_V1.5.html` | **Le produit** — application autonome (~1600 lignes), tout le moteur |
-| `endurabuild/` | **La PWA** — même produit en modules ES, mobile-first, installable/offline, vue plan en 4 onglets (voir ses RAPPORT-MIGRATION-PWA.md et RAPPORT-ONGLETS.md) ; UI = source de vérité désormais |
+| `endurabuild/` | **La PWA** — même produit en modules ES, mobile-first, installable/offline, vue plan en 5 onglets (voir ses RAPPORT-MIGRATION-PWA.md, RAPPORT-ONGLETS.md et RAPPORT-R4.md) ; UI = source de vérité désormais |
 | `ARCHITECTURE.md` | Choix techniques : pipeline du moteur, registre des règles R3.x/Cn, auditeur, conventions |
 | `src/` + `npm run audit:v1` | L'auditeur de cohérence — la spec exécutable (486 combinaisons) |
 | `ROADMAP-V2.md` | La cible V2 (raisonner → générer → auditer → adapter) |
@@ -66,7 +66,8 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   `renderSess()` est le SEUL producteur de texte, `blockBounds` la SEULE source de bornes,
   la courbe (bands + C22) le SEUL pilote de volume. Ne pas créer de deuxième chemin.
 - **Compatibilité** : l'outil est déployé ; l'état utilisateur vit dans `localStorage`
-  (`eb_state_v1`) — toute évolution du format doit dégrader proprement.
+  (`eb_state_v2`, multi-plans ; migration automatique depuis `eb_state_v1`) — toute
+  évolution du format doit dégrader proprement.
 - **Design responsive** : tester mobile/tablette/desktop pour toute retouche UI (grilles CSS,
   variables, esthétique « papier/collage » à préserver).
 
@@ -142,5 +143,12 @@ répercute automatiquement sur le ✓ existant), galerie de badges. Voir ARCHITE
 **Séances repliables + glossaire éducatifs** : toutes les séances (grille semaine + carte
 « Aujourd'hui ») en `<details>` fermés par défaut, cliquables pour le détail. Les
 éducatifs de natation expliquent désormais COMMENT faire le geste, pas juste son nom.
-Chantiers restants : nutrition complète (avis nutritionniste requis), Strava OAuth
-(décision infra ; Garmin abandonné — choix utilisateur), partage.
+**R4 livré** (brief `BRIEF_CLAUDE_CODE_R4.md`, rapport `endurabuild/RAPPORT-R4.md`) :
+bandeau réserves moteur non-repliable (onglet Plan, acquitté à l'ouverture des décisions),
+records personnels (Profil, lecture seule), **multi-plans** (`S.plans`/`eb_state_v2`,
+migration auto v1, sélecteur au Profil), **journal nutrition** (Open Food Facts + import
+CSV MyFitnessPal + delta glucides ravito — toujours AUCUNE cible calorique), **avatar SVG**
+personnalisable 100% traçable aux données (posture=7j réels, aura=streak, accessoires=
+badges, thème=accents sport), **félicitations + partage story** 1080×1920 (Web Share API,
+repli téléchargement). Chantiers restants : candidature API MyFitnessPal (humain),
+Strava OAuth (décision infra), avis nutritionniste pour la nutrition complète.

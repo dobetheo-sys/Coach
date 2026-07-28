@@ -306,3 +306,21 @@ ne se contentent plus de NOMMER le geste : chaque description dit COMMENT le fai
 repartir — corrige le timing »). Un seul glossaire (`swimDrillGlossary`, hissé au niveau
 du module pour être accessible aux branches swim ET tri) évite la duplication de texte
 entre les deux sports.
+
+## R4 — multi-plans, journal nutrition, avatar SVG, partage (endurabuild/)
+
+Livraison détaillée dans `endurabuild/RAPPORT-R4.md`. Points structurants :
+- **Multi-plans** : `state.js` passe à `eb_state_v2` (`S.plans[] + S.activePlanId`),
+  l'état de travail (`S.sport/S.answers/...`) reste celui du plan actif — recopie à
+  `ebSave()`, hydratation à `ebActivate()` (invalide `currentPlan`). Migration automatique
+  v1→v2 au chargement. « Changer de sport » ne touche que le plan actif.
+- **Bandeau réserves** (`tab-plan-general.js: warningsBannerHTML`) : `plan._v2.warnings`
+  affichées en bandeau non-repliable sur l'onglet Plan, acquittées par l'ouverture du
+  `<details>` `#motorDecisions` (ack = texte des warnings, pas un booléen).
+- **Journal nutrition** (`nutrition-journal.js`) : journal personnel (jamais de cible
+  calorique — frontière nutritionniste), recherche Open Food Facts, import CSV
+  MyFitnessPal local, delta glucides vs module ravitaillement. Rétention 30 jours.
+- **Avatar SVG** (`avatar.js`) : chaque variable visuelle traçable à une donnée réelle
+  (posture=7 jours réels, aura=streak, accessoires=badges, thème=accents sport).
+- **Partage story** (`export.js: storyBlob/shareStory`) : PNG 1080×1920, Web Share API
+  avec repli téléchargement ; modal félicitations à la coche ○→✓ (`tab-week.js`).

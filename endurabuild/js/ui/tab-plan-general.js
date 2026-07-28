@@ -9,9 +9,25 @@ import { exportICS, exportJSON, exportPNG } from "../export.js";
 
 const ic = { sw: "\u{1F3CA}", bk: "\u{1F6B4}", rn: "\u{1F3C3}", br: "\u{1F501}", rs: "\u{1F4AA}" };
 
+// R4-0.1 — les réserves du moteur (plan._v2.warnings : contrainte insatisfaisable après
+// réparation, ex. drapeau médical) étaient noyées dans le <details> « Décisions du
+// moteur », replié par défaut : un athlète pouvait ne JAMAIS voir que son plan est
+// structurellement incomplet. Bandeau non-repliable ici, tant que le repli n'a pas été
+// explicitement ouvert (S.answers.warningsAck mémorise LE TEXTE acquitté — de nouvelles
+// réserves après régénération font revenir le bandeau, pas juste au premier rendu).
+export function warningsBannerHTML(plan) {
+  const warns = (plan && plan._v2 && plan._v2.warnings) || [];
+  if (!warns.length) return "";
+  if (S.answers.warningsAck === warns.join("|")) return "";
+  return '<div class="warn" style="background:#ffe3e0;font-weight:600">⚠️ <b>Ce plan a des réserves.</b> '
+    + warns.map((w) => '<div style="font-weight:500;margin-top:4px">• ' + w + "</div>").join("")
+    + '<div style="font-weight:500;margin-top:6px;font-size:12px">Détail et justifications dans 📈 Avancement → « Les décisions du moteur » — ce bandeau restera affiché tant que tu ne les auras pas ouvertes.</div></div>';
+}
+
 export function renderTabPlanGeneral(plan) {
   const a = S.answers;
-  let html = '<div class="card"><div class="eyebrow">Plan général — ' + SPORTS[S.sport].nom + "</div><h2>Ta saison en un coup d’œil</h2>"
+  let html = warningsBannerHTML(plan);
+  html += '<div class="card"><div class="eyebrow">Plan général — ' + SPORTS[S.sport].nom + "</div><h2>Ta saison en un coup d’œil</h2>"
     + '<div class="why">' + plan.totalWeeks + " semaines en " + (plan.use10 ? "cycles de 10 jours (qui glissent)" : "semaines de 7 jours") + ", volume " + plan.volBase + "h → " + plan.volPeak + "h.</div>";
   html += driverBand(a);
   html += '<div class="ph-line">';

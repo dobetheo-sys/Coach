@@ -2,7 +2,7 @@
 // Le moteur V2 (engine.js) est le MÊME bundle auto-testé que dans Coach_Pro_V1.5.html,
 // généré depuis src/ par `npm run build:app` — extraction fidèle par construction.
 import "./engine.js"; // définit globalThis.EBV2 (IIFE, side-effect)
-import { S, ebLoad } from "./state.js";
+import { S, ebActivate, ebLoad } from "./state.js";
 import { buildPlanLegacy } from "./legacy-fallback.js";
 import { renderStep } from "./ui/steps.js";
 import { renderPlan } from "./ui/plan-view.js";
@@ -22,15 +22,17 @@ if ("serviceWorker" in navigator) {
   addEventListener("load", () => { navigator.serviceWorker.register("./sw.js").catch(() => {}); });
 }
 
-// ===== Reprise : si un état est sauvegardé, on le restaure (verbatim du monolithe) =====
+// ===== Reprise : restauration multi-plans (R4-4) — migration v1→v2 dans ebLoad() =====
 (function(){
   const saved=ebLoad();
-  if(saved&&saved.started&&saved.sport){
+  if(saved&&Array.isArray(saved.plans)&&saved.plans.length){
     try{
-      S.sport=saved.sport;S.answers=saved.answers||{};S.tier=saved.tier||"free";S.step=saved.step||0;S.started=true;
-      if(saved.sport)document.body.dataset.sport=saved.sport;
+      S.plans=saved.plans;
+      const id=saved.activePlanId&&saved.plans.some(p=>p.id===saved.activePlanId)?saved.activePlanId:saved.plans[0].id;
+      ebActivate(id);
+      if(S.sport)document.body.dataset.sport=S.sport;
       if(S.answers.intent)document.body.dataset.intent=S.answers.intent;
-      if(saved.onPlan){renderPlan();return;}
+      if(S.started&&S.sport&&S.onPlan){renderPlan();return;}
     }catch(e){}
   }
   renderStep();

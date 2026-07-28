@@ -197,7 +197,7 @@ function progressCardsHTML(plan){
     h+='</div><div class="load-sub"><span style="color:#00a376">\u25ac facile</span> \u00b7 <span style="color:#f0b429">\u25ac mod\u00e9r\u00e9</span> \u00b7 <span style="color:#e63946">\u25ac dur</span> \u2014 objectif manifeste : \u226570% de temps facile en semaines de charge (mesur\u00e9 : '+it.easyPct+'%).</div></div>';
   }
   if(v2){
-    h+='<details class="load-card" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+') \u2014 score d\u2019audit '+v2.score+'/100</summary><ul style="font-size:12px;line-height:1.6;margin:8px 0 0;padding-left:18px">';
+    h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+') \u2014 score d\u2019audit '+v2.score+'/100</summary><ul style="font-size:12px;line-height:1.6;margin:8px 0 0;padding-left:18px">';
     v2.decisions.forEach(d=>{h+='<li><b>'+d.what+' :</b> '+d.val+'<br><span style="color:#555">'+d.why+'</span></li>';});
     if(v2.warnings.length)h+='<li style="color:#c0392b"><b>R\u00e9serves :</b> '+v2.warnings.join(" ")+'</li>';
     h+='</ul></details>';

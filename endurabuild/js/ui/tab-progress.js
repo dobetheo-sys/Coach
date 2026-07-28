@@ -1,7 +1,7 @@
 // Onglet 📈 Avancement — le suivi vivant : charge (CTL/ATL/TSB), régularité/badges,
 // intensités, historique prévu vs réel, PRÉDICTION DE COURSE (déplacée ici — elle dépend
 // du streak et de la charge accomplie), décisions du moteur.
-import { $, S } from "../state.js";
+import { $, S, ebSave } from "../state.js";
 import { loadChartSVG, progressCardsHTML } from "./plan-view.js";
 import { evalRules, rulesGrouped } from "./steps.js";
 
@@ -25,4 +25,13 @@ export function renderTabProgress(plan) {
   }
   html += "</div>";
   $("screen").innerHTML = html;
+  // R4-0.1 — ouvrir « Les décisions du moteur » acquitte les réserves du plan : le
+  // bandeau d'alerte de l'onglet 🗓 Plan disparaît (jusqu'à de NOUVELLES réserves).
+  const md = $("motorDecisions");
+  if (md) md.addEventListener("toggle", () => {
+    if (md.open && plan && plan._v2 && plan._v2.warnings && plan._v2.warnings.length) {
+      S.answers.warningsAck = plan._v2.warnings.join("|");
+      ebSave();
+    }
+  });
 }

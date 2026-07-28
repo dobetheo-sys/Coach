@@ -10,6 +10,9 @@
 // l'ajusteur remplace/réduit, une seule séance adaptée peut représenter plusieurs séances
 // prévues — les deux mécanismes restent cohérents sans jamais mal cocher une séance).
 import { $, S, ebSave } from "../state.js";
+import { AVATAR_THEMES, avatarDataFor, avatarSVG } from "./avatar.js";
+import { SPORTS } from "../config.js";
+import { shareStory } from "../export.js";
 
 const ROLE_LABEL = { warmup: "Échauffement", body: "Corps de séance", cooldown: "Retour au calme" };
 
@@ -26,15 +29,22 @@ function checklistStore(dateISO) {
   return S.answers.sessionChecklist.items;
 }
 
-function avatarCardHTML(av) {
+// R4-2 — avatar SVG personnalisable : silhouette dont chaque variable visuelle est
+// traçable à une donnée réelle (posture = séances des 7 derniers jours, aura = streak,
+// accessoires = badges gagnés, couleur = thème choisi parmi les accents sport).
+function avatarCardHTML(av, visual) {
+  const themes = AVATAR_THEMES.map(([k, c]) =>
+    '<button class="doneBtn" data-av-theme="' + k + '" type="button" title="' + (SPORTS[k] ? SPORTS[k].nom : k) + '" style="background:' + c + ";border-color:#16130e" + (S.answers.avatarTheme === k ? ";outline:3px solid #16130e;outline-offset:2px" : "") + '"> </button>').join(" ");
   return '<div class="card"><div class="eyebrow">Ton avatar</div>'
     + '<div style="display:flex;align-items:center;gap:16px;margin-top:6px">'
-    + '<span style="font-size:52px;line-height:1">' + av.icon + "</span>"
-    + '<div style="flex:1"><div style="font-weight:800;font-size:16px">' + av.name + '</div>'
+    + '<div id="avSvg">' + avatarSVG(visual, 96) + "</div>"
+    + '<div style="flex:1"><div style="font-weight:800;font-size:16px">' + av.icon + " " + av.name + '</div>'
     + '<div style="font-size:11px;color:#777">Niveau ' + av.level + (av.xpToNext ? " · " + av.xpInLevel + "/" + av.xpToNext + " XP" : " · niveau maximum") + "</div>"
     + '<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:12px;overflow:hidden;margin-top:6px"><div style="height:100%;width:' + av.progressPct + '%;background:linear-gradient(90deg,#00a376,#00b8d9)"></div></div>'
     + "</div></div>"
-    + '<div class="load-sub" style="margin-top:8px">L’avatar grandit avec ta RÉGULARITÉ (semaines tenues, charge accomplie, badges) — jamais avec un chrono. Il ne redescend jamais : une semaine ratée n’efface rien.</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:700">Couleur du maillot :</span>' + themes
+    + '<button class="btn" id="avShare" type="button" style="margin-left:auto">📸 Partager</button></div>'
+    + '<div class="load-sub" style="margin-top:8px">Tout est traçable : posture = tes séances des 7 derniers jours · aura = ton streak · accessoires = tes badges. Jamais un chrono, jamais décroissant.</div>'
     + "</div>";
 }
 
@@ -98,12 +108,28 @@ export function renderTabMonitor(plan) {
       resSessions = res.sessions || [];
     } catch (e) { console.warn(e); }
   }
+  const visual = avatarDataFor(plan, todayISO);
 
   let html = '<div class="card"><div class="eyebrow">Suivi</div><h2>Ta progression, en jeu</h2></div>';
-  if (av) html += avatarCardHTML(av);
+  if (av) html += avatarCardHTML(av, visual);
   html += todayChecklistHTML(resSessions, todayISO);
   html += badgesGalleryHTML(badges);
   $("screen").innerHTML = html;
+
+  // Thème de l'avatar (accents sport de config.js — pas un nouveau système de couleurs)
+  document.querySelectorAll("#screen [data-av-theme]").forEach((b) => {
+    b.onclick = () => { S.answers.avatarTheme = b.dataset.avTheme; ebSave(); renderTabMonitor(plan); };
+  });
+  const shareBtn = $("avShare");
+  if (shareBtn) shareBtn.onclick = async () => {
+    shareBtn.disabled = true; shareBtn.textContent = "Génération…";
+    let streak = 0;
+    try { streak = globalThis.EBV2.progress(plan, S.answers, todayISO).streakWeeks || 0; } catch (e) {}
+    try {
+      await shareStory({ sessionName: av ? av.icon + " " + av.name + " · niveau " + av.level : "Mon avatar", detail: "", sport: S.sport, streak, badge: null, avatarSVG: avatarSVG(visual, 520), accent: visual.accent });
+    } catch (e) { console.warn(e); }
+    shareBtn.disabled = false; shareBtn.textContent = "📸 Partager";
+  };
 
   document.querySelectorAll("#screen [data-ck]").forEach((cb) => {
     cb.onchange = () => {

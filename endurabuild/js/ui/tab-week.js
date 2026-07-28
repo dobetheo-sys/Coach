@@ -5,6 +5,44 @@
 import { S, $, ebSave } from "../state.js";
 import { readinessCardHTML } from "./plan-view.js";
 import { applyReadiness, fetchWeather, readinessDoneToday } from "./readiness.js";
+import { nutritionJournalHTML, bindNutritionJournal } from "./nutrition-journal.js";
+import { avatarDataFor, avatarSVG } from "./avatar.js";
+import { shareStory } from "../export.js";
+
+// R4-3 — écran de félicitations à la validation d'une séance (○→✓) : modal courte,
+// ton des bannières momentHTML (encourageant, contextualisé), avec partage story natif
+// (Web Share API → feuille de partage OS → Story ; repli téléchargement PNG).
+function showCongrats(plan, session, newBadge, todayISO) {
+  document.querySelectorAll(".eb-overlay").forEach((e) => e.remove());
+  let streak = 0;
+  try { streak = globalThis.EBV2.progress(plan, S.answers, todayISO).streakWeeks || 0; } catch (e) {}
+  const av = avatarDataFor(plan, todayISO);
+  const ov = document.createElement("div");
+  ov.className = "eb-overlay";
+  ov.innerHTML = '<div class="eb-modal" role="dialog" aria-label="Séance validée">'
+    + '<div style="display:flex;justify-content:center">' + avatarSVG(av, 110) + "</div>"
+    + '<h2 style="text-align:center;margin:8px 0 2px">Bravo ! 🎉</h2>'
+    + '<div style="text-align:center;font-weight:700">' + session.name + "</div>"
+    + (session.det ? '<div style="text-align:center;font-size:12px;color:#635b4a;margin-top:2px">' + String(session.det).split("—")[0].slice(0, 60) + "</div>" : "")
+    + (streak > 0 ? '<div style="text-align:center;margin-top:8px">🔥 <b>' + streak + " semaine" + (streak > 1 ? "s" : "") + "</b> de régularité d’affilée</div>" : "")
+    + (newBadge ? '<div style="text-align:center;margin-top:6px;color:#8a6d00;font-weight:700">' + newBadge.icon + " Badge débloqué : " + newBadge.label + "</div>" : "")
+    + '<div class="nav" style="justify-content:center;margin-top:14px;gap:10px;flex-wrap:wrap">'
+    + '<button class="btn gold" id="ebShareStory" type="button">📸 Partager en story</button>'
+    + '<button class="btn" id="ebCloseCongrats" type="button">Fermer</button></div>'
+    + '<div class="load-sub" style="text-align:center;margin-top:6px">Image 9:16 générée localement — partage via la feuille de partage de ton téléphone.</div>'
+    + "</div>";
+  document.body.appendChild(ov);
+  ov.querySelector("#ebCloseCongrats").onclick = () => ov.remove();
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  ov.querySelector("#ebShareStory").onclick = async () => {
+    const btn = ov.querySelector("#ebShareStory");
+    btn.disabled = true; btn.textContent = "Génération…";
+    try {
+      await shareStory({ sessionName: session.name, detail: session.det, sport: S.sport, streak, badge: newBadge, avatarSVG: avatarSVG(av, 520), accent: av.accent });
+    } catch (e) { console.warn(e); }
+    btn.disabled = false; btn.textContent = "📸 Partager en story";
+  };
+}
 
 const ic = { sw: "\u{1F3CA}", bk: "\u{1F6B4}", rn: "\u{1F3C3}", br: "\u{1F501}", rs: "\u{1F4AA}" };
 
@@ -144,9 +182,11 @@ export function renderTabWeek(plan) {
   html += "</div></div>";
   const todayDay = w.days.find((d) => d.date === today) || null;
   html += nutritionCardHTML(todayDay, null);
+  html += nutritionJournalHTML(todayDay, today); // R4-1 — journal alimentaire (repliable)
   html += '<details class="load-card"><summary class="load-title">\u{1F321} Modifier ma forme du jour</summary>' + readinessCardHTML({ btnLabel: "Mettre à jour" }) + "</details>";
   html += "</div>";
   $("screen").innerHTML = html;
+  bindNutritionJournal(todayDay, today, () => renderTabWeek(plan));
   // Météo en différé : affine l'hydratation (chaleur → sodium) sans bloquer le rendu.
   if (todayDay) fetchWeather().then((wx) => {
     const el = $("nutCard");
@@ -160,12 +200,34 @@ export function renderTabWeek(plan) {
     b.onclick = () => {
       if (!S.answers.done) S.answers.done = {};
       const k = b.dataset.dk;
+      const checking = !S.answers.done[k]; // ○→✓ (pas la dé-coche)
+      let badgesBefore = [];
+      if (checking && globalThis.EBV2 && globalThis.EBV2.badges) {
+        try { badgesBefore = globalThis.EBV2.badges(plan, S.answers, today); } catch (e) {}
+      }
       if (S.answers.done[k]) delete S.answers.done[k];
       else S.answers.done[k] = true;
       ebSave();
       const sc = window.pageYOffset;
       renderTabWeek(plan); // re-rend la VUE — le plan n'est pas recalculé
       window.scrollTo(0, sc);
+      if (checking) {
+        // retrouver la séance depuis la clé "sem|jour|idx" (le plan, pas la vue)
+        const [wn, jour, si] = k.split("|");
+        const wk = plan.weeks.find((x) => String(x.num) === wn);
+        const dy = wk && wk.days.find((x) => x.jour === jour);
+        const sess = dy && dy.sessions[+si];
+        if (sess) {
+          let newBadge = null;
+          if (globalThis.EBV2 && globalThis.EBV2.badges) {
+            try {
+              const after = globalThis.EBV2.badges(plan, S.answers, today);
+              newBadge = after.find((x) => !badgesBefore.some((y) => y.id === x.id)) || null;
+            } catch (e) {}
+          }
+          showCongrats(plan, sess, newBadge, today);
+        }
+      }
     };
   });
 }

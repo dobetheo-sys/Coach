@@ -2,7 +2,7 @@
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
    une météo périmée est pire qu'une absence de météo). */
-const VERSION = "eb-pwa-v5"; // v5 : 5e onglet Suivi (avatar évolutif + monitoring séance)
+const VERSION = "eb-pwa-v6"; // v6 : R4 — multi-plans, journal nutrition, avatar SVG, partage story
 const ASSETS = [
   "./",
   "./index.html",
@@ -24,6 +24,8 @@ const ASSETS = [
   "./js/ui/tab-progress.js",
   "./js/ui/tab-monitor.js",
   "./js/ui/tab-week.js",
+  "./js/ui/avatar.js",
+  "./js/ui/nutrition-journal.js",
   "./assets/fonts/archivo-black-400.woff2",
   "./assets/fonts/space-grotesk-500-700.woff2",
   "./assets/fonts/caveat-600-700.woff2",

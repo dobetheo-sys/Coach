@@ -4,8 +4,9 @@
 // date, prev, source} — pas de nouvelle structure de données (brief onglets).
 // Toute donnée utilisateur réaffichée passe par esc() avant innerHTML (anti-XSS).
 import { SPORTS, VLAB } from "../config.js";
-import { $, S, ebSave, esc } from "../state.js";
+import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc } from "../state.js";
 import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js";
+import { renderPlan } from "./plan-view.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 
 const _fmtSec = (s) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
@@ -50,15 +51,120 @@ function journalPrev(t) {
   return esc(f) + " → ";
 }
 
+// R4-5 — Records personnels : PURE lecture/agrégation de l'existant (aucune nouvelle
+// structure de données). Deux sources : le journal d'évolution S.answers.tests (références
+// physiologiques datées — on garde la MEILLEURE, pas la dernière) et les séances réellement
+// faites (✓ du plan + imports FIT) pour les records empiriques (plus longue séance).
+const DISC_LABEL = { rn: "🏃 Course", bk: "🚴 Vélo", sw: "🏊 Natation", br: "🔁 Brick" };
+function recordsHTML(plan, a) {
+  const rows = [];
+  const tests = Array.isArray(a.tests) ? a.tests.filter((t) => isFinite(+t.value)) : [];
+  const best = (type, cmp) => tests.filter((t) => t.type === type).sort(cmp)[0];
+  const ftp = best("ftp", (x, y) => y.value - x.value);
+  if (ftp) rows.push({ lab: "⚡ Meilleure FTP", val: Math.round(ftp.value) + " W", date: ftp.date });
+  const pace = best("thrPace", (x, y) => x.value - y.value);
+  if (pace) rows.push({ lab: "⏱ Meilleure allure seuil", val: _fmtSec(+pace.value) + " /km", date: pace.date });
+  const css = best("css", (x, y) => x.value - y.value);
+  if (css) rows.push({ lab: "🏊 Meilleur CSS", val: _fmtSec(+css.value) + " /100m", date: css.date });
+  const vma = best("vma", (x, y) => y.value - x.value);
+  if (vma) rows.push({ lab: "💨 Meilleure VMA", val: vma.value + " km/h", date: vma.date });
+  // Records empiriques — plus longue séance FAITE par discipline (✓ datés + FIT importés)
+  const longest = {};
+  const seen = (d, minutes, date) => {
+    if (!minutes || !DISC_LABEL[d]) return;
+    if (!longest[d] || minutes > longest[d].minutes) longest[d] = { minutes, date };
+  };
+  const done = a.done || {};
+  if (plan) for (const w of plan.weeks) for (const dd of w.days) dd.sessions.forEach((s, si) => {
+    if (s.d !== "rs" && done[w.num + "|" + dd.jour + "|" + si]) seen(s.d, Math.round(s.min || 0), dd.date);
+  });
+  (Array.isArray(a.fitSessions) ? a.fitSessions : []).forEach((c) => seen(c.d, c.minutes, c.date));
+  Object.keys(longest).forEach((d) => rows.push({ lab: DISC_LABEL[d] + " — plus longue séance", val: Math.floor(longest[d].minutes / 60) + "h" + String(longest[d].minutes % 60).padStart(2, "0"), date: longest[d].date }));
+  let h = '<div class="load-card"><div class="load-title">🏅 Records personnels</div>';
+  if (!rows.length) h += '<div class="load-sub" style="margin-top:6px">Encore vides — ils se rempliront avec tes tests (FTP/allure/CSS), tes imports FIT/Strava et tes séances cochées ✓.</div>';
+  else rows.forEach((r) => { h += '<div style="display:flex;justify-content:space-between;gap:8px;margin:6px 0;font-size:13px;align-items:baseline"><span>' + r.lab + '</span><span style="text-align:right"><b>' + esc(r.val) + '</b>' + (r.date ? ' <span style="color:#777;font-size:11px">' + esc(r.date) + "</span>" : "") + "</span></div>"; });
+  h += '<div class="load-sub" style="margin-top:4px">Un record se gagne, il ne se perd pas — on garde la meilleure valeur jamais atteinte, avec sa date.</div></div>';
+  return h;
+}
+
 function summaryRows(a) {
   const L = (k, lab) => (a[k] ? '<div class="bp-decision"><div><div class="bp-what">' + lab + '</div><div class="bp-val">' + esc(String(a[k]).split(",").map((x) => VLAB[x] || x).join(", ")) + "</div></div></div>" : "");
   return L("intent", "Intention") + L("format", "Objectif") + L("history", "Historique") + L("level", "Niveau") + L("dispo", "Disponibilité") + L("injury", "Blessures");
+}
+
+// R4-4 — sélecteur de plans : plusieurs plans sous un même profil (tri A + 10k d'un ami,
+// cyclosportive isolée…). Chaque plan garde ses réponses, son journal, ses ✓ et ses
+// records (tout vit dans answers, par plan). Le sélecteur vit ICI, pas dans la barre de
+// navigation (tabs.js reste « navigation seule », brief onglets).
+function planLabel(p) {
+  if (p.label) return esc(p.label);
+  if (p.sport && SPORTS[p.sport]) return SPORTS[p.sport].ico + " " + SPORTS[p.sport].nom + (p.answers && p.answers.format ? " · " + esc(p.answers.format) : "");
+  return "Plan sans sport (questionnaire en cours)";
+}
+function plansSelectorHTML() {
+  let h = '<div class="load-card"><div class="load-title">🗂 Mes plans (' + Math.max(1, S.plans.length) + ")</div>";
+  const plans = S.plans.length ? S.plans : [];
+  plans.forEach((p) => {
+    const active = p.id === S.activePlanId;
+    h += '<div style="display:flex;align-items:center;gap:8px;margin:6px 0">'
+      + '<button class="btn' + (active ? " primary" : "") + '" data-plan="' + p.id + '" type="button" style="flex:1;text-align:left">' + planLabel(p) + (active ? " ✓" : "") + "</button>"
+      + '<button class="btn" data-plan-ren="' + p.id + '" type="button" title="Renommer" style="padding:6px 10px">✏️</button>'
+      + (!active && plans.length > 1 ? '<button class="btn" data-plan-del="' + p.id + '" type="button" title="Supprimer" style="padding:6px 10px">🗑</button>' : "")
+      + "</div>";
+  });
+  h += '<div class="nav" style="margin-top:8px"><button class="btn gold" id="pfNewPlan" type="button">＋ Nouveau plan</button></div>'
+    + '<div class="load-sub" style="margin-top:4px">Chaque plan a son questionnaire, son journal et ses records — passe de l’un à l’autre sans rien perdre.</div></div>';
+  return h;
+}
+function bindPlansSelector() {
+  document.querySelectorAll("#screen [data-plan]").forEach((b) => {
+    b.onclick = () => {
+      if (b.dataset.plan === S.activePlanId) return;
+      ebSave(); // fige le plan courant avant de basculer
+      ebActivate(b.dataset.plan);
+      ebSave();
+      if (S.onPlan && S.sport) renderPlan(); // régénère UNE fois via ensurePlan, réaffiche les onglets
+      else renderStep(); // questionnaire (plan pas terminé)
+      if (S.sport) document.body.dataset.sport = S.sport;
+      if (S.answers.intent) document.body.dataset.intent = S.answers.intent;
+    };
+  });
+  document.querySelectorAll("#screen [data-plan-ren]").forEach((b) => {
+    b.onclick = () => {
+      const p = S.plans.find((x) => x.id === b.dataset.planRen);
+      if (!p) return;
+      const nv = prompt("Nom du plan :", p.label || "");
+      if (nv !== null) { p.label = nv.trim(); ebSave(); renderTabProfile(ensurePlan()); }
+    };
+  });
+  document.querySelectorAll("#screen [data-plan-del]").forEach((b) => {
+    b.onclick = () => {
+      const p = S.plans.find((x) => x.id === b.dataset.planDel);
+      if (!p || p.id === S.activePlanId) return;
+      if (!confirm("Supprimer définitivement « " + (p.label || planLabel(p).replace(/<[^>]*>/g, "")) + " » ? Ses réponses, journal et records seront perdus.")) return;
+      S.plans = S.plans.filter((x) => x.id !== p.id);
+      ebSave();
+      renderTabProfile(ensurePlan());
+    };
+  });
+  const np = $("pfNewPlan");
+  if (np) np.onclick = () => {
+    ebSave(); // fige l'actuel
+    const e = ebNewPlanEntry("");
+    S.plans.push(e);
+    ebActivate(e.id);
+    ebSave();
+    document.body.dataset.sport = "";
+    document.body.dataset.intent = "";
+    renderStep(); // nouveau questionnaire, à partir du choix du sport
+  };
 }
 
 export function renderTabProfile(plan) {
   const a = S.answers, sp = S.sport;
   let html = '<div class="card"><div class="eyebrow">Profil — ' + SPORTS[sp].nom + "</div><h2>Tes réglages</h2>"
     + '<div class="why">Modifie une valeur : le plan est régénéré et le changement est consigné dans ton journal d’évolution.</div>';
+  html += plansSelectorHTML();
   html += '<div class="bp-cat">' + summaryRows(a) + "</div>";
 
   // — Références physiologiques éditables (celles que le moteur lit : a.ftp / a.pace / a.css)
@@ -72,6 +178,9 @@ export function renderTabProfile(plan) {
   html += row("pfWeight", "Poids (kg, optionnel)", a.weight, "affine le ravitaillement");
   html += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
     + '<div id="pfMsg" class="load-sub" style="margin-top:6px"></div></div>';
+
+  // — Records personnels (R4-5, lecture seule)
+  html += recordsHTML(plan, a);
 
   // — Journal d'évolution (S.answers.tests, trié du plus récent au plus ancien)
   const tests = Array.isArray(a.tests) ? [...a.tests].sort((x, y) => String(y.date || "").localeCompare(String(x.date || ""))) : [];
@@ -103,6 +212,7 @@ export function renderTabProfile(plan) {
   html += '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="pfEdit" type="button">← Modifier mes réponses</button><button class="btn" id="pfReset" type="button">Changer de sport</button></div></div>';
   $("screen").innerHTML = html;
 
+  bindPlansSelector();
   $("pfEdit").onclick = () => { S.step = curSteps().length - 1; renderStep(); };
   $("pfReset").onclick = () => reset();
   const fitInput = $("pfFit");
