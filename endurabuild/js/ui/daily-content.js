@@ -77,7 +77,7 @@ const ANECDOTES = [
   "En natation, 80% de la propulsion vient des bras. Les jambes équilibrent surtout. C'est l'inverse de presque tous les autres sports d'endurance.",
   "Le squelette d'un coureur régulier est plus DENSE que celui d'un sédentaire : l'impact contrôlé renforce l'os. La dose fait le poison — et le remède.",
   "Ironman Hawaï se court dans les champs de lave de Kona : 35°C au sol, vent de face dans les deux sens (le mumuku). Les pros s'y préparent en sauna.",
-  "Le plus vieux finisher d'un Ironman : Hiromu Inada, 89 ans (2022). Il a commencé le triathlon à 70 ans.",
+  "Le plus vieux finisher du championnat du monde Ironman : Hiromu Inada, 85 ans (Kona 2018). Il a commencé le triathlon à 70 ans.",
   "Zátopek encore : il s'entraînait en bottes militaires dans la neige, en retenant sa respiration entre les arbres. Ne copie rien — retiens l'audace.",
   "Le cyclisme fut le premier sport à autoriser officiellement les femmes aux JO d'été modernes en athlétisme d'endurance… en 1984 seulement pour le marathon.",
   "Joan Benoit a gagné ce premier marathon olympique féminin (1984), 17 jours après une arthroscopie du genou.",

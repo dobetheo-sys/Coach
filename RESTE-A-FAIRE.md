@@ -2,7 +2,7 @@
 
 Avancement global : **~90 %** de la vision (`note.md` + `ROADMAP-V2.md`).
 Le noyau critique (priorités 1-4 du manifeste : santé, blessures, régularité, progression)
-est à **100 %**, mécanisé et gardé vert par la CI (7 contrôles sur chaque push).
+est à **100 %**, mécanisé et gardé vert par la CI (9 contrôles sur chaque push, dont les E2E navigateur).
 
 ## ✅ Fait (rappel en une ligne chacun)
 
@@ -11,7 +11,7 @@ affûtage garanti ≥40 % · promesses calibrées (sonde de capacité) · répar
 mécanisée · adaptation quotidienne (readiness + météo Open-Meteo) · boucle prévu/réel
 depuis les ✓ · prédiction de course (Riegel/CSS/%FTP, fourchettes) · historique
 prévu vs réel · streak + avancement + badges · UI branchée sur le moteur (bundle
-auto-testé, legacy en repli) · docs (CLAUDE/ARCHITECTURE/ROADMAP) · CI 7 gardes.
+auto-testé, legacy en repli) · docs (CLAUDE/ARCHITECTURE/ROADMAP) · CI 9 gardes (8 audits/specs + E2E Playwright).
 
 ## 👤 À TOI — personne d'autre ne peut le faire
 
@@ -58,6 +58,13 @@ jamais un chrono, jamais décroissant), checklist en direct de la séance du jou
 détaillé (comment faire le geste, pas juste son nom). Voir ARCHITECTURE.md « 5e onglet
 Suivi » et « Séances repliables ».
 
+**Lot améliorations fait** (ARCHITECTURE.md « Lot améliorations ») : ancrage `plan_start`
+(fin du bug « semaine 1 éternelle »), état partagé entre plans (douleur/maladie/readiness
+suivent la personne), sauvegarde/restauration JSON, auto-✓ depuis un FIT, échange de jours
+⇄ persistant, journal des verdicts, chrono de course réel vs prédiction, modales
+accessibles (focus/Échap/aria), monolithe gelé, **E2E Playwright en CI** (`tests/e2e/`,
+4 suites, 74 assertions).
+
 ## 🔧 Reste côté code — par ordre recommandé
 
 | # | Chantier | Effort | Bloqué par | Détail |
@@ -82,7 +89,7 @@ Suivi » et « Séances repliables ».
 ## 📏 Règles d'entretien (pour toute session future)
 
 1. Toute modification de `src/` → `npm run build:app` (sinon `check:app` rouge en CI).
-2. Toute modification du générateur → les 7 contrôles CI doivent rester verts.
+2. Toute modification du générateur → les 9 contrôles CI doivent rester verts.
 3. Tout invariant nouveau → identifiant `Cn`/`R3.x`/`V2.x` + scorer + registre ARCHITECTURE.md.
 4. Mesurer avant de corriger — l'auditeur dit qui viole quoi.
 5. `note.md` prime sur tout, y compris ce fichier.

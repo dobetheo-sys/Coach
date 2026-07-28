@@ -28,6 +28,7 @@ if ("serviceWorker" in navigator) {
   if(saved&&Array.isArray(saved.plans)&&saved.plans.length){
     try{
       S.plans=saved.plans;
+      S.shared=saved.shared||{};
       const id=saved.activePlanId&&saved.plans.some(p=>p.id===saved.activePlanId)?saved.activePlanId:saved.plans[0].id;
       ebActivate(id);
       if(S.sport)document.body.dataset.sport=S.sport;

@@ -35,6 +35,7 @@ export interface AthleteProfile {
   css_known?: string;
   css?: string; // "1:55" par 100m
   race_date?: string;
+  plan_start?: string; // ancre calendaire posée à la 1re génération (sinon la semaine 1 glisserait à chaque régénération)
   races?: string;
   race1_date?: string;
   race1_prio?: string;

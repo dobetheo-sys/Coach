@@ -5,7 +5,14 @@
 // recopie cet état dans l'entrée active avant de persister, ebActivate() fait l'inverse.
 // currentPlan : le plan généré UNE fois (refonte onglets) — jamais persisté (recalculé au
 // chargement/changement de plan), jamais recalculé au changement d'onglet (ui/tabs.js).
-const S = { sport:null, answers:{}, rules:[], step:0, tier:"free", started:false, prevRuleIds:new Set(), showAllWeeks:false, currentPlan:null, onPlan:false, plans:[], activePlanId:null };
+const S = { sport:null, answers:{}, rules:[], step:0, tier:"free", started:false, prevRuleIds:new Set(), showAllWeeks:false, currentPlan:null, onPlan:false, plans:[], activePlanId:null, shared:{} };
+// État PAR PERSONNE (pas par plan) : le sommeil, la VFC, la douleur, la maladie, le poids
+// et les réglages de notification appartiennent au corps/à l'appareil — ils suivent
+// l'utilisateur d'un plan à l'autre (fini le re-check-in après un changement de plan).
+// Mécanique : recopiés answers → shared à chaque ebSave, shared → answers à ebActivate.
+const SHARED_KEYS=["readiness","painFlag","sickDates","weight","notifyTime","notifyDismissed","lastDailyNotif","lastWeeklyNotif","relanceSent"];
+function liftShared(){for(const k of SHARED_KEYS)if(S.answers[k]!==undefined)S.shared[k]=S.answers[k];}
+function overlayShared(){for(const k of SHARED_KEYS)if(S.shared[k]!==undefined)S.answers[k]=S.shared[k];}
 // Échappement HTML pour toute valeur saisie réinjectée via innerHTML (anti-XSS, avant tout partage).
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -26,10 +33,11 @@ function ebActivate(id){
   const e=S.plans.find(p=>p.id===id);if(!e)return false;
   S.activePlanId=id;S.sport=e.sport;S.answers=e.answers||{};S.tier=e.tier||"free";
   S.step=e.step||0;S.started=!!e.started;S.onPlan=!!e.onPlan;S.currentPlan=null;S.showAllWeeks=false;
+  overlayShared(); // l'état corporel (forme du jour, douleur…) suit la personne, pas le plan
   return true;
 }
 // Persistance : clé versionnée eb_state_v2 (tableau de plans). survit au rafraîchissement.
-function ebSave(){try{ebSyncActive();localStorage.setItem("eb_state_v2",JSON.stringify({plans:S.plans,activePlanId:S.activePlanId}));}catch(e){}}
+function ebSave(){try{ebSyncActive();liftShared();localStorage.setItem("eb_state_v2",JSON.stringify({plans:S.plans,activePlanId:S.activePlanId,shared:S.shared}));}catch(e){}}
 // Chargement + MIGRATION automatique de l'ancien format mono-plan eb_state_v1 (on ne fait
 // jamais perdre son plan à un utilisateur existant ; l'ancienne clé est laissée en place
 // par prudence — elle ne sera plus lue dès que la v2 existe).
@@ -40,7 +48,7 @@ function ebLoad(){
     const v1=JSON.parse(localStorage.getItem("eb_state_v1")||"null");
     if(v1){
       const e=Object.assign(ebNewPlanEntry(""),{sport:v1.sport||null,answers:v1.answers||{},tier:v1.tier||"free",step:v1.step||0,started:!!v1.started,onPlan:!!v1.onPlan});
-      return {plans:[e],activePlanId:e.id};
+      return {plans:[e],activePlanId:e.id,shared:{}};
     }
     return null;
   }catch(e){return null;}

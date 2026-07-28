@@ -43,6 +43,10 @@ dépôt — historique git si besoin.
 - `npm run build:app` — bundle le moteur V2 dans `Coach_Pro_V1.5.html` (auto-testé avant
   écriture). **À relancer après toute modification de `src/`** ; `npm run check:app` (CI)
   refuse un HTML désynchronisé.
+- `npm run test:e2e` — 4 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
+  job CI `e2e` séparé). Seule exception au zéro-dépendance : Playwright, devDependency de
+  TEST uniquement (`npm install` d'abord ; local : `/opt/pw-browsers/chromium` détecté,
+  sinon `EB_CHROMIUM`).
 
 **Règle de travail n°1 : après toute modification du générateur, relancer l'audit et le
 laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont listées dans
@@ -160,6 +164,15 @@ douleur/maladie, jamais de récompense hors plan — `EBV2.adherence`, garde CI
 protocole guidé → zones recalées en direct → régression sans langage d'échec),
 efficience à charge égale (fitRich), contenu du jour (90 anecdotes + physio par
 phase + stat perso + micro-défis), notifications honnêtes (pas de push app fermée
-sans backend). Chantiers restants : candidature API MyFitnessPal (humain),
-Strava OAuth + push serveur (même décision infra), avis nutritionniste pour la
-nutrition complète, déplacement de séance persistant (couche d'overrides).
+sans backend).
+**Lot améliorations livré** (voir ARCHITECTURE.md « Lot améliorations ») : ancrage
+calendrier `plan_start` (bug « semaine 1 éternelle » corrigé, asserté en CI), état
+partagé entre plans `S.shared` (douleur/maladie/readiness suivent la personne),
+sauvegarde/restauration JSON (Profil), auto-✓ des séances depuis un fichier FIT,
+échange de jours persistant (⇄, `answers.daySwaps`, garde-fou jours durs consécutifs),
+journal des verdicts readiness (carte Avancement), saisie du chrono de course réel
+(calibration face à la prédiction), modales accessibles (`js/ui/modal.js` — focus,
+Échap, aria), monolithe explicitement gelé (commentaire d'en-tête), **E2E Playwright
+en CI** (`tests/e2e/`, 4 suites, 74 assertions — seule devDependency, test uniquement).
+Chantiers restants : candidature API MyFitnessPal (humain), Strava OAuth + push
+serveur (même décision infra), avis nutritionniste pour la nutrition complète.

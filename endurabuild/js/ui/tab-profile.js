@@ -187,6 +187,14 @@ export function renderTabProfile(plan) {
   // — Retest « boss fight » (R4.4) : planification ici, cycle complet dans 📅 Semaine
   html += retestPlannerHTML();
 
+  // — Sauvegarde : tout vit dans localStorage — un navigateur nettoyé = tout perdu.
+  // Export/import JSON de l'état COMPLET (tous les plans + état partagé).
+  html += '<div class="load-card"><div class="load-title">💾 Sauvegarde</div>'
+    + '<div class="load-sub" style="margin-top:6px">Tes plans vivent dans ce navigateur uniquement. Exporte une sauvegarde de temps en temps — et importe-la sur un nouvel appareil ou après un nettoyage.</div>'
+    + '<div class="nav" style="margin-top:8px;flex-wrap:wrap;gap:8px"><button class="btn" id="pfBackup" type="button">Exporter ma sauvegarde</button>'
+    + '<label class="btn" style="cursor:pointer;margin:0">Importer une sauvegarde<input type="file" id="pfRestore" accept=".json,application/json" style="display:none"></label></div>'
+    + '<div id="pfBackupMsg" class="load-sub" style="margin-top:6px"></div></div>';
+
   // — Journal d'évolution (S.answers.tests, trié du plus récent au plus ancien)
   const tests = Array.isArray(a.tests) ? [...a.tests].sort((x, y) => String(y.date || "").localeCompare(String(x.date || ""))) : [];
   html += '<div class="load-card"><div class="load-title">📒 Journal d’évolution</div>';
@@ -219,6 +227,33 @@ export function renderTabProfile(plan) {
 
   bindPlansSelector();
   bindRetestPlanner(() => renderTabProfile(ensurePlan()));
+  // — Sauvegarde : export = l'état v2 complet tel quel ; import = validation minimale puis
+  // remplacement TOTAL (confirmé) et rechargement — le chemin le plus sûr, zéro fusion hasardeuse.
+  const bk = $("pfBackup");
+  if (bk) bk.onclick = () => {
+    ebSave();
+    const raw = localStorage.getItem("eb_state_v2") || "{}";
+    const blob = new Blob([raw], { type: "application/json" });
+    const u = URL.createObjectURL(blob);
+    const l = document.createElement("a");
+    l.href = u; l.download = "endurabuild-sauvegarde-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(l); l.click();
+    setTimeout(() => { document.body.removeChild(l); URL.revokeObjectURL(u); }, 200);
+    const m = $("pfBackupMsg"); if (m) m.textContent = "✓ Sauvegarde téléchargée (" + Math.round(raw.length / 1024) + " Ko).";
+  };
+  const rs = $("pfRestore");
+  if (rs) rs.onchange = async () => {
+    const f = rs.files && rs.files[0];
+    if (!f) return;
+    const m = $("pfBackupMsg");
+    try {
+      const data = JSON.parse(await f.text());
+      if (!data || !Array.isArray(data.plans) || !data.plans.length) { if (m) m.textContent = "⚠ Fichier invalide (pas une sauvegarde EnduraBuild)."; return; }
+      if (!confirm("Remplacer TOUTES les données actuelles (" + Math.max(1, S.plans.length) + " plan(s)) par cette sauvegarde (" + data.plans.length + " plan(s)) ?")) return;
+      localStorage.setItem("eb_state_v2", JSON.stringify(data));
+      location.reload();
+    } catch (e) { if (m) m.textContent = "⚠ Fichier illisible."; }
+  };
   $("pfEdit").onclick = () => { S.step = curSteps().length - 1; renderStep(); };
   $("pfReset").onclick = () => reset();
   const fitInput = $("pfFit");
@@ -250,10 +285,26 @@ export function renderTabProfile(plan) {
     }
     S.answers.fitSessions = S.answers.fitSessions.slice(-60); // borne : 60 dernières séances
     S.answers.fitRich = S.answers.fitRich.slice(-60);
+    // Auto-✓ : une séance importée qui correspond à une séance PLANIFIÉE (même jour, même
+    // sport, durée comparable) coche la séance du plan — la boucle prévu/réel se ferme
+    // sans double saisie. Correspondance prudente : jamais de ✓ sur un simple « même jour ».
+    let nA = 0;
+    if (!S.answers.done) S.answers.done = {};
+    for (const c of S.answers.fitSessions) {
+      for (const w of plan.weeks) for (const d of w.days) {
+        if (d.date !== c.date) continue;
+        d.sessions.forEach((s, si) => {
+          const k = w.num + "|" + d.jour + "|" + si;
+          if (s.d !== c.d || S.answers.done[k]) return;
+          const tol = Math.max(15, (s.min || 0) * 0.3);
+          if (Math.abs((s.min || 0) - c.minutes) <= tol) { S.answers.done[k] = true; nA++; }
+        });
+      }
+    }
     const nRef = syncRefsFromTests(); // pousse le test le plus récent vers a.ftp/pace/css — sinon le moteur ne le voit jamais
     ebSave();
     if (nRef) { invalidatePlan(); renderTabProfile(ensurePlan()); } // référence(s) mise(s) à jour → régénération (une fois)
-    msg((nS || nT ? "✓ " + nS + " séance" + (nS > 1 ? "s" : "") + " importée" + (nS > 1 ? "s" : "") + " (nourrit la fatigue de « Forme du jour »)" + (nT ? " · " + nT + " référence" + (nT > 1 ? "s" : "") + " ajoutée" + (nT > 1 ? "s" : "") + " au journal" : "") + (nRef ? " · plan régénéré avec la référence la plus récente" : "") + "." : "Aucune donnée exploitable.")
+    msg((nS || nT ? "✓ " + nS + " séance" + (nS > 1 ? "s" : "") + " importée" + (nS > 1 ? "s" : "") + " (nourrit la fatigue de « Forme du jour »)" + (nA ? " · " + nA + " séance" + (nA > 1 ? "s" : "") + " du plan validée" + (nA > 1 ? "s" : "") + " automatiquement ✓" : "") + (nT ? " · " + nT + " référence" + (nT > 1 ? "s" : "") + " ajoutée" + (nT > 1 ? "s" : "") + " au journal" : "") + (nRef ? " · plan régénéré avec la référence la plus récente" : "") + "." : "Aucune donnée exploitable.")
       + (notes.length ? '<br><span style="color:#8a6d00">⚠ ' + notes.map(esc).join(" ") + "</span>" : "")
       + (errs.length ? '<br><span style="color:#c0392b">' + errs.join("<br>") + "</span>" : ""));
   };

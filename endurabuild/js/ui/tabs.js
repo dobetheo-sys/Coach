@@ -21,8 +21,31 @@ let activeTab = "week"; // défaut : l'écran du quotidien (le plus consulté)
 
 /** Le SEUL endroit où le plan se (re)calcule. Invalidé par reset/Modifier/édition profil. */
 export function ensurePlan() {
-  if (!S.currentPlan) S.currentPlan = buildPlan(S.answers);
+  if (!S.currentPlan) {
+    // Ancre calendaire : posée UNE fois à la première génération — sans elle, la semaine 1
+    // re-glisserait au lundi courant à chaque ouverture et le plan n'avancerait jamais.
+    if (!S.answers.plan_start) { S.answers.plan_start = new Date().toISOString().slice(0, 10); ebSave(); }
+    S.currentPlan = buildPlan(S.answers);
+    applyDaySwaps(S.currentPlan); // déplacements de séances persistants (voir plus bas)
+  }
   return S.currentPlan;
+}
+
+// Déplacement de séance persistant (spec rétention §8) : l'utilisateur peut échanger deux
+// jours d'une même semaine. Les échanges sont stockés (answers.daySwaps) et RÉAPPLIQUÉS à
+// l'identique après chaque régénération (le plan est recalculé à chaque ouverture) — le
+// moteur garde la main sur la structure, l'utilisateur sur le calendrier de sa semaine.
+export function applyDaySwaps(plan) {
+  const swaps = Array.isArray(S.answers.daySwaps) ? S.answers.daySwaps : [];
+  for (const [wn, jA, jB] of swaps) {
+    const w = plan.weeks.find((x) => x.num === wn);
+    if (!w) continue;
+    const a = w.days.find((d) => d.jour === jA), b = w.days.find((d) => d.jour === jB);
+    if (!a || !b) continue;
+    [a.sessions, b.sessions] = [b.sessions, a.sessions];
+    [a.charge, b.charge] = [b.charge, a.charge];
+    [a.slot, b.slot] = [b.slot, a.slot];
+  }
 }
 export function invalidatePlan() {
   S.currentPlan = null;

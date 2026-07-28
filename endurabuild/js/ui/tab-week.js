@@ -10,7 +10,49 @@ import { avatarDataFor, avatarSVG } from "./avatar.js";
 import { celebrationMessage } from "./celebrations.js";
 import { missedSessionsCheck, notifySetupHTML, bindNotifySetup, scheduleDailyNotification, weeklyReviewHTML } from "../notifications.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
-import { ensurePlan } from "./tabs.js";
+import { ensurePlan, invalidatePlan } from "./tabs.js";
+import { trapModal } from "./modal.js";
+
+// Déplacement de séance persistant (spec §8) : échange de deux jours d'une même semaine.
+// L'échange est stocké (answers.daySwaps) et réappliqué après chaque régénération ; les ✓
+// et feedbacks des deux jours sont remappés UNE fois à la création (ils suivent la séance).
+function toggleSwap(wnum, jA, jB) {
+  if (!Array.isArray(S.answers.daySwaps)) S.answers.daySwaps = [];
+  const ix = S.answers.daySwaps.findIndex(([w2, a2, b2]) => w2 === wnum && ((a2 === jA && b2 === jB) || (a2 === jB && b2 === jA)));
+  if (ix >= 0) S.answers.daySwaps.splice(ix, 1);
+  else S.answers.daySwaps.push([wnum, jA, jB]);
+  const remap = (obj) => {
+    if (!obj) return;
+    for (let i = 0; i < 8; i++) {
+      const kA = wnum + "|" + jA + "|" + i, kB = wnum + "|" + jB + "|" + i;
+      const tA = obj[kA], tB = obj[kB];
+      if (tB !== undefined) obj[kA] = tB; else delete obj[kA];
+      if (tA !== undefined) obj[kB] = tA; else delete obj[kB];
+    }
+  };
+  remap(S.answers.done);
+  remap(S.answers.completions);
+}
+function handleSwapClick(plan, wnum, jour) {
+  const p = S._swapPending;
+  if (!p || p.w !== wnum) { S._swapPending = { w: wnum, jour }; renderTabWeek(plan); return; }
+  if (p.jour === jour) { S._swapPending = null; renderTabWeek(plan); return; }
+  toggleSwap(wnum, p.jour, jour);
+  S._swapPending = null;
+  ebSave();
+  invalidatePlan();
+  let np = ensurePlan();
+  // Garde-fou : l'échange ne doit pas créer deux jours durs consécutifs (récupération d'abord)
+  const wk = np.weeks.find((x) => x.num === wnum);
+  const adjacentHard = !!wk && wk.days.some((d, i) => i > 0 && d.charge === "dur" && wk.days[i - 1].charge === "dur");
+  if (adjacentHard && !confirm("Cet échange crée deux jours durs consécutifs — le corps récupère mal comme ça. Garder quand même ?")) {
+    toggleSwap(wnum, p.jour, jour); // annulation : on remet tout comme avant
+    ebSave();
+    invalidatePlan();
+    np = ensurePlan();
+  }
+  renderTabWeek(np);
+}
 import { dailyContentHTML } from "./daily-content.js";
 import { shareStory } from "../export.js";
 
@@ -36,6 +78,7 @@ function feedbackModal(plan, session, k, onDone) {
     + '<input type="text" id="fbPainLoc" placeholder="Où ? (optionnel)" style="display:none;margin-top:6px;width:100%">'
     + '<div class="nav" style="justify-content:center;margin-top:12px"><button class="btn primary" id="fbSave" type="button" disabled>Valider →</button></div></div>';
   document.body.appendChild(ov);
+  const untrap = trapModal(ov, () => { ov.remove(); onDone(); }); // Échap = passer le feedback, la séance reste validée
   const state = { rpe: null, feeling: null };
   const refresh = () => { ov.querySelector("#fbSave").disabled = !(state.rpe && state.feeling); };
   ov.querySelectorAll("[data-rpe]").forEach((b) => b.onclick = () => { state.rpe = +b.dataset.rpe; ov.querySelectorAll("[data-rpe]").forEach((x) => x.classList.toggle("primary", x === b)); refresh(); });
@@ -49,6 +92,7 @@ function feedbackModal(plan, session, k, onDone) {
     S.answers.completions[k] = { date: new Date().toISOString().slice(0, 10), rpe: state.rpe, feeling: state.feeling, pain, painLocation: loc || undefined };
     if (pain) S.answers.painFlag = { active: true, location: loc, since: new Date().toISOString().slice(0, 10) }; // R4.5 — verrouille la qualité via l'ajusteur
     ebSave();
+    untrap();
     ov.remove();
     onDone();
   };
@@ -90,8 +134,10 @@ function showCongrats(plan, session, newBadge, todayISO) {
     + nextSessionTeaser(plan, todayISO)
     + "</div>";
   document.body.appendChild(ov);
-  ov.querySelector("#ebCloseCongrats").onclick = () => ov.remove();
-  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  const untrap = trapModal(ov, () => ov.remove());
+  const closeOv = () => { untrap(); ov.remove(); };
+  ov.querySelector("#ebCloseCongrats").onclick = closeOv;
+  ov.onclick = (e) => { if (e.target === ov) closeOv(); };
   ov.querySelector("#ebShareStory").onclick = async () => {
     const btn = ov.querySelector("#ebShareStory");
     btn.disabled = true; btn.textContent = "Génération…";
@@ -286,9 +332,15 @@ export function renderTabWeek(plan) {
       })
       .join("");
     const mark = d.date === today ? "<i>aujourd’hui</i>" : (plan.use10 ? "<i>C" + d.cyc + "J" + d.jc + "</i>" : "");
-    html += '<div class="gd ' + d.charge + (d.date === today ? " today" : "") + '"><div class="gd-top"><b>' + d.jour + "</b>" + mark + '</div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
+    // §8 — déplacement de séance : ⇄ sur chaque jour, deux taps = échange persistant.
+    const pend = S._swapPending && S._swapPending.w === w.num && S._swapPending.jour === d.jour;
+    const swapBtn = '<button class="swapBtn" type="button" data-swap="' + w.num + "|" + d.jour + '" title="Échanger ce jour avec un autre" aria-label="Échanger ' + d.jour + ' avec un autre jour" style="border:none;background:' + (pend ? "#2e6bff" : "transparent") + ";color:" + (pend ? "#fff" : "#b3ab9b") + ';border-radius:5px;font-size:12px;cursor:pointer;padding:0 4px">⇄</button>';
+    html += '<div class="gd ' + d.charge + (d.date === today ? " today" : "") + (pend ? " swap-pend" : "") + '"' + (pend ? ' style="outline:2px dashed #2e6bff"' : "") + '><div class="gd-top"><b>' + d.jour + "</b>" + mark + swapBtn + '</div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
   });
-  html += "</div></div>";
+  html += "</div>";
+  if (S._swapPending && S._swapPending.w === w.num)
+    html += '<div class="load-sub" style="margin-top:6px">⇄ <b>' + S._swapPending.jour + "</b> sélectionné — touche le jour avec lequel l’échanger (ou re-touche ⇄ pour annuler).</div>";
+  html += "</div>";
   const todayDay = w.days.find((d) => d.date === today) || null;
   html += nutritionCardHTML(todayDay, null);
   html += nutritionJournalHTML(todayDay, today); // R4-1 — journal alimentaire (repliable)
@@ -309,6 +361,13 @@ export function renderTabWeek(plan) {
   });
   const _rb = $("rdApply");
   if (_rb) _rb.onclick = async () => { await applyReadiness(); renderTabWeek(plan); };
+  document.querySelectorAll("#screen [data-swap]").forEach((b) => {
+    b.onclick = (e) => {
+      e.stopPropagation();
+      const [wn, jour] = b.dataset.swap.split("|");
+      handleSwapClick(plan, +wn, jour);
+    };
+  });
   document.querySelectorAll("#screen .doneBtn").forEach((b) => {
     b.onclick = () => {
       if (!S.answers.done) S.answers.done = {};

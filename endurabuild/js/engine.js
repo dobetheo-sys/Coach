@@ -39,6 +39,7 @@
                      
                                   
                      
+                                                                                                                          
                  
                       
                       
@@ -1621,9 +1622,15 @@ function buildDays(r              , refs      , hz         )           {
   // est celle de la course — la course tombe à sa vraie date, à son vrai jour.
   const MS = 864e5;
   const mondayOf = (t        )         => t - ((new Date(t).getUTCDay() + 6) % 7) * MS;
+  // BUG CORRIGÉ (ancrage glissant) : sans date de course, ancrer sur « maintenant » faisait
+  // RE-GLISSER la semaine 1 à chaque régénération (le plan est recalculé à chaque ouverture) —
+  // l'athlète restait éternellement en semaine 1, progression/historique/série vidés au fil
+  // des semaines. L'ancre est désormais plan_start (posée par l'UI à la PREMIÈRE génération,
+  // persistée dans les réponses) : le plan avance dans le temps comme un vrai plan.
+  const anchorT = a.plan_start ? new Date(a.plan_start + "T00:00:00Z").getTime() : Date.now();
   const start = a.race_date
     ? mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - (r.weeks - 1) * 7 * MS
-    : mondayOf(Date.now());
+    : mondayOf(isFinite(anchorT) ? anchorT : Date.now());
   const iso = (t        ) => new Date(t).toISOString().slice(0, 10);
   days.forEach((d, i) => {
     const ph = d.phase ;

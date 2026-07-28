@@ -11,6 +11,7 @@ import { syncRefsFromTests } from "./tab-profile.js";
 import { invalidatePlan, ensurePlan, setTab } from "./tabs.js";
 import { shareStory } from "../export.js";
 import { avatarDataFor, avatarSVG } from "./avatar.js";
+import { trapModal } from "./modal.js";
 
 const TYPES = {
   ftp: { label: "FTP (vélo)", unit: "W", disc: "bike", parse: (v) => parseInt(v) || 0, fmt: (v) => Math.round(v) + " W", better: (nu, old) => nu > old },
@@ -134,8 +135,10 @@ function showReveal(plan, type, val, prevVal, todayISO, rerenderWeek) {
     + '<button class="btn gold" id="rtShare" type="button">📸 Carte RETEST</button>'
     + '<button class="btn" id="rtClose" type="button">Fermer</button></div></div>';
   document.body.appendChild(ov);
-  ov.querySelector("#rtClose").onclick = () => { ov.remove(); rerenderWeek(); };
-  ov.onclick = (e) => { if (e.target === ov) { ov.remove(); rerenderWeek(); } };
+  const untrap = trapModal(ov, () => { ov.remove(); rerenderWeek(); });
+  const closeOv = () => { untrap(); ov.remove(); rerenderWeek(); };
+  ov.querySelector("#rtClose").onclick = closeOv;
+  ov.onclick = (e) => { if (e.target === ov) closeOv(); };
   ov.querySelector("#rtShare").onclick = async () => {
     const b = ov.querySelector("#rtShare");
     b.disabled = true; b.textContent = "Génération…";

@@ -338,3 +338,42 @@ Rapport détaillé : `endurabuild/RAPPORT-R4-RETENTION.md`. Points structurants 
 - PWA : `celebrations.js` (15×4), `retest.js` (cycle boss fight sur journal+syncRefs),
   `daily-content.js` (90 anecdotes/physio par phase/stat perso/micro-défis, rotation
   déterministe par date), `notifications.js` (limites sans backend documentées dans l'UI).
+
+## Lot améliorations (juillet 2026) — solidité avant nouveauté
+
+Passage systématique sur les fragilités relevées à l'auto-revue ; aucun nouveau périmètre
+produit, que du durcissement. Points structurants :
+
+- **Ancrage du calendrier (`plan_start`)** — bug critique corrigé : sans date de course, le
+  plan se ré-ancrait sur le lundi COURANT à chaque régénération (semaine 1 éternelle,
+  streak/progression faussés). `ensurePlan()` pose `answers.plan_start` UNE fois ; le
+  générateur (`weekBuilder.ts`) ancre dessus. Asserté dans `demo:retention` (plan démarré
+  il y a 3 semaines → aujourd'hui en semaine 4 + déterminisme de régénération).
+- **État partagé entre plans (`S.shared`)** — la personne est une, ses plans sont
+  plusieurs : readiness du jour, drapeau douleur, jours malades, poids, réglages de rappel
+  vivent dans `eb_state_v2.shared` (SHARED_KEYS dans `state.js`, lift à la sauvegarde /
+  overlay à l'activation). Changer de plan ne « guérit » plus une douleur signalée.
+- **Sauvegarde/restauration** (Profil) : export JSON de tout `eb_state_v2`, restauration
+  validée + confirmée — le seul filet tant que tout vit en localStorage.
+- **Auto-✓ FIT** : un fichier importé coche automatiquement la séance planifiée
+  correspondante (même date + même sport + durée à ±30 %/15 min) — la boucle prévu/réel
+  se ferme sans double saisie.
+- **Échange de jours persistant (⇄, `answers.daySwaps`)** : deux taps dans la grille
+  semaine ; réappliqué après CHAQUE régénération (`applyDaySwaps` dans `tabs.js`), ✓ et
+  feedbacks remappés une fois à la création, garde-fou « deux jours durs consécutifs »
+  avec confirmation et annulation complète. Re-taper le même échange l'annule.
+- **Journal des verdicts (`answers.readinessLog`)** : chaque check-in archive
+  {date, niveau, action} (90 jours) ; carte « 🤖 Adaptations quotidiennes » dans
+  Avancement — la preuve visible que le plan n'est pas un PDF.
+- **Résultat de course réel (`answers.raceResult`)** : course passée → saisie du chrono
+  dans Avancement, affiché face à la prédiction de l'époque — calibration honnête.
+- **Accessibilité des modales (`js/ui/modal.js`, `trapModal`)** : aria-modal sur la boîte
+  de dialogue, focus déplacé à l'ouverture, piège Tab/Shift+Tab, Échap ferme. Branché sur
+  feedback RPE, félicitations et révélation de retest.
+- **Monolithe gelé** : commentaire d'en-tête dans `Coach_Pro_V1.5.html` — la PWA est la
+  source de vérité UI ; le fichier reste parce que `audit:v1` s'exécute contre lui et que
+  `build:app` y réinjecte le bundle. Ne plus y développer d'UI.
+- **E2E en CI (`tests/e2e/`, `npm run test:e2e`)** : 4 suites Playwright (check-in, R4,
+  rétention, améliorations — 74 assertions) contre la PWA servie localement, dans un vrai
+  Chromium. Playwright est une devDependency de TEST uniquement — le produit et l'audit
+  restent à zéro dépendance. Job CI `e2e` séparé (9 contrôles au total sur chaque push).

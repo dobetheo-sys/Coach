@@ -27,3 +27,17 @@ jobs:
       - run: npm run demo:retention
       # Le bundle EBV2 committé dans le HTML doit correspondre aux sources src/
       - run: npm run check:app
+
+  # E2E navigateur : les smokes de la PWA (check-in, R4, rétention, améliorations)
+  # tournent dans un vrai Chromium — Playwright est une devDependency de TEST
+  # uniquement, le produit et l'audit restent à zéro dépendance.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

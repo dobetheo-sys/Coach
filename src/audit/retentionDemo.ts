@@ -112,5 +112,18 @@ function validateDays(answers: Record<string, unknown>, upTo: number) {
   check("trail : D+ cible affiché sur la longue (temps + D+, spec §2)", dplus, (longs[0] && longs[0].det || "").slice(0, 80));
 }
 
+// ---- 6. Ancrage plan_start : le plan AVANCE dans le temps (fini la semaine 1 éternelle) ----
+{
+  const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
+  const threeWeeksAgo = iso(Date.now() - 21 * 864e5);
+  const { plan: pa } = generatePlan({ ...profile, plan_start: threeWeeksAgo } as unknown as AthleteProfile);
+  const today = iso(Date.now());
+  const wkToday = pa.weeks.find((w) => w.days.some((d) => (d as { date?: string }).date === today));
+  check("plan_start il y a 3 semaines → aujourd'hui tombe en semaine 4 (le plan avance)", !!wkToday && wkToday.num === 4, "semaine=" + (wkToday ? wkToday.num : "absente"));
+  const { plan: pb } = generatePlan({ ...profile, plan_start: threeWeeksAgo } as unknown as AthleteProfile);
+  check("régénération à l'identique : mêmes dates au jour près (déterminisme de l'ancre)",
+    JSON.stringify(pa.weeks.map((w) => w.days.map((d) => (d as { date?: string }).date))) === JSON.stringify(pb.weeks.map((w) => w.days.map((d) => (d as { date?: string }).date))));
+}
+
 if (failures) { console.error("\nDémo rétention : " + failures + " garantie(s) en échec."); process.exit(1); }
 console.log("\nDémo rétention : toutes les garanties tiennent (repos = séance, gel douleur/maladie, zéro récompense hors plan).");
