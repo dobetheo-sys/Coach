@@ -265,3 +265,44 @@ décision non affichée). Trouvailles et correctifs :
 
 Conséquence : l'onboarding premium passe de 5 à 3 écrans (sommeil/vie, poids, courses
 intermédiaires) — chacun à effet vérifié.
+
+## 5e onglet 🎮 Suivi — avatar évolutif + monitoring séance (`endurabuild/js/ui/tab-monitor.js`)
+
+Demande produit : gamifier davantage, avec un avatar qui évolue. Ajouté SANS nouvelle
+collecte de données — tout dérive des métriques déjà calculées (`progressV2`/`badgesV2`).
+
+- **`src/app/bridge.ts` : `avatarV2(plan, answers, todayISO)`** — XP CUMULATIF (jamais
+  décroissant, même philosophie que les badges « gagné-jamais-perdu ») : `semaines
+  régulières × 120 + badges × 80 + %charge × 3 + minutes accomplies / 15`. 7 paliers
+  (🥚 Premier pas → 🌱 → 🌿 → 🌳 → 🔥 → 🥈 → 🏆 Vétéran). Aucune performance brute
+  (chrono/FTP) dans le calcul — uniquement régularité, conforme à la priorité n°3 du
+  manifeste. Exposé `EBV2.avatar`.
+- **Monitoring de la séance** : les steps de la séance DU JOUR (déjà adaptée par
+  `adjustToday`, même donnée que la carte « Aujourd'hui » de l'onglet Semaine) sont
+  regroupés par rôle (échauffement/corps/retour au calme) en 3 cases à cocher, suivi
+  LOCAL en temps réel — ne nourrit PAS directement la fatigue de l'ajusteur (ça reste le
+  rôle du ✓ de l'onglet Semaine). Quand toutes les cases d'une séance sont cochées,
+  **le ✓ existant se coche automatiquement** pour toutes les séances planifiées du jour
+  (pas de correspondance index-à-index fragile entre séance adaptée et séances d'origine
+  — un remplacement readiness peut fusionner plusieurs séances prévues en une seule ;
+  la synchronisation reste globale au jour, jamais un mauvais index mal coché).
+- **Badges** : galerie complète déplacée ici (design du tab dédié à la gamification) ;
+  l'aperçu compact dans l'onglet Avancement reste en place (contexte différent, pas une
+  duplication gênante).
+
+Barre à 5 onglets (`tabs.js`), fallback robuste `TABS[TABS.length - 1]` (plus d'index
+codé en dur qui casserait à un futur 6e onglet).
+
+## Séances repliables + glossaire éducatifs détaillé
+
+Demande produit : réduire l'affichage des séances (liste dense) et les rendre cliquables
+pour voir le détail. `<details>/<summary>` natif (pas de JS de toggle à maintenir),
+fermé par défaut partout (grille de la semaine ET carte « Aujourd'hui ») — chevron `▸`
+en CSS (`.gd-sess`, `styles.css`).
+
+Les éducatifs de natation (respiration/technique/endurance/peur, `sessionLibrary.ts`)
+ne se contentent plus de NOMMER le geste : chaque description dit COMMENT le faire
+(ex. « rattrapé : le bras devant reste tendu jusqu'au contact des mains avant de
+repartir — corrige le timing »). Un seul glossaire (`swimDrillGlossary`, hissé au niveau
+du module pour être accessible aux branches swim ET tri) évite la duplication de texte
+entre les deux sports.

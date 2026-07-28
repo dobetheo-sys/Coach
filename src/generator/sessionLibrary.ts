@@ -45,6 +45,9 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
     ({ role: "body", reps, durationMin: dur, zone, intensity: intOf(zone) as unknown as string, recoveryText: recTxt || "", suffix: sfx || "", prefix: "" }) as V1Step;
   const Bd = (reps: number, dist: number, zone: string | null, recTxt?: string, sfx?: string, unitKm?: boolean, disc?: string): V1Step =>
     ({ role: "body", reps, distanceM: Math.round(dist / 25) * 25, unitKm: !!unitKm, zone, intensity: intOf(zone) as unknown as string, recoveryText: recTxt || "", suffix: sfx || "", prefix: "", d: disc }) as V1Step;
+  // Glossaire des éducatifs nage — accessible aux branches swim ET tri : nommer un
+  // éducatif ne suffit pas, il faut dire comment le faire (manifeste : jamais muette).
+  const swimDrillGlossary = "rattrapé (le bras devant reste tendu jusqu'au contact des mains avant de repartir : corrige le timing), poings fermés (main fermée : force l'appui par l'avant-bras), battements planche (jambes seules, planche tenue devant : isole et muscle le battement)";
 
   if (sp === "run") {
     const injImp = (a.injury || "").split(",").some((x) => ["tibia", "genou", "pied", "hanche"].includes(x));
@@ -96,13 +99,15 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
     const shoulder = (a.injury || "").includes("epaule"), ow = a.milieu === "ow" || a.milieu === "mixte";
     // Limite principale déclarée par le débutant (question dédiée) : chaque réponse
     // oriente RÉELLEMENT les éducatifs vers ce qui bloque, pas un générique commun.
+    // Chaque éducatif nommé porte son COMMENT FAIRE (pas juste son nom) — la séance
+    // s'explique elle-même, jusque dans le détail technique (manifeste : jamais muette).
     const swimLimitFocus: Record<string, { txt: string; note: string }> = {
-      respiration: { txt: " éducatifs respiration (3 temps bilatérale, expiration complète dans l'eau)", note: "La respiration débloque tout le reste : on la travaille isolée, sans la charge de la nage complète." },
-      technique: { txt: " éducatifs bras (rattrapé, poings fermés, un bras)", note: "Sentir l'appui avant d'ajouter de la distance : la technique s'automatise par la fréquence, pas par la force." },
+      respiration: { txt: " éducatifs respiration — 3 temps bilatérale (souffle continu par le nez sous l'eau, tête qui pivote sans se lever, inspire large sur le côté à la dernière seconde)", note: "La respiration débloque tout le reste : on la travaille isolée, sans la charge de la nage complète." },
+      technique: { txt: " éducatifs bras — rattrapé (le bras devant reste tendu, immobile, jusqu'à ce que l'autre main vienne le toucher avant de repartir : corrige le timing et la rotation), poings fermés (main fermée pendant toute la traction : sentir l'appui par l'avant-bras plutôt que la paume), un bras (l'autre reste le long du corps, immobile : isole le mouvement de traction)", note: "Sentir l'appui avant d'ajouter de la distance : la technique s'automatise par la fréquence, pas par la force." },
       endurance: { txt: " nage continue fractionnée courte, sans s'arrêter entre les longueurs", note: "Tenir la distance sans pause compte plus que la vitesse : la continuité prime, on fractionne le repos, pas la nage." },
       peur: { txt: " nage en petites longueurs, pied au mur possible à tout moment, jamais de chrono", note: "Le seul objectif est de se sentir bien dans l'eau — l'aisance se construit par l'exposition progressive, sans pression de performance." },
     };
-    const limFocus = swimLimitFocus[a.swim_limit || ""] || { txt: " éducatifs variés (rattrapé, poings fermés, battements planche)", note: "La technique se construit à froid, sans fatigue. Qualité > quantité." };
+    const limFocus = swimLimitFocus[a.swim_limit || ""] || { txt: " éducatifs variés — " + swimDrillGlossary, note: "La technique se construit à froid, sans fatigue. Qualité > quantité." };
     if (slot === "dur1") {
       if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Seuil technique CSS", note: "Quelques 100m à allure seuil contrôlée, technique maintenue : préparer la course sans casser le geste.", det: "", steps: [Wm(200, "souple + éducatifs"), Bd(P(4, 7), 100, "sw.css", "20-30s", "", false, "sw"), Cm(100, "relâché")] });
       else if (beginner) S2.push({ d: "sw", name: "Technique + éducatifs", note: limFocus.note, det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", "repos libre entre séries", limFocus.txt + ", " + P(1, 2) + " point(s) technique", false, "sw"), Cm(100, "relâché")] });
@@ -144,7 +149,7 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
       ? { name: "Nage seuil technique (+dist)", note: "Technique d'abord, mais quelques 100m à allure seuil contrôlée pour préparer la course.", steps: [Wm(200, "souple"), Object.assign(Bd(1, swimDist, "sw.css", "repos libre entre séries", ", fractionné en séries régulières, éducatifs entre", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(100, "relâché")] }
       : { name: "Nage seuil (+dist)", note: "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.", steps: [Wm(300, "+ 4×50m éducatifs"), Object.assign(Bd(1, swimDist, "sw.css", "15-20s", ", fractionné en séries régulières si besoin", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(200, "souple")] };
     const swTech = beginner
-      ? { name: "Nage éducatifs", note: "Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force.", steps: [Wm(100, "souple"), Bd(1, swTechDist, "sw.easy", "20-30s", ", éducatifs variés (rattrapé, poings fermés, battements planche) par 50m, 1 point technique à la fois", false, "sw"), Cm(100, "dos souple")] }
+      ? { name: "Nage éducatifs", note: "Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force.", steps: [Wm(100, "souple"), Bd(1, swTechDist, "sw.easy", "20-30s", ", par 50m, 1 point technique à la fois — " + swimDrillGlossary, false, "sw"), Cm(100, "dos souple")] }
       : { name: "Nage vitesse", note: "Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m.", steps: [Wm(200, "+ 4×25m accélérations progressives"), Bd(1, swTechDist, "sw.aero", "30-40s sur les 50m rapides", ", dont la moitié en accélérations de 50m", false, "sw"), Cm(150, "souple")] };
     const swShort = { name: "Nage récup", note: "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.", steps: [Bd(1, swShortDist, "sw.easy", "", " souple, en blocs de 50m, respiration 3 temps · relâchement total", false, "sw")] };
     if (slot === "dur1") {

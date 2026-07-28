@@ -51,6 +51,13 @@ pour obtenir FTP/allure/CSS soi-même (protocole + renvoi vers Profil), et les c
 personnalisés (`evalRules`) enfin visibles dans l'onglet Avancement. Détail complet dans
 ARCHITECTURE.md « Audit d'influence des paramètres ».
 
+**5e onglet 🎮 Suivi fait** : avatar évolutif (XP cumulatif — régularité/badges/charge,
+jamais un chrono, jamais décroissant), checklist en direct de la séance du jour
+(échauffement/corps/retour au calme), galerie de badges. Séances repliables partout
+(`<details>` fermés par défaut, clic pour le détail) + glossaire éducatifs natation
+détaillé (comment faire le geste, pas juste son nom). Voir ARCHITECTURE.md « 5e onglet
+Suivi » et « Séances repliables ».
+
 ## 🔧 Reste côté code — par ordre recommandé
 
 | # | Chantier | Effort | Bloqué par | Détail |

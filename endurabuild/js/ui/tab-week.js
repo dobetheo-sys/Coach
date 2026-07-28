@@ -93,7 +93,9 @@ function heroSessionHTML(plan, todayISO) {
   const badge = '<span style="float:right;font-size:11px;font-weight:700;color:#555;margin-top:2px">' + _verdictIc[v.level] + " " + _verdictLbl[res.adjustment.action] + "</span>";
   let body;
   if (res.sessions.length) {
-    body = res.sessions.map((x) => '<div style="margin-top:6px"><b>' + x.name + "</b>" + (x.det ? '<span class="gd-det">' + x.det + "</span>" : "") + "</div>").join("");
+    body = res.sessions.map((x) => x.det
+      ? '<details class="gd-sess" style="margin-top:6px"><summary><b>' + x.name + "</b></summary><span class=\"gd-det\">" + x.det + "</span></details>"
+      : '<div style="margin-top:6px"><b>' + x.name + "</b></div>").join("");
   } else {
     const upcoming = [];
     plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date > todayISO && d.sessions.some((s) => s.d !== "rs")) upcoming.push(d); }));
@@ -131,7 +133,9 @@ export function renderTabWeek(plan) {
         const k = w.num + "|" + d.jour + "|" + si;
         const dn = S.answers.done && S.answers.done[k];
         const chk = s.d !== "rs" ? '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" title="Marquer fait" aria-label="Marquer ' + s.name.replace(/"/g, "") + ' comme faite">' + (dn ? "✓" : "○") + "</button> " : "";
-        return chk + "<b>" + s.name + "</b>" + (s.det ? '<span class="gd-det">' + s.det + "</span>" : "");
+        return chk + (s.det
+          ? '<details class="gd-sess"><summary><b>' + s.name + "</b></summary><span class=\"gd-det\">" + s.det + "</span></details>"
+          : "<b>" + s.name + "</b>");
       })
       .join("");
     const mark = d.date === today ? "<i>aujourd’hui</i>" : (plan.use10 ? "<i>C" + d.cyc + "J" + d.jc + "</i>" : "");

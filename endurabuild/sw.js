@@ -2,7 +2,7 @@
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
    une météo périmée est pire qu'une absence de météo). */
-const VERSION = "eb-pwa-v4"; // v4 : dates alignées au calendrier réel + coche de séance discrète
+const VERSION = "eb-pwa-v5"; // v5 : 5e onglet Suivi (avatar évolutif + monitoring séance)
 const ASSETS = [
   "./",
   "./index.html",
@@ -22,6 +22,7 @@ const ASSETS = [
   "./js/ui/tab-profile.js",
   "./js/ui/tab-plan-general.js",
   "./js/ui/tab-progress.js",
+  "./js/ui/tab-monitor.js",
   "./js/ui/tab-week.js",
   "./assets/fonts/archivo-black-400.woff2",
   "./assets/fonts/space-grotesk-500-700.woff2",

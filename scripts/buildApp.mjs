@@ -77,6 +77,8 @@ const pred = EBV2.predict("run", answers, plan);
 if (!pred.items.length || !/–/.test(pred.items[0].value)) throw new Error("bundle invalide : predict cassé");
 const nut = EBV2.sessionNutrition({ d: "rn", name: "Sortie longue", det: "", min: 160, long: true }, { tempC: 30, weightKg: 70 });
 if (!nut || !nut.during.sodium || !/professionnel/.test(nut.disclaimer)) throw new Error("bundle invalide : sessionNutrition cassé");
+const av = EBV2.avatar(plan, answers, today);
+if (!av || !av.icon || av.level < 1 || av.progressPct < 0 || av.progressPct > 100) throw new Error("bundle invalide : avatar cassé");
 console.log("auto-test bundle : plan 16 semaines, score " + plan._v2.score + ", adaptation « " + adj.adjustment.verdict.level + " » OK");
 
 // ---- Injection entre marqueurs, après le </script> principal ----

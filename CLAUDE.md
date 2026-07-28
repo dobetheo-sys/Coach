@@ -134,5 +134,13 @@ que les valeurs courantes `a.ftp/pace/css`, jamais le journal daté), `swim_limi
 sur ses 4 valeurs, 3 champs morts retirés, calculateurs de test remplacés par la méthode
 pour obtenir soi-même FTP/allure/CSS, conseils personnalisés (`evalRules`) enfin visibles
 dans l'onglet Avancement. Détail dans ARCHITECTURE.md « Audit d'influence des paramètres ».
+**5e onglet 🎮 Suivi (gamification)** : avatar évolutif (`EBV2.avatar`, 7 paliers 🥚→🏆,
+XP cumulatif basé uniquement sur la régularité — jamais un chrono, jamais décroissant),
+monitoring en direct de la séance du jour (échauffement/corps/retour au calme à cocher,
+répercute automatiquement sur le ✓ existant), galerie de badges. Voir ARCHITECTURE.md
+« 5e onglet Suivi ».
+**Séances repliables + glossaire éducatifs** : toutes les séances (grille semaine + carte
+« Aujourd'hui ») en `<details>` fermés par défaut, cliquables pour le détail. Les
+éducatifs de natation expliquent désormais COMMENT faire le geste, pas juste son nom.
 Chantiers restants : nutrition complète (avis nutritionniste requis), Strava OAuth
 (décision infra ; Garmin abandonné — choix utilisateur), partage.

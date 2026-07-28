@@ -6,12 +6,14 @@ import { buildPlan } from "../app.js";
 import { renderTabProfile } from "./tab-profile.js";
 import { renderTabPlanGeneral } from "./tab-plan-general.js";
 import { renderTabProgress } from "./tab-progress.js";
+import { renderTabMonitor } from "./tab-monitor.js";
 import { renderTabWeek } from "./tab-week.js";
 
 const TABS = [
   ["profile", "\u{1F4CB}", "Profil", renderTabProfile],
   ["general", "\u{1F5D3}", "Plan", renderTabPlanGeneral],
   ["progress", "\u{1F4C8}", "Avancement", renderTabProgress],
+  ["monitor", "\u{1F3AE}", "Suivi", renderTabMonitor],
   ["week", "\u{1F4C5}", "Semaine", renderTabWeek],
 ];
 
@@ -38,7 +40,7 @@ function renderActiveTab() {
   const plan = ensurePlan();
   const screen = $("screen");
   if (screen) screen.setAttribute("role", "tabpanel");
-  const tab = TABS.find((t) => t[0] === activeTab) || TABS[3];
+  const tab = TABS.find((t) => t[0] === activeTab) || TABS[TABS.length - 1];
   tab[3](plan);
   const bar = $("ebTabbar");
   if (bar) bar.innerHTML = tabbarHTML();

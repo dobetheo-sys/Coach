@@ -3,7 +3,7 @@
  * (`npm run build:app`). L'UI n'appelle QUE ces trois fonctions ; aucune logique métier
  * dans les composants (manifeste, §9 Architecture).
  */
-import type { AthleteProfile, V1Plan } from "../engine/types.ts";
+import type { AthleteProfile, V1Plan, V1Step } from "../engine/types.ts";
 import { intensitySplit } from "../engine/loadModel.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
@@ -80,7 +80,7 @@ export function buildPlanV2(sport: string, answers: AppAnswers): V1Plan & { _v2?
 
 export interface TodayAdjustment {
   adjustment: DayAdjustment;
-  sessions: { name: string; det: string; d: string }[];
+  sessions: { name: string; det: string; d: string; steps?: V1Step[] }[];
   jour: string | null;
 }
 
@@ -106,7 +106,7 @@ export function adjustTodayV2(sport: string, answers: AppAnswers, snapshot: Read
   for (const w of plan.weeks)
     for (const d of w.days)
       if ((d as { date?: string }).date === snapshot.date) {
-        sessions = d.sessions.map((s) => ({ name: s.name, det: s.det || "", d: s.d }));
+        sessions = d.sessions.map((s) => ({ name: s.name, det: s.det || "", d: s.d, steps: s.steps }));
         jour = d.jour;
       }
   return { adjustment, sessions, jour };
@@ -191,6 +191,47 @@ export function badgesV2(plan: V1Plan, answers: AppAnswers, todayISO: string): B
   return out;
 }
 
+/** Avatar évolutif — gamification (onglet 🎮 Suivi). MÊME philosophie que les badges :
+ *  l'XP est CUMULATIF et ne redescend jamais (une semaine ratée n'efface rien), calculé
+ *  depuis les métriques déjà existantes (progressV2/badgesV2) — aucune nouvelle collecte,
+ *  aucun jugement de valeur ajouté au-delà de ce que le manifeste autorise (priorité n°3 :
+ *  régularité, jamais performance pure). Ne redescend jamais — mêmes garde-fous. */
+export interface AvatarState {
+  level: number;
+  name: string;
+  icon: string;
+  xp: number;
+  xpInLevel: number;
+  xpToNext: number;
+  progressPct: number;
+}
+const AVATAR_LEVELS: { name: string; icon: string; xp: number }[] = [
+  { name: "Premier pas", icon: "🥚", xp: 0 },
+  { name: "Graine plantée", icon: "🌱", xp: 120 },
+  { name: "Pousse", icon: "🌿", xp: 320 },
+  { name: "Enraciné", icon: "🌳", xp: 700 },
+  { name: "Sur la lancée", icon: "🔥", xp: 1300 },
+  { name: "Confirmé", icon: "🥈", xp: 2200 },
+  { name: "Vétéran", icon: "🏆", xp: 3500 },
+];
+export function avatarV2(plan: V1Plan, answers: AppAnswers, todayISO: string): AvatarState {
+  const pg = progressV2(plan, answers, todayISO);
+  const badges = badgesV2(plan, answers, todayISO);
+  const regularWeeks = pg.weekly.filter((w) => w.complete && w.ok).length;
+  // Semaines régulières (le cœur de la priorité n°3) + badges gagnés + charge accomplie :
+  // trois signaux déjà calculés ailleurs, jamais un chiffre de performance brute (chrono/FTP).
+  const xp = regularWeeks * 120 + badges.length * 80 + Math.round(pg.pctLoad * 3) + Math.round(pg.doneMin / 15);
+  let idx = 0;
+  for (let i = 0; i < AVATAR_LEVELS.length; i++) if (xp >= AVATAR_LEVELS[i].xp) idx = i;
+  const cur = AVATAR_LEVELS[idx], next = AVATAR_LEVELS[idx + 1];
+  const xpInLevel = xp - cur.xp;
+  const xpToNext = next ? next.xp - cur.xp : 0;
+  return {
+    level: idx + 1, name: cur.name, icon: cur.icon, xp, xpInLevel, xpToNext,
+    progressPct: next ? Math.max(0, Math.min(100, Math.round((xpInLevel / xpToNext) * 100))) : 100,
+  };
+}
+
 /** Prédiction de course — refs athlète + fiabilité issue du suivi réel (streak/charge). */
 export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { _v2?: V2PlanMeta }): Prediction {
   const { reasoned, plan: p } = plan ? { reasoned: null, plan } : generatePlan(toProfile(sport, answers));
@@ -217,7 +258,8 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   progress: progressV2,
   predict: predictV2,
   badges: badgesV2,
+  avatar: avatarV2,
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
-  version: "v2-sprint6",
+  version: "v2-sprint7",
 };
