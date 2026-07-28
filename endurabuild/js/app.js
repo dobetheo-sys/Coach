@@ -4,7 +4,7 @@
 import "./engine.js"; // définit globalThis.EBV2 (IIFE, side-effect)
 import { S, ebLoad } from "./state.js";
 import { buildPlanLegacy } from "./legacy-fallback.js";
-import { renderStep, ebAvailSet, ebAvailDur, ebAddTest, stravaImport } from "./ui/steps.js";
+import { renderStep } from "./ui/steps.js";
 import { renderPlan } from "./ui/plan-view.js";
 
 // ===== MOTEUR V2 — génération via EBV2, générateur legacy en REPLI (comportement identique
@@ -16,10 +16,6 @@ export function buildPlan(a) {
   }
   return buildPlanLegacy(a);
 }
-
-// Les handlers inline (onclick="…") des templates HTML résolvent sur window : exposition
-// explicite des quatre fonctions concernées (relevées par scan lors de la migration).
-Object.assign(window, { ebAvailSet, ebAvailDur, ebAddTest, stravaImport });
 
 // ===== PWA : service worker (offline + installable). Échec silencieux hors HTTPS/localhost.
 if ("serviceWorker" in navigator) {

@@ -36,12 +36,27 @@ régularité, prédiction, décisions), 📅 Semaine (défaut : semaine courante
 du jour). Plan généré UNE fois (`S.currentPlan`), 0 `buildPlan` au changement d'onglet
 (mesuré), barre fixe en bas avec safe-area. Voir `endurabuild/RAPPORT-ONGLETS.md`.
 
+**Écran d'accueil « Forme du jour d'abord » fait** : l'onglet 📅 Semaine s'ouvre sur le
+check-in (sommeil/VFC/énergie/ressenti, VFC visible pour tous désormais) — aucune séance
+visible avant d'avoir répondu, une fois par jour. Une fois validé : la séance du jour déjà
+adaptée (ou la prochaine si repos) en premier, puis la semaine. Voir ARCHITECTURE.md
+« Écran d'accueil ».
+
+**Audit d'influence des paramètres fait** : chaque réponse du questionnaire vérifiée contre
+le moteur réellement utilisé (V2, pas le legacy). Un vrai bug corrigé (import FIT/Strava
+qui n'atteignait jamais le plan généré), `swim_limit` pleinement câblé (4 valeurs, bassin
+et eau libre), 3 champs morts retirés (grille de contraintes de semaine, HRV premium
+redondant, Taille, Activité hors sport), les calculateurs de test remplacés par la MÉTHODE
+pour obtenir FTP/allure/CSS soi-même (protocole + renvoi vers Profil), et les conseils
+personnalisés (`evalRules`) enfin visibles dans l'onglet Avancement. Détail complet dans
+ARCHITECTURE.md « Audit d'influence des paramètres ».
+
 ## 🔧 Reste côté code — par ordre recommandé
 
 | # | Chantier | Effort | Bloqué par | Détail |
 |---|---|---|---|---|
 | ~~1~~ | ~~Export PNG / partage~~ | — | — | ✅ Fait (PWA : `js/export.js`, bouton 🖼 PNG dans le plan). |
-| 2 | **Import Strava automatique** | Moyen | ta décision infra | Le contrat `CompletedSession` est prêt (les ✓ l'utilisent déjà) ; il ne manque que le relais OAuth. Strava couvre les séances réalisées, PAS le sommeil/HRV (qui restent en saisie manuelle). |
+| 2 | **Import Strava automatique (OAuth)** | Moyen | ta décision infra | L'import manuel par jeton personnel existe et fonctionne (déplacé dans l'onglet 📋 Profil, à côté du FIT — même pont vers les références vivantes, bug corrigé). Reste l'automatisation (relais OAuth, mini-backend ou Cloudflare Worker) pour éviter la manip du jeton. |
 | ~~3~~ | ~~Source FIT (upload fichier)~~ | — | — | ✅ Fait : parseur FIT zéro-dépendance (`src/readiness/fitParser.ts`, spec `npm run demo:fit` en CI), bouton « 📂 Importer un fichier .FIT » dans l'onglet Profil — références (FTP/allure/CSS) au journal + séances réelles dans la fatigue de l'ajusteur (`fitSessions`, dédoublonnées avec les ✓). Sommeil/HRV restent en saisie manuelle (absents des FIT d'activité). |
 | ~~4~~ | ~~Nutrition (ravitaillement d'effort)~~ | — | — | ✅ Fait pour la partie NON bloquée : `src/nutrition/nutritionCalculator.ts` (règles N1–N7 sourcées ACSM/ISSN/Jeukendrup, spec `npm run demo:nutrition` en CI), carte « 🥤 Ravitaillement d'aujourd'hui » dans l'onglet 📅 Semaine (glucides/h, hydratation + sodium selon la météo, récupération, dépense estimée), poids optionnel dans 📋 Profil. **Reste bloqué avis nutritionniste** : calories journalières, macros, tout conseil d'apport global — le module actuel affiche un avertissement « ne remplace pas un pro » qu'on ne retire qu'après relecture pro. |
 | ~~5~~ | ~~API Garmin (HRV/sommeil auto)~~ | — | — | ⛔ Abandonné (décision utilisateur : « reste sur Strava ») — l'accès Garmin Health est B2B sous agrément, non garanti. La logique readiness reste agnostique de la source : si la décision change un jour, c'est un adaptateur à écrire, rien d'autre. Sommeil/HRV : saisie manuelle. |

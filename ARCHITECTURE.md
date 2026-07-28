@@ -222,3 +222,46 @@ ne plus le faire évoluer (le moteur V2 est la source de vérité).
 
 Étapes suivantes : chantiers différés (nutrition — avis nutritionniste requis, dashboard,
 gamification, partage) et sources readiness FIT/Garmin quand l'accès existe.
+
+## Écran d'accueil : « Forme du jour » avant toute séance (`endurabuild/js/ui/tab-week.js`)
+
+Demande produit : à l'ouverture, l'app demande d'abord sommeil/VFC/énergie/ressenti, et
+n'affiche la séance qu'après. `renderTabWeek()` (l'onglet 📅 Semaine, écran par défaut)
+se scinde en deux écrans exclusifs :
+
+- **Check-in** (`checkinGateHTML()`) — tant que `S.answers.readiness.date` n'est pas
+  aujourd'hui (`readinessDoneToday()` dans `readiness.js`) : SEULE la carte « Forme du
+  jour » est visible, aucune séance, aucune grille — pas de spoiler avant d'avoir répondu.
+  Une fois par jour, jamais insistant (pas de nouvelle question tant que le jour ne change
+  pas). Validée (`rdApply`) → `applyReadiness()` date le snapshot et sauvegarde.
+- **Vue complète** — une fois le check-in fait : `heroSessionHTML()` (la séance du jour
+  DÉJÀ adaptée au verdict via `EBV2.adjustToday`, badge verdict 🟢/🟠/🔴 + action ; si
+  repos, cherche et affiche la PROCHAINE séance non-repos dans le plan — jamais un écran
+  sans direction), puis la semaine complète, puis nutrition, puis un `<details>`
+  « Modifier ma forme du jour » (le formulaire complet, replié).
+
+Le sélecteur **VFC** (`rdHrv`, `hrvStatus: "basse"|"normale"|"haute"`) est désormais
+montré à TOUT LE MONDE dans cette carte (plus de question premium séparée qui ne servait
+qu'à un rappel manuel — voir audit ci-dessous) : il agit directement sur
+`assessReadiness`/`adjustToday`, défaut neutre « normale » pour qui ne suit pas cette
+donnée.
+
+## Audit d'influence des paramètres — chaque réponse doit agir sur le plan
+
+Passage systématique : pour chaque champ du questionnaire, vérifié dans `src/engine` +
+`src/generator` qu'il influence réellement le plan généré (pas seulement une carte de
+décision non affichée). Trouvailles et correctifs :
+
+| Paramètre | Constat | Correctif |
+|---|---|---|
+| `S.answers.tests` (FIT/Strava) | **Bug** : le moteur V2 ne lit QUE `a.ftp/pace/css` (valeur courante), jamais le journal daté — un import poussait au journal mais ne changeait JAMAIS le plan généré, malgré le message affiché disant le contraire. | `tab-profile.js: syncRefsFromTests()` — pousse le test le PLUS RÉCENT de chaque type vers `a.ftp/pace/css` + `*_known` après tout import (FIT ou Strava), avant régénération. |
+| `swim_limit` | 1 valeur sur 4 (« peur ») avait un effet, et seulement en eau libre — bassin + les 3 autres limites (respiration/technique/endurance) ne changeaient rien. | `sessionLibrary.ts` : les 4 valeurs orientent réellement les éducatifs (dur1 débutant, facileR bassin/OW) avec une note dédiée. |
+| `availability` (grille « Contraintes de semaine ») | Étape premium entière (jours bloqués/club) écrite dans `S.answers.availability`, lue par le générateur **legacy uniquement** — jamais par le moteur V2 réellement utilisé. | Étape retirée (redondante avec `off_which`, déjà gratuit et réellement branché, pour le cas « bloqué » ; le cas « club à durée fixe » n'était pas porté par V2 et sortait du périmètre de ce correctif). |
+| Calculateurs de tests (P20/CSS 400-50/3-10min/VMA) | UI de calcul manuel, dans la même étape que ci-dessus. | Retirés ; remplacés par `protocolHTML()` dans `steps.js` — la MÉTHODE pour aller chercher soi-même FTP/allure/CSS (test réel), avec renvoi explicite vers l'onglet 📋 Profil pour la saisir plus tard. |
+| `hrv` (« Suivi HRV quotidien ? ») | Question premium n'affectant jamais le plan (l'evalRules le disait lui-même : « à appliquer toi-même »). | Retirée ; remplacée par le sélecteur VFC toujours visible dans « Forme du jour » (effet réel, voir section précédente). |
+| `daily_burn` (« Activité hors sport ») | Aucun consommateur nulle part (vestige d'un futur module calories, hors périmètre). | Retiré. |
+| `height` (Taille) | Aucun consommateur nulle part, aucune advisory. | Retiré. |
+| `weight_lever`, `cycle_sync`, `sex` (ferritine), etc. | Effet réel = une carte `evalRules()` — mais cette liste n'était **affichée nulle part dans l'app** depuis la suppression du « mur de règles » (seulement dans l'export HTML). Répondre à la question n'avait aucune conséquence visible. | `tab-progress.js` : section repliable « 🧭 Conseils personnalisés » (`evalRules()` + `rulesGrouped()`, code déjà existant mais orphelin) — désormais visible dans l'app. |
+
+Conséquence : l'onboarding premium passe de 5 à 3 écrans (sommeil/vie, poids, courses
+intermédiaires) — chacun à effet vérifié.

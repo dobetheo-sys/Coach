@@ -121,16 +121,20 @@ function downloadPlan(){
 //   readinessCardHTML()  → carte « Forme du jour », rendue par l'onglet 📅 Semaine ;
 //   progressCardsHTML(p) → régularité/badges, prédiction, historique, intensités,
 //                          décisions du moteur, rendus par l'onglet 📈 Avancement.
-function readinessCardHTML(){
+function readinessCardHTML(opts){
   if(!globalThis.EBV2)return "";
+  const o=opts||{};
   const saved=(S.answers.readiness||{});
-  return '<div class="load-card"><div class="load-title">🌡 Forme du jour — adapte ta séance</div>'
-    +'<div class="load-sub" style="margin-bottom:8px">Trois réponses au réveil, le moteur ajuste la journée (remplacer, réduire, reposer — jamais forcer).</div>'
+  const title=o.title||"🌡 Forme du jour — adapte ta séance";
+  const sub=o.sub||"Quatre réponses au réveil, le moteur ajuste la journée (remplacer, réduire, reposer — jamais forcer).";
+  return '<div class="load-card"'+(o.id?' id="'+o.id+'"':'')+'><div class="load-title">'+title+'</div>'
+    +'<div class="load-sub" style="margin-bottom:8px">'+sub+'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-    +'<select id="rdSleep" class="opt" style="padding:6px 10px"><option value="bon"'+(saved.sleepQuality==="bon"?" selected":"")+'>Sommeil bon</option><option value="moyen"'+(saved.sleepQuality==="moyen"?" selected":"")+'>Sommeil moyen</option><option value="mauvais"'+(saved.sleepQuality==="mauvais"?" selected":"")+'>Sommeil mauvais</option></select>'
-    +'<select id="rdEnergy" class="opt" style="padding:6px 10px"><option value="80"'+(saved.energy===80?" selected":"")+'>Énergie haute</option><option value="55"'+(saved.energy===55?" selected":"")+'>Énergie moyenne</option><option value="35"'+(saved.energy===35?" selected":"")+'>Énergie basse</option><option value="15"'+(saved.energy===15?" selected":"")+'>Vidé·e</option></select>'
+    +'<select id="rdSleep" class="opt" style="padding:6px 10px"><option value="bon"'+(saved.sleepQuality==="bon"?" selected":"")+'>Sommeil bon</option><option value="moyen"'+(saved.sleepQuality==="moyen"||!saved.sleepQuality?" selected":"")+'>Sommeil moyen</option><option value="mauvais"'+(saved.sleepQuality==="mauvais"?" selected":"")+'>Sommeil mauvais</option></select>'
+    +'<select id="rdHrv" class="opt" style="padding:6px 10px" title="Variabilité cardiaque (montre/bague) — laisse sur Normale si tu ne suis pas cette donnée"><option value="haute"'+(saved.hrvStatus==="haute"?" selected":"")+'>VFC haute</option><option value="normale"'+(saved.hrvStatus==="normale"||!saved.hrvStatus?" selected":"")+'>VFC normale</option><option value="basse"'+(saved.hrvStatus==="basse"?" selected":"")+'>VFC basse</option></select>'
+    +'<select id="rdEnergy" class="opt" style="padding:6px 10px"><option value="80"'+(saved.energy===80?" selected":"")+'>Énergie haute</option><option value="55"'+(saved.energy===55||saved.energy==null?" selected":"")+'>Énergie moyenne</option><option value="35"'+(saved.energy===35?" selected":"")+'>Énergie basse</option><option value="15"'+(saved.energy===15?" selected":"")+'>Vidé·e</option></select>'
     +'<select id="rdFeel" class="opt" style="padding:6px 10px"><option value="frais"'+(saved.feel==="frais"?" selected":"")+'>Frais</option><option value="normal"'+(saved.feel==="normal"||!saved.feel?" selected":"")+'>Normal</option><option value="fatigue"'+(saved.feel==="fatigue"?" selected":"")+'>Fatigué</option></select>'
-    +'<button class="btn primary" id="rdApply" type="button">Adapter ma journée</button></div>'
+    +'<button class="btn primary" id="rdApply" type="button">'+(o.btnLabel||"Adapter ma journée")+'</button></div>'
     +'<div id="rdResult" style="margin-top:10px"></div></div>';
 }
 function progressCardsHTML(plan){

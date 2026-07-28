@@ -122,5 +122,17 @@ l'onglet Semaine, poids optionnel au Profil ; invariants (bornes dures, jamais d
 restriction, avertissement obligatoire) assertés par `npm run demo:nutrition` (CI).
 Le PÉRIMÈTRE s'arrête au ravitaillement : calories journalières/macros restent bloquées
 avis nutritionniste — ne pas étendre sans cette validation.
+**Écran d'accueil (PWA)** : l'onglet 📅 Semaine s'ouvre sur un check-in (sommeil/VFC/
+énergie/ressenti — VFC visible pour tous, plus de question premium séparée) ; aucune
+séance visible avant d'avoir répondu, une fois par jour (`S.answers.readiness.date`).
+Une fois répondu : la séance du jour DÉJÀ adaptée au verdict (ou la prochaine si repos)
+en premier, puis la semaine. Voir ARCHITECTURE.md « Écran d'accueil ».
+**Audit d'influence des paramètres (PWA)** : passage systématique — chaque réponse du
+questionnaire doit agir sur le plan généré, pas seulement produire une carte non affichée.
+Bug corrigé (import FIT/Strava qui n'atteignait jamais le plan généré — le moteur ne lit
+que les valeurs courantes `a.ftp/pace/css`, jamais le journal daté), `swim_limit` câblé
+sur ses 4 valeurs, 3 champs morts retirés, calculateurs de test remplacés par la méthode
+pour obtenir soi-même FTP/allure/CSS, conseils personnalisés (`evalRules`) enfin visibles
+dans l'onglet Avancement. Détail dans ARCHITECTURE.md « Audit d'influence des paramètres ».
 Chantiers restants : nutrition complète (avis nutritionniste requis), Strava OAuth
 (décision infra ; Garmin abandonné — choix utilisateur), partage.

@@ -11,25 +11,41 @@ function fetchWeather(){return new Promise(res=>{
       .catch(()=>{clearTimeout(to);res(null);});
   },()=>{clearTimeout(to);res(null);},{timeout:3000,maximumAge:600000});
 });}
+/** Verdict lisible + séances du jour, en HTML — factorisé pour le rendu direct ET le
+ *  ré-affichage (retour à l'onglet Semaine sans re-décrocher la météo). */
+function verdictHTML(res,weather){
+  const v=res.adjustment.verdict,ic={verte:"🟢",orange:"🟠",rouge:"🔴"};
+  const lbl={keep:"séance maintenue",reduce:"volume réduit, structure conservée",replace:"qualité remplacée par de l’endurance",rest:"repos aujourd’hui",off:"repos complet (affûtage)"};
+  let h='<div class="why" style="margin:0">'+(weather?'🌤 '+Math.round(weather.tmaxC)+'°C prévus'+(weather.precipMm>=5?' · pluie':'')+'<br>':'')+ic[v.level]+' <b>Readiness '+v.level+'</b> — '+lbl[res.adjustment.action]+'<br><span style="color:#555;font-size:12px">'+v.drivers.join(" · ")+'</span></div>';
+  if(res.sessions.length)res.sessions.forEach(x=>{h+='<div style="font-size:12px;margin-top:6px"><b>'+(res.jour||"Aujourd’hui")+' · '+x.name+'</b><br>'+x.det+'</div>';});
+  else h+='<div style="font-size:12px;margin-top:6px">Aucune séance planifiée aujourd’hui.</div>';
+  return h;
+}
+/** Applique la forme du jour : lit les 4 sélecteurs (sommeil/VFC/énergie/ressenti), calcule
+ *  le verdict, sauvegarde (daté — pas de nouvelle question tant que le jour ne change pas),
+ *  écrit #rdResult si présent. Retourne {snap,res} pour que l'appelant (onglet Semaine)
+ *  puisse ré-agencer l'écran (fin du check-in → séance du jour affichée). */
 async function applyReadiness(){
-  if(!globalThis.EBV2)return;
+  if(!globalThis.EBV2)return null;
   // Retour immédiat : la géoloc peut prendre jusqu'à ~3.5s (timeout) avant le verdict —
   // sans ce message, le bouton semble muet/cassé pendant tout ce temps (retour panel de test).
   const btn=$("rdApply");if(btn)btn.disabled=true;
   if($("rdResult"))$("rdResult").innerHTML='<div class="load-sub">Analyse en cours…</div>';
   const snap={date:new Date().toISOString().slice(0,10),
-    sleepQuality:$("rdSleep").value,energy:parseInt($("rdEnergy").value),feel:$("rdFeel").value};
+    sleepQuality:$("rdSleep").value,hrvStatus:$("rdHrv")?$("rdHrv").value:"normale",
+    energy:parseInt($("rdEnergy").value),feel:$("rdFeel").value};
   const wx=await fetchWeather();if(wx&&wx.tmaxC!=null)snap.weather=wx;
   if(btn)btn.disabled=false;
-  S.answers.readiness={sleepQuality:snap.sleepQuality,energy:snap.energy,feel:snap.feel};ebSave();
-  let res;try{res=globalThis.EBV2.adjustToday(S.sport,S.answers,snap);}catch(e){console.warn(e);return;}
-  const v=res.adjustment.verdict,ic={verte:"\ud83d\udfe2",orange:"\ud83d\udfe0",rouge:"\ud83d\udd34"};
-  const lbl={keep:"s\u00e9ance maintenue",reduce:"volume r\u00e9duit, structure conserv\u00e9e",replace:"qualit\u00e9 remplac\u00e9e par de l\u2019endurance",rest:"repos aujourd\u2019hui",off:"repos complet (aff\u00fbtage)"};
-  let h='<div class="why" style="margin:0">'+(snap.weather?'\ud83c\udf24 '+Math.round(snap.weather.tmaxC)+'\u00b0C pr\u00e9vus'+(snap.weather.precipMm>=5?' \u00b7 pluie':'')+'<br>':'')+ic[v.level]+' <b>Readiness '+v.level+'</b> \u2014 '+lbl[res.adjustment.action]+'<br><span style="color:#555;font-size:12px">'+v.drivers.join(" \u00b7 ")+'</span></div>';
-  if(res.sessions.length)res.sessions.forEach(x=>{h+='<div style="font-size:12px;margin-top:6px"><b>'+(res.jour||"Aujourd\u2019hui")+' \u00b7 '+x.name+'</b><br>'+x.det+'</div>';});
-  else h+='<div style="font-size:12px;margin-top:6px">Aucune s\u00e9ance planifi\u00e9e aujourd\u2019hui.</div>';
-  $("rdResult").innerHTML=h;
+  S.answers.readiness={date:snap.date,sleepQuality:snap.sleepQuality,hrvStatus:snap.hrvStatus,energy:snap.energy,feel:snap.feel};ebSave();
+  let res;try{res=globalThis.EBV2.adjustToday(S.sport,S.answers,snap);}catch(e){console.warn(e);return null;}
+  if($("rdResult"))$("rdResult").innerHTML=verdictHTML(res,snap.weather);
+  return {snap,res};
 }
-// Reprise : si un état est sauvegardé, on le restaure (plan ou questionnaire en cours).
+/** true si la forme du jour a déjà été renseignée AUJOURD'HUI (pas de nouvelle
+ *  question tant que le jour ne change pas — ergonomique, jamais insistant). */
+function readinessDoneToday(){
+  const r=S.answers.readiness;
+  return !!(r&&r.date===new Date().toISOString().slice(0,10));
+}
 
-export { applyReadiness, fetchWeather };
+export { applyReadiness, fetchWeather, readinessDoneToday };

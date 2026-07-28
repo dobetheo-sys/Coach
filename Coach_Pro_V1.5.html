@@ -1660,10 +1660,11 @@ function v2ExtrasHTML(plan){
   if(globalThis.EBV2){
     const saved=(S.answers.readiness||{});
     h+='<div class="load-card"><div class="load-title">\ud83c\udf21 Forme du jour \u2014 adapte ta s\u00e9ance</div>'
-      +'<div class="load-sub" style="margin-bottom:8px">Trois r\u00e9ponses au r\u00e9veil, le moteur ajuste la journ\u00e9e (remplacer, r\u00e9duire, reposer \u2014 jamais forcer).</div>'
+      +'<div class="load-sub" style="margin-bottom:8px">Quatre r\u00e9ponses au r\u00e9veil, le moteur ajuste la journ\u00e9e (remplacer, r\u00e9duire, reposer \u2014 jamais forcer).</div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-      +'<select id="rdSleep" class="opt" style="padding:6px 10px"><option value="bon"'+(saved.sleepQuality==="bon"?" selected":"")+'>Sommeil bon</option><option value="moyen"'+(saved.sleepQuality==="moyen"?" selected":"")+'>Sommeil moyen</option><option value="mauvais"'+(saved.sleepQuality==="mauvais"?" selected":"")+'>Sommeil mauvais</option></select>'
-      +'<select id="rdEnergy" class="opt" style="padding:6px 10px"><option value="80"'+(saved.energy===80?" selected":"")+'>\u00c9nergie haute</option><option value="55"'+(saved.energy===55?" selected":"")+'>\u00c9nergie moyenne</option><option value="35"'+(saved.energy===35?" selected":"")+'>\u00c9nergie basse</option><option value="15"'+(saved.energy===15?" selected":"")+'>Vid\u00e9\u00b7e</option></select>'
+      +'<select id="rdSleep" class="opt" style="padding:6px 10px"><option value="bon"'+(saved.sleepQuality==="bon"?" selected":"")+'>Sommeil bon</option><option value="moyen"'+(saved.sleepQuality==="moyen"||!saved.sleepQuality?" selected":"")+'>Sommeil moyen</option><option value="mauvais"'+(saved.sleepQuality==="mauvais"?" selected":"")+'>Sommeil mauvais</option></select>'
+      +'<select id="rdHrv" class="opt" style="padding:6px 10px" title="Variabilit\u00e9 cardiaque (montre/bague) \u2014 laisse sur Normale si tu ne suis pas cette donn\u00e9e"><option value="haute"'+(saved.hrvStatus==="haute"?" selected":"")+'>VFC haute</option><option value="normale"'+(saved.hrvStatus==="normale"||!saved.hrvStatus?" selected":"")+'>VFC normale</option><option value="basse"'+(saved.hrvStatus==="basse"?" selected":"")+'>VFC basse</option></select>'
+      +'<select id="rdEnergy" class="opt" style="padding:6px 10px"><option value="80"'+(saved.energy===80?" selected":"")+'>\u00c9nergie haute</option><option value="55"'+(saved.energy===55||saved.energy==null?" selected":"")+'>\u00c9nergie moyenne</option><option value="35"'+(saved.energy===35?" selected":"")+'>\u00c9nergie basse</option><option value="15"'+(saved.energy===15?" selected":"")+'>Vid\u00e9\u00b7e</option></select>'
       +'<select id="rdFeel" class="opt" style="padding:6px 10px"><option value="frais"'+(saved.feel==="frais"?" selected":"")+'>Frais</option><option value="normal"'+(saved.feel==="normal"||!saved.feel?" selected":"")+'>Normal</option><option value="fatigue"'+(saved.feel==="fatigue"?" selected":"")+'>Fatigu\u00e9</option></select>'
       +'<button class="btn primary" id="rdApply" type="button">Adapter ma journ\u00e9e</button></div>'
       +'<div id="rdResult" style="margin-top:10px"></div></div>';
@@ -1731,10 +1732,11 @@ async function applyReadiness(){
   const btn=$("rdApply");if(btn)btn.disabled=true;
   if($("rdResult"))$("rdResult").innerHTML='<div class="load-sub">Analyse en cours…</div>';
   const snap={date:new Date().toISOString().slice(0,10),
-    sleepQuality:$("rdSleep").value,energy:parseInt($("rdEnergy").value),feel:$("rdFeel").value};
+    sleepQuality:$("rdSleep").value,hrvStatus:$("rdHrv")?$("rdHrv").value:"normale",
+    energy:parseInt($("rdEnergy").value),feel:$("rdFeel").value};
   const wx=await fetchWeather();if(wx&&wx.tmaxC!=null)snap.weather=wx;
   if(btn)btn.disabled=false;
-  S.answers.readiness={sleepQuality:snap.sleepQuality,energy:snap.energy,feel:snap.feel};ebSave();
+  S.answers.readiness={date:snap.date,sleepQuality:snap.sleepQuality,hrvStatus:snap.hrvStatus,energy:snap.energy,feel:snap.feel};ebSave();
   let res;try{res=globalThis.EBV2.adjustToday(S.sport,S.answers,snap);}catch(e){console.warn(e);return;}
   const v=res.adjustment.verdict,ic={verte:"\ud83d\udfe2",orange:"\ud83d\udfe0",rouge:"\ud83d\udd34"};
   const lbl={keep:"s\u00e9ance maintenue",reduce:"volume r\u00e9duit, structure conserv\u00e9e",replace:"qualit\u00e9 remplac\u00e9e par de l\u2019endurance",rest:"repos aujourd\u2019hui",off:"repos complet (aff\u00fbtage)"};
@@ -3077,9 +3079,18 @@ function buildSessions(ctx            , slot      , phase        , prog        )
     else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
   } else if (sp === "swim") {
     const shoulder = (a.injury || "").includes("epaule"), ow = a.milieu === "ow" || a.milieu === "mixte";
+    // Limite principale déclarée par le débutant (question dédiée) : chaque réponse
+    // oriente RÉELLEMENT les éducatifs vers ce qui bloque, pas un générique commun.
+    const swimLimitFocus                                                = {
+      respiration: { txt: " éducatifs respiration (3 temps bilatérale, expiration complète dans l'eau)", note: "La respiration débloque tout le reste : on la travaille isolée, sans la charge de la nage complète." },
+      technique: { txt: " éducatifs bras (rattrapé, poings fermés, un bras)", note: "Sentir l'appui avant d'ajouter de la distance : la technique s'automatise par la fréquence, pas par la force." },
+      endurance: { txt: " nage continue fractionnée courte, sans s'arrêter entre les longueurs", note: "Tenir la distance sans pause compte plus que la vitesse : la continuité prime, on fractionne le repos, pas la nage." },
+      peur: { txt: " nage en petites longueurs, pied au mur possible à tout moment, jamais de chrono", note: "Le seul objectif est de se sentir bien dans l'eau — l'aisance se construit par l'exposition progressive, sans pression de performance." },
+    };
+    const limFocus = swimLimitFocus[a.swim_limit || ""] || { txt: " éducatifs variés (rattrapé, poings fermés, battements planche)", note: "La technique se construit à froid, sans fatigue. Qualité > quantité." };
     if (slot === "dur1") {
       if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Seuil technique CSS", note: "Quelques 100m à allure seuil contrôlée, technique maintenue : préparer la course sans casser le geste.", det: "", steps: [Wm(200, "souple + éducatifs"), Bd(P(4, 7), 100, "sw.css", "20-30s", "", false, "sw"), Cm(100, "relâché")] });
-      else if (beginner) S2.push({ d: "sw", name: "Technique + éducatifs", note: "La technique se construit à froid, sans fatigue. Qualité > quantité.", det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", "repos libre entre séries", " éducatifs variés (rattrapé, poings fermés, battements planche), " + P(1, 2) + " point(s) technique", false, "sw"), Cm(100, "relâché")] });
+      else if (beginner) S2.push({ d: "sw", name: "Technique + éducatifs", note: limFocus.note, det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", "repos libre entre séries", limFocus.txt + ", " + P(1, 2) + " point(s) technique", false, "sw"), Cm(100, "relâché")] });
       else if (shoulder) S2.push({ d: "sw", name: "Seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute.", det: "", steps: [Wm(300, "souple + 4×50m éducatifs"), Bd(P(6, 8), 100, "sw.css", "20-30s", "", false, "sw"), Cm(200, "souple")] });
       else S2.push({ d: "sw", name: "Seuil CSS", note: "Allure régulière sur tous les 100m. Le dernier doit ressembler au premier.", det: "", steps: [Wm(400, "progressif + 4×50m éducatifs"), Bd(P(6, 10), 100, "sw.css", "15-20s", "", false, "sw"), Cm(200, "souple")] });
     } else if (slot === "dur2") {
@@ -3097,7 +3108,8 @@ function buildSessions(ctx            , slot      , phase        , prog        )
       // C24 — pas de « sortie piscine de 600m » pour un non-débutant
       const techDistCaps = beginner ? { lo: 200, hi: 600 } : { lo: 750, hi: 1200 };
       if (ow && a.swim_limit === "peur") S2.push({ d: "sw", name: "Aisance eau libre", det: "familiarisation, respiration, flottaison — 💡 Objectif confiance : l'aisance dans l'eau libre se construit sans chrono, par l'exposition progressive.", steps: [] });
-      else S2.push({ d: "sw", name: "Technique souple", note: "Éducatifs à froid : le geste se grave sans fatigue. Qualité avant quantité.", det: "", steps: [Object.assign(Bd(1, P(techDistCaps.lo, techDistCaps.hi), "sw.easy", "", " éducatifs", false, "sw"), beginner ? {} : { bnd: { floor: techDistCaps.lo, cap: techDistCaps.hi } })], ...( { plainBody: true }          ) });
+      else if (!ow && beginner && a.swim_limit === "peur") S2.push({ d: "sw", name: "Aisance bassin", det: "petites longueurs, pied au mur à tout moment, zéro chrono — 💡 Objectif confiance : l'aisance dans l'eau se construit par l'exposition progressive, jamais par la contrainte.", steps: [] });
+      else S2.push({ d: "sw", name: "Technique souple", note: beginner ? limFocus.note : "Éducatifs à froid : le geste se grave sans fatigue. Qualité avant quantité.", det: "", steps: [Object.assign(Bd(1, P(techDistCaps.lo, techDistCaps.hi), "sw.easy", "", beginner ? limFocus.txt : " éducatifs", false, "sw"), beginner ? {} : { bnd: { floor: techDistCaps.lo, cap: techDistCaps.hi } })], ...( { plainBody: true }          ) });
     } else if (slot === "facile2") {
       const recDistCaps = beginner ? { lo: 100, hi: 400 } : { lo: 750, hi: 1100 }; // C24
       S2.push({ d: "sw", name: "Récup eau", note: "Nage de récupération : relâchement total, respiration ample.", det: "", steps: [Object.assign(Bd(1, P(recDistCaps.lo, recDistCaps.hi), "sw.easy", "", " souple", false, "sw"), beginner ? {} : { bnd: { floor: recDistCaps.lo, cap: recDistCaps.hi } })], ...( { plainBody: true }          ) });

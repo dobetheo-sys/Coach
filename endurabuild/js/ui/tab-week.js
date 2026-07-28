@@ -1,8 +1,10 @@
-// Onglet 📅 Plan de la semaine — l'écran du quotidien, LÉGER : uniquement la semaine
-// en cours, la coche des séances, et « Forme du jour » au plus près de l'action.
+// Onglet 📅 Plan de la semaine — l'écran du quotidien. Ordre imposé (demande produit) :
+// 1) Forme du jour d'abord (sommeil/VFC/énergie/ressenti) — jamais de séance affichée
+//    avant d'avoir répondu, une fois par jour (S.answers.readiness.date). 2) la séance
+//    du jour (ou la prochaine si repos), déjà adaptée au verdict. 3) toute la semaine.
 import { S, $, ebSave } from "../state.js";
 import { readinessCardHTML } from "./plan-view.js";
-import { applyReadiness, fetchWeather } from "./readiness.js";
+import { applyReadiness, fetchWeather, readinessDoneToday } from "./readiness.js";
 
 const ic = { sw: "\u{1F3CA}", bk: "\u{1F6B4}", rn: "\u{1F3C3}", br: "\u{1F501}", rs: "\u{1F4AA}" };
 
@@ -64,15 +66,63 @@ function nutritionCardHTML(day, tempC) {
   return h;
 }
 
+function greeting() {
+  const h = new Date().getHours();
+  return h < 5 ? "Debout tôt \u{1F319}" : h < 12 ? "Bonjour ☀️" : h < 18 ? "Bon après-midi" : h < 22 ? "Bonsoir \u{1F319}" : "Encore debout \u{1F989}";
+}
+
+// Écran de check-in : AUCUNE séance visible tant que la forme du jour n'est pas
+// renseignée (demande produit). Une fois par jour — readinessDoneToday() le sait déjà.
+function checkinGateHTML() {
+  return '<div class="card"><div class="eyebrow">Avant de commencer</div><h2>' + greeting() + "</h2>"
+    + '<div class="why">Quatre curseurs suffisent : le moteur adapte ta séance du jour à ta forme — jamais l’inverse.</div>'
+    + readinessCardHTML({ title: "\u{1F321} Forme du jour", sub: "Sommeil, VFC, énergie, ressenti.", btnLabel: "Voir ma séance du jour →" })
+    + "</div>";
+}
+
+// Séance du jour (déjà adaptée au verdict de forme) — ou, si repos, la prochaine séance
+// à venir : « la séance à venir » demandée, jamais un écran vide sans direction.
+const _verdictIc = { verte: "\u{1F7E2}", orange: "\u{1F7E0}", rouge: "\u{1F534}" };
+const _verdictLbl = { keep: "séance maintenue", reduce: "volume réduit", replace: "endurance à la place", rest: "repos conseillé", off: "repos complet" };
+function heroSessionHTML(plan, todayISO) {
+  if (!globalThis.EBV2 || !globalThis.EBV2.adjustToday) return "";
+  const snap = Object.assign({ date: todayISO }, S.answers.readiness || {});
+  let res;
+  try { res = globalThis.EBV2.adjustToday(S.sport, S.answers, snap); } catch (e) { console.warn(e); return ""; }
+  const v = res.adjustment.verdict;
+  const badge = '<span style="float:right;font-size:11px;font-weight:700;color:#555;margin-top:2px">' + _verdictIc[v.level] + " " + _verdictLbl[res.adjustment.action] + "</span>";
+  let body;
+  if (res.sessions.length) {
+    body = res.sessions.map((x) => '<div style="margin-top:6px"><b>' + x.name + "</b>" + (x.det ? '<span class="gd-det">' + x.det + "</span>" : "") + "</div>").join("");
+  } else {
+    const upcoming = [];
+    plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date > todayISO && d.sessions.some((s) => s.d !== "rs")) upcoming.push(d); }));
+    upcoming.sort((a, b) => a.date.localeCompare(b.date));
+    const nxt = upcoming[0];
+    body = '<div style="margin-top:6px">\u{1F60C} Repos aujourd’hui.' + (nxt ? " Prochaine séance : <b>" + nxt.jour + "</b> · " + nxt.sessions.filter((s) => s.d !== "rs").map((s) => s.name).join(", ") : "") + "</div>";
+  }
+  return '<div class="card">' + badge + '<div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + "</div>" + body + "</div>";
+}
+
 export function renderTabWeek(plan) {
+  const today = new Date().toISOString().slice(0, 10);
+  const moment = momentHTML(plan, today);
+
+  if (!readinessDoneToday()) {
+    $("screen").innerHTML = moment + checkinGateHTML();
+    const rb = $("rdApply");
+    if (rb) rb.onclick = async () => { await applyReadiness(); renderTabWeek(plan); };
+    return;
+  }
+
   const w = currentWeek(plan);
   const raceTag = w.race
     ? ' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700">\u{1F3C1} COURSE ' + w.race + "</span>"
     : w.postRace ? ' <span style="color:#9b72ff;font-size:10px">↳ récup post-course</span>' : "";
-  let html = '<div class="card"><div class="eyebrow">Ta semaine</div>';
-  html += momentHTML(plan);
+  let html = moment;
+  html += heroSessionHTML(plan, today);
+  html += '<div class="card"><div class="eyebrow">Ta semaine</div>';
   html += '<div class="gw"><div class="gw-h"><b>Semaine ' + w.num + "</b><span style=\"color:" + (w.phase.c || "#555") + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + "</em></div>";
-  const today = new Date().toISOString().slice(0, 10);
   html += '<div class="gw-grid">';
   w.days.forEach((d) => {
     const bg = d.sessions.map((s) => "<span>" + ic[s.d] + "</span>").join("");
@@ -90,7 +140,7 @@ export function renderTabWeek(plan) {
   html += "</div></div>";
   const todayDay = w.days.find((d) => d.date === today) || null;
   html += nutritionCardHTML(todayDay, null);
-  html += readinessCardHTML();
+  html += '<details class="load-card"><summary class="load-title">\u{1F321} Modifier ma forme du jour</summary>' + readinessCardHTML({ btnLabel: "Mettre à jour" }) + "</details>";
   html += "</div>";
   $("screen").innerHTML = html;
   // Météo en différé : affine l'hydratation (chaleur → sodium) sans bloquer le rendu.
@@ -101,7 +151,7 @@ export function renderTabWeek(plan) {
     if (h) el.outerHTML = h;
   });
   const _rb = $("rdApply");
-  if (_rb) _rb.onclick = applyReadiness;
+  if (_rb) _rb.onclick = async () => { await applyReadiness(); renderTabWeek(plan); };
   document.querySelectorAll("#screen .doneBtn").forEach((b) => {
     b.onclick = () => {
       if (!S.answers.done) S.answers.done = {};

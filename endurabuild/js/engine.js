@@ -1316,9 +1316,18 @@ function buildSessions(ctx            , slot      , phase        , prog        )
     else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
   } else if (sp === "swim") {
     const shoulder = (a.injury || "").includes("epaule"), ow = a.milieu === "ow" || a.milieu === "mixte";
+    // Limite principale déclarée par le débutant (question dédiée) : chaque réponse
+    // oriente RÉELLEMENT les éducatifs vers ce qui bloque, pas un générique commun.
+    const swimLimitFocus                                                = {
+      respiration: { txt: " éducatifs respiration (3 temps bilatérale, expiration complète dans l'eau)", note: "La respiration débloque tout le reste : on la travaille isolée, sans la charge de la nage complète." },
+      technique: { txt: " éducatifs bras (rattrapé, poings fermés, un bras)", note: "Sentir l'appui avant d'ajouter de la distance : la technique s'automatise par la fréquence, pas par la force." },
+      endurance: { txt: " nage continue fractionnée courte, sans s'arrêter entre les longueurs", note: "Tenir la distance sans pause compte plus que la vitesse : la continuité prime, on fractionne le repos, pas la nage." },
+      peur: { txt: " nage en petites longueurs, pied au mur possible à tout moment, jamais de chrono", note: "Le seul objectif est de se sentir bien dans l'eau — l'aisance se construit par l'exposition progressive, sans pression de performance." },
+    };
+    const limFocus = swimLimitFocus[a.swim_limit || ""] || { txt: " éducatifs variés (rattrapé, poings fermés, battements planche)", note: "La technique se construit à froid, sans fatigue. Qualité > quantité." };
     if (slot === "dur1") {
       if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Seuil technique CSS", note: "Quelques 100m à allure seuil contrôlée, technique maintenue : préparer la course sans casser le geste.", det: "", steps: [Wm(200, "souple + éducatifs"), Bd(P(4, 7), 100, "sw.css", "20-30s", "", false, "sw"), Cm(100, "relâché")] });
-      else if (beginner) S2.push({ d: "sw", name: "Technique + éducatifs", note: "La technique se construit à froid, sans fatigue. Qualité > quantité.", det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", "repos libre entre séries", " éducatifs variés (rattrapé, poings fermés, battements planche), " + P(1, 2) + " point(s) technique", false, "sw"), Cm(100, "relâché")] });
+      else if (beginner) S2.push({ d: "sw", name: "Technique + éducatifs", note: limFocus.note, det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", "repos libre entre séries", limFocus.txt + ", " + P(1, 2) + " point(s) technique", false, "sw"), Cm(100, "relâché")] });
       else if (shoulder) S2.push({ d: "sw", name: "Seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute.", det: "", steps: [Wm(300, "souple + 4×50m éducatifs"), Bd(P(6, 8), 100, "sw.css", "20-30s", "", false, "sw"), Cm(200, "souple")] });
       else S2.push({ d: "sw", name: "Seuil CSS", note: "Allure régulière sur tous les 100m. Le dernier doit ressembler au premier.", det: "", steps: [Wm(400, "progressif + 4×50m éducatifs"), Bd(P(6, 10), 100, "sw.css", "15-20s", "", false, "sw"), Cm(200, "souple")] });
     } else if (slot === "dur2") {
@@ -1336,7 +1345,8 @@ function buildSessions(ctx            , slot      , phase        , prog        )
       // C24 — pas de « sortie piscine de 600m » pour un non-débutant
       const techDistCaps = beginner ? { lo: 200, hi: 600 } : { lo: 750, hi: 1200 };
       if (ow && a.swim_limit === "peur") S2.push({ d: "sw", name: "Aisance eau libre", det: "familiarisation, respiration, flottaison — 💡 Objectif confiance : l'aisance dans l'eau libre se construit sans chrono, par l'exposition progressive.", steps: [] });
-      else S2.push({ d: "sw", name: "Technique souple", note: "Éducatifs à froid : le geste se grave sans fatigue. Qualité avant quantité.", det: "", steps: [Object.assign(Bd(1, P(techDistCaps.lo, techDistCaps.hi), "sw.easy", "", " éducatifs", false, "sw"), beginner ? {} : { bnd: { floor: techDistCaps.lo, cap: techDistCaps.hi } })], ...( { plainBody: true }          ) });
+      else if (!ow && beginner && a.swim_limit === "peur") S2.push({ d: "sw", name: "Aisance bassin", det: "petites longueurs, pied au mur à tout moment, zéro chrono — 💡 Objectif confiance : l'aisance dans l'eau se construit par l'exposition progressive, jamais par la contrainte.", steps: [] });
+      else S2.push({ d: "sw", name: "Technique souple", note: beginner ? limFocus.note : "Éducatifs à froid : le geste se grave sans fatigue. Qualité avant quantité.", det: "", steps: [Object.assign(Bd(1, P(techDistCaps.lo, techDistCaps.hi), "sw.easy", "", beginner ? limFocus.txt : " éducatifs", false, "sw"), beginner ? {} : { bnd: { floor: techDistCaps.lo, cap: techDistCaps.hi } })], ...( { plainBody: true }          ) });
     } else if (slot === "facile2") {
       const recDistCaps = beginner ? { lo: 100, hi: 400 } : { lo: 750, hi: 1100 }; // C24
       S2.push({ d: "sw", name: "Récup eau", note: "Nage de récupération : relâchement total, respiration ample.", det: "", steps: [Object.assign(Bd(1, P(recDistCaps.lo, recDistCaps.hi), "sw.easy", "", " souple", false, "sw"), beginner ? {} : { bnd: { floor: recDistCaps.lo, cap: recDistCaps.hi } })], ...( { plainBody: true }          ) });

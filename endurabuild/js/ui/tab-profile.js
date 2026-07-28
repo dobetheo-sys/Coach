@@ -1,15 +1,33 @@
 // Onglet 📋 Profil — résumé éditable des réglages + journal d'évolution horodaté.
 // Le journal ÉTEND le mécanisme existant S.answers.tests (déjà daté, déjà nourri par
-// ebAddTest/stravaImport) : toute modification manuelle y est consignée {type, value,
+// import FIT/Strava) : toute modification manuelle y est consignée {type, value,
 // date, prev, source} — pas de nouvelle structure de données (brief onglets).
 // Toute donnée utilisateur réaffichée passe par esc() avant innerHTML (anti-XSS).
 import { SPORTS, VLAB } from "../config.js";
 import { $, S, ebSave, esc } from "../state.js";
-import { curSteps, renderStep, reset, ebParseT } from "./steps.js";
+import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 
 const _fmtSec = (s) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
 const _fmtColon = (s) => Math.floor(s / 60) + ":" + String(Math.round(s % 60)).padStart(2, "0");
+
+// Le moteur V2 ne lit QUE les valeurs courantes (a.ftp/a.pace/a.css + *_known) — jamais
+// le journal daté S.answers.tests. Sans ce pont, un import (FIT/Strava) écrirait le
+// journal mais le plan généré ne changerait JAMAIS (bug corrigé : « chaque paramètre
+// doit influencer le plan »). Applique le test le PLUS RÉCENT de chaque type ; renvoie
+// le nombre de références effectivement mises à jour.
+function syncRefsFromTests() {
+  const tests = Array.isArray(S.answers.tests) ? S.answers.tests : [];
+  const latest = (type) => tests.filter((t) => t.type === type && isFinite(t.value)).sort((x, y) => String(y.date || "").localeCompare(String(x.date || "")))[0];
+  let n = 0;
+  const ftp = latest("ftp");
+  if (ftp) { const v = String(Math.round(ftp.value)); if (S.answers.ftp_known !== "oui" || S.answers.ftp !== v) { S.answers.ftp = v; S.answers.ftp_known = "oui"; n++; } }
+  const pace = latest("thrPace");
+  if (pace) { const v = _fmtColon(pace.value); if (S.answers.pace_known !== "oui" || S.answers.pace !== v) { S.answers.pace = v; S.answers.pace_known = "oui"; n++; } }
+  const css = latest("css");
+  if (css) { const v = _fmtColon(css.value); if (S.answers.css_known !== "oui" || S.answers.css !== v) { S.answers.css = v; S.answers.css_known = "oui"; n++; } }
+  return n;
+}
 
 // Libellé lisible d'une entrée du journal (types tests existants + types « profil: »).
 function journalLabel(t) {
@@ -74,6 +92,12 @@ export function renderTabProfile(plan) {
       + '<span class="load-sub" style="margin:0">export de ta montre — lu ici, jamais envoyé</span></div>'
       + '<div id="pfFitMsg" class="load-sub" style="margin-top:6px"></div>';
   }
+  // Import Strava (lecture seule, jeton personnel) — même journal, même pont vers le plan.
+  html += '<div style="margin-top:10px"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+    + '<input type="text" id="pfStravaTok" placeholder="token d’accès Strava" style="flex:1;min-width:180px">'
+    + '<button class="btn" id="pfStravaBtn" type="button">Importer depuis Strava</button></div>'
+    + '<div class="load-sub" style="margin-top:4px">Réglages Strava → « Mon API », scope <b>activity:read</b> — rien n’est écrit sur Strava.</div>'
+    + '<div id="pfStravaMsg" class="load-sub" style="margin-top:4px"></div></div>';
   html += "</div>";
 
   html += '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="pfEdit" type="button">← Modifier mes réponses</button><button class="btn" id="pfReset" type="button">Changer de sport</button></div></div>';
@@ -100,11 +124,28 @@ export function renderTabProfile(plan) {
       } catch (e) { errs.push(esc(f.name) + " : " + esc(e && e.message || "illisible")); }
     }
     S.answers.fitSessions = S.answers.fitSessions.slice(-60); // borne : 60 dernières séances
+    const nRef = syncRefsFromTests(); // pousse le test le plus récent vers a.ftp/pace/css — sinon le moteur ne le voit jamais
     ebSave();
-    if (nT) { invalidatePlan(); renderTabProfile(ensurePlan()); } // nouvelles réfs → régénération (une fois)
-    msg((nS || nT ? "✓ " + nS + " séance" + (nS > 1 ? "s" : "") + " importée" + (nS > 1 ? "s" : "") + " (nourrit la fatigue de « Forme du jour »)" + (nT ? " · " + nT + " référence" + (nT > 1 ? "s" : "") + " ajoutée" + (nT > 1 ? "s" : "") + " au journal" : "") + "." : "Aucune donnée exploitable.")
+    if (nRef) { invalidatePlan(); renderTabProfile(ensurePlan()); } // référence(s) mise(s) à jour → régénération (une fois)
+    msg((nS || nT ? "✓ " + nS + " séance" + (nS > 1 ? "s" : "") + " importée" + (nS > 1 ? "s" : "") + " (nourrit la fatigue de « Forme du jour »)" + (nT ? " · " + nT + " référence" + (nT > 1 ? "s" : "") + " ajoutée" + (nT > 1 ? "s" : "") + " au journal" : "") + (nRef ? " · plan régénéré avec la référence la plus récente" : "") + "." : "Aucune donnée exploitable.")
       + (notes.length ? '<br><span style="color:#8a6d00">⚠ ' + notes.map(esc).join(" ") + "</span>" : "")
       + (errs.length ? '<br><span style="color:#c0392b">' + errs.join("<br>") + "</span>" : ""));
+  };
+  const stravaBtn = $("pfStravaBtn");
+  if (stravaBtn) stravaBtn.onclick = async () => {
+    stravaBtn.disabled = true;
+    const before = Array.isArray(S.answers.tests) ? S.answers.tests.length : 0;
+    await stravaImport(); // écrit S.answers.tests + #pfStravaMsg
+    stravaBtn.disabled = false;
+    const added = (Array.isArray(S.answers.tests) ? S.answers.tests.length : 0) - before;
+    if (!added) return; // rien de nouveau (token invalide/aucune donnée) : le message de stravaImport suffit, pas de re-rendu
+    const statusHTML = ($("pfStravaMsg") || {}).innerHTML || "";
+    const nRef = syncRefsFromTests();
+    ebSave();
+    if (nRef) invalidatePlan(); // référence(s) à jour → régénération (une fois)
+    renderTabProfile(ensurePlan());
+    const m = $("pfStravaMsg");
+    if (m) m.innerHTML = statusHTML + (nRef ? '<br><span style="color:#00734f">✓ plan régénéré avec la référence la plus récente.</span>' : "");
   };
   $("pfSave").onclick = () => {
     const today = new Date().toISOString().slice(0, 10);

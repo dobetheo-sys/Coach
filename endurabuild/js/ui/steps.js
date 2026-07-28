@@ -1,7 +1,7 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
-import { CATS, HEROS, PREMIUM_STEPS_DEF, RULE_CAT, SPORTS, VLAB, fieldTests } from "../config.js";
-import { $, S, ebClear, ebSave, esc } from "../state.js";
+import { CATS, HEROS, PREMIUM_STEPS_DEF, RULE_CAT, SPORTS, VLAB } from "../config.js";
+import { $, S, ebClear, ebSave } from "../state.js";
 import { renderPlan } from "../ui/plan-view.js";
 import { hideTabs, invalidatePlan } from "../ui/tabs.js";
 import { buildPlan } from "../app.js";
@@ -88,7 +88,6 @@ function evalRules(a, tier){
   // ---- PREMIUM commun ----
   if(a.sleep==="court") add("sleep","Sommeil","Plafond réduit ~15%","Moins de 6h30 : la récup limite, pas le temps. Volume ajusté + priorité sommeil.");
   if(a.life_load==="lourde") add("life","Charge de vie","Marge renforcée","Stress total élevé : récup plus fréquente, adaptation quotidienne assouplie.");
-  if(a.hrv==="oui") add("hrv","Garde-fou HRV","Ajustement au jour le jour","N'affecte pas le plan généré : règle d'auto-ajustement quotidien à appliquer toi-même (HRV basse 2 matins → passe ta séance dure en facile ce jour-là). Filet anti-surentraînement.");
 
   // ---- PREMIUM : renfo/gammes par sport ----
   if(sp==="run"){
@@ -150,10 +149,9 @@ function buildFreeSteps(){
 
   // Profil
   steps.push({id:"profil",title:"Profil physique",eyebrow:"Gratuit — Qui tu es",
-    why:"Âge et gabarit calibrent zones et récup. Poids/taille optionnels. Le sexe ne sert qu'à des garde-fous précis.",
+    why:"Âge calibre zones et récup. Poids optionnel (affine le ravitaillement, éditable plus tard). Le sexe ne sert qu'à des garde-fous précis.",
     render(){return '<div class="q-sub">Ces plans sont calibrés pour des adultes. En dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée par un entraîneur — ne suis pas un plan avancé tel quel.</div><div class="row"><div class="q"><span class="q-label">Âge</span><input type="number" min="14" max="90" data-input="age" placeholder="32"></div>'
-      +'<div class="q"><span class="q-label">Poids (kg)</span><input type="number" data-input="weight" placeholder="—"></div>'
-      +'<div class="q"><span class="q-label">Taille (cm)</span><input type="number" data-input="height" placeholder="—"></div></div>'
+      +'<div class="q"><span class="q-label">Poids (kg, optionnel)</span><input type="number" data-input="weight" placeholder="—"></div></div>'
       +'<div class="q" style="margin-top:18px"><span class="q-label">Sexe</span><div class="opts" data-key="sex">'+opt("H","Homme")+opt("F","Femme")+opt("np","Préfère ne pas préciser")+'</div></div>';},
     valid(a){return a.age&&a.sex;}});
 
@@ -182,6 +180,17 @@ function buildFreeSteps(){
 
   return steps;
 }
+// Méthode pour obtenir une référence qu'on ne connaît pas encore — remplace les
+// calculateurs manuels (retirés, redondants avec l'édition directe du Profil) :
+// un protocole terrain réel à faire QUAND ON VEUT, résultat saisi plus tard.
+function protocolHTML(kind){
+  const M={
+    ftp:{t:"⚡ Comment obtenir ta FTP",d:"Fais un test de 20 minutes à fond (route, home-trainer, ou une course de ce format) : ta FTP ≈ 95% de ta puissance moyenne sur ces 20 minutes."},
+    pace:{t:"⏱ Comment obtenir ton allure seuil",d:"Cours 3 minutes à fond, récupère complètement (10min), puis cours 10 minutes à fond : l'écart de distance parcourue donne ton allure seuil. Plus simple : un 10-15km récent couru à fond en est une bonne estimation."},
+    css:{t:"🏊 Comment obtenir ton CSS",d:"Nage 400m à fond, récupère 10 minutes, puis nage 200m à fond : l'écart de temps entre les deux donne ton CSS (allure critique au 100m)."},
+  }[kind];
+  return '<div class="q-sub" style="margin-top:6px"><b>'+M.t+'</b> — '+M.d+' Tu pourras la renseigner plus tard dans l’onglet 📋 Profil : le plan se recalcule aussitôt.</div>';
+}
 function levelStep(){
   const sp=S.sport;
   if(sp==="tri") return {id:"level",title:"Tes niveaux (3 disciplines)",eyebrow:"Gratuit — Le moteur",
@@ -194,7 +203,9 @@ function levelStep(){
       branch("cssB",a.css_known==="oui",'<div class="branch"><div class="q"><span class="q-label">CSS (min/100m, ex 1:45)</span><input type="text" data-input="css" placeholder="1:45"></div></div>');
       branch("ftpB",a.ftp_known==="oui",'<div class="branch"><div class="q"><span class="q-label">FTP (W)</span><input type="number" data-input="ftp" placeholder="220"></div></div>');
       branch("paceB",a.pace_known==="oui",'<div class="branch"><div class="q"><span class="q-label">Allure seuil (min/km, ex 4:50)</span><input type="text" data-input="pace" placeholder="4:50"></div></div>');
-      branch("hrB",(a.ftp_known==="non"||a.pace_known==="non"),'<div class="branch"><div class="branch-tag">↳ Zones cardio pour ce qui manque</div><div class="q-sub">Pour les disciplines sans donnée chiffrée, on passe en BPM (FC max estimée par l\'âge, ou renseigne-la).</div><div class="q"><span class="q-label">FC max ? (optionnel)</span><input type="number" data-input="hr_max" placeholder="ex 188"></div></div>');
+      branch("hrB",(a.ftp_known==="non"||a.pace_known==="non"||a.css_known==="non"),'<div class="branch"><div class="branch-tag">↳ Ce qui manque, sans bloquer ton plan</div>'
+        +((a.ftp_known==="non"||a.pace_known==="non")?'<div class="q-sub">Vélo/course sans donnée chiffrée : on passe en BPM (FC max estimée par l\'âge, ou renseigne-la).</div><div class="q"><span class="q-label">FC max ? (optionnel)</span><input type="number" data-input="hr_max" placeholder="ex 188"></div>':'')
+        +(a.ftp_known==="non"?protocolHTML("ftp"):"")+(a.pace_known==="non"?protocolHTML("pace"):"")+(a.css_known==="non"?protocolHTML("css"):"")+'</div>');
     },
     valid(a){return a.level&&a.css_known&&a.ftp_known&&a.pace_known;}};
   if(sp==="bike") return {id:"level",title:"Ton niveau vélo",eyebrow:"Gratuit — Le moteur",
@@ -203,16 +214,17 @@ function levelStep(){
       +'<div class="q"><span class="q-label">Connais-tu ta FTP ?</span><div class="q-def">FTP = puissance (watts) tenable ~1h, mesurée par un capteur ou home-trainer via un test de 20min.</div><div class="opts" data-key="ftp_known">'+opt("oui","Oui")+opt("non","Non")+'</div></div><div id="ftpB"></div><div id="hrB"></div>';},
     branches(a){
       branch("ftpB",a.ftp_known==="oui",'<div class="branch"><div class="branch-tag">↳ FTP connue</div><div class="q"><span class="q-label">FTP (W)</span><input type="number" data-input="ftp" placeholder="220"></div></div>');
-      branch("hrB",a.ftp_known==="non",'<div class="branch"><div class="branch-tag">↳ Pas de capteur ? On passe en zones cardio</div><div class="q-sub">Tes zones seront données en battements/min (BPM). On estime ta FC max selon ton âge, mais si tu la connais, c\'est plus précis.</div><div class="q"><span class="q-label">FC max connue ? (optionnel)</span><input type="number" data-input="hr_max" placeholder="ex 188"></div><div class="q"><span class="q-label">FC au repos ? (optionnel, affine les zones)</span><input type="number" data-input="hr_rest" placeholder="ex 52"></div></div>');
+      branch("hrB",a.ftp_known==="non",'<div class="branch"><div class="branch-tag">↳ Pas de capteur ? On passe en zones cardio</div><div class="q-sub">Tes zones seront données en battements/min (BPM). On estime ta FC max selon ton âge, mais si tu la connais, c\'est plus précis.</div><div class="q"><span class="q-label">FC max connue ? (optionnel)</span><input type="number" data-input="hr_max" placeholder="ex 188"></div><div class="q"><span class="q-label">FC au repos ? (optionnel, affine les zones)</span><input type="number" data-input="hr_rest" placeholder="ex 52"></div>'+protocolHTML("ftp")+'</div>');
     },
     valid(a){return a.level&&a.ftp_known;}};
   if(sp==="swim") return {id:"level",title:"Ton niveau natation",eyebrow:"Gratuit — Dans l'eau",
     why:"Chez le débutant, la technique prime à 80%. Le CSS (allure seuil au 100m) calibre les zones si tu le connais.",
     render(){return '<div class="q"><span class="q-label">Niveau</span><div class="opts" data-key="level">'+opt("debutant","Débutant (technique en construction)")+opt("inter","Intermédiaire (1500m ok)")+opt("avance","Avancé (<1\'30/100m)")+'</div></div><div id="limB"></div>'
-      +'<div class="q"><span class="q-label">Connais-tu ton CSS ?</span><div class="q-def">CSS = vitesse critique de nage, ton allure seuil au 100m (test 400m + 200m). Sinon, réponds non.</div><div class="opts" data-key="css_known">'+opt("oui","Oui")+opt("non","Non")+'</div></div><div id="cssB"></div>';},
+      +'<div class="q"><span class="q-label">Connais-tu ton CSS ?</span><div class="q-def">CSS = vitesse critique de nage, ton allure seuil au 100m (test 400m + 200m). Sinon, réponds non.</div><div class="opts" data-key="css_known">'+opt("oui","Oui")+opt("non","Non")+'</div></div><div id="cssB"></div><div id="cssProtoB"></div>';},
     branches(a){
       branch("limB",a.level==="debutant",'<div class="branch"><div class="branch-tag">↳ Débutant</div><div class="q"><span class="q-label">Ta principale limite ?</span><div class="opts" data-key="swim_limit">'+opt("respiration","Respiration")+opt("technique","Technique de bras")+opt("endurance","Tenir la distance")+opt("peur","Aisance/confiance")+'</div></div></div>');
-      branch("cssB",a.css_known==="oui",'<div class="branch"><div class="branch-tag">↳ CSS connu</div><div class="q"><span class="q-label">CSS (min/100m, ex 1:45)</span><input type="text" data-input="css" placeholder="1:45"></div></div>');},
+      branch("cssB",a.css_known==="oui",'<div class="branch"><div class="branch-tag">↳ CSS connu</div><div class="q"><span class="q-label">CSS (min/100m, ex 1:45)</span><input type="text" data-input="css" placeholder="1:45"></div></div>');
+      branch("cssProtoB",a.css_known==="non",'<div class="branch">'+protocolHTML("css")+'</div>');},
     valid(a){return a.level&&a.css_known;}};
   // run
   return {id:"level",title:"Ton niveau course",eyebrow:"Gratuit — La foulée",
@@ -221,7 +233,7 @@ function levelStep(){
       +'<div class="q"><span class="q-label">Connais-tu ton allure seuil ?</span><div class="q-def">Allure seuil = allure tenable ~1h, proche de ton 10-15km à fond. Sinon réponds non.</div><div class="opts" data-key="pace_known">'+opt("oui","Oui")+opt("non","Non")+'</div></div><div id="paceB"></div><div id="hrB"></div>';},
     branches(a){
       branch("paceB",a.pace_known==="oui",'<div class="branch"><div class="branch-tag">↳ Allure connue</div><div class="q"><span class="q-label">Allure seuil (min/km, ex 4:50)</span><input type="text" data-input="pace" placeholder="4:50"></div></div>');
-      branch("hrB",a.pace_known==="non",'<div class="branch"><div class="branch-tag">↳ Pas de repère d\'allure ? On passe en zones cardio</div><div class="q-sub">Tes zones seront en BPM (battements/min) — la plupart des montres les affichent. FC max estimée selon l\'âge, ou renseigne-la pour plus de précision.</div><div class="q"><span class="q-label">FC max connue ? (optionnel)</span><input type="number" data-input="hr_max" placeholder="ex 190"></div><div class="q"><span class="q-label">FC au repos ? (optionnel)</span><input type="number" data-input="hr_rest" placeholder="ex 50"></div></div>');
+      branch("hrB",a.pace_known==="non",'<div class="branch"><div class="branch-tag">↳ Pas de repère d\'allure ? On passe en zones cardio</div><div class="q-sub">Tes zones seront en BPM (battements/min) — la plupart des montres les affichent. FC max estimée selon l\'âge, ou renseigne-la pour plus de précision.</div><div class="q"><span class="q-label">FC max connue ? (optionnel)</span><input type="number" data-input="hr_max" placeholder="ex 190"></div><div class="q"><span class="q-label">FC au repos ? (optionnel)</span><input type="number" data-input="hr_rest" placeholder="ex 50"></div>'+protocolHTML("pace")+'</div>');
     },
     valid(a){return a.level&&a.pace_known;}};
 }
@@ -237,39 +249,14 @@ function injuryOpts(){
   return arr.map(x=>opt(x[0],x[1])).join("");
 }
 
-// ===== R3.9 / R3.10 UI — disponibilité à 4 états + calculateurs de test terrain =====
-// Écrit directement dans S.answers.availability / S.answers.tests (des tableaux), que
-// buildPlan consomme tels quels (a = S.answers). Aucune modification des appels moteur.
-function ebAvailArr(){if(!Array.isArray(S.answers.availability))S.answers.availability=[];return S.answers.availability;}
-function ebAvailSet(day,val){
-  let arr=ebAvailArr().filter(x=>x.day!==day);
-  const disc={run:"social-run",bike:"social-ride",swim:"social-swim",tri:"social-ride"}[S.sport]||"social-ride";
-  const de=document.querySelector('[data-avdur="'+day+'"]');
-  if(val==="blocked")arr.push({day:day,status:"blocked"});
-  else if(val==="club-z2"||val==="club-seuil")arr.push({day:day,status:disc,durationMin:(de&&parseInt(de.value))||90,load:val==="club-seuil"?"seuil":"z2"});
-  S.answers.availability=arr;
-  if(de)de.style.display=(val.indexOf("club")===0)?"":"none";
-}
-function ebAvailDur(day,val){const e=ebAvailArr().find(x=>x.day===day);if(e)e.durationMin=parseInt(val)||90;}
 function ebParseT(v){const m=String(v||"").split(":");return m.length===2?(+m[0])*60+(+m[1]):parseFloat(v);}
-function ebAddTest(kind){
-  if(!Array.isArray(S.answers.tests))S.answers.tests=[];
-  const val=id=>{const el=document.getElementById(id);return el?el.value:"";};
-  const dt=val("ebTestDate")||new Date().toISOString().slice(0,10);
-  let t=null;
-  if(kind==="ftp")t=fieldTests.ftp(parseFloat(val("ebFtpP20")),dt);
-  else if(kind==="css")t=fieldTests.css(ebParseT(val("ebCss400")),ebParseT(val("ebCss50")),dt);
-  else if(kind==="cs")t=fieldTests.cs(parseFloat(val("ebCsD3")),parseFloat(val("ebCsD10")),dt);
-  else if(kind==="vma")t=fieldTests.vma(parseFloat(val("ebVmaD6")),dt);
-  if(t&&isFinite(t.value)){S.answers.tests.push(t);ebSave();const b=document.getElementById("ebTestList");if(b)b.innerHTML=S.answers.tests.map(x=>"• "+esc(x.type)+" = "+esc(x.value)+" — "+esc(x.date)).join("<br>");}
-}
 // ===== §10 — LECTURE Strava (OAuth 2.0, jeton personnel) : alimente a.tests (R3.8) =====
 // Lecture seule : on lit les activités récentes et on estime FTP / allure seuil / CSS.
 // Aucune écriture vers Strava. CORS supporté par l'API GET Strava avec un bearer token.
 const _fk100=s=>Math.floor(s/60)+"'"+String(Math.round(s%60)).padStart(2,"0");
 async function stravaImport(){
-  const tok=((document.getElementById("ebStravaTok")||{}).value||"").trim();
-  const st=document.getElementById("ebStravaStatus");
+  const tok=((document.getElementById("pfStravaTok")||{}).value||"").trim();
+  const st=document.getElementById("pfStravaMsg");
   const setS=h=>{if(st)st.innerHTML=h;};
   if(!tok){setS("Colle d'abord un token d'accès Strava (Réglages → Mon API, scope <b>activity:read</b>).");return;}
   setS("Lecture de tes activités récentes…");
@@ -296,8 +283,8 @@ async function stravaImport(){
     if(swims.length){const fast=swims.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
       if(fast>0){const s100=Math.round(100/fast);S.answers.tests.push({type:"css",value:s100,date:today,source:"Strava (nage la plus rapide)"});added.push("CSS ≈ "+_fk100(s100)+"/100m");}}
     setS((added.length?("Importé : "+added.join(" · ")+". <span class='q-sub'>Valeurs estimées à partir de tes séances — affine avec un test si besoin.</span>"):"Aucune donnée d'allure/puissance exploitable.")+(notes.length?("<br><span class='q-sub'>⚠ "+notes.join(" ")+"</span>"):""));
-    ebSave();const b=document.getElementById("ebTestList");if(b)b.innerHTML=(S.answers.tests||[]).map(x=>"• "+esc(x.type)+" = "+esc(x.value)+" — "+esc(x.date)+(x.source?" ("+esc(x.source)+")":"")).join("<br>");
-  }catch(e){setS("Échec réseau (CORS ou token invalide). Tu peux saisir les tests à la main ci-dessus.");}
+    ebSave();
+  }catch(e){setS("Échec réseau (CORS ou token invalide). Renseigne les valeurs à la main si besoin.");}
 }
 function buildPremiumSteps(){return PREMIUM_STEPS_DEF;}
 
@@ -306,9 +293,6 @@ function buildPremiumSteps(){return PREMIUM_STEPS_DEF;}
    ============================================================ */
 function curSteps(){return S.tier==="free"?buildFreeSteps():buildPremiumSteps();}
 function vlab(v){return String(v).split(",").map(x=>VLAB[x]||x).join(", ");}
-function ruleTrigger(id){return {intent:"intent",sante:"intent",duree:"format",medical:"med_treat",terrain:"terrain",clm:"format",ow:"milieu",bassin:"milieu",
-  tech:"level",recup:"history",inj:"injury",volume:"vol_max",sessions:"sessions_max",cycle:"shift_ok",polar:"doubles",
-  sleep:"sleep",life:"life_load",hrv:"hrv",renfo:"hrv",gammes:"hrv",force:"hrv",tech_drill:"hrv",poids:"weight_lever",fer:"sex",cyclep:"cycle_sync",races:"races"}[id];}
 function bindInputs(scope){
   scope.querySelectorAll(".opts").forEach(g=>{const key=g.dataset.key,multi=g.dataset.multi==="1",excl=g.dataset.exclusive||"";
     g.querySelectorAll(".opt").forEach(b=>{const cur=(S.answers[key]||"").split(",").filter(Boolean);
@@ -376,4 +360,4 @@ function renderBlueprint(){
 }
 function reset(){S.sport=null;S.answers={};S.step=0;S.tier="free";S.started=false;S.showAllWeeks=false;S.onPlan=false;invalidatePlan();ebClear();document.body.dataset.intent="";document.body.dataset.sport="";renderStep();}
 
-export { _fk100, bindInputs, branch, buildFreeSteps, buildPremiumSteps, curCfg, curSteps, ebAddTest, ebAvailArr, ebAvailDur, ebAvailSet, ebParseT, evalRules, injuryOpts, levelStep, opt, refreshNav, refreshTrail, renderBlueprint, renderSportPick, renderStep, reset, ruleTrigger, rulesGrouped, stravaImport, vlab };
+export { _fk100, bindInputs, branch, buildFreeSteps, buildPremiumSteps, curCfg, curSteps, ebParseT, evalRules, injuryOpts, levelStep, opt, refreshNav, refreshTrail, renderBlueprint, renderSportPick, renderStep, reset, rulesGrouped, stravaImport, vlab };
