@@ -1728,9 +1728,12 @@ function fetchWeather(){return new Promise(res=>{
 });}
 async function applyReadiness(){
   if(!globalThis.EBV2)return;
+  const btn=$("rdApply");if(btn)btn.disabled=true;
+  if($("rdResult"))$("rdResult").innerHTML='<div class="load-sub">Analyse en cours…</div>';
   const snap={date:new Date().toISOString().slice(0,10),
     sleepQuality:$("rdSleep").value,energy:parseInt($("rdEnergy").value),feel:$("rdFeel").value};
   const wx=await fetchWeather();if(wx&&wx.tmaxC!=null)snap.weather=wx;
+  if(btn)btn.disabled=false;
   S.answers.readiness={sleepQuality:snap.sleepQuality,energy:snap.energy,feel:snap.feel};ebSave();
   let res;try{res=globalThis.EBV2.adjustToday(S.sport,S.answers,snap);}catch(e){console.warn(e);return;}
   const v=res.adjustment.verdict,ic={verte:"\ud83d\udfe2",orange:"\ud83d\udfe0",rouge:"\ud83d\udd34"};

@@ -48,9 +48,13 @@ function nutritionCardHTML(day, tempC) {
   if (!advs.length) return "";
   let h = '<div class="load-card" id="nutCard"><div class="load-title">\u{1F964} Ravitaillement d’aujourd’hui' + (tempC != null ? ' <span style="font-weight:400">· ' + Math.round(tempC) + "°C prévus</span>" : "") + "</div>";
   advs.forEach(({ s, a }) => {
+    // Résumé court : sous 60min, « 0–500 ml/h » se lit mal (plancher à 0, et « /h » trompeur
+    // sur une séance plus courte qu'une heure) — on reprend le cadrage « à la soif » du moteur.
+    const drinkSummary = a.during.drinkMlPerH[0] === 0
+      ? "eau à la soif"
+      : a.during.drinkMlPerH[0] + "–" + a.during.drinkMlPerH[1] + " ml/h" + (a.during.sodium ? " + sodium" : "");
     h += '<details style="margin-top:6px;font-size:12px"><summary style="cursor:pointer"><b>' + s.name + "</b> — "
-      + (a.during.carbsGPerH ? a.during.carbsGPerH[0] + "–" + a.during.carbsGPerH[1] + " g/h de glucides, " : "eau, ")
-      + a.during.drinkMlPerH[0] + "–" + a.during.drinkMlPerH[1] + " ml/h" + (a.during.sodium ? " + sodium" : "") + "</summary>"
+      + (a.during.carbsGPerH ? a.during.carbsGPerH[0] + "–" + a.during.carbsGPerH[1] + " g/h de glucides, " + drinkSummary : drinkSummary) + "</summary>"
       + '<div style="margin:6px 0 0 2px;color:#3f3a30"><b>Avant :</b> ' + a.before
       + "<br><b>Pendant :</b> " + a.during.text
       + (a.after ? "<br><b>Après :</b> " + a.after : "")
