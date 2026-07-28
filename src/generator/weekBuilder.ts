@@ -106,15 +106,23 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
       }
     }
 
-  // Séances + rendu (dates absolues : fin = date de course ou aujourd'hui + durée)
+  // Séances + rendu. Dates absolues ALIGNÉES sur le calendrier réel : le jour étiqueté
+  // « Lun » tombe un VRAI lundi (le plan est régénéré à chaque ouverture — sans cet
+  // ancrage, la case « aujourd'hui » porte la séance d'un autre jour dès le lendemain).
+  // Sans course : la semaine 1 est la semaine EN COURS (début = lundi de cette semaine,
+  // les jours déjà écoulés restent visibles/cochables). Avec course : la DERNIÈRE semaine
+  // est celle de la course — la course tombe à sa vraie date, à son vrai jour.
   const MS = 864e5;
-  const end = a.race_date ? new Date(a.race_date + "T00:00:00Z") : new Date(Date.now() + (totalDays - 1) * MS);
+  const mondayOf = (t: number): number => t - ((new Date(t).getUTCDay() + 6) % 7) * MS;
+  const start = a.race_date
+    ? mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - (r.weeks - 1) * 7 * MS
+    : mondayOf(Date.now());
   const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
   days.forEach((d, i) => {
     const ph = d.phase!;
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
-    d.date = iso(end.getTime() - (totalDays - 1 - i) * MS);
+    d.date = iso(start + i * MS);
     d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog);
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);

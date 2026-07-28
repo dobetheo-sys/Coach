@@ -210,6 +210,29 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
     wl.push({ num: w + 1, phase: ph, vol: volReal, vol_declared: Math.round(targetH * 10) / 10, vol_real: volReal, days: wd, isRecup: isRW });
   }
 
+  // Dates alignées au calendrier réel → la course tombe à son VRAI jour dans la dernière
+  // semaine ; les jours datés APRÈS elle deviennent repos assumé (on prépare, on court,
+  // on récupère — jamais de séance orpheline après l'objectif). Volumes recalculés
+  // honnêtement, déclaré compris (jamais relevé).
+  if (a.race_date) {
+    const wk = wl[wl.length - 1];
+    let cut = false;
+    for (const d of wk.days as GenDay[]) {
+      if (d.date && d.date > a.race_date && d.sessions.some((s) => s.d !== "rs")) {
+        d.charge = "off";
+        d.slot = "off";
+        d.sessions = [{ d: "rs", name: "Repos post-course", det: "récupération — marche, hydratation, fierté", steps: [] }];
+        cut = true;
+      }
+    }
+    if (cut) {
+      const vr = Math.round((weekMin(wk.days as GenDay[]) / 60) * 10) / 10;
+      wk.vol = vr;
+      wk.vol_real = vr;
+      wk.vol_declared = Math.min(wk.vol_declared ?? vr, Math.max(vr, 0.1));
+    }
+  }
+
   // C6 — volPeak affiché = pic réel des semaines de charge
   let volPeak = r.volPeak;
   {
@@ -225,8 +248,9 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
     if (a.race2_date) races.push({ date: a.race2_date, prio: a.race2_prio || "C" });
   }
   for (const rc of races) {
-    const wIdx = Math.floor((new Date(rc.date).getTime() - Date.now()) / (7 * 864e5));
-    const wk = wl.find((w) => w.num === wIdx + 1);
+    // La semaine d'une course intermédiaire se trouve par SA DATE dans la grille datée
+    // (l'ancien offset depuis « aujourd'hui » se décale dès que la semaine 1 commence au lundi).
+    const wk = wl.find((w) => (w.days as GenDay[]).some((d) => d.date === rc.date));
     if (wk) {
       wk.race = rc.prio;
       if (rc.prio !== "C") {
