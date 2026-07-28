@@ -112,3 +112,46 @@ body.has-tabs .hero, body.has-tabs .progress { display: none; }
   .gd { padding: 10px; }
   details.load-card summary { padding: 8px 0; }
 }
+
+/* ===== R5 — refonte navigation ===== */
+/* Onglet central 🎯 Aujourd'hui : mis en valeur (retour utilisateur) */
+.tabbtn.tab-central .tabico {
+  font-size: 26px;
+  background: #16130e;
+  color: #fff;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -14px;
+  border: 2px solid #16130e;
+  box-shadow: 0 2px 0 #16130e33;
+}
+.tabbtn.tab-central.active .tabico { background: #f0b429; color: #16130e; }
+.tabbtn.tab-central.active { box-shadow: none; }
+/* Bouton de validation : esthétique retravaillée — cercle fin, coche animée */
+.doneBtn {
+  border-width: 1.5px;
+  background: transparent;
+  color: #b3ab9b;
+  transition: transform .12s, background .15s, color .15s;
+}
+.doneBtn:active { transform: scale(.85); }
+.doneBtn.done {
+  background: #00a376;
+  color: #fff;
+  border-color: #00734f;
+  animation: ck-pop .25s ease;
+}
+@keyframes ck-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+/* Séances : suggestion visuelle de clicabilité (retour utilisateur) */
+.gd-sess summary { border-bottom: 1px dashed #b3ab9b; padding-bottom: 1px; }
+.gd-sess summary::after { content: "détail"; font-size: 8px; color: var(--text2, #635b4a); margin-left: 4px; opacity: .7; }
+.gd-sess[open] summary::after { content: "replier"; }
+/* Diaporama du check-in : gros boutons, une question par écran */
+.ck-opt { text-align: left; }
+.ck-opt:active { transform: scale(.98); }
+/* Sous-objectifs de phase */
+.ph-obj summary::-webkit-details-marker { display: none; }

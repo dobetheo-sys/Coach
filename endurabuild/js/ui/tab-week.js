@@ -1,16 +1,16 @@
-// Onglet 📅 Plan de la semaine — l'écran du quotidien. Ordre imposé (demande produit) :
-// 1) Forme du jour d'abord (sommeil/VFC/énergie/ressenti) — jamais de séance affichée
-//    avant d'avoir répondu, une fois par jour (S.answers.readiness.date). 2) la séance
-//    du jour (ou la prochaine si repos), déjà adaptée au verdict. 3) toute la semaine.
+// Onglet 📅 Semaine — le calendrier de la semaine courante (refonte R5 : le check-in du
+// matin et la séance du jour vivent dans l'onglet central 🎯 Aujourd'hui ; ici, la grille
+// de la semaine, les échanges de jours ⇄, le bilan hebdo, le contenu du jour, les rappels).
+// La règle produit tient toujours : pas de séance visible avant le check-in → redirection
+// vers Aujourd'hui tant que la forme du jour n'est pas renseignée.
 import { S, $, ebSave, esc } from "../state.js";
 import { readinessCardHTML } from "./plan-view.js";
-import { applyReadiness, fetchWeather, readinessDoneToday } from "./readiness.js";
-import { nutritionJournalHTML, bindNutritionJournal } from "./nutrition-journal.js";
+import { applyReadiness, readinessDoneToday } from "./readiness.js";
 import { avatarDataFor, avatarSVG } from "./avatar.js";
 import { celebrationMessage } from "./celebrations.js";
-import { missedSessionsCheck, notifySetupHTML, bindNotifySetup, scheduleDailyNotification, weeklyReviewHTML } from "../notifications.js";
+import { notifySetupHTML, bindNotifySetup, scheduleDailyNotification, weeklyReviewHTML } from "../notifications.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
-import { ensurePlan, invalidatePlan } from "./tabs.js";
+import { ensurePlan, invalidatePlan, setTab } from "./tabs.js";
 import { trapModal } from "./modal.js";
 
 // Déplacement de séance persistant (spec §8) : échange de deux jours d'une même semaine.
@@ -179,83 +179,32 @@ export function momentHTML(plan, todayISO) {
   return "";
 }
 
-// Carte « Ravitaillement d'aujourd'hui » (module nutrition, périmètre ravitaillement
-// d'effort uniquement — voir src/nutrition/). La température vient de la météo déjà
-// intégrée (Open-Meteo) et arrive en différé : la carte se re-rend seule, dégrade
-// proprement sans réseau/géoloc. L'avertissement du moteur est TOUJOURS affiché.
-function nutritionCardHTML(day, tempC) {
-  if (!day || !globalThis.EBV2 || !globalThis.EBV2.sessionNutrition) return "";
-  const wkg = parseFloat(S.answers.weight) > 0 ? parseFloat(S.answers.weight) : null;
-  const advs = day.sessions
-    .map((s) => ({ s, a: globalThis.EBV2.sessionNutrition(s, { tempC: tempC == null ? null : tempC, weightKg: wkg }) }))
-    .filter((x) => x.a);
-  if (!advs.length) return "";
-  let h = '<div class="load-card" id="nutCard"><div class="load-title">\u{1F964} Ravitaillement d’aujourd’hui' + (tempC != null ? ' <span style="font-weight:400">· ' + Math.round(tempC) + "°C prévus</span>" : "") + "</div>";
-  advs.forEach(({ s, a }) => {
-    // Résumé court : sous 60min, « 0–500 ml/h » se lit mal (plancher à 0, et « /h » trompeur
-    // sur une séance plus courte qu'une heure) — on reprend le cadrage « à la soif » du moteur.
-    const drinkSummary = a.during.drinkMlPerH[0] === 0
-      ? "eau à la soif"
-      : a.during.drinkMlPerH[0] + "–" + a.during.drinkMlPerH[1] + " ml/h" + (a.during.sodium ? " + sodium" : "");
-    h += '<details style="margin-top:6px;font-size:12px"><summary style="cursor:pointer"><b>' + s.name + "</b> — "
-      + (a.during.carbsGPerH ? a.during.carbsGPerH[0] + "–" + a.during.carbsGPerH[1] + " g/h de glucides, " + drinkSummary : drinkSummary) + "</summary>"
-      + '<div style="margin:6px 0 0 2px;color:#3f3a30"><b>Avant :</b> ' + a.before
-      + "<br><b>Pendant :</b> " + a.during.text
-      + (a.after ? "<br><b>Après :</b> " + a.after : "")
-      + '<br><span style="color:#777">Dépense estimée ~' + a.kcal[0] + "–" + a.kcal[1] + " kcal" + (wkg ? "" : " (renseigne ton poids dans \u{1F4CB} Profil pour affiner)") + ".</span></div></details>";
-  });
-  h += '<div class="load-sub" style="margin-top:8px">' + advs[0].a.disclaimer + "</div></div>";
-  return h;
-}
-
-// Estimation énergétique du jour (décision utilisateur 28/07/2026) : dépense de base +
-// entraînement + répartition indicative des macros — une INFORMATION, jamais une cible
-// d'apport ni un menu ; l'avertissement du moteur est TOUJOURS affiché tel quel.
-function energyCardHTML(day) {
-  if (!globalThis.EBV2 || !globalThis.EBV2.dailyEnergy) return "";
-  let e;
-  try { e = globalThis.EBV2.dailyEnergy(S.answers, day ? day.sessions : []); } catch (err) { return ""; }
-  if (!e) {
-    return '<details class="load-card"><summary class="load-title">🔥 Dépense estimée du jour</summary>'
-      + '<div class="load-sub" style="margin-top:6px">Renseigne ton <b>poids</b> dans l’onglet 📋 Profil pour voir l’estimation (taille, âge et sexe l’affinent). Aucune estimation sans donnée réelle.</div></details>';
-  }
-  const f = (r) => r[0] === r[1] ? r[0] : r[0] + "–" + r[1];
-  return '<details class="load-card"><summary class="load-title">🔥 Dépense estimée du jour <span style="font-weight:400">· ~' + f(e.total) + " kcal</span></summary>"
-    + '<div style="font-size:12px;margin-top:8px">'
-    + "<b>Base + vie quotidienne :</b> ~" + f(e.daily) + " kcal (métabolisme de base ~" + f(e.bmr) + ")<br>"
-    + "<b>Entraînement du jour :</b> " + (e.training[1] ? "~" + f(e.training) + " kcal" : "repos — 0 kcal d’entraînement")
-    + "<br><b>Total :</b> ~" + f(e.total) + " kcal"
-    + (e.approximate ? '<br><span style="color:#8a6d00">Fourchette large : complète taille/âge au 📋 Profil pour l’affiner.</span>' : "")
-    + "</div>"
-    + '<div style="font-size:12px;margin-top:8px;color:#3f3a30">' + e.macros.text + "</div>"
-    + '<div class="load-sub" style="margin-top:8px">' + e.disclaimer + "</div></details>";
-}
-
 // R4.5 — bandeau douleur PERMANENT tant que le drapeau n'est pas levé : la qualité est
 // verrouillée par l'ajusteur (rouge forcé), la série est gelée, on recommande médecin/kiné.
-// Levée = action explicite + question de confirmation.
-function painBannerHTML() {
+// Levée = action explicite + question de confirmation. Exporté (R5) : affiché aussi
+// dans l'onglet 🎯 Aujourd'hui.
+export function painBannerHTML() {
   const pf = S.answers.painFlag;
   if (!pf || !pf.active) return "";
   return '<div class="warn" style="background:#ffe3e0;font-weight:600">🩹 <b>Douleur signalée' + (pf.location ? " (" + esc(pf.location) + ")" : "") + ".</b> "
     + 'Les séances de qualité sont remplacées par de la récupération tant que le drapeau est actif — ta série est gelée, rien n’est perdu. Si la douleur persiste, consulte un médecin ou un kiné.'
     + '<div class="nav" style="margin-top:8px"><button class="btn" id="ebLiftPain" type="button">Je n’ai plus mal → lever le drapeau</button></div></div>';
 }
-function bindPainBanner(plan) {
+export function bindPainBanner(plan, rerender) {
   const b = $("ebLiftPain");
   if (b) b.onclick = () => {
     if (!confirm("Plus aucune douleur, ni à froid ni pendant l’effort ?")) return;
     S.answers.painFlag = { active: false, location: S.answers.painFlag.location, since: S.answers.painFlag.since, liftedAt: new Date().toISOString().slice(0, 10) };
     ebSave();
-    renderTabWeek(plan);
+    (rerender || (() => renderTabWeek(plan)))();
   };
 }
 // R4.2 — maladie déclarée : gèle la série (le jour ne compte ni ne casse), jamais de culpabilisation.
-function sickToggleHTML(todayISO) {
+export function sickToggleHTML(todayISO) {
   const sick = (S.answers.sickDates || []).includes(todayISO);
   return '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px"><input type="checkbox" id="rdSick"' + (sick ? " checked" : "") + ' style="width:20px;height:20px"><span>🤒 Malade aujourd’hui — la série est gelée, la reprise attendra que ça aille mieux</span></label>';
 }
-function bindSickToggle(plan, todayISO) {
+export function bindSickToggle(plan, todayISO) {
   const cb = $("rdSick");
   if (cb) cb.onchange = () => {
     if (!Array.isArray(S.answers.sickDates)) S.answers.sickDates = [];
@@ -266,26 +215,11 @@ function bindSickToggle(plan, todayISO) {
   };
 }
 
-function greeting() {
-  const h = new Date().getHours();
-  return h < 5 ? "Debout tôt \u{1F319}" : h < 12 ? "Bonjour ☀️" : h < 18 ? "Bon après-midi" : h < 22 ? "Bonsoir \u{1F319}" : "Encore debout \u{1F989}";
-}
-
-// Écran de check-in : AUCUNE séance visible tant que la forme du jour n'est pas
-// renseignée (demande produit). Une fois par jour — readinessDoneToday() le sait déjà.
-function checkinGateHTML(todayISO) {
-  return '<div class="card"><div class="eyebrow">Avant de commencer</div><h2>' + greeting() + "</h2>"
-    + '<div class="why">Quatre curseurs suffisent : le moteur adapte ta séance du jour à ta forme — jamais l’inverse.</div>'
-    + readinessCardHTML({ title: "\u{1F321} Forme du jour", sub: "Sommeil, VFC, énergie, ressenti.", btnLabel: "Voir ma séance du jour →" })
-    + sickToggleHTML(todayISO)
-    + "</div>";
-}
-
 // Séance du jour (déjà adaptée au verdict de forme) — ou, si repos, la prochaine séance
-// à venir : « la séance à venir » demandée, jamais un écran vide sans direction.
+// à venir. Exportée (R5) : rendue en PREMIER dans l'onglet central 🎯 Aujourd'hui.
 const _verdictIc = { verte: "\u{1F7E2}", orange: "\u{1F7E0}", rouge: "\u{1F534}" };
 const _verdictLbl = { keep: "séance maintenue", reduce: "volume réduit", replace: "endurance à la place", rest: "repos conseillé", off: "repos complet" };
-function heroSessionHTML(plan, todayISO) {
+export function heroSessionHTML(plan, todayISO) {
   if (!globalThis.EBV2 || !globalThis.EBV2.adjustToday) return "";
   const snap = Object.assign({ date: todayISO }, S.answers.readiness || {});
   let res;
@@ -316,11 +250,7 @@ export function renderTabWeek(plan) {
   const moment = momentHTML(plan, today);
 
   if (!readinessDoneToday()) {
-    $("screen").innerHTML = moment + painBannerHTML() + checkinGateHTML(today);
-    const rb = $("rdApply");
-    if (rb) rb.onclick = async () => { await applyReadiness(); renderTabWeek(plan); };
-    bindPainBanner(plan);
-    bindSickToggle(plan, today);
+    setTab("today"); // règle produit : le check-in (diaporama d'Aujourd'hui) d'abord
     return;
   }
 
@@ -331,8 +261,6 @@ export function renderTabWeek(plan) {
   let html = moment;
   html += painBannerHTML();
   html += retestBannerHTML(today); // R4.4 — annonce J-7/veille/écran du jour J
-  html += missedSessionsCheck(plan); // R4.10 — relance bienveillante (une fois, jamais de rafale)
-  html += heroSessionHTML(plan, today);
   html += dailyContentHTML(plan, today); // R4.9 — contenu du jour (anecdote/physio/stat/défi)
   html += weeklyReviewHTML(plan); // R4.10 — bilan hebdo (dimanche)
   html += notifySetupHTML(); // R4.10 — réglage de l'heure du rappel (une fois)
@@ -364,25 +292,25 @@ export function renderTabWeek(plan) {
   if (S._swapPending && S._swapPending.w === w.num)
     html += '<div class="load-sub" style="margin-top:6px">⇄ <b>' + S._swapPending.jour + "</b> sélectionné — touche le jour avec lequel l’échanger (ou re-touche ⇄ pour annuler).</div>";
   html += "</div>";
-  const todayDay = w.days.find((d) => d.date === today) || null;
-  html += nutritionCardHTML(todayDay, null);
-  html += energyCardHTML(todayDay); // estimation dépense + macros indicatives (jamais une cible)
-  html += nutritionJournalHTML(todayDay, today); // R4-1 — journal alimentaire (repliable)
+  html += sickToggleHTML(today);
+  // Journal des adaptations quotidiennes (readinessLog) — la preuve que le plan réagit.
+  const rlog = Array.isArray(S.answers.readinessLog) ? S.answers.readinessLog : [];
+  if (rlog.length) {
+    const icV = { verte: "🟢", orange: "🟠", rouge: "🔴" };
+    const lblV = { keep: "maintenue", reduce: "réduite", replace: "remplacée par endurance", rest: "repos", off: "repos complet" };
+    const nAdapt = rlog.filter((x) => x.action !== "keep").length;
+    html += '<details class="load-card"><summary class="load-title">🤖 Adaptations quotidiennes (' + rlog.length + " check-ins · " + nAdapt + " ajustement" + (nAdapt > 1 ? "s" : "") + ")</summary>";
+    rlog.slice(-10).reverse().forEach((x) => { html += '<div style="font-size:12px;margin:4px 0">' + (icV[x.level] || "") + " " + x.date + " — séance " + (lblV[x.action] || x.action) + "</div>"; });
+    html += '<div class="load-sub" style="margin-top:4px">C’est la différence entre un plan PDF et un coach : chaque matin, la séance s’ajuste à ta forme réelle.</div></details>';
+  }
   html += '<details class="load-card"><summary class="load-title">\u{1F321} Modifier ma forme du jour</summary>' + readinessCardHTML({ btnLabel: "Mettre à jour" }) + "</details>";
   html += "</div>";
   $("screen").innerHTML = html;
   bindPainBanner(plan);
+  bindSickToggle(plan, today);
   bindRetestBanner(today, () => renderTabWeek(ensurePlan())); // le retest a pu régénérer le plan
   bindNotifySetup(plan, () => renderTabWeek(plan));
   scheduleDailyNotification(plan);
-  bindNutritionJournal(todayDay, today, () => renderTabWeek(plan));
-  // Météo en différé : affine l'hydratation (chaleur → sodium) sans bloquer le rendu.
-  if (todayDay) fetchWeather().then((wx) => {
-    const el = $("nutCard");
-    if (!el || !wx || wx.tmaxC == null) return;
-    const h = nutritionCardHTML(todayDay, wx.tmaxC);
-    if (h) el.outerHTML = h;
-  });
   const _rb = $("rdApply");
   if (_rb) _rb.onclick = async () => { await applyReadiness(); renderTabWeek(plan); };
   document.querySelectorAll("#screen [data-swap]").forEach((b) => {

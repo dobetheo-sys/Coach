@@ -128,16 +128,17 @@ restriction, avertissement obligatoire) assertés par `npm run demo:nutrition` (
 **Périmètre étendu par décision utilisateur (28/07/2026)** : ESTIMATION de la dépense
 journalière (base Mifflin-St Jeor N8 + vie quotidienne N9 + entraînement N7) et
 répartition INDICATIVE des macros (N10, `src/nutrition/energyEstimator.ts`, carte
-« 🔥 Dépense estimée » dans Semaine, taille optionnelle au Profil). La frontière qui
+« 🔥 Dépense estimée » dans l'onglet 🥗 Nutrition, taille optionnelle au Profil). La frontière qui
 RESTE : jamais de cible d'apport, jamais de menu, jamais de conseil de nutrition à
 proprement parler — tout est présenté comme dépense/photographie des consensus,
 avertissement renforcé obligatoire, invariants en CI (`demo:nutrition`). Le CONSEIL
 nutritionnel reste bloqué avis diététicien — ne pas franchir cette ligne.
-**Écran d'accueil (PWA)** : l'onglet 📅 Semaine s'ouvre sur un check-in (sommeil/VFC/
-énergie/ressenti — VFC visible pour tous, plus de question premium séparée) ; aucune
-séance visible avant d'avoir répondu, une fois par jour (`S.answers.readiness.date`).
-Une fois répondu : la séance du jour DÉJÀ adaptée au verdict (ou la prochaine si repos)
-en premier, puis la semaine. Voir ARCHITECTURE.md « Écran d'accueil ».
+**Écran d'accueil (PWA, refonte R5)** : l'app s'ouvre sur l'onglet CENTRAL 🎯 Aujourd'hui
+avec un check-in en DIAPORAMA cliquable (sommeil → VFC optionnelle → ressenti, phrases de
+coach) ; aucune séance visible avant d'avoir répondu, une fois par jour
+(`S.answers.readiness.date`). Une fois répondu : séance du jour DÉJÀ adaptée, prédiction
+de course, courbe charge/fatigue, barre d'avancement, répartition des intensités.
+Voir ARCHITECTURE.md « Refonte R5 ».
 **Audit d'influence des paramètres (PWA)** : passage systématique — chaque réponse du
 questionnaire doit agir sur le plan généré, pas seulement produire une carte non affichée.
 Bug corrigé (import FIT/Strava qui n'atteignait jamais le plan généré — le moteur ne lit
@@ -145,11 +146,11 @@ que les valeurs courantes `a.ftp/pace/css`, jamais le journal daté), `swim_limi
 sur ses 4 valeurs, 3 champs morts retirés, calculateurs de test remplacés par la méthode
 pour obtenir soi-même FTP/allure/CSS, conseils personnalisés (`evalRules`) enfin visibles
 dans l'onglet Avancement. Détail dans ARCHITECTURE.md « Audit d'influence des paramètres ».
-**5e onglet 🎮 Suivi (gamification)** : avatar évolutif (`EBV2.avatar`, 7 paliers 🥚→🏆,
-XP cumulatif basé uniquement sur la régularité — jamais un chrono, jamais décroissant),
-monitoring en direct de la séance du jour (échauffement/corps/retour au calme à cocher,
-répercute automatiquement sur le ✓ existant), galerie de badges. Voir ARCHITECTURE.md
-« 5e onglet Suivi ».
+**Gamification (refonte R5 : au Profil)** : avatar évolutif (`EBV2.avatar`, 7 paliers
+🥚→🏆, XP cumulatif basé uniquement sur la régularité — jamais un chrono, jamais
+décroissant), teaser du niveau suivant, niveaux intermédiaires PAR DISCIPLINE en
+triathlon (séances validées), badges, efficience. Le monitoring en direct de la séance
+(échauffement/corps/retour au calme, répercute sur le ✓) vit dans 🎯 Aujourd'hui.
 **Séances repliables + glossaire éducatifs** : toutes les séances (grille semaine + carte
 « Aujourd'hui ») en `<details>` fermés par défaut, cliquables pour le détail. Les
 éducatifs de natation expliquent désormais COMMENT faire le geste, pas juste son nom.
@@ -186,5 +187,15 @@ liste blanche d'origines, tokens par fragment, sans état) + `server/README.md`
 (déploiement pas-à-pas) + PWA (`js/strava.js`, bouton « Se connecter avec Strava »
 au Profil, refresh auto, repli jeton manuel conservé). Reste HUMAIN : créer l'app
 Strava + déployer le worker (15 min, README).
+**Refonte R5 livrée** (premier retour du fondateur, 28/07/2026) : navigation en 5 onglets
+📋 Profil · 🗓 Plan · 🎯 Aujourd'hui (CENTRAL, mis en valeur) · 📅 Semaine · 🥗 Nutrition.
+Check-in en diaporama coach (`js/ui/checkin.js`), Aujourd'hui = séance du jour → prédiction
+→ charge → avancement → intensités (`tab-today.js`), Profil = avatar/XP/teaser + niveaux
+par discipline (tri) + échéance + historique + retest suggéré + records, Plan = phases
+cliquables en sous-objectifs validables + décisions moteur en langage neutre (bandeau
+rouge « réserves » SUPPRIMÉ — retour utilisateur), séances partout cliquables avec
+affordance, bouton ✓ redessiné, Nutrition = dépense + macros + ravito + journal.
+Voir ARCHITECTURE.md « Refonte R5 ». Les anciens `tab-progress.js`/`tab-monitor.js`
+sont supprimés (contenu redistribué).
 Chantiers restants : candidature API MyFitnessPal (humain), push serveur,
 avis diététicien pour le CONSEIL nutritionnel (les estimations sont livrées).

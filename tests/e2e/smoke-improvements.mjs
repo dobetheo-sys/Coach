@@ -1,5 +1,7 @@
-// Lot améliorations : échange de jours persistant (⇄), accessibilité des modales
-// (Échap + focus), saisie du résultat de course réel, historique des adaptations.
+// Lot améliorations (adapté R5) : échange de jours ⇄ (Semaine), accessibilité des
+// modales (Échap + focus), résultat de course réel (Aujourd'hui), journal des
+// adaptations (Semaine), estimation énergétique (Nutrition), Strava OAuth (Profil).
+// Ordre des onglets R5 : 0=Profil · 1=Plan · 2=Aujourd'hui · 3=Semaine · 4=Nutrition.
 import { startServer, launchBrowser, makeReporter, runnerStateV1 } from "./harness.mjs";
 
 const PORT = 8540;
@@ -19,9 +21,9 @@ await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_stat
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 
-// ---- 1. Échange de jours (⇄) : deux taps, persistant, réversible ----
+// ---- 1. Échange de jours (⇄) dans Semaine : deux taps, persistant, réversible ----
 const tabs = await page.locator("#ebTabbar .tabbtn").all();
-await tabs[4].click(); await page.waitForTimeout(250);
+await tabs[3].click(); await page.waitForTimeout(300);
 ok((await page.locator("#screen [data-swap]").count()) === 7, "un bouton ⇄ par jour de la semaine courante");
 const before = await page.evaluate(async () => {
   const { S } = await import("./js/state.js");
@@ -29,7 +31,6 @@ const before = await page.evaluate(async () => {
   const w = S.currentPlan.weeks.find((x) => x.days.some((d) => d.date === t)) || S.currentPlan.weeks[0];
   return { num: w.num, days: w.days.map((d) => ({ jour: d.jour, names: d.sessions.map((s) => s.name).join("+") })) };
 });
-// choisir deux jours au contenu différent pour un échange observable
 let iA = 0, iB = 1;
 outer: for (let i = 0; i < before.days.length; i++)
   for (let j = i + 1; j < before.days.length; j++)
@@ -45,7 +46,6 @@ const after = await page.evaluate(async (wn) => {
 }, before.num);
 ok(Array.isArray(after.swaps) && after.swaps.length === 1, "échange persisté dans answers.daySwaps");
 ok(after.days[iA].names === before.days[iB].names && after.days[iB].names === before.days[iA].names, "les séances des deux jours sont bien échangées (" + jA + " ⇄ " + jB + ")");
-// persistance à travers une régénération complète
 const persisted = await page.evaluate(async (arg) => {
   const { invalidatePlan, ensurePlan } = await import("./js/ui/tabs.js");
   invalidatePlan();
@@ -54,7 +54,6 @@ const persisted = await page.evaluate(async (arg) => {
   return w.days.map((d) => ({ jour: d.jour, names: d.sessions.map((s) => s.name).join("+") }));
 }, { wn: before.num });
 ok(persisted[iA].names === before.days[iB].names, "l'échange survit à une régénération du plan (réappliqué)");
-// re-tap = annulation (retour à l'état d'origine)
 await page.click('#screen [data-swap="' + before.num + "|" + jA + '"]'); await page.waitForTimeout(150);
 await page.click('#screen [data-swap="' + before.num + "|" + jB + '"]'); await page.waitForTimeout(400);
 const reverted = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return (S.answers.daySwaps || []).length; });
@@ -67,41 +66,36 @@ ok(await page.locator(".eb-overlay [aria-modal='true']").count() === 1, "modal f
 const focusInModal = await page.evaluate(() => !!document.activeElement.closest(".eb-overlay"));
 ok(focusInModal, "le focus est déplacé dans la modal à l'ouverture");
 await page.keyboard.press("Escape"); await page.waitForTimeout(300);
-// Échap sur le feedback = passer le feedback (séance validée) → la célébration s'affiche
 ok(await page.locator(".eb-modal:has-text('Comment c’était')").count() === 0, "Échap ferme la modal feedback");
 if (await page.locator(".eb-overlay").count()) { await page.keyboard.press("Escape"); await page.waitForTimeout(200); }
 ok(await page.locator(".eb-overlay").count() === 0, "Échap ferme aussi la célébration");
 
-// ---- 3. Historique des adaptations (onglet Avancement) ----
-const t3 = await page.locator("#ebTabbar .tabbtn").all();
-await t3[2].click(); await page.waitForTimeout(250);
-const progTxt = await page.locator("#screen").textContent();
-ok(/Adaptations quotidiennes \(1 check-ins? · 1 ajustement/.test(progTxt), "carte « Adaptations quotidiennes » listée depuis readinessLog");
+// ---- 3. Journal des adaptations (Semaine) ----
+ok(/Adaptations quotidiennes \(1 check-ins? · 1 ajustement/.test(await page.locator("#screen").textContent()), "carte « Adaptations quotidiennes » listée depuis readinessLog (Semaine)");
 
-// ---- 4. Résultat de course réel (calibration honnête) ----
+// ---- 4. Résultat de course réel (Aujourd'hui — sous la prédiction) ----
 await page.evaluate(async (d) => {
   const { S, ebSave } = await import("./js/state.js");
   S.answers.race_date = d;
   ebSave();
   const { setTab } = await import("./js/ui/tabs.js");
-  setTab("progress");
+  setTab("today");
 }, today);
 await page.waitForTimeout(300);
-ok(await page.locator("#pgRaceTime").count() === 1, "course passée → carte de saisie du chrono affichée");
+ok(await page.locator("#pgRaceTime").count() === 1, "course passée → carte de saisie du chrono sur Aujourd'hui");
 await page.fill("#pgRaceTime", "44:30");
 await page.click("#pgRaceSave"); await page.waitForTimeout(300);
-const raceTxt = await page.locator("#screen").textContent();
-ok(/Réalisé : 44:30/.test(raceTxt), "chrono réel enregistré et affiché");
+ok(/Réalisé : 44:30/.test(await page.locator("#screen").textContent()), "chrono réel enregistré et affiché");
 const rr = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.answers.raceResult; });
 ok(rr && rr.time === "44:30" && rr.date === today, "raceResult persisté avec la date de course");
 
-// ---- 5. Estimation énergétique du jour (dépense + macros indicatives, jamais une cible) ----
+// ---- 5. Onglet Nutrition : estimation énergétique (jamais une cible) ----
 await page.evaluate(async () => {
   const { S, ebSave } = await import("./js/state.js");
   delete S.answers.weight;
   ebSave();
   const { setTab } = await import("./js/ui/tabs.js");
-  setTab("week");
+  setTab("nutrition");
 });
 await page.waitForTimeout(300);
 const noWtxt = await page.locator("#screen").textContent();
@@ -112,26 +106,24 @@ await page.evaluate(async () => {
   S.answers.height = "180";
   ebSave();
   const { setTab } = await import("./js/ui/tabs.js");
-  setTab("week");
+  setTab("nutrition");
 });
 await page.waitForTimeout(300);
-await page.locator("summary:has-text('Dépense estimée du jour')").click();
-await page.waitForTimeout(150);
 const eTxt = await page.locator("#screen").textContent();
-ok(/Base \+ vie quotidienne/.test(eTxt) && /Entraînement du jour/.test(eTxt) && /Total/.test(eTxt), "carte dépense : base + entraînement + total affichés");
+ok(/Base \+ vie quotidienne/.test(eTxt) && /Entraînement du jour/.test(eTxt) && /Total/.test(eTxt), "carte dépense : base + entraînement + total affichés (ouverte par défaut)");
 ok(/protéines ~\d+/.test(eTxt) && /lipides ~\d+/.test(eTxt) && /glucides ~\d+/.test(eTxt), "macros indicatives affichées (fourchettes chiffrées)");
 ok(/pas un menu/i.test(eTxt) && /pas une consigne/i.test(eTxt), "garde-fous affichés : photographie, pas un menu ni une consigne");
-ok(!/déficit|maigrir|perte de poids|restriction/i.test(eTxt), "aucun vocabulaire de restriction dans la carte");
+ok(!/déficit|maigrir|perte de poids|restriction/i.test(eTxt), "aucun vocabulaire de restriction dans l'onglet Nutrition");
+ok(/Journal alimentaire/.test(eTxt), "journal alimentaire présent dans l'onglet Nutrition");
 
-// ---- 6. Strava OAuth : connexion via relais proposée au Profil, repli jeton manuel ----
+// ---- 6. Strava OAuth : connexion via relais au Profil, repli jeton manuel ----
 const t6 = await page.locator("#ebTabbar .tabbtn").all();
-await t6[0].click(); await page.waitForTimeout(250);
+await t6[0].click(); await page.waitForTimeout(300);
 ok(await page.locator("#pfStravaConnect").count() === 1, "bouton « Se connecter avec Strava » présent au Profil");
 ok(await page.locator("#pfStravaRelay").count() === 1, "champ URL du relais présent (server/README.md)");
 ok(await page.locator("#pfStravaTok").count() === 1, "repli jeton manuel conservé");
 await page.click("#pfStravaConnect"); await page.waitForTimeout(150);
 ok(/relais/i.test(await page.locator("#pfStravaMsg").textContent()), "sans URL de relais → message d'aide, pas de redirection");
-// retour OAuth simulé : #strava_auth dans l'URL → tokens stockés, hash nettoyé
 const authOk = await page.evaluate(async () => {
   const payload = btoa(JSON.stringify({ access_token: "at123", refresh_token: "rt456", expires_at: Math.floor(Date.now() / 1000) + 21600, athlete: { id: 1, firstname: "Théo" } }));
   location.hash = "#strava_auth=" + encodeURIComponent(payload);
@@ -141,11 +133,11 @@ const authOk = await page.evaluate(async () => {
   return { got, stored: S.answers.stravaAuth && S.answers.stravaAuth.access_token === "at123", hashClean: !location.hash.includes("strava_auth") };
 });
 ok(authOk.got && authOk.stored && authOk.hashClean, "retour OAuth : tokens stockés depuis le fragment, hash nettoyé");
-await t6[0].click(); await page.waitForTimeout(250);
+await t6[0].click(); await page.waitForTimeout(300);
 const connTxt = await page.locator("#screen").textContent();
 ok(/Connecté \(Théo\)/.test(connTxt), "état connecté affiché (prénom Strava)");
 ok(await page.locator("#pfStravaBtn").count() === 1 && (await page.locator("#pfStravaOut").count()) === 1, "boutons « Importer mes activités » et « Se déconnecter » présents");
-await page.click("#pfStravaOut"); await page.waitForTimeout(250);
+await page.click("#pfStravaOut"); await page.waitForTimeout(300);
 ok(await page.locator("#pfStravaConnect").count() === 1, "déconnexion → retour à l'état non connecté");
 
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + ")");

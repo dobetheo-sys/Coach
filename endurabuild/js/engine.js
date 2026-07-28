@@ -3210,6 +3210,9 @@ function adherenceV2(plan        , answers            , todayISO        )       
                     
                    
                       
+                          
+                          
+                                                                      
  
 const AVATAR_LEVELS                                               = [
   { name: "Premier pas", icon: "🥚", xp: 0 },
@@ -3235,6 +3238,9 @@ function avatarV2(plan        , answers            , todayISO        )          
   return {
     level: idx + 1, name: cur.name, icon: cur.icon, xp, xpInLevel, xpToNext,
     progressPct: next ? Math.max(0, Math.min(100, Math.round((xpInLevel / xpToNext) * 100))) : 100,
+    // Teaser du niveau suivant (UI Profil) — l'XP reste 100% régularité, jamais un chrono.
+    nextName: next ? next.name : null, nextIcon: next ? next.icon : null,
+    levels: AVATAR_LEVELS.map((l, i) => ({ level: i + 1, name: l.name, icon: l.icon, xp: l.xp })),
   };
 }
 

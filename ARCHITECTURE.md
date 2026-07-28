@@ -407,3 +407,41 @@ carte « 🔗 Strava » au 📋 Profil (URL du relais configurable `answers.stra
 clé PARTAGÉE entre plans comme `stravaAuth`), import réutilisant le même
 `stravaImport` → pont `syncRefsFromTests` que le jeton manuel — lequel reste le
 repli assumé sans serveur. Testé E2E (retour OAuth simulé par fragment).
+
+## Refonte R5 — navigation guidée par le premier retour du fondateur (28/07/2026)
+
+Retour intégral : accueil en diaporama, onglet central mis en valeur, Profil = identité,
+Plan = macro cliquable, Nutrition dédiée. Ordre des onglets : **📋 Profil · 🗓 Plan ·
+🎯 Aujourd'hui (central, `tab-central` dans la barre) · 📅 Semaine · 🥗 Nutrition** ;
+onglet par défaut : Aujourd'hui.
+
+- **`js/ui/checkin.js`** — check-in du matin en diaporama : 3 écrans (sommeil → VFC
+  optionnelle avec « je ne la suis pas » → ressenti), phrases de coach qui réagissent à
+  la réponse précédente, brouillon dans `S._ck` (jamais persisté). Le ressenti règle
+  aussi l'énergie du snapshot moteur (1 question athlète = 2 signaux moteur).
+  `applyReadinessSnap()` (readiness.js) est le cœur commun diaporama/carte « Modifier ».
+- **`js/ui/tab-today.js`** — l'écran du quotidien : gate diaporama → séance du jour
+  (heroSessionHTML, exporté par tab-week) → checklist en direct → prédiction + chrono
+  réel → courbe CTL/ATL/TSB → barre d'avancement → intensités → historique prévu/réel.
+- **`js/ui/tab-profile.js`** — identité d'abord : avatar + niveau + XP + teaser du
+  niveau suivant (`EBV2.avatar.nextName/levels`), niveaux intermédiaires PAR DISCIPLINE
+  en tri (séances ✓ par sport, seuils déclaratifs `DISC_LEVELS`), échéance du plan,
+  retest suggéré (dernière référence + 42 j), records, badges, efficience, conseils
+  personnalisés, journal (FTP/seuil/CSS/poids).
+- **`js/ui/tab-plan-general.js`** — bandeau rouge « réserves » SUPPRIMÉ (langage
+  développeur) ; les limites restent lisibles dans « Les décisions du moteur » (déplacé
+  ici), en langage neutre. Phases cliquables = sous-objectifs (`phaseObjectivesHTML`) :
+  intention en une phrase (PHASE_GOALS), semaines et états, validation = toutes les
+  semaines passées ET régulières (≥80 %). Séances de la grille en `<details>` partout.
+- **`js/ui/tab-nutrition.js`** — dépense estimée (ouverte) + macros indicatives +
+  ravitaillement par séance (météo différée) + journal alimentaire. Les garde-fous
+  N8–N10 ne bougent pas (CI).
+- **`js/ui/tab-week.js`** — la grille de semaine, ⇄, bilan hebdo, contenu du jour,
+  rappels, journal des verdicts, « Modifier ma forme du jour ». Sans check-in du jour →
+  redirection vers Aujourd'hui (la règle « rien avant le check-in » tient partout).
+- **CSS (mobile.css)** — `tab-central` (icône ronde surélevée), `.doneBtn` redessiné
+  (cercle fin, coche animée `ck-pop`), affordance `.gd-sess` (« détail »/« replier »),
+  gros boutons du diaporama.
+- **Supprimés** : `tab-progress.js`, `tab-monitor.js` (contenu redistribué),
+  `warningsBannerHTML`/`warningsAck` (remplacés par le langage neutre des décisions).
+- E2E réécrits pour la nouvelle navigation (4 suites, 109 assertions).

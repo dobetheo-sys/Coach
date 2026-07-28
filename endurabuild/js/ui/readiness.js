@@ -25,17 +25,14 @@ function verdictHTML(res,weather){
  *  le verdict, sauvegarde (daté — pas de nouvelle question tant que le jour ne change pas),
  *  écrit #rdResult si présent. Retourne {snap,res} pour que l'appelant (onglet Semaine)
  *  puisse ré-agencer l'écran (fin du check-in → séance du jour affichée). */
-async function applyReadiness(){
+/** Cœur commun : applique une forme du jour DÉJÀ collectée (diaporama d'accueil OU carte
+ *  « Modifier ma forme du jour ») — météo, verdict, sauvegarde datée, journal des verdicts. */
+async function applyReadinessSnap(base){
   if(!globalThis.EBV2)return null;
-  // Retour immédiat : la géoloc peut prendre jusqu'à ~3.5s (timeout) avant le verdict —
-  // sans ce message, le bouton semble muet/cassé pendant tout ce temps (retour panel de test).
-  const btn=$("rdApply");if(btn)btn.disabled=true;
-  if($("rdResult"))$("rdResult").innerHTML='<div class="load-sub">Analyse en cours…</div>';
   const snap={date:new Date().toISOString().slice(0,10),
-    sleepQuality:$("rdSleep").value,hrvStatus:$("rdHrv")?$("rdHrv").value:"normale",
-    energy:parseInt($("rdEnergy").value),feel:$("rdFeel").value};
+    sleepQuality:base.sleepQuality||"moyen",hrvStatus:base.hrvStatus||"normale",
+    energy:parseInt(base.energy)||55,feel:base.feel||"normal"};
   const wx=await fetchWeather();if(wx&&wx.tmaxC!=null)snap.weather=wx;
-  if(btn)btn.disabled=false;
   S.answers.readiness={date:snap.date,sleepQuality:snap.sleepQuality,hrvStatus:snap.hrvStatus,energy:snap.energy,feel:snap.feel};ebSave();
   let res;try{res=globalThis.EBV2.adjustToday(S.sport,S.answers,snap);}catch(e){console.warn(e);return null;}
   // Historique des verdicts : chaque adaptation quotidienne est archivée (une entrée par
@@ -44,8 +41,21 @@ async function applyReadiness(){
   S.answers.readinessLog=S.answers.readinessLog.filter(x=>x.date!==snap.date);
   S.answers.readinessLog.push({date:snap.date,level:res.adjustment.verdict.level,action:res.adjustment.action});
   S.answers.readinessLog=S.answers.readinessLog.slice(-90);ebSave();
-  if($("rdResult"))$("rdResult").innerHTML=verdictHTML(res,snap.weather);
   return {snap,res};
+}
+async function applyReadiness(){
+  if(!globalThis.EBV2)return null;
+  // Retour immédiat : la géoloc peut prendre jusqu'à ~3.5s (timeout) avant le verdict —
+  // sans ce message, le bouton semble muet/cassé pendant tout ce temps (retour panel de test).
+  const btn=$("rdApply");if(btn)btn.disabled=true;
+  if($("rdResult"))$("rdResult").innerHTML='<div class="load-sub">Analyse en cours…</div>';
+  const out=await applyReadinessSnap({
+    sleepQuality:$("rdSleep").value,hrvStatus:$("rdHrv")?$("rdHrv").value:"normale",
+    energy:parseInt($("rdEnergy").value),feel:$("rdFeel").value});
+  if(btn)btn.disabled=false;
+  if(!out)return null;
+  if($("rdResult"))$("rdResult").innerHTML=verdictHTML(out.res,out.snap.weather);
+  return out;
 }
 /** true si la forme du jour a déjà été renseignée AUJOURD'HUI (pas de nouvelle
  *  question tant que le jour ne change pas — ergonomique, jamais insistant). */
@@ -54,4 +64,4 @@ function readinessDoneToday(){
   return !!(r&&r.date===new Date().toISOString().slice(0,10));
 }
 
-export { applyReadiness, fetchWeather, readinessDoneToday };
+export { applyReadiness, applyReadinessSnap, fetchWeather, readinessDoneToday, verdictHTML };

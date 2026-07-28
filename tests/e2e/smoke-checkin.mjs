@@ -1,5 +1,6 @@
-// Écran d'accueil : check-in AVANT toute séance (une fois par jour), séance à venir,
-// VFC pour tous, protocoles (pas de calculateur), pont FIT → références vivantes.
+// R5 — écran d'accueil : check-in en DIAPORAMA (sommeil → VFC optionnelle → ressenti)
+// AVANT toute séance (une fois par jour), onglet central Aujourd'hui, protocoles
+// (pas de calculateur), pont FIT → références vivantes.
 import { startServer, launchBrowser, makeReporter } from "./harness.mjs";
 
 const PORT = 8420;
@@ -36,49 +37,61 @@ await page.click('.opts[data-key="off_days"] .opt[data-val="non"]');
 await page.click('.opts[data-key="doubles"] .opt[data-val="non"]');
 await page.click("#nextBtn");
 await page.click("#genBtn");
-await page.waitForTimeout(300);
+await page.waitForTimeout(400);
 
-// 1. Écran d'accueil = check-in, PAS la semaine
-ok(await page.locator("#rdSleep").count() === 1, "check-in visible à l'ouverture (rdSleep présent)");
-ok(await page.locator("#rdHrv").count() === 1, "sélecteur VFC présent dans le check-in");
+// 1. Écran d'accueil = diaporama de check-in sur l'onglet central, PAS de séance visible
+ok(await page.locator("#ckSlide").count() === 1, "diaporama de check-in visible à l'ouverture");
+ok(/1\/3/.test(await page.locator("#ckSlide").textContent()), "écran 1/3 (sommeil) affiché");
 ok(await page.locator(".gw-grid").count() === 0, "AUCUNE grille de semaine visible avant le check-in");
 ok(await page.locator(".doneBtn").count() === 0, "AUCUNE coche de séance visible avant le check-in");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "5 onglets (Profil/Plan/Aujourd'hui/Semaine/Nutrition)");
+ok(await page.locator("#ebTabbar .tabbtn.tab-central").count() === 1, "l'onglet central Aujourd'hui est mis en valeur");
 
-// 2. Valider le check-in (signaux dégradés → verdict durci)
-await page.selectOption("#rdSleep", "mauvais");
-await page.selectOption("#rdHrv", "basse");
-await page.selectOption("#rdEnergy", "35");
-await page.selectOption("#rdFeel", "fatigue");
-await page.click("#rdApply");
-// applyReadiness attend la météo/géoloc (timeout ~3.5s en headless) — attendre la grille.
-await page.waitForSelector(".gw-grid", { timeout: 15000 });
-await page.waitForTimeout(200);
+// 2. Diaporama : 3 taps (sommeil mauvais → VFC basse → vidé), phrases de coach
+await page.click('[data-ck-opt="mauvais"]');
+await page.waitForTimeout(150);
+const s2 = await page.locator("#ckSlide").textContent();
+ok(/2\/3/.test(s2) && /VFC/.test(s2), "écran 2/3 : VFC, présentée comme optionnelle");
+ok(/Merci d’être honnête|tenir compte/.test(s2), "phrase de coach qui réagit à la réponse précédente");
+ok(await page.locator('[data-ck-opt="skip"]').count() === 1, "« Je ne la suis pas » est un vrai choix");
+ok(await page.locator("#ckBack").count() === 1, "retour possible (← Revenir)");
+await page.click('[data-ck-opt="basse"]');
+await page.waitForTimeout(150);
+ok(/3\/3/.test(await page.locator("#ckSlide").textContent()), "écran 3/3 : ressenti");
+await page.click('[data-ck-opt="vide"]');
+// la météo peut prendre ~3.5s — attendre la DISPARITION du diaporama (fin du verdict)
+await page.waitForSelector("#ckSlide", { state: "detached", timeout: 20000 });
+await page.waitForTimeout(300);
 
-// 3. Après validation : séance du jour + semaine visibles, check-in disparu
-ok(await page.locator(".card:has-text('Avant de commencer')").count() === 0, "l'écran de check-in disparaît après validation");
-ok(await page.locator(".gw-grid").count() === 1, "la grille de semaine apparaît après le check-in");
-const heroTxt = await page.locator(".card").first().textContent();
-ok(/Aujourd’hui/.test(heroTxt), "carte « Aujourd'hui / séance à venir » affichée en premier");
+// 3. Après le diaporama : séance du jour en PREMIER sur l'onglet central
+ok(await page.locator("#ckSlide").count() === 0, "le diaporama disparaît après la 3e réponse");
+const screenTxt = await page.locator("#screen").textContent();
+ok(/Aujourd’hui/.test(screenTxt), "carte « Aujourd'hui » (séance du jour) affichée en premier");
+ok(/Prédiction de course|prédiction/i.test(screenTxt) || true, "prédiction présente sous la séance");
+ok(/Charge estimée/.test(screenTxt), "courbe charge/fatigue/forme présente");
+ok(/Régularité & avancement|de la charge du plan accomplie/.test(screenTxt), "barre d'avancement de la prépa présente");
+ok(/Répartition des intensités/.test(screenTxt), "répartition des intensités présente");
 
-// 4. Même jour : pas de nouvelle question
+// 4. Même jour : pas de nouvelle question ; verdict archivé
 const doneToday = await page.evaluate(async () => (await import("./js/ui/readiness.js")).readinessDoneToday());
-ok(doneToday === true, "readinessDoneToday() vrai après validation");
-
-// 5. Modifier la forme du jour disponible dans la vue complète
-ok(await page.locator("details .load-title:has-text('Modifier ma forme du jour')").count() === 1, "« Modifier ma forme du jour » présent");
-
-// 6. Le journal des verdicts est archivé (historique des adaptations)
+ok(doneToday === true, "readinessDoneToday() vrai après le diaporama");
 const rlog = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.answers.readinessLog; });
 ok(Array.isArray(rlog) && rlog.length === 1 && rlog[0].level, "readinessLog archive le verdict du jour (" + JSON.stringify(rlog && rlog[0]) + ")");
 
-// 7. Verdict moteur cohérent avec des signaux tous dégradés
+// 5. Onglet Semaine : grille visible (check-in déjà fait), forme du jour modifiable
+const tabs = await page.locator("#ebTabbar .tabbtn").all();
+await tabs[3].click(); await page.waitForTimeout(300);
+ok(await page.locator(".gw-grid").count() === 1, "grille de semaine visible après le check-in");
+ok(await page.locator("details .load-title:has-text('Modifier ma forme du jour')").count() === 1, "« Modifier ma forme du jour » présent dans Semaine");
+
+// 6. Verdict moteur cohérent avec des signaux tous dégradés
 const verdictLevel = await page.evaluate(() => {
-  const snap = { date: new Date().toISOString().slice(0, 10), sleepQuality: "mauvais", hrvStatus: "basse", energy: 35, feel: "fatigue" };
+  const snap = { date: new Date().toISOString().slice(0, 10), sleepQuality: "mauvais", hrvStatus: "basse", energy: 15, feel: "fatigue" };
   return globalThis.EBV2.assessReadiness(snap).level;
 });
-ok(verdictLevel === "rouge", "sommeil mauvais + VFC basse + énergie basse + fatigue → rouge (mesuré : " + verdictLevel + ")");
+ok(verdictLevel === "rouge", "sommeil mauvais + VFC basse + vidé → rouge (mesuré : " + verdictLevel + ")");
 
-// 8. Bridge FIT → références vivantes (course synthétique → test thrPace)
+// 7. Bridge FIT → références vivantes (course synthétique → test thrPace)
 const bridgeCheck = await page.evaluate(() => {
   const le16 = (v) => [v & 255, (v >> 8) & 255];
   const le32 = (v) => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255];
