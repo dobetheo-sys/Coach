@@ -89,25 +89,12 @@ const neutralWarn = await page.evaluate(async () => {
 ok(neutralWarn.noBanner, "même avec des warnings moteur : pas de bandeau rouge");
 ok(neutralWarn.inDetails, "les limites du plan restent lisibles dans les décisions (langage neutre)");
 
-// ---- 6. Onglet Nutrition : journal alimentaire + import CSV MFP ----
+// ---- 6. Onglet Nutrition : journal alimentaire RETIRÉ (décision utilisateur R6) ----
 const t3 = await page.locator("#ebTabbar .tabbtn").all();
 await t3[4].click(); await page.waitForTimeout(300);
-ok(await page.locator("#njCard").count() === 1, "carte « Journal alimentaire » présente dans l'onglet Nutrition");
-await page.locator("#njCard summary").click(); await page.waitForTimeout(150);
-await page.fill("#njName", "Pâtes complètes");
-await page.fill("#njCarbs", "72");
-await page.fill("#njKcal", "380");
-await page.click("#njAdd"); await page.waitForTimeout(250);
-ok(/Pâtes complètes/.test(await page.locator("#njCard").textContent()), "entrée manuelle ajoutée au journal");
-const csvContent = "Date,Meal,Calories,Fat (g),Carbohydrates (g),Protein (g)\n" + new Date().toISOString().slice(0, 10) + ",Breakfast,320,8,45,12\n";
-await page.setInputFiles("#njCsv", { name: "mfp.csv", mimeType: "text/csv", buffer: Buffer.from(csvContent) });
-await page.waitForTimeout(300);
-const csvInLog = await page.evaluate(async () => {
-  const { S } = await import("./js/state.js");
-  const today = new Date().toISOString().slice(0, 10);
-  return (S.answers.foodLog[today] || []).some((e) => e.src === "mfp-csv");
-});
-ok(csvInLog, "import CSV MyFitnessPal : ligne du jour intégrée au journal");
+const nutTxt = await page.locator("#screen").textContent();
+ok(await page.locator("#njCard").count() === 0 && !/Journal alimentaire/.test(nutTxt), "journal alimentaire retiré de l'onglet Nutrition");
+ok(/Dépense estimée du jour/.test(nutTxt) && /Ravitaillement|carburant/i.test(nutTxt), "l'onglet Nutrition garde dépense estimée + ravitaillement");
 
 // ---- 7. Semaine : coche ✓ → feedback RPE → félicitations + partage story ----
 const t5 = await page.locator("#ebTabbar .tabbtn").all();

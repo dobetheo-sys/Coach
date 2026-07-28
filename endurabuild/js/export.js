@@ -74,61 +74,83 @@ function exportPNG(){try{
 // (feuille de partage de l'OS → Story), avec repli téléchargement (Safari desktop…).
 // Pas de tracé GPS : l'import FIT actuel ne lit que le résumé de séance (pas les records
 // GPS point à point) — on ne promet pas de carte qu'on n'a pas.
-async function storyBlob(o){
+async function storyBlob(o,format){
   // o : {sessionName, detail, sport, streak, badge:{icon,label}|null, avatarSVG, accent}
-  const W=1080,H=1920,c=document.createElement("canvas");c.width=W;c.height=H;
+  // format (R6 — plusieurs types de partage) : "story" 1080×1920 (défaut) | "square" 1080×1080
+  const sq=format==="square";
+  const W=1080,H=sq?1080:1920,c=document.createElement("canvas");c.width=W;c.height=H;
   const x=c.getContext("2d");
   const acc=o.accent||"#ff7a1a";
   const grad=x.createLinearGradient(0,0,0,H);
   grad.addColorStop(0,"#f1eadb");grad.addColorStop(1,acc+"33");
   x.fillStyle=grad;x.fillRect(0,0,W,H);
   x.fillStyle=acc;x.fillRect(0,0,W,18);x.fillRect(0,H-18,W,18);
-  x.fillStyle="#16130e";x.font="900 88px 'Archivo Black',sans-serif";x.fillText(o.title||"SÉANCE FAITE ✔",70,190);
-  x.fillStyle=acc;x.font="700 52px 'Space Grotesk',sans-serif";
-  x.fillText((SPORTS[o.sport]?SPORTS[o.sport].ico+" "+SPORTS[o.sport].nom:o.sport||""),70,290);
+  x.fillStyle="#16130e";x.font="900 "+(sq?66:88)+"px 'Archivo Black',sans-serif";x.fillText(o.title||"SÉANCE FAITE ✔",70,sq?140:190);
+  x.fillStyle=acc;x.font="700 "+(sq?42:52)+"px 'Space Grotesk',sans-serif";
+  x.fillText((SPORTS[o.sport]?SPORTS[o.sport].ico+" "+SPORTS[o.sport].nom:o.sport||""),70,sq?210:290);
   // avatar au centre (SVG → Image via blob URL, même origine)
   if(o.avatarSVG){
     await new Promise(res=>{
       const b=new Blob([o.avatarSVG],{type:"image/svg+xml"});const u=URL.createObjectURL(b);
-      const im=new Image();im.onload=()=>{x.drawImage(im,W/2-260,360,520,572);URL.revokeObjectURL(u);res();};
+      const im=new Image();
+      const dims=sq?[W/2-170,250,340,374]:[W/2-260,360,520,572];
+      im.onload=()=>{x.drawImage(im,dims[0],dims[1],dims[2],dims[3]);URL.revokeObjectURL(u);res();};
       im.onerror=()=>{URL.revokeObjectURL(u);res();};im.src=u;
     });
   }
-  x.fillStyle="#16130e";x.font="800 64px 'Space Grotesk',sans-serif";
+  x.fillStyle="#16130e";x.font="800 "+(sq?52:64)+"px 'Space Grotesk',sans-serif";
   const name=(o.sessionName||"").slice(0,28);
-  x.fillText(name,Math.max(40,W/2-x.measureText(name).width/2),1080);
-  if(o.detail){x.font="500 40px 'Space Grotesk',sans-serif";x.fillStyle="#3f3a30";
+  x.fillText(name,Math.max(40,W/2-x.measureText(name).width/2),sq?700:1080);
+  if(o.detail){x.font="500 "+(sq?32:40)+"px 'Space Grotesk',sans-serif";x.fillStyle="#3f3a30";
     const det=String(o.detail).split("—")[0].slice(0,44);
-    x.fillText(det,Math.max(40,W/2-x.measureText(det).width/2),1150);}
-  let y=1280;
-  if(o.streak>1){x.font="700 54px 'Space Grotesk',sans-serif";x.fillStyle="#16130e";
+    x.fillText(det,Math.max(40,W/2-x.measureText(det).width/2),sq?755:1150);}
+  let y=sq?840:1280;
+  if(o.streak>1){x.font="700 "+(sq?44:54)+"px 'Space Grotesk',sans-serif";x.fillStyle="#16130e";
     const t="🔥 "+o.streak+" jours d'affilée";
-    x.fillText(t,Math.max(40,W/2-x.measureText(t).width/2),y);y+=90;}
-  if(o.badge){x.font="700 50px 'Space Grotesk',sans-serif";x.fillStyle="#8a6d00";
+    x.fillText(t,Math.max(40,W/2-x.measureText(t).width/2),y);y+=sq?66:90;}
+  if(o.badge){x.font="700 "+(sq?40:50)+"px 'Space Grotesk',sans-serif";x.fillStyle="#8a6d00";
     const t=o.badge.icon+" Badge débloqué : "+o.badge.label;
-    x.fillText(t.slice(0,40),Math.max(40,W/2-x.measureText(t.slice(0,40)).width/2),y);y+=90;}
-  x.font="500 36px 'Space Grotesk',sans-serif";x.fillStyle="#777";
+    x.fillText(t.slice(0,40),Math.max(40,W/2-x.measureText(t.slice(0,40)).width/2),y);y+=sq?66:90;}
+  x.font="500 "+(sq?28:36)+"px 'Space Grotesk',sans-serif";x.fillStyle="#777";
   const d=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
   x.fillText(d,Math.max(40,W/2-x.measureText(d).width/2),y+20);
-  x.font="700 40px 'Space Grotesk',sans-serif";x.fillStyle="#16130e";
-  x.fillText("ENDURABUILD",70,H-80);
-  x.font="500 30px 'Space Grotesk',sans-serif";x.fillStyle="#777";
-  x.fillText("plan raisonné · chaque décision justifiée",70,H-40);
+  x.font="700 "+(sq?32:40)+"px 'Space Grotesk',sans-serif";x.fillStyle="#16130e";
+  x.fillText("ENDURABUILD",70,H-(sq?66:80));
+  x.font="500 "+(sq?24:30)+"px 'Space Grotesk',sans-serif";x.fillStyle="#777";
+  x.fillText("plan raisonné · chaque décision justifiée",70,H-(sq?34:40));
   return new Promise(res=>c.toBlob(res,"image/png"));
 }
-/** Partage natif (feuille OS → Story Instagram/etc.) ; repli : téléchargement du PNG. */
-async function shareStory(o){
-  const blob=await storyBlob(o);
+/** Partage natif (feuille OS → Story Instagram/etc.) ; repli : téléchargement du PNG.
+ *  format : "story" (9:16, défaut) | "square" (1:1 — posts/groupes). */
+async function shareStory(o,format){
+  const blob=await storyBlob(o,format);
   if(!blob)return false;
-  const file=new File([blob],"endurabuild-seance.png",{type:"image/png"});
+  const fname=format==="square"?"endurabuild-carte.png":"endurabuild-seance.png";
+  const file=new File([blob],fname,{type:"image/png"});
   if(navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){
     try{await navigator.share({files:[file],title:"Séance faite — EnduraBuild"});return true;}
     catch(e){if(e&&e.name==="AbortError")return true;/* l'utilisateur a annulé : pas un échec */}
   }
   const u=URL.createObjectURL(blob);const l=document.createElement("a");
-  l.href=u;l.download="endurabuild-seance.png";document.body.appendChild(l);l.click();
+  l.href=u;l.download=fname;document.body.appendChild(l);l.click();
   setTimeout(()=>{document.body.removeChild(l);URL.revokeObjectURL(u);},200);
   return true;
 }
+/** R6 — partage TEXTE (WhatsApp/SMS/…) : résumé de séance en clair, feuille de partage
+ *  native, repli presse-papiers (puis rien si même le presse-papiers est refusé). */
+async function shareText(o){
+  const parts=["✔ Séance faite — "+(SPORTS[o.sport]?SPORTS[o.sport].nom:"")];
+  if(o.sessionName)parts.push(o.sessionName+(o.detail?" — "+String(o.detail).split("—")[0].trim():""));
+  if(o.streak>1)parts.push("🔥 "+o.streak+" jours d'affilée");
+  if(o.badge)parts.push(o.badge.icon+" Badge débloqué : "+o.badge.label);
+  parts.push("(EnduraBuild — plan raisonné)");
+  const text=parts.join("\n");
+  if(navigator.share){
+    try{await navigator.share({text});return "share";}
+    catch(e){if(e&&e.name==="AbortError")return "share";}
+  }
+  try{await navigator.clipboard.writeText(text);return "clipboard";}
+  catch(e){return null;}
+}
 
-export { _dl, exportICS, exportJSON, exportPNG, planToJSON, shareStory, storyBlob };
+export { _dl, exportICS, exportJSON, exportPNG, planToJSON, shareStory, shareText, storyBlob };

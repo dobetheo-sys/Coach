@@ -17,6 +17,8 @@
   --cut:255px 18px 225px 14px/16px 225px 16px 255px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
+html{overflow-x:hidden;} /* iOS : body seul ne suffit pas — sans ça, un débordement
+  horizontal permet de « panner » l'écran et la barre d'onglets semble disparaître */
 body{
   background:var(--bg);
   color:var(--text);

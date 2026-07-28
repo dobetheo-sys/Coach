@@ -3,6 +3,7 @@
 // manipule que des tokens d'accès utilisateur, stockés dans l'état (localStorage) comme
 // le reste. Repli assumé : sans relais configuré, l'import par jeton manuel marche toujours.
 import { S, ebSave } from "./state.js";
+import { STRAVA_RELAY_DEFAULT } from "./config.js";
 
 /** À l'ouverture de l'app : récupère les tokens renvoyés par le relais dans le fragment
  *  (#strava_auth=…, jamais en query string — le fragment ne quitte pas le navigateur).
@@ -27,9 +28,10 @@ function stravaAuthFromHash() {
   return true;
 }
 
-/** URL du relais, normalisée (answers.stravaRelay — clé partagée entre plans). */
+/** URL du relais : celle de l'app (config, déployée pour tous) d'abord, sinon celle
+ *  collée par l'utilisateur (réglages avancés). Clé partagée entre plans. */
 function stravaRelayUrl() {
-  return String(S.answers.stravaRelay || "").trim().replace(/\/+$/, "");
+  return String(S.answers.stravaRelay || STRAVA_RELAY_DEFAULT || "").trim().replace(/\/+$/, "");
 }
 
 /** Lance la connexion : simple redirection vers le relais, qui gère tout. */

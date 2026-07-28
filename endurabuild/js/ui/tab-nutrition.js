@@ -6,7 +6,10 @@
 // une cible d'apport, jamais un menu ; l'avertissement du moteur est TOUJOURS affiché.
 import { S, $ } from "../state.js";
 import { fetchWeather } from "./readiness.js";
-import { nutritionJournalHTML, bindNutritionJournal } from "./nutrition-journal.js";
+// R6 — le journal alimentaire (Open Food Facts + CSV) est RETIRÉ sur décision
+// utilisateur : trop de saisie pour trop peu de valeur ; l'onglet reste
+// estimations + ravitaillement. (Les données foodLog éventuelles restent
+// inoffensives dans l'état — rien n'est perdu si l'avis change.)
 
 // Estimation énergétique du jour (décision utilisateur 28/07/2026) — dépense, jamais cible.
 export function energyCardHTML(day, open) {
@@ -62,11 +65,9 @@ export function renderTabNutrition(plan) {
     + '<div class="why">Des estimations et des repères issus des consensus publiés — jamais un régime, jamais une cible d’apport. Ce qui compte : manger assez pour t’entraîner.</div>';
   html += energyCardHTML(todayDay, true); // dépense théorique + macros indicatives, ouvert
   html += nutritionCardHTML(todayDay, null); // ravitaillement par séance (météo en différé)
-  html += nutritionJournalHTML(todayDay, today); // journal alimentaire (repliable)
   html += "</div>";
   $("screen").innerHTML = html;
 
-  bindNutritionJournal(todayDay, today, () => renderTabNutrition(plan));
   if (todayDay) fetchWeather().then((wx) => {
     const el = $("nutCard");
     if (!el || !wx || wx.tmaxC == null) return;

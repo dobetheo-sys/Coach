@@ -81,3 +81,9 @@ const CATS=[["struct","🧱","Structure"],["sante","❤️","Santé & garde-fous
 const HEROS=["cycle","volume","intent","sante"];
 
 export { CATS, HEROS, PREMIUM_STEPS_DEF, QLABELS, RULE_CAT, SPORTS, VLAB };
+
+// R6 — relais OAuth Strava par défaut : renseigner ICI l'URL du worker une fois déployé
+// (server/README.md) — tous les utilisateurs auront alors la connexion en 1 clic, sans
+// rien coller. Vide = pas encore déployé (repli : champ URL en réglages avancés + jeton).
+const STRAVA_RELAY_DEFAULT = "";
+export { STRAVA_RELAY_DEFAULT };

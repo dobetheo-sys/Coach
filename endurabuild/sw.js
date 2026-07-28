@@ -2,7 +2,7 @@
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
    une météo périmée est pire qu'une absence de météo). */
-const VERSION = "eb-pwa-v11"; // v11 : refonte R5 — accueil diaporama, onglet central Aujourd'hui, onglet Nutrition
+const VERSION = "eb-pwa-v12"; // v12 : R6 — fix avatar, validation dans Aujourd’hui, phases dépliantes, parcours→prédiction, Strava 1 clic
 const ASSETS = [
   "./",
   "./index.html",
@@ -26,7 +26,6 @@ const ASSETS = [
   "./js/ui/tab-week.js",
   "./js/ui/checkin.js",
   "./js/ui/avatar.js",
-  "./js/ui/nutrition-journal.js",
   "./js/ui/celebrations.js",
   "./js/ui/retest.js",
   "./js/ui/modal.js",

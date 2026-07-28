@@ -445,3 +445,38 @@ onglet par défaut : Aujourd'hui.
 - **Supprimés** : `tab-progress.js`, `tab-monitor.js` (contenu redistribué),
   `warningsBannerHTML`/`warningsAck` (remplacés par le langage neutre des décisions).
 - E2E réécrits pour la nouvelle navigation (4 suites, 109 assertions).
+
+## R6 — deuxième retour du fondateur (28/07/2026, soir)
+
+Dix points, tous traités :
+- **Bug avatar** : `</div>` manquant dans le teaser XP (tout le reste de la carte se
+  retrouvait DANS la ligne flex → colonnes écrasées, débordement horizontal) ; corrigé,
+  + `html{overflow-x:hidden}` (le débordement expliquait la « barre d'onglets disparue » :
+  pan horizontal iOS, la barre restait au viewport d'origine).
+- **Validation dans 🎯 Aujourd'hui** : `todayValidateHTML` — un gros bouton par séance du
+  jour (repos compris), même clé `done`, même boucle feedback→célébration que la grille.
+- **Partages multiples** (`export.js`) : `storyBlob(o, format)` — story 9:16 (défaut) et
+  carte carrée 1:1 ; `shareText` (feuille native, repli presse-papiers). La célébration
+  propose 📸 Story · 🖼 Carte · 💬 Texte.
+- **Phases → programme** (`tab-plan-general.js`) : la frise (`[data-phseg]`) est cliquable
+  et ouvre/descend vers le `.ph-obj` correspondant, qui liste LE PROGRAMME (semaines, jour
+  par jour, coches ✓ actives). **Validation = toutes les séances de la phase cochées**
+  (remplace le critère ≥80 % hebdo — demande explicite).
+- **Nouveau plan** : données de la PERSONNE pré-remplies (âge/sexe/poids/taille/refs/
+  parcours/dépistage médical) + `prevPlanId` ; bouton « ← Revenir à mon plan en cours »
+  sur tous les écrans du questionnaire (steps.js `backToPlanHTML`), brouillon abandonné
+  retiré de la liste.
+- **Profil du parcours** (`predictor.ts` PRED-parcours) : plat/vallonné (+3–6 %)/montagneux
+  (+8–15 %) appliqué aux temps course à pied en DÉCALANT ET ÉLARGISSANT la fourchette
+  (l'incertitude monte avec le relief) ; sélecteur au Profil (`answers.course_profile`),
+  n'affecte que la prédiction.
+- **Strava 1 clic** : `STRAVA_RELAY_DEFAULT` dans `config.js` (à renseigner au déploiement
+  du worker — plus rien à coller pour les utilisateurs), gros bouton unique, URL du relais
+  reléguée en « Réglages avancés », message pédagogique si aucun relais.
+- **Check-in re-jouable** : « ↻ Refaire mon point du matin » (Aujourd'hui) — efface la
+  readiness du jour (le journal des verdicts garde l'historique) et relance le diaporama.
+- **Journal alimentaire RETIRÉ** (décision utilisateur) : module `nutrition-journal.js`
+  supprimé, l'onglet Nutrition garde estimations + ravitaillement. `answers.foodLog`
+  éventuel reste inerte dans l'état.
+- E2E : 121 assertions (validation Aujourd'hui + 3 partages, programme de phase + phase
+  validée, pré-remplissage + retour, journal retiré).

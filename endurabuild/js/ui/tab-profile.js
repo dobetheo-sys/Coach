@@ -8,7 +8,7 @@ import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc } from "../state.js";
 import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js";
 import { renderPlan } from "./plan-view.js";
 import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
-import { stravaConnect, stravaAccessToken, stravaDisconnect } from "../strava.js";
+import { stravaConnect, stravaAccessToken, stravaDisconnect, stravaRelayUrl } from "../strava.js";
 import { AVATAR_THEMES, avatarDataFor, avatarSVG } from "./avatar.js";
 import { shareStory } from "../export.js";
 import { evalRules, rulesGrouped } from "./steps.js";
@@ -156,6 +156,11 @@ function bindPlansSelector() {
   if (np) np.onclick = () => {
     ebSave(); // fige l'actuel
     const e = ebNewPlanEntry("");
+    // R6 — pré-remplir les données de la PERSONNE (elles ne changent pas d'un plan à
+    // l'autre) : le questionnaire les propose pré-cochées au lieu de tout redemander.
+    const PERSONAL = ["age", "sex", "weight", "height", "ftp", "ftp_known", "pace", "pace_known", "css", "css_known", "course_profile", "med_pain", "med_dizzy", "med_treat"];
+    PERSONAL.forEach((k) => { if (S.answers[k] !== undefined && S.answers[k] !== "") e.answers[k] = S.answers[k]; });
+    e.prevPlanId = S.activePlanId; // pour le bouton « revenir à mon plan » du questionnaire
     S.plans.push(e);
     ebActivate(e.id);
     ebSave();
@@ -181,7 +186,7 @@ function avatarSectionHTML(plan, todayISO) {
     + '<div style="flex:1"><div style="font-weight:800;font-size:16px">' + av.icon + " " + av.name + '</div>'
     + '<div style="font-size:11px;color:#777">Niveau ' + av.level + " · " + av.xp + " XP" + (av.xpToNext ? " (" + av.xpInLevel + "/" + av.xpToNext + " dans ce niveau)" : " · niveau maximum") + "</div>"
     + '<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:12px;overflow:hidden;margin-top:6px"><div style="height:100%;width:' + av.progressPct + '%;background:linear-gradient(90deg,#00a376,#00b8d9)"></div></div>'
-    + (av.nextName ? '<div style="font-size:11px;margin-top:4px">Prochain niveau : <b>' + av.nextIcon + " " + av.nextName + "</b> — encore " + (av.xpToNext - av.xpInLevel) + " XP de régularité." : "")
+    + (av.nextName ? '<div style="font-size:11px;margin-top:4px">Prochain niveau : <b>' + av.nextIcon + " " + av.nextName + "</b> — encore " + (av.xpToNext - av.xpInLevel) + " XP de régularité.</div>" : "")
     + "</div></div>";
   if (adh) {
     if (adh.frozenToday) h += '<div class="load-sub" style="margin-top:8px">❄️ Série <b>gelée</b> (douleur ou maladie) : ' + adh.days + " jour" + (adh.days > 1 ? "s" : "") + " au compteur, rien n’est perdu.</div>";
@@ -300,6 +305,11 @@ export function renderTabProfile(plan) {
   // Taille : réintroduite AVEC un effet réel (métabolisme de base Mifflin-St Jeor, carte
   // « Dépense estimée » de l'onglet Semaine) — règle d'influence des paramètres respectée.
   html += row("pfHeight", "Taille (cm, optionnel)", a.height, "affine la dépense de base");
+  // R6 — profil du parcours visé : affine la PRÉDICTION (temps course à pied) sans
+  // toucher au plan. Vallonné/montagneux → fourchette décalée et élargie, justifiée.
+  const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
+  html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Profil du parcours visé</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
+    + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
   html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Rappel quotidien</span><input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label>';
   html += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
     + '<div id="pfMsg" class="load-sub" style="margin-top:6px"></div></div>';
@@ -353,10 +363,14 @@ export function renderTabProfile(plan) {
       + '<button class="btn" id="pfStravaBtn" type="button">Importer mes activités</button>'
       + '<button class="btn" id="pfStravaOut" type="button">Se déconnecter</button></div>';
   } else {
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
-      + '<input type="text" id="pfStravaRelay" placeholder="URL du relais (voir server/README.md)" value="' + esc(a.stravaRelay || "") + '" style="flex:1;min-width:180px">'
-      + '<button class="btn primary" id="pfStravaConnect" type="button">Se connecter avec Strava</button></div>'
-      + '<div class="load-sub" style="margin-top:4px">Un clic, autorisation sur Strava, retour ici — le relais garde le secret, l’app ne lit que tes activités (jamais d’écriture).</div>';
+    // R6 — UX guidée : UN bouton. L'URL du relais vit en config (déployée pour tous)
+    // ou dans les réglages avancés — l'utilisateur normal n'a rien à coller.
+    html += '<div style="margin-top:4px"><button class="btn primary" id="pfStravaConnect" type="button" style="width:100%;font-size:15px;padding:12px 16px">🔗 Se connecter avec Strava</button></div>'
+      + '<div class="load-sub" style="margin-top:4px">Un clic → autorisation sur Strava → retour ici. Lecture seule (jamais d’écriture), tes activités alimentent tes références (FTP/allure/CSS).</div>'
+      + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Réglages avancés (relais)</summary>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
+      + '<input type="text" id="pfStravaRelay" placeholder="URL du relais (voir server/README.md)" value="' + esc(a.stravaRelay || "") + '" style="flex:1;min-width:180px"></div>'
+      + '<div class="load-sub" style="margin-top:4px">Le relais garde le secret Strava hors de l’app — déploiement pas-à-pas dans server/README.md.</div></details>';
   }
   html += (S._stravaError ? '<div class="load-sub" style="margin-top:4px;color:#b3261e">Connexion Strava refusée (' + esc(S._stravaError) + ") — réessaie ou utilise le jeton manuel.</div>" : "")
     + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Repli : jeton manuel (sans serveur)</summary>'
@@ -496,10 +510,13 @@ export function renderTabProfile(plan) {
   };
   const stravaConnBtn = $("pfStravaConnect");
   if (stravaConnBtn) stravaConnBtn.onclick = () => {
-    const relay = (($("pfStravaRelay") || {}).value || "").trim();
+    const typed = (($("pfStravaRelay") || {}).value || "").trim();
+    if (typed) { S.answers.stravaRelay = typed; ebSave(); }
     const m = $("pfStravaMsg");
-    if (!relay) { if (m) m.textContent = "Colle d’abord l’URL de ton relais (déploiement pas-à-pas dans server/README.md du dépôt)."; return; }
-    S.answers.stravaRelay = relay;
+    if (!stravaRelayUrl()) {
+      if (m) m.innerHTML = "La connexion en 1 clic sera active quand le relais sera en ligne (15 min, <b>server/README.md</b>). En attendant : « Réglages avancés » pour coller l’URL d’un relais, ou le jeton manuel ci-dessous — les deux marchent.";
+      return;
+    }
     S._stravaError = null;
     ebSave();
     if (m) m.textContent = "Redirection vers Strava…";
@@ -570,6 +587,10 @@ export function renderTabProfile(plan) {
     const hgt = g("pfHeight");
     if (hgt !== null && hgt !== "" && parseFloat(hgt) > 0 && hgt !== String(a.height || "")) {
       S.answers.height = hgt; changed++; // n'affecte que l'estimation de dépense, pas le plan
+    }
+    const cp = ($("pfCourseProfile") || {}).value;
+    if (cp !== undefined && cp !== String(a.course_profile || "")) {
+      S.answers.course_profile = cp; changed++; // n'affecte que la prédiction, pas le plan
     }
     if (!changed) { const m = $("pfMsg"); if (m) m.textContent = "Aucun changement détecté."; return; }
     if (planChanged) invalidatePlan(); // le plan sera régénéré UNE fois, ici — pas au changement d'onglet

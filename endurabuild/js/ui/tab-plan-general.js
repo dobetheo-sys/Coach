@@ -24,33 +24,47 @@ const PHASE_GOALS = {
   taper: "Affûtage : le volume descend, la forme monte. Ne rien rajouter.",
   recup: "Récupérer — c'est là que le corps progresse vraiment.",
 };
+// Le clic (sur le segment coloré OU sur la ligne de la phase) DÉROULE LE PROGRAMME de la
+// phase : ses semaines, jour par jour, avec les mêmes coches ✓ que partout. La phase est
+// « ✅ validée » quand TOUTES ses séances sont cochées (retour utilisateur R6).
+function phaseStats(plan, p) {
+  const wks = plan.weeks.filter((w) => w.phase && w.phase.nom === p.nom);
+  let total = 0, done = 0;
+  wks.forEach((w) => w.days.forEach((d) => d.sessions.forEach((s, si) => {
+    if (s.d === "rs") return;
+    total++;
+    if (S.answers.done && S.answers.done[w.num + "|" + d.jour + "|" + si]) done++;
+  })));
+  return { wks, total, done, validated: total > 0 && done === total };
+}
 function phaseObjectivesHTML(plan) {
-  if (!globalThis.EBV2 || !globalThis.EBV2.progress) return "";
-  let weekly = [];
-  try { weekly = globalThis.EBV2.progress(plan, S.answers, new Date().toISOString().slice(0, 10)).weekly || []; } catch (e) { return ""; }
-  const byNum = {};
-  weekly.forEach((w) => { byNum[w.num] = w; });
-  let h = '<div class="load-card"><div class="load-title">🎯 Sous-objectifs — une phase à la fois</div>';
+  let h = '<div class="load-card"><div class="load-title">🎯 Sous-objectifs — une phase à la fois</div>'
+    + '<div class="load-sub" style="margin-top:4px">Touche une phase (ici ou dans la frise ci-dessus) pour dérouler son programme. Coche toutes ses séances : la phase se valide.</div>';
   plan.phases.forEach((p) => {
-    const wks = plan.weeks.filter((w) => w.phase && w.phase.nom === p.nom);
-    const rows = wks.map((w) => byNum[w.num]).filter(Boolean);
-    const past = rows.filter((r) => r.complete);
-    const okN = past.filter((r) => r.ok).length;
-    const started = past.length > 0;
-    const validated = wks.length > 0 && past.length === rows.length && rows.length > 0 && okN === past.length;
-    const pct = rows.length ? Math.round((okN / rows.length) * 100) : 0;
-    const state = validated ? "✅ validée" : started ? "en cours" : "à venir";
-    h += '<details class="ph-obj" style="margin-top:8px;border-left:4px solid ' + p.c + ';padding-left:10px"><summary style="cursor:pointer;font-size:13px"><b>' + p.nom + "</b> · " + wks.length + " sem — <i>" + state + "</i>"
+    const st = phaseStats(plan, p);
+    const pct = st.total ? Math.round((st.done / st.total) * 100) : 0;
+    const state = st.validated ? "✅ Phase validée" : st.done > 0 ? st.done + "/" + st.total + " séances ✓" : "à venir";
+    const open = S._phOpen === p.nom;
+    h += '<details class="ph-obj" data-ph="' + p.nom + '"' + (open ? " open" : "") + ' style="margin-top:8px;border-left:4px solid ' + p.c + ';padding-left:10px"><summary style="cursor:pointer;font-size:13px"><b>' + p.nom + "</b> · " + st.wks.length + " sem — <i>" + state + "</i>"
       + '<div style="background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden;margin-top:4px"><div style="height:100%;width:' + pct + "%;background:" + p.c + '"></div></div></summary>'
       + '<div class="load-sub" style="margin-top:6px">' + (PHASE_GOALS[(p.id || "").toLowerCase()] || PHASE_GOALS[p.nom ? p.nom.toLowerCase().slice(0, 4) : ""] || "Une étape du plan, au service de la suivante.") + "</div>";
-    wks.forEach((w) => {
-      const r = byNum[w.num];
-      const mark = !r || !r.complete ? "○ à venir" : r.ok ? "✅ régulière" : "◐ " + r.done + "/" + r.total + " séances";
-      h += '<div style="font-size:12px;margin-top:3px">Semaine ' + w.num + " · " + w.vol + "h" + (w.isRecup ? " (récup)" : "") + " — " + mark + "</div>";
+    // LE PROGRAMME : chaque semaine de la phase, jour par jour, coches comprises
+    st.wks.forEach((w) => {
+      h += '<div style="font-size:12px;margin-top:8px;font-weight:700">Semaine ' + w.num + " · " + w.vol + "h" + (w.isRecup ? " (récup)" : "") + "</div>";
+      w.days.forEach((d) => {
+        const items = d.sessions.map((s, si) => {
+          const k = w.num + "|" + d.jour + "|" + si;
+          const dn = S.answers.done && S.answers.done[k];
+          const chk = s.d !== "rs" ? '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" title="Marquer fait">' + (dn ? "✓" : "○") + "</button> " : "";
+          return chk + s.name;
+        }).join(" · ");
+        h += '<div style="font-size:12px;margin:3px 0 0 4px;color:#3f3a30"><b style="display:inline-block;width:34px">' + d.jour + "</b> " + items + "</div>";
+      });
     });
+    if (st.validated) h += '<div style="margin-top:8px;font-size:13px;font-weight:700;color:#00734f">✅ Phase validée — tout est fait. La suivante s’appuie sur ce travail.</div>';
     h += "</details>";
   });
-  h += '<div class="load-sub" style="margin-top:8px">Une phase se valide quand toutes ses semaines sont passées ET régulières (≥80% des séances) — la régularité, pas la perfection.</div></div>';
+  h += "</div>";
   return h;
 }
 
@@ -61,7 +75,7 @@ export function renderTabPlanGeneral(plan) {
     + '<div class="why">' + plan.totalWeeks + " semaines en " + (plan.use10 ? "cycles de 10 jours (qui glissent)" : "semaines de 7 jours") + ", volume " + plan.volBase + "h → " + plan.volPeak + "h.</div>";
   html += driverBand(a);
   html += '<div class="ph-line">';
-  plan.phases.forEach((p) => { html += '<div class="ph-seg" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + '"><span>' + p.nom + "</span><em>" + p.weeks + "sem</em></div>"; });
+  plan.phases.forEach((p) => { html += '<button type="button" class="ph-seg" data-phseg="' + p.nom + '" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span>' + p.nom + "</span><em>" + p.weeks + "sem</em></button>"; });
   html += "</div>";
   html += phaseObjectivesHTML(plan);
   html += '<div class="vol-bars">';
@@ -91,6 +105,18 @@ export function renderTabPlanGeneral(plan) {
   html += '<div class="warn" style="background:var(--bg2)">Intensités calibrées sur tes données. Les exports fonctionnent depuis cet onglet, quel que soit l’onglet consulté ensuite.</div>'
     + '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="backBp" type="button">← Modifier</button><button class="btn gold" id="allW" type="button">' + (S.showAllWeeks ? "Réduire" : "Voir les " + plan.totalWeeks + " semaines") + '</button><button class="btn primary" id="prn" type="button">🖨 HTML</button><button class="btn" id="expIcs" type="button">📅 Agenda (.ics)</button><button class="btn" id="expJson" type="button">{ } JSON</button><button class="btn" id="expPng" type="button">🖼 PNG</button><button class="btn" id="restartBtn" type="button">Changer de sport</button></div></div>';
   $("screen").innerHTML = html;
+  // R6 — la frise de phases est cliquable : ouvre le programme de la phase et y descend.
+  document.querySelectorAll("#screen [data-phseg]").forEach((b) => {
+    b.onclick = () => {
+      S._phOpen = S._phOpen === b.dataset.phseg ? null : b.dataset.phseg;
+      renderTabPlanGeneral(plan);
+      const el = document.querySelector('#screen .ph-obj[data-ph="' + b.dataset.phseg + '"]');
+      if (el && S._phOpen) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+  });
+  document.querySelectorAll("#screen .ph-obj").forEach((dt) => {
+    dt.addEventListener("toggle", () => { if (dt.open) S._phOpen = dt.dataset.ph; else if (S._phOpen === dt.dataset.ph) S._phOpen = null; });
+  });
   $("backBp").onclick = () => { S.step = curSteps().length - 1; renderStep(); };
   $("allW").onclick = () => { S.showAllWeeks = !S.showAllWeeks; renderTabPlanGeneral(plan); window.scrollTo(0, 0); }; // re-rend la VUE — pas de buildPlan
   $("prn").onclick = () => downloadPlan();
