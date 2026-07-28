@@ -15,12 +15,33 @@ function currentWeek(plan) {
   );
 }
 
+// Célébrations « moment » (RESTE-A-FAIRE #6) : bannières ponctuelles aux instants qui
+// comptent — jour de course, veille de course, entrée en affûtage. Purement visuel,
+// calculé depuis le plan déjà généré ; dégrade proprement si les jours n'ont pas de date.
+export function momentHTML(plan, todayISO) {
+  const today = todayISO || new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(new Date(today + "T00:00:00Z").getTime() + 864e5).toISOString().slice(0, 10);
+  const raceDates = (plan.races || []).map((r) => r.date);
+  if (S.answers && S.answers.race_date) raceDates.push(S.answers.race_date);
+  const B = (bg, txt) => '<div class="warn" style="background:' + bg + ';font-weight:600">' + txt + "</div>";
+  if (raceDates.includes(today))
+    return B("#ffe3e0", "\u{1F3C1} <b>Jour de course.</b> Tout le travail est fait — départ prudent, finis fort. Bonne course !");
+  if (raceDates.includes(tomorrow))
+    return B("#fff3d6", "\u{1F389} <b>Veille de course.</b> Objectif du jour : des jambes fraîches. Repos, hydratation, matériel préparé — demain tu récoltes.");
+  let taperStart = null;
+  plan.weeks.forEach((w) => w.days.forEach((d) => { if (!taperStart && (d.phaseId === "taper" || (w.phase && w.phase.id === "taper"))) taperStart = d.date; }));
+  if (taperStart && taperStart === today)
+    return B("#e9defc", "✂️ <b>L’affûtage commence.</b> Le volume descend, la forme monte — le plus dur est derrière toi. Ne rajoute rien.");
+  return "";
+}
+
 export function renderTabWeek(plan) {
   const w = currentWeek(plan);
   const raceTag = w.race
     ? ' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700">\u{1F3C1} COURSE ' + w.race + "</span>"
     : w.postRace ? ' <span style="color:#9b72ff;font-size:10px">↳ récup post-course</span>' : "";
   let html = '<div class="card"><div class="eyebrow">Ta semaine</div>';
+  html += momentHTML(plan);
   html += '<div class="gw"><div class="gw-h"><b>Semaine ' + w.num + "</b><span style=\"color:" + (w.phase.c || "#555") + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + "</em></div>";
   const today = new Date().toISOString().slice(0, 10);
   html += '<div class="gw-grid">';
@@ -34,7 +55,8 @@ export function renderTabWeek(plan) {
         return chk + "<b>" + s.name + "</b>" + (s.det ? '<span class="gd-det">' + s.det + "</span>" : "");
       })
       .join("");
-    html += '<div class="gd ' + d.charge + (d.date === today ? " today" : "") + '"><div class="gd-top"><b>' + d.jour + "</b>" + (d.date === today ? "<i>aujourd’hui</i>" : "") + '</div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
+    const mark = d.date === today ? "<i>aujourd’hui</i>" : (plan.use10 ? "<i>C" + d.cyc + "J" + d.jc + "</i>" : "");
+    html += '<div class="gd ' + d.charge + (d.date === today ? " today" : "") + '"><div class="gd-top"><b>' + d.jour + "</b>" + mark + '</div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
   });
   html += "</div></div>";
   html += readinessCardHTML();

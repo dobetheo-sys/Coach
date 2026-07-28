@@ -56,6 +56,16 @@ instrumenté par un compteur, puis 8 changements d'onglet (2 tours complets) →
   par `esc()` (state.js) — testé avec une entrée hostile dans le journal : neutralisée.
 - **Service worker** : version `eb-pwa-v2`, les 5 nouveaux modules ajoutés au cache.
 
+## Compléments après la refonte
+
+- **Mode 10 jours (`use10`) vérifié de bout en bout** dans la vue à onglets : marqueurs
+  de cycle C×J×, case « aujourd'hui » surlignée, semaine courante correcte —
+  11/11 assertions Chromium (profil vélo, dispo quotidienne).
+- **Célébrations « moment »** (`momentHTML` dans `tab-week.js`) : bannière ponctuelle le
+  jour de course, la veille de course (courses intermédiaires `plan.races` ET course
+  principale `race_date`), et le premier jour d'affûtage. Silencieux les jours ordinaires,
+  dégrade proprement si le plan n'a pas de dates (repli legacy).
+
 ## Détails d'implémentation notables
 
 - La coche des séances reste possible aussi dans le calendrier de l'onglet 🗓 Plan

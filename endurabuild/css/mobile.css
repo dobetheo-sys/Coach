@@ -95,6 +95,14 @@ body.has-tabs { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 body.has-tabs .nav { position: static; padding: 10px 0; }
 body.has-tabs .hero, body.has-tabs .progress { display: none; }
 
+/* --- Onglet Semaine : la case du jour saute aux yeux (style papier/collage) --- */
+.gd.today {
+  outline: 3px solid #e63946;
+  outline-offset: 1px;
+  box-shadow: 3.5px 3.5px 0 #e63946;
+}
+.gd.today .gd-top i { font-size: 9px; color: #e63946; }
+
 /* --- Confort de lecture des fiches séance au doigt --- */
 @media (pointer: coarse) {
   .gd { padding: 10px; }

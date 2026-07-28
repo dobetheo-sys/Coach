@@ -45,8 +45,8 @@ du jour). Plan généré UNE fois (`S.currentPlan`), 0 `buildPlan` au changement
 | 3 | **Source FIT (upload fichier)** | Moyen | rien | Parser le format FIT en zéro-dépendance est faisable mais dense. Alternative : accepter l'export CSV/GPX. Slot déjà prévu dans `ReadinessSource`. |
 | 4 | **Nutrition** | Moyen | avis nutritionniste | Calories, macros, glucides/heure sur les longues, hydratation par température (la météo est déjà là). Architecture prévue (`src/nutrition/` dans la roadmap). |
 | 5 | **API Garmin (HRV/sommeil auto)** | Moyen | agrément Garmin Health API (B2B, non garanti) | La logique est prête et agnostique de la source — si l'accès arrive un jour, c'est un adaptateur à écrire, rien d'autre. |
-| 6 | **Célébrations « moment »** | Petit | rien | Veille de course, fin d'affûtage — notifications visuelles ponctuelles (les badges durables existent). |
-| 7 | **Vue 10 jours (cycles use10)** | Petit | rien | Le moteur gère les cycles de 10 jours (dispo quotidienne) ; vérifier le rendu UI de bout en bout sur ce mode — moins testé que le 7 jours. |
+| ~~6~~ | ~~Célébrations « moment »~~ | — | — | ✅ Fait (PWA : bannières jour de course / veille de course / entrée en affûtage dans l'onglet 📅 Semaine, `momentHTML`). |
+| ~~7~~ | ~~Vue 10 jours (cycles use10)~~ | — | — | ✅ Vérifié en navigateur réel (profil `dispo quotidienne` : marqueurs C×J×, case « aujourd'hui », coche, semaine courante — 11/11 assertions vertes). |
 
 ## 🧹 Dettes techniques assumées (documentées, pas urgentes)
 
