@@ -1,5 +1,8 @@
 # Rapport de migration PWA — Coach_Pro_V1.5.html → endurabuild/
 
+> Depuis cette migration, la vue plan a été réorganisée en **4 onglets** —
+> voir `RAPPORT-ONGLETS.md` (brief `BRIEF_CLAUDE_CODE_ONGLETS.md`).
+
 Livrable du brief `BRIEF_CLAUDE_CODE_MIGRATION_PWA.md`. Migration réalisée par
 **extraction mécanique** (`scripts/splitPwa.py`) : les chunks top-level du script
 principal sont copiés verbatim et routés par nom — la fidélité est garantie par

@@ -30,6 +30,12 @@ polices auto-hébergées en vrais woff2, export PNG ajouté, validée en navigat
 486/486 à l'audit. Voir `endurabuild/RAPPORT-MIGRATION-PWA.md`. **À toi : la tester sur
 téléphone** (étape 8 du brief) avant de retirer le monolithe.
 
+**Refonte 4 onglets faite** (brief `BRIEF_CLAUDE_CODE_ONGLETS.md`) : 📋 Profil (réglages
+éditables + journal d'évolution), 🗓 Plan (vision macro + exports), 📈 Avancement (charge,
+régularité, prédiction, décisions), 📅 Semaine (défaut : semaine courante + coche + Forme
+du jour). Plan généré UNE fois (`S.currentPlan`), 0 `buildPlan` au changement d'onglet
+(mesuré), barre fixe en bas avec safe-area. Voir `endurabuild/RAPPORT-ONGLETS.md`.
+
 ## 🔧 Reste côté code — par ordre recommandé
 
 | # | Chantier | Effort | Bloqué par | Détail |

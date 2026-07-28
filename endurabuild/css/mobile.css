@@ -56,6 +56,45 @@ body {
   .gw-grid { grid-template-columns: 1fr; }
 }
 
+/* --- Barre d'onglets (refonte 4 onglets) : fixe en bas, usage à une main.
+       env(safe-area-inset-bottom) respecte la zone gestuelle iOS
+       (le viewport a viewport-fit=cover dans index.html). --- */
+#ebTabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  background: var(--bg, #f1eadb);
+  border-top: 2px solid #16130e;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tabbtn {
+  flex: 1;
+  min-height: 54px; /* ≥44px tactile */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 11px;
+  color: #635b4a;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.tabbtn .tabico { font-size: 20px; line-height: 1; }
+.tabbtn.active { color: #16130e; font-weight: 700; box-shadow: inset 0 3px 0 #16130e; }
+/* Le contenu ne doit jamais finir caché sous la barre */
+body.has-tabs { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+/* Dans la vue à onglets, la barre d'onglets prend le bas : la .nav redevient statique,
+   et le hero + la barre de progression du questionnaire s'effacent (écran léger). */
+body.has-tabs .nav { position: static; padding: 10px 0; }
+body.has-tabs .hero, body.has-tabs .progress { display: none; }
+
 /* --- Confort de lecture des fiches séance au doigt --- */
 @media (pointer: coarse) {
   .gd { padding: 10px; }

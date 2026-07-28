@@ -2,7 +2,7 @@
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
    une météo périmée est pire qu'une absence de météo). */
-const VERSION = "eb-pwa-v1";
+const VERSION = "eb-pwa-v2"; // v2 : refonte en 4 onglets
 const ASSETS = [
   "./",
   "./index.html",
@@ -18,6 +18,11 @@ const ASSETS = [
   "./js/ui/steps.js",
   "./js/ui/plan-view.js",
   "./js/ui/readiness.js",
+  "./js/ui/tabs.js",
+  "./js/ui/tab-profile.js",
+  "./js/ui/tab-plan-general.js",
+  "./js/ui/tab-progress.js",
+  "./js/ui/tab-week.js",
   "./assets/fonts/archivo-black-400.woff2",
   "./assets/fonts/space-grotesk-500-700.woff2",
   "./assets/fonts/caveat-600-700.woff2",

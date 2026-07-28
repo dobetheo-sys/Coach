@@ -3,6 +3,7 @@
 import { CATS, HEROS, PREMIUM_STEPS_DEF, RULE_CAT, SPORTS, VLAB, fieldTests } from "../config.js";
 import { $, S, ebClear, ebSave, esc } from "../state.js";
 import { renderPlan } from "../ui/plan-view.js";
+import { hideTabs, invalidatePlan } from "../ui/tabs.js";
 import { buildPlan } from "../app.js";
 
 function opt(val,label){return '<button class="opt" data-val="'+val+'" type="button">'+label+'</button>';}
@@ -333,7 +334,7 @@ function renderSportPick(){
   document.querySelectorAll(".sport-card").forEach(b=>b.onclick=()=>{S.sport=b.dataset.sport;document.body.dataset.sport=b.dataset.sport;S.started=true;S.step=0;renderStep();});
 }
 function renderStep(){
-  S.onPlan=false;ebSave();
+  S.onPlan=false;ebSave();hideTabs(); // questionnaire AVANT les onglets — jamais dedans (brief onglets)
   if(!S.sport){renderSportPick();return;}
   const steps=curSteps(),fT=buildFreeSteps().length+1,pT=buildPremiumSteps().length+1;
   let p="";
@@ -373,6 +374,6 @@ function renderBlueprint(){
     renderPlan();return;
   }
 }
-function reset(){S.sport=null;S.answers={};S.step=0;S.tier="free";S.started=false;S.showAllWeeks=false;S.onPlan=false;ebClear();document.body.dataset.intent="";document.body.dataset.sport="";renderStep();}
+function reset(){S.sport=null;S.answers={};S.step=0;S.tier="free";S.started=false;S.showAllWeeks=false;S.onPlan=false;invalidatePlan();ebClear();document.body.dataset.intent="";document.body.dataset.sport="";renderStep();}
 
 export { _fk100, bindInputs, branch, buildFreeSteps, buildPremiumSteps, curCfg, curSteps, ebAddTest, ebAvailArr, ebAvailDur, ebAvailSet, ebParseT, evalRules, injuryOpts, levelStep, opt, refreshNav, refreshTrail, renderBlueprint, renderSportPick, renderStep, reset, ruleTrigger, rulesGrouped, stravaImport, vlab };

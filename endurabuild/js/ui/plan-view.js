@@ -1,11 +1,10 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
 import { SPORTS } from "../config.js";
-import { $, S, ebSave } from "../state.js";
-import { curSteps, evalRules, opt, refreshTrail, renderStep, reset } from "../ui/steps.js";
-import { applyReadiness } from "../ui/readiness.js";
-import { exportICS, exportJSON, planToJSON, exportPNG } from "../export.js";
+import { S } from "../state.js";
+import { evalRules } from "../ui/steps.js";
 import { buildPlan } from "../app.js";
+import { renderTabs, invalidatePlan } from "./tabs.js";
 
 const _IFZ={"bk.z2":.65,"bk.ss":.90,"bk.vo2":1.12,"bk.frc":.82,"bk.rp":.84,"bk.thr":1.0,
   "rn.easy":.68,"rn.mara":.84,"rn.thr":.98,"rn.vo2":1.10,"rn.rec":.60,
@@ -67,34 +66,14 @@ function driverBand(a){
   else C("💪","Renfo intégré","#9b72ff");
   return '<div class="drv-band"><div class="drv-title">Ce qui pilote ton plan</div><div class="drv-wrap">'+chips.join("")+'</div></div>';
 }
+// Refonte onglets : l'ancien rendu monolithique est réparti dans js/ui/tab-*.js
+// (général / avancement / semaine / profil). renderPlan reste le point d'entrée
+// historique (steps.js « Générer », app.js reprise d'état) : il invalide le plan —
+// les réponses ont pu changer — puis délègue au conteneur d'onglets, qui appelle
+// buildPlan UNE seule fois via ensurePlan(). Un changement d'onglet ne régénère jamais.
 function renderPlan(){
-  S.onPlan=true;ebSave();
-  const a=S.answers,plan=buildPlan(a),ic={sw:"🏊",bk:"🚴",rn:"🏃",br:"🔁",rs:"💪"};
-  let html='<div class="card"><div class="eyebrow">Génération — '+SPORTS[S.sport].nom+'</div><h2>Ton calendrier prend forme</h2>'
-    +'<div class="why">'+plan.totalWeeks+' semaines en '+(plan.use10?"cycles de 10 jours (qui glissent)":"semaines de 7 jours")+', volume '+plan.volBase+'h → '+plan.volPeak+'h.</div>';
-  html+=driverBand(a);
-  html+='<div class="ph-line">';plan.phases.forEach(p=>html+='<div class="ph-seg" style="flex:'+p.weeks+';background:'+p.c+'22;border-color:'+p.c+'"><span>'+p.nom+'</span><em>'+p.weeks+'sem</em></div>');html+='</div>';
-  html+='<div class="vol-bars">';plan.weeks.forEach(w=>{const h=Math.max(8,Math.round(w.vol/plan.volPeak*52));html+='<div class="vb" style="height:'+h+'px;background:'+(w.isRecup?"#9b72ff":w.phase.c)+'" title="S'+w.num+' '+w.vol+'h"></div>';});html+='</div><div class="vol-cap">1 barre = 1 semaine · violet = récup</div>';
-  // Suivi de charge + compliance
-  let _totalS=0;plan.weeks.forEach(w=>w.days.forEach(d=>d.sessions.forEach(s=>{if(s.d!=="rs")_totalS++;})));
-  const _doneN=S.answers.done?Object.keys(S.answers.done).filter(k=>S.answers.done[k]).length:0;
-  html+='<div class="load-card"><div class="load-title">Charge estimée — fitness · fatigue · forme</div>'+loadChartSVG(plan)
-    +'<div class="load-leg"><span style="color:#2e6bff">▬ Fitness (CTL)</span> · <span style="color:#ff7a1a">▬ Fatigue (ATL)</span> · <span style="color:#00a376">▬ Forme (TSB)</span></div>'
-    +'<div class="load-sub">Estimée sans capteur, depuis la durée et l\'intensité de chaque séance (modèle TSS/CTL/ATL). La forme remonte à l\'affûtage — c\'est le but. Coche tes séances (○ → ✓) : <b>'+_doneN+' / '+_totalS+'</b> faites'+(_totalS?' ('+Math.round(_doneN/_totalS*100)+'%)':"")+'.</div></div>';
-  html+=v2ExtrasHTML(plan);
-  const show=S.showAllWeeks?plan.weeks:[...plan.weeks.slice(0,3),plan.weeks[plan.weeks.length-1]];
-  show.forEach((w,ix)=>{if(!S.showAllWeeks&&ix===3)html+='<div class="wk-skip">⋯ semaines 4 à '+(plan.totalWeeks-1)+' ⋯</div>';
-    const raceTag=w.race?' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700">🏁 COURSE '+w.race+'</span>':(w.postRace?' <span style="color:#9b72ff;font-size:10px">↳ récup post-course</span>':"");
-    html+='<div class="gw"><div class="gw-h"><b>Semaine '+w.num+'</b><span style="color:'+w.phase.c+'">'+w.phase.nom+'</span>'+raceTag+'<em>'+w.vol+'h'+(w.isRecup?" récup":"")+'</em></div><div class="gw-grid">';
-    w.days.forEach(d=>{const bg=d.sessions.map(s=>'<span>'+ic[s.d]+'</span>').join("");const nm=d.sessions.map((s,si)=>{const k=w.num+"|"+d.jour+"|"+si;const dn=S.answers.done&&S.answers.done[k];const chk=s.d!=="rs"?'<button class="doneBtn'+(dn?" done":"")+'" type="button" data-dk="'+k+'" title="Marquer fait">'+(dn?"✓":"○")+'</button> ':"";return chk+'<b>'+s.name+'</b>'+(s.det?'<span class="gd-det">'+s.det+'</span>':"");}).join("");
-      html+='<div class="gd '+d.charge+'"><div class="gd-top"><b>'+d.jour+'</b>'+(plan.use10?'<i>C'+d.cyc+'J'+d.jc+'</i>':"")+'</div><div class="gd-badges">'+bg+'</div><div class="gd-n">'+nm+'</div></div>';});
-    html+='</div></div>';});
-  html+='<div class="warn" style="background:var(--bg2)">Intensités calibrées sur tes données. Version complète : nutrition quotidienne, courses placées, checkpoints.</div>'
-    +'<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="backBp" type="button">← Modifier</button><button class="btn gold" id="allW" type="button">'+(S.showAllWeeks?"Réduire":"Voir les "+plan.totalWeeks+" semaines")+'</button><button class="btn primary" id="prn" type="button">🖨 HTML</button><button class="btn" id="expIcs" type="button">📅 Agenda (.ics)</button><button class="btn" id="expJson" type="button">{ } JSON</button><button class="btn" id="expPng" type="button">\ud83d\uddbc PNG</button><button class="btn" id="restartBtn" type="button">Changer de sport</button></div></div>';
-  $("screen").innerHTML=html;$("backBp").onclick=()=>{S.step=curSteps().length-1;renderStep();};$("allW").onclick=()=>{S.showAllWeeks=!S.showAllWeeks;renderPlan();window.scrollTo(0,0);};$("prn").onclick=()=>downloadPlan();$("expIcs").onclick=()=>exportICS();$("expJson").onclick=()=>exportJSON();const _ep=$("expPng");if(_ep)_ep.onclick=()=>exportPNG();$("restartBtn").onclick=()=>reset();
-  const _rb=$("rdApply");if(_rb)_rb.onclick=applyReadiness;
-  document.querySelectorAll(".doneBtn").forEach(b=>b.onclick=()=>{if(!S.answers.done)S.answers.done={};const k=b.dataset.dk;if(S.answers.done[k])delete S.answers.done[k];else S.answers.done[k]=true;ebSave();const sc=window.pageYOffset;renderPlan();window.scrollTo(0,sc);});
-  refreshTrail();
+  invalidatePlan();
+  renderTabs();
 }
 // Bug 2/5 — brancher planToJSON (interopérabilité) + export .ics (agenda de l'athlète).
 function downloadPlan(){
@@ -138,7 +117,23 @@ function downloadPlan(){
 // ===== MOTEUR V2 (bundle EBV2, injecté en fin de fichier) =====
 // La génération passe par le moteur TypeScript raisonné (src/ → npm run build:app).
 // Le générateur legacy ci-dessus reste en REPLI si le bundle manque (vieux exports).
-function v2ExtrasHTML(plan){
+// Refonte onglets : l'ancien v2ExtrasHTML est scindé en deux —
+//   readinessCardHTML()  → carte « Forme du jour », rendue par l'onglet 📅 Semaine ;
+//   progressCardsHTML(p) → régularité/badges, prédiction, historique, intensités,
+//                          décisions du moteur, rendus par l'onglet 📈 Avancement.
+function readinessCardHTML(){
+  if(!globalThis.EBV2)return "";
+  const saved=(S.answers.readiness||{});
+  return '<div class="load-card"><div class="load-title">🌡 Forme du jour — adapte ta séance</div>'
+    +'<div class="load-sub" style="margin-bottom:8px">Trois réponses au réveil, le moteur ajuste la journée (remplacer, réduire, reposer — jamais forcer).</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+    +'<select id="rdSleep" class="opt" style="padding:6px 10px"><option value="bon"'+(saved.sleepQuality==="bon"?" selected":"")+'>Sommeil bon</option><option value="moyen"'+(saved.sleepQuality==="moyen"?" selected":"")+'>Sommeil moyen</option><option value="mauvais"'+(saved.sleepQuality==="mauvais"?" selected":"")+'>Sommeil mauvais</option></select>'
+    +'<select id="rdEnergy" class="opt" style="padding:6px 10px"><option value="80"'+(saved.energy===80?" selected":"")+'>Énergie haute</option><option value="55"'+(saved.energy===55?" selected":"")+'>Énergie moyenne</option><option value="35"'+(saved.energy===35?" selected":"")+'>Énergie basse</option><option value="15"'+(saved.energy===15?" selected":"")+'>Vidé·e</option></select>'
+    +'<select id="rdFeel" class="opt" style="padding:6px 10px"><option value="frais"'+(saved.feel==="frais"?" selected":"")+'>Frais</option><option value="normal"'+(saved.feel==="normal"||!saved.feel?" selected":"")+'>Normal</option><option value="fatigue"'+(saved.feel==="fatigue"?" selected":"")+'>Fatigué</option></select>'
+    +'<button class="btn primary" id="rdApply" type="button">Adapter ma journée</button></div>'
+    +'<div id="rdResult" style="margin-top:10px"></div></div>';
+}
+function progressCardsHTML(plan){
   let h="";
   if(globalThis.EBV2&&globalThis.EBV2.progress){
     const pg=globalThis.EBV2.progress(plan,S.answers,new Date().toISOString().slice(0,10));
@@ -157,17 +152,6 @@ function v2ExtrasHTML(plan){
         h+='</div>';}
     }
     h+='</div>';
-  }
-  if(globalThis.EBV2){
-    const saved=(S.answers.readiness||{});
-    h+='<div class="load-card"><div class="load-title">\ud83c\udf21 Forme du jour \u2014 adapte ta s\u00e9ance</div>'
-      +'<div class="load-sub" style="margin-bottom:8px">Trois r\u00e9ponses au r\u00e9veil, le moteur ajuste la journ\u00e9e (remplacer, r\u00e9duire, reposer \u2014 jamais forcer).</div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-      +'<select id="rdSleep" class="opt" style="padding:6px 10px"><option value="bon"'+(saved.sleepQuality==="bon"?" selected":"")+'>Sommeil bon</option><option value="moyen"'+(saved.sleepQuality==="moyen"?" selected":"")+'>Sommeil moyen</option><option value="mauvais"'+(saved.sleepQuality==="mauvais"?" selected":"")+'>Sommeil mauvais</option></select>'
-      +'<select id="rdEnergy" class="opt" style="padding:6px 10px"><option value="80"'+(saved.energy===80?" selected":"")+'>\u00c9nergie haute</option><option value="55"'+(saved.energy===55?" selected":"")+'>\u00c9nergie moyenne</option><option value="35"'+(saved.energy===35?" selected":"")+'>\u00c9nergie basse</option><option value="15"'+(saved.energy===15?" selected":"")+'>Vid\u00e9\u00b7e</option></select>'
-      +'<select id="rdFeel" class="opt" style="padding:6px 10px"><option value="frais"'+(saved.feel==="frais"?" selected":"")+'>Frais</option><option value="normal"'+(saved.feel==="normal"||!saved.feel?" selected":"")+'>Normal</option><option value="fatigue"'+(saved.feel==="fatigue"?" selected":"")+'>Fatigu\u00e9</option></select>'
-      +'<button class="btn primary" id="rdApply" type="button">Adapter ma journ\u00e9e</button></div>'
-      +'<div id="rdResult" style="margin-top:10px"></div></div>';
   }
   if(globalThis.EBV2&&globalThis.EBV2.predict){
     try{
@@ -219,4 +203,4 @@ function v2ExtrasHTML(plan){
 // Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
 // pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
 
-export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, loadSeries, renderPlan, v2ExtrasHTML };
+export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, loadSeries, renderPlan, readinessCardHTML, progressCardsHTML };
