@@ -169,5 +169,25 @@ const snap = (s: Omit<ReadinessSnapshot, "date">, date: string): ReadinessSnapsh
   check("invariants 30 jours : hors verte jamais plus de minutes, toujours une décision", ok);
 }
 
+// ---- R4.5 (spec rétention §14) : le drapeau douleur verrouille TOUTE intensité >Z2 ----
+{
+  const HARD = [".vo2", ".thr", ".speed", ".css", ".ss", ".rp", ".frc", ".mara"];
+  const isHardSession = (s: { d: string; steps?: { role: string; zone?: string | null }[] }) =>
+    (s.steps || []).some((st) => st.role === "body" && typeof st.zone === "string" && HARD.some((z) => (st.zone as string).endsWith(z)));
+  const { plan, reasoned } = freshPlan();
+  // un jour de qualité (dur) du plan, testé avec TOUT au vert sauf la douleur
+  const hardDay = plan.weeks.flatMap((w) => w.days).find((d) => d.sessions.some(isHardSession) && (d as { date?: string }).date);
+  const date = (hardDay as { date?: string }).date!;
+  const adj = adjustDay(reasoned, plan, date, { date, sleepQuality: "bon", energy: 90, feel: "frais", painFlag: true, painLocation: "tibia" });
+  check("douleur signalée → verdict rouge malgré des signaux tous verts", adj.verdict.level === "rouge", adj.verdict.level);
+  check("douleur → plus AUCUNE séance >Z2 ce jour (qualité remplacée/repos)", !hardDay!.sessions.some(isHardSession), hardDay!.sessions.map((s) => s.name).join(", "));
+  check("douleur → le verdict s'explique (driver douleur + consulte)", adj.verdict.drivers.some((d) => /douleur/.test(d) && /médecin|kiné/.test(d)));
+  // R4.7 — RPE 8+ hier : signal annoncé (jamais silencieux)
+  const { plan: p3, reasoned: r3 } = freshPlan();
+  const d3 = p3.weeks.flatMap((w) => w.days).map((d) => (d as { date?: string }).date!).filter(Boolean)[5];
+  const adj3 = adjustDay(r3, p3, d3, { date: d3, sleepQuality: "bon", energy: 80, lastRpe: 9 });
+  check("RPE 9 hier → signal de fatigue présent dans les drivers", adj3.verdict.drivers.some((d) => /RPE 9/.test(d)));
+}
+
 if (failures > 0) { console.error("\n✗ " + failures + " scénario(s) readiness en échec"); process.exitCode = 1; }
 else console.log("\n✓ Adaptation readiness : tous les scénarios de la roadmap passent.");

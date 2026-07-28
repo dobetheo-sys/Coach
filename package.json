@@ -11,6 +11,7 @@
     "demo:readiness": "node src/audit/readinessDemo.ts",
     "demo:fit": "node src/audit/fitDemo.ts",
     "demo:nutrition": "node src/audit/nutritionDemo.ts",
+    "demo:retention": "node src/audit/retentionDemo.ts",
     "build:app": "node scripts/buildApp.mjs",
     "check:app": "node scripts/buildApp.mjs --check"
   },

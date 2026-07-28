@@ -87,6 +87,17 @@ export interface TodayAdjustment {
 /** Adapte la journée `snapshot.date` à l'état de forme — « recalcul du matin ». */
 export function adjustTodayV2(sport: string, answers: AppAnswers, snapshot: ReadinessSnapshot): TodayAdjustment {
   const { plan, reasoned } = generatePlan(toProfile(sport, answers));
+  // R4.5/R4.7 — le drapeau douleur et le RPE de la dernière séance validée entrent
+  // AUTOMATIQUEMENT dans la photo du jour (aucun appelant ne peut les oublier) :
+  // douleur active → rouge forcé ; RPE ≥8 hier → signal de fatigue annoncé.
+  const pf = answers.painFlag as { active?: boolean; location?: string } | undefined;
+  if (snapshot.painFlag == null && pf && pf.active) snapshot = { ...snapshot, painFlag: true, painLocation: pf.location };
+  if (snapshot.lastRpe == null && answers.completions) {
+    const comps = Object.values(answers.completions as Record<string, { date?: string; rpe?: number }>)
+      .filter((c) => c && c.date && c.date < snapshot.date && c.rpe != null)
+      .sort((x, y) => String(y.date).localeCompare(String(x.date)));
+    if (comps.length) snapshot = { ...snapshot, lastRpe: comps[0].rpe };
+  }
   // Boucle prévu/réel : les séances cochées dans l'UI nourrissent le calcul de fatigue,
   // complétées par les séances importées d'un fichier FIT (answers.fitSessions) —
   // même contrat CompletedSession ; dédoublonnage date+sport (une séance cochée ET
@@ -191,6 +202,42 @@ export function badgesV2(plan: V1Plan, answers: AppAnswers, todayISO: string): B
   return out;
 }
 
+/** R4.2 — Streak d'adhérence par JOUR (spec rétention). L'unité est le jour global
+ *  complété : TOUTES les séances planifiées du jour validées — Y COMPRIS le repos
+ *  (« récupération respectée ✓ », qui compte STRICTEMENT autant qu'un jour de séance).
+ *  GEL (jamais de perte) : douleur signalée ou maladie déclarée — ces jours ne comptent
+ *  ni ne cassent. Déborder du plan ne rapporte RIEN (seules les séances planifiées
+ *  comptent — il n'existe aucun chemin de gratification pour du volume hors plan). */
+export interface Adherence {
+  days: number;
+  todayComplete: boolean;
+  frozenToday: boolean;
+}
+export function adherenceV2(plan: V1Plan, answers: AppAnswers, todayISO: string): Adherence {
+  const done = (answers.done || {}) as Record<string, boolean>;
+  const sick = (answers.sickDates || []) as string[];
+  const pf = answers.painFlag as { active?: boolean; since?: string } | undefined;
+  const frozen = (date: string) => sick.includes(date) || !!(pf && pf.active && pf.since && date >= pf.since);
+  const days: { date: string; complete: boolean }[] = [];
+  for (const w of plan.weeks)
+    for (const d of w.days) {
+      const dd = (d as { date?: string }).date;
+      if (!dd || dd > todayISO) continue;
+      const complete = d.sessions.every((s, si) => done[w.num + "|" + d.jour + "|" + si]);
+      days.push({ date: dd, complete });
+    }
+  days.sort((a, b) => a.date.localeCompare(b.date));
+  let streak = 0;
+  for (let i = days.length - 1; i >= 0; i--) {
+    const d = days[i];
+    if (d.complete) streak++;
+    else if (frozen(d.date) || d.date === todayISO) continue; // gel, ou journée pas finie
+    else break;
+  }
+  const today = days.find((d) => d.date === todayISO);
+  return { days: streak, todayComplete: !!(today && today.complete), frozenToday: frozen(todayISO) };
+}
+
 /** Avatar évolutif — gamification (onglet 🎮 Suivi). MÊME philosophie que les badges :
  *  l'XP est CUMULATIF et ne redescend jamais (une semaine ratée n'efface rien), calculé
  *  depuis les métriques déjà existantes (progressV2/badgesV2) — aucune nouvelle collecte,
@@ -259,7 +306,8 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   predict: predictV2,
   badges: badgesV2,
   avatar: avatarV2,
+  adherence: adherenceV2,
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
-  version: "v2-sprint7",
+  version: "v2-sprint8",
 };

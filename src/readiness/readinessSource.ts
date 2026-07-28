@@ -32,6 +32,13 @@ export interface ReadinessSnapshot {
   feel?: Feel;
   completed?: CompletedSession[]; // séances réellement effectuées (7 derniers jours)
   weather?: WeatherInfo; // prévision du jour (Open-Meteo côté app ; absent = pas d'effet)
+  /** R4.5 — drapeau douleur actif (posé au feedback post-séance) : verrouille TOUTE
+   *  intensité >Z2 tant qu'il n'est pas explicitement levé. Santé = priorité n°1. */
+  painFlag?: boolean;
+  painLocation?: string;
+  /** R4.7 — RPE de la dernière séance validée (1-10) : un 8+ hier pèse sur aujourd'hui,
+   *  et l'ajustement est ANNONCÉ (c'est la différence entre un PDF et un coach). */
+  lastRpe?: number;
 }
 
 /** Météo du jour — manifeste §6 : canicule → repos/intensité réduite, chaleur → tôt le matin, pluie → surface. */
@@ -63,6 +70,14 @@ export interface ReadinessVerdict {
 export function assessReadiness(s: ReadinessSnapshot): ReadinessVerdict {
   const drivers: string[] = [];
   let score = 0; // négatif = fatigue
+  // R4.5 — douleur signalée : rouge FORCÉ, quels que soient les autres signaux. La qualité
+  // (>Z2) est remplacée par de la récupération tant que le drapeau n'est pas levé.
+  if (s.painFlag) {
+    drivers.push("douleur signalée" + (s.painLocation ? " (" + s.painLocation + ")" : "") + " — intensité verrouillée, consulte médecin/kiné si ça persiste");
+    return { level: "rouge", drivers };
+  }
+  // R4.7 — la séance d'hier était très dure (RPE ≥8) : signal de fatigue annoncé.
+  if (s.lastRpe != null && s.lastRpe >= 8) { score -= 1; drivers.push("séance d'hier très dure (RPE " + s.lastRpe + "/10)"); }
   if (s.sleepQuality === "mauvais" || (s.sleepHours != null && s.sleepHours < 5.5)) { score -= 2; drivers.push("sommeil dégradé"); }
   else if (s.sleepQuality === "moyen" || (s.sleepHours != null && s.sleepHours < 6.5)) { score -= 1; drivers.push("sommeil moyen"); }
   else if (s.sleepQuality === "bon") { score += 1; drivers.push("sommeil bon"); }

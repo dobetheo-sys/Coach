@@ -101,8 +101,8 @@ async function storyBlob(o){
     const det=String(o.detail).split("—")[0].slice(0,44);
     x.fillText(det,Math.max(40,W/2-x.measureText(det).width/2),1150);}
   let y=1280;
-  if(o.streak>0){x.font="700 54px 'Space Grotesk',sans-serif";x.fillStyle="#16130e";
-    const t="🔥 "+o.streak+" semaine"+(o.streak>1?"s":"")+" de régularité";
+  if(o.streak>1){x.font="700 54px 'Space Grotesk',sans-serif";x.fillStyle="#16130e";
+    const t="🔥 "+o.streak+" jours d'affilée";
     x.fillText(t,Math.max(40,W/2-x.measureText(t).width/2),y);y+=90;}
   if(o.badge){x.font="700 50px 'Space Grotesk',sans-serif";x.fillStyle="#8a6d00";
     const t=o.badge.icon+" Badge débloqué : "+o.badge.label;

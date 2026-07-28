@@ -2000,6 +2000,84 @@ const FORBIDDEN = [
   "une séance dont l'objectif n'est pas expliqué",
 ];
 
+// ===== src/engine/disciplineRegistry.ts =====
+/**
+ * Registre de disciplines (spec rétention R4.1) — la COUTURE D'EXTENSIBILITÉ du moteur.
+ *
+ * Le trio natation/vélo/course était codé en dur ; le trail était traité comme de la
+ * course route (faux : métriques, charge musculaire excentrique, compétences distinctes).
+ * Ce registre déclare chaque discipline comme DONNÉE : métrique primaire, source de
+ * zones (test de référence + protocole de retest), type de volume (distance vs durée),
+ * compétences trackées, règles de charge propres.
+ *
+ * Décision d'architecture (documentée dans RAPPORT-R4-RETENTION.md) : le registre est la
+ * source déclarative que consultent générateur et UI ; les disciplines historiques
+ * (sw/bk/rn) gardent leurs identifiants `d` existants — le contrat V1Plan et les 486
+ * combinaisons d'audit restent inchangés. Le TRAIL reste porté par le pipeline course
+ * (format "trail" du sport run) mais ses spécificités viennent d'ICI, plus du code en
+ * dur. Ajouter une discipline = ajouter une entrée (+ ses gabarits de séance) — le test
+ * d'extensibilité de la spec (§14) vérifie qu'une entrée fictive ne casse rien.
+ */
+
+                                 
+             
+                
+                                                    
+                                                                           
+                                                                                          
+                                                                                            
+                                                                                                 
+                                      
+                                                                         
+                   
+                                                                                            
+                      
+                                                                                              
+                  
+ 
+
+const DISCIPLINE_REGISTRY                                 = {
+  swim: {
+    id: "swim", label: "Natation", primaryMetric: "pace_100m",
+    zonesSource: { test: "CSS (400m + 200m à fond)", protocol: "Nage 400m à fond, récupère 10min, puis 200m à fond : l'écart de temps donne ton allure critique au 100m.", refKey: "css" },
+    volumeUnit: "distance", skills: ["technique", "respiration", "virages", "eau libre"],
+    loadRules: ["zéro impact : tolère les plus hautes fréquences", "épaule = zone sentinelle (coiffe)"],
+    impact: false,
+  },
+  bike: {
+    id: "bike", label: "Vélo", primaryMetric: "power_w",
+    zonesSource: { test: "FTP (20min à fond)", protocol: "20 minutes à fond après échauffement : FTP ≈ 95% de la puissance moyenne.", refKey: "ftp" },
+    volumeUnit: "duration", skills: ["position aéro", "pilotage", "cadence"],
+    loadRules: ["zéro impact : gros volumes tolérés", "force basse cadence = charge musculaire, espacer des séances de course"],
+    impact: false,
+  },
+  run: {
+    id: "run", label: "Course route", primaryMetric: "pace_km",
+    zonesSource: { test: "Allure seuil (3min + 10min à fond)", protocol: "3min à fond, récupération complète, puis 10min à fond : l'écart de distance donne l'allure seuil. Un 10-15km récent à fond est une bonne estimation.", refKey: "thrPace" },
+    volumeUnit: "distance", skills: ["économie de course", "gammes", "pacing"],
+    loadRules: ["impact = risque n°1 : volume progressif, jamais deux longues consécutives", "plafond de jours d'impact par semaine"],
+    impact: true,
+  },
+  trail: {
+    id: "trail", label: "Trail", primaryMetric: "gap_pace",
+    zonesSource: { test: "Allure seuil (3min + 10min à fond, sur plat)", protocol: "Même test que la route, SUR PLAT : en trail l'allure brute ne veut rien dire, on raisonne en GAP (allure ajustée à la pente) quand les données existent, sinon en FC/RPE.", refKey: "thrPace" },
+    volumeUnit: "duration", // temps + D+, JAMAIS en km seul (spec §2)
+    skills: ["descente technique", "montée au train", "navigation", "gestion ravito"],
+    loadRules: [
+      "volume planifié en TEMPS + D+ (un km de trail n'est pas un km de route)",
+      "descente = charge excentrique : délais de récupération rallongés après forte descente",
+      "mêmes flags de prudence impact que la course route (périostite : descentes = drapeau)",
+    ],
+    impact: true,
+  },
+};
+
+/** D+ cible d'une sortie longue trail, dérivé de la durée (~350-450m/h en course nature). */
+function trailElevationTarget(durationMin        )                             {
+  const h = durationMin / 60;
+  return { lo: Math.round((h * 350) / 50) * 50, hi: Math.round((h * 450) / 50) * 50 };
+}
+
 // ===== src/engine/reasoningEngine.ts =====
 /**
  * TrainingReasoningEngine — Sprint 1 V2.
@@ -3002,6 +3080,7 @@ function auditPlan(plan        , opts            = {})            {
                                                                           
 
 
+
 function buildSessions(ctx            , slot      , phase        , prog        )              {
   const r = ctx.r;
   const a = r.profile;
@@ -3036,6 +3115,9 @@ function buildSessions(ctx            , slot      , phase        , prog        )
 
   if (sp === "run") {
     const injImp = (a.injury || "").split(",").some((x) => ["tibia", "genou", "pied", "hanche"].includes(x));
+    // R4.1 — trail modulaire (registre de disciplines) : volume en TEMPS + D+, allure en
+    // GAP/RPE, compétence descente travaillée à part, prudence excentrique si impact fragile.
+    const isTrail = fmt === "trail";
     if (slot === "dur1") {
       // C17 — la VO2 survit au budget (dur1) en dev/spéc/peak ; l'allure course passe en dur2.
       if (phase === "spec" || phase === "peak" || phase === "dev") {
@@ -3046,16 +3128,24 @@ function buildSessions(ctx            , slot      , phase        , prog        )
         S2.push({ d: "rn", name: "Seuil progressif", note: "Allure soutenue mais maîtrisée, régulière du 1er au dernier bloc.", det: "", steps: [W(15, "footing + 4 lignes droites"), B(P(3, 4), P(6, 10), "rn.thr", "2min trot"), C(10, "footing")] });
       }
     } else if (slot === "dur2") {
-      if (phase === "spec" || phase === "peak")
+      if (isTrail && (phase === "spec" || phase === "peak") && !injImp)
+        // Compétence descente (registre trail) : progression NON-cardio, trackée à part.
+        // Les blessures d'impact (périostite…) court-circuitent cette séance — la descente
+        // est une charge excentrique, mêmes drapeaux de prudence que la route (spec §2).
+        S2.push({ d: "rn", name: "Côtes + descentes techniques", note: "La descente est une compétence : relâche le buste, cadence haute, regarde loin. La montée se court au RPE, pas à l'allure — en trail l'allure brute ne veut rien dire.", det: "", steps: [W(18, "progressif sur sentier"), B(P(4, 6), 3, "rn.vo2", "descente du même segment EN CONTRÔLE (c'est l'exercice, pas la récup)", " en montée au train"), C(10, "footing souple sur plat")] });
+      else if (phase === "spec" || phase === "peak")
         S2.push({ d: "rn", name: "Allure course spécifique", note: "C'est l'allure de ta course : mémorise la sensation, elle doit devenir automatique le jour J.", det: "", steps: [W(18, "progressif + gammes"), Bd(P(3, 5), fmt === "5k" || fmt === "10k" ? 1000 : 2000, fmt === "marathon" ? "rn.mara" : "rn.thr", "2-3min récup active", "", !(fmt === "5k" || fmt === "10k"), "rn"), C(10, "retour au calme")] });
       else
-        S2.push({ d: "rn", name: phase === "base" ? "Endurance soutenue" : "Allure spécifique", note: "Allure tenue et continue, sans à-coups.", det: "", steps: [W(15, "footing facile"), B(1, P(20, 45), fmt === "marathon" || fmt === "trail" ? "rn.mara" : "rn.thr"), C(8, "retour au calme " + G)] });
+        S2.push({ d: "rn", name: phase === "base" ? "Endurance soutenue" : "Allure spécifique", note: isTrail ? "Effort tenu et continu, au ressenti (GAP/FC) — pas à l'allure brute." : "Allure tenue et continue, sans à-coups.", det: "", steps: [W(15, "footing facile"), B(1, P(20, 45), fmt === "marathon" || fmt === "trail" ? "rn.mara" : "rn.thr"), C(8, "retour au calme " + G)] });
     } else if (slot === "durLong") {
       const durCaps = ({ "5k": { lo: 40, hi: 74 }, "10k": { lo: 50, hi: 90 }, semi: { lo: 70, hi: 130 }, marathon: { lo: 90, hi: 180 }, trail: { lo: 120, hi: 255 } }                                              )[fmt] || { lo: 60, hi: 110 };
       // C23 — jamais de sortie longue CAP >3h pour un débutant (le cap passe dans bnd → R3.3 ne regonfle pas)
       if (beginner) durCaps.hi = Math.min(durCaps.hi, C23_BEGINNER_LONG_RUN_CAP_MIN);
       const durMin = P(durCaps.lo, durCaps.hi);
-      S2.push({ d: "rn", long: true, name: "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : ""), { bnd: { floor: durCaps.lo, cap: durCaps.hi } }), ], ...( { plainBody: true }          ) });
+      // Trail (registre R4.1) : volume en TEMPS + D+ cible — jamais en km seul. Le D+ suit
+      // la durée (~350-450m/h) ; descentes en contrôle, surtout avec un passif d'impact.
+      const dplus = isTrail ? trailElevationTarget(durMin) : null;
+      S2.push({ d: "rn", long: true, name: isTrail ? "Sortie longue trail" : "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : isTrail ? "En trail on compte le TEMPS et le D+, pas les kilomètres. Monte au train, descends en contrôle" + (injImp ? " — descentes prudentes, ta zone fragile encaisse la charge excentrique" : "") + "." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", (isTrail && dplus ? " · D+ cible " + dplus.lo + "-" + dplus.hi + "m" : "") + (phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : "")), { bnd: { floor: durCaps.lo, cap: durCaps.hi } }), ], ...( { plainBody: true }          ) });
     } else if (slot === "facileR") {
       S2.push({ d: "rn", name: "Footing facile", note: beginner ? "Allure de conversation, sans forcer : c'est le volume facile qui fait progresser." : "Endurance fondamentale : allure de conversation. Ce volume facile construit l'aérobie sans user.", det: "", steps: [B(1, P(30, 50), "rn.easy", "", G && !injImp ? " · termine par " + G.replace("+ ", "") : "")], ...( { plainBody: true }          ) });
     } else if (slot === "facile2") {
@@ -3986,6 +4076,13 @@ function predictRace(
               
                                                                                      
                                                                                           
+                                                                                    
+                                                                                     
+                     
+                        
+                                                                                        
+                                                                                    
+                   
  
 
 /** Météo du jour — manifeste §6 : canicule → repos/intensité réduite, chaleur → tôt le matin, pluie → surface. */
@@ -4017,6 +4114,14 @@ function predictRace(
 function assessReadiness(s                   )                   {
   const drivers           = [];
   let score = 0; // négatif = fatigue
+  // R4.5 — douleur signalée : rouge FORCÉ, quels que soient les autres signaux. La qualité
+  // (>Z2) est remplacée par de la récupération tant que le drapeau n'est pas levé.
+  if (s.painFlag) {
+    drivers.push("douleur signalée" + (s.painLocation ? " (" + s.painLocation + ")" : "") + " — intensité verrouillée, consulte médecin/kiné si ça persiste");
+    return { level: "rouge", drivers };
+  }
+  // R4.7 — la séance d'hier était très dure (RPE ≥8) : signal de fatigue annoncé.
+  if (s.lastRpe != null && s.lastRpe >= 8) { score -= 1; drivers.push("séance d'hier très dure (RPE " + s.lastRpe + "/10)"); }
   if (s.sleepQuality === "mauvais" || (s.sleepHours != null && s.sleepHours < 5.5)) { score -= 2; drivers.push("sommeil dégradé"); }
   else if (s.sleepQuality === "moyen" || (s.sleepHours != null && s.sleepHours < 6.5)) { score -= 1; drivers.push("sommeil moyen"); }
   else if (s.sleepQuality === "bon") { score += 1; drivers.push("sommeil bon"); }
@@ -4611,6 +4716,17 @@ function buildPlanV2(sport        , answers            )                        
 /** Adapte la journée `snapshot.date` à l'état de forme — « recalcul du matin ». */
 function adjustTodayV2(sport        , answers            , snapshot                   )                  {
   const { plan, reasoned } = generatePlan(toProfile(sport, answers));
+  // R4.5/R4.7 — le drapeau douleur et le RPE de la dernière séance validée entrent
+  // AUTOMATIQUEMENT dans la photo du jour (aucun appelant ne peut les oublier) :
+  // douleur active → rouge forcé ; RPE ≥8 hier → signal de fatigue annoncé.
+  const pf = answers.painFlag                                                       ;
+  if (snapshot.painFlag == null && pf && pf.active) snapshot = { ...snapshot, painFlag: true, painLocation: pf.location };
+  if (snapshot.lastRpe == null && answers.completions) {
+    const comps = Object.values(answers.completions                                                   )
+      .filter((c) => c && c.date && c.date < snapshot.date && c.rpe != null)
+      .sort((x, y) => String(y.date).localeCompare(String(x.date)));
+    if (comps.length) snapshot = { ...snapshot, lastRpe: comps[0].rpe };
+  }
   // Boucle prévu/réel : les séances cochées dans l'UI nourrissent le calcul de fatigue,
   // complétées par les séances importées d'un fichier FIT (answers.fitSessions) —
   // même contrat CompletedSession ; dédoublonnage date+sport (une séance cochée ET
@@ -4715,6 +4831,42 @@ function badgesV2(plan        , answers            , todayISO        )          
   return out;
 }
 
+/** R4.2 — Streak d'adhérence par JOUR (spec rétention). L'unité est le jour global
+ *  complété : TOUTES les séances planifiées du jour validées — Y COMPRIS le repos
+ *  (« récupération respectée ✓ », qui compte STRICTEMENT autant qu'un jour de séance).
+ *  GEL (jamais de perte) : douleur signalée ou maladie déclarée — ces jours ne comptent
+ *  ni ne cassent. Déborder du plan ne rapporte RIEN (seules les séances planifiées
+ *  comptent — il n'existe aucun chemin de gratification pour du volume hors plan). */
+                            
+               
+                         
+                       
+ 
+function adherenceV2(plan        , answers            , todayISO        )            {
+  const done = (answers.done || {})                           ;
+  const sick = (answers.sickDates || [])            ;
+  const pf = answers.painFlag                                                    ;
+  const frozen = (date        ) => sick.includes(date) || !!(pf && pf.active && pf.since && date >= pf.since);
+  const days                                        = [];
+  for (const w of plan.weeks)
+    for (const d of w.days) {
+      const dd = (d                     ).date;
+      if (!dd || dd > todayISO) continue;
+      const complete = d.sessions.every((s, si) => done[w.num + "|" + d.jour + "|" + si]);
+      days.push({ date: dd, complete });
+    }
+  days.sort((a, b) => a.date.localeCompare(b.date));
+  let streak = 0;
+  for (let i = days.length - 1; i >= 0; i--) {
+    const d = days[i];
+    if (d.complete) streak++;
+    else if (frozen(d.date) || d.date === todayISO) continue; // gel, ou journée pas finie
+    else break;
+  }
+  const today = days.find((d) => d.date === todayISO);
+  return { days: streak, todayComplete: !!(today && today.complete), frozenToday: frozen(todayISO) };
+}
+
 /** Avatar évolutif — gamification (onglet 🎮 Suivi). MÊME philosophie que les badges :
  *  l'XP est CUMULATIF et ne redescend jamais (une semaine ratée n'efface rien), calculé
  *  depuis les métriques déjà existantes (progressV2/badgesV2) — aucune nouvelle collecte,
@@ -4783,9 +4935,10 @@ function predictV2(sport        , answers            , plan                     
   predict: predictV2,
   badges: badgesV2,
   avatar: avatarV2,
+  adherence: adherenceV2,
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
-  version: "v2-sprint7",
+  version: "v2-sprint8",
 };
 
 })();

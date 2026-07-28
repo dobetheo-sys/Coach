@@ -9,6 +9,7 @@ import {
   C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C23_BEGINNER_LONG_RUN_CAP_MIN,
   CAP_BRICK_BIKE, CAP_BRICK_RUN,
 } from "../engine/constraintMatrix.ts";
+import { trailElevationTarget } from "../engine/disciplineRegistry.ts";
 import { intOf } from "./renderer.ts";
 
 type Slot = "dur1" | "dur2" | "durLong" | "facileR" | "facile2" | "recup" | "off";
@@ -51,6 +52,9 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
 
   if (sp === "run") {
     const injImp = (a.injury || "").split(",").some((x) => ["tibia", "genou", "pied", "hanche"].includes(x));
+    // R4.1 — trail modulaire (registre de disciplines) : volume en TEMPS + D+, allure en
+    // GAP/RPE, compétence descente travaillée à part, prudence excentrique si impact fragile.
+    const isTrail = fmt === "trail";
     if (slot === "dur1") {
       // C17 — la VO2 survit au budget (dur1) en dev/spéc/peak ; l'allure course passe en dur2.
       if (phase === "spec" || phase === "peak" || phase === "dev") {
@@ -61,16 +65,24 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
         S2.push({ d: "rn", name: "Seuil progressif", note: "Allure soutenue mais maîtrisée, régulière du 1er au dernier bloc.", det: "", steps: [W(15, "footing + 4 lignes droites"), B(P(3, 4), P(6, 10), "rn.thr", "2min trot"), C(10, "footing")] });
       }
     } else if (slot === "dur2") {
-      if (phase === "spec" || phase === "peak")
+      if (isTrail && (phase === "spec" || phase === "peak") && !injImp)
+        // Compétence descente (registre trail) : progression NON-cardio, trackée à part.
+        // Les blessures d'impact (périostite…) court-circuitent cette séance — la descente
+        // est une charge excentrique, mêmes drapeaux de prudence que la route (spec §2).
+        S2.push({ d: "rn", name: "Côtes + descentes techniques", note: "La descente est une compétence : relâche le buste, cadence haute, regarde loin. La montée se court au RPE, pas à l'allure — en trail l'allure brute ne veut rien dire.", det: "", steps: [W(18, "progressif sur sentier"), B(P(4, 6), 3, "rn.vo2", "descente du même segment EN CONTRÔLE (c'est l'exercice, pas la récup)", " en montée au train"), C(10, "footing souple sur plat")] });
+      else if (phase === "spec" || phase === "peak")
         S2.push({ d: "rn", name: "Allure course spécifique", note: "C'est l'allure de ta course : mémorise la sensation, elle doit devenir automatique le jour J.", det: "", steps: [W(18, "progressif + gammes"), Bd(P(3, 5), fmt === "5k" || fmt === "10k" ? 1000 : 2000, fmt === "marathon" ? "rn.mara" : "rn.thr", "2-3min récup active", "", !(fmt === "5k" || fmt === "10k"), "rn"), C(10, "retour au calme")] });
       else
-        S2.push({ d: "rn", name: phase === "base" ? "Endurance soutenue" : "Allure spécifique", note: "Allure tenue et continue, sans à-coups.", det: "", steps: [W(15, "footing facile"), B(1, P(20, 45), fmt === "marathon" || fmt === "trail" ? "rn.mara" : "rn.thr"), C(8, "retour au calme " + G)] });
+        S2.push({ d: "rn", name: phase === "base" ? "Endurance soutenue" : "Allure spécifique", note: isTrail ? "Effort tenu et continu, au ressenti (GAP/FC) — pas à l'allure brute." : "Allure tenue et continue, sans à-coups.", det: "", steps: [W(15, "footing facile"), B(1, P(20, 45), fmt === "marathon" || fmt === "trail" ? "rn.mara" : "rn.thr"), C(8, "retour au calme " + G)] });
     } else if (slot === "durLong") {
       const durCaps = ({ "5k": { lo: 40, hi: 74 }, "10k": { lo: 50, hi: 90 }, semi: { lo: 70, hi: 130 }, marathon: { lo: 90, hi: 180 }, trail: { lo: 120, hi: 255 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 60, hi: 110 };
       // C23 — jamais de sortie longue CAP >3h pour un débutant (le cap passe dans bnd → R3.3 ne regonfle pas)
       if (beginner) durCaps.hi = Math.min(durCaps.hi, C23_BEGINNER_LONG_RUN_CAP_MIN);
       const durMin = P(durCaps.lo, durCaps.hi);
-      S2.push({ d: "rn", long: true, name: "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : ""), { bnd: { floor: durCaps.lo, cap: durCaps.hi } }), ], ...( { plainBody: true } as object) });
+      // Trail (registre R4.1) : volume en TEMPS + D+ cible — jamais en km seul. Le D+ suit
+      // la durée (~350-450m/h) ; descentes en contrôle, surtout avec un passif d'impact.
+      const dplus = isTrail ? trailElevationTarget(durMin) : null;
+      S2.push({ d: "rn", long: true, name: isTrail ? "Sortie longue trail" : "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : isTrail ? "En trail on compte le TEMPS et le D+, pas les kilomètres. Monte au train, descends en contrôle" + (injImp ? " — descentes prudentes, ta zone fragile encaisse la charge excentrique" : "") + "." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", (isTrail && dplus ? " · D+ cible " + dplus.lo + "-" + dplus.hi + "m" : "") + (phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : "")), { bnd: { floor: durCaps.lo, cap: durCaps.hi } }), ], ...( { plainBody: true } as object) });
     } else if (slot === "facileR") {
       S2.push({ d: "rn", name: "Footing facile", note: beginner ? "Allure de conversation, sans forcer : c'est le volume facile qui fait progresser." : "Endurance fondamentale : allure de conversation. Ce volume facile construit l'aérobie sans user.", det: "", steps: [B(1, P(30, 50), "rn.easy", "", G && !injImp ? " · termine par " + G.replace("+ ", "") : "")], ...( { plainBody: true } as object) });
     } else if (slot === "facile2") {

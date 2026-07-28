@@ -32,7 +32,15 @@ function checklistStore(dateISO) {
 // R4-2 — avatar SVG personnalisable : silhouette dont chaque variable visuelle est
 // traçable à une donnée réelle (posture = séances des 7 derniers jours, aura = streak,
 // accessoires = badges gagnés, couleur = thème choisi parmi les accents sport).
-function avatarCardHTML(av, visual) {
+// R4.2 — la série se raconte SANS culpabilisation : gelée = « rien n'est perdu »,
+// cassée = message neutre tourné vers la reprise (jamais de rouge ni de compteur barré).
+function avatarStreakLine(adh) {
+  if (!adh) return "";
+  if (adh.frozenToday) return '<div class="load-sub" style="margin-top:8px">❄️ Série <b>gelée</b> (douleur ou maladie) : ' + adh.days + " jour" + (adh.days > 1 ? "s" : "") + " au compteur, rien n’est perdu. La reprise attendra que tu sois prêt·e.</div>";
+  if (adh.days > 1) return '<div style="margin-top:8px;font-size:13px">🔥 <b>Série : ' + adh.days + " jours</b> — chaque jour du plan validé compte, repos compris.</div>";
+  return '<div class="load-sub" style="margin-top:8px">Nouvelle série — la régularité sur toute la préparation compte plus qu’une série parfaite.</div>';
+}
+function avatarCardHTML(av, visual, adh) {
   const themes = AVATAR_THEMES.map(([k, c]) =>
     '<button class="doneBtn" data-av-theme="' + k + '" type="button" title="' + (SPORTS[k] ? SPORTS[k].nom : k) + '" style="background:' + c + ";border-color:#16130e" + (S.answers.avatarTheme === k ? ";outline:3px solid #16130e;outline-offset:2px" : "") + '"> </button>').join(" ");
   return '<div class="card"><div class="eyebrow">Ton avatar</div>'
@@ -42,6 +50,7 @@ function avatarCardHTML(av, visual) {
     + '<div style="font-size:11px;color:#777">Niveau ' + av.level + (av.xpToNext ? " · " + av.xpInLevel + "/" + av.xpToNext + " XP" : " · niveau maximum") + "</div>"
     + '<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:12px;overflow:hidden;margin-top:6px"><div style="height:100%;width:' + av.progressPct + '%;background:linear-gradient(90deg,#00a376,#00b8d9)"></div></div>'
     + "</div></div>"
+    + avatarStreakLine(adh)
     + '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:700">Couleur du maillot :</span>' + themes
     + '<button class="btn" id="avShare" type="button" style="margin-left:auto">📸 Partager</button></div>'
     + '<div class="load-sub" style="margin-top:8px">Tout est traçable : posture = tes séances des 7 derniers jours · aura = ton streak · accessoires = tes badges. Jamais un chrono, jamais décroissant.</div>'
@@ -109,9 +118,11 @@ export function renderTabMonitor(plan) {
     } catch (e) { console.warn(e); }
   }
   const visual = avatarDataFor(plan, todayISO);
+  let adh = null;
+  if (globalThis.EBV2 && globalThis.EBV2.adherence) { try { adh = globalThis.EBV2.adherence(plan, S.answers, todayISO); } catch (e) {} }
 
   let html = '<div class="card"><div class="eyebrow">Suivi</div><h2>Ta progression, en jeu</h2></div>';
-  if (av) html += avatarCardHTML(av, visual);
+  if (av) html += avatarCardHTML(av, visual, adh);
   html += todayChecklistHTML(resSessions, todayISO);
   html += badgesGalleryHTML(badges);
   $("screen").innerHTML = html;
