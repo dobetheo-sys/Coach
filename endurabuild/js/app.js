@@ -6,6 +6,7 @@ import { S, ebActivate, ebLoad } from "./state.js";
 import { buildPlanLegacy } from "./legacy-fallback.js";
 import { renderStep } from "./ui/steps.js";
 import { renderPlan } from "./ui/plan-view.js";
+import { stravaAuthFromHash } from "./strava.js";
 
 // ===== MOTEUR V2 — génération via EBV2, générateur legacy en REPLI (comportement identique
 // ===== au monolithe : si le bundle manque ou échoue, le plan sort quand même).
@@ -31,10 +32,12 @@ if ("serviceWorker" in navigator) {
       S.shared=saved.shared||{};
       const id=saved.activePlanId&&saved.plans.some(p=>p.id===saved.activePlanId)?saved.activePlanId:saved.plans[0].id;
       ebActivate(id);
+      stravaAuthFromHash(); // retour OAuth Strava (#strava_auth=…) — APRÈS la restauration d'état
       if(S.sport)document.body.dataset.sport=S.sport;
       if(S.answers.intent)document.body.dataset.intent=S.answers.intent;
       if(S.started&&S.sport&&S.onPlan){renderPlan();return;}
     }catch(e){}
   }
+  stravaAuthFromHash(); // même retour OAuth quand aucun plan n'est encore enregistré
   renderStep();
 })();

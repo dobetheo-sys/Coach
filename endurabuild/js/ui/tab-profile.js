@@ -8,6 +8,7 @@ import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc } from "../state.js";
 import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js";
 import { renderPlan } from "./plan-view.js";
 import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
+import { stravaConnect, stravaAccessToken, stravaDisconnect } from "../strava.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 
 const _fmtSec = (s) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
@@ -176,7 +177,10 @@ export function renderTabProfile(plan) {
   if (sp === "swim" || sp === "tri") html += row("pfCss", "CSS (min:s /100m)", a.css_known === "oui" ? a.css : "", "ex. 1:55");
   html += row("pfVol", "Volume max (h/sem)", a.vol_max, "ex. 8");
   html += row("pfSess", "Séances max /sem", a.sessions_max, "ex. 5");
-  html += row("pfWeight", "Poids (kg, optionnel)", a.weight, "affine le ravitaillement");
+  html += row("pfWeight", "Poids (kg, optionnel)", a.weight, "affine ravito + dépense");
+  // Taille : réintroduite AVEC un effet réel (métabolisme de base Mifflin-St Jeor, carte
+  // « Dépense estimée » de l'onglet Semaine) — règle d'influence des paramètres respectée.
+  html += row("pfHeight", "Taille (cm, optionnel)", a.height, "affine la dépense de base");
   html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Rappel quotidien</span><input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label>';
   html += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
     + '<div id="pfMsg" class="load-sub" style="margin-top:6px"></div></div>';
@@ -214,11 +218,27 @@ export function renderTabProfile(plan) {
       + '<span class="load-sub" style="margin:0">export de ta montre — lu ici, jamais envoyé</span></div>'
       + '<div id="pfFitMsg" class="load-sub" style="margin-top:6px"></div>';
   }
-  // Import Strava (lecture seule, jeton personnel) — même journal, même pont vers le plan.
-  html += '<div style="margin-top:10px"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+  // Import Strava (lecture seule) — connexion OAuth via le relais serveur (server/README.md)
+  // en chemin principal, jeton manuel conservé en repli. Même journal, même pont vers le plan.
+  const sAuth = a.stravaAuth;
+  html += '<div style="margin-top:10px"><div style="font-weight:700;font-size:12px">🔗 Strava</div>';
+  if (sAuth && sAuth.access_token) {
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
+      + '<span style="font-size:12px">✓ Connecté' + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + "</span>"
+      + '<button class="btn" id="pfStravaBtn" type="button">Importer mes activités</button>'
+      + '<button class="btn" id="pfStravaOut" type="button">Se déconnecter</button></div>';
+  } else {
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
+      + '<input type="text" id="pfStravaRelay" placeholder="URL du relais (voir server/README.md)" value="' + esc(a.stravaRelay || "") + '" style="flex:1;min-width:180px">'
+      + '<button class="btn primary" id="pfStravaConnect" type="button">Se connecter avec Strava</button></div>'
+      + '<div class="load-sub" style="margin-top:4px">Un clic, autorisation sur Strava, retour ici — le relais garde le secret, l’app ne lit que tes activités (jamais d’écriture).</div>';
+  }
+  html += (S._stravaError ? '<div class="load-sub" style="margin-top:4px;color:#b3261e">Connexion Strava refusée (' + esc(S._stravaError) + ") — réessaie ou utilise le jeton manuel.</div>" : "")
+    + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Repli : jeton manuel (sans serveur)</summary>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
     + '<input type="text" id="pfStravaTok" placeholder="token d’accès Strava" style="flex:1;min-width:180px">'
-    + '<button class="btn" id="pfStravaBtn" type="button">Importer depuis Strava</button></div>'
-    + '<div class="load-sub" style="margin-top:4px">Réglages Strava → « Mon API », scope <b>activity:read</b> — rien n’est écrit sur Strava.</div>'
+    + (sAuth && sAuth.access_token ? "" : '<button class="btn" id="pfStravaBtnTok" type="button">Importer depuis Strava</button>')
+    + '</div><div class="load-sub" style="margin-top:4px">Réglages Strava → « Mon API », scope <b>activity:read</b> — rien n’est écrit sur Strava.</div></details>'
     + '<div id="pfStravaMsg" class="load-sub" style="margin-top:4px"></div></div>';
   html += "</div>";
 
@@ -308,12 +328,13 @@ export function renderTabProfile(plan) {
       + (notes.length ? '<br><span style="color:#8a6d00">⚠ ' + notes.map(esc).join(" ") + "</span>" : "")
       + (errs.length ? '<br><span style="color:#c0392b">' + errs.join("<br>") + "</span>" : ""));
   };
-  const stravaBtn = $("pfStravaBtn");
-  if (stravaBtn) stravaBtn.onclick = async () => {
-    stravaBtn.disabled = true;
+  // — Import Strava : même post-traitement (pont vers les références vivantes) que le
+  // token vienne de l'OAuth (relais) ou du champ manuel.
+  const runStravaImport = async (btn, tok) => {
+    btn.disabled = true;
     const before = Array.isArray(S.answers.tests) ? S.answers.tests.length : 0;
-    await stravaImport(); // écrit S.answers.tests + #pfStravaMsg
-    stravaBtn.disabled = false;
+    await stravaImport(tok); // écrit S.answers.tests + #pfStravaMsg
+    btn.disabled = false;
     const added = (Array.isArray(S.answers.tests) ? S.answers.tests.length : 0) - before;
     if (!added) return; // rien de nouveau (token invalide/aucune donnée) : le message de stravaImport suffit, pas de re-rendu
     const statusHTML = ($("pfStravaMsg") || {}).innerHTML || "";
@@ -324,6 +345,33 @@ export function renderTabProfile(plan) {
     const m = $("pfStravaMsg");
     if (m) m.innerHTML = statusHTML + (nRef ? '<br><span style="color:#00734f">✓ plan régénéré avec la référence la plus récente.</span>' : "");
   };
+  const stravaConnBtn = $("pfStravaConnect");
+  if (stravaConnBtn) stravaConnBtn.onclick = () => {
+    const relay = (($("pfStravaRelay") || {}).value || "").trim();
+    const m = $("pfStravaMsg");
+    if (!relay) { if (m) m.textContent = "Colle d’abord l’URL de ton relais (déploiement pas-à-pas dans server/README.md du dépôt)."; return; }
+    S.answers.stravaRelay = relay;
+    S._stravaError = null;
+    ebSave();
+    if (m) m.textContent = "Redirection vers Strava…";
+    stravaConnect(); // quitte la page — retour géré par stravaAuthFromHash() au chargement
+  };
+  const stravaBtn = $("pfStravaBtn");
+  if (stravaBtn) stravaBtn.onclick = async () => {
+    const tok = await stravaAccessToken(); // renouvelé via le relais si expiré
+    if (!tok) {
+      const m = $("pfStravaMsg");
+      if (m) m.textContent = "Session Strava expirée — reconnecte-toi.";
+      stravaDisconnect();
+      renderTabProfile(plan);
+      return;
+    }
+    await runStravaImport(stravaBtn, tok);
+  };
+  const stravaOut = $("pfStravaOut");
+  if (stravaOut) stravaOut.onclick = () => { stravaDisconnect(); renderTabProfile(plan); };
+  const stravaTokBtn = $("pfStravaBtnTok");
+  if (stravaTokBtn) stravaTokBtn.onclick = () => runStravaImport(stravaTokBtn);
   $("pfSave").onclick = () => {
     const today = new Date().toISOString().slice(0, 10);
     if (!Array.isArray(S.answers.tests)) S.answers.tests = [];
@@ -370,11 +418,15 @@ export function renderTabProfile(plan) {
     if (wgt !== null && wgt !== "" && parseFloat(wgt) > 0 && wgt !== String(a.weight || "")) {
       log("profil:weight", parseFloat(wgt), a.weight != null && a.weight !== "" ? parseFloat(a.weight) : null, () => { S.answers.weight = wgt; }); changed++;
     }
+    const hgt = g("pfHeight");
+    if (hgt !== null && hgt !== "" && parseFloat(hgt) > 0 && hgt !== String(a.height || "")) {
+      S.answers.height = hgt; changed++; // n'affecte que l'estimation de dépense, pas le plan
+    }
     if (!changed) { const m = $("pfMsg"); if (m) m.textContent = "Aucun changement détecté."; return; }
     if (planChanged) invalidatePlan(); // le plan sera régénéré UNE fois, ici — pas au changement d'onglet
     ebSave();
     renderTabProfile(ensurePlan());
     const m = $("pfMsg");
-    if (m) m.textContent = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + (planChanged ? " — plan régénéré, journal mis à jour." : " — journal mis à jour (le poids n’affecte que le ravitaillement, pas le plan).");
+    if (m) m.textContent = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + (planChanged ? " — plan régénéré, journal mis à jour." : " — journal mis à jour (poids/taille n’affectent que ravitaillement et dépense estimée, pas le plan).");
   };
 }

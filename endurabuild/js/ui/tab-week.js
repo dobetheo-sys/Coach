@@ -208,6 +208,29 @@ function nutritionCardHTML(day, tempC) {
   return h;
 }
 
+// Estimation énergétique du jour (décision utilisateur 28/07/2026) : dépense de base +
+// entraînement + répartition indicative des macros — une INFORMATION, jamais une cible
+// d'apport ni un menu ; l'avertissement du moteur est TOUJOURS affiché tel quel.
+function energyCardHTML(day) {
+  if (!globalThis.EBV2 || !globalThis.EBV2.dailyEnergy) return "";
+  let e;
+  try { e = globalThis.EBV2.dailyEnergy(S.answers, day ? day.sessions : []); } catch (err) { return ""; }
+  if (!e) {
+    return '<details class="load-card"><summary class="load-title">🔥 Dépense estimée du jour</summary>'
+      + '<div class="load-sub" style="margin-top:6px">Renseigne ton <b>poids</b> dans l’onglet 📋 Profil pour voir l’estimation (taille, âge et sexe l’affinent). Aucune estimation sans donnée réelle.</div></details>';
+  }
+  const f = (r) => r[0] === r[1] ? r[0] : r[0] + "–" + r[1];
+  return '<details class="load-card"><summary class="load-title">🔥 Dépense estimée du jour <span style="font-weight:400">· ~' + f(e.total) + " kcal</span></summary>"
+    + '<div style="font-size:12px;margin-top:8px">'
+    + "<b>Base + vie quotidienne :</b> ~" + f(e.daily) + " kcal (métabolisme de base ~" + f(e.bmr) + ")<br>"
+    + "<b>Entraînement du jour :</b> " + (e.training[1] ? "~" + f(e.training) + " kcal" : "repos — 0 kcal d’entraînement")
+    + "<br><b>Total :</b> ~" + f(e.total) + " kcal"
+    + (e.approximate ? '<br><span style="color:#8a6d00">Fourchette large : complète taille/âge au 📋 Profil pour l’affiner.</span>' : "")
+    + "</div>"
+    + '<div style="font-size:12px;margin-top:8px;color:#3f3a30">' + e.macros.text + "</div>"
+    + '<div class="load-sub" style="margin-top:8px">' + e.disclaimer + "</div></details>";
+}
+
 // R4.5 — bandeau douleur PERMANENT tant que le drapeau n'est pas levé : la qualité est
 // verrouillée par l'ajusteur (rouge forcé), la série est gelée, on recommande médecin/kiné.
 // Levée = action explicite + question de confirmation.
@@ -343,6 +366,7 @@ export function renderTabWeek(plan) {
   html += "</div>";
   const todayDay = w.days.find((d) => d.date === today) || null;
   html += nutritionCardHTML(todayDay, null);
+  html += energyCardHTML(todayDay); // estimation dépense + macros indicatives (jamais une cible)
   html += nutritionJournalHTML(todayDay, today); // R4-1 — journal alimentaire (repliable)
   html += '<details class="load-card"><summary class="load-title">\u{1F321} Modifier ma forme du jour</summary>' + readinessCardHTML({ btnLabel: "Mettre à jour" }) + "</details>";
   html += "</div>";

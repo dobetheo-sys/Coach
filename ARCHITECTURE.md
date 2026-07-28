@@ -178,7 +178,7 @@ cette partie reste bloquée tant qu'un(e) nutritionniste n'a pas validé l'appro
 | `nutrition/nutritionCalculator.ts` | `sessionNutrition()` : glucides pendant l'effort, hydratation, récupération, dépense estimée — repères des consensus publiés (ACSM 2016/2007, ISSN 2017, Jeukendrup 2014), jamais d'invention maison. `classifyIntensity()` réutilise `intensitySplit` (SEUL classificateur d'intensité du moteur — pas de deuxième chemin). `nutritionForSession()` = point d'entrée UI (V1Session → conseil, `rs` → null) |
 | `audit/nutritionDemo.ts` | Spec exécutable (`npm run demo:nutrition`, en CI) : bornes dures + balayage 1440 entrées + invariants ci-dessous |
 
-### Registre des règles nutrition (`N1`–`N7`)
+### Registre des règles nutrition (`N1`–`N10`)
 
 | Id | Règle | Source |
 |---|---|---|
@@ -189,14 +189,25 @@ cette partie reste bloquée tant qu'un(e) nutritionniste n'a pas validé l'appro
 | N5 | Après dur/long : fenêtre 30–60 min, ~1–1.2 g/kg glucides + ~0.3 g/kg protéines (chiffré seulement si poids connu) | ISSN 2017 |
 | N6 | **Jamais à jeun** sur séance dure ou longue (hypoglycémie d'effort = risque évitable) | manifeste, priorité n°1 |
 | N7 | Dépense estimée en fourchette (MET × poids × durée) — une information, jamais une cible à compenser ni à creuser | compendium Ainsworth |
+| N8 | Métabolisme de base en enveloppe (Mifflin-St Jeor ; donnée manquante → fourchette élargie, jamais de fausse précision) | Mifflin 1990, ADA 2005 |
+| N9 | Dépense du jour = base × NAP 1.35–1.55 (hors sport) + entraînement (N7) — information, jamais une cible | FAO/WHO/UNU 2001 |
+| N10 | Macros en RÉPARTITION indicative : protéines 1.2–1.7 g/kg, lipides 20–35 % (plancher 20 %), glucides 3–10 g/kg selon le volume du jour — « photographie de la littérature, pas un menu » | ACSM/AND/DC 2016, AMDR, Burke 2011 |
+
+N8–N10 (`nutrition/energyEstimator.ts`) débloqués par **décision utilisateur du
+28/07/2026** (« estimation des calories dépensées de base + entraînement + macros,
+jamais de conseil de nutrition ») : tout est ESTIMATION de dépense ou répartition
+observée, jamais une consigne d'apport ; sans poids → null (l'UI renvoie au Profil) ;
+avertissement renforcé `ENERGY_DISCLAIMER` obligatoire. Le CONSEIL nutritionnel
+(cibles d'apport, menus) reste bloqué avis diététicien.
 
 Invariants assertés en CI : glucides ≤90 g/h et boisson ≤1000 ml/h quelles que soient les
 entrées ; avertissement toujours présent ; aucun vocabulaire de restriction en sortie
 (`FORBIDDEN_OUTPUT`) ; dur/long → jamais à jeun + récupération toujours proposée ; chaque
-conseil motivé `{id, what, val, why}`. Côté UI (PWA) : carte « 🥤 Ravitaillement
-d'aujourd'hui » dans l'onglet 📅 Semaine (température Open-Meteo en différé, dégrade
-proprement), poids optionnel dans 📋 Profil (journalisé `profil:weight`, n'affecte QUE le
-ravitaillement — le plan n'est pas régénéré).
+conseil motivé `{id, what, val, why}` ; N8–N10 : jamais de cible, planchers de sécurité
+macros tenus, fourchette élargie si données incomplètes, null sans poids. Côté UI (PWA) :
+carte « 🥤 Ravitaillement d'aujourd'hui » + carte « 🔥 Dépense estimée du jour »
+(`EBV2.dailyEnergy`) dans l'onglet 📅 Semaine, poids et taille optionnels dans 📋 Profil
+(n'affectent QUE ravitaillement/dépense — le plan n'est pas régénéré).
 
 ## Branchement UI ↔ moteur V2 (`src/app/` + `scripts/buildApp.mjs`)
 
@@ -377,3 +388,22 @@ produit, que du durcissement. Points structurants :
   rétention, améliorations — 74 assertions) contre la PWA servie localement, dans un vrai
   Chromium. Playwright est une devDependency de TEST uniquement — le produit et l'audit
   restent à zéro dépendance. Job CI `e2e` séparé (9 contrôles au total sur chaque push).
+
+## Relais OAuth Strava (`server/`) — le seul composant serveur du projet
+
+`server/strava-relay.js` : Cloudflare Worker d'un fichier, zéro dépendance, SANS ÉTAT
+(rien n'est stocké ni journalisé). Raison d'être : le `client_secret` Strava ne doit
+jamais apparaître dans une app 100 % côté client — le worker est le seul à le connaître
+(variable *Secret* Cloudflare). Endpoints : `/auth` (redirection vers l'autorisation
+Strava, origine de retour validée contre la liste blanche `APP_ORIGINS`), `/callback`
+(échange du code, tokens renvoyés à l'app dans le FRAGMENT d'URL — un fragment ne quitte
+pas le navigateur), `/refresh` (renouvellement, CORS restreint). Scope `activity:read_all`
+uniquement — l'app n'écrit jamais sur Strava. Déploiement pas-à-pas : `server/README.md`
+(≈15 min, offre gratuite Cloudflare, étape humaine : créer l'app Strava).
+
+Côté PWA : `js/strava.js` (`stravaAuthFromHash` au démarrage — après restauration
+d'état, `stravaAccessToken` avec refresh auto, `stravaConnect`/`stravaDisconnect`),
+carte « 🔗 Strava » au 📋 Profil (URL du relais configurable `answers.stravaRelay`,
+clé PARTAGÉE entre plans comme `stravaAuth`), import réutilisant le même
+`stravaImport` → pont `syncRefsFromTests` que le jeton manuel — lequel reste le
+repli assumé sans serveur. Testé E2E (retour OAuth simulé par fragment).

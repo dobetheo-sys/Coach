@@ -2,7 +2,7 @@
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
    une météo périmée est pire qu'une absence de météo). */
-const VERSION = "eb-pwa-v9"; // v9 : ancrage plan_start, sauvegarde/restauration, swaps de jours, modales accessibles
+const VERSION = "eb-pwa-v10"; // v10 : estimation dépense+macros (jamais une cible), OAuth Strava via relais
 const ASSETS = [
   "./",
   "./index.html",
@@ -31,6 +31,7 @@ const ASSETS = [
   "./js/ui/modal.js",
   "./js/ui/daily-content.js",
   "./js/notifications.js",
+  "./js/strava.js",
   "./assets/fonts/archivo-black-400.woff2",
   "./assets/fonts/space-grotesk-500-700.woff2",
   "./assets/fonts/caveat-600-700.woff2",

@@ -34,6 +34,7 @@ const ORDER = [
   "src/readiness/fitParser.ts",
   "src/readiness/dailyAdjuster.ts",
   "src/nutrition/nutritionCalculator.ts",
+  "src/nutrition/energyEstimator.ts",
   "src/app/bridge.ts",
 ];
 

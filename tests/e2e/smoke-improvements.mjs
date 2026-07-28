@@ -95,6 +95,59 @@ ok(/Réalisé : 44:30/.test(raceTxt), "chrono réel enregistré et affiché");
 const rr = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.answers.raceResult; });
 ok(rr && rr.time === "44:30" && rr.date === today, "raceResult persisté avec la date de course");
 
+// ---- 5. Estimation énergétique du jour (dépense + macros indicatives, jamais une cible) ----
+await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  delete S.answers.weight;
+  ebSave();
+  const { setTab } = await import("./js/ui/tabs.js");
+  setTab("week");
+});
+await page.waitForTimeout(300);
+const noWtxt = await page.locator("#screen").textContent();
+ok(/Dépense estimée du jour/.test(noWtxt) && /Renseigne ton poids/i.test(noWtxt), "sans poids → carte présente mais AUCUNE estimation, renvoi vers Profil");
+await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  S.answers.weight = "72";
+  S.answers.height = "180";
+  ebSave();
+  const { setTab } = await import("./js/ui/tabs.js");
+  setTab("week");
+});
+await page.waitForTimeout(300);
+await page.locator("summary:has-text('Dépense estimée du jour')").click();
+await page.waitForTimeout(150);
+const eTxt = await page.locator("#screen").textContent();
+ok(/Base \+ vie quotidienne/.test(eTxt) && /Entraînement du jour/.test(eTxt) && /Total/.test(eTxt), "carte dépense : base + entraînement + total affichés");
+ok(/protéines ~\d+/.test(eTxt) && /lipides ~\d+/.test(eTxt) && /glucides ~\d+/.test(eTxt), "macros indicatives affichées (fourchettes chiffrées)");
+ok(/pas un menu/i.test(eTxt) && /pas une consigne/i.test(eTxt), "garde-fous affichés : photographie, pas un menu ni une consigne");
+ok(!/déficit|maigrir|perte de poids|restriction/i.test(eTxt), "aucun vocabulaire de restriction dans la carte");
+
+// ---- 6. Strava OAuth : connexion via relais proposée au Profil, repli jeton manuel ----
+const t6 = await page.locator("#ebTabbar .tabbtn").all();
+await t6[0].click(); await page.waitForTimeout(250);
+ok(await page.locator("#pfStravaConnect").count() === 1, "bouton « Se connecter avec Strava » présent au Profil");
+ok(await page.locator("#pfStravaRelay").count() === 1, "champ URL du relais présent (server/README.md)");
+ok(await page.locator("#pfStravaTok").count() === 1, "repli jeton manuel conservé");
+await page.click("#pfStravaConnect"); await page.waitForTimeout(150);
+ok(/relais/i.test(await page.locator("#pfStravaMsg").textContent()), "sans URL de relais → message d'aide, pas de redirection");
+// retour OAuth simulé : #strava_auth dans l'URL → tokens stockés, hash nettoyé
+const authOk = await page.evaluate(async () => {
+  const payload = btoa(JSON.stringify({ access_token: "at123", refresh_token: "rt456", expires_at: Math.floor(Date.now() / 1000) + 21600, athlete: { id: 1, firstname: "Théo" } }));
+  location.hash = "#strava_auth=" + encodeURIComponent(payload);
+  const { stravaAuthFromHash } = await import("./js/strava.js");
+  const got = stravaAuthFromHash();
+  const { S } = await import("./js/state.js");
+  return { got, stored: S.answers.stravaAuth && S.answers.stravaAuth.access_token === "at123", hashClean: !location.hash.includes("strava_auth") };
+});
+ok(authOk.got && authOk.stored && authOk.hashClean, "retour OAuth : tokens stockés depuis le fragment, hash nettoyé");
+await t6[0].click(); await page.waitForTimeout(250);
+const connTxt = await page.locator("#screen").textContent();
+ok(/Connecté \(Théo\)/.test(connTxt), "état connecté affiché (prénom Strava)");
+ok(await page.locator("#pfStravaBtn").count() === 1 && (await page.locator("#pfStravaOut").count()) === 1, "boutons « Importer mes activités » et « Se déconnecter » présents");
+await page.click("#pfStravaOut"); await page.waitForTimeout(250);
+ok(await page.locator("#pfStravaConnect").count() === 1, "déconnexion → retour à l'état non connecté");
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + ")");
 if (errs.length) info(errs.slice(0, 4).join(" | "));
 
