@@ -143,5 +143,27 @@ function validateDays(answers: Record<string, unknown>, upTo: number) {
   }
 }
 
+// ---- 7. R9 — avatar 16 niveaux : récompense IMMÉDIATE puis paliers qui s'étirent ----
+{
+  const { plan: pv } = generatePlan(profile);
+  const key0 = pv.weeks[0].num + "|" + pv.weeks[0].days.find((d) => d.sessions.some((s) => s.d !== "rs"))!.jour + "|0";
+  const today = new Date().toISOString().slice(0, 10);
+  const av0 = avatarV2(pv, {}, today);
+  check("avatar : 16 niveaux, chacun avec son déblocage visuel documenté", av0.levels.length === 16 && av0.levels.every((l) => l.unlock && l.unlock.length > 3));
+  check("avatar : niveau 1 au départ (0 XP)", av0.level === 1 && av0.xp === 0);
+  const av1 = avatarV2(pv, { done: { [key0]: true } }, today);
+  check("avatar : la PREMIÈRE séance validée fait passer niveau 2 (engouement immédiat)", av1.level === 2, "niveau=" + av1.level + " xp=" + av1.xp);
+  check("avatar : teaser du prochain déblocage exposé (nextUnlock)", !!av1.nextUnlock);
+  // les paliers s'étirent : chaque écart de seuil ≥ le précédent (courbe non linéaire)
+  const gaps = av0.levels.slice(1).map((l, i) => l.xp - av0.levels[i].xp);
+  check("avatar : courbe non linéaire (écarts de seuils croissants, du facile au mérité)", gaps.every((g, i) => i === 0 || g >= gaps[i - 1]), gaps.join(","));
+  // monotonie : plus de jours validés → jamais un niveau plus bas
+  const done5: Record<string, boolean> = {};
+  let n = 0;
+  pv.weeks[0].days.forEach((d) => d.sessions.forEach((s, si) => { if (n < 5) { done5[pv.weeks[0].num + "|" + d.jour + "|" + si] = true; n++; } }));
+  const av5 = avatarV2(pv, { done: done5 }, today);
+  check("avatar : l'XP ne fait que monter avec les jours validés (jamais décroissant)", av5.xp >= av1.xp && av5.level >= av1.level);
+}
+
 if (failures) { console.error("\nDémo rétention : " + failures + " garantie(s) en échec."); process.exit(1); }
 console.log("\nDémo rétention : toutes les garanties tiennent (repos = séance, gel douleur/maladie, zéro récompense hors plan).");

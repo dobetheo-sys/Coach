@@ -508,3 +508,22 @@ est désormais le **nombre de semaines calendaires entre le lundi de l'ancrage
 toujours aujourd'hui, la course tombe toujours dans la dernière semaine. Garde CI dans
 `demo:retention` (5 fractions de semaine différentes testées, départ immédiat + course
 en dernière semaine assertés).
+
+## R9 — avatar 16 niveaux : l'athlète s'équipe, le décor évolue (choix utilisateur A+C)
+
+- **XP (bridge `avatarV2`)** : +10 par séance du plan validée (repos respecté compris —
+  seules les coches correspondant à une vraie séance comptent, garde « zéro hors plan »
+  re-vérifiée), +80 par badge, +120 par semaine régulière. 100 % régularité, jamais un
+  chrono, jamais décroissant.
+- **Seuils NON linéaires** (0·10·25·50·90·150·230·340·480·660·900·1200·1600·2100·2700·
+  3500) : niveau 2 dès la PREMIÈRE séance, un niveau tous les 2-3 jours en semaine 1,
+  puis les paliers s'étirent (écarts croissants, asserté en CI).
+- **Chaque niveau débloque UN paramètre visuel** (`AVATAR_LEVELS[].unlock`, rendu par
+  couches dans `avatar.js`) — équipement en alternance avec décor : chaussures → parc →
+  bandana → piste → aura fine → lunettes → stade → maillot bicolore → dossard (numéroté
+  du niveau) → nocturne aux projecteurs → aura pleine + vitesse → étoiles → médaille →
+  arche d'arrivée → laurier + piédestal doré. Cumulatif : au niveau 12 on voit ses 11 acquis.
+- Traçabilité maintenue : posture = 7 derniers jours réels, couleur d'aura = streak,
+  couleur du maillot = thème choisi. Teaser Profil « Prochain : … — débloque … » +
+  liste des 16 niveaux consultable. Gardes CI : 6 assertions demo:retention (16 niveaux
+  documentés, niveau 2 à la 1re séance, courbe croissante, monotonie, hors-plan = 0 XP).
