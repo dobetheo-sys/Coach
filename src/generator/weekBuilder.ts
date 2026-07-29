@@ -6,6 +6,7 @@
  */
 import type { ReasonedPlan, V1Day, V1Session } from "../engine/types.ts";
 import { buildSessions, type SessionCtx } from "./sessionLibrary.ts";
+import { buildTrailSessions, trailWeekSchema } from "./trailLibrary.ts";
 import { intOf, renderSess, type Refs, type HrZones } from "./renderer.ts";
 
 const J = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -15,7 +16,10 @@ interface DaySlot {
   slot: string;
 }
 
-function schema(use10: boolean, phase: string, isRecup: boolean): DaySlot[] {
+function schema(use10: boolean, phase: string, isRecup: boolean, trailCat?: string): DaySlot[] {
+  // R7 TRAIL — structure propre : la descente et la marche sont des séances à part entière,
+  // la sortie longue est le pivot du week-end, le lundi porte le renfo excentrique.
+  if (trailCat) return trailWeekSchema(phase, isRecup, trailCat as "long") as DaySlot[];
   if (isRecup) {
     const d: [string, string][] = [["facile", "facileR"], ["facile", "facile2"], ["off", "off"], ["facile", "facileR"], ["facile", "facile2"], ["facile", "facileR"], ["off", "off"], ["facile", "facile2"], ["facile", "facileR"], ["recup", "recup"]];
     return (use10 ? d : d.slice(0, 7)).map((x) => ({ charge: x[0], slot: x[1] }));
@@ -57,7 +61,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
       // déjà, la détente d'affûtage fait office de récupération).
       if (isR && ph.id === "peak" && ph.weeks <= 1) isR = false;
       if (isR) sinceR = 0; else sinceR++;
-      sch = schema(r.use10, ph.id, isR);
+      sch = schema(r.use10, ph.id, isR, r.trail ? r.trail.category : undefined);
     }
     const s = sch[dic] || { charge: "facile", slot: "facileR" };
     const jn = J[i % 7];
@@ -137,7 +141,9 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
     d.date = iso(start + i * MS);
-    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog);
+    d.sessions = r.trail
+      ? buildTrailSessions(r, d.slot as Parameters<typeof buildTrailSessions>[1], d.phaseId, d.prog, d.week)
+      : buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog);
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
       else if (s.min == null) s.min = 0;
@@ -258,6 +264,18 @@ function applyStrengthGrafts(r: ReasonedPlan, days: GenDay[]): void {
     const graft = (day: GenDay | undefined, obj: V1Session) => {
       if (day && day.sessions.some((s) => s.d !== "rs")) day.sessions.push(obj);
     };
+    // R7 TRAIL (T15) — le renfo EXCENTRIQUE est la protection n°1 contre la casse musculaire
+    // en descente. Greffé dès la phase de base, jamais une journée en plus.
+    if (r.trail) {
+      const quad = r.inj.list.includes("quadriceps");
+      graft(faciles[0], { d: "rs", name: "+ Renfo excentrique",
+        det: (quad ? "25min" : "20min") + " en fin de séance : squats descendants LENTS (5s à la descente), fentes contrôlées, mollets sur une marche"
+          + (r.inj.list.includes("cheville") ? ", puis 10min de proprioception de cheville" : "")
+          + " — 💡 Objectif : préparer les cuisses à encaisser la descente. C'est la protection la plus efficace contre la casse musculaire du jour J"
+          + (quad ? ", et la seule charge autorisée sur tes quadriceps fragiles" : "") + ".",
+        steps: [] });
+      continue;
+    }
     if (sp === "run") {
       // B2 (audit v6) — la greffe de renfo est CIBLÉE par localisation : tibia → renfo
       // tibial, hanche → gainage hanche/ITB (moyen fessier, bande ilio-tibiale).

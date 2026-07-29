@@ -656,3 +656,103 @@ d'une constante nommée (`C22_AUDIT_HARD_JUMP`) — plus de littéral divergent.
 | `D2` | violations dures sur la matrice standard du banc | Agrégat des règles ci-dessus mesurées avec des profils différents des 486 d'`audit:v2` (qui est à **0 violation dure**) ; les cas restants sont des plans saturés par les planchers. |
 | `D3` | 4 profils tri à +11 à +19% au pic | **Arbitrage** : « la semaine max est en phase peak » (structure) et C22 (+10%) ne sont pas toujours satisfiables ensemble sur un plan saturé. On tient la structure ET le seuil DUR (+25%, jamais franchi) : mieux vaut un pic marqué qu'un pic plus léger que la base. |
 | `F2` | 42 séances à 43-44% au lieu de 45% de temps en zone cible | C13b ajouté (échauffement ≤0.8× corps, retour au calme ≤0.5×) : serrer davantage déstabilise le plafond `vol_max` et la courbe. Écart d'1 à 2 points, sans conséquence de sécurité. |
+
+## R7 TRAIL — le trail devient un sport (spec SPEC_R7_TRAIL, 29/07/2026)
+
+Diagnostic de départ : traité comme un FORMAT de course à pied, le trail prescrivait
+**86 séances sur 86 avec une allure en min/km** — dont une sortie longue de 255 min à
+5'36/km pour 1 300 à 1 650 m de dénivelé. Zéro marche rapide, zéro bâton, zéro
+ravitaillement, zéro nuit sur une préparation d'ultra ; 6 séances de côtes strictement
+identiques figées à 15×3min ; `terrain=trail`/`route`/`piste` produisaient le **même plan
+à la minute** ; et un 23 km/900 m recevait la même durée de préparation qu'un 100 miles.
+
+### Le verrou : l'intensité dépend de la pente
+
+`V1Step` porte désormais `gradient` (up/down/flat/rolling), `dplusM`, `dmoinsM`, `mode`
+(course / marche rapide / alternance), `poles`, `surface`. Table de résolution du rendu
+(`renderer.ts`) :
+
+| pente | référence | rendu |
+|---|---|---|
+| `flat` | allure seuil | `5'36-6'05/km` |
+| `up` | **VAM** (zones `tr.vam`/`tr.asc`/`tr.climb`/`tr.hike`) | `720-790 m/h de D+`, repli FC puis RPE |
+| `down` | **aucune** | consigne technique (`TRAIL_DOWN_CUE`), jamais de cible chiffrée |
+| `rolling` | FC (`fmtIntHr`) + D+/D− cible | `Z2 · D+ 630m / D− 510m cible` |
+
+Chiffrer une descente est activement nuisible : ça pousse à courir vite là où la casse
+musculaire et le risque de chute sont maximaux. `loadModel` (l'auditeur) mesure les deux
+axes verticaux — sans ça, les règles de dénivelé resteraient déclaratives comme
+`primaryMetric: "gap_pace"` l'était depuis R4 (jamais lu par le moteur).
+
+### Objectif décrit par ses DONNÉES, catégorie déduite
+
+Le questionnaire ne demande plus un format : il demande **distance, D+, technicité, nuit**
+(+ barrière horaire optionnelle). La catégorie d'effort (`kv` · `court` · `long` · `ultra` ·
+`ultra_long`) est **déduite du temps estimé** et affichée comme une décision, avec le
+km-effort (`distance + D+/100`) comme repère. Deux références au lieu d'une : allure seuil
+**sur plat** et **VAM** (m D+/h). Nouvelle étape « ton terrain d'entraînement » (accès réel
+au dénivelé, tapis, bâtons) — la contrainte la plus déterminante d'une prépa trail, et elle
+n'existait pas.
+
+### Modèle de charge à TROIS axes (`src/engine/trailModel.ts`)
+
+| axe | plafond | progression max |
+|---|---|---|
+| temps | `TRAIL_HISTORY_CAPS` par catégorie × historique | +10 % (C22) |
+| **D+** | `T1_DPLUS_CAPS` + plafond du terrain d'entraînement | **+12 %** (T2) |
+| **D−** | dérivé du D+, plafonné | **+8 %** (T2b) |
+
+Le négatif progresse le plus lentement : c'est délibéré (dommages excentriques à 24-48 h,
+récupération complète en 3 à 7 jours). Autres constantes avec provenance : **T3** (aucune
+qualité ni descente dans les 48 h suivant >1 000 m D− — la sortie longue n'est jamais
+supprimée, elle passe à plat), **T4** (sortie longue en % du temps de course estimé :
+0,55× sur un ultra, jamais un absolu), **T5** (part de marche rapide attendue),
+**T6** (durée de préparation par catégorie : 10 à 28 semaines), **T7** (répétitions
+ravitaillement au-delà de 6 h d'effort).
+
+### Bibliothèque (`src/generator/trailLibrary.ts`)
+
+14 séances : sortie longue (temps + D+ + D−), back-to-back, côtes courtes VAM, seuil
+ascensionnel, descente technique, descente en charge, marche rapide (bâtons), longue avec
+ravitaillement réel, sortie de nuit, renfo excentrique, proprioception, footing plat,
+tapis incliné, escaliers. La séance de côtes suit une **progression explicite**
+(`HILL_PROGRESSION` : 6×45 s → 10×90 s → 4×9 min seuil → 3×12 min allure de course), avec
+`repCap` et bornes de durée — le plancher « séance digne » de 30 min ne l'écrase plus.
+Contre-indications par zone : quadriceps → D− à 35 % et descentes longues retirées,
+cheville → sentier roulant + proprioception, tibia → descente rapide supprimée, fascia →
+terrain souple.
+
+### Terrain plat : nommer la limite
+
+Quand le dénivelé cible est inatteignable, le moteur plafonne au réalisable, **substitue**
+(tapis 10-15 %, escaliers, côtes répétées, renfo excentrique) et le **dit** : « ton terrain
+ne permet pas les 3 000 m D+/semaine que ton objectif demanderait… si tu peux caler 2 ou 3
+week-ends en relief pendant la phase spécifique, c'est le meilleur investissement de ta
+préparation. » C'est le type de décision qui appartient à un moteur « raisonné ».
+
+### Prédiction : Riegel ne s'applique pas
+
+Modèle en km-effort pondéré par la part verticale (moyenne harmonique entre vitesse au sol
+tenable et VAM tenable), pénalisé par la technicité (roulant 1,00 → alpin 1,30) et la nuit.
+Calibré sur des repères connus (56-101 km de montagne : 7-8 km-effort/h pour un coureur
+intermédiaire). Sorties : temps estimé (**fourchette large et annoncée comme telle** : ±20 %
+sur un ultra), vitesse en km-effort/h, vitesse ascensionnelle cible, part de marche, et une
+consigne de répartition par tiers (partir 5 % trop vite coûte 20 % sur la fin). Barrière
+horaire dépassée → avertissement **en tête**, pas dans une carte repliée.
+
+### Périmètre assumé
+
+Le moteur s'arrête à `ultra_long` (12-24 h) : au-delà, sommeil fractionné, assistance et
+ravitaillement par base-vie dépassent ce qu'un plan automatique peut honnêtement produire —
+l'outil construit l'endurance et **nomme la limite** au lieu de deviner. Hors périmètre
+également (dit, pas approximé) : skyrunning technique, protocole d'acclimatation en
+altitude (au-delà d'un avertissement > 2 500 m), courses par étapes.
+
+### Migration et garanties
+
+`SPORTS.run` perd le format `trail` ; les plans existants `sport=run, format=trail` sont
+**migrés** (`migrateTrailPlans`) avec des valeurs par défaut et un avertissement au Profil
+demandant la vraie distance et le vrai D+. Nouvelle carte Profil « ⛰ Ta course et ton
+terrain » (tout éditable, régénère le plan). Gardes : **16 tests T1-T16** du banc v6 (spec
+écrite AVANT le code, en dette, passée au vert lot par lot) + suite E2E `smoke-trail.mjs`
+(35 assertions, parcours complet dans un vrai navigateur).

@@ -21,6 +21,7 @@ mieux qu'un plan dangereux. »
 |---|---|
 | `note.md` | Manifeste : vision, priorités, règles interdites, principes d'or |
 | `Coach_Pro_V1.5.html` | **Le produit** — application autonome (~1600 lignes), tout le moteur |
+| `src/engine/trailModel.ts` + `src/generator/trailLibrary.ts` | **Le module trail** (R7) : catégorie déduite, charge à 3 axes (temps/D+/D−), 14 séances |
 | `endurabuild/` | **La PWA** — même produit en modules ES, mobile-first, installable/offline, vue plan en 5 onglets (voir ses RAPPORT-MIGRATION-PWA.md, RAPPORT-ONGLETS.md et RAPPORT-R4.md) ; UI = source de vérité désormais |
 | `ARCHITECTURE.md` | Choix techniques : pipeline du moteur, registre des règles R3.x/Cn, auditeur, conventions |
 | `src/` + `npm run audit:v1` | L'auditeur de cohérence — la spec exécutable (486 combinaisons) |
@@ -48,7 +49,7 @@ dépôt — historique git si besoin.
   (test attendu vert qui échoue) ; la dette connue (`expect:'fail'`) ne bloque pas la CI.
   Quand un défaut est corrigé, passer son `expect` à `'pass'` **dans le même commit** :
   il devient un garde-fou permanent.
-- `npm run test:e2e` — 4 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
+- `npm run test:e2e` — 6 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
   job CI `e2e` séparé). Seule exception au zéro-dépendance : Playwright, devDependency de
   TEST uniquement (`npm install` d'abord ; local : `/opt/pw-browsers/chromium` détecté,
   sinon `EB_CHROMIUM`).
@@ -223,6 +224,22 @@ garde CI 5 fractions) ; avatar **16 niveaux** mix « équipement + décor » (ch
 utilisateur), XP immédiat (+10/séance validée, repos compris — niveau 2 dès la 1re
 séance), seuils non linéaires croissants, chaque niveau débloque UN paramètre visuel
 (`unlock`), teaser « débloque … » au Profil, 6 gardes CI (demo:retention).
+**R7 TRAIL livré** (spec SPEC_R7_TRAIL, voir ARCHITECTURE.md « R7 TRAIL ») : le trail est
+un **SPORT** (`SPORTS.trail`), plus un format de course à pied. Le verrou levé : l'intensité
+dépend de la PENTE (`gradient` sur les steps) — VAM en montée, consigne technique SANS
+chiffre en descente, FC + D+ en vallonné ; avant, 86 séances sur 86 portaient une allure au
+sol, dont une longue à 5'36/km pour 1 650 m de D+. L'objectif se décrit par ses DONNÉES
+(distance, D+, technicité, nuit) et la **catégorie d'effort est déduite** (kv → ultra_long),
+avec le km-effort comme repère. Charge à **trois axes** : temps (+10 %), D+ (+12 %, T1/T2),
+D− (+8 %, T2b — le plus lent : la descente casse en premier). Constantes T1-T7 avec
+provenance, 14 séances dédiées (`src/generator/trailLibrary.ts` : longue, back-to-back,
+côtes VAM progressives, descente technique et en charge, marche rapide bâtons, ravito réel,
+nuit, renfo excentrique, tapis, escaliers), récup excentrique 48 h (T3), sortie longue en %
+du temps de course (T4), terrain plat → substituts + limite NOMMÉE, prédicteur trail (Riegel
+inapplicable) avec fourchette large assumée et barrière horaire en tête. Moteur plafonné à
+`ultra_long` (décision produit : au-delà de 24 h, on nomme la limite). Migration des plans
+`run/trail` + carte Profil « ⛰ Ta course et ton terrain ». Gardes : 16 tests T1-T16 (banc v6)
++ `smoke-trail.mjs` (35 assertions, 6e suite E2E).
 **Audit externe v6 livré** (29/07/2026, voir ARCHITECTURE.md « Audit externe v6 ») : un
 audit indépendant est arrivé avec son banc de régression exécutable (`audit_v6.mjs`,
 38 tests à ID stable, `npm run audit:v6` — **9e gate CI**, exit 1 à la moindre

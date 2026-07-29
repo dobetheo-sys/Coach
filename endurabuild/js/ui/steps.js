@@ -31,9 +31,13 @@ function evalRules(a, tier){
   if(a.med_pain==="oui"||a.med_dizzy==="oui"||a.med_treat==="oui") add("medical","⚠️ Sécurité médicale","Avis médical REQUIS","Signal d'alerte déclaré. Aucune intensité générée sans feu vert d'un médecin. Gratuit, par principe.");
 
   // ---- SPÉCIFIQUE PAR SPORT : terrain / milieu ----
+  if(sp==="trail"){
+    add("terrain","Discipline","Trail — le dénivelé commande","Volume planifié en TEMPS et en D+ (jamais en km), intensité en vitesse ascensionnelle en montée, descente programmée comme une charge à part entière, marche rapide entraînée.");
+    if(a.train_dplus_access==="plat") add("terrain2","Terrain d'entraînement","Plat — substituts nécessaires","Le dénivelé de ta course n'est pas atteignable près de chez toi : côtes répétées, escaliers ou tapis incliné remplacent une partie du D+, et le plan te le dit au lieu de prescrire l'impossible.");
+    if(a.poles==="oui"||a.poles==="a_decider") add("gammes","Bâtons","Marche rapide travaillée","Au-delà de 1500m D+, la marche avec bâtons économise réellement les jambes : elle se prépare comme le reste.");
+  }
   if(sp==="run"){
-    if(a.terrain==="trail") add("terrain","Terrain","Trail — dénivelé & technique","Travail de côte (montée/descente), renforcement excentrique quadri pour les descentes, gestion de l'allure au D+ et non au plat.");
-    else if(a.terrain==="route") add("terrain","Terrain","Route — allure constante","Régularité d'allure, économie de course, travail de seuil et d'allure spécifique objectif.");
+    if(a.terrain==="route") add("terrain","Terrain","Route — allure constante","Régularité d'allure, économie de course, travail de seuil et d'allure spécifique objectif.");
     else if(a.terrain==="piste") add("terrain","Terrain","Piste/mixte — vitesse","Travail de VMA et de vitesse pure, fractionné court de qualité.");
   }
   if(sp==="bike"){
@@ -121,9 +125,18 @@ function buildFreeSteps(){
    why:"La même cible se prépare différemment selon qu'on vise un chrono, la ligne d'arrivée, ou le plaisir.",
    render(){return '<div class="q"><span class="q-label">Ton moteur ?</span><div class="opts" data-key="intent">'
      +opt("competition",'<span style="color:#e63946">●</span> Compétition')+opt("finir",'<span style="color:#ff7a1a">●</span> Finir')+opt("plaisir",'<span style="color:#2e6bff">●</span> Plaisir')+'</div></div>'
-     +'<div class="q"><span class="q-label">Quel objectif ?</span><div class="opts" data-key="format">'+fmtOpts+'</div></div>'
+     +(S.sport==="trail"
+       // R7 TRAIL — la catégorie d'effort est DÉDUITE (§3.1) : on ne demande pas un format,
+       // on demande les données réelles de la course. Le D+ est LA donnée qui structure tout.
+       ? '<div class="q"><span class="q-label">Ta course visée</span><div class="q-sub">Le dénivelé compte autant que la distance : c\'est lui qui décide de la durée de préparation, du volume et du contenu.</div><div class="row">'
+         +'<div class="q"><span class="q-label">Distance (km)</span><input type="number" min="3" max="350" data-input="race_distance_km" placeholder="62"></div>'
+         +'<div class="q"><span class="q-label">D+ total (m)</span><input type="number" min="0" max="20000" data-input="race_dplus_m" placeholder="3200"></div></div>'
+         +'<div class="q"><span class="q-label">Terrain de la course</span><div class="opts" data-key="race_technicity">'+opt("roulant","Roulant (pistes larges)")+opt("mixte","Mixte")+opt("technique","Technique (racines, cailloux)")+opt("alpin","Alpin (haute montagne)")+'</div></div>'
+         +'<div class="q"><span class="q-label">Course de nuit ?</span><div class="opts" data-key="race_night">'+opt("non","Non")+opt("partielle","En partie")+opt("majoritaire","Majoritairement")+'</div></div>'
+         +'<div class="q"><span class="q-label">Barrière horaire (h, optionnel)</span><input type="number" min="1" max="60" step="0.5" data-input="race_cutoff_h" placeholder="—"></div>'
+       : '<div class="q"><span class="q-label">Quel objectif ?</span><div class="opts" data-key="format">'+fmtOpts+'</div></div>')
      +'<div class="q"><span class="q-label">Date (si connue)</span><input type="date" data-input="race_date"></div>';},
-   valid(a){return a.intent&&a.format;}},
+   valid(a){return a.intent&&(S.sport==="trail" ? (a.race_distance_km&&a.race_dplus_m&&a.race_technicity&&a.race_night) : a.format);}},
 
   {id:"medical",title:"Sécurité d'abord",eyebrow:"Gratuit — Feu vert",
    why:"Trois questions avant tout. Un signal → orientation médecin avant intensité. Gratuit, non négociable.",
@@ -145,6 +158,20 @@ function buildFreeSteps(){
       why:"L'eau libre demande des compétences en plus : navigation, peloton, sighting. Le bassin affine la technique.",
       render(){return '<div class="q"><span class="q-label">Où nages-tu principalement ?</span><div class="opts" data-key="milieu">'+cfg.milieux.map(m=>opt(m[0],m[1])).join("")+'</div></div>';},
       valid(a){return a.milieu;}});
+  }
+
+  // R7 TRAIL — « Ton terrain » (§3.3) : la contrainte la plus déterminante du trail, et elle
+  // n'existait pas. Un athlète en plaine qui prépare un ultra de montagne a besoin d'un plan
+  // structurellement différent — le moteur doit le savoir pour le dire au lieu de prescrire
+  // du dénivelé inatteignable.
+  if(S.sport==="trail"){
+    steps.push({id:"terrain_trail",title:"Ton terrain d'entraînement",eyebrow:"Gratuit — Ce que tu peux faire",
+      why:"C'est la contrainte n°1 d'une prépa trail : si tu ne peux pas atteindre le dénivelé que ta course demande, le plan doit compenser autrement — et te le dire franchement.",
+      render(){return '<div class="q"><span class="q-label">Du dénivelé accessible depuis chez toi ?</span><div class="opts" data-key="train_dplus_access">'
+        +opt("montagne","Montagne (+800m possibles)")+opt("collines","Collines (200-800m)")+opt("plat","Plat (moins de 200m)")+'</div></div>'
+        +'<div class="q"><span class="q-label">Tapis inclinable disponible ?</span><div class="q-sub">Substitut de montée quand le relief manque (10-15% d\'inclinaison).</div><div class="opts" data-key="treadmill">'+opt("oui","Oui")+opt("non","Non")+'</div></div>'
+        +'<div class="q"><span class="q-label">Bâtons de trail ?</span><div class="q-sub">Au-delà de 1500m D+, ils économisent réellement les jambes — mais c\'est ton choix.</div><div class="opts" data-key="poles">'+opt("oui","Oui, j\'en ai")+opt("a_decider","À décider")+opt("non","Non")+'</div></div>';},
+      valid(a){return a.train_dplus_access&&a.treadmill&&a.poles;}});
   }
 
   // Profil
@@ -194,6 +221,23 @@ function protocolHTML(kind){
 }
 function levelStep(){
   const sp=S.sport;
+  // R7 TRAIL (§3.2) — deux références, pas une : l'allure seuil SUR PLAT et la vitesse
+  // ascensionnelle (VAM). En montée, l'allure au sol ne veut rien dire ; la VAM, si.
+  if(sp==="trail") return {id:"level",title:"Ton moteur en montagne",eyebrow:"Gratuit — Le moteur",
+    why:"Deux références : ton allure seuil sur PLAT, et ta vitesse ascensionnelle (mètres de D+ par heure). C'est la VAM qui pilote l'intensité de tes montées — pas l'allure.",
+    render(){return '<div class="q"><span class="q-label">Ton niveau</span><div class="opts" data-key="level">'+opt("debutant","Débutant")+opt("inter","Intermédiaire")+opt("avance","Avancé")+'</div></div>'
+      +'<div class="q"><span class="q-label">Ton allure seuil sur PLAT ?</span><div class="opts" data-key="pace_known">'+opt("oui","Je la connais")+opt("non","Non")+'</div></div><div id="paceB"></div>'
+      +'<div class="q"><span class="q-label">Ta vitesse ascensionnelle (VAM) ?</span><div class="q-sub">En mètres de D+ par heure. Repères : débutant 500-700 · intermédiaire 700-1000 · avancé 1000-1400.</div><div class="opts" data-key="vam_known">'+opt("oui","Je la connais")+opt("non","Non")+'</div></div><div id="vamB"></div>';},
+    branches(a){
+      branch("paceB",a.pace_known==="oui",'<div class="branch"><div class="q"><span class="q-label">Allure seuil sur plat (min/km)</span><input type="text" data-input="pace" placeholder="4:50"></div></div>');
+      branch("paceB2",a.pace_known==="non","");
+      branch("vamB",a.vam_known==="oui",'<div class="branch"><div class="q"><span class="q-label">VAM (m de D+ / h)</span><input type="number" min="200" max="2500" data-input="vam" placeholder="850"></div></div>');
+      if(a.pace_known==="non"||a.vam_known==="non"){
+        const el=document.getElementById("vamB");
+        if(el&&a.vam_known==="non")el.innerHTML='<div class="q-sub" style="margin-top:6px"><b>⛰ Comment obtenir ta VAM</b> — Sur une montée régulière de 20 à 30 minutes, à l\'effort maximal tenable : le D+ parcouru divisé par la durée donne ta vitesse ascensionnelle seuil, en mètres par heure. Tu pourras la renseigner plus tard dans l\'onglet 📋 Profil : le plan se recalcule aussitôt.</div>';
+      }
+    },
+    valid(a){return a.level&&a.pace_known&&a.vam_known&&(a.pace_known!=="oui"||a.pace)&&(a.vam_known!=="oui"||a.vam);}};
   if(sp==="tri") return {id:"level",title:"Tes niveaux (3 disciplines)",eyebrow:"Gratuit — Le moteur",
     why:"Le triathlon combine 3 sports : on calibre chacun. Renseigne ce que tu connais, le reste passe en zones cardio ou ressenti.",
     render(){return '<div class="q"><span class="q-label">Niveau global</span><div class="opts" data-key="level">'+opt("debutant","Débutant")+opt("inter","Intermédiaire")+opt("avance","Avancé")+'</div></div>'
@@ -247,6 +291,9 @@ function injuryOpts(){
   if(sp==="run") arr=[["aucune","Aucune"],["tibia","Tibias / périostite"],["genou","Genou"],["pied","Pied / cheville"],["hanche","Hanche / ITB"]];
   if(sp==="bike") arr=[["aucune","Aucune"],["dos","Dos / lombaires"],["genou","Genou"],["cou","Nuque / cervicales"]];
   if(sp==="swim") arr=[["aucune","Aucune"],["epaule","Épaule"],["cou","Nuque"]];
+  // R7 TRAIL (§3.4) — ces localisations pilotent DIRECTEMENT le volume de descente :
+  // le quadriceps est la zone que la descente casse en premier.
+  if(sp==="trail") arr=[["aucune","Aucune"],["quadriceps","Quadriceps (descentes)"],["cheville","Cheville / entorses"],["tibia","Tibias / périostite"],["genou","Genou"],["fascia","Fascia plantaire"],["hanche","Hanche / ITB"]];
   return arr.map(x=>opt(x[0],x[1])).join("");
 }
 

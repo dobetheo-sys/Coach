@@ -11,11 +11,20 @@ const SPORTS = {
     minWeeks:{S:8,M:12,"70.3":20,Full:36},
     disciplines:["sw","bk","rn"]
   },
+  trail: {
+    nom:"Trail", ico:"⛰", accent:"#2f7d4f",
+    pitch:"Le dénivelé commande tout. On planifie en temps et en D+, jamais en kilomètres — et la descente compte autant que la montée.",
+    // Pas de « format » à choisir : la catégorie d'effort est DÉDUITE de la distance et du
+    // D+ de la course visée (T6/§3.1). Les formats ci-dessous ne servent qu'à l'affichage.
+    formats:[],
+    minWeeks:{kv:10,court:12,long:16,ultra:22,ultra_long:28},
+    disciplines:["rn"]
+  },
   run: {
     nom:"Course à pied", ico:"🏃", accent:"#ff7a1a",
     pitch:"Du 10 km au marathon. L'impact gère tout : volume progressif et renfo au centre.",
-    formats:[["5k","5 km"],["10k","10 km"],["semi","Semi-marathon"],["marathon","Marathon"],["trail","Trail / Ultra"]],
-    minWeeks:{"5k":6,"10k":8,semi:12,marathon:16,trail:18},
+    formats:[["5k","5 km"],["10k","10 km"],["semi","Semi-marathon"],["marathon","Marathon"]],
+    minWeeks:{"5k":6,"10k":8,semi:12,marathon:16},
     disciplines:["rn"],
     terrains:[["route","Route / bitume"],["trail","Trail / sentier"],["piste","Piste / mixte"]]
   },
@@ -71,11 +80,16 @@ const VLAB={competition:"Compétition",finir:"Finir",plaisir:"Plaisir",np:"Non p
   route:"Route",trail:"Trail",piste:"Piste",plat:"Plat",vallonne:"Vallonné",montagne:"Montagneux",bassin:"Bassin",ow:"Eau libre",mixte:"Mixte",
   court:"<6h30",moyen:"6h30-7h30",bon:">7h30",legere:"Légère",normale:"Normale",lourde:"Lourde",
   sedentaire:"Sédentaire",modere:"Modérément actif",actif:"Métier physique",oui:"Oui",non:"Non",parfois:"Parfois",coach:"Le moteur juge",
-  respiration:"Respiration",technique:"Technique",endurance:"Endurance",peur:"Confiance"};
+  respiration:"Respiration",technique:"Technique",endurance:"Endurance",peur:"Confiance",
+  // R7 TRAIL
+  roulant:"Roulant",alpin:"Alpin",partielle:"Partielle",majoritaire:"Majoritaire",
+  montagne:"Montagne",collines:"Collines",a_decider:"À décider"};
 const QLABELS={intent:"Intention",format:"Objectif",terrain:"Terrain",epreuve:"Épreuve",milieu:"Milieu",sex:"Sexe",level:"Niveau",swim_limit:"Limite",
   ftp_known:"FTP connue",ftp:"FTP",pace_known:"Allure connue",pace:"Allure seuil",css_known:"CSS connu",css:"CSS",history:"Historique",injury:"Blessures",
   sessions_max:"Séances max",vol_max:"Volume max",vol_recent:"Volume récent",dispo:"Dispo",shift_ok:"Décalage",off_days:"Jours OFF",off_which:"Jours bloqués",doubles:"Doubles",
-  sleep:"Sommeil",life_load:"Charge vie",weight_lever:"Levier poids",cycle_sync:"Cycle menstruel",races:"Courses inter.",age:"Âge",weight:"Poids"};
+  sleep:"Sommeil",life_load:"Charge vie",weight_lever:"Levier poids",cycle_sync:"Cycle menstruel",races:"Courses inter.",age:"Âge",weight:"Poids",
+  race_distance_km:"Distance",race_dplus_m:"D+ course",race_technicity:"Technicité",race_night:"Nuit",
+  vam_known:"VAM connue",vam:"VAM",train_dplus_access:"Accès dénivelé",poles:"Bâtons",treadmill:"Tapis inclinable"};
 const RULE_CAT={intent:"struct",sante:"sante",duree:"struct",medical:"sante",terrain:"struct",clm:"struct",ow:"disc",bassin:"disc",tech:"disc",recup:"struct",inj:"sante",volume:"struct",sessions:"struct",cycle:"struct",polar:"struct",sleep:"sante",life:"sante",renfo:"sante",gammes:"disc",force:"disc",tech_drill:"disc",poids:"nutri",fer:"sante",cyclep:"sante",races:"struct"};
 const CATS=[["struct","🧱","Structure"],["sante","❤️","Santé & garde-fous"],["disc","🎯","Spécifique sport"],["nutri","🍽","Nutrition"]];
 const HEROS=["cycle","volume","intent","sante"];

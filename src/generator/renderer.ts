@@ -77,6 +77,15 @@ export function fmtInt(key: string | null | undefined, refs: Refs, hz: HrZones):
   return d.fb;
 }
 
+/** Comme fmtInt, mais en préférant la FRÉQUENCE CARDIAQUE à l'allure : utilisé sur les
+ *  blocs vallonnés (R7 §7), où une allure au sol moyenne ne décrit aucun effort réel. */
+export function fmtIntHr(key: string | null | undefined, refs: Refs, hz: HrZones): string {
+  const d = key ? ZDEF[key] : undefined;
+  if (!d) return key || "";
+  if (d.hr && hz[d.hr]) return hz[d.hr];
+  return fmtInt(key, refs, hz);
+}
+
 export const intOf = (key: string | null): { ref: string; lo: number; hi: number } | null => {
   const d = key ? ZDEF[key] : undefined;
   return d ? { ref: d.ref, lo: d.lo, hi: d.hi } : null;
@@ -152,8 +161,10 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
         if (b.dplusM) str += " (+" + b.dplusM + "m D+)";
         if (b.zone) str += " @ " + fmtInt(b.zone as string, refs, hz);
       } else if (b.gradient === "rolling") {
-        // Vallonné : la charge se dit en D+/D−, l'intensité en FC/ressenti — pas en allure.
-        if (b.zone) str += " @ " + fmtInt(b.zone as string, refs, hz);
+        // Vallonné : la charge se dit en D+/D−, l'intensité en FC/ressenti — PAS en allure.
+        // Sur un parcours qui alterne montées et descentes, une allure moyenne au sol ne
+        // décrit aucun effort réel : c'est la fréquence cardiaque qui reste comparable.
+        if (b.zone) str += " @ " + fmtIntHr(b.zone as string, refs, hz);
         const dd: string[] = [];
         if (b.dplusM) dd.push("D+ " + b.dplusM + "m");
         if (b.dmoinsM) dd.push("D− " + b.dmoinsM + "m");

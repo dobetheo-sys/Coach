@@ -17,6 +17,7 @@ import {
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, type Refs } from "./renderer.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
+import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY } from "../engine/trailModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
 
 interface BoundedSession extends V1Session {
@@ -50,6 +51,11 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         const fl = s.long ? 800 : Math.min(b.bnd.floor, r.beginner ? 600 : 750); // C24
         return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
       }
+      // R7 TRAIL — un bloc de côtes dure 45 s à 12 min : le plancher « séance digne » de
+      // 30 min (pensé pour les sorties longues de route) écrasait son plafond et ramenait
+      // toutes les phases à la même valeur — exactement le défaut « 6 séances identiques
+      // à 15×3min » relevé par l'audit. Un bloc qui porte une PENTE garde ses propres bornes.
+      if (b.gradient) return { floor: Math.max(1, b.bnd.floor), cap: Math.max(1, b.bnd.cap) };
       const fl = s.d === "bk" ? 35 : 30; // C8/C16 — plancher digne, pas la borne basse du format
       return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
     }
@@ -653,6 +659,108 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         renderWeek(wd2);
       }
       const vr = Math.round((weekMin(wd2) / 60) * 10) / 10;
+      if (vr !== w.vol) { w.vol = vr; w.vol_real = vr; }
+    }
+  }
+
+  // ---- R7 TRAIL : les DEUX axes verticaux, puis la règle de récupération excentrique ----
+  // Le temps est déjà piloté par la courbe (bands + C22). Le D+ et le D− ont leur PROPRE
+  // courbe et leur propre plafond : les mettre à l'échelle après coup est la seule façon de
+  // garantir T3/T4 sans que le scaling du temps les écrase.
+  if (r.trail && r.trailVert) {
+    const vert = r.trailVert;
+    const stepsOf = (w: V1Week) => (w.days as GenDay[]).flatMap((d) => d.sessions.flatMap((s) => s.steps || []));
+    const upOf = (w: V1Week) => stepsOf(w).reduce((t, st) => t + (st.dplusM || 0) * (st.reps || 1), 0);
+    const downOf = (w: V1Week) => stepsOf(w).reduce((t, st) => t + (st.dmoinsM || 0) * (st.reps || 1), 0);
+    // Cohérence physique d'abord : un bloc en montée de N minutes à X m/h fait N/60×X mètres.
+    // Sans ce recalcul, le scaling du TEMPS (R3.3) laissait le D+ figé à sa valeur initiale.
+    const syncUpFromDuration = (w: V1Week) => {
+      for (const st of stepsOf(w)) {
+        if (st.gradient !== "up" || !st.durationMin || !st.dplusM) continue;
+        const z = String(st.zone || "");
+        const share = z === "tr.vam" ? 1.0 : z === "tr.asc" ? 0.89 : z === "tr.climb" ? 0.76 : z === "tr.hike" ? 0.52 : 0.42;
+        st.dplusM = Math.max(20, Math.round((st.durationMin / 60) * r.trail!.vam * share / 5) * 5);
+      }
+    };
+    const scaleVert = (w: V1Week, fUp: number, fDown: number) => {
+      for (const st of stepsOf(w)) {
+        if (st.dplusM) st.dplusM = Math.max(20, Math.round((st.dplusM * fUp) / 10) * 10);
+        if (st.dmoinsM) st.dmoinsM = Math.max(20, Math.round((st.dmoinsM * fDown) / 10) * 10);
+      }
+    };
+    // T3 — aucune qualité ni descente dans les 48h suivant une sortie à fort D− : les
+    // dommages excentriques culminent 24-48h après l'effort. La règle était DÉCLARÉE dans le
+    // registre depuis R4 ; elle s'applique enfin. La sortie LONGUE n'est jamais supprimée
+    // (c'est le pivot de la semaine) : elle perd son dénivelé et son intensité, pas sa place.
+    const applyEccentricRecovery = () => {
+      const allDays = wl.flatMap((w) => (w.days as GenDay[]).map((d) => ({ w, d })));
+      const dayDown = (d: GenDay) => d.sessions.reduce((t, s) => t + (s.steps || []).reduce((u, st) => u + (st.dmoinsM || 0) * (st.reps || 1), 0), 0);
+      for (let i = 0; i < allDays.length; i++) {
+        if (dayDown(allDays[i].d) < T3_ECCENTRIC_RECOVERY.thresholdDmoins) continue;
+        for (const nxt of allDays.slice(i + 1, i + 1 + T3_ECCENTRIC_RECOVERY.minGapDays)) {
+          const d = nxt.d;
+          if (d.forced || !d.sessions.some((s) => s.d !== "rs")) continue;
+          const hasLong = d.sessions.some((s) => s.long);
+          const isHard = d.charge === "dur";
+          const hasDown = dayDown(d) > 200;
+          if (!isHard && !hasDown) continue;
+          if (hasLong) {
+            // la longue reste, à plat et sans intensité
+            for (const sess of d.sessions) {
+              for (const st of sess.steps || []) {
+                st.dmoinsM = 0;
+                if (st.gradient === "down") st.gradient = "flat";
+                if (st.gradient === "up" || st.gradient === "rolling") { st.gradient = "flat"; st.dplusM = 0; }
+                if (st.role === "body") st.zone = "tr.easyup";
+              }
+              // la consigne d'origine (répétition ravito, matériel…) est CONSERVÉE : on ajoute
+              // la raison de l'allègement, on n'efface pas l'objectif de la séance.
+              sess.note = "Cette sortie tombe moins de 48 h après une grosse descente : elle reste au programme mais À PLAT et très souple. Les micro-lésions des cuisses culminent maintenant — le volume facile les répare, le dénivelé les aggraverait." + (sess.note ? " " + sess.note : "");
+            }
+            d.charge = "facile";
+          } else {
+            d.charge = "facile";
+            d.slot = "facile2";
+            d.sessions = [{
+              d: "rn", name: "Footing plat de récupération (post-descente)",
+              note: "La grosse descente d'il y a moins de 48 h a créé des micro-lésions dans tes cuisses : elles culminent maintenant. Aucune qualité, aucune descente aujourd'hui — du plat très souple, c'est ce qui répare le plus vite.",
+              det: "",
+              steps: [{ role: "body", durationMin: 30, gradient: "flat", zone: "tr.easyup", mode: "run", surface: "route" } as V1Step],
+            } as V1Session];
+          }
+          renderWeek(nxt.w.days as GenDay[]);
+        }
+      }
+    };
+    applyEccentricRecovery();
+
+    // Courbe verticale : même forme que la courbe de temps (bands), plafonnée par T1, et
+    // progressant au plus de T2 (+12%) / T2b (+8%) d'une semaine de charge à la suivante.
+    let prevUp = 0, prevDown = 0;
+    for (let pass = 0; pass < 2; pass++) {
+    prevUp = 0; prevDown = 0;
+    for (let i = 0; i < wl.length; i++) {
+      const w = wl[i];
+      const band = Lval(w.phase.id, w.phase.weeks > 1 ? (w.num - 1 - w.phase.start) / (w.phase.weeks - 1) : 1);
+      let tgtUp = vert.dplusPeak * band;
+      let tgtDown = vert.dmoinsPeak * band;
+      if (w.isRecup) { tgtUp *= RECUP_WEEK_FACTOR; tgtDown *= RECUP_WEEK_FACTOR; }
+      if (w.phase.id !== "taper" && !w.isRecup) {
+        if (prevUp > 0) tgtUp = Math.min(tgtUp, prevUp * T2_DPLUS_GROWTH);
+        if (prevDown > 0) tgtDown = Math.min(tgtDown, prevDown * T2_DMOINS_GROWTH);
+      }
+      syncUpFromDuration(w);
+      const curUp = upOf(w), curDown = downOf(w);
+      if (curUp > 0 || curDown > 0) {
+        scaleVert(w, curUp > 0 ? tgtUp / curUp : 1, curDown > 0 ? tgtDown / curDown : 1);
+        renderWeek(w.days as GenDay[]);
+      }
+      if (w.phase.id !== "taper" && !w.isRecup) { prevUp = upOf(w); prevDown = downOf(w); }
+    }
+    }
+    // Volumes recalculés après ces passes (le D+ ne change pas les minutes, la substitution T3 oui)
+    for (const w of wl) {
+      const vr = Math.round((weekMin(w.days as GenDay[]) / 60) * 10) / 10;
       if (vr !== w.vol) { w.vol = vr; w.vol_real = vr; }
     }
   }

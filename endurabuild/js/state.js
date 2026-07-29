@@ -41,14 +41,37 @@ function ebSave(){try{ebSyncActive();liftShared();localStorage.setItem("eb_state
 // Chargement + MIGRATION automatique de l'ancien format mono-plan eb_state_v1 (on ne fait
 // jamais perdre son plan à un utilisateur existant ; l'ancienne clé est laissée en place
 // par prudence — elle ne sera plus lue dès que la v2 existe).
+/** R7 TRAIL — migration des plans « sport=run, format=trail » : le trail est devenu un
+ *  SPORT (§8.2). On ne casse jamais un plan existant : le sport bascule, la distance et le
+ *  D+ sont pré-remplis à partir d'un ordre de grandeur, et un avertissement demande à
+ *  l'athlète de renseigner les deux vraies valeurs — ce sont elles qui structurent tout. */
+function migrateTrailPlans(state){
+  if(!state||!Array.isArray(state.plans))return state;
+  for(const p of state.plans){
+    if(p.sport!=="run"||!p.answers||p.answers.format!=="trail")continue;
+    p.sport="trail";
+    p.answers.format="";
+    if(!p.answers.race_distance_km)p.answers.race_distance_km="45";
+    if(!p.answers.race_dplus_m)p.answers.race_dplus_m="2000";
+    if(!p.answers.race_technicity)p.answers.race_technicity="mixte";
+    if(!p.answers.race_night)p.answers.race_night="non";
+    if(!p.answers.train_dplus_access)p.answers.train_dplus_access="collines";
+    if(!p.answers.treadmill)p.answers.treadmill="non";
+    if(!p.answers.poles)p.answers.poles="a_decider";
+    if(!p.answers.vam_known)p.answers.vam_known="non";
+    p.answers.trailMigrated=1; // l'UI affiche « vérifie ta distance et ton D+ »
+  }
+  return state;
+}
+
 function ebLoad(){
   try{
     const v2=JSON.parse(localStorage.getItem("eb_state_v2")||"null");
-    if(v2&&Array.isArray(v2.plans)&&v2.plans.length)return v2;
+    if(v2&&Array.isArray(v2.plans)&&v2.plans.length)return migrateTrailPlans(v2);
     const v1=JSON.parse(localStorage.getItem("eb_state_v1")||"null");
     if(v1){
       const e=Object.assign(ebNewPlanEntry(""),{sport:v1.sport||null,answers:v1.answers||{},tier:v1.tier||"free",step:v1.step||0,started:!!v1.started,onPlan:!!v1.onPlan});
-      return {plans:[e],activePlanId:e.id,shared:{}};
+      return migrateTrailPlans({plans:[e],activePlanId:e.id,shared:{}});
     }
     return null;
   }catch(e){return null;}

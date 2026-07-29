@@ -292,6 +292,58 @@ function retestSuggestionHTML() {
   return '<div class="load-sub" style="margin-top:4px">💡 Dernière référence mesurée le <b>' + last + "</b> → retest suggéré autour du <b>" + sug + "</b>" + (overdue ? " (c’est le moment !)" : "") + ".</div>";
 }
 
+// R7 TRAIL — les données qui structurent la prépa, éditables : distance, D+, technicité,
+// VAM. Elles changent la CATÉGORIE d'effort, donc la durée du plan, les plafonds et le
+// contenu — chaque modification régénère le plan.
+function trailProfileHTML(a) {
+  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
+  const sel = (id, cur, opts) => '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px"><span style="width:150px">' + opts.lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
+    + opts.list.map((o) => '<option value="' + o[0] + '"' + ((cur || "") === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></label>";
+  let h = '<div class="load-card"><div class="load-title">⛰ Ta course et ton terrain</div>';
+  if (a.trailMigrated) h += '<div class="load-sub" style="margin-top:6px;color:#a33"><b>À vérifier :</b> ton plan trail a été repris depuis l’ancienne version, où le dénivelé n’était pas demandé. Renseigne la vraie distance et le vrai D+ de ta course : ce sont eux qui décident de la durée de préparation, du volume et du contenu des séances.</div>';
+  else h += '<div class="load-sub" style="margin-top:4px">Le D+ compte autant que la distance : il décide de la catégorie d’effort, donc de tout le reste.</div>';
+  h += row("pfTrailKm", "Distance (km)", a.race_distance_km, "62");
+  h += row("pfTrailDplus", "D+ total (m)", a.race_dplus_m, "3200");
+  h += row("pfTrailVam", "VAM (m D+/h)", a.vam_known === "oui" ? a.vam : "", "850 — test : 20-30min de montée à fond");
+  h += sel("pfTrailTech", a.race_technicity, { lab: "Terrain de la course", list: [["roulant", "Roulant"], ["mixte", "Mixte"], ["technique", "Technique"], ["alpin", "Alpin"]] });
+  h += sel("pfTrailNight", a.race_night, { lab: "Course de nuit", list: [["non", "Non"], ["partielle", "En partie"], ["majoritaire", "Majoritairement"]] });
+  h += sel("pfTrailAccess", a.train_dplus_access, { lab: "Dénivelé accessible", list: [["montagne", "Montagne (+800m)"], ["collines", "Collines (200-800m)"], ["plat", "Plat (<200m)"]] });
+  h += sel("pfTrailPoles", a.poles, { lab: "Bâtons", list: [["oui", "Oui"], ["a_decider", "À décider"], ["non", "Non"]] });
+  h += row("pfTrailCutoff", "Barrière horaire (h)", a.race_cutoff_h, "optionnel");
+  h += '<div class="nav" style="margin-top:10px"><button class="btn" id="pfTrailSave" type="button">Enregistrer → régénérer le plan</button></div><div id="pfTrailMsg" class="load-sub" style="margin-top:6px"></div></div>';
+  return h;
+}
+function bindTrailProfile() {
+  const btn = $("pfTrailSave");
+  if (!btn) return;
+  btn.onclick = () => {
+    const a = S.answers;
+    const g = (id) => { const el = $(id); return el ? String(el.value || "").trim() : null; };
+    const before = JSON.stringify([a.race_distance_km, a.race_dplus_m, a.vam, a.race_technicity, a.race_night, a.train_dplus_access, a.poles, a.race_cutoff_h]);
+    const km = parseFloat(g("pfTrailKm") || ""), dp = parseFloat(g("pfTrailDplus") || ""), vam = parseFloat(g("pfTrailVam") || "");
+    if (km > 0) a.race_distance_km = String(km);
+    if (dp >= 0) a.race_dplus_m = String(dp);
+    if (vam >= 200 && vam <= 2500) { a.vam = String(vam); a.vam_known = "oui"; } else if (!g("pfTrailVam")) a.vam_known = "non";
+    for (const [id, key] of [["pfTrailTech", "race_technicity"], ["pfTrailNight", "race_night"], ["pfTrailAccess", "train_dplus_access"], ["pfTrailPoles", "poles"]]) {
+      const el = $(id);
+      if (el) a[key] = el.value;
+    }
+    const co = parseFloat(g("pfTrailCutoff") || "");
+    a.race_cutoff_h = co > 0 ? String(co) : "";
+    const m = $("pfTrailMsg");
+    if (JSON.stringify([a.race_distance_km, a.race_dplus_m, a.vam, a.race_technicity, a.race_night, a.train_dplus_access, a.poles, a.race_cutoff_h]) === before) {
+      if (m) m.textContent = "Aucun changement détecté.";
+      return;
+    }
+    delete a.trailMigrated;
+    invalidatePlan();
+    ebSave();
+    renderTabProfile(ensurePlan());
+    const m2 = $("pfTrailMsg");
+    if (m2) m2.textContent = "✓ Enregistré — plan régénéré : la catégorie d’effort, la durée et les plafonds sont recalculés.";
+  };
+}
+
 // R10 — courses intermédiaires RÉELLES (dates + priorité), pour TOUS les profils :
 // branchées sur la mécanique moteur existante — la semaine de la course est allégée
 // (mini-affûtage si B), la suivante est en récup, et le JOUR J porte une séance 🏁
@@ -347,6 +399,7 @@ export function renderTabProfile(plan) {
   html += '<div class="why">Modifie une valeur : le plan est régénéré et le changement est consigné dans ton journal d’évolution.</div>';
   html += plansSelectorHTML();
   html += planDeadlineHTML(plan);
+  if (sp === "trail") html += trailProfileHTML(a);
   html += raceInterHTML(a);
   html += '<div class="bp-cat">' + summaryRows(a) + "</div>";
 
@@ -499,6 +552,7 @@ export function renderTabProfile(plan) {
   $("pfEdit").onclick = () => { S.step = curSteps().length - 1; renderStep(); };
   $("pfReset").onclick = () => reset();
   bindRaceInter();
+  bindTrailProfile();
   const fitInput = $("pfFit");
   if (fitInput) fitInput.onchange = async () => {
     const msg = (t) => { const m = $("pfFitMsg"); if (m) m.innerHTML = t; };

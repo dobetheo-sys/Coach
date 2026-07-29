@@ -6,6 +6,7 @@
 import type { AthleteProfile, V1Plan, V1Step } from "../engine/types.ts";
 import { intensitySplit } from "../engine/loadModel.ts";
 import { parsePaceSec } from "../engine/constraintMatrix.ts";
+import { trailObjective } from "../engine/trailModel.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
@@ -342,6 +343,8 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
     pctLoad: pg.pctLoad,
     streakWeeks: pg.streakWeeks,
     courseProfile: String(answers.course_profile || "") || undefined, // R6 — profil du parcours (Profil)
+    // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
+    trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
   });
 }
 
