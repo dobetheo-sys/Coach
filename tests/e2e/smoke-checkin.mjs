@@ -32,6 +32,7 @@ await page.click("#nextBtn");
 await page.click('.opts[data-key="history"] .opt[data-val="confirme"]'); await page.click('.opts[data-key="injury"] .opt[data-val="aucune"]'); await page.click("#nextBtn");
 await page.click('.opts[data-key="sessions_max"] .opt[data-val="5"]');
 await page.click('.opts[data-key="vol_max"] .opt[data-val="7"]');
+await page.click('.opts[data-key="vol_recent"] .opt[data-val="3"]');
 await page.click('.opts[data-key="dispo"] .opt[data-val="semaine"]');
 await page.click('.opts[data-key="off_days"] .opt[data-val="non"]');
 await page.click('.opts[data-key="doubles"] .opt[data-val="non"]');

@@ -74,7 +74,7 @@ const VLAB={competition:"Compétition",finir:"Finir",plaisir:"Plaisir",np:"Non p
   respiration:"Respiration",technique:"Technique",endurance:"Endurance",peur:"Confiance"};
 const QLABELS={intent:"Intention",format:"Objectif",terrain:"Terrain",epreuve:"Épreuve",milieu:"Milieu",sex:"Sexe",level:"Niveau",swim_limit:"Limite",
   ftp_known:"FTP connue",ftp:"FTP",pace_known:"Allure connue",pace:"Allure seuil",css_known:"CSS connu",css:"CSS",history:"Historique",injury:"Blessures",
-  sessions_max:"Séances max",vol_max:"Volume max",dispo:"Dispo",shift_ok:"Décalage",off_days:"Jours OFF",off_which:"Jours bloqués",doubles:"Doubles",
+  sessions_max:"Séances max",vol_max:"Volume max",vol_recent:"Volume récent",dispo:"Dispo",shift_ok:"Décalage",off_days:"Jours OFF",off_which:"Jours bloqués",doubles:"Doubles",
   sleep:"Sommeil",life_load:"Charge vie",weight_lever:"Levier poids",cycle_sync:"Cycle menstruel",races:"Courses inter.",age:"Âge",weight:"Poids"};
 const RULE_CAT={intent:"struct",sante:"sante",duree:"struct",medical:"sante",terrain:"struct",clm:"struct",ow:"disc",bassin:"disc",tech:"disc",recup:"struct",inj:"sante",volume:"struct",sessions:"struct",cycle:"struct",polar:"struct",sleep:"sante",life:"sante",renfo:"sante",gammes:"disc",force:"disc",tech_drill:"disc",poids:"nutri",fer:"sante",cyclep:"sante",races:"struct"};
 const CATS=[["struct","🧱","Structure"],["sante","❤️","Santé & garde-fous"],["disc","🎯","Spécifique sport"],["nutri","🍽","Nutrition"]];

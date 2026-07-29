@@ -37,6 +37,8 @@ ok(/4'22/.test(profTxt), "meilleure allure seuil retenue (262s = 4'22), pas la p
 ok(/Mes plans \(1\)/.test(profTxt), "sélecteur « Mes plans » présent (1 plan après migration)");
 ok(/Plan généré le .+ · échéance/.test(profTxt), "date de génération + échéance du plan affichées");
 ok(/retest suggéré autour du \d{4}-\d{2}-\d{2}/.test(profTxt), "date de retest suggérée (dernière référence + 6 semaines)");
+ok(await page.locator("#pfVolRecent").count() === 1, "champ « Volume récent (point de départ) » éditable au Profil (R10)");
+ok(await page.locator("#pfRaceSave").count() === 1 && /Courses intermédiaires/.test(profTxt), "carte « 🏁 Courses intermédiaires » au Profil pour tous les profils (R10)");
 ok(await page.locator("#pfBackup").count() === 1, "bouton de sauvegarde (export JSON) présent dans Profil");
 ok(await page.locator("#pfRestore").count() === 1, "restauration depuis un fichier présente dans Profil");
 const dlBackup = page.waitForEvent("download", { timeout: 5000 }).catch(() => null);

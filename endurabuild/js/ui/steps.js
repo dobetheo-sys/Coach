@@ -170,13 +170,14 @@ function buildFreeSteps(){
     why:"Réponds pour une semaine NORMALE, pas idéale. On surestime tous de 20-30%. Le moteur garde une marge.",
     render(){return '<div class="q"><span class="q-label">Séances/sem tenables sans sacrifice ?</span><div class="opts" data-key="sessions_max">'+opt("3","≤3")+opt("5","4-5")+opt("7","6-7")+opt("9","8-9")+opt("12","10+")+'</div></div>'
       +'<div class="q"><span class="q-label">Volume horaire max (pic) ?</span><div class="q-sub">⚠️ Atteint seulement quelques semaines au pic, pas toute la prépa.</div><div class="opts" data-key="vol_max">'+opt("4","≤4h")+opt("7","5-7h")+opt("10","8-10h")+opt("13","11-13h")+opt("16","14-16h")+opt("20","16h+")+'</div></div>'
+      +'<div class="q"><span class="q-label">Volume RÉEL des 3-6 derniers mois ?</span><div class="q-sub">Ton point de départ : le plan démarre de ce que ton corps fait DÉJÀ, pas de ta capacité max.</div><div class="opts" data-key="vol_recent">'+opt("1","<2h")+opt("3","2-4h")+opt("5","4-6h")+opt("7","6-8h")+opt("10","8-12h")+opt("13","12h+")+'</div></div>'
       +'<div class="q"><span class="q-label">Disponibilité</span><div class="opts" data-key="dispo">'+opt("quotidienne","Tous les jours, libre")+opt("semaine","Tous les jours, contraint")+opt("partielle","4-5 j/sem")+opt("weekend","Week-end surtout")+'</div></div><div id="cycleBranch"></div>'
       +'<div class="q"><span class="q-label">Des jours OFF obligatoires ?</span><div class="opts" data-key="off_days">'+opt("non","Non")+opt("oui","Oui")+'</div></div><div id="offBranch"></div>'
       +'<div class="q"><span class="q-label">Journées à 2 séances possibles ?</span><div class="opts" data-key="doubles">'+opt("oui","Oui")+opt("parfois","Parfois")+opt("non","Non")+'</div></div>';},
     branches(a){
       branch("cycleBranch",a.dispo==="quotidienne",'<div class="branch"><div class="branch-tag">↳ Cycle long possible</div><div class="q"><span class="q-label">Un cycle de 10 jours glisse sur le calendrier (ta séance longue change de jour). OK ?</span><div class="opts" data-key="shift_ok">'+opt("oui","Oui, peu importe")+opt("non","Non, repères fixes")+'</div></div></div>');
       branch("offBranch",a.off_days==="oui",'<div class="branch"><div class="branch-tag">↳ Jours bloqués</div><div class="q"><span class="q-label">Lesquels ?</span><div class="opts" data-key="off_which" data-multi="1">'+["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].map(j=>opt(j,j)).join("")+'</div></div></div>');},
-    valid(a){return a.sessions_max&&a.vol_max&&a.dispo&&a.doubles&&a.off_days&&(a.dispo!=="quotidienne"||a.shift_ok)&&(a.off_days==="non"||a.off_which);}});
+    valid(a){return a.sessions_max&&a.vol_max&&a.vol_recent&&a.dispo&&a.doubles&&a.off_days&&(a.dispo!=="quotidienne"||a.shift_ok)&&(a.off_days==="non"||a.off_which);}});
 
   return steps;
 }

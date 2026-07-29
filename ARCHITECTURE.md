@@ -527,3 +527,42 @@ en dernière semaine assertés).
   couleur du maillot = thème choisi. Teaser Profil « Prochain : … — débloque … » +
   liste des 16 niveaux consultable. Gardes CI : 6 assertions demo:retention (16 niveaux
   documentés, niveau 2 à la 1re séance, courbe croissante, monotonie, hors-plan = 0 XP).
+
+## R10 — le point de départ de l'athlète + courses intermédiaires réelles (retour ami coach)
+
+Un ami entraîneur a passé l'app au crible de son protocole d'analyse d'athlète. Quatre
+corrections mécanisées, chacune avec sa garde :
+
+- **Rampe `vol_recent` (le point de départ)** : nouvelle question OBLIGATOIRE du
+  questionnaire gratuit (« Volume RÉEL des 3-6 derniers mois ? ») + champ éditable au
+  Profil. Dans `planGenerator`, la courbe de volume est plafonnée par une rampe qui part
+  de `vol_recent × 1.1` en semaine 1 et monte de ≤ C22 (+10 %) par semaine de charge
+  jusqu'à rejoindre la courbe théorique (elle s'efface alors) ; semaines de récup ×0.62
+  comme le reste, affûtage non concerné. Décision `R10-depart` consignée. Sans
+  `vol_recent`, comportement STRICTEMENT identique — les 486 combinaisons d'audit ne
+  bougent pas (asserté). Gardes CI demo:retention : semaine 1 ≤ ×1.1, croissance ≤ +10 %,
+  décision présente, plan identique sans la réponse.
+- **Courses intermédiaires pour tous** : carte « 🏁 Courses intermédiaires » au Profil
+  (2 dates + priorité B/C, `races="oui"` posé automatiquement) — avant, seul le
+  questionnaire premium posait la question, donc « demandé sans détail, adaptation ? ».
+  Et le JOUR de course est désormais matérialisé dans la grille : la séance de ce jour
+  devient « 🏁 Course B/C » avec sa consigne de pacing (B : mini-affûtage fait, départ
+  prudent, finir fort · C : course laboratoire, on s'entraîne à travers), semaine
+  allégée ×0.75 si B, semaine suivante ×0.7 (postRace). Gardes CI : séance 🏁 le jour J,
+  pacing présent, taperRace/postRace posés.
+- **%FTP recalibré + langage NP** (`predictor.ts`) : un ami lisait « 80 % FTP » comme
+  une cible molle. Bandes relevées sur les facteurs d'intensité de référence (Coggan) —
+  route 0.85-0.95, CLM 0.95-1.02, cyclo 0.73-0.83, gravel 0.68-0.78 ; tri S 0.85-0.93,
+  M 0.82-0.88, 70.3 0.76-0.83, Full 0.70-0.76 — et le « pourquoi » précise partout que
+  c'est de la puissance NORMALISÉE (les pointes montent au-dessus du seuil).
+- **Séance du jour = grille** : `adjustTodayV2` (bridge) applique désormais
+  `answers.daySwaps` avant de chercher le jour — après un échange ⇄, le héros
+  « Aujourd'hui » montrait l'ancienne séance alors que la grille montrait la bonne.
+- **Licence** : fichier `LICENSE` « tous droits réservés » (dépôt public pour
+  hébergement/consultation uniquement) + mention pied de page dans l'app.
+
+Reste du protocole de l'ami : couvert pour l'essentiel (âge, blessures, dispo réelle,
+FTP/allure/CSS + méthode de test, objectif A + profil de parcours, échéance). En
+backlog assumé : FC max/repos → zones FC, VDOT, profil diesel/explosif, préférence de
+régulation Watts/FC/RPE par discipline, plan strict vs flexible, créneaux des sorties
+longues, inventaire matériel (home-trainer/capteurs).

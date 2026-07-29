@@ -218,3 +218,12 @@ garde CI 5 fractions) ; avatar **16 niveaux** mix « équipement + décor » (ch
 utilisateur), XP immédiat (+10/séance validée, repos compris — niveau 2 dès la 1re
 séance), seuils non linéaires croissants, chaque niveau débloque UN paramètre visuel
 (`unlock`), teaser « débloque … » au Profil, 6 gardes CI (demo:retention).
+**R10 livré** (retour d'un ami entraîneur, voir ARCHITECTURE.md « R10 ») : **rampe
+`vol_recent`** — le plan part du volume RÉEL des 3-6 derniers mois (question obligatoire
+du questionnaire + Profil, semaine 1 ≤ ×1.1 puis ≤ +10 %/sem jusqu'à rejoindre la courbe,
+décision `R10-depart`, comportement inchangé sans la réponse — 486 combos intactes,
+gardes CI) ; **courses intermédiaires pour tous** (carte 🏁 au Profil, jour J matérialisé
+en séance « 🏁 Course B/C » avec pacing, semaine allégée + récup ensuite, gardes CI) ;
+**%FTP recalibré** sur les facteurs Coggan + « puissance NORMALISÉE » explicité partout ;
+`adjustTodayV2` applique les échanges ⇄ (héros Aujourd'hui = grille) ; **LICENSE** tous
+droits réservés + mention pied de page.

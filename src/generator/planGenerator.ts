@@ -132,6 +132,13 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
   }
 
   // ---- Boucle de volume : courbe (bands + C22) → R3.3 → garde C3 → R3.13 ----
+  // R10 — point de départ de l'athlète : si le volume RÉCENT (3-6 derniers mois) est
+  // connu, la semaine 1 part de là (≤ ×1.1) et la montée rejoint la courbe théorique à
+  // ≤ C22 (+10% par semaine de charge). Sans cette rampe, un athlète qui sort de 3h/sem
+  // recevait d'emblée la courbe calibrée sur sa capacité déclarée — trop, trop tôt.
+  const volRecent = parseFloat(a.vol_recent || "");
+  let _rampCap = volRecent > 0 ? Math.max(2, volRecent * 1.1) : Infinity;
+  let _rampWeeks = 0;
   const wl: V1Week[] = [];
   let _maxChargeMin = 0;
   let _prevLw = 0;
@@ -149,6 +156,18 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
     let targetH = Lw * peakH;
     if (isRW) targetH *= RECUP_WEEK_FACTOR;
     targetH = Math.min(targetH, capH); // C3
+    // R10 — rampe depuis le volume récent : cap qui monte de ≤ C22 par semaine de charge
+    if (ph.id !== "taper" && Number.isFinite(_rampCap)) {
+      const capW = isRW ? _rampCap * RECUP_WEEK_FACTOR : _rampCap;
+      if (targetH > capW + 0.05) {
+        targetH = capW;
+        _rampWeeks++;
+      }
+      if (!isRW) {
+        _rampCap *= C22_MAX_WEEKLY_GROWTH;
+        if (_rampCap >= peakH) _rampCap = Infinity; // la rampe a rejoint la courbe — elle s'efface
+      }
+    }
     // R3.3 — ajuster le corps des séances à la cible (itératif)
     for (let it = 0; it < 5; it++) {
       renderWeek(wd);
@@ -210,6 +229,14 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
     wl.push({ num: w + 1, phase: ph, vol: volReal, vol_declared: Math.round(targetH * 10) / 10, vol_real: volReal, days: wd, isRecup: isRW });
   }
 
+  if (_rampWeeks > 0) {
+    r.decisions.push({
+      id: "R10-depart", what: "Départ calé sur ton volume récent",
+      val: volRecent + "h/sem → montée ≤ +10%/semaine sur " + _rampWeeks + " semaine" + (_rampWeeks > 1 ? "s" : ""),
+      why: "Un plan qui démarre au-dessus de ce que le corps fait DÉJÀ multiplie le risque de blessure — on part de ton volume réel des derniers mois et on rejoint la courbe progressivement",
+    });
+  }
+
   // Dates alignées au calendrier réel → la course tombe à son VRAI jour dans la dernière
   // semaine ; les jours datés APRÈS elle deviennent repos assumé (on prépare, on court,
   // on récupère — jamais de séance orpheline après l'objectif). Volumes recalculés
@@ -253,6 +280,24 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
     const wk = wl.find((w) => (w.days as GenDay[]).some((d) => d.date === rc.date));
     if (wk) {
       wk.race = rc.prio;
+      // R10 — le JOUR de course existe dans la grille : la séance de ce jour devient la
+      // course elle-même (consigne de pacing selon la priorité), pas un entraînement.
+      const rd = (wk.days as GenDay[]).find((d) => d.date === rc.date);
+      if (rd) {
+        const mainD = a.sport === "bike" ? "bk" : a.sport === "swim" ? "sw" : "rn";
+        const prevMin = rd.sessions.reduce((m, s) => m + (s.min || 0), 0) || 60;
+        rd.charge = "dur";
+        rd.sessions = [{
+          d: mainD as "rn",
+          name: "🏁 Course " + rc.prio,
+          det: rc.prio === "C"
+            ? "Course laboratoire : départ contrôlé, teste ton ravito et ton pacing — on enchaîne l'entraînement derrière. — 💡 Objectif : apprendre en conditions réelles, pas performer."
+            : "Course de préparation : mini-affûtage fait, tu peux appuyer. Départ prudent, finis fort. — 💡 Objectif : valider allures et stratégie avant l'objectif A.",
+          min: prevMin,
+          steps: [{ role: "body", durationMin: prevMin, zone: mainD + ".thr" }],
+          note: "Course " + rc.prio + " placée à sa vraie date — la semaine est allégée autour.",
+        } as V1Session];
+      }
       if (rc.prio !== "C") {
         wk.vol = Math.round(wk.vol * 0.75 * 10) / 10;
         wk.taperRace = true;
