@@ -15,7 +15,8 @@
     "build:app": "node scripts/buildApp.mjs",
     "check:app": "node scripts/buildApp.mjs --check",
     "audit:v6": "node audit_v6.mjs Coach_Pro_V1.5.html",
-    "test:e2e": "node tests/e2e/run-all.mjs"
+    "test:e2e": "node tests/e2e/run-all.mjs",
+    "build:standalone": "node scripts/buildStandalone.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

@@ -49,6 +49,11 @@ dépôt — historique git si besoin.
   (test attendu vert qui échoue) ; la dette connue (`expect:'fail'`) ne bloque pas la CI.
   Quand un défaut est corrigé, passer son `expect` à `'pass'` **dans le même commit** :
   il devient un garde-fou permanent.
+- `npm run build:standalone` — recoud la **PWA** en UN fichier HTML autonome
+  (`EnduraBuild-standalone.html`, ignoré par git) : 23 modules ES en `Blob` + `importmap`
+  (instance unique par module, imports circulaires préservés), CSS et polices en `data:`.
+  Sert à tester l'app hors ligne d'un double-clic — le monolithe `Coach_Pro_V1.5.html`
+  a le moteur à jour mais son UI est gelée à R4 (ni carte Trail, ni étape terrain).
 - `npm run test:e2e` — 6 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
   job CI `e2e` séparé). Seule exception au zéro-dépendance : Playwright, devDependency de
   TEST uniquement (`npm install` d'abord ; local : `/opt/pw-browsers/chromium` détecté,
