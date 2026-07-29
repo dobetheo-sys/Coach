@@ -1792,6 +1792,7 @@ async function applyReadiness(){
                 
                   
                    
+                                                                                                                      
                         
                                                   
                     
@@ -3689,6 +3690,13 @@ function generatePlan(profile                )                                  
   }
 
   // ---- Boucle de volume : courbe (bands + C22) → R3.3 → garde C3 → R3.13 ----
+  // R10 — point de départ de l'athlète : si le volume RÉCENT (3-6 derniers mois) est
+  // connu, la semaine 1 part de là (≤ ×1.1) et la montée rejoint la courbe théorique à
+  // ≤ C22 (+10% par semaine de charge). Sans cette rampe, un athlète qui sort de 3h/sem
+  // recevait d'emblée la courbe calibrée sur sa capacité déclarée — trop, trop tôt.
+  const volRecent = parseFloat(a.vol_recent || "");
+  let _rampCap = volRecent > 0 ? Math.max(2, volRecent * 1.1) : Infinity;
+  let _rampWeeks = 0;
   const wl           = [];
   let _maxChargeMin = 0;
   let _prevLw = 0;
@@ -3706,6 +3714,18 @@ function generatePlan(profile                )                                  
     let targetH = Lw * peakH;
     if (isRW) targetH *= RECUP_WEEK_FACTOR;
     targetH = Math.min(targetH, capH); // C3
+    // R10 — rampe depuis le volume récent : cap qui monte de ≤ C22 par semaine de charge
+    if (ph.id !== "taper" && Number.isFinite(_rampCap)) {
+      const capW = isRW ? _rampCap * RECUP_WEEK_FACTOR : _rampCap;
+      if (targetH > capW + 0.05) {
+        targetH = capW;
+        _rampWeeks++;
+      }
+      if (!isRW) {
+        _rampCap *= C22_MAX_WEEKLY_GROWTH;
+        if (_rampCap >= peakH) _rampCap = Infinity; // la rampe a rejoint la courbe — elle s'efface
+      }
+    }
     // R3.3 — ajuster le corps des séances à la cible (itératif)
     for (let it = 0; it < 5; it++) {
       renderWeek(wd);
@@ -3767,6 +3787,14 @@ function generatePlan(profile                )                                  
     wl.push({ num: w + 1, phase: ph, vol: volReal, vol_declared: Math.round(targetH * 10) / 10, vol_real: volReal, days: wd, isRecup: isRW });
   }
 
+  if (_rampWeeks > 0) {
+    r.decisions.push({
+      id: "R10-depart", what: "Départ calé sur ton volume récent",
+      val: volRecent + "h/sem → montée ≤ +10%/semaine sur " + _rampWeeks + " semaine" + (_rampWeeks > 1 ? "s" : ""),
+      why: "Un plan qui démarre au-dessus de ce que le corps fait DÉJÀ multiplie le risque de blessure — on part de ton volume réel des derniers mois et on rejoint la courbe progressivement",
+    });
+  }
+
   // Dates alignées au calendrier réel → la course tombe à son VRAI jour dans la dernière
   // semaine ; les jours datés APRÈS elle deviennent repos assumé (on prépare, on court,
   // on récupère — jamais de séance orpheline après l'objectif). Volumes recalculés
@@ -3810,6 +3838,24 @@ function generatePlan(profile                )                                  
     const wk = wl.find((w) => (w.days            ).some((d) => d.date === rc.date));
     if (wk) {
       wk.race = rc.prio;
+      // R10 — le JOUR de course existe dans la grille : la séance de ce jour devient la
+      // course elle-même (consigne de pacing selon la priorité), pas un entraînement.
+      const rd = (wk.days            ).find((d) => d.date === rc.date);
+      if (rd) {
+        const mainD = a.sport === "bike" ? "bk" : a.sport === "swim" ? "sw" : "rn";
+        const prevMin = rd.sessions.reduce((m, s) => m + (s.min || 0), 0) || 60;
+        rd.charge = "dur";
+        rd.sessions = [{
+          d: mainD        ,
+          name: "🏁 Course " + rc.prio,
+          det: rc.prio === "C"
+            ? "Course laboratoire : départ contrôlé, teste ton ravito et ton pacing — on enchaîne l'entraînement derrière. — 💡 Objectif : apprendre en conditions réelles, pas performer."
+            : "Course de préparation : mini-affûtage fait, tu peux appuyer. Départ prudent, finis fort. — 💡 Objectif : valider allures et stratégie avant l'objectif A.",
+          min: prevMin,
+          steps: [{ role: "body", durationMin: prevMin, zone: mainD + ".thr" }],
+          note: "Course " + rc.prio + " placée à sa vraie date — la semaine est allégée autour.",
+        }             ];
+      }
       if (rc.prio !== "C") {
         wk.vol = Math.round(wk.vol * 0.75 * 10) / 10;
         wk.taperRace = true;
@@ -3975,12 +4021,15 @@ const SWIM_RACE                                                   = {
   fond: { dist: 1500, factor: 1.0 },
   ow: { dist: 1500, factor: 1.05 },
 };
+// R10 — recalées sur les facteurs d'intensité de référence (Coggan) et exprimées en
+// puissance NORMALISÉE : un ami coureur lisait « 80% FTP » comme une cible molle — c'est
+// la moyenne pondérée d'un effort où les pointes montent bien au-dessus du seuil.
 const BIKE_POWER                                                           = {
   crit: { lo: 0.95, hi: 1.05, note: "critérium : au seuil et au-dessus par relances" },
-  clm: { lo: 0.93, hi: 1.0, note: "CLM : effort au seuil, régulier du départ à la ligne" },
-  route: { lo: 0.8, hi: 0.9, note: "course sur route : puissance normalisée, les pointes en plus" },
-  cyclo: { lo: 0.7, hi: 0.8, note: "cyclosportive : tempo durable, garder du grain pour la fin" },
-  gravel: { lo: 0.65, hi: 0.75, note: "gravel/ultra : endurance, la régularité bat la vitesse" },
+  clm: { lo: 0.95, hi: 1.02, note: "CLM : effort au seuil, régulier du départ à la ligne" },
+  route: { lo: 0.85, hi: 0.95, note: "course sur route : les attaques et bosses montent bien au-dessus du seuil" },
+  cyclo: { lo: 0.73, hi: 0.83, note: "cyclosportive : tempo durable, garder du grain pour la fin" },
+  gravel: { lo: 0.68, hi: 0.78, note: "gravel/ultra : endurance, la régularité bat la vitesse" },
 };
 const TRI_SWIM                                                   = {
   S: { dist: 750, factor: 1.04 },
@@ -3989,10 +4038,10 @@ const TRI_SWIM                                                   = {
   Full: { dist: 3800, factor: 1.08 },
 };
 const TRI_BIKE                                             = {
-  S: { lo: 0.82, hi: 0.88 },
-  M: { lo: 0.78, hi: 0.85 },
-  "70.3": { lo: 0.72, hi: 0.8 },
-  Full: { lo: 0.65, hi: 0.73 },
+  S: { lo: 0.85, hi: 0.93 },
+  M: { lo: 0.82, hi: 0.88 },
+  "70.3": { lo: 0.76, hi: 0.83 },
+  Full: { lo: 0.7, hi: 0.76 },
 };
 const TRI_RUN                                                  = {
   S: { km: 5, fatigue: 1.03 },
@@ -4051,7 +4100,7 @@ function predictRace(
   } else if (sport === "bike") {
     const b = BIKE_POWER[format];
     if (refs.ftp > 0 && b) {
-      items.push({ leg: "Vélo", value: Math.round(refs.ftp * b.lo) + "–" + Math.round(refs.ftp * b.hi) + "W", why: b.note + " — le chrono dépend du parcours, la puissance cible ne ment pas" });
+      items.push({ leg: "Vélo", value: Math.round(refs.ftp * b.lo) + "–" + Math.round(refs.ftp * b.hi) + "W", why: b.note + " — cible en puissance NORMALISÉE (moyenne pondérée : les pointes montent au-dessus), le chrono dépend du parcours" });
       D("PRED-bike", "Méthode vélo", "% FTP par format", "Prédire un chrono sans connaître le parcours serait mentir ; la puissance cible est transférable partout");
     } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir tes puissances cibles de course.");
   } else if (sport === "swim") {
@@ -4068,7 +4117,7 @@ function predictRace(
       items.push({ leg: "Natation " + sw.dist + "m", value: range(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" });
     } else advice.push("CSS manquant → pas de projection natation (test 400/200m).");
     if (refs.ftp > 0 && bk) {
-      items.push({ leg: "Vélo", value: Math.round(refs.ftp * bk.lo) + "–" + Math.round(refs.ftp * bk.hi) + "W", why: "l'intensité qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" });
+      items.push({ leg: "Vélo", value: Math.round(refs.ftp * bk.lo) + "–" + Math.round(refs.ftp * bk.hi) + "W", why: "puissance normalisée qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" });
     } else advice.push("FTP manquante → pas de puissance cible vélo (test 20min × 0.95).");
     if (refs.thrPace > 0 && rn) {
       const t = riegelSec(refs.thrPace, rn.km) * rn.fatigue;
@@ -4841,6 +4890,17 @@ function buildPlanV2(sport        , answers            )                        
 /** Adapte la journée `snapshot.date` à l'état de forme — « recalcul du matin ». */
 function adjustTodayV2(sport        , answers            , snapshot                   )                  {
   const { plan, reasoned } = generatePlan(toProfile(sport, answers));
+  // R10 — les échanges de jours ⇄ de l'utilisateur (answers.daySwaps) s'appliquent AUSSI
+  // ici : sans ça, la « séance du jour » montrait la séance d'AVANT échange pendant que
+  // la grille montrait celle d'après (désalignement jour réel / jour du plan).
+  const swaps = (answers.daySwaps                                          ) || [];
+  for (const [wn, jA, jB] of swaps) {
+    const w = plan.weeks.find((x) => x.num === wn);
+    if (!w) continue;
+    const da = w.days.find((d) => d.jour === jA), db = w.days.find((d) => d.jour === jB);
+    if (!da || !db) continue;
+    const t = da.sessions; da.sessions = db.sessions; db.sessions = t;
+  }
   // R4.5/R4.7 — le drapeau douleur et le RPE de la dernière séance validée entrent
   // AUTOMATIQUEMENT dans la photo du jour (aucun appelant ne peut les oublier) :
   // douleur active → rouge forcé ; RPE ≥8 hier → signal de fatigue annoncé.

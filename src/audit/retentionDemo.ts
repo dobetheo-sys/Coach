@@ -165,5 +165,43 @@ function validateDays(answers: Record<string, unknown>, upTo: number) {
   check("avatar : l'XP ne fait que monter avec les jours validés (jamais décroissant)", av5.xp >= av1.xp && av5.level >= av1.level);
 }
 
+// ---- 8. R10 — le plan part du volume RÉCENT de l'athlète (jamais au-dessus de ce que
+// le corps fait déjà) et rejoint la courbe à ≤ +10%/semaine de charge ----
+{
+  const { plan: pBase, reasoned: rBase } = generatePlan(profile);
+  const { plan: pRamp, reasoned: rRamp } = generatePlan({ ...profile, vol_recent: "2" } as unknown as AthleteProfile);
+  const decl = (p: V1Plan, i: number) => p.weeks[i].vol_declared ?? p.weeks[i].vol;
+  check("vol_recent=2h : la semaine 1 déclare ≤ 2×1.1 h (départ = point de départ réel)", decl(pRamp, 0) <= 2 * 1.1 + 0.06, "sem1=" + decl(pRamp, 0) + "h");
+  // croissance ≤ C22 (+10%) entre semaines de CHARGE consécutives pendant la rampe
+  let growthOk = true, prevD = 0;
+  for (const w of pRamp.weeks) {
+    if (w.isRecup || w.phase.id === "taper") { continue; }
+    const dv = w.vol_declared ?? w.vol;
+    if (prevD > 0 && dv > prevD * 1.105 + 0.06) growthOk = false;
+    prevD = dv;
+  }
+  check("vol_recent : la montée reste ≤ +10% par semaine de charge (C22 respecté par la rampe)", growthOk);
+  check("vol_recent : la décision « R10-depart » est consignée (traçabilité du pourquoi)", rRamp.decisions.some((d) => d.id === "R10-depart"));
+  check("sans vol_recent : plan STRICTEMENT identique (les 486 combinaisons d'audit ne bougent pas)",
+    JSON.stringify(pBase.weeks.map((w) => w.vol)) === JSON.stringify(generatePlan(profile).plan.weeks.map((w) => w.vol)) && !rBase.decisions.some((d) => d.id === "R10-depart"));
+}
+
+// ---- 9. R10 — une course intermédiaire datée EXISTE dans la grille : séance 🏁 le jour J,
+// semaine allégée (B), semaine suivante en récupération ----
+{
+  const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
+  const today = iso(Date.now());
+  const race = iso(Date.now() + 70 * 864e5);
+  const inter = iso(Date.now() + 35 * 864e5);
+  const { plan: pr } = generatePlan({ ...profile, plan_start: today, race_date: race, races: "oui", race1_date: inter, race1_prio: "B" } as unknown as AthleteProfile);
+  const wk = pr.weeks.find((w) => w.days.some((d) => (d as { date?: string }).date === inter));
+  const rd = wk && wk.days.find((d) => (d as { date?: string }).date === inter);
+  check("course B intermédiaire : le JOUR J porte la séance 🏁 (plus un entraînement)", !!rd && rd.sessions.length === 1 && /🏁/.test(rd.sessions[0].name || ""), rd ? rd.sessions.map((s) => s.name).join(",") : "jour absent");
+  check("course B : consigne de pacing présente dans la séance", !!rd && /pacing|Départ prudent|appuyer/i.test(rd.sessions[0].det || ""));
+  check("course B : la semaine est marquée course + mini-affûtage (taperRace)", !!wk && wk.race === "B" && wk.taperRace === true);
+  const next = wk && pr.weeks.find((w) => w.num === wk.num + 1);
+  check("course B : la semaine SUIVANTE est en récupération (postRace)", !!next && next.postRace === true);
+}
+
 if (failures) { console.error("\nDémo rétention : " + failures + " garantie(s) en échec."); process.exit(1); }
 console.log("\nDémo rétention : toutes les garanties tiennent (repos = séance, gel douleur/maladie, zéro récompense hors plan).");

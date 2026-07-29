@@ -89,6 +89,17 @@ export interface TodayAdjustment {
 /** Adapte la journée `snapshot.date` à l'état de forme — « recalcul du matin ». */
 export function adjustTodayV2(sport: string, answers: AppAnswers, snapshot: ReadinessSnapshot): TodayAdjustment {
   const { plan, reasoned } = generatePlan(toProfile(sport, answers));
+  // R10 — les échanges de jours ⇄ de l'utilisateur (answers.daySwaps) s'appliquent AUSSI
+  // ici : sans ça, la « séance du jour » montrait la séance d'AVANT échange pendant que
+  // la grille montrait celle d'après (désalignement jour réel / jour du plan).
+  const swaps = (answers.daySwaps as [number, string, string][] | undefined) || [];
+  for (const [wn, jA, jB] of swaps) {
+    const w = plan.weeks.find((x) => x.num === wn);
+    if (!w) continue;
+    const da = w.days.find((d) => d.jour === jA), db = w.days.find((d) => d.jour === jB);
+    if (!da || !db) continue;
+    const t = da.sessions; da.sessions = db.sessions; db.sessions = t;
+  }
   // R4.5/R4.7 — le drapeau douleur et le RPE de la dernière séance validée entrent
   // AUTOMATIQUEMENT dans la photo du jour (aucun appelant ne peut les oublier) :
   // douleur active → rouge forcé ; RPE ≥8 hier → signal de fatigue annoncé.

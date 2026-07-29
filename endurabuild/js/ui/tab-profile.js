@@ -45,6 +45,8 @@ function journalLabel(t) {
     case "cs": return "Vitesse critique " + esc(v);
     case "vma": return "VMA " + esc(v) + " km/h";
     case "profil:vol_max": return "Volume max " + esc(v) + "h/sem";
+    case "profil:vol_recent": return "Volume récent " + esc(v) + "h/sem (point de départ)";
+    case "profil:race_inter": return "Courses intermédiaires : " + esc(v);
     case "profil:weight": return "Poids " + esc(v) + " kg";
     case "profil:sessions_max": return esc(v) + " séances/sem max";
     default: return esc(t.type) + " = " + esc(v);
@@ -290,6 +292,52 @@ function retestSuggestionHTML() {
   return '<div class="load-sub" style="margin-top:4px">💡 Dernière référence mesurée le <b>' + last + "</b> → retest suggéré autour du <b>" + sug + "</b>" + (overdue ? " (c’est le moment !)" : "") + ".</div>";
 }
 
+// R10 — courses intermédiaires RÉELLES (dates + priorité), pour TOUS les profils :
+// branchées sur la mécanique moteur existante — la semaine de la course est allégée
+// (mini-affûtage si B), la suivante est en récup, et le JOUR J porte une séance 🏁
+// avec sa consigne de pacing. Avant, seul le questionnaire premium posait la question.
+function raceInterHTML(a) {
+  const prioSel = (id, cur) => '<select id="' + id + '" style="flex:1;min-width:0">'
+    + '<option value="C"' + (cur !== "B" ? " selected" : "") + '>C — laboratoire (on s’entraîne à travers)</option>'
+    + '<option value="B"' + (cur === "B" ? " selected" : "") + '>B — préparation (mini-affûtage)</option></select>';
+  const rowR = (n, d, p) => '<div style="display:flex;gap:8px;align-items:center;font-size:13px;flex-wrap:wrap"><span style="width:70px">Course ' + n + '</span>'
+    + '<input type="date" id="pfRace' + n + 'd" value="' + esc(d || "") + '" style="flex:1;min-width:130px">' + prioSel("pfRace" + n + "p", p) + "</div>";
+  return '<div class="load-card"><div class="load-title">🏁 Courses intermédiaires</div>'
+    + '<div class="load-sub" style="margin-top:4px">Une course AVANT ton objectif ? Le moteur allège la semaine, place la course à sa vraie date avec sa consigne de pacing, et met la semaine suivante en récupération.</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">' + rowR(1, a.race1_date, a.race1_prio) + rowR(2, a.race2_date, a.race2_prio) + "</div>"
+    + '<div class="nav" style="margin-top:8px"><button class="btn" id="pfRaceSave" type="button">Enregistrer mes courses</button></div>'
+    + '<div id="pfRaceMsg" class="load-sub" style="margin-top:6px"></div></div>';
+}
+function bindRaceInter() {
+  const btn = $("pfRaceSave");
+  if (!btn) return;
+  btn.onclick = () => {
+    const a = S.answers;
+    const d1 = ($("pfRace1d") || {}).value || "", p1 = ($("pfRace1p") || {}).value || "C";
+    const d2 = ($("pfRace2d") || {}).value || "", p2 = ($("pfRace2p") || {}).value || "C";
+    const before = [a.race1_date || "", a.race1_prio || "", a.race2_date || "", a.race2_prio || "", a.races || ""].join("|");
+    a.race1_date = d1; a.race1_prio = d1 ? p1 : "";
+    a.race2_date = d2; a.race2_prio = d2 ? p2 : "";
+    a.races = d1 || d2 ? "oui" : "non";
+    const after = [a.race1_date, a.race1_prio, a.race2_date, a.race2_prio, a.races].join("|");
+    const m = $("pfRaceMsg");
+    if (after === before) { if (m) m.textContent = "Aucun changement détecté."; return; }
+    let warn = "";
+    for (const d of [d1, d2]) {
+      if (d && a.race_date && d >= a.race_date) warn = " ⚠️ Une date est le jour de (ou après) ton objectif A — elle sera ignorée par le plan.";
+      else if (d && a.plan_start && d < a.plan_start) warn = " ⚠️ Une date est avant le début du plan — elle sera ignorée.";
+    }
+    const desc = [d1 ? d1 + " (" + (d1 ? p1 : "") + ")" : "", d2 ? d2 + " (" + p2 + ")" : ""].filter(Boolean).join(" · ") || "aucune";
+    if (!Array.isArray(a.tests)) a.tests = [];
+    a.tests.push({ type: "profil:race_inter", value: desc, date: todayISO(), source: "profil (courses intermédiaires)" });
+    invalidatePlan();
+    ebSave();
+    renderTabProfile(ensurePlan());
+    const m2 = $("pfRaceMsg");
+    if (m2) m2.textContent = "✓ Courses enregistrées — plan régénéré autour de tes dates." + warn;
+  };
+}
+
 export function renderTabProfile(plan) {
   const a = S.answers, sp = S.sport;
   const tIso = todayISO();
@@ -299,6 +347,7 @@ export function renderTabProfile(plan) {
   html += '<div class="why">Modifie une valeur : le plan est régénéré et le changement est consigné dans ton journal d’évolution.</div>';
   html += plansSelectorHTML();
   html += planDeadlineHTML(plan);
+  html += raceInterHTML(a);
   html += '<div class="bp-cat">' + summaryRows(a) + "</div>";
 
   // — Références physiologiques éditables (celles que le moteur lit : a.ftp / a.pace / a.css)
@@ -308,6 +357,8 @@ export function renderTabProfile(plan) {
   if (sp === "run" || sp === "tri") html += row("pfPace", "Allure seuil (min:s /km)", a.pace_known === "oui" ? a.pace : "", "ex. 4:30");
   if (sp === "swim" || sp === "tri") html += row("pfCss", "CSS (min:s /100m)", a.css_known === "oui" ? a.css : "", "ex. 1:55");
   html += row("pfVol", "Volume max (h/sem)", a.vol_max, "ex. 8");
+  // R10 — le POINT DE DÉPART : le plan démarre du volume réellement fait ces derniers mois
+  html += row("pfVolRecent", "Volume récent (h/sem, 3-6 mois)", a.vol_recent, "ex. 4 — le plan part de là");
   html += row("pfSess", "Séances max /sem", a.sessions_max, "ex. 5");
   html += row("pfWeight", "Poids (kg, optionnel)", a.weight, "affine ravito + dépense");
   // Taille : réintroduite AVEC un effet réel (métabolisme de base Mifflin-St Jeor, carte
@@ -447,6 +498,7 @@ export function renderTabProfile(plan) {
   };
   $("pfEdit").onclick = () => { S.step = curSteps().length - 1; renderStep(); };
   $("pfReset").onclick = () => reset();
+  bindRaceInter();
   const fitInput = $("pfFit");
   if (fitInput) fitInput.onchange = async () => {
     const msg = (t) => { const m = $("pfFitMsg"); if (m) m.innerHTML = t; };
@@ -577,6 +629,10 @@ export function renderTabProfile(plan) {
       } else {
         log("profil:vol_max", parseFloat(vol), a.vol_max != null ? parseFloat(a.vol_max) : null, () => { S.answers.vol_max = vol; }); changed++;
       }
+    }
+    const vr = g("pfVolRecent");
+    if (vr !== null && vr !== "" && parseFloat(vr) > 0 && vr !== String(a.vol_recent || "")) {
+      log("profil:vol_recent", parseFloat(vr), a.vol_recent != null && a.vol_recent !== "" ? parseFloat(a.vol_recent) : null, () => { S.answers.vol_recent = vr; }); changed++;
     }
     const sess = g("pfSess");
     if (sess !== null && sess !== "" && parseInt(sess) > 0 && sess !== String(a.sessions_max || "")) {

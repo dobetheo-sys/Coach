@@ -2,7 +2,7 @@
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
    une météo périmée est pire qu'une absence de météo). */
-const VERSION = "eb-pwa-v13"; // v13 : R7 — dates en heure LOCALE (fini le décalage du soir) + jours du plan annotés de leur date
+const VERSION = "eb-pwa-v14"; // v14 : R10 — vol_recent (point de départ), courses intermédiaires au Profil, %FTP recalibré (NP), swaps dans la séance du jour, licence
 const ASSETS = [
   "./",
   "./index.html",

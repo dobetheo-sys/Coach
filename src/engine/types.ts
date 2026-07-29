@@ -20,6 +20,7 @@ export interface AthleteProfile {
   level?: Level;
   intent?: Intent;
   vol_max?: string;
+  vol_recent?: string; // R10 — volume moyen des 3-6 derniers mois (h/sem) : le POINT DE DÉPART de la montée en charge
   sessions_max?: string;
   dispo?: string; // "semaine" | "quotidienne" | …
   shift_ok?: string;

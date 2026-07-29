@@ -43,12 +43,15 @@ const SWIM_RACE: Record<string, { dist: number; factor: number }> = {
   fond: { dist: 1500, factor: 1.0 },
   ow: { dist: 1500, factor: 1.05 },
 };
+// R10 — recalées sur les facteurs d'intensité de référence (Coggan) et exprimées en
+// puissance NORMALISÉE : un ami coureur lisait « 80% FTP » comme une cible molle — c'est
+// la moyenne pondérée d'un effort où les pointes montent bien au-dessus du seuil.
 const BIKE_POWER: Record<string, { lo: number; hi: number; note: string }> = {
   crit: { lo: 0.95, hi: 1.05, note: "critérium : au seuil et au-dessus par relances" },
-  clm: { lo: 0.93, hi: 1.0, note: "CLM : effort au seuil, régulier du départ à la ligne" },
-  route: { lo: 0.8, hi: 0.9, note: "course sur route : puissance normalisée, les pointes en plus" },
-  cyclo: { lo: 0.7, hi: 0.8, note: "cyclosportive : tempo durable, garder du grain pour la fin" },
-  gravel: { lo: 0.65, hi: 0.75, note: "gravel/ultra : endurance, la régularité bat la vitesse" },
+  clm: { lo: 0.95, hi: 1.02, note: "CLM : effort au seuil, régulier du départ à la ligne" },
+  route: { lo: 0.85, hi: 0.95, note: "course sur route : les attaques et bosses montent bien au-dessus du seuil" },
+  cyclo: { lo: 0.73, hi: 0.83, note: "cyclosportive : tempo durable, garder du grain pour la fin" },
+  gravel: { lo: 0.68, hi: 0.78, note: "gravel/ultra : endurance, la régularité bat la vitesse" },
 };
 const TRI_SWIM: Record<string, { dist: number; factor: number }> = {
   S: { dist: 750, factor: 1.04 },
@@ -57,10 +60,10 @@ const TRI_SWIM: Record<string, { dist: number; factor: number }> = {
   Full: { dist: 3800, factor: 1.08 },
 };
 const TRI_BIKE: Record<string, { lo: number; hi: number }> = {
-  S: { lo: 0.82, hi: 0.88 },
-  M: { lo: 0.78, hi: 0.85 },
-  "70.3": { lo: 0.72, hi: 0.8 },
-  Full: { lo: 0.65, hi: 0.73 },
+  S: { lo: 0.85, hi: 0.93 },
+  M: { lo: 0.82, hi: 0.88 },
+  "70.3": { lo: 0.76, hi: 0.83 },
+  Full: { lo: 0.7, hi: 0.76 },
 };
 const TRI_RUN: Record<string, { km: number; fatigue: number }> = {
   S: { km: 5, fatigue: 1.03 },
@@ -119,7 +122,7 @@ export function predictRace(
   } else if (sport === "bike") {
     const b = BIKE_POWER[format];
     if (refs.ftp > 0 && b) {
-      items.push({ leg: "Vélo", value: Math.round(refs.ftp * b.lo) + "–" + Math.round(refs.ftp * b.hi) + "W", why: b.note + " — le chrono dépend du parcours, la puissance cible ne ment pas" });
+      items.push({ leg: "Vélo", value: Math.round(refs.ftp * b.lo) + "–" + Math.round(refs.ftp * b.hi) + "W", why: b.note + " — cible en puissance NORMALISÉE (moyenne pondérée : les pointes montent au-dessus), le chrono dépend du parcours" });
       D("PRED-bike", "Méthode vélo", "% FTP par format", "Prédire un chrono sans connaître le parcours serait mentir ; la puissance cible est transférable partout");
     } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir tes puissances cibles de course.");
   } else if (sport === "swim") {
@@ -136,7 +139,7 @@ export function predictRace(
       items.push({ leg: "Natation " + sw.dist + "m", value: range(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" });
     } else advice.push("CSS manquant → pas de projection natation (test 400/200m).");
     if (refs.ftp > 0 && bk) {
-      items.push({ leg: "Vélo", value: Math.round(refs.ftp * bk.lo) + "–" + Math.round(refs.ftp * bk.hi) + "W", why: "l'intensité qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" });
+      items.push({ leg: "Vélo", value: Math.round(refs.ftp * bk.lo) + "–" + Math.round(refs.ftp * bk.hi) + "W", why: "puissance normalisée qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" });
     } else advice.push("FTP manquante → pas de puissance cible vélo (test 20min × 0.95).");
     if (refs.thrPace > 0 && rn) {
       const t = riegelSec(refs.thrPace, rn.km) * rn.fatigue;

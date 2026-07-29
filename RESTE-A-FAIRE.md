@@ -85,6 +85,25 @@ accessibles (focus/Échap/aria), monolithe gelé, **E2E Playwright en CI** (`tes
 | ~~6~~ | ~~Célébrations « moment »~~ | — | — | ✅ Fait (PWA : bannières jour de course / veille de course / entrée en affûtage dans l'onglet 📅 Semaine, `momentHTML`). |
 | ~~7~~ | ~~Vue 10 jours (cycles use10)~~ | — | — | ✅ Vérifié en navigateur réel (profil `dispo quotidienne` : marqueurs C×J×, case « aujourd'hui », coche, semaine courante — 11/11 assertions vertes). |
 
+## 🎓 Backlog du protocole « analyse d'athlète » (retour ami entraîneur, R10)
+
+Couvert aujourd'hui : âge/taille/poids, blessures, dispo réelle, FTP/allure/CSS + méthode
+de test, objectif A + profil de parcours, échéance, **volume récent 3-6 mois (rampe de
+départ)**, **courses B/C datées**, %FTP expliqué (NP). Reste, par valeur décroissante :
+
+- **FC max / FC repos → zones FC** : utile pour qui n'a ni capteur de puissance ni GPS
+  précis — demande un rendu des séances en zones FC en plus des allures/watts.
+- **Préférence de régulation par discipline** (Watts / FC / RPE) : changer l'UNITÉ
+  d'affichage des consignes, pas le moteur.
+- **VDOT** (à partir d'un chrono récent) : redondant avec l'allure seuil déjà collectée —
+  n'ajouter que si un utilisateur réel le demande.
+- **Profil aérobie « diesel / explosif »** : influencerait le dosage VO2 vs seuil ;
+  demande un test ou un historique de courses pour être honnête.
+- **Plan strict vs flexible** : l'app est déjà flexible (⇄, readiness, gel) — poser la
+  question ne changerait que le ton des messages.
+- **Créneaux des sorties longues + inventaire matériel** (home-trainer, capteurs) :
+  affinage de placement, à traiter avec un vrai retour d'usage.
+
 ## 🧹 Dettes techniques assumées (documentées, pas urgentes)
 
 - **Générateur legacy dans le HTML** : gelé, sert de repli si le bundle manque. Ne plus le
