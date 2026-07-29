@@ -89,16 +89,18 @@ export class TrainingReasoningEngine {
     if (!comp) D("marge", "Marge de sécurité", "-10%", "Hors compétition, 10% de marge sur tous les plafonds (santé d'abord)");
 
     // 1B — indicateurs de récupération
-    let recupFactor = (a.sleep === "court" ? RECUP_FACTORS.sleepCourt : 1) * (a.life_load === "lourde" ? RECUP_FACTORS.lifeLourde : 1);
+    const recupFactor = (a.sleep === "court" ? RECUP_FACTORS.sleepCourt : 1) * (a.life_load === "lourde" ? RECUP_FACTORS.lifeLourde : 1);
     if (recupFactor < 1) D("1B", "Récupération dégradée", "volume ×" + recupFactor.toFixed(2), "Sommeil court et/ou charge de vie lourde : le contenu baisse réellement");
 
     // R6.2 (audit v6, B1/B3) — une blessure déclarée réduit RÉELLEMENT le plafond de
     // volume ; plusieurs zones fragiles → approche ultra-conservatrice, comme la carte
     // de règle affichée à l'athlète le promet depuis toujours.
+    // ⚠️ Le facteur s'applique APRÈS la sonde de capacité (loadFactor, planGenerator) et
+    // pas via sessionScale : passé dans les tailles initiales, la quantification des
+    // répétitions le rendait chaotique (un plan blessé pouvait sortir PLUS gros, mesuré +4%).
     const inj = readInjuries(a.injury);
     const injFactor = inj.count >= 2 ? R6_INJURY_LOAD_FACTORS.multiples : inj.count === 1 ? R6_INJURY_LOAD_FACTORS.une : 1;
     if (injFactor < 1) {
-      recupFactor *= injFactor;
       D("R6.2", "Blessure déclarée", "volume ×" + injFactor.toFixed(2), inj.count >= 2
         ? "Plusieurs zones fragiles (" + inj.list.join(", ") + ") : approche ultra-conservatrice — progression ralentie, bilan médical avant montée en charge"
         : "Zone fragile (" + inj.list.join(", ") + ") : le plafond de volume baisse de 10% — « une blessure décide quoi adapter », le volume en fait partie");
@@ -109,14 +111,16 @@ export class TrainingReasoningEngine {
     const ageN = boundedOrZero("age", parseInt(a.age || "") || 0);
     const minor = ageN > 0 && ageN <= R6_AGE_LOAD.mineur.maxAge;
     const master = ageN >= R6_AGE_LOAD.master.minAge;
+    let ageFactor = 1;
     if (minor) {
-      recupFactor *= R6_AGE_LOAD.mineur.volFactor;
+      ageFactor = R6_AGE_LOAD.mineur.volFactor;
       D("R6.3", "Athlète mineur (" + ageN + " ans)", "volume ×" + R6_AGE_LOAD.mineur.volFactor + ", aucune VO2max", "Ces plans sont calibrés pour des adultes : en dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée — le plan est réduit et sans VO2max, l'encadrement humain reste nécessaire");
       warnings.push("Ces plans sont calibrés pour des adultes. En dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée par un entraîneur : le plan est réduit de 30% et ne contient aucune séance VO2max — mais il ne remplace pas un encadrement humain.");
     } else if (master) {
-      recupFactor *= R6_AGE_LOAD.master.volFactor;
+      ageFactor = R6_AGE_LOAD.master.volFactor;
       D("R6.3", "Athlète master (" + ageN + " ans)", "volume ×" + R6_AGE_LOAD.master.volFactor + ", récup /3 semaines", "La capacité d'encaissement se maintient avec l'âge, la vitesse de récupération baisse : on récupère plus souvent, on charge un peu moins");
     }
+    const loadFactor = injFactor * ageFactor;
 
     const volMax = parseInt(a.vol_max || "10");
     const sessionScale = Math.min(1, (Math.min(volMax, caps, util) * marg) / util) * recupFactor;
@@ -224,6 +228,7 @@ export class TrainingReasoningEngine {
       warnings,
       noVo2: minor,
       raceBeyondPlan,
+      loadFactor,
       baseRefs: { ftp, thrPace, css },
       hz,
     };

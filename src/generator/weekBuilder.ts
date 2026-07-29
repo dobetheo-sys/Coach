@@ -50,6 +50,12 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     if (dic >= cycleLen) {
       cyc++; dic = 0;
       isR = ph.id !== "taper" && sinceR >= r.recupEvery - 1;
+      // D2 (audit v6) — la cadence de récup ne tombe JAMAIS sur la phase peak quand
+      // celle-ci est courte (≤ ~1 semaine) : sur un petit plan, la seule semaine de pic
+      // devenait une récup, et « la semaine max du plan » atterrissait mécaniquement en
+      // spec — violation structurelle. La récup glisse à la semaine suivante (taper la refuse
+      // déjà, la détente d'affûtage fait office de récupération).
+      if (isR && ph.id === "peak" && ph.weeks <= 1) isR = false;
       if (isR) sinceR = 0; else sinceR++;
       sch = schema(r.use10, ph.id, isR);
     }

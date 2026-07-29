@@ -87,6 +87,12 @@ export const BANDS: Record<string, [number, number]> = {
   taper: [0.55, 0.3],
 };
 export const C22_MAX_WEEKLY_GROWTH = rule("C22", "progression lissée : jamais +10% d'une semaine de charge à la suivante (manifeste)", 1.1);
+/** D3 (audit v6) — seuil DUR de l'auditeur sur les minutes livrées. C22 (+10%) est la
+ * règle du GÉNÉRATEUR V2 (cible calée sur le livré) ; la tolérance jusqu'à +25% absorbe
+ * la dérive des planchers de séance du produit V1.5 GELÉ, audité par le même scorer.
+ * Les trois sites (générateur, texte affiché, auditeur) référencent désormais des
+ * constantes nommées — plus jamais un littéral en dur qui diverge en silence. */
+export const C22_AUDIT_HARD_JUMP = rule("C22-dur", "au-delà de +25% livré entre semaines de charge, violation dure quelle que soit la cause (V1.5 gelé compris)", 1.25);
 export const RECUP_WEEK_FACTOR = 0.62;
 
 /** R3.13 — affûtage : si les planchers bloquent, la fréquence cède sous ce ratio du pic réel. */
@@ -107,6 +113,9 @@ export const MAX_RUN_DAYS: Record<History, number> = { reprise: 4, confirme: 5, 
 
 /** Natation non-débutant : une séance piscine <750m ne vaut pas le déplacement (manifeste). */
 export const C24_MIN_SWIM_SESSION_M = rule("C24", "piscine ≥750m par séance pour un non-débutant (manifeste : « sortie piscine de 600m » interdite)", 750);
+/** D6 (audit v6) — le débutant a aussi un plancher : une séance piscine sous 600m ne vaut
+ * pas le déplacement non plus. Fenêtre débutant résultante : [600m ; 850m] (C15). */
+export const C24B_MIN_SWIM_SESSION_BEGINNER_M = rule("C24b", "une séance piscine débutant <600m ne vaut pas le déplacement — C20 promet ~25min/séance, le contenu doit suivre", 600);
 
 /** Brick tri : bornes par format ; ×0.8 pour l'historique « reprise » (C21). */
 export const CAP_BRICK_BIKE: Record<string, number> = { S: 90, M: 120, "70.3": 180, Full: 300 };

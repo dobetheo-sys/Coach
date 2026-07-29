@@ -103,6 +103,8 @@ export interface ReasonedPlan {
   noVo2: boolean;
   /** C3 (audit v6) — course au-delà de 80 semaines : le plan s'ancre sur MAINTENANT, pas sur la course. */
   raceBeyondPlan: boolean;
+  /** R6.2/R6.3 (audit v6) — facteur blessures × âge, appliqué sur peakH APRÈS la sonde de capacité. */
+  loadFactor: number;
   baseRefs: { ftp: number; thrPace: number; css: number };
   hz: Record<string, string> & { fcMax?: number };
 }

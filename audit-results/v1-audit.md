@@ -8,7 +8,7 @@ Seuils : sur-prescrit > 1.4, sous-prescrit < 0.5, alerte séance longue > 55% de
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Récup+lourde | Longue >55% | Sans volume/plan | Couverture | Score moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | tri | 108 | 1.02 | 0.96–1.05 | 0 | 0 | 0 | 0.39 | 0 | 0 | 0.0 | 100% | 99 |
-| run | 135 | 1.13 | 1.09–1.19 | 0 | 0 | 0 | 0.38 | 0 | 0 | 0.0 | 100% | 99 |
+| run | 135 | 1.13 | 1.09–1.19 | 0 | 0 | 0 | 0.38 | 0 | 0 | 0.0 | 100% | 100 |
 | bike | 135 | 1.09 | 1.07–1.12 | 0 | 0 | 0 | 0.41 | 0 | 0 | 0.0 | 100% | 100 |
 | swim | 108 | 0.77 | 0.46–1.13 | 0 | 20 | 102 | 0.47 | 0 | 0 | 0.0 | 100% | 88 |
 
@@ -23,7 +23,7 @@ Seuils : sur-prescrit > 1.4, sous-prescrit < 0.5, alerte séance longue > 55% de
 ## Règles du manifeste (note.md)
 
 - Saut >+10% de la courbe déclarée entre semaines de charge : **0** combinaisons en échec
-- Saut >+25% de volume réel (métrique audit) : **0** en échec (sauts +15–25% tolérés comme bruit de métrique : 57 combos concernés)
+- Saut >+25% de volume réel (métrique audit) : **0** en échec (sauts +15–25% tolérés comme bruit de métrique : 3 combos concernés)
 - Deux longues CAP consécutives : **0** en échec
 - Sortie longue CAP >3h pour un débutant : **0** en échec
 - Séance piscine <750m pour un non-débutant : **0** en échec

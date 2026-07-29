@@ -326,7 +326,7 @@ test("D3", "C22 : progression ≤ +10 % entre semaines de charge", "fail", () =>
   return { ok: bad.length === 0, detail: `${bad.length} saut(s) : ${bad.slice(0, 3).join(" ; ")}` };
 });
 
-test("D4", "Semaine de récup jamais plus chargée que la précédente", "fail", () => {
+test("D4", "Semaine de récup jamais plus chargée que la précédente", "pass", () => {
   const bad = [];
   for (const sport of Object.keys(FORMATS))
     for (const format of FORMATS[sport])
@@ -340,7 +340,7 @@ test("D4", "Semaine de récup jamais plus chargée que la précédente", "fail",
   return { ok: bad.length === 0, detail: `${bad.length} cas : ${bad.slice(0, 3).join(" ; ")}` };
 });
 
-test("D5", "C15 : nage débutant ≤ 850 m par séance", "fail", () => {
+test("D5", "C15 : nage débutant ≤ 850 m par séance", "pass", () => {
   const bad = [];
   for (const sport of ["tri", "swim"])
     for (const format of FORMATS[sport]) {
@@ -353,7 +353,7 @@ test("D5", "C15 : nage débutant ≤ 850 m par séance", "fail", () => {
   return { ok: bad.length === 0, detail: `${bad.length} séance(s) : ${bad.slice(0, 3).join(" ; ")}` };
 });
 
-test("D6", "C24 : plancher de séance piscine aussi pour le débutant", "fail", () => {
+test("D6", "C24 : plancher de séance piscine aussi pour le débutant", "pass", () => {
   const bad = [];
   for (const sport of ["tri", "swim"])
     for (const format of FORMATS[sport]) {
@@ -366,7 +366,7 @@ test("D6", "C24 : plancher de séance piscine aussi pour le débutant", "fail", 
   return { ok: bad.length === 0, detail: `${bad.length} séance(s) sous 600 m : ${bad.slice(0, 3).join(" ; ")}` };
 });
 
-test("D7", "C23 : jamais de sortie longue CAP > 3 h pour un débutant", "fail", () => {
+test("D7", "C23 : jamais de sortie longue CAP > 3 h pour un débutant", "pass", () => {
   const bad = [];
   for (const sport of ["run", "tri"])
     for (const format of FORMATS[sport]) {
@@ -402,7 +402,7 @@ test("D9", "Chaque séance porte un objectif expliqué", "pass", () => {
   return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" ; ") || "ok" };
 });
 
-test("D10", "Affûtage strictement décroissant", "fail", () => {
+test("D10", "Affûtage strictement décroissant", "pass", () => {
   const bad = [];
   for (const sport of Object.keys(FORMATS))
     for (const format of FORMATS[sport])

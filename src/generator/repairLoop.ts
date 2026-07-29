@@ -10,6 +10,7 @@ import { auditPlan, type AuditOpts, type PlanAudit } from "../audit/coherenceSco
 import { R313_TAPER_MAX_VS_PEAK } from "../engine/constraintMatrix.ts";
 import { generatePlan } from "./planGenerator.ts";
 import { renderSess, type Refs } from "./renderer.ts";
+import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 
 export interface AuditedPlan {
   plan: V1Plan;
@@ -21,9 +22,36 @@ export interface AuditedPlan {
 
 const MAX_ITERATIONS = 3;
 
+/** Minutes d'une semaine mesurées avec le MODÈLE DE L'AUDITEUR (récup inter-répétitions
+ *  comprise) : c'est la seule base honnête quand on répare une violation qu'il a détectée. */
+function auditWeekMin(w: V1Plan["weeks"][0], refs: Refs): number {
+  const r2: AthleteRefs = { cssSecPer100m: refs.css || 130, thrPaceSecPerKm: refs.thrPace || 330 };
+  return w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + sessionLoad(s, r2).minutes, 0), 0);
+}
+
 /** Réparations ciblées : violation → action locale sur le plan. Exporté pour la démo de sabotage. */
-export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs, hz: Record<string, string>, baseRefs: Refs): string[] {
+export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs, hz: Record<string, string>, baseRefs: Refs, level?: string, volMaxH?: number): string[] {
   const applied: string[] = [];
+  const beginner = level === "debutant";
+  const swimFloorM = beginner ? 600 : 750; // C24/C24b — une réparation ne crée jamais une séance qui ne vaut pas le déplacement
+  const swimCapM = beginner ? 850 : Infinity; // C15
+  // Après toute réduction, une séance nage est ramenée dans sa fenêtre [plancher, plafond]
+  const fixSwimBounds = (s: V1Plan["weeks"][0]["days"][0]["sessions"][0]): void => {
+    if (s.d !== "sw" || !s.steps || !s.steps.length) return;
+    const tot = () => s.steps!.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+    const body = s.steps.filter((st) => st.role === "body" && st.distanceM != null).sort((x, y) => (y.reps || 1) * (y.distanceM || 0) - (x.reps || 1) * (x.distanceM || 0))[0];
+    if (!body || !body.distanceM) return;
+    const t0 = tot();
+    if (t0 > 0 && t0 < swimFloorM) {
+      const missing = swimFloorM - t0;
+      if ((body.reps || 1) > 1) body.reps = (body.reps || 1) + Math.ceil(missing / body.distanceM);
+      else body.distanceM = Math.ceil((body.distanceM + missing) / 25) * 25;
+    } else if (t0 > swimCapM) {
+      const excess = t0 - swimCapM;
+      if ((body.reps || 1) > 1) body.reps = Math.max(1, (body.reps || 1) - Math.ceil(excess / body.distanceM));
+      else body.distanceM = Math.max(100, Math.floor((body.distanceM - excess) / 25) * 25);
+    }
+  };
 
   // Affûtage trop lourd — deux visages du même mal : taperVsPeak > 0.6, ou une semaine
   // d'affûtage devenue la plus grosse du plan (échec « pic en phase peak »). Réparation :
@@ -46,6 +74,7 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
               if (st.durationMin) st.durationMin = Math.max(3, Math.round(st.durationMin * f));
               if (st.distanceM) st.distanceM = Math.max(100, Math.round((st.distanceM * f) / 25) * 25);
             }
+            fixSwimBounds(s);
             renderSess(s, refs, hz, baseRefs);
           }
         applied.push("S" + w.num + " : corps des séances d'affûtage ×" + f.toFixed(2) + " (affûtage plus lourd que permis)");
@@ -61,6 +90,194 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
         victim.sessions = [{ d: "rs", name: "OFF (affûtage)", det: "repos — la fraîcheur du jour J se construit maintenant", steps: [] }];
         applied.push("S" + w.num + " : jour facile → OFF (affûtage trop lourd)");
       }
+    }
+  }
+
+  // D2 (audit v6) — tri : la semaine pic DOIT contenir le brick (spec audit 2). Les
+  // cycles 10 jours / budgets serrés pouvaient le faire glisser hors du pic : on le
+  // réintroduit en clonant le brick d'une semaine voisine à la place de la longue.
+  if (audit.peakHasBrick === false) {
+    const peakAudits = audit.weeks.filter((w) => w.phaseId === "peak");
+    const ref = audit.peak && audit.peak.phaseId === "peak" ? audit.peak : peakAudits.reduce((a, b) => (b.prescribedMin > (a?.prescribedMin ?? 0) ? b : a), null as (typeof peakAudits)[0] | null);
+    const wk = ref ? plan.weeks.find((w) => w.num === ref.num) : undefined;
+    const donor = plan.weeks.flatMap((w) => w.days.flatMap((d) => d.sessions)).find((s) => s.brick && s.steps && s.steps.length);
+    if (wk && donor) {
+      const target = wk.days.find((d) => d.sessions.some((s) => s.long && !s.brick)) || wk.days.find((d) => !d.forced && d.sessions.some((s) => s.d !== "rs" && !s.brick && !s.long));
+      if (target) {
+        const clone = structuredClone(donor);
+        renderSess(clone, refs, hz, baseRefs);
+        target.sessions = [clone];
+        target.charge = "dur";
+        applied.push("S" + wk.num + " : brick réintroduit dans la semaine pic (spec audit 2 — il avait glissé hors du pic)");
+        // le brick ajouté ne crée ni saut de charge ni dépassement de vol_max (C3)
+        const prevW = plan.weeks.filter((w) => w.num < wk.num && !w.isRecup && w.phase.id !== "taper").pop();
+        if (prevW) {
+          const cap = Math.min(wMinOf(prevW) * 1.1, volMaxH ? volMaxH * 60 : Infinity);
+          for (let g = 0; g < 4 && wMinOf(wk) > cap; g++) {
+            const f = Math.max(0.6, cap / wMinOf(wk));
+            for (const d of wk.days)
+              for (const s of d.sessions) {
+                if (!s.steps || !s.steps.length) continue;
+                for (const st of s.steps) {
+                  if (st.role !== "body") continue;
+                  if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
+                  else if (st.durationMin) st.durationMin = Math.max(8, Math.round(st.durationMin * f));
+                  else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+                }
+                fixSwimBounds(s);
+                renderSess(s, refs, hz, baseRefs);
+              }
+          }
+        }
+      }
+    }
+  }
+
+  // D2 (audit v6) — la semaine de volume max doit tomber en phase peak : si une semaine
+  // hors peak dépasse la meilleure semaine peak, son corps est réduit juste sous elle.
+  if (!audit.peakInPeakPhase && audit.peak && audit.peak.phaseId !== "peak") {
+    const peakBest = Math.max(0, ...audit.weeks.filter((w) => w.phaseId === "peak").map((w) => w.prescribedMin));
+    const offender = plan.weeks.find((w) => w.num === audit.peak.num);
+    if (offender && peakBest > 0 && audit.peak.prescribedMin > 0) {
+      // f ≤ 0.97 TOUJOURS : une « réduction » ne remonte jamais le volume (bug mesuré ×1.27)
+      const f = Math.min(0.97, Math.max(0.5, (peakBest * 0.92) / audit.peak.prescribedMin));
+      for (const d of offender.days)
+        for (const s of d.sessions) {
+          if (!s.steps || !s.steps.length) continue;
+          for (const st of s.steps) {
+            if (st.role !== "body") continue;
+            if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
+            else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
+            else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+          }
+          fixSwimBounds(s);
+          renderSess(s, refs, hz, baseRefs);
+        }
+      applied.push("S" + offender.num + " (" + audit.peak.phaseId + ") : volume réduit ×" + f.toFixed(2) + " — la semaine max doit rester en phase peak");
+      // planchers de séance (nage surtout) : si le scaling ne peut pas mordre (f proche
+      // de 1, séances au plancher), la fréquence cède — mais BORNÉE : jamais sous 0.9×
+      // la semaine peak de référence (la version précédente pouvait vider la semaine, S4 → 0min).
+      const bestPeakWk = plan.weeks.filter((w) => w.phase.id === "peak").sort((x, y) => wMinOf(y) - wMinOf(x))[0];
+      for (let g = 0; g < 2 && bestPeakWk && wMinOf(offender) > wMinOf(bestPeakWk); g++) {
+        let victim: { d: (typeof offender.days)[0]; si: number; min: number } | null = null;
+        for (const d of offender.days) {
+          if (d.forced) continue;
+          d.sessions.forEach((s, si) => {
+            if (s.d === "rs" || s.long || s.brick) return;
+            const m = s.min || 0;
+            if (!victim || m < victim.min) victim = { d, si, min: m };
+          });
+        }
+        if (!victim) break;
+        const v = victim as { d: (typeof offender.days)[0]; si: number; min: number };
+        if (wMinOf(offender) - v.min < wMinOf(bestPeakWk) * 0.9) break;
+        v.d.sessions.splice(v.si, 1);
+        if (!v.d.sessions.some((s) => s.d !== "rs")) {
+          v.d.charge = "off";
+          v.d.sessions = [{ d: "rs", name: "OFF (équilibre du bloc)", det: "repos — la semaine la plus grosse du plan reste la semaine de peak", steps: [] }];
+        }
+        applied.push("S" + offender.num + " : séance retirée — la semaine max doit rester en phase peak (les planchers bloquaient la réduction)");
+      }
+    }
+  }
+
+  // D2/D3 (audit v6) — saut de volume réel > seuil dur entre semaines de charge : la
+  // semaine fautive est ramenée juste sous le seuil (mesure de l'auditeur, réparation plan).
+  if (audit.auditJumpsHard > 0) {
+    let prev: (typeof audit.weeks)[0] | null = null;
+    for (const wa of audit.weeks) {
+      if (wa.isRecup || wa.phaseId === "taper") continue;
+      if (prev && prev.prescribedMin > 0 && wa.prescribedMin > prev.prescribedMin * 1.25) {
+        const wk = plan.weeks.find((w) => w.num === wa.num);
+        if (wk) {
+          const f = Math.max(0.5, (prev.prescribedMin * 1.2) / wa.prescribedMin);
+          for (const d of wk.days)
+            for (const s of d.sessions) {
+              if (!s.steps || !s.steps.length) continue;
+              for (const st of s.steps) {
+                if (st.role !== "body") continue;
+                if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
+                else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
+                else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+              }
+              fixSwimBounds(s);
+              renderSess(s, refs, hz, baseRefs);
+            }
+          applied.push("S" + wk.num + " : saut de charge lissé ×" + f.toFixed(2) + " (manifeste : progression sans à-coups)");
+          // Si les planchers de séance bloquent la réduction (nage surtout : fenêtre
+          // [600, 850]m), la FRÉQUENCE cède — mesuré sur la métrique de l'auditeur, qui
+          // compte la récup inter-répétitions que le générateur ne voit pas.
+          const nSess = () => wk.days.reduce((t, d) => t + d.sessions.filter((x) => x.d !== "rs").length, 0);
+          const est = () => auditWeekMin(wk, refs);
+          for (let g = 0; g < 3 && est() > prev.prescribedMin * 1.2 && nSess() > 3; g++) {
+            let victim: { d: (typeof wk.days)[0]; si: number; min: number } | null = null;
+            for (const d of wk.days) {
+              if (d.forced) continue;
+              d.sessions.forEach((x, si) => {
+                if (x.d === "rs" || x.long || x.brick) return;
+                const m = x.min || 0;
+                if (!victim || m < victim.min) victim = { d, si, min: m };
+              });
+            }
+            if (!victim) break;
+            const v = victim as { d: (typeof wk.days)[0]; si: number; min: number };
+            v.d.sessions.splice(v.si, 1);
+            if (!v.d.sessions.some((x) => x.d !== "rs")) {
+              v.d.charge = "off";
+              v.d.sessions = [{ d: "rs", name: "OFF (lissage de charge)", det: "repos — la progression se fait sans à-coups : cette semaine ne bondit pas sur la précédente", steps: [] }];
+            }
+            applied.push("S" + wk.num + " : séance retirée (saut de charge que les planchers empêchaient de lisser)");
+          }
+        }
+      }
+      prev = wa;
+    }
+  }
+
+  // D10 (audit v6) — la réparation ne casse JAMAIS la monotonie de l'affûtage : chaque
+  // semaine d'affûtage repart ≤ la semaine précédente. La réparation ci-dessus vise
+  // chaque semaine indépendamment (cible 0.55×pic) ; planchers et quantification des
+  // répétitions pouvaient laisser S(n+1) > S(n). Corps réduits (répétitions comprises),
+  // puis la plus petite séance non-longue cède si les planchers bloquent encore.
+  {
+    let prevMin = 0;
+    for (const w of plan.weeks) {
+      const m0 = wMinOf(w);
+      if (w.phase.id !== "taper" || prevMin <= 0 || m0 <= prevMin) { prevMin = m0; continue; }
+      for (let g = 0; g < 6 && wMinOf(w) > prevMin; g++) {
+        const f = Math.max(0.5, (prevMin * 0.97) / wMinOf(w));
+        for (const d of w.days)
+          for (const s of d.sessions) {
+            if (!s.steps || !s.steps.length) continue;
+            for (const st of s.steps) {
+              if (st.role !== "body") continue;
+              if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
+              else if (st.durationMin) st.durationMin = Math.max(3, Math.round(st.durationMin * f));
+              else if (st.distanceM) st.distanceM = Math.max(100, Math.round((st.distanceM * f) / 25) * 25);
+            }
+            fixSwimBounds(s);
+            renderSess(s, refs, hz, baseRefs);
+          }
+      }
+      for (let g = 0; g < 4 && wMinOf(w) > prevMin; g++) {
+        let victim: { d: V1Plan["weeks"][0]["days"][0]; si: number; min: number } | null = null;
+        for (const d of w.days)
+          d.sessions.forEach((s, si) => {
+            if (s.d === "rs" || s.long || s.brick) return;
+            const m = s.min || 0;
+            if (!victim || m < victim.min) victim = { d, si, min: m };
+          });
+        if (!victim) break;
+        const v = victim as { d: V1Plan["weeks"][0]["days"][0]; si: number; min: number };
+        v.d.sessions.splice(v.si, 1);
+        if (!v.d.sessions.some((s) => s.d !== "rs")) {
+          v.d.charge = "off";
+          v.d.sessions = [{ d: "rs", name: "OFF (affûtage)", det: "repos — la fraîcheur du jour J se construit maintenant", steps: [] }];
+        }
+        applied.push("S" + w.num + " : séance retirée (l'affûtage ne remonte jamais)");
+      }
+      if (wMinOf(w) < m0) applied.push("S" + w.num + " : affûtage ramené sous la semaine précédente (" + Math.round(m0) + "→" + Math.round(wMinOf(w)) + "min)");
+      prevMin = wMinOf(w);
     }
   }
 
@@ -94,7 +311,7 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
   let best = { plan, audit };
 
   for (let it = 0; it < MAX_ITERATIONS && audit.hardViolations.length > 0; it++) {
-    const applied = applyTargetedRepairs(plan, audit, refs, reasoned.hz, reasoned.baseRefs);
+    const applied = applyTargetedRepairs(plan, audit, refs, reasoned.hz, reasoned.baseRefs, profile.level, parseInt(profile.vol_max || "10") || 10);
     if (!applied.length) break; // aucune réparation applicable : inutile de boucler
     repairs.push(...applied);
     audit = auditPlan(plan, opts);
