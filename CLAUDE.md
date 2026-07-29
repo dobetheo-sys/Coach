@@ -238,7 +238,7 @@ nuit, renfo excentrique, tapis, escaliers), récup excentrique 48 h (T3), sortie
 du temps de course (T4), terrain plat → substituts + limite NOMMÉE, prédicteur trail (Riegel
 inapplicable) avec fourchette large assumée et barrière horaire en tête. Moteur plafonné à
 `ultra_long` (décision produit : au-delà de 24 h, on nomme la limite). Migration des plans
-`run/trail` + carte Profil « ⛰ Ta course et ton terrain ». Gardes : 16 tests T1-T16 (banc v6)
+`run/trail` + carte Profil « ⛰ Ta course et ton terrain ». Gardes : 17 tests T1-T17 (banc v6)
 + `smoke-trail.mjs` (35 assertions, 6e suite E2E).
 **Audit externe v6 livré** (29/07/2026, voir ARCHITECTURE.md « Audit externe v6 ») : un
 audit indépendant est arrivé avec son banc de régression exécutable (`audit_v6.mjs`,

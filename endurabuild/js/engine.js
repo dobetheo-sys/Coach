@@ -3372,6 +3372,13 @@ function generatePlan(profile                , opts                             
       for (const st of stepsOf(w)) {
         if (st.dplusM) st.dplusM = Math.max(20, Math.round((st.dplusM * fUp) / 10) * 10);
         if (st.dmoinsM) st.dmoinsM = Math.max(20, Math.round((st.dmoinsM * fDown) / 10) * 10);
+        // T2c — cohérence physique : sur une BOUCLE (bloc `rolling` ou `flat`), on redescend
+        // exactement ce qu'on a monté, jamais plus. Sans cette borne, la mise à l'échelle
+        // indépendante des deux axes affichait « D+ 460m / D− 540m » sur une sortie longue :
+        // impossible sur le terrain, et un entraîneur le verrait au premier coup d'œil.
+        // Seuls les blocs de DESCENTE dédiés (navette, remontée mécanique) portent du D−
+        // sans D+ correspondant — c'est justement leur raison d'être.
+        if (st.gradient !== "down" && st.dmoinsM && (st.dplusM || 0) > 0 && st.dmoinsM > st.dplusM ) st.dmoinsM = st.dplusM ;
       }
     };
     // T3 — aucune qualité ni descente dans les 48h suivant une sortie à fort D− : les
@@ -5176,6 +5183,11 @@ function localTodayISO()         {
   avatar: avatarV2,
   adherence: adherenceV2,
   disciplines: DISCIPLINE_REGISTRY,
+  // R7 — l'UI a besoin de la catégorie d'effort déduite et des plafonds trail pour
+  // expliquer ses règles pédagogiques : les exposer évite de dupliquer les chiffres
+  // (une table de plafonds recopiée dans l'UI, c'est une table qui divergera).
+  trailObjective: (answers                         ) => trailObjective(toProfile("trail", answers)),
+  trailCaps: { history: TRAIL_HISTORY_CAPS, util: TRAIL_UTIL },
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
   dailyEnergy: dailyEnergyV2,

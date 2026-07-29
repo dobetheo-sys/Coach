@@ -570,7 +570,8 @@ longues, inventaire matériel (home-trainer/capteurs).
 ## Audit externe v6 (29/07/2026) — corrections et arbitrages
 
 Un audit externe est arrivé avec son **banc de régression exécutable** (`audit_v6.mjs`,
-38 tests à ID stable, zéro dépendance, `npm run audit:v6` en CI). Règle du banc : un test
+38 tests à ID stable au départ — 55 aujourd'hui avec le groupe trail, zéro dépendance,
+`npm run audit:v6` en CI). Règle du banc : un test
 attendu vert qui échoue = **régression** (exit 1) ; la dette connue (`expect:'fail'`) ne
 casse pas la CI, elle documente l'écart. À la livraison : **35 verts · 3 dettes ·
 0 régression** (état initial : 10 verts · 28 dettes).
@@ -702,6 +703,13 @@ n'existait pas.
 | **D+** | `T1_DPLUS_CAPS` + plafond du terrain d'entraînement | **+12 %** (T2) |
 | **D−** | dérivé du D+, plafonné | **+8 %** (T2b) |
 
+**T2c — une boucle ne descend jamais plus qu'elle ne monte** : les deux axes verticaux sont
+mis à l'échelle indépendamment (chacun a sa courbe et son plafond), ce qui pouvait afficher
+« D+ 460 m / D− 540 m » sur une sortie longue — impossible sur le terrain. Sur un bloc
+`rolling`/`flat`, le D− est borné par le D+ ; seuls les blocs de **descente dédiée** (navette,
+remontée mécanique) portent du D− sans D+, c'est leur raison d'être. Vérifié par le test
+**T17** du banc v6 et par `smoke-retention` (assertion sur le plan rendu).
+
 Le négatif progresse le plus lentement : c'est délibéré (dommages excentriques à 24-48 h,
 récupération complète en 3 à 7 jours). Autres constantes avec provenance : **T3** (aucune
 qualité ni descente dans les 48 h suivant >1 000 m D− — la sortie longue n'est jamais
@@ -753,6 +761,15 @@ altitude (au-delà d'un avertissement > 2 500 m), courses par étapes.
 `SPORTS.run` perd le format `trail` ; les plans existants `sport=run, format=trail` sont
 **migrés** (`migrateTrailPlans`) avec des valeurs par défaut et un avertissement au Profil
 demandant la vraie distance et le vrai D+. Nouvelle carte Profil « ⛰ Ta course et ton
-terrain » (tout éditable, régénère le plan). Gardes : **16 tests T1-T16** du banc v6 (spec
+terrain » (tout éditable, régénère le plan). Gardes : **17 tests T1-T17** du banc v6 (spec
 écrite AVANT le code, en dette, passée au vert lot par lot) + suite E2E `smoke-trail.mjs`
 (35 assertions, parcours complet dans un vrai navigateur).
+
+Conséquence à ne pas oublier quand on ajoute un sport : **toute table indexée par sport**
+doit être étendue, y compris côté UI. Les règles pédagogiques de l'onglet Plan (`evalRules`,
+`endurabuild/js/ui/steps.js`) lisaient leurs plafonds dans une table `{run, bike, swim, tri}`
+et plantaient tout le rendu du Profil sur `sport="trail"`. Corrigé en deux temps : le trail
+n'a **pas de format** (ses plafonds suivent la catégorie d'effort déduite, lue via
+`EBV2.trailObjective` / `EBV2.trailCaps` — une seule table de chiffres dans le projet, celle
+du moteur), et un sport ou un format inconnu **retombe sur un repli documenté** au lieu de
+lever une exception. Garde : `smoke-retention` assertait déjà « aucune erreur JS ».

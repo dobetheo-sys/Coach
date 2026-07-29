@@ -66,11 +66,23 @@ function evalRules(a, tier){
 
   // ---- COMMUN : volume (3 plafonds) ----
   if(a.sessions_max&&a.vol_max&&a.history){
-    const caps={run:{reprise:{"5k":4,"10k":5,semi:6,marathon:8,trail:9},confirme:{"5k":5,"10k":6,semi:8,marathon:10,trail:12},ancien:{"5k":6,"10k":7,semi:9,marathon:12,trail:14}},
+    // R7 — en trail il n'y a PAS de format : les plafonds suivent la catégorie d'effort
+    // DÉDUITE des données de la course (kv → ultra_long). Les chiffres viennent du moteur
+    // (EBV2.trailCaps) pour qu'une seule table existe dans le projet.
+    const trailCat = sp==="trail" ? (globalThis.EBV2&&EBV2.trailObjective ? EBV2.trailObjective(a).category : "long") : null;
+    const capsBySport={run:{reprise:{"5k":4,"10k":5,semi:6,marathon:8},confirme:{"5k":5,"10k":6,semi:8,marathon:10},ancien:{"5k":6,"10k":7,semi:9,marathon:12}},
       bike:{reprise:{crit:6,route:8,cyclo:9,clm:7,gravel:11},confirme:{crit:8,route:11,cyclo:13,clm:10,gravel:15},ancien:{crit:10,route:14,cyclo:16,clm:12,gravel:20}},
       swim:{reprise:{sprint:3,demifond:4,fond:5,ow:6},confirme:{sprint:5,demifond:6,fond:7,ow:9},ancien:{sprint:6,demifond:8,fond:10,ow:12}},
-      tri:{reprise:{S:6,M:8,"70.3":11,Full:15},confirme:{S:7,M:10,"70.3":13,Full:17},ancien:{S:8,M:12,"70.3":15,Full:19}}}[sp][a.history][fmt]||10;
-    const util={run:{"5k":6,"10k":7,semi:9,marathon:12,trail:14},bike:{crit:9,route:13,cyclo:15,clm:11,gravel:20},swim:{sprint:6,demifond:8,fond:10,ow:12},tri:{S:8,M:11,"70.3":14,Full:18}}[sp][fmt]||12;
+      tri:{reprise:{S:6,M:8,"70.3":11,Full:15},confirme:{S:7,M:10,"70.3":13,Full:17},ancien:{S:8,M:12,"70.3":15,Full:19}}};
+    const utilBySport={run:{"5k":6,"10k":7,semi:9,marathon:12},bike:{crit:9,route:13,cyclo:15,clm:11,gravel:20},swim:{sprint:6,demifond:8,fond:10,ow:12},tri:{S:8,M:11,"70.3":14,Full:18}};
+    const tc = (globalThis.EBV2&&EBV2.trailCaps) ? EBV2.trailCaps : null;
+    // Un sport ou un format inconnu ne doit JAMAIS casser le rendu des règles : repli documenté.
+    const caps = trailCat
+      ? (tc&&tc.history[trailCat] ? tc.history[trailCat][a.history] : null) || 11
+      : (capsBySport[sp]?.[a.history]?.[fmt] ?? 10);
+    const util = trailCat
+      ? (tc ? tc.util[trailCat] : null) || 13
+      : (utilBySport[sp]?.[fmt] ?? 12);
     const decl=parseInt(a.vol_max), marg=(a.intent==="competition")?1.0:0.9;
     const raw=Math.min(decl,caps,util), fin=Math.round(raw*marg*10)/10;
     let lim = raw===decl?"ta disponibilité":(raw===util?"l'utilité du format":"ton plafond physiologique");

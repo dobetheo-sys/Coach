@@ -739,6 +739,21 @@ test("T16", "Ultra long : aucune séance VO2max (ce n'est pas le limiteur)", "pa
   return { ok: bad.length === 0, detail: `${bad.length} bloc(s) VO2max en ultra long` };
 });
 
+test("T17", "Une boucle ne descend jamais plus qu'elle ne monte (T2c)", "pass", () => {
+  // Physique du terrain : sur une sortie en boucle (bloc `rolling`/`flat`), le D− ne peut pas
+  // dépasser le D+ — on revient au point de départ. Seuls les blocs de DESCENTE dédiés
+  // (navette, remontée mécanique) portent du D− sans D+.
+  const bad = [];
+  for (const opts of [{}, { race_distance_km: "45", race_dplus_m: "2000" }, { race_distance_km: "110", race_dplus_m: "6500" }]) {
+    const p = buildTrail(opts);
+    for (const { s, st } of trailSteps(p)) {
+      if (st.gradient === "down") continue;
+      if ((st.dmoinsM || 0) > (st.dplusM || 0)) bad.push(`${s.name} : D+ ${st.dplusM || 0}m / D− ${st.dmoinsM}m`);
+    }
+  }
+  return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" · ") || "aucune incohérence D+/D−" };
+});
+
 // ── G. Déterminisme & performance ────────────────────────────────────
 
 test("G1", "Génération déterministe", "pass", () => {

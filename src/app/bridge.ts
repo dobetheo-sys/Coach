@@ -6,7 +6,7 @@
 import type { AthleteProfile, V1Plan, V1Step } from "../engine/types.ts";
 import { intensitySplit } from "../engine/loadModel.ts";
 import { parsePaceSec } from "../engine/constraintMatrix.ts";
-import { trailObjective } from "../engine/trailModel.ts";
+import { trailObjective, TRAIL_HISTORY_CAPS, TRAIL_UTIL } from "../engine/trailModel.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
@@ -389,6 +389,11 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   avatar: avatarV2,
   adherence: adherenceV2,
   disciplines: DISCIPLINE_REGISTRY,
+  // R7 — l'UI a besoin de la catégorie d'effort déduite et des plafonds trail pour
+  // expliquer ses règles pédagogiques : les exposer évite de dupliquer les chiffres
+  // (une table de plafonds recopiée dans l'UI, c'est une table qui divergera).
+  trailObjective: (answers: Record<string, unknown>) => trailObjective(toProfile("trail", answers)),
+  trailCaps: { history: TRAIL_HISTORY_CAPS, util: TRAIL_UTIL },
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
   dailyEnergy: dailyEnergyV2,
