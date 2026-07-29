@@ -4,7 +4,7 @@
 // chaque séance (N1–N7, météo comprise), journal alimentaire (Open Food Facts + CSV MFP).
 // La frontière ne bouge pas : des ESTIMATIONS et des photographies de consensus — jamais
 // une cible d'apport, jamais un menu ; l'avertissement du moteur est TOUJOURS affiché.
-import { S, $ } from "../state.js";
+import { S, $, todayISO } from "../state.js";
 import { fetchWeather } from "./readiness.js";
 // R6 — le journal alimentaire (Open Food Facts + CSV) est RETIRÉ sur décision
 // utilisateur : trop de saisie pour trop peu de valeur ; l'onglet reste
@@ -57,7 +57,7 @@ export function nutritionCardHTML(day, tempC) {
 }
 
 export function renderTabNutrition(plan) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   let todayDay = null;
   plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date === today) todayDay = d; }));
 

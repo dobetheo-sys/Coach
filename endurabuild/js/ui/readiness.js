@@ -1,6 +1,6 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
-import { $, S, ebSave } from "../state.js";
+import { $, S, ebSave, todayISO } from "../state.js";
 
 function fetchWeather(){return new Promise(res=>{
   if(!navigator.geolocation)return res(null);
@@ -29,7 +29,7 @@ function verdictHTML(res,weather){
  *  « Modifier ma forme du jour ») — météo, verdict, sauvegarde datée, journal des verdicts. */
 async function applyReadinessSnap(base){
   if(!globalThis.EBV2)return null;
-  const snap={date:new Date().toISOString().slice(0,10),
+  const snap={date:todayISO(),
     sleepQuality:base.sleepQuality||"moyen",hrvStatus:base.hrvStatus||"normale",
     energy:parseInt(base.energy)||55,feel:base.feel||"normal"};
   const wx=await fetchWeather();if(wx&&wx.tmaxC!=null)snap.weather=wx;
@@ -61,7 +61,7 @@ async function applyReadiness(){
  *  question tant que le jour ne change pas — ergonomique, jamais insistant). */
 function readinessDoneToday(){
   const r=S.answers.readiness;
-  return !!(r&&r.date===new Date().toISOString().slice(0,10));
+  return !!(r&&r.date===todayISO());
 }
 
 export { applyReadiness, applyReadinessSnap, fetchWeather, readinessDoneToday, verdictHTML };

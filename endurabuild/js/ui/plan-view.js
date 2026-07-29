@@ -1,7 +1,7 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
 import { SPORTS } from "../config.js";
-import { S } from "../state.js";
+import { S, todayISO } from "../state.js";
 import { evalRules } from "../ui/steps.js";
 import { buildPlan } from "../app.js";
 import { renderTabs, invalidatePlan } from "./tabs.js";
@@ -142,7 +142,7 @@ function readinessCardHTML(opts){
 function progressBarCardHTML(plan){
   let h="";
   if(globalThis.EBV2&&globalThis.EBV2.progress){
-    const pg=globalThis.EBV2.progress(plan,S.answers,new Date().toISOString().slice(0,10));
+    const pg=globalThis.EBV2.progress(plan,S.answers,todayISO());
     const fire=pg.streakWeeks>0?"\ud83d\udd25":"\ud83c\udf31";
     h+='<div class="load-card"><div class="load-title">'+fire+' R\u00e9gularit\u00e9 & avancement</div>'
       +'<div class="load-sub" style="margin:6px 0">'
@@ -152,7 +152,7 @@ function progressBarCardHTML(plan){
       +'<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:14px;overflow:hidden"><div style="height:100%;width:'+pg.pctLoad+'%;background:#00a376"></div></div>'
       +'<div class="load-sub" style="margin-top:4px">Semaine '+pg.weekNow+'/'+pg.totalWeeks+' \u00b7 <b>'+pg.pctLoad+'%</b> de la charge du plan accomplie ('+(Math.round(pg.doneMin/6)/10)+'h / '+(Math.round(pg.totalMin/6)/10)+'h)</div>';
     if(globalThis.EBV2.badges){
-      const bd=globalThis.EBV2.badges(plan,S.answers,new Date().toISOString().slice(0,10));
+      const bd=globalThis.EBV2.badges(plan,S.answers,todayISO());
       if(bd.length){h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">';
         bd.forEach(b=>{h+='<span title="'+b.why.replace(/"/g,"&quot;")+'" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:11px;background:#fff">'+b.icon+' '+b.label+'</span>';});
         h+='</div>';}
@@ -179,7 +179,7 @@ function predictionCardHTML(plan){
 function historyCardHTML(plan){
   let h="";
   if(globalThis.EBV2&&globalThis.EBV2.progress){
-    const pgh=globalThis.EBV2.progress(plan,S.answers,new Date().toISOString().slice(0,10));
+    const pgh=globalThis.EBV2.progress(plan,S.answers,todayISO());
     const doneW=pgh.weekly.filter(w=>w.complete);
     if(doneW.length){
       h+='<div class="load-card"><div class="load-title">\ud83d\udcd2 Historique \u2014 pr\u00e9vu vs r\u00e9el</div>';

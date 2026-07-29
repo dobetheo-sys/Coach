@@ -300,7 +300,7 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
     thrPace: answers.pace_known === "oui" ? parse(answers.pace) : 0,
     css: answers.css_known === "oui" ? parse(answers.css) : 0,
   };
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localTodayISO();
   const pg = progressV2(p, answers, today);
   return predictRace(sport, String(answers.format || ""), String(answers.intent || "") || undefined, finalRefs, {
     pctLoad: pg.pctLoad,
@@ -330,6 +330,13 @@ function dailyEnergyV2(answers: AppAnswers, sessions?: { d: string; min?: number
     trainingKcal: kcal,
     trainingMin: tMin,
   });
+}
+
+// R7 — date du jour en heure LOCALE de l'appareil (jamais toISOString/UTC : le plan
+// vit dans le calendrier de l'athlète, pas celui de Greenwich).
+function localTodayISO(): string {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 
 declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;

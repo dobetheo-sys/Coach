@@ -20,7 +20,7 @@ export async function requestNotifyPermission() {
   try { return await Notification.requestPermission(); } catch (e) { return "denied"; }
 }
 
-function todayISO() { return new Date().toISOString().slice(0, 10); }
+function todayISO() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); } // R7 — heure LOCALE
 
 function sessionOfDay(plan, dateISO) {
   for (const w of plan.weeks) for (const d of w.days) if (d.date === dateISO) return d;

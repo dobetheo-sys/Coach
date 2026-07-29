@@ -6,7 +6,7 @@
 //   Partage → carte story « RETEST » distincte.
 // RÉGRESSION : aucun langage d'échec — souvent la réponse n'est pas dans l'entraînement
 // (sommeil, travail, stress). On recalibre, c'est tout (spec §5).
-import { $, S, ebSave, esc } from "../state.js";
+import { $, S, ebSave, esc, todayISO } from "../state.js";
 import { syncRefsFromTests } from "./tab-profile.js";
 import { invalidatePlan, ensurePlan, setTab } from "./tabs.js";
 import { shareStory } from "../export.js";
@@ -52,7 +52,7 @@ export function bindRetestPlanner(rerender) {
   const plan = $("rtPlan");
   if (plan) plan.onclick = () => {
     const date = ($("rtDate") || {}).value;
-    if (!date || date < new Date().toISOString().slice(0, 10)) { alert("Choisis une date à venir."); return; }
+    if (!date || date < todayISO()) { alert("Choisis une date à venir."); return; }
     S.answers.retest = { type: $("rtType").value, date };
     ebSave(); rerender();
   };

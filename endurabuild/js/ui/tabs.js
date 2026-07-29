@@ -1,7 +1,7 @@
 // Conteneur d'onglets — navigation seule, AUCUNE logique métier (brief onglets).
 // RÈGLE DE FOND : le plan est généré UNE fois (S.currentPlan) ; un changement
 // d'onglet ne rappelle JAMAIS buildPlan — les onglets sont des vues du même objet.
-import { S, $, ebSave } from "../state.js";
+import { S, $, ebSave, todayISO } from "../state.js";
 import { buildPlan } from "../app.js";
 import { renderTabProfile } from "./tab-profile.js";
 import { renderTabPlanGeneral } from "./tab-plan-general.js";
@@ -29,7 +29,7 @@ export function ensurePlan() {
   if (!S.currentPlan) {
     // Ancre calendaire : posée UNE fois à la première génération — sans elle, la semaine 1
     // re-glisserait au lundi courant à chaque ouverture et le plan n'avancerait jamais.
-    if (!S.answers.plan_start) { S.answers.plan_start = new Date().toISOString().slice(0, 10); ebSave(); }
+    if (!S.answers.plan_start) { S.answers.plan_start = todayISO(); ebSave(); }
     S.currentPlan = buildPlan(S.answers);
     applyDaySwaps(S.currentPlan); // déplacements de séances persistants (voir plus bas)
   }

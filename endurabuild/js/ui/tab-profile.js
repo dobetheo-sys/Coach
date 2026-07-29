@@ -4,7 +4,7 @@
 // date, prev, source} — pas de nouvelle structure de données (brief onglets).
 // Toute donnée utilisateur réaffichée passe par esc() avant innerHTML (anti-XSS).
 import { SPORTS, VLAB } from "../config.js";
-import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc } from "../state.js";
+import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc, todayISO } from "../state.js";
 import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js";
 import { renderPlan } from "./plan-view.js";
 import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
@@ -278,16 +278,16 @@ function retestSuggestionHTML() {
   const last = tests.map((t) => String(t.date || "")).sort().pop();
   if (!last) return "";
   const sug = new Date(new Date(last + "T00:00:00Z").getTime() + 42 * 864e5).toISOString().slice(0, 10);
-  const overdue = sug <= new Date().toISOString().slice(0, 10);
+  const overdue = sug <= todayISO();
   return '<div class="load-sub" style="margin-top:4px">💡 Dernière référence mesurée le <b>' + last + "</b> → retest suggéré autour du <b>" + sug + "</b>" + (overdue ? " (c’est le moment !)" : "") + ".</div>";
 }
 
 export function renderTabProfile(plan) {
   const a = S.answers, sp = S.sport;
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const tIso = todayISO();
   let html = '<div class="card"><div class="eyebrow">Profil — ' + SPORTS[sp].nom + "</div><h2>Toi, ton niveau, tes réglages</h2>";
   // R5 — l'identité d'abord : avatar, niveau, XP, teaser du niveau suivant
-  html += avatarSectionHTML(plan, todayISO);
+  html += avatarSectionHTML(plan, tIso);
   html += '<div class="why">Modifie une valeur : le plan est régénéré et le changement est consigné dans ton journal d’évolution.</div>';
   html += plansSelectorHTML();
   html += planDeadlineHTML(plan);
@@ -318,7 +318,7 @@ export function renderTabProfile(plan) {
   // dans un onglet à part — le Profil raconte qui tu es et ce que tu as construit)
   html += recordsHTML(plan, a);
   let _badges = [];
-  if (globalThis.EBV2 && globalThis.EBV2.badges) { try { _badges = globalThis.EBV2.badges(plan, a, todayISO); } catch (e) {} }
+  if (globalThis.EBV2 && globalThis.EBV2.badges) { try { _badges = globalThis.EBV2.badges(plan, a, tIso); } catch (e) {} }
   html += badgesGalleryHTML(_badges);
   html += efficiencyHTML();
 
@@ -399,9 +399,9 @@ export function renderTabProfile(plan) {
   if (_avShare) _avShare.onclick = async () => {
     _avShare.disabled = true; _avShare.textContent = "Génération…";
     let av2 = null, streak = 0;
-    try { av2 = globalThis.EBV2.avatar(plan, S.answers, todayISO); } catch (e) {}
-    try { streak = globalThis.EBV2.adherence(plan, S.answers, todayISO).days || 0; } catch (e) {}
-    const visual = avatarDataFor(plan, todayISO);
+    try { av2 = globalThis.EBV2.avatar(plan, S.answers, tIso); } catch (e) {}
+    try { streak = globalThis.EBV2.adherence(plan, S.answers, tIso).days || 0; } catch (e) {}
+    const visual = avatarDataFor(plan, tIso);
     try {
       await shareStory({ sessionName: av2 ? av2.icon + " " + av2.name + " · niveau " + av2.level : "Mon avatar", detail: "", sport: S.sport, streak, badge: null, avatarSVG: avatarSVG(visual, 520), accent: visual.accent });
     } catch (e) { console.warn(e); }
@@ -419,7 +419,7 @@ export function renderTabProfile(plan) {
     const blob = new Blob([raw], { type: "application/json" });
     const u = URL.createObjectURL(blob);
     const l = document.createElement("a");
-    l.href = u; l.download = "endurabuild-sauvegarde-" + new Date().toISOString().slice(0, 10) + ".json";
+    l.href = u; l.download = "endurabuild-sauvegarde-" + todayISO() + ".json";
     document.body.appendChild(l); l.click();
     setTimeout(() => { document.body.removeChild(l); URL.revokeObjectURL(u); }, 200);
     const m = $("pfBackupMsg"); if (m) m.textContent = "✓ Sauvegarde téléchargée (" + Math.round(raw.length / 1024) + " Ko).";
@@ -539,7 +539,7 @@ export function renderTabProfile(plan) {
   const stravaTokBtn = $("pfStravaBtnTok");
   if (stravaTokBtn) stravaTokBtn.onclick = () => runStravaImport(stravaTokBtn);
   $("pfSave").onclick = () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayISO();
     if (!Array.isArray(S.answers.tests)) S.answers.tests = [];
     const log = (type, value, prev, apply) => {
       S.answers.tests.push({ type, value, prev: prev != null && prev !== "" ? prev : undefined, date: today, source: "profil (modification manuelle)" });
