@@ -1,7 +1,7 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
 import { CATS, HEROS, PREMIUM_STEPS_DEF, RULE_CAT, SPORTS, VLAB } from "../config.js";
-import { $, S, ebActivate, ebClear, ebSave } from "../state.js";
+import { $, S, ebActivate, ebClear, ebSave, todayISO } from "../state.js";
 import { renderPlan } from "../ui/plan-view.js";
 import { hideTabs, invalidatePlan } from "../ui/tabs.js";
 import { buildPlan } from "../app.js";
@@ -267,7 +267,7 @@ async function stravaImport(oauthTok){
     const acts=await r.json();
     if(!Array.isArray(acts)||!acts.length){setS("Aucune activité récente trouvée.");return;}
     if(!Array.isArray(S.answers.tests))S.answers.tests=[];
-    const today=new Date().toISOString().slice(0,10),added=[],notes=[];
+    const today=todayISO(),added=[],notes=[];
     const sport=a=>a.sport_type||a.type||"";
     // FTP : uniquement si une sortie porte de la PUISSANCE (la vitesse seule ne dit rien de la FTP).
     const rides=acts.filter(a=>/Ride/.test(sport(a))&&(a.moving_time||0)>=1200);

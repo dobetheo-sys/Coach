@@ -59,4 +59,11 @@ function ebLoad(){
 function ebClear(){ebSave();}
 const $ = id => document.getElementById(id);
 
-export { $, S, ebActivate, ebClear, ebLoad, ebNewPlanEntry, ebSave, esc };
+// R7 — « aujourd'hui » en heure LOCALE. toISOString() donne la date UTC : entre 22h et
+// minuit (heure d'été française), l'app vivait encore LA VEILLE — « encore un problème
+// de jour réel et de jour du plan » (retour utilisateur). Toute comparaison avec les
+// dates du plan (chaînes YYYY-MM-DD) passe par ce helper, jamais par toISOString.
+function todayISO(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+/** Date courte pour l'affichage calendrier des jours du plan : "29/07". */
+function fmtDay(iso){return iso?iso.slice(8,10)+"/"+iso.slice(5,7):"";}
+export { $, S, ebActivate, ebClear, ebLoad, ebNewPlanEntry, ebSave, esc, fmtDay, todayISO };

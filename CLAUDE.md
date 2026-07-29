@@ -209,3 +209,7 @@ nouveau plan PRÉ-REMPLI (données de la personne) + bouton « Revenir à mon pl
 (relais par défaut dans `config.js` STRAVA_RELAY_DEFAULT — à renseigner au déploiement
 du worker ; URL en réglages avancés), « ↻ Refaire mon point du matin » (diaporama
 re-jouable), **journal alimentaire RETIRÉ** (décision utilisateur — module supprimé).
+**R7 livré** (3e retour) : dates en heure LOCALE partout (`todayISO()` dans state.js +
+`localTodayISO` bridge — fini l'app qui vit « hier » entre 22h et minuit heure française),
+jours du plan annotés de leur vraie date calendrier (`fmtDay` : grilles, programme de
+phase, en-têtes « du … au … », héros, validation), garde CI 2 fuseaux (smoke-dates).

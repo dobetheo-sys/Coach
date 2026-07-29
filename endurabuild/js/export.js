@@ -1,6 +1,6 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
-import { S } from "./state.js";
+import { S, todayISO } from "./state.js";
 import { SPORTS } from "./config.js";
 import { buildPlan } from "./app.js";
 
@@ -58,7 +58,7 @@ function exportPNG(){try{
       pr.items.forEach(it=>{x.fillText(it.leg+" : "+it.value,60,y);y+=48;});}
   }catch(e){}}
   if(globalThis.EBV2&&globalThis.EBV2.progress){try{
-    const pg=globalThis.EBV2.progress(plan,S.answers,new Date().toISOString().slice(0,10));
+    const pg=globalThis.EBV2.progress(plan,S.answers,todayISO());
     y+=30;x.fillStyle="#0c1016";x.font="700 40px 'Space Grotesk',sans-serif";
     x.fillText("Semaine "+pg.weekNow+"/"+pg.totalWeeks+" · "+pg.pctLoad+"% de la charge accomplie"+(pg.streakWeeks?" · streak "+pg.streakWeeks:""),60,y);
     y+=40;x.fillStyle="#e8e0cf";x.fillRect(60,y,W-120,26);x.fillStyle="#00a376";x.fillRect(60,y,(W-120)*pg.pctLoad/100,26);

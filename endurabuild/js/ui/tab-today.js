@@ -3,7 +3,7 @@
 // répondu, une fois par jour) ; 2) la séance du jour DÉJÀ adaptée au verdict ; 3) la
 // prédiction de course ; 4) la courbe charge/fatigue/forme ; 5) la barre d'avancement de
 // la prépa (liée à la même charge) ; 6) la répartition des intensités.
-import { S, $, ebSave } from "../state.js";
+import { S, $, ebSave, fmtDay, todayISO } from "../state.js";
 import { checkinSlideshowHTML, bindCheckinSlideshow } from "./checkin.js";
 import { readinessDoneToday } from "./readiness.js";
 import { loadChartSVG, progressBarCardHTML, predictionCardHTML, intensityCardHTML, historyCardHTML } from "./plan-view.js";
@@ -72,7 +72,7 @@ function todayValidateHTML(plan, todayISO) {
     h += '<button type="button" class="btn ' + (dn ? "" : "primary") + '" data-vd="' + k + '" data-vrest="' + (s.d === "rs" ? 1 : 0) + '" style="width:100%;margin-top:8px;font-size:15px;padding:13px 16px"' + (dn ? " disabled" : "") + ">"
       + (dn ? "✓ " + (s.d === "rs" ? "Repos validé" : "Séance validée — bravo") : "✓ " + label) + "</button>";
   });
-  return h ? '<div class="card"><div class="eyebrow">Valider ma journée</div>' + h + "</div>" : "";
+  return h ? '<div class="card"><div class="eyebrow">Valider ma journée · ' + d.jour + " " + fmtDay(d.date) + "</div>" + h + "</div>" : "";
 }
 function bindTodayValidate(plan, todayISO) {
   document.querySelectorAll("#screen [data-vd]").forEach((b) => {
@@ -105,8 +105,8 @@ function bindTodayValidate(plan, todayISO) {
 
 // Course passée → saisie du chrono réel face à la prédiction (calibration honnête).
 function raceResultCardHTML(plan) {
-  const rd = S.answers.race_date, todayISO = new Date().toISOString().slice(0, 10);
-  if (!rd || rd > todayISO) return "";
+  const rd = S.answers.race_date, tIso = todayISO();
+  if (!rd || rd > tIso) return "";
   if (S.answers.raceResult) {
     return '<div class="load-card"><div class="load-title">🏁 Ta course du ' + S.answers.raceResult.date + '</div>'
       + '<div class="load-sub" style="margin-top:6px"><b>Réalisé : ' + S.answers.raceResult.time + "</b>"
@@ -121,7 +121,7 @@ function raceResultCardHTML(plan) {
 }
 
 export function renderTabToday(plan) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const moment = momentHTML(plan, today);
 
   // 1. Le diaporama d'accueil — AUCUNE séance visible avant d'avoir répondu (1×/jour)

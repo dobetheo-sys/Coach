@@ -480,3 +480,20 @@ Dix points, tous traités :
   éventuel reste inerte dans l'état.
 - E2E : 121 assertions (validation Aujourd'hui + 3 partages, programme de phase + phase
   validée, pré-remplissage + retour, journal retiré).
+
+## R7 — le calendrier de l'athlète, pas celui de Greenwich (3e retour)
+
+« Encore un problème de jour réel et de jour du plan » — cause : `new Date().toISOString()`
+donne la date UTC ; entre 22 h et minuit (heure d'été française) l'app vivait encore LA
+VEILLE (mauvaise séance du jour, mauvaise case « aujourd'hui », readiness re-demandée…).
+- **`todayISO()` (state.js)** : date du jour en heure LOCALE — remplace toISOString dans
+  TOUTE l'UI (tabs/semaine/aujourd'hui/profil/plan-view/readiness/retest/steps/nutrition/
+  export/notifications) et dans le bridge (`localTodayISO`). Règle : toute comparaison
+  avec les dates du plan passe par ce helper, jamais par toISOString.
+- **`fmtDay(iso)`** : chaque jour du plan est annoté de sa vraie date calendrier (dd/mm) —
+  grille Semaine (+ « auj. »), grille Plan, programme de phase, en-têtes de semaine
+  (« du 28/07 au 03/08 »), héros Aujourd'hui, carte « Valider ma journée ».
+- **Garde CI `tests/e2e/smoke-dates.mjs`** : deux fuseaux extrêmes (UTC+14 et UTC−11 — à
+  toute heure réelle, au moins un diffère de la date UTC) vérifient todayISO() = date
+  locale, case « aujourd'hui » sur le bon jour, étiquettes Lun/Mar alignées sur les
+  vraies dates, annotations présentes. Toute régression UTC casse la CI.

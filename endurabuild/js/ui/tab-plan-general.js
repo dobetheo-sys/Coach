@@ -2,7 +2,7 @@
 // bandeau « ce qui pilote ton plan », phases, barres de volume, calendrier, exports.
 // La prédiction de course N'EST PAS ici (brief onglets) — elle vit dans 📈 Avancement.
 import { SPORTS } from "../config.js";
-import { $, S, ebSave } from "../state.js";
+import { $, S, ebSave, fmtDay } from "../state.js";
 import { curSteps, renderStep, reset } from "./steps.js";
 import { driverBand, downloadPlan, decisionsCardHTML } from "./plan-view.js";
 import { exportICS, exportJSON, exportPNG } from "../export.js";
@@ -50,7 +50,8 @@ function phaseObjectivesHTML(plan) {
       + '<div class="load-sub" style="margin-top:6px">' + (PHASE_GOALS[(p.id || "").toLowerCase()] || PHASE_GOALS[p.nom ? p.nom.toLowerCase().slice(0, 4) : ""] || "Une étape du plan, au service de la suivante.") + "</div>";
     // LE PROGRAMME : chaque semaine de la phase, jour par jour, coches comprises
     st.wks.forEach((w) => {
-      h += '<div style="font-size:12px;margin-top:8px;font-weight:700">Semaine ' + w.num + " · " + w.vol + "h" + (w.isRecup ? " (récup)" : "") + "</div>";
+      const pr = w.days.length ? " · du " + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) : "";
+      h += '<div style="font-size:12px;margin-top:8px;font-weight:700">Semaine ' + w.num + " · " + w.vol + "h" + (w.isRecup ? " (récup)" : "") + pr + "</div>";
       w.days.forEach((d) => {
         const items = d.sessions.map((s, si) => {
           const k = w.num + "|" + d.jour + "|" + si;
@@ -58,7 +59,7 @@ function phaseObjectivesHTML(plan) {
           const chk = s.d !== "rs" ? '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" title="Marquer fait">' + (dn ? "✓" : "○") + "</button> " : "";
           return chk + s.name;
         }).join(" · ");
-        h += '<div style="font-size:12px;margin:3px 0 0 4px;color:#3f3a30"><b style="display:inline-block;width:34px">' + d.jour + "</b> " + items + "</div>";
+        h += '<div style="font-size:12px;margin:3px 0 0 4px;color:#3f3a30"><b style="display:inline-block;width:34px">' + d.jour + '</b><span style="display:inline-block;width:44px;color:#999">' + fmtDay(d.date) + "</span> " + items + "</div>";
       });
     });
     if (st.validated) h += '<div style="margin-top:8px;font-size:13px;font-weight:700;color:#00734f">✅ Phase validée — tout est fait. La suivante s’appuie sur ce travail.</div>';
@@ -85,7 +86,8 @@ export function renderTabPlanGeneral(plan) {
   show.forEach((w, ix) => {
     if (!S.showAllWeeks && ix === 3) html += '<div class="wk-skip">⋯ semaines 4 à ' + (plan.totalWeeks - 1) + " ⋯</div>";
     const raceTag = w.race ? ' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700">🏁 COURSE ' + w.race + "</span>" : (w.postRace ? ' <span style="color:#9b72ff;font-size:10px">↳ récup post-course</span>' : "");
-    html += '<div class="gw"><div class="gw-h"><b>Semaine ' + w.num + '</b><span style="color:' + w.phase.c + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + '</em></div><div class="gw-grid">';
+    const wRange = w.days.length ? ' <span style="font-size:10px;color:#777;font-weight:400">du ' + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) + "</span>" : "";
+    html += '<div class="gw"><div class="gw-h"><b>Semaine ' + w.num + "</b>" + wRange + '<span style="color:' + w.phase.c + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + '</em></div><div class="gw-grid">';
     w.days.forEach((d) => {
       const bg = d.sessions.map((s) => "<span>" + ic[s.d] + "</span>").join("");
       const nm = d.sessions.map((s, si) => {
@@ -97,7 +99,7 @@ export function renderTabPlanGeneral(plan) {
           ? '<details class="gd-sess"><summary><b>' + s.name + "</b></summary><span class=\"gd-det\">" + s.det + "</span></details>"
           : "<b>" + s.name + "</b>");
       }).join("");
-      html += '<div class="gd ' + d.charge + '"><div class="gd-top"><b>' + d.jour + "</b>" + (plan.use10 ? "<i>C" + d.cyc + "J" + d.jc + "</i>" : "") + '</div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
+      html += '<div class="gd ' + d.charge + '"><div class="gd-top"><b>' + d.jour + "</b><i>" + fmtDay(d.date) + (plan.use10 ? " · C" + d.cyc + "J" + d.jc : "") + '</i></div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
     });
     html += "</div></div>";
   });

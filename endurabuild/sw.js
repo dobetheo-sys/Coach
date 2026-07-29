@@ -2,7 +2,7 @@
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
    une météo périmée est pire qu'une absence de météo). */
-const VERSION = "eb-pwa-v12"; // v12 : R6 — fix avatar, validation dans Aujourd’hui, phases dépliantes, parcours→prédiction, Strava 1 clic
+const VERSION = "eb-pwa-v13"; // v13 : R7 — dates en heure LOCALE (fini le décalage du soir) + jours du plan annotés de leur date
 const ASSETS = [
   "./",
   "./index.html",

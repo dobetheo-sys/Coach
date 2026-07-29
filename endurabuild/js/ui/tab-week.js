@@ -3,7 +3,7 @@
 // de la semaine, les échanges de jours ⇄, le bilan hebdo, le contenu du jour, les rappels).
 // La règle produit tient toujours : pas de séance visible avant le check-in → redirection
 // vers Aujourd'hui tant que la forme du jour n'est pas renseignée.
-import { S, $, ebSave, esc } from "../state.js";
+import { S, $, ebSave, esc, fmtDay, todayISO } from "../state.js";
 import { readinessCardHTML } from "./plan-view.js";
 import { applyReadiness, readinessDoneToday } from "./readiness.js";
 import { avatarDataFor, avatarSVG } from "./avatar.js";
@@ -89,8 +89,8 @@ export function feedbackModal(plan, session, k, onDone) {
     if (!S.answers.completions) S.answers.completions = {};
     const pain = painCb.checked;
     const loc = (ov.querySelector("#fbPainLoc").value || "").trim();
-    S.answers.completions[k] = { date: new Date().toISOString().slice(0, 10), rpe: state.rpe, feeling: state.feeling, pain, painLocation: loc || undefined };
-    if (pain) S.answers.painFlag = { active: true, location: loc, since: new Date().toISOString().slice(0, 10) }; // R4.5 — verrouille la qualité via l'ajusteur
+    S.answers.completions[k] = { date: todayISO(), rpe: state.rpe, feeling: state.feeling, pain, painLocation: loc || undefined };
+    if (pain) S.answers.painFlag = { active: true, location: loc, since: todayISO() }; // R4.5 — verrouille la qualité via l'ajusteur
     ebSave();
     untrap();
     ov.remove();
@@ -161,7 +161,7 @@ export function showCongrats(plan, session, newBadge, todayISO) {
 const ic = { sw: "\u{1F3CA}", bk: "\u{1F6B4}", rn: "\u{1F3C3}", br: "\u{1F501}", rs: "\u{1F4AA}" };
 
 function currentWeek(plan) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   return (
     plan.weeks.find((w) => w.days.some((d) => d.date === today)) ||
     plan.weeks.find((w) => w.days.some((d) => d.date >= today)) ||
@@ -173,7 +173,7 @@ function currentWeek(plan) {
 // comptent — jour de course, veille de course, entrée en affûtage. Purement visuel,
 // calculé depuis le plan déjà généré ; dégrade proprement si les jours n'ont pas de date.
 export function momentHTML(plan, todayISO) {
-  const today = todayISO || new Date().toISOString().slice(0, 10);
+  const today = todayISO || todayISO();
   const tomorrow = new Date(new Date(today + "T00:00:00Z").getTime() + 864e5).toISOString().slice(0, 10);
   const raceDates = (plan.races || []).map((r) => r.date);
   if (S.answers && S.answers.race_date) raceDates.push(S.answers.race_date);
@@ -204,7 +204,7 @@ export function bindPainBanner(plan, rerender) {
   const b = $("ebLiftPain");
   if (b) b.onclick = () => {
     if (!confirm("Plus aucune douleur, ni à froid ni pendant l’effort ?")) return;
-    S.answers.painFlag = { active: false, location: S.answers.painFlag.location, since: S.answers.painFlag.since, liftedAt: new Date().toISOString().slice(0, 10) };
+    S.answers.painFlag = { active: false, location: S.answers.painFlag.location, since: S.answers.painFlag.since, liftedAt: todayISO() };
     ebSave();
     (rerender || (() => renderTabWeek(plan)))();
   };
@@ -252,11 +252,11 @@ export function heroSessionHTML(plan, todayISO) {
     const nxt = upcoming[0];
     body = '<div style="margin-top:6px">\u{1F60C} Repos aujourd’hui.' + (nxt ? " Prochaine séance : <b>" + nxt.jour + "</b> · " + nxt.sessions.filter((s) => s.d !== "rs").map((s) => s.name).join(", ") : "") + "</div>";
   }
-  return '<div class="card">' + badge + '<div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + "</div>" + why + body + "</div>";
+  return '<div class="card">' + badge + '<div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayISO) + "</div>" + why + body + "</div>";
 }
 
 export function renderTabWeek(plan) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const moment = momentHTML(plan, today);
 
   if (!readinessDoneToday()) {
@@ -275,7 +275,8 @@ export function renderTabWeek(plan) {
   html += weeklyReviewHTML(plan); // R4.10 — bilan hebdo (dimanche)
   html += notifySetupHTML(); // R4.10 — réglage de l'heure du rappel (une fois)
   html += '<div class="card"><div class="eyebrow">Ta semaine</div>';
-  html += '<div class="gw"><div class="gw-h"><b>Semaine ' + w.num + "</b><span style=\"color:" + (w.phase.c || "#555") + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + "</em></div>";
+  const wRange = w.days.length ? ' <span style="font-size:10px;color:#777;font-weight:400">du ' + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) + "</span>" : "";
+  html += '<div class="gw"><div class="gw-h"><b>Semaine ' + w.num + "</b>" + wRange + "<span style=\"color:" + (w.phase.c || "#555") + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + "</em></div>";
   html += '<div class="gw-grid">';
   w.days.forEach((d) => {
     const bg = d.sessions.map((s) => "<span>" + ic[s.d] + "</span>").join("");
@@ -292,7 +293,8 @@ export function renderTabWeek(plan) {
           : "<b>" + s.name + "</b>");
       })
       .join("");
-    const mark = d.date === today ? "<i>aujourd’hui</i>" : (plan.use10 ? "<i>C" + d.cyc + "J" + d.jc + "</i>" : "");
+    // R7 — chaque jour du plan est annoté de sa VRAIE date calendrier (retour utilisateur)
+    const mark = "<i>" + (d.date === today ? "auj. · " : "") + fmtDay(d.date) + (plan.use10 ? " · C" + d.cyc + "J" + d.jc : "") + "</i>";
     // §8 — déplacement de séance : ⇄ sur chaque jour, deux taps = échange persistant.
     const pend = S._swapPending && S._swapPending.w === w.num && S._swapPending.jour === d.jour;
     const swapBtn = '<button class="swapBtn" type="button" data-swap="' + w.num + "|" + d.jour + '" title="Échanger ce jour avec un autre" aria-label="Échanger ' + d.jour + ' avec un autre jour" style="border:none;background:' + (pend ? "#2e6bff" : "transparent") + ";color:" + (pend ? "#fff" : "#b3ab9b") + ';border-radius:5px;font-size:12px;cursor:pointer;padding:0 4px">⇄</button>';
