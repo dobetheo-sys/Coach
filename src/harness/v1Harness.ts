@@ -26,6 +26,17 @@ export interface V1Step {
   d?: string; // discipline du step (nage dans tri, CAP du brick…)
   bnd?: { floor: number; cap: number };
   repCap?: number; // V2.2 — plafond de répétitions d'un bloc de qualité (le scaling ne le dépasse jamais)
+  // ---- R7 TRAIL : un bloc de trail ne se décrit pas comme un bloc de route ----
+  /** Pente du bloc — PILOTE LE RENDU DE L'INTENSITÉ (spec R7 §7, le verrou du module) :
+   *  `flat` → allure · `up` → vitesse ascensionnelle (ou FC/RPE) · `down` → consigne
+   *  qualitative SANS cible chiffrée · `rolling` → FC + D+ cible. Sans ce champ, le
+   *  renderer réimprimait « 5'36/km » sur 1 300 m de dénivelé — une allure impossible. */
+  gradient?: "up" | "down" | "flat" | "rolling";
+  dplusM?: number; // dénivelé positif du bloc (par répétition)
+  dmoinsM?: number; // dénivelé négatif du bloc (par répétition) — axe de charge à part entière
+  mode?: "run" | "hike" | "run_hike"; // course, marche rapide, alternance (la marche est une compétence)
+  poles?: boolean; // bâtons
+  surface?: "sentier" | "piste" | "route" | "escalier" | "tapis";
   _min?: number;
 }
 

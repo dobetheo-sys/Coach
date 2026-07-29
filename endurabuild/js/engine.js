@@ -695,13 +695,35 @@ const ZDEF                          = {
   "sw.aero": { ref: "css", lo: 1.06, hi: 1.06, hr: null, fb: "endurance régulière" },
   "sw.css": { ref: "css", lo: 1.0, hi: 1.0, hr: null, fb: "allure seuil (test 400m)" },
   "sw.speed": { ref: "css", lo: 0.94, hi: 0.94, hr: null, fb: "rapide mais contrôlé" },
+  // ---- R7 TRAIL : zones EN MONTÉE, exprimées en vitesse ascensionnelle (m D+/h) ----
+  // Le multiplicateur s'applique à la VAM seuil, pas à une allure : monter à 90-100% de sa
+  // VAM est une consigne exécutable, « 5'36/km en montée » ne l'est pas.
+  "tr.vam": { ref: "vam", lo: 0.95, hi: 1.05, hr: null, fb: "RPE 9/10 — montée à fond, court" },
+  "tr.asc": { ref: "vam", lo: 0.85, hi: 0.93, hr: "seuil", fb: "RPE 7-8/10 — seuil en montée, respiration ample mais contrôlée" },
+  "tr.climb": { ref: "vam", lo: 0.70, hi: 0.82, hr: "tempo", fb: "RPE 6-7/10 — allure de course en montée, tenable longtemps" },
+  "tr.hike": { ref: "vam", lo: 0.45, hi: 0.60, hr: "z2", fb: "marche rapide soutenue, poussée sur les cuisses" },
+  "tr.easyup": { ref: "vam", lo: 0.35, hi: 0.50, hr: "z1", fb: "montée très souple, conversation possible" },
+  // À plat sur sentier : l'allure reste pertinente (référence route)
+  "tr.flat": { ref: "thrPace", lo: 1.16, hi: 1.26, hr: "z2", fb: "allure conversation" },
+  "tr.flatthr": { ref: "thrPace", lo: 1.0, hi: 1.05, hr: "seuil", fb: "allure seuil ~1h, sur plat roulant" },
 };
+
+/** R7 TRAIL §7 — DESCENTE : jamais de cible chiffrée. Une consigne d'intensité en descente
+ *  est activement nuisible — elle pousse à courir vite là où la casse musculaire et le
+ *  risque de chute sont maximaux. La consigne est qualitative, et c'est un CHOIX. */
+const TRAIL_DOWN_CUE = "en contrôle : buste relâché, cadence haute, petits pas, regard 4-5m devant (jamais sur ses pieds)";
 
 const fk = (s        ) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
 
 function fmtInt(key                           , refs      , hz         )         {
   const d = key ? ZDEF[key] : undefined;
   if (!d) return key || "";
+  // R7 TRAIL — en montée : vitesse ascensionnelle si connue, sinon FC, sinon RPE. JAMAIS d'allure.
+  if (d.ref === "vam") {
+    if (refs.vam) return Math.round((refs.vam * d.lo) / 10) * 10 + "-" + Math.round((refs.vam * d.hi) / 10) * 10 + " m/h de D+";
+    if (d.hr && hz[d.hr]) return hz[d.hr];
+    return d.fb;
+  }
   if (d.ref === "ftp" && refs.ftp) return Math.round(refs.ftp * d.lo) + "-" + Math.round(refs.ftp * d.hi) + "W";
   if (d.ref === "thrPace" && refs.thrPace) return fk(refs.thrPace * d.lo) + "-" + fk(refs.thrPace * d.hi) + "/km";
   if (d.ref === "css" && refs.css) return (d.lo === d.hi ? fk(refs.css * d.lo) : fk(refs.css * d.lo) + "-" + fk(refs.css * d.hi)) + "/100m";
@@ -773,7 +795,29 @@ function renderSess(s                   , refs      , hz         , baseRefs     
       if (reps > 1) str += reps + "×";
       if (b.durationMin != null) str += b.durationMin + "min";
       else if (b.distanceM != null) str += ((b                        ).unitKm ? b.distanceM / 1000 : b.distanceM) + ((b                        ).unitKm ? "km" : "m");
-      if (b.zone) str += " @ " + fmtInt(b.zone          , refs, hz);
+      // R7 TRAIL §7 — LE VERROU : l'intensité rendue dépend de la PENTE du bloc.
+      // Sans cette résolution, chaque séance de montagne réimprimait une allure au sol.
+      if (b.gradient === "down") {
+        // Descente : aucune cible chiffrée, jamais. Consigne de contrôle technique.
+        if (b.dmoinsM) str += " de descente (−" + b.dmoinsM + "m)";
+        str += " — " + TRAIL_DOWN_CUE;
+      } else if (b.gradient === "up") {
+        if (b.mode === "hike") str += " de marche rapide" + (b.poles ? " avec bâtons" : "");
+        if (b.dplusM) str += " (+" + b.dplusM + "m D+)";
+        if (b.zone) str += " @ " + fmtInt(b.zone          , refs, hz);
+      } else if (b.gradient === "rolling") {
+        // Vallonné : la charge se dit en D+/D−, l'intensité en FC/ressenti — pas en allure.
+        if (b.zone) str += " @ " + fmtInt(b.zone          , refs, hz);
+        const dd           = [];
+        if (b.dplusM) dd.push("D+ " + b.dplusM + "m");
+        if (b.dmoinsM) dd.push("D− " + b.dmoinsM + "m");
+        if (dd.length) str += " · " + dd.join(" / ") + " cible";
+        if (b.mode === "run_hike") str += " · marche assumée dans les pentes raides";
+      } else {
+        if (b.zone) str += " @ " + fmtInt(b.zone          , refs, hz);
+        if (b.surface === "escalier") str += " en escaliers";
+        else if (b.surface === "tapis") str += " sur tapis incliné";
+      }
       str += (b                       ).suffix || "";
       if (b.recoveryText) str += " (récup " + b.recoveryText + " entre les blocs)";
       seg.push(str);
@@ -827,6 +871,12 @@ function renderSess(s                   , refs      , hz         , baseRefs     
                         
                        
              
+                                                                                         
+                                                                                     
+                                                
+                  
+                   
+                                     
  
 
                              
@@ -842,6 +892,8 @@ function renderSess(s                   , refs      , hz         , baseRefs     
                               
                   
                                                
+                                                                                 
+                                                                                   
                                                                                                      
                          
                   
@@ -1020,9 +1072,13 @@ function sessionLoadFromSteps(s            , refs             )              {
       flags.push("écart estimateur : nous " + minutes.toFixed(0) + "min vs générateur " + s.min + "min (« " + s.name + " »)");
     }
   }
+  const dplusM = steps.reduce((t, x) => t + (x.dplusM || 0) * (x.reps || 1), 0);
+  const dmoinsM = steps.reduce((t, x) => t + (x.dmoinsM || 0) * (x.reps || 1), 0);
   return {
     minutes,
     meters: s.d === "sw" || meters > 0 ? meters || null : null,
+    dplusM: dplusM || undefined,
+    dmoinsM: dmoinsM || undefined,
     recoveryMin: recovery,
     confidence: "full",
     flags,
