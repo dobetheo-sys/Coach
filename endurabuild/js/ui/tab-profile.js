@@ -184,9 +184,9 @@ function avatarSectionHTML(plan, todayISO) {
   let h = '<div class="load-card"><div style="display:flex;align-items:center;gap:16px">'
     + '<div id="avSvg">' + avatarSVG(visual, 96) + "</div>"
     + '<div style="flex:1"><div style="font-weight:800;font-size:16px">' + av.icon + " " + av.name + '</div>'
-    + '<div style="font-size:11px;color:#777">Niveau ' + av.level + " · " + av.xp + " XP" + (av.xpToNext ? " (" + av.xpInLevel + "/" + av.xpToNext + " dans ce niveau)" : " · niveau maximum") + "</div>"
+    + '<div style="font-size:11px;color:#777">Niveau ' + av.level + "/" + (av.levels ? av.levels.length : 16) + " · " + av.xp + " XP" + (av.xpToNext ? " (" + av.xpInLevel + "/" + av.xpToNext + " dans ce niveau)" : " · niveau maximum") + "</div>"
     + '<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:12px;overflow:hidden;margin-top:6px"><div style="height:100%;width:' + av.progressPct + '%;background:linear-gradient(90deg,#00a376,#00b8d9)"></div></div>'
-    + (av.nextName ? '<div style="font-size:11px;margin-top:4px">Prochain niveau : <b>' + av.nextIcon + " " + av.nextName + "</b> — encore " + (av.xpToNext - av.xpInLevel) + " XP de régularité.</div>" : "")
+    + (av.nextName ? '<div style="font-size:11px;margin-top:4px">Prochain : <b>' + av.nextIcon + " " + av.nextName + "</b>" + (av.nextUnlock ? " — débloque <b>" + av.nextUnlock + "</b>" : "") + " (encore " + (av.xpToNext - av.xpInLevel) + " XP).</div>" : "")
     + "</div></div>";
   if (adh) {
     if (adh.frozenToday) h += '<div class="load-sub" style="margin-top:8px">❄️ Série <b>gelée</b> (douleur ou maladie) : ' + adh.days + " jour" + (adh.days > 1 ? "s" : "") + " au compteur, rien n’est perdu.</div>";
@@ -194,9 +194,17 @@ function avatarSectionHTML(plan, todayISO) {
     else h += '<div class="load-sub" style="margin-top:8px">Nouvelle série — la régularité sur toute la préparation compte plus qu’une série parfaite.</div>';
   }
   h += disciplineLevelsHTML(plan);
+  if (av.levels) {
+    h += '<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer">Les ' + av.levels.length + " niveaux et ce qu'ils débloquent</summary><div style=\"margin-top:6px\">";
+    av.levels.forEach((l) => {
+      const got = av.level >= l.level;
+      h += '<div style="font-size:11px;margin:3px 0;' + (got ? "" : "opacity:0.55") + '">' + (got ? "✓" : "○") + " <b>" + l.icon + " " + l.name + "</b> (" + l.xp + " XP) — " + l.unlock + "</div>";
+    });
+    h += "</div></details>";
+  }
   h += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:700">Couleur du maillot :</span>' + themes
     + '<button class="btn" id="avShare" type="button" style="margin-left:auto">📸 Partager</button></div>'
-    + '<div class="load-sub" style="margin-top:8px">Tout est traçable : posture = tes 7 derniers jours · aura = ta série · accessoires = tes badges. L’XP ne récompense que la régularité — jamais un chrono, jamais décroissant.</div></div>';
+    + '<div class="load-sub" style="margin-top:8px">Tout est traçable : équipement et décor = ton niveau (régularité pure) · posture = tes 7 derniers jours · couleur de l’aura = ta série. Jamais un chrono, jamais décroissant.</div></div>';
   return h;
 }
 // Niveaux intermédiaires PAR DISCIPLINE (triathlon) : progression par nombre de séances

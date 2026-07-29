@@ -363,8 +363,17 @@ class TrainingReasoningEngine {
     const minW = MIN_WEEKS[sp][fmt] || 12;
     let weeks = minW;
     if (a.race_date) {
-      const diff = Math.floor((new Date(a.race_date).getTime() - Date.now()) / (7 * 864e5));
-      if (diff >= minW * 0.75 && diff <= 80) weeks = diff;
+      // R8 — l'entraînement commence CETTE semaine, pas la prochaine. L'ancien calcul
+      // floor((course − maintenant)/7j) perdait la fraction de semaine : course dans
+      // 8,5 semaines → plan de 8 semaines ancré sur la course → départ lundi SUIVANT.
+      // La durée est désormais le nombre de semaines calendaires entre le lundi de
+      // l'ancrage (plan_start, sinon aujourd'hui) et le lundi de course, inclus : le
+      // générateur (ancré fin de course) fait alors démarrer la semaine 1 aujourd'hui.
+      const MS = 864e5;
+      const mondayOf = (t        )         => t - ((new Date(t).getUTCDay() + 6) % 7) * MS;
+      const anchorT = a.plan_start ? new Date(a.plan_start + "T00:00:00Z").getTime() : Date.now();
+      const span = Math.round((mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - mondayOf(anchorT)) / (7 * MS)) + 1;
+      if (span >= Math.ceil(minW * 0.75) && span <= 80) weeks = span;
     }
     D("duree", "Durée de préparation", weeks + " semaines", "Minimum " + minW + " pour " + fmt + (a.race_date ? ", ajusté à la date de course" : ""));
 
@@ -3230,24 +3239,43 @@ function adherenceV2(plan        , answers            , todayISO        )       
                       
                           
                           
-                                                                      
+                            
+                                                                                      
  
-const AVATAR_LEVELS                                               = [
-  { name: "Premier pas", icon: "🥚", xp: 0 },
-  { name: "Graine plantée", icon: "🌱", xp: 120 },
-  { name: "Pousse", icon: "🌿", xp: 320 },
-  { name: "Enraciné", icon: "🌳", xp: 700 },
-  { name: "Sur la lancée", icon: "🔥", xp: 1300 },
-  { name: "Confirmé", icon: "🥈", xp: 2200 },
-  { name: "Vétéran", icon: "🏆", xp: 3500 },
+// R9 — 16 niveaux (mix « l'athlète s'équipe » + « le décor évolue », choix utilisateur).
+// Seuils NON linéaires : les premiers paliers tombent en 1-3 séances (engouement), les
+// derniers se méritent sur des mois. Chaque niveau change UN paramètre visuel (`unlock`,
+// rendu par avatar.js) — équipement de l'athlète en alternance avec le décor.
+const AVATAR_LEVELS                                                               = [
+  { name: "Départ", icon: "🥚", xp: 0, unlock: "la silhouette, prête à éclore" },
+  { name: "Premières foulées", icon: "👟", xp: 10, unlock: "chaussures à ta couleur" },
+  { name: "Sentier du parc", icon: "🌳", xp: 25, unlock: "décor : le parc" },
+  { name: "Bandana", icon: "🎽", xp: 50, unlock: "bandana noué" },
+  { name: "La piste", icon: "🛤", xp: 90, unlock: "décor : la piste" },
+  { name: "Première aura", icon: "✨", xp: 150, unlock: "aura d'entraînement" },
+  { name: "Lunettes de sport", icon: "🕶", xp: 230, unlock: "lunettes de sport" },
+  { name: "Le stade", icon: "🏟", xp: 340, unlock: "décor : le stade et ses gradins" },
+  { name: "Maillot de course", icon: "👕", xp: 480, unlock: "maillot bicolore" },
+  { name: "Dossard", icon: "🔖", xp: 660, unlock: "dossard à ton niveau" },
+  { name: "Sous les projecteurs", icon: "🌃", xp: 900, unlock: "décor : la nocturne aux projecteurs" },
+  { name: "Pleine vitesse", icon: "💨", xp: 1200, unlock: "aura pleine + traînée de vitesse" },
+  { name: "Étoiles", icon: "⭐", xp: 1600, unlock: "étoiles autour de toi" },
+  { name: "Médaille", icon: "🥇", xp: 2100, unlock: "médaille au cou" },
+  { name: "Arche d'arrivée", icon: "🏁", xp: 2700, unlock: "décor : l'arche d'arrivée" },
+  { name: "Légende", icon: "🏆", xp: 3500, unlock: "couronne de laurier + piédestal doré" },
 ];
 function avatarV2(plan        , answers            , todayISO        )              {
   const pg = progressV2(plan, answers, todayISO);
   const badges = badgesV2(plan, answers, todayISO);
   const regularWeeks = pg.weekly.filter((w) => w.complete && w.ok).length;
-  // Semaines régulières (le cœur de la priorité n°3) + badges gagnés + charge accomplie :
-  // trois signaux déjà calculés ailleurs, jamais un chiffre de performance brute (chrono/FTP).
-  const xp = regularWeeks * 120 + badges.length * 80 + Math.round(pg.pctLoad * 3) + Math.round(pg.doneMin / 15);
+  // R9 — XP 100% régularité, avec récompense IMMÉDIATE : +10 par jour validé (repos
+  // respecté compris — le repos est une séance), +80 par badge, +120 par semaine
+  // régulière. Jamais un chiffre de performance brute (chrono/FTP), jamais de volume
+  // hors plan (seules les cases ✓ du plan comptent).
+  const doneRec = (answers.done                           ) || {};
+  let doneDays = 0; // seules les coches correspondant à une VRAIE séance du plan comptent
+  for (const w of plan.weeks) for (const d of w.days) d.sessions.forEach((s, si) => { if (doneRec[w.num + "|" + d.jour + "|" + si]) doneDays++; });
+  const xp = doneDays * 10 + badges.length * 80 + regularWeeks * 120;
   let idx = 0;
   for (let i = 0; i < AVATAR_LEVELS.length; i++) if (xp >= AVATAR_LEVELS[i].xp) idx = i;
   const cur = AVATAR_LEVELS[idx], next = AVATAR_LEVELS[idx + 1];
@@ -3256,9 +3284,10 @@ function avatarV2(plan        , answers            , todayISO        )          
   return {
     level: idx + 1, name: cur.name, icon: cur.icon, xp, xpInLevel, xpToNext,
     progressPct: next ? Math.max(0, Math.min(100, Math.round((xpInLevel / xpToNext) * 100))) : 100,
-    // Teaser du niveau suivant (UI Profil) — l'XP reste 100% régularité, jamais un chrono.
+    // Teaser du niveau suivant (UI Profil) : ce que le prochain palier DÉBLOQUE.
     nextName: next ? next.name : null, nextIcon: next ? next.icon : null,
-    levels: AVATAR_LEVELS.map((l, i) => ({ level: i + 1, name: l.name, icon: l.icon, xp: l.xp })),
+    nextUnlock: next ? next.unlock : null,
+    levels: AVATAR_LEVELS.map((l, i) => ({ level: i + 1, name: l.name, icon: l.icon, xp: l.xp, unlock: l.unlock })),
   };
 }
 

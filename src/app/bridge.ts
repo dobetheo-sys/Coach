@@ -255,24 +255,43 @@ export interface AvatarState {
   progressPct: number;
   nextName: string | null;
   nextIcon: string | null;
-  levels: { level: number; name: string; icon: string; xp: number }[];
+  nextUnlock: string | null;
+  levels: { level: number; name: string; icon: string; xp: number; unlock: string }[];
 }
-const AVATAR_LEVELS: { name: string; icon: string; xp: number }[] = [
-  { name: "Premier pas", icon: "🥚", xp: 0 },
-  { name: "Graine plantée", icon: "🌱", xp: 120 },
-  { name: "Pousse", icon: "🌿", xp: 320 },
-  { name: "Enraciné", icon: "🌳", xp: 700 },
-  { name: "Sur la lancée", icon: "🔥", xp: 1300 },
-  { name: "Confirmé", icon: "🥈", xp: 2200 },
-  { name: "Vétéran", icon: "🏆", xp: 3500 },
+// R9 — 16 niveaux (mix « l'athlète s'équipe » + « le décor évolue », choix utilisateur).
+// Seuils NON linéaires : les premiers paliers tombent en 1-3 séances (engouement), les
+// derniers se méritent sur des mois. Chaque niveau change UN paramètre visuel (`unlock`,
+// rendu par avatar.js) — équipement de l'athlète en alternance avec le décor.
+const AVATAR_LEVELS: { name: string; icon: string; xp: number; unlock: string }[] = [
+  { name: "Départ", icon: "🥚", xp: 0, unlock: "la silhouette, prête à éclore" },
+  { name: "Premières foulées", icon: "👟", xp: 10, unlock: "chaussures à ta couleur" },
+  { name: "Sentier du parc", icon: "🌳", xp: 25, unlock: "décor : le parc" },
+  { name: "Bandana", icon: "🎽", xp: 50, unlock: "bandana noué" },
+  { name: "La piste", icon: "🛤", xp: 90, unlock: "décor : la piste" },
+  { name: "Première aura", icon: "✨", xp: 150, unlock: "aura d'entraînement" },
+  { name: "Lunettes de sport", icon: "🕶", xp: 230, unlock: "lunettes de sport" },
+  { name: "Le stade", icon: "🏟", xp: 340, unlock: "décor : le stade et ses gradins" },
+  { name: "Maillot de course", icon: "👕", xp: 480, unlock: "maillot bicolore" },
+  { name: "Dossard", icon: "🔖", xp: 660, unlock: "dossard à ton niveau" },
+  { name: "Sous les projecteurs", icon: "🌃", xp: 900, unlock: "décor : la nocturne aux projecteurs" },
+  { name: "Pleine vitesse", icon: "💨", xp: 1200, unlock: "aura pleine + traînée de vitesse" },
+  { name: "Étoiles", icon: "⭐", xp: 1600, unlock: "étoiles autour de toi" },
+  { name: "Médaille", icon: "🥇", xp: 2100, unlock: "médaille au cou" },
+  { name: "Arche d'arrivée", icon: "🏁", xp: 2700, unlock: "décor : l'arche d'arrivée" },
+  { name: "Légende", icon: "🏆", xp: 3500, unlock: "couronne de laurier + piédestal doré" },
 ];
 export function avatarV2(plan: V1Plan, answers: AppAnswers, todayISO: string): AvatarState {
   const pg = progressV2(plan, answers, todayISO);
   const badges = badgesV2(plan, answers, todayISO);
   const regularWeeks = pg.weekly.filter((w) => w.complete && w.ok).length;
-  // Semaines régulières (le cœur de la priorité n°3) + badges gagnés + charge accomplie :
-  // trois signaux déjà calculés ailleurs, jamais un chiffre de performance brute (chrono/FTP).
-  const xp = regularWeeks * 120 + badges.length * 80 + Math.round(pg.pctLoad * 3) + Math.round(pg.doneMin / 15);
+  // R9 — XP 100% régularité, avec récompense IMMÉDIATE : +10 par jour validé (repos
+  // respecté compris — le repos est une séance), +80 par badge, +120 par semaine
+  // régulière. Jamais un chiffre de performance brute (chrono/FTP), jamais de volume
+  // hors plan (seules les cases ✓ du plan comptent).
+  const doneRec = (answers.done as Record<string, boolean>) || {};
+  let doneDays = 0; // seules les coches correspondant à une VRAIE séance du plan comptent
+  for (const w of plan.weeks) for (const d of w.days) d.sessions.forEach((s, si) => { if (doneRec[w.num + "|" + d.jour + "|" + si]) doneDays++; });
+  const xp = doneDays * 10 + badges.length * 80 + regularWeeks * 120;
   let idx = 0;
   for (let i = 0; i < AVATAR_LEVELS.length; i++) if (xp >= AVATAR_LEVELS[i].xp) idx = i;
   const cur = AVATAR_LEVELS[idx], next = AVATAR_LEVELS[idx + 1];
@@ -281,9 +300,10 @@ export function avatarV2(plan: V1Plan, answers: AppAnswers, todayISO: string): A
   return {
     level: idx + 1, name: cur.name, icon: cur.icon, xp, xpInLevel, xpToNext,
     progressPct: next ? Math.max(0, Math.min(100, Math.round((xpInLevel / xpToNext) * 100))) : 100,
-    // Teaser du niveau suivant (UI Profil) — l'XP reste 100% régularité, jamais un chrono.
+    // Teaser du niveau suivant (UI Profil) : ce que le prochain palier DÉBLOQUE.
     nextName: next ? next.name : null, nextIcon: next ? next.icon : null,
-    levels: AVATAR_LEVELS.map((l, i) => ({ level: i + 1, name: l.name, icon: l.icon, xp: l.xp })),
+    nextUnlock: next ? next.unlock : null,
+    levels: AVATAR_LEVELS.map((l, i) => ({ level: i + 1, name: l.name, icon: l.icon, xp: l.xp, unlock: l.unlock })),
   };
 }
 

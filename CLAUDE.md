@@ -213,3 +213,8 @@ re-jouable), **journal alimentaire RETIRÉ** (décision utilisateur — module s
 `localTodayISO` bridge — fini l'app qui vit « hier » entre 22h et minuit heure française),
 jours du plan annotés de leur vraie date calendrier (`fmtDay` : grilles, programme de
 phase, en-têtes « du … au … », héros, validation), garde CI 2 fuseaux (smoke-dates).
+**R8+R9 livrés** : départ du plan CETTE semaine (durée = lundi courant → lundi de course,
+garde CI 5 fractions) ; avatar **16 niveaux** mix « équipement + décor » (choix
+utilisateur), XP immédiat (+10/séance validée, repos compris — niveau 2 dès la 1re
+séance), seuils non linéaires croissants, chaque niveau débloque UN paramètre visuel
+(`unlock`), teaser « débloque … » au Profil, 6 gardes CI (demo:retention).
