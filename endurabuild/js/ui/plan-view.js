@@ -217,8 +217,17 @@ function decisionsCardHTML(plan){
   const v2=plan&&plan._v2;
   if(v2){
     h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+') \u2014 score d\u2019audit '+v2.score+'/100</summary><ul style="font-size:12px;line-height:1.6;margin:8px 0 0;padding-left:18px">';
+    // D1 (audit v6) — les règles non satisfaites sont calculées et attachées au plan :
+    // on ne les jette plus à l'affichage. Langage neutre (pas de bandeau rouge — décision
+    // R5 du fondateur), mais EN TÊTE de liste, pas cachées.
+    if(v2.hardViolations&&v2.hardViolations.length){
+      h+='<li style="color:#a33"><b>Règles non satisfaites malgré réparation ('+v2.hardViolations.length+') :</b><br>'+v2.hardViolations.map(x=>'· '+x).join('<br>')+'<br><span style="color:#555">Le moteur a rendu le meilleur plan possible sous tes contraintes — ces points expliquent le score.</span></li>';
+    }
     v2.decisions.forEach(d=>{h+='<li><b>'+d.what+' :</b> '+d.val+'<br><span style="color:#555">'+d.why+'</span></li>';});
     if(v2.warnings.length)h+='<li><b>Limites connues de ce plan :</b> '+v2.warnings.join(" ")+'</li>';
+    if(v2.repairs&&v2.repairs.length){
+      h+='<li><details style="cursor:pointer"><summary>Réparations tentées par le moteur ('+v2.repairs.length+')</summary><div style="color:#555;margin-top:4px">'+v2.repairs.map(x=>'· '+x).join('<br>')+'</div></details></li>';
+    }
     h+='</ul></details>';
   }
   return h;

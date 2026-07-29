@@ -11,13 +11,15 @@ import {
   MIN_WEEKS, HISTORY_CAPS, UTIL, MARGIN, RECUP_FACTORS, PHASE_PCTS,
   BANDS, C22_MAX_WEEKLY_GROWTH, RECUP_WEEK_FACTOR, RECUP_EVERY,
   BEGINNER_SWIM_VOLPEAK_CAP_H, SWIM_TIME_FACTOR, C20_BEGINNER_SWIM_H_PER_SESSION,
-  MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, readInjuries,
+  MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, R6_AGE_LOAD, readInjuries, boundedOrZero,
 } from "./constraintMatrix.ts";
 
 /** Zones cardio (Karvonen si FC repos connue, sinon %FCmax) — port V1.5. */
 function hrZones(age?: string, hrMax?: string, hrRest?: string) {
-  const fcMax = parseInt(hrMax || "") || Math.round(208 - 0.7 * (parseInt(age || "") || 35));
-  const rest = parseInt(hrRest || "") || 0;
+  // E3 (audit v6) — hors bornes physiologiques = non renseigné (repli formule d'âge)
+  const boundedAge = boundedOrZero("age", parseInt(age || "") || 0) || 35;
+  const fcMax = boundedOrZero("hrMax", parseInt(hrMax || "") || 0) || Math.round(208 - 0.7 * boundedAge);
+  const rest = boundedOrZero("hrRest", parseInt(hrRest || "") || 0);
   const Z = (lo: number, hi: number) => {
     if (rest) return Math.round(rest + (fcMax - rest) * lo) + "-" + Math.round(rest + (fcMax - rest) * hi) + " bpm";
     return Math.round(fcMax * lo) + "-" + Math.round(fcMax * hi) + " bpm";
@@ -50,6 +52,7 @@ export class TrainingReasoningEngine {
     // ---- 1. Comprendre l'objectif : durée de préparation ----
     const minW = MIN_WEEKS[sp][fmt] || 12;
     let weeks = minW;
+    let raceBeyondPlan = false; // C3 — course au-delà de l'horizon planifiable : ancrer sur MAINTENANT
     if (a.race_date) {
       // R8 — l'entraînement commence CETTE semaine, pas la prochaine. L'ancien calcul
       // floor((course − maintenant)/7j) perdait la fraction de semaine : course dans
@@ -61,7 +64,19 @@ export class TrainingReasoningEngine {
       const mondayOf = (t: number): number => t - ((new Date(t).getUTCDay() + 6) % 7) * MS;
       const anchorT = a.plan_start ? new Date(a.plan_start + "T00:00:00Z").getTime() : Date.now();
       const span = Math.round((mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - mondayOf(anchorT)) / (7 * MS)) + 1;
-      if (span >= Math.ceil(minW * 0.75) && span <= 80) weeks = span;
+      // C2/C3 (audit v6) — hors fenêtre, JAMAIS un silence : chaque branche produit une
+      // décision ou un avertissement. L'ancien code laissait weeks=minW et le générateur
+      // rétrodatait le plan (13 semaines dans le passé pour une course dans 2 semaines).
+      if (span < Math.ceil(minW * 0.75)) {
+        weeks = Math.max(1, span);
+        warnings.push("Il te reste " + Math.max(1, span) + " semaine(s) avant la course — le minimum recommandé pour un " + fmt + " est de " + minW + ". Le plan couvre le temps réellement disponible : c'est une préparation partielle, pas une prépa complète comprimée. Ajuste ton objectif du jour J en conséquence.");
+        D("duree-contrainte", "Préparation raccourcie", Math.max(1, span) + "/" + minW + " semaines", "Mieux vaut un plan honnête sur le temps disponible qu'un plan complet impossible à suivre — ou rétrodaté dans le passé");
+      } else if (span > 80) {
+        weeks = 80;
+        raceBeyondPlan = true;
+        warnings.push("Ta course est dans " + span + " semaines. Le plan démarre MAINTENANT et couvre les 80 prochaines : au-delà, une planification séance par séance n'a pas de valeur prédictive — régénère ton plan quand l'échéance sera à moins de 80 semaines.");
+        D("duree-plafonnee", "Échéance très lointaine", "80 semaines planifiées (course à " + span + ")", "On construit la base longue dès maintenant ; la planification fine attendra que la course entre dans l'horizon");
+      } else weeks = span;
     }
     D("duree", "Durée de préparation", weeks + " semaines", "Minimum " + minW + " pour " + fmt + (a.race_date ? ", ajusté à la date de course" : ""));
 
@@ -90,6 +105,19 @@ export class TrainingReasoningEngine {
       if (inj.count >= 2) warnings.push("Plusieurs blessures déclarées (" + inj.list.join(", ") + ") : un bilan médical est recommandé avant la montée en charge — le plan est volontairement conservateur (-20% de volume).");
     }
 
+    // R6.3 (audit v6, A7) — l'âge module la charge : l'avertissement du Profil s'APPLIQUE.
+    const ageN = boundedOrZero("age", parseInt(a.age || "") || 0);
+    const minor = ageN > 0 && ageN <= R6_AGE_LOAD.mineur.maxAge;
+    const master = ageN >= R6_AGE_LOAD.master.minAge;
+    if (minor) {
+      recupFactor *= R6_AGE_LOAD.mineur.volFactor;
+      D("R6.3", "Athlète mineur (" + ageN + " ans)", "volume ×" + R6_AGE_LOAD.mineur.volFactor + ", aucune VO2max", "Ces plans sont calibrés pour des adultes : en dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée — le plan est réduit et sans VO2max, l'encadrement humain reste nécessaire");
+      warnings.push("Ces plans sont calibrés pour des adultes. En dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée par un entraîneur : le plan est réduit de 30% et ne contient aucune séance VO2max — mais il ne remplace pas un encadrement humain.");
+    } else if (master) {
+      recupFactor *= R6_AGE_LOAD.master.volFactor;
+      D("R6.3", "Athlète master (" + ageN + " ans)", "volume ×" + R6_AGE_LOAD.master.volFactor + ", récup /3 semaines", "La capacité d'encaissement se maintient avec l'âge, la vitesse de récupération baisse : on récupère plus souvent, on charge un peu moins");
+    }
+
     const volMax = parseInt(a.vol_max || "10");
     const sessionScale = Math.min(1, (Math.min(volMax, caps, util) * marg) / util) * recupFactor;
     let volPeak = Math.round(Math.min(volMax, caps, util) * marg * recupFactor * 10) / 10;
@@ -105,8 +133,8 @@ export class TrainingReasoningEngine {
     const offDays = (a.off_which || "").split(",").filter(Boolean);
     const use10 = a.dispo === "quotidienne" && a.shift_ok === "oui" && offDays.length < 2;
     if (use10) D("cycle", "Cycle de 10 jours", "activé", "Disponibilité quotidienne : densité mieux répartie qu'en semaine de 7 jours");
-    const recupEvery = RECUP_EVERY[history];
-    D("recup", "Semaine de récupération", "toutes les " + recupEvery + " semaines", history === "reprise" ? "Reprise : récupération plus fréquente" : "Assimilation régulière de la charge");
+    const recupEvery = master ? Math.min(RECUP_EVERY[history], R6_AGE_LOAD.master.recupEvery) : RECUP_EVERY[history];
+    D("recup", "Semaine de récupération", "toutes les " + recupEvery + " semaines", master ? "60+ : la récupération se rallonge avec l'âge — cadence resserrée (R6.3)" : history === "reprise" ? "Reprise : récupération plus fréquente" : "Assimilation régulière de la charge");
 
     const volBudget = Math.min(volMax, caps, util) * marg;
     const avgH = AVG_SESSION_H[sp];
@@ -165,7 +193,11 @@ export class TrainingReasoningEngine {
 
     const thrPace = a.pace_known === "oui" ? parsePaceSec(a.pace) : 0;
     const css = a.css_known === "oui" ? parsePaceSec(a.css) : 0;
-    const ftp = a.ftp_known === "oui" ? parseInt(a.ftp || "") || 0 : 0;
+    // E3 (audit v6) — FTP hors bornes physiologiques [60, 600W] = non renseignée : repli
+    // zones cardio + avertissement nommé, jamais des zones négatives à l'écran.
+    const ftpRaw = a.ftp_known === "oui" ? parseInt(a.ftp || "") || 0 : 0;
+    const ftp = boundedOrZero("ftp", ftpRaw);
+    if (ftpRaw > 0 && ftp === 0) warnings.push("FTP saisie (" + ftpRaw + "W) hors bornes plausibles [60–600W] : elle est ignorée — les séances s'affichent en zones cardio. Corrige-la au Profil.");
     const hz = hrZones(a.age, a.hr_max, a.hr_rest);
 
     return {
@@ -190,6 +222,8 @@ export class TrainingReasoningEngine {
       injuries,
       inj,
       warnings,
+      noVo2: minor,
+      raceBeyondPlan,
       baseRefs: { ftp, thrPace, css },
       hz,
     };

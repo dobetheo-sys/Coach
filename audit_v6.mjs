@@ -177,7 +177,7 @@ test("A6", "FC repos élevée sans baseline → au moins orange", "fail", () => 
   return { ok: v.level !== "verte", detail: `restingHr=62 sans baseline → ${v.level}` };
 });
 
-test("A7", "Mineur (<18 ans) → charge réduite vs adulte", "fail", () => {
+test("A7", "Mineur (<18 ans) → charge réduite vs adulte", "pass", () => {
   const ado = planMin(build("run", { format: "10k", age: "15" }));
   const adulte = planMin(build("run", { format: "10k", age: "32" }));
   return { ok: ado < adulte * 0.9, detail: `15 ans ${ado}min vs 32 ans ${adulte}min` };
@@ -236,7 +236,7 @@ test("C1", "sessions_max est un nombre de SÉANCES, pas de jours", "fail", () =>
   return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" ; ") || "ok" };
 });
 
-test("C2", "Date de course trop proche → avertissement, pas de plan rétrodaté", "fail", () => {
+test("C2", "Date de course trop proche → avertissement, pas de plan rétrodaté", "pass", () => {
   const p = build("run", { format: "marathon", level: "debutant", history: "reprise", race_date: isoIn(14) });
   const today = isoIn(0);
   const passees = p.weeks.filter((w) => w.days.at(-1).date < today).length;
@@ -247,7 +247,7 @@ test("C2", "Date de course trop proche → avertissement, pas de plan rétrodat�
   };
 });
 
-test("C3", "Date de course lointaine → le plan commence maintenant", "fail", () => {
+test("C3", "Date de course lointaine → le plan commence maintenant", "pass", () => {
   const p = build("run", { format: "marathon", race_date: isoIn(120 * 7) });
   const start = p.weeks[0].days[0].date;
   const delai = Math.round((new Date(start) - Date.now()) / 864e5);
@@ -284,7 +284,7 @@ test("C6", "doubles=non → jamais deux séances le même jour", "pass", () => {
 
 // ── D. Règles du manifeste ───────────────────────────────────────────
 
-test("D1", "Score d'audit cohérent avec les violations dures", "fail", () => {
+test("D1", "Score d'audit cohérent avec les violations dures", "pass", () => {
   const bad = [];
   for (const sport of Object.keys(FORMATS))
     for (const format of FORMATS[sport])
@@ -442,7 +442,7 @@ test("E2", "Un seul parseur d'allure (plan et prédiction d'accord)", "fail", ()
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "ok" };
 });
 
-test("E3", "FTP hors bornes physiologiques rejetée", "fail", () => {
+test("E3", "FTP hors bornes physiologiques rejetée", "pass", () => {
   const bad = [];
   for (const ftp of ["-100", "0", "1", "9999"]) {
     const p = build("bike", { format: "route", ftp_known: "oui", ftp });
@@ -455,7 +455,7 @@ test("E3", "FTP hors bornes physiologiques rejetée", "fail", () => {
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "ok" };
 });
 
-test("E4", "Poids invraisemblable → estimation énergétique refusée", "fail", () => {
+test("E4", "Poids invraisemblable → estimation énergétique refusée", "pass", () => {
   const a = profile("tri", { format: "70.3", weight: "35", height: "180" });
   const p = E.buildPlan("tri", a);
   const day = p.weeks[5].days.find((d) => d.sessions.some((s) => s.d !== "rs"));

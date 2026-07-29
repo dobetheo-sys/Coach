@@ -120,7 +120,9 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   // des semaines. L'ancre est désormais plan_start (posée par l'UI à la PREMIÈRE génération,
   // persistée dans les réponses) : le plan avance dans le temps comme un vrai plan.
   const anchorT = a.plan_start ? new Date(a.plan_start + "T00:00:00Z").getTime() : Date.now();
-  const start = a.race_date
+  // C3 (audit v6) — course au-delà de l'horizon (raceBeyondPlan) : le plan démarre
+  // MAINTENANT (base longue), il ne s'ancre pas sur une course dans 2 ans.
+  const start = a.race_date && !r.raceBeyondPlan
     ? mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - (r.weeks - 1) * 7 * MS
     : mondayOf(isFinite(anchorT) ? anchorT : Date.now());
   const iso = (t: number) => new Date(t).toISOString().slice(0, 10);

@@ -103,6 +103,10 @@
                                                   
                                                                                                                
                      
+                                                                         
+                 
+                                                                                                           
+                          
                                                           
                                                   
  
@@ -231,6 +235,26 @@ const AVG_SESSION_H                                 = { run: 1.15, bike: 1.3, tr
 /** C13 — l'échauffement chiffré ne dépasse jamais 25min ni le corps de séance. */
 const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ corps de séance", 25);
 
+/** E3 (audit v6) — bornes de plausibilité physiologique : hors bornes, la valeur est
+ * traitée comme NON RENSEIGNÉE (repli zones cardio/ressenti) + avertissement nommé —
+ * jamais une zone négative ou absurde à l'écran (l'attribut HTML min n'est pas une validation). */
+const PHYSIO_BOUNDS                                                             = rule(
+  "E3",
+  "une FTP de -100W ou de 9999W produit des zones absurdes affichées sans bruit : hors bornes = non renseigné + avertissement",
+  {
+    ftp: { min: 60, max: 600, unit: "W" },
+    hrMax: { min: 120, max: 220, unit: "bpm" },
+    hrRest: { min: 30, max: 100, unit: "bpm" },
+    weight: { min: 35, max: 200, unit: "kg" },
+    height: { min: 120, max: 230, unit: "cm" },
+    age: { min: 14, max: 95, unit: "ans" },
+  },
+);
+function boundedOrZero(key                                     , v        )         {
+  const b = PHYSIO_BOUNDS[key];
+  return Number.isFinite(v) && v >= b.min && v <= b.max ? v : 0;
+}
+
 /** R6.1 — contre-indications par localisation de douleur : une douleur de charge se
  * traite en RETIRANT la contrainte (changer de discipline), pas en la réduisant. */
                                                                   
@@ -255,6 +279,18 @@ const R6_INJURY_LOAD_FACTORS = rule(
   "R6.2",
   "une blessure déclarée réduit le plafond de volume ; plusieurs zones fragiles → approche ultra-conservatrice (c'est la carte de règle affichée à l'athlète)",
   { une: 0.9, multiples: 0.8 },
+);
+
+/** R6.3 (audit v6, A7) — l'âge module la charge : l'avertissement affiché au Profil
+ * (« en dessous de 18 ans, la charge doit être encadrée ») s'applique, pas seulement
+ * s'affiche ; au-delà de 60 ans la récupération se rallonge. */
+const R6_AGE_LOAD = rule(
+  "R6.3",
+  "l'avertissement mineur affiché au Profil doit agir sur le plan (volume -30%, zéro VO2max) ; master 60+ : volume -15% et récupération toutes les 3 semaines",
+  {
+    mineur: { maxAge: 17, volFactor: 0.7, allowVo2: false },
+    master: { minAge: 60, volFactor: 0.85, recupEvery: 3 },
+  },
 );
 
 /** Lecture UNIQUE des blessures (audit v6 B1a : le motif était dupliqué 4 fois avec des
@@ -387,8 +423,10 @@ function trailElevationTarget(durationMin        )                             {
 
 /** Zones cardio (Karvonen si FC repos connue, sinon %FCmax) — port V1.5. */
 function hrZones(age         , hrMax         , hrRest         ) {
-  const fcMax = parseInt(hrMax || "") || Math.round(208 - 0.7 * (parseInt(age || "") || 35));
-  const rest = parseInt(hrRest || "") || 0;
+  // E3 (audit v6) — hors bornes physiologiques = non renseigné (repli formule d'âge)
+  const boundedAge = boundedOrZero("age", parseInt(age || "") || 0) || 35;
+  const fcMax = boundedOrZero("hrMax", parseInt(hrMax || "") || 0) || Math.round(208 - 0.7 * boundedAge);
+  const rest = boundedOrZero("hrRest", parseInt(hrRest || "") || 0);
   const Z = (lo        , hi        ) => {
     if (rest) return Math.round(rest + (fcMax - rest) * lo) + "-" + Math.round(rest + (fcMax - rest) * hi) + " bpm";
     return Math.round(fcMax * lo) + "-" + Math.round(fcMax * hi) + " bpm";
@@ -421,6 +459,7 @@ class TrainingReasoningEngine {
     // ---- 1. Comprendre l'objectif : durée de préparation ----
     const minW = MIN_WEEKS[sp][fmt] || 12;
     let weeks = minW;
+    let raceBeyondPlan = false; // C3 — course au-delà de l'horizon planifiable : ancrer sur MAINTENANT
     if (a.race_date) {
       // R8 — l'entraînement commence CETTE semaine, pas la prochaine. L'ancien calcul
       // floor((course − maintenant)/7j) perdait la fraction de semaine : course dans
@@ -432,7 +471,19 @@ class TrainingReasoningEngine {
       const mondayOf = (t        )         => t - ((new Date(t).getUTCDay() + 6) % 7) * MS;
       const anchorT = a.plan_start ? new Date(a.plan_start + "T00:00:00Z").getTime() : Date.now();
       const span = Math.round((mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - mondayOf(anchorT)) / (7 * MS)) + 1;
-      if (span >= Math.ceil(minW * 0.75) && span <= 80) weeks = span;
+      // C2/C3 (audit v6) — hors fenêtre, JAMAIS un silence : chaque branche produit une
+      // décision ou un avertissement. L'ancien code laissait weeks=minW et le générateur
+      // rétrodatait le plan (13 semaines dans le passé pour une course dans 2 semaines).
+      if (span < Math.ceil(minW * 0.75)) {
+        weeks = Math.max(1, span);
+        warnings.push("Il te reste " + Math.max(1, span) + " semaine(s) avant la course — le minimum recommandé pour un " + fmt + " est de " + minW + ". Le plan couvre le temps réellement disponible : c'est une préparation partielle, pas une prépa complète comprimée. Ajuste ton objectif du jour J en conséquence.");
+        D("duree-contrainte", "Préparation raccourcie", Math.max(1, span) + "/" + minW + " semaines", "Mieux vaut un plan honnête sur le temps disponible qu'un plan complet impossible à suivre — ou rétrodaté dans le passé");
+      } else if (span > 80) {
+        weeks = 80;
+        raceBeyondPlan = true;
+        warnings.push("Ta course est dans " + span + " semaines. Le plan démarre MAINTENANT et couvre les 80 prochaines : au-delà, une planification séance par séance n'a pas de valeur prédictive — régénère ton plan quand l'échéance sera à moins de 80 semaines.");
+        D("duree-plafonnee", "Échéance très lointaine", "80 semaines planifiées (course à " + span + ")", "On construit la base longue dès maintenant ; la planification fine attendra que la course entre dans l'horizon");
+      } else weeks = span;
     }
     D("duree", "Durée de préparation", weeks + " semaines", "Minimum " + minW + " pour " + fmt + (a.race_date ? ", ajusté à la date de course" : ""));
 
@@ -461,6 +512,19 @@ class TrainingReasoningEngine {
       if (inj.count >= 2) warnings.push("Plusieurs blessures déclarées (" + inj.list.join(", ") + ") : un bilan médical est recommandé avant la montée en charge — le plan est volontairement conservateur (-20% de volume).");
     }
 
+    // R6.3 (audit v6, A7) — l'âge module la charge : l'avertissement du Profil s'APPLIQUE.
+    const ageN = boundedOrZero("age", parseInt(a.age || "") || 0);
+    const minor = ageN > 0 && ageN <= R6_AGE_LOAD.mineur.maxAge;
+    const master = ageN >= R6_AGE_LOAD.master.minAge;
+    if (minor) {
+      recupFactor *= R6_AGE_LOAD.mineur.volFactor;
+      D("R6.3", "Athlète mineur (" + ageN + " ans)", "volume ×" + R6_AGE_LOAD.mineur.volFactor + ", aucune VO2max", "Ces plans sont calibrés pour des adultes : en dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée — le plan est réduit et sans VO2max, l'encadrement humain reste nécessaire");
+      warnings.push("Ces plans sont calibrés pour des adultes. En dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée par un entraîneur : le plan est réduit de 30% et ne contient aucune séance VO2max — mais il ne remplace pas un encadrement humain.");
+    } else if (master) {
+      recupFactor *= R6_AGE_LOAD.master.volFactor;
+      D("R6.3", "Athlète master (" + ageN + " ans)", "volume ×" + R6_AGE_LOAD.master.volFactor + ", récup /3 semaines", "La capacité d'encaissement se maintient avec l'âge, la vitesse de récupération baisse : on récupère plus souvent, on charge un peu moins");
+    }
+
     const volMax = parseInt(a.vol_max || "10");
     const sessionScale = Math.min(1, (Math.min(volMax, caps, util) * marg) / util) * recupFactor;
     let volPeak = Math.round(Math.min(volMax, caps, util) * marg * recupFactor * 10) / 10;
@@ -476,8 +540,8 @@ class TrainingReasoningEngine {
     const offDays = (a.off_which || "").split(",").filter(Boolean);
     const use10 = a.dispo === "quotidienne" && a.shift_ok === "oui" && offDays.length < 2;
     if (use10) D("cycle", "Cycle de 10 jours", "activé", "Disponibilité quotidienne : densité mieux répartie qu'en semaine de 7 jours");
-    const recupEvery = RECUP_EVERY[history];
-    D("recup", "Semaine de récupération", "toutes les " + recupEvery + " semaines", history === "reprise" ? "Reprise : récupération plus fréquente" : "Assimilation régulière de la charge");
+    const recupEvery = master ? Math.min(RECUP_EVERY[history], R6_AGE_LOAD.master.recupEvery) : RECUP_EVERY[history];
+    D("recup", "Semaine de récupération", "toutes les " + recupEvery + " semaines", master ? "60+ : la récupération se rallonge avec l'âge — cadence resserrée (R6.3)" : history === "reprise" ? "Reprise : récupération plus fréquente" : "Assimilation régulière de la charge");
 
     const volBudget = Math.min(volMax, caps, util) * marg;
     const avgH = AVG_SESSION_H[sp];
@@ -536,7 +600,11 @@ class TrainingReasoningEngine {
 
     const thrPace = a.pace_known === "oui" ? parsePaceSec(a.pace) : 0;
     const css = a.css_known === "oui" ? parsePaceSec(a.css) : 0;
-    const ftp = a.ftp_known === "oui" ? parseInt(a.ftp || "") || 0 : 0;
+    // E3 (audit v6) — FTP hors bornes physiologiques [60, 600W] = non renseignée : repli
+    // zones cardio + avertissement nommé, jamais des zones négatives à l'écran.
+    const ftpRaw = a.ftp_known === "oui" ? parseInt(a.ftp || "") || 0 : 0;
+    const ftp = boundedOrZero("ftp", ftpRaw);
+    if (ftpRaw > 0 && ftp === 0) warnings.push("FTP saisie (" + ftpRaw + "W) hors bornes plausibles [60–600W] : elle est ignorée — les séances s'affichent en zones cardio. Corrige-la au Profil.");
     const hz = hrZones(a.age, a.hr_max, a.hr_rest);
 
     return {
@@ -561,6 +629,8 @@ class TrainingReasoningEngine {
       injuries,
       inj,
       warnings,
+      noVo2: minor,
+      raceBeyondPlan,
       baseRefs: { ftp, thrPace, css },
       hz,
     };
@@ -1358,6 +1428,12 @@ function auditPlan(plan        , opts            = {})            {
   if (brickCapViolations > 0) score -= 15;
   if (!peakInPeakPhase) score -= 10;
 
+  // D1 (audit v6) — une violation dure ne peut JAMAIS coexister avec un score
+  // « excellent » : le plafond dérive du NOMBRE de violations, pas d'une énumération
+  // de pénalités (les cas non énumérés — brick absent du pic… — ne passent plus
+  // entre les mailles : tri/70.3 s'affichait à 100/100 avec une violation dure).
+  if (hard.length > 0) score = Math.min(score, 70 - Math.min(30, (hard.length - 1) * 10));
+
   const nominalTotal = weeks.reduce((n, w) => n + w.nominalSessions, 0);
   const totalPrescribed = weeks.reduce((n, w) => n + w.prescribedMin, 0);
   const totalFull = weeks.reduce((n, w) => n + w.fullMinutes, 0);
@@ -1416,6 +1492,7 @@ function buildSessions(ctx            , slot      , phase        , prog        )
   const dbl = r.dbl;
   const sessionScale = r.sessionScale;
   const inj = r.inj; // R6 (audit v6) — lecture UNIQUE des blessures, plus de motif dupliqué
+  const noVo2 = r.noVo2; // R6.3 — mineur : la VO2max n'est jamais générée, l'alternative seuil/tempo prend le relais
   const _plioOK = lvl !== "debutant" && !finisher && !inj.impactAny;
   const G =
     phase === "base" ? "+ 4-6 strides 15s"
@@ -1447,7 +1524,7 @@ function buildSessions(ctx            , slot      , phase        , prog        )
       // charge le genou à chaque appui rapide) → seuil contrôlé, même rôle dans la semaine.
       if (inj.list.includes("genou") && (phase === "spec" || phase === "peak" || phase === "dev")) {
         S2.push({ d: "rn", name: "Seuil contrôlé (genou épargné)", note: "Genou fragile : on garde le stimulus aérobie fort mais sans les vitesses maximales ni les à-coups — le seuil remplace la VO2, sur surface souple si possible.", det: "", steps: [W(15, "footing très facile + gammes sans sauts"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot très lent", " sur surface souple"), C(10, "footing facile")] });
-      } else if (phase === "spec" || phase === "peak" || phase === "dev") {
+      } else if ((phase === "spec" || phase === "peak" || phase === "dev") && !noVo2) {
         S2.push({ d: "rn", name: "VO2max", note: "Puissance aérobie maximale : effort max tenable ~3min, récup complète. Maintenue jusqu'à l'affûtage.", det: "", steps: [W(20, "progressif + 4 lignes droites"), B(P(5, 8), 3, "rn.vo2", "2min30 trot"), C(10, "footing très facile")] });
       } else if (finisher || lvl === "debutant") {
         S2.push({ d: "rn", name: "Seuil doux", note: "Le seuil doit rester «confortablement difficile» : tu peux dire quelques mots, pas tenir une conversation. Si ça pique, ralentis.", det: "", steps: [W(15, "footing très facile + 3 lignes droites"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot très lent", injImp ? " sur surface souple" : ""), C(10, "footing facile")] });
@@ -1455,7 +1532,7 @@ function buildSessions(ctx            , slot      , phase        , prog        )
         S2.push({ d: "rn", name: "Seuil progressif", note: "Allure soutenue mais maîtrisée, régulière du 1er au dernier bloc.", det: "", steps: [W(15, "footing + 4 lignes droites"), B(P(3, 4), P(6, 10), "rn.thr", "2min trot"), C(10, "footing")] });
       }
     } else if (slot === "dur2") {
-      if (isTrail && (phase === "spec" || phase === "peak") && !injImp)
+      if (isTrail && (phase === "spec" || phase === "peak") && !injImp && !noVo2)
         // Compétence descente (registre trail) : progression NON-cardio, trackée à part.
         // Les blessures d'impact (périostite…) court-circuitent cette séance — la descente
         // est une charge excentrique, mêmes drapeaux de prudence que la route (spec §2).
@@ -1487,7 +1564,7 @@ function buildSessions(ctx            , slot      , phase        , prog        )
     const clm = fmt === "clm", climb = a.terrain === "montagne" || a.terrain === "vallonne";
     if (slot === "dur1") {
       if (phase === "base") S2.push({ d: "bk", name: "Sweetspot", note: "Effort soutenu mais maîtrisé, cadence 85-95 rpm. Tu dois pouvoir finir chaque bloc sans t'effondrer.", det: "", steps: [W(15, "montée progressive"), B(P(2, 3), P(12, 20), "bk.ss", "5min souple"), C(10, "décrassage")] });
-      else if (phase === "spec" || phase === "peak" || phase === "dev") S2.push({ d: "bk", name: "VO2max", note: "Intensité maximale tenable 4min, récup longue. La puissance aérobie se maintient jusqu'à l'affûtage.", det: "", steps: [W(20, "progressif + 3 sprints courts"), B(P(4, 6), 4, "bk.vo2", "4min"), C(10, "souple")] });
+      else if ((phase === "spec" || phase === "peak" || phase === "dev") && !noVo2) S2.push({ d: "bk", name: "VO2max", note: "Intensité maximale tenable 4min, récup longue. La puissance aérobie se maintient jusqu'à l'affûtage.", det: "", steps: [W(20, "progressif + 3 sprints courts"), B(P(4, 6), 4, "bk.vo2", "4min"), C(10, "souple")] });
       else if (lvl === "debutant" || finisher) S2.push({ d: "bk", name: "Tempo progressif", note: "Effort confortablement soutenu, sans jamais te mettre dans le rouge.", det: "", steps: [W(15, "souple"), B(P(2, 3), P(8, 15), "bk.ss", "4min très souple"), C(10, "décrassage")] });
       else S2.push({ d: "bk", name: "Sweetspot", note: "Effort soutenu mais maîtrisé, cadence 85-95 rpm.", det: "", steps: [W(15, "montée progressive"), B(P(2, 3), P(12, 20), "bk.ss", "5min souple"), C(10, "décrassage")] });
     } else if (slot === "dur2") {
@@ -1572,10 +1649,11 @@ function buildSessions(ctx            , slot      , phase        , prog        )
     if (slot === "dur1") {
       if (dbl) S2.push({ d: "sw", name: swMain.name + " (matin)", note: swMain.note, det: "", steps: swMain.steps });
       if (phase === "base") S2.push({ d: "bk", name: "Sweetspot vélo", note: "Cadence 85-95 rpm, soutenu mais maîtrisé.", det: "", steps: [W(15, "montée progressive"), Object.assign(B(PT(2, 3), PT(12, 18), "bk.ss", "5min souple"), { repCap: 4 }), C(10, "décrassage")] });
-      else if (phase === "spec" || phase === "peak") S2.push({ d: "bk", name: "VO2max vélo", note: "Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).", det: "", steps: [W(20, "progressif + 3 sprints"), Object.assign(B(PT(4, 6), 4, "bk.vo2", "4min récup"), { repCap: 8 }), C(10, "souple")] });
+      else if ((phase === "spec" || phase === "peak") && !noVo2) S2.push({ d: "bk", name: "VO2max vélo", note: "Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).", det: "", steps: [W(20, "progressif + 3 sprints"), Object.assign(B(PT(4, 6), 4, "bk.vo2", "4min récup"), { repCap: 8 }), C(10, "souple")] });
       else if (phase === "taper") S2.push({ d: "bk", name: "Rappel race-pace", note: "Affûtage : on réveille l'allure course sans générer de fatigue. Court et précis.", det: "", steps: [W(10, "progressif"), Object.assign(B(PT(2, 3), PT(6, 10), "bk.rp", "3min souple"), { repCap: 4 }), C(5, "décrassage")] });
       else if (lvl === "debutant" || finisher) S2.push({ d: "bk", name: "Tempo vélo", note: "Confortablement soutenu, jamais dans le rouge.", det: "", steps: [W(15, "souple"), Object.assign(B(PT(2, 3), PT(8, 15), "bk.ss", "4min souple"), { repCap: 4 }), C(10, "décrassage")] });
-      else S2.push({ d: "bk", name: "VO2max vélo", note: "Intensité max tenable 4min, récup quasi complète entre.", det: "", steps: [W(20, "progressif + 3 sprints"), Object.assign(B(PT(4, 6), 4, "bk.vo2", "4min récup"), { repCap: 8 }), C(10, "souple")] });
+      else if (!noVo2) S2.push({ d: "bk", name: "VO2max vélo", note: "Intensité max tenable 4min, récup quasi complète entre.", det: "", steps: [W(20, "progressif + 3 sprints"), Object.assign(B(PT(4, 6), 4, "bk.vo2", "4min récup"), { repCap: 8 }), C(10, "souple")] });
+      else S2.push({ d: "bk", name: "Tempo vélo", note: "Confortablement soutenu, jamais dans le rouge — la VO2max attendra la majorité (R6.3).", det: "", steps: [W(15, "souple"), Object.assign(B(PT(2, 3), PT(8, 15), "bk.ss", "4min souple"), { repCap: 4 }), C(10, "décrassage")] });
     } else if (slot === "dur2") {
       if (dbl) S2.push({ d: "sw", name: swTech.name, note: swTech.note, det: "", steps: swTech.steps });
       if (phase === "spec" || phase === "peak") S2.push({ d: "rn", name: "Allure course (tri)", note: "L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.", det: "", steps: [W(15, "footing progressif"), Object.assign(B(1, PT(20, 40), "rn.mara"), { bnd: { floor: 20, cap: 45 } }), C(8, "retour au calme")] });
@@ -1600,7 +1678,7 @@ function buildSessions(ctx            , slot      , phase        , prog        )
     } else if (slot === "facileR") {
       const ftCaps = ({ S: { lo: 25, hi: 45 }, M: { lo: 15, hi: 26 }, "70.3": { lo: 14, hi: 22 }, Full: { lo: 50, hi: 100 } }                                              )[fmt] || { lo: 25, hi: 45 };
       // C18 — le créneau course de qualité garanti en tri : VO2 court en peak
-      if (phase === "peak" && !runInj && !medHold && lvl !== "debutant" && !finisher) S2.push({ d: "rn", name: "VO2max course", note: "Rappels de puissance aérobie course, courts et vifs, jambes déjà entamées par le vélo.", det: "", steps: [W(12, "footing progressif + gammes"), Object.assign(B(PT(4, 6), 2, "rn.vo2", "2min trot"), { repCap: 6 }), C(8, "footing très facile")] });
+      if (phase === "peak" && !runInj && !medHold && !noVo2 && lvl !== "debutant" && !finisher) S2.push({ d: "rn", name: "VO2max course", note: "Rappels de puissance aérobie course, courts et vifs, jambes déjà entamées par le vélo.", det: "", steps: [W(12, "footing progressif + gammes"), Object.assign(B(PT(4, 6), 2, "rn.vo2", "2min trot"), { repCap: 6 }), C(8, "footing très facile")] });
       else if (phase === "peak" && runInj && !medHold) S2.push({ d: "rn", name: "Allure course (tri, surface souple)", note: "Course blessé : allure cible en contrôle, sur surface souple, jamais dans la douleur.", det: "", steps: [W(12, "footing progressif"), B(1, PT(18, 28), "rn.mara", "", ", sur surface souple"), C(8, "footing très facile")] });
       else S2.push({ d: "rn", name: "Footing facile", note: "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.", det: "", steps: [B(1, PT(ftCaps.lo, ftCaps.hi), "rn.easy", "", runInj ? " · surface souple" : "")], ...( { plainBody: true }          ) });
     } else if (slot === "facile2") S2.push({ d: "sw", name: swShort.name + " courte", note: swShort.note, det: "", steps: swShort.steps, ...( { plainBody: true }          ) });
@@ -1732,7 +1810,9 @@ function buildDays(r              , refs      , hz         )           {
   // des semaines. L'ancre est désormais plan_start (posée par l'UI à la PREMIÈRE génération,
   // persistée dans les réponses) : le plan avance dans le temps comme un vrai plan.
   const anchorT = a.plan_start ? new Date(a.plan_start + "T00:00:00Z").getTime() : Date.now();
-  const start = a.race_date
+  // C3 (audit v6) — course au-delà de l'horizon (raceBeyondPlan) : le plan démarre
+  // MAINTENANT (base longue), il ne s'ancre pas sur une course dans 2 ans.
+  const start = a.race_date && !r.raceBeyondPlan
     ? mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - (r.weeks - 1) * 7 * MS
     : mondayOf(isFinite(anchorT) ? anchorT : Date.now());
   const iso = (t        ) => new Date(t).toISOString().slice(0, 10);
@@ -3118,6 +3198,18 @@ const ENERGY_DISCLAIMER =
 const eRound10 = (v        )         => Math.round(v / 10) * 10;
 const eRound5 = (v        )         => Math.round(v / 5) * 5;
 
+/** E4 (audit v6) — garde IMC : hors [15, 45], les équations de dépense ne sont pas
+ * validées, et un tableau calorique propre et autoritaire est exactement le mauvais
+ * objet à mettre sous les yeux de quelqu'un dans cette situation. On n'affiche RIEN
+ * (pas d'estimation dégradée), et l'UI peut afficher ce message à la place. */
+const BMI_VALID_RANGE                   = [15, 45];
+function bmiGuardNotice(weightKg                , heightCm                )                {
+  if (!weightKg || !heightCm || !(weightKg > 0) || !(heightCm > 0)) return null;
+  const bmi = weightKg / Math.pow(heightCm / 100, 2);
+  if (bmi >= BMI_VALID_RANGE[0] && bmi <= BMI_VALID_RANGE[1]) return null;
+  return "Les chiffres saisis sortent des bornes sur lesquelles les équations de dépense énergétique sont validées : aucune estimation n'est affichée. Si ces valeurs sont exactes, un accompagnement médical ou diététique sera plus utile qu'un calculateur.";
+}
+
 /** N8 — métabolisme de base (Mifflin-St Jeor), en enveloppe [min, max] honnête :
  *  chaque donnée manquante élargit la fourchette au lieu d'inventer une précision. */
 function basalRange(weightKg        , heightCm                , age                , sex                )                                                  {
@@ -3140,6 +3232,7 @@ function basalRange(weightKg        , heightCm                , age             
 function dailyEnergy(input             )                             {
   const w = input.weightKg;
   if (!w || !(w > 25) || !(w < 300)) return null;
+  if (bmiGuardNotice(w, input.heightCm)) return null; // E4 — hors bornes de validation : rien
   const D                      = [];
   const { bmr, approximate } = basalRange(w, input.heightCm, input.age, input.sex);
   D.push({ id: "N8", what: "Métabolisme de base", val: bmr[0] + "–" + bmr[1] + " kcal/j", why: "équation de Mifflin-St Jeor (la mieux validée, ADA 2005)" + (approximate ? " — fourchette élargie car taille/âge/sexe incomplets au Profil" : " avec tes données du Profil") + " ; ce que ton corps dépense au repos complet" });

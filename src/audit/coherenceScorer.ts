@@ -346,6 +346,12 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   if (brickCapViolations > 0) score -= 15;
   if (!peakInPeakPhase) score -= 10;
 
+  // D1 (audit v6) — une violation dure ne peut JAMAIS coexister avec un score
+  // « excellent » : le plafond dérive du NOMBRE de violations, pas d'une énumération
+  // de pénalités (les cas non énumérés — brick absent du pic… — ne passent plus
+  // entre les mailles : tri/70.3 s'affichait à 100/100 avec une violation dure).
+  if (hard.length > 0) score = Math.min(score, 70 - Math.min(30, (hard.length - 1) * 10));
+
   const nominalTotal = weeks.reduce((n, w) => n + w.nominalSessions, 0);
   const totalPrescribed = weeks.reduce((n, w) => n + w.prescribedMin, 0);
   const totalFull = weeks.reduce((n, w) => n + w.fullMinutes, 0);

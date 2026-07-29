@@ -121,6 +121,26 @@ export const AVG_SESSION_H: Partial<Record<Sport, number>> = { run: 1.15, bike: 
 /** C13 — l'échauffement chiffré ne dépasse jamais 25min ni le corps de séance. */
 export const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ corps de séance", 25);
 
+/** E3 (audit v6) — bornes de plausibilité physiologique : hors bornes, la valeur est
+ * traitée comme NON RENSEIGNÉE (repli zones cardio/ressenti) + avertissement nommé —
+ * jamais une zone négative ou absurde à l'écran (l'attribut HTML min n'est pas une validation). */
+export const PHYSIO_BOUNDS: Record<string, { min: number; max: number; unit: string }> = rule(
+  "E3",
+  "une FTP de -100W ou de 9999W produit des zones absurdes affichées sans bruit : hors bornes = non renseigné + avertissement",
+  {
+    ftp: { min: 60, max: 600, unit: "W" },
+    hrMax: { min: 120, max: 220, unit: "bpm" },
+    hrRest: { min: 30, max: 100, unit: "bpm" },
+    weight: { min: 35, max: 200, unit: "kg" },
+    height: { min: 120, max: 230, unit: "cm" },
+    age: { min: 14, max: 95, unit: "ans" },
+  },
+);
+export function boundedOrZero(key: keyof typeof PHYSIO_BOUNDS & string, v: number): number {
+  const b = PHYSIO_BOUNDS[key];
+  return Number.isFinite(v) && v >= b.min && v <= b.max ? v : 0;
+}
+
 /** R6.1 — contre-indications par localisation de douleur : une douleur de charge se
  * traite en RETIRANT la contrainte (changer de discipline), pas en la réduisant. */
 export interface PainContra { forbid: string[]; prefer: string[] }
@@ -145,6 +165,18 @@ export const R6_INJURY_LOAD_FACTORS = rule(
   "R6.2",
   "une blessure déclarée réduit le plafond de volume ; plusieurs zones fragiles → approche ultra-conservatrice (c'est la carte de règle affichée à l'athlète)",
   { une: 0.9, multiples: 0.8 },
+);
+
+/** R6.3 (audit v6, A7) — l'âge module la charge : l'avertissement affiché au Profil
+ * (« en dessous de 18 ans, la charge doit être encadrée ») s'applique, pas seulement
+ * s'affiche ; au-delà de 60 ans la récupération se rallonge. */
+export const R6_AGE_LOAD = rule(
+  "R6.3",
+  "l'avertissement mineur affiché au Profil doit agir sur le plan (volume -30%, zéro VO2max) ; master 60+ : volume -15% et récupération toutes les 3 semaines",
+  {
+    mineur: { maxAge: 17, volFactor: 0.7, allowVo2: false },
+    master: { minAge: 60, volFactor: 0.85, recupEvery: 3 },
+  },
 );
 
 /** Lecture UNIQUE des blessures (audit v6 B1a : le motif était dupliqué 4 fois avec des
