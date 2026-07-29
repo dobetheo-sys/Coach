@@ -130,6 +130,24 @@ export const AVG_SESSION_H: Partial<Record<Sport, number>> = { run: 1.15, bike: 
 /** C13 — l'échauffement chiffré ne dépasse jamais 25min ni le corps de séance. */
 export const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ corps de séance", 25);
 
+/** E1/E2 (audit v6) — PARSEUR D'ALLURE UNIQUE. Il y en avait deux : un strict et ancré
+ * (moteur, alimente les zones du plan) et un laxiste (bridge, alimente la prédiction) —
+ * écrire « 4:50/km » donnait donc une prédiction juste et un plan en fréquence cardiaque,
+ * sans que rien ne le signale. Et « 4'50 » était refusé par les deux… alors que c'est la
+ * notation que l'app utilise elle-même pour AFFICHER les allures.
+ * Tolérant en entrée (4:50 · 4'50 · 4′50 · 4.50 · 4h50 · 04:50 · « 4:50/km » · espaces),
+ * strict en validation (secondes < 60, bornes de plausibilité). Renvoie 0 si invalide. */
+export function parsePaceSec(v: unknown, kind: "run" | "swim" = "run"): number {
+  const m = String(v ?? "").trim().match(/^(\d{1,2})\s*[:h.'′]\s*(\d{1,2})\s*(?:\/\s*(?:km|100\s*m))?$/);
+  if (!m) return 0;
+  const min = +m[1], sec = +m[2];
+  if (sec > 59) return 0;
+  const total = min * 60 + sec;
+  // course : 2:00 → 20:00 par km · natation : 1:00 → 5:00 par 100m
+  const [lo, hi] = kind === "swim" ? [60, 300] : [120, 1200];
+  return total >= lo && total <= hi ? total : 0;
+}
+
 /** E3 (audit v6) — bornes de plausibilité physiologique : hors bornes, la valeur est
  * traitée comme NON RENSEIGNÉE (repli zones cardio/ressenti) + avertissement nommé —
  * jamais une zone négative ou absurde à l'écran (l'attribut HTML min n'est pas une validation). */

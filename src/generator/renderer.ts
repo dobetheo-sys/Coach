@@ -96,7 +96,13 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
     const w = steps.find((x) => x.role === "warmup");
     if (w) {
       if (w.durationMin != null) {
-        const wm = Math.min(w.durationMin, C13_WARMUP_MAX_MIN, Math.max(3, Math.round(bodyMin) || w.durationMin));
+        // F1 (audit v6) — le clamp C13 est ÉCRIT dans durationMin, pas seulement dans le
+        // champ dérivé _min : l'écran affichait _min et planToJSON exportait durationMin,
+        // soit deux séances différentes portant le même nom (36 divergences mesurées sur un
+        // seul plan). Toute consommation future des steps (montre, Garmin, Zwift) héritait
+        // du bug. Un seul champ fait foi : durationMin ; _min en est une pure dérivée.
+        const wm = Math.min(w.durationMin, C13_WARMUP_MAX_MIN, Math.max(3, Math.round(bodyMin * 0.8) || w.durationMin));
+        w.durationMin = wm;
         w._min = wm;
         seg.push("Échauffement " + wm + "min" + (w.text ? " " + w.text : ""));
       } else if (w.distanceM != null) {
@@ -118,8 +124,13 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
     const c = steps.find((x) => x.role === "cooldown");
     if (c) {
       if (c.durationMin != null) {
-        c._min = c.durationMin;
-        seg.push("Retour au calme " + c.durationMin + "min" + (c.text ? " " + c.text : ""));
+        // F2 (audit v6) — C13b : le retour au calme reste PROPORTIONNÉ au corps de séance.
+        // Sur un petit budget, échauffement et retour fixes diluaient la qualité : 10min
+        // utiles dans une séance de 30min (33% en zone cible). Le stimulus reste majoritaire.
+        const cm = Math.min(c.durationMin, Math.max(3, Math.round(bodyMin * 0.5) || c.durationMin));
+        c.durationMin = cm;
+        c._min = cm;
+        seg.push("Retour au calme " + cm + "min" + (c.text ? " " + c.text : ""));
       } else if (c.distanceM != null) {
         c._min = stepMin(c, s.d, baseRefs);
         seg.push("Retour au calme " + c.distanceM + "m" + (c.text ? " " + c.text : ""));
@@ -128,7 +139,10 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
   }
   let det = seg.join(" · ");
   if (s.note) det += " — 💡 " + s.note;
-  s.min = steps.reduce((t, x) => t + (x._min || 0), 0);
+  // F3 (audit v6) — minutes ENTIÈRES dès la source : les flottants (13.541666666666666) se
+  // propageaient dans les totaux hebdo, le cap vol_max (422 vs 420 observé) et les
+  // vérifications de progression. L'arrondi appartient au calcul, pas à l'affichage.
+  s.min = Math.round(steps.reduce((t, x) => t + (x._min || 0), 0));
   s.det = det;
   return det;
 }

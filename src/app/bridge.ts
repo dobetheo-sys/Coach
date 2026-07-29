@@ -5,6 +5,7 @@
  */
 import type { AthleteProfile, V1Plan, V1Step } from "../engine/types.ts";
 import { intensitySplit } from "../engine/loadModel.ts";
+import { parsePaceSec } from "../engine/constraintMatrix.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
@@ -329,11 +330,11 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
     ? reasoned.baseRefs
     : { ftp: parseInt(String(answers.ftp || "")) || 0, thrPace: 0, css: 0 };
   // Sans reasoned (plan fourni par l'UI), reconstruire les refs depuis les réponses
-  const parse = (v: unknown) => { const m = String(v || "").trim().split(/[:h.]/); return m.length === 2 ? parseInt(m[0]) * 60 + parseInt(m[1]) : 0; };
+  const parse = parsePaceSec; // E1/E2 (audit v6) — un seul parseur : plan et prédiction ne peuvent plus diverger
   const finalRefs = reasoned ? refs : {
     ftp: answers.ftp_known === "oui" ? parseInt(String(answers.ftp || "")) || 0 : 0,
-    thrPace: answers.pace_known === "oui" ? parse(answers.pace) : 0,
-    css: answers.css_known === "oui" ? parse(answers.css) : 0,
+    thrPace: answers.pace_known === "oui" ? parse(answers.pace, "run") : 0,
+    css: answers.css_known === "oui" ? parse(answers.css, "swim") : 0,
   };
   const today = localTodayISO();
   const pg = progressV2(p, answers, today);

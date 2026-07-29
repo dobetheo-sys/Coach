@@ -12,6 +12,7 @@ import {
   BANDS, C22_MAX_WEEKLY_GROWTH, RECUP_WEEK_FACTOR, RECUP_EVERY,
   BEGINNER_SWIM_VOLPEAK_CAP_H, SWIM_TIME_FACTOR, C20_BEGINNER_SWIM_H_PER_SESSION,
   MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, R6_AGE_LOAD, readInjuries, boundedOrZero,
+  parsePaceSec,
 } from "./constraintMatrix.ts";
 
 /** Zones cardio (Karvonen si FC repos connue, sinon %FCmax) — port V1.5. */
@@ -25,12 +26,6 @@ function hrZones(age?: string, hrMax?: string, hrRest?: string) {
     return Math.round(fcMax * lo) + "-" + Math.round(fcMax * hi) + " bpm";
   };
   return { fcMax, z1: Z(0.6, 0.7), z2: Z(0.7, 0.8), tempo: Z(0.8, 0.87), seuil: Z(0.87, 0.92), vo2: Z(0.92, 0.97) };
-}
-
-function parsePaceSec(v?: string): number {
-  if (!v || !/^\d+[:h.]\d+$/.test(v.trim())) return 0;
-  const m = v.trim().split(/[:h.]/);
-  return parseInt(m[0]) * 60 + parseInt(m[1]);
 }
 
 export interface ReasoningResult {
@@ -195,8 +190,13 @@ export class TrainingReasoningEngine {
     // besoin (« le moteur se vérifie et se corrige » appliqué à ses propres promesses —
     // corrige notamment la nage non-débutante que V1.5 déclare à 6.3h pour 3.6h livrables).
 
-    const thrPace = a.pace_known === "oui" ? parsePaceSec(a.pace) : 0;
-    const css = a.css_known === "oui" ? parsePaceSec(a.css) : 0;
+    // E1/E2 — parseur unique, tolérant (4'50 accepté : c'est la notation que l'app affiche)
+    const thrPaceRaw = a.pace_known === "oui" ? String(a.pace ?? "").trim() : "";
+    const cssRaw = a.css_known === "oui" ? String(a.css ?? "").trim() : "";
+    const thrPace = parsePaceSec(thrPaceRaw, "run");
+    const css = parsePaceSec(cssRaw, "swim");
+    if (thrPaceRaw && !thrPace) warnings.push("Allure seuil « " + thrPaceRaw + " » illisible ou hors bornes (2:00 à 20:00 /km) : les séances de course s'affichent en zones cardio. Corrige-la au Profil (format 4:50 ou 4'50).");
+    if (cssRaw && !css) warnings.push("CSS « " + cssRaw + " » illisible ou hors bornes (1:00 à 5:00 /100m) : les séances de natation s'affichent au ressenti. Corrige-le au Profil.");
     // E3 (audit v6) — FTP hors bornes physiologiques [60, 600W] = non renseignée : repli
     // zones cardio + avertissement nommé, jamais des zones négatives à l'écran.
     const ftpRaw = a.ftp_known === "oui" ? parseInt(a.ftp || "") || 0 : 0;

@@ -2014,6 +2014,24 @@ const AVG_SESSION_H                                 = { run: 1.15, bike: 1.3, tr
 /** C13 — l'échauffement chiffré ne dépasse jamais 25min ni le corps de séance. */
 const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ corps de séance", 25);
 
+/** E1/E2 (audit v6) — PARSEUR D'ALLURE UNIQUE. Il y en avait deux : un strict et ancré
+ * (moteur, alimente les zones du plan) et un laxiste (bridge, alimente la prédiction) —
+ * écrire « 4:50/km » donnait donc une prédiction juste et un plan en fréquence cardiaque,
+ * sans que rien ne le signale. Et « 4'50 » était refusé par les deux… alors que c'est la
+ * notation que l'app utilise elle-même pour AFFICHER les allures.
+ * Tolérant en entrée (4:50 · 4'50 · 4′50 · 4.50 · 4h50 · 04:50 · « 4:50/km » · espaces),
+ * strict en validation (secondes < 60, bornes de plausibilité). Renvoie 0 si invalide. */
+function parsePaceSec(v         , kind                 = "run")         {
+  const m = String(v ?? "").trim().match(/^(\d{1,2})\s*[:h.'′]\s*(\d{1,2})\s*(?:\/\s*(?:km|100\s*m))?$/);
+  if (!m) return 0;
+  const min = +m[1], sec = +m[2];
+  if (sec > 59) return 0;
+  const total = min * 60 + sec;
+  // course : 2:00 → 20:00 par km · natation : 1:00 → 5:00 par 100m
+  const [lo, hi] = kind === "swim" ? [60, 300] : [120, 1200];
+  return total >= lo && total <= hi ? total : 0;
+}
+
 /** E3 (audit v6) — bornes de plausibilité physiologique : hors bornes, la valeur est
  * traitée comme NON RENSEIGNÉE (repli zones cardio/ressenti) + avertissement nommé —
  * jamais une zone négative ou absurde à l'écran (l'attribut HTML min n'est pas une validation). */
@@ -2213,12 +2231,6 @@ function hrZones(age         , hrMax         , hrRest         ) {
   return { fcMax, z1: Z(0.6, 0.7), z2: Z(0.7, 0.8), tempo: Z(0.8, 0.87), seuil: Z(0.87, 0.92), vo2: Z(0.92, 0.97) };
 }
 
-function parsePaceSec(v         )         {
-  if (!v || !/^\d+[:h.]\d+$/.test(v.trim())) return 0;
-  const m = v.trim().split(/[:h.]/);
-  return parseInt(m[0]) * 60 + parseInt(m[1]);
-}
-
                                   
                      
  
@@ -2381,8 +2393,13 @@ class TrainingReasoningEngine {
     // besoin (« le moteur se vérifie et se corrige » appliqué à ses propres promesses —
     // corrige notamment la nage non-débutante que V1.5 déclare à 6.3h pour 3.6h livrables).
 
-    const thrPace = a.pace_known === "oui" ? parsePaceSec(a.pace) : 0;
-    const css = a.css_known === "oui" ? parsePaceSec(a.css) : 0;
+    // E1/E2 — parseur unique, tolérant (4'50 accepté : c'est la notation que l'app affiche)
+    const thrPaceRaw = a.pace_known === "oui" ? String(a.pace ?? "").trim() : "";
+    const cssRaw = a.css_known === "oui" ? String(a.css ?? "").trim() : "";
+    const thrPace = parsePaceSec(thrPaceRaw, "run");
+    const css = parsePaceSec(cssRaw, "swim");
+    if (thrPaceRaw && !thrPace) warnings.push("Allure seuil « " + thrPaceRaw + " » illisible ou hors bornes (2:00 à 20:00 /km) : les séances de course s'affichent en zones cardio. Corrige-la au Profil (format 4:50 ou 4'50).");
+    if (cssRaw && !css) warnings.push("CSS « " + cssRaw + " » illisible ou hors bornes (1:00 à 5:00 /100m) : les séances de natation s'affichent au ressenti. Corrige-le au Profil.");
     // E3 (audit v6) — FTP hors bornes physiologiques [60, 600W] = non renseignée : repli
     // zones cardio + avertissement nommé, jamais des zones négatives à l'écran.
     const ftpRaw = a.ftp_known === "oui" ? parseInt(a.ftp || "") || 0 : 0;
@@ -2504,7 +2521,13 @@ function renderSess(s                   , refs      , hz         , baseRefs     
     const w = steps.find((x) => x.role === "warmup");
     if (w) {
       if (w.durationMin != null) {
-        const wm = Math.min(w.durationMin, C13_WARMUP_MAX_MIN, Math.max(3, Math.round(bodyMin) || w.durationMin));
+        // F1 (audit v6) — le clamp C13 est ÉCRIT dans durationMin, pas seulement dans le
+        // champ dérivé _min : l'écran affichait _min et planToJSON exportait durationMin,
+        // soit deux séances différentes portant le même nom (36 divergences mesurées sur un
+        // seul plan). Toute consommation future des steps (montre, Garmin, Zwift) héritait
+        // du bug. Un seul champ fait foi : durationMin ; _min en est une pure dérivée.
+        const wm = Math.min(w.durationMin, C13_WARMUP_MAX_MIN, Math.max(3, Math.round(bodyMin * 0.8) || w.durationMin));
+        w.durationMin = wm;
         w._min = wm;
         seg.push("Échauffement " + wm + "min" + (w.text ? " " + w.text : ""));
       } else if (w.distanceM != null) {
@@ -2526,8 +2549,13 @@ function renderSess(s                   , refs      , hz         , baseRefs     
     const c = steps.find((x) => x.role === "cooldown");
     if (c) {
       if (c.durationMin != null) {
-        c._min = c.durationMin;
-        seg.push("Retour au calme " + c.durationMin + "min" + (c.text ? " " + c.text : ""));
+        // F2 (audit v6) — C13b : le retour au calme reste PROPORTIONNÉ au corps de séance.
+        // Sur un petit budget, échauffement et retour fixes diluaient la qualité : 10min
+        // utiles dans une séance de 30min (33% en zone cible). Le stimulus reste majoritaire.
+        const cm = Math.min(c.durationMin, Math.max(3, Math.round(bodyMin * 0.5) || c.durationMin));
+        c.durationMin = cm;
+        c._min = cm;
+        seg.push("Retour au calme " + cm + "min" + (c.text ? " " + c.text : ""));
       } else if (c.distanceM != null) {
         c._min = stepMin(c, s.d, baseRefs);
         seg.push("Retour au calme " + c.distanceM + "m" + (c.text ? " " + c.text : ""));
@@ -2536,7 +2564,10 @@ function renderSess(s                   , refs      , hz         , baseRefs     
   }
   let det = seg.join(" · ");
   if (s.note) det += " — 💡 " + s.note;
-  s.min = steps.reduce((t, x) => t + (x._min || 0), 0);
+  // F3 (audit v6) — minutes ENTIÈRES dès la source : les flottants (13.541666666666666) se
+  // propageaient dans les totaux hebdo, le cap vol_max (422 vs 420 observé) et les
+  // vérifications de progression. L'arrondi appartient au calcul, pas à l'affichage.
+  s.min = Math.round(steps.reduce((t, x) => t + (x._min || 0), 0));
   s.det = det;
   return det;
 }
@@ -5809,6 +5840,7 @@ function dailyEnergy(input             )                             {
 
 
 
+
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
 }
@@ -6119,11 +6151,11 @@ function predictV2(sport        , answers            , plan                     
     ? reasoned.baseRefs
     : { ftp: parseInt(String(answers.ftp || "")) || 0, thrPace: 0, css: 0 };
   // Sans reasoned (plan fourni par l'UI), reconstruire les refs depuis les réponses
-  const parse = (v         ) => { const m = String(v || "").trim().split(/[:h.]/); return m.length === 2 ? parseInt(m[0]) * 60 + parseInt(m[1]) : 0; };
+  const parse = parsePaceSec; // E1/E2 (audit v6) — un seul parseur : plan et prédiction ne peuvent plus diverger
   const finalRefs = reasoned ? refs : {
     ftp: answers.ftp_known === "oui" ? parseInt(String(answers.ftp || "")) || 0 : 0,
-    thrPace: answers.pace_known === "oui" ? parse(answers.pace) : 0,
-    css: answers.css_known === "oui" ? parse(answers.css) : 0,
+    thrPace: answers.pace_known === "oui" ? parse(answers.pace, "run") : 0,
+    css: answers.css_known === "oui" ? parse(answers.css, "swim") : 0,
   };
   const today = localTodayISO();
   const pg = progressV2(p, answers, today);

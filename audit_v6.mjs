@@ -423,14 +423,14 @@ test("D10", "Affûtage strictement décroissant", "pass", () => {
 
 // ── E. Saisies & robustesse ──────────────────────────────────────────
 
-test("E1", "Notation d'allure française (4'50) acceptée", "fail", () => {
+test("E1", "Notation d'allure française (4'50) acceptée", "pass", () => {
   const a = profile("run", { format: "10k", pace_known: "oui", pace: "4'50" });
   const p = E.buildPlan("run", a);
   const enPace = sessionsOf(p).some(({ s }) => /\d+'\d+\s*-\s*\d+'\d+\/km/.test(s.det || ""));
   return { ok: enPace, detail: enPace ? "ok" : "retombe en zones cardio sans le dire" };
 });
 
-test("E2", "Un seul parseur d'allure (plan et prédiction d'accord)", "fail", () => {
+test("E2", "Un seul parseur d'allure (plan et prédiction d'accord)", "pass", () => {
   const bad = [];
   for (const pace of ["4:50", "4'50", "4:50/km", "4.50"]) {
     const a = profile("run", { format: "10k", pace_known: "oui", pace });
@@ -463,7 +463,7 @@ test("E4", "Poids invraisemblable → estimation énergétique refusée", "pass"
   return { ok: r === null, detail: r ? `IMC ≈ 10.8 → ${r.total?.join("–")} kcal affichées` : "ok" };
 });
 
-test("E5", "buildPlan ne lève jamais sur un état d'entrée dégradé", "fail", () => {
+test("E5", "buildPlan ne lève jamais sur un état d'entrée dégradé", "pass", () => {
   const bad = [];
   const mutants = [
     ["injury en tableau", { injury: ["aucune"] }],
@@ -508,11 +508,17 @@ test("E6", "Parseur FIT robuste aux fichiers malformés", "pass", () => {
 
 // ── F. Qualité de séance ─────────────────────────────────────────────
 
-test("F1", "durationMin et _min cohérents (contrat d'export)", "fail", () => {
+test("F1", "durationMin et _min cohérents (contrat d'export)", "pass", () => {
+  // Sémantique confirmée après correctif : `durationMin` = durée d'UNE répétition (exportée
+  // avec `reps` par planToJSON), `_min` = minutes TOTALES du bloc (reps comprises). La
+  // comparaison n'est donc légitime qu'à reps=1 — c'est là que vivait le vrai bug : le clamp
+  // C13 de l'échauffement n'était écrit que dans `_min`, donc l'écran et l'export
+  // décrivaient deux séances différentes. `_min` est désormais une pure dérivée.
   const bad = [];
   for (const sport of Object.keys(FORMATS))
     sessionsOf(build(sport, {})).forEach(({ s, w }) => {
       (s.steps || []).forEach((st) => {
+        if ((st.reps || 1) > 1) return;
         if (st.durationMin != null && st._min != null && Math.abs(st.durationMin - st._min) > 0.5)
           bad.push(`${sport} S${w.num} ${s.name}/${st.role}: ${st.durationMin} vs ${st._min}`);
       });
@@ -536,7 +542,7 @@ test("F2", "Séance de qualité : ≥45 % du temps dans la zone cible", "fail", 
   return { ok: bad.length === 0, detail: `${bad.length} séance(s) : ${bad.slice(0, 3).join(" ; ")}` };
 });
 
-test("F3", "Minutes de séance entières", "fail", () => {
+test("F3", "Minutes de séance entières", "pass", () => {
   const bad = [];
   for (const sport of Object.keys(FORMATS))
     sessionsOf(build(sport, { level: "debutant", vol_max: "4", swim_limit: "technique" }))
