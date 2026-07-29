@@ -553,6 +553,207 @@ test("F3", "Minutes de séance entières", "pass", () => {
   return { ok: bad.length === 0, detail: `${bad.length} cas : ${bad.slice(0, 2).join(" ; ")}` };
 });
 
+// ── T. Trail (SPEC_R7_TRAIL) ─────────────────────────────────────────
+// Spec exécutable écrite AVANT l'implémentation : chaque test décrit le comportement
+// attendu du module trail. Ils passent en expect:'pass' au fur et à mesure des lots T-1…T-8.
+
+/** Profil trail type — l'objectif est décrit par ses DONNÉES (distance, D+), pas par un format. */
+function trailProfile(over = {}) {
+  return {
+    intent: "competition",
+    med_pain: "non", med_dizzy: "non", med_treat: "non",
+    age: "35", sex: "H", weight: "72", height: "176",
+    level: "inter", history: "confirme", injury: "aucune",
+    sessions_max: "5", vol_max: "10", vol_recent: "6", dispo: "semaine",
+    shift_ok: "oui", off_days: "non", doubles: "non",
+    pace_known: "oui", pace: "4:50", vam_known: "oui", vam: "850",
+    race_distance_km: "62", race_dplus_m: "3200", race_technicity: "technique",
+    race_night: "partielle", train_dplus_access: "collines", poles: "a_decider",
+    treadmill: "non",
+    ...over,
+  };
+}
+const buildTrail = (over) => E.buildPlan("trail", trailProfile(over));
+const trailSteps = (p) => sessionsOf(p).flatMap(({ s, w, d }) => (s.steps || []).map((st) => ({ st, s, w, d })));
+const weekDplus = (w) => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) =>
+  u + (s.steps || []).reduce((v, st) => v + (st.dplusM || 0) * (st.reps || 1), 0), 0), 0);
+const weekDmoins = (w) => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) =>
+  u + (s.steps || []).reduce((v, st) => v + (st.dmoinsM || 0) * (st.reps || 1), 0), 0), 0);
+const dayDmoins = (d) => d.sessions.reduce((u, s) => u + (s.steps || []).reduce((v, st) => v + (st.dmoinsM || 0) * (st.reps || 1), 0), 0);
+const hasSession = (p, re) => sessionsOf(p).filter(({ s }) => re.test(s.name + " " + (s.det || "")));
+const inPhase = (p, phase) => sessionsOf(p).filter(({ w }) => w.phase.id === phase);
+
+test("T1", "Aucune allure en min/km sur un bloc en montée ou en descente", "pass", () => {
+  const bad = [];
+  for (const over of [{}, { race_dplus_m: "1200", race_distance_km: "25" }, { vam_known: "non" }]) {
+    const p = buildTrail(over);
+    trailSteps(p).forEach(({ st, s, w }) => {
+      if (st.role !== "body" || !st.gradient) return;
+      if (st.gradient !== "up" && st.gradient !== "down") return;
+      if (/\d+['′]\d+\s*\/\s*km/.test(s.det || "")) bad.push(`S${w.num} ${s.name} (${st.gradient})`);
+    });
+  }
+  return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" ; ") || "ok" };
+});
+
+test("T2", "Le D+ d'une séance est porté par ses steps, pas seulement écrit dans le texte", "pass", () => {
+  const p = buildTrail();
+  const bad = sessionsOf(p).filter(({ s }) => {
+    const mentionsDplus = /D\+/.test(s.det || "");
+    if (!mentionsDplus) return false;
+    return !(s.steps || []).some((st) => st.dplusM > 0);
+  });
+  return { ok: bad.length === 0, detail: `${bad.length} séance(s) avec un D+ non structuré` };
+});
+
+test("T3", "D+ hebdomadaire sous le plafond de la catégorie et de l'historique", "pass", () => {
+  const CAPS = { long: { reprise: 1800, confirme: 3000, ancien: 4200 }, ultra: { reprise: 2500, confirme: 4000, ancien: 5500 } };
+  const bad = [];
+  for (const history of ["reprise", "confirme", "ancien"]) {
+    const p = buildTrail({ history });
+    const cat = (p._v2?.decisions || []).find((d) => d.id === "format-trail");
+    const catId = /ultra/.test(String(cat?.val || "")) ? "ultra" : "long";
+    const cap = CAPS[catId][history];
+    p.weeks.forEach((w) => { if (!w.isRecup && weekDplus(w) > cap * 1.05) bad.push(`${history} S${w.num} ${Math.round(weekDplus(w))}m > ${cap}m`); });
+  }
+  return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" ; ") || "ok" };
+});
+
+test("T4", "Progression D+ ≤ +12 %/sem et D− ≤ +8 %/sem entre semaines de charge", "pass", () => {
+  const bad = [];
+  const p = buildTrail();
+  let prevUp = 0, prevDown = 0;
+  for (const w of p.weeks) {
+    if (w.isRecup || w.phase.id === "taper") continue;
+    const up = weekDplus(w), down = weekDmoins(w);
+    if (prevUp > 0 && up > prevUp * 1.12 + 50) bad.push(`S${w.num} D+ +${Math.round((up / prevUp - 1) * 100)}%`);
+    if (prevDown > 0 && down > prevDown * 1.08 + 50) bad.push(`S${w.num} D− +${Math.round((down / prevDown - 1) * 100)}%`);
+    prevUp = up; prevDown = down;
+  }
+  return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" ; ") || "ok" };
+});
+
+test("T5", "Aucune qualité ni descente dans les 48h suivant une sortie à fort D−", "pass", () => {
+  const p = buildTrail();
+  const days = p.weeks.flatMap((w) => w.days.map((d) => ({ w, d })));
+  const bad = [];
+  days.forEach(({ d }, i) => {
+    if (dayDmoins(d) < 1000) return;
+    for (const nxt of days.slice(i + 1, i + 3)) {
+      const hard = nxt.d.charge === "dur";
+      const down = dayDmoins(nxt.d) > 200;
+      if (hard || down) bad.push(`${d.date} (${Math.round(dayDmoins(d))}m D−) → ${nxt.d.date}`);
+    }
+  });
+  return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" ; ") || "ok" };
+});
+
+test("T6", "Sortie longue plafonnée en % du temps de course estimé, pas en absolu", "pass", () => {
+  const bad = [];
+  for (const [over, factor] of [[{ race_distance_km: "25", race_dplus_m: "1000" }, 1.0], [{}, 0.55], [{ race_distance_km: "110", race_dplus_m: "6000" }, 0.40]]) {
+    const a = trailProfile(over);
+    const p = E.buildPlan("trail", a);
+    const pred = E.predict("trail", a, p);
+    const hi = (pred.items || []).find((x) => /Temps estim/i.test(x.leg));
+    if (!hi) { bad.push("pas de temps estimé"); continue; }
+    const m = String(hi.value).match(/(\d+)h(\d+)?\D*(\d+)?h?(\d+)?/);
+    if (!m) { bad.push("temps estimé illisible : " + hi.value); continue; }
+    const raceMin = (+m[1]) * 60 + (+(m[2] || 0));
+    const longest = Math.max(...sessionsOf(p).map(({ s }) => s.min || 0));
+    if (longest > raceMin * factor * 1.1 + 15) bad.push(`longue ${Math.round(longest)}min > ${Math.round(raceMin * factor)}min`);
+  }
+  return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" ; ") || "ok" };
+});
+
+test("T7", "Ultra et plus : au moins 3 séances « ravito réel » en phase spécifique", "pass", () => {
+  const p = buildTrail();
+  const n = inPhase(p, "spec").filter(({ s }) => /ravito|nutrition r|sac/i.test(s.name + " " + (s.det || ""))).length;
+  return { ok: n >= 3, detail: `${n} séance(s) de répétition ravito en spécifique` };
+});
+
+test("T8", "Course de nuit annoncée → au moins 2 sorties de nuit en spec/peak", "pass", () => {
+  const p = buildTrail({ race_night: "majoritaire" });
+  const n = sessionsOf(p).filter(({ s, w }) => (w.phase.id === "spec" || w.phase.id === "peak") && /nuit|frontale/i.test(s.name + " " + (s.det || ""))).length;
+  return { ok: n >= 2, detail: `${n} sortie(s) de nuit` };
+});
+
+test("T9", "Ultra et plus : au moins 2 back-to-back en phase spécifique", "pass", () => {
+  const p = buildTrail();
+  const n = inPhase(p, "spec").filter(({ s }) => /back-to-back|enchaîné|sur jambes fatigu/i.test(s.name + " " + (s.det || ""))).length;
+  return { ok: n >= 2, detail: `${n} séance(s) back-to-back` };
+});
+
+test("T10", "Catégorie ≥ long : au moins une séance de marche rapide par bloc de charge", "pass", () => {
+  const p = buildTrail();
+  const phases = ["base", "dev", "spec"];
+  const missing = phases.filter((ph) => !inPhase(p, ph).some(({ s }) => /marche/i.test(s.name + " " + (s.det || ""))));
+  return { ok: missing.length === 0, detail: missing.length ? "aucune marche rapide en " + missing.join(", ") : "ok" };
+});
+
+test("T11", "Terrain plat déclaré → avertissement explicite + séances de substitution", "pass", () => {
+  const p = buildTrail({ train_dplus_access: "plat", treadmill: "oui" });
+  const warns = (p._v2?.warnings || []).join(" ");
+  const named = /terrain|dénivelé|D\+/i.test(warns) && /week-end|montagne|substitut|compens/i.test(warns);
+  const subs = hasSession(p, /tapis|escalier|côte répétée|côtes courtes|excentrique/i).length;
+  return { ok: named && subs > 0, detail: `warning ${named ? "présent" : "ABSENT"}, ${subs} séance(s) de substitution` };
+});
+
+test("T12", "Séance de côtes : la charge progresse entre base, dev, spec et peak", "pass", () => {
+  const p = buildTrail();
+  const bodyMin = (s) => (s.steps || []).filter((x) => x.role === "body").reduce((t, x) => t + (x.reps || 1) * (x.durationMin || 0), 0);
+  const per = {};
+  for (const ph of ["base", "dev", "spec", "peak"]) {
+    const c = inPhase(p, ph).filter(({ s }) => /côte|ascensionnel|VAM/i.test(s.name));
+    if (c.length) per[ph] = Math.max(...c.map(({ s }) => bodyMin(s)));
+  }
+  const seq = ["base", "dev", "spec", "peak"].filter((x) => per[x] != null).map((x) => per[x]);
+  const grows = seq.length >= 3 && seq.every((v, i) => i === 0 || v >= seq[i - 1]);
+  return { ok: grows, detail: seq.length ? seq.map(Math.round).join("→") : "aucune séance de côtes identifiée" };
+});
+
+test("T13", "Blessure quadriceps → D− total ≤ 40 % du plan sans blessure", "pass", () => {
+  const base = buildTrail();
+  const inj = buildTrail({ injury: "quadriceps" });
+  const tot = (p) => p.weeks.reduce((t, w) => t + weekDmoins(w), 0);
+  const b = tot(base), i = tot(inj);
+  return { ok: b > 0 && i <= b * 0.4, detail: `${Math.round(i)}m vs ${Math.round(b)}m (${b ? Math.round((i / b) * 100) : "?"}%)` };
+});
+
+test("T14", "Barrière horaire dépassée par l'estimation → avertissement en tête", "pass", () => {
+  const a = trailProfile({ race_cutoff_h: "8" }); // objectif 62km/3200m : estimation ~9-12h
+  const p = E.buildPlan("trail", a);
+  const warns = p._v2?.warnings || [];
+  const first = String(warns[0] || "");
+  return { ok: /barrière|cutoff|temps limite/i.test(first), detail: warns.length ? "1er avertissement : " + first.slice(0, 70) : "aucun avertissement" };
+});
+
+test("T15", "Renfo excentrique présent dès la phase base", "pass", () => {
+  const p = buildTrail();
+  const n = inPhase(p, "base").filter(({ s }) => /excentrique/i.test(s.name + " " + (s.det || ""))).length;
+  return { ok: n > 0, detail: `${n} séance(s) de renfo excentrique en base` };
+});
+
+test("T16", "Ultra long : aucune séance VO2max (ce n'est pas le limiteur)", "pass", () => {
+  const p = buildTrail({ race_distance_km: "110", race_dplus_m: "6500" });
+  const bad = trailSteps(p).filter(({ st }) => /\.vo2$/.test(st.zone || ""));
+  return { ok: bad.length === 0, detail: `${bad.length} bloc(s) VO2max en ultra long` };
+});
+
+test("T17", "Une boucle ne descend jamais plus qu'elle ne monte (T2c)", "pass", () => {
+  // Physique du terrain : sur une sortie en boucle (bloc `rolling`/`flat`), le D− ne peut pas
+  // dépasser le D+ — on revient au point de départ. Seuls les blocs de DESCENTE dédiés
+  // (navette, remontée mécanique) portent du D− sans D+.
+  const bad = [];
+  for (const opts of [{}, { race_distance_km: "45", race_dplus_m: "2000" }, { race_distance_km: "110", race_dplus_m: "6500" }]) {
+    const p = buildTrail(opts);
+    for (const { s, st } of trailSteps(p)) {
+      if (st.gradient === "down") continue;
+      if ((st.dmoinsM || 0) > (st.dplusM || 0)) bad.push(`${s.name} : D+ ${st.dplusM || 0}m / D− ${st.dmoinsM}m`);
+    }
+  }
+  return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" · ") || "aucune incohérence D+/D−" };
+});
+
 // ── G. Déterminisme & performance ────────────────────────────────────
 
 test("G1", "Génération déterministe", "pass", () => {
@@ -595,7 +796,7 @@ test("G3", "Ajustement ORANGE : réduction effective du volume", "pass", () => {
 const GROUPES = {
   A: "Sécurité", B: "Blessures", C: "Contrat athlète",
   D: "Règles manifeste", E: "Saisies & robustesse",
-  F: "Qualité de séance", G: "Déterminisme & perf",
+  F: "Qualité de séance", T: "Trail (spec R7)", G: "Déterminisme & perf",
 };
 
 console.log(`\nEnduraBuild — banc de régression v6`);

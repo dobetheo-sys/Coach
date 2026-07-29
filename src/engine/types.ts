@@ -7,7 +7,7 @@
  */
 export type { V1Plan, V1Week, V1Day, V1Session, V1Step } from "../harness/v1Harness.ts";
 
-export type Sport = "run" | "bike" | "swim" | "tri";
+export type Sport = "run" | "bike" | "swim" | "tri" | "trail";
 export type History = "reprise" | "confirme" | "ancien";
 export type Level = "debutant" | "inter" | "avance";
 export type Intent = "competition" | "finir" | "plaisir";
@@ -25,7 +25,21 @@ export interface AthleteProfile {
   dispo?: string; // "semaine" | "quotidienne" | …
   shift_ok?: string;
   off_which?: string; // "Lun,Mer" — jours bloqués
-  injury?: string; // "genou,tibia" | "aucune"
+  injury?: string; // "genou,tibia" | "aucune" (+ quadriceps/cheville/fascia en trail)
+  // ---- R7 TRAIL : l'objectif est décrit par ses DONNÉES, pas par un format ----
+  race_distance_km?: string;
+  race_dplus_m?: string; // LA donnée centrale d'une prépa trail
+  race_dmoins_m?: string; // par défaut = D+ (parcours en boucle)
+  race_altitude_max_m?: string;
+  race_cutoff_h?: string; // barrière horaire globale
+  race_technicity?: string; // roulant | mixte | technique | alpin
+  race_night?: string; // non | partielle | majoritaire
+  vam_known?: string;
+  vam?: string; // vitesse ascensionnelle seuil (m D+/h) — la référence d'intensité EN MONTÉE
+  train_dplus_access?: string; // montagne | collines | plat — la contrainte la plus déterminante
+  train_dplus_travel_min?: string;
+  poles?: string; // oui | non | a_decider
+  treadmill?: string; // tapis inclinable disponible
   age?: string;
   hr_max?: string;
   hr_rest?: string;
@@ -105,6 +119,11 @@ export interface ReasonedPlan {
   raceBeyondPlan: boolean;
   /** R6.2/R6.3 (audit v6) — facteur blessures × âge, appliqué sur peakH APRÈS la sonde de capacité. */
   loadFactor: number;
+  /** R7 TRAIL — objectif décodé (catégorie déduite, temps estimé, VAM) et cibles verticales. */
+  trail?: import("./trailModel.ts").TrailObjective;
+  trailVert?: { dplusPeak: number; dmoinsPeak: number; capped: boolean; accessCap: number };
+  /** T4 — plafond de la sortie longue, en % du temps de course estimé (0 hors trail). */
+  trailLongCapMin?: number;
   baseRefs: { ftp: number; thrPace: number; css: number };
   hz: Record<string, string> & { fcMax?: number };
 }

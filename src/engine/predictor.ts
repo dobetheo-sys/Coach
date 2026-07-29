@@ -9,6 +9,7 @@
  * La fourchette se resserre si le plan est bien suivi (streak + charge accomplie).
  */
 import type { Decision } from "./types.ts";
+import { T5_HIKE_SHARE, TRAIL_TECHNICITY, type TrailObjective } from "./trailModel.ts";
 
 export interface PredictionItem {
   leg: string; // "Course", "Natation", "Vélo", "CAP (tri)"…
@@ -24,6 +25,8 @@ export interface PredictOpts {
   pctLoad?: number; // % de charge du plan accomplie
   streakWeeks?: number;
   courseProfile?: string; // "plat" | "vallonne" | "montagneux" — profil du parcours visé
+  /** R7 TRAIL — objectif décodé (distance, D+, catégorie, VAM) : Riegel ne s'applique pas. */
+  trail?: TrailObjective;
 }
 
 // R6 — profil du parcours : un chrono à plat ne vaut rien sur un parcours vallonné.
@@ -84,6 +87,12 @@ function riegelSec(thrPaceSecPerKm: number, distKm: number): number {
   return 3600 * Math.pow(distKm / d1h, 1.06);
 }
 
+/** Minutes → « 9h20 » : une durée de trail se lit en heures, pas en minutes. */
+function fmtHM(min: number): string {
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
+}
+
 export function predictRace(
   sport: string,
   format: string,
@@ -110,6 +119,31 @@ export function predictRace(
     ? fmtT(sec * prof.lo * (1 + shift - spread)) + "–" + fmtT(sec * prof.hi * (1 + shift + spread))
     : range(sec);
   const profWhy = prof && prof.hi > 1 ? " · " + prof.label + " (+" + Math.round((prof.lo - 1) * 100) + "–" + Math.round((prof.hi - 1) * 100) + "%)" : "";
+
+  // ---- R7 TRAIL : Riegel est INAPPLICABLE (un km de trail n'est pas un km de route).
+  // Modèle à deux composantes : temps à plat + temps vertical (VAM), pénalisés par la
+  // technicité et la nuit. Fourchette LARGE et annoncée comme telle : sur un ultra, ±20%
+  // est une estimation honnête — afficher une fourchette serrée serait le mensonge.
+  if (sport === "trail" && opts.trail) {
+    const obj = opts.trail;
+    const tech = TRAIL_TECHNICITY[obj.technicity] || TRAIL_TECHNICITY.mixte;
+    const kmEffH = obj.kmEffort / Math.max(0.5, obj.raceMinMid / 60);
+    const one = (v: number) => (Math.round(v * 10) / 10).toFixed(1).replace(".", ",");
+    items.push({ leg: "Temps estimé", value: fmtHM(obj.raceMinLo) + "–" + fmtHM(obj.raceMinHi),
+      why: obj.why + " · fourchette large assumée : sur ce format, le terrain et la gestion pèsent plus que la condition physique" });
+    items.push({ leg: "Vitesse cible", value: one(kmEffH) + " km-effort/h",
+      why: "Le km-effort (distance + D+/100) se suit sur un relief irrégulier, là où l'allure au sol ne veut rien dire" });
+    items.push({ leg: "En montée", value: Math.round((obj.vam * 0.7) / 10) * 10 + "–" + Math.round((obj.vam * 0.82) / 10) * 10 + " m/h de D+",
+      why: "Ta vitesse ascensionnelle de course (70-82% de ta VAM seuil)" + (obj.vamKnown ? "" : " — estimée d'après ton niveau, fais le test pour l'affiner") + " : LA donnée à suivre dans les montées" });
+    const hike = T5_HIKE_SHARE[obj.category] ?? 0.15;
+    if (hike >= 0.1) items.push({ leg: "Part de marche", value: "~" + Math.round(hike * 100) + "% du temps",
+      why: "Sur ce relief, la marche rapide sera une part majeure de ta course : ce n'est pas un échec, c'est la stratégie qui économise le plus d'énergie dans les pentes raides" });
+    // §6.3 — l'erreur n°1 en ultra est le départ trop rapide : l'outil est bien placé pour le dire
+    advice.push("Répartition conseillée : premier tiers à " + one(kmEffH * 0.92) + " km-effort/h (volontairement en dessous — tu dois te sentir « trop tranquille »), deuxième tiers à " + one(kmEffH) + ", dernier tiers selon ce qu'il reste. Partir 5 % trop vite coûte 20 % sur la fin.");
+    if (obj.cutoffH && obj.raceMinHi > obj.cutoffH * 60) advice.unshift("⏱ Barrière horaire à " + obj.cutoffH + "h : notre estimation haute (" + fmtHM(obj.raceMinHi) + ") la dépasse. Vise le bas de la fourchette, contrôle ton départ et limite le temps passé aux ravitaillements.");
+    D("PRED-trail", "Méthode trail", "temps à plat + temps vertical (VAM)", "Riegel ne s'applique pas au trail : on additionne le temps horizontal et le temps d'ascension, puis on pénalise selon la technicité (" + tech.label + ") et la nuit");
+    return { items, advice, decisions };
+  }
 
   if (sport === "run") {
     if (refs.thrPace > 0 && RUN_KM[format]) {

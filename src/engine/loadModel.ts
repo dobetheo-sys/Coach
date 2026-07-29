@@ -20,6 +20,12 @@ export interface RawStep {
   recoveryText?: string;
   leg?: "bike" | "run";
   d?: string;
+  // R7 TRAIL — l'auditeur doit pouvoir MESURER les deux axes verticaux, sinon il ne peut
+  // pas vérifier les règles de dénivelé (T3/T4/T5) : elles resteraient déclaratives.
+  gradient?: "up" | "down" | "flat" | "rolling";
+  dplusM?: number;
+  dmoinsM?: number;
+  mode?: "run" | "hike" | "run_hike";
 }
 
 export interface RawSession {
@@ -35,6 +41,8 @@ export type Confidence = "full" | "partial" | "nominal" | "rest";
 export interface SessionLoad {
   minutes: number;
   meters: number | null; // natation uniquement
+  dplusM?: number; // R7 TRAIL — dénivelé positif de la séance (2e axe de charge)
+  dmoinsM?: number; // R7 TRAIL — dénivelé négatif (3e axe : la charge excentrique)
   recoveryMin?: number; // récup inter-répétitions comptée dans minutes (écart de métrique documenté)
   confidence: Confidence;
   flags: string[];
@@ -213,9 +221,13 @@ export function sessionLoadFromSteps(s: RawSession, refs: AthleteRefs): SessionL
       flags.push("écart estimateur : nous " + minutes.toFixed(0) + "min vs générateur " + s.min + "min (« " + s.name + " »)");
     }
   }
+  const dplusM = steps.reduce((t, x) => t + (x.dplusM || 0) * (x.reps || 1), 0);
+  const dmoinsM = steps.reduce((t, x) => t + (x.dmoinsM || 0) * (x.reps || 1), 0);
   return {
     minutes,
     meters: s.d === "sw" || meters > 0 ? meters || null : null,
+    dplusM: dplusM || undefined,
+    dmoinsM: dmoinsM || undefined,
     recoveryMin: recovery,
     confidence: "full",
     flags,

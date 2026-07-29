@@ -18,12 +18,17 @@ await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_stat
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 
-// 1. Trail : la sortie longue affiche temps + D+ cible (registre disciplines)
+// 1. Trail : la sortie longue affiche temps + D+ ET D− programmés (R7 : le D+ n'est plus
+//    une fourchette déduite de la durée comme en R4, c'est une charge décidée par le moteur,
+//    et la descente est programmée au même titre que la montée).
 const planTabs = await page.locator("#ebTabbar .tabbtn").all();
 await planTabs[1].click(); await page.waitForTimeout(250);
 await page.click("#allW"); await page.waitForTimeout(300);
 const fullPlanTxt = await page.locator("#screen").textContent();
-ok(/D\+ cible \d+-\d+m/.test(fullPlanTxt), "trail : « D+ cible X-Ym » visible sur les longues du plan");
+const vertMatch = fullPlanTxt.match(/D\+ (\d+)m \/ D− (\d+)m cible/g) || [];
+ok(vertMatch.length > 0, "trail : le D+ ET le D− programmés sont visibles sur les longues du plan (" + vertMatch.length + " séances)");
+ok(vertMatch.every((m) => { const [, up, down] = m.match(/D\+ (\d+)m \/ D− (\d+)m/); return +down <= +up; }),
+  "trail : aucune boucle ne descend plus qu'elle ne monte (T2c — cohérence physique)");
 ok(/Sortie longue trail/.test(fullPlanTxt), "trail : la longue est nommée « Sortie longue trail »");
 // R5 — sous-objectifs de phase cliquables dans l'onglet Plan
 ok(await page.locator(".ph-obj").count() >= 3, "phases cliquables (sous-objectifs) présentes");

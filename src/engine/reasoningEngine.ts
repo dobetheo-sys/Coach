@@ -14,6 +14,13 @@ import {
   MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, R6_AGE_LOAD, readInjuries, boundedOrZero,
   parsePaceSec,
 } from "./constraintMatrix.ts";
+import { T1_DPLUS_CAPS, T4_LONG_RUN_VS_RACE, T6_MIN_WEEKS, TRAIL_HISTORY_CAPS, TRAIL_UTIL, trailObjective, trailWeeklyVertical } from "./trailModel.ts";
+
+/** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
+function fmtH(min: number): string {
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
+}
 
 /** Zones cardio (Karvonen si FC repos connue, sinon %FCmax) — port V1.5. */
 function hrZones(age?: string, hrMax?: string, hrRest?: string) {
@@ -44,8 +51,20 @@ export class TrainingReasoningEngine {
     const finisher = a.intent === "finir";
     const comp = a.intent === "competition";
 
+    // ---- R7 TRAIL : l'objectif est DÉCODÉ avant tout le reste (catégorie déduite des
+    // données réelles de la course, pas demandée). Tout le dimensionnement en découle. ----
+    const isTrail = sp === "trail";
+    const tObj = isTrail ? trailObjective(a) : undefined;
+    if (tObj) {
+      D("format-trail", "Catégorie d'effort", tObj.category + " (" + fmtH(tObj.raceMinLo) + "–" + fmtH(tObj.raceMinHi) + " estimées)", "Déduit de " + tObj.why);
+      D("km-effort", "Ton objectif en km-effort", tObj.kmEffort + " km-effort", tObj.distanceKm + " km + " + tObj.dplusM + " m D+ ÷ 100 — la métrique qui compare des courses de relief différent");
+      if (!tObj.vamKnown) warnings.push("Ta vitesse ascensionnelle (VAM) n'est pas renseignée : le plan utilise une estimation de " + Math.round(tObj.vam) + " m/h d'après ton niveau. Fais le test (une montée régulière de 20-30 min à fond : D+ ÷ durée = ta VAM) et renseigne-la au Profil — c'est LA référence d'intensité en montée, et elle resserre aussi la prédiction.");
+      if (tObj.cappedByProduct) warnings.push("Ton objectif dépasse 24 h d'effort estimées. Le plan construit l'endurance nécessaire, mais la stratégie propre à ce format (sommeil fractionné, assistance, ravitaillement par base-vie) dépasse ce qu'un plan automatique peut honnêtement produire : cherche l'accompagnement d'un entraîneur ou d'un finisher expérimenté pour cette partie.");
+      if (tObj.altitudeMaxM && tObj.altitudeMaxM > 2500) warnings.push("Ta course monte à " + tObj.altitudeMaxM + " m : au-dessus de 2 500 m, la performance baisse et l'acclimatation compte. Un protocole d'acclimatation dépend de contraintes logistiques que l'outil ne connaît pas — si tu peux dormir en altitude quelques nuits avant, fais-le.");
+    }
+
     // ---- 1. Comprendre l'objectif : durée de préparation ----
-    const minW = MIN_WEEKS[sp][fmt] || 12;
+    const minW = tObj ? T6_MIN_WEEKS[tObj.category] : (MIN_WEEKS[sp]?.[fmt] || 12);
     let weeks = minW;
     let raceBeyondPlan = false; // C3 — course au-delà de l'horizon planifiable : ancrer sur MAINTENANT
     if (a.race_date) {
@@ -76,8 +95,8 @@ export class TrainingReasoningEngine {
     D("duree", "Durée de préparation", weeks + " semaines", "Minimum " + minW + " pour " + fmt + (a.race_date ? ", ajusté à la date de course" : ""));
 
     // ---- 2. Comprendre l'athlète : capacité de charge ----
-    const caps = HISTORY_CAPS[sp][history]?.[fmt] ?? 10;
-    const util = UTIL[sp][fmt] ?? 12;
+    const caps = tObj ? TRAIL_HISTORY_CAPS[tObj.category][history] : (HISTORY_CAPS[sp]?.[history]?.[fmt] ?? 10);
+    const util = tObj ? TRAIL_UTIL[tObj.category] : (UTIL[sp]?.[fmt] ?? 12);
     const marg = comp ? MARGIN.competition : MARGIN.autres;
     D("capacite", "Plafond historique", caps + "h/sem", "Ce que l'historique « " + history + " » permet d'encaisser sur " + fmt);
     D("utile", "Volume utile du format", util + "h/sem", "Au-delà, les heures ne servent plus l'objectif " + fmt);
@@ -204,6 +223,41 @@ export class TrainingReasoningEngine {
     if (ftpRaw > 0 && ftp === 0) warnings.push("FTP saisie (" + ftpRaw + "W) hors bornes plausibles [60–600W] : elle est ignorée — les séances s'affichent en zones cardio. Corrige-la au Profil.");
     const hz = hrZones(a.age, a.hr_max, a.hr_rest);
 
+    // ---- R7 TRAIL : les DEUX axes verticaux et le plafond de sortie longue ----
+    let tVert: { dplusPeak: number; dmoinsPeak: number; capped: boolean; accessCap: number } | undefined;
+    let trailLongCapMin = 0;
+    if (tObj) {
+      tVert = trailWeeklyVertical(tObj, history, a.train_dplus_access || "collines");
+      // T13 — blessure : la contre-indication porte sur la CIBLE verticale, pas seulement
+      // sur le contenu des séances (sinon la passe de mise à l'échelle du générateur
+      // ramène le dénivelé à la cible et annule la protection).
+      const dFac = inj.list.includes("quadriceps") ? 0.35 : inj.list.includes("genou") || inj.list.includes("tibia") ? 0.6 : 1;
+      if (dFac < 1) {
+        tVert = { ...tVert, dmoinsPeak: Math.round(tVert.dmoinsPeak * dFac) };
+        D("T13", "Descente plafonnée (blessure)", "D− ×" + dFac, inj.list.includes("quadriceps")
+          ? "Quadriceps fragiles : la descente est LA charge qui les casse — son volume tombe à 35% et les descentes longues sont retirées du plan, remplacées par du renfo excentrique"
+          : "Zone fragile : le volume de descente est réduit de 40% (la descente est le terrain le plus traumatisant du trail)");
+      }
+      const capCat = T1_DPLUS_CAPS[tObj.category][history];
+      D("T1", "Dénivelé hebdomadaire au pic", tVert.dplusPeak + " m D+ (D− " + tVert.dmoinsPeak + " m)", "Le D+ est le second axe de charge : plafonné par la catégorie (" + capCat + " m pour un historique « " + history + " ») et par ton terrain d'entraînement");
+      D("T2", "Progression du dénivelé", "D+ ≤ +12%/sem · D− ≤ +8%/sem", "La charge excentrique (descente) est le premier facteur de casse musculaire : elle progresse plus lentement que tout le reste");
+      // T4 — la sortie longue plafonne en % du TEMPS DE COURSE estimé, jamais en absolu
+      trailLongCapMin = Math.round(tObj.raceMinMid * T4_LONG_RUN_VS_RACE[tObj.category]);
+      D("T4", "Plafond de la sortie longue", fmtH(trailLongCapMin), "Sur ce format, reproduire la durée de course à l'entraînement serait contre-productif : " + Math.round(T4_LONG_RUN_VS_RACE[tObj.category] * 100) + "% du temps estimé suffit à préparer le reste");
+      // T7 — répétitions ravito/matériel
+      if (tObj.raceMinMid / 60 >= 6) D("T7", "Répétitions ravitaillement", "3 sorties en conditions réelles (phase spécifique)", "Au-delà de 6 h d'effort, l'estomac et le matériel provoquent autant d'abandons que les jambes : ça se teste à l'entraînement");
+      // T11 — terrain plat : le dire, ne pas prescrire du dénivelé inatteignable
+      if (tVert.capped) {
+        warnings.push("Ton terrain d'entraînement ne permet pas d'atteindre les " + T1_DPLUS_CAPS[tObj.category][history] + " m D+/semaine que ton objectif demanderait (plafond réalisable : ~" + tVert.accessCap + " m). Le plan compense par du travail en côte répétée" + (a.treadmill === "oui" ? ", du tapis incliné" : ", des escaliers") + " et du renfo excentrique, mais ces substituts ne remplacent pas complètement une descente longue. Si tu peux caler 2 ou 3 week-ends en relief pendant la phase spécifique, c'est le meilleur investissement de ta préparation.");
+        D("T11", "Terrain d'entraînement limité", "D+ plafonné à " + tVert.dplusPeak + " m/sem", "Prescrire un dénivelé inatteignable serait mentir : le plan substitue ce qu'il peut et nomme ce qui manque");
+      }
+      // T14 — barrière horaire : l'information la plus utile que l'outil puisse produire
+      if (tObj.cutoffH && tObj.raceMinHi > tObj.cutoffH * 60) {
+        warnings.unshift("⏱ Barrière horaire : ta course est limitée à " + tObj.cutoffH + " h et notre estimation haute est de " + fmtH(tObj.raceMinHi) + ". C'est jouable mais rien ne devra déraper — vise le bas de la fourchette, contrôle ton départ, et prépare une stratégie de ravitaillement rapide. Si l'écart se confirme à l'entraînement, envisage un format plus court : finir vaut mieux qu'être arrêté à un poste.");
+        D("T14", "Barrière horaire serrée", tObj.cutoffH + "h pour " + fmtH(tObj.raceMinLo) + "–" + fmtH(tObj.raceMinHi) + " estimées", "Le plan reste identique, mais l'objectif du jour J devient la gestion, pas la performance");
+      }
+    }
+
     return {
       profile: a,
       decisions,
@@ -229,6 +283,9 @@ export class TrainingReasoningEngine {
       noVo2: minor,
       raceBeyondPlan,
       loadFactor,
+      trail: tObj,
+      trailVert: tVert,
+      trailLongCapMin,
       baseRefs: { ftp, thrPace, css },
       hz,
     };

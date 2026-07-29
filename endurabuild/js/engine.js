@@ -11,7 +11,7 @@
  * de src/audit/ les valide SANS modification — l'auditeur est la spec.
  */
 
-                                                    
+                                                              
                                                         
                                                     
                                                          
@@ -29,7 +29,21 @@
                                                   
                     
                                                   
-                                              
+                                                                                      
+                                                                                  
+                            
+                                                                
+                                                                 
+                               
+                                                     
+                                                                  
+                                                       
+                     
+                                                                                             
+                                                                                                 
+                                  
+                                          
+                                                    
                
                   
                    
@@ -109,6 +123,11 @@
                           
                                                                                                        
                      
+                                                                                                
+                                                   
+                                                                                            
+                                                                                         
+                           
                                                           
                                                   
  
@@ -439,6 +458,264 @@ function trailElevationTarget(durationMin        )                             {
   return { lo: Math.round((h * 350) / 50) * 50, hi: Math.round((h * 450) / 50) * 50 };
 }
 
+// ===== src/engine/trailModel.ts =====
+/**
+ * Modèle TRAIL (spec R7) — le trail est un SPORT, pas un format de course à pied.
+ *
+ * Pourquoi ce module existe : traité comme un format de `run`, le trail recevait une seule
+ * durée de préparation, un seul plafond de sortie longue et un seul plafond horaire pour
+ * tout — du 23 km/900 m au 100 miles/10 000 m. Le questionnaire ne demandait jamais le
+ * dénivelé de la course visée, la seule donnée qui structure une préparation trail.
+ *
+ * Trois principes structurent tout ce fichier :
+ *  - le volume se planifie en TEMPS **et** en D+ / D−, jamais en kilomètres ;
+ *  - l'intensité dépend de la PENTE (rendu : renderer.ts, zones `tr.*`) ;
+ *  - la DESCENTE est une charge à part entière — premier facteur de casse musculaire et
+ *    de non-finish, donc progressée plus lentement que tout le reste.
+ *
+ * Périmètre assumé (décision produit) : le moteur va jusqu'à `ultra_long` (12-24 h). Au-delà,
+ * la stratégie de course (sommeil fractionné, assistance, ravitaillement par base-vie) dépasse
+ * ce qu'un plan automatique peut honnêtement produire — et l'outil le DIT au lieu de deviner.
+ */
+                                                 
+
+                                                        
+const TRAIL_PROVENANCE                = [];
+function trule   (id        , why        , value   )    {
+  TRAIL_PROVENANCE.push({ id, why });
+  return value;
+}
+
+                                                                                          
+const TRAIL_CATEGORIES                  = ["kv", "court", "long", "ultra", "ultra_long", "ultra_xl"];
+
+/** T1 — plafond de D+ hebdomadaire (m/semaine, au pic) par catégorie × historique. */
+const T1_DPLUS_CAPS                                                = trule(
+  "T1",
+  "le D+ est le second axe de charge du trail : le plafonner par catégorie et par historique évite qu'un plan de 8h/sem accumule un dénivelé d'ultra-traileur",
+  {
+    kv: { reprise: 1500, confirme: 2500, ancien: 3500 },
+    court: { reprise: 1200, confirme: 2000, ancien: 2800 },
+    long: { reprise: 1800, confirme: 3000, ancien: 4200 },
+    ultra: { reprise: 2500, confirme: 4000, ancien: 5500 },
+    ultra_long: { reprise: 3000, confirme: 5000, ancien: 7000 },
+    ultra_xl: { reprise: 3500, confirme: 6000, ancien: 8500 },
+  },
+);
+
+/** T2 / T2b — progressions hebdomadaires distinctes ; le NÉGATIF est le plus lent des trois axes. */
+const T2_DPLUS_GROWTH = trule("T2", "le D+ monte plus vite que le temps mais reste lissé", 1.12);
+const T2_DMOINS_GROWTH = trule(
+  "T2b",
+  "la charge excentrique est le premier facteur de casse musculaire en trail : les dommages culminent 24-48h après l'effort et la récupération complète demande 3 à 7 jours — sa progression est la plus lente",
+  1.08,
+);
+
+/** T3 — récupération après forte descente (le registre le déclarait depuis R4, personne ne l'appliquait). */
+const T3_ECCENTRIC_RECOVERY = trule(
+  "T3",
+  "aucune séance de qualité ni de descente dans les 48h suivant une sortie à fort D− : les dommages musculaires excentriques culminent à 24-48h",
+  { thresholdDmoins: 1000, minGapDays: 2 },
+);
+
+/** T4 — la sortie longue plafonne en % du TEMPS DE COURSE estimé, pas en minutes absolues. */
+const T4_LONG_RUN_VS_RACE                                = trule(
+  "T4",
+  "sur un ultra, reproduire la durée de course à l'entraînement est contre-productif : le plafond suit la catégorie d'effort",
+  { kv: 1.5, court: 1.0, long: 0.85, ultra: 0.55, ultra_long: 0.4, ultra_xl: 0.3 },
+);
+
+/** T5 — part de marche rapide attendue en course : une compétence entraînable, pas un échec. */
+const T5_HIKE_SHARE                                = trule(
+  "T5",
+  "au-delà de 1500m D+, la marche rapide représente une part majeure du temps de course : elle s'entraîne, avec ou sans bâtons",
+  { kv: 0.5, court: 0.05, long: 0.15, ultra: 0.25, ultra_long: 0.35, ultra_xl: 0.4 },
+);
+
+/** T6 — durée de préparation minimale par catégorie (remplace `MIN_WEEKS.run.trail = 18` pour tous). */
+const T6_MIN_WEEKS                                = trule(
+  "T6",
+  "un ultra ne se prépare pas dans le même horizon qu'un trail court",
+  { kv: 10, court: 12, long: 16, ultra: 22, ultra_long: 28, ultra_xl: 34 },
+);
+
+/** T7 — répétitions nutrition/matériel en conditions réelles, au-delà de 6h d'effort. */
+const T7_REHEARSAL = trule(
+  "T7",
+  "au-delà de 6h d'effort, la nutrition et le matériel sont des causes d'abandon aussi fréquentes que la condition physique : ils se répètent à l'entraînement",
+  { minRaceHours: 6, sessionsInSpec: 3 },
+);
+
+/** Plafonds horaires du trail par catégorie × historique (h/sem au pic) — l'axe TEMPS. */
+const TRAIL_HISTORY_CAPS                                                = {
+  kv: { reprise: 6, confirme: 8, ancien: 10 },
+  court: { reprise: 6, confirme: 8, ancien: 10 },
+  long: { reprise: 8, confirme: 11, ancien: 13 },
+  ultra: { reprise: 9, confirme: 13, ancien: 16 },
+  ultra_long: { reprise: 10, confirme: 14, ancien: 18 },
+  ultra_xl: { reprise: 11, confirme: 15, ancien: 20 },
+};
+/** Heures UTILES par catégorie — au-delà, le volume ne sert plus l'objectif. */
+const TRAIL_UTIL                                = { kv: 9, court: 10, long: 13, ultra: 16, ultra_long: 19, ultra_xl: 22 };
+
+/** Pénalité de technicité sur le temps estimé (spec §6.1). */
+const TRAIL_TECHNICITY                                               = {
+  roulant: { f: 1.0, label: "roulant" },
+  mixte: { f: 1.08, label: "mixte" },
+  technique: { f: 1.18, label: "technique" },
+  alpin: { f: 1.3, label: "alpin" },
+};
+
+/** Ordres de grandeur de VAM seuil (m D+/h) — repli quand l'athlète ne la connaît pas. */
+const VAM_BY_LEVEL                         = { debutant: 600, inter: 850, avance: 1200 };
+
+/** Part de la vitesse seuil réellement tenable selon la durée d'effort : une allure seuil
+ *  ne se tient pas 12 h. `flat` s'applique à la vitesse au sol, `vert` à la VAM.
+ *  (Fractions de la référence seuil, pas des multiplicateurs de temps.) */
+const ENDURANCE_KEEP                                                        = {
+  kv: { flat: 0.98, vert: 0.98 },
+  court: { flat: 0.92, vert: 0.9 },
+  long: { flat: 0.86, vert: 0.85 },
+  ultra: { flat: 0.82, vert: 0.82 },
+  ultra_long: { flat: 0.78, vert: 0.8 },
+  ultra_xl: { flat: 0.7, vert: 0.72 },
+};
+
+                                 
+                     
+                 
+                  
+                   
+                          
+                                                                                        
+                             
+                           
+                    
+                    
+                     
+                     
+                
+              
+                    
+                      
+                         
+                              
+              
+ 
+
+const num = (v         )         => {
+  const n = parseFloat(String(v ?? "").replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+};
+
+/**
+ * Catégorie d'effort DÉDUITE des données réelles de la course (jamais demandée à l'athlète)
+ * + fourchette de temps estimé. Modèle en KM-EFFORT pondéré par la part verticale :
+ *   v_km_effort = harmonique(vitesse plat tenable, VAM tenable) selon la part de vertical
+ *   t = km-effort / v_km_effort × technicité × nuit
+ * La catégorie dépend du temps et le temps dépend de la catégorie (dégradation d'endurance) :
+ * quelques itérations convergent. Calibré sur des repères connus (56-101 km de montagne :
+ * 8-9 km-effort/h pour un coureur intermédiaire, ~11-12 sur un format court roulant).
+ * Un seuil sur la seule distance serait faux : 62 km à 3 200 m D+ et 62 km à plat ne sont
+ * pas la même course.
+ */
+function trailObjective(a                )                 {
+  const distanceKm = Math.max(1, num(a.race_distance_km) || 25);
+  const dplusM = Math.max(0, num(a.race_dplus_m) || Math.round(distanceKm * 25));
+  const dmoinsM = num(a.race_dmoins_m) > 0 ? num(a.race_dmoins_m) : dplusM;
+  const kmEffort = Math.round(distanceKm + dplusM / 100);
+  const level = a.level || "inter";
+  const vamKnown = a.vam_known === "oui" && num(a.vam) >= 200 && num(a.vam) <= 2500;
+  const vam = vamKnown ? num(a.vam) : VAM_BY_LEVEL[level] || 850;
+  // allure seuil SUR PLAT (s/km) — la référence route reste valable à plat
+  const flatPaceSec = num(a.pace_known === "oui" ? paceToSec(a.pace) : 0) || (level === "debutant" ? 360 : level === "avance" ? 260 : 300);
+  const tech = TRAIL_TECHNICITY[a.race_technicity || "mixte"] || TRAIL_TECHNICITY.mixte;
+  const night = a.race_night || "non";
+  const nightF = night === "majoritaire" ? 1.1 : night === "partielle" ? 1.05 : 1.0;
+
+  // KV : montée quasi pure, catégorie décidée par la géométrie, pas par le temps
+  // KV : un « kilomètre vertical » se reconnaît à sa pente moyenne (≥140 m de D+ par km),
+  // pas à un seuil de distance — 6 km pour 1 000 m D+ est un KV, 6 km pour 200 m ne l'est pas.
+  const isKv = dplusM / Math.max(1, distanceKm) >= 140 && distanceKm <= 12;
+  let cat                = isKv ? "kv" : "long";
+  let mid = 0;
+  // Modèle en KM-EFFORT, pondéré par la part verticale du parcours (moyenne harmonique).
+  // Un modèle purement additif (temps à plat + temps d'ascension) compte DEUX FOIS le
+  // déplacement horizontal des montées et surestime lourdement : 62 km/3 200 m sortait à
+  // 15-22 h là où la réalité d'un coureur intermédiaire est plutôt 11-13 h.
+  const vFlatSeuil = 3600 / Math.max(120, flatPaceSec); // km/h au seuil, sur plat
+  const partVert = (dplusM / 100) / Math.max(1, kmEffort); // part du km-effort qui est du vertical
+  for (let it = 0; it < 4; it++) {
+    const keep = ENDURANCE_KEEP[cat];
+    const vFlat = vFlatSeuil * keep.flat; // km-effort/h sur les portions plates
+    const vVert = (vam * keep.vert) / 100; // 100 m D+ = 1 km-effort
+    const vKmEff = 1 / ((1 - partVert) / Math.max(1, vFlat) + partVert / Math.max(1, vVert));
+    mid = (kmEffort / vKmEff) * 60 * tech.f * nightF;
+    const h = mid / 60;
+    const next                = isKv ? "kv" : h < 3 ? "court" : h < 6 ? "long" : h < 12 ? "ultra" : h < 24 ? "ultra_long" : "ultra_xl";
+    if (next === cat) break;
+    cat = next;
+  }
+  const rawCategory = cat;
+  // Décision produit : le moteur s'arrête à ultra_long et le dit (§11.2).
+  const cappedByProduct = cat === "ultra_xl";
+  if (cappedByProduct) cat = "ultra_long";
+
+  // Fourchette : ±20% assumée sur un ultra, plus serrée sur un format court. Le mensonge
+  // serait d'afficher une fourchette étroite sur 12h de course.
+  const spread = cat === "kv" || cat === "court" ? 0.1 : cat === "long" ? 0.14 : 0.2;
+  return {
+    distanceKm, dplusM, dmoinsM, kmEffort, category: cat, rawCategory, cappedByProduct,
+    raceMinLo: Math.round(mid * (1 - spread)), raceMinHi: Math.round(mid * (1 + spread)), raceMinMid: Math.round(mid),
+    technicity: a.race_technicity || "mixte", night, vam, vamKnown, flatPaceSec,
+    cutoffH: num(a.race_cutoff_h) > 0 ? num(a.race_cutoff_h) : null,
+    altitudeMaxM: num(a.race_altitude_max_m) > 0 ? num(a.race_altitude_max_m) : null,
+    why: distanceKm + " km / " + dplusM + " m D+ = " + kmEffort + " km-effort · "
+      + (vamKnown ? "ta VAM de " + Math.round(vam) + " m/h" : "VAM estimée à " + Math.round(vam) + " m/h (niveau " + level + ")")
+      + " et ton allure seuil à plat, dégradées pour la durée · terrain " + tech.label
+      + (tech.f > 1 ? " (+" + Math.round((tech.f - 1) * 100) + "%)" : "")
+      + (nightF > 1 ? " · nuit (+" + Math.round((nightF - 1) * 100) + "%)" : ""),
+  };
+}
+
+/** Parseur d'allure local (évite une dépendance circulaire avec constraintMatrix). */
+function paceToSec(v         )         {
+  const m = String(v ?? "").trim().match(/^(\d{1,2})\s*[:h.'′]\s*(\d{1,2})\s*(?:\/\s*km)?$/);
+  if (!m) return 0;
+  const sec = +m[2];
+  if (sec > 59) return 0;
+  const t = +m[1] * 60 + sec;
+  return t >= 120 && t <= 1200 ? t : 0;
+}
+
+/** Accès au dénivelé à l'entraînement : ce que le terrain permet RÉELLEMENT par sortie. */
+const TRAIL_ACCESS                                                        = {
+  montagne: { perLongRun: 2000, label: "montagne (>800m D+ accessibles)" },
+  collines: { perLongRun: 800, label: "collines (200-800m D+)" },
+  plat: { perLongRun: 200, label: "plat (<200m D+)" },
+};
+
+/** Cible de D+/D− hebdomadaire au pic, bornée par la catégorie, l'historique ET le terrain. */
+function trailWeeklyVertical(obj                , history        , access        )   
+                                                                            
+  {
+  const cap = T1_DPLUS_CAPS[obj.category][history] ?? T1_DPLUS_CAPS[obj.category].confirme;
+  // Le besoin brut : ~2 à 3 fois le D+ de la course par semaine au pic pour un format court,
+  // décroissant en part relative sur les ultras (où le temps devient le limiteur).
+  const need = obj.category === "kv" || obj.category === "court" ? obj.dplusM * 2.2
+    : obj.category === "long" ? obj.dplusM * 1.3
+    : obj.category === "ultra" ? obj.dplusM * 0.9
+    : obj.dplusM * 0.6;
+  const acc = TRAIL_ACCESS[access] || TRAIL_ACCESS.collines;
+  // 2 sorties vallonnées par semaine + le reste en côtes courtes : plafond réalisable
+  const accessCap = Math.round(acc.perLongRun * 2.5);
+  const dplusPeak = Math.round(Math.min(cap, need, accessCap));
+  // Le D− suit le D+ (une montée se redescend) mais reste plafonné : sur un parcours
+  // en boucle, D− = D+ ; on ne le programme jamais au-delà.
+  const dmoinsPeak = Math.round(Math.min(dplusPeak, dplusPeak * (obj.dmoinsM / Math.max(1, obj.dplusM))));
+  return { dplusPeak, dmoinsPeak, capped: Math.min(cap, need) > accessCap, accessCap };
+}
+
 // ===== src/engine/reasoningEngine.ts =====
 /**
  * TrainingReasoningEngine — Sprint 1 V2.
@@ -449,6 +726,13 @@ function trailElevationTarget(durationMin        )                             {
  * Les nombres viennent de la matrice de contraintes (provenance V1.5 validée).
  */
                                                                                 
+
+
+/** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
+function fmtH(min        )         {
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
+}
 
 /** Zones cardio (Karvonen si FC repos connue, sinon %FCmax) — port V1.5. */
 function hrZones(age         , hrMax         , hrRest         ) {
@@ -479,8 +763,20 @@ class TrainingReasoningEngine {
     const finisher = a.intent === "finir";
     const comp = a.intent === "competition";
 
+    // ---- R7 TRAIL : l'objectif est DÉCODÉ avant tout le reste (catégorie déduite des
+    // données réelles de la course, pas demandée). Tout le dimensionnement en découle. ----
+    const isTrail = sp === "trail";
+    const tObj = isTrail ? trailObjective(a) : undefined;
+    if (tObj) {
+      D("format-trail", "Catégorie d'effort", tObj.category + " (" + fmtH(tObj.raceMinLo) + "–" + fmtH(tObj.raceMinHi) + " estimées)", "Déduit de " + tObj.why);
+      D("km-effort", "Ton objectif en km-effort", tObj.kmEffort + " km-effort", tObj.distanceKm + " km + " + tObj.dplusM + " m D+ ÷ 100 — la métrique qui compare des courses de relief différent");
+      if (!tObj.vamKnown) warnings.push("Ta vitesse ascensionnelle (VAM) n'est pas renseignée : le plan utilise une estimation de " + Math.round(tObj.vam) + " m/h d'après ton niveau. Fais le test (une montée régulière de 20-30 min à fond : D+ ÷ durée = ta VAM) et renseigne-la au Profil — c'est LA référence d'intensité en montée, et elle resserre aussi la prédiction.");
+      if (tObj.cappedByProduct) warnings.push("Ton objectif dépasse 24 h d'effort estimées. Le plan construit l'endurance nécessaire, mais la stratégie propre à ce format (sommeil fractionné, assistance, ravitaillement par base-vie) dépasse ce qu'un plan automatique peut honnêtement produire : cherche l'accompagnement d'un entraîneur ou d'un finisher expérimenté pour cette partie.");
+      if (tObj.altitudeMaxM && tObj.altitudeMaxM > 2500) warnings.push("Ta course monte à " + tObj.altitudeMaxM + " m : au-dessus de 2 500 m, la performance baisse et l'acclimatation compte. Un protocole d'acclimatation dépend de contraintes logistiques que l'outil ne connaît pas — si tu peux dormir en altitude quelques nuits avant, fais-le.");
+    }
+
     // ---- 1. Comprendre l'objectif : durée de préparation ----
-    const minW = MIN_WEEKS[sp][fmt] || 12;
+    const minW = tObj ? T6_MIN_WEEKS[tObj.category] : (MIN_WEEKS[sp]?.[fmt] || 12);
     let weeks = minW;
     let raceBeyondPlan = false; // C3 — course au-delà de l'horizon planifiable : ancrer sur MAINTENANT
     if (a.race_date) {
@@ -511,8 +807,8 @@ class TrainingReasoningEngine {
     D("duree", "Durée de préparation", weeks + " semaines", "Minimum " + minW + " pour " + fmt + (a.race_date ? ", ajusté à la date de course" : ""));
 
     // ---- 2. Comprendre l'athlète : capacité de charge ----
-    const caps = HISTORY_CAPS[sp][history]?.[fmt] ?? 10;
-    const util = UTIL[sp][fmt] ?? 12;
+    const caps = tObj ? TRAIL_HISTORY_CAPS[tObj.category][history] : (HISTORY_CAPS[sp]?.[history]?.[fmt] ?? 10);
+    const util = tObj ? TRAIL_UTIL[tObj.category] : (UTIL[sp]?.[fmt] ?? 12);
     const marg = comp ? MARGIN.competition : MARGIN.autres;
     D("capacite", "Plafond historique", caps + "h/sem", "Ce que l'historique « " + history + " » permet d'encaisser sur " + fmt);
     D("utile", "Volume utile du format", util + "h/sem", "Au-delà, les heures ne servent plus l'objectif " + fmt);
@@ -639,6 +935,41 @@ class TrainingReasoningEngine {
     if (ftpRaw > 0 && ftp === 0) warnings.push("FTP saisie (" + ftpRaw + "W) hors bornes plausibles [60–600W] : elle est ignorée — les séances s'affichent en zones cardio. Corrige-la au Profil.");
     const hz = hrZones(a.age, a.hr_max, a.hr_rest);
 
+    // ---- R7 TRAIL : les DEUX axes verticaux et le plafond de sortie longue ----
+    let tVert                                                                                           ;
+    let trailLongCapMin = 0;
+    if (tObj) {
+      tVert = trailWeeklyVertical(tObj, history, a.train_dplus_access || "collines");
+      // T13 — blessure : la contre-indication porte sur la CIBLE verticale, pas seulement
+      // sur le contenu des séances (sinon la passe de mise à l'échelle du générateur
+      // ramène le dénivelé à la cible et annule la protection).
+      const dFac = inj.list.includes("quadriceps") ? 0.35 : inj.list.includes("genou") || inj.list.includes("tibia") ? 0.6 : 1;
+      if (dFac < 1) {
+        tVert = { ...tVert, dmoinsPeak: Math.round(tVert.dmoinsPeak * dFac) };
+        D("T13", "Descente plafonnée (blessure)", "D− ×" + dFac, inj.list.includes("quadriceps")
+          ? "Quadriceps fragiles : la descente est LA charge qui les casse — son volume tombe à 35% et les descentes longues sont retirées du plan, remplacées par du renfo excentrique"
+          : "Zone fragile : le volume de descente est réduit de 40% (la descente est le terrain le plus traumatisant du trail)");
+      }
+      const capCat = T1_DPLUS_CAPS[tObj.category][history];
+      D("T1", "Dénivelé hebdomadaire au pic", tVert.dplusPeak + " m D+ (D− " + tVert.dmoinsPeak + " m)", "Le D+ est le second axe de charge : plafonné par la catégorie (" + capCat + " m pour un historique « " + history + " ») et par ton terrain d'entraînement");
+      D("T2", "Progression du dénivelé", "D+ ≤ +12%/sem · D− ≤ +8%/sem", "La charge excentrique (descente) est le premier facteur de casse musculaire : elle progresse plus lentement que tout le reste");
+      // T4 — la sortie longue plafonne en % du TEMPS DE COURSE estimé, jamais en absolu
+      trailLongCapMin = Math.round(tObj.raceMinMid * T4_LONG_RUN_VS_RACE[tObj.category]);
+      D("T4", "Plafond de la sortie longue", fmtH(trailLongCapMin), "Sur ce format, reproduire la durée de course à l'entraînement serait contre-productif : " + Math.round(T4_LONG_RUN_VS_RACE[tObj.category] * 100) + "% du temps estimé suffit à préparer le reste");
+      // T7 — répétitions ravito/matériel
+      if (tObj.raceMinMid / 60 >= 6) D("T7", "Répétitions ravitaillement", "3 sorties en conditions réelles (phase spécifique)", "Au-delà de 6 h d'effort, l'estomac et le matériel provoquent autant d'abandons que les jambes : ça se teste à l'entraînement");
+      // T11 — terrain plat : le dire, ne pas prescrire du dénivelé inatteignable
+      if (tVert.capped) {
+        warnings.push("Ton terrain d'entraînement ne permet pas d'atteindre les " + T1_DPLUS_CAPS[tObj.category][history] + " m D+/semaine que ton objectif demanderait (plafond réalisable : ~" + tVert.accessCap + " m). Le plan compense par du travail en côte répétée" + (a.treadmill === "oui" ? ", du tapis incliné" : ", des escaliers") + " et du renfo excentrique, mais ces substituts ne remplacent pas complètement une descente longue. Si tu peux caler 2 ou 3 week-ends en relief pendant la phase spécifique, c'est le meilleur investissement de ta préparation.");
+        D("T11", "Terrain d'entraînement limité", "D+ plafonné à " + tVert.dplusPeak + " m/sem", "Prescrire un dénivelé inatteignable serait mentir : le plan substitue ce qu'il peut et nomme ce qui manque");
+      }
+      // T14 — barrière horaire : l'information la plus utile que l'outil puisse produire
+      if (tObj.cutoffH && tObj.raceMinHi > tObj.cutoffH * 60) {
+        warnings.unshift("⏱ Barrière horaire : ta course est limitée à " + tObj.cutoffH + " h et notre estimation haute est de " + fmtH(tObj.raceMinHi) + ". C'est jouable mais rien ne devra déraper — vise le bas de la fourchette, contrôle ton départ, et prépare une stratégie de ravitaillement rapide. Si l'écart se confirme à l'entraînement, envisage un format plus court : finir vaut mieux qu'être arrêté à un poste.");
+        D("T14", "Barrière horaire serrée", tObj.cutoffH + "h pour " + fmtH(tObj.raceMinLo) + "–" + fmtH(tObj.raceMinHi) + " estimées", "Le plan reste identique, mais l'objectif du jour J devient la gestion, pas la performance");
+      }
+    }
+
     return {
       profile: a,
       decisions,
@@ -664,6 +995,9 @@ class TrainingReasoningEngine {
       noVo2: minor,
       raceBeyondPlan,
       loadFactor,
+      trail: tObj,
+      trailVert: tVert,
+      trailLongCapMin,
       baseRefs: { ftp, thrPace, css },
       hz,
     };
@@ -695,18 +1029,49 @@ const ZDEF                          = {
   "sw.aero": { ref: "css", lo: 1.06, hi: 1.06, hr: null, fb: "endurance régulière" },
   "sw.css": { ref: "css", lo: 1.0, hi: 1.0, hr: null, fb: "allure seuil (test 400m)" },
   "sw.speed": { ref: "css", lo: 0.94, hi: 0.94, hr: null, fb: "rapide mais contrôlé" },
+  // ---- R7 TRAIL : zones EN MONTÉE, exprimées en vitesse ascensionnelle (m D+/h) ----
+  // Le multiplicateur s'applique à la VAM seuil, pas à une allure : monter à 90-100% de sa
+  // VAM est une consigne exécutable, « 5'36/km en montée » ne l'est pas.
+  "tr.vam": { ref: "vam", lo: 0.95, hi: 1.05, hr: null, fb: "RPE 9/10 — montée à fond, court" },
+  "tr.asc": { ref: "vam", lo: 0.85, hi: 0.93, hr: "seuil", fb: "RPE 7-8/10 — seuil en montée, respiration ample mais contrôlée" },
+  "tr.climb": { ref: "vam", lo: 0.70, hi: 0.82, hr: "tempo", fb: "RPE 6-7/10 — allure de course en montée, tenable longtemps" },
+  "tr.hike": { ref: "vam", lo: 0.45, hi: 0.60, hr: "z2", fb: "marche rapide soutenue, poussée sur les cuisses" },
+  "tr.easyup": { ref: "vam", lo: 0.35, hi: 0.50, hr: "z1", fb: "montée très souple, conversation possible" },
+  // À plat sur sentier : l'allure reste pertinente (référence route)
+  "tr.flat": { ref: "thrPace", lo: 1.16, hi: 1.26, hr: "z2", fb: "allure conversation" },
+  "tr.flatthr": { ref: "thrPace", lo: 1.0, hi: 1.05, hr: "seuil", fb: "allure seuil ~1h, sur plat roulant" },
 };
+
+/** R7 TRAIL §7 — DESCENTE : jamais de cible chiffrée. Une consigne d'intensité en descente
+ *  est activement nuisible — elle pousse à courir vite là où la casse musculaire et le
+ *  risque de chute sont maximaux. La consigne est qualitative, et c'est un CHOIX. */
+const TRAIL_DOWN_CUE = "en contrôle : buste relâché, cadence haute, petits pas, regard 4-5m devant (jamais sur ses pieds)";
 
 const fk = (s        ) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
 
 function fmtInt(key                           , refs      , hz         )         {
   const d = key ? ZDEF[key] : undefined;
   if (!d) return key || "";
+  // R7 TRAIL — en montée : vitesse ascensionnelle si connue, sinon FC, sinon RPE. JAMAIS d'allure.
+  if (d.ref === "vam") {
+    if (refs.vam) return Math.round((refs.vam * d.lo) / 10) * 10 + "-" + Math.round((refs.vam * d.hi) / 10) * 10 + " m/h de D+";
+    if (d.hr && hz[d.hr]) return hz[d.hr];
+    return d.fb;
+  }
   if (d.ref === "ftp" && refs.ftp) return Math.round(refs.ftp * d.lo) + "-" + Math.round(refs.ftp * d.hi) + "W";
   if (d.ref === "thrPace" && refs.thrPace) return fk(refs.thrPace * d.lo) + "-" + fk(refs.thrPace * d.hi) + "/km";
   if (d.ref === "css" && refs.css) return (d.lo === d.hi ? fk(refs.css * d.lo) : fk(refs.css * d.lo) + "-" + fk(refs.css * d.hi)) + "/100m";
   if (d.hr && hz[d.hr]) return hz[d.hr];
   return d.fb;
+}
+
+/** Comme fmtInt, mais en préférant la FRÉQUENCE CARDIAQUE à l'allure : utilisé sur les
+ *  blocs vallonnés (R7 §7), où une allure au sol moyenne ne décrit aucun effort réel. */
+function fmtIntHr(key                           , refs      , hz         )         {
+  const d = key ? ZDEF[key] : undefined;
+  if (!d) return key || "";
+  if (d.hr && hz[d.hr]) return hz[d.hr];
+  return fmtInt(key, refs, hz);
 }
 
 const intOf = (key               )                                                 => {
@@ -773,7 +1138,31 @@ function renderSess(s                   , refs      , hz         , baseRefs     
       if (reps > 1) str += reps + "×";
       if (b.durationMin != null) str += b.durationMin + "min";
       else if (b.distanceM != null) str += ((b                        ).unitKm ? b.distanceM / 1000 : b.distanceM) + ((b                        ).unitKm ? "km" : "m");
-      if (b.zone) str += " @ " + fmtInt(b.zone          , refs, hz);
+      // R7 TRAIL §7 — LE VERROU : l'intensité rendue dépend de la PENTE du bloc.
+      // Sans cette résolution, chaque séance de montagne réimprimait une allure au sol.
+      if (b.gradient === "down") {
+        // Descente : aucune cible chiffrée, jamais. Consigne de contrôle technique.
+        if (b.dmoinsM) str += " de descente (−" + b.dmoinsM + "m)";
+        str += " — " + TRAIL_DOWN_CUE;
+      } else if (b.gradient === "up") {
+        if (b.mode === "hike") str += " de marche rapide" + (b.poles ? " avec bâtons" : "");
+        if (b.dplusM) str += " (+" + b.dplusM + "m D+)";
+        if (b.zone) str += " @ " + fmtInt(b.zone          , refs, hz);
+      } else if (b.gradient === "rolling") {
+        // Vallonné : la charge se dit en D+/D−, l'intensité en FC/ressenti — PAS en allure.
+        // Sur un parcours qui alterne montées et descentes, une allure moyenne au sol ne
+        // décrit aucun effort réel : c'est la fréquence cardiaque qui reste comparable.
+        if (b.zone) str += " @ " + fmtIntHr(b.zone          , refs, hz);
+        const dd           = [];
+        if (b.dplusM) dd.push("D+ " + b.dplusM + "m");
+        if (b.dmoinsM) dd.push("D− " + b.dmoinsM + "m");
+        if (dd.length) str += " · " + dd.join(" / ") + " cible";
+        if (b.mode === "run_hike") str += " · marche assumée dans les pentes raides";
+      } else {
+        if (b.zone) str += " @ " + fmtInt(b.zone          , refs, hz);
+        if (b.surface === "escalier") str += " en escaliers";
+        else if (b.surface === "tapis") str += " sur tapis incliné";
+      }
       str += (b                       ).suffix || "";
       if (b.recoveryText) str += " (récup " + b.recoveryText + " entre les blocs)";
       seg.push(str);
@@ -827,6 +1216,12 @@ function renderSess(s                   , refs      , hz         , baseRefs     
                         
                        
              
+                                                                                         
+                                                                                     
+                                                
+                  
+                   
+                                     
  
 
                              
@@ -842,6 +1237,8 @@ function renderSess(s                   , refs      , hz         , baseRefs     
                               
                   
                                                
+                                                                                 
+                                                                                   
                                                                                                      
                          
                   
@@ -1020,9 +1417,13 @@ function sessionLoadFromSteps(s            , refs             )              {
       flags.push("écart estimateur : nous " + minutes.toFixed(0) + "min vs générateur " + s.min + "min (« " + s.name + " »)");
     }
   }
+  const dplusM = steps.reduce((t, x) => t + (x.dplusM || 0) * (x.reps || 1), 0);
+  const dmoinsM = steps.reduce((t, x) => t + (x.dmoinsM || 0) * (x.reps || 1), 0);
   return {
     minutes,
     meters: s.d === "sw" || meters > 0 ? meters || null : null,
+    dplusM: dplusM || undefined,
+    dmoinsM: dmoinsM || undefined,
     recoveryMin: recovery,
     confidence: "full",
     flags,
@@ -1767,6 +2168,198 @@ function buildSessions(ctx            , slot      , phase        , prog        )
   return S2;
 }
 
+// ===== src/generator/trailLibrary.ts =====
+/**
+ * Bibliothèque de séances TRAIL (spec R7 §5) — 14 séances, chacune chargeant explicitement
+ * ses axes (temps / D+ / D−).
+ *
+ * Ce que l'ancien `run/trail` produisait : 28 footings plats, 20 footings récup, 7 « allure
+ * spécifique » de rien, et 6 séances de côtes strictement identiques figées à 15×3min.
+ * Zéro marche rapide, zéro bâton, zéro ravitaillement, zéro nuit — sur une préparation
+ * d'ultra. Une séance sur huit était spécifique au trail.
+ *
+ * Ici, chaque bloc porte sa PENTE (`gradient`), donc son intensité se rend correctement
+ * (renderer.ts) : VAM en montée, consigne technique en descente, allure seulement à plat.
+ */
+                                                                          
+
+
+/** Progression EXPLICITE de la séance de côtes (spec §5.4) — corrige les 6 séances figées
+ *  à 15×3min : format et récupération changent à chaque phase, et `repCap` est obligatoire
+ *  comme sur les séances vélo. */
+const HILL_PROGRESSION                                                                                                                                    = {
+  base: { reps: [5, 6], durMin: 0.75, zone: "tr.vam", rec: "descente MARCHÉE, récupération complète", repCap: 6,
+    name: "Côtes courtes (initiation)", note: "Premières côtes courtes : on cherche la mécanique de montée (buste droit, poussée complète), pas la performance. La descente se marche : elle sert à récupérer, pas à s'abîmer les cuisses." },
+  dev: { reps: [8, 10], durMin: 1.25, zone: "tr.vam", rec: "descente souple en trottinant", repCap: 10,
+    name: "Côtes courtes (VAM)", note: "Le travail de vitesse ascensionnelle : court, intense, en montée. C'est ce qui fait progresser ta VAM — la référence qui compte en trail." },
+  spec: { reps: [3, 4], durMin: 9, zone: "tr.asc", rec: "descente EN CONTRÔLE (elle fait partie du travail)", repCap: 5,
+    name: "Seuil ascensionnel", note: "Le seuil en montée, sur des blocs longs : c'est l'allure que tu tiendras dans les grosses côtes de ta course. La descente entre les blocs n'est pas de la récup passive, c'est de l'entraînement excentrique." },
+  peak: { reps: [3, 3], durMin: 12, zone: "tr.climb", rec: "descente en contrôle", repCap: 4,
+    name: "Montées à l'allure de course", note: "Blocs longs à l'allure exacte de tes montées le jour J : mémorise la sensation et la respiration. Ne pars pas plus vite que ce que tu pourras tenir après 4 heures de course." },
+  taper: { reps: [3, 3], durMin: 3, zone: "tr.asc", rec: "descente très souple", repCap: 3,
+    name: "Rappels de côte (affûtage)", note: "Court et vif : on réveille la mécanique de montée sans créer de fatigue. La fraîcheur passe avant tout." },
+};
+
+function buildTrailSessions(r              , slot      , phase        , prog        , weekNum        )              {
+  const a = r.profile;
+  const obj = r.trail ;
+  const vert = r.trailVert ;
+  const cat = obj.category;
+  const S2              = [];
+  const inj = r.inj;
+  const beginner = r.beginner;
+  const scale = r.sessionScale;
+  const P = (lo        , hi        ) => Math.max(1, Math.round((lo + (hi - lo) * prog) * scale));
+  // Part de la cible verticale hebdo allouée à CETTE séance (le générateur ajuste ensuite)
+  const upShare = (f        ) => Math.max(50, Math.round((vert.dplusPeak * f * (0.55 + 0.45 * prog)) / 10) * 10);
+  const downShare = (f        ) => Math.max(50, Math.round((vert.dmoinsPeak * f * (0.5 + 0.5 * prog)) / 10) * 10);
+
+  // --- Contre-indications spécifiques trail (spec §5.3) : la descente est le terrain à risque
+  const quadInj = inj.list.includes("quadriceps");
+  const ankleInj = inj.list.includes("cheville");
+  const shinInj = inj.list.includes("tibia");
+  const kneeInj = inj.list.includes("genou");
+  const fasciaInj = inj.list.includes("fascia");
+  const noHardDown = quadInj || shinInj; // descente rapide/longue supprimée
+  const downFactor = quadInj ? 0.4 : kneeInj || shinInj ? 0.6 : 1;
+  const technicalOk = !ankleInj; // terrain technique interdit sur cheville fragile
+  const poles = a.poles === "oui" || (a.poles === "a_decider" && obj.dplusM >= 1500);
+  const flatAccess = a.train_dplus_access === "plat";
+  const treadmill = a.treadmill === "oui";
+  const hikeShare = T5_HIKE_SHARE[cat] ?? 0.15;
+  const ultra = cat === "ultra" || cat === "ultra_long" || cat === "ultra_xl";
+  const rehearsalNeeded = obj.raceMinMid / 60 >= T7_REHEARSAL.minRaceHours;
+
+  const W = (min        , txt         )         => ({ role: "warmup", durationMin: min, text: txt || "", gradient: "flat" });
+  const C = (min        , txt         )         => ({ role: "cooldown", durationMin: min, text: txt || "", gradient: "flat" });
+  const B = (o                                           )         =>
+    ({ role: "body", reps: 1, intensity: intOf(o.zone ?? null)                     , ...o })          ;
+
+  if (slot === "durLong") {
+    // 1. SORTIE LONGUE TRAIL — temps + D+ + D−, en `rolling` : jamais une allure au sol.
+    const durMin = P(Math.round(60 + 40 * (ultra ? 1.6 : 1)), r.trailLongCapMin || 240);
+    const up = upShare(0.55), down = Math.round(upShare(0.55) * downFactor);
+    const hikeMin = hikeShare > 0.1 ? Math.round(durMin * hikeShare) : 0;
+    // T7 — au-delà de 6h d'effort, TOUTES les longues de la phase spécifique sont des
+    // répétitions générales (sac, eau, glucides réels) : l'estomac et le matériel se
+    // préparent comme les jambes, et ça ne se teste pas le jour J.
+    const isRehearsal = rehearsalNeeded && (phase === "spec" || phase === "peak");
+    S2.push({
+      d: "rn", long: true,
+      name: isRehearsal ? "Longue trail + ravito réel" : "Sortie longue trail",
+      note: isRehearsal
+        ? "Répétition GÉNÉRALE : sac de course, réserve d'eau complète, et 60 à 90 g de glucides par heure — exactement ce que tu prendras le jour J. Au-delà de 6 h d'effort, l'estomac et le matériel font autant d'abandons que les jambes : ça se teste à l'entraînement, jamais en course."
+        : "La séance qui construit ta course : on compte le TEMPS et le dénivelé, jamais les kilomètres. Monte au train (tu dois pouvoir parler), descends en contrôle" + (hikeMin ? ", et marche franchement dans les pentes raides — c'est ce que tu feras en course" : "") + ".",
+      det: "",
+      steps: [
+        B({ durationMin: durMin - (hikeMin ? Math.round(hikeMin / 2) : 0), gradient: "rolling", zone: "tr.flat", dplusM: up, dmoinsM: down,
+          mode: hikeMin ? "run_hike" : "run", poles: poles && hikeMin > 0, surface: technicalOk ? "sentier" : "piste",
+          bnd: { floor: 60, cap: r.trailLongCapMin || 240 } }                             ),
+      ],
+      ...({ plainBody: true }          ),
+    }             );
+  } else if (slot === "dur1") {
+    // 3/4. CÔTES COURTES → SEUIL ASCENSIONNEL → ALLURE DE COURSE EN MONTÉE (progression §5.4)
+    const hp = HILL_PROGRESSION[phase] || HILL_PROGRESSION.dev;
+    // Ultra long : pas de VO2 (ce n'est pas le limiteur) — on reste sur du seuil ascensionnel
+    const noVam = r.noVo2 || cat === "ultra_long" || cat === "ultra_xl";
+    const zone = noVam && hp.zone === "tr.vam" ? "tr.asc" : hp.zone;
+    const reps = Math.max(2, Math.min(hp.repCap, P(hp.reps[0], hp.reps[1])));
+    const durEach = hp.durMin;
+    const upPer = Math.max(20, Math.round((durEach / 60) * obj.vam * 0.9 / 5) * 5);
+    if (flatAccess && !treadmill) {
+      // 14. ESCALIERS — substitut de D+ quand le terrain ne permet pas la montée longue
+      S2.push({ d: "rn", name: "Escaliers (substitut de dénivelé)", note: "Ton terrain ne donne pas accès à de vraies montées : les escaliers reproduisent la contrainte verticale. Monte en poussée complète, redescends TOUJOURS en marchant — la descente d'escalier est traumatisante pour les genoux.", det: "",
+        steps: [W(15, "footing plat progressif"), B({ durationMin: durEach, reps, zone, gradient: "up", dplusM: upPer, mode: "run", surface: "escalier", recoveryText: "redescente MARCHÉE", repCap: hp.repCap }), C(10, "footing très souple")] });
+    } else if (flatAccess && treadmill) {
+      // 13. TAPIS INCLINÉ
+      S2.push({ d: "rn", name: "Tapis incliné (substitut de dénivelé)", note: "Tapis à 10-15 % d'inclinaison : c'est le meilleur substitut de montée quand le terrain manque. Aucune descente, donc aucune casse musculaire — mais aussi aucune préparation à la descente : garde tes week-ends en relief pour ça.", det: "",
+        steps: [W(12, "à plat, progressif"), B({ durationMin: durEach, reps, zone, gradient: "up", dplusM: upPer, mode: "run", surface: "tapis", recoveryText: "2min à plat, inclinaison à 0", repCap: hp.repCap }), C(8, "à plat souple")] });
+    } else {
+      S2.push({ d: "rn", name: hp.name, note: hp.note, det: "",
+        steps: [W(15, "footing progressif jusqu'au pied de la côte"),
+          // `bnd` verrouille la durée UNITAIRE du bloc : sans lui, R3.3 ramenait toutes les
+          // phases à la même valeur et la progression base→dev→spec→peak disparaissait
+          // (le défaut mesuré par l'audit : 6 séances identiques à 15×3min).
+          B({ durationMin: durEach, reps, zone, gradient: "up", dplusM: upPer, mode: "run", poles: poles && phase === "spec", recoveryText: hp.rec, repCap: hp.repCap, bnd: { floor: Math.max(1, Math.round(durEach * 0.9)), cap: Math.round(durEach * 1.15) } }),
+          C(10, "footing souple sur plat")] });
+    }
+  } else if (slot === "dur2") {
+    // 5/6. DESCENTE TECHNIQUE puis DESCENTE EN CHARGE — le vaccin excentrique
+    if (noHardDown) {
+      // 10. RENFO EXCENTRIQUE renforcé à la place (spec §5.3)
+      S2.push({ d: "rn", name: "Renfo excentrique (protection)", note: (quadInj ? "Quadriceps fragiles" : "Tibias fragiles") + " : la descente rapide est retirée du plan. Le renfo excentrique construit la même résistance sans le traumatisme — squats descendants très lents (5 s), fentes contrôlées, mollets sur marche. C'est le meilleur investissement quand la descente est interdite.", det: "",
+        steps: [W(12, "footing plat très souple"), B({ durationMin: P(18, 25), gradient: "flat", zone: "tr.easyup", mode: "run" }), C(8, "étirements doux")] });
+    } else if (phase === "spec" || phase === "peak") {
+      const down = Math.round(downShare(0.5) * downFactor);
+      S2.push({ d: "rn", name: "Descente en charge", note: "LA séance qui décide de ta fin de course. Les descentes longues abîment les cuisses ; s'y exposer progressivement crée une protection durable (c'est prouvé et ça s'appelle l'effet de répétition). Monte tranquillement ou marche, et descends " + (technicalOk ? "sur ton terrain le plus roulant au début, puis plus technique" : "sur sentier ROULANT uniquement — ta cheville n'est pas prête pour du technique") + ".", det: "",
+        steps: [W(15, "footing plat"), B({ durationMin: P(12, 20), reps: 1, gradient: "up", zone: "tr.easyup", dplusM: Math.round(down / 2), mode: poles ? "hike" : "run_hike", poles }),
+          B({ durationMin: P(20, 34), reps: Math.max(2, P(2, 4)), gradient: "down", dmoinsM: Math.round(down / Math.max(2, P(2, 4))), surface: technicalOk ? "sentier" : "piste", recoveryText: "remontée en marche active" }), C(10, "footing plat souple")] });
+    } else {
+      const down = Math.round(downShare(0.35) * downFactor);
+      S2.push({ d: "rn", name: "Descente technique", note: "La descente est une COMPÉTENCE, pas une récupération. Objectif : le geste, pas la vitesse. Buste relâché, bras écartés pour l'équilibre, petits pas rapides, regard 4-5 m devant. On répète 3 à 6 fois la même descente pour sentir la progression.", det: "",
+        steps: [W(12, "footing plat"), B({ durationMin: P(8, 14), gradient: "up", zone: "tr.easyup", dplusM: Math.round(down / 2), mode: "hike", poles }),
+          B({ durationMin: P(4, 7), reps: Math.max(3, P(3, 6)), gradient: "down", dmoinsM: Math.round(down / Math.max(3, P(3, 6))), surface: technicalOk ? "sentier" : "piste", recoveryText: "remontée marchée, souffle repris" }), C(8, "footing souple")] });
+    }
+  } else if (slot === "facileR") {
+    // 7. MARCHE RAPIDE EN CÔTE (base/dev) · 9. SORTIE DE NUIT (spec/peak si course de nuit)
+    const nightNeeded = (a.race_night === "partielle" || a.race_night === "majoritaire") && (phase === "spec" || phase === "peak");
+    if (nightNeeded && weekNum % 2 === 1) {
+      S2.push({ d: "rn", name: "Sortie de nuit (frontale)", note: "Courir de nuit change tout : la perception du relief, l'équilibre, la vigilance, le moral. Terrain CONNU, frontale chargée (+ une réserve), rythme facile. L'objectif est de s'habituer, pas de performer — et de vérifier ton matériel avant qu'il te lâche en course.", det: "",
+        steps: [B({ durationMin: P(55, 100), gradient: "rolling", zone: "tr.flat", dplusM: upShare(0.2), dmoinsM: Math.round(upShare(0.2) * downFactor), mode: "run_hike", poles, surface: "sentier" })],
+        ...({ plainBody: true }          ) }             );
+    } else if (hikeShare >= 0.1 && (phase === "base" || phase === "dev" || phase === "spec")) {
+      S2.push({ d: "rn", name: "Marche rapide en montée" + (poles ? " (bâtons)" : ""), note: "Sur ta course, la marche représentera environ " + Math.round(hikeShare * 100) + " % du temps : c'est une compétence, pas un aveu d'échec. Marche vite, mains sur les cuisses ou " + (poles ? "avec les bâtons (poussée complète, buste légèrement penché)" : "bras actifs") + ", rythme cardiaque soutenu. Tu iras plus vite en marchant bien qu'en courant mal. Termine par 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente.", det: "",
+        steps: [B({ durationMin: P(40, 85), gradient: "up", zone: "tr.hike", dplusM: upShare(0.3), mode: "hike", poles })],
+        ...({ plainBody: true }          ) }             );
+    } else {
+      // 12. FOOTING PLAT RÉCUP — aucun D+ assumé
+      S2.push({ d: "rn", name: "Footing plat + renfo excentrique", note: "Volume facile sur terrain PLAT et souple : aucun dénivelé, aucune technique. C'est le volume qui construit l'aérobie sans ajouter de casse musculaire" + (fasciaInj ? " — et sur terrain souple, ton fascia a besoin de ça" : "") + ". Puis 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes contrôlées, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente, et elle se construit dès maintenant.", det: "",
+        steps: [B({ durationMin: P(35, 65), gradient: "flat", zone: "tr.flat", mode: "run", surface: fasciaInj ? "sentier" : "route" })],
+        ...({ plainBody: true }          ) }             );
+    }
+  } else if (slot === "facile2") {
+    // 2. BACK-TO-BACK (ultra, spec/peak) sinon footing récup + 11. proprioception
+    if (ultra && (phase === "spec" || phase === "peak")) {
+      S2.push({ d: "rn", name: "Back-to-back (sur jambes fatiguées)", note: "Le lendemain de ta longue, 60 à 70 % de sa durée, sur des jambes qui n'ont pas récupéré. C'est la séance qui reproduit le plus fidèlement les dernières heures d'un ultra — et la plus utile mentalement. Rythme très facile, marche assumée.", det: "",
+        steps: [B({ durationMin: P(45, 90), gradient: "rolling", zone: "tr.easyup", dplusM: upShare(0.25), dmoinsM: Math.round(upShare(0.25) * downFactor), mode: "run_hike", poles })],
+        ...({ plainBody: true }          ) }             );
+    } else {
+      S2.push({ d: "rn", name: "Footing récup" + (ankleInj ? " + proprioception" : ""), note: "Récupération active à plat : les jambes tournent, zéro intensité, zéro dénivelé. Puis 15-20 min de renfo excentrique si tu ne l'as pas fait cette semaine." + (ankleInj ? " Puis 15 min de proprioception (équilibre sur une jambe, yeux fermés, coussin instable) : c'est ce qui protège ta cheville sur terrain technique." : ""), det: "",
+        steps: [B({ durationMin: P(22, 35), gradient: "flat", zone: "tr.easyup", mode: "run", surface: "route" })],
+        ...({ plainBody: true }          ) }             );
+    }
+  } else if (slot === "recup") {
+    // 10/11. RENFO EXCENTRIQUE + proprioception — greffés, jamais une journée en plus
+    S2.push({ d: "rs", name: "Repos + renfo excentrique",
+      det: "20-25min : squats descendants LENTS (5s à la descente), fentes contrôlées, mollets sur une marche" + (ankleInj ? ", puis 15min de proprioception de cheville" : "") + " — 💡 Objectif : préparer les cuisses à encaisser la descente. C'est la protection la plus efficace contre la casse musculaire du jour J, et ça se construit dès la phase de base.",
+      steps: [] });
+  } else if (slot === "off") {
+    S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
+  }
+  return S2;
+}
+
+/** Slots d'une semaine trail : la structure diffère de la route (descente et marche sont
+ *  des séances à part entière, la longue est le pivot). */
+function trailWeekSchema(phase        , isRecup         , cat               )                                     {
+  if (isRecup) return [
+    { charge: "recup", slot: "recup" }, { charge: "facile", slot: "facile2" }, { charge: "off", slot: "off" },
+    { charge: "facile", slot: "facileR" }, { charge: "off", slot: "off" }, { charge: "facile", slot: "facileR" }, { charge: "recup", slot: "recup" },
+  ];
+  const ultra = cat === "ultra" || cat === "ultra_long" || cat === "ultra_xl";
+  // Lun repos+renfo · Mar côtes/VAM · Mer footing plat · Jeu descente · Ven OFF · Sam LONGUE · Dim back-to-back ou récup
+  return [
+    { charge: "recup", slot: "recup" },
+    { charge: "dur", slot: "dur1" },
+    { charge: "facile", slot: "facileR" },
+    { charge: "dur", slot: "dur2" },
+    { charge: "off", slot: "off" },
+    { charge: "dur", slot: "durLong" },
+    { charge: ultra ? "facile" : "facile", slot: "facile2" },
+  ];
+}
+
 // ===== src/generator/weekBuilder.ts =====
 /**
  * Construction des semaines V2 — port sémantique des passes de Coach_Pro_V1.5 :
@@ -1777,6 +2370,7 @@ function buildSessions(ctx            , slot      , phase        , prog        )
                                                                          
 
 
+
 const J = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
                    
@@ -1784,7 +2378,10 @@ const J = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
                
  
 
-function schema(use10         , phase        , isRecup         )            {
+function schema(use10         , phase        , isRecup         , trailCat         )            {
+  // R7 TRAIL — structure propre : la descente et la marche sont des séances à part entière,
+  // la sortie longue est le pivot du week-end, le lundi porte le renfo excentrique.
+  if (trailCat) return trailWeekSchema(phase, isRecup, trailCat          )             ;
   if (isRecup) {
     const d                     = [["facile", "facileR"], ["facile", "facile2"], ["off", "off"], ["facile", "facileR"], ["facile", "facile2"], ["facile", "facileR"], ["off", "off"], ["facile", "facile2"], ["facile", "facileR"], ["recup", "recup"]];
     return (use10 ? d : d.slice(0, 7)).map((x) => ({ charge: x[0], slot: x[1] }));
@@ -1826,7 +2423,7 @@ function buildDays(r              , refs      , hz         )           {
       // déjà, la détente d'affûtage fait office de récupération).
       if (isR && ph.id === "peak" && ph.weeks <= 1) isR = false;
       if (isR) sinceR = 0; else sinceR++;
-      sch = schema(r.use10, ph.id, isR);
+      sch = schema(r.use10, ph.id, isR, r.trail ? r.trail.category : undefined);
     }
     const s = sch[dic] || { charge: "facile", slot: "facileR" };
     const jn = J[i % 7];
@@ -1906,7 +2503,9 @@ function buildDays(r              , refs      , hz         )           {
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
     d.date = iso(start + i * MS);
-    d.sessions = buildSessions(ctx, d.slot                                       , d.phaseId, d.prog);
+    d.sessions = r.trail
+      ? buildTrailSessions(r, d.slot                                            , d.phaseId, d.prog, d.week)
+      : buildSessions(ctx, d.slot                                       , d.phaseId, d.prog);
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
       else if (s.min == null) s.min = 0;
@@ -2027,6 +2626,18 @@ function applyStrengthGrafts(r              , days          )       {
     const graft = (day                    , obj           ) => {
       if (day && day.sessions.some((s) => s.d !== "rs")) day.sessions.push(obj);
     };
+    // R7 TRAIL (T15) — le renfo EXCENTRIQUE est la protection n°1 contre la casse musculaire
+    // en descente. Greffé dès la phase de base, jamais une journée en plus.
+    if (r.trail) {
+      const quad = r.inj.list.includes("quadriceps");
+      graft(faciles[0], { d: "rs", name: "+ Renfo excentrique",
+        det: (quad ? "25min" : "20min") + " en fin de séance : squats descendants LENTS (5s à la descente), fentes contrôlées, mollets sur une marche"
+          + (r.inj.list.includes("cheville") ? ", puis 10min de proprioception de cheville" : "")
+          + " — 💡 Objectif : préparer les cuisses à encaisser la descente. C'est la protection la plus efficace contre la casse musculaire du jour J"
+          + (quad ? ", et la seule charge autorisée sur tes quadriceps fragiles" : "") + ".",
+        steps: [] });
+      continue;
+    }
     if (sp === "run") {
       // B2 (audit v6) — la greffe de renfo est CIBLÉE par localisation : tibia → renfo
       // tibial, hanche → gainage hanche/ITB (moyen fessier, bande ilio-tibiale).
@@ -2098,6 +2709,7 @@ function applyPolarizationGuard(r              , days          , ctx            
 
 
 
+
 function generatePlan(profile                , opts                             )                                           {
   const engine = new TrainingReasoningEngine();
   const r = engine.analyze(profile);
@@ -2125,6 +2737,11 @@ function generatePlan(profile                , opts                             
         const fl = s.long ? 800 : Math.min(b.bnd.floor, r.beginner ? 600 : 750); // C24
         return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
       }
+      // R7 TRAIL — un bloc de côtes dure 45 s à 12 min : le plancher « séance digne » de
+      // 30 min (pensé pour les sorties longues de route) écrasait son plafond et ramenait
+      // toutes les phases à la même valeur — exactement le défaut « 6 séances identiques
+      // à 15×3min » relevé par l'audit. Un bloc qui porte une PENTE garde ses propres bornes.
+      if (b.gradient) return { floor: Math.max(1, b.bnd.floor), cap: Math.max(1, b.bnd.cap) };
       const fl = s.d === "bk" ? 35 : 30; // C8/C16 — plancher digne, pas la borne basse du format
       return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
     }
@@ -2732,6 +3349,115 @@ function generatePlan(profile                , opts                             
     }
   }
 
+  // ---- R7 TRAIL : les DEUX axes verticaux, puis la règle de récupération excentrique ----
+  // Le temps est déjà piloté par la courbe (bands + C22). Le D+ et le D− ont leur PROPRE
+  // courbe et leur propre plafond : les mettre à l'échelle après coup est la seule façon de
+  // garantir T3/T4 sans que le scaling du temps les écrase.
+  if (r.trail && r.trailVert) {
+    const vert = r.trailVert;
+    const stepsOf = (w        ) => (w.days            ).flatMap((d) => d.sessions.flatMap((s) => s.steps || []));
+    const upOf = (w        ) => stepsOf(w).reduce((t, st) => t + (st.dplusM || 0) * (st.reps || 1), 0);
+    const downOf = (w        ) => stepsOf(w).reduce((t, st) => t + (st.dmoinsM || 0) * (st.reps || 1), 0);
+    // Cohérence physique d'abord : un bloc en montée de N minutes à X m/h fait N/60×X mètres.
+    // Sans ce recalcul, le scaling du TEMPS (R3.3) laissait le D+ figé à sa valeur initiale.
+    const syncUpFromDuration = (w        ) => {
+      for (const st of stepsOf(w)) {
+        if (st.gradient !== "up" || !st.durationMin || !st.dplusM) continue;
+        const z = String(st.zone || "");
+        const share = z === "tr.vam" ? 1.0 : z === "tr.asc" ? 0.89 : z === "tr.climb" ? 0.76 : z === "tr.hike" ? 0.52 : 0.42;
+        st.dplusM = Math.max(20, Math.round((st.durationMin / 60) * r.trail .vam * share / 5) * 5);
+      }
+    };
+    const scaleVert = (w        , fUp        , fDown        ) => {
+      for (const st of stepsOf(w)) {
+        if (st.dplusM) st.dplusM = Math.max(20, Math.round((st.dplusM * fUp) / 10) * 10);
+        if (st.dmoinsM) st.dmoinsM = Math.max(20, Math.round((st.dmoinsM * fDown) / 10) * 10);
+        // T2c — cohérence physique : sur une BOUCLE (bloc `rolling` ou `flat`), on redescend
+        // exactement ce qu'on a monté, jamais plus. Sans cette borne, la mise à l'échelle
+        // indépendante des deux axes affichait « D+ 460m / D− 540m » sur une sortie longue :
+        // impossible sur le terrain, et un entraîneur le verrait au premier coup d'œil.
+        // Seuls les blocs de DESCENTE dédiés (navette, remontée mécanique) portent du D−
+        // sans D+ correspondant — c'est justement leur raison d'être.
+        if (st.gradient !== "down" && st.dmoinsM && (st.dplusM || 0) > 0 && st.dmoinsM > st.dplusM ) st.dmoinsM = st.dplusM ;
+      }
+    };
+    // T3 — aucune qualité ni descente dans les 48h suivant une sortie à fort D− : les
+    // dommages excentriques culminent 24-48h après l'effort. La règle était DÉCLARÉE dans le
+    // registre depuis R4 ; elle s'applique enfin. La sortie LONGUE n'est jamais supprimée
+    // (c'est le pivot de la semaine) : elle perd son dénivelé et son intensité, pas sa place.
+    const applyEccentricRecovery = () => {
+      const allDays = wl.flatMap((w) => (w.days            ).map((d) => ({ w, d })));
+      const dayDown = (d        ) => d.sessions.reduce((t, s) => t + (s.steps || []).reduce((u, st) => u + (st.dmoinsM || 0) * (st.reps || 1), 0), 0);
+      for (let i = 0; i < allDays.length; i++) {
+        if (dayDown(allDays[i].d) < T3_ECCENTRIC_RECOVERY.thresholdDmoins) continue;
+        for (const nxt of allDays.slice(i + 1, i + 1 + T3_ECCENTRIC_RECOVERY.minGapDays)) {
+          const d = nxt.d;
+          if (d.forced || !d.sessions.some((s) => s.d !== "rs")) continue;
+          const hasLong = d.sessions.some((s) => s.long);
+          const isHard = d.charge === "dur";
+          const hasDown = dayDown(d) > 200;
+          if (!isHard && !hasDown) continue;
+          if (hasLong) {
+            // la longue reste, à plat et sans intensité
+            for (const sess of d.sessions) {
+              for (const st of sess.steps || []) {
+                st.dmoinsM = 0;
+                if (st.gradient === "down") st.gradient = "flat";
+                if (st.gradient === "up" || st.gradient === "rolling") { st.gradient = "flat"; st.dplusM = 0; }
+                if (st.role === "body") st.zone = "tr.easyup";
+              }
+              // la consigne d'origine (répétition ravito, matériel…) est CONSERVÉE : on ajoute
+              // la raison de l'allègement, on n'efface pas l'objectif de la séance.
+              sess.note = "Cette sortie tombe moins de 48 h après une grosse descente : elle reste au programme mais À PLAT et très souple. Les micro-lésions des cuisses culminent maintenant — le volume facile les répare, le dénivelé les aggraverait." + (sess.note ? " " + sess.note : "");
+            }
+            d.charge = "facile";
+          } else {
+            d.charge = "facile";
+            d.slot = "facile2";
+            d.sessions = [{
+              d: "rn", name: "Footing plat de récupération (post-descente)",
+              note: "La grosse descente d'il y a moins de 48 h a créé des micro-lésions dans tes cuisses : elles culminent maintenant. Aucune qualité, aucune descente aujourd'hui — du plat très souple, c'est ce qui répare le plus vite.",
+              det: "",
+              steps: [{ role: "body", durationMin: 30, gradient: "flat", zone: "tr.easyup", mode: "run", surface: "route" }          ],
+            }             ];
+          }
+          renderWeek(nxt.w.days            );
+        }
+      }
+    };
+    applyEccentricRecovery();
+
+    // Courbe verticale : même forme que la courbe de temps (bands), plafonnée par T1, et
+    // progressant au plus de T2 (+12%) / T2b (+8%) d'une semaine de charge à la suivante.
+    let prevUp = 0, prevDown = 0;
+    for (let pass = 0; pass < 2; pass++) {
+    prevUp = 0; prevDown = 0;
+    for (let i = 0; i < wl.length; i++) {
+      const w = wl[i];
+      const band = Lval(w.phase.id, w.phase.weeks > 1 ? (w.num - 1 - w.phase.start) / (w.phase.weeks - 1) : 1);
+      let tgtUp = vert.dplusPeak * band;
+      let tgtDown = vert.dmoinsPeak * band;
+      if (w.isRecup) { tgtUp *= RECUP_WEEK_FACTOR; tgtDown *= RECUP_WEEK_FACTOR; }
+      if (w.phase.id !== "taper" && !w.isRecup) {
+        if (prevUp > 0) tgtUp = Math.min(tgtUp, prevUp * T2_DPLUS_GROWTH);
+        if (prevDown > 0) tgtDown = Math.min(tgtDown, prevDown * T2_DMOINS_GROWTH);
+      }
+      syncUpFromDuration(w);
+      const curUp = upOf(w), curDown = downOf(w);
+      if (curUp > 0 || curDown > 0) {
+        scaleVert(w, curUp > 0 ? tgtUp / curUp : 1, curDown > 0 ? tgtDown / curDown : 1);
+        renderWeek(w.days            );
+      }
+      if (w.phase.id !== "taper" && !w.isRecup) { prevUp = upOf(w); prevDown = downOf(w); }
+    }
+    }
+    // Volumes recalculés après ces passes (le D+ ne change pas les minutes, la substitution T3 oui)
+    for (const w of wl) {
+      const vr = Math.round((weekMin(w.days            ) / 60) * 10) / 10;
+      if (vr !== w.vol) { w.vol = vr; w.vol_real = vr; }
+    }
+  }
+
   if (_rampWeeks > 0) {
     r.decisions.push({
       id: "R10-depart", what: "Départ calé sur ton volume récent",
@@ -3150,22 +3876,6 @@ function generateAudited(profile                , auditOpts                     
  */
                                            
 
-                                 
-                                                            
-                                             
-              
- 
-                             
-                          
-                                                               
-                        
- 
-                              
-                                                    
-                       
-                                                                                         
- 
-
 // R6 — profil du parcours : un chrono à plat ne vaut rien sur un parcours vallonné.
 // Facteurs de temps course à pied (littérature GAP/expérience course sur route) :
 // vallonné ~+3–6 %, montagneux ~+8–15 % — appliqués en ÉLARGISSANT la fourchette
@@ -3224,6 +3934,12 @@ function riegelSec(thrPaceSecPerKm        , distKm        )         {
   return 3600 * Math.pow(distKm / d1h, 1.06);
 }
 
+/** Minutes → « 9h20 » : une durée de trail se lit en heures, pas en minutes. */
+function fmtHM(min        )         {
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
+}
+
 function predictRace(
   sport        ,
   format        ,
@@ -3250,6 +3966,31 @@ function predictRace(
     ? fmtT(sec * prof.lo * (1 + shift - spread)) + "–" + fmtT(sec * prof.hi * (1 + shift + spread))
     : range(sec);
   const profWhy = prof && prof.hi > 1 ? " · " + prof.label + " (+" + Math.round((prof.lo - 1) * 100) + "–" + Math.round((prof.hi - 1) * 100) + "%)" : "";
+
+  // ---- R7 TRAIL : Riegel est INAPPLICABLE (un km de trail n'est pas un km de route).
+  // Modèle à deux composantes : temps à plat + temps vertical (VAM), pénalisés par la
+  // technicité et la nuit. Fourchette LARGE et annoncée comme telle : sur un ultra, ±20%
+  // est une estimation honnête — afficher une fourchette serrée serait le mensonge.
+  if (sport === "trail" && opts.trail) {
+    const obj = opts.trail;
+    const tech = TRAIL_TECHNICITY[obj.technicity] || TRAIL_TECHNICITY.mixte;
+    const kmEffH = obj.kmEffort / Math.max(0.5, obj.raceMinMid / 60);
+    const one = (v        ) => (Math.round(v * 10) / 10).toFixed(1).replace(".", ",");
+    items.push({ leg: "Temps estimé", value: fmtHM(obj.raceMinLo) + "–" + fmtHM(obj.raceMinHi),
+      why: obj.why + " · fourchette large assumée : sur ce format, le terrain et la gestion pèsent plus que la condition physique" });
+    items.push({ leg: "Vitesse cible", value: one(kmEffH) + " km-effort/h",
+      why: "Le km-effort (distance + D+/100) se suit sur un relief irrégulier, là où l'allure au sol ne veut rien dire" });
+    items.push({ leg: "En montée", value: Math.round((obj.vam * 0.7) / 10) * 10 + "–" + Math.round((obj.vam * 0.82) / 10) * 10 + " m/h de D+",
+      why: "Ta vitesse ascensionnelle de course (70-82% de ta VAM seuil)" + (obj.vamKnown ? "" : " — estimée d'après ton niveau, fais le test pour l'affiner") + " : LA donnée à suivre dans les montées" });
+    const hike = T5_HIKE_SHARE[obj.category] ?? 0.15;
+    if (hike >= 0.1) items.push({ leg: "Part de marche", value: "~" + Math.round(hike * 100) + "% du temps",
+      why: "Sur ce relief, la marche rapide sera une part majeure de ta course : ce n'est pas un échec, c'est la stratégie qui économise le plus d'énergie dans les pentes raides" });
+    // §6.3 — l'erreur n°1 en ultra est le départ trop rapide : l'outil est bien placé pour le dire
+    advice.push("Répartition conseillée : premier tiers à " + one(kmEffH * 0.92) + " km-effort/h (volontairement en dessous — tu dois te sentir « trop tranquille »), deuxième tiers à " + one(kmEffH) + ", dernier tiers selon ce qu'il reste. Partir 5 % trop vite coûte 20 % sur la fin.");
+    if (obj.cutoffH && obj.raceMinHi > obj.cutoffH * 60) advice.unshift("⏱ Barrière horaire à " + obj.cutoffH + "h : notre estimation haute (" + fmtHM(obj.raceMinHi) + ") la dépasse. Vise le bas de la fourchette, contrôle ton départ et limite le temps passé aux ravitaillements.");
+    D("PRED-trail", "Méthode trail", "temps à plat + temps vertical (VAM)", "Riegel ne s'applique pas au trail : on additionne le temps horizontal et le temps d'ascension, puis on pénalise selon la technicité (" + tech.label + ") et la nuit");
+    return { items, advice, decisions };
+  }
 
   if (sport === "run") {
     if (refs.thrPace > 0 && RUN_KM[format]) {
@@ -4073,6 +4814,7 @@ function dailyEnergy(input             )                             {
 
 
 
+
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
 }
@@ -4395,6 +5137,8 @@ function predictV2(sport        , answers            , plan                     
     pctLoad: pg.pctLoad,
     streakWeeks: pg.streakWeeks,
     courseProfile: String(answers.course_profile || "") || undefined, // R6 — profil du parcours (Profil)
+    // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
+    trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
   });
 }
 
@@ -4439,6 +5183,11 @@ function localTodayISO()         {
   avatar: avatarV2,
   adherence: adherenceV2,
   disciplines: DISCIPLINE_REGISTRY,
+  // R7 — l'UI a besoin de la catégorie d'effort déduite et des plafonds trail pour
+  // expliquer ses règles pédagogiques : les exposer évite de dupliquer les chiffres
+  // (une table de plafonds recopiée dans l'UI, c'est une table qui divergera).
+  trailObjective: (answers                         ) => trailObjective(toProfile("trail", answers)),
+  trailCaps: { history: TRAIL_HISTORY_CAPS, util: TRAIL_UTIL },
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
   dailyEnergy: dailyEnergyV2,
