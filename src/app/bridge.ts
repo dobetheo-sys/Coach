@@ -9,7 +9,7 @@ import { generateAudited } from "../generator/repairLoop.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
 import { predictRace, type Prediction } from "../engine/predictor.ts";
-import { assessReadiness, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
+import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes } from "../readiness/fitParser.ts";
 import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
 import { dailyEnergy, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
@@ -88,6 +88,10 @@ export interface TodayAdjustment {
 
 /** Adapte la journée `snapshot.date` à l'état de forme — « recalcul du matin ». */
 export function adjustTodayV2(sport: string, answers: AppAnswers, snapshot: ReadinessSnapshot): TodayAdjustment {
+  // Validation de schéma (audit v6) : une clé inconnue = câblage cassé, pas un détail —
+  // le signal serait ignoré sans le moindre bruit. On le dit, on ne bloque pas l'athlète.
+  const unknown = validateSnapshot(snapshot as unknown as Record<string, unknown>);
+  if (unknown.length) console.warn("Photo du matin : clé(s) non reconnue(s) et donc IGNORÉE(S) — " + unknown.join(", "));
   const { plan, reasoned } = generatePlan(toProfile(sport, answers));
   // R10 — les échanges de jours ⇄ de l'utilisateur (answers.daySwaps) s'appliquent AUSSI
   // ici : sans ça, la « séance du jour » montrait la séance d'AVANT échange pendant que

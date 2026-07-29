@@ -196,26 +196,51 @@ function applyRunImpactCap(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZo
   }
 }
 
-/** Budget de séances : jamais plus de jours actifs que le budget (récup comprises). */
+/**
+ * C1 (audit v6) — budget de SÉANCES, pas de jours. La question posée est « séances/sem
+ * tenables sans sacrifice ? » : avec doubles=oui, compter les jours livrait 9 séances à
+ * qui en avait déclaré 7. Le retrait va du moins coûteux au plus coûteux :
+ *   1. 2ᵉ séance des jours doubles (faciles d'abord)  2. jours faciles entiers
+ *   3. jours durs hors sortie longue                  4. dernier recours
+ * `durLong` et les jours `forced` ne sont JAMAIS touchés (comportement d'origine, correct).
+ */
 function applySessionBudget(r: ReasonedPlan, days: GenDay[]): void {
   const toOff = (d: GenDay) => {
     d.charge = "off"; d.slot = "off";
     d.sessions = [{ d: "rs", name: "OFF (budget séances)", det: "repos — respect de ta disponibilité déclarée", steps: [] }];
   };
+  const nSess = (d: GenDay) => d.sessions.filter((s) => s.d !== "rs").length;
   for (let w = 1; w <= r.weeks; w++) {
     const wd = days.filter((d) => d.week === w);
     const activeNow = () => wd.filter((d) => d.charge !== "off" && d.charge !== "recup");
-    let over = activeNow().length - r.budgetPerWeek;
+    const totalSessions = () => wd.reduce((t, d) => t + nSess(d), 0);
+    let over = totalSessions() - r.budgetPerWeek;
     if (over <= 0) continue;
-    const fac = activeNow().filter((d) => d.charge === "facile" && !d.forced);
-    for (let i = fac.length - 1; i >= 0 && over > 0; i--) { toOff(fac[i]); over--; }
+    // 1. les journées à 2 séances rendent leur séance secondaire (la plus légère, jamais
+    // la longue ni le brick) — le rythme de la semaine est préservé, seule la densité baisse
+    const dbls = () => activeNow().filter((d) => nSess(d) > 1);
+    for (const d of [...dbls().filter((x) => x.charge === "facile"), ...dbls().filter((x) => x.charge !== "facile")]) {
+      while (over > 0 && nSess(d) > 1) {
+        const cand = d.sessions.map((s, i) => ({ s, i })).filter((x) => x.s.d !== "rs" && !x.s.long && !x.s.brick);
+        if (!cand.length) break;
+        const victim = cand.reduce((x, y) => ((y.s.min || 0) < (x.s.min || 0) ? y : x));
+        d.sessions.splice(victim.i, 1);
+        over--;
+      }
+      if (over <= 0) break;
+    }
+    // 2. puis des journées entières, faciles d'abord
     if (over > 0) {
-      const durs = activeNow().filter((d) => d.charge === "dur" && !d.forced && d.slot !== "durLong");
-      for (let i = durs.length - 1; i >= 0 && over > 0; i--) { toOff(durs[i]); over--; }
+      const fac = activeNow().filter((d) => d.charge === "facile" && !d.forced);
+      for (let i = fac.length - 1; i >= 0 && over > 0; i--) { over -= nSess(fac[i]); toOff(fac[i]); }
     }
     if (over > 0) {
-      const any = activeNow().filter((d) => !d.forced);
-      for (let i = any.length - 1; i >= 0 && over > 0; i--) { toOff(any[i]); over--; }
+      const durs = activeNow().filter((d) => d.charge === "dur" && !d.forced && d.slot !== "durLong");
+      for (let i = durs.length - 1; i >= 0 && over > 0; i--) { over -= nSess(durs[i]); toOff(durs[i]); }
+    }
+    if (over > 0) {
+      const any = activeNow().filter((d) => !d.forced && d.slot !== "durLong");
+      for (let i = any.length - 1; i >= 0 && over > 0; i--) { over -= nSess(any[i]); toOff(any[i]); }
     }
   }
 }

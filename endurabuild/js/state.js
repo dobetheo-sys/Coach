@@ -10,7 +10,7 @@ const S = { sport:null, answers:{}, rules:[], step:0, tier:"free", started:false
 // et les réglages de notification appartiennent au corps/à l'appareil — ils suivent
 // l'utilisateur d'un plan à l'autre (fini le re-check-in après un changement de plan).
 // Mécanique : recopiés answers → shared à chaque ebSave, shared → answers à ebActivate.
-const SHARED_KEYS=["readiness","painFlag","sickDates","weight","height","notifyTime","notifyDismissed","lastDailyNotif","lastWeeklyNotif","relanceSent","stravaRelay","stravaAuth"];
+const SHARED_KEYS=["readiness","painFlag","sickDates","weight","height","notifyTime","notifyDismissed","lastDailyNotif","lastWeeklyNotif","relanceSent","stravaRelay","stravaAuth","hrRestLog"];
 function liftShared(){for(const k of SHARED_KEYS)if(S.answers[k]!==undefined)S.shared[k]=S.answers[k];}
 function overlayShared(){for(const k of SHARED_KEYS)if(S.shared[k]!==undefined)S.answers[k]=S.shared[k];}
 // Échappement HTML pour toute valeur saisie réinjectée via innerHTML (anti-XSS, avant tout partage).

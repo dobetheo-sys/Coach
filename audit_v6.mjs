@@ -160,19 +160,19 @@ test("A3", "Jour rouge : jamais plus de minutes qu'avant ajustement", "pass", ()
   return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" ; ") || "ok" };
 });
 
-test("A4", "Signal objectif non annulable par le déclaratif subjectif", "fail", () => {
+test("A4", "Signal objectif non annulable par le déclaratif subjectif", "pass", () => {
   const v = E.assessReadiness({
     date: isoIn(0), hrvStatus: "basse", sleepQuality: "bon", energy: 75,
   });
   return { ok: v.level !== "verte", detail: `HRV basse + sommeil bon + énergie 75 → ${v.level}` };
 });
 
-test("A5", "Sommeil très court (<4h) → au moins rouge", "fail", () => {
+test("A5", "Sommeil très court (<4h) → au moins rouge", "pass", () => {
   const v = E.assessReadiness({ date: isoIn(0), sleepHours: 3 });
   return { ok: v.level === "rouge", detail: `sleepHours=3 → ${v.level}` };
 });
 
-test("A6", "FC repos élevée sans baseline → au moins orange", "fail", () => {
+test("A6", "FC repos élevée sans baseline → au moins orange", "pass", () => {
   const v = E.assessReadiness({ date: isoIn(0), restingHr: 62 });
   return { ok: v.level !== "verte", detail: `restingHr=62 sans baseline → ${v.level}` };
 });
@@ -223,7 +223,7 @@ test("B3", "Blessures multiples → plan plus conservateur qu'une seule", "pass"
 
 // ── C. Contrat avec l'athlète ────────────────────────────────────────
 
-test("C1", "sessions_max est un nombre de SÉANCES, pas de jours", "fail", () => {
+test("C1", "sessions_max est un nombre de SÉANCES, pas de jours", "pass", () => {
   const bad = [];
   for (const sm of ["3", "5", "7"])
     for (const doubles of ["oui", "parfois", "non"]) {

@@ -16,13 +16,22 @@ function greeting() {
 const SLIDES = [
   {
     id: "sleep",
-    coach: () => greeting() + " C’est l’heure du point du matin. Première question : bien dormi ?",
+    // A5 (audit v6) — la question porte sur les HEURES (un signal mesuré) et non plus sur
+    // la seule impression : une nuit sous 4h30 est un rouge en soi, quel que soit le moral.
+    // Une question côté athlète, deux signaux côté moteur (sleepHours + sleepQuality).
+    coach: () => greeting() + " C’est l’heure du point du matin. Première question : tu as dormi combien de temps ?",
     options: [
-      { val: "bon", ico: "😴", label: "Bien dormi", react: "Parfait, c’est la meilleure des récups." },
-      { val: "moyen", ico: "😐", label: "Moyen", react: "Noté. Une nuit moyenne, ça se gère." },
-      { val: "mauvais", ico: "🥱", label: "Mal dormi", react: "Merci d’être honnête — on va en tenir compte." },
+      { val: "8", ico: "🛌", label: "8h ou plus", react: "Excellent, c’est la meilleure des récups." },
+      { val: "7", ico: "😴", label: "7-8h", react: "Parfait, c’est la meilleure des récups." },
+      { val: "6", ico: "😐", label: "6-7h", react: "Noté. Une nuit moyenne, ça se gère." },
+      { val: "5", ico: "🥱", label: "5-6h", react: "Merci d’être honnête — on va en tenir compte." },
+      { val: "4", ico: "😩", label: "Moins de 5h", react: "Nuit courte : on va lever le pied aujourd’hui." },
     ],
-    set: (d, v) => { d.sleepQuality = v; },
+    set: (d, v) => {
+      const H = { "8": 8.5, "7": 7.5, "6": 6.5, "5": 5.5, "4": 4 };
+      d.sleepHours = H[v];
+      d.sleepQuality = +v >= 7 ? "bon" : +v >= 6 ? "moyen" : "mauvais";
+    },
   },
   {
     id: "hrv",
@@ -34,6 +43,12 @@ const SLIDES = [
       { val: "skip", ico: "🤷", label: "Je ne la suis pas", react: "Aucun souci, le ressenti suffit." },
     ],
     set: (d, v) => { d.hrvStatus = v === "skip" ? "normale" : v; },
+    // A6 (audit v6) — la FC au réveil était supportée par le moteur et jamais collectée :
+    // champ optionnel ici (une frappe, jamais bloquant), baseline glissante 7 jours calculée
+    // depuis l'historique dès la 3e mesure.
+    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;margin-top:14px;color:#635b4a">'
+      + '<span>FC au réveil (optionnel)</span><input type="number" id="ckHr" inputmode="numeric" min="30" max="120" value="' + (d.restingHr || "") + '" placeholder="ex. 52" style="width:88px">'
+      + "<span>bpm</span></label>",
   },
   {
     id: "feel",
@@ -67,6 +82,7 @@ export function checkinSlideshowHTML() {
     h += '<button type="button" class="btn ck-opt" data-ck-opt="' + o.val + '" style="display:flex;align-items:center;gap:12px;justify-content:flex-start;font-size:15px;padding:14px 16px;width:100%"><span style="font-size:22px">' + o.ico + "</span>" + o.label + "</button>";
   });
   h += "</div>";
+  if (slide.extraHTML) h += slide.extraHTML(ck);
   if (ck.step > 0) h += '<button type="button" class="btn" id="ckBack" style="margin-top:12px;font-size:12px;padding:6px 12px">← Revenir</button>';
   h += dotsHTML(ck.step) + "</div>";
   return h;
@@ -84,6 +100,11 @@ export function bindCheckinSlideshow(rerender, onDone) {
     b.onclick = async () => {
       const opt = slide.options.find((o) => o.val === b.dataset.ckOpt);
       if (!opt) return;
+      const hrEl = $("ckHr");
+      if (hrEl) {
+        const v = parseInt(hrEl.value || "");
+        if (v >= 30 && v <= 120) ck.restingHr = v; else delete ck.restingHr;
+      }
       slide.set(ck, opt.val, opt);
       ck._react = opt.react || "";
       ck.step++;

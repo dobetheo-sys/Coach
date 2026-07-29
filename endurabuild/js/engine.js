@@ -1934,26 +1934,51 @@ function applyRunImpactCap(r              , days          , refs      , hz      
   }
 }
 
-/** Budget de séances : jamais plus de jours actifs que le budget (récup comprises). */
+/**
+ * C1 (audit v6) — budget de SÉANCES, pas de jours. La question posée est « séances/sem
+ * tenables sans sacrifice ? » : avec doubles=oui, compter les jours livrait 9 séances à
+ * qui en avait déclaré 7. Le retrait va du moins coûteux au plus coûteux :
+ *   1. 2ᵉ séance des jours doubles (faciles d'abord)  2. jours faciles entiers
+ *   3. jours durs hors sortie longue                  4. dernier recours
+ * `durLong` et les jours `forced` ne sont JAMAIS touchés (comportement d'origine, correct).
+ */
 function applySessionBudget(r              , days          )       {
   const toOff = (d        ) => {
     d.charge = "off"; d.slot = "off";
     d.sessions = [{ d: "rs", name: "OFF (budget séances)", det: "repos — respect de ta disponibilité déclarée", steps: [] }];
   };
+  const nSess = (d        ) => d.sessions.filter((s) => s.d !== "rs").length;
   for (let w = 1; w <= r.weeks; w++) {
     const wd = days.filter((d) => d.week === w);
     const activeNow = () => wd.filter((d) => d.charge !== "off" && d.charge !== "recup");
-    let over = activeNow().length - r.budgetPerWeek;
+    const totalSessions = () => wd.reduce((t, d) => t + nSess(d), 0);
+    let over = totalSessions() - r.budgetPerWeek;
     if (over <= 0) continue;
-    const fac = activeNow().filter((d) => d.charge === "facile" && !d.forced);
-    for (let i = fac.length - 1; i >= 0 && over > 0; i--) { toOff(fac[i]); over--; }
+    // 1. les journées à 2 séances rendent leur séance secondaire (la plus légère, jamais
+    // la longue ni le brick) — le rythme de la semaine est préservé, seule la densité baisse
+    const dbls = () => activeNow().filter((d) => nSess(d) > 1);
+    for (const d of [...dbls().filter((x) => x.charge === "facile"), ...dbls().filter((x) => x.charge !== "facile")]) {
+      while (over > 0 && nSess(d) > 1) {
+        const cand = d.sessions.map((s, i) => ({ s, i })).filter((x) => x.s.d !== "rs" && !x.s.long && !x.s.brick);
+        if (!cand.length) break;
+        const victim = cand.reduce((x, y) => ((y.s.min || 0) < (x.s.min || 0) ? y : x));
+        d.sessions.splice(victim.i, 1);
+        over--;
+      }
+      if (over <= 0) break;
+    }
+    // 2. puis des journées entières, faciles d'abord
     if (over > 0) {
-      const durs = activeNow().filter((d) => d.charge === "dur" && !d.forced && d.slot !== "durLong");
-      for (let i = durs.length - 1; i >= 0 && over > 0; i--) { toOff(durs[i]); over--; }
+      const fac = activeNow().filter((d) => d.charge === "facile" && !d.forced);
+      for (let i = fac.length - 1; i >= 0 && over > 0; i--) { over -= nSess(fac[i]); toOff(fac[i]); }
     }
     if (over > 0) {
-      const any = activeNow().filter((d) => !d.forced);
-      for (let i = any.length - 1; i >= 0 && over > 0; i--) { toOff(any[i]); over--; }
+      const durs = activeNow().filter((d) => d.charge === "dur" && !d.forced && d.slot !== "durLong");
+      for (let i = durs.length - 1; i >= 0 && over > 0; i--) { over -= nSess(durs[i]); toOff(durs[i]); }
+    }
+    if (over > 0) {
+      const any = activeNow().filter((d) => !d.forced && d.slot !== "durLong");
+      for (let i = any.length - 1; i >= 0 && over > 0; i--) { over -= nSess(any[i]); toOff(any[i]); }
     }
   }
 }
@@ -3303,11 +3328,19 @@ function predictRace(
  * - énergie très basse → rouge ; basse → orange
  * - FC repos élevée vs habitude (+8%) → au moins orange
  * - tout au vert (sommeil bon, HRV normale/haute, énergie haute) → verte, la qualité est GARDÉE
- * - information absente → prudence : jamais mieux que « orange » si un signal négatif existe
+ * - A4 (audit v6) : deux registres — un signal OBJECTIF négatif (HRV, FC repos, heures de
+ *   sommeil mesurées) ne peut PAS être annulé par du déclaratif positif (énergie, ressenti,
+ *   qualité de sommeil perçue) ; le subjectif ne fait alors qu'aggraver.
+ * - information absente : le signal est nommé dans `drivers` s'il est exploitable avec un
+ *   seuil absolu (FC repos), sinon il est simplement ignoré — jamais jeté en silence.
  */
 function assessReadiness(s                   )                   {
   const drivers           = [];
-  let score = 0; // négatif = fatigue
+  // A4 (audit v6) — DEUX REGISTRES SÉPARÉS. Un ressenti déclaratif ne peut pas effacer une
+  // mesure : « HRV basse + je me sens bien » restait ORANGE au mieux, jamais VERTE (avant,
+  // trois bonus subjectifs annulaient le −2 de la HRV et rendaient le verdict vert).
+  let objectif = 0; // HRV, FC repos, heures de sommeil MESURÉES
+  let subjectif = 0; // énergie, sensation, qualité de sommeil déclarée
   // R4.5 — douleur signalée : rouge FORCÉ, quels que soient les autres signaux. La qualité
   // (>Z2) est remplacée par de la récupération tant que le drapeau n'est pas levé.
   if (s.painFlag) {
@@ -3315,27 +3348,60 @@ function assessReadiness(s                   )                   {
     return { level: "rouge", drivers };
   }
   // R4.7 — la séance d'hier était très dure (RPE ≥8) : signal de fatigue annoncé.
-  if (s.lastRpe != null && s.lastRpe >= 8) { score -= 1; drivers.push("séance d'hier très dure (RPE " + s.lastRpe + "/10)"); }
-  if (s.sleepQuality === "mauvais" || (s.sleepHours != null && s.sleepHours < 5.5)) { score -= 2; drivers.push("sommeil dégradé"); }
-  else if (s.sleepQuality === "moyen" || (s.sleepHours != null && s.sleepHours < 6.5)) { score -= 1; drivers.push("sommeil moyen"); }
-  else if (s.sleepQuality === "bon") { score += 1; drivers.push("sommeil bon"); }
-  if (s.hrvStatus === "basse") { score -= 2; drivers.push("HRV sous ta moyenne 7j"); }
-  else if (s.hrvStatus === "haute") { score += 1; drivers.push("HRV au-dessus de ta moyenne"); }
+  if (s.lastRpe != null && s.lastRpe >= 8) { objectif -= 1; drivers.push("séance d'hier très dure (RPE " + s.lastRpe + "/10)"); }
+  // A5 (audit v6) — une nuit VRAIMENT courte est un signal rouge en soi : 3h de sommeil
+  // ne se compense pas par une bonne humeur (avant : orange seulement).
+  if (s.sleepHours != null && s.sleepHours < 4.5) { objectif -= 3; drivers.push("nuit très courte (" + s.sleepHours + "h) — le sommeil est le premier levier de récupération"); }
+  else if (s.sleepQuality === "mauvais" || (s.sleepHours != null && s.sleepHours < 5.5)) {
+    if (s.sleepHours != null && s.sleepHours < 5.5) objectif -= 2; else subjectif -= 2;
+    drivers.push("sommeil dégradé");
+  } else if (s.sleepQuality === "moyen" || (s.sleepHours != null && s.sleepHours < 6.5)) {
+    if (s.sleepHours != null && s.sleepHours < 6.5) objectif -= 1; else subjectif -= 1;
+    drivers.push("sommeil moyen");
+  } else if (s.sleepQuality === "bon") { subjectif += 1; drivers.push("sommeil bon"); }
+  if (s.hrvStatus === "basse") { objectif -= 2; drivers.push("HRV sous ta moyenne 7j"); }
+  else if (s.hrvStatus === "haute") { objectif += 1; drivers.push("HRV au-dessus de ta moyenne"); }
   if (s.energy != null) {
-    if (s.energy < 25) { score -= 2; drivers.push("énergie très basse (" + s.energy + "/100)"); }
-    else if (s.energy < 45) { score -= 1; drivers.push("énergie basse (" + s.energy + "/100)"); }
-    else if (s.energy >= 70) { score += 1; drivers.push("énergie haute (" + s.energy + "/100)"); }
+    if (s.energy < 25) { subjectif -= 2; drivers.push("énergie très basse (" + s.energy + "/100)"); }
+    else if (s.energy < 45) { subjectif -= 1; drivers.push("énergie basse (" + s.energy + "/100)"); }
+    else if (s.energy >= 70) { subjectif += 1; drivers.push("énergie haute (" + s.energy + "/100)"); }
   }
-  if (s.restingHr != null && s.restingHrBaseline != null && s.restingHr >= s.restingHrBaseline * 1.08) {
-    score -= 2;
-    drivers.push("FC repos élevée (" + s.restingHr + " vs " + s.restingHrBaseline + " bpm habituels)");
+  // A6 (audit v6) — la FC de repos ne se perd plus faute de baseline : baseline connue →
+  // comparaison relative (+8%) ; sinon seuil absolu prudent (≥70 bpm au réveil chez un
+  // athlète d'endurance mérite au moins un orange), et le signal est NOMMÉ dans les drivers.
+  if (s.restingHr != null) {
+    if (s.restingHrBaseline != null) {
+      if (s.restingHr >= s.restingHrBaseline * 1.08) {
+        objectif -= 2;
+        drivers.push("FC repos élevée (" + s.restingHr + " vs " + s.restingHrBaseline + " bpm habituels)");
+      }
+    } else if (s.restingHr >= 70) {
+      objectif -= 2;
+      drivers.push("FC repos élevée au réveil (" + s.restingHr + " bpm, sans historique de comparaison — renseigne-la quelques matins pour affiner)");
+    } else if (s.restingHr >= 60) {
+      objectif -= 1;
+      drivers.push("FC repos un peu haute (" + s.restingHr + " bpm, pas encore de moyenne personnelle)");
+    }
   }
-  if (s.feel === "fatigue") { score -= 1; drivers.push("sensation de fatigue déclarée"); }
-  else if (s.feel === "frais") { score += 1; drivers.push("sensation de fraîcheur"); }
+  if (s.feel === "fatigue") { subjectif -= 1; drivers.push("sensation de fatigue déclarée"); }
+  else if (s.feel === "frais") { subjectif += 1; drivers.push("sensation de fraîcheur"); }
 
+  // A4 — quand la mesure est négative, le déclaratif ne peut qu'AGGRAVER, jamais compenser.
+  const score = objectif + (objectif < 0 ? Math.min(0, subjectif) : subjectif);
   const level                 = score <= -3 ? "rouge" : score <= -1 ? "orange" : "verte";
   if (!drivers.length) drivers.push("aucun signal : on suit le plan");
   return { level, drivers };
+}
+
+/** Clés reconnues d'une photo du matin — toute autre clé est une ERREUR DE CÂBLAGE :
+ *  sans cette validation, une faute de frappe côté UI faisait disparaître un signal de
+ *  sécurité en silence (audit v6). En dev, on veut du bruit ; en prod, une trace. */
+const SNAPSHOT_KEYS = [
+  "date", "sleepQuality", "sleepHours", "hrvStatus", "restingHr", "restingHrBaseline",
+  "energy", "feel", "completed", "weather", "painFlag", "painLocation", "lastRpe",
+]         ;
+function validateSnapshot(s                         )           {
+  return Object.keys(s || {}).filter((k) => !(SNAPSHOT_KEYS                     ).includes(k));
 }
 
 /** MVP — saisie manuelle : trois questions au réveil suffisent. */
@@ -4044,6 +4110,10 @@ function buildPlanV2(sport        , answers            )                        
 
 /** Adapte la journée `snapshot.date` à l'état de forme — « recalcul du matin ». */
 function adjustTodayV2(sport        , answers            , snapshot                   )                  {
+  // Validation de schéma (audit v6) : une clé inconnue = câblage cassé, pas un détail —
+  // le signal serait ignoré sans le moindre bruit. On le dit, on ne bloque pas l'athlète.
+  const unknown = validateSnapshot(snapshot                                      );
+  if (unknown.length) console.warn("Photo du matin : clé(s) non reconnue(s) et donc IGNORÉE(S) — " + unknown.join(", "));
   const { plan, reasoned } = generatePlan(toProfile(sport, answers));
   // R10 — les échanges de jours ⇄ de l'utilisateur (answers.daySwaps) s'appliquent AUSSI
   // ici : sans ça, la « séance du jour » montrait la séance d'AVANT échange pendant que
