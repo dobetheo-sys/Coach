@@ -121,6 +121,59 @@ export const AVG_SESSION_H: Partial<Record<Sport, number>> = { run: 1.15, bike: 
 /** C13 — l'échauffement chiffré ne dépasse jamais 25min ni le corps de séance. */
 export const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ corps de séance", 25);
 
+/** R6.1 — contre-indications par localisation de douleur : une douleur de charge se
+ * traite en RETIRANT la contrainte (changer de discipline), pas en la réduisant. */
+export interface PainContra { forbid: string[]; prefer: string[] }
+export const R6_PAIN_CONTRAINDICATION: Record<string, PainContra> = rule(
+  "R6.1",
+  "une douleur de charge se traite en retirant la contrainte, pas en la réduisant : chaque localisation interdit la ou les disciplines qui la sollicitent",
+  {
+    tibia: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    genou: { forbid: ["rn", "bk"], prefer: ["sw"] },
+    pied: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    hanche: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    course: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    epaule: { forbid: ["sw"], prefer: ["bk", "rn"] },
+    dos: { forbid: ["bk"], prefer: ["sw"] },
+    cou: { forbid: ["sw", "bk"], prefer: ["rn"] },
+  },
+);
+
+/** R6.2 — une blessure déclarée réduit le plafond de volume (l'étape « Historique &
+ * blessures » promet « une blessure décide quoi adapter » — le volume en fait partie). */
+export const R6_INJURY_LOAD_FACTORS = rule(
+  "R6.2",
+  "une blessure déclarée réduit le plafond de volume ; plusieurs zones fragiles → approche ultra-conservatrice (c'est la carte de règle affichée à l'athlète)",
+  { une: 0.9, multiples: 0.8 },
+);
+
+/** Lecture UNIQUE des blessures (audit v6 B1a : le motif était dupliqué 4 fois avec des
+ * ensembles légèrement différents — un booléen écrasait les localisations). */
+export interface InjuryInfo {
+  list: string[];
+  count: number;
+  /** blessure d'impact course (tibia/genou/pied/hanche — ensemble historique V1.5) */
+  impact: boolean;
+  /** idem + « course » générique (utilisé par les gammes/plyo) */
+  impactAny: boolean;
+  shoulder: boolean;
+  lumbar: boolean;
+  cervical: boolean;
+}
+export function readInjuries(raw: unknown): InjuryInfo {
+  const list = (Array.isArray(raw) ? raw.join(",") : String(raw ?? ""))
+    .split(",").map((s) => s.trim()).filter((x) => x && x !== "aucune");
+  return {
+    list,
+    count: list.length,
+    impact: list.some((x) => ["tibia", "genou", "pied", "hanche"].includes(x)),
+    impactAny: list.some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x)),
+    shoulder: list.includes("epaule"),
+    lumbar: list.includes("dos"),
+    cervical: list.includes("cou"),
+  };
+}
+
 /** Interdictions du manifeste — vérifiées par l'auditeur, rappelées ici pour le générateur. */
 export const FORBIDDEN = [
   "deux longues sorties CAP consécutives",

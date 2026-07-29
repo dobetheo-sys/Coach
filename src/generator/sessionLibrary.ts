@@ -29,8 +29,8 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
   const medHold = r.medHold;
   const dbl = r.dbl;
   const sessionScale = r.sessionScale;
-  const _injImpactG = (a.injury || "").split(",").some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x));
-  const _plioOK = lvl !== "debutant" && !finisher && !_injImpactG;
+  const inj = r.inj; // R6 (audit v6) — lecture UNIQUE des blessures, plus de motif dupliqué
+  const _plioOK = lvl !== "debutant" && !finisher && !inj.impactAny;
   const G =
     phase === "base" ? "+ 4-6 strides 15s"
     : phase === "dev" ? "+ gammes (genoux, talons-fesses)"
@@ -51,13 +51,17 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
   const swimDrillGlossary = "rattrapé (le bras devant reste tendu jusqu'au contact des mains avant de repartir : corrige le timing), poings fermés (main fermée : force l'appui par l'avant-bras), battements planche (jambes seules, planche tenue devant : isole et muscle le battement)";
 
   if (sp === "run") {
-    const injImp = (a.injury || "").split(",").some((x) => ["tibia", "genou", "pied", "hanche"].includes(x));
+    const injImp = inj.impact;
     // R4.1 — trail modulaire (registre de disciplines) : volume en TEMPS + D+, allure en
     // GAP/RPE, compétence descente travaillée à part, prudence excentrique si impact fragile.
     const isTrail = fmt === "trail";
     if (slot === "dur1") {
       // C17 — la VO2 survit au budget (dur1) en dev/spéc/peak ; l'allure course passe en dur2.
-      if (phase === "spec" || phase === "peak" || phase === "dev") {
+      // B2/R6.1 (audit v6) — genou : pas de vitesses maximales ni d'à-coups (la VO2 course
+      // charge le genou à chaque appui rapide) → seuil contrôlé, même rôle dans la semaine.
+      if (inj.list.includes("genou") && (phase === "spec" || phase === "peak" || phase === "dev")) {
+        S2.push({ d: "rn", name: "Seuil contrôlé (genou épargné)", note: "Genou fragile : on garde le stimulus aérobie fort mais sans les vitesses maximales ni les à-coups — le seuil remplace la VO2, sur surface souple si possible.", det: "", steps: [W(15, "footing très facile + gammes sans sauts"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot très lent", " sur surface souple"), C(10, "footing facile")] });
+      } else if (phase === "spec" || phase === "peak" || phase === "dev") {
         S2.push({ d: "rn", name: "VO2max", note: "Puissance aérobie maximale : effort max tenable ~3min, récup complète. Maintenue jusqu'à l'affûtage.", det: "", steps: [W(20, "progressif + 4 lignes droites"), B(P(5, 8), 3, "rn.vo2", "2min30 trot"), C(10, "footing très facile")] });
       } else if (finisher || lvl === "debutant") {
         S2.push({ d: "rn", name: "Seuil doux", note: "Le seuil doit rester «confortablement difficile» : tu peux dire quelques mots, pas tenir une conversation. Si ça pique, ralentis.", det: "", steps: [W(15, "footing très facile + 3 lignes droites"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot très lent", injImp ? " sur surface souple" : ""), C(10, "footing facile")] });
@@ -78,6 +82,10 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
       const durCaps = ({ "5k": { lo: 40, hi: 74 }, "10k": { lo: 50, hi: 90 }, semi: { lo: 70, hi: 130 }, marathon: { lo: 90, hi: 180 }, trail: { lo: 120, hi: 255 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 60, hi: 110 };
       // C23 — jamais de sortie longue CAP >3h pour un débutant (le cap passe dans bnd → R3.3 ne regonfle pas)
       if (beginner) durCaps.hi = Math.min(durCaps.hi, C23_BEGINNER_LONG_RUN_CAP_MIN);
+      // B2/R6.1 (audit v6) — pied et hanche : la sortie longue est la séance qui cumule
+      // le plus d'impacts — son plafond baisse selon la zone (pied ×0.85, hanche ×0.9).
+      if (inj.list.includes("pied")) durCaps.hi = Math.round(durCaps.hi * 0.85);
+      else if (inj.list.includes("hanche")) durCaps.hi = Math.round(durCaps.hi * 0.9);
       const durMin = P(durCaps.lo, durCaps.hi);
       // Trail (registre R4.1) : volume en TEMPS + D+ cible — jamais en km seul. Le D+ suit
       // la durée (~350-450m/h) ; descentes en contrôle, surtout avec un passif d'impact.
@@ -108,7 +116,7 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
     else if (slot === "recup") S2.push({ d: "rs", name: "Repos / gainage", det: "mobilité", steps: [] });
     else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
   } else if (sp === "swim") {
-    const shoulder = (a.injury || "").includes("epaule"), ow = a.milieu === "ow" || a.milieu === "mixte";
+    const shoulder = inj.shoulder, ow = a.milieu === "ow" || a.milieu === "mixte";
     // Limite principale déclarée par le débutant (question dédiée) : chaque réponse
     // oriente RÉELLEMENT les éducatifs vers ce qui bloque, pas un générique commun.
     // Chaque éducatif nommé porte son COMMENT FAIRE (pas juste son nom) — la séance
@@ -128,8 +136,11 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
     } else if (slot === "dur2") {
       if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Endurance + touches de vitesse", note: "Nage continue technique, plus quelques accélérations courtes de 25m : de la vitesse de forme, pas de la souffrance.", det: "", steps: [Wm(200, "souple"), Bd(1, 400, "sw.aero", "20-30s", " nage continue fractionnée", false, "sw"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " en accélérations progressives, technique maintenue", false, "sw"), Cm(100, "très souple")] });
       else if (beginner) S2.push({ d: "sw", name: "Endurance technique", note: "Priorité au geste, pas au chrono. Un seul point technique à la fois.", det: "", steps: [Wm(200, "souple"), Bd(1, 600, "sw.easy", "20-30s, le temps de respirer", " nage continue fractionnée (ex 8-12×50m) + 1 éducatif entre chaque", false, "sw"), Cm(100, "très souple")] });
-      else if (shoulder && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Jambes vitesse (épaule épargnée)", note: "Vitesse par les jambes : battements rapides avec planche, l'épaule ne travaille pas. La puissance se maintient sans risque.", det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " battements rapides avec planche (jambes seules)", false, "sw"), Bd(1, 200, "sw.easy", "", " éducatifs technique", false, "sw"), Cm(100, "souple")] });
-      else if (shoulder) S2.push({ d: "sw", name: "Jambes + technique", note: "Épaule épargnée : le travail passe par les jambes et la technique, la charge articulaire reste nulle.", det: "", steps: [Bd(1, 400, null, "", " séries battements + éducatifs · épargne épaule", false, "sw")], ...( { plainBody: true } as object) });
+      // B1 (audit v6) — les séances de substitution épaule héritent d'un BUDGET BORNÉ :
+      // sans bnd, R3.3 gonflait le bloc jusqu'aux caps génériques (+68% de volume mesuré
+      // sur swim/fond/epaule — une blessure qui AUGMENTAIT la charge).
+      else if (shoulder && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Jambes vitesse (épaule épargnée)", note: "Vitesse par les jambes : battements rapides avec planche, l'épaule ne travaille pas. La puissance se maintient sans risque.", det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " battements rapides avec planche (jambes seules)", false, "sw"), Object.assign(Bd(1, 200, "sw.easy", "", " éducatifs technique", false, "sw"), { bnd: { floor: 200, cap: 600 } }), Cm(100, "souple")] });
+      else if (shoulder) S2.push({ d: "sw", name: "Jambes + technique", note: "Épaule épargnée : le travail passe par les jambes et la technique, la charge articulaire reste nulle.", det: "", steps: [Object.assign(Bd(1, 400, null, "", " séries battements + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: 1200 } })], ...( { plainBody: true } as object) });
       else S2.push({ d: "sw", name: "Vitesse", note: "Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage.", det: "", steps: [Wm(400, "varié + 4×25m accélérations"), Bd(P(8, 12), 50, "sw.speed", "30-40s", "", false, "sw"), Cm(200, "souple")] });
     } else if (slot === "durLong") {
       const distCaps = beginner
@@ -148,7 +159,7 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
     } else if (slot === "recup") S2.push({ d: "rs", name: "Repos / épaules", det: "étirements coiffe", steps: [] });
     else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
   } else if (sp === "tri") {
-    const runInj = (a.injury || "").includes("course");
+    const runInj = inj.list.includes("course");
     const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] } as Record<string, [number, number]>)[phase] || [0.5, 0.8];
     const PT = (lo: number, hi: number) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
     const swimDistCaps = ({ S: { lo: 300, hi: 750 }, M: { lo: 600, hi: 1500 }, "70.3": { lo: 950, hi: 1900 }, Full: { lo: 1600, hi: 3000 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 600, hi: 1500 };
@@ -157,12 +168,20 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
     // C24 — même la nage récup tri : ≥750m pour un non-débutant
     const swShortDist = beginner ? Math.min(600, Math.max(200, Math.round((swimDist * 0.4) / 50) * 50)) : Math.min(1100, Math.max(750, Math.round((swimDist * 0.6) / 50) * 50));
     const swTechDist = Math.max(beginner ? 300 : 750, Math.round((swimDist * 0.5) / 50) * 50);
-    const swMain = beginner
+    let swMain = beginner
       ? { name: "Nage seuil technique (+dist)", note: "Technique d'abord, mais quelques 100m à allure seuil contrôlée pour préparer la course.", steps: [Wm(200, "souple"), Object.assign(Bd(1, swimDist, "sw.css", "repos libre entre séries", ", fractionné en séries régulières, éducatifs entre", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(100, "relâché")] }
       : { name: "Nage seuil (+dist)", note: "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.", steps: [Wm(300, "+ 4×50m éducatifs"), Object.assign(Bd(1, swimDist, "sw.css", "15-20s", ", fractionné en séries régulières si besoin", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(200, "souple")] };
-    const swTech = beginner
+    let swTech = beginner
       ? { name: "Nage éducatifs", note: "Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force.", steps: [Wm(100, "souple"), Bd(1, swTechDist, "sw.easy", "20-30s", ", par 50m, 1 point technique à la fois — " + swimDrillGlossary, false, "sw"), Cm(100, "dos souple")] }
       : { name: "Nage vitesse", note: "Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m.", steps: [Wm(200, "+ 4×25m accélérations progressives"), Bd(1, swTechDist, "sw.aero", "30-40s sur les 50m rapides", ", dont la moitié en accélérations de 50m", false, "sw"), Cm(150, "souple")] };
+    // B1c (audit v6) — l'épaule existait pour les triathlètes dans le QUESTIONNAIRE mais
+    // pas dans le générateur (branche morte : le traitement vivait sous sp === "swim").
+    // Ici : mêmes substitutions que le nageur, au budget de la séance remplacée (bnd).
+    if (inj.shoulder) {
+      const shoulderDist = Math.max(swimDistCaps.lo, Math.round((swimDist * 0.8) / 50) * 50);
+      swMain = { name: "Nage seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute. Arrêt au moindre signal articulaire.", steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(1, shoulderDist, "sw.css", "20-30s", ", fractionné en 100m, amplitude confortable", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: shoulderDist } }), Cm(100, "souple")] };
+      swTech = { name: "Jambes + technique (épaule épargnée)", note: "Le travail passe par les jambes (battements planche) et la technique : la charge articulaire de l'épaule reste minimale.", steps: [Object.assign(Bd(1, swTechDist, null, "", " séries battements planche + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: swTechDist } })] };
+    }
     const swShort = { name: "Nage récup", note: "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.", steps: [Bd(1, swShortDist, "sw.easy", "", " souple, en blocs de 50m, respiration 3 temps · relâchement total", false, "sw")] };
     if (slot === "dur1") {
       if (dbl) S2.push({ d: "sw", name: swMain.name + " (matin)", note: swMain.note, det: "", steps: swMain.steps });

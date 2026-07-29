@@ -101,7 +101,7 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
     if (audit.hardViolations.length < best.audit.hardViolations.length || audit.score > best.audit.score) best = { plan, audit };
   }
 
-  const warnings: string[] = [];
+  const warnings: string[] = [...(reasoned.warnings || [])];
   if (best.audit.hardViolations.length > 0) {
     warnings.push("Plan rendu avec réserves (contraintes insatisfaisables après " + MAX_ITERATIONS + " réparations) :");
     warnings.push(...best.audit.hardViolations.map((v) => "· " + v));

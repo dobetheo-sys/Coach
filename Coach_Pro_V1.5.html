@@ -1867,6 +1867,10 @@ async function applyReadiness(){
                 
                
                      
+                                                                                         
+                                                  
+                                                                                                               
+                     
                                                           
                                                   
  
@@ -1995,6 +1999,59 @@ const AVG_SESSION_H                                 = { run: 1.15, bike: 1.3, tr
 /** C13 — l'échauffement chiffré ne dépasse jamais 25min ni le corps de séance. */
 const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ corps de séance", 25);
 
+/** R6.1 — contre-indications par localisation de douleur : une douleur de charge se
+ * traite en RETIRANT la contrainte (changer de discipline), pas en la réduisant. */
+                                                                  
+const R6_PAIN_CONTRAINDICATION                             = rule(
+  "R6.1",
+  "une douleur de charge se traite en retirant la contrainte, pas en la réduisant : chaque localisation interdit la ou les disciplines qui la sollicitent",
+  {
+    tibia: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    genou: { forbid: ["rn", "bk"], prefer: ["sw"] },
+    pied: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    hanche: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    course: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    epaule: { forbid: ["sw"], prefer: ["bk", "rn"] },
+    dos: { forbid: ["bk"], prefer: ["sw"] },
+    cou: { forbid: ["sw", "bk"], prefer: ["rn"] },
+  },
+);
+
+/** R6.2 — une blessure déclarée réduit le plafond de volume (l'étape « Historique &
+ * blessures » promet « une blessure décide quoi adapter » — le volume en fait partie). */
+const R6_INJURY_LOAD_FACTORS = rule(
+  "R6.2",
+  "une blessure déclarée réduit le plafond de volume ; plusieurs zones fragiles → approche ultra-conservatrice (c'est la carte de règle affichée à l'athlète)",
+  { une: 0.9, multiples: 0.8 },
+);
+
+/** Lecture UNIQUE des blessures (audit v6 B1a : le motif était dupliqué 4 fois avec des
+ * ensembles légèrement différents — un booléen écrasait les localisations). */
+                             
+                 
+                
+                                                                                      
+                  
+                                                                  
+                     
+                    
+                  
+                    
+ 
+function readInjuries(raw         )             {
+  const list = (Array.isArray(raw) ? raw.join(",") : String(raw ?? ""))
+    .split(",").map((s) => s.trim()).filter((x) => x && x !== "aucune");
+  return {
+    list,
+    count: list.length,
+    impact: list.some((x) => ["tibia", "genou", "pied", "hanche"].includes(x)),
+    impactAny: list.some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x)),
+    shoulder: list.includes("epaule"),
+    lumbar: list.includes("dos"),
+    cervical: list.includes("cou"),
+  };
+}
+
 /** Interdictions du manifeste — vérifiées par l'auditeur, rappelées ici pour le générateur. */
 const FORBIDDEN = [
   "deux longues sorties CAP consécutives",
@@ -2120,6 +2177,7 @@ function parsePaceSec(v         )         {
 class TrainingReasoningEngine {
   analyze(a                )               {
     const decisions             = [];
+    const warnings           = [];
     const D = (id        , what        , val                 , why        ) => decisions.push({ id, what, val, why });
     const sp = a.sport, fmt = a.format;
     const history = a.history || "confirme";
@@ -2155,8 +2213,21 @@ class TrainingReasoningEngine {
     if (!comp) D("marge", "Marge de sécurité", "-10%", "Hors compétition, 10% de marge sur tous les plafonds (santé d'abord)");
 
     // 1B — indicateurs de récupération
-    const recupFactor = (a.sleep === "court" ? RECUP_FACTORS.sleepCourt : 1) * (a.life_load === "lourde" ? RECUP_FACTORS.lifeLourde : 1);
+    let recupFactor = (a.sleep === "court" ? RECUP_FACTORS.sleepCourt : 1) * (a.life_load === "lourde" ? RECUP_FACTORS.lifeLourde : 1);
     if (recupFactor < 1) D("1B", "Récupération dégradée", "volume ×" + recupFactor.toFixed(2), "Sommeil court et/ou charge de vie lourde : le contenu baisse réellement");
+
+    // R6.2 (audit v6, B1/B3) — une blessure déclarée réduit RÉELLEMENT le plafond de
+    // volume ; plusieurs zones fragiles → approche ultra-conservatrice, comme la carte
+    // de règle affichée à l'athlète le promet depuis toujours.
+    const inj = readInjuries(a.injury);
+    const injFactor = inj.count >= 2 ? R6_INJURY_LOAD_FACTORS.multiples : inj.count === 1 ? R6_INJURY_LOAD_FACTORS.une : 1;
+    if (injFactor < 1) {
+      recupFactor *= injFactor;
+      D("R6.2", "Blessure déclarée", "volume ×" + injFactor.toFixed(2), inj.count >= 2
+        ? "Plusieurs zones fragiles (" + inj.list.join(", ") + ") : approche ultra-conservatrice — progression ralentie, bilan médical avant montée en charge"
+        : "Zone fragile (" + inj.list.join(", ") + ") : le plafond de volume baisse de 10% — « une blessure décide quoi adapter », le volume en fait partie");
+      if (inj.count >= 2) warnings.push("Plusieurs blessures déclarées (" + inj.list.join(", ") + ") : un bilan médical est recommandé avant la montée en charge — le plan est volontairement conservateur (-20% de volume).");
+    }
 
     const volMax = parseInt(a.vol_max || "10");
     const sessionScale = Math.min(1, (Math.min(volMax, caps, util) * marg) / util) * recupFactor;
@@ -2182,13 +2253,15 @@ class TrainingReasoningEngine {
     const budgetPerWeek = Math.min(parseInt(a.sessions_max || "7") || 7, volSessCap);
     D("budget", "Séances par semaine", budgetPerWeek, "Budget déclaré ∧ budget implicite du volume (" + volBudget.toFixed(1) + "h ÷ " + (avgH ?? "—") + "h/séance)");
 
-    const injuries = (a.injury || "").split(",").filter((x) => x && x !== "aucune");
+    const injuries = inj.list;
     let maxRunDays                = null;
     if (sp === "run") {
-      const injImpact = injuries.some((x) => ["tibia", "genou", "pied", "hanche"].includes(x));
       maxRunDays = MAX_RUN_DAYS[history] ?? 5;
-      if (injImpact) maxRunDays = Math.max(3, maxRunDays - 1);
-      D("impact", "Jours de course max", maxRunDays + "/semaine", "La course est le sport à plus fort impact" + (injImpact ? " — blessure d'impact déclarée, -1 jour" : ""));
+      if (inj.impact) maxRunDays = Math.max(3, maxRunDays - 1);
+      // B2 (audit v6) — le tibia (périostite) est LA blessure de l'impact répété : le
+      // plafond de jours de course est renforcé d'un jour supplémentaire.
+      if (inj.list.includes("tibia")) maxRunDays = Math.max(3, maxRunDays - 1);
+      D("impact", "Jours de course max", maxRunDays + "/semaine", "La course est le sport à plus fort impact" + (inj.impact ? " — blessure d'impact déclarée, -1 jour" + (inj.list.includes("tibia") ? " (-1 de plus : le tibia est une blessure d'impact répété)" : "") : ""));
     }
 
     // ---- 4. Calculer la charge : phases (C19) et courbe (bands + C22) ----
@@ -2254,6 +2327,8 @@ class TrainingReasoningEngine {
       comp,
       dbl: a.doubles === "oui",
       injuries,
+      inj,
+      warnings,
       baseRefs: { ftp, thrPace, css },
       hz,
     };
@@ -3108,8 +3183,8 @@ function buildSessions(ctx            , slot      , phase        , prog        )
   const medHold = r.medHold;
   const dbl = r.dbl;
   const sessionScale = r.sessionScale;
-  const _injImpactG = (a.injury || "").split(",").some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x));
-  const _plioOK = lvl !== "debutant" && !finisher && !_injImpactG;
+  const inj = r.inj; // R6 (audit v6) — lecture UNIQUE des blessures, plus de motif dupliqué
+  const _plioOK = lvl !== "debutant" && !finisher && !inj.impactAny;
   const G =
     phase === "base" ? "+ 4-6 strides 15s"
     : phase === "dev" ? "+ gammes (genoux, talons-fesses)"
@@ -3130,13 +3205,17 @@ function buildSessions(ctx            , slot      , phase        , prog        )
   const swimDrillGlossary = "rattrapé (le bras devant reste tendu jusqu'au contact des mains avant de repartir : corrige le timing), poings fermés (main fermée : force l'appui par l'avant-bras), battements planche (jambes seules, planche tenue devant : isole et muscle le battement)";
 
   if (sp === "run") {
-    const injImp = (a.injury || "").split(",").some((x) => ["tibia", "genou", "pied", "hanche"].includes(x));
+    const injImp = inj.impact;
     // R4.1 — trail modulaire (registre de disciplines) : volume en TEMPS + D+, allure en
     // GAP/RPE, compétence descente travaillée à part, prudence excentrique si impact fragile.
     const isTrail = fmt === "trail";
     if (slot === "dur1") {
       // C17 — la VO2 survit au budget (dur1) en dev/spéc/peak ; l'allure course passe en dur2.
-      if (phase === "spec" || phase === "peak" || phase === "dev") {
+      // B2/R6.1 (audit v6) — genou : pas de vitesses maximales ni d'à-coups (la VO2 course
+      // charge le genou à chaque appui rapide) → seuil contrôlé, même rôle dans la semaine.
+      if (inj.list.includes("genou") && (phase === "spec" || phase === "peak" || phase === "dev")) {
+        S2.push({ d: "rn", name: "Seuil contrôlé (genou épargné)", note: "Genou fragile : on garde le stimulus aérobie fort mais sans les vitesses maximales ni les à-coups — le seuil remplace la VO2, sur surface souple si possible.", det: "", steps: [W(15, "footing très facile + gammes sans sauts"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot très lent", " sur surface souple"), C(10, "footing facile")] });
+      } else if (phase === "spec" || phase === "peak" || phase === "dev") {
         S2.push({ d: "rn", name: "VO2max", note: "Puissance aérobie maximale : effort max tenable ~3min, récup complète. Maintenue jusqu'à l'affûtage.", det: "", steps: [W(20, "progressif + 4 lignes droites"), B(P(5, 8), 3, "rn.vo2", "2min30 trot"), C(10, "footing très facile")] });
       } else if (finisher || lvl === "debutant") {
         S2.push({ d: "rn", name: "Seuil doux", note: "Le seuil doit rester «confortablement difficile» : tu peux dire quelques mots, pas tenir une conversation. Si ça pique, ralentis.", det: "", steps: [W(15, "footing très facile + 3 lignes droites"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot très lent", injImp ? " sur surface souple" : ""), C(10, "footing facile")] });
@@ -3157,6 +3236,10 @@ function buildSessions(ctx            , slot      , phase        , prog        )
       const durCaps = ({ "5k": { lo: 40, hi: 74 }, "10k": { lo: 50, hi: 90 }, semi: { lo: 70, hi: 130 }, marathon: { lo: 90, hi: 180 }, trail: { lo: 120, hi: 255 } }                                              )[fmt] || { lo: 60, hi: 110 };
       // C23 — jamais de sortie longue CAP >3h pour un débutant (le cap passe dans bnd → R3.3 ne regonfle pas)
       if (beginner) durCaps.hi = Math.min(durCaps.hi, C23_BEGINNER_LONG_RUN_CAP_MIN);
+      // B2/R6.1 (audit v6) — pied et hanche : la sortie longue est la séance qui cumule
+      // le plus d'impacts — son plafond baisse selon la zone (pied ×0.85, hanche ×0.9).
+      if (inj.list.includes("pied")) durCaps.hi = Math.round(durCaps.hi * 0.85);
+      else if (inj.list.includes("hanche")) durCaps.hi = Math.round(durCaps.hi * 0.9);
       const durMin = P(durCaps.lo, durCaps.hi);
       // Trail (registre R4.1) : volume en TEMPS + D+ cible — jamais en km seul. Le D+ suit
       // la durée (~350-450m/h) ; descentes en contrôle, surtout avec un passif d'impact.
@@ -3187,7 +3270,7 @@ function buildSessions(ctx            , slot      , phase        , prog        )
     else if (slot === "recup") S2.push({ d: "rs", name: "Repos / gainage", det: "mobilité", steps: [] });
     else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
   } else if (sp === "swim") {
-    const shoulder = (a.injury || "").includes("epaule"), ow = a.milieu === "ow" || a.milieu === "mixte";
+    const shoulder = inj.shoulder, ow = a.milieu === "ow" || a.milieu === "mixte";
     // Limite principale déclarée par le débutant (question dédiée) : chaque réponse
     // oriente RÉELLEMENT les éducatifs vers ce qui bloque, pas un générique commun.
     // Chaque éducatif nommé porte son COMMENT FAIRE (pas juste son nom) — la séance
@@ -3207,8 +3290,11 @@ function buildSessions(ctx            , slot      , phase        , prog        )
     } else if (slot === "dur2") {
       if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Endurance + touches de vitesse", note: "Nage continue technique, plus quelques accélérations courtes de 25m : de la vitesse de forme, pas de la souffrance.", det: "", steps: [Wm(200, "souple"), Bd(1, 400, "sw.aero", "20-30s", " nage continue fractionnée", false, "sw"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " en accélérations progressives, technique maintenue", false, "sw"), Cm(100, "très souple")] });
       else if (beginner) S2.push({ d: "sw", name: "Endurance technique", note: "Priorité au geste, pas au chrono. Un seul point technique à la fois.", det: "", steps: [Wm(200, "souple"), Bd(1, 600, "sw.easy", "20-30s, le temps de respirer", " nage continue fractionnée (ex 8-12×50m) + 1 éducatif entre chaque", false, "sw"), Cm(100, "très souple")] });
-      else if (shoulder && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Jambes vitesse (épaule épargnée)", note: "Vitesse par les jambes : battements rapides avec planche, l'épaule ne travaille pas. La puissance se maintient sans risque.", det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " battements rapides avec planche (jambes seules)", false, "sw"), Bd(1, 200, "sw.easy", "", " éducatifs technique", false, "sw"), Cm(100, "souple")] });
-      else if (shoulder) S2.push({ d: "sw", name: "Jambes + technique", note: "Épaule épargnée : le travail passe par les jambes et la technique, la charge articulaire reste nulle.", det: "", steps: [Bd(1, 400, null, "", " séries battements + éducatifs · épargne épaule", false, "sw")], ...( { plainBody: true }          ) });
+      // B1 (audit v6) — les séances de substitution épaule héritent d'un BUDGET BORNÉ :
+      // sans bnd, R3.3 gonflait le bloc jusqu'aux caps génériques (+68% de volume mesuré
+      // sur swim/fond/epaule — une blessure qui AUGMENTAIT la charge).
+      else if (shoulder && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Jambes vitesse (épaule épargnée)", note: "Vitesse par les jambes : battements rapides avec planche, l'épaule ne travaille pas. La puissance se maintient sans risque.", det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " battements rapides avec planche (jambes seules)", false, "sw"), Object.assign(Bd(1, 200, "sw.easy", "", " éducatifs technique", false, "sw"), { bnd: { floor: 200, cap: 600 } }), Cm(100, "souple")] });
+      else if (shoulder) S2.push({ d: "sw", name: "Jambes + technique", note: "Épaule épargnée : le travail passe par les jambes et la technique, la charge articulaire reste nulle.", det: "", steps: [Object.assign(Bd(1, 400, null, "", " séries battements + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: 1200 } })], ...( { plainBody: true }          ) });
       else S2.push({ d: "sw", name: "Vitesse", note: "Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage.", det: "", steps: [Wm(400, "varié + 4×25m accélérations"), Bd(P(8, 12), 50, "sw.speed", "30-40s", "", false, "sw"), Cm(200, "souple")] });
     } else if (slot === "durLong") {
       const distCaps = beginner
@@ -3227,7 +3313,7 @@ function buildSessions(ctx            , slot      , phase        , prog        )
     } else if (slot === "recup") S2.push({ d: "rs", name: "Repos / épaules", det: "étirements coiffe", steps: [] });
     else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
   } else if (sp === "tri") {
-    const runInj = (a.injury || "").includes("course");
+    const runInj = inj.list.includes("course");
     const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] }                                    )[phase] || [0.5, 0.8];
     const PT = (lo        , hi        ) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
     const swimDistCaps = ({ S: { lo: 300, hi: 750 }, M: { lo: 600, hi: 1500 }, "70.3": { lo: 950, hi: 1900 }, Full: { lo: 1600, hi: 3000 } }                                              )[fmt] || { lo: 600, hi: 1500 };
@@ -3236,12 +3322,20 @@ function buildSessions(ctx            , slot      , phase        , prog        )
     // C24 — même la nage récup tri : ≥750m pour un non-débutant
     const swShortDist = beginner ? Math.min(600, Math.max(200, Math.round((swimDist * 0.4) / 50) * 50)) : Math.min(1100, Math.max(750, Math.round((swimDist * 0.6) / 50) * 50));
     const swTechDist = Math.max(beginner ? 300 : 750, Math.round((swimDist * 0.5) / 50) * 50);
-    const swMain = beginner
+    let swMain = beginner
       ? { name: "Nage seuil technique (+dist)", note: "Technique d'abord, mais quelques 100m à allure seuil contrôlée pour préparer la course.", steps: [Wm(200, "souple"), Object.assign(Bd(1, swimDist, "sw.css", "repos libre entre séries", ", fractionné en séries régulières, éducatifs entre", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(100, "relâché")] }
       : { name: "Nage seuil (+dist)", note: "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.", steps: [Wm(300, "+ 4×50m éducatifs"), Object.assign(Bd(1, swimDist, "sw.css", "15-20s", ", fractionné en séries régulières si besoin", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(200, "souple")] };
-    const swTech = beginner
+    let swTech = beginner
       ? { name: "Nage éducatifs", note: "Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force.", steps: [Wm(100, "souple"), Bd(1, swTechDist, "sw.easy", "20-30s", ", par 50m, 1 point technique à la fois — " + swimDrillGlossary, false, "sw"), Cm(100, "dos souple")] }
       : { name: "Nage vitesse", note: "Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m.", steps: [Wm(200, "+ 4×25m accélérations progressives"), Bd(1, swTechDist, "sw.aero", "30-40s sur les 50m rapides", ", dont la moitié en accélérations de 50m", false, "sw"), Cm(150, "souple")] };
+    // B1c (audit v6) — l'épaule existait pour les triathlètes dans le QUESTIONNAIRE mais
+    // pas dans le générateur (branche morte : le traitement vivait sous sp === "swim").
+    // Ici : mêmes substitutions que le nageur, au budget de la séance remplacée (bnd).
+    if (inj.shoulder) {
+      const shoulderDist = Math.max(swimDistCaps.lo, Math.round((swimDist * 0.8) / 50) * 50);
+      swMain = { name: "Nage seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute. Arrêt au moindre signal articulaire.", steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(1, shoulderDist, "sw.css", "20-30s", ", fractionné en 100m, amplitude confortable", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: shoulderDist } }), Cm(100, "souple")] };
+      swTech = { name: "Jambes + technique (épaule épargnée)", note: "Le travail passe par les jambes (battements planche) et la technique : la charge articulaire de l'épaule reste minimale.", steps: [Object.assign(Bd(1, swTechDist, null, "", " séries battements planche + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: swTechDist } })] };
+    }
     const swShort = { name: "Nage récup", note: "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.", steps: [Bd(1, swShortDist, "sw.easy", "", " souple, en blocs de 50m, respiration 3 temps · relâchement total", false, "sw")] };
     if (slot === "dur1") {
       if (dbl) S2.push({ d: "sw", name: swMain.name + " (matin)", note: swMain.note, det: "", steps: swMain.steps });
@@ -3447,7 +3541,7 @@ function buildDays(r              , refs      , hz         )           {
 function applyRunImpactCap(r              , days          , refs      , hz         )       {
   const a = r.profile;
   if (a.sport !== "run" || r.maxRunDays == null) return;
-  const injImpact = r.injuries.some((x) => ["tibia", "genou", "pied", "hanche"].includes(x));
+  const injImpact = r.inj.impact; // R6 (audit v6) — lecture unique des blessures
   const canCross = a.dispo === "quotidienne" || a.dispo === "semaine";
   for (let w = 1; w <= r.weeks; w++) {
     const wd = days.filter((d) => d.week === w);
@@ -3512,8 +3606,10 @@ function applyStrengthGrafts(r              , days          )       {
       if (day && day.sessions.some((s) => s.d !== "rs")) day.sessions.push(obj);
     };
     if (sp === "run") {
-      graft(faciles[0], { d: "rs", name: r.injuries.includes("tibia") ? "+ Renfo tibial" : "+ Renfo + gainage", det: "20min en fin de footing", steps: [] });
-      const injImpactP = r.injuries.some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x));
+      // B2 (audit v6) — la greffe de renfo est CIBLÉE par localisation : tibia → renfo
+      // tibial, hanche → gainage hanche/ITB (moyen fessier, bande ilio-tibiale).
+      graft(faciles[0], { d: "rs", name: r.injuries.includes("tibia") ? "+ Renfo tibial" : r.injuries.includes("hanche") ? "+ Gainage hanche/ITB" : "+ Renfo + gainage", det: r.injuries.includes("hanche") ? "20min moyen fessier + gainage latéral en fin de footing" : "20min en fin de footing", steps: [] });
+      const injImpactP = r.inj.impactAny;
       const beginnerR = r.beginner || r.finisher;
       let plioDet        ;
       if (injImpactP) plioDet = "renfo excentrique (pas de sauts — protection)";
@@ -3967,7 +4063,7 @@ function generateAudited(profile                , auditOpts                     
     if (audit.hardViolations.length < best.audit.hardViolations.length || audit.score > best.audit.score) best = { plan, audit };
   }
 
-  const warnings           = [];
+  const warnings           = [...(reasoned.warnings || [])];
   if (best.audit.hardViolations.length > 0) {
     warnings.push("Plan rendu avec réserves (contraintes insatisfaisables après " + MAX_ITERATIONS + " réparations) :");
     warnings.push(...best.audit.hardViolations.map((v) => "· " + v));
@@ -4416,6 +4512,7 @@ function importFitBytes(buf                          )            {
                                                                                            
 
 
+
 const HARD_ZONES = [".vo2", ".thr", ".speed", ".css"];
 const MODERATE_ZONES = [".ss", ".rp", ".frc", ".mara", ".tempo"];
 
@@ -4465,9 +4562,11 @@ function reduceDay(day       , f        , refs      , hz                        
     if (!s.steps || !s.steps.length) continue;
     for (const st of s.steps) {
       if (st.role !== "body") continue;
+      // A3 (audit v6) — les planchers ne remontent JAMAIS au-dessus de la valeur d'origine :
+      // une réduction est une réduction, même sur une séance déjà courte.
       if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.round(st.reps * f));
-      else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
-      else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+      else if (st.durationMin) st.durationMin = Math.min(st.durationMin, Math.max(10, Math.round(st.durationMin * f)));
+      else if (st.distanceM) st.distanceM = Math.min(st.distanceM, Math.max(200, Math.round((st.distanceM * f) / 25) * 25));
     }
     renderSess(s, refs, hz, baseRefs);
   }
@@ -4476,11 +4575,25 @@ function reduceDay(day       , f        , refs      , hz                        
 function enduranceReplacement(disc        , minutes        , refs      , hz                        , baseRefs      , why        )            {
   const d = (disc === "br" ? "bk" : disc)                  ;
   const zone = d === "rn" ? "rn.easy" : d === "sw" ? "sw.easy" : "bk.z2";
+  // A3 (audit v6) — un remplacement de récupération n'est PAS une séance de plan : le
+  // plancher C24 (750m) ne s'y applique pas. La distance est DÉRIVÉE des minutes allouées
+  // (arrondi à 25m vers le bas) pour ne jamais dépasser la séance qu'elle remplace.
   const s            = d === "sw"
-    ? { d, name: "Endurance souple (adaptée)", note: why, det: "", steps: [{ role: "body", distanceM: Math.max(750, Math.round(((minutes * 60) / (baseRefs.css || 130)) * 100 / 25) * 25), zone, d: "sw" }] }
+    ? { d, name: "Endurance souple (adaptée)", note: why, det: "", steps: [{ role: "body", distanceM: Math.max(200, Math.floor(((minutes * 60) / (baseRefs.css || 130)) * 100 / 25) * 25), zone, d: "sw" }] }
     : { d, name: "Endurance facile (adaptée)", note: why, det: "", steps: [{ role: "body", durationMin: minutes, zone }] };
   renderSess(s, refs, hz, baseRefs);
   return s;
+}
+
+/** A2 (audit v6, R6.1) — la localisation de la douleur choisit la discipline de
+ * remplacement : on retire la contrainte qui sollicite la zone, on ne la réduit pas.
+ * Renvoie null quand AUCUNE discipline d'endurance n'épargne la zone → repos complet. */
+function resolvePainDiscipline(mainDisc        , painLocation                    )                                            {
+  const base = mainDisc === "br" ? "bk" : mainDisc;
+  const contra = painLocation ? R6_PAIN_CONTRAINDICATION[painLocation] : undefined;
+  if (!contra || !contra.forbid.includes(base)) return { disc: base, swapped: false };
+  const alt = contra.prefer.find((d2) => !contra.forbid.includes(d2)) ?? null;
+  return { disc: alt, swapped: true };
 }
 
 function adjustDay(reasoned              , plan        , date        , snapshot                   )                {
@@ -4551,13 +4664,26 @@ function adjustDay(reasoned              , plan        , date        , snapshot 
       day.sessions = [{ d: "rs", name: "OFF (readiness)", det: "repos — 💡 " + drivers.join(" · ") + ". En affûtage, la fraîcheur prime sur tout : repos complet.", steps: [] }];
       D("ADAPT-rouge-taper", "Rouge en affûtage", "OFF", "À quelques jours de la course, on ne force jamais sur un signal rouge");
     } else if (intensity === "difficile" || intensity === "moderee") {
-      action = "replace";
       const main = day.sessions.find((s) => s.d !== "rs") ;
-      const why = drivers.join(" · ") + " — la séance de qualité est remplacée par de l'endurance : l'intensité un jour rouge coûte plus qu'elle ne rapporte.";
-      const replacementMin = Math.max(25, Math.round(originalMinutes * 0.5));
-      day.sessions = [enduranceReplacement(main.d, replacementMin, refs, reasoned.hz, reasoned.baseRefs, why)];
-      day.charge = "facile";
-      D("ADAPT-rouge", "Readiness rouge", "qualité → endurance (" + replacementMin + "min)", why);
+      // A3 — jamais plus de minutes qu'avant : le plancher de 25min cède si la séance
+      // d'origine était plus courte.
+      const replacementMin = Math.min(Math.max(1, Math.round(originalMinutes)), Math.max(25, Math.round(originalMinutes * 0.5)));
+      // A2/R6.1 — la douleur localisée retire la discipline qui sollicite la zone
+      const pain = snapshot.painFlag ? resolvePainDiscipline(main.d, snapshot.painLocation) : { disc: main.d === "br" ? "bk" : main.d, swapped: false };
+      if (pain.disc === null) {
+        action = "rest";
+        day.charge = "off";
+        day.sessions = [{ d: "rs", name: "Repos complet (douleur)", det: "repos — 💡 douleur " + (snapshot.painLocation || "signalée") + " : aucune discipline d'endurance n'épargne cette zone aujourd'hui. Le repos EST la bonne séance.", steps: [] }];
+        D("ADAPT-rouge-douleur", "Douleur " + (snapshot.painLocation || "signalée"), "repos complet", "Aucune discipline disponible n'épargne la zone douloureuse — on ne dégrade pas la séance, on l'annule (R6.1)");
+      } else {
+        action = "replace";
+        const why = pain.swapped
+          ? "douleur " + (snapshot.painLocation || "") + " signalée — l'appui sur la zone est retiré aujourd'hui : la séance passe en " + (pain.disc === "bk" ? "vélo" : pain.disc === "sw" ? "nage" : "course") + " souple (R6.1)."
+          : drivers.join(" · ") + " — la séance de qualité est remplacée par de l'endurance : l'intensité un jour rouge coûte plus qu'elle ne rapporte.";
+        day.sessions = [enduranceReplacement(pain.disc, replacementMin, refs, reasoned.hz, reasoned.baseRefs, why)];
+        day.charge = "facile";
+        D("ADAPT-rouge", "Readiness rouge", "qualité → endurance (" + replacementMin + "min)", why);
+      }
     } else {
       action = "rest";
       const deepRed = (snapshot.energy != null && snapshot.energy < 20) || (snapshot.sleepQuality === "mauvais" && snapshot.hrvStatus === "basse");
@@ -4569,7 +4695,13 @@ function adjustDay(reasoned              , plan        , date        , snapshot 
     }
   }
 
-  return { date, action, verdict, originalMinutes, adjustedMinutes: dayMinutes(day), decisions };
+  // A3 (audit v6) — l'invariant d'en-tête est ASSERTÉ, plus seulement documenté :
+  // hors « keep », un ajustement ne produit jamais plus de minutes que la séance d'origine.
+  const adjustedMinutes = dayMinutes(day);
+  if (action !== "keep" && adjustedMinutes > originalMinutes + 0.01) {
+    throw new Error("Invariant readiness violé : " + originalMinutes.toFixed(1) + " → " + adjustedMinutes.toFixed(1) + "min (" + action + ")");
+  }
+  return { date, action, verdict, originalMinutes, adjustedMinutes, decisions };
 }
 
 // ===== src/nutrition/nutritionCalculator.ts =====

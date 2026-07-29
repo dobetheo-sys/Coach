@@ -95,6 +95,10 @@ export interface ReasonedPlan {
   comp: boolean;
   dbl: boolean;
   injuries: string[];
+  /** R6 (audit v6) — lecture unique des blessures : localisations + drapeaux dérivés. */
+  inj: import("./constraintMatrix.ts").InjuryInfo;
+  /** Avertissements du raisonnement (blessures multiples, durée contrainte…) — fusionnés dans _v2.warnings. */
+  warnings: string[];
   baseRefs: { ftp: number; thrPace: number; css: number };
   hz: Record<string, string> & { fcMax?: number };
 }

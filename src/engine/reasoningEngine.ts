@@ -11,7 +11,7 @@ import {
   MIN_WEEKS, HISTORY_CAPS, UTIL, MARGIN, RECUP_FACTORS, PHASE_PCTS,
   BANDS, C22_MAX_WEEKLY_GROWTH, RECUP_WEEK_FACTOR, RECUP_EVERY,
   BEGINNER_SWIM_VOLPEAK_CAP_H, SWIM_TIME_FACTOR, C20_BEGINNER_SWIM_H_PER_SESSION,
-  MAX_RUN_DAYS, AVG_SESSION_H,
+  MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, readInjuries,
 } from "./constraintMatrix.ts";
 
 /** Zones cardio (Karvonen si FC repos connue, sinon %FCmax) — port V1.5. */
@@ -38,6 +38,7 @@ export interface ReasoningResult {
 export class TrainingReasoningEngine {
   analyze(a: AthleteProfile): ReasonedPlan {
     const decisions: Decision[] = [];
+    const warnings: string[] = [];
     const D = (id: string, what: string, val: string | number, why: string) => decisions.push({ id, what, val, why });
     const sp = a.sport, fmt = a.format;
     const history = a.history || "confirme";
@@ -73,8 +74,21 @@ export class TrainingReasoningEngine {
     if (!comp) D("marge", "Marge de sécurité", "-10%", "Hors compétition, 10% de marge sur tous les plafonds (santé d'abord)");
 
     // 1B — indicateurs de récupération
-    const recupFactor = (a.sleep === "court" ? RECUP_FACTORS.sleepCourt : 1) * (a.life_load === "lourde" ? RECUP_FACTORS.lifeLourde : 1);
+    let recupFactor = (a.sleep === "court" ? RECUP_FACTORS.sleepCourt : 1) * (a.life_load === "lourde" ? RECUP_FACTORS.lifeLourde : 1);
     if (recupFactor < 1) D("1B", "Récupération dégradée", "volume ×" + recupFactor.toFixed(2), "Sommeil court et/ou charge de vie lourde : le contenu baisse réellement");
+
+    // R6.2 (audit v6, B1/B3) — une blessure déclarée réduit RÉELLEMENT le plafond de
+    // volume ; plusieurs zones fragiles → approche ultra-conservatrice, comme la carte
+    // de règle affichée à l'athlète le promet depuis toujours.
+    const inj = readInjuries(a.injury);
+    const injFactor = inj.count >= 2 ? R6_INJURY_LOAD_FACTORS.multiples : inj.count === 1 ? R6_INJURY_LOAD_FACTORS.une : 1;
+    if (injFactor < 1) {
+      recupFactor *= injFactor;
+      D("R6.2", "Blessure déclarée", "volume ×" + injFactor.toFixed(2), inj.count >= 2
+        ? "Plusieurs zones fragiles (" + inj.list.join(", ") + ") : approche ultra-conservatrice — progression ralentie, bilan médical avant montée en charge"
+        : "Zone fragile (" + inj.list.join(", ") + ") : le plafond de volume baisse de 10% — « une blessure décide quoi adapter », le volume en fait partie");
+      if (inj.count >= 2) warnings.push("Plusieurs blessures déclarées (" + inj.list.join(", ") + ") : un bilan médical est recommandé avant la montée en charge — le plan est volontairement conservateur (-20% de volume).");
+    }
 
     const volMax = parseInt(a.vol_max || "10");
     const sessionScale = Math.min(1, (Math.min(volMax, caps, util) * marg) / util) * recupFactor;
@@ -100,13 +114,15 @@ export class TrainingReasoningEngine {
     const budgetPerWeek = Math.min(parseInt(a.sessions_max || "7") || 7, volSessCap);
     D("budget", "Séances par semaine", budgetPerWeek, "Budget déclaré ∧ budget implicite du volume (" + volBudget.toFixed(1) + "h ÷ " + (avgH ?? "—") + "h/séance)");
 
-    const injuries = (a.injury || "").split(",").filter((x) => x && x !== "aucune");
+    const injuries = inj.list;
     let maxRunDays: number | null = null;
     if (sp === "run") {
-      const injImpact = injuries.some((x) => ["tibia", "genou", "pied", "hanche"].includes(x));
       maxRunDays = MAX_RUN_DAYS[history] ?? 5;
-      if (injImpact) maxRunDays = Math.max(3, maxRunDays - 1);
-      D("impact", "Jours de course max", maxRunDays + "/semaine", "La course est le sport à plus fort impact" + (injImpact ? " — blessure d'impact déclarée, -1 jour" : ""));
+      if (inj.impact) maxRunDays = Math.max(3, maxRunDays - 1);
+      // B2 (audit v6) — le tibia (périostite) est LA blessure de l'impact répété : le
+      // plafond de jours de course est renforcé d'un jour supplémentaire.
+      if (inj.list.includes("tibia")) maxRunDays = Math.max(3, maxRunDays - 1);
+      D("impact", "Jours de course max", maxRunDays + "/semaine", "La course est le sport à plus fort impact" + (inj.impact ? " — blessure d'impact déclarée, -1 jour" + (inj.list.includes("tibia") ? " (-1 de plus : le tibia est une blessure d'impact répété)" : "") : ""));
     }
 
     // ---- 4. Calculer la charge : phases (C19) et courbe (bands + C22) ----
@@ -172,6 +188,8 @@ export class TrainingReasoningEngine {
       comp,
       dbl: a.doubles === "oui",
       injuries,
+      inj,
+      warnings,
       baseRefs: { ftp, thrPace, css },
       hz,
     };

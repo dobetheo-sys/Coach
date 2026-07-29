@@ -161,7 +161,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
 function applyRunImpactCap(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZones): void {
   const a = r.profile;
   if (a.sport !== "run" || r.maxRunDays == null) return;
-  const injImpact = r.injuries.some((x) => ["tibia", "genou", "pied", "hanche"].includes(x));
+  const injImpact = r.inj.impact; // R6 (audit v6) — lecture unique des blessures
   const canCross = a.dispo === "quotidienne" || a.dispo === "semaine";
   for (let w = 1; w <= r.weeks; w++) {
     const wd = days.filter((d) => d.week === w);
@@ -226,8 +226,10 @@ function applyStrengthGrafts(r: ReasonedPlan, days: GenDay[]): void {
       if (day && day.sessions.some((s) => s.d !== "rs")) day.sessions.push(obj);
     };
     if (sp === "run") {
-      graft(faciles[0], { d: "rs", name: r.injuries.includes("tibia") ? "+ Renfo tibial" : "+ Renfo + gainage", det: "20min en fin de footing", steps: [] });
-      const injImpactP = r.injuries.some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x));
+      // B2 (audit v6) — la greffe de renfo est CIBLÉE par localisation : tibia → renfo
+      // tibial, hanche → gainage hanche/ITB (moyen fessier, bande ilio-tibiale).
+      graft(faciles[0], { d: "rs", name: r.injuries.includes("tibia") ? "+ Renfo tibial" : r.injuries.includes("hanche") ? "+ Gainage hanche/ITB" : "+ Renfo + gainage", det: r.injuries.includes("hanche") ? "20min moyen fessier + gainage latéral en fin de footing" : "20min en fin de footing", steps: [] });
+      const injImpactP = r.inj.impactAny;
       const beginnerR = r.beginner || r.finisher;
       let plioDet: string;
       if (injImpactP) plioDet = "renfo excentrique (pas de sauts — protection)";
