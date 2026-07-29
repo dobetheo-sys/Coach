@@ -14,6 +14,7 @@
     "demo:retention": "node src/audit/retentionDemo.ts",
     "build:app": "node scripts/buildApp.mjs",
     "check:app": "node scripts/buildApp.mjs --check",
+    "audit:v6": "node audit_v6.mjs Coach_Pro_V1.5.html",
     "test:e2e": "node tests/e2e/run-all.mjs"
   },
   "devDependencies": {

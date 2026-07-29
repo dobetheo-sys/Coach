@@ -35,6 +35,7 @@ export type Confidence = "full" | "partial" | "nominal" | "rest";
 export interface SessionLoad {
   minutes: number;
   meters: number | null; // natation uniquement
+  recoveryMin?: number; // récup inter-répétitions comptée dans minutes (écart de métrique documenté)
   confidence: Confidence;
   flags: string[];
   generatorMin?: number; // s.min du générateur, pour le recoupement d'estimateurs
@@ -215,6 +216,7 @@ export function sessionLoadFromSteps(s: RawSession, refs: AthleteRefs): SessionL
   return {
     minutes,
     meters: s.d === "sw" || meters > 0 ? meters || null : null,
+    recoveryMin: recovery,
     confidence: "full",
     flags,
     generatorMin: s.min,
@@ -301,7 +303,7 @@ export function sessionLoadFromText(s: RawSession): SessionLoad {
     if (paceMatch) paceS = Number(paceMatch[1]) * 60 + Number(paceMatch[2]);
     else flags.push("allure /100m absente du texte → repli " + DEFAULT_SWIM_PACE_S_PER_100M + "s/100m");
     const minutes = (meters / 100) * (paceS / 60) + recoveryMin;
-    return { minutes, meters, confidence: allParsed && paceMatch ? "full" : "partial", flags };
+    return { minutes, meters, recoveryMin, confidence: allParsed && paceMatch ? "full" : "partial", flags };
   }
 
   // Sports en minutes : rn / bk / br

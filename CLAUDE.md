@@ -43,6 +43,11 @@ dépôt — historique git si besoin.
 - `npm run build:app` — bundle le moteur V2 dans `Coach_Pro_V1.5.html` (auto-testé avant
   écriture). **À relancer après toute modification de `src/`** ; `npm run check:app` (CI)
   refuse un HTML désynchronisé.
+- `npm run audit:v6` — **banc de régression externe** (audit du 29/07/2026) : 38 tests à
+  ID stable contre le bundle du monolithe, zéro dépendance. Exit 1 à la moindre RÉGRESSION
+  (test attendu vert qui échoue) ; la dette connue (`expect:'fail'`) ne bloque pas la CI.
+  Quand un défaut est corrigé, passer son `expect` à `'pass'` **dans le même commit** :
+  il devient un garde-fou permanent.
 - `npm run test:e2e` — 4 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
   job CI `e2e` séparé). Seule exception au zéro-dépendance : Playwright, devDependency de
   TEST uniquement (`npm install` d'abord ; local : `/opt/pw-browsers/chromium` détecté,
@@ -218,6 +223,21 @@ garde CI 5 fractions) ; avatar **16 niveaux** mix « équipement + décor » (ch
 utilisateur), XP immédiat (+10/séance validée, repos compris — niveau 2 dès la 1re
 séance), seuils non linéaires croissants, chaque niveau débloque UN paramètre visuel
 (`unlock`), teaser « débloque … » au Profil, 6 gardes CI (demo:retention).
+**Audit externe v6 livré** (29/07/2026, voir ARCHITECTURE.md « Audit externe v6 ») : un
+audit indépendant est arrivé avec son banc de régression exécutable (`audit_v6.mjs`,
+38 tests à ID stable, `npm run audit:v6` — **9e gate CI**, exit 1 à la moindre
+RÉGRESSION ; la dette connue ne bloque pas). Passé de 10 verts/28 dettes à
+**35 verts · 3 dettes · 0 régression**. Sécurité d'abord : la douleur localisée change
+de DISCIPLINE (R6.1), un jour rouge ne peut plus augmenter la charge (invariant asserté),
+une blessure allège toujours (R6.2 + passe de référence), l'épaule marche en tri, les
+4 localisations donnent 4 plans. Promesses : `sessions_max` compte des SÉANCES (C1), la
+date de course a 3 branches explicites (C2/C3), l'âge module (R6.3 : mineur sans VO2max,
+master 60+), bornes physiologiques et garde IMC, parseur d'allure UNIQUE. Les planchers de
+séance ne gagnent plus contre la courbe (C15/C23 au niveau séance, plancher C24b, lissage
+sur le livré). Readiness : objectif vs subjectif séparés, heures de sommeil et FC au réveil
+enfin collectées, validation de schéma. Export : contrat `durationMin`/`_min` réparé, ICS
+conforme RFC 5545. **3 dettes documentées avec leur arbitrage** (D2, D3 : structure du pic
+vs C22 sur plans saturés, F2 : 43-44% au lieu de 45%).
 **R10 livré** (retour d'un ami entraîneur, voir ARCHITECTURE.md « R10 ») : **rampe
 `vol_recent`** — le plan part du volume RÉEL des 3-6 derniers mois (question obligatoire
 du questionnaire + Profil, semaine 1 ≤ ×1.1 puis ≤ +10 %/sem jusqu'à rejoindre la courbe,

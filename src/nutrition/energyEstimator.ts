@@ -58,6 +58,18 @@ export const ENERGY_DISCLAIMER =
 const eRound10 = (v: number): number => Math.round(v / 10) * 10;
 const eRound5 = (v: number): number => Math.round(v / 5) * 5;
 
+/** E4 (audit v6) — garde IMC : hors [15, 45], les équations de dépense ne sont pas
+ * validées, et un tableau calorique propre et autoritaire est exactement le mauvais
+ * objet à mettre sous les yeux de quelqu'un dans cette situation. On n'affiche RIEN
+ * (pas d'estimation dégradée), et l'UI peut afficher ce message à la place. */
+export const BMI_VALID_RANGE: [number, number] = [15, 45];
+export function bmiGuardNotice(weightKg?: number | null, heightCm?: number | null): string | null {
+  if (!weightKg || !heightCm || !(weightKg > 0) || !(heightCm > 0)) return null;
+  const bmi = weightKg / Math.pow(heightCm / 100, 2);
+  if (bmi >= BMI_VALID_RANGE[0] && bmi <= BMI_VALID_RANGE[1]) return null;
+  return "Les chiffres saisis sortent des bornes sur lesquelles les équations de dépense énergétique sont validées : aucune estimation n'est affichée. Si ces valeurs sont exactes, un accompagnement médical ou diététique sera plus utile qu'un calculateur.";
+}
+
 /** N8 — métabolisme de base (Mifflin-St Jeor), en enveloppe [min, max] honnête :
  *  chaque donnée manquante élargit la fourchette au lieu d'inventer une précision. */
 export function basalRange(weightKg: number, heightCm?: number | null, age?: number | null, sex?: string | null): { bmr: [number, number]; approximate: boolean } {
@@ -80,6 +92,7 @@ export function basalRange(weightKg: number, heightCm?: number | null, age?: num
 export function dailyEnergy(input: EnergyInput): DailyEnergyEstimate | null {
   const w = input.weightKg;
   if (!w || !(w > 25) || !(w < 300)) return null;
+  if (bmiGuardNotice(w, input.heightCm)) return null; // E4 — hors bornes de validation : rien
   const D: NutritionDecision[] = [];
   const { bmr, approximate } = basalRange(w, input.heightCm, input.age, input.sex);
   D.push({ id: "N8", what: "Métabolisme de base", val: bmr[0] + "–" + bmr[1] + " kcal/j", why: "équation de Mifflin-St Jeor (la mieux validée, ADA 2005)" + (approximate ? " — fourchette élargie car taille/âge/sexe incomplets au Profil" : " avec tes données du Profil") + " ; ce que ton corps dépense au repos complet" });

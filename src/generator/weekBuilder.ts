@@ -50,6 +50,12 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     if (dic >= cycleLen) {
       cyc++; dic = 0;
       isR = ph.id !== "taper" && sinceR >= r.recupEvery - 1;
+      // D2 (audit v6) — la cadence de récup ne tombe JAMAIS sur la phase peak quand
+      // celle-ci est courte (≤ ~1 semaine) : sur un petit plan, la seule semaine de pic
+      // devenait une récup, et « la semaine max du plan » atterrissait mécaniquement en
+      // spec — violation structurelle. La récup glisse à la semaine suivante (taper la refuse
+      // déjà, la détente d'affûtage fait office de récupération).
+      if (isR && ph.id === "peak" && ph.weeks <= 1) isR = false;
       if (isR) sinceR = 0; else sinceR++;
       sch = schema(r.use10, ph.id, isR);
     }
@@ -120,7 +126,9 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   // des semaines. L'ancre est désormais plan_start (posée par l'UI à la PREMIÈRE génération,
   // persistée dans les réponses) : le plan avance dans le temps comme un vrai plan.
   const anchorT = a.plan_start ? new Date(a.plan_start + "T00:00:00Z").getTime() : Date.now();
-  const start = a.race_date
+  // C3 (audit v6) — course au-delà de l'horizon (raceBeyondPlan) : le plan démarre
+  // MAINTENANT (base longue), il ne s'ancre pas sur une course dans 2 ans.
+  const start = a.race_date && !r.raceBeyondPlan
     ? mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - (r.weeks - 1) * 7 * MS
     : mondayOf(isFinite(anchorT) ? anchorT : Date.now());
   const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
@@ -161,7 +169,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
 function applyRunImpactCap(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZones): void {
   const a = r.profile;
   if (a.sport !== "run" || r.maxRunDays == null) return;
-  const injImpact = r.injuries.some((x) => ["tibia", "genou", "pied", "hanche"].includes(x));
+  const injImpact = r.inj.impact; // R6 (audit v6) — lecture unique des blessures
   const canCross = a.dispo === "quotidienne" || a.dispo === "semaine";
   for (let w = 1; w <= r.weeks; w++) {
     const wd = days.filter((d) => d.week === w);
@@ -188,26 +196,51 @@ function applyRunImpactCap(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZo
   }
 }
 
-/** Budget de séances : jamais plus de jours actifs que le budget (récup comprises). */
+/**
+ * C1 (audit v6) — budget de SÉANCES, pas de jours. La question posée est « séances/sem
+ * tenables sans sacrifice ? » : avec doubles=oui, compter les jours livrait 9 séances à
+ * qui en avait déclaré 7. Le retrait va du moins coûteux au plus coûteux :
+ *   1. 2ᵉ séance des jours doubles (faciles d'abord)  2. jours faciles entiers
+ *   3. jours durs hors sortie longue                  4. dernier recours
+ * `durLong` et les jours `forced` ne sont JAMAIS touchés (comportement d'origine, correct).
+ */
 function applySessionBudget(r: ReasonedPlan, days: GenDay[]): void {
   const toOff = (d: GenDay) => {
     d.charge = "off"; d.slot = "off";
     d.sessions = [{ d: "rs", name: "OFF (budget séances)", det: "repos — respect de ta disponibilité déclarée", steps: [] }];
   };
+  const nSess = (d: GenDay) => d.sessions.filter((s) => s.d !== "rs").length;
   for (let w = 1; w <= r.weeks; w++) {
     const wd = days.filter((d) => d.week === w);
     const activeNow = () => wd.filter((d) => d.charge !== "off" && d.charge !== "recup");
-    let over = activeNow().length - r.budgetPerWeek;
+    const totalSessions = () => wd.reduce((t, d) => t + nSess(d), 0);
+    let over = totalSessions() - r.budgetPerWeek;
     if (over <= 0) continue;
-    const fac = activeNow().filter((d) => d.charge === "facile" && !d.forced);
-    for (let i = fac.length - 1; i >= 0 && over > 0; i--) { toOff(fac[i]); over--; }
+    // 1. les journées à 2 séances rendent leur séance secondaire (la plus légère, jamais
+    // la longue ni le brick) — le rythme de la semaine est préservé, seule la densité baisse
+    const dbls = () => activeNow().filter((d) => nSess(d) > 1);
+    for (const d of [...dbls().filter((x) => x.charge === "facile"), ...dbls().filter((x) => x.charge !== "facile")]) {
+      while (over > 0 && nSess(d) > 1) {
+        const cand = d.sessions.map((s, i) => ({ s, i })).filter((x) => x.s.d !== "rs" && !x.s.long && !x.s.brick);
+        if (!cand.length) break;
+        const victim = cand.reduce((x, y) => ((y.s.min || 0) < (x.s.min || 0) ? y : x));
+        d.sessions.splice(victim.i, 1);
+        over--;
+      }
+      if (over <= 0) break;
+    }
+    // 2. puis des journées entières, faciles d'abord
     if (over > 0) {
-      const durs = activeNow().filter((d) => d.charge === "dur" && !d.forced && d.slot !== "durLong");
-      for (let i = durs.length - 1; i >= 0 && over > 0; i--) { toOff(durs[i]); over--; }
+      const fac = activeNow().filter((d) => d.charge === "facile" && !d.forced);
+      for (let i = fac.length - 1; i >= 0 && over > 0; i--) { over -= nSess(fac[i]); toOff(fac[i]); }
     }
     if (over > 0) {
-      const any = activeNow().filter((d) => !d.forced);
-      for (let i = any.length - 1; i >= 0 && over > 0; i--) { toOff(any[i]); over--; }
+      const durs = activeNow().filter((d) => d.charge === "dur" && !d.forced && d.slot !== "durLong");
+      for (let i = durs.length - 1; i >= 0 && over > 0; i--) { over -= nSess(durs[i]); toOff(durs[i]); }
+    }
+    if (over > 0) {
+      const any = activeNow().filter((d) => !d.forced && d.slot !== "durLong");
+      for (let i = any.length - 1; i >= 0 && over > 0; i--) { over -= nSess(any[i]); toOff(any[i]); }
     }
   }
 }
@@ -226,8 +259,10 @@ function applyStrengthGrafts(r: ReasonedPlan, days: GenDay[]): void {
       if (day && day.sessions.some((s) => s.d !== "rs")) day.sessions.push(obj);
     };
     if (sp === "run") {
-      graft(faciles[0], { d: "rs", name: r.injuries.includes("tibia") ? "+ Renfo tibial" : "+ Renfo + gainage", det: "20min en fin de footing", steps: [] });
-      const injImpactP = r.injuries.some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x));
+      // B2 (audit v6) — la greffe de renfo est CIBLÉE par localisation : tibia → renfo
+      // tibial, hanche → gainage hanche/ITB (moyen fessier, bande ilio-tibiale).
+      graft(faciles[0], { d: "rs", name: r.injuries.includes("tibia") ? "+ Renfo tibial" : r.injuries.includes("hanche") ? "+ Gainage hanche/ITB" : "+ Renfo + gainage", det: r.injuries.includes("hanche") ? "20min moyen fessier + gainage latéral en fin de footing" : "20min en fin de footing", steps: [] });
+      const injImpactP = r.inj.impactAny;
       const beginnerR = r.beginner || r.finisher;
       let plioDet: string;
       if (injImpactP) plioDet = "renfo excentrique (pas de sauts — protection)";

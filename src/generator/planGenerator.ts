@@ -11,19 +11,30 @@
 import type { AthleteProfile, ReasonedPlan, V1Plan, V1Session, V1Step, V1Week } from "../engine/types.ts";
 import {
   BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH,
+  C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
   CAP_BRICK_BIKE, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, type Refs } from "./renderer.ts";
+import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
 
 interface BoundedSession extends V1Session {
   social?: boolean;
 }
 
-export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned: ReasonedPlan } {
+export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: boolean }): { plan: V1Plan; reasoned: ReasonedPlan } {
   const engine = new TrainingReasoningEngine();
   const r = engine.analyze(profile);
+  // R6.2/R6.3 (audit v6, B1) — passe de référence : le plan « sans blessure ni facteur
+  // d'âge » sert de PLAFOND au plan réel. Sans elle, la quantification des répétitions et
+  // les planchers de séance pouvaient rendre un plan blessé plus gros (+3% mesuré) : une
+  // blessure déclarée doit TOUJOURS alléger, jamais alourdir (priorité n°2 du manifeste).
+  const refWeekCaps: number[] | null = !opts?.noLoadFactor && r.loadFactor < 1
+    ? generatePlan(profile, { noLoadFactor: true }).plan.weeks.map((w) =>
+        w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0))
+    : null;
+  if (opts?.noLoadFactor) r.loadFactor = 1;
   const a = profile;
   const fmt = a.format;
   const refs: Refs = { ...r.baseRefs };
@@ -85,6 +96,16 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
   }
 
   const weekMin = (wd: GenDay[]) => wd.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0);
+  // D3 (audit v6) — en NATATION, la métrique de charge de l'auditeur (récup entre
+  // répétitions comprise) diverge fortement de s.min : sur la fenêtre saturée du débutant,
+  // le générateur croyait la semaine lisse là où l'auditeur voyait un saut. Les passes de
+  // lissage utilisent donc SA mesure pour ce sport — on lisse ce qui est mesuré.
+  const _auditRefs: AthleteRefs = { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 };
+  // Le lissage retient la mesure la PLUS GRANDE des deux (s.min du plan, métrique auditeur) :
+  // les deux lectures doivent tenir, on ne lisse pas l'une en cassant l'autre.
+  const weekMinSmooth = a.sport === "swim" || a.sport === "tri"
+    ? (wd: GenDay[]) => Math.max(weekMin(wd), wd.reduce((t, d) => t + d.sessions.reduce((u, s) => u + sessionLoad(s, _auditRefs).minutes, 0), 0))
+    : weekMin;
   const renderWeek = (wd: GenDay[]) =>
     wd.forEach((d) => d.sessions.forEach((s) => {
       if (s.steps && s.steps.length) renderSess(s, refs, r.hz, r.baseRefs);
@@ -101,7 +122,10 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
     const b = BANDS[id] || [0.6, 0.9];
     return b[0] + (b[1] - b[0]) * Math.max(0, Math.min(1, prog));
   };
-  const capH = parseInt(a.vol_max || "10");
+  // C3 — plafond dur de la semaine. R6.2/R6.3 (audit v6, B1) : une blessure ou l'âge
+  // abaissent AUSSI ce plafond — sans ça, les planchers de séance regarnissaient la semaine
+  // jusqu'à l'ancien plafond et un plan « blessé » pouvait livrer plus (+3% mesuré).
+  const capH = parseInt(a.vol_max || "10") * (r.loadFactor < 1 ? r.loadFactor : 1);
   let peakH = r.peakH;
 
   // ---- V2.1 — sonde de capacité : que permettent réellement les plafonds au pic ? ----
@@ -130,6 +154,10 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
       }
     }
   }
+  // R6.2/R6.3 (audit v6) — blessures et âge réduisent la promesse APRÈS la sonde : la
+  // réduction porte sur la cible livrable mesurée, pas sur les tailles initiales de
+  // séances (où la quantification des répétitions la rendait chaotique).
+  if (r.loadFactor < 1) peakH *= r.loadFactor;
 
   // ---- Boucle de volume : courbe (bands + C22) → R3.3 → garde C3 → R3.13 ----
   // R10 — point de départ de l'athlète : si le volume RÉCENT (3-6 derniers mois) est
@@ -142,6 +170,54 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
   const wl: V1Week[] = [];
   let _maxChargeMin = 0;
   let _prevLw = 0;
+  // D3/D4/D10 (audit v6) — la courbe se lisse sur les minutes LIVRÉES, pas seulement sur
+  // la charge modélisée : les planchers de séance font dériver le rendu, alors la cible
+  // de chaque semaine se cale sur ce qui a réellement été rendu la semaine d'avant.
+  let _lastWeekMin = 0; // minutes livrées de la semaine précédente (toutes)
+  let _prevChargeMin = 0; // minutes livrées de la dernière semaine de CHARGE
+  // Quand les planchers bloquent le scaling vers le bas, la FRÉQUENCE cède (même principe
+  // que R3.13 en affûtage) : le jour facile le plus léger passe OFF.
+  const cutLightestEasyDay = (wd2: GenDay[], why: string, minActive = 3): boolean => {
+    const active = wd2.filter((d) => d.charge !== "off" && d.sessions.some((s) => s.d !== "rs"));
+    if (active.length <= minActive) return false;
+    const cand = active.filter((d) => (d.charge === "facile" || d.charge === "recup") && !d.forced && !d.sessions.some((s) => s.long || s.brick));
+    if (!cand.length) return false;
+    const dayMin = (d2: GenDay) => d2.sessions.reduce((t, s) => t + (s.min || 0), 0);
+    const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
+    victim.charge = "off";
+    victim.slot = "off";
+    victim.sessions = [{ d: "rs", name: "OFF (lissage)", det: "repos — " + why, steps: [] }];
+    return true;
+  };
+  // Coupe par SÉANCE (plus fine que par jour) : la plus petite séance non-longue saute.
+  // minRemainMin : ne jamais couper en-dessous (une coupe trop profonde crée le saut
+  // de charge qu'elle voulait éviter, mesuré +87% sur bike/crit).
+  const cutSmallestSessionIn = (wd2: GenDay[], minRemainMin = 0): boolean => {
+    const cur = weekMin(wd2);
+    let victim: { d: GenDay; si: number; min: number } | null = null;
+    for (const skipForced of [true, false]) {
+      for (const d of wd2) {
+        if (skipForced && d.forced) continue;
+        d.sessions.forEach((s, si) => {
+          if (s.d === "rs" || s.long || s.brick) return;
+          const m = s.min || 0;
+          if (!victim || m < victim.min) victim = { d, si, min: m };
+        });
+      }
+      if (victim) break; // repli : si tous les jours candidats sont « forcés », on coupe quand même une séance (jamais longue/brick)
+    }
+    if (!victim) return false;
+    const v = victim as { d: GenDay; si: number; min: number };
+    if (minRemainMin > 0 && cur - v.min < minRemainMin) return false;
+    v.d.sessions.splice(v.si, 1);
+    if (!v.d.sessions.some((s) => s.d !== "rs")) {
+      v.d.charge = "off";
+      v.d.slot = "off";
+      v.d.sessions = [{ d: "rs", name: "OFF (équilibre du bloc)", det: "repos — la semaine la plus chargée du plan reste la semaine de pic", steps: [] }];
+    }
+    return true;
+  };
+  const nSessIn = (wd2: GenDay[]) => wd2.reduce((t, d) => t + d.sessions.filter((s) => s.d !== "rs").length, 0);
   for (let w = 0; w < r.weeks; w++) {
     const ph = r.phases.find((p) => w >= p.start && w < p.end) || r.phases[4];
     const prog = ph.weeks > 1 ? (w - ph.start) / (ph.weeks - 1) : ph.id === "taper" ? 0.5 : 1;
@@ -168,6 +244,14 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
         if (_rampCap >= peakH) _rampCap = Infinity; // la rampe a rejoint la courbe — elle s'efface
       }
     }
+    // D3/D4/D10 (audit v6) — cible calée sur le LIVRÉ de la semaine précédente :
+    // charge ≤ dernière charge ×C22 · récup ≤ semaine précédente · affûtage jamais remontant.
+    // R6.2/R6.3 (audit v6, B1) — plafond de référence : jamais plus que le même plan sans
+    // blessure ni facteur d'âge, semaine par semaine. Garantie structurelle, pas un réglage.
+    if (refWeekCaps && refWeekCaps[w] != null) targetH = Math.min(targetH, (refWeekCaps[w] / 60) * r.loadFactor);
+    if (ph.id !== "taper" && !isRW && _prevChargeMin > 0) targetH = Math.min(targetH, (_prevChargeMin / 60) * C22_MAX_WEEKLY_GROWTH);
+    if (isRW && _lastWeekMin > 0) targetH = Math.min(targetH, (_lastWeekMin / 60) * 0.95);
+    if (ph.id === "taper" && _lastWeekMin > 0) targetH = Math.min(targetH, (_lastWeekMin / 60) * 0.98);
     // R3.3 — ajuster le corps des séances à la cible (itératif)
     for (let it = 0; it < 5; it++) {
       renderWeek(wd);
@@ -192,22 +276,93 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
       }));
       renderWeek(wd);
     }
-    // C24 — plancher de SÉANCE nage non-débutant : avec des cibles honnêtes (sonde V2.1),
-    // R3.3 réduit aussi les séances de qualité — les blocs à répétitions n'ont pas de
-    // plancher de total. On remonte la séance entière à ≥750m si le scaling l'a fait tomber.
-    if (a.sport !== "run" && !r.beginner) {
+    // C24/C24b — plancher de SÉANCE nage : avec des cibles honnêtes (sonde V2.1), R3.3
+    // réduit aussi les séances de qualité — les blocs à répétitions n'ont pas de plancher
+    // de total. On remonte la séance entière : ≥750m (non-débutant), ≥600m (débutant, D6 —
+    // le manifeste interdit la « sortie piscine qui ne vaut pas le déplacement » à tous).
+    if (a.sport !== "run") {
+      const swFloor = r.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : 750;
+      const raised: { d: GenDay; s: V1Session }[] = [];
       for (const d of wd)
         for (const s of d.sessions) {
           if (s.d !== "sw" || !s.steps || !s.steps.length) continue;
           const meters = s.steps.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
-          if (meters === 0 || meters >= 750) continue;
+          if (meters === 0 || meters >= swFloor) continue;
           const body = s.steps.filter((st) => st.role === "body" && st.distanceM != null).sort((x, y) => (y.reps || 1) * (y.distanceM || 0) - (x.reps || 1) * (x.distanceM || 0))[0];
           if (!body || !body.distanceM) continue;
-          const missing = 750 - meters;
+          const missing = swFloor - meters;
           if ((body.reps || 1) > 1) body.reps = (body.reps || 1) + Math.ceil(missing / body.distanceM);
           else body.distanceM = Math.ceil((body.distanceM + missing) / 25) * 25;
+          raised.push({ d, s });
         }
       renderWeek(wd);
+      // D6/B1 (audit v6) — si les remontées au plancher font déborder la semaine de sa
+      // cible, la FRÉQUENCE cède, pas la taille : la plus petite séance remontée saute
+      // (une piscine sous le plancher ne vaut pas le déplacement ; la gonfler au-delà du
+      // budget gonflerait la semaine — mesuré +5% sur les plans blessés).
+      // jamais en semaine de PEAK : c'est elle qui doit rester la plus grosse du plan
+      for (let g = 0; g < 2 && ph.id !== "peak" && raised.length && weekMin(wd) > targetH * 60 * 1.03; g++) {
+        raised.sort((x, y) => (x.s.min || 0) - (y.s.min || 0));
+        const victim = raised.shift()!;
+        if (victim.d.forced || victim.s.long) continue;
+        const idx = victim.d.sessions.indexOf(victim.s);
+        if (idx < 0) continue;
+        victim.d.sessions.splice(idx, 1);
+        if (!victim.d.sessions.some((x) => x.d !== "rs")) {
+          victim.d.charge = "off";
+          victim.d.slot = "off";
+          victim.d.sessions = [{ d: "rs", name: "OFF (fréquence nage)", det: "repos — une séance piscine sous le plancher ne vaut pas le déplacement : la fréquence cède, pas la taille", steps: [] }];
+        }
+        renderWeek(wd);
+      }
+    }
+    // D5 (audit v6) — C15 s'applique à la SÉANCE (tous blocs confondus), pas au seul bloc
+    // body : échauffement 200m + corps 850m + retour 100m = 1150m violait le plafond en
+    // silence. Le corps cède, jamais l'échauffement ni le retour au calme (valeur technique).
+    if (r.beginner && a.sport !== "run") {
+      let changed = false;
+      for (const d of wd)
+        for (const s of d.sessions) {
+          if (s.d !== "sw" || !s.steps || !s.steps.length) continue;
+          const tot = s.steps.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+          if (tot <= C15_BEGINNER_SWIM_SESSION_CAP_M) continue;
+          const aux = s.steps.filter((st) => st.role !== "body").reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+          const bodyTot = tot - aux;
+          const bodyCap = Math.max(100, C15_BEGINNER_SWIM_SESSION_CAP_M - aux);
+          if (bodyTot <= bodyCap) continue;
+          const f = bodyCap / bodyTot;
+          for (const st of s.steps) {
+            if (st.role !== "body" || st.distanceM == null) continue;
+            if ((st.reps || 1) > 1) st.reps = Math.max(1, Math.floor((st.reps || 1) * f));
+            else st.distanceM = Math.max(100, Math.floor((st.distanceM * f) / 25) * 25);
+          }
+          changed = true;
+        }
+      if (changed) renderWeek(wd);
+    }
+    // D7 (audit v6) — C23 s'applique au TOTAL de séance course débutant (≤3h) : le cap de
+    // bloc laissait les footings sans bornes gonfler à 3h40 via R3.3.
+    if (r.beginner) {
+      let changed = false;
+      for (const d of wd)
+        for (const s of d.sessions) {
+          if (s.d !== "rn" || !s.steps || !s.steps.length || (s.min || 0) <= C23_BEGINNER_LONG_RUN_CAP_MIN) continue;
+          let over = (s.min || 0) - C23_BEGINNER_LONG_RUN_CAP_MIN;
+          const bodies = s.steps.filter((st) => st.role === "body" && st.durationMin != null).sort((x, y) => (y.reps || 1) * (y.durationMin || 0) - (x.reps || 1) * (x.durationMin || 0));
+          for (const st of bodies) {
+            if (over <= 0) break;
+            if ((st.reps || 1) > 1) {
+              const cut = Math.min(st.reps! - 1, Math.ceil(over / st.durationMin!));
+              st.reps = st.reps! - cut;
+              over -= cut * st.durationMin!;
+            } else {
+              const cut = Math.min(st.durationMin! - 20, Math.ceil(over));
+              if (cut > 0) { st.durationMin = st.durationMin! - cut; over -= cut; }
+            }
+          }
+          changed = true;
+        }
+      if (changed) renderWeek(wd);
     }
     // R3.13 — affûtage : si les planchers bloquent, la fréquence cède
     if (ph.id === "taper" && _maxChargeMin > 0) {
@@ -224,9 +379,282 @@ export function generatePlan(profile: AthleteProfile): { plan: V1Plan; reasoned:
         victim.sessions = [{ d: "rs", name: "OFF (affûtage)", det: "repos — la fraîcheur du jour J se construit maintenant", steps: [] }];
       }
     }
+    // D10 (audit v6) — l'affûtage ne remonte JAMAIS : les gabarits de la semaine de course
+    // (rappels race-pace un peu plus longs) + la quantification des répétitions faisaient
+    // regonfler la 2e semaine d'affûtage. Convergence forcée vers ≤ semaine précédente ;
+    // si les planchers bloquent, une séance (pas un jour) cède — en tri, les jours
+    // d'affûtage sont tous « dur », la coupe par jour ne trouvait aucun candidat.
+    if (ph.id === "taper" && _lastWeekMin > 0) {
+      for (let g = 0; g < 6 && weekMin(wd) > _lastWeekMin; g++) {
+        scaleWeekBody(wd, Math.max(0.6, (_lastWeekMin * 0.97) / weekMin(wd)));
+        renderWeek(wd);
+      }
+      for (let g = 0; g < 3 && weekMin(wd) > _lastWeekMin && nSessIn(wd) > 2; g++) {
+        if (!cutSmallestSessionIn(wd)) break;
+        renderWeek(wd);
+      }
+    }
+    // D3/D4/D10 (audit v6) — si les planchers de séance empêchent encore de tenir la
+    // courbe livrée (récup > semaine précédente, affûtage remontant, saut > C22), la
+    // fréquence cède : le jour facile le plus léger passe OFF, comme en R3.13.
+    {
+      const delivCapMin = isRW || ph.id === "taper"
+        ? (_lastWeekMin > 0 ? _lastWeekMin : Infinity)
+        : (_prevChargeMin > 0 ? _prevChargeMin * C22_MAX_WEEKLY_GROWTH : Infinity);
+      // 1) réduire les corps de séance vers le cap livré (D3 — sur les petites semaines à
+      // 3 jours, il n'y a rien à couper : la réduction doit mordre d'abord)
+      for (let g = 0; g < 3 && Number.isFinite(delivCapMin) && weekMin(wd) > delivCapMin + 1; g++) {
+        const before = weekMin(wd);
+        scaleWeekBody(wd, Math.max(0.8, delivCapMin / before));
+        renderWeek(wd);
+        if (before - weekMin(wd) < 0.5) break;
+      }
+      // 2) récup/affûtage : la fréquence peut descendre à 2 jours actifs (la fraîcheur
+      // prime) ; semaine de charge : jamais sous 3 (la régularité prime).
+      const minActive = isRW || ph.id === "taper" ? 2 : 3;
+      for (let g = 0; g < 4 && weekMin(wd) > delivCapMin + 1; g++) {
+        if (!cutLightestEasyDay(wd, isRW ? "une semaine de récupération n'est jamais plus chargée que la précédente" : ph.id === "taper" ? "l'affûtage ne remonte jamais" : "la progression reste ≤ +10% de semaine en semaine", minActive)) break;
+        renderWeek(wd);
+      }
+    }
     const volReal = Math.round((weekMin(wd) / 60) * 10) / 10;
     if (!isRW && ph.id !== "taper") _maxChargeMin = Math.max(_maxChargeMin, weekMin(wd));
+    _lastWeekMin = weekMin(wd);
+    if (!isRW && ph.id !== "taper") _prevChargeMin = _lastWeekMin;
     wl.push({ num: w + 1, phase: ph, vol: volReal, vol_declared: Math.round(targetH * 10) / 10, vol_real: volReal, days: wd, isRecup: isRW });
+  }
+
+  // D2 (audit v6) — la semaine PIC domine le plan LIVRÉ. Sur un plan saturé par les
+  // planchers (petit budget nage débutant : toutes les semaines ~1h), une semaine
+  // spec/base pouvait dépasser le peak — la boucle de réparation partait alors en
+  // chasse (mauvaise semaine, nouvelles violations). Ici : la fréquence de la semaine
+  // fautive cède, jamais celle du peak ; et l'affûtage repasse sous R3.13 du pic re-mesuré.
+  {
+    const wmW = (w: V1Week) => weekMin(w.days as GenDay[]);
+    const nSess = (w: V1Week) => nSessIn(w.days as GenDay[]);
+    // Sur les petits plans, la cadence de récup peut tomber PILE sur la semaine de phase
+    // peak : la référence devient alors la meilleure semaine peak tout court — sinon la
+    // passe se désactivait et la réparation aval détruisait la semaine max (mesuré S4 → 0min).
+    const peakNR = wl.filter((w) => w.phase.id === "peak" && !w.isRecup).map(wmW);
+    const peakAny = wl.filter((w) => w.phase.id === "peak").map(wmW);
+    const peakBest = Math.max(0, ...(peakNR.length ? peakNR : peakAny));
+    if (peakBest > 0) {
+      // (nage : la dominance du pic se juge aux MÈTRES côté auditeur — pas besoin de
+      // sur-couper ici, ce qui créait des sauts de charge en aval)
+      const domCap = 1.02;
+      for (const w of wl) {
+        if (w.phase.id === "peak" || w.phase.id === "taper" || w.isRecup) continue;
+        // 1) réduire les corps de séance vers ≤ pic (les séances au plancher ne bougent pas)
+        for (let g = 0; g < 4 && wmW(w) > peakBest * domCap; g++) {
+          const before = wmW(w);
+          scaleWeekBody(w.days as GenDay[], Math.max(0.8, (peakBest * (domCap - 0.04)) / before));
+          renderWeek(w.days as GenDay[]);
+          if (before - wmW(w) < 0.5) break; // les planchers bloquent — passer à la coupe
+        }
+        // 2) plancher de coupe : couper plus bas recréerait un saut vers la suivante
+        for (let g = 0; g < 3 && wmW(w) > peakBest * domCap && nSess(w) > 3; g++) {
+          if (!cutSmallestSessionIn(w.days as GenDay[], peakBest * (domCap - 0.09))) break;
+          renderWeek(w.days as GenDay[]);
+        }
+        const vr = Math.round((wmW(w) / 60) * 10) / 10;
+        if (vr < w.vol) { w.vol = vr; w.vol_real = vr; }
+      }
+      for (const w of wl.filter((x) => x.phase.id === "taper")) {
+        for (let g = 0; g < 3 && wmW(w) > peakBest * R313_TAPER_MAX_VS_PEAK && nSess(w) > 2; g++) {
+          if (!cutSmallestSessionIn(w.days as GenDay[])) break;
+          renderWeek(w.days as GenDay[]);
+        }
+        const vr = Math.round((wmW(w) / 60) * 10) / 10;
+        if (vr < w.vol) { w.vol = vr; w.vol_real = vr; }
+      }
+      // et l'affûtage reste DÉCROISSANT après ces coupes (les coupes indépendantes par
+      // semaine pouvaient inverser deux semaines d'affûtage voisines)
+      let prevT = 0;
+      for (const w of wl) {
+        const m0 = wmW(w);
+        if (w.phase.id !== "taper") { prevT = m0; continue; }
+        if (prevT > 0 && m0 > prevT) {
+          for (let g = 0; g < 4 && wmW(w) > prevT; g++) {
+            const before = wmW(w);
+            scaleWeekBody(w.days as GenDay[], Math.max(0.7, (prevT * 0.97) / before));
+            renderWeek(w.days as GenDay[]);
+            if (before - wmW(w) < 0.5) break;
+          }
+          for (let g = 0; g < 3 && wmW(w) > prevT && nSess(w) > 2; g++) {
+            if (!cutSmallestSessionIn(w.days as GenDay[])) break;
+            renderWeek(w.days as GenDay[]);
+          }
+          const vr = Math.round((wmW(w) / 60) * 10) / 10;
+          if (vr < w.vol) { w.vol = vr; w.vol_real = vr; }
+        }
+        prevT = wmW(w);
+      }
+      // et les coupes ci-dessus ne recréent JAMAIS une récup plus chargée que sa voisine
+      let prevM = 0;
+      for (const w of wl) {
+        if (w.isRecup && prevM > 0) {
+          for (let g = 0; g < 3 && wmW(w) > prevM && nSess(w) > 1; g++) {
+            if (!cutSmallestSessionIn(w.days as GenDay[])) break;
+            renderWeek(w.days as GenDay[]);
+          }
+          const vr = Math.round((wmW(w) / 60) * 10) / 10;
+          if (vr < w.vol) { w.vol = vr; w.vol_real = vr; }
+        }
+        prevM = wmW(w);
+      }
+    }
+  }
+
+  // C24/C24b/C15 — fenêtres de SÉANCE nage, LE MOT FINAL après toutes les passes de
+  // lissage (qui peuvent redescendre ou regonfler une séance) : ≥750m non-débutant,
+  // [600, 850]m débutant. Le corps cède ou monte — jamais l'échauffement ni le retour au calme.
+  if (a.sport !== "run") {
+    const swFloorF = r.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : 750;
+    for (const w of wl) {
+      const wd2 = w.days as GenDay[];
+      let changed = false;
+      for (const d of wd2)
+        for (const s of d.sessions) {
+          if (s.d !== "sw" || !s.steps || !s.steps.length) continue;
+          const totOf = () => s.steps!.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+          const body = s.steps.filter((st) => st.role === "body" && st.distanceM != null).sort((x, y) => (y.reps || 1) * (y.distanceM || 0) - (x.reps || 1) * (x.distanceM || 0))[0];
+          if (!body || !body.distanceM) continue;
+          const t0 = totOf();
+          if (t0 > 0 && t0 < swFloorF) {
+            const missing = swFloorF - t0;
+            if ((body.reps || 1) > 1) body.reps = (body.reps || 1) + Math.ceil(missing / body.distanceM);
+            else body.distanceM = Math.ceil((body.distanceM + missing) / 25) * 25;
+            changed = true;
+          }
+          if (r.beginner && totOf() > C15_BEGINNER_SWIM_SESSION_CAP_M) {
+            const aux = s.steps.filter((st) => st.role !== "body").reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+            const bodyCap = Math.max(100, C15_BEGINNER_SWIM_SESSION_CAP_M - aux);
+            const bodyTot = totOf() - aux;
+            if (bodyTot > bodyCap) {
+              const f = bodyCap / bodyTot;
+              for (const st of s.steps) {
+                if (st.role !== "body" || st.distanceM == null) continue;
+                if ((st.reps || 1) > 1) st.reps = Math.max(1, Math.floor((st.reps || 1) * f));
+                else st.distanceM = Math.max(100, Math.floor((st.distanceM * f) / 25) * 25);
+              }
+              changed = true;
+            }
+          }
+        }
+      if (changed) {
+        renderWeek(wd2);
+        const vr = Math.round((weekMin(wd2) / 60) * 10) / 10;
+        w.vol = vr;
+        w.vol_real = vr;
+      }
+    }
+    // Les remontées au plancher peuvent regonfler une semaine que le lissage avait
+    // réduite : re-vérification ORDONNÉE des caps livrés (saut ≤ ×1.1, récup/affûtage
+    // jamais remontants) — en coupant des séances ENTIÈRES, les fenêtres restent intactes.
+    // Rejouée après la passe de dominance : les deux contraintes doivent tenir ENSEMBLE.
+    const harmonizeOrdered = (): void => {
+      let prevCharge = 0, prevWeek = 0, maxWeek = 0;
+      for (const w of wl) {
+        const wd2 = w.days as GenDay[];
+        const isT = w.phase.id === "taper";
+        let cap = w.isRecup || isT
+          ? (prevWeek > 0 ? prevWeek : Infinity)
+          : (prevCharge > 0 ? prevCharge * C22_MAX_WEEKLY_GROWTH : Infinity);
+        // La semaine de PEAK est le sommet de la courbe : elle ne descend JAMAIS sous la
+        // plus grosse semaine passée (dominance), mais elle n'échappe pas au seuil DUR de
+        // saut (C22-dur) — sinon un pic naturellement plus fourni en séances créait un
+        // saut de charge que la réparation ne pouvait pas résorber (planchers).
+        // ARBITRAGE ASSUMÉ (audit v6) : deux règles se disputent la semaine de pic — « la
+        // semaine max est en phase peak » (structure) et C22 « +10% max » (progression).
+        // Sur les plans saturés par les planchers de séance, les deux ne sont pas toujours
+        // satisfiables : on tient la structure ET le seuil DUR (+25% livré, jamais franchi),
+        // en acceptant un pic jusqu'à +19% quand la dominance l'exige. 4 profils tri
+        // concernés, documentés dans ARCHITECTURE.md — mieux vaut un pic un peu marqué
+        // qu'un pic plus léger que la base (ce qui n'est plus un plan périodisé).
+        if (w.phase.id === "peak" && !w.isRecup) {
+          cap = Math.max(maxWeek, prevCharge > 0 ? prevCharge * C22_AUDIT_HARD_JUMP * 0.95 : Infinity);
+        }
+        const minS = w.isRecup || isT ? 2 : 3;
+        for (let g = 0; g < 3 && weekMinSmooth(wd2) > cap + 1 && nSessIn(wd2) > minS; g++) {
+          if (!cutSmallestSessionIn(wd2)) break;
+          renderWeek(wd2);
+        }
+        const vr = Math.round((weekMin(wd2) / 60) * 10) / 10;
+        if (vr !== w.vol) { w.vol = vr; w.vol_real = vr; }
+        prevWeek = weekMinSmooth(wd2);
+        if (!w.isRecup && !isT) {
+          prevCharge = prevWeek;
+          maxWeek = Math.max(maxWeek, prevWeek);
+        }
+      }
+    };
+    harmonizeOrdered();
+    // Plan saturé par les planchers (toutes les semaines ≈ n séances × plancher) : si une
+    // semaine de charge dépasse encore le pic, raboter tout le plan sous les planchers
+    // serait absurde — le PIC MONTE d'une séance technique douce (dans le budget déclaré).
+    {
+      const wmW2 = (w: V1Week) => weekMin(w.days as GenDay[]);
+      const bestPeakW = wl.filter((w) => w.phase.id === "peak" && !w.isRecup).sort((x, y) => wmW2(y) - wmW2(x))[0];
+      if (bestPeakW) {
+        const maxCharge = Math.max(0, ...wl.filter((w) => !w.isRecup && w.phase.id !== "taper" && w !== bestPeakW).map(wmW2));
+        // le pic monte, mais JAMAIS au-delà de +10% de la semaine qui le précède (C22)
+        const prevOfPeak = wl.filter((w) => w.num < bestPeakW.num && !w.isRecup && w.phase.id !== "taper").pop();
+        const raiseCap = Math.min(prevOfPeak ? wmW2(prevOfPeak) * C22_MAX_WEEKLY_GROWTH : Infinity, capH * 60);
+        for (let g = 0; g < 2 && wmW2(bestPeakW) < maxCharge && nSessIn(bestPeakW.days as GenDay[]) < r.budgetPerWeek; g++) {
+          const wd2 = bestPeakW.days as GenDay[];
+          const donor = wd2.flatMap((d) => d.sessions).filter((s) => s.d === "sw" && s.steps && s.steps.length && !s.long).sort((x, y) => (x.min || 0) - (y.min || 0))[0];
+          const restDay = wd2.find((d) => !d.forced && !d.sessions.some((s) => s.d !== "rs"));
+          if (!donor || !restDay) break;
+          if (wmW2(bestPeakW) + (donor.min || 0) > raiseCap) break;
+          const clone = structuredClone(donor) as V1Session;
+          restDay.charge = "facile";
+          restDay.slot = "facileR";
+          restDay.sessions = [clone];
+          renderWeek(wd2);
+          const vr = Math.round((wmW2(bestPeakW) / 60) * 10) / 10;
+          bestPeakW.vol = vr;
+          bestPeakW.vol_real = vr;
+        }
+        // Si le pic ne peut pas monter (budget/C22), ce sont les semaines de charge qui le
+        // dépassent qui cèdent une séance — la hiérarchie du plan est structurelle, elle
+        // ne se négocie pas contre le confort d'une semaine de base.
+        const peakM = wmW2(bestPeakW);
+        for (const w of wl) {
+          if (w === bestPeakW || w.isRecup || w.phase.id === "taper") continue;
+          for (let g = 0; g < 3 && wmW2(w) > peakM && nSessIn(w.days as GenDay[]) > 2; g++) {
+            if (!cutSmallestSessionIn(w.days as GenDay[])) break;
+            renderWeek(w.days as GenDay[]);
+          }
+          const vr = Math.round((wmW2(w) / 60) * 10) / 10;
+          if (vr !== w.vol) { w.vol = vr; w.vol_real = vr; }
+        }
+      }
+    }
+    harmonizeOrdered(); // les coupes de dominance ne cassent ni C22 ni la monotonie récup/affûtage
+  }
+
+  // R6.2/R6.3 (audit v6, B1) — dernier mot : le LIVRÉ de chaque semaine ne dépasse jamais
+  // celui du plan de référence (sans blessure/âge). Les planchers de séance ne peuvent plus
+  // faire d'un plan « blessé » un plan plus lourd — la fréquence cède en dernier recours.
+  if (refWeekCaps) {
+    for (let i = 0; i < wl.length; i++) {
+      const w = wl[i];
+      const capMin = refWeekCaps[i];
+      if (capMin == null) continue;
+      const wd2 = w.days as GenDay[];
+      for (let g = 0; g < 4 && weekMin(wd2) > capMin; g++) {
+        const before = weekMin(wd2);
+        scaleWeekBody(wd2, Math.max(0.75, capMin / before));
+        renderWeek(wd2);
+        if (before - weekMin(wd2) < 0.5) break;
+      }
+      for (let g = 0; g < 3 && weekMin(wd2) > capMin && nSessIn(wd2) > 2; g++) {
+        if (!cutSmallestSessionIn(wd2)) break;
+        renderWeek(wd2);
+      }
+      const vr = Math.round((weekMin(wd2) / 60) * 10) / 10;
+      if (vr !== w.vol) { w.vol = vr; w.vol_real = vr; }
+    }
   }
 
   if (_rampWeeks > 0) {

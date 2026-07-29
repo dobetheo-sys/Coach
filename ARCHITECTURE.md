@@ -566,3 +566,93 @@ FTP/allure/CSS + méthode de test, objectif A + profil de parcours, échéance).
 backlog assumé : FC max/repos → zones FC, VDOT, profil diesel/explosif, préférence de
 régulation Watts/FC/RPE par discipline, plan strict vs flexible, créneaux des sorties
 longues, inventaire matériel (home-trainer/capteurs).
+
+## Audit externe v6 (29/07/2026) — corrections et arbitrages
+
+Un audit externe est arrivé avec son **banc de régression exécutable** (`audit_v6.mjs`,
+38 tests à ID stable, zéro dépendance, `npm run audit:v6` en CI). Règle du banc : un test
+attendu vert qui échoue = **régression** (exit 1) ; la dette connue (`expect:'fail'`) ne
+casse pas la CI, elle documente l'écart. À la livraison : **35 verts · 3 dettes ·
+0 régression** (état initial : 10 verts · 28 dettes).
+
+### Sécurité (P0)
+
+- **A2/R6.1** — `R6_PAIN_CONTRAINDICATION` (matrice de contraintes) : chaque localisation
+  de douleur interdit la ou les disciplines qui la sollicitent. `adjustDay` change la
+  DISCIPLINE de remplacement (tibia → vélo/nage, épaule → vélo/course, genou → nage) ;
+  si aucune n'épargne la zone (cou sur un plan nage+vélo) → **repos complet explicite**,
+  jamais une séance dégradée.
+- **A3** — un jour rouge ne peut plus AUGMENTER la charge : plancher de 25min borné par la
+  séance d'origine, plancher C24 retiré des remplacements (un remplacement de récupération
+  n'est pas une séance de plan), et l'invariant d'en-tête est **asserté** (`throw`) dans
+  `adjustDay` — il ne peut plus se perdre en silence.
+- **B1/R6.2** — `readInjuries()` unique (le motif était dupliqué 4 fois, avec des ensembles
+  différents), facteur de volume 0.9 (une zone) / 0.8 (plusieurs) appliqué **après la sonde
+  de capacité**, plafond `vol_max` abaissé du même facteur, et surtout **passe de
+  référence** : un plan blessé est plafonné semaine par semaine par le même plan SANS
+  blessure. Une blessure allège toujours, jamais l'inverse (+68% mesuré avant).
+- **B1c** — l'épaule fonctionne enfin en triathlon (branche morte : le traitement vivait
+  sous `sp === "swim"` alors que le questionnaire proposait « Épaule (nage) » aux tri).
+- **B2** — 4 localisations → 4 plans distincts : tibia (-1 jour d'impact de plus), genou
+  (seuil contrôlé au lieu de VO2 : pas d'à-coups), pied (longue ×0.85), hanche (longue
+  ×0.9 + greffe gainage hanche/ITB).
+- **B3** — la carte de règle « Blessures multiples → ultra-conservateur » existe enfin :
+  -20% de volume + avertissement « bilan médical avant montée en charge ».
+
+### Promesses tenues
+
+- **C1** — `sessions_max` compte des SÉANCES, pas des jours actifs (« ≤3 tenables » livrait
+  5 séances ; 7 en livrait 9). Retrait du moins coûteux au plus coûteux : 2ᵉ séance des
+  jours doubles → jours faciles → jours durs hors longue. `durLong` jamais touché.
+- **C2/C3** — la date de course a trois branches EXPLICITES, jamais un silence : trop
+  proche → plan partiel sur le temps disponible (fini les 13 semaines dans le passé) ;
+  au-delà de 80 semaines → départ MAINTENANT en base longue (`raceBeyondPlan`) ; sinon la
+  durée réelle. Chaque branche produit une décision et un avertissement.
+- **A7/R6.3** — l'âge module : mineur → volume ×0.70 et **aucune VO2max** (6 branches de la
+  bibliothèque), avertissement affiché ET appliqué ; master 60+ → ×0.85 et récup /3 semaines.
+- **E3/E4** — bornes de plausibilité (`PHYSIO_BOUNDS`) côté moteur, garde IMC [15, 45] dans
+  l'estimation énergétique (hors bornes : **aucune** estimation, pas d'estimation dégradée).
+- **E1/E2** — un SEUL parseur d'allure (`parsePaceSec`), tolérant en entrée (`4'50` accepté
+  — c'est la notation que l'app affiche) et strict en validation ; le plan et la prédiction
+  ne peuvent plus décrire deux athlètes différents, et une saisie illisible est signalée.
+
+### Les planchers ne gagnent plus contre la courbe
+
+Classe de bug commune (D3-D7, D10) : les caps s'appliquaient au BLOC, la courbe à la
+semaine. Correctifs : C15 et C23 au niveau **séance**, plancher débutant C24b (600m,
+sinon la fréquence cède), lissage sur les minutes **livrées**, monotonie récup/affûtage,
+et — en natation/triathlon — lissage sur la **métrique de l'auditeur** (récup entre
+répétitions comprise) : on lisse ce qui est mesuré. Le seuil dur de l'auditeur dérive
+d'une constante nommée (`C22_AUDIT_HARD_JUMP`) — plus de littéral divergent.
+
+### Readiness : le modèle n'est plus complaisant
+
+- **A4** — deux registres : un signal OBJECTIF négatif (HRV, FC repos, heures de sommeil
+  mesurées) ne peut plus être annulé par du déclaratif positif ; le subjectif ne fait alors
+  qu'aggraver. « HRV basse + je me sens bien » → orange, plus jamais verte.
+- **A5** — le check-in demande les HEURES de sommeil (un tap) : sous 4h30 → rouge en soi.
+- **A6** — FC au réveil collectée (champ optionnel) + baseline glissante 7 jours
+  (`S.shared.hrRestLog`, dès la 3ᵉ mesure) ; sans baseline, seuil absolu prudent.
+- Validation de schéma (`SNAPSHOT_KEYS`/`validateSnapshot`) : une clé inconnue est
+  signalée — elle ne fait plus disparaître un signal de sécurité sans bruit.
+
+### Interopérabilité
+
+- **F1** — le clamp C13 est écrit dans `durationMin`, plus seulement dans le champ dérivé
+  `_min` : l'écran et l'export décrivaient deux séances différentes. `durationMin` = durée
+  d'UNE répétition (exportée avec `reps`), `_min` = total du bloc — sémantique explicitée
+  dans le banc.
+- **F3** — minutes entières dès le calcul (les flottants polluaient les totaux et le cap).
+- **ICS RFC 5545** — `DTSTAMP` ajouté (obligatoire), UID portant sport + format + id de plan
+  (deux plans ne s'écrasent plus à l'import), `DTEND` = J+1 (exclusif).
+- **D1** — le score d'audit est plafonné par le nombre de violations dures (≤70 dès la
+  première) ; violations et réparations sont RENDUES dans la carte « décisions du moteur »
+  (langage neutre, sans bandeau rouge — décision R5 du fondateur).
+
+### Dette résiduelle assumée (3 tests, documentés)
+
+| Test | Écart | Pourquoi on s'arrête là |
+|---|---|---|
+| `D2` | violations dures sur la matrice standard du banc | Agrégat des règles ci-dessus mesurées avec des profils différents des 486 d'`audit:v2` (qui est à **0 violation dure**) ; les cas restants sont des plans saturés par les planchers. |
+| `D3` | 4 profils tri à +11 à +19% au pic | **Arbitrage** : « la semaine max est en phase peak » (structure) et C22 (+10%) ne sont pas toujours satisfiables ensemble sur un plan saturé. On tient la structure ET le seuil DUR (+25%, jamais franchi) : mieux vaut un pic marqué qu'un pic plus léger que la base. |
+| `F2` | 42 séances à 43-44% au lieu de 45% de temps en zone cible | C13b ajouté (échauffement ≤0.8× corps, retour au calme ≤0.5×) : serrer davantage déstabilise le plafond `vol_max` et la courbe. Écart d'1 à 2 points, sans conséquence de sécurité. |

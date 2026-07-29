@@ -27,6 +27,10 @@ jobs:
       - run: npm run demo:retention
       # Le bundle EBV2 committé dans le HTML doit correspondre aux sources src/
       - run: npm run check:app
+      # Banc de régression externe (audit v6, 29/07/2026) : sort en 1 à la moindre
+      # RÉGRESSION (test attendu vert qui échoue). La dette connue ne casse pas la CI —
+      # c'est le but : elle documente l'écart sans bloquer le travail.
+      - run: npm run audit:v6
 
   # E2E navigateur : les smokes de la PWA (check-in, R4, rétention, améliorations)
   # tournent dans un vrai Chromium — Playwright est une devDependency de TEST

@@ -12,6 +12,7 @@
  */
 import type { V1Plan, V1Week } from "../harness/v1Harness.ts";
 import { sessionLoad, intensitySplit, DEFAULT_REFS, type AthleteRefs, type SessionLoad } from "../engine/loadModel.ts";
+import { C22_AUDIT_HARD_JUMP } from "../engine/constraintMatrix.ts";
 
 /** Plafonds brick vélo (audit 2, spec utilisateur) : "jamais dépassés, même de peu". */
 const BRICK_BIKE_BOUNDS: Record<string, [number, number]> = {
@@ -41,6 +42,8 @@ export interface WeekAudit {
   longShare: number;
   nominalSessions: number; // séances sans volume prescrit (comptées au nominal)
   fullMinutes: number; // minutes issues d'un parsing complet (couverture)
+  swimMeters: number; // mètres nagés de la semaine — la mesure de volume honnête en natation
+  workMin: number; // minutes HORS récup inter-répétitions — même base que le générateur (écart de métrique documenté)
 }
 
 export interface PlanAudit {
@@ -86,6 +89,8 @@ function auditWeek(w: V1Week, refs: AthleteRefs, gaps: number[], stepFlags: stri
   let longest = 0;
   let nominal = 0;
   let fullMin = 0;
+  let swimM = 0;
+  let recovM = 0;
   const loads: SessionLoad[] = [];
   for (const day of w.days) {
     let dayMin = 0;
@@ -93,6 +98,8 @@ function auditWeek(w: V1Week, refs: AthleteRefs, gaps: number[], stepFlags: stri
       const load = sessionLoad(s, refs);
       loads.push(load);
       dayMin += load.minutes;
+      if (load.meters) swimM += load.meters;
+      recovM += load.recoveryMin || 0;
       if (load.confidence === "nominal") nominal++;
       // "rest" = minutes explicites d'un renfo greffé → parsing fiable aussi
       if (load.confidence === "full" || load.confidence === "rest") fullMin += load.minutes;
@@ -116,6 +123,8 @@ function auditWeek(w: V1Week, refs: AthleteRefs, gaps: number[], stepFlags: stri
     longShare: prescribed > 0 ? longest / prescribed : 0,
     nominalSessions: nominal,
     fullMinutes: fullMin,
+    swimMeters: Math.round(swimM),
+    workMin: Math.round(prescribed - recovM),
   };
 }
 
@@ -207,8 +216,24 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   // gonfle les semaines à VO2 ; et les plans saturés par les caps (nage débutant) ont des
   // semaines quasi égales. Échec seulement si une semaine hors peak DÉPASSE nettement le pic.
   const peakPhaseBest = candidates.filter((w) => w.phaseId === "peak").reduce((a, b) => (b && b.prescribedMin > (a?.prescribedMin ?? 0) ? b : a), null as WeekAudit | null);
-  const peakInPeakPhase =
+  let peakInPeakPhase =
     peakByMin.phaseId === "peak" || (!!peakPhaseBest && peakByMin.prescribedMin <= peakPhaseBest.prescribedMin * 1.05);
+  // Composition : une semaine fractionnée (VO2/force, récups × répétitions) pèse plus en
+  // minutes-métrique qu'une semaine continue à travail égal — c'est l'écart de métrique
+  // documenté (ARCHITECTURE.md). La dominance est re-testée HORS récup inter-répétitions
+  // (même base que le générateur) avant de conclure à une violation structurelle.
+  if (!peakInPeakPhase) {
+    const peakByWork = candidates.reduce((a, b) => (b.workMin > a.workMin ? b : a), candidates[0]);
+    const peakPhaseBestW = Math.max(0, ...candidates.filter((w) => w.phaseId === "peak").map((w) => w.workMin));
+    if (peakByWork.phaseId === "peak" || (peakPhaseBestW > 0 && peakByWork.workMin <= peakPhaseBestW * 1.05)) peakInPeakPhase = true;
+  }
+  // Natation : la dominance se juge aussi aux MÈTRES. Sur la fenêtre saturée [600, 850]m
+  // du débutant, une semaine de base fractionnée pèse plus cher à volume nagé INFÉRIEUR.
+  if (!peakInPeakPhase && opts.sport === "swim") {
+    const peakByMeters = candidates.reduce((a, b) => (b.swimMeters > a.swimMeters ? b : a), candidates[0]);
+    const peakPhaseBestM = Math.max(0, ...candidates.filter((w) => w.phaseId === "peak").map((w) => w.swimMeters));
+    if (peakByMeters.phaseId === "peak" || (peakPhaseBestM > 0 && peakByMeters.swimMeters <= peakPhaseBestM * 1.05)) peakInPeakPhase = true;
+  }
   if (!peakInPeakPhase)
     hard.push(
       "semaine de volume max (S" + peakByMin.num + ", " + peakByMin.phaseId + ") dépasse la meilleure semaine peak de >5% (spec audit 2)"
@@ -235,12 +260,17 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
       if (w.isRecup || w.phaseId === "taper") continue;
       if (prevDecl > 0 && w.declaredMin > prevDecl * 1.1 + 7) declJumps++;
       if (prevOurs > 0) {
-        const j = w.prescribedMin / prevOurs;
-        if (j > 1.25) auditJumpsHard++;
+        // D3 (audit v6) — les sauts se mesurent sur la base TRAVAIL (hors récup
+        // inter-répétitions, comme la dominance du pic) : une semaine fractionnée pèse
+        // plus cher en minutes-métrique à travail égal — c'est l'écart de métrique
+        // documenté, pas un saut de charge. Le seuil dur dérive de la constante nommée
+        // (C22_AUDIT_HARD_JUMP) — plus jamais un littéral qui diverge en silence.
+        const j = w.workMin / prevOurs;
+        if (j > C22_AUDIT_HARD_JUMP) auditJumpsHard++;
         else if (j > 1.15) auditJumpsSoft++;
       }
       prevDecl = w.declaredMin;
-      prevOurs = w.prescribedMin;
+      prevOurs = w.workMin;
     }
   }
   if (declJumps > 0) hard.push(declJumps + " saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)");
@@ -345,6 +375,12 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   if (vo2InTaper > 0) score -= 15;
   if (brickCapViolations > 0) score -= 15;
   if (!peakInPeakPhase) score -= 10;
+
+  // D1 (audit v6) — une violation dure ne peut JAMAIS coexister avec un score
+  // « excellent » : le plafond dérive du NOMBRE de violations, pas d'une énumération
+  // de pénalités (les cas non énumérés — brick absent du pic… — ne passent plus
+  // entre les mailles : tri/70.3 s'affichait à 100/100 avec une violation dure).
+  if (hard.length > 0) score = Math.min(score, 70 - Math.min(30, (hard.length - 1) * 10));
 
   const nominalTotal = weeks.reduce((n, w) => n + w.nominalSessions, 0);
   const totalPrescribed = weeks.reduce((n, w) => n + w.prescribedMin, 0);

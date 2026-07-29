@@ -87,6 +87,12 @@ export const BANDS: Record<string, [number, number]> = {
   taper: [0.55, 0.3],
 };
 export const C22_MAX_WEEKLY_GROWTH = rule("C22", "progression lissée : jamais +10% d'une semaine de charge à la suivante (manifeste)", 1.1);
+/** D3 (audit v6) — seuil DUR de l'auditeur sur les minutes livrées. C22 (+10%) est la
+ * règle du GÉNÉRATEUR V2 (cible calée sur le livré) ; la tolérance jusqu'à +25% absorbe
+ * la dérive des planchers de séance du produit V1.5 GELÉ, audité par le même scorer.
+ * Les trois sites (générateur, texte affiché, auditeur) référencent désormais des
+ * constantes nommées — plus jamais un littéral en dur qui diverge en silence. */
+export const C22_AUDIT_HARD_JUMP = rule("C22-dur", "au-delà de +25% livré entre semaines de charge, violation dure quelle que soit la cause (V1.5 gelé compris)", 1.25);
 export const RECUP_WEEK_FACTOR = 0.62;
 
 /** R3.13 — affûtage : si les planchers bloquent, la fréquence cède sous ce ratio du pic réel. */
@@ -107,6 +113,9 @@ export const MAX_RUN_DAYS: Record<History, number> = { reprise: 4, confirme: 5, 
 
 /** Natation non-débutant : une séance piscine <750m ne vaut pas le déplacement (manifeste). */
 export const C24_MIN_SWIM_SESSION_M = rule("C24", "piscine ≥750m par séance pour un non-débutant (manifeste : « sortie piscine de 600m » interdite)", 750);
+/** D6 (audit v6) — le débutant a aussi un plancher : une séance piscine sous 600m ne vaut
+ * pas le déplacement non plus. Fenêtre débutant résultante : [600m ; 850m] (C15). */
+export const C24B_MIN_SWIM_SESSION_BEGINNER_M = rule("C24b", "une séance piscine débutant <600m ne vaut pas le déplacement — C20 promet ~25min/séance, le contenu doit suivre", 600);
 
 /** Brick tri : bornes par format ; ×0.8 pour l'historique « reprise » (C21). */
 export const CAP_BRICK_BIKE: Record<string, number> = { S: 90, M: 120, "70.3": 180, Full: 300 };
@@ -120,6 +129,109 @@ export const AVG_SESSION_H: Partial<Record<Sport, number>> = { run: 1.15, bike: 
 
 /** C13 — l'échauffement chiffré ne dépasse jamais 25min ni le corps de séance. */
 export const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ corps de séance", 25);
+
+/** E1/E2 (audit v6) — PARSEUR D'ALLURE UNIQUE. Il y en avait deux : un strict et ancré
+ * (moteur, alimente les zones du plan) et un laxiste (bridge, alimente la prédiction) —
+ * écrire « 4:50/km » donnait donc une prédiction juste et un plan en fréquence cardiaque,
+ * sans que rien ne le signale. Et « 4'50 » était refusé par les deux… alors que c'est la
+ * notation que l'app utilise elle-même pour AFFICHER les allures.
+ * Tolérant en entrée (4:50 · 4'50 · 4′50 · 4.50 · 4h50 · 04:50 · « 4:50/km » · espaces),
+ * strict en validation (secondes < 60, bornes de plausibilité). Renvoie 0 si invalide. */
+export function parsePaceSec(v: unknown, kind: "run" | "swim" = "run"): number {
+  const m = String(v ?? "").trim().match(/^(\d{1,2})\s*[:h.'′]\s*(\d{1,2})\s*(?:\/\s*(?:km|100\s*m))?$/);
+  if (!m) return 0;
+  const min = +m[1], sec = +m[2];
+  if (sec > 59) return 0;
+  const total = min * 60 + sec;
+  // course : 2:00 → 20:00 par km · natation : 1:00 → 5:00 par 100m
+  const [lo, hi] = kind === "swim" ? [60, 300] : [120, 1200];
+  return total >= lo && total <= hi ? total : 0;
+}
+
+/** E3 (audit v6) — bornes de plausibilité physiologique : hors bornes, la valeur est
+ * traitée comme NON RENSEIGNÉE (repli zones cardio/ressenti) + avertissement nommé —
+ * jamais une zone négative ou absurde à l'écran (l'attribut HTML min n'est pas une validation). */
+export const PHYSIO_BOUNDS: Record<string, { min: number; max: number; unit: string }> = rule(
+  "E3",
+  "une FTP de -100W ou de 9999W produit des zones absurdes affichées sans bruit : hors bornes = non renseigné + avertissement",
+  {
+    ftp: { min: 60, max: 600, unit: "W" },
+    hrMax: { min: 120, max: 220, unit: "bpm" },
+    hrRest: { min: 30, max: 100, unit: "bpm" },
+    weight: { min: 35, max: 200, unit: "kg" },
+    height: { min: 120, max: 230, unit: "cm" },
+    age: { min: 14, max: 95, unit: "ans" },
+  },
+);
+export function boundedOrZero(key: keyof typeof PHYSIO_BOUNDS & string, v: number): number {
+  const b = PHYSIO_BOUNDS[key];
+  return Number.isFinite(v) && v >= b.min && v <= b.max ? v : 0;
+}
+
+/** R6.1 — contre-indications par localisation de douleur : une douleur de charge se
+ * traite en RETIRANT la contrainte (changer de discipline), pas en la réduisant. */
+export interface PainContra { forbid: string[]; prefer: string[] }
+export const R6_PAIN_CONTRAINDICATION: Record<string, PainContra> = rule(
+  "R6.1",
+  "une douleur de charge se traite en retirant la contrainte, pas en la réduisant : chaque localisation interdit la ou les disciplines qui la sollicitent",
+  {
+    tibia: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    genou: { forbid: ["rn", "bk"], prefer: ["sw"] },
+    pied: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    hanche: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    course: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    epaule: { forbid: ["sw"], prefer: ["bk", "rn"] },
+    dos: { forbid: ["bk"], prefer: ["sw"] },
+    cou: { forbid: ["sw", "bk"], prefer: ["rn"] },
+  },
+);
+
+/** R6.2 — une blessure déclarée réduit le plafond de volume (l'étape « Historique &
+ * blessures » promet « une blessure décide quoi adapter » — le volume en fait partie). */
+export const R6_INJURY_LOAD_FACTORS = rule(
+  "R6.2",
+  "une blessure déclarée réduit le plafond de volume ; plusieurs zones fragiles → approche ultra-conservatrice (c'est la carte de règle affichée à l'athlète)",
+  { une: 0.9, multiples: 0.8 },
+);
+
+/** R6.3 (audit v6, A7) — l'âge module la charge : l'avertissement affiché au Profil
+ * (« en dessous de 18 ans, la charge doit être encadrée ») s'applique, pas seulement
+ * s'affiche ; au-delà de 60 ans la récupération se rallonge. */
+export const R6_AGE_LOAD = rule(
+  "R6.3",
+  "l'avertissement mineur affiché au Profil doit agir sur le plan (volume -30%, zéro VO2max) ; master 60+ : volume -15% et récupération toutes les 3 semaines",
+  {
+    mineur: { maxAge: 17, volFactor: 0.7, allowVo2: false },
+    master: { minAge: 60, volFactor: 0.85, recupEvery: 3 },
+  },
+);
+
+/** Lecture UNIQUE des blessures (audit v6 B1a : le motif était dupliqué 4 fois avec des
+ * ensembles légèrement différents — un booléen écrasait les localisations). */
+export interface InjuryInfo {
+  list: string[];
+  count: number;
+  /** blessure d'impact course (tibia/genou/pied/hanche — ensemble historique V1.5) */
+  impact: boolean;
+  /** idem + « course » générique (utilisé par les gammes/plyo) */
+  impactAny: boolean;
+  shoulder: boolean;
+  lumbar: boolean;
+  cervical: boolean;
+}
+export function readInjuries(raw: unknown): InjuryInfo {
+  const list = (Array.isArray(raw) ? raw.join(",") : String(raw ?? ""))
+    .split(",").map((s) => s.trim()).filter((x) => x && x !== "aucune");
+  return {
+    list,
+    count: list.length,
+    impact: list.some((x) => ["tibia", "genou", "pied", "hanche"].includes(x)),
+    impactAny: list.some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x)),
+    shoulder: list.includes("epaule"),
+    lumbar: list.includes("dos"),
+    cervical: list.includes("cou"),
+  };
+}
 
 /** Interdictions du manifeste — vérifiées par l'auditeur, rappelées ici pour le générateur. */
 export const FORBIDDEN = [

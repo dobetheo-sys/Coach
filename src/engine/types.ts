@@ -95,6 +95,16 @@ export interface ReasonedPlan {
   comp: boolean;
   dbl: boolean;
   injuries: string[];
+  /** R6 (audit v6) — lecture unique des blessures : localisations + drapeaux dérivés. */
+  inj: import("./constraintMatrix.ts").InjuryInfo;
+  /** Avertissements du raisonnement (blessures multiples, durée contrainte…) — fusionnés dans _v2.warnings. */
+  warnings: string[];
+  /** R6.3 (audit v6) — athlète mineur : aucune séance VO2max générée. */
+  noVo2: boolean;
+  /** C3 (audit v6) — course au-delà de 80 semaines : le plan s'ancre sur MAINTENANT, pas sur la course. */
+  raceBeyondPlan: boolean;
+  /** R6.2/R6.3 (audit v6) — facteur blessures × âge, appliqué sur peakH APRÈS la sonde de capacité. */
+  loadFactor: number;
   baseRefs: { ftp: number; thrPace: number; css: number };
   hz: Record<string, string> & { fcMax?: number };
 }

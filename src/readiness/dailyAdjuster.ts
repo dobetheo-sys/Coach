@@ -14,6 +14,7 @@
  * chaque ajustement porte un {id, what, val, why}.
  */
 import type { Decision, ReasonedPlan, V1Day, V1Plan, V1Session } from "../engine/types.ts";
+import { R6_PAIN_CONTRAINDICATION } from "../engine/constraintMatrix.ts";
 import { renderSess, type Refs } from "../generator/renderer.ts";
 import { assessReadiness, type ReadinessSnapshot, type ReadinessVerdict, type ReadinessLevel } from "./readinessSource.ts";
 
@@ -79,9 +80,11 @@ function reduceDay(day: V1Day, f: number, refs: Refs, hz: Record<string, string>
     if (!s.steps || !s.steps.length) continue;
     for (const st of s.steps) {
       if (st.role !== "body") continue;
+      // A3 (audit v6) — les planchers ne remontent JAMAIS au-dessus de la valeur d'origine :
+      // une réduction est une réduction, même sur une séance déjà courte.
       if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.round(st.reps * f));
-      else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
-      else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+      else if (st.durationMin) st.durationMin = Math.min(st.durationMin, Math.max(10, Math.round(st.durationMin * f)));
+      else if (st.distanceM) st.distanceM = Math.min(st.distanceM, Math.max(200, Math.round((st.distanceM * f) / 25) * 25));
     }
     renderSess(s, refs, hz, baseRefs);
   }
@@ -90,11 +93,25 @@ function reduceDay(day: V1Day, f: number, refs: Refs, hz: Record<string, string>
 function enduranceReplacement(disc: string, minutes: number, refs: Refs, hz: Record<string, string>, baseRefs: Refs, why: string): V1Session {
   const d = (disc === "br" ? "bk" : disc) as V1Session["d"];
   const zone = d === "rn" ? "rn.easy" : d === "sw" ? "sw.easy" : "bk.z2";
+  // A3 (audit v6) — un remplacement de récupération n'est PAS une séance de plan : le
+  // plancher C24 (750m) ne s'y applique pas. La distance est DÉRIVÉE des minutes allouées
+  // (arrondi à 25m vers le bas) pour ne jamais dépasser la séance qu'elle remplace.
   const s: V1Session = d === "sw"
-    ? { d, name: "Endurance souple (adaptée)", note: why, det: "", steps: [{ role: "body", distanceM: Math.max(750, Math.round(((minutes * 60) / (baseRefs.css || 130)) * 100 / 25) * 25), zone, d: "sw" }] }
+    ? { d, name: "Endurance souple (adaptée)", note: why, det: "", steps: [{ role: "body", distanceM: Math.max(200, Math.floor(((minutes * 60) / (baseRefs.css || 130)) * 100 / 25) * 25), zone, d: "sw" }] }
     : { d, name: "Endurance facile (adaptée)", note: why, det: "", steps: [{ role: "body", durationMin: minutes, zone }] };
   renderSess(s, refs, hz, baseRefs);
   return s;
+}
+
+/** A2 (audit v6, R6.1) — la localisation de la douleur choisit la discipline de
+ * remplacement : on retire la contrainte qui sollicite la zone, on ne la réduit pas.
+ * Renvoie null quand AUCUNE discipline d'endurance n'épargne la zone → repos complet. */
+function resolvePainDiscipline(mainDisc: string, painLocation: string | undefined): { disc: string | null; swapped: boolean } {
+  const base = mainDisc === "br" ? "bk" : mainDisc;
+  const contra = painLocation ? R6_PAIN_CONTRAINDICATION[painLocation] : undefined;
+  if (!contra || !contra.forbid.includes(base)) return { disc: base, swapped: false };
+  const alt = contra.prefer.find((d2) => !contra.forbid.includes(d2)) ?? null;
+  return { disc: alt, swapped: true };
 }
 
 export function adjustDay(reasoned: ReasonedPlan, plan: V1Plan, date: string, snapshot: ReadinessSnapshot): DayAdjustment {
@@ -165,13 +182,26 @@ export function adjustDay(reasoned: ReasonedPlan, plan: V1Plan, date: string, sn
       day.sessions = [{ d: "rs", name: "OFF (readiness)", det: "repos — 💡 " + drivers.join(" · ") + ". En affûtage, la fraîcheur prime sur tout : repos complet.", steps: [] }];
       D("ADAPT-rouge-taper", "Rouge en affûtage", "OFF", "À quelques jours de la course, on ne force jamais sur un signal rouge");
     } else if (intensity === "difficile" || intensity === "moderee") {
-      action = "replace";
       const main = day.sessions.find((s) => s.d !== "rs")!;
-      const why = drivers.join(" · ") + " — la séance de qualité est remplacée par de l'endurance : l'intensité un jour rouge coûte plus qu'elle ne rapporte.";
-      const replacementMin = Math.max(25, Math.round(originalMinutes * 0.5));
-      day.sessions = [enduranceReplacement(main.d, replacementMin, refs, reasoned.hz, reasoned.baseRefs, why)];
-      day.charge = "facile";
-      D("ADAPT-rouge", "Readiness rouge", "qualité → endurance (" + replacementMin + "min)", why);
+      // A3 — jamais plus de minutes qu'avant : le plancher de 25min cède si la séance
+      // d'origine était plus courte.
+      const replacementMin = Math.min(Math.max(1, Math.round(originalMinutes)), Math.max(25, Math.round(originalMinutes * 0.5)));
+      // A2/R6.1 — la douleur localisée retire la discipline qui sollicite la zone
+      const pain = snapshot.painFlag ? resolvePainDiscipline(main.d, snapshot.painLocation) : { disc: main.d === "br" ? "bk" : main.d, swapped: false };
+      if (pain.disc === null) {
+        action = "rest";
+        day.charge = "off";
+        day.sessions = [{ d: "rs", name: "Repos complet (douleur)", det: "repos — 💡 douleur " + (snapshot.painLocation || "signalée") + " : aucune discipline d'endurance n'épargne cette zone aujourd'hui. Le repos EST la bonne séance.", steps: [] }];
+        D("ADAPT-rouge-douleur", "Douleur " + (snapshot.painLocation || "signalée"), "repos complet", "Aucune discipline disponible n'épargne la zone douloureuse — on ne dégrade pas la séance, on l'annule (R6.1)");
+      } else {
+        action = "replace";
+        const why = pain.swapped
+          ? "douleur " + (snapshot.painLocation || "") + " signalée — l'appui sur la zone est retiré aujourd'hui : la séance passe en " + (pain.disc === "bk" ? "vélo" : pain.disc === "sw" ? "nage" : "course") + " souple (R6.1)."
+          : drivers.join(" · ") + " — la séance de qualité est remplacée par de l'endurance : l'intensité un jour rouge coûte plus qu'elle ne rapporte.";
+        day.sessions = [enduranceReplacement(pain.disc, replacementMin, refs, reasoned.hz, reasoned.baseRefs, why)];
+        day.charge = "facile";
+        D("ADAPT-rouge", "Readiness rouge", "qualité → endurance (" + replacementMin + "min)", why);
+      }
     } else {
       action = "rest";
       const deepRed = (snapshot.energy != null && snapshot.energy < 20) || (snapshot.sleepQuality === "mauvais" && snapshot.hrvStatus === "basse");
@@ -183,5 +213,11 @@ export function adjustDay(reasoned: ReasonedPlan, plan: V1Plan, date: string, sn
     }
   }
 
-  return { date, action, verdict, originalMinutes, adjustedMinutes: dayMinutes(day), decisions };
+  // A3 (audit v6) — l'invariant d'en-tête est ASSERTÉ, plus seulement documenté :
+  // hors « keep », un ajustement ne produit jamais plus de minutes que la séance d'origine.
+  const adjustedMinutes = dayMinutes(day);
+  if (action !== "keep" && adjustedMinutes > originalMinutes + 0.01) {
+    throw new Error("Invariant readiness violé : " + originalMinutes.toFixed(1) + " → " + adjustedMinutes.toFixed(1) + "min (" + action + ")");
+  }
+  return { date, action, verdict, originalMinutes, adjustedMinutes, decisions };
 }

@@ -24,9 +24,19 @@ function exportJSON(){try{const j=planToJSON(S.answers);_dl("plan-"+(S.sport||"e
 function exportICS(){try{
   const j=planToJSON(S.answers);
   const esc2=s=>String(s==null?"":s).replace(/([,;\\])/g,"\\$1").replace(/\r?\n/g,"\\n");
-  const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//EnduraBuild//FR//","CALSCALE:GREGORIAN"];
+  const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//EnduraBuild//FR//","CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+  // Conformité RFC 5545 (audit v6) — trois défauts corrigés :
+  //  1. DTSTAMP était ABSENT (obligatoire ; certains clients rejetaient le fichier entier)
+  //  2. UID collisionnable (AAAAMMJJ-index) : deux plans différents à la même date se
+  //     REMPLAÇAIENT à l'import — l'UID porte maintenant sport, format et id du plan
+  //  3. DTEND == DTSTART sur un événement VALUE=DATE : DTEND est EXCLUSIF, l'événement
+  //     avait donc une durée nulle — il vaut désormais J+1
+  const stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+  const planId=String((S.currentPlan&&S.currentPlan.id)||S.activePlanId||"p").replace(/[^A-Za-z0-9]/g,"");
+  const tag=(S.sport||"eb")+"-"+String(S.answers.format||"x").replace(/[^A-Za-z0-9.]/g,"")+"-"+planId;
+  const nextDay=iso=>{const t=new Date(iso+"T00:00:00Z").getTime()+864e5;return new Date(t).toISOString().slice(0,10).replace(/-/g,"");};
   j.weeks.forEach(w=>w.days.forEach(d=>{if(!d.date)return;const dt=d.date.replace(/-/g,"");
-    d.sessions.forEach((s,i)=>{L.push("BEGIN:VEVENT","UID:"+dt+"-"+i+"@endurabuild","DTSTART;VALUE=DATE:"+dt,"DTEND;VALUE=DATE:"+dt,"SUMMARY:"+esc2(s.name),"DESCRIPTION:"+esc2(s.det||""),"END:VEVENT");});}));
+    d.sessions.forEach((s,i)=>{L.push("BEGIN:VEVENT","UID:"+dt+"-"+i+"-"+tag+"@endurabuild","DTSTAMP:"+stamp,"SEQUENCE:0","DTSTART;VALUE=DATE:"+dt,"DTEND;VALUE=DATE:"+nextDay(d.date),"SUMMARY:"+esc2(s.name),"DESCRIPTION:"+esc2(s.det||""),"END:VEVENT");});}));
   L.push("END:VCALENDAR");
   _dl("plan-"+(S.sport||"eb")+".ics","text/calendar;charset=utf-8",L.join("\r\n"));
 }catch(e){alert("Export impossible : "+e.message);}}

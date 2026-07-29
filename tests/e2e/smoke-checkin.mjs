@@ -43,18 +43,21 @@ await page.waitForTimeout(400);
 // 1. Écran d'accueil = diaporama de check-in sur l'onglet central, PAS de séance visible
 ok(await page.locator("#ckSlide").count() === 1, "diaporama de check-in visible à l'ouverture");
 ok(/1\/3/.test(await page.locator("#ckSlide").textContent()), "écran 1/3 (sommeil) affiché");
+ok(/dormi combien/.test(await page.locator("#ckSlide").textContent()), "le sommeil est demandé en HEURES (signal mesuré, audit v6 A5)");
 ok(await page.locator(".gw-grid").count() === 0, "AUCUNE grille de semaine visible avant le check-in");
 ok(await page.locator(".doneBtn").count() === 0, "AUCUNE coche de séance visible avant le check-in");
 ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "5 onglets (Profil/Plan/Aujourd'hui/Semaine/Nutrition)");
 ok(await page.locator("#ebTabbar .tabbtn.tab-central").count() === 1, "l'onglet central Aujourd'hui est mis en valeur");
 
-// 2. Diaporama : 3 taps (sommeil mauvais → VFC basse → vidé), phrases de coach
-await page.click('[data-ck-opt="mauvais"]');
+// 2. Diaporama : 3 taps (nuit courte → VFC basse → vidé), phrases de coach
+await page.click('[data-ck-opt="4"]'); // moins de 5h
 await page.waitForTimeout(150);
 const s2 = await page.locator("#ckSlide").textContent();
 ok(/2\/3/.test(s2) && /VFC/.test(s2), "écran 2/3 : VFC, présentée comme optionnelle");
-ok(/Merci d’être honnête|tenir compte/.test(s2), "phrase de coach qui réagit à la réponse précédente");
+ok(/lever le pied|tenir compte|Nuit courte/.test(s2), "phrase de coach qui réagit à la réponse précédente");
 ok(await page.locator('[data-ck-opt="skip"]').count() === 1, "« Je ne la suis pas » est un vrai choix");
+ok(await page.locator("#ckHr").count() === 1, "FC au réveil collectée (optionnelle) — audit v6 A6");
+await page.fill("#ckHr", "58");
 ok(await page.locator("#ckBack").count() === 1, "retour possible (← Revenir)");
 await page.click('[data-ck-opt="basse"]');
 await page.waitForTimeout(150);

@@ -32,8 +32,22 @@ async function applyReadinessSnap(base){
   const snap={date:todayISO(),
     sleepQuality:base.sleepQuality||"moyen",hrvStatus:base.hrvStatus||"normale",
     energy:parseInt(base.energy)||55,feel:base.feel||"normal"};
+  // A5/A6 (audit v6) — signaux MESURÉS enfin transmis au moteur (ils étaient supportés
+  // depuis Sprint 2 et jamais collectés) : heures de sommeil, FC au réveil, et baseline
+  // glissante 7 jours calculée depuis l'historique (dès 3 mesures, sinon seuil absolu).
+  if(base.sleepHours!=null&&isFinite(base.sleepHours))snap.sleepHours=+base.sleepHours;
+  const hr=parseInt(base.restingHr);
+  if(hr>=30&&hr<=120){
+    snap.restingHr=hr;
+    if(!Array.isArray(S.answers.hrRestLog))S.answers.hrRestLog=[];
+    S.answers.hrRestLog=S.answers.hrRestLog.filter(x=>x.date!==snap.date);
+    const prev=S.answers.hrRestLog.slice(-7);
+    if(prev.length>=3)snap.restingHrBaseline=Math.round(prev.reduce((t,x)=>t+x.v,0)/prev.length);
+    S.answers.hrRestLog.push({date:snap.date,v:hr});
+    S.answers.hrRestLog=S.answers.hrRestLog.slice(-30);
+  }
   const wx=await fetchWeather();if(wx&&wx.tmaxC!=null)snap.weather=wx;
-  S.answers.readiness={date:snap.date,sleepQuality:snap.sleepQuality,hrvStatus:snap.hrvStatus,energy:snap.energy,feel:snap.feel};ebSave();
+  S.answers.readiness={date:snap.date,sleepQuality:snap.sleepQuality,hrvStatus:snap.hrvStatus,energy:snap.energy,feel:snap.feel,sleepHours:snap.sleepHours,restingHr:snap.restingHr};ebSave();
   let res;try{res=globalThis.EBV2.adjustToday(S.sport,S.answers,snap);}catch(e){console.warn(e);return null;}
   // Historique des verdicts : chaque adaptation quotidienne est archivée (une entrée par
   // jour, la dernière gagne) — montre combien de fois le plan s'est réellement adapté.
