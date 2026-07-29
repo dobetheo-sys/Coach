@@ -2131,8 +2131,17 @@ class TrainingReasoningEngine {
     const minW = MIN_WEEKS[sp][fmt] || 12;
     let weeks = minW;
     if (a.race_date) {
-      const diff = Math.floor((new Date(a.race_date).getTime() - Date.now()) / (7 * 864e5));
-      if (diff >= minW * 0.75 && diff <= 80) weeks = diff;
+      // R8 — l'entraînement commence CETTE semaine, pas la prochaine. L'ancien calcul
+      // floor((course − maintenant)/7j) perdait la fraction de semaine : course dans
+      // 8,5 semaines → plan de 8 semaines ancré sur la course → départ lundi SUIVANT.
+      // La durée est désormais le nombre de semaines calendaires entre le lundi de
+      // l'ancrage (plan_start, sinon aujourd'hui) et le lundi de course, inclus : le
+      // générateur (ancré fin de course) fait alors démarrer la semaine 1 aujourd'hui.
+      const MS = 864e5;
+      const mondayOf = (t        )         => t - ((new Date(t).getUTCDay() + 6) % 7) * MS;
+      const anchorT = a.plan_start ? new Date(a.plan_start + "T00:00:00Z").getTime() : Date.now();
+      const span = Math.round((mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - mondayOf(anchorT)) / (7 * MS)) + 1;
+      if (span >= Math.ceil(minW * 0.75) && span <= 80) weeks = span;
     }
     D("duree", "Durée de préparation", weeks + " semaines", "Minimum " + minW + " pour " + fmt + (a.race_date ? ", ajusté à la date de course" : ""));
 

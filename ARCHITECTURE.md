@@ -497,3 +497,14 @@ VEILLE (mauvaise séance du jour, mauvaise case « aujourd'hui », readiness re-
   toute heure réelle, au moins un diffère de la date UTC) vérifient todayISO() = date
   locale, case « aujourd'hui » sur le bon jour, étiquettes Lun/Mar alignées sur les
   vraies dates, annotations présentes. Toute régression UTC casse la CI.
+
+## R8 — l'entraînement commence cette semaine (fix durée avec date de course)
+
+4e retour : « l'entraînement commence la semaine prochaine et pas aujourd'hui ». Cause :
+`floor((course − maintenant)/7 j)` perdait la fraction de semaine — course dans 8,5
+semaines → plan de 8 semaines ancré sur la course → semaine 1 au lundi SUIVANT. La durée
+est désormais le **nombre de semaines calendaires entre le lundi de l'ancrage
+(plan_start) et le lundi de course, inclus** (reasoningEngine) : la semaine 1 contient
+toujours aujourd'hui, la course tombe toujours dans la dernière semaine. Garde CI dans
+`demo:retention` (5 fractions de semaine différentes testées, départ immédiat + course
+en dernière semaine assertés).

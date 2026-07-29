@@ -125,5 +125,23 @@ function validateDays(answers: Record<string, unknown>, upTo: number) {
     JSON.stringify(pa.weeks.map((w) => w.days.map((d) => (d as { date?: string }).date))) === JSON.stringify(pb.weeks.map((w) => w.days.map((d) => (d as { date?: string }).date))));
 }
 
+// ---- 6b. R8 — avec une date de course, l'entraînement commence CETTE semaine (jamais la
+// prochaine : l'ancien floor(semaines) perdait la fraction et décalait tout le plan) ----
+{
+  const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
+  const today = iso(Date.now());
+  for (const daysOut of [59, 61, 66, 70, 74]) { // ~8.4 à ~10.6 semaines — fractions variées
+    const race = iso(Date.now() + daysOut * 864e5);
+    const { plan: pr } = generatePlan({ ...profile, plan_start: today, race_date: race } as unknown as AthleteProfile);
+    const w1 = pr.weeks[0];
+    const hasToday = w1.days.some((d) => (d as { date?: string }).date === today);
+    const lastW = pr.weeks[pr.weeks.length - 1];
+    const raceInLast = lastW.days.some((d) => (d as { date?: string }).date === race);
+    check("course à J+" + daysOut + " : la semaine 1 contient AUJOURD'HUI (départ immédiat)", hasToday,
+      "semaine 1 : " + ((w1.days[0] as { date?: string }).date || "?") + " → " + ((w1.days[w1.days.length - 1] as { date?: string }).date || "?"));
+    check("course à J+" + daysOut + " : la course tombe dans la dernière semaine", raceInLast);
+  }
+}
+
 if (failures) { console.error("\nDémo rétention : " + failures + " garantie(s) en échec."); process.exit(1); }
 console.log("\nDémo rétention : toutes les garanties tiennent (repos = séance, gel douleur/maladie, zéro récompense hors plan).");
