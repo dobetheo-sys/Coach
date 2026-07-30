@@ -19,6 +19,7 @@ import { renderSess, type Refs } from "./renderer.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY } from "../engine/trailModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
+import { guard, sportModule } from "../sports/registry.ts";
 
 interface BoundedSession extends V1Session {
   social?: boolean;
@@ -109,7 +110,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   const _auditRefs: AthleteRefs = { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 };
   // Le lissage retient la mesure la PLUS GRANDE des deux (s.min du plan, métrique auditeur) :
   // les deux lectures doivent tenir, on ne lisse pas l'une en cassant l'autre.
-  const weekMinSmooth = a.sport === "swim" || a.sport === "tri"
+  const weekMinSmooth = guard(a.sport as string, "smoothOnAuditMetric")
     ? (wd: GenDay[]) => Math.max(weekMin(wd), wd.reduce((t, d) => t + d.sessions.reduce((u, s) => u + sessionLoad(s, _auditRefs).minutes, 0), 0))
     : weekMin;
   const renderWeek = (wd: GenDay[]) =>
@@ -286,7 +287,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     // réduit aussi les séances de qualité — les blocs à répétitions n'ont pas de plancher
     // de total. On remonte la séance entière : ≥750m (non-débutant), ≥600m (débutant, D6 —
     // le manifeste interdit la « sortie piscine qui ne vaut pas le déplacement » à tous).
-    if (a.sport !== "run") {
+    if (guard(a.sport as string, "swimSessionFloors")) {
       const swFloor = r.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : 750;
       const raised: { d: GenDay; s: V1Session }[] = [];
       for (const d of wd)
@@ -325,7 +326,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     // D5 (audit v6) — C15 s'applique à la SÉANCE (tous blocs confondus), pas au seul bloc
     // body : échauffement 200m + corps 850m + retour 100m = 1150m violait le plafond en
     // silence. Le corps cède, jamais l'échauffement ni le retour au calme (valeur technique).
-    if (r.beginner && a.sport !== "run") {
+    if (r.beginner && guard(a.sport as string, "swimSessionFloors")) {
       let changed = false;
       for (const d of wd)
         for (const s of d.sessions) {
@@ -514,7 +515,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   // C24/C24b/C15 — fenêtres de SÉANCE nage, LE MOT FINAL après toutes les passes de
   // lissage (qui peuvent redescendre ou regonfler une séance) : ≥750m non-débutant,
   // [600, 850]m débutant. Le corps cède ou monte — jamais l'échauffement ni le retour au calme.
-  if (a.sport !== "run") {
+  if (guard(a.sport as string, "swimSessionFloors")) {
     const swFloorF = r.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : 750;
     for (const w of wl) {
       const wd2 = w.days as GenDay[];
@@ -827,7 +828,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // course elle-même (consigne de pacing selon la priorité), pas un entraînement.
       const rd = (wk.days as GenDay[]).find((d) => d.date === rc.date);
       if (rd) {
-        const mainD = a.sport === "bike" ? "bk" : a.sport === "swim" ? "sw" : "rn";
+        const mainD = sportModule(a.sport as string).mainDiscipline;
         const prevMin = rd.sessions.reduce((m, s) => m + (s.min || 0), 0) || 60;
         rd.charge = "dur";
         rd.sessions = [{

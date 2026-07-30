@@ -22,10 +22,12 @@ function parseTime(v) { const m = String(v || "").split(":"); return m.length ==
 function fmtSec(s) { return Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0") + " /km"; }
 
 export function typesForSport(sport) {
-  if (sport === "tri") return ["css", "ftp", "thrPace"];
-  if (sport === "bike") return ["ftp"];
-  if (sport === "swim") return ["css"];
-  return ["thrPace"];
+  // R10 phase 1 — la liste vient du REGISTRE DE SPORTS (EBV2.sports) : l'UI ne recopie plus
+  // ce que chaque sport teste. Un sport ajouté au moteur est complet ici sans y toucher.
+  // Les types affichables restent filtrés par TYPES (un protocole non écrit ne s'affiche pas).
+  const reg = globalThis.EBV2 && EBV2.sports && EBV2.sports[sport];
+  const known = reg ? reg.retestTypes.filter((t) => TYPES[t]) : [];
+  return known.length ? known : ["thrPace"]; // repli : l'allure seuil se teste dans tous les sports
 }
 function protocolFor(type) {
   const reg = globalThis.EBV2 && globalThis.EBV2.disciplines;

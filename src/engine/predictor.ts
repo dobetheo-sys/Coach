@@ -9,6 +9,7 @@
  * La fourchette se resserre si le plan est bien suivi (streak + charge accomplie).
  */
 import type { Decision } from "./types.ts";
+import { sportModule } from "../sports/registry.ts";
 import { T5_HIKE_SHARE, TRAIL_TECHNICITY, type TrailObjective } from "./trailModel.ts";
 
 export interface PredictionItem {
@@ -39,8 +40,8 @@ const COURSE_PROFILE_RUN: Record<string, { lo: number; hi: number; label: string
   montagneux: { lo: 1.08, hi: 1.15, label: "parcours montagneux" },
 };
 
-const RUN_KM: Record<string, number> = { "5k": 5, "10k": 10, semi: 21.0975, marathon: 42.195 };
-const SWIM_RACE: Record<string, { dist: number; factor: number }> = {
+export const RUN_KM: Record<string, number> = { "5k": 5, "10k": 10, semi: 21.0975, marathon: 42.195 };
+export const SWIM_RACE: Record<string, { dist: number; factor: number }> = {
   sprint: { dist: 100, factor: 0.9 },
   demifond: { dist: 400, factor: 0.94 },
   fond: { dist: 1500, factor: 1.0 },
@@ -49,26 +50,26 @@ const SWIM_RACE: Record<string, { dist: number; factor: number }> = {
 // R10 — recalées sur les facteurs d'intensité de référence (Coggan) et exprimées en
 // puissance NORMALISÉE : un ami coureur lisait « 80% FTP » comme une cible molle — c'est
 // la moyenne pondérée d'un effort où les pointes montent bien au-dessus du seuil.
-const BIKE_POWER: Record<string, { lo: number; hi: number; note: string }> = {
+export const BIKE_POWER: Record<string, { lo: number; hi: number; note: string }> = {
   crit: { lo: 0.95, hi: 1.05, note: "critérium : au seuil et au-dessus par relances" },
   clm: { lo: 0.95, hi: 1.02, note: "CLM : effort au seuil, régulier du départ à la ligne" },
   route: { lo: 0.85, hi: 0.95, note: "course sur route : les attaques et bosses montent bien au-dessus du seuil" },
   cyclo: { lo: 0.73, hi: 0.83, note: "cyclosportive : tempo durable, garder du grain pour la fin" },
   gravel: { lo: 0.68, hi: 0.78, note: "gravel/ultra : endurance, la régularité bat la vitesse" },
 };
-const TRI_SWIM: Record<string, { dist: number; factor: number }> = {
+export const TRI_SWIM: Record<string, { dist: number; factor: number }> = {
   S: { dist: 750, factor: 1.04 },
   M: { dist: 1500, factor: 1.05 },
   "70.3": { dist: 1900, factor: 1.06 },
   Full: { dist: 3800, factor: 1.08 },
 };
-const TRI_BIKE: Record<string, { lo: number; hi: number }> = {
+export const TRI_BIKE: Record<string, { lo: number; hi: number }> = {
   S: { lo: 0.85, hi: 0.93 },
   M: { lo: 0.82, hi: 0.88 },
   "70.3": { lo: 0.76, hi: 0.83 },
   Full: { lo: 0.7, hi: 0.76 },
 };
-const TRI_RUN: Record<string, { km: number; fatigue: number }> = {
+export const TRI_RUN: Record<string, { km: number; fatigue: number }> = {
   S: { km: 5, fatigue: 1.03 },
   M: { km: 10, fatigue: 1.05 },
   "70.3": { km: 21.0975, fatigue: 1.08 },
@@ -145,41 +146,15 @@ export function predictRace(
     return { items, advice, decisions };
   }
 
-  if (sport === "run") {
-    if (refs.thrPace > 0 && RUN_KM[format]) {
-      const t = riegelSec(refs.thrPace, RUN_KM[format]);
-      items.push({ leg: "Course", value: runRange(t), why: "Riegel depuis ton allure seuil (~1h), exposant 1.06 — la référence des prédictions route" + profWhy });
-      D("PRED-run", "Méthode course", "Riegel ^1.06", "Extrapolation standard depuis l'allure tenable une heure");
-    } else if (format === "trail") {
-      advice.push("Trail : le chrono dépend du D+ et du terrain — repère fiable : allure Z2 à plat, marche assumée dans les pentes raides.");
-    } else advice.push("Renseigne ton allure seuil (test : 30min à fond, allure moyenne) pour obtenir une projection chiffrée.");
-  } else if (sport === "bike") {
-    const b = BIKE_POWER[format];
-    if (refs.ftp > 0 && b) {
-      items.push({ leg: "Vélo", value: Math.round(refs.ftp * b.lo) + "–" + Math.round(refs.ftp * b.hi) + "W", why: b.note + " — cible en puissance NORMALISÉE (moyenne pondérée : les pointes montent au-dessus), le chrono dépend du parcours" });
-      D("PRED-bike", "Méthode vélo", "% FTP par format", "Prédire un chrono sans connaître le parcours serait mentir ; la puissance cible est transférable partout");
-    } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir tes puissances cibles de course.");
-  } else if (sport === "swim") {
-    const sw = SWIM_RACE[format];
-    if (refs.css > 0 && sw) {
-      const t = (sw.dist / 100) * refs.css * sw.factor;
-      items.push({ leg: "Natation (" + sw.dist + "m)", value: range(t), why: "CSS × " + sw.factor + (sw.factor < 1 ? " (les distances courtes se nagent plus vite que le seuil)" : sw.factor > 1 ? " (eau libre : navigation et peloton ralentissent)" : " (le 1500m se nage à l'allure CSS)") });
-      D("PRED-swim", "Méthode natation", "CSS × facteur distance", "Le Critical Swim Speed est l'allure soutenable — chaque distance de course a son facteur validé");
-    } else advice.push("Renseigne ton CSS (test : 400m et 200m chrono → CSS = 200m ÷ (t400−t200)) pour une projection chiffrée.");
-  } else if (sport === "tri") {
-    const sw = TRI_SWIM[format], bk = TRI_BIKE[format], rn = TRI_RUN[format];
-    if (refs.css > 0 && sw) {
-      const t = (sw.dist / 100) * refs.css * sw.factor;
-      items.push({ leg: "Natation " + sw.dist + "m", value: range(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" });
-    } else advice.push("CSS manquant → pas de projection natation (test 400/200m).");
-    if (refs.ftp > 0 && bk) {
-      items.push({ leg: "Vélo", value: Math.round(refs.ftp * bk.lo) + "–" + Math.round(refs.ftp * bk.hi) + "W", why: "puissance normalisée qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" });
-    } else advice.push("FTP manquante → pas de puissance cible vélo (test 20min × 0.95).");
-    if (refs.thrPace > 0 && rn) {
-      const t = riegelSec(refs.thrPace, rn.km) * rn.fatigue;
-      items.push({ leg: "CAP " + (rn.km >= 21 ? (rn.km > 22 ? "marathon" : "semi") : rn.km + "km"), value: runRange(t), why: "Riegel × " + rn.fatigue + " de fatigue post-vélo (facteur " + format + ")" + profWhy });
-    } else advice.push("Allure seuil manquante → pas de projection CAP (test 30min).");
-    if (items.length) D("PRED-tri", "Méthode tri", "legs séparés", "Un total additionnerait les incertitudes ; chaque leg a sa méthode et sa fourchette");
+  // R10 phase 1 — DISPATCH : chaque sport porte SA méthode de prédiction dans son module
+  // (`src/sports/<sport>/`). Ce qui reste ici est commun : fourchettes, profil de parcours,
+  // formatage, journal de décisions. Un sport sans méthode ne PRÉDIT RIEN plutôt que de
+  // sortir un chiffre inventé — la fourchette honnête est la seule sortie acceptable.
+  const mod = sportModule(sport);
+  if (mod.predict) {
+    mod.predict({ format, refs, items, advice, D, range, runRange, riegelSec, profWhy });
+  } else {
+    advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }
 
   return { items, advice, decisions };

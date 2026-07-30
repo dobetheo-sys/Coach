@@ -6,7 +6,7 @@
  */
 import type { ReasonedPlan, V1Day, V1Session } from "../engine/types.ts";
 import { buildSessions, type SessionCtx } from "./sessionLibrary.ts";
-import { buildTrailSessions, trailWeekSchema } from "./trailLibrary.ts";
+import { guard, sportModule } from "../sports/registry.ts";
 import { intOf, renderSess, type Refs, type HrZones } from "./renderer.ts";
 
 const J = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -16,10 +16,13 @@ interface DaySlot {
   slot: string;
 }
 
-function schema(use10: boolean, phase: string, isRecup: boolean, trailCat?: string): DaySlot[] {
-  // R7 TRAIL — structure propre : la descente et la marche sont des séances à part entière,
-  // la sortie longue est le pivot du week-end, le lundi porte le renfo excentrique.
-  if (trailCat) return trailWeekSchema(phase, isRecup, trailCat as "long") as DaySlot[];
+function schema(use10: boolean, phase: string, isRecup: boolean, r?: ReasonedPlan): DaySlot[] {
+  // R10 phase 1 — un sport peut avoir son PROPRE schéma de semaine (le trail : descente et
+  // marche sont des séances à part entière, la longue est le pivot du week-end, le lundi porte
+  // le renfo excentrique). Il le déclare dans son module ; sinon, le schéma générique par
+  // créneaux s'applique — il est agnostique de la discipline, et c'est très bien ainsi.
+  const own = r ? sportModule(r.profile.sport as string).weekSchema : null;
+  if (own) return own(phase, isRecup, r!) as DaySlot[];
   if (isRecup) {
     const d: [string, string][] = [["facile", "facileR"], ["facile", "facile2"], ["off", "off"], ["facile", "facileR"], ["facile", "facile2"], ["facile", "facileR"], ["off", "off"], ["facile", "facile2"], ["facile", "facileR"], ["recup", "recup"]];
     return (use10 ? d : d.slice(0, 7)).map((x) => ({ charge: x[0], slot: x[1] }));
@@ -43,6 +46,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   const a = r.profile;
   const sp = a.sport;
   const ctx: SessionCtx = { r };
+  const mod = sportModule(sp as string); // registre R10 : ce que CE sport déclare
   const cycleLen = r.use10 ? 10 : 7;
   const totalDays = r.weeks * 7;
   const days: GenDay[] = [];
@@ -61,7 +65,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
       // déjà, la détente d'affûtage fait office de récupération).
       if (isR && ph.id === "peak" && ph.weeks <= 1) isR = false;
       if (isR) sinceR = 0; else sinceR++;
-      sch = schema(r.use10, ph.id, isR, r.trail ? r.trail.category : undefined);
+      sch = schema(r.use10, ph.id, isR, r);
     }
     const s = sch[dic] || { charge: "facile", slot: "facileR" };
     const jn = J[i % 7];
@@ -109,10 +113,11 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   // medHold : retirer l'intensité (dur1/dur2 ; tri : aussi le brick) avant génération
   if (r.medHold)
     for (const d of days) {
-      const stripLong = sp === "tri";
+      // Le brick tri EST de l'intensité : sur avis médical en attente, la longue tombe aussi.
+      const stripLong = guard(sp as string, "stripLongOnMedHold");
       if (d.charge === "dur" && (d.slot === "dur1" || d.slot === "dur2" || (stripLong && d.slot === "durLong"))) {
         d.charge = "facile";
-        d.slot = sp === "run" ? "facile2" : "facileR";
+        d.slot = mod.easyFallbackSlot;
       }
     }
 
@@ -141,9 +146,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
     d.date = iso(start + i * MS);
-    d.sessions = r.trail
-      ? buildTrailSessions(r, d.slot as Parameters<typeof buildTrailSessions>[1], d.phaseId, d.prog, d.week)
-      : buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog);
+    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week);
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
       else if (s.min == null) s.min = 0;
@@ -152,7 +155,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
 
   // C18b — un seul « VO2max course » par semaine de peak : le second créneau facileR
   // redevient footing (sinon 4 jours durs et une semaine de peak plus légère que la spec).
-  if (a.sport === "tri") {
+  if (guard(a.sport as string, "singleRunVo2PerWeek")) {
     for (let w = 1; w <= r.weeks; w++) {
       const vo2Days = days.filter((d) => d.week === w && d.sessions.some((x) => x.name === "VO2max course"));
       for (let i = 1; i < vo2Days.length; i++) {
@@ -175,8 +178,8 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
  *  D10-3 — s'applique à `run` ET `trail` (le trail ajoute l'excentrique à l'impact). */
 function applyRunImpactCap(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZones): void {
   const a = r.profile;
-  if ((a.sport !== "run" && a.sport !== "trail") || r.maxRunDays == null) return;
-  const isTrail = a.sport === "trail";
+  if (!guard(a.sport as string, "runImpactCap") || r.maxRunDays == null) return;
+  const isTrail = a.sport === "trail"; // le SUBSTITUT est trail-spécifique (vélo en côte)
   const injImpact = r.inj.impact; // R6 (audit v6) — lecture unique des blessures
   const canCross = a.dispo === "quotidienne" || a.dispo === "semaine";
   for (let w = 1; w <= r.weeks; w++) {
@@ -291,6 +294,9 @@ function applyStrengthGrafts(r: ReasonedPlan, days: GenDay[]): void {
         steps: [] });
       continue;
     }
+    // NB (R10 phase 1) : le trail a sa PROPRE greffe de renfo excentrique, posée plus haut
+    // dans cette fonction (elle `continue`). Lui ajouter en plus la plio de la course
+    // ferait doublon — l'extraction reste mécanique, ce n'est pas le lieu d'en décider.
     if (sp === "run") {
       // B2 (audit v6) — la greffe de renfo est CIBLÉE par localisation : tibia → renfo
       // tibial, hanche → gainage hanche/ITB (moyen fessier, bande ilio-tibiale).
@@ -317,7 +323,7 @@ function applyAntiCollage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZon
     if (days[i].charge === "dur" && days[i + 1].charge === "dur" && !days[i + 1].forced) {
       const d = days[i + 1];
       d.charge = "facile";
-      d.slot = r.profile.sport === "run" ? "facile2" : "facileR";
+      d.slot = sportModule(r.profile.sport as string).easyFallbackSlot;
       d.sessions = buildSessions(ctx, d.slot as "facile2" | "facileR", d.phaseId, d.prog || 0);
       for (const s of d.sessions) if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
     }

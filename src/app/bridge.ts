@@ -8,6 +8,7 @@ import { intensitySplit } from "../engine/loadModel.ts";
 import { parsePaceSec, HISTORY_CAPS, UTIL, MARGIN } from "../engine/constraintMatrix.ts";
 import { trailObjective, TRAIL_HISTORY_CAPS, TRAIL_UTIL } from "../engine/trailModel.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
+import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
 import { predictRace, type Prediction } from "../engine/predictor.ts";
@@ -399,6 +400,13 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   // annonçait 8h/sem là où le moteur en applique 9 (vélo/route/reprise). Les règles
   // pédagogiques expliquent des décisions : elles doivent lire les chiffres qui décident.
   volumeCaps: { history: HISTORY_CAPS, util: UTIL, margin: MARGIN },
+  // R10 phase 1 — le REGISTRE DE SPORTS exposé à l'UI : elle n'a plus à savoir quel sport
+  // teste quoi (`typesForSport` recopiait la liste). Un sport ajouté au moteur devient
+  // automatiquement complet côté interface.
+  sports: Object.fromEntries(knownSports().map((id) => {
+    const m = sportModule(id);
+    return [id, { id: m.id, mainDiscipline: m.mainDiscipline, retestTypes: m.retestTypes, guards: m.guards }];
+  })),
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
   dailyEnergy: dailyEnergyV2,

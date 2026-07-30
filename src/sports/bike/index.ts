@@ -1,0 +1,50 @@
+/**
+ * Sport VÉLO (registre R10). Extraction mécanique de la branche `sp === "bike"`.
+ */
+import type { V1Session } from "../../engine/types.ts";
+import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
+import { BIKE_POWER } from "../../engine/predictor.ts";
+
+export function buildBikeSessions(kit: SessionKit): V1Session[] {
+  const { a, fmt, slot, phase, lvl, finisher, noVo2, S2, P, W, C, B } = kit;
+  const clm = fmt === "clm", climb = a.terrain === "montagne" || a.terrain === "vallonne";
+  if (slot === "dur1") {
+    if (phase === "base") S2.push({ d: "bk", name: "Sweetspot", note: "Effort soutenu mais maîtrisé, cadence 85-95 rpm. Tu dois pouvoir finir chaque bloc sans t'effondrer.", det: "", steps: [W(15, "montée progressive"), B(P(2, 3), P(12, 20), "bk.ss", "5min souple"), C(10, "décrassage")] });
+    else if ((phase === "spec" || phase === "peak" || phase === "dev") && !noVo2) S2.push({ d: "bk", name: "VO2max", note: "Intensité maximale tenable 4min, récup longue. La puissance aérobie se maintient jusqu'à l'affûtage.", det: "", steps: [W(20, "progressif + 3 sprints courts"), B(P(4, 6), 4, "bk.vo2", "4min"), C(10, "souple")] });
+    else if (lvl === "debutant" || finisher) S2.push({ d: "bk", name: "Tempo progressif", note: "Effort confortablement soutenu, sans jamais te mettre dans le rouge.", det: "", steps: [W(15, "souple"), B(P(2, 3), P(8, 15), "bk.ss", "4min très souple"), C(10, "décrassage")] });
+    else S2.push({ d: "bk", name: "Sweetspot", note: "Effort soutenu mais maîtrisé, cadence 85-95 rpm.", det: "", steps: [W(15, "montée progressive"), B(P(2, 3), P(12, 20), "bk.ss", "5min souple"), C(10, "décrassage")] });
+  } else if (slot === "dur2") {
+    if (clm && (phase === "spec" || phase === "peak")) S2.push({ d: "bk", name: "Spécifique CLM (position)", note: "Travaille la tenue de position autant que la puissance : c'est elle qui te fera gagner du temps.", det: "", steps: [W(20, "progressif en position normale"), B(P(2, 3), P(15, 25), "bk.thr", "5min souple, redresse-toi", " en position aéro tenue"), C(10, "décrassage")] });
+    else if (phase === "spec" || phase === "peak") S2.push({ d: "bk", name: "Seuil / race-pace", note: "Allure de course soutenable ~1h. Régularité avant tout.", det: "", steps: [W(15, "progressif"), B(P(2, 4), P(10, 20), "bk.thr", "5min souple"), C(10, "décrassage")] });
+    else S2.push({ d: "bk", name: climb ? "Force en côte" : "Force basse cadence", note: "Gros braquet, cadence basse, mais sans forcer sur les genoux : c'est musculaire, pas cardio.", det: "", steps: [W(15, "+ montée en intensité"), B(P(4, 6), 5, "bk.frc", "3min souple ou en redescendant", " à 50-60 rpm" + (climb ? " en côte" : "")), C(10, "moulinage léger")] });
+  } else if (slot === "durLong") {
+    const durCaps = ({ crit: { lo: 60, hi: 150 }, route: { lo: 90, hi: 180 }, clm: { lo: 75, hi: 165 }, cyclo: { lo: 120, hi: 240 }, gravel: { lo: 150, hi: 360 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 90, hi: 210 };
+    S2.push({ d: "bk", long: true, name: "Sortie longue", note: "Endurance longue : le moteur aérobie se construit sur la durée. Allure régulière, mange et bois régulièrement.", det: "", steps: [Object.assign(B(1, P(durCaps.lo, durCaps.hi), "bk.z2", "", fmt === "cyclo" || fmt === "gravel" ? " · endurance" : ""), { bnd: { floor: durCaps.lo, cap: durCaps.hi } })], ...( { plainBody: true } as object) });
+  } else if (slot === "facileR") S2.push({ d: "bk", name: "Endurance facile", note: "Z2 conversationnel, cadence souple 85-95 rpm : la base aérobie se construit ici.", det: "", steps: [B(1, P(45, 90), "bk.z2")], ...( { plainBody: true } as object) });
+  else if (slot === "facile2") S2.push({ d: "bk", name: "Récup active", note: "Moulinage très souple : activer la circulation, aucune force sur les pédales.", det: "", steps: [B(1, P(30, 45), null, "", " très souple")], ...( { plainBody: true } as object) });
+  else if (slot === "recup") S2.push({ d: "rs", name: "Repos / gainage", det: "mobilité", steps: [] });
+  else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
+  return S2;
+}
+
+
+/** Prédiction bike — extraction mécanique de la branche correspondante de `predictRace`. */
+export function predictBike(kit: PredictKit): void {
+  const { refs, format, items, advice, D } = kit;
+  const b = BIKE_POWER[format];
+  if (refs.ftp > 0 && b) {
+    items.push({ leg: "Vélo", value: Math.round(refs.ftp * b.lo) + "–" + Math.round(refs.ftp * b.hi) + "W", why: b.note + " — cible en puissance NORMALISÉE (moyenne pondérée : les pointes montent au-dessus), le chrono dépend du parcours" });
+    D("PRED-bike", "Méthode vélo", "% FTP par format", "Prédire un chrono sans connaître le parcours serait mentir ; la puissance cible est transférable partout");
+  } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir tes puissances cibles de course.");
+}
+
+registerSport({
+  id: "bike",
+  mainDiscipline: "bk",
+  easyFallbackSlot: "facileR",
+  weekSchema: null,
+  buildSessions: buildBikeSessions,
+  predict: predictBike,
+  retestTypes: ["ftp"],
+  guards: {},
+});

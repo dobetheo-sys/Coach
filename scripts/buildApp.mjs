@@ -19,6 +19,9 @@ import { dirname, join } from "node:path";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ORDER = [
   "src/engine/types.ts",
+  // R10 phase 1 — le REGISTRE avant tout : `registerSport()` doit exister quand les modules
+  // de sport s'enregistrent, et le registre doit être peuplé avant la première génération.
+  "src/sports/registry.ts",
   "src/engine/constraintMatrix.ts",
   "src/engine/disciplineRegistry.ts",
   "src/engine/trailModel.ts",
@@ -28,6 +31,13 @@ const ORDER = [
   "src/audit/coherenceScorer.ts",
   "src/generator/sessionLibrary.ts",
   "src/generator/trailLibrary.ts",
+  // Modules de sport : ils s'enregistrent à l'import (effet de bord), après trailLibrary
+  // dont le module trail se sert, et avant les passes qui interrogent le registre.
+  "src/sports/run/index.ts",
+  "src/sports/bike/index.ts",
+  "src/sports/swim/index.ts",
+  "src/sports/tri/index.ts",
+  "src/sports/trail/index.ts",
   "src/generator/weekBuilder.ts",
   "src/generator/planGenerator.ts",
   "src/generator/repairLoop.ts",

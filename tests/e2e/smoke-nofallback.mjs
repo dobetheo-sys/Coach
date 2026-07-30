@@ -56,6 +56,20 @@ const back = await page.evaluate(async () => {
 });
 ok(back.plan && back.alerts === 0, "le moteur revenu, la génération repart (aucun état bloqué)");
 
+// ---- 5. R10 phase 1 : registre de sports — un sport inconnu LÈVE, sans plan fantôme ----
+const reg = await page.evaluate(() => {
+  const sports = globalThis.EBV2.sports || {};
+  let thrown = null, plan = null;
+  try { plan = globalThis.EBV2.buildPlan("parapente", { vol_max: "8", sessions_max: "5", history: "confirme" }); }
+  catch (e) { thrown = { name: e.name, code: e.code, msg: String(e.message) }; }
+  return { ids: Object.keys(sports).sort(), tri: sports.tri, trail: sports.trail, thrown, plan: !!plan };
+});
+ok(reg.ids.join(",") === "bike,run,swim,trail,tri", "les 5 sports sont déclarés dans le registre (" + reg.ids.join(" ") + ")");
+ok(reg.trail && reg.trail.guards.runImpactCap === true, "le trail DÉCLARE le plafond de jours d'appui (D10-3 ne peut plus revenir par oubli)");
+ok(reg.tri && reg.tri.retestTypes.length === 3, "le tri déclare ses 3 tests de référence (l'UI ne les recopie plus)");
+ok(reg.thrown !== null && !reg.plan, "un sport inconnu lève au lieu de produire un plan silencieux");
+ok(reg.thrown && /SPORT_INCONNU/.test(reg.thrown.code || reg.thrown.msg), "l'erreur est PORTEUSE (" + (reg.thrown ? reg.thrown.code : "—") + ")");
+
 ok(errs.length === 0, "aucune exception non attrapée (" + errs.length + ")");
 if (errs.length) info(errs.slice(0, 3).join(" | "));
 

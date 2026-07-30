@@ -14,6 +14,7 @@ import {
   MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, R6_AGE_LOAD, readInjuries, boundedOrZero,
   parsePaceSec,
 } from "./constraintMatrix.ts";
+import { guard } from "../sports/registry.ts";
 import { T1_DPLUS_CAPS, T4_LONG_RUN_VS_RACE, T6_MIN_WEEKS, TRAIL_HISTORY_CAPS, TRAIL_UTIL, trailObjective, trailWeeklyVertical } from "./trailModel.ts";
 
 /** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
@@ -139,11 +140,11 @@ export class TrainingReasoningEngine {
     const volMax = parseInt(a.vol_max || "10");
     const sessionScale = Math.min(1, (Math.min(volMax, caps, util) * marg) / util) * recupFactor;
     let volPeak = Math.round(Math.min(volMax, caps, util) * marg * recupFactor * 10) / 10;
-    if (sp === "swim" && beginner) {
+    if (guard(sp as string, "swimTimeFactor") && beginner) {
       volPeak = Math.min(volPeak, BEGINNER_SWIM_VOLPEAK_CAP_H);
       D("C15", "Nageur débutant", "pic ≤" + BEGINNER_SWIM_VOLPEAK_CAP_H + "h", "La technique borne le volume, pas l'historique (risque épaule)");
     }
-    if (sp === "swim") volPeak = Math.round(volPeak * SWIM_TIME_FACTOR * 10) / 10;
+    if (guard(sp as string, "swimTimeFactor")) volPeak = Math.round(volPeak * SWIM_TIME_FACTOR * 10) / 10;
 
     // ---- 3. Comprendre les contraintes : médical, jours, budget ----
     const medHold = a.med_pain === "oui" || a.med_dizzy === "oui" || a.med_treat === "oui";
@@ -167,7 +168,7 @@ export class TrainingReasoningEngine {
     // là où un coureur route avec la MÊME blessure en recevait 3. Or le trail ajoute la charge
     // excentrique de la descente à l'impact — c'est la discipline la plus exigeante pour les
     // tissus, pas la moins.
-    if (sp === "run" || sp === "trail") {
+    if (guard(sp as string, "runImpactCap")) {
       maxRunDays = MAX_RUN_DAYS[history] ?? 5;
       if (inj.impact) maxRunDays = Math.max(3, maxRunDays - 1);
       // B2 (audit v6) — le tibia (périostite) est LA blessure de l'impact répété : le
@@ -206,7 +207,7 @@ export class TrainingReasoningEngine {
     const theoPeak = Math.min(volMax, caps, util) * marg * recupFactor;
     let peakH = Math.min(theoPeak, volMax) * medFactor;
     // C20 — nage débutant : la promesse suit la capacité réelle C15
-    if (sp === "swim" && beginner) {
+    if (guard(sp as string, "swimTimeFactor") && beginner) {
       const cap20 = (parseInt(a.sessions_max || "6") || 6) * C20_BEGINNER_SWIM_H_PER_SESSION;
       if (peakH > cap20) {
         peakH = cap20;

@@ -132,6 +132,156 @@
                                                   
  
 
+// ===== src/sports/registry.ts =====
+/**
+ * REGISTRE DE SPORTS (spec R10, phase 1) — un sport = un module, plus une branche de `if`.
+ *
+ * Pourquoi : `buildSessions()` faisait ~230 lignes de `if (sp === …)` pour 4 sports, et une
+ * douzaine d'autres passes portaient leur propre test de sport en dur. Le trail (R7) avait déjà
+ * pris la bonne sortie — un module à part — et ce précédent a révélé le vrai problème : à
+ * chaque sport ajouté, il faut se SOUVENIR de tous les tests à étendre. On ne s'en souvient
+ * pas. La preuve, mesurée avant ce chantier :
+ *   - le plafond de jours d'impact ne s'appliquait pas au trail (D10-3) : périostite = 5 jours
+ *     d'appui au lieu de 3 ;
+ *   - la répartition d'intensité ne connaissait pas ses zones (D10-6) : 100 % « facile » ;
+ *   - le générateur de repli ne le connaissait pas non plus (TypeError, phase 0).
+ *
+ * Le gain de ce registre n'est donc pas l'élégance : c'est qu'un garde-fou de SÉCURITÉ ne peut
+ * plus manquer un sport par oubli. Chaque module DÉCLARE ce qui s'applique à lui (`guards`), et
+ * un sport inconnu lève au lieu de produire un plan silencieux.
+ */
+                                                                                         
+
+                                                                                         
+
+/** Erreur porteuse — même contrat que l'UI (`EBGenerationError`) : on échoue en le DISANT. */
+class UnknownSportError extends Error {
+           code = "SPORT_INCONNU";
+  constructor(sport        ) {
+    super("Sport inconnu : " + sport + " — aucun module de sport ne le déclare");
+    this.name = "UnknownSportError";
+  }
+}
+
+/**
+ * Garde-fous déclarés par sport. Un drapeau à `true` fait s'appliquer une passe ; l'absence de
+ * drapeau est un choix EXPLICITE, pas un oubli. Toute passe gardée par un test de sport en dur
+ * doit migrer ici — c'est la règle qui empêche la classe de bug D10-3 de revenir.
+ */
+                              
+                                                                                            
+                         
+                                                                                    
+                               
+                                                                                           
+                                
+                                                                                                 
+                                
+                                                                                
+                              
+                                                                                      
+                          
+                                                                                
+                           
+ 
+
+/** Contrat d'un module de sport. `null` = « utiliser le générique ». */
+                              
+            
+                                                                                             
+                                     
+                                                                                        
+                                          
+                                                                                               
+                                                                                                                
+                                                                                       
+                                                  
+                                                                            
+                                              
+                                                      
+                        
+                      
+ 
+
+/**
+ * Boîte à outils passée aux modules : tout ce que l'ancienne fonction monolithique avait dans
+ * sa portée. Les modules la DÉSTRUCTURENT en une ligne, ce qui a permis de déplacer les corps
+ * de séances sans en changer un caractère — condition de l'extraction mécanique (golden master).
+ */
+                             
+                  
+                    
+             
+                          
+             
+                
+               
+                                                                                              
+                  
+              
+                    
+                    
+                   
+               
+                       
+                           
+                 
+            
+                            
+                  
+                                        
+                                                                        
+                                                                          
+                                                                        
+                                                                          
+                                                                                                                            
+                                                                                                                                                               
+ 
+
+/**
+ * Boîte à outils du PRÉDICTEUR — même principe que `SessionKit` : les fourchettes, le
+ * formatage et le journal de décisions sont communs (les erreurs de méthode se paient
+ * partout), la MÉTHODE est propre à chaque sport. Les modules poussent dans `items`,
+ * `advice` et `decisions` ; ils ne retournent rien.
+ */
+                             
+                 
+                                                      
+                                                       
+                   
+                                                                  
+                                             
+                                 
+                                                                              
+                                    
+                                                     
+                                                                        
+                  
+ 
+
+const MODULES = new Map                     ();
+
+/** Enregistrement d'un module — appelé une fois par sport, à l'import. */
+function registerSport(mod             )       {
+  MODULES.set(mod.id, mod);
+}
+
+/** Accès au module d'un sport. Lève sur un sport inconnu : jamais de plan par défaut. */
+function sportModule(sport        )              {
+  const mod = MODULES.get(sport);
+  if (!mod) throw new UnknownSportError(sport);
+  return mod;
+}
+
+function knownSports()           {
+  return [...MODULES.keys()];
+}
+
+/** Un garde-fou s'applique-t-il à ce sport ? Une seule façon de poser la question. */
+function guard(sport        , flag                   )          {
+  return MODULES.get(sport)?.guards[flag] === true;
+}
+
 // ===== src/engine/constraintMatrix.ts =====
 /**
  * Matrice de contraintes V2 — le savoir validé de Coach_Pro_V1.5, en DONNÉES avec provenance.
@@ -728,6 +878,7 @@ function trailWeeklyVertical(obj                , history        , access       
                                                                                 
 
 
+
 /** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
 function fmtH(min        )         {
   const h = Math.floor(min / 60), m = Math.round(min % 60);
@@ -851,11 +1002,11 @@ class TrainingReasoningEngine {
     const volMax = parseInt(a.vol_max || "10");
     const sessionScale = Math.min(1, (Math.min(volMax, caps, util) * marg) / util) * recupFactor;
     let volPeak = Math.round(Math.min(volMax, caps, util) * marg * recupFactor * 10) / 10;
-    if (sp === "swim" && beginner) {
+    if (guard(sp          , "swimTimeFactor") && beginner) {
       volPeak = Math.min(volPeak, BEGINNER_SWIM_VOLPEAK_CAP_H);
       D("C15", "Nageur débutant", "pic ≤" + BEGINNER_SWIM_VOLPEAK_CAP_H + "h", "La technique borne le volume, pas l'historique (risque épaule)");
     }
-    if (sp === "swim") volPeak = Math.round(volPeak * SWIM_TIME_FACTOR * 10) / 10;
+    if (guard(sp          , "swimTimeFactor")) volPeak = Math.round(volPeak * SWIM_TIME_FACTOR * 10) / 10;
 
     // ---- 3. Comprendre les contraintes : médical, jours, budget ----
     const medHold = a.med_pain === "oui" || a.med_dizzy === "oui" || a.med_treat === "oui";
@@ -879,7 +1030,7 @@ class TrainingReasoningEngine {
     // là où un coureur route avec la MÊME blessure en recevait 3. Or le trail ajoute la charge
     // excentrique de la descente à l'impact — c'est la discipline la plus exigeante pour les
     // tissus, pas la moins.
-    if (sp === "run" || sp === "trail") {
+    if (guard(sp          , "runImpactCap")) {
       maxRunDays = MAX_RUN_DAYS[history] ?? 5;
       if (inj.impact) maxRunDays = Math.max(3, maxRunDays - 1);
       // B2 (audit v6) — le tibia (périostite) est LA blessure de l'impact répété : le
@@ -918,7 +1069,7 @@ class TrainingReasoningEngine {
     const theoPeak = Math.min(volMax, caps, util) * marg * recupFactor;
     let peakH = Math.min(theoPeak, volMax) * medFactor;
     // C20 — nage débutant : la promesse suit la capacité réelle C15
-    if (sp === "swim" && beginner) {
+    if (guard(sp          , "swimTimeFactor") && beginner) {
       const cap20 = (parseInt(a.sessions_max || "6") || 6) * C20_BEGINNER_SWIM_H_PER_SESSION;
       if (peakH > cap20) {
         peakH = cap20;
@@ -1981,8 +2132,14 @@ function auditPlan(plan        , opts            = {})            {
                                                                           
 
 
+// Import des modules de sport pour leur EFFET DE BORD (enregistrement dans le registre).
+// Un seul endroit dans le projet connaît la liste des sports : celui-ci.
 
-function buildSessions(ctx            , slot      , phase        , prog        )              {
+
+
+
+
+function buildSessions(ctx            , slot      , phase        , prog        , weekNum = 1)              {
   const r = ctx.r;
   const a = r.profile;
   const sp = a.sport, fmt = a.format;
@@ -2015,179 +2172,17 @@ function buildSessions(ctx            , slot      , phase        , prog        )
   // éducatif ne suffit pas, il faut dire comment le faire (manifeste : jamais muette).
   const swimDrillGlossary = "rattrapé (le bras devant reste tendu jusqu'au contact des mains avant de repartir : corrige le timing), poings fermés (main fermée : force l'appui par l'avant-bras), battements planche (jambes seules, planche tenue devant : isole et muscle le battement)";
 
-  if (sp === "run") {
-    const injImp = inj.impact;
-    // R4.1 — trail modulaire (registre de disciplines) : volume en TEMPS + D+, allure en
-    // GAP/RPE, compétence descente travaillée à part, prudence excentrique si impact fragile.
-    const isTrail = fmt === "trail";
-    if (slot === "dur1") {
-      // C17 — la VO2 survit au budget (dur1) en dev/spéc/peak ; l'allure course passe en dur2.
-      // B2/R6.1 (audit v6) — genou : pas de vitesses maximales ni d'à-coups (la VO2 course
-      // charge le genou à chaque appui rapide) → seuil contrôlé, même rôle dans la semaine.
-      if (inj.list.includes("genou") && (phase === "spec" || phase === "peak" || phase === "dev")) {
-        S2.push({ d: "rn", name: "Seuil contrôlé (genou épargné)", note: "Genou fragile : on garde le stimulus aérobie fort mais sans les vitesses maximales ni les à-coups — le seuil remplace la VO2, sur surface souple si possible.", det: "", steps: [W(15, "footing très facile + gammes sans sauts"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot très lent", " sur surface souple"), C(10, "footing facile")] });
-      } else if ((phase === "spec" || phase === "peak" || phase === "dev") && !noVo2) {
-        S2.push({ d: "rn", name: "VO2max", note: "Puissance aérobie maximale : effort max tenable ~3min, récup complète. Maintenue jusqu'à l'affûtage.", det: "", steps: [W(20, "progressif + 4 lignes droites"), B(P(5, 8), 3, "rn.vo2", "2min30 trot"), C(10, "footing très facile")] });
-      } else if (finisher || lvl === "debutant") {
-        S2.push({ d: "rn", name: "Seuil doux", note: "Le seuil doit rester «confortablement difficile» : tu peux dire quelques mots, pas tenir une conversation. Si ça pique, ralentis.", det: "", steps: [W(15, "footing très facile + 3 lignes droites"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot très lent", injImp ? " sur surface souple" : ""), C(10, "footing facile")] });
-      } else {
-        S2.push({ d: "rn", name: "Seuil progressif", note: "Allure soutenue mais maîtrisée, régulière du 1er au dernier bloc.", det: "", steps: [W(15, "footing + 4 lignes droites"), B(P(3, 4), P(6, 10), "rn.thr", "2min trot"), C(10, "footing")] });
-      }
-    } else if (slot === "dur2") {
-      if (isTrail && (phase === "spec" || phase === "peak") && !injImp && !noVo2)
-        // Compétence descente (registre trail) : progression NON-cardio, trackée à part.
-        // Les blessures d'impact (périostite…) court-circuitent cette séance — la descente
-        // est une charge excentrique, mêmes drapeaux de prudence que la route (spec §2).
-        S2.push({ d: "rn", name: "Côtes + descentes techniques", note: "La descente est une compétence : relâche le buste, cadence haute, regarde loin. La montée se court au RPE, pas à l'allure — en trail l'allure brute ne veut rien dire.", det: "", steps: [W(18, "progressif sur sentier"), B(P(4, 6), 3, "rn.vo2", "descente du même segment EN CONTRÔLE (c'est l'exercice, pas la récup)", " en montée au train"), C(10, "footing souple sur plat")] });
-      else if (phase === "spec" || phase === "peak")
-        S2.push({ d: "rn", name: "Allure course spécifique", note: "C'est l'allure de ta course : mémorise la sensation, elle doit devenir automatique le jour J.", det: "", steps: [W(18, "progressif + gammes"), Bd(P(3, 5), fmt === "5k" || fmt === "10k" ? 1000 : 2000, fmt === "marathon" ? "rn.mara" : "rn.thr", "2-3min récup active", "", !(fmt === "5k" || fmt === "10k"), "rn"), C(10, "retour au calme")] });
-      else
-        S2.push({ d: "rn", name: phase === "base" ? "Endurance soutenue" : "Allure spécifique", note: isTrail ? "Effort tenu et continu, au ressenti (GAP/FC) — pas à l'allure brute." : "Allure tenue et continue, sans à-coups.", det: "", steps: [W(15, "footing facile"), B(1, P(20, 45), fmt === "marathon" || fmt === "trail" ? "rn.mara" : "rn.thr"), C(8, "retour au calme " + G)] });
-    } else if (slot === "durLong") {
-      const durCaps = ({ "5k": { lo: 40, hi: 74 }, "10k": { lo: 50, hi: 90 }, semi: { lo: 70, hi: 130 }, marathon: { lo: 90, hi: 180 }, trail: { lo: 120, hi: 255 } }                                              )[fmt] || { lo: 60, hi: 110 };
-      // C23 — jamais de sortie longue CAP >3h pour un débutant (le cap passe dans bnd → R3.3 ne regonfle pas)
-      if (beginner) durCaps.hi = Math.min(durCaps.hi, C23_BEGINNER_LONG_RUN_CAP_MIN);
-      // B2/R6.1 (audit v6) — pied et hanche : la sortie longue est la séance qui cumule
-      // le plus d'impacts — son plafond baisse selon la zone (pied ×0.85, hanche ×0.9).
-      if (inj.list.includes("pied")) durCaps.hi = Math.round(durCaps.hi * 0.85);
-      else if (inj.list.includes("hanche")) durCaps.hi = Math.round(durCaps.hi * 0.9);
-      const durMin = P(durCaps.lo, durCaps.hi);
-      // Trail (registre R4.1) : volume en TEMPS + D+ cible — jamais en km seul. Le D+ suit
-      // la durée (~350-450m/h) ; descentes en contrôle, surtout avec un passif d'impact.
-      const dplus = isTrail ? trailElevationTarget(durMin) : null;
-      S2.push({ d: "rn", long: true, name: isTrail ? "Sortie longue trail" : "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : isTrail ? "En trail on compte le TEMPS et le D+, pas les kilomètres. Monte au train, descends en contrôle" + (injImp ? " — descentes prudentes, ta zone fragile encaisse la charge excentrique" : "") + "." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", (isTrail && dplus ? " · D+ cible " + dplus.lo + "-" + dplus.hi + "m" : "") + (phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : "")), { bnd: { floor: durCaps.lo, cap: durCaps.hi } }), ], ...( { plainBody: true }          ) });
-    } else if (slot === "facileR") {
-      S2.push({ d: "rn", name: "Footing facile", note: beginner ? "Allure de conversation, sans forcer : c'est le volume facile qui fait progresser." : "Endurance fondamentale : allure de conversation. Ce volume facile construit l'aérobie sans user.", det: "", steps: [B(1, P(30, 50), "rn.easy", "", G && !injImp ? " · termine par " + G.replace("+ ", "") : "")], ...( { plainBody: true }          ) });
-    } else if (slot === "facile2") {
-      S2.push({ d: "rn", name: "Footing récup", note: "Récupération active : les jambes tournent, zéro intensité — ça accélère la récupération.", det: "", steps: [B(1, P(20, 30), "rn.rec")], ...( { plainBody: true }          ) });
-    } else if (slot === "recup") S2.push({ d: "rs", name: "Repos / mobilité", det: "marche, étirements", steps: [] });
-    else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
-  } else if (sp === "bike") {
-    const clm = fmt === "clm", climb = a.terrain === "montagne" || a.terrain === "vallonne";
-    if (slot === "dur1") {
-      if (phase === "base") S2.push({ d: "bk", name: "Sweetspot", note: "Effort soutenu mais maîtrisé, cadence 85-95 rpm. Tu dois pouvoir finir chaque bloc sans t'effondrer.", det: "", steps: [W(15, "montée progressive"), B(P(2, 3), P(12, 20), "bk.ss", "5min souple"), C(10, "décrassage")] });
-      else if ((phase === "spec" || phase === "peak" || phase === "dev") && !noVo2) S2.push({ d: "bk", name: "VO2max", note: "Intensité maximale tenable 4min, récup longue. La puissance aérobie se maintient jusqu'à l'affûtage.", det: "", steps: [W(20, "progressif + 3 sprints courts"), B(P(4, 6), 4, "bk.vo2", "4min"), C(10, "souple")] });
-      else if (lvl === "debutant" || finisher) S2.push({ d: "bk", name: "Tempo progressif", note: "Effort confortablement soutenu, sans jamais te mettre dans le rouge.", det: "", steps: [W(15, "souple"), B(P(2, 3), P(8, 15), "bk.ss", "4min très souple"), C(10, "décrassage")] });
-      else S2.push({ d: "bk", name: "Sweetspot", note: "Effort soutenu mais maîtrisé, cadence 85-95 rpm.", det: "", steps: [W(15, "montée progressive"), B(P(2, 3), P(12, 20), "bk.ss", "5min souple"), C(10, "décrassage")] });
-    } else if (slot === "dur2") {
-      if (clm && (phase === "spec" || phase === "peak")) S2.push({ d: "bk", name: "Spécifique CLM (position)", note: "Travaille la tenue de position autant que la puissance : c'est elle qui te fera gagner du temps.", det: "", steps: [W(20, "progressif en position normale"), B(P(2, 3), P(15, 25), "bk.thr", "5min souple, redresse-toi", " en position aéro tenue"), C(10, "décrassage")] });
-      else if (phase === "spec" || phase === "peak") S2.push({ d: "bk", name: "Seuil / race-pace", note: "Allure de course soutenable ~1h. Régularité avant tout.", det: "", steps: [W(15, "progressif"), B(P(2, 4), P(10, 20), "bk.thr", "5min souple"), C(10, "décrassage")] });
-      else S2.push({ d: "bk", name: climb ? "Force en côte" : "Force basse cadence", note: "Gros braquet, cadence basse, mais sans forcer sur les genoux : c'est musculaire, pas cardio.", det: "", steps: [W(15, "+ montée en intensité"), B(P(4, 6), 5, "bk.frc", "3min souple ou en redescendant", " à 50-60 rpm" + (climb ? " en côte" : "")), C(10, "moulinage léger")] });
-    } else if (slot === "durLong") {
-      const durCaps = ({ crit: { lo: 60, hi: 150 }, route: { lo: 90, hi: 180 }, clm: { lo: 75, hi: 165 }, cyclo: { lo: 120, hi: 240 }, gravel: { lo: 150, hi: 360 } }                                              )[fmt] || { lo: 90, hi: 210 };
-      S2.push({ d: "bk", long: true, name: "Sortie longue", note: "Endurance longue : le moteur aérobie se construit sur la durée. Allure régulière, mange et bois régulièrement.", det: "", steps: [Object.assign(B(1, P(durCaps.lo, durCaps.hi), "bk.z2", "", fmt === "cyclo" || fmt === "gravel" ? " · endurance" : ""), { bnd: { floor: durCaps.lo, cap: durCaps.hi } })], ...( { plainBody: true }          ) });
-    } else if (slot === "facileR") S2.push({ d: "bk", name: "Endurance facile", note: "Z2 conversationnel, cadence souple 85-95 rpm : la base aérobie se construit ici.", det: "", steps: [B(1, P(45, 90), "bk.z2")], ...( { plainBody: true }          ) });
-    else if (slot === "facile2") S2.push({ d: "bk", name: "Récup active", note: "Moulinage très souple : activer la circulation, aucune force sur les pédales.", det: "", steps: [B(1, P(30, 45), null, "", " très souple")], ...( { plainBody: true }          ) });
-    else if (slot === "recup") S2.push({ d: "rs", name: "Repos / gainage", det: "mobilité", steps: [] });
-    else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
-  } else if (sp === "swim") {
-    const shoulder = inj.shoulder, ow = a.milieu === "ow" || a.milieu === "mixte";
-    // Limite principale déclarée par le débutant (question dédiée) : chaque réponse
-    // oriente RÉELLEMENT les éducatifs vers ce qui bloque, pas un générique commun.
-    // Chaque éducatif nommé porte son COMMENT FAIRE (pas juste son nom) — la séance
-    // s'explique elle-même, jusque dans le détail technique (manifeste : jamais muette).
-    const swimLimitFocus                                                = {
-      respiration: { txt: " éducatifs respiration — 3 temps bilatérale (souffle continu par le nez sous l'eau, tête qui pivote sans se lever, inspire large sur le côté à la dernière seconde)", note: "La respiration débloque tout le reste : on la travaille isolée, sans la charge de la nage complète." },
-      technique: { txt: " éducatifs bras — rattrapé (le bras devant reste tendu, immobile, jusqu'à ce que l'autre main vienne le toucher avant de repartir : corrige le timing et la rotation), poings fermés (main fermée pendant toute la traction : sentir l'appui par l'avant-bras plutôt que la paume), un bras (l'autre reste le long du corps, immobile : isole le mouvement de traction)", note: "Sentir l'appui avant d'ajouter de la distance : la technique s'automatise par la fréquence, pas par la force." },
-      endurance: { txt: " nage continue fractionnée courte, sans s'arrêter entre les longueurs", note: "Tenir la distance sans pause compte plus que la vitesse : la continuité prime, on fractionne le repos, pas la nage." },
-      peur: { txt: " nage en petites longueurs, pied au mur possible à tout moment, jamais de chrono", note: "Le seul objectif est de se sentir bien dans l'eau — l'aisance se construit par l'exposition progressive, sans pression de performance." },
-    };
-    const limFocus = swimLimitFocus[a.swim_limit || ""] || { txt: " éducatifs variés — " + swimDrillGlossary, note: "La technique se construit à froid, sans fatigue. Qualité > quantité." };
-    if (slot === "dur1") {
-      if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Seuil technique CSS", note: "Quelques 100m à allure seuil contrôlée, technique maintenue : préparer la course sans casser le geste.", det: "", steps: [Wm(200, "souple + éducatifs"), Bd(P(4, 7), 100, "sw.css", "20-30s", "", false, "sw"), Cm(100, "relâché")] });
-      else if (beginner) S2.push({ d: "sw", name: "Technique + éducatifs", note: limFocus.note, det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", "repos libre entre séries", limFocus.txt + ", " + P(1, 2) + " point(s) technique", false, "sw"), Cm(100, "relâché")] });
-      else if (shoulder) S2.push({ d: "sw", name: "Seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute.", det: "", steps: [Wm(300, "souple + 4×50m éducatifs"), Bd(P(6, 8), 100, "sw.css", "20-30s", "", false, "sw"), Cm(200, "souple")] });
-      else S2.push({ d: "sw", name: "Seuil CSS", note: "Allure régulière sur tous les 100m. Le dernier doit ressembler au premier.", det: "", steps: [Wm(400, "progressif + 4×50m éducatifs"), Bd(P(6, 10), 100, "sw.css", "15-20s", "", false, "sw"), Cm(200, "souple")] });
-    } else if (slot === "dur2") {
-      if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Endurance + touches de vitesse", note: "Nage continue technique, plus quelques accélérations courtes de 25m : de la vitesse de forme, pas de la souffrance.", det: "", steps: [Wm(200, "souple"), Bd(1, 400, "sw.aero", "20-30s", " nage continue fractionnée", false, "sw"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " en accélérations progressives, technique maintenue", false, "sw"), Cm(100, "très souple")] });
-      else if (beginner) S2.push({ d: "sw", name: "Endurance technique", note: "Priorité au geste, pas au chrono. Un seul point technique à la fois.", det: "", steps: [Wm(200, "souple"), Bd(1, 600, "sw.easy", "20-30s, le temps de respirer", " nage continue fractionnée (ex 8-12×50m) + 1 éducatif entre chaque", false, "sw"), Cm(100, "très souple")] });
-      // B1 (audit v6) — les séances de substitution épaule héritent d'un BUDGET BORNÉ :
-      // sans bnd, R3.3 gonflait le bloc jusqu'aux caps génériques (+68% de volume mesuré
-      // sur swim/fond/epaule — une blessure qui AUGMENTAIT la charge).
-      else if (shoulder && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Jambes vitesse (épaule épargnée)", note: "Vitesse par les jambes : battements rapides avec planche, l'épaule ne travaille pas. La puissance se maintient sans risque.", det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " battements rapides avec planche (jambes seules)", false, "sw"), Object.assign(Bd(1, 200, "sw.easy", "", " éducatifs technique", false, "sw"), { bnd: { floor: 200, cap: 600 } }), Cm(100, "souple")] });
-      else if (shoulder) S2.push({ d: "sw", name: "Jambes + technique", note: "Épaule épargnée : le travail passe par les jambes et la technique, la charge articulaire reste nulle.", det: "", steps: [Object.assign(Bd(1, 400, null, "", " séries battements + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: 1200 } })], ...( { plainBody: true }          ) });
-      else S2.push({ d: "sw", name: "Vitesse", note: "Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage.", det: "", steps: [Wm(400, "varié + 4×25m accélérations"), Bd(P(8, 12), 50, "sw.speed", "30-40s", "", false, "sw"), Cm(200, "souple")] });
-    } else if (slot === "durLong") {
-      const distCaps = beginner
-        ? { lo: 300, hi: Math.min(850, C15_BEGINNER_SWIM_SESSION_CAP_M) }
-        : ({ sprint: { lo: 600, hi: 1400 }, demifond: { lo: 1000, hi: 2000 }, fond: { lo: 1500, hi: 3000 }, ow: { lo: 1500, hi: 4500 } }                                              )[fmt] || { lo: 1000, hi: 2000 };
-      S2.push({ d: "sw", long: !beginner, name: ow ? "Volume + sighting" : beginner ? "Volume aérobie" : "Longue continue", note: ow ? "Endurance continue + navigation : allure régulière et repères visuels — les conditions réelles de la course." : "Endurance continue : allure régulière, geste stable — c'est la séance qui construit la caisse.", det: "", steps: [Object.assign(Bd(1, P(distCaps.lo, distCaps.hi), "sw.aero", "", (ow ? " · navigation aux repères" : "") + (beginner ? " · fractionne en blocs de 100-200m si besoin, la continuité prime sur l'allure" : ""), false, "sw"), { bnd: { floor: distCaps.lo, cap: distCaps.hi } })], ...( { plainBody: true }          ) });
-    } else if (slot === "facileR") {
-      // C24 — pas de « sortie piscine de 600m » pour un non-débutant
-      const techDistCaps = beginner ? { lo: 200, hi: 600 } : { lo: 750, hi: 1200 };
-      if (ow && a.swim_limit === "peur") S2.push({ d: "sw", name: "Aisance eau libre", det: "familiarisation, respiration, flottaison — 💡 Objectif confiance : l'aisance dans l'eau libre se construit sans chrono, par l'exposition progressive.", steps: [] });
-      else if (!ow && beginner && a.swim_limit === "peur") S2.push({ d: "sw", name: "Aisance bassin", det: "petites longueurs, pied au mur à tout moment, zéro chrono — 💡 Objectif confiance : l'aisance dans l'eau se construit par l'exposition progressive, jamais par la contrainte.", steps: [] });
-      else S2.push({ d: "sw", name: "Technique souple", note: beginner ? limFocus.note : "Éducatifs à froid : le geste se grave sans fatigue. Qualité avant quantité.", det: "", steps: [Object.assign(Bd(1, P(techDistCaps.lo, techDistCaps.hi), "sw.easy", "", beginner ? limFocus.txt : " éducatifs", false, "sw"), beginner ? {} : { bnd: { floor: techDistCaps.lo, cap: techDistCaps.hi } })], ...( { plainBody: true }          ) });
-    } else if (slot === "facile2") {
-      const recDistCaps = beginner ? { lo: 100, hi: 400 } : { lo: 750, hi: 1100 }; // C24
-      S2.push({ d: "sw", name: "Récup eau", note: "Nage de récupération : relâchement total, respiration ample.", det: "", steps: [Object.assign(Bd(1, P(recDistCaps.lo, recDistCaps.hi), "sw.easy", "", " souple", false, "sw"), beginner ? {} : { bnd: { floor: recDistCaps.lo, cap: recDistCaps.hi } })], ...( { plainBody: true }          ) });
-    } else if (slot === "recup") S2.push({ d: "rs", name: "Repos / épaules", det: "étirements coiffe", steps: [] });
-    else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
-  } else if (sp === "tri") {
-    const runInj = inj.list.includes("course");
-    const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] }                                    )[phase] || [0.5, 0.8];
-    const PT = (lo        , hi        ) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
-    const swimDistCaps = ({ S: { lo: 300, hi: 750 }, M: { lo: 600, hi: 1500 }, "70.3": { lo: 950, hi: 1900 }, Full: { lo: 1600, hi: 3000 } }                                              )[fmt] || { lo: 600, hi: 1500 };
-    const swimDist = PT(swimDistCaps.lo, swimDistCaps.hi);
-    const triSwimVolCap = ({ S: 1050, M: 2100, "70.3": 3000, Full: 4500 }                          )[fmt] || 2100;
-    // C24 — même la nage récup tri : ≥750m pour un non-débutant
-    const swShortDist = beginner ? Math.min(600, Math.max(200, Math.round((swimDist * 0.4) / 50) * 50)) : Math.min(1100, Math.max(750, Math.round((swimDist * 0.6) / 50) * 50));
-    const swTechDist = Math.max(beginner ? 300 : 750, Math.round((swimDist * 0.5) / 50) * 50);
-    let swMain = beginner
-      ? { name: "Nage seuil technique (+dist)", note: "Technique d'abord, mais quelques 100m à allure seuil contrôlée pour préparer la course.", steps: [Wm(200, "souple"), Object.assign(Bd(1, swimDist, "sw.css", "repos libre entre séries", ", fractionné en séries régulières, éducatifs entre", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(100, "relâché")] }
-      : { name: "Nage seuil (+dist)", note: "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.", steps: [Wm(300, "+ 4×50m éducatifs"), Object.assign(Bd(1, swimDist, "sw.css", "15-20s", ", fractionné en séries régulières si besoin", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(200, "souple")] };
-    let swTech = beginner
-      ? { name: "Nage éducatifs", note: "Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force.", steps: [Wm(100, "souple"), Bd(1, swTechDist, "sw.easy", "20-30s", ", par 50m, 1 point technique à la fois — " + swimDrillGlossary, false, "sw"), Cm(100, "dos souple")] }
-      : { name: "Nage vitesse", note: "Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m.", steps: [Wm(200, "+ 4×25m accélérations progressives"), Bd(1, swTechDist, "sw.aero", "30-40s sur les 50m rapides", ", dont la moitié en accélérations de 50m", false, "sw"), Cm(150, "souple")] };
-    // B1c (audit v6) — l'épaule existait pour les triathlètes dans le QUESTIONNAIRE mais
-    // pas dans le générateur (branche morte : le traitement vivait sous sp === "swim").
-    // Ici : mêmes substitutions que le nageur, au budget de la séance remplacée (bnd).
-    if (inj.shoulder) {
-      const shoulderDist = Math.max(swimDistCaps.lo, Math.round((swimDist * 0.8) / 50) * 50);
-      swMain = { name: "Nage seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute. Arrêt au moindre signal articulaire.", steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(1, shoulderDist, "sw.css", "20-30s", ", fractionné en 100m, amplitude confortable", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: shoulderDist } }), Cm(100, "souple")] };
-      swTech = { name: "Jambes + technique (épaule épargnée)", note: "Le travail passe par les jambes (battements planche) et la technique : la charge articulaire de l'épaule reste minimale.", steps: [Object.assign(Bd(1, swTechDist, null, "", " séries battements planche + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: swTechDist } })] };
-    }
-    const swShort = { name: "Nage récup", note: "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.", steps: [Bd(1, swShortDist, "sw.easy", "", " souple, en blocs de 50m, respiration 3 temps · relâchement total", false, "sw")] };
-    if (slot === "dur1") {
-      if (dbl) S2.push({ d: "sw", name: swMain.name + " (matin)", note: swMain.note, det: "", steps: swMain.steps });
-      if (phase === "base") S2.push({ d: "bk", name: "Sweetspot vélo", note: "Cadence 85-95 rpm, soutenu mais maîtrisé.", det: "", steps: [W(15, "montée progressive"), Object.assign(B(PT(2, 3), PT(12, 18), "bk.ss", "5min souple"), { repCap: 4 }), C(10, "décrassage")] });
-      else if ((phase === "spec" || phase === "peak") && !noVo2) S2.push({ d: "bk", name: "VO2max vélo", note: "Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).", det: "", steps: [W(20, "progressif + 3 sprints"), Object.assign(B(PT(4, 6), 4, "bk.vo2", "4min récup"), { repCap: 8 }), C(10, "souple")] });
-      else if (phase === "taper") S2.push({ d: "bk", name: "Rappel race-pace", note: "Affûtage : on réveille l'allure course sans générer de fatigue. Court et précis.", det: "", steps: [W(10, "progressif"), Object.assign(B(PT(2, 3), PT(6, 10), "bk.rp", "3min souple"), { repCap: 4 }), C(5, "décrassage")] });
-      else if (lvl === "debutant" || finisher) S2.push({ d: "bk", name: "Tempo vélo", note: "Confortablement soutenu, jamais dans le rouge.", det: "", steps: [W(15, "souple"), Object.assign(B(PT(2, 3), PT(8, 15), "bk.ss", "4min souple"), { repCap: 4 }), C(10, "décrassage")] });
-      else if (!noVo2) S2.push({ d: "bk", name: "VO2max vélo", note: "Intensité max tenable 4min, récup quasi complète entre.", det: "", steps: [W(20, "progressif + 3 sprints"), Object.assign(B(PT(4, 6), 4, "bk.vo2", "4min récup"), { repCap: 8 }), C(10, "souple")] });
-      else S2.push({ d: "bk", name: "Tempo vélo", note: "Confortablement soutenu, jamais dans le rouge — la VO2max attendra la majorité (R6.3).", det: "", steps: [W(15, "souple"), Object.assign(B(PT(2, 3), PT(8, 15), "bk.ss", "4min souple"), { repCap: 4 }), C(10, "décrassage")] });
-    } else if (slot === "dur2") {
-      if (dbl) S2.push({ d: "sw", name: swTech.name, note: swTech.note, det: "", steps: swTech.steps });
-      if (phase === "spec" || phase === "peak") S2.push({ d: "rn", name: "Allure course (tri)", note: "L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.", det: "", steps: [W(15, "footing progressif"), Object.assign(B(1, PT(20, 40), "rn.mara"), { bnd: { floor: 20, cap: 45 } }), C(8, "retour au calme")] });
-      else S2.push({ d: "bk", name: "Force basse cadence", note: "Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.", det: "", steps: [W(15, "+ montée en intensité"), Object.assign(B(PT(4, 6), ({ S: 5, M: 5, "70.3": 6, Full: 7 }                          )[fmt] || 5, "bk.frc", "3min souple", " à 50-60 rpm"), { repCap: 8 }), C(10, "moulinage")] });
-    } else if (slot === "durLong") {
-      if (phase === "spec" || phase === "peak") {
-        // C21 — brick borné par format, ×0.8 en reprise (appliqué aussi dans blockBounds)
-        const rf = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1;
-        const bb = ({ S: { lo: 45, hi: 90 }, M: { lo: 60, hi: 120 }, "70.3": { lo: 90, hi: 180 }, Full: { lo: 150, hi: 300 } }                                              )[fmt] || { lo: 60, hi: 180 };
-        const br = ({ S: { lo: 10, hi: 20 }, M: { lo: 12, hi: 24 }, "70.3": { lo: 16, hi: 32 }, Full: { lo: 35, hi: 70 } }                                              )[fmt] || { lo: 15, hi: 30 };
-        // Répartition des intensités (manifeste) : le brick roule en Z2, le DERNIER TIERS
-        // passe à l'allure course — la spécificité (transition, jambes entamées) est gardée
-        // sans transformer 2 à 5h hebdo en zone grise (tri mesuré à 54-67% de temps facile).
-        S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : vélo en endurance, dernier tiers @ allure course, puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP.", det: "", steps: [
-          { role: "body", leg: "bike", durationMin: PT(bb.lo, Math.round(bb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2")                      }          ,
-          { role: "body", leg: "run", durationMin: PT(br.lo, Math.round(br.hi * rf)), d: "rn" }          ,
-        ], ...( { runInj }          ) });
-      } else {
-        const longRunCaps = ({ S: { lo: 30, hi: 60 }, M: { lo: 40, hi: 75 }, "70.3": { lo: 50, hi: 100 }, Full: { lo: 60, hi: 140 } }                                              )[fmt] || { lo: 50, hi: 100 };
-        S2.push({ d: "rn", long: true, name: "Sortie longue CAP", note: "Endurance fondamentale, allure facile et conversationnelle.", det: "", steps: [Object.assign(B(1, PT(longRunCaps.lo, longRunCaps.hi), "rn.easy", "", runInj ? " sur surface souple" : ""), { bnd: { floor: longRunCaps.lo, cap: longRunCaps.hi } })], ...( { plainBody: true }          ) });
-      }
-    } else if (slot === "facileR") {
-      const ftCaps = ({ S: { lo: 25, hi: 45 }, M: { lo: 15, hi: 26 }, "70.3": { lo: 14, hi: 22 }, Full: { lo: 50, hi: 100 } }                                              )[fmt] || { lo: 25, hi: 45 };
-      // C18 — le créneau course de qualité garanti en tri : VO2 court en peak
-      if (phase === "peak" && !runInj && !medHold && !noVo2 && lvl !== "debutant" && !finisher) S2.push({ d: "rn", name: "VO2max course", note: "Rappels de puissance aérobie course, courts et vifs, jambes déjà entamées par le vélo.", det: "", steps: [W(12, "footing progressif + gammes"), Object.assign(B(PT(4, 6), 2, "rn.vo2", "2min trot"), { repCap: 6 }), C(8, "footing très facile")] });
-      else if (phase === "peak" && runInj && !medHold) S2.push({ d: "rn", name: "Allure course (tri, surface souple)", note: "Course blessé : allure cible en contrôle, sur surface souple, jamais dans la douleur.", det: "", steps: [W(12, "footing progressif"), B(1, PT(18, 28), "rn.mara", "", ", sur surface souple"), C(8, "footing très facile")] });
-      else S2.push({ d: "rn", name: "Footing facile", note: "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.", det: "", steps: [B(1, PT(ftCaps.lo, ftCaps.hi), "rn.easy", "", runInj ? " · surface souple" : "")], ...( { plainBody: true }          ) });
-    } else if (slot === "facile2") S2.push({ d: "sw", name: swShort.name + " courte", note: swShort.note, det: "", steps: swShort.steps, ...( { plainBody: true }          ) });
-    else if (slot === "recup") S2.push({ d: "rs", name: "Récup active", det: "mobilité", steps: [] });
-    else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
-  }
-  return S2;
+  // R10 phase 1 — DISPATCH : les branches par sport ont quitté cette fonction pour
+  // `src/sports/<sport>/`. Ce qui reste ici est la boîte à outils COMMUNE (builders de steps,
+  // progression P, gammes G, glossaire nage) : elle est partagée, donc elle n'a aucune raison
+  // d'être dupliquée par sport. Un sport inconnu lève (`UnknownSportError`) au lieu de
+  // retourner un tableau vide, qui produisait des jours muets sans que personne le voie.
+  const kit             = {
+    r, a, sp: sp          , fmt, slot, phase, prog, weekNum,
+    lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, G, swimDrillGlossary,
+    S2, P, W, Wm, C, Cm, B, Bd,
+  };
+  return sportModule(sp          ).buildSessions(kit);
 }
 
 // ===== src/generator/trailLibrary.ts =====
@@ -2382,6 +2377,372 @@ function trailWeekSchema(phase        , isRecup         , cat               )   
   ];
 }
 
+// ===== src/sports/run/index.ts =====
+/**
+ * Sport COURSE (registre R10). Extraction MÉCANIQUE de la branche `sp === "run"` de
+ * sessionLibrary : le corps des séances n'a pas changé d'un caractère (golden master à 0 écart).
+ * Le format `trail` y survit encore pour les plans migrés (`fmt === "trail"`) — le vrai trail
+ * est un sport à part depuis R7 (`src/sports/trail/`).
+ */
+                                                       
+
+
+
+
+function buildRunSessions(kit            )              {
+  const { a, fmt, slot, phase, lvl, finisher, beginner, medHold, inj, noVo2, G, S2, P, W, C, Bd, B } = kit;
+  const injImp = inj.impact;
+  // R4.1 — trail modulaire (registre de disciplines) : volume en TEMPS + D+, allure en
+  // GAP/RPE, compétence descente travaillée à part, prudence excentrique si impact fragile.
+  const isTrail = fmt === "trail";
+  if (slot === "dur1") {
+    // C17 — la VO2 survit au budget (dur1) en dev/spéc/peak ; l'allure course passe en dur2.
+    // B2/R6.1 (audit v6) — genou : pas de vitesses maximales ni d'à-coups (la VO2 course
+    // charge le genou à chaque appui rapide) → seuil contrôlé, même rôle dans la semaine.
+    if (inj.list.includes("genou") && (phase === "spec" || phase === "peak" || phase === "dev")) {
+      S2.push({ d: "rn", name: "Seuil contrôlé (genou épargné)", note: "Genou fragile : on garde le stimulus aérobie fort mais sans les vitesses maximales ni les à-coups — le seuil remplace la VO2, sur surface souple si possible.", det: "", steps: [W(15, "footing très facile + gammes sans sauts"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot très lent", " sur surface souple"), C(10, "footing facile")] });
+    } else if ((phase === "spec" || phase === "peak" || phase === "dev") && !noVo2) {
+      S2.push({ d: "rn", name: "VO2max", note: "Puissance aérobie maximale : effort max tenable ~3min, récup complète. Maintenue jusqu'à l'affûtage.", det: "", steps: [W(20, "progressif + 4 lignes droites"), B(P(5, 8), 3, "rn.vo2", "2min30 trot"), C(10, "footing très facile")] });
+    } else if (finisher || lvl === "debutant") {
+      S2.push({ d: "rn", name: "Seuil doux", note: "Le seuil doit rester «confortablement difficile» : tu peux dire quelques mots, pas tenir une conversation. Si ça pique, ralentis.", det: "", steps: [W(15, "footing très facile + 3 lignes droites"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot très lent", injImp ? " sur surface souple" : ""), C(10, "footing facile")] });
+    } else {
+      S2.push({ d: "rn", name: "Seuil progressif", note: "Allure soutenue mais maîtrisée, régulière du 1er au dernier bloc.", det: "", steps: [W(15, "footing + 4 lignes droites"), B(P(3, 4), P(6, 10), "rn.thr", "2min trot"), C(10, "footing")] });
+    }
+  } else if (slot === "dur2") {
+    if (isTrail && (phase === "spec" || phase === "peak") && !injImp && !noVo2)
+      // Compétence descente (registre trail) : progression NON-cardio, trackée à part.
+      // Les blessures d'impact (périostite…) court-circuitent cette séance — la descente
+      // est une charge excentrique, mêmes drapeaux de prudence que la route (spec §2).
+      S2.push({ d: "rn", name: "Côtes + descentes techniques", note: "La descente est une compétence : relâche le buste, cadence haute, regarde loin. La montée se court au RPE, pas à l'allure — en trail l'allure brute ne veut rien dire.", det: "", steps: [W(18, "progressif sur sentier"), B(P(4, 6), 3, "rn.vo2", "descente du même segment EN CONTRÔLE (c'est l'exercice, pas la récup)", " en montée au train"), C(10, "footing souple sur plat")] });
+    else if (phase === "spec" || phase === "peak")
+      S2.push({ d: "rn", name: "Allure course spécifique", note: "C'est l'allure de ta course : mémorise la sensation, elle doit devenir automatique le jour J.", det: "", steps: [W(18, "progressif + gammes"), Bd(P(3, 5), fmt === "5k" || fmt === "10k" ? 1000 : 2000, fmt === "marathon" ? "rn.mara" : "rn.thr", "2-3min récup active", "", !(fmt === "5k" || fmt === "10k"), "rn"), C(10, "retour au calme")] });
+    else
+      S2.push({ d: "rn", name: phase === "base" ? "Endurance soutenue" : "Allure spécifique", note: isTrail ? "Effort tenu et continu, au ressenti (GAP/FC) — pas à l'allure brute." : "Allure tenue et continue, sans à-coups.", det: "", steps: [W(15, "footing facile"), B(1, P(20, 45), fmt === "marathon" || fmt === "trail" ? "rn.mara" : "rn.thr"), C(8, "retour au calme " + G)] });
+  } else if (slot === "durLong") {
+    const durCaps = ({ "5k": { lo: 40, hi: 74 }, "10k": { lo: 50, hi: 90 }, semi: { lo: 70, hi: 130 }, marathon: { lo: 90, hi: 180 }, trail: { lo: 120, hi: 255 } }                                              )[fmt] || { lo: 60, hi: 110 };
+    // C23 — jamais de sortie longue CAP >3h pour un débutant (le cap passe dans bnd → R3.3 ne regonfle pas)
+    if (beginner) durCaps.hi = Math.min(durCaps.hi, C23_BEGINNER_LONG_RUN_CAP_MIN);
+    // B2/R6.1 (audit v6) — pied et hanche : la sortie longue est la séance qui cumule
+    // le plus d'impacts — son plafond baisse selon la zone (pied ×0.85, hanche ×0.9).
+    if (inj.list.includes("pied")) durCaps.hi = Math.round(durCaps.hi * 0.85);
+    else if (inj.list.includes("hanche")) durCaps.hi = Math.round(durCaps.hi * 0.9);
+    const durMin = P(durCaps.lo, durCaps.hi);
+    // Trail (registre R4.1) : volume en TEMPS + D+ cible — jamais en km seul. Le D+ suit
+    // la durée (~350-450m/h) ; descentes en contrôle, surtout avec un passif d'impact.
+    const dplus = isTrail ? trailElevationTarget(durMin) : null;
+    S2.push({ d: "rn", long: true, name: isTrail ? "Sortie longue trail" : "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : isTrail ? "En trail on compte le TEMPS et le D+, pas les kilomètres. Monte au train, descends en contrôle" + (injImp ? " — descentes prudentes, ta zone fragile encaisse la charge excentrique" : "") + "." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", (isTrail && dplus ? " · D+ cible " + dplus.lo + "-" + dplus.hi + "m" : "") + (phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : "")), { bnd: { floor: durCaps.lo, cap: durCaps.hi } }), ], ...( { plainBody: true }          ) });
+  } else if (slot === "facileR") {
+    S2.push({ d: "rn", name: "Footing facile", note: beginner ? "Allure de conversation, sans forcer : c'est le volume facile qui fait progresser." : "Endurance fondamentale : allure de conversation. Ce volume facile construit l'aérobie sans user.", det: "", steps: [B(1, P(30, 50), "rn.easy", "", G && !injImp ? " · termine par " + G.replace("+ ", "") : "")], ...( { plainBody: true }          ) });
+  } else if (slot === "facile2") {
+    S2.push({ d: "rn", name: "Footing récup", note: "Récupération active : les jambes tournent, zéro intensité — ça accélère la récupération.", det: "", steps: [B(1, P(20, 30), "rn.rec")], ...( { plainBody: true }          ) });
+  } else if (slot === "recup") S2.push({ d: "rs", name: "Repos / mobilité", det: "marche, étirements", steps: [] });
+  else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
+  return S2;
+}
+
+
+/** Prédiction run — extraction mécanique de la branche correspondante de `predictRace`. */
+function predictRun(kit            )       {
+  const { refs, format, items, advice, D, runRange, riegelSec, profWhy } = kit;
+  if (refs.thrPace > 0 && RUN_KM[format]) {
+    const t = riegelSec(refs.thrPace, RUN_KM[format]);
+    items.push({ leg: "Course", value: runRange(t), why: "Riegel depuis ton allure seuil (~1h), exposant 1.06 — la référence des prédictions route" + profWhy });
+    D("PRED-run", "Méthode course", "Riegel ^1.06", "Extrapolation standard depuis l'allure tenable une heure");
+  } else if (format === "trail") {
+    advice.push("Trail : le chrono dépend du D+ et du terrain — repère fiable : allure Z2 à plat, marche assumée dans les pentes raides.");
+  } else advice.push("Renseigne ton allure seuil (test : 30min à fond, allure moyenne) pour obtenir une projection chiffrée.");
+}
+
+registerSport({
+  id: "run",
+  mainDiscipline: "rn",
+  // La course a DEUX créneaux faciles : le second footing (récup) sert de repli — un
+  // coureur déclassé court quand même, plus court et plus souple.
+  easyFallbackSlot: "facile2",
+  weekSchema: null,
+  buildSessions: buildRunSessions,
+  predict: predictRun,
+  retestTypes: ["thrPace"],
+  guards: { runImpactCap: true },
+});
+
+// ===== src/sports/bike/index.ts =====
+/**
+ * Sport VÉLO (registre R10). Extraction mécanique de la branche `sp === "bike"`.
+ */
+                                                       
+
+
+function buildBikeSessions(kit            )              {
+  const { a, fmt, slot, phase, lvl, finisher, noVo2, S2, P, W, C, B } = kit;
+  const clm = fmt === "clm", climb = a.terrain === "montagne" || a.terrain === "vallonne";
+  if (slot === "dur1") {
+    if (phase === "base") S2.push({ d: "bk", name: "Sweetspot", note: "Effort soutenu mais maîtrisé, cadence 85-95 rpm. Tu dois pouvoir finir chaque bloc sans t'effondrer.", det: "", steps: [W(15, "montée progressive"), B(P(2, 3), P(12, 20), "bk.ss", "5min souple"), C(10, "décrassage")] });
+    else if ((phase === "spec" || phase === "peak" || phase === "dev") && !noVo2) S2.push({ d: "bk", name: "VO2max", note: "Intensité maximale tenable 4min, récup longue. La puissance aérobie se maintient jusqu'à l'affûtage.", det: "", steps: [W(20, "progressif + 3 sprints courts"), B(P(4, 6), 4, "bk.vo2", "4min"), C(10, "souple")] });
+    else if (lvl === "debutant" || finisher) S2.push({ d: "bk", name: "Tempo progressif", note: "Effort confortablement soutenu, sans jamais te mettre dans le rouge.", det: "", steps: [W(15, "souple"), B(P(2, 3), P(8, 15), "bk.ss", "4min très souple"), C(10, "décrassage")] });
+    else S2.push({ d: "bk", name: "Sweetspot", note: "Effort soutenu mais maîtrisé, cadence 85-95 rpm.", det: "", steps: [W(15, "montée progressive"), B(P(2, 3), P(12, 20), "bk.ss", "5min souple"), C(10, "décrassage")] });
+  } else if (slot === "dur2") {
+    if (clm && (phase === "spec" || phase === "peak")) S2.push({ d: "bk", name: "Spécifique CLM (position)", note: "Travaille la tenue de position autant que la puissance : c'est elle qui te fera gagner du temps.", det: "", steps: [W(20, "progressif en position normale"), B(P(2, 3), P(15, 25), "bk.thr", "5min souple, redresse-toi", " en position aéro tenue"), C(10, "décrassage")] });
+    else if (phase === "spec" || phase === "peak") S2.push({ d: "bk", name: "Seuil / race-pace", note: "Allure de course soutenable ~1h. Régularité avant tout.", det: "", steps: [W(15, "progressif"), B(P(2, 4), P(10, 20), "bk.thr", "5min souple"), C(10, "décrassage")] });
+    else S2.push({ d: "bk", name: climb ? "Force en côte" : "Force basse cadence", note: "Gros braquet, cadence basse, mais sans forcer sur les genoux : c'est musculaire, pas cardio.", det: "", steps: [W(15, "+ montée en intensité"), B(P(4, 6), 5, "bk.frc", "3min souple ou en redescendant", " à 50-60 rpm" + (climb ? " en côte" : "")), C(10, "moulinage léger")] });
+  } else if (slot === "durLong") {
+    const durCaps = ({ crit: { lo: 60, hi: 150 }, route: { lo: 90, hi: 180 }, clm: { lo: 75, hi: 165 }, cyclo: { lo: 120, hi: 240 }, gravel: { lo: 150, hi: 360 } }                                              )[fmt] || { lo: 90, hi: 210 };
+    S2.push({ d: "bk", long: true, name: "Sortie longue", note: "Endurance longue : le moteur aérobie se construit sur la durée. Allure régulière, mange et bois régulièrement.", det: "", steps: [Object.assign(B(1, P(durCaps.lo, durCaps.hi), "bk.z2", "", fmt === "cyclo" || fmt === "gravel" ? " · endurance" : ""), { bnd: { floor: durCaps.lo, cap: durCaps.hi } })], ...( { plainBody: true }          ) });
+  } else if (slot === "facileR") S2.push({ d: "bk", name: "Endurance facile", note: "Z2 conversationnel, cadence souple 85-95 rpm : la base aérobie se construit ici.", det: "", steps: [B(1, P(45, 90), "bk.z2")], ...( { plainBody: true }          ) });
+  else if (slot === "facile2") S2.push({ d: "bk", name: "Récup active", note: "Moulinage très souple : activer la circulation, aucune force sur les pédales.", det: "", steps: [B(1, P(30, 45), null, "", " très souple")], ...( { plainBody: true }          ) });
+  else if (slot === "recup") S2.push({ d: "rs", name: "Repos / gainage", det: "mobilité", steps: [] });
+  else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
+  return S2;
+}
+
+
+/** Prédiction bike — extraction mécanique de la branche correspondante de `predictRace`. */
+function predictBike(kit            )       {
+  const { refs, format, items, advice, D } = kit;
+  const b = BIKE_POWER[format];
+  if (refs.ftp > 0 && b) {
+    items.push({ leg: "Vélo", value: Math.round(refs.ftp * b.lo) + "–" + Math.round(refs.ftp * b.hi) + "W", why: b.note + " — cible en puissance NORMALISÉE (moyenne pondérée : les pointes montent au-dessus), le chrono dépend du parcours" });
+    D("PRED-bike", "Méthode vélo", "% FTP par format", "Prédire un chrono sans connaître le parcours serait mentir ; la puissance cible est transférable partout");
+  } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir tes puissances cibles de course.");
+}
+
+registerSport({
+  id: "bike",
+  mainDiscipline: "bk",
+  easyFallbackSlot: "facileR",
+  weekSchema: null,
+  buildSessions: buildBikeSessions,
+  predict: predictBike,
+  retestTypes: ["ftp"],
+  guards: {},
+});
+
+// ===== src/sports/swim/index.ts =====
+/**
+ * Sport NATATION (registre R10). Extraction mécanique de la branche `sp === "swim"`.
+ * Les planchers/plafonds en MÈTRES (C15/C24/C24b) et la sonde de capacité sont déclarés
+ * comme garde-fous du module, plus comme tests de sport dispersés dans le générateur.
+ */
+                                                       
+
+
+
+function buildSwimSessions(kit            )              {
+  const { a, fmt, slot, phase, beginner, inj, swimDrillGlossary, S2, P, Wm, Cm, Bd } = kit;
+  const shoulder = inj.shoulder, ow = a.milieu === "ow" || a.milieu === "mixte";
+  // Limite principale déclarée par le débutant (question dédiée) : chaque réponse
+  // oriente RÉELLEMENT les éducatifs vers ce qui bloque, pas un générique commun.
+  // Chaque éducatif nommé porte son COMMENT FAIRE (pas juste son nom) — la séance
+  // s'explique elle-même, jusque dans le détail technique (manifeste : jamais muette).
+  const swimLimitFocus                                                = {
+    respiration: { txt: " éducatifs respiration — 3 temps bilatérale (souffle continu par le nez sous l'eau, tête qui pivote sans se lever, inspire large sur le côté à la dernière seconde)", note: "La respiration débloque tout le reste : on la travaille isolée, sans la charge de la nage complète." },
+    technique: { txt: " éducatifs bras — rattrapé (le bras devant reste tendu, immobile, jusqu'à ce que l'autre main vienne le toucher avant de repartir : corrige le timing et la rotation), poings fermés (main fermée pendant toute la traction : sentir l'appui par l'avant-bras plutôt que la paume), un bras (l'autre reste le long du corps, immobile : isole le mouvement de traction)", note: "Sentir l'appui avant d'ajouter de la distance : la technique s'automatise par la fréquence, pas par la force." },
+    endurance: { txt: " nage continue fractionnée courte, sans s'arrêter entre les longueurs", note: "Tenir la distance sans pause compte plus que la vitesse : la continuité prime, on fractionne le repos, pas la nage." },
+    peur: { txt: " nage en petites longueurs, pied au mur possible à tout moment, jamais de chrono", note: "Le seul objectif est de se sentir bien dans l'eau — l'aisance se construit par l'exposition progressive, sans pression de performance." },
+  };
+  const limFocus = swimLimitFocus[a.swim_limit || ""] || { txt: " éducatifs variés — " + swimDrillGlossary, note: "La technique se construit à froid, sans fatigue. Qualité > quantité." };
+  if (slot === "dur1") {
+    if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Seuil technique CSS", note: "Quelques 100m à allure seuil contrôlée, technique maintenue : préparer la course sans casser le geste.", det: "", steps: [Wm(200, "souple + éducatifs"), Bd(P(4, 7), 100, "sw.css", "20-30s", "", false, "sw"), Cm(100, "relâché")] });
+    else if (beginner) S2.push({ d: "sw", name: "Technique + éducatifs", note: limFocus.note, det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", "repos libre entre séries", limFocus.txt + ", " + P(1, 2) + " point(s) technique", false, "sw"), Cm(100, "relâché")] });
+    else if (shoulder) S2.push({ d: "sw", name: "Seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute.", det: "", steps: [Wm(300, "souple + 4×50m éducatifs"), Bd(P(6, 8), 100, "sw.css", "20-30s", "", false, "sw"), Cm(200, "souple")] });
+    else S2.push({ d: "sw", name: "Seuil CSS", note: "Allure régulière sur tous les 100m. Le dernier doit ressembler au premier.", det: "", steps: [Wm(400, "progressif + 4×50m éducatifs"), Bd(P(6, 10), 100, "sw.css", "15-20s", "", false, "sw"), Cm(200, "souple")] });
+  } else if (slot === "dur2") {
+    if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Endurance + touches de vitesse", note: "Nage continue technique, plus quelques accélérations courtes de 25m : de la vitesse de forme, pas de la souffrance.", det: "", steps: [Wm(200, "souple"), Bd(1, 400, "sw.aero", "20-30s", " nage continue fractionnée", false, "sw"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " en accélérations progressives, technique maintenue", false, "sw"), Cm(100, "très souple")] });
+    else if (beginner) S2.push({ d: "sw", name: "Endurance technique", note: "Priorité au geste, pas au chrono. Un seul point technique à la fois.", det: "", steps: [Wm(200, "souple"), Bd(1, 600, "sw.easy", "20-30s, le temps de respirer", " nage continue fractionnée (ex 8-12×50m) + 1 éducatif entre chaque", false, "sw"), Cm(100, "très souple")] });
+    // B1 (audit v6) — les séances de substitution épaule héritent d'un BUDGET BORNÉ :
+    // sans bnd, R3.3 gonflait le bloc jusqu'aux caps génériques (+68% de volume mesuré
+    // sur swim/fond/epaule — une blessure qui AUGMENTAIT la charge).
+    else if (shoulder && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Jambes vitesse (épaule épargnée)", note: "Vitesse par les jambes : battements rapides avec planche, l'épaule ne travaille pas. La puissance se maintient sans risque.", det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " battements rapides avec planche (jambes seules)", false, "sw"), Object.assign(Bd(1, 200, "sw.easy", "", " éducatifs technique", false, "sw"), { bnd: { floor: 200, cap: 600 } }), Cm(100, "souple")] });
+    else if (shoulder) S2.push({ d: "sw", name: "Jambes + technique", note: "Épaule épargnée : le travail passe par les jambes et la technique, la charge articulaire reste nulle.", det: "", steps: [Object.assign(Bd(1, 400, null, "", " séries battements + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: 1200 } })], ...( { plainBody: true }          ) });
+    else S2.push({ d: "sw", name: "Vitesse", note: "Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage.", det: "", steps: [Wm(400, "varié + 4×25m accélérations"), Bd(P(8, 12), 50, "sw.speed", "30-40s", "", false, "sw"), Cm(200, "souple")] });
+  } else if (slot === "durLong") {
+    const distCaps = beginner
+      ? { lo: 300, hi: Math.min(850, C15_BEGINNER_SWIM_SESSION_CAP_M) }
+      : ({ sprint: { lo: 600, hi: 1400 }, demifond: { lo: 1000, hi: 2000 }, fond: { lo: 1500, hi: 3000 }, ow: { lo: 1500, hi: 4500 } }                                              )[fmt] || { lo: 1000, hi: 2000 };
+    S2.push({ d: "sw", long: !beginner, name: ow ? "Volume + sighting" : beginner ? "Volume aérobie" : "Longue continue", note: ow ? "Endurance continue + navigation : allure régulière et repères visuels — les conditions réelles de la course." : "Endurance continue : allure régulière, geste stable — c'est la séance qui construit la caisse.", det: "", steps: [Object.assign(Bd(1, P(distCaps.lo, distCaps.hi), "sw.aero", "", (ow ? " · navigation aux repères" : "") + (beginner ? " · fractionne en blocs de 100-200m si besoin, la continuité prime sur l'allure" : ""), false, "sw"), { bnd: { floor: distCaps.lo, cap: distCaps.hi } })], ...( { plainBody: true }          ) });
+  } else if (slot === "facileR") {
+    // C24 — pas de « sortie piscine de 600m » pour un non-débutant
+    const techDistCaps = beginner ? { lo: 200, hi: 600 } : { lo: 750, hi: 1200 };
+    if (ow && a.swim_limit === "peur") S2.push({ d: "sw", name: "Aisance eau libre", det: "familiarisation, respiration, flottaison — 💡 Objectif confiance : l'aisance dans l'eau libre se construit sans chrono, par l'exposition progressive.", steps: [] });
+    else if (!ow && beginner && a.swim_limit === "peur") S2.push({ d: "sw", name: "Aisance bassin", det: "petites longueurs, pied au mur à tout moment, zéro chrono — 💡 Objectif confiance : l'aisance dans l'eau se construit par l'exposition progressive, jamais par la contrainte.", steps: [] });
+    else S2.push({ d: "sw", name: "Technique souple", note: beginner ? limFocus.note : "Éducatifs à froid : le geste se grave sans fatigue. Qualité avant quantité.", det: "", steps: [Object.assign(Bd(1, P(techDistCaps.lo, techDistCaps.hi), "sw.easy", "", beginner ? limFocus.txt : " éducatifs", false, "sw"), beginner ? {} : { bnd: { floor: techDistCaps.lo, cap: techDistCaps.hi } })], ...( { plainBody: true }          ) });
+  } else if (slot === "facile2") {
+    const recDistCaps = beginner ? { lo: 100, hi: 400 } : { lo: 750, hi: 1100 }; // C24
+    S2.push({ d: "sw", name: "Récup eau", note: "Nage de récupération : relâchement total, respiration ample.", det: "", steps: [Object.assign(Bd(1, P(recDistCaps.lo, recDistCaps.hi), "sw.easy", "", " souple", false, "sw"), beginner ? {} : { bnd: { floor: recDistCaps.lo, cap: recDistCaps.hi } })], ...( { plainBody: true }          ) });
+  } else if (slot === "recup") S2.push({ d: "rs", name: "Repos / épaules", det: "étirements coiffe", steps: [] });
+  else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
+  return S2;
+}
+
+
+/** Prédiction swim — extraction mécanique de la branche correspondante de `predictRace`. */
+function predictSwim(kit            )       {
+  const { refs, format, items, advice, D, range } = kit;
+  const sw = SWIM_RACE[format];
+  if (refs.css > 0 && sw) {
+    const t = (sw.dist / 100) * refs.css * sw.factor;
+    items.push({ leg: "Natation (" + sw.dist + "m)", value: range(t), why: "CSS × " + sw.factor + (sw.factor < 1 ? " (les distances courtes se nagent plus vite que le seuil)" : sw.factor > 1 ? " (eau libre : navigation et peloton ralentissent)" : " (le 1500m se nage à l'allure CSS)") });
+    D("PRED-swim", "Méthode natation", "CSS × facteur distance", "Le Critical Swim Speed est l'allure soutenable — chaque distance de course a son facteur validé");
+  } else advice.push("Renseigne ton CSS (test : 400m et 200m chrono → CSS = 200m ÷ (t400−t200)) pour une projection chiffrée.");
+}
+
+registerSport({
+  id: "swim",
+  mainDiscipline: "sw",
+  easyFallbackSlot: "facileR",
+  weekSchema: null,
+  buildSessions: buildSwimSessions,
+  predict: predictSwim,
+  retestTypes: ["css"],
+    // Le temps DANS L'EAU n'est pas le temps de séance (bord de bassin, récup, consignes) :
+  // le facteur nage traduit la promesse en volume réellement nagé.
+  guards: { smoothOnAuditMetric: true, swimSessionFloors: true, capacityProbe: true, swimTimeFactor: true },
+});
+
+// ===== src/sports/tri/index.ts =====
+/**
+ * Sport TRIATHLON (registre R10). Extraction mécanique de la branche `sp === "tri"`.
+ * C'est le sport qui portait le plus de passes gardées par un test de sport (brick, C18b,
+ * lissage sur métrique nage) : elles sont désormais des garde-fous DÉCLARÉS.
+ */
+                                                               
+
+
+
+
+function buildTriSessions(kit            )              {
+  const { a, fmt, slot, phase, prog, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
+  const runInj = inj.list.includes("course");
+  const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] }                                    )[phase] || [0.5, 0.8];
+  const PT = (lo        , hi        ) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
+  const swimDistCaps = ({ S: { lo: 300, hi: 750 }, M: { lo: 600, hi: 1500 }, "70.3": { lo: 950, hi: 1900 }, Full: { lo: 1600, hi: 3000 } }                                              )[fmt] || { lo: 600, hi: 1500 };
+  const swimDist = PT(swimDistCaps.lo, swimDistCaps.hi);
+  const triSwimVolCap = ({ S: 1050, M: 2100, "70.3": 3000, Full: 4500 }                          )[fmt] || 2100;
+  // C24 — même la nage récup tri : ≥750m pour un non-débutant
+  const swShortDist = beginner ? Math.min(600, Math.max(200, Math.round((swimDist * 0.4) / 50) * 50)) : Math.min(1100, Math.max(750, Math.round((swimDist * 0.6) / 50) * 50));
+  const swTechDist = Math.max(beginner ? 300 : 750, Math.round((swimDist * 0.5) / 50) * 50);
+  let swMain = beginner
+    ? { name: "Nage seuil technique (+dist)", note: "Technique d'abord, mais quelques 100m à allure seuil contrôlée pour préparer la course.", steps: [Wm(200, "souple"), Object.assign(Bd(1, swimDist, "sw.css", "repos libre entre séries", ", fractionné en séries régulières, éducatifs entre", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(100, "relâché")] }
+    : { name: "Nage seuil (+dist)", note: "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.", steps: [Wm(300, "+ 4×50m éducatifs"), Object.assign(Bd(1, swimDist, "sw.css", "15-20s", ", fractionné en séries régulières si besoin", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(200, "souple")] };
+  let swTech = beginner
+    ? { name: "Nage éducatifs", note: "Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force.", steps: [Wm(100, "souple"), Bd(1, swTechDist, "sw.easy", "20-30s", ", par 50m, 1 point technique à la fois — " + swimDrillGlossary, false, "sw"), Cm(100, "dos souple")] }
+    : { name: "Nage vitesse", note: "Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m.", steps: [Wm(200, "+ 4×25m accélérations progressives"), Bd(1, swTechDist, "sw.aero", "30-40s sur les 50m rapides", ", dont la moitié en accélérations de 50m", false, "sw"), Cm(150, "souple")] };
+  // B1c (audit v6) — l'épaule existait pour les triathlètes dans le QUESTIONNAIRE mais
+  // pas dans le générateur (branche morte : le traitement vivait sous sp === "swim").
+  // Ici : mêmes substitutions que le nageur, au budget de la séance remplacée (bnd).
+  if (inj.shoulder) {
+    const shoulderDist = Math.max(swimDistCaps.lo, Math.round((swimDist * 0.8) / 50) * 50);
+    swMain = { name: "Nage seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute. Arrêt au moindre signal articulaire.", steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(1, shoulderDist, "sw.css", "20-30s", ", fractionné en 100m, amplitude confortable", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: shoulderDist } }), Cm(100, "souple")] };
+    swTech = { name: "Jambes + technique (épaule épargnée)", note: "Le travail passe par les jambes (battements planche) et la technique : la charge articulaire de l'épaule reste minimale.", steps: [Object.assign(Bd(1, swTechDist, null, "", " séries battements planche + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: swTechDist } })] };
+  }
+  const swShort = { name: "Nage récup", note: "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.", steps: [Bd(1, swShortDist, "sw.easy", "", " souple, en blocs de 50m, respiration 3 temps · relâchement total", false, "sw")] };
+  if (slot === "dur1") {
+    if (dbl) S2.push({ d: "sw", name: swMain.name + " (matin)", note: swMain.note, det: "", steps: swMain.steps });
+    if (phase === "base") S2.push({ d: "bk", name: "Sweetspot vélo", note: "Cadence 85-95 rpm, soutenu mais maîtrisé.", det: "", steps: [W(15, "montée progressive"), Object.assign(B(PT(2, 3), PT(12, 18), "bk.ss", "5min souple"), { repCap: 4 }), C(10, "décrassage")] });
+    else if ((phase === "spec" || phase === "peak") && !noVo2) S2.push({ d: "bk", name: "VO2max vélo", note: "Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).", det: "", steps: [W(20, "progressif + 3 sprints"), Object.assign(B(PT(4, 6), 4, "bk.vo2", "4min récup"), { repCap: 8 }), C(10, "souple")] });
+    else if (phase === "taper") S2.push({ d: "bk", name: "Rappel race-pace", note: "Affûtage : on réveille l'allure course sans générer de fatigue. Court et précis.", det: "", steps: [W(10, "progressif"), Object.assign(B(PT(2, 3), PT(6, 10), "bk.rp", "3min souple"), { repCap: 4 }), C(5, "décrassage")] });
+    else if (lvl === "debutant" || finisher) S2.push({ d: "bk", name: "Tempo vélo", note: "Confortablement soutenu, jamais dans le rouge.", det: "", steps: [W(15, "souple"), Object.assign(B(PT(2, 3), PT(8, 15), "bk.ss", "4min souple"), { repCap: 4 }), C(10, "décrassage")] });
+    else if (!noVo2) S2.push({ d: "bk", name: "VO2max vélo", note: "Intensité max tenable 4min, récup quasi complète entre.", det: "", steps: [W(20, "progressif + 3 sprints"), Object.assign(B(PT(4, 6), 4, "bk.vo2", "4min récup"), { repCap: 8 }), C(10, "souple")] });
+    else S2.push({ d: "bk", name: "Tempo vélo", note: "Confortablement soutenu, jamais dans le rouge — la VO2max attendra la majorité (R6.3).", det: "", steps: [W(15, "souple"), Object.assign(B(PT(2, 3), PT(8, 15), "bk.ss", "4min souple"), { repCap: 4 }), C(10, "décrassage")] });
+  } else if (slot === "dur2") {
+    if (dbl) S2.push({ d: "sw", name: swTech.name, note: swTech.note, det: "", steps: swTech.steps });
+    if (phase === "spec" || phase === "peak") S2.push({ d: "rn", name: "Allure course (tri)", note: "L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.", det: "", steps: [W(15, "footing progressif"), Object.assign(B(1, PT(20, 40), "rn.mara"), { bnd: { floor: 20, cap: 45 } }), C(8, "retour au calme")] });
+    else S2.push({ d: "bk", name: "Force basse cadence", note: "Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.", det: "", steps: [W(15, "+ montée en intensité"), Object.assign(B(PT(4, 6), ({ S: 5, M: 5, "70.3": 6, Full: 7 }                          )[fmt] || 5, "bk.frc", "3min souple", " à 50-60 rpm"), { repCap: 8 }), C(10, "moulinage")] });
+  } else if (slot === "durLong") {
+    if (phase === "spec" || phase === "peak") {
+      // C21 — brick borné par format, ×0.8 en reprise (appliqué aussi dans blockBounds)
+      const rf = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1;
+      const bb = ({ S: { lo: 45, hi: 90 }, M: { lo: 60, hi: 120 }, "70.3": { lo: 90, hi: 180 }, Full: { lo: 150, hi: 300 } }                                              )[fmt] || { lo: 60, hi: 180 };
+      const br = ({ S: { lo: 10, hi: 20 }, M: { lo: 12, hi: 24 }, "70.3": { lo: 16, hi: 32 }, Full: { lo: 35, hi: 70 } }                                              )[fmt] || { lo: 15, hi: 30 };
+      // Répartition des intensités (manifeste) : le brick roule en Z2, le DERNIER TIERS
+      // passe à l'allure course — la spécificité (transition, jambes entamées) est gardée
+      // sans transformer 2 à 5h hebdo en zone grise (tri mesuré à 54-67% de temps facile).
+      S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : vélo en endurance, dernier tiers @ allure course, puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP.", det: "", steps: [
+        { role: "body", leg: "bike", durationMin: PT(bb.lo, Math.round(bb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2")                      }          ,
+        { role: "body", leg: "run", durationMin: PT(br.lo, Math.round(br.hi * rf)), d: "rn" }          ,
+      ], ...( { runInj }          ) });
+    } else {
+      const longRunCaps = ({ S: { lo: 30, hi: 60 }, M: { lo: 40, hi: 75 }, "70.3": { lo: 50, hi: 100 }, Full: { lo: 60, hi: 140 } }                                              )[fmt] || { lo: 50, hi: 100 };
+      S2.push({ d: "rn", long: true, name: "Sortie longue CAP", note: "Endurance fondamentale, allure facile et conversationnelle.", det: "", steps: [Object.assign(B(1, PT(longRunCaps.lo, longRunCaps.hi), "rn.easy", "", runInj ? " sur surface souple" : ""), { bnd: { floor: longRunCaps.lo, cap: longRunCaps.hi } })], ...( { plainBody: true }          ) });
+    }
+  } else if (slot === "facileR") {
+    const ftCaps = ({ S: { lo: 25, hi: 45 }, M: { lo: 15, hi: 26 }, "70.3": { lo: 14, hi: 22 }, Full: { lo: 50, hi: 100 } }                                              )[fmt] || { lo: 25, hi: 45 };
+    // C18 — le créneau course de qualité garanti en tri : VO2 court en peak
+    if (phase === "peak" && !runInj && !medHold && !noVo2 && lvl !== "debutant" && !finisher) S2.push({ d: "rn", name: "VO2max course", note: "Rappels de puissance aérobie course, courts et vifs, jambes déjà entamées par le vélo.", det: "", steps: [W(12, "footing progressif + gammes"), Object.assign(B(PT(4, 6), 2, "rn.vo2", "2min trot"), { repCap: 6 }), C(8, "footing très facile")] });
+    else if (phase === "peak" && runInj && !medHold) S2.push({ d: "rn", name: "Allure course (tri, surface souple)", note: "Course blessé : allure cible en contrôle, sur surface souple, jamais dans la douleur.", det: "", steps: [W(12, "footing progressif"), B(1, PT(18, 28), "rn.mara", "", ", sur surface souple"), C(8, "footing très facile")] });
+    else S2.push({ d: "rn", name: "Footing facile", note: "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.", det: "", steps: [B(1, PT(ftCaps.lo, ftCaps.hi), "rn.easy", "", runInj ? " · surface souple" : "")], ...( { plainBody: true }          ) });
+  } else if (slot === "facile2") S2.push({ d: "sw", name: swShort.name + " courte", note: swShort.note, det: "", steps: swShort.steps, ...( { plainBody: true }          ) });
+  else if (slot === "recup") S2.push({ d: "rs", name: "Récup active", det: "mobilité", steps: [] });
+  else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
+  return S2;
+}
+
+
+/** Prédiction tri — extraction mécanique de la branche correspondante de `predictRace`. */
+function predictTri(kit            )       {
+  const { refs, format, items, advice, D, range, runRange, riegelSec, profWhy } = kit;
+  const sw = TRI_SWIM[format], bk = TRI_BIKE[format], rn = TRI_RUN[format];
+  if (refs.css > 0 && sw) {
+    const t = (sw.dist / 100) * refs.css * sw.factor;
+    items.push({ leg: "Natation " + sw.dist + "m", value: range(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" });
+  } else advice.push("CSS manquant → pas de projection natation (test 400/200m).");
+  if (refs.ftp > 0 && bk) {
+    items.push({ leg: "Vélo", value: Math.round(refs.ftp * bk.lo) + "–" + Math.round(refs.ftp * bk.hi) + "W", why: "puissance normalisée qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" });
+  } else advice.push("FTP manquante → pas de puissance cible vélo (test 20min × 0.95).");
+  if (refs.thrPace > 0 && rn) {
+    const t = riegelSec(refs.thrPace, rn.km) * rn.fatigue;
+    items.push({ leg: "CAP " + (rn.km >= 21 ? (rn.km > 22 ? "marathon" : "semi") : rn.km + "km"), value: runRange(t), why: "Riegel × " + rn.fatigue + " de fatigue post-vélo (facteur " + format + ")" + profWhy });
+  } else advice.push("Allure seuil manquante → pas de projection CAP (test 30min).");
+  if (items.length) D("PRED-tri", "Méthode tri", "legs séparés", "Un total additionnerait les incertitudes ; chaque leg a sa méthode et sa fourchette");
+}
+
+registerSport({
+  id: "tri",
+  mainDiscipline: "rn", // la CAP finit la course : c'est la discipline de référence du tri
+  easyFallbackSlot: "facileR",
+  weekSchema: null,
+  buildSessions: buildTriSessions,
+  predict: predictTri,
+  retestTypes: ["css", "ftp", "thrPace"],
+    // Le tri NAGE : il hérite des planchers de séance en mètres (C24/C24b), comme la natation.
+  // C'est précisément ce que `sport !== "run"` disait de façon détournée.
+  guards: { stripLongOnMedHold: true, singleRunVo2PerWeek: true, smoothOnAuditMetric: true, capacityProbe: true, swimSessionFloors: true },
+});
+
+// ===== src/sports/trail/index.ts =====
+/**
+ * Sport TRAIL (registre R10). Le trail était DÉJÀ modulaire depuis R7 (`trailModel.ts` +
+ * `trailLibrary.ts`) : c'est ce précédent que la phase 1 généralise. Son entrée dans le
+ * registre ne déplace donc aucun code — elle DÉCLARE ce que le trail avait obtenu par des
+ * `if` dispersés, dont le plafond de jours d'appui (D10-3) qui lui échappait justement parce
+ * qu'il n'était déclaré nulle part.
+ */
+                                                       
+
+
+// Nom UNIQUE dans tout le projet : le bundle (`npm run build:app`) concatène les modules
+// dans une seule portée, un `buildSessions` local écraserait le dispatch de sessionLibrary.
+function buildTrailSessionsFromKit(kit            )              {
+  // Le module trail lit le plan raisonné directement (objectif + axes verticaux) : il n'a
+  // pas besoin de la boîte à outils commune, ses séances se décrivent en temps + D+ + D−.
+  return buildTrailSessions(kit.r, kit.slot        , kit.phase, kit.prog, kit.weekNum);
+}
+
+registerSport({
+  id: "trail",
+  mainDiscipline: "rn",
+  // "facileR", PAS "facile2" : c'est ce que l'ancien code faisait (`sport === "run" ? … : …`
+  // ne connaissait que la course). Le déclarer autrement changerait les plans trail — ce
+  // serait une DÉCISION, pas une extraction. Candidate à réexaminer (voir R10_DEFECTS.md).
+  easyFallbackSlot: "facileR",
+  weekSchema: (phase, isRecup, r) => trailWeekSchema(phase, isRecup, r.trail .category),
+  buildSessions: buildTrailSessionsFromKit,
+  retestTypes: ["thrPace", "vam"],
+  // D10-3 — LE drapeau qui manquait : le trail cumule l'impact de la course et la charge
+  // excentrique de la descente. Il est plafonné en jours d'appui comme la course.
+  guards: { runImpactCap: true },
+});
+
 // ===== src/generator/weekBuilder.ts =====
 /**
  * Construction des semaines V2 — port sémantique des passes de Coach_Pro_V1.5 :
@@ -2400,10 +2761,13 @@ const J = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
                
  
 
-function schema(use10         , phase        , isRecup         , trailCat         )            {
-  // R7 TRAIL — structure propre : la descente et la marche sont des séances à part entière,
-  // la sortie longue est le pivot du week-end, le lundi porte le renfo excentrique.
-  if (trailCat) return trailWeekSchema(phase, isRecup, trailCat          )             ;
+function schema(use10         , phase        , isRecup         , r               )            {
+  // R10 phase 1 — un sport peut avoir son PROPRE schéma de semaine (le trail : descente et
+  // marche sont des séances à part entière, la longue est le pivot du week-end, le lundi porte
+  // le renfo excentrique). Il le déclare dans son module ; sinon, le schéma générique par
+  // créneaux s'applique — il est agnostique de la discipline, et c'est très bien ainsi.
+  const own = r ? sportModule(r.profile.sport          ).weekSchema : null;
+  if (own) return own(phase, isRecup, r )             ;
   if (isRecup) {
     const d                     = [["facile", "facileR"], ["facile", "facile2"], ["off", "off"], ["facile", "facileR"], ["facile", "facile2"], ["facile", "facileR"], ["off", "off"], ["facile", "facile2"], ["facile", "facileR"], ["recup", "recup"]];
     return (use10 ? d : d.slice(0, 7)).map((x) => ({ charge: x[0], slot: x[1] }));
@@ -2427,6 +2791,7 @@ function buildDays(r              , refs      , hz         )           {
   const a = r.profile;
   const sp = a.sport;
   const ctx             = { r };
+  const mod = sportModule(sp          ); // registre R10 : ce que CE sport déclare
   const cycleLen = r.use10 ? 10 : 7;
   const totalDays = r.weeks * 7;
   const days           = [];
@@ -2445,7 +2810,7 @@ function buildDays(r              , refs      , hz         )           {
       // déjà, la détente d'affûtage fait office de récupération).
       if (isR && ph.id === "peak" && ph.weeks <= 1) isR = false;
       if (isR) sinceR = 0; else sinceR++;
-      sch = schema(r.use10, ph.id, isR, r.trail ? r.trail.category : undefined);
+      sch = schema(r.use10, ph.id, isR, r);
     }
     const s = sch[dic] || { charge: "facile", slot: "facileR" };
     const jn = J[i % 7];
@@ -2493,10 +2858,11 @@ function buildDays(r              , refs      , hz         )           {
   // medHold : retirer l'intensité (dur1/dur2 ; tri : aussi le brick) avant génération
   if (r.medHold)
     for (const d of days) {
-      const stripLong = sp === "tri";
+      // Le brick tri EST de l'intensité : sur avis médical en attente, la longue tombe aussi.
+      const stripLong = guard(sp          , "stripLongOnMedHold");
       if (d.charge === "dur" && (d.slot === "dur1" || d.slot === "dur2" || (stripLong && d.slot === "durLong"))) {
         d.charge = "facile";
-        d.slot = sp === "run" ? "facile2" : "facileR";
+        d.slot = mod.easyFallbackSlot;
       }
     }
 
@@ -2525,9 +2891,7 @@ function buildDays(r              , refs      , hz         )           {
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
     d.date = iso(start + i * MS);
-    d.sessions = r.trail
-      ? buildTrailSessions(r, d.slot                                            , d.phaseId, d.prog, d.week)
-      : buildSessions(ctx, d.slot                                       , d.phaseId, d.prog);
+    d.sessions = buildSessions(ctx, d.slot                                       , d.phaseId, d.prog, d.week);
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
       else if (s.min == null) s.min = 0;
@@ -2536,7 +2900,7 @@ function buildDays(r              , refs      , hz         )           {
 
   // C18b — un seul « VO2max course » par semaine de peak : le second créneau facileR
   // redevient footing (sinon 4 jours durs et une semaine de peak plus légère que la spec).
-  if (a.sport === "tri") {
+  if (guard(a.sport          , "singleRunVo2PerWeek")) {
     for (let w = 1; w <= r.weeks; w++) {
       const vo2Days = days.filter((d) => d.week === w && d.sessions.some((x) => x.name === "VO2max course"));
       for (let i = 1; i < vo2Days.length; i++) {
@@ -2559,8 +2923,8 @@ function buildDays(r              , refs      , hz         )           {
  *  D10-3 — s'applique à `run` ET `trail` (le trail ajoute l'excentrique à l'impact). */
 function applyRunImpactCap(r              , days          , refs      , hz         )       {
   const a = r.profile;
-  if ((a.sport !== "run" && a.sport !== "trail") || r.maxRunDays == null) return;
-  const isTrail = a.sport === "trail";
+  if (!guard(a.sport          , "runImpactCap") || r.maxRunDays == null) return;
+  const isTrail = a.sport === "trail"; // le SUBSTITUT est trail-spécifique (vélo en côte)
   const injImpact = r.inj.impact; // R6 (audit v6) — lecture unique des blessures
   const canCross = a.dispo === "quotidienne" || a.dispo === "semaine";
   for (let w = 1; w <= r.weeks; w++) {
@@ -2675,6 +3039,9 @@ function applyStrengthGrafts(r              , days          )       {
         steps: [] });
       continue;
     }
+    // NB (R10 phase 1) : le trail a sa PROPRE greffe de renfo excentrique, posée plus haut
+    // dans cette fonction (elle `continue`). Lui ajouter en plus la plio de la course
+    // ferait doublon — l'extraction reste mécanique, ce n'est pas le lieu d'en décider.
     if (sp === "run") {
       // B2 (audit v6) — la greffe de renfo est CIBLÉE par localisation : tibia → renfo
       // tibial, hanche → gainage hanche/ITB (moyen fessier, bande ilio-tibiale).
@@ -2701,7 +3068,7 @@ function applyAntiCollage(r              , days          , refs      , hz       
     if (days[i].charge === "dur" && days[i + 1].charge === "dur" && !days[i + 1].forced) {
       const d = days[i + 1];
       d.charge = "facile";
-      d.slot = r.profile.sport === "run" ? "facile2" : "facileR";
+      d.slot = sportModule(r.profile.sport          ).easyFallbackSlot;
       d.sessions = buildSessions(ctx, d.slot                         , d.phaseId, d.prog || 0);
       for (const s of d.sessions) if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
     }
@@ -2741,6 +3108,7 @@ function applyPolarizationGuard(r              , days          , ctx            
  * corrige l'écart V1.5 nage non-débutante (6.3h déclarées / 3.6h livrables).
  */
                                                                                                           
+
 
 
 
@@ -2832,7 +3200,7 @@ function generatePlan(profile                , opts                             
   const _auditRefs              = { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 };
   // Le lissage retient la mesure la PLUS GRANDE des deux (s.min du plan, métrique auditeur) :
   // les deux lectures doivent tenir, on ne lisse pas l'une en cassant l'autre.
-  const weekMinSmooth = a.sport === "swim" || a.sport === "tri"
+  const weekMinSmooth = guard(a.sport          , "smoothOnAuditMetric")
     ? (wd          ) => Math.max(weekMin(wd), wd.reduce((t, d) => t + d.sessions.reduce((u, s) => u + sessionLoad(s, _auditRefs).minutes, 0), 0))
     : weekMin;
   const renderWeek = (wd          ) =>
@@ -3009,7 +3377,7 @@ function generatePlan(profile                , opts                             
     // réduit aussi les séances de qualité — les blocs à répétitions n'ont pas de plancher
     // de total. On remonte la séance entière : ≥750m (non-débutant), ≥600m (débutant, D6 —
     // le manifeste interdit la « sortie piscine qui ne vaut pas le déplacement » à tous).
-    if (a.sport !== "run") {
+    if (guard(a.sport          , "swimSessionFloors")) {
       const swFloor = r.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : 750;
       const raised                                = [];
       for (const d of wd)
@@ -3048,7 +3416,7 @@ function generatePlan(profile                , opts                             
     // D5 (audit v6) — C15 s'applique à la SÉANCE (tous blocs confondus), pas au seul bloc
     // body : échauffement 200m + corps 850m + retour 100m = 1150m violait le plafond en
     // silence. Le corps cède, jamais l'échauffement ni le retour au calme (valeur technique).
-    if (r.beginner && a.sport !== "run") {
+    if (r.beginner && guard(a.sport          , "swimSessionFloors")) {
       let changed = false;
       for (const d of wd)
         for (const s of d.sessions) {
@@ -3237,7 +3605,7 @@ function generatePlan(profile                , opts                             
   // C24/C24b/C15 — fenêtres de SÉANCE nage, LE MOT FINAL après toutes les passes de
   // lissage (qui peuvent redescendre ou regonfler une séance) : ≥750m non-débutant,
   // [600, 850]m débutant. Le corps cède ou monte — jamais l'échauffement ni le retour au calme.
-  if (a.sport !== "run") {
+  if (guard(a.sport          , "swimSessionFloors")) {
     const swFloorF = r.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : 750;
     for (const w of wl) {
       const wd2 = w.days            ;
@@ -3550,7 +3918,7 @@ function generatePlan(profile                , opts                             
       // course elle-même (consigne de pacing selon la priorité), pas un entraînement.
       const rd = (wk.days            ).find((d) => d.date === rc.date);
       if (rd) {
-        const mainD = a.sport === "bike" ? "bk" : a.sport === "swim" ? "sw" : "rn";
+        const mainD = sportModule(a.sport          ).mainDiscipline;
         const prevMin = rd.sessions.reduce((m, s) => m + (s.min || 0), 0) || 60;
         rd.charge = "dur";
         rd.sessions = [{
@@ -3913,6 +4281,7 @@ function generateAudited(profile                , auditOpts                     
  */
                                            
 
+
 // R6 — profil du parcours : un chrono à plat ne vaut rien sur un parcours vallonné.
 // Facteurs de temps course à pied (littérature GAP/expérience course sur route) :
 // vallonné ~+3–6 %, montagneux ~+8–15 % — appliqués en ÉLARGISSANT la fourchette
@@ -4029,41 +4398,15 @@ function predictRace(
     return { items, advice, decisions };
   }
 
-  if (sport === "run") {
-    if (refs.thrPace > 0 && RUN_KM[format]) {
-      const t = riegelSec(refs.thrPace, RUN_KM[format]);
-      items.push({ leg: "Course", value: runRange(t), why: "Riegel depuis ton allure seuil (~1h), exposant 1.06 — la référence des prédictions route" + profWhy });
-      D("PRED-run", "Méthode course", "Riegel ^1.06", "Extrapolation standard depuis l'allure tenable une heure");
-    } else if (format === "trail") {
-      advice.push("Trail : le chrono dépend du D+ et du terrain — repère fiable : allure Z2 à plat, marche assumée dans les pentes raides.");
-    } else advice.push("Renseigne ton allure seuil (test : 30min à fond, allure moyenne) pour obtenir une projection chiffrée.");
-  } else if (sport === "bike") {
-    const b = BIKE_POWER[format];
-    if (refs.ftp > 0 && b) {
-      items.push({ leg: "Vélo", value: Math.round(refs.ftp * b.lo) + "–" + Math.round(refs.ftp * b.hi) + "W", why: b.note + " — cible en puissance NORMALISÉE (moyenne pondérée : les pointes montent au-dessus), le chrono dépend du parcours" });
-      D("PRED-bike", "Méthode vélo", "% FTP par format", "Prédire un chrono sans connaître le parcours serait mentir ; la puissance cible est transférable partout");
-    } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir tes puissances cibles de course.");
-  } else if (sport === "swim") {
-    const sw = SWIM_RACE[format];
-    if (refs.css > 0 && sw) {
-      const t = (sw.dist / 100) * refs.css * sw.factor;
-      items.push({ leg: "Natation (" + sw.dist + "m)", value: range(t), why: "CSS × " + sw.factor + (sw.factor < 1 ? " (les distances courtes se nagent plus vite que le seuil)" : sw.factor > 1 ? " (eau libre : navigation et peloton ralentissent)" : " (le 1500m se nage à l'allure CSS)") });
-      D("PRED-swim", "Méthode natation", "CSS × facteur distance", "Le Critical Swim Speed est l'allure soutenable — chaque distance de course a son facteur validé");
-    } else advice.push("Renseigne ton CSS (test : 400m et 200m chrono → CSS = 200m ÷ (t400−t200)) pour une projection chiffrée.");
-  } else if (sport === "tri") {
-    const sw = TRI_SWIM[format], bk = TRI_BIKE[format], rn = TRI_RUN[format];
-    if (refs.css > 0 && sw) {
-      const t = (sw.dist / 100) * refs.css * sw.factor;
-      items.push({ leg: "Natation " + sw.dist + "m", value: range(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" });
-    } else advice.push("CSS manquant → pas de projection natation (test 400/200m).");
-    if (refs.ftp > 0 && bk) {
-      items.push({ leg: "Vélo", value: Math.round(refs.ftp * bk.lo) + "–" + Math.round(refs.ftp * bk.hi) + "W", why: "puissance normalisée qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" });
-    } else advice.push("FTP manquante → pas de puissance cible vélo (test 20min × 0.95).");
-    if (refs.thrPace > 0 && rn) {
-      const t = riegelSec(refs.thrPace, rn.km) * rn.fatigue;
-      items.push({ leg: "CAP " + (rn.km >= 21 ? (rn.km > 22 ? "marathon" : "semi") : rn.km + "km"), value: runRange(t), why: "Riegel × " + rn.fatigue + " de fatigue post-vélo (facteur " + format + ")" + profWhy });
-    } else advice.push("Allure seuil manquante → pas de projection CAP (test 30min).");
-    if (items.length) D("PRED-tri", "Méthode tri", "legs séparés", "Un total additionnerait les incertitudes ; chaque leg a sa méthode et sa fourchette");
+  // R10 phase 1 — DISPATCH : chaque sport porte SA méthode de prédiction dans son module
+  // (`src/sports/<sport>/`). Ce qui reste ici est commun : fourchettes, profil de parcours,
+  // formatage, journal de décisions. Un sport sans méthode ne PRÉDIT RIEN plutôt que de
+  // sortir un chiffre inventé — la fourchette honnête est la seule sortie acceptable.
+  const mod = sportModule(sport);
+  if (mod.predict) {
+    mod.predict({ format, refs, items, advice, D, range, runRange, riegelSec, profWhy });
+  } else {
+    advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }
 
   return { items, advice, decisions };
@@ -4852,6 +5195,7 @@ function dailyEnergy(input             )                             {
 
 
 
+
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
 }
@@ -5230,6 +5574,13 @@ function localTodayISO()         {
   // annonçait 8h/sem là où le moteur en applique 9 (vélo/route/reprise). Les règles
   // pédagogiques expliquent des décisions : elles doivent lire les chiffres qui décident.
   volumeCaps: { history: HISTORY_CAPS, util: UTIL, margin: MARGIN },
+  // R10 phase 1 — le REGISTRE DE SPORTS exposé à l'UI : elle n'a plus à savoir quel sport
+  // teste quoi (`typesForSport` recopiait la liste). Un sport ajouté au moteur devient
+  // automatiquement complet côté interface.
+  sports: Object.fromEntries(knownSports().map((id) => {
+    const m = sportModule(id);
+    return [id, { id: m.id, mainDiscipline: m.mainDiscipline, retestTypes: m.retestTypes, guards: m.guards }];
+  })),
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
   dailyEnergy: dailyEnergyV2,
