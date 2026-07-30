@@ -148,6 +148,56 @@ export const VAM_BY_HISTORY: Record<string, number> = trule(
 );
 /** Allure seuil sur plat, en secondes/km, quand elle n'est pas connue — adossée à l'ancienneté
  *  de pratique, jamais au niveau ressenti (R12.6). Volontairement prudente. */
+/**
+ * T19 — LA RÉCUPÉRATION D'UNE RÉPÉTITION EN PENTE EST UN RETOUR, ET IL SE CALCULE.
+ *
+ * En trail, la récupération entre deux répétitions n'est pas une pause : c'est le trajet de
+ * retour au pied de la côte (ou en haut de la descente). Elle a donc une durée, et cette durée
+ * se DÉDUIT du dénivelé de la répétition — pas d'une phrase. C'était le dernier endroit du
+ * moteur où de la prose servait de donnée : 1 740 récupérations de trail étaient comptées
+ * 0 minute parce que leur libellé (« descente MARCHÉE », « remontée en marche active ») ne
+ * portait aucun chiffre. Une séance de côtes annoncée 11 min en durait 20.
+ *
+ * Vitesses de RETOUR, pas d'effort — c'est ce qui les distingue des VAM d'entraînement :
+ *   · descente marchée/trottinée de récupération : 900 m D−/h. Une descente de récupération se
+ *     freine (c'est elle qui casse les cuisses) ; 900 m/h est le compromis observé entre la
+ *     marche prudente (~600) et le trot souple (~1 200).
+ *   · remontée en marche active : 400 m D+/h. C'est la VAM de randonnée soutenue — au-dessus,
+ *     ce n'est plus une récupération, c'est un second bloc de travail.
+ * Plancher d'une minute : une répétition ne s'enchaîne pas sans une reprise de souffle, même
+ * quand le dénivelé est minuscule.
+ */
+export const T19_RETURN = trule(
+  "T19",
+  "la récupération d'une répétition en pente est le trajet de retour : sa durée se déduit du dénivelé, jamais d'un libellé",
+  { downWalkMPerH: 900, upWalkMPerH: 400, minMin: 1, maxMin: 45 },
+);
+
+/** Durée du RETOUR après une répétition en pente, en minutes (T19). `up`/`down` = mètres de
+ *  dénivelé de la répétition ; on redescend ce qu'on a monté, on remonte ce qu'on a descendu. */
+export function returnMinutes(o: { dplusM?: number; dmoinsM?: number }): number {
+  const t = (o.dplusM ? (o.dplusM / T19_RETURN.downWalkMPerH) * 60 : 0)
+    + (o.dmoinsM ? (o.dmoinsM / T19_RETURN.upWalkMPerH) * 60 : 0);
+  return Math.min(T19_RETURN.maxMin, Math.max(T19_RETURN.minMin, Math.round(t * 10) / 10));
+}
+
+/**
+ * T19, RÉCONCILIATION — `recoveryMin` d'un bloc en pente est une DÉRIVÉE de son dénivelé, et
+ * le dénivelé bouge après la construction (mise à l'échelle verticale T1/T2, plafond de bosse
+ * accessible, allègement T3). Un nombre dérivé figé trop tôt ment dès la première passe qui
+ * touche sa source : on le recalcule donc à chaque rendu, comme `_min`.
+ *
+ * Le TAPIS est exclu : sur un tapis, on ne redescend rien — la récupération est l'intervalle à
+ * plat prescrit par la séance, une valeur fixe et non déductible du dénivelé simulé.
+ */
+export function syncReturnRecovery(steps: { role?: string; reps?: number; gradient?: string; surface?: string; recoveryText?: string; recoveryMin?: number; dplusM?: number; dmoinsM?: number }[]): void {
+  for (const st of steps) {
+    if (st.role !== "body" || (st.reps || 1) <= 1 || !st.recoveryText) continue;
+    if (!st.gradient || st.gradient === "flat" || st.surface === "tapis") continue;
+    st.recoveryMin = returnMinutes({ dplusM: st.dplusM, dmoinsM: st.dmoinsM });
+  }
+}
+
 export const T18d_FLAT_PACE_BY_HISTORY: Record<string, number> = trule(
   "T18d", "un repli d'allure doit s'appuyer sur une réponse vérifiable ; le niveau ressenti n'en est pas une",
   { reprise: 380, confirme: 330, ancien: 300 },

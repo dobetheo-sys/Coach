@@ -18,7 +18,7 @@ import {
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, type Refs } from "./renderer.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
-import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS } from "../engine/trailModel.ts";
+import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS, syncReturnRecovery } from "../engine/trailModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { arbitrateVolRecent } from "../engine/measured.ts";
@@ -90,25 +90,39 @@ export function reconcileDeclaredVolume(
   // après coup : 4 sauts subsistaient, jusqu'à +18 %. Même leçon que R5.1 et R5.3 — une règle
   // de sécurité se vérifie EN DERNIER, sinon elle ne vérifie que l'avant-dernier état.
   //
-  // On réduit les corps de séance, jamais leur nombre, et jamais sous la borne basse déclarée
-  // par la séance elle-même (`bnd.floor`) : un plancher est une règle, pas une marge.
+  // On réduit les corps de séance, jamais leur nombre de SÉANCES, et jamais sous la borne basse
+  // déclarée par le bloc (`bnd.floor`) : un plancher est une règle, pas une marge. Les
+  // RÉPÉTITIONS, elles, cèdent avant la taille — comme partout ailleurs dans ce moteur. Sans
+  // cela, la garantie était inopérante sur le trail, où les blocs de côtes ont des bornes
+  // serrées (`floor = 0,9 × durée`) et où tout le volume vit dans le nombre de répétitions :
+  // la passe tournait, ne pouvait rien réduire, et laissait passer des sauts de +25 % une fois
+  // la charge mesurée honnêtement (R3-final).
   {
     let prevCharge = 0;
     for (const wk of plan.weeks) {
       if (wk.isRecup || wk.phase.id === "taper") continue;
       const cur = weekMinOf(wk);
       if (prevCharge > 0 && cur > prevCharge * C22_MAX_WEEKLY_GROWTH + 1) {
-        const f = (prevCharge * C22_MAX_WEEKLY_GROWTH) / cur;
-        for (const d of wk.days) for (const sx of d.sessions) {
-          if (sx.d === "rs" || !sx.steps) continue;
-          let touched = false;
-          for (const st of sx.steps) {
-            if (st.role !== "body" || !st.durationMin) continue;
-            const floor = (st as { bnd?: { floor?: number } }).bnd?.floor ?? 5;
-            const next = Math.max(floor, Math.round(st.durationMin * f));
-            if (next < st.durationMin) { st.durationMin = next; touched = true; }
+        for (let g = 0; g < 4 && weekMinOf(wk) > prevCharge * C22_MAX_WEEKLY_GROWTH + 1; g++) {
+          const before = weekMinOf(wk);
+          const f = (prevCharge * C22_MAX_WEEKLY_GROWTH) / before;
+          for (const d of wk.days) for (const sx of d.sessions) {
+            if (sx.d === "rs" || !sx.steps) continue;
+            let touched = false;
+            for (const st of sx.steps) {
+              if (st.role !== "body") continue;
+              const floor = (st as { bnd?: { floor?: number } }).bnd?.floor;
+              if ((st.reps || 1) > 1) {
+                const next = Math.max(1, Math.round((st.reps || 1) * f));
+                if (next < (st.reps || 1)) { st.reps = next; touched = true; }
+              } else if (st.durationMin) {
+                const next = Math.max(floor ?? 5, Math.round(st.durationMin * f));
+                if (next < st.durationMin) { st.durationMin = next; touched = true; }
+              }
+            }
+            if (touched && render) render(sx);
           }
-          if (touched && render) render(sx);
+          if (before - weekMinOf(wk) < 0.5) break; // les planchers bloquent : rien de plus à prendre
         }
       }
       prevCharge = weekMinOf(wk);
@@ -132,11 +146,19 @@ export function reconcileDeclaredVolume(
   {
     const swimMetersOf = (sx: V1Session) =>
       (sx.steps || []).reduce((t, st) => t + (st.distanceM && (st.d || sx.d) === "sw" ? (st.reps || 1) * st.distanceM : 0), 0);
-    for (let i = 1; i < plan.weeks.length; i++) {
+    let lastCharge = 0;
+    for (let i = 0; i < plan.weeks.length; i++) {
       const wk = plan.weeks[i];
-      if (!wk.isRecup) continue;
-      const prev = weekMinOf(plan.weeks[i - 1]);
-      if (prev <= 0 || weekMinOf(wk) <= prev + 1) continue;
+      // La référence est la dernière semaine de CHARGE — celle que la récupération assimile.
+      // Comparer deux récups consécutives (dérive du cycle de 10 jours) n'a pas de sens
+      // physiologique et entre en collision avec les planchers de séance ; la spec interne
+      // (`coherenceScorer`) l'excluait déjà explicitement, le générateur s'aligne dessus.
+      if (!wk.isRecup) { if (wk.phase.id !== "taper") lastCharge = weekMinOf(wk); continue; }
+      const prev = lastCharge;
+      // Tolérance ZÉRO, comme la règle auditée : « jamais plus lourde » se compare strictement.
+      // La minute de marge tolérée ici laissait passer exactement le cas mesuré (287 vs 286) —
+      // un garde-fou qui s'accorde une marge ne garantit pas ce qu'il annonce.
+      if (prev <= 0 || weekMinOf(wk) <= prev) continue;
       const f = prev / weekMinOf(wk);
       for (const d of wk.days) for (const sx of d.sessions) {
         if (sx.d === "rs" || !sx.steps) continue;
@@ -168,7 +190,7 @@ export function reconcileDeclaredVolume(
         }
         if (render) render(sx);
       }
-      for (let g = 0; g < 4 && weekMinOf(wk) > prev + 1; g++) {
+      for (let g = 0; g < 4 && weekMinOf(wk) > prev; g++) {
         const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
         if (active.length <= 1) break; // une semaine de récup garde au moins un contact avec le sport
         const victim = active.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
@@ -521,8 +543,13 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     : weekMin;
   const renderWeek = (wd: GenDay[]) =>
     wd.forEach((d) => d.sessions.forEach((s) => {
-      if (s.steps && s.steps.length) renderSess(s, refs, r.hz, r.baseRefs);
-      else if (s.min == null) s.min = 0;
+      if (s.steps && s.steps.length) {
+        // T19 — la récupération d'un bloc en pente suit son dénivelé, qui bouge encore à ce
+        // stade (mise à l'échelle verticale, plafond de bosse, allègement T3). On la
+        // réconcilie AVANT de mesurer, pas après : c'est elle qui entre dans `_min`.
+        syncReturnRecovery(s.steps);
+        renderSess(s, refs, r.hz, r.baseRefs);
+      } else if (s.min == null) s.min = 0;
     }));
   const scaleWeekBody = (wd: GenDay[], f: number) =>
     wd.forEach((d) => d.sessions.forEach((s) => {

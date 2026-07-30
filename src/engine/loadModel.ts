@@ -18,6 +18,10 @@ export interface RawStep {
   reps?: number;
   zone?: string | null;
   recoveryText?: string;
+  /** R3-final — la durée de récupération est une DONNÉE portée par le step. L'auditeur la lit,
+   *  il ne la déduit plus d'un libellé : c'est le générateur qui sait combien dure « la descente
+   *  marchée » entre deux répétitions de côte. */
+  recoveryMin?: number;
   leg?: "bike" | "run";
   d?: string;
   // R7 TRAIL — l'auditeur doit pouvoir MESURER les deux axes verticaux, sinon il ne peut
@@ -160,7 +164,13 @@ function segmentSwim(segRaw: string): { meters: number; recoveryMin: number; par
   return { meters, recoveryMin, parsed: parsedAny || meters > 0 };
 }
 
-/** Récup inter-blocs depuis recoveryText V1.5 ("2min trot", "15-20s", "repos libre…") en minutes. */
+/**
+ * Récup inter-blocs déduite d'un LIBELLÉ. Réservée au chemin TEXTE (plans sans steps : le
+ * générateur legacy gelé, un plan restauré d'une ancienne version). Le chemin structuré ne
+ * l'appelle plus : il lit `recoveryMin`, un nombre posé à la construction du step.
+ * `recoveryMinFromText` ne peut donc plus renvoyer 0 en silence sur une séance à répétitions —
+ * c'est ce silence qui coûtait 1 740 récupérations non comptées (R3-final).
+ */
 function recoveryMinFromText(txt: string | undefined): number {
   if (!txt) return 0;
   const asMin = txt.match(/(\d+)(?:-(\d+))?\s*min(\d{2})?/);
@@ -198,7 +208,16 @@ export function sessionLoadFromSteps(s: RawSession, refs: AthleteRefs): SessionL
   for (const b of bodies) {
     bodyMin += stepMinutes(b, s.d, refs);
     const reps = b.reps || 1;
-    if (reps > 1) recovery += recoveryMinFromText(b.recoveryText) * (reps - 1);
+    if (reps > 1) {
+      // `recoveryMin` est la source de vérité (R3-final). Le repli sur le libellé ne sert qu'aux
+      // plans que la bibliothèque actuelle n'a pas construits : le générateur legacy GELÉ du
+      // monolithe (audité par `audit:v1`) et un plan restauré d'une version antérieure. Sans lui,
+      // l'auditeur cessait de voir la récupération de tout le périmètre legacy — l'inverse exact
+      // du but. Et quand le repli ne trouve rien non plus, il le DIT au lieu de compter 0.
+      const rec = b.recoveryMin ?? recoveryMinFromText(b.recoveryText);
+      if (!rec && b.recoveryText) flags.push("récupération non quantifiée sur « " + s.name + " » (« " + b.recoveryText + " ») : la charge de cette séance est SOUS-ESTIMÉE");
+      recovery += rec * (reps - 1);
+    }
     if ((b.d || s.d) === "sw" && b.distanceM) meters += (b.reps || 1) * b.distanceM;
   }
   let auxMin = 0;
@@ -245,6 +264,14 @@ export function sessionLoadFromSteps(s: RawSession, refs: AthleteRefs): SessionL
 /** Charge d'une séance : chemin structuré V1.5 si steps présents, sinon parsing texte (endurabuild-3). */
 export function sessionLoad(s: RawSession, refs: AthleteRefs = DEFAULT_REFS): SessionLoad {
   if (s.steps && s.steps.length > 0 && s.d !== "rs") return sessionLoadFromSteps(s, refs);
+  // R3-final — UN JOUR DE REPOS NE SE MESURE PAS EN LISANT SA DESCRIPTION. Un « Repos + renfo
+  // excentrique » décrit des séries ; le parseur de texte y trouvait 23 minutes que le
+  // générateur comptait 0. Les deux lectures divergeaient donc sur des journées qui, par
+  // construction, ne portent aucune charge d'endurance — et l'écart tombait exactement sur les
+  // semaines de récupération, où il faisait basculer la comparaison avec la semaine précédente.
+  // Même défaut que la récupération inter-blocs, un cran plus loin : de la prose servait de
+  // donnée. Le type de la séance fait foi.
+  if (s.d === "rs") return { minutes: 0, meters: null, recoveryMin: 0, confidence: "rest", flags: [], generatorMin: s.min };
   return sessionLoadFromText(s);
 }
 
@@ -304,7 +331,7 @@ export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS):
     if (cls === "hard") out.hardMin += stMin;
     else if (cls === "mod") out.modMin += stMin;
     else out.easyMin += stMin;
-    if (reps > 1) out.easyMin += recoveryMinFromText(st.recoveryText) * (reps - 1); // la récup est facile
+    if (reps > 1) out.easyMin += (st.recoveryMin ?? recoveryMinFromText(st.recoveryText)) * (reps - 1); // la récup est facile
   }
   return out;
 }

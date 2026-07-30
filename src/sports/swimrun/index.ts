@@ -137,7 +137,7 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
         steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(P(4, 7), 100, "sw.css", "25-35s", " amplitude confortable, SANS plaquettes", false, "sw"), { repCap: 10 }), Cm(150, "souple")] });
     } else if (beginner) {
       S2.push({ d: "sw", name: "Technique + aisance en tenue", note: "En swimrun on nage en chaussures et en combinaison : la position change, les jambes portent moins. Habitue-toi au matériel AVANT de chercher la vitesse — c'est le choc n°1 des débutants.", det: "",
-        steps: [Wm(200, "souple"), Object.assign(Bd(P(6, 10), 50, "sw.easy", "repos libre", " en tenue partielle, un point technique à la fois", false, "sw"), { repCap: 10 }), Cm(100, "relâché")] });
+        steps: [Wm(200, "souple"), Object.assign(Bd(P(6, 10), 50, "sw.easy", [0.33, "repos libre (~20s)"], " en tenue partielle, un point technique à la fois", false, "sw"), { repCap: 10 }), Cm(100, "relâché")] });
     } else if ((phase === "spec" || phase === "peak") && (kit.weekNum % 2 === 0 || kit.r.weeks <= 14)) {
       // La PLUS LONGUE NAGE est la contrainte dimensionnante d'une prépa swimrun (thermique et
       // mentale) : elle se répète en continu, pas en séries. Une semaine sur deux en phase

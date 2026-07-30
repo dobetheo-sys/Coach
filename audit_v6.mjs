@@ -330,15 +330,25 @@ test("D3", "C22 : progression ≤ +10 % entre semaines de charge", "fail", () =>
   return { ok: bad.length === 0, detail: `${bad.length} saut(s) : ${bad.slice(0, 3).join(" ; ")}` };
 });
 
-test("D4", "Semaine de récup jamais plus chargée que la précédente", "pass", () => {
+// La règle porte sur la semaine que la récup ASSIMILE, donc sur la dernière semaine de CHARGE
+// qui la précède — c'est la formulation de la spec interne (`coherenceScorer`, qui exclut
+// explicitement `weeks[i-1].isRecup`). Comparer deux semaines de récupération CONSÉCUTIVES
+// (dérive du cycle de 10 jours) n'ajoute rien et entre en collision frontale avec le plancher
+// de séance : un plan de nage débutant saturé n'a plus qu'une séance de 600 m (C24b), qui ne
+// peut ni maigrir ni disparaître. Deux règles qui se contredisent sur toutes les séances
+// courtes : celle-ci était mal formée, elle est reformulée plutôt qu'arbitrée.
+test("D4", "Semaine de récup jamais plus chargée que la dernière semaine de charge", "pass", () => {
   const bad = [];
   for (const sport of Object.keys(FORMATS))
     for (const format of FORMATS[sport])
       for (const level of ["debutant", "inter"]) {
         const p = build(sport, { format, level, sessions_max: "3", vol_max: "7" });
-        p.weeks.forEach((w, i) => {
-          if (i && w.isRecup && weekMin(w) > weekMin(p.weeks[i - 1]) + 1)
-            bad.push(`${sport}/${format}/${level} S${w.num}`);
+        let lastCharge = 0;
+        p.weeks.forEach((w) => {
+          const m = weekMin(w);
+          if (w.isRecup) {
+            if (lastCharge > 0 && m > lastCharge) bad.push(`${sport}/${format}/${level} S${w.num}`);
+          } else if (w.phase.id !== "taper") lastCharge = m;
         });
       }
   return { ok: bad.length === 0, detail: `${bad.length} cas : ${bad.slice(0, 3).join(" ; ")}` };

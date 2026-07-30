@@ -20,7 +20,14 @@ export interface V1Step {
   reps?: number;
   zone?: string | null;
   intensity?: string;
+  /** Libellé de la récupération inter-répétitions — de la PROSE, pour l'athlète. Il ne sert
+   *  plus jamais de donnée : la durée vit dans `recoveryMin`. */
   recoveryText?: string;
+  /** Durée de la récupération inter-répétitions, en minutes, PAR intervalle (R3-final).
+   *  Renseignée à la CONSTRUCTION du step par la bibliothèque de séances — c'est elle qui sait
+   *  combien dure « la descente marchée », pas un lecteur de phrases. La charge d'une
+   *  répétition vaut `reps × durée + (reps − 1) × recoveryMin`. */
+  recoveryMin?: number;
   text?: string;
   leg?: "bike" | "run"; // brick
   d?: string; // discipline du step (nage dans tri, CAP du brick…)

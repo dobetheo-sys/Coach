@@ -110,12 +110,13 @@ export const intOf = (key: string | null): { ref: string; lo: number; hi: number
  * l'échelle au lieu d'être une constante que le lissage sous-corrige (c'était l'obstacle qui
  * avait fait échouer la première tentative — cf. R10_DEFECTS.md).
  *
- * Une récup NON chiffrée (« récupération complète », « redescente marchée » : 7 % des blocs,
- * surtout en trail) reste à 0 — on ne devine pas une durée qu'on n'a pas.
+ * R3-final — la durée vient de `recoveryMin`, un NOMBRE posé à la construction du step. Elle ne
+ * se relit plus dans `recoveryText` : c'était le dernier endroit du moteur où de la prose servait
+ * de donnée, et il coûtait 1 740 récupérations comptées 0 minute (35 % des séances de trail).
  */
 export function stepMin(st: V1Step, disc: string, baseRefs: Refs): number {
   const reps = st.reps || 1;
-  const rec = st.role === "body" && reps > 1 ? (reps - 1) * (recoveryMinutes(st.recoveryText) || 0) : 0;
+  const rec = st.role === "body" && reps > 1 ? (reps - 1) * (st.recoveryMin || 0) : 0;
   if (st.durationMin) return reps * st.durationMin + rec;
   if (st.distanceM) {
     const d = st.d || disc;
@@ -158,7 +159,7 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
     // Les clamps C13/C13b se calculent sur le TRAVAIL, récup exclue — c'est la définition de
     // « échauffement ≤ corps », et c'est aussi ce que recalcule l'auditeur : les deux lectures
     // doivent produire le même nombre, sinon l'écart qu'on vient de fermer se rouvre ailleurs.
-    const rec = (b.reps || 1) > 1 ? ((b.reps || 1) - 1) * (recoveryMinutes(b.recoveryText) || 0) : 0;
+    const rec = (b.reps || 1) > 1 ? ((b.reps || 1) - 1) * (b.recoveryMin || 0) : 0;
     recTotal += rec;
     bodyMin += b._min - rec;
   }

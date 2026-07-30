@@ -39,7 +39,13 @@ export interface WeekAudit {
   nominalSessions: number; // séances sans volume prescrit (comptées au nominal)
   fullMinutes: number; // minutes issues d'un parsing complet (couverture)
   swimMeters: number; // mètres nagés de la semaine — la mesure de volume honnête en natation
-  workMin: number; // minutes HORS récup inter-répétitions — même base que le générateur (écart de métrique documenté)
+  /** R3-final — minutes hors récup inter-répétitions. Cette base existait pour NEUTRALISER
+   *  l'écart entre les deux estimateurs : le générateur ne comptait pas la récupération, nous
+   *  si. L'écart est fermé (`recoveryMin` porté par le step, mesuré des deux côtés), donc la
+   *  compensation n'a plus d'objet — les règles de progression et de dominance du pic mesurent
+   *  désormais les MÊMES minutes que celles que le générateur pilote. Le champ reste exposé
+   *  pour l'analyse (part de travail réel d'une semaine), il n'arbitre plus aucune règle. */
+  workMin: number;
 }
 
 export interface PlanAudit {
@@ -219,6 +225,12 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   // documenté (ARCHITECTURE.md). La dominance est re-testée HORS récup inter-répétitions
   // (même base que le générateur) avant de conclure à une violation structurelle.
   if (!peakInPeakPhase) {
+    // La DOMINANCE DU PIC se juge sur le TRAVAIL, pas sur le temps passé dehors — et ce n'est
+    // pas la compensation d'un écart de mesure, c'est la définition de la règle. Une semaine de
+    // développement pleine de répétitions occupe plus de CLOCK TIME (les récupérations sont du
+    // temps) qu'une semaine de pic faite de sorties longues continues, à charge d'entraînement
+    // pourtant inférieure. « La semaine pic est la plus grosse du plan » parle de stimulus.
+    // La règle de PROGRESSION, elle, parle bien de temps vécu : elle mesure `prescribedMin`.
     const peakByWork = candidates.reduce((a, b) => (b.workMin > a.workMin ? b : a), candidates[0]);
     const peakPhaseBestW = Math.max(0, ...candidates.filter((w) => w.phaseId === "peak").map((w) => w.workMin));
     if (peakByWork.phaseId === "peak" || (peakPhaseBestW > 0 && peakByWork.workMin <= peakPhaseBestW * 1.05)) peakInPeakPhase = true;
@@ -256,17 +268,18 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
       if (w.isRecup || w.phaseId === "taper") continue;
       if (prevDecl > 0 && w.declaredMin > prevDecl * 1.1 + 7) declJumps++;
       if (prevOurs > 0) {
-        // D3 (audit v6) — les sauts se mesurent sur la base TRAVAIL (hors récup
-        // inter-répétitions, comme la dominance du pic) : une semaine fractionnée pèse
-        // plus cher en minutes-métrique à travail égal — c'est l'écart de métrique
-        // documenté, pas un saut de charge. Le seuil dur dérive de la constante nommée
-        // (C22_AUDIT_HARD_JUMP) — plus jamais un littéral qui diverge en silence.
-        const j = w.workMin / prevOurs;
+        // D3 puis R3-final — les sauts se mesuraient sur la base TRAVAIL parce que le
+        // générateur ne comptait pas la récupération : une semaine fractionnée pesait plus cher
+        // en minutes-métrique à travail égal, et c'était un artefact de mesure, pas un saut de
+        // charge. L'écart est fermé : les deux estimateurs comptent la même chose. On mesure
+        // donc le temps réellement prescrit — celui que le générateur pilote et que l'athlète
+        // passe dehors. Le seuil dur dérive de la constante nommée (C22_AUDIT_HARD_JUMP).
+        const j = w.prescribedMin / prevOurs;
         if (j > C22_AUDIT_HARD_JUMP) auditJumpsHard++;
         else if (j > 1.15) auditJumpsSoft++;
       }
       prevDecl = w.declaredMin;
-      prevOurs = w.workMin;
+      prevOurs = w.prescribedMin;
     }
   }
   if (declJumps > 0) hard.push(declJumps + " saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)");

@@ -11,7 +11,7 @@
  * (renderer.ts) : VAM en montée, consigne technique en descente, allure seulement à plat.
  */
 import type { ReasonedPlan, V1Session, V1Step } from "../engine/types.ts";
-import { T5_HIKE_SHARE, T7_REHEARSAL, type TrailCategory } from "../engine/trailModel.ts";
+import { T5_HIKE_SHARE, T7_REHEARSAL, returnMinutes, type TrailCategory } from "../engine/trailModel.ts";
 import { intOf } from "./renderer.ts";
 
 type Slot = "dur1" | "dur2" | "durLong" | "facileR" | "facile2" | "recup" | "off";
@@ -64,8 +64,18 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
 
   const W = (min: number, txt?: string): V1Step => ({ role: "warmup", durationMin: min, text: txt || "", gradient: "flat" });
   const C = (min: number, txt?: string): V1Step => ({ role: "cooldown", durationMin: min, text: txt || "", gradient: "flat" });
-  const B = (o: Partial<V1Step> & { durationMin: number }): V1Step =>
-    ({ role: "body", reps: 1, intensity: intOf(o.zone ?? null) as unknown as string, ...o }) as V1Step;
+  // T19 — LA RÉCUPÉRATION D'UNE RÉPÉTITION EN PENTE SE CALCULE, elle ne se lit pas.
+  // Entre deux répétitions de côte, l'athlète REDESCEND ce qu'il vient de monter ; entre deux
+  // répétitions de descente, il REMONTE. Cette durée est déductible du dénivelé du bloc, et
+  // c'est ce qui remplace les sept libellés qui valaient 0 minute (« descente MARCHÉE »,
+  // « remontée en marche active »… — 1 740 récupérations non comptées, 35 % des séances de
+  // trail). Un `recoveryMin` explicite passé par l'appelant a toujours priorité.
+  const B = (o: Partial<V1Step> & { durationMin: number }): V1Step => {
+    const st = { role: "body", reps: 1, intensity: intOf(o.zone ?? null) as unknown as string, ...o } as V1Step;
+    if ((st.reps || 1) > 1 && st.recoveryText && st.recoveryMin == null)
+      st.recoveryMin = returnMinutes({ dplusM: st.dplusM, dmoinsM: st.dmoinsM });
+    return st;
+  };
 
   if (slot === "durLong") {
     // 1. SORTIE LONGUE TRAIL — temps + D+ + D−, en `rolling` : jamais une allure au sol.
@@ -114,7 +124,7 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
     } else if (flatAccess && treadmill) {
       // 13. TAPIS INCLINÉ
       S2.push({ d: "rn", name: "Tapis incliné (substitut de dénivelé)", note: "Tapis à 10-15 % d'inclinaison : c'est le meilleur substitut de montée quand le terrain manque. Aucune descente, donc aucune casse musculaire — mais aussi aucune préparation à la descente : garde tes week-ends en relief pour ça.", det: "",
-        steps: [W(12, "à plat, progressif"), B({ durationMin: durEach, reps, zone, gradient: "up", dplusM: upPer, mode: "run", surface: "tapis", recoveryText: "2min à plat, inclinaison à 0", repCap: hp.repCap }), C(8, "à plat souple")] });
+        steps: [W(12, "à plat, progressif"), B({ durationMin: durEach, reps, zone, gradient: "up", dplusM: upPer, mode: "run", surface: "tapis", recoveryText: "2min à plat, inclinaison à 0", recoveryMin: 2, repCap: hp.repCap }), C(8, "à plat souple")] });
     } else {
       S2.push({ d: "rn", name: hp.name, note: hp.note, det: "",
         steps: [W(15, "footing progressif jusqu'au pied de la côte"),

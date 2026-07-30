@@ -2631,6 +2631,14 @@ class UnknownSportError extends Error {
                            
  
 
+/**
+ * Récupération inter-répétitions passée aux builders de steps (R3-final). Soit un texte DÉJÀ
+ * chiffré (« 2min30 trot ») dont la minute est lue une seule fois, à la construction ; soit un
+ * couple `[minutes, libellé]` quand la phrase n'en porte pas (« repos libre entre séries »).
+ * Dans les deux cas, ce qui SORT du builder est un nombre — plus jamais une phrase à relire.
+ */
+                                            
+
 /** Contrat d'un module de sport. `null` = « utiliser le générique ». */
                               
             
@@ -2683,8 +2691,8 @@ class UnknownSportError extends Error {
                                                                           
                                                                         
                                                                           
-                                                                                                                            
-                                                                                                                                                               
+                                                                                                                      
+                                                                                                                                                         
  
 
 /**
@@ -3318,6 +3326,56 @@ const VAM_BY_HISTORY                         = trule(
 );
 /** Allure seuil sur plat, en secondes/km, quand elle n'est pas connue — adossée à l'ancienneté
  *  de pratique, jamais au niveau ressenti (R12.6). Volontairement prudente. */
+/**
+ * T19 — LA RÉCUPÉRATION D'UNE RÉPÉTITION EN PENTE EST UN RETOUR, ET IL SE CALCULE.
+ *
+ * En trail, la récupération entre deux répétitions n'est pas une pause : c'est le trajet de
+ * retour au pied de la côte (ou en haut de la descente). Elle a donc une durée, et cette durée
+ * se DÉDUIT du dénivelé de la répétition — pas d'une phrase. C'était le dernier endroit du
+ * moteur où de la prose servait de donnée : 1 740 récupérations de trail étaient comptées
+ * 0 minute parce que leur libellé (« descente MARCHÉE », « remontée en marche active ») ne
+ * portait aucun chiffre. Une séance de côtes annoncée 11 min en durait 20.
+ *
+ * Vitesses de RETOUR, pas d'effort — c'est ce qui les distingue des VAM d'entraînement :
+ *   · descente marchée/trottinée de récupération : 900 m D−/h. Une descente de récupération se
+ *     freine (c'est elle qui casse les cuisses) ; 900 m/h est le compromis observé entre la
+ *     marche prudente (~600) et le trot souple (~1 200).
+ *   · remontée en marche active : 400 m D+/h. C'est la VAM de randonnée soutenue — au-dessus,
+ *     ce n'est plus une récupération, c'est un second bloc de travail.
+ * Plancher d'une minute : une répétition ne s'enchaîne pas sans une reprise de souffle, même
+ * quand le dénivelé est minuscule.
+ */
+const T19_RETURN = trule(
+  "T19",
+  "la récupération d'une répétition en pente est le trajet de retour : sa durée se déduit du dénivelé, jamais d'un libellé",
+  { downWalkMPerH: 900, upWalkMPerH: 400, minMin: 1, maxMin: 45 },
+);
+
+/** Durée du RETOUR après une répétition en pente, en minutes (T19). `up`/`down` = mètres de
+ *  dénivelé de la répétition ; on redescend ce qu'on a monté, on remonte ce qu'on a descendu. */
+function returnMinutes(o                                       )         {
+  const t = (o.dplusM ? (o.dplusM / T19_RETURN.downWalkMPerH) * 60 : 0)
+    + (o.dmoinsM ? (o.dmoinsM / T19_RETURN.upWalkMPerH) * 60 : 0);
+  return Math.min(T19_RETURN.maxMin, Math.max(T19_RETURN.minMin, Math.round(t * 10) / 10));
+}
+
+/**
+ * T19, RÉCONCILIATION — `recoveryMin` d'un bloc en pente est une DÉRIVÉE de son dénivelé, et
+ * le dénivelé bouge après la construction (mise à l'échelle verticale T1/T2, plafond de bosse
+ * accessible, allègement T3). Un nombre dérivé figé trop tôt ment dès la première passe qui
+ * touche sa source : on le recalcule donc à chaque rendu, comme `_min`.
+ *
+ * Le TAPIS est exclu : sur un tapis, on ne redescend rien — la récupération est l'intervalle à
+ * plat prescrit par la séance, une valeur fixe et non déductible du dénivelé simulé.
+ */
+function syncReturnRecovery(steps                                                                                                                                                         )       {
+  for (const st of steps) {
+    if (st.role !== "body" || (st.reps || 1) <= 1 || !st.recoveryText) continue;
+    if (!st.gradient || st.gradient === "flat" || st.surface === "tapis") continue;
+    st.recoveryMin = returnMinutes({ dplusM: st.dplusM, dmoinsM: st.dmoinsM });
+  }
+}
+
 const T18d_FLAT_PACE_BY_HISTORY                         = trule(
   "T18d", "un repli d'allure doit s'appuyer sur une réponse vérifiable ; le niveau ressenti n'en est pas une",
   { reprise: 380, confirme: 330, ancien: 300 },
@@ -3976,12 +4034,13 @@ const intOf = (key               )                                              
  * l'échelle au lieu d'être une constante que le lissage sous-corrige (c'était l'obstacle qui
  * avait fait échouer la première tentative — cf. R10_DEFECTS.md).
  *
- * Une récup NON chiffrée (« récupération complète », « redescente marchée » : 7 % des blocs,
- * surtout en trail) reste à 0 — on ne devine pas une durée qu'on n'a pas.
+ * R3-final — la durée vient de `recoveryMin`, un NOMBRE posé à la construction du step. Elle ne
+ * se relit plus dans `recoveryText` : c'était le dernier endroit du moteur où de la prose servait
+ * de donnée, et il coûtait 1 740 récupérations comptées 0 minute (35 % des séances de trail).
  */
 function stepMin(st        , disc        , baseRefs      )         {
   const reps = st.reps || 1;
-  const rec = st.role === "body" && reps > 1 ? (reps - 1) * (recoveryMinutes(st.recoveryText) || 0) : 0;
+  const rec = st.role === "body" && reps > 1 ? (reps - 1) * (st.recoveryMin || 0) : 0;
   if (st.durationMin) return reps * st.durationMin + rec;
   if (st.distanceM) {
     const d = st.d || disc;
@@ -4024,7 +4083,7 @@ function renderSess(s                   , refs      , hz         , baseRefs     
     // Les clamps C13/C13b se calculent sur le TRAVAIL, récup exclue — c'est la définition de
     // « échauffement ≤ corps », et c'est aussi ce que recalcule l'auditeur : les deux lectures
     // doivent produire le même nombre, sinon l'écart qu'on vient de fermer se rouvre ailleurs.
-    const rec = (b.reps || 1) > 1 ? ((b.reps || 1) - 1) * (recoveryMinutes(b.recoveryText) || 0) : 0;
+    const rec = (b.reps || 1) > 1 ? ((b.reps || 1) - 1) * (b.recoveryMin || 0) : 0;
     recTotal += rec;
     bodyMin += b._min - rec;
   }
@@ -4174,6 +4233,10 @@ function renderSess(s                   , refs      , hz         , baseRefs     
                 
                        
                         
+                                                                                               
+                                                                                                 
+                                                  
+                       
                        
              
                                                                                          
@@ -4316,7 +4379,13 @@ function segmentSwim(segRaw        )                                            
   return { meters, recoveryMin, parsed: parsedAny || meters > 0 };
 }
 
-/** Récup inter-blocs depuis recoveryText V1.5 ("2min trot", "15-20s", "repos libre…") en minutes. */
+/**
+ * Récup inter-blocs déduite d'un LIBELLÉ. Réservée au chemin TEXTE (plans sans steps : le
+ * générateur legacy gelé, un plan restauré d'une ancienne version). Le chemin structuré ne
+ * l'appelle plus : il lit `recoveryMin`, un nombre posé à la construction du step.
+ * `recoveryMinFromText` ne peut donc plus renvoyer 0 en silence sur une séance à répétitions —
+ * c'est ce silence qui coûtait 1 740 récupérations non comptées (R3-final).
+ */
 function recoveryMinFromText(txt                    )         {
   if (!txt) return 0;
   const asMin = txt.match(/(\d+)(?:-(\d+))?\s*min(\d{2})?/);
@@ -4354,7 +4423,16 @@ function sessionLoadFromSteps(s            , refs             )              {
   for (const b of bodies) {
     bodyMin += stepMinutes(b, s.d, refs);
     const reps = b.reps || 1;
-    if (reps > 1) recovery += recoveryMinFromText(b.recoveryText) * (reps - 1);
+    if (reps > 1) {
+      // `recoveryMin` est la source de vérité (R3-final). Le repli sur le libellé ne sert qu'aux
+      // plans que la bibliothèque actuelle n'a pas construits : le générateur legacy GELÉ du
+      // monolithe (audité par `audit:v1`) et un plan restauré d'une version antérieure. Sans lui,
+      // l'auditeur cessait de voir la récupération de tout le périmètre legacy — l'inverse exact
+      // du but. Et quand le repli ne trouve rien non plus, il le DIT au lieu de compter 0.
+      const rec = b.recoveryMin ?? recoveryMinFromText(b.recoveryText);
+      if (!rec && b.recoveryText) flags.push("récupération non quantifiée sur « " + s.name + " » (« " + b.recoveryText + " ») : la charge de cette séance est SOUS-ESTIMÉE");
+      recovery += rec * (reps - 1);
+    }
     if ((b.d || s.d) === "sw" && b.distanceM) meters += (b.reps || 1) * b.distanceM;
   }
   let auxMin = 0;
@@ -4401,6 +4479,14 @@ function sessionLoadFromSteps(s            , refs             )              {
 /** Charge d'une séance : chemin structuré V1.5 si steps présents, sinon parsing texte (endurabuild-3). */
 function sessionLoad(s            , refs              = DEFAULT_REFS)              {
   if (s.steps && s.steps.length > 0 && s.d !== "rs") return sessionLoadFromSteps(s, refs);
+  // R3-final — UN JOUR DE REPOS NE SE MESURE PAS EN LISANT SA DESCRIPTION. Un « Repos + renfo
+  // excentrique » décrit des séries ; le parseur de texte y trouvait 23 minutes que le
+  // générateur comptait 0. Les deux lectures divergeaient donc sur des journées qui, par
+  // construction, ne portent aucune charge d'endurance — et l'écart tombait exactement sur les
+  // semaines de récupération, où il faisait basculer la comparaison avec la semaine précédente.
+  // Même défaut que la récupération inter-blocs, un cran plus loin : de la prose servait de
+  // donnée. Le type de la séance fait foi.
+  if (s.d === "rs") return { minutes: 0, meters: null, recoveryMin: 0, confidence: "rest", flags: [], generatorMin: s.min };
   return sessionLoadFromText(s);
 }
 
@@ -4460,7 +4546,7 @@ function intensitySplit(s            , refs              = DEFAULT_REFS)        
     if (cls === "hard") out.hardMin += stMin;
     else if (cls === "mod") out.modMin += stMin;
     else out.easyMin += stMin;
-    if (reps > 1) out.easyMin += recoveryMinFromText(st.recoveryText) * (reps - 1); // la récup est facile
+    if (reps > 1) out.easyMin += (st.recoveryMin ?? recoveryMinFromText(st.recoveryText)) * (reps - 1); // la récup est facile
   }
   return out;
 }
@@ -4557,7 +4643,13 @@ const THRESHOLDS = {
                                                                                 
                                                                           
                                                                                              
-                                                                                                                      
+                                                                                           
+                                                                                              
+                                                                                             
+                                                                                               
+                                                                                            
+                                                                                             
+                  
  
 
                             
@@ -4737,6 +4829,12 @@ function auditPlan(plan        , opts            = {})            {
   // documenté (ARCHITECTURE.md). La dominance est re-testée HORS récup inter-répétitions
   // (même base que le générateur) avant de conclure à une violation structurelle.
   if (!peakInPeakPhase) {
+    // La DOMINANCE DU PIC se juge sur le TRAVAIL, pas sur le temps passé dehors — et ce n'est
+    // pas la compensation d'un écart de mesure, c'est la définition de la règle. Une semaine de
+    // développement pleine de répétitions occupe plus de CLOCK TIME (les récupérations sont du
+    // temps) qu'une semaine de pic faite de sorties longues continues, à charge d'entraînement
+    // pourtant inférieure. « La semaine pic est la plus grosse du plan » parle de stimulus.
+    // La règle de PROGRESSION, elle, parle bien de temps vécu : elle mesure `prescribedMin`.
     const peakByWork = candidates.reduce((a, b) => (b.workMin > a.workMin ? b : a), candidates[0]);
     const peakPhaseBestW = Math.max(0, ...candidates.filter((w) => w.phaseId === "peak").map((w) => w.workMin));
     if (peakByWork.phaseId === "peak" || (peakPhaseBestW > 0 && peakByWork.workMin <= peakPhaseBestW * 1.05)) peakInPeakPhase = true;
@@ -4774,17 +4872,18 @@ function auditPlan(plan        , opts            = {})            {
       if (w.isRecup || w.phaseId === "taper") continue;
       if (prevDecl > 0 && w.declaredMin > prevDecl * 1.1 + 7) declJumps++;
       if (prevOurs > 0) {
-        // D3 (audit v6) — les sauts se mesurent sur la base TRAVAIL (hors récup
-        // inter-répétitions, comme la dominance du pic) : une semaine fractionnée pèse
-        // plus cher en minutes-métrique à travail égal — c'est l'écart de métrique
-        // documenté, pas un saut de charge. Le seuil dur dérive de la constante nommée
-        // (C22_AUDIT_HARD_JUMP) — plus jamais un littéral qui diverge en silence.
-        const j = w.workMin / prevOurs;
+        // D3 puis R3-final — les sauts se mesuraient sur la base TRAVAIL parce que le
+        // générateur ne comptait pas la récupération : une semaine fractionnée pesait plus cher
+        // en minutes-métrique à travail égal, et c'était un artefact de mesure, pas un saut de
+        // charge. L'écart est fermé : les deux estimateurs comptent la même chose. On mesure
+        // donc le temps réellement prescrit — celui que le générateur pilote et que l'athlète
+        // passe dehors. Le seuil dur dérive de la constante nommée (C22_AUDIT_HARD_JUMP).
+        const j = w.prescribedMin / prevOurs;
         if (j > C22_AUDIT_HARD_JUMP) auditJumpsHard++;
         else if (j > 1.15) auditJumpsSoft++;
       }
       prevDecl = w.declaredMin;
-      prevOurs = w.workMin;
+      prevOurs = w.prescribedMin;
     }
   }
   if (declJumps > 0) hard.push(declJumps + " saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)");
@@ -4975,10 +5074,24 @@ function buildSessions(ctx            , slot      , phase        , prog        ,
   const Wm = (dist        , txt         )         => ({ role: "warmup", distanceM: dist, text: txt || "" });
   const C = (min        , txt         )         => ({ role: "cooldown", durationMin: min, text: txt || "" });
   const Cm = (dist        , txt         )         => ({ role: "cooldown", distanceM: dist, text: txt || "" });
-  const B = (reps        , dur        , zone               , recTxt         , sfx         )         =>
-    ({ role: "body", reps, durationMin: dur, zone, intensity: intOf(zone)                     , recoveryText: recTxt || "", suffix: sfx || "", prefix: "" })          ;
-  const Bd = (reps        , dist        , zone               , recTxt         , sfx         , unitKm          , disc         )         =>
-    ({ role: "body", reps, distanceM: Math.round(dist / 25) * 25, unitKm: !!unitKm, zone, intensity: intOf(zone)                     , recoveryText: recTxt || "", suffix: sfx || "", prefix: "", d: disc })          ;
+  // R3-final — LA RÉCUPÉRATION EST UNE DONNÉE, PAS UNE PHRASE À RELIRE.
+  //
+  // `rec` accepte deux formes, et c'est tout l'objet du correctif :
+  //   · un texte DÉJÀ CHIFFRÉ (« 2min30 trot ») — le nombre en est extrait UNE fois, ici, à la
+  //     naissance du step, et vit ensuite dans `recoveryMin` ;
+  //   · un couple `[minutes, libellé]` quand la phrase ne porte aucun chiffre (« repos libre »,
+  //     « descente marchée ») — c'est le générateur qui sait combien elle dure, pas un lecteur.
+  // Le chemin structuré ne rappelle plus jamais de parseur de prose. `recoveryText` reste, mais
+  // il ne sert plus qu'à l'athlète.
+  const recFields = (rec      ) => {
+    if (!rec) return { recoveryText: "", recoveryMin: 0 };
+    if (Array.isArray(rec)) return { recoveryText: rec[1], recoveryMin: rec[0] };
+    return { recoveryText: rec, recoveryMin: recoveryMinutes(rec) ?? 0 };
+  };
+  const B = (reps        , dur        , zone               , rec      , sfx         )         =>
+    ({ role: "body", reps, durationMin: dur, zone, intensity: intOf(zone)                     , ...recFields(rec), suffix: sfx || "", prefix: "" })          ;
+  const Bd = (reps        , dist        , zone               , rec      , sfx         , unitKm          , disc         )         =>
+    ({ role: "body", reps, distanceM: Math.round(dist / 25) * 25, unitKm: !!unitKm, zone, intensity: intOf(zone)                     , ...recFields(rec), suffix: sfx || "", prefix: "", d: disc })          ;
   // Glossaire des éducatifs nage — accessible aux branches swim ET tri : nommer un
   // éducatif ne suffit pas, il faut dire comment le faire (manifeste : jamais muette).
   const swimDrillGlossary = "rattrapé (le bras devant reste tendu jusqu'au contact des mains avant de repartir : corrige le timing), poings fermés (main fermée : force l'appui par l'avant-bras), battements planche (jambes seules, planche tenue devant : isole et muscle le battement)";
@@ -5060,8 +5173,18 @@ function buildTrailSessions(r              , slot      , phase        , prog    
 
   const W = (min        , txt         )         => ({ role: "warmup", durationMin: min, text: txt || "", gradient: "flat" });
   const C = (min        , txt         )         => ({ role: "cooldown", durationMin: min, text: txt || "", gradient: "flat" });
-  const B = (o                                           )         =>
-    ({ role: "body", reps: 1, intensity: intOf(o.zone ?? null)                     , ...o })          ;
+  // T19 — LA RÉCUPÉRATION D'UNE RÉPÉTITION EN PENTE SE CALCULE, elle ne se lit pas.
+  // Entre deux répétitions de côte, l'athlète REDESCEND ce qu'il vient de monter ; entre deux
+  // répétitions de descente, il REMONTE. Cette durée est déductible du dénivelé du bloc, et
+  // c'est ce qui remplace les sept libellés qui valaient 0 minute (« descente MARCHÉE »,
+  // « remontée en marche active »… — 1 740 récupérations non comptées, 35 % des séances de
+  // trail). Un `recoveryMin` explicite passé par l'appelant a toujours priorité.
+  const B = (o                                           )         => {
+    const st = { role: "body", reps: 1, intensity: intOf(o.zone ?? null)                     , ...o }          ;
+    if ((st.reps || 1) > 1 && st.recoveryText && st.recoveryMin == null)
+      st.recoveryMin = returnMinutes({ dplusM: st.dplusM, dmoinsM: st.dmoinsM });
+    return st;
+  };
 
   if (slot === "durLong") {
     // 1. SORTIE LONGUE TRAIL — temps + D+ + D−, en `rolling` : jamais une allure au sol.
@@ -5110,7 +5233,7 @@ function buildTrailSessions(r              , slot      , phase        , prog    
     } else if (flatAccess && treadmill) {
       // 13. TAPIS INCLINÉ
       S2.push({ d: "rn", name: "Tapis incliné (substitut de dénivelé)", note: "Tapis à 10-15 % d'inclinaison : c'est le meilleur substitut de montée quand le terrain manque. Aucune descente, donc aucune casse musculaire — mais aussi aucune préparation à la descente : garde tes week-ends en relief pour ça.", det: "",
-        steps: [W(12, "à plat, progressif"), B({ durationMin: durEach, reps, zone, gradient: "up", dplusM: upPer, mode: "run", surface: "tapis", recoveryText: "2min à plat, inclinaison à 0", repCap: hp.repCap }), C(8, "à plat souple")] });
+        steps: [W(12, "à plat, progressif"), B({ durationMin: durEach, reps, zone, gradient: "up", dplusM: upPer, mode: "run", surface: "tapis", recoveryText: "2min à plat, inclinaison à 0", recoveryMin: 2, repCap: hp.repCap }), C(8, "à plat souple")] });
     } else {
       S2.push({ d: "rn", name: hp.name, note: hp.note, det: "",
         steps: [W(15, "footing progressif jusqu'au pied de la côte"),
@@ -5371,7 +5494,7 @@ function buildSwimSessions(kit            )              {
   const limFocus = swimLimitFocus[a.swim_limit || ""] || { txt: " éducatifs variés — " + swimDrillGlossary, note: "La technique se construit à froid, sans fatigue. Qualité > quantité." };
   if (slot === "dur1") {
     if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Seuil technique CSS", note: "Quelques 100m à allure seuil contrôlée, technique maintenue : préparer la course sans casser le geste.", det: "", steps: [Wm(200, "souple + éducatifs"), Object.assign(Bd(P(4, 7), 100, "sw.css", "20-30s", "", false, "sw"), { repCap: 10 }), Cm(100, "relâché")] });
-    else if (beginner) S2.push({ d: "sw", name: "Technique + éducatifs", note: limFocus.note, det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", "repos libre entre séries", limFocus.txt + ", " + P(1, 2) + " point(s) technique", false, "sw"), Cm(100, "relâché")] });
+    else if (beginner) S2.push({ d: "sw", name: "Technique + éducatifs", note: limFocus.note, det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", [0.33, "repos libre entre séries (~20s)"], limFocus.txt + ", " + P(1, 2) + " point(s) technique", false, "sw"), Cm(100, "relâché")] });
     else if (shoulder) S2.push({ d: "sw", name: "Seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute.", det: "", steps: [Wm(300, "souple + 4×50m éducatifs"), Object.assign(Bd(P(6, 8), 100, "sw.css", "20-30s", "", false, "sw"), { repCap: 10 }), Cm(200, "souple")] });
     else S2.push({ d: "sw", name: "Seuil CSS", note: "Allure régulière sur tous les 100m. Le dernier doit ressembler au premier.", det: "", steps: [Wm(400, "progressif + 4×50m éducatifs"), Object.assign(Bd(P(6, 10), 100, "sw.css", "15-20s", "", false, "sw"), { repCap: 14 }), Cm(200, "souple")] });
   } else if (slot === "dur2") {
@@ -5451,7 +5574,7 @@ function buildTriSessions(kit            )              {
   const swShortDist = beginner ? Math.min(600, Math.max(200, Math.round((swimDist * 0.4) / 50) * 50)) : Math.min(1100, Math.max(750, Math.round((swimDist * 0.6) / 50) * 50));
   const swTechDist = Math.max(beginner ? 300 : 750, Math.round((swimDist * 0.5) / 50) * 50);
   let swMain = beginner
-    ? { name: "Nage seuil technique (+dist)", note: "Technique d'abord, mais quelques 100m à allure seuil contrôlée pour préparer la course.", steps: [Wm(200, "souple"), Object.assign(Bd(1, swimDist, "sw.css", "repos libre entre séries", ", fractionné en séries régulières, éducatifs entre", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(100, "relâché")] }
+    ? { name: "Nage seuil technique (+dist)", note: "Technique d'abord, mais quelques 100m à allure seuil contrôlée pour préparer la course.", steps: [Wm(200, "souple"), Object.assign(Bd(1, swimDist, "sw.css", [0.33, "repos libre entre séries (~20s)"], ", fractionné en séries régulières, éducatifs entre", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(100, "relâché")] }
     : { name: "Nage seuil (+dist)", note: "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.", steps: [Wm(300, "+ 4×50m éducatifs"), Object.assign(Bd(1, swimDist, "sw.css", "15-20s", ", fractionné en séries régulières si besoin", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(200, "souple")] };
   let swTech = beginner
     ? { name: "Nage éducatifs", note: "Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force.", steps: [Wm(100, "souple"), Bd(1, swTechDist, "sw.easy", "20-30s", ", par 50m, 1 point technique à la fois — " + swimDrillGlossary, false, "sw"), Cm(100, "dos souple")] }
@@ -6726,25 +6849,39 @@ function reconcileDeclaredVolume(
   // après coup : 4 sauts subsistaient, jusqu'à +18 %. Même leçon que R5.1 et R5.3 — une règle
   // de sécurité se vérifie EN DERNIER, sinon elle ne vérifie que l'avant-dernier état.
   //
-  // On réduit les corps de séance, jamais leur nombre, et jamais sous la borne basse déclarée
-  // par la séance elle-même (`bnd.floor`) : un plancher est une règle, pas une marge.
+  // On réduit les corps de séance, jamais leur nombre de SÉANCES, et jamais sous la borne basse
+  // déclarée par le bloc (`bnd.floor`) : un plancher est une règle, pas une marge. Les
+  // RÉPÉTITIONS, elles, cèdent avant la taille — comme partout ailleurs dans ce moteur. Sans
+  // cela, la garantie était inopérante sur le trail, où les blocs de côtes ont des bornes
+  // serrées (`floor = 0,9 × durée`) et où tout le volume vit dans le nombre de répétitions :
+  // la passe tournait, ne pouvait rien réduire, et laissait passer des sauts de +25 % une fois
+  // la charge mesurée honnêtement (R3-final).
   {
     let prevCharge = 0;
     for (const wk of plan.weeks) {
       if (wk.isRecup || wk.phase.id === "taper") continue;
       const cur = weekMinOf(wk);
       if (prevCharge > 0 && cur > prevCharge * C22_MAX_WEEKLY_GROWTH + 1) {
-        const f = (prevCharge * C22_MAX_WEEKLY_GROWTH) / cur;
-        for (const d of wk.days) for (const sx of d.sessions) {
-          if (sx.d === "rs" || !sx.steps) continue;
-          let touched = false;
-          for (const st of sx.steps) {
-            if (st.role !== "body" || !st.durationMin) continue;
-            const floor = (st                                ).bnd?.floor ?? 5;
-            const next = Math.max(floor, Math.round(st.durationMin * f));
-            if (next < st.durationMin) { st.durationMin = next; touched = true; }
+        for (let g = 0; g < 4 && weekMinOf(wk) > prevCharge * C22_MAX_WEEKLY_GROWTH + 1; g++) {
+          const before = weekMinOf(wk);
+          const f = (prevCharge * C22_MAX_WEEKLY_GROWTH) / before;
+          for (const d of wk.days) for (const sx of d.sessions) {
+            if (sx.d === "rs" || !sx.steps) continue;
+            let touched = false;
+            for (const st of sx.steps) {
+              if (st.role !== "body") continue;
+              const floor = (st                                ).bnd?.floor;
+              if ((st.reps || 1) > 1) {
+                const next = Math.max(1, Math.round((st.reps || 1) * f));
+                if (next < (st.reps || 1)) { st.reps = next; touched = true; }
+              } else if (st.durationMin) {
+                const next = Math.max(floor ?? 5, Math.round(st.durationMin * f));
+                if (next < st.durationMin) { st.durationMin = next; touched = true; }
+              }
+            }
+            if (touched && render) render(sx);
           }
-          if (touched && render) render(sx);
+          if (before - weekMinOf(wk) < 0.5) break; // les planchers bloquent : rien de plus à prendre
         }
       }
       prevCharge = weekMinOf(wk);
@@ -6768,11 +6905,19 @@ function reconcileDeclaredVolume(
   {
     const swimMetersOf = (sx           ) =>
       (sx.steps || []).reduce((t, st) => t + (st.distanceM && (st.d || sx.d) === "sw" ? (st.reps || 1) * st.distanceM : 0), 0);
-    for (let i = 1; i < plan.weeks.length; i++) {
+    let lastCharge = 0;
+    for (let i = 0; i < plan.weeks.length; i++) {
       const wk = plan.weeks[i];
-      if (!wk.isRecup) continue;
-      const prev = weekMinOf(plan.weeks[i - 1]);
-      if (prev <= 0 || weekMinOf(wk) <= prev + 1) continue;
+      // La référence est la dernière semaine de CHARGE — celle que la récupération assimile.
+      // Comparer deux récups consécutives (dérive du cycle de 10 jours) n'a pas de sens
+      // physiologique et entre en collision avec les planchers de séance ; la spec interne
+      // (`coherenceScorer`) l'excluait déjà explicitement, le générateur s'aligne dessus.
+      if (!wk.isRecup) { if (wk.phase.id !== "taper") lastCharge = weekMinOf(wk); continue; }
+      const prev = lastCharge;
+      // Tolérance ZÉRO, comme la règle auditée : « jamais plus lourde » se compare strictement.
+      // La minute de marge tolérée ici laissait passer exactement le cas mesuré (287 vs 286) —
+      // un garde-fou qui s'accorde une marge ne garantit pas ce qu'il annonce.
+      if (prev <= 0 || weekMinOf(wk) <= prev) continue;
       const f = prev / weekMinOf(wk);
       for (const d of wk.days) for (const sx of d.sessions) {
         if (sx.d === "rs" || !sx.steps) continue;
@@ -6804,7 +6949,7 @@ function reconcileDeclaredVolume(
         }
         if (render) render(sx);
       }
-      for (let g = 0; g < 4 && weekMinOf(wk) > prev + 1; g++) {
+      for (let g = 0; g < 4 && weekMinOf(wk) > prev; g++) {
         const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
         if (active.length <= 1) break; // une semaine de récup garde au moins un contact avec le sport
         const victim = active.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
@@ -7157,8 +7302,13 @@ function generatePlan(profile                , opts                             
     : weekMin;
   const renderWeek = (wd          ) =>
     wd.forEach((d) => d.sessions.forEach((s) => {
-      if (s.steps && s.steps.length) renderSess(s, refs, r.hz, r.baseRefs);
-      else if (s.min == null) s.min = 0;
+      if (s.steps && s.steps.length) {
+        // T19 — la récupération d'un bloc en pente suit son dénivelé, qui bouge encore à ce
+        // stade (mise à l'échelle verticale, plafond de bosse, allègement T3). On la
+        // réconcilie AVANT de mesurer, pas après : c'est elle qui entre dans `_min`.
+        syncReturnRecovery(s.steps);
+        renderSess(s, refs, r.hz, r.baseRefs);
+      } else if (s.min == null) s.min = 0;
     }));
   const scaleWeekBody = (wd          , f        ) =>
     wd.forEach((d) => d.sessions.forEach((s) => {

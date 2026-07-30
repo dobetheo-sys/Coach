@@ -50,6 +50,14 @@ export interface SportGuards {
   swimTimeFactor?: boolean;
 }
 
+/**
+ * Récupération inter-répétitions passée aux builders de steps (R3-final). Soit un texte DÉJÀ
+ * chiffré (« 2min30 trot ») dont la minute est lue une seule fois, à la construction ; soit un
+ * couple `[minutes, libellé]` quand la phrase n'en porte pas (« repos libre entre séries »).
+ * Dans les deux cas, ce qui SORT du builder est un nombre — plus jamais une phrase à relire.
+ */
+export type Rec = string | [number, string];
+
 /** Contrat d'un module de sport. `null` = « utiliser le générique ». */
 export interface SportModule {
   id: Sport;
@@ -102,8 +110,8 @@ export interface SessionKit {
   Wm: (dist: number, txt?: string) => import("../engine/types.ts").V1Step;
   C: (min: number, txt?: string) => import("../engine/types.ts").V1Step;
   Cm: (dist: number, txt?: string) => import("../engine/types.ts").V1Step;
-  B: (reps: number, dur: number, zone: string | null, recTxt?: string, sfx?: string) => import("../engine/types.ts").V1Step;
-  Bd: (reps: number, dist: number, zone: string | null, recTxt?: string, sfx?: string, unitKm?: boolean, disc?: string) => import("../engine/types.ts").V1Step;
+  B: (reps: number, dur: number, zone: string | null, rec?: Rec, sfx?: string) => import("../engine/types.ts").V1Step;
+  Bd: (reps: number, dist: number, zone: string | null, rec?: Rec, sfx?: string, unitKm?: boolean, disc?: string) => import("../engine/types.ts").V1Step;
 }
 
 /**

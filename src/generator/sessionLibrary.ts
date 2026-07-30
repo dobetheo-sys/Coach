@@ -5,8 +5,8 @@
  * débutant/blessure/intention identiques au produit validé.
  */
 import type { ReasonedPlan, V1Session, V1Step } from "../engine/types.ts";
-import { intOf } from "./renderer.ts";
-import { sportModule, type SessionKit } from "../sports/registry.ts";
+import { intOf, recoveryMinutes } from "./renderer.ts";
+import { sportModule, type Rec, type SessionKit } from "../sports/registry.ts";
 // Import des modules de sport pour leur EFFET DE BORD (enregistrement dans le registre).
 // Un seul endroit dans le projet connaît la liste des sports : celui-ci.
 import "../sports/run/index.ts";
@@ -48,10 +48,24 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
   const Wm = (dist: number, txt?: string): V1Step => ({ role: "warmup", distanceM: dist, text: txt || "" });
   const C = (min: number, txt?: string): V1Step => ({ role: "cooldown", durationMin: min, text: txt || "" });
   const Cm = (dist: number, txt?: string): V1Step => ({ role: "cooldown", distanceM: dist, text: txt || "" });
-  const B = (reps: number, dur: number, zone: string | null, recTxt?: string, sfx?: string): V1Step =>
-    ({ role: "body", reps, durationMin: dur, zone, intensity: intOf(zone) as unknown as string, recoveryText: recTxt || "", suffix: sfx || "", prefix: "" }) as V1Step;
-  const Bd = (reps: number, dist: number, zone: string | null, recTxt?: string, sfx?: string, unitKm?: boolean, disc?: string): V1Step =>
-    ({ role: "body", reps, distanceM: Math.round(dist / 25) * 25, unitKm: !!unitKm, zone, intensity: intOf(zone) as unknown as string, recoveryText: recTxt || "", suffix: sfx || "", prefix: "", d: disc }) as V1Step;
+  // R3-final — LA RÉCUPÉRATION EST UNE DONNÉE, PAS UNE PHRASE À RELIRE.
+  //
+  // `rec` accepte deux formes, et c'est tout l'objet du correctif :
+  //   · un texte DÉJÀ CHIFFRÉ (« 2min30 trot ») — le nombre en est extrait UNE fois, ici, à la
+  //     naissance du step, et vit ensuite dans `recoveryMin` ;
+  //   · un couple `[minutes, libellé]` quand la phrase ne porte aucun chiffre (« repos libre »,
+  //     « descente marchée ») — c'est le générateur qui sait combien elle dure, pas un lecteur.
+  // Le chemin structuré ne rappelle plus jamais de parseur de prose. `recoveryText` reste, mais
+  // il ne sert plus qu'à l'athlète.
+  const recFields = (rec?: Rec) => {
+    if (!rec) return { recoveryText: "", recoveryMin: 0 };
+    if (Array.isArray(rec)) return { recoveryText: rec[1], recoveryMin: rec[0] };
+    return { recoveryText: rec, recoveryMin: recoveryMinutes(rec) ?? 0 };
+  };
+  const B = (reps: number, dur: number, zone: string | null, rec?: Rec, sfx?: string): V1Step =>
+    ({ role: "body", reps, durationMin: dur, zone, intensity: intOf(zone) as unknown as string, ...recFields(rec), suffix: sfx || "", prefix: "" }) as V1Step;
+  const Bd = (reps: number, dist: number, zone: string | null, rec?: Rec, sfx?: string, unitKm?: boolean, disc?: string): V1Step =>
+    ({ role: "body", reps, distanceM: Math.round(dist / 25) * 25, unitKm: !!unitKm, zone, intensity: intOf(zone) as unknown as string, ...recFields(rec), suffix: sfx || "", prefix: "", d: disc }) as V1Step;
   // Glossaire des éducatifs nage — accessible aux branches swim ET tri : nommer un
   // éducatif ne suffit pas, il faut dire comment le faire (manifeste : jamais muette).
   const swimDrillGlossary = "rattrapé (le bras devant reste tendu jusqu'au contact des mains avant de repartir : corrige le timing), poings fermés (main fermée : force l'appui par l'avant-bras), battements planche (jambes seules, planche tenue devant : isole et muscle le battement)";
