@@ -7,7 +7,7 @@
  */
 export type { V1Plan, V1Week, V1Day, V1Session, V1Step } from "../harness/v1Harness.ts";
 
-export type Sport = "run" | "bike" | "swim" | "tri" | "trail";
+export type Sport = "run" | "bike" | "swim" | "tri" | "trail" | "duathlon";
 export type History = "reprise" | "confirme" | "ancien";
 export type Level = "debutant" | "inter" | "avance";
 export type Intent = "competition" | "finir" | "plaisir";

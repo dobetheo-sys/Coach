@@ -11,6 +11,14 @@ const SPORTS = {
     minWeeks:{S:8,M:12,"70.3":20,Full:36},
     disciplines:["sw","bk","rn"]
   },
+  duathlon: {
+    nom:"Duathlon", ico:"🏃🚴", accent:"#c2410c",
+    pitch:"Course, vélo, course. Deux fois l'impact, et aucune récupération dans l'eau — c'est le format le plus dur pour les jambes du catalogue.",
+    formats:[["S","Sprint (5 / 20 / 2,5)"],["M","Standard (10 / 40 / 5)"],["L","Longue distance (14 / 60 / 7)"],["PM","Powerman (10 / 150 / 30)"]],
+    minWeeks:{S:8,M:12,L:16,PM:24},
+    disciplines:["rn","bk"],
+    terrains:[["plat","Plat / roulant"],["vallonne","Vallonné"],["montagne","Montagneux"]]
+  },
   trail: {
     nom:"Trail", ico:"⛰", accent:"#2f7d4f",
     pitch:"Le dénivelé commande tout. On planifie en temps et en D+, jamais en kilomètres — et la descente compte autant que la montée.",

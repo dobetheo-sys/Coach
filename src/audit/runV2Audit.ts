@@ -20,6 +20,7 @@ const SPORTS: Record<Sport, string[]> = {
   swim: ["sprint", "demifond", "fond", "ow"],
   tri: ["S", "M", "70.3", "Full"],
   trail: [""], // pas de format : la catégorie d'effort est DÉDUITE des données de la course
+  duathlon: ["S", "M", "L", "PM"], // R10 phase 2 — un sport non audité n'est pas livrable
 };
 const HISTORIES = ["reprise", "confirme", "ancien"] as const;
 const LEVELS = ["debutant", "inter", "avance"] as const;

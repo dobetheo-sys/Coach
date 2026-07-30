@@ -38,6 +38,8 @@ const ORDER = [
   "src/sports/swim/index.ts",
   "src/sports/tri/index.ts",
   "src/sports/trail/index.ts",
+  "src/sports/duathlon/tables.ts",
+  "src/sports/duathlon/index.ts",
   "src/generator/weekBuilder.ts",
   "src/generator/planGenerator.ts",
   "src/generator/repairLoop.ts",
@@ -64,11 +66,43 @@ function moduleToScript(path) {
   return "// ===== " + path + " =====\n" + src;
 }
 
+/**
+ * D10-9 — GARDE-FOU DE COLLISION. Le bundle concatène tous les modules dans UNE SEULE portée :
+ * deux déclarations racines du même nom, et la seconde écrase la première SANS UN MOT. Rencontré
+ * pendant R10 phase 1 (un `buildSessions` local dans le module trail a remplacé le dispatch de
+ * sessionLibrary — le plan trail sortait faux). L'auto-test l'a attrapé par chance ; on ne
+ * dépend plus de la chance. Chaque sport ajouté multiplie les noms racines : ce contrôle doit
+ * vivre AVANT l'évaluation, pour nommer le coupable au lieu d'une pile d'exécution obscure.
+ */
+function checkCollisions(scripts) {
+  const seen = new Map(); // nom → fichier
+  const dup = [];
+  const DECL = /^(?:function|const|let|class|async function)\s+([A-Za-z_$][\w$]*)/;
+  scripts.forEach((src, i) => {
+    for (const line of src.split("\n")) {
+      const m = DECL.exec(line);
+      if (!m) continue;
+      const name = m[1];
+      if (seen.has(name)) dup.push(name + " : " + seen.get(name) + " puis " + ORDER[i]);
+      else seen.set(name, ORDER[i]);
+    }
+  });
+  if (dup.length) {
+    console.error("✖ collision(s) de noms dans le bundle — la seconde déclaration ÉCRASE la première :");
+    for (const d of dup) console.error("   " + d);
+    console.error("\nCorriger en renommant : le bundle n'a qu'une portée, un nom racine est GLOBAL.");
+    process.exit(1);
+  }
+}
+
+const _scripts = ORDER.map(moduleToScript);
+checkCollisions(_scripts);
+
 const bundle =
   "/* __EBV2_BUNDLE__ généré par scripts/buildApp.mjs — NE PAS ÉDITER À LA MAIN.\n" +
   "   Source de vérité : src/ (moteur V2). Reconstruire : npm run build:app */\n" +
   "(function(){\n\"use strict\";\n" +
-  ORDER.map(moduleToScript).join("\n") +
+  _scripts.join("\n") +
   "\n})();\n";
 
 // ---- AUTO-TEST avant écriture : le bundle doit s'évaluer et générer un plan sain ----

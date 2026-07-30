@@ -64,7 +64,7 @@ const reg = await page.evaluate(() => {
   catch (e) { thrown = { name: e.name, code: e.code, msg: String(e.message) }; }
   return { ids: Object.keys(sports).sort(), tri: sports.tri, trail: sports.trail, thrown, plan: !!plan };
 });
-ok(reg.ids.join(",") === "bike,run,swim,trail,tri", "les 5 sports sont déclarés dans le registre (" + reg.ids.join(" ") + ")");
+ok(reg.ids.join(",") === "bike,duathlon,run,swim,trail,tri", "les 6 sports sont déclarés dans le registre (" + reg.ids.join(" ") + ")");
 ok(reg.trail && reg.trail.guards.runImpactCap === true, "le trail DÉCLARE le plafond de jours d'appui (D10-3 ne peut plus revenir par oubli)");
 ok(reg.tri && reg.tri.retestTypes.length === 3, "le tri déclare ses 3 tests de référence (l'UI ne les recopie plus)");
 ok(reg.thrown !== null && !reg.plan, "un sport inconnu lève au lieu de produire un plan silencieux");

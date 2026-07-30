@@ -39,6 +39,10 @@ function evalRules(a, tier){
     if(a.terrain==="route") add("terrain","Terrain","Route — allure constante","Régularité d'allure, économie de course, travail de seuil et d'allure spécifique objectif.");
     else if(a.terrain==="piste") add("terrain","Terrain","Piste/mixte — vitesse","Travail de VMA et de vitesse pure, fractionné court de qualité.");
   }
+  if(sp==="duathlon"){
+    add("terrain","Discipline","Duathlon — deux fois l'impact","Deux segments de course, dont un sur jambes entamées, et aucune séance dans l'eau pour absorber du volume sans impact : le plafond de jours d'appui est le garde-fou n°1 de ce plan, et la longue sortie se fait à vélo.");
+    add("brick","Enchaînements","Les DEUX sens travaillés","R1 → vélo (tu montes sur le vélo avec des jambes déjà entamées : la puissance tenable n'est pas celle d'un contre-la-montre frais) et vélo → R2 (le R2 est plus court et plus intense que la CAP d'un triathlon : on n'y gère pas, on y lutte).");
+  }
   if(sp==="bike"){
     if(a.terrain==="montagne") add("terrain","Parcours","Montagneux — le W/kg est roi","Force en côte systématique, poids stratégique, pacing montée discipliné, descentes techniques.");
     else if(a.terrain==="vallonne") add("terrain","Parcours","Vallonné — relances","Travail de force, pacing à puissance variable, gestion des bosses au compteur.");
@@ -158,8 +162,9 @@ function buildFreeSteps(){
 
   // Étape terrain/milieu spécifique
   if(cfg.terrains){
-    steps.push({id:"terrain",title:S.sport==="bike"?"Le parcours":"Le terrain",eyebrow:"Gratuit — Où ça se joue",
-      why:S.sport==="bike"?"Plat ou montagne ne se préparent pas pareil : force, braquets, pacing changent.":"Route, trail ou piste : l'impact, le dénivelé et le type de travail diffèrent.",
+    steps.push({id:"terrain",title:(S.sport==="bike"||S.sport==="duathlon")?"Le parcours":"Le terrain",eyebrow:"Gratuit — Où ça se joue",
+      why:S.sport==="duathlon"?"Le profil du parcours change tout en duathlon : un vélo vallonné ponctionne les jambes avant le R2, un parcours plat récompense la puissance constante."
+        :S.sport==="bike"?"Plat ou montagne ne se préparent pas pareil : force, braquets, pacing changent.":"Route, trail ou piste : l'impact, le dénivelé et le type de travail diffèrent.",
       render(){return '<div class="q"><span class="q-label">Ton terrain principal</span><div class="opts" data-key="terrain">'+cfg.terrains.map(t=>opt(t[0],t[1])).join("")+'</div></div>';},
       valid(a){return a.terrain;}});
   }
@@ -248,6 +253,21 @@ function levelStep(){
       }
     },
     valid(a){return a.level&&a.pace_known&&a.vam_known&&(a.pace_known!=="oui"||a.pace)&&(a.vam_known!=="oui"||a.vam);}};
+  // R10 phase 2 — DUATHLON : deux références seulement (allure course + FTP). Pas de CSS :
+  // il n'y a pas de natation, et demander une donnée inutilisée serait du bruit.
+  if(sp==="duathlon") return {id:"level",title:"Tes niveaux (2 disciplines)",eyebrow:"Gratuit — Le moteur",
+    why:"Le duathlon combine course et vélo. L'allure seuil course pilote tes deux segments à pied, la FTP ton segment vélo — et c'est la course qui décide la plupart des duathlons.",
+    render(){return '<div class="q"><span class="q-label">Niveau global</span><div class="opts" data-key="level">'+opt("debutant","Débutant")+opt("inter","Intermédiaire")+opt("avance","Avancé")+'</div></div>'
+      +'<div class="q"><span class="q-label">🏃 Connais-tu ton allure seuil course ?</span><div class="opts" data-key="pace_known">'+opt("oui","Oui")+opt("non","Non")+'</div></div><div id="paceB"></div>'
+      +'<div class="q"><span class="q-label">🚴 Connais-tu ta FTP (watts) ?</span><div class="opts" data-key="ftp_known">'+opt("oui","Oui")+opt("non","Non")+'</div></div><div id="ftpB"></div><div id="hrB"></div>';},
+    branches(a){
+      branch("paceB",a.pace_known==="oui",'<div class="branch"><div class="q"><span class="q-label">Allure seuil (min/km, ex 4:50)</span><input type="text" data-input="pace" placeholder="4:50"></div></div>');
+      branch("ftpB",a.ftp_known==="oui",'<div class="branch"><div class="q"><span class="q-label">FTP (W)</span><input type="number" data-input="ftp" placeholder="220"></div></div>');
+      branch("hrB",(a.ftp_known==="non"||a.pace_known==="non"),'<div class="branch"><div class="branch-tag">↳ Ce qui manque, sans bloquer ton plan</div>'
+        +'<div class="q-sub">Sans donnée chiffrée, les zones passent en BPM (FC max estimée par l\'âge, ou renseigne-la).</div><div class="q"><span class="q-label">FC max ? (optionnel)</span><input type="number" data-input="hr_max" placeholder="ex 188"></div>'
+        +(a.pace_known==="non"?protocolHTML("pace"):"")+(a.ftp_known==="non"?protocolHTML("ftp"):"")+'</div>');
+    },
+    valid(a){return a.level&&a.pace_known&&a.ftp_known&&(a.pace_known!=="oui"||a.pace)&&(a.ftp_known!=="oui"||a.ftp);}};
   if(sp==="tri") return {id:"level",title:"Tes niveaux (3 disciplines)",eyebrow:"Gratuit — Le moteur",
     why:"Le triathlon combine 3 sports : on calibre chacun. Renseigne ce que tu connais, le reste passe en zones cardio ou ressenti.",
     render(){return '<div class="q"><span class="q-label">Niveau global</span><div class="opts" data-key="level">'+opt("debutant","Débutant")+opt("inter","Intermédiaire")+opt("avance","Avancé")+'</div></div>'
@@ -303,6 +323,9 @@ function injuryOpts(){
   if(sp==="swim") arr=[["aucune","Aucune"],["epaule","Épaule"],["cou","Nuque"]];
   // R7 TRAIL (§3.4) — ces localisations pilotent DIRECTEMENT le volume de descente :
   // le quadriceps est la zone que la descente casse en premier.
+  // R10 phase 2 — DUATHLON : deux disciplines seulement, donc pas d'épaule ; en revanche
+  // « ça tire quand je cours » est LA déclaration qui compte (deux segments de course).
+  if(sp==="duathlon") arr=[["aucune","Aucune"],["course","Gêne à la course"],["tibia","Tibias / périostite"],["genou","Genou"],["pied","Pied / cheville"],["hanche","Hanche / ITB"],["dos","Dos / lombaires (vélo)"]];
   if(sp==="trail") arr=[["aucune","Aucune"],["quadriceps","Quadriceps (descentes)"],["cheville","Cheville / entorses"],["tibia","Tibias / périostite"],["genou","Genou"],["fascia","Fascia plantaire"],["hanche","Hanche / ITB"]];
   return arr.map(x=>opt(x[0],x[1])).join("");
 }

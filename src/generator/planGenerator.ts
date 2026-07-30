@@ -12,7 +12,7 @@ import type { AthleteProfile, ReasonedPlan, V1Plan, V1Session, V1Step, V1Week } 
 import {
   BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH,
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
-  CAP_BRICK_BIKE, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
+  BRICK_BIKE_BOUNDS, CAP_BRICK_BIKE, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, type Refs } from "./renderer.ts";
@@ -61,7 +61,13 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
     }
     if (s.brick) {
-      if (b.leg === "bike") return { floor: 32, cap: Math.round((CAP_BRICK_BIKE[fmt] || 300) * brickRF) };
+      // C21b — le PLANCHER du leg vélo est la borne basse auditée du format : le scaling R3.3
+      // ne peut plus descendre un brick sous ce que la spec exige (sinon le générateur produit
+      // ce que l'auditeur refuse, et c'est l'auditeur qui a raison).
+      if (b.leg === "bike") {
+        const bb = BRICK_BIKE_BOUNDS[fmt || ""];
+        return { floor: bb ? bb[0] : 32, cap: Math.round((CAP_BRICK_BIKE[fmt] || 300) * brickRF) };
+      }
       return { floor: 8, cap: Math.round((CAP_BRICK_RUN[fmt] || 70) * brickRF) };
     }
     if (s.long) {

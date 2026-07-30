@@ -25,6 +25,10 @@ export const MIN_WEEKS: Record<Sport, Record<string, number>> = {
   run: { "5k": 6, "10k": 8, semi: 12, marathon: 16, trail: 18 },
   bike: { crit: 8, route: 12, cyclo: 14, clm: 10, gravel: 16 },
   swim: { sprint: 8, demifond: 10, fond: 12, ow: 14 },
+  // R10 phase 2 — duathlon. Les tables détaillées vivent dans `src/sports/duathlon/tables.ts`
+  // (avec leur provenance) ; ces entrées les REFLÈTENT pour les lectures génériques.
+  duathlon: { S: 8, M: 12, L: 16, PM: 24 },
+  trail: {}, // pas de format : T6_MIN_WEEKS décide par catégorie d'effort déduite
 };
 
 /** Plafond d'heures hebdo par historique — ce que l'athlète peut ENCAISSER. */
@@ -49,6 +53,14 @@ export const HISTORY_CAPS: Record<Sport, Record<History, Record<string, number>>
     confirme: { S: 7, M: 10, "70.3": 13, Full: 17 },
     ancien: { S: 8, M: 12, "70.3": 15, Full: 19 },
   },
+  // R10 phase 2 — duathlon : entre la course pure et le triathlon court (deux disciplines,
+  // mais un impact course doublé — le plafond horaire n'est pas ce qui limite, c'est l'appui).
+  duathlon: {
+    reprise: { S: 5, M: 7, L: 9, PM: 12 },
+    confirme: { S: 7, M: 9, L: 11, PM: 15 },
+    ancien: { S: 8, M: 11, L: 13, PM: 18 },
+  },
+  trail: {}, // TRAIL_HISTORY_CAPS décide par catégorie d'effort
 };
 
 /** Heures UTILES par format — au-delà, le volume ne sert plus l'objectif. */
@@ -57,6 +69,8 @@ export const UTIL: Record<Sport, Record<string, number>> = {
   bike: { crit: 9, route: 13, cyclo: 15, clm: 11, gravel: 20 },
   swim: { sprint: 6, demifond: 8, fond: 10, ow: 12 },
   tri: { S: 8, M: 11, "70.3": 14, Full: 18 },
+  duathlon: { S: 8, M: 10, L: 13, PM: 17 },
+  trail: {}, // TRAIL_UTIL décide par catégorie
 };
 
 /** Marge de sécurité : 10% retenus sauf intention compétition (assumé). */
@@ -118,8 +132,22 @@ export const C24_MIN_SWIM_SESSION_M = rule("C24", "piscine ≥750m par séance p
 export const C24B_MIN_SWIM_SESSION_BEGINNER_M = rule("C24b", "une séance piscine débutant <600m ne vaut pas le déplacement — C20 promet ~25min/séance, le contenu doit suivre", 600);
 
 /** Brick tri : bornes par format ; ×0.8 pour l'historique « reprise » (C21). */
-export const CAP_BRICK_BIKE: Record<string, number> = { S: 90, M: 120, "70.3": 180, Full: 300 };
-export const CAP_BRICK_RUN: Record<string, number> = { S: 20, M: 24, "70.3": 32, Full: 70 };
+export const CAP_BRICK_BIKE: Record<string, number> = { S: 90, M: 120, "70.3": 180, Full: 300, L: 150, PM: 300 };
+export const CAP_BRICK_RUN: Record<string, number> = { S: 20, M: 24, "70.3": 32, Full: 70, L: 30, PM: 70 };
+/**
+ * Bornes du leg VÉLO d'un brick, par format — « jamais dépassées, même de peu » (spec audit 2).
+ * Source unique : l'auditeur les lit ici (il en gardait une copie), et `blockBounds` cale son
+ * PLANCHER dessus. Sans ça le générateur peut produire ce que l'auditeur interdit — c'est
+ * arrivé en R10 phase 2 : les bornes duathlon inventées passaient sous le plancher audité.
+ * Les formats duathlon S et M partagent les bornes du triathlon S et M : le segment vélo est
+ * le même (20 km, 40 km). L et PM sont propres au duathlon.
+ */
+export const BRICK_BIKE_BOUNDS: Record<string, [number, number]> = rule(
+  "C21b",
+  "un brick d'entraînement n'est ni une sortie longue déguisée ni un tour de pâté de maisons : ses bornes suivent le format de course",
+  { S: [45, 90], M: [60, 120], "70.3": [90, 180], Full: [150, 300], L: [70, 150], PM: [150, 300] },
+);
+
 export const C21_REPRISE_BRICK_FACTOR = rule("C21", "en reprise, le brick ne mange pas la semaine (61% du volume hebdo observé sans ce facteur)", 0.8);
 
 /** Plafonds de séance longue / nage par format (R3.4b), et budget implicite du volume. */
@@ -225,7 +253,11 @@ export function readInjuries(raw: unknown): InjuryInfo {
   return {
     list,
     count: list.length,
-    impact: list.some((x) => ["tibia", "genou", "pied", "hanche"].includes(x)),
+    // R10 phase 2 — « course » (zone fragile déclarée en multi-discipline : tri, duathlon)
+    // COMPTE comme une blessure d'impact. Elle ne l'était que dans `impactAny` (renfo/plio) :
+    // le plafond de jours d'appui, qui lit `impact`, l'ignorait donc — un duathlète déclarant
+    // « ça tire quand je cours » recevait autant d'appuis qu'un athlète sain.
+    impact: list.some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x)),
     impactAny: list.some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x)),
     shoulder: list.includes("epaule"),
     lumbar: list.includes("dos"),

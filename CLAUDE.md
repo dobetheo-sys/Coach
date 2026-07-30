@@ -21,6 +21,7 @@ mieux qu'un plan dangereux. »
 |---|---|
 | `note.md` | Manifeste : vision, priorités, règles interdites, principes d'or |
 | `Coach_Pro_V1.5.html` | **Le produit** — application autonome (~1600 lignes), tout le moteur |
+| `src/sports/registry.ts` + `src/sports/<sport>/` | **Le registre de sports** (R10) : un sport = un module qui DÉCLARE ses séances, sa prédiction, ses tests et ses `guards` (garde-fous). Un sport inconnu lève. |
 | `src/engine/trailModel.ts` + `src/generator/trailLibrary.ts` | **Le module trail** (R7) : catégorie déduite, charge à 3 axes (temps/D+/D−), 14 séances |
 | `endurabuild/` | **La PWA** — même produit en modules ES, mobile-first, installable/offline, vue plan en 5 onglets (voir ses RAPPORT-MIGRATION-PWA.md, RAPPORT-ONGLETS.md et RAPPORT-R4.md) ; UI = source de vérité désormais |
 | `ARCHITECTURE.md` | Choix techniques : pipeline du moteur, registre des règles R3.x/Cn, auditeur, conventions |
@@ -36,7 +37,7 @@ dépôt — historique git si besoin.
 - `npm run audit:v1` — audite les 486 combinaisons contre `Coach_Pro_V1.5.html`, écrit
   `audit-results/v1-audit.{json,md}`, **exit 1 à la moindre violation dure**. Zéro dépendance
   à installer (Node ≥22.18 exécute le TypeScript nativement). La CI l'exécute sur chaque push.
-- `npm run audit:v2` — mêmes 486 profils à travers le **moteur V2** (Sprint 1 :
+- `npm run audit:v2` — **594 profils** (486 + duathlon R10) à travers le **moteur V2** (Sprint 1 :
   raisonnement + génération + réparation), même auditeur, + comparatif V1.5 ↔ V2.
 - `npm run demo:repair` — preuve exécutable des garanties de la boucle de réparation.
 - `npm run demo:readiness` — spec exécutable de l'adaptation quotidienne (Sprint 2) :
@@ -59,7 +60,7 @@ dépôt — historique git si besoin.
   (instance unique par module, imports circulaires préservés), CSS et polices en `data:`.
   Sert à tester l'app hors ligne d'un double-clic — le monolithe `Coach_Pro_V1.5.html`
   a le moteur à jour mais son UI est gelée à R4 (ni carte Trail, ni étape terrain).
-- `npm run test:e2e` — 6 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
+- `npm run test:e2e` — 8 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
   job CI `e2e` séparé). Seule exception au zéro-dépendance : Playwright, devDependency de
   TEST uniquement (`npm install` d'abord ; local : `/opt/pw-browsers/chromium` détecté,
   sinon `EB_CHROMIUM`).

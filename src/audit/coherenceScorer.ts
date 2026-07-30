@@ -12,15 +12,11 @@
  */
 import type { V1Plan, V1Week } from "../harness/v1Harness.ts";
 import { sessionLoad, intensitySplit, DEFAULT_REFS, type AthleteRefs, type SessionLoad } from "../engine/loadModel.ts";
-import { C22_AUDIT_HARD_JUMP } from "../engine/constraintMatrix.ts";
+import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS } from "../engine/constraintMatrix.ts";
 
-/** Plafonds brick vélo (audit 2, spec utilisateur) : "jamais dépassés, même de peu". */
-const BRICK_BIKE_BOUNDS: Record<string, [number, number]> = {
-  S: [45, 90],
-  M: [60, 120],
-  "70.3": [90, 180],
-  Full: [150, 300],
-};
+// Les bornes brick vélo (audit 2, « jamais dépassées, même de peu ») vivent désormais dans la
+// matrice de contraintes : l'auditeur et le générateur lisent LE MÊME tableau. La copie locale
+// permettait au générateur de produire ce que l'auditeur interdit — vu en R10 phase 2.
 
 export const THRESHOLDS = {
   overPrescribed: 1.4,

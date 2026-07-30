@@ -48,6 +48,7 @@ const FORMATS = {
   swim: ["sprint", "demifond", "fond", "ow"],
   tri: ["S", "M", "70.3", "Full"],
   trail: [""], // pas de format : la catégorie d'effort est déduite (R7)
+  duathlon: ["S", "M", "L", "PM"], // R10 phase 2
 };
 const HISTORIES = ["reprise", "confirme", "ancien"];
 const LEVELS = ["debutant", "inter", "avance"];
