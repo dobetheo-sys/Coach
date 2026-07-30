@@ -100,3 +100,88 @@ SOUS-CORRIGE, d'autant plus que la part de récup est grande. La correction n'es
 chantier à part entière sur la boucle de volume, pas un ajout de champ.
 
 En attendant, `U-DECL` reste budgété et l'écart est documenté ici plutôt que masqué.
+
+---
+
+## Audit externe v7 — deuxième passe (MESSAGE_CLAUDE_CODE_R5, 30/07/2026)
+
+Le même auditeur a rejoué son harnais sur la version corrigée en R4 (4 580 profils, même graine)
+et a rendu six résiduels. Traités dans l'ordre qu'il suggérait, chacun mesuré avant/après avec
+son propre banc — ce que l'auditeur interne ne voit toujours pas, `audit_v7` continue de le voir.
+
+| sport | R4 (audité) | après R5 (`audit_v7.cjs`, N=400) |
+|---|---|---|
+| trail | 87 % de profils sans défaut | **99 %** |
+| swimrun | 78 % | **92 %** |
+| duathlon | 97 % | **99 %** |
+
+**R5.1 — le renommage de la pivot tournait trop tôt.** `syncDerivedLabels(plan)` est extrait et
+appelé EN DERNIER, dans `generateAudited` après les réparations ciblées — pas dans `generatePlan`,
+où `applyTargetedRepairs` et `reduceDay` modifiaient encore les répétitions APRÈS lui. Toute prose
+dérivée d'un nombre passe désormais par ce point de convergence. `S-TRANSITIONS` 9 → 0.
+
+**R5.2 — l'affûtage échappait à la couverture des disciplines.** Deux fautes en une : la
+« semaine de récup » était DEVINÉE par comptage de jours de repos (une semaine d'affûtage en a
+autant, elle était donc sautée), et la couverture tournait AVANT le budget de séances et
+l'anti-collage, qui pouvaient retirer la séance qu'elle venait de poser. `isRecup`/`phase.id` sont
+lus explicitement, la couverture passe en dernier, et l'affûtage exige au moins la discipline
+PRINCIPALE. Restait un troisième chemin : les coupes de volume de `planGenerator` tournent après
+`buildDays` et pouvaient orpheliner la course d'une semaine d'affûtage de duathlon —
+`keepsMainDiscipline` oriente désormais le choix de la victime (sans jamais l'interdire : la
+sécurité du volume passe avant la complétude). `D-DISC` 22 → 1.
+
+**R5.3 — la dernière semaine sortait de la bande, et personne ne regardait.** La bande
+[0,5–1,4] exclut l'affûtage, dont la règle propre porte sur le pic et non sur sa propre courbe :
+une semaine pouvait prescrire +71 % de ce qu'elle annonçait sans qu'aucune règle ne la voie.
+`reconcileDeclaredVolume(plan, warnings)` ferme le trou et s'applique à TOUTES les semaines, en
+dernier (même leçon que R5.1, il est appelé aussi après les réparations) :
+1. la FRÉQUENCE cède avant la TAILLE — une séance sous le quart d'heure ne vaut pas le
+   déplacement (le cas mesuré : quatre séances de 3 minutes autour d'une longue au plancher) ;
+2. si la structure minimale dépasse encore l'enveloppe déclarée, le chiffre annoncé s'aligne sur
+   le prescrit **et un avertissement le dit**, avec ses deux remèdes (relever le volume, ou viser
+   plus court). Le silence était le défaut.
+Au passage, la décroissance de l'affûtage devient une RÈGLE au lieu d'un effet de bord : elle
+était émergente (courbe + coupe R3.13) et la dérive des créneaux d'un cycle de 10 jours pouvait
+rendre la 3ᵉ semaine plus lourde que la 2ᵉ (147→98→123→88, attrapé par le banc v6 D10).
+`U-DECL` 187+43+5 → 1+1+0.
+
+**R5.4 — la VO2 swimrun s'éteignait sur blessure d'impact.** La branche existait mais était
+placée APRÈS `if (inj.impact)` : elle était inatteignable. Réordonnée, le stimulus change de
+SUPPORT au lieu de disparaître (8×50 m en `sw.vo2`, départs 1'30 — le swimrun n'a pas de vélo,
+mais il a l'eau, et c'est même le support le plus spécifique).
+
+**R5.5 — deux fois la même séance dans la semaine.** Trois producteurs de doublons, trois
+correctifs :
+- `applyRunImpactCap` produisait deux substitutions identiques → `crossTrainingSession` reçoit un
+  rang (`nth`) et fait varier le CONTENU, jamais la CHARGE (une variante plus longue rendait le
+  plan d'une blessure multiple plus lourd que celui d'une blessure unique — banc v6 B3) ;
+- la montée du pic CLONAIT une séance de nage à l'identique (« Seuil CSS + plaquettes » deux
+  fois) → le donneur doit être une séance FACILE (le pic n'a pas à gagner de l'intensité par une
+  passe de volume) et le clone porte un nom propre ;
+- le cycle de 10 jours place deux créneaux `dur2` dans la même fenêtre calendaire →
+  `applyWeeklyVariety` cherche la variante du créneau frère, et à défaut allège. Les doublons
+  FACILES sont laissés : deux footings dans une semaine, c'est un plan normal.
+`U-DUP` 76 → 0.
+
+**Effet de bord assumé** : sur une petite enveloppe (3 séances/semaine, ou 3 jours bloqués), le
+créneau `dur2` ne survit pas au budget — le plan swimrun traversait 40 semaines sans une seule
+sollicitation de la puissance aérobie maximale. Le créneau de qualité alterne désormais, une
+semaine sur deux en phase de développement, avec le support adapté aux zones fragiles (impact →
+nage, épaule → course, les deux → on laisse la main aux branches prudentes). `S-NOVO2` 181 → 0.
+
+**R5.6b — `VLAB` collisionnait.** Son namespace est plat : `partielle` (dispo « 4-5j/sem ») était
+écrasé par `partielle` (course de nuit), `montagne` (terrain « Montagneux ») par `montagne`
+(dénivelé accessible). L'affichage de la dispo et du terrain était donc FAUX. Les libellés
+ambigus vivent maintenant dans `VLAB_Q`, une table PAR QUESTION consultée avant la table plate —
+plutôt que de préfixer les valeurs, ce qui aurait demandé une migration des réponses stockées.
+
+**R5.6a (= R4.7c) — non traité, et c'est délibéré** : la correction demande de calculer le
+facteur d'échelle sur la seule part pilotable de la séance (`f = (cible − récup_fixe) /
+corps_scalable`) dans toutes les passes de lissage. Le diagnostic complet est ci-dessus ; c'est un
+chantier sur la boucle de volume, pas un ajout de champ.
+
+**Dette restante, budgétée dans `scripts/runAuditV7.mjs`** : `S-RUN-STARVED`, `S-MIX` et
+`S-LONGSWIM` (swimrun) — l'auditeur note lui-même que le fuzz accepte des saisies invraisemblables
+(format sprint avec 3 000 m de plus longue nage, `vol_recent` > `vol_max`). Sa piste « passe de
+plausibilité en entrée, avec avertissement et jamais de blocage » est la bonne, et c'est le
+prochain gisement — elle n'est pas faite ici.

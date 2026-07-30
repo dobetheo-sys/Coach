@@ -167,12 +167,69 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   }
 
   applyRunImpactCap(r, days, refs, hz);
-  applyDisciplineCoverage(r, days, refs, hz, ctx);
   applySessionBudget(r, days);
   applyStrengthGrafts(r, days);
   applyAntiCollage(r, days, refs, hz, ctx);
   applyPolarizationGuard(r, days, ctx, refs, hz);
+  // R5.2 (audit v7 bis) — EN DERNIER : la couverture des disciplines tournait AVANT le budget
+  // de séances et l'anti-collage, qui pouvaient retirer la séance qu'elle venait d'ajouter.
+  // Une semaine d'affûtage de duathlon sortait ainsi sans une seule séance de course — et sans
+  // avertissement. Un duathlon commence et finit à pied : c'est la discipline qu'on ne peut pas
+  // ne pas toucher en affûtage.
+  applyDisciplineCoverage(r, days, refs, hz, ctx);
+  applyWeeklyVariety(r, days, refs, hz, ctx);
   return days;
+}
+
+/**
+ * R5.5 (audit v7 bis) — JAMAIS deux fois la même séance DE QUALITÉ dans la même semaine.
+ *
+ * Le cycle de 10 jours place deux créneaux `dur2` dans la même fenêtre calendaire : la
+ * bibliothèque, sollicitée deux fois avec le même créneau et la même phase, rend deux fois la
+ * séance IDENTIQUE (« Force basse cadence », « Seuil CSS + plaquettes »). Physiologiquement,
+ * répéter une séance n'est pas une faute ; pédagogiquement, une carte affichée deux fois dit à
+ * l'athlète que le plan ne le regarde pas — et deux blocs de seuil rigoureusement identiques
+ * ne se justifient pas quand le créneau frère est libre.
+ *
+ * On cherche donc une VARIANTE (le créneau dur frère), et à défaut on allège : la seconde
+ * occurrence redevient une séance facile. L'allègement va toujours dans le sens de la sécurité.
+ * Les doublons FACILES sont laissés tels quels — deux footings faciles dans une semaine, c'est
+ * un plan normal, pas un défaut.
+ */
+function applyWeeklyVariety(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZones, ctx: SessionCtx): void {
+  const mod = sportModule(r.profile.sport as string);
+  const QUALITY_Z = /\.(vo2|thr|css|rp|ss|frc|speed|mara)$/;
+  const isQual = (s: V1Session) => (s.steps || []).some((b) =>
+    b.role === "body" && (QUALITY_Z.test(String(b.zone || ""))
+      || ["tr.vam", "tr.asc", "tr.climb", "tr.flatthr"].includes(String(b.zone || ""))
+      || (b.reps || 1) > 1));
+  for (let w = 1; w <= r.weeks; w++) {
+    const seen = new Set<string>();
+    for (const d of days.filter((x) => x.week === w)) {
+      for (let i = 0; i < d.sessions.length; i++) {
+        const s = d.sessions[i];
+        if (s.d === "rs" || !seen.has(s.name) || !isQual(s)) { seen.add(s.name); continue; }
+        const alt = d.slot === "dur1" ? "dur2" : d.slot === "dur2" ? "dur1" : null;
+        let done = false;
+        if (alt) {
+          const built = buildSessions(ctx, alt as Parameters<typeof buildSessions>[1], d.phaseId, d.prog || 0, d.week);
+          const pick = built.find((x) => x.d !== "rs" && !seen.has(x.name));
+          if (pick) {
+            if (pick.steps && pick.steps.length) renderSess(pick, refs, hz, r.baseRefs);
+            d.slot = alt; d.sessions[i] = pick; done = true;
+          }
+        }
+        if (!done) {
+          const built = buildSessions(ctx, mod.easyFallbackSlot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog || 0, d.week);
+          const pick = built.find((x) => x.d !== "rs");
+          if (!pick) { seen.add(s.name); continue; }
+          if (pick.steps && pick.steps.length) renderSess(pick, refs, hz, r.baseRefs);
+          d.charge = "facile"; d.slot = mod.easyFallbackSlot; d.sessions[i] = pick;
+        }
+        seen.add(d.sessions[i].name);
+      }
+    }
+  }
 }
 
 /** Plafond de jours d'impact course : l'excédent devient cross-training vélo ou repos.
@@ -187,6 +244,7 @@ function applyRunImpactCap(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZo
     const wd = days.filter((d) => d.week === w);
     const isRecupWk = wd.filter((d) => d.isR).length >= 4;
     const cap = isRecupWk ? Math.max(2, r.maxRunDays - 1) : r.maxRunDays;
+    let subsThisWeek = 0; // R5.5 — rang de la substitution DANS la semaine
     const runDays = wd.filter((d) => d.sessions.some((s) => s.d === "rn"));
     let over = runDays.length - cap;
     if (over <= 0) continue;
@@ -201,7 +259,7 @@ function applyRunImpactCap(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZo
         // correctement retirés. Tant qu'une passe peut fabriquer une séance sans passer par
         // une fonction qui connaît les drapeaux, le garde-fou reste contournable par la
         // prochaine passe ajoutée — c'est la leçon structurelle, pas le symptôme.
-        const s = crossTrainingSession(r, isTrail, d.charge === "dur");
+        const s = crossTrainingSession(r, isTrail, d.charge === "dur", subsThisWeek++);
         renderSess(s, refs, hz, r.baseRefs);
         d.sessions = [s];
       } else {
@@ -230,7 +288,14 @@ function applyDisciplineCoverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz
   let impossible = 0;
   for (let w = 1; w <= r.weeks; w++) {
     const wd = days.filter((d) => d.week === w);
-    if (wd.filter((d) => d.isR).length >= 4) continue; // semaine de récup : structure allégée
+    // On LIT l'information au lieu de la deviner : compter les jours de repos confondait une
+    // semaine d'affûtage avec une semaine de récupération, et l'exemptait de toute couverture.
+    const isRecupWeek = wd.length > 0 && wd.every((d) => d.isR);
+    const isTaper = wd[0]?.phaseId === "taper";
+    if (isRecupWeek) continue; // récup : structure volontairement allégée
+    // En affûtage, la couverture reste exigée pour la discipline PRINCIPALE au moins : le
+    // volume baisse, la spécificité non.
+    const required = isTaper ? [mod.mainDiscipline] : mod.disciplines;
     const present = new Set<string>();
     for (const d of wd)
       for (const s of d.sessions) {
@@ -238,7 +303,7 @@ function applyDisciplineCoverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz
         if (s.d === "br") { for (const b of s.steps || []) if (b.leg) present.add(b.leg === "bike" ? "bk" : b.d || "rn"); present.add("bk"); present.add("rn"); }
         else present.add(s.d);
       }
-    const missing = mod.disciplines.filter((x) => !present.has(x));
+    const missing = required.filter((x) => !present.has(x));
     if (!missing.length) continue;
     // Un jour facile non bloqué peut changer de discipline sans toucher à la structure dure.
     const donors = wd.filter((d) => !d.forced && d.charge === "facile" && d.sessions.some((s) => s.d !== "rs"));
@@ -248,18 +313,28 @@ function applyDisciplineCoverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz
       if (!donor) break;
       // La séance de remplacement passe par le point d'entrée unique (R4.0) : elle connaît les
       // drapeaux médicaux et d'âge. Le cross-training vélo EST la séance vélo facile.
+      // R5.2 — en AFFÛTAGE, couvrir ne doit pas REGONFLER : la décroissance de l'affûtage est
+      // une règle de sécurité (R3.13), la couverture une règle de complétude. La séance de
+      // remplacement ne peut donc pas peser sensiblement plus que celle qu'elle remplace.
+      const donorMin = donor.sessions.reduce((t, s) => t + (s.min || 0), 0);
+      const tooHeavy = (s: V1Session) => isTaper && donorMin > 0 && (s.min || 0) > donorMin * 1.15;
       if (disc === "bk") {
         const sess = crossTrainingSession(r, false, false);
         sess.name = "Endurance vélo (couverture discipline)";
         sess.note = "Ton enveloppe de jours laisse peu de place : cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan de duathlon sans vélo n'est pas un plan allégé, c'est un plan d'un autre sport.";
         renderSess(sess, refs, hz, r.baseRefs);
+        if (tooHeavy(sess)) continue;
         donor.sessions = [sess];
         fixed++;
       } else {
         const built = buildSessions(ctx, disc === "sw" ? "facile2" : "facileR", donor.phaseId, donor.prog || 0, donor.week);
-        const pick = built.find((x) => x.d === disc);
-        if (!pick) continue;
+        // R5.5 — ne jamais réinstaller une séance déjà présente cette semaine-là : la
+        // reconstruction produisait un doublon exact (« Seuil CSS + plaquettes » deux fois).
+        const already = new Set(wd.flatMap((x) => x.sessions.map((y) => y.name)));
+        const pick = built.find((x) => x.d === disc && !already.has(x.name)) || built.find((x) => x.d === disc);
+        if (!pick || already.has(pick.name)) continue;
         for (const x of built) if (x.steps && x.steps.length) renderSess(x, refs, hz, r.baseRefs);
+        if (tooHeavy(pick)) continue;
         donor.sessions = [pick];
         fixed++;
       }
@@ -280,7 +355,24 @@ function applyDisciplineCoverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz
  * @param wantsVertical  trail : garder le stimulus vertical (côte) plutôt qu'un plat
  * @param wantsIntensity le jour remplacé était un jour DUR : on cherche un équivalent
  */
-function crossTrainingSession(r: ReasonedPlan, wantsVertical: boolean, wantsIntensity: boolean): V1Session {
+function crossTrainingSession(r: ReasonedPlan, wantsVertical: boolean, wantsIntensity: boolean, nth = 0): V1Session {
+  // R5.5 (audit v7 bis) — le point d'entrée unique produisait la MÊME séance à chaque appel :
+  // deux jours de course en excès dans la semaine donnaient deux séances rigoureusement
+  // identiques. Le rang dans la semaine fait varier le contenu — un athlète qui lit deux fois
+  // la même carte pense (à raison) que le plan ne le regarde pas.
+  if (nth >= 1 && !r.medHold) {
+    // La variante fait varier le CONTENU, jamais la CHARGE : un deuxième remplacement plus long
+    // rendrait le plan d'une blessure multiple plus lourd que celui d'une blessure unique
+    // (mesuré au banc v6, B3). Même durée que l'endurance de référence, travail de cadence
+    // en plus — c'est la lecture qui change, pas la dose.
+    return {
+      d: "bk", name: "Endurance vélo — travail de cadence (sans impact)",
+      note: "Deuxième remplacement de la semaine : même durée que l'autre, mais on y ajoute de la cadence. Alterne 5 min à cadence haute (95-100 tr/min) et 5 min à cadence libre, tout du long, en endurance. Le geste travaille pendant que les tissus de la course récupèrent.",
+      det: "",
+      steps: [{ role: "body", durationMin: 55, zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string }],
+      ...({ plainBody: true } as object),
+    } as V1Session;
+  }
   // 1. Drapeau médical : AUCUNE intensité, quelle que soit la raison du remplacement.
   //    « Un mauvais plan vaut mieux qu'un plan dangereux » (manifeste).
   if (r.medHold) {

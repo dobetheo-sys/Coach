@@ -41,7 +41,7 @@ const BUDGET = {
   "U-DATE-DUP": 0,
   "U-TAPER": 0,
   "S-OW": 0,         // plafond d'accès à l'eau libre (R4.3)
-  "S-TRANSITIONS": 0, // nom de la pivot vs prescription (R4.4)
+  "S-TRANSITIONS": 0, // nom de la pivot vs prescription (R4.4/R5.1)
   "S-SOLO": 0,       // parler de binôme en solo (R4.8d)
   "S-EPAULE": 0,
   "T-POLES": 0,
@@ -53,19 +53,19 @@ const BUDGET = {
   "D-BRICK": 0,
   "D-TERRAIN": 0,
   // --- Dette restante, chiffrée : ne doit jamais remonter (voir R10_DEFECTS.md) ---
-  "U-DECL": 30,      // R4.8c — lissage d'affûtage sur la mesure incluant les récups
-  "U-RACEDATE": 20,  // R4.8b — course lointaine : plafond assumé + avertissement
-  "U-DUP": 30,       // R4.2.4 — variantes d'un même créneau dans la semaine
+  "U-DECL": 2,       // R5.3 — CORRIGÉ : la courbe annoncée se réconcilie avec le prescrit
+  "U-RACEDATE": 12,  // R4.8b — course lointaine : plafond assumé + avertissement
+  "U-DUP": 0,        // R5.5 — CORRIGÉ : jamais deux fois la même séance de qualité par semaine
   "T-DPLUS": 0,      // R4.7a — CORRIGÉ : le D+ par bloc suit le terrain accessible (T1b)
   "T-NIGHT": 2,      // R4.7b — la consigne nuit est un ATTRIBUT greffé sur les séances survivantes
-  "T-DPLUS-WK": 5,
-  "T-POLES-ADV": 5,
-  "S-NOVO2": 26,     // stimulus VO2 absent quand une blessure d'impact est déclarée
-  "S-LONGSWIM": 25,  // plus longue nage non répétée sur les valeurs extrêmes
-  "S-MIX": 15,       // part course/nage du plan vs de la course
+  "T-DPLUS-WK": 2,
+  "T-POLES-ADV": 2,
+  "S-NOVO2": 0,      // R5.4/R5.5 — CORRIGÉ : le stimulus change de support et de créneau
+  "S-LONGSWIM": 8,   // plus longue nage non répétée sur les valeurs extrêmes (saisies invraisemblables)
+  "S-MIX": 9,        // part course/nage du plan vs de la course
   "S-RUN-STARVED": 10,
-  "S-PREREQ": 20,    // format RABATTU + avertissement (choix assumé, cf. R10_DEFECTS)
-  "D-DISC": 12,      // R4.6 — couverture des disciplines quand l'enveloppe est trop étroite
+  "S-PREREQ": 12,    // format RABATTU + avertissement (choix assumé, cf. R10_DEFECTS)
+  "D-DISC": 1,       // R5.2 — CORRIGÉ : couverture en dernier + aucune coupe n'orpheline la discipline principale
 };
 
 let failed = false;

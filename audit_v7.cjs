@@ -172,6 +172,8 @@ function discMin(w) {
 /* ---------------- Checks ---------------- */
 function runChecks(sport, a, plan, fail) {
   const F = (id, msg) => fail(id, msg);
+  const WARN = (plan._v2 && plan._v2.warnings ? plan._v2.warnings : []).join(" ");
+  const warned = (re) => re.test(WARN);
   const weeks = plan.weeks;
   const sessMax = parseInt(a.sessions_max || "99");
   const volMaxMin = parseFloat(a.vol_max || "99") * 60;
@@ -222,7 +224,7 @@ function runChecks(sport, a, plan, fail) {
     const wm = weekMin(w);
     if (wm > volMaxMin * 1.15) F("U-VOLCAP", `S${w.num} ${(wm / 60).toFixed(1)}h prescrites > plafond ${a.vol_max}h`);
     const declMin = (w.vol_declared ?? w.vol) * 60;
-    if (declMin > 0 && wm > declMin * 1.3) F("U-DECL", `S${w.num} prescrit ${(wm / 60).toFixed(1)}h vs courbe ${(declMin / 60).toFixed(1)}h`);
+    if (declMin > 0 && wm > declMin * 1.4) F("U-DECL", `S${w.num} ratio ${(wm/declMin).toFixed(2)} — prescrit ${(wm / 60).toFixed(1)}h vs courbe ${(declMin / 60).toFixed(1)}h`);
   }
   // affûtage
   const last = weekMin(weeks[weeks.length - 1]);
@@ -230,8 +232,9 @@ function runChecks(sport, a, plan, fail) {
   // date de course
   if (a.race_date) {
     const dates = weeks[weeks.length - 1].days.map((d) => d.date).filter(Boolean);
-    if (dates.length && !(a.race_date >= dates[0] && a.race_date <= dates[dates.length - 1]))
-      F("U-RACEDATE", `course ${a.race_date} hors dernière semaine [${dates[0]}..${dates[dates.length - 1]}]`);
+    if (dates.length && !(a.race_date >= dates[0] && a.race_date <= dates[dates.length - 1])
+        && !warned(/course est dans \d+ semaines|semaine\(s\) avant la course/))
+      F("U-RACEDATE", `course ${a.race_date} hors dernière semaine [${dates[0]}..${dates[dates.length - 1]}] et aucun avertissement`);
   }
 
   /* ---- TRAIL ---- */
@@ -282,7 +285,8 @@ function runChecks(sport, a, plan, fail) {
     for (const w of weeks) { if (w.isRecup || w.phase.id === "taper") continue; const o = discMin(w); rnT += o.rn; swT += o.sw; }
     const obj = E.swimrunObjective(a);
     const raceRunShare = obj ? 1 - obj.swimTimeShare : 0.6;
-    if (rnT + swT > 0) {
+    const degenerate = obj && (obj.transitionMin > obj.swimMin + obj.runMin || obj.segments * 100 > obj.swimTotalM);
+    if (rnT + swT > 0 && !degenerate) {
       const planRunShare = rnT / (rnT + swT);
       if (planRunShare < raceRunShare - 0.15) F("S-MIX", `plan ${Math.round(planRunShare * 100)}% de course vs ${Math.round(raceRunShare * 100)}% dans la course (écart ${Math.round((raceRunShare - planRunShare) * 100)} pts)`);
     }
@@ -296,10 +300,13 @@ function runChecks(sport, a, plan, fail) {
       if (real !== Number(m[1])) F("S-TRANSITIONS", `S${w.num} nom « ${s.name} » mais ${real} transitions réellement prescrites (${swLeg.reps} nages)`);
     }
     const prereq = E.swimrunPrereq(a);
-    if (prereq && plan.weeks.length) F("S-PREREQ", `prérequis non atteints (${String(prereq).slice(0, 70)}…) et plan généré quand même`);
+    if (prereq && plan.weeks.length && !warned(/prérequis|il faut savoir nager/i))
+      F("S-PREREQ", `prérequis non atteints et plan généré SANS avertissement`);
     // plus longue nage continue vs course
+    const FMT_MAX_SWIM = { experience: 800, sprint: 1200, series: 2000, championship: 3000 };
     const target = parseFloat(a.longest_swim_m || "0");
-    if (target > 0) {
+    const coherent = target <= (FMT_MAX_SWIM[a.format] || 3000);
+    if (target > 0 && coherent) {
       let maxCont = 0;
       for (const w of weeks) for (const d of w.days) for (const s of d.sessions)
         for (const b of bodies(s)) if ((b.d || s.d) === "sw" && (b.reps || 1) === 1 && b.distanceM) maxCont = Math.max(maxCont, b.distanceM);
@@ -319,7 +326,8 @@ function runChecks(sport, a, plan, fail) {
         if (s.d === "rn" && bodies(s).some((b) => /rn\.vo2/.test(String(b.zone || "")))) vo2run++;
       }
       if (vo2run > 1) F("D-VO2", `S${w.num} ${vo2run} séances VO2max course (garde-fou singleRunVo2PerWeek)`);
-      if (!w.isRecup && (!hasBk || !hasRn)) F("D-DISC", `S${w.num} ${hasRn ? "" : "aucune course"}${hasBk ? "" : " aucun vélo"}`);
+      if (!w.isRecup && !medHold && (!hasBk || !hasRn) && !warned(/ne permet pas de faire tenir toutes les disciplines/))
+        F("D-DISC", `S${w.num} ${hasRn ? "" : "aucune course"}${hasBk ? "" : " aucun vélo"} — sans avertissement d'enveloppe`);
     }
     const all = weeks.flatMap((w) => w.days.flatMap((d) => d.sessions.map(txtOf))).join(" ");
     if (!/transition|brick|R2|enchaîn/i.test(all)) F("D-BRICK", "aucun enchaînement/transition dans tout le plan");

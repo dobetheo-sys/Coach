@@ -3,7 +3,7 @@
 // import FIT/Strava) : toute modification manuelle y est consignée {type, value,
 // date, prev, source} — pas de nouvelle structure de données (brief onglets).
 // Toute donnée utilisateur réaffichée passe par esc() avant innerHTML (anti-XSS).
-import { SPORTS, VLAB } from "../config.js";
+import { SPORTS, VLAB, VLAB_Q } from "../config.js";
 import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc, todayISO } from "../state.js";
 import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js";
 import { renderPlan } from "./plan-view.js";
@@ -95,7 +95,9 @@ function recordsHTML(plan, a) {
 }
 
 function summaryRows(a) {
-  const L = (k, lab) => (a[k] ? '<div class="bp-decision"><div><div class="bp-what">' + lab + '</div><div class="bp-val">' + esc(String(a[k]).split(",").map((x) => VLAB[x] || x).join(", ")) + "</div></div></div>" : "");
+  // R5.6b — la table PAR QUESTION passe avant la table plate : « partielle » ne veut pas dire la
+  // même chose pour la disponibilité et pour une course de nuit.
+  const L = (k, lab) => (a[k] ? '<div class="bp-decision"><div><div class="bp-what">' + lab + '</div><div class="bp-val">' + esc(String(a[k]).split(",").map((x) => (VLAB_Q[k] && VLAB_Q[k][x]) || VLAB[x] || x).join(", ")) + "</div></div></div>" : "");
   return L("intent", "Intention") + L("format", "Objectif") + L("history", "Historique") + L("level", "Niveau") + L("dispo", "Disponibilité") + L("injury", "Blessures");
 }
 

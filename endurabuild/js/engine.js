@@ -1283,6 +1283,11 @@ const ZDEF                          = {
   "sw.aero": { ref: "css", lo: 1.06, hi: 1.06, hr: null, fb: "endurance régulière" },
   "sw.css": { ref: "css", lo: 1.0, hi: 1.0, hr: null, fb: "allure seuil (test 400m)" },
   "sw.speed": { ref: "css", lo: 0.94, hi: 0.94, hr: null, fb: "rapide mais contrôlé" },
+  // R5.4 (audit v7 bis) — VO2max EN NAGE. Sous blessure d'impact, supprimer le stimulus laissait
+  // un plan swimrun sans aucune puissance aérobie maximale pendant 40 semaines. Le swimrun n'a
+  // pas de vélo, mais il a l'eau : c'est le cross-training de `applyRunImpactCap` appliqué au
+  // bon support. Départs serrés, récupération incomplète — la contrainte vient du temps de repos.
+  "sw.vo2": { ref: "css", lo: 0.90, hi: 0.90, hr: null, fb: "très rapide, récup courte (RPE 9/10)" },
   // ---- R7 TRAIL : zones EN MONTÉE, exprimées en vitesse ascensionnelle (m D+/h) ----
   // Le multiplicateur s'applique à la VAM seuil, pas à une allure : monter à 90-100% de sa
   // VAM est une consigne exécutable, « 5'36/km en montée » ne l'est pas.
@@ -3458,6 +3463,13 @@ function buildSwimrunSessions(kit            )              {
   const pad = paddleShare(phase, shoulder);
   const gearNote = team ? " Longe attachée : c'est en binôme que ça se joue." : "";
 
+  // Le stimulus VO2 en course : un seul constructeur, deux créneaux possibles (`dur2` quand le
+  // budget le permet, `dur1` en alternance quand il ne le permet pas — R5.5).
+  const vo2Swim = ()            => ({ d: "sw", name: "VO2max en nage (zone fragile épargnée)", note: "Ta zone fragile interdit l'intensité en course, pas la puissance aérobie maximale : elle se travaille dans l'eau, sans le moindre impact. Départs toutes les 1'30 : c'est la récupération courte qui fait le travail, pas la vitesse pure. Si tu sens la zone fragile, tu sors.", det: "",
+    steps: [Wm(300, "progressif + 4×25m accélérations"), Object.assign(Bd(P(6, 10), 50, "sw.vo2", "départ 1'30", "", false, "sw"), { repCap: 10 }), Cm(200, "très souple")] });
+  const vo2Trail = ()            => ({ d: "rn", name: "VO2max sur sentier", note: "Le seul bloc vraiment dur de ta semaine : effort maximal tenable ~3 min, récupération complète. On le place en phase de développement — c'est lui qui relève le plafond sous lequel toute ton allure d'endurance se joue. Sur sentier, pas sur piste : le terrain fait partie du geste.", det: "",
+    steps: [W(18, "footing progressif sur sentier + 4 lignes droites"), B(P(4, 6), 3, "rn.vo2", "2min30 trot", ""), C(10, "footing très souple")] });
+
   if (slot === "durLong") {
     // ---- LA SÉANCE PIVOT : le swimrun spécifique (§R10.3.4) ----
     const band = S9_LONG_SHARE[phase] || S9_LONG_SHARE.dev;
@@ -3516,7 +3528,20 @@ function buildSwimrunSessions(kit            )              {
     }
   } else if (slot === "dur1") {
     // ---- Qualité NAGE : en tenue quand c'est possible, plaquettes progressives (S8) ----
-    if (shoulder) {
+    // R5.5 (audit v7 bis) — SUR UNE PETITE ENVELOPPE, LA QUALITÉ SE PARTAGE UN SEUL CRÉNEAU.
+    // Le stimulus VO2 vit dans `dur2` ; à 3 séances par semaine (ou 3 jours bloqués), le budget
+    // supprime ce jour et le plan traversait 40 semaines sans une seule sollicitation de la
+    // puissance aérobie maximale — c'est elle qui plafonne l'allure d'endurance sur laquelle
+    // tout le reste se joue. Une semaine sur deux en phase de développement, le créneau de
+    // qualité bascule donc sur elle ; le seuil nage revient l'autre semaine. Rien n'est
+    // sacrifié, tout est alterné — c'est ce que fait un entraîneur avec trois séances.
+    // Le SUPPORT suit les zones fragiles (R5.4) : impact → nage, épaule → course. Les deux à la
+    // fois : aucun support n'est sûr, on laisse la main aux branches prudentes ci-dessous.
+    if (phase === "dev" && kit.weekNum % 2 === 1 && !kit.noVo2 && !medHold && !beginner
+        && !(inj.impact && shoulder)
+        && ((kit.r.budgetPerWeek ?? 6) <= 4 || (kit.r.offDays?.length ?? 0) >= 3)) {
+      S2.push(inj.impact ? vo2Swim() : vo2Trail());
+    } else if (shoulder) {
       S2.push({ d: "sw", name: "Nage seuil contrôlé (épaule épargnée)", note: "Épaule fragile : volume modéré, technique soignée, et les plaquettes réduites au minimum — ce sont elles qui chargent l'épaule en swimrun. Arrêt au moindre signal articulaire.", det: "",
         steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(P(4, 7), 100, "sw.css", "25-35s", " amplitude confortable, SANS plaquettes", false, "sw"), { repCap: 10 }), Cm(150, "souple")] });
     } else if (beginner) {
@@ -3536,17 +3561,22 @@ function buildSwimrunSessions(kit            )              {
     }
   } else if (slot === "dur2") {
     // ---- Qualité COURSE : le terrain est du trail, l'impact compte ----
-    if (inj.impact) {
+    if (inj.impact && (phase === "dev" || phase === "spec") && !kit.noVo2 && !medHold && !beginner) {
+      // R5.4 — zone fragile à l'impact : la VO2max ne disparaît pas, elle change de SUPPORT.
+      // Le swimrun n'a pas de vélo pour absorber l'intensité sans impact, mais il a l'eau — et
+      // c'est même le support le plus spécifique des deux. Départs serrés : la difficulté vient
+      // du temps de repos, pas de la vitesse pure.
+      S2.push(vo2Swim());
+    } else if (inj.impact) {
       S2.push({ d: "rn", name: "Seuil course (surface souple)", note: "Zone fragile déclarée : stimulus fort, sans vitesses maximales ni à-coups, sur surface souple.", det: "",
         steps: [W(15, "footing très facile"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot", " sur surface souple"), C(10, "footing facile")] });
-    } else if ((phase === "dev" || phase === "spec") && !kit.noVo2 && !medHold && !beginner && !inj.impact) {
+    } else if ((phase === "dev" || phase === "spec") && !kit.noVo2 && !medHold && !beginner) {
       // R4.8f (audit v7) — le module ne contenait AUCUN stimulus VO2/vitesse : `noVo2` et
       // « pas de VO2 en affûtage » y étaient donc des règles vides. Un swimrun se court à
       // allure d'endurance, mais la puissance aérobie maximale reste ce qui plafonne cette
       // allure — elle se travaille en phase de développement, courte et sur le terrain de la
       // course, pas sur piste.
-      S2.push({ d: "rn", name: "VO2max sur sentier", note: "Le seul bloc vraiment dur de ta semaine : effort maximal tenable ~3 min, récupération complète. On le place en phase de développement — c'est lui qui relève le plafond sous lequel toute ton allure d'endurance se joue. Sur sentier, pas sur piste : le terrain fait partie du geste.", det: "",
-        steps: [W(18, "footing progressif sur sentier + 4 lignes droites"), B(P(4, 6), 3, "rn.vo2", "2min30 trot", "", ), C(10, "footing très souple")] });
+      S2.push(vo2Trail());
     } else {
       S2.push({ d: "rn", name: "Seuil course sur sentier", note: "En swimrun on court sur des rochers, des racines et des sentiers, jambes mouillées et chaussures pleines d'eau. Cours ce seuil sur le terrain le plus proche de ta course, pas sur piste.", det: "",
         steps: [W(15, "footing progressif sur sentier"), B(P(3, 5), P(5, 9), "rn.thr", "2min trot"), C(10, "footing souple")] });
@@ -3843,12 +3873,69 @@ function buildDays(r              , refs      , hz         )           {
   }
 
   applyRunImpactCap(r, days, refs, hz);
-  applyDisciplineCoverage(r, days, refs, hz, ctx);
   applySessionBudget(r, days);
   applyStrengthGrafts(r, days);
   applyAntiCollage(r, days, refs, hz, ctx);
   applyPolarizationGuard(r, days, ctx, refs, hz);
+  // R5.2 (audit v7 bis) — EN DERNIER : la couverture des disciplines tournait AVANT le budget
+  // de séances et l'anti-collage, qui pouvaient retirer la séance qu'elle venait d'ajouter.
+  // Une semaine d'affûtage de duathlon sortait ainsi sans une seule séance de course — et sans
+  // avertissement. Un duathlon commence et finit à pied : c'est la discipline qu'on ne peut pas
+  // ne pas toucher en affûtage.
+  applyDisciplineCoverage(r, days, refs, hz, ctx);
+  applyWeeklyVariety(r, days, refs, hz, ctx);
   return days;
+}
+
+/**
+ * R5.5 (audit v7 bis) — JAMAIS deux fois la même séance DE QUALITÉ dans la même semaine.
+ *
+ * Le cycle de 10 jours place deux créneaux `dur2` dans la même fenêtre calendaire : la
+ * bibliothèque, sollicitée deux fois avec le même créneau et la même phase, rend deux fois la
+ * séance IDENTIQUE (« Force basse cadence », « Seuil CSS + plaquettes »). Physiologiquement,
+ * répéter une séance n'est pas une faute ; pédagogiquement, une carte affichée deux fois dit à
+ * l'athlète que le plan ne le regarde pas — et deux blocs de seuil rigoureusement identiques
+ * ne se justifient pas quand le créneau frère est libre.
+ *
+ * On cherche donc une VARIANTE (le créneau dur frère), et à défaut on allège : la seconde
+ * occurrence redevient une séance facile. L'allègement va toujours dans le sens de la sécurité.
+ * Les doublons FACILES sont laissés tels quels — deux footings faciles dans une semaine, c'est
+ * un plan normal, pas un défaut.
+ */
+function applyWeeklyVariety(r              , days          , refs      , hz         , ctx            )       {
+  const mod = sportModule(r.profile.sport          );
+  const QUALITY_Z = /\.(vo2|thr|css|rp|ss|frc|speed|mara)$/;
+  const isQual = (s           ) => (s.steps || []).some((b) =>
+    b.role === "body" && (QUALITY_Z.test(String(b.zone || ""))
+      || ["tr.vam", "tr.asc", "tr.climb", "tr.flatthr"].includes(String(b.zone || ""))
+      || (b.reps || 1) > 1));
+  for (let w = 1; w <= r.weeks; w++) {
+    const seen = new Set        ();
+    for (const d of days.filter((x) => x.week === w)) {
+      for (let i = 0; i < d.sessions.length; i++) {
+        const s = d.sessions[i];
+        if (s.d === "rs" || !seen.has(s.name) || !isQual(s)) { seen.add(s.name); continue; }
+        const alt = d.slot === "dur1" ? "dur2" : d.slot === "dur2" ? "dur1" : null;
+        let done = false;
+        if (alt) {
+          const built = buildSessions(ctx, alt                                       , d.phaseId, d.prog || 0, d.week);
+          const pick = built.find((x) => x.d !== "rs" && !seen.has(x.name));
+          if (pick) {
+            if (pick.steps && pick.steps.length) renderSess(pick, refs, hz, r.baseRefs);
+            d.slot = alt; d.sessions[i] = pick; done = true;
+          }
+        }
+        if (!done) {
+          const built = buildSessions(ctx, mod.easyFallbackSlot                                       , d.phaseId, d.prog || 0, d.week);
+          const pick = built.find((x) => x.d !== "rs");
+          if (!pick) { seen.add(s.name); continue; }
+          if (pick.steps && pick.steps.length) renderSess(pick, refs, hz, r.baseRefs);
+          d.charge = "facile"; d.slot = mod.easyFallbackSlot; d.sessions[i] = pick;
+        }
+        seen.add(d.sessions[i].name);
+      }
+    }
+  }
 }
 
 /** Plafond de jours d'impact course : l'excédent devient cross-training vélo ou repos.
@@ -3863,6 +3950,7 @@ function applyRunImpactCap(r              , days          , refs      , hz      
     const wd = days.filter((d) => d.week === w);
     const isRecupWk = wd.filter((d) => d.isR).length >= 4;
     const cap = isRecupWk ? Math.max(2, r.maxRunDays - 1) : r.maxRunDays;
+    let subsThisWeek = 0; // R5.5 — rang de la substitution DANS la semaine
     const runDays = wd.filter((d) => d.sessions.some((s) => s.d === "rn"));
     let over = runDays.length - cap;
     if (over <= 0) continue;
@@ -3877,7 +3965,7 @@ function applyRunImpactCap(r              , days          , refs      , hz      
         // correctement retirés. Tant qu'une passe peut fabriquer une séance sans passer par
         // une fonction qui connaît les drapeaux, le garde-fou reste contournable par la
         // prochaine passe ajoutée — c'est la leçon structurelle, pas le symptôme.
-        const s = crossTrainingSession(r, isTrail, d.charge === "dur");
+        const s = crossTrainingSession(r, isTrail, d.charge === "dur", subsThisWeek++);
         renderSess(s, refs, hz, r.baseRefs);
         d.sessions = [s];
       } else {
@@ -3906,7 +3994,14 @@ function applyDisciplineCoverage(r              , days          , refs      , hz
   let impossible = 0;
   for (let w = 1; w <= r.weeks; w++) {
     const wd = days.filter((d) => d.week === w);
-    if (wd.filter((d) => d.isR).length >= 4) continue; // semaine de récup : structure allégée
+    // On LIT l'information au lieu de la deviner : compter les jours de repos confondait une
+    // semaine d'affûtage avec une semaine de récupération, et l'exemptait de toute couverture.
+    const isRecupWeek = wd.length > 0 && wd.every((d) => d.isR);
+    const isTaper = wd[0]?.phaseId === "taper";
+    if (isRecupWeek) continue; // récup : structure volontairement allégée
+    // En affûtage, la couverture reste exigée pour la discipline PRINCIPALE au moins : le
+    // volume baisse, la spécificité non.
+    const required = isTaper ? [mod.mainDiscipline] : mod.disciplines;
     const present = new Set        ();
     for (const d of wd)
       for (const s of d.sessions) {
@@ -3914,7 +4009,7 @@ function applyDisciplineCoverage(r              , days          , refs      , hz
         if (s.d === "br") { for (const b of s.steps || []) if (b.leg) present.add(b.leg === "bike" ? "bk" : b.d || "rn"); present.add("bk"); present.add("rn"); }
         else present.add(s.d);
       }
-    const missing = mod.disciplines.filter((x) => !present.has(x));
+    const missing = required.filter((x) => !present.has(x));
     if (!missing.length) continue;
     // Un jour facile non bloqué peut changer de discipline sans toucher à la structure dure.
     const donors = wd.filter((d) => !d.forced && d.charge === "facile" && d.sessions.some((s) => s.d !== "rs"));
@@ -3924,18 +4019,28 @@ function applyDisciplineCoverage(r              , days          , refs      , hz
       if (!donor) break;
       // La séance de remplacement passe par le point d'entrée unique (R4.0) : elle connaît les
       // drapeaux médicaux et d'âge. Le cross-training vélo EST la séance vélo facile.
+      // R5.2 — en AFFÛTAGE, couvrir ne doit pas REGONFLER : la décroissance de l'affûtage est
+      // une règle de sécurité (R3.13), la couverture une règle de complétude. La séance de
+      // remplacement ne peut donc pas peser sensiblement plus que celle qu'elle remplace.
+      const donorMin = donor.sessions.reduce((t, s) => t + (s.min || 0), 0);
+      const tooHeavy = (s           ) => isTaper && donorMin > 0 && (s.min || 0) > donorMin * 1.15;
       if (disc === "bk") {
         const sess = crossTrainingSession(r, false, false);
         sess.name = "Endurance vélo (couverture discipline)";
         sess.note = "Ton enveloppe de jours laisse peu de place : cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan de duathlon sans vélo n'est pas un plan allégé, c'est un plan d'un autre sport.";
         renderSess(sess, refs, hz, r.baseRefs);
+        if (tooHeavy(sess)) continue;
         donor.sessions = [sess];
         fixed++;
       } else {
         const built = buildSessions(ctx, disc === "sw" ? "facile2" : "facileR", donor.phaseId, donor.prog || 0, donor.week);
-        const pick = built.find((x) => x.d === disc);
-        if (!pick) continue;
+        // R5.5 — ne jamais réinstaller une séance déjà présente cette semaine-là : la
+        // reconstruction produisait un doublon exact (« Seuil CSS + plaquettes » deux fois).
+        const already = new Set(wd.flatMap((x) => x.sessions.map((y) => y.name)));
+        const pick = built.find((x) => x.d === disc && !already.has(x.name)) || built.find((x) => x.d === disc);
+        if (!pick || already.has(pick.name)) continue;
         for (const x of built) if (x.steps && x.steps.length) renderSess(x, refs, hz, r.baseRefs);
+        if (tooHeavy(pick)) continue;
         donor.sessions = [pick];
         fixed++;
       }
@@ -3956,7 +4061,24 @@ function applyDisciplineCoverage(r              , days          , refs      , hz
  * @param wantsVertical  trail : garder le stimulus vertical (côte) plutôt qu'un plat
  * @param wantsIntensity le jour remplacé était un jour DUR : on cherche un équivalent
  */
-function crossTrainingSession(r              , wantsVertical         , wantsIntensity         )            {
+function crossTrainingSession(r              , wantsVertical         , wantsIntensity         , nth = 0)            {
+  // R5.5 (audit v7 bis) — le point d'entrée unique produisait la MÊME séance à chaque appel :
+  // deux jours de course en excès dans la semaine donnaient deux séances rigoureusement
+  // identiques. Le rang dans la semaine fait varier le contenu — un athlète qui lit deux fois
+  // la même carte pense (à raison) que le plan ne le regarde pas.
+  if (nth >= 1 && !r.medHold) {
+    // La variante fait varier le CONTENU, jamais la CHARGE : un deuxième remplacement plus long
+    // rendrait le plan d'une blessure multiple plus lourd que celui d'une blessure unique
+    // (mesuré au banc v6, B3). Même durée que l'endurance de référence, travail de cadence
+    // en plus — c'est la lecture qui change, pas la dose.
+    return {
+      d: "bk", name: "Endurance vélo — travail de cadence (sans impact)",
+      note: "Deuxième remplacement de la semaine : même durée que l'autre, mais on y ajoute de la cadence. Alterne 5 min à cadence haute (95-100 tr/min) et 5 min à cadence libre, tout du long, en endurance. Le geste travaille pendant que les tissus de la course récupèrent.",
+      det: "",
+      steps: [{ role: "body", durationMin: 55, zone: "bk.z2", intensity: intOf("bk.z2")                      }],
+      ...({ plainBody: true }          ),
+    }             ;
+  }
   // 1. Drapeau médical : AUCUNE intensité, quelle que soit la raison du remplacement.
   //    « Un mauvais plan vaut mieux qu'un plan dangereux » (manifeste).
   if (r.medHold) {
@@ -4167,6 +4289,114 @@ function applyPolarizationGuard(r              , days          , ctx            
  * contrat qui ne tient que par les rattrapages de ses consommateurs n'est pas un contrat — le
  * prochain consommateur oubliera. Exporté pour que la boucle de réparation l'applique aussi.
  */
+/**
+ * R5.3 (audit v7 bis) — RÉCONCILIATION DE LA COURBE ANNONCÉE ET DU PRESCRIT.
+ *
+ * Appelée EN DERNIER (comme `syncDerivedLabels`, même leçon R5.1) : les passes de réparation
+ * modifient encore les durées après la génération, et un chiffre dérivé qu'on fige trop tôt
+ * ment dès la première réparation.
+ */
+function reconcileDeclaredVolume(plan        , warnings          )       {
+  // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
+  // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
+  // règle, mais elle porte sur la réduction vs le PIC, pas sur l'écart à sa propre courbe.
+  // Une semaine pouvait donc être à 45 % du pic (règle d'affûtage satisfaite) tout en
+  // prescrivant 71 % de plus que ce que la courbe annonce à l'athlète — mesuré : ratio 1,71 en
+  // trail, 2,02 en swimrun, et toujours sur la DERNIÈRE semaine.
+  //
+  // En affûtage, les planchers de séance (une séance digne ne descend pas sous 30 min)
+  // empêchent structurellement d'atteindre une courbe très basse. On ne casse donc pas les
+  // séances : on aligne le CHIFFRE ANNONCÉ sur ce qui est réellement prescrit — c'est le même
+  // principe que la sonde de capacité (la promesse suit ce que les plafonds permettent).
+  // La règle de sécurité R3.13 (affûtage ≤ 60 % du pic) continue, elle, de gouverner le fond.
+  //
+  // Le même écart existe hors affûtage, sur les enveloppes très basses : un plafond
+  // hebdomadaire de 4 h face à un objectif long donnait une courbe à 0,6 h et une semaine
+  // prescrite à 1,2 h — composée de quatre séances de 3 MINUTES et d'une sortie longue au
+  // plancher. Deux fautes en une, traitées dans l'ordre du manifeste :
+  //   1. la FRÉQUENCE cède avant la TAILLE — une séance sous le quart d'heure ne vaut pas le
+  //      déplacement, son jour redevient du repos (principe déjà appliqué à la nage) ;
+  //   2. si la structure minimale dépasse encore l'enveloppe déclarée, le chiffre annoncé
+  //      s'aligne sur le prescrit ET un AVERTISSEMENT le dit, avec les deux remèdes. Le
+  //      silence était le défaut : un athlète ne peut pas arbitrer ce qu'on ne lui dit pas.
+  const MIN_WORTH_MIN = 15;
+  const dayMin = (d       ) => d.sessions.reduce((u, sx) => u + (sx.min || 0), 0);
+  const weekMinOf = (wk        ) => wk.days.reduce((t, d) => t + dayMin(d), 0);
+  const weekH = (wk        ) => Math.round((weekMinOf(wk) / 60) * 10) / 10;
+
+  // R5.3 — L'AFFÛTAGE DÉCROÎT, POINT. La décroissance était jusqu'ici ÉMERGENTE (courbe + coupe
+  // R3.13) : sur un cycle de 10 jours, la dérive des créneaux d'une semaine calendaire à l'autre
+  // pouvait rendre la 3ᵉ semaine d'affûtage plus lourde que la 2ᵉ (147→98→123→88 mesuré, banc v6
+  // D10). Une règle de sécurité ne doit pas dépendre d'un effet de bord : elle s'énonce et se
+  // vérifie ici, en dernier, quelle que soit la passe qui a bougé une durée avant.
+  {
+    let prev = Infinity;
+    for (const wk of plan.weeks) {
+      if (wk.phase.id !== "taper") continue;
+      for (let g = 0; g < 6 && weekMinOf(wk) > prev; g++) {
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
+        if (active.length <= 1) break;
+        const cand = active.filter((d) => !d.sessions.some((s) => s.long || s.brick));
+        const victim = (cand.length ? cand : active).reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
+        victim.charge = "off";
+        victim.slot = "off";
+        victim.sessions = [{ d: "rs", name: "OFF (affûtage décroissant)", det: "repos — chaque semaine d'affûtage pèse moins que la précédente : c'est la règle, pas une conséquence", steps: [], min: 0 }];
+      }
+      prev = weekMinOf(wk);
+    }
+  }
+  let forcedWeeks = 0;
+  for (const wk of plan.weeks) {
+    const lim = wk.phase.id === "taper" ? 1.25 : 1.4;
+    // Pas de coupe en AFFÛTAGE : sa décroissance est stricte (R3.13, banc v6 D10) et retirer
+    // une séance courte d'une semaine plutôt que d'une autre y casse la monotonie.
+    if (wk.phase.id !== "taper") {
+      let work = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
+      for (const d of [...work].sort((x, y) => dayMin(x) - dayMin(y))) {
+        // La coupe ne s'applique QU'AUX semaines qui débordent déjà de leur courbe : ailleurs,
+        // une séance courte est un choix de la courbe, pas un artefact de plancher.
+        if (work.length <= 1 || weekH(wk) <= (wk.vol_declared ?? wk.vol) * lim) break;
+        if (dayMin(d) >= MIN_WORTH_MIN) break; // les suivantes sont plus longues : couper deviendrait arbitraire
+        d.charge = "off"; d.slot = "off";
+        d.sessions = [{ d: "rs", name: "OFF (séance trop courte)", det: "repos — sous un quart d'heure, une séance ne vaut pas le déplacement : la fréquence cède, pas la taille", steps: [], min: 0 }];
+        work = work.filter((x) => x !== d);
+      }
+    }
+    const delivered = weekH(wk);
+    if (delivered > (wk.vol_declared ?? wk.vol) * lim) {
+      wk.vol_declared = delivered;
+      wk.vol = delivered;
+      if (wk.phase.id !== "taper" && !wk.isRecup) forcedWeeks++;
+    }
+  }
+  if (forcedWeeks > 0)
+    warnings.push("Sur " + forcedWeeks + " semaine(s) de charge, la structure minimale de ce plan (une séance digne de ce nom ne descend pas sous 30 min, une sortie longue encore moins) dépasse le volume hebdomadaire que tu as déclaré. Le chiffre annoncé a été aligné sur ce qui t'est réellement prescrit — mieux vaut une courbe honnête qu'une promesse que le plan ne tient pas. Deux remèdes, à toi de choisir : relever le volume dont tu disposes, ou viser un objectif plus court.");
+
+}
+
+/**
+ * R5.1 (audit v7 bis) — POINT DE CONVERGENCE de toute prose dérivée d'un champ numérique.
+ * Le recalcul du libellé vivait dans `generatePlan()`, avec le commentaire « une fois que plus
+ * rien ne bougera ». C'était l'intention, pas l'ordonnancement : `applyTargetedRepairs()` et
+ * `reduceDay()` modifient encore les répétitions APRÈS. Le nom repartait alors en avance sur
+ * les chiffres — dans l'autre sens qu'au premier tour (4 transitions annoncées, 2 prescrites).
+ * Cette fonction est appelée EN DERNIER, à la sortie de la boucle de réparation. Toute prose
+ * qui dépend d'un nombre doit passer par ici : c'est ce qui empêche la prochaine passe de
+ * réparation de rouvrir le même écart.
+ */
+function syncDerivedLabels(plan        )       {
+  for (const w of plan.weeks)
+    for (const d of w.days)
+      for (const sess of d.sessions) {
+        // Swimrun : le nombre de transitions annoncé par le nom EST la spécification de la
+        // séance — il se relit sur le leg de nage, jamais sur une valeur figée à la naissance.
+        if (/\(\d+ transitions\)/.test(sess.name || "")) {
+          const swLeg = (sess.steps || []).find((b) => b.role === "body" && b.leg === "swim");
+          if (swLeg) sess.name = String(sess.name).replace(/\(\d+ transitions\)/, "(" + 2 * (swLeg.reps || 1) + " transitions)");
+        }
+      }
+}
+
 function normalizeRestMinutes(plan        )       {
   for (const w of plan.weeks)
     for (const d of w.days)
@@ -4378,11 +4608,26 @@ function generatePlan(profile                , opts                             
   let _prevChargeMin = 0; // minutes livrées de la dernière semaine de CHARGE
   // Quand les planchers bloquent le scaling vers le bas, la FRÉQUENCE cède (même principe
   // que R3.13 en affûtage) : le jour facile le plus léger passe OFF.
+  // R5.2 (audit v7 bis) — UNE COUPE NE PEUT PAS ORPHELINER LA DISCIPLINE PRINCIPALE. La passe de
+  // couverture tourne en fin de `buildDays` ; les coupes de volume, elles, tournent APRÈS et
+  // pouvaient retirer la seule séance de course d'une semaine d'affûtage de duathlon — un
+  // duathlon commence et finit à pied. Chaque sélection de victime passe désormais par ce filtre.
+  const keepsMainDiscipline = (wd2          , victim        )          => {
+    const mainD = sportModule(r.profile.sport          ).mainDiscipline;
+    const covers = (d        ) => d.sessions.some((s) => s.d === mainD || (s.d === "br" && (s.steps || []).some((b) => b.leg === (mainD === "rn" ? "run" : mainD === "bk" ? "bike" : "swim"))));
+    if (!covers(victim)) return true;
+    return wd2.some((d) => d !== victim && covers(d));
+  };
   const cutLightestEasyDay = (wd2          , why        , minActive = 3)          => {
     const active = wd2.filter((d) => d.charge !== "off" && d.sessions.some((s) => s.d !== "rs"));
     if (active.length <= minActive) return false;
-    const cand = active.filter((d) => (d.charge === "facile" || d.charge === "recup") && !d.forced && !d.sessions.some((s) => s.long || s.brick));
-    if (!cand.length) return false;
+    const cand0 = active.filter((d) => (d.charge === "facile" || d.charge === "recup") && !d.forced && !d.sessions.some((s) => s.long || s.brick));
+    if (!cand0.length) return false;
+    // La couverture de discipline oriente le choix ; elle ne l'INTERDIT jamais. Si le seul jour
+    // coupable porte la discipline principale, la coupe a lieu quand même : la hiérarchie du
+    // manifeste met le volume sûr au-dessus de la complétude du plan.
+    const candK = cand0.filter((d) => keepsMainDiscipline(wd2, d));
+    const cand = candK.length ? candK : cand0;
     const dayMin = (d2        ) => d2.sessions.reduce((t, s) => t + (s.min || 0), 0);
     const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
     victim.charge = "off";
@@ -4396,16 +4641,23 @@ function generatePlan(profile                , opts                             
   const cutSmallestSessionIn = (wd2          , minRemainMin = 0)          => {
     const cur = weekMin(wd2);
     let victim                                                = null;
-    for (const skipForced of [true, false]) {
-      for (const d of wd2) {
-        if (skipForced && d.forced) continue;
-        d.sessions.forEach((s, si) => {
-          if (s.d === "rs" || s.long || s.brick) return;
-          const m = s.min || 0;
-          if (!victim || m < victim.min) victim = { d, si, min: m };
-        });
+    // R5.2 — on ÉVITE d'orpheliner la discipline principale (`keepMain`), puis on repasse sans
+    // ce garde si c'était la seule coupe possible : orienter, jamais interdire.
+    for (const keepMain of [true, false]) {
+      const mainD = sportModule(r.profile.sport          ).mainDiscipline;
+      for (const skipForced of [true, false]) {
+        for (const d of wd2) {
+          if (skipForced && d.forced) continue;
+          d.sessions.forEach((s, si) => {
+            if (s.d === "rs" || s.long || s.brick) return;
+            if (keepMain && s.d === mainD && !wd2.some((o) => o.sessions.some((x) => x !== s && (x.d === mainD || x.d === "br")))) return;
+            const m = s.min || 0;
+            if (!victim || m < victim.min) victim = { d, si, min: m };
+          });
+        }
+        if (victim) break; // repli : si tous les jours candidats sont « forcés », on coupe quand même une séance (jamais longue/brick)
       }
-      if (victim) break; // repli : si tous les jours candidats sont « forcés », on coupe quand même une séance (jamais longue/brick)
+      if (victim) break;
     }
     if (!victim) return false;
     const v = victim                                          ;
@@ -4571,8 +4823,10 @@ function generatePlan(profile                , opts                             
         if (weekMin(wd) <= _maxChargeMin * R313_TAPER_MAX_VS_PEAK) break;
         const active = wd.filter((d) => d.charge !== "off" && d.sessions.some((s) => s.d !== "rs"));
         if (active.length <= 3) break;
-        const cand = active.filter((d) => d.charge === "facile" && !d.forced && !d.sessions.some((s) => s.long || s.brick));
-        if (!cand.length) break;
+        const cand0 = active.filter((d) => d.charge === "facile" && !d.forced && !d.sessions.some((s) => s.long || s.brick));
+        if (!cand0.length) break;
+        const candK = cand0.filter((d) => keepsMainDiscipline(wd, d));
+        const cand = candK.length ? candK : cand0;
         const dayMin = (d2        ) => d2.sessions.reduce((t, s) => t + (s.min || 0), 0);
         const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
         victim.charge = "off";
@@ -4803,11 +5057,21 @@ function generatePlan(profile                , opts                             
         const raiseCap = Math.min(prevOfPeak ? wmW2(prevOfPeak) * C22_MAX_WEEKLY_GROWTH : Infinity, capH * 60);
         for (let g = 0; g < 2 && wmW2(bestPeakW) < maxCharge && nSessIn(bestPeakW.days            ) < r.budgetPerWeek; g++) {
           const wd2 = bestPeakW.days            ;
-          const donor = wd2.flatMap((d) => d.sessions).filter((s) => s.d === "sw" && s.steps && s.steps.length && !s.long).sort((x, y) => (x.min || 0) - (y.min || 0))[0];
+          // R5.5 — le pic monte d'une séance TECHNIQUE DOUCE : on ne clone qu'une séance facile
+          // (jamais un seuil : le pic n'a pas à gagner de l'intensité par une passe de volume),
+          // et le clone porte un nom PROPRE. Cloner à l'identique donnait « Seuil CSS +
+          // plaquettes » deux fois dans la même semaine — un athlète qui lit deux fois la même
+          // carte en conclut, à raison, que le plan ne le regarde pas.
+          const isQualitySess = (s           ) => (s.steps || []).some((b) =>
+            b.role === "body" && (/\.(vo2|thr|css|rp|ss|frc|speed|mara)$/.test(String(b.zone || "")) || (b.reps || 1) > 1));
+          const donor = wd2.flatMap((d) => d.sessions).filter((s) => s.d === "sw" && s.steps && s.steps.length && !s.long && !isQualitySess(s)).sort((x, y) => (x.min || 0) - (y.min || 0))[0];
           const restDay = wd2.find((d) => !d.forced && !d.sessions.some((s) => s.d !== "rs"));
           if (!donor || !restDay) break;
           if (wmW2(bestPeakW) + (donor.min || 0) > raiseCap) break;
           const clone = structuredClone(donor)             ;
+          const takenNames = new Set(wd2.flatMap((d) => d.sessions.map((s) => s.name)));
+          for (let sfx = 0; takenNames.has(clone.name); sfx++)
+            clone.name = donor.name + " (volume du pic" + (sfx > 0 ? " " + (sfx + 1) : "") + ")";
           restDay.charge = "facile";
           restDay.slot = "facileR";
           restDay.sessions = [clone];
@@ -5007,21 +5271,6 @@ function generatePlan(profile                , opts                             
     }
   }
 
-  // R4.4 (audit v7) — LIBELLÉ DÉRIVÉ APRÈS SCALING. Un nom calculé à la construction est de la
-  // prose figée ; les répétitions sont un champ numérique que les passes de mise à l'échelle
-  // peuvent encore bouger. Les deux divergeaient : « Swimrun spécifique (6 transitions) » pour
-  // 15 nages prescrites, soit 30 transitions réelles — sur la seule séance dont l'objet DÉCLARÉ
-  // est de reproduire le nombre de transitions de la course. Le nom se recalcule ici, une fois
-  // que plus rien ne bougera. (Aucun test de sport : le motif du nom suffit à l'identifier.)
-  for (const w of wl)
-    for (const d of w.days            )
-      for (const sess of d.sessions) {
-        if (!/\(\d+ transitions\)/.test(sess.name || "")) continue;
-        const swLeg = (sess.steps || []).find((b) => b.role === "body" && b.leg === "swim");
-        if (!swLeg) continue;
-        sess.name = String(sess.name).replace(/\(\d+ transitions\)/, "(" + 2 * (swLeg.reps || 1) + " transitions)");
-      }
-
   if (_rampWeeks > 0) {
     r.decisions.push({
       id: "R10-depart", what: "Départ calé sur ton volume récent",
@@ -5104,7 +5353,10 @@ function generatePlan(profile                , opts                             
   }
 
   const plan         = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
+  reconcileDeclaredVolume(plan, r.warnings);
+
   normalizeRestMinutes(plan);
+  syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation
   return { plan, reasoned: r };
 }
 
@@ -5428,6 +5680,14 @@ function generateAudited(profile                , auditOpts                     
   // Les passes de réparation créent des séances de repos : le contrat `min` se re-normalise à
   // la sortie, pas seulement dans le générateur (R4.8a).
   normalizeRestMinutes(best.plan);
+  // R5.3 — la courbe ANNONCÉE se réconcilie avec le prescrit une fois les réparations passées :
+  // `reduceDay` et `applyTargetedRepairs` changent encore des durées, et un écart figé avant
+  // elles ment à l'athlète dès la première réparation (même leçon que R5.1).
+  reconcileDeclaredVolume(best.plan, warnings);
+  // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
+  // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
+  // ici, une fois que plus rien ne bougera — cette fois pour de vrai.
+  syncDerivedLabels(best.plan);
   return { plan: best.plan, audit: best.audit, warnings, repairs, decisions: reasoned.decisions };
 }
 

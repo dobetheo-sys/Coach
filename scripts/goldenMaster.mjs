@@ -205,7 +205,7 @@ if (!diffs.length) {
   process.exit(errors.length ? 1 : 0);
 }
 console.error("✖ golden master : " + diffs.length + " écart(s) sur " + n + " profils");
-for (const d of diffs.slice(0, 12)) console.error("   " + d.k + "\n      " + d.why);
+for (const d of diffs.slice(0, Number(process.env.GOLDEN_SHOW||12))) console.error("   " + d.k + "\n      " + d.why);
 if (diffs.length > 12) console.error("   … et " + (diffs.length - 12) + " autre(s)");
 console.error("\nUn écart = l'extraction est fausse. Si le changement est VOULU, recapturer");
 console.error("explicitement (`--capture`) pour qu'il apparaisse dans le diff git.");

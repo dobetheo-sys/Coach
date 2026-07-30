@@ -41,6 +41,11 @@ export const ZDEF: Record<string, ZoneDef> = {
   "sw.aero": { ref: "css", lo: 1.06, hi: 1.06, hr: null, fb: "endurance régulière" },
   "sw.css": { ref: "css", lo: 1.0, hi: 1.0, hr: null, fb: "allure seuil (test 400m)" },
   "sw.speed": { ref: "css", lo: 0.94, hi: 0.94, hr: null, fb: "rapide mais contrôlé" },
+  // R5.4 (audit v7 bis) — VO2max EN NAGE. Sous blessure d'impact, supprimer le stimulus laissait
+  // un plan swimrun sans aucune puissance aérobie maximale pendant 40 semaines. Le swimrun n'a
+  // pas de vélo, mais il a l'eau : c'est le cross-training de `applyRunImpactCap` appliqué au
+  // bon support. Départs serrés, récupération incomplète — la contrainte vient du temps de repos.
+  "sw.vo2": { ref: "css", lo: 0.90, hi: 0.90, hr: null, fb: "très rapide, récup courte (RPE 9/10)" },
   // ---- R7 TRAIL : zones EN MONTÉE, exprimées en vitesse ascensionnelle (m D+/h) ----
   // Le multiplicateur s'applique à la VAM seuil, pas à une allure : monter à 90-100% de sa
   // VAM est une consigne exécutable, « 5'36/km en montée » ne l'est pas.

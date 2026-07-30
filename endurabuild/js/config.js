@@ -99,8 +99,18 @@ const VLAB={competition:"Compétition",finir:"Finir",plaisir:"Plaisir",np:"Non p
   sedentaire:"Sédentaire",modere:"Modérément actif",actif:"Métier physique",oui:"Oui",non:"Non",parfois:"Parfois",coach:"Le moteur juge",
   respiration:"Respiration",technique:"Technique",endurance:"Endurance",peur:"Confiance",
   // R7 TRAIL
-  roulant:"Roulant",alpin:"Alpin",partielle:"Partielle",majoritaire:"Majoritaire",
-  montagne:"Montagne",collines:"Collines",a_decider:"À décider"};
+  roulant:"Roulant",alpin:"Alpin",majoritaire:"Majoritairement",
+  collines:"Collines",a_decider:"À décider"};
+// R5.6b (audit v7 bis) — le namespace de VLAB est PLAT : il collisionne dès qu'un sport réutilise
+// un mot. `partielle` (dispo « 4-5j/sem ») était écrasé par `partielle` (nuit), et `montagne`
+// (terrain « Montagneux ») par `montagne` (dénivelé accessible) — l'affichage de la dispo et du
+// terrain était donc FAUX. Les libellés ambigus vivent désormais dans une table PAR QUESTION,
+// consultée avant la table plate ; celle-ci ne garde que les valeurs sans ambiguïté.
+const VLAB_Q={
+  dispo:{partielle:"4-5j/sem"},
+  terrain:{montagne:"Montagneux"},
+  race_night:{partielle:"En partie",majoritaire:"Majoritairement",non:"Non"},
+  train_dplus_access:{montagne:"Montagne (+800m)",collines:"Collines (200-800m)",plat:"Plat (<200m)"}};
 const QLABELS={intent:"Intention",format:"Objectif",terrain:"Terrain",epreuve:"Épreuve",milieu:"Milieu",sex:"Sexe",level:"Niveau",swim_limit:"Limite",
   ftp_known:"FTP connue",ftp:"FTP",pace_known:"Allure connue",pace:"Allure seuil",css_known:"CSS connu",css:"CSS",history:"Historique",injury:"Blessures",
   sessions_max:"Séances max",vol_max:"Volume max",vol_recent:"Volume récent",dispo:"Dispo",shift_ok:"Décalage",off_days:"Jours OFF",off_which:"Jours bloqués",doubles:"Doubles",
@@ -111,7 +121,7 @@ const RULE_CAT={intent:"struct",sante:"sante",duree:"struct",medical:"sante",ter
 const CATS=[["struct","🧱","Structure"],["sante","❤️","Santé & garde-fous"],["disc","🎯","Spécifique sport"],["nutri","🍽","Nutrition"]];
 const HEROS=["cycle","volume","intent","sante"];
 
-export { CATS, HEROS, PREMIUM_STEPS_DEF, QLABELS, RULE_CAT, SPORTS, VLAB };
+export { CATS, HEROS, PREMIUM_STEPS_DEF, QLABELS, RULE_CAT, SPORTS, VLAB, VLAB_Q };
 
 // R6 — relais OAuth Strava par défaut : renseigner ICI l'URL du worker une fois déployé
 // (server/README.md) — tous les utilisateurs auront alors la connexion en 1 clic, sans

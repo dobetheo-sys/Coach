@@ -54,6 +54,13 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
   const pad = paddleShare(phase, shoulder);
   const gearNote = team ? " Longe attachée : c'est en binôme que ça se joue." : "";
 
+  // Le stimulus VO2 en course : un seul constructeur, deux créneaux possibles (`dur2` quand le
+  // budget le permet, `dur1` en alternance quand il ne le permet pas — R5.5).
+  const vo2Swim = (): V1Session => ({ d: "sw", name: "VO2max en nage (zone fragile épargnée)", note: "Ta zone fragile interdit l'intensité en course, pas la puissance aérobie maximale : elle se travaille dans l'eau, sans le moindre impact. Départs toutes les 1'30 : c'est la récupération courte qui fait le travail, pas la vitesse pure. Si tu sens la zone fragile, tu sors.", det: "",
+    steps: [Wm(300, "progressif + 4×25m accélérations"), Object.assign(Bd(P(6, 10), 50, "sw.vo2", "départ 1'30", "", false, "sw"), { repCap: 10 }), Cm(200, "très souple")] });
+  const vo2Trail = (): V1Session => ({ d: "rn", name: "VO2max sur sentier", note: "Le seul bloc vraiment dur de ta semaine : effort maximal tenable ~3 min, récupération complète. On le place en phase de développement — c'est lui qui relève le plafond sous lequel toute ton allure d'endurance se joue. Sur sentier, pas sur piste : le terrain fait partie du geste.", det: "",
+    steps: [W(18, "footing progressif sur sentier + 4 lignes droites"), B(P(4, 6), 3, "rn.vo2", "2min30 trot", ""), C(10, "footing très souple")] });
+
   if (slot === "durLong") {
     // ---- LA SÉANCE PIVOT : le swimrun spécifique (§R10.3.4) ----
     const band = S9_LONG_SHARE[phase] || S9_LONG_SHARE.dev;
@@ -112,7 +119,20 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
     }
   } else if (slot === "dur1") {
     // ---- Qualité NAGE : en tenue quand c'est possible, plaquettes progressives (S8) ----
-    if (shoulder) {
+    // R5.5 (audit v7 bis) — SUR UNE PETITE ENVELOPPE, LA QUALITÉ SE PARTAGE UN SEUL CRÉNEAU.
+    // Le stimulus VO2 vit dans `dur2` ; à 3 séances par semaine (ou 3 jours bloqués), le budget
+    // supprime ce jour et le plan traversait 40 semaines sans une seule sollicitation de la
+    // puissance aérobie maximale — c'est elle qui plafonne l'allure d'endurance sur laquelle
+    // tout le reste se joue. Une semaine sur deux en phase de développement, le créneau de
+    // qualité bascule donc sur elle ; le seuil nage revient l'autre semaine. Rien n'est
+    // sacrifié, tout est alterné — c'est ce que fait un entraîneur avec trois séances.
+    // Le SUPPORT suit les zones fragiles (R5.4) : impact → nage, épaule → course. Les deux à la
+    // fois : aucun support n'est sûr, on laisse la main aux branches prudentes ci-dessous.
+    if (phase === "dev" && kit.weekNum % 2 === 1 && !kit.noVo2 && !medHold && !beginner
+        && !(inj.impact && shoulder)
+        && ((kit.r.budgetPerWeek ?? 6) <= 4 || (kit.r.offDays?.length ?? 0) >= 3)) {
+      S2.push(inj.impact ? vo2Swim() : vo2Trail());
+    } else if (shoulder) {
       S2.push({ d: "sw", name: "Nage seuil contrôlé (épaule épargnée)", note: "Épaule fragile : volume modéré, technique soignée, et les plaquettes réduites au minimum — ce sont elles qui chargent l'épaule en swimrun. Arrêt au moindre signal articulaire.", det: "",
         steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(P(4, 7), 100, "sw.css", "25-35s", " amplitude confortable, SANS plaquettes", false, "sw"), { repCap: 10 }), Cm(150, "souple")] });
     } else if (beginner) {
@@ -132,17 +152,22 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
     }
   } else if (slot === "dur2") {
     // ---- Qualité COURSE : le terrain est du trail, l'impact compte ----
-    if (inj.impact) {
+    if (inj.impact && (phase === "dev" || phase === "spec") && !kit.noVo2 && !medHold && !beginner) {
+      // R5.4 — zone fragile à l'impact : la VO2max ne disparaît pas, elle change de SUPPORT.
+      // Le swimrun n'a pas de vélo pour absorber l'intensité sans impact, mais il a l'eau — et
+      // c'est même le support le plus spécifique des deux. Départs serrés : la difficulté vient
+      // du temps de repos, pas de la vitesse pure.
+      S2.push(vo2Swim());
+    } else if (inj.impact) {
       S2.push({ d: "rn", name: "Seuil course (surface souple)", note: "Zone fragile déclarée : stimulus fort, sans vitesses maximales ni à-coups, sur surface souple.", det: "",
         steps: [W(15, "footing très facile"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot", " sur surface souple"), C(10, "footing facile")] });
-    } else if ((phase === "dev" || phase === "spec") && !kit.noVo2 && !medHold && !beginner && !inj.impact) {
+    } else if ((phase === "dev" || phase === "spec") && !kit.noVo2 && !medHold && !beginner) {
       // R4.8f (audit v7) — le module ne contenait AUCUN stimulus VO2/vitesse : `noVo2` et
       // « pas de VO2 en affûtage » y étaient donc des règles vides. Un swimrun se court à
       // allure d'endurance, mais la puissance aérobie maximale reste ce qui plafonne cette
       // allure — elle se travaille en phase de développement, courte et sur le terrain de la
       // course, pas sur piste.
-      S2.push({ d: "rn", name: "VO2max sur sentier", note: "Le seul bloc vraiment dur de ta semaine : effort maximal tenable ~3 min, récupération complète. On le place en phase de développement — c'est lui qui relève le plafond sous lequel toute ton allure d'endurance se joue. Sur sentier, pas sur piste : le terrain fait partie du geste.", det: "",
-        steps: [W(18, "footing progressif sur sentier + 4 lignes droites"), B(P(4, 6), 3, "rn.vo2", "2min30 trot", "", ), C(10, "footing très souple")] });
+      S2.push(vo2Trail());
     } else {
       S2.push({ d: "rn", name: "Seuil course sur sentier", note: "En swimrun on court sur des rochers, des racines et des sentiers, jambes mouillées et chaussures pleines d'eau. Cours ce seuil sur le terrain le plus proche de ta course, pas sur piste.", det: "",
         steps: [W(15, "footing progressif sur sentier"), B(P(3, 5), P(5, 9), "rn.thr", "2min trot"), C(10, "footing souple")] });

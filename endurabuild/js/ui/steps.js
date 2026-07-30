@@ -1,6 +1,6 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
-import { CATS, HEROS, PREMIUM_STEPS_DEF, RULE_CAT, SPORTS, VLAB } from "../config.js";
+import { CATS, HEROS, PREMIUM_STEPS_DEF, RULE_CAT, SPORTS, VLAB, VLAB_Q } from "../config.js";
 import { $, S, ebActivate, ebClear, ebSave, todayISO } from "../state.js";
 import { renderPlan } from "../ui/plan-view.js";
 import { hideTabs, invalidatePlan } from "../ui/tabs.js";
@@ -427,7 +427,8 @@ function buildPremiumSteps(){return PREMIUM_STEPS_DEF;}
    GÉNÉRATEUR multisport
    ============================================================ */
 function curSteps(){return S.tier==="free"?buildFreeSteps():buildPremiumSteps();}
-function vlab(v){return String(v).split(",").map(x=>VLAB[x]||x).join(", ");}
+// `q` = identifiant de la question : lève l'ambiguïté des valeurs partagées (R5.6b).
+function vlab(v,q){const T=(q&&VLAB_Q[q])||null;return String(v).split(",").map(x=>(T&&T[x])||VLAB[x]||x).join(", ");}
 function bindInputs(scope){
   scope.querySelectorAll(".opts").forEach(g=>{const key=g.dataset.key,multi=g.dataset.multi==="1",excl=g.dataset.exclusive||"";
     g.querySelectorAll(".opt").forEach(b=>{const cur=(S.answers[key]||"").split(",").filter(Boolean);

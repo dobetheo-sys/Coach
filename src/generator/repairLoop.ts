@@ -8,7 +8,7 @@
 import type { AthleteProfile, V1Plan } from "../engine/types.ts";
 import { auditPlan, type AuditOpts, type PlanAudit } from "../audit/coherenceScorer.ts";
 import { R313_TAPER_MAX_VS_PEAK } from "../engine/constraintMatrix.ts";
-import { generatePlan, normalizeRestMinutes } from "./planGenerator.ts";
+import { generatePlan, normalizeRestMinutes, reconcileDeclaredVolume, syncDerivedLabels } from "./planGenerator.ts";
 import { renderSess, type Refs } from "./renderer.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 
@@ -326,5 +326,13 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
   // Les passes de réparation créent des séances de repos : le contrat `min` se re-normalise à
   // la sortie, pas seulement dans le générateur (R4.8a).
   normalizeRestMinutes(best.plan);
+  // R5.3 — la courbe ANNONCÉE se réconcilie avec le prescrit une fois les réparations passées :
+  // `reduceDay` et `applyTargetedRepairs` changent encore des durées, et un écart figé avant
+  // elles ment à l'athlète dès la première réparation (même leçon que R5.1).
+  reconcileDeclaredVolume(best.plan, warnings);
+  // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
+  // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
+  // ici, une fois que plus rien ne bougera — cette fois pour de vrai.
+  syncDerivedLabels(best.plan);
   return { plan: best.plan, audit: best.audit, warnings, repairs, decisions: reasoned.decisions };
 }

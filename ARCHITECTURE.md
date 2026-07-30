@@ -773,3 +773,28 @@ n'a **pas de format** (ses plafonds suivent la catégorie d'effort déduite, lue
 `EBV2.trailObjective` / `EBV2.trailCaps` — une seule table de chiffres dans le projet, celle
 du moteur), et un sport ou un format inconnu **retombe sur un repli documenté** au lieu de
 lever une exception. Garde : `smoke-retention` assertait déjà « aucune erreur JS ».
+
+## Audit externe v7 — les points de convergence (30/07/2026)
+
+Deux passes de l'audit multi-sport (harnais `audit_v7.cjs`, 4 580 profils) ont fait émerger une
+règle d'architecture que le registre ne portait pas encore : **tout chiffre DÉRIVÉ se réconcilie
+en dernier**. Trois défauts distincts avaient la même racine — une valeur calculée trop tôt, puis
+invalidée par une passe qui tournait après elle :
+
+| dérivé | fonction | appelée depuis |
+|---|---|---|
+| prose issue d'un nombre (« 4 transitions ») | `syncDerivedLabels(plan)` | `generateAudited`, après les réparations |
+| courbe ANNONCÉE vs prescrit + décroissance de l'affûtage | `reconcileDeclaredVolume(plan, warnings)` | `generatePlan` **et** `generateAudited` |
+| couverture des disciplines | `applyDisciplineCoverage` | fin de `buildDays`, après budget/anti-collage/polarisation |
+
+Corollaire, appris deux fois : **ne jamais DEVINER un état qu'on peut LIRE** (une semaine de
+récup était identifiée par comptage de jours de repos — une semaine d'affûtage en a autant), et
+**une règle de sécurité ne doit pas être émergente** (la décroissance de l'affûtage tenait à la
+combinaison courbe + coupe R3.13 ; le glissement des créneaux d'un cycle de 10 jours suffisait à
+la casser). Elle s'énonce, elle se vérifie, elle a un test.
+
+Deux invariants de contenu s'y ajoutent, valables pour toute passe de reconstruction :
+`applyWeeklyVariety` (jamais deux fois la même séance de QUALITÉ dans une semaine — les doublons
+faciles sont normaux) et la règle des variantes : **faire varier le contenu, jamais la charge**
+(une substitution plus longue que celle qu'elle remplace rendait un plan « deux blessures » plus
+lourd qu'un plan « une blessure »). Détail et chiffres avant/après dans `R10_DEFECTS.md`.
