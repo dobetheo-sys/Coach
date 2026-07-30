@@ -76,5 +76,27 @@ Ce qui reste est budgété et ne peut plus remonter : `U-DECL` (lissage d'affût
 incluant les récups, R4.8c), `U-RACEDATE` (course lointaine : plafond + avertissement, R4.8b),
 `U-DUP` (variantes d'un même créneau), `T-DPLUS`/`T-NIGHT` (R4.7a/b), `S-NOVO2` et `S-LONGSWIM`
 sur les profils blessés ou extrêmes, `S-MIX`, `D-DISC` quand l'enveloppe est trop étroite.
-`R4.7c` (récupérations trail non chiffrées → temps non compté par séance) reste ouvert : c'est
-une mesure, pas un check, et elle demande un champ `recoveryMin` sur les steps.
+### R4.7c — récupération non comptée : diagnostic complet, correction reportée
+
+**Le défaut** : `stepMin()` (générateur) ne compte PAS la récupération entre répétitions, alors
+que `sessionLoad()` (auditeur) la compte quand le texte porte un chiffre. C'est la racine de
+l'« écart de métrique récup » traîné depuis des mois ET de `U-DECL`. Côté trail, 100 % des
+récupérations sont non chiffrées (« redescente MARCHÉE », « récupération complète ») : une
+séance de côtes annonce 12 min pour ~22 min réelles. Sur le total du plan l'écart se compense ;
+par SÉANCE et par SEMAINE il ne se compense pas — et c'est à cette échelle que les plafonds de
+volume et les jours durs adjacents sont évalués.
+
+**Tentative faite, puis annulée** (elle est instructive) : ajouter un champ numérique
+`recoveryMin` et compter la récup dans `stepMin`. Résultat immédiat : 9 violations dures
+(6 sauts >+25 % entre semaines de charge, 3 dominances de pic) et 1 régression au banc v6.
+
+**Ce que ça a appris — et c'est le vrai obstacle** : la récupération est une fraction NON
+PILOTABLE de la séance. La courbe de charge (R3.3) met à l'échelle la durée des blocs, pas la
+récup, qui suit le nombre de répétitions. Quand une semaine est mise à l'échelle par un facteur
+`f`, le livré vaut `corps × f + récup`, alors que le facteur est calculé sur le total : il
+SOUS-CORRIGE, d'autant plus que la part de récup est grande. La correction n'est donc pas
+« compter la récup » — c'est **calculer le facteur d'échelle sur la seule part pilotable** :
+`f = (cible − récup_fixe) / corps_scalable`, dans toutes les passes de lissage. C'est un
+chantier à part entière sur la boucle de volume, pas un ajout de champ.
+
+En attendant, `U-DECL` reste budgété et l'écart est documenté ici plutôt que masqué.
