@@ -10,11 +10,16 @@ import type { AthleteProfile, Sport } from "../engine/types.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
 import { THRESHOLDS } from "./coherenceScorer.ts";
 
+// D10-1 — le trail est un SPORT depuis R7 : le harnais auditait encore un format `run/trail`
+// qui n'existe plus dans l'UI, et n'auditait JAMAIS le vrai module trail (couvert seulement
+// par le banc v6 et l'E2E). Le format disparaît, le sport prend sa place — le nombre de
+// combinaisons est inchangé (486), ce qui est vérifié en CI.
 const SPORTS: Record<Sport, string[]> = {
-  run: ["5k", "10k", "semi", "marathon", "trail"],
+  run: ["5k", "10k", "semi", "marathon"],
   bike: ["crit", "route", "cyclo", "clm", "gravel"],
   swim: ["sprint", "demifond", "fond", "ow"],
   tri: ["S", "M", "70.3", "Full"],
+  trail: [""], // pas de format : la catégorie d'effort est DÉDUITE des données de la course
 };
 const HISTORIES = ["reprise", "confirme", "ancien"] as const;
 const LEVELS = ["debutant", "inter", "avance"] as const;
@@ -50,7 +55,13 @@ for (const sport of Object.keys(SPORTS) as Sport[]) {
     for (const history of HISTORIES) {
       for (const level of LEVELS) {
         for (const intent of INTENTS) {
-          const profile: AthleteProfile = { ...baseProfile(), sport, format, history, level, intent };
+          // Le trail sans données de course n'auditerait que ses valeurs par défaut : on lui
+          // donne une vraie course (62 km / 3 200 m D+, technique, partiellement nocturne).
+          const trailData = sport === "trail"
+            ? { race_distance_km: "62", race_dplus_m: "3200", race_technicity: "technique", race_night: "partielle",
+                train_dplus_access: "collines", treadmill: "non", poles: "a_decider", vam_known: "oui", vam: "850" }
+            : {};
+          const profile: AthleteProfile = { ...baseProfile(), sport, format, history, level, intent, ...trailData };
           try {
             const res = generateAudited(profile);
             const a = res.audit;

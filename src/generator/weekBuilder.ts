@@ -171,10 +171,12 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   return days;
 }
 
-/** Plafond de jours d'impact course : l'excédent devient cross-training vélo ou repos. */
+/** Plafond de jours d'impact course : l'excédent devient cross-training vélo ou repos.
+ *  D10-3 — s'applique à `run` ET `trail` (le trail ajoute l'excentrique à l'impact). */
 function applyRunImpactCap(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZones): void {
   const a = r.profile;
-  if (a.sport !== "run" || r.maxRunDays == null) return;
+  if ((a.sport !== "run" && a.sport !== "trail") || r.maxRunDays == null) return;
+  const isTrail = a.sport === "trail";
   const injImpact = r.inj.impact; // R6 (audit v6) — lecture unique des blessures
   const canCross = a.dispo === "quotidienne" || a.dispo === "semaine";
   for (let w = 1; w <= r.weeks; w++) {
@@ -188,7 +190,20 @@ function applyRunImpactCap(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZo
     for (let i = 0; i < ordered.length && over > 0; i++) {
       const d = ordered[i];
       if (canCross && (injImpact || d.charge === "dur")) {
-        const s: V1Session = d.charge === "dur"
+        // En trail, le substitut garde le stimulus qui compte : du VERTICAL sans impact.
+        // Un footing plat de remplacement perdrait le sens de la semaine.
+        const s: V1Session = isTrail
+          ? {
+            d: "bk", name: "Cross-training vélo en côte (sans impact)",
+            note: "Ton plafond de jours d'appui est atteint : ce vélo garde le travail en montée — le muscle et le cardio progressent — sans ajouter d'impact ni de descente. C'est le meilleur échange possible aujourd'hui.",
+            det: "",
+            steps: [
+              { role: "warmup", durationMin: 15, text: "progressif, sur le plat" },
+              { role: "body", reps: 4, durationMin: 8, zone: "bk.thr", intensity: intOf("bk.thr") as unknown as string, recoveryText: "4min souple en descente", text: "en côte, assis, cadence 60-70" },
+              { role: "cooldown", durationMin: 10, text: "souple" },
+            ],
+          }
+          : d.charge === "dur"
           ? { d: "bk", name: "Cross-training vélo (intensité)", note: "Intervalles vélo — équivalent VO2 sans impact, maintient la puissance aérobie pendant que le tissu se répare.", det: "", steps: [{ role: "warmup", durationMin: 15, text: "progressif" }, { role: "body", reps: 5, durationMin: 3, zone: "bk.vo2", intensity: intOf("bk.vo2") as unknown as string, recoveryText: "3min souple" }, { role: "cooldown", durationMin: 10, text: "souple" }] }
           : { d: "bk", name: "Cross-training vélo", note: "Zéro impact : le stimulus aérobie est conservé pendant que les tissus de la course récupèrent.", det: "", steps: [{ role: "body", durationMin: 55, zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string }], ...({ plainBody: true } as object) };
         renderSess(s, refs, hz, r.baseRefs);

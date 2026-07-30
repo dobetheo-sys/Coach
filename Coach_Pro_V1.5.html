@@ -2642,13 +2642,22 @@ class TrainingReasoningEngine {
 
     const injuries = inj.list;
     let maxRunDays                = null;
-    if (sp === "run") {
+    // D10-3 — le plafond de jours d'IMPACT vaut aussi pour le trail. Il ne s'appliquait qu'à
+    // `run` : depuis R7 un traileur avec une périostite recevait 5 jours de course par semaine,
+    // là où un coureur route avec la MÊME blessure en recevait 3. Or le trail ajoute la charge
+    // excentrique de la descente à l'impact — c'est la discipline la plus exigeante pour les
+    // tissus, pas la moins.
+    if (sp === "run" || sp === "trail") {
       maxRunDays = MAX_RUN_DAYS[history] ?? 5;
       if (inj.impact) maxRunDays = Math.max(3, maxRunDays - 1);
       // B2 (audit v6) — le tibia (périostite) est LA blessure de l'impact répété : le
       // plafond de jours de course est renforcé d'un jour supplémentaire.
       if (inj.list.includes("tibia")) maxRunDays = Math.max(3, maxRunDays - 1);
-      D("impact", "Jours de course max", maxRunDays + "/semaine", "La course est le sport à plus fort impact" + (inj.impact ? " — blessure d'impact déclarée, -1 jour" + (inj.list.includes("tibia") ? " (-1 de plus : le tibia est une blessure d'impact répété)" : "") : ""));
+      D("impact", "Jours de course max", maxRunDays + "/semaine",
+        (sp === "trail"
+          ? "Le trail cumule l'impact de la course et la charge excentrique de la descente : le plafond de jours d'appui vaut ici aussi"
+          : "La course est le sport à plus fort impact")
+        + (inj.impact ? " — blessure d'impact déclarée, -1 jour" + (inj.list.includes("tibia") ? " (-1 de plus : le tibia est une blessure d'impact répété)" : "") : ""));
     }
 
     // ---- 4. Calculer la charge : phases (C19) et courbe (bands + C22) ----
@@ -3215,6 +3224,19 @@ function sessionLoad(s            , refs              = DEFAULT_REFS)           
  
 const HARD_SUFFIX = [".vo2", ".thr", ".speed", ".css"];
 const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
+/**
+ * D10-6 — zones TRAIL (R7). Elles ne portent aucun des suffixes ci-dessus : `tr.vam` et
+ * `tr.flatthr` tombaient donc en « facile », et la répartition 80/20 comme le garde-fou de
+ * polarisation étaient AVEUGLES sur tout le trail (100% de facile mesuré sur les 27 profils).
+ * Classement par ce que l'effort coûte vraiment :
+ *   dur    — VAM (quasi maximal), seuil ascensionnel, seuil sur plat
+ *   modéré — allure de course en montée (tenable longtemps, mais loin d'être facile)
+ *   facile — marche rapide, montée souple, footing plat : de l'endurance, et c'est le but
+ * La DESCENTE n'entre pas ici : sa charge est excentrique, mesurée par l'axe D− (T2b),
+ * pas par l'intensité cardiaque — la compter « dure » ferait doublon avec son propre plafond.
+ */
+const TRAIL_HARD = ["tr.vam", "tr.asc", "tr.flatthr"];
+const TRAIL_MOD = ["tr.climb"];
 function intensitySplit(s            , refs              = DEFAULT_REFS)                 {
   const out                 = { easyMin: 0, modMin: 0, hardMin: 0 };
   if (!s.steps || !s.steps.length || s.d === "rs") {
@@ -3234,9 +3256,9 @@ function intensitySplit(s            , refs              = DEFAULT_REFS)        
     }
     const zone = typeof st.zone === "string" ? st.zone : "";
     // Brick : legs classés par leur zone (bk.rp = modéré) ; le leg CAP « allure cible » = modéré.
-    const cls = HARD_SUFFIX.some((z) => zone.endsWith(z))
+    const cls = TRAIL_HARD.includes(zone) || HARD_SUFFIX.some((z) => zone.endsWith(z))
       ? "hard"
-      : MOD_SUFFIX.some((z) => zone.endsWith(z)) || st.leg === "run"
+      : TRAIL_MOD.includes(zone) || MOD_SUFFIX.some((z) => zone.endsWith(z)) || st.leg === "run"
         ? "mod"
         : "easy";
     if (cls === "hard") out.hardMin += stMin;
@@ -4301,10 +4323,12 @@ function buildDays(r              , refs      , hz         )           {
   return days;
 }
 
-/** Plafond de jours d'impact course : l'excédent devient cross-training vélo ou repos. */
+/** Plafond de jours d'impact course : l'excédent devient cross-training vélo ou repos.
+ *  D10-3 — s'applique à `run` ET `trail` (le trail ajoute l'excentrique à l'impact). */
 function applyRunImpactCap(r              , days          , refs      , hz         )       {
   const a = r.profile;
-  if (a.sport !== "run" || r.maxRunDays == null) return;
+  if ((a.sport !== "run" && a.sport !== "trail") || r.maxRunDays == null) return;
+  const isTrail = a.sport === "trail";
   const injImpact = r.inj.impact; // R6 (audit v6) — lecture unique des blessures
   const canCross = a.dispo === "quotidienne" || a.dispo === "semaine";
   for (let w = 1; w <= r.weeks; w++) {
@@ -4318,7 +4342,20 @@ function applyRunImpactCap(r              , days          , refs      , hz      
     for (let i = 0; i < ordered.length && over > 0; i++) {
       const d = ordered[i];
       if (canCross && (injImpact || d.charge === "dur")) {
-        const s            = d.charge === "dur"
+        // En trail, le substitut garde le stimulus qui compte : du VERTICAL sans impact.
+        // Un footing plat de remplacement perdrait le sens de la semaine.
+        const s            = isTrail
+          ? {
+            d: "bk", name: "Cross-training vélo en côte (sans impact)",
+            note: "Ton plafond de jours d'appui est atteint : ce vélo garde le travail en montée — le muscle et le cardio progressent — sans ajouter d'impact ni de descente. C'est le meilleur échange possible aujourd'hui.",
+            det: "",
+            steps: [
+              { role: "warmup", durationMin: 15, text: "progressif, sur le plat" },
+              { role: "body", reps: 4, durationMin: 8, zone: "bk.thr", intensity: intOf("bk.thr")                     , recoveryText: "4min souple en descente", text: "en côte, assis, cadence 60-70" },
+              { role: "cooldown", durationMin: 10, text: "souple" },
+            ],
+          }
+          : d.charge === "dur"
           ? { d: "bk", name: "Cross-training vélo (intensité)", note: "Intervalles vélo — équivalent VO2 sans impact, maintient la puissance aérobie pendant que le tissu se répare.", det: "", steps: [{ role: "warmup", durationMin: 15, text: "progressif" }, { role: "body", reps: 5, durationMin: 3, zone: "bk.vo2", intensity: intOf("bk.vo2")                     , recoveryText: "3min souple" }, { role: "cooldown", durationMin: 10, text: "souple" }] }
           : { d: "bk", name: "Cross-training vélo", note: "Zéro impact : le stimulus aérobie est conservé pendant que les tissus de la course récupèrent.", det: "", steps: [{ role: "body", durationMin: 55, zone: "bk.z2", intensity: intOf("bk.z2")                      }], ...({ plainBody: true }          ) };
         renderSess(s, refs, hz, r.baseRefs);

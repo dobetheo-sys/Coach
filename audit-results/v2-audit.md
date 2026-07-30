@@ -4,19 +4,21 @@ Généré par `npm run audit:v2`. 486 combinaisons via le moteur V2, scorées pa
 
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| run | 135 | 1.14 | 1.07–1.21 | 0 | 0 | 0 | 0.38 | 0 | 80% | 0 | 97 |
+| run | 108 | 1.15 | 1.11–1.21 | 0 | 0 | 0 | 0.38 | 0 | 79% | 0 | 97 |
 | bike | 135 | 1.09 | 1.08–1.11 | 0 | 0 | 0 | 0.41 | 0 | 88% | 0 | 100 |
 | swim | 108 | 1.09 | 0.69–1.16 | 0 | 0 | 4 | 0.45 | 0 | 85% | 0 | 98 |
 | tri | 108 | 1.02 | 0.97–1.07 | 0 | 0 | 0 | 0.42 | 0 | 77% | 8 | 97 |
+| trail | 27 | 1.07 | 0.96–1.07 | 0 | 0 | 0 | 0.32 | 0 | 96% | 0 | 100 |
 
 ## V1.5 ↔ V2 (même auditeur, mêmes 486 profils)
 
 | Sport | Ratio pic méd V1.5 → V2 | Pire ratio V1.5 → V2 | Score moyen V1.5 → V2 |
 |---|---|---|---|
-| run | 1.13 → 1.14 | 1.25 → 1.28 | 100 → 97 |
+| run | 1.13 → 1.15 | 1.25 → 1.28 | 100 → 97 |
 | bike | 1.09 → 1.09 | 1.16 → 1.19 | 100 → 100 |
 | swim | 0.77 → 1.09 | 0.36 → 0.65 | 88 → 98 |
 | tri | 1.02 → 1.02 | 1.06 → 0.61 | 99 → 97 |
+| trail | NaN → 1.07 | 1.00 → 1.07 | NaN → 100 |
 
 ## Décisions du moteur — exemple (tri / 70.3 / confirme / inter / competition)
 

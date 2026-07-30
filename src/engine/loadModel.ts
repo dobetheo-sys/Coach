@@ -251,6 +251,19 @@ export interface IntensitySplit {
 }
 const HARD_SUFFIX = [".vo2", ".thr", ".speed", ".css"];
 const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
+/**
+ * D10-6 — zones TRAIL (R7). Elles ne portent aucun des suffixes ci-dessus : `tr.vam` et
+ * `tr.flatthr` tombaient donc en « facile », et la répartition 80/20 comme le garde-fou de
+ * polarisation étaient AVEUGLES sur tout le trail (100% de facile mesuré sur les 27 profils).
+ * Classement par ce que l'effort coûte vraiment :
+ *   dur    — VAM (quasi maximal), seuil ascensionnel, seuil sur plat
+ *   modéré — allure de course en montée (tenable longtemps, mais loin d'être facile)
+ *   facile — marche rapide, montée souple, footing plat : de l'endurance, et c'est le but
+ * La DESCENTE n'entre pas ici : sa charge est excentrique, mesurée par l'axe D− (T2b),
+ * pas par l'intensité cardiaque — la compter « dure » ferait doublon avec son propre plafond.
+ */
+const TRAIL_HARD = ["tr.vam", "tr.asc", "tr.flatthr"];
+const TRAIL_MOD = ["tr.climb"];
 export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS): IntensitySplit {
   const out: IntensitySplit = { easyMin: 0, modMin: 0, hardMin: 0 };
   if (!s.steps || !s.steps.length || s.d === "rs") {
@@ -270,9 +283,9 @@ export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS):
     }
     const zone = typeof st.zone === "string" ? st.zone : "";
     // Brick : legs classés par leur zone (bk.rp = modéré) ; le leg CAP « allure cible » = modéré.
-    const cls = HARD_SUFFIX.some((z) => zone.endsWith(z))
+    const cls = TRAIL_HARD.includes(zone) || HARD_SUFFIX.some((z) => zone.endsWith(z))
       ? "hard"
-      : MOD_SUFFIX.some((z) => zone.endsWith(z)) || st.leg === "run"
+      : TRAIL_MOD.includes(zone) || MOD_SUFFIX.some((z) => zone.endsWith(z)) || st.leg === "run"
         ? "mod"
         : "easy";
     if (cls === "hard") out.hardMin += stMin;

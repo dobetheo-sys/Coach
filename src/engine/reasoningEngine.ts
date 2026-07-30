@@ -162,13 +162,22 @@ export class TrainingReasoningEngine {
 
     const injuries = inj.list;
     let maxRunDays: number | null = null;
-    if (sp === "run") {
+    // D10-3 — le plafond de jours d'IMPACT vaut aussi pour le trail. Il ne s'appliquait qu'à
+    // `run` : depuis R7 un traileur avec une périostite recevait 5 jours de course par semaine,
+    // là où un coureur route avec la MÊME blessure en recevait 3. Or le trail ajoute la charge
+    // excentrique de la descente à l'impact — c'est la discipline la plus exigeante pour les
+    // tissus, pas la moins.
+    if (sp === "run" || sp === "trail") {
       maxRunDays = MAX_RUN_DAYS[history] ?? 5;
       if (inj.impact) maxRunDays = Math.max(3, maxRunDays - 1);
       // B2 (audit v6) — le tibia (périostite) est LA blessure de l'impact répété : le
       // plafond de jours de course est renforcé d'un jour supplémentaire.
       if (inj.list.includes("tibia")) maxRunDays = Math.max(3, maxRunDays - 1);
-      D("impact", "Jours de course max", maxRunDays + "/semaine", "La course est le sport à plus fort impact" + (inj.impact ? " — blessure d'impact déclarée, -1 jour" + (inj.list.includes("tibia") ? " (-1 de plus : le tibia est une blessure d'impact répété)" : "") : ""));
+      D("impact", "Jours de course max", maxRunDays + "/semaine",
+        (sp === "trail"
+          ? "Le trail cumule l'impact de la course et la charge excentrique de la descente : le plafond de jours d'appui vaut ici aussi"
+          : "La course est le sport à plus fort impact")
+        + (inj.impact ? " — blessure d'impact déclarée, -1 jour" + (inj.list.includes("tibia") ? " (-1 de plus : le tibia est une blessure d'impact répété)" : "") : ""));
     }
 
     // ---- 4. Calculer la charge : phases (C19) et courbe (bands + C22) ----
