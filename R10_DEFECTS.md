@@ -409,3 +409,34 @@ quatre séances sont AU plancher (C15 : 850 m ; C20 : 0,42 h/séance), et l'éca
 max et le pic est de 5 minutes. Il n'y a plus de marge sous les planchers pour exprimer une
 hiérarchie. J'ai tenté un rabotage : sans effet, les planchers le reprennent immédiatement — le
 code a été retiré plutôt que laissé en place sans effet.
+
+### F2 mesure un symptôme, pas sa cause — et la récupération non comptée est enfin chiffrée
+
+Dernier test en dette du banc v6 : « une séance de qualité passe ≥45 % de son temps dans la
+zone cible », 98 séances entre 43 % et 44 %. Le motif était trop régulier pour être un dosage.
+
+**Il ne l'était pas.** `_min` ne compte pas la récupération ENTRE répétitions. Une VO2
+« 10 min d'échauffement + 4×3 min (récup 2 min 30) + 6 min de retour au calme » est comptée
+**28 min** alors qu'elle en dure **35,5**. Le ratio mesuré (12/28 = 43 %) est faux : le corps
+réel vaut 19,5 min sur 35,5, soit **55 %** — largement au-dessus du seuil. « Corriger » les
+séances pour atteindre 45 % (blocs plus longs, échauffement plus court) aurait dégradé de vraies
+séances pour satisfaire une mesure incomplète. Le test reste donc en dette, requalifié en
+**témoin de R5.6a** : il passera au vert le jour où la récupération entrera dans la métrique.
+
+**L'ampleur, enfin chiffrée** (6 sports, 21 formats, 381 blocs multi-répétitions) :
+
+| | déclaré | réel |
+|---|---|---|
+| plan entier | 1 650 h | 1 704 h (**+3 %**) |
+| les 356 séances à récupération chiffrée | 14 810 min | 18 001 min (**+22 %**, jusqu'à **+50 %**) |
+
+C'est exactement ce que le diagnostic R4.7c annonçait : *sur le total du plan l'écart se
+compense, par séance il ne se compense pas.* Et c'est la séance que l'athlète vit le mardi soir :
+une séance annoncée 30 min lui en prend 45.
+
+**Ce qui est livré maintenant, sans toucher au moteur** : la durée PORTE-À-PORTE est dite dans
+le texte de la séance — « ⏱ prévois ~39 min en tout (récupérations comprises) ». `min` ne bouge
+pas : c'est la métrique qui pilote la courbe, les plafonds et l'auditeur, et la changer reste le
+chantier R5.6a. Mais l'athlète n'a plus à découvrir l'écart sur le terrain. 7 % des blocs ont une
+récupération non chiffrée (« récupération complète », « descente marchée », surtout en trail) :
+on ne devine pas une durée qu'on n'a pas, ces séances n'affichent pas la mention.

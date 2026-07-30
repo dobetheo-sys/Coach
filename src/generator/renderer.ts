@@ -114,6 +114,23 @@ interface RenderableSession extends V1Session {
   social?: boolean;
 }
 
+
+/**
+ * Durée d'une récupération écrite en toutes lettres (« 2min30 trot », « 90s », « 3min »).
+ * `null` quand elle n'est pas chiffrée (« récupération complète », « descente marchée ») : on
+ * ne devine pas une durée qu'on n'a pas — 7 % des blocs sont dans ce cas, surtout en trail.
+ */
+export function recoveryMinutes(text?: string): number | null {
+  if (!text) return null;
+  let m = /(\d+)\s*min\s*(\d{1,2})\b/.exec(text);
+  if (m) return +m[1] + +m[2] / 60;
+  m = /(\d+)\s*min/.exec(text);
+  if (m) return +m[1];
+  m = /(\d+)\s*s\b/.exec(text);
+  if (m) return +m[1] / 60;
+  return null;
+}
+
 export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRefs: Refs): string {
   const steps = s.steps || [];
   const bodies = steps.filter((x) => x.role === "body");
@@ -206,6 +223,24 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
     }
   }
   let det = seg.join(" · ");
+  // R4.7c/F2 — LA DURÉE PORTE-À-PORTE, DITE À L'ATHLÈTE.
+  //
+  // `min` compte le temps de TRAVAIL : échauffement + blocs + retour au calme. Il ne compte pas
+  // la récupération ENTRE répétitions, qui n'est pas de l'entraînement mais qui occupe bel et
+  // bien la séance. Mesuré sur 6 sports et 21 formats : sur les 356 séances à récupération
+  // chiffrée, l'écart est de **+22 % en moyenne, jusqu'à +50 %** — une séance annoncée 30 min
+  // en dure 45. Sur le plan entier l'écart se dilue à 3 % (le volume est surtout fait de
+  // séances continues), mais l'athlète, lui, ne vit pas la moyenne du plan : il vit son mardi
+  // soir, et il a besoin de savoir combien de temps prévoir.
+  //
+  // On ne touche PAS à `min` : c'est la métrique du moteur, elle pilote la courbe, les
+  // plafonds et l'auditeur, et la changer est un chantier à part entière (voir R5.6a dans
+  // R10_DEFECTS.md). On DIT la différence, ce qui est à la fois honnête et sans risque.
+  const recTotal = bodies.reduce((t, b) => t + ((b.reps || 1) > 1 ? ((b.reps || 1) - 1) * (recoveryMinutes(b.recoveryText) || 0) : 0), 0);
+  if (recTotal >= 3) {
+    const porte = Math.round(steps.reduce((t, x) => t + (x._min || 0), 0) + recTotal);
+    det += " · ⏱ prévois ~" + porte + "min en tout (récupérations comprises)";
+  }
   if (s.note) det += " — 💡 " + s.note;
   // F3 (audit v6) — minutes ENTIÈRES dès la source : les flottants (13.541666666666666) se
   // propageaient dans les totaux hebdo, le cap vol_max (422 vs 420 observé) et les
