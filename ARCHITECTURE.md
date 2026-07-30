@@ -142,17 +142,37 @@ Trois conséquences dans le même lot :
 - les clamps C13/C13b restent calculés sur le TRAVAIL, récup exclue — sinon l'écart qu'on
   vient de fermer se rouvrirait sur l'échauffement.
 
-### Quatre règles de sécurité, un seul point de convergence
+### C13c / C13d — l'échauffement a un plancher, et il gagne
+
+`C13c` : **10 min minimum** sur toute séance qui porte un échauffement chiffré. Le plancher était
+à 3 min et la clause de proportion (`≤ 0,8 × corps`) l'y ramenait dès que la courbe réduisait la
+séance : 1 213 séances de QUALITÉ s'échauffaient moins de 10 min, 663 moins de 5. La proportion
+reste en vigueur au-dessus du plancher, jamais en dessous.
+
+`C13d` : corollaire obligatoire. Avec 10 + 3 min incompressibles, une séance de 17 min ne contient
+plus que 4 min de travail — elle est **déclassée en endurance**, pas rabotée (128 séances, 4,6 %).
+Exclusions mesurées : le trail (charge verticale) et tout bloc en DISTANCE (la nage a sa propre
+dose minimale, C24/C15 — déclasser un 8×50 m VO2 supprimait le seul stimulus aérobie maximal de
+trois plans swimrun). Gardes CI : `F4` et `F5` au banc v6.
+
+### Cinq règles de sécurité, un seul point de convergence
 
 `reconcileDeclaredVolume()` est appelée EN DERNIER, après la boucle de réparation, et porte
-désormais quatre garanties qui étaient chacune ÉMERGENTES avant de casser :
+désormais cinq garanties qui étaient chacune ÉMERGENTES avant de casser :
 C22 (progression ≤ +10 % entre semaines de charge), **D4 (une semaine de récup n'est jamais plus
-lourde que celle qu'elle assimile)**, R5.3 (l'affûtage décroît strictement) et l'alignement du
-volume déclaré sur le prescrit. Même leçon quatre fois : *une règle de sécurité vérifiée au milieu
-du pipeline ne vérifie que l'avant-dernier état.* D4 vivait dans le calcul de la cible ; quand les
-planchers de séance saturent la semaine (deux récups consécutives d'un cycle de 10 jours, réduites
-à leurs deux séances minimales), la cible n'a plus prise et la composition décide seule —
-33 min puis 36 min, une « récupération » qui remonte.
+lourde que celle qu'elle assimile)**, R5.3 (l'affûtage décroît strictement), **R3.13 (l'affûtage
+pèse ≤ 60 % du pic livré)** et l'alignement du volume déclaré sur le prescrit. Même leçon cinq
+fois : *une règle de sécurité vérifiée au milieu du pipeline ne vérifie que l'avant-dernier état.*
+
+- **D4** vivait dans le calcul de la cible ; quand les planchers de séance saturent la semaine
+  (deux récups consécutives d'un cycle de 10 jours, réduites à leurs deux séances minimales), la
+  cible n'a plus prise et la composition décide seule — 33 min puis 36 min, une « récupération »
+  qui remonte.
+- **R3.13** était tenue par des coupes réparties dans la boucle, qui s'arrêtaient toutes aux
+  planchers de séance. Le point aveugle : un plancher dit « en dessous, la séance ne vaut pas le
+  déplacement » — c'est une règle de semaine de CHARGE. L'affûtage a pour objet même de
+  raccourcir ; une sortie longue d'affûtage EST une sortie longue réduite. Les corps s'y réduisent
+  donc jusqu'à un plancher d'affûtage explicite (10 min), et la fréquence ne cède qu'après.
 
 ## Conventions de code
 

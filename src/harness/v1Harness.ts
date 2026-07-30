@@ -50,6 +50,9 @@ export interface V1Session {
   min?: number; // estimation du générateur (renderSess) — à recouper, pas à croire
   long?: boolean;
   brick?: boolean;
+  /** R10 — course intermédiaire (B ou C) placée à sa vraie date. Une course a LIEU : aucune
+   *  passe de dosage ne la retaille et C13d ne la déclasse pas, quelle que soit sa durée. */
+  race?: boolean;
   note?: string;
 }
 export interface V1Day {

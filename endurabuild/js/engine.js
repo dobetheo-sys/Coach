@@ -1151,6 +1151,30 @@ const AVG_SESSION_H                                 = { run: 1.15, bike: 1.3, tr
 
 /** C13 — l'échauffement chiffré ne dépasse jamais 25min ni le corps de séance. */
 const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ corps de séance", 25);
+/**
+ * C13c — PLANCHER d'échauffement : 10 min, quelle que soit la taille de la séance.
+ *
+ * Le plancher était de 3 min, et la clause de proportion (`≤ 0,8 × corps`) l'y ramenait dès que
+ * la courbe réduisait la séance : mesuré sur 9 795 séances, **1 213 séances de QUALITÉ
+ * s'échauffaient moins de 10 min, dont 663 moins de 5 min** — un 3×1000 m au seuil précédé de
+ * trois minutes de footing. Physiologiquement, la montée de température musculaire, l'ouverture
+ * vasculaire et la cinétique de VO2 demandent une dizaine de minutes ; en dessous, le premier
+ * intervalle sert d'échauffement et se paie en risque tendineux. La priorité n°2 du manifeste
+ * (prévention des blessures) prime sur la proportion : on ne rabote pas un échauffement pour
+ * faire tenir une séance dans une enveloppe.
+ *
+ * Conséquence assumée et TRAITÉE : sous une certaine enveloppe, une séance de qualité ne tient
+ * plus (10 min d'échauffement + une dose utile + 3 min de retour au calme). Elle n'est pas
+ * rabotée — elle est DÉCLASSÉE en séance facile (C13d, weekBuilder) : mieux vaut un footing
+ * assumé qu'une VO2max mal échauffée.
+ */
+const C13c_WARMUP_MIN_MIN = rule("C13c", "échauffement ≥10min sur toute séance qui en porte un", 10);
+/**
+ * C13d — DOSE MINIMALE D'UNE SÉANCE DE QUALITÉ. Corollaire direct de C13c : en dessous, la
+ * séance ne mérite plus son nom (l'échauffement et le retour au calme y pèsent plus que le
+ * travail). Le créneau devient une séance facile plutôt qu'une caricature de séance dure.
+ */
+const C13d_QUALITY_MIN_BODY_MIN = rule("C13d", "dose de qualité ≥8min de travail, sinon la séance est déclassée", 8);
 
 /** E1/E2 (audit v6) — PARSEUR D'ALLURE UNIQUE. Il y en avait deux : un strict et ancré
  * (moteur, alimente les zones du plan) et un laxiste (bridge, alimente la prédiction) —
@@ -2241,7 +2265,12 @@ function renderSess(s                   , refs      , hz         , baseRefs     
         // soit deux séances différentes portant le même nom (36 divergences mesurées sur un
         // seul plan). Toute consommation future des steps (montre, Garmin, Zwift) héritait
         // du bug. Un seul champ fait foi : durationMin ; _min en est une pure dérivée.
-        const wm = Math.min(w.durationMin, C13_WARMUP_MAX_MIN, Math.max(3, Math.round(bodyMin * 0.8) || w.durationMin));
+        // C13c — le PLANCHER de 10 min gagne contre la clause de proportion. Elle reste utile
+        // au-dessus (ne pas mettre 25 min d'échauffement devant 20 min de travail), mais elle
+        // ne peut plus descendre l'échauffement sous le seuil physiologique : c'était la
+        // mécanique qui produisait 663 séances échauffées moins de 5 minutes.
+        const wCap = Math.min(C13_WARMUP_MAX_MIN, Math.max(C13c_WARMUP_MIN_MIN, Math.round(bodyMin * 0.8) || w.durationMin));
+        const wm = Math.max(C13c_WARMUP_MIN_MIN, Math.min(w.durationMin, wCap));
         w.durationMin = wm;
         w._min = wm;
         seg.push("Échauffement " + wm + "min" + (w.text ? " " + w.text : ""));
@@ -2529,7 +2558,14 @@ function sessionLoadFromSteps(s            , refs             )              {
   for (const st of steps) {
     if (st.role === "body") continue;
     if (st.role === "warmup" && st.durationMin != null) {
-      auxMin += Math.min(st.durationMin, 25, Math.max(3, Math.round(bodyMin) || st.durationMin));
+      // Le clamp d'échauffement est la SEULE valeur d'un plan que l'auditeur ne peut pas
+      // recalculer depuis les champs bruts : elle dépend du corps de séance, et la formule a
+      // bougé (C13 en V1.5, C13c depuis). La rejouer ici en faisait une seconde définition,
+      // qui a fini par diverger — un échauffement prescrit 10 min était compté 8 dès que le
+      // corps en faisait 8. `_min` est la valeur RENDUE, donc celle que l'athlète lit et que
+      // l'export publie : c'est elle qu'on mesure. Le rejeu ne sert plus que de repli pour un
+      // plan non rendu (le générateur legacy gelé du monolithe passe par là).
+      auxMin += st._min != null ? st._min : Math.min(st.durationMin, 25, Math.max(3, Math.round(bodyMin) || st.durationMin));
     } else {
       auxMin += stepMinutes(st, s.d, refs);
     }
@@ -4771,6 +4807,17 @@ function applyPolarizationGuard(r              , days          , ctx            
 
 
 /**
+ * Une zone de QUALITÉ — source unique. Le prédicat vivait en local dans `scaleBlock` (V2.2 :
+ * un bloc de qualité ne grandit pas tout seul) ; C13d en a besoin aussi, et deux copies d'une
+ * définition, c'est deux définitions. `.mara` = allure de COURSE : 15×2000m au marathon, ce
+ * n'est pas du volume facile.
+ */
+const QUALITY_SUFFIX = /\.(vo2|thr|css|rp|ss|frc|speed|mara)$/;
+const QUALITY_TRAIL = ["tr.vam", "tr.asc", "tr.climb", "tr.flatthr"];
+const IS_QUALITY_ZONE = (zone        )          =>
+  QUALITY_SUFFIX.test(zone) || QUALITY_TRAIL.includes(zone);
+
+/**
  * R4.8a (audit v7) — CONTRAT V1Plan : `min` est un NOMBRE sur toute séance, repos compris.
  * Il manquait sur les séances créées par les passes tardives (« OFF (affûtage) », y compris
  * celles de la boucle de réparation) : rattrapé partout par `s.min || 0` côté lecture, mais un
@@ -4911,6 +4958,58 @@ function reconcileDeclaredVolume(
     }
   }
 
+  // R3.13 — GARANTIE FINALE : L'AFFÛTAGE PÈSE ≤60 % DU PIC LIVRÉ.
+  //
+  // Cinquième règle rapatriée ici, et pour la même raison que les quatre autres : elle était
+  // tenue par des coupes réparties dans la boucle, qui s'arrêtent toutes aux PLANCHERS de
+  // séance. Sur un plan saturé (swimrun « experience », historique reprise : toutes les
+  // semaines au plancher, pic = base), il ne reste en affûtage qu'une sortie longue de 62 min
+  // qu'aucune coupe n'a le droit de toucher — 71 % du pic au lieu de 60.
+  //
+  // Le point aveugle était de traiter le plancher de séance comme intouchable EN AFFÛTAGE.
+  // Un plancher dit « en dessous, la séance ne vaut pas le déplacement » — c'est une règle de
+  // semaine de CHARGE. L'affûtage, lui, a pour objet même de raccourcir : une sortie longue
+  // d'affûtage EST une sortie longue réduite. On réduit donc les corps sans se laisser arrêter
+  // par `bnd.floor`, jusqu'à un plancher d'affûtage explicite, et la fréquence ne cède qu'après.
+  {
+    const TAPER_BODY_FLOOR_MIN = 10;
+    const peakNR = plan.weeks.filter((w) => w.phase.id === "peak" && !w.isRecup).map(weekMinOf);
+    const peakAny = plan.weeks.filter((w) => w.phase.id === "peak").map(weekMinOf);
+    const peakBest = Math.max(0, ...(peakNR.length ? peakNR : peakAny));
+    const cap = peakBest * R313_TAPER_MAX_VS_PEAK;
+    if (peakBest > 0) for (const wk of plan.weeks) {
+      if (wk.phase.id !== "taper") continue;
+      for (let g = 0; g < 6 && weekMinOf(wk) > cap; g++) {
+        const before = weekMinOf(wk);
+        const f = cap / before;
+        for (const d of wk.days) for (const sx of d.sessions) {
+          if (sx.d === "rs" || sx.race || !sx.steps) continue;
+          let touched = false;
+          for (const st of sx.steps) {
+            if (st.role !== "body") continue;
+            if (st.durationMin) {
+              const next = Math.max(TAPER_BODY_FLOOR_MIN, Math.round(st.durationMin * f));
+              if (next < st.durationMin) { st.durationMin = next; touched = true; }
+            } else if (st.distanceM) {
+              const next = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+              if (next < st.distanceM) { st.distanceM = next; touched = true; }
+            }
+          }
+          if (touched && render) render(sx);
+        }
+        if (before - weekMinOf(wk) < 0.5) break; // plus rien à réduire : la fréquence prend le relais
+      }
+      for (let g = 0; g < 4 && weekMinOf(wk) > cap; g++) {
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
+        if (active.length <= 1) break;
+        const victim = active.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
+        victim.charge = "off";
+        victim.slot = "off";
+        victim.sessions = [{ d: "rs", name: "OFF (affûtage)", det: "repos — la dernière semaine pèse au plus 60 % du pic : c'est ce qui te met frais sur la ligne", steps: [], min: 0 }];
+      }
+    }
+  }
+
   // R5.3 — L'AFFÛTAGE DÉCROÎT, POINT. La décroissance était jusqu'ici ÉMERGENTE (courbe + coupe
   // R3.13) : sur un cycle de 10 jours, la dérive des créneaux d'une semaine calendaire à l'autre
   // pouvait rendre la 3ᵉ semaine d'affûtage plus lourde que la 2ᵉ (147→98→123→88 mesuré, banc v6
@@ -4968,6 +5067,44 @@ function reconcileDeclaredVolume(
       if (wk.phase.id !== "taper" && !wk.isRecup) forcedWeeks++;
     }
   }
+  // C13d — UNE SÉANCE DE QUALITÉ SOUS-DOSÉE EST DÉCLASSÉE, PAS RABOTÉE.
+  //
+  // Corollaire du plancher d'échauffement C13c : avec 10 min d'échauffement et 3 min de retour
+  // au calme incompressibles, une séance de 17 min ne contient plus que 4 minutes de travail.
+  // Ce n'est pas une VO2max, c'est un échauffement suivi d'un sprint. Mesuré après C13c :
+  // 128 séances (4,6 % des séances de qualité), toutes sur les enveloppes les plus basses.
+  // La réponse honnête n'est pas de raboter l'échauffement pour sauver l'étiquette — c'est de
+  // rendre à la séance ce qu'elle est vraiment : de l'endurance. Même durée, même place dans
+  // la semaine, intention corrigée.
+  //
+  // Deux exclusions, chacune pour sa raison :
+  //   · le TRAIL — sa charge est verticale (D+/D−, axes T1/T2b), pas horaire ; déclasser un bloc
+  //     de côtes viderait la cible de dénivelé que le reste du moteur vient d'atteindre ;
+  //   · la NATATION et tout bloc exprimé en DISTANCE — C13d est le corollaire d'un plancher qui
+  //     s'exprime en MINUTES, et un échauffement de nage se compte en mètres. Un 8×50 m VO2 pèse
+  //     7,7 min de « corps » à 1'55/100 m : le déclasser supprimait le seul stimulus de puissance
+  //     aérobie du plan (S-NOVO2, banc v7). En bassin, la dose minimale est déjà tenue par C24
+  //     (750 m de séance) et C15 (850 m pour un débutant) — C13d n'y a rien à ajouter.
+  {
+    const EASY_ZONE                         = { rn: "rn.easy", bk: "bk.z2" };
+    for (const wk of plan.weeks) for (const d of wk.days) for (const sx of d.sessions) {
+      const st = sx.steps || [];
+      // Une COURSE n'est pas une séance : elle a lieu, dosée ou non. Elle ne se déclasse pas.
+      if (!st.length || sx.d === "rs" || sx.brick || sx.race) continue;
+      const bodies = st.filter((x) => x.role === "body");
+      if (!bodies.length || bodies.some((x) => x.gradient || x.leg || x.distanceM != null)) continue;
+      if (!bodies.some((x) => IS_QUALITY_ZONE(String(x.zone || "")))) continue;
+      if (bodies.reduce((t, x) => t + (x._min || 0), 0) >= C13d_QUALITY_MIN_BODY_MIN) continue;
+      const zone = EASY_ZONE[sx.d];
+      if (!zone) continue;
+      const totMin = st.reduce((t, x) => t + (x._min || 0), 0);
+      sx.steps = [{ role: "body", durationMin: Math.max(10, Math.round(totMin)), zone }];
+      sx.name = "Endurance facile";
+      sx.note = "Cette semaine, l'enveloppe ne laissait que quelques minutes de travail pour un échauffement complet : une séance dure de cinq minutes n'apporte rien et coûte cher. Le créneau redevient de l'endurance — c'est un choix, pas un repli.";
+      if (render) render(sx);
+    }
+  }
+
   if (forcedWeeks > 0)
     warnings.push("Sur " + forcedWeeks + " semaine(s) de charge, la structure minimale de ce plan (une séance digne de ce nom ne descend pas sous 30 min, une sortie longue encore moins) dépasse le volume hebdomadaire que tu as déclaré. Le chiffre annoncé a été aligné sur ce qui t'est réellement prescrit — mieux vaut une courbe honnête qu'une promesse que le plan ne tient pas. Deux remèdes, à toi de choisir : relever le volume dont tu disposes, ou viser un objectif plus court.");
 
@@ -5082,8 +5219,7 @@ function generatePlan(profile                , opts                             
     // technique) peut absorber du volume en répétitions — c'est même sa fonction, et la courbe
     // de charge s'en sert comme levier. Un bloc de QUALITÉ ne grandit plus tout seul : sans
     // `repCap` explicite, il reste au gabarit choisi par la bibliothèque.
-    const QUALITY = /\.(vo2|thr|css|rp|ss|frc|speed|mara)$/; // `.mara` = allure de COURSE : 15×2000m au marathon, ce n'est pas du volume facile
-    const isQuality = QUALITY.test(String(b.zone || "")) || ["tr.vam", "tr.asc", "tr.climb", "tr.flatthr"].includes(String(b.zone || ""));
+    const isQuality = IS_QUALITY_ZONE(String(b.zone || ""));
     const repMax = b.repCap ?? (isQuality ? (b.reps || 1) : 15);
     if (b.distanceM != null) {
       if ((b.reps || 1) > 1) {
@@ -5426,7 +5562,13 @@ function generatePlan(profile                , opts                             
       for (let g = 0; g < 3; g++) {
         if (weekMin(wd) <= _maxChargeMin * R313_TAPER_MAX_VS_PEAK) break;
         const active = wd.filter((d) => d.charge !== "off" && d.sessions.some((s) => s.d !== "rs"));
-        if (active.length <= 3) break;
+        // C13c — le plancher d'échauffement de 10 min alourdit mécaniquement les séances
+        // d'affûtage (qui sont courtes : rappels d'allure, lignes droites). Sur les petits
+        // formats, l'ancien butoir de 3 jours empêchait alors d'atteindre les −40 % de R3.13
+        // (mesuré : 62 % du pic sur 9 combinaisons 5k/reprise). Deux séances dans la dernière
+        // semaine avant un 5k, c'est un affûtage normal — trois séances mal réduites, non.
+        // `keepsMainDiscipline` continue d'orienter la victime : on ne vide pas la discipline.
+        if (active.length <= 2) break;
         const cand0 = active.filter((d) => d.charge === "facile" && !d.forced && !d.sessions.some((s) => s.long || s.brick));
         if (!cand0.length) break;
         const candK = cand0.filter((d) => keepsMainDiscipline(wd, d));
@@ -5944,6 +6086,7 @@ function generatePlan(profile                , opts                             
         rd.sessions = [{
           d: mainD        ,
           name: "🏁 Course " + rc.prio,
+          race: true,
           det: rc.prio === "C"
             ? "Course laboratoire : départ contrôlé, teste ton ravito et ton pacing — on enchaîne l'entraînement derrière. — 💡 Objectif : apprendre en conditions réelles, pas performer."
             : "Course de préparation : mini-affûtage fait, tu peux appuyer. Départ prudent, finis fort. — 💡 Objectif : valider allures et stratégie avant l'objectif A.",

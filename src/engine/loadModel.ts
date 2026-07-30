@@ -205,7 +205,14 @@ export function sessionLoadFromSteps(s: RawSession, refs: AthleteRefs): SessionL
   for (const st of steps) {
     if (st.role === "body") continue;
     if (st.role === "warmup" && st.durationMin != null) {
-      auxMin += Math.min(st.durationMin, 25, Math.max(3, Math.round(bodyMin) || st.durationMin));
+      // Le clamp d'échauffement est la SEULE valeur d'un plan que l'auditeur ne peut pas
+      // recalculer depuis les champs bruts : elle dépend du corps de séance, et la formule a
+      // bougé (C13 en V1.5, C13c depuis). La rejouer ici en faisait une seconde définition,
+      // qui a fini par diverger — un échauffement prescrit 10 min était compté 8 dès que le
+      // corps en faisait 8. `_min` est la valeur RENDUE, donc celle que l'athlète lit et que
+      // l'export publie : c'est elle qu'on mesure. Le rejeu ne sert plus que de repli pour un
+      // plan non rendu (le générateur legacy gelé du monolithe passe par là).
+      auxMin += st._min != null ? st._min : Math.min(st.durationMin, 25, Math.max(3, Math.round(bodyMin) || st.durationMin));
     } else {
       auxMin += stepMinutes(st, s.d, refs);
     }

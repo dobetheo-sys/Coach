@@ -4,7 +4,7 @@
  * n'expose le scaling que sur les steps body. Texte français identique au produit.
  */
 import type { V1Session, V1Step } from "../engine/types.ts";
-import { C13_WARMUP_MAX_MIN } from "../engine/constraintMatrix.ts";
+import { C13_WARMUP_MAX_MIN, C13c_WARMUP_MIN_MIN } from "../engine/constraintMatrix.ts";
 
 export interface Refs {
   ftp: number;
@@ -185,7 +185,12 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
         // soit deux séances différentes portant le même nom (36 divergences mesurées sur un
         // seul plan). Toute consommation future des steps (montre, Garmin, Zwift) héritait
         // du bug. Un seul champ fait foi : durationMin ; _min en est une pure dérivée.
-        const wm = Math.min(w.durationMin, C13_WARMUP_MAX_MIN, Math.max(3, Math.round(bodyMin * 0.8) || w.durationMin));
+        // C13c — le PLANCHER de 10 min gagne contre la clause de proportion. Elle reste utile
+        // au-dessus (ne pas mettre 25 min d'échauffement devant 20 min de travail), mais elle
+        // ne peut plus descendre l'échauffement sous le seuil physiologique : c'était la
+        // mécanique qui produisait 663 séances échauffées moins de 5 minutes.
+        const wCap = Math.min(C13_WARMUP_MAX_MIN, Math.max(C13c_WARMUP_MIN_MIN, Math.round(bodyMin * 0.8) || w.durationMin));
+        const wm = Math.max(C13c_WARMUP_MIN_MIN, Math.min(w.durationMin, wCap));
         w.durationMin = wm;
         w._min = wm;
         seg.push("Échauffement " + wm + "min" + (w.text ? " " + w.text : ""));

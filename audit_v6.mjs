@@ -546,17 +546,49 @@ test("F1", "durationMin et _min cohérents (contrat d'export)", "pass", () => {
   return { ok: bad.length === 0, detail: `${bad.length} divergence(s) : ${bad.slice(0, 2).join(" ; ")}` };
 });
 
+test("F4", "C13c : aucun échauffement chiffré sous 10 min", "pass", () => {
+  const bad = [];
+  for (const sport of Object.keys(FORMATS))
+    for (const format of FORMATS[sport])
+      for (const vol of ["4", "10", "16"])
+        sessionsOf(build(sport, { format, vol_max: vol })).forEach(({ s, w }) => {
+          const wu = (s.steps || []).find((x) => x.role === "warmup" && x.durationMin != null);
+          if (wu && (wu._min ?? wu.durationMin) < 9.5)
+            bad.push(`${sport}/${format} S${w.num} ${s.name} : ${wu._min}min`);
+        });
+  return { ok: bad.length === 0, detail: `${bad.length} séance(s) : ${bad.slice(0, 3).join(" ; ")}` };
+});
+
+// C13d ne gouverne que les doses exprimées en MINUTES : en bassin, la dose minimale est tenue
+// par C24/C15 (mètres), et un 8×50 m VO2 ne pèse que 7,7 min de « corps » sans être sous-dosé
+// pour autant. Le garde-fou mesure donc exactement ce que la règle promet — ni plus, ni moins.
+test("F5", "C13d : aucune séance de qualité EN TEMPS sous 8 min de dose", "pass", () => {
+  const QZ = /\.(vo2|thr|ss|css|speed|rp|frc|mara)$/;
+  const bad = [];
+  for (const sport of Object.keys(FORMATS))
+    for (const format of FORMATS[sport])
+      for (const vol of ["4", "10", "16"])
+        sessionsOf(build(sport, { format, vol_max: vol })).forEach(({ s, w }) => {
+          const st = s.steps || [];
+          const bodies = st.filter((x) => x.role === "body");
+          if (!bodies.some((x) => QZ.test(x.zone || "")) || bodies.some((x) => x.gradient || x.leg || x.distanceM != null)) return;
+          const body = bodies.reduce((t, x) => t + (x._min || 0), 0);
+          if (body < 8) bad.push(`${sport}/${format} S${w.num} ${s.name} : ${Math.round(body)}min de travail`);
+        });
+  return { ok: bad.length === 0, detail: `${bad.length} séance(s) : ${bad.slice(0, 3).join(" ; ")}` };
+});
+
 // F2 — LA CAUSE PRINCIPALE EST CORRIGÉE, IL RESTE UN RÉSIDU ASSUMÉ.
 // Diagnostic du 30/07/2026 : le ratio corps/total plafonnait à ~43 % parce que `_min` ne
 // comptait PAS la récupération entre répétitions. R5.6a l'a mise dans le `_min` du bloc qui la
 // porte : une VO2 « 10min éch + 4×3min (récup 2min30) + 6min retour » vaut désormais 19,5 min de
 // corps sur 35,5, soit 55 %. Mesure avant/après : 28 séances sous le seuil → **7**.
-// Ce qui reste : sept séances de qualité MINUSCULES (1×4min de VO2, 1×5min de force), que la
-// courbe de volume a réduites à une seule répétition sur les semaines les plus légères. Leur
-// échauffement et leur retour au calme sont déjà à leur plancher (3 min chacun, C13/C13b) ;
-// atteindre 45 % demanderait de descendre l'échauffement SOUS 3 minutes avant un effort
-// maximal. Un ratio de 42 % vaut mieux qu'une VO2max échauffée deux minutes : la dette est
-// conservée sciemment, et le test la garde sous les yeux.
+// Ce qui reste, après C13c (plancher d'échauffement à 10 min) et C13d (une séance de qualité
+// sous-dosée est déclassée, plus rabotée) : SEPT séances de sweetspot de 10 à 14 min de travail,
+// précédées des 10 minutes d'échauffement que le projet vient d'ériger en règle de sécurité.
+// Atteindre 45 % y demanderait précisément ce que C13c interdit — raccourcir l'échauffement.
+// Les deux règles se contredisent sur ces sept séances ; la priorité n°2 du manifeste (prévention
+// des blessures) tranche. La dette est conservée sciemment, et le test la garde sous les yeux.
 test("F2", "Séance de qualité : ≥45 % du temps dans la zone cible", "fail", () => {
   const bad = [];
   for (const sport of ["run", "bike", "tri"])

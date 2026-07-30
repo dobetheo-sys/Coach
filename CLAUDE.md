@@ -114,7 +114,10 @@ avoir un effet — sinon la documenter comme UI pure.
 Audit **100% vert** : 486/486 combinaisons, 0 violation dure, 0 semaine hors bande [0.5, 1.4],
 0 alerte, **répartition des intensités mécanisée** (~80/20 : part facile ≥70%, médiane 83% —
 repCap V2.2 + brick Z2 + C18b). Couverture structurée 100%, promesses calibrées (C20/C22),
-affûtage garanti ≥40% de réduction (R3.13), règles du manifeste mécanisées. **R5.6a livré** :
+affûtage garanti ≥40% de réduction (R3.13), règles du manifeste mécanisées. **C13c/C13d livrés** :
+plancher d'échauffement à 10 min sur toute séance qui en porte un (1 213 séances de qualité
+s'échauffaient moins, 663 moins de 5 min) — et son corollaire, une séance de qualité qui ne
+garde plus 8 min de travail est DÉCLASSÉE en endurance plutôt que rabotée. **R5.6a livré** :
 la récup inter-blocs entre dans la métrique du générateur (dans le `_min` du bloc qui la porte,
 donc elle suit la mise à l'échelle) — la durée annoncée est la durée porte-à-porte, et l'écart
 médian entre les deux estimateurs tombe à 0,0 min. C'était la plus vieille dette du dépôt.

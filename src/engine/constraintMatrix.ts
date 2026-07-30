@@ -178,6 +178,30 @@ export const AVG_SESSION_H: Partial<Record<Sport, number>> = { run: 1.15, bike: 
 
 /** C13 — l'échauffement chiffré ne dépasse jamais 25min ni le corps de séance. */
 export const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ corps de séance", 25);
+/**
+ * C13c — PLANCHER d'échauffement : 10 min, quelle que soit la taille de la séance.
+ *
+ * Le plancher était de 3 min, et la clause de proportion (`≤ 0,8 × corps`) l'y ramenait dès que
+ * la courbe réduisait la séance : mesuré sur 9 795 séances, **1 213 séances de QUALITÉ
+ * s'échauffaient moins de 10 min, dont 663 moins de 5 min** — un 3×1000 m au seuil précédé de
+ * trois minutes de footing. Physiologiquement, la montée de température musculaire, l'ouverture
+ * vasculaire et la cinétique de VO2 demandent une dizaine de minutes ; en dessous, le premier
+ * intervalle sert d'échauffement et se paie en risque tendineux. La priorité n°2 du manifeste
+ * (prévention des blessures) prime sur la proportion : on ne rabote pas un échauffement pour
+ * faire tenir une séance dans une enveloppe.
+ *
+ * Conséquence assumée et TRAITÉE : sous une certaine enveloppe, une séance de qualité ne tient
+ * plus (10 min d'échauffement + une dose utile + 3 min de retour au calme). Elle n'est pas
+ * rabotée — elle est DÉCLASSÉE en séance facile (C13d, weekBuilder) : mieux vaut un footing
+ * assumé qu'une VO2max mal échauffée.
+ */
+export const C13c_WARMUP_MIN_MIN = rule("C13c", "échauffement ≥10min sur toute séance qui en porte un", 10);
+/**
+ * C13d — DOSE MINIMALE D'UNE SÉANCE DE QUALITÉ. Corollaire direct de C13c : en dessous, la
+ * séance ne mérite plus son nom (l'échauffement et le retour au calme y pèsent plus que le
+ * travail). Le créneau devient une séance facile plutôt qu'une caricature de séance dure.
+ */
+export const C13d_QUALITY_MIN_BODY_MIN = rule("C13d", "dose de qualité ≥8min de travail, sinon la séance est déclassée", 8);
 
 /** E1/E2 (audit v6) — PARSEUR D'ALLURE UNIQUE. Il y en avait deux : un strict et ancré
  * (moteur, alimente les zones du plan) et un laxiste (bridge, alimente la prédiction) —

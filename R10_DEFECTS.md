@@ -537,3 +537,71 @@ déjà sa VAM estimée (R12.4), les trois autres références ne disaient rien.
 La décision `R12-ref` est désormais émise pour tout plan, et nomme ce qui est déclaré et ce qui
 est estimé, discipline par discipline, avec le protocole d'acquisition en clair. Une référence
 estimée n'est pas un détail d'affichage : elle change les zones affichées ET le volume promis.
+
+## C13c / C13d — le plancher d'échauffement (30/07/2026, demande du fondateur)
+
+« Je pense qu'il faut mettre un plancher de 10 min d'échauffement pour n'importe quelle séance. »
+Mesure d'abord, comme toujours. Sur 9 795 séances de 6 sports :
+
+| | avant | après |
+|---|---|---|
+| séances portant un échauffement chiffré | 3 073 | 3 073 |
+| dont **moins de 10 min** | 1 559 (dont **1 213 de QUALITÉ**) | **0** |
+| dont **moins de 5 min** | 663 | **0** |
+| séances de qualité SANS étape d'échauffement | 0 | 0 |
+
+L'intuition était juste et la mécanique fautive identifiée : le plancher était bien à 3 min, mais
+c'est la clause de PROPORTION (`échauffement ≤ 0,8 × corps`) qui l'y ramenait dès que la courbe
+de volume réduisait la séance. Un 3×1000 m au seuil précédé de trois minutes de footing, ce n'est
+pas un compromis d'enveloppe : c'est le premier intervalle qui sert d'échauffement, et il se paie
+en risque tendineux. C13c fait gagner le plancher contre la proportion ; la proportion reste en
+vigueur AU-DESSUS de 10 min (pas 25 min d'échauffement devant 20 min de travail).
+
+**Le corollaire, C13d — et c'est lui qui rend la règle tenable.** Avec 10 min d'échauffement et
+3 min de retour au calme incompressibles, une séance de 17 min ne contient plus que 4 minutes de
+travail : 128 séances (4,6 % des séances de qualité) sont tombées dans ce cas sur les enveloppes
+les plus basses. Raboter l'échauffement pour sauver l'étiquette aurait annulé C13c. Ces séances
+sont donc DÉCLASSÉES en endurance — même durée, même place dans la semaine, intention corrigée.
+Mieux vaut un footing assumé qu'une VO2max de cinq minutes mal échauffée.
+
+Deux exclusions, chacune mesurée avant d'être écrite :
+- **le trail** : sa charge est verticale (D+/D−) ; déclasser un bloc de côtes viderait la cible
+  de dénivelé que le reste du moteur vient d'atteindre ;
+- **la natation et tout bloc en DISTANCE** : C13d est le corollaire d'un plancher en MINUTES.
+  Un 8×50 m VO2 pèse 7,7 min de « corps » à 1'55/100 m sans être sous-dosé — la première version
+  le déclassait et supprimait le seul stimulus de puissance aérobie de trois plans swimrun
+  (`S-NOVO2`, attrapé par le banc v7). En bassin, la dose minimale est déjà tenue par C24 et C15.
+
+**Trois effets de bord, tous traités :**
+
+1. **L'affûtage sortait de R3.13.** Les séances d'affûtage sont courtes (rappels d'allure, lignes
+   droites) : le plancher les alourdit mécaniquement. Neuf combinaisons 5k/reprise sont passées à
+   62 % du pic (limite : 60 %), et un swimrun saturé à 71 %. La règle R3.13 était, elle aussi,
+   tenue par des coupes réparties dans la boucle — **cinquième** rapatriement dans
+   `reconcileDeclaredVolume`. Le point aveugle : les planchers de séance y étaient traités comme
+   intouchables. Un plancher dit « en dessous, la séance ne vaut pas le déplacement » — c'est une
+   règle de semaine de CHARGE. L'affûtage a pour objet même de raccourcir : une sortie longue
+   d'affûtage EST une sortie longue réduite. Les corps se réduisent donc jusqu'à un plancher
+   d'affûtage explicite (10 min), et la fréquence ne cède qu'après.
+
+2. **L'auditeur rejouait le clamp d'échauffement.** `sessionLoadFromSteps` recalculait
+   `min(durationMin, 25, max(3, corps))` pour « comparer à périmètre égal ». C'était vrai quand
+   le clamp ne vivait que dans `_min` ; depuis F1 il est écrit dans `durationMin`, et le rejeu en
+   faisait une seconde définition — qui a divergé dès que le plancher est passé à 10 (un
+   échauffement prescrit 10 min était compté 8 quand le corps en faisait 8). L'auditeur lit
+   désormais `_min`, la valeur RENDUE, celle que l'athlète voit et que l'export publie ; le rejeu
+   ne subsiste qu'en repli pour un plan non rendu (le générateur legacy gelé du monolithe).
+
+3. **Une course intermédiaire s'est fait déclasser.** La séance « 🏁 Course B/C » porte une zone
+   de qualité et une durée courte : C13d l'a transformée en footing. Une course n'est pas une
+   séance — elle a lieu, dosée ou non. Elle porte maintenant un drapeau `race` qu'aucune passe de
+   dosage ne franchit.
+
+**Gardes CI ajoutées** : `F4` (aucun échauffement chiffré sous 10 min) et `F5` (aucune séance de
+qualité EN TEMPS sous 8 min de dose) au banc v6 — 54 verts, 3 dettes, 0 régression.
+
+**La dette F2 devient une contradiction assumée entre deux règles.** Il reste sept séances de
+sweetspot à 10-14 min de travail derrière les 10 minutes d'échauffement qu'on vient d'ériger en
+règle. Atteindre 45 % de zone cible y demanderait exactement ce que C13c interdit. Les deux
+règles se contredisent sur ces sept séances ; la priorité n°2 du manifeste (prévention des
+blessures) tranche, et le test garde le chiffre sous les yeux.
