@@ -37,7 +37,7 @@ dépôt — historique git si besoin.
 - `npm run audit:v1` — audite les 486 combinaisons contre `Coach_Pro_V1.5.html`, écrit
   `audit-results/v1-audit.{json,md}`, **exit 1 à la moindre violation dure**. Zéro dépendance
   à installer (Node ≥22.18 exécute le TypeScript nativement). La CI l'exécute sur chaque push.
-- `npm run audit:v2` — **594 profils** (486 + duathlon R10) à travers le **moteur V2** (Sprint 1 :
+- `npm run audit:v2` — **702 profils** (486 + duathlon + swimrun R10) à travers le **moteur V2** (Sprint 1 :
   raisonnement + génération + réparation), même auditeur, + comparatif V1.5 ↔ V2.
 - `npm run demo:repair` — preuve exécutable des garanties de la boucle de réparation.
 - `npm run demo:readiness` — spec exécutable de l'adaptation quotidienne (Sprint 2) :
@@ -60,7 +60,7 @@ dépôt — historique git si besoin.
   (instance unique par module, imports circulaires préservés), CSS et polices en `data:`.
   Sert à tester l'app hors ligne d'un double-clic — le monolithe `Coach_Pro_V1.5.html`
   a le moteur à jour mais son UI est gelée à R4 (ni carte Trail, ni étape terrain).
-- `npm run test:e2e` — 8 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
+- `npm run test:e2e` — 9 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
   job CI `e2e` séparé). Seule exception au zéro-dépendance : Playwright, devDependency de
   TEST uniquement (`npm install` d'abord ; local : `/opt/pw-browsers/chromium` détecté,
   sinon `EB_CHROMIUM`).

@@ -28,6 +28,7 @@ export const MIN_WEEKS: Record<Sport, Record<string, number>> = {
   // R10 phase 2 — duathlon. Les tables détaillées vivent dans `src/sports/duathlon/tables.ts`
   // (avec leur provenance) ; ces entrées les REFLÈTENT pour les lectures génériques.
   duathlon: { S: 8, M: 12, L: 16, PM: 24 },
+  swimrun: { experience: 10, sprint: 12, series: 20, championship: 30 },
   trail: {}, // pas de format : T6_MIN_WEEKS décide par catégorie d'effort déduite
 };
 
@@ -60,6 +61,13 @@ export const HISTORY_CAPS: Record<Sport, Record<History, Record<string, number>>
     confirme: { S: 7, M: 9, L: 11, PM: 15 },
     ancien: { S: 8, M: 11, L: 13, PM: 18 },
   },
+  // R10 phase 3 — swimrun : la structure de référence des coachs tient en 7-12 h/sem ; au-delà
+  // ce n'est plus la condition qui limite mais la logistique (eau libre, binôme, matériel).
+  swimrun: {
+    reprise: { experience: 5, sprint: 6, series: 8, championship: 9 },
+    confirme: { experience: 7, sprint: 8, series: 11, championship: 12 },
+    ancien: { experience: 8, sprint: 10, series: 13, championship: 15 },
+  },
   trail: {}, // TRAIL_HISTORY_CAPS décide par catégorie d'effort
 };
 
@@ -70,6 +78,7 @@ export const UTIL: Record<Sport, Record<string, number>> = {
   swim: { sprint: 6, demifond: 8, fond: 10, ow: 12 },
   tri: { S: 8, M: 11, "70.3": 14, Full: 18 },
   duathlon: { S: 8, M: 10, L: 13, PM: 17 },
+  swimrun: { experience: 8, sprint: 10, series: 13, championship: 16 },
   trail: {}, // TRAIL_UTIL décide par catégorie
 };
 

@@ -15,6 +15,7 @@ import "../sports/swim/index.ts";
 import "../sports/tri/index.ts";
 import "../sports/trail/index.ts";
 import "../sports/duathlon/index.ts";
+import "../sports/swimrun/index.ts";
 
 type Slot = "dur1" | "dur2" | "durLong" | "facileR" | "facile2" | "recup" | "off";
 

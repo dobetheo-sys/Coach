@@ -122,6 +122,13 @@ export interface PredictKit {
   riegelSec: (thrPace: number, km: number) => number;
   /** Mention « + vallonné (+3–6%) » à coller aux fourchettes course. */
   profWhy: string;
+  /** Objectif SWIMRUN décodé (trois postes) — présent seulement pour ce sport. */
+  swimrun?: {
+    category: string; swimTotalM: number; runTotalKm: number; segments: number; transitions: number;
+    longestSwimM: number; teamMode: string; paceKnown: boolean; swimMin: number; runMin: number;
+    transitionMin: number; totalMinLo: number; totalMinMid: number; totalMinHi: number;
+    swimTimeShare: number; why: string;
+  };
 }
 
 const MODULES = new Map<string, SportModule>();

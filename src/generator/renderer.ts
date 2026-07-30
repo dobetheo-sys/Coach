@@ -118,9 +118,14 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
     bodyMin += b._min;
   }
   const seg: string[] = [];
-  if (s.brick) {
-    const bk = bodies.find((b) => b.leg === "bike")!;
-    const rn = bodies.find((b) => b.leg === "run")!;
+  // Le rendu « brick » suppose un leg VÉLO et un leg COURSE (tri, duathlon). Un enchaînement
+  // multi-disciplines d'une autre forme (swimrun : nage ↔ course, N fois) n'est PAS un brick —
+  // la spec R10 le dit explicitement — et passe par le rendu générique de steps.
+  const bkLeg = bodies.find((b) => b.leg === "bike");
+  const rnLeg = bodies.find((b) => b.leg === "run");
+  if (s.brick && bkLeg && rnLeg) {
+    const bk = bkLeg;
+    const rn = rnLeg;
     seg.push(
       bk.durationMin + "min vélo @ " + fmtInt(bk.zone as string, refs, hz) +
         ", dernier tiers @ allure course, échauffement progressif inclus, puis transition rapide + " + rn.durationMin + "min CAP" +

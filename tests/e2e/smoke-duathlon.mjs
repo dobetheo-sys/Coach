@@ -15,7 +15,7 @@ page.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
 await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
 
 // ---- 1. Le duathlon est un sport de premier ordre ----
-ok(await page.locator(".sport-card").count() === 6, "6 sports proposés (duathlon ajouté)");
+ok(await page.locator(".sport-card").count() === 7, "7 sports proposés (duathlon ajouté)");
 ok(await page.locator('.sport-card[data-sport="duathlon"]').count() === 1, "carte « Duathlon » présente");
 await page.click('.sport-card[data-sport="duathlon"]');
 await page.click('.opts[data-key="intent"] .opt[data-val="competition"]');

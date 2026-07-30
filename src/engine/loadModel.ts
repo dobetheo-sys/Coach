@@ -283,9 +283,15 @@ export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS):
     }
     const zone = typeof st.zone === "string" ? st.zone : "";
     // Brick : legs classés par leur zone (bk.rp = modéré) ; le leg CAP « allure cible » = modéré.
+    // Le leg COURSE d'un enchaînement compte « modéré » quand il n'a PAS de zone explicite :
+    // c'est le cas du brick tri (« allure cible » implicite). Quand une zone est déclarée, elle
+    // prime — sinon les segments de course d'un swimrun, explicitement en endurance, seraient
+    // comptés modérés et la répartition d'intensité tomberait à 61 % de facile (mesuré) sur un
+    // plan qui est en réalité polarisé. La zone déclarée est toujours plus précise que l'indice.
+    const runLegNoZone = st.leg === "run" && !zone;
     const cls = TRAIL_HARD.includes(zone) || HARD_SUFFIX.some((z) => zone.endsWith(z))
       ? "hard"
-      : TRAIL_MOD.includes(zone) || MOD_SUFFIX.some((z) => zone.endsWith(z)) || st.leg === "run"
+      : TRAIL_MOD.includes(zone) || MOD_SUFFIX.some((z) => zone.endsWith(z)) || runLegNoZone
         ? "mod"
         : "easy";
     if (cls === "hard") out.hardMin += stMin;

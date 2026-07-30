@@ -49,6 +49,7 @@ const FORMATS = {
   tri: ["S", "M", "70.3", "Full"],
   trail: [""], // pas de format : la catégorie d'effort est déduite (R7)
   duathlon: ["S", "M", "L", "PM"], // R10 phase 2
+  swimrun: ["experience", "sprint", "series", "championship"], // R10 phase 3
 };
 const HISTORIES = ["reprise", "confirme", "ancien"];
 const LEVELS = ["debutant", "inter", "avance"];
@@ -57,6 +58,10 @@ const INTENTS = ["competition", "finir", "plaisir"];
 const base = () => ({
   vol_max: "10", sessions_max: "6", dispo: "semaine", off_which: "", injury: "", age: "35",
   ftp_known: "oui", ftp: "250", pace_known: "oui", pace: "4:30", css_known: "oui", css: "1:55", races: "non",
+});
+const swimrunExtras = () => ({
+  swim_total_m: "7850", run_total_km: "33", race_dplus_m: "900", segments_n: "20",
+  longest_swim_m: "1400", water_temp_c: "16", team_mode: "binome", openwater_access: "saisonnier",
 });
 const trailExtras = () => ({
   race_distance_km: "62", race_dplus_m: "3200", race_technicity: "technique", race_night: "partielle",
@@ -69,7 +74,7 @@ function* profiles() {
       for (const history of HISTORIES) {
         for (const level of LEVELS) {
           for (const intent of INTENTS) {
-            const a = { ...base(), format, history, level, intent, ...(sport === "trail" ? trailExtras() : {}) };
+            const a = { ...base(), format, history, level, intent, ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : {}) };
             yield { key: [sport, format || "-", history, level, intent].join("/"), sport, a };
           }
         }
@@ -92,7 +97,7 @@ function* profiles() {
     const format = fmts[fmts.length - 1];
     for (const [label, over] of guards) {
       const a = { ...base(), format, history: "confirme", level: "inter", intent: "competition",
-        ...(sport === "trail" ? trailExtras() : {}), ...over };
+        ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : {}), ...over };
       yield { key: ["G", sport, format || "-", label].join("/"), sport, a };
     }
   }

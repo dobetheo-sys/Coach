@@ -19,6 +19,15 @@ const SPORTS = {
     disciplines:["rn","bk"],
     terrains:[["plat","Plat / roulant"],["vallonne","Vallonné"],["montagne","Montagneux"]]
   },
+  swimrun: {
+    nom:"Swimrun", ico:"🌊", accent:"#0e7490",
+    pitch:"Nager en chaussures, courir en combinaison, vingt fois de suite. Le terrain et le matériel commandent, pas le chrono.",
+    // Le format ne sert que de valeurs par DÉFAUT : ce sont les données de l'épreuve
+    // (distance nagée, segments, plus longue nage) qui dimensionnent la préparation.
+    formats:[["experience","Experience (~5-8 km)"],["sprint","Sprint (~10-15 km)"],["series","World Series (~30-45 km)"],["championship","Championnat du monde (~70 km)"]],
+    minWeeks:{experience:10,sprint:12,series:20,championship:30},
+    disciplines:["sw","rn"]
+  },
   trail: {
     nom:"Trail", ico:"⛰", accent:"#2f7d4f",
     pitch:"Le dénivelé commande tout. On planifie en temps et en D+, jamais en kilomètres — et la descente compte autant que la montée.",

@@ -55,7 +55,7 @@ ok(/#00b8d9/.test(await page.locator("#avSvg svg").innerHTML()), "le SVG reprend
 
 // ---- 4. Multi-plans : nouveau plan → questionnaire vierge, retour au 1er sans perte ----
 await page.click("#pfNewPlan"); await page.waitForTimeout(300);
-ok(await page.locator(".sport-card").count() === 6, "nouveau plan → choix du sport (questionnaire vierge) — 6 sports depuis R10 (duathlon)");
+ok(await page.locator(".sport-card").count() === 7, "nouveau plan → choix du sport (questionnaire vierge) — 7 sports depuis R10 (duathlon + swimrun)");
 await page.click('.sport-card[data-sport="bike"]');
 await page.click('.opts[data-key="intent"] .opt[data-val="plaisir"]');
 await page.click('.opts[data-key="format"] .opt[data-val="cyclo"]');

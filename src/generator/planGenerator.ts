@@ -57,6 +57,11 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // toutes les phases à la même valeur — exactement le défaut « 6 séances identiques
       // à 15×3min » relevé par l'audit. Un bloc qui porte une PENTE garde ses propres bornes.
       if (b.gradient) return { floor: Math.max(1, b.bnd.floor), cap: Math.max(1, b.bnd.cap) };
+      // Bornes PAR RÉPÉTITION (swimrun : N alternances nage ↔ course) : le plancher « séance
+      // digne » de 30 min n'a aucun sens sur un segment de 8 min répété 10 fois — il le
+      // gonflerait d'un facteur 4. Un bloc répété garde ses propres bornes, comme un bloc
+      // porteur de pente.
+      if ((b.reps || 1) > 1) return { floor: Math.max(1, b.bnd.floor), cap: Math.max(1, Math.round(b.bnd.cap * sc)) };
       const fl = s.d === "bk" ? 35 : 30; // C8/C16 — plancher digne, pas la borne basse du format
       return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
     }

@@ -128,7 +128,7 @@ ok(phValid, "toutes les séances de la phase cochées → « ✅ Phase validée 
 // ---- 3quater. R6 : nouveau plan pré-rempli + retour à l'accueil possible ----
 await tP[0].click(); await page.waitForTimeout(300);
 await page.click("#pfNewPlan"); await page.waitForTimeout(300);
-ok(await page.locator(".sport-card").count() === 6, "nouveau plan → choix du sport — 6 sports depuis R10 (duathlon)");
+ok(await page.locator(".sport-card").count() === 7, "nouveau plan → choix du sport — 7 sports depuis R10 (duathlon + swimrun)");
 ok(await page.locator("#ebBackToPlan").count() === 1, "« Revenir à mon plan en cours » visible pendant le questionnaire");
 const prefilled = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return { age: S.answers.age, sex: S.answers.sex, pace: S.answers.pace }; });
 ok(prefilled.age === "35" && prefilled.sex === "H" && prefilled.pace === "4:30", "données de la personne pré-remplies (âge/sexe/allure) dans le nouveau plan");

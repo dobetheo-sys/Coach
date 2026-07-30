@@ -16,7 +16,7 @@ page.on("pageerror", (e) => consoleErrs.push(String(e)));
 await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
 
 // ---- 1. Le trail est proposé comme SPORT, plus comme format de course à pied ----
-ok(await page.locator(".sport-card").count() === 6, "6 sports proposés (trail R7 + duathlon R10)");
+ok(await page.locator(".sport-card").count() === 7, "7 sports proposés (trail R7 + duathlon et swimrun R10)");
 ok(await page.locator('.sport-card[data-sport="trail"]').count() === 1, "carte « Trail » présente au choix du sport");
 await page.click('.sport-card[data-sport="run"]');
 const runFormats = await page.locator('.opts[data-key="format"]').textContent();

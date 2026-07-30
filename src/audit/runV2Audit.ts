@@ -21,6 +21,7 @@ const SPORTS: Record<Sport, string[]> = {
   tri: ["S", "M", "70.3", "Full"],
   trail: [""], // pas de format : la catégorie d'effort est DÉDUITE des données de la course
   duathlon: ["S", "M", "L", "PM"], // R10 phase 2 — un sport non audité n'est pas livrable
+  swimrun: ["experience", "sprint", "series", "championship"], // R10 phase 3
 };
 const HISTORIES = ["reprise", "confirme", "ancien"] as const;
 const LEVELS = ["debutant", "inter", "avance"] as const;
@@ -58,11 +59,17 @@ for (const sport of Object.keys(SPORTS) as Sport[]) {
         for (const intent of INTENTS) {
           // Le trail sans données de course n'auditerait que ses valeurs par défaut : on lui
           // donne une vraie course (62 km / 3 200 m D+, technique, partiellement nocturne).
+          // Le swimrun se décrit par les données de l'épreuve (World Series ÖTILLÖ Cannes) :
+          // sans elles on n'auditerait que des valeurs par défaut.
+          const swimrunData = sport === "swimrun"
+            ? { swim_total_m: "7850", run_total_km: "33", race_dplus_m: "900", segments_n: "20",
+                longest_swim_m: "1400", water_temp_c: "16", team_mode: "binome", openwater_access: "saisonnier" }
+            : {};
           const trailData = sport === "trail"
             ? { race_distance_km: "62", race_dplus_m: "3200", race_technicity: "technique", race_night: "partielle",
                 train_dplus_access: "collines", treadmill: "non", poles: "a_decider", vam_known: "oui", vam: "850" }
             : {};
-          const profile: AthleteProfile = { ...baseProfile(), sport, format, history, level, intent, ...trailData };
+          const profile: AthleteProfile = { ...baseProfile(), sport, format, history, level, intent, ...trailData, ...swimrunData };
           try {
             const res = generateAudited(profile);
             const a = res.audit;

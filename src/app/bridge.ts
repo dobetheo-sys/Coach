@@ -7,6 +7,8 @@ import type { AthleteProfile, V1Plan, V1Step } from "../engine/types.ts";
 import { intensitySplit } from "../engine/loadModel.ts";
 import { parsePaceSec, HISTORY_CAPS, UTIL, MARGIN } from "../engine/constraintMatrix.ts";
 import { trailObjective, TRAIL_HISTORY_CAPS, TRAIL_UTIL } from "../engine/trailModel.ts";
+import { swimrunObjective } from "../sports/swimrun/objective.ts";
+import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
 import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
@@ -346,6 +348,7 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
     courseProfile: String(answers.course_profile || "") || undefined, // R6 — profil du parcours (Profil)
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
+    swimrun: sport === "swimrun" ? swimrunObjective(toProfile(sport, answers)) : undefined,
   });
 }
 
@@ -395,6 +398,10 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   // (une table de plafonds recopiée dans l'UI, c'est une table qui divergera).
   trailObjective: (answers: Record<string, unknown>) => trailObjective(toProfile("trail", answers)),
   trailCaps: { history: TRAIL_HISTORY_CAPS, util: TRAIL_UTIL },
+  // S10 — prérequis d'entrée swimrun : l'UI refuse un format long en dessous, et DIT pourquoi.
+  // C'est la priorité n°1 du manifeste (santé) dans un sport où l'on est loin du bord.
+  swimrunPrereq: (answers: Record<string, unknown>) => swimrunPrereqBlock(answers as { format?: string }),
+  swimrunObjective: (answers: Record<string, unknown>) => swimrunObjective(toProfile("swimrun", answers)),
   // R10 phase 0 (§ R10.0.3) — SOURCE UNIQUE des plafonds de volume. L'UI en gardait une copie
   // littérale (`capsBySport`/`utilBySport` dans steps.js) qui avait déjà DIVERGÉ : elle
   // annonçait 8h/sem là où le moteur en applique 9 (vélo/route/reprise). Les règles

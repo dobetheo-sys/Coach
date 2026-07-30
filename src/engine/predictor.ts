@@ -9,7 +9,7 @@
  * La fourchette se resserre si le plan est bien suivi (streak + charge accomplie).
  */
 import type { Decision } from "./types.ts";
-import { sportModule } from "../sports/registry.ts";
+import { sportModule, type PredictKit } from "../sports/registry.ts";
 import { T5_HIKE_SHARE, TRAIL_TECHNICITY, type TrailObjective } from "./trailModel.ts";
 
 export interface PredictionItem {
@@ -28,6 +28,8 @@ export interface PredictOpts {
   courseProfile?: string; // "plat" | "vallonne" | "montagneux" — profil du parcours visé
   /** R7 TRAIL — objectif décodé (distance, D+, catégorie, VAM) : Riegel ne s'applique pas. */
   trail?: TrailObjective;
+  /** Objectif swimrun décodé (§R10.3.2) — trois postes de temps. */
+  swimrun?: PredictKit["swimrun"];
 }
 
 // R6 — profil du parcours : un chrono à plat ne vaut rien sur un parcours vallonné.
@@ -152,7 +154,7 @@ export function predictRace(
   // sortir un chiffre inventé — la fourchette honnête est la seule sortie acceptable.
   const mod = sportModule(sport);
   if (mod.predict) {
-    mod.predict({ format, refs, items, advice, D, range, runRange, riegelSec, profWhy });
+    mod.predict({ format, refs, items, advice, D, range, runRange, riegelSec, profWhy, swimrun: opts.swimrun });
   } else {
     advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }
