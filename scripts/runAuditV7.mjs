@@ -56,8 +56,8 @@ const BUDGET = {
   "U-DECL": 30,      // R4.8c — lissage d'affûtage sur la mesure incluant les récups
   "U-RACEDATE": 20,  // R4.8b — course lointaine : plafond assumé + avertissement
   "U-DUP": 30,       // R4.2.4 — variantes d'un même créneau dans la semaine
-  "T-DPLUS": 16,     // R4.7a — D+ par bloc au-delà du terrain accessible
-  "T-NIGHT": 15,     // R4.7b — contenu nuit perdu quand une blessure est déclarée
+  "T-DPLUS": 0,      // R4.7a — CORRIGÉ : le D+ par bloc suit le terrain accessible (T1b)
+  "T-NIGHT": 2,      // R4.7b — la consigne nuit est un ATTRIBUT greffé sur les séances survivantes
   "T-DPLUS-WK": 5,
   "T-POLES-ADV": 5,
   "S-NOVO2": 26,     // stimulus VO2 absent quand une blessure d'impact est déclarée

@@ -2670,10 +2670,15 @@ function paceToSec(v         )         {
 }
 
 /** Accès au dénivelé à l'entraînement : ce que le terrain permet RÉELLEMENT par sortie. */
-const TRAIL_ACCESS                                                        = {
-  montagne: { perLongRun: 2000, label: "montagne (>800m D+ accessibles)" },
-  collines: { perLongRun: 800, label: "collines (200-800m D+)" },
-  plat: { perLongRun: 200, label: "plat (<200m D+)" },
+const TRAIL_ACCESS                                                                          = {
+  montagne: { perLongRun: 2000, perBlock: 700, label: "montagne (>800m D+ accessibles)" },
+  collines: { perLongRun: 800, perBlock: 300, label: "collines (200-800m D+)" },
+  // T1b (audit v7) — `perBlock` : le D+ d'UN bloc, pas seulement de la semaine. La question
+  // « quel dénivelé accessible depuis chez toi ? » est présentée comme la contrainte n°1 d'une
+  // prépa trail ; elle modulait les cibles HEBDO mais pas le `dplusM` des blocs, et le plan
+  // prescrivait 210 m de D+ par répétition à quelqu'un qui a déclaré vivre en terrain plat.
+  // Sur du plat, on ne trouve qu'une butte : le bloc est court, et il faut le RÉPÉTER.
+  plat: { perLongRun: 200, perBlock: 60, label: "plat (<200m D+)" },
 };
 
 /** Cible de D+/D− hebdomadaire au pic, bornée par la catégorie, l'historique ET le terrain. */
@@ -4130,9 +4135,17 @@ function buildTrailSessions(r              , slot      , phase        , prog    
     S2.push({
       d: "rn", long: true,
       name: isRehearsal ? "Longue trail + ravito réel" : "Sortie longue trail",
+      // T-NIGHT (audit v7) — la consigne de nuit était portée par UNE séance dédiée, elle-même
+      // éliminée par la substitution d'impact dès qu'une blessure était déclarée : le plan
+      // n'évoquait alors ni nuit, ni frontale, ni lampe pendant 40 semaines, pour une course
+      // annoncée nocturne. Une compétence ne doit pas dépendre de la survie d'une séance : la
+      // consigne se greffe aussi sur la sortie LONGUE, qui est le pivot de la semaine.
       note: isRehearsal
         ? "Répétition GÉNÉRALE : sac de course, réserve d'eau complète, et 60 à 90 g de glucides par heure — exactement ce que tu prendras le jour J. Au-delà de 6 h d'effort, l'estomac et le matériel font autant d'abandons que les jambes : ça se teste à l'entraînement, jamais en course."
-        : "La séance qui construit ta course : on compte le TEMPS et le dénivelé, jamais les kilomètres. Monte au train (tu dois pouvoir parler), descends en contrôle" + (hikeMin ? ", et marche franchement dans les pentes raides — c'est ce que tu feras en course" : "") + ".",
+        : "La séance qui construit ta course : on compte le TEMPS et le dénivelé, jamais les kilomètres. Monte au train (tu dois pouvoir parler), descends en contrôle" + (hikeMin ? ", et marche franchement dans les pentes raides — c'est ce que tu feras en course" : "") + "."
+          + (a.race_night && a.race_night !== "non" && (phase === "spec" || phase === "peak")
+            ? " Ta course se court en partie de nuit : termine celle-ci à la frontale (chargée, plus une réserve) sur un terrain que tu connais. La nuit change la perception du relief, l'équilibre et le moral — ça s'apprivoise, et le matériel se vérifie avant qu'il te lâche en course."
+            : ""),
       det: "",
       steps: [
         B({ durationMin: durMin - (hikeMin ? Math.round(hikeMin / 2) : 0), gradient: "rolling", zone: "tr.flat", dplusM: up, dmoinsM: down,
@@ -4185,6 +4198,13 @@ function buildTrailSessions(r              , slot      , phase        , prog    
           B({ durationMin: P(4, 7), reps: Math.max(3, P(3, 6)), gradient: "down", dmoinsM: Math.round(down / Math.max(3, P(3, 6))), surface: technicalOk ? "sentier" : "piste", recoveryText: "remontée marchée, souffle repris" , repCap: 8 }), C(8, "footing souple")] });
     }
   } else if (slot === "facileR") {
+    // T-NIGHT (audit v7) — une compétence ne doit dépendre de la survie d'AUCUNE séance : avec
+    // une blessure déclarée, la séance de nuit ET la sortie longue pouvaient être remplacées,
+    // et le plan n'évoquait plus ni nuit ni frontale pendant 40 semaines pour une course
+    // nocturne. La consigne se greffe donc aussi sur le footing, la séance la plus nombreuse.
+    const nightCue = a.race_night && a.race_night !== "non" && (phase === "spec" || phase === "peak")
+      ? " Ta course se court en partie de nuit : fais celui-ci à la frontale au moins une fois par quinzaine, sur un terrain connu — la nuit change l'équilibre et la perception du relief, et c'est aussi le moment de vérifier ta lampe."
+      : "";
     // 7. MARCHE RAPIDE EN CÔTE (base/dev) · 9. SORTIE DE NUIT (spec/peak si course de nuit)
     const nightNeeded = (a.race_night === "partielle" || a.race_night === "majoritaire") && (phase === "spec" || phase === "peak");
     if (nightNeeded && weekNum % 2 === 1) {
@@ -4192,12 +4212,12 @@ function buildTrailSessions(r              , slot      , phase        , prog    
         steps: [B({ durationMin: P(55, 100), gradient: "rolling", zone: "tr.flat", dplusM: upShare(0.2), dmoinsM: Math.round(upShare(0.2) * downFactor), mode: "run_hike", poles, surface: "sentier" })],
         ...({ plainBody: true }          ) }             );
     } else if (hikeShare >= 0.1 && (phase === "base" || phase === "dev" || phase === "spec")) {
-      S2.push({ d: "rn", name: "Marche rapide en montée" + (poles ? " (bâtons)" : ""), note: "Sur ta course, la marche représentera environ " + Math.round(hikeShare * 100) + " % du temps : c'est une compétence, pas un aveu d'échec. Marche vite, mains sur les cuisses ou " + (poles ? "avec les bâtons (poussée complète, buste légèrement penché)" : "bras actifs") + ", rythme cardiaque soutenu. Tu iras plus vite en marchant bien qu'en courant mal. Termine par 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente.", det: "",
+      S2.push({ d: "rn", name: "Marche rapide en montée" + (poles ? " (bâtons)" : ""), note: "Sur ta course, la marche représentera environ " + Math.round(hikeShare * 100) + " % du temps : c'est une compétence, pas un aveu d'échec. Marche vite, mains sur les cuisses ou " + (poles ? "avec les bâtons (poussée complète, buste légèrement penché)" : "bras actifs") + ", rythme cardiaque soutenu. Tu iras plus vite en marchant bien qu'en courant mal. Termine par 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente." + nightCue, det: "",
         steps: [B({ durationMin: P(40, 85), gradient: "up", zone: "tr.hike", dplusM: upShare(0.3), mode: "hike", poles })],
         ...({ plainBody: true }          ) }             );
     } else {
       // 12. FOOTING PLAT RÉCUP — aucun D+ assumé
-      S2.push({ d: "rn", name: "Footing plat + renfo excentrique", note: "Volume facile sur terrain PLAT et souple : aucun dénivelé, aucune technique. C'est le volume qui construit l'aérobie sans ajouter de casse musculaire" + (fasciaInj ? " — et sur terrain souple, ton fascia a besoin de ça" : "") + ". Puis 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes contrôlées, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente, et elle se construit dès maintenant.", det: "",
+      S2.push({ d: "rn", name: "Footing plat + renfo excentrique", note: "Volume facile sur terrain PLAT et souple : aucun dénivelé, aucune technique. C'est le volume qui construit l'aérobie sans ajouter de casse musculaire" + (fasciaInj ? " — et sur terrain souple, ton fascia a besoin de ça" : "") + ". Puis 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes contrôlées, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente, et elle se construit dès maintenant." + nightCue, det: "",
         steps: [B({ durationMin: P(35, 65), gradient: "flat", zone: "tr.flat", mode: "run", surface: fasciaInj ? "sentier" : "route" })],
         ...({ plainBody: true }          ) }             );
     }
@@ -6617,12 +6637,23 @@ function generatePlan(profile                , opts                             
     const downOf = (w        ) => stepsOf(w).reduce((t, st) => t + (st.dmoinsM || 0) * (st.reps || 1), 0);
     // Cohérence physique d'abord : un bloc en montée de N minutes à X m/h fait N/60×X mètres.
     // Sans ce recalcul, le scaling du TEMPS (R3.3) laissait le D+ figé à sa valeur initiale.
+    // T1b (audit v7) — le D+ d'un bloc ne dépasse jamais ce que le terrain permet. Le tapis
+    // lève la contrainte en MONTÉE (c'est justement sa fonction), pas en descente.
+    const accessKey = a.train_dplus_access || "collines";
+    const perBlockCap = a.treadmill === "oui"
+      ? TRAIL_ACCESS.collines.perBlock
+      : (TRAIL_ACCESS[accessKey] || TRAIL_ACCESS.collines).perBlock;
     const syncUpFromDuration = (w        ) => {
       for (const st of stepsOf(w)) {
         if (st.gradient !== "up" || !st.durationMin || !st.dplusM) continue;
         const z = String(st.zone || "");
         const share = z === "tr.vam" ? 1.0 : z === "tr.asc" ? 0.89 : z === "tr.climb" ? 0.76 : z === "tr.hike" ? 0.52 : 0.42;
         st.dplusM = Math.max(20, Math.round((st.durationMin / 60) * r.trail .vam * share / 5) * 5);
+      }
+      for (const st of stepsOf(w)) {
+        if (!st.dplusM || st.dplusM <= perBlockCap) continue;
+        st.dplusM = perBlockCap; // le bloc s'aligne sur la bosse disponible, on la répète
+        if (st.dmoinsM && st.dmoinsM > perBlockCap) st.dmoinsM = perBlockCap;
       }
     };
     const scaleVert = (w        , fUp        , fDown        ) => {
@@ -6636,6 +6667,10 @@ function generatePlan(profile                , opts                             
         // Seuls les blocs de DESCENTE dédiés (navette, remontée mécanique) portent du D−
         // sans D+ correspondant — c'est justement leur raison d'être.
         if (st.gradient !== "down" && st.dmoinsM && (st.dplusM || 0) > 0 && st.dmoinsM > st.dplusM ) st.dmoinsM = st.dplusM ;
+        // T1b — le plafond de terrain s'applique APRÈS la mise à l'échelle : sinon la courbe
+        // verticale regonfle le bloc au-dessus de ce que le relief accessible permet.
+        if (st.dplusM && st.dplusM > perBlockCap) st.dplusM = perBlockCap;
+        if (st.dmoinsM && st.dmoinsM > perBlockCap) st.dmoinsM = perBlockCap;
       }
     };
     // T3 — aucune qualité ni descente dans les 48h suivant une sortie à fort D− : les
@@ -6684,6 +6719,30 @@ function generatePlan(profile                , opts                             
     };
     applyEccentricRecovery();
 
+    // T3, CONTRÔLE PAR SEMAINE — la règle des 48 h est appliquée avant la mise à l'échelle
+    // verticale (elle doit l'être : elle change la structure de la semaine). Mais la courbe peut
+    // ensuite pousser une journée AU-DESSUS du seuil, et le plan livré viole alors une règle
+    // qu'il croyait respecter — mesuré : 1 040 m de D− suivis d'une séance de qualité 48 h après.
+    // On ne re-structure pas la semaine (l'aplatir casse la progression D+/D−) : on ramène la
+    // DESCENTE DU JOUR juste sous le seuil, et seulement quand la violation existe vraiment.
+    // Appelé DANS la boucle de courbe pour que la progression soit mesurée sur ces valeurs-là :
+    // sinon les deux règles se contredisent (T2b lit un chiffre que T3 modifiera après lui).
+    const dayDmoins = (d        ) => d.sessions.reduce((t, sx) => t + (sx.steps || []).reduce((u, st) => u + (st.dmoinsM || 0) * (st.reps || 1), 0), 0);
+    const clampEccentricDays = (w        ) => {
+      const wd = w.days            ;
+      for (let i = 0; i < wd.length; i++) {
+        const tot = dayDmoins(wd[i]);
+        if (tot < T3_ECCENTRIC_RECOVERY.thresholdDmoins) continue;
+        const conflict = wd.slice(i + 1, i + 1 + T3_ECCENTRIC_RECOVERY.minGapDays)
+          .some((d) => d.charge === "dur" || dayDmoins(d) > 200);
+        if (!conflict) continue; // grosse descente suivie de repos : c'est exactement la règle
+        const f = (T3_ECCENTRIC_RECOVERY.thresholdDmoins * 0.95) / tot;
+        for (const sess of wd[i].sessions)
+          for (const st of sess.steps || []) if (st.dmoinsM) st.dmoinsM = Math.max(20, Math.round((st.dmoinsM * f) / 10) * 10);
+      }
+    };
+
+
     // Courbe verticale : même forme que la courbe de temps (bands), plafonnée par T1, et
     // progressant au plus de T2 (+12%) / T2b (+8%) d'une semaine de charge à la suivante.
     let prevUp = 0, prevDown = 0;
@@ -6703,6 +6762,7 @@ function generatePlan(profile                , opts                             
       const curUp = upOf(w), curDown = downOf(w);
       if (curUp > 0 || curDown > 0) {
         scaleVert(w, curUp > 0 ? tgtUp / curUp : 1, curDown > 0 ? tgtDown / curDown : 1);
+        clampEccentricDays(w); // T3 avant que la progression ne lise les valeurs de la semaine
         renderWeek(w.days            );
       }
       if (w.phase.id !== "taper" && !w.isRecup) { prevUp = upOf(w); prevDown = downOf(w); }

@@ -17,7 +17,7 @@ import {
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, type Refs } from "./renderer.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
-import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY } from "../engine/trailModel.ts";
+import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS } from "../engine/trailModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 
@@ -734,12 +734,23 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     const downOf = (w: V1Week) => stepsOf(w).reduce((t, st) => t + (st.dmoinsM || 0) * (st.reps || 1), 0);
     // Cohérence physique d'abord : un bloc en montée de N minutes à X m/h fait N/60×X mètres.
     // Sans ce recalcul, le scaling du TEMPS (R3.3) laissait le D+ figé à sa valeur initiale.
+    // T1b (audit v7) — le D+ d'un bloc ne dépasse jamais ce que le terrain permet. Le tapis
+    // lève la contrainte en MONTÉE (c'est justement sa fonction), pas en descente.
+    const accessKey = a.train_dplus_access || "collines";
+    const perBlockCap = a.treadmill === "oui"
+      ? TRAIL_ACCESS.collines.perBlock
+      : (TRAIL_ACCESS[accessKey] || TRAIL_ACCESS.collines).perBlock;
     const syncUpFromDuration = (w: V1Week) => {
       for (const st of stepsOf(w)) {
         if (st.gradient !== "up" || !st.durationMin || !st.dplusM) continue;
         const z = String(st.zone || "");
         const share = z === "tr.vam" ? 1.0 : z === "tr.asc" ? 0.89 : z === "tr.climb" ? 0.76 : z === "tr.hike" ? 0.52 : 0.42;
         st.dplusM = Math.max(20, Math.round((st.durationMin / 60) * r.trail!.vam * share / 5) * 5);
+      }
+      for (const st of stepsOf(w)) {
+        if (!st.dplusM || st.dplusM <= perBlockCap) continue;
+        st.dplusM = perBlockCap; // le bloc s'aligne sur la bosse disponible, on la répète
+        if (st.dmoinsM && st.dmoinsM > perBlockCap) st.dmoinsM = perBlockCap;
       }
     };
     const scaleVert = (w: V1Week, fUp: number, fDown: number) => {
@@ -753,6 +764,10 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         // Seuls les blocs de DESCENTE dédiés (navette, remontée mécanique) portent du D−
         // sans D+ correspondant — c'est justement leur raison d'être.
         if (st.gradient !== "down" && st.dmoinsM && (st.dplusM || 0) > 0 && st.dmoinsM > st.dplusM!) st.dmoinsM = st.dplusM!;
+        // T1b — le plafond de terrain s'applique APRÈS la mise à l'échelle : sinon la courbe
+        // verticale regonfle le bloc au-dessus de ce que le relief accessible permet.
+        if (st.dplusM && st.dplusM > perBlockCap) st.dplusM = perBlockCap;
+        if (st.dmoinsM && st.dmoinsM > perBlockCap) st.dmoinsM = perBlockCap;
       }
     };
     // T3 — aucune qualité ni descente dans les 48h suivant une sortie à fort D− : les
@@ -801,6 +816,30 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     };
     applyEccentricRecovery();
 
+    // T3, CONTRÔLE PAR SEMAINE — la règle des 48 h est appliquée avant la mise à l'échelle
+    // verticale (elle doit l'être : elle change la structure de la semaine). Mais la courbe peut
+    // ensuite pousser une journée AU-DESSUS du seuil, et le plan livré viole alors une règle
+    // qu'il croyait respecter — mesuré : 1 040 m de D− suivis d'une séance de qualité 48 h après.
+    // On ne re-structure pas la semaine (l'aplatir casse la progression D+/D−) : on ramène la
+    // DESCENTE DU JOUR juste sous le seuil, et seulement quand la violation existe vraiment.
+    // Appelé DANS la boucle de courbe pour que la progression soit mesurée sur ces valeurs-là :
+    // sinon les deux règles se contredisent (T2b lit un chiffre que T3 modifiera après lui).
+    const dayDmoins = (d: GenDay) => d.sessions.reduce((t, sx) => t + (sx.steps || []).reduce((u, st) => u + (st.dmoinsM || 0) * (st.reps || 1), 0), 0);
+    const clampEccentricDays = (w: V1Week) => {
+      const wd = w.days as GenDay[];
+      for (let i = 0; i < wd.length; i++) {
+        const tot = dayDmoins(wd[i]);
+        if (tot < T3_ECCENTRIC_RECOVERY.thresholdDmoins) continue;
+        const conflict = wd.slice(i + 1, i + 1 + T3_ECCENTRIC_RECOVERY.minGapDays)
+          .some((d) => d.charge === "dur" || dayDmoins(d) > 200);
+        if (!conflict) continue; // grosse descente suivie de repos : c'est exactement la règle
+        const f = (T3_ECCENTRIC_RECOVERY.thresholdDmoins * 0.95) / tot;
+        for (const sess of wd[i].sessions)
+          for (const st of sess.steps || []) if (st.dmoinsM) st.dmoinsM = Math.max(20, Math.round((st.dmoinsM * f) / 10) * 10);
+      }
+    };
+
+
     // Courbe verticale : même forme que la courbe de temps (bands), plafonnée par T1, et
     // progressant au plus de T2 (+12%) / T2b (+8%) d'une semaine de charge à la suivante.
     let prevUp = 0, prevDown = 0;
@@ -820,6 +859,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       const curUp = upOf(w), curDown = downOf(w);
       if (curUp > 0 || curDown > 0) {
         scaleVert(w, curUp > 0 ? tgtUp / curUp : 1, curDown > 0 ? tgtDown / curDown : 1);
+        clampEccentricDays(w); // T3 avant que la progression ne lise les valeurs de la semaine
         renderWeek(w.days as GenDay[]);
       }
       if (w.phase.id !== "taper" && !w.isRecup) { prevUp = upOf(w); prevDown = downOf(w); }

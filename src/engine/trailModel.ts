@@ -228,10 +228,15 @@ function paceToSec(v: unknown): number {
 }
 
 /** Accès au dénivelé à l'entraînement : ce que le terrain permet RÉELLEMENT par sortie. */
-export const TRAIL_ACCESS: Record<string, { perLongRun: number; label: string }> = {
-  montagne: { perLongRun: 2000, label: "montagne (>800m D+ accessibles)" },
-  collines: { perLongRun: 800, label: "collines (200-800m D+)" },
-  plat: { perLongRun: 200, label: "plat (<200m D+)" },
+export const TRAIL_ACCESS: Record<string, { perLongRun: number; perBlock: number; label: string }> = {
+  montagne: { perLongRun: 2000, perBlock: 700, label: "montagne (>800m D+ accessibles)" },
+  collines: { perLongRun: 800, perBlock: 300, label: "collines (200-800m D+)" },
+  // T1b (audit v7) — `perBlock` : le D+ d'UN bloc, pas seulement de la semaine. La question
+  // « quel dénivelé accessible depuis chez toi ? » est présentée comme la contrainte n°1 d'une
+  // prépa trail ; elle modulait les cibles HEBDO mais pas le `dplusM` des blocs, et le plan
+  // prescrivait 210 m de D+ par répétition à quelqu'un qui a déclaré vivre en terrain plat.
+  // Sur du plat, on ne trouve qu'une butte : le bloc est court, et il faut le RÉPÉTER.
+  plat: { perLongRun: 200, perBlock: 60, label: "plat (<200m D+)" },
 };
 
 /** Cible de D+/D− hebdomadaire au pic, bornée par la catégorie, l'historique ET le terrain. */

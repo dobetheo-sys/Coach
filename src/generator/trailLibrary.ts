@@ -79,9 +79,17 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
     S2.push({
       d: "rn", long: true,
       name: isRehearsal ? "Longue trail + ravito réel" : "Sortie longue trail",
+      // T-NIGHT (audit v7) — la consigne de nuit était portée par UNE séance dédiée, elle-même
+      // éliminée par la substitution d'impact dès qu'une blessure était déclarée : le plan
+      // n'évoquait alors ni nuit, ni frontale, ni lampe pendant 40 semaines, pour une course
+      // annoncée nocturne. Une compétence ne doit pas dépendre de la survie d'une séance : la
+      // consigne se greffe aussi sur la sortie LONGUE, qui est le pivot de la semaine.
       note: isRehearsal
         ? "Répétition GÉNÉRALE : sac de course, réserve d'eau complète, et 60 à 90 g de glucides par heure — exactement ce que tu prendras le jour J. Au-delà de 6 h d'effort, l'estomac et le matériel font autant d'abandons que les jambes : ça se teste à l'entraînement, jamais en course."
-        : "La séance qui construit ta course : on compte le TEMPS et le dénivelé, jamais les kilomètres. Monte au train (tu dois pouvoir parler), descends en contrôle" + (hikeMin ? ", et marche franchement dans les pentes raides — c'est ce que tu feras en course" : "") + ".",
+        : "La séance qui construit ta course : on compte le TEMPS et le dénivelé, jamais les kilomètres. Monte au train (tu dois pouvoir parler), descends en contrôle" + (hikeMin ? ", et marche franchement dans les pentes raides — c'est ce que tu feras en course" : "") + "."
+          + (a.race_night && a.race_night !== "non" && (phase === "spec" || phase === "peak")
+            ? " Ta course se court en partie de nuit : termine celle-ci à la frontale (chargée, plus une réserve) sur un terrain que tu connais. La nuit change la perception du relief, l'équilibre et le moral — ça s'apprivoise, et le matériel se vérifie avant qu'il te lâche en course."
+            : ""),
       det: "",
       steps: [
         B({ durationMin: durMin - (hikeMin ? Math.round(hikeMin / 2) : 0), gradient: "rolling", zone: "tr.flat", dplusM: up, dmoinsM: down,
@@ -134,6 +142,13 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
           B({ durationMin: P(4, 7), reps: Math.max(3, P(3, 6)), gradient: "down", dmoinsM: Math.round(down / Math.max(3, P(3, 6))), surface: technicalOk ? "sentier" : "piste", recoveryText: "remontée marchée, souffle repris" , repCap: 8 }), C(8, "footing souple")] });
     }
   } else if (slot === "facileR") {
+    // T-NIGHT (audit v7) — une compétence ne doit dépendre de la survie d'AUCUNE séance : avec
+    // une blessure déclarée, la séance de nuit ET la sortie longue pouvaient être remplacées,
+    // et le plan n'évoquait plus ni nuit ni frontale pendant 40 semaines pour une course
+    // nocturne. La consigne se greffe donc aussi sur le footing, la séance la plus nombreuse.
+    const nightCue = a.race_night && a.race_night !== "non" && (phase === "spec" || phase === "peak")
+      ? " Ta course se court en partie de nuit : fais celui-ci à la frontale au moins une fois par quinzaine, sur un terrain connu — la nuit change l'équilibre et la perception du relief, et c'est aussi le moment de vérifier ta lampe."
+      : "";
     // 7. MARCHE RAPIDE EN CÔTE (base/dev) · 9. SORTIE DE NUIT (spec/peak si course de nuit)
     const nightNeeded = (a.race_night === "partielle" || a.race_night === "majoritaire") && (phase === "spec" || phase === "peak");
     if (nightNeeded && weekNum % 2 === 1) {
@@ -141,12 +156,12 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
         steps: [B({ durationMin: P(55, 100), gradient: "rolling", zone: "tr.flat", dplusM: upShare(0.2), dmoinsM: Math.round(upShare(0.2) * downFactor), mode: "run_hike", poles, surface: "sentier" })],
         ...({ plainBody: true } as object) } as V1Session);
     } else if (hikeShare >= 0.1 && (phase === "base" || phase === "dev" || phase === "spec")) {
-      S2.push({ d: "rn", name: "Marche rapide en montée" + (poles ? " (bâtons)" : ""), note: "Sur ta course, la marche représentera environ " + Math.round(hikeShare * 100) + " % du temps : c'est une compétence, pas un aveu d'échec. Marche vite, mains sur les cuisses ou " + (poles ? "avec les bâtons (poussée complète, buste légèrement penché)" : "bras actifs") + ", rythme cardiaque soutenu. Tu iras plus vite en marchant bien qu'en courant mal. Termine par 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente.", det: "",
+      S2.push({ d: "rn", name: "Marche rapide en montée" + (poles ? " (bâtons)" : ""), note: "Sur ta course, la marche représentera environ " + Math.round(hikeShare * 100) + " % du temps : c'est une compétence, pas un aveu d'échec. Marche vite, mains sur les cuisses ou " + (poles ? "avec les bâtons (poussée complète, buste légèrement penché)" : "bras actifs") + ", rythme cardiaque soutenu. Tu iras plus vite en marchant bien qu'en courant mal. Termine par 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente." + nightCue, det: "",
         steps: [B({ durationMin: P(40, 85), gradient: "up", zone: "tr.hike", dplusM: upShare(0.3), mode: "hike", poles })],
         ...({ plainBody: true } as object) } as V1Session);
     } else {
       // 12. FOOTING PLAT RÉCUP — aucun D+ assumé
-      S2.push({ d: "rn", name: "Footing plat + renfo excentrique", note: "Volume facile sur terrain PLAT et souple : aucun dénivelé, aucune technique. C'est le volume qui construit l'aérobie sans ajouter de casse musculaire" + (fasciaInj ? " — et sur terrain souple, ton fascia a besoin de ça" : "") + ". Puis 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes contrôlées, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente, et elle se construit dès maintenant.", det: "",
+      S2.push({ d: "rn", name: "Footing plat + renfo excentrique", note: "Volume facile sur terrain PLAT et souple : aucun dénivelé, aucune technique. C'est le volume qui construit l'aérobie sans ajouter de casse musculaire" + (fasciaInj ? " — et sur terrain souple, ton fascia a besoin de ça" : "") + ". Puis 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes contrôlées, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente, et elle se construit dès maintenant." + nightCue, det: "",
         steps: [B({ durationMin: P(35, 65), gradient: "flat", zone: "tr.flat", mode: "run", surface: fasciaInj ? "sentier" : "route" })],
         ...({ plainBody: true } as object) } as V1Session);
     }

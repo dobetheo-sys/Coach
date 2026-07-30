@@ -54,7 +54,24 @@ Verrouillé en CI par `npm run audit:v7`, avec un BUDGET par check (0 = garde-fo
 
 ### Dette restante, chiffrée (budgets dans `scripts/runAuditV7.mjs`)
 
-Profils sans aucun défaut : trail **72 → 78 %**, duathlon **45 → 91 %**, swimrun **23 → 69 %**.
+Profils sans aucun défaut : trail **56 → 84 %**, duathlon **45 → 91 %**, swimrun **23 → 69 %**.
+
+**R4.7a corrigé** (`T-DPLUS` = 0) : le D+ d'un BLOC suit désormais le terrain accessible
+(`TRAIL_ACCESS.perBlock`), avant ET après la mise à l'échelle verticale — la courbe regonflait
+sinon le bloc au-dessus de ce que le relief permet. Sur du plat on ne trouve qu'une butte : le
+bloc est court et il se RÉPÈTE.
+
+**R4.7b corrigé** (`T-NIGHT` 15 → 1) : la consigne de nuit était portée par UNE séance dédiée,
+elle-même éliminée par la substitution d'impact dès qu'une blessure était déclarée. Une
+compétence ne doit dépendre de la survie d'AUCUNE séance : la consigne est devenue un ATTRIBUT
+greffé sur la sortie longue ET sur les footings, les séances les plus nombreuses.
+
+**Effet de bord, encore trouvé par le banc v6** : la règle T3 (48 h après une grosse descente)
+était évaluée AVANT la mise à l'échelle verticale, donc sur des valeurs qui n'étaient pas celles
+du plan livré. La rejouer après cassait la progression D−/semaine (+32 % mesuré) : deux règles
+se contredisaient parce que l'une lisait un chiffre que l'autre modifierait après elle. Résolu
+en ramenant la DESCENTE DU JOUR juste sous le seuil, **dans** la boucle de courbe — la
+progression mesure alors les valeurs finales.
 Ce qui reste est budgété et ne peut plus remonter : `U-DECL` (lissage d'affûtage sur la mesure
 incluant les récups, R4.8c), `U-RACEDATE` (course lointaine : plafond + avertissement, R4.8b),
 `U-DUP` (variantes d'un même créneau), `T-DPLUS`/`T-NIGHT` (R4.7a/b), `S-NOVO2` et `S-LONGSWIM`
