@@ -44,8 +44,17 @@ export function buildPlan(a) {
 }
 
 // ===== PWA : service worker (offline + installable). Échec silencieux hors HTTPS/localhost.
-if ("serviceWorker" in navigator) {
-  addEventListener("load", () => { navigator.serviceWorker.register("./sw.js").catch(() => {}); });
+// R11 §8 — le service worker sert la PWA SERVIE (cache hors ligne, installation). Dans le
+// fichier autonome il n'a rien à mettre en cache et son enregistrement échoue de toute façon :
+// on ne le tente pas, et on dit pourquoi plutôt que d'avaler l'échec. Un `catch(() => {})` qui
+// masque une cause légitime rend le prochain diagnostic plus difficile, pour zéro bénéfice.
+if (globalThis.EB_STANDALONE) {
+  console.info("EnduraBuild : fichier autonome — pas de service worker (tout est déjà embarqué).");
+} else if ("serviceWorker" in navigator) {
+  addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .catch((e) => console.warn("EnduraBuild : service worker non enregistré —", e && e.message));
+  });
 }
 
 // ===== Reprise : restauration multi-plans (R4-4) — migration v1→v2 dans ebLoad() =====

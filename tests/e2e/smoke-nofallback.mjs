@@ -15,6 +15,9 @@ const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, lo
 const page = await ctx.newPage();
 const errs = [];
 page.on("pageerror", (e) => errs.push(String(e)));
+const reqFailed = [];
+page.on("requestfailed", (r) => reqFailed.push(r.url().split("/").pop() + " " + (r.failure()?.errorText || "")));
+page.on("response", (r) => { if (r.status() >= 400) reqFailed.push(r.url().split("/").pop() + " HTTP " + r.status()); });
 
 // ---- 1. Le module de repli n'est plus servi ni référencé ----
 const r = await fetch("http://localhost:" + PORT + "/js/legacy-fallback.js").catch(() => null);
@@ -106,6 +109,32 @@ const tooShort = await page.evaluate(() => {
 ok(tooShort.refus, "marathon dans 3 semaines : REFUS (minWeeks enfin appliqué — R11.4)");
 ok(/format plus court/.test(tooShort.human || "") && /à partir du/.test(tooShort.human || ""),
   "… et le refus propose les DEUX issues concrètes (format plus court, ou date compatible)");
+
+// ---- 7. R11 §8 : la PWA SERVIE reste installable, et rien n'échoue en silence ----
+// L'audit affirmait « PWA non installable, échecs silencieux ». Mesuré : c'est FAUX pour la PWA
+// servie — service worker activé, manifeste lié, aucune requête en échec. Rien ne le vérifiait
+// pourtant : ce garde-fou existe pour que ça reste vrai.
+const pwa = await page.evaluate(async () => {
+  const regs = await navigator.serviceWorker.getRegistrations();
+  const link = document.querySelector('link[rel="manifest"]');
+  let man = null;
+  try { man = await (await fetch(link.getAttribute("href"))).json(); } catch (e) { man = null; }
+  const icons = man && Array.isArray(man.icons) ? man.icons : [];
+  const probes = await Promise.all(icons.map(async (ic) => {
+    try { const r = await fetch(ic.src); return r.ok; } catch (e) { return false; }
+  }));
+  return {
+    sw: regs.length > 0 && !!(regs[0].active || regs[0].installing),
+    manifest: !!man, name: man && (man.name || man.short_name),
+    display: man && man.display, start: man && man.start_url,
+    nIcons: icons.length, iconsOK: probes.every(Boolean),
+  };
+});
+ok(pwa.sw, "service worker enregistré et actif sur la PWA servie");
+ok(pwa.manifest && !!pwa.name, "manifeste présent et nommé (" + pwa.name + ")");
+ok(pwa.display === "standalone" || pwa.display === "fullscreen", "mode d'affichage installable (" + pwa.display + ")");
+ok(pwa.nIcons >= 2 && pwa.iconsOK, "les " + pwa.nIcons + " icônes du manifeste existent réellement");
+ok(reqFailed.length === 0, "aucune requête en échec au chargement (" + reqFailed.slice(0, 2).join(" | ") + ")");
 
 ok(errs.length === 0, "aucune exception non attrapée (" + errs.length + ")");
 if (errs.length) info(errs.slice(0, 3).join(" | "));

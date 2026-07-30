@@ -12,7 +12,10 @@ import { S, ebSave } from "./state.js";
 function canNotify() { return "Notification" in window && Notification.permission === "granted"; }
 function notify(title, body) {
   if (!canNotify()) return;
-  try { new Notification(title, { body, icon: "assets/icon-192.png", badge: "assets/icon-192.png" }); } catch (e) {}
+  // R11 §8 — l'icône vit dans `assets/`, qui n'existe pas dans le fichier autonome : on ne la
+  // demande alors pas du tout, plutôt que de laisser le navigateur échouer en silence.
+  const ico = globalThis.EB_STANDALONE ? undefined : "assets/icon-192.png";
+  try { new Notification(title, ico ? { body, icon: ico, badge: ico } : { body }); } catch (e) {}
 }
 export async function requestNotifyPermission() {
   if (!("Notification" in window)) return "unsupported";

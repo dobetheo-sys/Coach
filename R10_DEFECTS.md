@@ -440,3 +440,26 @@ pas : c'est la métrique qui pilote la courbe, les plafonds et l'auditeur, et la
 chantier R5.6a. Mais l'athlète n'a plus à découvrir l'écart sur le terrain. 7 % des blocs ont une
 récupération non chiffrée (« récupération complète », « descente marchée », surtout en trail) :
 on ne devine pas une durée qu'on n'a pas, ces séances n'affichent pas la mention.
+
+### R11 §8 — l'audit se trompait sur la PWA, et rien ne le vérifiait
+
+L'audit R11 rangeait en dette : *« `app.js` enregistre `./sw.js` et `notifications.js`
+référence `assets/icon-192.png` ; ni l'un ni l'autre n'est dans le bundle. PWA non installable,
+échecs silencieux. »*
+
+**Mesuré dans un vrai Chromium, c'est faux pour le produit.** Sur la PWA SERVIE — celle qui est
+déployée — le service worker s'enregistre et s'active, le manifeste est lié et valide, ses trois
+icônes existent, et il n'y a **aucune requête en échec ni erreur console**. L'auditeur avait
+raisonné sur le contenu du bundle standalone sans ouvrir ni l'un ni l'autre.
+
+**Ce qui était vrai, et qui est corrigé** : le fichier autonome tentait quand même d'enregistrer
+un service worker qui n'a rien à mettre en cache, et de charger une icône absente. Deux échecs
+avalés par un `catch(() => {})`. Ce n'est pas grave en soi — mais un échec masqué rend plus
+difficile le diagnostic du prochain, pour zéro bénéfice. Le build injecte désormais
+`EB_STANDALONE`, le code n'entreprend plus ce qui n'a pas de sens dans ce contexte, et le dit
+en une ligne de console.
+
+**Ce qui manquait vraiment : le garde-fou.** Rien ne vérifiait que la PWA reste installable.
+`smoke-nofallback` l'assure maintenant en cinq assertions — service worker actif, manifeste
+nommé, mode d'affichage installable, icônes réellement servies, zéro requête en échec. C'est le
+contrat qui compte, et il est désormais protégé.
