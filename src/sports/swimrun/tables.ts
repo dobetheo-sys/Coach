@@ -124,7 +124,12 @@ export const S7_COLD = srule(
 export const S8_PADDLES = srule(
   "S8",
   "les plaquettes sont l'outil le plus rentable du swimrun et le plus traumatisant pour l'épaule : la progressivité n'est pas une précaution, c'est la condition de leur usage",
-  { shareBase: 0.15, shareDev: 0.3, shareSpec: 0.45, shoulderFactor: 0.4 },
+  { shareBase: 0.15, shareDev: 0.3, shareSpec: 0.45,
+    // R4.8e (audit v7) — épaule déclarée : ZÉRO plaquette, partout. Le facteur valait 0.4, ce qui
+    // laissait ~6 % de plaquettes dans la séance pivot pendant que la séance de nage affichait
+    // « SANS plaquettes » : deux séances du même plan se contredisaient sur le même drapeau.
+    // Trancher vaut mieux qu'expliquer une incohérence.
+    shoulderFactor: 0 },
 );
 
 /**
@@ -136,6 +141,18 @@ export const S9_LONG_SHARE: Record<string, [number, number]> = srule(
   "S9",
   "reproduire la durée de course à l'entraînement est contre-productif ; le pic à 80 % trois semaines avant est le compromis documenté",
   { base: [0.2, 0.35], dev: [0.35, 0.55], spec: [0.55, 0.7], peak: [0.7, 0.8], taper: [0.25, 0.4] },
+);
+
+/**
+ * S12 — nombre maximal de segments reproduits dans UNE séance. Une course à 48 segments ne se
+ * répète pas à l'entraînement : au-delà d'une douzaine d'entrées-sorties d'eau, la séance
+ * devient la course elle-même. On travaille la compétence sur un nombre représentatif et on la
+ * répète semaine après semaine — c'est comme ça qu'elle s'automatise.
+ */
+export const S12_PIVOT_MAX_SEGMENTS = srule(
+  "S12",
+  "la compétence « entrer et sortir de l'eau » s'automatise par la répétition hebdomadaire, pas en reproduisant les 48 segments de la course en une sortie",
+  10,
 );
 
 /**

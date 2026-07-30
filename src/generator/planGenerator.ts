@@ -12,7 +12,7 @@ import type { AthleteProfile, ReasonedPlan, V1Plan, V1Session, V1Step, V1Week } 
 import {
   BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH,
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
-  BRICK_BIKE_BOUNDS, CAP_BRICK_BIKE, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
+  BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_BIKE, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, type Refs } from "./renderer.ts";
@@ -23,6 +23,19 @@ import { guard, sportModule } from "../sports/registry.ts";
 
 interface BoundedSession extends V1Session {
   social?: boolean;
+}
+
+/**
+ * R4.8a (audit v7) — CONTRAT V1Plan : `min` est un NOMBRE sur toute séance, repos compris.
+ * Il manquait sur les séances créées par les passes tardives (« OFF (affûtage) », y compris
+ * celles de la boucle de réparation) : rattrapé partout par `s.min || 0` côté lecture, mais un
+ * contrat qui ne tient que par les rattrapages de ses consommateurs n'est pas un contrat — le
+ * prochain consommateur oubliera. Exporté pour que la boucle de réparation l'applique aussi.
+ */
+export function normalizeRestMinutes(plan: V1Plan): void {
+  for (const w of plan.weeks)
+    for (const d of w.days)
+      for (const s of d.sessions) if (typeof s.min !== "number" || !isFinite(s.min)) s.min = 0;
 }
 
 export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: boolean }): { plan: V1Plan; reasoned: ReasonedPlan } {
@@ -47,7 +60,11 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   const brickRF = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1; // C21
   function blockBounds(b: V1Step, s: BoundedSession): { floor: number; cap: number } {
     if (b.bnd) {
-      const sc = _capScale;
+      // Un plafond marqué `hard` est une règle du manifeste (C23…) : la sonde de capacité peut
+      // élargir les plafonds ordinaires pour tenir la promesse de volume, jamais celui-là.
+      // Sans cette distinction, l'excédent de volume refusé par les blocs de qualité (R4.1)
+      // repartait dans la sortie longue et faisait sauter C23 (193 min pour un débutant).
+      const sc = b.bnd.hard ? 1 : _capScale;
       if (b.distanceM != null) {
         const fl = s.long ? 800 : Math.min(b.bnd.floor, r.beginner ? 600 : 750); // C24
         return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
@@ -90,7 +107,20 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     // V2.2 — répartition des intensités : un bloc de QUALITÉ ne dépasse jamais son gabarit
     // (repCap). Sans lui, R3.3 déversait l'excédent de volume dans les intervalles
     // (VO2 4-6×4min devenu 15×4min) au lieu des séances faciles — zone grise garantie.
-    const repMax = Math.min(15, b.repCap || 15);
+    // R4.1 (audit v7) — le `15` de repli n'était pas un plafond de sécurité, c'était la valeur
+    // par défaut : tout step non annoté pouvait TRIPLER ses répétitions pour absorber le volume
+    // de la semaine. Mesuré : 15×6min = 90 min au seuil (swimrun), 5×14min = 70 min (duathlon),
+    // 12×3min de descente (trail). Le déversement doit aller vers les séances FACILES, jamais
+    // vers un bloc de qualité non plafonné. Défaut désormais CONSERVATEUR : le nombre de
+    // répétitions construit par la bibliothèque, qui l'a choisi pour une raison.
+    // Le défaut dépend de ce que le bloc EST : « le déversement doit aller vers les séances
+    // faciles, jamais vers un bloc de qualité » (audit v7). Un bloc facile (endurance, récup,
+    // technique) peut absorber du volume en répétitions — c'est même sa fonction, et la courbe
+    // de charge s'en sert comme levier. Un bloc de QUALITÉ ne grandit plus tout seul : sans
+    // `repCap` explicite, il reste au gabarit choisi par la bibliothèque.
+    const QUALITY = /\.(vo2|thr|css|rp|ss|frc|speed|mara)$/; // `.mara` = allure de COURSE : 15×2000m au marathon, ce n'est pas du volume facile
+    const isQuality = QUALITY.test(String(b.zone || "")) || ["tr.vam", "tr.asc", "tr.climb", "tr.flatthr"].includes(String(b.zone || ""));
+    const repMax = b.repCap ?? (isQuality ? (b.reps || 1) : 15);
     if (b.distanceM != null) {
       if ((b.reps || 1) > 1) {
         const tot = (b.reps || 1) * b.distanceM * f;
@@ -102,6 +132,24 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         b.durationMin = Math.max(bd.floor, Math.min(bd.cap, b.durationMin));
         b.reps = Math.max(1, Math.min(repMax, Math.round(tot / b.durationMin)));
       } else b.durationMin = Math.max(bd.floor, Math.min(bd.cap, Math.round(b.durationMin * f)));
+    }
+    // R4.1c (audit v7) — plafond de DOSE en plus du plafond de reps : rien n'empêchait
+    // `5×14min` au seuil, puisque c'est la DURÉE du bloc qui avait été mise à l'échelle et non
+    // le nombre de répétitions. Une dose de seuil au-delà de ~40 min ou de VO2 au-delà de
+    // ~25 min n'est pas un entraînement dur, c'est une course — et personne n'enchaîne ça
+    // semaine après semaine sans casser.
+    if (b.durationMin != null) {
+      const z = String(b.zone || "");
+      const doseCap = /\.vo2$/.test(z) || z === "tr.vam" ? DOSE_CAP_MIN.vo2
+        : /\.thr$|\.css$/.test(z) || z === "tr.asc" || z === "tr.flatthr" ? DOSE_CAP_MIN.thr
+        : null;
+      if (doseCap != null) {
+        const reps = b.reps || 1;
+        if (reps * b.durationMin > doseCap) {
+          if (reps > 1) b.reps = Math.max(1, Math.floor(doseCap / b.durationMin));
+          else b.durationMin = doseCap;
+        }
+      }
     }
     // C15 — protection débutant nage : aucune séance >850m, tous blocs confondus
     if (r.beginner && s.d === "sw" && b.distanceM != null) {
@@ -784,6 +832,21 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     }
   }
 
+  // R4.4 (audit v7) — LIBELLÉ DÉRIVÉ APRÈS SCALING. Un nom calculé à la construction est de la
+  // prose figée ; les répétitions sont un champ numérique que les passes de mise à l'échelle
+  // peuvent encore bouger. Les deux divergeaient : « Swimrun spécifique (6 transitions) » pour
+  // 15 nages prescrites, soit 30 transitions réelles — sur la seule séance dont l'objet DÉCLARÉ
+  // est de reproduire le nombre de transitions de la course. Le nom se recalcule ici, une fois
+  // que plus rien ne bougera. (Aucun test de sport : le motif du nom suffit à l'identifier.)
+  for (const w of wl)
+    for (const d of w.days as GenDay[])
+      for (const sess of d.sessions) {
+        if (!/\(\d+ transitions\)/.test(sess.name || "")) continue;
+        const swLeg = (sess.steps || []).find((b) => b.role === "body" && b.leg === "swim");
+        if (!swLeg) continue;
+        sess.name = String(sess.name).replace(/\(\d+ transitions\)/, "(" + 2 * (swLeg.reps || 1) + " transitions)");
+      }
+
   if (_rampWeeks > 0) {
     r.decisions.push({
       id: "R10-depart", what: "Départ calé sur ton volume récent",
@@ -866,5 +929,6 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   }
 
   const plan: V1Plan = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
+  normalizeRestMinutes(plan);
   return { plan, reasoned: r };
 }

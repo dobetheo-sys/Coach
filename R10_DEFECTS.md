@@ -29,3 +29,35 @@ FAIT arithmétiquement 3-4 % du temps. La part facile élevée est le propre de 
 d'ultra (le volume est le stimulus). L'auditeur exige une part facile ≥ 70 % : le trail la
 respecte largement, et le chiffre est désormais MESURÉ au lieu d'être supposé.
 
+## Audit externe v7 (multi-sport trail / swimrun / duathlon)
+
+Harnais indépendant fourni avec l'audit (`audit_v7.cjs`, 4 580 profils : balayage OFAT + fuzz
+seedé). Il ne connaît pas `auditPlan()` et ne lui fait pas confiance : il compare le plan ÉMIS
+aux PROMESSES (règles déclarées, réponses de l'athlète, chiffres que le moteur calcule lui-même).
+C'est ce qui lui a permis de trouver ce que l'auditeur interne ne voit pas — celui-ci rendait
+`score: 100, hardViolations: []` sur des plans contenant 90 min de seuil ou aucun vélo.
+Verrouillé en CI par `npm run audit:v7`, avec un BUDGET par check (0 = garde-fou définitif).
+
+| id | défaut | statut |
+|---|---|---|
+| R4.0 | **SANTÉ, bloquant.** Le drapeau médical était contourné par la passe de réparation : `applyRunImpactCap` écrivait ses séances de substitution EN DUR, sans lire `medHold` ni `noVo2`. Avec « douleur thoracique à l'effort » déclarée, le plan reprenait 32 à 97 blocs au seuil APRÈS que les générateurs les aient correctement retirés, et `warnings` restait VIDE. Correctif structurel : `crossTrainingSession(r, …)` est le SEUL constructeur de séance des passes de réparation — il reçoit le plan raisonné, donc les drapeaux. Tant qu'une passe peut fabriquer une séance sans eux, le garde-fou reste contournable par la prochaine passe ajoutée. + avertissement explicite dès qu'un drapeau médical est actif. | corrigé |
+| R4.1 | `repCap` de 15 = déversoir de volume. Le `15` n'était pas un plafond de sécurité, c'était le DÉFAUT : tout step non annoté pouvait tripler ses répétitions pour absorber le volume (15×6min = 90 min de seuil, 5×14min = 70 min, 12×3min de descente). Défaut désormais différencié : un bloc FACILE peut absorber (c'est sa fonction, et la courbe s'en sert), un bloc de QUALITÉ reste au gabarit choisi par la bibliothèque. + plafond de DOSE (C25 : 40 min de seuil, 25 min de VO2) car c'est parfois la DURÉE qui avait grandi, pas les reps. Blocs de qualité nage et descente trail annotés explicitement. | corrigé |
+| R4.2 | SWIMRUN : le plan inversait la répartition de la course. L'acclimatation au froid remplaçait l'endurance COURSE dès que l'eau passait sous 17 °C — la majorité des courses européennes, donc le comportement par défaut, pas un cas limite. Le froid consomme désormais un créneau NAGE. Le créneau `facileR` apparaissait aussi deux fois (deux séances identiques) : la semaine passe à 5 séances distinctes, conforme à la structure de référence des coachs. | corrigé |
+| R4.3 | SWIMRUN : `maxSessionsPerWeek` (3/1/0) n'était lu que comme `=== 0` — un plafond traité en booléen. Quota désormais alloué par PRIORITÉ déterministe : swimrun spécifique > plus longue nage > acclimatation (la plus substituable, qui ne réclame jamais le quota). Corollaire : une séance en bassin ne parle plus d'« eau libre » — c'était trompeur pour qui lit la carte. | corrigé |
+| R4.4 | SWIMRUN : le nom de la pivot contredisait sa prescription (« 6 transitions » pour 30 réellement prescrites). Le nom était de la prose figée, les reps un champ numérique. `repCap = segs` (le nombre de transitions EST la spec, il n'absorbe pas de volume) + libellé DÉRIVÉ après toutes les passes de mise à l'échelle. | corrigé |
+| R4.5 | SWIMRUN : prérequis d'entrée ignorés par le moteur (la porte ne vivait que dans le questionnaire). Le moteur les rejoue et RABAT le format à Sprint + avertissement. **Divergence assumée avec le check** `S-PREREQ`, qui attend un refus total : refuser laisserait l'athlète sans rien, alors qu'un plan Sprint n'est pas dangereux — c'est le format LONG qui l'était. L'audit autorise explicitement cette lecture (« refuse ou dégrade explicitement »). | corrigé (dégradation) |
+| R4.6 | DUATHLON : des plans sans vélo, silencieusement (46 semaines sur 59 avec 3 jours OFF). Invariant de couverture : chaque discipline déclarée par le sport apparaît dans une semaine de charge ; si l'enveloppe ne le permet pas, un avertissement le dit avec le remède (format plus court ou cycle de 10 jours). Les sports déclarent désormais leurs `disciplines` dans le registre. | corrigé |
+| R4.8a | `min` absent (au lieu de `0`) sur les séances de repos créées tardivement : contrat V1Plan rompu, rattrapé partout par `s.min \|\| 0` — un contrat qui ne tient que par les rattrapages de ses consommateurs n'est pas un contrat. Normalisé aux DEUX points de sortie (générateur et boucle de réparation). | corrigé |
+| R4.8d | La pivot parlait de longe et de binôme en `team_mode=solo`. | corrigé |
+| R4.8e | `injury=epaule` : la séance de nage affichait « SANS plaquettes » pendant que la pivot en gardait ~6 %. Deux séances du même plan se contredisaient sur le même drapeau. Tranché : ZÉRO plaquette sous drapeau épaule. | corrigé |
+| — | **Effet de bord découvert** : la sonde de capacité multipliait les plafonds de séance, C23 compris (3 h de sortie longue pour un débutant → 193 min). Un plafond du MANIFESTE ne doit jamais être mis à l'échelle : `bnd.hard` le marque comme intouchable. Trouvé parce que le banc v6 a régressé en corrigeant R4.1 — les deux bancs se surveillent. | corrigé |
+
+### Dette restante, chiffrée (budgets dans `scripts/runAuditV7.mjs`)
+
+Profils sans aucun défaut : trail **72 → 78 %**, duathlon **45 → 91 %**, swimrun **23 → 69 %**.
+Ce qui reste est budgété et ne peut plus remonter : `U-DECL` (lissage d'affûtage sur la mesure
+incluant les récups, R4.8c), `U-RACEDATE` (course lointaine : plafond + avertissement, R4.8b),
+`U-DUP` (variantes d'un même créneau), `T-DPLUS`/`T-NIGHT` (R4.7a/b), `S-NOVO2` et `S-LONGSWIM`
+sur les profils blessés ou extrêmes, `S-MIX`, `D-DISC` quand l'enveloppe est trop étroite.
+`R4.7c` (récupérations trail non chiffrées → temps non compté par séance) reste ouvert : c'est
+une mesure, pas un check, et elle demande un champ `recoveryMin` sur les steps.

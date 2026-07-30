@@ -23,19 +23,19 @@ export function buildSwimSessions(kit: SessionKit): V1Session[] {
   };
   const limFocus = swimLimitFocus[a.swim_limit || ""] || { txt: " éducatifs variés — " + swimDrillGlossary, note: "La technique se construit à froid, sans fatigue. Qualité > quantité." };
   if (slot === "dur1") {
-    if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Seuil technique CSS", note: "Quelques 100m à allure seuil contrôlée, technique maintenue : préparer la course sans casser le geste.", det: "", steps: [Wm(200, "souple + éducatifs"), Bd(P(4, 7), 100, "sw.css", "20-30s", "", false, "sw"), Cm(100, "relâché")] });
+    if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Seuil technique CSS", note: "Quelques 100m à allure seuil contrôlée, technique maintenue : préparer la course sans casser le geste.", det: "", steps: [Wm(200, "souple + éducatifs"), Object.assign(Bd(P(4, 7), 100, "sw.css", "20-30s", "", false, "sw"), { repCap: 10 }), Cm(100, "relâché")] });
     else if (beginner) S2.push({ d: "sw", name: "Technique + éducatifs", note: limFocus.note, det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", "repos libre entre séries", limFocus.txt + ", " + P(1, 2) + " point(s) technique", false, "sw"), Cm(100, "relâché")] });
-    else if (shoulder) S2.push({ d: "sw", name: "Seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute.", det: "", steps: [Wm(300, "souple + 4×50m éducatifs"), Bd(P(6, 8), 100, "sw.css", "20-30s", "", false, "sw"), Cm(200, "souple")] });
-    else S2.push({ d: "sw", name: "Seuil CSS", note: "Allure régulière sur tous les 100m. Le dernier doit ressembler au premier.", det: "", steps: [Wm(400, "progressif + 4×50m éducatifs"), Bd(P(6, 10), 100, "sw.css", "15-20s", "", false, "sw"), Cm(200, "souple")] });
+    else if (shoulder) S2.push({ d: "sw", name: "Seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute.", det: "", steps: [Wm(300, "souple + 4×50m éducatifs"), Object.assign(Bd(P(6, 8), 100, "sw.css", "20-30s", "", false, "sw"), { repCap: 10 }), Cm(200, "souple")] });
+    else S2.push({ d: "sw", name: "Seuil CSS", note: "Allure régulière sur tous les 100m. Le dernier doit ressembler au premier.", det: "", steps: [Wm(400, "progressif + 4×50m éducatifs"), Object.assign(Bd(P(6, 10), 100, "sw.css", "15-20s", "", false, "sw"), { repCap: 14 }), Cm(200, "souple")] });
   } else if (slot === "dur2") {
-    if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Endurance + touches de vitesse", note: "Nage continue technique, plus quelques accélérations courtes de 25m : de la vitesse de forme, pas de la souffrance.", det: "", steps: [Wm(200, "souple"), Bd(1, 400, "sw.aero", "20-30s", " nage continue fractionnée", false, "sw"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " en accélérations progressives, technique maintenue", false, "sw"), Cm(100, "très souple")] });
+    if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Endurance + touches de vitesse", note: "Nage continue technique, plus quelques accélérations courtes de 25m : de la vitesse de forme, pas de la souffrance.", det: "", steps: [Wm(200, "souple"), Bd(1, 400, "sw.aero", "20-30s", " nage continue fractionnée", false, "sw"), Object.assign(Bd(P(6, 10), 25, "sw.speed", "30s repos", " en accélérations progressives, technique maintenue", false, "sw"), { repCap: 12 }), Cm(100, "très souple")] });
     else if (beginner) S2.push({ d: "sw", name: "Endurance technique", note: "Priorité au geste, pas au chrono. Un seul point technique à la fois.", det: "", steps: [Wm(200, "souple"), Bd(1, 600, "sw.easy", "20-30s, le temps de respirer", " nage continue fractionnée (ex 8-12×50m) + 1 éducatif entre chaque", false, "sw"), Cm(100, "très souple")] });
     // B1 (audit v6) — les séances de substitution épaule héritent d'un BUDGET BORNÉ :
     // sans bnd, R3.3 gonflait le bloc jusqu'aux caps génériques (+68% de volume mesuré
     // sur swim/fond/epaule — une blessure qui AUGMENTAIT la charge).
-    else if (shoulder && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Jambes vitesse (épaule épargnée)", note: "Vitesse par les jambes : battements rapides avec planche, l'épaule ne travaille pas. La puissance se maintient sans risque.", det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " battements rapides avec planche (jambes seules)", false, "sw"), Object.assign(Bd(1, 200, "sw.easy", "", " éducatifs technique", false, "sw"), { bnd: { floor: 200, cap: 600 } }), Cm(100, "souple")] });
+    else if (shoulder && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Jambes vitesse (épaule épargnée)", note: "Vitesse par les jambes : battements rapides avec planche, l'épaule ne travaille pas. La puissance se maintient sans risque.", det: "", steps: [Wm(200, "souple"), Object.assign(Bd(P(6, 10), 25, "sw.speed", "30s repos", " battements rapides avec planche (jambes seules)", false, "sw"), { repCap: 12 }), Object.assign(Bd(1, 200, "sw.easy", "", " éducatifs technique", false, "sw"), { bnd: { floor: 200, cap: 600 } }), Cm(100, "souple")] });
     else if (shoulder) S2.push({ d: "sw", name: "Jambes + technique", note: "Épaule épargnée : le travail passe par les jambes et la technique, la charge articulaire reste nulle.", det: "", steps: [Object.assign(Bd(1, 400, null, "", " séries battements + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: 1200 } })], ...( { plainBody: true } as object) });
-    else S2.push({ d: "sw", name: "Vitesse", note: "Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage.", det: "", steps: [Wm(400, "varié + 4×25m accélérations"), Bd(P(8, 12), 50, "sw.speed", "30-40s", "", false, "sw"), Cm(200, "souple")] });
+    else S2.push({ d: "sw", name: "Vitesse", note: "Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage.", det: "", steps: [Wm(400, "varié + 4×25m accélérations"), Object.assign(Bd(P(8, 12), 50, "sw.speed", "30-40s", "", false, "sw"), { repCap: 16 }), Cm(200, "souple")] });
   } else if (slot === "durLong") {
     const distCaps = beginner
       ? { lo: 300, hi: Math.min(850, C15_BEGINNER_SWIM_SESSION_CAP_M) }
@@ -70,6 +70,7 @@ export function predictSwim(kit: PredictKit): void {
 registerSport({
   id: "swim",
   mainDiscipline: "sw",
+  disciplines: ["sw"],
   easyFallbackSlot: "facileR",
   weekSchema: null,
   buildSessions: buildSwimSessions,

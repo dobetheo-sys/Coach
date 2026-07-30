@@ -4,7 +4,7 @@
  * « reprise », neutralisation médicale, plafond d'impact course, budget de séances,
  * greffes renfo, anti-collage final, garantie de polarisation.
  */
-import type { ReasonedPlan, V1Day, V1Session } from "../engine/types.ts";
+import type { ReasonedPlan, V1Day, V1Session, V1Step } from "../engine/types.ts";
 import { buildSessions, type SessionCtx } from "./sessionLibrary.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { intOf, renderSess, type Refs, type HrZones } from "./renderer.ts";
@@ -167,6 +167,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   }
 
   applyRunImpactCap(r, days, refs, hz);
+  applyDisciplineCoverage(r, days, refs, hz, ctx);
   applySessionBudget(r, days);
   applyStrengthGrafts(r, days);
   applyAntiCollage(r, days, refs, hz, ctx);
@@ -193,22 +194,14 @@ function applyRunImpactCap(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZo
     for (let i = 0; i < ordered.length && over > 0; i++) {
       const d = ordered[i];
       if (canCross && (injImpact || d.charge === "dur")) {
-        // En trail, le substitut garde le stimulus qui compte : du VERTICAL sans impact.
-        // Un footing plat de remplacement perdrait le sens de la semaine.
-        const s: V1Session = isTrail
-          ? {
-            d: "bk", name: "Cross-training vélo en côte (sans impact)",
-            note: "Ton plafond de jours d'appui est atteint : ce vélo garde le travail en montée — le muscle et le cardio progressent — sans ajouter d'impact ni de descente. C'est le meilleur échange possible aujourd'hui.",
-            det: "",
-            steps: [
-              { role: "warmup", durationMin: 15, text: "progressif, sur le plat" },
-              { role: "body", reps: 4, durationMin: 8, zone: "bk.thr", intensity: intOf("bk.thr") as unknown as string, recoveryText: "4min souple en descente", text: "en côte, assis, cadence 60-70" },
-              { role: "cooldown", durationMin: 10, text: "souple" },
-            ],
-          }
-          : d.charge === "dur"
-          ? { d: "bk", name: "Cross-training vélo (intensité)", note: "Intervalles vélo — équivalent VO2 sans impact, maintient la puissance aérobie pendant que le tissu se répare.", det: "", steps: [{ role: "warmup", durationMin: 15, text: "progressif" }, { role: "body", reps: 5, durationMin: 3, zone: "bk.vo2", intensity: intOf("bk.vo2") as unknown as string, recoveryText: "3min souple" }, { role: "cooldown", durationMin: 10, text: "souple" }] }
-          : { d: "bk", name: "Cross-training vélo", note: "Zéro impact : le stimulus aérobie est conservé pendant que les tissus de la course récupèrent.", det: "", steps: [{ role: "body", durationMin: 55, zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string }], ...({ plainBody: true } as object) };
+        // R4.0 (audit v7) — POINT D'ENTRÉE UNIQUE. Ces séances étaient écrites en dur ici et
+        // ne lisaient NI `medHold` NI `noVo2` : sous drapeau médical (« douleur thoracique à
+        // l'effort », que le questionnaire présente comme non négociable), la passe de
+        // réparation réinjectait 32 à 97 blocs au seuil APRÈS que les générateurs les aient
+        // correctement retirés. Tant qu'une passe peut fabriquer une séance sans passer par
+        // une fonction qui connaît les drapeaux, le garde-fou reste contournable par la
+        // prochaine passe ajoutée — c'est la leçon structurelle, pas le symptôme.
+        const s = crossTrainingSession(r, isTrail, d.charge === "dur");
         renderSess(s, refs, hz, r.baseRefs);
         d.sessions = [s];
       } else {
@@ -218,6 +211,127 @@ function applyRunImpactCap(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZo
       over--;
     }
   }
+}
+
+/**
+ * R4.6 (audit v7) — COUVERTURE DES DISCIPLINES. Mesuré avant correction : avec 3 jours OFF
+ * déclarés, **46 semaines sur 59** d'un plan de duathlon ne contenaient AUCUNE séance de vélo —
+ * le plan devenait un plan de course à pied, et ne le disait pas. Aucune contrainte n'imposait
+ * la présence des deux disciplines : le schéma était simplement amputé par les jours bloqués.
+ *
+ * Deux issues, jamais le silence :
+ *   1. il reste un jour facile → il change de discipline (le sport garde ses deux moteurs) ;
+ *   2. l'enveloppe déclarée ne le permet pas → un AVERTISSEMENT le dit, avec le remède
+ *      (format plus court, ou cycle de 10 jours).
+ */
+function applyDisciplineCoverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZones, ctx: SessionCtx): void {
+  const mod = sportModule(r.profile.sport as string);
+  if (mod.disciplines.length < 2) return; // monodiscipline : rien à couvrir
+  let impossible = 0;
+  for (let w = 1; w <= r.weeks; w++) {
+    const wd = days.filter((d) => d.week === w);
+    if (wd.filter((d) => d.isR).length >= 4) continue; // semaine de récup : structure allégée
+    const present = new Set<string>();
+    for (const d of wd)
+      for (const s of d.sessions) {
+        if (s.d === "rs") continue;
+        if (s.d === "br") { for (const b of s.steps || []) if (b.leg) present.add(b.leg === "bike" ? "bk" : b.d || "rn"); present.add("bk"); present.add("rn"); }
+        else present.add(s.d);
+      }
+    const missing = mod.disciplines.filter((x) => !present.has(x));
+    if (!missing.length) continue;
+    // Un jour facile non bloqué peut changer de discipline sans toucher à la structure dure.
+    const donors = wd.filter((d) => !d.forced && d.charge === "facile" && d.sessions.some((s) => s.d !== "rs"));
+    let fixed = 0;
+    for (const disc of missing) {
+      const donor = donors[fixed];
+      if (!donor) break;
+      // La séance de remplacement passe par le point d'entrée unique (R4.0) : elle connaît les
+      // drapeaux médicaux et d'âge. Le cross-training vélo EST la séance vélo facile.
+      if (disc === "bk") {
+        const sess = crossTrainingSession(r, false, false);
+        sess.name = "Endurance vélo (couverture discipline)";
+        sess.note = "Ton enveloppe de jours laisse peu de place : cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan de duathlon sans vélo n'est pas un plan allégé, c'est un plan d'un autre sport.";
+        renderSess(sess, refs, hz, r.baseRefs);
+        donor.sessions = [sess];
+        fixed++;
+      } else {
+        const built = buildSessions(ctx, disc === "sw" ? "facile2" : "facileR", donor.phaseId, donor.prog || 0, donor.week);
+        const pick = built.find((x) => x.d === disc);
+        if (!pick) continue;
+        for (const x of built) if (x.steps && x.steps.length) renderSess(x, refs, hz, r.baseRefs);
+        donor.sessions = [pick];
+        fixed++;
+      }
+    }
+    if (fixed < missing.length) impossible++;
+  }
+  if (impossible > 0) {
+    r.warnings.push("Sur " + impossible + " semaine(s), ton enveloppe de jours disponibles ne permet pas de faire tenir toutes les disciplines de ce sport (jours bloqués + disponibilité déclarée). Le plan fait au mieux, mais deux options le rendraient meilleur : viser un format plus court, ou passer sur un cycle de 10 jours (Profil → disponibilité) pour espacer les séances clés au lieu de les entasser sur 7 jours.");
+  }
+}
+
+/**
+ * Séance de CROSS-TRAINING de substitution — le SEUL constructeur de séance des passes de
+ * réparation (R4.0, audit v7). Il reçoit le plan raisonné, donc les drapeaux : neutralisation
+ * médicale, interdiction de VO2 (mineur), blessures. Aucune passe ne doit écrire une séance
+ * littérale : c'est ce qui a permis au drapeau médical d'être contourné.
+ *
+ * @param wantsVertical  trail : garder le stimulus vertical (côte) plutôt qu'un plat
+ * @param wantsIntensity le jour remplacé était un jour DUR : on cherche un équivalent
+ */
+function crossTrainingSession(r: ReasonedPlan, wantsVertical: boolean, wantsIntensity: boolean): V1Session {
+  // 1. Drapeau médical : AUCUNE intensité, quelle que soit la raison du remplacement.
+  //    « Un mauvais plan vaut mieux qu'un plan dangereux » (manifeste).
+  if (r.medHold) {
+    return {
+      d: "bk", name: "Cross-training vélo très souple (avis médical en attente)",
+      note: "Tu as signalé un symptôme à l'effort : aucune intensité n'est générée avant le feu vert d'un médecin. Ce vélo reste en endurance basse, tu dois pouvoir tenir une conversation complète. Si le moindre symptôme apparaît, tu t'arrêtes.",
+      det: "",
+      steps: [{ role: "body", durationMin: 45, zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string }],
+      ...({ plainBody: true } as object),
+    } as V1Session;
+  }
+  // 2. Trail : le stimulus qui compte est le VERTICAL, sans impact ni descente. L'intensité
+  //    suit les mêmes règles que partout ailleurs (seuil si autorisé, tempo sinon).
+  if (wantsVertical) {
+    const zone = wantsIntensity && !r.noVo2 ? "bk.thr" : "bk.ss";
+    return {
+      d: "bk", name: "Cross-training vélo en côte (sans impact)",
+      note: "Ton plafond de jours d'appui est atteint : ce vélo garde le travail en montée — le muscle et le cardio progressent — sans ajouter d'impact ni de descente. C'est le meilleur échange possible aujourd'hui."
+        + (r.noVo2 ? " Intensité tenue en tempo : la VO2max attendra la majorité." : ""),
+      det: "",
+      steps: [
+        { role: "warmup", durationMin: 15, text: "progressif, sur le plat" },
+        { role: "body", reps: 4, durationMin: 8, zone, intensity: intOf(zone) as unknown as string, repCap: 5, recoveryText: "4min souple en descente", text: "en côte, assis, cadence 60-70" } as V1Step,
+        { role: "cooldown", durationMin: 10, text: "souple" },
+      ],
+    } as V1Session;
+  }
+  // 3. Jour dur remplacé : équivalent d'intensité sans impact — VO2 si autorisée, seuil sinon.
+  if (wantsIntensity) {
+    const zone = r.noVo2 ? "bk.thr" : "bk.vo2";
+    return {
+      d: "bk", name: "Cross-training vélo (intensité)",
+      note: (r.noVo2
+        ? "Intervalles vélo au seuil — l'intensité sans impact, et sans VO2max : à ton âge, la puissance aérobie maximale se construit plus tard, le seuil suffit largement."
+        : "Intervalles vélo — équivalent VO2 sans impact, maintient la puissance aérobie pendant que le tissu se répare."),
+      det: "",
+      steps: [
+        { role: "warmup", durationMin: 15, text: "progressif" },
+        { role: "body", reps: r.noVo2 ? 3 : 5, durationMin: r.noVo2 ? 8 : 3, zone, intensity: intOf(zone) as unknown as string, repCap: r.noVo2 ? 4 : 6, recoveryText: "3min souple" } as V1Step,
+        { role: "cooldown", durationMin: 10, text: "souple" },
+      ],
+    } as V1Session;
+  }
+  // 4. Jour facile remplacé : endurance pure.
+  return {
+    d: "bk", name: "Cross-training vélo",
+    note: "Zéro impact : le stimulus aérobie est conservé pendant que les tissus de la course récupèrent.",
+    det: "",
+    steps: [{ role: "body", durationMin: 55, zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string }],
+    ...({ plainBody: true } as object),
+  } as V1Session;
 }
 
 /**

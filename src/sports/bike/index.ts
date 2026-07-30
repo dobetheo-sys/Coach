@@ -41,6 +41,7 @@ export function predictBike(kit: PredictKit): void {
 registerSport({
   id: "bike",
   mainDiscipline: "bk",
+  disciplines: ["bk"],
   easyFallbackSlot: "facileR",
   weekSchema: null,
   buildSessions: buildBikeSessions,

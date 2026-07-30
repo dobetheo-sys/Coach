@@ -134,6 +134,7 @@ export function predictDuathlon(kit: PredictKit): void {
 registerSport({
   id: "duathlon",
   mainDiscipline: "rn", // deux segments sur trois se courent : la course décide
+  disciplines: ["rn", "bk"],
   easyFallbackSlot: "facileR",
   weekSchema: null, // le schéma générique par créneaux convient : rien de spécifique à inventer
   buildSessions: buildDuathlonSessions,

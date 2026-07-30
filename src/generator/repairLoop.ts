@@ -8,7 +8,7 @@
 import type { AthleteProfile, V1Plan } from "../engine/types.ts";
 import { auditPlan, type AuditOpts, type PlanAudit } from "../audit/coherenceScorer.ts";
 import { R313_TAPER_MAX_VS_PEAK } from "../engine/constraintMatrix.ts";
-import { generatePlan } from "./planGenerator.ts";
+import { generatePlan, normalizeRestMinutes } from "./planGenerator.ts";
 import { renderSess, type Refs } from "./renderer.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 
@@ -323,5 +323,8 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
     warnings.push("Plan rendu avec réserves (contraintes insatisfaisables après " + MAX_ITERATIONS + " réparations) :");
     warnings.push(...best.audit.hardViolations.map((v) => "· " + v));
   }
+  // Les passes de réparation créent des séances de repos : le contrat `min` se re-normalise à
+  // la sortie, pas seulement dans le générateur (R4.8a).
+  normalizeRestMinutes(best.plan);
   return { plan: best.plan, audit: best.audit, warnings, repairs, decisions: reasoned.decisions };
 }

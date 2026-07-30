@@ -50,6 +50,11 @@ dépôt — historique git si besoin.
   (test attendu vert qui échoue) ; la dette connue (`expect:'fail'`) ne bloque pas la CI.
   Quand un défaut est corrigé, passer son `expect` à `'pass'` **dans le même commit** :
   il devient un garde-fou permanent.
+- `npm run audit:v7` — **banc externe multi-sport** (trail/swimrun/duathlon, harnais
+  indépendant `audit_v7.cjs` : 4 580 profils, OFAT + fuzz seedé). Il compare le plan émis aux
+  PROMESSES, pas à l'auditeur interne — c'est ainsi qu'il a trouvé le contournement du drapeau
+  médical et les doses de 90 min de seuil que `auditPlan()` notait 100/100. **11e gate CI**,
+  budget par check dans `scripts/runAuditV7.mjs` (0 = garde-fou définitif).
 - `npm run golden:capture` / `golden:verify` — **golden master** (spec R10) : photographie
   578 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
   blessures/âges/terrain/volumes) et détecte tout écart au bit près. `golden/hashes.json` est

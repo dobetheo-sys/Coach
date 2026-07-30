@@ -15,6 +15,7 @@ import {
   parsePaceSec,
 } from "./constraintMatrix.ts";
 import { guard } from "../sports/registry.ts";
+import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
 import { T1_DPLUS_CAPS, T4_LONG_RUN_VS_RACE, T6_MIN_WEEKS, TRAIL_HISTORY_CAPS, TRAIL_UTIL, trailObjective, trailWeeklyVertical } from "./trailModel.ts";
 
 /** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
@@ -41,7 +42,8 @@ export interface ReasoningResult {
 }
 
 export class TrainingReasoningEngine {
-  analyze(a: AthleteProfile): ReasonedPlan {
+  analyze(aIn: AthleteProfile): ReasonedPlan {
+    let a = aIn;
     const decisions: Decision[] = [];
     const warnings: string[] = [];
     const D = (id: string, what: string, val: string | number, why: string) => decisions.push({ id, what, val, why });
@@ -62,6 +64,21 @@ export class TrainingReasoningEngine {
       if (!tObj.vamKnown) warnings.push("Ta vitesse ascensionnelle (VAM) n'est pas renseignée : le plan utilise une estimation de " + Math.round(tObj.vam) + " m/h d'après ton niveau. Fais le test (une montée régulière de 20-30 min à fond : D+ ÷ durée = ta VAM) et renseigne-la au Profil — c'est LA référence d'intensité en montée, et elle resserre aussi la prédiction.");
       if (tObj.cappedByProduct) warnings.push("Ton objectif dépasse 24 h d'effort estimées. Le plan construit l'endurance nécessaire, mais la stratégie propre à ce format (sommeil fractionné, assistance, ravitaillement par base-vie) dépasse ce qu'un plan automatique peut honnêtement produire : cherche l'accompagnement d'un entraîneur ou d'un finisher expérimenté pour cette partie.");
       if (tObj.altitudeMaxM && tObj.altitudeMaxM > 2500) warnings.push("Ta course monte à " + tObj.altitudeMaxM + " m : au-dessus de 2 500 m, la performance baisse et l'acclimatation compte. Un protocole d'acclimatation dépend de contraintes logistiques que l'outil ne connaît pas — si tu peux dormir en altitude quelques nuits avant, fais-le.");
+    }
+
+    // R4.5 (audit v7) — PRÉREQUIS D'ENTRÉE DANS LE MOTEUR. La porte ne vivait que dans le
+    // questionnaire (`valid()` du step intention) : toute autre voie — édition d'une réponse
+    // depuis le Profil, état restauré, import — générait le plan long quand même. La priorité
+    // n°1 du manifeste est la santé : elle doit vivre dans le moteur, pas dans l'interface.
+    // On ne refuse pas de produire un plan (l'athlète resterait sans rien) : on RABAT le format
+    // au plus long format autorisé et on le DIT.
+    if (sp === "swimrun") {
+      const block = swimrunPrereqBlock(a as { format?: string; swim_continuous?: string; run_continuous?: string });
+      if (block) {
+        warnings.push(block + " Ton plan a donc été construit sur le format Sprint : il te prépare aux bases, et tu passeras au format long quand elles seront acquises.");
+        D("prereq-swimrun", "Format rabattu", "sprint (au lieu de " + (a.format || "?") + ")", "Les prérequis de sécurité du format long ne sont pas atteints — construire les bases d'abord n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend");
+        a = { ...a, format: "sprint" };
+      }
     }
 
     // ---- 1. Comprendre l'objectif : durée de préparation ----
@@ -148,7 +165,16 @@ export class TrainingReasoningEngine {
 
     // ---- 3. Comprendre les contraintes : médical, jours, budget ----
     const medHold = a.med_pain === "oui" || a.med_dizzy === "oui" || a.med_treat === "oui";
-    if (medHold) D("medical", "⚠️ Drapeau médical", "plan de maintien", "Aucune intensité générée sans feu vert médical ; pic allégé à 40%");
+    if (medHold) {
+      D("medical", "⚠️ Drapeau médical", "plan de maintien", "Aucune intensité générée sans feu vert médical ; pic allégé à 40%");
+      // R4.0 (audit v7) — le drapeau médical ne produisait AUCUN avertissement : `warnings`
+      // restait vide, et rien dans le plan ne mentionnait l'avis médical. Une décision dans un
+      // volet dépliable ne suffit pas pour la priorité n°1 du manifeste.
+      const which = [a.med_pain === "oui" ? "douleur thoracique à l'effort" : null,
+        a.med_dizzy === "oui" ? "vertiges ou malaise à l'effort" : null,
+        a.med_treat === "oui" ? "traitement cardiovasculaire" : null].filter(Boolean).join(", ");
+      warnings.push("⚠️ Tu as signalé : " + which + ". Ce plan est un plan de MAINTIEN — aucune intensité n'y est générée, le volume est allégé, et il ne remplace pas un avis médical. Prends rendez-vous avant de reprendre l'entraînement structuré : c'est la seule chose non négociable de cet outil.");
+    }
     const offDays = (a.off_which || "").split(",").filter(Boolean);
     const use10 = a.dispo === "quotidienne" && a.shift_ok === "oui" && offDays.length < 2;
     if (use10) D("cycle", "Cycle de 10 jours", "activé", "Disponibilité quotidienne : densité mieux répartie qu'en semaine de 7 jours");

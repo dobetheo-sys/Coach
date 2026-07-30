@@ -20,6 +20,7 @@ function buildTrailSessionsFromKit(kit: SessionKit): V1Session[] {
 registerSport({
   id: "trail",
   mainDiscipline: "rn",
+  disciplines: ["rn"],
   // "facileR", PAS "facile2" : c'est ce que l'ancien code faisait (`sport === "run" ? … : …`
   // ne connaissait que la course). Le déclarer autrement changerait les plans trail — ce
   // serait une DÉCISION, pas une extraction. Candidate à réexaminer (voir R10_DEFECTS.md).

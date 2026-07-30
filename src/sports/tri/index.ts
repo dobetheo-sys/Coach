@@ -98,6 +98,7 @@ export function predictTri(kit: PredictKit): void {
 registerSport({
   id: "tri",
   mainDiscipline: "rn", // la CAP finit la course : c'est la discipline de référence du tri
+  disciplines: ["sw", "bk", "rn"],
   easyFallbackSlot: "facileR",
   weekSchema: null,
   buildSessions: buildTriSessions,

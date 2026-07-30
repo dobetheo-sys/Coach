@@ -18,7 +18,8 @@
     "test:e2e": "node tests/e2e/run-all.mjs",
     "build:standalone": "node scripts/buildStandalone.mjs",
     "golden:capture": "node scripts/goldenMaster.mjs --capture",
-    "golden:verify": "node scripts/goldenMaster.mjs --verify"
+    "golden:verify": "node scripts/goldenMaster.mjs --verify",
+    "audit:v7": "node scripts/runAuditV7.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

@@ -1958,6 +1958,9 @@ class UnknownSportError extends Error {
             
                                                                                              
                                      
+                                                                                         
+                                                                                               
+                                      
                                                                                         
                                           
                                                                                                
@@ -2215,6 +2218,18 @@ const BRICK_BIKE_BOUNDS                                   = rule(
   "C21b",
   "un brick d'entraînement n'est ni une sortie longue déguisée ni un tour de pâté de maisons : ses bornes suivent le format de course",
   { S: [45, 90], M: [60, 120], "70.3": [90, 180], Full: [150, 300], L: [70, 150], PM: [150, 300] },
+);
+
+/**
+ * Plafond de DOSE par bloc de qualité (minutes dans la zone, répétitions comprises).
+ * Ce n'est pas le nombre de répétitions qui blesse, c'est le temps passé dans la zone : le
+ * plafond de reps seul laissait passer `5×14min` au seuil (70 min) parce que la mise à
+ * l'échelle avait allongé la DURÉE et non le nombre de blocs.
+ */
+const DOSE_CAP_MIN = rule(
+  "C25",
+  "au-delà de ~40 min de seuil ou ~25 min de VO2max dans une séance, ce n'est plus un entraînement dur mais une course : personne ne l'enchaîne semaine après semaine sans casser",
+  { thr: 40, vo2: 25 },
 );
 
 const C21_REPRISE_BRICK_FACTOR = rule("C21", "en reprise, le brick ne mange pas la semaine (61% du volume hebdo observé sans ce facteur)", 0.8);
@@ -2695,6 +2710,7 @@ function trailWeeklyVertical(obj                , history        , access       
 
 
 
+
 /** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
 function fmtH(min        )         {
   const h = Math.floor(min / 60), m = Math.round(min % 60);
@@ -2719,7 +2735,8 @@ function hrZones(age         , hrMax         , hrRest         ) {
  
 
 class TrainingReasoningEngine {
-  analyze(a                )               {
+  analyze(aIn                )               {
+    let a = aIn;
     const decisions             = [];
     const warnings           = [];
     const D = (id        , what        , val                 , why        ) => decisions.push({ id, what, val, why });
@@ -2740,6 +2757,21 @@ class TrainingReasoningEngine {
       if (!tObj.vamKnown) warnings.push("Ta vitesse ascensionnelle (VAM) n'est pas renseignée : le plan utilise une estimation de " + Math.round(tObj.vam) + " m/h d'après ton niveau. Fais le test (une montée régulière de 20-30 min à fond : D+ ÷ durée = ta VAM) et renseigne-la au Profil — c'est LA référence d'intensité en montée, et elle resserre aussi la prédiction.");
       if (tObj.cappedByProduct) warnings.push("Ton objectif dépasse 24 h d'effort estimées. Le plan construit l'endurance nécessaire, mais la stratégie propre à ce format (sommeil fractionné, assistance, ravitaillement par base-vie) dépasse ce qu'un plan automatique peut honnêtement produire : cherche l'accompagnement d'un entraîneur ou d'un finisher expérimenté pour cette partie.");
       if (tObj.altitudeMaxM && tObj.altitudeMaxM > 2500) warnings.push("Ta course monte à " + tObj.altitudeMaxM + " m : au-dessus de 2 500 m, la performance baisse et l'acclimatation compte. Un protocole d'acclimatation dépend de contraintes logistiques que l'outil ne connaît pas — si tu peux dormir en altitude quelques nuits avant, fais-le.");
+    }
+
+    // R4.5 (audit v7) — PRÉREQUIS D'ENTRÉE DANS LE MOTEUR. La porte ne vivait que dans le
+    // questionnaire (`valid()` du step intention) : toute autre voie — édition d'une réponse
+    // depuis le Profil, état restauré, import — générait le plan long quand même. La priorité
+    // n°1 du manifeste est la santé : elle doit vivre dans le moteur, pas dans l'interface.
+    // On ne refuse pas de produire un plan (l'athlète resterait sans rien) : on RABAT le format
+    // au plus long format autorisé et on le DIT.
+    if (sp === "swimrun") {
+      const block = swimrunPrereqBlock(a                                                                          );
+      if (block) {
+        warnings.push(block + " Ton plan a donc été construit sur le format Sprint : il te prépare aux bases, et tu passeras au format long quand elles seront acquises.");
+        D("prereq-swimrun", "Format rabattu", "sprint (au lieu de " + (a.format || "?") + ")", "Les prérequis de sécurité du format long ne sont pas atteints — construire les bases d'abord n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend");
+        a = { ...a, format: "sprint" };
+      }
     }
 
     // ---- 1. Comprendre l'objectif : durée de préparation ----
@@ -2826,7 +2858,16 @@ class TrainingReasoningEngine {
 
     // ---- 3. Comprendre les contraintes : médical, jours, budget ----
     const medHold = a.med_pain === "oui" || a.med_dizzy === "oui" || a.med_treat === "oui";
-    if (medHold) D("medical", "⚠️ Drapeau médical", "plan de maintien", "Aucune intensité générée sans feu vert médical ; pic allégé à 40%");
+    if (medHold) {
+      D("medical", "⚠️ Drapeau médical", "plan de maintien", "Aucune intensité générée sans feu vert médical ; pic allégé à 40%");
+      // R4.0 (audit v7) — le drapeau médical ne produisait AUCUN avertissement : `warnings`
+      // restait vide, et rien dans le plan ne mentionnait l'avis médical. Une décision dans un
+      // volet dépliable ne suffit pas pour la priorité n°1 du manifeste.
+      const which = [a.med_pain === "oui" ? "douleur thoracique à l'effort" : null,
+        a.med_dizzy === "oui" ? "vertiges ou malaise à l'effort" : null,
+        a.med_treat === "oui" ? "traitement cardiovasculaire" : null].filter(Boolean).join(", ");
+      warnings.push("⚠️ Tu as signalé : " + which + ". Ce plan est un plan de MAINTIEN — aucune intensité n'y est générée, le volume est allégé, et il ne remplace pas un avis médical. Prends rendez-vous avant de reprendre l'entraînement structuré : c'est la seule chose non négociable de cet outil.");
+    }
     const offDays = (a.off_which || "").split(",").filter(Boolean);
     const use10 = a.dispo === "quotidienne" && a.shift_ok === "oui" && offDays.length < 2;
     if (use10) D("cycle", "Cycle de 10 jours", "activé", "Disponibilité quotidienne : densité mieux répartie qu'en semaine de 7 jours");
@@ -4136,12 +4177,12 @@ function buildTrailSessions(r              , slot      , phase        , prog    
       const down = Math.round(downShare(0.5) * downFactor);
       S2.push({ d: "rn", name: "Descente en charge", note: "LA séance qui décide de ta fin de course. Les descentes longues abîment les cuisses ; s'y exposer progressivement crée une protection durable (c'est prouvé et ça s'appelle l'effet de répétition). Monte tranquillement ou marche, et descends " + (technicalOk ? "sur ton terrain le plus roulant au début, puis plus technique" : "sur sentier ROULANT uniquement — ta cheville n'est pas prête pour du technique") + ".", det: "",
         steps: [W(15, "footing plat"), B({ durationMin: P(12, 20), reps: 1, gradient: "up", zone: "tr.easyup", dplusM: Math.round(down / 2), mode: poles ? "hike" : "run_hike", poles }),
-          B({ durationMin: P(20, 34), reps: Math.max(2, P(2, 4)), gradient: "down", dmoinsM: Math.round(down / Math.max(2, P(2, 4))), surface: technicalOk ? "sentier" : "piste", recoveryText: "remontée en marche active" }), C(10, "footing plat souple")] });
+          B({ durationMin: P(20, 34), reps: Math.max(2, P(2, 4)), gradient: "down", dmoinsM: Math.round(down / Math.max(2, P(2, 4))), surface: technicalOk ? "sentier" : "piste", recoveryText: "remontée en marche active" , repCap: 8 }), C(10, "footing plat souple")] });
     } else {
       const down = Math.round(downShare(0.35) * downFactor);
       S2.push({ d: "rn", name: "Descente technique", note: "La descente est une COMPÉTENCE, pas une récupération. Objectif : le geste, pas la vitesse. Buste relâché, bras écartés pour l'équilibre, petits pas rapides, regard 4-5 m devant. On répète 3 à 6 fois la même descente pour sentir la progression.", det: "",
         steps: [W(12, "footing plat"), B({ durationMin: P(8, 14), gradient: "up", zone: "tr.easyup", dplusM: Math.round(down / 2), mode: "hike", poles }),
-          B({ durationMin: P(4, 7), reps: Math.max(3, P(3, 6)), gradient: "down", dmoinsM: Math.round(down / Math.max(3, P(3, 6))), surface: technicalOk ? "sentier" : "piste", recoveryText: "remontée marchée, souffle repris" }), C(8, "footing souple")] });
+          B({ durationMin: P(4, 7), reps: Math.max(3, P(3, 6)), gradient: "down", dmoinsM: Math.round(down / Math.max(3, P(3, 6))), surface: technicalOk ? "sentier" : "piste", recoveryText: "remontée marchée, souffle repris" , repCap: 8 }), C(8, "footing souple")] });
     }
   } else if (slot === "facileR") {
     // 7. MARCHE RAPIDE EN CÔTE (base/dev) · 9. SORTIE DE NUIT (spec/peak si course de nuit)
@@ -4240,7 +4281,7 @@ function buildRunSessions(kit            )              {
       // est une charge excentrique, mêmes drapeaux de prudence que la route (spec §2).
       S2.push({ d: "rn", name: "Côtes + descentes techniques", note: "La descente est une compétence : relâche le buste, cadence haute, regarde loin. La montée se court au RPE, pas à l'allure — en trail l'allure brute ne veut rien dire.", det: "", steps: [W(18, "progressif sur sentier"), B(P(4, 6), 3, "rn.vo2", "descente du même segment EN CONTRÔLE (c'est l'exercice, pas la récup)", " en montée au train"), C(10, "footing souple sur plat")] });
     else if (phase === "spec" || phase === "peak")
-      S2.push({ d: "rn", name: "Allure course spécifique", note: "C'est l'allure de ta course : mémorise la sensation, elle doit devenir automatique le jour J.", det: "", steps: [W(18, "progressif + gammes"), Bd(P(3, 5), fmt === "5k" || fmt === "10k" ? 1000 : 2000, fmt === "marathon" ? "rn.mara" : "rn.thr", "2-3min récup active", "", !(fmt === "5k" || fmt === "10k"), "rn"), C(10, "retour au calme")] });
+      S2.push({ d: "rn", name: "Allure course spécifique", note: "C'est l'allure de ta course : mémorise la sensation, elle doit devenir automatique le jour J.", det: "", steps: [W(18, "progressif + gammes"), Object.assign(Bd(P(3, 5), fmt === "5k" || fmt === "10k" ? 1000 : 2000, fmt === "marathon" ? "rn.mara" : "rn.thr", "2-3min récup active", "", !(fmt === "5k" || fmt === "10k"), "rn"), { repCap: 8 }), C(10, "retour au calme")] });
     else
       S2.push({ d: "rn", name: phase === "base" ? "Endurance soutenue" : "Allure spécifique", note: isTrail ? "Effort tenu et continu, au ressenti (GAP/FC) — pas à l'allure brute." : "Allure tenue et continue, sans à-coups.", det: "", steps: [W(15, "footing facile"), B(1, P(20, 45), fmt === "marathon" || fmt === "trail" ? "rn.mara" : "rn.thr"), C(8, "retour au calme " + G)] });
   } else if (slot === "durLong") {
@@ -4255,7 +4296,7 @@ function buildRunSessions(kit            )              {
     // Trail (registre R4.1) : volume en TEMPS + D+ cible — jamais en km seul. Le D+ suit
     // la durée (~350-450m/h) ; descentes en contrôle, surtout avec un passif d'impact.
     const dplus = isTrail ? trailElevationTarget(durMin) : null;
-    S2.push({ d: "rn", long: true, name: isTrail ? "Sortie longue trail" : "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : isTrail ? "En trail on compte le TEMPS et le D+, pas les kilomètres. Monte au train, descends en contrôle" + (injImp ? " — descentes prudentes, ta zone fragile encaisse la charge excentrique" : "") + "." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", (isTrail && dplus ? " · D+ cible " + dplus.lo + "-" + dplus.hi + "m" : "") + (phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : "")), { bnd: { floor: durCaps.lo, cap: durCaps.hi } }), ], ...( { plainBody: true }          ) });
+    S2.push({ d: "rn", long: true, name: isTrail ? "Sortie longue trail" : "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : isTrail ? "En trail on compte le TEMPS et le D+, pas les kilomètres. Monte au train, descends en contrôle" + (injImp ? " — descentes prudentes, ta zone fragile encaisse la charge excentrique" : "") + "." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", (isTrail && dplus ? " · D+ cible " + dplus.lo + "-" + dplus.hi + "m" : "") + (phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : "")), { bnd: { floor: durCaps.lo, cap: durCaps.hi, hard: beginner } }), ], ...( { plainBody: true }          ) });
   } else if (slot === "facileR") {
     S2.push({ d: "rn", name: "Footing facile", note: beginner ? "Allure de conversation, sans forcer : c'est le volume facile qui fait progresser." : "Endurance fondamentale : allure de conversation. Ce volume facile construit l'aérobie sans user.", det: "", steps: [B(1, P(30, 50), "rn.easy", "", G && !injImp ? " · termine par " + G.replace("+ ", "") : "")], ...( { plainBody: true }          ) });
   } else if (slot === "facile2") {
@@ -4281,6 +4322,7 @@ function predictRun(kit            )       {
 registerSport({
   id: "run",
   mainDiscipline: "rn",
+  disciplines: ["rn"],
   // La course a DEUX créneaux faciles : le second footing (récup) sert de repli — un
   // coureur déclassé court quand même, plus court et plus souple.
   easyFallbackSlot: "facile2",
@@ -4334,6 +4376,7 @@ function predictBike(kit            )       {
 registerSport({
   id: "bike",
   mainDiscipline: "bk",
+  disciplines: ["bk"],
   easyFallbackSlot: "facileR",
   weekSchema: null,
   buildSessions: buildBikeSessions,
@@ -4367,19 +4410,19 @@ function buildSwimSessions(kit            )              {
   };
   const limFocus = swimLimitFocus[a.swim_limit || ""] || { txt: " éducatifs variés — " + swimDrillGlossary, note: "La technique se construit à froid, sans fatigue. Qualité > quantité." };
   if (slot === "dur1") {
-    if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Seuil technique CSS", note: "Quelques 100m à allure seuil contrôlée, technique maintenue : préparer la course sans casser le geste.", det: "", steps: [Wm(200, "souple + éducatifs"), Bd(P(4, 7), 100, "sw.css", "20-30s", "", false, "sw"), Cm(100, "relâché")] });
+    if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Seuil technique CSS", note: "Quelques 100m à allure seuil contrôlée, technique maintenue : préparer la course sans casser le geste.", det: "", steps: [Wm(200, "souple + éducatifs"), Object.assign(Bd(P(4, 7), 100, "sw.css", "20-30s", "", false, "sw"), { repCap: 10 }), Cm(100, "relâché")] });
     else if (beginner) S2.push({ d: "sw", name: "Technique + éducatifs", note: limFocus.note, det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", "repos libre entre séries", limFocus.txt + ", " + P(1, 2) + " point(s) technique", false, "sw"), Cm(100, "relâché")] });
-    else if (shoulder) S2.push({ d: "sw", name: "Seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute.", det: "", steps: [Wm(300, "souple + 4×50m éducatifs"), Bd(P(6, 8), 100, "sw.css", "20-30s", "", false, "sw"), Cm(200, "souple")] });
-    else S2.push({ d: "sw", name: "Seuil CSS", note: "Allure régulière sur tous les 100m. Le dernier doit ressembler au premier.", det: "", steps: [Wm(400, "progressif + 4×50m éducatifs"), Bd(P(6, 10), 100, "sw.css", "15-20s", "", false, "sw"), Cm(200, "souple")] });
+    else if (shoulder) S2.push({ d: "sw", name: "Seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute.", det: "", steps: [Wm(300, "souple + 4×50m éducatifs"), Object.assign(Bd(P(6, 8), 100, "sw.css", "20-30s", "", false, "sw"), { repCap: 10 }), Cm(200, "souple")] });
+    else S2.push({ d: "sw", name: "Seuil CSS", note: "Allure régulière sur tous les 100m. Le dernier doit ressembler au premier.", det: "", steps: [Wm(400, "progressif + 4×50m éducatifs"), Object.assign(Bd(P(6, 10), 100, "sw.css", "15-20s", "", false, "sw"), { repCap: 14 }), Cm(200, "souple")] });
   } else if (slot === "dur2") {
-    if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Endurance + touches de vitesse", note: "Nage continue technique, plus quelques accélérations courtes de 25m : de la vitesse de forme, pas de la souffrance.", det: "", steps: [Wm(200, "souple"), Bd(1, 400, "sw.aero", "20-30s", " nage continue fractionnée", false, "sw"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " en accélérations progressives, technique maintenue", false, "sw"), Cm(100, "très souple")] });
+    if (beginner && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Endurance + touches de vitesse", note: "Nage continue technique, plus quelques accélérations courtes de 25m : de la vitesse de forme, pas de la souffrance.", det: "", steps: [Wm(200, "souple"), Bd(1, 400, "sw.aero", "20-30s", " nage continue fractionnée", false, "sw"), Object.assign(Bd(P(6, 10), 25, "sw.speed", "30s repos", " en accélérations progressives, technique maintenue", false, "sw"), { repCap: 12 }), Cm(100, "très souple")] });
     else if (beginner) S2.push({ d: "sw", name: "Endurance technique", note: "Priorité au geste, pas au chrono. Un seul point technique à la fois.", det: "", steps: [Wm(200, "souple"), Bd(1, 600, "sw.easy", "20-30s, le temps de respirer", " nage continue fractionnée (ex 8-12×50m) + 1 éducatif entre chaque", false, "sw"), Cm(100, "très souple")] });
     // B1 (audit v6) — les séances de substitution épaule héritent d'un BUDGET BORNÉ :
     // sans bnd, R3.3 gonflait le bloc jusqu'aux caps génériques (+68% de volume mesuré
     // sur swim/fond/epaule — une blessure qui AUGMENTAIT la charge).
-    else if (shoulder && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Jambes vitesse (épaule épargnée)", note: "Vitesse par les jambes : battements rapides avec planche, l'épaule ne travaille pas. La puissance se maintient sans risque.", det: "", steps: [Wm(200, "souple"), Bd(P(6, 10), 25, "sw.speed", "30s repos", " battements rapides avec planche (jambes seules)", false, "sw"), Object.assign(Bd(1, 200, "sw.easy", "", " éducatifs technique", false, "sw"), { bnd: { floor: 200, cap: 600 } }), Cm(100, "souple")] });
+    else if (shoulder && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Jambes vitesse (épaule épargnée)", note: "Vitesse par les jambes : battements rapides avec planche, l'épaule ne travaille pas. La puissance se maintient sans risque.", det: "", steps: [Wm(200, "souple"), Object.assign(Bd(P(6, 10), 25, "sw.speed", "30s repos", " battements rapides avec planche (jambes seules)", false, "sw"), { repCap: 12 }), Object.assign(Bd(1, 200, "sw.easy", "", " éducatifs technique", false, "sw"), { bnd: { floor: 200, cap: 600 } }), Cm(100, "souple")] });
     else if (shoulder) S2.push({ d: "sw", name: "Jambes + technique", note: "Épaule épargnée : le travail passe par les jambes et la technique, la charge articulaire reste nulle.", det: "", steps: [Object.assign(Bd(1, 400, null, "", " séries battements + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: 1200 } })], ...( { plainBody: true }          ) });
-    else S2.push({ d: "sw", name: "Vitesse", note: "Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage.", det: "", steps: [Wm(400, "varié + 4×25m accélérations"), Bd(P(8, 12), 50, "sw.speed", "30-40s", "", false, "sw"), Cm(200, "souple")] });
+    else S2.push({ d: "sw", name: "Vitesse", note: "Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage.", det: "", steps: [Wm(400, "varié + 4×25m accélérations"), Object.assign(Bd(P(8, 12), 50, "sw.speed", "30-40s", "", false, "sw"), { repCap: 16 }), Cm(200, "souple")] });
   } else if (slot === "durLong") {
     const distCaps = beginner
       ? { lo: 300, hi: Math.min(850, C15_BEGINNER_SWIM_SESSION_CAP_M) }
@@ -4414,6 +4457,7 @@ function predictSwim(kit            )       {
 registerSport({
   id: "swim",
   mainDiscipline: "sw",
+  disciplines: ["sw"],
   easyFallbackSlot: "facileR",
   weekSchema: null,
   buildSessions: buildSwimSessions,
@@ -4524,6 +4568,7 @@ function predictTri(kit            )       {
 registerSport({
   id: "tri",
   mainDiscipline: "rn", // la CAP finit la course : c'est la discipline de référence du tri
+  disciplines: ["sw", "bk", "rn"],
   easyFallbackSlot: "facileR",
   weekSchema: null,
   buildSessions: buildTriSessions,
@@ -4556,6 +4601,7 @@ function buildTrailSessionsFromKit(kit            )              {
 registerSport({
   id: "trail",
   mainDiscipline: "rn",
+  disciplines: ["rn"],
   // "facileR", PAS "facile2" : c'est ce que l'ancien code faisait (`sport === "run" ? … : …`
   // ne connaissait que la course). Le déclarer autrement changerait les plans trail — ce
   // serait une DÉCISION, pas une extraction. Candidate à réexaminer (voir R10_DEFECTS.md).
@@ -4788,6 +4834,7 @@ function predictDuathlon(kit            )       {
 registerSport({
   id: "duathlon",
   mainDiscipline: "rn", // deux segments sur trois se courent : la course décide
+  disciplines: ["rn", "bk"],
   easyFallbackSlot: "facileR",
   weekSchema: null, // le schéma générique par créneaux convient : rien de spécifique à inventer
   buildSessions: buildDuathlonSessions,
@@ -4926,7 +4973,12 @@ const S7_COLD = srule(
 const S8_PADDLES = srule(
   "S8",
   "les plaquettes sont l'outil le plus rentable du swimrun et le plus traumatisant pour l'épaule : la progressivité n'est pas une précaution, c'est la condition de leur usage",
-  { shareBase: 0.15, shareDev: 0.3, shareSpec: 0.45, shoulderFactor: 0.4 },
+  { shareBase: 0.15, shareDev: 0.3, shareSpec: 0.45,
+    // R4.8e (audit v7) — épaule déclarée : ZÉRO plaquette, partout. Le facteur valait 0.4, ce qui
+    // laissait ~6 % de plaquettes dans la séance pivot pendant que la séance de nage affichait
+    // « SANS plaquettes » : deux séances du même plan se contredisaient sur le même drapeau.
+    // Trancher vaut mieux qu'expliquer une incohérence.
+    shoulderFactor: 0 },
 );
 
 /**
@@ -4938,6 +4990,18 @@ const S9_LONG_SHARE                                   = srule(
   "S9",
   "reproduire la durée de course à l'entraînement est contre-productif ; le pic à 80 % trois semaines avant est le compromis documenté",
   { base: [0.2, 0.35], dev: [0.35, 0.55], spec: [0.55, 0.7], peak: [0.7, 0.8], taper: [0.25, 0.4] },
+);
+
+/**
+ * S12 — nombre maximal de segments reproduits dans UNE séance. Une course à 48 segments ne se
+ * répète pas à l'entraînement : au-delà d'une douzaine d'entrées-sorties d'eau, la séance
+ * devient la course elle-même. On travaille la compétence sur un nombre représentatif et on la
+ * répète semaine après semaine — c'est comme ça qu'elle s'automatise.
+ */
+const S12_PIVOT_MAX_SEGMENTS = srule(
+  "S12",
+  "la compétence « entrer et sortir de l'eau » s'automatise par la répétition hebdomadaire, pas en reproduisant les 48 segments de la course en une sortie",
+  10,
 );
 
 /**
@@ -5120,6 +5184,22 @@ function buildSwimrunSessions(kit            )              {
   const obj = swimrunObjective(a);
   const ow = OPENWATER_ACCESS[a.openwater_access || "saisonnier"] || OPENWATER_ACCESS.saisonnier;
   const noOpenWater = ow.maxSessionsPerWeek === 0;
+  // R4.3 (audit v7) — `maxSessionsPerWeek` (3 / 1 / 0) est un NOMBRE, pas un booléen : il
+  // n'était lu que comme `=== 0`, et le plan prescrivait 3 séances en eau libre là où l'athlète
+  // en avait déclaré 1 de possible. Le quota est désormais alloué par PRIORITÉ, de façon
+  // déterministe (chaque créneau sait s'il a droit à l'eau libre sans compter la semaine) :
+  //   1. le swimrun spécifique — la séance qui justifie le sport ;
+  //   2. la plus longue nage continue — la contrainte dimensionnante ;
+  //   3. l'acclimatation au froid — la plus substituable (bassin non chauffé, douche).
+  const owQuota = ow.maxSessionsPerWeek;
+  const owForPivot = owQuota >= 1;
+  const owForLongSwim = owQuota >= 2;
+  // L'acclimatation est la séance la plus SUBSTITUABLE des trois (bassin non chauffé, douche) :
+  // elle ne réclame jamais le quota. Cela laisse une marge d'une séance, car les passes de
+  // reconstruction (anti-collage, polarisation) peuvent dupliquer un créneau dans la semaine —
+  // une 4ᵉ séance en eau libre est alors apparue sur un plafond de 3. L'athlète garde de
+  // l'exposition au froid via le swimrun spécifique et la longue nage, qui y sont déjà.
+  const owForCold = false;
   const shoulder = inj.shoulder;
   const team = obj.teamMode === "binome";
   const cold = obj.waterTempC != null && obj.waterTempC < S7_COLD.acclimationBelowC;
@@ -5141,7 +5221,11 @@ function buildSwimrunSessions(kit            )              {
     // Le motif reproduit la COURSE : mêmes transitions, même part de nage. Sur une séance plus
     // courte, on garde le NOMBRE de transitions et on raccourcit les segments — c'est la
     // compétence « entrer et sortir de l'eau » qui se travaille, pas la distance.
-    const segs = Math.max(2, Math.min(obj.segments, Math.round(obj.segments * Math.min(1, share * 1.3))));
+    // S12 — on ne reproduit jamais plus d'une douzaine de segments dans une séance : au-delà,
+    // la séance EST la course. R4.1 (audit v7) : `repCap = segs` sur les deux legs — le nombre
+    // de transitions est la SPÉCIFICATION de cette séance, il ne doit jamais absorber du volume.
+    // C'est la durée des segments qui s'ajuste.
+    const segs = Math.max(2, Math.min(obj.segments, S12_PIVOT_MAX_SEGMENTS, Math.round(obj.segments * Math.min(1, share * 1.3))));
     const swimMin = Math.max(4, Math.round(durMin * obj.swimTimeShare));
     // Les transitions consomment du temps réel : elles sortent du budget de la séance
     // (elles ne sont pas de l'entraînement, mais elles occupent la sortie).
@@ -5153,28 +5237,28 @@ function buildSwimrunSessions(kit            )              {
       // une séance infaisable. Enchaînements courts bassin ↔ tapis/extérieur, en tenue partielle.
       S2.push({ d: "br", long: true,
         name: "Swimrun en substitution (bassin ↔ course)",
-        note: "Tu n'as pas d'accès à l'eau libre : cette séance reproduit ce qui est reproductible — les " + segs * 2 + " transitions et la part de nage de ta course, en bassin et sur route. Ce qui NE se substitue pas : la navigation, la houle, le froid et l'entrée en eau vive. Cale au moins deux week-ends en eau libre avant ta course, c'est le meilleur investissement de ta préparation." + gearNote,
+        note: "Tu n'as pas accès à un plan d'eau : cette séance reproduit ce qui est reproductible — les " + segs * 2 + " transitions et la part de nage de ta course, en bassin et sur route. Ce qui NE se substitue pas : la navigation, la houle, le froid et l'entrée en eau vive. Cale au moins deux week-ends en conditions réelles (lac ou mer) avant ta course, c'est le meilleur investissement de ta préparation." + gearNote,
         det: "",
         steps: [
           Wm(200, "nage souple, en tenue partielle si le bassin l'autorise"),
           // Les DEUX legs sont des steps à part entière : mettre la course dans un texte de
           // récupération ferait mentir le total de la séance (l'auditeur, lui, la compte).
-          { role: "body", leg: "swim", reps: segs, durationMin: perSwim, zone: "sw.aero", d: "sw", intensity: "aero"                     , bnd: { floor: 2, cap: perSwim }, recoveryText: "sortie de bassin sans traîner", suffix: " nage" + (pad > 0 ? " (dont ~" + Math.round(pad * 100) + "% avec plaquettes)" : ""), text: "" }          ,
-          { role: "body", leg: "run", reps: segs, durationMin: perRun, d: "rn", zone: "rn.easy", intensity: "easy"                     , bnd: { floor: 3, cap: perRun }, recoveryText: "retour à l'eau immédiat", suffix: " de course entre deux nages", text: "" }          ,
+          { role: "body", leg: "swim", reps: segs, durationMin: perSwim, zone: "sw.aero", d: "sw", intensity: "aero"                     , bnd: { floor: 2, cap: perSwim }, repCap: segs, recoveryText: "sortie de bassin sans traîner", suffix: " nage" + (pad > 0 ? " (dont ~" + Math.round(pad * 100) + "% avec plaquettes)" : ""), text: "" }          ,
+          { role: "body", leg: "run", reps: segs, durationMin: perRun, d: "rn", zone: "rn.easy", intensity: "easy"                     , bnd: { floor: 3, cap: perRun }, repCap: segs, recoveryText: "retour à l'eau immédiat", suffix: " de course entre deux nages", text: "" }          ,
           Cm(150, "souple"),
         ] });
     } else {
       S2.push({ d: "br", long: true,
         name: "Swimrun spécifique (" + segs * 2 + " transitions)",
-        note: "LA séance de ta préparation : elle reproduit le nombre de transitions et la part de nage de ta course, quelle que soit sa durée. Entre dans l'eau sans t'arrêter pour ranger tes affaires, sors en courant, et compte le temps que tu perds à chaque passage — c'est là qu'un binôme entraîné gagne une demi-heure." + (cold ? " Eau froide : couvre-toi dès la sortie, la déperdition thermique se joue à la course, pas à la nage." : "") + gearNote,
+        note: "LA séance de ta préparation : elle reproduit le nombre de transitions et la part de nage de ta course, quelle que soit sa durée. Entre dans l'eau sans t'arrêter pour ranger tes affaires, sors en courant, et compte le temps que tu perds à chaque passage — c'est là qu'on gagne une demi-heure." + (cold ? " Eau froide : couvre-toi dès la sortie, la déperdition thermique se joue à la course, pas à la nage." : "") + gearNote,
         det: "",
         steps: [
           W(10, "course d'ouverture progressive, matériel en place"),
           // Nage ET course sont des steps à part entière (§R10.3.4) : le motif alterne les deux
           // `segs` fois. Encoder la course dans un texte de récupération ferait sous-compter la
           // séance de tout son volume de course — l'auditeur l'a relevé, et il avait raison.
-          { role: "body", leg: "swim", reps: segs, durationMin: perSwim, zone: "sw.aero", d: "sw", intensity: "aero"                     , bnd: { floor: 2, cap: perSwim }, recoveryText: "sortie d'eau en courant", suffix: " nage en eau libre" + (pad > 0 ? ", ~" + Math.round(pad * 100) + "% avec plaquettes" : "") + (team ? ", longe attachée" : ""), text: "" }          ,
-          { role: "body", leg: "run", reps: segs, durationMin: perRun, d: "rn", zone: "rn.easy", intensity: "easy"                     , bnd: { floor: 3, cap: perRun }, recoveryText: "entrée dans l'eau sans t'arrêter", suffix: " de course sur sentier entre deux nages", text: "" }          ,
+          { role: "body", leg: "swim", reps: segs, durationMin: perSwim, zone: "sw.aero", d: "sw", intensity: "aero"                     , bnd: { floor: 2, cap: perSwim }, repCap: segs, recoveryText: "sortie d'eau en courant", suffix: (owForPivot ? " nage en eau libre" : " nage en bassin") + (pad > 0 ? ", ~" + Math.round(pad * 100) + "% avec plaquettes" : "") + (team ? ", longe attachée" : ""), text: "" }          ,
+          { role: "body", leg: "run", reps: segs, durationMin: perRun, d: "rn", zone: "rn.easy", intensity: "easy"                     , bnd: { floor: 3, cap: perRun }, repCap: segs, recoveryText: "entrée dans l'eau sans t'arrêter", suffix: " de course sur sentier entre deux nages", text: "" }          ,
           C(10, "course très souple, se réchauffer"),
         ] });
     }
@@ -5182,35 +5266,68 @@ function buildSwimrunSessions(kit            )              {
     // ---- Qualité NAGE : en tenue quand c'est possible, plaquettes progressives (S8) ----
     if (shoulder) {
       S2.push({ d: "sw", name: "Nage seuil contrôlé (épaule épargnée)", note: "Épaule fragile : volume modéré, technique soignée, et les plaquettes réduites au minimum — ce sont elles qui chargent l'épaule en swimrun. Arrêt au moindre signal articulaire.", det: "",
-        steps: [Wm(200, "souple + éducatifs doux"), Bd(P(4, 7), 100, "sw.css", "25-35s", " amplitude confortable, SANS plaquettes", false, "sw"), Cm(150, "souple")] });
+        steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(P(4, 7), 100, "sw.css", "25-35s", " amplitude confortable, SANS plaquettes", false, "sw"), { repCap: 10 }), Cm(150, "souple")] });
     } else if (beginner) {
       S2.push({ d: "sw", name: "Technique + aisance en tenue", note: "En swimrun on nage en chaussures et en combinaison : la position change, les jambes portent moins. Habitue-toi au matériel AVANT de chercher la vitesse — c'est le choc n°1 des débutants.", det: "",
         steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", "repos libre", " en tenue partielle, un point technique à la fois", false, "sw"), Cm(100, "relâché")] });
+    } else if ((phase === "spec" || phase === "peak") && (kit.weekNum % 2 === 0 || kit.r.weeks <= 14)) {
+      // La PLUS LONGUE NAGE est la contrainte dimensionnante d'une prépa swimrun (thermique et
+      // mentale) : elle se répète en continu, pas en séries. Une semaine sur deux en phase
+      // spécifique, pour ne pas sacrifier le travail de seuil.
+      S2.push({ d: "sw", name: "Nage continue longue (répétition de la plus longue nage)",
+        note: "La plus longue nage de ta course fait " + obj.longestSwimM + " m : c'est elle qui décide si tu passes ou si tu sors de l'eau vidé. On la répète EN CONTINU, sans toucher le bord — le mental compte autant que le physique ici." + (owForLongSwim ? " En eau libre, avec quelqu'un à vue." : " En bassin : ne t'arrête pas aux murs, demi-tour et tu repars. Ton accès aux plans d'eau est réservé au swimrun spécifique."),
+        det: "",
+        steps: [Wm(200, "souple, mise en tenue"), Object.assign(Bd(1, Math.max(400, obj.longestSwimM), "sw.aero", "", " en continu, sans arrêt" + (owForLongSwim ? " (eau libre)" : " (bassin)"), false, "sw"), { bnd: { floor: Math.max(400, Math.round(obj.longestSwimM * 0.85)), cap: Math.round(obj.longestSwimM * 1.15) } }), Cm(150, "souple")] });
     } else {
       S2.push({ d: "sw", name: "Seuil CSS + plaquettes", note: "Le seuil se tient sur tous les 100 m : le dernier doit ressembler au premier. Les plaquettes viennent progressivement — elles tractent, mais elles chargent l'épaule." + (pad > 0 ? " Aujourd'hui : environ " + Math.round(pad * 100) + "% de la série avec plaquettes." : ""), det: "",
-        steps: [Wm(300, "progressif + 4×50m éducatifs"), Bd(P(6, 10), 100, "sw.css", "15-20s", pad > 0 ? " dont ~" + Math.round(pad * 100) + "% avec plaquettes + pull buoy" : "", false, "sw"), Cm(200, "souple")] });
+        steps: [Wm(300, "progressif + 4×50m éducatifs"), Object.assign(Bd(P(6, 10), 100, "sw.css", "15-20s", pad > 0 ? " dont ~" + Math.round(pad * 100) + "% avec plaquettes + pull buoy" : "", false, "sw"), { repCap: 11 }), Cm(200, "souple")] });
     }
   } else if (slot === "dur2") {
     // ---- Qualité COURSE : le terrain est du trail, l'impact compte ----
     if (inj.impact) {
       S2.push({ d: "rn", name: "Seuil course (surface souple)", note: "Zone fragile déclarée : stimulus fort, sans vitesses maximales ni à-coups, sur surface souple.", det: "",
         steps: [W(15, "footing très facile"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot", " sur surface souple"), C(10, "footing facile")] });
+    } else if ((phase === "dev" || phase === "spec") && !kit.noVo2 && !medHold && !beginner && !inj.impact) {
+      // R4.8f (audit v7) — le module ne contenait AUCUN stimulus VO2/vitesse : `noVo2` et
+      // « pas de VO2 en affûtage » y étaient donc des règles vides. Un swimrun se court à
+      // allure d'endurance, mais la puissance aérobie maximale reste ce qui plafonne cette
+      // allure — elle se travaille en phase de développement, courte et sur le terrain de la
+      // course, pas sur piste.
+      S2.push({ d: "rn", name: "VO2max sur sentier", note: "Le seul bloc vraiment dur de ta semaine : effort maximal tenable ~3 min, récupération complète. On le place en phase de développement — c'est lui qui relève le plafond sous lequel toute ton allure d'endurance se joue. Sur sentier, pas sur piste : le terrain fait partie du geste.", det: "",
+        steps: [W(18, "footing progressif sur sentier + 4 lignes droites"), B(P(4, 6), 3, "rn.vo2", "2min30 trot", "", ), C(10, "footing très souple")] });
     } else {
       S2.push({ d: "rn", name: "Seuil course sur sentier", note: "En swimrun on court sur des rochers, des racines et des sentiers, jambes mouillées et chaussures pleines d'eau. Cours ce seuil sur le terrain le plus proche de ta course, pas sur piste.", det: "",
         steps: [W(15, "footing progressif sur sentier"), B(P(3, 5), P(5, 9), "rn.thr", "2min trot"), C(10, "footing souple")] });
     }
   } else if (slot === "facileR") {
-    // ---- Endurance course, ou acclimatation au froid quand la saison l'exige (S7) ----
-    if (cold && !noOpenWater && !medHold) {
-      S2.push({ d: "sw", name: "Acclimatation eau froide", note: "L'acclimatation au froid est une qualité qui s'entraîne, pas une affaire de volonté : exposition régulière, temps dans l'eau allongé progressivement. Jamais seul, toujours avec une sortie possible à vue." + (obj.waterTempC != null && obj.waterTempC < S7_COLD.wetsuitMandatoryBelowC ? " Sous " + S7_COLD.wetsuitMandatoryBelowC + " °C la combinaison est de toute façon obligatoire en course." : ""), det: "",
-        steps: [Bd(1, Math.max(300, P(400, 1000)), "sw.easy", "", " en eau libre, sortie progressive du temps d'exposition", false, "sw")], ...({ plainBody: true }          ) });
-    } else {
-      S2.push({ d: "rn", name: "Footing facile", note: "Endurance fondamentale, allure de conversation. En swimrun, courir avec des jambes fatiguées par la nage est la norme : ce volume facile construit cette tolérance.", det: "",
-        steps: [B(1, P(30, 55), "rn.easy", "", inj.impact ? " · surface souple" : " · sur sentier si possible")], ...({ plainBody: true }          ) });
-    }
+    // R4.2 (audit v7) — L'ENDURANCE COURSE NE SE FAIT PLUS VOLER SON CRÉNEAU. L'acclimatation au
+    // froid remplaçait ce footing dès que l'eau passait sous 17 °C, c'est-à-dire pour la majorité
+    // des courses européennes : ce n'était pas un cas limite, c'était le comportement par défaut.
+    // Résultat mesuré : le plan allouait 43 % du temps à la course quand la course en demande
+    // 68 % — un écart de 25 points, dans le sens qui pénalise le limiteur réel du sport.
+    // Le froid consomme désormais un créneau NAGE (`facile2`).
+    S2.push({ d: "rn", name: "Footing facile", note: "Endurance fondamentale, allure de conversation. En swimrun, courir avec des jambes fatiguées par la nage est la norme : ce volume facile construit cette tolérance — et la course représente la majorité du temps de ta course.", det: "",
+      steps: [B(1, P(30, 55), "rn.easy", "", inj.impact ? " · surface souple" : " · sur sentier si possible")], ...({ plainBody: true }          ) });
   } else if (slot === "facile2") {
-    S2.push({ d: "sw", name: "Nage récup + technique", note: "Récupération dans l'eau : relâchement total, respiration ample. C'est aussi le moment de refaire des éducatifs à froid, sans fatigue.", det: "",
-      steps: [Bd(1, P(600, 1100), "sw.easy", "", " souple, éducatifs entre les séries", false, "sw")], ...({ plainBody: true }          ) });
+    // R4.3 (audit v7) — LE PLAFOND D'ACCÈS À L'EAU LIBRE EST UN NOMBRE, PAS UN BOOLÉEN.
+    // `maxSessionsPerWeek` (3 / 1 / 0) n'était lu que comme `=== 0`. La pivot consomme le
+    // premier quota de la semaine (c'est la séance prioritaire) : une seconde séance en eau
+    // libre n'est donc possible qu'à partir d'un plafond de 2. En dessous, l'acclimatation se
+    // fait en bassin froid ou en douche froide — et le plan le DIT.
+    if (cold && !medHold) {
+      const inOpenWater = owForCold;
+      S2.push({ d: "sw", name: inOpenWater ? "Acclimatation eau froide" : "Acclimatation au froid (bassin / douche)",
+        note: "L'acclimatation au froid est une qualité qui s'entraîne, pas une affaire de volonté : exposition régulière, temps dans l'eau allongé progressivement."
+          + (inOpenWater
+            ? " Jamais seul, toujours avec une sortie possible à vue."
+            : " Ton accès aux plans d'eau est déjà pris par les séances prioritaires de la semaine : cette exposition se fait donc en bassin non chauffé, ou à défaut par des fins de douche froides de 2 à 3 min. C'est moins efficace, et c'est mieux que rien.")
+          + (obj.waterTempC != null && obj.waterTempC < S7_COLD.wetsuitMandatoryBelowC ? " Sous " + S7_COLD.wetsuitMandatoryBelowC + " °C la combinaison est de toute façon obligatoire en course." : ""),
+        det: "",
+        steps: [Bd(1, Math.max(300, P(400, 1000)), "sw.easy", "", (inOpenWater ? " en eau libre" : " en bassin non chauffé") + ", temps d'exposition allongé progressivement", false, "sw")], ...({ plainBody: true }          ) });
+    } else {
+      S2.push({ d: "sw", name: "Nage récup + technique", note: "Récupération dans l'eau : relâchement total, respiration ample. C'est aussi le moment de refaire des éducatifs à froid, sans fatigue.", det: "",
+        steps: [Bd(1, P(600, 1100), "sw.easy", "", " souple, éducatifs entre les séries", false, "sw")], ...({ plainBody: true }          ) });
+    }
   } else if (slot === "recup") {
     S2.push({ d: "rs", name: "Repos / épaules + mobilité", det: "coiffe des rotateurs, mobilité chevilles — les deux zones que le swimrun charge le plus", steps: [] });
   } else if (slot === "off") {
@@ -5229,12 +5346,18 @@ function swimrunWeekSchema(_phase        , isRecup         )                    
     { charge: "recup", slot: "recup" }, { charge: "facile", slot: "facile2" }, { charge: "off", slot: "off" },
     { charge: "facile", slot: "facileR" }, { charge: "off", slot: "off" }, { charge: "facile", slot: "facile2" }, { charge: "recup", slot: "recup" },
   ];
-  // Lun repos/renfo · Mar nage qualité · Mer course facile · Jeu course qualité · Ven nage récup
-  // · Sam SWIMRUN spécifique · Dim course facile
+  // R4.2.4 (audit v7) — le créneau `facileR` apparaissait DEUX fois (Mer et Dim) et produisait
+  // deux séances identiques dans la même semaine. Un même créneau deux fois, c'est soit une
+  // variante, soit un doublon : ici c'était un doublon. La semaine tient en 5 séances, ce qui
+  // correspond à la structure de référence des coachs (2 nages, 2 courses + le swimrun
+  // spécifique), et le dimanche redevient un vrai jour de repos — un sport qui charge autant
+  // les épaules que les jambes en a besoin.
+  // Lun repos+renfo · Mar nage qualité · Mer footing · Jeu course qualité · Ven nage récup/froid
+  // · Sam SWIMRUN spécifique · Dim repos
   return [
     { charge: "recup", slot: "recup" }, { charge: "dur", slot: "dur1" }, { charge: "facile", slot: "facileR" },
     { charge: "dur", slot: "dur2" }, { charge: "facile", slot: "facile2" }, { charge: "dur", slot: "durLong" },
-    { charge: "facile", slot: "facileR" },
+    { charge: "off", slot: "off" },
   ];
 }
 
@@ -5273,6 +5396,7 @@ function predictSwimrun(kit            )       {
 registerSport({
   id: "swimrun",
   mainDiscipline: "rn", // la course représente l'essentiel du temps, même si la nage décide
+  disciplines: ["sw", "rn"],
   easyFallbackSlot: "facileR",
   weekSchema: (phase, isRecup) => swimrunWeekSchema(phase, isRecup),
   buildSessions: buildSwimrunSessions,
@@ -5305,7 +5429,7 @@ function swimrunPrereqBlock(a                                                   
  * « reprise », neutralisation médicale, plafond d'impact course, budget de séances,
  * greffes renfo, anti-collage final, garantie de polarisation.
  */
-                                                                         
+                                                                                 
 
 
 
@@ -5467,6 +5591,7 @@ function buildDays(r              , refs      , hz         )           {
   }
 
   applyRunImpactCap(r, days, refs, hz);
+  applyDisciplineCoverage(r, days, refs, hz, ctx);
   applySessionBudget(r, days);
   applyStrengthGrafts(r, days);
   applyAntiCollage(r, days, refs, hz, ctx);
@@ -5493,22 +5618,14 @@ function applyRunImpactCap(r              , days          , refs      , hz      
     for (let i = 0; i < ordered.length && over > 0; i++) {
       const d = ordered[i];
       if (canCross && (injImpact || d.charge === "dur")) {
-        // En trail, le substitut garde le stimulus qui compte : du VERTICAL sans impact.
-        // Un footing plat de remplacement perdrait le sens de la semaine.
-        const s            = isTrail
-          ? {
-            d: "bk", name: "Cross-training vélo en côte (sans impact)",
-            note: "Ton plafond de jours d'appui est atteint : ce vélo garde le travail en montée — le muscle et le cardio progressent — sans ajouter d'impact ni de descente. C'est le meilleur échange possible aujourd'hui.",
-            det: "",
-            steps: [
-              { role: "warmup", durationMin: 15, text: "progressif, sur le plat" },
-              { role: "body", reps: 4, durationMin: 8, zone: "bk.thr", intensity: intOf("bk.thr")                     , recoveryText: "4min souple en descente", text: "en côte, assis, cadence 60-70" },
-              { role: "cooldown", durationMin: 10, text: "souple" },
-            ],
-          }
-          : d.charge === "dur"
-          ? { d: "bk", name: "Cross-training vélo (intensité)", note: "Intervalles vélo — équivalent VO2 sans impact, maintient la puissance aérobie pendant que le tissu se répare.", det: "", steps: [{ role: "warmup", durationMin: 15, text: "progressif" }, { role: "body", reps: 5, durationMin: 3, zone: "bk.vo2", intensity: intOf("bk.vo2")                     , recoveryText: "3min souple" }, { role: "cooldown", durationMin: 10, text: "souple" }] }
-          : { d: "bk", name: "Cross-training vélo", note: "Zéro impact : le stimulus aérobie est conservé pendant que les tissus de la course récupèrent.", det: "", steps: [{ role: "body", durationMin: 55, zone: "bk.z2", intensity: intOf("bk.z2")                      }], ...({ plainBody: true }          ) };
+        // R4.0 (audit v7) — POINT D'ENTRÉE UNIQUE. Ces séances étaient écrites en dur ici et
+        // ne lisaient NI `medHold` NI `noVo2` : sous drapeau médical (« douleur thoracique à
+        // l'effort », que le questionnaire présente comme non négociable), la passe de
+        // réparation réinjectait 32 à 97 blocs au seuil APRÈS que les générateurs les aient
+        // correctement retirés. Tant qu'une passe peut fabriquer une séance sans passer par
+        // une fonction qui connaît les drapeaux, le garde-fou reste contournable par la
+        // prochaine passe ajoutée — c'est la leçon structurelle, pas le symptôme.
+        const s = crossTrainingSession(r, isTrail, d.charge === "dur");
         renderSess(s, refs, hz, r.baseRefs);
         d.sessions = [s];
       } else {
@@ -5518,6 +5635,127 @@ function applyRunImpactCap(r              , days          , refs      , hz      
       over--;
     }
   }
+}
+
+/**
+ * R4.6 (audit v7) — COUVERTURE DES DISCIPLINES. Mesuré avant correction : avec 3 jours OFF
+ * déclarés, **46 semaines sur 59** d'un plan de duathlon ne contenaient AUCUNE séance de vélo —
+ * le plan devenait un plan de course à pied, et ne le disait pas. Aucune contrainte n'imposait
+ * la présence des deux disciplines : le schéma était simplement amputé par les jours bloqués.
+ *
+ * Deux issues, jamais le silence :
+ *   1. il reste un jour facile → il change de discipline (le sport garde ses deux moteurs) ;
+ *   2. l'enveloppe déclarée ne le permet pas → un AVERTISSEMENT le dit, avec le remède
+ *      (format plus court, ou cycle de 10 jours).
+ */
+function applyDisciplineCoverage(r              , days          , refs      , hz         , ctx            )       {
+  const mod = sportModule(r.profile.sport          );
+  if (mod.disciplines.length < 2) return; // monodiscipline : rien à couvrir
+  let impossible = 0;
+  for (let w = 1; w <= r.weeks; w++) {
+    const wd = days.filter((d) => d.week === w);
+    if (wd.filter((d) => d.isR).length >= 4) continue; // semaine de récup : structure allégée
+    const present = new Set        ();
+    for (const d of wd)
+      for (const s of d.sessions) {
+        if (s.d === "rs") continue;
+        if (s.d === "br") { for (const b of s.steps || []) if (b.leg) present.add(b.leg === "bike" ? "bk" : b.d || "rn"); present.add("bk"); present.add("rn"); }
+        else present.add(s.d);
+      }
+    const missing = mod.disciplines.filter((x) => !present.has(x));
+    if (!missing.length) continue;
+    // Un jour facile non bloqué peut changer de discipline sans toucher à la structure dure.
+    const donors = wd.filter((d) => !d.forced && d.charge === "facile" && d.sessions.some((s) => s.d !== "rs"));
+    let fixed = 0;
+    for (const disc of missing) {
+      const donor = donors[fixed];
+      if (!donor) break;
+      // La séance de remplacement passe par le point d'entrée unique (R4.0) : elle connaît les
+      // drapeaux médicaux et d'âge. Le cross-training vélo EST la séance vélo facile.
+      if (disc === "bk") {
+        const sess = crossTrainingSession(r, false, false);
+        sess.name = "Endurance vélo (couverture discipline)";
+        sess.note = "Ton enveloppe de jours laisse peu de place : cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan de duathlon sans vélo n'est pas un plan allégé, c'est un plan d'un autre sport.";
+        renderSess(sess, refs, hz, r.baseRefs);
+        donor.sessions = [sess];
+        fixed++;
+      } else {
+        const built = buildSessions(ctx, disc === "sw" ? "facile2" : "facileR", donor.phaseId, donor.prog || 0, donor.week);
+        const pick = built.find((x) => x.d === disc);
+        if (!pick) continue;
+        for (const x of built) if (x.steps && x.steps.length) renderSess(x, refs, hz, r.baseRefs);
+        donor.sessions = [pick];
+        fixed++;
+      }
+    }
+    if (fixed < missing.length) impossible++;
+  }
+  if (impossible > 0) {
+    r.warnings.push("Sur " + impossible + " semaine(s), ton enveloppe de jours disponibles ne permet pas de faire tenir toutes les disciplines de ce sport (jours bloqués + disponibilité déclarée). Le plan fait au mieux, mais deux options le rendraient meilleur : viser un format plus court, ou passer sur un cycle de 10 jours (Profil → disponibilité) pour espacer les séances clés au lieu de les entasser sur 7 jours.");
+  }
+}
+
+/**
+ * Séance de CROSS-TRAINING de substitution — le SEUL constructeur de séance des passes de
+ * réparation (R4.0, audit v7). Il reçoit le plan raisonné, donc les drapeaux : neutralisation
+ * médicale, interdiction de VO2 (mineur), blessures. Aucune passe ne doit écrire une séance
+ * littérale : c'est ce qui a permis au drapeau médical d'être contourné.
+ *
+ * @param wantsVertical  trail : garder le stimulus vertical (côte) plutôt qu'un plat
+ * @param wantsIntensity le jour remplacé était un jour DUR : on cherche un équivalent
+ */
+function crossTrainingSession(r              , wantsVertical         , wantsIntensity         )            {
+  // 1. Drapeau médical : AUCUNE intensité, quelle que soit la raison du remplacement.
+  //    « Un mauvais plan vaut mieux qu'un plan dangereux » (manifeste).
+  if (r.medHold) {
+    return {
+      d: "bk", name: "Cross-training vélo très souple (avis médical en attente)",
+      note: "Tu as signalé un symptôme à l'effort : aucune intensité n'est générée avant le feu vert d'un médecin. Ce vélo reste en endurance basse, tu dois pouvoir tenir une conversation complète. Si le moindre symptôme apparaît, tu t'arrêtes.",
+      det: "",
+      steps: [{ role: "body", durationMin: 45, zone: "bk.z2", intensity: intOf("bk.z2")                      }],
+      ...({ plainBody: true }          ),
+    }             ;
+  }
+  // 2. Trail : le stimulus qui compte est le VERTICAL, sans impact ni descente. L'intensité
+  //    suit les mêmes règles que partout ailleurs (seuil si autorisé, tempo sinon).
+  if (wantsVertical) {
+    const zone = wantsIntensity && !r.noVo2 ? "bk.thr" : "bk.ss";
+    return {
+      d: "bk", name: "Cross-training vélo en côte (sans impact)",
+      note: "Ton plafond de jours d'appui est atteint : ce vélo garde le travail en montée — le muscle et le cardio progressent — sans ajouter d'impact ni de descente. C'est le meilleur échange possible aujourd'hui."
+        + (r.noVo2 ? " Intensité tenue en tempo : la VO2max attendra la majorité." : ""),
+      det: "",
+      steps: [
+        { role: "warmup", durationMin: 15, text: "progressif, sur le plat" },
+        { role: "body", reps: 4, durationMin: 8, zone, intensity: intOf(zone)                     , repCap: 5, recoveryText: "4min souple en descente", text: "en côte, assis, cadence 60-70" }          ,
+        { role: "cooldown", durationMin: 10, text: "souple" },
+      ],
+    }             ;
+  }
+  // 3. Jour dur remplacé : équivalent d'intensité sans impact — VO2 si autorisée, seuil sinon.
+  if (wantsIntensity) {
+    const zone = r.noVo2 ? "bk.thr" : "bk.vo2";
+    return {
+      d: "bk", name: "Cross-training vélo (intensité)",
+      note: (r.noVo2
+        ? "Intervalles vélo au seuil — l'intensité sans impact, et sans VO2max : à ton âge, la puissance aérobie maximale se construit plus tard, le seuil suffit largement."
+        : "Intervalles vélo — équivalent VO2 sans impact, maintient la puissance aérobie pendant que le tissu se répare."),
+      det: "",
+      steps: [
+        { role: "warmup", durationMin: 15, text: "progressif" },
+        { role: "body", reps: r.noVo2 ? 3 : 5, durationMin: r.noVo2 ? 8 : 3, zone, intensity: intOf(zone)                     , repCap: r.noVo2 ? 4 : 6, recoveryText: "3min souple" }          ,
+        { role: "cooldown", durationMin: 10, text: "souple" },
+      ],
+    }             ;
+  }
+  // 4. Jour facile remplacé : endurance pure.
+  return {
+    d: "bk", name: "Cross-training vélo",
+    note: "Zéro impact : le stimulus aérobie est conservé pendant que les tissus de la course récupèrent.",
+    det: "",
+    steps: [{ role: "body", durationMin: 55, zone: "bk.z2", intensity: intOf("bk.z2")                      }],
+    ...({ plainBody: true }          ),
+  }             ;
 }
 
 /**
@@ -5670,6 +5908,19 @@ function applyPolarizationGuard(r              , days          , ctx            
 
 
 
+/**
+ * R4.8a (audit v7) — CONTRAT V1Plan : `min` est un NOMBRE sur toute séance, repos compris.
+ * Il manquait sur les séances créées par les passes tardives (« OFF (affûtage) », y compris
+ * celles de la boucle de réparation) : rattrapé partout par `s.min || 0` côté lecture, mais un
+ * contrat qui ne tient que par les rattrapages de ses consommateurs n'est pas un contrat — le
+ * prochain consommateur oubliera. Exporté pour que la boucle de réparation l'applique aussi.
+ */
+function normalizeRestMinutes(plan        )       {
+  for (const w of plan.weeks)
+    for (const d of w.days)
+      for (const s of d.sessions) if (typeof s.min !== "number" || !isFinite(s.min)) s.min = 0;
+}
+
 function generatePlan(profile                , opts                             )                                           {
   const engine = new TrainingReasoningEngine();
   const r = engine.analyze(profile);
@@ -5692,7 +5943,11 @@ function generatePlan(profile                , opts                             
   const brickRF = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1; // C21
   function blockBounds(b        , s                )                                 {
     if (b.bnd) {
-      const sc = _capScale;
+      // Un plafond marqué `hard` est une règle du manifeste (C23…) : la sonde de capacité peut
+      // élargir les plafonds ordinaires pour tenir la promesse de volume, jamais celui-là.
+      // Sans cette distinction, l'excédent de volume refusé par les blocs de qualité (R4.1)
+      // repartait dans la sortie longue et faisait sauter C23 (193 min pour un débutant).
+      const sc = b.bnd.hard ? 1 : _capScale;
       if (b.distanceM != null) {
         const fl = s.long ? 800 : Math.min(b.bnd.floor, r.beginner ? 600 : 750); // C24
         return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
@@ -5735,7 +5990,20 @@ function generatePlan(profile                , opts                             
     // V2.2 — répartition des intensités : un bloc de QUALITÉ ne dépasse jamais son gabarit
     // (repCap). Sans lui, R3.3 déversait l'excédent de volume dans les intervalles
     // (VO2 4-6×4min devenu 15×4min) au lieu des séances faciles — zone grise garantie.
-    const repMax = Math.min(15, b.repCap || 15);
+    // R4.1 (audit v7) — le `15` de repli n'était pas un plafond de sécurité, c'était la valeur
+    // par défaut : tout step non annoté pouvait TRIPLER ses répétitions pour absorber le volume
+    // de la semaine. Mesuré : 15×6min = 90 min au seuil (swimrun), 5×14min = 70 min (duathlon),
+    // 12×3min de descente (trail). Le déversement doit aller vers les séances FACILES, jamais
+    // vers un bloc de qualité non plafonné. Défaut désormais CONSERVATEUR : le nombre de
+    // répétitions construit par la bibliothèque, qui l'a choisi pour une raison.
+    // Le défaut dépend de ce que le bloc EST : « le déversement doit aller vers les séances
+    // faciles, jamais vers un bloc de qualité » (audit v7). Un bloc facile (endurance, récup,
+    // technique) peut absorber du volume en répétitions — c'est même sa fonction, et la courbe
+    // de charge s'en sert comme levier. Un bloc de QUALITÉ ne grandit plus tout seul : sans
+    // `repCap` explicite, il reste au gabarit choisi par la bibliothèque.
+    const QUALITY = /\.(vo2|thr|css|rp|ss|frc|speed|mara)$/; // `.mara` = allure de COURSE : 15×2000m au marathon, ce n'est pas du volume facile
+    const isQuality = QUALITY.test(String(b.zone || "")) || ["tr.vam", "tr.asc", "tr.climb", "tr.flatthr"].includes(String(b.zone || ""));
+    const repMax = b.repCap ?? (isQuality ? (b.reps || 1) : 15);
     if (b.distanceM != null) {
       if ((b.reps || 1) > 1) {
         const tot = (b.reps || 1) * b.distanceM * f;
@@ -5747,6 +6015,24 @@ function generatePlan(profile                , opts                             
         b.durationMin = Math.max(bd.floor, Math.min(bd.cap, b.durationMin));
         b.reps = Math.max(1, Math.min(repMax, Math.round(tot / b.durationMin)));
       } else b.durationMin = Math.max(bd.floor, Math.min(bd.cap, Math.round(b.durationMin * f)));
+    }
+    // R4.1c (audit v7) — plafond de DOSE en plus du plafond de reps : rien n'empêchait
+    // `5×14min` au seuil, puisque c'est la DURÉE du bloc qui avait été mise à l'échelle et non
+    // le nombre de répétitions. Une dose de seuil au-delà de ~40 min ou de VO2 au-delà de
+    // ~25 min n'est pas un entraînement dur, c'est une course — et personne n'enchaîne ça
+    // semaine après semaine sans casser.
+    if (b.durationMin != null) {
+      const z = String(b.zone || "");
+      const doseCap = /\.vo2$/.test(z) || z === "tr.vam" ? DOSE_CAP_MIN.vo2
+        : /\.thr$|\.css$/.test(z) || z === "tr.asc" || z === "tr.flatthr" ? DOSE_CAP_MIN.thr
+        : null;
+      if (doseCap != null) {
+        const reps = b.reps || 1;
+        if (reps * b.durationMin > doseCap) {
+          if (reps > 1) b.reps = Math.max(1, Math.floor(doseCap / b.durationMin));
+          else b.durationMin = doseCap;
+        }
+      }
     }
     // C15 — protection débutant nage : aucune séance >850m, tous blocs confondus
     if (r.beginner && s.d === "sw" && b.distanceM != null) {
@@ -6429,6 +6715,21 @@ function generatePlan(profile                , opts                             
     }
   }
 
+  // R4.4 (audit v7) — LIBELLÉ DÉRIVÉ APRÈS SCALING. Un nom calculé à la construction est de la
+  // prose figée ; les répétitions sont un champ numérique que les passes de mise à l'échelle
+  // peuvent encore bouger. Les deux divergeaient : « Swimrun spécifique (6 transitions) » pour
+  // 15 nages prescrites, soit 30 transitions réelles — sur la seule séance dont l'objet DÉCLARÉ
+  // est de reproduire le nombre de transitions de la course. Le nom se recalcule ici, une fois
+  // que plus rien ne bougera. (Aucun test de sport : le motif du nom suffit à l'identifier.)
+  for (const w of wl)
+    for (const d of w.days            )
+      for (const sess of d.sessions) {
+        if (!/\(\d+ transitions\)/.test(sess.name || "")) continue;
+        const swLeg = (sess.steps || []).find((b) => b.role === "body" && b.leg === "swim");
+        if (!swLeg) continue;
+        sess.name = String(sess.name).replace(/\(\d+ transitions\)/, "(" + 2 * (swLeg.reps || 1) + " transitions)");
+      }
+
   if (_rampWeeks > 0) {
     r.decisions.push({
       id: "R10-depart", what: "Départ calé sur ton volume récent",
@@ -6511,6 +6812,7 @@ function generatePlan(profile                , opts                             
   }
 
   const plan         = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
+  normalizeRestMinutes(plan);
   return { plan, reasoned: r };
 }
 
@@ -6831,6 +7133,9 @@ function generateAudited(profile                , auditOpts                     
     warnings.push("Plan rendu avec réserves (contraintes insatisfaisables après " + MAX_ITERATIONS + " réparations) :");
     warnings.push(...best.audit.hardViolations.map((v) => "· " + v));
   }
+  // Les passes de réparation créent des séances de repos : le contrat `min` se re-normalise à
+  // la sortie, pas seulement dans le générateur (R4.8a).
+  normalizeRestMinutes(best.plan);
   return { plan: best.plan, audit: best.audit, warnings, repairs, decisions: reasoned.decisions };
 }
 

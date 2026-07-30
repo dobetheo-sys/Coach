@@ -157,6 +157,18 @@ export const BRICK_BIKE_BOUNDS: Record<string, [number, number]> = rule(
   { S: [45, 90], M: [60, 120], "70.3": [90, 180], Full: [150, 300], L: [70, 150], PM: [150, 300] },
 );
 
+/**
+ * Plafond de DOSE par bloc de qualité (minutes dans la zone, répétitions comprises).
+ * Ce n'est pas le nombre de répétitions qui blesse, c'est le temps passé dans la zone : le
+ * plafond de reps seul laissait passer `5×14min` au seuil (70 min) parce que la mise à
+ * l'échelle avait allongé la DURÉE et non le nombre de blocs.
+ */
+export const DOSE_CAP_MIN = rule(
+  "C25",
+  "au-delà de ~40 min de seuil ou ~25 min de VO2max dans une séance, ce n'est plus un entraînement dur mais une course : personne ne l'enchaîne semaine après semaine sans casser",
+  { thr: 40, vo2: 25 },
+);
+
 export const C21_REPRISE_BRICK_FACTOR = rule("C21", "en reprise, le brick ne mange pas la semaine (61% du volume hebdo observé sans ce facteur)", 0.8);
 
 /** Plafonds de séance longue / nage par format (R3.4b), et budget implicite du volume. */

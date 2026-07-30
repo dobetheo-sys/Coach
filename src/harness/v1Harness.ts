@@ -24,7 +24,9 @@ export interface V1Step {
   text?: string;
   leg?: "bike" | "run"; // brick
   d?: string; // discipline du step (nage dans tri, CAP du brick…)
-  bnd?: { floor: number; cap: number };
+  /** Bornes du bloc. `hard: true` = plafond du MANIFESTE, jamais mis à l'échelle par la sonde
+   *  de capacité (C23 : 3 h de sortie longue pour un débutant, par exemple). */
+  bnd?: { floor: number; cap: number; hard?: boolean };
   repCap?: number; // V2.2 — plafond de répétitions d'un bloc de qualité (le scaling ne le dépasse jamais)
   // ---- R7 TRAIL : un bloc de trail ne se décrit pas comme un bloc de route ----
   /** Pente du bloc — PILOTE LE RENDU DE L'INTENSITÉ (spec R7 §7, le verrou du module) :

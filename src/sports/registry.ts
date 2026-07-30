@@ -55,6 +55,9 @@ export interface SportModule {
   id: Sport;
   /** Discipline principale (`rn` · `bk` · `sw`) — remplace les mappings sport→discipline. */
   mainDiscipline: "rn" | "bk" | "sw";
+  /** Toutes les disciplines du sport. R4.6 : chacune doit apparaître dans une semaine de
+   *  charge — un plan de duathlon sans vélo n'est pas un plan dégradé, c'est un autre plan. */
+  disciplines: ("rn" | "bk" | "sw")[];
   /** Créneau facile de repli quand un jour dur est déclassé (anti-collage, medHold). */
   easyFallbackSlot: "facile2" | "facileR";
   /** Schéma de semaine spécifique (charge + créneau par jour), ou `null` pour le générique. */
