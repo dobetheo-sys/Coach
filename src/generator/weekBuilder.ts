@@ -90,6 +90,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   }
 
   applyAvailability(r, days);
+  applyPeakSignature(r, days);
 
   // Fix ciblé « reprise » : garantir une semaine peak de charge portant la signature (durLong)
   if ((a.history || "confirme") === "reprise") {
@@ -237,6 +238,40 @@ function applyWeeklyVariety(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZ
   }
 }
 
+
+
+/**
+ * D2 (banc v6) — LA SEMAINE DE PIC PORTE LA SÉANCE SIGNATURE.
+ *
+ * Mesuré : 8 configurations de triathlon sortaient avec une semaine de pic SANS BRICK. Cause :
+ * le cycle de 10 jours glisse sur le calendrier, et une semaine de 7 jours peut ne contenir
+ * aucun créneau `durLong` — exactement le mécanisme qui produisait les doublons de R5.5, vu
+ * par l'autre bout. L'auditeur avait raison de le refuser : le brick EST le triathlon, la
+ * sortie longue EST le plan d'endurance. Une semaine de pic sans elle n'est pas une semaine de
+ * pic, c'est une semaine chargée.
+ *
+ * Le correctif agit en AMONT (sur les créneaux, avant construction des séances) pour que la
+ * boucle de volume voie une semaine cohérente dès le départ : le second créneau de qualité
+ * devient la longue. On échange une séance de seuil contre la séance qui donne son nom au
+ * sport — sur la semaine la plus importante du plan, l'arbitrage n'est pas discutable.
+ */
+function applyPeakSignature(r: ReasonedPlan, days: GenDay[]): void {
+  for (let w = 1; w <= r.weeks; w++) {
+    const wd = days.filter((d) => d.week === w);
+    // `isR` est posé par CYCLE, pas par semaine calendaire : sur un cycle de 10 jours, le
+    // premier jour d'une semaine de charge peut être marqué récup. On lit la semaine entière,
+    // comme le fait la couverture des disciplines — c'est la même leçon que R5.2.
+    const isRecupWeek = wd.every((d) => d.isR);
+    if (!wd.length || wd[0].phaseId !== "peak" || isRecupWeek) continue;
+    if (wd.some((d) => d.slot === "durLong")) continue;
+    // Le candidat : un jour DUR non bloqué (on ne crée pas de jour dur, on en requalifie un).
+    // `dur2` d'abord — `dur1` porte la qualité principale du sport.
+    const cand = wd.find((d) => d.slot === "dur2" && !d.forced) || wd.find((d) => d.charge === "dur" && !d.forced);
+    if (!cand) continue;
+    cand.slot = "durLong";
+    cand.charge = "dur";
+  }
+}
 
 /**
  * R11.7 — `dispo` AGIT ENFIN SUR LE PLAN.

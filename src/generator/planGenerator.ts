@@ -40,7 +40,11 @@ interface BoundedSession extends V1Session {
  * modifient encore les durées après la génération, et un chiffre dérivé qu'on fige trop tôt
  * ment dès la première réparation.
  */
-export function reconcileDeclaredVolume(plan: V1Plan, warnings: string[]): void {
+export function reconcileDeclaredVolume(
+  plan: V1Plan, warnings: string[],
+  /** Rendu : nécessaire pour que le texte d'une séance RÉDUITE ne mente pas sur sa durée. */
+  render?: (s: V1Session) => void,
+): void {
   // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
   // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
   // règle, mais elle porte sur la réduction vs le PIC, pas sur l'écart à sa propre courbe.
@@ -68,6 +72,37 @@ export function reconcileDeclaredVolume(plan: V1Plan, warnings: string[]): void 
   const weekMinOf = (wk: V1Week) => wk.days.reduce((t, d) => t + dayMin(d), 0);
   const weekH = (wk: V1Week) => Math.round((weekMinOf(wk) / 60) * 10) / 10;
 
+  // C22 — GARANTIE FINALE DE PROGRESSION (D3, banc v6). La borne « +10 % d'une semaine de
+  // charge à la suivante » existait DANS la boucle de volume, mais des passes ultérieures
+  // (montée du pic, remontée aux planchers, harmonisation) pouvaient regonfler une semaine
+  // après coup : 4 sauts subsistaient, jusqu'à +18 %. Même leçon que R5.1 et R5.3 — une règle
+  // de sécurité se vérifie EN DERNIER, sinon elle ne vérifie que l'avant-dernier état.
+  //
+  // On réduit les corps de séance, jamais leur nombre, et jamais sous la borne basse déclarée
+  // par la séance elle-même (`bnd.floor`) : un plancher est une règle, pas une marge.
+  {
+    let prevCharge = 0;
+    for (const wk of plan.weeks) {
+      if (wk.isRecup || wk.phase.id === "taper") continue;
+      const cur = weekMinOf(wk);
+      if (prevCharge > 0 && cur > prevCharge * C22_MAX_WEEKLY_GROWTH + 1) {
+        const f = (prevCharge * C22_MAX_WEEKLY_GROWTH) / cur;
+        for (const d of wk.days) for (const sx of d.sessions) {
+          if (sx.d === "rs" || !sx.steps) continue;
+          let touched = false;
+          for (const st of sx.steps) {
+            if (st.role !== "body" || !st.durationMin) continue;
+            const floor = (st as { bnd?: { floor?: number } }).bnd?.floor ?? 5;
+            const next = Math.max(floor, Math.round(st.durationMin * f));
+            if (next < st.durationMin) { st.durationMin = next; touched = true; }
+          }
+          if (touched && render) render(sx);
+        }
+      }
+      prevCharge = weekMinOf(wk);
+    }
+  }
+
   // R5.3 — L'AFFÛTAGE DÉCROÎT, POINT. La décroissance était jusqu'ici ÉMERGENTE (courbe + coupe
   // R3.13) : sur un cycle de 10 jours, la dérive des créneaux d'une semaine calendaire à l'autre
   // pouvait rendre la 3ᵉ semaine d'affûtage plus lourde que la 2ᵉ (147→98→123→88 mesuré, banc v6
@@ -79,7 +114,19 @@ export function reconcileDeclaredVolume(plan: V1Plan, warnings: string[]): void 
       if (wk.phase.id !== "taper") continue;
       for (let g = 0; g < 6 && weekMinOf(wk) > prev; g++) {
         const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
-        if (active.length <= 1) break;
+        // Une seule séance restante : on ne peut plus RETIRER, il faut RÉDUIRE. Sans ce repli,
+        // la décroissance de l'affûtage s'arrêtait net dès qu'une semaine tombait à une séance
+        // (mesuré : 48 → 56 min sur un Full à 3 séances/semaine). Réduire est toujours dans le
+        // sens de la sécurité — c'est de l'affûtage, l'objectif EST d'enlever.
+        if (active.length <= 1) {
+          const only = active[0]?.sessions.find((s) => s.d !== "rs");
+          if (only && prev > 0 && (only.min || 0) > prev) {
+            const f = Math.max(0.5, prev / (only.min || 1));
+            for (const st of only.steps || []) if (st.role === "body" && st.durationMin) st.durationMin = Math.max(5, Math.round(st.durationMin * f));
+            if (render) render(only);
+          }
+          break;
+        }
         const cand = active.filter((d) => !d.sessions.some((s) => s.long || s.brick));
         const victim = (cand.length ? cand : active).reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
         victim.charge = "off";
@@ -1110,7 +1157,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   }
 
   const plan: V1Plan = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
-  reconcileDeclaredVolume(plan, r.warnings);
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs));
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation

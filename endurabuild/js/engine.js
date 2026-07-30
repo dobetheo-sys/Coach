@@ -3973,6 +3973,7 @@ function buildDays(r              , refs      , hz         )           {
   }
 
   applyAvailability(r, days);
+  applyPeakSignature(r, days);
 
   // Fix ciblé « reprise » : garantir une semaine peak de charge portant la signature (durLong)
   if ((a.history || "confirme") === "reprise") {
@@ -4120,6 +4121,40 @@ function applyWeeklyVariety(r              , days          , refs      , hz     
   }
 }
 
+
+
+/**
+ * D2 (banc v6) — LA SEMAINE DE PIC PORTE LA SÉANCE SIGNATURE.
+ *
+ * Mesuré : 8 configurations de triathlon sortaient avec une semaine de pic SANS BRICK. Cause :
+ * le cycle de 10 jours glisse sur le calendrier, et une semaine de 7 jours peut ne contenir
+ * aucun créneau `durLong` — exactement le mécanisme qui produisait les doublons de R5.5, vu
+ * par l'autre bout. L'auditeur avait raison de le refuser : le brick EST le triathlon, la
+ * sortie longue EST le plan d'endurance. Une semaine de pic sans elle n'est pas une semaine de
+ * pic, c'est une semaine chargée.
+ *
+ * Le correctif agit en AMONT (sur les créneaux, avant construction des séances) pour que la
+ * boucle de volume voie une semaine cohérente dès le départ : le second créneau de qualité
+ * devient la longue. On échange une séance de seuil contre la séance qui donne son nom au
+ * sport — sur la semaine la plus importante du plan, l'arbitrage n'est pas discutable.
+ */
+function applyPeakSignature(r              , days          )       {
+  for (let w = 1; w <= r.weeks; w++) {
+    const wd = days.filter((d) => d.week === w);
+    // `isR` est posé par CYCLE, pas par semaine calendaire : sur un cycle de 10 jours, le
+    // premier jour d'une semaine de charge peut être marqué récup. On lit la semaine entière,
+    // comme le fait la couverture des disciplines — c'est la même leçon que R5.2.
+    const isRecupWeek = wd.every((d) => d.isR);
+    if (!wd.length || wd[0].phaseId !== "peak" || isRecupWeek) continue;
+    if (wd.some((d) => d.slot === "durLong")) continue;
+    // Le candidat : un jour DUR non bloqué (on ne crée pas de jour dur, on en requalifie un).
+    // `dur2` d'abord — `dur1` porte la qualité principale du sport.
+    const cand = wd.find((d) => d.slot === "dur2" && !d.forced) || wd.find((d) => d.charge === "dur" && !d.forced);
+    if (!cand) continue;
+    cand.slot = "durLong";
+    cand.charge = "dur";
+  }
+}
 
 /**
  * R11.7 — `dispo` AGIT ENFIN SUR LE PLAN.
@@ -4663,7 +4698,11 @@ function applyPolarizationGuard(r              , days          , ctx            
  * modifient encore les durées après la génération, et un chiffre dérivé qu'on fige trop tôt
  * ment dès la première réparation.
  */
-function reconcileDeclaredVolume(plan        , warnings          )       {
+function reconcileDeclaredVolume(
+  plan        , warnings          ,
+  /** Rendu : nécessaire pour que le texte d'une séance RÉDUITE ne mente pas sur sa durée. */
+  render                         ,
+)       {
   // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
   // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
   // règle, mais elle porte sur la réduction vs le PIC, pas sur l'écart à sa propre courbe.
@@ -4691,6 +4730,37 @@ function reconcileDeclaredVolume(plan        , warnings          )       {
   const weekMinOf = (wk        ) => wk.days.reduce((t, d) => t + dayMin(d), 0);
   const weekH = (wk        ) => Math.round((weekMinOf(wk) / 60) * 10) / 10;
 
+  // C22 — GARANTIE FINALE DE PROGRESSION (D3, banc v6). La borne « +10 % d'une semaine de
+  // charge à la suivante » existait DANS la boucle de volume, mais des passes ultérieures
+  // (montée du pic, remontée aux planchers, harmonisation) pouvaient regonfler une semaine
+  // après coup : 4 sauts subsistaient, jusqu'à +18 %. Même leçon que R5.1 et R5.3 — une règle
+  // de sécurité se vérifie EN DERNIER, sinon elle ne vérifie que l'avant-dernier état.
+  //
+  // On réduit les corps de séance, jamais leur nombre, et jamais sous la borne basse déclarée
+  // par la séance elle-même (`bnd.floor`) : un plancher est une règle, pas une marge.
+  {
+    let prevCharge = 0;
+    for (const wk of plan.weeks) {
+      if (wk.isRecup || wk.phase.id === "taper") continue;
+      const cur = weekMinOf(wk);
+      if (prevCharge > 0 && cur > prevCharge * C22_MAX_WEEKLY_GROWTH + 1) {
+        const f = (prevCharge * C22_MAX_WEEKLY_GROWTH) / cur;
+        for (const d of wk.days) for (const sx of d.sessions) {
+          if (sx.d === "rs" || !sx.steps) continue;
+          let touched = false;
+          for (const st of sx.steps) {
+            if (st.role !== "body" || !st.durationMin) continue;
+            const floor = (st                                ).bnd?.floor ?? 5;
+            const next = Math.max(floor, Math.round(st.durationMin * f));
+            if (next < st.durationMin) { st.durationMin = next; touched = true; }
+          }
+          if (touched && render) render(sx);
+        }
+      }
+      prevCharge = weekMinOf(wk);
+    }
+  }
+
   // R5.3 — L'AFFÛTAGE DÉCROÎT, POINT. La décroissance était jusqu'ici ÉMERGENTE (courbe + coupe
   // R3.13) : sur un cycle de 10 jours, la dérive des créneaux d'une semaine calendaire à l'autre
   // pouvait rendre la 3ᵉ semaine d'affûtage plus lourde que la 2ᵉ (147→98→123→88 mesuré, banc v6
@@ -4702,7 +4772,19 @@ function reconcileDeclaredVolume(plan        , warnings          )       {
       if (wk.phase.id !== "taper") continue;
       for (let g = 0; g < 6 && weekMinOf(wk) > prev; g++) {
         const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
-        if (active.length <= 1) break;
+        // Une seule séance restante : on ne peut plus RETIRER, il faut RÉDUIRE. Sans ce repli,
+        // la décroissance de l'affûtage s'arrêtait net dès qu'une semaine tombait à une séance
+        // (mesuré : 48 → 56 min sur un Full à 3 séances/semaine). Réduire est toujours dans le
+        // sens de la sécurité — c'est de l'affûtage, l'objectif EST d'enlever.
+        if (active.length <= 1) {
+          const only = active[0]?.sessions.find((s) => s.d !== "rs");
+          if (only && prev > 0 && (only.min || 0) > prev) {
+            const f = Math.max(0.5, prev / (only.min || 1));
+            for (const st of only.steps || []) if (st.role === "body" && st.durationMin) st.durationMin = Math.max(5, Math.round(st.durationMin * f));
+            if (render) render(only);
+          }
+          break;
+        }
         const cand = active.filter((d) => !d.sessions.some((s) => s.long || s.brick));
         const victim = (cand.length ? cand : active).reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
         victim.charge = "off";
@@ -5733,7 +5815,7 @@ function generatePlan(profile                , opts                             
   }
 
   const plan         = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
-  reconcileDeclaredVolume(plan, r.warnings);
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs));
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation
@@ -6063,7 +6145,7 @@ function generateAudited(profile                , auditOpts                     
   // R5.3 — la courbe ANNONCÉE se réconcilie avec le prescrit une fois les réparations passées :
   // `reduceDay` et `applyTargetedRepairs` changent encore des durées, et un écart figé avant
   // elles ment à l'athlète dès la première réparation (même leçon que R5.1).
-  reconcileDeclaredVolume(best.plan, warnings);
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs));
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.

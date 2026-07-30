@@ -356,3 +356,56 @@ NATURE (vécue / mesurée / estimée), et une question non classée fait échoue
 Corrigé en `fond`. Deuxième nuance : l'amplitude résiduelle de la sortie longue (débutant 180 min
 vs 245) n'est pas un défaut mais le plafond de sécurité C23 ; le banc compare désormais
 `inter ↔ avancé` pour ne pas pousser à supprimer une règle de sécurité.
+
+---
+
+## Dette du banc v6 : reprise de D2, D3, D10 (30/07/2026)
+
+Reprise des trois tests laissés en `expect:'fail'` depuis l'audit v6 — la dette la plus ancienne
+du dépôt. Mesures avant/après, et ce qui reste avec sa raison.
+
+**D2 — violations dures sur la matrice standard : 11/153 → 2/153.**
+
+*La semaine de pic sans brick (8 configurations de triathlon).* Le cycle de 10 jours glisse sur
+le calendrier : une semaine de 7 jours peut ne contenir AUCUN créneau `durLong`. C'est le même
+mécanisme que les doublons de R5.5, vu par l'autre bout. L'auditeur avait raison de le refuser —
+le brick EST le triathlon, la sortie longue EST le plan d'endurance ; une semaine de pic sans
+elle n'est pas une semaine de pic, c'est une semaine chargée. `applyPeakSignature` requalifie le
+second créneau de qualité en longue, en amont, pour que la boucle de volume voie une semaine
+cohérente dès le départ.
+
+*Au passage, la troisième famille (une semaine de récup plus chargée que la précédente) a disparu
+avec.* Elle avait la même cause.
+
+*Piège rencontré, et c'est une leçon déjà vue :* `isR` est posé par CYCLE, pas par semaine
+calendaire. Sur un cycle de 10 jours, le premier jour d'une semaine de charge peut être marqué
+récup — tester `wd[0].isR` sautait précisément les semaines à corriger. On lit la semaine
+entière, comme le fait la couverture des disciplines depuis R5.2.
+
+**D10 — régression introduite par ce lot, puis corrigée, avec un gain.** Changer la structure du
+pic a déplacé les seuils de l'affûtage, et la garantie de décroissance s'est révélée incomplète :
+elle savait RETIRER une séance, pas RÉDUIRE la dernière. Dès qu'une semaine d'affûtage tombait à
+une séance, la décroissance s'arrêtait net (48 → 56 min mesuré). Elle sait maintenant réduire —
+et en affûtage, réduire est précisément l'objectif.
+
+**D3 — sauts de charge : de +18 % à +11 %, mais toujours 4 cas au-dessus du seuil.**
+
+La borne C22 (+10 % d'une semaine de charge à la suivante) existait DANS la boucle de volume,
+mais des passes ultérieures pouvaient regonfler une semaine après coup. Elle est désormais
+vérifiée EN DERNIER, avec les deux autres réconciliations — même leçon que R5.1 et R5.3 : une
+règle de sécurité vérifiée au milieu du pipeline ne vérifie que l'avant-dernier état.
+
+**Ce qui reste, et pourquoi ce n'est pas corrigeable en l'état** : sur un plan court avec deux
+semaines de récupération consécutives, la dernière semaine de charge (S4) est à 248 min et le
+pic à 276. C22 voudrait le pic ≤ 273 ; la hiérarchie du plan veut le pic > 248. Les deux tiennent
+dans 25 minutes, et les planchers de séance interdisent de descendre plus bas. **Réduire encore
+ferait passer le pic SOUS une semaine de base — on échangerait une violation contre une autre,
+plus grave.** La correction de fond est ailleurs : dans la forme de la courbe (le rapport
+dev→peak vaut 1,18, donc supérieur à C22 par construction), pas dans une passe de rattrapage.
+
+**Les 2 configurations D2 restantes** (`swim/sprint|demifond/debutant/reprise`) relèvent de la
+même impasse, en plus net : tout le plan tient entre 45 min et 1 h de nage par semaine, les
+quatre séances sont AU plancher (C15 : 850 m ; C20 : 0,42 h/séance), et l'écart entre la semaine
+max et le pic est de 5 minutes. Il n'y a plus de marge sous les planchers pour exprimer une
+hiérarchie. J'ai tenté un rabotage : sans effet, les planchers le reprennent immédiatement — le
+code a été retiré plutôt que laissé en place sans effet.
