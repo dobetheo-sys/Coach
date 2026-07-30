@@ -197,9 +197,27 @@ export const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ cor
  */
 export const C13c_WARMUP_MIN_MIN = rule("C13c", "échauffement ≥10min sur toute séance qui en porte un", 10);
 /**
- * C13d — DOSE MINIMALE D'UNE SÉANCE DE QUALITÉ. Corollaire direct de C13c : en dessous, la
- * séance ne mérite plus son nom (l'échauffement et le retour au calme y pèsent plus que le
- * travail). Le créneau devient une séance facile plutôt qu'une caricature de séance dure.
+ * C13e — L'ÉCHAUFFEMENT N'EST JAMAIS PLUS LONG QUE LE CORPS DE SÉANCE. Invariant DUR, sur les
+ * six sports et dans les deux unités (minutes en course/vélo/trail, mètres en bassin). Une
+ * séance dont l'échauffement pèse plus que le travail n'est pas une séance : c'est un footing
+ * qui porte l'étiquette d'une autre chose, et l'athlète qui la lit ne peut plus se fier au nom.
+ * C'est cette borne qui arbitre contre C13c : le plancher de 10 min est un OBJECTIF
+ * physiologique, pas une autorisation à déséquilibrer la séance. Quand les deux se contredisent,
+ * ce n'est pas le rendu qui gonfle l'échauffement — c'est C13d qui restructure la séance.
+ */
+export const C13e_WARMUP_NEVER_OVER_BODY = rule("C13e", "échauffement ≤ corps de séance, toujours", true);
+/**
+ * C13d — DOSE MINIMALE D'UNE SÉANCE DE QUALITÉ : 8 min de travail. En dessous, la séance ne
+ * mérite plus son nom (l'échauffement et le retour au calme y pèsent plus que le travail) et le
+ * créneau devient de l'endurance continue plutôt qu'une caricature de séance dure.
+ *
+ * Ce seuil n'est délibérément PAS aligné sur le plancher d'échauffement C13c, et l'écart de
+ * deux minutes est le résultat d'une mesure. Les aligner à 10 min paraissait plus propre — un
+ * échauffement de 10 min tient alors toujours sans dépasser le corps — mais sur une petite
+ * enveloppe (swimrun à 4 h/sem) TOUTES les séances de qualité passaient sous le seuil : le plan
+ * perdait son unique stimulus VO2 sur 41 semaines (`S-NOVO2`, banc v7). Un plan petit reste un
+ * plan : il garde sa qualité. Entre 8 et 10 min de corps, c'est donc C13e qui arbitre —
+ * l'échauffement s'aligne sur le corps au lieu de le dépasser.
  */
 export const C13d_QUALITY_MIN_BODY_MIN = rule("C13d", "dose de qualité ≥8min de travail, sinon la séance est déclassée", 8);
 

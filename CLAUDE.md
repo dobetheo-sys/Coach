@@ -117,7 +117,9 @@ repCap V2.2 + brick Z2 + C18b). Couverture structurée 100%, promesses calibrée
 affûtage garanti ≥40% de réduction (R3.13), règles du manifeste mécanisées. **C13c/C13d livrés** :
 plancher d'échauffement à 10 min sur toute séance qui en porte un (1 213 séances de qualité
 s'échauffaient moins, 663 moins de 5 min) — et son corollaire, une séance de qualité qui ne
-garde plus 8 min de travail est DÉCLASSÉE en endurance plutôt que rabotée. **R5.6a livré** :
+garde plus 8 min de travail est DÉCLASSÉE en endurance plutôt que rabotée. **C13e livré** :
+l'échauffement n'est JAMAIS plus long que le corps de séance, sur les 6 sports et dans les deux
+unités (840 séances sur 40 550 → 0, garde `F6`) ; le plancher de 10 min cède à cet invariant. **R5.6a livré** :
 la récup inter-blocs entre dans la métrique du générateur (dans le `_min` du bloc qui la porte,
 donc elle suit la mise à l'échelle) — la durée annoncée est la durée porte-à-porte, et l'écart
 médian entre les deux estimateurs tombe à 0,0 min. C'était la plus vieille dette du dépôt.

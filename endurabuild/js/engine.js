@@ -1170,9 +1170,27 @@ const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ corps de s
  */
 const C13c_WARMUP_MIN_MIN = rule("C13c", "échauffement ≥10min sur toute séance qui en porte un", 10);
 /**
- * C13d — DOSE MINIMALE D'UNE SÉANCE DE QUALITÉ. Corollaire direct de C13c : en dessous, la
- * séance ne mérite plus son nom (l'échauffement et le retour au calme y pèsent plus que le
- * travail). Le créneau devient une séance facile plutôt qu'une caricature de séance dure.
+ * C13e — L'ÉCHAUFFEMENT N'EST JAMAIS PLUS LONG QUE LE CORPS DE SÉANCE. Invariant DUR, sur les
+ * six sports et dans les deux unités (minutes en course/vélo/trail, mètres en bassin). Une
+ * séance dont l'échauffement pèse plus que le travail n'est pas une séance : c'est un footing
+ * qui porte l'étiquette d'une autre chose, et l'athlète qui la lit ne peut plus se fier au nom.
+ * C'est cette borne qui arbitre contre C13c : le plancher de 10 min est un OBJECTIF
+ * physiologique, pas une autorisation à déséquilibrer la séance. Quand les deux se contredisent,
+ * ce n'est pas le rendu qui gonfle l'échauffement — c'est C13d qui restructure la séance.
+ */
+const C13e_WARMUP_NEVER_OVER_BODY = rule("C13e", "échauffement ≤ corps de séance, toujours", true);
+/**
+ * C13d — DOSE MINIMALE D'UNE SÉANCE DE QUALITÉ : 8 min de travail. En dessous, la séance ne
+ * mérite plus son nom (l'échauffement et le retour au calme y pèsent plus que le travail) et le
+ * créneau devient de l'endurance continue plutôt qu'une caricature de séance dure.
+ *
+ * Ce seuil n'est délibérément PAS aligné sur le plancher d'échauffement C13c, et l'écart de
+ * deux minutes est le résultat d'une mesure. Les aligner à 10 min paraissait plus propre — un
+ * échauffement de 10 min tient alors toujours sans dépasser le corps — mais sur une petite
+ * enveloppe (swimrun à 4 h/sem) TOUTES les séances de qualité passaient sous le seuil : le plan
+ * perdait son unique stimulus VO2 sur 41 semaines (`S-NOVO2`, banc v7). Un plan petit reste un
+ * plan : il garde sa qualité. Entre 8 et 10 min de corps, c'est donc C13e qui arbitre —
+ * l'échauffement s'aligne sur le corps au lieu de le dépasser.
  */
 const C13d_QUALITY_MIN_BODY_MIN = rule("C13d", "dose de qualité ≥8min de travail, sinon la séance est déclassée", 8);
 
@@ -2265,16 +2283,33 @@ function renderSess(s                   , refs      , hz         , baseRefs     
         // soit deux séances différentes portant le même nom (36 divergences mesurées sur un
         // seul plan). Toute consommation future des steps (montre, Garmin, Zwift) héritait
         // du bug. Un seul champ fait foi : durationMin ; _min en est une pure dérivée.
-        // C13c — le PLANCHER de 10 min gagne contre la clause de proportion. Elle reste utile
-        // au-dessus (ne pas mettre 25 min d'échauffement devant 20 min de travail), mais elle
-        // ne peut plus descendre l'échauffement sous le seuil physiologique : c'était la
-        // mécanique qui produisait 663 séances échauffées moins de 5 minutes.
-        const wCap = Math.min(C13_WARMUP_MAX_MIN, Math.max(C13c_WARMUP_MIN_MIN, Math.round(bodyMin * 0.8) || w.durationMin));
-        const wm = Math.max(C13c_WARMUP_MIN_MIN, Math.min(w.durationMin, wCap));
+        // Trois bornes, dans cet ordre de priorité :
+        //   C13e — l'échauffement n'est JAMAIS plus long que le corps de séance. Invariant dur,
+        //          sur les 6 sports : une séance dont l'échauffement pèse plus que le travail
+        //          n'est pas une séance, c'est un footing avec une étiquette.
+        //   C13   — ni plus de 25 min, ni plus de 80 % du corps quand celui-ci est confortable.
+        //   C13c  — plancher de 10 min… qui CÈDE à C13e quand le corps est plus court. Le
+        //          plancher est un objectif physiologique, pas une autorisation à déséquilibrer
+        //          la séance ; c'est C13d qui doit alors restructurer la séance, pas le rendu
+        //          qui doit gonfler l'échauffement.
+        // « Corps » au sens de C13e = le corps de séance TEL QU'IL EST ÉCRIT, récupération entre
+        // répétitions comprise (R5.6a : elle appartient au bloc). Un 4×2min récup 2min, c'est
+        // 14 min de corps ; le comparer à ses seules 8 min de travail interdirait un échauffement
+        // de 10 min là où il est parfaitement à sa place. La clause de PROPORTION, elle, reste
+        // adossée au travail : son objet est que le stimulus reste majoritaire.
+        const bodyTotal = bodyMin + recTotal;
+        const wCap = Math.min(C13_WARMUP_MAX_MIN, bodyTotal || w.durationMin, Math.max(C13c_WARMUP_MIN_MIN, Math.round(bodyMin * 0.8) || w.durationMin));
+        const wm = Math.max(1, Math.min(C13c_WARMUP_MIN_MIN, wCap), Math.min(w.durationMin, wCap));
         w.durationMin = wm;
         w._min = wm;
         seg.push("Échauffement " + wm + "min" + (w.text ? " " + w.text : ""));
       } else if (w.distanceM != null) {
+        // C13e en NAGE — même invariant, exprimé dans l'unité de la discipline : un échauffement
+        // de 400 m devant 300 m de travail, c'est une séance qui s'échauffe plus qu'elle ne
+        // travaille. Comparer les MÈTRES suffit à garantir l'invariant en minutes (même allure
+        // de conversion, et la récupération ne compte que du côté du corps).
+        const bodyM = bodies.reduce((t, b) => t + (b.distanceM ? (b.reps || 1) * b.distanceM : 0), 0);
+        if (bodyM > 0 && w.distanceM > bodyM) w.distanceM = Math.max(25, Math.floor(bodyM / 25) * 25);
         w._min = stepMin(w, s.d, baseRefs);
         seg.push("Échauffement " + w.distanceM + "m" + (w.text ? " " + w.text : ""));
       }
@@ -4188,8 +4223,52 @@ function buildDays(r              , refs      , hz         )           {
   // avertissement. Un duathlon commence et finit à pied : c'est la discipline qu'on ne peut pas
   // ne pas toucher en affûtage.
   applyDisciplineCoverage(r, days, refs, hz, ctx);
+  applyVo2Coverage(r, days, refs, hz, ctx);
   applyWeeklyVariety(r, days, refs, hz, ctx);
   return days;
+}
+
+/**
+ * UN PLAN PORTE UN STIMULUS VO2 — et on le LIT, on ne le suppose pas.
+ *
+ * Les modules décident du support et du créneau (R5.4/R5.5), mais leur condition de bascule
+ * était un PROXY : « si le budget est ≤ 4 séances, ou 3 jours bloqués, ou dispo week-end, alors
+ * `dur2` ne survivra pas, donc la VO2 déménage dans `dur1` ». Un proxy ne voit que ce qu'on a
+ * pensé à y mettre : sur une enveloppe de 4 h/sem en dispo « partielle », `dur2` ne survit pas
+ * non plus, et le plan traversait 20 semaines sans une seule sollicitation de la puissance
+ * aérobie maximale — celle qui plafonne l'allure d'endurance sur laquelle tout le reste se joue.
+ *
+ * Même leçon que partout ailleurs dans ce moteur : on ne DEVINE pas un état qu'on peut LIRE.
+ * Cette passe tourne APRÈS le budget de séances, l'anti-collage et la couverture des
+ * disciplines — donc sur la semaine telle qu'elle sera livrée. S'il manque le stimulus, un
+ * créneau dur de la phase de développement est re-tagué `dur2` et sa séance reconstruite : le
+ * module rend alors sa variante VO2 de lui-même. Une semaine sur deux, jamais plus.
+ */
+function applyVo2Coverage(r              , days          , refs      , hz         , ctx            )       {
+  if (r.medHold || r.noVo2) return;
+  const isVo2 = (d        ) =>
+    d.sessions.some((s) => (s.steps || []).some((b) => b.role === "body" && /\.(vo2|speed)$/.test(String(b.zone || ""))));
+  if (days.some(isVo2)) return; // le plan en a déjà : rien à forcer
+  const devWeeks = [...new Set(days.filter((d) => d.phaseId === "dev" && !d.isR).map((d) => d.week))];
+  for (const w of devWeeks) {
+    if (w % 2 === 0) continue; // une semaine sur deux — le seuil garde l'autre
+    const wd = days.filter((d) => d.week === w);
+    const cand = wd.find((d) => d.charge === "dur" && !d.forced && d.slot !== "durLong" && d.slot !== "dur2");
+    if (!cand) continue;
+    const built = buildSessions(ctx, "dur2"                                       , cand.phaseId, cand.prog || 0, cand.week);
+    if (!built.length) continue;
+    cand.slot = "dur2";
+    cand.sessions = built;
+    for (const s of cand.sessions) if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
+    if (isVo2(cand)) continue;
+    // Le module n'a pas de variante VO2 pour ce créneau : on remet la séance d'origine plutôt
+    // que de laisser un `dur2` qui ne porte pas ce pour quoi on l'a posé.
+    {
+      cand.slot = "dur1";
+      cand.sessions = buildSessions(ctx, "dur1"                                       , cand.phaseId, cand.prog || 0, cand.week);
+      for (const s of cand.sessions) if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
+    }
+  }
 }
 
 /**
@@ -4580,7 +4659,17 @@ function applySessionBudget(r              , days          )       {
       }
       if (over <= 0) break;
     }
-    // 2. puis des journées entières, faciles d'abord
+    // 2. puis des journées entières, dans l'ordre de ce qu'on peut le mieux perdre.
+    // Les journées de RÉCUPÉRATION d'abord : elles COMPTAIENT dans le budget (`totalSessions`)
+    // sans jamais pouvoir le payer (`activeNow` les excluait). Un jour de récup survivait donc
+    // au détriment du seul créneau de qualité de la semaine — mesuré sur un swimrun à 4 h/sem :
+    // une nage récup de 16 min conservée, et le plan traversait 20 semaines sans stimulus VO2
+    // (`S-NOVO2`, banc v7). Une séance de récupération est la PREMIÈRE à céder quand le budget
+    // manque, pas la dernière : ce qu'elle apporte, un jour de repos l'apporte aussi.
+    if (over > 0) {
+      const rec = wd.filter((d) => d.charge === "recup" && !d.forced && d.sessions.some((s) => s.d !== "rs"));
+      for (let i = rec.length - 1; i >= 0 && over > 0; i--) { over -= nSess(rec[i]); toOff(rec[i]); }
+    }
     if (over > 0) {
       const fac = activeNow().filter((d) => d.charge === "facile" && !d.forced);
       for (let i = fac.length - 1; i >= 0 && over > 0; i--) { over -= nSess(fac[i]); toOff(fac[i]); }
@@ -5067,15 +5156,20 @@ function reconcileDeclaredVolume(
       if (wk.phase.id !== "taper" && !wk.isRecup) forcedWeeks++;
     }
   }
-  // C13d — UNE SÉANCE DE QUALITÉ SOUS-DOSÉE EST DÉCLASSÉE, PAS RABOTÉE.
+  // C13d — UNE SÉANCE SOUS-DOSÉE EST DÉCLASSÉE, PAS RABOTÉE.
   //
-  // Corollaire du plancher d'échauffement C13c : avec 10 min d'échauffement et 3 min de retour
-  // au calme incompressibles, une séance de 17 min ne contient plus que 4 minutes de travail.
-  // Ce n'est pas une VO2max, c'est un échauffement suivi d'un sprint. Mesuré après C13c :
-  // 128 séances (4,6 % des séances de qualité), toutes sur les enveloppes les plus basses.
-  // La réponse honnête n'est pas de raboter l'échauffement pour sauver l'étiquette — c'est de
-  // rendre à la séance ce qu'elle est vraiment : de l'endurance. Même durée, même place dans
-  // la semaine, intention corrigée.
+  // Corollaire de C13c (plancher d'échauffement 10 min) ET de C13e (échauffement ≤ corps) : pour
+  // que les deux tiennent ENSEMBLE, il faut au moins 10 min de corps. En dessous, une séance de
+  // 17 min ne contient plus que 4 minutes de travail — ce n'est pas une VO2max, c'est un
+  // échauffement suivi d'un sprint. La réponse honnête n'est pas de raboter l'échauffement pour
+  // sauver l'étiquette : c'est de rendre à la séance ce qu'elle est vraiment, de l'endurance.
+  // Même durée, même place dans la semaine, intention corrigée.
+  //
+  // Le déclencheur reste la QUALITÉ, et c'est mesuré, pas supposé : élargir C13d à « toute
+  // séance portant un échauffement » a fait déclasser des séances de swimrun qui étaient le
+  // seul stimulus VO2 du plan (`S-NOVO2` = 4, `U-REPCAP` = 5 au banc v7 — le volume libéré
+  // repartait en répétitions ailleurs). Une séance FACILE dont le corps est court n'a rien à
+  // déclasser : elle est déjà ce qu'elle prétend être, et C13e suffit à l'équilibrer.
   //
   // Deux exclusions, chacune pour sa raison :
   //   · le TRAIL — sa charge est verticale (D+/D−, axes T1/T2b), pas horaire ; déclasser un bloc
@@ -5249,6 +5343,27 @@ function generatePlan(profile                , opts                             
           if (reps > 1) b.reps = Math.max(1, Math.floor(doseCap / b.durationMin));
           else b.durationMin = doseCap;
         }
+      }
+    }
+    // C13d-plancher — SYMÉTRIQUE du plafond de dose ci-dessus, et corollaire de C13c.
+    // Le plancher d'échauffement de 10 min prend des minutes à la séance ; la courbe les
+    // reprend alors sur le seul endroit qu'elle sait réduire — les blocs. Mesuré sur un
+    // swimrun à 4 h/sem : toutes les doses de qualité tombaient sous 8 min, la séance était
+    // ensuite déclassée par C13d, et le plan traversait 20 semaines sans un seul stimulus VO2
+    // (`S-NOVO2`, banc v7). R4.1 dit « le déversement de volume va vers les séances FACILES,
+    // jamais vers un bloc de qualité » ; la règle symétrique était manquante : le RETRAIT
+    // vient des séances faciles, lui aussi. Un bloc de qualité ne descend pas sous sa dose.
+    if (isQuality && b.durationMin != null && !b.gradient) {
+      const reps = b.reps || 1;
+      if (reps * b.durationMin < C13d_QUALITY_MIN_BODY_MIN) {
+        // Le plafond de répétitions à respecter ici est `repCap` (la valeur DÉCLARÉE par la
+        // bibliothèque), surtout pas `repMax` : celui-ci vaut, à défaut de `repCap`, le nombre
+        // de répétitions COURANT — donc 1 dès que la passe précédente a réduit le bloc à une
+        // seule. C'est un cliquet : le bloc ne pouvait plus jamais remonter, et un 5×3min de
+        // VO2 tombé à 1×3min restait à 1×3min, puis se faisait déclasser par C13d.
+        const repCeil = b.repCap ?? 15;
+        if (reps > 1) b.reps = Math.max(reps, Math.min(repCeil, Math.ceil(C13d_QUALITY_MIN_BODY_MIN / b.durationMin)));
+        else b.durationMin = Math.max(b.durationMin, Math.min(bd.cap, C13d_QUALITY_MIN_BODY_MIN));
       }
     }
     // C15 — protection débutant nage : aucune séance >850m, tous blocs confondus
@@ -5475,7 +5590,7 @@ function generatePlan(profile                , opts                             
     // le manifeste interdit la « sortie piscine qui ne vaut pas le déplacement » à tous).
     if (guard(a.sport          , "swimSessionFloors")) {
       const swFloor = r.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : 750;
-      const raised                                = [];
+      let raised                                = [];
       for (const d of wd)
         for (const s of d.sessions) {
           if (s.d !== "sw" || !s.steps || !s.steps.length) continue;
@@ -5495,6 +5610,19 @@ function generatePlan(profile                , opts                             
       // budget gonflerait la semaine — mesuré +5% sur les plans blessés).
       // jamais en semaine de PEAK : c'est elle qui doit rester la plus grosse du plan
       for (let g = 0; g < 2 && ph.id !== "peak" && raised.length && weekMin(wd) > targetH * 60 * 1.03; g++) {
+        // Cette coupe ne prend JAMAIS une séance de qualité. Elle existe pour absorber le
+        // gonflement dû au plancher piscine (C24), et elle prenait la plus COURTE des séances
+        // remontées — qui se trouve être la VO2max en nage (8×50 m, la seule assez petite pour
+        // avoir besoin d'être remontée). Mesuré sur un swimrun à 4 h/sem : les six créneaux VO2
+        // du plan disparaissaient un par un et le plan traversait 20 semaines sans puissance
+        // aérobie maximale (`S-NOVO2`, banc v7).
+        // Si la seule candidate est de qualité, on ne coupe pas : la semaine reste légèrement
+        // au-dessus de sa cible, et `reconcileDeclaredVolume` aligne le chiffre ANNONCÉ sur le
+        // prescrit (avec son avertissement). Une promesse d'heures se corrige ; un stimulus
+        // supprimé pendant 20 semaines ne se rattrape pas.
+        const easyRaised = raised.filter((x) => !(x.s.steps || []).some((b) => b.role === "body" && IS_QUALITY_ZONE(String(b.zone || ""))));
+        if (!easyRaised.length) break;
+        raised = easyRaised;
         raised.sort((x, y) => (x.s.min || 0) - (y.s.min || 0));
         const victim = raised.shift() ;
         if (victim.d.forced || victim.s.long) continue;

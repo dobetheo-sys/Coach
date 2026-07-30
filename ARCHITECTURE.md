@@ -142,18 +142,48 @@ Trois conséquences dans le même lot :
 - les clamps C13/C13b restent calculés sur le TRAVAIL, récup exclue — sinon l'écart qu'on
   vient de fermer se rouvrirait sur l'échauffement.
 
-### C13c / C13d — l'échauffement a un plancher, et il gagne
+### C13c / C13d / C13e — l'échauffement, ses bornes et leur ordre
 
-`C13c` : **10 min minimum** sur toute séance qui porte un échauffement chiffré. Le plancher était
-à 3 min et la clause de proportion (`≤ 0,8 × corps`) l'y ramenait dès que la courbe réduisait la
-séance : 1 213 séances de QUALITÉ s'échauffaient moins de 10 min, 663 moins de 5. La proportion
-reste en vigueur au-dessus du plancher, jamais en dessous.
+Trois bornes, priorité décroissante, toutes appliquées dans `renderSess` (seul producteur de texte) :
+
+| id | règle | statut |
+|---|---|---|
+| **C13e** | échauffement **≤ corps de séance**, 6 sports, minutes ET mètres | invariant DUR (`F6`) |
+| **C13** | ≤ 25 min, et ≤ 80 % du corps quand celui-ci est confortable | plafond |
+| **C13c** | **≥ 10 min**… mais **cède** à C13e quand le corps est plus court | plancher (`F4`) |
+
+Mesuré : 840 séances sur 40 550 sortaient avec un échauffement plus long que leur corps →
+**0**. Le « corps » de C13e est le corps TEL QU'IL EST ÉCRIT, récupération comprise (R5.6a) ; la
+clause de proportion, elle, reste adossée au TRAVAIL — son objet est que le stimulus reste
+majoritaire. Résidu : 307 séances de trail sous 10 min, dont la récupération de descente n'est
+pas chiffrée (leur corps est mesuré à 4 min pour ~20 min réelles).
+
+`C13c` avant C13e : le plancher était à 3 min et la clause de proportion l'y ramenait dès que la
+courbe réduisait la séance — 1 213 séances de QUALITÉ s'échauffaient moins de 10 min, 663 moins
+de 5.
 
 `C13d` : corollaire obligatoire. Avec 10 + 3 min incompressibles, une séance de 17 min ne contient
 plus que 4 min de travail — elle est **déclassée en endurance**, pas rabotée (128 séances, 4,6 %).
 Exclusions mesurées : le trail (charge verticale) et tout bloc en DISTANCE (la nage a sa propre
 dose minimale, C24/C15 — déclasser un 8×50 m VO2 supprimait le seul stimulus aérobie maximal de
-trois plans swimrun). Gardes CI : `F4` et `F5` au banc v6.
+trois plans swimrun). Le seuil reste à **8 min**, délibérément PAS aligné sur les 10 min de C13c :
+les aligner faisait passer toutes les séances de qualité d'une petite enveloppe sous le seuil, et
+le plan perdait son unique stimulus VO2 sur 41 semaines. Un plan petit reste un plan.
+Gardes CI : `F4`, `F5`, `F6` au banc v6.
+
+### Le retrait de volume vient des séances faciles — la règle symétrique de R4.1
+
+R4.1 disait « le déversement de volume va vers les séances FACILES, jamais vers un bloc de
+qualité ». Le sens inverse manquait, et quatre passes s'en servaient pour sacrifier le stimulus :
+la coupe du plancher piscine prenait la plus COURTE des séances remontées (donc la VO2 en nage,
+8×50 m) ; le budget de séances comptait les jours de récup sans pouvoir les couper, si bien qu'un
+jour de récupération survivait au créneau de qualité ; `repMax` valait le nombre de répétitions
+COURANT à défaut de `repCap`, créant un cliquet qui empêchait un bloc réduit à 1×3min de jamais
+remonter ; et un bloc de qualité n'avait aucun plancher de dose. Corrigés ensemble : le retrait
+vient des séances faciles, un bloc de qualité ne descend pas sous 8 min de dose, et si la seule
+victime possible est une séance de qualité, on ne coupe pas — la semaine reste au-dessus de sa
+cible et le chiffre ANNONCÉ s'aligne (avec son avertissement). Une promesse d'heures se corrige ;
+un stimulus supprimé pendant 20 semaines ne se rattrape pas.
 
 ### Cinq règles de sécurité, un seul point de convergence
 

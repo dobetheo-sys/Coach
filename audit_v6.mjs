@@ -546,15 +546,44 @@ test("F1", "durationMin et _min cohérents (contrat d'export)", "pass", () => {
   return { ok: bad.length === 0, detail: `${bad.length} divergence(s) : ${bad.slice(0, 2).join(" ; ")}` };
 });
 
-test("F4", "C13c : aucun échauffement chiffré sous 10 min", "pass", () => {
+// C13e — L'INVARIANT DUR, sur les six sports et dans les deux unités. Le banc `build()` couvre
+// tri/run/bike/swim ; le trail et le duathlon passent par leurs propres fabriques de profils.
+test("F6", "C13e : jamais d'échauffement plus long que le corps de séance", "pass", () => {
+  const bad = [];
+  const scan = (p, tag) => sessionsOf(p).forEach(({ s, w }) => {
+    const st = s.steps || [];
+    const wu = st.find((x) => x.role === "warmup");
+    if (!wu) return;
+    const body = st.filter((x) => x.role === "body").reduce((t, x) => t + (x._min || 0), 0);
+    if ((wu._min || 0) > body + 0.01)
+      bad.push(`${tag} S${w.num} ${s.name} : éch ${(wu._min || 0).toFixed(1)} > corps ${body.toFixed(1)}`);
+  });
+  for (const sport of Object.keys(FORMATS))
+    for (const format of FORMATS[sport])
+      for (const level of ["debutant", "inter", "avance"])
+        for (const vol of ["4", "10", "16"])
+          scan(build(sport, { format, level, vol_max: vol }), `${sport}/${format}/${level}/${vol}h`);
+  for (const level of ["debutant", "inter", "avance"])
+    for (const vol of ["4", "10", "16"])
+      scan(buildTrail({ level, vol_max: vol }), `trail/${level}/${vol}h`);
+  return { ok: bad.length === 0, detail: `${bad.length} séance(s) : ${bad.slice(0, 3).join(" ; ")}` };
+});
+
+// C13c s'énonce « 10 min, SAUF si le corps est plus court » (C13e prime — cf. F6). Le test
+// mesure donc la règle telle qu'elle est, pas telle qu'on l'a d'abord formulée.
+test("F4", "C13c : aucun échauffement chiffré sous 10 min (sauf corps plus court)", "pass", () => {
   const bad = [];
   for (const sport of Object.keys(FORMATS))
     for (const format of FORMATS[sport])
       for (const vol of ["4", "10", "16"])
         sessionsOf(build(sport, { format, vol_max: vol })).forEach(({ s, w }) => {
-          const wu = (s.steps || []).find((x) => x.role === "warmup" && x.durationMin != null);
-          if (wu && (wu._min ?? wu.durationMin) < 9.5)
-            bad.push(`${sport}/${format} S${w.num} ${s.name} : ${wu._min}min`);
+          const st = s.steps || [];
+          const wu = st.find((x) => x.role === "warmup" && x.durationMin != null);
+          if (!wu) return;
+          const body = st.filter((x) => x.role === "body").reduce((t, x) => t + (x._min || 0), 0);
+          const seuil = Math.min(10, body);
+          if ((wu._min ?? wu.durationMin) < seuil - 0.5)
+            bad.push(`${sport}/${format} S${w.num} ${s.name} : ${wu._min}min (corps ${body.toFixed(0)})`);
         });
   return { ok: bad.length === 0, detail: `${bad.length} séance(s) : ${bad.slice(0, 3).join(" ; ")}` };
 });

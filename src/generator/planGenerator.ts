@@ -288,15 +288,20 @@ export function reconcileDeclaredVolume(
       if (wk.phase.id !== "taper" && !wk.isRecup) forcedWeeks++;
     }
   }
-  // C13d — UNE SÉANCE DE QUALITÉ SOUS-DOSÉE EST DÉCLASSÉE, PAS RABOTÉE.
+  // C13d — UNE SÉANCE SOUS-DOSÉE EST DÉCLASSÉE, PAS RABOTÉE.
   //
-  // Corollaire du plancher d'échauffement C13c : avec 10 min d'échauffement et 3 min de retour
-  // au calme incompressibles, une séance de 17 min ne contient plus que 4 minutes de travail.
-  // Ce n'est pas une VO2max, c'est un échauffement suivi d'un sprint. Mesuré après C13c :
-  // 128 séances (4,6 % des séances de qualité), toutes sur les enveloppes les plus basses.
-  // La réponse honnête n'est pas de raboter l'échauffement pour sauver l'étiquette — c'est de
-  // rendre à la séance ce qu'elle est vraiment : de l'endurance. Même durée, même place dans
-  // la semaine, intention corrigée.
+  // Corollaire de C13c (plancher d'échauffement 10 min) ET de C13e (échauffement ≤ corps) : pour
+  // que les deux tiennent ENSEMBLE, il faut au moins 10 min de corps. En dessous, une séance de
+  // 17 min ne contient plus que 4 minutes de travail — ce n'est pas une VO2max, c'est un
+  // échauffement suivi d'un sprint. La réponse honnête n'est pas de raboter l'échauffement pour
+  // sauver l'étiquette : c'est de rendre à la séance ce qu'elle est vraiment, de l'endurance.
+  // Même durée, même place dans la semaine, intention corrigée.
+  //
+  // Le déclencheur reste la QUALITÉ, et c'est mesuré, pas supposé : élargir C13d à « toute
+  // séance portant un échauffement » a fait déclasser des séances de swimrun qui étaient le
+  // seul stimulus VO2 du plan (`S-NOVO2` = 4, `U-REPCAP` = 5 au banc v7 — le volume libéré
+  // repartait en répétitions ailleurs). Une séance FACILE dont le corps est court n'a rien à
+  // déclasser : elle est déjà ce qu'elle prétend être, et C13e suffit à l'équilibrer.
   //
   // Deux exclusions, chacune pour sa raison :
   //   · le TRAIL — sa charge est verticale (D+/D−, axes T1/T2b), pas horaire ; déclasser un bloc
@@ -470,6 +475,27 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
           if (reps > 1) b.reps = Math.max(1, Math.floor(doseCap / b.durationMin));
           else b.durationMin = doseCap;
         }
+      }
+    }
+    // C13d-plancher — SYMÉTRIQUE du plafond de dose ci-dessus, et corollaire de C13c.
+    // Le plancher d'échauffement de 10 min prend des minutes à la séance ; la courbe les
+    // reprend alors sur le seul endroit qu'elle sait réduire — les blocs. Mesuré sur un
+    // swimrun à 4 h/sem : toutes les doses de qualité tombaient sous 8 min, la séance était
+    // ensuite déclassée par C13d, et le plan traversait 20 semaines sans un seul stimulus VO2
+    // (`S-NOVO2`, banc v7). R4.1 dit « le déversement de volume va vers les séances FACILES,
+    // jamais vers un bloc de qualité » ; la règle symétrique était manquante : le RETRAIT
+    // vient des séances faciles, lui aussi. Un bloc de qualité ne descend pas sous sa dose.
+    if (isQuality && b.durationMin != null && !b.gradient) {
+      const reps = b.reps || 1;
+      if (reps * b.durationMin < C13d_QUALITY_MIN_BODY_MIN) {
+        // Le plafond de répétitions à respecter ici est `repCap` (la valeur DÉCLARÉE par la
+        // bibliothèque), surtout pas `repMax` : celui-ci vaut, à défaut de `repCap`, le nombre
+        // de répétitions COURANT — donc 1 dès que la passe précédente a réduit le bloc à une
+        // seule. C'est un cliquet : le bloc ne pouvait plus jamais remonter, et un 5×3min de
+        // VO2 tombé à 1×3min restait à 1×3min, puis se faisait déclasser par C13d.
+        const repCeil = b.repCap ?? 15;
+        if (reps > 1) b.reps = Math.max(reps, Math.min(repCeil, Math.ceil(C13d_QUALITY_MIN_BODY_MIN / b.durationMin)));
+        else b.durationMin = Math.max(b.durationMin, Math.min(bd.cap, C13d_QUALITY_MIN_BODY_MIN));
       }
     }
     // C15 — protection débutant nage : aucune séance >850m, tous blocs confondus
@@ -696,7 +722,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     // le manifeste interdit la « sortie piscine qui ne vaut pas le déplacement » à tous).
     if (guard(a.sport as string, "swimSessionFloors")) {
       const swFloor = r.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : 750;
-      const raised: { d: GenDay; s: V1Session }[] = [];
+      let raised: { d: GenDay; s: V1Session }[] = [];
       for (const d of wd)
         for (const s of d.sessions) {
           if (s.d !== "sw" || !s.steps || !s.steps.length) continue;
@@ -716,6 +742,19 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // budget gonflerait la semaine — mesuré +5% sur les plans blessés).
       // jamais en semaine de PEAK : c'est elle qui doit rester la plus grosse du plan
       for (let g = 0; g < 2 && ph.id !== "peak" && raised.length && weekMin(wd) > targetH * 60 * 1.03; g++) {
+        // Cette coupe ne prend JAMAIS une séance de qualité. Elle existe pour absorber le
+        // gonflement dû au plancher piscine (C24), et elle prenait la plus COURTE des séances
+        // remontées — qui se trouve être la VO2max en nage (8×50 m, la seule assez petite pour
+        // avoir besoin d'être remontée). Mesuré sur un swimrun à 4 h/sem : les six créneaux VO2
+        // du plan disparaissaient un par un et le plan traversait 20 semaines sans puissance
+        // aérobie maximale (`S-NOVO2`, banc v7).
+        // Si la seule candidate est de qualité, on ne coupe pas : la semaine reste légèrement
+        // au-dessus de sa cible, et `reconcileDeclaredVolume` aligne le chiffre ANNONCÉ sur le
+        // prescrit (avec son avertissement). Une promesse d'heures se corrige ; un stimulus
+        // supprimé pendant 20 semaines ne se rattrape pas.
+        const easyRaised = raised.filter((x) => !(x.s.steps || []).some((b) => b.role === "body" && IS_QUALITY_ZONE(String(b.zone || ""))));
+        if (!easyRaised.length) break;
+        raised = easyRaised;
         raised.sort((x, y) => (x.s.min || 0) - (y.s.min || 0));
         const victim = raised.shift()!;
         if (victim.d.forced || victim.s.long) continue;

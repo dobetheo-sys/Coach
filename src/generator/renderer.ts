@@ -185,16 +185,33 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
         // soit deux séances différentes portant le même nom (36 divergences mesurées sur un
         // seul plan). Toute consommation future des steps (montre, Garmin, Zwift) héritait
         // du bug. Un seul champ fait foi : durationMin ; _min en est une pure dérivée.
-        // C13c — le PLANCHER de 10 min gagne contre la clause de proportion. Elle reste utile
-        // au-dessus (ne pas mettre 25 min d'échauffement devant 20 min de travail), mais elle
-        // ne peut plus descendre l'échauffement sous le seuil physiologique : c'était la
-        // mécanique qui produisait 663 séances échauffées moins de 5 minutes.
-        const wCap = Math.min(C13_WARMUP_MAX_MIN, Math.max(C13c_WARMUP_MIN_MIN, Math.round(bodyMin * 0.8) || w.durationMin));
-        const wm = Math.max(C13c_WARMUP_MIN_MIN, Math.min(w.durationMin, wCap));
+        // Trois bornes, dans cet ordre de priorité :
+        //   C13e — l'échauffement n'est JAMAIS plus long que le corps de séance. Invariant dur,
+        //          sur les 6 sports : une séance dont l'échauffement pèse plus que le travail
+        //          n'est pas une séance, c'est un footing avec une étiquette.
+        //   C13   — ni plus de 25 min, ni plus de 80 % du corps quand celui-ci est confortable.
+        //   C13c  — plancher de 10 min… qui CÈDE à C13e quand le corps est plus court. Le
+        //          plancher est un objectif physiologique, pas une autorisation à déséquilibrer
+        //          la séance ; c'est C13d qui doit alors restructurer la séance, pas le rendu
+        //          qui doit gonfler l'échauffement.
+        // « Corps » au sens de C13e = le corps de séance TEL QU'IL EST ÉCRIT, récupération entre
+        // répétitions comprise (R5.6a : elle appartient au bloc). Un 4×2min récup 2min, c'est
+        // 14 min de corps ; le comparer à ses seules 8 min de travail interdirait un échauffement
+        // de 10 min là où il est parfaitement à sa place. La clause de PROPORTION, elle, reste
+        // adossée au travail : son objet est que le stimulus reste majoritaire.
+        const bodyTotal = bodyMin + recTotal;
+        const wCap = Math.min(C13_WARMUP_MAX_MIN, bodyTotal || w.durationMin, Math.max(C13c_WARMUP_MIN_MIN, Math.round(bodyMin * 0.8) || w.durationMin));
+        const wm = Math.max(1, Math.min(C13c_WARMUP_MIN_MIN, wCap), Math.min(w.durationMin, wCap));
         w.durationMin = wm;
         w._min = wm;
         seg.push("Échauffement " + wm + "min" + (w.text ? " " + w.text : ""));
       } else if (w.distanceM != null) {
+        // C13e en NAGE — même invariant, exprimé dans l'unité de la discipline : un échauffement
+        // de 400 m devant 300 m de travail, c'est une séance qui s'échauffe plus qu'elle ne
+        // travaille. Comparer les MÈTRES suffit à garantir l'invariant en minutes (même allure
+        // de conversion, et la récupération ne compte que du côté du corps).
+        const bodyM = bodies.reduce((t, b) => t + (b.distanceM ? (b.reps || 1) * b.distanceM : 0), 0);
+        if (bodyM > 0 && w.distanceM > bodyM) w.distanceM = Math.max(25, Math.floor(bodyM / 25) * 25);
         w._min = stepMin(w, s.d, baseRefs);
         seg.push("Échauffement " + w.distanceM + "m" + (w.text ? " " + w.text : ""));
       }

@@ -605,3 +605,70 @@ sweetspot à 10-14 min de travail derrière les 10 minutes d'échauffement qu'on
 règle. Atteindre 45 % de zone cible y demanderait exactement ce que C13c interdit. Les deux
 règles se contredisent sur ces sept séances ; la priorité n°2 du manifeste (prévention des
 blessures) tranche, et le test garde le chiffre sous les yeux.
+
+
+## C13e — l'échauffement n'est jamais plus long que le corps (30/07/2026, demande du fondateur)
+
+« Qu'aucune séance du plan ne sorte avec échauffement > corps, sur les 6 sports. » Mesure
+d'abord, sur **40 550 séances** : 11 243 portent un échauffement, dont **840 (7,5 %) plus longs
+que leur corps de séance** — 702 en temps, 138 en distance (bassin), et 339 sur le seul trail.
+C'était l'effet de bord direct de C13c livré une heure plus tôt : un plancher de 10 min posé sans
+plafond correspondant déséquilibre les petites séances au lieu de les protéger.
+
+**Après : 0 sur 40 523 séances**, garde-fou `F6` au banc v6 (les six sports, les deux unités).
+
+**Ce que la règle dit maintenant, dans l'ordre de priorité :**
+- **C13e** — échauffement ≤ corps. Invariant DUR. En bassin, l'invariant s'exprime en mètres :
+  comparer les mètres suffit à le garantir en minutes (même conversion, et la récupération ne
+  compte que du côté du corps).
+- **C13** — ni plus de 25 min, ni plus de 80 % du corps quand celui-ci est confortable.
+- **C13c** — plancher de 10 min, qui **cède** à C13e. Le plancher est un objectif physiologique,
+  pas une autorisation à déséquilibrer la séance.
+
+Le « corps » de C13e est le corps **tel qu'il est écrit**, récupération comprise (R5.6a : elle
+appartient au bloc). Un 4×2min récup 2min, c'est 14 min de corps ; le comparer à ses seules 8 min
+de travail interdirait un échauffement de 10 min là où il est parfaitement à sa place — 711
+séances perdaient leur plancher pour rien. La clause de PROPORTION, elle, reste adossée au
+travail : son objet est que le stimulus reste majoritaire.
+
+**Reste 307 séances sous 10 min d'échauffement, toutes en trail**, et la cause est identifiée :
+ce sont des séances de côtes courtes dont la récupération (« redescente MARCHÉE, récupération
+complète ») n'est PAS chiffrée — 7 % des blocs du moteur, presque tous en trail. Leur corps est
+donc mesuré à 4 min quand la séance en dure ~20. Chiffrer les récupérations de descente est le
+prochain gisement : il rendrait ces séances honnêtes ET ferait rentrer le plancher de 10 min.
+
+### Ce que la chasse a fait remonter — quatre défauts, tous antérieurs
+
+Aucun n'était visible avant que C13c ne resserre les enveloppes d'un cran. Tous étaient des
+**priorités inversées** : quelque chose de facile survivait au détriment du stimulus.
+
+1. **Le plancher piscine coupait la VO2.** La passe « fréquence nage » absorbe le gonflement dû à
+   C24 en retirant la plus COURTE des séances remontées au plancher — qui se trouve être la
+   VO2max en nage (8×50 m, la seule assez petite pour avoir eu besoin d'être remontée). Sur un
+   swimrun à 4 h/sem, ses six créneaux VO2 disparaissaient un par un. Elle ne touche plus jamais
+   une séance de qualité ; si la seule candidate en est une, on ne coupe pas — la semaine reste
+   un peu au-dessus de sa cible et `reconcileDeclaredVolume` aligne le chiffre annoncé. *Une
+   promesse d'heures se corrige ; un stimulus supprimé pendant 20 semaines ne se rattrape pas.*
+
+2. **Le budget de séances comptait les jours de récup sans pouvoir les couper.** `totalSessions()`
+   les incluait, `activeNow()` les excluait : un jour de récupération survivait donc au détriment
+   du seul créneau de qualité de la semaine. Ils cèdent maintenant les PREMIERS — ce qu'apporte
+   une séance de récupération, un jour de repos l'apporte aussi.
+
+3. **Un cliquet sur les répétitions.** `repMax` vaut, à défaut de `repCap`, le nombre de
+   répétitions COURANT — donc 1 dès qu'une passe a réduit le bloc à une seule. Un 5×3min de VO2
+   tombé à 1×3min ne pouvait plus jamais remonter. Le nouveau plancher de dose lit `repCap`.
+
+4. **La dose de qualité n'avait pas de plancher.** R4.1 disait « le déversement de volume va vers
+   les séances FACILES, jamais vers un bloc de qualité » ; la règle symétrique manquait. Le
+   RETRAIT vient des séances faciles lui aussi : un bloc de qualité ne descend plus sous 8 min.
+
+### Et une leçon sur C13d
+
+Aligner le seuil de déclassement de C13d sur le plancher d'échauffement (8 → 10 min) semblait
+plus propre : un échauffement de 10 min tient alors toujours. Mesuré : sur une petite enveloppe,
+TOUTES les séances de qualité passaient sous le seuil et le plan perdait son unique stimulus VO2
+sur 41 semaines. Élargir C13d à « toute séance portant un échauffement » (au lieu des seules
+séances de qualité) donnait le même résultat en pire. **Un plan petit reste un plan : il garde sa
+qualité.** Le seuil reste à 8 min, l'écart de deux minutes est le résultat d'une mesure, et entre
+8 et 10 min de corps c'est C13e qui arbitre.

@@ -183,8 +183,52 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   // avertissement. Un duathlon commence et finit à pied : c'est la discipline qu'on ne peut pas
   // ne pas toucher en affûtage.
   applyDisciplineCoverage(r, days, refs, hz, ctx);
+  applyVo2Coverage(r, days, refs, hz, ctx);
   applyWeeklyVariety(r, days, refs, hz, ctx);
   return days;
+}
+
+/**
+ * UN PLAN PORTE UN STIMULUS VO2 — et on le LIT, on ne le suppose pas.
+ *
+ * Les modules décident du support et du créneau (R5.4/R5.5), mais leur condition de bascule
+ * était un PROXY : « si le budget est ≤ 4 séances, ou 3 jours bloqués, ou dispo week-end, alors
+ * `dur2` ne survivra pas, donc la VO2 déménage dans `dur1` ». Un proxy ne voit que ce qu'on a
+ * pensé à y mettre : sur une enveloppe de 4 h/sem en dispo « partielle », `dur2` ne survit pas
+ * non plus, et le plan traversait 20 semaines sans une seule sollicitation de la puissance
+ * aérobie maximale — celle qui plafonne l'allure d'endurance sur laquelle tout le reste se joue.
+ *
+ * Même leçon que partout ailleurs dans ce moteur : on ne DEVINE pas un état qu'on peut LIRE.
+ * Cette passe tourne APRÈS le budget de séances, l'anti-collage et la couverture des
+ * disciplines — donc sur la semaine telle qu'elle sera livrée. S'il manque le stimulus, un
+ * créneau dur de la phase de développement est re-tagué `dur2` et sa séance reconstruite : le
+ * module rend alors sa variante VO2 de lui-même. Une semaine sur deux, jamais plus.
+ */
+function applyVo2Coverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZones, ctx: SessionCtx): void {
+  if (r.medHold || r.noVo2) return;
+  const isVo2 = (d: GenDay) =>
+    d.sessions.some((s) => (s.steps || []).some((b) => b.role === "body" && /\.(vo2|speed)$/.test(String(b.zone || ""))));
+  if (days.some(isVo2)) return; // le plan en a déjà : rien à forcer
+  const devWeeks = [...new Set(days.filter((d) => d.phaseId === "dev" && !d.isR).map((d) => d.week))];
+  for (const w of devWeeks) {
+    if (w % 2 === 0) continue; // une semaine sur deux — le seuil garde l'autre
+    const wd = days.filter((d) => d.week === w);
+    const cand = wd.find((d) => d.charge === "dur" && !d.forced && d.slot !== "durLong" && d.slot !== "dur2");
+    if (!cand) continue;
+    const built = buildSessions(ctx, "dur2" as Parameters<typeof buildSessions>[1], cand.phaseId, cand.prog || 0, cand.week);
+    if (!built.length) continue;
+    cand.slot = "dur2";
+    cand.sessions = built;
+    for (const s of cand.sessions) if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
+    if (isVo2(cand)) continue;
+    // Le module n'a pas de variante VO2 pour ce créneau : on remet la séance d'origine plutôt
+    // que de laisser un `dur2` qui ne porte pas ce pour quoi on l'a posé.
+    {
+      cand.slot = "dur1";
+      cand.sessions = buildSessions(ctx, "dur1" as Parameters<typeof buildSessions>[1], cand.phaseId, cand.prog || 0, cand.week);
+      for (const s of cand.sessions) if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
+    }
+  }
 }
 
 /**
@@ -575,7 +619,17 @@ function applySessionBudget(r: ReasonedPlan, days: GenDay[]): void {
       }
       if (over <= 0) break;
     }
-    // 2. puis des journées entières, faciles d'abord
+    // 2. puis des journées entières, dans l'ordre de ce qu'on peut le mieux perdre.
+    // Les journées de RÉCUPÉRATION d'abord : elles COMPTAIENT dans le budget (`totalSessions`)
+    // sans jamais pouvoir le payer (`activeNow` les excluait). Un jour de récup survivait donc
+    // au détriment du seul créneau de qualité de la semaine — mesuré sur un swimrun à 4 h/sem :
+    // une nage récup de 16 min conservée, et le plan traversait 20 semaines sans stimulus VO2
+    // (`S-NOVO2`, banc v7). Une séance de récupération est la PREMIÈRE à céder quand le budget
+    // manque, pas la dernière : ce qu'elle apporte, un jour de repos l'apporte aussi.
+    if (over > 0) {
+      const rec = wd.filter((d) => d.charge === "recup" && !d.forced && d.sessions.some((s) => s.d !== "rs"));
+      for (let i = rec.length - 1; i >= 0 && over > 0; i--) { over -= nSess(rec[i]); toOff(rec[i]); }
+    }
     if (over > 0) {
       const fac = activeNow().filter((d) => d.charge === "facile" && !d.forced);
       for (let i = fac.length - 1; i >= 0 && over > 0; i--) { over -= nSess(fac[i]); toOff(fac[i]); }
