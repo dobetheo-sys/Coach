@@ -3726,6 +3726,42 @@ class TrainingReasoningEngine {
     if (ftpRaw > 0 && ftp === 0) warnings.push("FTP saisie (" + ftpRaw + "W) hors bornes plausibles [60–600W] : elle est ignorée — les séances s'affichent en zones cardio. Corrige-la au Profil.");
     const hz = hrZones(a.age, a.hr_max, a.hr_rest);
 
+    // R12.4b — LA SOURCE DE CHAQUE RÉFÉRENCE EST DITE, TOUJOURS.
+    //
+    // Le banc amont l'a attrapé : effacer `pace_known` déplaçait la promesse de volume (9.7 →
+    // 9.8 h) sans que rien ne le dise. Le mécanisme est légitime — sans allure déclarée, le
+    // moteur calcule sur une allure de repli, donc les blocs en DISTANCE ne durent pas la même
+    // chose, donc la sonde de capacité ne trouve pas le même plafond. Ce qui ne l'était pas,
+    // c'est le silence : le trail annonçait déjà sa VAM estimée (R12.4), les trois autres
+    // références ne disaient rien. Une référence estimée n'est pas un détail d'affichage —
+    // elle change les zones affichées ET le volume promis.
+    const REF_LABEL                         = { rn: "allure seuil", bk: "FTP", sw: "CSS" };
+    const REF_HOW                         = {
+      rn: "3 min à fond puis 10 min à fond",
+      bk: "20 min à fond (FTP = 95 % de la puissance normalisée)",
+      sw: "400 m puis 200 m à fond (CSS)",
+    };
+    const refKnown                          = { rn: thrPace > 0, bk: ftp > 0, sw: css > 0 };
+    const discs = knownSports().includes(sp) ? sportModule(sp).disciplines : [];
+    if (discs.length) {
+      const est = discs.filter((d) => !refKnown[d]);
+      const dec = discs.filter((d) => refKnown[d]);
+      D(
+        "R12-ref",
+        "Tes références d'intensité",
+        [
+          dec.length ? dec.map((d) => REF_LABEL[d]).join(" · ") + " (déclarée" + (dec.length > 1 ? "s" : "") + ")" : "",
+          est.length ? est.map((d) => REF_LABEL[d]).join(" · ") + " (ESTIMÉE" + (est.length > 1 ? "S" : "") + ")" : "",
+        ].filter(Boolean).join(" — "),
+        est.length === 0
+          ? "Toutes tes références sont déclarées : les séances portent des cibles chiffrées et le volume promis est calé sur ta vraie vitesse."
+          : est.map((d) => REF_LABEL[d]).join(" et ") + " : sans valeur déclarée, les séances de "
+            + est.map((d) => (d === "rn" ? "course" : d === "bk" ? "vélo" : "natation")).join(" et ")
+            + " s'affichent en zones cardio ou au ressenti, et le volume est calculé sur une vitesse de repli PRUDENTE — ce qui déplace légèrement la promesse d'heures. Pour la remplacer : "
+            + est.map((d) => REF_HOW[d]).join(" ; ") + ", ou un simple import de montre.",
+      );
+    }
+
     // ---- R7 TRAIL : les DEUX axes verticaux et le plafond de sortie longue ----
     let tVert                                                                                           ;
     let trailLongCapMin = 0;
@@ -3884,14 +3920,31 @@ const intOf = (key               )                                              
   return d ? { ref: d.ref, lo: d.lo, hi: d.hi } : null;
 };
 
-/** Minutes d'un step (nage : mètres via CSS de base ; km course/vélo via allure seuil). */
+/**
+ * Minutes d'un step (nage : mètres via CSS de base ; km course/vélo via allure seuil).
+ *
+ * R5.6a — LA RÉCUPÉRATION APPARTIENT AU BLOC QUI LA PORTE. « 4×3min récup 2min30 », ce n'est
+ * pas 12 minutes de séance : c'est 19,5 minutes pendant lesquelles l'athlète est là. L'auditeur
+ * la comptait déjà (`sessionLoadFromSteps`), le générateur non — d'où l'« écart de métrique
+ * récup » traîné depuis des mois, `U-DECL`, et une séance annoncée 30 min qui en durait 45
+ * (+22 % en moyenne, jusqu'à +50 %, sur les 356 séances à récup chiffrée).
+ *
+ * La compter ICI, dans le bloc, plutôt qu'en surcouche au niveau de la séance, est ce qui rend
+ * la correction sûre : le facteur d'échelle R3.3 agit sur les RÉPÉTITIONS, donc la récup suit
+ * l'échelle au lieu d'être une constante que le lissage sous-corrige (c'était l'obstacle qui
+ * avait fait échouer la première tentative — cf. R10_DEFECTS.md).
+ *
+ * Une récup NON chiffrée (« récupération complète », « redescente marchée » : 7 % des blocs,
+ * surtout en trail) reste à 0 — on ne devine pas une durée qu'on n'a pas.
+ */
 function stepMin(st        , disc        , baseRefs      )         {
   const reps = st.reps || 1;
-  if (st.durationMin) return reps * st.durationMin;
+  const rec = st.role === "body" && reps > 1 ? (reps - 1) * (recoveryMinutes(st.recoveryText) || 0) : 0;
+  if (st.durationMin) return reps * st.durationMin + rec;
   if (st.distanceM) {
     const d = st.d || disc;
-    if (d === "sw") return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60);
-    return ((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60);
+    if (d === "sw") return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60) + rec;
+    return ((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60) + rec;
   }
   return 0;
 }
@@ -3923,9 +3976,15 @@ function renderSess(s                   , refs      , hz         , baseRefs     
   const steps = s.steps || [];
   const bodies = steps.filter((x) => x.role === "body");
   let bodyMin = 0;
+  let recTotal = 0;
   for (const b of bodies) {
     b._min = stepMin(b, s.d, baseRefs);
-    bodyMin += b._min;
+    // Les clamps C13/C13b se calculent sur le TRAVAIL, récup exclue — c'est la définition de
+    // « échauffement ≤ corps », et c'est aussi ce que recalcule l'auditeur : les deux lectures
+    // doivent produire le même nombre, sinon l'écart qu'on vient de fermer se rouvre ailleurs.
+    const rec = (b.reps || 1) > 1 ? ((b.reps || 1) - 1) * (recoveryMinutes(b.recoveryText) || 0) : 0;
+    recTotal += rec;
+    bodyMin += b._min - rec;
   }
   const seg           = [];
   // Le rendu « brick » suppose un leg VÉLO et un leg COURSE (tri, duathlon). Un enchaînement
@@ -3991,7 +4050,11 @@ function renderSess(s                   , refs      , hz         , baseRefs     
         else if (b.surface === "tapis") str += " sur tapis incliné";
       }
       str += (b                       ).suffix || "";
-      if (b.recoveryText) str += " (récup " + b.recoveryText + " entre les blocs)";
+      // « entre les blocs » n'a de sens qu'entre DEUX blocs. La courbe de volume ramène
+      // parfois un bloc à une seule répétition ; la mention de récupération, elle, restait —
+      // « 1×5min (récup 3min entre les blocs) » décrit une pause qui n'existe pas. Même
+      // famille que syncDerivedLabels : une prose dérivée d'un nombre se relit sur le nombre.
+      if (b.recoveryText && (b.reps || 1) > 1) str += " (récup " + b.recoveryText + " entre les blocs)";
       seg.push(str);
     }
     const c = steps.find((x) => x.role === "cooldown");
@@ -4011,24 +4074,12 @@ function renderSess(s                   , refs      , hz         , baseRefs     
     }
   }
   let det = seg.join(" · ");
-  // R4.7c/F2 — LA DURÉE PORTE-À-PORTE, DITE À L'ATHLÈTE.
-  //
-  // `min` compte le temps de TRAVAIL : échauffement + blocs + retour au calme. Il ne compte pas
-  // la récupération ENTRE répétitions, qui n'est pas de l'entraînement mais qui occupe bel et
-  // bien la séance. Mesuré sur 6 sports et 21 formats : sur les 356 séances à récupération
-  // chiffrée, l'écart est de **+22 % en moyenne, jusqu'à +50 %** — une séance annoncée 30 min
-  // en dure 45. Sur le plan entier l'écart se dilue à 3 % (le volume est surtout fait de
-  // séances continues), mais l'athlète, lui, ne vit pas la moyenne du plan : il vit son mardi
-  // soir, et il a besoin de savoir combien de temps prévoir.
-  //
-  // On ne touche PAS à `min` : c'est la métrique du moteur, elle pilote la courbe, les
-  // plafonds et l'auditeur, et la changer est un chantier à part entière (voir R5.6a dans
-  // R10_DEFECTS.md). On DIT la différence, ce qui est à la fois honnête et sans risque.
-  const recTotal = bodies.reduce((t, b) => t + ((b.reps || 1) > 1 ? ((b.reps || 1) - 1) * (recoveryMinutes(b.recoveryText) || 0) : 0), 0);
-  if (recTotal >= 3) {
-    const porte = Math.round(steps.reduce((t, x) => t + (x._min || 0), 0) + recTotal);
-    det += " · ⏱ prévois ~" + porte + "min en tout (récupérations comprises)";
-  }
+  // R5.6a — LA DURÉE ANNONCÉE EST LA DURÉE PORTE-À-PORTE. `min` inclut désormais la
+  // récupération entre répétitions, comptée dans le `_min` du bloc qui la porte (cf. stepMin).
+  // Il n'y a plus d'écart à corriger après coup : le moteur, l'auditeur et le chronomètre de
+  // l'athlète disent le même nombre. On précise seulement quelle PART de la séance est de la
+  // récupération — « 45 min dont 8 de récup » et « 45 min pleines » ne se préparent pas pareil.
+  if (recTotal >= 3) det += " · ⏱ dont ~" + Math.round(recTotal) + "min de récup entre les blocs";
   if (s.note) det += " — 💡 " + s.note;
   // F3 (audit v6) — minutes ENTIÈRES dès la source : les flottants (13.541666666666666) se
   // propageaient dans les totaux hebdo, le cap vol_max (422 vs 420 observé) et les
@@ -6561,6 +6612,70 @@ function reconcileDeclaredVolume(
         }
       }
       prevCharge = weekMinOf(wk);
+    }
+  }
+
+  // D4 (banc v6) — UNE SEMAINE DE RÉCUP N'EST JAMAIS PLUS LOURDE QUE CELLE QU'ELLE ASSIMILE.
+  //
+  // Troisième application de la même leçon (R5.1, R5.3, C22 ci-dessus) : la règle vivait dans
+  // le CALCUL DE LA CIBLE (`targetH = min(targetH, semaine précédente × 0.95)`), donc elle ne
+  // gouvernait que l'avant-dernier état. Quand les planchers de séance saturent la semaine —
+  // deux semaines de récup consécutives issues d'un cycle de 10 jours, chacune réduite à ses
+  // deux séances minimales — la cible n'a plus prise, et la composition (une longue + une
+  // récup d'un côté, une récup + une séance de seuil de l'autre) décide seule. Mesuré :
+  // 33 min puis 36 min, soit une « récupération » qui remonte.
+  //
+  // Deux leviers, dans l'ordre du manifeste : réduire d'abord (les répétitions cèdent avant la
+  // taille — un 3×100 devient un 2×100, pas un 3×75), retirer ensuite. Retirer une séance
+  // d'une semaine de RÉCUP va toujours dans le sens de la sécurité : c'est ce que la semaine
+  // est censée faire.
+  {
+    const swimMetersOf = (sx           ) =>
+      (sx.steps || []).reduce((t, st) => t + (st.distanceM && (st.d || sx.d) === "sw" ? (st.reps || 1) * st.distanceM : 0), 0);
+    for (let i = 1; i < plan.weeks.length; i++) {
+      const wk = plan.weeks[i];
+      if (!wk.isRecup) continue;
+      const prev = weekMinOf(plan.weeks[i - 1]);
+      if (prev <= 0 || weekMinOf(wk) <= prev + 1) continue;
+      const f = prev / weekMinOf(wk);
+      for (const d of wk.days) for (const sx of d.sessions) {
+        if (sx.d === "rs" || !sx.steps) continue;
+        // C24/C15 — le plancher de SÉANCE piscine (750 m) est une règle, pas une marge : on ne
+        // réduit pas une séance de nage en dessous. Si elle ne peut plus maigrir, elle sautera.
+        const swBefore = swimMetersOf(sx);
+        const before = sx.steps.map((st) => ({ st, reps: st.reps, durationMin: st.durationMin, distanceM: st.distanceM }));
+        let touched = false;
+        for (const st of sx.steps) {
+          if (st.role !== "body") continue;
+          const floor = (st                                ).bnd?.floor;
+          if ((st.reps || 1) > 1) {
+            const next = Math.max(1, Math.round((st.reps || 1) * f));
+            if (next < (st.reps || 1)) { st.reps = next; touched = true; }
+          } else if (st.durationMin) {
+            const next = Math.max(floor ?? 5, Math.round(st.durationMin * f));
+            if (next < st.durationMin) { st.durationMin = next; touched = true; }
+          } else if (st.distanceM) {
+            const next = Math.max(floor ?? 100, Math.round((st.distanceM * f) / 25) * 25);
+            if (next < st.distanceM) { st.distanceM = next; touched = true; }
+          }
+        }
+        if (!touched) continue;
+        if (swBefore > 0 && swimMetersOf(sx) < 750) {
+          // La réduction casserait le plancher : on la DÉFAIT intégralement et on laisse la
+          // coupe ci-dessous faire le travail. Réduire à moitié serait le pire des deux.
+          for (const b of before) { b.st.reps = b.reps; b.st.durationMin = b.durationMin; b.st.distanceM = b.distanceM; }
+          continue;
+        }
+        if (render) render(sx);
+      }
+      for (let g = 0; g < 4 && weekMinOf(wk) > prev + 1; g++) {
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
+        if (active.length <= 1) break; // une semaine de récup garde au moins un contact avec le sport
+        const victim = active.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
+        victim.charge = "off";
+        victim.slot = "off";
+        victim.sessions = [{ d: "rs", name: "OFF (semaine de récupération)", det: "repos — une semaine de récup ne pèse jamais plus que la semaine qu'elle est là pour assimiler", steps: [], min: 0 }];
+      }
     }
   }
 

@@ -14,7 +14,7 @@ import {
   MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, R6_AGE_LOAD, readInjuries, boundedOrZero,
   parsePaceSec,
 } from "./constraintMatrix.ts";
-import { guard } from "../sports/registry.ts";
+import { guard, knownSports, sportModule } from "../sports/registry.ts";
 import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
 import { T1_DPLUS_CAPS, T4_LONG_RUN_VS_RACE, T6_MIN_WEEKS, TRAIL_HISTORY_CAPS, TRAIL_UTIL, trailObjective, trailWeeklyVertical } from "./trailModel.ts";
 
@@ -266,6 +266,42 @@ export class TrainingReasoningEngine {
     const ftp = boundedOrZero("ftp", ftpRaw);
     if (ftpRaw > 0 && ftp === 0) warnings.push("FTP saisie (" + ftpRaw + "W) hors bornes plausibles [60–600W] : elle est ignorée — les séances s'affichent en zones cardio. Corrige-la au Profil.");
     const hz = hrZones(a.age, a.hr_max, a.hr_rest);
+
+    // R12.4b — LA SOURCE DE CHAQUE RÉFÉRENCE EST DITE, TOUJOURS.
+    //
+    // Le banc amont l'a attrapé : effacer `pace_known` déplaçait la promesse de volume (9.7 →
+    // 9.8 h) sans que rien ne le dise. Le mécanisme est légitime — sans allure déclarée, le
+    // moteur calcule sur une allure de repli, donc les blocs en DISTANCE ne durent pas la même
+    // chose, donc la sonde de capacité ne trouve pas le même plafond. Ce qui ne l'était pas,
+    // c'est le silence : le trail annonçait déjà sa VAM estimée (R12.4), les trois autres
+    // références ne disaient rien. Une référence estimée n'est pas un détail d'affichage —
+    // elle change les zones affichées ET le volume promis.
+    const REF_LABEL: Record<string, string> = { rn: "allure seuil", bk: "FTP", sw: "CSS" };
+    const REF_HOW: Record<string, string> = {
+      rn: "3 min à fond puis 10 min à fond",
+      bk: "20 min à fond (FTP = 95 % de la puissance normalisée)",
+      sw: "400 m puis 200 m à fond (CSS)",
+    };
+    const refKnown: Record<string, boolean> = { rn: thrPace > 0, bk: ftp > 0, sw: css > 0 };
+    const discs = knownSports().includes(sp) ? sportModule(sp).disciplines : [];
+    if (discs.length) {
+      const est = discs.filter((d) => !refKnown[d]);
+      const dec = discs.filter((d) => refKnown[d]);
+      D(
+        "R12-ref",
+        "Tes références d'intensité",
+        [
+          dec.length ? dec.map((d) => REF_LABEL[d]).join(" · ") + " (déclarée" + (dec.length > 1 ? "s" : "") + ")" : "",
+          est.length ? est.map((d) => REF_LABEL[d]).join(" · ") + " (ESTIMÉE" + (est.length > 1 ? "S" : "") + ")" : "",
+        ].filter(Boolean).join(" — "),
+        est.length === 0
+          ? "Toutes tes références sont déclarées : les séances portent des cibles chiffrées et le volume promis est calé sur ta vraie vitesse."
+          : est.map((d) => REF_LABEL[d]).join(" et ") + " : sans valeur déclarée, les séances de "
+            + est.map((d) => (d === "rn" ? "course" : d === "bk" ? "vélo" : "natation")).join(" et ")
+            + " s'affichent en zones cardio ou au ressenti, et le volume est calculé sur une vitesse de repli PRUDENTE — ce qui déplace légèrement la promesse d'heures. Pour la remplacer : "
+            + est.map((d) => REF_HOW[d]).join(" ; ") + ", ou un simple import de montre.",
+      );
+    }
 
     // ---- R7 TRAIL : les DEUX axes verticaux et le plafond de sortie longue ----
     let tVert: { dplusPeak: number; dmoinsPeak: number; capped: boolean; accessCap: number } | undefined;

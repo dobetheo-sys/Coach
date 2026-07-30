@@ -114,9 +114,10 @@ avoir un effet — sinon la documenter comme UI pure.
 Audit **100% vert** : 486/486 combinaisons, 0 violation dure, 0 semaine hors bande [0.5, 1.4],
 0 alerte, **répartition des intensités mécanisée** (~80/20 : part facile ≥70%, médiane 83% —
 repCap V2.2 + brick Z2 + C18b). Couverture structurée 100%, promesses calibrées (C20/C22),
-affûtage garanti ≥40% de réduction (R3.13), règles du manifeste mécanisées. Seul signal
-résiduel documenté : l'écart de métrique récup inter-blocs (voir `ARCHITECTURE.md`) — ce
-n'est pas un défaut, ne pas le « corriger ».
+affûtage garanti ≥40% de réduction (R3.13), règles du manifeste mécanisées. **R5.6a livré** :
+la récup inter-blocs entre dans la métrique du générateur (dans le `_min` du bloc qui la porte,
+donc elle suit la mise à l'échelle) — la durée annoncée est la durée porte-à-porte, et l'écart
+médian entre les deux estimateurs tombe à 0,0 min. C'était la plus vieille dette du dépôt.
 
 **Sprint 1 V2 : FAIT.** Le moteur de raisonnement (`src/engine/`) et le générateur V2
 (`src/generator/`) produisent les 486 plans à 0 violation dure via `npm run audit:v2`,

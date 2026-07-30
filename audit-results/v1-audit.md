@@ -30,7 +30,7 @@ Seuils : sur-prescrit > 1.4, sous-prescrit < 0.5, alerte séance longue > 55% de
 - Séance sans objectif expliqué (Pourquoi/Bénéfice) : **0** en échec
 - Répartition des intensités : part facile <70% : **0** en échec (médiane 83% de temps facile)
 
-Recoupement d'estimateurs : écart médian |nos minutes − s.min du générateur| par plan, médiane globale 0.0min (l'écart attendu vient de la récup inter-blocs, que le générateur ne compte pas).
+Recoupement d'estimateurs : écart médian |nos minutes − s.min du générateur| par plan, médiane globale 0.0min (R5.6a : la récup inter-blocs est désormais comptée des DEUX côtés — les deux estimateurs mesurent la même séance, l'écart attendu est nul).
 
 ## Pires cas (ratio pic le plus extrême par sport)
 

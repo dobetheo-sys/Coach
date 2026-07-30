@@ -215,7 +215,7 @@ md += "- Séance sans objectif expliqué (Pourquoi/Bénéfice) : **" + results.f
 md += "- Répartition des intensités : part facile <70% : **" + results.filter((r) => r.easyShare < 0.7).length + "** en échec (médiane " + (results.map((r) => r.easyShare).sort((a, b) => a - b)[Math.floor(results.length / 2)] * 100).toFixed(0) + "% de temps facile)\n";
 const gapsAll = results.map((r) => r.estimatorGapMed ?? 0).sort((a, b) => a - b);
 md += "\nRecoupement d'estimateurs : écart médian |nos minutes − s.min du générateur| par plan, médiane globale " +
-  quantile(gapsAll, 0.5).toFixed(1) + "min (l'écart attendu vient de la récup inter-blocs, que le générateur ne compte pas).\n";
+  quantile(gapsAll, 0.5).toFixed(1) + "min (R5.6a : la récup inter-blocs est désormais comptée des DEUX côtés — les deux estimateurs mesurent la même séance, l'écart attendu est nul).\n";
 
 // ---------- Pires cas par sport ----------
 md += "\n## Pires cas (ratio pic le plus extrême par sport)\n\n";

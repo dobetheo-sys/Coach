@@ -546,15 +546,17 @@ test("F1", "durationMin et _min cohérents (contrat d'export)", "pass", () => {
   return { ok: bad.length === 0, detail: `${bad.length} divergence(s) : ${bad.slice(0, 2).join(" ; ")}` };
 });
 
-// F2 — CE TEST MESURE UN SYMPTÔME, PAS SA CAUSE. Diagnostic du 30/07/2026 : le ratio
-// corps/total plafonne à ~43 % parce que `_min` ne compte PAS la récupération entre
-// répétitions. Une VO2 « 10min éch + 4×3min (récup 2min30) + 6min retour » est comptée 28 min
-// alors qu'elle en dure 35,5 : le corps réel vaut 19,5 min sur 35,5, soit 55 % — bien au-dessus
-// du seuil. Le ratio mesuré ici est donc faux par construction, et « corriger » les séances
-// pour l'atteindre (blocs plus longs, échauffement plus court) dégraderait de vraies séances
-// pour satisfaire une mesure incomplète.
-// La cause est R5.6a (récupération non comptée, cf. R10_DEFECTS.md) : ce test reste en dette
-// et sert de TÉMOIN — il passera au vert le jour où la récupération entrera dans la métrique.
+// F2 — LA CAUSE PRINCIPALE EST CORRIGÉE, IL RESTE UN RÉSIDU ASSUMÉ.
+// Diagnostic du 30/07/2026 : le ratio corps/total plafonnait à ~43 % parce que `_min` ne
+// comptait PAS la récupération entre répétitions. R5.6a l'a mise dans le `_min` du bloc qui la
+// porte : une VO2 « 10min éch + 4×3min (récup 2min30) + 6min retour » vaut désormais 19,5 min de
+// corps sur 35,5, soit 55 %. Mesure avant/après : 28 séances sous le seuil → **7**.
+// Ce qui reste : sept séances de qualité MINUSCULES (1×4min de VO2, 1×5min de force), que la
+// courbe de volume a réduites à une seule répétition sur les semaines les plus légères. Leur
+// échauffement et leur retour au calme sont déjà à leur plancher (3 min chacun, C13/C13b) ;
+// atteindre 45 % demanderait de descendre l'échauffement SOUS 3 minutes avant un effort
+// maximal. Un ratio de 42 % vaut mieux qu'une VO2max échauffée deux minutes : la dette est
+// conservée sciemment, et le test la garde sous les yeux.
 test("F2", "Séance de qualité : ≥45 % du temps dans la zone cible", "fail", () => {
   const bad = [];
   for (const sport of ["run", "bike", "tri"])

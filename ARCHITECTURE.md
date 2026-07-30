@@ -38,8 +38,9 @@ questionnaire (S.answers)
 Chaque séance porte `steps: [{role: warmup|body|cooldown, durationMin|distanceM, reps, zone,
 recoveryText, bnd:{floor,cap}}]`, construits par les helpers `W/Wm/B/Bd/C/Cm` dans `sess()`.
 Aucun reparse de texte nulle part : le volume hebdo est la somme des champs (`weekMin`).
-`renderSess()` rend le texte français et calcule `s.min` — **qui exclut la récup inter-blocs**
-(choix assumé ; l'auditeur la compte, d'où un écart de métrique documenté).
+`renderSess()` rend le texte français et calcule `s.min` — **récup inter-blocs comprise**
+(R5.6a) : le `_min` d'un bloc répété vaut `reps × durée + (reps−1) × récup`. La durée annoncée
+est donc la durée porte-à-porte, la même que celle de l'auditeur.
 
 ### La courbe de charge (R3.3) et ses bornes
 
@@ -112,13 +113,46 @@ chargée que la précédente ; ratio prescrit/déclaré par semaine dans [0.5, 1
 gros jour ≤55% de la semaine. **Répartition des intensités** (manifeste ~80/20) : part du
 temps FACILE des semaines de charge ≥70% (dur), 70-73% toléré (souple) — médiane mesurée 83%.
 
-### L'écart de métrique, documenté une fois pour toutes
+### R5.6a — l'écart de métrique récup, fermé (30/07/2026)
 
-L'auditeur compte la récup inter-blocs (temps réel passé à la séance) ; le `s.min` du
-générateur ne la compte pas (charge d'entraînement). Les deux sont cohérents par construction
-(recoupés séance par séance, écart médian ~0) mais les ratios audités dépassent légèrement
-1.0 sur les semaines riches en intervalles. Les seuils des règles intègrent cette marge —
-ne pas « corriger » l'un pour l'autre.
+**Ce que c'était.** L'auditeur comptait la récup inter-blocs (temps réel passé à la séance),
+`s.min` non (charge d'entraînement). Deux lectures de la même séance, écart documenté depuis des
+mois, à l'origine de `U-DECL` (semaines prescrivant plus qu'annoncé) et de la dette F2 du banc v6.
+Chiffré avant correction : **+3 % sur un plan entier, mais +22 % en moyenne et jusqu'à +50 %** sur
+les 356 séances à récup chiffrée — une séance annoncée 30 min en durait 45. L'athlète ne vit pas la
+moyenne du plan : il vit son mardi soir.
+
+**Pourquoi la première tentative avait échoué** (elle est instructive). Ajouter un champ
+`recoveryMin` au niveau de la SÉANCE donnait 9 violations dures : la courbe met à l'échelle la
+durée des blocs, pas une constante posée à côté. Le livré valait `corps × f + récup` alors que `f`
+était calculé sur le total — sous-correction systématique, d'autant plus grande que la part de
+récup est grande.
+
+**Ce qui la fait marcher.** La récup entre dans le `_min` du BLOC qui la porte
+(`stepMin` : `reps × durée + (reps−1) × récup`), pas de la séance. Le facteur R3.3 agit sur les
+RÉPÉTITIONS : la récup suit donc l'échelle au lieu de lui résister, et les cinq itérations de la
+boucle convergent comme avant. Résultat mesuré : **0 violation dure** sur les 594 combinaisons de
+`audit:v2`, 486/486 sur `audit:v1`, et l'écart médian entre les deux estimateurs tombe à **0,0 min**
+— les recoupements de `sessionLoadFromSteps` mesurent enfin la même séance que le générateur.
+
+Trois conséquences dans le même lot :
+- **F2** (banc v6) passe de 28 séances sous 45 % de zone cible à **7**, toutes minuscules
+  (1×4min de VO2) avec échauffement/retour déjà au plancher — dette conservée sciemment ;
+- **D4** devient une RÈGLE au lieu d'un effet de bord (voir ci-dessous) ;
+- les clamps C13/C13b restent calculés sur le TRAVAIL, récup exclue — sinon l'écart qu'on
+  vient de fermer se rouvrirait sur l'échauffement.
+
+### Quatre règles de sécurité, un seul point de convergence
+
+`reconcileDeclaredVolume()` est appelée EN DERNIER, après la boucle de réparation, et porte
+désormais quatre garanties qui étaient chacune ÉMERGENTES avant de casser :
+C22 (progression ≤ +10 % entre semaines de charge), **D4 (une semaine de récup n'est jamais plus
+lourde que celle qu'elle assimile)**, R5.3 (l'affûtage décroît strictement) et l'alignement du
+volume déclaré sur le prescrit. Même leçon quatre fois : *une règle de sécurité vérifiée au milieu
+du pipeline ne vérifie que l'avant-dernier état.* D4 vivait dans le calcul de la cible ; quand les
+planchers de séance saturent la semaine (deux récups consécutives d'un cycle de 10 jours, réduites
+à leurs deux séances minimales), la cible n'a plus prise et la composition décide seule —
+33 min puis 36 min, une « récupération » qui remonte.
 
 ## Conventions de code
 

@@ -463,3 +463,77 @@ en une ligne de console.
 `smoke-nofallback` l'assure maintenant en cinq assertions — service worker actif, manifeste
 nommé, mode d'affichage installable, icônes réellement servies, zéro requête en échec. C'est le
 contrat qui compte, et il est désormais protégé.
+
+---
+
+## R5.6a — la récupération entre dans la métrique (30/07/2026)
+
+La plus vieille dette du dépôt, ouverte sous le nom `R4.7c` puis rappelée à chaque audit
+externe. Elle est fermée. Le diagnostic posé plus haut était juste sur le fond et faux sur
+le remède : ce n'est pas le FACTEUR d'échelle qu'il fallait corriger, c'est l'ENDROIT où la
+récupération est comptée.
+
+**Ce qui bloquait.** La première tentative ajoutait un champ `recoveryMin` à la SÉANCE, à côté
+des blocs. La récup devenait alors une constante que la courbe ne pouvait pas atteindre : le
+livré valait `corps × f + récup` pour un facteur calculé sur le total, donc sous-correction
+systématique — 9 violations dures. D'où la conclusion, à l'époque, qu'il fallait réécrire
+toutes les passes de lissage en `f = (cible − récup_fixe) / corps_scalable`.
+
+**Ce qui débloque.** La récupération n'est pas à côté du bloc : **elle est dedans**.
+« 4×3min récup 2min30 » n'est pas un bloc de 12 min accompagné de 7,5 min de rab — c'est un
+bloc qui occupe 19,5 min. En l'écrivant dans `_min` du bloc (`reps × durée + (reps−1) × récup`),
+elle devient PILOTABLE : `scaleBlock` agit sur les répétitions, donc la récup se met à l'échelle
+avec le reste. Aucune passe de lissage n'a eu à changer. La correction tenait en cinq lignes,
+là où la note précédente annonçait « un chantier à part entière ».
+
+Il aura fallu se tromper d'endroit une fois pour trouver le bon. La leçon générale du dépôt
+s'applique aussi ici : *un nombre dérivé se calcule là où vit la chose qu'il décrit.*
+
+**Mesuré, avant → après :**
+
+| | avant | après |
+|---|---|---|
+| écart médian estimateur auditeur ↔ générateur | ~3 % (jusqu'à +50 % par séance) | **0,0 min** |
+| `audit:v1` (486 combos) | 0 violation dure | **0 violation dure** |
+| `audit:v2` (594 combos) | 0 violation dure | **0 violation dure** |
+| F2 (banc v6) — séances de qualité sous 45 % | 28 | **7** |
+| D4 (banc v6) — semaine de récup plus lourde | 0 | **0** (devenue une règle, voir ci-dessous) |
+
+**Deux défauts trouvés en chemin, corrigés dans le même lot :**
+
+1. **D4 était émergente.** La règle « une semaine de récup n'est jamais plus lourde que celle
+   qu'elle assimile » vivait dans le CALCUL DE LA CIBLE. Quand les planchers de séance saturent
+   la semaine — deux récups consécutives issues d'un cycle de 10 jours, chacune réduite à ses
+   deux séances minimales — la cible n'a plus prise et la composition décide seule : 33 min puis
+   36 min. Elle est désormais garantie dans `reconcileDeclaredVolume`, en dernier, comme C22 et
+   la décroissance d'affûtage avant elle. Les répétitions cèdent avant la taille ; le plancher
+   de séance piscine (C24, 750 m) annule une réduction plutôt que d'être enfreint, et c'est
+   alors la fréquence qui cède. Quatrième fois que la même leçon est appliquée.
+
+2. **Une prose qui mentait.** Un bloc ramené à UNE répétition par la courbe gardait sa mention
+   « (récup 3min souple entre les blocs) » — une pause entre deux blocs dont il ne reste qu'un.
+   Même famille que `syncDerivedLabels` : la mention se relit sur `reps`.
+
+**La dette F2 qui reste, et pourquoi elle reste.** Sept séances de qualité minuscules
+(1×4min de VO2, 1×5min de force) sur les semaines les plus légères. Leur échauffement et leur
+retour au calme sont déjà à leur plancher de 3 minutes (C13/C13b) ; atteindre 45 % de zone
+cible demanderait d'échauffer moins de 3 minutes avant un effort maximal. 42 % vaut mieux
+qu'une VO2max échauffée deux minutes. Le test reste en `expect:'fail'` pour garder le chiffre
+sous les yeux.
+
+**Effet secondaire assumé** : toutes les durées affichées montent (celles des séances à
+intervalles surtout). Ce n'est pas le plan qui s'alourdit — c'est celui qu'on annonçait qui
+était faux. Le détail de séance dit maintenant « ⏱ dont ~8min de récup entre les blocs » :
+45 minutes dont 8 de récup et 45 minutes pleines ne se préparent pas de la même façon.
+
+## R12.4b — la source de chaque référence est dite
+
+Trouvé par le banc amont dans le même lot : effacer `pace_known` déplaçait la promesse de
+volume (9,7 → 9,8 h) **sans que rien ne le dise**. Le mécanisme est légitime — sans allure
+déclarée, les blocs exprimés en DISTANCE sont convertis avec une allure de repli, donc la sonde
+de capacité ne trouve pas le même plafond. Le silence, lui, ne l'était pas : le trail annonçait
+déjà sa VAM estimée (R12.4), les trois autres références ne disaient rien.
+
+La décision `R12-ref` est désormais émise pour tout plan, et nomme ce qui est déclaré et ce qui
+est estimé, discipline par discipline, avec le protocole d'acquisition en clair. Une référence
+estimée n'est pas un détail d'affichage : elle change les zones affichées ET le volume promis.

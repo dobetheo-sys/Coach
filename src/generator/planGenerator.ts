@@ -103,6 +103,70 @@ export function reconcileDeclaredVolume(
     }
   }
 
+  // D4 (banc v6) — UNE SEMAINE DE RÉCUP N'EST JAMAIS PLUS LOURDE QUE CELLE QU'ELLE ASSIMILE.
+  //
+  // Troisième application de la même leçon (R5.1, R5.3, C22 ci-dessus) : la règle vivait dans
+  // le CALCUL DE LA CIBLE (`targetH = min(targetH, semaine précédente × 0.95)`), donc elle ne
+  // gouvernait que l'avant-dernier état. Quand les planchers de séance saturent la semaine —
+  // deux semaines de récup consécutives issues d'un cycle de 10 jours, chacune réduite à ses
+  // deux séances minimales — la cible n'a plus prise, et la composition (une longue + une
+  // récup d'un côté, une récup + une séance de seuil de l'autre) décide seule. Mesuré :
+  // 33 min puis 36 min, soit une « récupération » qui remonte.
+  //
+  // Deux leviers, dans l'ordre du manifeste : réduire d'abord (les répétitions cèdent avant la
+  // taille — un 3×100 devient un 2×100, pas un 3×75), retirer ensuite. Retirer une séance
+  // d'une semaine de RÉCUP va toujours dans le sens de la sécurité : c'est ce que la semaine
+  // est censée faire.
+  {
+    const swimMetersOf = (sx: V1Session) =>
+      (sx.steps || []).reduce((t, st) => t + (st.distanceM && (st.d || sx.d) === "sw" ? (st.reps || 1) * st.distanceM : 0), 0);
+    for (let i = 1; i < plan.weeks.length; i++) {
+      const wk = plan.weeks[i];
+      if (!wk.isRecup) continue;
+      const prev = weekMinOf(plan.weeks[i - 1]);
+      if (prev <= 0 || weekMinOf(wk) <= prev + 1) continue;
+      const f = prev / weekMinOf(wk);
+      for (const d of wk.days) for (const sx of d.sessions) {
+        if (sx.d === "rs" || !sx.steps) continue;
+        // C24/C15 — le plancher de SÉANCE piscine (750 m) est une règle, pas une marge : on ne
+        // réduit pas une séance de nage en dessous. Si elle ne peut plus maigrir, elle sautera.
+        const swBefore = swimMetersOf(sx);
+        const before = sx.steps.map((st) => ({ st, reps: st.reps, durationMin: st.durationMin, distanceM: st.distanceM }));
+        let touched = false;
+        for (const st of sx.steps) {
+          if (st.role !== "body") continue;
+          const floor = (st as { bnd?: { floor?: number } }).bnd?.floor;
+          if ((st.reps || 1) > 1) {
+            const next = Math.max(1, Math.round((st.reps || 1) * f));
+            if (next < (st.reps || 1)) { st.reps = next; touched = true; }
+          } else if (st.durationMin) {
+            const next = Math.max(floor ?? 5, Math.round(st.durationMin * f));
+            if (next < st.durationMin) { st.durationMin = next; touched = true; }
+          } else if (st.distanceM) {
+            const next = Math.max(floor ?? 100, Math.round((st.distanceM * f) / 25) * 25);
+            if (next < st.distanceM) { st.distanceM = next; touched = true; }
+          }
+        }
+        if (!touched) continue;
+        if (swBefore > 0 && swimMetersOf(sx) < 750) {
+          // La réduction casserait le plancher : on la DÉFAIT intégralement et on laisse la
+          // coupe ci-dessous faire le travail. Réduire à moitié serait le pire des deux.
+          for (const b of before) { b.st.reps = b.reps; b.st.durationMin = b.durationMin; b.st.distanceM = b.distanceM; }
+          continue;
+        }
+        if (render) render(sx);
+      }
+      for (let g = 0; g < 4 && weekMinOf(wk) > prev + 1; g++) {
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
+        if (active.length <= 1) break; // une semaine de récup garde au moins un contact avec le sport
+        const victim = active.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
+        victim.charge = "off";
+        victim.slot = "off";
+        victim.sessions = [{ d: "rs", name: "OFF (semaine de récupération)", det: "repos — une semaine de récup ne pèse jamais plus que la semaine qu'elle est là pour assimiler", steps: [], min: 0 }];
+      }
+    }
+  }
+
   // R5.3 — L'AFFÛTAGE DÉCROÎT, POINT. La décroissance était jusqu'ici ÉMERGENTE (courbe + coupe
   // R3.13) : sur un cycle de 10 jours, la dérive des créneaux d'une semaine calendaire à l'autre
   // pouvait rendre la 3ᵉ semaine d'affûtage plus lourde que la 2ᵉ (147→98→123→88 mesuré, banc v6

@@ -96,14 +96,31 @@ export const intOf = (key: string | null): { ref: string; lo: number; hi: number
   return d ? { ref: d.ref, lo: d.lo, hi: d.hi } : null;
 };
 
-/** Minutes d'un step (nage : mètres via CSS de base ; km course/vélo via allure seuil). */
+/**
+ * Minutes d'un step (nage : mètres via CSS de base ; km course/vélo via allure seuil).
+ *
+ * R5.6a — LA RÉCUPÉRATION APPARTIENT AU BLOC QUI LA PORTE. « 4×3min récup 2min30 », ce n'est
+ * pas 12 minutes de séance : c'est 19,5 minutes pendant lesquelles l'athlète est là. L'auditeur
+ * la comptait déjà (`sessionLoadFromSteps`), le générateur non — d'où l'« écart de métrique
+ * récup » traîné depuis des mois, `U-DECL`, et une séance annoncée 30 min qui en durait 45
+ * (+22 % en moyenne, jusqu'à +50 %, sur les 356 séances à récup chiffrée).
+ *
+ * La compter ICI, dans le bloc, plutôt qu'en surcouche au niveau de la séance, est ce qui rend
+ * la correction sûre : le facteur d'échelle R3.3 agit sur les RÉPÉTITIONS, donc la récup suit
+ * l'échelle au lieu d'être une constante que le lissage sous-corrige (c'était l'obstacle qui
+ * avait fait échouer la première tentative — cf. R10_DEFECTS.md).
+ *
+ * Une récup NON chiffrée (« récupération complète », « redescente marchée » : 7 % des blocs,
+ * surtout en trail) reste à 0 — on ne devine pas une durée qu'on n'a pas.
+ */
 export function stepMin(st: V1Step, disc: string, baseRefs: Refs): number {
   const reps = st.reps || 1;
-  if (st.durationMin) return reps * st.durationMin;
+  const rec = st.role === "body" && reps > 1 ? (reps - 1) * (recoveryMinutes(st.recoveryText) || 0) : 0;
+  if (st.durationMin) return reps * st.durationMin + rec;
   if (st.distanceM) {
     const d = st.d || disc;
-    if (d === "sw") return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60);
-    return ((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60);
+    if (d === "sw") return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60) + rec;
+    return ((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60) + rec;
   }
   return 0;
 }
@@ -135,9 +152,15 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
   const steps = s.steps || [];
   const bodies = steps.filter((x) => x.role === "body");
   let bodyMin = 0;
+  let recTotal = 0;
   for (const b of bodies) {
     b._min = stepMin(b, s.d, baseRefs);
-    bodyMin += b._min;
+    // Les clamps C13/C13b se calculent sur le TRAVAIL, récup exclue — c'est la définition de
+    // « échauffement ≤ corps », et c'est aussi ce que recalcule l'auditeur : les deux lectures
+    // doivent produire le même nombre, sinon l'écart qu'on vient de fermer se rouvre ailleurs.
+    const rec = (b.reps || 1) > 1 ? ((b.reps || 1) - 1) * (recoveryMinutes(b.recoveryText) || 0) : 0;
+    recTotal += rec;
+    bodyMin += b._min - rec;
   }
   const seg: string[] = [];
   // Le rendu « brick » suppose un leg VÉLO et un leg COURSE (tri, duathlon). Un enchaînement
@@ -203,7 +226,11 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
         else if (b.surface === "tapis") str += " sur tapis incliné";
       }
       str += (b as { suffix?: string }).suffix || "";
-      if (b.recoveryText) str += " (récup " + b.recoveryText + " entre les blocs)";
+      // « entre les blocs » n'a de sens qu'entre DEUX blocs. La courbe de volume ramène
+      // parfois un bloc à une seule répétition ; la mention de récupération, elle, restait —
+      // « 1×5min (récup 3min entre les blocs) » décrit une pause qui n'existe pas. Même
+      // famille que syncDerivedLabels : une prose dérivée d'un nombre se relit sur le nombre.
+      if (b.recoveryText && (b.reps || 1) > 1) str += " (récup " + b.recoveryText + " entre les blocs)";
       seg.push(str);
     }
     const c = steps.find((x) => x.role === "cooldown");
@@ -223,24 +250,12 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
     }
   }
   let det = seg.join(" · ");
-  // R4.7c/F2 — LA DURÉE PORTE-À-PORTE, DITE À L'ATHLÈTE.
-  //
-  // `min` compte le temps de TRAVAIL : échauffement + blocs + retour au calme. Il ne compte pas
-  // la récupération ENTRE répétitions, qui n'est pas de l'entraînement mais qui occupe bel et
-  // bien la séance. Mesuré sur 6 sports et 21 formats : sur les 356 séances à récupération
-  // chiffrée, l'écart est de **+22 % en moyenne, jusqu'à +50 %** — une séance annoncée 30 min
-  // en dure 45. Sur le plan entier l'écart se dilue à 3 % (le volume est surtout fait de
-  // séances continues), mais l'athlète, lui, ne vit pas la moyenne du plan : il vit son mardi
-  // soir, et il a besoin de savoir combien de temps prévoir.
-  //
-  // On ne touche PAS à `min` : c'est la métrique du moteur, elle pilote la courbe, les
-  // plafonds et l'auditeur, et la changer est un chantier à part entière (voir R5.6a dans
-  // R10_DEFECTS.md). On DIT la différence, ce qui est à la fois honnête et sans risque.
-  const recTotal = bodies.reduce((t, b) => t + ((b.reps || 1) > 1 ? ((b.reps || 1) - 1) * (recoveryMinutes(b.recoveryText) || 0) : 0), 0);
-  if (recTotal >= 3) {
-    const porte = Math.round(steps.reduce((t, x) => t + (x._min || 0), 0) + recTotal);
-    det += " · ⏱ prévois ~" + porte + "min en tout (récupérations comprises)";
-  }
+  // R5.6a — LA DURÉE ANNONCÉE EST LA DURÉE PORTE-À-PORTE. `min` inclut désormais la
+  // récupération entre répétitions, comptée dans le `_min` du bloc qui la porte (cf. stepMin).
+  // Il n'y a plus d'écart à corriger après coup : le moteur, l'auditeur et le chronomètre de
+  // l'athlète disent le même nombre. On précise seulement quelle PART de la séance est de la
+  // récupération — « 45 min dont 8 de récup » et « 45 min pleines » ne se préparent pas pareil.
+  if (recTotal >= 3) det += " · ⏱ dont ~" + Math.round(recTotal) + "min de récup entre les blocs";
   if (s.note) det += " — 💡 " + s.note;
   // F3 (audit v6) — minutes ENTIÈRES dès la source : les flottants (13.541666666666666) se
   // propageaient dans les totaux hebdo, le cap vol_max (422 vs 420 observé) et les
