@@ -1,0 +1,4961 @@
+[
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "intent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE intent = \"__zzz__\" (attendu : competition / finir / pl"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "intent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "intent",
+  "mut": "chaîne vide",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.5→12.3h · sem 46→46 · séances 264→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "intent",
+  "mut": "clé absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.5→12.3h · sem 46→46 · séances 264→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "level",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE level = \"__zzz__\" (attendu : debutant / inter / avance"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "level",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "level",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "level",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "history",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE history = \"__zzz__\" (attendu : reprise / confirme / an"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "history",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "history",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "history",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "dispo",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE dispo = \"__zzz__\" (attendu : quotidienne / semaine / p"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "dispo",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "dispo",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "dispo",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "doubles",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE doubles = \"__zzz__\" (attendu : oui / parfois / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "doubles",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "doubles",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "doubles",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "off_days",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE off_days = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "off_days",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "off_days",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "off_days",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "sex",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sex = \"__zzz__\" (attendu : F / H / np)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "sex",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "sex",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "sex",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "sleep",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sleep = \"__zzz__\" (attendu : court / moyen / bon)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "sleep",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "sleep",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "sleep",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "life_load",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE life_load = \"__zzz__\" (attendu : legere / normale / lo"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "life_load",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "life_load",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "life_load",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "ftp_known",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE ftp_known = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "ftp_known",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "ftp_known",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "ftp_known",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "pace_known",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE pace_known = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "pace_known",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "pace_known",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "pace_known",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "css_known",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE css_known = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "css_known",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "css_known",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "css_known",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "sessions_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sessions_max = \"__zzz__\" (attendu : un nombre en séanc"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "sessions_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "sessions_max",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "sessions_max",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "vol_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "vol_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "vol_max",
+  "mut": "chaîne vide",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"\" (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "vol_max",
+  "mut": "clé absente",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = undefined (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "vol_recent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_recent = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "vol_recent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "vol_recent",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "vol_recent",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "format",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = \"__zzz__\" (attendu : S / M / 70.3 / Full)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "format",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "format",
+  "mut": "format d'un autre sport",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = \"gravel\" (attendu : S / M / 70.3 / Full)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "tri",
+  "key": "format",
+  "mut": "clé absente",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = undefined (attendu : S / M / 70.3 / Full)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "intent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE intent = \"__zzz__\" (attendu : competition / finir / pl"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "intent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "intent",
+  "mut": "chaîne vide",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 9.6→8.7h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "intent",
+  "mut": "clé absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 9.6→8.7h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "level",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE level = \"__zzz__\" (attendu : debutant / inter / avance"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "level",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "level",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "level",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "history",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE history = \"__zzz__\" (attendu : reprise / confirme / an"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "history",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "history",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "history",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "dispo",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE dispo = \"__zzz__\" (attendu : quotidienne / semaine / p"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "dispo",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "dispo",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "dispo",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "doubles",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE doubles = \"__zzz__\" (attendu : oui / parfois / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "doubles",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "doubles",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "doubles",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "off_days",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE off_days = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "off_days",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "off_days",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "off_days",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "sex",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sex = \"__zzz__\" (attendu : F / H / np)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "sex",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "sex",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "sex",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "sleep",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sleep = \"__zzz__\" (attendu : court / moyen / bon)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "sleep",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "sleep",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "sleep",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "life_load",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE life_load = \"__zzz__\" (attendu : legere / normale / lo"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "life_load",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "life_load",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "life_load",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "pace_known",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE pace_known = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "pace_known",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "pace_known",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "pace_known",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "treadmill",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE treadmill = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "treadmill",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "treadmill",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "treadmill",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "sessions_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sessions_max = \"__zzz__\" (attendu : un nombre en séanc"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "sessions_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "sessions_max",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "sessions_max",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "vol_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "vol_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "vol_max",
+  "mut": "chaîne vide",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"\" (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "vol_max",
+  "mut": "clé absente",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = undefined (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "vol_recent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_recent = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "vol_recent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "vol_recent",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "vol_recent",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "format",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = \"__zzz__\" (attendu : 5k / 10k / semi / marath"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "format",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 9.6→9.6h · sem 46→46 · séances 219→219",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "format",
+  "mut": "format d'un autre sport",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = \"gravel\" (attendu : 5k / 10k / semi / maratho"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "run",
+  "key": "format",
+  "mut": "clé absente",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = undefined (attendu : 5k / 10k / semi / marath"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "intent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE intent = \"__zzz__\" (attendu : competition / finir / pl"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "intent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "intent",
+  "mut": "chaîne vide",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.9→11.6h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "intent",
+  "mut": "clé absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.9→11.6h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "level",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE level = \"__zzz__\" (attendu : debutant / inter / avance"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "level",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "level",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "level",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "history",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE history = \"__zzz__\" (attendu : reprise / confirme / an"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "history",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "history",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "history",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "dispo",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE dispo = \"__zzz__\" (attendu : quotidienne / semaine / p"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "dispo",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "dispo",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "dispo",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "doubles",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE doubles = \"__zzz__\" (attendu : oui / parfois / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "doubles",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "doubles",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "doubles",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "off_days",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE off_days = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "off_days",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "off_days",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "off_days",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "sex",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sex = \"__zzz__\" (attendu : F / H / np)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "sex",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "sex",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "sex",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "sleep",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sleep = \"__zzz__\" (attendu : court / moyen / bon)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "sleep",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "sleep",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "sleep",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "life_load",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE life_load = \"__zzz__\" (attendu : legere / normale / lo"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "life_load",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "life_load",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "life_load",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "ftp_known",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE ftp_known = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "ftp_known",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "ftp_known",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "ftp_known",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "sessions_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sessions_max = \"__zzz__\" (attendu : un nombre en séanc"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "sessions_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "sessions_max",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "sessions_max",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "vol_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "vol_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "vol_max",
+  "mut": "chaîne vide",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"\" (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "vol_max",
+  "mut": "clé absente",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = undefined (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "vol_recent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_recent = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "vol_recent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "vol_recent",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "vol_recent",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "format",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = \"__zzz__\" (attendu : crit / route / cyclo / c"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "format",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 266→266",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "format",
+  "mut": "format d'un autre sport",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.9→12.8h · sem 46→46 · séances 266→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "bike",
+  "key": "format",
+  "mut": "clé absente",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = undefined (attendu : crit / route / cyclo / c"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "intent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE intent = \"__zzz__\" (attendu : competition / finir / pl"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "intent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "intent",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "intent",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "level",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE level = \"__zzz__\" (attendu : debutant / inter / avance"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "level",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "level",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "level",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "history",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE history = \"__zzz__\" (attendu : reprise / confirme / an"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "history",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "history",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "history",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "dispo",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE dispo = \"__zzz__\" (attendu : quotidienne / semaine / p"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "dispo",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "dispo",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "dispo",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "doubles",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE doubles = \"__zzz__\" (attendu : oui / parfois / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "doubles",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "doubles",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "doubles",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "off_days",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE off_days = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "off_days",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "off_days",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "off_days",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "sex",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sex = \"__zzz__\" (attendu : F / H / np)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "sex",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "sex",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "sex",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "sleep",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sleep = \"__zzz__\" (attendu : court / moyen / bon)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "sleep",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "sleep",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "sleep",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "life_load",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE life_load = \"__zzz__\" (attendu : legere / normale / lo"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "life_load",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "life_load",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "life_load",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "css_known",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE css_known = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "css_known",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "css_known",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "css_known",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "swim_limit",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE swim_limit = \"__zzz__\" (attendu : technique / respirat"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "swim_limit",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "swim_limit",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "swim_limit",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "sessions_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sessions_max = \"__zzz__\" (attendu : un nombre en séanc"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "sessions_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "sessions_max",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "sessions_max",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "vol_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "vol_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "vol_max",
+  "mut": "chaîne vide",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"\" (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "vol_max",
+  "mut": "clé absente",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = undefined (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "vol_recent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_recent = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "vol_recent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "vol_recent",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swim",
+  "key": "vol_recent",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 3.5→3.5h · sem 46→46 · séances 259→259",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "intent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE intent = \"__zzz__\" (attendu : competition / finir / pl"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "intent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "intent",
+  "mut": "chaîne vide",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 8.9→8h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "intent",
+  "mut": "clé absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 8.9→8h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "level",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE level = \"__zzz__\" (attendu : debutant / inter / avance"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "level",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "level",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "level",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "history",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE history = \"__zzz__\" (attendu : reprise / confirme / an"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "history",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "history",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "history",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "dispo",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE dispo = \"__zzz__\" (attendu : quotidienne / semaine / p"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "dispo",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "dispo",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "dispo",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "doubles",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE doubles = \"__zzz__\" (attendu : oui / parfois / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "doubles",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "doubles",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "doubles",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "off_days",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE off_days = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "off_days",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "off_days",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "off_days",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "sex",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sex = \"__zzz__\" (attendu : F / H / np)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "sex",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "sex",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "sex",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "sleep",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sleep = \"__zzz__\" (attendu : court / moyen / bon)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "sleep",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "sleep",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "sleep",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "life_load",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE life_load = \"__zzz__\" (attendu : legere / normale / lo"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "life_load",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "life_load",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "life_load",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "ftp_known",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE ftp_known = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "ftp_known",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "ftp_known",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "ftp_known",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "pace_known",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE pace_known = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "pace_known",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "pace_known",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "pace_known",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "sessions_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sessions_max = \"__zzz__\" (attendu : un nombre en séanc"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "sessions_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "sessions_max",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "sessions_max",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "vol_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "vol_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "vol_max",
+  "mut": "chaîne vide",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"\" (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "vol_max",
+  "mut": "clé absente",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = undefined (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "vol_recent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_recent = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "vol_recent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "vol_recent",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "vol_recent",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "format",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = \"__zzz__\" (attendu : S / M / L / PM)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "format",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 8.9→8.9h · sem 46→46 · séances 265→265",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "format",
+  "mut": "format d'un autre sport",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = \"gravel\" (attendu : S / M / L / PM)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "duathlon",
+  "key": "format",
+  "mut": "clé absente",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = undefined (attendu : S / M / L / PM)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "intent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE intent = \"__zzz__\" (attendu : competition / finir / pl"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "intent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "intent",
+  "mut": "chaîne vide",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 11.3→9.8h · sem 46→46 · séances 210→207",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "intent",
+  "mut": "clé absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 11.3→9.8h · sem 46→46 · séances 210→207",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "level",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE level = \"__zzz__\" (attendu : debutant / inter / avance"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "level",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "level",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "level",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "history",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE history = \"__zzz__\" (attendu : reprise / confirme / an"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "history",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "history",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "history",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "dispo",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE dispo = \"__zzz__\" (attendu : quotidienne / semaine / p"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "dispo",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "dispo",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "dispo",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "doubles",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE doubles = \"__zzz__\" (attendu : oui / parfois / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "doubles",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "doubles",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "doubles",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "off_days",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE off_days = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "off_days",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "off_days",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "off_days",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "sex",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sex = \"__zzz__\" (attendu : F / H / np)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "sex",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "sex",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "sex",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "sleep",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sleep = \"__zzz__\" (attendu : court / moyen / bon)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "sleep",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "sleep",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "sleep",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "life_load",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE life_load = \"__zzz__\" (attendu : legere / normale / lo"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "life_load",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "life_load",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "life_load",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "pace_known",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE pace_known = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "pace_known",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "pace_known",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "pace_known",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "css_known",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE css_known = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "css_known",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "css_known",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "css_known",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "openwater_access",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE openwater_access = \"__zzz__\" (attendu : aucun / saison"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "openwater_access",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "openwater_access",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "openwater_access",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "team_mode",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE team_mode = \"__zzz__\" (attendu : solo / binome)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "team_mode",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "team_mode",
+  "mut": "chaîne vide",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 11.3→10.9h · sem 46→46 · séances 210→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "team_mode",
+  "mut": "clé absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 11.3→10.9h · sem 46→46 · séances 210→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "sessions_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sessions_max = \"__zzz__\" (attendu : un nombre en séanc"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "sessions_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "sessions_max",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "sessions_max",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "vol_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "vol_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "vol_max",
+  "mut": "chaîne vide",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"\" (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "vol_max",
+  "mut": "clé absente",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = undefined (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "vol_recent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_recent = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "vol_recent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "vol_recent",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "vol_recent",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "format",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = \"__zzz__\" (attendu : experience / sprint / se"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "format",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "format",
+  "mut": "format d'un autre sport",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = \"gravel\" (attendu : experience / sprint / ser"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "swimrun",
+  "key": "format",
+  "mut": "clé absente",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = undefined (attendu : experience / sprint / se"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "intent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE intent = \"__zzz__\" (attendu : competition / finir / pl"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "intent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "intent",
+  "mut": "chaîne vide",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.9→11.6h · sem 46→46 · séances 209→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "intent",
+  "mut": "clé absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.9→11.6h · sem 46→46 · séances 209→210",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "level",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE level = \"__zzz__\" (attendu : debutant / inter / avance"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "level",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "level",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "level",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "history",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE history = \"__zzz__\" (attendu : reprise / confirme / an"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "history",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "history",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "history",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "dispo",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE dispo = \"__zzz__\" (attendu : quotidienne / semaine / p"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "dispo",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "dispo",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "dispo",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "doubles",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE doubles = \"__zzz__\" (attendu : oui / parfois / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "doubles",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "doubles",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "doubles",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "off_days",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE off_days = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "off_days",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "off_days",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "off_days",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "sex",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sex = \"__zzz__\" (attendu : F / H / np)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "sex",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "sex",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "sex",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "sleep",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sleep = \"__zzz__\" (attendu : court / moyen / bon)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "sleep",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "sleep",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "sleep",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "life_load",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE life_load = \"__zzz__\" (attendu : legere / normale / lo"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "life_load",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "life_load",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "life_load",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "pace_known",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE pace_known = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "pace_known",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "pace_known",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "pace_known",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "vam_known",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vam_known = \"__zzz__\" (attendu : oui / non)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "vam_known",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "vam_known",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "vam_known",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "poles",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE poles = \"__zzz__\" (attendu : oui / non / a_decider)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "poles",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "poles",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "poles",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "race_night",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_night = \"__zzz__\" (attendu : non / partielle / ma"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "race_night",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "race_night",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "race_night",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "race_technicity",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_technicity = \"__zzz__\" (attendu : roulant / mixte"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "race_technicity",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "race_technicity",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "race_technicity",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "train_dplus_access",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE train_dplus_access = \"__zzz__\" (attendu : plat / colli"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "train_dplus_access",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "train_dplus_access",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "train_dplus_access",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "sessions_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sessions_max = \"__zzz__\" (attendu : un nombre en séanc"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "sessions_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "sessions_max",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "sessions_max",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "vol_max",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "vol_max",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "vol_max",
+  "mut": "chaîne vide",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"\" (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "vol_max",
+  "mut": "clé absente",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = undefined (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "vol_recent",
+  "mut": "valeur inconnue",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_recent = \"__zzz__\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "vol_recent",
+  "mut": "casse fautive",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "vol_recent",
+  "mut": "chaîne vide",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T1 énum",
+  "sport": "trail",
+  "key": "vol_recent",
+  "mut": "clé absente",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "ftp",
+  "mut": "texte",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE ftp = \"abc\" (attendu : un nombre en W)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "ftp",
+  "mut": "négatif",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE ftp = \"-5\" (attendu : 50–600 W)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "ftp",
+  "mut": "zéro",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE ftp = \"0\" (attendu : 50–600 W)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "ftp",
+  "mut": "absurde",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE ftp = \"999999\" (attendu : 50–600 W)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "ftp",
+  "mut": "virgule FR",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE ftp = \"12,5\" (attendu : 50–600 W)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "ftp",
+  "mut": "null",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "pace",
+  "mut": "texte",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "pace",
+  "mut": "négatif",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "pace",
+  "mut": "zéro",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "pace",
+  "mut": "absurde",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "pace",
+  "mut": "virgule FR",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "pace",
+  "mut": "null",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "age",
+  "mut": "texte",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE age = \"abc\" (attendu : un nombre en ans)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "age",
+  "mut": "négatif",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE age = \"-5\" (attendu : 10–100 ans)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "age",
+  "mut": "zéro",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE age = \"0\" (attendu : 10–100 ans)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "age",
+  "mut": "absurde",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE age = \"999999\" (attendu : 10–100 ans)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "age",
+  "mut": "virgule FR",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "age",
+  "mut": "null",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "weight",
+  "mut": "texte",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE weight = \"abc\" (attendu : un nombre en kg)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "weight",
+  "mut": "négatif",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE weight = \"-5\" (attendu : 25–250 kg)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "weight",
+  "mut": "zéro",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE weight = \"0\" (attendu : 25–250 kg)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "weight",
+  "mut": "absurde",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE weight = \"999999\" (attendu : 25–250 kg)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "weight",
+  "mut": "virgule FR",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE weight = \"12,5\" (attendu : 25–250 kg)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "weight",
+  "mut": "null",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "vol_max",
+  "mut": "texte",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"abc\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "vol_max",
+  "mut": "négatif",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"-5\" (attendu : 1–40 h/sem)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "vol_max",
+  "mut": "zéro",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"0\" (attendu : 1–40 h/sem)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "vol_max",
+  "mut": "absurde",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = \"999999\" (attendu : 1–40 h/sem)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "vol_max",
+  "mut": "virgule FR",
+  "verdict": "valeur valide différente",
+  "delta": "pic 12.5→11.6h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "vol_max",
+  "mut": "null",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_max = null (attendu : une valeur en h/sem)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "vol_recent",
+  "mut": "texte",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_recent = \"abc\" (attendu : un nombre en h/sem)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "vol_recent",
+  "mut": "négatif",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_recent = \"-5\" (attendu : 0–40 h/sem)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "vol_recent",
+  "mut": "zéro",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "vol_recent",
+  "mut": "absurde",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vol_recent = \"999999\" (attendu : 0–40 h/sem)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "vol_recent",
+  "mut": "virgule FR",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "vol_recent",
+  "mut": "null",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "sessions_max",
+  "mut": "texte",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sessions_max = \"abc\" (attendu : un nombre en séances/s"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "sessions_max",
+  "mut": "négatif",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sessions_max = \"-5\" (attendu : 1–14 séances/sem)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "sessions_max",
+  "mut": "zéro",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sessions_max = \"0\" (attendu : 1–14 séances/sem)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "sessions_max",
+  "mut": "absurde",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE sessions_max = \"999999\" (attendu : 1–14 séances/sem)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "sessions_max",
+  "mut": "virgule FR",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "tri",
+  "key": "sessions_max",
+  "mut": "null",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_distance_km",
+  "mut": "texte",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_distance_km = \"abc\" (attendu : un nombre en km)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_distance_km",
+  "mut": "négatif",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_distance_km = \"-5\" (attendu : 1–500 km)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_distance_km",
+  "mut": "zéro",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_distance_km = \"0\" (attendu : 1–500 km)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_distance_km",
+  "mut": "absurde",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_distance_km = \"999999\" (attendu : 1–500 km)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_distance_km",
+  "mut": "virgule FR",
+  "verdict": "valeur valide différente",
+  "delta": "pic 12.9→10.8h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_distance_km",
+  "mut": "null",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_distance_km = null (attendu : une valeur en km)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_dplus_m",
+  "mut": "texte",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_dplus_m = \"abc\" (attendu : un nombre en m)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_dplus_m",
+  "mut": "négatif",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_dplus_m = \"-5\" (attendu : 0–30000 m)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_dplus_m",
+  "mut": "zéro",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→210",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_dplus_m",
+  "mut": "absurde",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_dplus_m = \"999999\" (attendu : 0–30000 m)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_dplus_m",
+  "mut": "virgule FR",
+  "verdict": "valeur valide différente",
+  "delta": "pic 12.9→10.8h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_dplus_m",
+  "mut": "null",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_dplus_m = null (attendu : une valeur en m)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "vam",
+  "mut": "texte",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vam = \"abc\" (attendu : un nombre en m/h)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "vam",
+  "mut": "négatif",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vam = \"-5\" (attendu : 200–2500 m/h)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "vam",
+  "mut": "zéro",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vam = \"0\" (attendu : 200–2500 m/h)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "vam",
+  "mut": "absurde",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vam = \"999999\" (attendu : 200–2500 m/h)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "vam",
+  "mut": "virgule FR",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE vam = \"12,5\" (attendu : 200–2500 m/h)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "vam",
+  "mut": "null",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_cutoff_h",
+  "mut": "texte",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_cutoff_h = \"abc\" (attendu : un nombre en h)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_cutoff_h",
+  "mut": "négatif",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_cutoff_h = \"-5\" (attendu : 1–200 h)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_cutoff_h",
+  "mut": "zéro",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_cutoff_h = \"0\" (attendu : 1–200 h)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_cutoff_h",
+  "mut": "absurde",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_cutoff_h = \"999999\" (attendu : 1–200 h)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_cutoff_h",
+  "mut": "virgule FR",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "trail",
+  "key": "race_cutoff_h",
+  "mut": "null",
+  "verdict": "sans effet",
+  "delta": "pic 12.9→12.9h · sem 46→46 · séances 209→209",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "swimrun",
+  "key": "race_distance_km",
+  "mut": "texte",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_distance_km = \"abc\" (attendu : un nombre en km)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "swimrun",
+  "key": "race_distance_km",
+  "mut": "négatif",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_distance_km = \"-5\" (attendu : 1–500 km)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "swimrun",
+  "key": "race_distance_km",
+  "mut": "zéro",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_distance_km = \"0\" (attendu : 1–500 km)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "swimrun",
+  "key": "race_distance_km",
+  "mut": "absurde",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_distance_km = \"999999\" (attendu : 1–500 km)"
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "swimrun",
+  "key": "race_distance_km",
+  "mut": "virgule FR",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T2 nombre",
+  "sport": "swimrun",
+  "key": "race_distance_km",
+  "mut": "null",
+  "verdict": "sans effet",
+  "delta": "pic 11.3→11.3h · sem 46→46 · séances 210→210",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "tri",
+  "key": "race_date",
+  "mut": "date passée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2020-01-01\" (attendu : une date future)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "tri",
+  "key": "race_date",
+  "mut": "malformée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"13/06/2027\" (attendu : AAAA-MM-JJ)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "tri",
+  "key": "race_date",
+  "mut": "absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.5→12.5h · sem 46→36 · séances 264→206",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "tri",
+  "key": "race_date",
+  "mut": "dans 3 semaines",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-20\" (attendu : au moins 36 semain"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "tri",
+  "key": "race_date",
+  "mut": "dans 20 ans",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.5→12.5h · sem 46→80 · séances 264→458",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "run",
+  "key": "race_date",
+  "mut": "date passée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2020-01-01\" (attendu : une date future)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "run",
+  "key": "race_date",
+  "mut": "malformée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"13/06/2027\" (attendu : AAAA-MM-JJ)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "run",
+  "key": "race_date",
+  "mut": "absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 9.6→9.6h · sem 46→16 · séances 219→76",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "run",
+  "key": "race_date",
+  "mut": "dans 3 semaines",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-20\" (attendu : au moins 16 semain"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "run",
+  "key": "race_date",
+  "mut": "dans 20 ans",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 9.6→9.6h · sem 46→80 · séances 219→381",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "bike",
+  "key": "race_date",
+  "mut": "date passée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2020-01-01\" (attendu : une date future)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "bike",
+  "key": "race_date",
+  "mut": "malformée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"13/06/2027\" (attendu : AAAA-MM-JJ)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "bike",
+  "key": "race_date",
+  "mut": "absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.9→12.9h · sem 46→14 · séances 266→81",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "bike",
+  "key": "race_date",
+  "mut": "dans 3 semaines",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-20\" (attendu : au moins 14 semain"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "bike",
+  "key": "race_date",
+  "mut": "dans 20 ans",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.9→12.9h · sem 46→80 · séances 266→462",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "swim",
+  "key": "race_date",
+  "mut": "date passée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2020-01-01\" (attendu : une date future)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "swim",
+  "key": "race_date",
+  "mut": "malformée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"13/06/2027\" (attendu : AAAA-MM-JJ)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "swim",
+  "key": "race_date",
+  "mut": "absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 3.5→3.4h · sem 46→12 · séances 259→70",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "swim",
+  "key": "race_date",
+  "mut": "dans 3 semaines",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-20\" (attendu : au moins 12 semain"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "swim",
+  "key": "race_date",
+  "mut": "dans 20 ans",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 3.5→3.5h · sem 46→80 · séances 259→450",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "duathlon",
+  "key": "race_date",
+  "mut": "date passée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2020-01-01\" (attendu : une date future)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "duathlon",
+  "key": "race_date",
+  "mut": "malformée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"13/06/2027\" (attendu : AAAA-MM-JJ)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "duathlon",
+  "key": "race_date",
+  "mut": "absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 8.9→8.6h · sem 46→12 · séances 265→70",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "duathlon",
+  "key": "race_date",
+  "mut": "dans 3 semaines",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-20\" (attendu : au moins 12 semain"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "duathlon",
+  "key": "race_date",
+  "mut": "dans 20 ans",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 8.9→8.9h · sem 46→80 · séances 265→461",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "swimrun",
+  "key": "race_date",
+  "mut": "date passée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2020-01-01\" (attendu : une date future)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "swimrun",
+  "key": "race_date",
+  "mut": "malformée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"13/06/2027\" (attendu : AAAA-MM-JJ)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "swimrun",
+  "key": "race_date",
+  "mut": "absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 11.3→10.9h · sem 46→20 · séances 210→90",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "swimrun",
+  "key": "race_date",
+  "mut": "dans 3 semaines",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-20\" (attendu : au moins 20 semain"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "swimrun",
+  "key": "race_date",
+  "mut": "dans 20 ans",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 11.3→10.9h · sem 46→80 · séances 210→363",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "trail",
+  "key": "race_date",
+  "mut": "date passée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2020-01-01\" (attendu : une date future)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "trail",
+  "key": "race_date",
+  "mut": "malformée",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"13/06/2027\" (attendu : AAAA-MM-JJ)"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "trail",
+  "key": "race_date",
+  "mut": "absente",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.9→12.9h · sem 46→22 · séances 209→99",
+  "err": ""
+ },
+ {
+  "cat": "T3 date",
+  "sport": "trail",
+  "key": "race_date",
+  "mut": "dans 3 semaines",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-20\" (attendu : au moins 22 semain"
+ },
+ {
+  "cat": "T3 date",
+  "sport": "trail",
+  "key": "race_date",
+  "mut": "dans 20 ans",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.9→12.9h · sem 46→80 · séances 209→363",
+  "err": ""
+ },
+ {
+  "cat": "T4 croisé",
+  "sport": "tri",
+  "key": "—",
+  "mut": "vol_recent > vol_max",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.5→4h · sem 46→46 · séances 264→138",
+  "err": ""
+ },
+ {
+  "cat": "T4 croisé",
+  "sport": "tri",
+  "key": "—",
+  "mut": "3 séances / 20 h",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.5→7.9h · sem 46→46 · séances 264→133",
+  "err": ""
+ },
+ {
+  "cat": "T4 croisé",
+  "sport": "tri",
+  "key": "—",
+  "mut": "12 séances / 4 h",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.5→4h · sem 46→46 · séances 264→138",
+  "err": ""
+ },
+ {
+  "cat": "T4 croisé",
+  "sport": "tri",
+  "key": "—",
+  "mut": "ftp_known=oui sans ftp",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T4 croisé",
+  "sport": "tri",
+  "key": "—",
+  "mut": "pace_known=oui sans pace",
+  "verdict": "sans effet",
+  "delta": "pic 12.5→12.5h · sem 46→46 · séances 264→264",
+  "err": ""
+ },
+ {
+  "cat": "T4 croisé",
+  "sport": "tri",
+  "key": "—",
+  "mut": "débutant + Ironman + 20 h",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.5→13.2h · sem 46→46 · séances 264→261",
+  "err": ""
+ },
+ {
+  "cat": "T4 croisé",
+  "sport": "tri",
+  "key": "—",
+  "mut": "douleur + compétition",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 12.5→5.2h · sem 46→46 · séances 264→266",
+  "err": ""
+ },
+ {
+  "cat": "T4 croisé",
+  "sport": "tri",
+  "key": "—",
+  "mut": "off 7 jours sur 7",
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE off_which = \"Lun,Mar,Mer,Jeu,Ven,Sam,Dim\" (attendu : a"
+ }
+]

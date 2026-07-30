@@ -77,13 +77,17 @@ for (const sport of ["trail", "swimrun", "duathlon"]) {
   const d = JSON.parse(out);
   const over = [];
   for (const [id, n] of d.rows) {
+    // R11 — les refus d'entrée typés sont le comportement DEMANDÉ : le fuzz produit
+    // volontairement des combinaisons impossibles (Ironman dans 3 semaines, FTP négative).
+    // Ils sont comptés et affichés, jamais budgétés comme un défaut.
+    if (id.startsWith("U-REFUS:")) continue;
     const key = id.startsWith("U-CRASH") ? "U-CRASH" : id;
     const budget = BUDGET[key];
     if (budget === undefined) { over.push(`${id} = ${n} (check INCONNU : ajouter son budget)`); continue; }
     if (n > budget) over.push(`${id} = ${n} > ${budget}`);
   }
   const pct = Math.round((d.clean / d.cases) * 100);
-  console.log(`${over.length ? "✖" : "✔"} ${sport.padEnd(9)} ${d.clean}/${d.cases} profils sans défaut (${pct}%) · ${d.crashes} crash · ${d.nondet} non-déterminisme`);
+  console.log(`${over.length ? "✖" : "✔"} ${sport.padEnd(9)} ${d.clean}/${d.cases} profils sans défaut (${pct}%) · ${d.refusals || 0} refus d'entrée · ${d.crashes} crash · ${d.nondet} non-déterminisme`);
   for (const o of over) console.log("     " + o);
   if (over.length) failed = true;
 }

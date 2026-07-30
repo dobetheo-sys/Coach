@@ -57,7 +57,7 @@ const E = loadEngine(htmlPath);
 
 const FORMATS = {
   tri: ["S", "M", "70.3", "Full"],
-  run: ["5k", "10k", "semi", "marathon", "trail"],
+  run: ["5k", "10k", "semi", "marathon"], // R7 : `trail` n'est plus un format de course à pied, c'est un SPORT
   bike: ["crit", "route", "cyclo", "clm", "gravel"],
   swim: ["sprint", "demifond", "fond", "ow"],
 };
@@ -236,15 +236,19 @@ test("C1", "sessions_max est un nombre de SÉANCES, pas de jours", "pass", () =>
   return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" ; ") || "ok" };
 });
 
-test("C2", "Date de course trop proche → avertissement, pas de plan rétrodaté", "pass", () => {
-  const p = build("run", { format: "marathon", level: "debutant", history: "reprise", race_date: isoIn(14) });
-  const today = isoIn(0);
-  const passees = p.weeks.filter((w) => w.days.at(-1).date < today).length;
-  const warn = (p._v2?.warnings || []).length;
-  return {
-    ok: passees === 0 || warn > 0,
-    detail: `${passees}/${p.weeks.length} semaines dans le passé, ${warn} avertissement(s)`,
-  };
+// R11.4 — CONTRAT DURCI. Ce test acceptait « un avertissement suffit ». L'audit amont a montré
+// qu'un marathon en 2 semaines sortait comme un plan normal : la constante `minWeeks` existait
+// et personne ne la lisait. Un outil qui accepte de préparer un Ironman en 4 semaines cautionne
+// la blessure. La préparation trop courte est désormais REFUSÉE — avec ses deux issues
+// concrètes (format plus court, ou date compatible), pour que l'athlète puisse arbitrer.
+test("C2", "Préparation trop courte pour le format → REFUS motivé, jamais un plan dégradé", "pass", () => {
+  let refus = null;
+  try { build("run", { format: "marathon", level: "debutant", history: "reprise", race_date: isoIn(14) }); }
+  catch (e) { refus = e; }
+  if (!refus) return { ok: false, detail: "marathon en 2 semaines : plan produit sans refus" };
+  const ok = refus.code === "ENTREE_INVALIDE" && refus.key === "race_date"
+    && /format plus court/.test(refus.human || "") && /à partir du \d{4}-\d{2}-\d{2}/.test(refus.human || "");
+  return { ok, detail: ok ? "refus typé + deux issues proposées" : String(refus.human || refus.message).slice(0, 90) };
 });
 
 test("C3", "Date de course lointaine → le plan commence maintenant", "pass", () => {
@@ -442,15 +446,16 @@ test("E2", "Un seul parseur d'allure (plan et prédiction d'accord)", "pass", ()
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "ok" };
 });
 
-test("E3", "FTP hors bornes physiologiques rejetée", "pass", () => {
+// R11.3 — CONTRAT DURCI : une FTP hors bornes n'est plus « rattrapée pour que les zones
+// restent lisibles », elle est REFUSÉE. Rattraper en silence laissait l'athlète croire que sa
+// saisie avait été prise en compte ; le refus lui dit quoi corriger.
+test("E3", "FTP hors bornes physiologiques → refus typé (jamais des zones rattrapées en silence)", "pass", () => {
   const bad = [];
   for (const ftp of ["-100", "0", "1", "9999"]) {
-    const p = build("bike", { format: "route", ftp_known: "oui", ftp });
-    const neg = sessionsOf(p).some(({ s }) => /-\d+\s*-\s*-?\d+\s*W|--/.test(s.det || ""));
-    const abs = sessionsOf(p).some(({ s }) => {
-      const m = (s.det || "").match(/(\d{4,})\s*W/); return m && +m[1] > 600;
-    });
-    if (neg || abs) bad.push(`ftp=${ftp}${neg ? " (zones négatives)" : ""}${abs ? " (>600W)" : ""}`);
+    let refus = null;
+    try { build("bike", { format: "route", ftp_known: "oui", ftp }); } catch (e) { refus = e; }
+    if (!refus) { bad.push(`ftp=${ftp} accepté sans un mot`); continue; }
+    if (refus.code !== "ENTREE_INVALIDE" || refus.key !== "ftp") bad.push(`ftp=${ftp} : refus non typé`);
   }
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "ok" };
 });
@@ -463,19 +468,34 @@ test("E4", "Poids invraisemblable → estimation énergétique refusée", "pass"
   return { ok: r === null, detail: r ? `IMC ≈ 10.8 → ${r.total?.join("–")} kcal affichées` : "ok" };
 });
 
-test("E5", "buildPlan ne lève jamais sur un état d'entrée dégradé", "pass", () => {
+// R11 — CE TEST A CHANGÉ DE CONTRAT, volontairement. Il assertait « buildPlan ne lève JAMAIS
+// sur une entrée dégradée » : c'était l'exact contraire de ce qu'il faut. L'audit amont a
+// montré où ça menait — `vol_max: "abc"` produisait un Ironman à 30 min hebdo de pic, sans un
+// mot. Le principe du projet est l'inverse : « un plan faux est plus dangereux que pas de
+// plan ». Une entrée fausse doit donc être REFUSÉE, et le refus doit être TYPÉ (clé, valeur,
+// attendu) pour que l'athlète puisse le réparer lui-même.
+test("E5", "buildPlan REFUSE une entrée invalide, avec un refus typé et réparable", "pass", () => {
   const bad = [];
   const mutants = [
-    ["injury en tableau", { injury: ["aucune"] }],
-    ["injury absent", { injury: undefined }],
     ["format inconnu", { format: "ultra" }],
-    ["age null", { age: null }],
+    ["age null", { age: "zéro" }],
     ["vol_max absent", { vol_max: undefined }],
     ["sessions_max texte", { sessions_max: "beaucoup" }],
+    ["niveau renommé", { level: "expert" }],
   ];
   for (const [nom, over] of mutants) {
+    let refus = null;
     try { E.buildPlan("run", { ...profile("run"), ...over }); }
-    catch (e) { bad.push(`${nom}: ${e.message.slice(0, 40)}`); }
+    catch (e) { refus = e; }
+    if (!refus) { bad.push(`${nom}: aucun refus (plan produit sur une entrée fausse)`); continue; }
+    if (refus.code !== "ENTREE_INVALIDE") { bad.push(`${nom}: refus non typé (${String(refus.message).slice(0, 40)})`); continue; }
+    if (!refus.key || !refus.expected || !refus.human) bad.push(`${nom}: refus typé mais incomplet (clé/attendu/message)`);
+  }
+  // Les entrées TOLÉRABLES doivent, elles, continuer de passer : un refus trop large est
+  // aussi un défaut. `injury` absent ou en tableau est un état d'app légitime.
+  for (const [nom, over] of [["injury absent", { injury: undefined }], ["injury en tableau", { injury: ["aucune"] }]]) {
+    try { E.buildPlan("run", { ...profile("run"), ...over }); }
+    catch (e) { bad.push(`${nom}: refusé à tort (${String(e.message).slice(0, 40)})`); }
   }
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "ok" };
 });

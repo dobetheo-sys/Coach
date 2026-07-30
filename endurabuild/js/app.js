@@ -35,6 +35,10 @@ export function buildPlan(a) {
   try {
     return globalThis.EBV2.buildPlan(S.sport, a);
   } catch (e) {
+    // R11 — une entrée invalide n'est PAS une panne du moteur : c'est une réponse que
+    // l'athlète peut corriger lui-même. La confondre avec « MOTEUR_EN_ECHEC » lui montrait un
+    // échec sans cause exploitable alors que la cause était parfaitement identifiable.
+    if (e && e.code === "ENTREE_INVALIDE") throw new EBGenerationError("ENTREE_INVALIDE", e);
     throw new EBGenerationError("MOTEUR_EN_ECHEC", e);
   }
 }

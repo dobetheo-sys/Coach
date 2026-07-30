@@ -367,13 +367,23 @@ const nFuzz = parseInt(process.argv[3] || "1200");
 const cases = [...ofat(sport), ...fuzz(sport, nFuzz)];
 const tally = new Map();
 const examples = new Map();
-let crashes = 0, nondet = 0, ok = 0;
+let crashes = 0, nondet = 0, ok = 0, refusals = 0;
 
 for (const [label, a] of cases) {
   let plan;
   try {
     plan = E.buildPlan(sport, a);
   } catch (e) {
+    // R11 — un REFUS D'ENTRÉE TYPÉ n'est pas un crash : c'est le comportement demandé (le
+    // fuzz produit volontairement des combinaisons impossibles, par exemple un Ironman dans
+    // 3 semaines). On le compte à part, sans le confondre avec une TypeError nue.
+    if (e && e.code === "ENTREE_INVALIDE") {
+      refusals++;
+      const rid = "U-REFUS:" + String(e.key);
+      tally.set(rid, (tally.get(rid) || 0) + 1);
+      if (!examples.has(rid)) examples.set(rid, { label, a, msg: String(e.human || e.message) });
+      continue;
+    }
     crashes++;
     const id = "U-CRASH:" + String(e && e.message).slice(0, 60);
     tally.set(id, (tally.get(id) || 0) + 1);
@@ -402,4 +412,4 @@ for (const [label, a] of cases) {
 }
 
 const rows = [...tally.entries()].sort((x, y) => y[1] - x[1]);
-console.log(JSON.stringify({ sport, cases: cases.length, clean: ok, crashes, nondet, rows, examples: Object.fromEntries([...examples].map(([k, v]) => [k, { label: v.label, msg: v.msg, a: v.a }])) }));
+console.log(JSON.stringify({ sport, cases: cases.length, clean: ok, crashes, nondet, refusals, rows, examples: Object.fromEntries([...examples].map(([k, v]) => [k, { label: v.label, msg: v.msg, a: v.a }])) }));

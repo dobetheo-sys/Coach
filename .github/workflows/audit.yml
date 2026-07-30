@@ -32,6 +32,15 @@ jobs:
       # RÉGRESSION (test attendu vert qui échoue). La dette connue ne casse pas la CI —
       # c'est le but : elle documente l'écart sans bloquer le travail.
       - run: npm run audit:v6
+      # Banc externe multi-sport (v7) : compare le plan émis aux PROMESSES, pas à l'auditeur
+      # interne. Budget par check dans scripts/runAuditV7.mjs (0 = garde-fou définitif).
+      - run: npm run audit:v7
+      # R11 — contrat d'ENTRÉE : 551 entrées fausses doivent tomber en refus MOTIVÉ, en
+      # « sans effet », ou en dérive ANNONCÉE. Zéro dérive silencieuse, zéro crash non typé.
+      - run: npm run audit:amont
+      # Golden master : 814 plans photographiés, détection d'écart au bit près. Les empreintes
+      # sont versionnées ; tout changement de plan doit être VOULU et recapturé explicitement.
+      - run: npm run golden:verify
 
   # E2E navigateur : les smokes de la PWA (check-in, R4, rétention, améliorations)
   # tournent dans un vrai Chromium — Playwright est une devDependency de TEST

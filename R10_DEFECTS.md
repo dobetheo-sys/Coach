@@ -185,3 +185,62 @@ chantier sur la boucle de volume, pas un ajout de champ.
 (format sprint avec 3 000 m de plus longue nage, `vol_recent` > `vol_max`). Sa piste « passe de
 plausibilité en entrée, avec avertissement et jamais de blocage » est la bonne, et c'est le
 prochain gisement — elle n'est pas faite ici.
+
+---
+
+## R11 — Le contrat d'entrée (audit amont, 30/07/2026)
+
+Un troisième banc externe est arrivé, cette fois sur la SURFACE D'ENTRÉE du moteur. Son constat
+tenait en une phrase : sur 551 entrées fausses, le moteur a produit un plan crédible 544 fois et
+planté 7 fois avec une `TypeError` nue. **Il n'a jamais refusé de générer.** C'était la
+contradiction directe de la règle du projet — « un plan faux est plus dangereux que pas de
+plan » : le garde-fou existait côté app, rien ne le déclenchait.
+
+| | avant | après |
+|---|---|---|
+| refus explicite et motivé | **0** | **203** |
+| dérive silencieuse | 130 | **0** |
+| crash `TypeError` non typé | 7 | **0** |
+| dérive ANNONCÉE (plan différent, cause dite) | — | 35 |
+| sans effet | 414 | 310 |
+
+`npm run audit:amont` — 13ᵉ gate CI, exit 1 à la moindre dérive silencieuse.
+
+**Ce qui a été construit** : `src/engine/answerSchema.ts`, source de vérité UNIQUE des domaines
+(`ANSWER_SCHEMA`, `FORMATS_BY_SPORT`), et trois sorties, jamais une quatrième :
+1. `EBInputError` — valeur hors domaine, type faux, requis manquant. Le refus porte la clé, la
+   valeur reçue, l'attendu, et une phrase adressée à l'ATHLÈTE : c'est lui qui répare.
+2. `warnings[]` — contradictions entre valeurs individuellement valides (B8).
+3. `defaults[]` journalisés dans `decisions` — un défaut appliqué est visible, jamais tacite.
+
+**Les défauts éteints** : `vol_max: "abc"` ne donne plus un Ironman à 30 min hebdo de pic (B1) ;
+`minWeeks` est enfin LU, et refuse un marathon en 3 semaines avec ses deux issues concrètes
+(B2) ; une course passée ne produit plus un plan d'une semaine — elle est purgée à la reprise
+d'état, avec une fenêtre de grâce de 3 jours (B3) ; un format hors domaine est refusé, une
+casse fautive corrigée ET dite (B4) ; une énumération renommée ne peut plus faire perdre 91 %
+du volume en silence (B5) ; sept jours bloqués sur sept sont refusés avant génération, et un
+plan à 0 séance après génération (B6) ; une date au format FR est un refus motivé, plus une
+`TypeError` (B7) ; la virgule française est normalisée AVANT parsing — « 2,200 » ne fait plus
+basculer une catégorie trail (B9).
+
+**Deux arbitrages assumés, notés parce qu'ils coûtent quelque chose** :
+
+- *Le banc v6 disait l'inverse.* Son test E5 assertait « `buildPlan` ne lève JAMAIS sur une
+  entrée dégradée ». C'est exactement ce qu'il ne faut pas. Il a été réécrit sous le contrat
+  inverse — un refus TYPÉ et réparable — en gardant son ID. Même chose pour C2 (préparation
+  trop courte : avertissement → refus) et E3 (FTP hors bornes : rattrapée → refusée).
+- *Un athlète déjà inscrit à une course trop proche reçoit un refus, pas un plan dégradé.*
+  C'est la lettre de R11.4, et c'est défendable (le plan serait une fiction), mais ça se paie :
+  il n'aura rien plutôt qu'une préparation imparfaite. Le refus lui propose les deux issues.
+  Le seuil se mesure depuis le DÉPART DU PLAN, pas depuis aujourd'hui : un plan créé il y a
+  vingt semaines pour une course demain reste valide — refuser à trois jours de l'échéance
+  serait absurde.
+
+**Le banc a aussi révélé son propre défaut** : son profil de référence swim portait
+`format: "1500"`, une valeur qui n'existe pas dans le domaine du sport. Le moteur l'acceptait —
+c'est B4, démontré par le banc sur lui-même. Corrigé en `fond`.
+
+**Classement étendu, en le documentant** : le banc ne connaissait que « échec explicite » ou
+« sans effet ». La spec R11.2 prévoit trois canaux : un plan qui change ET qui dit pourquoi est
+conforme. Le banc lit donc maintenant `_v2.warnings` et `_v2.decisions`. Ce n'est pas un
+assouplissement : la dérive silencieuse reste à zéro, et c'est elle le critère de sortie.

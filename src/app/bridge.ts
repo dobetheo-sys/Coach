@@ -5,7 +5,7 @@
  */
 import type { AthleteProfile, V1Plan, V1Step } from "../engine/types.ts";
 import { intensitySplit } from "../engine/loadModel.ts";
-import { parsePaceSec, HISTORY_CAPS, UTIL, MARGIN } from "../engine/constraintMatrix.ts";
+import { parsePaceSec, HISTORY_CAPS, UTIL, MARGIN, MIN_WEEKS } from "../engine/constraintMatrix.ts";
 import { trailObjective, TRAIL_HISTORY_CAPS, TRAIL_UTIL } from "../engine/trailModel.ts";
 import { swimrunObjective } from "../sports/swimrun/objective.ts";
 import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
@@ -17,6 +17,7 @@ import { predictRace, type Prediction } from "../engine/predictor.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes } from "../readiness/fitParser.ts";
 import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
+import { validateAnswers, assertPlanIsAPlan, EBInputError, ANSWER_SCHEMA, FORMATS_BY_SPORT } from "../engine/answerSchema.ts";
 import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
 import { dailyEnergy, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
 import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
@@ -59,8 +60,22 @@ export function completedFromDone(plan: V1Plan, answers: AppAnswers, beforeDate:
 
 /** Génère le plan via le moteur V2 (raisonne → génère → audite → répare) — forme V1Plan. */
 export function buildPlanV2(sport: string, answers: AppAnswers): V1Plan & { _v2?: V2PlanMeta } {
-  const res = generateAudited(toProfile(sport, answers));
+  // R11 — LE CONTRAT D'ENTRÉE, avant toute génération. Trois sorties possibles et jamais une
+  // quatrième : refus motivé (`EBInputError`), avertissement porté par le plan, ou défaut
+  // journalisé. Rendre un plan sans qu'aucun canal ne se soit exprimé était le défaut : le
+  // moteur produisait un Ironman à 30 min de pic sur une saisie illisible, sans un mot.
+  const vr = validateAnswers(sport, answers as Record<string, unknown>, localTodayISO());
+  const res = generateAudited(toProfile(sport, vr.answers as unknown as AppAnswers));
   const plan = res.plan as V1Plan & { _v2?: V2PlanMeta };
+  // R11.6 — un plan vide n'est pas un plan : le contrôle ne peut se faire qu'ICI, une fois
+  // qu'on sait ce qui a réellement été produit.
+  assertPlanIsAPlan(sport, vr.answers.format as string | undefined, plan.weeks as never);
+  // Les contradictions et les défauts appliqués REJOIGNENT les canaux existants : ils
+  // s'affichent là où l'athlète regarde déjà (« Pourquoi ce plan », décisions du moteur).
+  // Les avertissements de SÉCURITÉ du moteur (barrière horaire, prérequis, médical) restent en
+  // tête : ceux du contrat d'entrée sont des remarques de saisie, ils passent après.
+  if (vr.warnings.length) res.warnings.push(...vr.warnings);
+  if (vr.defaults.length) res.decisions.push(...vr.defaults);
   // Répartition des intensités par semaine (dashboard « manifeste ~80/20 »)
   const refs = { cssSecPer100m: 130, thrPaceSecPerKm: 330 };
   let cE = 0, cM = 0, cH = 0;
@@ -415,6 +430,13 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
     const m = sportModule(id);
     return [id, { id: m.id, mainDiscipline: m.mainDiscipline, retestTypes: m.retestTypes, guards: m.guards }];
   })),
+  // R11 — le schéma d'entrée est la SOURCE DE VÉRITÉ des domaines : l'UI doit générer ses
+  // options depuis lui, jamais l'inverse (tant qu'ils sont écrits deux fois, ils divergent).
+  answerSchema: ANSWER_SCHEMA,
+  formatsBySport: FORMATS_BY_SPORT,
+  minWeeks: MIN_WEEKS,
+  validateAnswers,
+  EBInputError,
   importFit: importFitBytes,
   // R6 §3 — l'adaptateur de données réalisées, exposé à l'UI. Le moteur ne connaît que
   // l'instantané ; l'UI décide QUAND le rafraîchir (cadence = semaine de décharge).

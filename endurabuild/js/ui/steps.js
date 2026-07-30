@@ -140,7 +140,15 @@ function evalRules(a, tier){
 function curCfg(){return SPORTS[S.sport];}
 function buildFreeSteps(){
   const cfg=curCfg();
-  const fmtOpts=cfg.formats.map(f=>opt(f[0],f[1])).join("");
+  // R11.1 — le SCHÉMA D'ENTRÉE du moteur est la source de vérité des domaines. L'UI garde ses
+  // libellés (le moteur n'a que faire de « Ironman (3.8/180/42) »), mais la LISTE des valeurs
+  // vient de lui : deux listes écrites à deux endroits divergent toujours, et c'est ainsi
+  // qu'un format proposé ici a pu ne plus exister là-bas — en silence.
+  const allowed = (globalThis.EBV2 && globalThis.EBV2.formatsBySport && globalThis.EBV2.formatsBySport[S.sport]) || null;
+  const fmtList = allowed ? cfg.formats.filter(f=>allowed.includes(f[0])) : cfg.formats;
+  if (allowed && fmtList.length !== cfg.formats.length)
+    console.warn("EB: formats proposés absents du schéma moteur —", cfg.formats.filter(f=>!allowed.includes(f[0])).map(f=>f[0]));
+  const fmtOpts=fmtList.map(f=>opt(f[0],f[1])).join("");
   const steps=[
   {id:"intent",title:"L'intention",eyebrow:"Gratuit — Pourquoi",
    why:"La même cible se prépare différemment selon qu'on vise un chrono, la ligne d'arrivée, ou le plaisir.",

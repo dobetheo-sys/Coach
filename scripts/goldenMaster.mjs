@@ -43,7 +43,7 @@ if (!mode) {
 
 // ---- Espace de profils ----------------------------------------------------
 const FORMATS = {
-  run: ["5k", "10k", "semi", "marathon", "trail"], // `run/trail` : encore audité par runV2Audit (D10-1)
+  run: ["5k", "10k", "semi", "marathon"], // `run/trail` : encore audité par runV2Audit (D10-1)
   bike: ["crit", "route", "cyclo", "clm", "gravel"],
   swim: ["sprint", "demifond", "fond", "ow"],
   tri: ["S", "M", "70.3", "Full"],

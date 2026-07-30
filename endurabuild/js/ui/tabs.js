@@ -78,6 +78,34 @@ function tabbarHTML() {
 function renderGenerationFailure(err) {
   const screen = $("screen");
   if (!screen) return;
+  const cause = err && err.cause;
+  // R11 — refus d'ENTRÉE : la cause est une réponse, pas un bug. On la nomme, on explique
+  // comment la corriger, et on emmène l'athlète là où il peut le faire. Un refus motivé vaut
+  // infiniment mieux qu'un plan bâti sur une valeur fausse.
+  if (err && err.code === "ENTREE_INVALIDE" && cause) {
+    screen.innerHTML =
+      '<div class="card" role="alert" style="border-color:#c0392b">'
+      + '<h2 style="margin-top:0">Le plan n’a pas été généré</h2>'
+      + "<p>" + String(cause.human || cause.message) + "</p>"
+      + "<p><b>Ton profil est conservé</b> — rien n’a été perdu.</p>"
+      + '<div class="nav" style="gap:10px"><button type="button" class="btn primary" id="ebFixInput">Corriger ma réponse</button>'
+      + '<button type="button" class="btn" id="ebRetryGen">Réessayer</button></div>'
+      + '<div class="why" style="margin-top:10px">Réponse concernée : <code>' + String(cause.key)
+      + "</code> = <code>" + JSON.stringify(cause.value) + "</code> — attendu : " + String(cause.expected) + "</div></div>";
+    // On renvoie au QUESTIONNAIRE, pas au Profil : le Profil est une vue du plan, et il n'y a
+    // justement pas de plan. Import différé — `steps.js` importe déjà ce module.
+    const fix = $("ebFixInput");
+    if (fix) fix.onclick = async () => {
+      invalidatePlan();
+      const st = await import("./steps.js");
+      hideTabs(); S.onPlan = false; ebSave();
+      S.step = Math.max(0, st.curSteps().length - 1);
+      st.renderStep();
+    };
+    const rb = $("ebRetryGen");
+    if (rb) rb.onclick = () => { invalidatePlan(); renderActiveTab(); };
+    return;
+  }
   screen.innerHTML =
     '<div class="card" role="alert" style="border-color:#c0392b">'
     + '<h2 style="margin-top:0">La génération du plan a échoué</h2>'

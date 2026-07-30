@@ -70,6 +70,40 @@ ok(reg.tri && reg.tri.retestTypes.length === 3, "le tri déclare ses 3 tests de 
 ok(reg.thrown !== null && !reg.plan, "un sport inconnu lève au lieu de produire un plan silencieux");
 ok(reg.thrown && /SPORT_INCONNU/.test(reg.thrown.code || reg.thrown.msg), "l'erreur est PORTEUSE (" + (reg.thrown ? reg.thrown.code : "—") + ")");
 
+// ---- 6. R11 : le CONTRAT D'ENTRÉE — une réponse fausse est refusée, et le refus est réparable
+const inv = await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  const { invalidatePlan, setTab } = await import("./js/ui/tabs.js");
+  const before = JSON.stringify(S.answers);
+  S.answers.vol_max = "abc"; ebSave();
+  invalidatePlan(); setTab("week");
+  const txt = document.querySelector("#screen").textContent;
+  const out = {
+    refus: /Le plan n’a pas été généré/.test(txt),
+    humain: /n’est pas un nombre|n'est pas un nombre/.test(txt),
+    cle: /vol_max/.test(txt),
+    bouton: !!document.getElementById("ebFixInput"),
+    profilIntact: JSON.parse(before).level === S.answers.level,
+  };
+  S.answers = JSON.parse(before); ebSave(); invalidatePlan(); setTab("week");
+  return out;
+});
+ok(inv.refus, "une valeur illisible fait REFUSER le plan (jamais un plan fantôme à 30 min de pic)");
+ok(inv.humain && inv.cle, "le refus dit QUOI corriger, en français, avec la réponse concernée");
+ok(inv.bouton, "un bouton ramène l'athlète à ses réponses — le refus est réparable");
+ok(inv.profilIntact, "le profil est conservé : un refus n'efface rien");
+const tooShort = await page.evaluate(() => {
+  const a = { intent: "competition", format: "marathon", level: "inter", history: "confirme", injury: "aucune",
+    sessions_max: "7", vol_max: "10", dispo: "quotidienne", age: "32", sex: "H", med_pain: "non", med_dizzy: "non",
+    med_treat: "non", off_days: "non", doubles: "oui", terrain: "route",
+    race_date: new Date(Date.now() + 21 * 864e5).toISOString().slice(0, 10) };
+  try { globalThis.EBV2.buildPlan("run", a); return { refus: false }; }
+  catch (e) { return { refus: e.code === "ENTREE_INVALIDE", human: String(e.human || "") }; }
+});
+ok(tooShort.refus, "marathon dans 3 semaines : REFUS (minWeeks enfin appliqué — R11.4)");
+ok(/format plus court/.test(tooShort.human || "") && /à partir du/.test(tooShort.human || ""),
+  "… et le refus propose les DEUX issues concrètes (format plus court, ou date compatible)");
+
 ok(errs.length === 0, "aucune exception non attrapée (" + errs.length + ")");
 if (errs.length) info(errs.slice(0, 3).join(" | "));
 
