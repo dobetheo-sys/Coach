@@ -2,7 +2,7 @@
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
    une météo périmée est pire qu'une absence de météo). */
-const VERSION = "eb-pwa-v15"; // v15 : R7 TRAIL (sport à part entière, charge à 3 axes) + audit externe v6
+const VERSION = "eb-pwa-v16"; // v16 : R10 phase 0 — générateur legacy supprimé, échec de génération VISIBLE
 const ASSETS = [
   "./",
   "./index.html",
@@ -13,7 +13,6 @@ const ASSETS = [
   "./js/engine.js",
   "./js/state.js",
   "./js/config.js",
-  "./js/legacy-fallback.js",
   "./js/export.js",
   "./js/ui/steps.js",
   "./js/ui/plan-view.js",

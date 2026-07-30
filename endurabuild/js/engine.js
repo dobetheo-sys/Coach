@@ -5188,6 +5188,11 @@ function localTodayISO()         {
   // (une table de plafonds recopiée dans l'UI, c'est une table qui divergera).
   trailObjective: (answers                         ) => trailObjective(toProfile("trail", answers)),
   trailCaps: { history: TRAIL_HISTORY_CAPS, util: TRAIL_UTIL },
+  // R10 phase 0 (§ R10.0.3) — SOURCE UNIQUE des plafonds de volume. L'UI en gardait une copie
+  // littérale (`capsBySport`/`utilBySport` dans steps.js) qui avait déjà DIVERGÉ : elle
+  // annonçait 8h/sem là où le moteur en applique 9 (vélo/route/reprise). Les règles
+  // pédagogiques expliquent des décisions : elles doivent lire les chiffres qui décident.
+  volumeCaps: { history: HISTORY_CAPS, util: UTIL, margin: MARGIN },
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
   dailyEnergy: dailyEnergyV2,

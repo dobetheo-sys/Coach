@@ -49,6 +49,11 @@ dépôt — historique git si besoin.
   (test attendu vert qui échoue) ; la dette connue (`expect:'fail'`) ne bloque pas la CI.
   Quand un défaut est corrigé, passer son `expect` à `'pass'` **dans le même commit** :
   il devient un garde-fou permanent.
+- `npm run golden:capture` / `golden:verify` — **golden master** (spec R10) : photographie
+  578 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
+  blessures/âges/terrain/volumes) et détecte tout écart au bit près. `golden/hashes.json` est
+  versionné (empreintes) ; la photo complète (~46 Mo) reste locale et sert à LOCALISER le
+  champ qui a changé. Bloquant avant toute extraction mécanique.
 - `npm run build:standalone` — recoud la **PWA** en UN fichier HTML autonome
   (`EnduraBuild-standalone.html`, ignoré par git) : 23 modules ES en `Blob` + `importmap`
   (instance unique par module, imports circulaires préservés), CSS et polices en `data:`.

@@ -3,8 +3,7 @@
 import { SPORTS } from "../config.js";
 import { S, todayISO } from "../state.js";
 import { evalRules } from "../ui/steps.js";
-import { buildPlan } from "../app.js";
-import { renderTabs, invalidatePlan } from "./tabs.js";
+import { renderTabs, invalidatePlan, ensurePlan } from "./tabs.js";
 
 const _IFZ={"bk.z2":.65,"bk.ss":.90,"bk.vo2":1.12,"bk.frc":.82,"bk.rp":.84,"bk.thr":1.0,
   "rn.easy":.68,"rn.mara":.84,"rn.thr":.98,"rn.vo2":1.10,"rn.rec":.60,
@@ -77,7 +76,10 @@ function renderPlan(){
 }
 // Bug 2/5 — brancher planToJSON (interopérabilité) + export .ics (agenda de l'athlète).
 function downloadPlan(){
-  const a=S.answers, plan=buildPlan(a), cfg=SPORTS[S.sport];
+  // R10 phase 0 — l'export réutilise le plan AFFICHÉ (ensurePlan) au lieu d'en régénérer un
+  // second : deux générations pouvaient déjà diverger, et surtout un échec de génération
+  // doit remonter comme tel, pas produire un export silencieusement différent.
+  const a=S.answers, plan=ensurePlan(), cfg=SPORTS[S.sport];
   const ic={sw:"🏊",bk:"🚴",rn:"🏃",br:"🔁",rs:"💪"};
   let rows="";
   plan.weeks.forEach(w=>{
@@ -116,7 +118,6 @@ function downloadPlan(){
 
 // ===== MOTEUR V2 (bundle EBV2, injecté en fin de fichier) =====
 // La génération passe par le moteur TypeScript raisonné (src/ → npm run build:app).
-// Le générateur legacy ci-dessus reste en REPLI si le bundle manque (vieux exports).
 // Refonte onglets : l'ancien v2ExtrasHTML est scindé en deux —
 //   readinessCardHTML()  → carte « Forme du jour », rendue par l'onglet 📅 Semaine ;
 //   progressCardsHTML(p) → régularité/badges, prédiction, historique, intensités,

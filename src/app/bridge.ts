@@ -5,7 +5,7 @@
  */
 import type { AthleteProfile, V1Plan, V1Step } from "../engine/types.ts";
 import { intensitySplit } from "../engine/loadModel.ts";
-import { parsePaceSec } from "../engine/constraintMatrix.ts";
+import { parsePaceSec, HISTORY_CAPS, UTIL, MARGIN } from "../engine/constraintMatrix.ts";
 import { trailObjective, TRAIL_HISTORY_CAPS, TRAIL_UTIL } from "../engine/trailModel.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
@@ -394,6 +394,11 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   // (une table de plafonds recopiée dans l'UI, c'est une table qui divergera).
   trailObjective: (answers: Record<string, unknown>) => trailObjective(toProfile("trail", answers)),
   trailCaps: { history: TRAIL_HISTORY_CAPS, util: TRAIL_UTIL },
+  // R10 phase 0 (§ R10.0.3) — SOURCE UNIQUE des plafonds de volume. L'UI en gardait une copie
+  // littérale (`capsBySport`/`utilBySport` dans steps.js) qui avait déjà DIVERGÉ : elle
+  // annonçait 8h/sem là où le moteur en applique 9 (vélo/route/reprise). Les règles
+  // pédagogiques expliquent des décisions : elles doivent lire les chiffres qui décident.
+  volumeCaps: { history: HISTORY_CAPS, util: UTIL, margin: MARGIN },
   importFit: importFitBytes,
   sessionNutrition: nutritionForSession,
   dailyEnergy: dailyEnergyV2,

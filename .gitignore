@@ -1,3 +1,4 @@
 node_modules/
 package-lock.json
 EnduraBuild-standalone.html
+golden/plans.full.json

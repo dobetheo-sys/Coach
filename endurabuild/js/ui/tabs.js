@@ -2,7 +2,7 @@
 // RÈGLE DE FOND : le plan est généré UNE fois (S.currentPlan) ; un changement
 // d'onglet ne rappelle JAMAIS buildPlan — les onglets sont des vues du même objet.
 import { S, $, ebSave, todayISO } from "../state.js";
-import { buildPlan } from "../app.js";
+import { buildPlan, EBGenerationError } from "../app.js";
 import { renderTabProfile } from "./tab-profile.js";
 import { renderTabPlanGeneral } from "./tab-plan-general.js";
 import { renderTabToday } from "./tab-today.js";
@@ -64,8 +64,39 @@ function tabbarHTML() {
   ).join("");
 }
 
+/**
+ * Écran d'échec de génération (spec R10 § R10.0.2). Volontairement PAS un `console.warn` :
+ * l'athlète doit savoir qu'il n'a pas de plan, et savoir que son profil est intact. Le
+ * générateur de repli produisait un plan dégradé en silence — c'est exactement ce qu'on
+ * refuse maintenant.
+ */
+function renderGenerationFailure(err) {
+  const screen = $("screen");
+  if (!screen) return;
+  screen.innerHTML =
+    '<div class="card" role="alert" style="border-color:#c0392b">'
+    + '<h2 style="margin-top:0">La génération du plan a échoué</h2>'
+    + "<p>Rien n’a été enregistré — <b>ton profil est conservé</b>. Réessaie ; si le problème "
+    + "persiste, signale-le.</p>"
+    + '<button type="button" class="btn" id="ebRetryGen">Réessayer</button>'
+    + '<div class="why" style="margin-top:10px">Détail technique : <code>'
+    + String((err && err.code) || "INCONNU") + "</code>"
+    + (err && err.cause && err.cause.message ? " — " + String(err.cause.message).slice(0, 200) : "")
+    + "</div></div>";
+  const btn = $("ebRetryGen");
+  if (btn) btn.onclick = () => { invalidatePlan(); renderActiveTab(); };
+  const bar = $("ebTabbar");
+  if (bar) bar.remove(); // aucune vue de plan n'a de sens sans plan
+}
+
 function renderActiveTab() {
-  const plan = ensurePlan();
+  let plan;
+  try {
+    plan = ensurePlan();
+  } catch (e) {
+    if (e instanceof EBGenerationError) { renderGenerationFailure(e); return; }
+    throw e;
+  }
   const screen = $("screen");
   if (screen) screen.setAttribute("role", "tabpanel");
   const tab = TABS.find((t) => t[0] === activeTab) || TABS[TABS.length - 1];

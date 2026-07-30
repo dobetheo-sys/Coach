@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smoke-improvements.mjs", "smoke-dates.mjs",
-  "smoke-trail.mjs"];
+  "smoke-trail.mjs", "smoke-nofallback.mjs"];
 let failed = 0;
 for (const s of SUITES) {
   console.log("\n━━━ " + s + " ━━━");
