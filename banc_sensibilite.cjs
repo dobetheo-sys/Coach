@@ -1,4 +1,11 @@
-// banc_sensibilite.js — chaque réponse du questionnaire doit changer le plan. Sinon on ment à l'athlète.
+// banc_sensibilite.cjs — chaque réponse du questionnaire doit changer le plan. Sinon on ment à
+// l'athlète (banc externe R11.8).
+//
+// CRITÈRE DE SORTIE : toute clé listée dans ATTENDU doit avoir au moins une valeur qui modifie
+// l'empreinte du plan (volumes, noms de séances, zones, placement des jours). Une clé inerte
+// fait échouer le banc — c'est ce qui empêche B10 (`cycle_sync`) et B11 (`dispo`) de revenir.
+// Les SATURATIONS assumées (`sleep=bon`, `life_load=legere` : les valeurs hautes n'ajoutent
+// rien à la valeur normale) ne sont pas des défauts et ne sont pas comptées.
 "use strict";
 /* Chargement portable du moteur (même contrat que `audit_v7.cjs`) :
  *   ENGINE=/chemin/engine.js  ou  STANDALONE=/chemin/EnduraBuild-standalone.html
@@ -30,6 +37,9 @@ function fp(p){const names=new Map(),zones=new Map(),slots=new Map();let mins=0;
  const j=m=>[...m.entries()].sort().map(x=>x.join(":")).join("|");
  return {use10:!!p.use10,peak:p.volPeak,weeks:p.totalWeeks,mins:Math.round(mins),names:j(names),zones:j(zones),slots:j(slots)};}
 const diff=(a,b)=>["use10","peak","weeks","mins","names","zones","slots"].filter(k=>a[k]!==b[k]);
+// Les deux dates du cycle sont indispensables à la périodisation : sans elles, la question
+// serait de nouveau une case à cocher sans effet (c'est exactement le défaut B10).
+const ATTENDU=["sleep","life_load","dispo","level","history","cycle_sync","age","weight_lever","off_days"];
 const REF={intent:"competition",level:"inter",history:"confirme",injury:"aucune",sessions_max:"9",vol_max:"13",
  vol_recent:"7",dispo:"partielle",doubles:"parfois",off_days:"non",sleep:"moyen",life_load:"normale",age:"30",
  weight:"79",sex:"H",race_date:"2027-06-13",weight_lever:"non",format:"Full",ftp_known:"oui",ftp:"227",
@@ -44,10 +54,23 @@ const T=[
  ["dispo=weekend",{dispo:"weekend"}],["dispo=semaine",{dispo:"semaine"}],
  ["level=avance",{level:"avance"}],["level=debutant",{level:"debutant"}],
  ["history=ancien",{history:"ancien"}],["history=reprise",{history:"reprise"}],
- ["sex=F",{sex:"F"}],["sex=F + cycle_sync=oui",{sex:"F",cycle_sync:"oui"}],
+ ["sex=F",{sex:"F"}],// Date choisie pour que la fenêtre prémenstruelle NE tombe PAS sur les semaines de décharge :
+ // avec un cycle de 28 jours et un plan démarrant un jour 1, les deux coïncident toutes les
+ // quatre semaines et il n'y a alors rien à déplacer (comportement correct, mais qui ne teste
+ // rien).
+ ["sex=F + cycle_sync=oui",{sex:"F",cycle_sync:"oui",cycle_start:"2026-08-10",cycle_len:"30"}],
  ["age=18",{age:"18"}],["age=55",{age:"55"}],["age=70",{age:"70"}],
  ["weight_lever=oui",{weight_lever:"oui",weight:"85"}],
  ["off_days=oui (Lun+Ven)",{off_days:"oui",off_which:"Lun,Ven"}],
 ];
+const agit=new Set();
 for(const [lbl,mut] of T){const a={...REF,...mut};let f;try{f=fp(E.buildPlan("tri",a));}catch(e){console.log(lbl.padEnd(34),"CRASH");continue;}
- const d=diff(base,f);console.log(lbl.padEnd(34), d.length?d.join("+"):"∅  AUCUN EFFET SUR LE PLAN", d.includes("peak")?`(pic ${base.peak}→${f.peak}h)`:"");}
+ const d=diff(base,f);console.log(lbl.padEnd(34), d.length?d.join("+"):"∅  AUCUN EFFET SUR LE PLAN", d.includes("peak")?`(pic ${base.peak}→${f.peak}h)`:"");
+ if(d.length)for(const k of ATTENDU)if(lbl.startsWith(k+"=")||lbl.startsWith(k+" ")||lbl.includes(k))agit.add(k);}
+const inertes=ATTENDU.filter(k=>!agit.has(k));
+if(inertes.length){
+  console.error("\n\u2716 clé(s) INERTE(S) : "+inertes.join(", "));
+  console.error("Une question posée à l'athlète doit agir sur son plan, ou disparaître du questionnaire.");
+  process.exit(1);
+}
+console.log("\n\u2713 toutes les réponses attendues agissent sur le plan.");

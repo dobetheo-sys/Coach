@@ -38,6 +38,10 @@ jobs:
       # R11 — contrat d'ENTRÉE : 551 entrées fausses doivent tomber en refus MOTIVÉ, en
       # « sans effet », ou en dérive ANNONCÉE. Zéro dérive silencieuse, zéro crash non typé.
       - run: npm run audit:amont
+      # R11.8 — banc de SENSIBILITÉ : toute réponse du questionnaire doit modifier le plan.
+      # Une clé inerte fait échouer la CI — c'est ce qui empêche `cycle_sync` et `dispo` de
+      # redevenir des cases à cocher sans effet.
+      - run: npm run audit:sensibilite
       # Golden master : 814 plans photographiés, détection d'écart au bit près. Les empreintes
       # sont versionnées ; tout changement de plan doit être VOULU et recapturé explicitement.
       - run: npm run golden:verify

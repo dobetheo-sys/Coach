@@ -29,6 +29,10 @@ export interface AthleteProfile {
    * une observation ne remplace jamais une contrainte. Absent = comportement d'avant.
    */
   measured?: MeasuredSnapshot | null;
+  /** R11.7 — périodisation sur le cycle : date du 1er jour des dernières règles + longueur. */
+  cycle_sync?: string;
+  cycle_start?: string;
+  cycle_len?: string;
   sessions_max?: string;
   dispo?: string; // "semaine" | "quotidienne" | …
   shift_ok?: string;

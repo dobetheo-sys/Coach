@@ -112,6 +112,8 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   med_dizzy: enumF("les vertiges à l'effort", OUI_NON),
   med_treat: enumF("ton suivi médical", OUI_NON),
   cycle_sync: enumF("la synchronisation avec ton cycle", OUI_NON),
+  cycle_start: { type: "date", label: "le 1er jour de tes dernières règles" },
+  cycle_len: numF("la longueur de ton cycle", 21, 40, "jours"),
   weight_lever: enumF("le levier du poids", ["oui", "non", "coach"]),
   age: numF("ton âge", 10, 100, "ans"),
   weight: numF("ton poids", 25, 250, "kg"),

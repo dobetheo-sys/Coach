@@ -8,6 +8,7 @@ import type { ReasonedPlan, V1Day, V1Session, V1Step } from "../engine/types.ts"
 import { buildSessions, type SessionCtx } from "./sessionLibrary.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { intOf, renderSess, type Refs, type HrZones } from "./renderer.ts";
+import { readCycle, weekIsLateLuteal } from "../engine/cycleModel.ts";
 
 const J = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
@@ -87,6 +88,8 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
       if (t) { t.charge = "dur"; t.slot = "dur2"; t.swapped = true; }
     }
   }
+
+  applyAvailability(r, days);
 
   // Fix ciblé « reprise » : garantir une semaine peak de charge portant la signature (durLong)
   if ((a.history || "confirme") === "reprise") {
@@ -169,6 +172,8 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   applyRunImpactCap(r, days, refs, hz);
   applySessionBudget(r, days);
   applyStrengthGrafts(r, days);
+  applyWeightLever(r, days, refs, hz, ctx);
+  applyCyclePeriodisation(r, days, refs, hz, ctx);
   applyAntiCollage(r, days, refs, hz, ctx);
   applyPolarizationGuard(r, days, ctx, refs, hz);
   // R5.2 (audit v7 bis) — EN DERNIER : la couverture des disciplines tournait AVANT le budget
@@ -230,6 +235,82 @@ function applyWeeklyVariety(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZ
       }
     }
   }
+}
+
+
+/**
+ * R11.7 — `dispo` AGIT ENFIN SUR LE PLAN.
+ *
+ * L'audit amont l'a mesuré : `quotidienne`, `semaine`, `partielle` et `weekend` donnaient
+ * QUATRE PLANS STRICTEMENT IDENTIQUES, placement des jours compris. Quelqu'un qui déclarait
+ * « week-end surtout » recevait le plan de quelqu'un de libre tous les jours. On lui posait la
+ * question, on lui affichait que ça comptait, et ça ne changeait rien — c'est le genre de
+ * mensonge qui coûte plus cher au produit que la fonctionnalité manquante.
+ *
+ * Deux effets, choisis parce qu'ils sont ceux qu'un entraîneur applique vraiment :
+ *   1. le NOMBRE DE JOURS d'entraînement (`weekend` 3, `partielle` 5, sinon 7) — la contrainte
+ *      première d'une vie réelle ; le volume, lui, reste piloté par la courbe, donc moins de
+ *      jours donne des séances plus longues, jusqu'à ce que les plafonds parlent ;
+ *   2. la SÉANCE LONGUE au week-end dès que la semaine est contrainte — une sortie longue un
+ *      mardi soir n'existe pas, et la prescrire est la façon la plus sûre de faire décrocher.
+ *
+ * Cette passe ne touche QUE les créneaux et les charges : elle tourne avant la construction des
+ * séances, donc rien n'est écrit deux fois et le reste du pipeline la voit comme une semaine
+ * ordinaire.
+ */
+function applyAvailability(r: ReasonedPlan, days: GenDay[]): void {
+  const dispo = String(r.profile.dispo || "quotidienne");
+  // « Week-end surtout » ne veut pas dire « uniquement le week-end » : deux jours de week-end
+  // plus deux créneaux de semaine, c'est ce que fait réellement quelqu'un qui répond ça. À
+  // trois jours, le plan perdait un stimulus entier (la VO2 en swimrun, le travail de côte en
+  // duathlon montagneux) — mesuré au banc v7.
+  const maxDays = dispo === "weekend" ? 4 : dispo === "partielle" ? 5 : 7;
+  const longToWeekend = dispo === "weekend" || dispo === "semaine";
+  if (maxDays >= 7 && !longToWeekend) return; // `quotidienne` : aucune contrainte à appliquer
+  let moved = 0, cut = 0;
+  // Ce qu'on GARDE, par ordre de priorité — raisonner en « quoi garder » plutôt qu'en « quoi
+  // couper » évite de se retrouver avec trois jours durs et aucun jour facile : la sortie
+  // longue est la séance qui fait le plan, puis une séance de qualité, puis du facile, puis la
+  // seconde qualité. Le reste cède.
+  const KEEP: Record<string, number> = { durLong: 0, dur1: 1, facileR: 2, dur2: 3, facile2: 4, recup: 5 };
+  for (let w = 1; w <= r.weeks; w++) {
+    const wd = days.filter((d) => d.week === w);
+    if (longToWeekend) {
+      const longDay = wd.find((d) => d.slot === "durLong" && !d.forced);
+      const target = ["Sam", "Dim"].map((j) => wd.find((d) => d.jour === j && !d.forced)).find(Boolean);
+      if (longDay && target && longDay !== target) {
+        [longDay.charge, target.charge] = [target.charge, longDay.charge];
+        [longDay.slot, target.slot] = [target.slot, longDay.slot];
+        moved++;
+      }
+    }
+    if (maxDays < 7) {
+      const active = () => wd.filter((d) => d.charge !== "off" && !d.forced);
+      // En « week-end surtout », les jours de semaine cèdent AVANT le samedi et le dimanche.
+      const weekendBonus = (d: GenDay) => (dispo === "weekend" && (d.jour === "Sam" || d.jour === "Dim") ? -10 : 0);
+      for (let g = 0; g < 7 && active().length > maxDays; g++) {
+        // La victime est le jour le MOINS prioritaire ; en « week-end surtout », samedi et
+        // dimanche sont protégés par un bonus, ce sont eux qu'on garde.
+        const victim = active().sort((x, y) => (KEEP[y.slot] ?? 3) + weekendBonus(y) - ((KEEP[x.slot] ?? 3) + weekendBonus(x)))[0];
+        if (!victim) break;
+        victim.charge = "off"; victim.slot = "off";
+        cut++;
+      }
+    }
+  }
+  // Rien n'a bougé (le schéma de 7 jours pose déjà la longue au samedi) : on ne journalise pas
+  // une décision qui n'a rien décidé. Une liste de décisions gonflée de non-événements se lit
+  // moins bien qu'une liste courte et vraie.
+  if (!moved && !cut) return;
+  r.decisions.push({
+    id: "R11-dispo", what: "Jours d'entraînement",
+    val: (cut ? maxDays + " jour(s)/semaine" : "") + (cut && moved ? " · " : "") + (moved ? "sortie longue déplacée au week-end (" + moved + " semaine(s))" : ""),
+    why: dispo === "weekend"
+      ? "Tu as déclaré t'entraîner surtout le week-end : le plan concentre les séances qui comptent sur samedi et dimanche plutôt que d'en semer sept que tu ne feras pas"
+      : dispo === "partielle"
+        ? "Tu as déclaré 4-5 jours par semaine : le plan tient dans cette enveloppe, avec des séances plus longues plutôt qu'un calendrier qu'on ne suit pas"
+        : "Tes journées de semaine sont contraintes : la sortie longue tombe au week-end, là où le temps existe vraiment",
+  });
 }
 
 /** Plafond de jours d'impact course : l'excédent devient cross-training vélo ou repos.
@@ -473,6 +554,114 @@ function applySessionBudget(r: ReasonedPlan, days: GenDay[]): void {
       for (let i = any.length - 1; i >= 0 && over > 0; i--) { over -= nSess(any[i]); toOff(any[i]); }
     }
   }
+}
+
+
+
+/**
+ * R11.7 — `cycle_sync` AGIT ENFIN. Voir `src/engine/cycleModel.ts` pour ce que dit (et ne dit
+ * pas) la littérature : l'effet moyen de la phase sur la performance est TRIVIAL, la
+ * variabilité entre personnes est grande. On ne touche donc pas au VOLUME — la courbe reste la
+ * courbe — on touche au PLACEMENT : sur une semaine majoritairement prémenstruelle, la SECONDE
+ * séance de qualité redevient une séance facile. Une seule, jamais les deux : supprimer
+ * l'intensité d'une semaine entière sur une donnée de calendrier serait aussi faux que
+ * l'ignorer.
+ *
+ * L'athlète garde le dernier mot : la question est révocable, et l'effet disparaît avec elle.
+ */
+function applyCyclePeriodisation(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZones, ctx: SessionCtx): void {
+  const cyc = readCycle(r.profile);
+  if (!cyc.active) return;
+  const mod = sportModule(r.profile.sport as string);
+  let touched = 0, deja = 0;
+  for (let w = 1; w <= r.weeks; w++) {
+    const wd = days.filter((d) => d.week === w);
+    if (!weekIsLateLuteal(cyc, wd.map((d) => d.date || "").filter(Boolean))) continue;
+    // Récup et affûtage sont DÉJÀ allégés : rien à déplacer. Ce cas est fréquent et il mérite
+    // d'être dit — avec un cycle proche de 28 jours, la fenêtre prémenstruelle tombe souvent
+    // pile sur la semaine de décharge. C'est une bonne nouvelle, pas un raté du moteur.
+    if (wd[0]?.isR || wd[0]?.phaseId === "taper") { deja++; continue; }
+    // La SECONDE qualité seulement : `dur2`. `dur1` et la longue restent — c'est ce qui fait
+    // la semaine, et rien ne justifie de les retirer.
+    const target = wd.find((d) => d.slot === "dur2" && !d.forced && d.charge === "dur");
+    if (!target) continue;
+    const built = buildSessions(ctx, mod.easyFallbackSlot as Parameters<typeof buildSessions>[1], target.phaseId, target.prog || 0, target.week);
+    const pick = built.find((x) => x.d !== "rs");
+    if (!pick) continue;
+    renderSess(pick, refs, hz, r.baseRefs);
+    pick.note = "Semaine prémenstruelle : cette séance de qualité devient une séance facile. Ce n'est pas une baisse de niveau — c'est que la thermorégulation et la perception de l'effort sont moins favorables sur ces quelques jours, et qu'une séance dure y coûte plus cher qu'elle ne rapporte. Le volume de la semaine, lui, ne bouge pas. Si tu te sens très bien, fais-la dure : tu es la seule à pouvoir en juger."
+      + (pick.note ? " " + pick.note : "");
+    target.charge = "facile"; target.slot = mod.easyFallbackSlot; target.sessions = [pick];
+    touched++;
+  }
+  r.decisions.push({
+    id: "R11-cycle", what: "Périodisation sur ton cycle",
+    val: touched + " semaine(s) prémenstruelle(s) allégée(s) d'une séance de qualité"
+      + (deja ? " · " + deja + " tombai(en)t déjà sur une semaine de décharge" : ""),
+    why: "Tu as demandé à caler le plan sur ton cycle. L'effet du cycle sur la performance est en moyenne FAIBLE et très variable d'une personne à l'autre : le plan ne prétend donc pas savoir comment tu te sens. Il déplace seulement l'intensité hors de la fenêtre prémenstruelle, sans toucher au volume — et tu peux passer outre n'importe quel jour",
+  });
+}
+
+/**
+ * R11.7 — `weight_lever` AGIT SUR LE PLAN, sans jamais devenir une injonction.
+ *
+ * L'audit amont l'a relevé : la réponse était déclarée, affichée dans une carte de règle, et
+ * sans le moindre effet. Le câbler pose une question de fond, parce que la frontière du
+ * manifeste est nette : **jamais de cible d'apport, jamais de régime, jamais de poids visé.**
+ * Ce qui reste — et qui est de l'entraînement, pas de la diététique :
+ *
+ *   1. le RENFORCEMENT est garanti chaque semaine de charge. La masse musculaire est le
+ *      déterminant de la dépense de repos ; c'est aussi ce qu'un déficit énergétique attaque en
+ *      premier. C'est une prescription d'entraînement, pas un conseil alimentaire ;
+ *   2. une séance FACILE de plus en phase de base quand le budget le permet — le volume à
+ *      faible intensité est le levier de composition corporelle le mieux établi, et le seul qui
+ *      ne coûte rien en fraîcheur.
+ *
+ * Ce que la passe ne fait JAMAIS : réduire les glucides, parler de kilos, ni transformer une
+ * séance de qualité en séance « brûle-graisses » — cette notion n'a pas de sens et sert surtout
+ * à vendre des plans.
+ */
+function applyWeightLever(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZones, ctx: SessionCtx): void {
+  if (String(r.profile.weight_lever || "non") !== "oui") return;
+  let added = 0, extra = 0;
+  for (let w = 1; w <= r.weeks; w++) {
+    const wd = days.filter((d) => d.week === w);
+    if (wd[0]?.isR || wd[0]?.phaseId === "taper") continue;
+    const hasStrength = wd.some((d) => d.sessions.some((s) => /Renfo|Gainage|Force max|Plio/.test(s.name)));
+    if (!hasStrength) {
+      const host = wd.find((d) => d.charge === "facile" && !d.forced && d.sessions.some((s) => s.d !== "rs"));
+      if (host) {
+        host.sessions.push({ d: "rs", name: "+ Renfo général",
+          det: "20min en fin de séance : squats, fentes, gainage, tirage — 💡 Tu as choisi de travailler le poids comme levier. Le renforcement est ce que l'entraînement peut faire pour toi de plus utile ici : il protège la masse musculaire, qui est le principal déterminant de ta dépense au repos. Le reste (l'assiette) se décide avec un professionnel, pas avec une application.",
+          steps: [] });
+        added++;
+      }
+    }
+    // 2. FRÉQUENCE de facile en phase de base : à volume hebdomadaire égal (la courbe ne bouge
+    //    pas), le même temps réparti sur une séance de plus est plus soutenable et plus
+    //    favorable à la composition corporelle qu'une séance longue de plus. C'est le seul
+    //    autre levier que l'entraînement possède ici.
+    if (wd[0]?.phaseId === "base") {
+      const nSess = wd.reduce((t, d) => t + d.sessions.filter((s) => s.d !== "rs").length, 0);
+      const free = wd.find((d) => !d.forced && d.charge === "off" && !d.sessions.some((s) => s.d !== "rs"));
+      if (free && nSess < (r.budgetPerWeek ?? 7)) {
+        const slot = sportModule(r.profile.sport as string).easyFallbackSlot;
+        const built = buildSessions(ctx, slot as Parameters<typeof buildSessions>[1], free.phaseId, free.prog || 0, free.week);
+        const pick = built.find((x) => x.d !== "rs");
+        if (pick) {
+          renderSess(pick, refs, hz, r.baseRefs);
+          free.charge = "facile"; free.slot = slot; free.sessions = [pick];
+          extra++;
+        }
+      }
+    }
+  }
+  r.decisions.push({
+    id: "R11-poids", what: "Levier poids : ce que le plan fait",
+    val: "renforcement garanti en semaine de charge" + (added ? " (+" + added + " greffe(s))" : "")
+      + (extra ? " · +" + extra + " séance(s) facile(s) en phase de base, à volume égal" : ""),
+    why: "Tu as choisi de travailler le poids comme levier. Le plan agit là où l'ENTRAÎNEMENT agit — renforcement et volume facile — et nulle part ailleurs : aucune cible d'apport, aucun régime, aucun poids visé. Cette frontière ne bougera pas",
+  });
 }
 
 /** Renfo/gammes greffés en fin de séance existante — jamais une journée en plus. */

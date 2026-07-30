@@ -98,6 +98,12 @@ function* profiles() {
     ["measured-bas", { vol_recent: "9", measured: { updated_at: "2026-07-30", source: "fit_import", window_days: 28, vol_min: 720, sessions: 12, confidence: "high" } }],
     ["measured-haut", { vol_recent: "2", measured: { updated_at: "2026-07-30", source: "fit_import", window_days: 28, vol_min: 2400, sessions: 24, confidence: "high" } }],
     ["measured-partiel", { vol_recent: "9", measured: { updated_at: "2026-07-30", source: "manual", window_days: 28, vol_min: 300, sessions: 5, confidence: "partial" } }],
+    // R11.7 — les trois réponses qui étaient INERTES et qui agissent désormais. Sans ces
+    // profils, rien n'empêcherait leur effet de disparaître à nouveau en silence.
+    ["dispo-weekend", { dispo: "weekend" }],
+    ["dispo-partielle", { dispo: "partielle" }],
+    ["cycle", { sex: "F", cycle_sync: "oui", cycle_start: "2026-07-27", cycle_len: "28" }],
+    ["poids-levier", { weight_lever: "oui", weight: "82" }],
   ];
   for (const [sport, fmts] of Object.entries(FORMATS)) {
     const format = fmts[fmts.length - 1];

@@ -4,7 +4,7 @@
  * ⚠️ L'accès Garmin Health API (HRV/Body Battery/Training Readiness) est un programme
  * B2B sous agrément, non garanti. L'architecture rend la source interchangeable :
  *   1. Saisie manuelle (MVP, ici) — « comment as-tu dormi ? / FC du matin / énergie »
- *   2. Upload FIT (à venir)
+ *   2. Upload FIT (livré — `src/readiness/fitParser.ts`, import au Profil)
  *   3. API Garmin (si accès accordé)
  * La logique d'ajustement (dailyAdjuster) ne dépend JAMAIS de la provenance des chiffres.
  */

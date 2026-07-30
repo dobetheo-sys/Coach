@@ -244,3 +244,49 @@ c'est B4, démontré par le banc sur lui-même. Corrigé en `fond`.
 « sans effet ». La spec R11.2 prévoit trois canaux : un plan qui change ET qui dit pourquoi est
 conforme. Le banc lit donc maintenant `_v2.warnings` et `_v2.decisions`. Ce n'est pas un
 assouplissement : la dérive silencieuse reste à zéro, et c'est elle le critère de sortie.
+
+### R11.7 — les réponses inertes agissent (décision produit)
+
+L'audit amont a mis le doigt sur la famille la plus grave au regard du contrat du produit :
+**des questions posées à l'athlète, des cartes de règle affichées, et aucun effet sur le plan.**
+`cycle_sync` : `grep` dans le moteur → 0 occurrence, plan identique au bit près. `dispo` :
+quatre valeurs, quatre plans strictement identiques, placement des jours compris.
+`weight_lever` : déclaré, inerte.
+
+La spec laissait deux issues — câbler ou retirer. **Décision : câbler les trois.**
+
+**`dispo`** — deux effets, ceux qu'un entraîneur applique vraiment : le NOMBRE de jours
+(`weekend` 4, `partielle` 5, sinon 7) et la sortie longue au week-end dès que la semaine est
+contrainte. `weekend` était d'abord à 3 jours : le banc v7 a montré qu'on y perdait un stimulus
+entier (la VO2 en swimrun, le travail de côte en duathlon montagneux) — « week-end surtout » ne
+veut pas dire « uniquement le week-end ». La passe raisonne en « quoi GARDER » et non en « quoi
+couper », sans quoi on obtenait trois jours durs et aucun jour facile.
+
+**`cycle_sync`** — `src/engine/cycleModel.ts`, avec sa littérature en tête de fichier. La revue
+de référence (McNulty et al., 2020, 78 études) conclut à un effet **trivial** de la phase du
+cycle sur la performance, avec une variabilité entre personnes bien plus grande que l'effet
+moyen. La seule conclusion défendable : **on ne change pas le VOLUME, on change le PLACEMENT.**
+Sur une semaine majoritairement prémenstruelle, la SECONDE séance de qualité devient facile —
+une seule, jamais les deux, et l'athlète peut passer outre. La question demande désormais les
+deux données sans lesquelles elle n'est qu'une case à cocher (1er jour du dernier cycle,
+longueur). Cas fréquent et dit explicitement : avec un cycle proche de 28 jours, la fenêtre
+prémenstruelle tombe souvent pile sur la semaine de décharge — il n'y a alors rien à déplacer,
+et c'est une bonne nouvelle, pas un raté.
+
+**`weight_lever`** — la frontière du manifeste ne bouge pas : jamais de cible d'apport, jamais
+de régime, jamais de poids visé. Ce qui reste, et qui est de l'ENTRAÎNEMENT : le renforcement
+garanti chaque semaine de charge (la masse musculaire est ce qu'un déficit attaque en premier),
+et une séance facile de plus en phase de base à volume hebdomadaire égal. Rien qui ressemble à
+une séance « brûle-graisses » — cette notion n'a pas de sens et sert surtout à vendre des plans.
+
+**Garde-fou permanent** : `npm run audit:sensibilite` (14ᵉ gate) — toute clé du questionnaire
+doit avoir au moins une valeur qui modifie l'empreinte du plan. Une clé inerte fait échouer la
+CI. Les saturations assumées (`sleep=bon`, `life_load=legere` : les valeurs hautes n'ajoutent
+rien à la valeur normale) ne sont pas comptées comme des défauts. 4 profils golden ajoutés.
+
+**Effet sur l'existant : nul.** Les 814 profils du golden master sont inchangés — le câblage
+n'agit que sur les réponses qui étaient jusqu'ici sans effet.
+
+**Aussi corrigé** (§8, textes périmés visibles par l'athlète) : deux écrans affirmaient
+qu'« aucun contenu nutritionnel n'est généré » — faux depuis l'onglet Nutrition ; et
+`readinessSource` annonçait l'import FIT « à venir » alors qu'il est livré.

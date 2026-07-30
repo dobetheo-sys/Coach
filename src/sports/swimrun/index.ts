@@ -130,7 +130,7 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
     // fois : aucun support n'est sûr, on laisse la main aux branches prudentes ci-dessous.
     if (phase === "dev" && kit.weekNum % 2 === 1 && !kit.noVo2 && !medHold && !beginner
         && !(inj.impact && shoulder)
-        && ((kit.r.budgetPerWeek ?? 6) <= 4 || (kit.r.offDays?.length ?? 0) >= 3)) {
+        && ((kit.r.budgetPerWeek ?? 6) <= 4 || (kit.r.offDays?.length ?? 0) >= 3 || kit.a.dispo === "weekend")) {
       S2.push(inj.impact ? vo2Swim() : vo2Trail());
     } else if (shoulder) {
       S2.push({ d: "sw", name: "Nage seuil contrôlé (épaule épargnée)", note: "Épaule fragile : volume modéré, technique soignée, et les plaquettes réduites au minimum — ce sont elles qui chargent l'épaule en swimrun. Arrêt au moindre signal articulaire.", det: "",

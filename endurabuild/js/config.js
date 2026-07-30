@@ -72,11 +72,20 @@ const PREMIUM_STEPS_DEF=[
    render(){return '<div class="q"><span class="q-label">Sommeil moyen</span><div class="opts" data-key="sleep">'+opt("court","<6h30")+opt("moyen","6h30-7h30")+opt("bon",">7h30")+'</div></div>'
      +'<div class="q"><span class="q-label">Charge de vie</span><div class="opts" data-key="life_load">'+opt("legere","Légère")+opt("normale","Normale")+opt("lourde","Lourde")+'</div></div>';},
    valid(a){return a.sleep&&a.life_load;}},
-  {id:"nutri",title:"Objectif de poids",eyebrow:"Gratuit — Composition",why:"Le poids est un paramètre de performance, jamais une injonction. Tu décides s'il est travaillé. (Le conseil nutritionnel détaillé — ravitaillement, hydratation — n'est pas encore dans l'outil.)",
+  {id:"nutri",title:"Objectif de poids",eyebrow:"Gratuit — Composition",why:"Le poids est un paramètre de performance, jamais une injonction. Tu décides s'il est travaillé. (L'onglet Nutrition estime ta dépense et ton ravitaillement d'effort ; il ne fixe jamais de cible d'apport.)",
    render(){let s='<div class="q"><span class="q-label">Travailler le poids comme levier ?</span><div class="q-sub">Révocable à tout moment.</div><div class="opts" data-key="weight_lever">'+opt("oui","Oui")+opt("non","Maintien strict")+opt("coach","Le moteur juge")+'</div></div>';
-     if(S.answers.sex==="F")s+='<div class="branch"><div class="branch-tag">↳ Option cycle menstruel</div><div class="q"><span class="q-label">Périodiser selon ton cycle ?</span><div class="opts" data-key="cycle_sync">'+opt("oui","Oui")+opt("non","Non")+'</div></div></div>';
+     // R11.7 — la périodisation sur le cycle AGIT désormais sur le plan (voir
+     // src/engine/cycleModel.ts). Elle demande donc les deux données sans lesquelles elle
+     // n'est qu'une case à cocher : la date de départ du dernier cycle et sa longueur.
+     if(S.answers.sex==="F")s+='<div class="branch"><div class="branch-tag">↳ Option cycle menstruel</div>'
+       +'<div class="q"><span class="q-label">Périodiser selon ton cycle ?</span><div class="q-sub">Le plan déplace l\'intensité hors de la fenêtre prémenstruelle, sans toucher au volume. Révocable à tout moment.</div><div class="opts" data-key="cycle_sync">'+opt("oui","Oui")+opt("non","Non")+'</div></div>'
+       +'<div id="cycleDates"></div></div>';
      return s;},
-   valid(a){return a.weight_lever&&(a.sex!=="F"||a.cycle_sync);}},
+   branches(a){
+     branch("cycleDates",a.sex==="F"&&a.cycle_sync==="oui",
+       '<div class="q"><span class="q-label">1er jour de tes dernières règles</span><div class="q-sub">Sert uniquement à situer les semaines. Rien n\'est transmis nulle part.</div><input type="date" id="qCycleStart" data-input="cycle_start" value="'+(a.cycle_start||"")+'" style="width:100%"></div>'
+       +'<div class="q"><span class="q-label">Longueur de ton cycle (jours)</span><div class="q-sub">28 par défaut si tu ne sais pas.</div><input type="number" min="21" max="40" id="qCycleLen" data-input="cycle_len" value="'+(a.cycle_len||"28")+'" style="width:100%"></div>');},
+   valid(a){return a.weight_lever&&(a.sex!=="F"||(a.cycle_sync&&(a.cycle_sync!=="oui"||a.cycle_start)));}},
   {id:"races",title:"Courses intermédiaires",eyebrow:"Premium — Le chemin",why:"Des laboratoires avant le jour J : on place une récup juste après chacune, et un mini-affûtage avant les courses importantes.",
    render(){return '<div class="q"><span class="q-label">Des courses avant l\'objectif ?</span><div class="opts" data-key="races">'+opt("oui","Oui")+opt("non","Pas encore")+'</div></div><div id="racesB"></div>';},
    branches(a){

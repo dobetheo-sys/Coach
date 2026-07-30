@@ -128,7 +128,7 @@ function evalRules(a, tier){
     add("renfo","Renforcement","Transversal 3 sports","Renfo tibial (course), gainage position (vélo), coiffe (nage). Pliométrie progressive si pas de blessure active.");
   }
 
-  if(a.weight_lever==="oui"&&a.weight) add("poids","Levier poids","Signalé — pas encore dans les séances","Paramètre de performance"+(sp==="bike"||sp==="run"?" (W/kg ou portage)":"")+", jamais une injonction. Aucun contenu nutritionnel n'est encore généré dans le plan : à travailler avec un professionnel.");
+  if(a.weight_lever==="oui"&&a.weight) add("poids","Levier poids","Signalé — pas encore dans les séances","Paramètre de performance"+(sp==="bike"||sp==="run"?" (W/kg ou portage)":"")+", jamais une injonction. L'onglet 🥗 Nutrition estime ta dépense et ton ravitaillement d'effort ; il ne prescrit AUCUNE cible d'apport ni aucun régime — ça, c'est l'affaire d'un diététicien.");
   if(a.sex==="F"){ add("fer","Ferritine","Bilan 3×/an","Risque de carence en fer élevé en endurance féminine."); if(a.cycle_sync==="oui") add("cyclep","Périodisation menstruelle","Bientôt","Pas encore active dans le calcul du plan — on préfère te le dire plutôt que le laisser croire. En attendant, adapte l'intensité à ton ressenti selon ta phase."); }
   if(a.races==="oui") add("races","Courses intermédiaires","Hiérarchie A/B/C","Objectif C = on enchaîne. B = mini-affûtage. Récup placée juste après.");
   return R;
