@@ -204,6 +204,37 @@ ok(await page.locator("#pfStravaBtn").count() === 1 && (await page.locator("#pfS
 await page.click("#pfStravaOut"); await page.waitForTimeout(300);
 ok(await page.locator("#pfStravaConnect").count() === 1, "déconnexion → retour à l'état non connecté");
 
+// ---- R6 §2-§3 : ingestion des données réalisées, souveraine et arbitrée ----
+await t6[0].click(); await page.waitForTimeout(300);
+ok(!/Ce que tu as réellement fait/.test(await page.locator("#screen").textContent()),
+  "sans aucune donnée importée, la carte de mesure ne s'affiche pas (le plan reste celui d'avant)");
+const meas = await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  const { setTab } = await import("./js/ui/tabs.js");
+  // 12 séances d'1h réparties sur 28 jours : ~3h/sem mesurées contre la déclaration du profil.
+  const t0 = Date.now();
+  S.answers.fitSessions = Array.from({ length: 12 }, (_, i) => ({
+    date: new Date(t0 - i * 2 * 864e5).toISOString().slice(0, 10), d: "rn", minutes: 60 }));
+  S.answers.vol_recent = "9";
+  ebSave();
+  setTab("profile");
+  const txt = document.querySelector("#screen").textContent;
+  return { shown: /Ce que tu as réellement fait/.test(txt), arb: /ajusté de 9h déclarés à 3h mesurés/.test(txt), hasBtn: !!document.getElementById("pfMeasApply"), applied: !!S.answers.measured };
+});
+ok(meas.shown, "avec des séances importées, la carte « Ce que tu as réellement fait » apparaît");
+ok(meas.arb, "l'arbitrage mesuré vs déclaré est annoncé AVANT d'être appliqué");
+ok(meas.hasBtn && !meas.applied, "rien n'est appliqué sans le geste de l'athlète (aucun écrasement silencieux)");
+await page.click("#pfMeasApply"); await page.waitForTimeout(500);
+const measApplied = await page.evaluate(async () => {
+  const { S } = await import("./js/state.js");
+  const dec = S.currentPlan && S.currentPlan._v2 ? S.currentPlan._v2.decisions.map((d) => d.id) : [];
+  return { stored: !!(S.answers.measured && S.answers.measured.vol_min > 0), decision: dec.includes("measured-vol"),
+    canClear: !!document.getElementById("pfMeasClear") };
+});
+ok(measApplied.stored, "l'instantané est enregistré (daté, versionné)");
+ok(measApplied.decision, "la recalibration apparaît dans les décisions du moteur (§3.4)");
+ok(measApplied.canClear, "l'athlète peut revenir à sa déclaration");
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + ")");
 if (errs.length) info(errs.slice(0, 4).join(" | "));
 

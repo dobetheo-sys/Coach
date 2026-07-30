@@ -16,6 +16,7 @@ import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
 import { predictRace, type Prediction } from "../engine/predictor.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes } from "../readiness/fitParser.ts";
+import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
 import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
 import { dailyEnergy, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
 import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
@@ -415,6 +416,11 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
     return [id, { id: m.id, mainDiscipline: m.mainDiscipline, retestTypes: m.retestTypes, guards: m.guards }];
   })),
   importFit: importFitBytes,
+  // R6 §3 — l'adaptateur de données réalisées, exposé à l'UI. Le moteur ne connaît que
+  // l'instantané ; l'UI décide QUAND le rafraîchir (cadence = semaine de décharge).
+  measuredFromSessions,
+  measuredWeeklyHours,
+  arbitrateVolRecent,
   sessionNutrition: nutritionForSession,
   dailyEnergy: dailyEnergyV2,
   version: "v2-sprint9",

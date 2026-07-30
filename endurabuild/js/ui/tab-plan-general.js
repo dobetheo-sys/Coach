@@ -4,7 +4,7 @@
 import { SPORTS } from "../config.js";
 import { $, S, ebSave, fmtDay } from "../state.js";
 import { curSteps, renderStep, reset } from "./steps.js";
-import { driverBand, downloadPlan, decisionsCardHTML } from "./plan-view.js";
+import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML } from "./plan-view.js";
 import { exportICS, exportJSON, exportPNG } from "../export.js";
 
 const ic = { sw: "\u{1F3CA}", bk: "\u{1F6B4}", rn: "\u{1F3C3}", br: "\u{1F501}", rs: "\u{1F4AA}" };
@@ -75,6 +75,10 @@ export function renderTabPlanGeneral(plan) {
   html += '<div class="card"><div class="eyebrow">Plan général — ' + SPORTS[S.sport].nom + "</div><h2>Ta saison en un coup d’œil</h2>"
     + '<div class="why">' + plan.totalWeeks + " semaines en " + (plan.use10 ? "cycles de 10 jours (qui glissent)" : "semaines de 7 jours") + ", volume " + plan.volBase + "h → " + plan.volPeak + "h.</div>";
   html += driverBand(a);
+  // §5 (R6) — « Pourquoi ce plan » EN TÊTE, dépliée : l'explicabilité est le
+  // contre-positionnement du produit, pas une option de confort. Le détail complet des
+  // décisions reste en bas de l'onglet (`decisionsCardHTML`), à un lien d'ici.
+  html += whyPlanCardHTML(plan);
   html += '<div class="ph-line">';
   plan.phases.forEach((p) => { html += '<button type="button" class="ph-seg" data-phseg="' + p.nom + '" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span>' + p.nom + "</span><em>" + p.weeks + "sem</em></button>"; });
   html += "</div>";
@@ -95,9 +99,7 @@ export function renderTabPlanGeneral(plan) {
         const dn = S.answers.done && S.answers.done[k];
         const chk = s.d !== "rs" ? '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" title="Marquer fait">' + (dn ? "✓" : "○") + "</button> " : "";
         // R5 — séance cliquable partout (détail replié + affordance visuelle via CSS .gd-sess)
-        return chk + (s.det
-          ? '<details class="gd-sess"><summary><b>' + s.name + "</b></summary><span class=\"gd-det\">" + s.det + "</span></details>"
-          : "<b>" + s.name + "</b>");
+        return chk + sessDetailsHTML(s);
       }).join("");
       html += '<div class="gd ' + d.charge + '"><div class="gd-top"><b>' + d.jour + "</b><i>" + fmtDay(d.date) + (plan.use10 ? " · C" + d.cyc + "J" + d.jc : "") + '</i></div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
     });

@@ -20,6 +20,7 @@ import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS } from "../engine/trailModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
 import { guard, sportModule } from "../sports/registry.ts";
+import { arbitrateVolRecent } from "../engine/measured.ts";
 
 interface BoundedSession extends V1Session {
   social?: boolean;
@@ -338,7 +339,12 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   // connu, la semaine 1 part de là (≤ ×1.1) et la montée rejoint la courbe théorique à
   // ≤ C22 (+10% par semaine de charge). Sans cette rampe, un athlète qui sort de 3h/sem
   // recevait d'emblée la courbe calibrée sur sa capacité déclarée — trop, trop tôt.
-  const volRecent = parseFloat(a.vol_recent || "");
+  // R6 §2 — le point de départ peut être MESURÉ (`answers.measured`) au lieu d'être déclaré.
+  // L'arbitrage vit dans un seul endroit (`arbitrateVolRecent`) et il est motivé : la phrase
+  // produite part dans `decisions[]`, l'athlète voit le changement et sa cause. Sans
+  // `measured`, `hours` vaut exactement la déclaration — le plan est celui d'avant.
+  const _volArb = arbitrateVolRecent(a.vol_recent, a.measured);
+  const volRecent = _volArb.hours ?? NaN;
   let _rampCap = volRecent > 0 ? Math.max(2, volRecent * 1.1) : Infinity;
   let _rampWeeks = 0;
   const wl: V1Week[] = [];
@@ -1017,8 +1023,16 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   if (_rampWeeks > 0) {
     r.decisions.push({
       id: "R10-depart", what: "Départ calé sur ton volume récent",
-      val: volRecent + "h/sem → montée ≤ +10%/semaine sur " + _rampWeeks + " semaine" + (_rampWeeks > 1 ? "s" : ""),
+      val: volRecent + "h/sem" + (_volArb.source === "mesure" ? " (mesuré)" : "") + " → montée ≤ +10%/semaine sur " + _rampWeeks + " semaine" + (_rampWeeks > 1 ? "s" : ""),
       why: "Un plan qui démarre au-dessus de ce que le corps fait DÉJÀ multiplie le risque de blessure — on part de ton volume réel des derniers mois et on rejoint la courbe progressivement",
+    });
+  }
+  // R6 §3.4 — toute recalibration produit une entrée VISIBLE : l'athlète doit voir le
+  // changement ET sa cause. Un chiffre qui bouge sans explication est pire qu'un chiffre faux.
+  if (_volArb.why) {
+    r.decisions.push({
+      id: "measured-vol", what: "Volume de départ, mesuré vs déclaré", val: _volArb.why,
+      why: "Ce que tu as fait est plus fiable que ce dont tu te souviens — mais une mesure incomplète ne sert jamais à alléger un plan, seulement à corriger une sous-estimation",
     });
   }
 

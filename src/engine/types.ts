@@ -6,6 +6,8 @@
  * de src/audit/ les valide SANS modification — l'auditeur est la spec.
  */
 export type { V1Plan, V1Week, V1Day, V1Session, V1Step } from "../harness/v1Harness.ts";
+import type { MeasuredSnapshot } from "./measured.ts";
+export type { MeasuredSnapshot, DoneSession } from "./measured.ts";
 
 export type Sport = "run" | "bike" | "swim" | "tri" | "trail" | "duathlon" | "swimrun";
 export type History = "reprise" | "confirme" | "ancien";
@@ -21,6 +23,12 @@ export interface AthleteProfile {
   intent?: Intent;
   vol_max?: string;
   vol_recent?: string; // R10 — volume moyen des 3-6 derniers mois (h/sem) : le POINT DE DÉPART de la montée en charge
+  /**
+   * R6 §3 — instantané de ce qui a été RÉELLEMENT fait (import souverain de fichiers, saisie,
+   * ou connecteur optionnel). Namespace séparé, jamais fusionné dans les champs déclarés :
+   * une observation ne remplace jamais une contrainte. Absent = comportement d'avant.
+   */
+  measured?: MeasuredSnapshot | null;
   sessions_max?: string;
   dispo?: string; // "semaine" | "quotidienne" | …
   shift_ok?: string;

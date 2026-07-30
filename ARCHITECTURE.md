@@ -798,3 +798,51 @@ Deux invariants de contenu s'y ajoutent, valables pour toute passe de reconstruc
 faciles sont normaux) et la règle des variantes : **faire varier le contenu, jamais la charge**
 (une substitution plus longue que celle qu'elle remplace rendait un plan « deux blessures » plus
 lourd qu'un plan « une blessure »). Détail et chiffres avant/après dans `R10_DEFECTS.md`.
+
+## Décisions produit R6 — explicabilité et données réalisées (30/07/2026)
+
+Deux chantiers issus de `MESSAGE_CLAUDE_CODE_R6_produit.md` (le premier document du projet qui
+porte des décisions de PRODUIT et non des correctifs de moteur).
+
+### §5 — l'explicabilité en surface
+
+Le moteur produisait déjà tout le « pourquoi » : `decisions[]`, `warnings`, et une `note` de
+justification sur chaque séance (l'auditeur refuse une séance muette). Ça vivait dans `_v2`,
+derrière un repli fermé, en bas de l'onglet Plan. La critique standard des coachs automatiques
+est l'opacité — nous avions la réponse en base sans la montrer.
+
+- `whyPlanCardHTML(plan)` — « 🧭 Pourquoi ce plan », **en tête** de l'onglet Plan, dépliée, en
+  langage d'athlète. Aucune phrase n'est inventée : chacune cite la décision qui la produit.
+- `sessDetailsHTML(s)` — le **POURQUOI passe devant le QUOI** dans le détail d'une séance ;
+  `whyOf`/`techOf` séparent la justification de la description technique (le moteur les colle
+  dans `det`, l'affichage les redistribue — le contrat de données ne bouge pas).
+- Dans le héros d'**Aujourd'hui**, le pourquoi est **visible sans rien ouvrir** : c'est l'écran
+  du matin, et « pourquoi cette séance » y vaut plus que la liste des blocs.
+
+### §2-§3 — `measured` : l'ingestion souveraine des données réalisées
+
+`src/engine/measured.ts` — un instantané de scalaires **dérivés**, daté et versionné, rangé dans
+`answers.measured`. Trois règles fondent le module :
+
+1. **Une observation ne remplace jamais une contrainte.** Seul `vol_recent` — le point de départ
+   de la rampe R10, et le champ le plus souvent mal déclaré — est mesurable. `vol_max`,
+   `sessions_max`, `dispo`, `off_days`, `injury`, `history` et les drapeaux médicaux restent
+   DÉCLARÉS : ce que quelqu'un a fait le mois dernier ne dit pas ce qu'il peut soutenir.
+2. **Le moteur reste une fonction pure.** Instantané, jamais flux. C'est ce qui garde `audit_v7`
+   et le golden master possibles. Corollaire **testé** : sans `measured`, le plan est exactement
+   celui d'avant (les 820 profils du golden sont bit-identiques après ce lot).
+3. **La source est un adaptateur interchangeable.** Voie par défaut : l'athlète apporte ses
+   fichiers (FIT aujourd'hui) — souverain, aucun plafond d'athlètes, aucune clause d'usage. Un
+   connecteur de plateforme reste optionnel et le moteur ne suppose JAMAIS sa présence.
+
+`arbitrateVolRecent()` est le seul endroit qui décide du point de départ : une mesure fiable
+(`confidence: "high"`) remplace la déclaration dans les deux sens ; une fenêtre incomplète
+sous-compte par construction, elle ne peut donc que corriger une SOUS-estimation — **jamais
+alléger un plan sur une donnée manquante**. Tout écart produit une entrée `decisions[]` visible.
+
+Cadence (§3.3) : `endurabuild/js/measured.js` rafraîchit l'instantané à la première donnée, puis
+**en semaine de décharge** seulement — pas tous les matins. Un plan qui bouge chaque jour est
+anxiogène et invérifiable.
+
+Gardes : `npm run demo:measured` (22 garanties, 12ᵉ gate CI), 3 profils `measured-*` ajoutés au
+golden master (fiable bas / fiable haut / partiel), 7 assertions E2E dans `smoke-improvements`.

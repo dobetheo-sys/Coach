@@ -19,6 +19,7 @@ import { dirname, join } from "node:path";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ORDER = [
   "src/engine/types.ts",
+  "src/engine/measured.ts",
   // R10 phase 1 — le REGISTRE avant tout : `registerSport()` doit exister quand les modules
   // de sport s'enregistrent, et le registre doit être peuplé avant la première génération.
   "src/sports/registry.ts",

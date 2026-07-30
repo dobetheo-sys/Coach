@@ -92,6 +92,12 @@ function* profiles() {
     ["off-2j", { off_days: "oui", off_which: "lun,ven" }], ["doubles", { doubles: "oui", dispo: "quotidienne" }],
     ["vol-recent-bas", { vol_recent: "2", vol_max: "12" }],
     ["terrain-plat", { train_dplus_access: "plat", treadmill: "oui" }],
+    // R6 §3.1 — `measured` est une DIMENSION du harnais, pas un cas particulier : absent,
+    // fiable, partiel, et incohérent avec la déclaration. Le cas « absent » est déjà couvert
+    // par les 820 autres profils — c'est lui le filet (`measured: null` ⇒ plan d'avant).
+    ["measured-bas", { vol_recent: "9", measured: { updated_at: "2026-07-30", source: "fit_import", window_days: 28, vol_min: 720, sessions: 12, confidence: "high" } }],
+    ["measured-haut", { vol_recent: "2", measured: { updated_at: "2026-07-30", source: "fit_import", window_days: 28, vol_min: 2400, sessions: 24, confidence: "high" } }],
+    ["measured-partiel", { vol_recent: "9", measured: { updated_at: "2026-07-30", source: "manual", window_days: 28, vol_min: 300, sessions: 5, confidence: "partial" } }],
   ];
   for (const [sport, fmts] of Object.entries(FORMATS)) {
     const format = fmts[fmts.length - 1];

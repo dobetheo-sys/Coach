@@ -4,7 +4,7 @@
 // La règle produit tient toujours : pas de séance visible avant le check-in → redirection
 // vers Aujourd'hui tant que la forme du jour n'est pas renseignée.
 import { S, $, ebSave, esc, fmtDay, todayISO } from "../state.js";
-import { readinessCardHTML } from "./plan-view.js";
+import { readinessCardHTML, sessDetailsHTML, whyOf, techOf } from "./plan-view.js";
 import { applyReadiness, readinessDoneToday } from "./readiness.js";
 import { avatarDataFor, avatarSVG } from "./avatar.js";
 import { celebrationMessage } from "./celebrations.js";
@@ -242,9 +242,16 @@ export function heroSessionHTML(plan, todayISO) {
     ? '<div class="load-sub" style="margin:4px 0 0">↳ ' + v.drivers.join(" · ") + "</div>" : "";
   let body;
   if (res.sessions.length) {
-    body = res.sessions.map((x) => x.det
-      ? '<details class="gd-sess" style="margin-top:6px"><summary><b>' + x.name + "</b></summary><span class=\"gd-det\">" + x.det + "</span></details>"
-      : '<div style="margin-top:6px"><b>' + x.name + "</b></div>").join("");
+    // §5 (R6) — dans le HÉROS d'Aujourd'hui, le POURQUOI est VISIBLE sans rien ouvrir : c'est
+    // l'écran que l'athlète regarde tous les matins, et « pourquoi cette séance » y a plus de
+    // valeur que la liste des blocs, qui reste à un clic.
+    body = res.sessions.map((x) => {
+      const why = whyOf(x);
+      return '<div style="margin-top:8px"><b>' + x.name + "</b>"
+        + (why ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + why + "</div>" : "")
+        + (x.det ? '<details class="gd-sess" style="margin-top:4px"><summary>Le détail de la séance</summary><span class="gd-det">' + techOf(x) + "</span></details>" : "")
+        + "</div>";
+    }).join("");
   } else {
     const upcoming = [];
     plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date > todayISO && d.sessions.some((s) => s.d !== "rs")) upcoming.push(d); }));
@@ -288,9 +295,7 @@ export function renderTabWeek(plan) {
         // de repos validé compte STRICTEMENT autant qu'un jour de séance dans la streak.
         const title = s.d === "rs" ? "Récupération respectée" : "Marquer fait";
         const chk = '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" data-rest="' + (s.d === "rs" ? 1 : 0) + '" title="' + title + '" aria-label="' + title + ' : ' + s.name.replace(/"/g, "") + '">' + (dn ? "✓" : "○") + "</button> ";
-        return chk + (s.det
-          ? '<details class="gd-sess"><summary><b>' + s.name + "</b></summary><span class=\"gd-det\">" + s.det + "</span></details>"
-          : "<b>" + s.name + "</b>");
+        return chk + sessDetailsHTML(s);
       })
       .join("");
     // R7 — chaque jour du plan est annoté de sa VRAIE date calendrier (retour utilisateur)

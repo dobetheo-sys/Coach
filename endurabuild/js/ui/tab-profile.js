@@ -4,6 +4,7 @@
 // date, prev, source} — pas de nouvelle structure de données (brief onglets).
 // Toute donnée utilisateur réaffichée passe par esc() avant innerHTML (anti-XSS).
 import { SPORTS, VLAB, VLAB_Q } from "../config.js";
+import { previewMeasured, measuredHours, refreshMeasured, clearMeasured } from "../measured.js";
 import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc, todayISO } from "../state.js";
 import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js";
 import { renderPlan } from "./plan-view.js";
@@ -392,6 +393,38 @@ function bindRaceInter() {
   };
 }
 
+
+// ── R6 §2-§3 — CE QUE TU AS RÉELLEMENT FAIT ──────────────────────────────────────────
+// La carte ne montre QU'UN champ mesurable : le volume récent, point de départ de la rampe.
+// Tous les autres champs restent déclarés — une observation ne remplace jamais une contrainte,
+// et c'est ce qui nous distingue d'un agrégateur d'activités. L'athlète voit la mesure, la
+// comparaison avec sa déclaration, et l'arbitrage QUE LE MOTEUR VA FAIRE, avant qu'il le fasse.
+function measuredCardHTML() {
+  const a = S.answers;
+  const snap = previewMeasured();
+  if (!snap) return "";
+  const arb = globalThis.EBV2 && globalThis.EBV2.arbitrateVolRecent
+    ? globalThis.EBV2.arbitrateVolRecent(a.vol_recent, snap) : null;
+  const h = measuredHours(snap);
+  const applied = !!a.measured;
+  let out = '<div style="margin-top:12px;padding:10px;border:1px solid #16130e;border-radius:8px;background:var(--bg2,#efe8d8)">'
+    + '<div style="font-weight:700;font-size:12px">\u{1F4E5} Ce que tu as réellement fait</div>'
+    + '<div class="load-sub" style="margin-top:4px">Sur tes <b>' + snap.window_days + ' derniers jours</b> : '
+    + '<b>' + Math.round(snap.vol_min / 60) + 'h</b> en <b>' + snap.sessions + '</b> séance' + (snap.sessions > 1 ? 's' : '')
+    + ' \u2014 soit <b>' + h + 'h/sem</b>'
+    + (snap.confidence === 'partial' ? ' <span style="color:#a33">(fenêtre incomplète : la mesure sous-compte)</span>' : '')
+    + '.</div>';
+  if (arb && arb.why) out += '<div class="load-sub" style="margin-top:6px">' + esc(arb.why) + '</div>';
+  else if (arb && arb.source === 'mesure') out += '<div class="load-sub" style="margin-top:6px">Ta déclaration et la mesure disent la même chose : rien à ajuster.</div>';
+  out += '<div class="load-sub" style="margin-top:6px">Seul le <b>point de départ</b> se mesure. Ton volume max, tes séances par semaine, tes jours dispos et tes blessures restent DÉCLARÉS : ce que tu as fait le mois dernier ne dit pas ce que tu peux soutenir.</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
+    + '<button type="button" class="btn' + (applied ? '' : ' primary') + '" id="pfMeasApply">' + (applied ? 'Actualiser la mesure' : 'Utiliser mes données mesurées') + '</button>'
+    + (applied ? '<button type="button" class="btn" id="pfMeasClear">Revenir à ma déclaration</button>' : '')
+    + '</div>';
+  if (applied) out += '<div class="load-sub" style="margin-top:6px">Instantané du ' + esc(String(a.measured.updated_at)) + ' \u2014 il se rafraîchit tout seul à ta prochaine semaine de décharge, pas tous les matins.</div>';
+  return out + '</div>';
+}
+
 export function renderTabProfile(plan) {
   const a = S.answers, sp = S.sport;
   const tIso = todayISO();
@@ -458,6 +491,7 @@ export function renderTabProfile(plan) {
   } else {
     html += '<div class="load-sub">Encore vide — il se remplira à chaque test (FTP, allure, CSS), import Strava/FIT, ou modification de profil ci-dessus.</div>';
   }
+  html += measuredCardHTML();
   // Import FIT (roadmap : source « upload fichier », sans compte ni réseau) — le fichier
   // d'activité de n'importe quelle montre nourrit le journal (références) ET la fatigue
   // de l'ajusteur (S.answers.fitSessions, même contrat que les ✓).
@@ -555,6 +589,19 @@ export function renderTabProfile(plan) {
   $("pfReset").onclick = () => reset();
   bindRaceInter();
   bindTrailProfile();
+  // R6 §3 — l'athlète arbitre : il voit la mesure, il décide de la brancher ou de la retirer.
+  // Aucun écrasement silencieux d'une donnée qu'il a saisie.
+  const measApply = $("pfMeasApply");
+  if (measApply) measApply.onclick = () => {
+    delete S.answers.measured;              // force le premier calcul, hors cadence
+    refreshMeasured(S.currentPlan);
+    invalidatePlan();
+    renderTabProfile(ensurePlan());
+  };
+  const measClear = $("pfMeasClear");
+  if (measClear) measClear.onclick = () => {
+    if (clearMeasured()) { invalidatePlan(); renderTabProfile(ensurePlan()); }
+  };
   const fitInput = $("pfFit");
   if (fitInput) fitInput.onchange = async () => {
     const msg = (t) => { const m = $("pfFitMsg"); if (m) m.innerHTML = t; };

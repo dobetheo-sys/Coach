@@ -213,6 +213,70 @@ function intensityCardHTML(plan){
   }
   return h;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// §5 (MESSAGE_CLAUDE_CODE_R6) — L'EXPLICABILITÉ EN SURFACE PRODUIT.
+//
+// Le moteur produit déjà tout le « pourquoi » : `decisions[]`, `warnings`, et une `note` de
+// justification sur CHAQUE séance (l'auditeur refuse une séance muette). Mais ça vivait dans
+// `_v2`, derrière un repli fermé, en bas de l'onglet Plan — donc invisible. La critique
+// standard des coachs automatiques est l'opacité ; nous avions la réponse en base sans la
+// montrer. Rien n'est calculé ici : on remonte à la surface ce qui existe déjà.
+// ─────────────────────────────────────────────────────────────────────
+
+/** Le séparateur posé par `renderSess` entre le QUOI et le POURQUOI d'une séance. */
+const WHY_SEP="\u2014 \u{1F4A1} ";
+/** La justification d'une séance, séparée de sa description technique. */
+function whyOf(s){
+  if(s&&s.note)return String(s.note);
+  const d=s&&s.det?String(s.det):"";
+  const i=d.indexOf(WHY_SEP);
+  return i<0?"":d.slice(i+WHY_SEP.length).trim();
+}
+/** La description technique seule (le « quoi »), sans la justification collée en queue. */
+function techOf(s){
+  const d=s&&s.det?String(s.det):"";
+  const i=d.indexOf(WHY_SEP);
+  return (i<0?d:d.slice(0,i)).trim();
+}
+/**
+ * Le bloc repliable d'une séance dans une grille. Le POURQUOI passe devant le QUOI : quand
+ * l'athlète ouvre une séance, la première chose qu'il lit est la raison d'être de la séance,
+ * pas la liste des blocs. C'est l'ordre dans lequel un entraîneur parle.
+ */
+function sessDetailsHTML(s,style){
+  if(!s.det)return "<b>"+s.name+"</b>";
+  const why=whyOf(s),tech=techOf(s);
+  return '<details class="gd-sess"'+(style?' style="'+style+'"':"")+'><summary><b>'+s.name+"</b></summary>"
+    +(why?'<span class="gd-why">\u{1F4A1} '+why+"</span>":"")
+    +'<span class="gd-det">'+tech+"</span></details>";
+}
+
+/**
+ * « Pourquoi ce plan » — EN TÊTE de l'onglet Plan, dépliée, en langage d'athlète.
+ * Les chiffres viennent des `decisions[]` du moteur : aucune phrase n'est inventée ici, chacune
+ * cite la décision qui la produit. Le détail complet reste dans la carte du bas.
+ */
+function whyPlanCardHTML(plan){
+  const v2=plan&&plan._v2;
+  if(!v2||!v2.decisions||!v2.decisions.length)return "";
+  const D={};v2.decisions.forEach(d=>{D[d.id]=d;});
+  const li=[];
+  const add=(txt,src)=>{if(txt)li.push('<li>'+txt+(src?' <span style="color:#777">('+src+')</span>':"")+"</li>");};
+  if(D.duree)add("Ta préparation fait <b>"+D.duree.val+"</b>, découpée en phases : on construit d'abord, on aiguise ensuite, on arrive frais.","durée");
+  if(D.capacite&&D.utile)add("Le pic monte à ce que permet le plus petit des deux : ton volume déclaré (<b>"+D.capacite.val+"</b>) et ce que ton objectif demande vraiment (<b>"+D.utile.val+"</b>). Promettre plus serait une promesse que le plan ne tient pas.","plafonds");
+  else if(D.capacite)add("Le pic est plafonné à ton volume déclaré : <b>"+D.capacite.val+"</b>.","plafond");
+  if(D.budget)add("<b>"+D.budget.val+"</b> séances par semaine"+(D["R10-depart"]?"" : "")+(D.recup?", avec une semaine allégée "+D.recup.val:"")+".","budget");
+  if(D["R10-depart"])add("Le départ est calé sur ton volume RÉEL des derniers mois, pas sur ta cible : <b>"+D["R10-depart"].val+"</b>. C'est la marche la plus souvent trop haute.","reprise");
+  if(D.impact)add("Pas plus de <b>"+D.impact.val+"</b> jours d'appui : c'est l'impact qui blesse, pas le volume.","impact");
+  let h='<div class="load-card"><div class="load-title">\u{1F9ED} Pourquoi ce plan</div>'
+    +'<ul style="font-size:12.5px;line-height:1.55;margin:8px 0 0;padding-left:18px">'+li.join("")+"</ul>";
+  if(v2.warnings&&v2.warnings.length)
+    h+='<div class="load-sub" style="margin-top:8px">\u26A0 Ce que le moteur n\u2019a pas pu faire sous tes contraintes : '+v2.warnings[0]+(v2.warnings.length>1?' <a href="#motorDecisions" style="color:inherit">et '+(v2.warnings.length-1)+' autre'+(v2.warnings.length>2?"s":"")+"\u2026</a>":"")+"</div>";
+  h+='<div class="load-sub" style="margin-top:6px"><a href="#motorDecisions" style="color:inherit">\u2193 Les '+v2.decisions.length+' décisions du moteur, en détail</a></div></div>';
+  return h;
+}
+
 function decisionsCardHTML(plan){
   let h="";
   const v2=plan&&plan._v2;
@@ -236,4 +300,4 @@ function decisionsCardHTML(plan){
 // Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
 // pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
 
-export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML };
+export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf };

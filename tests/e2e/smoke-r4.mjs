@@ -92,6 +92,34 @@ const neutralWarn = await page.evaluate(async () => {
 ok(neutralWarn.noBanner, "même avec des warnings moteur : pas de bandeau rouge");
 ok(neutralWarn.inDetails, "les limites du plan restent lisibles dans les décisions (langage neutre)");
 
+// ---- 5b. §5 (R6) : l'explicabilité EN SURFACE — « pourquoi ce plan », « pourquoi cette séance »
+await t2[1].click(); await page.waitForTimeout(250);
+const whyTxt = await page.locator("#screen").textContent();
+ok(/Pourquoi ce plan/.test(whyTxt), "carte « Pourquoi ce plan » en tête de l'onglet Plan (§5)");
+ok(/Ta préparation fait \d+ semaines/.test(whyTxt), "la durée est expliquée en langage d'athlète, pas en identifiant de décision");
+const whyBeforeWhat = await page.evaluate(() => {
+  // Les jours de REPOS n'ont pas de justification (« marche, étirements ») : on regarde une
+  // séance d'entraînement, celles que l'auditeur refuse muettes.
+  const ds = [...document.querySelectorAll("#screen details.gd-sess")];
+  const d = ds.find((x) => x.querySelector(".gd-why"));
+  if (!d) return { hasWhy: false, nSess: ds.length };
+  d.open = true;
+  const why = d.querySelector(".gd-why"), det = d.querySelector(".gd-det");
+  return { hasWhy: true, nWhy: document.querySelectorAll("#screen .gd-why").length,
+    order: why.compareDocumentPosition(det) & Node.DOCUMENT_POSITION_FOLLOWING ? "why-first" : "det-first",
+    noDup: !/\u{1F4A1}/u.test(det.textContent) };
+});
+ok(whyBeforeWhat && whyBeforeWhat.hasWhy && whyBeforeWhat.nWhy > 5, "les séances de la grille portent leur justification (" + (whyBeforeWhat && whyBeforeWhat.nWhy) + ")");
+ok(whyBeforeWhat && whyBeforeWhat.order === "why-first", "le POURQUOI passe devant le QUOI dans le détail d'une séance");
+ok(whyBeforeWhat && whyBeforeWhat.noDup, "la justification n'est plus dupliquée en queue de description technique");
+const t2b = await page.locator("#ebTabbar .tabbtn").all();
+await t2b[2].click(); await page.waitForTimeout(400);
+const heroWhy = await page.evaluate(() => {
+  const c = document.querySelector("#screen");
+  return { visibleWhy: !!c.querySelector(".gd-why"), hidden: !!c.querySelector("details.gd-sess") };
+});
+ok(heroWhy.visibleWhy, "dans Aujourd'hui, le « pourquoi » de la séance est visible SANS rien ouvrir (§5)");
+
 // ---- 6. Onglet Nutrition : journal alimentaire RETIRÉ (décision utilisateur R6) ----
 const t3 = await page.locator("#ebTabbar .tabbtn").all();
 await t3[4].click(); await page.waitForTimeout(300);

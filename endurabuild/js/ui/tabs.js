@@ -2,6 +2,7 @@
 // RÈGLE DE FOND : le plan est généré UNE fois (S.currentPlan) ; un changement
 // d'onglet ne rappelle JAMAIS buildPlan — les onglets sont des vues du même objet.
 import { S, $, ebSave, todayISO } from "../state.js";
+import { refreshMeasured } from "../measured.js";
 import { buildPlan, EBGenerationError } from "../app.js";
 import { renderTabProfile } from "./tab-profile.js";
 import { renderTabPlanGeneral } from "./tab-plan-general.js";
@@ -31,6 +32,10 @@ export function ensurePlan() {
     // re-glisserait au lundi courant à chaque ouverture et le plan n'avancerait jamais.
     if (!S.answers.plan_start) { S.answers.plan_start = todayISO(); ebSave(); }
     S.currentPlan = buildPlan(S.answers);
+    // R6 §3.3 — cadence de recalibration : l'instantané des données réalisées ne se rafraîchit
+    // qu'en semaine de décharge (ou à la toute première fois). S'il a bougé, on régénère UNE
+    // fois — jamais en boucle, le plan reste une fonction pure de ses entrées.
+    if (refreshMeasured(S.currentPlan)) S.currentPlan = buildPlan(S.answers);
     applyDaySwaps(S.currentPlan); // déplacements de séances persistants (voir plus bas)
   }
   return S.currentPlan;

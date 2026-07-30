@@ -23,6 +23,7 @@ jobs:
       - run: npm run demo:repair
       - run: npm run demo:readiness
       - run: npm run demo:fit
+      - run: npm run demo:measured
       - run: npm run demo:nutrition
       - run: npm run demo:retention
       # Le bundle EBV2 committé dans le HTML doit correspondre aux sources src/
