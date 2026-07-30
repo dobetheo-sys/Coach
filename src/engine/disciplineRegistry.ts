@@ -23,6 +23,8 @@ export interface DisciplineSpec {
   primaryMetric: "pace_100m" | "power_w" | "pace_km" | "gap_pace" | string;
   /** Test de référence qui calibre les zones + protocole de retest (affiché tel quel). */
   zonesSource: { test: string; protocol: string; refKey: "css" | "ftp" | "thrPace" | null };
+  /** R12.2 — référence VERTICALE, là où l'allure au sol ne dit rien (trail). */
+  verticalSource?: { test: string; protocol: string; refKey: "vam" };
   /** Volume planifié en distance ou en durée. Le trail est en DURÉE (+D+), jamais en km seul. */
   volumeUnit: "distance" | "duration";
   /** Compétences non-cardio trackées (progression par jauges, futur). */
@@ -58,6 +60,12 @@ export const DISCIPLINE_REGISTRY: Record<string, DisciplineSpec> = {
   trail: {
     id: "trail", label: "Trail", primaryMetric: "gap_pace",
     zonesSource: { test: "Allure seuil (3min + 10min à fond, sur plat)", protocol: "Même test que la route, SUR PLAT : en trail l'allure brute ne veut rien dire, on raisonne en GAP (allure ajustée à la pente) quand les données existent, sinon en FC/RPE.", refKey: "thrPace" },
+    // R12.2 — LA référence du trail. Elle n'avait aucun protocole écrit : le plan la devinait.
+    verticalSource: {
+      test: "VAM (montée continue de 20 à 30 min)",
+      protocol: "Choisis une montée régulière que tu peux tenir 20 à 30 minutes sans t'arrêter, sur une pente franche (8-15 %). Échauffe-toi 15 min, puis monte à un rythme dur mais RÉGULIER — celui que tu tiendrais une heure si tu devais. Relève le D+ et le temps : VAM = D+ ÷ durée en heures. Refais-la sur la MÊME montée à chaque retest, sinon tu compares deux choses différentes.",
+      refKey: "vam",
+    },
     volumeUnit: "duration", // temps + D+, JAMAIS en km seul (spec §2)
     skills: ["descente technique", "montée au train", "navigation", "gestion ravito"],
     loadRules: [

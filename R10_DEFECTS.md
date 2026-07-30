@@ -290,3 +290,69 @@ n'agit que sur les réponses qui étaient jusqu'ici sans effet.
 **Aussi corrigé** (§8, textes périmés visibles par l'athlète) : deux écrans affirmaient
 qu'« aucun contenu nutritionnel n'est généré » — faux depuis l'onglet Nutrition ; et
 `readinessSource` annonçait l'import FIT « à venir » alors qu'il est livré.
+
+---
+
+## R12 — Le chemin sans références (audit grand public, 30/07/2026)
+
+Quatrième banc externe, sur une question que les précédents n'avaient pas posée : **que produit
+l'outil pour quelqu'un qui ne connaît AUCUNE de ses références ?** C'est le cas majoritaire
+d'une V1.
+
+**Ce qui était déjà bon, et qui est maintenant verrouillé** : sur 18 configurations et ~2 700
+séances générées avec toutes les références à « non », **0 séance sans repère exécutable**.
+Le repli est propre — zones FC en course et à vélo, effort relatif en natation (la FC n'est pas
+fiable en bassin, on n'en invente pas), RPE sur les intervalles courts avec la raison affichée.
+C'est la ligne de base anti-régression du banc.
+
+**Le défaut** : le trail ne dégradait pas, il DEVINAIT. Là où les trois autres disciplines se
+replient sur une grandeur observable, le trail substituait un nombre déduit d'un adjectif
+auto-déclaré (`VAM_BY_LEVEL[level]`) et construisait tout le plan et la prédiction dessus. Sur
+un 45 km / 2 200 m, le seul changement de « niveau » faisait varier l'estimation de course de
+**trois heures**. Et « intermédiaire » est la case que tout le monde coche.
+
+| | avant | après |
+|---|---|---|
+| estimation de course pilotée par le seul « niveau » | 3 h d'écart (32 %) | **0 %** |
+| sortie longue, progression selon le niveau | non monotone, inexpliquée | monotone, et le plafond T4 s'explique |
+| chaîne d'acquisition de la VAM | aucune (ni test, ni montre) | **retest + import montre + question vécue** |
+
+**R12.1 — la bonne question n'est pas « connais-tu ton X ? », c'est « qu'as-tu fait ? ».**
+La VAM se déduit désormais d'une **montée vécue** : deux chiffres que n'importe qui donne de
+mémoire (D+ et durée). Abattement documenté (T18) — 90 %, et 85 % sous 15 minutes, parce qu'une
+montée d'entraînement n'est pas un effort seuil et qu'une montée courte flatte la moyenne.
+
+**R12.4/R12.6 — un adjectif ne pilote plus aucun chiffre.** Le repli s'appuie sur deux réponses
+FACTUELLES : l'ancienneté de pratique et le dénivelé réellement accessible depuis chez soi.
+Même correction sur l'allure seuil de repli, par où `level` continuait de passer. `level` garde
+ce qui lui revient — le CONTENU des séances — et rien d'autre. Les valeurs de repli sont
+descendues vers la borne basse : un plan calibré trop haut se paie en blessure, un plan calibré
+trop bas se corrige à la première montée déclarée.
+
+**R12.2/R12.3 — la VAM devient mesurable ET automatique.** Protocole de retest écrit (montée
+continue de 20 à 30 min, sur la MÊME montée à chaque fois, sinon on compare deux choses
+différentes), et le parseur FIT lit enfin `total_ascent` : qui connecte sa montre obtient une
+VAM sans faire de test. Deux garde-fous — une sortie plate ne produit rien, et la moyenne d'une
+sortie entière est annoncée comme une estimation BASSE plutôt que gonflée.
+
+**R12.5 est satisfait plus strictement que demandé** : l'audit voulait un avertissement pour une
+VAM hors bornes, aligné sur la FTP. Depuis R11, les deux sont un REFUS typé — le contrat s'est
+durci entre les deux audits.
+
+**§0 — swimrun hors V1.** Sorti par **drapeau de build** (`EB_SWIMRUN=1` le réintègre) qui
+exclut le module ET ses cas de bancs : golden master, audit v2, audit v7, suite E2E. Du code
+expédié mais non exercé est exactement ce que ce projet refuse depuis la suppression du
+générateur legacy. Le code reste dans `src/`, intact. Un sport absent du bundle donne un refus
+lisible (`ENTREE_INVALIDE`, R11) et ne s'affiche plus dans le sélecteur — qui lit maintenant le
+registre du moteur au lieu de sa propre liste.
+
+**Garde-fou** : `npm run audit:public` (15ᵉ gate). Le tableau de la chaîne d'acquisition n'est
+plus écrit à la main — il est DÉRIVÉ du registre de disciplines et de `FIT_DERIVED_TESTS`, sinon
+c'est un commentaire, pas un garde-fou. Section D ajoutée : chaque question du schéma porte sa
+NATURE (vécue / mesurée / estimée), et une question non classée fait échouer la CI.
+
+**Le banc s'est trompé sur un point, et c'est noté** : son profil de référence swim portait
+`format: "1500"`, inexistant dans le domaine — même erreur que le banc amont, et R11 l'attrape.
+Corrigé en `fond`. Deuxième nuance : l'amplitude résiduelle de la sortie longue (débutant 180 min
+vs 245) n'est pas un défaut mais le plafond de sécurité C23 ; le banc compare désormais
+`inter ↔ avancé` pour ne pas pousser à supprimer une règle de sécurité.

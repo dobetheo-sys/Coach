@@ -2,6 +2,9 @@
 // Ce que cette suite protège en priorité : le plafond de jours d'appui (§R10.2.3, « non
 // négociable »), les DEUX sens de brique, et la prédiction en trois legs — jamais un total.
 import { startServer, launchBrowser, makeReporter } from "./harness.mjs";
+const V1_SWIMRUN = process.env.EB_SWIMRUN === "1";
+const N_SPORTS = V1_SWIMRUN ? 7 : 6; // R12 §0 — swimrun hors V1 : le sélecteur suit le registre du moteur
+
 
 const PORT = 8530;
 const server = await startServer(PORT);
@@ -15,7 +18,7 @@ page.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
 await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
 
 // ---- 1. Le duathlon est un sport de premier ordre ----
-ok(await page.locator(".sport-card").count() === 7, "7 sports proposés (duathlon ajouté)");
+ok(await page.locator(".sport-card").count() === N_SPORTS, N_SPORTS + " sports proposés (duathlon inclus)");
 ok(await page.locator('.sport-card[data-sport="duathlon"]').count() === 1, "carte « Duathlon » présente");
 await page.click('.sport-card[data-sport="duathlon"]');
 await page.click('.opts[data-key="intent"] .opt[data-val="competition"]');

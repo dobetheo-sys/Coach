@@ -69,7 +69,10 @@ const BUDGET = {
 };
 
 let failed = false;
-for (const sport of ["trail", "swimrun", "duathlon"]) {
+// R12 §0 — swimrun hors V1 : ses cas de banc sortent AVEC le module. Un banc qui teste du code
+// non expédié donne une fausse assurance ; `EB_SWIMRUN=1` les réintègre tous les deux.
+const SPORTS_V7 = process.env.EB_SWIMRUN === "1" ? ["trail", "swimrun", "duathlon"] : ["trail", "duathlon"];
+for (const sport of SPORTS_V7) {
   const out = execFileSync(process.execPath, [join(ROOT, "audit_v7.cjs"), sport, N], {
     env: { ...process.env, ENGINE: join(ROOT, "endurabuild/js/engine.js") },
     encoding: "utf8", maxBuffer: 64 * 1024 * 1024,

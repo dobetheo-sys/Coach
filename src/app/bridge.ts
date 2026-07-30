@@ -15,7 +15,7 @@ import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
 import { predictRace, type Prediction } from "../engine/predictor.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
-import { importFitBytes } from "../readiness/fitParser.ts";
+import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
 import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
 import { validateAnswers, assertPlanIsAPlan, EBInputError, ANSWER_SCHEMA, FORMATS_BY_SPORT } from "../engine/answerSchema.ts";
 import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
@@ -64,6 +64,12 @@ export function buildPlanV2(sport: string, answers: AppAnswers): V1Plan & { _v2?
   // quatrième : refus motivé (`EBInputError`), avertissement porté par le plan, ou défaut
   // journalisé. Rendre un plan sans qu'aucun canal ne se soit exprimé était le défaut : le
   // moteur produisait un Ironman à 30 min de pic sur une saisie illisible, sans un mot.
+  // Le SPORT est la première entrée à valider : un sport absent du bundle (R12 §0) doit donner
+  // un refus lisible, pas une erreur de symbole manquant au fond du moteur.
+  if (!knownSports().includes(sport)) {
+    throw new EBInputError("sport", sport, knownSports().join(" / "),
+      "Le sport « " + sport + " » n'est pas disponible dans cette version. Sports proposés : " + knownSports().join(", ") + ".");
+  }
   const vr = validateAnswers(sport, answers as Record<string, unknown>, localTodayISO());
   const res = generateAudited(toProfile(sport, vr.answers as unknown as AppAnswers));
   const plan = res.plan as V1Plan & { _v2?: V2PlanMeta };
@@ -364,7 +370,7 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
     courseProfile: String(answers.course_profile || "") || undefined, // R6 — profil du parcours (Profil)
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
-    swimrun: sport === "swimrun" ? swimrunObjective(toProfile(sport, answers)) : undefined,
+    swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,
   });
 }
 
@@ -416,8 +422,10 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   trailCaps: { history: TRAIL_HISTORY_CAPS, util: TRAIL_UTIL },
   // S10 — prérequis d'entrée swimrun : l'UI refuse un format long en dessous, et DIT pourquoi.
   // C'est la priorité n°1 du manifeste (santé) dans un sport où l'on est loin du bord.
-  swimrunPrereq: (answers: Record<string, unknown>) => swimrunPrereqBlock(answers as { format?: string }),
-  swimrunObjective: (answers: Record<string, unknown>) => swimrunObjective(toProfile("swimrun", answers)),
+  // R12 §0 — le module swimrun peut être ABSENT du bundle V1 : ces ponts le tolèrent au lieu
+  // de faire tomber tout l'objet `EBV2` au chargement.
+  swimrunPrereq: (answers: Record<string, unknown>) => (typeof swimrunPrereqBlock === "function" ? swimrunPrereqBlock(answers as { format?: string }) : ""),
+  swimrunObjective: (answers: Record<string, unknown>) => (typeof swimrunObjective === "function" ? swimrunObjective(toProfile("swimrun", answers)) : null),
   // R10 phase 0 (§ R10.0.3) — SOURCE UNIQUE des plafonds de volume. L'UI en gardait une copie
   // littérale (`capsBySport`/`utilBySport` dans steps.js) qui avait déjà DIVERGÉ : elle
   // annonçait 8h/sem là où le moteur en applique 9 (vélo/route/reprise). Les règles
@@ -433,11 +441,14 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   // R11 — le schéma d'entrée est la SOURCE DE VÉRITÉ des domaines : l'UI doit générer ses
   // options depuis lui, jamais l'inverse (tant qu'ils sont écrits deux fois, ils divergent).
   answerSchema: ANSWER_SCHEMA,
+  // R12.6 — la NATURE de chaque question (vécue / mesurée / estimée) est exposée : c'est ce
+  // qui permet à un banc de vérifier qu'aucune question estimée ne pilote un chiffre.
   formatsBySport: FORMATS_BY_SPORT,
   minWeeks: MIN_WEEKS,
   validateAnswers,
   EBInputError,
   importFit: importFitBytes,
+  fitDerivedTests: FIT_DERIVED_TESTS,
   // R6 §3 — l'adaptateur de données réalisées, exposé à l'UI. Le moteur ne connaît que
   // l'instantané ; l'UI décide QUAND le rafraîchir (cadence = semaine de décharge).
   measuredFromSessions,

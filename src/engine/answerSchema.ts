@@ -39,6 +39,22 @@ export class EBInputError extends Error {
 
 export type FieldType = "enum" | "csv" | "number" | "date";
 
+/**
+ * R12.6 — LA NATURE DE CHAQUE QUESTION, et ce qu'elle a le droit de piloter.
+ *
+ * L'audit grand public a nommé le vrai critère de conception d'une V1 : *est-ce que quelqu'un
+ * peut répondre à cette question sans faire de test ?*
+ *
+ *   · `vecue`   — répondable par tout le monde, de mémoire. C'est la matière première.
+ *   · `mesuree` — demande un test ou une montre. DOIT avoir (a) un repli qui DÉGRADE
+ *                 proprement (zone, RPE, sensation) et (b) un chemin d'acquisition DANS l'outil.
+ *   · `estimee` — auto-déclarée, invérifiable (« ton niveau »). Elle a le droit de moduler le
+ *                 CONTENU d'une séance ; elle n'a PAS le droit de piloter une grandeur
+ *                 numérique — c'est exactement là que ça a cassé, avec trois heures d'écart sur
+ *                 une estimation de course selon la case cochée.
+ */
+export type QuestionNature = "vecue" | "mesuree" | "estimee";
+
 export interface FieldSpec {
   type: FieldType;
   label: string;              // libellé humain — le message d'erreur parle à l'athlète
@@ -46,6 +62,8 @@ export interface FieldSpec {
   min?: number; max?: number;  // number
   unit?: string;
   sports?: string[];          // pertinent seulement pour ces sports
+  /** R12.6 — vécue / mesurée / estimée. Voir `QuestionNature`. */
+  nature?: QuestionNature;
   /** Champ sans lequel le plan serait bâti sur une valeur que l'athlète n'a jamais donnée. */
   required?: boolean;
   /** … ou requis pour CES sports seulement (le trail décrit son objectif par ses données,
@@ -90,72 +108,76 @@ const numF = (label: string, min: number, max: number, unit?: string, sports?: s
  */
 export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   // ---- Communes ----
-  intent: { ...enumF("ton intention", ["competition", "finir", "plaisir"]), fallback: "plaisir/finir (marge de 0,9 sur le volume)" },
-  level: { ...enumF("ton niveau", ["debutant", "inter", "avance"]), fallback: "inter" },
-  history: { ...enumF("ton historique d'entraînement", ["reprise", "confirme", "ancien"]), fallback: "confirme" },
-  dispo: enumF("ta disponibilité", ["quotidienne", "semaine", "partielle", "weekend"]),
-  doubles: enumF("les doubles séances", ["oui", "parfois", "non"]),
-  off_days: enumF("les jours bloqués", OUI_NON),
-  off_which: { type: "csv", label: "tes jours bloqués", domain: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] },
-  shift_ok: enumF("le décalage de tes jours", OUI_NON),
-  sex: enumF("ton sexe", ["F", "H", "np"]),
-  sleep: enumF("ton sommeil", ["court", "moyen", "bon"]),
-  life_load: enumF("ta charge de vie", ["legere", "normale", "lourde"]),
-  activity: enumF("ton activité quotidienne", ["sedentaire", "modere", "actif"]),
+  intent: { ...enumF("ton intention", ["competition", "finir", "plaisir"]), fallback: "plaisir/finir (marge de 0,9 sur le volume)" , nature: "vecue" },
+  level: { ...enumF("ton niveau", ["debutant", "inter", "avance"]), fallback: "inter" , nature: "estimee" },
+  history: { ...enumF("ton historique d'entraînement", ["reprise", "confirme", "ancien"]), fallback: "confirme" , nature: "vecue" },
+  dispo: { ...enumF("ta disponibilité", ["quotidienne", "semaine", "partielle", "weekend"]), nature: "vecue" },
+  doubles: { ...enumF("les doubles séances", ["oui", "parfois", "non"]), nature: "vecue" },
+  off_days: { ...enumF("les jours bloqués", OUI_NON), nature: "vecue" },
+  off_which: { type: "csv", label: "tes jours bloqués", domain: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] , nature: "vecue" },
+  shift_ok: { ...enumF("le décalage de tes jours", OUI_NON), nature: "vecue" },
+  sex: { ...enumF("ton sexe", ["F", "H", "np"]), nature: "vecue" },
+  sleep: { ...enumF("ton sommeil", ["court", "moyen", "bon"]), nature: "vecue" },
+  life_load: { ...enumF("ta charge de vie", ["legere", "normale", "lourde"]), nature: "vecue" },
+  activity: { ...enumF("ton activité quotidienne", ["sedentaire", "modere", "actif"]), nature: "vecue" },
   // Le domaine COMPLET, tous sports confondus : ce sont les localisations proposées par le
   // questionnaire (`injuryOpts`). L'UI en montre un sous-ensemble par sport ; le moteur, lui,
   // doit accepter tout ce qui a pu être enregistré — y compris après un changement de sport.
-  injury: { type: "csv", label: "tes zones fragiles",
+  injury: { type: "csv", label: "tes zones fragiles", nature: "vecue",
     domain: ["aucune", "tibia", "genou", "pied", "hanche", "dos", "epaule", "cou", "course", "velo",
       "quadriceps", "cheville", "fascia"] },
-  med_pain: enumF("la douleur à l'effort", OUI_NON),
-  med_dizzy: enumF("les vertiges à l'effort", OUI_NON),
-  med_treat: enumF("ton suivi médical", OUI_NON),
-  cycle_sync: enumF("la synchronisation avec ton cycle", OUI_NON),
-  cycle_start: { type: "date", label: "le 1er jour de tes dernières règles" },
-  cycle_len: numF("la longueur de ton cycle", 21, 40, "jours"),
-  weight_lever: enumF("le levier du poids", ["oui", "non", "coach"]),
-  age: numF("ton âge", 10, 100, "ans"),
-  weight: numF("ton poids", 25, 250, "kg"),
-  height: numF("ta taille", 100, 250, "cm"),
-  hr_max: numF("ta FC max", 120, 230, "bpm"),
-  vol_max: { ...numF("ton volume max", 1, 40, "h/sem"), required: true },
-  vol_recent: numF("ton volume récent", 0, 40, "h/sem"),
-  sessions_max: { ...numF("ton nombre de séances", 1, 14, "séances/sem"), fallback: "7" },
-  race_date: { type: "date", label: "la date de ta course" },
-  plan_start: { type: "date", label: "le départ de ton plan" },
+  med_pain: { ...enumF("la douleur à l'effort", OUI_NON), nature: "vecue" },
+  med_dizzy: { ...enumF("les vertiges à l'effort", OUI_NON), nature: "vecue" },
+  med_treat: { ...enumF("ton suivi médical", OUI_NON), nature: "vecue" },
+  cycle_sync: { ...enumF("la synchronisation avec ton cycle", OUI_NON), nature: "vecue" },
+  cycle_start: { type: "date", label: "le 1er jour de tes dernières règles" , nature: "vecue" },
+  cycle_len: { ...numF("la longueur de ton cycle", 21, 40, "jours"), nature: "vecue" },
+  weight_lever: { ...enumF("le levier du poids", ["oui", "non", "coach"]), nature: "vecue" },
+  age: { ...numF("ton âge", 10, 100, "ans"), nature: "vecue" },
+  weight: { ...numF("ton poids", 25, 250, "kg"), nature: "vecue" },
+  height: { ...numF("ta taille", 100, 250, "cm"), nature: "vecue" },
+  hr_max: { ...numF("ta FC max", 120, 230, "bpm"), nature: "mesuree" },
+  vol_max: { ...numF("ton volume max", 1, 40, "h/sem"), required: true , nature: "vecue" },
+  vol_recent: { ...numF("ton volume récent", 0, 40, "h/sem"), nature: "vecue" },
+  sessions_max: { ...numF("ton nombre de séances", 1, 14, "séances/sem"), fallback: "7" , nature: "vecue" },
+  race_date: { type: "date", label: "la date de ta course" , nature: "vecue" },
+  plan_start: { type: "date", label: "le départ de ton plan" , nature: "vecue" },
   // ---- Références mesurées ----
-  ftp_known: enumF("« connais-tu ta FTP »", OUI_NON),
-  pace_known: enumF("« connais-tu ton allure seuil »", OUI_NON),
-  css_known: enumF("« connais-tu ton CSS »", OUI_NON),
-  vam_known: enumF("« connais-tu ta VAM »", OUI_NON, ["trail"]),
-  ftp: numF("ta FTP", 50, 600, "W"),
-  vam: numF("ta VAM", 200, 2500, "m/h", ["trail"]),
+  ftp_known: { ...enumF("« connais-tu ta FTP »", OUI_NON), nature: "vecue" },
+  pace_known: { ...enumF("« connais-tu ton allure seuil »", OUI_NON), nature: "vecue" },
+  css_known: { ...enumF("« connais-tu ton CSS »", OUI_NON), nature: "vecue" },
+  vam_known: { ...enumF("« connais-tu ta VAM »", OUI_NON, ["trail"]), nature: "vecue" },
+  ftp: { ...numF("ta FTP", 50, 600, "W"), nature: "mesuree" },
+  vam: { ...numF("ta VAM", 200, 2500, "m/h", ["trail"]), nature: "mesuree" },
+  // R12.1 — la montée VÉCUE : deux chiffres que tout le monde peut donner, d'où l'on déduit
+  // la VAM. Bornes larges à dessein : c'est un souvenir, pas un protocole.
+  climb_dplus_m: { ...numF("le D+ de ta dernière grosse montée", 50, 3000, "m", ["trail"]), nature: "vecue" },
+  climb_min: { ...numF("la durée de ta dernière grosse montée", 5, 300, "min", ["trail"]), nature: "vecue" },
   // ---- Terrain / milieu ----
-  terrain: enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"]),
-  milieu: enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim"]),
-  swim_limit: enumF("ta limite en natation", ["technique", "respiration", "endurance", "peur"], ["swim"]),
-  treadmill: enumF("l'accès au tapis", OUI_NON),
+  terrain: { ...enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"]), nature: "vecue" },
+  milieu: { ...enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim"]), nature: "vecue" },
+  swim_limit: { ...enumF("ta limite en natation", ["technique", "respiration", "endurance", "peur"], ["swim"]), nature: "vecue" },
+  treadmill: { ...enumF("l'accès au tapis", OUI_NON), nature: "vecue" },
   // ---- Trail ----
-  race_technicity: enumF("la technicité de ta course", ["roulant", "mixte", "technique", "alpin"], ["trail"]),
-  race_night: enumF("la part de nuit", ["non", "partielle", "majoritaire"], ["trail"]),
-  train_dplus_access: enumF("le dénivelé accessible", ["plat", "collines", "montagne"], ["trail"]),
-  poles: enumF("les bâtons", ["oui", "non", "a_decider"], ["trail"]),
-  race_distance_km: { ...numF("la distance de ta course", 1, 500, "km", ["trail", "swimrun"]), requiredFor: ["trail"] },
-  race_dplus_m: { ...numF("le D+ de ta course", 0, 30000, "m", ["trail"]), required: true },
-  race_cutoff_h: numF("la barrière horaire", 1, 200, "h", ["trail"]),
+  race_technicity: { ...enumF("la technicité de ta course", ["roulant", "mixte", "technique", "alpin"], ["trail"]), nature: "vecue" },
+  race_night: { ...enumF("la part de nuit", ["non", "partielle", "majoritaire"], ["trail"]), nature: "vecue" },
+  train_dplus_access: { ...enumF("le dénivelé accessible", ["plat", "collines", "montagne"], ["trail"]), nature: "vecue" },
+  poles: { ...enumF("les bâtons", ["oui", "non", "a_decider"], ["trail"]), nature: "vecue" },
+  race_distance_km: { ...numF("la distance de ta course", 1, 500, "km", ["trail", "swimrun"]), requiredFor: ["trail"] , nature: "vecue" },
+  race_dplus_m: { ...numF("le D+ de ta course", 0, 30000, "m", ["trail"]), required: true , nature: "vecue" },
+  race_cutoff_h: { ...numF("la barrière horaire", 1, 200, "h", ["trail"]), nature: "vecue" },
   // ---- Swimrun ----
-  openwater_access: enumF("ton accès à l'eau libre", ["aucun", "saisonnier", "toute_annee"], ["swimrun"]),
-  team_mode: { ...enumF("solo ou binôme", ["solo", "binome"], ["swimrun"]), fallback: "solo" },
-  swim_continuous: enumF("la nage en continu", OUI_NON, ["swimrun"]),
-  run_continuous: enumF("la course en continu", OUI_NON, ["swimrun"]),
-  gear_test: enumF("le test en tenue", OUI_NON, ["swimrun"]),
-  swim_total_m: numF("la nage totale de ta course", 100, 30000, "m", ["swimrun"]),
-  run_total_km: numF("la course totale de ton épreuve", 1, 200, "km", ["swimrun"]),
-  longest_swim_m: numF("ta plus longue nage", 50, 10000, "m", ["swimrun"]),
-  segments_n: numF("le nombre de segments", 2, 60, "", ["swimrun"]),
-  water_temp_c: numF("la température de l'eau", -2, 35, "°C", ["swimrun"]),
-  team_swim_gap_sec: numF("l'écart de nage du binôme", 0, 120, "s/100m", ["swimrun"]),
+  openwater_access: { ...enumF("ton accès à l'eau libre", ["aucun", "saisonnier", "toute_annee"], ["swimrun"]), nature: "vecue" },
+  team_mode: { ...enumF("solo ou binôme", ["solo", "binome"], ["swimrun"]), fallback: "solo" , nature: "vecue" },
+  swim_continuous: { ...enumF("la nage en continu", OUI_NON, ["swimrun"]), nature: "vecue" },
+  run_continuous: { ...enumF("la course en continu", OUI_NON, ["swimrun"]), nature: "vecue" },
+  gear_test: { ...enumF("le test en tenue", OUI_NON, ["swimrun"]), nature: "vecue" },
+  swim_total_m: { ...numF("la nage totale de ta course", 100, 30000, "m", ["swimrun"]), nature: "vecue" },
+  run_total_km: { ...numF("la course totale de ton épreuve", 1, 200, "km", ["swimrun"]), nature: "vecue" },
+  longest_swim_m: { ...numF("ta plus longue nage", 50, 10000, "m", ["swimrun"]), nature: "vecue" },
+  segments_n: { ...numF("le nombre de segments", 2, 60, "", ["swimrun"]), nature: "vecue" },
+  water_temp_c: { ...numF("la température de l'eau", -2, 35, "°C", ["swimrun"]), nature: "vecue" },
+  team_swim_gap_sec: { ...numF("l'écart de nage du binôme", 0, 120, "s/100m", ["swimrun"]), nature: "mesuree" },
 };
 
 /* ───────────────────────── Normalisation numérique (R11.3) ───────────────────────── */

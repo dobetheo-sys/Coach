@@ -3,6 +3,9 @@
 // rouge), feedback→félicitations→partage dans SEMAINE.
 // Ordre des onglets R5 : 0=Profil · 1=Plan · 2=Aujourd'hui · 3=Semaine · 4=Nutrition.
 import { startServer, launchBrowser, makeReporter, runnerStateV1 } from "./harness.mjs";
+const V1_SWIMRUN = process.env.EB_SWIMRUN === "1";
+const N_SPORTS = V1_SWIMRUN ? 7 : 6; // R12 §0 — swimrun hors V1 : le sélecteur suit le registre du moteur
+
 
 const PORT = 8480;
 const server = await startServer(PORT);
@@ -55,7 +58,7 @@ ok(/#00b8d9/.test(await page.locator("#avSvg svg").innerHTML()), "le SVG reprend
 
 // ---- 4. Multi-plans : nouveau plan → questionnaire vierge, retour au 1er sans perte ----
 await page.click("#pfNewPlan"); await page.waitForTimeout(300);
-ok(await page.locator(".sport-card").count() === 7, "nouveau plan → choix du sport (questionnaire vierge) — 7 sports depuis R10 (duathlon + swimrun)");
+ok(await page.locator(".sport-card").count() === N_SPORTS, "nouveau plan → choix du sport (questionnaire vierge) — " + N_SPORTS + " sports au périmètre courant");
 await page.click('.sport-card[data-sport="bike"]');
 await page.click('.opts[data-key="intent"] .opt[data-val="plaisir"]');
 await page.click('.opts[data-key="format"] .opt[data-val="cyclo"]');

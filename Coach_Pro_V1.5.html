@@ -1805,6 +1805,9 @@ async function applyReadiness(){
                       
                        
                      
+                                                                                      
+                         
+                     
                         
                                                   
                     
@@ -2101,6 +2104,22 @@ class EBInputError extends Error {
 
                                                            
 
+/**
+ * R12.6 — LA NATURE DE CHAQUE QUESTION, et ce qu'elle a le droit de piloter.
+ *
+ * L'audit grand public a nommé le vrai critère de conception d'une V1 : *est-ce que quelqu'un
+ * peut répondre à cette question sans faire de test ?*
+ *
+ *   · `vecue`   — répondable par tout le monde, de mémoire. C'est la matière première.
+ *   · `mesuree` — demande un test ou une montre. DOIT avoir (a) un repli qui DÉGRADE
+ *                 proprement (zone, RPE, sensation) et (b) un chemin d'acquisition DANS l'outil.
+ *   · `estimee` — auto-déclarée, invérifiable (« ton niveau »). Elle a le droit de moduler le
+ *                 CONTENU d'une séance ; elle n'a PAS le droit de piloter une grandeur
+ *                 numérique — c'est exactement là que ça a cassé, avec trois heures d'écart sur
+ *                 une estimation de course selon la case cochée.
+ */
+                                                             
+
                             
                   
                                                                                        
@@ -2108,6 +2127,8 @@ class EBInputError extends Error {
                                         
                 
                                                                     
+                                                                  
+                          
                                                                                               
                      
                                                                                           
@@ -2152,72 +2173,76 @@ const numF = (label        , min        , max        , unit         , sports    
  */
 const ANSWER_SCHEMA                            = {
   // ---- Communes ----
-  intent: { ...enumF("ton intention", ["competition", "finir", "plaisir"]), fallback: "plaisir/finir (marge de 0,9 sur le volume)" },
-  level: { ...enumF("ton niveau", ["debutant", "inter", "avance"]), fallback: "inter" },
-  history: { ...enumF("ton historique d'entraînement", ["reprise", "confirme", "ancien"]), fallback: "confirme" },
-  dispo: enumF("ta disponibilité", ["quotidienne", "semaine", "partielle", "weekend"]),
-  doubles: enumF("les doubles séances", ["oui", "parfois", "non"]),
-  off_days: enumF("les jours bloqués", OUI_NON),
-  off_which: { type: "csv", label: "tes jours bloqués", domain: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] },
-  shift_ok: enumF("le décalage de tes jours", OUI_NON),
-  sex: enumF("ton sexe", ["F", "H", "np"]),
-  sleep: enumF("ton sommeil", ["court", "moyen", "bon"]),
-  life_load: enumF("ta charge de vie", ["legere", "normale", "lourde"]),
-  activity: enumF("ton activité quotidienne", ["sedentaire", "modere", "actif"]),
+  intent: { ...enumF("ton intention", ["competition", "finir", "plaisir"]), fallback: "plaisir/finir (marge de 0,9 sur le volume)" , nature: "vecue" },
+  level: { ...enumF("ton niveau", ["debutant", "inter", "avance"]), fallback: "inter" , nature: "estimee" },
+  history: { ...enumF("ton historique d'entraînement", ["reprise", "confirme", "ancien"]), fallback: "confirme" , nature: "vecue" },
+  dispo: { ...enumF("ta disponibilité", ["quotidienne", "semaine", "partielle", "weekend"]), nature: "vecue" },
+  doubles: { ...enumF("les doubles séances", ["oui", "parfois", "non"]), nature: "vecue" },
+  off_days: { ...enumF("les jours bloqués", OUI_NON), nature: "vecue" },
+  off_which: { type: "csv", label: "tes jours bloqués", domain: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] , nature: "vecue" },
+  shift_ok: { ...enumF("le décalage de tes jours", OUI_NON), nature: "vecue" },
+  sex: { ...enumF("ton sexe", ["F", "H", "np"]), nature: "vecue" },
+  sleep: { ...enumF("ton sommeil", ["court", "moyen", "bon"]), nature: "vecue" },
+  life_load: { ...enumF("ta charge de vie", ["legere", "normale", "lourde"]), nature: "vecue" },
+  activity: { ...enumF("ton activité quotidienne", ["sedentaire", "modere", "actif"]), nature: "vecue" },
   // Le domaine COMPLET, tous sports confondus : ce sont les localisations proposées par le
   // questionnaire (`injuryOpts`). L'UI en montre un sous-ensemble par sport ; le moteur, lui,
   // doit accepter tout ce qui a pu être enregistré — y compris après un changement de sport.
-  injury: { type: "csv", label: "tes zones fragiles",
+  injury: { type: "csv", label: "tes zones fragiles", nature: "vecue",
     domain: ["aucune", "tibia", "genou", "pied", "hanche", "dos", "epaule", "cou", "course", "velo",
       "quadriceps", "cheville", "fascia"] },
-  med_pain: enumF("la douleur à l'effort", OUI_NON),
-  med_dizzy: enumF("les vertiges à l'effort", OUI_NON),
-  med_treat: enumF("ton suivi médical", OUI_NON),
-  cycle_sync: enumF("la synchronisation avec ton cycle", OUI_NON),
-  cycle_start: { type: "date", label: "le 1er jour de tes dernières règles" },
-  cycle_len: numF("la longueur de ton cycle", 21, 40, "jours"),
-  weight_lever: enumF("le levier du poids", ["oui", "non", "coach"]),
-  age: numF("ton âge", 10, 100, "ans"),
-  weight: numF("ton poids", 25, 250, "kg"),
-  height: numF("ta taille", 100, 250, "cm"),
-  hr_max: numF("ta FC max", 120, 230, "bpm"),
-  vol_max: { ...numF("ton volume max", 1, 40, "h/sem"), required: true },
-  vol_recent: numF("ton volume récent", 0, 40, "h/sem"),
-  sessions_max: { ...numF("ton nombre de séances", 1, 14, "séances/sem"), fallback: "7" },
-  race_date: { type: "date", label: "la date de ta course" },
-  plan_start: { type: "date", label: "le départ de ton plan" },
+  med_pain: { ...enumF("la douleur à l'effort", OUI_NON), nature: "vecue" },
+  med_dizzy: { ...enumF("les vertiges à l'effort", OUI_NON), nature: "vecue" },
+  med_treat: { ...enumF("ton suivi médical", OUI_NON), nature: "vecue" },
+  cycle_sync: { ...enumF("la synchronisation avec ton cycle", OUI_NON), nature: "vecue" },
+  cycle_start: { type: "date", label: "le 1er jour de tes dernières règles" , nature: "vecue" },
+  cycle_len: { ...numF("la longueur de ton cycle", 21, 40, "jours"), nature: "vecue" },
+  weight_lever: { ...enumF("le levier du poids", ["oui", "non", "coach"]), nature: "vecue" },
+  age: { ...numF("ton âge", 10, 100, "ans"), nature: "vecue" },
+  weight: { ...numF("ton poids", 25, 250, "kg"), nature: "vecue" },
+  height: { ...numF("ta taille", 100, 250, "cm"), nature: "vecue" },
+  hr_max: { ...numF("ta FC max", 120, 230, "bpm"), nature: "mesuree" },
+  vol_max: { ...numF("ton volume max", 1, 40, "h/sem"), required: true , nature: "vecue" },
+  vol_recent: { ...numF("ton volume récent", 0, 40, "h/sem"), nature: "vecue" },
+  sessions_max: { ...numF("ton nombre de séances", 1, 14, "séances/sem"), fallback: "7" , nature: "vecue" },
+  race_date: { type: "date", label: "la date de ta course" , nature: "vecue" },
+  plan_start: { type: "date", label: "le départ de ton plan" , nature: "vecue" },
   // ---- Références mesurées ----
-  ftp_known: enumF("« connais-tu ta FTP »", OUI_NON),
-  pace_known: enumF("« connais-tu ton allure seuil »", OUI_NON),
-  css_known: enumF("« connais-tu ton CSS »", OUI_NON),
-  vam_known: enumF("« connais-tu ta VAM »", OUI_NON, ["trail"]),
-  ftp: numF("ta FTP", 50, 600, "W"),
-  vam: numF("ta VAM", 200, 2500, "m/h", ["trail"]),
+  ftp_known: { ...enumF("« connais-tu ta FTP »", OUI_NON), nature: "vecue" },
+  pace_known: { ...enumF("« connais-tu ton allure seuil »", OUI_NON), nature: "vecue" },
+  css_known: { ...enumF("« connais-tu ton CSS »", OUI_NON), nature: "vecue" },
+  vam_known: { ...enumF("« connais-tu ta VAM »", OUI_NON, ["trail"]), nature: "vecue" },
+  ftp: { ...numF("ta FTP", 50, 600, "W"), nature: "mesuree" },
+  vam: { ...numF("ta VAM", 200, 2500, "m/h", ["trail"]), nature: "mesuree" },
+  // R12.1 — la montée VÉCUE : deux chiffres que tout le monde peut donner, d'où l'on déduit
+  // la VAM. Bornes larges à dessein : c'est un souvenir, pas un protocole.
+  climb_dplus_m: { ...numF("le D+ de ta dernière grosse montée", 50, 3000, "m", ["trail"]), nature: "vecue" },
+  climb_min: { ...numF("la durée de ta dernière grosse montée", 5, 300, "min", ["trail"]), nature: "vecue" },
   // ---- Terrain / milieu ----
-  terrain: enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"]),
-  milieu: enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim"]),
-  swim_limit: enumF("ta limite en natation", ["technique", "respiration", "endurance", "peur"], ["swim"]),
-  treadmill: enumF("l'accès au tapis", OUI_NON),
+  terrain: { ...enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"]), nature: "vecue" },
+  milieu: { ...enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim"]), nature: "vecue" },
+  swim_limit: { ...enumF("ta limite en natation", ["technique", "respiration", "endurance", "peur"], ["swim"]), nature: "vecue" },
+  treadmill: { ...enumF("l'accès au tapis", OUI_NON), nature: "vecue" },
   // ---- Trail ----
-  race_technicity: enumF("la technicité de ta course", ["roulant", "mixte", "technique", "alpin"], ["trail"]),
-  race_night: enumF("la part de nuit", ["non", "partielle", "majoritaire"], ["trail"]),
-  train_dplus_access: enumF("le dénivelé accessible", ["plat", "collines", "montagne"], ["trail"]),
-  poles: enumF("les bâtons", ["oui", "non", "a_decider"], ["trail"]),
-  race_distance_km: { ...numF("la distance de ta course", 1, 500, "km", ["trail", "swimrun"]), requiredFor: ["trail"] },
-  race_dplus_m: { ...numF("le D+ de ta course", 0, 30000, "m", ["trail"]), required: true },
-  race_cutoff_h: numF("la barrière horaire", 1, 200, "h", ["trail"]),
+  race_technicity: { ...enumF("la technicité de ta course", ["roulant", "mixte", "technique", "alpin"], ["trail"]), nature: "vecue" },
+  race_night: { ...enumF("la part de nuit", ["non", "partielle", "majoritaire"], ["trail"]), nature: "vecue" },
+  train_dplus_access: { ...enumF("le dénivelé accessible", ["plat", "collines", "montagne"], ["trail"]), nature: "vecue" },
+  poles: { ...enumF("les bâtons", ["oui", "non", "a_decider"], ["trail"]), nature: "vecue" },
+  race_distance_km: { ...numF("la distance de ta course", 1, 500, "km", ["trail", "swimrun"]), requiredFor: ["trail"] , nature: "vecue" },
+  race_dplus_m: { ...numF("le D+ de ta course", 0, 30000, "m", ["trail"]), required: true , nature: "vecue" },
+  race_cutoff_h: { ...numF("la barrière horaire", 1, 200, "h", ["trail"]), nature: "vecue" },
   // ---- Swimrun ----
-  openwater_access: enumF("ton accès à l'eau libre", ["aucun", "saisonnier", "toute_annee"], ["swimrun"]),
-  team_mode: { ...enumF("solo ou binôme", ["solo", "binome"], ["swimrun"]), fallback: "solo" },
-  swim_continuous: enumF("la nage en continu", OUI_NON, ["swimrun"]),
-  run_continuous: enumF("la course en continu", OUI_NON, ["swimrun"]),
-  gear_test: enumF("le test en tenue", OUI_NON, ["swimrun"]),
-  swim_total_m: numF("la nage totale de ta course", 100, 30000, "m", ["swimrun"]),
-  run_total_km: numF("la course totale de ton épreuve", 1, 200, "km", ["swimrun"]),
-  longest_swim_m: numF("ta plus longue nage", 50, 10000, "m", ["swimrun"]),
-  segments_n: numF("le nombre de segments", 2, 60, "", ["swimrun"]),
-  water_temp_c: numF("la température de l'eau", -2, 35, "°C", ["swimrun"]),
-  team_swim_gap_sec: numF("l'écart de nage du binôme", 0, 120, "s/100m", ["swimrun"]),
+  openwater_access: { ...enumF("ton accès à l'eau libre", ["aucun", "saisonnier", "toute_annee"], ["swimrun"]), nature: "vecue" },
+  team_mode: { ...enumF("solo ou binôme", ["solo", "binome"], ["swimrun"]), fallback: "solo" , nature: "vecue" },
+  swim_continuous: { ...enumF("la nage en continu", OUI_NON, ["swimrun"]), nature: "vecue" },
+  run_continuous: { ...enumF("la course en continu", OUI_NON, ["swimrun"]), nature: "vecue" },
+  gear_test: { ...enumF("le test en tenue", OUI_NON, ["swimrun"]), nature: "vecue" },
+  swim_total_m: { ...numF("la nage totale de ta course", 100, 30000, "m", ["swimrun"]), nature: "vecue" },
+  run_total_km: { ...numF("la course totale de ton épreuve", 1, 200, "km", ["swimrun"]), nature: "vecue" },
+  longest_swim_m: { ...numF("ta plus longue nage", 50, 10000, "m", ["swimrun"]), nature: "vecue" },
+  segments_n: { ...numF("le nombre de segments", 2, 60, "", ["swimrun"]), nature: "vecue" },
+  water_temp_c: { ...numF("la température de l'eau", -2, 35, "°C", ["swimrun"]), nature: "vecue" },
+  team_swim_gap_sec: { ...numF("l'écart de nage du binôme", 0, 120, "s/100m", ["swimrun"]), nature: "mesuree" },
 };
 
 /* ───────────────────────── Normalisation numérique (R11.3) ───────────────────────── */
@@ -3040,6 +3065,8 @@ const FORBIDDEN = [
                                                                            
                                                                                           
                                                                                             
+                                                                                
+                                                                     
                                                                                                  
                                       
                                                                          
@@ -3075,6 +3102,12 @@ const DISCIPLINE_REGISTRY                                 = {
   trail: {
     id: "trail", label: "Trail", primaryMetric: "gap_pace",
     zonesSource: { test: "Allure seuil (3min + 10min à fond, sur plat)", protocol: "Même test que la route, SUR PLAT : en trail l'allure brute ne veut rien dire, on raisonne en GAP (allure ajustée à la pente) quand les données existent, sinon en FC/RPE.", refKey: "thrPace" },
+    // R12.2 — LA référence du trail. Elle n'avait aucun protocole écrit : le plan la devinait.
+    verticalSource: {
+      test: "VAM (montée continue de 20 à 30 min)",
+      protocol: "Choisis une montée régulière que tu peux tenir 20 à 30 minutes sans t'arrêter, sur une pente franche (8-15 %). Échauffe-toi 15 min, puis monte à un rythme dur mais RÉGULIER — celui que tu tiendrais une heure si tu devais. Relève le D+ et le temps : VAM = D+ ÷ durée en heures. Refais-la sur la MÊME montée à chaque retest, sinon tu compares deux choses différentes.",
+      refKey: "vam",
+    },
     volumeUnit: "duration", // temps + D+, JAMAIS en km seul (spec §2)
     skills: ["descente technique", "montée au train", "navigation", "gestion ravito"],
     loadRules: [
@@ -3200,8 +3233,68 @@ const TRAIL_TECHNICITY                                               = {
   alpin: { f: 1.3, label: "alpin" },
 };
 
-/** Ordres de grandeur de VAM seuil (m D+/h) — repli quand l'athlète ne la connaît pas. */
-const VAM_BY_LEVEL                         = { debutant: 600, inter: 850, avance: 1200 };
+/**
+ * T18 (R12.1) — LA VAM SE DÉDUIT D'UNE MONTÉE VÉCUE, PAS D'UN ADJECTIF.
+ *
+ * L'audit grand public a montré le défaut : contrairement aux trois autres références, le trail
+ * ne se repliait pas sur une grandeur observable — il substituait un NOMBRE déduit d'un adjectif
+ * auto-déclaré (`level`), puis construisait tout le plan et la prédiction dessus. Sur un
+ * 45 km / 2 200 m, le seul changement de « niveau » faisait varier l'estimation de course de
+ * TROIS HEURES. Or « intermédiaire » est la case que tout le monde coche.
+ *
+ * La bonne question n'est pas « connais-tu ta VAM ? » — personne ne la connaît — mais
+ * « ta dernière grosse montée : combien de D+, en combien de temps ? ». Tout le monde sait y
+ * répondre, et c'est une MESURE.
+ *
+ * L'abattement : une montée d'entraînement n'est pas un effort seuil, et une montée courte
+ * flatte la moyenne (on tient 900 m/h sur 15 min, pas sur une heure). On retient donc 90 % de
+ * la VAM observée, et 85 % sous 15 minutes. Conservateur par construction : sous-estimer la VAM
+ * donne un plan un peu facile, la surestimer donne un plan intenable et une prédiction qui ment.
+ */
+const T18_VAM_FROM_CLIMB = trule(
+  "T18",
+  "une VAM mesurée sur une montée vécue vaut mieux qu'une VAM déduite d'un adjectif — avec un abattement, car une montée d'entraînement n'est pas un effort seuil et une montée courte flatte la moyenne",
+  { abatement: 0.9, shortClimbMin: 15, shortAbatement: 0.85, minMin: 5, maxMin: 300 },
+);
+
+/**
+ * Repli quand l'athlète n'a ni VAM ni montée à déclarer (R12.4). Deux principes :
+ *
+ * 1. **BORNE BASSE, pas médiane.** Pour une V1 grand public, l'inconnu doit tomber vers le bas.
+ *    L'ancien défaut (850 m/h) décrivait déjà un grimpeur solide. Un plan calibré trop haut se
+ *    paie en blessure ; calibré trop bas, il se corrige à la première montée déclarée.
+ * 2. **Le repli ne s'appuie plus sur `level`.** C'était le cœur du défaut mesuré : le seul
+ *    changement d'adjectif faisait varier l'estimation de course de TROIS HEURES, et
+ *    « intermédiaire » est la case que tout le monde coche. On s'appuie sur deux réponses
+ *    FACTUELLES — depuis combien de temps tu pratiques, et quel dénivelé tu as près de chez toi
+ *    (quelqu'un qui vit en montagne grimpe, quelqu'un qui vit en plaine non). `level` continue
+ *    de servir là où il est légitime : le CONTENU des séances, jamais un chiffre de prédiction.
+ */
+const VAM_BY_HISTORY                         = trule(
+  "T18b", "l'ancienneté de pratique est une réponse factuelle ; le « niveau » est un adjectif — seul le premier a le droit de piloter un chiffre",
+  { reprise: 500, confirme: 620, ancien: 720 },
+);
+/** Allure seuil sur plat, en secondes/km, quand elle n'est pas connue — adossée à l'ancienneté
+ *  de pratique, jamais au niveau ressenti (R12.6). Volontairement prudente. */
+const T18d_FLAT_PACE_BY_HISTORY                         = trule(
+  "T18d", "un repli d'allure doit s'appuyer sur une réponse vérifiable ; le niveau ressenti n'en est pas une",
+  { reprise: 380, confirme: 330, ancien: 300 },
+);
+/** … modulé par le dénivelé RÉELLEMENT accessible : on grimpe ce qu'on a sous la porte. */
+const VAM_BY_TERRAIN                         = trule(
+  "T18c", "le dénivelé accessible depuis chez soi prédit mieux la capacité en montée qu'un niveau ressenti",
+  { plat: 0.9, collines: 1.0, montagne: 1.1 },
+);
+
+/** VAM déduite d'une montée déclarée (D+ en m, durée en min) — `null` si la saisie ne dit rien. */
+function vamFromClimb(dplusM        , minutes        )                {
+  const T = T18_VAM_FROM_CLIMB;
+  if (!(dplusM > 0) || !(minutes >= T.minMin) || minutes > T.maxMin) return null;
+  const raw = dplusM / (minutes / 60);
+  const f = minutes < T.shortClimbMin ? T.shortAbatement : T.abatement;
+  const v = Math.round(raw * f);
+  return v >= 150 && v <= 2500 ? v : null;
+}
 
 /** Part de la vitesse seuil réellement tenable selon la durée d'effort : une allure seuil
  *  ne se tient pas 12 h. `flat` s'applique à la vitesse au sol, `vert` à la VAM.
@@ -3231,6 +3324,8 @@ const ENDURANCE_KEEP                                                        = {
                 
               
                     
+                                                                                            
+                                               
                       
                          
                               
@@ -3259,10 +3354,21 @@ function trailObjective(a                )                 {
   const dmoinsM = num(a.race_dmoins_m) > 0 ? num(a.race_dmoins_m) : dplusM;
   const kmEffort = Math.round(distanceKm + dplusM / 100);
   const level = a.level || "inter";
-  const vamKnown = a.vam_known === "oui" && num(a.vam) >= 200 && num(a.vam) <= 2500;
-  const vam = vamKnown ? num(a.vam) : VAM_BY_LEVEL[level] || 850;
+  // Trois sources, dans cet ordre : la VAM saisie (rare), la montée VÉCUE (R12.1 — ce que les
+  // gens savent), et à défaut un repli conservateur pondéré par l'historique (R12.4).
+  const vamDeclared = a.vam_known === "oui" && num(a.vam) >= 200 && num(a.vam) <= 2500 ? num(a.vam) : 0;
+  const vamClimb = vamDeclared ? 0 : (vamFromClimb(num(a.climb_dplus_m), num(a.climb_min)) || 0);
+  const vamKnown = vamDeclared > 0 || vamClimb > 0;
+  const vamSource                                    = vamDeclared ? "declaree" : vamClimb ? "montee" : "estimee";
+  const vam = vamDeclared || vamClimb
+    || Math.round((VAM_BY_HISTORY[a.history || "confirme"] ?? 620) * (VAM_BY_TERRAIN[a.train_dplus_access || "collines"] ?? 1));
   // allure seuil SUR PLAT (s/km) — la référence route reste valable à plat
-  const flatPaceSec = num(a.pace_known === "oui" ? paceToSec(a.pace) : 0) || (level === "debutant" ? 360 : level === "avance" ? 260 : 300);
+  // R12.6 — même principe que pour la VAM : quand l'allure n'est pas connue, le repli suit une
+  // réponse FACTUELLE (l'ancienneté de pratique), pas un adjectif. C'est par ce chemin que
+  // `level` faisait encore varier l'estimation de course — et donc la sortie longue, calibrée
+  // en pourcentage du temps de course (T4).
+  const flatPaceSec = num(a.pace_known === "oui" ? paceToSec(a.pace) : 0)
+    || (T18d_FLAT_PACE_BY_HISTORY[a.history || "confirme"] ?? 330);
   const tech = TRAIL_TECHNICITY[a.race_technicity || "mixte"] || TRAIL_TECHNICITY.mixte;
   const night = a.race_night || "non";
   const nightF = night === "majoritaire" ? 1.1 : night === "partielle" ? 1.05 : 1.0;
@@ -3301,11 +3407,13 @@ function trailObjective(a                )                 {
   return {
     distanceKm, dplusM, dmoinsM, kmEffort, category: cat, rawCategory, cappedByProduct,
     raceMinLo: Math.round(mid * (1 - spread)), raceMinHi: Math.round(mid * (1 + spread)), raceMinMid: Math.round(mid),
-    technicity: a.race_technicity || "mixte", night, vam, vamKnown, flatPaceSec,
+    technicity: a.race_technicity || "mixte", night, vam, vamKnown, vamSource, flatPaceSec,
     cutoffH: num(a.race_cutoff_h) > 0 ? num(a.race_cutoff_h) : null,
     altitudeMaxM: num(a.race_altitude_max_m) > 0 ? num(a.race_altitude_max_m) : null,
     why: distanceKm + " km / " + dplusM + " m D+ = " + kmEffort + " km-effort · "
-      + (vamKnown ? "ta VAM de " + Math.round(vam) + " m/h" : "VAM estimée à " + Math.round(vam) + " m/h (niveau " + level + ")")
+      + (vamSource === "declaree" ? "ta VAM de " + Math.round(vam) + " m/h"
+        : vamSource === "montee" ? "ta VAM de " + Math.round(vam) + " m/h, déduite de la montée que tu as déclarée"
+        : "VAM estimée à " + Math.round(vam) + " m/h (repli prudent : " + (a.history || "confirme") + ", terrain " + (a.train_dplus_access || "collines") + ")")
       + " et ton allure seuil à plat, dégradées pour la durée · terrain " + tech.label
       + (tech.f > 1 ? " (+" + Math.round((tech.f - 1) * 100) + "%)" : "")
       + (nightF > 1 ? " · nuit (+" + Math.round((nightF - 1) * 100) + "%)" : ""),
@@ -3412,7 +3520,12 @@ class TrainingReasoningEngine {
     if (tObj) {
       D("format-trail", "Catégorie d'effort", tObj.category + " (" + fmtH(tObj.raceMinLo) + "–" + fmtH(tObj.raceMinHi) + " estimées)", "Déduit de " + tObj.why);
       D("km-effort", "Ton objectif en km-effort", tObj.kmEffort + " km-effort", tObj.distanceKm + " km + " + tObj.dplusM + " m D+ ÷ 100 — la métrique qui compare des courses de relief différent");
-      if (!tObj.vamKnown) warnings.push("Ta vitesse ascensionnelle (VAM) n'est pas renseignée : le plan utilise une estimation de " + Math.round(tObj.vam) + " m/h d'après ton niveau. Fais le test (une montée régulière de 20-30 min à fond : D+ ÷ durée = ta VAM) et renseigne-la au Profil — c'est LA référence d'intensité en montée, et elle resserre aussi la prédiction.");
+      // R12.4 — la VAM estimée est ANNONCÉE, et l'athlète sait exactement quoi faire pour la
+      // remplacer : donner la dernière montée qu'il a faite. Pas un test à programmer, pas un
+      // chiffre à connaître — un souvenir. C'est la différence entre un plan qu'on affine et un
+      // plan qui repose sur une case cochée.
+      if (!tObj.vamKnown) warnings.push("Ta vitesse ascensionnelle est ESTIMÉE (" + Math.round(tObj.vam) + " m/h, repli prudent d'après ton niveau et ton historique) : c'est la référence d'intensité en montée ET la base de la prédiction, donc l'estimation coûte cher en précision. Le plus simple pour la corriger : au Profil, donne ta dernière grosse montée — combien de D+, en combien de temps. Pas besoin de test ni de chiffre à connaître.");
+      else if (tObj.vamSource === "montee") warnings.push("Ta VAM (" + Math.round(tObj.vam) + " m/h) est déduite de la montée que tu as déclarée, avec une marge de prudence : une montée d'entraînement n'est pas un effort seuil. Elle se précisera au premier test vertical ou au premier import de montre.");
       if (tObj.cappedByProduct) warnings.push("Ton objectif dépasse 24 h d'effort estimées. Le plan construit l'endurance nécessaire, mais la stratégie propre à ce format (sommeil fractionné, assistance, ravitaillement par base-vie) dépasse ce qu'un plan automatique peut honnêtement produire : cherche l'accompagnement d'un entraîneur ou d'un finisher expérimenté pour cette partie.");
       if (tObj.altitudeMaxM && tObj.altitudeMaxM > 2500) warnings.push("Ta course monte à " + tObj.altitudeMaxM + " m : au-dessus de 2 500 m, la performance baisse et l'acclimatation compte. Un protocole d'acclimatation dépend de contraintes logistiques que l'outil ne connaît pas — si tu peux dormir en altitude quelques nuits avant, fais-le.");
     }
@@ -3424,7 +3537,10 @@ class TrainingReasoningEngine {
     // On ne refuse pas de produire un plan (l'athlète resterait sans rien) : on RABAT le format
     // au plus long format autorisé et on le DIT.
     if (sp === "swimrun") {
-      const block = swimrunPrereqBlock(a                                                                          );
+      // R12 §0 — le module swimrun peut être absent du bundle V1 : on ne référence pas un
+      // symbole qui n'existe pas (le sport, lui, est déjà refusé en amont par le registre).
+      const block = typeof swimrunPrereqBlock === "function"
+        ? swimrunPrereqBlock(a                                                                          ) : "";
       if (block) {
         warnings.push(block + " Ton plan a donc été construit sur le format Sprint : il te prépare aux bases, et tu passeras au format long quand elles seront acquises.");
         D("prereq-swimrun", "Format rabattu", "sprint (au lieu de " + (a.format || "?") + ")", "Les prérequis de sécurité du format long ne sont pas atteints — construire les bases d'abord n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend");
@@ -3630,7 +3746,16 @@ class TrainingReasoningEngine {
       D("T2", "Progression du dénivelé", "D+ ≤ +12%/sem · D− ≤ +8%/sem", "La charge excentrique (descente) est le premier facteur de casse musculaire : elle progresse plus lentement que tout le reste");
       // T4 — la sortie longue plafonne en % du TEMPS DE COURSE estimé, jamais en absolu
       trailLongCapMin = Math.round(tObj.raceMinMid * T4_LONG_RUN_VS_RACE[tObj.category]);
-      D("T4", "Plafond de la sortie longue", fmtH(trailLongCapMin), "Sur ce format, reproduire la durée de course à l'entraînement serait contre-productif : " + Math.round(T4_LONG_RUN_VS_RACE[tObj.category] * 100) + "% du temps estimé suffit à préparer le reste");
+      // R12.7 — la sortie longue est calibrée en POURCENTAGE du temps de course estimé. Un
+      // athlète plus rapide a une course plus courte, donc une sortie longue plus courte : la
+      // progression n'est pas monotone avec le niveau, et sans explication ça passe pour un bug.
+      D("T4", "Plafond de la sortie longue", fmtH(trailLongCapMin),
+        "Sur ce format, reproduire la durée de course à l'entraînement serait contre-productif : "
+        + Math.round(T4_LONG_RUN_VS_RACE[tObj.category] * 100) + "% du temps estimé suffit à préparer le reste. "
+        + "Ce plafond suit ton temps ESTIMÉ (" + fmtH(Math.round(tObj.raceMinMid)) + ") : plus tu es rapide, plus ta course est courte, et plus ta sortie longue l'est aussi — "
+        + (tObj.vamSource === "estimee"
+          ? "et comme ta vitesse ascensionnelle est encore estimée, ce plafond bougera dès que tu donneras une vraie montée"
+          : "il se recalculera à chaque fois que ta référence de montée changera"));
       // T7 — répétitions ravito/matériel
       if (tObj.raceMinMid / 60 >= 6) D("T7", "Répétitions ravitaillement", "3 sorties en conditions réelles (phase spécifique)", "Au-delà de 6 h d'effort, l'estomac et le matériel provoquent autant d'abandons que les jambes : ça se teste à l'entraînement");
       // T11 — terrain plat : le dire, ne pas prescrire du dénivelé inatteignable
@@ -5523,607 +5648,6 @@ registerSport({
   // du volume sans impact. Sans ce plafond, le générateur produit 6 jours d'appui par semaine.
   guards: { runImpactCap: true, stripLongOnMedHold: true, singleRunVo2PerWeek: true },
 });
-
-// ===== src/sports/swimrun/tables.ts =====
-/**
- * Constantes SWIMRUN avec provenance (spec R10 phase 3).
- *
- * DÉCISION D'ARCHITECTURE (§R10.3) : le swimrun n'est pas un triathlon sans vélo, c'est un
- * cousin du TRAIL. Distances non standardisées, volume en TEMPS, terrain comme variable
- * première, matériel structurant, prédiction par fourchette large assumée. Ce fichier suit donc
- * le modèle de `trailModel.ts` (constantes nommées, chacune avec son pourquoi), pas celui du tri.
- *
- * Deux nouveautés que ni le trail ni le tri ne couvrent : le BINÔME (le profil cesse d'être
- * individuel) et les RÉFÉRENCES EN TENUE (les refs de bassin/route deviennent des estimations
- * de repli).
- */
-                                                 
-const SWIMRUN_PROVENANCE         = [];
-function srule   (id        , why        , value   )    {
-  SWIMRUN_PROVENANCE.push({ id, why });
-  return value;
-}
-
-                                                                                  
-const SWIMRUN_CATEGORIES                    = ["experience", "sprint", "series", "championship"];
-
-/**
- * S1 — repères de calibration (ÖTILLÖ Cannes / championnat du monde). Servent de VALEURS PAR
- * DÉFAUT quand l'athlète n'a pas encore les chiffres de sa course : la distance nagée, le
- * nombre de segments et la plus longue nage sont ce qui dimensionne une prépa swimrun.
- */
-const S1_RACE_DEFAULTS                                                                                                                    = srule(
-  "S1",
-  "les distances de swimrun ne sont pas normalisées : sans repères réels, un plan par défaut serait une fiction — ceux-ci viennent d'épreuves ÖTILLÖ documentées",
-  {
-    experience: { swimM: 1700, runKm: 4, dplusM: 100, segments: 6, longestSwimM: 400 },
-    sprint: { swimM: 2600, runKm: 9.2, dplusM: 250, segments: 10, longestSwimM: 600 },
-    series: { swimM: 7850, runKm: 33, dplusM: 900, segments: 20, longestSwimM: 1400 },
-    championship: { swimM: 9000, runKm: 61, dplusM: 1900, segments: 25, longestSwimM: 1600 },
-  },
-);
-
-/** S2 — durée de préparation minimale par catégorie (§R10.3.1). */
-const S2_MIN_WEEKS                                  = srule(
-  "S2",
-  "un championnat du monde de swimrun ne se prépare pas dans l'horizon d'une Experience",
-  { experience: 10, sprint: 12, series: 20, championship: 30 },
-);
-
-/** S3 — plafonds horaires (h/sem au pic) par catégorie × historique. */
-const S3_HISTORY_CAPS                                                  = srule(
-  "S3",
-  "la structure de référence des coachs spécialisés tient dans 7 à 12 h hebdomadaires : au-delà, ce n'est plus la condition qui limite mais la logistique (eau libre, binôme, matériel)",
-  {
-    experience: { reprise: 5, confirme: 7, ancien: 8 },
-    sprint: { reprise: 6, confirme: 8, ancien: 10 },
-    series: { reprise: 8, confirme: 11, ancien: 13 },
-    championship: { reprise: 9, confirme: 12, ancien: 15 },
-  },
-);
-
-/** Heures UTILES par catégorie — au-delà, le volume ne sert plus l'objectif. */
-const SWIMRUN_UTIL                                  = { experience: 8, sprint: 10, series: 13, championship: 16 };
-
-/**
- * S4 — RÉFÉRENCES EN TENUE. LE point critique de la spec (§R10.3.3) : il est INTERDIT de
- * dériver l'allure swimrun d'un simple facteur appliqué au CSS bassin ou à l'allure route.
- * Ces facteurs ne sont donc PAS une méthode — ce sont des valeurs de REPLI, marquées comme
- * estimées partout où elles apparaissent, en attendant le test de terrain en tenue complète.
- *
- * Ordre de grandeur observé et documenté par les coachs : un binôme à 6 min/km sur route se
- * retrouve autour de 8 min/km en tenue swimrun (combinaison, chaussures mouillées, terrain) —
- * soit ×1.33. À la nage, combinaison et pull buoy portent, plaquettes tractent, mais la
- * navigation, les vagues et le matériel embarqué coûtent : le net est légèrement plus lent
- * que le CSS bassin.
- */
-const S4_GEAR_FACTORS = srule(
-  "S4",
-  "les allures ne transfèrent PAS : c'est le point de douleur n°2 des pratiquants (le choc du premier test en tenue). Ces facteurs sont un repli explicite, jamais une méthode — le test en tenue les remplace",
-  { run: 1.33, swim: 1.08 },
-);
-
-/**
- * S5 — COÛT DES TRANSITIONS. Poste de temps à part entière, systématiquement sous-estimé
- * (point de douleur n°3). Une course à 10 segments compte 20 transitions : à 2 min chacune,
- * c'est 40 min — plus que ce que la plupart des binômes croient perdre sur toute la course.
- * Le coût dépend de l'entraînement : c'est précisément ce que la séance pivot travaille.
- */
-const S5_TRANSITION_MIN                         = srule(
-  "S5",
-  "les transitions se répètent à l'entraînement ou se paient en course : le coût unitaire baisse avec la pratique, il ne disparaît jamais",
-  { debutant: 2.5, inter: 1.5, avance: 1.0 },
-);
-
-/**
- * S6 — EFFET DE BINÔME (longe). Règles ÖTILLÖ : l'équipe reste groupée en permanence, sans
- * dépasser 5 à 10 m d'écart selon l'épreuve. Conséquences MODÉLISÉES, pas mentionnées en note :
- * le suiveur drafte (effort réduit de 15 à 20 %, un bon sillage vaut jusqu'à 10 s/100 m), et
- * attachée, la vitesse de l'équipe se rapproche davantage de celle du nageur le plus RAPIDE
- * que du plus lent.
- */
-const S6_TEAM = srule(
-  "S6",
-  "le choix du partenaire est décrit comme la décision la plus lourde de conséquence du sport : son effet doit être dans le calcul, pas dans un conseil",
-  {
-    draftEffortSaving: 0.175, // 15-20 % pour le suiveur
-    swimSecPer100mGain: 10, // sillage optimal
-    fasterSwimmerWeight: 0.6, // la vitesse d'équipe penche vers le plus rapide
-  },
-);
-
-/**
- * S7 — FROID. L'acclimatation est un AXE PÉRIODISÉ, pas une ligne de conseil : exposition
- * régulière (hebdomadaire au minimum, 2-3× idéalement), avec allongement progressif du temps
- * dans l'eau. Combinaison obligatoire en compétition sous 19 °C (règlement ÖTILLÖ).
- */
-const S7_COLD = srule(
-  "S7",
-  "l'eau froide dégrade la nage et la lucidité avant de mettre en danger : l'acclimatation se planifie comme une qualité physique",
-  { wetsuitMandatoryBelowC: 19, acclimationBelowC: 17, minSessionsPerWeek: 1, idealSessionsPerWeek: 2 },
-);
-
-/**
- * S8 — PLAQUETTES et ÉPAULE. Les plaquettes sollicitent durement épaules et dos : leur
- * introduction est GRADUELLE, jamais d'emblée au volume cible. Le drapeau `epaule` cesse
- * d'être un simple modificateur de volume — il conditionne cette progression.
- */
-const S8_PADDLES = srule(
-  "S8",
-  "les plaquettes sont l'outil le plus rentable du swimrun et le plus traumatisant pour l'épaule : la progressivité n'est pas une précaution, c'est la condition de leur usage",
-  { shareBase: 0.15, shareDev: 0.3, shareSpec: 0.45,
-    // R4.8e (audit v7) — épaule déclarée : ZÉRO plaquette, partout. Le facteur valait 0.4, ce qui
-    // laissait ~6 % de plaquettes dans la séance pivot pendant que la séance de nage affichait
-    // « SANS plaquettes » : deux séances du même plan se contredisaient sur le même drapeau.
-    // Trancher vaut mieux qu'expliquer une incohérence.
-    shoulderFactor: 0 },
-);
-
-/**
- * S9 — PROGRESSION DE LA SÉANCE PIVOT, en % du temps de course estimé. Mappée sur les PHASES
- * (base/dev/spec/peak/taper) plutôt que câblée sur 10 semaines : la spec donne une courbe à
- * pic 80 % à trois semaines de la course, ce qui correspond à la fin de `peak`.
- */
-const S9_LONG_SHARE                                   = srule(
-  "S9",
-  "reproduire la durée de course à l'entraînement est contre-productif ; le pic à 80 % trois semaines avant est le compromis documenté",
-  { base: [0.2, 0.35], dev: [0.35, 0.55], spec: [0.55, 0.7], peak: [0.7, 0.8], taper: [0.25, 0.4] },
-);
-
-/**
- * S12 — nombre maximal de segments reproduits dans UNE séance. Une course à 48 segments ne se
- * répète pas à l'entraînement : au-delà d'une douzaine d'entrées-sorties d'eau, la séance
- * devient la course elle-même. On travaille la compétence sur un nombre représentatif et on la
- * répète semaine après semaine — c'est comme ça qu'elle s'automatise.
- */
-const S12_PIVOT_MAX_SEGMENTS = srule(
-  "S12",
-  "la compétence « entrer et sortir de l'eau » s'automatise par la répétition hebdomadaire, pas en reproduisant les 48 segments de la course en une sortie",
-  10,
-);
-
-/**
- * S10 — PRÉREQUIS D'ENTRÉE. Savoir nager 30 min (~1200 m) en continu et courir 30 min. En
- * dessous, le questionnaire REFUSE les formats longs et propose `experience` : c'est la
- * priorité n°1 du manifeste (santé) appliquée à un sport où l'on est loin du bord.
- */
-const S10_PREREQ = srule(
-  "S10",
-  "en swimrun on est parfois à 700 m du rivage : un nageur qui ne tient pas 30 min continu n'a pas sa place sur un format long, et le dire est plus utile que de générer un plan",
-  { minSwimContinuousMin: 30, minSwimContinuousM: 1200, minRunContinuousMin: 30 },
-);
-
-/**
- * S11 — MATÉRIEL OBLIGATOIRE (socle ÖTILLÖ). Rappelé en tête de plan. Formulé comme un socle
- * à VÉRIFIER auprès de l'organisateur, jamais comme une liste exhaustive : elle varie.
- */
-const S11_GEAR_CHECKLIST           = srule(
-  "S11",
-  "le matériel obligatoire est un point de douleur récurrent car il varie d'un organisateur à l'autre : on donne le socle et on renvoie au règlement",
-  [
-    "combinaison une pièce adaptée à la température de l'eau",
-    "bandage compressif emballé de façon étanche",
-    "sifflet accessible pendant les nages",
-    "gobelet ou flasque pliable",
-    "longe si tu cours en binôme (obligatoire sur la plupart des épreuves)",
-  ],
-);
-
-/** Part de nage dans le TEMPS de course (indicatif) — bien supérieure à sa part en distance. */
-const SWIM_TIME_SHARE_HINT                                  = { experience: 0.35, sprint: 0.3, series: 0.28, championship: 0.25 };
-
-/** Accès à l'eau libre — sur le modèle exact de `TRAIL_ACCESS` (§R10.3.6). */
-const OPENWATER_ACCESS                                                                = {
-  toute_annee: { label: "eau libre accessible toute l'année", maxSessionsPerWeek: 3 },
-  saisonnier: { label: "eau libre accessible en saison seulement", maxSessionsPerWeek: 1 },
-  aucun: { label: "aucun accès à l'eau libre", maxSessionsPerWeek: 0 },
-};
-
-// ===== src/sports/swimrun/objective.ts =====
-/**
- * Objet COURSE swimrun (§R10.3.2) — construit sur le modèle exact de `trailObjective` : le
- * format seul ne suffit pas, ce sont les DONNÉES de l'épreuve qui dimensionnent la préparation.
- *
- * Le temps estimé se décompose en TROIS POSTES, jamais un bloc :
- *     temps_total = temps_nage + temps_course + temps_transitions
- * Les transitions sont un poste à part entière (§R10.3.7) : à 20 transitions et 2 min l'unité,
- * c'est 40 min — plus que ce que la plupart des binômes croient perdre sur toute la course.
- */
-                                                            
-
-// Noms préfixés : le bundle concatène tout dans une portée unique (garde-fou de collision
-// dans buildApp.mjs) — `num` et `paceToSec` existent déjà dans trailModel.
-const srNum = (v         )         => {
-  const n = parseFloat(String(v ?? "").replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
-};
-
-/** Parseur local (évite une dépendance circulaire) : « 1:45 » / « 1'45 » → secondes. */
-function srPaceToSec(v         , max        )         {
-  const m = String(v ?? "").trim().match(/^(\d{1,3})\s*[:h.'′]\s*(\d{1,2})$/);
-  if (!m) {
-    const plain = srNum(v);
-    return plain > 0 && plain <= max ? plain : 0;
-  }
-  const sec = +m[2];
-  if (sec > 59) return 0;
-  const t = +m[1] * 60 + sec;
-  return t > 0 && t <= max ? t : 0;
-}
-
-/** Catégorie DÉDUITE des données réelles, jamais demandée : c'est le volume qui décide. */
-function deduceCategory(swimM        , runKm        )                  {
-  const total = runKm + swimM / 1000 * 4; // 1 km nagé ≈ 4 km couru en temps
-  if (total >= 55) return "championship";
-  if (total >= 28) return "series";
-  if (total >= 13) return "sprint";
-  return "experience";
-}
-
-function swimrunObjective(a                )                   {
-  // Le format déclaré ne sert que de source de VALEURS PAR DÉFAUT : dès que l'athlète donne
-  // les chiffres de sa course, ce sont eux qui comptent.
-  const declared = (a.format                   ) || "sprint";
-  const def = S1_RACE_DEFAULTS[declared] || S1_RACE_DEFAULTS.sprint;
-  const swimTotalM = Math.max(200, srNum(a.swim_total_m) || def.swimM);
-  const runTotalKm = Math.max(1, srNum(a.run_total_km) || def.runKm);
-  const dplusM = srNum(a.race_dplus_m) > 0 ? srNum(a.race_dplus_m) : def.dplusM;
-  const segments = Math.max(1, Math.round(srNum(a.segments_n) || def.segments));
-  const transitions = segments * 2; // une entrée + une sortie d'eau par segment nagé
-  const longestSwimM = Math.max(50, srNum(a.longest_swim_m) || def.longestSwimM);
-  const waterTempC = srNum(a.water_temp_c) > 0 ? srNum(a.water_temp_c) : null;
-  const teamMode                    = a.team_mode === "solo" ? "solo" : "binome";
-  const category = deduceCategory(swimTotalM, runTotalKm);
-  const level = a.level || "inter";
-
-  // ---- Références EN TENUE : mesurées si le test est fait, estimées sinon (§R10.3.3) ----
-  const measuredSwim = srPaceToSec(a.swimrun_swim_pace, 400);
-  const measuredRun = srPaceToSec(a.swimrun_run_pace, 1200);
-  const paceKnown = measuredSwim > 0 && measuredRun > 0;
-  const cssSec = srPaceToSec(a.css, 300) || 130;
-  const roadSec = srPaceToSec(a.pace, 1200) || (level === "debutant" ? 390 : level === "avance" ? 280 : 330);
-  let swimPaceSec = measuredSwim || Math.round(cssSec * S4_GEAR_FACTORS.swim);
-  let runPaceSec = measuredRun || Math.round(roadSec * S4_GEAR_FACTORS.run);
-
-  // ---- Binôme : l'effet de longe est CALCULÉ (S6), pas mentionné ----
-  if (teamMode === "binome") {
-    // Le suiveur drafte, et attachée l'équipe se rapproche du nageur le plus rapide : la
-    // vitesse d'équipe est donc meilleure que la moyenne des deux, sans atteindre le plus fort.
-    const gap = srNum(a.team_swim_gap_sec); // écart déclaré (s/100 m) entre les deux
-    if (gap > 0) {
-      const pull = gap * (1 - S6_TEAM.fasterSwimmerWeight); // ce que le plus lent concède encore
-      swimPaceSec = Math.round(swimPaceSec + pull - Math.min(S6_TEAM.swimSecPer100mGain, gap * 0.5));
-    } else {
-      swimPaceSec = Math.max(60, swimPaceSec - Math.round(S6_TEAM.swimSecPer100mGain * 0.4));
-    }
-  }
-
-  // ---- Les trois postes ----
-  const swimMin = (swimTotalM / 100) * swimPaceSec / 60;
-  // Le terrain est du TRAIL : le D+ coûte du temps (repère usuel ~350-450 m/h en nature).
-  const runMin = (runTotalKm * runPaceSec) / 60 + (dplusM / 400) * 60 * 0.6;
-  const transitionMin = transitions * (S5_TRANSITION_MIN[level] ?? 1.5);
-  // Le froid dégrade la nage : sous le seuil d'acclimatation, on l'ANNONCE dans l'estimation.
-  const coldF = waterTempC != null && waterTempC < S7_COLD.acclimationBelowC ? 1.06 : 1;
-  const mid = (swimMin * coldF + runMin + transitionMin);
-  // Fourchette LARGE et annoncée comme telle, exactement comme le trail : afficher une
-  // fourchette serrée sur une épreuve où le terrain, l'eau et le binôme commandent serait
-  // le mensonge. Elle se resserre un peu quand les références sont MESURÉES en tenue.
-  const spread = (category === "experience" || category === "sprint" ? 0.13 : 0.2) * (paceKnown ? 0.8 : 1.15);
-
-  return {
-    category, swimTotalM, runTotalKm, dplusM, segments, transitions, longestSwimM, waterTempC, teamMode,
-    swimPaceSec, runPaceSec, paceKnown,
-    swimMin: Math.round(swimMin * coldF), runMin: Math.round(runMin), transitionMin: Math.round(transitionMin),
-    totalMinLo: Math.round(mid * (1 - spread)), totalMinMid: Math.round(mid), totalMinHi: Math.round(mid * (1 + spread)),
-    swimTimeShare: Math.max(0.05, Math.min(0.7, (swimMin * coldF) / Math.max(1, mid))),
-    why: swimTotalM + " m nagés + " + runTotalKm + " km courus (" + dplusM + " m D+) en "
-      + segments + " segments = " + transitions + " transitions · "
-      + (paceKnown
-        ? "tes allures MESURÉES en tenue"
-        : "allures ESTIMÉES depuis ton CSS et ton allure route (facteurs de repli) — fais le test en tenue complète pour les affiner")
-      + (teamMode === "binome" ? " · en binôme, effet de longe compris" : " · en solo")
-      + (coldF > 1 ? " · eau froide (+6 % sur la nage)" : ""),
-  };
-}
-
-/** Part de nage attendue dans le temps, par catégorie — repère affiché quand rien n'est saisi. */
-function swimTimeShareHint(cat                 )         {
-  return SWIM_TIME_SHARE_HINT[cat] ?? 0.3;
-}
-
-// ===== src/sports/swimrun/index.ts =====
-/**
- * Sport SWIMRUN (spec R10 phase 3).
- *
- * « Le swimrun n'est pas un triathlon sans vélo. C'est un cousin du trail. » (§R10.3) — le
- * module se modélise sur `trailLibrary`, pas sur `tri` : volume en TEMPS, terrain et matériel
- * comme variables premières, prédiction par fourchette large assumée, garde-fous de sécurité.
- *
- * La séance PIVOT n'est PAS un brick : c'est un motif paramétré par la course visée. Quelle que
- * soit sa durée, elle reproduit le NOMBRE DE TRANSITIONS et le POURCENTAGE DE NAGE de l'épreuve.
- * C'est ce qui la distingue d'un enchaînement natation-course quelconque.
- */
-                                                               
-
-
-
-/** Part de plaquettes autorisée dans la séance, par phase — S8, progressif et jamais d'emblée. */
-function paddleShare(phase        , shoulder         )         {
-  const base = phase === "base" ? S8_PADDLES.shareBase
-    : phase === "dev" ? S8_PADDLES.shareDev
-    : phase === "taper" ? S8_PADDLES.shareBase
-    : S8_PADDLES.shareSpec;
-  return shoulder ? base * S8_PADDLES.shoulderFactor : base;
-}
-
-function buildSwimrunSessions(kit            )              {
-  const { a, slot, phase, prog, lvl, beginner, medHold, inj, S2, P, W, C, Wm, Cm, B, Bd } = kit;
-  const obj = swimrunObjective(a);
-  const ow = OPENWATER_ACCESS[a.openwater_access || "saisonnier"] || OPENWATER_ACCESS.saisonnier;
-  const noOpenWater = ow.maxSessionsPerWeek === 0;
-  // R4.3 (audit v7) — `maxSessionsPerWeek` (3 / 1 / 0) est un NOMBRE, pas un booléen : il
-  // n'était lu que comme `=== 0`, et le plan prescrivait 3 séances en eau libre là où l'athlète
-  // en avait déclaré 1 de possible. Le quota est désormais alloué par PRIORITÉ, de façon
-  // déterministe (chaque créneau sait s'il a droit à l'eau libre sans compter la semaine) :
-  //   1. le swimrun spécifique — la séance qui justifie le sport ;
-  //   2. la plus longue nage continue — la contrainte dimensionnante ;
-  //   3. l'acclimatation au froid — la plus substituable (bassin non chauffé, douche).
-  const owQuota = ow.maxSessionsPerWeek;
-  const owForPivot = owQuota >= 1;
-  const owForLongSwim = owQuota >= 2;
-  // L'acclimatation est la séance la plus SUBSTITUABLE des trois (bassin non chauffé, douche) :
-  // elle ne réclame jamais le quota. Cela laisse une marge d'une séance, car les passes de
-  // reconstruction (anti-collage, polarisation) peuvent dupliquer un créneau dans la semaine —
-  // une 4ᵉ séance en eau libre est alors apparue sur un plafond de 3. L'athlète garde de
-  // l'exposition au froid via le swimrun spécifique et la longue nage, qui y sont déjà.
-  const owForCold = false;
-  const shoulder = inj.shoulder;
-  const team = obj.teamMode === "binome";
-  const cold = obj.waterTempC != null && obj.waterTempC < S7_COLD.acclimationBelowC;
-  const pad = paddleShare(phase, shoulder);
-  const gearNote = team ? " Longe attachée : c'est en binôme que ça se joue." : "";
-
-  // Le stimulus VO2 en course : un seul constructeur, deux créneaux possibles (`dur2` quand le
-  // budget le permet, `dur1` en alternance quand il ne le permet pas — R5.5).
-  const vo2Swim = ()            => ({ d: "sw", name: "VO2max en nage (zone fragile épargnée)", note: "Ta zone fragile interdit l'intensité en course, pas la puissance aérobie maximale : elle se travaille dans l'eau, sans le moindre impact. Départs toutes les 1'30 : c'est la récupération courte qui fait le travail, pas la vitesse pure. Si tu sens la zone fragile, tu sors.", det: "",
-    steps: [Wm(300, "progressif + 4×25m accélérations"), Object.assign(Bd(P(6, 10), 50, "sw.vo2", "départ 1'30", "", false, "sw"), { repCap: 10 }), Cm(200, "très souple")] });
-  const vo2Trail = ()            => ({ d: "rn", name: "VO2max sur sentier", note: "Le seul bloc vraiment dur de ta semaine : effort maximal tenable ~3 min, récupération complète. On le place en phase de développement — c'est lui qui relève le plafond sous lequel toute ton allure d'endurance se joue. Sur sentier, pas sur piste : le terrain fait partie du geste.", det: "",
-    steps: [W(18, "footing progressif sur sentier + 4 lignes droites"), B(P(4, 6), 3, "rn.vo2", "2min30 trot", ""), C(10, "footing très souple")] });
-
-  if (slot === "durLong") {
-    // ---- LA SÉANCE PIVOT : le swimrun spécifique (§R10.3.4) ----
-    const band = S9_LONG_SHARE[phase] || S9_LONG_SHARE.dev;
-    const share = band[0] + (band[1] - band[0]) * prog;
-    // S9 dimensionne la pivot en % du temps de COURSE. Elle reste néanmoins une séance dans
-    // une semaine : au-delà d'environ la moitié du volume hebdo, ce n'est plus un plan, c'est
-    // une course déguisée (et l'auditeur le signale à juste titre au-delà de 55 %).
-    // Le plafond suit la semaine EN COURS, pas le pic : sur une semaine allégée, une pivot
-    // calibrée sur le pic représenterait 70 % du volume. `sessionScale` porte déjà le rapport
-    // de la semaine à la charge de référence.
-    const weekCapMin = Math.round((kit.r.volPeak || 8) * 60 * 0.42 * Math.min(1, kit.sessionScale || 1));
-    const durMin = Math.min(weekCapMin, Math.max(40, Math.round(obj.totalMinMid * share)));
-    // Le motif reproduit la COURSE : mêmes transitions, même part de nage. Sur une séance plus
-    // courte, on garde le NOMBRE de transitions et on raccourcit les segments — c'est la
-    // compétence « entrer et sortir de l'eau » qui se travaille, pas la distance.
-    // S12 — on ne reproduit jamais plus d'une douzaine de segments dans une séance : au-delà,
-    // la séance EST la course. R4.1 (audit v7) : `repCap = segs` sur les deux legs — le nombre
-    // de transitions est la SPÉCIFICATION de cette séance, il ne doit jamais absorber du volume.
-    // C'est la durée des segments qui s'ajuste.
-    const segs = Math.max(2, Math.min(obj.segments, S12_PIVOT_MAX_SEGMENTS, Math.round(obj.segments * Math.min(1, share * 1.3))));
-    const swimMin = Math.max(4, Math.round(durMin * obj.swimTimeShare));
-    // Les transitions consomment du temps réel : elles sortent du budget de la séance
-    // (elles ne sont pas de l'entraînement, mais elles occupent la sortie).
-    const runMin = Math.max(6, durMin - swimMin - Math.round(segs * 2 * (S5_TRANSITION_MIN[lvl] ?? 1.5)));
-    const perSwim = Math.max(2, Math.round(swimMin / segs));
-    const perRun = Math.max(3, Math.round(runMin / segs));
-    if (noOpenWater) {
-      // §R10.3.6 — aucun accès à l'eau libre : on SUBSTITUE et on le DIT, au lieu de prescrire
-      // une séance infaisable. Enchaînements courts bassin ↔ tapis/extérieur, en tenue partielle.
-      S2.push({ d: "br", long: true,
-        name: "Swimrun en substitution (bassin ↔ course)",
-        note: "Tu n'as pas accès à un plan d'eau : cette séance reproduit ce qui est reproductible — les " + segs * 2 + " transitions et la part de nage de ta course, en bassin et sur route. Ce qui NE se substitue pas : la navigation, la houle, le froid et l'entrée en eau vive. Cale au moins deux week-ends en conditions réelles (lac ou mer) avant ta course, c'est le meilleur investissement de ta préparation." + gearNote,
-        det: "",
-        steps: [
-          Wm(200, "nage souple, en tenue partielle si le bassin l'autorise"),
-          // Les DEUX legs sont des steps à part entière : mettre la course dans un texte de
-          // récupération ferait mentir le total de la séance (l'auditeur, lui, la compte).
-          { role: "body", leg: "swim", reps: segs, durationMin: perSwim, zone: "sw.aero", d: "sw", intensity: "aero"                     , bnd: { floor: 2, cap: perSwim }, repCap: segs, recoveryText: "sortie de bassin sans traîner", suffix: " nage" + (pad > 0 ? " (dont ~" + Math.round(pad * 100) + "% avec plaquettes)" : ""), text: "" }          ,
-          { role: "body", leg: "run", reps: segs, durationMin: perRun, d: "rn", zone: "rn.easy", intensity: "easy"                     , bnd: { floor: 3, cap: perRun }, repCap: segs, recoveryText: "retour à l'eau immédiat", suffix: " de course entre deux nages", text: "" }          ,
-          Cm(150, "souple"),
-        ] });
-    } else {
-      S2.push({ d: "br", long: true,
-        name: "Swimrun spécifique (" + segs * 2 + " transitions)",
-        note: "LA séance de ta préparation : elle reproduit le nombre de transitions et la part de nage de ta course, quelle que soit sa durée. Entre dans l'eau sans t'arrêter pour ranger tes affaires, sors en courant, et compte le temps que tu perds à chaque passage — c'est là qu'on gagne une demi-heure." + (cold ? " Eau froide : couvre-toi dès la sortie, la déperdition thermique se joue à la course, pas à la nage." : "") + gearNote,
-        det: "",
-        steps: [
-          W(10, "course d'ouverture progressive, matériel en place"),
-          // Nage ET course sont des steps à part entière (§R10.3.4) : le motif alterne les deux
-          // `segs` fois. Encoder la course dans un texte de récupération ferait sous-compter la
-          // séance de tout son volume de course — l'auditeur l'a relevé, et il avait raison.
-          { role: "body", leg: "swim", reps: segs, durationMin: perSwim, zone: "sw.aero", d: "sw", intensity: "aero"                     , bnd: { floor: 2, cap: perSwim }, repCap: segs, recoveryText: "sortie d'eau en courant", suffix: (owForPivot ? " nage en eau libre" : " nage en bassin") + (pad > 0 ? ", ~" + Math.round(pad * 100) + "% avec plaquettes" : "") + (team ? ", longe attachée" : ""), text: "" }          ,
-          { role: "body", leg: "run", reps: segs, durationMin: perRun, d: "rn", zone: "rn.easy", intensity: "easy"                     , bnd: { floor: 3, cap: perRun }, repCap: segs, recoveryText: "entrée dans l'eau sans t'arrêter", suffix: " de course sur sentier entre deux nages", text: "" }          ,
-          C(10, "course très souple, se réchauffer"),
-        ] });
-    }
-  } else if (slot === "dur1") {
-    // ---- Qualité NAGE : en tenue quand c'est possible, plaquettes progressives (S8) ----
-    // R5.5 (audit v7 bis) — SUR UNE PETITE ENVELOPPE, LA QUALITÉ SE PARTAGE UN SEUL CRÉNEAU.
-    // Le stimulus VO2 vit dans `dur2` ; à 3 séances par semaine (ou 3 jours bloqués), le budget
-    // supprime ce jour et le plan traversait 40 semaines sans une seule sollicitation de la
-    // puissance aérobie maximale — c'est elle qui plafonne l'allure d'endurance sur laquelle
-    // tout le reste se joue. Une semaine sur deux en phase de développement, le créneau de
-    // qualité bascule donc sur elle ; le seuil nage revient l'autre semaine. Rien n'est
-    // sacrifié, tout est alterné — c'est ce que fait un entraîneur avec trois séances.
-    // Le SUPPORT suit les zones fragiles (R5.4) : impact → nage, épaule → course. Les deux à la
-    // fois : aucun support n'est sûr, on laisse la main aux branches prudentes ci-dessous.
-    if (phase === "dev" && kit.weekNum % 2 === 1 && !kit.noVo2 && !medHold && !beginner
-        && !(inj.impact && shoulder)
-        && ((kit.r.budgetPerWeek ?? 6) <= 4 || (kit.r.offDays?.length ?? 0) >= 3 || kit.a.dispo === "weekend")) {
-      S2.push(inj.impact ? vo2Swim() : vo2Trail());
-    } else if (shoulder) {
-      S2.push({ d: "sw", name: "Nage seuil contrôlé (épaule épargnée)", note: "Épaule fragile : volume modéré, technique soignée, et les plaquettes réduites au minimum — ce sont elles qui chargent l'épaule en swimrun. Arrêt au moindre signal articulaire.", det: "",
-        steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(P(4, 7), 100, "sw.css", "25-35s", " amplitude confortable, SANS plaquettes", false, "sw"), { repCap: 10 }), Cm(150, "souple")] });
-    } else if (beginner) {
-      S2.push({ d: "sw", name: "Technique + aisance en tenue", note: "En swimrun on nage en chaussures et en combinaison : la position change, les jambes portent moins. Habitue-toi au matériel AVANT de chercher la vitesse — c'est le choc n°1 des débutants.", det: "",
-        steps: [Wm(200, "souple"), Bd(P(6, 10), 50, "sw.easy", "repos libre", " en tenue partielle, un point technique à la fois", false, "sw"), Cm(100, "relâché")] });
-    } else if ((phase === "spec" || phase === "peak") && (kit.weekNum % 2 === 0 || kit.r.weeks <= 14)) {
-      // La PLUS LONGUE NAGE est la contrainte dimensionnante d'une prépa swimrun (thermique et
-      // mentale) : elle se répète en continu, pas en séries. Une semaine sur deux en phase
-      // spécifique, pour ne pas sacrifier le travail de seuil.
-      S2.push({ d: "sw", name: "Nage continue longue (répétition de la plus longue nage)",
-        note: "La plus longue nage de ta course fait " + obj.longestSwimM + " m : c'est elle qui décide si tu passes ou si tu sors de l'eau vidé. On la répète EN CONTINU, sans toucher le bord — le mental compte autant que le physique ici." + (owForLongSwim ? " En eau libre, avec quelqu'un à vue." : " En bassin : ne t'arrête pas aux murs, demi-tour et tu repars. Ton accès aux plans d'eau est réservé au swimrun spécifique."),
-        det: "",
-        steps: [Wm(200, "souple, mise en tenue"), Object.assign(Bd(1, Math.max(400, obj.longestSwimM), "sw.aero", "", " en continu, sans arrêt" + (owForLongSwim ? " (eau libre)" : " (bassin)"), false, "sw"), { bnd: { floor: Math.max(400, Math.round(obj.longestSwimM * 0.85)), cap: Math.round(obj.longestSwimM * 1.15) } }), Cm(150, "souple")] });
-    } else {
-      S2.push({ d: "sw", name: "Seuil CSS + plaquettes", note: "Le seuil se tient sur tous les 100 m : le dernier doit ressembler au premier. Les plaquettes viennent progressivement — elles tractent, mais elles chargent l'épaule." + (pad > 0 ? " Aujourd'hui : environ " + Math.round(pad * 100) + "% de la série avec plaquettes." : ""), det: "",
-        steps: [Wm(300, "progressif + 4×50m éducatifs"), Object.assign(Bd(P(6, 10), 100, "sw.css", "15-20s", pad > 0 ? " dont ~" + Math.round(pad * 100) + "% avec plaquettes + pull buoy" : "", false, "sw"), { repCap: 11 }), Cm(200, "souple")] });
-    }
-  } else if (slot === "dur2") {
-    // ---- Qualité COURSE : le terrain est du trail, l'impact compte ----
-    if (inj.impact && (phase === "dev" || phase === "spec") && !kit.noVo2 && !medHold && !beginner) {
-      // R5.4 — zone fragile à l'impact : la VO2max ne disparaît pas, elle change de SUPPORT.
-      // Le swimrun n'a pas de vélo pour absorber l'intensité sans impact, mais il a l'eau — et
-      // c'est même le support le plus spécifique des deux. Départs serrés : la difficulté vient
-      // du temps de repos, pas de la vitesse pure.
-      S2.push(vo2Swim());
-    } else if (inj.impact) {
-      S2.push({ d: "rn", name: "Seuil course (surface souple)", note: "Zone fragile déclarée : stimulus fort, sans vitesses maximales ni à-coups, sur surface souple.", det: "",
-        steps: [W(15, "footing très facile"), B(P(2, 4), P(6, 10), "rn.thr", "2-3min trot", " sur surface souple"), C(10, "footing facile")] });
-    } else if ((phase === "dev" || phase === "spec") && !kit.noVo2 && !medHold && !beginner) {
-      // R4.8f (audit v7) — le module ne contenait AUCUN stimulus VO2/vitesse : `noVo2` et
-      // « pas de VO2 en affûtage » y étaient donc des règles vides. Un swimrun se court à
-      // allure d'endurance, mais la puissance aérobie maximale reste ce qui plafonne cette
-      // allure — elle se travaille en phase de développement, courte et sur le terrain de la
-      // course, pas sur piste.
-      S2.push(vo2Trail());
-    } else {
-      S2.push({ d: "rn", name: "Seuil course sur sentier", note: "En swimrun on court sur des rochers, des racines et des sentiers, jambes mouillées et chaussures pleines d'eau. Cours ce seuil sur le terrain le plus proche de ta course, pas sur piste.", det: "",
-        steps: [W(15, "footing progressif sur sentier"), B(P(3, 5), P(5, 9), "rn.thr", "2min trot"), C(10, "footing souple")] });
-    }
-  } else if (slot === "facileR") {
-    // R4.2 (audit v7) — L'ENDURANCE COURSE NE SE FAIT PLUS VOLER SON CRÉNEAU. L'acclimatation au
-    // froid remplaçait ce footing dès que l'eau passait sous 17 °C, c'est-à-dire pour la majorité
-    // des courses européennes : ce n'était pas un cas limite, c'était le comportement par défaut.
-    // Résultat mesuré : le plan allouait 43 % du temps à la course quand la course en demande
-    // 68 % — un écart de 25 points, dans le sens qui pénalise le limiteur réel du sport.
-    // Le froid consomme désormais un créneau NAGE (`facile2`).
-    S2.push({ d: "rn", name: "Footing facile", note: "Endurance fondamentale, allure de conversation. En swimrun, courir avec des jambes fatiguées par la nage est la norme : ce volume facile construit cette tolérance — et la course représente la majorité du temps de ta course.", det: "",
-      steps: [B(1, P(30, 55), "rn.easy", "", inj.impact ? " · surface souple" : " · sur sentier si possible")], ...({ plainBody: true }          ) });
-  } else if (slot === "facile2") {
-    // R4.3 (audit v7) — LE PLAFOND D'ACCÈS À L'EAU LIBRE EST UN NOMBRE, PAS UN BOOLÉEN.
-    // `maxSessionsPerWeek` (3 / 1 / 0) n'était lu que comme `=== 0`. La pivot consomme le
-    // premier quota de la semaine (c'est la séance prioritaire) : une seconde séance en eau
-    // libre n'est donc possible qu'à partir d'un plafond de 2. En dessous, l'acclimatation se
-    // fait en bassin froid ou en douche froide — et le plan le DIT.
-    if (cold && !medHold) {
-      const inOpenWater = owForCold;
-      S2.push({ d: "sw", name: inOpenWater ? "Acclimatation eau froide" : "Acclimatation au froid (bassin / douche)",
-        note: "L'acclimatation au froid est une qualité qui s'entraîne, pas une affaire de volonté : exposition régulière, temps dans l'eau allongé progressivement."
-          + (inOpenWater
-            ? " Jamais seul, toujours avec une sortie possible à vue."
-            : " Ton accès aux plans d'eau est déjà pris par les séances prioritaires de la semaine : cette exposition se fait donc en bassin non chauffé, ou à défaut par des fins de douche froides de 2 à 3 min. C'est moins efficace, et c'est mieux que rien.")
-          + (obj.waterTempC != null && obj.waterTempC < S7_COLD.wetsuitMandatoryBelowC ? " Sous " + S7_COLD.wetsuitMandatoryBelowC + " °C la combinaison est de toute façon obligatoire en course." : ""),
-        det: "",
-        steps: [Bd(1, Math.max(300, P(400, 1000)), "sw.easy", "", (inOpenWater ? " en eau libre" : " en bassin non chauffé") + ", temps d'exposition allongé progressivement", false, "sw")], ...({ plainBody: true }          ) });
-    } else {
-      S2.push({ d: "sw", name: "Nage récup + technique", note: "Récupération dans l'eau : relâchement total, respiration ample. C'est aussi le moment de refaire des éducatifs à froid, sans fatigue.", det: "",
-        steps: [Bd(1, P(600, 1100), "sw.easy", "", " souple, éducatifs entre les séries", false, "sw")], ...({ plainBody: true }          ) });
-    }
-  } else if (slot === "recup") {
-    S2.push({ d: "rs", name: "Repos / épaules + mobilité", det: "coiffe des rotateurs, mobilité chevilles — les deux zones que le swimrun charge le plus", steps: [] });
-  } else if (slot === "off") {
-    S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
-  }
-  return S2;
-}
-
-/**
- * Structure hebdomadaire de référence (§R10.3.4, convergence des sources) : 2-3 nages,
- * 3-4 courses, 1-2 swimruns spécifiques, 2 séances de renforcement. Le swimrun spécifique
- * tombe le week-end (l'eau libre et le binôme sont des contraintes logistiques).
- */
-function swimrunWeekSchema(_phase        , isRecup         )                                     {
-  if (isRecup) return [
-    { charge: "recup", slot: "recup" }, { charge: "facile", slot: "facile2" }, { charge: "off", slot: "off" },
-    { charge: "facile", slot: "facileR" }, { charge: "off", slot: "off" }, { charge: "facile", slot: "facile2" }, { charge: "recup", slot: "recup" },
-  ];
-  // R4.2.4 (audit v7) — le créneau `facileR` apparaissait DEUX fois (Mer et Dim) et produisait
-  // deux séances identiques dans la même semaine. Un même créneau deux fois, c'est soit une
-  // variante, soit un doublon : ici c'était un doublon. La semaine tient en 5 séances, ce qui
-  // correspond à la structure de référence des coachs (2 nages, 2 courses + le swimrun
-  // spécifique), et le dimanche redevient un vrai jour de repos — un sport qui charge autant
-  // les épaules que les jambes en a besoin.
-  // Lun repos+renfo · Mar nage qualité · Mer footing · Jeu course qualité · Ven nage récup/froid
-  // · Sam SWIMRUN spécifique · Dim repos
-  return [
-    { charge: "recup", slot: "recup" }, { charge: "dur", slot: "dur1" }, { charge: "facile", slot: "facileR" },
-    { charge: "dur", slot: "dur2" }, { charge: "facile", slot: "facile2" }, { charge: "dur", slot: "durLong" },
-    { charge: "off", slot: "off" },
-  ];
-}
-
-/** Prédiction swimrun (§R10.3.7) — trois postes, fourchette large assumée. Riegel inapplicable. */
-function predictSwimrun(kit            )       {
-  const { items, advice, D } = kit;
-  const obj = kit.swimrun;
-  if (!obj) {
-    advice.push("Renseigne les données de ta course (distance nagée, distance courue, nombre de segments) pour obtenir une estimation de temps.");
-    return;
-  }
-  const fmtHM = (min        ) => {
-    const h = Math.floor(min / 60), m = Math.round(min % 60);
-    return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
-  };
-  const est = obj.paceKnown ? "" : " — ESTIMÉ d'après ton CSS et ton allure route, fais le test en tenue pour l'affiner";
-  items.push({ leg: "Temps estimé", value: fmtHM(obj.totalMinLo) + "–" + fmtHM(obj.totalMinHi),
-    why: obj.why + " · fourchette large assumée : sur cette épreuve, le terrain, l'eau et le binôme pèsent plus que la condition physique" });
-  items.push({ leg: "Dont nage", value: fmtHM(obj.swimMin) + " (" + Math.round(obj.swimTimeShare * 100) + "% du temps)",
-    why: "La nage pèse bien plus lourd en TEMPS qu'en distance : " + Math.round(obj.swimTotalM / 10) / 100 + " km nagés ne représentent qu'une fraction de la distance, mais un quart à un tiers du chrono" + est });
-  items.push({ leg: "Dont course", value: fmtHM(obj.runMin),
-    why: "Terrain de trail, jambes mouillées, chaussures pleines d'eau : compte une allure nettement plus lente que sur route" + est });
-  items.push({ leg: "Dont transitions", value: fmtHM(obj.transitionMin) + " (" + obj.transitions + " passages)",
-    why: "Poste à part entière, jamais négligé : " + obj.segments + " segments nagés = " + obj.transitions + " transitions. C'est le temps le plus facile à récupérer — il s'entraîne" });
-  if (obj.teamMode === "binome") {
-    items.push({ leg: "Effet de binôme", value: "−" + Math.round(S6_TEAM.draftEffortSaving * 100) + "% d'effort pour le suiveur",
-      why: "Un bon sillage vaut jusqu'à " + S6_TEAM.swimSecPer100mGain + " s/100 m et supprime la charge de navigation ; attachée, la vitesse de l'équipe se rapproche de celle du nageur le plus rapide" });
-  }
-  D("PRED-swimrun", "Méthode swimrun", "nage + course + transitions", "Riegel ne s'applique pas : on additionne trois postes mesurés séparément, dont les transitions que tout le monde sous-estime");
-  advice.push("Le temps le plus facile à gagner n'est pas dans les jambes : c'est dans les " + obj.transitions + " transitions. Répète-les jusqu'à ce qu'elles soient automatiques.");
-  if (!obj.paceKnown) advice.push("Fais le test en tenue COMPLÈTE (combinaison, chaussures, chaussettes, pull buoy, plaquettes, en eau libre, avec ton partenaire et la longe) : 1000 m nagés et 5 à 8 km courus. Un binôme à 6 min/km sur route se retrouve souvent autour de 8 min/km en tenue — tant que ce test n'est pas fait, toutes nos allures sont des estimations.");
-  advice.push("Matériel à vérifier auprès de l'organisateur (socle habituel) : " + S11_GEAR_CHECKLIST.join(" · ") + ".");
-  if (obj.longestSwimM >= 1000) advice.push("Ta plus longue nage fait " + obj.longestSwimM + " m : c'est la contrainte qui dimensionne ta préparation, thermiquement et mentalement. Nage-la au moins deux fois en conditions réelles avant la course.");
-}
-
-registerSport({
-  id: "swimrun",
-  mainDiscipline: "rn", // la course représente l'essentiel du temps, même si la nage décide
-  disciplines: ["sw", "rn"],
-  easyFallbackSlot: "facileR",
-  weekSchema: (phase, isRecup) => swimrunWeekSchema(phase, isRecup),
-  buildSessions: buildSwimrunSessions,
-  predict: predictSwimrun,
-  // Le test en tenue passe AVANT le CSS et l'allure route : ceux-ci ne sont qu'un repli.
-  retestTypes: ["swimrunSwimPace", "swimrunRunPace", "css", "thrPace"],
-  // Le terrain est du trail (impact + excentrique) : le plafond de jours d'appui s'applique.
-  // Les planchers de séance en mètres s'appliquent aussi — il y a de la vraie natation ici.
-  guards: { runImpactCap: true, swimSessionFloors: true, smoothOnAuditMetric: true, stripLongOnMedHold: true },
-});
-
-/** Prérequis d'entrée (S10) — exposé à l'UI, qui refuse les formats longs en dessous. */
-function swimrunPrereqBlock(a                                                                        )                {
-  const longFormat = a.format === "series" || a.format === "championship";
-  if (!longFormat) return null;
-  const swimOk = a.swim_continuous === "oui";
-  const runOk = a.run_continuous === "oui";
-  if (swimOk && runOk) return null;
-  return "Pour un format " + (a.format === "championship" ? "championnat du monde" : "World Series")
-    + ", il faut savoir nager " + S10_PREREQ.minSwimContinuousMin + " min (environ "
-    + S10_PREREQ.minSwimContinuousM + " m) sans s'arrêter et courir " + S10_PREREQ.minRunContinuousMin
-    + " min en continu — en swimrun on est parfois à plusieurs centaines de mètres du rivage. "
-    + "Commence par un format Experience ou Sprint : ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend.";
-}
 
 // ===== src/generator/weekBuilder.ts =====
 /**
@@ -8644,12 +8168,13 @@ const SPORT_MAP                                                    = { 1: "rn", 
                  
                      
                       
+                                                                  
  
 
                             
                          
                                                                                        
-                                                                                            
+                                                                                                    
                                                                                   
  
 
@@ -8705,7 +8230,7 @@ function parseFit(bytes            )               {
     const def = defs.get(localType);
     if (!def) throw new Error("Message de données sans définition (fichier corrompu)");
     if (def.global === 18) {
-      const s                                                                                                  = {};
+      const s                                                                                                             = {};
       let fo = o;
       for (const f of def.fields) {
         const v = readNum(bytes, fo, f.size, def.littleEndian);
@@ -8719,6 +8244,10 @@ function parseFit(bytes            )               {
         else if (f.num === 16) s.hr = v;
         else if (f.num === 20) s.power = v;
         else if (f.num === 34) s.np = v;
+        // R12.3 — total_ascent (champ 22, en mètres) : la seule donnée qui permet de dériver
+        // une VAM depuis une montre. Sans elle, l'athlète pouvait connecter sa montre et
+        // rester avec une VAM devinée — le chemin de masse était vide.
+        else if (f.num === 22) s.ascent = v;
       }
       if (s.timer != null && s.timer > 0) {
         const startS = s.start != null ? s.start + FIT_EPOCH_S : null;
@@ -8731,6 +8260,7 @@ function parseFit(bytes            )               {
           avgHr: s.hr,
           avgPowerW: s.power,
           normPowerW: s.np,
+          ascentM: s.ascent,
         });
       }
     }
@@ -8742,6 +8272,17 @@ function parseFit(bytes            )               {
 /** Séances FIT → contrat readiness (CompletedSession) + estimations de références,
  *  avec les MÊMES règles prudentes que l'import Strava (jamais de FTP sans puissance,
  *  l'allure moyenne d'une course est un plancher, pas un seuil). */
+/**
+ * Les références que l'import montre sait DÉRIVER. Déclarée ici, à côté du code qui les émet,
+ * pour qu'un banc puisse la vérifier au lieu de faire confiance à un tableau écrit à la main
+ * (R12, section C : « aucune référence ne doit rester en non/non/devinée »).
+ */
+const FIT_DERIVED_TESTS = ["ftp", "thrPace", "css", "vam"]         ;
+
+/** Sous ce seuil, la « VAM » d'une sortie décrit un terrain vallonné, pas une capacité en
+ *  montée : on n'en tire rien plutôt que d'écrire un chiffre faux dans le journal. */
+const VAM_FIT_MIN = 250;
+
 function fitToImport(sessions              )            {
   const completed                     = [];
   const tests                     = [];
@@ -8757,6 +8298,18 @@ function fitToImport(sessions              )            {
       tests.push({ type: "thrPace", value: Math.round(1000 / s.avgSpeedMs), date: s.date, source: "FIT (course " + s.minutes + "min, estimation basse)" });
     if (s.sport === "sw" && s.minutes >= 10 && s.avgSpeedMs && s.avgSpeedMs > 0)
       tests.push({ type: "css", value: Math.round(100 / s.avgSpeedMs), date: s.date, source: "FIT (nage " + s.minutes + "min)" });
+    // R12.3 — VAM depuis la montre. Deux garde-fous : une sortie PLATE ne produit pas de VAM
+    // exploitable (on exige une pente moyenne réelle), et la moyenne d'une sortie entière
+    // sous-estime la VAM seuil — on l'annonce comme une estimation BASSE plutôt que de la
+    // gonfler. Une valeur basse fait un plan un peu facile ; une valeur gonflée fait un plan
+    // intenable et une prédiction qui ment.
+    if (s.sport === "rn" && s.minutes >= 25 && s.ascentM && s.ascentM > 0) {
+      const vam = Math.round(s.ascentM / (s.minutes / 60));
+      if (vam >= VAM_FIT_MIN && vam <= 2500)
+        tests.push({ type: "vam", value: vam, date: s.date, source: "FIT (sortie " + s.minutes + "min, " + Math.round(s.ascentM) + "m D+, estimation basse)" });
+      else if (s.ascentM < 100)
+        notes.push("Sortie du " + s.date + " trop plate (" + Math.round(s.ascentM) + "m D+) : aucune VAM exploitable.");
+    }
   }
   if (!sessions.length) notes.push("Aucune séance trouvée dans ce fichier (est-ce bien un FIT d'activité ?).");
   return { sessions, completed, tests, notes };
@@ -9285,6 +8838,12 @@ function buildPlanV2(sport        , answers            )                        
   // quatrième : refus motivé (`EBInputError`), avertissement porté par le plan, ou défaut
   // journalisé. Rendre un plan sans qu'aucun canal ne se soit exprimé était le défaut : le
   // moteur produisait un Ironman à 30 min de pic sur une saisie illisible, sans un mot.
+  // Le SPORT est la première entrée à valider : un sport absent du bundle (R12 §0) doit donner
+  // un refus lisible, pas une erreur de symbole manquant au fond du moteur.
+  if (!knownSports().includes(sport)) {
+    throw new EBInputError("sport", sport, knownSports().join(" / "),
+      "Le sport « " + sport + " » n'est pas disponible dans cette version. Sports proposés : " + knownSports().join(", ") + ".");
+  }
   const vr = validateAnswers(sport, answers                           , localTodayISO());
   const res = generateAudited(toProfile(sport, vr.answers                         ));
   const plan = res.plan                                 ;
@@ -9585,7 +9144,7 @@ function predictV2(sport        , answers            , plan                     
     courseProfile: String(answers.course_profile || "") || undefined, // R6 — profil du parcours (Profil)
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
-    swimrun: sport === "swimrun" ? swimrunObjective(toProfile(sport, answers)) : undefined,
+    swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,
   });
 }
 
@@ -9637,8 +9196,10 @@ function localTodayISO()         {
   trailCaps: { history: TRAIL_HISTORY_CAPS, util: TRAIL_UTIL },
   // S10 — prérequis d'entrée swimrun : l'UI refuse un format long en dessous, et DIT pourquoi.
   // C'est la priorité n°1 du manifeste (santé) dans un sport où l'on est loin du bord.
-  swimrunPrereq: (answers                         ) => swimrunPrereqBlock(answers                       ),
-  swimrunObjective: (answers                         ) => swimrunObjective(toProfile("swimrun", answers)),
+  // R12 §0 — le module swimrun peut être ABSENT du bundle V1 : ces ponts le tolèrent au lieu
+  // de faire tomber tout l'objet `EBV2` au chargement.
+  swimrunPrereq: (answers                         ) => (typeof swimrunPrereqBlock === "function" ? swimrunPrereqBlock(answers                       ) : ""),
+  swimrunObjective: (answers                         ) => (typeof swimrunObjective === "function" ? swimrunObjective(toProfile("swimrun", answers)) : null),
   // R10 phase 0 (§ R10.0.3) — SOURCE UNIQUE des plafonds de volume. L'UI en gardait une copie
   // littérale (`capsBySport`/`utilBySport` dans steps.js) qui avait déjà DIVERGÉ : elle
   // annonçait 8h/sem là où le moteur en applique 9 (vélo/route/reprise). Les règles
@@ -9654,11 +9215,14 @@ function localTodayISO()         {
   // R11 — le schéma d'entrée est la SOURCE DE VÉRITÉ des domaines : l'UI doit générer ses
   // options depuis lui, jamais l'inverse (tant qu'ils sont écrits deux fois, ils divergent).
   answerSchema: ANSWER_SCHEMA,
+  // R12.6 — la NATURE de chaque question (vécue / mesurée / estimée) est exposée : c'est ce
+  // qui permet à un banc de vérifier qu'aucune question estimée ne pilote un chiffre.
   formatsBySport: FORMATS_BY_SPORT,
   minWeeks: MIN_WEEKS,
   validateAnswers,
   EBInputError,
   importFit: importFitBytes,
+  fitDerivedTests: FIT_DERIVED_TESTS,
   // R6 §3 — l'adaptateur de données réalisées, exposé à l'UI. Le moteur ne connaît que
   // l'instantané ; l'UI décide QUAND le rafraîchir (cadence = semaine de décharge).
   measuredFromSessions,

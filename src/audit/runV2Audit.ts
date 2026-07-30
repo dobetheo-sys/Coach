@@ -21,7 +21,9 @@ const SPORTS: Record<Sport, string[]> = {
   tri: ["S", "M", "70.3", "Full"],
   trail: [""], // pas de format : la catégorie d'effort est DÉDUITE des données de la course
   duathlon: ["S", "M", "L", "PM"], // R10 phase 2 — un sport non audité n'est pas livrable
-  swimrun: ["experience", "sprint", "series", "championship"], // R10 phase 3
+  // R12 §0 — swimrun hors V1 : ses combinaisons sortent avec le module du bundle. Le code
+  // reste dans `src/` et `EB_SWIMRUN=1` le réintègre partout d'un coup (bundle, bancs, E2E).
+  ...(process.env.EB_SWIMRUN === "1" ? { swimrun: ["experience", "sprint", "series", "championship"] } : {}),
 };
 const HISTORIES = ["reprise", "confirme", "ancien"] as const;
 const LEVELS = ["debutant", "inter", "avance"] as const;

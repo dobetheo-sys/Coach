@@ -2,6 +2,9 @@
 // ses DONNÉES (distance + D+), la catégorie d'effort est déduite, l'intensité dépend de la
 // pente (jamais d'allure au sol en montée), et la descente est une charge programmée.
 import { startServer, launchBrowser, makeReporter } from "./harness.mjs";
+const V1_SWIMRUN = process.env.EB_SWIMRUN === "1";
+const N_SPORTS = V1_SWIMRUN ? 7 : 6; // R12 §0 — swimrun hors V1 : le sélecteur suit le registre du moteur
+
 
 const PORT = 8490;
 const server = await startServer(PORT);
@@ -16,7 +19,7 @@ page.on("pageerror", (e) => consoleErrs.push(String(e)));
 await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
 
 // ---- 1. Le trail est proposé comme SPORT, plus comme format de course à pied ----
-ok(await page.locator(".sport-card").count() === 7, "7 sports proposés (trail R7 + duathlon et swimrun R10)");
+ok(await page.locator(".sport-card").count() === N_SPORTS, N_SPORTS + " sports proposés (trail R7 + duathlon R10)");
 ok(await page.locator('.sport-card[data-sport="trail"]').count() === 1, "carte « Trail » présente au choix du sport");
 await page.click('.sport-card[data-sport="run"]');
 const runFormats = await page.locator('.opts[data-key="format"]').textContent();
@@ -60,6 +63,22 @@ ok(/sur PLAT/.test(lvlTxt), "l'allure seuil est explicitement demandée SUR PLAT
 await page.click('.opts[data-key="level"] .opt[data-val="inter"]');
 await page.click('.opts[data-key="pace_known"] .opt[data-val="oui"]');
 await page.fill('[data-input="pace"]', "4:50");
+// R12.1 — la question principale est désormais la montée VÉCUE, pas « connais-tu ta VAM ».
+ok(/dernière grosse montée/.test(lvlTxt), "la VAM se demande par une montée VÉCUE (R12.1), pas par un chiffre à connaître");
+ok(await page.locator('[data-input="climb_dplus_m"]').count() === 1 && await page.locator('[data-input="climb_min"]').count() === 1,
+  "deux champs : D+ et durée de la montée");
+await page.fill('[data-input="climb_dplus_m"]', "600");
+await page.fill('[data-input="climb_min"]', "55");
+const vamFromClimb = await page.evaluate(() => globalThis.EBV2.trailObjective({
+  race_distance_km: "45", race_dplus_m: "2200", history: "confirme", level: "inter",
+  climb_dplus_m: "600", climb_min: "55" }));
+ok(vamFromClimb.vamSource === "montee" && vamFromClimb.vam > 400 && vamFromClimb.vam < 700,
+  "la VAM est DÉDUITE de la montée déclarée, avec abattement (" + vamFromClimb.vam + " m/h)");
+const vamGuessed = await page.evaluate(() => ["debutant", "inter", "avance"].map((level) =>
+  globalThis.EBV2.trailObjective({ race_distance_km: "45", race_dplus_m: "2200", history: "confirme", level }).raceMinMid));
+ok(new Set(vamGuessed).size === 1, "sans montée déclarée, le NIVEAU ne fait plus varier l'estimation de course (R12.6)");
+// La VAM directe reste possible pour qui l'a mesurée — mais elle n'est plus le chemin principal.
+await page.evaluate(() => { const d = document.querySelector('#screen details'); if (d) d.open = true; });
 await page.click('.opts[data-key="vam_known"] .opt[data-val="oui"]');
 await page.fill('[data-input="vam"]', "850");
 await page.click("#nextBtn");

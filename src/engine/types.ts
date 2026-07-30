@@ -33,6 +33,9 @@ export interface AthleteProfile {
   cycle_sync?: string;
   cycle_start?: string;
   cycle_len?: string;
+  /** R12.1 — la montée VÉCUE d'où l'on déduit la VAM (personne ne connaît sa VAM). */
+  climb_dplus_m?: string;
+  climb_min?: string;
   sessions_max?: string;
   dispo?: string; // "semaine" | "quotidienne" | …
   shift_ok?: string;

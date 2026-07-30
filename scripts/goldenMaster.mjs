@@ -42,15 +42,19 @@ if (!mode) {
 }
 
 // ---- Espace de profils ----------------------------------------------------
-const FORMATS = {
+// R12 §0 — swimrun hors V1 (voir scripts/buildApp.mjs) : ses profils sortent du golden avec
+// le module. `EB_SWIMRUN=1` les réintègre.
+const V1_SWIMRUN = process.env.EB_SWIMRUN === "1";
+const FORMATS_ALL = {
   run: ["5k", "10k", "semi", "marathon"], // `run/trail` : encore audité par runV2Audit (D10-1)
   bike: ["crit", "route", "cyclo", "clm", "gravel"],
   swim: ["sprint", "demifond", "fond", "ow"],
   tri: ["S", "M", "70.3", "Full"],
   trail: [""], // pas de format : la catégorie d'effort est déduite (R7)
   duathlon: ["S", "M", "L", "PM"], // R10 phase 2
-  swimrun: ["experience", "sprint", "series", "championship"], // R10 phase 3
+  swimrun: ["experience", "sprint", "series", "championship"], // R10 phase 3 (hors V1 par défaut)
 };
+const FORMATS = Object.fromEntries(Object.entries(FORMATS_ALL).filter(([k]) => V1_SWIMRUN || k !== "swimrun"));
 const HISTORIES = ["reprise", "confirme", "ancien"];
 const LEVELS = ["debutant", "inter", "avance"];
 const INTENTS = ["competition", "finir", "plaisir"];

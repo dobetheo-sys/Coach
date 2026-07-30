@@ -26,12 +26,13 @@ export interface FitSession {
   avgHr?: number;
   avgPowerW?: number;
   normPowerW?: number;
+  ascentM?: number; // total_ascent — R12.3, d'où se déduit la VAM
 }
 
 export interface FitImport {
   sessions: FitSession[];
   completed: CompletedSession[]; // prêtes pour le contrat readiness (mêmes ✓ que l'UI)
-  tests: { type: "ftp" | "thrPace" | "css"; value: number; date: string; source: string }[];
+  tests: { type: "ftp" | "thrPace" | "css" | "vam"; value: number; date: string; source: string }[];
   notes: string[]; // ce qu'on n'a PAS pu estimer, et pourquoi — jamais silencieux
 }
 
@@ -87,7 +88,7 @@ export function parseFit(bytes: Uint8Array): FitSession[] {
     const def = defs.get(localType);
     if (!def) throw new Error("Message de données sans définition (fichier corrompu)");
     if (def.global === 18) {
-      const s: Partial<Record<"start" | "timer" | "dist" | "speed" | "hr" | "power" | "np" | "sport", number>> = {};
+      const s: Partial<Record<"start" | "timer" | "dist" | "speed" | "hr" | "power" | "np" | "ascent" | "sport", number>> = {};
       let fo = o;
       for (const f of def.fields) {
         const v = readNum(bytes, fo, f.size, def.littleEndian);
@@ -101,6 +102,10 @@ export function parseFit(bytes: Uint8Array): FitSession[] {
         else if (f.num === 16) s.hr = v;
         else if (f.num === 20) s.power = v;
         else if (f.num === 34) s.np = v;
+        // R12.3 — total_ascent (champ 22, en mètres) : la seule donnée qui permet de dériver
+        // une VAM depuis une montre. Sans elle, l'athlète pouvait connecter sa montre et
+        // rester avec une VAM devinée — le chemin de masse était vide.
+        else if (f.num === 22) s.ascent = v;
       }
       if (s.timer != null && s.timer > 0) {
         const startS = s.start != null ? s.start + FIT_EPOCH_S : null;
@@ -113,6 +118,7 @@ export function parseFit(bytes: Uint8Array): FitSession[] {
           avgHr: s.hr,
           avgPowerW: s.power,
           normPowerW: s.np,
+          ascentM: s.ascent,
         });
       }
     }
@@ -124,6 +130,17 @@ export function parseFit(bytes: Uint8Array): FitSession[] {
 /** Séances FIT → contrat readiness (CompletedSession) + estimations de références,
  *  avec les MÊMES règles prudentes que l'import Strava (jamais de FTP sans puissance,
  *  l'allure moyenne d'une course est un plancher, pas un seuil). */
+/**
+ * Les références que l'import montre sait DÉRIVER. Déclarée ici, à côté du code qui les émet,
+ * pour qu'un banc puisse la vérifier au lieu de faire confiance à un tableau écrit à la main
+ * (R12, section C : « aucune référence ne doit rester en non/non/devinée »).
+ */
+export const FIT_DERIVED_TESTS = ["ftp", "thrPace", "css", "vam"] as const;
+
+/** Sous ce seuil, la « VAM » d'une sortie décrit un terrain vallonné, pas une capacité en
+ *  montée : on n'en tire rien plutôt que d'écrire un chiffre faux dans le journal. */
+const VAM_FIT_MIN = 250;
+
 export function fitToImport(sessions: FitSession[]): FitImport {
   const completed: CompletedSession[] = [];
   const tests: FitImport["tests"] = [];
@@ -139,6 +156,18 @@ export function fitToImport(sessions: FitSession[]): FitImport {
       tests.push({ type: "thrPace", value: Math.round(1000 / s.avgSpeedMs), date: s.date, source: "FIT (course " + s.minutes + "min, estimation basse)" });
     if (s.sport === "sw" && s.minutes >= 10 && s.avgSpeedMs && s.avgSpeedMs > 0)
       tests.push({ type: "css", value: Math.round(100 / s.avgSpeedMs), date: s.date, source: "FIT (nage " + s.minutes + "min)" });
+    // R12.3 — VAM depuis la montre. Deux garde-fous : une sortie PLATE ne produit pas de VAM
+    // exploitable (on exige une pente moyenne réelle), et la moyenne d'une sortie entière
+    // sous-estime la VAM seuil — on l'annonce comme une estimation BASSE plutôt que de la
+    // gonfler. Une valeur basse fait un plan un peu facile ; une valeur gonflée fait un plan
+    // intenable et une prédiction qui ment.
+    if (s.sport === "rn" && s.minutes >= 25 && s.ascentM && s.ascentM > 0) {
+      const vam = Math.round(s.ascentM / (s.minutes / 60));
+      if (vam >= VAM_FIT_MIN && vam <= 2500)
+        tests.push({ type: "vam", value: vam, date: s.date, source: "FIT (sortie " + s.minutes + "min, " + Math.round(s.ascentM) + "m D+, estimation basse)" });
+      else if (s.ascentM < 100)
+        notes.push("Sortie du " + s.date + " trop plate (" + Math.round(s.ascentM) + "m D+) : aucune VAM exploitable.");
+    }
   }
   if (!sessions.length) notes.push("Aucune séance trouvée dans ce fichier (est-ce bien un FIT d'activité ?).");
   return { sessions, completed, tests, notes };

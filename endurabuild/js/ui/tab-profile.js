@@ -33,6 +33,10 @@ export function syncRefsFromTests() {
   if (pace) { const v = _fmtColon(pace.value); if (S.answers.pace_known !== "oui" || S.answers.pace !== v) { S.answers.pace = v; S.answers.pace_known = "oui"; n++; } }
   const css = latest("css");
   if (css) { const v = _fmtColon(css.value); if (S.answers.css_known !== "oui" || S.answers.css !== v) { S.answers.css = v; S.answers.css_known = "oui"; n++; } }
+  // R12.2/R12.3 — la VAM suit le même pont que les trois autres références : sans lui, un test
+  // ou un import écrirait le journal sans que le plan change JAMAIS (bug déjà corrigé une fois).
+  const vam = latest("vam");
+  if (vam) { const v = String(Math.round(vam.value)); if (S.answers.vam_known !== "oui" || S.answers.vam !== v) { S.answers.vam = v; S.answers.vam_known = "oui"; n++; } }
   return n;
 }
 
@@ -43,6 +47,7 @@ function journalLabel(t) {
     case "ftp": return "FTP " + esc(v) + "W";
     case "thrPace": return "Allure seuil " + esc(_fmtSec(+v)) + "/km";
     case "css": return "CSS " + esc(_fmtSec(+v)) + "/100m";
+    case "vam": return "VAM " + esc(Math.round(+v)) + " m/h";
     case "cs": return "Vitesse critique " + esc(v);
     case "vma": return "VMA " + esc(v) + " km/h";
     case "profil:vol_max": return "Volume max " + esc(v) + "h/sem";
@@ -307,7 +312,12 @@ function trailProfileHTML(a) {
   else h += '<div class="load-sub" style="margin-top:4px">Le D+ compte autant que la distance : il décide de la catégorie d’effort, donc de tout le reste.</div>';
   h += row("pfTrailKm", "Distance (km)", a.race_distance_km, "62");
   h += row("pfTrailDplus", "D+ total (m)", a.race_dplus_m, "3200");
-  h += row("pfTrailVam", "VAM (m D+/h)", a.vam_known === "oui" ? a.vam : "", "850 — test : 20-30min de montée à fond");
+  // R12.1 — la montée VÉCUE d'abord : c'est la question à laquelle tout le monde sait répondre.
+  // La VAM directe reste possible pour qui l'a mesurée, mais elle n'est plus le chemin principal.
+  h += '<div class="load-sub" style="margin-top:8px"><b>⛰ Ta dernière grosse montée</b> — d\'au moins 5 minutes, sans t\'arrêter. C\'est de là que le plan déduit ta vitesse ascensionnelle.</div>';
+  h += row("pfClimbDplus", "D+ de cette montée (m)", a.climb_dplus_m, "450");
+  h += row("pfClimbMin", "Durée de cette montée (min)", a.climb_min, "40");
+  h += row("pfTrailVam", "VAM déjà mesurée (m D+/h)", a.vam_known === "oui" ? a.vam : "", "facultatif — sinon déduite ci-dessus");
   h += sel("pfTrailTech", a.race_technicity, { lab: "Terrain de la course", list: [["roulant", "Roulant"], ["mixte", "Mixte"], ["technique", "Technique"], ["alpin", "Alpin"]] });
   h += sel("pfTrailNight", a.race_night, { lab: "Course de nuit", list: [["non", "Non"], ["partielle", "En partie"], ["majoritaire", "Majoritairement"]] });
   h += sel("pfTrailAccess", a.train_dplus_access, { lab: "Dénivelé accessible", list: [["montagne", "Montagne (+800m)"], ["collines", "Collines (200-800m)"], ["plat", "Plat (<200m)"]] });
@@ -322,8 +332,11 @@ function bindTrailProfile() {
   btn.onclick = () => {
     const a = S.answers;
     const g = (id) => { const el = $(id); return el ? String(el.value || "").trim() : null; };
-    const before = JSON.stringify([a.race_distance_km, a.race_dplus_m, a.vam, a.race_technicity, a.race_night, a.train_dplus_access, a.poles, a.race_cutoff_h]);
+    const before = JSON.stringify([a.race_distance_km, a.race_dplus_m, a.vam, a.climb_dplus_m, a.climb_min, a.race_technicity, a.race_night, a.train_dplus_access, a.poles, a.race_cutoff_h]);
     const km = parseFloat(g("pfTrailKm") || ""), dp = parseFloat(g("pfTrailDplus") || ""), vam = parseFloat(g("pfTrailVam") || "");
+    const cdp = parseFloat(g("pfClimbDplus") || ""), cmin = parseFloat(g("pfClimbMin") || "");
+    a.climb_dplus_m = cdp >= 50 && cdp <= 3000 ? String(cdp) : "";
+    a.climb_min = cmin >= 5 && cmin <= 300 ? String(cmin) : "";
     if (km > 0) a.race_distance_km = String(km);
     if (dp >= 0) a.race_dplus_m = String(dp);
     if (vam >= 200 && vam <= 2500) { a.vam = String(vam); a.vam_known = "oui"; } else if (!g("pfTrailVam")) a.vam_known = "non";
@@ -334,7 +347,7 @@ function bindTrailProfile() {
     const co = parseFloat(g("pfTrailCutoff") || "");
     a.race_cutoff_h = co > 0 ? String(co) : "";
     const m = $("pfTrailMsg");
-    if (JSON.stringify([a.race_distance_km, a.race_dplus_m, a.vam, a.race_technicity, a.race_night, a.train_dplus_access, a.poles, a.race_cutoff_h]) === before) {
+    if (JSON.stringify([a.race_distance_km, a.race_dplus_m, a.vam, a.climb_dplus_m, a.climb_min, a.race_technicity, a.race_night, a.train_dplus_access, a.poles, a.race_cutoff_h]) === before) {
       if (m) m.textContent = "Aucun changement détecté.";
       return;
     }

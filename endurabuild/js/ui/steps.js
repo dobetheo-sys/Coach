@@ -283,21 +283,28 @@ function levelStep(){
   const sp=S.sport;
   // R7 TRAIL (§3.2) — deux références, pas une : l'allure seuil SUR PLAT et la vitesse
   // ascensionnelle (VAM). En montée, l'allure au sol ne veut rien dire ; la VAM, si.
+  // R12.1 — LA BONNE QUESTION N'EST PAS « CONNAIS-TU TA VAM ? », C'EST « QU'AS-TU FAIT ? ».
+  // Personne ne connaît sa VAM : c'était la seule référence sans chemin d'acquisition, et le
+  // moteur la DEVINAIT depuis l'adjectif « niveau » — trois heures d'écart sur l'estimation de
+  // course selon la case cochée. On demande désormais une montée VÉCUE : deux chiffres que
+  // n'importe qui peut donner de mémoire, et dont la VAM se déduit.
   if(sp==="trail") return {id:"level",title:"Ton moteur en montagne",eyebrow:"Gratuit — Le moteur",
-    why:"Deux références : ton allure seuil sur PLAT, et ta vitesse ascensionnelle (mètres de D+ par heure). C'est la VAM qui pilote l'intensité de tes montées — pas l'allure.",
-    render(){return '<div class="q"><span class="q-label">Ton niveau</span><div class="opts" data-key="level">'+opt("debutant","Débutant")+opt("inter","Intermédiaire")+opt("avance","Avancé")+'</div></div>'
+    why:"La référence du trail, c'est la vitesse ascensionnelle : combien de mètres de dénivelé tu montes en une heure. Pas besoin de la connaître — raconte-nous ta dernière grosse montée, on s'occupe du calcul.",
+    render(){return '<div class="q"><span class="q-label">Ton niveau</span><div class="q-sub">Sert au CONTENU des séances (technicité, progressivité), jamais à estimer un chrono.</div><div class="opts" data-key="level">'+opt("debutant","Débutant")+opt("inter","Intermédiaire")+opt("avance","Avancé")+'</div></div>'
+      +'<div class="q"><span class="q-label">Ta dernière grosse montée</span><div class="q-sub">Une montée que tu as vraiment faite, d\'au moins 5 minutes, sans t\'arrêter. De mémoire suffit.</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><label style="flex:1;min-width:120px;font-size:13px">D+ (mètres)<input type="number" min="50" max="3000" data-input="climb_dplus_m" placeholder="450" style="width:100%"></label>'
+      +'<label style="flex:1;min-width:120px;font-size:13px">Durée (minutes)<input type="number" min="5" max="300" data-input="climb_min" placeholder="40" style="width:100%"></label></div>'
+      +'<div class="q-sub" style="margin-top:6px">Tu n\'en as pas ? Laisse vide : le plan partira d\'une estimation prudente et se corrigera dès ta première montée enregistrée.</div></div>'
       +'<div class="q"><span class="q-label">Ton allure seuil sur PLAT ?</span><div class="opts" data-key="pace_known">'+opt("oui","Je la connais")+opt("non","Non")+'</div></div><div id="paceB"></div>'
-      +'<div class="q"><span class="q-label">Ta vitesse ascensionnelle (VAM) ?</span><div class="q-sub">En mètres de D+ par heure. Repères : débutant 500-700 · intermédiaire 700-1000 · avancé 1000-1400.</div><div class="opts" data-key="vam_known">'+opt("oui","Je la connais")+opt("non","Non")+'</div></div><div id="vamB"></div>';},
+      +'<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12px">Je connais déjà ma VAM</summary>'
+      +'<div class="q" style="margin-top:6px"><span class="q-label">VAM (m de D+ / h)</span><div class="opts" data-key="vam_known">'+opt("oui","Je la connais")+opt("non","Non")+'</div><div id="vamB"></div></div></details>';},
     branches(a){
       branch("paceB",a.pace_known==="oui",'<div class="branch"><div class="q"><span class="q-label">Allure seuil sur plat (min/km)</span><input type="text" data-input="pace" placeholder="4:50"></div></div>');
-      branch("paceB2",a.pace_known==="non","");
       branch("vamB",a.vam_known==="oui",'<div class="branch"><div class="q"><span class="q-label">VAM (m de D+ / h)</span><input type="number" min="200" max="2500" data-input="vam" placeholder="850"></div></div>');
-      if(a.pace_known==="non"||a.vam_known==="non"){
-        const el=document.getElementById("vamB");
-        if(el&&a.vam_known==="non")el.innerHTML='<div class="q-sub" style="margin-top:6px"><b>⛰ Comment obtenir ta VAM</b> — Sur une montée régulière de 20 à 30 minutes, à l\'effort maximal tenable : le D+ parcouru divisé par la durée donne ta vitesse ascensionnelle seuil, en mètres par heure. Tu pourras la renseigner plus tard dans l\'onglet 📋 Profil : le plan se recalcule aussitôt.</div>';
-      }
     },
-    valid(a){return a.level&&a.pace_known&&a.vam_known&&(a.pace_known!=="oui"||a.pace)&&(a.vam_known!=="oui"||a.vam);}};
+    // La montée n'est PAS obligatoire : un athlète sans montée en tête doit pouvoir avancer.
+    // Le repli est prudent et il est annoncé — c'est le contrat R12.4.
+    valid(a){return a.level&&a.pace_known&&(a.pace_known!=="oui"||a.pace)&&(a.vam_known!=="oui"||a.vam);}};
   // R10 phase 3 — SWIMRUN : les références qui comptent sont EN TENUE (§R10.3.3). Le CSS et
   // l'allure route ne sont qu'un repli, et l'UI le dit à chaque affichage.
   if(sp==="swimrun") return {id:"level",title:"Tes références en tenue",eyebrow:"Gratuit — Le moteur",
@@ -480,7 +487,11 @@ function renderSportPick(){
   $("progress").innerHTML="";
   let html='<div class="card welcome"><div class="w-tri">🏁</div><h2>Quel plan veux-tu construire ?</h2>'
     +'<p>Un moteur de raisonnement par sport — choisis le tien, le questionnaire s\'adapte.</p><div class="sport-grid">';
-  Object.entries(SPORTS).forEach(([k,c])=>{html+='<button class="sport-card" data-sport="'+k+'" type="button" style="--sa:'+c.accent+'"><span class="sc-ico">'+c.ico+'</span><span class="sc-nom">'+c.nom+'</span><span class="sc-pitch">'+c.pitch+'</span></button>';});
+  // R12 §0 — les sports proposés sont ceux que le MOTEUR connaît réellement (registre R10).
+  // Un sport exclu du bundle V1 ne doit pas apparaître ici : proposer un choix qui lèvera à la
+  // génération est pire que de ne pas le proposer.
+  const known = (globalThis.EBV2 && globalThis.EBV2.sports) ? Object.keys(globalThis.EBV2.sports) : null;
+  Object.entries(SPORTS).filter(([k])=>!known||known.includes(k)).forEach(([k,c])=>{html+='<button class="sport-card" data-sport="'+k+'" type="button" style="--sa:'+c.accent+'"><span class="sc-ico">'+c.ico+'</span><span class="sc-nom">'+c.nom+'</span><span class="sc-pitch">'+c.pitch+'</span></button>';});
   html+='</div></div>'+backToPlanHTML();
   $("screen").innerHTML=html;
   bindBackToPlan();

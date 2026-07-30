@@ -43,9 +43,17 @@ const ORDER = [
   "src/sports/trail/index.ts",
   "src/sports/duathlon/tables.ts",
   "src/sports/duathlon/index.ts",
-  "src/sports/swimrun/tables.ts",
-  "src/sports/swimrun/objective.ts",
-  "src/sports/swimrun/index.ts",
+  // R12 §0 — SWIMRUN HORS V1 (décision de périmètre, 30/07/2026). Audience disjointe, 601
+  // lignes dédiées, 26 % de la surface de test. Le module est EXCLU DU BUNDLE, pas masqué dans
+  // l'UI : du code expédié mais non exercé est exactement ce que ce projet refuse depuis la
+  // suppression du générateur legacy — « un filet troué ne protège personne ». Le code reste
+  // dans `src/`, réintégrable en retirant ce drapeau.
+  //   EB_SWIMRUN=1 npm run build:app  → réintègre le sport (et ses cas de bancs).
+  ...(process.env.EB_SWIMRUN === "1" ? [
+    "src/sports/swimrun/tables.ts",
+    "src/sports/swimrun/objective.ts",
+    "src/sports/swimrun/index.ts",
+  ] : []),
   "src/generator/weekBuilder.ts",
   "src/generator/planGenerator.ts",
   "src/generator/repairLoop.ts",

@@ -61,7 +61,12 @@ export class TrainingReasoningEngine {
     if (tObj) {
       D("format-trail", "Catégorie d'effort", tObj.category + " (" + fmtH(tObj.raceMinLo) + "–" + fmtH(tObj.raceMinHi) + " estimées)", "Déduit de " + tObj.why);
       D("km-effort", "Ton objectif en km-effort", tObj.kmEffort + " km-effort", tObj.distanceKm + " km + " + tObj.dplusM + " m D+ ÷ 100 — la métrique qui compare des courses de relief différent");
-      if (!tObj.vamKnown) warnings.push("Ta vitesse ascensionnelle (VAM) n'est pas renseignée : le plan utilise une estimation de " + Math.round(tObj.vam) + " m/h d'après ton niveau. Fais le test (une montée régulière de 20-30 min à fond : D+ ÷ durée = ta VAM) et renseigne-la au Profil — c'est LA référence d'intensité en montée, et elle resserre aussi la prédiction.");
+      // R12.4 — la VAM estimée est ANNONCÉE, et l'athlète sait exactement quoi faire pour la
+      // remplacer : donner la dernière montée qu'il a faite. Pas un test à programmer, pas un
+      // chiffre à connaître — un souvenir. C'est la différence entre un plan qu'on affine et un
+      // plan qui repose sur une case cochée.
+      if (!tObj.vamKnown) warnings.push("Ta vitesse ascensionnelle est ESTIMÉE (" + Math.round(tObj.vam) + " m/h, repli prudent d'après ton niveau et ton historique) : c'est la référence d'intensité en montée ET la base de la prédiction, donc l'estimation coûte cher en précision. Le plus simple pour la corriger : au Profil, donne ta dernière grosse montée — combien de D+, en combien de temps. Pas besoin de test ni de chiffre à connaître.");
+      else if (tObj.vamSource === "montee") warnings.push("Ta VAM (" + Math.round(tObj.vam) + " m/h) est déduite de la montée que tu as déclarée, avec une marge de prudence : une montée d'entraînement n'est pas un effort seuil. Elle se précisera au premier test vertical ou au premier import de montre.");
       if (tObj.cappedByProduct) warnings.push("Ton objectif dépasse 24 h d'effort estimées. Le plan construit l'endurance nécessaire, mais la stratégie propre à ce format (sommeil fractionné, assistance, ravitaillement par base-vie) dépasse ce qu'un plan automatique peut honnêtement produire : cherche l'accompagnement d'un entraîneur ou d'un finisher expérimenté pour cette partie.");
       if (tObj.altitudeMaxM && tObj.altitudeMaxM > 2500) warnings.push("Ta course monte à " + tObj.altitudeMaxM + " m : au-dessus de 2 500 m, la performance baisse et l'acclimatation compte. Un protocole d'acclimatation dépend de contraintes logistiques que l'outil ne connaît pas — si tu peux dormir en altitude quelques nuits avant, fais-le.");
     }
@@ -73,7 +78,10 @@ export class TrainingReasoningEngine {
     // On ne refuse pas de produire un plan (l'athlète resterait sans rien) : on RABAT le format
     // au plus long format autorisé et on le DIT.
     if (sp === "swimrun") {
-      const block = swimrunPrereqBlock(a as { format?: string; swim_continuous?: string; run_continuous?: string });
+      // R12 §0 — le module swimrun peut être absent du bundle V1 : on ne référence pas un
+      // symbole qui n'existe pas (le sport, lui, est déjà refusé en amont par le registre).
+      const block = typeof swimrunPrereqBlock === "function"
+        ? swimrunPrereqBlock(a as { format?: string; swim_continuous?: string; run_continuous?: string }) : "";
       if (block) {
         warnings.push(block + " Ton plan a donc été construit sur le format Sprint : il te prépare aux bases, et tu passeras au format long quand elles seront acquises.");
         D("prereq-swimrun", "Format rabattu", "sprint (au lieu de " + (a.format || "?") + ")", "Les prérequis de sécurité du format long ne sont pas atteints — construire les bases d'abord n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend");
@@ -279,7 +287,16 @@ export class TrainingReasoningEngine {
       D("T2", "Progression du dénivelé", "D+ ≤ +12%/sem · D− ≤ +8%/sem", "La charge excentrique (descente) est le premier facteur de casse musculaire : elle progresse plus lentement que tout le reste");
       // T4 — la sortie longue plafonne en % du TEMPS DE COURSE estimé, jamais en absolu
       trailLongCapMin = Math.round(tObj.raceMinMid * T4_LONG_RUN_VS_RACE[tObj.category]);
-      D("T4", "Plafond de la sortie longue", fmtH(trailLongCapMin), "Sur ce format, reproduire la durée de course à l'entraînement serait contre-productif : " + Math.round(T4_LONG_RUN_VS_RACE[tObj.category] * 100) + "% du temps estimé suffit à préparer le reste");
+      // R12.7 — la sortie longue est calibrée en POURCENTAGE du temps de course estimé. Un
+      // athlète plus rapide a une course plus courte, donc une sortie longue plus courte : la
+      // progression n'est pas monotone avec le niveau, et sans explication ça passe pour un bug.
+      D("T4", "Plafond de la sortie longue", fmtH(trailLongCapMin),
+        "Sur ce format, reproduire la durée de course à l'entraînement serait contre-productif : "
+        + Math.round(T4_LONG_RUN_VS_RACE[tObj.category] * 100) + "% du temps estimé suffit à préparer le reste. "
+        + "Ce plafond suit ton temps ESTIMÉ (" + fmtH(Math.round(tObj.raceMinMid)) + ") : plus tu es rapide, plus ta course est courte, et plus ta sortie longue l'est aussi — "
+        + (tObj.vamSource === "estimee"
+          ? "et comme ta vitesse ascensionnelle est encore estimée, ce plafond bougera dès que tu donneras une vraie montée"
+          : "il se recalculera à chaque fois que ta référence de montée changera"));
       // T7 — répétitions ravito/matériel
       if (tObj.raceMinMid / 60 >= 6) D("T7", "Répétitions ravitaillement", "3 sorties en conditions réelles (phase spécifique)", "Au-delà de 6 h d'effort, l'estomac et le matériel provoquent autant d'abandons que les jambes : ça se teste à l'entraînement");
       // T11 — terrain plat : le dire, ne pas prescrire du dénivelé inatteignable

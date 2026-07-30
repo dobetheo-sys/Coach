@@ -85,7 +85,7 @@ const REF = {
   // (le 1500 m EST une épreuve de fond) pour que les 551 cas tournent.
   swim: { ...BASE, format: "fond", css_known: "non", milieu: "bassin", swim_limit: "technique" },
   duathlon: { ...BASE, format: "M", ftp_known: "oui", ftp: "227", pace_known: "oui", pace: "4:50", terrain: "plat" },
-  swimrun: { ...BASE, format: "series", css_known: "non", pace_known: "oui", pace: "4:50", team_mode: "solo", openwater_access: "saisonnier", race_distance_km: "30" },
+  ...(process.env.EB_SWIMRUN === "1" ? { swimrun: { ...BASE, format: "series", css_known: "non", pace_known: "oui", pace: "4:50", team_mode: "solo", openwater_access: "saisonnier", race_distance_km: "30" } } : {}),
   trail: { ...BASE, race_distance_km: "45", race_dplus_m: "2200", race_technicity: "mixte", race_night: "non", train_dplus_access: "collines", poles: "oui", vam_known: "non", pace_known: "oui", pace: "4:50" },
 };
 
@@ -171,7 +171,7 @@ for (const sp of SPORTS) {
 const NUMKEYS = { tri: ["ftp", "pace", "age", "weight", "vol_max", "vol_recent", "sessions_max"], trail: ["race_distance_km", "race_dplus_m", "vam", "race_cutoff_h"], swimrun: ["race_distance_km"] };
 const NUMMUTS = [["texte", "abc"], ["négatif", "-5"], ["zéro", "0"], ["absurde", "999999"], ["virgule FR", "12,5"], ["null", null]];
 for (const sp of Object.keys(NUMKEYS)) {
-  if (!refs[sp].ok) continue;
+  if (!refs[sp] || !refs[sp].ok) continue; // sport hors périmètre V1 (R12 §0)
   for (const k of NUMKEYS[sp]) for (const [lbl, v] of NUMMUTS) {
     const a = { ...REF[sp] }; a[k] = v;
     rec("T2 nombre", sp, k, lbl, build(sp, a), refs[sp]);
