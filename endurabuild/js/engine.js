@@ -5383,6 +5383,19 @@ function reconcileDeclaredVolume(
         }
         if (before - wm(wk) < 0.5) break;
       }
+      // Les blocs en pente sont hors d'atteinte de la réduction (leur charge verticale a ses
+      // propres passes) : sur un plan de trail, la garantie peut donc ne rien pouvoir réduire.
+      // La FRÉQUENCE prend alors le relais, comme partout ailleurs — la plus petite séance non
+      // longue cède. Jamais la sortie longue : c'est le pivot de la semaine.
+      for (let g = 0; g < 3 && wm(wk) > peakBest; g++) {
+        const cand = wk.days.filter((d) => d.sessions.some((sx) => sx.d !== "rs" && !sx.long && !sx.race && !sx.brick));
+        if (cand.length <= 2) break;
+        const dayMinOf = (d       ) => d.sessions.reduce((t, sx) => t + (sx.min || 0), 0);
+        const victim = cand.reduce((x, y) => (dayMinOf(y) < dayMinOf(x) ? y : x));
+        victim.charge = "off";
+        victim.slot = "off";
+        victim.sessions = [{ d: "rs", name: "OFF (la semaine de pic reste la plus grosse)", det: "repos — une phase de développement ne dépasse pas la phase de pic : c'est la périodisation, pas un réglage", steps: [], min: 0 }];
+      }
     }
   }
 
@@ -7249,7 +7262,25 @@ function generateAudited(profile                , auditOpts                     
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.
   syncDerivedLabels(best.plan);
-  return { plan: best.plan, audit: best.audit, warnings, repairs, decisions: reasoned.decisions };
+
+  // L'AUDIT RENDU EST CELUI DU PLAN RENDU.
+  //
+  // `best.audit` était pris AVANT les trois passes ci-dessus — dont `reconcileDeclaredVolume`,
+  // qui porte à elle seule sept garanties. Le verdict décrivait donc un plan qui n'existait
+  // plus : la trace a montré le même plan « en violation » selon `res.audit` et « propre »
+  // selon un `auditPlan` rejoué dessus. Un auditeur qui note un état intermédiaire ne dit rien
+  // du produit, exactement comme le harnais qui mesurait le générateur de repli (O7).
+  //
+  // On re-mesure donc à la sortie. Les réserves affichées à l'athlète sont recalculées avec :
+  // annoncer des réserves qu'on vient de lever serait le même mensonge dans l'autre sens.
+  const finalAudit = auditPlan(best.plan, opts);
+  const stale = warnings.indexOf("Plan rendu avec réserves (contraintes insatisfaisables après " + MAX_ITERATIONS + " réparations) :");
+  if (stale >= 0) warnings.splice(stale, 1 + best.audit.hardViolations.length);
+  if (finalAudit.hardViolations.length > 0) {
+    warnings.push("Plan rendu avec réserves (contraintes insatisfaisables après " + MAX_ITERATIONS + " réparations) :");
+    warnings.push(...finalAudit.hardViolations.map((v) => "· " + v));
+  }
+  return { plan: best.plan, audit: finalAudit, warnings, repairs, decisions: reasoned.decisions };
 }
 
 // ===== src/engine/predictor.ts =====

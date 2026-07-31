@@ -182,6 +182,19 @@ export function reconcileDeclaredVolume(
         }
         if (before - wm(wk) < 0.5) break;
       }
+      // Les blocs en pente sont hors d'atteinte de la réduction (leur charge verticale a ses
+      // propres passes) : sur un plan de trail, la garantie peut donc ne rien pouvoir réduire.
+      // La FRÉQUENCE prend alors le relais, comme partout ailleurs — la plus petite séance non
+      // longue cède. Jamais la sortie longue : c'est le pivot de la semaine.
+      for (let g = 0; g < 3 && wm(wk) > peakBest; g++) {
+        const cand = wk.days.filter((d) => d.sessions.some((sx) => sx.d !== "rs" && !sx.long && !sx.race && !sx.brick));
+        if (cand.length <= 2) break;
+        const dayMinOf = (d: V1Day) => d.sessions.reduce((t, sx) => t + (sx.min || 0), 0);
+        const victim = cand.reduce((x, y) => (dayMinOf(y) < dayMinOf(x) ? y : x));
+        victim.charge = "off";
+        victim.slot = "off";
+        victim.sessions = [{ d: "rs", name: "OFF (la semaine de pic reste la plus grosse)", det: "repos — une phase de développement ne dépasse pas la phase de pic : c'est la périodisation, pas un réglage", steps: [], min: 0 }];
+      }
     }
   }
 
