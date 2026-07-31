@@ -13,7 +13,7 @@ import {
   BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH,
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
   BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_BIKE, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
-  C13d_QUALITY_MIN_BODY_MIN,
+  C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, type Refs } from "./renderer.ts";
@@ -129,6 +129,48 @@ export function reconcileDeclaredVolume(
     }
   }
 
+  // A2 / I1 — LA PÉRIODISATION NE S'INVERSE PAS : aucune semaine hors pic ne dépasse la
+  // meilleure semaine de pic. Une phase de développement plus lourde que la phase de pic n'est
+  // pas un arbitrage, c'est une inversion — et elle n'apparaissait qu'en trail, sur les semaines
+  // à séances de côte : celles qui viennent justement de récupérer leurs vraies minutes de
+  // descente marchée (R3-final). La règle existait dans la boucle avec 2 % de tolérance ; elle
+  // devient une garantie FINALE et stricte, sixième du même point de convergence.
+  {
+    const wm = (wk: V1Week) => weekMinOf(wk);
+    const peakNR = plan.weeks.filter((wk) => wk.phase.id === "peak" && !wk.isRecup).map(wm);
+    const peakAny = plan.weeks.filter((wk) => wk.phase.id === "peak").map(wm);
+    const peakBest = Math.max(0, ...(peakNR.length ? peakNR : peakAny));
+    if (peakBest > 0) for (const wk of plan.weeks) {
+      if (wk.phase.id === "peak" || wk.phase.id === "taper" || wk.isRecup) continue;
+      for (let g = 0; g < 5 && wm(wk) > peakBest; g++) {
+        const before = wm(wk);
+        const f = (peakBest - 1) / before;
+        for (const d of wk.days) for (const sx of d.sessions) {
+          if (sx.d === "rs" || sx.race || !sx.steps) continue;
+          let touched = false;
+          for (const st of sx.steps) {
+            if (st.role !== "body") continue;
+            // Cette garantie ARRIVE APRÈS les passes qui tiennent, elles, les planchers de nage
+            // (C24/C24b) et la progression verticale du trail (T2/T2b). Elle ne touche donc ni
+            // les blocs en mètres, ni les blocs en pente : réduire là casserait deux invariants
+            // pour en sauver un troisième, et c'est exactement ce qu'on cherche à ne plus faire.
+            if (st.distanceM != null || st.gradient) continue;
+            const floor = (st as { bnd?: { floor?: number } }).bnd?.floor;
+            if ((st.reps || 1) > 1) {
+              const next = Math.max(1, Math.round((st.reps || 1) * f));
+              if (next < (st.reps || 1)) { st.reps = next; touched = true; }
+            } else if (st.durationMin) {
+              const next = Math.max(floor ?? 5, Math.round(st.durationMin * f));
+              if (next < st.durationMin) { st.durationMin = next; touched = true; }
+            }
+          }
+          if (touched && render) render(sx);
+        }
+        if (before - wm(wk) < 0.5) break;
+      }
+    }
+  }
+
   // D4 (banc v6) — UNE SEMAINE DE RÉCUP N'EST JAMAIS PLUS LOURDE QUE CELLE QU'ELLE ASSIMILE.
   //
   // Troisième application de la même leçon (R5.1, R5.3, C22 ci-dessus) : la règle vivait dans
@@ -158,8 +200,10 @@ export function reconcileDeclaredVolume(
       // Tolérance ZÉRO, comme la règle auditée : « jamais plus lourde » se compare strictement.
       // La minute de marge tolérée ici laissait passer exactement le cas mesuré (287 vs 286) —
       // un garde-fou qui s'accorde une marge ne garantit pas ce qu'il annonce.
-      if (prev <= 0 || weekMinOf(wk) <= prev) continue;
-      const f = prev / weekMinOf(wk);
+      // STRICTEMENT inférieure : une semaine de décharge qui égale la semaine de charge ne
+      // décharge pas. L'égalité (417 = 417) passait, et c'est bien le cas qu'on cherche à éviter.
+      if (prev <= 0 || weekMinOf(wk) < prev) continue;
+      const f = (prev - 1) / weekMinOf(wk);
       for (const d of wk.days) for (const sx of d.sessions) {
         if (sx.d === "rs" || !sx.steps) continue;
         // C24/C15 — le plancher de SÉANCE piscine (750 m) est une règle, pas une marge : on ne
@@ -182,7 +226,7 @@ export function reconcileDeclaredVolume(
           }
         }
         if (!touched) continue;
-        if (swBefore > 0 && swimMetersOf(sx) < 750) {
+        if (swBefore > 0 && swimMetersOf(sx) < 750 && !(wk.isRecup || wk.phase.id === "taper")) {
           // La réduction casserait le plancher : on la DÉFAIT intégralement et on laisse la
           // coupe ci-dessous faire le travail. Réduire à moitié serait le pire des deux.
           for (const b of before) { b.st.reps = b.reps; b.st.durationMin = b.durationMin; b.st.distanceM = b.distanceM; }
@@ -190,7 +234,7 @@ export function reconcileDeclaredVolume(
         }
         if (render) render(sx);
       }
-      for (let g = 0; g < 4 && weekMinOf(wk) > prev; g++) {
+      for (let g = 0; g < 4 && weekMinOf(wk) >= prev; g++) {
         const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
         if (active.length <= 1) break; // une semaine de récup garde au moins un contact avec le sport
         const victim = active.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
@@ -310,6 +354,26 @@ export function reconcileDeclaredVolume(
       if (wk.phase.id !== "taper" && !wk.isRecup) forcedWeeks++;
     }
   }
+
+  // I10 / B3 — LE VOLUME ANNONCÉ EST LE VOLUME PRESCRIT, DANS LES DEUX SENS.
+  //
+  // L'alignement n'existait que vers le HAUT (une semaine qui déborde de sa courbe). Vers le
+  // bas, `vol_declared` restait la cible d'origine : la première semaine d'affûtage, celle
+  // dont la fréquence vient d'être coupée, annonçait 5h30 et en délivrait 4h30 — 18 % d'écart,
+  // systématique, sur la semaine où l'athlète regarde le plus attentivement. Les autres
+  // semaines d'affûtage concordaient au dixième, ce qui rendait l'anomalie invisible en moyenne.
+  //
+  // Une promesse d'heures qui ne tient pas est un défaut de véracité, pas un arrondi. Tolérance
+  // 10 % : au-delà, le chiffre affiché suit ce qui est réellement prescrit.
+  for (const wk of plan.weeks) {
+    const delivered = weekH(wk);
+    const declared = wk.vol_declared ?? wk.vol;
+    if (declared > 0 && Math.abs(declared - delivered) / declared > 0.10) {
+      wk.vol_declared = delivered;
+      wk.vol = delivered;
+    }
+    wk.vol_real = delivered;
+  }
   // C13d — UNE SÉANCE SOUS-DOSÉE EST DÉCLASSÉE, PAS RABOTÉE.
   //
   // Corollaire de C13c (plancher d'échauffement 10 min) ET de C13e (échauffement ≤ corps) : pour
@@ -350,6 +414,76 @@ export function reconcileDeclaredVolume(
       sx.name = "Endurance facile";
       sx.note = "Cette semaine, l'enveloppe ne laissait que quelques minutes de travail pour un échauffement complet : une séance dure de cinq minutes n'apporte rien et coûte cher. Le créneau redevient de l'endurance — c'est un choix, pas un repli.";
       if (render) render(sx);
+    }
+  }
+
+  // C25 / I11 — LE NOM COLLE À LA DOSE : une séance de récupération reste une récupération.
+  // Le modèle est nommé à la sélection, puis la mise à l'échelle l'allonge pour remplir
+  // l'enveloppe sans jamais renommer. Mesuré par le banc d'invariants : « Nage récup courte »
+  // de 196 min et 9 025 m, « Récup active » de 134 min, « Footing récup » de 98 min.
+  // L'intention est portée par `recovery`, une DONNÉE : le libellé n'en est que le rendu, et
+  // c'est la dose qui s'aligne sur l'intention, jamais l'inverse.
+  //
+  // I14 — ET LA SORTIE LONGUE EST LA PLUS LONGUE DE SA SEMAINE, dans sa discipline. Là aussi
+  // le nom promet un rang que la mise à l'échelle ne garantissait pas (« Sortie longue » de
+  // 96 min à côté d'une séance de 119 min). On ne gonfle pas la longue — ce serait ajouter du
+  // volume pour tenir une promesse : on plafonne les AUTRES séances de la même discipline.
+  // Aucune séance ordinaire ne dépasse la sortie longue de la semaine ; c'est aussi ce qu'un
+  // entraîneur vérifie en premier en relisant une semaine.
+  {
+    const totalOf = (sx: V1Session) => (sx.steps || []).reduce((t, st) => t + (st._min || 0), 0);
+    const metersOf = (sx: V1Session) => (sx.steps || []).reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+    const shrinkTo = (sx: V1Session, capMin: number): void => {
+      // Un plafond de LIBELLÉ ne casse pas un plancher de SÉANCE : en bassin, réduire sous
+      // C24/C24b transformerait « le nom colle à la dose » en « la séance ne vaut plus le
+      // déplacement ». Le garde-fou le plus bas (600 m) borne la réduction ; au-dessus, la
+      // passe de fenêtre nage garde le dernier mot.
+      const swMin = sx.d === "sw" ? Math.min(750, metersOf(sx)) : 0;
+      for (let g = 0; g < 5 && totalOf(sx) > capMin + 0.5; g++) {
+        const before = totalOf(sx);
+        const f = capMin / before;
+        const snap = (sx.steps || []).map((st) => ({ st, reps: st.reps, durationMin: st.durationMin, distanceM: st.distanceM }));
+        let touched = false;
+        for (const st of sx.steps || []) {
+          if (st.role !== "body") continue;
+          // Les blocs en PENTE portent la charge verticale (T1/T2/T2b), tenue par ses propres
+          // passes : y toucher ici ferait bouger le D+/D− d'une semaine sans que la progression
+          // verticale soit revérifiée. Un plafond de libellé n'a pas à déplacer un axe de charge.
+          if (st.gradient) continue;
+          if ((st.reps || 1) > 1) {
+            const next = Math.max(1, Math.round((st.reps || 1) * f));
+            if (next < (st.reps || 1)) { st.reps = next; touched = true; }
+          } else if (st.durationMin) {
+            const next = Math.max(5, Math.round(st.durationMin * f));
+            if (next < st.durationMin) { st.durationMin = next; touched = true; }
+          } else if (st.distanceM) {
+            const next = Math.max(100, Math.round((st.distanceM * f) / 25) * 25);
+            if (next < st.distanceM) { st.distanceM = next; touched = true; }
+          }
+        }
+        if (!touched) break;
+        // Le plancher piscine n'est pas une marge : si le pas de réduction le franchit, on le
+        // DÉFAIT au lieu de s'arrêter à mi-chemin — s'arrêter après coup laissait la séance
+        // sous le plancher, ce que le plafond de libellé n'a jamais eu le droit de faire.
+        if (swMin > 0 && metersOf(sx) < swMin) {
+          for (const b of snap) { b.st.reps = b.reps; b.st.durationMin = b.durationMin; b.st.distanceM = b.distanceM; }
+          break;
+        }
+        if (render) render(sx);
+        if (before - totalOf(sx) < 0.5) break;
+      }
+    };
+    for (const wk of plan.weeks) {
+      const all = wk.days.flatMap((d) => d.sessions).filter((sx) => sx.d !== "rs" && sx.steps && sx.steps.length);
+      for (const sx of all) if (sx.recovery && !sx.race && (sx.min || 0) > C25_RECOVERY_SESSION_CAP_MIN) shrinkTo(sx, C25_RECOVERY_SESSION_CAP_MIN);
+      for (const lg of all) {
+        if (!lg.long || lg.race) continue;
+        for (const sx of all) {
+          if (sx === lg || sx.race || sx.brick || sx.long) continue;
+          if (sx.d !== lg.d) continue; // « la plus longue DANS SA DISCIPLINE »
+          if ((sx.min || 0) > (lg.min || 0)) shrinkTo(sx, lg.min || 0);
+        }
+      }
     }
   }
 
@@ -750,11 +884,36 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     if (guard(a.sport as string, "swimSessionFloors")) {
       const swFloor = r.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : 750;
       let raised: { d: GenDay; s: V1Session }[] = [];
+      // A3 — LES PLANCHERS DE SÉANCE SONT SUSPENDUS EN RÉCUPÉRATION ET EN AFFÛTAGE.
+      // Un plancher dit « en dessous, la séance ne vaut pas le déplacement » : c'est une règle
+      // de semaine de CHARGE. Une semaine de décharge a pour objet de RETIRER, pas de garantir
+      // qu'on se déplace — y remonter une séance au plancher fait mécaniquement remonter la
+      // semaine, et c'est ainsi qu'une récup devenait plus lourde que la charge qu'elle
+      // assimile (collision C24b × D4, plans de nage débutant saturés). Une séance sous le
+      // plancher n'y est donc pas remontée : elle est retirée. Deux collisions indépendantes
+      // (affûtage et récup) fermées par une seule reformulation, et une règle en moins.
+      const dechargeWeek = isRW || ph.id === "taper";
       for (const d of wd)
         for (const s of d.sessions) {
           if (s.d !== "sw" || !s.steps || !s.steps.length) continue;
           const meters = s.steps.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
           if (meters === 0 || meters >= swFloor) continue;
+          if (dechargeWeek) {
+            // …mais une semaine de décharge n'est pas une semaine VIDE. Retirer sans borne
+            // vidait les quatre dernières semaines d'un plan de nage débutant saturé, où
+            // TOUTES les séances sont au plancher : un affûtage sans une seule séance n'affûte
+            // rien, il désentraîne. La dernière séance de la semaine reste, quelle que soit sa
+            // taille — c'est elle qui maintient la spécificité pendant que le volume tombe.
+            const restants = wd.reduce((t, dd) => t + dd.sessions.filter((x) => x.d !== "rs").length, 0);
+            if (restants <= 1) continue;
+            const idx = d.sessions.indexOf(s);
+            if (idx >= 0) d.sessions.splice(idx, 1);
+            if (!d.sessions.some((x) => x.d !== "rs")) {
+              d.charge = "off"; d.slot = "off";
+              d.sessions = [{ d: "rs", name: "OFF (semaine de décharge)", det: "repos — sous le plancher de séance, une semaine de décharge retire au lieu de remonter", steps: [], min: 0 }];
+            }
+            continue;
+          }
           const body = s.steps.filter((st) => st.role === "body" && st.distanceM != null).sort((x, y) => (y.reps || 1) * (y.distanceM || 0) - (x.reps || 1) * (x.distanceM || 0))[0];
           if (!body || !body.distanceM) continue;
           const missing = swFloor - meters;
@@ -1000,14 +1159,28 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     const swFloorF = r.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : 750;
     for (const w of wl) {
       const wd2 = w.days as GenDay[];
+      // A3 — même reformulation qu'en amont : en décharge, on retire, on ne remonte pas.
+      const decharge = w.isRecup || w.phase.id === "taper";
       let changed = false;
       for (const d of wd2)
-        for (const s of d.sessions) {
+        for (const s of [...d.sessions]) {
           if (s.d !== "sw" || !s.steps || !s.steps.length) continue;
           const totOf = () => s.steps!.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
           const body = s.steps.filter((st) => st.role === "body" && st.distanceM != null).sort((x, y) => (y.reps || 1) * (y.distanceM || 0) - (x.reps || 1) * (x.distanceM || 0))[0];
           if (!body || !body.distanceM) continue;
           const t0 = totOf();
+          if (decharge && t0 > 0 && t0 < swFloorF) {
+            const restants = wd2.reduce((t, dd) => t + dd.sessions.filter((x) => x.d !== "rs").length, 0);
+            if (restants <= 1) continue;
+            const idx = d.sessions.indexOf(s);
+            if (idx >= 0) d.sessions.splice(idx, 1);
+            if (!d.sessions.some((x) => x.d !== "rs")) {
+              d.charge = "off"; d.slot = "off";
+              d.sessions = [{ d: "rs", name: "OFF (semaine de décharge)", det: "repos — sous le plancher de séance, une semaine de décharge retire au lieu de remonter", steps: [], min: 0 }];
+            }
+            changed = true;
+            continue;
+          }
           if (t0 > 0 && t0 < swFloorF) {
             const missing = swFloorF - t0;
             if ((body.reps || 1) > 1) body.reps = (body.reps || 1) + Math.ceil(missing / body.distanceM);
@@ -1236,7 +1409,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
             d.charge = "facile";
             d.slot = "facile2";
             d.sessions = [{
-              d: "rn", name: "Footing plat de récupération (post-descente)",
+              d: "rn", recovery: true, name: "Footing plat de récupération (post-descente)",
               note: "La grosse descente d'il y a moins de 48 h a créé des micro-lésions dans tes cuisses : elles culminent maintenant. Aucune qualité, aucune descente aujourd'hui — du plat très souple, c'est ce qui répare le plus vite.",
               det: "",
               steps: [{ role: "body", durationMin: 30, gradient: "flat", zone: "tr.easyup", mode: "run", surface: "route" } as V1Step],

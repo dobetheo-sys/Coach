@@ -195,13 +195,17 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
         //          plancher est un objectif physiologique, pas une autorisation à déséquilibrer
         //          la séance ; c'est C13d qui doit alors restructurer la séance, pas le rendu
         //          qui doit gonfler l'échauffement.
-        // « Corps » au sens de C13e = le corps de séance TEL QU'IL EST ÉCRIT, récupération entre
-        // répétitions comprise (R5.6a : elle appartient au bloc). Un 4×2min récup 2min, c'est
-        // 14 min de corps ; le comparer à ses seules 8 min de travail interdirait un échauffement
-        // de 10 min là où il est parfaitement à sa place. La clause de PROPORTION, elle, reste
-        // adossée au travail : son objet est que le stimulus reste majoritaire.
-        const bodyTotal = bodyMin + recTotal;
-        const wCap = Math.min(C13_WARMUP_MAX_MIN, bodyTotal || w.durationMin, Math.max(C13c_WARMUP_MIN_MIN, Math.round(bodyMin * 0.8) || w.durationMin));
+        // « Corps » au sens de C13e = le TRAVAIL, récupération exclue. J'avais d'abord retenu le
+        // corps tel qu'il est écrit (récup comprise) : un 4×2min récup 2min occupe 14 min, et
+        // 10 min d'échauffement y paraissent proportionnés. Le banc d'invariants a tranché sur
+        // 217 séances — un échauffement de 10 min devant 6 minutes de TRAVAIL déséquilibre la
+        // séance, quel que soit le temps passé debout entre les répétitions. La récupération
+        // n'est pas du stimulus : la règle se lit sur ce que la séance fait faire.
+        // Le plafond est ARRONDI À LA MINUTE INFÉRIEURE : `bodyMin` est une somme de flottants
+        // (17,1 − 9,1 = 8,000000000000002) et un échauffement de 8,000000000000002 min devant
+        // 8 min de corps viole l'invariant pour une erreur de représentation. Les minutes d'une
+        // séance sont entières par contrat (F3) ; le plafond l'est donc aussi.
+        const wCap = Math.floor(Math.min(C13_WARMUP_MAX_MIN, bodyMin || w.durationMin, Math.max(C13c_WARMUP_MIN_MIN, Math.round(bodyMin * 0.8) || w.durationMin)) + 1e-6);
         const wm = Math.max(1, Math.min(C13c_WARMUP_MIN_MIN, wCap), Math.min(w.durationMin, wCap));
         w.durationMin = wm;
         w._min = wm;

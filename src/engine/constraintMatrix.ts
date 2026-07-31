@@ -197,6 +197,62 @@ export const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ cor
  */
 export const C13c_WARMUP_MIN_MIN = rule("C13c", "échauffement ≥10min sur toute séance qui en porte un", 10);
 /**
+ * C26 — LE PLANCHER DE TEMPS FACILE DÉPEND DU VOLUME, PARCE QUE 80/20 EN EST UNE CONSÉQUENCE.
+ *
+ * La justification, écrite avant de regarder quelles combinaisons passent.
+ *
+ * La répartition ~80/20 est une OBSERVATION faite sur des athlètes d'endurance de haut niveau
+ * s'entraînant 10 à 25 h par semaine (Seiler, Esteve-Lanao, Stöggl & Sperlich). Son mécanisme
+ * est explicite : à ce volume, ce qui limite l'adaptation est la capacité de RÉCUPÉRATION, et
+ * le temps passé en intensité en est le premier consommateur. La proportion de 80 % de facile
+ * n'est donc pas une loi : c'est ce qu'on obtient mécaniquement quand on plafonne le travail
+ * dur à ce qu'un organisme absorbe — environ deux séances et une heure par semaine — et qu'on
+ * remplit le reste d'un volume important.
+ *
+ * En dessous de ce volume, le facteur limitant s'inverse. Un athlète à 3 h par semaine récupère
+ * complètement entre ses séances ; ce qui limite son progrès n'est plus la récupération mais le
+ * STIMULUS TOTAL. Lui imposer 80 % de facile laisse 35 minutes de qualité hebdomadaire, moins
+ * que ce qu'il faut pour seulement MAINTENIR la puissance aérobie maximale. Le seuil de 70 %,
+ * appliqué tel quel à une petite enveloppe, protège donc contre un risque qui n'existe pas et
+ * dégrade le plan qu'il prétend garder sain.
+ *
+ * La règle physiologiquement vraie est donc le PLAFOND DE TEMPS DUR (≈60 min/semaine, deux à
+ * trois séances) ; la part de facile en est la conséquence arithmétique. On l'énonce dans ce
+ * sens : `plancher_facile = 1 − 60 / minutes_hebdo`, borné à [60 %, 70 %].
+ *   · 10 h/sem → 1 − 60/600 = 90 % … borné à 70 % : la règle historique, inchangée.
+ *   ·  6 h/sem → 1 − 60/360 = 83 % … borné à 70 % : inchangée aussi.
+ *   ·  3 h/sem → 1 − 60/180 = 67 % : le plan a droit à une heure de qualité, comme les autres.
+ * Le plancher absolu de 60 % reste : en dessous, ce n'est plus une préparation d'endurance.
+ *
+ * Ce n'est PAS un seuil ajusté à ses contre-exemples : le plafond de 60 min de travail dur est
+ * la grandeur physiologique, et elle est identique pour tout le monde. C'est le pourcentage,
+ * grandeur dérivée, qui varie — comme il l'a toujours fait dans la littérature.
+ */
+export const C26_HARD_TIME_CAP_MIN = rule("C26", "le facteur limitant est le temps DUR hebdomadaire (~60 min), pas son pourcentage : la part de facile en découle", 60);
+export const C26_EASY_SHARE_MAX = 0.70;
+export const C26_EASY_SHARE_MIN = 0.60;
+export function easyShareFloor(weeklyMin: number): number {
+  if (!(weeklyMin > 0)) return C26_EASY_SHARE_MAX;
+  const derived = 1 - C26_HARD_TIME_CAP_MIN / weeklyMin;
+  return Math.min(C26_EASY_SHARE_MAX, Math.max(C26_EASY_SHARE_MIN, derived));
+}
+
+/**
+ * C25 — UNE SÉANCE DE RÉCUPÉRATION RESTE COURTE : 60 min, plafond dur.
+ *
+ * Le modèle de séance est nommé à la SÉLECTION, puis la mise à l'échelle allonge sa durée pour
+ * remplir l'enveloppe — sans jamais renommer ni requalifier. Mesuré : « Nage récup courte » de
+ * 196 min et 9 025 m, « Récup active » de 134 min, « Footing récup » de 98 min. Un athlète qui
+ * lit « récup courte » et trouve 9 kilomètres ne fera plus jamais confiance à un libellé, et
+ * c'est le libellé qui porte l'intention pédagogique de toute l'application.
+ *
+ * Une heure est la borne haute de ce qu'un entraîneur appelle une récupération : au-delà, le
+ * volume lui-même devient une charge, ce qui est exactement l'inverse du but de la séance.
+ * Le déversement de volume va vers les séances d'ENDURANCE, jamais vers la récupération.
+ */
+export const C25_RECOVERY_SESSION_CAP_MIN = rule("C25", "une séance dont l'intention est la récupération ne dépasse pas 60 min", 60);
+
+/**
  * C13e — L'ÉCHAUFFEMENT N'EST JAMAIS PLUS LONG QUE LE CORPS DE SÉANCE. Invariant DUR, sur les
  * six sports et dans les deux unités (minutes en course/vélo/trail, mètres en bassin). Une
  * séance dont l'échauffement pèse plus que le travail n'est pas une séance : c'est un footing

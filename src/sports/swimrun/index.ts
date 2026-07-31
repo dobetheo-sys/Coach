@@ -198,7 +198,7 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
         det: "",
         steps: [Bd(1, Math.max(300, P(400, 1000)), "sw.easy", "", (inOpenWater ? " en eau libre" : " en bassin non chauffé") + ", temps d'exposition allongé progressivement", false, "sw")], ...({ plainBody: true } as object) });
     } else {
-      S2.push({ d: "sw", name: "Nage récup + technique", note: "Récupération dans l'eau : relâchement total, respiration ample. C'est aussi le moment de refaire des éducatifs à froid, sans fatigue.", det: "",
+      S2.push({ d: "sw", recovery: true, name: "Nage récup + technique", note: "Récupération dans l'eau : relâchement total, respiration ample. C'est aussi le moment de refaire des éducatifs à froid, sans fatigue.", det: "",
         steps: [Bd(1, P(600, 1100), "sw.easy", "", " souple, éducatifs entre les séries", false, "sw")], ...({ plainBody: true } as object) });
     }
   } else if (slot === "recup") {

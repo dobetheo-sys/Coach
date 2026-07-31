@@ -60,6 +60,11 @@ export interface V1Session {
   /** R10 — course intermédiaire (B ou C) placée à sa vraie date. Une course a LIEU : aucune
    *  passe de dosage ne la retaille et C13d ne la déclasse pas, quelle que soit sa durée. */
   race?: boolean;
+  /** L'INTENTION de la séance, en donnée. Le nom (« Footing récup », « Récup active ») n'en est
+   *  que le rendu : sans ce champ, la mise à l'échelle allongeait la séance pour remplir
+   *  l'enveloppe sans jamais renommer, et l'athlète lisait « Nage récup courte » sur 196 min et
+   *  9 025 m. Un libellé auquel on ne peut plus se fier ne vaut rien. */
+  recovery?: boolean;
   note?: string;
 }
 export interface V1Day {

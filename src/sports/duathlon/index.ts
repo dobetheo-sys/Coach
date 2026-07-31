@@ -101,7 +101,7 @@ export function buildDuathlonSessions(kit: SessionKit): V1Session[] {
   } else if (slot === "facile2") {
     // §R10.2.2 — le créneau « nage récup » du tri n'a plus d'objet : il devient du vélo
     // récupération (zéro impact) plutôt qu'un troisième jour de course.
-    S2.push({ d: "bk", name: "Vélo récup", note: "Moulinage très souple, sans force sur les pédales : on active la circulation sans ajouter un appui de plus dans la semaine.", det: "",
+    S2.push({ d: "bk", recovery: true, name: "Vélo récup", note: "Moulinage très souple, sans force sur les pédales : on active la circulation sans ajouter un appui de plus dans la semaine.", det: "",
       steps: [B(1, PT(30, 45), null, "", " très souple")], ...({ plainBody: true } as object) });
   } else if (slot === "recup") {
     S2.push({ d: "rs", name: "Repos / mobilité", det: "marche, étirements, mobilité hanches", steps: [] });

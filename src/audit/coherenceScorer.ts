@@ -12,7 +12,7 @@
  */
 import type { V1Plan, V1Week } from "../harness/v1Harness.ts";
 import { sessionLoad, intensitySplit, DEFAULT_REFS, type AthleteRefs, type SessionLoad } from "../engine/loadModel.ts";
-import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS } from "../engine/constraintMatrix.ts";
+import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS, easyShareFloor } from "../engine/constraintMatrix.ts";
 
 // Les bornes brick vélo (audit 2, « jamais dépassées, même de peu ») vivent désormais dans la
 // matrice de contraintes : l'auditeur et le générateur lisent LE MÊME tableau. La copie locale
@@ -304,7 +304,14 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
         if (s.d === "rs") continue;
         const load = sessionLoad(s, refs);
         if (opts.level === "debutant" && s.d === "rn" && s.long && load.minutes > 185) beginnerLongRunOver3h++;
-        if (opts.level && opts.level !== "debutant" && s.d === "sw" && (load.meters ?? 0) > 0 && (load.meters ?? 0) < 750) smallSwims++;
+        // A3 — UN PLANCHER DE SÉANCE EST UNE RÈGLE DE SEMAINE DE CHARGE. Il dit « en dessous,
+        // la séance ne vaut pas le déplacement » : c'est un argument de dosage, et une semaine
+        // de décharge a précisément pour objet de retirer. L'exiger en récupération et en
+        // affûtage forçait à REMONTER des séances dans les semaines censées alléger — d'où une
+        // récup plus lourde que la charge qu'elle assimile, et un affûtage qui n'affûte pas.
+        // Deux collisions indépendantes, une seule reformulation, et une règle en moins.
+        const decharge = w.isRecup || w.phase.id === "taper";
+        if (!decharge && opts.level && opts.level !== "debutant" && s.d === "sw" && (load.meters ?? 0) > 0 && (load.meters ?? 0) < 750) smallSwims++;
         if (!s.note && !(s.det || "").includes("💡")) unexplainedSessions++;
       }
   if (beginnerLongRunOver3h > 0) hard.push(beginnerLongRunOver3h + " sortie(s) longue(s) CAP >3h pour un débutant (manifeste)");
@@ -323,7 +330,13 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
       }
   }
   const easyShare = easyTot + modTot + hardTot > 0 ? easyTot / (easyTot + modTot + hardTot) : 1;
-  if (easyShare < 0.7) hard.push("répartition des intensités : " + Math.round(easyShare * 100) + "% de temps facile (<70% — zone grise, manifeste ~80/20)");
+  // C26 — le plancher suit le VOLUME : 80/20 est la conséquence d'un plafond de temps dur
+  // (~60 min/sem), pas une loi en soi. Sur une petite enveloppe, exiger 70 % de facile laisse
+  // moins d'une heure de qualité — moins que ce qu'il faut pour maintenir la VO2max.
+  const chargeMin = weeks.filter((w) => !w.isRecup && w.phaseId !== "taper").map((w) => w.prescribedMin);
+  const meanChargeMin = chargeMin.length ? chargeMin.reduce((a, b) => a + b, 0) / chargeMin.length : 0;
+  const easyFloor = easyShareFloor(meanChargeMin);
+  if (easyShare < easyFloor) hard.push("répartition des intensités : " + Math.round(easyShare * 100) + "% de temps facile (<" + Math.round(easyFloor * 100) + "% pour " + Math.round(meanChargeMin / 6) / 10 + "h/sem — zone grise, manifeste ~80/20)");
 
   // ---- Cohérence : une nage FACILE/RÉCUP ne dépasse jamais la « longue » de sa semaine
   // (une « Récup eau » de 2150m n'est pas une récup). Les séances de qualité (jours durs)
@@ -378,8 +391,8 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
 
   score -= Math.min(20, adjacentHardDays * 10);
   score -= Math.min(10, recupHeavier * 5);
-  if (easyShare < 0.7) score -= 15;
-  else if (easyShare < 0.73) score -= 5;
+  if (easyShare < easyFloor) score -= 15;
+  else if (easyShare < easyFloor + 0.03) score -= 5;
   if (taperVsPeak !== null && taperVsPeak > 0.6) score -= 20;
   if (vo2InTaper > 0) score -= 15;
   if (brickCapViolations > 0) score -= 15;

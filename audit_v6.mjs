@@ -367,12 +367,15 @@ test("D5", "C15 : nage débutant ≤ 850 m par séance", "pass", () => {
   return { ok: bad.length === 0, detail: `${bad.length} séance(s) : ${bad.slice(0, 3).join(" ; ")}` };
 });
 
-test("D6", "C24 : plancher de séance piscine aussi pour le débutant", "pass", () => {
+// A3 — le plancher est une règle de semaine de CHARGE (voir `coherenceScorer`) : une semaine de
+// décharge retire au lieu de remonter, et une séance sous le plancher y est légitime.
+test("D6", "C24 : plancher de séance piscine aussi pour le débutant (semaines de charge)", "pass", () => {
   const bad = [];
   for (const sport of ["tri", "swim"])
     for (const format of FORMATS[sport]) {
       const p = build(sport, { format, level: "debutant", swim_limit: "technique" });
       sessionsOf(p).forEach(({ s, w }) => {
+        if (w.isRecup || w.phase.id === "taper") return; // A3 — plancher = règle de semaine de charge
         const m = swimMeters(s);
         if (s.d === "sw" && m > 0 && m < 600) bad.push(`${sport}/${format} S${w.num} ${m}m`);
       });
@@ -590,7 +593,11 @@ test("F4", "C13c : aucun échauffement chiffré sous 10 min (sauf corps plus cou
           const st = s.steps || [];
           const wu = st.find((x) => x.role === "warmup" && x.durationMin != null);
           if (!wu) return;
-          const body = st.filter((x) => x.role === "body").reduce((t, x) => t + (x._min || 0), 0);
+          // Le corps se mesure en TRAVAIL, récup exclue — même lecture que C13e (le banc
+          // d'invariants a tranché : 10 min d'échauffement devant 6 min de travail déséquilibre
+          // la séance, quel que soit le temps passé debout entre les répétitions).
+          const body = st.filter((x) => x.role === "body")
+            .reduce((t, x) => t + (x.durationMin ? (x.reps || 1) * x.durationMin : Math.max(0, (x._min || 0) - ((x.reps || 1) > 1 ? ((x.reps || 1) - 1) * (x.recoveryMin || 0) : 0))), 0);
           const seuil = Math.min(10, body);
           if ((wu._min ?? wu.durationMin) < seuil - 0.5)
             bad.push(`${sport}/${format} S${w.num} ${s.name} : ${wu._min}min (corps ${body.toFixed(0)})`);

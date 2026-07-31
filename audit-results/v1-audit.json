@@ -4100,7 +4100,7 @@
   "history": "confirme",
   "level": "debutant",
   "intent": "competition",
-  "score": 93,
+  "score": 98,
   "peakRatio": 1.1464646464646464,
   "peakDeclaredH": 3.3,
   "peakPrescribedH": 3.783333333333333,
@@ -4205,7 +4205,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "competition",
-  "score": 93,
+  "score": 98,
   "peakRatio": 1.1464646464646464,
   "peakDeclaredH": 3.3,
   "peakPrescribedH": 3.783333333333333,
@@ -4310,7 +4310,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "competition",
-  "score": 93,
+  "score": 98,
   "peakRatio": 1.1464646464646464,
   "peakDeclaredH": 3.3,
   "peakPrescribedH": 3.783333333333333,
@@ -13655,7 +13655,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "competition",
-  "score": 70,
+  "score": 90,
   "peakRatio": 0.6265208333333334,
   "peakDeclaredH": 4,
   "peakPrescribedH": 2.5,
@@ -13681,9 +13681,7 @@
   "adjacentHard": 0,
   "coverage": 0.999755489021956,
   "nominalSessions": 0,
-  "hardViolations": [
-   "répartition des intensités : 69% de temps facile (<70% — zone grise, manifeste ~80/20)"
-  ],
+  "hardViolations": [],
   "softIssues": [
    "pic S7 ratio limite : 0.63"
   ]
@@ -13694,7 +13692,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "finir",
-  "score": 70,
+  "score": 90,
   "peakRatio": 0.6961342592592593,
   "peakDeclaredH": 3.6,
   "peakPrescribedH": 2.5,
@@ -13720,9 +13718,7 @@
   "adjacentHard": 0,
   "coverage": 0.999288843950118,
   "nominalSessions": 0,
-  "hardViolations": [
-   "répartition des intensités : 69% de temps facile (<70% — zone grise, manifeste ~80/20)"
-  ],
+  "hardViolations": [],
   "softIssues": [
    "pic S7 ratio limite : 0.70"
   ]
@@ -13733,7 +13729,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "plaisir",
-  "score": 70,
+  "score": 90,
   "peakRatio": 0.6961342592592593,
   "peakDeclaredH": 3.6,
   "peakPrescribedH": 2.5,
@@ -13759,9 +13755,7 @@
   "adjacentHard": 0,
   "coverage": 0.999288843950118,
   "nominalSessions": 0,
-  "hardViolations": [
-   "répartition des intensités : 69% de temps facile (<70% — zone grise, manifeste ~80/20)"
-  ],
+  "hardViolations": [],
   "softIssues": [
    "pic S7 ratio limite : 0.70"
   ]
@@ -13772,7 +13766,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "competition",
-  "score": 70,
+  "score": 90,
   "peakRatio": 0.6265208333333334,
   "peakDeclaredH": 4,
   "peakPrescribedH": 2.5,
@@ -13798,9 +13792,7 @@
   "adjacentHard": 0,
   "coverage": 0.999755489021956,
   "nominalSessions": 0,
-  "hardViolations": [
-   "répartition des intensités : 69% de temps facile (<70% — zone grise, manifeste ~80/20)"
-  ],
+  "hardViolations": [],
   "softIssues": [
    "pic S7 ratio limite : 0.63"
   ]
@@ -13811,7 +13803,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "finir",
-  "score": 70,
+  "score": 90,
   "peakRatio": 0.6961342592592593,
   "peakDeclaredH": 3.6,
   "peakPrescribedH": 2.5,
@@ -13837,9 +13829,7 @@
   "adjacentHard": 0,
   "coverage": 0.999288843950118,
   "nominalSessions": 0,
-  "hardViolations": [
-   "répartition des intensités : 69% de temps facile (<70% — zone grise, manifeste ~80/20)"
-  ],
+  "hardViolations": [],
   "softIssues": [
    "pic S7 ratio limite : 0.70"
   ]
@@ -13850,7 +13840,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "plaisir",
-  "score": 70,
+  "score": 90,
   "peakRatio": 0.6961342592592593,
   "peakDeclaredH": 3.6,
   "peakPrescribedH": 2.5,
@@ -13876,9 +13866,7 @@
   "adjacentHard": 0,
   "coverage": 0.999288843950118,
   "nominalSessions": 0,
-  "hardViolations": [
-   "répartition des intensités : 69% de temps facile (<70% — zone grise, manifeste ~80/20)"
-  ],
+  "hardViolations": [],
   "softIssues": [
    "pic S7 ratio limite : 0.70"
   ]
@@ -13994,7 +13982,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "competition",
-  "score": 55,
+  "score": 70,
   "peakRatio": 0.5221006944444445,
   "peakDeclaredH": 4.8,
   "peakPrescribedH": 2.5,
@@ -14021,8 +14009,7 @@
   "coverage": 0.99917742469381,
   "nominalSessions": 0,
   "hardViolations": [
-   "affûtage insuffisant : dernière semaine à 63% du pic (spec audit 2 : réduction ≥40%)",
-   "répartition des intensités : 69% de temps facile (<70% — zone grise, manifeste ~80/20)"
+   "affûtage insuffisant : dernière semaine à 63% du pic (spec audit 2 : réduction ≥40%)"
   ],
   "softIssues": [
    "pic S7 ratio limite : 0.52"
@@ -14034,7 +14021,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "finir",
-  "score": 55,
+  "score": 70,
   "peakRatio": 0.5828100775193799,
   "peakDeclaredH": 4.3,
   "peakPrescribedH": 2.5,
@@ -14061,8 +14048,7 @@
   "coverage": 0.99917742469381,
   "nominalSessions": 0,
   "hardViolations": [
-   "affûtage insuffisant : dernière semaine à 63% du pic (spec audit 2 : réduction ≥40%)",
-   "répartition des intensités : 69% de temps facile (<70% — zone grise, manifeste ~80/20)"
+   "affûtage insuffisant : dernière semaine à 63% du pic (spec audit 2 : réduction ≥40%)"
   ],
   "softIssues": [
    "pic S7 ratio limite : 0.58"
@@ -14074,7 +14060,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "plaisir",
-  "score": 55,
+  "score": 70,
   "peakRatio": 0.5828100775193799,
   "peakDeclaredH": 4.3,
   "peakPrescribedH": 2.5,
@@ -14101,8 +14087,7 @@
   "coverage": 0.99917742469381,
   "nominalSessions": 0,
   "hardViolations": [
-   "affûtage insuffisant : dernière semaine à 63% du pic (spec audit 2 : réduction ≥40%)",
-   "répartition des intensités : 69% de temps facile (<70% — zone grise, manifeste ~80/20)"
+   "affûtage insuffisant : dernière semaine à 63% du pic (spec audit 2 : réduction ≥40%)"
   ],
   "softIssues": [
    "pic S7 ratio limite : 0.58"
@@ -14114,7 +14099,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "competition",
-  "score": 55,
+  "score": 70,
   "peakRatio": 0.5221006944444445,
   "peakDeclaredH": 4.8,
   "peakPrescribedH": 2.5,
@@ -14141,8 +14126,7 @@
   "coverage": 0.99917742469381,
   "nominalSessions": 0,
   "hardViolations": [
-   "affûtage insuffisant : dernière semaine à 63% du pic (spec audit 2 : réduction ≥40%)",
-   "répartition des intensités : 69% de temps facile (<70% — zone grise, manifeste ~80/20)"
+   "affûtage insuffisant : dernière semaine à 63% du pic (spec audit 2 : réduction ≥40%)"
   ],
   "softIssues": [
    "pic S7 ratio limite : 0.52"
@@ -14154,7 +14138,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "finir",
-  "score": 55,
+  "score": 70,
   "peakRatio": 0.5828100775193799,
   "peakDeclaredH": 4.3,
   "peakPrescribedH": 2.5,
@@ -14181,8 +14165,7 @@
   "coverage": 0.99917742469381,
   "nominalSessions": 0,
   "hardViolations": [
-   "affûtage insuffisant : dernière semaine à 63% du pic (spec audit 2 : réduction ≥40%)",
-   "répartition des intensités : 69% de temps facile (<70% — zone grise, manifeste ~80/20)"
+   "affûtage insuffisant : dernière semaine à 63% du pic (spec audit 2 : réduction ≥40%)"
   ],
   "softIssues": [
    "pic S7 ratio limite : 0.58"
@@ -14194,7 +14177,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "plaisir",
-  "score": 55,
+  "score": 70,
   "peakRatio": 0.5828100775193799,
   "peakDeclaredH": 4.3,
   "peakPrescribedH": 2.5,
@@ -14221,8 +14204,7 @@
   "coverage": 0.99917742469381,
   "nominalSessions": 0,
   "hardViolations": [
-   "affûtage insuffisant : dernière semaine à 63% du pic (spec audit 2 : réduction ≥40%)",
-   "répartition des intensités : 69% de temps facile (<70% — zone grise, manifeste ~80/20)"
+   "affûtage insuffisant : dernière semaine à 63% du pic (spec audit 2 : réduction ≥40%)"
   ],
   "softIssues": [
    "pic S7 ratio limite : 0.58"
@@ -14339,7 +14321,7 @@
   "history": "reprise",
   "level": "inter",
   "intent": "competition",
-  "score": 95,
+  "score": 100,
   "peakRatio": 0.8043730158730159,
   "peakDeclaredH": 3.5,
   "peakPrescribedH": 2.816666666666667,
@@ -14444,7 +14426,7 @@
   "history": "reprise",
   "level": "avance",
   "intent": "competition",
-  "score": 95,
+  "score": 100,
   "peakRatio": 0.8043730158730159,
   "peakDeclaredH": 3.5,
   "peakPrescribedH": 2.816666666666667,
@@ -14654,7 +14636,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "competition",
-  "score": 85,
+  "score": 90,
   "peakRatio": 0.5311897274633124,
   "peakDeclaredH": 5.3,
   "peakPrescribedH": 2.816666666666667,
@@ -14691,7 +14673,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "finir",
-  "score": 85,
+  "score": 90,
   "peakRatio": 0.5865219907407409,
   "peakDeclaredH": 4.8,
   "peakPrescribedH": 2.816666666666667,
@@ -14728,7 +14710,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "plaisir",
-  "score": 85,
+  "score": 90,
   "peakRatio": 0.5865219907407409,
   "peakDeclaredH": 4.8,
   "peakPrescribedH": 2.816666666666667,
@@ -14765,7 +14747,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "competition",
-  "score": 85,
+  "score": 90,
   "peakRatio": 0.5311897274633124,
   "peakDeclaredH": 5.3,
   "peakPrescribedH": 2.816666666666667,
@@ -14802,7 +14784,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "finir",
-  "score": 85,
+  "score": 90,
   "peakRatio": 0.5865219907407409,
   "peakDeclaredH": 4.8,
   "peakPrescribedH": 2.816666666666667,
@@ -14839,7 +14821,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "plaisir",
-  "score": 85,
+  "score": 90,
   "peakRatio": 0.5865219907407409,
   "peakDeclaredH": 4.8,
   "peakPrescribedH": 2.816666666666667,
@@ -14981,7 +14963,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "competition",
-  "score": 45,
+  "score": 50,
   "peakRatio": 0.3965219092331769,
   "peakDeclaredH": 7.1,
   "peakPrescribedH": 2.816666666666667,
@@ -15019,7 +15001,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "finir",
-  "score": 49,
+  "score": 54,
   "peakRatio": 0.4398914930555556,
   "peakDeclaredH": 6.4,
   "peakPrescribedH": 2.816666666666667,
@@ -15057,7 +15039,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "plaisir",
-  "score": 49,
+  "score": 54,
   "peakRatio": 0.4398914930555556,
   "peakDeclaredH": 6.4,
   "peakPrescribedH": 2.816666666666667,
@@ -15095,7 +15077,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "competition",
-  "score": 45,
+  "score": 50,
   "peakRatio": 0.3965219092331769,
   "peakDeclaredH": 7.1,
   "peakPrescribedH": 2.816666666666667,
@@ -15133,7 +15115,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "finir",
-  "score": 49,
+  "score": 54,
   "peakRatio": 0.4398914930555556,
   "peakDeclaredH": 6.4,
   "peakPrescribedH": 2.816666666666667,
@@ -15171,7 +15153,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "plaisir",
-  "score": 49,
+  "score": 54,
   "peakRatio": 0.4398914930555556,
   "peakDeclaredH": 6.4,
   "peakPrescribedH": 2.816666666666667,

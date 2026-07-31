@@ -23,7 +23,8 @@
     "audit:v7": "node scripts/runAuditV7.mjs",
     "audit:amont": "node audit_amont.cjs",
     "audit:sensibilite": "node banc_sensibilite.cjs",
-    "audit:public": "node banc_grand_public.cjs"
+    "audit:public": "node banc_grand_public.cjs",
+    "audit:invariants": "node banc_invariants.cjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"
