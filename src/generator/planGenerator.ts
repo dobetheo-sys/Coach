@@ -57,6 +57,8 @@ export function reconcileDeclaredVolume(
   plan: V1Plan, warnings: string[],
   /** Rendu : nécessaire pour que le texte d'une séance RÉDUITE ne mente pas sur sa durée. */
   render?: (s: V1Session) => void,
+  /** Contexte des règles de SÉANCE tenues ici : la fenêtre piscine dépend du niveau. */
+  ctx?: { swimFloors?: boolean; beginner?: boolean },
 ): void {
   // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
   // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
@@ -111,7 +113,7 @@ export function reconcileDeclaredVolume(
             if (sx.d === "rs" || !sx.steps) continue;
             let touched = false;
             for (const st of sx.steps) {
-              if (st.role !== "body") continue;
+              if (st.role !== "body" || st.leg) continue; // les legs de brick ont leurs bornes de format
               const floor = (st as { bnd?: { floor?: number } }).bnd?.floor;
               if ((st.reps || 1) > 1) {
                 const next = Math.max(1, Math.round((st.reps || 1) * f));
@@ -153,10 +155,13 @@ export function reconcileDeclaredVolume(
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
             // Cette garantie ARRIVE APRÈS les passes qui tiennent, elles, les planchers de nage
-            // (C24/C24b) et la progression verticale du trail (T2/T2b). Elle ne touche donc ni
-            // les blocs en mètres, ni les blocs en pente : réduire là casserait deux invariants
-            // pour en sauver un troisième, et c'est exactement ce qu'on cherche à ne plus faire.
-            if (st.distanceM != null || st.gradient) continue;
+            // (C24/C24b), la progression verticale du trail (T2/T2b) et les bornes de format du
+            // brick (C21/C21b). Elle ne touche donc ni les blocs en mètres, ni les blocs en
+            // pente, ni les legs d'enchaînement : réduire là casserait un invariant pour en
+            // sauver un autre, et c'est exactement ce qu'on cherche à ne plus faire.
+            // La trace a montré que le leg VÉLO d'un brick tombait ici à 5 min — sous la borne
+            // basse du format, qui n'est pas portée par `bnd` mais par `blockBounds`.
+            if (st.distanceM != null || st.gradient || st.leg) continue;
             const floor = (st as { bnd?: { floor?: number } }).bnd?.floor;
             if ((st.reps || 1) > 1) {
               const next = Math.max(1, Math.round((st.reps || 1) * f));
@@ -491,6 +496,46 @@ export function reconcileDeclaredVolume(
           if (sx.d !== lg.d) continue; // « la plus longue DANS SA DISCIPLINE »
           if ((sx.min || 0) > (lg.min || 0)) shrinkTo(sx, lg.min || 0);
         }
+      }
+    }
+  }
+
+  // C24/C24b — LA FENÊTRE DE SÉANCE PISCINE, AU POINT DE CONVERGENCE.
+  //
+  // La trace a répondu en une lecture ce que trois tours d'élimination n'avaient pas trouvé :
+  // les séances de nage à 700 m des semaines 2 et 4 ne sont JAMAIS VISITÉES par la passe de
+  // plancher. Elle vivait dans `generatePlan`, et la boucle de réparation mute les séances
+  // APRÈS elle — la règle ne vérifiait donc que l'avant-dernier état. Septième fois que la même
+  // leçon se paie, et la première fois qu'elle est trouvée sans battue.
+  //
+  // On monte le bloc le plus long jusqu'au plancher, jamais l'échauffement ni le retour au
+  // calme ; en semaine de décharge, A3 s'applique — on retire au lieu de remonter.
+  if (ctx?.swimFloors) {
+    const floorM = ctx.beginner ? 600 : 750;
+    for (const wk of plan.weeks) {
+      const decharge = wk.isRecup || wk.phase.id === "taper";
+      for (const d of wk.days) for (const sx of [...d.sessions]) {
+        if (sx.d !== "sw" || !sx.steps || !sx.steps.length) continue;
+        const metersOf = () => sx.steps!.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+        const tot = metersOf();
+        if (tot <= 0 || tot >= floorM) continue;
+        if (decharge) {
+          if (wk.days.reduce((t, dd) => t + dd.sessions.filter((x) => x.d !== "rs").length, 0) <= 1) continue;
+          const i2 = d.sessions.indexOf(sx);
+          if (i2 >= 0) d.sessions.splice(i2, 1);
+          if (!d.sessions.some((x) => x.d !== "rs")) {
+            d.charge = "off"; d.slot = "off";
+            d.sessions = [{ d: "rs", name: "OFF (semaine de décharge)", det: "repos — sous le plancher de séance, une semaine de décharge retire au lieu de remonter", steps: [], min: 0 }];
+          }
+          continue;
+        }
+        const body = sx.steps.filter((st) => st.role === "body" && st.distanceM != null)
+          .sort((x, y) => (y.reps || 1) * (y.distanceM || 0) - (x.reps || 1) * (x.distanceM || 0))[0];
+        if (!body || !body.distanceM) continue;
+        const missing = floorM - tot;
+        if ((body.reps || 1) > 1) body.reps = (body.reps || 1) + Math.ceil(missing / body.distanceM);
+        else body.distanceM = Math.ceil((body.distanceM + missing) / 25) * 25;
+        if (render) render(sx);
       }
     }
   }
@@ -1657,7 +1702,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   }
 
   const plan: V1Plan = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs));
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport as string, "swimSessionFloors"), beginner: r.beginner });
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation

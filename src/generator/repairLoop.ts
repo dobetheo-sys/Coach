@@ -7,6 +7,7 @@
  */
 import type { AthleteProfile, V1Plan } from "../engine/types.ts";
 import { auditPlan, type AuditOpts, type PlanAudit } from "../audit/coherenceScorer.ts";
+import { guard } from "../sports/registry.ts";
 import { R313_TAPER_MAX_VS_PEAK } from "../engine/constraintMatrix.ts";
 import { generatePlan, normalizeRestMinutes, reconcileDeclaredVolume, syncDerivedLabels } from "./planGenerator.ts";
 import { renderSess, type Refs } from "./renderer.ts";
@@ -329,7 +330,7 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
   // R5.3 — la courbe ANNONCÉE se réconcilie avec le prescrit une fois les réparations passées :
   // `reduceDay` et `applyTargetedRepairs` changent encore des durées, et un écart figé avant
   // elles ment à l'athlète dès la première réparation (même leçon que R5.1).
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs));
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport as string, "swimSessionFloors"), beginner: reasoned.beginner });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.

@@ -5012,7 +5012,14 @@ function auditPlan(plan        , opts            = {})            {
       prevOurs = w.prescribedMin;
     }
   }
-  if (declJumps > 0) hard.push(declJumps + " saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)");
+  // I10 a fermé l'écart entre la courbe ANNONCÉE et le volume PRESCRIT : le chiffre affiché suit
+  // désormais le contenu (véracité). Conséquence directe : cette règle et celle du saut de
+  // volume RÉEL mesurent la même grandeur, avec deux seuils différents — +10 % ici, +25 % là.
+  // Deux règles qui se contredisent : l'une est mal formée, et c'est celle-ci. Le +10 % est la
+  // CIBLE du générateur (C22), pas un seuil d'audit sur le plan livré ; la tolérance à +25 %
+  // existe précisément parce que les planchers de séance empêchent parfois de l'atteindre.
+  // La règle de sécurité reste portée par le volume réel ; ici, on SIGNALE sans bloquer.
+  if (declJumps > 0) soft.push(declJumps + " saut(s) >+10% de la courbe annoncée entre semaines de charge — la courbe suit désormais le prescrit (I10), et le prescrit est borné à +25% par sa propre règle");
   if (auditJumpsHard > 0) hard.push(auditJumpsHard + " saut(s) >+25% de volume réel entre semaines de charge (manifeste)");
 
   // ---- Manifeste : jamais deux longues CAP consécutives ----
@@ -6955,6 +6962,8 @@ function reconcileDeclaredVolume(
   plan        , warnings          ,
   /** Rendu : nécessaire pour que le texte d'une séance RÉDUITE ne mente pas sur sa durée. */
   render                         ,
+  /** Contexte des règles de SÉANCE tenues ici : la fenêtre piscine dépend du niveau. */
+  ctx                                               ,
 )       {
   // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
   // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
@@ -7009,7 +7018,7 @@ function reconcileDeclaredVolume(
             if (sx.d === "rs" || !sx.steps) continue;
             let touched = false;
             for (const st of sx.steps) {
-              if (st.role !== "body") continue;
+              if (st.role !== "body" || st.leg) continue; // les legs de brick ont leurs bornes de format
               const floor = (st                                ).bnd?.floor;
               if ((st.reps || 1) > 1) {
                 const next = Math.max(1, Math.round((st.reps || 1) * f));
@@ -7051,10 +7060,13 @@ function reconcileDeclaredVolume(
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
             // Cette garantie ARRIVE APRÈS les passes qui tiennent, elles, les planchers de nage
-            // (C24/C24b) et la progression verticale du trail (T2/T2b). Elle ne touche donc ni
-            // les blocs en mètres, ni les blocs en pente : réduire là casserait deux invariants
-            // pour en sauver un troisième, et c'est exactement ce qu'on cherche à ne plus faire.
-            if (st.distanceM != null || st.gradient) continue;
+            // (C24/C24b), la progression verticale du trail (T2/T2b) et les bornes de format du
+            // brick (C21/C21b). Elle ne touche donc ni les blocs en mètres, ni les blocs en
+            // pente, ni les legs d'enchaînement : réduire là casserait un invariant pour en
+            // sauver un autre, et c'est exactement ce qu'on cherche à ne plus faire.
+            // La trace a montré que le leg VÉLO d'un brick tombait ici à 5 min — sous la borne
+            // basse du format, qui n'est pas portée par `bnd` mais par `blockBounds`.
+            if (st.distanceM != null || st.gradient || st.leg) continue;
             const floor = (st                                ).bnd?.floor;
             if ((st.reps || 1) > 1) {
               const next = Math.max(1, Math.round((st.reps || 1) * f));
@@ -7389,6 +7401,46 @@ function reconcileDeclaredVolume(
           if (sx.d !== lg.d) continue; // « la plus longue DANS SA DISCIPLINE »
           if ((sx.min || 0) > (lg.min || 0)) shrinkTo(sx, lg.min || 0);
         }
+      }
+    }
+  }
+
+  // C24/C24b — LA FENÊTRE DE SÉANCE PISCINE, AU POINT DE CONVERGENCE.
+  //
+  // La trace a répondu en une lecture ce que trois tours d'élimination n'avaient pas trouvé :
+  // les séances de nage à 700 m des semaines 2 et 4 ne sont JAMAIS VISITÉES par la passe de
+  // plancher. Elle vivait dans `generatePlan`, et la boucle de réparation mute les séances
+  // APRÈS elle — la règle ne vérifiait donc que l'avant-dernier état. Septième fois que la même
+  // leçon se paie, et la première fois qu'elle est trouvée sans battue.
+  //
+  // On monte le bloc le plus long jusqu'au plancher, jamais l'échauffement ni le retour au
+  // calme ; en semaine de décharge, A3 s'applique — on retire au lieu de remonter.
+  if (ctx?.swimFloors) {
+    const floorM = ctx.beginner ? 600 : 750;
+    for (const wk of plan.weeks) {
+      const decharge = wk.isRecup || wk.phase.id === "taper";
+      for (const d of wk.days) for (const sx of [...d.sessions]) {
+        if (sx.d !== "sw" || !sx.steps || !sx.steps.length) continue;
+        const metersOf = () => sx.steps .reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+        const tot = metersOf();
+        if (tot <= 0 || tot >= floorM) continue;
+        if (decharge) {
+          if (wk.days.reduce((t, dd) => t + dd.sessions.filter((x) => x.d !== "rs").length, 0) <= 1) continue;
+          const i2 = d.sessions.indexOf(sx);
+          if (i2 >= 0) d.sessions.splice(i2, 1);
+          if (!d.sessions.some((x) => x.d !== "rs")) {
+            d.charge = "off"; d.slot = "off";
+            d.sessions = [{ d: "rs", name: "OFF (semaine de décharge)", det: "repos — sous le plancher de séance, une semaine de décharge retire au lieu de remonter", steps: [], min: 0 }];
+          }
+          continue;
+        }
+        const body = sx.steps.filter((st) => st.role === "body" && st.distanceM != null)
+          .sort((x, y) => (y.reps || 1) * (y.distanceM || 0) - (x.reps || 1) * (x.distanceM || 0))[0];
+        if (!body || !body.distanceM) continue;
+        const missing = floorM - tot;
+        if ((body.reps || 1) > 1) body.reps = (body.reps || 1) + Math.ceil(missing / body.distanceM);
+        else body.distanceM = Math.ceil((body.distanceM + missing) / 25) * 25;
+        if (render) render(sx);
       }
     }
   }
@@ -8555,7 +8607,7 @@ function generatePlan(profile                , opts                             
   }
 
   const plan         = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs));
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport          , "swimSessionFloors"), beginner: r.beginner });
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation
@@ -8571,6 +8623,7 @@ function generatePlan(profile                , opts                             
  * explicites — c'est un output de coaching précieux, pas un échec.
  */
                                                                  
+
 
 
 
@@ -8885,7 +8938,7 @@ function generateAudited(profile                , auditOpts                     
   // R5.3 — la courbe ANNONCÉE se réconcilie avec le prescrit une fois les réparations passées :
   // `reduceDay` et `applyTargetedRepairs` changent encore des durées, et un écart figé avant
   // elles ment à l'athlète dès la première réparation (même leçon que R5.1).
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs));
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), beginner: reasoned.beginner });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.

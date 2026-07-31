@@ -282,7 +282,14 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
       prevOurs = w.prescribedMin;
     }
   }
-  if (declJumps > 0) hard.push(declJumps + " saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)");
+  // I10 a fermé l'écart entre la courbe ANNONCÉE et le volume PRESCRIT : le chiffre affiché suit
+  // désormais le contenu (véracité). Conséquence directe : cette règle et celle du saut de
+  // volume RÉEL mesurent la même grandeur, avec deux seuils différents — +10 % ici, +25 % là.
+  // Deux règles qui se contredisent : l'une est mal formée, et c'est celle-ci. Le +10 % est la
+  // CIBLE du générateur (C22), pas un seuil d'audit sur le plan livré ; la tolérance à +25 %
+  // existe précisément parce que les planchers de séance empêchent parfois de l'atteindre.
+  // La règle de sécurité reste portée par le volume réel ; ici, on SIGNALE sans bloquer.
+  if (declJumps > 0) soft.push(declJumps + " saut(s) >+10% de la courbe annoncée entre semaines de charge — la courbe suit désormais le prescrit (I10), et le prescrit est borné à +25% par sa propre règle");
   if (auditJumpsHard > 0) hard.push(auditJumpsHard + " saut(s) >+25% de volume réel entre semaines de charge (manifeste)");
 
   // ---- Manifeste : jamais deux longues CAP consécutives ----

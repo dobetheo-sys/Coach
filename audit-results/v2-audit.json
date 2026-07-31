@@ -4689,7 +4689,7 @@
   "history": "reprise",
   "level": "inter",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8607222222222222,
   "peakDeclaredH": 2,
   "peakPrescribedH": 1.7166666666666666,
@@ -4697,15 +4697,10 @@
   "taperVsPeak": 0.5825242718446602,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8683093207051221,
+  "easyShare": 0.8651835987667931,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -4751,7 +4746,7 @@
   "history": "reprise",
   "level": "avance",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8607222222222222,
   "peakDeclaredH": 2,
   "peakPrescribedH": 1.7166666666666666,
@@ -4759,15 +4754,10 @@
   "taperVsPeak": 0.5825242718446602,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8683093207051221,
+  "easyShare": 0.8651835987667931,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -4870,7 +4860,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8927513227513226,
   "peakDeclaredH": 2.1,
   "peakPrescribedH": 1.8666666666666667,
@@ -4878,15 +4868,10 @@
   "taperVsPeak": 0.5357142857142857,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8776511317629738,
+  "easyShare": 0.8737528549961364,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -4894,7 +4879,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "finir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8558017676767677,
   "peakDeclaredH": 2.2,
   "peakPrescribedH": 1.8833333333333333,
@@ -4902,15 +4887,10 @@
   "taperVsPeak": 0.5132743362831859,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8777521917696054,
+  "easyShare": 0.8738562659460353,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -4918,7 +4898,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "plaisir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8558017676767677,
   "peakDeclaredH": 2.2,
   "peakPrescribedH": 1.8833333333333333,
@@ -4926,15 +4906,10 @@
   "taperVsPeak": 0.5132743362831859,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8777521917696054,
+  "easyShare": 0.8738562659460353,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -4942,7 +4917,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8927513227513226,
   "peakDeclaredH": 2.1,
   "peakPrescribedH": 1.8666666666666667,
@@ -4950,15 +4925,10 @@
   "taperVsPeak": 0.5357142857142857,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8776511317629738,
+  "easyShare": 0.8737528549961364,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -4966,7 +4936,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "finir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8558017676767677,
   "peakDeclaredH": 2.2,
   "peakPrescribedH": 1.8833333333333333,
@@ -4974,15 +4944,10 @@
   "taperVsPeak": 0.5132743362831859,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8777521917696054,
+  "easyShare": 0.8738562659460353,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -4990,7 +4955,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "plaisir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8558017676767677,
   "peakDeclaredH": 2.2,
   "peakPrescribedH": 1.8833333333333333,
@@ -4998,15 +4963,10 @@
   "taperVsPeak": 0.5132743362831859,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8777521917696054,
+  "easyShare": 0.8738562659460353,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5071,7 +5031,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8289709595959597,
   "peakDeclaredH": 2.2,
   "peakPrescribedH": 1.8166666666666667,
@@ -5079,15 +5039,10 @@
   "taperVsPeak": 0.5504587155963303,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8786634040443605,
+  "easyShare": 0.8747361073887064,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5095,7 +5050,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "finir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8761868686868687,
   "peakDeclaredH": 2.2,
   "peakPrescribedH": 1.9333333333333333,
@@ -5103,15 +5058,10 @@
   "taperVsPeak": 0.5,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8750278827950286,
+  "easyShare": 0.8711723950164916,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5119,7 +5069,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "plaisir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8761868686868687,
   "peakDeclaredH": 2.2,
   "peakPrescribedH": 1.9333333333333333,
@@ -5127,15 +5077,10 @@
   "taperVsPeak": 0.5,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8750278827950286,
+  "easyShare": 0.8711723950164916,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5143,7 +5088,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8289709595959597,
   "peakDeclaredH": 2.2,
   "peakPrescribedH": 1.8166666666666667,
@@ -5151,15 +5096,10 @@
   "taperVsPeak": 0.5504587155963303,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8786634040443605,
+  "easyShare": 0.8747361073887064,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5167,7 +5107,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "finir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8761868686868687,
   "peakDeclaredH": 2.2,
   "peakPrescribedH": 1.9333333333333333,
@@ -5175,15 +5115,10 @@
   "taperVsPeak": 0.5,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8750278827950286,
+  "easyShare": 0.8711723950164916,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5191,7 +5126,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "plaisir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.8761868686868687,
   "peakDeclaredH": 2.2,
   "peakPrescribedH": 1.9333333333333333,
@@ -5199,15 +5134,10 @@
   "taperVsPeak": 0.5,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8750278827950286,
+  "easyShare": 0.8711723950164916,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "3 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5443,7 +5373,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.9875111111111111,
   "peakDeclaredH": 2.5,
   "peakPrescribedH": 2.466666666666667,
@@ -5451,15 +5381,10 @@
   "taperVsPeak": 0.5,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8428589322481835,
+  "easyShare": 0.8411194429179585,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5467,7 +5392,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "finir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.9917650462962962,
   "peakDeclaredH": 2.4,
   "peakPrescribedH": 2.3833333333333333,
@@ -5475,15 +5400,10 @@
   "taperVsPeak": 0.5174825174825175,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8450387324826394,
+  "easyShare": 0.8441549235577294,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "1 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5491,7 +5411,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "plaisir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.9917650462962962,
   "peakDeclaredH": 2.4,
   "peakPrescribedH": 2.3833333333333333,
@@ -5499,15 +5419,10 @@
   "taperVsPeak": 0.5174825174825175,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8450387324826394,
+  "easyShare": 0.8441549235577294,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "1 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5515,7 +5430,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.9875111111111111,
   "peakDeclaredH": 2.5,
   "peakPrescribedH": 2.466666666666667,
@@ -5523,15 +5438,10 @@
   "taperVsPeak": 0.5,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8428589322481835,
+  "easyShare": 0.8411194429179585,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5539,7 +5449,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "finir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.9917650462962962,
   "peakDeclaredH": 2.4,
   "peakPrescribedH": 2.3833333333333333,
@@ -5547,15 +5457,10 @@
   "taperVsPeak": 0.5174825174825175,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8450387324826394,
+  "easyShare": 0.8441549235577294,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "1 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5563,7 +5468,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "plaisir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.9917650462962962,
   "peakDeclaredH": 2.4,
   "peakPrescribedH": 2.3833333333333333,
@@ -5571,15 +5476,10 @@
   "taperVsPeak": 0.5174825174825175,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8450387324826394,
+  "easyShare": 0.8441549235577294,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "1 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5587,7 +5487,7 @@
   "history": "ancien",
   "level": "debutant",
   "intent": "competition",
-  "score": 70,
+  "score": 84,
   "peakRatio": 0.8972222222222223,
   "peakDeclaredH": 1,
   "peakPrescribedH": 0.9,
@@ -5597,13 +5497,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9282223579718999,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5649,7 +5544,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.9948722222222222,
   "peakDeclaredH": 2.5,
   "peakPrescribedH": 2.4833333333333334,
@@ -5657,15 +5552,10 @@
   "taperVsPeak": 0.4966442953020134,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8417913010557935,
+  "easyShare": 0.8400574453903062,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5673,7 +5563,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "finir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.969038888888889,
   "peakDeclaredH": 2.5,
   "peakPrescribedH": 2.4166666666666665,
@@ -5681,15 +5571,10 @@
   "taperVsPeak": 0.5103448275862069,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8436406963879082,
+  "easyShare": 0.841893515101521,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5697,7 +5582,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "plaisir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.969038888888889,
   "peakDeclaredH": 2.5,
   "peakPrescribedH": 2.4166666666666665,
@@ -5705,15 +5590,10 @@
   "taperVsPeak": 0.5103448275862069,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8436406963879082,
+  "easyShare": 0.841893515101521,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5721,7 +5601,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.9948722222222222,
   "peakDeclaredH": 2.5,
   "peakPrescribedH": 2.4833333333333334,
@@ -5729,15 +5609,10 @@
   "taperVsPeak": 0.4966442953020134,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8417913010557935,
+  "easyShare": 0.8400574453903062,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5745,7 +5620,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "finir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.969038888888889,
   "peakDeclaredH": 2.5,
   "peakPrescribedH": 2.4166666666666665,
@@ -5753,15 +5628,10 @@
   "taperVsPeak": 0.5103448275862069,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8436406963879082,
+  "easyShare": 0.841893515101521,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -5769,7 +5639,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "plaisir",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.969038888888889,
   "peakDeclaredH": 2.5,
   "peakPrescribedH": 2.4166666666666665,
@@ -5777,15 +5647,10 @@
   "taperVsPeak": 0.5103448275862069,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8436406963879082,
+  "easyShare": 0.841893515101521,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ],
-  "hardViolations": [
-   "2 séance(s) piscine <750m pour un non-débutant (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "swim",
@@ -7902,7 +7767,7 @@
   "history": "reprise",
   "level": "inter",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.9086601307189541,
   "peakDeclaredH": 8.5,
   "peakPrescribedH": 7.716666666666667,
@@ -7910,15 +7775,10 @@
   "taperVsPeak": 0.36285097192224625,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7763019428551214,
+  "easyShare": 0.7766090038805257,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "tri",
@@ -7964,7 +7824,7 @@
   "history": "reprise",
   "level": "avance",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.9086601307189541,
   "peakDeclaredH": 8.5,
   "peakPrescribedH": 7.716666666666667,
@@ -7972,15 +7832,10 @@
   "taperVsPeak": 0.36285097192224625,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7763019428551214,
+  "easyShare": 0.7766090038805257,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "tri",
@@ -8900,7 +8755,7 @@
   "history": "reprise",
   "level": "debutant",
   "intent": "finir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 0.9471794871794871,
   "peakDeclaredH": 6.5,
   "peakPrescribedH": 6.15,
@@ -8910,13 +8765,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9520252957531483,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -8924,7 +8774,7 @@
   "history": "reprise",
   "level": "debutant",
   "intent": "plaisir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 0.9471794871794871,
   "peakDeclaredH": 6.5,
   "peakPrescribedH": 6.15,
@@ -8934,13 +8784,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9520252957531483,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -8948,7 +8793,7 @@
   "history": "reprise",
   "level": "inter",
   "intent": "competition",
-  "score": 70,
+  "score": 85,
   "peakRatio": 1.0118333333333334,
   "peakDeclaredH": 10,
   "peakPrescribedH": 10.116666666666667,
@@ -8958,13 +8803,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9594706368899917,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9010,7 +8850,7 @@
   "history": "reprise",
   "level": "avance",
   "intent": "competition",
-  "score": 70,
+  "score": 85,
   "peakRatio": 1.0118333333333334,
   "peakDeclaredH": 10,
   "peakPrescribedH": 10.116666666666667,
@@ -9020,13 +8860,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9594706368899917,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9072,7 +8907,7 @@
   "history": "confirme",
   "level": "debutant",
   "intent": "competition",
-  "score": 60,
+  "score": 70,
   "peakRatio": 0.9197368421052631,
   "peakDeclaredH": 7.6,
   "peakPrescribedH": 6.983333333333333,
@@ -9084,12 +8919,10 @@
   "repairs": 4,
   "warnings": [
    "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· semaine de volume max (S10, dev) dépasse la meilleure semaine peak de >5% (spec audit 2)",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
+   "· semaine de volume max (S10, dev) dépasse la meilleure semaine peak de >5% (spec audit 2)"
   ],
   "hardViolations": [
-   "semaine de volume max (S10, dev) dépasse la meilleure semaine peak de >5% (spec audit 2)",
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
+   "semaine de volume max (S10, dev) dépasse la meilleure semaine peak de >5% (spec audit 2)"
   ]
  },
  {
@@ -9098,7 +8931,7 @@
   "history": "confirme",
   "level": "debutant",
   "intent": "finir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 0.9015873015873015,
   "peakDeclaredH": 8.4,
   "peakPrescribedH": 7.566666666666666,
@@ -9108,13 +8941,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9596527692871989,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "3 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9122,7 +8950,7 @@
   "history": "confirme",
   "level": "debutant",
   "intent": "plaisir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 0.9015873015873015,
   "peakDeclaredH": 8.4,
   "peakPrescribedH": 7.566666666666666,
@@ -9132,13 +8960,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9596527692871989,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "3 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9165,7 +8988,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "finir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 1.0118518518518518,
   "peakDeclaredH": 9,
   "peakPrescribedH": 9.1,
@@ -9175,13 +8998,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9602206805105012,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9189,7 +9007,7 @@
   "history": "confirme",
   "level": "inter",
   "intent": "plaisir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 1.0118518518518518,
   "peakDeclaredH": 9,
   "peakPrescribedH": 9.1,
@@ -9199,13 +9017,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9602206805105012,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9232,7 +9045,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "finir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 1.0118518518518518,
   "peakDeclaredH": 9,
   "peakPrescribedH": 9.1,
@@ -9242,13 +9055,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9602206805105012,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9256,7 +9064,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "plaisir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 1.0118518518518518,
   "peakDeclaredH": 9,
   "peakPrescribedH": 9.1,
@@ -9266,13 +9074,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9602206805105012,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9280,7 +9083,7 @@
   "history": "ancien",
   "level": "debutant",
   "intent": "competition",
-  "score": 60,
+  "score": 70,
   "peakRatio": 0.9197368421052631,
   "peakDeclaredH": 7.6,
   "peakPrescribedH": 6.983333333333333,
@@ -9292,12 +9095,10 @@
   "repairs": 4,
   "warnings": [
    "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· semaine de volume max (S10, dev) dépasse la meilleure semaine peak de >5% (spec audit 2)",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
+   "· semaine de volume max (S10, dev) dépasse la meilleure semaine peak de >5% (spec audit 2)"
   ],
   "hardViolations": [
-   "semaine de volume max (S10, dev) dépasse la meilleure semaine peak de >5% (spec audit 2)",
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
+   "semaine de volume max (S10, dev) dépasse la meilleure semaine peak de >5% (spec audit 2)"
   ]
  },
  {
@@ -9306,7 +9107,7 @@
   "history": "ancien",
   "level": "debutant",
   "intent": "finir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 0.9015873015873015,
   "peakDeclaredH": 8.4,
   "peakPrescribedH": 7.566666666666666,
@@ -9316,13 +9117,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9596527692871989,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "3 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9330,7 +9126,7 @@
   "history": "ancien",
   "level": "debutant",
   "intent": "plaisir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 0.9015873015873015,
   "peakDeclaredH": 8.4,
   "peakPrescribedH": 7.566666666666666,
@@ -9340,13 +9136,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9596527692871989,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 3 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "3 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9373,7 +9164,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "finir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 1.0118518518518518,
   "peakDeclaredH": 9,
   "peakPrescribedH": 9.1,
@@ -9383,13 +9174,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9602206805105012,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9397,7 +9183,7 @@
   "history": "ancien",
   "level": "inter",
   "intent": "plaisir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 1.0118518518518518,
   "peakDeclaredH": 9,
   "peakPrescribedH": 9.1,
@@ -9407,13 +9193,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9602206805105012,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9440,7 +9221,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "finir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 1.0118518518518518,
   "peakDeclaredH": 9,
   "peakPrescribedH": 9.1,
@@ -9450,13 +9231,8 @@
   "weeksUnder": 0,
   "easyShare": 0.9602206805105012,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "trail",
@@ -9464,7 +9240,7 @@
   "history": "ancien",
   "level": "avance",
   "intent": "plaisir",
-  "score": 70,
+  "score": 85,
   "peakRatio": 1.0118518518518518,
   "peakDeclaredH": 9,
   "peakPrescribedH": 9.1,
@@ -9474,54 +9250,6 @@
   "weeksUnder": 0,
   "easyShare": 0.9602206805105012,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ],
-  "hardViolations": [
-   "1 saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)"
-  ]
- },
- {
-  "sport": "duathlon",
-  "format": "S",
-  "history": "reprise",
-  "level": "debutant",
-  "intent": "competition",
-  "score": 70,
-  "peakRatio": 0.8939393939393939,
-  "peakDeclaredH": 3.3,
-  "peakPrescribedH": 2.95,
-  "longShare": 0.2937853107344633,
-  "taperVsPeak": 0.4858757062146893,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.83729216152019,
-  "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 brick(s) vélo hors bornes format (spec audit 2)"
-  ],
-  "hardViolations": [
-   "1 brick(s) vélo hors bornes format (spec audit 2)"
-  ]
- },
- {
-  "sport": "duathlon",
-  "format": "S",
-  "history": "reprise",
-  "level": "debutant",
-  "intent": "finir",
-  "score": 100,
-  "peakRatio": 0.9197530864197531,
-  "peakDeclaredH": 2.7,
-  "peakPrescribedH": 2.4833333333333334,
-  "longShare": 0.35570469798657717,
-  "taperVsPeak": 0.5460526315789473,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.8335664335664336,
-  "repairs": 0,
   "warnings": [],
   "hardViolations": []
  },
@@ -9530,43 +9258,76 @@
   "format": "S",
   "history": "reprise",
   "level": "debutant",
-  "intent": "plaisir",
-  "score": 100,
-  "peakRatio": 0.9197530864197531,
-  "peakDeclaredH": 2.7,
-  "peakPrescribedH": 2.4833333333333334,
-  "longShare": 0.35570469798657717,
-  "taperVsPeak": 0.5460526315789473,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.8335664335664336,
-  "repairs": 0,
-  "warnings": [],
-  "hardViolations": []
- },
- {
-  "sport": "duathlon",
-  "format": "S",
-  "history": "reprise",
-  "level": "inter",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 0.898989898989899,
   "peakDeclaredH": 3.3,
   "peakPrescribedH": 2.966666666666667,
-  "longShare": 0.29213483146067415,
-  "taperVsPeak": 0.47752808988764045,
+  "longShare": 0.29775280898876405,
+  "taperVsPeak": 0.48314606741573035,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8376777251184834,
+  "easyShare": 0.8374851720047449,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 brick(s) vélo hors bornes format (spec audit 2)"
-  ],
-  "hardViolations": [
-   "1 brick(s) vélo hors bornes format (spec audit 2)"
-  ]
+  "warnings": [],
+  "hardViolations": []
+ },
+ {
+  "sport": "duathlon",
+  "format": "S",
+  "history": "reprise",
+  "level": "debutant",
+  "intent": "finir",
+  "score": 100,
+  "peakRatio": 0.9197530864197531,
+  "peakDeclaredH": 2.7,
+  "peakPrescribedH": 2.4833333333333334,
+  "longShare": 0.35570469798657717,
+  "taperVsPeak": 0.5460526315789473,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.8335664335664336,
+  "repairs": 0,
+  "warnings": [],
+  "hardViolations": []
+ },
+ {
+  "sport": "duathlon",
+  "format": "S",
+  "history": "reprise",
+  "level": "debutant",
+  "intent": "plaisir",
+  "score": 100,
+  "peakRatio": 0.9197530864197531,
+  "peakDeclaredH": 2.7,
+  "peakPrescribedH": 2.4833333333333334,
+  "longShare": 0.35570469798657717,
+  "taperVsPeak": 0.5460526315789473,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.8335664335664336,
+  "repairs": 0,
+  "warnings": [],
+  "hardViolations": []
+ },
+ {
+  "sport": "duathlon",
+  "format": "S",
+  "history": "reprise",
+  "level": "inter",
+  "intent": "competition",
+  "score": 100,
+  "peakRatio": 0.9040404040404041,
+  "peakDeclaredH": 3.3,
+  "peakPrescribedH": 2.9833333333333334,
+  "longShare": 0.29608938547486036,
+  "taperVsPeak": 0.4748603351955307,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.8378698224852071,
+  "repairs": 0,
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "duathlon",
@@ -9612,23 +9373,18 @@
   "history": "reprise",
   "level": "avance",
   "intent": "competition",
-  "score": 70,
-  "peakRatio": 0.898989898989899,
+  "score": 100,
+  "peakRatio": 0.9040404040404041,
   "peakDeclaredH": 3.3,
-  "peakPrescribedH": 2.966666666666667,
-  "longShare": 0.29213483146067415,
-  "taperVsPeak": 0.47752808988764045,
+  "peakPrescribedH": 2.9833333333333334,
+  "longShare": 0.29608938547486036,
+  "taperVsPeak": 0.4748603351955307,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8376777251184834,
+  "easyShare": 0.8378698224852071,
   "repairs": 0,
-  "warnings": [
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· 1 brick(s) vélo hors bornes format (spec audit 2)"
-  ],
-  "hardViolations": [
-   "1 brick(s) vélo hors bornes format (spec audit 2)"
-  ]
+  "warnings": [],
+  "hardViolations": []
  },
  {
   "sport": "duathlon",
@@ -9675,14 +9431,14 @@
   "level": "debutant",
   "intent": "competition",
   "score": 100,
-  "peakRatio": 0.9722222222222222,
+  "peakRatio": 0.975925925925926,
   "peakDeclaredH": 4.5,
-  "peakPrescribedH": 4.383333333333334,
-  "longShare": 0.259047619047619,
-  "taperVsPeak": 0.5247148288973384,
+  "peakPrescribedH": 4.4,
+  "longShare": 0.2618595825426945,
+  "taperVsPeak": 0.5227272727272727,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.821673525377229,
+  "easyShare": 0.8217957505140507,
   "repairs": 0,
   "warnings": [],
   "hardViolations": []
@@ -9736,10 +9492,10 @@
   "peakDeclaredH": 4.5,
   "peakPrescribedH": 4.066666666666666,
   "longShare": 0.28688524590163933,
-  "taperVsPeak": 0.5475285171102662,
+  "taperVsPeak": 0.5454545454545454,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8208132322536182,
+  "easyShare": 0.8209366391184573,
   "repairs": 0,
   "warnings": [],
   "hardViolations": []
@@ -9774,10 +9530,10 @@
   "peakDeclaredH": 4.1,
   "peakPrescribedH": 3.7,
   "longShare": 0.2747747747747748,
-  "taperVsPeak": 0.5439330543933054,
+  "taperVsPeak": 0.5416666666666666,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8220371071563801,
+  "easyShare": 0.8221717744986757,
   "repairs": 0,
   "warnings": [],
   "hardViolations": []
@@ -9793,10 +9549,10 @@
   "peakDeclaredH": 4.5,
   "peakPrescribedH": 4.066666666666666,
   "longShare": 0.28688524590163933,
-  "taperVsPeak": 0.5475285171102662,
+  "taperVsPeak": 0.5454545454545454,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8208132322536182,
+  "easyShare": 0.8209366391184573,
   "repairs": 0,
   "warnings": [],
   "hardViolations": []
@@ -9831,10 +9587,10 @@
   "peakDeclaredH": 4.1,
   "peakPrescribedH": 3.7,
   "longShare": 0.2747747747747748,
-  "taperVsPeak": 0.5439330543933054,
+  "taperVsPeak": 0.5416666666666666,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8220371071563801,
+  "easyShare": 0.8221717744986757,
   "repairs": 0,
   "warnings": [],
   "hardViolations": []
