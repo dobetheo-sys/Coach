@@ -24,7 +24,8 @@
     "audit:amont": "node audit_amont.cjs",
     "audit:sensibilite": "node banc_sensibilite.cjs",
     "audit:public": "node banc_grand_public.cjs",
-    "audit:invariants": "node banc_invariants.cjs"
+    "audit:invariants": "node banc_invariants.cjs",
+    "trace": "node scripts/trace.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

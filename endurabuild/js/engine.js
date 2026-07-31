@@ -147,6 +147,61 @@
                                                   
  
 
+// ===== src/engine/trace.ts =====
+/**
+ * TRACE DES MUTATIONS — « quelle passe a fait ça ? », répondu une fois pour toutes.
+ *
+ * Cinq tours de suite, la question posée par un défaut a été « quelle passe a modifié cette
+ * séance, et pourquoi ». Cinq fois, la réponse a été cherchée par élimination : on retire une
+ * passe, on régénère, on regarde. C'est cher, et ça ne se capitalise pas.
+ *
+ * Trois exigences, tenues ici :
+ *   1. ORDONNÉE — les entrées sortent dans l'ordre d'exécution des passes. C'est l'ordre qui
+ *      explique les collisions : une passe tardive qui défait le travail d'une passe précoce est
+ *      invisible autrement.
+ *   2. ACTIVABLE PAR COMBINAISON — `EB_TRACE=swim/moyenne/inter` (ou n'importe quelle étiquette
+ *      posée par l'appelant). Une trace globale sur 297 combinaisons est illisible.
+ *   3. SANS EFFET SUR LA SORTIE — `record()` sort immédiatement quand la trace est éteinte, et
+ *      ne touche jamais l'objet observé. Le plan généré trace active doit être identique au
+ *      caractère près ; `scripts/trace.mjs` le VÉRIFIE à chaque exécution.
+ */
+                             
+              
+               
+                   
+                
+                       
+                      
+                                                                                              
+                           
+                          
+                 
+                    
+ 
+
+let ON = false;
+let LABEL = "";
+let SEQ = 0;
+const ENTRIES               = [];
+
+/** Ouvre la trace pour une étiquette de combinaison. `null` l'éteint. */
+function traceOn(label               )       {
+  ON = !!label;
+  LABEL = label || "";
+  SEQ = 0;
+  ENTRIES.length = 0;
+}
+function traceEnabled()          {
+  return ON;
+}
+function record(e                         )       {
+  if (!ON) return;
+  ENTRIES.push({ ...e, seq: ++SEQ });
+}
+function traceDump()                                           {
+  return { label: LABEL, entries: ENTRIES.slice() };
+}
+
 // ===== src/engine/measured.ts =====
 /**
  * `measured` — L'INSTANTANÉ DE CE QUE L'ATHLÈTE A RÉELLEMENT FAIT (décisions produit R6, §2-§3).
@@ -5102,6 +5157,7 @@ function applyPolarizationGuard(r              , days          , ctx            
 
 
 
+
 /**
  * Une zone de QUALITÉ — source unique. Le prédicat vivait en local dans `scaleBlock` (V2.2 :
  * un bloc de qualité ne grandit pas tout seul) ; C13d en a besoin aussi, et deux copies d'une
@@ -5196,6 +5252,7 @@ function reconcileDeclaredVolume(
               }
             }
             if (touched && render) render(sx);
+            if (touched && traceEnabled()) traceRecord({ pass: "C22-final", weekNum: wk.num, sessionName: sx.name, discipline: sx.d, field: "minutes", before: Math.round(before), after: Math.round(weekMinOf(wk)), reason: "C22 (progression ≤ +10 %)", envelope: Math.round(prevCharge) + "→" + Math.round(weekMinOf(wk)) + "min" });
           }
           if (before - weekMinOf(wk) < 0.5) break; // les planchers bloquent : rien de plus à prendre
         }
@@ -5240,6 +5297,7 @@ function reconcileDeclaredVolume(
             }
           }
           if (touched && render) render(sx);
+          if (touched && traceEnabled()) traceRecord({ pass: "dev≤peak", weekNum: wk.num, sessionName: sx.name, discipline: sx.d, field: "minutes", before: Math.round(before), after: Math.round(wm(wk)), reason: "A2/I1", envelope: "pic " + Math.round(peakBest) + "min" });
         }
         if (before - wm(wk) < 0.5) break;
       }
@@ -5308,6 +5366,7 @@ function reconcileDeclaredVolume(
           continue;
         }
         if (render) render(sx);
+        if (traceEnabled()) traceRecord({ pass: "D4-récup", weekNum: wk.num, sessionName: sx.name, discipline: sx.d, field: "minutes", after: Math.round(weekMinOf(wk)), reason: "D4 (récup < dernière charge)", envelope: "charge " + Math.round(prev) + "min" });
       }
       for (let g = 0; g < 4 && weekMinOf(wk) >= prev; g++) {
         const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
@@ -5358,6 +5417,7 @@ function reconcileDeclaredVolume(
             }
           }
           if (touched && render) render(sx);
+          if (touched && traceEnabled()) traceRecord({ pass: "R3.13-affûtage", weekNum: wk.num, sessionName: sx.name, discipline: sx.d, field: "minutes", before: Math.round(before), after: Math.round(weekMinOf(wk)), reason: "R3.13 (affûtage ≤ 60 % du pic)", envelope: "cap " + Math.round(cap) + "min" });
         }
         if (before - weekMinOf(wk) < 0.5) break; // plus rien à réduire : la fréquence prend le relais
       }
@@ -5539,6 +5599,7 @@ function reconcileDeclaredVolume(
           }
         }
         if (!touched) break;
+        if (traceEnabled()) traceRecord({ pass: "libellé-vs-dose", sessionName: sx.name, discipline: sx.d, field: "minutes", before: Math.round(before), after: Math.round(totalOf(sx)), reason: sx.recovery ? "C25" : "I14" });
         // Le plancher piscine n'est pas une marge : si le pas de réduction le franchit, on le
         // DÉFAIT au lieu de s'arrêter à mi-chemin — s'arrêter après coup laissait la séance
         // sous le plancher, ce que le plafond de libellé n'a jamais eu le droit de faire.
@@ -5983,6 +6044,7 @@ function generatePlan(profile                , opts                             
             // taille — c'est elle qui maintient la spécificité pendant que le volume tombe.
             const restants = wd.reduce((t, dd) => t + dd.sessions.filter((x) => x.d !== "rs").length, 0);
             if (restants <= 1) continue;
+            if (traceEnabled()) traceRecord({ pass: "plancher-piscine", weekNum: w + 1, date: d.date, sessionName: s.name, discipline: s.d, field: "suppression", before: meters, reason: "A3 (décharge : on retire, on ne remonte pas)" });
             const idx = d.sessions.indexOf(s);
             if (idx >= 0) d.sessions.splice(idx, 1);
             if (!d.sessions.some((x) => x.d !== "rs")) {
@@ -5996,6 +6058,7 @@ function generatePlan(profile                , opts                             
           const missing = swFloor - meters;
           if ((body.reps || 1) > 1) body.reps = (body.reps || 1) + Math.ceil(missing / body.distanceM);
           else body.distanceM = Math.ceil((body.distanceM + missing) / 25) * 25;
+          if (traceEnabled()) traceRecord({ pass: "plancher-piscine", weekNum: w + 1, date: d.date, sessionName: s.name, discipline: s.d, field: "distance", before: meters, after: swFloor, reason: r.beginner ? "C24b" : "C24" });
           raised.push({ d, s });
         }
       renderWeek(wd);
@@ -6634,6 +6697,7 @@ function generatePlan(profile                , opts                             
         // Le jour de la course n'est plus un jour « bloqué » : l'athlète y court, c'est un FAIT
         // qu'il a déclaré lui-même. Et comme la course occupe un créneau, elle ne s'ajoute pas
         // au budget de séances : la plus petite séance de la semaine cède sa place.
+        if (traceEnabled()) traceRecord({ pass: "insertion-course", weekNum: wk.num, date: rc.date, sessionName: "🏁 Course " + rc.prio, discipline: mainD, field: "insertion", after: prevMin, reason: "N1" });
         rd.forced = false;
         rd.charge = "dur";
         {
@@ -6643,6 +6707,7 @@ function generatePlan(profile                , opts                             
           const budget = r.budgetPerWeek || 6;
           while (others.length + 1 > budget) {
             const victim = others.reduce((x, y) => ((y.sx.min || 0) < (x.sx.min || 0) ? y : x));
+            if (traceEnabled()) traceRecord({ pass: "insertion-course", weekNum: wk.num, date: victim.d.date, sessionName: victim.sx.name, discipline: victim.sx.d, field: "suppression", before: victim.sx.min, reason: "N1 (la course prend le créneau : budget " + budget + ")" });
             const i2 = victim.d.sessions.indexOf(victim.sx);
             if (i2 >= 0) victim.d.sessions.splice(i2, 1);
             if (!victim.d.sessions.some((x) => x.d !== "rs")) {
