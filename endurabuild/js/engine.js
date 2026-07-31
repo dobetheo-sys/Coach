@@ -1335,9 +1335,47 @@ const RACE_EVE_CAP_MIN = rule("C27", "la veille d'une course : ≤45 min faciles
 const C26_HARD_TIME_CAP_MIN = rule("C26", "le facteur limitant est le temps DUR hebdomadaire (~60 min), pas son pourcentage : la part de facile en découle", 60);
 const C26_EASY_SHARE_MAX = 0.70;
 const C26_EASY_SHARE_MIN = 0.60;
-function easyShareFloor(weeklyMin        )         {
+/**
+ * C26b — LES 60 MINUTES NE SONT PAS LES MÊMES POUR TOUT LE MONDE.
+ *
+ * Le raisonnement de C26 tient : le plafond de temps DUR est la grandeur physiologique, la part
+ * de facile en est la dérivée. Mais la constante, elle, décrit une capacité de RÉCUPÉRATION
+ * CENTRALE — cardiaque, métabolique, nerveuse — et ce n'est pas ce qui limite tout le monde.
+ *
+ * Chez un athlète qui reprend, ou qui débute, le facteur limitant est le TISSU CONJONCTIF :
+ * tendons, aponévroses, os. Il se remodèle sur des semaines à des mois, bien plus lentement que
+ * la filière aérobie, et il ne prévient pas — la tendinopathie arrive après la séance qui s'est
+ * bien passée. C'est précisément le profil de la V1 grand public, et c'est là que 48 minutes de
+ * qualité hebdomadaire sur une enveloppe de 2 h deviennent dangereuses : la borne basse de 60 %
+ * les autorisait.
+ *
+ * Une blessure déclarée dit la même chose, en plus fort et au présent.
+ *
+ * On module donc la CONSTANTE, pas le raisonnement — c'est ce que l'audit demandait.
+ */
+const C26b_HARD_TIME_BY_HISTORY                         = rule(
+  "C26b",
+  "le plafond de temps dur suit ce qui limite VRAIMENT : récupération centrale chez l'entraîné, tissu conjonctif chez celui qui reprend",
+  { reprise: 35, confirme: 60, ancien: 60 },
+);
+const C26b_HARD_TIME_BEGINNER_MIN = rule("C26b-deb", "un débutant construit son tissu conjonctif avant sa puissance : la qualité reste marginale", 25);
+const C26b_INJURY_FACTOR = rule("C26b-bless", "une blessure déclarée dit au présent ce que l'historique dit au passé", 0.6);
+
+                               
+                   
+                 
+                    
+ 
+/** Plafond de temps DUR hebdomadaire pour ce profil (C26 + C26b). */
+function hardTimeCapMin(ctx               )         {
+  let cap = C26b_HARD_TIME_BY_HISTORY[ctx?.history || "confirme"] ?? C26_HARD_TIME_CAP_MIN;
+  if (ctx?.level === "debutant") cap = Math.min(cap, C26b_HARD_TIME_BEGINNER_MIN);
+  if (ctx?.injured) cap = Math.round(cap * C26b_INJURY_FACTOR);
+  return cap;
+}
+function easyShareFloor(weeklyMin        , ctx               )         {
   if (!(weeklyMin > 0)) return C26_EASY_SHARE_MAX;
-  const derived = 1 - C26_HARD_TIME_CAP_MIN / weeklyMin;
+  const derived = 1 - hardTimeCapMin(ctx) / weeklyMin;
   return Math.min(C26_EASY_SHARE_MAX, Math.max(C26_EASY_SHARE_MIN, derived));
 }
 
@@ -3102,6 +3140,10 @@ const THRESHOLDS = {
                  
                   
                                                                                                 
+                                                                                              
+                                                                                 
+                   
+                    
                      
  
 
@@ -3361,7 +3403,7 @@ function auditPlan(plan        , opts            = {})            {
   // moins d'une heure de qualité — moins que ce qu'il faut pour maintenir la VO2max.
   const chargeMin = weeks.filter((w) => !w.isRecup && w.phaseId !== "taper").map((w) => w.prescribedMin);
   const meanChargeMin = chargeMin.length ? chargeMin.reduce((a, b) => a + b, 0) / chargeMin.length : 0;
-  const easyFloor = easyShareFloor(meanChargeMin);
+  const easyFloor = easyShareFloor(meanChargeMin, { history: opts.history, level: opts.level, injured: !!opts.injured });
   if (easyShare < easyFloor) hard.push("répartition des intensités : " + Math.round(easyShare * 100) + "% de temps facile (<" + Math.round(easyFloor * 100) + "% pour " + Math.round(meanChargeMin / 6) / 10 + "h/sem — zone grise, manifeste ~80/20)");
 
   // ---- Cohérence : une nage FACILE/RÉCUP ne dépasse jamais la « longue » de sa semaine
@@ -7230,6 +7272,10 @@ function generateAudited(profile                , auditOpts                     
     sport: profile.sport,
     format: profile.format,
     level: profile.level,
+    // C26b — l'auditeur doit savoir ce qui LIMITE cet athlète : sans `history` ni `injured`,
+    // il jugerait un débutant qui reprend avec le plafond de temps dur d'un compétiteur.
+    history: profile.history,
+    injured: !!(profile.injury && profile.injury !== "aucune" && profile.injury !== ""),
     refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 },
     ...auditOpts,
   };

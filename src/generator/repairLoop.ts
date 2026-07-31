@@ -303,6 +303,10 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
     sport: profile.sport,
     format: profile.format,
     level: profile.level,
+    // C26b — l'auditeur doit savoir ce qui LIMITE cet athlète : sans `history` ni `injured`,
+    // il jugerait un débutant qui reprend avec le plafond de temps dur d'un compétiteur.
+    history: profile.history,
+    injured: !!(profile.injury && profile.injury !== "aucune" && profile.injury !== ""),
     refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 },
     ...auditOpts,
   };

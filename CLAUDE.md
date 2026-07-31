@@ -277,6 +277,16 @@ sur le livré). Readiness : objectif vs subjectif séparés, heures de sommeil e
 enfin collectées, validation de schéma. Export : contrat `durationMin`/`_min` réparé, ICS
 conforme RFC 5545. **3 dettes documentées avec leur arbitrage** (D2, D3 : structure du pic
 vs C22 sur plans saturés, F2 : 43-44% au lieu de 45%).
+**Mesures rendues honnêtes (série d'audits externes, 31/07/2026)** : `recoveryMin` porté par le
+step (la récup n'est plus lue dans une phrase — 1 740 récupérations de trail comptées 0 min),
+`enforceMedicalHold` (une PORTE dans les builders + un FILET au point de convergence : le garde
+s'était rouvert deux fois, il énumère désormais ce qui est PERMIS), la course objectif dans le
+calendrier (N1, elle n'y était sur AUCUN des 6 sports), `npm run trace` — la trace ordonnée des
+mutations, activable par combinaison, prouvée sans effet sur la sortie à chaque exécution.
+Deux mesures mentaient : `v1Harness` auditait le générateur de repli (il charge le bundle
+maintenant, et LÈVE s'il ne peut pas), et `generateAudited` rendait le verdict d'un état
+intermédiaire (re-mesuré à la sortie). **15 gates verts.**
+
 **R10 livré** (retour d'un ami entraîneur, voir ARCHITECTURE.md « R10 ») : **rampe
 `vol_recent`** — le plan part du volume RÉEL des 3-6 derniers mois (question obligatoire
 du questionnaire + Profil, semaine 1 ≤ ×1.1 puis ≤ +10 %/sem jusqu'à rejoindre la courbe,

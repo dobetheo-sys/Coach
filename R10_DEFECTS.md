@@ -672,3 +672,42 @@ sur 41 semaines. Élargir C13d à « toute séance portant un échauffement » (
 séances de qualité) donnait le même résultat en pire. **Un plan petit reste un plan : il garde sa
 qualité.** Le seuil reste à 8 min, l'écart de deux minutes est le résultat d'une mesure, et entre
 8 et 10 min de corps c'est C13e qui arbitre.
+
+---
+
+## C26b — les 60 minutes de qualité ne sont pas les mêmes pour tout le monde (31/07/2026)
+
+C26 avait retourné la règle du bon côté : le plafond de temps DUR est la grandeur
+physiologique, la part de facile en est la dérivée. La constante, elle, restait unique.
+
+Or 60 min/semaine décrit une capacité de récupération CENTRALE — cardiaque, métabolique,
+nerveuse. Ce n'est pas ce qui limite tout le monde. Chez quelqu'un qui reprend ou qui débute, le
+facteur limitant est le TISSU CONJONCTIF : tendons, aponévroses, os. Il se remodèle sur des
+semaines à des mois, bien plus lentement que la filière aérobie, et il ne prévient pas — la
+tendinopathie arrive après la séance qui s'est bien passée. C'est exactement le profil de la V1
+grand public, et c'est là que la borne basse de 60 % autorisait 48 minutes de qualité sur une
+enveloppe de 2 h.
+
+| profil | plafond de temps dur | plancher de facile à 2 h/sem |
+|---|---|---|
+| confirmé / ancien, sain | 60 min | 60 % |
+| reprise | 35 min | 70 % |
+| débutant | 25 min | 70 % |
+| blessure déclarée | ×0,6 | 70 % |
+
+Le raisonnement ne bouge pas, seule la constante — c'est ce que l'audit demandait. Et l'auditeur
+reçoit désormais `history` et `injured` : sans eux, il jugeait un débutant qui reprend avec le
+plafond d'un compétiteur.
+
+## O11 — la dette de finition, mesurée avant d'être traitée
+
+- **Build standalone** : `sw.js` et les icônes ne sont plus référencés du tout (0 occurrence).
+  Le drapeau `EB_STANDALONE` posé plus tôt dans la série avait déjà fermé les échecs silencieux ;
+  l'audit mesurait `standalone-3`, antérieur.
+- **Deux textes qui NIAIENT une fonctionnalité livrée** — même famille que tout le reste de la
+  série, dans l'autre sens : « Levier poids : signalé, pas encore dans les séances » alors que
+  `applyWeightLever` agit depuis R11.7, et « Périodisation menstruelle : bientôt » alors que
+  `applyCyclePeriodisation` déplace la seconde séance de qualité des semaines prémenstruelles.
+  Un outil qui sous-annonce ce qu'il fait est aussi peu fiable qu'un outil qui sur-annonce.
+- **`STRAVA_RELAY_DEFAULT`** reste vide : c'est un déploiement humain (15 min, `server/README.md`),
+  pas une dette de code.

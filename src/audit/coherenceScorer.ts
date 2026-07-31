@@ -83,6 +83,10 @@ export interface AuditOpts {
   sport?: string;
   format?: string;
   level?: string; // "debutant" active les règles spécifiques débutant/non-débutant du manifeste
+  /** C26b — ce qui LIMITE l'athlète : récupération centrale chez l'entraîné, tissu conjonctif
+   *  chez celui qui reprend ou qui débute. Le plafond de temps dur en dépend. */
+  history?: string;
+  injured?: boolean;
   refs?: AthleteRefs;
 }
 
@@ -342,7 +346,7 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   // moins d'une heure de qualité — moins que ce qu'il faut pour maintenir la VO2max.
   const chargeMin = weeks.filter((w) => !w.isRecup && w.phaseId !== "taper").map((w) => w.prescribedMin);
   const meanChargeMin = chargeMin.length ? chargeMin.reduce((a, b) => a + b, 0) / chargeMin.length : 0;
-  const easyFloor = easyShareFloor(meanChargeMin);
+  const easyFloor = easyShareFloor(meanChargeMin, { history: opts.history, level: opts.level, injured: !!opts.injured });
   if (easyShare < easyFloor) hard.push("répartition des intensités : " + Math.round(easyShare * 100) + "% de temps facile (<" + Math.round(easyFloor * 100) + "% pour " + Math.round(meanChargeMin / 6) / 10 + "h/sem — zone grise, manifeste ~80/20)");
 
   // ---- Cohérence : une nage FACILE/RÉCUP ne dépasse jamais la « longue » de sa semaine

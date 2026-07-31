@@ -128,8 +128,8 @@ function evalRules(a, tier){
     add("renfo","Renforcement","Transversal 3 sports","Renfo tibial (course), gainage position (vélo), coiffe (nage). Pliométrie progressive si pas de blessure active.");
   }
 
-  if(a.weight_lever==="oui"&&a.weight) add("poids","Levier poids","Signalé — pas encore dans les séances","Paramètre de performance"+(sp==="bike"||sp==="run"?" (W/kg ou portage)":"")+", jamais une injonction. L'onglet 🥗 Nutrition estime ta dépense et ton ravitaillement d'effort ; il ne prescrit AUCUNE cible d'apport ni aucun régime — ça, c'est l'affaire d'un diététicien.");
-  if(a.sex==="F"){ add("fer","Ferritine","Bilan 3×/an","Risque de carence en fer élevé en endurance féminine."); if(a.cycle_sync==="oui") add("cyclep","Périodisation menstruelle","Bientôt","Pas encore active dans le calcul du plan — on préfère te le dire plutôt que le laisser croire. En attendant, adapte l'intensité à ton ressenti selon ta phase."); }
+  if(a.weight_lever==="oui"&&a.weight) add("poids","Levier poids","Actif sur le plan","Paramètre de performance"+(sp==="bike"||sp==="run"?" (W/kg ou portage)":"")+", jamais une injonction. L'onglet 🥗 Nutrition estime ta dépense et ton ravitaillement d'effort ; il ne prescrit AUCUNE cible d'apport ni aucun régime — ça, c'est l'affaire d'un diététicien.");
+  if(a.sex==="F"){ add("fer","Ferritine","Bilan 3×/an","Risque de carence en fer élevé en endurance féminine."); if(a.cycle_sync==="oui") add("cyclep","Périodisation menstruelle","Active sur le placement","Sur une semaine majoritairement prémenstruelle, la SECONDE séance de qualité redevient facile — jamais les deux, et le volume de la semaine ne bouge pas. L'effet moyen de la phase sur la performance est faible et très variable d'une personne à l'autre : on touche au placement, pas à la charge. Ton ressenti reste le dernier mot, et la question est révocable."); }
   if(a.races==="oui") add("races","Courses intermédiaires","Hiérarchie A/B/C","Objectif C = on enchaîne. B = mini-affûtage. Récup placée juste après.");
   return R;
 }

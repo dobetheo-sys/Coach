@@ -102,7 +102,7 @@ for (const sport of Object.keys(v1.SPORTS)) {
           const a = { ...baseAnswers(), format, history, level, intent };
           let audit: PlanAudit;
           try {
-            audit = auditPlan(v1.buildPlan(a), { sport, format, level, refs: REFS });
+            audit = auditPlan(v1.buildPlan(a), { sport, format, level, history, refs: REFS });
           } catch (e) {
             errors++;
             console.error("ERREUR", sport, format, history, level, intent, e);

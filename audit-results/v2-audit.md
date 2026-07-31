@@ -1,6 +1,6 @@
 # Audit V2 (Sprint 1) — moteur de raisonnement + générateur
 
-Généré par `npm run audit:v2`. 702 combinaisons via le moteur V2, scorées par l'auditeur inchangé. 0 erreur(s).
+Généré par `npm run audit:v2`. 594 combinaisons via le moteur V2, scorées par l'auditeur inchangé. 0 erreur(s).
 
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -10,7 +10,6 @@ Généré par `npm run audit:v2`. 702 combinaisons via le moteur V2, scorées pa
 | tri | 108 | 0.95 | 0.91–1.00 | 0 | 0 | 0 | 0.41 | 0 | 77% | 0 | 97 |
 | trail | 27 | 0.99 | 0.90–1.01 | 0 | 0 | 0 | 0.28 | 0 | 96% | 0 | 89 |
 | duathlon | 108 | 0.97 | 0.91–1.00 | 0 | 0 | 0 | 0.38 | 0 | 86% | 0 | 99 |
-| swimrun | 108 | 0.95 | 0.92–0.97 | 0 | 0 | 0 | 0.41 | 12 | 91% | 0 | 96 |
 
 ## V1.5 ↔ V2 (même auditeur, mêmes 486 profils)
 
@@ -22,7 +21,6 @@ Généré par `npm run audit:v2`. 702 combinaisons via le moteur V2, scorées pa
 | tri | 0.95 → 0.95 | 0.90 → 0.90 | 97 → 97 |
 | trail | NaN → 0.99 | 1.00 → 0.90 | NaN → 89 |
 | duathlon | NaN → 0.97 | 1.00 → 0.89 | NaN → 99 |
-| swimrun | NaN → 0.95 | 1.00 → 0.90 | NaN → 96 |
 
 ## Décisions du moteur — exemple (tri / 70.3 / confirme / inter / competition)
 
