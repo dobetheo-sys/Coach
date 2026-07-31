@@ -308,3 +308,14 @@ longueur réelle (elle promettait 3 h pour trois jours, et la boucle R3.3 gonfla
 derniers jours avant la course pour « remplir »). Angle mort fermé au passage : **aucun** des
 714 profils du golden ne portait de date de course — passe « course datée » ajoutée
 (6 sports × 7 jours de semaine, **714 → 756**), garde permanent `I18` (72 échecs → 0).
+
+**I14 fermé** (voir R10_DEFECTS.md « I14 ») : la sortie longue est désormais la plus longue
+séance de sa semaine sur les 6 sports. Les 18 échecs restants étaient tous en trail et venaient
+d'une exclusion posée par prudence — le plafond ne touchait aucun bloc en pente : « Descente en
+charge » montait à **5 h 16 contre 4 h 04** pour la sortie longue, sur l'axe dont le module dit
+lui-même qu'il casse en premier. Un bloc en pente se réduit par ses RÉPÉTITIONS (le total de D+/D−
+suit au prorata, la vitesse ascensionnelle de chaque répétition ne bouge pas), jamais par sa durée.
+Deux rappels de la même leçon au passage : une contrainte de croissance ne se viole pas qu'en
+montant (réduire la semaine N creuse l'écart avec N+1 → T2/T2b re-clampées au point de
+convergence), et une garantie de SÉANCE doit précéder les garanties de SEMAINE (sinon la semaine
+est validée sur un contenu qui va encore changer). **Banc d'invariants vert sur ses 19 tests.**

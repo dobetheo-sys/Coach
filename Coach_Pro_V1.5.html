@@ -7122,6 +7122,56 @@ function reconcileDeclaredVolume(
   const weekMinOf = (wk        ) => wk.days.reduce((t, d) => t + dayMin(d), 0);
   const weekH = (wk        ) => Math.round((weekMinOf(wk) / 60) * 10) / 10;
 
+  // C25 / I11 / I14 — LES GARANTIES DE SÉANCE PRÉCÈDENT LES GARANTIES DE SEMAINE.
+  // (Définition et justification plus bas, à `enforceLabelVsDose`.) Elle RÉDUIT des séances :
+  // la laisser tourner après « dev ≤ pic » abaissait des semaines de pic déjà validées et
+  // rouvrait l'inversion de périodisation sur 4 combinaisons de trail. Une semaine ne peut pas
+  // être vérifiée sur un contenu qui va encore changer.
+  enforceLabelVsDose();
+
+  // T2 / T2b — LA PROGRESSION VERTICALE SE RE-VÉRIFIE APRÈS TOUTE COUPE DE SÉANCE.
+  //
+  // « Une contrainte de croissance se viole en montant, jamais en descendant » : c'est faux dès
+  // qu'on regarde DEUX semaines. Réduire la semaine N n'abîme pas la semaine N, elle creuse
+  // l'écart avec N+1 — le banc trail l'a dit tout de suite (S5 D− +22 %, S10 +17 %, S15 +34 %)
+  // après que le plafond de libellé eut retiré des répétitions de descente. La courbe verticale
+  // vit dans `generatePlan`, donc AVANT cette coupe : elle ne vérifiait, une fois de plus, que
+  // l'avant-dernier état.
+  //
+  // On re-clampe ici avec le levier de l'axe vertical lui-même — les MÈTRES, jamais les minutes.
+  // Deux passes, comme la courbe d'origine : baisser N+1 change le plafond de N+2.
+  {
+    const stepsOfWeek = (wk        ) => wk.days.flatMap((d) => d.sessions).flatMap((sx) => sx.steps || []);
+    const upOf = (wk        ) => stepsOfWeek(wk).reduce((t, st) => t + (st.dplusM || 0) * (st.reps || 1), 0);
+    const downOf = (wk        ) => stepsOfWeek(wk).reduce((t, st) => t + (st.dmoinsM || 0) * (st.reps || 1), 0);
+    for (let pass = 0; pass < 2; pass++) {
+      let prevUp = 0, prevDown = 0;
+      for (const wk of plan.weeks) {
+        const charge = !wk.isRecup && wk.phase.id !== "taper";
+        const cu = upOf(wk), cd = downOf(wk);
+        if (charge && (cu > 0 || cd > 0)) {
+          const fUp = prevUp > 0 && cu > prevUp * T2_DPLUS_GROWTH ? (prevUp * T2_DPLUS_GROWTH) / cu : 1;
+          const fDown = prevDown > 0 && cd > prevDown * T2_DMOINS_GROWTH ? (prevDown * T2_DMOINS_GROWTH) / cd : 1;
+          if (fUp < 1 || fDown < 1) {
+            for (const st of stepsOfWeek(wk)) {
+              if (st.dplusM && fUp < 1) st.dplusM = Math.max(20, Math.round((st.dplusM * fUp) / 10) * 10);
+              if (st.dmoinsM && fDown < 1) st.dmoinsM = Math.max(20, Math.round((st.dmoinsM * fDown) / 10) * 10);
+              if (st.gradient !== "down" && st.dmoinsM && (st.dplusM || 0) > 0 && st.dmoinsM > st.dplusM) st.dmoinsM = st.dplusM;
+            }
+            // La récupération d'une répétition en pente se DÉDUIT du dénivelé (T19) : elle suit.
+            for (const d of wk.days) for (const sx of d.sessions) {
+              if (!sx.steps || !sx.steps.length) continue;
+              syncReturnRecovery(sx.steps);
+              if (render) render(sx);
+            }
+            if (traceEnabled()) traceRecord({ pass: "T2b-après-coupe", weekNum: wk.num, field: "distance", before: Math.round(cd), after: Math.round(downOf(wk)), reason: "T2/T2b re-vérifiées au point de convergence" });
+          }
+        }
+        if (charge) { prevUp = upOf(wk); prevDown = downOf(wk); }
+      }
+    }
+  }
+
   // C22 — GARANTIE FINALE DE PROGRESSION (D3, banc v6). La borne « +10 % d'une semaine de
   // charge à la suivante » existait DANS la boucle de volume, mais des passes ultérieures
   // (montée du pic, remontée aux planchers, harmonisation) pouvaient regonfler une semaine
@@ -7488,7 +7538,15 @@ function reconcileDeclaredVolume(
   // volume pour tenir une promesse : on plafonne les AUTRES séances de la même discipline.
   // Aucune séance ordinaire ne dépasse la sortie longue de la semaine ; c'est aussi ce qu'un
   // entraîneur vérifie en premier en relisant une semaine.
-  {
+  //
+  // ORDRE (I14, 2e passe) — cette passe est appelée AVANT les garanties hebdomadaires, pas
+  // après. Elle RÉDUIT des séances : la faire tourner en dernier abaissait des semaines de pic
+  // déjà validées par « dev ≤ pic », et rouvrait l'inversion sur 4 combinaisons de trail. Une
+  // garantie de SÉANCE doit précéder les garanties de SEMAINE — sinon la semaine est vérifiée
+  // sur un contenu qui va encore changer. Elle est rappelée une seconde fois en fin de course :
+  // une passe hebdomadaire qui raboterait la sortie longue promouvrait une autre séance au rang
+  // de « plus longue », et le filet doit être le dernier à parler.
+  function enforceLabelVsDose()       {
     const totalOf = (sx           ) => (sx.steps || []).reduce((t, st) => t + (st._min || 0), 0);
     const metersOf = (sx           ) => (sx.steps || []).reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
     const shrinkTo = (sx           , capMin        )       => {
@@ -7504,12 +7562,38 @@ function reconcileDeclaredVolume(
         let touched = false;
         for (const st of sx.steps || []) {
           if (st.role !== "body") continue;
-          // Seuls les blocs qui portent du DÉNIVELÉ sont intouchables ici : la charge verticale
-          // (T1/T2/T2b) a ses propres passes, et un plafond de libellé n'a pas à déplacer un axe
-          // de charge sans que sa progression soit revérifiée. Un bloc `flat` n'en porte aucun —
-          // l'exclure aussi laissait 9 « Footing récup » de 71 min et 18 sorties longues de trail
-          // dépassées par une autre séance, pour une prudence sans objet.
-          if (st.gradient === "up" || st.gradient === "down" || st.gradient === "rolling") continue;
+          // I14 (2e passe) — UN BLOC EN PENTE N'EST PAS INTOUCHABLE : IL SE RÉDUIT PAR SES
+          // RÉPÉTITIONS, JAMAIS PAR SA DURÉE.
+          //
+          // La prudence initiale excluait tout bloc portant du dénivelé, au motif que la charge
+          // verticale a ses propres passes (T2 : +12 %/sem de D+, T2b : +8 % de D−). Elle coûtait
+          // 18 semaines de trail où « Descente en charge » dépassait la sortie longue — jusqu'à
+          // 5 h 16 contre 4 h 04. Sur l'axe dont le module dit lui-même qu'il casse en premier.
+          //
+          // Deux distinctions que la prudence confondait :
+          //   1. une contrainte de CROISSANCE se viole en montant, jamais en descendant — réduire
+          //      un axe de charge ne peut pas casser sa progression ;
+          //   2. `dplusM`/`dmoinsM` sont déclarés PAR répétition. Retirer des répétitions réduit
+          //      le total exactement au prorata et ne touche pas à la vitesse ascensionnelle de
+          //      chaque répétition. Ce qui serait faux, c'est de raboter la DURÉE d'un bloc en
+          //      pente : l'athlète descendrait les mêmes 400 m en moins de temps — une vitesse
+          //      impossible. C'est cette réduction-là, et elle seule, qui reste interdite.
+          //
+          // Plancher à 2 répétitions : une séance de descente avec une seule descente n'est plus
+          // une séance de descente. Si le plafond n'est pas atteint à 2, la boucle s'arrête et le
+          // banc le dira — un résidu mesuré vaut mieux qu'une séance dénaturée.
+          const enPente = st.gradient === "up" || st.gradient === "down" || st.gradient === "rolling";
+          if (enPente) {
+            // On arrondit à l'INFÉRIEUR, contrairement aux blocs plats : sur un axe de charge
+            // qui casse en premier, une répétition de trop ne se rattrape pas la semaine
+            // suivante. `round` laissait d'ailleurs passer le dernier cas mesuré (3 répétitions
+            // × 0,84 → 3 : la passe tournait sans rien réduire).
+            if ((st.reps || 1) > 2) {
+              const next = Math.max(2, Math.floor((st.reps || 1) * f));
+              if (next < (st.reps || 1)) { st.reps = next; touched = true; }
+            }
+            continue;
+          }
           if ((st.reps || 1) > 1) {
             const next = Math.max(1, Math.round((st.reps || 1) * f));
             if (next < (st.reps || 1)) { st.reps = next; touched = true; }
@@ -7591,6 +7675,14 @@ function reconcileDeclaredVolume(
   // …et une dernière fois APRÈS toutes les passes de ce point de convergence : elles peuvent
   // recomposer une séance (déclassement C13d, remplacement de course, greffe).
   enforceMedicalHold(plan, !!ctx?.medHold);
+  // Même raison pour le rang de la sortie longue : une passe hebdomadaire qui rabote la longue
+  // promeut mécaniquement une autre séance au rang de « plus longue de la semaine ». Le filet
+  // repasse en dernier. Il ne peut que réduire, donc il ne peut rouvrir aucune des garanties
+  // de semaine tenues au-dessus — sauf « dev ≤ pic », qui compare DEUX semaines entre elles :
+  // c'est pour elle que le premier appel existe. Ce second appel n'est pas décoratif, il a été
+  // mesuré : il modifie encore 44 des 594 combinaisons de `audit:v2` (des semaines où une passe
+  // hebdomadaire avait raboté la sortie longue après coup), et l'audit reste vert avec lui.
+  enforceLabelVsDose();
 
   if (forcedWeeks > 0)
     warnings.push("Sur " + forcedWeeks + " semaine(s) de charge, la structure minimale de ce plan (une séance digne de ce nom ne descend pas sous 30 min, une sortie longue encore moins) dépasse le volume hebdomadaire que tu as déclaré. Le chiffre annoncé a été aligné sur ce qui t'est réellement prescrit — mieux vaut une courbe honnête qu'une promesse que le plan ne tient pas. Deux remèdes, à toi de choisir : relever le volume dont tu disposes, ou viser un objectif plus court.");

@@ -81,6 +81,8 @@ Les invariants sont marqués dans le code par leur identifiant. Ceux actuellemen
 | C18b | Un seul « VO2max course » garanti par semaine de peak tri (le second créneau reste footing) |
 | V2.1 | Sonde de capacité : la promesse déclarée suit ce que les plafonds de séance permettent |
 | V2.2 | `repCap` : un bloc de qualité ne dépasse jamais son gabarit — l'excédent de volume va aux séances faciles, pas en zone grise |
+| I14 | La sortie longue est la plus longue séance de sa semaine, dans sa discipline : les AUTRES sont plafonnées, jamais la longue gonflée. Un bloc en pente se réduit par ses RÉPÉTITIONS (plancher 2, arrondi inférieur), jamais par sa durée — raboter la durée d'un bloc de descente fabriquerait une vitesse impossible. Garantie de SÉANCE, donc appelée AVANT les garanties de semaine, et rappelée en filet après |
+| T2/T2b (2e passe) | La progression verticale (D+ ≤ +12 %/sem, D− ≤ +8 %) est re-clampée au point de convergence : réduire une semaine creuse l'écart avec la suivante — une contrainte de croissance ne se viole pas qu'en montant |
 | N2 | Le plan s'arrête le SOIR DU JOUR J : la dernière semaine est coupée à la date de course (1 à 7 jours), jamais un reliquat de repos après l'objectif ; sa cible de volume est proratisée à sa longueur réelle (`raceTailDays` dans `buildDays` + filet dans `planGenerator`, garde `I18`) |
 
 La liste n'est pas exhaustive (certains C1–C14 vivent seulement dans le code) : en cas de

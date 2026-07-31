@@ -752,3 +752,42 @@ couverture. La photo ne bougeait pas parce qu'elle ne regardait pas. Passe « co
 ajoutée (6 sports × 7 jours de semaine, ancre et échéance figées pour rester déterministe) :
 **714 → 756 profils**. Garde permanent `I18` au banc d'invariants, sur les sept jours de la
 semaine parce que le jour de la semaine EST la variable du défaut : **72 échecs → 0**.
+
+## I14 — la sortie longue n'était pas la plus longue, et la prudence coûtait cher (31/07/2026)
+
+Le banc d'invariants signalait 18 échecs, tous en trail, tous laissés ouverts par une exclusion
+explicite : le plafond « aucune séance ne dépasse la sortie longue » ne touchait aucun bloc
+portant du dénivelé, au motif qu'un axe de charge a ses propres passes. Le coût de cette
+prudence, mesuré : **« Descente en charge » jusqu'à 5 h 16 contre 4 h 04 pour la sortie longue**
+— sur l'axe dont le module trail dit lui-même qu'il casse en premier (T2b, +8 %/semaine).
+
+Ce n'était donc pas un défaut d'étiquette mais de dosage, et il touchait la priorité n°2 du
+manifeste. La cause : la sortie longue est plafonnée par T4 (% du temps de course), la séance de
+descente ne l'était par rien — l'excédent de la courbe hebdomadaire allait mécaniquement là.
+
+**Deux distinctions que la prudence confondait.** Une contrainte de croissance ne se viole pas en
+descendant ; et `dplusM`/`dmoinsM` sont déclarés PAR répétition, donc retirer des répétitions
+réduit le total au prorata sans toucher à la vitesse ascensionnelle de chacune. Ce qui reste
+interdit, et qui motivait l'exclusion, c'est de raboter la DURÉE d'un bloc en pente : l'athlète
+descendrait les mêmes 400 m en moins de temps, une vitesse impossible. Un bloc en pente se
+réduit donc par ses répétitions, plancher à 2 (une séance de descente avec une seule descente
+n'est plus une séance de descente), arrondi à l'inférieur.
+
+**Et deux fois la même leçon, payée dans le même tour.**
+
+1. *« Une contrainte de croissance se viole en montant, jamais en descendant » est faux dès qu'on
+   regarde DEUX semaines.* Réduire la semaine N creuse l'écart avec N+1 : le banc trail a répondu
+   S5 D− +22 %, S10 +17 %, S15 +34 %. La courbe verticale vit dans `generatePlan`, donc avant la
+   coupe — elle ne vérifiait que l'avant-dernier état. T2/T2b sont désormais re-clampées au point
+   de convergence, avec le levier de l'axe vertical lui-même (les mètres, jamais les minutes).
+2. *Une garantie de SÉANCE doit précéder les garanties de SEMAINE.* Le plafond de libellé tournait
+   en dernier : il abaissait des semaines de pic déjà validées et rouvrait « dev ≤ pic » sur
+   4 combinaisons de trail. Il est rappelé une seconde fois en fin de course — et ce second appel
+   n'est pas décoratif : il modifie encore 44 des 594 combinaisons de `audit:v2`, là où une passe
+   hebdomadaire avait raboté la sortie longue après coup.
+
+**Résultat.** 18 → 0, et le banc d'invariants est vert sur ses 19 tests pour la première fois.
+La préparation en descente n'est pas sacrifiée : pic hebdomadaire de D− à 1 250–1 280 m (contre
+1 250–1 290 avant), médiane en baisse de 6 % au plus. Effet hors trail du réordonnancement,
+mesuré sur les 567 profils non-trail : **539 inchangés**, 24 en baisse (au plus −60 min sur un
+plan entier), 4 en hausse (au plus +5 min).
