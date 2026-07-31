@@ -81,6 +81,7 @@ Les invariants sont marqués dans le code par leur identifiant. Ceux actuellemen
 | C18b | Un seul « VO2max course » garanti par semaine de peak tri (le second créneau reste footing) |
 | V2.1 | Sonde de capacité : la promesse déclarée suit ce que les plafonds de séance permettent |
 | V2.2 | `repCap` : un bloc de qualité ne dépasse jamais son gabarit — l'excédent de volume va aux séances faciles, pas en zone grise |
+| N2 | Le plan s'arrête le SOIR DU JOUR J : la dernière semaine est coupée à la date de course (1 à 7 jours), jamais un reliquat de repos après l'objectif ; sa cible de volume est proratisée à sa longueur réelle (`raceTailDays` dans `buildDays` + filet dans `planGenerator`, garde `I18`) |
 
 La liste n'est pas exhaustive (certains C1–C14 vivent seulement dans le code) : en cas de
 doute, chercher `// C` et `// R3.` dans `Coach_Pro_V1.5.html`.

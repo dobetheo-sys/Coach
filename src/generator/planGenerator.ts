@@ -929,6 +929,14 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     if (ph.id !== "taper" && !isRW && _prevChargeMin > 0) targetH = Math.min(targetH, (_prevChargeMin / 60) * C22_MAX_WEEKLY_GROWTH);
     if (isRW && _lastWeekMin > 0) targetH = Math.min(targetH, (_lastWeekMin / 60) * 0.95);
     if (ph.id === "taper" && _lastWeekMin > 0) targetH = Math.min(targetH, (_lastWeekMin / 60) * 0.98);
+    // N2 — UNE SEMAINE COURTE NE PROMET PAS UNE SEMAINE ENTIÈRE.
+    // La dernière semaine s'arrête au soir de la course : elle peut ne compter que 1 à 6
+    // jours. La cible de la courbe est une dose HEBDOMADAIRE — appliquée telle quelle à trois
+    // jours, elle annonçait 3 h là où le plan n'en tient que 2,3, et poussait la boucle R3.3
+    // à gonfler les deux derniers jours avant le jour J pour « remplir ». C'est exactement ce
+    // que le tail de repos masquait : le chiffre était faux avant la coupe aussi, la coupe l'a
+    // seulement rendu visible. On proratise à la longueur réelle de la semaine.
+    if (wd.length > 0 && wd.length < 7) targetH *= wd.length / 7;
     // R3.3 — ajuster le corps des séances à la cible (itératif)
     for (let it = 0; it < 5; it++) {
       renderWeek(wd);
@@ -1571,22 +1579,18 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     });
   }
 
-  // Dates alignées au calendrier réel → la course tombe à son VRAI jour dans la dernière
-  // semaine ; les jours datés APRÈS elle deviennent repos assumé (on prépare, on court,
-  // on récupère — jamais de séance orpheline après l'objectif). Volumes recalculés
-  // honnêtement, déclaré compris (jamais relevé).
+  // N2 — LE FILET : aucun jour APRÈS la course objectif ne survit dans le plan.
+  //
+  // La grille s'arrête désormais au soir du jour J (`buildDays`, `raceTailDays`) : ce bloc ne
+  // devrait plus rien trouver. Il reste parce que la leçon de cette série a été payée sept
+  // fois — une garantie vérifiée au MILIEU du pipeline ne vérifie que l'avant-dernier état.
+  // Toute passe future qui rallongerait la dernière semaine (une insertion, un rééquilibrage)
+  // se ferait rattraper ici plutôt que d'atterrir chez l'athlète.
   if (a.race_date) {
     const wk = wl[wl.length - 1];
-    let cut = false;
-    for (const d of wk.days as GenDay[]) {
-      if (d.date && d.date > a.race_date && d.sessions.some((s) => s.d !== "rs")) {
-        d.charge = "off";
-        d.slot = "off";
-        d.sessions = [{ d: "rs", name: "Repos post-course", det: "récupération — marche, hydratation, fierté", steps: [] }];
-        cut = true;
-      }
-    }
-    if (cut) {
+    const before = (wk.days as GenDay[]).length;
+    wk.days = (wk.days as GenDay[]).filter((d) => !d.date || d.date <= a.race_date!);
+    if ((wk.days as GenDay[]).length !== before) {
       const vr = Math.round((weekMin(wk.days as GenDay[]) / 60) * 10) / 10;
       wk.vol = vr;
       wk.vol_real = vr;

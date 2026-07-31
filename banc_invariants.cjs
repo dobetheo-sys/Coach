@@ -176,6 +176,20 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
       const autres = jourJ.sessions.filter((x) => x.d !== "rs" && !isRace(x));
       if (autres.length) ko("I17", ctx, `jour de course intermédiaire : ${autres.map((x) => x.name).join(", ")} en plus`);
     }
+    // I18 (N2) — LE PLAN S'ARRÊTE LE JOUR DE LA COURSE, quel que soit le JOUR de la semaine.
+    // La dernière semaine était la semaine calendaire de l'objectif : elle courait jusqu'au
+    // dimanche. Une course un mercredi laissait quatre jours de « Repos post-course », une
+    // course un lundi en laissait six. Le jour de la semaine est LA variable du défaut : un
+    // seul cas testé (un dimanche) le rendait invisible. Les sept sont testés.
+    for (const iso of ["2027-06-07", "2027-06-08", "2027-06-09", "2027-06-10", "2027-06-11", "2027-06-12", "2027-06-13"]) {
+      const p2 = E.buildPlan(sp, { ...BASE, ...extra, ...ENV[1].a, level: "inter", race_date: iso });
+      const derniere = p2.weeks[p2.weeks.length - 1];
+      const apres = derniere.days.filter((d) => d.date && d.date > iso);
+      if (apres.length) ko("I18", `${sp}/course ${iso}`, `${apres.length} jour(s) au plan APRÈS l'objectif (${apres.map((d) => d.date).join(", ")})`);
+      const dernier = derniere.days[derniere.days.length - 1];
+      if (!dernier || !dernier.sessions.some(isRace))
+        ko("I18", `${sp}/course ${iso}`, `le dernier jour du plan (${dernier ? dernier.date : "—"}) n'est pas la course`);
+    }
   }
 
   // I13 — monotonie du niveau déclaré : plus l'athlète est fort, plus la charge est élevée
@@ -193,6 +207,7 @@ const NAMES = {
   I7:"durée comptabilisée", I8:"plafond de séances", I9:"enveloppe de volume",
   I10:"annoncé = réel", I11:"le nom colle à la dose", I12:"sortie longue ≤ 60 %", I14:"la sortie longue est la plus longue",
   I13:"monotonie du niveau", I15:"la course est au calendrier", I16:"veille de course allégée", I17:"jour J exclusif",
+  I18:"le plan s'arrête le jour J",
 };
 const G = {};
 for (const f of fails) (G[f.id] ||= []).push(f);

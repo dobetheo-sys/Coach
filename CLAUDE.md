@@ -56,10 +56,12 @@ dépôt — historique git si besoin.
   médical et les doses de 90 min de seuil que `auditPlan()` notait 100/100. **11e gate CI**,
   budget par check dans `scripts/runAuditV7.mjs` (0 = garde-fou définitif).
 - `npm run golden:capture` / `golden:verify` — **golden master** (spec R10) : photographie
-  578 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
-  blessures/âges/terrain/volumes) et détecte tout écart au bit près. `golden/hashes.json` est
-  versionné (empreintes) ; la photo complète (~46 Mo) reste locale et sert à LOCALISER le
-  champ qui a changé. Bloquant avant toute extraction mécanique.
+  756 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
+  blessures/âges/terrain/volumes + **passe « course datée »** : 6 sports × les 7 jours de
+  semaine possibles pour le jour J — sans elle, toute la branche ancrée sur une course était
+  hors couverture, et c'est ce trou qui a laissé vivre N2) et détecte tout écart au bit près.
+  `golden/hashes.json` est versionné (empreintes) ; la photo complète (~76 Mo) reste locale et
+  sert à LOCALISER le champ qui a changé. Bloquant avant toute extraction mécanique.
 - `npm run build:standalone` — recoud la **PWA** en UN fichier HTML autonome
   (`EnduraBuild-standalone.html`, ignoré par git) : 23 modules ES en `Blob` + `importmap`
   (instance unique par module, imports circulaires préservés), CSS et polices en `data:`.
@@ -296,3 +298,13 @@ en séance « 🏁 Course B/C » avec pacing, semaine allégée + récup ensuite
 **%FTP recalibré** sur les facteurs Coggan + « puissance NORMALISÉE » explicité partout ;
 `adjustTodayV2` applique les échanges ⇄ (héros Aujourd'hui = grille) ; **LICENSE** tous
 droits réservés + mention pied de page.
+
+**N2 livré** (registre externe, voir R10_DEFECTS.md « N2 ») : **le plan s'arrête le jour de la
+course**. La dernière semaine était la semaine CALENDAIRE de l'objectif — une course un
+mercredi laissait quatre jours de « Repos post-course », une course un lundi en laissait SIX
+(mesuré : 126 jours morts sur 42 plans). La grille ne bouge pas, elle est coupée au soir du
+jour J : la dernière semaine fait 1 à 7 jours, et sa cible de volume est proratisée à sa
+longueur réelle (elle promettait 3 h pour trois jours, et la boucle R3.3 gonflait les deux
+derniers jours avant la course pour « remplir »). Angle mort fermé au passage : **aucun** des
+714 profils du golden ne portait de date de course — passe « course datée » ajoutée
+(6 sports × 7 jours de semaine, **714 → 756**), garde permanent `I18` (72 échecs → 0).

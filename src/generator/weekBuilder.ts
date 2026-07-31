@@ -49,7 +49,25 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   const ctx: SessionCtx = { r };
   const mod = sportModule(sp as string); // registre R10 : ce que CE sport déclare
   const cycleLen = r.use10 ? 10 : 7;
-  const totalDays = r.weeks * 7;
+  // N2 — LE PLAN S'ARRÊTE LE JOUR DE LA COURSE.
+  //
+  // La dernière semaine était la semaine CALENDAIRE de la course : elle courait jusqu'au
+  // dimanche, quel que soit le jour J. Une course un mercredi laissait quatre jours après
+  // l'objectif, une course un lundi en laissait SIX — mesuré : 126 jours morts sur 42 plans
+  // (6 sports × 7 jours possibles), soit trois par plan en moyenne. Le générateur les
+  // remplissait de « Repos post-course », ce qui rendait le défaut invisible : le plan n'avait
+  // pas l'air cassé, il avait l'air de finir en roue libre. Or un plan qui continue après son
+  // objectif n'a plus d'objectif — c'est la préparation SUIVANTE, qui ne se décide pas ici.
+  // On ne déplace PAS la grille (l'ancrage au lundi tient les libellés de jours et le départ
+  // « cette semaine » de R8/R9) : on coupe la dernière semaine au soir de la course. Elle
+  // devient une semaine courte de 1 à 7 jours — c'est la vérité de l'affûtage, pas un défaut.
+  const raceTailDays = (() => {
+    if (!a.race_date || r.raceBeyondPlan) return 0;
+    const t = new Date(a.race_date + "T00:00:00Z").getTime();
+    if (!isFinite(t)) return 0;
+    return 6 - ((new Date(t).getUTCDay() + 6) % 7); // 0 = course un dimanche, 6 = un lundi
+  })();
+  const totalDays = r.weeks * 7 - raceTailDays;
   const days: GenDay[] = [];
   let cyc = 0, dic = cycleLen, sinceR = 0, sch: DaySlot[] = [], isR = false;
 

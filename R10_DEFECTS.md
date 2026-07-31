@@ -711,3 +711,44 @@ plafond d'un compétiteur.
   Un outil qui sous-annonce ce qu'il fait est aussi peu fiable qu'un outil qui sur-annonce.
 - **`STRAVA_RELAY_DEFAULT`** reste vide : c'est un déploiement humain (15 min, `server/README.md`),
   pas une dette de code.
+
+## N2 — le plan continuait après son objectif (31/07/2026)
+
+Le registre annonçait « quatre jours de repos après la course ». La mesure en a trouvé jusqu'à
+**six**, et 126 jours morts au total sur 42 plans (6 sports × les 7 jours possibles du jour J),
+soit trois par plan en moyenne.
+
+La cause : la dernière semaine était la semaine **calendaire** de la course. Elle courait
+jusqu'au dimanche quel que soit le jour J, et le générateur remplissait le reliquat de « Repos
+post-course ». C'est ce remplissage qui a fait vivre le défaut si longtemps : le plan n'avait
+pas l'air cassé, il avait l'air de finir en roue libre. Or un plan qui continue après son
+objectif n'a plus d'objectif — la suite, c'est la préparation SUIVANTE, et elle ne se décide
+pas ici.
+
+| jour de la course | jours de repos après l'objectif — avant | après |
+|---|---|---|
+| lundi | 6 | 0 |
+| mercredi | 4 | 0 |
+| samedi | 1 | 0 |
+| dimanche | 0 | 0 |
+
+**Correctif.** La grille ne bouge PAS (l'ancrage au lundi tient les libellés de jours et le
+départ « cette semaine » de R8/R9) : elle s'arrête au soir du jour J (`raceTailDays`,
+`buildDays`). La dernière semaine devient une semaine courte de 1 à 7 jours — c'est la vérité
+de l'affûtage, pas un défaut. Le filet de `planGenerator` reste : une garantie vérifiée au
+milieu du pipeline ne vérifie que l'avant-dernier état, la leçon a été payée sept fois dans
+cette série.
+
+**Ce que la coupe a révélé.** Le tail de repos masquait un second mensonge : la dernière semaine
+annonçait un volume de semaine ENTIÈRE. Trois jours de plan promettaient 3,0 h — et la boucle
+R3.3 gonflait les deux derniers jours avant le jour J pour « remplir ». La cible de la courbe
+est une dose hebdomadaire : elle est désormais proratisée à la longueur réelle de la semaine
+(0,9 h à deux jours · 1,3 h à trois · 2,1 h à cinq · 3,0 h à sept).
+
+**Et l'angle mort qui l'avait laissé passer.** Aucun des 714 profils du golden master ne portait
+de `race_date` : toute la branche ancrée sur une course — durée déduite de l'échéance, grille
+alignée sur le jour J, insertion de la course, fenêtre de la veille, affûtage — était hors
+couverture. La photo ne bougeait pas parce qu'elle ne regardait pas. Passe « course datée »
+ajoutée (6 sports × 7 jours de semaine, ancre et échéance figées pour rester déterministe) :
+**714 → 756 profils**. Garde permanent `I18` au banc d'invariants, sur les sept jours de la
+semaine parce que le jour de la semaine EST la variable du défaut : **72 échecs → 0**.

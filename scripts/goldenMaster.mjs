@@ -72,6 +72,25 @@ const trailExtras = () => ({
   train_dplus_access: "collines", treadmill: "non", poles: "a_decider", vam_known: "oui", vam: "850",
 });
 
+// Passe « course datée » : l'ancre et l'échéance sont FIXES, sinon la photo périmerait chaque
+// semaine (la durée du plan se déduit du nombre de semaines entre l'ancre et la course).
+// `plan_start` est dans le passé — c'est la condition pour que l'ancre ne suive pas le
+// calendrier ; la course reste dans l'horizon planifiable (< 80 semaines).
+const RACE_PASS_START = "2026-01-05"; // un lundi, dans le passé
+const RACE_PASS_DATES = ["2027-06-07", "2027-06-08", "2027-06-09", "2027-06-10", "2027-06-11", "2027-06-12", "2027-06-13"];
+const JOURS = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"];
+// Une date figée finit toujours par entrer dans le passé, et le moteur REFUSE une course
+// passée (contrat d'entrée B3). Plutôt qu'une panne obscure dans un an, on prévient huit
+// semaines avant, en disant quoi faire.
+{
+  const alerte = new Date(RACE_PASS_DATES[0] + "T00:00:00Z").getTime() - 56 * 864e5;
+  if (Date.now() > alerte) {
+    console.error("✖ La passe « course datée » du golden arrive à échéance (" + RACE_PASS_DATES[0] + ").");
+    console.error("  À faire : décaler RACE_PASS_DATES d'un an dans scripts/goldenMaster.mjs, puis `npm run golden:capture`.");
+    process.exit(2);
+  }
+}
+
 function* profiles() {
   for (const sport of Object.keys(FORMATS)) {
     for (const format of FORMATS[sport]) {
@@ -115,6 +134,24 @@ function* profiles() {
       const a = { ...base(), format, history: "confirme", level: "inter", intent: "competition",
         ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : {}), ...over };
       yield { key: ["G", sport, format || "-", label].join("/"), sport, a };
+    }
+  }
+  // ---- Passe « course datée » (N2) ----------------------------------------
+  // ANGLE MORT MESURÉ : aucun des 714 profils précédents ne portait de `race_date`. Toute la
+  // branche ancrée sur une course — durée déduite de l'échéance, grille alignée sur le jour J,
+  // insertion de la course, fenêtre d'allègement de la veille, affûtage — était donc HORS de
+  // la couverture du golden. C'est ce qui a permis à N2 (jusqu'à SIX jours de repos après
+  // l'objectif) de vivre sans qu'aucune photo ne bouge. Un filet troué là où le plan est le
+  // plus engageant pour l'athlète ne protège rien.
+  // Les 7 dates sont les 7 JOURS de la semaine : le jour J n'est pas toujours un dimanche, et
+  // c'est justement le jour de la course qui pilote la longueur de la dernière semaine.
+  for (const [sport, fmts] of Object.entries(FORMATS)) {
+    const format = fmts[fmts.length - 1];
+    for (let k = 0; k < RACE_PASS_DATES.length; k++) {
+      const a = { ...base(), format, history: "confirme", level: "inter", intent: "competition",
+        ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : {}),
+        plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[k] };
+      yield { key: ["J", sport, format || "-", JOURS[k]].join("/"), sport, a };
     }
   }
 }

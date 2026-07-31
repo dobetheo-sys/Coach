@@ -4464,7 +4464,25 @@ function buildDays(r              , refs      , hz         )           {
   const ctx             = { r };
   const mod = sportModule(sp          ); // registre R10 : ce que CE sport déclare
   const cycleLen = r.use10 ? 10 : 7;
-  const totalDays = r.weeks * 7;
+  // N2 — LE PLAN S'ARRÊTE LE JOUR DE LA COURSE.
+  //
+  // La dernière semaine était la semaine CALENDAIRE de la course : elle courait jusqu'au
+  // dimanche, quel que soit le jour J. Une course un mercredi laissait quatre jours après
+  // l'objectif, une course un lundi en laissait SIX — mesuré : 126 jours morts sur 42 plans
+  // (6 sports × 7 jours possibles), soit trois par plan en moyenne. Le générateur les
+  // remplissait de « Repos post-course », ce qui rendait le défaut invisible : le plan n'avait
+  // pas l'air cassé, il avait l'air de finir en roue libre. Or un plan qui continue après son
+  // objectif n'a plus d'objectif — c'est la préparation SUIVANTE, qui ne se décide pas ici.
+  // On ne déplace PAS la grille (l'ancrage au lundi tient les libellés de jours et le départ
+  // « cette semaine » de R8/R9) : on coupe la dernière semaine au soir de la course. Elle
+  // devient une semaine courte de 1 à 7 jours — c'est la vérité de l'affûtage, pas un défaut.
+  const raceTailDays = (() => {
+    if (!a.race_date || r.raceBeyondPlan) return 0;
+    const t = new Date(a.race_date + "T00:00:00Z").getTime();
+    if (!isFinite(t)) return 0;
+    return 6 - ((new Date(t).getUTCDay() + 6) % 7); // 0 = course un dimanche, 6 = un lundi
+  })();
+  const totalDays = r.weeks * 7 - raceTailDays;
   const days           = [];
   let cyc = 0, dic = cycleLen, sinceR = 0, sch            = [], isR = false;
 
@@ -6172,6 +6190,14 @@ function generatePlan(profile                , opts                             
     if (ph.id !== "taper" && !isRW && _prevChargeMin > 0) targetH = Math.min(targetH, (_prevChargeMin / 60) * C22_MAX_WEEKLY_GROWTH);
     if (isRW && _lastWeekMin > 0) targetH = Math.min(targetH, (_lastWeekMin / 60) * 0.95);
     if (ph.id === "taper" && _lastWeekMin > 0) targetH = Math.min(targetH, (_lastWeekMin / 60) * 0.98);
+    // N2 — UNE SEMAINE COURTE NE PROMET PAS UNE SEMAINE ENTIÈRE.
+    // La dernière semaine s'arrête au soir de la course : elle peut ne compter que 1 à 6
+    // jours. La cible de la courbe est une dose HEBDOMADAIRE — appliquée telle quelle à trois
+    // jours, elle annonçait 3 h là où le plan n'en tient que 2,3, et poussait la boucle R3.3
+    // à gonfler les deux derniers jours avant le jour J pour « remplir ». C'est exactement ce
+    // que le tail de repos masquait : le chiffre était faux avant la coupe aussi, la coupe l'a
+    // seulement rendu visible. On proratise à la longueur réelle de la semaine.
+    if (wd.length > 0 && wd.length < 7) targetH *= wd.length / 7;
     // R3.3 — ajuster le corps des séances à la cible (itératif)
     for (let it = 0; it < 5; it++) {
       renderWeek(wd);
@@ -6814,22 +6840,18 @@ function generatePlan(profile                , opts                             
     });
   }
 
-  // Dates alignées au calendrier réel → la course tombe à son VRAI jour dans la dernière
-  // semaine ; les jours datés APRÈS elle deviennent repos assumé (on prépare, on court,
-  // on récupère — jamais de séance orpheline après l'objectif). Volumes recalculés
-  // honnêtement, déclaré compris (jamais relevé).
+  // N2 — LE FILET : aucun jour APRÈS la course objectif ne survit dans le plan.
+  //
+  // La grille s'arrête désormais au soir du jour J (`buildDays`, `raceTailDays`) : ce bloc ne
+  // devrait plus rien trouver. Il reste parce que la leçon de cette série a été payée sept
+  // fois — une garantie vérifiée au MILIEU du pipeline ne vérifie que l'avant-dernier état.
+  // Toute passe future qui rallongerait la dernière semaine (une insertion, un rééquilibrage)
+  // se ferait rattraper ici plutôt que d'atterrir chez l'athlète.
   if (a.race_date) {
     const wk = wl[wl.length - 1];
-    let cut = false;
-    for (const d of wk.days            ) {
-      if (d.date && d.date > a.race_date && d.sessions.some((s) => s.d !== "rs")) {
-        d.charge = "off";
-        d.slot = "off";
-        d.sessions = [{ d: "rs", name: "Repos post-course", det: "récupération — marche, hydratation, fierté", steps: [] }];
-        cut = true;
-      }
-    }
-    if (cut) {
+    const before = (wk.days            ).length;
+    wk.days = (wk.days            ).filter((d) => !d.date || d.date <= a.race_date );
+    if ((wk.days            ).length !== before) {
       const vr = Math.round((weekMin(wk.days            ) / 60) * 10) / 10;
       wk.vol = vr;
       wk.vol_real = vr;
