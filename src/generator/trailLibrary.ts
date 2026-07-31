@@ -13,6 +13,7 @@
 import type { ReasonedPlan, V1Session, V1Step } from "../engine/types.ts";
 import { T5_HIKE_SHARE, T7_REHEARSAL, returnMinutes, type TrailCategory } from "../engine/trailModel.ts";
 import { intOf } from "./renderer.ts";
+import { medicalZone } from "../engine/medicalHold.ts";
 
 type Slot = "dur1" | "dur2" | "durLong" | "facileR" | "facile2" | "recup" | "off";
 
@@ -71,7 +72,8 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
   // « remontée en marche active »… — 1 740 récupérations non comptées, 35 % des séances de
   // trail). Un `recoveryMin` explicite passé par l'appelant a toujours priorité.
   const B = (o: Partial<V1Step> & { durationMin: number }): V1Step => {
-    const st = { role: "body", reps: 1, intensity: intOf(o.zone ?? null) as unknown as string, ...o } as V1Step;
+    const zone = medicalZone(o.zone, r.medHold) as string | null | undefined;
+    const st = { role: "body", reps: 1, ...o, zone, intensity: intOf(zone ?? null) as unknown as string } as V1Step;
     if ((st.reps || 1) > 1 && st.recoveryText && st.recoveryMin == null)
       st.recoveryMin = returnMinutes({ dplusM: st.dplusM, dmoinsM: st.dmoinsM });
     return st;

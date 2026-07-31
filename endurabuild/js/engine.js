@@ -202,6 +202,63 @@ function traceDump()                                           {
   return { label: LABEL, entries: ENTRIES.slice() };
 }
 
+// ===== src/engine/medicalHold.ts =====
+/**
+ * DRAPEAU MÉDICAL — LE POINT UNIQUE OÙ UNE SÉANCE ACQUIERT SON INTENSITÉ.
+ *
+ * R4.0 avait fermé le contournement. Il s'est rouvert DEUX FOIS : une fois par le module trail
+ * (R7, nouvelles zones `tr.*` que la vérification locale ne connaissait pas), une fois par
+ * l'insertion de course (N1, qui écrivait `.thr` sans passer par la bibliothèque). Un garde qui
+ * se rouvre à chaque nouveau producteur de séances n'est pas un garde : c'est une vérification
+ * locale que le producteur suivant oubliera.
+ *
+ * La règle est donc portée par le MOTEUR, à l'endroit où une zone est écrite, et par un filet
+ * final qui rattrape tout écrivain futur (`enforceMedicalHold`). Les deux ensemble : la porte
+ * pour que ce soit gratuit, le filet pour que ce soit vrai.
+ *
+ * Sous drapeau, aucune séance d'aucun plan ne porte de zone au-dessus de l'ENDURANCE — courses,
+ * tests et retests compris. Un plan de maintien n'inscrit pas de course : la règle appartient
+ * au moteur, pas à l'appelant.
+ */
+                                                 
+
+/** Zones d'ENDURANCE, les seules autorisées sous drapeau médical. Tout le reste est au-dessus. */
+const EASY_ZONES = new Set([
+  "rn.easy", "rn.rec", "bk.z2", "sw.easy", "sw.aero",
+  "tr.flat", "tr.hike", "tr.easyup",
+]);
+/** Repli par discipline — la zone facile de la discipline du bloc. */
+const EASY_BY_PREFIX                         = { rn: "rn.easy", bk: "bk.z2", sw: "sw.easy", tr: "tr.easyup" };
+
+function isEasyZone(zone                           )          {
+  return !zone || EASY_ZONES.has(zone);
+}
+
+/** LA PORTE : toute zone écrite sous drapeau médical redescend à l'endurance de sa discipline. */
+function medicalZone(zone                           , medHold         )                            {
+  if (!medHold || isEasyZone(zone)) return zone;
+  const pfx = String(zone).split(".")[0];
+  return EASY_BY_PREFIX[pfx] || "rn.easy";
+}
+
+/**
+ * LE FILET : appelé au point de convergence, il rattrape toute zone écrite hors de la porte —
+ * une passe tardive, un module futur, une séance construite à la main. C'est lui qui rend la
+ * garantie non-réouvrable : le prochain producteur n'a pas besoin de connaître la règle.
+ */
+function enforceMedicalHold(plan        , medHold         )         {
+  if (!medHold) return 0;
+  let fixed = 0;
+  for (const w of plan.weeks)
+    for (const d of w.days)
+      for (const s of d.sessions)
+        for (const st of (s.steps || [])            ) {
+          const next = medicalZone(st.zone, true);
+          if (next !== st.zone) { st.zone = next          ; fixed++; }
+        }
+  return fixed;
+}
+
 // ===== src/engine/measured.ts =====
 /**
  * `measured` — L'INSTANTANÉ DE CE QUE L'ATHLÈTE A RÉELLEMENT FAIT (décisions produit R6, §2-§3).
@@ -3418,6 +3475,7 @@ function auditPlan(plan        , opts            = {})            {
                                                                           
 
 
+
 // Import des modules de sport pour leur EFFET DE BORD (enregistrement dans le registre).
 // Un seul endroit dans le projet connaît la liste des sports : celui-ci.
 
@@ -3466,10 +3524,14 @@ function buildSessions(ctx            , slot      , phase        , prog        ,
     if (Array.isArray(rec)) return { recoveryText: rec[1], recoveryMin: rec[0] };
     return { recoveryText: rec, recoveryMin: recoveryMinutes(rec) ?? 0 };
   };
-  const B = (reps        , dur        , zone               , rec      , sfx         )         =>
-    ({ role: "body", reps, durationMin: dur, zone, intensity: intOf(zone)                     , ...recFields(rec), suffix: sfx || "", prefix: "" })          ;
-  const Bd = (reps        , dist        , zone               , rec      , sfx         , unitKm          , disc         )         =>
-    ({ role: "body", reps, distanceM: Math.round(dist / 25) * 25, unitKm: !!unitKm, zone, intensity: intOf(zone)                     , ...recFields(rec), suffix: sfx || "", prefix: "", d: disc })          ;
+  const B = (reps        , dur        , zoneIn               , rec      , sfx         )         => {
+    const zone = medicalZone(zoneIn, r.medHold)                 ;
+    return ({ role: "body", reps, durationMin: dur, zone, intensity: intOf(zone)                     , ...recFields(rec), suffix: sfx || "", prefix: "" })          ;
+  };
+  const Bd = (reps        , dist        , zoneIn               , rec      , sfx         , unitKm          , disc         )         => {
+    const zone = medicalZone(zoneIn, r.medHold)                 ;
+    return ({ role: "body", reps, distanceM: Math.round(dist / 25) * 25, unitKm: !!unitKm, zone, intensity: intOf(zone)                     , ...recFields(rec), suffix: sfx || "", prefix: "", d: disc })          ;
+  };
   // Glossaire des éducatifs nage — accessible aux branches swim ET tri : nommer un
   // éducatif ne suffit pas, il faut dire comment le faire (manifeste : jamais muette).
   const swimDrillGlossary = "rattrapé (le bras devant reste tendu jusqu'au contact des mains avant de repartir : corrige le timing), poings fermés (main fermée : force l'appui par l'avant-bras), battements planche (jambes seules, planche tenue devant : isole et muscle le battement)";
@@ -3501,6 +3563,7 @@ function buildSessions(ctx            , slot      , phase        , prog        ,
  * (renderer.ts) : VAM en montée, consigne technique en descente, allure seulement à plat.
  */
                                                                           
+
 
 
 /** Progression EXPLICITE de la séance de côtes (spec §5.4) — corrige les 6 séances figées
@@ -3558,7 +3621,8 @@ function buildTrailSessions(r              , slot      , phase        , prog    
   // « remontée en marche active »… — 1 740 récupérations non comptées, 35 % des séances de
   // trail). Un `recoveryMin` explicite passé par l'appelant a toujours priorité.
   const B = (o                                           )         => {
-    const st = { role: "body", reps: 1, intensity: intOf(o.zone ?? null)                     , ...o }          ;
+    const zone = medicalZone(o.zone, r.medHold)                             ;
+    const st = { role: "body", reps: 1, ...o, zone, intensity: intOf(zone ?? null)                      }          ;
     if ((st.reps || 1) > 1 && st.recoveryText && st.recoveryMin == null)
       st.recoveryMin = returnMinutes({ dplusM: st.dplusM, dmoinsM: st.dmoinsM });
     return st;
@@ -5165,6 +5229,7 @@ function applyPolarizationGuard(r              , days          , ctx            
 
 
 
+
 /**
  * Une zone de QUALITÉ — source unique. Le prédicat vivait en local dans `scaleBlock` (V2.2 :
  * un bloc de qualité ne grandit pas tout seul) ; C13d en a besoin aussi, et deux copies d'une
@@ -5195,8 +5260,13 @@ function reconcileDeclaredVolume(
   /** Rendu : nécessaire pour que le texte d'une séance RÉDUITE ne mente pas sur sa durée. */
   render                         ,
   /** Contexte des règles de SÉANCE tenues ici : la fenêtre piscine dépend du niveau. */
-  ctx                                               ,
+  ctx                                                                  ,
 )       {
+  // 3a — LE FILET DU DRAPEAU MÉDICAL, en tout premier et en tout dernier ressort. La PORTE est
+  // dans les builders (`medicalZone`) ; ce filet rattrape ce qui a été écrit hors d'elle — une
+  // passe tardive, un module futur, une séance construite à la main. Il est ici pour que le
+  // prochain producteur de séances n'ait pas besoin de connaître la règle pour la respecter.
+  enforceMedicalHold(plan, !!ctx?.medHold);
   // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
   // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
   // règle, mais elle porte sur la réduction vs le PIC, pas sur l'écart à sa propre courbe.
@@ -5676,6 +5746,10 @@ function reconcileDeclaredVolume(
       }
     }
   }
+
+  // …et une dernière fois APRÈS toutes les passes de ce point de convergence : elles peuvent
+  // recomposer une séance (déclassement C13d, remplacement de course, greffe).
+  enforceMedicalHold(plan, !!ctx?.medHold);
 
   if (forcedWeeks > 0)
     warnings.push("Sur " + forcedWeeks + " semaine(s) de charge, la structure minimale de ce plan (une séance digne de ce nom ne descend pas sous 30 min, une sortie longue encore moins) dépasse le volume hebdomadaire que tu as déclaré. Le chiffre annoncé a été aligné sur ce qui t'est réellement prescrit — mieux vaut une courbe honnête qu'une promesse que le plan ne tient pas. Deux remèdes, à toi de choisir : relever le volume dont tu disposes, ou viser un objectif plus court.");
@@ -6839,7 +6913,7 @@ function generatePlan(profile                , opts                             
   }
 
   const plan         = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport          , "swimSessionFloors"), beginner: r.beginner });
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport          , "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold });
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation
@@ -7170,7 +7244,7 @@ function generateAudited(profile                , auditOpts                     
   // R5.3 — la courbe ANNONCÉE se réconcilie avec le prescrit une fois les réparations passées :
   // `reduceDay` et `applyTargetedRepairs` changent encore des durées, et un écart figé avant
   // elles ment à l'athlète dès la première réparation (même leçon que R5.1).
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), beginner: reasoned.beginner });
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.

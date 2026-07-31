@@ -155,6 +155,23 @@ export function loadV1(htmlPath?: string): V1Engine {
   }
 
   domStub();
+
+  // O7 — LE HARNAIS DOIT REPRODUIRE LE NAVIGATEUR, SINON IL AUDITE AUTRE CHOSE.
+  //
+  // Il n'extrayait que le PREMIER bloc `<script>`. Le bundle du moteur V2 est injecté plus bas
+  // dans le fichier, entre ses marqueurs : `globalThis.EBV2` n'existait donc pas au moment de
+  // l'eval, et le wrapper `buildPlan` (qui teste sa présence) retombait sur le générateur
+  // legacy — celui que `check:app` rend inatteignable en production. `audit:v1` mesurait donc
+  // fidèlement un chemin mort, et ses 486 combinaisons ne disaient rien du produit.
+  // On charge le bundle AVANT la page, exactement comme le navigateur.
+  const bi = html.indexOf("/*__EBV2_START__*/");
+  const bj = html.indexOf("/*__EBV2_END__*/");
+  if (bi >= 0 && bj > bi) (0, eval)(html.slice(bi, bj + "/*__EBV2_END__*/".length));
+  // Et le repli ne peut plus redevenir silencieux : un harnais qui audite le mauvais moteur
+  // rend 486 combinaisons vertes qui ne parlent de rien. S'il n'y a pas de bundle, on le DIT.
+  if (bi >= 0 && !(globalThis as Record<string, unknown>).EBV2)
+    throw new Error("bundle EBV2 présent dans le HTML mais non chargé — le harnais auditerait le générateur de repli");
+
   // Export explicite dans la chaîne évaluée : const/let top-level restent
   // dans le scope de l'eval, ils ne s'attachent jamais à globalThis.
   const exported = code + "\nglobalThis.__V1 = { S, SPORTS, buildPlan, evalRules };\n";

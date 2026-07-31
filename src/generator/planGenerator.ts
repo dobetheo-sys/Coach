@@ -23,6 +23,7 @@ import { buildDays, type GenDay } from "./weekBuilder.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { arbitrateVolRecent } from "../engine/measured.ts";
 import { record as traceRecord, traceEnabled } from "../engine/trace.ts";
+import { enforceMedicalHold } from "../engine/medicalHold.ts";
 
 interface BoundedSession extends V1Session {
   social?: boolean;
@@ -58,8 +59,13 @@ export function reconcileDeclaredVolume(
   /** Rendu : nécessaire pour que le texte d'une séance RÉDUITE ne mente pas sur sa durée. */
   render?: (s: V1Session) => void,
   /** Contexte des règles de SÉANCE tenues ici : la fenêtre piscine dépend du niveau. */
-  ctx?: { swimFloors?: boolean; beginner?: boolean },
+  ctx?: { swimFloors?: boolean; beginner?: boolean; medHold?: boolean },
 ): void {
+  // 3a — LE FILET DU DRAPEAU MÉDICAL, en tout premier et en tout dernier ressort. La PORTE est
+  // dans les builders (`medicalZone`) ; ce filet rattrape ce qui a été écrit hors d'elle — une
+  // passe tardive, un module futur, une séance construite à la main. Il est ici pour que le
+  // prochain producteur de séances n'ait pas besoin de connaître la règle pour la respecter.
+  enforceMedicalHold(plan, !!ctx?.medHold);
   // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
   // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
   // règle, mais elle porte sur la réduction vs le PIC, pas sur l'écart à sa propre courbe.
@@ -539,6 +545,10 @@ export function reconcileDeclaredVolume(
       }
     }
   }
+
+  // …et une dernière fois APRÈS toutes les passes de ce point de convergence : elles peuvent
+  // recomposer une séance (déclassement C13d, remplacement de course, greffe).
+  enforceMedicalHold(plan, !!ctx?.medHold);
 
   if (forcedWeeks > 0)
     warnings.push("Sur " + forcedWeeks + " semaine(s) de charge, la structure minimale de ce plan (une séance digne de ce nom ne descend pas sous 30 min, une sortie longue encore moins) dépasse le volume hebdomadaire que tu as déclaré. Le chiffre annoncé a été aligné sur ce qui t'est réellement prescrit — mieux vaut une courbe honnête qu'une promesse que le plan ne tient pas. Deux remèdes, à toi de choisir : relever le volume dont tu disposes, ou viser un objectif plus court.");
@@ -1702,7 +1712,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   }
 
   const plan: V1Plan = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport as string, "swimSessionFloors"), beginner: r.beginner });
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport as string, "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold });
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation

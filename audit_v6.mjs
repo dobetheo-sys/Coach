@@ -118,11 +118,25 @@ const test = (id, titre, expect, fn) => TESTS.push({ id, titre, expect, fn });
 
 // ── A. Sécurité ──────────────────────────────────────────────────────
 
-test("A1", "Drapeau médical → aucune intensité générée", "pass", () => {
-  const p = build("run", { med_pain: "oui", format: "10k" });
-  const hard = sessionsOf(p).filter(({ s }) =>
-    (s.steps || []).some((st) => st.role === "body" && /\.(vo2|thr|css|speed)$/.test(st.zone || "")));
-  return { ok: hard.length === 0, detail: `${hard.length} séance(s) intense(s) malgré med_pain=oui` };
+// 3a — LE GARDE PORTE SUR TOUS LES SPORTS, TOUS LES DRAPEAUX, ET TOUTES LES ZONES.
+// Il s'est rouvert deux fois parce qu'il ne regardait qu'un sport et quatre suffixes : le trail
+// a apporté ses zones `tr.*`, l'insertion de course a écrit un `.thr` hors bibliothèque. On
+// n'énumère plus ce qui est interdit — on énumère ce qui est PERMIS (l'endurance), et tout le
+// reste est une violation. Un garde qui liste les interdits rate le prochain producteur.
+test("A1", "Drapeau médical → aucune zone au-dessus de l'endurance, 6 sports, 3 drapeaux", "pass", () => {
+  const EASY = new Set(["rn.easy", "rn.rec", "bk.z2", "sw.easy", "sw.aero", "tr.flat", "tr.hike", "tr.easyup"]);
+  const bad = [];
+  for (const flag of ["med_pain", "med_dizzy", "med_treat"])
+    for (const sport of Object.keys(FORMATS))
+      for (const format of FORMATS[sport]) {
+        const p = build(sport, { [flag]: "oui", format, race_date: isoIn(400), races: "oui", race1_date: isoIn(120), race1_prio: "A" });
+        sessionsOf(p).forEach(({ s, w }) => (s.steps || []).forEach((st) => {
+          if (st.role !== "body") return;
+          const z = st.zone || "";
+          if (z && !EASY.has(z)) bad.push(`${flag}/${sport}/${format} S${w.num} « ${s.name} » ${z}`);
+        }));
+      }
+  return { ok: bad.length === 0, detail: `${bad.length} zone(s) interdite(s) : ${bad.slice(0, 3).join(" ; ")}` };
 });
 
 test("A2", "Douleur localisée → la discipline à risque est retirée", "pass", () => {

@@ -20,6 +20,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ORDER = [
   "src/engine/types.ts",
   "src/engine/trace.ts",
+  "src/engine/medicalHold.ts",
   "src/engine/measured.ts",
   "src/engine/answerSchema.ts",
   "src/engine/cycleModel.ts",

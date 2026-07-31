@@ -6,6 +6,7 @@
  */
 import type { ReasonedPlan, V1Session, V1Step } from "../engine/types.ts";
 import { intOf, recoveryMinutes } from "./renderer.ts";
+import { medicalZone } from "../engine/medicalHold.ts";
 import { sportModule, type Rec, type SessionKit } from "../sports/registry.ts";
 // Import des modules de sport pour leur EFFET DE BORD (enregistrement dans le registre).
 // Un seul endroit dans le projet connaît la liste des sports : celui-ci.
@@ -62,10 +63,14 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
     if (Array.isArray(rec)) return { recoveryText: rec[1], recoveryMin: rec[0] };
     return { recoveryText: rec, recoveryMin: recoveryMinutes(rec) ?? 0 };
   };
-  const B = (reps: number, dur: number, zone: string | null, rec?: Rec, sfx?: string): V1Step =>
-    ({ role: "body", reps, durationMin: dur, zone, intensity: intOf(zone) as unknown as string, ...recFields(rec), suffix: sfx || "", prefix: "" }) as V1Step;
-  const Bd = (reps: number, dist: number, zone: string | null, rec?: Rec, sfx?: string, unitKm?: boolean, disc?: string): V1Step =>
-    ({ role: "body", reps, distanceM: Math.round(dist / 25) * 25, unitKm: !!unitKm, zone, intensity: intOf(zone) as unknown as string, ...recFields(rec), suffix: sfx || "", prefix: "", d: disc }) as V1Step;
+  const B = (reps: number, dur: number, zoneIn: string | null, rec?: Rec, sfx?: string): V1Step => {
+    const zone = medicalZone(zoneIn, r.medHold) as string | null;
+    return ({ role: "body", reps, durationMin: dur, zone, intensity: intOf(zone) as unknown as string, ...recFields(rec), suffix: sfx || "", prefix: "" }) as V1Step;
+  };
+  const Bd = (reps: number, dist: number, zoneIn: string | null, rec?: Rec, sfx?: string, unitKm?: boolean, disc?: string): V1Step => {
+    const zone = medicalZone(zoneIn, r.medHold) as string | null;
+    return ({ role: "body", reps, distanceM: Math.round(dist / 25) * 25, unitKm: !!unitKm, zone, intensity: intOf(zone) as unknown as string, ...recFields(rec), suffix: sfx || "", prefix: "", d: disc }) as V1Step;
+  };
   // Glossaire des éducatifs nage — accessible aux branches swim ET tri : nommer un
   // éducatif ne suffit pas, il faut dire comment le faire (manifeste : jamais muette).
   const swimDrillGlossary = "rattrapé (le bras devant reste tendu jusqu'au contact des mains avant de repartir : corrige le timing), poings fermés (main fermée : force l'appui par l'avant-bras), battements planche (jambes seules, planche tenue devant : isole et muscle le battement)";
