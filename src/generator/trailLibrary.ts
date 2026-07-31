@@ -106,7 +106,11 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
       steps: [
         B({ durationMin: durMin - (hikeMin ? Math.round(hikeMin / 2) : 0), gradient: "rolling", zone: "tr.flat", dplusM: up, dmoinsM: down,
           mode: hikeMin ? "run_hike" : "run", poles: poles && hikeMin > 0, surface: technicalOk ? "sentier" : "piste",
-          bnd: { floor: 60, cap: r.trailLongCapMin || 240 } } as Partial<V1Step> as V1Step),
+          // C23 — le plafond débutant (3 h) vaut AUSSI en trail : la longue trail n'avait
+          // jamais porté ce clamp — le re-remplissage R13.5 l'a prouvé en la gonflant à sa
+          // borne (10-13 sorties > 3 h par plan débutant, audit:v2). `hard` : la sonde de
+          // capacité n'élargit jamais un plafond du manifeste.
+          bnd: { floor: 60, cap: r.beginner ? Math.min(180, r.trailLongCapMin || 240) : (r.trailLongCapMin || 240), hard: r.beginner } } as Partial<V1Step> as V1Step),
       ],
       ...({ plainBody: true } as object),
     } as V1Session);

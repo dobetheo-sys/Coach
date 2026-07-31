@@ -20,6 +20,8 @@ import { renderSess, type Refs } from "./renderer.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS, syncReturnRecovery } from "../engine/trailModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
+import { buildSessions } from "./sessionLibrary.ts";
+import { predictRace } from "../engine/predictor.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { arbitrateVolRecent } from "../engine/measured.ts";
 import { record as traceRecord, traceEnabled } from "../engine/trace.ts";
@@ -58,8 +60,10 @@ export function reconcileDeclaredVolume(
   plan: V1Plan, warnings: string[],
   /** Rendu : nécessaire pour que le texte d'une séance RÉDUITE ne mente pas sur sa durée. */
   render?: (s: V1Session) => void,
-  /** Contexte des règles de SÉANCE tenues ici : la fenêtre piscine dépend du niveau. */
-  ctx?: { swimFloors?: boolean; beginner?: boolean; medHold?: boolean },
+  /** Contexte des règles de SÉANCE tenues ici : la fenêtre piscine dépend du niveau.
+   *  `keepTaperSwim` (R13.3) : le sport déclare que l'affûtage garde une nage par semaine —
+   *  les coupes de fréquence l'évitent tant qu'une autre victime existe. */
+  ctx?: { swimFloors?: boolean; beginner?: boolean; medHold?: boolean; keepTaperSwim?: boolean; mainDiscipline?: string; disciplines?: string[] },
 ): void {
   // 3a — LE FILET DU DRAPEAU MÉDICAL, en tout premier et en tout dernier ressort. La PORTE est
   // dans les builders (`medicalZone`) ; ce filet rattrape ce qui a été écrit hors d'elle — une
@@ -156,15 +160,29 @@ export function reconcileDeclaredVolume(
   // serrées (`floor = 0,9 × durée`) et où tout le volume vit dans le nombre de répétitions :
   // la passe tournait, ne pouvait rien réduire, et laissait passer des sauts de +25 % une fois
   // la charge mesurée honnêtement (R3-final).
-  {
+  //
+  // ANX-C22 (R13) — ET ELLE SE RÉPÈTE JUSQU'AU POINT FIXE, EN TOUT DERNIER. Un seul passage ne
+  // suffit pas : les passes POSTÉRIEURES de ce même point de convergence (remontée du plancher
+  // piscine, regonflement de la semaine de course, planchers de séance) regonflaient encore —
+  // mesuré : S22→S23 +12 % sur le Full de référence, malgré la « garantie finale ». Même leçon
+  // que R5.1/R5.3, un cran plus loin : la fonction est rappelée en fin de réconciliation,
+  // itérée ≤ 3 fois (réduire N décale le plafond de N+1 — le point fixe se gagne, il ne se
+  // décrète pas).
+  const enforceC22Final = (): boolean => {
+    let touchedAny = false;
     let prevCharge = 0;
     for (const wk of plan.weeks) {
       if (wk.isRecup || wk.phase.id === "taper") continue;
       const cur = weekMinOf(wk);
+      // ANX-C22 — la cible vise 3 min SOUS le plafond, pas le plafond : les durées sont des
+      // minutes ENTIÈRES et les distances des multiples de 25 m — une réduction de 0,5 min
+      // s'arrondit à zéro, la boucle cassait (« rien à prendre ») et le saut restait à +10,6 %
+      // pour un plafond à +10,5. Le quantum d'arrondi a besoin de marge pour exister.
       if (prevCharge > 0 && cur > prevCharge * C22_MAX_WEEKLY_GROWTH + 1) {
+        touchedAny = true;
         for (let g = 0; g < 4 && weekMinOf(wk) > prevCharge * C22_MAX_WEEKLY_GROWTH + 1; g++) {
           const before = weekMinOf(wk);
-          const f = (prevCharge * C22_MAX_WEEKLY_GROWTH) / before;
+          const f = Math.max(0, prevCharge * C22_MAX_WEEKLY_GROWTH - 3) / before;
           for (const d of wk.days) for (const sx of d.sessions) {
             if (sx.d === "rs" || !sx.steps) continue;
             let touched = false;
@@ -187,7 +205,9 @@ export function reconcileDeclaredVolume(
       }
       prevCharge = weekMinOf(wk);
     }
-  }
+    return touchedAny;
+  };
+  enforceC22Final();
 
   // A2 / I1 — LA PÉRIODISATION NE S'INVERSE PAS : aucune semaine hors pic ne dépasse la
   // meilleure semaine de pic. Une phase de développement plus lourde que la phase de pic n'est
@@ -368,10 +388,72 @@ export function reconcileDeclaredVolume(
       for (let g = 0; g < 4 && weekMinOf(wk) > cap; g++) {
         const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
         if (active.length <= 1) break;
-        const victim = active.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
+        // R13.3 — la nage d'affûtage (souvent la séance la plus courte, donc la victime
+        // désignée de toutes les coupes) est ÉVITÉE tant qu'une autre victime existe : les
+        // sensations d'eau se perdent en 10-14 jours et la course commence dans l'eau.
+        // Orienter, jamais interdire : si c'est la seule coupe possible, elle a lieu (R3.13
+        // est une règle de sécurité, la couverture une règle de complétude).
+        const soleSwim = (d: V1Day) => d.sessions.some((s) => s.d === "sw")
+          && !wk.days.some((o) => o !== d && o.sessions.some((s) => s.d === "sw"));
+        let spared = ctx?.keepTaperSwim ? active.filter((d) => !soleSwim(d)) : active;
+        // R13 — même orientation que toutes les autres coupes : le seul jour qui porte la
+        // DISCIPLINE PRINCIPALE est épargné tant qu'une autre victime existe. Sans ça, la 2e
+        // semaine d'affûtage d'un duathlon sortait 100 % vélo (D-DISC, banc v7) — un duathlon
+        // commence et finit à pied.
+        for (const md of (ctx?.disciplines || (ctx?.mainDiscipline ? [ctx.mainDiscipline] : []))) {
+          const covers = (d: V1Day) => d.sessions.some((s) => s.d === md || (s.d === "br" && (s.steps || []).some((b) => b.leg === (md === "rn" ? "run" : "bike"))));
+          const sole = (d: V1Day) => covers(d) && !wk.days.some((o) => o !== d && covers(o));
+          const spared2 = spared.filter((d) => !sole(d));
+          if (spared2.length) spared = spared2;
+        }
+        const cand = spared.length ? spared : active;
+        const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
         victim.charge = "off";
         victim.slot = "off";
         victim.sessions = [{ d: "rs", name: "OFF (affûtage)", det: "repos — la dernière semaine pèse au plus 60 % du pic : c'est ce qui te met frais sur la ligne", steps: [], min: 0 }];
+      }
+    }
+  }
+
+  // R13.6 — LA SEMAINE DE COURSE A UN PLANCHER : 30 % DU PIC LIVRÉ (hors jour J).
+  // La borne HAUTE existait (R3.13 : ≤ 60 %), la basse non — mesuré : 14 % du pic sur le Full,
+  // l'athlète passait la semaine de course quasi à l'arrêt. Bosquet 2007 : l'affûtage optimal
+  // réduit de 40-60 %, il ne coupe pas le moteur — sous ~30 %, les sensations partent avec la
+  // fatigue. On regonfle les corps de séance simples (jamais le déverrouillage de la veille,
+  // jamais la course, jamais les blocs répétés dont la dose est un choix) ; la décroissance
+  // R5.3 juge le résultat juste après, et la fenêtre 30-60 % tient des deux côtés.
+  {
+    const last = plan.weeks[plan.weeks.length - 1];
+    const isRaceWeek = last && (plan.races || []).some((rc) => last.days.some((d) => d.date === rc.date && d.sessions.some((s) => s.race)));
+    if (isRaceWeek) {
+      const peakDeliv = Math.max(0, ...plan.weeks.filter((w) => w.phase.id === "peak").map(weekMinOf));
+      const hors = () => last.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.race ? 0 : s.min || 0), 0), 0);
+      if (peakDeliv > 0 && hors() < peakDeliv * 0.30) {
+        for (let g = 0; g < 3 && hors() < peakDeliv * 0.30; g++) {
+          const f = Math.min(2, (peakDeliv * 0.32) / Math.max(1, hors()));
+          if (f <= 1.02) break;
+          let touched = false;
+          for (const d of last.days)
+            for (const sx of d.sessions) {
+              // Jamais la LONGUE ni le brick : regonfler la sortie longue en semaine de course
+              // contredirait l'affûtage — et sans bornes de bloc, elle repassait au-dessus de
+              // C23 (sortie CAP débutant > 3 h, régression D7 du banc v6).
+              if (sx.race || sx.d === "rs" || !sx.steps || sx.long || sx.brick || /Déverrouillage/.test(sx.name)) continue;
+              for (const st of sx.steps) {
+                if (st.role !== "body" || (st.reps || 1) > 1) continue;
+                // Le complément de volume est de l'ENDURANCE : regonfler un bloc de qualité
+                // pour tenir un plancher fabriquait « Seuil course 1×124 min » en semaine de
+                // course (U-DOSE, banc v7) — une dose que personne ne prescrit, encore moins à
+                // J-5. Les blocs durs gardent leur dose, seuls les blocs faciles portent le
+                // plancher.
+                if (st.zone && IS_QUALITY_ZONE(String(st.zone))) continue;
+                if (st.durationMin) { st.durationMin = Math.round(st.durationMin * f); touched = true; }
+                else if (st.distanceM) { st.distanceM = Math.round((st.distanceM * f) / 25) * 25; touched = true; }
+              }
+              if (render) render(sx);
+            }
+          if (!touched) break;
+        }
       }
     }
   }
@@ -400,7 +482,32 @@ export function reconcileDeclaredVolume(
           }
           break;
         }
-        const cand = active.filter((d) => !d.sessions.some((s) => s.long || s.brick));
+        let cand = active.filter((d) => !d.sessions.some((s) => s.long || s.brick));
+        // R13 — même orientation que partout : ne pas orpheliner une discipline du sport.
+        // Et si TOUTE victime en orphelinerait une (2 jours actifs, 2 disciplines), on ne
+        // retire plus : on RÉDUIT — la décroissance est servie, la spécificité aussi.
+        let orphanOnly = false;
+        for (const md of (ctx?.disciplines || [])) {
+          const covers = (d: V1Day) => d.sessions.some((s) => s.d === md || (s.d === "br" && (s.steps || []).some((b) => b.leg === (md === "rn" ? "run" : "bike"))));
+          const sole = (d: V1Day) => covers(d) && !wk.days.some((o) => o !== d && covers(o));
+          const cand2 = cand.filter((d) => !sole(d));
+          if (cand2.length) cand = cand2;
+          else if (cand.some(sole)) orphanOnly = true;
+        }
+        if (orphanOnly && prev > 0) {
+          const f = Math.max(0.5, (prev * 0.95) / weekMinOf(wk));
+          for (const d of wk.days) for (const sx of d.sessions) {
+            if (sx.d === "rs" || sx.race || !sx.steps) continue;
+            for (const st of sx.steps) {
+              if (st.role !== "body") continue;
+              if ((st.reps || 1) > 1) st.reps = Math.max(1, Math.floor((st.reps || 1) * f));
+              else if (st.durationMin) st.durationMin = Math.max(5, Math.round(st.durationMin * f));
+              else if (st.distanceM) st.distanceM = Math.max(150, Math.round((st.distanceM * f) / 25) * 25);
+            }
+            if (render) render(sx);
+          }
+          continue;
+        }
         const victim = (cand.length ? cand : active).reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
         victim.charge = "off";
         victim.slot = "off";
@@ -654,6 +761,11 @@ export function reconcileDeclaredVolume(
   // mesuré : il modifie encore 44 des 594 combinaisons de `audit:v2` (des semaines où une passe
   // hebdomadaire avait raboté la sortie longue après coup), et l'audit reste vert avec lui.
   enforceLabelVsDose();
+  // ANX-C22 — LE POINT FIXE, EN TOUT DERNIER (définition plus haut). Placé un cran trop tôt,
+  // le 2e passage du plafond de libellé pouvait encore réduire une semaine N et recréer le
+  // saut N→N+1 qu'on venait de fermer (mesuré : 3 sauts à +11 % survivaient). Rien ne réduit
+  // ni ne gonfle après cette ligne.
+  for (let p = 0; p < 3 && enforceC22Final(); p++);
 
   if (forcedWeeks > 0)
     warnings.push("Sur " + forcedWeeks + " semaine(s) de charge, la structure minimale de ce plan (une séance digne de ce nom ne descend pas sous 30 min, une sortie longue encore moins) dépasse le volume hebdomadaire que tu as déclaré. Le chiffre annoncé a été aligné sur ce qui t'est réellement prescrit — mieux vaut une courbe honnête qu'une promesse que le plan ne tient pas. Deux remèdes, à toi de choisir : relever le volume dont tu disposes, ou viser un objectif plus court.");
@@ -886,11 +998,40 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       }
       clampWeekBody(clone);
       renderWeek(clone);
-      const capacityH = weekMin(clone) / 60;
+      let capacityH = weekMin(clone) / 60;
+      // R13.5 — LA SONDE MESURE AUSSI LE CHEMIN, PAS SEULEMENT LE SOMMET. Elle sondait la
+      // semaine de PIC seule : avec une épaule déclarée, les séances de substitution des
+      // phases base/dev/spec plafonnent ~40 % plus bas que celles du pic, et la progression
+      // est bornée à +10 %/semaine (C22). Un pic à 2,9 h qu'aucune semaine précédente ne peut
+      // amener reste sur le papier : le moteur visait des cibles inatteignables, les passes
+      // de convergence (dev ≤ pic, lissage) broyaient le plan vers les planchers — mesuré :
+      // 20 semaines PLATES à 0,8 h/sem pendant que la promesse affichait 2,9 h. La promesse
+      // devient min(capacité du pic, capacité de la spécifique × 1,15) : un pic ne dépasse
+      // que légèrement ce que la semaine qui y mène sait porter.
+      {
+        const chargeSpecWeeks = [...new Set(days.filter((d) => d.phaseId === "spec").map((d) => d.week))]
+          .filter((wn) => days.filter((d) => d.week === wn && d.isR).length < 4);
+        const specWeek = chargeSpecWeeks[chargeSpecWeeks.length - 1];
+        if (specWeek) {
+          const clone2 = structuredClone(days.filter((d) => d.week === specWeek)) as GenDay[];
+          _capScale = 0.9;
+          for (let it = 0; it < 4; it++) {
+            renderWeek(clone2);
+            const cur = weekMin(clone2) / 60;
+            if (cur <= 0) break;
+            scaleWeekBody(clone2, (peakH * 2) / cur);
+          }
+          clampWeekBody(clone2);
+          renderWeek(clone2);
+          const specCapH = weekMin(clone2) / 60;
+          if (specCapH > 0) capacityH = Math.min(capacityH, specCapH * 1.15);
+          _capScale = 1;
+        }
+      }
       if (capacityH > 0 && capacityH < peakH * 0.95) {
         r.decisions.push({
           id: "V2.1", what: "Promesse calibrée par sonde de capacité", val: capacityH.toFixed(1) + "h (au lieu de " + peakH.toFixed(1) + "h)",
-          why: "Les plafonds de séance (formats, C15/C21/C24) ne permettent pas plus : promettre davantage serait mentir",
+          why: "Les plafonds de séance (formats, C15/C21/C24" + (r.inj.count > 0 ? ", et surtout tes séances aménagées pour ta zone fragile" : "") + ") ne permettent pas plus : promettre davantage serait mentir",
         });
         peakH = capacityH;
       }
@@ -928,12 +1069,21 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   // couverture tourne en fin de `buildDays` ; les coupes de volume, elles, tournent APRÈS et
   // pouvaient retirer la seule séance de course d'une semaine d'affûtage de duathlon — un
   // duathlon commence et finit à pied. Chaque sélection de victime passe désormais par ce filtre.
+  // R13 — généralisé : la coupe n'orpheline AUCUNE discipline du sport (plus seulement la
+  // principale). Mesuré : la 2e semaine d'affûtage d'un duathlon sortait sans un coup de
+  // pédale — la CAP était protégée, le vélo non (D-DISC, banc v7).
+  const _sportDiscs = sportModule(r.profile.sport as string).disciplines;
   const keepsMainDiscipline = (wd2: GenDay[], victim: GenDay): boolean => {
-    const mainD = sportModule(r.profile.sport as string).mainDiscipline;
-    const covers = (d: GenDay) => d.sessions.some((s) => s.d === mainD || (s.d === "br" && (s.steps || []).some((b) => b.leg === (mainD === "rn" ? "run" : mainD === "bk" ? "bike" : "swim"))));
-    if (!covers(victim)) return true;
-    return wd2.some((d) => d !== victim && covers(d));
+    const coversD = (d: GenDay, disc: string) => d.sessions.some((s) => s.d === disc || (s.d === "br" && (s.steps || []).some((b) => b.leg === (disc === "rn" ? "run" : disc === "bk" ? "bike" : "swim"))));
+    for (const disc of _sportDiscs) {
+      if (!coversD(victim, disc)) continue;
+      if (!wd2.some((d) => d !== victim && coversD(d, disc))) return false;
+    }
+    return true;
   };
+  // R13.3 — le sport déclare que l'affûtage (et la préparation) garde sa nage : les coupes
+  // l'évitent tant qu'une autre victime existe. Orienter, jamais interdire.
+  const _keepTaperSwim = guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold;
   const cutLightestEasyDay = (wd2: GenDay[], why: string, minActive = 3): boolean => {
     const active = wd2.filter((d) => d.charge !== "off" && d.sessions.some((s) => s.d !== "rs"));
     if (active.length <= minActive) return false;
@@ -943,7 +1093,12 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     // coupable porte la discipline principale, la coupe a lieu quand même : la hiérarchie du
     // manifeste met le volume sûr au-dessus de la complétude du plan.
     const candK = cand0.filter((d) => keepsMainDiscipline(wd2, d));
-    const cand = candK.length ? candK : cand0;
+    let cand = candK.length ? candK : cand0;
+    if (_keepTaperSwim && wd2[0]?.phaseId === "taper") {
+      const spared = cand.filter((d) => !(d.sessions.some((s) => s.d === "sw")
+        && !wd2.some((o) => o !== d && o.sessions.some((s) => s.d === "sw"))));
+      if (spared.length) cand = spared;
+    }
     const dayMin = (d2: GenDay) => d2.sessions.reduce((t, s) => t + (s.min || 0), 0);
     const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
     victim.charge = "off";
@@ -965,8 +1120,12 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         for (const d of wd2) {
           if (skipForced && d.forced) continue;
           d.sessions.forEach((s, si) => {
-            if (s.d === "rs" || s.long || s.brick) return;
-            if (keepMain && s.d === mainD && !wd2.some((o) => o.sessions.some((x) => x !== s && (x.d === mainD || x.d === "br")))) return;
+            if (s.d === "rs" || s.long || s.brick || s.race) return; // R13.4 : min=0 faisait de la COURSE la « plus petite séance » — jamais une victime
+            if (keepMain && _sportDiscs.includes(s.d) && !wd2.some((o) => o.sessions.some((x) => x !== s && (x.d === s.d || x.d === "br")))) return;
+            // R13.3 — en affûtage, la seule nage de la semaine est traitée comme la discipline
+            // principale : préférée à la coupe, jamais interdite (le repli keepMain=false coupe).
+            if (keepMain && _keepTaperSwim && wd2[0]?.phaseId === "taper" && s.d === "sw"
+              && !wd2.some((o) => o.sessions.some((x) => x !== s && x.d === "sw"))) return;
             const m = s.min || 0;
             if (!victim || m < victim.min) victim = { d, si, min: m };
           });
@@ -997,8 +1156,15 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     if (ph.id !== "taper" && _prevLw > 0) Lw = Math.min(Lw, _prevLw * C22_MAX_WEEKLY_GROWTH);
     if (ph.id !== "taper" && !isRW) _prevLw = Lw;
     // R3.12 — le plafond de la longue suit la phase
-    _capScale = Math.max(0.4, Math.min(1, (Lw - 0.5) * 1.2 + 0.4));
+    // R13.6 — en AFFÛTAGE, le plafond des séances suit la courbe d'affûtage elle-même (Lw
+    // 0,55 → 0,30), pas la formule des phases de charge : celle-ci écrasait `_capScale` à
+    // 0,46 dès la première semaine d'affûtage — la capacité de la semaine tombait à 25 % du
+    // pic quand la courbe en demandait 55, et la décroissance partait d'une falaise (−63 %
+    // d'un coup, mesuré sur le Full). La longue de S-3 d'un plan long fait encore 60-70 % de
+    // sa taille normale : c'est la réduction 40-60 % de Bosquet, pas un arrêt.
+    _capScale = ph.id === "taper" ? Math.max(0.3, Math.min(1, Lw + 0.25)) : Math.max(0.4, Math.min(1, (Lw - 0.5) * 1.2 + 0.4));
     let targetH = Lw * peakH;
+    
     if (isRW) targetH *= RECUP_WEEK_FACTOR;
     targetH = Math.min(targetH, capH); // C3
     // R10 — rampe depuis le volume récent : cap qui monte de ≤ C22 par semaine de charge
@@ -1021,6 +1187,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     if (ph.id !== "taper" && !isRW && _prevChargeMin > 0) targetH = Math.min(targetH, (_prevChargeMin / 60) * C22_MAX_WEEKLY_GROWTH);
     if (isRW && _lastWeekMin > 0) targetH = Math.min(targetH, (_lastWeekMin / 60) * 0.95);
     if (ph.id === "taper" && _lastWeekMin > 0) targetH = Math.min(targetH, (_lastWeekMin / 60) * 0.98);
+
     // N2 — UNE SEMAINE COURTE NE PROMET PAS UNE SEMAINE ENTIÈRE.
     // La dernière semaine s'arrête au soir de la course : elle peut ne compter que 1 à 6
     // jours. La cible de la courbe est une dose HEBDOMADAIRE — appliquée telle quelle à trois
@@ -1105,7 +1272,35 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // (une piscine sous le plancher ne vaut pas le déplacement ; la gonfler au-delà du
       // budget gonflerait la semaine — mesuré +5% sur les plans blessés).
       // jamais en semaine de PEAK : c'est elle qui doit rester la plus grosse du plan
-      for (let g = 0; g < 2 && ph.id !== "peak" && raised.length && weekMin(wd) > targetH * 60 * 1.03; g++) {
+      //
+      // R13.5 — LES MÈTRES CÈDENT AVANT LA FRÉQUENCE. La coupe ci-dessous supprimait une
+      // séance ENTIÈRE (~10 % de la semaine) pour absorber un dépassement de plancher de ~2 %.
+      // Sur un plan épaule où le plancher remonte une séance CHAQUE semaine, cette réponse
+      // annulait exactement le gain C22 de +10 %/semaine : la courbe ne montait jamais —
+      // mesuré, 20 semaines plates à 0,8 h/sem, promesse 2,9 h, et la spirale de réparation
+      // derrière. On rend d'abord les mètres que le plancher a ajoutés, en réduisant les
+      // séances AU-DESSUS du plancher (jamais en dessous, jamais la longue) ; la fréquence ne
+      // cède que si les mètres ne suffisent pas.
+      for (let g = 0; g < 3 && ph.id !== "peak" && raised.length && weekMin(wd) > targetH * 60 * 1.03; g++) {
+        const overM = ((weekMin(wd) - targetH * 60 * 1.01) / 60) * 3000; // minutes → ~mètres (css ~2min/100m)
+        const cands = wd.flatMap((d) => d.sessions)
+          .filter((s) => s.d === "sw" && !s.long && s.steps && !raised.some((x) => x.s === s))
+          .map((s) => ({ s, m: (s.steps || []).reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0) }))
+          .filter((x) => x.m > swFloor + 50)
+          .sort((x, y) => y.m - x.m);
+        let gaveM = 0;
+        for (const c of cands) {
+          if (gaveM >= overM) break;
+          const body = (c.s.steps || []).filter((st) => st.role === "body" && st.distanceM != null && (st.reps || 1) === 1)
+            .sort((x, y) => (y.distanceM || 0) - (x.distanceM || 0))[0];
+          if (!body || !body.distanceM) continue;
+          const give = Math.min(body.distanceM - 200, c.m - swFloor, overM - gaveM);
+          if (give < 50) continue;
+          body.distanceM = Math.round((body.distanceM - give) / 25) * 25;
+          gaveM += give;
+        }
+        if (gaveM > 0) renderWeek(wd);
+        if (weekMin(wd) <= targetH * 60 * 1.03) break;
         // Cette coupe ne prend JAMAIS une séance de qualité. Elle existe pour absorber le
         // gonflement dû au plancher piscine (C24), et elle prenait la plus COURTE des séances
         // remontées — qui se trouve être la VO2max en nage (8×50 m, la seule assez petite pour
@@ -1133,6 +1328,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         renderWeek(wd);
       }
     }
+
     // D5 (audit v6) — C15 s'applique à la SÉANCE (tous blocs confondus), pas au seul bloc
     // body : échauffement 200m + corps 850m + retour 100m = 1150m violait le plafond en
     // silence. Le corps cède, jamais l'échauffement ni le retour au calme (valeur technique).
@@ -1196,7 +1392,14 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         const cand0 = active.filter((d) => d.charge === "facile" && !d.forced && !d.sessions.some((s) => s.long || s.brick));
         if (!cand0.length) break;
         const candK = cand0.filter((d) => keepsMainDiscipline(wd, d));
-        const cand = candK.length ? candK : cand0;
+        let cand = candK.length ? candK : cand0;
+        // R13.3 — même orientation que le filet : la seule nage de la semaine d'affûtage est
+        // épargnée tant qu'une autre victime existe (les sensations d'eau se perdent vite).
+        if (_keepTaperSwim) {
+          const spared = cand.filter((d) => !(d.sessions.some((s) => s.d === "sw")
+            && !wd.some((o) => o !== d && o.sessions.some((s) => s.d === "sw"))));
+          if (spared.length) cand = spared;
+        }
         const dayMin = (d2: GenDay) => d2.sessions.reduce((t, s) => t + (s.min || 0), 0);
         const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
         victim.charge = "off";
@@ -1219,6 +1422,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         renderWeek(wd);
       }
     }
+
     // D3/D4/D10 (audit v6) — si les planchers de séance empêchent encore de tenir la
     // courbe livrée (récup > semaine précédente, affûtage remontant, saut > C22), la
     // fréquence cède : le jour facile le plus léger passe OFF, comme en R3.13.
@@ -1241,11 +1445,35 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         if (!cutLightestEasyDay(wd, isRW ? "une semaine de récupération n'est jamais plus chargée que la précédente" : ph.id === "taper" ? "l'affûtage ne remonte jamais" : "la progression reste ≤ +10% de semaine en semaine", minActive)) break;
         renderWeek(wd);
       }
+      // R13.5 — LA COUPE REND CE QU'ELLE A PRIS EN TROP. Retirer un JOUR entier est un
+      // quantum grossier : sur les plans épaule, la coupe faisait passer la semaine SOUS sa
+      // cible (1,63 h de planchers → coupe → 1,33 h pour une cible à 1,37), et le ratchet C22
+      // « livré ×1,1 » repartait de la valeur sous-livrée. Bilan mesuré : +10 % de cible et
+      // −10 % de coupe s'annulaient chaque semaine, 20 semaines PLATES à 0,8-1,4 h pendant que
+      // la promesse affichait 2,9 h — puis la dominance du pic broyait le reste. Après la
+      // coupe, les séances restantes regonflent vers la cible : la coupe paie les planchers,
+      // le re-remplissage rend le volume que le jour retiré emportait en trop.
+      // En récup et en affûtage aussi : sous-livrer LÉGÈREMENT y est une vertu, sous-livrer de
+      // 45 % sous sa propre courbe n'en est pas une — mesuré : l'affûtage du Full tombait de
+      // 445 à 165 min (−63 % d'un coup, puis plat), quand Bosquet 2007 prescrit −40/−60 %.
+      // Le plafond `min(cible, semaine précédente)` préserve la décroissance R5.3 et D4.
+      {
+        const refillCap = Math.min(Number.isFinite(delivCapMin) ? delivCapMin : Infinity, targetH * 60);
+        for (let it = 0; it < 3 && Number.isFinite(refillCap) && weekMin(wd) < refillCap * 0.97; it++) {
+          const cur = weekMin(wd);
+          if (cur <= 0) break;
+          scaleWeekBody(wd, (refillCap * 0.99) / cur);
+          renderWeek(wd);
+          if (weekMin(wd) - cur < 0.5) break; // les plafonds de séance bloquent : on s'arrête là
+        }
+      }
     }
+
     const volReal = Math.round((weekMin(wd) / 60) * 10) / 10;
     if (!isRW && ph.id !== "taper") _maxChargeMin = Math.max(_maxChargeMin, weekMin(wd));
     _lastWeekMin = weekMin(wd);
     if (!isRW && ph.id !== "taper") _prevChargeMin = _lastWeekMin;
+    
     wl.push({ num: w + 1, phase: ph, vol: volReal, vol_declared: Math.round(targetH * 10) / 10, vol_real: volReal, days: wd, isRecup: isRW });
   }
 
@@ -1740,7 +1968,19 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
             .flatMap((d) => d.sessions.filter((sx) => sx.d !== "rs").map((sx) => ({ d, sx })));
           const budget = r.budgetPerWeek || 6;
           while (others.length + 1 > budget) {
-            const victim = others.reduce((x, y) => ((y.sx.min || 0) < (x.sx.min || 0) ? y : x));
+            // R13 — la coupe de budget n'orpheline pas une discipline du sport (le jour J ne
+            // couvre que la discipline principale) : sur un duathlon à 3 séances/semaine, la
+            // semaine de course perdait son dernier coup de pédale (D-DISC, banc v7).
+            const discs = sportModule(a.sport as string).disciplines;
+            const coversAfter = (cand: { sx: V1Session }) => discs.every((disc) => {
+              const still = others.some((o) => o !== cand && (o.sx.d === disc || (o.sx.d === "br" && (o.sx.steps || []).some((b) => b.leg === (disc === "rn" ? "run" : "bike")))))
+                || disc === sportModule(a.sport as string).mainDiscipline; // la course couvre la principale
+              const carried = cand.sx.d === disc || (cand.sx.d === "br" && (cand.sx.steps || []).some((b) => b.leg === (disc === "rn" ? "run" : "bike")));
+              return !carried || still;
+            });
+            const safe = others.filter(coversAfter);
+            const pool = safe.length ? safe : others;
+            const victim = pool.reduce((x, y) => ((y.sx.min || 0) < (x.sx.min || 0) ? y : x));
             if (traceEnabled()) traceRecord({ pass: "insertion-course", weekNum: wk.num, date: victim.d.date, sessionName: victim.sx.name, discipline: victim.sx.d, field: "suppression", before: victim.sx.min, reason: "N1 (la course prend le créneau : budget " + budget + ")" });
             const i2 = victim.d.sessions.indexOf(victim.sx);
             if (i2 >= 0) victim.d.sessions.splice(i2, 1);
@@ -1751,20 +1991,32 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
             others.splice(others.indexOf(victim), 1);
           }
         }
+        // R13.4 — LA COURSE OBJECTIF NE COMPTE PAS COMME UNE SÉANCE. `min` valait la durée de
+        // la séance remplacée (13-29 min) : l'Ironman entrait dans la charge hebdomadaire comme
+        // un footing, faussait le volume de la semaine, l'adhérence et les célébrations. Une
+        // course A n'est pas un entraînement dosé : `min: 0`, hors charge — et l'affichage
+        // porte les temps PRÉDITS par le prédicteur, pas une durée de footing inventée.
+        // Les courses B/C, elles, TIENNENT LIEU de séance (c'est leur définition) : elles
+        // gardent leur durée dans la charge.
+        let predDet = "";
+        if (rc.prio === "A") {
+          const pred = predictRace(a.sport as string, a.format as string, a.intent, r.baseRefs, { courseProfile: a.terrain, trail: r.trail || undefined });
+          if (pred.items.length) predDet = " — ⏱ Prévu : " + pred.items.map((it) => it.leg + " " + it.value).join(" · ");
+        }
         rd.sessions = [{
           d: mainD as "rn",
           name: "🏁 Course " + rc.prio,
           race: true,
-          det: rc.prio === "A"
+          det: (rc.prio === "A"
             ? "LE JOUR J. Départ contrôlé à ton allure cible, la première moitié doit te sembler facile — c'est le seul pacing qui tient. — 💡 Tout ce qui devait être construit l'est : aujourd'hui, tu exécutes."
             : rc.prio === "C"
               ? "Course laboratoire : départ contrôlé, teste ton ravito et ton pacing — on enchaîne l'entraînement derrière. — 💡 Objectif : apprendre en conditions réelles, pas performer."
-              : "Course de préparation : mini-affûtage fait, tu peux appuyer. Départ contrôlé, finis fort. — 💡 Objectif : valider allures et stratégie avant l'objectif A.",
-          min: prevMin,
+              : "Course de préparation : mini-affûtage fait, tu peux appuyer. Départ contrôlé, finis fort. — 💡 Objectif : valider allures et stratégie avant l'objectif A.") + predDet,
+          min: rc.prio === "A" ? 0 : prevMin,
           // Une course ne porte PAS de zone d'entraînement : ce n'est pas une séance dosée, c'est
           // un événement. Lui coller `.thr` la faisait compter comme 60+ min de seuil par les
           // bancs de dose — et surtout comme de l'intensité générée là où elle est interdite.
-          steps: [{ role: "body", durationMin: prevMin, _min: prevMin }],
+          steps: rc.prio === "A" ? [] : [{ role: "body", durationMin: prevMin, _min: prevMin }],
           note: "Course " + rc.prio + " placée à sa vraie date — la semaine est allégée autour.",
         } as V1Session];
       }
@@ -1785,18 +2037,46 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       for (let k = 1; k <= prep; k++) {
         const d = dayAt(-k);
         if (!d) continue;
-        const capMin = k === 1 ? RACE_EVE_CAP_MIN : Math.round(RACE_EVE_CAP_MIN * 1.5);
+        const capMin = k === 1 ? RACE_EVE_CAP_MIN : Math.round(RACE_EVE_CAP_MIN * 2.5);
         d.charge = "facile";
+        // R13.4 — le plafond de la veille est un plafond de JOUR, pas de séance : en doubles,
+        // la veille portait deux séances de 20+27 min — 47 min de « déverrouillage » au total.
+        // La veille d'une course, il y a UNE sortie courte, point.
+        if (k === 1) {
+          const act = d.sessions.filter((sx) => sx.d !== "rs" && !sx.race && sx.steps);
+          for (let i2 = 1; i2 < act.length; i2++) {
+            const j = d.sessions.indexOf(act[i2]);
+            if (j >= 0) d.sessions.splice(j, 1);
+          }
+        }
         for (const sx of d.sessions) {
           if (sx.d === "rs" || sx.race || !sx.steps) continue;
-          if ((sx.min || 0) <= capMin) continue;
-          const mainD = sportModule(a.sport as string).mainDiscipline;
-          sx.steps = [{ role: "body", durationMin: capMin, zone: mainD + (mainD === "sw" ? ".easy" : mainD === "bk" ? ".z2" : ".easy") } as V1Step];
+          if ((sx.min || 0) <= capMin && k > 1) continue;
+          if ((sx.min || 0) <= 25 && k === 1 && !sx.long && !sx.brick) continue;
+          // R13.4 — la zone suit la DISCIPLINE DE LA SÉANCE, plus jamais la discipline
+          // principale du sport : la passe collait une zone de course à pied sur une séance
+          // vélo de veille (zone rn.easy sur d="bk" — un non-sens que personne ne relisait).
+          const dz = sx.d === "sw" ? "sw.easy" : sx.d === "bk" ? "bk.z2" : "rn.easy";
+          if (k === 1) {
+            // Un déverrouillage se joue à 15-25 min : échauffement + trois accélérations
+            // franches — réveiller les jambes, jamais les entamer (mesuré avant : 48 min la
+            // veille d'un Ironman, 63 la veille d'un 70.3, en « déverrouillage » de nom).
+            sx.steps = [
+              // 3×2 min (et pas 3×1) : avec un corps de 8 min, l'échauffement C13e garde ses
+              // 8 min et la séance totale tient dans 15-25 min — à 3×1, le clamp « échauffement
+              // ≤ corps » réduisait tout à 11 min, sous le plancher de séance digne (U-MIN v7).
+              { role: "warmup", durationMin: 8, text: "très progressif" } as V1Step,
+              { role: "body", durationMin: 2, reps: 3, zone: dz, recoveryMin: 1, recoveryText: "1min très souple", text: ", accélérations franches mais courtes" } as V1Step,
+              { role: "cooldown", durationMin: 5, text: "souple" } as V1Step,
+            ];
+          } else {
+            sx.steps = [{ role: "body", durationMin: capMin, zone: dz } as V1Step];
+          }
           sx.long = false;
           sx.brick = false;
           sx.name = k === 1 ? "Déverrouillage (veille de course)" : "Endurance allégée (avant course)";
           sx.note = k === 1
-            ? "Veille de course : on réveille les jambes, on ne les fatigue pas. Court, souple, quelques accélérations de 20 s si tu en ressens le besoin — puis on range les chaussures."
+            ? "Veille de course : on réveille les jambes, on ne les fatigue pas. Échauffement doux, trois accélérations franches — puis on range les chaussures."
             : "La course approche : le volume descend, l'intensité aussi. Ce que tu gagnes maintenant, c'est de la fraîcheur, pas de la forme.";
           renderSess(sx, refs, r.hz, r.baseRefs);
         }
@@ -1812,6 +2092,38 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         wk.vol = Math.round(wk.vol * 0.75 * 10) / 10;
         wk.taperRace = true;
       }
+      // R13.6 — LA SEMAINE DE COURSE A UN PLANCHER : ~30 % DU PIC, HORS JOUR J. Entre le
+      // budget N1 (la course prend un créneau, la plus petite séance saute) et la fenêtre
+      // d'allègement, la semaine de l'objectif tombait à 14 % du pic : quasi à l'arrêt —
+      // Bosquet 2007 situe l'affûtage à −40/−60 %, pas à −86 ; sous ~30 %, les sensations
+      // partent avec la fatigue. Si le plancher n'est pas atteint, les jours OFF (jamais la
+      // veille, jamais le jour J) redeviennent de l'endurance allégée — la séance qu'un
+      // entraîneur écrit un mardi de semaine de course.
+      if (rc.prio === "A") {
+        const wkDays = wk.days as GenDay[];
+        const horsCourse = () => wkDays.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.race ? 0 : s.min || 0), 0), 0);
+        const floorMin = volPeak * 60 * 0.30;
+        const mainD = sportModule(a.sport as string).mainDiscipline;
+        const dz = mainD === "sw" ? "sw.easy" : mainD === "bk" ? "bk.z2" : "rn.easy";
+        const raceIdx = wkDays.findIndex((d) => d.sessions.some((s) => s.race));
+        const budget = r.budgetPerWeek || 6;
+        for (const d of wkDays) {
+          if (horsCourse() >= floorMin) break;
+          // Le budget de séances déclaré tient AUSSI en semaine de course (U-SESSBUDGET v7) :
+          // remonter un OFF n'ajoute jamais une séance au-delà de ce que l'athlète a déclaré.
+          if (wkDays.reduce((t, x) => t + x.sessions.filter((s) => s.d !== "rs").length, 0) + 1 > budget) break;
+          const i = wkDays.indexOf(d);
+          if (d.forced || (raceIdx >= 0 && i >= raceIdx - 1)) continue; // ni la veille, ni le jour J
+          if (d.sessions.some((s) => s.d !== "rs")) continue;
+          const dur = Math.min(Math.round(RACE_EVE_CAP_MIN * 2.5), Math.max(30, Math.round(floorMin - horsCourse())));
+          const sx: V1Session = { d: mainD as "rn", name: "Endurance allégée (semaine de course)", det: "",
+            note: "Semaine de course : on entretient le moteur sans le fatiguer. Allure strictement facile, arrêt net à la durée — la fraîcheur du jour J se construit aussi en continuant de bouger.",
+            steps: [{ role: "body", durationMin: dur, zone: dz } as V1Step] };
+          renderSess(sx, refs, r.hz, r.baseRefs);
+          d.charge = "facile"; d.slot = "facileR";
+          d.sessions = [sx];
+        }
+      }
       const next = wl.find((w) => w.num === wk.num + 1);
       if (next) {
         next.vol = Math.round(next.vol * 0.7 * 10) / 10;
@@ -1820,8 +2132,36 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     }
   }
 
+  // R13.3 (filet) — CHAQUE SEMAINE D'AFFÛTAGE GARDE SA NAGE, LA SEMAINE DE COURSE COMPRISE.
+  // La couverture des disciplines l'avait posée — sur le jour que l'insertion de course vient
+  // d'écraser (le donneur « au plus près de la course » ÉTAIT le jour J avant que la course y
+  // soit matérialisée). Une garantie posée avant une passe qui réécrit des jours ne garantit
+  // que l'avant-dernier état : le filet parle après. Donneur : un jour facile de course à pied
+  // sans qualité, jamais le jour J ni la veille (le déverrouillage reste un déverrouillage) —
+  // au plus près de la course (≤ 5 jours : les sensations d'eau du départ se gardent fraîches).
+  if (guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold) {
+    for (const wk of wl) {
+      if (wk.phase.id !== "taper") continue;
+      const wdays = wk.days as GenDay[];
+      if (wdays.some((d) => d.sessions.some((s) => s.d === "sw"))) continue;
+      const raceIdx = wdays.findIndex((d) => d.sessions.some((s) => s.race));
+      const cand = wdays.filter((d, i) => !d.forced
+        && (raceIdx < 0 || i < raceIdx - 1)
+        && d.sessions.length > 0
+        && d.sessions.every((s) => s.d === "rn" && !s.long && !s.brick && !s.race
+          && !(s.steps || []).some((st) => IS_QUALITY_ZONE(String(st.zone || "")))));
+      const donor = cand[cand.length - 1];
+      if (!donor) continue;
+      const built = buildSessions({ r }, "facile2", "taper", donor.prog || 0, donor.week);
+      const pick = built.find((x) => x.d === "sw");
+      if (!pick) continue;
+      renderSess(pick, refs, r.hz, r.baseRefs);
+      donor.sessions = [pick];
+    }
+  }
+
   const plan: V1Plan = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport as string, "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold });
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport as string, "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines });
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation

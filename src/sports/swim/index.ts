@@ -33,7 +33,15 @@ export function buildSwimSessions(kit: SessionKit): V1Session[] {
     // B1 (audit v6) — les séances de substitution épaule héritent d'un BUDGET BORNÉ :
     // sans bnd, R3.3 gonflait le bloc jusqu'aux caps génériques (+68% de volume mesuré
     // sur swim/fond/epaule — une blessure qui AUGMENTAIT la charge).
-    else if (shoulder && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Jambes vitesse (épaule épargnée)", note: "Vitesse par les jambes : battements rapides avec planche, l'épaule ne travaille pas. La puissance se maintient sans risque.", det: "", steps: [Wm(200, "souple"), Object.assign(Bd(P(6, 10), 25, "sw.speed", "30s repos", " battements rapides avec planche (jambes seules)", false, "sw"), { repCap: 12 }), Object.assign(Bd(1, 200, "sw.easy", "", " éducatifs technique", false, "sw"), { bnd: { floor: 200, cap: 600 } }), Cm(100, "souple")] });
+    // R13.5 — LA SUBSTITUTION ÉPAULE DU PIC DOIT POUVOIR PORTER LE PIC. La séance était figée
+    // à ~1 200 m (12×25 m + 600 m), soit MOINS que la séance de dev (1 500 m) : la semaine de
+    // pic ne pouvait structurellement pas dominer, l'auditeur le signalait, et la boucle de
+    // réparation érodait tout le plan vers les planchers — 20 semaines plates à 0,8 h/sem
+    // pendant que la promesse affichait 2,9 h. Le budget reste BORNÉ (B1 : une blessure
+    // n'augmente jamais la charge — le plafond de référence ×0,9 tient toujours), mais il suit
+    // la phase : des séries de jambes de 50 m (le vrai format d'un kick set) et un bloc
+    // technique qui peut grandir. L'épaule ne travaille pas plus — les jambes, oui.
+    else if (shoulder && (phase === "spec" || phase === "peak")) S2.push({ d: "sw", name: "Jambes vitesse (épaule épargnée)", note: "Vitesse par les jambes : battements rapides avec planche, l'épaule ne travaille pas. La puissance se maintient sans risque.", det: "", steps: [Wm(200, "souple"), Object.assign(Bd(P(8, 12), 50, "sw.speed", "20-30s repos", " battements rapides avec planche (jambes seules)", false, "sw"), { repCap: 16 }), Object.assign(Bd(1, P(400, 900), "sw.easy", "", " éducatifs technique, amplitude confortable", false, "sw"), { bnd: { floor: 200, cap: 1200 } }), Cm(100, "souple")] });
     else if (shoulder) S2.push({ d: "sw", name: "Jambes + technique", note: "Épaule épargnée : le travail passe par les jambes et la technique, la charge articulaire reste nulle.", det: "", steps: [Object.assign(Bd(1, 400, null, "", " séries battements + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: 1200 } })], ...( { plainBody: true } as object) });
     else S2.push({ d: "sw", name: "Vitesse", note: "Vitesse contrôlée et technique : la fréquence ne doit pas casser ta nage.", det: "", steps: [Wm(400, "varié + 4×25m accélérations"), Object.assign(Bd(P(8, 12), 50, "sw.speed", "30-40s", "", false, "sw"), { repCap: 16 }), Cm(200, "souple")] });
   } else if (slot === "durLong") {

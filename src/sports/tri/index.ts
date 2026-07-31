@@ -22,7 +22,11 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
   const swTechDist = Math.max(beginner ? 300 : 750, Math.round((swimDist * 0.5) / 50) * 50);
   let swMain = beginner
     ? { name: "Nage seuil technique (+dist)", note: "Technique d'abord, mais quelques 100m à allure seuil contrôlée pour préparer la course.", steps: [Wm(200, "souple"), Object.assign(Bd(1, swimDist, "sw.css", [0.33, "repos libre entre séries (~20s)"], ", fractionné en séries régulières, éducatifs entre", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(100, "relâché")] }
-    : { name: "Nage seuil (+dist)", note: "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.", steps: [Wm(300, "+ 4×50m éducatifs"), Object.assign(Bd(1, swimDist, "sw.css", "15-20s", ", fractionné en séries régulières si besoin", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(200, "souple")] };
+    // R13 — une séance de seuil nage n'est pas 100 % seuil : le corps se répartit ~70 % au CSS
+    // et ~30 % en aérobie (retour actif, éducatifs entre les séries). Compter tout le corps en
+    // dur surchargeait l'intensité hebdomadaire de 6-8 min — ce qui faisait passer 10
+    // combinaisons tri sous le plancher de temps facile une fois la nage mono-séance branchée.
+    : { name: "Nage seuil (+dist)", note: "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.", steps: [Wm(300, "+ 4×50m éducatifs"), Object.assign(Bd(1, Math.max(200, Math.round((swimDist * 0.7) / 50) * 50), "sw.css", "15-20s", ", fractionné en séries régulières si besoin", false, "sw"), { bnd: { floor: Math.max(200, Math.round((swimDistCaps.lo * 0.7) / 50) * 50), cap: Math.round(triSwimVolCap * 0.7) } }), Object.assign(Bd(1, Math.max(150, Math.round((swimDist * 0.3) / 50) * 50), "sw.aero", "", " souple, technique relâchée entre les séries", false, "sw"), { bnd: { floor: 150, cap: Math.round(triSwimVolCap * 0.3) } }), Cm(200, "souple")] };
   let swTech = beginner
     ? { name: "Nage éducatifs", note: "Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force.", steps: [Wm(100, "souple"), Bd(1, swTechDist, "sw.easy", "20-30s", ", par 50m, 1 point technique à la fois — " + swimDrillGlossary, false, "sw"), Cm(100, "dos souple")] }
     : { name: "Nage vitesse", note: "Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m.", steps: [Wm(200, "+ 4×25m accélérations progressives"), Bd(1, swTechDist, "sw.aero", "30-40s sur les 50m rapides", ", dont la moitié en accélérations de 50m", false, "sw"), Cm(150, "souple")] };
@@ -46,6 +50,13 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
   } else if (slot === "dur2") {
     if (dbl) S2.push({ d: "sw", name: swTech.name, note: swTech.note, det: "", steps: swTech.steps });
     if (phase === "spec" || phase === "peak") S2.push({ d: "rn", name: "Allure course (tri)", note: "L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.", det: "", steps: [W(15, "footing progressif"), Object.assign(B(1, PT(20, 40), "rn.mara"), { bnd: { floor: 20, cap: 45 } }), C(8, "retour au calme")] });
+    // R13.4 — L'AFFÛTAGE EST BRANCHÉ EXPLICITEMENT, plus jamais par un `else` attrape-tout.
+    // Le fall-through envoyait la FORCE basse cadence (bk.frc) en plein affûtage : 6 blocs de
+    // gros braquet sur le Full, dont un à J-3 de l'Ironman. La force à 50-60 rpm laisse la
+    // même fatigue résiduelle que la VO2max (48-72 h de courbatures profondes) — le manifeste
+    // interdit l'une, l'autre y était par accident de branchement. À la place : un rappel
+    // d'allure course à pied, court et précis, le miroir exact du « Rappel race-pace » vélo.
+    else if (phase === "taper") S2.push({ d: "rn", name: "Rappel allure course CAP", note: "Affûtage : on réveille l'allure du jour J sans générer de fatigue. Deux blocs courts, précis, puis on range les chaussures.", det: "", steps: [W(10, "footing progressif"), Object.assign(B(2, 8, "rn.mara", "3min trot"), { repCap: 2, bnd: { floor: 6, cap: 8, hard: true } }), C(5, "footing souple")] });
     else S2.push({ d: "bk", name: "Force basse cadence", note: "Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.", det: "", steps: [W(15, "+ montée en intensité"), Object.assign(B(PT(4, 6), ({ S: 5, M: 5, "70.3": 6, Full: 7 } as Record<string, number>)[fmt] || 5, "bk.frc", "3min souple", " à 50-60 rpm"), { repCap: 8 }), C(10, "moulinage")] });
   } else if (slot === "durLong") {
     if (phase === "spec" || phase === "peak") {
@@ -69,8 +80,33 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     // C18 — le créneau course de qualité garanti en tri : VO2 court en peak
     if (phase === "peak" && !runInj && !medHold && !noVo2 && lvl !== "debutant" && !finisher) S2.push({ d: "rn", name: "VO2max course", note: "Rappels de puissance aérobie course, courts et vifs, jambes déjà entamées par le vélo.", det: "", steps: [W(12, "footing progressif + gammes"), Object.assign(B(PT(4, 6), 2, "rn.vo2", "2min trot"), { repCap: 6 }), C(8, "footing très facile")] });
     else if (phase === "peak" && runInj && !medHold) S2.push({ d: "rn", name: "Allure course (tri, surface souple)", note: "Course blessé : allure cible en contrôle, sur surface souple, jamais dans la douleur.", det: "", steps: [W(12, "footing progressif"), B(1, PT(18, 28), "rn.mara", "", ", sur surface souple"), C(8, "footing très facile")] });
-    else S2.push({ d: "rn", name: "Footing facile", note: "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.", det: "", steps: [B(1, PT(ftCaps.lo, ftCaps.hi), "rn.easy", "", runInj ? " · surface souple" : "")], ...( { plainBody: true } as object) });
-  } else if (slot === "facile2") S2.push({ d: "sw", recovery: true, name: swShort.name + " courte", note: swShort.note, det: "", steps: swShort.steps, ...( { plainBody: true } as object) });
+    // R13 — le footing porte ses BORNES (`ftCaps` existait, jamais posé en bnd) : c'était le
+    // seul bloc sans plafond de la semaine, donc le déversoir de toutes les passes de
+    // remplissage — mesuré : « Footing facile 213 min » en semaine de peak (D7, banc v6).
+    // Un footing de 3 h 33 est une seconde sortie longue déguisée, pas un footing.
+    else S2.push({ d: "rn", name: "Footing facile", note: "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.", det: "", steps: [Object.assign(B(1, PT(ftCaps.lo, ftCaps.hi), "rn.easy", "", runInj ? " · surface souple" : ""), { bnd: { floor: ftCaps.lo, cap: Math.round(ftCaps.hi * 1.3) } })], ...( { plainBody: true } as object) });
+  } else if (slot === "facile2") {
+    // R13.3 — EN MONO-SÉANCE, LA NAGE DU TRI EXISTE. `swMain` et `swTech` n'étaient poussées
+    // que sous `dbl` (doubles séances) : pour la majorité des athlètes (`doubles` non/parfois),
+    // l'unique nage hebdomadaire était « Nage récup courte » en sw.easy — zéro seuil CSS sur
+    // 59 semaines d'un plan Full, et AUCUNE nage sur les 6 semaines d'affûtage. Les sensations
+    // d'eau se perdent en 10-14 jours : se présenter à un départ de 3,8 km sans avoir nagé
+    // depuis un mois et demi n'est pas une contre-performance, c'est un risque (eau libre).
+    // Le créneau facile2 route donc PAR PHASE quand l'athlète ne double pas ; en doubles, la
+    // nage principale et la technique vivent déjà sur dur1/dur2 — la récup courte reste.
+    if (dbl) S2.push({ d: "sw", recovery: true, name: swShort.name + " courte", note: swShort.note, det: "", steps: swShort.steps, ...( { plainBody: true } as object) });
+    else if (phase === "taper") S2.push({ d: "sw", name: "Rappel nage course", note: "Affûtage : on entretient les sensations d'eau sans fatigue — elles se perdent en 10 à 14 jours, et le jour J commence par la natation. Court, précis, à l'allure de course.", det: "", steps: [
+      Wm(300, "souple"), Object.assign(Bd(beginner ? 4 : 6, 100, "sw.css", "20-30s", ", à l'allure de course, technique impeccable", false, "sw"), { repCap: 6 }), Cm(100, "souple")] });
+    else if (phase === "base") S2.push({ d: "sw", name: swTech.name, note: swTech.note, det: "", steps: swTech.steps });
+    // dev/spec/peak : la nage principale (sw.css) — SAUF pour l'intention plaisir/finir ET le
+    // débutant (sa priorité est le geste, et sa version « technique+seuil » à 100 % de corps
+    // dur faisait passer un plan S à 2,8 h/sem sous le plancher de temps facile), qui
+    // garde la technique : ajouter du seuil hebdomadaire à quelqu'un qui vient chercher du
+    // plaisir faisait passer la part facile sous le plancher C26 (mesuré : 70 % pile, violé
+    // sur 3 combinaisons 70.3). L'intensité suit l'intention, pas l'inverse.
+    else if (finisher || a.intent === "plaisir" || beginner) S2.push({ d: "sw", name: swTech.name, note: swTech.note, det: "", steps: swTech.steps });
+    else S2.push({ d: "sw", name: swMain.name, note: swMain.note, det: "", steps: swMain.steps });
+  }
   else if (slot === "recup") S2.push({ d: "rs", name: "Récup active", det: "mobilité", steps: [] });
   else if (slot === "off") S2.push({ d: "rs", name: "OFF", det: "repos total", steps: [] });
   return S2;
@@ -106,5 +142,5 @@ registerSport({
   retestTypes: ["css", "ftp", "thrPace"],
     // Le tri NAGE : il hérite des planchers de séance en mètres (C24/C24b), comme la natation.
   // C'est précisément ce que `sport !== "run"` disait de façon détournée.
-  guards: { stripLongOnMedHold: true, singleRunVo2PerWeek: true, smoothOnAuditMetric: true, capacityProbe: true, swimSessionFloors: true },
+  guards: { stripLongOnMedHold: true, singleRunVo2PerWeek: true, smoothOnAuditMetric: true, capacityProbe: true, swimSessionFloors: true, swimRacePrepFrequency: true },
 });

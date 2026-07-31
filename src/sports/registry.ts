@@ -48,6 +48,10 @@ export interface SportGuards {
   capacityProbe?: boolean;
   /** Le volume promis se convertit en temps DANS L'EAU (`SWIM_TIME_FACTOR`). */
   swimTimeFactor?: boolean;
+  /** R13.3 — la course COMMENCE par la natation : en mono-séance, la fréquence de nage est
+   *  garantie (2e nage en spécifique/pic, alternance en dev) et l'affûtage garde une nage
+   *  chaque semaine (les sensations d'eau se perdent en 10-14 jours). */
+  swimRacePrepFrequency?: boolean;
 }
 
 /**

@@ -1,26 +1,28 @@
 # Audit V2 (Sprint 1) — moteur de raisonnement + générateur
 
-Généré par `npm run audit:v2`. 594 combinaisons via le moteur V2, scorées par l'auditeur inchangé. 0 erreur(s).
+Généré par `npm run audit:v2`. 702 combinaisons via le moteur V2, scorées par l'auditeur inchangé. 0 erreur(s).
 
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| run | 108 | 0.98 | 0.93–1.00 | 0 | 0 | 0 | 0.44 | 0 | 82% | 0 | 98 |
-| bike | 135 | 1.00 | 0.98–1.00 | 0 | 0 | 0 | 0.45 | 0 | 91% | 0 | 99 |
-| swim | 108 | 0.97 | 0.92–0.99 | 0 | 0 | 0 | 0.42 | 0 | 86% | 0 | 98 |
-| tri | 108 | 0.95 | 0.91–1.00 | 0 | 0 | 0 | 0.41 | 0 | 77% | 0 | 97 |
-| trail | 27 | 0.96 | 0.90–0.97 | 0 | 0 | 0 | 0.34 | 0 | 96% | 0 | 93 |
-| duathlon | 108 | 0.97 | 0.91–1.00 | 0 | 0 | 0 | 0.38 | 0 | 86% | 0 | 99 |
+| run | 108 | 0.98 | 0.94–1.00 | 0 | 0 | 0 | 0.43 | 0 | 82% | 0 | 99 |
+| bike | 135 | 1.00 | 0.97–1.00 | 0 | 0 | 0 | 0.43 | 0 | 91% | 0 | 99 |
+| swim | 108 | 0.97 | 0.92–1.00 | 0 | 0 | 0 | 0.44 | 0 | 86% | 0 | 98 |
+| tri | 108 | 0.98 | 0.92–1.00 | 0 | 0 | 0 | 0.40 | 12 | 76% | 0 | 96 |
+| trail | 27 | 0.95 | 0.91–1.00 | 0 | 0 | 0 | 0.32 | 0 | 96% | 32 | 93 |
+| duathlon | 108 | 0.97 | 0.93–1.00 | 0 | 0 | 0 | 0.38 | 0 | 86% | 0 | 100 |
+| swimrun | 108 | 0.97 | 0.93–0.98 | 0 | 0 | 0 | 0.39 | 18 | 92% | 0 | 96 |
 
 ## V1.5 ↔ V2 (même auditeur, mêmes 486 profils)
 
 | Sport | Ratio pic méd V1.5 → V2 | Pire ratio V1.5 → V2 | Score moyen V1.5 → V2 |
 |---|---|---|---|
-| run | 0.98 → 0.98 | 0.90 → 0.90 | 98 → 98 |
-| bike | 1.00 → 1.00 | 0.92 → 0.92 | 99 → 99 |
+| run | 0.99 → 0.98 | 0.90 → 0.90 | 99 → 99 |
+| bike | 1.00 → 1.00 | 0.94 → 0.94 | 99 → 99 |
 | swim | 0.97 → 0.97 | 0.86 → 0.86 | 98 → 98 |
-| tri | 0.95 → 0.95 | 0.90 → 0.90 | 97 → 97 |
-| trail | NaN → 0.96 | 1.00 → 0.90 | NaN → 93 |
-| duathlon | NaN → 0.97 | 1.00 → 0.89 | NaN → 99 |
+| tri | 0.98 → 0.98 | 0.90 → 0.90 | 96 → 96 |
+| trail | NaN → 0.95 | 1.00 → 0.90 | NaN → 93 |
+| duathlon | NaN → 0.97 | 1.00 → 0.91 | NaN → 100 |
+| swimrun | NaN → 0.97 | 1.00 → 0.92 | NaN → 96 |
 
 ## Décisions du moteur — exemple (tri / 70.3 / confirme / inter / competition)
 

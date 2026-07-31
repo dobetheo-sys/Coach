@@ -195,7 +195,10 @@ function runChecks(sport, a, plan, fail) {
       for (const s of d.sessions) {
         const t = txtOf(s);
         if (/undefined|NaN|Infinity|\[object|null/.test(t)) F("U-TEXT", `S${w.num} ${d.jour} « ${s.name} » : ${t.match(/undefined|NaN|Infinity|\[object|null/)[0]}`);
-        if (s.d !== "rs" && (typeof s.min !== "number" || !isFinite(s.min) || s.min <= 0)) F("U-MIN", `S${w.num} ${d.jour} « ${s.name} » min=${s.min}`);
+        // R13.4 — la COURSE OBJECTIF porte min=0 À DESSEIN : un Ironman n'entre pas dans la
+        // charge hebdomadaire comme un footing (l'affichage porte les temps prédits). Même
+        // logique que U-OFF plus bas : le jour J est un fait de l'athlète, pas une séance dosée.
+        if (s.d !== "rs" && s.race !== true && !/🏁/.test(s.name || "") && (typeof s.min !== "number" || !isFinite(s.min) || s.min <= 0)) F("U-MIN", `S${w.num} ${d.jour} « ${s.name} » min=${s.min}`);
         if (s.d === "rs" && typeof s.min !== "number") F("U-MIN-REST", `S${w.num} ${d.jour} « ${s.name} » : champ min absent (0 ailleurs)`);
         // cohérence min / steps
         const stepSum = (s.steps || []).reduce((x, st) => x + (st._min || 0), 0);

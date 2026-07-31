@@ -51,6 +51,20 @@ let css = ["css/styles.css", "css/mobile.css"].map(read).join("\n");
 css = css.replace(/url\("\.\.\/assets\/fonts\/([^"]+)"\)/g,
   (_m, f) => 'url("data:font/woff2;base64,' + b64("assets/fonts/" + f) + '")');
 
+// R13.2 — GARDE : la feuille d'IMPRESSION de ui/plan-view.js est une chaîne JavaScript
+// (concaténations `+'…'` comprises). Collée dans le <style> principal, le parseur CSS en
+// récupère ce qui est syntaxiquement valide : `body{font-family:-apple-system,Arial…}` tue
+// Space Grotesk comme police de base de tout le fichier, un `h2` global souligne le check-in,
+// un `ul` global rétrécit toutes les listes. C'est arrivé (audit standalone-4) — un défaut
+// que « ça rend moins bien que la PWA » décrit et qu'aucun diff de module ne montre. Le build
+// échoue si la signature réapparaît, en nommant la cause.
+if (/font-family:-apple-system,Arial/.test(css) || /\n\s*\+'/.test(css)) {
+  console.error("✖ R13.2 : la CSS d'impression de ui/plan-view.js (chaîne JS, `-apple-system,Arial` ou lignes `+'…'`)");
+  console.error("  a fuité dans css/styles.css ou css/mobile.css. Elle ne doit vivre QUE dans plan-view.js :");
+  console.error("  retirer le bloc collé du fichier CSS, puis relancer.");
+  process.exit(1);
+}
+
 // ---- 3. Réassemblage de la page ----
 let html = read("index.html");
 html = html

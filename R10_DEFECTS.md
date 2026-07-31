@@ -791,3 +791,78 @@ La préparation en descente n'est pas sacrifiée : pic hebdomadaire de D− à 1
 1 250–1 290 avant), médiane en baisse de 6 % au plus. Effet hors trail du réordonnancement,
 mesuré sur les 567 profils non-trail : **539 inchangés**, 24 en baisse (au plus −60 min sur un
 plan entier), 4 en hausse (au plus +5 min).
+
+## R13 — le handoff standalone-4, et ce que le banc a débusqué derrière (31/07/2026)
+
+Un audit externe est arrivé avec son banc exécutable (`bench_r13.cjs`, désormais **gate CI
+`npm run audit:r13`**) : 19 échecs mesurés sur le build courant, zéro sur les non-régressions.
+Tout est vert à la fin — et le chemin a débusqué plus que la liste.
+
+**R13.1 — l'âge avait deux domaines.** Le schéma acceptait 10-100, la table physio locale
+14-95 : un enfant de 10 ans recevait le plan adulte complet, VO2max comprises, sans un mot ;
+un athlète de 98 ans aussi, avec la FCmax d'un homme de 35 ans (le repli d'âge). Cinq clés
+divergeaient. `PHYSIO_BOUNDS` DÉRIVE désormais du schéma (accesseurs paresseux — le cycle
+d'imports a un sens), le filet E3 avertit sur les chemins non validés, et `build:app` échoue
+si une clé commune diverge — la règle est exécutable, plus un commentaire.
+
+**R13.2 — la CSS d'impression avait fuité.** Le diagnostic du handoff visait l'empaqueteur ;
+la mesure a montré la fuite DANS `css/styles.css` lui-même (la chaîne JS print de
+`plan-view.js`, apostrophes de concaténation comprises, collée en queue de fichier) : Space
+Grotesk mourait comme police de base, un `h2` global soulignait le check-in. Bloc retiré,
+garde de build qui échoue sur la signature.
+
+**R13.3 — en mono-séance, le tri ne nageait pas.** L'unique nage hebdo était « Nage récup
+courte » (sw.easy), zéro CSS en 59 semaines, zéro nage sur tout l'affûtage d'un Ironman.
+`facile2` route par phase, une 2e nage vit en spécifique/pic (alternance en dev), l'affûtage
+garde un « Rappel nage course » chaque semaine — y compris la semaine de course, via un filet
+posé APRÈS l'insertion du jour J (le donneur « au plus près de la course » ÉTAIT le jour J).
+Et l'intensité suit l'intention : plaisir/finir/débutant gardent la technique.
+
+**R13.4 — la semaine de course était cassée par un fall-through.** L'`else` attrape-tout
+envoyait la force basse cadence (48-72 h de fatigue résiduelle) en plein affûtage — à J-3 de
+l'Ironman. La règle est devenue une violation DURE de l'auditeur (« `*.frc` en taper ») et
+elle a débusqué le même accident dans **trois sports** (tri, vélo, duathlon). La veille passe
+à ≤ 25 min (un déverrouillage réveille, une séance entame), et le jour J sort de la charge
+(`min: 0`, temps PRÉDITS affichés — l'Ironman n'est plus compté comme un footing).
+
+**R13.5 — épaule + natation : 20 semaines plates à 0,8 h/sem sous une promesse à 2,9 h.**
+Le diagnostic tracé a remonté TROIS causes empilées : (1) la sonde de capacité ne mesurait
+que le SOMMET — elle sonde désormais aussi le chemin (la spécifique × 1,15 borne la
+promesse) ; (2) la substitution épaule du pic était plus petite que celle du dev — le pic ne
+pouvait structurellement pas dominer ; (3) surtout, LE QUANTUM DES COUPES : retirer un jour
+entier pour tenir une cible faisait passer la semaine SOUS la cible, et le ratchet C22
+« livré ×1,1 » repartait de la valeur sous-livrée — +10 % de cible et −10 % de coupe
+s'annulaient chaque semaine. La coupe REND désormais ce qu'elle a pris en trop (re-remplissage
+vers la cible, bornes de bloc respectées). Résultat : confirme 1,4 → 2,9 h, ratio 2,17,
+0 violation, 0 réparation. Plus deux filets permanents : promesse vs pic livré (< 75 % → le
+limiteur est nommé), et courbe plate (max/min < 1,35 → l'athlète le sait).
+
+**R13.6 — les phases en pourcentage explosaient sur les plans longs.** 6 semaines d'affûtage
+et 9 de peak sur 59 semaines : un désentraînement organisé (Bosquet 2007 : 8-14 jours,
+~3 semaines max). Plafonds absolus (taper ≤ 3, peak ≤ 5, excédent → spécifique), plafond de
+séance d'affûtage calé sur la courbe d'affûtage elle-même (la falaise −63 % devient une
+descente), et la semaine de course a un PLANCHER : 30 % du pic hors jour J — les jours OFF
+redeviennent de l'endurance allégée dans la limite du budget déclaré.
+
+**Annexes.** C22 au point fixe, EN TOUT DERNIER, avec 3 min de marge sous le plafond (les
+minutes entières et les pas de 25 m arrondissaient une réduction de 0,5 min à zéro : le saut
+restait à +10,6 % pour un plafond à +10,5). Et le mono-sport dont la discipline principale
+touche la zone fragile déclarée le DIT (genou + plan vélo pur → avertissement nommé).
+
+**Ce que la vague de vert a débusqué en aval** — chaque correctif a fait parler un banc :
+- la course à `min: 0` devenait LA PLUS PETITE séance de sa semaine, donc la victime idéale
+  de toutes les coupes « retirer la plus petite » : une coupe d'affûtage a supprimé l'Ironman
+  du plan. Une course n'est jamais une victime (garde sur tous les sélecteurs) ;
+- la protection anti-orphelin ne couvrait que la discipline PRINCIPALE : généralisée à toutes
+  (un duathlon d'affûtage sans un coup de pédale n'est pas un duathlon), et quand toute
+  victime orphelinerait, on RÉDUIT au lieu de retirer ;
+- le footing du tri n'avait pas de bornes (`ftCaps` existait, jamais posé) : c'était le
+  déversoir de toutes les passes de remplissage — « Footing facile 213 min » en semaine de
+  peak. Le plafond C23 débutant manquait aussi à la longue TRAIL ;
+- une séance de seuil nage n'est pas 100 % seuil : le corps se répartit 70 % CSS / 30 %
+  aérobie — compter tout en dur faisait passer 10 combinaisons tri sous le plancher de temps
+  facile ;
+- et le garde de polarisation repassait AVANT les passes qui ajoutent des séances — huitième
+  paiement de la leçon du point de convergence.
+
+**16 gates verts + `audit:r13` (17e), E2E 8/8, golden recapturé (756), swimrun vert.**

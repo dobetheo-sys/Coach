@@ -6,6 +6,7 @@
  * Source de vérité : Coach_Pro_V1.5.html (486 combinaisons vertes à l'audit).
  */
 import type { Sport, History } from "./types.ts";
+import { ANSWER_SCHEMA } from "./answerSchema.ts";
 
 export interface Provenance {
   id: string;
@@ -205,7 +206,10 @@ export const C13c_WARMUP_MIN_MIN = rule("C13c", "échauffement ≥10min sur tout
  * 45 minutes souples, quelques accélérations courtes : c'est ce que fait un entraîneur la
  * veille, et c'est le seul contenu qui ne coûte rien le lendemain.
  */
-export const RACE_EVE_CAP_MIN = rule("C27", "la veille d'une course : ≤45 min faciles — jamais la plus longue séance de la semaine", 45);
+// R13.4 — 45 min la veille n'était pas un déverrouillage, c'était une séance pleine (mesuré :
+// 48 min la veille d'un Ironman, 63 la veille d'un 70.3). Un déverrouillage se joue à
+// 15-25 min : échauffement + trois accélérations — réveiller, jamais entamer.
+export const RACE_EVE_CAP_MIN = rule("C27", "la veille d'une course : ≤25 min — un déverrouillage réveille les jambes (échauffement + 3 accélérations), une séance pleine les entame", 25);
 
 /**
  * C26 — LE PLANCHER DE TEMPS FACILE DÉPEND DU VOLUME, PARCE QUE 80/20 EN EST UNE CONSÉQUENCE.
@@ -346,17 +350,38 @@ export function parsePaceSec(v: unknown, kind: "run" | "swim" = "run"): number {
 
 /** E3 (audit v6) — bornes de plausibilité physiologique : hors bornes, la valeur est
  * traitée comme NON RENSEIGNÉE (repli zones cardio/ressenti) + avertissement nommé —
- * jamais une zone négative ou absurde à l'écran (l'attribut HTML min n'est pas une validation). */
+ * jamais une zone négative ou absurde à l'écran (l'attribut HTML min n'est pas une validation).
+ *
+ * R13.1 — UNE SEULE SOURCE DE BORNES. Cette table portait ses propres littéraux à côté
+ * d'`ANSWER_SCHEMA` : deux domaines pour la même grandeur, et les extrêmes passaient ENTRE les
+ * deux. Mesuré : le schéma accepte un âge de 10 à 100, cette table n'en croyait que 14 à 95 —
+ * `boundedOrZero("age", 12)` rendait 0, le prédicat `minor` devenait faux, et un enfant de
+ * 10 ans recevait le plan adulte complet, VO2max comprises, sans un mot. Un athlète de 98 ans
+ * aussi, avec la FCmax d'un homme de 35 ans (le repli d'âge). Cinq clés divergeaient (âge,
+ * poids, taille, FCmax, FTP) — l'en-tête de R11 l'avait écrit : « une énumération écrite deux
+ * fois est une énumération qui divergera ». Toute clé présente dans le schéma DÉRIVE désormais
+ * ses bornes de lui ; si une borne physio doit être plus stricte, c'est LE SCHÉMA qu'on change.
+ * Seul `hrRest` (absent du questionnaire) garde une borne locale. */
+function schemaBound(key: string, unit: string): { min: number; max: number; unit: string } {
+  const f = ANSWER_SCHEMA[key] as { min?: number; max?: number } | undefined;
+  if (!f || f.min == null || f.max == null)
+    throw new Error("PHYSIO_BOUNDS : la clé « " + key + " » n'existe pas (ou n'est pas numérique) dans ANSWER_SCHEMA — la borne doit vivre dans le schéma, pas ici");
+  return { min: f.min, max: f.max, unit };
+}
+// Accesseurs PARESSEUX : `answerSchema` et ce module s'importent mutuellement, et selon le
+// point d'entrée du cycle, `ANSWER_SCHEMA` n'existe pas encore quand cette table s'initialise
+// (mesuré : TDZ en important `answerSchema` en premier). La dérivation se fait donc à la
+// LECTURE, jamais à l'initialisation — les deux modules sont toujours prêts à ce moment-là.
 export const PHYSIO_BOUNDS: Record<string, { min: number; max: number; unit: string }> = rule(
   "E3",
-  "une FTP de -100W ou de 9999W produit des zones absurdes affichées sans bruit : hors bornes = non renseigné + avertissement",
+  "une FTP de -100W ou de 9999W produit des zones absurdes affichées sans bruit : hors bornes = non renseigné + avertissement ; bornes DÉRIVÉES d'ANSWER_SCHEMA (R13.1 : deux tables = une zone morte entre les deux)",
   {
-    ftp: { min: 60, max: 600, unit: "W" },
-    hrMax: { min: 120, max: 220, unit: "bpm" },
-    hrRest: { min: 30, max: 100, unit: "bpm" },
-    weight: { min: 35, max: 200, unit: "kg" },
-    height: { min: 120, max: 230, unit: "cm" },
-    age: { min: 14, max: 95, unit: "ans" },
+    get ftp() { return schemaBound("ftp", "W"); },
+    get hrMax() { return schemaBound("hr_max", "bpm"); },
+    hrRest: { min: 30, max: 100, unit: "bpm" }, // absent du schéma : borne locale assumée
+    get weight() { return schemaBound("weight", "kg"); },
+    get height() { return schemaBound("height", "cm"); },
+    get age() { return schemaBound("age", "ans"); },
   },
 );
 export function boundedOrZero(key: keyof typeof PHYSIO_BOUNDS & string, v: number): number {
@@ -440,6 +465,7 @@ export const FORBIDDEN = [
   "une semaine de récupération plus chargée que la précédente",
   "une progression de volume >+10% entre semaines de charge",
   "une séance VO2max en affûtage",
+  "une séance de force basse cadence en affûtage (même fatigue résiduelle que la VO2max)",
   "une sortie piscine de 600m (non-débutant)",
   "une sortie longue CAP de 3h pour un débutant",
   "une séance dont l'objectif n'est pas expliqué",

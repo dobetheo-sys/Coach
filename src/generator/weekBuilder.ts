@@ -9,6 +9,9 @@ import { buildSessions, type SessionCtx } from "./sessionLibrary.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { intOf, renderSess, type Refs, type HrZones } from "./renderer.ts";
 import { readCycle, weekIsLateLuteal } from "../engine/cycleModel.ts";
+// Import circulaire assumé (planGenerator importe buildDays) : IS_QUALITY_ZONE n'est lu qu'à
+// l'exécution, jamais à l'initialisation du module — même motif que la porte médicale.
+import { IS_QUALITY_ZONE } from "./planGenerator.ts";
 
 const J = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
@@ -201,8 +204,15 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   // avertissement. Un duathlon commence et finit à pied : c'est la discipline qu'on ne peut pas
   // ne pas toucher en affûtage.
   applyDisciplineCoverage(r, days, refs, hz, ctx);
+  applySwimFrequency(r, days, refs, hz, ctx);
   applyVo2Coverage(r, days, refs, hz, ctx);
   applyWeeklyVariety(r, days, refs, hz, ctx);
+  // R13.3 (suite) — le garde de polarisation REPASSE après les passes qui ajoutent des séances :
+  // la couverture et la fréquence de nage installent une « Nage seuil » (sw.css) qu'il n'a
+  // jamais vue — mesuré : 10 combinaisons tri repassaient sous le plancher de temps facile
+  // (68-70 %). Huitième paiement de la même leçon : une garantie posée avant une passe qui
+  // ajoute ne garantit que l'avant-dernier état.
+  applyPolarizationGuard(r, days, ctx, refs, hz);
   return days;
 }
 
@@ -473,7 +483,16 @@ function applyDisciplineCoverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz
     if (isRecupWeek) continue; // récup : structure volontairement allégée
     // En affûtage, la couverture reste exigée pour la discipline PRINCIPALE au moins : le
     // volume baisse, la spécificité non.
-    const required = isTaper ? [mod.mainDiscipline] : mod.disciplines;
+    // R13.3 — et pour un sport qui COMMENCE par la natation (tri), la nage aussi : les
+    // sensations d'eau se perdent en 10-14 jours, or l'affûtage en dure jusqu'à trois. Mesuré
+    // avant : ZÉRO nage sur les 6 semaines d'affûtage d'un Full mono-séance — l'athlète se
+    // présentait à un départ de 3,8 km en eau libre sans avoir nagé depuis un mois et demi.
+    // (En doubles, la nage d'affûtage vit déjà sur le créneau dur1 : rien à couvrir.)
+    // R13 — en affûtage aussi, TOUTES les disciplines du sport : ne garder que la principale
+    // laissait la semaine de course d'un duathlon sans un coup de pédale (D-DISC, banc v7) —
+    // et les sensations vélo se perdent comme les sensations d'eau. Le garde R5.2 ci-dessous
+    // empêche la couverture de regonfler la décroissance : on couvre léger, on ne recharge pas.
+    const required = mod.disciplines;
     const present = new Set<string>();
     for (const d of wd)
       for (const s of d.sessions) {
@@ -485,9 +504,12 @@ function applyDisciplineCoverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz
     if (!missing.length) continue;
     // Un jour facile non bloqué peut changer de discipline sans toucher à la structure dure.
     const donors = wd.filter((d) => !d.forced && d.charge === "facile" && d.sessions.some((s) => s.d !== "rs"));
+    const pool = [...donors];
     let fixed = 0;
     for (const disc of missing) {
-      const donor = donors[fixed];
+      // R13.3 — la nage d'affûtage se place au plus PRÈS de la course (fin de semaine) : le
+      // rappel sert à garder les sensations pour le jour J, pas à occuper un lundi.
+      const donor = disc === "sw" && isTaper ? pool.pop() : pool.shift();
       if (!donor) break;
       // La séance de remplacement passe par le point d'entrée unique (R4.0) : elle connaît les
       // drapeaux médicaux et d'âge. Le cross-training vélo EST la séance vélo facile.
@@ -501,7 +523,7 @@ function applyDisciplineCoverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz
         sess.name = "Endurance vélo (couverture discipline)";
         sess.note = "Ton enveloppe de jours laisse peu de place : cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan de duathlon sans vélo n'est pas un plan allégé, c'est un plan d'un autre sport.";
         renderSess(sess, refs, hz, r.baseRefs);
-        if (tooHeavy(sess)) continue;
+        if (tooHeavy(sess)) { pool.unshift(donor); continue; } // le donneur reste disponible pour la discipline suivante
         donor.sessions = [sess];
         fixed++;
       } else {
@@ -510,9 +532,9 @@ function applyDisciplineCoverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz
         // reconstruction produisait un doublon exact (« Seuil CSS + plaquettes » deux fois).
         const already = new Set(wd.flatMap((x) => x.sessions.map((y) => y.name)));
         const pick = built.find((x) => x.d === disc && !already.has(x.name)) || built.find((x) => x.d === disc);
-        if (!pick || already.has(pick.name)) continue;
+        if (!pick || already.has(pick.name)) { pool.unshift(donor); continue; }
         for (const x of built) if (x.steps && x.steps.length) renderSess(x, refs, hz, r.baseRefs);
-        if (tooHeavy(pick)) continue;
+        if (tooHeavy(pick)) { pool.unshift(donor); continue; }
         donor.sessions = [pick];
         fixed++;
       }
@@ -521,6 +543,43 @@ function applyDisciplineCoverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz
   }
   if (impossible > 0) {
     r.warnings.push("Sur " + impossible + " semaine(s), ton enveloppe de jours disponibles ne permet pas de faire tenir toutes les disciplines de ce sport (jours bloqués + disponibilité déclarée). Le plan fait au mieux, mais deux options le rendraient meilleur : viser un format plus court, ou passer sur un cycle de 10 jours (Profil → disponibilité) pour espacer les séances clés au lieu de les entasser sur 7 jours.");
+  }
+}
+
+/**
+ * R13.3 (2e étage) — FRÉQUENCE DE NAGE EN MONO-SÉANCE. La couverture des disciplines garantit
+ * UNE nage par semaine ; pour un sport dont la course commence dans l'eau, une seule exposition
+ * hebdomadaire en spécifique/pic laisse les sensations s'éroder entre deux séances. Mesuré
+ * avant : 1,0 nage/semaine sur tout le dev+spec+peak d'un Full mono-séance. Ici : une DEUXIÈME
+ * nage en spécifique et pic (chaque semaine), en alternance une semaine sur deux en dev — le
+ * donneur est un jour facile de course À PIED sans qualité, jamais la longue, jamais le créneau
+ * C18. La 2e séance est la nage TECHNIQUE (la même que la phase base construit — une seule
+ * bibliothèque, pas un deuxième chemin) : une principale + une technique, c'est la paire
+ * qu'un entraîneur écrit.
+ */
+function applySwimFrequency(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZones, ctx: SessionCtx): void {
+  if (!guard(r.profile.sport as string, "swimRacePrepFrequency") || r.dbl || r.medHold) return;
+  const isQuality = (s: V1Session) => (s.steps || []).some((st) => IS_QUALITY_ZONE(String(st.zone || "")));
+  for (let w = 1; w <= r.weeks; w++) {
+    const wd = days.filter((d) => d.week === w);
+    if (!wd.length || wd.every((d) => d.isR)) continue;
+    const ph = wd[0].phaseId;
+    if (ph !== "dev" && ph !== "spec" && ph !== "peak") continue;
+    if (ph === "dev" && w % 2 === 0) continue; // dev : une semaine sur deux suffit à entretenir
+    const swims = wd.reduce((t, d) => t + d.sessions.filter((s) => s.d === "sw").length, 0);
+    if (swims >= 2) continue;
+    const donor = wd.find((d) => !d.forced && d.charge === "facile"
+      && d.sessions.length > 0
+      && d.sessions.every((s) => s.d === "rn" && !s.long && !s.brick && !isQuality(s)));
+    if (!donor) continue;
+    // La technique est la séance que la bibliothèque construit pour la phase BASE : demander
+    // « la nage facile de base » n'est pas un détournement, c'est exactement cette séance.
+    const built = buildSessions(ctx, "facile2", "base", donor.prog || 0, donor.week);
+    const already = new Set(wd.flatMap((x) => x.sessions.map((y) => y.name)));
+    const pick = built.find((x) => x.d === "sw" && !already.has(x.name));
+    if (!pick) continue;
+    renderSess(pick, refs, hz, r.baseRefs);
+    donor.sessions = [pick];
   }
 }
 

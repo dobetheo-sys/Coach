@@ -319,3 +319,20 @@ Deux rappels de la même leçon au passage : une contrainte de croissance ne se 
 montant (réduire la semaine N creuse l'écart avec N+1 → T2/T2b re-clampées au point de
 convergence), et une garantie de SÉANCE doit précéder les garanties de SEMAINE (sinon la semaine
 est validée sur un contenu qui va encore changer). **Banc d'invariants vert sur ses 19 tests.**
+
+**R13 livré** (handoff standalone-4, voir R10_DEFECTS.md « R13 » — banc `npm run audit:r13`,
+17e gate CI) : **l'âge n'a plus qu'un domaine** (PHYSIO_BOUNDS dérive d'ANSWER_SCHEMA, un
+enfant de 10 ans recevait le plan adulte complet — garde de build anti-divergence) ; **CSS
+print** retirée de styles.css + garde de build ; **la nage du tri mono-séance existe**
+(facile2 par phase, 2e nage en spec/pic, rappel nage CHAQUE semaine d'affûtage, l'intensité
+suit l'intention) ; **semaine de course réparée** (force basse cadence bannie de l'affûtage
+en violation DURE — le même fall-through vivait dans TROIS sports —, veille ≤ 25 min, jour J
+`min:0` + temps prédits, plancher 30 % du pic hors jour J) ; **l'effondrement épaule+natation
+corrigé à la cause** (sonde de capacité qui mesure aussi le CHEMIN, coupes qui RENDENT ce
+qu'elles prennent en trop — confirme : 20 semaines plates 0,8 h → courbe 1,4→2,9 h, 0
+réparation) ; **phases plafonnées en absolu** (taper ≤ 3, peak ≤ 5, Bosquet 2007) ; C22 au
+point fixe en tout dernier ; genou+vélo pur = avertissement nommé. Et la vague de vert a
+débusqué : la course `min:0` devenue victime idéale de toutes les coupes (jamais une victime
+désormais), la protection anti-orphelin généralisée à TOUTES les disciplines, le footing tri
+sans bornes (déversoir des remplissages, 213 min mesurées), le seuil nage compté 100 % dur
+(70/30 désormais). **17 gates verts, E2E 8/8, golden 756 recapturé.**

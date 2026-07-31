@@ -201,6 +201,23 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   }
   if (vo2InTaper > 0) hard.push(vo2InTaper + " séance(s) VO2max en semaine d'affûtage (interdit, spec audit 2)");
 
+  // ---- R13.4 : pas de FORCE (basse cadence) en affûtage ----
+  // La force à 50-60 rpm a le même coût de fatigue résiduelle que la VO2max (48-72 h de
+  // courbatures profondes) : mesuré avant correction, 6 blocs `bk.frc` dans l'affûtage d'un
+  // Full — dont une séance de gros braquet à J-3 de l'Ironman. Elle était là par accident de
+  // branchement (`else` attrape-tout), pas par intention : la règle devient VÉRIFIÉE.
+  let frcInTaper = 0;
+  for (const w of plan.weeks) {
+    if (!taperNums.has(w.num)) continue;
+    for (const d of w.days)
+      for (const s of d.sessions)
+        if ((s.steps || []).some((st) => typeof st.zone === "string" && st.zone.endsWith(".frc"))) {
+          frcInTaper++;
+          flags.push("S" + w.num + " (taper) : séance de force « " + s.name + " »");
+        }
+  }
+  if (frcInTaper > 0) hard.push(frcInTaper + " séance(s) de force (basse cadence) en semaine d'affûtage (R13.4 : même coût de récupération que la VO2max)");
+
   // ---- Audit 2 : bornes du brick vélo par format ----
   let brickCapViolations = 0;
   const bounds = opts.format ? BRICK_BIKE_BOUNDS[opts.format] : undefined;

@@ -11,7 +11,7 @@ import {
   MIN_WEEKS, HISTORY_CAPS, UTIL, MARGIN, RECUP_FACTORS, PHASE_PCTS,
   BANDS, C22_MAX_WEEKLY_GROWTH, RECUP_WEEK_FACTOR, RECUP_EVERY,
   BEGINNER_SWIM_VOLPEAK_CAP_H, SWIM_TIME_FACTOR, C20_BEGINNER_SWIM_H_PER_SESSION,
-  MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, R6_AGE_LOAD, readInjuries, boundedOrZero,
+  MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, R6_AGE_LOAD, R6_PAIN_CONTRAINDICATION, readInjuries, boundedOrZero,
   parsePaceSec,
 } from "./constraintMatrix.ts";
 import { guard, knownSports, sportModule } from "../sports/registry.ts";
@@ -145,10 +145,30 @@ export class TrainingReasoningEngine {
         ? "Plusieurs zones fragiles (" + inj.list.join(", ") + ") : approche ultra-conservatrice — progression ralentie, bilan médical avant montée en charge"
         : "Zone fragile (" + inj.list.join(", ") + ") : le plafond de volume baisse de 10% — « une blessure décide quoi adapter », le volume en fait partie");
       if (inj.count >= 2) warnings.push("Plusieurs blessures déclarées (" + inj.list.join(", ") + ") : un bilan médical est recommandé avant la montée en charge — le plan est volontairement conservateur (-20% de volume).");
+      // ANX-GEN (R13) — LA ZONE FRAGILE QUI TOUCHE LA DISCIPLINE PRINCIPALE DU SPORT CHOISI
+      // SE DIT À VOIX HAUTE. R6.1 déclare `genou → forbid [rn, bk]` ; en mono-sport vélo, la
+      // génération appliquait ×0,9 sans un mot — l'athlète au genou fragile recevait un plan
+      // 100 % vélo et aucun signal. En multisport, la substitution de discipline fait le
+      // travail ; en mono-sport, elle est impossible : il ne reste que la franchise.
+      const mainD = sportModule(sp as string).mainDiscipline;
+      const conflit = inj.list.filter((loc) => (R6_PAIN_CONTRAINDICATION[loc]?.forbid || []).includes(mainD));
+      if (conflit.length && sportModule(sp as string).disciplines.length < 2) {
+        warnings.push("Ta zone fragile (" + conflit.join(", ") + ") est précisément celle que ce sport charge à chaque séance. Le plan réduit le volume (×" + injFactor.toFixed(2) + ") et l'ajusteur quotidien surveillera la douleur — mais un avis médical avant la montée en charge est la vraie réponse : aucune réduction de volume ne remplace un diagnostic.");
+      }
     }
 
     // R6.3 (audit v6, A7) — l'âge module la charge : l'avertissement du Profil s'APPLIQUE.
-    const ageN = boundedOrZero("age", parseInt(a.age || "") || 0);
+    // R13.1 — les bornes sont celles du SCHÉMA (source unique, dérivée) : un âge de 10 à 100
+    // est un âge, et les prédicats mineur/master le voient. Avant, la table physio locale
+    // (14–95) écartait 10-13 et 96-100 en silence : plan adulte complet pour un enfant de
+    // 10 ans. Sur le chemin validé, une valeur hors schéma a déjà LEVÉ dans validateAnswers —
+    // la branche d'écart ci-dessous est le filet des appelants qui n'y passent pas
+    // (`adjustTodayV2` appelle generatePlan sans validation), et elle le DIT (contrat E3 :
+    // hors bornes = non renseigné + avertissement, jamais un écart muet).
+    const ageRaw = parseInt(a.age || "") || 0;
+    const ageN = boundedOrZero("age", ageRaw);
+    if (ageRaw !== 0 && ageN === 0)
+      warnings.push("Ton âge renseigné (" + ageRaw + ") est hors du domaine accepté (10 à 100 ans) : il n'a pas été utilisé, et les protections liées à l'âge (mineur, master) n'ont pas pu s'appliquer. Corrige-le au Profil.");
     const minor = ageN > 0 && ageN <= R6_AGE_LOAD.mineur.maxAge;
     const master = ageN >= R6_AGE_LOAD.master.minAge;
     let ageFactor = 1;
@@ -234,6 +254,33 @@ export class TrainingReasoningEngine {
       }
       phases[4].start = phases[3].end;
       phases[4].weeks = phases[4].end - phases[4].start;
+    }
+    // R13.6 — LES POURCENTAGES DE PHASE PRENNENT DES PLAFONDS ABSOLUS. 10 % d'affûtage sur un
+    // plan de 59 semaines = 6 semaines à un quart du pic : la littérature (méta-analyse
+    // Bosquet 2007) situe l'affûtage optimal à 8-14 jours, ~3 semaines maximum pour un
+    // Ironman, réduction 40-60 %. Six semaines, c'est un désentraînement organisé — l'athlète
+    // le plus discipliné arrive détraîné. Même logique pour le peak (≤ 5 semaines : au-delà,
+    // ce n'est plus un pic, c'est un plateau de charge maximale que personne n'encaisse).
+    // L'excédent revient à la phase SPÉCIFIQUE (puis au développement) : c'est là que les
+    // semaines supplémentaires d'un plan long produisent de l'adaptation. La part de base ne
+    // bouge pas, C19 (peak ≥ 1) tient toujours.
+    {
+      const [, dev, spc, pk, tap] = phases;
+      const tapMax = Math.max(1, Math.min(Math.round(0.10 * weeks), weeks >= 30 ? 3 : 2));
+      const pkMax = 5;
+      let surplus = 0;
+      if (tap.weeks > tapMax) { surplus += tap.weeks - tapMax; tap.weeks = tapMax; }
+      if (pk.weeks > pkMax) { surplus += pk.weeks - pkMax; pk.weeks = pkMax; }
+      if (surplus > 0) {
+        spc.weeks += surplus;
+        // Recoudre les bornes de proche en proche (start/end sont dérivés des durées).
+        spc.start = dev.end; spc.end = spc.start + spc.weeks;
+        pk.start = spc.end; pk.end = pk.start + pk.weeks;
+        tap.start = pk.end; tap.end = weeks;
+        tap.weeks = tap.end - tap.start;
+        D("R13.6", "Phases plafonnées en absolu", "affûtage " + tap.weeks + " sem · peak " + pk.weeks + " sem (excédent → spécifique)",
+          "Les pourcentages explosent sur les plans longs : 6 semaines d'affûtage désentraînent (optimal 8-14 jours, ~3 semaines max — Bosquet 2007), un « pic » de 9 semaines est un plateau que personne n'encaisse");
+      }
     }
     D("courbe", "Courbe de charge", "base " + BANDS.base[0] + "→peak 1.0→affûtage " + BANDS.taper[1], "Bandes normalisées × pic, récup ×" + RECUP_WEEK_FACTOR + ", lissage C22 ≤+" + Math.round((C22_MAX_WEEKLY_GROWTH - 1) * 100) + "%/sem");
 

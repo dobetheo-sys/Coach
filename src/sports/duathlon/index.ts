@@ -59,6 +59,13 @@ export function buildDuathlonSessions(kit: SessionKit): V1Session[] {
     } else if ((phase === "dev") && !noVo2) {
       S2.push({ d: "bk", name: "VO2max vélo", note: "Intensité maximale tenable 4min, récupération quasi complète. Sans impact : c'est le vélo qui porte la charge dure de la semaine.", det: "",
         steps: [W(20, "progressif + 3 sprints courts"), Object.assign(B(PT(4, 6), 4, "bk.vo2", "4min"), { repCap: 8 }), C(10, "souple")] });
+    // R13.4 — TROISIÈME sport avec le même fall-through (tri, vélo, duathlon) : l'`else`
+    // attrape-tout envoyait la force basse cadence en plein affûtage. La règle mécanisée de
+    // l'auditeur (« *.frc en taper » = violation dure) les a débusqués un par un — c'est
+    // exactement ce qu'une règle vérifiée fait qu'une règle espérée ne fait pas.
+    } else if (phase === "taper") {
+      S2.push({ d: "bk", name: "Rappel race-pace", note: "Affûtage : on réveille l'allure course sans générer de fatigue. Court et précis.", det: "",
+        steps: [W(10, "progressif"), Object.assign(B(PT(2, 3), PT(6, 10), "bk.rp", "3min souple"), { repCap: 4 }), C(5, "décrassage")] });
     } else {
       S2.push({ d: "bk", name: "Force basse cadence", note: "Gros braquet, cadence 50-60 rpm : c'est musculaire, pas cardio. Sans forcer sur les genoux.", det: "",
         steps: [W(15, "+ montée en intensité"), Object.assign(B(PT(4, 6), 5, "bk.frc", "3min souple", " à 50-60 rpm"), { repCap: 8 }), C(10, "moulinage léger")] });

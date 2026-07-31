@@ -7,7 +7,7 @@
  */
 import type { AthleteProfile, V1Plan } from "../engine/types.ts";
 import { auditPlan, type AuditOpts, type PlanAudit } from "../audit/coherenceScorer.ts";
-import { guard } from "../sports/registry.ts";
+import { guard, sportModule } from "../sports/registry.ts";
 import { R313_TAPER_MAX_VS_PEAK } from "../engine/constraintMatrix.ts";
 import { generatePlan, normalizeRestMinutes, reconcileDeclaredVolume, syncDerivedLabels } from "./planGenerator.ts";
 import { renderSess, type Refs } from "./renderer.ts";
@@ -164,7 +164,7 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
         for (const d of offender.days) {
           if (d.forced) continue;
           d.sessions.forEach((s, si) => {
-            if (s.d === "rs" || s.long || s.brick) return;
+            if (s.d === "rs" || s.long || s.brick || s.race) return; // R13.4 : une course (min=0) n'est jamais une victime de coupe
             const m = s.min || 0;
             if (!victim || m < victim.min) victim = { d, si, min: m };
           });
@@ -264,7 +264,7 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
         let victim: { d: V1Plan["weeks"][0]["days"][0]; si: number; min: number } | null = null;
         for (const d of w.days)
           d.sessions.forEach((s, si) => {
-            if (s.d === "rs" || s.long || s.brick) return;
+            if (s.d === "rs" || s.long || s.brick || s.race) return; // R13.4 : une course (min=0) n'est jamais une victime de coupe
             const m = s.min || 0;
             if (!victim || m < victim.min) victim = { d, si, min: m };
           });
@@ -334,7 +334,7 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
   // R5.3 — la courbe ANNONCÉE se réconcilie avec le prescrit une fois les réparations passées :
   // `reduceDay` et `applyTargetedRepairs` changent encore des durées, et un écart figé avant
   // elles ment à l'athlète dès la première réparation (même leçon que R5.1).
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport as string, "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold });
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport as string, "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport as string, "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport as string).mainDiscipline, disciplines: sportModule(reasoned.profile.sport as string).disciplines });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.
@@ -350,6 +350,25 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
   //
   // On re-mesure donc à la sortie. Les réserves affichées à l'athlète sont recalculées avec :
   // annoncer des réserves qu'on vient de lever serait le même mensonge dans l'autre sens.
+  // R13.5 — LA PROMESSE EST CONFRONTÉE AU LIVRÉ, EN DERNIER. Le journal pouvait afficher
+  // « sonde de capacité → 2,9 h » au-dessus d'un plan dont le pic réel faisait 0,9 h : le
+  // chiffre annoncé mentait ×3 et AUCUN garde ne comparait les deux. Si le pic livré fait
+  // moins de 75 % de la promesse V2.1, un avertissement nomme le limiteur — et si les
+  // semaines de charge sont PLATES (max/min < 1,35), le plan n'est plus un plan périodisé
+  // et l'athlète doit le savoir. Deux filets, pas des correctifs : la génération saine ne
+  // les déclenche jamais (mesuré : 0 sur les 594 combinaisons).
+  {
+    const wMin = (w: { days: { sessions: { min?: number }[] }[] }) => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0);
+    const charge = best.plan.weeks.filter((w) => !w.isRecup && w.phase.id !== "taper").map(wMin);
+    const pkH = charge.length ? Math.max(...charge) / 60 : 0;
+    const v21 = reasoned.decisions.find((d) => d.id === "V2.1");
+    const promH = v21 ? parseFloat(String(v21.val).replace(",", ".")) : 0;
+    const injWhy = reasoned.inj && reasoned.inj.count > 0 ? "tes séances aménagées pour ta zone fragile (" + reasoned.inj.list.join(", ") + ") bornent chaque semaine" : "les plafonds de séance bornent chaque semaine";
+    if (promH > 0 && pkH > 0 && pkH < promH * 0.75)
+      warnings.push("Le volume promis (" + promH.toFixed(1) + " h/sem au pic) n'est pas atteignable : " + injWhy + " — le plan livrable culmine à " + pkH.toFixed(1) + " h/sem. C'est ce chiffre-là qui compte.");
+    if (charge.length >= 4 && Math.max(...charge) / Math.max(1, Math.min(...charge)) < 1.35)
+      warnings.push("Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif.");
+  }
   const finalAudit = auditPlan(best.plan, opts);
   const stale = warnings.indexOf("Plan rendu avec réserves (contraintes insatisfaisables après " + MAX_ITERATIONS + " réparations) :");
   if (stale >= 0) warnings.splice(stale, 1 + best.audit.hardViolations.length);

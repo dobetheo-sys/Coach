@@ -16,6 +16,12 @@ export function buildBikeSessions(kit: SessionKit): V1Session[] {
   } else if (slot === "dur2") {
     if (clm && (phase === "spec" || phase === "peak")) S2.push({ d: "bk", name: "Spécifique CLM (position)", note: "Travaille la tenue de position autant que la puissance : c'est elle qui te fera gagner du temps.", det: "", steps: [W(20, "progressif en position normale"), B(P(2, 3), P(15, 25), "bk.thr", "5min souple, redresse-toi", " en position aéro tenue"), C(10, "décrassage")] });
     else if (phase === "spec" || phase === "peak") S2.push({ d: "bk", name: "Seuil / race-pace", note: "Allure de course soutenable ~1h. Régularité avant tout.", det: "", steps: [W(15, "progressif"), B(P(2, 4), P(10, 20), "bk.thr", "5min souple"), C(10, "décrassage")] });
+    // R13.4 — même fall-through que le tri, même correctif : l'affûtage est branché
+    // EXPLICITEMENT. L'`else` attrape-tout envoyait la force basse cadence (bk.frc) en plein
+    // affûtage — 48-72 h de fatigue résiduelle, le coût d'une VO2max, à quelques jours de la
+    // course. C'est la règle mécanisée du tri (auditeur : « *.frc en taper » = violation dure)
+    // qui a révélé que le vélo portait le même accident de branchement.
+    else if (phase === "taper") S2.push({ d: "bk", name: "Rappel race-pace", note: "Affûtage : on réveille l'allure course sans générer de fatigue. Court et précis.", det: "", steps: [W(10, "progressif"), Object.assign(B(P(2, 3), P(6, 10), "bk.rp", "3min souple"), { repCap: 4 }), C(5, "décrassage")] });
     else S2.push({ d: "bk", name: climb ? "Force en côte" : "Force basse cadence", note: "Gros braquet, cadence basse, mais sans forcer sur les genoux : c'est musculaire, pas cardio.", det: "", steps: [W(15, "+ montée en intensité"), B(P(4, 6), 5, "bk.frc", "3min souple ou en redescendant", " à 50-60 rpm" + (climb ? " en côte" : "")), C(10, "moulinage léger")] });
   } else if (slot === "durLong") {
     const durCaps = ({ crit: { lo: 60, hi: 150 }, route: { lo: 90, hi: 180 }, clm: { lo: 75, hi: 165 }, cyclo: { lo: 120, hi: 240 }, gravel: { lo: 150, hi: 360 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 90, hi: 210 };

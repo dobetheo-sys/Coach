@@ -17,8 +17,9 @@
   --cut:255px 18px 225px 14px/16px 225px 16px 255px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
-html{overflow-x:hidden;} /* iOS : body seul ne suffit pas — sans ça, un débordement
-  horizontal permet de « panner » l'écran et la barre d'onglets semble disparaître */
+/* iOS : body seul ne suffit pas — sans ça, un débordement horizontal permet de
+   « panner » l'écran et la barre d'onglets semble disparaître */
+html{overflow-x:hidden;}
 body{
   background:var(--bg);
   color:var(--text);
@@ -262,12 +263,10 @@ body[data-sport="tri"]{--acc:#ff3b30;}
 .drv b{font-weight:400;font-size:14px;}
 @media(max-width:600px){.drv{font-size:11px;padding:5px 9px;}}
 
-
-body{font-family:-apple-system,Arial,sans-serif;max-width:900px;margin:0 auto;padding:24px;color:#16130e;background:#f1eadb}'
-    +'h1{font-size:24px}h2{font-size:16px;margin-top:24px;border-bottom:2px solid #16130e;padding-bottom:4px}'
-    +'.w{margin:14px 0;page-break-inside:avoid}.wh{font-size:14px;margin-bottom:6px}'
-    +'.g{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}@media(max-width:680px){.g{grid-template-columns:repeat(2,1fr)}}'
-    +'.d{border:1.5px solid #16130e;border-radius:6px;padding:6px;font-size:10px;min-height:70px}'
-    +'.d.dur{background:#ffe3e0}.d.facile{background:#d9f3e1}.d.recup{background:#e9defc}.d.off{background:#eee}'
-    +'.dh{font-weight:700;font-size:9px;margin-bottom:3px}ul{font-size:12px;line-height:1.5}'
-    +'@media print{body{background:#fff}}
+/* La feuille d'IMPRESSION n'a rien à faire ici : elle vit dans la chaîne JS de
+   ui/plan-view.js (fenêtre d'impression dédiée). R13.2 : un collage accidentel de cette
+   chaîne — apostrophes de concaténation comprises — avait atterri en queue de ce fichier.
+   Le parseur CSS en récupérait ce qui était syntaxiquement valide : Space Grotesk mourait
+   comme police de base (body → Arial), le h2 du check-in prenait un soulignement parasite,
+   toutes les listes rétrécissaient. Le build du standalone échoue désormais s'il retrouve
+   cette signature dans le <style> (garde dans scripts/buildStandalone.mjs). */

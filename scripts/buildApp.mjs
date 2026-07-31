@@ -143,7 +143,24 @@ const nut = EBV2.sessionNutrition({ d: "rn", name: "Sortie longue", det: "", min
 if (!nut || !nut.during.sodium || !/professionnel/.test(nut.disclaimer)) throw new Error("bundle invalide : sessionNutrition cassé");
 const av = EBV2.avatar(plan, answers, today);
 if (!av || !av.icon || av.level < 1 || av.progressPct < 0 || av.progressPct > 100) throw new Error("bundle invalide : avatar cassé");
-console.log("auto-test bundle : plan 16 semaines, score " + plan._v2.score + ", adaptation « " + adj.adjustment.verdict.level + " » OK");
+// R13.1 — LA RÈGLE « UNE SEULE SOURCE DE BORNES » EST EXÉCUTABLE, PAS UN COMMENTAIRE.
+// Les deux tables (ANSWER_SCHEMA et PHYSIO_BOUNDS) sont importées depuis src/ et comparées
+// clé à clé : si quelqu'un ré-introduit un littéral divergent dans PHYSIO_BOUNDS, le build
+// échoue en nommant la clé. C'est ce trou (âge 10-13 et 96-100 entre les deux domaines) qui
+// donnait le plan adulte complet à un enfant de 10 ans.
+{
+  const { ANSWER_SCHEMA } = await import("../src/engine/answerSchema.ts");
+  const { PHYSIO_BOUNDS } = await import("../src/engine/constraintMatrix.ts");
+  const MAP = { ftp: "ftp", hrMax: "hr_max", weight: "weight", height: "height", age: "age" };
+  for (const [pk, sk] of Object.entries(MAP)) {
+    const p = PHYSIO_BOUNDS[pk], s = ANSWER_SCHEMA[sk];
+    if (!p || !s || p.min !== s.min || p.max !== s.max)
+      throw new Error("R13.1 : PHYSIO_BOUNDS." + pk + " (" + (p && p.min) + "–" + (p && p.max) +
+        ") diverge d'ANSWER_SCHEMA." + sk + " (" + (s && s.min) + "–" + (s && s.max) +
+        ") — la borne doit vivre dans le schéma, une seule fois.");
+  }
+}
+console.log("auto-test bundle : plan 16 semaines, score " + plan._v2.score + ", adaptation « " + adj.adjustment.verdict.level + " » OK · bornes physio = schéma (R13.1)");
 
 // ---- Injection entre marqueurs, après le </script> principal ----
 const htmlPath = join(root, "Coach_Pro_V1.5.html");
