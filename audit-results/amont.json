@@ -1751,7 +1751,7 @@
   "key": "dispo",
   "mut": "chaîne vide",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 3.3→3.7h · sem 46→46 · séances 222→258",
+  "delta": "pic 3.3→3.7h · sem 46→46 · séances 222→257",
   "err": ""
  },
  {
@@ -1760,7 +1760,7 @@
   "key": "dispo",
   "mut": "clé absente",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 3.3→3.7h · sem 46→46 · séances 222→258",
+  "delta": "pic 3.3→3.7h · sem 46→46 · séances 222→257",
   "err": ""
  },
  {
@@ -4181,7 +4181,7 @@
   "key": "—",
   "mut": "vol_recent > vol_max",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 12.5→4h · sem 46→46 · séances 228→138",
+  "delta": "pic 12.5→4h · sem 46→46 · séances 228→137",
   "err": ""
  },
  {
@@ -4190,7 +4190,7 @@
   "key": "—",
   "mut": "3 séances / 20 h",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 12.5→8.2h · sem 46→46 · séances 228→135",
+  "delta": "pic 12.5→8.2h · sem 46→46 · séances 228→134",
   "err": ""
  },
  {
@@ -4199,7 +4199,7 @@
   "key": "—",
   "mut": "12 séances / 4 h",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 12.5→4h · sem 46→46 · séances 228→138",
+  "delta": "pic 12.5→4h · sem 46→46 · séances 228→137",
   "err": ""
  },
  {

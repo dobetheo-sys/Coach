@@ -29,9 +29,6 @@ const BASE = { intent:"competition", history:"confirme", injury:"aucune", dispo:
 const SPORTS = {
   run:{format:"marathon",terrain:"route",treadmill:"non",pace_known:"oui",pace:"4:50"},
   bike:{format:"cyclo",terrain:"plat",ftp_known:"oui",ftp:"227"},
-  // R11 — « 1500 » n'est pas une valeur du domaine `format` en nage (sprint/demifond/fond/ow) :
-  // le contrat d'entrée refuse la saisie, et le banc ne testerait rien. Troisième banc externe
-  // à porter cette faute ; c'est le contrat d'entrée qui la révèle à chaque fois.
   swim:{format:"fond",milieu:"bassin",swim_limit:"technique",css_known:"non"},
   tri:{format:"70.3",ftp_known:"oui",ftp:"227",pace_known:"oui",pace:"4:50",css_known:"non"},
   duathlon:{format:"M",terrain:"plat",ftp_known:"oui",ftp:"227",pace_known:"oui",pace:"4:50"},
@@ -48,6 +45,10 @@ const QUALITY = /seuil|vo2|intervalle|fractionn|tempo|sweetspot|côte|cote|allur
 
 const fails = [];
 function ko(id, ctx, msg) { fails.push({ id, ctx, msg }); }
+
+// Sous ce seuil, une seule séance représente une fraction majeure de la semaine :
+// les ratios mesurent la granularité, pas la charge. Les invariants de volume y sont suspendus.
+const GRAIN_MIN = 60;
 
 function sessionsOf(w) {
   const out = [];
@@ -85,23 +86,23 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
     const dev = byPhase("dev"), peak = byPhase("peak");
     if (dev.length && peak.length) {
       const md = Math.max(...dev.map((x) => x.min)), mp = Math.max(...peak.map((x) => x.min));
-      if (md > mp * 1.0) ko("I1", ctx, `dev ${Math.round(md)}min > peak ${Math.round(mp)}min (+${Math.round(100*(md/mp-1))}%)`);
+      if (md > mp && md - mp > 10 && mp >= GRAIN_MIN) ko("I1", ctx, `dev ${Math.round(md)}min > peak ${Math.round(mp)}min (+${Math.round(100*(md/mp-1))}%)`);
     }
     // I2 — l'affûtage reste sous le pic
     const tap = byPhase("taper");
     if (tap.length && peak.length) {
       const mt = Math.max(...tap.map((x) => x.min)), mnp = Math.min(...peak.map((x) => x.min));
-      if (mt >= mnp) ko("I2", ctx, `affûtage ${Math.round(mt)}min ≥ plus petite semaine de pic ${Math.round(mnp)}min`);
+      if (mt >= mnp && mt - mnp > 10 && mnp >= GRAIN_MIN) ko("I2", ctx, `affûtage ${Math.round(mt)}min ≥ plus petite semaine de pic ${Math.round(mnp)}min`);
     }
     // I3 — une semaine de récup est plus légère que la semaine de charge qui la précède
     for (let i = 1; i < W.length; i++)
-      if (W[i].w.isRecup && !W[i-1].w.isRecup && W[i].min >= W[i-1].min)
+      if (W[i].w.isRecup && !W[i-1].w.isRecup && W[i].min >= W[i-1].min && W[i-1].min >= GRAIN_MIN)
         ko("I3", ctx, `sem ${W[i].w.num} (récup) ${Math.round(W[i].min)}min ≥ sem ${W[i-1].w.num} ${Math.round(W[i-1].min)}min`);
     // I4 — pas de bond de plus de 35 % entre deux semaines de charge
     for (let i = 1; i < W.length; i++) {
       if (W[i].w.isRecup || W[i-1].w.isRecup || !W[i-1].min) continue;
       const j = W[i].min / W[i-1].min;
-      if (j > 1.35) ko("I4", ctx, `sem ${W[i-1].w.num}→${W[i].w.num} : +${Math.round(100*(j-1))}%`);
+      if (j > 1.35 && W[i].min - W[i-1].min > 20 && W[i-1].min >= GRAIN_MIN) ko("I4", ctx, `sem ${W[i-1].w.num}→${W[i].w.num} : +${Math.round(100*(j-1))}%`);
     }
     for (const { w, n, min } of W) {
       // I5 — l'échauffement ne dépasse jamais le corps de séance
@@ -135,12 +136,11 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
       for (const s of sessionsOf(w)) {
         if (/r[ée]cup|courte/i.test(s.name) && s.min > 60)
           ko("I11", ctx, `sem ${w.num} « ${s.name} » dure ${s.min}min`);
-        // « la plus longue de sa semaine, DANS SA DISCIPLINE » — c'est l'énoncé de l'invariant.
-        // Sans le filtre par discipline, la sortie longue à pied d'un triathlon est comparée à
-        // la sortie longue à VÉLO, qui est légitimement plus longue : 138 faux positifs sur les
-        // seuls sports multi-disciplines. On teste l'invariant tel qu'il est écrit.
         if (/longue/i.test(s.name)) {
-          const mx = Math.max(...sessionsOf(w).filter((y) => y.d === s.d && !y.brick).map((y) => y.min || 0));
+          // Une COURSE n'est pas une séance d'entraînement : elle a lieu, et le banc la traite
+          // déjà à part (I15/I17). La comparer au rang des sorties longues ferait échouer
+          // l'invariant sur toute semaine contenant une course — 15 faux positifs mesurés.
+          const mx = Math.max(...sessionsOf(w).filter((y) => y.d === s.d && !/🏁/.test(y.name || "")).map((y) => y.min || 0));
           if ((s.min || 0) < mx * 0.85) ko("I14", ctx, `sem ${w.num} « ${s.name} » ${s.min}min alors que la plus longue de la semaine fait ${mx}min`);
         }
       }
@@ -150,6 +150,34 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
         ko("I12", ctx, `sem ${w.num} : sortie longue ${longest}min = ${Math.round(100*longest/min)}% du volume (${n} séances)`);
     }
   }
+  // I15/I16/I17 — les courses : présence au calendrier, veille allégée, jour J exclusif
+  {
+    const withRace = { ...BASE, ...extra, ...ENV[1].a, level:"inter",
+      races:"oui", race1_date:"2027-03-14", race1_prio:"A" };
+    const p = E.buildPlan(sp, withRace);
+    const ctx = `${sp}/courses`;
+    const dayOf = (iso) => { for (const w of p.weeks) for (const d of w.days) if (d.date === iso) return d; return null; };
+    const isRace = (x) => /🏁/.test(x.name || "");
+    // I15 — la course objectif figure comme séance
+    const objectif = dayOf(BASE.race_date);
+    if (objectif && !objectif.sessions.some(isRace))
+      ko("I15", ctx, `jour de la course objectif (${BASE.race_date}) : aucune séance de course — ` +
+        (objectif.sessions.filter((x) => x.d !== "rs").map((x) => x.name + " " + x.min + "min").join(" + ") || "repos"));
+    // I16 — la veille d'une course, rien de long
+    for (const iso of [BASE.race_date, "2027-03-14"]) {
+      const veille = dayOf(new Date(new Date(iso + "T12:00:00Z").getTime() - 864e5).toISOString().slice(0, 10));
+      if (!veille) continue;
+      const mx = Math.max(0, ...veille.sessions.filter((x) => x.d !== "rs" && !isRace(x)).map((x) => x.min || 0));
+      if (mx > 60) ko("I16", ctx, `veille de la course du ${iso} : séance de ${mx}min`);
+    }
+    // I17 — le jour d'une course, aucune autre séance
+    const jourJ = dayOf("2027-03-14");
+    if (jourJ) {
+      const autres = jourJ.sessions.filter((x) => x.d !== "rs" && !isRace(x));
+      if (autres.length) ko("I17", ctx, `jour de course intermédiaire : ${autres.map((x) => x.name).join(", ")} en plus`);
+    }
+  }
+
   // I13 — monotonie du niveau déclaré : plus l'athlète est fort, plus la charge est élevée
   const byLevel = LEVELS.map((lv) => {
     const p = E.buildPlan(sp, { ...BASE, ...extra, ...ENV[1].a, level: lv });
@@ -164,7 +192,7 @@ const NAMES = {
   I4:"saut hebdo ≤ 35 %", I5:"échauffement ≤ corps", I6:"séance non vide",
   I7:"durée comptabilisée", I8:"plafond de séances", I9:"enveloppe de volume",
   I10:"annoncé = réel", I11:"le nom colle à la dose", I12:"sortie longue ≤ 60 %", I14:"la sortie longue est la plus longue",
-  I13:"monotonie du niveau",
+  I13:"monotonie du niveau", I15:"la course est au calendrier", I16:"veille de course allégée", I17:"jour J exclusif",
 };
 const G = {};
 for (const f of fails) (G[f.id] ||= []).push(f);

@@ -2946,6 +2946,17 @@ const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ corps de s
  */
 const C13c_WARMUP_MIN_MIN = rule("C13c", "échauffement ≥10min sur toute séance qui en porte un", 10);
 /**
+ * C27 — LA VEILLE D'UNE COURSE NE DÉPASSE PAS 45 MIN, ET ELLE EST FACILE.
+ *
+ * Mesuré : la veille d'une course intermédiaire portait la PLUS LONGUE séance de la semaine sur
+ * les quatre sports testés — 4 h 30 de trail, 3 h 56 de vélo, 3 h 23 de brick. La course était
+ * insérée dans un calendrier déjà construit, sans que les jours voisins soient replanifiés.
+ * 45 minutes souples, quelques accélérations courtes : c'est ce que fait un entraîneur la
+ * veille, et c'est le seul contenu qui ne coûte rien le lendemain.
+ */
+const RACE_EVE_CAP_MIN = rule("C27", "la veille d'une course : ≤45 min faciles — jamais la plus longue séance de la semaine", 45);
+
+/**
  * C26 — LE PLANCHER DE TEMPS FACILE DÉPEND DU VOLUME, PARCE QUE 80/20 EN EST UNE CONSÉQUENCE.
  *
  * La justification, écrite avant de regarder quelles combinaisons passent.
@@ -7067,7 +7078,7 @@ function reconcileDeclaredVolume(
         if (render) render(sx);
       }
       for (let g = 0; g < 4 && weekMinOf(wk) >= prev; g++) {
-        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
         if (active.length <= 1) break; // une semaine de récup garde au moins un contact avec le sport
         const victim = active.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
         victim.charge = "off";
@@ -7119,7 +7130,7 @@ function reconcileDeclaredVolume(
         if (before - weekMinOf(wk) < 0.5) break; // plus rien à réduire : la fréquence prend le relais
       }
       for (let g = 0; g < 4 && weekMinOf(wk) > cap; g++) {
-        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
         if (active.length <= 1) break;
         const victim = active.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
         victim.charge = "off";
@@ -7139,7 +7150,7 @@ function reconcileDeclaredVolume(
     for (const wk of plan.weeks) {
       if (wk.phase.id !== "taper") continue;
       for (let g = 0; g < 6 && weekMinOf(wk) > prev; g++) {
-        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
         // Une seule séance restante : on ne peut plus RETIRER, il faut RÉDUIRE. Sans ce repli,
         // la décroissance de l'affûtage s'arrêtait net dès qu'une semaine tombait à une séance
         // (mesuré : 48 → 56 min sur un Full à 3 séances/semaine). Réduire est toujours dans le
@@ -7168,7 +7179,7 @@ function reconcileDeclaredVolume(
     // Pas de coupe en AFFÛTAGE : sa décroissance est stricte (R3.13, banc v6 D10) et retirer
     // une séance courte d'une semaine plutôt que d'une autre y casse la monotonie.
     if (wk.phase.id !== "taper") {
-      let work = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs"));
+      let work = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
       for (const d of [...work].sort((x, y) => dayMin(x) - dayMin(y))) {
         // La coupe ne s'applique QU'AUX semaines qui débordent déjà de leur courbe : ailleurs,
         // une séance courte est un choix de la courbe, pas un artefact de plancher.
@@ -7278,10 +7289,12 @@ function reconcileDeclaredVolume(
         let touched = false;
         for (const st of sx.steps || []) {
           if (st.role !== "body") continue;
-          // Les blocs en PENTE portent la charge verticale (T1/T2/T2b), tenue par ses propres
-          // passes : y toucher ici ferait bouger le D+/D− d'une semaine sans que la progression
-          // verticale soit revérifiée. Un plafond de libellé n'a pas à déplacer un axe de charge.
-          if (st.gradient) continue;
+          // Seuls les blocs qui portent du DÉNIVELÉ sont intouchables ici : la charge verticale
+          // (T1/T2/T2b) a ses propres passes, et un plafond de libellé n'a pas à déplacer un axe
+          // de charge sans que sa progression soit revérifiée. Un bloc `flat` n'en porte aucun —
+          // l'exclure aussi laissait 9 « Footing récup » de 71 min et 18 sorties longues de trail
+          // dépassées par une autre séance, pour une prudence sans objet.
+          if (st.gradient === "up" || st.gradient === "down" || st.gradient === "rolling") continue;
           if ((st.reps || 1) > 1) {
             const next = Math.max(1, Math.round((st.reps || 1) * f));
             if (next < (st.reps || 1)) { st.reps = next; touched = true; }
@@ -8358,10 +8371,22 @@ function generatePlan(profile                , opts                             
 
   // Courses intermédiaires : mini-affûtage semaine B/A, récup la semaine suivante
   const races                                   = [];
-  if (a.races === "oui") {
-    if (a.race1_date) races.push({ date: a.race1_date, prio: a.race1_prio || "C" });
-    if (a.race2_date) races.push({ date: a.race2_date, prio: a.race2_prio || "C" });
-  }
+  // N1 — LA COURSE OBJECTIF EST DANS LE PLAN. Le mécanisme d'insertion existait et n'était
+  // jamais appliqué à la course pour laquelle le plan existe : le jour J, l'athlète recevait
+  // « Footing facile 22 min » sur les 6 sports. Pire, la veille, le bandeau annonçait « des
+  // jambes fraîches, repos » pendant que le plan prescrivait 66 à 94 min. Le bandeau et la
+  // séance se contredisaient sur le même écran — deux passes qui produisent des faits opposés
+  // sans que personne ne les confronte, la famille de défauts de toute cette série.
+  // `race_date` alimente la liste au même titre qu'une course intermédiaire, en priorité A,
+  // sans dépendre de `a.races` (qui ne décrit QUE les courses secondaires).
+  // Sous drapeau médical, le plan est un plan de MAINTIEN : on n'y inscrit pas une course.
+  // (Sans cette garde, la séance de course injectait une zone seuil dans 65 plans sous drapeau
+  // médical — le contournement exact que R4.0 avait fermé. Priorité n°1 du manifeste.)
+  if (a.race_date && !r.medHold) races.push({ date: a.race_date, prio: "A" });
+  // N5 — une date de course secondaire renseignée SANS `races:"oui"` était ignorée en silence.
+  // R11 : on l'applique ou on lève ; jamais un champ rempli qui ne fait rien.
+  if (a.race1_date && !r.medHold) races.push({ date: a.race1_date, prio: a.race1_prio || "C" });
+  if (a.race2_date && !r.medHold) races.push({ date: a.race2_date, prio: a.race2_prio || "C" });
   for (const rc of races) {
     // La semaine d'une course intermédiaire se trouve par SA DATE dans la grille datée
     // (l'ancien offset depuis « aujourd'hui » se décale dès que la semaine 1 commence au lundi).
@@ -8374,18 +8399,83 @@ function generatePlan(profile                , opts                             
       if (rd) {
         const mainD = sportModule(a.sport          ).mainDiscipline;
         const prevMin = rd.sessions.reduce((m, s) => m + (s.min || 0), 0) || 60;
+        // Le jour de la course n'est plus un jour « bloqué » : l'athlète y court, c'est un FAIT
+        // qu'il a déclaré lui-même. Et comme la course occupe un créneau, elle ne s'ajoute pas
+        // au budget de séances : la plus petite séance de la semaine cède sa place.
+        rd.forced = false;
         rd.charge = "dur";
+        {
+          const others = (wk.days            )
+            .filter((d) => d !== rd)
+            .flatMap((d) => d.sessions.filter((sx) => sx.d !== "rs").map((sx) => ({ d, sx })));
+          const budget = r.budgetPerWeek || 6;
+          while (others.length + 1 > budget) {
+            const victim = others.reduce((x, y) => ((y.sx.min || 0) < (x.sx.min || 0) ? y : x));
+            const i2 = victim.d.sessions.indexOf(victim.sx);
+            if (i2 >= 0) victim.d.sessions.splice(i2, 1);
+            if (!victim.d.sessions.some((x) => x.d !== "rs")) {
+              victim.d.charge = "off"; victim.d.slot = "off";
+              victim.d.sessions = [{ d: "rs", name: "OFF (semaine de course)", det: "repos — la course occupe le créneau de la semaine", steps: [], min: 0 }];
+            }
+            others.splice(others.indexOf(victim), 1);
+          }
+        }
         rd.sessions = [{
           d: mainD        ,
           name: "🏁 Course " + rc.prio,
           race: true,
-          det: rc.prio === "C"
-            ? "Course laboratoire : départ contrôlé, teste ton ravito et ton pacing — on enchaîne l'entraînement derrière. — 💡 Objectif : apprendre en conditions réelles, pas performer."
-            : "Course de préparation : mini-affûtage fait, tu peux appuyer. Départ prudent, finis fort. — 💡 Objectif : valider allures et stratégie avant l'objectif A.",
+          det: rc.prio === "A"
+            ? "LE JOUR J. Départ contrôlé à ton allure cible, la première moitié doit te sembler facile — c'est le seul pacing qui tient. — 💡 Tout ce qui devait être construit l'est : aujourd'hui, tu exécutes."
+            : rc.prio === "C"
+              ? "Course laboratoire : départ contrôlé, teste ton ravito et ton pacing — on enchaîne l'entraînement derrière. — 💡 Objectif : apprendre en conditions réelles, pas performer."
+              : "Course de préparation : mini-affûtage fait, tu peux appuyer. Départ contrôlé, finis fort. — 💡 Objectif : valider allures et stratégie avant l'objectif A.",
           min: prevMin,
-          steps: [{ role: "body", durationMin: prevMin, zone: mainD + ".thr" }],
+          // Une course ne porte PAS de zone d'entraînement : ce n'est pas une séance dosée, c'est
+          // un événement. Lui coller `.thr` la faisait compter comme 60+ min de seuil par les
+          // bancs de dose — et surtout comme de l'intensité générée là où elle est interdite.
+          steps: [{ role: "body", durationMin: prevMin, _min: prevMin }],
           note: "Course " + rc.prio + " placée à sa vraie date — la semaine est allégée autour.",
         }             ];
+      }
+      // N3/N4 — LA FENÊTRE AUTOUR DE LA COURSE EST REPLANIFIÉE, ET LA PRIORITÉ LA PILOTE.
+      // La course était INSÉRÉE dans un calendrier déjà construit, sans que les jours voisins
+      // soient touchés : la veille portait la plus longue séance de la semaine sur 4 sports
+      // sur 4 — 4 h 30 de trail la veille d'une course. Deux passes qui ne se parlent pas.
+      // Et `race1_prio` ne changeait rien : A, B et C donnaient le même plan au caractère près.
+      // Ce que la priorité pilote désormais, c'est la LARGEUR de la fenêtre :
+      //   A → 3 jours allégés avant, 2 jours de récup après (c'est l'objectif du plan)
+      //   B → veille allégée, 1 jour de récup après
+      //   C → veille allégée seulement : la course TIENT LIEU de séance de qualité.
+      const prep = rc.prio === "A" ? 3 : 1;
+      const after = rc.prio === "A" ? 2 : rc.prio === "B" ? 1 : 0;
+      const allDays = wl.flatMap((w) => w.days            );
+      const raceT = new Date(rc.date + "T12:00:00Z").getTime();
+      const dayAt = (offsetDays        ) => allDays.find((d) => d.date === new Date(raceT + offsetDays * 864e5).toISOString().slice(0, 10));
+      for (let k = 1; k <= prep; k++) {
+        const d = dayAt(-k);
+        if (!d) continue;
+        const capMin = k === 1 ? RACE_EVE_CAP_MIN : Math.round(RACE_EVE_CAP_MIN * 1.5);
+        d.charge = "facile";
+        for (const sx of d.sessions) {
+          if (sx.d === "rs" || sx.race || !sx.steps) continue;
+          if ((sx.min || 0) <= capMin) continue;
+          const mainD = sportModule(a.sport          ).mainDiscipline;
+          sx.steps = [{ role: "body", durationMin: capMin, zone: mainD + (mainD === "sw" ? ".easy" : mainD === "bk" ? ".z2" : ".easy") }          ];
+          sx.long = false;
+          sx.brick = false;
+          sx.name = k === 1 ? "Déverrouillage (veille de course)" : "Endurance allégée (avant course)";
+          sx.note = k === 1
+            ? "Veille de course : on réveille les jambes, on ne les fatigue pas. Court, souple, quelques accélérations de 20 s si tu en ressens le besoin — puis on range les chaussures."
+            : "La course approche : le volume descend, l'intensité aussi. Ce que tu gagnes maintenant, c'est de la fraîcheur, pas de la forme.";
+          renderSess(sx, refs, r.hz, r.baseRefs);
+        }
+      }
+      for (let k = 1; k <= after; k++) {
+        const d = dayAt(k);
+        if (!d || d.sessions.some((sx) => sx.race)) continue;
+        d.charge = "off";
+        d.slot = "off";
+        d.sessions = [{ d: "rs", name: "Repos post-course", det: "récupération — marche, hydratation, fierté", steps: [], min: 0 }];
       }
       if (rc.prio !== "C") {
         wk.vol = Math.round(wk.vol * 0.75 * 10) / 10;

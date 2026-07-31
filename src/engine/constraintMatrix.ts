@@ -197,6 +197,17 @@ export const C13_WARMUP_MAX_MIN = rule("C13", "échauffement ≤25min et ≤ cor
  */
 export const C13c_WARMUP_MIN_MIN = rule("C13c", "échauffement ≥10min sur toute séance qui en porte un", 10);
 /**
+ * C27 — LA VEILLE D'UNE COURSE NE DÉPASSE PAS 45 MIN, ET ELLE EST FACILE.
+ *
+ * Mesuré : la veille d'une course intermédiaire portait la PLUS LONGUE séance de la semaine sur
+ * les quatre sports testés — 4 h 30 de trail, 3 h 56 de vélo, 3 h 23 de brick. La course était
+ * insérée dans un calendrier déjà construit, sans que les jours voisins soient replanifiés.
+ * 45 minutes souples, quelques accélérations courtes : c'est ce que fait un entraîneur la
+ * veille, et c'est le seul contenu qui ne coûte rien le lendemain.
+ */
+export const RACE_EVE_CAP_MIN = rule("C27", "la veille d'une course : ≤45 min faciles — jamais la plus longue séance de la semaine", 45);
+
+/**
  * C26 — LE PLANCHER DE TEMPS FACILE DÉPEND DU VOLUME, PARCE QUE 80/20 EN EST UNE CONSÉQUENCE.
  *
  * La justification, écrite avant de regarder quelles combinaisons passent.

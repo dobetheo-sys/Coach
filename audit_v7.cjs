@@ -201,7 +201,10 @@ function runChecks(sport, a, plan, fail) {
         const stepSum = (s.steps || []).reduce((x, st) => x + (st._min || 0), 0);
         if ((s.steps || []).length && Math.abs(stepSum - (s.min || 0)) > 1.01) F("U-MIN-SUM", `S${w.num} ${d.jour} « ${s.name} » min=${s.min} vs Σsteps=${Math.round(stepSum)}`);
         if (isWork(s)) { nSess++; dayWork++; }
-        if (isWork(s) && offSet.has(d.jour)) F("U-OFF", `S${w.num} séance ${d.jour} déclaré OFF`);
+        // Une COURSE que l'athlète a lui-même datée n'est pas une séance que le moteur place :
+        // c'est un fait. Elle tombe le jour qu'elle tombe, y compris sur un jour déclaré OFF —
+        // le contrat « pas de séance les jours bloqués » porte sur ce que le PLAN décide.
+        if (isWork(s) && offSet.has(d.jour) && !/🏁/.test(s.name || "")) F("U-OFF", `S${w.num} séance ${d.jour} déclaré OFF`);
         // médical
         if (medHold) for (const b of bodies(s)) if (HARD_HI.test(String(b.zone || ""))) F("U-MED", `S${w.num} ${d.jour} zone ${b.zone} malgré drapeau médical`);
         // reps absurdes
