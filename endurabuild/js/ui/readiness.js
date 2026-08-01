@@ -16,9 +16,9 @@ function fetchWeather(){return new Promise(res=>{
 function verdictHTML(res,weather){
   const v=res.adjustment.verdict,ic={verte:"🟢",orange:"🟠",rouge:"🔴"};
   const lbl={keep:"séance maintenue",reduce:"volume réduit, structure conservée",replace:"qualité remplacée par de l’endurance",rest:"repos aujourd’hui",off:"repos complet (affûtage)"};
-  let h='<div class="why" style="margin:0">'+(weather?'🌤 '+Math.round(weather.tmaxC)+'°C prévus'+(weather.precipMm>=5?' · pluie':'')+'<br>':'')+ic[v.level]+' <b>Readiness '+v.level+'</b> — '+lbl[res.adjustment.action]+'<br><span style="color:#555;font-size:12px">'+v.drivers.join(" · ")+'</span></div>';
-  if(res.sessions.length)res.sessions.forEach(x=>{h+='<div style="font-size:12px;margin-top:6px"><b>'+(res.jour||"Aujourd’hui")+' · '+x.name+'</b><br>'+x.det+'</div>';});
-  else h+='<div style="font-size:12px;margin-top:6px">Aucune séance planifiée aujourd’hui.</div>';
+  let h='<div class="why" style="margin:0">'+(weather?'🌤 '+Math.round(weather.tmaxC)+'°C prévus'+(weather.precipMm>=5?' · pluie':'')+'<br>':'')+ic[v.level]+' <b>Readiness '+v.level+'</b> — '+lbl[res.adjustment.action]+'<br><span style="color:#555;font-size:var(--fs-sm)">'+v.drivers.join(" · ")+'</span></div>';
+  if(res.sessions.length)res.sessions.forEach(x=>{h+='<div style="font-size:var(--fs-sm);margin-top:6px"><b>'+(res.jour||"Aujourd’hui")+' · '+x.name+'</b><br>'+x.det+'</div>';});
+  else h+='<div style="font-size:var(--fs-sm);margin-top:6px">Aucune séance planifiée aujourd’hui.</div>';
   return h;
 }
 /** Applique la forme du jour : lit les 4 sélecteurs (sommeil/VFC/énergie/ressenti), calcule

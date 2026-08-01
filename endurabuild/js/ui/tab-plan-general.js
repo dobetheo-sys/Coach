@@ -45,13 +45,13 @@ function phaseObjectivesHTML(plan) {
     const pct = st.total ? Math.round((st.done / st.total) * 100) : 0;
     const state = st.validated ? "✅ Phase validée" : st.done > 0 ? st.done + "/" + st.total + " séances ✓" : "à venir";
     const open = S._phOpen === p.nom;
-    h += '<details class="ph-obj" data-ph="' + p.nom + '"' + (open ? " open" : "") + ' style="margin-top:8px;border-left:4px solid ' + p.c + ';padding-left:10px"><summary style="cursor:pointer;font-size:13px"><b>' + p.nom + "</b> · " + st.wks.length + " sem — <i>" + state + "</i>"
+    h += '<details class="ph-obj" data-ph="' + p.nom + '"' + (open ? " open" : "") + ' style="margin-top:8px;border-left:4px solid ' + p.c + ';padding-left:10px"><summary style="cursor:pointer;font-size:var(--fs-md)"><b>' + p.nom + "</b> · " + st.wks.length + " sem — <i>" + state + "</i>"
       + '<div style="background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden;margin-top:4px"><div style="height:100%;width:' + pct + "%;background:" + p.c + '"></div></div></summary>'
       + '<div class="load-sub" style="margin-top:6px">' + (PHASE_GOALS[(p.id || "").toLowerCase()] || PHASE_GOALS[p.nom ? p.nom.toLowerCase().slice(0, 4) : ""] || "Une étape du plan, au service de la suivante.") + "</div>";
     // LE PROGRAMME : chaque semaine de la phase, jour par jour, coches comprises
     st.wks.forEach((w) => {
       const pr = w.days.length ? " · du " + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) : "";
-      h += '<div style="font-size:12px;margin-top:8px;font-weight:700">Semaine ' + w.num + " · " + w.vol + "h" + (w.isRecup ? " (récup)" : "") + pr + "</div>";
+      h += '<div style="font-size:var(--fs-sm);margin-top:8px;font-weight:700">Semaine ' + w.num + " · " + w.vol + "h" + (w.isRecup ? " (récup)" : "") + pr + "</div>";
       w.days.forEach((d) => {
         const items = d.sessions.map((s, si) => {
           const k = w.num + "|" + d.jour + "|" + si;
@@ -59,10 +59,10 @@ function phaseObjectivesHTML(plan) {
           const chk = s.d !== "rs" ? '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" title="Marquer fait">' + (dn ? "✓" : "○") + "</button> " : "";
           return chk + s.name;
         }).join(" · ");
-        h += '<div style="font-size:12px;margin:3px 0 0 4px;color:#3f3a30"><b style="display:inline-block;width:34px">' + d.jour + '</b><span style="display:inline-block;width:44px;color:#999">' + fmtDay(d.date) + "</span> " + items + "</div>";
+        h += '<div style="font-size:var(--fs-sm);margin:3px 0 0 4px;color:#3f3a30"><b style="display:inline-block;width:34px">' + d.jour + '</b><span style="display:inline-block;width:44px;color:#999">' + fmtDay(d.date) + "</span> " + items + "</div>";
       });
     });
-    if (st.validated) h += '<div style="margin-top:8px;font-size:13px;font-weight:700;color:#00734f">✅ Phase validée — tout est fait. La suivante s’appuie sur ce travail.</div>';
+    if (st.validated) h += '<div style="margin-top:8px;font-size:var(--fs-md);font-weight:700;color:#00734f">✅ Phase validée — tout est fait. La suivante s’appuie sur ce travail.</div>';
     h += "</details>";
   });
   h += "</div>";
@@ -105,8 +105,8 @@ export function renderTabPlanGeneral(plan) {
   const show = S.showAllWeeks ? plan.weeks : [...plan.weeks.slice(0, 3), plan.weeks[plan.weeks.length - 1]];
   show.forEach((w, ix) => {
     if (!S.showAllWeeks && ix === 3) html += '<div class="wk-skip">⋯ semaines 4 à ' + (plan.totalWeeks - 1) + " ⋯</div>";
-    const raceTag = w.race ? ' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700">🏁 COURSE ' + w.race + "</span>" : (w.postRace ? ' <span style="color:#9b72ff;font-size:10px">↳ récup post-course</span>' : "");
-    const wRange = w.days.length ? ' <span style="font-size:10px;color:var(--muted);font-weight:400">du ' + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) + "</span>" : "";
+    const raceTag = w.race ? ' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:var(--fs-micro);font-weight:700">🏁 COURSE ' + w.race + "</span>" : (w.postRace ? ' <span style="color:#9b72ff;font-size:var(--fs-micro)">↳ récup post-course</span>' : "");
+    const wRange = w.days.length ? ' <span style="font-size:var(--fs-micro);color:var(--muted);font-weight:400">du ' + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) + "</span>" : "";
     html += '<div class="gw" id="gw' + w.num + '"><div class="gw-h"><b>Semaine ' + w.num + "</b>" + wRange + '<span style="color:' + w.phase.c + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + '</em></div><div class="gw-grid">';
     w.days.forEach((d) => {
       const bg = d.sessions.map((s) => "<span>" + ic[s.d] + "</span>").join("");

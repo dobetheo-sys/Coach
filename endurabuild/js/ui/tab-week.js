@@ -68,13 +68,13 @@ export function feedbackModal(plan, session, k, onDone) {
   ov.innerHTML = '<div class="eb-modal" role="dialog" aria-label="Ton ressenti">'
     + '<h2 style="margin:0 0 2px">Comment c’était ?</h2>'
     + '<div class="load-sub">10 secondes — ces réponses ajustent la suite du plan.</div>'
-    + '<div style="font-weight:700;font-size:12px;margin-top:10px">Effort (RPE 1 = très facile · 10 = maximal)</div>'
+    + '<div style="font-weight:700;font-size:var(--fs-sm);margin-top:10px">Effort (RPE 1 = très facile · 10 = maximal)</div>'
     + '<div style="display:flex;gap:4px;margin-top:4px">' + rpeBtns + "</div>"
-    + '<div style="font-weight:700;font-size:12px;margin-top:10px">Ressenti</div>'
+    + '<div style="font-weight:700;font-size:var(--fs-sm);margin-top:10px">Ressenti</div>'
     + '<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">'
     + '<button class="btn" data-feel="great" type="button">😃 Super</button><button class="btn" data-feel="normal" type="button">🙂 Normal</button>'
     + '<button class="btn" data-feel="hard" type="button">😮‍💨 Dur</button><button class="btn" data-feel="bad" type="button">😣 Mauvais</button></div>'
-    + '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px"><input type="checkbox" id="fbPain" style="width:20px;height:20px"><span>🩹 Douleur pendant ou après</span></label>'
+    + '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:var(--fs-md)"><input type="checkbox" id="fbPain" style="width:20px;height:20px"><span>🩹 Douleur pendant ou après</span></label>'
     + '<input type="text" id="fbPainLoc" placeholder="Où ? (optionnel)" style="display:none;margin-top:6px;width:100%">'
     + '<div class="nav" style="justify-content:center;margin-top:12px"><button class="btn primary" id="fbSave" type="button" disabled>Valider →</button></div></div>';
   document.body.appendChild(ov);
@@ -109,7 +109,7 @@ function nextSessionTeaser(plan, todayISO) {
   const when = nxt.date === tomorrow ? "Demain" : nxt.jour;
   const s = nxt.sessions.find((x) => x.d !== "rs");
   const obj = s.det ? String(s.det).split("—")[0].split("·")[0].trim().slice(0, 50) : "";
-  return '<div style="margin-top:12px;padding-top:10px;border-top:2px dashed #0003;font-size:13px"><b>' + when + " : " + s.name + "</b>" + (obj ? '<br><span style="color:#635b4a">Objectif : ' + obj + "</span>" : "") + "</div>";
+  return '<div style="margin-top:12px;padding-top:10px;border-top:2px dashed #0003;font-size:var(--fs-md)"><b>' + when + " : " + s.name + "</b>" + (obj ? '<br><span style="color:#635b4a">Objectif : ' + obj + "</span>" : "") + "</div>";
 }
 
 // Célébration (modal courte, partage story natif — repli téléchargement PNG).
@@ -122,9 +122,9 @@ export function showCongrats(plan, session, newBadge, todayISO) {
   ov.className = "eb-overlay";
   ov.innerHTML = '<div class="eb-modal" role="dialog" aria-label="Séance validée">'
     + '<div style="display:flex;justify-content:center">' + avatarSVG(av, 110) + "</div>"
-    + '<h2 style="text-align:center;margin:8px 0 2px;font-size:17px;line-height:1.35">' + celebrationMessage(session) + "</h2>"
+    + '<h2 style="text-align:center;margin:8px 0 2px;font-size:var(--fs-hand);line-height:1.35">' + celebrationMessage(session) + "</h2>"
     + '<div style="text-align:center;font-weight:700;margin-top:6px">' + session.name + "</div>"
-    + (session.det ? '<div style="text-align:center;font-size:12px;color:#635b4a;margin-top:2px">' + String(session.det).split("—")[0].slice(0, 60) + "</div>" : "")
+    + (session.det ? '<div style="text-align:center;font-size:var(--fs-sm);color:#635b4a;margin-top:2px">' + String(session.det).split("—")[0].slice(0, 60) + "</div>" : "")
     + (streak > 1 ? '<div style="text-align:center;margin-top:8px">🔥 <b>' + streak + " jours d’affilée</b> — le repos validé compte aussi</div>" : "")
     + (newBadge ? '<div style="text-align:center;margin-top:6px;color:#8a6d00;font-weight:700">' + newBadge.icon + " Badge débloqué : " + newBadge.label + "</div>" : "")
     + '<div class="nav" style="justify-content:center;margin-top:14px;gap:8px;flex-wrap:wrap">'
@@ -212,7 +212,7 @@ export function bindPainBanner(plan, rerender) {
 // R4.2 — maladie déclarée : gèle la série (le jour ne compte ni ne casse), jamais de culpabilisation.
 export function sickToggleHTML(todayISO) {
   const sick = (S.answers.sickDates || []).includes(todayISO);
-  return '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px"><input type="checkbox" id="rdSick"' + (sick ? " checked" : "") + ' style="width:20px;height:20px"><span>🤒 Malade aujourd’hui — la série est gelée, la reprise attendra que ça aille mieux</span></label>';
+  return '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:var(--fs-md)"><input type="checkbox" id="rdSick"' + (sick ? " checked" : "") + ' style="width:20px;height:20px"><span>🤒 Malade aujourd’hui — la série est gelée, la reprise attendra que ça aille mieux</span></label>';
 }
 export function bindSickToggle(plan, todayISO) {
   const cb = $("rdSick");
@@ -235,7 +235,7 @@ export function heroSessionHTML(plan, todayISO) {
   let res;
   try { res = globalThis.EBV2.adjustToday(S.sport, S.answers, snap); } catch (e) { console.warn(e); return ""; }
   const v = res.adjustment.verdict;
-  const badge = '<span style="float:right;font-size:11px;font-weight:700;color:#555;margin-top:2px">' + _verdictIc[v.level] + " " + _verdictLbl[res.adjustment.action] + "</span>";
+  const badge = '<span style="float:right;font-size:var(--fs-xs);font-weight:700;color:#555;margin-top:2px">' + _verdictIc[v.level] + " " + _verdictLbl[res.adjustment.action] + "</span>";
   // R4.7 — le plan qui réagit : toute adaptation est ANNONCÉE et expliquée en une phrase
   // (RPE d'hier, douleur, sommeil… — c'est la différence entre un PDF statique et un coach).
   const why = res.adjustment.action !== "keep" && v.drivers.length
@@ -273,8 +273,8 @@ export function renderTabWeek(plan) {
 
   const w = currentWeek(plan);
   const raceTag = w.race
-    ? ' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700">\u{1F3C1} COURSE ' + w.race + "</span>"
-    : w.postRace ? ' <span style="color:#9b72ff;font-size:10px">↳ récup post-course</span>' : "";
+    ? ' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:var(--fs-micro);font-weight:700">\u{1F3C1} COURSE ' + w.race + "</span>"
+    : w.postRace ? ' <span style="color:#9b72ff;font-size:var(--fs-micro)">↳ récup post-course</span>' : "";
   let html = moment;
   html += painBannerHTML();
   html += retestBannerHTML(today); // R4.4 — annonce J-7/veille/écran du jour J
@@ -282,7 +282,7 @@ export function renderTabWeek(plan) {
   html += weeklyReviewHTML(plan); // R4.10 — bilan hebdo (dimanche)
   html += notifySetupHTML(); // R4.10 — réglage de l'heure du rappel (une fois)
   html += '<div class="card"><div class="eyebrow">Ta semaine</div>';
-  const wRange = w.days.length ? ' <span style="font-size:10px;color:var(--muted);font-weight:400">du ' + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) + "</span>" : "";
+  const wRange = w.days.length ? ' <span style="font-size:var(--fs-micro);color:var(--muted);font-weight:400">du ' + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) + "</span>" : "";
   html += '<div class="gw"><div class="gw-h"><b>Semaine ' + w.num + "</b>" + wRange + "<span style=\"color:" + (w.phase.c || "#555") + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + "</em></div>";
   html += '<div class="gw-grid">';
   w.days.forEach((d) => {
@@ -302,7 +302,7 @@ export function renderTabWeek(plan) {
     const mark = "<i>" + (d.date === today ? "auj. · " : "") + fmtDay(d.date) + (plan.use10 ? " · C" + d.cyc + "J" + d.jc : "") + "</i>";
     // §8 — déplacement de séance : ⇄ sur chaque jour, deux taps = échange persistant.
     const pend = S._swapPending && S._swapPending.w === w.num && S._swapPending.jour === d.jour;
-    const swapBtn = '<button class="swapBtn" type="button" data-swap="' + w.num + "|" + d.jour + '" title="Échanger ce jour avec un autre" aria-label="Échanger ' + d.jour + ' avec un autre jour" style="border:none;background:' + (pend ? "#2e6bff" : "transparent") + ";color:" + (pend ? "#fff" : "#b3ab9b") + ';border-radius:5px;font-size:12px;cursor:pointer;padding:0 4px">⇄</button>';
+    const swapBtn = '<button class="swapBtn" type="button" data-swap="' + w.num + "|" + d.jour + '" title="Échanger ce jour avec un autre" aria-label="Échanger ' + d.jour + ' avec un autre jour" style="border:none;background:' + (pend ? "#2e6bff" : "transparent") + ";color:" + (pend ? "#fff" : "#b3ab9b") + ';border-radius:5px;font-size:var(--fs-sm);cursor:pointer;padding:0 4px">⇄</button>';
     html += '<div class="gd ' + d.charge + (d.date === today ? " today" : "") + (pend ? " swap-pend" : "") + '"' + (pend ? ' style="outline:2px dashed #2e6bff"' : "") + '><div class="gd-top"><b>' + d.jour + "</b>" + mark + swapBtn + '</div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
   });
   html += "</div>";
@@ -317,7 +317,7 @@ export function renderTabWeek(plan) {
     const lblV = { keep: "maintenue", reduce: "réduite", replace: "remplacée par endurance", rest: "repos", off: "repos complet" };
     const nAdapt = rlog.filter((x) => x.action !== "keep").length;
     html += '<details class="load-card"><summary class="load-title">🤖 Adaptations quotidiennes (' + rlog.length + " check-ins · " + nAdapt + " ajustement" + (nAdapt > 1 ? "s" : "") + ")</summary>";
-    rlog.slice(-10).reverse().forEach((x) => { html += '<div style="font-size:12px;margin:4px 0">' + (icV[x.level] || "") + " " + x.date + " — séance " + (lblV[x.action] || x.action) + "</div>"; });
+    rlog.slice(-10).reverse().forEach((x) => { html += '<div style="font-size:var(--fs-sm);margin:4px 0">' + (icV[x.level] || "") + " " + x.date + " — séance " + (lblV[x.action] || x.action) + "</div>"; });
     html += '<div class="load-sub" style="margin-top:4px">C’est la différence entre un plan PDF et un coach : chaque matin, la séance s’ajuste à ta forme réelle.</div></details>';
   }
   html += '<details class="load-card"><summary class="load-title">\u{1F321} Modifier ma forme du jour</summary>' + readinessCardHTML({ btnLabel: "Mettre à jour" }) + "</details>";

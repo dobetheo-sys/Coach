@@ -32,10 +32,10 @@ function todayChecklistHTML(resSessions, todayISO) {
   let h = '<details class="load-card"><summary class="load-title">⏱ Suivre ma séance en direct</summary><div class="load-sub" style="margin-top:6px">Coche au fil de la séance : une fois tout fait, elle passe automatiquement en « ✓ ».</div>';
   resSessions.forEach((s, si) => {
     const groups = stepGroupsFor(s);
-    h += '<div style="margin-top:8px"><b style="font-size:12px">' + s.name + "</b>";
+    h += '<div style="margin-top:8px"><b style="font-size:var(--fs-sm)">' + s.name + "</b>";
     (groups || ["all"]).forEach((r) => {
       const k = si + "|" + r;
-      h += '<label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px"><input type="checkbox" data-ck="' + k + '"' + (state[k] ? " checked" : "") + ' style="width:20px;height:20px"><span>' + (ROLE_LABEL[r] || "Fait") + "</span></label>";
+      h += '<label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:var(--fs-md)"><input type="checkbox" data-ck="' + k + '"' + (state[k] ? " checked" : "") + ' style="width:20px;height:20px"><span>' + (ROLE_LABEL[r] || "Fait") + "</span></label>";
     });
     h += "</div>";
   });
@@ -69,7 +69,7 @@ function todayValidateHTML(plan, todayISO) {
     const k = w.num + "|" + d.jour + "|" + si;
     const dn = S.answers.done && S.answers.done[k];
     const label = s.d === "rs" ? "Récupération respectée" : "Valider : " + s.name;
-    h += '<button type="button" class="btn ' + (dn ? "" : "primary") + '" data-vd="' + k + '" data-vrest="' + (s.d === "rs" ? 1 : 0) + '" style="width:100%;margin-top:8px;font-size:15px;padding:13px 16px"' + (dn ? " disabled" : "") + ">"
+    h += '<button type="button" class="btn ' + (dn ? "" : "primary") + '" data-vd="' + k + '" data-vrest="' + (s.d === "rs" ? 1 : 0) + '" style="width:100%;margin-top:8px;font-size:var(--fs-lg);padding:13px 16px"' + (dn ? " disabled" : "") + ">"
       + (dn ? "✓ " + (s.d === "rs" ? "Repos validé" : "Séance validée — bravo") : "✓ " + label) + "</button>";
   });
   return h ? '<div class="card"><div class="eyebrow">Valider ma journée · ' + d.jour + " " + fmtDay(d.date) + "</div>" + h + "</div>" : "";
@@ -163,7 +163,7 @@ export function renderTabToday(plan) {
   html += "</div>";
   // R6 — le check-in du matin doit rester accessible : celui qui a déjà répondu (ou dont
   // l'état vient d'une ancienne version) peut refaire son point sans attendre demain.
-  html += '<div style="text-align:center;margin:4px 0 10px"><button class="btn" id="tdRedoCheckin" type="button" style="font-size:12px;padding:6px 14px">↻ Refaire mon point du matin</button></div>';
+  html += '<div style="text-align:center;margin:4px 0 10px"><button class="btn" id="tdRedoCheckin" type="button" style="font-size:var(--fs-sm);padding:6px 14px">↻ Refaire mon point du matin</button></div>';
   $("screen").innerHTML = html;
 
   const redo = $("tdRedoCheckin");

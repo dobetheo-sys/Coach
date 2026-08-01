@@ -83,7 +83,7 @@ export function retestBannerHTML(todayISO) {
   const steps = protocolFor(r.type).split(/(?<=\.)\s+/).map((s, i) => '<div style="margin:4px 0"><b>' + (i + 1) + ".</b> " + s + "</div>").join("");
   return '<div class="card" style="border-color:#9b72ff"><div class="eyebrow" style="background:#9b72ff">🥊 Jour de retest — ' + T.label + "</div>"
     + '<div class="why">Un test n’est ni réussi ni raté : il MESURE. Échauffe-toi sérieusement, exécute, note le résultat.</div>'
-    + '<div style="font-size:13px;margin-top:6px">' + steps + "</div>"
+    + '<div style="font-size:var(--fs-md);margin-top:6px">' + steps + "</div>"
     + '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">'
     + '<input type="text" id="rtResult" placeholder="Résultat (' + T.unit + ')" style="flex:1;min-width:130px">'
     + '<button class="btn gold" id="rtSubmit" type="button">Valider le retest</button></div>'

@@ -93,6 +93,9 @@ function downloadPlan(){
   });
   const rules=evalRules(a,S.tier);
   const blue=rules.map(r=>'<li><b>'+r.what+' :</b> '+r.val+'<br><span style="color:#555">'+r.why+'</span></li>').join("");
+  // R16.8 — le DOCUMENT EXPORTÉ est autonome : il ne charge ni styles.css ni ses variables.
+  // Ses tailles restent donc LITTÉRALES. Les ramener sur `var(--fs-*)` les rendrait toutes
+  // à la taille par défaut du navigateur — même piège que les couleurs en R16.2.
   const doc='<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mon plan '+cfg.nom+'</title>'
     +'<style>body{font-family:-apple-system,Arial,sans-serif;max-width:900px;margin:0 auto;padding:24px;color:#16130e;background:#f1eadb}'
     +'h1{font-size:24px}h2{font-size:16px;margin-top:24px;border-bottom:2px solid #16130e;padding-bottom:4px}'
@@ -155,7 +158,7 @@ function progressBarCardHTML(plan){
     if(globalThis.EBV2.badges){
       const bd=globalThis.EBV2.badges(plan,S.answers,todayISO());
       if(bd.length){h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">';
-        bd.forEach(b=>{h+='<span title="'+b.why.replace(/"/g,"&quot;")+'" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:11px;background:#fff">'+b.icon+' '+b.label+'</span>';});
+        bd.forEach(b=>{h+='<span title="'+b.why.replace(/"/g,"&quot;")+'" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:#fff">'+b.icon+' '+b.label+'</span>';});
         h+='</div>';}
     }
     h+='</div>';
@@ -211,7 +214,7 @@ function historyCardHTML(plan){
       h+='<div class="load-card"><div class="load-title">\ud83d\udcd2 Historique \u2014 pr\u00e9vu vs r\u00e9el</div>';
       doneW.slice(-8).forEach(w=>{
         const pc=w.minTotal>0?Math.round(w.minDone/w.minTotal*100):0;
-        h+='<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12px">'
+        h+='<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:var(--fs-sm)">'
           +'<span style="width:34px"><b>S'+w.num+'</b></span>'
           +'<span style="width:20px">'+(w.ok?"\u2705":"\u25cb")+'</span>'
           +'<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:10px;overflow:hidden"><div style="height:100%;width:'+pc+'%;background:'+(w.ok?"#00a376":"#f0b429")+'"></div></div>'
@@ -295,7 +298,7 @@ function whyPlanCardHTML(plan){
   if(D["R10-depart"])add("Le départ est calé sur ton volume RÉEL des derniers mois, pas sur ta cible : <b>"+D["R10-depart"].val+"</b>. C'est la marche la plus souvent trop haute.","reprise");
   if(D.impact)add("Pas plus de <b>"+D.impact.val+"</b> jours d'appui : c'est l'impact qui blesse, pas le volume.","impact");
   let h='<div class="load-card"><div class="load-title">\u{1F9ED} Pourquoi ce plan</div>'
-    +'<ul style="font-size:12.5px;line-height:1.55;margin:8px 0 0;padding-left:18px">'+li.join("")+"</ul>";
+    +'<ul style="font-size:var(--fs-md);line-height:1.55;margin:8px 0 0;padding-left:18px">'+li.join("")+"</ul>";
   if(v2.warnings&&v2.warnings.length)
     h+='<div class="load-sub" style="margin-top:8px">\u26A0 Ce que le moteur n\u2019a pas pu faire sous tes contraintes : '+v2.warnings[0]+(v2.warnings.length>1?' <a href="#motorDecisions" style="color:inherit">et '+(v2.warnings.length-1)+' autre'+(v2.warnings.length>2?"s":"")+"\u2026</a>":"")+"</div>";
   h+='<div class="load-sub" style="margin-top:6px"><a href="#motorDecisions" style="color:inherit">\u2193 Les '+v2.decisions.length+' décisions du moteur, en détail</a></div></div>';
@@ -306,7 +309,7 @@ function decisionsCardHTML(plan){
   let h="";
   const v2=plan&&plan._v2;
   if(v2){
-    h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+') \u2014 score d\u2019audit '+v2.score+'/100</summary><ul style="font-size:12px;line-height:1.6;margin:8px 0 0;padding-left:18px">';
+    h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+') \u2014 score d\u2019audit '+v2.score+'/100</summary><ul style="font-size:var(--fs-sm);line-height:1.6;margin:8px 0 0;padding-left:18px">';
     // D1 (audit v6) — les règles non satisfaites sont calculées et attachées au plan :
     // on ne les jette plus à l'affichage. Langage neutre (pas de bandeau rouge — décision
     // R5 du fondateur), mais EN TÊTE de liste, pas cachées.

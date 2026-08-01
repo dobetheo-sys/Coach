@@ -116,7 +116,7 @@ function recordsHTML(plan, a) {
   Object.keys(longest).forEach((d) => rows.push({ lab: DISC_LABEL[d] + " — plus longue séance", val: Math.floor(longest[d].minutes / 60) + "h" + String(longest[d].minutes % 60).padStart(2, "0"), date: longest[d].date }));
   let h = '<div class="load-card"><div class="load-title">🏅 Records personnels</div>';
   if (!rows.length) h += '<div class="load-sub" style="margin-top:6px">Encore vides — ils se rempliront avec tes tests (FTP/allure/CSS), tes imports FIT/Strava et tes séances cochées ✓.</div>';
-  else rows.forEach((r) => { h += '<div style="display:flex;justify-content:space-between;gap:8px;margin:6px 0;font-size:13px;align-items:baseline"><span>' + r.lab + '</span><span style="text-align:right"><b>' + esc(r.val) + '</b>' + (r.date ? ' <span style="color:var(--muted);font-size:11px">' + esc(r.date) + "</span>" : "") + "</span></div>"; });
+  else rows.forEach((r) => { h += '<div style="display:flex;justify-content:space-between;gap:8px;margin:6px 0;font-size:var(--fs-md);align-items:baseline"><span>' + r.lab + '</span><span style="text-align:right"><b>' + esc(r.val) + '</b>' + (r.date ? ' <span style="color:var(--muted);font-size:var(--fs-xs)">' + esc(r.date) + "</span>" : "") + "</span></div>"; });
   h += '<div class="load-sub" style="margin-top:4px">Un record se gagne, il ne se perd pas — on garde la meilleure valeur jamais atteinte, avec sa date.</div></div>';
   return h;
 }
@@ -214,14 +214,14 @@ function avatarSectionHTML(plan, todayISO) {
     '<button class="doneBtn" data-av-theme="' + k + '" type="button" title="' + (SPORTS[k] ? SPORTS[k].nom : k) + '" style="background:' + c + ";border-color:#16130e" + (S.answers.avatarTheme === k ? ";outline:3px solid #16130e;outline-offset:2px" : "") + '"> </button>').join(" ");
   let h = '<div class="load-card"><div style="display:flex;align-items:center;gap:16px">'
     + '<div id="avSvg">' + avatarSVG(visual, 96) + "</div>"
-    + '<div style="flex:1"><div style="font-weight:800;font-size:16px">' + av.icon + " " + av.name + '</div>'
-    + '<div style="font-size:11px;color:var(--muted)">Niveau ' + av.level + "/" + (av.levels ? av.levels.length : 16) + " · " + av.xp + " XP" + (av.xpToNext ? " (" + av.xpInLevel + "/" + av.xpToNext + " dans ce niveau)" : " · niveau maximum") + "</div>"
+    + '<div style="flex:1"><div style="font-weight:800;font-size:var(--fs-lg)">' + av.icon + " " + av.name + '</div>'
+    + '<div style="font-size:var(--fs-xs);color:var(--muted)">Niveau ' + av.level + "/" + (av.levels ? av.levels.length : 16) + " · " + av.xp + " XP" + (av.xpToNext ? " (" + av.xpInLevel + "/" + av.xpToNext + " dans ce niveau)" : " · niveau maximum") + "</div>"
     + '<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:12px;overflow:hidden;margin-top:6px"><div style="height:100%;width:' + av.progressPct + '%;background:linear-gradient(90deg,#00a376,#00b8d9)"></div></div>'
-    + (av.nextName ? '<div style="font-size:11px;margin-top:4px">Prochain : <b>' + av.nextIcon + " " + av.nextName + "</b>" + (av.nextUnlock ? " — débloque <b>" + av.nextUnlock + "</b>" : "") + " (encore " + (av.xpToNext - av.xpInLevel) + " XP).</div>" : "")
+    + (av.nextName ? '<div style="font-size:var(--fs-xs);margin-top:4px">Prochain : <b>' + av.nextIcon + " " + av.nextName + "</b>" + (av.nextUnlock ? " — débloque <b>" + av.nextUnlock + "</b>" : "") + " (encore " + (av.xpToNext - av.xpInLevel) + " XP).</div>" : "")
     + "</div></div>";
   if (adh) {
     if (adh.frozenToday) h += '<div class="load-sub" style="margin-top:8px">❄️ Série <b>gelée</b> (douleur ou maladie) : ' + adh.days + " jour" + (adh.days > 1 ? "s" : "") + " au compteur, rien n’est perdu.</div>";
-    else if (adh.days > 1) h += '<div style="margin-top:8px;font-size:13px">🔥 <b>Série : ' + adh.days + " jours</b> — repos validé compris.</div>";
+    else if (adh.days > 1) h += '<div style="margin-top:8px;font-size:var(--fs-md)">🔥 <b>Série : ' + adh.days + " jours</b> — repos validé compris.</div>";
     else h += '<div class="load-sub" style="margin-top:8px">Nouvelle série — la régularité sur toute la préparation compte plus qu’une série parfaite.</div>';
   }
   h += disciplineLevelsHTML(plan);
@@ -229,11 +229,11 @@ function avatarSectionHTML(plan, todayISO) {
     h += '<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer">Les ' + av.levels.length + " niveaux et ce qu'ils débloquent</summary><div style=\"margin-top:6px\">";
     av.levels.forEach((l) => {
       const got = av.level >= l.level;
-      h += '<div style="font-size:11px;margin:3px 0;' + (got ? "" : "opacity:0.55") + '">' + (got ? "✓" : "○") + " <b>" + l.icon + " " + l.name + "</b> (" + l.xp + " XP) — " + l.unlock + "</div>";
+      h += '<div style="font-size:var(--fs-xs);margin:3px 0;' + (got ? "" : "opacity:0.55") + '">' + (got ? "✓" : "○") + " <b>" + l.icon + " " + l.name + "</b> (" + l.xp + " XP) — " + l.unlock + "</div>";
     });
     h += "</div></details>";
   }
-  h += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:700">Couleur du maillot :</span>' + themes
+  h += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:var(--fs-sm);font-weight:700">Couleur du maillot :</span>' + themes
     + '<button class="btn" id="avShare" type="button" style="margin-left:auto">📸 Partager</button></div>'
     + '<div class="load-sub" style="margin-top:8px">Tout est traçable : équipement et décor = ton niveau (régularité pure) · posture = tes 7 derniers jours · couleur de l’aura = ta série. Jamais un chrono, jamais décroissant.</div></div>';
   return h;
@@ -255,16 +255,16 @@ function disciplineLevelsHTML(plan) {
     for (let i = 0; i < DISC_LEVELS.length; i++) if (n >= DISC_LEVELS[i][0]) idx = i;
     const next = DISC_LEVELS[idx + 1];
     const pct = next ? Math.min(100, Math.round(((n - DISC_LEVELS[idx][0]) / (next[0] - DISC_LEVELS[idx][0])) * 100)) : 100;
-    return '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px"><span style="width:20px">' + ico + '</span><span style="width:86px">' + nom + '</span><b style="width:76px">' + DISC_LEVELS[idx][1] + '</b>'
+    return '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:var(--fs-sm)"><span style="width:20px">' + ico + '</span><span style="width:86px">' + nom + '</span><b style="width:76px">' + DISC_LEVELS[idx][1] + '</b>'
       + '<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:#00a376"></div></div>'
       + '<span style="width:82px;text-align:right;color:var(--muted)">' + (next ? n + "/" + next[0] + " → " + next[1] : n + " séances") + "</span></div>";
   };
-  return '<div style="margin-top:10px"><div style="font-size:12px;font-weight:700">Par discipline (séances validées)</div>'
+  return '<div style="margin-top:10px"><div style="font-size:var(--fs-sm);font-weight:700">Par discipline (séances validées)</div>'
     + row("🏊", "Natation", count.sw) + row("🚴", "Vélo", count.bk) + row("🏃", "Course", count.rn) + "</div>";
 }
 function badgesGalleryHTML(badges) {
   if (!badges.length) return "";
-  const chips = badges.map((b) => '<span title="' + b.why.replace(/"/g, "&quot;") + '" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:11px;background:#fff">' + b.icon + " " + b.label + "</span>").join(" ");
+  const chips = badges.map((b) => '<span title="' + b.why.replace(/"/g, "&quot;") + '" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:#fff">' + b.icon + " " + b.label + "</span>").join(" ");
   return '<div class="load-card"><div class="load-title">🏅 Badges gagnés (' + badges.length + ')</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' + chips + "</div></div>";
 }
 // R4.8 — efficience : uniquement les progrès à charge égale (imports FIT), jamais le volume.
@@ -325,8 +325,8 @@ function retestSuggestionHTML() {
 // VAM. Elles changent la CATÉGORIE d'effort, donc la durée du plan, les plafonds et le
 // contenu — chaque modification régénère le plan.
 function trailProfileHTML(a) {
-  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
-  const sel = (id, cur, opts) => '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px"><span style="width:150px">' + opts.lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
+  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:6px"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
+  const sel = (id, cur, opts) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:6px"><span style="width:150px">' + opts.lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
     + opts.list.map((o) => '<option value="' + o[0] + '"' + ((cur || "") === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></label>";
   let h = '<div class="load-card"><div class="load-title">⛰ Ta course et ton terrain</div>';
   if (a.trailMigrated) h += '<div class="load-sub" style="margin-top:6px;color:#a33"><b>À vérifier :</b> ton plan trail a été repris depuis l’ancienne version, où le dénivelé n’était pas demandé. Renseigne la vraie distance et le vrai D+ de ta course : ce sont eux qui décident de la durée de préparation, du volume et du contenu des séances.</div>';
@@ -389,7 +389,7 @@ function raceInterHTML(a) {
   const prioSel = (id, cur) => '<select id="' + id + '" style="flex:1;min-width:0">'
     + '<option value="C"' + (cur !== "B" ? " selected" : "") + '>C — laboratoire (on s’entraîne à travers)</option>'
     + '<option value="B"' + (cur === "B" ? " selected" : "") + '>B — préparation (mini-affûtage)</option></select>';
-  const rowR = (n, d, p) => '<div style="display:flex;gap:8px;align-items:center;font-size:13px;flex-wrap:wrap"><span style="width:70px">Course ' + n + '</span>'
+  const rowR = (n, d, p) => '<div style="display:flex;gap:8px;align-items:center;font-size:var(--fs-md);flex-wrap:wrap"><span style="width:70px">Course ' + n + '</span>'
     + '<input type="date" id="pfRace' + n + 'd" value="' + esc(d || "") + '" style="flex:1;min-width:130px">' + prioSel("pfRace" + n + "p", p) + "</div>";
   return '<div class="load-card"><div class="load-title">🏁 Courses intermédiaires</div>'
     + '<div class="load-sub" style="margin-top:4px">Une course AVANT ton objectif ? Le moteur allège la semaine, place la course à sa vraie date avec sa consigne de pacing, et met la semaine suivante en récupération.</div>'
@@ -442,7 +442,7 @@ function measuredCardHTML() {
   const h = measuredHours(snap);
   const applied = !!a.measured;
   let out = '<div style="margin-top:12px;padding:10px;border:1px solid #16130e;border-radius:8px;background:var(--bg2,#efe8d8)">'
-    + '<div style="font-weight:700;font-size:12px">\u{1F4E5} Ce que tu as réellement fait</div>'
+    + '<div style="font-weight:700;font-size:var(--fs-sm)">\u{1F4E5} Ce que tu as réellement fait</div>'
     + '<div class="load-sub" style="margin-top:4px">Sur tes <b>' + snap.window_days + ' derniers jours</b> : '
     + '<b>' + Math.round(snap.vol_min / 60) + 'h</b> en <b>' + snap.sessions + '</b> séance' + (snap.sessions > 1 ? 's' : '')
     + ' \u2014 soit <b>' + h + 'h/sem</b>'
@@ -474,7 +474,7 @@ export function renderTabProfile(plan) {
 
   // — Références physiologiques éditables (celles que le moteur lit : a.ftp / a.pace / a.css)
   html += '<div class="load-card"><div class="load-title">⚙ Références d’entraînement</div><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">';
-  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
+  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
   if (sp === "bike" || sp === "tri") html += row("pfFtp", "FTP (watts)", a.ftp_known === "oui" ? a.ftp : "", "ex. 220");
   if (sp === "run" || sp === "tri") html += row("pfPace", "Allure seuil (min:s /km)", a.pace_known === "oui" ? a.pace : "", "ex. 4:30");
   if (sp === "swim" || sp === "tri") html += row("pfCss", "CSS (min:s /100m)", a.css_known === "oui" ? a.css : "", "ex. 1:55");
@@ -489,7 +489,7 @@ export function renderTabProfile(plan) {
   // R6 — profil du parcours visé : affine la PRÉDICTION (temps course à pied) sans
   // toucher au plan. Vallonné/montagneux → fourchette décalée et élargie, justifiée.
   const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
-  html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Profil du parcours visé</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
+  html += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Profil du parcours visé</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
     + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
   // R14.1 §1-c — LA QUESTION QUI REMPLACE L'ANCIENNETÉ dans le calcul de la marge de
   // progression. Elle est ici (Profil) et pas dans le questionnaire d'entrée, pour ne pas
@@ -497,7 +497,7 @@ export function renderTabProfile(plan) {
   // depuis quinze ans au feeling a encore devant lui tout ce qu'un plan apporte ; quelqu'un
   // qui suit un plan depuis trois ans en a déjà consommé la plus grande part.
   const tsSel = (v, lab) => '<option value="' + v + '"' + ((a.training_structure || "") === v ? " selected" : "") + ">" + lab + "</option>";
-  html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Tes 12 derniers mois</span><select id="pfTrainingStructure" style="flex:1;min-width:0">'
+  html += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Tes 12 derniers mois</span><select id="pfTrainingStructure" style="flex:1;min-width:0">'
     + tsSel("", "Je préfère ne pas dire") + tsSel("feeling", "Au feeling, sans plan")
     + tsSel("intermittent", "Un plan, par périodes") + tsSel("suivi", "Un plan structuré, suivi") + "</select></label>";
   html += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Sert à estimer ta marge de progression d’ici la course — pas à juger. Sans réponse, on reste prudent.</div>';
@@ -507,7 +507,7 @@ export function renderTabProfile(plan) {
     html += row("pfWeightTarget", "Poids cible (optionnel)", a.weight_target, "affiche une sensibilité, jamais un objectif");
     html += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Tu as demandé ce levier. L’app montre ce que la balance changerait sur tes chronos — elle ne propose ni rythme, ni alimentation : ces questions se traitent avec un professionnel de santé.</div>';
   }
-  html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Rappel quotidien</span><input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label>';
+  html += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Rappel quotidien</span><input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label>';
   html += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
     + '<div id="pfMsg" class="load-sub" style="margin-top:6px"></div></div>';
 
@@ -539,7 +539,7 @@ export function renderTabProfile(plan) {
   html += '<details class="load-card"' + (_connecte ? "" : " open") + '><summary class="load-title" style="cursor:pointer">📒 Journal d’évolution, imports et Strava</summary>';
   if (tests.length) {
     tests.forEach((t) => {
-      html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:12px;align-items:baseline"><span style="width:78px;color:#635b4a">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:var(--muted)">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
+      html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:var(--fs-sm);align-items:baseline"><span style="width:78px;color:#635b4a">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:var(--muted)">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
     });
   } else {
     html += '<div class="load-sub">Encore vide — il se remplira à chaque test (FTP, allure, CSS), import Strava/FIT, ou modification de profil ci-dessus.</div>';
@@ -557,16 +557,16 @@ export function renderTabProfile(plan) {
   // Import Strava (lecture seule) — connexion OAuth via le relais serveur (server/README.md)
   // en chemin principal, jeton manuel conservé en repli. Même journal, même pont vers le plan.
   const sAuth = a.stravaAuth;
-  html += '<div style="margin-top:10px"><div style="font-weight:700;font-size:12px">🔗 Strava</div>';
+  html += '<div style="margin-top:10px"><div style="font-weight:700;font-size:var(--fs-sm)">🔗 Strava</div>';
   if (sAuth && sAuth.access_token) {
     html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
-      + '<span style="font-size:12px">✓ Connecté' + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + "</span>"
+      + '<span style="font-size:var(--fs-sm)">✓ Connecté' + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + "</span>"
       + '<button class="btn" id="pfStravaBtn" type="button">Importer mes activités</button>'
       + '<button class="btn" id="pfStravaOut" type="button">Se déconnecter</button></div>';
   } else {
     // R6 — UX guidée : UN bouton. L'URL du relais vit en config (déployée pour tous)
     // ou dans les réglages avancés — l'utilisateur normal n'a rien à coller.
-    html += '<div style="margin-top:4px"><button class="btn primary" id="pfStravaConnect" type="button" style="width:100%;font-size:15px;padding:12px 16px">🔗 Se connecter avec Strava</button></div>'
+    html += '<div style="margin-top:4px"><button class="btn primary" id="pfStravaConnect" type="button" style="width:100%;font-size:var(--fs-lg);padding:12px 16px">🔗 Se connecter avec Strava</button></div>'
       + '<div class="load-sub" style="margin-top:4px">Un clic → autorisation sur Strava → retour ici. Lecture seule (jamais d’écriture), tes activités alimentent tes références (FTP/allure/CSS).</div>'
       + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Réglages avancés (relais)</summary>'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'

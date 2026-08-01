@@ -22,14 +22,14 @@ export function energyCardHTML(day, open) {
   }
   const f = (r) => r[0] === r[1] ? r[0] : r[0] + "–" + r[1];
   return '<details class="load-card"' + (open ? " open" : "") + '><summary class="load-title">🔥 Dépense estimée du jour <span style="font-weight:400">· ~' + f(e.total) + " kcal</span></summary>"
-    + '<div style="font-size:12px;margin-top:8px">'
+    + '<div style="font-size:var(--fs-sm);margin-top:8px">'
     + "<b>Base + vie quotidienne :</b> ~" + f(e.daily) + " kcal (métabolisme de base ~" + f(e.bmr) + ")<br>"
     + "<b>Entraînement du jour :</b> " + (e.training[1] ? "~" + f(e.training) + " kcal" : "repos — 0 kcal d’entraînement")
     + "<br><b>Total :</b> ~" + f(e.total) + " kcal"
     + (e.approximate ? '<br><span style="color:#8a6d00">Fourchette large : complète taille/âge au 📋 Profil pour l’affiner.</span>' : "")
     + "</div>"
     // R16.6 — une ligne par macro plutôt qu'un paragraphe de six lignes enchaînées.
-    + '<div style="font-size:12px;margin-top:8px;color:#3f3a30">'
+    + '<div style="font-size:var(--fs-sm);margin-top:8px;color:#3f3a30">'
     + (e.macros.lines || []).map((l) => '<div style="margin:3px 0">• ' + l + "</div>").join("")
     + '<div style="margin-top:6px;color:var(--muted)">C’est une photographie de la littérature, pas un menu ni une consigne.</div>'
     + "</div>"
@@ -49,7 +49,7 @@ export function nutritionCardHTML(day, tempC) {
     const drinkSummary = a.during.drinkMlPerH[0] === 0
       ? "eau à la soif"
       : a.during.drinkMlPerH[0] + "–" + a.during.drinkMlPerH[1] + " ml/h" + (a.during.sodium ? " + sodium" : "");
-    h += '<details style="margin-top:6px;font-size:12px"><summary style="cursor:pointer"><b>' + s.name + "</b> — "
+    h += '<details style="margin-top:6px;font-size:var(--fs-sm)"><summary style="cursor:pointer"><b>' + s.name + "</b> — "
       + (a.during.carbsGPerH ? a.during.carbsGPerH[0] + "–" + a.during.carbsGPerH[1] + " g/h de glucides, " + drinkSummary : drinkSummary) + "</summary>"
       + '<div style="margin:6px 0 0 2px;color:#3f3a30"><b>Avant :</b> ' + a.before
       + "<br><b>Pendant :</b> " + a.during.text

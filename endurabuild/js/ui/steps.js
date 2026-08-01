@@ -292,11 +292,11 @@ function levelStep(){
     why:"La référence du trail, c'est la vitesse ascensionnelle : combien de mètres de dénivelé tu montes en une heure. Pas besoin de la connaître — raconte-nous ta dernière grosse montée, on s'occupe du calcul.",
     render(){return '<div class="q"><span class="q-label">Ton niveau</span><div class="q-sub">Sert au CONTENU des séances (technicité, progressivité), jamais à estimer un chrono.</div><div class="opts" data-key="level">'+opt("debutant","Débutant")+opt("inter","Intermédiaire")+opt("avance","Avancé")+'</div></div>'
       +'<div class="q"><span class="q-label">Ta dernière grosse montée</span><div class="q-sub">Une montée que tu as vraiment faite, d\'au moins 5 minutes, sans t\'arrêter. De mémoire suffit.</div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><label style="flex:1;min-width:120px;font-size:13px">D+ (mètres)<input type="number" min="50" max="3000" data-input="climb_dplus_m" placeholder="450" style="width:100%"></label>'
-      +'<label style="flex:1;min-width:120px;font-size:13px">Durée (minutes)<input type="number" min="5" max="300" data-input="climb_min" placeholder="40" style="width:100%"></label></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><label style="flex:1;min-width:120px;font-size:var(--fs-md)">D+ (mètres)<input type="number" min="50" max="3000" data-input="climb_dplus_m" placeholder="450" style="width:100%"></label>'
+      +'<label style="flex:1;min-width:120px;font-size:var(--fs-md)">Durée (minutes)<input type="number" min="5" max="300" data-input="climb_min" placeholder="40" style="width:100%"></label></div>'
       +'<div class="q-sub" style="margin-top:6px">Tu n\'en as pas ? Laisse vide : le plan partira d\'une estimation prudente et se corrigera dès ta première montée enregistrée.</div></div>'
       +'<div class="q"><span class="q-label">Ton allure seuil sur PLAT ?</span><div class="opts" data-key="pace_known">'+opt("oui","Je la connais")+opt("non","Non")+'</div></div><div id="paceB"></div>'
-      +'<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12px">Je connais déjà ma VAM</summary>'
+      +'<details style="margin-top:8px"><summary style="cursor:pointer;font-size:var(--fs-sm)">Je connais déjà ma VAM</summary>'
       +'<div class="q" style="margin-top:6px"><span class="q-label">VAM (m de D+ / h)</span><div class="opts" data-key="vam_known">'+opt("oui","Je la connais")+opt("non","Non")+'</div><div id="vamB"></div></div></details>';},
     branches(a){
       branch("paceB",a.pace_known==="oui",'<div class="branch"><div class="q"><span class="q-label">Allure seuil sur plat (min/km)</span><input type="text" data-input="pace" placeholder="4:50"></div></div>');
@@ -469,7 +469,7 @@ function backToPlanTarget(){
     ||S.plans.find(p=>p.id!==S.activePlanId&&p.onPlan)||null;
 }
 function backToPlanHTML(){
-  return backToPlanTarget()?'<div style="text-align:center;margin:10px 0"><button class="btn" id="ebBackToPlan" type="button" style="font-size:12px;padding:8px 16px">← Revenir à mon plan en cours</button></div>':"";
+  return backToPlanTarget()?'<div style="text-align:center;margin:10px 0"><button class="btn" id="ebBackToPlan" type="button" style="font-size:var(--fs-sm);padding:8px 16px">← Revenir à mon plan en cours</button></div>':"";
 }
 function bindBackToPlan(){
   const b=$("ebBackToPlan");if(!b)return;
