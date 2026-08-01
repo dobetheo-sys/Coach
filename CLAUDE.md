@@ -67,6 +67,11 @@ dépôt — historique git si besoin.
   R14.1 : le gain s'indexe sur la **distance au potentiel** (références mesurées), fourchette
   asymétrique, vélo en deux lignes, levier poids sous gardes. Les critères que R14.1 périme
   restent AFFICHÉS dans `bench_r14.cjs` avec leur raison (statut `----`), jamais supprimés.
+- `npm run audit:invariants` — **20 invariants × 54 configurations** (7 sports × 3 enveloppes ×
+  3 niveaux), **22e gate CI depuis R20.6**. Une propriété que le plan tient TOUJOURS : dev ≤ pic,
+  échauffement ≤ corps, la sortie longue est la plus longue de sa discipline, le plan s'arrête le
+  jour J… Il sortait en code 0 quoi qu'il trouve et n'était pas en CI — d'où les quatre familles
+  d'échecs qu'il a portées sous une documentation qui le disait vert (O-9). Il bloque désormais.
 - `npm run registry:check` — **le registre s'exécute** (R15.9) : chaque entrée mesurable de
   `BUGS_OUVERTS.md` porte un bloc ` ```verify ` (`id`, `quoi`, `attendu`, `cmd`), le script les
   enchaîne et range chacune en **reproduit** / **ne reproduit plus (→ §4)** / **commande
@@ -524,6 +529,23 @@ le rendu n'affichait pas le second bloc et gardait « dernier tiers @ allure cou
 chiffre** (le trou de R19.5, resté ouvert côté texte) ; `enforceHardTimeCap` ne classait pas
 comme l'auditeur (O-11 reproduit dans son propre correctif) ; la borne du brick lisait le
 premier leg vélo au lieu de sommer. **21 gates verts, E2E 13/13, golden 900.**
+
+**R20.6 livré — le banc d'invariants garde enfin** (O-9 fermé, voir ARCHITECTURE.md « R20.6 ») :
+`CLAUDE.md` annonçait « banc d'invariants vert sur ses 19 tests » — il ne l'était pas, et ne
+l'était pas avant R18 non plus. Le mécanisme du silence EST le défaut : le banc sortait en code
+**0 quoi qu'il trouve**, et **il n'était pas en CI**. Un rapport que rien ne lit vaut zéro.
+**Trois invariants PÉRIMÉS** — la course objectif n'est pas une séance d'entraînement : `I6` (54)
+réclamait une durée non nulle quand le jour J porte `min: 0` par conception (R13.4) ; `I8` (15)
+comptait la course dans un budget d'entraînement ; `I12` (3) mesurait la dominance d'une sortie
+longue dans la SEMAINE DE COURSE, où il n'y en a pas. **Un VRAI défaut — `I14`** (6), plus large
+que « le trail débutant » : « Marche rapide en montée » à **295 min quand la sortie longue du
+même athlète est plafonnée à 180** (C23). La 2ᵉ passe d'I14 interdisait de toucher un bloc en
+pente non répété et son commentaire assumait le résidu ; or ce qui était interdit, c'était de
+changer la VITESSE ASCENSIONNELLE — réduire durée ET dénivelé du même facteur la laisse
+identique, c'est la même montée, plus courte. **Puis le banc garde** : exit 1 (vérifié rouge),
+**22ᵉ gate CI**, 20 invariants × 54 configurations, 0 échec. L'ordre comptait : rendre bloquant
+un banc dont on n'a pas trié les échecs fige la dette au lieu de la traiter.
+**22 gates verts, E2E 13/13, golden 900 (un seul profil change, de 5 min).**
 
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels

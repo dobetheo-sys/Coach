@@ -279,7 +279,7 @@ attendu: /^(experience|sprint|series|championship) : pivot(\n|$)/m
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swimrun',level:'inter',history:'confirme',intent:'competition',vol_max:'12',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',css:'2:00',css_known:'oui',vol_recent:'8',injury:'aucune',off_days:'non',shift_ok:'non',doubles:'parfois',swim_total_m:'2000',run_total_km:'12',segments_n:'10',longest_swim_m:'600',water_temp_c:'18',team_mode:'solo',openwater_access:'saisonnier',swim_continuous:'oui',run_continuous:'oui',gear_test:'oui',race_date:'2027-11-24'};for(const f of ['experience','sprint','series','championship']){const p=E.buildPlan('swimrun',{...b,format:f});let mx=0,nm='';for(const w of p.weeks)for(const d of w.days)for(const s of d.sessions||[])if((s.min||0)>mx){mx=s.min;nm=s.name;}console.log(f+' : '+(/Footing/.test(nm)?'FOOTING '+mx+' min':'pivot')); }"
 ```
 
-### O-9 · Le banc d'invariants n'est pas vert, et la documentation dit qu'il l'est · 🟠 **OUVERT (constaté en R18)**
+### O-9 · Le banc d'invariants n'est pas vert, et la documentation dit qu'il l'est · ✅ **FERMÉ (R20.6)**
 
 `CLAUDE.md` annonce « Banc d'invariants vert sur ses 19 tests ». Il ne l'est pas, et ne l'était
 pas avant R18 non plus (vérifié en rejouant le banc contre le moteur d'avant le lot : **mêmes**
@@ -297,10 +297,42 @@ I12 et I14 sont à re-mesurer : I14 a été déclaré fermé en R14, il ne l'est
 débutant à grosse enveloppe. Le banc sort en 0 quoi qu'il arrive — il RAPPORTE, il ne garde
 pas —, ce qui explique que personne ne l'ait vu : un rapport que rien ne lit vaut zéro.
 
+---
+
+**FERMETURE (R20.6, 01/08/2026).** Trois invariants PÉRIMÉS, un VRAI défaut, et le banc devient
+bloquant — dans cet ordre, parce que rendre bloquant un banc dont on n'a pas trié les échecs
+revient à figer la dette au lieu de la traiter.
+
+**Périmés — la course objectif n'est pas une séance d'entraînement.**
+- `I6` (54 échecs) réclamait une durée non nulle : le jour J porte `min: 0` **par conception**
+  depuis R13.4 — c'est ce qui l'empêche d'être la victime des passes de coupe.
+- `I8` (15) comptait la course dans le budget `sessions_max`, un budget d'entraînement : la
+  course a lieu, elle ne se décide pas. Le moteur l'exclut déjà (R15.7-A).
+- `I12` (3) mesurait la dominance d'une sortie longue… dans la **semaine de course** d'un trail
+  à petite enveloppe : « Endurance allégée » 54 min sur 80 au total. Il n'y a pas de sortie
+  longue dans cette semaine — ce qu'on mesurait est une structure d'affûtage voulue. Les
+  semaines de décharge sortent du champ, comme dans toutes les règles de volume du dépôt.
+
+**Vrai défaut — `I14` (6), et il était plus large que « du trail débutant ».** « Marche rapide
+en montée (bâtons) » atteignait **295 min pendant que la « Sortie longue trail » du même athlète
+est plafonnée à 180** (C23, débutant) : la séance qui donne son nom à la semaine n'était plus la
+plus longue, sur le sport où la sortie longue EST la séance de référence. `enforceLabelVsDose`
+ne la réduisait pas parce que la 2ᵉ passe d'I14 (R14) interdisait de toucher un bloc en pente
+non répété — son commentaire assumait explicitement le résidu.
+
+Ce qui était interdit, c'était de changer la VITESSE ASCENSIONNELLE (raboter la durée en gardant
+le D+ ferait gravir les mêmes 400 m en moins de temps). Réduire durée **et** dénivelé du même
+facteur la laisse strictement identique : c'est la même montée, plus courte. Troisième passe
+d'I14, et le résidu tombe à zéro.
+
+**Puis le banc garde.** Il sort en code 1 (vérifié rouge en cassant un seuil) et **entre en CI**
+— il n'y était pas, ce qui est la vraie raison pour laquelle quatre familles d'échecs ont vécu
+sous une documentation qui le disait vert. **20 invariants × 54 configurations, 0 échec.**
+
 ```verify
 id: O-9
-quoi: le banc d'invariants porte encore quatre familles d'échecs
-attendu: /I14 +la sortie longue est la plus longue +\d+ échecs/
+quoi: le banc d'invariants est vert ET bloquant
+attendu: /✓ les 20 invariants tiennent sur les 54 configurations/
 cmd: npm run audit:invariants
 ```
 

@@ -70,6 +70,12 @@ jobs:
       # d'une V1) : 0 séance sans repère exécutable, aucun adjectif auto-déclaré ne pilote un
       # chiffre, aucune référence sans chemin d'acquisition dans l'outil.
       - run: npm run audit:public
+      # R20.6 — BANC D'INVARIANTS, désormais BLOQUANT (O-9). 20 propriétés que le plan tient
+      # TOUJOURS, sur 54 configurations (6 sports × 3 enveloppes × 3 niveaux). Il sortait en
+      # code 0 quoi qu'il trouve et n'était pas en CI : il a donc porté quatre familles
+      # d'échecs pendant que la documentation le disait vert. Un rapport que rien ne lit
+      # vaut zéro.
+      - run: npm run audit:invariants
       # Golden master : 814 plans photographiés, détection d'écart au bit près. Les empreintes
       # sont versionnées ; tout changement de plan doit être VOULU et recapturé explicitement.
       - run: npm run golden:verify

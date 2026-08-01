@@ -1991,3 +1991,47 @@ c'est une allure qu'on TIENT, et l'apprendre pendant des heures est l'objet mêm
 3. **La borne du brick lisait un morceau de ce qu'elle nommait.** `brickCapViolations` prenait
    `steps.find(leg === "bike")` : le jour où le leg est coupé en deux, un brick conforme devient
    « trop court ». Elle SOMME désormais, et chaque bloc porte sa part des bornes du format.
+
+## R20.6 — le banc d'invariants garde enfin (O-9 fermé)
+
+`CLAUDE.md` annonçait « banc d'invariants vert sur ses 19 tests ». Il ne l'était pas, et ne
+l'était pas avant R18 non plus. Quatre familles d'échecs vivaient sous une documentation qui les
+niait — la forme la plus coûteuse de dette : elle ne se signale pas, et elle rend fausse la
+phrase qui la cite.
+
+**Le mécanisme du silence, et c'est lui le vrai défaut** : le banc sortait en code 0 quoi qu'il
+trouve, **et il n'était pas en CI**. Un rapport que rien ne lit vaut zéro.
+
+### Trois invariants périmés — la course objectif n'est pas une séance d'entraînement
+
+| id | échecs | ce qu'il mesurait vraiment |
+|---|---|---|
+| I6 | 54 | réclamait une durée non nulle ; le jour J porte `min: 0` **par conception** (R13.4) — c'est ce qui l'empêche d'être la victime de toutes les passes de coupe |
+| I8 | 15 | comptait la course dans `sessions_max`, un budget d'ENTRAÎNEMENT : la course a lieu, elle ne se décide pas (le moteur l'exclut déjà, R15.7-A) |
+| I12 | 3 | mesurait la dominance d'une sortie longue… dans la **semaine de course** : « Endurance allégée » 54 min sur 80 au total, sur un trail à petite enveloppe. Il n'y a pas de sortie longue dans cette semaine |
+
+Les trois se corrigent dans le BANC, avec leur raison écrite. Aucune règle du moteur ne bouge.
+
+### Un vrai défaut — I14, plus large que « le trail débutant »
+
+« Marche rapide en montée (bâtons) » atteignait **295 min pendant que la « Sortie longue trail »
+du même athlète est plafonnée à 180** (C23, débutant). La séance qui donne son nom à la semaine
+n'était plus la plus longue — sur le sport où la sortie longue EST la séance de référence.
+
+`enforceLabelVsDose` ne la réduisait pas : la 2ᵉ passe d'I14 (R14) interdit de toucher un bloc en
+pente non répété, et son propre commentaire assumait le résidu (« un résidu mesuré vaut mieux
+qu'une séance dénaturée »).
+
+**Ce qui était interdit, c'était de changer la VITESSE ASCENSIONNELLE.** Raboter la durée en
+gardant le D+ ferait gravir les mêmes 400 m en moins de temps — une vitesse que l'athlète ne
+peut pas produire. Réduire durée **et** dénivelé du même facteur la laisse strictement
+identique : c'est la même montée, plus courte. Troisième passe d'I14, plancher à 20 min, résidu
+à zéro. Golden : **un seul profil change, de 5 minutes.**
+
+### Puis le banc garde
+
+Exit 1 sur le moindre échec (vérifié rouge en cassant un seuil), et **entrée en CI** — 22ᵉ gate.
+**20 invariants × 54 configurations (7 sports × 3 enveloppes × 3 niveaux), 0 échec.**
+
+L'ordre comptait : rendre bloquant un banc dont on n'a pas trié les échecs revient à figer la
+dette au lieu de la traiter.

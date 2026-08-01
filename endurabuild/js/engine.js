@@ -7703,6 +7703,32 @@ function reconcileDeclaredVolume(
             if ((st.reps || 1) > 2) {
               const next = Math.max(2, Math.floor((st.reps || 1) * f));
               if (next < (st.reps || 1)) { st.reps = next; touched = true; }
+              continue;
+            }
+            // I14 (3e passe, R20.6) — UN BLOC EN PENTE **CONTINU** SE RÉDUIT AUSSI, À CONDITION
+            // DE RÉDUIRE SON DÉNIVELÉ AU MÊME PRORATA.
+            //
+            // La 2e passe (I14) avait raison d'interdire de raboter la DURÉE seule : l'athlète
+            // gravirait les mêmes 400 m en moins de temps, une vitesse ascensionnelle qu'il ne
+            // peut pas produire. Mais elle en avait tiré « on ne touche pas », et son propre
+            // commentaire assumait le résidu — mesuré par le banc d'invariants : **« Marche
+            // rapide en montée (bâtons) » à 295 min pendant que la « Sortie longue trail » du
+            // même athlète est plafonnée à 180** (C23, débutant). La séance qui donne son nom à
+            // la semaine n'était plus la plus longue, sur le sport où la sortie longue est LA
+            // séance de référence.
+            //
+            // Ce qui était interdit, c'est de changer la VITESSE. Réduire durée et dénivelé du
+            // même facteur la laisse strictement identique : c'est la même montée, plus courte.
+            // Le plancher de 20 min protège ce qui reste d'être une séance sans objet.
+            if ((st.durationMin || 0) > 20) {
+              const next = Math.max(20, Math.round((st.durationMin || 0) * f));
+              if (next < (st.durationMin || 0)) {
+                const g = next / (st.durationMin || 1);
+                st.durationMin = next;
+                if (st.dplusM) st.dplusM = Math.max(20, Math.round((st.dplusM * g) / 10) * 10);
+                if (st.dmoinsM) st.dmoinsM = Math.max(20, Math.round((st.dmoinsM * g) / 10) * 10);
+                touched = true;
+              }
             }
             continue;
           }

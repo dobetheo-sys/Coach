@@ -164,8 +164,14 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
         const { wu, body } = warmBody(s);
         if (wu > 0 && body > 0 && wu > body)
           ko("I5", ctx, `sem ${w.num} « ${s.name} » échauffement ${Math.round(wu)}min > corps ${Math.round(body)}min`);
-        // I6 — pas de séance vide
-        if (!(s.min > 0)) ko("I6", ctx, `sem ${w.num} « ${s.name} » durée nulle`);
+        // I6 — pas de séance vide. R20.6 : LA COURSE OBJECTIF EST EXCLUE, et c'est l'invariant
+        // qui était périmé, pas le moteur. Depuis R13.4, le jour J porte `min: 0` PAR
+        // CONCEPTION — c'est ce qui l'empêche d'être la victime des passes de coupe et ce qui
+        // fait que la charge de la semaine ne compte pas la course comme un entraînement. Le
+        // banc, lui, réclamait une durée. 54 « échecs » qui disaient tous la même chose : un
+        // contrat livré, qu'aucune règle ne contredit, et que ce check ne connaissait pas.
+        // Même exclusion que celle déjà posée sur I14 (`!/🏁/`), pour la même raison.
+        if (!(s.min > 0) && !/🏁/.test(s.name || "")) ko("I6", ctx, `sem ${w.num} « ${s.name} » durée nulle`);
         // I7 — la somme des steps rend compte de la durée annoncée de la séance
         if ((s.steps || []).length && s.min > 15) {
           let acc = 0;
@@ -178,8 +184,14 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
             ko("I7", ctx, `sem ${w.num} « ${s.name} » : ${s.min}min annoncées, ${Math.round(acc)}min comptabilisées (${Math.round(100*acc/s.min)}%)`);
         }
       }
-      // I8 — le nombre de séances respecte le plafond déclaré
-      if (n > Number(env.a.sessions_max)) ko("I8", ctx, `sem ${w.num} : ${n} séances > plafond ${env.a.sessions_max}`);
+      // I8 — le nombre de séances respecte le plafond déclaré. R20.6 : MÊME FAMILLE QUE I6.
+      // `sessions_max` est un budget d'ENTRAÎNEMENT — ce que l'athlète peut caser dans sa
+      // semaine. La course objectif ne s'y range pas : elle a lieu, elle n'est pas une séance
+      // qu'on décide de faire ou non, et l'en exclure est déjà ce que le moteur fait
+      // (R15.7-A : `sessionsMaxDeclared` protège la fréquence en semaine de course). 15
+      // « échecs » qui étaient tous la semaine du jour J, sur les 7 sports.
+      const nHorsCourse = sessionsOf(w).filter((s) => !/🏁/.test(s.name || "")).length;
+      if (nHorsCourse > Number(env.a.sessions_max)) ko("I8", ctx, `sem ${w.num} : ${nHorsCourse} séances > plafond ${env.a.sessions_max}`);
       // I9 — le volume hebdo respecte l'enveloppe déclarée
       if (min / 60 > Number(env.a.vol_max) * 1.05)
         ko("I9", ctx, `sem ${w.num} : ${(min/60).toFixed(1)}h > enveloppe ${env.a.vol_max}h`);
@@ -198,10 +210,23 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
           if ((s.min || 0) < mx * 0.85) ko("I14", ctx, `sem ${w.num} « ${s.name} » ${s.min}min alors que la plus longue de la semaine fait ${mx}min`);
         }
       }
-      // I12 — la sortie longue ne dépasse pas la moitié du volume de la semaine
+      // I12 — la sortie longue ne dépasse pas la moitié du volume de la semaine.
+      //
+      // R20.6 — DEUX EXCLUSIONS, MESURÉES. Les 3 échecs restants étaient TOUS la SEMAINE DE
+      // COURSE d'un trail à petite enveloppe : « Endurance allégée (semaine de course) » 54 min
+      // sur un total de 80 (plus le jour J à 0). Il n'y a pas de sortie longue dans cette
+      // semaine — `longest` y désigne simplement la plus grosse de trois séances minuscules,
+      // et la dominance qu'on mesure est celle d'une structure d'affûtage voulue (R13.4 /
+      // R15.7-A), pas d'un déséquilibre de charge.
+      //   · les semaines de DÉCHARGE (récup, affûtage) sortent du champ — comme dans toutes les
+      //     règles de volume de ce dépôt ;
+      //   · la course ne compte pas dans le nombre de séances (même raison qu'en I6 et I8).
+      // Vérifié après exclusion : plus aucune semaine de CHARGE ne dépasse le seuil.
+      if (w.isRecup || w.phase.id === "taper") continue;
+      const nEntrainement = sessionsOf(w).filter((s) => !/🏁/.test(s.name || "")).length;
       const longest = Math.max(0, ...sessionsOf(w).map((s) => s.min || 0));
-      if (min > 0 && n >= 4 && longest / min > 0.6)
-        ko("I12", ctx, `sem ${w.num} : sortie longue ${longest}min = ${Math.round(100*longest/min)}% du volume (${n} séances)`);
+      if (min > 0 && nEntrainement >= 4 && longest / min > 0.6)
+        ko("I12", ctx, `sem ${w.num} : sortie longue ${longest}min = ${Math.round(100*longest/min)}% du volume (${nEntrainement} séances)`);
     }
   }
   // I15/I16/I17 — les courses : présence au calendrier, veille allégée, jour J exclusif
@@ -282,3 +307,20 @@ for (const id of Object.keys(NAMES)) {
     if (seen.size >= 8) { console.log(`  … et ${G[id].length - 8} autres`); break; }
   }
 }
+
+/* ---- R20.6 — LE BANC GARDE, IL NE SE CONTENTE PLUS DE RAPPORTER ------------------------- */
+//
+// O-9 : ce banc sortait en code 0 quoi qu'il trouve. Il a donc porté QUATRE familles d'échecs
+// pendant que `CLAUDE.md` annonçait « vert sur ses 19 tests » — et personne ne l'a vu, parce
+// qu'un rapport que rien ne lit vaut zéro. C'est la forme la plus coûteuse de dette : elle ne
+// se signale pas, et elle rend fausse la documentation qui la cite.
+//
+// Les 20 invariants sont verts (I6/I8/I12 étaient PÉRIMÉS — la course objectif n'est pas une
+// séance d'entraînement ; I14 était un VRAI défaut, corrigé côté moteur). Le banc bloque donc
+// désormais, et il entre en CI : à partir d'ici, un invariant qui casse arrête la chaîne.
+if (fails.length) {
+  console.error(`\n✖ ${fails.length} échec(s) d'invariant sur ${Object.keys(NAMES).length} règles.`);
+  console.error("Un invariant est une propriété que le plan tient TOUJOURS. S'il casse, c'est le moteur qu'on corrige — ou l'invariant qu'on démontre périmé, avec sa mesure.");
+  process.exit(1);
+}
+console.log("\n✓ les 20 invariants tiennent sur les 54 configurations.");
