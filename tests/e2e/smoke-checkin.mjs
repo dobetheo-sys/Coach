@@ -46,7 +46,7 @@ ok(/1\/3/.test(await page.locator("#ckSlide").textContent()), "écran 1/3 (somme
 ok(/dormi combien/.test(await page.locator("#ckSlide").textContent()), "le sommeil est demandé en HEURES (signal mesuré, audit v6 A5)");
 ok(await page.locator(".gw-grid").count() === 0, "AUCUNE grille de semaine visible avant le check-in");
 ok(await page.locator(".doneBtn").count() === 0, "AUCUNE coche de séance visible avant le check-in");
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "5 onglets (Profil/Plan/Aujourd'hui/Semaine/Nutrition)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "4 onglets (Profil/Plan/Aujourd'hui/Nutrition) — R16.9 a fondu Semaine dans Plan");
 ok(await page.locator("#ebTabbar .tabbtn.tab-central").count() === 1, "l'onglet central Aujourd'hui est mis en valeur");
 
 // 2. Diaporama : 3 taps (nuit courte → VFC basse → vidé), phrases de coach
@@ -82,11 +82,21 @@ ok(doneToday === true, "readinessDoneToday() vrai après le diaporama");
 const rlog = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.answers.readinessLog; });
 ok(Array.isArray(rlog) && rlog.length === 1 && rlog[0].level, "readinessLog archive le verdict du jour (" + JSON.stringify(rlog && rlog[0]) + ")");
 
-// 5. Onglet Semaine : grille visible (check-in déjà fait), forme du jour modifiable
+// 5. R16.9 — la forme du jour se retouche dans 🎯 Aujourd'hui (l'onglet du quotidien),
+// pas dans le plan. On est encore dessus après le diaporama.
+ok(await page.locator("details .load-title:has-text('Modifier ma forme du jour')").count() === 1, "« Modifier ma forme du jour » présent dans Aujourd’hui");
+ok(await page.locator("details .load-title:has-text('Adaptations quotidiennes')").count() === 1, "le journal des verdicts a suivi dans Aujourd’hui");
+
+// 5bis. L'ONGLET FUSIONNÉ — critère d'acceptation du handoff : depuis 🗓 Plan seul, on doit
+// pouvoir COCHER une séance faite ET voir la vue d'ensemble, sans changer d'onglet.
 const tabs = await page.locator("#ebTabbar .tabbtn").all();
-await tabs[3].click(); await page.waitForTimeout(300);
-ok(await page.locator(".gw-grid").count() === 1, "grille de semaine visible après le check-in");
-ok(await page.locator("details .load-title:has-text('Modifier ma forme du jour')").count() === 1, "« Modifier ma forme du jour » présent dans Semaine");
+await tabs[1].click(); await page.waitForTimeout(300);
+ok(await page.locator("#screen .gw-grid").count() >= 2, "Plan montre la semaine courante ET la saison (" + (await page.locator("#screen .gw-grid").count()) + " grilles)");
+ok(await page.locator("#screen .doneBtn").count() > 0, "la coche ✓ d'une séance est atteignable depuis Plan");
+ok(await page.locator("#screen [data-swap]").count() > 0, "l'échange de jours ⇄ a survécu à la fusion");
+const planTxt = await page.locator("#screen").textContent();
+ok(/Sous-objectifs/.test(planTxt) && /décisions du moteur/i.test(planTxt), "la vue d'ensemble (phases + décisions) est sur le même écran");
+ok(/Agenda \(\.ics\)/.test(planTxt), "les exports sont sur le même écran");
 
 // 6. Verdict moteur cohérent avec des signaux tous dégradés
 const verdictLevel = await page.evaluate(() => {

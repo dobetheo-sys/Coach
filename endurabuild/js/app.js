@@ -1,26 +1,60 @@
-// Point d'entrée PWA — câblage des modules, moteur V2, repli legacy, reprise d'état, SW.
+// Point d'entrée PWA — câblage des modules, moteur V2, reprise d'état, SW.
 // Le moteur V2 (engine.js) est le MÊME bundle auto-testé que dans Coach_Pro_V1.5.html,
 // généré depuis src/ par `npm run build:app` — extraction fidèle par construction.
 import "./engine.js"; // définit globalThis.EBV2 (IIFE, side-effect)
 import { S, ebActivate, ebLoad } from "./state.js";
-import { buildPlanLegacy } from "./legacy-fallback.js";
 import { renderStep } from "./ui/steps.js";
 import { renderPlan } from "./ui/plan-view.js";
 import { stravaAuthFromHash } from "./strava.js";
 
-// ===== MOTEUR V2 — génération via EBV2, générateur legacy en REPLI (comportement identique
-// ===== au monolithe : si le bundle manque ou échoue, le plan sort quand même).
-export function buildPlan(a) {
-  if (globalThis.EBV2 && typeof globalThis.EBV2.buildPlan === "function") {
-    try { return globalThis.EBV2.buildPlan(S.sport, a); }
-    catch (e) { console.warn("Moteur V2 indisponible - generateur legacy utilise", e); }
+/**
+ * Échec de génération — une exception PORTEUSE, pour que l'UI puisse le DIRE.
+ * (spec R10 § R10.0.2 : un plan faux est plus dangereux que pas de plan.)
+ */
+export class EBGenerationError extends Error {
+  constructor(code, cause) {
+    super("Génération impossible : " + code);
+    this.name = "EBGenerationError";
+    this.code = code;
+    this.cause = cause;
   }
-  return buildPlanLegacy(a);
+}
+
+// ===== MOTEUR V2 — le SEUL générateur (R10 phase 0) =====
+// Le générateur « legacy » a été supprimé. Il ne protégeait que d'une défaillance du moteur
+// V2, or les deux vivaient dans le même fichier : si la page se charge, le moteur est là. Le
+// seul déclenchement réel était « le moteur lève une exception » — cas où le repli, plus
+// ancien et non maintenu, produisait un plan de qualité inférieure SANS que l'athlète le
+// sache. Preuve : le trail est arrivé en R7 sans que le repli soit mis à jour (`caps.trail`
+// valait `undefined` → TypeError). Un filet troué ne protège personne : on préfère
+// désormais un échec VISIBLE.
+export function buildPlan(a) {
+  if (!globalThis.EBV2 || typeof globalThis.EBV2.buildPlan !== "function") {
+    throw new EBGenerationError("MOTEUR_ABSENT");
+  }
+  try {
+    return globalThis.EBV2.buildPlan(S.sport, a);
+  } catch (e) {
+    // R11 — une entrée invalide n'est PAS une panne du moteur : c'est une réponse que
+    // l'athlète peut corriger lui-même. La confondre avec « MOTEUR_EN_ECHEC » lui montrait un
+    // échec sans cause exploitable alors que la cause était parfaitement identifiable.
+    if (e && e.code === "ENTREE_INVALIDE") throw new EBGenerationError("ENTREE_INVALIDE", e);
+    throw new EBGenerationError("MOTEUR_EN_ECHEC", e);
+  }
 }
 
 // ===== PWA : service worker (offline + installable). Échec silencieux hors HTTPS/localhost.
-if ("serviceWorker" in navigator) {
-  addEventListener("load", () => { navigator.serviceWorker.register("./sw.js").catch(() => {}); });
+// R11 §8 — le service worker sert la PWA SERVIE (cache hors ligne, installation). Dans le
+// fichier autonome il n'a rien à mettre en cache et son enregistrement échoue de toute façon :
+// on ne le tente pas, et on dit pourquoi plutôt que d'avaler l'échec. Un `catch(() => {})` qui
+// masque une cause légitime rend le prochain diagnostic plus difficile, pour zéro bénéfice.
+if (globalThis.EB_STANDALONE) {
+  console.info("EnduraBuild : fichier autonome — pas de service worker (tout est déjà embarqué).");
+} else if ("serviceWorker" in navigator) {
+  addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .catch((e) => console.warn("EnduraBuild : service worker non enregistré —", e && e.message));
+  });
 }
 
 // ===== Reprise : restauration multi-plans (R4-4) — migration v1→v2 dans ebLoad() =====

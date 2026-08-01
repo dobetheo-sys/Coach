@@ -218,5 +218,5 @@ export function dailyContentHTML(plan, todayISO) {
       else { kind = "anecdote"; icon = "📜"; title = "Petite histoire d'endurance"; body = ANECDOTES[hashDate(todayISO + "a", ANECDOTES.length)]; }
     } else { kind = "defi"; icon = "🎯"; title = "Micro-défi technique (zéro volume en plus)"; body = CHALLENGES[hashDate(todayISO + "c", CHALLENGES.length)]; }
   }
-  return '<details class="load-card" open><summary class="load-title">' + icon + " " + title + '</summary><div class="load-sub" style="margin-top:6px;font-size:13px;line-height:1.55">' + body + "</div></details>";
+  return '<details class="load-card" open><summary class="load-title">' + icon + " " + title + '</summary><div class="load-sub" style="margin-top:6px;font-size:var(--fs-md);line-height:1.55">' + body + "</div></details>";
 }

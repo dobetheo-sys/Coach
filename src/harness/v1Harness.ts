@@ -20,11 +20,20 @@ export interface V1Step {
   reps?: number;
   zone?: string | null;
   intensity?: string;
+  /** Libellé de la récupération inter-répétitions — de la PROSE, pour l'athlète. Il ne sert
+   *  plus jamais de donnée : la durée vit dans `recoveryMin`. */
   recoveryText?: string;
+  /** Durée de la récupération inter-répétitions, en minutes, PAR intervalle (R3-final).
+   *  Renseignée à la CONSTRUCTION du step par la bibliothèque de séances — c'est elle qui sait
+   *  combien dure « la descente marchée », pas un lecteur de phrases. La charge d'une
+   *  répétition vaut `reps × durée + (reps − 1) × recoveryMin`. */
+  recoveryMin?: number;
   text?: string;
   leg?: "bike" | "run"; // brick
   d?: string; // discipline du step (nage dans tri, CAP du brick…)
-  bnd?: { floor: number; cap: number };
+  /** Bornes du bloc. `hard: true` = plafond du MANIFESTE, jamais mis à l'échelle par la sonde
+   *  de capacité (C23 : 3 h de sortie longue pour un débutant, par exemple). */
+  bnd?: { floor: number; cap: number; hard?: boolean };
   repCap?: number; // V2.2 — plafond de répétitions d'un bloc de qualité (le scaling ne le dépasse jamais)
   // ---- R7 TRAIL : un bloc de trail ne se décrit pas comme un bloc de route ----
   /** Pente du bloc — PILOTE LE RENDU DE L'INTENSITÉ (spec R7 §7, le verrou du module) :
@@ -48,6 +57,14 @@ export interface V1Session {
   min?: number; // estimation du générateur (renderSess) — à recouper, pas à croire
   long?: boolean;
   brick?: boolean;
+  /** R10 — course intermédiaire (B ou C) placée à sa vraie date. Une course a LIEU : aucune
+   *  passe de dosage ne la retaille et C13d ne la déclasse pas, quelle que soit sa durée. */
+  race?: boolean;
+  /** L'INTENTION de la séance, en donnée. Le nom (« Footing récup », « Récup active ») n'en est
+   *  que le rendu : sans ce champ, la mise à l'échelle allongeait la séance pour remplir
+   *  l'enveloppe sans jamais renommer, et l'athlète lisait « Nage récup courte » sur 196 min et
+   *  9 025 m. Un libellé auquel on ne peut plus se fier ne vaut rien. */
+  recovery?: boolean;
   note?: string;
 }
 export interface V1Day {
@@ -138,6 +155,23 @@ export function loadV1(htmlPath?: string): V1Engine {
   }
 
   domStub();
+
+  // O7 — LE HARNAIS DOIT REPRODUIRE LE NAVIGATEUR, SINON IL AUDITE AUTRE CHOSE.
+  //
+  // Il n'extrayait que le PREMIER bloc `<script>`. Le bundle du moteur V2 est injecté plus bas
+  // dans le fichier, entre ses marqueurs : `globalThis.EBV2` n'existait donc pas au moment de
+  // l'eval, et le wrapper `buildPlan` (qui teste sa présence) retombait sur le générateur
+  // legacy — celui que `check:app` rend inatteignable en production. `audit:v1` mesurait donc
+  // fidèlement un chemin mort, et ses 486 combinaisons ne disaient rien du produit.
+  // On charge le bundle AVANT la page, exactement comme le navigateur.
+  const bi = html.indexOf("/*__EBV2_START__*/");
+  const bj = html.indexOf("/*__EBV2_END__*/");
+  if (bi >= 0 && bj > bi) (0, eval)(html.slice(bi, bj + "/*__EBV2_END__*/".length));
+  // Et le repli ne peut plus redevenir silencieux : un harnais qui audite le mauvais moteur
+  // rend 486 combinaisons vertes qui ne parlent de rien. S'il n'y a pas de bundle, on le DIT.
+  if (bi >= 0 && !(globalThis as Record<string, unknown>).EBV2)
+    throw new Error("bundle EBV2 présent dans le HTML mais non chargé — le harnais auditerait le générateur de repli");
+
   // Export explicite dans la chaîne évaluée : const/let top-level restent
   // dans le scope de l'eval, ils ne s'attachent jamais à globalThis.
   const exported = code + "\nglobalThis.__V1 = { S, SPORTS, buildPlan, evalRules };\n";

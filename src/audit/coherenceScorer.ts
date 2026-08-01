@@ -12,15 +12,11 @@
  */
 import type { V1Plan, V1Week } from "../harness/v1Harness.ts";
 import { sessionLoad, intensitySplit, DEFAULT_REFS, type AthleteRefs, type SessionLoad } from "../engine/loadModel.ts";
-import { C22_AUDIT_HARD_JUMP } from "../engine/constraintMatrix.ts";
+import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS, easyShareFloor } from "../engine/constraintMatrix.ts";
 
-/** Plafonds brick vélo (audit 2, spec utilisateur) : "jamais dépassés, même de peu". */
-const BRICK_BIKE_BOUNDS: Record<string, [number, number]> = {
-  S: [45, 90],
-  M: [60, 120],
-  "70.3": [90, 180],
-  Full: [150, 300],
-};
+// Les bornes brick vélo (audit 2, « jamais dépassées, même de peu ») vivent désormais dans la
+// matrice de contraintes : l'auditeur et le générateur lisent LE MÊME tableau. La copie locale
+// permettait au générateur de produire ce que l'auditeur interdit — vu en R10 phase 2.
 
 export const THRESHOLDS = {
   overPrescribed: 1.4,
@@ -43,7 +39,13 @@ export interface WeekAudit {
   nominalSessions: number; // séances sans volume prescrit (comptées au nominal)
   fullMinutes: number; // minutes issues d'un parsing complet (couverture)
   swimMeters: number; // mètres nagés de la semaine — la mesure de volume honnête en natation
-  workMin: number; // minutes HORS récup inter-répétitions — même base que le générateur (écart de métrique documenté)
+  /** R3-final — minutes hors récup inter-répétitions. Cette base existait pour NEUTRALISER
+   *  l'écart entre les deux estimateurs : le générateur ne comptait pas la récupération, nous
+   *  si. L'écart est fermé (`recoveryMin` porté par le step, mesuré des deux côtés), donc la
+   *  compensation n'a plus d'objet — les règles de progression et de dominance du pic mesurent
+   *  désormais les MÊMES minutes que celles que le générateur pilote. Le champ reste exposé
+   *  pour l'analyse (part de travail réel d'une semaine), il n'arbitre plus aucune règle. */
+  workMin: number;
 }
 
 export interface PlanAudit {
@@ -81,6 +83,10 @@ export interface AuditOpts {
   sport?: string;
   format?: string;
   level?: string; // "debutant" active les règles spécifiques débutant/non-débutant du manifeste
+  /** C26b — ce qui LIMITE l'athlète : récupération centrale chez l'entraîné, tissu conjonctif
+   *  chez celui qui reprend ou qui débute. Le plafond de temps dur en dépend. */
+  history?: string;
+  injured?: boolean;
   refs?: AthleteRefs;
 }
 
@@ -195,6 +201,23 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   }
   if (vo2InTaper > 0) hard.push(vo2InTaper + " séance(s) VO2max en semaine d'affûtage (interdit, spec audit 2)");
 
+  // ---- R13.4 : pas de FORCE (basse cadence) en affûtage ----
+  // La force à 50-60 rpm a le même coût de fatigue résiduelle que la VO2max (48-72 h de
+  // courbatures profondes) : mesuré avant correction, 6 blocs `bk.frc` dans l'affûtage d'un
+  // Full — dont une séance de gros braquet à J-3 de l'Ironman. Elle était là par accident de
+  // branchement (`else` attrape-tout), pas par intention : la règle devient VÉRIFIÉE.
+  let frcInTaper = 0;
+  for (const w of plan.weeks) {
+    if (!taperNums.has(w.num)) continue;
+    for (const d of w.days)
+      for (const s of d.sessions)
+        if ((s.steps || []).some((st) => typeof st.zone === "string" && st.zone.endsWith(".frc"))) {
+          frcInTaper++;
+          flags.push("S" + w.num + " (taper) : séance de force « " + s.name + " »");
+        }
+  }
+  if (frcInTaper > 0) hard.push(frcInTaper + " séance(s) de force (basse cadence) en semaine d'affûtage (R13.4 : même coût de récupération que la VO2max)");
+
   // ---- Audit 2 : bornes du brick vélo par format ----
   let brickCapViolations = 0;
   const bounds = opts.format ? BRICK_BIKE_BOUNDS[opts.format] : undefined;
@@ -223,6 +246,12 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   // documenté (ARCHITECTURE.md). La dominance est re-testée HORS récup inter-répétitions
   // (même base que le générateur) avant de conclure à une violation structurelle.
   if (!peakInPeakPhase) {
+    // La DOMINANCE DU PIC se juge sur le TRAVAIL, pas sur le temps passé dehors — et ce n'est
+    // pas la compensation d'un écart de mesure, c'est la définition de la règle. Une semaine de
+    // développement pleine de répétitions occupe plus de CLOCK TIME (les récupérations sont du
+    // temps) qu'une semaine de pic faite de sorties longues continues, à charge d'entraînement
+    // pourtant inférieure. « La semaine pic est la plus grosse du plan » parle de stimulus.
+    // La règle de PROGRESSION, elle, parle bien de temps vécu : elle mesure `prescribedMin`.
     const peakByWork = candidates.reduce((a, b) => (b.workMin > a.workMin ? b : a), candidates[0]);
     const peakPhaseBestW = Math.max(0, ...candidates.filter((w) => w.phaseId === "peak").map((w) => w.workMin));
     if (peakByWork.phaseId === "peak" || (peakPhaseBestW > 0 && peakByWork.workMin <= peakPhaseBestW * 1.05)) peakInPeakPhase = true;
@@ -260,20 +289,28 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
       if (w.isRecup || w.phaseId === "taper") continue;
       if (prevDecl > 0 && w.declaredMin > prevDecl * 1.1 + 7) declJumps++;
       if (prevOurs > 0) {
-        // D3 (audit v6) — les sauts se mesurent sur la base TRAVAIL (hors récup
-        // inter-répétitions, comme la dominance du pic) : une semaine fractionnée pèse
-        // plus cher en minutes-métrique à travail égal — c'est l'écart de métrique
-        // documenté, pas un saut de charge. Le seuil dur dérive de la constante nommée
-        // (C22_AUDIT_HARD_JUMP) — plus jamais un littéral qui diverge en silence.
-        const j = w.workMin / prevOurs;
+        // D3 puis R3-final — les sauts se mesuraient sur la base TRAVAIL parce que le
+        // générateur ne comptait pas la récupération : une semaine fractionnée pesait plus cher
+        // en minutes-métrique à travail égal, et c'était un artefact de mesure, pas un saut de
+        // charge. L'écart est fermé : les deux estimateurs comptent la même chose. On mesure
+        // donc le temps réellement prescrit — celui que le générateur pilote et que l'athlète
+        // passe dehors. Le seuil dur dérive de la constante nommée (C22_AUDIT_HARD_JUMP).
+        const j = w.prescribedMin / prevOurs;
         if (j > C22_AUDIT_HARD_JUMP) auditJumpsHard++;
         else if (j > 1.15) auditJumpsSoft++;
       }
       prevDecl = w.declaredMin;
-      prevOurs = w.workMin;
+      prevOurs = w.prescribedMin;
     }
   }
-  if (declJumps > 0) hard.push(declJumps + " saut(s) >+10% de la courbe déclarée entre semaines de charge (manifeste)");
+  // I10 a fermé l'écart entre la courbe ANNONCÉE et le volume PRESCRIT : le chiffre affiché suit
+  // désormais le contenu (véracité). Conséquence directe : cette règle et celle du saut de
+  // volume RÉEL mesurent la même grandeur, avec deux seuils différents — +10 % ici, +25 % là.
+  // Deux règles qui se contredisent : l'une est mal formée, et c'est celle-ci. Le +10 % est la
+  // CIBLE du générateur (C22), pas un seuil d'audit sur le plan livré ; la tolérance à +25 %
+  // existe précisément parce que les planchers de séance empêchent parfois de l'atteindre.
+  // La règle de sécurité reste portée par le volume réel ; ici, on SIGNALE sans bloquer.
+  if (declJumps > 0) soft.push(declJumps + " saut(s) >+10% de la courbe annoncée entre semaines de charge — la courbe suit désormais le prescrit (I10), et le prescrit est borné à +25% par sa propre règle");
   if (auditJumpsHard > 0) hard.push(auditJumpsHard + " saut(s) >+25% de volume réel entre semaines de charge (manifeste)");
 
   // ---- Manifeste : jamais deux longues CAP consécutives ----
@@ -295,7 +332,14 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
         if (s.d === "rs") continue;
         const load = sessionLoad(s, refs);
         if (opts.level === "debutant" && s.d === "rn" && s.long && load.minutes > 185) beginnerLongRunOver3h++;
-        if (opts.level && opts.level !== "debutant" && s.d === "sw" && (load.meters ?? 0) > 0 && (load.meters ?? 0) < 750) smallSwims++;
+        // A3 — UN PLANCHER DE SÉANCE EST UNE RÈGLE DE SEMAINE DE CHARGE. Il dit « en dessous,
+        // la séance ne vaut pas le déplacement » : c'est un argument de dosage, et une semaine
+        // de décharge a précisément pour objet de retirer. L'exiger en récupération et en
+        // affûtage forçait à REMONTER des séances dans les semaines censées alléger — d'où une
+        // récup plus lourde que la charge qu'elle assimile, et un affûtage qui n'affûte pas.
+        // Deux collisions indépendantes, une seule reformulation, et une règle en moins.
+        const decharge = w.isRecup || w.phase.id === "taper";
+        if (!decharge && opts.level && opts.level !== "debutant" && s.d === "sw" && (load.meters ?? 0) > 0 && (load.meters ?? 0) < 750) smallSwims++;
         if (!s.note && !(s.det || "").includes("💡")) unexplainedSessions++;
       }
   if (beginnerLongRunOver3h > 0) hard.push(beginnerLongRunOver3h + " sortie(s) longue(s) CAP >3h pour un débutant (manifeste)");
@@ -314,7 +358,13 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
       }
   }
   const easyShare = easyTot + modTot + hardTot > 0 ? easyTot / (easyTot + modTot + hardTot) : 1;
-  if (easyShare < 0.7) hard.push("répartition des intensités : " + Math.round(easyShare * 100) + "% de temps facile (<70% — zone grise, manifeste ~80/20)");
+  // C26 — le plancher suit le VOLUME : 80/20 est la conséquence d'un plafond de temps dur
+  // (~60 min/sem), pas une loi en soi. Sur une petite enveloppe, exiger 70 % de facile laisse
+  // moins d'une heure de qualité — moins que ce qu'il faut pour maintenir la VO2max.
+  const chargeMin = weeks.filter((w) => !w.isRecup && w.phaseId !== "taper").map((w) => w.prescribedMin);
+  const meanChargeMin = chargeMin.length ? chargeMin.reduce((a, b) => a + b, 0) / chargeMin.length : 0;
+  const easyFloor = easyShareFloor(meanChargeMin, { history: opts.history, level: opts.level, injured: !!opts.injured });
+  if (easyShare < easyFloor) hard.push("répartition des intensités : " + Math.round(easyShare * 100) + "% de temps facile (<" + Math.round(easyFloor * 100) + "% pour " + Math.round(meanChargeMin / 6) / 10 + "h/sem — zone grise, manifeste ~80/20)");
 
   // ---- Cohérence : une nage FACILE/RÉCUP ne dépasse jamais la « longue » de sa semaine
   // (une « Récup eau » de 2150m n'est pas une récup). Les séances de qualité (jours durs)
@@ -369,8 +419,8 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
 
   score -= Math.min(20, adjacentHardDays * 10);
   score -= Math.min(10, recupHeavier * 5);
-  if (easyShare < 0.7) score -= 15;
-  else if (easyShare < 0.73) score -= 5;
+  if (easyShare < easyFloor) score -= 15;
+  else if (easyShare < easyFloor + 0.03) score -= 5;
   if (taperVsPeak !== null && taperVsPeak > 0.6) score -= 20;
   if (vo2InTaper > 0) score -= 15;
   if (brickCapViolations > 0) score -= 15;

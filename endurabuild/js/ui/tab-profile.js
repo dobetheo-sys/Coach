@@ -3,7 +3,8 @@
 // import FIT/Strava) : toute modification manuelle y est consignée {type, value,
 // date, prev, source} — pas de nouvelle structure de données (brief onglets).
 // Toute donnée utilisateur réaffichée passe par esc() avant innerHTML (anti-XSS).
-import { SPORTS, VLAB } from "../config.js";
+import { SPORTS, VLAB, VLAB_Q } from "../config.js";
+import { previewMeasured, measuredHours, refreshMeasured, clearMeasured } from "../measured.js";
 import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc, todayISO } from "../state.js";
 import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js";
 import { renderPlan } from "./plan-view.js";
@@ -32,6 +33,10 @@ export function syncRefsFromTests() {
   if (pace) { const v = _fmtColon(pace.value); if (S.answers.pace_known !== "oui" || S.answers.pace !== v) { S.answers.pace = v; S.answers.pace_known = "oui"; n++; } }
   const css = latest("css");
   if (css) { const v = _fmtColon(css.value); if (S.answers.css_known !== "oui" || S.answers.css !== v) { S.answers.css = v; S.answers.css_known = "oui"; n++; } }
+  // R12.2/R12.3 — la VAM suit le même pont que les trois autres références : sans lui, un test
+  // ou un import écrirait le journal sans que le plan change JAMAIS (bug déjà corrigé une fois).
+  const vam = latest("vam");
+  if (vam) { const v = String(Math.round(vam.value)); if (S.answers.vam_known !== "oui" || S.answers.vam !== v) { S.answers.vam = v; S.answers.vam_known = "oui"; n++; } }
   return n;
 }
 
@@ -42,6 +47,7 @@ function journalLabel(t) {
     case "ftp": return "FTP " + esc(v) + "W";
     case "thrPace": return "Allure seuil " + esc(_fmtSec(+v)) + "/km";
     case "css": return "CSS " + esc(_fmtSec(+v)) + "/100m";
+    case "vam": return "VAM " + esc(Math.round(+v)) + " m/h";
     case "cs": return "Vitesse critique " + esc(v);
     case "vma": return "VMA " + esc(v) + " km/h";
     case "profil:vol_max": return "Volume max " + esc(v) + "h/sem";
@@ -63,6 +69,27 @@ function journalPrev(t) {
 // physiologiques datées — on garde la MEILLEURE, pas la dernière) et les séances réellement
 // faites (✓ du plan + imports FIT) pour les records empiriques (plus longue séance).
 const DISC_LABEL = { rn: "🏃 Course", bk: "🚴 Vélo", sw: "🏊 Natation", br: "🔁 Brick" };
+/**
+ * R16.7 — REPLIER LES BLOCS SECONDAIRES DU PROFIL.
+ *
+ * La page défilait d'un seul tenant sur quinze sections : éditer sa FTP demandait de traverser
+ * tout le reste. Ce qui reste OUVERT est ce qu'on vient consulter ou modifier (avatar, plans,
+ * échéance, résumé, références, retest) ; ce qui se replie est ce qu'on vient CHERCHER quand on
+ * le veut (records, badges, efficience, sauvegarde, journal).
+ *
+ * Le mécanisme est celui qui existe déjà pour « Conseils personnalisés » : `<details>`, donc
+ * accessible au clavier et lisible par un lecteur d'écran sans rien de spécifique à écrire.
+ * On transforme la carte plutôt que de dupliquer son rendu — un second chemin de rendu serait
+ * un second endroit à corriger.
+ */
+function repliable(h, ouvert) {
+  if (!h) return h;
+  return h
+    .replace('<div class="load-card">', '<details class="load-card"' + (ouvert ? " open" : "") + ">")
+    .replace(/<div class="load-title">([\s\S]*?)<\/div>/, '<summary class="load-title" style="cursor:pointer">$1</summary>')
+    .replace(/<\/div>\s*$/, "</details>");
+}
+
 function recordsHTML(plan, a) {
   const rows = [];
   const tests = Array.isArray(a.tests) ? a.tests.filter((t) => isFinite(+t.value)) : [];
@@ -89,13 +116,15 @@ function recordsHTML(plan, a) {
   Object.keys(longest).forEach((d) => rows.push({ lab: DISC_LABEL[d] + " — plus longue séance", val: Math.floor(longest[d].minutes / 60) + "h" + String(longest[d].minutes % 60).padStart(2, "0"), date: longest[d].date }));
   let h = '<div class="load-card"><div class="load-title">🏅 Records personnels</div>';
   if (!rows.length) h += '<div class="load-sub" style="margin-top:6px">Encore vides — ils se rempliront avec tes tests (FTP/allure/CSS), tes imports FIT/Strava et tes séances cochées ✓.</div>';
-  else rows.forEach((r) => { h += '<div style="display:flex;justify-content:space-between;gap:8px;margin:6px 0;font-size:13px;align-items:baseline"><span>' + r.lab + '</span><span style="text-align:right"><b>' + esc(r.val) + '</b>' + (r.date ? ' <span style="color:#777;font-size:11px">' + esc(r.date) + "</span>" : "") + "</span></div>"; });
+  else rows.forEach((r) => { h += '<div style="display:flex;justify-content:space-between;gap:8px;margin:6px 0;font-size:var(--fs-md);align-items:baseline"><span>' + r.lab + '</span><span style="text-align:right"><b>' + esc(r.val) + '</b>' + (r.date ? ' <span style="color:var(--muted);font-size:var(--fs-xs)">' + esc(r.date) + "</span>" : "") + "</span></div>"; });
   h += '<div class="load-sub" style="margin-top:4px">Un record se gagne, il ne se perd pas — on garde la meilleure valeur jamais atteinte, avec sa date.</div></div>';
   return h;
 }
 
 function summaryRows(a) {
-  const L = (k, lab) => (a[k] ? '<div class="bp-decision"><div><div class="bp-what">' + lab + '</div><div class="bp-val">' + esc(String(a[k]).split(",").map((x) => VLAB[x] || x).join(", ")) + "</div></div></div>" : "");
+  // R5.6b — la table PAR QUESTION passe avant la table plate : « partielle » ne veut pas dire la
+  // même chose pour la disponibilité et pour une course de nuit.
+  const L = (k, lab) => (a[k] ? '<div class="bp-decision"><div><div class="bp-what">' + lab + '</div><div class="bp-val">' + esc(String(a[k]).split(",").map((x) => (VLAB_Q[k] && VLAB_Q[k][x]) || VLAB[x] || x).join(", ")) + "</div></div></div>" : "");
   return L("intent", "Intention") + L("format", "Objectif") + L("history", "Historique") + L("level", "Niveau") + L("dispo", "Disponibilité") + L("injury", "Blessures");
 }
 
@@ -185,14 +214,14 @@ function avatarSectionHTML(plan, todayISO) {
     '<button class="doneBtn" data-av-theme="' + k + '" type="button" title="' + (SPORTS[k] ? SPORTS[k].nom : k) + '" style="background:' + c + ";border-color:#16130e" + (S.answers.avatarTheme === k ? ";outline:3px solid #16130e;outline-offset:2px" : "") + '"> </button>').join(" ");
   let h = '<div class="load-card"><div style="display:flex;align-items:center;gap:16px">'
     + '<div id="avSvg">' + avatarSVG(visual, 96) + "</div>"
-    + '<div style="flex:1"><div style="font-weight:800;font-size:16px">' + av.icon + " " + av.name + '</div>'
-    + '<div style="font-size:11px;color:#777">Niveau ' + av.level + "/" + (av.levels ? av.levels.length : 16) + " · " + av.xp + " XP" + (av.xpToNext ? " (" + av.xpInLevel + "/" + av.xpToNext + " dans ce niveau)" : " · niveau maximum") + "</div>"
+    + '<div style="flex:1"><div style="font-weight:800;font-size:var(--fs-lg)">' + av.icon + " " + av.name + '</div>'
+    + '<div style="font-size:var(--fs-xs);color:var(--muted)">Niveau ' + av.level + "/" + (av.levels ? av.levels.length : 16) + " · " + av.xp + " XP" + (av.xpToNext ? " (" + av.xpInLevel + "/" + av.xpToNext + " dans ce niveau)" : " · niveau maximum") + "</div>"
     + '<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:12px;overflow:hidden;margin-top:6px"><div style="height:100%;width:' + av.progressPct + '%;background:linear-gradient(90deg,#00a376,#00b8d9)"></div></div>'
-    + (av.nextName ? '<div style="font-size:11px;margin-top:4px">Prochain : <b>' + av.nextIcon + " " + av.nextName + "</b>" + (av.nextUnlock ? " — débloque <b>" + av.nextUnlock + "</b>" : "") + " (encore " + (av.xpToNext - av.xpInLevel) + " XP).</div>" : "")
+    + (av.nextName ? '<div style="font-size:var(--fs-xs);margin-top:4px">Prochain : <b>' + av.nextIcon + " " + av.nextName + "</b>" + (av.nextUnlock ? " — débloque <b>" + av.nextUnlock + "</b>" : "") + " (encore " + (av.xpToNext - av.xpInLevel) + " XP).</div>" : "")
     + "</div></div>";
   if (adh) {
     if (adh.frozenToday) h += '<div class="load-sub" style="margin-top:8px">❄️ Série <b>gelée</b> (douleur ou maladie) : ' + adh.days + " jour" + (adh.days > 1 ? "s" : "") + " au compteur, rien n’est perdu.</div>";
-    else if (adh.days > 1) h += '<div style="margin-top:8px;font-size:13px">🔥 <b>Série : ' + adh.days + " jours</b> — repos validé compris.</div>";
+    else if (adh.days > 1) h += '<div style="margin-top:8px;font-size:var(--fs-md)">🔥 <b>Série : ' + adh.days + " jours</b> — repos validé compris.</div>";
     else h += '<div class="load-sub" style="margin-top:8px">Nouvelle série — la régularité sur toute la préparation compte plus qu’une série parfaite.</div>';
   }
   h += disciplineLevelsHTML(plan);
@@ -200,11 +229,11 @@ function avatarSectionHTML(plan, todayISO) {
     h += '<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer">Les ' + av.levels.length + " niveaux et ce qu'ils débloquent</summary><div style=\"margin-top:6px\">";
     av.levels.forEach((l) => {
       const got = av.level >= l.level;
-      h += '<div style="font-size:11px;margin:3px 0;' + (got ? "" : "opacity:0.55") + '">' + (got ? "✓" : "○") + " <b>" + l.icon + " " + l.name + "</b> (" + l.xp + " XP) — " + l.unlock + "</div>";
+      h += '<div style="font-size:var(--fs-xs);margin:3px 0;' + (got ? "" : "opacity:0.55") + '">' + (got ? "✓" : "○") + " <b>" + l.icon + " " + l.name + "</b> (" + l.xp + " XP) — " + l.unlock + "</div>";
     });
     h += "</div></details>";
   }
-  h += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:700">Couleur du maillot :</span>' + themes
+  h += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:var(--fs-sm);font-weight:700">Couleur du maillot :</span>' + themes
     + '<button class="btn" id="avShare" type="button" style="margin-left:auto">📸 Partager</button></div>'
     + '<div class="load-sub" style="margin-top:8px">Tout est traçable : équipement et décor = ton niveau (régularité pure) · posture = tes 7 derniers jours · couleur de l’aura = ta série. Jamais un chrono, jamais décroissant.</div></div>';
   return h;
@@ -226,16 +255,16 @@ function disciplineLevelsHTML(plan) {
     for (let i = 0; i < DISC_LEVELS.length; i++) if (n >= DISC_LEVELS[i][0]) idx = i;
     const next = DISC_LEVELS[idx + 1];
     const pct = next ? Math.min(100, Math.round(((n - DISC_LEVELS[idx][0]) / (next[0] - DISC_LEVELS[idx][0])) * 100)) : 100;
-    return '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px"><span style="width:20px">' + ico + '</span><span style="width:86px">' + nom + '</span><b style="width:76px">' + DISC_LEVELS[idx][1] + '</b>'
+    return '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:var(--fs-sm)"><span style="width:20px">' + ico + '</span><span style="width:86px">' + nom + '</span><b style="width:76px">' + DISC_LEVELS[idx][1] + '</b>'
       + '<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:#00a376"></div></div>'
-      + '<span style="width:82px;text-align:right;color:#777">' + (next ? n + "/" + next[0] + " → " + next[1] : n + " séances") + "</span></div>";
+      + '<span style="width:82px;text-align:right;color:var(--muted)">' + (next ? n + "/" + next[0] + " → " + next[1] : n + " séances") + "</span></div>";
   };
-  return '<div style="margin-top:10px"><div style="font-size:12px;font-weight:700">Par discipline (séances validées)</div>'
+  return '<div style="margin-top:10px"><div style="font-size:var(--fs-sm);font-weight:700">Par discipline (séances validées)</div>'
     + row("🏊", "Natation", count.sw) + row("🚴", "Vélo", count.bk) + row("🏃", "Course", count.rn) + "</div>";
 }
 function badgesGalleryHTML(badges) {
   if (!badges.length) return "";
-  const chips = badges.map((b) => '<span title="' + b.why.replace(/"/g, "&quot;") + '" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:11px;background:#fff">' + b.icon + " " + b.label + "</span>").join(" ");
+  const chips = badges.map((b) => '<span title="' + b.why.replace(/"/g, "&quot;") + '" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:#fff">' + b.icon + " " + b.label + "</span>").join(" ");
   return '<div class="load-card"><div class="load-title">🏅 Badges gagnés (' + badges.length + ')</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' + chips + "</div></div>";
 }
 // R4.8 — efficience : uniquement les progrès à charge égale (imports FIT), jamais le volume.
@@ -296,15 +325,20 @@ function retestSuggestionHTML() {
 // VAM. Elles changent la CATÉGORIE d'effort, donc la durée du plan, les plafonds et le
 // contenu — chaque modification régénère le plan.
 function trailProfileHTML(a) {
-  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
-  const sel = (id, cur, opts) => '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px"><span style="width:150px">' + opts.lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
+  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:6px"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
+  const sel = (id, cur, opts) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:6px"><span style="width:150px">' + opts.lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
     + opts.list.map((o) => '<option value="' + o[0] + '"' + ((cur || "") === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></label>";
   let h = '<div class="load-card"><div class="load-title">⛰ Ta course et ton terrain</div>';
   if (a.trailMigrated) h += '<div class="load-sub" style="margin-top:6px;color:#a33"><b>À vérifier :</b> ton plan trail a été repris depuis l’ancienne version, où le dénivelé n’était pas demandé. Renseigne la vraie distance et le vrai D+ de ta course : ce sont eux qui décident de la durée de préparation, du volume et du contenu des séances.</div>';
   else h += '<div class="load-sub" style="margin-top:4px">Le D+ compte autant que la distance : il décide de la catégorie d’effort, donc de tout le reste.</div>';
   h += row("pfTrailKm", "Distance (km)", a.race_distance_km, "62");
   h += row("pfTrailDplus", "D+ total (m)", a.race_dplus_m, "3200");
-  h += row("pfTrailVam", "VAM (m D+/h)", a.vam_known === "oui" ? a.vam : "", "850 — test : 20-30min de montée à fond");
+  // R12.1 — la montée VÉCUE d'abord : c'est la question à laquelle tout le monde sait répondre.
+  // La VAM directe reste possible pour qui l'a mesurée, mais elle n'est plus le chemin principal.
+  h += '<div class="load-sub" style="margin-top:8px"><b>⛰ Ta dernière grosse montée</b> — d\'au moins 5 minutes, sans t\'arrêter. C\'est de là que le plan déduit ta vitesse ascensionnelle.</div>';
+  h += row("pfClimbDplus", "D+ de cette montée (m)", a.climb_dplus_m, "450");
+  h += row("pfClimbMin", "Durée de cette montée (min)", a.climb_min, "40");
+  h += row("pfTrailVam", "VAM déjà mesurée (m D+/h)", a.vam_known === "oui" ? a.vam : "", "facultatif — sinon déduite ci-dessus");
   h += sel("pfTrailTech", a.race_technicity, { lab: "Terrain de la course", list: [["roulant", "Roulant"], ["mixte", "Mixte"], ["technique", "Technique"], ["alpin", "Alpin"]] });
   h += sel("pfTrailNight", a.race_night, { lab: "Course de nuit", list: [["non", "Non"], ["partielle", "En partie"], ["majoritaire", "Majoritairement"]] });
   h += sel("pfTrailAccess", a.train_dplus_access, { lab: "Dénivelé accessible", list: [["montagne", "Montagne (+800m)"], ["collines", "Collines (200-800m)"], ["plat", "Plat (<200m)"]] });
@@ -319,8 +353,11 @@ function bindTrailProfile() {
   btn.onclick = () => {
     const a = S.answers;
     const g = (id) => { const el = $(id); return el ? String(el.value || "").trim() : null; };
-    const before = JSON.stringify([a.race_distance_km, a.race_dplus_m, a.vam, a.race_technicity, a.race_night, a.train_dplus_access, a.poles, a.race_cutoff_h]);
+    const before = JSON.stringify([a.race_distance_km, a.race_dplus_m, a.vam, a.climb_dplus_m, a.climb_min, a.race_technicity, a.race_night, a.train_dplus_access, a.poles, a.race_cutoff_h]);
     const km = parseFloat(g("pfTrailKm") || ""), dp = parseFloat(g("pfTrailDplus") || ""), vam = parseFloat(g("pfTrailVam") || "");
+    const cdp = parseFloat(g("pfClimbDplus") || ""), cmin = parseFloat(g("pfClimbMin") || "");
+    a.climb_dplus_m = cdp >= 50 && cdp <= 3000 ? String(cdp) : "";
+    a.climb_min = cmin >= 5 && cmin <= 300 ? String(cmin) : "";
     if (km > 0) a.race_distance_km = String(km);
     if (dp >= 0) a.race_dplus_m = String(dp);
     if (vam >= 200 && vam <= 2500) { a.vam = String(vam); a.vam_known = "oui"; } else if (!g("pfTrailVam")) a.vam_known = "non";
@@ -331,7 +368,7 @@ function bindTrailProfile() {
     const co = parseFloat(g("pfTrailCutoff") || "");
     a.race_cutoff_h = co > 0 ? String(co) : "";
     const m = $("pfTrailMsg");
-    if (JSON.stringify([a.race_distance_km, a.race_dplus_m, a.vam, a.race_technicity, a.race_night, a.train_dplus_access, a.poles, a.race_cutoff_h]) === before) {
+    if (JSON.stringify([a.race_distance_km, a.race_dplus_m, a.vam, a.climb_dplus_m, a.climb_min, a.race_technicity, a.race_night, a.train_dplus_access, a.poles, a.race_cutoff_h]) === before) {
       if (m) m.textContent = "Aucun changement détecté.";
       return;
     }
@@ -352,7 +389,7 @@ function raceInterHTML(a) {
   const prioSel = (id, cur) => '<select id="' + id + '" style="flex:1;min-width:0">'
     + '<option value="C"' + (cur !== "B" ? " selected" : "") + '>C — laboratoire (on s’entraîne à travers)</option>'
     + '<option value="B"' + (cur === "B" ? " selected" : "") + '>B — préparation (mini-affûtage)</option></select>';
-  const rowR = (n, d, p) => '<div style="display:flex;gap:8px;align-items:center;font-size:13px;flex-wrap:wrap"><span style="width:70px">Course ' + n + '</span>'
+  const rowR = (n, d, p) => '<div style="display:flex;gap:8px;align-items:center;font-size:var(--fs-md);flex-wrap:wrap"><span style="width:70px">Course ' + n + '</span>'
     + '<input type="date" id="pfRace' + n + 'd" value="' + esc(d || "") + '" style="flex:1;min-width:130px">' + prioSel("pfRace" + n + "p", p) + "</div>";
   return '<div class="load-card"><div class="load-title">🏁 Courses intermédiaires</div>'
     + '<div class="load-sub" style="margin-top:4px">Une course AVANT ton objectif ? Le moteur allège la semaine, place la course à sa vraie date avec sa consigne de pacing, et met la semaine suivante en récupération.</div>'
@@ -390,6 +427,38 @@ function bindRaceInter() {
   };
 }
 
+
+// ── R6 §2-§3 — CE QUE TU AS RÉELLEMENT FAIT ──────────────────────────────────────────
+// La carte ne montre QU'UN champ mesurable : le volume récent, point de départ de la rampe.
+// Tous les autres champs restent déclarés — une observation ne remplace jamais une contrainte,
+// et c'est ce qui nous distingue d'un agrégateur d'activités. L'athlète voit la mesure, la
+// comparaison avec sa déclaration, et l'arbitrage QUE LE MOTEUR VA FAIRE, avant qu'il le fasse.
+function measuredCardHTML() {
+  const a = S.answers;
+  const snap = previewMeasured();
+  if (!snap) return "";
+  const arb = globalThis.EBV2 && globalThis.EBV2.arbitrateVolRecent
+    ? globalThis.EBV2.arbitrateVolRecent(a.vol_recent, snap) : null;
+  const h = measuredHours(snap);
+  const applied = !!a.measured;
+  let out = '<div style="margin-top:12px;padding:10px;border:1px solid #16130e;border-radius:8px;background:var(--bg2,#efe8d8)">'
+    + '<div style="font-weight:700;font-size:var(--fs-sm)">\u{1F4E5} Ce que tu as réellement fait</div>'
+    + '<div class="load-sub" style="margin-top:4px">Sur tes <b>' + snap.window_days + ' derniers jours</b> : '
+    + '<b>' + Math.round(snap.vol_min / 60) + 'h</b> en <b>' + snap.sessions + '</b> séance' + (snap.sessions > 1 ? 's' : '')
+    + ' \u2014 soit <b>' + h + 'h/sem</b>'
+    + (snap.confidence === 'partial' ? ' <span style="color:#a33">(fenêtre incomplète : la mesure sous-compte)</span>' : '')
+    + '.</div>';
+  if (arb && arb.why) out += '<div class="load-sub" style="margin-top:6px">' + esc(arb.why) + '</div>';
+  else if (arb && arb.source === 'mesure') out += '<div class="load-sub" style="margin-top:6px">Ta déclaration et la mesure disent la même chose : rien à ajuster.</div>';
+  out += '<div class="load-sub" style="margin-top:6px">Seul le <b>point de départ</b> se mesure. Ton volume max, tes séances par semaine, tes jours dispos et tes blessures restent DÉCLARÉS : ce que tu as fait le mois dernier ne dit pas ce que tu peux soutenir.</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
+    + '<button type="button" class="btn' + (applied ? '' : ' primary') + '" id="pfMeasApply">' + (applied ? 'Actualiser la mesure' : 'Utiliser mes données mesurées') + '</button>'
+    + (applied ? '<button type="button" class="btn" id="pfMeasClear">Revenir à ma déclaration</button>' : '')
+    + '</div>';
+  if (applied) out += '<div class="load-sub" style="margin-top:6px">Instantané du ' + esc(String(a.measured.updated_at)) + ' \u2014 il se rafraîchit tout seul à ta prochaine semaine de décharge, pas tous les matins.</div>';
+  return out + '</div>';
+}
+
 export function renderTabProfile(plan) {
   const a = S.answers, sp = S.sport;
   const tIso = todayISO();
@@ -405,7 +474,7 @@ export function renderTabProfile(plan) {
 
   // — Références physiologiques éditables (celles que le moteur lit : a.ftp / a.pace / a.css)
   html += '<div class="load-card"><div class="load-title">⚙ Références d’entraînement</div><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">';
-  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
+  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
   if (sp === "bike" || sp === "tri") html += row("pfFtp", "FTP (watts)", a.ftp_known === "oui" ? a.ftp : "", "ex. 220");
   if (sp === "run" || sp === "tri") html += row("pfPace", "Allure seuil (min:s /km)", a.pace_known === "oui" ? a.pace : "", "ex. 4:30");
   if (sp === "swim" || sp === "tri") html += row("pfCss", "CSS (min:s /100m)", a.css_known === "oui" ? a.css : "", "ex. 1:55");
@@ -420,19 +489,35 @@ export function renderTabProfile(plan) {
   // R6 — profil du parcours visé : affine la PRÉDICTION (temps course à pied) sans
   // toucher au plan. Vallonné/montagneux → fourchette décalée et élargie, justifiée.
   const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
-  html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Profil du parcours visé</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
+  html += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Profil du parcours visé</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
     + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
-  html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Rappel quotidien</span><input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label>';
+  // R14.1 §1-c — LA QUESTION QUI REMPLACE L'ANCIENNETÉ dans le calcul de la marge de
+  // progression. Elle est ici (Profil) et pas dans le questionnaire d'entrée, pour ne pas
+  // alourdir le tunnel. Ce qu'elle mesure : le STIMULUS DE LA STRUCTURE. Quelqu'un qui court
+  // depuis quinze ans au feeling a encore devant lui tout ce qu'un plan apporte ; quelqu'un
+  // qui suit un plan depuis trois ans en a déjà consommé la plus grande part.
+  const tsSel = (v, lab) => '<option value="' + v + '"' + ((a.training_structure || "") === v ? " selected" : "") + ">" + lab + "</option>";
+  html += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Tes 12 derniers mois</span><select id="pfTrainingStructure" style="flex:1;min-width:0">'
+    + tsSel("", "Je préfère ne pas dire") + tsSel("feeling", "Au feeling, sans plan")
+    + tsSel("intermittent", "Un plan, par périodes") + tsSel("suivi", "Un plan structuré, suivi") + "</select></label>";
+  html += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Sert à estimer ta marge de progression d’ici la course — pas à juger. Sans réponse, on reste prudent.</div>';
+  // R14.1 §5 — le poids cible n'apparaît QUE si l'athlète a demandé ce levier. Jamais proposé,
+  // jamais suggéré : c'est la frontière du manifeste, et elle ne bouge pas.
+  if (a.weight_lever === "oui") {
+    html += row("pfWeightTarget", "Poids cible (optionnel)", a.weight_target, "affiche une sensibilité, jamais un objectif");
+    html += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Tu as demandé ce levier. L’app montre ce que la balance changerait sur tes chronos — elle ne propose ni rythme, ni alimentation : ces questions se traitent avec un professionnel de santé.</div>';
+  }
+  html += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Rappel quotidien</span><input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label>';
   html += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
     + '<div id="pfMsg" class="load-sub" style="margin-top:6px"></div></div>';
 
   // — Records personnels (R4-5, lecture seule) + badges + efficience (R5 : ici, pas
   // dans un onglet à part — le Profil raconte qui tu es et ce que tu as construit)
-  html += recordsHTML(plan, a);
+  html += repliable(recordsHTML(plan, a), false);
   let _badges = [];
   if (globalThis.EBV2 && globalThis.EBV2.badges) { try { _badges = globalThis.EBV2.badges(plan, a, tIso); } catch (e) {} }
-  html += badgesGalleryHTML(_badges);
-  html += efficiencyHTML();
+  html += repliable(badgesGalleryHTML(_badges), false);
+  html += repliable(efficiencyHTML(), false);
 
   // — Retest « boss fight » (R4.4) : suggestion de date + planification
   html += retestSuggestionHTML();
@@ -440,22 +525,26 @@ export function renderTabProfile(plan) {
 
   // — Sauvegarde : tout vit dans localStorage — un navigateur nettoyé = tout perdu.
   // Export/import JSON de l'état COMPLET (tous les plans + état partagé).
-  html += '<div class="load-card"><div class="load-title">💾 Sauvegarde</div>'
+  html += '<details class="load-card"><summary class="load-title" style="cursor:pointer">💾 Sauvegarde</summary>'
     + '<div class="load-sub" style="margin-top:6px">Tes plans vivent dans ce navigateur uniquement. Exporte une sauvegarde de temps en temps — et importe-la sur un nouvel appareil ou après un nettoyage.</div>'
     + '<div class="nav" style="margin-top:8px;flex-wrap:wrap;gap:8px"><button class="btn" id="pfBackup" type="button">Exporter ma sauvegarde</button>'
     + '<label class="btn" style="cursor:pointer;margin:0">Importer une sauvegarde<input type="file" id="pfRestore" accept=".json,application/json" style="display:none"></label></div>'
-    + '<div id="pfBackupMsg" class="load-sub" style="margin-top:6px"></div></div>';
+    + '<div id="pfBackupMsg" class="load-sub" style="margin-top:6px"></div></details>';
 
   // — Journal d'évolution (S.answers.tests, trié du plus récent au plus ancien)
   const tests = Array.isArray(a.tests) ? [...a.tests].sort((x, y) => String(y.date || "").localeCompare(String(x.date || ""))) : [];
-  html += '<div class="load-card"><div class="load-title">📒 Journal d’évolution</div>';
+  // Ouvert tant que Strava n'est pas connecté : ce bloc porte alors un appel à l'action
+  // (importer ses activités), et un CTA replié n'est pas un CTA.
+  const _connecte = !!(a.stravaAuth && a.stravaAuth.access_token);
+  html += '<details class="load-card"' + (_connecte ? "" : " open") + '><summary class="load-title" style="cursor:pointer">📒 Journal d’évolution, imports et Strava</summary>';
   if (tests.length) {
     tests.forEach((t) => {
-      html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:12px;align-items:baseline"><span style="width:78px;color:#635b4a">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:#777">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
+      html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:var(--fs-sm);align-items:baseline"><span style="width:78px;color:#635b4a">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:var(--muted)">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
     });
   } else {
     html += '<div class="load-sub">Encore vide — il se remplira à chaque test (FTP, allure, CSS), import Strava/FIT, ou modification de profil ci-dessus.</div>';
   }
+  html += measuredCardHTML();
   // Import FIT (roadmap : source « upload fichier », sans compte ni réseau) — le fichier
   // d'activité de n'importe quelle montre nourrit le journal (références) ET la fatigue
   // de l'ajusteur (S.answers.fitSessions, même contrat que les ✓).
@@ -468,16 +557,16 @@ export function renderTabProfile(plan) {
   // Import Strava (lecture seule) — connexion OAuth via le relais serveur (server/README.md)
   // en chemin principal, jeton manuel conservé en repli. Même journal, même pont vers le plan.
   const sAuth = a.stravaAuth;
-  html += '<div style="margin-top:10px"><div style="font-weight:700;font-size:12px">🔗 Strava</div>';
+  html += '<div style="margin-top:10px"><div style="font-weight:700;font-size:var(--fs-sm)">🔗 Strava</div>';
   if (sAuth && sAuth.access_token) {
     html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
-      + '<span style="font-size:12px">✓ Connecté' + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + "</span>"
+      + '<span style="font-size:var(--fs-sm)">✓ Connecté' + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + "</span>"
       + '<button class="btn" id="pfStravaBtn" type="button">Importer mes activités</button>'
       + '<button class="btn" id="pfStravaOut" type="button">Se déconnecter</button></div>';
   } else {
     // R6 — UX guidée : UN bouton. L'URL du relais vit en config (déployée pour tous)
     // ou dans les réglages avancés — l'utilisateur normal n'a rien à coller.
-    html += '<div style="margin-top:4px"><button class="btn primary" id="pfStravaConnect" type="button" style="width:100%;font-size:15px;padding:12px 16px">🔗 Se connecter avec Strava</button></div>'
+    html += '<div style="margin-top:4px"><button class="btn primary" id="pfStravaConnect" type="button" style="width:100%;font-size:var(--fs-lg);padding:12px 16px">🔗 Se connecter avec Strava</button></div>'
       + '<div class="load-sub" style="margin-top:4px">Un clic → autorisation sur Strava → retour ici. Lecture seule (jamais d’écriture), tes activités alimentent tes références (FTP/allure/CSS).</div>'
       + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Réglages avancés (relais)</summary>'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
@@ -491,7 +580,7 @@ export function renderTabProfile(plan) {
     + (sAuth && sAuth.access_token ? "" : '<button class="btn" id="pfStravaBtnTok" type="button">Importer depuis Strava</button>')
     + '</div><div class="load-sub" style="margin-top:4px">Réglages Strava → « Mon API », scope <b>activity:read</b> — rien n’est écrit sur Strava.</div></details>'
     + '<div id="pfStravaMsg" class="load-sub" style="margin-top:4px"></div></div>';
-  html += "</div>";
+  html += "</details>";
 
   // — Conseils personnalisés (evalRules) : chaque réponse du questionnaire sans effet
   // direct sur le plan reste VISIBLE ici (ferritine, cycle, garde-fous santé…).
@@ -553,6 +642,19 @@ export function renderTabProfile(plan) {
   $("pfReset").onclick = () => reset();
   bindRaceInter();
   bindTrailProfile();
+  // R6 §3 — l'athlète arbitre : il voit la mesure, il décide de la brancher ou de la retirer.
+  // Aucun écrasement silencieux d'une donnée qu'il a saisie.
+  const measApply = $("pfMeasApply");
+  if (measApply) measApply.onclick = () => {
+    delete S.answers.measured;              // force le premier calcul, hors cadence
+    refreshMeasured(S.currentPlan);
+    invalidatePlan();
+    renderTabProfile(ensurePlan());
+  };
+  const measClear = $("pfMeasClear");
+  if (measClear) measClear.onclick = () => {
+    if (clearMeasured()) { invalidatePlan(); renderTabProfile(ensurePlan()); }
+  };
   const fitInput = $("pfFit");
   if (fitInput) fitInput.onchange = async () => {
     const msg = (t) => { const m = $("pfFitMsg"); if (m) m.innerHTML = t; };
@@ -709,6 +811,16 @@ export function renderTabProfile(plan) {
     const cp = ($("pfCourseProfile") || {}).value;
     if (cp !== undefined && cp !== String(a.course_profile || "")) {
       S.answers.course_profile = cp; changed++; // n'affecte que la prédiction, pas le plan
+    }
+    // R14.1 — les deux entrées de la PROJECTION : elles ne régénèrent pas le plan (elles ne
+    // changent pas une seule séance), elles changent ce qu'on annonce pour le jour J.
+    const ts = ($("pfTrainingStructure") || {}).value;
+    if (ts !== undefined && ts !== String(a.training_structure || "")) {
+      S.answers.training_structure = ts; changed++;
+    }
+    const wt = g("pfWeightTarget");
+    if (wt !== null && wt !== String(a.weight_target || "")) {
+      S.answers.weight_target = wt; changed++;
     }
     if (!changed) { const m = $("pfMsg"); if (m) m.textContent = "Aucun changement détecté."; return; }
     if (planChanged) invalidatePlan(); // le plan sera régénéré UNE fois, ici — pas au changement d'onglet

@@ -64,14 +64,34 @@ function migrateTrailPlans(state){
   return state;
 }
 
+/**
+ * R11.5 — PURGE DES DATES DE COURSE PASSÉES à la reprise d'état. Une date restée en
+ * `localStorage` après la course faisait générer un plan d'UNE semaine, sans un mot : l'app
+ * calculait la préparation d'une échéance déjà vécue. La date part dans `race_done` (l'onglet
+ * Aujourd'hui s'en sert pour proposer la saisie du chrono réel) et le plan repart proprement.
+ * Fenêtre de grâce de 3 jours : le lendemain d'une course, on est encore dans la course.
+ */
+function purgePastRace(state){
+  const t=todayISO();
+  const grace=new Date(new Date(t+"T00:00:00Z").getTime()-3*864e5).toISOString().slice(0,10);
+  for(const p of (state&&state.plans)||[]){
+    const a=p.answers||{};
+    if(a.race_date&&/^\d{4}-\d{2}-\d{2}$/.test(a.race_date)&&a.race_date<grace){
+      a.race_done=a.race_date;
+      delete a.race_date;
+    }
+  }
+  return state;
+}
+
 function ebLoad(){
   try{
     const v2=JSON.parse(localStorage.getItem("eb_state_v2")||"null");
-    if(v2&&Array.isArray(v2.plans)&&v2.plans.length)return migrateTrailPlans(v2);
+    if(v2&&Array.isArray(v2.plans)&&v2.plans.length)return purgePastRace(migrateTrailPlans(v2));
     const v1=JSON.parse(localStorage.getItem("eb_state_v1")||"null");
     if(v1){
       const e=Object.assign(ebNewPlanEntry(""),{sport:v1.sport||null,answers:v1.answers||{},tier:v1.tier||"free",step:v1.step||0,started:!!v1.started,onPlan:!!v1.onPlan});
-      return migrateTrailPlans({plans:[e],activePlanId:e.id,shared:{}});
+      return purgePastRace(migrateTrailPlans({plans:[e],activePlanId:e.id,shared:{}}));
     }
     return null;
   }catch(e){return null;}

@@ -1,22 +1,26 @@
 # Audit V2 (Sprint 1) — moteur de raisonnement + générateur
 
-Généré par `npm run audit:v2`. 486 combinaisons via le moteur V2, scorées par l'auditeur inchangé. 0 erreur(s).
+Généré par `npm run audit:v2`. 594 combinaisons via le moteur V2, scorées par l'auditeur inchangé. 0 erreur(s).
 
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| run | 135 | 1.14 | 1.07–1.21 | 0 | 0 | 0 | 0.38 | 0 | 80% | 0 | 97 |
-| bike | 135 | 1.09 | 1.08–1.11 | 0 | 0 | 0 | 0.41 | 0 | 88% | 0 | 100 |
-| swim | 108 | 1.09 | 0.69–1.16 | 0 | 0 | 4 | 0.45 | 0 | 85% | 0 | 98 |
-| tri | 108 | 1.02 | 0.97–1.07 | 0 | 0 | 0 | 0.42 | 0 | 77% | 8 | 97 |
+| run | 108 | 0.98 | 0.94–1.00 | 0 | 0 | 0 | 0.43 | 0 | 82% | 0 | 99 |
+| bike | 135 | 1.00 | 0.97–1.00 | 0 | 0 | 0 | 0.43 | 0 | 91% | 0 | 99 |
+| swim | 108 | 0.97 | 0.92–1.00 | 0 | 0 | 0 | 0.44 | 0 | 86% | 0 | 98 |
+| tri | 108 | 0.98 | 0.92–1.00 | 0 | 0 | 0 | 0.40 | 12 | 76% | 0 | 96 |
+| trail | 27 | 0.95 | 0.91–1.00 | 0 | 0 | 0 | 0.32 | 0 | 96% | 32 | 93 |
+| duathlon | 108 | 0.97 | 0.93–1.00 | 0 | 0 | 0 | 0.38 | 0 | 86% | 0 | 100 |
 
 ## V1.5 ↔ V2 (même auditeur, mêmes 486 profils)
 
 | Sport | Ratio pic méd V1.5 → V2 | Pire ratio V1.5 → V2 | Score moyen V1.5 → V2 |
 |---|---|---|---|
-| run | 1.13 → 1.14 | 1.25 → 1.28 | 100 → 97 |
-| bike | 1.09 → 1.09 | 1.16 → 1.19 | 100 → 100 |
-| swim | 0.77 → 1.09 | 0.36 → 0.65 | 88 → 98 |
-| tri | 1.02 → 1.02 | 1.06 → 0.61 | 99 → 97 |
+| run | 0.99 → 0.98 | 0.90 → 0.90 | 99 → 99 |
+| bike | 1.00 → 1.00 | 0.94 → 0.94 | 99 → 99 |
+| swim | 0.97 → 0.97 | 0.86 → 0.86 | 98 → 98 |
+| tri | 0.98 → 0.98 | 0.90 → 0.90 | 96 → 96 |
+| trail | NaN → 0.95 | 1.00 → 0.90 | NaN → 93 |
+| duathlon | NaN → 0.97 | 1.00 → 0.91 | NaN → 100 |
 
 ## Décisions du moteur — exemple (tri / 70.3 / confirme / inter / competition)
 
@@ -26,3 +30,4 @@ Généré par `npm run audit:v2`. 486 combinaisons via le moteur V2, scorées pa
 - **recup** · Semaine de récupération : `toutes les 4 semaines` — Assimilation régulière de la charge
 - **budget** · Séances par semaine : `6` — Budget déclaré ∧ budget implicite du volume (10.0h ÷ 1.2h/séance)
 - **courbe** · Courbe de charge : `base 0.5→peak 1.0→affûtage 0.3` — Bandes normalisées × pic, récup ×0.62, lissage C22 ≤+10%/sem
+- **R12-ref** · Tes références d'intensité : `CSS · FTP · allure seuil (déclarées)` — Toutes tes références sont déclarées : les séances portent des cibles chiffrées et le volume promis est calé sur ta vraie vitesse.

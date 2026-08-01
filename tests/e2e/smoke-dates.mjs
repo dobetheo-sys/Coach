@@ -46,12 +46,14 @@ ok(await page.evaluate(async () => { const { todayISO } = await import("./js/sta
 const vTxt = await page.locator(".card:has-text('Valider ma journée')").textContent().catch(() => "");
 ok(!vTxt || vTxt.includes(local.dm), "carte « Valider ma journée » datée du jour local");
 
-// 3. Semaine : chaque jour annoté de sa date ; la case « auj. » = date locale
+// 3. Plan → carte « Ta semaine » : chaque jour annoté de sa date ; « auj. » = date locale
+// R16.9 — la grille vivait dans l'onglet Semaine (index 3) ; elle est en tête de Plan.
 const tabs = await page.locator("#ebTabbar .tabbtn").all();
-await tabs[3].click(); await page.waitForTimeout(400);
-const cells = await page.locator("#screen .gd .gd-top i").allTextContents();
+await tabs[1].click(); await page.waitForTimeout(400);
+const semaine = page.locator("#screen .card").filter({ hasText: "Ta semaine" }).first();
+const cells = await semaine.locator(".gd .gd-top i").allTextContents();
 ok(cells.length === 7 && cells.every((c) => /\d{2}\/\d{2}/.test(c)), "les 7 jours de la semaine sont annotés de leur date (dd/mm)");
-const todayCell = await page.locator("#screen .gd.today").textContent().catch(() => null);
+const todayCell = await page.locator("#screen .gd.today").first().textContent().catch(() => null);
 ok(!!todayCell && todayCell.includes("auj.") && todayCell.includes(local.dm), "la case « aujourd'hui » de la grille porte la date locale (" + local.dm + ")");
 // cohérence plan ↔ calendrier : la date affichée correspond au jour étiqueté
 const dayCheck = await page.evaluate(async (iso) => {
@@ -70,9 +72,8 @@ ok(dayCheck.okAll, "chaque étiquette de jour (Lun/Mar/…) correspond au vrai j
 ok(dayCheck.found, "le jour calendaire local existe bien dans le plan (pas de décalage de semaine)");
 
 // 4. En-têtes de semaine : bornes « du dd/mm au dd/mm » présentes (Semaine + Plan)
-ok(/du \d{2}\/\d{2} au \d{2}\/\d{2}/.test(await page.locator("#screen").textContent()), "l'en-tête de semaine affiche ses bornes calendaires");
-await tabs[1].click(); await page.waitForTimeout(400);
-ok(/du \d{2}\/\d{2} au \d{2}\/\d{2}/.test(await page.locator("#screen").textContent()), "l'onglet Plan affiche aussi les bornes calendaires des semaines");
+ok(/du \d{2}\/\d{2} au \d{2}\/\d{2}/.test(await semaine.textContent()), "l'en-tête de semaine affiche ses bornes calendaires");
+ok(/du \d{2}\/\d{2} au \d{2}\/\d{2}/.test(await page.locator("#screen").textContent()), "les semaines de la saison portent aussi leurs bornes calendaires");
 
 // 5. Second fuseau (UTC−11) : à TOUTE heure réelle, au moins un des deux fuseaux a une
 // date locale ≠ UTC — la régression toISOString ne peut pas passer entre les mailles.
@@ -95,7 +96,7 @@ const inPlan2 = await page2.evaluate(async (iso) => {
   S.answers.readiness = { date: iso, sleepQuality: "bon", hrvStatus: "normale", energy: 80, feel: "frais" };
   ebSave();
   const { setTab } = await import("./js/ui/tabs.js");
-  setTab("week");
+  setTab("general");
   return !!document.querySelector("#screen .gd.today");
 }, local2.iso);
 ok(inPlan2, "UTC−11 : la case « aujourd'hui » tombe sur le bon jour calendaire local");

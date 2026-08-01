@@ -12,7 +12,10 @@ import { S, ebSave } from "./state.js";
 function canNotify() { return "Notification" in window && Notification.permission === "granted"; }
 function notify(title, body) {
   if (!canNotify()) return;
-  try { new Notification(title, { body, icon: "assets/icon-192.png", badge: "assets/icon-192.png" }); } catch (e) {}
+  // R11 §8 — l'icône vit dans `assets/`, qui n'existe pas dans le fichier autonome : on ne la
+  // demande alors pas du tout, plutôt que de laisser le navigateur échouer en silence.
+  const ico = globalThis.EB_STANDALONE ? undefined : "assets/icon-192.png";
+  try { new Notification(title, ico ? { body, icon: ico, badge: ico } : { body }); } catch (e) {}
 }
 export async function requestNotifyPermission() {
   if (!("Notification" in window)) return "unsupported";
@@ -69,7 +72,9 @@ export function missedSessionsCheck(plan) {
   days.sort((a, b) => a.d.date.localeCompare(b.d.date));
   for (let i = days.length - 1; i >= 0; i--) {
     const { w, d } = days[i];
-    const sessions = d.sessions.map((s, si) => ({ s, k: w.num + "|" + d.jour + "|" + si })).filter((x) => x.s.d !== "rs");
+    // R13.4 — une COURSE n'est jamais une « séance manquée » : elle a eu lieu (ou pas), mais
+    // relancer l'athlète parce que le jour J n'est pas coché serait absurde des deux côtés.
+    const sessions = d.sessions.map((s, si) => ({ s, k: w.num + "|" + d.jour + "|" + si })).filter((x) => x.s.d !== "rs" && !x.s.race);
     if (!sessions.length) continue; // les jours de repos n'entrent pas dans le compte des « séances manquées »
     if (sick.includes(d.date) || (pf && pf.active && pf.since && d.date >= pf.since)) continue; // gel : pas une « séance manquée »
     if (sessions.every((x) => done[x.k])) break;

@@ -11,9 +11,11 @@ import {
   MIN_WEEKS, HISTORY_CAPS, UTIL, MARGIN, RECUP_FACTORS, PHASE_PCTS,
   BANDS, C22_MAX_WEEKLY_GROWTH, RECUP_WEEK_FACTOR, RECUP_EVERY,
   BEGINNER_SWIM_VOLPEAK_CAP_H, SWIM_TIME_FACTOR, C20_BEGINNER_SWIM_H_PER_SESSION,
-  MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, R6_AGE_LOAD, readInjuries, boundedOrZero,
+  MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, R6_AGE_LOAD, R6_PAIN_CONTRAINDICATION, readInjuries, boundedOrZero,
   parsePaceSec,
 } from "./constraintMatrix.ts";
+import { guard, knownSports, sportModule } from "../sports/registry.ts";
+import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
 import { T1_DPLUS_CAPS, T4_LONG_RUN_VS_RACE, T6_MIN_WEEKS, TRAIL_HISTORY_CAPS, TRAIL_UTIL, trailObjective, trailWeeklyVertical } from "./trailModel.ts";
 
 /** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
@@ -40,7 +42,8 @@ export interface ReasoningResult {
 }
 
 export class TrainingReasoningEngine {
-  analyze(a: AthleteProfile): ReasonedPlan {
+  analyze(aIn: AthleteProfile): ReasonedPlan {
+    let a = aIn;
     const decisions: Decision[] = [];
     const warnings: string[] = [];
     const D = (id: string, what: string, val: string | number, why: string) => decisions.push({ id, what, val, why });
@@ -58,9 +61,32 @@ export class TrainingReasoningEngine {
     if (tObj) {
       D("format-trail", "Catégorie d'effort", tObj.category + " (" + fmtH(tObj.raceMinLo) + "–" + fmtH(tObj.raceMinHi) + " estimées)", "Déduit de " + tObj.why);
       D("km-effort", "Ton objectif en km-effort", tObj.kmEffort + " km-effort", tObj.distanceKm + " km + " + tObj.dplusM + " m D+ ÷ 100 — la métrique qui compare des courses de relief différent");
-      if (!tObj.vamKnown) warnings.push("Ta vitesse ascensionnelle (VAM) n'est pas renseignée : le plan utilise une estimation de " + Math.round(tObj.vam) + " m/h d'après ton niveau. Fais le test (une montée régulière de 20-30 min à fond : D+ ÷ durée = ta VAM) et renseigne-la au Profil — c'est LA référence d'intensité en montée, et elle resserre aussi la prédiction.");
+      // R12.4 — la VAM estimée est ANNONCÉE, et l'athlète sait exactement quoi faire pour la
+      // remplacer : donner la dernière montée qu'il a faite. Pas un test à programmer, pas un
+      // chiffre à connaître — un souvenir. C'est la différence entre un plan qu'on affine et un
+      // plan qui repose sur une case cochée.
+      if (!tObj.vamKnown) warnings.push("Ta vitesse ascensionnelle est ESTIMÉE (" + Math.round(tObj.vam) + " m/h, repli prudent d'après ton niveau et ton historique) : c'est la référence d'intensité en montée ET la base de la prédiction, donc l'estimation coûte cher en précision. Le plus simple pour la corriger : au Profil, donne ta dernière grosse montée — combien de D+, en combien de temps. Pas besoin de test ni de chiffre à connaître.");
+      else if (tObj.vamSource === "montee") warnings.push("Ta VAM (" + Math.round(tObj.vam) + " m/h) est déduite de la montée que tu as déclarée, avec une marge de prudence : une montée d'entraînement n'est pas un effort seuil. Elle se précisera au premier test vertical ou au premier import de montre.");
       if (tObj.cappedByProduct) warnings.push("Ton objectif dépasse 24 h d'effort estimées. Le plan construit l'endurance nécessaire, mais la stratégie propre à ce format (sommeil fractionné, assistance, ravitaillement par base-vie) dépasse ce qu'un plan automatique peut honnêtement produire : cherche l'accompagnement d'un entraîneur ou d'un finisher expérimenté pour cette partie.");
       if (tObj.altitudeMaxM && tObj.altitudeMaxM > 2500) warnings.push("Ta course monte à " + tObj.altitudeMaxM + " m : au-dessus de 2 500 m, la performance baisse et l'acclimatation compte. Un protocole d'acclimatation dépend de contraintes logistiques que l'outil ne connaît pas — si tu peux dormir en altitude quelques nuits avant, fais-le.");
+    }
+
+    // R4.5 (audit v7) — PRÉREQUIS D'ENTRÉE DANS LE MOTEUR. La porte ne vivait que dans le
+    // questionnaire (`valid()` du step intention) : toute autre voie — édition d'une réponse
+    // depuis le Profil, état restauré, import — générait le plan long quand même. La priorité
+    // n°1 du manifeste est la santé : elle doit vivre dans le moteur, pas dans l'interface.
+    // On ne refuse pas de produire un plan (l'athlète resterait sans rien) : on RABAT le format
+    // au plus long format autorisé et on le DIT.
+    if (sp === "swimrun") {
+      // R12 §0 — le module swimrun peut être absent du bundle V1 : on ne référence pas un
+      // symbole qui n'existe pas (le sport, lui, est déjà refusé en amont par le registre).
+      const block = typeof swimrunPrereqBlock === "function"
+        ? swimrunPrereqBlock(a as { format?: string; swim_continuous?: string; run_continuous?: string }) : "";
+      if (block) {
+        warnings.push(block + " Ton plan a donc été construit sur le format Sprint : il te prépare aux bases, et tu passeras au format long quand elles seront acquises.");
+        D("prereq-swimrun", "Format rabattu", "sprint (au lieu de " + (a.format || "?") + ")", "Les prérequis de sécurité du format long ne sont pas atteints — construire les bases d'abord n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend");
+        a = { ...a, format: "sprint" };
+      }
     }
 
     // ---- 1. Comprendre l'objectif : durée de préparation ----
@@ -119,10 +145,30 @@ export class TrainingReasoningEngine {
         ? "Plusieurs zones fragiles (" + inj.list.join(", ") + ") : approche ultra-conservatrice — progression ralentie, bilan médical avant montée en charge"
         : "Zone fragile (" + inj.list.join(", ") + ") : le plafond de volume baisse de 10% — « une blessure décide quoi adapter », le volume en fait partie");
       if (inj.count >= 2) warnings.push("Plusieurs blessures déclarées (" + inj.list.join(", ") + ") : un bilan médical est recommandé avant la montée en charge — le plan est volontairement conservateur (-20% de volume).");
+      // ANX-GEN (R13) — LA ZONE FRAGILE QUI TOUCHE LA DISCIPLINE PRINCIPALE DU SPORT CHOISI
+      // SE DIT À VOIX HAUTE. R6.1 déclare `genou → forbid [rn, bk]` ; en mono-sport vélo, la
+      // génération appliquait ×0,9 sans un mot — l'athlète au genou fragile recevait un plan
+      // 100 % vélo et aucun signal. En multisport, la substitution de discipline fait le
+      // travail ; en mono-sport, elle est impossible : il ne reste que la franchise.
+      const mainD = sportModule(sp as string).mainDiscipline;
+      const conflit = inj.list.filter((loc) => (R6_PAIN_CONTRAINDICATION[loc]?.forbid || []).includes(mainD));
+      if (conflit.length && sportModule(sp as string).disciplines.length < 2) {
+        warnings.push("Ta zone fragile (" + conflit.join(", ") + ") est précisément celle que ce sport charge à chaque séance. Le plan réduit le volume (×" + injFactor.toFixed(2) + ") et l'ajusteur quotidien surveillera la douleur — mais un avis médical avant la montée en charge est la vraie réponse : aucune réduction de volume ne remplace un diagnostic.");
+      }
     }
 
     // R6.3 (audit v6, A7) — l'âge module la charge : l'avertissement du Profil s'APPLIQUE.
-    const ageN = boundedOrZero("age", parseInt(a.age || "") || 0);
+    // R13.1 — les bornes sont celles du SCHÉMA (source unique, dérivée) : un âge de 10 à 100
+    // est un âge, et les prédicats mineur/master le voient. Avant, la table physio locale
+    // (14–95) écartait 10-13 et 96-100 en silence : plan adulte complet pour un enfant de
+    // 10 ans. Sur le chemin validé, une valeur hors schéma a déjà LEVÉ dans validateAnswers —
+    // la branche d'écart ci-dessous est le filet des appelants qui n'y passent pas
+    // (`adjustTodayV2` appelle generatePlan sans validation), et elle le DIT (contrat E3 :
+    // hors bornes = non renseigné + avertissement, jamais un écart muet).
+    const ageRaw = parseInt(a.age || "") || 0;
+    const ageN = boundedOrZero("age", ageRaw);
+    if (ageRaw !== 0 && ageN === 0)
+      warnings.push("Ton âge renseigné (" + ageRaw + ") est hors du domaine accepté (10 à 100 ans) : il n'a pas été utilisé, et les protections liées à l'âge (mineur, master) n'ont pas pu s'appliquer. Corrige-le au Profil.");
     const minor = ageN > 0 && ageN <= R6_AGE_LOAD.mineur.maxAge;
     const master = ageN >= R6_AGE_LOAD.master.minAge;
     let ageFactor = 1;
@@ -139,15 +185,24 @@ export class TrainingReasoningEngine {
     const volMax = parseInt(a.vol_max || "10");
     const sessionScale = Math.min(1, (Math.min(volMax, caps, util) * marg) / util) * recupFactor;
     let volPeak = Math.round(Math.min(volMax, caps, util) * marg * recupFactor * 10) / 10;
-    if (sp === "swim" && beginner) {
+    if (guard(sp as string, "swimTimeFactor") && beginner) {
       volPeak = Math.min(volPeak, BEGINNER_SWIM_VOLPEAK_CAP_H);
       D("C15", "Nageur débutant", "pic ≤" + BEGINNER_SWIM_VOLPEAK_CAP_H + "h", "La technique borne le volume, pas l'historique (risque épaule)");
     }
-    if (sp === "swim") volPeak = Math.round(volPeak * SWIM_TIME_FACTOR * 10) / 10;
+    if (guard(sp as string, "swimTimeFactor")) volPeak = Math.round(volPeak * SWIM_TIME_FACTOR * 10) / 10;
 
     // ---- 3. Comprendre les contraintes : médical, jours, budget ----
     const medHold = a.med_pain === "oui" || a.med_dizzy === "oui" || a.med_treat === "oui";
-    if (medHold) D("medical", "⚠️ Drapeau médical", "plan de maintien", "Aucune intensité générée sans feu vert médical ; pic allégé à 40%");
+    if (medHold) {
+      D("medical", "⚠️ Drapeau médical", "plan de maintien", "Aucune intensité générée sans feu vert médical ; pic allégé à 40%");
+      // R4.0 (audit v7) — le drapeau médical ne produisait AUCUN avertissement : `warnings`
+      // restait vide, et rien dans le plan ne mentionnait l'avis médical. Une décision dans un
+      // volet dépliable ne suffit pas pour la priorité n°1 du manifeste.
+      const which = [a.med_pain === "oui" ? "douleur thoracique à l'effort" : null,
+        a.med_dizzy === "oui" ? "vertiges ou malaise à l'effort" : null,
+        a.med_treat === "oui" ? "traitement cardiovasculaire" : null].filter(Boolean).join(", ");
+      warnings.push("⚠️ Tu as signalé : " + which + ". Ce plan est un plan de MAINTIEN — aucune intensité n'y est générée, le volume est allégé, et il ne remplace pas un avis médical. Prends rendez-vous avant de reprendre l'entraînement structuré : c'est la seule chose non négociable de cet outil.");
+    }
     const offDays = (a.off_which || "").split(",").filter(Boolean);
     const use10 = a.dispo === "quotidienne" && a.shift_ok === "oui" && offDays.length < 2;
     if (use10) D("cycle", "Cycle de 10 jours", "activé", "Disponibilité quotidienne : densité mieux répartie qu'en semaine de 7 jours");
@@ -162,13 +217,22 @@ export class TrainingReasoningEngine {
 
     const injuries = inj.list;
     let maxRunDays: number | null = null;
-    if (sp === "run") {
+    // D10-3 — le plafond de jours d'IMPACT vaut aussi pour le trail. Il ne s'appliquait qu'à
+    // `run` : depuis R7 un traileur avec une périostite recevait 5 jours de course par semaine,
+    // là où un coureur route avec la MÊME blessure en recevait 3. Or le trail ajoute la charge
+    // excentrique de la descente à l'impact — c'est la discipline la plus exigeante pour les
+    // tissus, pas la moins.
+    if (guard(sp as string, "runImpactCap")) {
       maxRunDays = MAX_RUN_DAYS[history] ?? 5;
       if (inj.impact) maxRunDays = Math.max(3, maxRunDays - 1);
       // B2 (audit v6) — le tibia (périostite) est LA blessure de l'impact répété : le
       // plafond de jours de course est renforcé d'un jour supplémentaire.
       if (inj.list.includes("tibia")) maxRunDays = Math.max(3, maxRunDays - 1);
-      D("impact", "Jours de course max", maxRunDays + "/semaine", "La course est le sport à plus fort impact" + (inj.impact ? " — blessure d'impact déclarée, -1 jour" + (inj.list.includes("tibia") ? " (-1 de plus : le tibia est une blessure d'impact répété)" : "") : ""));
+      D("impact", "Jours de course max", maxRunDays + "/semaine",
+        (sp === "trail"
+          ? "Le trail cumule l'impact de la course et la charge excentrique de la descente : le plafond de jours d'appui vaut ici aussi"
+          : "La course est le sport à plus fort impact")
+        + (inj.impact ? " — blessure d'impact déclarée, -1 jour" + (inj.list.includes("tibia") ? " (-1 de plus : le tibia est une blessure d'impact répété)" : "") : ""));
     }
 
     // ---- 4. Calculer la charge : phases (C19) et courbe (bands + C22) ----
@@ -191,13 +255,40 @@ export class TrainingReasoningEngine {
       phases[4].start = phases[3].end;
       phases[4].weeks = phases[4].end - phases[4].start;
     }
+    // R13.6 — LES POURCENTAGES DE PHASE PRENNENT DES PLAFONDS ABSOLUS. 10 % d'affûtage sur un
+    // plan de 59 semaines = 6 semaines à un quart du pic : la littérature (méta-analyse
+    // Bosquet 2007) situe l'affûtage optimal à 8-14 jours, ~3 semaines maximum pour un
+    // Ironman, réduction 40-60 %. Six semaines, c'est un désentraînement organisé — l'athlète
+    // le plus discipliné arrive détraîné. Même logique pour le peak (≤ 5 semaines : au-delà,
+    // ce n'est plus un pic, c'est un plateau de charge maximale que personne n'encaisse).
+    // L'excédent revient à la phase SPÉCIFIQUE (puis au développement) : c'est là que les
+    // semaines supplémentaires d'un plan long produisent de l'adaptation. La part de base ne
+    // bouge pas, C19 (peak ≥ 1) tient toujours.
+    {
+      const [, dev, spc, pk, tap] = phases;
+      const tapMax = Math.max(1, Math.min(Math.round(0.10 * weeks), weeks >= 30 ? 3 : 2));
+      const pkMax = 5;
+      let surplus = 0;
+      if (tap.weeks > tapMax) { surplus += tap.weeks - tapMax; tap.weeks = tapMax; }
+      if (pk.weeks > pkMax) { surplus += pk.weeks - pkMax; pk.weeks = pkMax; }
+      if (surplus > 0) {
+        spc.weeks += surplus;
+        // Recoudre les bornes de proche en proche (start/end sont dérivés des durées).
+        spc.start = dev.end; spc.end = spc.start + spc.weeks;
+        pk.start = spc.end; pk.end = pk.start + pk.weeks;
+        tap.start = pk.end; tap.end = weeks;
+        tap.weeks = tap.end - tap.start;
+        D("R13.6", "Phases plafonnées en absolu", "affûtage " + tap.weeks + " sem · peak " + pk.weeks + " sem (excédent → spécifique)",
+          "Les pourcentages explosent sur les plans longs : 6 semaines d'affûtage désentraînent (optimal 8-14 jours, ~3 semaines max — Bosquet 2007), un « pic » de 9 semaines est un plateau que personne n'encaisse");
+      }
+    }
     D("courbe", "Courbe de charge", "base " + BANDS.base[0] + "→peak 1.0→affûtage " + BANDS.taper[1], "Bandes normalisées × pic, récup ×" + RECUP_WEEK_FACTOR + ", lissage C22 ≤+" + Math.round((C22_MAX_WEEKLY_GROWTH - 1) * 100) + "%/sem");
 
     const medFactor = medHold ? 0.4 : 1;
     const theoPeak = Math.min(volMax, caps, util) * marg * recupFactor;
     let peakH = Math.min(theoPeak, volMax) * medFactor;
     // C20 — nage débutant : la promesse suit la capacité réelle C15
-    if (sp === "swim" && beginner) {
+    if (guard(sp as string, "swimTimeFactor") && beginner) {
       const cap20 = (parseInt(a.sessions_max || "6") || 6) * C20_BEGINNER_SWIM_H_PER_SESSION;
       if (peakH > cap20) {
         peakH = cap20;
@@ -223,6 +314,42 @@ export class TrainingReasoningEngine {
     if (ftpRaw > 0 && ftp === 0) warnings.push("FTP saisie (" + ftpRaw + "W) hors bornes plausibles [60–600W] : elle est ignorée — les séances s'affichent en zones cardio. Corrige-la au Profil.");
     const hz = hrZones(a.age, a.hr_max, a.hr_rest);
 
+    // R12.4b — LA SOURCE DE CHAQUE RÉFÉRENCE EST DITE, TOUJOURS.
+    //
+    // Le banc amont l'a attrapé : effacer `pace_known` déplaçait la promesse de volume (9.7 →
+    // 9.8 h) sans que rien ne le dise. Le mécanisme est légitime — sans allure déclarée, le
+    // moteur calcule sur une allure de repli, donc les blocs en DISTANCE ne durent pas la même
+    // chose, donc la sonde de capacité ne trouve pas le même plafond. Ce qui ne l'était pas,
+    // c'est le silence : le trail annonçait déjà sa VAM estimée (R12.4), les trois autres
+    // références ne disaient rien. Une référence estimée n'est pas un détail d'affichage —
+    // elle change les zones affichées ET le volume promis.
+    const REF_LABEL: Record<string, string> = { rn: "allure seuil", bk: "FTP", sw: "CSS" };
+    const REF_HOW: Record<string, string> = {
+      rn: "3 min à fond puis 10 min à fond",
+      bk: "20 min à fond (FTP = 95 % de la puissance normalisée)",
+      sw: "400 m puis 200 m à fond (CSS)",
+    };
+    const refKnown: Record<string, boolean> = { rn: thrPace > 0, bk: ftp > 0, sw: css > 0 };
+    const discs = knownSports().includes(sp) ? sportModule(sp).disciplines : [];
+    if (discs.length) {
+      const est = discs.filter((d) => !refKnown[d]);
+      const dec = discs.filter((d) => refKnown[d]);
+      D(
+        "R12-ref",
+        "Tes références d'intensité",
+        [
+          dec.length ? dec.map((d) => REF_LABEL[d]).join(" · ") + " (déclarée" + (dec.length > 1 ? "s" : "") + ")" : "",
+          est.length ? est.map((d) => REF_LABEL[d]).join(" · ") + " (ESTIMÉE" + (est.length > 1 ? "S" : "") + ")" : "",
+        ].filter(Boolean).join(" — "),
+        est.length === 0
+          ? "Toutes tes références sont déclarées : les séances portent des cibles chiffrées et le volume promis est calé sur ta vraie vitesse."
+          : est.map((d) => REF_LABEL[d]).join(" et ") + " : sans valeur déclarée, les séances de "
+            + est.map((d) => (d === "rn" ? "course" : d === "bk" ? "vélo" : "natation")).join(" et ")
+            + " s'affichent en zones cardio ou au ressenti, et le volume est calculé sur une vitesse de repli PRUDENTE — ce qui déplace légèrement la promesse d'heures. Pour la remplacer : "
+            + est.map((d) => REF_HOW[d]).join(" ; ") + ", ou un simple import de montre.",
+      );
+    }
+
     // ---- R7 TRAIL : les DEUX axes verticaux et le plafond de sortie longue ----
     let tVert: { dplusPeak: number; dmoinsPeak: number; capped: boolean; accessCap: number } | undefined;
     let trailLongCapMin = 0;
@@ -243,7 +370,16 @@ export class TrainingReasoningEngine {
       D("T2", "Progression du dénivelé", "D+ ≤ +12%/sem · D− ≤ +8%/sem", "La charge excentrique (descente) est le premier facteur de casse musculaire : elle progresse plus lentement que tout le reste");
       // T4 — la sortie longue plafonne en % du TEMPS DE COURSE estimé, jamais en absolu
       trailLongCapMin = Math.round(tObj.raceMinMid * T4_LONG_RUN_VS_RACE[tObj.category]);
-      D("T4", "Plafond de la sortie longue", fmtH(trailLongCapMin), "Sur ce format, reproduire la durée de course à l'entraînement serait contre-productif : " + Math.round(T4_LONG_RUN_VS_RACE[tObj.category] * 100) + "% du temps estimé suffit à préparer le reste");
+      // R12.7 — la sortie longue est calibrée en POURCENTAGE du temps de course estimé. Un
+      // athlète plus rapide a une course plus courte, donc une sortie longue plus courte : la
+      // progression n'est pas monotone avec le niveau, et sans explication ça passe pour un bug.
+      D("T4", "Plafond de la sortie longue", fmtH(trailLongCapMin),
+        "Sur ce format, reproduire la durée de course à l'entraînement serait contre-productif : "
+        + Math.round(T4_LONG_RUN_VS_RACE[tObj.category] * 100) + "% du temps estimé suffit à préparer le reste. "
+        + "Ce plafond suit ton temps ESTIMÉ (" + fmtH(Math.round(tObj.raceMinMid)) + ") : plus tu es rapide, plus ta course est courte, et plus ta sortie longue l'est aussi — "
+        + (tObj.vamSource === "estimee"
+          ? "et comme ta vitesse ascensionnelle est encore estimée, ce plafond bougera dès que tu donneras une vraie montée"
+          : "il se recalculera à chaque fois que ta référence de montée changera"));
       // T7 — répétitions ravito/matériel
       if (tObj.raceMinMid / 60 >= 6) D("T7", "Répétitions ravitaillement", "3 sorties en conditions réelles (phase spécifique)", "Au-delà de 6 h d'effort, l'estomac et le matériel provoquent autant d'abandons que les jambes : ça se teste à l'entraînement");
       // T11 — terrain plat : le dire, ne pas prescrire du dénivelé inatteignable

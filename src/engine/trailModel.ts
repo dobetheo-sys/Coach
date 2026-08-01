@@ -105,8 +105,118 @@ export const TRAIL_TECHNICITY: Record<string, { f: number; label: string }> = {
   alpin: { f: 1.3, label: "alpin" },
 };
 
-/** Ordres de grandeur de VAM seuil (m D+/h) — repli quand l'athlète ne la connaît pas. */
-export const VAM_BY_LEVEL: Record<string, number> = { debutant: 600, inter: 850, avance: 1200 };
+/**
+ * T18 (R12.1) — LA VAM SE DÉDUIT D'UNE MONTÉE VÉCUE, PAS D'UN ADJECTIF.
+ *
+ * L'audit grand public a montré le défaut : contrairement aux trois autres références, le trail
+ * ne se repliait pas sur une grandeur observable — il substituait un NOMBRE déduit d'un adjectif
+ * auto-déclaré (`level`), puis construisait tout le plan et la prédiction dessus. Sur un
+ * 45 km / 2 200 m, le seul changement de « niveau » faisait varier l'estimation de course de
+ * TROIS HEURES. Or « intermédiaire » est la case que tout le monde coche.
+ *
+ * La bonne question n'est pas « connais-tu ta VAM ? » — personne ne la connaît — mais
+ * « ta dernière grosse montée : combien de D+, en combien de temps ? ». Tout le monde sait y
+ * répondre, et c'est une MESURE.
+ *
+ * L'abattement : une montée d'entraînement n'est pas un effort seuil, et une montée courte
+ * flatte la moyenne (on tient 900 m/h sur 15 min, pas sur une heure). On retient donc 90 % de
+ * la VAM observée, et 85 % sous 15 minutes. Conservateur par construction : sous-estimer la VAM
+ * donne un plan un peu facile, la surestimer donne un plan intenable et une prédiction qui ment.
+ */
+export const T18_VAM_FROM_CLIMB = trule(
+  "T18",
+  "une VAM mesurée sur une montée vécue vaut mieux qu'une VAM déduite d'un adjectif — avec un abattement, car une montée d'entraînement n'est pas un effort seuil et une montée courte flatte la moyenne",
+  { abatement: 0.9, shortClimbMin: 15, shortAbatement: 0.85, minMin: 5, maxMin: 300 },
+);
+
+/**
+ * Repli quand l'athlète n'a ni VAM ni montée à déclarer (R12.4). Deux principes :
+ *
+ * 1. **BORNE BASSE, pas médiane.** Pour une V1 grand public, l'inconnu doit tomber vers le bas.
+ *    L'ancien défaut (850 m/h) décrivait déjà un grimpeur solide. Un plan calibré trop haut se
+ *    paie en blessure ; calibré trop bas, il se corrige à la première montée déclarée.
+ * 2. **Le repli ne s'appuie plus sur `level`.** C'était le cœur du défaut mesuré : le seul
+ *    changement d'adjectif faisait varier l'estimation de course de TROIS HEURES, et
+ *    « intermédiaire » est la case que tout le monde coche. On s'appuie sur deux réponses
+ *    FACTUELLES — depuis combien de temps tu pratiques, et quel dénivelé tu as près de chez toi
+ *    (quelqu'un qui vit en montagne grimpe, quelqu'un qui vit en plaine non). `level` continue
+ *    de servir là où il est légitime : le CONTENU des séances, jamais un chiffre de prédiction.
+ */
+export const VAM_BY_HISTORY: Record<string, number> = trule(
+  "T18b", "l'ancienneté de pratique est une réponse factuelle ; le « niveau » est un adjectif — seul le premier a le droit de piloter un chiffre",
+  { reprise: 500, confirme: 620, ancien: 720 },
+);
+/** Allure seuil sur plat, en secondes/km, quand elle n'est pas connue — adossée à l'ancienneté
+ *  de pratique, jamais au niveau ressenti (R12.6). Volontairement prudente. */
+/**
+ * T19 — LA RÉCUPÉRATION D'UNE RÉPÉTITION EN PENTE EST UN RETOUR, ET IL SE CALCULE.
+ *
+ * En trail, la récupération entre deux répétitions n'est pas une pause : c'est le trajet de
+ * retour au pied de la côte (ou en haut de la descente). Elle a donc une durée, et cette durée
+ * se DÉDUIT du dénivelé de la répétition — pas d'une phrase. C'était le dernier endroit du
+ * moteur où de la prose servait de donnée : 1 740 récupérations de trail étaient comptées
+ * 0 minute parce que leur libellé (« descente MARCHÉE », « remontée en marche active ») ne
+ * portait aucun chiffre. Une séance de côtes annoncée 11 min en durait 20.
+ *
+ * Vitesses de RETOUR, pas d'effort — c'est ce qui les distingue des VAM d'entraînement :
+ *   · descente marchée/trottinée de récupération : 900 m D−/h. Une descente de récupération se
+ *     freine (c'est elle qui casse les cuisses) ; 900 m/h est le compromis observé entre la
+ *     marche prudente (~600) et le trot souple (~1 200).
+ *   · remontée en marche active : 400 m D+/h. C'est la VAM de randonnée soutenue — au-dessus,
+ *     ce n'est plus une récupération, c'est un second bloc de travail.
+ * Plancher d'une minute : une répétition ne s'enchaîne pas sans une reprise de souffle, même
+ * quand le dénivelé est minuscule.
+ */
+export const T19_RETURN = trule(
+  "T19",
+  "la récupération d'une répétition en pente est le trajet de retour : sa durée se déduit du dénivelé, jamais d'un libellé",
+  { downWalkMPerH: 900, upWalkMPerH: 400, minMin: 1, maxMin: 45 },
+);
+
+/** Durée du RETOUR après une répétition en pente, en minutes (T19). `up`/`down` = mètres de
+ *  dénivelé de la répétition ; on redescend ce qu'on a monté, on remonte ce qu'on a descendu. */
+export function returnMinutes(o: { dplusM?: number; dmoinsM?: number }): number {
+  const t = (o.dplusM ? (o.dplusM / T19_RETURN.downWalkMPerH) * 60 : 0)
+    + (o.dmoinsM ? (o.dmoinsM / T19_RETURN.upWalkMPerH) * 60 : 0);
+  return Math.min(T19_RETURN.maxMin, Math.max(T19_RETURN.minMin, Math.round(t * 10) / 10));
+}
+
+/**
+ * T19, RÉCONCILIATION — `recoveryMin` d'un bloc en pente est une DÉRIVÉE de son dénivelé, et
+ * le dénivelé bouge après la construction (mise à l'échelle verticale T1/T2, plafond de bosse
+ * accessible, allègement T3). Un nombre dérivé figé trop tôt ment dès la première passe qui
+ * touche sa source : on le recalcule donc à chaque rendu, comme `_min`.
+ *
+ * Le TAPIS est exclu : sur un tapis, on ne redescend rien — la récupération est l'intervalle à
+ * plat prescrit par la séance, une valeur fixe et non déductible du dénivelé simulé.
+ */
+export function syncReturnRecovery(steps: { role?: string; reps?: number; gradient?: string; surface?: string; recoveryText?: string; recoveryMin?: number; dplusM?: number; dmoinsM?: number }[]): void {
+  for (const st of steps) {
+    if (st.role !== "body" || (st.reps || 1) <= 1 || !st.recoveryText) continue;
+    if (!st.gradient || st.gradient === "flat" || st.surface === "tapis") continue;
+    st.recoveryMin = returnMinutes({ dplusM: st.dplusM, dmoinsM: st.dmoinsM });
+  }
+}
+
+export const T18d_FLAT_PACE_BY_HISTORY: Record<string, number> = trule(
+  "T18d", "un repli d'allure doit s'appuyer sur une réponse vérifiable ; le niveau ressenti n'en est pas une",
+  { reprise: 380, confirme: 330, ancien: 300 },
+);
+/** … modulé par le dénivelé RÉELLEMENT accessible : on grimpe ce qu'on a sous la porte. */
+export const VAM_BY_TERRAIN: Record<string, number> = trule(
+  "T18c", "le dénivelé accessible depuis chez soi prédit mieux la capacité en montée qu'un niveau ressenti",
+  { plat: 0.9, collines: 1.0, montagne: 1.1 },
+);
+
+/** VAM déduite d'une montée déclarée (D+ en m, durée en min) — `null` si la saisie ne dit rien. */
+export function vamFromClimb(dplusM: number, minutes: number): number | null {
+  const T = T18_VAM_FROM_CLIMB;
+  if (!(dplusM > 0) || !(minutes >= T.minMin) || minutes > T.maxMin) return null;
+  const raw = dplusM / (minutes / 60);
+  const f = minutes < T.shortClimbMin ? T.shortAbatement : T.abatement;
+  const v = Math.round(raw * f);
+  return v >= 150 && v <= 2500 ? v : null;
+}
 
 /** Part de la vitesse seuil réellement tenable selon la durée d'effort : une allure seuil
  *  ne se tient pas 12 h. `flat` s'applique à la vitesse au sol, `vert` à la VAM.
@@ -136,6 +246,8 @@ export interface TrailObjective {
   night: string;
   vam: number;
   vamKnown: boolean;
+  /** D'où vient la VAM : saisie, déduite d'une montée vécue (R12.1), ou estimée (repli). */
+  vamSource: "declaree" | "montee" | "estimee";
   flatPaceSec: number;
   cutoffH: number | null;
   altitudeMaxM: number | null;
@@ -164,10 +276,21 @@ export function trailObjective(a: AthleteProfile): TrailObjective {
   const dmoinsM = num(a.race_dmoins_m) > 0 ? num(a.race_dmoins_m) : dplusM;
   const kmEffort = Math.round(distanceKm + dplusM / 100);
   const level = a.level || "inter";
-  const vamKnown = a.vam_known === "oui" && num(a.vam) >= 200 && num(a.vam) <= 2500;
-  const vam = vamKnown ? num(a.vam) : VAM_BY_LEVEL[level] || 850;
+  // Trois sources, dans cet ordre : la VAM saisie (rare), la montée VÉCUE (R12.1 — ce que les
+  // gens savent), et à défaut un repli conservateur pondéré par l'historique (R12.4).
+  const vamDeclared = a.vam_known === "oui" && num(a.vam) >= 200 && num(a.vam) <= 2500 ? num(a.vam) : 0;
+  const vamClimb = vamDeclared ? 0 : (vamFromClimb(num(a.climb_dplus_m), num(a.climb_min)) || 0);
+  const vamKnown = vamDeclared > 0 || vamClimb > 0;
+  const vamSource: "declaree" | "montee" | "estimee" = vamDeclared ? "declaree" : vamClimb ? "montee" : "estimee";
+  const vam = vamDeclared || vamClimb
+    || Math.round((VAM_BY_HISTORY[a.history || "confirme"] ?? 620) * (VAM_BY_TERRAIN[a.train_dplus_access || "collines"] ?? 1));
   // allure seuil SUR PLAT (s/km) — la référence route reste valable à plat
-  const flatPaceSec = num(a.pace_known === "oui" ? paceToSec(a.pace) : 0) || (level === "debutant" ? 360 : level === "avance" ? 260 : 300);
+  // R12.6 — même principe que pour la VAM : quand l'allure n'est pas connue, le repli suit une
+  // réponse FACTUELLE (l'ancienneté de pratique), pas un adjectif. C'est par ce chemin que
+  // `level` faisait encore varier l'estimation de course — et donc la sortie longue, calibrée
+  // en pourcentage du temps de course (T4).
+  const flatPaceSec = num(a.pace_known === "oui" ? paceToSec(a.pace) : 0)
+    || (T18d_FLAT_PACE_BY_HISTORY[a.history || "confirme"] ?? 330);
   const tech = TRAIL_TECHNICITY[a.race_technicity || "mixte"] || TRAIL_TECHNICITY.mixte;
   const night = a.race_night || "non";
   const nightF = night === "majoritaire" ? 1.1 : night === "partielle" ? 1.05 : 1.0;
@@ -206,11 +329,13 @@ export function trailObjective(a: AthleteProfile): TrailObjective {
   return {
     distanceKm, dplusM, dmoinsM, kmEffort, category: cat, rawCategory, cappedByProduct,
     raceMinLo: Math.round(mid * (1 - spread)), raceMinHi: Math.round(mid * (1 + spread)), raceMinMid: Math.round(mid),
-    technicity: a.race_technicity || "mixte", night, vam, vamKnown, flatPaceSec,
+    technicity: a.race_technicity || "mixte", night, vam, vamKnown, vamSource, flatPaceSec,
     cutoffH: num(a.race_cutoff_h) > 0 ? num(a.race_cutoff_h) : null,
     altitudeMaxM: num(a.race_altitude_max_m) > 0 ? num(a.race_altitude_max_m) : null,
     why: distanceKm + " km / " + dplusM + " m D+ = " + kmEffort + " km-effort · "
-      + (vamKnown ? "ta VAM de " + Math.round(vam) + " m/h" : "VAM estimée à " + Math.round(vam) + " m/h (niveau " + level + ")")
+      + (vamSource === "declaree" ? "ta VAM de " + Math.round(vam) + " m/h"
+        : vamSource === "montee" ? "ta VAM de " + Math.round(vam) + " m/h, déduite de la montée que tu as déclarée"
+        : "VAM estimée à " + Math.round(vam) + " m/h (repli prudent : " + (a.history || "confirme") + ", terrain " + (a.train_dplus_access || "collines") + ")")
       + " et ton allure seuil à plat, dégradées pour la durée · terrain " + tech.label
       + (tech.f > 1 ? " (+" + Math.round((tech.f - 1) * 100) + "%)" : "")
       + (nightF > 1 ? " · nuit (+" + Math.round((nightF - 1) * 100) + "%)" : ""),
@@ -228,10 +353,15 @@ function paceToSec(v: unknown): number {
 }
 
 /** Accès au dénivelé à l'entraînement : ce que le terrain permet RÉELLEMENT par sortie. */
-export const TRAIL_ACCESS: Record<string, { perLongRun: number; label: string }> = {
-  montagne: { perLongRun: 2000, label: "montagne (>800m D+ accessibles)" },
-  collines: { perLongRun: 800, label: "collines (200-800m D+)" },
-  plat: { perLongRun: 200, label: "plat (<200m D+)" },
+export const TRAIL_ACCESS: Record<string, { perLongRun: number; perBlock: number; label: string }> = {
+  montagne: { perLongRun: 2000, perBlock: 700, label: "montagne (>800m D+ accessibles)" },
+  collines: { perLongRun: 800, perBlock: 300, label: "collines (200-800m D+)" },
+  // T1b (audit v7) — `perBlock` : le D+ d'UN bloc, pas seulement de la semaine. La question
+  // « quel dénivelé accessible depuis chez toi ? » est présentée comme la contrainte n°1 d'une
+  // prépa trail ; elle modulait les cibles HEBDO mais pas le `dplusM` des blocs, et le plan
+  // prescrivait 210 m de D+ par répétition à quelqu'un qui a déclaré vivre en terrain plat.
+  // Sur du plat, on ne trouve qu'une butte : le bloc est court, et il faut le RÉPÉTER.
+  plat: { perLongRun: 200, perBlock: 60, label: "plat (<200m D+)" },
 };
 
 /** Cible de D+/D− hebdomadaire au pic, bornée par la catégorie, l'historique ET le terrain. */

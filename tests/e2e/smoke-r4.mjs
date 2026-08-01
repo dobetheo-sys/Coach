@@ -3,6 +3,8 @@
 // rouge), feedback→félicitations→partage dans SEMAINE.
 // Ordre des onglets R5 : 0=Profil · 1=Plan · 2=Aujourd'hui · 3=Semaine · 4=Nutrition.
 import { startServer, launchBrowser, makeReporter, runnerStateV1 } from "./harness.mjs";
+const N_SPORTS = 7; // R16.10 — swimrun réintégré : le sélecteur suit le registre du moteur
+
 
 const PORT = 8480;
 const server = await startServer(PORT);
@@ -22,7 +24,7 @@ await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 const v2state = await page.evaluate(() => JSON.parse(localStorage.getItem("eb_state_v2") || "null"));
 ok(!!(v2state && Array.isArray(v2state.plans) && v2state.plans.length === 1 && v2state.plans[0].sport === "run"), "migration v1→v2 : plan repris sans perte (plans=" + (v2state ? v2state.plans.length : "null") + ")");
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "l'app restaure directement la vue plan (5 onglets)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "l'app restaure directement la vue plan (4 onglets)");
 
 // ---- 2. Profil : avatar/niveau/XP + records + plans + sauvegarde + retest suggéré ----
 const tabs = await page.locator("#ebTabbar .tabbtn").all();
@@ -42,6 +44,10 @@ ok(await page.locator("#pfRaceSave").count() === 1 && /Courses intermédiaires/.
 ok(await page.locator("#pfBackup").count() === 1, "bouton de sauvegarde (export JSON) présent dans Profil");
 ok(await page.locator("#pfRestore").count() === 1, "restauration depuis un fichier présente dans Profil");
 const dlBackup = page.waitForEvent("download", { timeout: 5000 }).catch(() => null);
+// R16.7 — la carte « 💾 Sauvegarde » est désormais repliée par défaut (bloc secondaire du
+// Profil). Le bouton existe, il n'est simplement plus visible tant que le `<details>` est
+// fermé : on l'ouvre, comme le ferait l'utilisateur. Les assertions ne bougent pas.
+await page.evaluate(() => { const b = document.getElementById("pfBackup"); const d = b && b.closest("details"); if (d) d.open = true; });
 await page.click("#pfBackup");
 const bk = await dlBackup;
 ok(bk !== null && /endurabuild/.test(bk ? bk.suggestedFilename() : ""), "la sauvegarde télécharge un fichier (" + (bk ? bk.suggestedFilename() : "aucun") + ")");
@@ -55,7 +61,7 @@ ok(/#00b8d9/.test(await page.locator("#avSvg svg").innerHTML()), "le SVG reprend
 
 // ---- 4. Multi-plans : nouveau plan → questionnaire vierge, retour au 1er sans perte ----
 await page.click("#pfNewPlan"); await page.waitForTimeout(300);
-ok(await page.locator(".sport-card").count() === 5, "nouveau plan → choix du sport (questionnaire vierge) — 5 sports depuis R7 (trail)");
+ok(await page.locator(".sport-card").count() === N_SPORTS, "nouveau plan → choix du sport (questionnaire vierge) — " + N_SPORTS + " sports au périmètre courant");
 await page.click('.sport-card[data-sport="bike"]');
 await page.click('.opts[data-key="intent"] .opt[data-val="plaisir"]');
 await page.click('.opts[data-key="format"] .opt[data-val="cyclo"]');
@@ -69,7 +75,7 @@ await page.evaluate(() => {
 });
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "retour au plan 1 : la vue plan est restaurée");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "retour au plan 1 : la vue plan est restaurée");
 const t2 = await page.locator("#ebTabbar .tabbtn").all();
 await t2[0].click(); await page.waitForTimeout(250);
 ok(/Mes plans \(2\)/.test(await page.locator("#screen").textContent()), "les 2 plans sont listés dans le sélecteur");
@@ -92,18 +98,47 @@ const neutralWarn = await page.evaluate(async () => {
 ok(neutralWarn.noBanner, "même avec des warnings moteur : pas de bandeau rouge");
 ok(neutralWarn.inDetails, "les limites du plan restent lisibles dans les décisions (langage neutre)");
 
+// ---- 5b. §5 (R6) : l'explicabilité EN SURFACE — « pourquoi ce plan », « pourquoi cette séance »
+await t2[1].click(); await page.waitForTimeout(250);
+const whyTxt = await page.locator("#screen").textContent();
+ok(/Pourquoi ce plan/.test(whyTxt), "carte « Pourquoi ce plan » en tête de l'onglet Plan (§5)");
+ok(/Ta préparation fait \d+ semaines/.test(whyTxt), "la durée est expliquée en langage d'athlète, pas en identifiant de décision");
+const whyBeforeWhat = await page.evaluate(() => {
+  // Les jours de REPOS n'ont pas de justification (« marche, étirements ») : on regarde une
+  // séance d'entraînement, celles que l'auditeur refuse muettes.
+  const ds = [...document.querySelectorAll("#screen details.gd-sess")];
+  const d = ds.find((x) => x.querySelector(".gd-why"));
+  if (!d) return { hasWhy: false, nSess: ds.length };
+  d.open = true;
+  const why = d.querySelector(".gd-why"), det = d.querySelector(".gd-det");
+  return { hasWhy: true, nWhy: document.querySelectorAll("#screen .gd-why").length,
+    order: why.compareDocumentPosition(det) & Node.DOCUMENT_POSITION_FOLLOWING ? "why-first" : "det-first",
+    noDup: !/\u{1F4A1}/u.test(det.textContent) };
+});
+ok(whyBeforeWhat && whyBeforeWhat.hasWhy && whyBeforeWhat.nWhy > 5, "les séances de la grille portent leur justification (" + (whyBeforeWhat && whyBeforeWhat.nWhy) + ")");
+ok(whyBeforeWhat && whyBeforeWhat.order === "why-first", "le POURQUOI passe devant le QUOI dans le détail d'une séance");
+ok(whyBeforeWhat && whyBeforeWhat.noDup, "la justification n'est plus dupliquée en queue de description technique");
+const t2b = await page.locator("#ebTabbar .tabbtn").all();
+await t2b[2].click(); await page.waitForTimeout(400);
+const heroWhy = await page.evaluate(() => {
+  const c = document.querySelector("#screen");
+  return { visibleWhy: !!c.querySelector(".gd-why"), hidden: !!c.querySelector("details.gd-sess") };
+});
+ok(heroWhy.visibleWhy, "dans Aujourd'hui, le « pourquoi » de la séance est visible SANS rien ouvrir (§5)");
+
 // ---- 6. Onglet Nutrition : journal alimentaire RETIRÉ (décision utilisateur R6) ----
 const t3 = await page.locator("#ebTabbar .tabbtn").all();
-await t3[4].click(); await page.waitForTimeout(300);
+await t3[3].click(); await page.waitForTimeout(300);
 const nutTxt = await page.locator("#screen").textContent();
 ok(await page.locator("#njCard").count() === 0 && !/Journal alimentaire/.test(nutTxt), "journal alimentaire retiré de l'onglet Nutrition");
 ok(/Dépense estimée du jour/.test(nutTxt) && /Ravitaillement|carburant/i.test(nutTxt), "l'onglet Nutrition garde dépense estimée + ravitaillement");
 
-// ---- 7. Semaine : coche ✓ → feedback RPE → félicitations + partage story ----
+// ---- 7. R16.9 : la coche ✓ → feedback RPE → félicitations vit désormais dans Plan ----
+// (c'était la coche de Semaine ; celle de Plan basculait un booléen en silence.)
 const t5 = await page.locator("#ebTabbar .tabbtn").all();
-await t5[3].click(); await page.waitForTimeout(300);
+await t5[1].click(); await page.waitForTimeout(300);
 const dbtn = page.locator('.doneBtn[data-rest="0"]:not(.done)').first();
-ok((await dbtn.count()) === 1, "coche de séance (non-repos) disponible dans Semaine");
+ok((await dbtn.count()) === 1, "coche de séance (non-repos) disponible dans Plan");
 await dbtn.click(); await page.waitForTimeout(300);
 ok(await page.locator(".eb-modal:has-text('Comment c’était')").count() === 1, "feedback RPE affiché avant la célébration");
 await page.locator("[data-rpe='6']").click();

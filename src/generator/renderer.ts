@@ -4,7 +4,7 @@
  * n'expose le scaling que sur les steps body. Texte français identique au produit.
  */
 import type { V1Session, V1Step } from "../engine/types.ts";
-import { C13_WARMUP_MAX_MIN } from "../engine/constraintMatrix.ts";
+import { C13_WARMUP_MAX_MIN, C13c_WARMUP_MIN_MIN } from "../engine/constraintMatrix.ts";
 
 export interface Refs {
   ftp: number;
@@ -41,6 +41,11 @@ export const ZDEF: Record<string, ZoneDef> = {
   "sw.aero": { ref: "css", lo: 1.06, hi: 1.06, hr: null, fb: "endurance régulière" },
   "sw.css": { ref: "css", lo: 1.0, hi: 1.0, hr: null, fb: "allure seuil (test 400m)" },
   "sw.speed": { ref: "css", lo: 0.94, hi: 0.94, hr: null, fb: "rapide mais contrôlé" },
+  // R5.4 (audit v7 bis) — VO2max EN NAGE. Sous blessure d'impact, supprimer le stimulus laissait
+  // un plan swimrun sans aucune puissance aérobie maximale pendant 40 semaines. Le swimrun n'a
+  // pas de vélo, mais il a l'eau : c'est le cross-training de `applyRunImpactCap` appliqué au
+  // bon support. Départs serrés, récupération incomplète — la contrainte vient du temps de repos.
+  "sw.vo2": { ref: "css", lo: 0.90, hi: 0.90, hr: null, fb: "très rapide, récup courte (RPE 9/10)" },
   // ---- R7 TRAIL : zones EN MONTÉE, exprimées en vitesse ascensionnelle (m D+/h) ----
   // Le multiplicateur s'applique à la VAM seuil, pas à une allure : monter à 90-100% de sa
   // VAM est une consigne exécutable, « 5'36/km en montée » ne l'est pas.
@@ -91,14 +96,32 @@ export const intOf = (key: string | null): { ref: string; lo: number; hi: number
   return d ? { ref: d.ref, lo: d.lo, hi: d.hi } : null;
 };
 
-/** Minutes d'un step (nage : mètres via CSS de base ; km course/vélo via allure seuil). */
+/**
+ * Minutes d'un step (nage : mètres via CSS de base ; km course/vélo via allure seuil).
+ *
+ * R5.6a — LA RÉCUPÉRATION APPARTIENT AU BLOC QUI LA PORTE. « 4×3min récup 2min30 », ce n'est
+ * pas 12 minutes de séance : c'est 19,5 minutes pendant lesquelles l'athlète est là. L'auditeur
+ * la comptait déjà (`sessionLoadFromSteps`), le générateur non — d'où l'« écart de métrique
+ * récup » traîné depuis des mois, `U-DECL`, et une séance annoncée 30 min qui en durait 45
+ * (+22 % en moyenne, jusqu'à +50 %, sur les 356 séances à récup chiffrée).
+ *
+ * La compter ICI, dans le bloc, plutôt qu'en surcouche au niveau de la séance, est ce qui rend
+ * la correction sûre : le facteur d'échelle R3.3 agit sur les RÉPÉTITIONS, donc la récup suit
+ * l'échelle au lieu d'être une constante que le lissage sous-corrige (c'était l'obstacle qui
+ * avait fait échouer la première tentative — cf. R10_DEFECTS.md).
+ *
+ * R3-final — la durée vient de `recoveryMin`, un NOMBRE posé à la construction du step. Elle ne
+ * se relit plus dans `recoveryText` : c'était le dernier endroit du moteur où de la prose servait
+ * de donnée, et il coûtait 1 740 récupérations comptées 0 minute (35 % des séances de trail).
+ */
 export function stepMin(st: V1Step, disc: string, baseRefs: Refs): number {
   const reps = st.reps || 1;
-  if (st.durationMin) return reps * st.durationMin;
+  const rec = st.role === "body" && reps > 1 ? (reps - 1) * (st.recoveryMin || 0) : 0;
+  if (st.durationMin) return reps * st.durationMin + rec;
   if (st.distanceM) {
     const d = st.d || disc;
-    if (d === "sw") return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60);
-    return ((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60);
+    if (d === "sw") return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60) + rec;
+    return ((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60) + rec;
   }
   return 0;
 }
@@ -109,18 +132,46 @@ interface RenderableSession extends V1Session {
   social?: boolean;
 }
 
+
+/**
+ * Durée d'une récupération écrite en toutes lettres (« 2min30 trot », « 90s », « 3min »).
+ * `null` quand elle n'est pas chiffrée (« récupération complète », « descente marchée ») : on
+ * ne devine pas une durée qu'on n'a pas — 7 % des blocs sont dans ce cas, surtout en trail.
+ */
+export function recoveryMinutes(text?: string): number | null {
+  if (!text) return null;
+  let m = /(\d+)\s*min\s*(\d{1,2})\b/.exec(text);
+  if (m) return +m[1] + +m[2] / 60;
+  m = /(\d+)\s*min/.exec(text);
+  if (m) return +m[1];
+  m = /(\d+)\s*s\b/.exec(text);
+  if (m) return +m[1] / 60;
+  return null;
+}
+
 export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRefs: Refs): string {
   const steps = s.steps || [];
   const bodies = steps.filter((x) => x.role === "body");
   let bodyMin = 0;
+  let recTotal = 0;
   for (const b of bodies) {
     b._min = stepMin(b, s.d, baseRefs);
-    bodyMin += b._min;
+    // Les clamps C13/C13b se calculent sur le TRAVAIL, récup exclue — c'est la définition de
+    // « échauffement ≤ corps », et c'est aussi ce que recalcule l'auditeur : les deux lectures
+    // doivent produire le même nombre, sinon l'écart qu'on vient de fermer se rouvre ailleurs.
+    const rec = (b.reps || 1) > 1 ? ((b.reps || 1) - 1) * (b.recoveryMin || 0) : 0;
+    recTotal += rec;
+    bodyMin += b._min - rec;
   }
   const seg: string[] = [];
-  if (s.brick) {
-    const bk = bodies.find((b) => b.leg === "bike")!;
-    const rn = bodies.find((b) => b.leg === "run")!;
+  // Le rendu « brick » suppose un leg VÉLO et un leg COURSE (tri, duathlon). Un enchaînement
+  // multi-disciplines d'une autre forme (swimrun : nage ↔ course, N fois) n'est PAS un brick —
+  // la spec R10 le dit explicitement — et passe par le rendu générique de steps.
+  const bkLeg = bodies.find((b) => b.leg === "bike");
+  const rnLeg = bodies.find((b) => b.leg === "run");
+  if (s.brick && bkLeg && rnLeg) {
+    const bk = bkLeg;
+    const rn = rnLeg;
     seg.push(
       bk.durationMin + "min vélo @ " + fmtInt(bk.zone as string, refs, hz) +
         ", dernier tiers @ allure course, échauffement progressif inclus, puis transition rapide + " + rn.durationMin + "min CAP" +
@@ -135,11 +186,37 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
         // soit deux séances différentes portant le même nom (36 divergences mesurées sur un
         // seul plan). Toute consommation future des steps (montre, Garmin, Zwift) héritait
         // du bug. Un seul champ fait foi : durationMin ; _min en est une pure dérivée.
-        const wm = Math.min(w.durationMin, C13_WARMUP_MAX_MIN, Math.max(3, Math.round(bodyMin * 0.8) || w.durationMin));
+        // Trois bornes, dans cet ordre de priorité :
+        //   C13e — l'échauffement n'est JAMAIS plus long que le corps de séance. Invariant dur,
+        //          sur les 6 sports : une séance dont l'échauffement pèse plus que le travail
+        //          n'est pas une séance, c'est un footing avec une étiquette.
+        //   C13   — ni plus de 25 min, ni plus de 80 % du corps quand celui-ci est confortable.
+        //   C13c  — plancher de 10 min… qui CÈDE à C13e quand le corps est plus court. Le
+        //          plancher est un objectif physiologique, pas une autorisation à déséquilibrer
+        //          la séance ; c'est C13d qui doit alors restructurer la séance, pas le rendu
+        //          qui doit gonfler l'échauffement.
+        // « Corps » au sens de C13e = le TRAVAIL, récupération exclue. J'avais d'abord retenu le
+        // corps tel qu'il est écrit (récup comprise) : un 4×2min récup 2min occupe 14 min, et
+        // 10 min d'échauffement y paraissent proportionnés. Le banc d'invariants a tranché sur
+        // 217 séances — un échauffement de 10 min devant 6 minutes de TRAVAIL déséquilibre la
+        // séance, quel que soit le temps passé debout entre les répétitions. La récupération
+        // n'est pas du stimulus : la règle se lit sur ce que la séance fait faire.
+        // Le plafond est ARRONDI À LA MINUTE INFÉRIEURE : `bodyMin` est une somme de flottants
+        // (17,1 − 9,1 = 8,000000000000002) et un échauffement de 8,000000000000002 min devant
+        // 8 min de corps viole l'invariant pour une erreur de représentation. Les minutes d'une
+        // séance sont entières par contrat (F3) ; le plafond l'est donc aussi.
+        const wCap = Math.floor(Math.min(C13_WARMUP_MAX_MIN, bodyMin || w.durationMin, Math.max(C13c_WARMUP_MIN_MIN, Math.round(bodyMin * 0.8) || w.durationMin)) + 1e-6);
+        const wm = Math.max(1, Math.min(C13c_WARMUP_MIN_MIN, wCap), Math.min(w.durationMin, wCap));
         w.durationMin = wm;
         w._min = wm;
         seg.push("Échauffement " + wm + "min" + (w.text ? " " + w.text : ""));
       } else if (w.distanceM != null) {
+        // C13e en NAGE — même invariant, exprimé dans l'unité de la discipline : un échauffement
+        // de 400 m devant 300 m de travail, c'est une séance qui s'échauffe plus qu'elle ne
+        // travaille. Comparer les MÈTRES suffit à garantir l'invariant en minutes (même allure
+        // de conversion, et la récupération ne compte que du côté du corps).
+        const bodyM = bodies.reduce((t, b) => t + (b.distanceM ? (b.reps || 1) * b.distanceM : 0), 0);
+        if (bodyM > 0 && w.distanceM > bodyM) w.distanceM = Math.max(25, Math.floor(bodyM / 25) * 25);
         w._min = stepMin(w, s.d, baseRefs);
         seg.push("Échauffement " + w.distanceM + "m" + (w.text ? " " + w.text : ""));
       }
@@ -176,7 +253,11 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
         else if (b.surface === "tapis") str += " sur tapis incliné";
       }
       str += (b as { suffix?: string }).suffix || "";
-      if (b.recoveryText) str += " (récup " + b.recoveryText + " entre les blocs)";
+      // « entre les blocs » n'a de sens qu'entre DEUX blocs. La courbe de volume ramène
+      // parfois un bloc à une seule répétition ; la mention de récupération, elle, restait —
+      // « 1×5min (récup 3min entre les blocs) » décrit une pause qui n'existe pas. Même
+      // famille que syncDerivedLabels : une prose dérivée d'un nombre se relit sur le nombre.
+      if (b.recoveryText && (b.reps || 1) > 1) str += " (récup " + b.recoveryText + " entre les blocs)";
       seg.push(str);
     }
     const c = steps.find((x) => x.role === "cooldown");
@@ -196,6 +277,12 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
     }
   }
   let det = seg.join(" · ");
+  // R5.6a — LA DURÉE ANNONCÉE EST LA DURÉE PORTE-À-PORTE. `min` inclut désormais la
+  // récupération entre répétitions, comptée dans le `_min` du bloc qui la porte (cf. stepMin).
+  // Il n'y a plus d'écart à corriger après coup : le moteur, l'auditeur et le chronomètre de
+  // l'athlète disent le même nombre. On précise seulement quelle PART de la séance est de la
+  // récupération — « 45 min dont 8 de récup » et « 45 min pleines » ne se préparent pas pareil.
+  if (recTotal >= 3) det += " · ⏱ dont ~" + Math.round(recTotal) + "min de récup entre les blocs";
   if (s.note) det += " — 💡 " + s.note;
   // F3 (audit v6) — minutes ENTIÈRES dès la source : les flottants (13.541666666666666) se
   // propageaient dans les totaux hebdo, le cap vol_max (422 vs 420 observé) et les

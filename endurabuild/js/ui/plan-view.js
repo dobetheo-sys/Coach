@@ -1,10 +1,9 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
 import { SPORTS } from "../config.js";
-import { S, todayISO } from "../state.js";
+import { S, todayISO, fmtDay } from "../state.js";
 import { evalRules } from "../ui/steps.js";
-import { buildPlan } from "../app.js";
-import { renderTabs, invalidatePlan } from "./tabs.js";
+import { renderTabs, invalidatePlan, ensurePlan } from "./tabs.js";
 
 const _IFZ={"bk.z2":.65,"bk.ss":.90,"bk.vo2":1.12,"bk.frc":.82,"bk.rp":.84,"bk.thr":1.0,
   "rn.easy":.68,"rn.mara":.84,"rn.thr":.98,"rn.vo2":1.10,"rn.rec":.60,
@@ -77,7 +76,10 @@ function renderPlan(){
 }
 // Bug 2/5 — brancher planToJSON (interopérabilité) + export .ics (agenda de l'athlète).
 function downloadPlan(){
-  const a=S.answers, plan=buildPlan(a), cfg=SPORTS[S.sport];
+  // R10 phase 0 — l'export réutilise le plan AFFICHÉ (ensurePlan) au lieu d'en régénérer un
+  // second : deux générations pouvaient déjà diverger, et surtout un échec de génération
+  // doit remonter comme tel, pas produire un export silencieusement différent.
+  const a=S.answers, plan=ensurePlan(), cfg=SPORTS[S.sport];
   const ic={sw:"🏊",bk:"🚴",rn:"🏃",br:"🔁",rs:"💪"};
   let rows="";
   plan.weeks.forEach(w=>{
@@ -91,6 +93,9 @@ function downloadPlan(){
   });
   const rules=evalRules(a,S.tier);
   const blue=rules.map(r=>'<li><b>'+r.what+' :</b> '+r.val+'<br><span style="color:#555">'+r.why+'</span></li>').join("");
+  // R16.8 — le DOCUMENT EXPORTÉ est autonome : il ne charge ni styles.css ni ses variables.
+  // Ses tailles restent donc LITTÉRALES. Les ramener sur `var(--fs-*)` les rendrait toutes
+  // à la taille par défaut du navigateur — même piège que les couleurs en R16.2.
   const doc='<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mon plan '+cfg.nom+'</title>'
     +'<style>body{font-family:-apple-system,Arial,sans-serif;max-width:900px;margin:0 auto;padding:24px;color:#16130e;background:#f1eadb}'
     +'h1{font-size:24px}h2{font-size:16px;margin-top:24px;border-bottom:2px solid #16130e;padding-bottom:4px}'
@@ -104,7 +109,7 @@ function downloadPlan(){
     +'<p>'+plan.totalWeeks+' semaines · '+(plan.use10?"cycles de 10 jours":"semaines de 7 jours")+' · volume '+plan.volBase+'h → '+plan.volPeak+'h · objectif '+(a.format||"")+'</p>'
     +'<h2>Les décisions de ton plan</h2><ul>'+blue+'</ul>'
     +'<h2>Calendrier complet</h2>'+rows
-    +'<p style="margin-top:30px;font-size:11px;color:#777">Généré par EnduraBuild · à valider avec un professionnel de santé. Astuce : ouvre ce fichier et fais Imprimer → Enregistrer en PDF.</p>'
+    +'<p style="margin-top:30px;font-size:11px;color:#635b4a">Généré par EnduraBuild · à valider avec un professionnel de santé. Astuce : ouvre ce fichier et fais Imprimer → Enregistrer en PDF.</p>'
     +'</body></html>';
   const blob=new Blob([doc],{type:"text/html"});
   const url=URL.createObjectURL(blob);
@@ -116,9 +121,8 @@ function downloadPlan(){
 
 // ===== MOTEUR V2 (bundle EBV2, injecté en fin de fichier) =====
 // La génération passe par le moteur TypeScript raisonné (src/ → npm run build:app).
-// Le générateur legacy ci-dessus reste en REPLI si le bundle manque (vieux exports).
 // Refonte onglets : l'ancien v2ExtrasHTML est scindé en deux —
-//   readinessCardHTML()  → carte « Forme du jour », rendue par l'onglet 📅 Semaine ;
+//   readinessCardHTML()  → carte « Forme du jour », rendue par l'onglet 🎯 Aujourd'hui (R16.9) ;
 //   progressCardsHTML(p) → régularité/badges, prédiction, historique, intensités,
 //                          décisions du moteur, rendus par l'onglet 📈 Avancement.
 function readinessCardHTML(opts){
@@ -154,7 +158,7 @@ function progressBarCardHTML(plan){
     if(globalThis.EBV2.badges){
       const bd=globalThis.EBV2.badges(plan,S.answers,todayISO());
       if(bd.length){h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">';
-        bd.forEach(b=>{h+='<span title="'+b.why.replace(/"/g,"&quot;")+'" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:11px;background:#fff">'+b.icon+' '+b.label+'</span>';});
+        bd.forEach(b=>{h+='<span title="'+b.why.replace(/"/g,"&quot;")+'" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:#fff">'+b.icon+' '+b.label+'</span>';});
         h+='</div>';}
     }
     h+='</div>';
@@ -168,9 +172,34 @@ function predictionCardHTML(plan){
       const pr=globalThis.EBV2.predict(S.sport,S.answers,plan);
       if(pr.items.length||pr.advice.length){
         h+='<div class="load-card"><div class="load-title">\ud83d\udd2e Pr\u00e9diction de course</div>';
+        // R14 \u2014 DEUX PR\u00c9DICTIONS, TOUJOURS \u00c9TIQUET\u00c9ES. La forme ACTUELLE reste l'ancre (c'est
+        // la v\u00e9rit\u00e9 mesur\u00e9e) ; la forme PROJET\u00c9E dit o\u00f9 l'entra\u00eenement m\u00e8ne, avec sa date de
+        // r\u00e9f\u00e9rence et sa confiance. Jamais l'une sans l'autre, jamais un chiffre nu.
+        const pj=pr.projected;
+        h+='<div class="load-sub" style="margin:8px 0 2px;font-weight:600">Aujourd\u2019hui \u2014 ta forme mesur\u00e9e</div>';
         pr.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
+        if(pj&&pj.applicable&&pj.items.length){
+          const d=pj.raceDate?(fmtDay(pj.raceDate)+"/"+pj.raceDate.slice(0,4)):"le jour J";
+          h+='<div class="load-sub" style="margin:12px 0 2px;font-weight:600">Projet\u00e9 au '+d
+            +' <span style="font-weight:400;color:var(--muted)">\u00b7 confiance '+pj.confidence+'</span></div>';
+          pj.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
+          h+='<div class="load-sub" style="color:var(--muted);margin-top:4px">Si tu suis ce plan. La fourchette est volontairement ASYM\u00c9TRIQUE : au pire, ta forme d\u2019aujourd\u2019hui \u2014 un plan suivi ne rend pas plus lent, il peut seulement rapporter moins que pr\u00e9vu.</div>';
+          // R14.1 \u00a75 \u2014 le levier poids ne s'affiche QUE si l'athl\u00e8te l'a demand\u00e9 et a saisi sa
+          // cible. Une sensibilit\u00e9, jamais un objectif ; aucun rythme, aucune consigne alimentaire.
+          if(pj.weightLever){
+            const wl=pj.weightLever;
+            h+='<div class="load-sub" style="margin:10px 0 0;padding-top:8px;border-top:1px dashed #0002"><b>Sensibilit\u00e9 au poids (tu as demand\u00e9 ce levier)</b><br>'
+              +'<span style="color:#555">'+wl.why+'</span></div>';
+          }
+        }
         pr.advice.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0;color:#8a6d00">\u26a0 '+x+'</div>';});
-        h+='<div class="load-sub" style="color:#777">Fourchette, pas promesse \u2014 elle se resserre quand le plan est bien suivi (streak + charge accomplie).</div></div>';
+        // Le MOTIF d'un refus de projeter vaut autant que la projection : \u00ab trop t\u00f4t pour
+        // projeter \u00bb est une information, le silence n'en est pas une.
+        if(pj&&!pj.applicable){
+          const why=(pj.decisions||[]).filter(x=>/^P7-refus$|^P8$|^P6-sans-chrono$/.test(x.id))[0];
+          if(why) h+='<div class="load-sub" style="margin:10px 0 0;color:var(--muted)"><b>Pas de chrono projet\u00e9</b> \u2014 '+why.why+'</div>';
+        }
+        h+='<div class="load-sub" style="color:var(--muted)">Fourchette, pas promesse \u2014 elle se resserre quand le plan est bien suivi (streak + charge accomplie).</div></div>';
       }
     }catch(e){console.warn(e);}
   }
@@ -185,7 +214,7 @@ function historyCardHTML(plan){
       h+='<div class="load-card"><div class="load-title">\ud83d\udcd2 Historique \u2014 pr\u00e9vu vs r\u00e9el</div>';
       doneW.slice(-8).forEach(w=>{
         const pc=w.minTotal>0?Math.round(w.minDone/w.minTotal*100):0;
-        h+='<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12px">'
+        h+='<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:var(--fs-sm)">'
           +'<span style="width:34px"><b>S'+w.num+'</b></span>'
           +'<span style="width:20px">'+(w.ok?"\u2705":"\u25cb")+'</span>'
           +'<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:10px;overflow:hidden"><div style="height:100%;width:'+pc+'%;background:'+(w.ok?"#00a376":"#f0b429")+'"></div></div>'
@@ -212,11 +241,75 @@ function intensityCardHTML(plan){
   }
   return h;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// §5 (MESSAGE_CLAUDE_CODE_R6) — L'EXPLICABILITÉ EN SURFACE PRODUIT.
+//
+// Le moteur produit déjà tout le « pourquoi » : `decisions[]`, `warnings`, et une `note` de
+// justification sur CHAQUE séance (l'auditeur refuse une séance muette). Mais ça vivait dans
+// `_v2`, derrière un repli fermé, en bas de l'onglet Plan — donc invisible. La critique
+// standard des coachs automatiques est l'opacité ; nous avions la réponse en base sans la
+// montrer. Rien n'est calculé ici : on remonte à la surface ce qui existe déjà.
+// ─────────────────────────────────────────────────────────────────────
+
+/** Le séparateur posé par `renderSess` entre le QUOI et le POURQUOI d'une séance. */
+const WHY_SEP="\u2014 \u{1F4A1} ";
+/** La justification d'une séance, séparée de sa description technique. */
+function whyOf(s){
+  if(s&&s.note)return String(s.note);
+  const d=s&&s.det?String(s.det):"";
+  const i=d.indexOf(WHY_SEP);
+  return i<0?"":d.slice(i+WHY_SEP.length).trim();
+}
+/** La description technique seule (le « quoi »), sans la justification collée en queue. */
+function techOf(s){
+  const d=s&&s.det?String(s.det):"";
+  const i=d.indexOf(WHY_SEP);
+  return (i<0?d:d.slice(0,i)).trim();
+}
+/**
+ * Le bloc repliable d'une séance dans une grille. Le POURQUOI passe devant le QUOI : quand
+ * l'athlète ouvre une séance, la première chose qu'il lit est la raison d'être de la séance,
+ * pas la liste des blocs. C'est l'ordre dans lequel un entraîneur parle.
+ */
+function sessDetailsHTML(s,style){
+  if(!s.det)return "<b>"+s.name+"</b>";
+  const why=whyOf(s),tech=techOf(s);
+  return '<details class="gd-sess"'+(style?' style="'+style+'"':"")+'><summary><b>'+s.name+"</b></summary>"
+    +(why?'<span class="gd-why">\u{1F4A1} '+why+"</span>":"")
+    +'<span class="gd-det">'+tech+"</span></details>";
+}
+
+/**
+ * « Pourquoi ce plan » — EN TÊTE de l'onglet Plan, dépliée, en langage d'athlète.
+ * Les chiffres viennent des `decisions[]` du moteur : aucune phrase n'est inventée ici, chacune
+ * cite la décision qui la produit. Le détail complet reste dans la carte du bas.
+ */
+function whyPlanCardHTML(plan){
+  const v2=plan&&plan._v2;
+  if(!v2||!v2.decisions||!v2.decisions.length)return "";
+  const D={};v2.decisions.forEach(d=>{D[d.id]=d;});
+  const li=[];
+  const add=(txt,src)=>{if(txt)li.push('<li>'+txt+(src?' <span style="color:var(--muted)">('+src+')</span>':"")+"</li>");};
+  if(D.duree)add("Ta préparation fait <b>"+D.duree.val+"</b>, découpée en phases : on construit d'abord, on aiguise ensuite, on arrive frais.","durée");
+  if(D.capacite&&D.utile)add("Le pic monte à ce que permet le plus petit des deux : ton volume déclaré (<b>"+D.capacite.val+"</b>) et ce que ton objectif demande vraiment (<b>"+D.utile.val+"</b>). Promettre plus serait une promesse que le plan ne tient pas.","plafonds");
+  else if(D.capacite)add("Le pic est plafonné à ton volume déclaré : <b>"+D.capacite.val+"</b>.","plafond");
+  if(D.budget)add("<b>"+D.budget.val+"</b> séances par semaine"+(D["R10-depart"]?"" : "")+(D.recup?", avec une semaine allégée "+D.recup.val:"")+".","budget");
+  if(D["R10-depart"])add("Le départ est calé sur ton volume RÉEL des derniers mois, pas sur ta cible : <b>"+D["R10-depart"].val+"</b>. C'est la marche la plus souvent trop haute.","reprise");
+  if(D.impact)add("Pas plus de <b>"+D.impact.val+"</b> jours d'appui : c'est l'impact qui blesse, pas le volume.","impact");
+  let h='<div class="load-card"><div class="load-title">\u{1F9ED} Pourquoi ce plan</div>'
+    +'<ul style="font-size:var(--fs-md);line-height:1.55;margin:8px 0 0;padding-left:18px">'+li.join("")+"</ul>";
+  if(v2.warnings&&v2.warnings.length)
+    h+='<div class="load-sub" style="margin-top:8px">\u26A0 Ce que le moteur n\u2019a pas pu faire sous tes contraintes : '+v2.warnings[0]+(v2.warnings.length>1?' <a href="#motorDecisions" style="color:inherit">et '+(v2.warnings.length-1)+' autre'+(v2.warnings.length>2?"s":"")+"\u2026</a>":"")+"</div>";
+  h+='<div class="load-sub" style="margin-top:6px"><a href="#motorDecisions" style="color:inherit">\u2193 Les '+v2.decisions.length+' décisions du moteur, en détail</a></div></div>';
+  return h;
+}
+
 function decisionsCardHTML(plan){
   let h="";
   const v2=plan&&plan._v2;
   if(v2){
-    h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+') \u2014 score d\u2019audit '+v2.score+'/100</summary><ul style="font-size:12px;line-height:1.6;margin:8px 0 0;padding-left:18px">';
+    h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+') \u2014 score d\u2019audit '+v2.score+'/100</summary><ul style="font-size:var(--fs-sm);line-height:1.6;margin:8px 0 0;padding-left:18px">';
     // D1 (audit v6) — les règles non satisfaites sont calculées et attachées au plan :
     // on ne les jette plus à l'affichage. Langage neutre (pas de bandeau rouge — décision
     // R5 du fondateur), mais EN TÊTE de liste, pas cachées.
@@ -235,4 +328,4 @@ function decisionsCardHTML(plan){
 // Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
 // pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
 
-export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML };
+export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf };

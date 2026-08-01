@@ -10,11 +10,20 @@ import type { AthleteProfile, Sport } from "../engine/types.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
 import { THRESHOLDS } from "./coherenceScorer.ts";
 
+// D10-1 — le trail est un SPORT depuis R7 : le harnais auditait encore un format `run/trail`
+// qui n'existe plus dans l'UI, et n'auditait JAMAIS le vrai module trail (couvert seulement
+// par le banc v6 et l'E2E). Le format disparaît, le sport prend sa place — le nombre de
+// combinaisons est inchangé (486), ce qui est vérifié en CI.
 const SPORTS: Record<Sport, string[]> = {
-  run: ["5k", "10k", "semi", "marathon", "trail"],
+  run: ["5k", "10k", "semi", "marathon"],
   bike: ["crit", "route", "cyclo", "clm", "gravel"],
   swim: ["sprint", "demifond", "fond", "ow"],
   tri: ["S", "M", "70.3", "Full"],
+  trail: [""], // pas de format : la catégorie d'effort est DÉDUITE des données de la course
+  duathlon: ["S", "M", "L", "PM"], // R10 phase 2 — un sport non audité n'est pas livrable
+  // R12 §0 — swimrun hors V1 : ses combinaisons sortent avec le module du bundle. Le code
+  // reste dans `src/` et `EB_SWIMRUN=1` le réintègre partout d'un coup (bundle, bancs, E2E).
+  ...(process.env.EB_SWIMRUN === "1" ? { swimrun: ["experience", "sprint", "series", "championship"] } : {}),
 };
 const HISTORIES = ["reprise", "confirme", "ancien"] as const;
 const LEVELS = ["debutant", "inter", "avance"] as const;
@@ -50,7 +59,19 @@ for (const sport of Object.keys(SPORTS) as Sport[]) {
     for (const history of HISTORIES) {
       for (const level of LEVELS) {
         for (const intent of INTENTS) {
-          const profile: AthleteProfile = { ...baseProfile(), sport, format, history, level, intent };
+          // Le trail sans données de course n'auditerait que ses valeurs par défaut : on lui
+          // donne une vraie course (62 km / 3 200 m D+, technique, partiellement nocturne).
+          // Le swimrun se décrit par les données de l'épreuve (World Series ÖTILLÖ Cannes) :
+          // sans elles on n'auditerait que des valeurs par défaut.
+          const swimrunData = sport === "swimrun"
+            ? { swim_total_m: "7850", run_total_km: "33", race_dplus_m: "900", segments_n: "20",
+                longest_swim_m: "1400", water_temp_c: "16", team_mode: "binome", openwater_access: "saisonnier" }
+            : {};
+          const trailData = sport === "trail"
+            ? { race_distance_km: "62", race_dplus_m: "3200", race_technicity: "technique", race_night: "partielle",
+                train_dplus_access: "collines", treadmill: "non", poles: "a_decider", vam_known: "oui", vam: "850" }
+            : {};
+          const profile: AthleteProfile = { ...baseProfile(), sport, format, history, level, intent, ...trailData, ...swimrunData };
           try {
             const res = generateAudited(profile);
             const a = res.audit;

@@ -57,7 +57,7 @@ const E = loadEngine(htmlPath);
 
 const FORMATS = {
   tri: ["S", "M", "70.3", "Full"],
-  run: ["5k", "10k", "semi", "marathon", "trail"],
+  run: ["5k", "10k", "semi", "marathon"], // R7 : `trail` n'est plus un format de course à pied, c'est un SPORT
   bike: ["crit", "route", "cyclo", "clm", "gravel"],
   swim: ["sprint", "demifond", "fond", "ow"],
 };
@@ -118,11 +118,25 @@ const test = (id, titre, expect, fn) => TESTS.push({ id, titre, expect, fn });
 
 // ── A. Sécurité ──────────────────────────────────────────────────────
 
-test("A1", "Drapeau médical → aucune intensité générée", "pass", () => {
-  const p = build("run", { med_pain: "oui", format: "10k" });
-  const hard = sessionsOf(p).filter(({ s }) =>
-    (s.steps || []).some((st) => st.role === "body" && /\.(vo2|thr|css|speed)$/.test(st.zone || "")));
-  return { ok: hard.length === 0, detail: `${hard.length} séance(s) intense(s) malgré med_pain=oui` };
+// 3a — LE GARDE PORTE SUR TOUS LES SPORTS, TOUS LES DRAPEAUX, ET TOUTES LES ZONES.
+// Il s'est rouvert deux fois parce qu'il ne regardait qu'un sport et quatre suffixes : le trail
+// a apporté ses zones `tr.*`, l'insertion de course a écrit un `.thr` hors bibliothèque. On
+// n'énumère plus ce qui est interdit — on énumère ce qui est PERMIS (l'endurance), et tout le
+// reste est une violation. Un garde qui liste les interdits rate le prochain producteur.
+test("A1", "Drapeau médical → aucune zone au-dessus de l'endurance, 6 sports, 3 drapeaux", "pass", () => {
+  const EASY = new Set(["rn.easy", "rn.rec", "bk.z2", "sw.easy", "sw.aero", "tr.flat", "tr.hike", "tr.easyup"]);
+  const bad = [];
+  for (const flag of ["med_pain", "med_dizzy", "med_treat"])
+    for (const sport of Object.keys(FORMATS))
+      for (const format of FORMATS[sport]) {
+        const p = build(sport, { [flag]: "oui", format, race_date: isoIn(400), races: "oui", race1_date: isoIn(120), race1_prio: "A" });
+        sessionsOf(p).forEach(({ s, w }) => (s.steps || []).forEach((st) => {
+          if (st.role !== "body") return;
+          const z = st.zone || "";
+          if (z && !EASY.has(z)) bad.push(`${flag}/${sport}/${format} S${w.num} « ${s.name} » ${z}`);
+        }));
+      }
+  return { ok: bad.length === 0, detail: `${bad.length} zone(s) interdite(s) : ${bad.slice(0, 3).join(" ; ")}` };
 });
 
 test("A2", "Douleur localisée → la discipline à risque est retirée", "pass", () => {
@@ -236,15 +250,19 @@ test("C1", "sessions_max est un nombre de SÉANCES, pas de jours", "pass", () =>
   return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" ; ") || "ok" };
 });
 
-test("C2", "Date de course trop proche → avertissement, pas de plan rétrodaté", "pass", () => {
-  const p = build("run", { format: "marathon", level: "debutant", history: "reprise", race_date: isoIn(14) });
-  const today = isoIn(0);
-  const passees = p.weeks.filter((w) => w.days.at(-1).date < today).length;
-  const warn = (p._v2?.warnings || []).length;
-  return {
-    ok: passees === 0 || warn > 0,
-    detail: `${passees}/${p.weeks.length} semaines dans le passé, ${warn} avertissement(s)`,
-  };
+// R11.4 — CONTRAT DURCI. Ce test acceptait « un avertissement suffit ». L'audit amont a montré
+// qu'un marathon en 2 semaines sortait comme un plan normal : la constante `minWeeks` existait
+// et personne ne la lisait. Un outil qui accepte de préparer un Ironman en 4 semaines cautionne
+// la blessure. La préparation trop courte est désormais REFUSÉE — avec ses deux issues
+// concrètes (format plus court, ou date compatible), pour que l'athlète puisse arbitrer.
+test("C2", "Préparation trop courte pour le format → REFUS motivé, jamais un plan dégradé", "pass", () => {
+  let refus = null;
+  try { build("run", { format: "marathon", level: "debutant", history: "reprise", race_date: isoIn(14) }); }
+  catch (e) { refus = e; }
+  if (!refus) return { ok: false, detail: "marathon en 2 semaines : plan produit sans refus" };
+  const ok = refus.code === "ENTREE_INVALIDE" && refus.key === "race_date"
+    && /format plus court/.test(refus.human || "") && /à partir du \d{4}-\d{2}-\d{2}/.test(refus.human || "");
+  return { ok, detail: ok ? "refus typé + deux issues proposées" : String(refus.human || refus.message).slice(0, 90) };
 });
 
 test("C3", "Date de course lointaine → le plan commence maintenant", "pass", () => {
@@ -314,27 +332,47 @@ test("D3", "C22 : progression ≤ +10 % entre semaines de charge", "fail", () =>
   for (const sport of Object.keys(FORMATS))
     for (const format of FORMATS[sport]) {
       const p = build(sport, { format });
-      let prev = null;
+      let prev = null, prevDecl = null, prevW = null;
       for (const w of p.weeks) {
         if (w.isRecup || w.phase.id === "taper") continue;
         const m = weekMin(w);
-        if (prev && m > prev * 1.1 + 1)
-          bad.push(`${sport}/${format} S${w.num} +${Math.round((m / prev - 1) * 100)}%`);
-        prev = m;
+        const decl = (w.vol || 0) * 60; // la courbe PROMISE, à distinguer du prescrit
+        if (prev && m > prev * 1.1 + 1) {
+          // R15.4 — le détail dit désormais QUELLE configuration saute, de combien, et
+          // surtout si c'est la COURBE ou la DISCRÉTISATION : `7 sauts` ne permettait pas
+          // de choisir le correctif. Déclaré conforme + prescrit qui saute = la semaine ne
+          // se divise pas plus fin (planchers de séance). Les deux qui sautent = la courbe.
+          const dPct = prevDecl > 0 ? Math.round((decl / prevDecl - 1) * 100) : NaN;
+          const pPct = Math.round((m / prev - 1) * 100);
+          const cause = Number.isFinite(dPct) && dPct <= 10 ? "discrétisation" : "courbe";
+          bad.push(`${sport}/${format}(${p.totalWeeks}sem) S${prevW.num}→S${w.num} `
+            + `déclaré +${dPct}% / prescrit +${pPct}% → ${cause}`);
+        }
+        prev = m; prevDecl = decl; prevW = w;
       }
     }
-  return { ok: bad.length === 0, detail: `${bad.length} saut(s) : ${bad.slice(0, 3).join(" ; ")}` };
+  return { ok: bad.length === 0, detail: `${bad.length} saut(s) — ` + bad.join(" · ") };
 });
 
-test("D4", "Semaine de récup jamais plus chargée que la précédente", "pass", () => {
+// La règle porte sur la semaine que la récup ASSIMILE, donc sur la dernière semaine de CHARGE
+// qui la précède — c'est la formulation de la spec interne (`coherenceScorer`, qui exclut
+// explicitement `weeks[i-1].isRecup`). Comparer deux semaines de récupération CONSÉCUTIVES
+// (dérive du cycle de 10 jours) n'ajoute rien et entre en collision frontale avec le plancher
+// de séance : un plan de nage débutant saturé n'a plus qu'une séance de 600 m (C24b), qui ne
+// peut ni maigrir ni disparaître. Deux règles qui se contredisent sur toutes les séances
+// courtes : celle-ci était mal formée, elle est reformulée plutôt qu'arbitrée.
+test("D4", "Semaine de récup jamais plus chargée que la dernière semaine de charge", "pass", () => {
   const bad = [];
   for (const sport of Object.keys(FORMATS))
     for (const format of FORMATS[sport])
       for (const level of ["debutant", "inter"]) {
         const p = build(sport, { format, level, sessions_max: "3", vol_max: "7" });
-        p.weeks.forEach((w, i) => {
-          if (i && w.isRecup && weekMin(w) > weekMin(p.weeks[i - 1]) + 1)
-            bad.push(`${sport}/${format}/${level} S${w.num}`);
+        let lastCharge = 0;
+        p.weeks.forEach((w) => {
+          const m = weekMin(w);
+          if (w.isRecup) {
+            if (lastCharge > 0 && m > lastCharge) bad.push(`${sport}/${format}/${level} S${w.num}`);
+          } else if (w.phase.id !== "taper") lastCharge = m;
         });
       }
   return { ok: bad.length === 0, detail: `${bad.length} cas : ${bad.slice(0, 3).join(" ; ")}` };
@@ -353,12 +391,15 @@ test("D5", "C15 : nage débutant ≤ 850 m par séance", "pass", () => {
   return { ok: bad.length === 0, detail: `${bad.length} séance(s) : ${bad.slice(0, 3).join(" ; ")}` };
 });
 
-test("D6", "C24 : plancher de séance piscine aussi pour le débutant", "pass", () => {
+// A3 — le plancher est une règle de semaine de CHARGE (voir `coherenceScorer`) : une semaine de
+// décharge retire au lieu de remonter, et une séance sous le plancher y est légitime.
+test("D6", "C24 : plancher de séance piscine aussi pour le débutant (semaines de charge)", "pass", () => {
   const bad = [];
   for (const sport of ["tri", "swim"])
     for (const format of FORMATS[sport]) {
       const p = build(sport, { format, level: "debutant", swim_limit: "technique" });
       sessionsOf(p).forEach(({ s, w }) => {
+        if (w.isRecup || w.phase.id === "taper") return; // A3 — plancher = règle de semaine de charge
         const m = swimMeters(s);
         if (s.d === "sw" && m > 0 && m < 600) bad.push(`${sport}/${format} S${w.num} ${m}m`);
       });
@@ -442,15 +483,16 @@ test("E2", "Un seul parseur d'allure (plan et prédiction d'accord)", "pass", ()
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "ok" };
 });
 
-test("E3", "FTP hors bornes physiologiques rejetée", "pass", () => {
+// R11.3 — CONTRAT DURCI : une FTP hors bornes n'est plus « rattrapée pour que les zones
+// restent lisibles », elle est REFUSÉE. Rattraper en silence laissait l'athlète croire que sa
+// saisie avait été prise en compte ; le refus lui dit quoi corriger.
+test("E3", "FTP hors bornes physiologiques → refus typé (jamais des zones rattrapées en silence)", "pass", () => {
   const bad = [];
   for (const ftp of ["-100", "0", "1", "9999"]) {
-    const p = build("bike", { format: "route", ftp_known: "oui", ftp });
-    const neg = sessionsOf(p).some(({ s }) => /-\d+\s*-\s*-?\d+\s*W|--/.test(s.det || ""));
-    const abs = sessionsOf(p).some(({ s }) => {
-      const m = (s.det || "").match(/(\d{4,})\s*W/); return m && +m[1] > 600;
-    });
-    if (neg || abs) bad.push(`ftp=${ftp}${neg ? " (zones négatives)" : ""}${abs ? " (>600W)" : ""}`);
+    let refus = null;
+    try { build("bike", { format: "route", ftp_known: "oui", ftp }); } catch (e) { refus = e; }
+    if (!refus) { bad.push(`ftp=${ftp} accepté sans un mot`); continue; }
+    if (refus.code !== "ENTREE_INVALIDE" || refus.key !== "ftp") bad.push(`ftp=${ftp} : refus non typé`);
   }
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "ok" };
 });
@@ -463,19 +505,34 @@ test("E4", "Poids invraisemblable → estimation énergétique refusée", "pass"
   return { ok: r === null, detail: r ? `IMC ≈ 10.8 → ${r.total?.join("–")} kcal affichées` : "ok" };
 });
 
-test("E5", "buildPlan ne lève jamais sur un état d'entrée dégradé", "pass", () => {
+// R11 — CE TEST A CHANGÉ DE CONTRAT, volontairement. Il assertait « buildPlan ne lève JAMAIS
+// sur une entrée dégradée » : c'était l'exact contraire de ce qu'il faut. L'audit amont a
+// montré où ça menait — `vol_max: "abc"` produisait un Ironman à 30 min hebdo de pic, sans un
+// mot. Le principe du projet est l'inverse : « un plan faux est plus dangereux que pas de
+// plan ». Une entrée fausse doit donc être REFUSÉE, et le refus doit être TYPÉ (clé, valeur,
+// attendu) pour que l'athlète puisse le réparer lui-même.
+test("E5", "buildPlan REFUSE une entrée invalide, avec un refus typé et réparable", "pass", () => {
   const bad = [];
   const mutants = [
-    ["injury en tableau", { injury: ["aucune"] }],
-    ["injury absent", { injury: undefined }],
     ["format inconnu", { format: "ultra" }],
-    ["age null", { age: null }],
+    ["age null", { age: "zéro" }],
     ["vol_max absent", { vol_max: undefined }],
     ["sessions_max texte", { sessions_max: "beaucoup" }],
+    ["niveau renommé", { level: "expert" }],
   ];
   for (const [nom, over] of mutants) {
+    let refus = null;
     try { E.buildPlan("run", { ...profile("run"), ...over }); }
-    catch (e) { bad.push(`${nom}: ${e.message.slice(0, 40)}`); }
+    catch (e) { refus = e; }
+    if (!refus) { bad.push(`${nom}: aucun refus (plan produit sur une entrée fausse)`); continue; }
+    if (refus.code !== "ENTREE_INVALIDE") { bad.push(`${nom}: refus non typé (${String(refus.message).slice(0, 40)})`); continue; }
+    if (!refus.key || !refus.expected || !refus.human) bad.push(`${nom}: refus typé mais incomplet (clé/attendu/message)`);
+  }
+  // Les entrées TOLÉRABLES doivent, elles, continuer de passer : un refus trop large est
+  // aussi un défaut. `injury` absent ou en tableau est un état d'app légitime.
+  for (const [nom, over] of [["injury absent", { injury: undefined }], ["injury en tableau", { injury: ["aucune"] }]]) {
+    try { E.buildPlan("run", { ...profile("run"), ...over }); }
+    catch (e) { bad.push(`${nom}: refusé à tort (${String(e.message).slice(0, 40)})`); }
   }
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "ok" };
 });
@@ -526,6 +583,82 @@ test("F1", "durationMin et _min cohérents (contrat d'export)", "pass", () => {
   return { ok: bad.length === 0, detail: `${bad.length} divergence(s) : ${bad.slice(0, 2).join(" ; ")}` };
 });
 
+// C13e — L'INVARIANT DUR, sur les six sports et dans les deux unités. Le banc `build()` couvre
+// tri/run/bike/swim ; le trail et le duathlon passent par leurs propres fabriques de profils.
+test("F6", "C13e : jamais d'échauffement plus long que le corps de séance", "pass", () => {
+  const bad = [];
+  const scan = (p, tag) => sessionsOf(p).forEach(({ s, w }) => {
+    const st = s.steps || [];
+    const wu = st.find((x) => x.role === "warmup");
+    if (!wu) return;
+    const body = st.filter((x) => x.role === "body").reduce((t, x) => t + (x._min || 0), 0);
+    if ((wu._min || 0) > body + 0.01)
+      bad.push(`${tag} S${w.num} ${s.name} : éch ${(wu._min || 0).toFixed(1)} > corps ${body.toFixed(1)}`);
+  });
+  for (const sport of Object.keys(FORMATS))
+    for (const format of FORMATS[sport])
+      for (const level of ["debutant", "inter", "avance"])
+        for (const vol of ["4", "10", "16"])
+          scan(build(sport, { format, level, vol_max: vol }), `${sport}/${format}/${level}/${vol}h`);
+  for (const level of ["debutant", "inter", "avance"])
+    for (const vol of ["4", "10", "16"])
+      scan(buildTrail({ level, vol_max: vol }), `trail/${level}/${vol}h`);
+  return { ok: bad.length === 0, detail: `${bad.length} séance(s) : ${bad.slice(0, 3).join(" ; ")}` };
+});
+
+// C13c s'énonce « 10 min, SAUF si le corps est plus court » (C13e prime — cf. F6). Le test
+// mesure donc la règle telle qu'elle est, pas telle qu'on l'a d'abord formulée.
+test("F4", "C13c : aucun échauffement chiffré sous 10 min (sauf corps plus court)", "pass", () => {
+  const bad = [];
+  for (const sport of Object.keys(FORMATS))
+    for (const format of FORMATS[sport])
+      for (const vol of ["4", "10", "16"])
+        sessionsOf(build(sport, { format, vol_max: vol })).forEach(({ s, w }) => {
+          const st = s.steps || [];
+          const wu = st.find((x) => x.role === "warmup" && x.durationMin != null);
+          if (!wu) return;
+          // Le corps se mesure en TRAVAIL, récup exclue — même lecture que C13e (le banc
+          // d'invariants a tranché : 10 min d'échauffement devant 6 min de travail déséquilibre
+          // la séance, quel que soit le temps passé debout entre les répétitions).
+          const body = st.filter((x) => x.role === "body")
+            .reduce((t, x) => t + (x.durationMin ? (x.reps || 1) * x.durationMin : Math.max(0, (x._min || 0) - ((x.reps || 1) > 1 ? ((x.reps || 1) - 1) * (x.recoveryMin || 0) : 0))), 0);
+          const seuil = Math.min(10, body);
+          if ((wu._min ?? wu.durationMin) < seuil - 0.5)
+            bad.push(`${sport}/${format} S${w.num} ${s.name} : ${wu._min}min (corps ${body.toFixed(0)})`);
+        });
+  return { ok: bad.length === 0, detail: `${bad.length} séance(s) : ${bad.slice(0, 3).join(" ; ")}` };
+});
+
+// C13d ne gouverne que les doses exprimées en MINUTES : en bassin, la dose minimale est tenue
+// par C24/C15 (mètres), et un 8×50 m VO2 ne pèse que 7,7 min de « corps » sans être sous-dosé
+// pour autant. Le garde-fou mesure donc exactement ce que la règle promet — ni plus, ni moins.
+test("F5", "C13d : aucune séance de qualité EN TEMPS sous 8 min de dose", "pass", () => {
+  const QZ = /\.(vo2|thr|ss|css|speed|rp|frc|mara)$/;
+  const bad = [];
+  for (const sport of Object.keys(FORMATS))
+    for (const format of FORMATS[sport])
+      for (const vol of ["4", "10", "16"])
+        sessionsOf(build(sport, { format, vol_max: vol })).forEach(({ s, w }) => {
+          const st = s.steps || [];
+          const bodies = st.filter((x) => x.role === "body");
+          if (!bodies.some((x) => QZ.test(x.zone || "")) || bodies.some((x) => x.gradient || x.leg || x.distanceM != null)) return;
+          const body = bodies.reduce((t, x) => t + (x._min || 0), 0);
+          if (body < 8) bad.push(`${sport}/${format} S${w.num} ${s.name} : ${Math.round(body)}min de travail`);
+        });
+  return { ok: bad.length === 0, detail: `${bad.length} séance(s) : ${bad.slice(0, 3).join(" ; ")}` };
+});
+
+// F2 — LA CAUSE PRINCIPALE EST CORRIGÉE, IL RESTE UN RÉSIDU ASSUMÉ.
+// Diagnostic du 30/07/2026 : le ratio corps/total plafonnait à ~43 % parce que `_min` ne
+// comptait PAS la récupération entre répétitions. R5.6a l'a mise dans le `_min` du bloc qui la
+// porte : une VO2 « 10min éch + 4×3min (récup 2min30) + 6min retour » vaut désormais 19,5 min de
+// corps sur 35,5, soit 55 %. Mesure avant/après : 28 séances sous le seuil → **7**.
+// Ce qui reste, après C13c (plancher d'échauffement à 10 min) et C13d (une séance de qualité
+// sous-dosée est déclassée, plus rabotée) : SEPT séances de sweetspot de 10 à 14 min de travail,
+// précédées des 10 minutes d'échauffement que le projet vient d'ériger en règle de sécurité.
+// Atteindre 45 % y demanderait précisément ce que C13c interdit — raccourcir l'échauffement.
+// Les deux règles se contredisent sur ces sept séances ; la priorité n°2 du manifeste (prévention
+// des blessures) tranche. La dette est conservée sciemment, et le test la garde sous les yeux.
 test("F2", "Séance de qualité : ≥45 % du temps dans la zone cible", "fail", () => {
   const bad = [];
   for (const sport of ["run", "bike", "tri"])

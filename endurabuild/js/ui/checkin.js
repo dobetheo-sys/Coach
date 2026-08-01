@@ -46,7 +46,7 @@ const SLIDES = [
     // A6 (audit v6) — la FC au réveil était supportée par le moteur et jamais collectée :
     // champ optionnel ici (une frappe, jamais bloquant), baseline glissante 7 jours calculée
     // depuis l'historique dès la 3e mesure.
-    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;margin-top:14px;color:#635b4a">'
+    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:#635b4a">'
       + '<span>FC au réveil (optionnel)</span><input type="number" id="ckHr" inputmode="numeric" min="30" max="120" value="' + (d.restingHr || "") + '" placeholder="ex. 52" style="width:88px">'
       + "<span>bpm</span></label>",
   },
@@ -76,14 +76,14 @@ export function checkinSlideshowHTML() {
   const slide = SLIDES[ck.step];
   if (!slide) return "";
   let h = '<div class="card" id="ckSlide"><div class="eyebrow">Point du matin · ' + (ck.step + 1) + "/" + SLIDES.length + "</div>";
-  h += '<h2 style="font-size:19px;line-height:1.4">' + esc(slide.coach(ck)) + "</h2>";
+  h += '<h2 style="font-size:var(--fs-hand);line-height:1.4">' + esc(slide.coach(ck)) + "</h2>";
   h += '<div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">';
   slide.options.forEach((o) => {
-    h += '<button type="button" class="btn ck-opt" data-ck-opt="' + o.val + '" style="display:flex;align-items:center;gap:12px;justify-content:flex-start;font-size:15px;padding:14px 16px;width:100%"><span style="font-size:22px">' + o.ico + "</span>" + o.label + "</button>";
+    h += '<button type="button" class="btn ck-opt" data-ck-opt="' + o.val + '" style="display:flex;align-items:center;gap:12px;justify-content:flex-start;font-size:var(--fs-lg);padding:14px 16px;width:100%"><span style="font-size:var(--fs-xl)">' + o.ico + "</span>" + o.label + "</button>";
   });
   h += "</div>";
   if (slide.extraHTML) h += slide.extraHTML(ck);
-  if (ck.step > 0) h += '<button type="button" class="btn" id="ckBack" style="margin-top:12px;font-size:12px;padding:6px 12px">← Revenir</button>';
+  if (ck.step > 0) h += '<button type="button" class="btn" id="ckBack" style="margin-top:12px;font-size:var(--fs-sm);padding:6px 12px">← Revenir</button>';
   h += dotsHTML(ck.step) + "</div>";
   return h;
 }
@@ -111,7 +111,7 @@ export function bindCheckinSlideshow(rerender, onDone) {
       if (ck.step < SLIDES.length) { rerender(); return; }
       // Fin du diaporama → verdict (la météo peut prendre ~3.5 s : écran d'attente coach)
       const sc = $("ckSlide");
-      if (sc) sc.innerHTML = '<div class="eyebrow">Point du matin</div><h2 style="font-size:19px">C’est noté 👍</h2><div class="load-sub" style="margin-top:8px">Je regarde ta forme, ta fatigue des derniers jours et la météo — ta séance arrive…</div>';
+      if (sc) sc.innerHTML = '<div class="eyebrow">Point du matin</div><h2 style="font-size:var(--fs-hand)">C’est noté 👍</h2><div class="load-sub" style="margin-top:8px">Je regarde ta forme, ta fatigue des derniers jours et la météo — ta séance arrive…</div>';
       const out = await applyReadinessSnap(ck);
       S._ck = null;
       onDone(out);

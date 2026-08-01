@@ -19,6 +19,14 @@ import { dirname, join } from "node:path";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ORDER = [
   "src/engine/types.ts",
+  "src/engine/trace.ts",
+  "src/engine/medicalHold.ts",
+  "src/engine/measured.ts",
+  "src/engine/answerSchema.ts",
+  "src/engine/cycleModel.ts",
+  // R10 phase 1 — le REGISTRE avant tout : `registerSport()` doit exister quand les modules
+  // de sport s'enregistrent, et le registre doit être peuplé avant la première génération.
+  "src/sports/registry.ts",
   "src/engine/constraintMatrix.ts",
   "src/engine/disciplineRegistry.ts",
   "src/engine/trailModel.ts",
@@ -28,9 +36,29 @@ const ORDER = [
   "src/audit/coherenceScorer.ts",
   "src/generator/sessionLibrary.ts",
   "src/generator/trailLibrary.ts",
+  // Modules de sport : ils s'enregistrent à l'import (effet de bord), après trailLibrary
+  // dont le module trail se sert, et avant les passes qui interrogent le registre.
+  "src/sports/run/index.ts",
+  "src/sports/bike/index.ts",
+  "src/sports/swim/index.ts",
+  "src/sports/tri/index.ts",
+  "src/sports/trail/index.ts",
+  "src/sports/duathlon/tables.ts",
+  "src/sports/duathlon/index.ts",
+  // R16.10 — SWIMRUN RÉINTÉGRÉ (01/08/2026). R12 §0 l'avait sorti du bundle — pas masqué dans
+  // l'UI, sorti : du code expédié mais non exercé est exactement ce que ce projet refuse. La
+  // condition de retour était de traiter sa dette d'abord, pas de retirer le drapeau : ses
+  // quatre checks budgétés au banc v7 valaient 53 à 80 ‰ pour 78 % de profils propres. Ils
+  // sont à 12 ‰ pour 89 % — au niveau du duathlon — après S13 (la structure hebdomadaire lit
+  // enfin l'objectif) et l'exemption des règles de sécurité côté banc. Le sport entre donc
+  // avec un filet à sa taille, pas avec un filet troué.
+  "src/sports/swimrun/tables.ts",
+  "src/sports/swimrun/objective.ts",
+  "src/sports/swimrun/index.ts",
   "src/generator/weekBuilder.ts",
   "src/generator/planGenerator.ts",
   "src/generator/repairLoop.ts",
+  "src/engine/projection.ts",
   "src/engine/predictor.ts",
   "src/readiness/readinessSource.ts",
   "src/readiness/fitParser.ts",
@@ -54,11 +82,43 @@ function moduleToScript(path) {
   return "// ===== " + path + " =====\n" + src;
 }
 
+/**
+ * D10-9 — GARDE-FOU DE COLLISION. Le bundle concatène tous les modules dans UNE SEULE portée :
+ * deux déclarations racines du même nom, et la seconde écrase la première SANS UN MOT. Rencontré
+ * pendant R10 phase 1 (un `buildSessions` local dans le module trail a remplacé le dispatch de
+ * sessionLibrary — le plan trail sortait faux). L'auto-test l'a attrapé par chance ; on ne
+ * dépend plus de la chance. Chaque sport ajouté multiplie les noms racines : ce contrôle doit
+ * vivre AVANT l'évaluation, pour nommer le coupable au lieu d'une pile d'exécution obscure.
+ */
+function checkCollisions(scripts) {
+  const seen = new Map(); // nom → fichier
+  const dup = [];
+  const DECL = /^(?:function|const|let|class|async function)\s+([A-Za-z_$][\w$]*)/;
+  scripts.forEach((src, i) => {
+    for (const line of src.split("\n")) {
+      const m = DECL.exec(line);
+      if (!m) continue;
+      const name = m[1];
+      if (seen.has(name)) dup.push(name + " : " + seen.get(name) + " puis " + ORDER[i]);
+      else seen.set(name, ORDER[i]);
+    }
+  });
+  if (dup.length) {
+    console.error("✖ collision(s) de noms dans le bundle — la seconde déclaration ÉCRASE la première :");
+    for (const d of dup) console.error("   " + d);
+    console.error("\nCorriger en renommant : le bundle n'a qu'une portée, un nom racine est GLOBAL.");
+    process.exit(1);
+  }
+}
+
+const _scripts = ORDER.map(moduleToScript);
+checkCollisions(_scripts);
+
 const bundle =
   "/* __EBV2_BUNDLE__ généré par scripts/buildApp.mjs — NE PAS ÉDITER À LA MAIN.\n" +
   "   Source de vérité : src/ (moteur V2). Reconstruire : npm run build:app */\n" +
   "(function(){\n\"use strict\";\n" +
-  ORDER.map(moduleToScript).join("\n") +
+  _scripts.join("\n") +
   "\n})();\n";
 
 // ---- AUTO-TEST avant écriture : le bundle doit s'évaluer et générer un plan sain ----
@@ -83,7 +143,33 @@ const nut = EBV2.sessionNutrition({ d: "rn", name: "Sortie longue", det: "", min
 if (!nut || !nut.during.sodium || !/professionnel/.test(nut.disclaimer)) throw new Error("bundle invalide : sessionNutrition cassé");
 const av = EBV2.avatar(plan, answers, today);
 if (!av || !av.icon || av.level < 1 || av.progressPct < 0 || av.progressPct > 100) throw new Error("bundle invalide : avatar cassé");
-console.log("auto-test bundle : plan 16 semaines, score " + plan._v2.score + ", adaptation « " + adj.adjustment.verdict.level + " » OK");
+// R13.1 — LA RÈGLE « UNE SEULE SOURCE DE BORNES » EST EXÉCUTABLE, PAS UN COMMENTAIRE.
+// Les deux tables (ANSWER_SCHEMA et PHYSIO_BOUNDS) sont importées depuis src/ et comparées
+// clé à clé : si quelqu'un ré-introduit un littéral divergent dans PHYSIO_BOUNDS, le build
+// échoue en nommant la clé. C'est ce trou (âge 10-13 et 96-100 entre les deux domaines) qui
+// donnait le plan adulte complet à un enfant de 10 ans.
+{
+  const { ANSWER_SCHEMA } = await import("../src/engine/answerSchema.ts");
+  const { PHYSIO_BOUNDS } = await import("../src/engine/constraintMatrix.ts");
+  const MAP = { ftp: "ftp", hrMax: "hr_max", weight: "weight", height: "height", age: "age" };
+  for (const [pk, sk] of Object.entries(MAP)) {
+    const p = PHYSIO_BOUNDS[pk], s = ANSWER_SCHEMA[sk];
+    if (!p || !s || p.min !== s.min || p.max !== s.max)
+      throw new Error("R13.1 : PHYSIO_BOUNDS." + pk + " (" + (p && p.min) + "–" + (p && p.max) +
+        ") diverge d'ANSWER_SCHEMA." + sk + " (" + (s && s.min) + "–" + (s && s.max) +
+        ") — la borne doit vivre dans le schéma, une seule fois.");
+  }
+}
+// R14.3-a — MÊME GESTE, SUR LE PROFIL DE PARCOURS. Le domaine `terrain` du schéma et la
+// table de relief du prédicteur avaient divergé en silence : « montagne » n'était classé
+// nulle part, donc aucune correction de relief au jour J. Toute valeur du domaine doit
+// désormais être classée (relief ou surface), sinon le build échoue en la nommant.
+{
+  const { ANSWER_SCHEMA } = await import("../src/engine/answerSchema.ts");
+  const { assertTerrainCovered } = await import("../src/engine/predictor.ts");
+  assertTerrainCovered(ANSWER_SCHEMA.terrain.domain);
+}
+console.log("auto-test bundle : plan 16 semaines, score " + plan._v2.score + ", adaptation « " + adj.adjustment.verdict.level + " » OK · bornes physio = schéma (R13.1) · terrain classé (R14.3-a)");
 
 // ---- Injection entre marqueurs, après le </script> principal ----
 const htmlPath = join(root, "Coach_Pro_V1.5.html");

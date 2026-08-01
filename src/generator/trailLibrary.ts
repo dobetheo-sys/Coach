@@ -11,8 +11,9 @@
  * (renderer.ts) : VAM en montée, consigne technique en descente, allure seulement à plat.
  */
 import type { ReasonedPlan, V1Session, V1Step } from "../engine/types.ts";
-import { T5_HIKE_SHARE, T7_REHEARSAL, type TrailCategory } from "../engine/trailModel.ts";
+import { T5_HIKE_SHARE, T7_REHEARSAL, returnMinutes, type TrailCategory } from "../engine/trailModel.ts";
 import { intOf } from "./renderer.ts";
+import { medicalZone } from "../engine/medicalHold.ts";
 
 type Slot = "dur1" | "dur2" | "durLong" | "facileR" | "facile2" | "recup" | "off";
 
@@ -64,8 +65,19 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
 
   const W = (min: number, txt?: string): V1Step => ({ role: "warmup", durationMin: min, text: txt || "", gradient: "flat" });
   const C = (min: number, txt?: string): V1Step => ({ role: "cooldown", durationMin: min, text: txt || "", gradient: "flat" });
-  const B = (o: Partial<V1Step> & { durationMin: number }): V1Step =>
-    ({ role: "body", reps: 1, intensity: intOf(o.zone ?? null) as unknown as string, ...o }) as V1Step;
+  // T19 — LA RÉCUPÉRATION D'UNE RÉPÉTITION EN PENTE SE CALCULE, elle ne se lit pas.
+  // Entre deux répétitions de côte, l'athlète REDESCEND ce qu'il vient de monter ; entre deux
+  // répétitions de descente, il REMONTE. Cette durée est déductible du dénivelé du bloc, et
+  // c'est ce qui remplace les sept libellés qui valaient 0 minute (« descente MARCHÉE »,
+  // « remontée en marche active »… — 1 740 récupérations non comptées, 35 % des séances de
+  // trail). Un `recoveryMin` explicite passé par l'appelant a toujours priorité.
+  const B = (o: Partial<V1Step> & { durationMin: number }): V1Step => {
+    const zone = medicalZone(o.zone, r.medHold) as string | null | undefined;
+    const st = { role: "body", reps: 1, ...o, zone, intensity: intOf(zone ?? null) as unknown as string } as V1Step;
+    if ((st.reps || 1) > 1 && st.recoveryText && st.recoveryMin == null)
+      st.recoveryMin = returnMinutes({ dplusM: st.dplusM, dmoinsM: st.dmoinsM });
+    return st;
+  };
 
   if (slot === "durLong") {
     // 1. SORTIE LONGUE TRAIL — temps + D+ + D−, en `rolling` : jamais une allure au sol.
@@ -79,14 +91,26 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
     S2.push({
       d: "rn", long: true,
       name: isRehearsal ? "Longue trail + ravito réel" : "Sortie longue trail",
+      // T-NIGHT (audit v7) — la consigne de nuit était portée par UNE séance dédiée, elle-même
+      // éliminée par la substitution d'impact dès qu'une blessure était déclarée : le plan
+      // n'évoquait alors ni nuit, ni frontale, ni lampe pendant 40 semaines, pour une course
+      // annoncée nocturne. Une compétence ne doit pas dépendre de la survie d'une séance : la
+      // consigne se greffe aussi sur la sortie LONGUE, qui est le pivot de la semaine.
       note: isRehearsal
         ? "Répétition GÉNÉRALE : sac de course, réserve d'eau complète, et 60 à 90 g de glucides par heure — exactement ce que tu prendras le jour J. Au-delà de 6 h d'effort, l'estomac et le matériel font autant d'abandons que les jambes : ça se teste à l'entraînement, jamais en course."
-        : "La séance qui construit ta course : on compte le TEMPS et le dénivelé, jamais les kilomètres. Monte au train (tu dois pouvoir parler), descends en contrôle" + (hikeMin ? ", et marche franchement dans les pentes raides — c'est ce que tu feras en course" : "") + ".",
+        : "La séance qui construit ta course : on compte le TEMPS et le dénivelé, jamais les kilomètres. Monte au train (tu dois pouvoir parler), descends en contrôle" + (hikeMin ? ", et marche franchement dans les pentes raides — c'est ce que tu feras en course" : "") + "."
+          + (a.race_night && a.race_night !== "non" && (phase === "spec" || phase === "peak")
+            ? " Ta course se court en partie de nuit : termine celle-ci à la frontale (chargée, plus une réserve) sur un terrain que tu connais. La nuit change la perception du relief, l'équilibre et le moral — ça s'apprivoise, et le matériel se vérifie avant qu'il te lâche en course."
+            : ""),
       det: "",
       steps: [
         B({ durationMin: durMin - (hikeMin ? Math.round(hikeMin / 2) : 0), gradient: "rolling", zone: "tr.flat", dplusM: up, dmoinsM: down,
           mode: hikeMin ? "run_hike" : "run", poles: poles && hikeMin > 0, surface: technicalOk ? "sentier" : "piste",
-          bnd: { floor: 60, cap: r.trailLongCapMin || 240 } } as Partial<V1Step> as V1Step),
+          // C23 — le plafond débutant (3 h) vaut AUSSI en trail : la longue trail n'avait
+          // jamais porté ce clamp — le re-remplissage R13.5 l'a prouvé en la gonflant à sa
+          // borne (10-13 sorties > 3 h par plan débutant, audit:v2). `hard` : la sonde de
+          // capacité n'élargit jamais un plafond du manifeste.
+          bnd: { floor: 60, cap: r.beginner ? Math.min(180, r.trailLongCapMin || 240) : (r.trailLongCapMin || 240), hard: r.beginner } } as Partial<V1Step> as V1Step),
       ],
       ...({ plainBody: true } as object),
     } as V1Session);
@@ -106,7 +130,7 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
     } else if (flatAccess && treadmill) {
       // 13. TAPIS INCLINÉ
       S2.push({ d: "rn", name: "Tapis incliné (substitut de dénivelé)", note: "Tapis à 10-15 % d'inclinaison : c'est le meilleur substitut de montée quand le terrain manque. Aucune descente, donc aucune casse musculaire — mais aussi aucune préparation à la descente : garde tes week-ends en relief pour ça.", det: "",
-        steps: [W(12, "à plat, progressif"), B({ durationMin: durEach, reps, zone, gradient: "up", dplusM: upPer, mode: "run", surface: "tapis", recoveryText: "2min à plat, inclinaison à 0", repCap: hp.repCap }), C(8, "à plat souple")] });
+        steps: [W(12, "à plat, progressif"), B({ durationMin: durEach, reps, zone, gradient: "up", dplusM: upPer, mode: "run", surface: "tapis", recoveryText: "2min à plat, inclinaison à 0", recoveryMin: 2, repCap: hp.repCap }), C(8, "à plat souple")] });
     } else {
       S2.push({ d: "rn", name: hp.name, note: hp.note, det: "",
         steps: [W(15, "footing progressif jusqu'au pied de la côte"),
@@ -126,14 +150,21 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
       const down = Math.round(downShare(0.5) * downFactor);
       S2.push({ d: "rn", name: "Descente en charge", note: "LA séance qui décide de ta fin de course. Les descentes longues abîment les cuisses ; s'y exposer progressivement crée une protection durable (c'est prouvé et ça s'appelle l'effet de répétition). Monte tranquillement ou marche, et descends " + (technicalOk ? "sur ton terrain le plus roulant au début, puis plus technique" : "sur sentier ROULANT uniquement — ta cheville n'est pas prête pour du technique") + ".", det: "",
         steps: [W(15, "footing plat"), B({ durationMin: P(12, 20), reps: 1, gradient: "up", zone: "tr.easyup", dplusM: Math.round(down / 2), mode: poles ? "hike" : "run_hike", poles }),
-          B({ durationMin: P(20, 34), reps: Math.max(2, P(2, 4)), gradient: "down", dmoinsM: Math.round(down / Math.max(2, P(2, 4))), surface: technicalOk ? "sentier" : "piste", recoveryText: "remontée en marche active" }), C(10, "footing plat souple")] });
+          B({ durationMin: P(20, 34), reps: Math.max(2, P(2, 4)), gradient: "down", dmoinsM: Math.round(down / Math.max(2, P(2, 4))), surface: technicalOk ? "sentier" : "piste", recoveryText: "remontée en marche active" , repCap: 8 }), C(10, "footing plat souple")] });
     } else {
       const down = Math.round(downShare(0.35) * downFactor);
       S2.push({ d: "rn", name: "Descente technique", note: "La descente est une COMPÉTENCE, pas une récupération. Objectif : le geste, pas la vitesse. Buste relâché, bras écartés pour l'équilibre, petits pas rapides, regard 4-5 m devant. On répète 3 à 6 fois la même descente pour sentir la progression.", det: "",
         steps: [W(12, "footing plat"), B({ durationMin: P(8, 14), gradient: "up", zone: "tr.easyup", dplusM: Math.round(down / 2), mode: "hike", poles }),
-          B({ durationMin: P(4, 7), reps: Math.max(3, P(3, 6)), gradient: "down", dmoinsM: Math.round(down / Math.max(3, P(3, 6))), surface: technicalOk ? "sentier" : "piste", recoveryText: "remontée marchée, souffle repris" }), C(8, "footing souple")] });
+          B({ durationMin: P(4, 7), reps: Math.max(3, P(3, 6)), gradient: "down", dmoinsM: Math.round(down / Math.max(3, P(3, 6))), surface: technicalOk ? "sentier" : "piste", recoveryText: "remontée marchée, souffle repris" , repCap: 8 }), C(8, "footing souple")] });
     }
   } else if (slot === "facileR") {
+    // T-NIGHT (audit v7) — une compétence ne doit dépendre de la survie d'AUCUNE séance : avec
+    // une blessure déclarée, la séance de nuit ET la sortie longue pouvaient être remplacées,
+    // et le plan n'évoquait plus ni nuit ni frontale pendant 40 semaines pour une course
+    // nocturne. La consigne se greffe donc aussi sur le footing, la séance la plus nombreuse.
+    const nightCue = a.race_night && a.race_night !== "non" && (phase === "spec" || phase === "peak")
+      ? " Ta course se court en partie de nuit : fais celui-ci à la frontale au moins une fois par quinzaine, sur un terrain connu — la nuit change l'équilibre et la perception du relief, et c'est aussi le moment de vérifier ta lampe."
+      : "";
     // 7. MARCHE RAPIDE EN CÔTE (base/dev) · 9. SORTIE DE NUIT (spec/peak si course de nuit)
     const nightNeeded = (a.race_night === "partielle" || a.race_night === "majoritaire") && (phase === "spec" || phase === "peak");
     if (nightNeeded && weekNum % 2 === 1) {
@@ -141,12 +172,12 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
         steps: [B({ durationMin: P(55, 100), gradient: "rolling", zone: "tr.flat", dplusM: upShare(0.2), dmoinsM: Math.round(upShare(0.2) * downFactor), mode: "run_hike", poles, surface: "sentier" })],
         ...({ plainBody: true } as object) } as V1Session);
     } else if (hikeShare >= 0.1 && (phase === "base" || phase === "dev" || phase === "spec")) {
-      S2.push({ d: "rn", name: "Marche rapide en montée" + (poles ? " (bâtons)" : ""), note: "Sur ta course, la marche représentera environ " + Math.round(hikeShare * 100) + " % du temps : c'est une compétence, pas un aveu d'échec. Marche vite, mains sur les cuisses ou " + (poles ? "avec les bâtons (poussée complète, buste légèrement penché)" : "bras actifs") + ", rythme cardiaque soutenu. Tu iras plus vite en marchant bien qu'en courant mal. Termine par 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente.", det: "",
+      S2.push({ d: "rn", name: "Marche rapide en montée" + (poles ? " (bâtons)" : ""), note: "Sur ta course, la marche représentera environ " + Math.round(hikeShare * 100) + " % du temps : c'est une compétence, pas un aveu d'échec. Marche vite, mains sur les cuisses ou " + (poles ? "avec les bâtons (poussée complète, buste légèrement penché)" : "bras actifs") + ", rythme cardiaque soutenu. Tu iras plus vite en marchant bien qu'en courant mal. Termine par 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente." + nightCue, det: "",
         steps: [B({ durationMin: P(40, 85), gradient: "up", zone: "tr.hike", dplusM: upShare(0.3), mode: "hike", poles })],
         ...({ plainBody: true } as object) } as V1Session);
     } else {
       // 12. FOOTING PLAT RÉCUP — aucun D+ assumé
-      S2.push({ d: "rn", name: "Footing plat + renfo excentrique", note: "Volume facile sur terrain PLAT et souple : aucun dénivelé, aucune technique. C'est le volume qui construit l'aérobie sans ajouter de casse musculaire" + (fasciaInj ? " — et sur terrain souple, ton fascia a besoin de ça" : "") + ". Puis 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes contrôlées, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente, et elle se construit dès maintenant.", det: "",
+      S2.push({ d: "rn", name: "Footing plat + renfo excentrique", note: "Volume facile sur terrain PLAT et souple : aucun dénivelé, aucune technique. C'est le volume qui construit l'aérobie sans ajouter de casse musculaire" + (fasciaInj ? " — et sur terrain souple, ton fascia a besoin de ça" : "") + ". Puis 20 min de renfo EXCENTRIQUE (squats descendants lents 5 s, fentes contrôlées, mollets sur une marche) : c'est la protection n°1 des cuisses contre la descente, et elle se construit dès maintenant." + nightCue, det: "",
         steps: [B({ durationMin: P(35, 65), gradient: "flat", zone: "tr.flat", mode: "run", surface: fasciaInj ? "sentier" : "route" })],
         ...({ plainBody: true } as object) } as V1Session);
     }
@@ -157,7 +188,7 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
         steps: [B({ durationMin: P(45, 90), gradient: "rolling", zone: "tr.easyup", dplusM: upShare(0.25), dmoinsM: Math.round(upShare(0.25) * downFactor), mode: "run_hike", poles })],
         ...({ plainBody: true } as object) } as V1Session);
     } else {
-      S2.push({ d: "rn", name: "Footing récup" + (ankleInj ? " + proprioception" : ""), note: "Récupération active à plat : les jambes tournent, zéro intensité, zéro dénivelé. Puis 15-20 min de renfo excentrique si tu ne l'as pas fait cette semaine." + (ankleInj ? " Puis 15 min de proprioception (équilibre sur une jambe, yeux fermés, coussin instable) : c'est ce qui protège ta cheville sur terrain technique." : ""), det: "",
+      S2.push({ d: "rn", recovery: true, name: "Footing récup" + (ankleInj ? " + proprioception" : ""), note: "Récupération active à plat : les jambes tournent, zéro intensité, zéro dénivelé. Puis 15-20 min de renfo excentrique si tu ne l'as pas fait cette semaine." + (ankleInj ? " Puis 15 min de proprioception (équilibre sur une jambe, yeux fermés, coussin instable) : c'est ce qui protège ta cheville sur terrain technique." : ""), det: "",
         steps: [B({ durationMin: P(22, 35), gradient: "flat", zone: "tr.easyup", mode: "run", surface: "route" })],
         ...({ plainBody: true } as object) } as V1Session);
     }

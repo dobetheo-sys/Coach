@@ -18,6 +18,10 @@ export interface RawStep {
   reps?: number;
   zone?: string | null;
   recoveryText?: string;
+  /** R3-final — la durée de récupération est une DONNÉE portée par le step. L'auditeur la lit,
+   *  il ne la déduit plus d'un libellé : c'est le générateur qui sait combien dure « la descente
+   *  marchée » entre deux répétitions de côte. */
+  recoveryMin?: number;
   leg?: "bike" | "run";
   d?: string;
   // R7 TRAIL — l'auditeur doit pouvoir MESURER les deux axes verticaux, sinon il ne peut
@@ -160,7 +164,13 @@ function segmentSwim(segRaw: string): { meters: number; recoveryMin: number; par
   return { meters, recoveryMin, parsed: parsedAny || meters > 0 };
 }
 
-/** Récup inter-blocs depuis recoveryText V1.5 ("2min trot", "15-20s", "repos libre…") en minutes. */
+/**
+ * Récup inter-blocs déduite d'un LIBELLÉ. Réservée au chemin TEXTE (plans sans steps : le
+ * générateur legacy gelé, un plan restauré d'une ancienne version). Le chemin structuré ne
+ * l'appelle plus : il lit `recoveryMin`, un nombre posé à la construction du step.
+ * `recoveryMinFromText` ne peut donc plus renvoyer 0 en silence sur une séance à répétitions —
+ * c'est ce silence qui coûtait 1 740 récupérations non comptées (R3-final).
+ */
 function recoveryMinFromText(txt: string | undefined): number {
   if (!txt) return 0;
   const asMin = txt.match(/(\d+)(?:-(\d+))?\s*min(\d{2})?/);
@@ -198,14 +208,30 @@ export function sessionLoadFromSteps(s: RawSession, refs: AthleteRefs): SessionL
   for (const b of bodies) {
     bodyMin += stepMinutes(b, s.d, refs);
     const reps = b.reps || 1;
-    if (reps > 1) recovery += recoveryMinFromText(b.recoveryText) * (reps - 1);
+    if (reps > 1) {
+      // `recoveryMin` est la source de vérité (R3-final). Le repli sur le libellé ne sert qu'aux
+      // plans que la bibliothèque actuelle n'a pas construits : le générateur legacy GELÉ du
+      // monolithe (audité par `audit:v1`) et un plan restauré d'une version antérieure. Sans lui,
+      // l'auditeur cessait de voir la récupération de tout le périmètre legacy — l'inverse exact
+      // du but. Et quand le repli ne trouve rien non plus, il le DIT au lieu de compter 0.
+      const rec = b.recoveryMin ?? recoveryMinFromText(b.recoveryText);
+      if (!rec && b.recoveryText) flags.push("récupération non quantifiée sur « " + s.name + " » (« " + b.recoveryText + " ») : la charge de cette séance est SOUS-ESTIMÉE");
+      recovery += rec * (reps - 1);
+    }
     if ((b.d || s.d) === "sw" && b.distanceM) meters += (b.reps || 1) * b.distanceM;
   }
   let auxMin = 0;
   for (const st of steps) {
     if (st.role === "body") continue;
     if (st.role === "warmup" && st.durationMin != null) {
-      auxMin += Math.min(st.durationMin, 25, Math.max(3, Math.round(bodyMin) || st.durationMin));
+      // Le clamp d'échauffement est la SEULE valeur d'un plan que l'auditeur ne peut pas
+      // recalculer depuis les champs bruts : elle dépend du corps de séance, et la formule a
+      // bougé (C13 en V1.5, C13c depuis). La rejouer ici en faisait une seconde définition,
+      // qui a fini par diverger — un échauffement prescrit 10 min était compté 8 dès que le
+      // corps en faisait 8. `_min` est la valeur RENDUE, donc celle que l'athlète lit et que
+      // l'export publie : c'est elle qu'on mesure. Le rejeu ne sert plus que de repli pour un
+      // plan non rendu (le générateur legacy gelé du monolithe passe par là).
+      auxMin += st._min != null ? st._min : Math.min(st.durationMin, 25, Math.max(3, Math.round(bodyMin) || st.durationMin));
     } else {
       auxMin += stepMinutes(st, s.d, refs);
     }
@@ -238,6 +264,14 @@ export function sessionLoadFromSteps(s: RawSession, refs: AthleteRefs): SessionL
 /** Charge d'une séance : chemin structuré V1.5 si steps présents, sinon parsing texte (endurabuild-3). */
 export function sessionLoad(s: RawSession, refs: AthleteRefs = DEFAULT_REFS): SessionLoad {
   if (s.steps && s.steps.length > 0 && s.d !== "rs") return sessionLoadFromSteps(s, refs);
+  // R3-final — UN JOUR DE REPOS NE SE MESURE PAS EN LISANT SA DESCRIPTION. Un « Repos + renfo
+  // excentrique » décrit des séries ; le parseur de texte y trouvait 23 minutes que le
+  // générateur comptait 0. Les deux lectures divergeaient donc sur des journées qui, par
+  // construction, ne portent aucune charge d'endurance — et l'écart tombait exactement sur les
+  // semaines de récupération, où il faisait basculer la comparaison avec la semaine précédente.
+  // Même défaut que la récupération inter-blocs, un cran plus loin : de la prose servait de
+  // donnée. Le type de la séance fait foi.
+  if (s.d === "rs") return { minutes: 0, meters: null, recoveryMin: 0, confidence: "rest", flags: [], generatorMin: s.min };
   return sessionLoadFromText(s);
 }
 
@@ -251,6 +285,19 @@ export interface IntensitySplit {
 }
 const HARD_SUFFIX = [".vo2", ".thr", ".speed", ".css"];
 const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
+/**
+ * D10-6 — zones TRAIL (R7). Elles ne portent aucun des suffixes ci-dessus : `tr.vam` et
+ * `tr.flatthr` tombaient donc en « facile », et la répartition 80/20 comme le garde-fou de
+ * polarisation étaient AVEUGLES sur tout le trail (100% de facile mesuré sur les 27 profils).
+ * Classement par ce que l'effort coûte vraiment :
+ *   dur    — VAM (quasi maximal), seuil ascensionnel, seuil sur plat
+ *   modéré — allure de course en montée (tenable longtemps, mais loin d'être facile)
+ *   facile — marche rapide, montée souple, footing plat : de l'endurance, et c'est le but
+ * La DESCENTE n'entre pas ici : sa charge est excentrique, mesurée par l'axe D− (T2b),
+ * pas par l'intensité cardiaque — la compter « dure » ferait doublon avec son propre plafond.
+ */
+const TRAIL_HARD = ["tr.vam", "tr.asc", "tr.flatthr"];
+const TRAIL_MOD = ["tr.climb"];
 export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS): IntensitySplit {
   const out: IntensitySplit = { easyMin: 0, modMin: 0, hardMin: 0 };
   if (!s.steps || !s.steps.length || s.d === "rs") {
@@ -270,15 +317,21 @@ export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS):
     }
     const zone = typeof st.zone === "string" ? st.zone : "";
     // Brick : legs classés par leur zone (bk.rp = modéré) ; le leg CAP « allure cible » = modéré.
-    const cls = HARD_SUFFIX.some((z) => zone.endsWith(z))
+    // Le leg COURSE d'un enchaînement compte « modéré » quand il n'a PAS de zone explicite :
+    // c'est le cas du brick tri (« allure cible » implicite). Quand une zone est déclarée, elle
+    // prime — sinon les segments de course d'un swimrun, explicitement en endurance, seraient
+    // comptés modérés et la répartition d'intensité tomberait à 61 % de facile (mesuré) sur un
+    // plan qui est en réalité polarisé. La zone déclarée est toujours plus précise que l'indice.
+    const runLegNoZone = st.leg === "run" && !zone;
+    const cls = TRAIL_HARD.includes(zone) || HARD_SUFFIX.some((z) => zone.endsWith(z))
       ? "hard"
-      : MOD_SUFFIX.some((z) => zone.endsWith(z)) || st.leg === "run"
+      : TRAIL_MOD.includes(zone) || MOD_SUFFIX.some((z) => zone.endsWith(z)) || runLegNoZone
         ? "mod"
         : "easy";
     if (cls === "hard") out.hardMin += stMin;
     else if (cls === "mod") out.modMin += stMin;
     else out.easyMin += stMin;
-    if (reps > 1) out.easyMin += recoveryMinFromText(st.recoveryText) * (reps - 1); // la récup est facile
+    if (reps > 1) out.easyMin += (st.recoveryMin ?? recoveryMinFromText(st.recoveryText)) * (reps - 1); // la récup est facile
   }
   return out;
 }

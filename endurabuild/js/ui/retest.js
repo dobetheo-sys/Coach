@@ -17,20 +17,30 @@ const TYPES = {
   ftp: { label: "FTP (vélo)", unit: "W", disc: "bike", parse: (v) => parseInt(v) || 0, fmt: (v) => Math.round(v) + " W", better: (nu, old) => nu > old },
   thrPace: { label: "Allure seuil (course)", unit: "min:s /km", disc: "run", parse: parseTime, fmt: fmtSec, better: (nu, old) => nu < old },
   css: { label: "CSS (natation)", unit: "min:s /100m", disc: "swim", parse: parseTime, fmt: (v) => fmtSec(v).replace("/km", "/100m"), better: (nu, old) => nu < old },
+  // R12.2 — la VAM était la seule référence sans protocole écrit : `retestTypes` la déclarait
+  // déjà pour le trail, mais l'UI la filtrait faute de test. Elle entre ici, et le cycle
+  // « boss fight » existant fonctionne sans autre modification.
+  vam: { label: "VAM (trail)", unit: "m/h", disc: "trail", parse: (v) => parseInt(v) || 0, fmt: (v) => Math.round(v) + " m/h", better: (nu, old) => nu > old },
 };
 function parseTime(v) { const m = String(v || "").split(":"); return m.length === 2 ? (+m[0]) * 60 + (+m[1]) : NaN; }
 function fmtSec(s) { return Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0") + " /km"; }
 
 export function typesForSport(sport) {
-  if (sport === "tri") return ["css", "ftp", "thrPace"];
-  if (sport === "bike") return ["ftp"];
-  if (sport === "swim") return ["css"];
-  return ["thrPace"];
+  // R10 phase 1 — la liste vient du REGISTRE DE SPORTS (EBV2.sports) : l'UI ne recopie plus
+  // ce que chaque sport teste. Un sport ajouté au moteur est complet ici sans y toucher.
+  // Les types affichables restent filtrés par TYPES (un protocole non écrit ne s'affiche pas).
+  const reg = globalThis.EBV2 && EBV2.sports && EBV2.sports[sport];
+  const known = reg ? reg.retestTypes.filter((t) => TYPES[t]) : [];
+  return known.length ? known : ["thrPace"]; // repli : l'allure seuil se teste dans tous les sports
 }
 function protocolFor(type) {
   const reg = globalThis.EBV2 && globalThis.EBV2.disciplines;
   const d = reg && reg[TYPES[type].disc];
-  return d ? d.zonesSource.protocol : "";
+  if (!d) return "";
+  // R12.2 — le trail a DEUX références : l'allure seuil sur plat (GAP) et la VAM (verticale).
+  // Le protocole affiché doit être celui du test demandé, pas celui de la discipline.
+  if (TYPES[type].unit === "m/h" && d.verticalSource) return d.verticalSource.protocol;
+  return d.zonesSource.protocol;
 }
 
 // ---- Planification (carte Profil) ----
@@ -73,7 +83,7 @@ export function retestBannerHTML(todayISO) {
   const steps = protocolFor(r.type).split(/(?<=\.)\s+/).map((s, i) => '<div style="margin:4px 0"><b>' + (i + 1) + ".</b> " + s + "</div>").join("");
   return '<div class="card" style="border-color:#9b72ff"><div class="eyebrow" style="background:#9b72ff">🥊 Jour de retest — ' + T.label + "</div>"
     + '<div class="why">Un test n’est ni réussi ni raté : il MESURE. Échauffe-toi sérieusement, exécute, note le résultat.</div>'
-    + '<div style="font-size:13px;margin-top:6px">' + steps + "</div>"
+    + '<div style="font-size:var(--fs-md);margin-top:6px">' + steps + "</div>"
     + '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">'
     + '<input type="text" id="rtResult" placeholder="Résultat (' + T.unit + ')" style="flex:1;min-width:130px">'
     + '<button class="btn gold" id="rtSubmit" type="button">Valider le retest</button></div>'

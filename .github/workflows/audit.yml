@@ -23,6 +23,7 @@ jobs:
       - run: npm run demo:repair
       - run: npm run demo:readiness
       - run: npm run demo:fit
+      - run: npm run demo:measured
       - run: npm run demo:nutrition
       - run: npm run demo:retention
       # Le bundle EBV2 committé dans le HTML doit correspondre aux sources src/
@@ -31,6 +32,40 @@ jobs:
       # RÉGRESSION (test attendu vert qui échoue). La dette connue ne casse pas la CI —
       # c'est le but : elle documente l'écart sans bloquer le travail.
       - run: npm run audit:v6
+      # Banc externe multi-sport (v7) : compare le plan émis aux PROMESSES, pas à l'auditeur
+      # interne. Budget par check dans scripts/runAuditV7.mjs (0 = garde-fou définitif).
+      - run: npm run audit:v7
+      # R11 — contrat d'ENTRÉE : 551 entrées fausses doivent tomber en refus MOTIVÉ, en
+      # « sans effet », ou en dérive ANNONCÉE. Zéro dérive silencieuse, zéro crash non typé.
+      - run: npm run audit:amont
+      # R13 — banc du handoff standalone-4 : 24 critères (âge/bornes, CSS print, nage tri
+      # mono-séance, semaine de course, épaule, phases plafonnées) + non-régressions.
+      # Le standalone n'existe pas en CI : les contrôles R13.2 passent en SKIP assumé.
+      - run: npm run audit:r13
+      # R14 — banc de la PRÉDICTION PROJETÉE (16 critères) : contrat `projected`, adhérence
+      # en fenêtre glissante, gain plafonné et saturant, incertitude bornée, pacing JAMAIS
+      # projeté (P6, la règle de sécurité du chapitre), et les deux non-régressions qui
+      # verrouillent la prédiction « forme actuelle ».
+      - run: npm run audit:r14
+      # R14.1 — addendum correctif : le plafond de gain s'indexe sur la DISTANCE AU POTENTIEL
+      # (références mesurées), plus sur l'ancienneté ; fourchette asymétrique ; vélo en deux
+      # lignes ; levier poids sous gardes dures. Périme R14.4 et R14.6-A/B du banc R14.
+      - run: npm run audit:r14.1
+      # R15 — chapitres MOTEUR du handoff de revue du registre : relief vélo dans la cible
+      # d'intensité (O-2), plancher et déverrouillage de la semaine de course, et éligibilité
+      # âge × format (un mineur ne prépare pas douze mois une épreuve interdite à l'inscription).
+      - run: npm run audit:r15
+      # R11.8 — banc de SENSIBILITÉ : toute réponse du questionnaire doit modifier le plan.
+      # Une clé inerte fait échouer la CI — c'est ce qui empêche `cycle_sync` et `dispo` de
+      # redevenir des cases à cocher sans effet.
+      - run: npm run audit:sensibilite
+      # R12 — le chemin de l'athlète qui ne connaît AUCUNE de ses références (le cas majoritaire
+      # d'une V1) : 0 séance sans repère exécutable, aucun adjectif auto-déclaré ne pilote un
+      # chiffre, aucune référence sans chemin d'acquisition dans l'outil.
+      - run: npm run audit:public
+      # Golden master : 814 plans photographiés, détection d'écart au bit près. Les empreintes
+      # sont versionnées ; tout changement de plan doit être VOULU et recapturé explicitement.
+      - run: npm run golden:verify
 
   # E2E navigateur : les smokes de la PWA (check-in, R4, rétention, améliorations)
   # tournent dans un vrai Chromium — Playwright est une devDependency de TEST

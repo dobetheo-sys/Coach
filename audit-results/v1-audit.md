@@ -7,10 +7,10 @@ Seuils : sur-prescrit > 1.4, sous-prescrit < 0.5, alerte séance longue > 55% de
 
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Récup+lourde | Longue >55% | Sans volume/plan | Couverture | Score moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| tri | 108 | 1.02 | 0.96–1.05 | 0 | 0 | 0 | 0.39 | 0 | 0 | 0.0 | 100% | 99 |
-| run | 135 | 1.13 | 1.09–1.19 | 0 | 0 | 0 | 0.38 | 0 | 0 | 0.0 | 100% | 100 |
-| bike | 135 | 1.09 | 1.07–1.12 | 0 | 0 | 0 | 0.41 | 0 | 0 | 0.0 | 100% | 100 |
-| swim | 108 | 0.77 | 0.46–1.13 | 0 | 20 | 102 | 0.47 | 0 | 0 | 0.0 | 100% | 88 |
+| tri | 108 | 0.98 | 0.92–1.00 | 0 | 0 | 0 | 0.40 | 0 | 12 | 0.0 | 100% | 96 |
+| run | 135 | 0.99 | 0.97–1.05 | 0 | 0 | 0 | 0.33 | 0 | 0 | 0.0 | 100% | 99 |
+| bike | 135 | 1.00 | 0.97–1.00 | 0 | 0 | 0 | 0.43 | 0 | 0 | 0.0 | 100% | 99 |
+| swim | 108 | 0.97 | 0.92–1.00 | 0 | 0 | 0 | 0.44 | 0 | 0 | 0.0 | 100% | 98 |
 
 ## Règles d'acceptation (spec « audit 2 »)
 
@@ -22,19 +22,19 @@ Seuils : sur-prescrit > 1.4, sous-prescrit < 0.5, alerte séance longue > 55% de
 
 ## Règles du manifeste (note.md)
 
-- Saut >+10% de la courbe déclarée entre semaines de charge : **0** combinaisons en échec
-- Saut >+25% de volume réel (métrique audit) : **0** en échec (sauts +15–25% tolérés comme bruit de métrique : 3 combos concernés)
+- Saut >+10% de la courbe déclarée entre semaines de charge : **27** combinaisons en échec
+- Saut >+25% de volume réel (métrique audit) : **0** en échec (sauts +15–25% tolérés comme bruit de métrique : 17 combos concernés)
 - Deux longues CAP consécutives : **0** en échec
 - Sortie longue CAP >3h pour un débutant : **0** en échec
 - Séance piscine <750m pour un non-débutant : **0** en échec
 - Séance sans objectif expliqué (Pourquoi/Bénéfice) : **0** en échec
-- Répartition des intensités : part facile <70% : **0** en échec (médiane 83% de temps facile)
+- Répartition des intensités : part facile <70% : **0** en échec (médiane 84% de temps facile)
 
-Recoupement d'estimateurs : écart médian |nos minutes − s.min du générateur| par plan, médiane globale 0.0min (l'écart attendu vient de la récup inter-blocs, que le générateur ne compte pas).
+Recoupement d'estimateurs : écart médian |nos minutes − s.min du générateur| par plan, médiane globale 0.0min (R5.6a : la récup inter-blocs est désormais comptée des DEUX côtés — les deux estimateurs mesurent la même séance, l'écart attendu est nul).
 
 ## Pires cas (ratio pic le plus extrême par sport)
 
-- **tri** : S/ancien/debutant/competition → ratio 1.06 (déclaré 6.4h, prescrit 6.8h), longue 27%
-- **run** : 5k/confirme/debutant/competition → ratio 1.25 (déclaré 3.3h, prescrit 4.1h), longue 33%
-- **bike** : crit/reprise/debutant/finir → ratio 1.16 (déclaré 4.0h, prescrit 4.6h), longue 31%
-- **swim** : fond/ancien/inter/competition → ratio 0.36 (déclaré 10.0h, prescrit 3.6h), longue 26%
+- **tri** : 70.3/confirme/debutant/finir → ratio 0.90 (déclaré 7.1h, prescrit 6.4h), longue 55%
+- **run** : 10k/ancien/inter/plaisir → ratio 0.90 (déclaré 4.0h, prescrit 3.6h), longue 24%
+- **bike** : crit/ancien/debutant/finir → ratio 0.94 (déclaré 6.5h, prescrit 6.1h), longue 24%
+- **swim** : sprint/confirme/debutant/competition → ratio 0.86 (déclaré 1.0h, prescrit 0.9h), longue 32%

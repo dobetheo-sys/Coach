@@ -10,7 +10,7 @@ La vue plan de la PWA est réorganisée en **4 onglets**, barre fixe en bas d'é
 | 📋 Profil | `js/ui/tab-profile.js` | Résumé des réponses, références éditables (FTP / allure seuil / CSS / volume max / séances max), **journal d'évolution horodaté** |
 | 🗓 Plan | `js/ui/tab-plan-general.js` | Bandeau « ce qui pilote ton plan », phases, barres de volume, calendrier (3 premières semaines + dernière, dépliable), exports |
 | 📈 Avancement | `js/ui/tab-progress.js` | Charge CTL/ATL/TSB + compliance, régularité/streak/badges, **prédiction de course (déplacée ici)**, historique prévu vs réel, intensités 80/20, décisions du moteur |
-| 📅 Semaine | `js/ui/tab-week.js` | **Onglet par défaut** — uniquement la semaine en cours, coche des séances (○→✓), « Forme du jour » au plus près de l'action |
+| 📅 Semaine (RETIRÉ en R16.9, fondu dans 🗓 Plan) | `js/ui/tab-week.js` (supprimé) | **Onglet par défaut** — uniquement la semaine en cours, coche des séances (○→✓), « Forme du jour » au plus près de l'action |
 
 Le conteneur `js/ui/tabs.js` gère la navigation et l'état de l'onglet actif — zéro
 logique métier. `plan-view.js` garde les calculs partagés (`loadSeries`,
@@ -61,7 +61,7 @@ instrumenté par un compteur, puis 8 changements d'onglet (2 tours complets) →
 - **Mode 10 jours (`use10`) vérifié de bout en bout** dans la vue à onglets : marqueurs
   de cycle C×J×, case « aujourd'hui » surlignée, semaine courante correcte —
   11/11 assertions Chromium (profil vélo, dispo quotidienne).
-- **Célébrations « moment »** (`momentHTML` dans `tab-week.js`) : bannière ponctuelle le
+- **Célébrations « moment »** (`momentHTML`, dans `session-life.js` depuis R16.9) : bannière ponctuelle le
   jour de course, la veille de course (courses intermédiaires `plan.races` ET course
   principale `race_date`), et le premier jour d'affûtage. Silencieux les jours ordinaires,
   dégrade proprement si le plan n'a pas de dates (repli legacy).

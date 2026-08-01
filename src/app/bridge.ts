@@ -5,14 +5,20 @@
  */
 import type { AthleteProfile, V1Plan, V1Step } from "../engine/types.ts";
 import { intensitySplit } from "../engine/loadModel.ts";
-import { parsePaceSec } from "../engine/constraintMatrix.ts";
+import { parsePaceSec, HISTORY_CAPS, UTIL, MARGIN, MIN_WEEKS } from "../engine/constraintMatrix.ts";
 import { trailObjective, TRAIL_HISTORY_CAPS, TRAIL_UTIL } from "../engine/trailModel.ts";
+import { swimrunObjective } from "../sports/swimrun/objective.ts";
+import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
+import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
-import { predictRace, type Prediction } from "../engine/predictor.ts";
+import { predictRace, courseProfileOf, type Prediction } from "../engine/predictor.ts";
+import { adherenceWindow, taperIsConform, margeOf } from "../engine/projection.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
-import { importFitBytes } from "../readiness/fitParser.ts";
+import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
+import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
+import { validateAnswers, assertPlanIsAPlan, EBInputError, ANSWER_SCHEMA, FORMATS_BY_SPORT } from "../engine/answerSchema.ts";
 import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
 import { dailyEnergy, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
 import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
@@ -55,8 +61,28 @@ export function completedFromDone(plan: V1Plan, answers: AppAnswers, beforeDate:
 
 /** Génère le plan via le moteur V2 (raisonne → génère → audite → répare) — forme V1Plan. */
 export function buildPlanV2(sport: string, answers: AppAnswers): V1Plan & { _v2?: V2PlanMeta } {
-  const res = generateAudited(toProfile(sport, answers));
+  // R11 — LE CONTRAT D'ENTRÉE, avant toute génération. Trois sorties possibles et jamais une
+  // quatrième : refus motivé (`EBInputError`), avertissement porté par le plan, ou défaut
+  // journalisé. Rendre un plan sans qu'aucun canal ne se soit exprimé était le défaut : le
+  // moteur produisait un Ironman à 30 min de pic sur une saisie illisible, sans un mot.
+  // Le SPORT est la première entrée à valider : un sport absent du bundle (R12 §0) doit donner
+  // un refus lisible, pas une erreur de symbole manquant au fond du moteur.
+  if (!knownSports().includes(sport)) {
+    throw new EBInputError("sport", sport, knownSports().join(" / "),
+      "Le sport « " + sport + " » n'est pas disponible dans cette version. Sports proposés : " + knownSports().join(", ") + ".");
+  }
+  const vr = validateAnswers(sport, answers as Record<string, unknown>, localTodayISO());
+  const res = generateAudited(toProfile(sport, vr.answers as unknown as AppAnswers));
   const plan = res.plan as V1Plan & { _v2?: V2PlanMeta };
+  // R11.6 — un plan vide n'est pas un plan : le contrôle ne peut se faire qu'ICI, une fois
+  // qu'on sait ce qui a réellement été produit.
+  assertPlanIsAPlan(sport, vr.answers.format as string | undefined, plan.weeks as never);
+  // Les contradictions et les défauts appliqués REJOIGNENT les canaux existants : ils
+  // s'affichent là où l'athlète regarde déjà (« Pourquoi ce plan », décisions du moteur).
+  // Les avertissements de SÉCURITÉ du moteur (barrière horaire, prérequis, médical) restent en
+  // tête : ceux du contrat d'entrée sont des remarques de saisie, ils passent après.
+  if (vr.warnings.length) res.warnings.push(...vr.warnings);
+  if (vr.defaults.length) res.decisions.push(...vr.defaults);
   // Répartition des intensités par semaine (dashboard « manifeste ~80/20 »)
   const refs = { cssSecPer100m: 130, thrPaceSecPerKm: 330 };
   let cE = 0, cM = 0, cH = 0;
@@ -324,6 +350,57 @@ export function avatarV2(plan: V1Plan, answers: AppAnswers, todayISO: string): A
   };
 }
 
+/**
+ * R17.2 — LE TROISIÈME CANAL : LA FORME PHYSIQUE, MONTRÉE SANS RIEN RETIRER.
+ *
+ * Le brief avatar (AV3/AV4) voulait piloter l'ÉQUIPEMENT par un palier de performance. Refusé,
+ * et la raison tient en une phrase : une allure seuil monte ET DESCEND. Une blessure, une
+ * maladie, une grossesse, une charge de travail, ou simplement l'âge la font baisser — et
+ * l'athlète verrait son avatar se déshabiller au moment précis où il a le plus besoin d'être
+ * encouragé à revenir. L'équipement reste donc la RÉGULARITÉ (cumulatif, jamais décroissant,
+ * priorité n°3 du manifeste).
+ *
+ * Mais l'information de performance est réelle et l'athlète a le droit de la voir. Elle a
+ * donc son propre canal, construit pour être RÉVERSIBLE SANS PERTE : un repère qui se
+ * DÉPLACE. Il peut reculer sans que rien ne disparaisse — c'est une position sur une échelle,
+ * pas une possession qu'on retire.
+ *
+ * La source n'est PAS un nouveau calcul : c'est `margeOf` (R14.1), déjà sourcé (profil de
+ * puissance Coggan pour le vélo, heuristiques assumées pour course et nage) et déjà DÉCALÉ
+ * par sexe et par âge — donc un master de 55 ans n'est pas jugé contre une référence de
+ * 25 ans, et une femme n'est pas jugée contre une référence masculine. On décale la
+ * RÉFÉRENCE, jamais la personne.
+ *
+ * `null` quand la référence n'est pas mesurée : pas de palier par défaut, pas de zéro. On ne
+ * montre pas une position qu'on n'a pas mesurée.
+ */
+export interface PerfTier { tier: number; disciplines: Record<string, number>; }
+const DISC_TO_REF: Record<string, "ftp" | "thrPace" | "css"> = { rn: "thrPace", sw: "css", bk: "ftp" };
+export function perfTierV2(sport: string, answers: AppAnswers): PerfTier | null {
+  const parse = parsePaceSec;
+  const refs = {
+    ftp: answers.ftp_known === "oui" ? parseInt(String(answers.ftp || "")) || 0 : 0,
+    thrPace: answers.pace_known === "oui" ? parse(answers.pace, "run") : 0,
+    css: answers.css_known === "oui" ? parse(answers.css, "swim") : 0,
+  };
+  const poids = parseFloat(String(answers.weight || "")) || null;
+  const age = parseInt(String(answers.age || "")) || null;
+  const sexe = (answers.sex as string) || null;
+  const discs = knownSports().includes(sport) ? sportModule(sport).disciplines : [];
+  const out: Record<string, number> = {};
+  for (const d of discs) {
+    const cle = DISC_TO_REF[d];
+    if (!cle) continue;
+    const marge = margeOf(cle, refs, poids, sexe, age);
+    if (marge == null) continue;
+    // marge 1.0 = loin du potentiel · 0.12 = proche. Le palier est l'inverse, sur 1-10.
+    out[d] = Math.max(1, Math.min(10, Math.round((1 - marge) * 10) || 1));
+  }
+  const vals = Object.values(out);
+  if (!vals.length) return null; // aucune référence mesurée → aucun palier, pas un palier 1
+  return { tier: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length), disciplines: out };
+}
+
 /** Prédiction de course — refs athlète + fiabilité issue du suivi réel (streak/charge). */
 export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { _v2?: V2PlanMeta }): Prediction {
   const { reasoned, plan: p } = plan ? { reasoned: null, plan } : generatePlan(toProfile(sport, answers));
@@ -339,13 +416,107 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
   };
   const today = localTodayISO();
   const pg = progressV2(p, answers, today);
+  // ---- R14 — ENTRÉES DU PROJECTEUR (« où en seras-tu le jour J »).
+  // Trois données que le prédicteur n'avait jamais vues : le temps qui RESTE, ce qui a été
+  // RÉELLEMENT fait, et le journal de tests. Elles vivent ici parce que c'est le pont qui
+  // connaît le plan livré et les réponses de l'athlète — le prédicteur reste une fonction
+  // des références qu'on lui donne.
+  const horizonWeeks = weeksUntilRace(p, answers, today);
+  const tests = Array.isArray(answers.tests) ? (answers.tests as { type: string; value: number; date: string }[]) : [];
   return predictRace(sport, String(answers.format || ""), String(answers.intent || "") || undefined, finalRefs, {
     pctLoad: pg.pctLoad,
     streakWeeks: pg.streakWeeks,
-    courseProfile: String(answers.course_profile || "") || undefined, // R6 — profil du parcours (Profil)
+    // R6 — profil du parcours (Profil) · R14.3-a — résolveur UNIQUE, partagé avec le jour J :
+    // `course_profile` (le parcours visé) prime, `terrain` prend le relais à défaut.
+    courseProfile: courseProfileOf(answers as never),
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
+    swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,
+    // R14 P5 — le volume de COURSE hebdomadaire pilote l'exposant de Riegel.
+    runHoursPerWeek: sport === "run" ? parseFloat(String(answers.vol_max || "")) || undefined : undefined,
+    projection: horizonWeeks == null ? undefined : {
+      horizonWeeks,
+      level: String(answers.level || "") || undefined,
+      history: String(answers.history || "") || undefined,
+      adherence: adherenceWindow(p as never, (answers.done || {}) as Record<string, boolean>, today),
+      tests,
+      taperConform: taperIsConform(p as never),
+      refAgeWeeks: refAgeWeeks(tests, today),
+      raceDate: String(answers.race_date || "") || undefined,
+      // R14.1 P2bis — la MARGE se lit sur les références mesurées : elles montent donc jusqu'au
+      // projecteur, avec le poids (sans lui, pas de W/kg) et les décalages de bandes.
+      refs: finalRefs,
+      weightKg: parseFloat(String(answers.weight || "")) || null,
+      heightCm: parseFloat(String(answers.height || "")) || null,
+      sex: typeof answers.sex === "string" ? answers.sex : null,
+      age: parseInt(String(answers.age || "")) || null,
+      trainingStructure: String(answers.training_structure || "") || null,
+      // R14.1 P10 — dose-réponse : ce que le plan PRESCRIT face à ce que l'athlète fait déjà.
+      prescribedMeanH: prescribedMeanHours(p),
+      volRecentH: parseFloat(String(answers.vol_recent || "")) || null,
+      // R14.1 P9 — le levier poids n'existe que si l'athlète l'a demandé ET a saisi sa cible.
+      weightLeverAsked: answers.weight_lever === "oui",
+      weightTargetKg: parseFloat(String(answers.weight_target || "")) || null,
+      medicalFlag: answers.med_pain === "oui" || answers.med_dizzy === "oui" || answers.med_treat === "oui",
+    },
+    // R7 TRAIL — l'objectif rejoué avec une VAM et une allure à plat projetées : le prédicteur
+    // ne sait pas reconstruire un `TrailObjective`, il vit dans `trailModel`.
+    projectTrail: sport === "trail"
+      ? (gVam: number, gPace: number) => {
+        const prof = toProfile(sport, answers) as Record<string, unknown>;
+        const base = trailObjective(prof as never);
+        return trailObjective({ ...prof, vam_known: "oui", vam: String(Math.round(base.vam * (1 + gVam))),
+          pace_known: "oui", pace: secToPace(base.flatPaceSec / (1 + gPace)) } as never);
+      }
+      : undefined,
   });
+}
+
+/**
+ * R14.1 P10 — volume hebdomadaire moyen PRESCRIT sur les phases qui construisent (dev, spéc,
+ * pic). L'affûtage et la base sont exclus à dessein : le premier réduit par définition, le
+ * second n'est pas encore la dose du plan. C'est le rapport de ce chiffre au volume récent qui
+ * dit si le plan MONTE la charge ou la maintient — et un plan de maintien ne fait pas
+ * progresser autant, quoi qu'on affiche.
+ */
+function prescribedMeanHours(plan: V1Plan): number | null {
+  const w = plan.weeks.filter((x) => !x.isRecup && ["dev", "spec", "peak"].includes(String(x.phase && x.phase.id)));
+  if (!w.length) return null;
+  let min = 0;
+  for (const wk of w)
+    for (const d of wk.days)
+      for (const s of d.sessions) if (s.d !== "rs" && !s.race) min += s.min || 0;
+  return min > 0 ? min / 60 / w.length : null;
+}
+
+/** Secondes/km → « 4:50 » : le parseur d'allure est unique (E1/E2), son inverse doit l'être aussi. */
+function secToPace(secPerKm: number): string {
+  const s = Math.max(1, Math.round(secPerKm));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+
+/**
+ * R14 — L'HORIZON : semaines entre aujourd'hui et le jour J. La date de course prime (c'est
+ * l'échéance réelle) ; à défaut on prend la fin du plan. `null` = pas d'échéance connue, donc
+ * pas de projection — on ne projette pas vers une date qu'on ne connaît pas.
+ */
+function weeksUntilRace(plan: V1Plan, answers: AppAnswers, todayISO: string): number | null {
+  const rd = String(answers.race_date || "").trim();
+  let cible = /^\d{4}-\d{2}-\d{2}$/.test(rd) ? rd : "";
+  if (!cible) {
+    for (const w of plan.weeks) for (const d of w.days) if ((d as { date?: string }).date) cible = (d as { date?: string }).date as string;
+  }
+  if (!cible) return null;
+  const jours = (Date.parse(cible + "T00:00:00Z") - Date.parse(todayISO + "T00:00:00Z")) / 864e5;
+  if (!Number.isFinite(jours) || jours < 0) return null; // course passée : rien à projeter
+  return jours / 7;
+}
+
+/** P7 — âge (en semaines) de la référence la plus récente : un test d'il y a un an ne décrit plus personne. */
+function refAgeWeeks(tests: { date?: string }[], todayISO: string): number | null {
+  const dates = (tests || []).map((t) => Date.parse(String(t.date) + "T00:00:00Z")).filter((n) => Number.isFinite(n));
+  if (!dates.length) return null; // références déclarées sans date : on n'invente pas leur ancienneté
+  return Math.max(0, (Date.parse(todayISO + "T00:00:00Z") - Math.max(...dates)) / (7 * 864e5));
 }
 
 /** Estimation énergétique du jour (décision utilisateur 28/07/2026 — estimation, jamais
@@ -387,6 +558,7 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   predict: predictV2,
   badges: badgesV2,
   avatar: avatarV2,
+  perfTier: perfTierV2,
   adherence: adherenceV2,
   disciplines: DISCIPLINE_REGISTRY,
   // R7 — l'UI a besoin de la catégorie d'effort déduite et des plafonds trail pour
@@ -394,7 +566,40 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   // (une table de plafonds recopiée dans l'UI, c'est une table qui divergera).
   trailObjective: (answers: Record<string, unknown>) => trailObjective(toProfile("trail", answers)),
   trailCaps: { history: TRAIL_HISTORY_CAPS, util: TRAIL_UTIL },
+  // S10 — prérequis d'entrée swimrun : l'UI refuse un format long en dessous, et DIT pourquoi.
+  // C'est la priorité n°1 du manifeste (santé) dans un sport où l'on est loin du bord.
+  // R12 §0 — le module swimrun peut être ABSENT du bundle V1 : ces ponts le tolèrent au lieu
+  // de faire tomber tout l'objet `EBV2` au chargement.
+  swimrunPrereq: (answers: Record<string, unknown>) => (typeof swimrunPrereqBlock === "function" ? swimrunPrereqBlock(answers as { format?: string }) : ""),
+  swimrunObjective: (answers: Record<string, unknown>) => (typeof swimrunObjective === "function" ? swimrunObjective(toProfile("swimrun", answers)) : null),
+  // R10 phase 0 (§ R10.0.3) — SOURCE UNIQUE des plafonds de volume. L'UI en gardait une copie
+  // littérale (`capsBySport`/`utilBySport` dans steps.js) qui avait déjà DIVERGÉ : elle
+  // annonçait 8h/sem là où le moteur en applique 9 (vélo/route/reprise). Les règles
+  // pédagogiques expliquent des décisions : elles doivent lire les chiffres qui décident.
+  volumeCaps: { history: HISTORY_CAPS, util: UTIL, margin: MARGIN },
+  // R10 phase 1 — le REGISTRE DE SPORTS exposé à l'UI : elle n'a plus à savoir quel sport
+  // teste quoi (`typesForSport` recopiait la liste). Un sport ajouté au moteur devient
+  // automatiquement complet côté interface.
+  sports: Object.fromEntries(knownSports().map((id) => {
+    const m = sportModule(id);
+    return [id, { id: m.id, mainDiscipline: m.mainDiscipline, retestTypes: m.retestTypes, guards: m.guards }];
+  })),
+  // R11 — le schéma d'entrée est la SOURCE DE VÉRITÉ des domaines : l'UI doit générer ses
+  // options depuis lui, jamais l'inverse (tant qu'ils sont écrits deux fois, ils divergent).
+  answerSchema: ANSWER_SCHEMA,
+  // R12.6 — la NATURE de chaque question (vécue / mesurée / estimée) est exposée : c'est ce
+  // qui permet à un banc de vérifier qu'aucune question estimée ne pilote un chiffre.
+  formatsBySport: FORMATS_BY_SPORT,
+  minWeeks: MIN_WEEKS,
+  validateAnswers,
+  EBInputError,
   importFit: importFitBytes,
+  fitDerivedTests: FIT_DERIVED_TESTS,
+  // R6 §3 — l'adaptateur de données réalisées, exposé à l'UI. Le moteur ne connaît que
+  // l'instantané ; l'UI décide QUAND le rafraîchir (cadence = semaine de décharge).
+  measuredFromSessions,
+  measuredWeeklyHours,
+  arbitrateVolRecent,
   sessionNutrition: nutritionForSession,
   dailyEnergy: dailyEnergyV2,
   version: "v2-sprint9",

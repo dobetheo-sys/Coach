@@ -1,10 +1,9 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
-import { CATS, HEROS, PREMIUM_STEPS_DEF, RULE_CAT, SPORTS, VLAB } from "../config.js";
+import { CATS, HEROS, PREMIUM_STEPS_DEF, RULE_CAT, SPORTS, VLAB, VLAB_Q } from "../config.js";
 import { $, S, ebActivate, ebClear, ebSave, todayISO } from "../state.js";
 import { renderPlan } from "../ui/plan-view.js";
 import { hideTabs, invalidatePlan } from "../ui/tabs.js";
-import { buildPlan } from "../app.js";
 
 function opt(val,label){return '<button class="opt" data-val="'+val+'" type="button">'+label+'</button>';}
 function branch(id,cond,html){const el=$(id);if(!el)return;el.innerHTML=cond?html:"";if(cond)bindInputs(el);}
@@ -40,6 +39,17 @@ function evalRules(a, tier){
     if(a.terrain==="route") add("terrain","Terrain","Route — allure constante","Régularité d'allure, économie de course, travail de seuil et d'allure spécifique objectif.");
     else if(a.terrain==="piste") add("terrain","Terrain","Piste/mixte — vitesse","Travail de VMA et de vitesse pure, fractionné court de qualité.");
   }
+  if(sp==="swimrun"){
+    add("terrain","Discipline","Swimrun — le matériel et le terrain commandent","Volume planifié en TEMPS, jamais en kilomètres. Le terrain est celui du trail, la nage se fait en chaussures et en combinaison, et les transitions sont un poste de temps à part entière.");
+    add("transitions","Transitions","Un poste de temps, pas un détail","Ta course compte deux transitions par segment nagé. À 2 minutes l'unité, vingt transitions font quarante minutes — c'est le temps le plus facile à récupérer, et il s'entraîne.");
+    if(a.team_mode!=="solo") add("binome","Binôme","Effet de longe calculé","Le suiveur économise 15 à 20 % d'effort et n'a pas la charge de navigation ; attachée, la vitesse de l'équipe se rapproche de celle du nageur le plus rapide. C'est dans le calcul, pas dans un conseil.");
+    if(a.openwater_access==="aucun") add("ow2","Accès eau libre","Aucun — substitutions","Le plan remplace les swimruns par des enchaînements bassin ↔ course et le DIT : la navigation, la houle et le froid ne se substituent pas. Cale deux week-ends en eau libre avant ta course.");
+    if(!a.swimrun_swim_pace||!a.swimrun_run_pace) add("refs","Références","ESTIMÉES, pas mesurées","Tes allures sont dérivées de ton CSS et de ton allure route par des facteurs de repli. Un binôme à 6 min/km sur route se retrouve souvent autour de 8 min/km en tenue : fais le test en tenue complète, c'est lui qui rend la prédiction honnête.");
+  }
+  if(sp==="duathlon"){
+    add("terrain","Discipline","Duathlon — deux fois l'impact","Deux segments de course, dont un sur jambes entamées, et aucune séance dans l'eau pour absorber du volume sans impact : le plafond de jours d'appui est le garde-fou n°1 de ce plan, et la longue sortie se fait à vélo.");
+    add("brick","Enchaînements","Les DEUX sens travaillés","R1 → vélo (tu montes sur le vélo avec des jambes déjà entamées : la puissance tenable n'est pas celle d'un contre-la-montre frais) et vélo → R2 (le R2 est plus court et plus intense que la CAP d'un triathlon : on n'y gère pas, on y lutte).");
+  }
   if(sp==="bike"){
     if(a.terrain==="montagne") add("terrain","Parcours","Montagneux — le W/kg est roi","Force en côte systématique, poids stratégique, pacing montée discipliné, descentes techniques.");
     else if(a.terrain==="vallonne") add("terrain","Parcours","Vallonné — relances","Travail de force, pacing à puissance variable, gestion des bosses au compteur.");
@@ -70,20 +80,19 @@ function evalRules(a, tier){
     // DÉDUITE des données de la course (kv → ultra_long). Les chiffres viennent du moteur
     // (EBV2.trailCaps) pour qu'une seule table existe dans le projet.
     const trailCat = sp==="trail" ? (globalThis.EBV2&&EBV2.trailObjective ? EBV2.trailObjective(a).category : "long") : null;
-    const capsBySport={run:{reprise:{"5k":4,"10k":5,semi:6,marathon:8},confirme:{"5k":5,"10k":6,semi:8,marathon:10},ancien:{"5k":6,"10k":7,semi:9,marathon:12}},
-      bike:{reprise:{crit:6,route:8,cyclo:9,clm:7,gravel:11},confirme:{crit:8,route:11,cyclo:13,clm:10,gravel:15},ancien:{crit:10,route:14,cyclo:16,clm:12,gravel:20}},
-      swim:{reprise:{sprint:3,demifond:4,fond:5,ow:6},confirme:{sprint:5,demifond:6,fond:7,ow:9},ancien:{sprint:6,demifond:8,fond:10,ow:12}},
-      tri:{reprise:{S:6,M:8,"70.3":11,Full:15},confirme:{S:7,M:10,"70.3":13,Full:17},ancien:{S:8,M:12,"70.3":15,Full:19}}};
-    const utilBySport={run:{"5k":6,"10k":7,semi:9,marathon:12},bike:{crit:9,route:13,cyclo:15,clm:11,gravel:20},swim:{sprint:6,demifond:8,fond:10,ow:12},tri:{S:8,M:11,"70.3":14,Full:18}};
+    // R10 phase 0 (§ R10.0.3) — les plafonds viennent du MOTEUR, plus d'une copie locale.
+    // La copie avait divergé (8h affichées, 9h appliquées en vélo/route/reprise) : une règle
+    // qui explique une décision doit lire le chiffre qui décide, sinon elle raconte.
+    const vc = (globalThis.EBV2&&EBV2.volumeCaps) ? EBV2.volumeCaps : null;
     const tc = (globalThis.EBV2&&EBV2.trailCaps) ? EBV2.trailCaps : null;
     // Un sport ou un format inconnu ne doit JAMAIS casser le rendu des règles : repli documenté.
     const caps = trailCat
       ? (tc&&tc.history[trailCat] ? tc.history[trailCat][a.history] : null) || 11
-      : (capsBySport[sp]?.[a.history]?.[fmt] ?? 10);
+      : (vc?.history?.[sp]?.[a.history]?.[fmt] ?? 10);
     const util = trailCat
       ? (tc ? tc.util[trailCat] : null) || 13
-      : (utilBySport[sp]?.[fmt] ?? 12);
-    const decl=parseInt(a.vol_max), marg=(a.intent==="competition")?1.0:0.9;
+      : (vc?.util?.[sp]?.[fmt] ?? 12);
+    const decl=parseInt(a.vol_max), marg=(a.intent==="competition")?(vc?.margin?.competition ?? 1.0):(vc?.margin?.autres ?? 0.9);
     const raw=Math.min(decl,caps,util), fin=Math.round(raw*marg*10)/10;
     let lim = raw===decl?"ta disponibilité":(raw===util?"l'utilité du format":"ton plafond physiologique");
     add("volume","Volume en pic",fin+(sp==="swim"?"h (eau)":"h")+" max",
@@ -119,8 +128,8 @@ function evalRules(a, tier){
     add("renfo","Renforcement","Transversal 3 sports","Renfo tibial (course), gainage position (vélo), coiffe (nage). Pliométrie progressive si pas de blessure active.");
   }
 
-  if(a.weight_lever==="oui"&&a.weight) add("poids","Levier poids","Signalé — pas encore dans les séances","Paramètre de performance"+(sp==="bike"||sp==="run"?" (W/kg ou portage)":"")+", jamais une injonction. Aucun contenu nutritionnel n'est encore généré dans le plan : à travailler avec un professionnel.");
-  if(a.sex==="F"){ add("fer","Ferritine","Bilan 3×/an","Risque de carence en fer élevé en endurance féminine."); if(a.cycle_sync==="oui") add("cyclep","Périodisation menstruelle","Bientôt","Pas encore active dans le calcul du plan — on préfère te le dire plutôt que le laisser croire. En attendant, adapte l'intensité à ton ressenti selon ta phase."); }
+  if(a.weight_lever==="oui"&&a.weight) add("poids","Levier poids","Actif sur le plan","Paramètre de performance"+(sp==="bike"||sp==="run"?" (W/kg ou portage)":"")+", jamais une injonction. L'onglet 🥗 Nutrition estime ta dépense et ton ravitaillement d'effort ; il ne prescrit AUCUNE cible d'apport ni aucun régime — ça, c'est l'affaire d'un diététicien.");
+  if(a.sex==="F"){ add("fer","Ferritine","Bilan 3×/an","Risque de carence en fer élevé en endurance féminine."); if(a.cycle_sync==="oui") add("cyclep","Périodisation menstruelle","Active sur le placement","Sur une semaine majoritairement prémenstruelle, la SECONDE séance de qualité redevient facile — jamais les deux, et le volume de la semaine ne bouge pas. L'effet moyen de la phase sur la performance est faible et très variable d'une personne à l'autre : on touche au placement, pas à la charge. Ton ressenti reste le dernier mot, et la question est révocable."); }
   if(a.races==="oui") add("races","Courses intermédiaires","Hiérarchie A/B/C","Objectif C = on enchaîne. B = mini-affûtage. Récup placée juste après.");
   return R;
 }
@@ -131,7 +140,15 @@ function evalRules(a, tier){
 function curCfg(){return SPORTS[S.sport];}
 function buildFreeSteps(){
   const cfg=curCfg();
-  const fmtOpts=cfg.formats.map(f=>opt(f[0],f[1])).join("");
+  // R11.1 — le SCHÉMA D'ENTRÉE du moteur est la source de vérité des domaines. L'UI garde ses
+  // libellés (le moteur n'a que faire de « Ironman (3.8/180/42) »), mais la LISTE des valeurs
+  // vient de lui : deux listes écrites à deux endroits divergent toujours, et c'est ainsi
+  // qu'un format proposé ici a pu ne plus exister là-bas — en silence.
+  const allowed = (globalThis.EBV2 && globalThis.EBV2.formatsBySport && globalThis.EBV2.formatsBySport[S.sport]) || null;
+  const fmtList = allowed ? cfg.formats.filter(f=>allowed.includes(f[0])) : cfg.formats;
+  if (allowed && fmtList.length !== cfg.formats.length)
+    console.warn("EB: formats proposés absents du schéma moteur —", cfg.formats.filter(f=>!allowed.includes(f[0])).map(f=>f[0]));
+  const fmtOpts=fmtList.map(f=>opt(f[0],f[1])).join("");
   const steps=[
   {id:"intent",title:"L'intention",eyebrow:"Gratuit — Pourquoi",
    why:"La même cible se prépare différemment selon qu'on vise un chrono, la ligne d'arrivée, ou le plaisir.",
@@ -146,9 +163,39 @@ function buildFreeSteps(){
          +'<div class="q"><span class="q-label">Terrain de la course</span><div class="opts" data-key="race_technicity">'+opt("roulant","Roulant (pistes larges)")+opt("mixte","Mixte")+opt("technique","Technique (racines, cailloux)")+opt("alpin","Alpin (haute montagne)")+'</div></div>'
          +'<div class="q"><span class="q-label">Course de nuit ?</span><div class="opts" data-key="race_night">'+opt("non","Non")+opt("partielle","En partie")+opt("majoritaire","Majoritairement")+'</div></div>'
          +'<div class="q"><span class="q-label">Barrière horaire (h, optionnel)</span><input type="number" min="1" max="60" step="0.5" data-input="race_cutoff_h" placeholder="—"></div>'
+       : S.sport==="swimrun"
+       // R10 phase 3 — SWIMRUN (§R10.3.2) : le format ne sert que de valeurs par DÉFAUT. Ce
+       // qui dimensionne la préparation, ce sont la distance nagée, le NOMBRE DE SEGMENTS
+       // (donc de transitions) et la PLUS LONGUE NAGE — contrainte thermique et mentale.
+       ? '<div class="q"><span class="q-label">Quel format ?</span><div class="opts" data-key="format">'+fmtOpts+'</div></div>'
+         +'<div class="q"><span class="q-label">Les données de ta course</span><div class="q-sub">Laisse vide si tu ne les connais pas encore : on part des repères du format, et tu affines plus tard au Profil.</div><div class="row">'
+         +'<div class="q"><span class="q-label">Total nagé (m)</span><input type="number" min="200" max="20000" data-input="swim_total_m" placeholder="2600"></div>'
+         +'<div class="q"><span class="q-label">Total couru (km)</span><input type="number" min="1" max="120" step="0.1" data-input="run_total_km" placeholder="9.2"></div></div>'
+         +'<div class="row"><div class="q"><span class="q-label">D+ total (m)</span><input type="number" min="0" max="8000" data-input="race_dplus_m" placeholder="250"></div>'
+         +'<div class="q"><span class="q-label">Segments nagés</span><input type="number" min="1" max="60" data-input="segments_n" placeholder="10"></div></div>'
+         +'<div class="row"><div class="q"><span class="q-label">La plus longue nage (m)</span><div class="q-def">C\'est elle qui dimensionne ta prépa : thermiquement et mentalement.</div><input type="number" min="50" max="5000" data-input="longest_swim_m" placeholder="600"></div>'
+         +'<div class="q"><span class="q-label">Température d\'eau prévue (°C)</span><input type="number" min="4" max="30" data-input="water_temp_c" placeholder="16"></div></div>'
+         +'<div class="q"><span class="q-label">Solo ou binôme ?</span><div class="q-def">La plupart des épreuves se courent en binôme, attachés par une longe — et ça change toute la prescription.</div><div class="opts" data-key="team_mode">'+opt("binome","En binôme")+opt("solo","En solo")+'</div></div><div id="teamB"></div>'
+         +'<div class="q"><span class="q-label">Accès à l\'eau libre à l\'entraînement ?</span><div class="opts" data-key="openwater_access">'+opt("toute_annee","Toute l\'année")+opt("saisonnier","En saison seulement")+opt("aucun","Aucun")+'</div></div>'
+         +'<div class="q"><span class="q-label">Tu nages 30min (~1200m) sans t\'arrêter ?</span><div class="opts" data-key="swim_continuous">'+opt("oui","Oui")+opt("non","Pas encore")+'</div></div>'
+         +'<div class="q"><span class="q-label">Tu cours 30min en continu ?</span><div class="opts" data-key="run_continuous">'+opt("oui","Oui")+opt("non","Pas encore")+'</div></div><div id="prereqB"></div>'
        : '<div class="q"><span class="q-label">Quel objectif ?</span><div class="opts" data-key="format">'+fmtOpts+'</div></div>')
      +'<div class="q"><span class="q-label">Date (si connue)</span><input type="date" data-input="race_date"></div>';},
-   valid(a){return a.intent&&(S.sport==="trail" ? (a.race_distance_km&&a.race_dplus_m&&a.race_technicity&&a.race_night) : a.format);}},
+   branches(a){
+     if(S.sport!=="swimrun")return;
+     branch("teamB",a.team_mode!=="solo",'<div class="branch"><div class="q"><span class="q-label">Écart de niveau à la nage avec ton binôme (s/100m, optionnel)</span><div class="q-def">0 = même niveau. Sert à calculer l\'effet de longe : attachée, l\'équipe se rapproche de la vitesse du plus rapide.</div><input type="number" min="0" max="60" data-input="team_swim_gap_sec" placeholder="0"></div></div>');
+     // S10 — prérequis d'entrée : on REFUSE de générer un format long en dessous, et on dit pourquoi.
+     const block = (globalThis.EBV2 && EBV2.swimrunPrereq) ? EBV2.swimrunPrereq(a) : null;
+     branch("prereqB", !!block, '<div class="branch" style="border-color:#c0392b"><div class="branch-tag" style="color:#c0392b">↳ Prérequis non atteints</div><div class="q-sub">'+(block||"")+'</div></div>');
+   },
+   valid(a){
+     if(S.sport==="trail")return a.intent&&a.race_distance_km&&a.race_dplus_m&&a.race_technicity&&a.race_night;
+     if(S.sport==="swimrun"){
+       const block=(globalThis.EBV2&&EBV2.swimrunPrereq)?EBV2.swimrunPrereq(a):null;
+       return !!(a.intent&&a.format&&a.team_mode&&a.openwater_access&&a.swim_continuous&&a.run_continuous&&!block);
+     }
+     return a.intent&&a.format;
+   }},
 
   {id:"medical",title:"Sécurité d'abord",eyebrow:"Gratuit — Feu vert",
    why:"Trois questions avant tout. Un signal → orientation médecin avant intensité. Gratuit, non négociable.",
@@ -160,8 +207,9 @@ function buildFreeSteps(){
 
   // Étape terrain/milieu spécifique
   if(cfg.terrains){
-    steps.push({id:"terrain",title:S.sport==="bike"?"Le parcours":"Le terrain",eyebrow:"Gratuit — Où ça se joue",
-      why:S.sport==="bike"?"Plat ou montagne ne se préparent pas pareil : force, braquets, pacing changent.":"Route, trail ou piste : l'impact, le dénivelé et le type de travail diffèrent.",
+    steps.push({id:"terrain",title:(S.sport==="bike"||S.sport==="duathlon")?"Le parcours":"Le terrain",eyebrow:"Gratuit — Où ça se joue",
+      why:S.sport==="duathlon"?"Le profil du parcours change tout en duathlon : un vélo vallonné ponctionne les jambes avant le R2, un parcours plat récompense la puissance constante."
+        :S.sport==="bike"?"Plat ou montagne ne se préparent pas pareil : force, braquets, pacing changent.":"Route, trail ou piste : l'impact, le dénivelé et le type de travail diffèrent.",
       render(){return '<div class="q"><span class="q-label">Ton terrain principal</span><div class="opts" data-key="terrain">'+cfg.terrains.map(t=>opt(t[0],t[1])).join("")+'</div></div>';},
       valid(a){return a.terrain;}});
   }
@@ -235,21 +283,57 @@ function levelStep(){
   const sp=S.sport;
   // R7 TRAIL (§3.2) — deux références, pas une : l'allure seuil SUR PLAT et la vitesse
   // ascensionnelle (VAM). En montée, l'allure au sol ne veut rien dire ; la VAM, si.
+  // R12.1 — LA BONNE QUESTION N'EST PAS « CONNAIS-TU TA VAM ? », C'EST « QU'AS-TU FAIT ? ».
+  // Personne ne connaît sa VAM : c'était la seule référence sans chemin d'acquisition, et le
+  // moteur la DEVINAIT depuis l'adjectif « niveau » — trois heures d'écart sur l'estimation de
+  // course selon la case cochée. On demande désormais une montée VÉCUE : deux chiffres que
+  // n'importe qui peut donner de mémoire, et dont la VAM se déduit.
   if(sp==="trail") return {id:"level",title:"Ton moteur en montagne",eyebrow:"Gratuit — Le moteur",
-    why:"Deux références : ton allure seuil sur PLAT, et ta vitesse ascensionnelle (mètres de D+ par heure). C'est la VAM qui pilote l'intensité de tes montées — pas l'allure.",
-    render(){return '<div class="q"><span class="q-label">Ton niveau</span><div class="opts" data-key="level">'+opt("debutant","Débutant")+opt("inter","Intermédiaire")+opt("avance","Avancé")+'</div></div>'
+    why:"La référence du trail, c'est la vitesse ascensionnelle : combien de mètres de dénivelé tu montes en une heure. Pas besoin de la connaître — raconte-nous ta dernière grosse montée, on s'occupe du calcul.",
+    render(){return '<div class="q"><span class="q-label">Ton niveau</span><div class="q-sub">Sert au CONTENU des séances (technicité, progressivité), jamais à estimer un chrono.</div><div class="opts" data-key="level">'+opt("debutant","Débutant")+opt("inter","Intermédiaire")+opt("avance","Avancé")+'</div></div>'
+      +'<div class="q"><span class="q-label">Ta dernière grosse montée</span><div class="q-sub">Une montée que tu as vraiment faite, d\'au moins 5 minutes, sans t\'arrêter. De mémoire suffit.</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><label style="flex:1;min-width:120px;font-size:var(--fs-md)">D+ (mètres)<input type="number" min="50" max="3000" data-input="climb_dplus_m" placeholder="450" style="width:100%"></label>'
+      +'<label style="flex:1;min-width:120px;font-size:var(--fs-md)">Durée (minutes)<input type="number" min="5" max="300" data-input="climb_min" placeholder="40" style="width:100%"></label></div>'
+      +'<div class="q-sub" style="margin-top:6px">Tu n\'en as pas ? Laisse vide : le plan partira d\'une estimation prudente et se corrigera dès ta première montée enregistrée.</div></div>'
       +'<div class="q"><span class="q-label">Ton allure seuil sur PLAT ?</span><div class="opts" data-key="pace_known">'+opt("oui","Je la connais")+opt("non","Non")+'</div></div><div id="paceB"></div>'
-      +'<div class="q"><span class="q-label">Ta vitesse ascensionnelle (VAM) ?</span><div class="q-sub">En mètres de D+ par heure. Repères : débutant 500-700 · intermédiaire 700-1000 · avancé 1000-1400.</div><div class="opts" data-key="vam_known">'+opt("oui","Je la connais")+opt("non","Non")+'</div></div><div id="vamB"></div>';},
+      +'<details style="margin-top:8px"><summary style="cursor:pointer;font-size:var(--fs-sm)">Je connais déjà ma VAM</summary>'
+      +'<div class="q" style="margin-top:6px"><span class="q-label">VAM (m de D+ / h)</span><div class="opts" data-key="vam_known">'+opt("oui","Je la connais")+opt("non","Non")+'</div><div id="vamB"></div></div></details>';},
     branches(a){
       branch("paceB",a.pace_known==="oui",'<div class="branch"><div class="q"><span class="q-label">Allure seuil sur plat (min/km)</span><input type="text" data-input="pace" placeholder="4:50"></div></div>');
-      branch("paceB2",a.pace_known==="non","");
       branch("vamB",a.vam_known==="oui",'<div class="branch"><div class="q"><span class="q-label">VAM (m de D+ / h)</span><input type="number" min="200" max="2500" data-input="vam" placeholder="850"></div></div>');
-      if(a.pace_known==="non"||a.vam_known==="non"){
-        const el=document.getElementById("vamB");
-        if(el&&a.vam_known==="non")el.innerHTML='<div class="q-sub" style="margin-top:6px"><b>⛰ Comment obtenir ta VAM</b> — Sur une montée régulière de 20 à 30 minutes, à l\'effort maximal tenable : le D+ parcouru divisé par la durée donne ta vitesse ascensionnelle seuil, en mètres par heure. Tu pourras la renseigner plus tard dans l\'onglet 📋 Profil : le plan se recalcule aussitôt.</div>';
-      }
     },
-    valid(a){return a.level&&a.pace_known&&a.vam_known&&(a.pace_known!=="oui"||a.pace)&&(a.vam_known!=="oui"||a.vam);}};
+    // La montée n'est PAS obligatoire : un athlète sans montée en tête doit pouvoir avancer.
+    // Le repli est prudent et il est annoncé — c'est le contrat R12.4.
+    valid(a){return a.level&&a.pace_known&&(a.pace_known!=="oui"||a.pace)&&(a.vam_known!=="oui"||a.vam);}};
+  // R10 phase 3 — SWIMRUN : les références qui comptent sont EN TENUE (§R10.3.3). Le CSS et
+  // l'allure route ne sont qu'un repli, et l'UI le dit à chaque affichage.
+  if(sp==="swimrun") return {id:"level",title:"Tes références en tenue",eyebrow:"Gratuit — Le moteur",
+    why:"Les allures ne transfèrent PAS en swimrun : combinaison, chaussures mouillées, pull buoy, plaquettes, terrain. Le seul test qui vaut se fait en tenue COMPLÈTE, avec ton partenaire et la longe. Sans lui on estime — et on te le dira partout.",
+    render(){return '<div class="q"><span class="q-label">Niveau global</span><div class="opts" data-key="level">'+opt("debutant","Débutant")+opt("inter","Intermédiaire")+opt("avance","Avancé")+'</div></div>'
+      +'<div class="q"><span class="q-label">As-tu fait le test EN TENUE (1000m nagés + 5-8km courus) ?</span><div class="q-def">Combinaison, chaussures, chaussettes, pull buoy, plaquettes, en eau libre, avec le partenaire et la longe.</div><div class="opts" data-key="gear_test">'+opt("oui","Oui")+opt("non","Pas encore")+'</div></div><div id="gearB"></div>'
+      +'<div class="q"><span class="q-label">Sinon : ton CSS en bassin ?</span><div class="opts" data-key="css_known">'+opt("oui","Je le connais")+opt("non","Non")+'</div></div><div id="cssB"></div>'
+      +'<div class="q"><span class="q-label">Ton allure seuil sur route ?</span><div class="opts" data-key="pace_known">'+opt("oui","Je la connais")+opt("non","Non")+'</div></div><div id="paceB"></div>';},
+    branches(a){
+      branch("gearB",a.gear_test==="oui",'<div class="branch"><div class="branch-tag">↳ Tes vraies références</div><div class="q"><span class="q-label">Allure de nage en tenue (min/100m)</span><input type="text" data-input="swimrun_swim_pace" placeholder="2:05"></div><div class="q"><span class="q-label">Allure de course en tenue (min/km)</span><input type="text" data-input="swimrun_run_pace" placeholder="8:00"></div></div>');
+      branch("cssB",a.css_known==="oui",'<div class="branch"><div class="q"><span class="q-label">CSS (min/100m)</span><input type="text" data-input="css" placeholder="1:45"></div></div>');
+      branch("paceB",a.pace_known==="oui",'<div class="branch"><div class="q"><span class="q-label">Allure seuil route (min/km)</span><input type="text" data-input="pace" placeholder="4:50"></div></div>');
+    },
+    valid(a){return a.level&&a.gear_test&&a.css_known&&a.pace_known&&(a.gear_test!=="oui"||(a.swimrun_swim_pace&&a.swimrun_run_pace));}};
+  // R10 phase 2 — DUATHLON : deux références seulement (allure course + FTP). Pas de CSS :
+  // il n'y a pas de natation, et demander une donnée inutilisée serait du bruit.
+  if(sp==="duathlon") return {id:"level",title:"Tes niveaux (2 disciplines)",eyebrow:"Gratuit — Le moteur",
+    why:"Le duathlon combine course et vélo. L'allure seuil course pilote tes deux segments à pied, la FTP ton segment vélo — et c'est la course qui décide la plupart des duathlons.",
+    render(){return '<div class="q"><span class="q-label">Niveau global</span><div class="opts" data-key="level">'+opt("debutant","Débutant")+opt("inter","Intermédiaire")+opt("avance","Avancé")+'</div></div>'
+      +'<div class="q"><span class="q-label">🏃 Connais-tu ton allure seuil course ?</span><div class="opts" data-key="pace_known">'+opt("oui","Oui")+opt("non","Non")+'</div></div><div id="paceB"></div>'
+      +'<div class="q"><span class="q-label">🚴 Connais-tu ta FTP (watts) ?</span><div class="opts" data-key="ftp_known">'+opt("oui","Oui")+opt("non","Non")+'</div></div><div id="ftpB"></div><div id="hrB"></div>';},
+    branches(a){
+      branch("paceB",a.pace_known==="oui",'<div class="branch"><div class="q"><span class="q-label">Allure seuil (min/km, ex 4:50)</span><input type="text" data-input="pace" placeholder="4:50"></div></div>');
+      branch("ftpB",a.ftp_known==="oui",'<div class="branch"><div class="q"><span class="q-label">FTP (W)</span><input type="number" data-input="ftp" placeholder="220"></div></div>');
+      branch("hrB",(a.ftp_known==="non"||a.pace_known==="non"),'<div class="branch"><div class="branch-tag">↳ Ce qui manque, sans bloquer ton plan</div>'
+        +'<div class="q-sub">Sans donnée chiffrée, les zones passent en BPM (FC max estimée par l\'âge, ou renseigne-la).</div><div class="q"><span class="q-label">FC max ? (optionnel)</span><input type="number" data-input="hr_max" placeholder="ex 188"></div>'
+        +(a.pace_known==="non"?protocolHTML("pace"):"")+(a.ftp_known==="non"?protocolHTML("ftp"):"")+'</div>');
+    },
+    valid(a){return a.level&&a.pace_known&&a.ftp_known&&(a.pace_known!=="oui"||a.pace)&&(a.ftp_known!=="oui"||a.ftp);}};
   if(sp==="tri") return {id:"level",title:"Tes niveaux (3 disciplines)",eyebrow:"Gratuit — Le moteur",
     why:"Le triathlon combine 3 sports : on calibre chacun. Renseigne ce que tu connais, le reste passe en zones cardio ou ressenti.",
     render(){return '<div class="q"><span class="q-label">Niveau global</span><div class="opts" data-key="level">'+opt("debutant","Débutant")+opt("inter","Intermédiaire")+opt("avance","Avancé")+'</div></div>'
@@ -305,6 +389,11 @@ function injuryOpts(){
   if(sp==="swim") arr=[["aucune","Aucune"],["epaule","Épaule"],["cou","Nuque"]];
   // R7 TRAIL (§3.4) — ces localisations pilotent DIRECTEMENT le volume de descente :
   // le quadriceps est la zone que la descente casse en premier.
+  // R10 phase 2 — DUATHLON : deux disciplines seulement, donc pas d'épaule ; en revanche
+  // « ça tire quand je cours » est LA déclaration qui compte (deux segments de course).
+  // R10 phase 3 — SWIMRUN : l'épaule est la zone n°1 (plaquettes), et le terrain est du trail.
+  if(sp==="swimrun") arr=[["aucune","Aucune"],["epaule","Épaule (plaquettes)"],["cou","Nuque / cervicales"],["cheville","Cheville / entorses"],["genou","Genou"],["tibia","Tibias / périostite"],["fascia","Fascia plantaire"]];
+  if(sp==="duathlon") arr=[["aucune","Aucune"],["course","Gêne à la course"],["tibia","Tibias / périostite"],["genou","Genou"],["pied","Pied / cheville"],["hanche","Hanche / ITB"],["dos","Dos / lombaires (vélo)"]];
   if(sp==="trail") arr=[["aucune","Aucune"],["quadriceps","Quadriceps (descentes)"],["cheville","Cheville / entorses"],["tibia","Tibias / périostite"],["genou","Genou"],["fascia","Fascia plantaire"],["hanche","Hanche / ITB"]];
   return arr.map(x=>opt(x[0],x[1])).join("");
 }
@@ -353,7 +442,8 @@ function buildPremiumSteps(){return PREMIUM_STEPS_DEF;}
    GÉNÉRATEUR multisport
    ============================================================ */
 function curSteps(){return S.tier==="free"?buildFreeSteps():buildPremiumSteps();}
-function vlab(v){return String(v).split(",").map(x=>VLAB[x]||x).join(", ");}
+// `q` = identifiant de la question : lève l'ambiguïté des valeurs partagées (R5.6b).
+function vlab(v,q){const T=(q&&VLAB_Q[q])||null;return String(v).split(",").map(x=>(T&&T[x])||VLAB[x]||x).join(", ");}
 function bindInputs(scope){
   scope.querySelectorAll(".opts").forEach(g=>{const key=g.dataset.key,multi=g.dataset.multi==="1",excl=g.dataset.exclusive||"";
     g.querySelectorAll(".opt").forEach(b=>{const cur=(S.answers[key]||"").split(",").filter(Boolean);
@@ -379,7 +469,7 @@ function backToPlanTarget(){
     ||S.plans.find(p=>p.id!==S.activePlanId&&p.onPlan)||null;
 }
 function backToPlanHTML(){
-  return backToPlanTarget()?'<div style="text-align:center;margin:10px 0"><button class="btn" id="ebBackToPlan" type="button" style="font-size:12px;padding:8px 16px">← Revenir à mon plan en cours</button></div>':"";
+  return backToPlanTarget()?'<div style="text-align:center;margin:10px 0"><button class="btn" id="ebBackToPlan" type="button" style="font-size:var(--fs-sm);padding:8px 16px">← Revenir à mon plan en cours</button></div>':"";
 }
 function bindBackToPlan(){
   const b=$("ebBackToPlan");if(!b)return;
@@ -397,7 +487,11 @@ function renderSportPick(){
   $("progress").innerHTML="";
   let html='<div class="card welcome"><div class="w-tri">🏁</div><h2>Quel plan veux-tu construire ?</h2>'
     +'<p>Un moteur de raisonnement par sport — choisis le tien, le questionnaire s\'adapte.</p><div class="sport-grid">';
-  Object.entries(SPORTS).forEach(([k,c])=>{html+='<button class="sport-card" data-sport="'+k+'" type="button" style="--sa:'+c.accent+'"><span class="sc-ico">'+c.ico+'</span><span class="sc-nom">'+c.nom+'</span><span class="sc-pitch">'+c.pitch+'</span></button>';});
+  // R12 §0 — les sports proposés sont ceux que le MOTEUR connaît réellement (registre R10).
+  // Un sport exclu du bundle V1 ne doit pas apparaître ici : proposer un choix qui lèvera à la
+  // génération est pire que de ne pas le proposer.
+  const known = (globalThis.EBV2 && globalThis.EBV2.sports) ? Object.keys(globalThis.EBV2.sports) : null;
+  Object.entries(SPORTS).filter(([k])=>!known||known.includes(k)).forEach(([k,c])=>{html+='<button class="sport-card" data-sport="'+k+'" type="button" style="--sa:'+c.accent+'"><span class="sc-ico">'+c.ico+'</span><span class="sc-nom">'+c.nom+'</span><span class="sc-pitch">'+c.pitch+'</span></button>';});
   html+='</div></div>'+backToPlanHTML();
   $("screen").innerHTML=html;
   bindBackToPlan();

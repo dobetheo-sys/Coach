@@ -11,6 +11,23 @@ const SPORTS = {
     minWeeks:{S:8,M:12,"70.3":20,Full:36},
     disciplines:["sw","bk","rn"]
   },
+  duathlon: {
+    nom:"Duathlon", ico:"🏃🚴", accent:"#c2410c",
+    pitch:"Course, vélo, course. Deux fois l'impact, et aucune récupération dans l'eau — c'est le format le plus dur pour les jambes du catalogue.",
+    formats:[["S","Sprint (5 / 20 / 2,5)"],["M","Standard (10 / 40 / 5)"],["L","Longue distance (14 / 60 / 7)"],["PM","Powerman (10 / 150 / 30)"]],
+    minWeeks:{S:8,M:12,L:16,PM:24},
+    disciplines:["rn","bk"],
+    terrains:[["plat","Plat / roulant"],["vallonne","Vallonné"],["montagne","Montagneux"]]
+  },
+  swimrun: {
+    nom:"Swimrun", ico:"🌊", accent:"#0e7490",
+    pitch:"Nager en chaussures, courir en combinaison, vingt fois de suite. Le terrain et le matériel commandent, pas le chrono.",
+    // Le format ne sert que de valeurs par DÉFAUT : ce sont les données de l'épreuve
+    // (distance nagée, segments, plus longue nage) qui dimensionnent la préparation.
+    formats:[["experience","Experience (~5-8 km)"],["sprint","Sprint (~10-15 km)"],["series","World Series (~30-45 km)"],["championship","Championnat du monde (~70 km)"]],
+    minWeeks:{experience:10,sprint:12,series:20,championship:30},
+    disciplines:["sw","rn"]
+  },
   trail: {
     nom:"Trail", ico:"⛰", accent:"#2f7d4f",
     pitch:"Le dénivelé commande tout. On planifie en temps et en D+, jamais en kilomètres — et la descente compte autant que la montée.",
@@ -55,11 +72,20 @@ const PREMIUM_STEPS_DEF=[
    render(){return '<div class="q"><span class="q-label">Sommeil moyen</span><div class="opts" data-key="sleep">'+opt("court","<6h30")+opt("moyen","6h30-7h30")+opt("bon",">7h30")+'</div></div>'
      +'<div class="q"><span class="q-label">Charge de vie</span><div class="opts" data-key="life_load">'+opt("legere","Légère")+opt("normale","Normale")+opt("lourde","Lourde")+'</div></div>';},
    valid(a){return a.sleep&&a.life_load;}},
-  {id:"nutri",title:"Objectif de poids",eyebrow:"Gratuit — Composition",why:"Le poids est un paramètre de performance, jamais une injonction. Tu décides s'il est travaillé. (Le conseil nutritionnel détaillé — ravitaillement, hydratation — n'est pas encore dans l'outil.)",
+  {id:"nutri",title:"Objectif de poids",eyebrow:"Gratuit — Composition",why:"Le poids est un paramètre de performance, jamais une injonction. Tu décides s'il est travaillé. (L'onglet Nutrition estime ta dépense et ton ravitaillement d'effort ; il ne fixe jamais de cible d'apport.)",
    render(){let s='<div class="q"><span class="q-label">Travailler le poids comme levier ?</span><div class="q-sub">Révocable à tout moment.</div><div class="opts" data-key="weight_lever">'+opt("oui","Oui")+opt("non","Maintien strict")+opt("coach","Le moteur juge")+'</div></div>';
-     if(S.answers.sex==="F")s+='<div class="branch"><div class="branch-tag">↳ Option cycle menstruel</div><div class="q"><span class="q-label">Périodiser selon ton cycle ?</span><div class="opts" data-key="cycle_sync">'+opt("oui","Oui")+opt("non","Non")+'</div></div></div>';
+     // R11.7 — la périodisation sur le cycle AGIT désormais sur le plan (voir
+     // src/engine/cycleModel.ts). Elle demande donc les deux données sans lesquelles elle
+     // n'est qu'une case à cocher : la date de départ du dernier cycle et sa longueur.
+     if(S.answers.sex==="F")s+='<div class="branch"><div class="branch-tag">↳ Option cycle menstruel</div>'
+       +'<div class="q"><span class="q-label">Périodiser selon ton cycle ?</span><div class="q-sub">Le plan déplace l\'intensité hors de la fenêtre prémenstruelle, sans toucher au volume. Révocable à tout moment.</div><div class="opts" data-key="cycle_sync">'+opt("oui","Oui")+opt("non","Non")+'</div></div>'
+       +'<div id="cycleDates"></div></div>';
      return s;},
-   valid(a){return a.weight_lever&&(a.sex!=="F"||a.cycle_sync);}},
+   branches(a){
+     branch("cycleDates",a.sex==="F"&&a.cycle_sync==="oui",
+       '<div class="q"><span class="q-label">1er jour de tes dernières règles</span><div class="q-sub">Sert uniquement à situer les semaines. Rien n\'est transmis nulle part.</div><input type="date" id="qCycleStart" data-input="cycle_start" value="'+(a.cycle_start||"")+'" style="width:100%"></div>'
+       +'<div class="q"><span class="q-label">Longueur de ton cycle (jours)</span><div class="q-sub">28 par défaut si tu ne sais pas.</div><input type="number" min="21" max="40" id="qCycleLen" data-input="cycle_len" value="'+(a.cycle_len||"28")+'" style="width:100%"></div>');},
+   valid(a){return a.weight_lever&&(a.sex!=="F"||(a.cycle_sync&&(a.cycle_sync!=="oui"||a.cycle_start)));}},
   {id:"races",title:"Courses intermédiaires",eyebrow:"Premium — Le chemin",why:"Des laboratoires avant le jour J : on place une récup juste après chacune, et un mini-affûtage avant les courses importantes.",
    render(){return '<div class="q"><span class="q-label">Des courses avant l\'objectif ?</span><div class="opts" data-key="races">'+opt("oui","Oui")+opt("non","Pas encore")+'</div></div><div id="racesB"></div>';},
    branches(a){
@@ -82,8 +108,18 @@ const VLAB={competition:"Compétition",finir:"Finir",plaisir:"Plaisir",np:"Non p
   sedentaire:"Sédentaire",modere:"Modérément actif",actif:"Métier physique",oui:"Oui",non:"Non",parfois:"Parfois",coach:"Le moteur juge",
   respiration:"Respiration",technique:"Technique",endurance:"Endurance",peur:"Confiance",
   // R7 TRAIL
-  roulant:"Roulant",alpin:"Alpin",partielle:"Partielle",majoritaire:"Majoritaire",
-  montagne:"Montagne",collines:"Collines",a_decider:"À décider"};
+  roulant:"Roulant",alpin:"Alpin",majoritaire:"Majoritairement",
+  collines:"Collines",a_decider:"À décider"};
+// R5.6b (audit v7 bis) — le namespace de VLAB est PLAT : il collisionne dès qu'un sport réutilise
+// un mot. `partielle` (dispo « 4-5j/sem ») était écrasé par `partielle` (nuit), et `montagne`
+// (terrain « Montagneux ») par `montagne` (dénivelé accessible) — l'affichage de la dispo et du
+// terrain était donc FAUX. Les libellés ambigus vivent désormais dans une table PAR QUESTION,
+// consultée avant la table plate ; celle-ci ne garde que les valeurs sans ambiguïté.
+const VLAB_Q={
+  dispo:{partielle:"4-5j/sem"},
+  terrain:{montagne:"Montagneux"},
+  race_night:{partielle:"En partie",majoritaire:"Majoritairement",non:"Non"},
+  train_dplus_access:{montagne:"Montagne (+800m)",collines:"Collines (200-800m)",plat:"Plat (<200m)"}};
 const QLABELS={intent:"Intention",format:"Objectif",terrain:"Terrain",epreuve:"Épreuve",milieu:"Milieu",sex:"Sexe",level:"Niveau",swim_limit:"Limite",
   ftp_known:"FTP connue",ftp:"FTP",pace_known:"Allure connue",pace:"Allure seuil",css_known:"CSS connu",css:"CSS",history:"Historique",injury:"Blessures",
   sessions_max:"Séances max",vol_max:"Volume max",vol_recent:"Volume récent",dispo:"Dispo",shift_ok:"Décalage",off_days:"Jours OFF",off_which:"Jours bloqués",doubles:"Doubles",
@@ -94,7 +130,7 @@ const RULE_CAT={intent:"struct",sante:"sante",duree:"struct",medical:"sante",ter
 const CATS=[["struct","🧱","Structure"],["sante","❤️","Santé & garde-fous"],["disc","🎯","Spécifique sport"],["nutri","🍽","Nutrition"]];
 const HEROS=["cycle","volume","intent","sante"];
 
-export { CATS, HEROS, PREMIUM_STEPS_DEF, QLABELS, RULE_CAT, SPORTS, VLAB };
+export { CATS, HEROS, PREMIUM_STEPS_DEF, QLABELS, RULE_CAT, SPORTS, VLAB, VLAB_Q };
 
 // R6 — relais OAuth Strava par défaut : renseigner ICI l'URL du worker une fois déployé
 // (server/README.md) — tous les utilisateurs auront alors la connexion en 1 clic, sans

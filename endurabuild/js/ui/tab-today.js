@@ -3,13 +3,18 @@
 // répondu, une fois par jour) ; 2) la séance du jour DÉJÀ adaptée au verdict ; 3) la
 // prédiction de course ; 4) la courbe charge/fatigue/forme ; 5) la barre d'avancement de
 // la prépa (liée à la même charge) ; 6) la répartition des intensités.
+// R16.9 — la fusion de 📅 Semaine dans 🗓 Plan lui a aussi transmis le QUOTIDIEN, qui n'avait
+// rien à faire dans une vue de saison : contenu du jour, bilan hebdo, réglage du rappel,
+// déclaration de maladie, journal des adaptations, retouche de la forme du jour. Ils
+// arrivent après le bloc « Ta préparation », donc après le check-in dont ils dépendent.
 import { S, $, ebSave, fmtDay, todayISO } from "../state.js";
 import { checkinSlideshowHTML, bindCheckinSlideshow } from "./checkin.js";
-import { readinessDoneToday } from "./readiness.js";
-import { loadChartSVG, progressBarCardHTML, predictionCardHTML, intensityCardHTML, historyCardHTML } from "./plan-view.js";
-import { momentHTML, painBannerHTML, bindPainBanner, sickToggleHTML, bindSickToggle, heroSessionHTML, feedbackModal, showCongrats } from "./tab-week.js";
+import { loadChartSVG, progressBarCardHTML, predictionCardHTML, intensityCardHTML, historyCardHTML, readinessCardHTML } from "./plan-view.js";
+import { momentHTML, painBannerHTML, bindPainBanner, sickToggleHTML, bindSickToggle, heroSessionHTML, feedbackModal, showCongrats } from "./session-life.js";
+import { readinessDoneToday, applyReadiness } from "./readiness.js";
+import { dailyContentHTML } from "./daily-content.js";
+import { notifySetupHTML, bindNotifySetup, scheduleDailyNotification, weeklyReviewHTML, missedSessionsCheck } from "../notifications.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
-import { missedSessionsCheck } from "../notifications.js";
 import { ensurePlan } from "./tabs.js";
 
 const ROLE_LABEL = { warmup: "Échauffement", body: "Corps de séance", cooldown: "Retour au calme" };
@@ -32,10 +37,10 @@ function todayChecklistHTML(resSessions, todayISO) {
   let h = '<details class="load-card"><summary class="load-title">⏱ Suivre ma séance en direct</summary><div class="load-sub" style="margin-top:6px">Coche au fil de la séance : une fois tout fait, elle passe automatiquement en « ✓ ».</div>';
   resSessions.forEach((s, si) => {
     const groups = stepGroupsFor(s);
-    h += '<div style="margin-top:8px"><b style="font-size:12px">' + s.name + "</b>";
+    h += '<div style="margin-top:8px"><b style="font-size:var(--fs-sm)">' + s.name + "</b>";
     (groups || ["all"]).forEach((r) => {
       const k = si + "|" + r;
-      h += '<label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px"><input type="checkbox" data-ck="' + k + '"' + (state[k] ? " checked" : "") + ' style="width:20px;height:20px"><span>' + (ROLE_LABEL[r] || "Fait") + "</span></label>";
+      h += '<label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:var(--fs-md)"><input type="checkbox" data-ck="' + k + '"' + (state[k] ? " checked" : "") + ' style="width:20px;height:20px"><span>' + (ROLE_LABEL[r] || "Fait") + "</span></label>";
     });
     h += "</div>";
   });
@@ -69,7 +74,7 @@ function todayValidateHTML(plan, todayISO) {
     const k = w.num + "|" + d.jour + "|" + si;
     const dn = S.answers.done && S.answers.done[k];
     const label = s.d === "rs" ? "Récupération respectée" : "Valider : " + s.name;
-    h += '<button type="button" class="btn ' + (dn ? "" : "primary") + '" data-vd="' + k + '" data-vrest="' + (s.d === "rs" ? 1 : 0) + '" style="width:100%;margin-top:8px;font-size:15px;padding:13px 16px"' + (dn ? " disabled" : "") + ">"
+    h += '<button type="button" class="btn ' + (dn ? "" : "primary") + '" data-vd="' + k + '" data-vrest="' + (s.d === "rs" ? 1 : 0) + '" style="width:100%;margin-top:8px;font-size:var(--fs-lg);padding:13px 16px"' + (dn ? " disabled" : "") + ">"
       + (dn ? "✓ " + (s.d === "rs" ? "Repos validé" : "Séance validée — bravo") : "✓ " + label) + "</button>";
   });
   return h ? '<div class="card"><div class="eyebrow">Valider ma journée · ' + d.jour + " " + fmtDay(d.date) + "</div>" + h + "</div>" : "";
@@ -120,6 +125,20 @@ function raceResultCardHTML(plan) {
     + '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><input type="text" id="pgRaceTime" placeholder="ex. 44:30 ou 3:42:10" style="flex:1;min-width:120px"><button class="btn primary" id="pgRaceSave" type="button">Enregistrer</button></div></div>';
 }
 
+// Journal des adaptations quotidiennes (readinessLog) — la preuve que le plan réagit.
+// R16.9 — venu de 📅 Semaine : il commente les check-ins, il appartient à l'écran du matin.
+function readinessLogHTML() {
+  const rlog = Array.isArray(S.answers.readinessLog) ? S.answers.readinessLog : [];
+  if (!rlog.length) return "";
+  const icV = { verte: "🟢", orange: "🟠", rouge: "🔴" };
+  const lblV = { keep: "maintenue", reduce: "réduite", replace: "remplacée par endurance", rest: "repos", off: "repos complet" };
+  const nAdapt = rlog.filter((x) => x.action !== "keep").length;
+  let h = '<details class="load-card"><summary class="load-title">🤖 Adaptations quotidiennes (' + rlog.length + " check-ins · " + nAdapt + " ajustement" + (nAdapt > 1 ? "s" : "") + ")</summary>";
+  rlog.slice(-10).reverse().forEach((x) => { h += '<div style="font-size:var(--fs-sm);margin:4px 0">' + (icV[x.level] || "") + " " + x.date + " — séance " + (lblV[x.action] || x.action) + "</div>"; });
+  h += '<div class="load-sub" style="margin-top:4px">C’est la différence entre un plan PDF et un coach : chaque matin, la séance s’ajuste à ta forme réelle.</div></details>';
+  return h;
+}
+
 export function renderTabToday(plan) {
   const today = todayISO();
   const moment = momentHTML(plan, today);
@@ -163,8 +182,27 @@ export function renderTabToday(plan) {
   html += "</div>";
   // R6 — le check-in du matin doit rester accessible : celui qui a déjà répondu (ou dont
   // l'état vient d'une ancienne version) peut refaire son point sans attendre demain.
-  html += '<div style="text-align:center;margin:4px 0 10px"><button class="btn" id="tdRedoCheckin" type="button" style="font-size:12px;padding:6px 14px">↻ Refaire mon point du matin</button></div>';
+  // R16.9 — LE QUOTIDIEN QUI VIVAIT DANS 📅 SEMAINE atterrit ici, parce que c'est ce qu'il
+  // est : le contenu du jour, le bilan de la semaine écoulée, le réglage du rappel, la
+  // déclaration de maladie, le journal des adaptations et la retouche de la forme du jour
+  // n'ont jamais parlé du PLAN — ils parlent de la JOURNÉE. L'onglet Plan garde la saison
+  // et les semaines ; ces cartes suivent le check-in dont elles dépendent.
+  html += dailyContentHTML(plan, today);       // R4.9 — anecdote / physio / stat perso / micro-défi
+  html += weeklyReviewHTML(plan);              // R4.10 — bilan hebdo (dimanche)
+  html += notifySetupHTML();                   // R4.10 — réglage de l'heure du rappel (une fois)
+  html += '<div class="card">' + sickToggleHTML(today);
+  html += readinessLogHTML();
+  html += '<details class="load-card"><summary class="load-title">\u{1F321} Modifier ma forme du jour</summary>' + readinessCardHTML({ btnLabel: "Mettre à jour" }) + "</details>";
+  html += "</div>";
+  html += '<div style="text-align:center;margin:4px 0 10px"><button class="btn" id="tdRedoCheckin" type="button" style="font-size:var(--fs-sm);padding:6px 14px">↻ Refaire mon point du matin</button></div>';
   $("screen").innerHTML = html;
+  bindSickToggle(plan, today);
+  bindNotifySetup(plan, () => renderTabToday(plan));
+  scheduleDailyNotification(plan);
+  {
+    const rb = $("rdApply");
+    if (rb) rb.onclick = async () => { await applyReadiness(); renderTabToday(plan); };
+  }
 
   const redo = $("tdRedoCheckin");
   if (redo) redo.onclick = () => {
