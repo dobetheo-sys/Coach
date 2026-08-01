@@ -8,6 +8,8 @@
 //   AV1-B  même forme du jour, palier différent → la posture et l'expression ne bougent
 //          PAS, seuls l'équipement et la couleur changent
 //   AV6-A  la tête se pose sur un point d'ancrage FIXE, identique quel que soit le reste
+//   AV3-C  (R17.2, en remplacement d'AV3/AV4) le canal FORME PHYSIQUE est un repère qui se
+//          DÉPLACE : il monte et descend sans jamais retirer une pièce d'équipement
 //
 // Ce sont les deux premiers qui portent la valeur : sans eux, « deux canaux séparés » est
 // une intention, pas une propriété. Avant R17.1 la posture venait des séances des 7 derniers
@@ -92,6 +94,27 @@ const visageDe = (svg) => (/<g data-mood="[^"]*">([\s\S]*?)<\/g>/.exec(svg) || [
 ok(visageDe(n2) === visageDe(n15) && visageDe(n2) !== "ABSENT",
   "AV1-B — à forme du jour égale, l'EXPRESSION est identique quel que soit le palier");
 ok(pieces(n2) !== pieces(n15), "AV1-B — et l'équipement, lui, a bien changé avec le palier");
+
+// ---- AV3-C — le canal forme physique ne retire RIEN ------------------------------------
+// C'est l'assertion qui remplace AV3/AV4, et c'est celle qui protège l'athlète : un palier
+// de performance qui BAISSE (blessure, maladie, âge) ne doit rien lui enlever. On compare
+// donc deux rendus au même niveau et à la même forme du jour, mais à des paliers de forme
+// physique opposés — et on exige que l'équipement soit strictement identique.
+const perfBas = await rendu({ level: 12, accent: "#ff7a1a", streak: 5, mood: "normal", perf: { tier: 2, disciplines: {} } });
+const perfHaut = await rendu({ level: 12, accent: "#ff7a1a", streak: 5, mood: "normal", perf: { tier: 9, disciplines: {} } });
+ok(pieces(perfBas) === pieces(perfHaut) && pieces(perfBas).length > 0,
+  "AV3-C — un palier de forme physique BAS ne retire aucune pièce d'équipement (" + pieces(perfBas).replace(/data-piece=|"/g, "") + ")");
+ok(calque(perfBas, "posture") === calque(perfHaut, "posture"),
+  "AV3-C — et il ne change pas la posture non plus : les trois canaux sont indépendants");
+ok(visageDe(perfBas) === visageDe(perfHaut), "AV3-C — ni l'expression");
+ok(/data-tier="2"/.test(perfBas) && /data-tier="9"/.test(perfHaut),
+  "AV3-C — le repère se DÉPLACE bien avec le palier (c'est une position, pas une possession)");
+ok(!/#e63946|#ff3b30/.test((/<g data-layer="perf"[\s\S]*?<\/g>/.exec(perfBas) || [""])[0]),
+  "AV3-C — le repère n'est jamais rouge : c'est un constat, pas une note");
+
+const sansRef = await rendu({ level: 12, accent: "#ff7a1a", streak: 5, mood: "normal", perf: null });
+ok(!/data-layer="perf"/.test(sansRef),
+  "AV3-C — sans référence mesurée, AUCUN repère : pas de palier 1 par défaut");
 
 // ---- AV6-A — l'ancrage de la tête ne bouge jamais ---------------------------------------
 const ancrages = [];

@@ -14,7 +14,7 @@ import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
 import { predictRace, courseProfileOf, type Prediction } from "../engine/predictor.ts";
-import { adherenceWindow, taperIsConform } from "../engine/projection.ts";
+import { adherenceWindow, taperIsConform, margeOf } from "../engine/projection.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
 import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
@@ -350,6 +350,57 @@ export function avatarV2(plan: V1Plan, answers: AppAnswers, todayISO: string): A
   };
 }
 
+/**
+ * R17.2 — LE TROISIÈME CANAL : LA FORME PHYSIQUE, MONTRÉE SANS RIEN RETIRER.
+ *
+ * Le brief avatar (AV3/AV4) voulait piloter l'ÉQUIPEMENT par un palier de performance. Refusé,
+ * et la raison tient en une phrase : une allure seuil monte ET DESCEND. Une blessure, une
+ * maladie, une grossesse, une charge de travail, ou simplement l'âge la font baisser — et
+ * l'athlète verrait son avatar se déshabiller au moment précis où il a le plus besoin d'être
+ * encouragé à revenir. L'équipement reste donc la RÉGULARITÉ (cumulatif, jamais décroissant,
+ * priorité n°3 du manifeste).
+ *
+ * Mais l'information de performance est réelle et l'athlète a le droit de la voir. Elle a
+ * donc son propre canal, construit pour être RÉVERSIBLE SANS PERTE : un repère qui se
+ * DÉPLACE. Il peut reculer sans que rien ne disparaisse — c'est une position sur une échelle,
+ * pas une possession qu'on retire.
+ *
+ * La source n'est PAS un nouveau calcul : c'est `margeOf` (R14.1), déjà sourcé (profil de
+ * puissance Coggan pour le vélo, heuristiques assumées pour course et nage) et déjà DÉCALÉ
+ * par sexe et par âge — donc un master de 55 ans n'est pas jugé contre une référence de
+ * 25 ans, et une femme n'est pas jugée contre une référence masculine. On décale la
+ * RÉFÉRENCE, jamais la personne.
+ *
+ * `null` quand la référence n'est pas mesurée : pas de palier par défaut, pas de zéro. On ne
+ * montre pas une position qu'on n'a pas mesurée.
+ */
+export interface PerfTier { tier: number; disciplines: Record<string, number>; }
+const DISC_TO_REF: Record<string, "ftp" | "thrPace" | "css"> = { rn: "thrPace", sw: "css", bk: "ftp" };
+export function perfTierV2(sport: string, answers: AppAnswers): PerfTier | null {
+  const parse = parsePaceSec;
+  const refs = {
+    ftp: answers.ftp_known === "oui" ? parseInt(String(answers.ftp || "")) || 0 : 0,
+    thrPace: answers.pace_known === "oui" ? parse(answers.pace, "run") : 0,
+    css: answers.css_known === "oui" ? parse(answers.css, "swim") : 0,
+  };
+  const poids = parseFloat(String(answers.weight || "")) || null;
+  const age = parseInt(String(answers.age || "")) || null;
+  const sexe = (answers.sex as string) || null;
+  const discs = knownSports().includes(sport) ? sportModule(sport).disciplines : [];
+  const out: Record<string, number> = {};
+  for (const d of discs) {
+    const cle = DISC_TO_REF[d];
+    if (!cle) continue;
+    const marge = margeOf(cle, refs, poids, sexe, age);
+    if (marge == null) continue;
+    // marge 1.0 = loin du potentiel · 0.12 = proche. Le palier est l'inverse, sur 1-10.
+    out[d] = Math.max(1, Math.min(10, Math.round((1 - marge) * 10) || 1));
+  }
+  const vals = Object.values(out);
+  if (!vals.length) return null; // aucune référence mesurée → aucun palier, pas un palier 1
+  return { tier: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length), disciplines: out };
+}
+
 /** Prédiction de course — refs athlète + fiabilité issue du suivi réel (streak/charge). */
 export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { _v2?: V2PlanMeta }): Prediction {
   const { reasoned, plan: p } = plan ? { reasoned: null, plan } : generatePlan(toProfile(sport, answers));
@@ -507,6 +558,7 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   predict: predictV2,
   badges: badgesV2,
   avatar: avatarV2,
+  perfTier: perfTierV2,
   adherence: adherenceV2,
   disciplines: DISCIPLINE_REGISTRY,
   // R7 — l'UI a besoin de la catégorie d'effort déduite et des plafonds trail pour

@@ -417,9 +417,15 @@ matin) et **progression** (équipement/décor/aura, le niveau cumulatif inchang�
 le visage est NEUTRE — jamais un sourire par défaut ; sous drapeau douleur, l'état plafonne à
 « fatigué·e ». Contrat de calques (`data-layer`, `data-piece`, `HEAD_ANCHOR` exporté) pour que
 le test lise des calques au lieu de deviner. Garde `tests/e2e/smoke-avatar.mjs` (11e suite,
-19 assertions) : AV1-A, AV1-B, AV6-A. **Bloqué et non contourné** : AV3/AV4 (progression
-pilotée par la performance) contredit « jamais un chrono, jamais décroissant » — arbitrage
-utilisateur requis ; AV7/AV8 (45 assets raster) sort du périmètre code ; AV11/AV12 (badges par
+19 assertions) : AV1-A, AV1-B, AV6-A. **R17.2 — AV3/AV4 tranché par un TROISIÈME CANAL** (choix utilisateur) : piloter l'équipement
+par la performance aurait rendu l'avatar DÉCROISSANT — une blessure, une maladie, l'âge font
+baisser une allure seuil, et l'athlète se serait vu déshabiller au moment où il a le plus
+besoin de revenir. L'équipement reste donc la régularité ; la performance a son propre canal,
+un **repère gradué au sol qui se DÉPLACE** — il monte, il descend, il ne retire rien. Source :
+`margeOf` (R14.1), déjà sourcée et déjà décalée par sexe et âge, donc un master n'est pas jugé
+contre une référence de 25 ans. `null` sans référence mesurée (pas de palier 1 par défaut),
+jamais de rouge, aucun effet sur les deux autres canaux — garde `AV3-C`.
+**Bloqué et non contourné** : AV7/AV8 (45 assets raster) sort du périmètre code ; AV11/AV12 (badges par
 zone) attend des badges par discipline, qui n'existent pas.
 
 **R16 (lot design visuel) livré** (handoff `HANDOFF_R16_design_visuel.md`, voir ARCHITECTURE.md

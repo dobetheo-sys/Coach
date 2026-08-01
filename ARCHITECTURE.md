@@ -1346,6 +1346,52 @@ lecteurs d'écran.
 
 | décision | blocage |
 |---|---|
-| **AV3 / AV4** — progression pilotée par un palier de PERFORMANCE (allure seuil, CSS, FTP/kg) | Contredit une règle écrite : l'XP est « basé uniquement sur la régularité — jamais un chrono, **jamais décroissant** » (CLAUDE.md, commentaire d'`avatarV2`, gate `demo:retention`). Deux problèmes distincts : ça inverse la hiérarchie du manifeste (performance = priorité 5, régularité = 3), et ça rend l'avatar **décroissant** — une blessure, une maladie, l'âge font perdre l'équipement, exactement quand l'athlète a le plus besoin de ne pas être puni. **Arbitrage utilisateur requis** : soit AV3 se réécrit sur le palier existant, soit la règle se réécrit dans le même commit que le code. |
+| ~~**AV3 / AV4**~~ | ✅ **Tranché en R17.2 par un TROISIÈME CANAL** — voir ci-dessous. |
 | **AV7 / AV8** — assets raster générés SDXL | Production d'images, hors périmètre du code (le brief le dit lui-même, étape 1). Et le standalone fait 1,57 Mo tout inline : 45 pièces raster en `data:` changent la nature du livrable offline — à chiffrer avant de s'engager. |
 | **AV11 / AV12** — badges par zone du corps | Les 7 badges de `badgesV2` sont **tous** de la régularité (`streak3`, `bloc-base`, `recup`…) : aucun ne porte de discipline. AV12 les mettrait donc tous sur le torse. Il faut d'abord créer des badges par discipline — ce que le brief ne prévoit pas. |
+
+
+## R17.2 — le troisième canal : montrer la performance sans rien retirer
+
+**Le blocage.** AV3/AV4 voulaient piloter l'ÉQUIPEMENT de l'avatar par un palier de
+performance (allure seuil, CSS, FTP/kg). Refusé, pour une raison qui tient en une phrase :
+**une allure seuil monte ET DESCEND.** Une blessure, une maladie, une grossesse, une charge
+de travail, ou simplement l'âge la font baisser — et l'athlète verrait son avatar **se
+déshabiller** au moment précis où il a le plus besoin d'être encouragé à revenir. Le scénario
+n'est pas théorique : quelqu'un au seuil à 4:30/km revient d'une blessure à 5:10/km et
+repasserait du palier 7 au palier 4, perdant dossard et lunettes, sans avoir cessé d'être
+régulier.
+
+**L'arbitrage retenu** (option C) : l'information de performance est réelle et l'athlète a le
+droit de la voir — mais elle a son **propre canal**, construit pour être réversible sans
+perte.
+
+| canal | source | rendu | peut baisser ? |
+|---|---|---|---|
+| forme du jour | check-in du matin | posture + expression | oui, chaque jour |
+| progression | XP (régularité, cumulatif) | équipement, décor, aura | **jamais** |
+| **forme physique** | `margeOf` (R14.1) | **un repère gradué au sol** | **oui — et il ne retire rien** |
+
+La différence est structurelle, pas cosmétique : le troisième canal est une **position sur
+une échelle**, pas une possession. Il se déplace. Il peut reculer sans que quoi que ce soit
+disparaisse de l'avatar — c'est la différence entre « tu es ici aujourd'hui » et « on te
+retire ce que tu avais gagné ».
+
+**La source n'est pas un nouveau calcul.** `perfTierV2` s'appuie sur `margeOf` (R14.1), déjà
+sourcé — profil de puissance Coggan pour le vélo, heuristiques assumées et écrites comme
+telles pour course et nage — et déjà **décalé par sexe et par âge**. Un master de 55 ans n'est
+donc pas jugé contre une référence de 25 ans, et une femme n'est pas jugée contre une
+référence masculine : on décale la RÉFÉRENCE, jamais la personne. C'est la leçon de R14.1,
+réutilisée telle quelle au lieu d'être réinventée.
+
+Trois règles dans le rendu, toutes assertées :
+- **`null` quand aucune référence n'est mesurée** — pas de palier 1 par défaut. On ne montre
+  pas une position qu'on n'a pas mesurée ;
+- **jamais de rouge, aucun mot d'échec** — c'est un constat, pas une note ;
+- **aucun effet sur les deux autres canaux** — l'équipement, la posture et l'expression sont
+  strictement identiques entre un palier 2 et un palier 9.
+
+**Garde : `AV3-C`** dans `tests/e2e/smoke-avatar.mjs` (25 assertions au total). C'est
+l'assertion qui protège l'athlète : elle compare deux rendus à niveau et forme du jour égaux
+mais à paliers de forme physique opposés, et exige que l'équipement soit identique. Tant
+qu'elle est verte, une baisse de performance ne peut pas déshabiller quelqu'un.

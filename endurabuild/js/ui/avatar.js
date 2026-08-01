@@ -9,13 +9,17 @@
 //   · couleur du maillot          → thème choisi (accents par sport de config.js).
 // SVG inline léger (PWA offline, zéro image externe), dessinable sur canvas pour le partage.
 //
-// R17.1 — DEUX CANAUX SÉPARÉS, et c'est le point de la refonte.
+// R17.1 / R17.2 — TROIS CANAUX SÉPARÉS, et c'est le point de la refonte.
 //   · le canal FORME DU JOUR : posture + expression, relus à chaque check-in du matin.
 //     Il change tous les jours et ne mémorise rien.
 //   · le canal PROGRESSION : équipement, décor, aura, couleur. Il ne bouge qu'avec le
 //     niveau, qui est cumulatif et ne redescend jamais.
-// Les deux ne se touchent pas : à niveau égal, seule la forme du jour bouge ; à forme
-// égale, seul l'équipement bouge. C'est vérifié (`tests/e2e/smoke-avatar.mjs`).
+//   · le canal FORME PHYSIQUE (R17.2) : un repère gradué au sol, placé selon la marge au
+//     potentiel (`EBV2.perfTier`). Il MONTE ET DESCEND — c'est pour ça qu'il est un repère
+//     qui se déplace et non un équipement : il peut reculer sans rien retirer à personne.
+// Les trois ne se touchent pas : à niveau égal seule la forme du jour bouge ; à forme du
+// jour égale seul l'équipement bouge ; et le repère de forme physique ne touche ni l'un ni
+// l'autre. C'est vérifié (`tests/e2e/smoke-avatar.mjs`).
 //
 // Ce que ça REMPLACE : la posture était pilotée par les séances des 7 derniers jours —
 // un signal qui n'est ni la forme d'aujourd'hui ni la progression long terme, et qui
@@ -78,7 +82,7 @@ export function moodOf(readiness, painFlag, todayIso) {
 
 /** Variables visuelles depuis les données réelles — la traçabilité est le contrat. */
 export function avatarDataFor(plan, todayISO) {
-  const out = { accent: avatarTheme(), streak: 0, mood: "normal", level: 1, icon: "", name: "" };
+  const out = { accent: avatarTheme(), streak: 0, mood: "normal", level: 1, icon: "", name: "", perf: null };
   // Le canal forme du jour ne dépend NI du plan NI du moteur : il se lit même si tout le
   // reste échoue, parce que c'est la seule chose que l'athlète a saisie ce matin.
   out.mood = moodOf(S.answers.readiness, S.answers.painFlag, todayISO);
@@ -88,6 +92,10 @@ export function avatarDataFor(plan, todayISO) {
     out.streak = pg.streakWeeks || 0;
     const av = globalThis.EBV2.avatar(plan, S.answers, todayISO);
     out.level = av.level; out.icon = av.icon; out.name = av.name;
+    // R17.2 — TROISIÈME CANAL. `null` si aucune référence mesurée : on ne montre pas une
+    // position qu'on n'a pas. Il ne touche NI l'équipement NI la posture — c'est tout
+    // l'intérêt : il peut reculer sans que l'athlète perde quoi que ce soit.
+    out.perf = globalThis.EBV2.perfTier ? globalThis.EBV2.perfTier(S.sport, S.answers) : null;
   } catch (e) { /* avatar par défaut, jamais bloquant */ }
   return out;
 }
@@ -192,6 +200,27 @@ export function avatarSVG(v, size) {
   };
   const visage = '<g data-mood="' + (v.mood || "normal") + '">' + (F[v.mood] || F.normal) + "</g>";
   const moodLabel = (MOODS.find((m) => m.id === v.mood) || MOODS[2]).label;
+  const perfLabel = v.perf && Number.isFinite(v.perf.tier) ? ", repère de forme " + v.perf.tier + " sur 10" : "";
+
+  // ---- CANAL 3 : LA FORME PHYSIQUE (R17.2) ----
+  // Une échelle graduée au sol et un repère qui s'y place. Le repère se DÉPLACE : il peut
+  // reculer sans que rien ne disparaisse de l'avatar. C'est la différence entre « tu es ici
+  // aujourd'hui » et « on te retire ce que tu avais gagné ».
+  // Absent tant qu'aucune référence n'est mesurée — pas de repère au minimum par défaut.
+  let perf = "";
+  if (v.perf && Number.isFinite(v.perf.tier)) {
+    const t = Math.max(1, Math.min(10, v.perf.tier));
+    const x = 18 + ((t - 1) / 9) * 64; // 10 graduations de x=18 à x=82
+    let grad = "";
+    for (let i = 0; i < 10; i++) {
+      const gx = 18 + (i / 9) * 64;
+      grad += '<line x1="' + gx.toFixed(1) + '" y1="109.5" x2="' + gx.toFixed(1) + '" y2="' + (i === t - 1 ? 105 : 107.5) + '" stroke="#16130e" stroke-width="' + (i === t - 1 ? 1.6 : 0.8) + '" opacity="' + (i === t - 1 ? 0.9 : 0.3) + '"/>';
+    }
+    // Le repère n'est JAMAIS rouge et ne porte aucun mot d'échec : c'est un constat, pas
+    // une note. Il utilise l'accent du sport, comme le reste de l'équipement.
+    perf = '<g data-layer="perf" data-tier="' + t + '">' + grad
+      + '<path d="M' + x.toFixed(1) + ' 103 l-2.6 -3.4 h5.2 z" fill="' + acc + '" stroke="#16130e" stroke-width="0.8"/></g>';
+  }
 
   // R17.1 — CONTRAT DE CALQUES. Chaque pièce est étiquetée : c'est ce qui permet à un test
   // de vérifier la séparation des canaux sans deviner au moyen d'expressions régulières, et
@@ -202,12 +231,12 @@ export function avatarSVG(v, size) {
     + piece("dossard", _bib) + piece("medaille", _medal) + piece("etoiles", _stars)
     + piece("laurier", _laurel) + "</g>";
 
-  return '<svg viewBox="0 0 100 110" width="' + s + '" height="' + Math.round(s * 1.1) + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Avatar niveau ' + L + ', ' + moodLabel + '">'
+  return '<svg viewBox="0 0 100 110" width="' + s + '" height="' + Math.round(s * 1.1) + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Avatar niveau ' + L + ', ' + moodLabel + perfLabel + '">'
     + decor + aura + speed
     + '<g stroke="#16130e" stroke-width="5" stroke-linecap="round" fill="none">'
     + '<circle cx="' + A.cx + '" cy="' + A.cy + '" r="' + A.r + '" fill="#f6efe0"/>'
     + '<g data-layer="maillot">' + torso + "</g>"
     + '<g data-layer="posture">' + arms + legs + "</g>"
-    + "</g>" + visage + gear
+    + "</g>" + visage + gear + perf
     + "</svg>";
 }
