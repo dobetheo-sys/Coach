@@ -138,6 +138,14 @@ export interface PredictKit {
   /** Mention « + vallonné (+3–6%) » à coller aux fourchettes course. */
   profWhy: string;
   /**
+   * R18.2 — fourchette NATATION élargie par le milieu de course (bassin, lac, mer, eau vive).
+   * Sans réponse, c'est `range` à l'identique. Symétrique de `runRange` pour le relief : on
+   * élargit l'incertitude, on n'invente pas un décalage.
+   */
+  swimRange: (sec: number) => string;
+  /** Mention « · eau vive (×0.95–1.2) » à coller au « pourquoi » du leg natation. */
+  swimWhy: string;
+  /**
    * R15.2 — LE RELIEF ENTRE DANS LA CIBLE D'INTENSITÉ VÉLO. Les trois sports qui prescrivent
    * une puissance (tri, vélo, duathlon) passent leur bande d'IF par ici : sans ce point unique,
    * un quatrième producteur de watts divergerait le jour où on l'ajoute — et cette fois sur le

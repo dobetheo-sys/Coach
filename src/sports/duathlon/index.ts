@@ -105,10 +105,13 @@ export function buildDuathlonSessions(kit: SessionKit): V1Session[] {
       const r2 = DUA_RUN2[f] || { lo: 10, hi: 22 };
       const tbLo = tbb[0], tbHi = tbb[1];
       const trLo = Math.max(5, Math.round(r2.lo * 0.6)), trHi = Math.max(8, Math.round(r2.lo * 0.9));
-      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel vélo → R2)", note: "Court, à l'allure du jour J : on n'entraîne plus, on entretient. Le R2 se court sur des jambes de coton — c'est une compétence, elle se perd en trois semaines, et elle ne se rattrape pas le jour de la course. Zéro fatigue résiduelle.", det: "",
+      // Leg vélo en Z2, pas en allure course : voir le commentaire jumeau dans `tri/index.ts`.
+      // C'est ici que le banc v7 l'a attrapé — 158 profils avec 48 min continues en zone haute
+      // dans une semaine d'affûtage.
+      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel vélo → R2)", note: "Court : on n'entraîne plus, on entretient. Vélo en endurance, les DIX dernières minutes à l'allure du jour J, puis R2 enchaîné vite. Le R2 se court sur des jambes de coton — c'est une compétence, elle se perd en trois semaines, et elle ne se rattrape pas le matin de la course. Zéro fatigue résiduelle.", det: "",
         steps: [
           // Plancher = la borne basse AUDITÉE (C21c), pas une fraction d'elle.
-          { role: "body", leg: "bike", durationMin: PT(tbLo, Math.round(tbHi * rf)), zone: "bk.rp", intensity: intOf("bk.rp") as unknown as string, bnd: { floor: tbLo, cap: tbHi } } as V1Step,
+          { role: "body", leg: "bike", durationMin: PT(tbLo, Math.round(tbHi * rf)), zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string, bnd: { floor: tbLo, cap: tbHi } } as V1Step,
           { role: "body", leg: "run", durationMin: PT(trLo, Math.round(trHi * rf)), d: "rn", bnd: { floor: Math.max(5, Math.round(trLo * 0.6)), cap: trHi } } as V1Step,
         ], ...({ runInj } as object) });
     } else {

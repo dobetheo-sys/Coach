@@ -205,6 +205,95 @@ Voir ARCHITECTURE.md « R16.10 » pour la table avant/après et les deux verrous
 
 ---
 
+### O-8 · Le footing du swimrun n'a pas de bornes · 🔴 **OUVERT (trouvé en R18, hors périmètre du lot)**
+
+Trouvé en lisant les plans pendant R18.4, pas en cherchant. Sur un swimrun à 12 h/sem, la plus
+longue séance du plan est un **« Footing facile »** :
+
+| format | plus longue séance du plan |
+|---|---|
+| experience | **182 min** |
+| sprint | **228 min** |
+| series | **226 min** |
+
+Un footing de presque quatre heures n'est pas un footing : c'est une seconde sortie longue
+déguisée, et sur les trois formats c'est elle qui domine le plan — devant la séance pivot, qui
+est censée être LA séance spécifique du swimrun.
+
+C'est **exactement** le défaut que R13 a corrigé pour le triathlon (« Footing facile 213 min »,
+banc v6, D7) : le bloc du créneau facile n'a **pas de `bnd`**, il devient donc le déversoir de
+toutes les passes de remplissage. La correction du tri a posé `ftCaps` en bornes ; celle du
+swimrun n'a jamais été faite, parce que le module est arrivé plus tard et que personne n'a
+rejoué la liste des leçons du sport précédent.
+
+Ce n'est pas dans R18 parce que R18 traite six constats de test nommés, et que celui-ci n'en
+fait pas partie — l'élargir en silence est précisément ce que ce registre existe pour empêcher.
+
+```verify
+id: O-8
+quoi: la plus longue séance d'un plan swimrun est un footing de plus de 150 min
+attendu: /Footing facile/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swimrun',level:'inter',history:'confirme',intent:'competition',vol_max:'12',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',css:'2:00',css_known:'oui',vol_recent:'8',injury:'aucune',off_days:'non',shift_ok:'non',swim_total_m:'2000',run_total_km:'12',segments_n:'10',longest_swim_m:'600',water_temp_c:'18',team_mode:'solo',openwater_access:'saisonnier',swim_continuous:'oui',run_continuous:'oui',gear_test:'oui',race_date:'2027-01-24'};for(const f of ['experience','sprint','series']){const p=E.buildPlan('swimrun',{...b,format:f});let mx=0,nm='';for(const w of p.weeks)for(const d of w.days)for(const s of d.sessions||[])if((s.min||0)>mx){mx=s.min;nm=s.name;}if(mx>150)console.log(f+' : '+mx+' min « '+nm+' »');}"
+```
+
+### O-9 · Le banc d'invariants n'est pas vert, et la documentation dit qu'il l'est · 🟠 **OUVERT (constaté en R18)**
+
+`CLAUDE.md` annonce « Banc d'invariants vert sur ses 19 tests ». Il ne l'est pas, et ne l'était
+pas avant R18 non plus (vérifié en rejouant le banc contre le moteur d'avant le lot : **mêmes**
+quatre échecs, aux mêmes comptes). Ce sont donc quatre dettes silencieuses, pas une régression :
+
+| id | ce qu'il dit | échecs | lecture |
+|---|---|---|---|
+| I6 | séance non vide | 54 | la course objectif est à `min: 0` **par conception** (R13.4) — c'est l'INVARIANT qui est périmé, pas le moteur |
+| I8 | plafond de séances | 15 | la course objectif s'ajoute au budget de la semaine ; même famille que I6 |
+| I12 | sortie longue ≤ 60 % | 3 | trail, petite enveloppe : 54 min sur 4 séances — c'est de la granularité, `GRAIN_MIN` ne couvre pas ce cas |
+| I14 | la longue est la plus longue | 6 | trail, grosse enveloppe, débutant : « Sortie longue trail » plafonnée à 180 min pendant qu'un autre bloc monte à 295 |
+
+I6 et I8 se corrigent dans le BANC (exclure la course, comme le fait déjà `wmin` ailleurs).
+I12 et I14 sont à re-mesurer : I14 a été déclaré fermé en R14, il ne l'est pas pour le trail
+débutant à grosse enveloppe. Le banc sort en 0 quoi qu'il arrive — il RAPPORTE, il ne garde
+pas —, ce qui explique que personne ne l'ait vu : un rapport que rien ne lit vaut zéro.
+
+```verify
+id: O-9
+quoi: le banc d'invariants porte encore quatre familles d'échecs
+attendu: /I14 +la sortie longue est la plus longue +\d+ échecs/
+cmd: npm run audit:invariants
+```
+
+### O-10 · `vol_max` ne pilote plus rien au-delà de 10 h, et l'annonce ne colle pas au livré · 🟠 **OUVERT (constaté en R18)**
+
+Constat de test du fondateur : « Volume max à 12 h au lieu de 14, acceptable pour le 70.3 ».
+La mesure dit autre chose que le constat, et **autre chose que ce que j'avais écrit d'abord** :
+ma première mesure passait `intent: "perf"`, qui n'est pas dans le domaine (`competition /
+finir / plaisir`) — le chemin validé la refuse, le chemin interne la tolérait. Refaite sur une
+entrée valide, sur un 70.3 historique `ancien` :
+
+| `vol_max` déclaré | pic ANNONCÉ | pic LIVRÉ |
+|---|---|---|
+| 10 h | 8,8 h | 9,6 h |
+| 12 h | 8,7 h | 9,5 h |
+| 14 h | 8,7 h | 9,5 h |
+| 16 h | 8,7 h | 9,5 h |
+
+Deux choses, et aucune n'est celle qu'on croyait :
+1. **au-delà de 10 h, `vol_max` ne change plus rien** — le limiteur est ailleurs (budget de
+   séances × plafonds de la bibliothèque 70.3), et la question continue d'être posée comme si
+   elle décidait ;
+2. le pic **livré dépasse le pic annoncé** de ~0,8 h, systématiquement. C'est l'inverse du sens
+   redouté, mais c'est le même défaut : la **sonde de capacité V2.1** existe pour que « la
+   promesse suive ce que les plafonds permettent », et ici les deux ne se rejoignent pas.
+
+Le fondateur a tranché « acceptable » sur l'écart de volume ; l'entrée reste ouverte parce que
+le point 1 rend une question du questionnaire inerte au-delà d'un seuil que rien n'annonce.
+
+```verify
+id: O-10
+quoi: au-delà de 10h, vol_max ne change plus le plan d'un 70.3
+attendu: /vol_max=16h → pic annoncé 8[.,]7 h/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const a={sport:'tri',format:'70.3',level:'avance',history:'ancien',intent:'competition',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',ftp:'230',ftp_known:'oui',css:'2:00',css_known:'oui',vol_recent:'10',injury:'aucune',off_days:'non',shift_ok:'non',race_date:'2027-01-24'};for(const v of ['10','12','14','16']){const p=E.buildPlan('tri',{...a,vol_max:v});console.log('vol_max='+v+'h → pic annoncé '+p.volPeak+' h · pic livré '+(Math.max(...p.weeks.map(w=>w.vol_declared))).toFixed(1)+' h');}"
+```
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas

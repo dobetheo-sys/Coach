@@ -30,6 +30,21 @@ await page.click("#nextBtn");
 ok(/Le parcours/.test(await page.locator("#screen").textContent()), "étape « Le parcours » (profil), pas « Le terrain » de la course à pied");
 await page.click('.opts[data-key="terrain"] .opt[data-val="vallonne"]');
 await page.click("#nextBtn");
+// ---- R18.2 — le profil de la course, DISCIPLINE PAR DISCIPLINE ----
+// Un duathlon vallonné à vélo et plat à pied ne se pace pas comme un parcours homogène :
+// c'est la même course, deux corrections différentes. L'étape est FACULTATIVE (chaque leg
+// non renseigné retombe sur le terrain global), et on le vérifie aussi.
+const legTxt = await page.locator("#screen").textContent();
+ok(/profil de ta course/i.test(legTxt), "étape « Le profil de ta course » proposée en duathlon");
+ok(/parcours vélo/i.test(legTxt) && /parcours à pied/i.test(legTxt), "les deux segments sont demandés séparément");
+// On vérifie le CHAMP, pas le mot : le texte d'intro de l'étape explique la logique commune
+// aux trois legs et cite la natation. Chercher le mot aurait fait échouer un test correct —
+// et l'aurait fait passer le jour où le champ reviendrait sans le mot.
+ok(await page.locator('.opts[data-key="leg_swim_env"]').count() === 0, "aucun champ de nage en duathlon — le leg n'existe pas");
+ok(await page.locator("#nextBtn").isEnabled(), "l'étape est FACULTATIVE : on peut continuer sans rien renseigner");
+await page.click('.opts[data-key="leg_bike_prof"] .opt[data-val="montagne"]');
+await page.click('.opts[data-key="leg_run_prof"] .opt[data-val="plat"]');
+await page.click("#nextBtn");
 await page.fill('[data-input="age"]', "35");
 await page.click('.opts[data-key="sex"] .opt[data-val="H"]');
 await page.click("#nextBtn");

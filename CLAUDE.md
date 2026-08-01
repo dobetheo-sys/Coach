@@ -55,6 +55,10 @@ dépôt — historique git si besoin.
   PROMESSES, pas à l'auditeur interne — c'est ainsi qu'il a trouvé le contournement du drapeau
   médical et les doses de 90 min de seuil que `auditPlan()` notait 100/100. **11e gate CI**,
   budget par check dans `scripts/runAuditV7.mjs` (0 = garde-fou définitif).
+- `npm run audit:r18` — **banc du retour de TEST du fondateur** (`bench_r18.cjs`, 13 critères,
+  21e gate CI). Rouge sur 10 de ses 13 critères contre le moteur d'avant le lot. Il porte aussi
+  l'arbitrage qui borne R18.5 (« la cadence gagne sur le placement »), **compté et démontré** à
+  chaque exécution — 34 gabarits, chacun vérifié en retirant la décharge litigieuse.
 - `npm run audit:r13` / `audit:r14` / `audit:r14.1` — **bancs des handoffs externes**
   (`bench_r13.cjs`, `bench_r14.cjs`, `bench_r14_1.cjs`), 17e à 19e gates CI. R13 : âge, CSS
   print, nage du tri mono-séance, semaine de course, épaule, plafonds de phases. R14 : la
@@ -408,6 +412,42 @@ Débusqué au passage : le §6 du handoff oubliait `R14.4` dans sa liste de crit
 plafonds SONT la table déclarée fausse, et ils sont arithmétiquement incompatibles avec le nouveau
 `R14.1-B` (50 % d'écart exigé contre 45 % autorisé). **19 gates verts, E2E 8/8 (55 assertions),
 golden 758 inchangé** — la projection ne touche aucune séance.
+
+**R18 livré — le premier lot qui vient d'un TEST, pas d'un audit** (retour du fondateur,
+01/08/2026, voir ARCHITECTURE.md « R18 » — banc `npm run audit:r18`, **21e gate CI**) : six
+constats, cinq défauts, dont deux plus larges que ce que le test pouvait voir.
+**R18.1** le zoom involontaire — le viewport était bon, la cause est qu'iOS zoome sur tout champ
+sous 16 px et ne dézoome jamais ; 22 champs concernés, dont les quatre sélecteurs du check-in du
+matin. `css/mobile.css` posait la bonne valeur depuis l'origine mais **perdait la cascade**
+contre `.opt` et contre `input[type=text]` — un correctif que la cascade annule est un correctif
+qu'on croit avoir. On ne pose PAS `user-scalable=no` : retirer le zoom subi en retirant le zoom
+voulu supprime la seule loupe d'un malvoyant. En chemin, `smoke-typo` ne lisait pas
+`css/mobile.css`, qui portait un texte à 8 px sous le plancher de 9 que R16.8 affirme tenir —
+et la mesure de rendu ne le voyait pas non plus (un `::after` n'est pas un nœud de texte).
+**R18.2** le profil de course **par discipline** — R14.3-a avait unifié `terrain` et
+`course_profile` en une clé, ce qui était juste, mais cette clé décrit le parcours comme s'il
+était homogène ; un triathlon ne l'est jamais. `legProfileOf()` prolonge la cascade d'un cran
+(leg → global → terrain), la nage a son propre domaine (un relief ne décrit pas un plan d'eau),
+et `eau_vive` élargit **des deux côtés** parce qu'un courant porte autant qu'il freine.
+**R18.3** retour à cinq onglets — 🎯 Aujourd'hui redevient réellement central (3e sur 5) ;
+📅 Semaine revient SANS la coche en deux versions que R16.9 avait débusquée (elle consomme
+`weekGridHTML`/`toggleDone`). Débusqué au passage : `handleSwapClick` re-rendait Plan en dur.
+**R18.4** le brick disparaissait de l'affûtage — mesuré sur 4 formats de tri × 4 de duathlon,
+tous niveaux : **trois semaines** sans enchaînement avant le jour J, parce que `durLong`
+retombait dans la branche générique là où R13.4 n'avait branché que `dur1`/`dur2`. **C21c** :
+le plafond du brick d'affûtage EST le plancher de la bande de charge — la relation ne peut pas
+dériver. Ma première écriture mettait 48 min continues à allure course dans une semaine
+d'affûtage ; le banc v7 l'a trouvée (158 profils duathlon, 59 % → 89 %) et avait raison au-delà
+de sa règle.
+**R18.5** la cadence de récup ignorait les phases — 75 % des plans déchargeaient DANS le pic.
+C27a/b/c **déplacent** sans jamais supprimer, et un garde les domine : aucune règle de placement
+ne fait dépasser à l'athlète sa propre cadence. Les 34 arbitrages où la cadence gagne sont
+comptés ET démontrés à chaque exécution du banc.
+Enregistrés non traités (`BUGS_OUVERTS.md`) : **O-8** le footing swimrun sans bornes (182-228
+min, la plus longue séance du plan — le défaut que R13 a corrigé pour le tri), **O-9** le banc
+d'invariants porte quatre familles d'échecs pendant que la doc le dit vert (dette, pas
+régression : identique contre le moteur d'avant R18), **O-10** `vol_max` inerte au-delà de 10 h.
+**21 gates verts, E2E 12/12 suites, golden 900 recapturé.**
 
 **R17.1 livré — l'avatar sait enfin comment tu vas AUJOURD'HUI** (brief avatar, voir
 ARCHITECTURE.md « R17.1 ») : la posture était pilotée par les séances des 7 derniers jours —

@@ -16,8 +16,8 @@ Généré par `npm run audit:v2`. 594 combinaisons via le moteur V2, scorées pa
 | Sport | Ratio pic méd V1.5 → V2 | Pire ratio V1.5 → V2 | Score moyen V1.5 → V2 |
 |---|---|---|---|
 | run | 0.99 → 0.98 | 0.90 → 0.90 | 99 → 99 |
-| bike | 1.00 → 0.99 | 0.94 → 0.94 | 99 → 99 |
-| swim | 0.97 → 0.97 | 0.86 → 0.86 | 98 → 97 |
+| bike | 0.99 → 0.99 | 0.94 → 0.94 | 99 → 99 |
+| swim | 0.97 → 0.97 | 0.86 → 0.86 | 97 → 97 |
 | tri | 0.98 → 0.98 | 0.90 → 0.90 | 96 → 96 |
 | trail | NaN → 0.95 | 1.00 → 0.90 | NaN → 90 |
 | duathlon | NaN → 0.97 | 1.00 → 0.91 | NaN → 99 |

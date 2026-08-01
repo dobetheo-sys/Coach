@@ -220,6 +220,34 @@ function buildFreeSteps(){
       valid(a){return a.milieu;}});
   }
 
+  // R18.2 — LE PROFIL DE LA COURSE, PAR DISCIPLINE (retour du fondateur après test).
+  // La question « ton terrain » ci-dessus décrit UN terrain, comme si le parcours était
+  // homogène. Un triathlon ne l'est jamais : on peut nager en eau vive, rouler en montagne et
+  // courir à plat, et les trois corrections sont indépendantes. Une seule réponse en
+  // appliquait une troisième, fausse pour les trois legs.
+  // Facultative de bout en bout : chaque leg non renseigné retombe sur le terrain global
+  // (`legProfileOf`), donc quelqu'un qui ne sait pas encore n'est pas bloqué et ne perd rien.
+  if (S.sport === "tri" || S.sport === "duathlon" || S.sport === "swimrun") {
+    const nage = S.sport === "tri" || S.sport === "swimrun";
+    const velo = S.sport === "tri" || S.sport === "duathlon";
+    steps.push({id:"leg_profiles",title:"Le profil de ta course",eyebrow:"Gratuit — Discipline par discipline",
+      why:"Ton épreuve n'est pas d'un seul bloc. Chaque segment a son terrain, et chacun change une chose différente : le milieu de nage décale la fourchette de natation, le relief du vélo abaisse ta puissance cible, le relief à pied élargit ton temps de course. Tu peux tout laisser vide — on reprendra alors ton terrain général.",
+      render(){
+        let h = "";
+        if (nage) h += '<div class="q"><span class="q-label">La natation se passe où ?</span>'
+          + '<div class="q-sub">Le bassin est plus rapide que l\'eau libre (ni navigation, ni houle). Un courant, lui, peut porter autant que freiner — on élargira la fourchette dans les deux sens.</div>'
+          + '<div class="opts" data-key="leg_swim_env">'+opt("bassin","Bassin")+opt("lac","Lac / eau libre calme")+opt("mer_calme","Mer calme")+opt("mer_agitee","Mer agitée")+opt("eau_vive","Eau vive (courant)")+'</div></div>';
+        if (velo) h += '<div class="q"><span class="q-label">Le parcours vélo ?</span>'
+          + '<div class="q-sub">Sur du relief, le coût suit la puissance NORMALISÉE : viser la bande du plat revient à rouler plus dur qu\'on ne croit, et ça se paie à pied.</div>'
+          + '<div class="opts" data-key="leg_bike_prof">'+opt("plat","Plat")+opt("vallonne","Vallonné")+opt("montagne","Montagneux")+'</div></div>';
+        h += '<div class="q"><span class="q-label">Le parcours à pied ?</span>'
+          + '<div class="q-sub">Le relief ralentit ET rend le chrono moins prévisible : la fourchette monte et s\'élargit.</div>'
+          + '<div class="opts" data-key="leg_run_prof">'+opt("plat","Plat")+opt("vallonne","Vallonné")+opt("montagne","Montagneux")+'</div></div>';
+        return h;
+      },
+      valid(){return true;}}); // facultative : rien ne bloque, tout retombe sur le terrain global
+  }
+
   // R7 TRAIL — « Ton terrain » (§3.3) : la contrainte la plus déterminante du trail, et elle
   // n'existait pas. Un athlète en plaine qui prépare un ultra de montagne a besoin d'un plan
   // structurellement différent — le moteur doit le savoir pour le dire au lieu de prescrire

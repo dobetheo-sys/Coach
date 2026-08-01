@@ -21,7 +21,7 @@ import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS, syncReturnRecovery } from "../engine/trailModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
 import { buildSessions } from "./sessionLibrary.ts";
-import { predictRace, courseProfileOf } from "../engine/predictor.ts";
+import { predictRace, courseProfileOf, legProfileOf } from "../engine/predictor.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { arbitrateVolRecent } from "../engine/measured.ts";
 import { record as traceRecord, traceEnabled } from "../engine/trace.ts";
@@ -2146,6 +2146,8 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
           // extrapolerait au volume réel de l'athlète.
           const pred = predictRace(a.sport as string, a.format as string, a.intent, r.baseRefs, {
             courseProfile: courseProfileOf(a as never),
+            // R18.2 — trois profils au lieu d'un : un triathlon n'est pas homogène.
+            legProfiles: { swim: legProfileOf(a as never, "swim"), bike: legProfileOf(a as never, "bike"), run: legProfileOf(a as never, "run") },
             trail: r.trail || undefined,
             runHoursPerWeek: a.sport === "run" ? parseFloat(String(a.vol_max ?? "")) || undefined : undefined,
           });

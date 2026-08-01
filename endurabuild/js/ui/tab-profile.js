@@ -491,6 +491,25 @@ export function renderTabProfile(plan) {
   const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
   html += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Profil du parcours visé</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
     + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
+  // R18.2 — et DISCIPLINE PAR DISCIPLINE pour les épreuves multisport. La ligne ci-dessus
+  // décrit le parcours comme s'il était homogène ; un triathlon ne l'est jamais. Chaque leg
+  // laissé sur « comme au-dessus » retombe sur cette réponse globale, puis sur le terrain :
+  // un seul chemin (`legProfileOf`), trois niveaux de précision.
+  if (S.sport === "tri" || S.sport === "duathlon" || S.sport === "swimrun") {
+    const legSel = (id, cle, lab, opts) => {
+      const cur = String(a[cle] || "");
+      return '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:4px"><span style="width:150px">' + lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
+        + opts.map(([v, l]) => '<option value="' + v + '"' + (cur === v ? " selected" : "") + ">" + l + "</option>").join("")
+        + "</select></label>";
+    };
+    const RELIEF_OPTS = [["", "Comme au-dessus"], ["plat", "Plat"], ["vallonne", "Vallonné"], ["montagne", "Montagneux"]];
+    if (S.sport === "tri" || S.sport === "swimrun")
+      html += legSel("pfLegSwim", "leg_swim_env", "🏊 Milieu de nage", [["", "Comme au-dessus"], ["bassin", "Bassin"], ["lac", "Lac / eau libre calme"], ["mer_calme", "Mer calme"], ["mer_agitee", "Mer agitée"], ["eau_vive", "Eau vive (courant)"]]);
+    if (S.sport === "tri" || S.sport === "duathlon")
+      html += legSel("pfLegBike", "leg_bike_prof", "🚴 Parcours vélo", RELIEF_OPTS);
+    html += legSel("pfLegRun", "leg_run_prof", "🏃 Parcours à pied", RELIEF_OPTS);
+    html += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Ton épreuve n’est pas d’un seul bloc : on peut nager en eau vive, rouler en montagne et courir à plat. Chaque segment corrige une chose différente — et « Comme au-dessus » est un choix parfaitement valable.</div>';
+  }
   // R14.1 §1-c — LA QUESTION QUI REMPLACE L'ANCIENNETÉ dans le calcul de la marge de
   // progression. Elle est ici (Profil) et pas dans le questionnaire d'entrée, pour ne pas
   // alourdir le tunnel. Ce qu'elle mesure : le STIMULUS DE LA STRUCTURE. Quelqu'un qui court
@@ -811,6 +830,13 @@ export function renderTabProfile(plan) {
     const cp = ($("pfCourseProfile") || {}).value;
     if (cp !== undefined && cp !== String(a.course_profile || "")) {
       S.answers.course_profile = cp; changed++; // n'affecte que la prédiction, pas le plan
+    }
+    // R18.2 — les trois profils par discipline. Ils touchent la prédiction ET le pacing du
+    // jour J (le jour J est une séance du plan), d'où `changed++` : le plan est régénéré.
+    for (const [id, cle] of [["pfLegSwim", "leg_swim_env"], ["pfLegBike", "leg_bike_prof"], ["pfLegRun", "leg_run_prof"]]) {
+      const el = $(id);
+      if (!el) continue;
+      if (el.value !== String(a[cle] || "")) { S.answers[cle] = el.value; changed++; }
     }
     // R14.1 — les deux entrées de la PROJECTION : elles ne régénèrent pas le plan (elles ne
     // changent pas une seule séance), elles changent ce qu'on annonce pour le jour J.

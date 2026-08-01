@@ -50,6 +50,12 @@ export interface PredictOpts {
   pctLoad?: number; // % de charge du plan accomplie
   streakWeeks?: number;
   courseProfile?: string; // "plat" | "vallonne" | "montagne" — profil du parcours visé
+  /**
+   * R18.2 — profils PAR DISCIPLINE (multisport). Chaque entrée absente retombe sur
+   * `courseProfile` pour le vélo et la course ; la nage ne retombe sur rien (un relief ne
+   * décrit pas un plan d'eau). Rempli par `legProfileOf()` chez l'appelant, jamais deviné ici.
+   */
+  legProfiles?: { swim?: string; bike?: string; run?: string };
   /** R7 TRAIL — objectif décodé (distance, D+, catégorie, VAM) : Riegel ne s'applique pas. */
   trail?: TrailObjective;
   /** Objectif swimrun décodé (§R10.3.2) — trois postes de temps. */
@@ -141,6 +147,55 @@ export function courseProfileOf(a: { course_profile?: unknown; terrain?: unknown
   if (explicite && reliefOf(explicite)) return explicite;
   const terrain = String(a.terrain ?? "").trim();
   return terrain || undefined;
+}
+
+/**
+ * R18.2 — LE MILIEU DE NAGE. Ce n'est pas un relief, et ça ne se traite pas comme tel.
+ *
+ * La référence n'est PAS le bassin : `TRI_SWIM[format].factor` est calibré « peloton,
+ * combinaison et navigation compris », donc sur de l'eau libre calme. Le lac vaut donc 1.00,
+ * et le bassin est plus RAPIDE que la référence — se tromper de point d'ancrage aurait
+ * ralenti tout le monde de 5 % en croyant corriger.
+ *
+ * `eau_vive` est le cas que le fondateur a cité, et c'est le plus intéressant : un courant
+ * peut porter autant qu'il freine. Sa bande est donc ASYMÉTRIQUE ET LARGE, dans les deux
+ * sens — on refuse de faire semblant de savoir de quel côté. Même honnêteté que RELIEF pour
+ * la course, qui élargit au lieu de décaler.
+ *
+ * Heuristiques de praticiens, assumées comme telles : aucune de ces valeurs n'est mesurée,
+ * et c'est écrit ici plutôt que sous-entendu.
+ */
+const SWIM_ENV: Record<string, ReliefFactor> = {
+  bassin: { lo: 0.94, hi: 0.97, label: "bassin (pas de navigation, appuis aux murs)" },
+  lac: { lo: 1.0, hi: 1.0, label: "lac / eau libre calme" },
+  mer_calme: { lo: 1.01, hi: 1.05, label: "mer calme" },
+  mer_agitee: { lo: 1.06, hi: 1.14, label: "mer agitée (houle, respiration contrariée)" },
+  eau_vive: { lo: 0.95, hi: 1.2, label: "eau vive (courant)" },
+};
+export function swimEnvOf(value: unknown): ReliefFactor | null {
+  const k = String(value ?? "").trim();
+  return k ? SWIM_ENV[k] || null : null;
+}
+
+/**
+ * R18.2 — LE RÉSOLVEUR PAR DISCIPLINE, point unique.
+ *
+ * Trois niveaux, du plus précis au plus général : la réponse du LEG, puis le profil de course
+ * global (`course_profile`), puis le terrain d'entraînement (`terrain`). C'est la même
+ * cascade que `courseProfileOf`, prolongée d'un cran — pas un second vocabulaire.
+ *
+ * La nage ne retombe sur RIEN : le profil global décrit un relief, et un relief ne dit rien
+ * d'un plan d'eau. Retomber dessus aurait produit un « lac montagneux » traité comme du plat.
+ */
+export type RaceLeg = "swim" | "bike" | "run";
+export function legProfileOf(a: { leg_swim_env?: unknown; leg_bike_prof?: unknown; leg_run_prof?: unknown; course_profile?: unknown; terrain?: unknown }, leg: RaceLeg): string | undefined {
+  if (leg === "swim") {
+    const v = String(a.leg_swim_env ?? "").trim();
+    return v && SWIM_ENV[v] ? v : undefined;
+  }
+  const propre = String((leg === "bike" ? a.leg_bike_prof : a.leg_run_prof) ?? "").trim();
+  if (propre && reliefOf(propre)) return propre;
+  return courseProfileOf(a);
 }
 
 /** Garde de build : toute valeur du domaine `terrain` est classée (relief ou neutre). */
@@ -269,13 +324,31 @@ export function predictRace(
   const shift = intent === "finir" ? 0.03 : 0;
   if (followed) D("PRED-forme", "Fourchette resserrée", "±2%", "Plan bien suivi (streak ≥3 semaines, charge accomplie ≥60%) : la projection est plus fiable");
   if (shift > 0) D("PRED-finisher", "Pacing conservateur", "+3%", "Objectif finisher : on vise l'arrivée en forme, pas la marge d'erreur");
+  // R18.2 — chaque leg lit SON profil ; à défaut, le profil global. Un triathlon n'est pas
+  // homogène : nager en eau vive, rouler en montagne et courir à plat, ce sont trois
+  // corrections indépendantes, et une clé unique en appliquait une troisième, fausse pour
+  // les trois. Les sports mono-discipline ne passent pas de `legProfiles` : rien ne bouge.
+  const legs = opts.legProfiles || {};
   // Fourchette COURSE À PIED avec profil de parcours (R6) — le relief élargit et décale.
-  const prof = reliefOf(opts.courseProfile);
+  const prof = reliefOf(legs.run ?? opts.courseProfile);
   if (prof && prof.hi > 1) D("PRED-parcours", "Profil du parcours", prof.label, "Le relief ralentit et augmente l'incertitude : fourchette ×" + prof.lo + "–" + prof.hi + " sur les temps de course à pied");
   const profWhy = prof && prof.hi > 1 ? " · " + prof.label + " (+" + Math.round((prof.lo - 1) * 100) + "–" + Math.round((prof.hi - 1) * 100) + "%)" : "";
   // R15.2 — décalage d'IF vélo et sa justification, calculés UNE fois pour les trois sports
   // qui prescrivent des watts (tri, vélo, duathlon).
-  const ifShift = bikeIFShift(opts.courseProfile);
+  // R18.2 — le milieu de nage. Aucun repli sur le profil global : un relief ne décrit pas
+  // un plan d'eau (voir SWIM_ENV).
+  const swimEnv = swimEnvOf(legs.swim);
+  const swimWhy = swimEnv && (swimEnv.lo !== 1 || swimEnv.hi !== 1)
+    ? " · " + swimEnv.label + " (×" + swimEnv.lo + "–" + swimEnv.hi + ")"
+    : "";
+  if (swimEnv && (swimEnv.lo !== 1 || swimEnv.hi !== 1))
+    D("R18.2-nage", "Milieu de nage", swimEnv.label,
+      swimEnv.lo < 1 && swimEnv.hi > 1
+        ? "Un courant peut porter autant qu'il freine : la fourchette s'élargit DANS LES DEUX SENS plutôt que de décaler dans un sens qu'on ne connaît pas."
+        : swimEnv.hi < 1
+          ? "En bassin il n'y a ni navigation ni houle, et les murs rendent du temps : la référence d'eau libre est trop lente ici."
+          : "La navigation, la houle et la respiration contrariée coûtent du temps : la fourchette monte et s'élargit.");
+  const ifShift = bikeIFShift(legs.bike ?? opts.courseProfile);
   const bikeWhy = ifShift < 0
     ? " · cible ABAISSÉE de " + Math.round(-ifShift * 100) + " points pour le relief : sur un parcours "
       + "accidenté le coût suit la puissance NORMALISÉE et non la moyenne, et l'indice de variabilité "
@@ -283,7 +356,7 @@ export function predictRace(
       + "croit — ça se paie à pied, pas sur le vélo"
     : "";
   if (ifShift < 0)
-    D("R15.2", "Relief du parcours vélo", (prof ? prof.label : "accidenté") + " → IF " + (ifShift * 100).toFixed(1) + " pt",
+    D("R15.2", "Relief du parcours vélo", (reliefOf(legs.bike ?? opts.courseProfile) || { label: "accidenté" }).label + " → IF " + (ifShift * 100).toFixed(1) + " pt",
       "Le chrono vélo n'est pas prédit (il dépend du parcours), mais la CIBLE D'INTENSITÉ, elle, doit "
       + "descendre : à puissance moyenne égale, un parcours vallonné coûte plus cher qu'un parcours plat.");
   // R14 P5 — l'exposant de Riegel suit le volume, et SEULEMENT pour une course sèche :
@@ -317,6 +390,14 @@ export function predictRace(
     const runRange = (sec: number) => {
       if (!prof) return range(sec);
       const lo = sec * prof.lo * (1 + shift - spread), hi = sec * prof.hi * (1 + shift + spread);
+      note(lo, hi);
+      return fmtT(lo) + "–" + fmtT(hi);
+    };
+    // R18.2 — même forme que `runRange` : le milieu de nage élargit la fourchette au lieu de
+    // décaler un chiffre. Sans réponse, c'est `range` — donc rien ne bouge pour l'existant.
+    const swimRange = (sec: number) => {
+      if (!swimEnv) return range(sec);
+      const lo = sec * swimEnv.lo * (1 + shift - spread), hi = sec * swimEnv.hi * (1 + shift + spread);
       note(lo, hi);
       return fmtT(lo) + "–" + fmtT(hi);
     };
@@ -358,7 +439,7 @@ export function predictRace(
   // sortir un chiffre inventé — la fourchette honnête est la seule sortie acceptable.
   const mod = sportModule(sport);
   if (mod.predict) {
-    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, riegelSec, profWhy, bikeIF, bikeWhy, swimrun: opts.swimrun });
+    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy, swimrun: opts.swimrun });
   } else {
     advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }

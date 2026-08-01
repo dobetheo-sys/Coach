@@ -194,6 +194,27 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   weight_target: { ...numF("ton poids cible", 35, 200, "kg"), nature: "vecue" },
   // ---- Terrain / milieu ----
   terrain: { ...enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"]), nature: "vecue" },
+  // ---- R18.2 — LE PROFIL DE COURSE PAR DISCIPLINE ----
+  // Retour du fondateur après test : « dans la construction avancée je veux qu'on définisse
+  // le profil de la course (ex triathlon : eau vive, vélo montagneux, course plate) ».
+  // Il a raison sur un point qu'aucune règle du dépôt ne couvrait : R14.3-a a unifié
+  // `terrain` et `course_profile` en UNE clé — ce qui était le bon geste contre la divergence
+  // silencieuse —, mais cette clé unique décrit le parcours comme s'il était homogène. Un
+  // triathlon ne l'est jamais : on peut nager en eau vive, rouler en montagne et courir à
+  // plat, et les trois corrections sont indépendantes. Une clé globale en applique une
+  // troisième, fausse pour les trois.
+  //
+  // Ces clés ne remplacent pas la clé globale, elles la SPÉCIALISENT : `legProfileOf()`
+  // retombe dessus quand un leg n'est pas renseigné, exactement comme `courseProfileOf`
+  // retombe sur `terrain`. Un seul chemin, trois niveaux de précision — la leçon de R14.3-a
+  // tient, on ne recrée pas deux vocabulaires.
+  //
+  // Le milieu de nage a son propre domaine parce que ce n'est PAS un relief : « montagneux »
+  // ne veut rien dire dans l'eau, et l'incertitude n'y est pas de même nature (un courant
+  // peut porter autant que freiner — voir SWIM_ENV dans `predictor.ts`).
+  leg_swim_env: { ...enumF("le milieu de nage de ta course", ["bassin", "lac", "mer_calme", "mer_agitee", "eau_vive"], ["tri", "swimrun"]), nature: "vecue" },
+  leg_bike_prof: { ...enumF("le profil du parcours vélo", ["plat", "vallonne", "montagne"], ["tri", "duathlon"]), nature: "vecue" },
+  leg_run_prof: { ...enumF("le profil du parcours à pied", ["plat", "vallonne", "montagne"], ["tri", "duathlon", "swimrun"]), nature: "vecue" },
   milieu: { ...enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim"]), nature: "vecue" },
   swim_limit: { ...enumF("ta limite en natation", ["technique", "respiration", "endurance", "peur"], ["swim"]), nature: "vecue" },
   treadmill: { ...enumF("l'accès au tapis", OUI_NON), nature: "vecue" },

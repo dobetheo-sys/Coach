@@ -95,11 +95,17 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
       const tbb = BRICK_TAPER_BIKE_BOUNDS[fmt] || [25, 45];
       const tb = { lo: tbb[0], hi: tbb[1] };
       const tr = ({ S: { lo: 6, hi: 10 }, M: { lo: 8, hi: 12 }, "70.3": { lo: 10, hi: 16 }, Full: { lo: 12, hi: 20 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 8, hi: 12 };
-      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel de transition)", note: "Court, à l'allure du jour J : on ne construit plus rien, on entretient. Les jambes ont besoin de se rappeler la sensation « de coton » des premières foulées après le vélo — c'est une compétence, elle se perd, et elle ne se rattrape pas le jour de la course. Un tiers du volume du brick de pic, zéro fatigue résiduelle.", det: "", steps: [
+      // LE LEG VÉLO ROULE EN Z2, PAS À L'ALLURE COURSE. Première écriture : `bk.rp` sur tout
+      // le bloc — mesuré par le banc v7, 158 profils de duathlon en violation de dose (48 min
+      // continues en zone haute). C'était juste, et pas seulement pour l'auditeur : 45 min à
+      // allure course EST une séance dure, c'est-à-dire l'exact contraire d'un affûtage.
+      // Même structure que le brick de pic : le corps en endurance, l'allure course rappelée
+      // sur la fin et portée par la consigne, jamais par la zone du bloc entier.
+      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel de transition)", note: "Court : on ne construit plus rien, on entretient. Vélo en endurance, les DIX dernières minutes à l'allure du jour J, puis on enchaîne vite. Les jambes ont besoin de se rappeler la sensation « de coton » des premières foulées après le vélo — c'est une compétence, elle se perd, et elle ne se rattrape pas le matin de la course. Un tiers du volume du brick de pic, zéro fatigue résiduelle.", det: "", steps: [
         // Le PLANCHER du leg vélo est la borne basse AUDITÉE (C21c), pas une fraction d'elle :
         // sinon la décroissance d'affûtage descend la séance sous ce que la spec exige, et le
         // générateur produit ce que l'auditeur refuse. Même discipline que C21b en charge.
-        { role: "body", leg: "bike", durationMin: PT(tb.lo, Math.round(tb.hi * rf)), zone: "bk.rp", intensity: intOf("bk.rp") as unknown as string, bnd: { floor: tb.lo, cap: tb.hi } } as V1Step,
+        { role: "body", leg: "bike", durationMin: PT(tb.lo, Math.round(tb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string, bnd: { floor: tb.lo, cap: tb.hi } } as V1Step,
         { role: "body", leg: "run", durationMin: PT(tr.lo, Math.round(tr.hi * rf)), d: "rn", bnd: { floor: Math.max(5, Math.round(tr.lo * 0.6)), cap: tr.hi } } as V1Step,
       ], ...( { runInj } as object) });
     } else {
@@ -146,11 +152,13 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
 
 /** Prédiction tri — extraction mécanique de la branche correspondante de `predictRace`. */
 export function predictTri(kit: PredictKit): void {
-  const { refs, format, items, advice, D, range, runRange, riegelSec, profWhy, bikeIF, bikeWhy } = kit;
+  const { refs, format, items, advice, D, range, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy } = kit;
   const sw = TRI_SWIM[format], bk = TRI_BIKE[format], rn = TRI_RUN[format];
   if (refs.css > 0 && sw) {
     const t = (sw.dist / 100) * refs.css * sw.factor;
-    items.push({ leg: "Natation " + sw.dist + "m", value: range(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" });
+    // R18.2 — la fourchette natation suit le MILIEU de la course. Le facteur `sw.factor` est
+    // calibré sur de l'eau libre calme : c'est le lac qui vaut 1, pas le bassin.
+    items.push({ leg: "Natation " + sw.dist + "m", value: swimRange(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" + swimWhy });
   } else advice.push("CSS manquant → pas de projection natation (test 400/200m).");
   if (refs.ftp > 0 && bk) {
     // R15.2 — la bande passe par `bikeIF` : le relief du parcours l'abaisse, une seule fois,

@@ -13,7 +13,7 @@ import { generateAudited } from "../generator/repairLoop.ts";
 import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
-import { predictRace, courseProfileOf, type Prediction } from "../engine/predictor.ts";
+import { predictRace, courseProfileOf, legProfileOf, type Prediction } from "../engine/predictor.ts";
 import { adherenceWindow, taperIsConform, margeOf } from "../engine/projection.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
@@ -429,6 +429,8 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
     // R6 — profil du parcours (Profil) · R14.3-a — résolveur UNIQUE, partagé avec le jour J :
     // `course_profile` (le parcours visé) prime, `terrain` prend le relais à défaut.
     courseProfile: courseProfileOf(answers as never),
+    // R18.2 — trois profils au lieu d'un : un triathlon n'est pas homogène.
+    legProfiles: { swim: legProfileOf(answers as never, "swim"), bike: legProfileOf(answers as never, "bike"), run: legProfileOf(answers as never, "run") },
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
     swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,

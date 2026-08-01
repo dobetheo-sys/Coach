@@ -1395,3 +1395,167 @@ Trois règles dans le rendu, toutes assertées :
 l'assertion qui protège l'athlète : elle compare deux rendus à niveau et forme du jour égaux
 mais à paliers de forme physique opposés, et exige que l'équipement soit identique. Tant
 qu'elle est verte, une baisse de performance ne peut pas déshabiller quelqu'un.
+
+---
+
+## R18 — le lot du retour de TEST (fondateur, 01/08/2026)
+
+Six constats sont revenus d'un test de l'application livrée. Cinq étaient des défauts, et deux
+d'entre eux se sont révélés plus larges que ce que le test avait pu voir. Le sixième était une
+demande produit. C'est le premier lot du dépôt qui ne vient ni d'un audit externe ni d'un
+handoff : il vient de quelqu'un qui a ouvert l'app et l'a utilisée.
+
+**Banc : `npm run audit:r18` (`bench_r18.cjs`, 13 critères, 21e gate CI).** Rouge sur 10 de ses
+13 critères contre le moteur d'avant le lot.
+
+### R18.1 — le zoom involontaire
+
+Constat : « pas d'antizoom sur le html ». Le `<meta viewport>` était pourtant correct. La cause
+est ailleurs et elle est mécanique : **iOS zoome automatiquement sur un champ dont la taille de
+texte est sous 16 px**, à la mise au point, et ne dézoome jamais après. Mesuré au pointeur
+tactile : 17 champs au Profil, 5 dans 🎯 Aujourd'hui — dont les quatre sélecteurs du check-in
+du matin, l'écran touché tous les jours.
+
+`css/mobile.css` posait pourtant la bonne valeur sur `input, select` **depuis l'origine**. Elle
+ne s'appliquait à rien de ce qui compte : `.opt` (0,1,0) et `input[type=text]` (0,1,1 — un
+sélecteur d'attribut pèse autant qu'une classe) battent tous deux `select` (0,0,1). Un
+correctif que la cascade annule est un correctif qu'on croit avoir. D'où le bloc `--fs-field`
+en **fin** de `styles.css` (à spécificité égale, l'ordre source tranche) et la répétition
+explicite des deux formes.
+
+**Ce qu'on ne fait pas : `user-scalable=no`.** Interdire le pinch-to-zoom retire le zoom SUBI
+en retirant aussi le zoom VOULU — c'est la seule loupe d'un malvoyant sur mobile, et le
+manifeste met la santé avant l'esthétique. `smoke-typo` asserte les deux moitiés.
+
+**R18.1-a, trouvé en chemin :** la garde `smoke-typo` ne lisait pas `css/mobile.css`, qui
+portait un `font-size:8px` (le libellé « détail » des séances repliables) — sous le plancher de
+9 px que R16.8 affirme tenir. La mesure de rendu ne le voyait pas non plus : un `::after` n'est
+pas un nœud de texte. **Les deux mesures le manquaient.** La couche mobile garde le droit
+d'écrire des valeurs concrètes (elle survit délibérément à une régénération de `styles.css`) :
+on n'y exige donc pas zéro littéral, on y exige le **plancher** — c'est la propriété qui
+protège quelqu'un, pas la propreté du fichier.
+
+### R18.2 — le profil de course PAR DISCIPLINE
+
+Demande : « dans la construction avancée je veux qu'on définisse le profil de la course
+(ex triathlon : eau vive, vélo montagneux, course plate) ».
+
+R14.3-a avait unifié `terrain` et `course_profile` en UNE clé — le bon geste contre la
+divergence silencieuse. Mais cette clé unique décrit le parcours **comme s'il était homogène**,
+et un triathlon ne l'est jamais : les trois corrections sont indépendantes, et une clé globale
+en appliquait une troisième, fausse pour les trois.
+
+Trois clés de schéma (`leg_swim_env`, `leg_bike_prof`, `leg_run_prof`) et **un résolveur
+unique**, `legProfileOf(a, leg)`, qui prolonge la cascade de R14.3-a d'un cran : réponse du leg
+→ profil de course global → terrain d'entraînement. Un seul chemin, trois niveaux de précision ;
+on ne recrée pas deux vocabulaires. La nage ne retombe sur rien — un relief ne décrit pas un
+plan d'eau, et « lac montagneux » serait traité comme du plat.
+
+`SWIM_ENV` mérite sa note : **la référence n'est pas le bassin**. `TRI_SWIM[format].factor` est
+calibré « peloton, combinaison et navigation compris », donc sur de l'eau libre calme — le lac
+vaut 1,00 et le bassin est plus RAPIDE. Se tromper de point d'ancrage aurait ralenti tout le
+monde de 5 % en croyant corriger. Et `eau_vive`, le cas cité, est le seul dont le **signe** est
+inconnu : un courant porte autant qu'il freine. Sa bande est donc asymétrique et large **des
+deux côtés** (0,95–1,20), comme `RELIEF` élargit au lieu de décaler pour la course à pied.
+
+Effet mesuré sur un 70.3, entre « tout vallonné » et « eau vive · vélo montagneux · course
+plate » : natation 39'04–41'29 → 37'07–49'47, vélo 173–189 W → 169–185 W, CAP 1h53–2h04 →
+1h50–1h57. Les trois legs bougent séparément, **et sur la séance du jour J du plan**, pas
+seulement sur une carte d'affichage — c'est pour ça que le banc de sensibilité lit désormais le
+`det` de la course : une réponse qui change les temps prescrits passait auparavant pour « sans
+effet sur le plan ».
+
+### R18.3 — retour à cinq onglets
+
+« Je préférais 5 onglets que 4, l'œil humain aime les chiffres impairs. » Il y a une raison de
+plus que l'esthétique : 🎯 Aujourd'hui est l'onglet **central** du produit depuis R5, et avec
+quatre onglets « central » n'existe pas. L'ordre est **Profil · Plan · Aujourd'hui · Semaine ·
+Nutrition** — troisième sur cinq, donc réellement au milieu.
+
+**Ce que la restauration ne ramène pas.** R16.9 avait fondu 📅 Semaine dans 🗓 Plan et, ce
+faisant, trouvé un vrai défaut : la coche existait en DEUX versions, dont l'une ne produisait
+aucun `completion` — donc aucun RPE, donc un ajusteur qui sous-estimait la fatigue le lendemain.
+`tab-week.js` ne redessine rien : il consomme `weekGridHTML` et `toggleDone`, les mêmes que
+🗓 Plan. Répartition : Semaine apporte la **navigation** de semaine en semaine (ce que ni Plan
+ni Aujourd'hui ne donnaient), le quotidien reste dans 🎯 Aujourd'hui, Plan redevient la saison.
+
+Débusqué en le faisant : `handleSwapClick` re-rendait `renderTabPlanGeneral` **en dur** — un ⇄
+touché depuis Semaine faisait disparaître Semaine. Même classe de défaut (un geste, deux
+comportements selon l'écran), par l'autre bout.
+
+### R18.4 — le brick disparaissait de l'affûtage
+
+Constat : « Sur mon profil perso, 0 brick en affûtage ? ». Mesuré : sur les **4 formats de tri
+et les 4 de duathlon, tous niveaux**, le dernier enchaînement vélo↔course tombait **trois
+semaines** avant le jour J.
+
+R13.4 avait branché l'affûtage explicitement sur `dur1` et `dur2` ; `durLong` retombait encore
+dans la branche générique et rendait une sortie longue à pied. Le triathlète arrivait donc au
+départ sans avoir posé le pied par terre après le vélo depuis 21 jours — sur la transition qui
+est la difficulté propre du sport. Le swimrun, lui, gardait sa séance pivot en affûtage : le
+modèle existait déjà dans le dépôt, il n'était pas appliqué ici.
+
+**C21c** déclare la bande du brick d'affûtage, et sa forme est le point intéressant : son
+**plafond est le plancher de la bande de charge du même format** (`BRICK_TAPER_BIKE_BOUNDS`
+dérive de `BRICK_BIKE_BOUNDS`). Le brick le plus long qu'autorise l'affûtage est donc le plus
+court qu'exigeait la construction — vrai par construction sur les six formats, impossible à
+faire diverger. L'affûtage n'est **pas** exempté de C21b : une exemption serait le trou par
+lequel une sortie de 2 h reviendrait en semaine d'affûtage sans un mot.
+
+Écart ramené de 3 semaines à 1 (la semaine de course est exclue : sa spécificité, c'est la
+course, et c'est aussi la semaine que R13.4/R15.7 remodèlent).
+
+**Une erreur de conception, trouvée par le banc v7 et gardée écrite.** La première écriture
+mettait le leg vélo entier en `bk.rp` : 38 à 48 minutes **continues** en zone haute, dans une
+semaine d'affûtage — 158 profils de duathlon en violation de dose (`U-DOSE`, 59 % de profils
+propres). Le banc avait raison au-delà de sa règle : 45 minutes à allure course EST une séance
+dure, c'est-à-dire l'exact contraire de ce que la séance prétend faire. Le leg vélo roule donc
+en Z2, l'allure course est rappelée par la **consigne** sur la fin — même structure que le brick
+de pic. Duathlon 59 % → 89 %. Critère `R18.4-D` posé pour que ça ne revienne pas.
+
+### R18.5 — la cadence de récupération ignorait les phases
+
+Constat : « 2 semaines de récup en spécifique (peut-être lié au roulement sur 10 jours) ». Ce
+n'était pas le cycle de 10 jours, et le défaut était plus large : sur un balayage de plans,
+**75 % portaient une décharge DANS la phase pic** et 75 % ouvraient une phase sur une décharge.
+Une seule cause : `sinceR` comptait les cycles depuis la dernière récup, globalement, sans
+jamais regarder où on se trouvait dans le plan.
+
+Trois règles, et **aucune ne supprime de récupération** — une décharge perdue est de la charge
+ajoutée en silence :
+
+- **C27a** — une phase ne s'ouvre jamais sur une décharge. Elle est **anticipée** au dernier
+  cycle de la phase qui se termine, jamais reportée : la première écriture reportait, et la
+  mesure a montré que ça faisait passer la plus longue série de semaines de charge de 4 à 5.
+- **C27b** — aucune récupération dans le pic tant que l'affûtage peut en tenir lieu ; elle est
+  anticipée au dernier cycle du spécifique. Le garde `cyclesDansPic <= recupEvery` **sert** :
+  sur les longues préparations le pic monte à cinq semaines (R13.6), et là il mérite vraiment
+  sa décharge — la règle se désactive d'elle-même.
+- **C27c** — une récupération ne se colle jamais à l'affûtage (deux à trois semaines de
+  décharge d'affilée avant le départ, sur la fin de plan où la spécificité est maximale).
+
+**Et un garde domine les trois** : `chargeStreak < recupEvery`. Aucune règle de placement n'a le
+droit de faire dépasser à l'athlète sa propre cadence de récupération — c'est l'ordre du
+manifeste, santé avant progression. Quand les deux exigences sont incompatibles (cadence 3 +
+spécifique de 4 semaines + pic de 2), la cadence gagne et le placement cède. Le banc **compte
+et affiche** ces arbitrages (34), et chacun est **démontré** : il retire la décharge litigieuse
+et vérifie que la série de charge dépasserait alors la cadence. C'est la différence entre une
+exception posée d'avance et un test affaibli pour devenir vert.
+
+Trois erreurs dans mes propres règles, trouvées à la trace et gardées écrites dans le code :
+une anticipation qui doublait une décharge déjà prise, une autre qui visait le cycle qu'elle
+était censée protéger, et C27c qui rouvrait ce que C27b venait de fermer.
+
+### Le sixième constat, et ce qu'il a coûté de vérifier
+
+« Volume max à 12 h au lieu de 14, acceptable pour le 70.3 » — arbitré « acceptable » par le
+fondateur. La mesure dit autre chose que le constat : **au-delà de 10 h, `vol_max` ne change
+plus rien** sur un 70.3, et le pic livré dépasse le pic annoncé de ~0,8 h. Enregistré en `O-10`
+avec sa commande de re-mesure, pas corrigé — c'est un chantier de sonde de capacité, pas une
+ligne.
+
+Deux autres défauts trouvés **en lisant les plans** pendant le lot, enregistrés et non traités :
+`O-8` (le footing du swimrun n'a pas de bornes : 182 à 228 min, c'est la plus longue séance du
+plan sur les trois formats — exactement le défaut que R13 a corrigé pour le tri) et `O-9` (le
+banc d'invariants porte quatre familles d'échecs pendant que la documentation le dit vert ;
+vérifié identique contre le moteur d'avant R18, donc dette et non régression).

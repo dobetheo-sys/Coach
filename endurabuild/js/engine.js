@@ -603,6 +603,27 @@ const ANSWER_SCHEMA                            = {
   weight_target: { ...numF("ton poids cible", 35, 200, "kg"), nature: "vecue" },
   // ---- Terrain / milieu ----
   terrain: { ...enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"]), nature: "vecue" },
+  // ---- R18.2 — LE PROFIL DE COURSE PAR DISCIPLINE ----
+  // Retour du fondateur après test : « dans la construction avancée je veux qu'on définisse
+  // le profil de la course (ex triathlon : eau vive, vélo montagneux, course plate) ».
+  // Il a raison sur un point qu'aucune règle du dépôt ne couvrait : R14.3-a a unifié
+  // `terrain` et `course_profile` en UNE clé — ce qui était le bon geste contre la divergence
+  // silencieuse —, mais cette clé unique décrit le parcours comme s'il était homogène. Un
+  // triathlon ne l'est jamais : on peut nager en eau vive, rouler en montagne et courir à
+  // plat, et les trois corrections sont indépendantes. Une clé globale en applique une
+  // troisième, fausse pour les trois.
+  //
+  // Ces clés ne remplacent pas la clé globale, elles la SPÉCIALISENT : `legProfileOf()`
+  // retombe dessus quand un leg n'est pas renseigné, exactement comme `courseProfileOf`
+  // retombe sur `terrain`. Un seul chemin, trois niveaux de précision — la leçon de R14.3-a
+  // tient, on ne recrée pas deux vocabulaires.
+  //
+  // Le milieu de nage a son propre domaine parce que ce n'est PAS un relief : « montagneux »
+  // ne veut rien dire dans l'eau, et l'incertitude n'y est pas de même nature (un courant
+  // peut porter autant que freiner — voir SWIM_ENV dans `predictor.ts`).
+  leg_swim_env: { ...enumF("le milieu de nage de ta course", ["bassin", "lac", "mer_calme", "mer_agitee", "eau_vive"], ["tri", "swimrun"]), nature: "vecue" },
+  leg_bike_prof: { ...enumF("le profil du parcours vélo", ["plat", "vallonne", "montagne"], ["tri", "duathlon"]), nature: "vecue" },
+  leg_run_prof: { ...enumF("le profil du parcours à pied", ["plat", "vallonne", "montagne"], ["tri", "duathlon", "swimrun"]), nature: "vecue" },
   milieu: { ...enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim"]), nature: "vecue" },
   swim_limit: { ...enumF("ta limite en natation", ["technique", "respiration", "endurance", "peur"], ["swim"]), nature: "vecue" },
   treadmill: { ...enumF("l'accès au tapis", OUI_NON), nature: "vecue" },
@@ -1125,6 +1146,14 @@ class UnknownSportError extends Error {
                                     
                                                      
                                                                         
+                  
+     
+                                                                                              
+                                                                                            
+                                                         
+     
+                                     
+                                                                                     
                   
      
                                                                                              
@@ -4350,11 +4379,17 @@ function buildTriSessions(kit            )              {
       const tbb = BRICK_TAPER_BIKE_BOUNDS[fmt] || [25, 45];
       const tb = { lo: tbb[0], hi: tbb[1] };
       const tr = ({ S: { lo: 6, hi: 10 }, M: { lo: 8, hi: 12 }, "70.3": { lo: 10, hi: 16 }, Full: { lo: 12, hi: 20 } }                                              )[fmt] || { lo: 8, hi: 12 };
-      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel de transition)", note: "Court, à l'allure du jour J : on ne construit plus rien, on entretient. Les jambes ont besoin de se rappeler la sensation « de coton » des premières foulées après le vélo — c'est une compétence, elle se perd, et elle ne se rattrape pas le jour de la course. Un tiers du volume du brick de pic, zéro fatigue résiduelle.", det: "", steps: [
+      // LE LEG VÉLO ROULE EN Z2, PAS À L'ALLURE COURSE. Première écriture : `bk.rp` sur tout
+      // le bloc — mesuré par le banc v7, 158 profils de duathlon en violation de dose (48 min
+      // continues en zone haute). C'était juste, et pas seulement pour l'auditeur : 45 min à
+      // allure course EST une séance dure, c'est-à-dire l'exact contraire d'un affûtage.
+      // Même structure que le brick de pic : le corps en endurance, l'allure course rappelée
+      // sur la fin et portée par la consigne, jamais par la zone du bloc entier.
+      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel de transition)", note: "Court : on ne construit plus rien, on entretient. Vélo en endurance, les DIX dernières minutes à l'allure du jour J, puis on enchaîne vite. Les jambes ont besoin de se rappeler la sensation « de coton » des premières foulées après le vélo — c'est une compétence, elle se perd, et elle ne se rattrape pas le matin de la course. Un tiers du volume du brick de pic, zéro fatigue résiduelle.", det: "", steps: [
         // Le PLANCHER du leg vélo est la borne basse AUDITÉE (C21c), pas une fraction d'elle :
         // sinon la décroissance d'affûtage descend la séance sous ce que la spec exige, et le
         // générateur produit ce que l'auditeur refuse. Même discipline que C21b en charge.
-        { role: "body", leg: "bike", durationMin: PT(tb.lo, Math.round(tb.hi * rf)), zone: "bk.rp", intensity: intOf("bk.rp")                     , bnd: { floor: tb.lo, cap: tb.hi } }          ,
+        { role: "body", leg: "bike", durationMin: PT(tb.lo, Math.round(tb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2")                     , bnd: { floor: tb.lo, cap: tb.hi } }          ,
         { role: "body", leg: "run", durationMin: PT(tr.lo, Math.round(tr.hi * rf)), d: "rn", bnd: { floor: Math.max(5, Math.round(tr.lo * 0.6)), cap: tr.hi } }          ,
       ], ...( { runInj }          ) });
     } else {
@@ -4401,11 +4436,13 @@ function buildTriSessions(kit            )              {
 
 /** Prédiction tri — extraction mécanique de la branche correspondante de `predictRace`. */
 function predictTri(kit            )       {
-  const { refs, format, items, advice, D, range, runRange, riegelSec, profWhy, bikeIF, bikeWhy } = kit;
+  const { refs, format, items, advice, D, range, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy } = kit;
   const sw = TRI_SWIM[format], bk = TRI_BIKE[format], rn = TRI_RUN[format];
   if (refs.css > 0 && sw) {
     const t = (sw.dist / 100) * refs.css * sw.factor;
-    items.push({ leg: "Natation " + sw.dist + "m", value: range(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" });
+    // R18.2 — la fourchette natation suit le MILIEU de la course. Le facteur `sw.factor` est
+    // calibré sur de l'eau libre calme : c'est le lac qui vaut 1, pas le bassin.
+    items.push({ leg: "Natation " + sw.dist + "m", value: swimRange(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" + swimWhy });
   } else advice.push("CSS manquant → pas de projection natation (test 400/200m).");
   if (refs.ftp > 0 && bk) {
     // R15.2 — la bande passe par `bikeIF` : le relief du parcours l'abaisse, une seule fois,
@@ -4660,10 +4697,13 @@ function buildDuathlonSessions(kit            )              {
       const r2 = DUA_RUN2[f] || { lo: 10, hi: 22 };
       const tbLo = tbb[0], tbHi = tbb[1];
       const trLo = Math.max(5, Math.round(r2.lo * 0.6)), trHi = Math.max(8, Math.round(r2.lo * 0.9));
-      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel vélo → R2)", note: "Court, à l'allure du jour J : on n'entraîne plus, on entretient. Le R2 se court sur des jambes de coton — c'est une compétence, elle se perd en trois semaines, et elle ne se rattrape pas le jour de la course. Zéro fatigue résiduelle.", det: "",
+      // Leg vélo en Z2, pas en allure course : voir le commentaire jumeau dans `tri/index.ts`.
+      // C'est ici que le banc v7 l'a attrapé — 158 profils avec 48 min continues en zone haute
+      // dans une semaine d'affûtage.
+      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel vélo → R2)", note: "Court : on n'entraîne plus, on entretient. Vélo en endurance, les DIX dernières minutes à l'allure du jour J, puis R2 enchaîné vite. Le R2 se court sur des jambes de coton — c'est une compétence, elle se perd en trois semaines, et elle ne se rattrape pas le matin de la course. Zéro fatigue résiduelle.", det: "",
         steps: [
           // Plancher = la borne basse AUDITÉE (C21c), pas une fraction d'elle.
-          { role: "body", leg: "bike", durationMin: PT(tbLo, Math.round(tbHi * rf)), zone: "bk.rp", intensity: intOf("bk.rp")                     , bnd: { floor: tbLo, cap: tbHi } }          ,
+          { role: "body", leg: "bike", durationMin: PT(tbLo, Math.round(tbHi * rf)), zone: "bk.z2", intensity: intOf("bk.z2")                     , bnd: { floor: tbLo, cap: tbHi } }          ,
           { role: "body", leg: "run", durationMin: PT(trLo, Math.round(trHi * rf)), d: "rn", bnd: { floor: Math.max(5, Math.round(trLo * 0.6)), cap: trHi } }          ,
         ], ...({ runInj }          ) });
     } else {
@@ -8539,6 +8579,8 @@ function generatePlan(profile                , opts                             
           // extrapolerait au volume réel de l'athlète.
           const pred = predictRace(a.sport          , a.format          , a.intent, r.baseRefs, {
             courseProfile: courseProfileOf(a         ),
+            // R18.2 — trois profils au lieu d'un : un triathlon n'est pas homogène.
+            legProfiles: { swim: legProfileOf(a         , "swim"), bike: legProfileOf(a         , "bike"), run: legProfileOf(a         , "run") },
             trail: r.trail || undefined,
             runHoursPerWeek: a.sport === "run" ? parseFloat(String(a.vol_max ?? "")) || undefined : undefined,
           });
@@ -9713,6 +9755,12 @@ function taperIsConform(plan
                                                     
                        
                                                                                        
+     
+                                                                                   
+                                                                                          
+                                                                                               
+     
+                                                               
                                                                                               
                          
                                                                     
@@ -9804,6 +9852,55 @@ function courseProfileOf(a                                                 )    
   if (explicite && reliefOf(explicite)) return explicite;
   const terrain = String(a.terrain ?? "").trim();
   return terrain || undefined;
+}
+
+/**
+ * R18.2 — LE MILIEU DE NAGE. Ce n'est pas un relief, et ça ne se traite pas comme tel.
+ *
+ * La référence n'est PAS le bassin : `TRI_SWIM[format].factor` est calibré « peloton,
+ * combinaison et navigation compris », donc sur de l'eau libre calme. Le lac vaut donc 1.00,
+ * et le bassin est plus RAPIDE que la référence — se tromper de point d'ancrage aurait
+ * ralenti tout le monde de 5 % en croyant corriger.
+ *
+ * `eau_vive` est le cas que le fondateur a cité, et c'est le plus intéressant : un courant
+ * peut porter autant qu'il freine. Sa bande est donc ASYMÉTRIQUE ET LARGE, dans les deux
+ * sens — on refuse de faire semblant de savoir de quel côté. Même honnêteté que RELIEF pour
+ * la course, qui élargit au lieu de décaler.
+ *
+ * Heuristiques de praticiens, assumées comme telles : aucune de ces valeurs n'est mesurée,
+ * et c'est écrit ici plutôt que sous-entendu.
+ */
+const SWIM_ENV                               = {
+  bassin: { lo: 0.94, hi: 0.97, label: "bassin (pas de navigation, appuis aux murs)" },
+  lac: { lo: 1.0, hi: 1.0, label: "lac / eau libre calme" },
+  mer_calme: { lo: 1.01, hi: 1.05, label: "mer calme" },
+  mer_agitee: { lo: 1.06, hi: 1.14, label: "mer agitée (houle, respiration contrariée)" },
+  eau_vive: { lo: 0.95, hi: 1.2, label: "eau vive (courant)" },
+};
+function swimEnvOf(value         )                      {
+  const k = String(value ?? "").trim();
+  return k ? SWIM_ENV[k] || null : null;
+}
+
+/**
+ * R18.2 — LE RÉSOLVEUR PAR DISCIPLINE, point unique.
+ *
+ * Trois niveaux, du plus précis au plus général : la réponse du LEG, puis le profil de course
+ * global (`course_profile`), puis le terrain d'entraînement (`terrain`). C'est la même
+ * cascade que `courseProfileOf`, prolongée d'un cran — pas un second vocabulaire.
+ *
+ * La nage ne retombe sur RIEN : le profil global décrit un relief, et un relief ne dit rien
+ * d'un plan d'eau. Retomber dessus aurait produit un « lac montagneux » traité comme du plat.
+ */
+                                              
+function legProfileOf(a                                                                                                                          , leg         )                     {
+  if (leg === "swim") {
+    const v = String(a.leg_swim_env ?? "").trim();
+    return v && SWIM_ENV[v] ? v : undefined;
+  }
+  const propre = String((leg === "bike" ? a.leg_bike_prof : a.leg_run_prof) ?? "").trim();
+  if (propre && reliefOf(propre)) return propre;
+  return courseProfileOf(a);
 }
 
 /** Garde de build : toute valeur du domaine `terrain` est classée (relief ou neutre). */
@@ -9932,13 +10029,31 @@ function predictRace(
   const shift = intent === "finir" ? 0.03 : 0;
   if (followed) D("PRED-forme", "Fourchette resserrée", "±2%", "Plan bien suivi (streak ≥3 semaines, charge accomplie ≥60%) : la projection est plus fiable");
   if (shift > 0) D("PRED-finisher", "Pacing conservateur", "+3%", "Objectif finisher : on vise l'arrivée en forme, pas la marge d'erreur");
+  // R18.2 — chaque leg lit SON profil ; à défaut, le profil global. Un triathlon n'est pas
+  // homogène : nager en eau vive, rouler en montagne et courir à plat, ce sont trois
+  // corrections indépendantes, et une clé unique en appliquait une troisième, fausse pour
+  // les trois. Les sports mono-discipline ne passent pas de `legProfiles` : rien ne bouge.
+  const legs = opts.legProfiles || {};
   // Fourchette COURSE À PIED avec profil de parcours (R6) — le relief élargit et décale.
-  const prof = reliefOf(opts.courseProfile);
+  const prof = reliefOf(legs.run ?? opts.courseProfile);
   if (prof && prof.hi > 1) D("PRED-parcours", "Profil du parcours", prof.label, "Le relief ralentit et augmente l'incertitude : fourchette ×" + prof.lo + "–" + prof.hi + " sur les temps de course à pied");
   const profWhy = prof && prof.hi > 1 ? " · " + prof.label + " (+" + Math.round((prof.lo - 1) * 100) + "–" + Math.round((prof.hi - 1) * 100) + "%)" : "";
   // R15.2 — décalage d'IF vélo et sa justification, calculés UNE fois pour les trois sports
   // qui prescrivent des watts (tri, vélo, duathlon).
-  const ifShift = bikeIFShift(opts.courseProfile);
+  // R18.2 — le milieu de nage. Aucun repli sur le profil global : un relief ne décrit pas
+  // un plan d'eau (voir SWIM_ENV).
+  const swimEnv = swimEnvOf(legs.swim);
+  const swimWhy = swimEnv && (swimEnv.lo !== 1 || swimEnv.hi !== 1)
+    ? " · " + swimEnv.label + " (×" + swimEnv.lo + "–" + swimEnv.hi + ")"
+    : "";
+  if (swimEnv && (swimEnv.lo !== 1 || swimEnv.hi !== 1))
+    D("R18.2-nage", "Milieu de nage", swimEnv.label,
+      swimEnv.lo < 1 && swimEnv.hi > 1
+        ? "Un courant peut porter autant qu'il freine : la fourchette s'élargit DANS LES DEUX SENS plutôt que de décaler dans un sens qu'on ne connaît pas."
+        : swimEnv.hi < 1
+          ? "En bassin il n'y a ni navigation ni houle, et les murs rendent du temps : la référence d'eau libre est trop lente ici."
+          : "La navigation, la houle et la respiration contrariée coûtent du temps : la fourchette monte et s'élargit.");
+  const ifShift = bikeIFShift(legs.bike ?? opts.courseProfile);
   const bikeWhy = ifShift < 0
     ? " · cible ABAISSÉE de " + Math.round(-ifShift * 100) + " points pour le relief : sur un parcours "
       + "accidenté le coût suit la puissance NORMALISÉE et non la moyenne, et l'indice de variabilité "
@@ -9946,7 +10061,7 @@ function predictRace(
       + "croit — ça se paie à pied, pas sur le vélo"
     : "";
   if (ifShift < 0)
-    D("R15.2", "Relief du parcours vélo", (prof ? prof.label : "accidenté") + " → IF " + (ifShift * 100).toFixed(1) + " pt",
+    D("R15.2", "Relief du parcours vélo", (reliefOf(legs.bike ?? opts.courseProfile) || { label: "accidenté" }).label + " → IF " + (ifShift * 100).toFixed(1) + " pt",
       "Le chrono vélo n'est pas prédit (il dépend du parcours), mais la CIBLE D'INTENSITÉ, elle, doit "
       + "descendre : à puissance moyenne égale, un parcours vallonné coûte plus cher qu'un parcours plat.");
   // R14 P5 — l'exposant de Riegel suit le volume, et SEULEMENT pour une course sèche :
@@ -9980,6 +10095,14 @@ function predictRace(
     const runRange = (sec        ) => {
       if (!prof) return range(sec);
       const lo = sec * prof.lo * (1 + shift - spread), hi = sec * prof.hi * (1 + shift + spread);
+      note(lo, hi);
+      return fmtT(lo) + "–" + fmtT(hi);
+    };
+    // R18.2 — même forme que `runRange` : le milieu de nage élargit la fourchette au lieu de
+    // décaler un chiffre. Sans réponse, c'est `range` — donc rien ne bouge pour l'existant.
+    const swimRange = (sec        ) => {
+      if (!swimEnv) return range(sec);
+      const lo = sec * swimEnv.lo * (1 + shift - spread), hi = sec * swimEnv.hi * (1 + shift + spread);
       note(lo, hi);
       return fmtT(lo) + "–" + fmtT(hi);
     };
@@ -10021,7 +10144,7 @@ function predictRace(
   // sortir un chiffre inventé — la fourchette honnête est la seule sortie acceptable.
   const mod = sportModule(sport);
   if (mod.predict) {
-    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, riegelSec, profWhy, bikeIF, bikeWhy, swimrun: opts.swimrun });
+    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy, swimrun: opts.swimrun });
   } else {
     advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }
@@ -11385,6 +11508,8 @@ function predictV2(sport        , answers            , plan                     
     // R6 — profil du parcours (Profil) · R14.3-a — résolveur UNIQUE, partagé avec le jour J :
     // `course_profile` (le parcours visé) prime, `terrain` prend le relais à défaut.
     courseProfile: courseProfileOf(answers         ),
+    // R18.2 — trois profils au lieu d'un : un triathlon n'est pas homogène.
+    legProfiles: { swim: legProfileOf(answers         , "swim"), bike: legProfileOf(answers         , "bike"), run: legProfileOf(answers         , "run") },
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
     swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,

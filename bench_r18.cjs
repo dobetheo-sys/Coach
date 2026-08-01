@@ -134,6 +134,40 @@ check("R18.4-C", "l'affûtage réduit le VOLUME du brick, pas sa nature : il res
   return { ok: !ko.length, info: ko.length ? ko[0] : "affûtage strictement plus court que la charge sur les 8 formats" };
 });
 
+check("R18.4-D", "le brick d'affûtage n'est PAS une séance dure : aucune dose de zone haute au-delà du plafond", () => {
+  // CE CRITÈRE EXISTE PARCE QUE JE M'ÉTAIS TROMPÉ. La première écriture du brick d'affûtage
+  // mettait le leg vélo entier en `bk.rp` (allure course) : 38 à 48 minutes CONTINUES en zone
+  // haute, dans une semaine d'affûtage. Le banc v7 l'a trouvé — 158 profils de duathlon en
+  // violation de dose — et il avait raison au-delà de la règle : 45 minutes à allure course
+  // EST une séance dure, c'est-à-dire l'exact contraire de ce que la séance prétend faire.
+  // Le leg vélo roule donc en Z2, l'allure course est rappelée par la CONSIGNE sur la fin.
+  const HAUTE = /\.(vo2|thr|rp|css)$/;
+  const CAP = 45;
+  const ko = [];
+  let vus = 0;
+  for (const sp of Object.keys(FORMATS_BRICK))
+    for (const f of FORMATS_BRICK[sp])
+      for (const sem of [16, 26, 38]) {
+        let p;
+        try { p = E.buildPlan(sp, ans({ format: f, race_date: sunday(sem) })); }
+        catch (e) { if (e && e.code === "ENTREE_INVALIDE") continue; throw e; }
+        for (const w of p.weeks) {
+          if (w.phase.id !== "taper") continue;
+          for (const s of sessionsOf(w)) {
+            if (!s.brick) continue;
+            vus++;
+            for (const st of (s.steps || [])) {
+              const dose = (st.reps || 1) * (st.durationMin || 0);
+              if (HAUTE.test(String(st.zone || "")) && dose > CAP)
+                ko.push(`${sp}/${f}/${sem}sem : ${Math.round(dose)}min en ${st.zone}`);
+            }
+          }
+        }
+      }
+  if (!vus) return { ok: false, info: "aucun brick d'affûtage observé — le critère ne mesure rien" };
+  return { ok: !ko.length, info: ko.length ? `${ko.length} — ${ko[0]}` : `${vus} bricks d'affûtage, aucun bloc de zone haute > ${CAP}min` };
+});
+
 /* ================= R18.5 — la récupération connaît les phases ================= */
 check("R18.5-A", "aucune phase ne s'OUVRE sur une semaine de récupération", () => {
   const { n, ko } = balayage((p) => {
@@ -227,6 +261,63 @@ check("R18.5-E", "on n'a supprimé aucune récupération : les plans en gardent 
     return nR < attendu ? `${nR} récup pour ${horsTaper.length} semaines (attendu ≥ ${attendu})` : null;
   });
   return { ok: !ko.length, info: ko.length ? `${ko.length}/${n} — ${ko[0]}` : `${n} plans balayés` };
+});
+
+/* ================= R18.2 — le profil de course PAR DISCIPLINE ================= */
+// Le jour J est une SÉANCE du plan : ses temps prescrits sont ce que l'athlète va exécuter.
+// C'est là qu'on mesure, pas dans une carte d'affichage — une correction qui ne descend pas
+// jusqu'à la séance n'a pas d'effet sur le plan, quoi qu'en dise l'écran de prédiction.
+function jourJ(sport, extra) {
+  const p = E.buildPlan(sport, ans(Object.assign({ race_date: sunday(26) }, extra)));
+  for (const w of p.weeks) for (const d of w.days) for (const s of d.sessions) if (s.race) return String(s.det || "");
+  return "";
+}
+
+check("R18.2-A", "les trois legs corrigent INDÉPENDAMMENT le pacing du jour J", () => {
+  // C'est l'exemple exact du fondateur : « eau vive, vélo montagneux, course plate ». Avant
+  // R18.2 une clé unique décrivait le parcours comme homogène, donc appliquait une troisième
+  // correction, fausse pour les trois. On exige que chaque leg bouge SEUL — les tester
+  // ensemble aurait laissé passer un câblage où un seul des trois agit.
+  const ref = jourJ("tri", { terrain: "vallonne" });
+  if (!/Prévu/.test(ref)) return { ok: false, info: "le jour J ne porte aucun temps prédit — le critère ne mesure rien" };
+  const seul = { nage: jourJ("tri", { terrain: "vallonne", leg_swim_env: "eau_vive" }),
+    velo: jourJ("tri", { terrain: "vallonne", leg_bike_prof: "montagne" }),
+    pied: jourJ("tri", { terrain: "vallonne", leg_run_prof: "plat" }) };
+  const inertes = Object.keys(seul).filter((k) => seul[k] === ref);
+  if (inertes.length) return { ok: false, info: "leg(s) sans effet sur le jour J : " + inertes.join(", ") };
+  // Indépendance : deux legs différents ne produisent pas le même plan.
+  const distincts = new Set(Object.values(seul)).size === 3;
+  return { ok: distincts, info: distincts ? "nage, vélo et course à pied donnent trois jours J différents" : "deux legs produisent le même résultat — ils ne sont pas indépendants" };
+});
+
+check("R18.2-B", "un leg non renseigné retombe sur le profil global, jamais sur rien", () => {
+  // La leçon de R14.3-a tient : un seul chemin, trois niveaux de précision. Si le repli
+  // cassait, un athlète qui a répondu « montagne » au terrain verrait ses corrections
+  // disparaître EN SILENCE le jour où on a ajouté les questions par leg.
+  const global = jourJ("tri", { terrain: "montagne" });
+  const plat = jourJ("tri", { terrain: "plat" });
+  const legPlat = jourJ("tri", { terrain: "montagne", leg_bike_prof: "plat", leg_run_prof: "plat" });
+  return { ok: global !== plat && global !== legPlat,
+    info: global === plat ? "le terrain global ne corrige plus rien — le repli est cassé"
+      : global === legPlat ? "le leg explicite ne prime pas sur le global" : "le global corrige, et le leg explicite le remplace" };
+});
+
+check("R18.2-C", "le milieu de nage ÉLARGIT au lieu de décaler quand le sens est inconnu", () => {
+  // `eau_vive` est le cas cité par le fondateur, et c'est le seul dont le SIGNE est inconnu :
+  // un courant peut porter autant qu'il freine. Sa bande doit donc encadrer la référence des
+  // DEUX côtés. Afficher un décalage franc serait un mensonge confortable.
+  const lire = (env) => {
+    const t = jourJ("tri", { leg_swim_env: env });
+    const m = /Natation \d+m (\d+)'(\d+)–(\d+)'(\d+)/.exec(t);
+    return m ? { lo: +m[1] * 60 + +m[2], hi: +m[3] * 60 + +m[4] } : null;
+  };
+  const lac = lire("lac"), vive = lire("eau_vive"), bassin = lire("bassin"), agitee = lire("mer_agitee");
+  if (!lac || !vive || !bassin || !agitee) return { ok: false, info: "fourchette natation illisible sur le jour J" };
+  const encadre = vive.lo < lac.lo && vive.hi > lac.hi;
+  const plusLarge = vive.hi - vive.lo > lac.hi - lac.lo;
+  const ordre = bassin.hi < lac.hi && agitee.lo > lac.lo;
+  return { ok: encadre && plusLarge && ordre,
+    info: `bassin ≤ lac ≤ mer agitée : ${ordre} · eau vive encadre le lac des deux côtés : ${encadre} · et plus large : ${plusLarge}` };
 });
 
 /* ================= Non-régressions ================= */

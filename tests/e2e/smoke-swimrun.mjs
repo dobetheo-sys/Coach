@@ -50,6 +50,13 @@ await page.fill('[data-input="water_temp_c"]', "16");
 await page.click("#nextBtn");
 for (const v of ["med_pain", "med_dizzy", "med_treat"]) await page.click('.opts[data-key="' + v + '"] .opt[data-val="non"]');
 await page.click("#nextBtn");
+// ---- R18.2 — le profil de la course, DISCIPLINE PAR DISCIPLINE ----
+const legTxt = await page.locator("#screen").textContent();
+ok(/profil de ta course/i.test(legTxt), "étape « Le profil de ta course » proposée en swimrun");
+ok(/natation se passe où/i.test(legTxt), "le milieu de nage est demandé (mer agitée ≠ lac)");
+ok(!/parcours vélo/i.test(legTxt), "aucune question de vélo en swimrun — le leg n'existe pas");
+await page.click('.opts[data-key="leg_swim_env"] .opt[data-val="mer_agitee"]');
+await page.click("#nextBtn");
 await page.fill('[data-input="age"]', "35");
 await page.click('.opts[data-key="sex"] .opt[data-val="H"]');
 await page.click("#nextBtn");
