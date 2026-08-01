@@ -95,7 +95,7 @@ await page.click('.opts[data-key="doubles"] .opt[data-val="non"]');
 await page.click("#nextBtn");
 await page.click("#genBtn");
 await page.waitForTimeout(900);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "plan trail généré (vue 4 onglets)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "plan trail généré (vue 5 onglets)");
 
 // ---- 5. Le plan lui-même : catégorie déduite, décisions, contenu spécifique ----
 const plan = await page.evaluate(async () => {

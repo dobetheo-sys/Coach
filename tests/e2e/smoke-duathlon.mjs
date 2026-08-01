@@ -59,7 +59,7 @@ await page.click('.opts[data-key="doubles"] .opt[data-val="non"]');
 await page.click("#nextBtn");
 await page.click("#genBtn");
 await page.waitForTimeout(900);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "plan duathlon généré (vue 4 onglets)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "plan duathlon généré (vue 5 onglets)");
 
 // ---- 3. Le plan : garde-fou d'impact, deux sens de brique, longue à vélo ----
 const plan = await page.evaluate(async () => {

@@ -46,10 +46,12 @@ ok(await page.evaluate(async () => { const { todayISO } = await import("./js/sta
 const vTxt = await page.locator(".card:has-text('Valider ma journée')").textContent().catch(() => "");
 ok(!vTxt || vTxt.includes(local.dm), "carte « Valider ma journée » datée du jour local");
 
-// 3. Plan → carte « Ta semaine » : chaque jour annoté de sa date ; « auj. » = date locale
-// R16.9 — la grille vivait dans l'onglet Semaine (index 3) ; elle est en tête de Plan.
-const tabs = await page.locator("#ebTabbar .tabbtn").all();
-await tabs[1].click(); await page.waitForTimeout(400);
+// 3. 📅 Semaine → carte « Ta semaine » : chaque jour annoté de sa date ; « auj. » = date locale
+// R18.3 — la carte est repartie dans l'onglet 📅 Semaine, restauré. On y va par NOM et plus
+// par index : c'est un changement d'ordre d'onglets qui a cassé cette suite, et un test qui
+// dépend d'une position se recasse au prochain.
+await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("week"); });
+await page.waitForTimeout(400);
 const semaine = page.locator("#screen .card").filter({ hasText: "Ta semaine" }).first();
 const cells = await semaine.locator(".gd .gd-top i").allTextContents();
 ok(cells.length === 7 && cells.every((c) => /\d{2}\/\d{2}/.test(c)), "les 7 jours de la semaine sont annotés de leur date (dd/mm)");
@@ -73,7 +75,9 @@ ok(dayCheck.found, "le jour calendaire local existe bien dans le plan (pas de d�
 
 // 4. En-têtes de semaine : bornes « du dd/mm au dd/mm » présentes (Semaine + Plan)
 ok(/du \d{2}\/\d{2} au \d{2}\/\d{2}/.test(await semaine.textContent()), "l'en-tête de semaine affiche ses bornes calendaires");
-ok(/du \d{2}\/\d{2} au \d{2}\/\d{2}/.test(await page.locator("#screen").textContent()), "les semaines de la saison portent aussi leurs bornes calendaires");
+await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("general"); });
+await page.waitForTimeout(400);
+ok(/du \d{2}\/\d{2} au \d{2}\/\d{2}/.test(await page.locator("#screen").textContent()), "les semaines de la saison portent aussi leurs bornes calendaires (onglet 🗓 Plan)");
 
 // 5. Second fuseau (UTC−11) : à TOUTE heure réelle, au moins un des deux fuseaux a une
 // date locale ≠ UTC — la régression toISOString ne peut pas passer entre les mailles.

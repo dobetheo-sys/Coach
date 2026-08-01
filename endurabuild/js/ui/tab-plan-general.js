@@ -21,9 +21,8 @@ import { curSteps, renderStep, reset } from "./steps.js";
 import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML } from "./plan-view.js";
 import { exportICS, exportJSON, exportPNG } from "../export.js";
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
-import { readinessDoneToday } from "./readiness.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
-import { ensurePlan, invalidatePlan, setTab } from "./tabs.js";
+import { ensurePlan, invalidatePlan } from "./tabs.js";
 
 const ic = { sw: "\u{1F3CA}", bk: "\u{1F6B4}", rn: "\u{1F3C3}", br: "\u{1F501}", rs: "\u{1F4AA}" };
 
@@ -52,10 +51,16 @@ function toggleSwap(wnum, jA, jB) {
   remap(S.answers.done);
   remap(S.answers.completions);
 }
-function handleSwapClick(plan, wnum, jour) {
+// R18.3 — `rerender` est PARAMÉTRÉ depuis que 📅 Semaine est revenue : la fonction
+// re-rendait `renderTabPlanGeneral` en dur, donc un ⇄ touché depuis Semaine faisait
+// disparaître Semaine. C'est exactement la classe de bug que R16.9 avait trouvée dans la
+// coche (un geste, deux comportements selon l'onglet) — on ne la réintroduit pas par
+// l'autre bout. L'appelant dit ce qu'il faut redessiner ; le geste, lui, est unique.
+export function handleSwapClick(plan, wnum, jour, rerender) {
+  const redraw = (pl) => (rerender ? rerender(pl) : renderTabPlanGeneral(pl));
   const p = S._swapPending;
-  if (!p || p.w !== wnum) { S._swapPending = { w: wnum, jour }; renderTabPlanGeneral(plan); return; }
-  if (p.jour === jour) { S._swapPending = null; renderTabPlanGeneral(plan); return; }
+  if (!p || p.w !== wnum) { S._swapPending = { w: wnum, jour }; redraw(plan); return; }
+  if (p.jour === jour) { S._swapPending = null; redraw(plan); return; }
   toggleSwap(wnum, p.jour, jour);
   S._swapPending = null;
   ebSave();
@@ -70,7 +75,7 @@ function handleSwapClick(plan, wnum, jour) {
     invalidatePlan();
     np = ensurePlan();
   }
-  renderTabPlanGeneral(np);
+  redraw(np);
 }
 
 // ===== La grille d'UNE semaine — le SEUL producteur de cases ============================
@@ -78,7 +83,7 @@ function handleSwapClick(plan, wnum, jour) {
 // d'affordances, et la divergence qui va avec (Semaine avait le ⇄ et la coche complète,
 // Plan ni l'un ni l'autre). Il n'en reste qu'un, et il porte partout les mêmes gestes :
 // cocher (✓ → feedback → célébration), échanger (⇄), ouvrir le détail.
-function weekGridHTML(plan, w, today) {
+export function weekGridHTML(plan, w, today) {
   let h = '<div class="gw-grid">';
   w.days.forEach((d) => {
     const bg = d.sessions.map((s) => "<span>" + ic[s.d] + "</span>").join("");
@@ -104,7 +109,7 @@ function weekGridHTML(plan, w, today) {
     h += '<div class="load-sub" style="margin-top:6px">⇄ <b>' + S._swapPending.jour + "</b> sélectionné — touche le jour avec lequel l’échanger (ou re-touche ⇄ pour annuler).</div>";
   return h;
 }
-function weekHeaderHTML(w) {
+export function weekHeaderHTML(w) {
   const raceTag = w.race
     ? ' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:var(--fs-micro);font-weight:700">\u{1F3C1} COURSE ' + w.race + "</span>"
     : w.postRace ? ' <span style="color:#9b72ff;font-size:var(--fs-micro)">↳ récup post-course</span>' : "";
@@ -112,7 +117,7 @@ function weekHeaderHTML(w) {
   return '<div class="gw-h"><b>Semaine ' + w.num + "</b>" + wRange + '<span style="color:' + (w.phase.c || "#555") + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + "</em></div>";
 }
 
-function currentWeek(plan) {
+export function currentWeek(plan) {
   const today = todayISO();
   return (
     plan.weeks.find((w) => w.days.some((d) => d.date === today)) ||
@@ -121,23 +126,11 @@ function currentWeek(plan) {
   );
 }
 
-// La carte « Ta semaine » — ce que 📅 Semaine apportait vraiment : le recentrage.
-// R16.9 — la règle produit « aucune séance avant le point du matin » vivait là-bas sous
-// forme de REDIRECTION brutale de tout l'onglet vers Aujourd'hui. Elle devient une
-// invitation, et se resserre sur ce qu'elle visait : c'est la séance du JOUR, montrée
-// non adaptée, qui pose problème — pas la consultation de sa saison. La carte du jour
-// reste donc vide tant que le check-in n'est pas fait, et l'onglet n'est plus pris en otage.
-function thisWeekCardHTML(plan, today) {
-  const w = currentWeek(plan);
-  if (!readinessDoneToday()) {
-    return '<div class="card"><div class="eyebrow">Ta semaine</div>'
-      + '<div class="load-sub">Ton point du matin n’est pas encore fait — la séance du jour n’est donc pas encore adaptée à ta forme. '
-      + "Une minute suffit, et tu récupères une semaine juste.</div>"
-      + '<div class="nav" style="margin-top:10px"><button class="btn primary" id="gpGoCheckin" type="button">→ Faire mon point du matin</button></div></div>';
-  }
-  return '<div class="card"><div class="eyebrow">Ta semaine</div><div class="gw">'
-    + weekHeaderHTML(w) + weekGridHTML(plan, w, today) + "</div></div>";
-}
+// R18.3 — la carte « Ta semaine » est repartie dans l'onglet 📅 Semaine, restauré : elle y
+// gagne la navigation de semaine en semaine, que cette carte ne pouvait pas porter. 🗓 Plan
+// redevient ce qu'il fait le mieux — la SAISON : frise de phases, sous-objectifs, courbe de
+// volume, décisions du moteur, exports. La grille elle-même reste produite ici
+// (`weekGridHTML`), et l'onglet Semaine la consomme : un seul dessin, deux points de vue.
 
 // R5 — chaque PHASE est un SOUS-OBJECTIF cliquable : son intention en une phrase, ses
 // semaines, sa progression réelle (✓ des séances) et son état (validée / en cours / à
@@ -199,7 +192,6 @@ export function renderTabPlanGeneral(plan) {
   const a = S.answers;
   const today = todayISO();
   let html = momentHTML(plan, today) + painBannerHTML() + retestBannerHTML(today);
-  html += thisWeekCardHTML(plan, today);
   html += '<div class="card"><div class="eyebrow">Plan général — ' + SPORTS[S.sport].nom + "</div><h2>Ta saison en un coup d’œil</h2>"
     + '<div class="why">' + plan.totalWeeks + " semaines en " + (plan.use10 ? "cycles de 10 jours (qui glissent)" : "semaines de 7 jours") + ", volume " + plan.volBase + "h → " + plan.volPeak + "h.</div>";
   html += driverBand(a);
@@ -246,10 +238,6 @@ export function renderTabPlanGeneral(plan) {
   const rerender = () => renderTabPlanGeneral(plan);
   bindPainBanner(plan, rerender);
   bindRetestBanner(today, () => renderTabPlanGeneral(ensurePlan())); // le retest a pu régénérer le plan
-  {
-    const go = $("gpGoCheckin");
-    if (go) go.onclick = () => setTab("today");
-  }
   // R6 — la frise de phases est cliquable : ouvre le programme de la phase et y descend.
   {
     const g = document.getElementById("goCurWk");

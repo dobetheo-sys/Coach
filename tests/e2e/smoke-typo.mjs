@@ -129,8 +129,10 @@ for (const w of [1100, 760, 390]) {
 }
 await page.setViewportSize({ width: 1100, height: 900 });
 
-// ---- 4. Le plancher de lisibilité, sur les quatre onglets -----------------------------
-for (const t of ["profile", "general", "today", "nutrition"]) {
+// ---- 4. Le plancher de lisibilité, sur les CINQ onglets --------------------------------
+// R18.3 — « week » est revenu : un onglet non balayé est un onglet non gardé, et c'est
+// exactement comme ça que `css/mobile.css` avait gardé un texte de 8 px pendant tout R16.
+for (const t of ["profile", "general", "today", "week", "nutrition"]) {
   await page.evaluate(async (t) => { const { setTab } = await import("./js/ui/tabs.js"); setTab(t); }, t);
   await page.waitForTimeout(400);
   const mini = await page.evaluate(() => {
@@ -163,7 +165,7 @@ await tactile.evaluate(async (iso) => {
   ebSave();
 }, iso);
 ok(await tactile.evaluate(() => matchMedia("(pointer:coarse)").matches), "le contexte de mesure est bien tactile (sinon la garde ne prouve rien)");
-for (const t of ["profile", "general", "today", "nutrition"]) {
+for (const t of ["profile", "general", "today", "week", "nutrition"]) {
   await tactile.evaluate(async (t) => { const { setTab } = await import("./js/ui/tabs.js"); setTab(t); }, t);
   await tactile.waitForTimeout(400);
   const petits = await tactile.evaluate(() => {
@@ -185,7 +187,7 @@ const meta = await tactile.evaluate(() => (document.querySelector('meta[name=vie
 ok(!/user-scalable\s*=\s*no|maximum-scale/.test(meta),
   "le pinch-to-zoom reste autorisé — on retire le zoom SUBI, jamais le zoom VOULU (" + meta + ")");
 
-ok(errs.length === 0, "aucune erreur JS sur les 4 onglets (" + errs.length + (errs.length ? " — " + errs[0] : "") + ")");
+ok(errs.length === 0, "aucune erreur JS sur les 5 onglets (" + errs.length + (errs.length ? " — " + errs[0] : "") + ")");
 
 await browser.close();
 server.close();

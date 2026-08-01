@@ -46,7 +46,7 @@ ok(/1\/3/.test(await page.locator("#ckSlide").textContent()), "écran 1/3 (somme
 ok(/dormi combien/.test(await page.locator("#ckSlide").textContent()), "le sommeil est demandé en HEURES (signal mesuré, audit v6 A5)");
 ok(await page.locator(".gw-grid").count() === 0, "AUCUNE grille de semaine visible avant le check-in");
 ok(await page.locator(".doneBtn").count() === 0, "AUCUNE coche de séance visible avant le check-in");
-ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "4 onglets (Profil/Plan/Aujourd'hui/Nutrition) — R16.9 a fondu Semaine dans Plan");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "5 onglets (Profil/Plan/Aujourd'hui/Semaine/Nutrition) — R18.3 a restauré Semaine, et 🎯 Aujourd'hui redevient réellement CENTRAL (3e sur 5)");
 ok(await page.locator("#ebTabbar .tabbtn.tab-central").count() === 1, "l'onglet central Aujourd'hui est mis en valeur");
 
 // 2. Diaporama : 3 taps (nuit courte → VFC basse → vidé), phrases de coach

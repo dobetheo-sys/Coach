@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smoke-improvements.mjs", "smoke-dates.mjs",
   "smoke-trail.mjs", "smoke-nofallback.mjs", "smoke-duathlon.mjs", "smoke-typo.mjs",
   // R16.10 — la suite swimrun revient avec le module (elle sortait avec lui en R12 §0).
-  "smoke-swimrun.mjs", "smoke-avatar.mjs"];
+  "smoke-swimrun.mjs", "smoke-avatar.mjs",
+  // R18.3 — la navigation à cinq onglets, et surtout : un geste, une implémentation.
+  "smoke-tabs.mjs"];
 let failed = 0;
 for (const s of SUITES) {
   console.log("\n━━━ " + s + " ━━━");

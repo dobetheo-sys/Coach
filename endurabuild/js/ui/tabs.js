@@ -8,20 +8,29 @@ import { renderTabProfile } from "./tab-profile.js";
 import { renderTabPlanGeneral } from "./tab-plan-general.js";
 import { renderTabToday } from "./tab-today.js";
 import { renderTabNutrition } from "./tab-nutrition.js";
+import { renderTabWeek } from "./tab-week.js";
 
 // Refonte R5 (retour utilisateur) : l'onglet CENTRAL 🎯 Aujourd'hui est l'écran du
 // quotidien (check-in diaporama → séance du jour → prédiction → charge → avancement),
 // mis en valeur dans la barre (classe tab-central). L'ancien Avancement y est fondu,
 // l'ancien Suivi est redistribué (avatar/badges → Profil, checklist → Aujourd'hui),
 // et 🥗 Nutrition devient un onglet à part entière.
-// R16.9 — 📅 Semaine disparaît à son tour : elle n'ajoutait qu'un recentrage sur la semaine
-// courante, que 🗓 Plan porte désormais en carte de tête. Quatre onglets. Un identifiant
-// d'onglet inconnu (un « week » gardé dans un état sauvegardé, un lien ancien) retombe sur
-// le dernier onglet par le repli déjà en place dans `renderActiveTab`.
+// R16.9 avait fondu 📅 Semaine dans 🗓 Plan (cinq onglets → quatre). R18.3 la RESTAURE, sur
+// retour du fondateur après test : « je préférais 5 onglets que 4, l'œil humain aime les
+// chiffres impairs ». Et il a une raison de plus que l'esthétique : 🎯 Aujourd'hui est
+// l'onglet CENTRAL du produit depuis R5 — avec quatre onglets, « central » n'existe pas.
+// L'ordre ci-dessous le place en TROISIÈME sur cinq, donc réellement au milieu.
+//
+// Ce que la restauration ne ramène PAS : la coche en deux versions. R16.9 avait découvert
+// que cocher depuis Semaine et cocher depuis Plan ne faisaient pas la même chose — le
+// nouveau `tab-week.js` consomme `weekGridHTML` et `toggleDone` comme 🗓 Plan, sans
+// redessiner sa propre grille. Un identifiant d'onglet inconnu retombe sur le dernier onglet
+// par le repli déjà en place dans `renderActiveTab`.
 const TABS = [
   ["profile", "\u{1F4CB}", "Profil", renderTabProfile],
   ["general", "\u{1F5D3}", "Plan", renderTabPlanGeneral],
   ["today", "\u{1F3AF}", "Aujourd’hui", renderTabToday],
+  ["week", "\u{1F4C5}", "Semaine", renderTabWeek],
   ["nutrition", "\u{1F957}", "Nutrition", renderTabNutrition],
 ];
 
