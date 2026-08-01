@@ -1636,3 +1636,57 @@ révèle que `bk.rp` vaut **0,80–0,88 × FTP** quand le prédicteur prescrit *
 le jour J d'un 70.3. Le moteur porte **deux définitions de « l'allure course »**, et la zone
 d'entraînement est plus dure que l'allure de course qu'il annonce. Il faut les réconcilier
 avant de construire une séance dessus — suivi en `O-11` avec sa commande de re-mesure.
+
+---
+
+## R20.1 — les gardes cessent de couvrir « là où le code a été écrit »
+
+Mes deux défauts de R19 avaient la **même forme** : la garde couvrait le sport où le code avait
+été écrit, pas celui où il servait. `leg_swim_env` agissait en triathlon et pas en swimrun ; le
+champ « température de l'eau » plantait le questionnaire triathlon, qu'aucune suite E2E ne
+traversait. Deux gardes, parce que les deux défauts étaient de deux types distincts — **une
+réponse qui n'agit pas** et **un écran qui ne s'affiche pas**. Une seule des deux n'en aurait
+attrapé qu'un.
+
+### La garde dérivée du schéma
+
+`audit:sensibilite` gardait une **liste écrite à la main**, sur **un seul sport**. Elle
+n'attrapait donc que ce dont on s'était souvenu, là où on l'avait écrit. Le balayage est
+désormais dérivé d'`ANSWER_SCHEMA` : pour chaque sport, pour chaque clé que le schéma déclare
+applicable à ce sport, il fabrique une valeur différente et exige que le plan change.
+**148 couples sport × clé**, aucune liste à maintenir — une clé ajoutée au schéma est testée le
+jour même.
+
+Trois mécanismes le rendent honnête plutôt que bruyant :
+- l'empreinte lit le **texte rendu** des séances, pas seulement leur structure : une réponse
+  qui change les watts ou l'allure sans déplacer une séance ne passe plus pour inerte ;
+- les clés **conditionnelles** (`off_days` sans `off_which`, `vam` sans `vam_known`…) sont
+  exemptées ET testées **en paires** — une exemption sans sa paire serait une porte de sortie ;
+- une clé inerte connue est une **DETTE DÉCLARÉE**, affichée à chaque exécution avec son entrée
+  de registre. Jamais un silence.
+
+Le schéma a aussi cessé de **sur-déclarer** : la FTP était déclarée pour la course à pied et la
+natation, `terrain` pour la natation, l'accès au tapis pour les sept sports. Ces clés y étaient
+évidemment inertes, et elles noyaient le signal des vraies inerties.
+
+### La garde des sept questionnaires
+
+`tests/e2e/smoke-questionnaires.mjs` va du choix du sport jusqu'au plan généré, **pour les sept
+sports**, et échoue sur la moindre erreur JavaScript. Son répondeur est **générique** : il ne
+connaît pas la liste des questions, il répond à ce que l'écran présente. C'est volontaire — une
+suite qui connaîtrait les questions cesserait de traverser le jour où on en ajoute une, et
+c'est exactement le trou qu'elle ferme. Vérifiée **rouge** en réintroduisant le défaut de R19.2.
+
+### Ce que les deux gardes ont trouvé le jour même
+
+| défaut | mesure |
+|---|---|
+| **`vol_recent: 0` lu comme « pas de réponse »** | semaine 1 à **3,9 h au lieu de 2,0 h** sur un profil `reprise` — le `\|\| undefined` traitait le zéro comme une absence, et privait de rampe exactement la population qu'elle protège |
+| **le jour J du swimrun sans temps prédits** | le générateur ne passait pas l'objectif décodé à `predictRace` — d'où aussi `leg_swim_env`/`leg_run_prof` inertes sur le plan malgré R19.1 |
+| **`gear_test` lu nulle part** | le module dit lui-même que sans test en tenue les allures ne transfèrent pas ; la réponse entre donc dans la confiance accordée aux références |
+| **`swim_limit` réservé aux débutants** (O-14) | les deux seuls consommateurs étaient derrière `if (beginner)` — une limite ne disparaît pas quand on progresse |
+
+Dette déclarée : **`O-13`**, la rampe R10 ne mord jamais en natation. Le plafond est en heures
+de PLAN, or la nage est déjà convertie en heures d'EAU (`SWIM_TIME_FACTOR`) : les deux nombres
+ne mesurent pas la même chose. Corriger demande de décider ce que `vol_recent` veut dire pour un
+nageur — une question de produit avant d'être une ligne de code.

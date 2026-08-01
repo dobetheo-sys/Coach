@@ -413,6 +413,27 @@ plafonds SONT la table déclarée fausse, et ils sont arithmétiquement incompat
 `R14.1-B` (50 % d'écart exigé contre 45 % autorisé). **19 gates verts, E2E 8/8 (55 assertions),
 golden 758 inchangé** — la projection ne touche aucune séance.
 
+**R20.1 livré — les gardes cessent de couvrir « là où le code a été écrit »** (décision du
+fondateur, voir ARCHITECTURE.md « R20.1 ») : mes deux défauts de R19 avaient la MÊME forme —
+la garde couvrait le sport où le code avait été écrit, pas celui où il servait. Deux gardes,
+parce que les deux défauts étaient de deux types. **`audit:sensibilite` est dérivé du SCHÉMA** :
+toute clé déclarée doit agir dans CHAQUE sport où elle est déclarée (148 couples sport × clé,
+aucune liste à maintenir, 5 paires pour les clés conditionnelles, exemptions nommées une par
+une). **`smoke-questionnaires`** (13e suite E2E) traverse les SEPT questionnaires — aucune ne
+passait par le triathlon, ce qui avait laissé filer le `ReferenceError` de R19.2 ; vérifiée
+ROUGE en réintroduisant ce défaut. Quatre défauts trouvés le jour même par ces gardes :
+**`vol_recent: 0`** — « je ne m'entraîne pas du tout » était lu comme « pas de réponse » (le
+piège du `|| undefined` sur un zéro) : semaine 1 à **3,9 h au lieu de 2,0 h** sur un profil
+`reprise`, exactement la population que la rampe R10 protège ; **le jour J du swimrun ne
+portait aucun temps prédit** (le générateur ne lui passait pas son objectif décodé) — ce qui
+rendait aussi `leg_swim_env`/`leg_run_prof` inertes sur le plan malgré R19.1 ; **`gear_test`
+n'était lu nulle part** alors que le module dit lui-même que sans test en tenue les allures ne
+sont pas des références ; **`swim_limit` n'agissait que pour les débutants** (O-14) alors que
+CLAUDE.md le disait « câblé sur ses 4 valeurs ». Le schéma cesse aussi de sur-déclarer (la FTP
+n'est plus demandée en course à pied ni en natation). Dette déclarée : `O-13`, la rampe R10 ne
+mord jamais en natation — erreur d'unité, décision produit à prendre.
+**21 gates verts, E2E 13/13, golden 900 recapturé, registre 13/13 re-mesuré.**
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur

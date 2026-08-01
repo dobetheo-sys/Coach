@@ -172,11 +172,11 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   race_date: { type: "date", label: "la date de ta course" , nature: "vecue" },
   plan_start: { type: "date", label: "le départ de ton plan" , nature: "vecue" },
   // ---- Références mesurées ----
-  ftp_known: { ...enumF("« connais-tu ta FTP »", OUI_NON), nature: "vecue" },
-  pace_known: { ...enumF("« connais-tu ton allure seuil »", OUI_NON), nature: "vecue" },
-  css_known: { ...enumF("« connais-tu ton CSS »", OUI_NON), nature: "vecue" },
+  ftp_known: { ...enumF("« connais-tu ta FTP »", OUI_NON, ["bike", "tri", "duathlon"]), nature: "vecue" },
+  pace_known: { ...enumF("« connais-tu ton allure seuil »", OUI_NON, ["run", "trail", "tri", "duathlon", "swimrun"]), nature: "vecue" },
+  css_known: { ...enumF("« connais-tu ton CSS »", OUI_NON, ["swim", "tri", "swimrun"]), nature: "vecue" },
   vam_known: { ...enumF("« connais-tu ta VAM »", OUI_NON, ["trail"]), nature: "vecue" },
-  ftp: { ...numF("ta FTP", 50, 600, "W"), nature: "mesuree" },
+  ftp: { ...numF("ta FTP", 50, 600, "W", ["bike", "tri", "duathlon"]), nature: "mesuree" },
   vam: { ...numF("ta VAM", 200, 2500, "m/h", ["trail"]), nature: "mesuree" },
   // R12.1 — la montée VÉCUE : deux chiffres que tout le monde peut donner, d'où l'on déduit
   // la VAM. Bornes larges à dessein : c'est un souvenir, pas un protocole.
@@ -192,8 +192,14 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   // Poids cible : JAMAIS proposé ni suggéré par l'outil (P9). Il n'existe que si l'athlète a
   // demandé le levier ET saisi la valeur lui-même, et il ne produit qu'une SENSIBILITÉ.
   weight_target: { ...numF("ton poids cible", 35, 200, "kg"), nature: "vecue" },
+  // R20.1 — LES CLÉS SONT DÉCLARÉES POUR LES SPORTS OÙ ELLES ONT UN SENS, et pour eux seuls.
+  // Le balayage dérivé du schéma (`audit:sensibilite`) a montré ce que coûtait l'inverse : la
+  // FTP était déclarée pour la COURSE À PIED et la NATATION, `terrain` pour la natation et le
+  // swimrun, l'accès au tapis pour les sept sports. Ces clés y étaient évidemment inertes —
+  // et une clé inerte noyait le signal des VRAIES inerties dans le rapport. Un schéma qui
+  // sur-déclare rend sa propre garde illisible.
   // ---- Terrain / milieu ----
-  terrain: { ...enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"]), nature: "vecue" },
+  terrain: { ...enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"], ["run", "bike", "tri", "duathlon"]), nature: "vecue" },
   // ---- R18.2 — LE PROFIL DE COURSE PAR DISCIPLINE ----
   // Retour du fondateur après test : « dans la construction avancée je veux qu'on définisse
   // le profil de la course (ex triathlon : eau vive, vélo montagneux, course plate) ».
@@ -217,13 +223,13 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   leg_run_prof: { ...enumF("le profil du parcours à pied", ["plat", "vallonne", "montagne"], ["tri", "duathlon", "swimrun"]), nature: "vecue" },
   milieu: { ...enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim"]), nature: "vecue" },
   swim_limit: { ...enumF("ta limite en natation", ["technique", "respiration", "endurance", "peur"], ["swim"]), nature: "vecue" },
-  treadmill: { ...enumF("l'accès au tapis", OUI_NON), nature: "vecue" },
+  treadmill: { ...enumF("l'accès au tapis", OUI_NON, ["trail"]), nature: "vecue" },
   // ---- Trail ----
   race_technicity: { ...enumF("la technicité de ta course", ["roulant", "mixte", "technique", "alpin"], ["trail"]), nature: "vecue" },
   race_night: { ...enumF("la part de nuit", ["non", "partielle", "majoritaire"], ["trail"]), nature: "vecue" },
   train_dplus_access: { ...enumF("le dénivelé accessible", ["plat", "collines", "montagne"], ["trail"]), nature: "vecue" },
   poles: { ...enumF("les bâtons", ["oui", "non", "a_decider"], ["trail"]), nature: "vecue" },
-  race_distance_km: { ...numF("la distance de ta course", 1, 500, "km", ["trail", "swimrun"]), requiredFor: ["trail"] , nature: "vecue" },
+  race_distance_km: { ...numF("la distance de ta course", 1, 500, "km", ["trail"]), requiredFor: ["trail"] , nature: "vecue" },
   race_dplus_m: { ...numF("le D+ de ta course", 0, 30000, "m", ["trail"]), required: true , nature: "vecue" },
   race_cutoff_h: { ...numF("la barrière horaire", 1, 200, "h", ["trail"]), nature: "vecue" },
   // ---- Swimrun ----

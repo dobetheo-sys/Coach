@@ -940,9 +940,9 @@
   "sport": "run",
   "key": "treadmill",
   "mut": "valeur inconnue",
-  "verdict": "ÉCHEC EXPLICITE",
-  "delta": "",
-  "err": "ENTREE_INVALIDE treadmill = \"__zzz__\" (attendu : oui / non)"
+  "verdict": "sans effet",
+  "delta": "pic 9.8→9.8h · sem 46→46 · séances 221→221",
+  "err": ""
  },
  {
   "cat": "T1 énum",
@@ -3604,8 +3604,8 @@
   "sport": "tri",
   "key": "vol_recent",
   "mut": "zéro",
-  "verdict": "sans effet",
-  "delta": "pic 11.7→11.7h · sem 46→46 · séances 231→231",
+  "verdict": "DÉRIVE ANNONCÉE",
+  "delta": "pic 11.7→11.7h · sem 46→46 · séances 231→228",
   "err": ""
  },
  {

@@ -54,7 +54,18 @@ export function buildSwimSessions(kit: SessionKit): V1Session[] {
     const techDistCaps = beginner ? { lo: 200, hi: 600 } : { lo: 750, hi: 1200 };
     if (ow && a.swim_limit === "peur") S2.push({ d: "sw", name: "Aisance eau libre", det: "familiarisation, respiration, flottaison — 💡 Objectif confiance : l'aisance dans l'eau libre se construit sans chrono, par l'exposition progressive.", steps: [] });
     else if (!ow && beginner && a.swim_limit === "peur") S2.push({ d: "sw", name: "Aisance bassin", det: "petites longueurs, pied au mur à tout moment, zéro chrono — 💡 Objectif confiance : l'aisance dans l'eau se construit par l'exposition progressive, jamais par la contrainte.", steps: [] });
-    else S2.push({ d: "sw", name: "Technique souple", note: beginner ? limFocus.note : "Éducatifs à froid : le geste se grave sans fatigue. Qualité avant quantité.", det: "", steps: [Object.assign(Bd(1, P(techDistCaps.lo, techDistCaps.hi), "sw.easy", "", beginner ? limFocus.txt : " éducatifs", false, "sw"), beginner ? {} : { bnd: { floor: techDistCaps.lo, cap: techDistCaps.hi } })], ...( { plainBody: true } as object) });
+    // R20.1-d — `swim_limit` N'AGISSAIT QUE POUR LES DÉBUTANTS. Les deux seuls endroits qui
+    // consommaient `limFocus` étaient derrière `if (beginner)` : un nageur intermédiaire qui
+    // déclare « ma limite, c'est la respiration » recevait « éducatifs » sans plus de
+    // précision. La question est pourtant posée à tout le monde, et `CLAUDE.md` affirmait
+    // qu'elle était « câblée sur ses 4 valeurs ». Elle l'était sur un quart de la population.
+    // Une limite ne disparaît pas quand on progresse — elle devient plus fine à traiter, pas
+    // moins utile à nommer. Le focus s'applique donc dès que la réponse existe ; le repli
+    // générique reste pour qui n'a pas répondu.
+    else {
+      const cible = a.swim_limit ? limFocus : { txt: " éducatifs", note: "Éducatifs à froid : le geste se grave sans fatigue. Qualité avant quantité." };
+      S2.push({ d: "sw", name: "Technique souple", note: beginner ? limFocus.note : cible.note, det: "", steps: [Object.assign(Bd(1, P(techDistCaps.lo, techDistCaps.hi), "sw.easy", "", beginner ? limFocus.txt : cible.txt, false, "sw"), beginner ? {} : { bnd: { floor: techDistCaps.lo, cap: techDistCaps.hi } })], ...( { plainBody: true } as object) });
+    }
   } else if (slot === "facile2") {
     const recDistCaps = beginner ? { lo: 100, hi: 400 } : { lo: 750, hi: 1100 }; // C24
     S2.push({ d: "sw", recovery: true, name: "Récup eau", note: "Nage de récupération : relâchement total, respiration ample.", det: "", steps: [Object.assign(Bd(1, P(recDistCaps.lo, recDistCaps.hi), "sw.easy", "", " souple", false, "sw"), beginner ? {} : { bnd: { floor: recDistCaps.lo, cap: recDistCaps.hi } })], ...( { plainBody: true } as object) });

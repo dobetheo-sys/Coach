@@ -8,7 +8,9 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   // R16.10 — la suite swimrun revient avec le module (elle sortait avec lui en R12 §0).
   "smoke-swimrun.mjs", "smoke-avatar.mjs",
   // R18.3 — la navigation à cinq onglets, et surtout : un geste, une implémentation.
-  "smoke-tabs.mjs"];
+  "smoke-tabs.mjs",
+  // R20.1 — les SEPT questionnaires se traversent : aucune suite ne passait par le triathlon.
+  "smoke-questionnaires.mjs"];
 let failed = 0;
 for (const s of SUITES) {
   console.log("\n━━━ " + s + " ━━━");

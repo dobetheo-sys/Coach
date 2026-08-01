@@ -22,6 +22,7 @@ import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS,
 import { buildDays, type GenDay } from "./weekBuilder.ts";
 import { buildSessions } from "./sessionLibrary.ts";
 import { predictRace, courseProfileOf, legProfileOf } from "../engine/predictor.ts";
+import { swimrunObjective } from "../sports/swimrun/objective.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { arbitrateVolRecent } from "../engine/measured.ts";
 import { record as traceRecord, traceEnabled } from "../engine/trace.ts";
@@ -1191,7 +1192,10 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   // `measured`, `hours` vaut exactement la déclaration — le plan est celui d'avant.
   const _volArb = arbitrateVolRecent(a.vol_recent, a.measured);
   const volRecent = _volArb.hours ?? NaN;
-  let _rampCap = volRecent > 0 ? Math.max(2, volRecent * 1.1) : Infinity;
+  // R20.1-a — `>= 0`, pas `> 0` : voir `arbitrateVolRecent`. Quelqu'un qui repart de ZÉRO est
+  // celui à qui il faut le départ le plus prudent, et le test strict lui donnait le moins
+  // prudent. Le plancher de 2 h reste : on ne prescrit pas une semaine 1 vide, on la borne.
+  let _rampCap = isFinite(volRecent) && volRecent >= 0 ? Math.max(2, volRecent * 1.1) : Infinity;
   let _rampWeeks = 0;
   const wl: V1Week[] = [];
   let _maxChargeMin = 0;
@@ -2149,6 +2153,17 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
             // R18.2 — trois profils au lieu d'un : un triathlon n'est pas homogène.
             legProfiles: { swim: legProfileOf(a as never, "swim"), bike: legProfileOf(a as never, "bike"), run: legProfileOf(a as never, "run") },
             trail: r.trail || undefined,
+            // R20.1-b — LE JOUR J DU SWIMRUN NE PORTAIT AUCUN TEMPS PRÉDIT. `predictRace` ne
+            // recevait pas l'objectif swimrun décodé : le module poussait un conseil et
+            // rendait zéro item, donc `predDet` restait vide. Le triathlon et le trail
+            // affichaient leurs temps sur la case du jour J, le swimrun non — et personne ne
+            // l'avait vu parce que rien ne comparait les sept sports sur ce point.
+            // C'est aussi ce qui rendait `leg_swim_env` et `leg_run_prof` INERTES sur le plan
+            // en swimrun alors que R19.1 venait de les brancher dans la prédiction.
+            swimrun: a.sport === "swimrun" ? swimrunObjective(a) : undefined,
+            // R19.2 — la combinaison. `|| undefined` aurait relu 0 °C comme « pas de réponse »
+            // (le piège de `vol_recent`, R20.1-a) : on teste la finitude, pas la vérité.
+            waterTempC: (() => { const t = parseFloat(String(a.water_temp_c ?? "")); return isFinite(t) ? t : undefined; })(),
             runHoursPerWeek: a.sport === "run" ? parseFloat(String(a.vol_max ?? "")) || undefined : undefined,
           });
           if (pred.items.length) predDet = " — ⏱ Prévu : " + pred.items.map((it) => it.leg + " " + it.value).join(" · ");

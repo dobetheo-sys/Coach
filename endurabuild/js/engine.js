@@ -384,8 +384,19 @@ function arbitrateVolRecent(
   declaredRaw                                    ,
   m                                     ,
 )                       {
+  // R20.1-a — ZÉRO EST UNE RÉPONSE, PAS UNE ABSENCE DE RÉPONSE.
+  //
+  // Le test était `dec > 0` : déclarer « je ne m'entraîne pas du tout en ce moment » était donc
+  // lu comme « je n'ai pas répondu », et la rampe R10 ne se déclenchait pas. Mesuré sur un
+  // profil `reprise` en préparation marathon : **semaine 1 à 3,9 h au lieu de 2,0 h** — presque
+  // le double, sur exactement la population que cette rampe existe pour protéger. Quelqu'un
+  // qui repart de zéro est celui à qui il faut le départ le plus prudent, et c'est lui qui
+  // recevait le départ le moins prudent.
+  //
+  // Trouvé par le balayage dérivé du schéma (R20.1), pas par un test écrit à la main : aucune
+  // liste de cas ne pensait à essayer la borne basse d'un domaine qui commence à 0.
   const dec = parseFloat(String(declaredRaw ?? ""));
-  const declared = isFinite(dec) && dec > 0 ? dec : null;
+  const declared = isFinite(dec) && dec >= 0 ? dec : null;
   const meas = measuredWeeklyHours(m);
   if (meas == null) {
     return { hours: declared, declared, measured: null, source: declared == null ? "aucun" : "declare", why: "" };
@@ -581,11 +592,11 @@ const ANSWER_SCHEMA                            = {
   race_date: { type: "date", label: "la date de ta course" , nature: "vecue" },
   plan_start: { type: "date", label: "le départ de ton plan" , nature: "vecue" },
   // ---- Références mesurées ----
-  ftp_known: { ...enumF("« connais-tu ta FTP »", OUI_NON), nature: "vecue" },
-  pace_known: { ...enumF("« connais-tu ton allure seuil »", OUI_NON), nature: "vecue" },
-  css_known: { ...enumF("« connais-tu ton CSS »", OUI_NON), nature: "vecue" },
+  ftp_known: { ...enumF("« connais-tu ta FTP »", OUI_NON, ["bike", "tri", "duathlon"]), nature: "vecue" },
+  pace_known: { ...enumF("« connais-tu ton allure seuil »", OUI_NON, ["run", "trail", "tri", "duathlon", "swimrun"]), nature: "vecue" },
+  css_known: { ...enumF("« connais-tu ton CSS »", OUI_NON, ["swim", "tri", "swimrun"]), nature: "vecue" },
   vam_known: { ...enumF("« connais-tu ta VAM »", OUI_NON, ["trail"]), nature: "vecue" },
-  ftp: { ...numF("ta FTP", 50, 600, "W"), nature: "mesuree" },
+  ftp: { ...numF("ta FTP", 50, 600, "W", ["bike", "tri", "duathlon"]), nature: "mesuree" },
   vam: { ...numF("ta VAM", 200, 2500, "m/h", ["trail"]), nature: "mesuree" },
   // R12.1 — la montée VÉCUE : deux chiffres que tout le monde peut donner, d'où l'on déduit
   // la VAM. Bornes larges à dessein : c'est un souvenir, pas un protocole.
@@ -601,8 +612,14 @@ const ANSWER_SCHEMA                            = {
   // Poids cible : JAMAIS proposé ni suggéré par l'outil (P9). Il n'existe que si l'athlète a
   // demandé le levier ET saisi la valeur lui-même, et il ne produit qu'une SENSIBILITÉ.
   weight_target: { ...numF("ton poids cible", 35, 200, "kg"), nature: "vecue" },
+  // R20.1 — LES CLÉS SONT DÉCLARÉES POUR LES SPORTS OÙ ELLES ONT UN SENS, et pour eux seuls.
+  // Le balayage dérivé du schéma (`audit:sensibilite`) a montré ce que coûtait l'inverse : la
+  // FTP était déclarée pour la COURSE À PIED et la NATATION, `terrain` pour la natation et le
+  // swimrun, l'accès au tapis pour les sept sports. Ces clés y étaient évidemment inertes —
+  // et une clé inerte noyait le signal des VRAIES inerties dans le rapport. Un schéma qui
+  // sur-déclare rend sa propre garde illisible.
   // ---- Terrain / milieu ----
-  terrain: { ...enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"]), nature: "vecue" },
+  terrain: { ...enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"], ["run", "bike", "tri", "duathlon"]), nature: "vecue" },
   // ---- R18.2 — LE PROFIL DE COURSE PAR DISCIPLINE ----
   // Retour du fondateur après test : « dans la construction avancée je veux qu'on définisse
   // le profil de la course (ex triathlon : eau vive, vélo montagneux, course plate) ».
@@ -626,13 +643,13 @@ const ANSWER_SCHEMA                            = {
   leg_run_prof: { ...enumF("le profil du parcours à pied", ["plat", "vallonne", "montagne"], ["tri", "duathlon", "swimrun"]), nature: "vecue" },
   milieu: { ...enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim"]), nature: "vecue" },
   swim_limit: { ...enumF("ta limite en natation", ["technique", "respiration", "endurance", "peur"], ["swim"]), nature: "vecue" },
-  treadmill: { ...enumF("l'accès au tapis", OUI_NON), nature: "vecue" },
+  treadmill: { ...enumF("l'accès au tapis", OUI_NON, ["trail"]), nature: "vecue" },
   // ---- Trail ----
   race_technicity: { ...enumF("la technicité de ta course", ["roulant", "mixte", "technique", "alpin"], ["trail"]), nature: "vecue" },
   race_night: { ...enumF("la part de nuit", ["non", "partielle", "majoritaire"], ["trail"]), nature: "vecue" },
   train_dplus_access: { ...enumF("le dénivelé accessible", ["plat", "collines", "montagne"], ["trail"]), nature: "vecue" },
   poles: { ...enumF("les bâtons", ["oui", "non", "a_decider"], ["trail"]), nature: "vecue" },
-  race_distance_km: { ...numF("la distance de ta course", 1, 500, "km", ["trail", "swimrun"]), requiredFor: ["trail"] , nature: "vecue" },
+  race_distance_km: { ...numF("la distance de ta course", 1, 500, "km", ["trail"]), requiredFor: ["trail"] , nature: "vecue" },
   race_dplus_m: { ...numF("le D+ de ta course", 0, 30000, "m", ["trail"]), required: true , nature: "vecue" },
   race_cutoff_h: { ...numF("la barrière horaire", 1, 200, "h", ["trail"]), nature: "vecue" },
   // ---- Swimrun ----
@@ -4308,7 +4325,18 @@ function buildSwimSessions(kit            )              {
     const techDistCaps = beginner ? { lo: 200, hi: 600 } : { lo: 750, hi: 1200 };
     if (ow && a.swim_limit === "peur") S2.push({ d: "sw", name: "Aisance eau libre", det: "familiarisation, respiration, flottaison — 💡 Objectif confiance : l'aisance dans l'eau libre se construit sans chrono, par l'exposition progressive.", steps: [] });
     else if (!ow && beginner && a.swim_limit === "peur") S2.push({ d: "sw", name: "Aisance bassin", det: "petites longueurs, pied au mur à tout moment, zéro chrono — 💡 Objectif confiance : l'aisance dans l'eau se construit par l'exposition progressive, jamais par la contrainte.", steps: [] });
-    else S2.push({ d: "sw", name: "Technique souple", note: beginner ? limFocus.note : "Éducatifs à froid : le geste se grave sans fatigue. Qualité avant quantité.", det: "", steps: [Object.assign(Bd(1, P(techDistCaps.lo, techDistCaps.hi), "sw.easy", "", beginner ? limFocus.txt : " éducatifs", false, "sw"), beginner ? {} : { bnd: { floor: techDistCaps.lo, cap: techDistCaps.hi } })], ...( { plainBody: true }          ) });
+    // R20.1-d — `swim_limit` N'AGISSAIT QUE POUR LES DÉBUTANTS. Les deux seuls endroits qui
+    // consommaient `limFocus` étaient derrière `if (beginner)` : un nageur intermédiaire qui
+    // déclare « ma limite, c'est la respiration » recevait « éducatifs » sans plus de
+    // précision. La question est pourtant posée à tout le monde, et `CLAUDE.md` affirmait
+    // qu'elle était « câblée sur ses 4 valeurs ». Elle l'était sur un quart de la population.
+    // Une limite ne disparaît pas quand on progresse — elle devient plus fine à traiter, pas
+    // moins utile à nommer. Le focus s'applique donc dès que la réponse existe ; le repli
+    // générique reste pour qui n'a pas répondu.
+    else {
+      const cible = a.swim_limit ? limFocus : { txt: " éducatifs", note: "Éducatifs à froid : le geste se grave sans fatigue. Qualité avant quantité." };
+      S2.push({ d: "sw", name: "Technique souple", note: beginner ? limFocus.note : cible.note, det: "", steps: [Object.assign(Bd(1, P(techDistCaps.lo, techDistCaps.hi), "sw.easy", "", beginner ? limFocus.txt : cible.txt, false, "sw"), beginner ? {} : { bnd: { floor: techDistCaps.lo, cap: techDistCaps.hi } })], ...( { plainBody: true }          ) });
+    }
   } else if (slot === "facile2") {
     const recDistCaps = beginner ? { lo: 100, hi: 400 } : { lo: 750, hi: 1100 }; // C24
     S2.push({ d: "sw", recovery: true, name: "Récup eau", note: "Nage de récupération : relâchement total, respiration ample.", det: "", steps: [Object.assign(Bd(1, P(recDistCaps.lo, recDistCaps.hi), "sw.easy", "", " souple", false, "sw"), beginner ? {} : { bnd: { floor: recDistCaps.lo, cap: recDistCaps.hi } })], ...( { plainBody: true }          ) });
@@ -5127,7 +5155,17 @@ function swimrunObjective(a                )                   {
   // ---- Références EN TENUE : mesurées si le test est fait, estimées sinon (§R10.3.3) ----
   const measuredSwim = srPaceToSec(a.swimrun_swim_pace, 400);
   const measuredRun = srPaceToSec(a.swimrun_run_pace, 1200);
-  const paceKnown = measuredSwim > 0 && measuredRun > 0;
+  // R20.1-c — `gear_test` ne servait à RIEN. La question « as-tu fait le test en tenue
+  // complète ? » était posée au questionnaire swimrun et lue nulle part dans le moteur : le
+  // balayage dérivé du schéma (R20.1) l'a trouvée inerte.
+  //
+  // Le module dit pourtant lui-même ce qu'elle vaut : « les allures ne transfèrent PAS en
+  // swimrun — combinaison, chaussures mouillées, pull buoy, plaquettes, terrain. Le seul test
+  // qui vaut se fait en tenue COMPLÈTE. » Deux chronos saisis SANS ce test ne sont donc pas
+  // des références mesurées : ce sont des estimations qui se croient mesurées, et elles
+  // resserrent la fourchette à tort. `gear_test` entre donc exactement là où l'argument du
+  // module le place — dans la confiance qu'on accorde aux références.
+  const paceKnown = measuredSwim > 0 && measuredRun > 0 && String(a.gear_test ?? "") !== "non";
   const cssSec = srPaceToSec(a.css, 300) || 130;
   const roadSec = srPaceToSec(a.pace, 1200) || (level === "debutant" ? 390 : level === "avance" ? 280 : 330);
   let swimPaceSec = measuredSwim || Math.round(cssSec * S4_GEAR_FACTORS.swim);
@@ -6551,6 +6589,7 @@ function applyPolarizationGuard(r              , days          , ctx            
 
 
 
+
 /**
  * Une zone de QUALITÉ — source unique. Le prédicat vivait en local dans `scaleBlock` (V2.2 :
  * un bloc de qualité ne grandit pas tout seul) ; C13d en a besoin aussi, et deux copies d'une
@@ -7711,7 +7750,10 @@ function generatePlan(profile                , opts                             
   // `measured`, `hours` vaut exactement la déclaration — le plan est celui d'avant.
   const _volArb = arbitrateVolRecent(a.vol_recent, a.measured);
   const volRecent = _volArb.hours ?? NaN;
-  let _rampCap = volRecent > 0 ? Math.max(2, volRecent * 1.1) : Infinity;
+  // R20.1-a — `>= 0`, pas `> 0` : voir `arbitrateVolRecent`. Quelqu'un qui repart de ZÉRO est
+  // celui à qui il faut le départ le plus prudent, et le test strict lui donnait le moins
+  // prudent. Le plancher de 2 h reste : on ne prescrit pas une semaine 1 vide, on la borne.
+  let _rampCap = isFinite(volRecent) && volRecent >= 0 ? Math.max(2, volRecent * 1.1) : Infinity;
   let _rampWeeks = 0;
   const wl           = [];
   let _maxChargeMin = 0;
@@ -8669,6 +8711,17 @@ function generatePlan(profile                , opts                             
             // R18.2 — trois profils au lieu d'un : un triathlon n'est pas homogène.
             legProfiles: { swim: legProfileOf(a         , "swim"), bike: legProfileOf(a         , "bike"), run: legProfileOf(a         , "run") },
             trail: r.trail || undefined,
+            // R20.1-b — LE JOUR J DU SWIMRUN NE PORTAIT AUCUN TEMPS PRÉDIT. `predictRace` ne
+            // recevait pas l'objectif swimrun décodé : le module poussait un conseil et
+            // rendait zéro item, donc `predDet` restait vide. Le triathlon et le trail
+            // affichaient leurs temps sur la case du jour J, le swimrun non — et personne ne
+            // l'avait vu parce que rien ne comparait les sept sports sur ce point.
+            // C'est aussi ce qui rendait `leg_swim_env` et `leg_run_prof` INERTES sur le plan
+            // en swimrun alors que R19.1 venait de les brancher dans la prédiction.
+            swimrun: a.sport === "swimrun" ? swimrunObjective(a) : undefined,
+            // R19.2 — la combinaison. `|| undefined` aurait relu 0 °C comme « pas de réponse »
+            // (le piège de `vol_recent`, R20.1-a) : on teste la finitude, pas la vérité.
+            waterTempC: (() => { const t = parseFloat(String(a.water_temp_c ?? "")); return isFinite(t) ? t : undefined; })(),
             runHoursPerWeek: a.sport === "run" ? parseFloat(String(a.vol_max ?? "")) || undefined : undefined,
           });
           if (pred.items.length) predDet = " — ⏱ Prévu : " + pred.items.map((it) => it.leg + " " + it.value).join(" · ");
@@ -11664,7 +11717,8 @@ function predictV2(sport        , answers            , plan                     
     // R18.2 — trois profils au lieu d'un : un triathlon n'est pas homogène.
     legProfiles: { swim: legProfileOf(answers         , "swim"), bike: legProfileOf(answers         , "bike"), run: legProfileOf(answers         , "run") },
     // R19.2 — la combinaison : seuil réglementaire à 24,5 °C, 4 à 7 % de temps de nage.
-    waterTempC: parseFloat(String(answers.water_temp_c ?? "")) || undefined,
+    // R20.1-a — `isFinite`, pas `||` : 0 est une réponse. Même piège que `vol_recent`.
+    waterTempC: (() => { const t = parseFloat(String(answers.water_temp_c ?? "")); return isFinite(t) ? t : undefined; })(),
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
     swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,

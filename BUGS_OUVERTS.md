@@ -364,6 +364,39 @@ attendu: /, 0 sans aucune qualite/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const iso=w=>{const d=new Date(Date.now()+w*7*864e5);d.setUTCDate(d.getUTCDate()+((7-d.getUTCDay())%7));return d.toISOString().slice(0,10)};const B={level:'inter',history:'confirme',intent:'competition',vol_max:'10',sessions_max:'6',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',ftp:'230',ftp_known:'oui',css:'2:00',css_known:'oui',vol_recent:'7',injury:'aucune',off_days:'non',shift_ok:'non',terrain:'plat'};const S={run:['5k','semi','marathon'],bike:['crit','cyclo'],tri:['M','70.3']};let n=0,vide=0;for(const sp of Object.keys(S))for(const f of S[sp])for(const sem of [22,30,40]){let p;try{p=E.buildPlan(sp,{...B,format:f,race_date:iso(sem)})}catch(e){continue}const wk=p._v2.intensity.weekly,T=p.weeks.map((w,i)=>({i,ph:w.phase.id})).filter(x=>x.ph==='taper').slice(0,-1);for(const x of T){n++;if(wk[x.i].m+wk[x.i].h===0)vide++}}console.log(n+' semaines d affutage, '+vide+' sans aucune qualite')"
 ```
 
+### O-13 · La rampe R10 ne mord jamais en natation — erreur d'unité · 🟠 **OUVERT (trouvé par la garde R20.1)**
+
+Trouvé par le balayage dérivé du schéma, pas en cherchant : `vol_recent` est la seule clé du
+schéma qui reste inerte dans un sport (la natation) une fois les exemptions posées.
+
+Mesuré sur un profil `swim / fond / reprise` : semaine 1 = **1,6 h quelle que soit la réponse**
+(0, 1, 4 ou 8 h/sem de volume récent). Aucune décision `R10-depart` n'est émise.
+
+La cause est une **erreur d'unité**. Le plafond de rampe vaut `max(2 h, vol_recent × 1,1)` et
+se compare aux heures du PLAN ; or le volume de nage est déjà converti en heures d'EAU par
+`SWIM_TIME_FACTOR` (0,4). Une semaine 1 de nage dépasse donc rarement 2 h, et le plancher de la
+rampe l'absorbe toujours. Les deux nombres ne mesurent pas la même chose.
+
+Corriger demande de **décider ce que `vol_recent` veut dire pour un nageur** — des heures dans
+l'eau, ou des heures d'entraînement toutes disciplines ? C'est une question de produit avant
+d'être une ligne de code, d'où l'entrée plutôt qu'un correctif rapide. Elle est portée comme
+DETTE DÉCLARÉE dans `banc_sensibilite.cjs` : le banc l'affiche à chaque exécution.
+
+```verify
+id: O-13
+quoi: en natation, le volume récent déclaré ne change pas la semaine 1
+attendu: /DETTE CONNUE/
+cmd: npm run audit:sensibilite
+```
+
+### O-14 · `swim_limit` n'agissait que pour les débutants · ✅ **FERMÉ (R20.1-d)**
+
+`CLAUDE.md` affirmait que `swim_limit` était « câblé sur ses 4 valeurs ». Il l'était sur un
+QUART de la population : les deux seuls endroits qui consommaient le focus (`limFocus`) étaient
+derrière `if (beginner)`. Un nageur intermédiaire qui déclare « ma limite, c'est la
+respiration » recevait « éducatifs », sans plus. Une limite ne disparaît pas quand on progresse.
+Trouvé par la garde R20.1, corrigé dans le même lot.
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas
