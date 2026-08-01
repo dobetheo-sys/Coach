@@ -45,17 +45,16 @@ const ORDER = [
   "src/sports/trail/index.ts",
   "src/sports/duathlon/tables.ts",
   "src/sports/duathlon/index.ts",
-  // R12 §0 — SWIMRUN HORS V1 (décision de périmètre, 30/07/2026). Audience disjointe, 601
-  // lignes dédiées, 26 % de la surface de test. Le module est EXCLU DU BUNDLE, pas masqué dans
-  // l'UI : du code expédié mais non exercé est exactement ce que ce projet refuse depuis la
-  // suppression du générateur legacy — « un filet troué ne protège personne ». Le code reste
-  // dans `src/`, réintégrable en retirant ce drapeau.
-  //   EB_SWIMRUN=1 npm run build:app  → réintègre le sport (et ses cas de bancs).
-  ...(process.env.EB_SWIMRUN === "1" ? [
-    "src/sports/swimrun/tables.ts",
-    "src/sports/swimrun/objective.ts",
-    "src/sports/swimrun/index.ts",
-  ] : []),
+  // R16.10 — SWIMRUN RÉINTÉGRÉ (01/08/2026). R12 §0 l'avait sorti du bundle — pas masqué dans
+  // l'UI, sorti : du code expédié mais non exercé est exactement ce que ce projet refuse. La
+  // condition de retour était de traiter sa dette d'abord, pas de retirer le drapeau : ses
+  // quatre checks budgétés au banc v7 valaient 53 à 80 ‰ pour 78 % de profils propres. Ils
+  // sont à 12 ‰ pour 89 % — au niveau du duathlon — après S13 (la structure hebdomadaire lit
+  // enfin l'objectif) et l'exemption des règles de sécurité côté banc. Le sport entre donc
+  // avec un filet à sa taille, pas avec un filet troué.
+  "src/sports/swimrun/tables.ts",
+  "src/sports/swimrun/objective.ts",
+  "src/sports/swimrun/index.ts",
   "src/generator/weekBuilder.ts",
   "src/generator/planGenerator.ts",
   "src/generator/repairLoop.ts",

@@ -124,6 +124,33 @@ séances de la semaine courante, non adaptées, quand on déplie « Voir les N s
 si c'est acceptable (une séance PLANIFIÉE n'est pas une séance PRESCRITE pour aujourd'hui) ou
 s'il faut masquer la semaine courante dans la saison tant que le check-in manque.
 
+### O-6 · `golden:verify` — un gate de CI rouge en permanence depuis R15.7-C · ✅ **FERMÉ (R16.10-a)**
+
+Trouvé en revérifiant les vingt gates un par un avec le bon code de sortie (une boucle
+antérieure lisait `$?` après une substitution de commande et rapportait « OK » pour tout le
+monde — l'instrument de vérification était lui-même faux, ce qui est la version la plus
+gênante du défaut).
+
+`golden:verify` annonçait « 900 profils, 0 écart » **puis sortait en code 1**. Cause : R15.7-C
+a ajouté quatre profils `mineur` dont la génération se termine par un REFUS typé
+(`ENTREE_INVALIDE`) — le comportement voulu, ajouté exprès — que le golden comptait comme une
+erreur de génération. `.github/workflows/audit.yml` gate sur cette commande : **le job était
+donc rouge depuis R15.7-C**, et mes propres messages de commit annonçaient « 20 gates verts »
+sans que ce soit vrai pour celui-là.
+
+Fermé en distinguant le refus typé de l'erreur, comme `U-REFUS:` au banc v7 depuis R11 : on
+compte, on affiche, on hache — on ne confond pas. **Leçon à garder : un gate qui échoue en
+permanence ne signale plus rien, et une vérification en boucle shell doit tester le code de
+sortie de la commande, pas celui de son enrobage.**
+
+### O-7 · La structure hebdomadaire du swimrun ne lisait pas l'objectif · ✅ **FERMÉ (R16.10, S13)**
+
+`swimrunWeekSchema(phase, isRecup)` ne voit jamais la course. Mesuré : la part de course dans
+le plan valait **63-64 % pour toute épreuve**, alors que la part de course dans l'épreuve va de
+45 % (5 000 m de nage / 5 km) à 94 % (800 m / 30 km) — 31 points de sous-entraînement du
+limiteur réel sur une épreuve course-dominante. Fermé par `S13_MIX_FOLLOWS_RACE`.
+Voir ARCHITECTURE.md « R16.10 » pour la table avant/après et les deux verrous.
+
 ---
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
@@ -141,6 +168,11 @@ Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. I
 
 ### Banc v7 — budgets non nuls (`scripts/runAuditV7.mjs`, en ‰ de profils depuis R15.1)
 
+> **R16.10** — les quatre budgets swimrun (`S-LONGSWIM` 53 ‰, `S-MIX` 60 ‰, `S-RUN-STARVED`
+> 67 ‰, `S-PREREQ` 80 ‰) sont tombés à **12 / 12 / 12 / 0 ‰** après traitement de la dette :
+> une correction moteur (S13) et une correction d'instrument (les checks de spécificité ne
+> punissent plus les règles de sécurité). Résidu 5-8 ‰ vérifié sur N=250 / 400 / 600.
+
 | check | budget | nature |
 |---|---|---|
 | `U-RACEDATE` | 80 ‰ | Course très lointaine : plafond de durée assumé + avertissement (R4.8b). Comportement voulu. |
@@ -148,7 +180,7 @@ Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. I
 | `T-NIGHT` | 13 ‰ | Consigne de nuit portée en ATTRIBUT sur les séances survivantes (R4.7b) plutôt que par une séance dédiée. |
 | `T-DPLUS-WK`, `T-POLES-ADV` | 13 ‰ chacun | Résiduels trail sur profils extrêmes. |
 | `D-DISC` | 7 ‰ | Corrigé en R15.1 (couverture de discipline en semaine de course) — mesuré 0 à N=400. |
-| `S-LONGSWIM` `S-MIX` `S-RUN-STARVED` `S-PREREQ` | 54 · 60 · 67 · 80 ‰ | **Swimrun uniquement — donc NON EXERCÉS dans le produit V1** (le module est exclu du bundle, R12 §0). Ces budgets ne protègent rien tant que `EB_SWIMRUN=1` n'est pas activé. |
+| `S-LONGSWIM` `S-MIX` `S-RUN-STARVED` `S-PREREQ` | ~~54 · 60 · 67 · 80 ‰~~ → **12 · 12 · 12 · 0 ‰** | ✅ **R16.10** : le module est expédié, les checks sont donc exercés, et les budgets sont à la taille du résidu réel (5-8 ‰, vérifié sur N=250 / 400 / 600) au lieu de trois à cinq fois au-dessus. |
 
 > ⚠️ La ligne swimrun mérite d'être lue deux fois : ce sont 39 défauts budgétés sur du code
 > **expédié dans `src/` mais absent du produit**. Ce n'est pas une dette du produit, c'est une
@@ -195,7 +227,7 @@ document historique du dépôt, il se corrige dans son propre commit avec la mes
 | H-2 | Notifications push app fermée | Demande un backend. Décision produit assumée : on n'annonce pas ce qu'on ne peut pas tenir. |
 | H-3 | CONSEIL nutritionnel (par opposition aux ESTIMATIONS, livrées) | Bloqué sur avis diététicien. **Ligne à ne pas franchir**, manifeste. |
 | H-4 | Candidature API MyFitnessPal | Démarche humaine. |
-| H-5 | Swimrun hors V1 | Décision de périmètre (R12 §0), réversible par `EB_SWIMRUN=1`. Voir la note du §2. |
+| ~~H-5~~ | ~~Swimrun hors V1~~ | ✅ **R16.10** : réintégré après traitement de la dette (78 % → 89 % de profils propres). Le drapeau `EB_SWIMRUN` n'existe plus. |
 
 ---
 

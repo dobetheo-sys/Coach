@@ -76,17 +76,23 @@ const BUDGET_PERMILLE = {
   "T-DPLUS-WK": 13,
   "T-POLES-ADV": 13,
   "S-NOVO2": 0,      // R5.4/R5.5 — CORRIGÉ : le stimulus change de support et de créneau
-  "S-LONGSWIM": 53,   // plus longue nage non répétée sur les valeurs extrêmes (saisies invraisemblables)
-  "S-MIX": 60,        // part course/nage du plan vs de la course
-  "S-RUN-STARVED": 67,
-  "S-PREREQ": 80,    // format RABATTU + avertissement (choix assumé, cf. R10_DEFECTS)
+  // R16.10 — BUDGETS SWIMRUN RESSERRÉS APRÈS TRAITEMENT DE LA DETTE. Ils valaient 53 à 80 ‰
+  // pour un taux réel de 5 à 8 ‰ : un filet dix fois plus large que ce qu'il attrape ne
+  // protège de rien (c'est exactement la leçon O-1). Deux corrections les ont fait tomber —
+  // S13 côté moteur (la structure hebdo ne lisait pas l'objectif : 63-64 % de course dans le
+  // plan quelle que soit l'épreuve, de 45 % à 94 %) et l'exemption des règles de sécurité
+  // côté banc. Résidu mesuré sur trois tailles d'échantillon (N=250 / 400 / 600) : 5-8 ‰.
+  "S-LONGSWIM": 12,
+  "S-MIX": 12,
+  "S-RUN-STARVED": 12,
+  "S-PREREQ": 0,     // 0 aux trois tailles depuis R16.10 : devenu garde-fou permanent
   "D-DISC": 7,       // R5.2 — CORRIGÉ : couverture en dernier + aucune coupe n'orpheline la discipline principale
 };
 
 let failed = false;
-// R12 §0 — swimrun hors V1 : ses cas de banc sortent AVEC le module. Un banc qui teste du code
-// non expédié donne une fausse assurance ; `EB_SWIMRUN=1` les réintègre tous les deux.
-const SPORTS_V7 = process.env.EB_SWIMRUN === "1" ? ["trail", "swimrun", "duathlon"] : ["trail", "duathlon"];
+// R16.10 — les trois sports, tout le temps. Les cas swimrun sortaient AVEC le module (R12 §0) :
+// un banc qui teste du code non expédié donne une fausse assurance. Le module est expédié.
+const SPORTS_V7 = ["trail", "swimrun", "duathlon"];
 for (const sport of SPORTS_V7) {
   const out = execFileSync(process.execPath, [join(ROOT, "audit_v7.cjs"), sport, N], {
     env: { ...process.env, ENGINE: join(ROOT, "endurabuild/js/engine.js") },

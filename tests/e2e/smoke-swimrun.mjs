@@ -79,7 +79,7 @@ await page.click('.opts[data-key="doubles"] .opt[data-val="non"]');
 await page.click("#nextBtn");
 await page.click("#genBtn");
 await page.waitForTimeout(1000);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "plan swimrun généré (vue 5 onglets)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "plan swimrun généré (vue 4 onglets)");
 
 // ---- 4. Le plan : la séance pivot reproduit les transitions et la part de nage ----
 const plan = await page.evaluate(async () => {

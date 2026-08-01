@@ -339,7 +339,7 @@ sortie entière est annoncée comme une estimation BASSE plutôt que gonflée.
 VAM hors bornes, aligné sur la FTP. Depuis R11, les deux sont un REFUS typé — le contrat s'est
 durci entre les deux audits.
 
-**§0 — swimrun hors V1.** Sorti par **drapeau de build** (`EB_SWIMRUN=1` le réintègre) qui
+**§0 — swimrun hors V1.** ⚠️ **CADUC depuis R16.10** (réintégré après traitement de sa dette — voir ARCHITECTURE.md « R16.10 » ; le drapeau `EB_SWIMRUN` n'existe plus). État à l'époque : sorti par **drapeau de build** (`EB_SWIMRUN=1` le réintégrait) qui
 exclut le module ET ses cas de bancs : golden master, audit v2, audit v7, suite E2E. Du code
 expédié mais non exercé est exactement ce que ce projet refuse depuis la suppression du
 générateur legacy. Le code reste dans `src/`, intact. Un sport absent du bundle donne un refus

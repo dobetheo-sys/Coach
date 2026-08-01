@@ -1148,3 +1148,65 @@ que le point du matin n'est pas fait, et l'onglet n'est plus pris en otage.
 Critères d'acceptation du handoff, tous assertés dans `smoke-checkin.mjs` : `TABS.length
 === 4`, aucune erreur console sur les 4 onglets, cocher une séance ET voir la vue d'ensemble
 depuis le seul onglet Plan, aucun import restant vers `tab-week.js`.
+
+
+### R16.10 — swimrun réintégré, mais la dette d'abord
+
+Décision de périmètre R12 §0 (30/07/2026) : le swimrun était **sorti du bundle**, pas masqué
+dans l'UI — 78 % de profils propres au banc v7, quatre checks budgétés à 53-80 ‰, et le
+principe du dépôt (« du code expédié mais non exercé est ce qu'on refuse ») tranchait dans ce
+sens. La condition de retour posée était de traiter la dette, pas de retirer le drapeau.
+
+**Mesure d'abord.** Reconstruit avec le module, le banc donnait `S-LONGSWIM` 16 ‰, `S-MIX`
+23 ‰, `S-RUN-STARVED` 18 ‰, `S-PREREQ` 0 — pour des budgets de 53 à 80 ‰. Un filet trois à
+cinq fois plus large que ce qu'il attrape ne protège de rien : c'est la leçon O-1, à nouveau.
+
+**Deux causes, une par côté.**
+
+*Côté moteur — S13, la structure hebdomadaire ne lisait pas l'objectif.* `swimrunWeekSchema`
+a pour signature `(phase, isRecup)` : elle ne voit jamais la course. Mesuré sur un balayage du
+mix d'épreuve à profil constant :
+
+| épreuve | course dans la COURSE | course dans le PLAN (avant) | (après) |
+|---|---|---|---|
+| 800 m / 30 km | 94 % | 63 % | 84 % |
+| 1 500 m / 20 km | 85 % | 64 % | 85 % |
+| 2 600 m / 12 km | 71 % | 64 % | 64 % |
+| 3 000 m / 8 km | 63 % | 64 % | 64 % |
+| 5 000 m / 5 km | 45 % | 64 % | 64 % |
+
+Le plan valait 63-64 % de course quelle que soit l'épreuve. `S13_MIX_FOLLOWS_RACE` fait
+basculer le SECOND créneau facile (une nage de récupération) en course au-delà de 78 % de
+course dans l'épreuve. Pas de rééquilibrage au prorata — nager 6 % du temps parce que la
+course nage 6 % du temps serait absurde, la technique se perd par manque de **fréquence** —
+et aucune discipline ne descend jamais sous deux rendez-vous hebdomadaires.
+
+Deux choses apprises en le faisant, toutes deux écrites dans le code :
+- **la règle miroir a été écrite, mesurée, et retirée.** Côté épreuve dominée par la nage, le
+  plan était déjà à 64 % pour 45-53 % dans la course : au-dessus, jamais en dessous, donc
+  jamais le sens qui sous-entraîne. Basculer par symétrie faisait tomber la part de course à
+  17 %. Une règle qu'aucun défaut ne réclame est une règle qui en crée un.
+- **la bascule ne s'applique ni au froid ni sous drapeau médical.** Sans ce second verrou,
+  71 profils sous drapeau perdaient leur seule nage continue — la spécificité est la priorité
+  5 du manifeste, la santé la 1.
+
+*Côté banc — l'instrument punissait les règles de sécurité.* `S-MIX`, `S-RUN-STARVED` et
+`S-LONGSWIM` comparent le plan à la course sans savoir que le moteur a délibérément allégé une
+discipline. Mesuré : **71 des 73 hits de S-LONGSWIM et 5 des 7 de S-RUN-STARVED** portaient un
+drapeau médical ou une blessure de la discipline en cause. Un plan qui s'écarte de la course
+POUR CETTE RAISON est conforme. Même famille de défaut que `U-STRUCT` en R15.1.
+
+**Résultat : 78 % → 89 % de profils propres** (au niveau du duathlon), résidu 5-8 ‰ stable sur
+trois tailles d'échantillon (N=250 / 400 / 600), **budgets 53-80 ‰ → 12 ‰**, `S-PREREQ` à 0
+(garde-fou permanent). Le drapeau `EB_SWIMRUN` disparaît de `buildApp.mjs`, `runAuditV7.mjs`,
+`goldenMaster.mjs` et `run-all.mjs` : sept sports au sélecteur, dixième suite E2E, golden
+**764 → 900 profils**.
+
+**R16.10-a — et le golden était rouge depuis R15.7-C.** Trouvé en vérifiant les gates un par
+un avec le bon code de sortie : `golden:verify` annonçait « 0 écart » puis sortait en code 1,
+parce que les quatre profils `mineur` ajoutés à la passe de garde-fous se terminent désormais
+par un REFUS typé (`ENTREE_INVALIDE`) — le comportement voulu de R15.7-C — que le golden
+comptait comme une erreur de génération. La CI gate sur cette commande : **ce gate était donc
+rouge en permanence**, et un gate rouge en permanence est un gate que plus personne ne lit. Un
+refus typé est désormais compté, affiché et haché à part, exactement comme `U-REFUS:` au banc
+v7 depuis R11.

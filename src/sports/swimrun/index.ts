@@ -10,12 +10,14 @@
  * C'est ce qui la distingue d'un enchaînement natation-course quelconque.
  */
 import type { V1Session, V1Step } from "../../engine/types.ts";
-import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
+import {
+ registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { swimrunObjective } from "./objective.ts";
 import {
   S5_TRANSITION_MIN, S6_TEAM, S7_COLD, S8_PADDLES, S9_LONG_SHARE, S10_PREREQ, S11_GEAR_CHECKLIST,
   S12_PIVOT_MAX_SEGMENTS,
   OPENWATER_ACCESS,
+  S13_MIX_FOLLOWS_RACE,
 } from "./tables.ts";
 
 /** Part de plaquettes autorisée dans la séance, par phase — S8, progressif et jamais d'emblée. */
@@ -52,6 +54,21 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
   const team = obj.teamMode === "binome";
   const cold = obj.waterTempC != null && obj.waterTempC < S7_COLD.acclimationBelowC;
   const pad = paddleShare(phase, shoulder);
+  // S13 — LE CRÉNEAU FACILE SECONDAIRE SUIT LA COURSE. La structure hebdomadaire était un
+  // constant (2 nages, 2 courses, la pivot) : la part de course du plan valait 63-64 % que
+  // l'épreuve en demande 45 % ou 94 %. On ne rééquilibre pas au prorata — nager 6 % du temps
+  // parce que la course nage 6 % du temps serait absurde, la technique se perd par manque de
+  // FRÉQUENCE — mais un créneau facile bascule quand l'écart n'est plus défendable.
+  const runShare = 1 - obj.swimTimeShare;
+  // Deux verrous, tous deux au nom de la HIÉRARCHIE DU MANIFESTE — la spécificité est la
+  // priorité 5, la santé la 1 :
+  //   · l'acclimatation au froid n'est pas un choix de spécificité mais une adaptation de
+  //     sécurité : quand elle occupe `facile2`, elle le verrouille ;
+  //   · sous drapeau médical, le plan est un plan d'entretien — il n'a rien à ressembler à
+  //     une course. Mesuré : sans ce verrou, la bascule retirait la nage souple des plans
+  //     sous drapeau, et 71 profils perdaient leur seule nage continue.
+  const runDominant = runShare > S13_MIX_FOLLOWS_RACE.runDominantAbove && !cold && !medHold;
+
   const gearNote = team ? " Longe attachée : c'est en binôme que ça se joue." : "";
 
   // Le stimulus VO2 en course : un seul constructeur, deux créneaux possibles (`dur2` quand le
@@ -179,6 +196,11 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
     // Résultat mesuré : le plan allouait 43 % du temps à la course quand la course en demande
     // 68 % — un écart de 25 points, dans le sens qui pénalise le limiteur réel du sport.
     // Le froid consomme désormais un créneau NAGE (`facile2`).
+    // S13 — PAS DE RÈGLE SYMÉTRIQUE ICI, et c'est mesuré : côté épreuve dominée par la NAGE
+    // (45-53 % de course), le plan était déjà à 64 % — au-dessus de la course, jamais en
+    // dessous, donc jamais le sens qui sous-entraîne. Basculer ce créneau en nage « pour la
+    // symétrie » a été essayé et mesuré : la part de course tombait à 17 %. Une règle qu'aucun
+    // défaut ne réclame est une règle qui en crée un.
     S2.push({ d: "rn", name: "Footing facile", note: "Endurance fondamentale, allure de conversation. En swimrun, courir avec des jambes fatiguées par la nage est la norme : ce volume facile construit cette tolérance — et la course représente la majorité du temps de ta course.", det: "",
       steps: [B(1, P(30, 55), "rn.easy", "", inj.impact ? " · surface souple" : " · sur sentier si possible")], ...({ plainBody: true } as object) });
   } else if (slot === "facile2") {
@@ -187,7 +209,13 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
     // premier quota de la semaine (c'est la séance prioritaire) : une seconde séance en eau
     // libre n'est donc possible qu'à partir d'un plafond de 2. En dessous, l'acclimatation se
     // fait en bassin froid ou en douche froide — et le plan le DIT.
-    if (cold && !medHold) {
+    if (runDominant) {
+      // S13 — ton épreuve court beaucoup plus qu'elle ne nage : ce second créneau facile,
+      // qui était une nage de récupération, passe en course. La nage garde deux rendez-vous
+      // par semaine (le créneau de qualité et la pivot) : elle ne disparaît jamais.
+      S2.push({ d: "rn", name: "Footing facile (endurance)", note: "Sur ton épreuve, la course représente " + Math.round(runShare * 100) + " % du temps total contre " + Math.round(obj.swimTimeShare * 100) + " % pour la nage : ce second créneau facile lui revient. Allure de conversation, sur le terrain le plus proche de ta course.", det: "",
+        steps: [B(1, P(30, 50), "rn.easy", "", inj.impact ? " · surface souple" : " · sur sentier si possible")], ...({ plainBody: true } as object) });
+    } else if (cold && !medHold) {
       const inOpenWater = owForCold;
       S2.push({ d: "sw", name: inOpenWater ? "Acclimatation eau froide" : "Acclimatation au froid (bassin / douche)",
         note: "L'acclimatation au froid est une qualité qui s'entraîne, pas une affaire de volonté : exposition régulière, temps dans l'eau allongé progressivement."

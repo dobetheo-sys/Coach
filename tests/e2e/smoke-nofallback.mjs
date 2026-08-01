@@ -3,8 +3,7 @@
 // plan. Cette suite vérifie les deux moitiés de la décision : plus de repli, et un écran
 // d'échec qui dit à l'athlète que son profil est intact.
 import { startServer, launchBrowser, makeReporter, runnerStateV1 } from "./harness.mjs";
-const V1_SWIMRUN = process.env.EB_SWIMRUN === "1";
-const N_SPORTS = V1_SWIMRUN ? 7 : 6; // R12 §0 — swimrun hors V1 : le sélecteur suit le registre du moteur
+const N_SPORTS = 7; // R16.10 — swimrun réintégré : le sélecteur suit le registre du moteur
 
 
 const PORT = 8520;
@@ -70,7 +69,7 @@ const reg = await page.evaluate(() => {
   catch (e) { thrown = { name: e.name, code: e.code, msg: String(e.message) }; }
   return { ids: Object.keys(sports).sort(), tri: sports.tri, trail: sports.trail, thrown, plan: !!plan };
 });
-ok(reg.ids.join(",") === (V1_SWIMRUN ? "bike,duathlon,run,swim,swimrun,trail,tri" : "bike,duathlon,run,swim,trail,tri"), "les " + N_SPORTS + " sports du périmètre sont déclarés dans le registre (" + reg.ids.join(" ") + ")");
+ok(reg.ids.join(",") === "bike,duathlon,run,swim,swimrun,trail,tri", "les " + N_SPORTS + " sports du périmètre sont déclarés dans le registre (" + reg.ids.join(" ") + ")");
 ok(reg.trail && reg.trail.guards.runImpactCap === true, "le trail DÉCLARE le plafond de jours d'appui (D10-3 ne peut plus revenir par oubli)");
 ok(reg.tri && reg.tri.retestTypes.length === 3, "le tri déclare ses 3 tests de référence (l'UI ne les recopie plus)");
 ok(reg.thrown !== null && !reg.plan, "un sport inconnu lève au lieu de produire un plan silencieux");

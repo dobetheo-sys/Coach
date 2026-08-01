@@ -5,9 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smoke-improvements.mjs", "smoke-dates.mjs",
   "smoke-trail.mjs", "smoke-nofallback.mjs", "smoke-duathlon.mjs", "smoke-typo.mjs",
-  // R12 §0 — la suite swimrun sort AVEC le module : un test qui exerce du code non expédié
-  // donne une fausse assurance. `EB_SWIMRUN=1 npm run test:e2e` la réintègre.
-  ...(process.env.EB_SWIMRUN === "1" ? ["smoke-swimrun.mjs"] : [])];
+  // R16.10 — la suite swimrun revient avec le module (elle sortait avec lui en R12 §0).
+  "smoke-swimrun.mjs"];
 let failed = 0;
 for (const s of SUITES) {
   console.log("\n━━━ " + s + " ━━━");

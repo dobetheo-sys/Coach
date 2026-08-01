@@ -182,6 +182,36 @@ export const S11_GEAR_CHECKLIST: string[] = srule(
   ],
 );
 
+/**
+ * S13 — LE CRÉNEAU FACILE SECONDAIRE SUIT LA DISCIPLINE QUI DOMINE LA COURSE.
+ *
+ * Mesuré avant correction (banc v7, R16.10) : la part de COURSE dans le plan valait 63-64 %
+ * quelle que soit l'épreuve, alors que la part de course dans la course va de 45 % (5 000 m
+ * de nage / 5 km) à 94 % (800 m / 30 km). La structure hebdomadaire était un CONSTANT —
+ * 2 nages, 2 courses, la pivot — et ne lisait jamais l'objectif. Sur une épreuve à 94 % de
+ * course, le plan sous-entraînait le limiteur réel de 31 points.
+ *
+ * La règle ne rééquilibre PAS proportionnellement, et c'est délibéré : nager 6 % du temps
+ * parce que la course ne nage que 6 % du temps est absurde — la technique de nage se perd
+ * par manque de FRÉQUENCE, pas de volume, et c'est la sortie de l'eau qui décide de la
+ * course. Aucune des deux disciplines ne descend donc jamais sous deux rendez-vous par
+ * semaine (la pivot en porte déjà une de chaque). C'est le SECOND créneau facile qui bascule.
+ *
+ * Le seuil borne la bande où la structure de référence des coachs (≈64 % de course) est
+ * encore juste ; au-dessus, elle ne l'est plus. Il n'y a PAS de seuil symétrique : côté
+ * épreuve dominée par la nage, le plan mesurait déjà 64 % de course pour 45-53 % dans la
+ * course — au-dessus, jamais en dessous, donc jamais le sens qui sous-entraîne. La règle
+ * miroir a été écrite, mesurée (la part de course tombait à 17 %) et retirée.
+ */
+export const S13_MIX_FOLLOWS_RACE = srule(
+  "S13",
+  "la spécificité veut que le plan ressemble à la course ; la technique de nage veut de la fréquence — le compromis est de faire basculer UN créneau facile, jamais de supprimer une discipline",
+  {
+    /** Au-dessus : le second créneau facile (nage de récup) passe en COURSE. */
+    runDominantAbove: 0.78,
+  },
+);
+
 /** Part de nage dans le TEMPS de course (indicatif) — bien supérieure à sa part en distance. */
 export const SWIM_TIME_SHARE_HINT: Record<SwimrunCategory, number> = { experience: 0.35, sprint: 0.3, series: 0.28, championship: 0.25 };
 

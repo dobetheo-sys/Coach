@@ -42,9 +42,9 @@ if (!mode) {
 }
 
 // ---- Espace de profils ----------------------------------------------------
-// R12 §0 — swimrun hors V1 (voir scripts/buildApp.mjs) : ses profils sortent du golden avec
-// le module. `EB_SWIMRUN=1` les réintègre.
-const V1_SWIMRUN = process.env.EB_SWIMRUN === "1";
+// R16.10 — swimrun réintégré (voir scripts/buildApp.mjs) : ses profils rentrent dans le
+// golden avec le module. Ils en sortaient avec lui en R12 §0 — photographier des plans qu'on
+// n'expédie pas surveille du vide.
 const FORMATS_ALL = {
   run: ["5k", "10k", "semi", "marathon"], // `run/trail` : encore audité par runV2Audit (D10-1)
   bike: ["crit", "route", "cyclo", "clm", "gravel"],
@@ -52,9 +52,9 @@ const FORMATS_ALL = {
   tri: ["S", "M", "70.3", "Full"],
   trail: [""], // pas de format : la catégorie d'effort est déduite (R7)
   duathlon: ["S", "M", "L", "PM"], // R10 phase 2
-  swimrun: ["experience", "sprint", "series", "championship"], // R10 phase 3 (hors V1 par défaut)
+  swimrun: ["experience", "sprint", "series", "championship"], // R10 phase 3, expédié depuis R16.10
 };
-const FORMATS = Object.fromEntries(Object.entries(FORMATS_ALL).filter(([k]) => V1_SWIMRUN || k !== "swimrun"));
+const FORMATS = FORMATS_ALL;
 const HISTORIES = ["reprise", "confirme", "ancien"];
 const LEVELS = ["debutant", "inter", "avance"];
 const INTENTS = ["competition", "finir", "plaisir"];
@@ -205,20 +205,33 @@ function canon(v) {
 
 function snapshot() {
   const snap = {};
-  let n = 0, errors = [];
+  let n = 0, errors = [], refus = [];
   for (const { key, sport, a } of profiles()) {
     try {
       snap[key] = canon(globalThis.EBV2.buildPlan(sport, a));
     } catch (e) {
-      errors.push(key + " : " + (e && e.message ? e.message : String(e)));
-      snap[key] = { ERREUR: String(e && e.message ? e.message : e) };
+      // R16.10-a — UN REFUS TYPÉ N'EST PAS UNE ERREUR, c'est un COMPORTEMENT PHOTOGRAPHIÉ.
+      // Depuis R15.7-C (un mineur ne s'inscrit pas sur un format 18+), quatre profils du
+      // golden se terminent par `ENTREE_INVALIDE` — le refus voulu, ajouté exprès à la passe
+      // de garde-fous. Le golden les hachait correctement (« 0 écart ») mais sortait quand
+      // même en code 1 : la CI gate sur `golden:verify`, donc CE GATE ÉTAIT ROUGE DEPUIS
+      // R15.7-C, et un gate rouge en permanence est un gate que plus personne ne lit. Même
+      // distinction que `U-REFUS:` au banc v7 (R11) : on compte, on affiche, on ne confond pas.
+      const typed = e && e.code === "ENTREE_INVALIDE";
+      const msg = key + " : " + (e && e.message ? e.message : String(e));
+      if (typed) { refus.push(msg); snap[key] = { REFUS: String(e.key), ATTENDU: String(e.expected) }; }
+      else { errors.push(msg); snap[key] = { ERREUR: String(e && e.message ? e.message : e) }; }
     }
     n++;
   }
-  return { snap, n, errors };
+  return { snap, n, errors, refus };
 }
 
-const { snap, n, errors } = snapshot();
+const { snap, n, errors, refus } = snapshot();
+if (refus.length) {
+  console.log("· " + refus.length + " refus d'entrée typé(s) — comportement attendu, photographié :");
+  for (const r of refus.slice(0, 5)) console.log("   " + r);
+}
 if (errors.length) {
   console.error("✖ " + errors.length + " profil(s) en erreur :");
   for (const e of errors.slice(0, 5)) console.error("   " + e);

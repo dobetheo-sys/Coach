@@ -207,6 +207,16 @@ function runChecks(sport, a, plan, fail) {
   const offSet = new Set(a.off_days === "oui" ? String(a.off_which || "").split(",").filter(Boolean) : []);
   const medHold = a.med_pain === "oui" || a.med_dizzy === "oui" || a.med_treat === "oui";
   const inj = String(a.injury || "");
+  // R16.10 — L'INSTRUMENT NE DOIT PAS PUNIR UNE RÈGLE DE SÉCURITÉ. Trois checks de
+  // SPÉCIFICITÉ (S-MIX, S-RUN-STARVED, S-LONGSWIM) comparaient le plan à la course sans
+  // savoir que le moteur avait délibérément allégé une discipline. Mesuré avant correction :
+  // 71 des 73 hits de S-LONGSWIM et 5 des 7 de S-RUN-STARVED portaient un drapeau médical ou
+  // une blessure de la discipline en cause. C'est la hiérarchie du manifeste — santé (1) et
+  // prévention (2) passent avant performance (5) — donc un plan qui s'écarte de la course
+  // POUR CETTE RAISON est conforme, pas défaillant. Même famille de défaut d'instrument que
+  // `U-STRUCT` en R15.1 : le banc mesurait, mais pas ce qu'il croyait.
+  const injRun = /tibia|genou|dos|cheville|pied|itb|achille/i.test(inj);
+  const injSwim = /epaule|épaule/i.test(inj);
 
   let peak = 0;
   for (const w of weeks) peak = Math.max(peak, weekMin(w));
@@ -316,7 +326,8 @@ function runChecks(sport, a, plan, fail) {
         if (/epaule/.test(inj) && /plaquettes/i.test(t) && !/SANS plaquettes/i.test(t)) F("S-EPAULE", `S${w.num} plaquettes prescrites avec épaule déclarée`);
       }
       if (ow > owCap) F("S-OW", `S${w.num} ${ow} séances en eau libre > ${owCap} autorisée(s) (${a.openwater_access})`);
-      if (!w.isRecup && w.phase.id !== "taper" && runS + (w.days.some((d) => d.sessions.some((s) => s.d === "br")) ? 1 : 0) < 2)
+      if (!w.isRecup && w.phase.id !== "taper" && !medHold && !injRun
+        && runS + (w.days.some((d) => d.sessions.some((s) => s.d === "br")) ? 1 : 0) < 2)
         F("S-RUN-STARVED", `S${w.num} ${runS} séance(s) de course pure (${swS} de nage) — course = majorité du temps de course`);
     }
     let anyVo2 = 0;
@@ -328,7 +339,7 @@ function runChecks(sport, a, plan, fail) {
     const obj = E.swimrunObjective(a);
     const raceRunShare = obj ? 1 - obj.swimTimeShare : 0.6;
     const degenerate = obj && (obj.transitionMin > obj.swimMin + obj.runMin || obj.segments * 100 > obj.swimTotalM);
-    if (rnT + swT > 0 && !degenerate) {
+    if (rnT + swT > 0 && !degenerate && !medHold && !injRun && !injSwim) {
       const planRunShare = rnT / (rnT + swT);
       if (planRunShare < raceRunShare - 0.15) F("S-MIX", `plan ${Math.round(planRunShare * 100)}% de course vs ${Math.round(raceRunShare * 100)}% dans la course (écart ${Math.round((raceRunShare - planRunShare) * 100)} pts)`);
     }
@@ -348,7 +359,7 @@ function runChecks(sport, a, plan, fail) {
     const FMT_MAX_SWIM = { experience: 800, sprint: 1200, series: 2000, championship: 3000 };
     const target = parseFloat(a.longest_swim_m || "0");
     const coherent = target <= (FMT_MAX_SWIM[a.format] || 3000);
-    if (target > 0 && coherent) {
+    if (target > 0 && coherent && !medHold && !injSwim) {
       let maxCont = 0;
       for (const w of weeks) for (const d of w.days) for (const s of d.sessions)
         for (const b of bodies(s)) if ((b.d || s.d) === "sw" && (b.reps || 1) === 1 && b.distanceM) maxCont = Math.max(maxCont, b.distanceM);

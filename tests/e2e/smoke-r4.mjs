@@ -3,8 +3,7 @@
 // rouge), feedback→félicitations→partage dans SEMAINE.
 // Ordre des onglets R5 : 0=Profil · 1=Plan · 2=Aujourd'hui · 3=Semaine · 4=Nutrition.
 import { startServer, launchBrowser, makeReporter, runnerStateV1 } from "./harness.mjs";
-const V1_SWIMRUN = process.env.EB_SWIMRUN === "1";
-const N_SPORTS = V1_SWIMRUN ? 7 : 6; // R12 §0 — swimrun hors V1 : le sélecteur suit le registre du moteur
+const N_SPORTS = 7; // R16.10 — swimrun réintégré : le sélecteur suit le registre du moteur
 
 
 const PORT = 8480;

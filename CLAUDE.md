@@ -416,6 +416,23 @@ successives des pastilles de phase tronquées ne regardaient pas la cause : ni l
 `tests/e2e/smoke-typo.mjs` (9e suite E2E) — relations d'ordre entre rôles + plancher de
 lisibilité, jamais des valeurs absolues.
 
+**R16.10 livré — swimrun réintégré, la dette traitée d'abord** (voir ARCHITECTURE.md
+« R16.10 ») : R12 §0 avait SORTI le module du bundle (78 % de profils propres au banc v7,
+quatre checks budgétés 53-80 ‰) ; la condition de retour était de traiter la dette, pas de
+retirer le drapeau. **S13** côté moteur — la structure hebdomadaire ne lisait pas l'objectif :
+le plan valait 63-64 % de course que l'épreuve en demande 45 % ou 94 %, soit 31 points de
+sous-entraînement du limiteur réel sur une épreuve course-dominante ; le second créneau facile
+bascule désormais avec la course, sans rééquilibrage au prorata (la technique de nage se perd
+par FRÉQUENCE) et sans jamais s'appliquer au froid ni sous drapeau médical. La règle miroir a
+été écrite, mesurée (la part de course tombait à 17 %) et RETIRÉE — une règle qu'aucun défaut
+ne réclame est une règle qui en crée un. Côté banc, l'instrument punissait les règles de
+sécurité : **71 des 73 hits de S-LONGSWIM** portaient un drapeau médical (même famille que
+`U-STRUCT` en R15.1). Résultat **78 % → 89 %**, budgets **53-80 ‰ → 12 ‰**, résidu vérifié
+stable sur trois tailles d'échantillon. Sept sports, 10 suites E2E, golden **764 → 900**.
+**R16.10-a** : `golden:verify` — un gate de CI — sortait en code 1 **depuis R15.7-C** tout en
+annonçant « 0 écart », parce qu'il comptait les quatre refus typés `mineur` comme des erreurs
+de génération. Un gate rouge en permanence est un gate que plus personne ne lit.
+
 **R15 (chapitres moteur) livré** (revue externe de `BUGS_OUVERTS.md`, voir R10_DEFECTS.md « R15 »
 — banc `npm run audit:r15`, **20e gate CI**) : **R15.7-C** un mineur pouvait générer un plan
 Ironman (15 ans + tri/Full accepté, 59 semaines, pic 7,7 h) — R6.3 modulait la charge mais rien
