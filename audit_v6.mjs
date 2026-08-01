@@ -332,16 +332,26 @@ test("D3", "C22 : progression ≤ +10 % entre semaines de charge", "fail", () =>
   for (const sport of Object.keys(FORMATS))
     for (const format of FORMATS[sport]) {
       const p = build(sport, { format });
-      let prev = null;
+      let prev = null, prevDecl = null, prevW = null;
       for (const w of p.weeks) {
         if (w.isRecup || w.phase.id === "taper") continue;
         const m = weekMin(w);
-        if (prev && m > prev * 1.1 + 1)
-          bad.push(`${sport}/${format} S${w.num} +${Math.round((m / prev - 1) * 100)}%`);
-        prev = m;
+        const decl = (w.vol || 0) * 60; // la courbe PROMISE, à distinguer du prescrit
+        if (prev && m > prev * 1.1 + 1) {
+          // R15.4 — le détail dit désormais QUELLE configuration saute, de combien, et
+          // surtout si c'est la COURBE ou la DISCRÉTISATION : `7 sauts` ne permettait pas
+          // de choisir le correctif. Déclaré conforme + prescrit qui saute = la semaine ne
+          // se divise pas plus fin (planchers de séance). Les deux qui sautent = la courbe.
+          const dPct = prevDecl > 0 ? Math.round((decl / prevDecl - 1) * 100) : NaN;
+          const pPct = Math.round((m / prev - 1) * 100);
+          const cause = Number.isFinite(dPct) && dPct <= 10 ? "discrétisation" : "courbe";
+          bad.push(`${sport}/${format}(${p.totalWeeks}sem) S${prevW.num}→S${w.num} `
+            + `déclaré +${dPct}% / prescrit +${pPct}% → ${cause}`);
+        }
+        prev = m; prevDecl = decl; prevW = w;
       }
     }
-  return { ok: bad.length === 0, detail: `${bad.length} saut(s) : ${bad.slice(0, 3).join(" ; ")}` };
+  return { ok: bad.length === 0, detail: `${bad.length} saut(s) — ` + bad.join(" · ") };
 });
 
 // La règle porte sur la semaine que la récup ASSIMILE, donc sur la dernière semaine de CHARGE

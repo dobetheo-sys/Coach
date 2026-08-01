@@ -249,6 +249,68 @@ cmd: npm run audit:v7
 ---
 
 
+### D3 · C22 — 7 sauts de +11 à +17 % · 📊 **DIAGNOSTIQUÉ (R15.4) — deux causes, pas une**
+
+Le handoff R15.4 proposait une cause et un correctif : *« C22 contraint les TRANSITIONS,
+les ratios de phase contraignent les NIVEAUX ; deux spécifications indépendantes de la même
+quantité »*, à résoudre en générant les niveaux par produit cumulé des incréments autorisés.
+Avant de refaire la courbe, j'ai instrumenté le test D3 pour qu'il dise QUELLES configurations
+sautent, et de combien — puis comparé, sur chacune, la courbe **DÉCLARÉE** (`w.vol`, ce que le
+moteur promet) au **PRESCRIT** (somme des minutes réellement posées).
+
+Les 7 sauts, tous entre semaines **consécutives** (aucun ne franchit une semaine de récup) :
+
+| configuration | saut |
+|---|---|
+| tri/M (12 sem) S8→S9 puis S9→S10 | +11 % · +11 % |
+| tri/70.3 (20 sem) S12→S13 | +12 % |
+| swim/sprint (8 sem) S3→S4 | +17 % |
+| swim/demifond (10 sem) S2→S3, S3→S4, S7→S8 | +13 % · +13 % · +11 % |
+
+**Et la comparaison déclaré ↔ prescrit sépare les cas en deux familles.** Le test D3 le dit
+désormais lui-même (`npm run audit:v6 -- --verbose`), sur son propre profil de référence :
+
+| configuration | déclaré | prescrit | cause |
+|---|---|---|---|
+| tri/M S8→S9 | +6 % | +11 % | **discrétisation** |
+| tri/M S9→S10 | +7 % | +11 % | **discrétisation** |
+| tri/70.3 S12→S13 | +16 % | +12 % | **courbe** |
+| swim/sprint S3→S4 | +18 % | +17 % | **courbe** |
+| swim/demifond S2→S3 | +24 % | +13 % | **courbe** |
+| swim/demifond S3→S4 | +5 % | +13 % | **discrétisation** |
+| swim/demifond S7→S8 | +8 % | +11 % | **discrétisation** |
+
+**4 discrétisation · 3 courbe.**
+
+**Conséquence pour le correctif : la sortie proposée par le handoff ne fermerait que 3 des
+7 sauts.** Générer les niveaux par produit cumulé rend la courbe DÉCLARÉE conforme par
+construction — ça traite la seconde famille. Ça ne touche pas la première, où la courbe est
+déjà conforme et où le dépassement vient de ce que la semaine ne peut pas se diviser plus fin :
+sur 90 min hebdomadaires en natation, une séance à son plancher (C15 850 m / C24b 750 m) pèse
+plus de 10 % de la semaine, donc toute recomposition casse mécaniquement le seuil.
+
+**Le lot R15.4 se dédouble donc**, et c'est la mesure qui l'a dit, pas une intuition :
+1. **forme de la courbe** — niveaux par produit cumulé des incréments autorisés, puis mise à
+   l'échelle sur le pic. Le ratio dev→peak devient une conséquence de la longueur du plan.
+2. **granularité** — décider ce que C22 signifie quand l'unité indivisible dépasse le seuil.
+   Trois issues possibles, à trancher avec les chiffres : tolérer un plancher absolu en minutes
+   sous un certain volume hebdo ; exempter explicitement les semaines dont la plus petite
+   séance dépasse 10 % du total ; ou accepter que C22 ne s'applique qu'au déclaré. **Aucune ne
+   doit être choisie sans mesurer combien de configurations chacune laisse passer.**
+
+Ni l'un ni l'autre n'est fait : ce sont deux chapitres ouverts, désormais correctement séparés.
+`D2` (3/153 configurations avec ≥1 violation dure) et `F2` (8 séances à 40-43 % au lieu de
+45 %) restent inchangés et doivent le rester quand ces lots seront pris.
+
+```verify
+id: D3
+quoi: 7 sauts C22 encore présents, D2 et F2 inchangés
+attendu: /3 dette connue/
+cmd: npm run audit:v6
+```
+
+---
+
 ## §3 — Angles morts connus de la mesure
 
 Ce ne sont pas des bugs : ce sont des endroits où **on ne saurait pas** qu'il y a un bug.
