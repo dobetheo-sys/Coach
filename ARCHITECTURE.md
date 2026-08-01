@@ -87,6 +87,15 @@ Les invariants sont marqués dans le code par leur identifiant. Ceux actuellemen
 | R13.5 | La sonde de capacité mesure le sommet ET le chemin (promesse ≤ capacité spécifique × 1,15) ; toute coupe de fréquence REND ce qu'elle a pris en trop (re-remplissage vers la cible) ; promesse vs pic livré < 75 % → avertissement nommé ; semaines de charge plates (max/min < 1,35) → avertissement |
 | R13.6 | Phases plafonnées en absolu : affûtage ≤ 3 sem (2 si plan < 30 sem), peak ≤ 5, excédent → spécifique ; plafond de séance d'affûtage calé sur la courbe d'affûtage ; semaine de course ∈ [30, 60] % du pic hors jour J |
 | N2 | Le plan s'arrête le SOIR DU JOUR J : la dernière semaine est coupée à la date de course (1 à 7 jours), jamais un reliquat de repos après l'objectif ; sa cible de volume est proratisée à sa longueur réelle (`raceTailDays` dans `buildDays` + filet dans `planGenerator`, garde `I18`) |
+| R14.3-a | UN SEUL profil de parcours : `courseProfileOf()` (`course_profile` prime, `terrain` en repli) sert le jour J ET la carte Prédiction ; la table de relief couvre tout le domaine `terrain` du schéma et `assertTerrainCovered()` fait échouer `build:app` sur une valeur non classée |
+| P1 | L'adhérence du projecteur est une fenêtre glissante des 6 semaines ÉCOULÉES (`adherenceWindow`), jamais `pctLoad` (qui compte le futur) ; aucun ✓ dans le plan = **non jugeable**, pas 0 % |
+| P2 | Gain projeté plafonné et saturant : `G∞ × (1 − exp(−w/20))`, `G∞` = le plus BAS des plafonds suggérés par `level` et `history` (jamais un gain de débutant à un athlète expérimenté) |
+| P3 | ≥ 2 tests datés espacés de ≥ 6 semaines → taux MESURÉ, rétréci vers le prior (`n/(n+2)`) et borné par P2 ; `gainSource` passe à `mesure`/`mixte` et la décision le dit |
+| P4 | Le bénéfice d'affûtage (+1,96 %, Bosquet 2007) ne s'ajoute que si l'affûtage est CONFORME sur le plan LIVRÉ : 2-3 semaines et −41 à −60 % vs pic (`taperIsConform`), jamais sur la seule présence d'une phase `taper` |
+| P5 | Exposant de Riegel piloté par le volume de course hebdomadaire (1,04 ≥12 h → 1,12 <5 h, interpolé) — **course sèche uniquement** : les legs course du tri/duathlon gardent 1,06, leurs facteurs de fatigue ayant été calibrés contre lui |
+| P6 | **Le pacing ne se projette JAMAIS** (règle de sécurité) : tout item qui n'est pas un TEMPS est repris à l'identique de la forme actuelle, avec la mention. Un sport qui ne prédit que des cibles n'a rien à projeter, et le dit |
+| P7 | `spreadPct = 0,03 + 0,05·(horizon/52) + 0,03·(âge du test/52) − 0,02·(adhérence − 0,5)`, borné [0,03 ; 0,12] ; au-delà de ±12 % brut → `applicable: false` avec le motif (repère : SEE de Rüst 2011 ≈ ±8 %) |
+| P8 | Aucune projection sans référence mesurée ; adhérence < 50 % → gain ramené au seul bénéfice d'affûtage, motif affiché, jamais de reproche |
 
 La liste n'est pas exhaustive (certains C1–C14 vivent seulement dans le code) : en cas de
 doute, chercher `// C` et `// R3.` dans `Coach_Pro_V1.5.html`.
@@ -936,3 +945,58 @@ anxiogène et invérifiable.
 
 Gardes : `npm run demo:measured` (22 garanties, 12ᵉ gate CI), 3 profils `measured-*` ajoutés au
 golden master (fiable bas / fiable haut / partiel), 7 assertions E2E dans `smoke-improvements`.
+
+## R14 — la prédiction projetée jour J (handoff standalone-5, 01/08/2026)
+
+### Où vit quoi
+
+- **`src/engine/projection.ts`** — les huit règles P1–P8. Ce module ne produit **jamais** un
+  chrono : il produit des FRACTIONS DE GAIN et une INCERTITUDE. La séparation est le point
+  d'architecture : la façon de passer d'une référence à un temps (Riegel, CSS, %FTP) est déjà
+  écrite une fois dans les modules de sport, et une projection ne doit pas en créer une seconde.
+  Il porte aussi `adherenceWindow()` (P1) et `taperIsConform()` (P4), tous deux calculés sur le
+  plan LIVRÉ.
+- **`src/engine/predictor.ts`** — le corps du prédicteur est extrait dans un `render({refs,
+  spread, trail})` **rejouable**. La forme actuelle appelle `render` avec les références
+  mesurées ; la forme projetée l'appelle avec les références projetées et la fourchette élargie.
+  Un seul chemin de calcul, deux jeux d'entrées.
+- **`src/app/bridge.ts`** — fournit ce que le prédicteur ne peut pas connaître seul : l'horizon
+  (`weeksUntilRace`), l'adhérence, le journal de tests, la conformité d'affûtage, l'âge de la
+  référence, et le volume de course qui pilote P5.
+- **UI** — `predictionCardHTML()` (plan-view.js) rend les DEUX prédictions étiquetées ; l'onglet
+  🎯 Aujourd'hui réutilise la même fonction. Un refus de projeter affiche son MOTIF : « trop tôt
+  pour projeter » est une information, le silence n'en est pas une.
+
+### Ce qui fait autorité, et ce qui n'en a pas
+
+Le fichier distingue explicitement trois statuts, et le code le dit :
+
+| statut | ce qui en relève |
+|---|---|
+| **source primaire** | affûtage +1,96 % (Bosquet 2007, méta-analyse 27 études) · variabilité inter-individuelle (HERITAGE, 483 sujets) · ordre de grandeur de l'incertitude (Rüst 2011, SEE 57 min ≈ ±8 %) · volume ↔ tenue de la distance (Vickers & Vertosick 2016, N=2303) |
+| **heuristique convergente** | les plafonds `G_INFINI`, la constante de temps τ = 20 semaines, les ancrages d'exposant de Riegel. Annotés comme tels dans le code, et **remplaçables par la mesure de l'athlète** (P3) |
+| **rejeté** | tout chrono dérivé de la CTL/ATL/TSB (Coggan : indicateur RELATIF de forme) · le modèle de Banister (validité prospective non démontrée) |
+
+C'est HERITAGE qui fonde la forme même de la sortie : à programme identique, 7 % des sujets ont
+gagné ≤ 0,1 L/min et 8 % ≥ 0,7 L/min. **Une projection ponctuelle est fausse par construction ;
+seule une fourchette est honnête.**
+
+### La règle qui prime sur les autres
+
+**P6 — le pacing ne se projette jamais.** Tout item de `projected.items` qui n'est pas un TEMPS
+(une puissance en W, une vitesse ascensionnelle, une part de marche) est repris À L'IDENTIQUE de
+la forme actuelle, avec la mention. Raison : une cible projetée qui remonte l'IF de 0,73 à 0,78
+fait partir trop vite, et le coût se paie au marathon — voire à l'abandon. *Le temps se projette,
+l'intensité s'ancre.* Corollaire assumé : un sport qui ne prédit que des cibles (le vélo — le
+chrono dépend du parcours, on ne l'invente pas) n'a rien à projeter, et le dit au lieu d'afficher
+une projection identique à la forme actuelle sans explication.
+
+### P5, le seul point qui touche l'existant
+
+L'exposant de Riegel devient fonction du volume hebdomadaire de course. Il n'est appliqué qu'à
+l'extrapolation d'une **course sèche** : les legs course du triathlon et du duathlon gardent
+1,06, parce que leurs facteurs `fatigue` (1,03 à 1,13) ont été calibrés CONTRE cet exposant.
+Bouger l'exposant sous eux recalibrerait silencieusement une table validée et compterait deux
+fois la même difficulté. Les deux appelants de `predictRace` (bridge et `planGenerator` pour le
+texte du jour J) passent les mêmes entrées — sans quoi les deux écrans divergeraient à nouveau,
+ce que R14.3-a venait précisément de fermer.

@@ -59,6 +59,7 @@ const ORDER = [
   "src/generator/weekBuilder.ts",
   "src/generator/planGenerator.ts",
   "src/generator/repairLoop.ts",
+  "src/engine/projection.ts",
   "src/engine/predictor.ts",
   "src/readiness/readinessSource.ts",
   "src/readiness/fitParser.ts",
@@ -160,7 +161,16 @@ if (!av || !av.icon || av.level < 1 || av.progressPct < 0 || av.progressPct > 10
         ") — la borne doit vivre dans le schéma, une seule fois.");
   }
 }
-console.log("auto-test bundle : plan 16 semaines, score " + plan._v2.score + ", adaptation « " + adj.adjustment.verdict.level + " » OK · bornes physio = schéma (R13.1)");
+// R14.3-a — MÊME GESTE, SUR LE PROFIL DE PARCOURS. Le domaine `terrain` du schéma et la
+// table de relief du prédicteur avaient divergé en silence : « montagne » n'était classé
+// nulle part, donc aucune correction de relief au jour J. Toute valeur du domaine doit
+// désormais être classée (relief ou surface), sinon le build échoue en la nommant.
+{
+  const { ANSWER_SCHEMA } = await import("../src/engine/answerSchema.ts");
+  const { assertTerrainCovered } = await import("../src/engine/predictor.ts");
+  assertTerrainCovered(ANSWER_SCHEMA.terrain.domain);
+}
+console.log("auto-test bundle : plan 16 semaines, score " + plan._v2.score + ", adaptation « " + adj.adjustment.verdict.level + " » OK · bornes physio = schéma (R13.1) · terrain classé (R14.3-a)");
 
 // ---- Injection entre marqueurs, après le </script> principal ----
 const htmlPath = join(root, "Coach_Pro_V1.5.html");

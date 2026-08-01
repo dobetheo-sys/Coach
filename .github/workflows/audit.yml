@@ -42,6 +42,11 @@ jobs:
       # mono-séance, semaine de course, épaule, phases plafonnées) + non-régressions.
       # Le standalone n'existe pas en CI : les contrôles R13.2 passent en SKIP assumé.
       - run: npm run audit:r13
+      # R14 — banc de la PRÉDICTION PROJETÉE (16 critères) : contrat `projected`, adhérence
+      # en fenêtre glissante, gain plafonné et saturant, incertitude bornée, pacing JAMAIS
+      # projeté (P6, la règle de sécurité du chapitre), et les deux non-régressions qui
+      # verrouillent la prédiction « forme actuelle ».
+      - run: npm run audit:r14
       # R11.8 — banc de SENSIBILITÉ : toute réponse du questionnaire doit modifier le plan.
       # Une clé inerte fait échouer la CI — c'est ce qui empêche `cycle_sync` et `dispo` de
       # redevenir des cases à cocher sans effet.

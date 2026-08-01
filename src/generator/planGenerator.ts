@@ -21,7 +21,7 @@ import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS, syncReturnRecovery } from "../engine/trailModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
 import { buildSessions } from "./sessionLibrary.ts";
-import { predictRace } from "../engine/predictor.ts";
+import { predictRace, courseProfileOf } from "../engine/predictor.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { arbitrateVolRecent } from "../engine/measured.ts";
 import { record as traceRecord, traceEnabled } from "../engine/trace.ts";
@@ -2000,7 +2000,17 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         // gardent leur durée dans la charge.
         let predDet = "";
         if (rc.prio === "A") {
-          const pred = predictRace(a.sport as string, a.format as string, a.intent, r.baseRefs, { courseProfile: a.terrain, trail: r.trail || undefined });
+          // R14.3-a — le jour J et la carte Prédiction lisent le MÊME profil de parcours,
+          // par le même résolveur : deux écrans de la même app ne peuvent plus annoncer
+          // deux chronos différents pour la même course. Même raison pour le volume qui
+          // pilote l'exposant de Riegel (P5) : l'oublier ici rouvrirait la divergence d'un
+          // cran plus bas — le det du jour J extrapolerait à 1,06 pendant que la carte
+          // extrapolerait au volume réel de l'athlète.
+          const pred = predictRace(a.sport as string, a.format as string, a.intent, r.baseRefs, {
+            courseProfile: courseProfileOf(a as never),
+            trail: r.trail || undefined,
+            runHoursPerWeek: a.sport === "run" ? parseFloat(String(a.vol_max ?? "")) || undefined : undefined,
+          });
           if (pred.items.length) predDet = " — ⏱ Prévu : " + pred.items.map((it) => it.leg + " " + it.value).join(" · ");
         }
         rd.sessions = [{

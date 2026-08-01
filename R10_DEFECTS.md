@@ -866,3 +866,112 @@ touche la zone fragile déclarée le DIT (genou + plan vélo pur → avertisseme
   paiement de la leçon du point de convergence.
 
 **16 gates verts + `audit:r13` (17e), E2E 8/8, golden recapturé (756), swimrun vert.**
+
+## R14 — la prédiction ignorait le plan qu'elle accompagne (01/08/2026)
+
+Cinquième banc externe, sur le seul module que les précédents n'avaient pas ouvert.
+`bench_r14.cjs` — **14 échecs sur 16** contre le build post-R13, les 2 verts étant les
+non-régressions à protéger. Tout est vert à la fin, et le chemin a débusqué deux angles morts
+de plus.
+
+**Le constat, mesuré.** `predictRace` ne lisait que `refs = {ftp, thrPace, css}` : les valeurs
+saisies AUJOURD'HUI. Rien dans la chaîne ne connaissait le temps qui reste, le volume qui sera
+fait, ni ce qui a déjà été accompli. Sur un Ironman à 59 semaines, en simulant 30 semaines
+intégralement cochées, `JSON.stringify(items)` était **identique au caractère près** entre la
+semaine 1 et la semaine 31. L'athlète le plus assidu du monde voyait le même chrono après sept
+mois. C'était le seul module du moteur qui ignorait le plan qu'il accompagne — et c'est aussi
+celui qui décide du pacing du jour J.
+
+**R14.3-a — deux champs pour la même idée, et des clés qui ne se recouvraient pas.** Le jour J
+lisait `a.terrain` (domaine du schéma : `montagne`), la carte Prédiction lisait
+`answers.course_profile` (vocabulaire de l'UI : `montagneux`). `vallonne` tombait juste par
+coïncidence orthographique ; `montagne` ne tombait sur rien — **plat 240 min, montagne 240 min**,
+les +8 à +15 % de relief disparaissaient en silence. Un résolveur unique (`courseProfileOf`)
+sert désormais les deux écrans, la table de relief couvre TOUT le domaine `terrain`, et
+`assertTerrainCovered()` fait échouer `build:app` sur une valeur non classée : une valeur
+oubliée ne peut plus retomber silencieusement sur « pas de correction ».
+
+**R14.1/R14.2 — le contrat.** `predict()` garde sa sortie intacte (la forme actuelle est la
+vérité mesurée, c'est l'ancre) et gagne `projected` : `{applicable, horizonWeeks, adherence,
+gainPct, gainSource, spreadPct, confidence, refs, items, decisions}`. Le prédicteur est REJOUÉ
+sur des références projetées — aucune seconde méthode d'extrapolation n'a été écrite, ce qui
+aurait été le vrai risque. L'UI affiche les deux, étiquetées, avec la date de référence.
+
+**Les huit règles, et celle qui compte pour la sécurité.**
+- **P1** — l'adhérence est une fenêtre glissante de 6 semaines ÉCOULÉES. `pctLoad` valait
+  `doneMin / totalMin` sur le plan ENTIER, futur compris : 30 semaines parfaites sur 59
+  donnaient 43 %, sous le seuil de 60 % qui resserrait la fourchette. La condition était
+  mécaniquement inatteignable en début de préparation et devenait vraie en fin de plan pour une
+  raison étrangère à la régularité. Nuance ajoutée après mesure : **aucun ✓ dans tout le plan
+  n'est pas « 0 % d'adhérence »** mais « non jugeable » — quelqu'un qui n'utilise pas les coches
+  n'est pas quelqu'un qui ne s'entraîne pas, et le manifeste interdit le reproche.
+- **P2** — gain plafonné et SATURANT : `G∞ × (1 − exp(−w/20))`. Le plafond retenu est le plus
+  BAS des deux que suggèrent `level` et `history` (liste noire du handoff : jamais un gain de
+  débutant à un athlète expérimenté ; et doctrine R12 : un adjectif auto-déclaré ne pilote pas
+  un nombre au-dessus de ce que la réponse factuelle autorise).
+- **P3** — deux tests datés espacés de ≥6 semaines donnent le taux RÉEL, rétréci vers le prior
+  (`n/(n+2)`) et borné par P2. L'athlète devient sa propre référence, et c'est la seule sortie
+  prévue hors de l'heuristique.
+- **P4** — les +1,96 % de Bosquet 2007 ne s'ajoutent que si l'affûtage est CONFORME (2-3
+  semaines, −41 à −60 % vs pic), vérifié sur le plan livré et non sur la présence d'une phase
+  nommée `taper`.
+- **P5** — l'exposant de Riegel suit le volume (1,04 à ≥12 h/sem → 1,12 sous 5 h). Il était figé
+  à 1,06 : **même marathon prédit à 4 h et à 14 h de course par semaine**. Seul point de R14 qui
+  touche l'existant, et il ne touche QUE la course sèche — les legs course du tri et du duathlon
+  gardent 1,06, leurs facteurs de fatigue ayant été calibrés contre lui (bouger l'exposant sous
+  eux recalibrerait en silence une table validée, et compterait deux fois la même difficulté).
+- **P6 — LA RÈGLE DE SÉCURITÉ : le pacing ne se projette JAMAIS.** Toute cible d'intensité
+  (puissance, allure) est reprise à l'identique de la forme actuelle, avec la mention. Une
+  projection optimiste qui remonte l'IF de 0,73 à 0,78 fait partir trop vite, et le coût se paie
+  au marathon — voire à l'abandon. **Le temps se projette, l'intensité s'ancre.**
+- **P7** — l'incertitude se calcule et s'affiche ; au-delà de ±12 % (repère : SEE de 57 min de
+  Rüst 2011 sur un Ironman ≈ ±8 %), on REFUSE d'afficher un chrono et on dit pourquoi.
+- **P8** — aucune projection sans matière, et adhérence < 50 % → gain ramené au seul bénéfice
+  d'affûtage, motif affiché, jamais de reproche.
+
+**Rejeté explicitement, et écrit dans le code** : dériver un chrono de la CTL/ATL/TSB (Coggan,
+concepteur du modèle, la qualifie d'indicateur RELATIF de forme) et le modèle de Banister
+(ajustement rétrospectif excellent, validité prédictive prospective non démontrée). Les plafonds
+de gain sont annotés « heuristique convergente, pas de source primaire » — parce qu'ils le sont.
+
+### Le banc avait un défaut d'instrument, et il rendait deux critères insatisfiables
+
+`markDone(p, today, weeksBack, rate)` marquait la séance `i` quand `(i % 100) / 100 < rate` : un
+échantillonneur qui ne discrimine qu'à partir d'une vingtaine de séances. Or le plan démarre la
+semaine COURANTE (R8/R9) — au moment où le banc tourne, la fenêtre des 6 semaines écoulées ne
+contient que les quelques jours déjà passés. **Mesuré : 6 séances, indices 0,00 à 0,05, tous
+inférieurs à 0,20 comme à 0,95.**
+
+| taux demandé | séances réellement cochées |
+|---|---|
+| 0,20 | 6/6 |
+| 0,30 | 6/6 |
+| 0,95 | 6/6 |
+| 1,00 | 6/6 |
+
+`markDone(0.30)` et `markDone(0.95)` étaient donc **identiques au caractère près**. R14.5-A
+exigeait `gain(30 %) ≤ gain(95 %) / 2` à partir de deux entrées identiques : aucun moteur
+déterministe ne peut y satisfaire sauf en rendant un gain nul, ce que R14.3-A et R14.4
+interdisent par ailleurs. Et R14.5-B mesurait une adhérence de 100 % en croyant en mesurer une
+de 20 %. L'INTENTION des deux tests est juste et vaut d'être protégée en permanence ; c'est
+l'instrument qui était faux. L'échantillonnage devient proportionnel et exact à petit effectif
+(Bresenham) — 1/6 à 20 %, 2/6 à 30 %, 6/6 à 95 % — **les identifiants et les assertions ne
+bougent pas**. Même geste que R11 sur les tests E5/C2/E3 du banc v6.
+
+### Et le golden regardait P5 au seul point où il ne bouge pas
+
+Après correction, `golden:verify` rendait **0 écart** — pas parce que P5 est sans effet, mais
+parce que la passe « course datée » fige `vol_max` au profil de base : 10 h/sem, très exactement
+l'ancrage où l'exposant vaut 1,06, sa valeur historique. Même famille que l'angle mort que N2
+avait trouvé un cran plus haut (aucun profil ne portait de `race_date`). Mesuré sur le texte du
+jour J d'un marathon daté : **3 h 31 à 3 h/sem contre 3 h 12 à 20 h/sem**, là où les deux
+annonçaient 3 h 17 avant. Passe « volume et extrapolation » ajoutée sur les deux bornes du
+domaine (**756 → 758 profils**), et aucune empreinte existante n'a changé.
+
+**Troisième rappel de la leçon du chemin unique, dans le même lot** : `planGenerator` appelait
+`predictRace` sans lui passer le volume. Le det du jour J aurait extrapolé à 1,06 pendant que la
+carte Prédiction extrapolait au volume réel — la divergence que R14.3-a venait de fermer, rouverte
+un cran plus bas par omission. Les deux appelants passent désormais les mêmes entrées.
+
+**18 gates verts (`audit:r14` en 18e), E2E 8/8 (52 assertions dans `smoke-improvements`, dont
+l'affichage des DEUX prédictions), golden 758.**

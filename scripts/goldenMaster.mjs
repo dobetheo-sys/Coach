@@ -154,6 +154,20 @@ function* profiles() {
       yield { key: ["J", sport, format || "-", JOURS[k]].join("/"), sport, a };
     }
   }
+  // ---- Passe « volume et extrapolation » (R14 P5) --------------------------
+  // MÊME ANGLE MORT, UN CRAN PLUS BAS. La passe ci-dessus fige `vol_max` au profil de base
+  // (10 h/sem) — qui est très exactement l'ancrage où l'exposant de Riegel vaut 1,06, sa
+  // valeur historique. Autrement dit : P5 (l'exposant piloté par le volume) ne changeait
+  // AUCUNE empreinte, non parce qu'il est sans effet, mais parce que la photo le regardait
+  // au seul point où il ne bouge pas. Mesuré sur le texte du jour J d'un marathon daté :
+  // 3 h 31 à 3 h/sem contre 3 h 12 à 20 h/sem, là où les deux annonçaient 3 h 17 avant.
+  // Les deux bornes du domaine entrent donc sous garde permanente.
+  for (const v of ["3", "20"]) {
+    const a = { ...base(), vol_max: v, vol_recent: String(Math.max(1, +v - 2)), sessions_max: v === "3" ? "3" : "12",
+      format: "marathon", history: "confirme", level: "inter", intent: "competition",
+      plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[6] };
+    yield { key: ["P5", "run", "marathon", v + "h"].join("/"), sport: "run", a };
+  }
 }
 
 // ---- Normalisation canonique --------------------------------------------

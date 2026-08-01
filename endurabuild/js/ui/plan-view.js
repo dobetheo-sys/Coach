@@ -1,7 +1,7 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
 import { SPORTS } from "../config.js";
-import { S, todayISO } from "../state.js";
+import { S, todayISO, fmtDay } from "../state.js";
 import { evalRules } from "../ui/steps.js";
 import { renderTabs, invalidatePlan, ensurePlan } from "./tabs.js";
 
@@ -169,8 +169,26 @@ function predictionCardHTML(plan){
       const pr=globalThis.EBV2.predict(S.sport,S.answers,plan);
       if(pr.items.length||pr.advice.length){
         h+='<div class="load-card"><div class="load-title">\ud83d\udd2e Pr\u00e9diction de course</div>';
+        // R14 \u2014 DEUX PR\u00c9DICTIONS, TOUJOURS \u00c9TIQUET\u00c9ES. La forme ACTUELLE reste l'ancre (c'est
+        // la v\u00e9rit\u00e9 mesur\u00e9e) ; la forme PROJET\u00c9E dit o\u00f9 l'entra\u00eenement m\u00e8ne, avec sa date de
+        // r\u00e9f\u00e9rence et sa confiance. Jamais l'une sans l'autre, jamais un chiffre nu.
+        const pj=pr.projected;
+        h+='<div class="load-sub" style="margin:8px 0 2px;font-weight:600">Aujourd\u2019hui \u2014 ta forme mesur\u00e9e</div>';
         pr.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
+        if(pj&&pj.applicable&&pj.items.length){
+          const d=pj.raceDate?(fmtDay(pj.raceDate)+"/"+pj.raceDate.slice(0,4)):"le jour J";
+          h+='<div class="load-sub" style="margin:12px 0 2px;font-weight:600">Projet\u00e9 au '+d
+            +' <span style="font-weight:400;color:#777">\u00b7 confiance '+pj.confidence+'</span></div>';
+          pj.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
+          h+='<div class="load-sub" style="color:#777;margin-top:4px">Si tu suis ce plan \u2014 fourchette large \u00e0 dessein : \u00e0 programme identique, deux personnes ne progressent pas pareil.</div>';
+        }
         pr.advice.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0;color:#8a6d00">\u26a0 '+x+'</div>';});
+        // Le MOTIF d'un refus de projeter vaut autant que la projection : \u00ab trop t\u00f4t pour
+        // projeter \u00bb est une information, le silence n'en est pas une.
+        if(pj&&!pj.applicable){
+          const why=(pj.decisions||[]).filter(x=>/^P7-refus$|^P8$|^P6-sans-chrono$/.test(x.id))[0];
+          if(why) h+='<div class="load-sub" style="margin:10px 0 0;color:#777"><b>Pas de chrono projet\u00e9</b> \u2014 '+why.why+'</div>';
+        }
         h+='<div class="load-sub" style="color:#777">Fourchette, pas promesse \u2014 elle se resserre quand le plan est bien suivi (streak + charge accomplie).</div></div>';
       }
     }catch(e){console.warn(e);}

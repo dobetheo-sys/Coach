@@ -55,11 +55,18 @@ dépôt — historique git si besoin.
   PROMESSES, pas à l'auditeur interne — c'est ainsi qu'il a trouvé le contournement du drapeau
   médical et les doses de 90 min de seuil que `auditPlan()` notait 100/100. **11e gate CI**,
   budget par check dans `scripts/runAuditV7.mjs` (0 = garde-fou définitif).
+- `npm run audit:r13` / `audit:r14` — **bancs des handoffs externes** (`bench_r13.cjs`,
+  `bench_r14.cjs`), 17e et 18e gates CI. R13 : âge, CSS print, nage du tri mono-séance,
+  semaine de course, épaule, plafonds de phases. R14 : la **prédiction projetée jour J**
+  (contrat `projected`, adhérence glissante, gain saturant, pacing jamais projeté) + les
+  non-régressions qui verrouillent la prédiction « forme actuelle ».
 - `npm run golden:capture` / `golden:verify` — **golden master** (spec R10) : photographie
-  756 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
+  758 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
   blessures/âges/terrain/volumes + **passe « course datée »** : 6 sports × les 7 jours de
   semaine possibles pour le jour J — sans elle, toute la branche ancrée sur une course était
-  hors couverture, et c'est ce trou qui a laissé vivre N2) et détecte tout écart au bit près.
+  hors couverture, et c'est ce trou qui a laissé vivre N2 — plus une passe « volume et
+  extrapolation » R14, sans laquelle P5 n'était regardé qu'à l'ancrage où il ne bouge pas)
+  et détecte tout écart au bit près.
   `golden/hashes.json` est versionné (empreintes) ; la photo complète (~76 Mo) reste locale et
   sert à LOCALISER le champ qui a changé. Bloquant avant toute extraction mécanique.
 - `npm run build:standalone` — recoud la **PWA** en UN fichier HTML autonome
@@ -336,3 +343,28 @@ débusqué : la course `min:0` devenue victime idéale de toutes les coupes (jam
 désormais), la protection anti-orphelin généralisée à TOUTES les disciplines, le footing tri
 sans bornes (déversoir des remplissages, 213 min mesurées), le seuil nage compté 100 % dur
 (70/30 désormais). **17 gates verts, E2E 8/8, golden 756 recapturé.**
+
+**R14 livré** (handoff standalone-5, voir R10_DEFECTS.md « R14 » — banc `npm run audit:r14`,
+**18e gate CI**) : **la prédiction connaît enfin le plan qu'elle accompagne**. Elle ne lisait que
+les références saisies AUJOURD'HUI : sur un Ironman à 59 semaines avec 30 semaines intégralement
+cochées, le chrono affiché était identique au caractère près entre la semaine 1 et la semaine 31.
+`predict()` garde sa sortie intacte (la forme actuelle reste l'ancre mesurée) et gagne
+`projected` — le MÊME prédicteur rejoué sur des références projetées, jamais une seconde méthode
+d'extrapolation. Huit règles tracées (`src/engine/projection.ts`) : adhérence en **fenêtre
+glissante de 6 semaines écoulées** (P1 — `pctLoad` comptait le futur, donc 30 semaines parfaites
+sur 59 donnaient 43 %) ; gain **plafonné et saturant** au profil le plus prudent entre `level` et
+`history` (P2) ; **tes tests datés priment** sur l'heuristique (P3) ; **+1,96 % d'affûtage
+seulement s'il est conforme** (P4, Bosquet 2007 vérifié sur le plan livré) ; **exposant de Riegel
+piloté par le volume** (P5 — figé à 1,06, il donnait le même marathon à 4 h et à 14 h/semaine ;
+seule la course sèche est touchée, les legs tri/duathlon gardent leurs facteurs calibrés) ; **le
+pacing ne se projette JAMAIS** (P6, la règle de sécurité : le temps se projette, l'intensité
+s'ancre) ; incertitude calculée avec **refus motivé au-delà de ±12 %** (P7) ; aucune projection
+sans matière et gain annulé sous 50 % d'adhérence, motif affiché, jamais de reproche (P8). CTL/ATL/TSB
+et Banister explicitement rejetés, dans le code, avec la raison. **R14.3-a** : `terrain` et
+`course_profile` étaient deux champs pour la même idée avec des clés qui ne se recouvraient pas —
+`montagne` ne déclenchait AUCUNE correction de relief (plat 240 min, montagne 240 min) ; résolveur
+unique partagé par le jour J et la carte Prédiction, garde de build sur le domaine.
+Débusqué en chemin : le banc rendait deux critères **insatisfiables** (son échantillonneur
+d'adhérence marquait 6/6 séances à tous les taux — instrument corrigé, ID et assertions gardés),
+et le golden regardait P5 au seul point où il ne bouge pas (`vol_max: 10` = l'ancrage 1,06) —
+passe « volume et extrapolation » ajoutée, **756 → 758**. **18 gates verts, E2E 8/8, golden 758.**

@@ -9237,7 +9237,17 @@ function generatePlan(profile                , opts                             
         // gardent leur durée dans la charge.
         let predDet = "";
         if (rc.prio === "A") {
-          const pred = predictRace(a.sport          , a.format          , a.intent, r.baseRefs, { courseProfile: a.terrain, trail: r.trail || undefined });
+          // R14.3-a — le jour J et la carte Prédiction lisent le MÊME profil de parcours,
+          // par le même résolveur : deux écrans de la même app ne peuvent plus annoncer
+          // deux chronos différents pour la même course. Même raison pour le volume qui
+          // pilote l'exposant de Riegel (P5) : l'oublier ici rouvrirait la divergence d'un
+          // cran plus bas — le det du jour J extrapolerait à 1,06 pendant que la carte
+          // extrapolerait au volume réel de l'athlète.
+          const pred = predictRace(a.sport          , a.format          , a.intent, r.baseRefs, {
+            courseProfile: courseProfileOf(a         ),
+            trail: r.trail || undefined,
+            runHoursPerWeek: a.sport === "run" ? parseFloat(String(a.vol_max ?? "")) || undefined : undefined,
+          });
           if (pred.items.length) predDet = " — ⏱ Prévu : " + pred.items.map((it) => it.leg + " " + it.value).join(" · ");
         }
         rd.sessions = [{
@@ -9778,6 +9788,340 @@ function generateAudited(profile                , auditOpts                     
   return { plan: best.plan, audit: finalAudit, warnings, repairs, decisions: reasoned.decisions };
 }
 
+// ===== src/engine/projection.ts =====
+/**
+ * PROJECTION DE FORME AU JOUR J (R14) — « où en seras-tu le jour de la course ».
+ *
+ * Le défaut mesuré par le handoff R14 : `predictRace` ne lisait que `refs = {ftp, thrPace, css}`,
+ * c'est-à-dire les valeurs saisies AUJOURD'HUI. Sur un Ironman à 59 semaines, en simulant
+ * 30 semaines intégralement cochées, la prédiction restait identique au caractère près —
+ * l'athlète le plus assidu du monde voyait le même chrono après sept mois d'entraînement.
+ * C'était le seul module du moteur qui ignorait le plan qu'il accompagne, et c'est aussi
+ * celui qui décide du pacing du jour J.
+ *
+ * CE MODULE NE PRODUIT JAMAIS LE CHRONO LUI-MÊME : il produit des FRACTIONS DE GAIN et une
+ * INCERTITUDE, que le prédicteur applique à ses propres méthodes. La séparation est
+ * volontaire — la façon de passer d'une référence à un temps (Riegel, CSS, %FTP) est déjà
+ * écrite une fois, et une projection ne doit pas en créer une seconde.
+ *
+ * ─── CE QUI FONDE LES CHIFFRES, ET CE QUI N'EST QU'UNE HEURISTIQUE ─────────────────────
+ *
+ * SOLIDE (source primaire) :
+ *   - Affûtage : Bosquet, Montpetit, Arvisais & Mujika, MSSE 2007;39(8):1358-67 — méta-analyse
+ *     de 27 études, gain moyen +1,96 % (plage −2,28 à +8,91 %), optimum à 2 semaines avec
+ *     volume réduit de 41-60 % et INTENSITÉ MAINTENUE. C'est la seule constante de ce fichier
+ *     qui vienne d'une méta-analyse, et c'est pour ça qu'elle est conditionnée (P4) : la
+ *     promettre quand le plan n'affûte pas conformément serait la citer à faux.
+ *   - Variabilité inter-individuelle : HERITAGE (Bouchard, 483 sujets, 20 semaines de
+ *     programme IDENTIQUE) — gain moyen ~0,4 L/min, mais 7 % des sujets à ≤ +0,1 L/min et
+ *     8 % à ≥ +0,7 L/min. C'est l'argument décisif de tout le chapitre : **une projection
+ *     ponctuelle est fausse par construction, seule une fourchette est honnête.**
+ *   - Ordre de grandeur de l'incertitude : Rüst et al., OAJSM 2011;2:121-129 (N=184) —
+ *     prédiction du temps d'Ironman à r²=0,65, SEE = 57 min sur ~11 h, soit ±8 %. Notre borne
+ *     haute (±12 %) ne peut pas être plus étroite que ça sans mentir.
+ *
+ * HEURISTIQUE CONVERGENTE (pas de source primaire — à réviser dès qu'on aura des données
+ * internes, et REMPLAÇABLE par la mesure de l'athlète via P3) :
+ *   - Les plafonds `G_INFINI` ci-dessous (~20-30 %/an débutant, 5-10 % intermédiaire,
+ *     2-5 % avancé) : convergence de sources de coaching, pas d'étude princeps.
+ *   - La constante de temps τ = 20 semaines de la saturation.
+ *
+ * EXPLICITEMENT REJETÉ (liste noire du handoff, et on ne la franchit pas) :
+ *   - Dériver un chrono de la CTL/ATL/TSB. Coggan, concepteur du modèle, la qualifie
+ *     d'indicateur RELATIF de forme, jamais d'un prédicteur absolu. La CTL reste une
+ *     tendance de charge — jamais une entrée de ce module.
+ *   - Le modèle de Banister : excellent ajustement rétrospectif, validité prédictive
+ *     prospective non démontrée, paramètres instables.
+ *   - Projeter une cible de PUISSANCE ou d'ALLURE (P6, dans le prédicteur) : c'est la règle
+ *     de sécurité du chapitre. Le temps se projette, l'intensité s'ancre.
+ */
+                                           
+
+/** Un point du journal de tests de l'athlète (`answers.tests`). */
+                                                                                       
+
+                                  
+                                                                                         
+                       
+                 
+                   
+     
+                                                                               
+                                                                                        
+                                                           
+     
+                           
+                                                                                         
+                    
+                                                                                                  
+                        
+                                                                                         
+                             
+                                                                                                     
+                    
+ 
+
+                                   
+                      
+                       
+                    
+                                                                      
+                                           
+                    
+                                             
+                        
+ 
+
+/**
+ * P2 — PLAFONDS DE GAIN PAR PROFIL (fractions annuelles asymptotiques).
+ *
+ * La course reçoit un plafond plus bas que le vélo, et ce n'est pas un arrondi : l'économie
+ * de course ne gagne que 2-4 % (Barnes & Kilding 2015) et progresse lentement, là où la FTP
+ * répond vite à un bloc structuré. Nager progresse entre les deux — la technique offre de la
+ * marge, mais elle s'acquiert lentement.
+ *
+ * ⚠ HEURISTIQUE CONVERGENTE, PAS UNE VÉRITÉ. Ces nombres n'ont pas de source primaire ; ils
+ * sont écrits ici pour être remplacés par la mesure de l'athlète dès que P3 en a les moyens.
+ */
+const G_INFINI                                                                             = {
+  debutant: { ftp: 0.24, thrPace: 0.18, css: 0.20, vam: 0.20 },
+  inter: { ftp: 0.08, thrPace: 0.06, css: 0.07, vam: 0.07 },
+  avance: { ftp: 0.04, thrPace: 0.03, css: 0.035, vam: 0.035 },
+};
+const BUCKET_BY_LEVEL                         = { debutant: "debutant", inter: "inter", avance: "avance" };
+const BUCKET_BY_HISTORY                         = { reprise: "debutant", confirme: "inter", ancien: "avance" };
+const BUCKET_ORDER = ["debutant", "inter", "avance"];
+
+/** P2 — constante de temps de la saturation : le gain ralentit, il ne s'accumule pas. */
+const TAU_WEEKS = 20;
+/** P4 — Bosquet 2007, gain moyen d'un affûtage CONFORME. */
+const TAPER_GAIN = 0.0196;
+/** P7 — au-delà, on refuse d'afficher un chrono projeté (repère : SEE de Rüst 2011 ≈ ±8 %). */
+const SPREAD_MAX = 0.12;
+const SPREAD_MIN = 0.03;
+/** P8 — en dessous, le plan ne peut pas produire le gain qu'il prévoyait. */
+const ADHERENCE_FLOOR = 0.5;
+/**
+ * Facteur appliqué quand l'adhérence n'est pas jugeable (aucun ✓ dans le plan). Ni 1,0
+ * (qui promettrait un suivi parfait) ni 0 (qui accuserait quelqu'un qui n'a rien fait de mal) :
+ * on projette un suivi NORMAL et on dit que c'est ce qu'on fait.
+ */
+const ADHERENCE_UNKNOWN_FACTOR = 0.9;
+
+/**
+ * Le plafond retenu est le PLUS BAS des deux que suggèrent `level` et `history`.
+ *
+ * Deux raisons, et la première suffit : la liste noire du handoff dit « ne jamais appliquer
+ * un gain de débutant à un athlète expérimenté ». La seconde est la doctrine R12 — un
+ * adjectif auto-déclaré (`level`) ne doit pas piloter un nombre plus haut que ce que la
+ * réponse FACTUELLE (`history`, l'ancienneté de pratique) autorise. Un gain surestimé se
+ * paie en promesse non tenue le jour J ; un gain sous-estimé se corrige au premier retest.
+ */
+function gainCeiling(level         , history         )                                                 {
+  const a = BUCKET_BY_LEVEL[String(level || "")] ?? null;
+  const b = BUCKET_BY_HISTORY[String(history || "")] ?? null;
+  const candidats = [a, b].filter((x)              => !!x);
+  const bucket = candidats.length
+    ? candidats.reduce((lo, x) => (BUCKET_ORDER.indexOf(x) > BUCKET_ORDER.indexOf(lo) ? x : lo))
+    : "inter";
+  return { bucket, g: G_INFINI[bucket] };
+}
+
+const LABEL_BUCKET                         = {
+  debutant: "débutant ou en reprise", inter: "intermédiaire / confirmé", avance: "avancé / longue date",
+};
+const LABEL_REF                         = { ftp: "FTP", thrPace: "allure seuil", css: "CSS", vam: "VAM" };
+
+/**
+ * P3 — LA MESURE DE L'ATHLÈTE PRIME SUR NOTRE HEURISTIQUE.
+ *
+ * Deux tests datés du même type, espacés d'au moins 6 semaines, donnent un taux RÉEL de
+ * progression (%/semaine). On le rétrécit vers le prior (`w = n/(n+2)` — deux points ne
+ * font pas une tendance, dix la font), puis on le BORNE par le plafond P2 : un athlète qui
+ * a gagné 13 % en six mois ne gagnera pas 26 % en douze, la courbe sature.
+ *
+ * C'est la seule façon de sortir de l'heuristique : l'athlète devient sa propre référence.
+ */
+function measuredRate(tests                       , type        )                                            {
+  const pts = (tests || [])
+    .filter((t) => t && t.type === type && Number.isFinite(+t.value) && +t.value > 0 && t.date)
+    .map((t) => ({ v: +t.value, d: Date.parse(t.date + "T00:00:00Z") }))
+    .filter((t) => Number.isFinite(t.d))
+    .sort((x, y) => x.d - y.d);
+  if (pts.length < 2) return null;
+  const first = pts[0], last = pts[pts.length - 1];
+  const weeks = (last.d - first.d) / (7 * 864e5);
+  if (weeks < 6) return null; // deux tests rapprochés mesurent le bruit, pas la progression
+  // L'allure seuil est un temps : progresser, c'est BAISSER. On ramène tout à « fraction de
+  // gain », positive quand l'athlète s'améliore, quel que soit le sens de la grandeur.
+  const gain = type === "thrPace" ? (first.v - last.v) / first.v : (last.v - first.v) / first.v;
+  return { ratePerWeek: gain / weeks, n: pts.length };
+}
+
+function projectForm(input                 )                   {
+  const decisions             = [];
+  const D = (id        , what        , val        , why        ) => decisions.push({ id, what, val, why });
+  const w = Math.max(0, input.horizonWeeks);
+
+  // ---- P2 : plafond par profil, saturation exponentielle ----
+  const { bucket, g } = gainCeiling(input.level, input.history);
+  const sat = 1 - Math.exp(-w / TAU_WEEKS);
+  D("P2", "Marge de progression retenue", LABEL_BUCKET[bucket],
+    "Plafond du profil le plus prudent entre ton niveau et ton ancienneté de pratique — un gain "
+    + "surestimé se paie le jour J. La courbe SATURE (constante de temps " + TAU_WEEKS + " semaines) : "
+    + "les premières semaines rapportent beaucoup plus que les dernières. Ces plafonds sont des "
+    + "heuristiques de coaching, pas une loi : tes propres tests les remplacent (P3).");
+
+  // ---- P1 : adhérence, fenêtre glissante — jamais le % du plan entier ----
+  let adhFactor        ;
+  let adherence        ;
+  if (input.adherence == null) {
+    adherence = ADHERENCE_UNKNOWN_FACTOR;
+    adhFactor = ADHERENCE_UNKNOWN_FACTOR;
+    D("P1", "Adhérence récente", "pas encore mesurable",
+      "Aucune séance cochée pour l'instant : on projette un suivi NORMAL, ni parfait ni absent. "
+      + "Dès que tu coches tes séances, cette projection se cale sur ton adhérence RÉELLE des "
+      + "6 dernières semaines — et elle deviendra plus fiable.");
+  } else {
+    adherence = input.adherence;
+    // Sous le plancher, le gain tombe à ~0. Ce n'est pas une punition, c'est une conséquence :
+    // un plan à moitié fait ne produit pas l'adaptation qu'il prévoyait, et le dire à l'avance
+    // vaut mieux que de le découvrir sur la ligne de départ.
+    adhFactor = adherence < ADHERENCE_FLOOR ? 0 : Math.min(1, adherence);
+    D("P1", "Adhérence des 6 dernières semaines", Math.round(adherence * 100) + "% des minutes prévues",
+      adherence < ADHERENCE_FLOOR
+        ? "Sur les 6 dernières semaines, moins de la moitié des séances ont été faites — le plan ne "
+          + "peut pas produire le gain qu'il prévoyait, et te projeter un chrono en progrès serait te "
+          + "mentir. Rien n'est perdu : la régularité se reprend, et la projection avec elle."
+        : "Mesurée sur les semaines ÉCOULÉES uniquement (les séances à venir ne comptent ni pour "
+          + "ni contre toi) : c'est ce qui a été fait qui produit l'adaptation.");
+  }
+
+  // ---- P4 : le bénéfice d'affûtage ne s'ajoute que si l'affûtage EXISTE ----
+  const taper = input.taperConform ? TAPER_GAIN : 0;
+  D("P4", "Bénéfice d'affûtage", input.taperConform ? "+" + (TAPER_GAIN * 100).toFixed(1) + "%" : "non compté",
+    input.taperConform
+      ? "Ton plan affûte conformément (2-3 semaines, volume réduit de 41 à 60 % du pic, intensité "
+        + "MAINTENUE) : méta-analyse Bosquet 2007 (27 études), gain moyen +1,96 % le jour J. C'est "
+        + "l'affûtage qui transforme l'entraînement en performance."
+      : "Le plan ne contient pas d'affûtage conforme (2-3 semaines, −41 à −60 % de volume, intensité "
+        + "maintenue) : promettre le gain d'affûtage sans l'affûtage serait citer la littérature à faux.");
+
+  // ---- P3 puis composition finale, référence par référence ----
+  const gainPct = { ftp: 0, thrPace: 0, css: 0, vam: 0 };
+  let mesures = 0, priors = 0;
+  for (const k of ["ftp", "thrPace", "css", "vam"]         ) {
+    const prior = g[k] * sat;
+    let brut = prior;
+    const m = measuredRate(input.tests, k);
+    if (m) {
+      const wm = m.n / (m.n + 2); // rétrécissement vers le prior : 2 points → 0,5 ; 10 points → 0,83
+      const mesure = Math.max(0, m.ratePerWeek * w);
+      brut = Math.min(wm * mesure + (1 - wm) * prior, g[k] * sat); // BORNÉ par P2 : la courbe sature
+      mesures++;
+      D("P3", "Ta progression mesurée sur " + LABEL_REF[k],
+        (m.ratePerWeek * 100).toFixed(2) + "%/semaine sur " + m.n + " tests datés",
+        "Tes propres tests remplacent notre heuristique, pondérés à " + Math.round(wm * 100) + "% "
+        + "(deux points ne font pas une tendance, dix la font) et bornés par le plafond de ton profil — "
+        + "prolonger un taux mesuré en ligne droite sur un an ferait de toi un champion du monde sur le papier.");
+    } else priors++;
+    gainPct[k] = Math.round((brut * adhFactor + taper) * 10000) / 10000;
+  }
+  const gainSource                                 = mesures === 0 ? "prior" : priors === 0 ? "mesure" : "mixte";
+
+  // ---- P7 : l'incertitude se calcule et s'affiche ----
+  // Elle monte avec l'horizon (plus c'est loin, moins on sait) et avec l'ÂGE de la référence
+  // (un test d'il y a un an ne décrit plus personne), et elle descend avec la régularité.
+  const refAge = input.refAgeWeeks == null ? 0 : Math.max(0, input.refAgeWeeks);
+  const spreadBrut = 0.03 + 0.05 * (w / 52) + 0.03 * (refAge / 52) - 0.02 * (adherence - 0.5);
+  const spreadPct = Math.min(SPREAD_MAX, Math.max(SPREAD_MIN, spreadBrut));
+  const tropLoin = spreadBrut > SPREAD_MAX;
+  D("P7", "Incertitude de la projection", "±" + (spreadPct * 100).toFixed(1) + "%",
+    "Un même programme produit des gains très différents d'une personne à l'autre — sur 483 sujets "
+    + "suivis 20 semaines (HERITAGE), 7 % n'ont presque rien gagné et 8 % ont énormément gagné. Une "
+    + "projection ponctuelle serait fausse par construction : seule une fourchette est honnête. "
+    + "Elle s'élargit avec l'horizon (" + Math.round(w) + " semaines)"
+    + (refAge > 0 ? " et avec l'âge de ta dernière référence (" + Math.round(refAge) + " semaines)" : "")
+    + ", et se resserre avec ta régularité.");
+
+  let applicable = true;
+  if (tropLoin) {
+    applicable = false;
+    D("P7-refus", "Pas de chrono projeté", "±" + (spreadBrut * 100).toFixed(1) + "% > ±" + SPREAD_MAX * 100 + "%",
+      "Trop tôt pour projeter un chrono : à cet horizon, la fourchette honnête serait si large "
+      + "qu'elle n'apprendrait rien. Voici ta forme d'AUJOURD'HUI — reviens quand la course "
+      + "approchera, la projection s'affinera d'elle-même.");
+  }
+
+  const confidence                                 =
+    !applicable || spreadPct >= 0.09 || adhFactor === 0 ? "faible"
+      : spreadPct <= 0.05 && (gainSource !== "prior" || adherence >= 0.8) ? "bonne"
+        : "moyenne";
+
+  return { applicable, horizonWeeks: Math.round(w * 10) / 10, adherence, gainPct, gainSource, spreadPct, confidence, decisions };
+}
+
+/**
+ * P1 — L'ADHÉRENCE EST UNE FENÊTRE GLISSANTE, PAS UN POURCENTAGE DE PLAN.
+ *
+ * `pctLoad` (barre d'avancement) vaut `doneMin / totalMin` sur le plan ENTIER, futur compris :
+ * 30 semaines parfaites sur 59 donnent 43 %, sous le seuil de 60 % qui resserrait la fourchette.
+ * La condition était donc mécaniquement inatteignable en début de préparation et devenait vraie
+ * en fin de plan pour une raison qui n'a rien à voir avec la régularité. Il reste ce qu'il est
+ * pour la barre d'avancement, mais il ne pilote plus rien ici.
+ *
+ * Deux garde-fous sur la mesure elle-même :
+ *  - seules les journées ÉCOULÉES comptent (une séance de mardi prochain n'est pas « ratée ») ;
+ *  - AUCUN ✓ dans tout le plan → `null` (non jugeable) plutôt que 0. Quelqu'un qui n'utilise pas
+ *    les coches n'est pas quelqu'un qui ne s'entraîne pas, et le manifeste interdit le reproche.
+ */
+function adherenceWindow(
+  plan                                                                                                                                ,
+  done                         ,
+  todayISO        ,
+  weeks = 6
+)                {
+  if (!done || Object.keys(done).length === 0) return null;
+  const cut = new Date(Date.parse(todayISO + "T00:00:00Z") - weeks * 7 * 864e5).toISOString().slice(0, 10);
+  let prescrit = 0, fait = 0;
+  for (const wk of plan.weeks)
+    for (const d of wk.days) {
+      if (!d.date || d.date >= todayISO || d.date < cut) continue;
+      d.sessions.forEach((s, si) => {
+        if (s.d === "rs" || s.race) return; // le repos ne se « rate » pas, une course n'est pas une séance
+        const min = Math.max(0, s.min || 0);
+        prescrit += min;
+        if (done[wk.num + "|" + d.jour + "|" + si]) fait += min;
+      });
+    }
+  if (prescrit <= 0) return null;
+  return Math.min(1, fait / prescrit);
+}
+
+/**
+ * P4 — L'AFFÛTAGE EST-IL CONFORME ? Les trois critères de Bosquet 2007, vérifiés sur le plan
+ * LIVRÉ et pas sur la présence d'une phase nommée « taper » : c'est la réduction réelle qui
+ * produit le gain, pas l'étiquette. Le jour J lui-même est exclu du calcul (il porte `min: 0`
+ * depuis R13.4 et fausserait la moyenne de la dernière semaine).
+ */
+function taperIsConform(plan   
+                                                                                                                                 
+ )          {
+  const semaines = plan.weeks || [];
+  if (!semaines.length) return false;
+  const charge = (wk                           ) =>
+    wk.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.race ? 0 : Math.max(0, s.min || 0)), 0), 0);
+  const taper = semaines.filter((wk) => wk.phase && wk.phase.id === "taper");
+  if (taper.length < 2 || taper.length > 3) return false; // Bosquet : 8-14 jours, ~3 semaines max
+  const pic = Math.max(...semaines.filter((wk) => !taper.includes(wk)).map(charge), 0);
+  if (pic <= 0) return false;
+  // Réduction de 41 à 60 % du volume du pic, mesurée sur la MOYENNE des semaines d'affûtage :
+  // c'est la dose totale d'affûtage qui compte, pas le creux d'une semaine isolée.
+  const moy = taper.reduce((t, wk) => t + charge(wk), 0) / taper.length;
+  const reduction = 1 - moy / pic;
+  return reduction >= 0.41 && reduction <= 0.60;
+}
+
 // ===== src/engine/predictor.ts =====
 /**
  * Prédiction de course — projection chiffrée en compétition (roadmap « dashboard »).
@@ -9792,15 +10136,114 @@ function generateAudited(profile                , auditOpts                     
                                            
 
 
+
+/**
+ * R14.1 — LA FORME PROJETÉE AU JOUR J, à côté de la forme actuelle (jamais à sa place).
+ * L'UI affiche les deux, étiquetées : « Aujourd'hui : 4h00–4h15 » / « Projeté au 12/09/2027 :
+ * 3h44–4h02 (confiance moyenne) ». Jamais un seul chiffre, jamais sans la date de référence.
+ */
+                                      
+                      
+                       
+                    
+                                                                      
+                                           
+                    
+                                             
+                    
+                                                      
+                          
+                        
+ 
+                             
+                          
+                                                               
+                        
+                                                                                                      
+                                        
+ 
+                              
+                                                    
+                       
+                                                                                       
+                                                                                              
+                         
+                                                                    
+                                  
+     
+                                                                                        
+                                                         
+     
+                           
+                                                                                       
+                               
+     
+                                                                                     
+                                                                                         
+     
+                                                                       
+ 
+
 // R6 — profil du parcours : un chrono à plat ne vaut rien sur un parcours vallonné.
 // Facteurs de temps course à pied (littérature GAP/expérience course sur route) :
 // vallonné ~+3–6 %, montagneux ~+8–15 % — appliqués en ÉLARGISSANT la fourchette
 // (l'incertitude monte avec le relief, on ne fait pas semblant du contraire).
-const COURSE_PROFILE_RUN                                                            = {
+//
+// R14.3-a — DEUX CHAMPS POUR LA MÊME IDÉE, ET DES CLÉS QUI NE SE RECOUVRAIENT PAS.
+// Le jour J lisait `a.terrain` (domaine du schéma : … `montagne` …), la carte Prédiction
+// lisait `answers.course_profile` (vocabulaire de l'UI : … `montagneux` …). `vallonne`
+// tombait juste par coïncidence orthographique ; `montagne` ne tombait sur rien —
+// mesuré sur le jour J d'un Ironman : plat 240 min, montagne 240 min, les +8 à +15 %
+// disparaissaient EN SILENCE. Le même athlète pouvait lire deux chronos différents dans
+// deux écrans de la même app.
+//
+// La table couvre désormais TOUT le domaine `terrain` du schéma, et `assertTerrainCovered()`
+// (appelée par `build:app`) échoue si une valeur ajoutée au schéma n'y est pas classée :
+// la règle « une seule source » est exécutable, pas un commentaire (même geste que R13.1).
+                                                                       
+const RELIEF                               = {
   plat: { lo: 1.0, hi: 1.0, label: "parcours plat" },
   vallonne: { lo: 1.03, hi: 1.06, label: "parcours vallonné" },
-  montagneux: { lo: 1.08, hi: 1.15, label: "parcours montagneux" },
+  montagne: { lo: 1.08, hi: 1.15, label: "parcours montagneux" },
 };
+/** Alias du vocabulaire UI (`course_profile`) vers le domaine du schéma (`terrain`). */
+const RELIEF_ALIAS                         = { montagneux: "montagne", vallonné: "vallonne" };
+/**
+ * Valeurs de `terrain` qui décrivent une SURFACE et non un relief : elles ne disent rien
+ * du dénivelé, donc elles ne corrigent rien. Les classer explicitement est le but — une
+ * valeur non classée doit faire échouer le build, pas retomber sur « pas de correction ».
+ */
+const RELIEF_NEUTRAL = ["route", "piste", "mixte", "trail"]         ;
+
+/** Résout le profil de parcours vers le domaine du schéma. `null` = pas de correction. */
+function reliefOf(value         )                      {
+  const k = String(value ?? "").trim();
+  if (!k) return null;
+  return RELIEF[RELIEF_ALIAS[k] || k] || null;
+}
+
+/**
+ * R14.3-a — LE CHEMIN UNIQUE. `course_profile` (le parcours VISÉ, réponse la plus
+ * spécifique, posée au Profil) prime ; à défaut on retombe sur `terrain` (le terrain
+ * d'entraînement, qui est aussi la question « Le parcours » en vélo et duathlon).
+ * Tous les appelants passent par ici — jour J compris.
+ */
+function courseProfileOf(a                                                 )                     {
+  const explicite = String(a.course_profile ?? "").trim();
+  if (explicite && reliefOf(explicite)) return explicite;
+  const terrain = String(a.terrain ?? "").trim();
+  return terrain || undefined;
+}
+
+/** Garde de build : toute valeur du domaine `terrain` est classée (relief ou neutre). */
+function assertTerrainCovered(domain                   )       {
+  const orphelines = domain.filter((v) => !RELIEF[v] && !(RELIEF_NEUTRAL                     ).includes(v));
+  if (orphelines.length)
+    throw new Error("R14.3-a : terrain « " + orphelines.join(", ") + " » n'est classé ni en relief "
+      + "(RELIEF) ni en surface (RELIEF_NEUTRAL) dans predictor.ts — une valeur non classée "
+      + "retomberait silencieusement sur « pas de correction », et c'est exactement le défaut "
+      + "que « montagne » a fait vivre.");
+}
 
 const RUN_KM                         = { "5k": 5, "10k": 10, semi: 21.0975, marathon: 42.195 };
 const SWIM_RACE                                                   = {
@@ -9844,10 +10287,43 @@ const fmtT = (sec        )         => {
   return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "'" + String(r).padStart(2, "0");
 };
 
-/** Riegel : temps sur D depuis l'allure seuil (tenable ~1h), t = 3600 × (D/D₁ₕ)^1.06 */
-function riegelSec(thrPaceSecPerKm        , distKm        )         {
+/**
+ * R14 — P5 : L'EXPOSANT DE RIEGEL SUIT LE VOLUME.
+ *
+ * Il était figé à 1,06. Mesuré : deux athlètes de MÊME allure seuil, l'un à 4 h/semaine,
+ * l'autre à 14 h, recevaient le même marathon prédit (3 h 32). Or c'est précisément le
+ * volume qui gouverne la tenue de la distance — Vickers & Vertosick (BMC Sports Sci Med
+ * Rehabil 2016, N=2303) montrent que Riegel sous-estime le marathon d'au moins 10 min pour
+ * la moitié des coureurs, et que le kilométrage hebdomadaire est un prédicteur MAJEUR
+ * (MSE 208 contre 381 pour Riegel en validation).
+ *
+ * Ancrages (calibration empirique de calculateurs, pas une étude princeps — heuristique
+ * assumée), interpolés linéairement et bornés :
+ *   ≥ 12 h/sem → 1,04 · 10 h → 1,06 · 6,5 h → 1,09 · ≤ 4 h → 1,12
+ *
+ * ⚠ N'EST APPLIQUÉ QU'À L'EXTRAPOLATION D'UNE COURSE SÈCHE. Les legs course du triathlon et
+ * du duathlon gardent 1,06 : leurs facteurs `fatigue` (1,03 à 1,13 selon le format) ont été
+ * calibrés CONTRE cet exposant, et bouger l'exposant sous eux recalibrerait silencieusement
+ * une table validée — on compterait deux fois la même difficulté.
+ */
+const RIEGEL_ANCRES                     = [[4, 1.12], [6.5, 1.09], [10, 1.06], [12, 1.04]];
+function riegelExponent(runHoursPerWeek         )         {
+  const h = Number(runHoursPerWeek);
+  if (!Number.isFinite(h) || h <= 0) return 1.06; // pas de volume connu → comportement historique
+  if (h <= RIEGEL_ANCRES[0][0]) return RIEGEL_ANCRES[0][1];
+  const last = RIEGEL_ANCRES[RIEGEL_ANCRES.length - 1];
+  if (h >= last[0]) return last[1];
+  for (let i = 1; i < RIEGEL_ANCRES.length; i++) {
+    const [h0, e0] = RIEGEL_ANCRES[i - 1], [h1, e1] = RIEGEL_ANCRES[i];
+    if (h <= h1) return e0 + ((e1 - e0) * (h - h0)) / (h1 - h0);
+  }
+  return 1.06;
+}
+
+/** Riegel : temps sur D depuis l'allure seuil (tenable ~1h), t = 3600 × (D/D₁ₕ)^exp */
+function riegelSecWith(exp        , thrPaceSecPerKm        , distKm        )         {
   const d1h = 3600 / thrPaceSecPerKm;
-  return 3600 * Math.pow(distKm / d1h, 1.06);
+  return 3600 * Math.pow(distKm / d1h, exp);
 }
 
 /** Minutes → « 9h20 » : une durée de trail se lit en heures, pas en minutes. */
@@ -9856,6 +10332,20 @@ function fmtHM(min        )         {
   return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
 }
 
+/**
+ * Un item porte-t-il un TEMPS ? Seuls les temps se projettent (R14 P6) : une cible de
+ * puissance (« 159–173 W ») ou de vitesse ascensionnelle reste ancrée sur la référence
+ * MESURÉE. Les formats produits par `fmtT`/`fmtHM` : « 4h08 », « 38'20 », « 45min ».
+ */
+const EST_UN_TEMPS = /^\s*\d+\s*(h\d+|'\d+|min)\s*[–-]/;
+
+/** Le calcul complet des items, rejouable à d'autres références et à une autre fourchette. */
+                      
+                                                      
+                 
+                         
+ 
+
 function predictRace(
   sport        ,
   format        ,
@@ -9863,32 +10353,47 @@ function predictRace(
   refs                                               ,
   opts              = {}
 )             {
-  const items                   = [];
-  const advice           = [];
   const decisions             = [];
   const D = (id        , what        , val        , why        ) => decisions.push({ id, what, val, why });
 
   // Fourchette : ±3% de base ; ±2% si le plan est bien suivi ; décalée +3% en mode finisher.
   const followed = (opts.pctLoad ?? 0) >= 60 && (opts.streakWeeks ?? 0) >= 3;
-  const spread = followed ? 0.02 : 0.03;
   const shift = intent === "finir" ? 0.03 : 0;
   if (followed) D("PRED-forme", "Fourchette resserrée", "±2%", "Plan bien suivi (streak ≥3 semaines, charge accomplie ≥60%) : la projection est plus fiable");
   if (shift > 0) D("PRED-finisher", "Pacing conservateur", "+3%", "Objectif finisher : on vise l'arrivée en forme, pas la marge d'erreur");
-  const range = (sec        ) => fmtT(sec * (1 + shift - spread)) + "–" + fmtT(sec * (1 + shift + spread));
   // Fourchette COURSE À PIED avec profil de parcours (R6) — le relief élargit et décale.
-  const prof = opts.courseProfile && COURSE_PROFILE_RUN[opts.courseProfile] ? COURSE_PROFILE_RUN[opts.courseProfile] : null;
+  const prof = reliefOf(opts.courseProfile);
   if (prof && prof.hi > 1) D("PRED-parcours", "Profil du parcours", prof.label, "Le relief ralentit et augmente l'incertitude : fourchette ×" + prof.lo + "–" + prof.hi + " sur les temps de course à pied");
-  const runRange = (sec        ) => prof
-    ? fmtT(sec * prof.lo * (1 + shift - spread)) + "–" + fmtT(sec * prof.hi * (1 + shift + spread))
-    : range(sec);
   const profWhy = prof && prof.hi > 1 ? " · " + prof.label + " (+" + Math.round((prof.lo - 1) * 100) + "–" + Math.round((prof.hi - 1) * 100) + "%)" : "";
+  // R14 P5 — l'exposant de Riegel suit le volume, et SEULEMENT pour une course sèche :
+  // les legs course du tri/duathlon portent déjà leurs facteurs de fatigue calibrés à 1,06.
+  const expo = sport === "run" ? riegelExponent(opts.runHoursPerWeek) : 1.06;
+  if (sport === "run" && expo !== 1.06)
+    D("P5", "Tenue de la distance", "exposant de Riegel " + expo.toFixed(3),
+      "L'extrapolation entre distances dépend du VOLUME, pas seulement de l'allure : à volume élevé "
+      + "on tient mieux la distance, à petit volume la fin coûte plus cher. Riegel figé à 1,06 donnait "
+      + "le même marathon à 4 h et à 14 h de course par semaine — Vickers & Vertosick (2016, N=2303) "
+      + "montrent que le kilométrage hebdomadaire est un prédicteur majeur.");
+
+  const render = (args            )                                                                       => {
+    const items                   = [];
+    const advice           = [];
+    const dec             = [];
+    const Dloc = (id        , what        , val        , why        ) => dec.push({ id, what, val, why });
+    const spread = args.spread;
+    const refs = args.refs;
+    const range = (sec        ) => fmtT(sec * (1 + shift - spread)) + "–" + fmtT(sec * (1 + shift + spread));
+    const runRange = (sec        ) => prof
+      ? fmtT(sec * prof.lo * (1 + shift - spread)) + "–" + fmtT(sec * prof.hi * (1 + shift + spread))
+      : range(sec);
+    const riegelSec = (paceSecPerKm        , distKm        ) => riegelSecWith(expo, paceSecPerKm, distKm);
 
   // ---- R7 TRAIL : Riegel est INAPPLICABLE (un km de trail n'est pas un km de route).
   // Modèle à deux composantes : temps à plat + temps vertical (VAM), pénalisés par la
   // technicité et la nuit. Fourchette LARGE et annoncée comme telle : sur un ultra, ±20%
   // est une estimation honnête — afficher une fourchette serrée serait le mensonge.
-  if (sport === "trail" && opts.trail) {
-    const obj = opts.trail;
+  if (sport === "trail" && args.trail) {
+    const obj = args.trail;
     const tech = TRAIL_TECHNICITY[obj.technicity] || TRAIL_TECHNICITY.mixte;
     const kmEffH = obj.kmEffort / Math.max(0.5, obj.raceMinMid / 60);
     const one = (v        ) => (Math.round(v * 10) / 10).toFixed(1).replace(".", ",");
@@ -9904,8 +10409,8 @@ function predictRace(
     // §6.3 — l'erreur n°1 en ultra est le départ trop rapide : l'outil est bien placé pour le dire
     advice.push("Répartition conseillée : premier tiers à " + one(kmEffH * 0.92) + " km-effort/h (volontairement en dessous — tu dois te sentir « trop tranquille »), deuxième tiers à " + one(kmEffH) + ", dernier tiers selon ce qu'il reste. Partir 5 % trop vite coûte 20 % sur la fin.");
     if (obj.cutoffH && obj.raceMinHi > obj.cutoffH * 60) advice.unshift("⏱ Barrière horaire à " + obj.cutoffH + "h : notre estimation haute (" + fmtHM(obj.raceMinHi) + ") la dépasse. Vise le bas de la fourchette, contrôle ton départ et limite le temps passé aux ravitaillements.");
-    D("PRED-trail", "Méthode trail", "temps à plat + temps vertical (VAM)", "Riegel ne s'applique pas au trail : on additionne le temps horizontal et le temps d'ascension, puis on pénalise selon la technicité (" + tech.label + ") et la nuit");
-    return { items, advice, decisions };
+    Dloc("PRED-trail", "Méthode trail", "temps à plat + temps vertical (VAM)", "Riegel ne s'applique pas au trail : on additionne le temps horizontal et le temps d'ascension, puis on pénalise selon la technicité (" + tech.label + ") et la nuit");
+    return { items, advice, decisions: dec };
   }
 
   // R10 phase 1 — DISPATCH : chaque sport porte SA méthode de prédiction dans son module
@@ -9914,12 +10419,107 @@ function predictRace(
   // sortir un chiffre inventé — la fourchette honnête est la seule sortie acceptable.
   const mod = sportModule(sport);
   if (mod.predict) {
-    mod.predict({ format, refs, items, advice, D, range, runRange, riegelSec, profWhy, swimrun: opts.swimrun });
+    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, riegelSec, profWhy, swimrun: opts.swimrun });
   } else {
     advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }
 
-  return { items, advice, decisions };
+    return { items, advice, decisions: dec };
+  };
+
+  // ---- FORME ACTUELLE — la vérité mesurée, l'ancre. Elle ne bouge pas (R14, non-régression).
+  const spreadNow = followed ? 0.02 : 0.03;
+  const now = render({ refs, spread: spreadNow, trail: opts.trail });
+  decisions.push(...now.decisions);
+
+  return {
+    items: now.items,
+    advice: now.advice,
+    decisions,
+    projected: buildProjection(sport, refs, opts, now.items, render),
+  };
+}
+
+/**
+ * R14 — LA FORME PROJETÉE. Le même prédicteur, rejoué sur des références projetées et une
+ * fourchette élargie. Trois refus possibles, tous motivés, jamais un chiffre inventé :
+ *  - pas d'entrées de projection (appelant qui n'en fournit pas) → `null` ;
+ *  - aucune référence mesurée (P8) → `applicable: false`, items vides ;
+ *  - horizon trop lointain pour une fourchette utile (P7) → `applicable: false`.
+ */
+function buildProjection(
+  sport        ,
+  refs                                               ,
+  opts             ,
+  itemsNow                  ,
+  render                                                                                         ,
+)                             {
+  const input = opts.projection;
+  if (!input) return null;
+
+  const p = projectForm(input);
+  const vide = { applicable: false, horizonWeeks: p.horizonWeeks, adherence: p.adherence, gainPct: p.gainPct,
+    gainSource: p.gainSource, spreadPct: p.spreadPct, confidence: p.confidence, raceDate: input.raceDate,
+    refs, items: []                    , decisions: p.decisions };
+
+  // P8 — AUCUNE PROJECTION SANS MATIÈRE. Sans référence mesurée, la « forme actuelle » n'a
+  // déjà rien à dire ; projeter une valeur inventée serait construire un chrono sur du vent.
+  if (!(refs.ftp > 0) && !(refs.thrPace > 0) && !(refs.css > 0)) {
+    p.decisions.push({ id: "P8", what: "Pas de projection", val: "aucune référence mesurée",
+      why: "Nous ne projetons rien tant qu'aucune référence n'est connue : un chrono construit sur "
+        + "une valeur inventée serait un chiffre présentable et faux. Fais un test (les protocoles "
+        + "sont dans l'app) et la projection apparaîtra." });
+    return vide;
+  }
+  if (!p.applicable) return vide;
+
+  // Les références projetées. L'allure seuil est un TEMPS au kilomètre : progresser la fait
+  // BAISSER — l'erreur de signe ici donnerait un athlète qui ralentit en s'entraînant.
+  const projRefs = {
+    ftp: refs.ftp > 0 ? Math.round(refs.ftp * (1 + p.gainPct.ftp)) : 0,
+    thrPace: refs.thrPace > 0 ? refs.thrPace / (1 + p.gainPct.thrPace) : 0,
+    css: refs.css > 0 ? refs.css / (1 + p.gainPct.css) : 0,
+  };
+  const trailProj = opts.projectTrail ? opts.projectTrail(p.gainPct.vam, p.gainPct.thrPace) : opts.trail;
+  const fut = render({ refs: projRefs, spread: p.spreadPct, trail: trailProj });
+
+  // P6 — LE PACING NE SE PROJETTE JAMAIS. C'est la règle de sécurité du chapitre : une cible
+  // de puissance projetée (IF 0,73 → 0,78) fait partir trop vite, et le coût se paie au
+  // marathon — voire à l'abandon. Le TEMPS se projette, l'INTENSITÉ s'ancre sur la dernière
+  // mesure réelle. Tout item qui n'est pas un temps est donc repris À L'IDENTIQUE.
+  let ancres = 0;
+  const items = fut.items.map((it, i) => {
+    const ref = itemsNow[i] && itemsNow[i].leg === it.leg ? itemsNow[i] : itemsNow.find((x) => x.leg === it.leg);
+    if (EST_UN_TEMPS.test(it.value) || !ref) return it;
+    ancres++;
+    return { leg: ref.leg, value: ref.value,
+      why: ref.why + " · cible ANCRÉE sur ta référence mesurée d'aujourd'hui — elle bougera à ton "
+        + "prochain test, jamais sur une projection : partir à l'intensité qu'on espère avoir se paie "
+        + "toujours dans le dernier tiers de la course." };
+  });
+  if (ancres > 0)
+    p.decisions.push({ id: "P6", what: "Intensités non projetées", val: ancres + " cible(s) ancrée(s)",
+      why: "Le temps se projette, l'intensité s'ancre. Une cible de puissance ou d'allure calculée sur "
+        + "la forme qu'on ESPÈRE avoir fait partir trop vite le jour J ; celle-ci reste calée sur ta "
+        + "dernière mesure réelle." });
+
+  // Un sport dont TOUS les items sont des cibles d'intensité (le vélo : on prédit des watts,
+  // jamais un chrono qui dépend du parcours) n'a rien à projeter — et le dire vaut mieux que
+  // d'afficher une projection identique à la forme actuelle sans expliquer pourquoi.
+  const aUnTemps = items.some((it) => EST_UN_TEMPS.test(it.value));
+  if (!aUnTemps) {
+    p.decisions.push({ id: "P6-sans-chrono", what: "Rien à projeter", val: "ce sport prédit des cibles, pas un temps",
+      why: "Ici nous prédisons des puissances cibles, pas un chrono (il dépend du parcours, du vent et "
+        + "du peloton) — et une cible ne se projette jamais (P6). Ta progression apparaît dans tes "
+        + "retests, pas dans une prédiction de course." });
+    return { ...vide, applicable: false, refs: projRefs, decisions: p.decisions };
+  }
+
+  return {
+    applicable: true, horizonWeeks: p.horizonWeeks, adherence: p.adherence, gainPct: p.gainPct,
+    gainSource: p.gainSource, spreadPct: p.spreadPct, confidence: p.confidence, raceDate: input.raceDate,
+    refs: projRefs, items, decisions: p.decisions,
+  };
 }
 
 // ===== src/readiness/readinessSource.ts =====
@@ -10739,6 +11339,7 @@ function dailyEnergy(input             )                             {
 
 
 
+
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
 }
@@ -11077,14 +11678,75 @@ function predictV2(sport        , answers            , plan                     
   };
   const today = localTodayISO();
   const pg = progressV2(p, answers, today);
+  // ---- R14 — ENTRÉES DU PROJECTEUR (« où en seras-tu le jour J »).
+  // Trois données que le prédicteur n'avait jamais vues : le temps qui RESTE, ce qui a été
+  // RÉELLEMENT fait, et le journal de tests. Elles vivent ici parce que c'est le pont qui
+  // connaît le plan livré et les réponses de l'athlète — le prédicteur reste une fonction
+  // des références qu'on lui donne.
+  const horizonWeeks = weeksUntilRace(p, answers, today);
+  const tests = Array.isArray(answers.tests) ? (answers.tests                                                   ) : [];
   return predictRace(sport, String(answers.format || ""), String(answers.intent || "") || undefined, finalRefs, {
     pctLoad: pg.pctLoad,
     streakWeeks: pg.streakWeeks,
-    courseProfile: String(answers.course_profile || "") || undefined, // R6 — profil du parcours (Profil)
+    // R6 — profil du parcours (Profil) · R14.3-a — résolveur UNIQUE, partagé avec le jour J :
+    // `course_profile` (le parcours visé) prime, `terrain` prend le relais à défaut.
+    courseProfile: courseProfileOf(answers         ),
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
     swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,
+    // R14 P5 — le volume de COURSE hebdomadaire pilote l'exposant de Riegel.
+    runHoursPerWeek: sport === "run" ? parseFloat(String(answers.vol_max || "")) || undefined : undefined,
+    projection: horizonWeeks == null ? undefined : {
+      horizonWeeks,
+      level: String(answers.level || "") || undefined,
+      history: String(answers.history || "") || undefined,
+      adherence: adherenceWindow(p         , (answers.done || {})                           , today),
+      tests,
+      taperConform: taperIsConform(p         ),
+      refAgeWeeks: refAgeWeeks(tests, today),
+      raceDate: String(answers.race_date || "") || undefined,
+    },
+    // R7 TRAIL — l'objectif rejoué avec une VAM et une allure à plat projetées : le prédicteur
+    // ne sait pas reconstruire un `TrailObjective`, il vit dans `trailModel`.
+    projectTrail: sport === "trail"
+      ? (gVam        , gPace        ) => {
+        const prof = toProfile(sport, answers)                           ;
+        const base = trailObjective(prof         );
+        return trailObjective({ ...prof, vam_known: "oui", vam: String(Math.round(base.vam * (1 + gVam))),
+          pace_known: "oui", pace: secToPace(base.flatPaceSec / (1 + gPace)) }         );
+      }
+      : undefined,
   });
+}
+
+/** Secondes/km → « 4:50 » : le parseur d'allure est unique (E1/E2), son inverse doit l'être aussi. */
+function secToPace(secPerKm        )         {
+  const s = Math.max(1, Math.round(secPerKm));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+
+/**
+ * R14 — L'HORIZON : semaines entre aujourd'hui et le jour J. La date de course prime (c'est
+ * l'échéance réelle) ; à défaut on prend la fin du plan. `null` = pas d'échéance connue, donc
+ * pas de projection — on ne projette pas vers une date qu'on ne connaît pas.
+ */
+function weeksUntilRace(plan        , answers            , todayISO        )                {
+  const rd = String(answers.race_date || "").trim();
+  let cible = /^\d{4}-\d{2}-\d{2}$/.test(rd) ? rd : "";
+  if (!cible) {
+    for (const w of plan.weeks) for (const d of w.days) if ((d                     ).date) cible = (d                     ).date          ;
+  }
+  if (!cible) return null;
+  const jours = (Date.parse(cible + "T00:00:00Z") - Date.parse(todayISO + "T00:00:00Z")) / 864e5;
+  if (!Number.isFinite(jours) || jours < 0) return null; // course passée : rien à projeter
+  return jours / 7;
+}
+
+/** P7 — âge (en semaines) de la référence la plus récente : un test d'il y a un an ne décrit plus personne. */
+function refAgeWeeks(tests                     , todayISO        )                {
+  const dates = (tests || []).map((t) => Date.parse(String(t.date) + "T00:00:00Z")).filter((n) => Number.isFinite(n));
+  if (!dates.length) return null; // références déclarées sans date : on n'invente pas leur ancienneté
+  return Math.max(0, (Date.parse(todayISO + "T00:00:00Z") - Math.max(...dates)) / (7 * 864e5));
 }
 
 /** Estimation énergétique du jour (décision utilisateur 28/07/2026 — estimation, jamais

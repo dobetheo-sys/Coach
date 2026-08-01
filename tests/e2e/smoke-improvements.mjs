@@ -238,6 +238,31 @@ ok(measApplied.stored, "l'instantané est enregistré (daté, versionné)");
 ok(measApplied.decision, "la recalibration apparaît dans les décisions du moteur (§3.4)");
 ok(measApplied.canClear, "l'athlète peut revenir à sa déclaration");
 
+// ---- R14. Les DEUX prédictions sont rendues, étiquetées, avec la date de référence ----
+// Le contrat R14 vit dans le moteur (banc `audit:r14`) ; ce qui manquait au banc, c'est la
+// preuve que l'athlète les VOIT toutes les deux. Une projection calculée mais non affichée
+// serait exactement le défaut « carte non affichée » de l'audit d'influence des paramètres.
+const proj = await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  const { setTab } = await import("./js/ui/tabs.js");
+  const d = new Date(Date.now() + 40 * 7 * 864e5).toISOString().slice(0, 10);
+  S.answers.race_date = d;
+  delete S.answers.raceResult; // sinon la carte « ta course est passée » prend la place
+  ebSave();
+  setTab("today");
+  const txt = document.querySelector("#screen").textContent;
+  const p = globalThis.EBV2.predict(S.sport, S.answers, S.currentPlan);
+  return { txt, applicable: !!(p.projected && p.projected.applicable), an: d.slice(0, 4),
+    conf: p.projected ? p.projected.confidence : "" };
+});
+ok(/Aujourd’hui — ta forme mesurée/.test(proj.txt), "la prédiction « forme actuelle » est étiquetée comme telle");
+if (proj.applicable) {
+  ok(/Projeté au \d{2}\/\d{2}\/\d{4}/.test(proj.txt), "la projection porte SA DATE de référence (jamais un chiffre nu)");
+  ok(new RegExp("confiance " + proj.conf).test(proj.txt), "la confiance de la projection est affichée (" + proj.conf + ")");
+} else {
+  ok(/Pas de chrono projeté/.test(proj.txt), "quand on refuse de projeter, le MOTIF est affiché — le silence n'est pas une information");
+}
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + ")");
 if (errs.length) info(errs.slice(0, 4).join(" | "));
 

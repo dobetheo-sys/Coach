@@ -26,7 +26,8 @@
     "audit:public": "node banc_grand_public.cjs",
     "audit:invariants": "node banc_invariants.cjs",
     "trace": "node scripts/trace.mjs",
-    "audit:r13": "node bench_r13.cjs endurabuild/js/engine.js EnduraBuild-standalone.html"
+    "audit:r13": "node bench_r13.cjs endurabuild/js/engine.js EnduraBuild-standalone.html",
+    "audit:r14": "node bench_r14.cjs endurabuild/js/engine.js"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

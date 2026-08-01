@@ -13,7 +13,8 @@ import { generateAudited } from "../generator/repairLoop.ts";
 import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
-import { predictRace, type Prediction } from "../engine/predictor.ts";
+import { predictRace, courseProfileOf, type Prediction } from "../engine/predictor.ts";
+import { adherenceWindow, taperIsConform } from "../engine/projection.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
 import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
@@ -364,14 +365,75 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
   };
   const today = localTodayISO();
   const pg = progressV2(p, answers, today);
+  // ---- R14 — ENTRÉES DU PROJECTEUR (« où en seras-tu le jour J »).
+  // Trois données que le prédicteur n'avait jamais vues : le temps qui RESTE, ce qui a été
+  // RÉELLEMENT fait, et le journal de tests. Elles vivent ici parce que c'est le pont qui
+  // connaît le plan livré et les réponses de l'athlète — le prédicteur reste une fonction
+  // des références qu'on lui donne.
+  const horizonWeeks = weeksUntilRace(p, answers, today);
+  const tests = Array.isArray(answers.tests) ? (answers.tests as { type: string; value: number; date: string }[]) : [];
   return predictRace(sport, String(answers.format || ""), String(answers.intent || "") || undefined, finalRefs, {
     pctLoad: pg.pctLoad,
     streakWeeks: pg.streakWeeks,
-    courseProfile: String(answers.course_profile || "") || undefined, // R6 — profil du parcours (Profil)
+    // R6 — profil du parcours (Profil) · R14.3-a — résolveur UNIQUE, partagé avec le jour J :
+    // `course_profile` (le parcours visé) prime, `terrain` prend le relais à défaut.
+    courseProfile: courseProfileOf(answers as never),
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
     swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,
+    // R14 P5 — le volume de COURSE hebdomadaire pilote l'exposant de Riegel.
+    runHoursPerWeek: sport === "run" ? parseFloat(String(answers.vol_max || "")) || undefined : undefined,
+    projection: horizonWeeks == null ? undefined : {
+      horizonWeeks,
+      level: String(answers.level || "") || undefined,
+      history: String(answers.history || "") || undefined,
+      adherence: adherenceWindow(p as never, (answers.done || {}) as Record<string, boolean>, today),
+      tests,
+      taperConform: taperIsConform(p as never),
+      refAgeWeeks: refAgeWeeks(tests, today),
+      raceDate: String(answers.race_date || "") || undefined,
+    },
+    // R7 TRAIL — l'objectif rejoué avec une VAM et une allure à plat projetées : le prédicteur
+    // ne sait pas reconstruire un `TrailObjective`, il vit dans `trailModel`.
+    projectTrail: sport === "trail"
+      ? (gVam: number, gPace: number) => {
+        const prof = toProfile(sport, answers) as Record<string, unknown>;
+        const base = trailObjective(prof as never);
+        return trailObjective({ ...prof, vam_known: "oui", vam: String(Math.round(base.vam * (1 + gVam))),
+          pace_known: "oui", pace: secToPace(base.flatPaceSec / (1 + gPace)) } as never);
+      }
+      : undefined,
   });
+}
+
+/** Secondes/km → « 4:50 » : le parseur d'allure est unique (E1/E2), son inverse doit l'être aussi. */
+function secToPace(secPerKm: number): string {
+  const s = Math.max(1, Math.round(secPerKm));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+
+/**
+ * R14 — L'HORIZON : semaines entre aujourd'hui et le jour J. La date de course prime (c'est
+ * l'échéance réelle) ; à défaut on prend la fin du plan. `null` = pas d'échéance connue, donc
+ * pas de projection — on ne projette pas vers une date qu'on ne connaît pas.
+ */
+function weeksUntilRace(plan: V1Plan, answers: AppAnswers, todayISO: string): number | null {
+  const rd = String(answers.race_date || "").trim();
+  let cible = /^\d{4}-\d{2}-\d{2}$/.test(rd) ? rd : "";
+  if (!cible) {
+    for (const w of plan.weeks) for (const d of w.days) if ((d as { date?: string }).date) cible = (d as { date?: string }).date as string;
+  }
+  if (!cible) return null;
+  const jours = (Date.parse(cible + "T00:00:00Z") - Date.parse(todayISO + "T00:00:00Z")) / 864e5;
+  if (!Number.isFinite(jours) || jours < 0) return null; // course passée : rien à projeter
+  return jours / 7;
+}
+
+/** P7 — âge (en semaines) de la référence la plus récente : un test d'il y a un an ne décrit plus personne. */
+function refAgeWeeks(tests: { date?: string }[], todayISO: string): number | null {
+  const dates = (tests || []).map((t) => Date.parse(String(t.date) + "T00:00:00Z")).filter((n) => Number.isFinite(n));
+  if (!dates.length) return null; // références déclarées sans date : on n'invente pas leur ancienneté
+  return Math.max(0, (Date.parse(todayISO + "T00:00:00Z") - Math.max(...dates)) / (7 * 864e5));
 }
 
 /** Estimation énergétique du jour (décision utilisateur 28/07/2026 — estimation, jamais
