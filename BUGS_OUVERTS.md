@@ -114,6 +114,13 @@ trois notés parce qu'ils se reproduiront :
 3. la correspondance par position n'est valide que si les jours ne sont pas réordonnés. C'est
    désormais **vérifié à chaque exécution** (les jours portent leur nom canonique), pas supposé.
 
+```verify
+id: O-3
+quoi: le repli se déclenche encore sur ≥20 % des plans trail
+attendu: /mérite son LOT/
+cmd: npm run measure:fallback trail
+```
+
 **Reste à faire (le lot) :** décider `facileR` vs `facile2` pour le trail, avec mesure
 avant/après sur le golden — et traiter le swimrun dans le même mouvement, puisqu'il est plus
 concerné que le sport qui a ouvert l'entrée.
@@ -171,6 +178,14 @@ compte, on affiche, on hache — on ne confond pas. **Leçon à garder : un gate
 permanence ne signale plus rien, et une vérification en boucle shell doit tester le code de
 sortie de la commande, pas celui de son enrobage.**
 
+```verify
+id: O-6
+quoi: golden:verify sort en 0 et annonce 0 écart
+attendu: /0 écart/
+cmd: npm run golden:verify
+```
+
+
 ### O-7 · La structure hebdomadaire du swimrun ne lisait pas l'objectif · ✅ **FERMÉ (R16.10, S13)**
 
 `swimrunWeekSchema(phase, isRecup)` ne voit jamais la course. Mesuré : la part de course dans
@@ -194,6 +209,14 @@ Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. I
 | **D3** | 4 sauts de charge à **+11 %** au lieu de +10 % | Le rapport dev→peak de la courbe vaut 1,18, donc **supérieur à C22 par construction**. Sur un plan court à deux récups consécutives, C22 voudrait le pic ≤ 273 min quand la hiérarchie du plan le veut > 248 : les deux tiennent dans 25 minutes et les planchers de séance interdisent de descendre. Réduire encore ferait passer le pic SOUS une semaine de base — on échangerait une violation contre une pire. **La correction de fond est dans la FORME de la courbe, pas dans une passe de rattrapage.** |
 | **F2** | 7 séances de qualité à ~42 % de temps en zone cible au lieu de 45 % | **Contradiction assumée entre deux règles.** Ces séances ont déjà leur échauffement et leur retour au calme à leur plancher (C13/C13b) ; atteindre 45 % demanderait exactement ce que C13c interdit (échauffer moins de 10 min avant un effort maximal). La priorité n°2 du manifeste (prévention des blessures) tranche. Le test reste en `expect:'fail'` **pour garder le chiffre sous les yeux**, pas parce qu'on l'a oublié. |
 
+```verify
+id: DETTE-v6
+quoi: 3 dettes connues, 0 régression
+attendu: /3 dette connue · ✖ 0 régression/
+cmd: npm run audit:v6
+```
+
+
 ### Banc v7 — budgets non nuls (`scripts/runAuditV7.mjs`, en ‰ de profils depuis R15.1)
 
 > **R16.10** — les quatre budgets swimrun (`S-LONGSWIM` 53 ‰, `S-MIX` 60 ‰, `S-RUN-STARVED`
@@ -215,6 +238,16 @@ Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. I
 > dette du dépôt — et elle redeviendra une dette du produit le jour où swimrun rentrera en V1.
 
 ---
+
+```verify
+id: DETTE-v7
+quoi: tous les checks dans leur budget (swimrun compris depuis R16.10)
+attendu: /tous les checks dans leur budget/
+cmd: npm run audit:v7
+```
+
+---
+
 
 ## §3 — Angles morts connus de la mesure
 
@@ -242,6 +275,21 @@ qui n'existe plus, ce qui est le symétrique exact d'un défaut caché.
 | **question R15.5** — « le harnais distingue-t-il un `xfail` qui PASSE d'un échec attendu ? » | Risque soulevé : le jour où quelqu'un corrige F2, le test rougirait et la correction serait annulée comme une régression | **Déjà correct, vérifié.** `audit_v6.mjs:942` : un test `expect:'fail'` qui passe s'affiche `★` et porte la note « ← CORRIGÉ : passer expect à 'pass' ». Il compte comme VERT, pas comme échec. Aucun travail nécessaire. |
 | `R10_DEFECTS.md` §C13e | « Reste 307 séances sous 10 min d'échauffement, toutes en trail… leur récupération n'est PAS chiffrée (7 % des blocs) » | **Corrigé** par le lot « la récupération devient une donnée » : sur 344 blocs à répétitions multiples mesurés (6 sports), **0 récupération non chiffrée**, et `F4` mesure **0 violation** du plancher de 10 min. |
 
+```verify
+id: §4-D10-9
+quoi: le garde-fou de collision de noms existe — l'entrée D10-9 est bien périmée
+attendu: /checkCollisions/
+cmd: grep -n checkCollisions scripts/buildApp.mjs
+```
+
+```verify
+id: §4-R15.5
+quoi: le harnais v6 distingue un xfail QUI PASSE d'une régression
+attendu: /CORRIGÉ : passer expect à 'pass'|expect === "fail"/
+cmd: grep -n "CORRIGÉ : passer expect" audit_v6.mjs
+```
+
+
 *(Ces deux corrections de registre ne sont pas appliquées dans ce fichier : le registre est le
 document historique du dépôt, il se corrige dans son propre commit avec la mesure à l'appui.)*
 
@@ -262,13 +310,15 @@ document historique du dépôt, il se corrige dans son propre commit avec la mes
 ## Comment re-vérifier ce fichier
 
 ```bash
-npm run audit:v6                                   # → 55 vert · 3 dette · 0 régression (§2)
-npm run audit:v7                                   # → vert à N=150
-ENGINE=$PWD/endurabuild/js/engine.js \
-  node audit_v7.cjs duathlon 253                   # → D-DISC = 2  (O-1)
-grep -n easyFallbackSlot src/sports/*/index.ts     # → trail: facileR, run: facile2  (O-3)
-grep -n checkCollisions scripts/buildApp.mjs       # → existe  (§4, D10-9 périmée)
+npm run registry:check     # exécute TOUS les blocs ```verify``` de ce fichier (R15.9)
+npm run registry:check --strict   # + échoue si une entrée ne reproduit plus
 ```
+
+Depuis R15.9, ce fichier **s'exécute**. Chaque entrée mesurable porte un bloc ```` ```verify ````
+(`id`, `quoi`, `attendu` = motif attendu dans la sortie, `cmd`). `npm run registry:check` les
+enchaîne et range chaque entrée en **reproduit** / **ne reproduit plus (→ §4)** / **commande
+cassée**. Le §4 de ce document a été rempli à la main jusqu'ici, en compilant le fichier — il
+devient un résultat automatique au lieu d'un heureux accident.
 
 **Rappel de méthode, qui vaut pour toute reprise de cette liste :** mesurer d'abord, corriger
 ensuite, re-mesurer, garder le vert. Un défaut dont on ne sait pas dire le chiffre AVANT n'est pas

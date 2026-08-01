@@ -1243,3 +1243,49 @@ forme de gardes :
 
 Cinq sports sur sept ne déclarent pas de `weekSchema` (ils prennent celui du générateur) : la
 méthode ne peut rien en dire, et le script l'affiche au lieu de rendre un zéro.
+
+
+## R15.9 — le registre des bugs s'exécute (`npm run registry:check`)
+
+`BUGS_OUVERTS.md` dit de lui-même qu'« une dette qu'on ne peut pas re-mesurer en une ligne
+n'est pas une dette, c'est un souvenir ». R15.9 applique la phrase au document.
+
+Chaque entrée mesurable porte un bloc ` ```verify ` — `id`, `quoi`, `attendu` (motif attendu
+dans la sortie), `cmd`. Le script les exécute et range chacune en trois colonnes :
+
+| colonne | signification |
+|---|---|
+| **reproduit** | la mesure retrouve ce que l'entrée décrit — l'entrée est à jour |
+| **ne reproduit plus** | la commande tourne, le motif a disparu : l'entrée est devenue fausse et doit passer au §4. **C'est un résultat, pas un échec** — le §4 était rempli à la main jusqu'ici, en compilant le fichier |
+| **commande cassée** | la commande ne produit plus rien : le registre pointe dans le vide |
+
+Une entrée FERMÉE écrit le motif de sa CORRECTION : elle « reproduit » son état corrigé. Sortie
+en code 1 sur une commande cassée seulement ; `--strict` fait aussi échouer sur une entrée
+périmée.
+
+**Le vérificateur a été vu rouge avant d'être publié.** Un bloc au motif introuvable et un bloc
+à la commande inexistante ont été ajoutés temporairement : les trois colonnes se remplissent
+correctement et le code de sortie passe à 1. Un contrôleur qui n'a jamais échoué ne prouve rien
+— c'est la même leçon que R16.10-a, où un gate sortait en 1 depuis des semaines sans que
+personne ne le lise.
+
+**Hors CI, délibérément** : les commandes du registre rejouent `audit:v6`, `audit:v7` et
+`golden:verify`, qui sont déjà des gates. L'intérêt de `registry:check` est de re-vérifier le
+document quand on le REPREND, pas d'ajouter dix minutes à chaque push.
+
+## R15.5 — l'`expect:'fail'` qui passe : vérifié, aucun travail nécessaire
+
+Le handoff craignait que le jour où quelqu'un corrige `F2`, le test rougisse et la correction
+soit annulée comme une régression. Vérifié en forçant le seuil de `F2` de 45 % à 40 % :
+`audit_v6.mjs` affiche `★ F2 … ← CORRIGÉ : passer expect à 'pass'`, compte le test comme VERT,
+annonce **0 régression** et sort en code 0. Le mécanisme est correct. Les cinq autres bancs
+(`r13`, `r14`, `r14.1`, `r15`, `v7`) n'ont pas de mécanisme `expect` du tout : chez eux, tout
+doit passer. L'entrée est classée §4 (« devenue fausse ») avec sa vérification.
+
+## R15.6 — swimrun : réglé par R16.10, pas par un job séparé
+
+Le handoff proposait deux sorties : un job CI séparé non bloquant, ou une branche dédiée. La
+troisième a été prise — **traiter la dette et réintégrer le module** (R16.10). Les budgets ne
+surveillent plus du code non exécuté : le code est expédié, les checks tournent dans l'audit
+principal, et les budgets sont à la taille du résidu réel. Le « pire des deux mondes » que le
+handoff décrivait n'existe plus.

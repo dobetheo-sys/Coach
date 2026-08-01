@@ -63,6 +63,11 @@ dépôt — historique git si besoin.
   R14.1 : le gain s'indexe sur la **distance au potentiel** (références mesurées), fourchette
   asymétrique, vélo en deux lignes, levier poids sous gardes. Les critères que R14.1 périme
   restent AFFICHÉS dans `bench_r14.cjs` avec leur raison (statut `----`), jamais supprimés.
+- `npm run registry:check` — **le registre s'exécute** (R15.9) : chaque entrée mesurable de
+  `BUGS_OUVERTS.md` porte un bloc ` ```verify ` (`id`, `quoi`, `attendu`, `cmd`), le script les
+  enchaîne et range chacune en **reproduit** / **ne reproduit plus (→ §4)** / **commande
+  cassée**. Volontairement HORS CI : il rejoue des gates qui y tournent déjà. À lancer quand on
+  reprend le registre — c'est ce qui empêche une dette de devenir un souvenir.
 - `npm run measure:fallback [sport|tous]` — **mesure R15.3** : à quelle fréquence le créneau
   facile de repli (`easyFallbackSlot`) se déclenche. Détection POST-HOC (plan émis vs
   `weekSchema` déclaré), zéro instrumentation dans `src/`. Vérifie sa propre hypothèse
