@@ -263,6 +263,23 @@ if (proj.applicable) {
   ok(/Pas de chrono projeté/.test(proj.txt), "quand on refuse de projeter, le MOTIF est affiché — le silence n'est pas une information");
 }
 
+// ---- R14.1. La question de structure existe, et le levier poids reste FERMÉ par défaut ----
+// P9 est la frontière la plus sensible du module : le champ « poids cible » ne doit pas
+// exister tant que l'athlète n'a pas ouvert cette porte lui-même.
+const r141 = await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  const { setTab } = await import("./js/ui/tabs.js");
+  S.answers.weight_lever = "non"; ebSave();
+  setTab("profile");
+  const ferme = { struct: !!document.getElementById("pfTrainingStructure"), cible: !!document.getElementById("pfWeightTarget") };
+  S.answers.weight_lever = "oui"; ebSave();
+  setTab("profile");
+  return { ferme, ouvert: !!document.getElementById("pfWeightTarget") };
+});
+ok(r141.ferme.struct, "la question « tes 12 derniers mois » est posée au Profil (marge de progression)");
+ok(!r141.ferme.cible, "sans demande explicite, AUCUN champ de poids cible n'est proposé (P9)");
+ok(r141.ouvert, "levier demandé : le champ de poids cible apparaît, et seulement alors");
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + ")");
 if (errs.length) info(errs.slice(0, 4).join(" | "));
 

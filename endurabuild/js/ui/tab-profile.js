@@ -470,6 +470,22 @@ export function renderTabProfile(plan) {
   const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
   html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Profil du parcours visé</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
     + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
+  // R14.1 §1-c — LA QUESTION QUI REMPLACE L'ANCIENNETÉ dans le calcul de la marge de
+  // progression. Elle est ici (Profil) et pas dans le questionnaire d'entrée, pour ne pas
+  // alourdir le tunnel. Ce qu'elle mesure : le STIMULUS DE LA STRUCTURE. Quelqu'un qui court
+  // depuis quinze ans au feeling a encore devant lui tout ce qu'un plan apporte ; quelqu'un
+  // qui suit un plan depuis trois ans en a déjà consommé la plus grande part.
+  const tsSel = (v, lab) => '<option value="' + v + '"' + ((a.training_structure || "") === v ? " selected" : "") + ">" + lab + "</option>";
+  html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Tes 12 derniers mois</span><select id="pfTrainingStructure" style="flex:1;min-width:0">'
+    + tsSel("", "Je préfère ne pas dire") + tsSel("feeling", "Au feeling, sans plan")
+    + tsSel("intermittent", "Un plan, par périodes") + tsSel("suivi", "Un plan structuré, suivi") + "</select></label>";
+  html += '<div class="load-sub" style="margin:2px 0 6px;color:#777">Sert à estimer ta marge de progression d’ici la course — pas à juger. Sans réponse, on reste prudent.</div>';
+  // R14.1 §5 — le poids cible n'apparaît QUE si l'athlète a demandé ce levier. Jamais proposé,
+  // jamais suggéré : c'est la frontière du manifeste, et elle ne bouge pas.
+  if (a.weight_lever === "oui") {
+    html += row("pfWeightTarget", "Poids cible (optionnel)", a.weight_target, "affiche une sensibilité, jamais un objectif");
+    html += '<div class="load-sub" style="margin:2px 0 6px;color:#777">Tu as demandé ce levier. L’app montre ce que la balance changerait sur tes chronos — elle ne propose ni rythme, ni alimentation : ces questions se traitent avec un professionnel de santé.</div>';
+  }
   html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Rappel quotidien</span><input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label>';
   html += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
     + '<div id="pfMsg" class="load-sub" style="margin-top:6px"></div></div>';
@@ -771,6 +787,16 @@ export function renderTabProfile(plan) {
     const cp = ($("pfCourseProfile") || {}).value;
     if (cp !== undefined && cp !== String(a.course_profile || "")) {
       S.answers.course_profile = cp; changed++; // n'affecte que la prédiction, pas le plan
+    }
+    // R14.1 — les deux entrées de la PROJECTION : elles ne régénèrent pas le plan (elles ne
+    // changent pas une seule séance), elles changent ce qu'on annonce pour le jour J.
+    const ts = ($("pfTrainingStructure") || {}).value;
+    if (ts !== undefined && ts !== String(a.training_structure || "")) {
+      S.answers.training_structure = ts; changed++;
+    }
+    const wt = g("pfWeightTarget");
+    if (wt !== null && wt !== String(a.weight_target || "")) {
+      S.answers.weight_target = wt; changed++;
     }
     if (!changed) { const m = $("pfMsg"); if (m) m.textContent = "Aucun changement détecté."; return; }
     if (planChanged) invalidatePlan(); // le plan sera régénéré UNE fois, ici — pas au changement d'onglet

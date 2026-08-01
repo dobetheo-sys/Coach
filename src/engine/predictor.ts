@@ -11,7 +11,8 @@
 import type { Decision } from "./types.ts";
 import { sportModule, type PredictKit } from "../sports/registry.ts";
 import { T5_HIKE_SHARE, TRAIL_TECHNICITY, type TrailObjective } from "./trailModel.ts";
-import { projectForm, type ProjectionInput } from "./projection.ts";
+import { projectForm, GAIN_BAND_LO, GAIN_BAND_HI,
+  type ProjectionInput, type WeightLever } from "./projection.ts";
 
 export interface PredictionItem {
   leg: string; // "Course", "Natation", "Vélo", "CAP (tri)"…
@@ -28,9 +29,11 @@ export interface ProjectedPrediction {
   horizonWeeks: number;
   adherence: number;
   gainPct: { ftp: number; thrPace: number; css: number; vam: number };
+  /** R14.1 §2 — fourchette ASYMÉTRIQUE sur le gain ; `spreadPct` (symétrique) a disparu. */
+  gainBand: { ftp: [number, number]; thrPace: [number, number]; css: [number, number]; vam: [number, number] };
   gainSource: "prior" | "mesure" | "mixte";
-  spreadPct: number;
   confidence: "faible" | "moyenne" | "bonne";
+  weightLever: WeightLever | null;
   raceDate?: string;
   refs: { ftp: number; thrPace: number; css: number };
   items: PredictionItem[];
@@ -256,17 +259,30 @@ export function predictRace(
       + "le même marathon à 4 h et à 14 h de course par semaine — Vickers & Vertosick (2016, N=2303) "
       + "montrent que le kilométrage hebdomadaire est un prédicteur majeur.");
 
-  const render = (args: RenderArgs): { items: PredictionItem[]; advice: string[]; decisions: Decision[] } => {
+  const render = (args: RenderArgs): { items: PredictionItem[]; advice: string[]; decisions: Decision[]; mid: Map<number, number> } => {
     const items: PredictionItem[] = [];
     const advice: string[] = [];
     const dec: Decision[] = [];
     const Dloc = (id: string, what: string, val: string, why: string) => dec.push({ id, what, val, why });
     const spread = args.spread;
     const refs = args.refs;
-    const range = (sec: number) => fmtT(sec * (1 + shift - spread)) + "–" + fmtT(sec * (1 + shift + spread));
-    const runRange = (sec: number) => prof
-      ? fmtT(sec * prof.lo * (1 + shift - spread)) + "–" + fmtT(sec * prof.hi * (1 + shift + spread))
-      : range(sec);
+    // R14.1 — LE MILIEU EXACT DE CHAQUE ITEM DE TEMPS, capté au vol.
+    // La fourchette projetée se construit à partir du milieu de la fourchette ACTUELLE ; le
+    // relire dans la chaîne formatée serait fragile. `range`/`runRange` sont appelés juste
+    // avant le `items.push()` de leur item, donc `items.length` EST son futur index.
+    const mid = new Map<number, number>();
+    const note = (lo: number, hi: number) => { mid.set(items.length, (lo + hi) / 2); };
+    const range = (sec: number) => {
+      const lo = sec * (1 + shift - spread), hi = sec * (1 + shift + spread);
+      note(lo, hi);
+      return fmtT(lo) + "–" + fmtT(hi);
+    };
+    const runRange = (sec: number) => {
+      if (!prof) return range(sec);
+      const lo = sec * prof.lo * (1 + shift - spread), hi = sec * prof.hi * (1 + shift + spread);
+      note(lo, hi);
+      return fmtT(lo) + "–" + fmtT(hi);
+    };
     const riegelSec = (paceSecPerKm: number, distKm: number) => riegelSecWith(expo, paceSecPerKm, distKm);
 
   // ---- R7 TRAIL : Riegel est INAPPLICABLE (un km de trail n'est pas un km de route).
@@ -291,7 +307,7 @@ export function predictRace(
     advice.push("Répartition conseillée : premier tiers à " + one(kmEffH * 0.92) + " km-effort/h (volontairement en dessous — tu dois te sentir « trop tranquille »), deuxième tiers à " + one(kmEffH) + ", dernier tiers selon ce qu'il reste. Partir 5 % trop vite coûte 20 % sur la fin.");
     if (obj.cutoffH && obj.raceMinHi > obj.cutoffH * 60) advice.unshift("⏱ Barrière horaire à " + obj.cutoffH + "h : notre estimation haute (" + fmtHM(obj.raceMinHi) + ") la dépasse. Vise le bas de la fourchette, contrôle ton départ et limite le temps passé aux ravitaillements.");
     Dloc("PRED-trail", "Méthode trail", "temps à plat + temps vertical (VAM)", "Riegel ne s'applique pas au trail : on additionne le temps horizontal et le temps d'ascension, puis on pénalise selon la technicité (" + tech.label + ") et la nuit");
-    return { items, advice, decisions: dec };
+    return { items, advice, decisions: dec, mid };
   }
 
   // R10 phase 1 — DISPATCH : chaque sport porte SA méthode de prédiction dans son module
@@ -305,7 +321,7 @@ export function predictRace(
     advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }
 
-    return { items, advice, decisions: dec };
+    return { items, advice, decisions: dec, mid };
   };
 
   // ---- FORME ACTUELLE — la vérité mesurée, l'ancre. Elle ne bouge pas (R14, non-régression).
@@ -317,7 +333,7 @@ export function predictRace(
     items: now.items,
     advice: now.advice,
     decisions,
-    projected: buildProjection(sport, refs, opts, now.items, render),
+    projected: buildProjection(sport, refs, opts, now, render),
   };
 }
 
@@ -332,16 +348,17 @@ function buildProjection(
   sport: string,
   refs: { ftp: number; thrPace: number; css: number },
   opts: PredictOpts,
-  itemsNow: PredictionItem[],
-  render: (a: RenderArgs) => { items: PredictionItem[]; advice: string[]; decisions: Decision[] },
+  now: { items: PredictionItem[]; mid: Map<number, number> },
+  render: (a: RenderArgs) => { items: PredictionItem[]; advice: string[]; decisions: Decision[]; mid: Map<number, number> },
 ): ProjectedPrediction | null {
   const input = opts.projection;
   if (!input) return null;
+  const itemsNow = now.items;
 
   const p = projectForm(input);
   const vide = { applicable: false, horizonWeeks: p.horizonWeeks, adherence: p.adherence, gainPct: p.gainPct,
-    gainSource: p.gainSource, spreadPct: p.spreadPct, confidence: p.confidence, raceDate: input.raceDate,
-    refs, items: [] as PredictionItem[], decisions: p.decisions };
+    gainBand: p.gainBand, gainSource: p.gainSource, confidence: p.confidence, weightLever: p.weightLever,
+    raceDate: input.raceDate, refs, items: [] as PredictionItem[], decisions: p.decisions };
 
   // P8 — AUCUNE PROJECTION SANS MATIÈRE. Sans référence mesurée, la « forme actuelle » n'a
   // déjà rien à dire ; projeter une valeur inventée serait construire un chrono sur du vent.
@@ -362,43 +379,71 @@ function buildProjection(
     css: refs.css > 0 ? refs.css / (1 + p.gainPct.css) : 0,
   };
   const trailProj = opts.projectTrail ? opts.projectTrail(p.gainPct.vam, p.gainPct.thrPace) : opts.trail;
-  const fut = render({ refs: projRefs, spread: p.spreadPct, trail: trailProj });
+  // Rejeu au gain de RÉFÉRENCE, sans fourchette : on ne veut de ce passage que le déplacement
+  // du milieu. La fourchette, elle, est construite ci-dessous — et elle est asymétrique.
+  const fut = render({ refs: projRefs, spread: 0, trail: trailProj });
 
-  // P6 — LE PACING NE SE PROJETTE JAMAIS. C'est la règle de sécurité du chapitre : une cible
-  // de puissance projetée (IF 0,73 → 0,78) fait partir trop vite, et le coût se paie au
-  // marathon — voire à l'abandon. Le TEMPS se projette, l'INTENSITÉ s'ancre sur la dernière
-  // mesure réelle. Tout item qui n'est pas un temps est donc repris À L'IDENTIQUE.
   let ancres = 0;
-  const items = fut.items.map((it, i) => {
+  const items: PredictionItem[] = [];
+  fut.items.forEach((it, i) => {
     const ref = itemsNow[i] && itemsNow[i].leg === it.leg ? itemsNow[i] : itemsNow.find((x) => x.leg === it.leg);
-    if (EST_UN_TEMPS.test(it.value) || !ref) return it;
+    const mNow = now.mid.get(i), mFut = fut.mid.get(i);
+
+    // ---- Item de TEMPS : fourchette ASYMÉTRIQUE autour de la forme d'aujourd'hui (R14.1 §2)
+    if (mNow != null && mFut != null && mNow > 0) {
+      // Le gain en TEMPS, tel que le prédicteur du sport le produit réellement (Riegel, facteur
+      // CSS, fatigue post-vélo…) : on ne le re-dérive pas d'une seconde formule.
+      const gTime = Math.max(0, 1 - mFut / mNow);
+      const loT = mNow * (1 - Math.min(0.95, GAIN_BAND_HI * gTime)); // le plus rapide plausible
+      const hiT = mNow * (1 - GAIN_BAND_LO * gTime);                 // « presque rien gagné »
+      items.push({ leg: it.leg, value: fmtT(loT) + "–" + fmtT(hiT),
+        why: it.why + " · au pire, ta forme d'aujourd'hui : un plan suivi ne rend pas plus lent, il "
+          + "peut seulement rapporter moins que prévu (sur 483 sujets au même programme, 7 % n'ont "
+          + "presque rien gagné et 8 % énormément — HERITAGE)." });
+      return;
+    }
+
+    // ---- Item de PACING : P6, jamais projeté. Mais on cesse de le faire passer pour une
+    // projection : la cible ancrée et la référence projetée deviennent DEUX lignes (R14.1 §3).
+    // Sans ça, la moitié du temps de course d'un 70.3 est invisible dans la projection, et
+    // l'athlète en conclut — à raison — que l'outil ne prévoit aucun progrès.
+    if (!ref) { items.push(it); return; }
     ancres++;
-    return { leg: ref.leg, value: ref.value,
-      why: ref.why + " · cible ANCRÉE sur ta référence mesurée d'aujourd'hui — elle bougera à ton "
-        + "prochain test, jamais sur une projection : partir à l'intensité qu'on espère avoir se paie "
-        + "toujours dans le dernier tiers de la course." };
+    items.push({ leg: ref.leg + " — cible jour J", value: ref.value,
+      why: ref.why + " · ANCRÉE sur ta référence mesurée d'aujourd'hui : elle ne bougera qu'à ton "
+        + "prochain test. Partir à l'intensité qu'on espère avoir se paie toujours dans le dernier "
+        + "tiers de la course." });
+    const w = /^\s*(\d+)\s*[–-]\s*(\d+)\s*W\s*$/.exec(ref.value);
+    if (w && refs.ftp > 0) {
+      const [lo, hi] = p.gainBand.ftp;
+      const ftpLo = Math.round(refs.ftp * (1 + lo)), ftpHi = Math.round(refs.ftp * (1 + hi));
+      const cibLo = Math.round(+w[1] * (1 + lo)), cibHi = Math.round(+w[2] * (1 + hi));
+      items.push({ leg: ref.leg + " — FTP projetée", value: ftpLo + "–" + ftpHi + "W",
+        why: "À ce niveau, la cible du jour J deviendrait " + cibLo + "–" + cibHi + "W. Elle ne se "
+          + "débloque pas toute seule : refais un test de FTP et le plan s'y recalera. C'est la moitié "
+          + "du temps de course — la voir progresser est le vrai retour de ces semaines." });
+    }
   });
   if (ancres > 0)
     p.decisions.push({ id: "P6", what: "Intensités non projetées", val: ancres + " cible(s) ancrée(s)",
       why: "Le temps se projette, l'intensité s'ancre. Une cible de puissance ou d'allure calculée sur "
         + "la forme qu'on ESPÈRE avoir fait partir trop vite le jour J ; celle-ci reste calée sur ta "
-        + "dernière mesure réelle." });
+        + "dernière mesure réelle, et la référence projetée est affichée à côté, séparément." });
 
   // Un sport dont TOUS les items sont des cibles d'intensité (le vélo : on prédit des watts,
-  // jamais un chrono qui dépend du parcours) n'a rien à projeter — et le dire vaut mieux que
-  // d'afficher une projection identique à la forme actuelle sans expliquer pourquoi.
-  const aUnTemps = items.some((it) => EST_UN_TEMPS.test(it.value));
-  if (!aUnTemps) {
+  // jamais un chrono qui dépend du parcours) n'a pas de chrono à projeter — et le dire vaut
+  // mieux que d'afficher une projection sans expliquer pourquoi elle ne bouge pas.
+  if (!items.some((it) => EST_UN_TEMPS.test(it.value))) {
     p.decisions.push({ id: "P6-sans-chrono", what: "Rien à projeter", val: "ce sport prédit des cibles, pas un temps",
       why: "Ici nous prédisons des puissances cibles, pas un chrono (il dépend du parcours, du vent et "
-        + "du peloton) — et une cible ne se projette jamais (P6). Ta progression apparaît dans tes "
-        + "retests, pas dans une prédiction de course." });
-    return { ...vide, applicable: false, refs: projRefs, decisions: p.decisions };
+        + "du peloton) — et une cible ne se projette jamais (P6). Ta progression apparaît dans ta FTP "
+        + "projetée et dans tes retests, pas dans une prédiction de course." });
+    return { ...vide, applicable: false, refs: projRefs, items, decisions: p.decisions };
   }
 
   return {
     applicable: true, horizonWeeks: p.horizonWeeks, adherence: p.adherence, gainPct: p.gainPct,
-    gainSource: p.gainSource, spreadPct: p.spreadPct, confidence: p.confidence, raceDate: input.raceDate,
-    refs: projRefs, items, decisions: p.decisions,
+    gainBand: p.gainBand, gainSource: p.gainSource, confidence: p.confidence, weightLever: p.weightLever,
+    raceDate: input.raceDate, refs: projRefs, items, decisions: p.decisions,
   };
 }

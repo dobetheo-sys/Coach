@@ -153,6 +153,16 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   // la VAM. Bornes larges à dessein : c'est un souvenir, pas un protocole.
   climb_dplus_m: { ...numF("le D+ de ta dernière grosse montée", 50, 3000, "m", ["trail"]), nature: "vecue" },
   climb_min: { ...numF("la durée de ta dernière grosse montée", 5, 300, "min", ["trail"]), nature: "vecue" },
+  // ---- R14.1 — entrées de la PROJECTION (elles n'agissent pas sur le plan) ----
+  // Ces deux clés ne modifient pas la génération : elles pilotent la prédiction PROJETÉE.
+  // Elles vivent quand même dans le schéma — c'est la leçon de R14.3-a, où `course_profile`,
+  // resté hors schéma, avait fini par diverger du domaine de `terrain` en silence.
+  // `training_structure` mesure le STIMULUS DE LA STRUCTURE, pas les années de pratique :
+  // quelqu'un qui s'entraîne au feeling depuis dix ans a encore tout le bénéfice d'un plan.
+  training_structure: { ...enumF("la structure de ton entraînement récent", ["feeling", "intermittent", "suivi"]), nature: "vecue" },
+  // Poids cible : JAMAIS proposé ni suggéré par l'outil (P9). Il n'existe que si l'athlète a
+  // demandé le levier ET saisi la valeur lui-même, et il ne produit qu'une SENSIBILITÉ.
+  weight_target: { ...numF("ton poids cible", 35, 200, "kg"), nature: "vecue" },
   // ---- Terrain / milieu ----
   terrain: { ...enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"]), nature: "vecue" },
   milieu: { ...enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim"]), nature: "vecue" },

@@ -392,6 +392,21 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
       taperConform: taperIsConform(p as never),
       refAgeWeeks: refAgeWeeks(tests, today),
       raceDate: String(answers.race_date || "") || undefined,
+      // R14.1 P2bis — la MARGE se lit sur les références mesurées : elles montent donc jusqu'au
+      // projecteur, avec le poids (sans lui, pas de W/kg) et les décalages de bandes.
+      refs: finalRefs,
+      weightKg: parseFloat(String(answers.weight || "")) || null,
+      heightCm: parseFloat(String(answers.height || "")) || null,
+      sex: typeof answers.sex === "string" ? answers.sex : null,
+      age: parseInt(String(answers.age || "")) || null,
+      trainingStructure: String(answers.training_structure || "") || null,
+      // R14.1 P10 — dose-réponse : ce que le plan PRESCRIT face à ce que l'athlète fait déjà.
+      prescribedMeanH: prescribedMeanHours(p),
+      volRecentH: parseFloat(String(answers.vol_recent || "")) || null,
+      // R14.1 P9 — le levier poids n'existe que si l'athlète l'a demandé ET a saisi sa cible.
+      weightLeverAsked: answers.weight_lever === "oui",
+      weightTargetKg: parseFloat(String(answers.weight_target || "")) || null,
+      medicalFlag: answers.med_pain === "oui" || answers.med_dizzy === "oui" || answers.med_treat === "oui",
     },
     // R7 TRAIL — l'objectif rejoué avec une VAM et une allure à plat projetées : le prédicteur
     // ne sait pas reconstruire un `TrailObjective`, il vit dans `trailModel`.
@@ -404,6 +419,23 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
       }
       : undefined,
   });
+}
+
+/**
+ * R14.1 P10 — volume hebdomadaire moyen PRESCRIT sur les phases qui construisent (dev, spéc,
+ * pic). L'affûtage et la base sont exclus à dessein : le premier réduit par définition, le
+ * second n'est pas encore la dose du plan. C'est le rapport de ce chiffre au volume récent qui
+ * dit si le plan MONTE la charge ou la maintient — et un plan de maintien ne fait pas
+ * progresser autant, quoi qu'on affiche.
+ */
+function prescribedMeanHours(plan: V1Plan): number | null {
+  const w = plan.weeks.filter((x) => !x.isRecup && ["dev", "spec", "peak"].includes(String(x.phase && x.phase.id)));
+  if (!w.length) return null;
+  let min = 0;
+  for (const wk of w)
+    for (const d of wk.days)
+      for (const s of d.sessions) if (s.d !== "rs" && !s.race) min += s.min || 0;
+  return min > 0 ? min / 60 / w.length : null;
 }
 
 /** Secondes/km → « 4:50 » : le parseur d'allure est unique (E1/E2), son inverse doit l'être aussi. */

@@ -55,11 +55,14 @@ dépôt — historique git si besoin.
   PROMESSES, pas à l'auditeur interne — c'est ainsi qu'il a trouvé le contournement du drapeau
   médical et les doses de 90 min de seuil que `auditPlan()` notait 100/100. **11e gate CI**,
   budget par check dans `scripts/runAuditV7.mjs` (0 = garde-fou définitif).
-- `npm run audit:r13` / `audit:r14` — **bancs des handoffs externes** (`bench_r13.cjs`,
-  `bench_r14.cjs`), 17e et 18e gates CI. R13 : âge, CSS print, nage du tri mono-séance,
-  semaine de course, épaule, plafonds de phases. R14 : la **prédiction projetée jour J**
-  (contrat `projected`, adhérence glissante, gain saturant, pacing jamais projeté) + les
-  non-régressions qui verrouillent la prédiction « forme actuelle ».
+- `npm run audit:r13` / `audit:r14` / `audit:r14.1` — **bancs des handoffs externes**
+  (`bench_r13.cjs`, `bench_r14.cjs`, `bench_r14_1.cjs`), 17e à 19e gates CI. R13 : âge, CSS
+  print, nage du tri mono-séance, semaine de course, épaule, plafonds de phases. R14 : la
+  **prédiction projetée jour J** (contrat `projected`, adhérence glissante, gain saturant,
+  pacing jamais projeté) + les non-régressions qui verrouillent la « forme actuelle ».
+  R14.1 : le gain s'indexe sur la **distance au potentiel** (références mesurées), fourchette
+  asymétrique, vélo en deux lignes, levier poids sous gardes. Les critères que R14.1 périme
+  restent AFFICHÉS dans `bench_r14.cjs` avec leur raison (statut `----`), jamais supprimés.
 - `npm run golden:capture` / `golden:verify` — **golden master** (spec R10) : photographie
   758 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
   blessures/âges/terrain/volumes + **passe « course datée »** : 6 sports × les 7 jours de
@@ -368,3 +371,29 @@ Débusqué en chemin : le banc rendait deux critères **insatisfiables** (son é
 d'adhérence marquait 6/6 séances à tous les taux — instrument corrigé, ID et assertions gardés),
 et le golden regardait P5 au seul point où il ne bouge pas (`vol_max: 10` = l'ancrage 1,06) —
 passe « volume et extrapolation » ajoutée, **756 → 758**. **18 gates verts, E2E 8/8, golden 758.**
+
+**R14.1 livré** (addendum correctif, voir R10_DEFECTS.md « R14.1 » — banc `npm run audit:r14.1`,
+**19e gate CI**) : **le plafond de gain s'indexait sur l'ancienneté, pas sur la marge**. Mesuré sur
+un écran de production (70.3 à 43 semaines, FTP 230 W pour 85 kg = 2,71 W/kg) : +4,6 % de CAP,
++4,5 % de nage, **0 % de vélo** — la moitié du temps de course d'un 70.3, immobile. Le code
+appliquait fidèlement la table R14 ; c'est la TABLE qui était fausse, parce qu'elle lisait
+`history = ancien` comme « proche du plafond physiologique ». 2,71 W/kg est en bas de la bande
+« fair » de Coggan : la marge était grande, la table disait l'inverse. Troisième paiement de la
+leçon R12 — un adjectif auto-déclaré ne pilote aucun chiffre, et `history` en est un.
+**P2bis** : `G∞ = G_plafond × h(marge MESURÉE) × k_structure × f_volume`, `h` interpolé sur des
+bandes (vélo = profil Coggan publié ; course et nage = heuristiques assumées, écrites comme telles),
+décalées par sexe et âge — on décale LA RÉFÉRENCE, jamais la marge de l'athlète. `k_structure`
+mesure le stimulus de la STRUCTURE (nouvelle question Profil « tes 12 derniers mois ») et non les
+années ; `history` n'en est plus que le repli. **P7bis** : la fourchette porte sur le GAIN et devient
+ASYMÉTRIQUE — borne haute = ta forme d'aujourd'hui, parce que le pire cas d'un plan suivi n'est pas
+de régresser mais de ne presque rien gagner (HERITAGE) ; `gainBand` remplace `spreadPct`. **P6bis** :
+le vélo affiche DEUX lignes (« cible jour J » ancrée + « FTP projetée » 234–265 W) — P6 reste la
+règle de sécurité, on cesse seulement de la faire passer pour une projection. **P10** : facteur
+volume (prescrit ÷ récent, borné [0,75 ; 1,15] — le plafond est délibéré, le moteur ne récompense
+pas la surcharge). **P9** : levier poids uniquement si demandé ET cible saisie, en SENSIBILITÉ,
+sans calendrier ni apport, neutralisé en silence sur IMC cible < 18,5 / mineur / drapeau médical /
+perte > 0,5 kg/sem. Confiance « faible » tant qu'aucune semaine n'est écoulée.
+Débusqué au passage : le §6 du handoff oubliait `R14.4` dans sa liste de critères périmés — ses
+plafonds SONT la table déclarée fausse, et ils sont arithmétiquement incompatibles avec le nouveau
+`R14.1-B` (50 % d'écart exigé contre 45 % autorisé). **19 gates verts, E2E 8/8 (55 assertions),
+golden 758 inchangé** — la projection ne touche aucune séance.

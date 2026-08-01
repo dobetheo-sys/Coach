@@ -975,3 +975,89 @@ un cran plus bas par omission. Les deux appelants passent désormais les mêmes 
 
 **18 gates verts (`audit:r14` en 18e), E2E 8/8 (52 assertions dans `smoke-improvements`, dont
 l'affichage des DEUX prédictions), golden 758.**
+
+## R14.1 — le plafond de gain s'indexait sur l'ancienneté, pas sur la marge (01/08/2026)
+
+Addendum correctif au handoff R14, arrivé avec son banc (`bench_r14_1.cjs`, **19e gate CI**) :
+**8 échecs sur 14**. Il remplace la table P2, la règle d'incertitude P7 et l'affichage vélo de
+P6 ; le reste de R14 (contrat `projected`, P1, P3, P4, P5, P8) est inchangé et validé.
+
+**Le constat, mesuré sur un écran de production.** 70.3 à 43 semaines, athlète réel :
+FTP 230 W pour 85 kg (**2,71 W/kg**), CSS 2'15/100 m, allure seuil 4:41/km. Le moteur projetait
++4,6 % sur la CAP, +4,5 % sur la nage, et **0 % sur le vélo** — qui fait pourtant la moitié du
+temps de course d'un 70.3.
+
+Le code appliquait fidèlement la ligne « avancé / longue date » de la table R14. **Le code était
+juste, la table était fausse** : elle indexait le plafond de gain sur `history`, et lisait
+`ancien` (pratique de longue date) comme « proche du plafond physiologique ». C'est une
+confusion — des années de pratique auto-encadrée ne donnent pas la trainabilité résiduelle d'un
+athlète structuré depuis dix ans. 2,71 W/kg est en bas de la bande « fair » de Coggan et un CSS
+à 2'15 est un profil limité par la technique : **la marge est grande, la table disait l'inverse.**
+
+C'est exactement la leçon R12 (« un adjectif auto-déclaré ne pilote plus aucun chiffre »), qui
+n'avait été appliquée qu'à `level` : `history` faisait passer la même erreur par la porte d'à
+côté. Troisième fois que ce dépôt paie la même leçon.
+
+**P2bis — la marge se lit sur ce qui est MESURÉ.**
+`G∞ = G_plafond(discipline) × h(marge) × k_structure × f_volume`, puis saturation et plafond
+absolu de 30 %. `h` s'interpole sur des bandes de référence — vélo d'après le profil de puissance
+de Coggan (publié), course et nage **heuristiques convergentes de praticiens, écrites comme
+telles** — décalées par le sexe (−0,45 W/kg, +10 % sur les allures) et par l'âge (−5 %/décennie
+après 35 ans, sur LA RÉFÉRENCE et jamais sur la marge de l'athlète). `G_plafond` : 0,25 vélo,
+0,22 nage (forte composante technique : la marge d'un nageur lent est dans le geste), 0,15 course
+(l'économie de course ne gagne que 2-4 %, Barnes & Kilding 2015).
+`k_structure` mesure le STIMULUS DE LA STRUCTURE et non les années — nouvelle question au Profil
+(« tes 12 derniers mois »), `history` ne sert plus qu'à son repli, et sans réponse la confiance
+ne peut pas monter à « bonne ».
+
+**P7bis — la fourchette devient asymétrique, et porte sur le gain.** La règle symétrique
+produisait une borne haute absurde (−42 s de natation sur 43 semaines) : l'élargissement de
+l'incertitude annulait le gain du côté pessimiste. HERITAGE dit précisément l'inverse — le pire
+cas d'un plan suivi n'est pas de régresser, c'est de ne presque rien gagner. **La borne haute est
+donc ta forme d'aujourd'hui**, et le texte le dit. `gainBand` remplace `spreadPct` dans le
+contrat ; le refus se déclenche désormais sur la LARGEUR de la fourchette (> 25 points).
+
+**P6bis — le vélo affiche deux lignes.** P6 (le pacing ne se projette jamais) reste la règle de
+sécurité ; ce qui change, c'est qu'on cesse de la faire passer pour une projection. « Vélo —
+cible jour J » (ancrée, identique) et « Vélo — FTP projetée » (234–265 W) sont deux entrées
+distinctes. Sans ça, la moitié du temps de course était invisible dans la projection, et
+l'athlète en concluait — à raison — que l'outil ne prévoit aucun progrès.
+
+**P10 — facteur volume.** Le plan lui-même n'entrait pas dans le modèle : deux athlètes à 6 h et
+14 h/semaine recevaient la même projection. `f_volume` = prescrit(dev+spéc+pic) ÷ volume récent,
+borné [0,75 ; 1,15]. **Le plafond est délibéré** : au-delà, le volume supplémentaire ne se
+convertit plus proportionnellement en performance et fait monter le risque de blessure — le
+moteur ne récompense pas la surcharge, et c'est la priorité n°2 du manifeste dans un endroit où
+on ne l'attendait pas.
+
+**P9 — le levier poids, sous gardes dures.** N'existe que si l'athlète l'a demandé ET a saisi sa
+cible lui-même. Présentation en SENSIBILITÉ (« à FTP identique, ton rapport passerait de X à Y »),
+jamais en objectif ; **ni calendrier, ni rythme de perte, ni apport** — la frontière nutrition du
+manifeste s'applique telle quelle. Gardes qui neutralisent le levier en silence : IMC cible
+< 18,5, perte impliquée > 0,5 kg/semaine, athlète mineur, drapeau médical actif.
+
+| l'écran de production | avant | après |
+|---|---|---|
+| Natation 1900 m | 45'18 → 43'16 (−4,5 %) | 43'57 → **39'34–44'39** |
+| CAP semi | 1h50 → 1h45 (−4,6 %) | 1h49 → **1h45–1h53** |
+| Vélo | 175–191 W → 175–191 W (**0 %**) | cible ancrée + **FTP projetée 234–265 W** |
+| Confiance sur un plan jamais commencé | « moyenne » | **« faible »** |
+
+### Le banc R14 gardait un critère que l'addendum périme sans le dire
+
+Le §6 du handoff liste `R14.2` et `R14.6-A/B` comme périmés. **`R14.4` l'est aussi, et il ne
+figure pas dans la liste.** Ses plafonds (intermédiaire ≤ 12 %, avancé ≤ 6 %) SONT la table que
+le §0 déclare fausse — ceux-là mêmes qui donnaient 5 % à 2,71 W/kg. Et il est arithmétiquement
+incompatible avec le nouveau `R14.1-B` :
+
+> à références identiques, exiger `avancé ≤ 6 %` et `intermédiaire ≤ 12 %` impose un écart
+> ancien/confirmé d'au moins **(0,12 − 0,06)/0,12 = 50 %**, quand `R14.1-B` le plafonne à **45 %**.
+
+Les satisfaire tous les deux exigerait que `level` — l'adjectif le plus auto-déclaré du
+questionnaire, et celui que R12 a précisément démis — pilote un facteur ~2 sur le gain. Les trois
+critères périmés restent **affichés avec leur raison** dans `bench_r14.cjs` (statut `----`, jamais
+supprimés) : un banc dont les tests disparaissent sans laisser de trace est un banc qu'on ne peut
+plus relire.
+
+**Effet sur les plans : nul.** `golden:verify` reste à 758 profils, 0 écart — la projection ne
+touche aucune séance. **19 gates verts, E2E 8/8 (55 assertions).**

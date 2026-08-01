@@ -22,6 +22,12 @@ function check(id, label, fn) {
   try { const r = fn(); R.push({ id, label, ok: !!r.ok, info: r.info || "" }); }
   catch (e) { R.push({ id, label, ok: false, info: "EXCEPTION: " + (e.human || e.message) }); }
 }
+/**
+ * Critère PÉRIMÉ par l'addendum R14.1 : l'identifiant reste visible avec la raison, mais il
+ * n'est plus évalué — il testerait un contrat qui n'existe plus. Ne jamais supprimer la ligne :
+ * un banc dont les tests disparaissent sans laisser de trace est un banc qu'on ne peut pas relire.
+ */
+function perime(id, label, pourquoi) { R.push({ id, label, perime: true, info: pourquoi }); }
 
 const BASE = {
   intent: "competition", level: "inter", history: "ancien", dispo: "quotidienne", shift_ok: "non",
@@ -87,7 +93,8 @@ function markDone(p, todayISO, weeksBack, rate) {
 check("R14.1-A", "predict() expose `projected` complet sur un plan long", () => {
   const pj = proj(ans({}));
   if (!pj) return { ok: false, info: "clé `projected` absente" };
-  const need = ["applicable", "horizonWeeks", "confidence", "spreadPct", "gainPct", "gainSource", "adherence", "refs", "items", "decisions"];
+  // R14.1 §2 — `spreadPct` (fourchette symétrique) est remplacé par `gainBand` (asymétrique).
+  const need = ["applicable", "horizonWeeks", "confidence", "gainBand", "gainPct", "gainSource", "adherence", "refs", "items", "decisions"];
   const miss = need.filter((k) => pj[k] === undefined);
   return { ok: miss.length === 0 && pj.applicable === true && (pj.items || []).length > 0, info: miss.length ? "champs manquants: " + miss.join(",") : "horizon=" + pj.horizonWeeks + " conf=" + pj.confidence };
 });
@@ -125,16 +132,14 @@ check("R14.3-B", "à J-10, le gain se réduit au bénéfice d'affûtage (≤ 2,5
 });
 
 /* ================= R14.4 — plafonds par niveau (P2) ================= */
-check("R14.4", "débutant > intermédiaire > avancé, et plafonds littérature respectés", () => {
-  const g = (o) => { const pj = proj(ans(Object.assign({ race_date: iso(52 * 7), format: "70.3" }, o))); return pj && pj.gainPct ? pj.gainPct.ftp : null; };
-  const deb = g({ level: "debutant", history: "reprise", intent: "finir" });
-  const int = g({ level: "inter", history: "confirme" });
-  const adv = g({ level: "avance", history: "ancien" });
-  if ([deb, int, adv].some((x) => x == null)) return { ok: false, info: "gainPct absent" };
-  const ordre = deb > int && int > adv;
-  const bornes = deb <= 0.30 && int <= 0.12 && adv <= 0.06;
-  return { ok: ordre && bornes, info: `déb=${(deb * 100).toFixed(1)}% inter=${(int * 100).toFixed(1)}% avancé=${(adv * 100).toFixed(1)}%` };
-});
+perime("R14.4", "débutant > intermédiaire > avancé, et plafonds littérature respectés",
+  "PÉRIMÉ par R14.1 §1 — ses plafonds (int ≤ 12 %, avancé ≤ 6 %) SONT la table que l'addendum "
+  + "déclare fausse : à 2,71 W/kg elle prédisait 5 % là où la marge réelle vaut ~13 %. Et il est "
+  + "arithmétiquement incompatible avec R14.1-B : à références identiques, ses plafonds imposent "
+  + "un écart ancien/confirmé d'au moins 50 %, quand R14.1-B le plafonne à 45 %. Les satisfaire "
+  + "tous les deux exigerait que `level` (adjectif auto-déclaré) pilote un facteur ~2 sur le gain — "
+  + "exactement ce que R12 lui a retiré. Remplacé par R14.1-A/B/C du banc R14.1. "
+  + "(Omission du §6 du handoff, qui ne listait que R14.2 et R14.6.)");
 
 /* ================= R14.5 — adhérence réelle (P1) ================= */
 check("R14.5-A", "adhérence 30 % → gain ≤ moitié du gain à 95 %", () => {
@@ -157,18 +162,13 @@ check("R14.5-B", "adhérence < 50 % : projection annulée ou avertie expliciteme
 });
 
 /* ================= R14.6 — incertitude (P7) ================= */
-check("R14.6-A", "fourchette projetée plus large que l'actuelle, et croissante avec l'horizon", () => {
-  const s = (rd) => { const pj = proj(ans({ race_date: rd, format: "70.3" })); return pj ? pj.spreadPct : null; };
-  const court = s("2026-12-20"), long = s("2027-07-30");
-  if (court == null || long == null) return { ok: false, info: "spreadPct absent" };
-  return { ok: court > 0.03 && long > court, info: `20sem=±${(court * 100).toFixed(1)}% · 52sem=±${(long * 100).toFixed(1)}%` };
-});
-check("R14.6-B", "au-delà de ±12 %, on n'affiche pas de temps projeté", () => {
-  const pj = proj(ans({ race_date: iso(150 * 7), format: "70.3", level: "debutant", history: "reprise" }));
-  if (!pj) return { ok: false, info: "pas de projection" };
-  const ok = pj.spreadPct <= 0.12 || pj.applicable === false;
-  return { ok, info: "spread=±" + (pj.spreadPct * 100).toFixed(1) + "% applicable=" + pj.applicable };
-});
+perime("R14.6-A", "fourchette symétrique plus large que l'actuelle",
+  "PÉRIMÉ par R14.1 §2 — `spreadPct` n'existe plus. La fourchette symétrique produisait une "
+  + "borne haute absurde (−42 s de natation en 43 semaines) : l'élargissement de l'incertitude "
+  + "annulait le gain du côté pessimiste. Remplacé par R14.1-D/E (`gainBand`).");
+perime("R14.6-B", "au-delà de ±12 %, on n'affiche pas de temps projeté",
+  "PÉRIMÉ par R14.1 §2 — le seuil de refus existe toujours mais porte sur la LARGEUR de la "
+  + "fourchette de gain (> 25 points), plus sur un spread symétrique. Couvert par R14.1-E.");
 
 /* ================= R14.7 — le journal de tests prime (P3) ================= */
 check("R14.7", "deux tests datés → taux MESURÉ utilisé et tracé", () => {
@@ -222,6 +222,11 @@ check("ANX-NR", "non-régression : la prédiction FORME ACTUELLE est inchangée"
 /* ---------------- rapport ---------------- */
 let fail = 0;
 console.log("\n== BANC R14 — prédiction projetée · moteur " + (E.version || "?") + " ==\n");
-for (const r of R) { if (!r.ok) fail++; console.log((r.ok ? "  PASS " : "✗ FAIL ") + r.id.padEnd(12) + r.label + (r.info ? "  — " + r.info : "")); }
-console.log("\n" + (fail ? fail + " échec(s)." : "Tout passe."));
+let skip = 0;
+for (const r of R) {
+  if (r.perime) { skip++; console.log("  ---- " + r.id.padEnd(12) + r.label + "\n       ↳ " + r.info); continue; }
+  if (!r.ok) fail++;
+  console.log((r.ok ? "  PASS " : "✗ FAIL ") + r.id.padEnd(12) + r.label + (r.info ? "  — " + r.info : ""));
+}
+console.log("\n" + (fail ? fail + " échec(s)." : "Tout passe.") + (skip ? "  (" + skip + " critère(s) périmé(s) par R14.1 — voir bench_r14_1.cjs)" : ""));
 process.exit(fail ? 1 : 0);

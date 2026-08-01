@@ -89,12 +89,16 @@ Les invariants sont marqués dans le code par leur identifiant. Ceux actuellemen
 | N2 | Le plan s'arrête le SOIR DU JOUR J : la dernière semaine est coupée à la date de course (1 à 7 jours), jamais un reliquat de repos après l'objectif ; sa cible de volume est proratisée à sa longueur réelle (`raceTailDays` dans `buildDays` + filet dans `planGenerator`, garde `I18`) |
 | R14.3-a | UN SEUL profil de parcours : `courseProfileOf()` (`course_profile` prime, `terrain` en repli) sert le jour J ET la carte Prédiction ; la table de relief couvre tout le domaine `terrain` du schéma et `assertTerrainCovered()` fait échouer `build:app` sur une valeur non classée |
 | P1 | L'adhérence du projecteur est une fenêtre glissante des 6 semaines ÉCOULÉES (`adherenceWindow`), jamais `pctLoad` (qui compte le futur) ; aucun ✓ dans le plan = **non jugeable**, pas 0 % |
-| P2 | Gain projeté plafonné et saturant : `G∞ × (1 − exp(−w/20))`, `G∞` = le plus BAS des plafonds suggérés par `level` et `history` (jamais un gain de débutant à un athlète expérimenté) |
+| P2bis | Gain projeté = `G_plafond(discipline) × h(marge MESURÉE) × k_structure × f_volume`, saturé par `1 − exp(−w/20)` et plafonné à 30 %/an. `h` s'interpole sur des bandes (vélo = profil Coggan ; course et nage = heuristiques assumées), décalées par sexe et âge — on décale LA RÉFÉRENCE, jamais la marge. R14 indexait sur `history` : 2,71 W/kg recevait le plafond « avancé » |
+| P2bis-c | `k_structure` mesure le STIMULUS DE LA STRUCTURE (question Profil « tes 12 derniers mois »), pas les années de pratique ; `history` n'en est plus que le repli, et sans réponse la confiance ne monte pas à « bonne » |
+| P7bis | La fourchette porte sur le GAIN et elle est ASYMÉTRIQUE : `[0,15 g ; 1,30 g]`, donc **borne haute = la forme d'aujourd'hui** (un plan suivi ne rend pas plus lent). `gainBand` remplace `spreadPct` ; refus si la largeur dépasse 25 points |
+| P6bis | Le vélo affiche DEUX lignes : « cible jour J » (ancrée, P6) et « FTP projetée ». Confondre les deux rendait invisible la moitié du temps de course d'un 70.3 |
+| P10 | `f_volume` = volume prescrit (dev+spéc+pic) ÷ volume récent, borné [0,75 ; 1,15]. Le plafond est délibéré : le moteur ne récompense pas la surcharge |
+| P9 | Levier poids UNIQUEMENT si demandé ET cible saisie par l'athlète ; sensibilité (W/kg, coût énergétique), jamais un objectif, jamais de rythme ni d'apport. Neutralisé en silence si IMC cible < 18,5, perte > 0,5 kg/sem, mineur, ou drapeau médical |
 | P3 | ≥ 2 tests datés espacés de ≥ 6 semaines → taux MESURÉ, rétréci vers le prior (`n/(n+2)`) et borné par P2 ; `gainSource` passe à `mesure`/`mixte` et la décision le dit |
 | P4 | Le bénéfice d'affûtage (+1,96 %, Bosquet 2007) ne s'ajoute que si l'affûtage est CONFORME sur le plan LIVRÉ : 2-3 semaines et −41 à −60 % vs pic (`taperIsConform`), jamais sur la seule présence d'une phase `taper` |
 | P5 | Exposant de Riegel piloté par le volume de course hebdomadaire (1,04 ≥12 h → 1,12 <5 h, interpolé) — **course sèche uniquement** : les legs course du tri/duathlon gardent 1,06, leurs facteurs de fatigue ayant été calibrés contre lui |
 | P6 | **Le pacing ne se projette JAMAIS** (règle de sécurité) : tout item qui n'est pas un TEMPS est repris à l'identique de la forme actuelle, avec la mention. Un sport qui ne prédit que des cibles n'a rien à projeter, et le dit |
-| P7 | `spreadPct = 0,03 + 0,05·(horizon/52) + 0,03·(âge du test/52) − 0,02·(adhérence − 0,5)`, borné [0,03 ; 0,12] ; au-delà de ±12 % brut → `applicable: false` avec le motif (repère : SEE de Rüst 2011 ≈ ±8 %) |
 | P8 | Aucune projection sans référence mesurée ; adhérence < 50 % → gain ramené au seul bénéfice d'affûtage, motif affiché, jamais de reproche |
 
 La liste n'est pas exhaustive (certains C1–C14 vivent seulement dans le code) : en cas de
@@ -1000,3 +1004,55 @@ Bouger l'exposant sous eux recalibrerait silencieusement une table validée et c
 fois la même difficulté. Les deux appelants de `predictRace` (bridge et `planGenerator` pour le
 texte du jour J) passent les mêmes entrées — sans quoi les deux écrans divergeraient à nouveau,
 ce que R14.3-a venait précisément de fermer.
+
+## R14.1 — l'addendum correctif : indexer sur la marge, pas sur l'ancienneté (01/08/2026)
+
+### Ce que R14 avait faux, et pourquoi c'était subtil
+
+R14 a livré le bon MÉCANISME (contrat `projected`, prédicteur rejoué, huit règles tracées) avec
+la mauvaise TABLE. Le plafond de gain venait de `history`, et `ancien` — « pratique de longue
+date » — était lu comme « proche du plafond physiologique ». Rien dans le code ne signalait
+l'erreur : il appliquait fidèlement une table qui ne décrivait pas ce qu'elle prétendait décrire.
+
+C'est le même défaut que R12 avait corrigé sur `level`, un cran plus loin. La règle générale du
+dépôt s'énonce maintenant sans exception : **aucune réponse auto-déclarée ne fixe un plafond
+physiologique — seule une mesure le fait.** `level` pilote le CONTENU des séances, `history`
+pilote les plafonds de VOLUME et le modificateur de structure ; ni l'un ni l'autre ne dit combien
+il reste à gagner.
+
+### La chaîne du gain, dans l'ordre
+
+```
+h          = marge lue sur la référence MESURÉE (W/kg, allure seuil, CSS)
+             bandes interpolées, décalées par sexe et âge — on décale LA RÉFÉRENCE
+G_plafond  = 0,25 vélo · 0,22 nage · 0,15 course   (ce qu'un débutant complet peut gagner)
+k_structure= 1,00 au feeling · 0,85 par périodes · 0,65 plan suivi   (stimulus de la structure)
+f_volume   = prescrit(dev+spéc+pic) ÷ volume récent, borné [0,75 ; 1,15]
+──────────────────────────────────────────────────────────────────────────────
+G∞         = G_plafond × h × k_structure × f_volume
+gain(w)    = G∞ × (1 − exp(−w/20))        puis × adhérence, + affûtage si conforme
+             puis PLAFOND ABSOLU de 30 %/discipline/an
+gainBand   = [0,15 × gain ; 1,30 × gain]  ← asymétrique : la borne haute est la forme actuelle
+```
+
+### Trois principes que ce lot ajoute au dépôt
+
+1. **Une fourchette de progrès est asymétrique.** Le pire cas d'un plan suivi n'est pas de
+   régresser, c'est de ne presque rien gagner (HERITAGE : 7 % des sujets à ≤ 0,1 L/min sur un
+   programme identique). Une fourchette symétrique produisait −42 s de natation sur 43 semaines,
+   c'est-à-dire un chiffre qui dit à l'athlète que sept mois d'entraînement ne servent à rien.
+2. **Le moteur ne récompense jamais la surcharge.** `f_volume` plafonne à 1,15 : au-delà, le
+   volume supplémentaire ne se convertit plus proportionnellement en performance et fait monter
+   le risque de blessure. Priorité n°2 du manifeste, appliquée dans le prédicteur.
+3. **Une frontière se garde des DEUX côtés.** Le levier poids (P9) n'existe que si l'athlète l'a
+   ouvert lui-même — et le mot « kg » ne doit pas non plus arriver par la porte d'une explication
+   de marge : le rapport puissance/masse ne s'écrit nulle part ailleurs que dans ce levier.
+
+### Critères de banc périmés — et pourquoi ils restent affichés
+
+`bench_r14.cjs` conserve `R14.2`, `R14.4` et `R14.6-A/B` avec le statut `----` et leur
+justification, plutôt que de les supprimer. `R14.4` n'était pas dans la liste du handoff : ses
+plafonds (int ≤ 12 %, avancé ≤ 6 %) sont exactement la table que l'addendum déclare fausse, et ils
+imposent un écart ancien/confirmé d'au moins 50 % là où `R14.1-B` en autorise 45 % — deux critères
+qui ne peuvent pas être vrais ensemble sans rendre `level` responsable d'un facteur 2 sur le gain.
+Un banc dont les tests disparaissent sans laisser de trace est un banc qu'on ne peut plus relire.

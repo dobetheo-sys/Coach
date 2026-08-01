@@ -55,6 +55,24 @@ export interface ProjectionInput {
   level?: string;
   history?: string;
   /**
+   * R14.1 — les références MESURÉES, d'où se déduit la marge disponible (P2bis).
+   * `ftp` en W, `thrPace` et `css` en secondes, `weightKg` pour les W/kg.
+   */
+  refs?: { ftp: number; thrPace: number; css: number };
+  weightKg?: number | null;
+  sex?: string | null;
+  age?: number | null;
+  /** P2bis-c — structure de l'entraînement des 12 derniers mois (question Profil). */
+  trainingStructure?: string | null;
+  /** P10 — volume hebdo moyen PRESCRIT en dev+spec+peak, et volume récent déclaré (heures). */
+  prescribedMeanH?: number | null;
+  volRecentH?: number | null;
+  /** P9 — levier poids : n'existe QUE si l'athlète l'a demandé et a saisi une cible. */
+  weightLeverAsked?: boolean;
+  weightTargetKg?: number | null;
+  heightCm?: number | null;
+  medicalFlag?: boolean;
+  /**
    * P1 — adhérence sur la fenêtre glissante des 6 dernières semaines ÉCOULÉES.
    * `null` = pas jugeable (aucun ✓ dans tout le plan : le journal n'est pas utilisé, ce
    * qui ne veut PAS dire que l'athlète ne s'entraîne pas).
@@ -70,44 +88,186 @@ export interface ProjectionInput {
   raceDate?: string;
 }
 
+/**
+ * P9 — le poids comme LEVIER OPTIONNEL, présenté en SENSIBILITÉ et jamais en objectif.
+ * Le module ne produit ni calendrier, ni rythme de perte, ni apport : ces sujets restent
+ * hors du périmètre du moteur, comme la frontière nutrition l'a déjà établi.
+ */
+export interface WeightLever {
+  currentKg: number;
+  targetKg: number;
+  wkgNow: number | null;
+  wkgTarget: number | null;
+  runGainPct: number;
+  why: string;
+}
+
 export interface ProjectionResult {
   applicable: boolean;
   horizonWeeks: number;
   adherence: number;
   gainPct: { ftp: number; thrPace: number; css: number; vam: number };
+  /**
+   * R14.1 §2 — LA FOURCHETTE PORTE SUR LE GAIN, et elle est ASYMÉTRIQUE.
+   * `[g_lo, g_hi]` par référence : `spreadPct` (symétrique) a disparu du contrat.
+   */
+  gainBand: { ftp: [number, number]; thrPace: [number, number]; css: [number, number]; vam: [number, number] };
   gainSource: "prior" | "mesure" | "mixte";
-  spreadPct: number;
   confidence: "faible" | "moyenne" | "bonne";
+  weightLever: WeightLever | null;
   decisions: Decision[];
 }
 
 /**
- * P2 — PLAFONDS DE GAIN PAR PROFIL (fractions annuelles asymptotiques).
+ * P2bis (R14.1) — LE PLAFOND DE GAIN S'INDEXE SUR LA DISTANCE AU POTENTIEL.
  *
- * La course reçoit un plafond plus bas que le vélo, et ce n'est pas un arrondi : l'économie
- * de course ne gagne que 2-4 % (Barnes & Kilding 2015) et progresse lentement, là où la FTP
- * répond vite à un bloc structuré. Nager progresse entre les deux — la technique offre de la
- * marge, mais elle s'acquiert lentement.
+ * ── LE DÉFAUT CORRIGÉ ────────────────────────────────────────────────────────────────
+ * La première version (R14) indexait le plafond sur `history`, et lisait `ancien` (pratique
+ * de longue date) comme « proche du plafond physiologique ». C'est une confusion : des années
+ * de pratique auto-encadrée ne donnent pas la trainabilité résiduelle d'un athlète structuré
+ * depuis dix ans. Mesuré sur un écran de production — 70.3 à 43 semaines, FTP 230 W pour
+ * 85 kg, soit **2,71 W/kg** — le moteur projetait +4,6 % sur la CAP et +5,1 % sur la nage.
+ * Or 2,71 W/kg est en bas de la bande « fair » de Coggan et un CSS à 2'15/100 m est un profil
+ * limité par la technique : **la marge est grande, la table disait l'inverse.** Le code était
+ * juste, la table était fausse.
  *
- * ⚠ HEURISTIQUE CONVERGENTE, PAS UNE VÉRITÉ. Ces nombres n'ont pas de source primaire ; ils
- * sont écrits ici pour être remplacés par la mesure de l'athlète dès que P3 en a les moyens.
+ * C'est exactement la leçon R12 (« un adjectif auto-déclaré ne pilote plus aucun chiffre »),
+ * qui n'avait été appliquée qu'à `level` : `history` faisait passer la même erreur par la
+ * porte d'à côté. La marge se déduit désormais de ce qui est MESURÉ.
+ *
+ *     G∞(discipline) = G_plafond(discipline) × h(marge) × k_structure × f_volume
+ *
+ * ── LES BANDES ───────────────────────────────────────────────────────────────────────
+ * Les bandes VÉLO suivent le profil de puissance de Coggan (publié). Les bandes CAP et NAGE
+ * sont des **heuristiques convergentes de praticiens** — écrites comme telles, et remplaçables
+ * par la mesure de l'athlète dès qu'il a deux tests datés (P3).
+ *
+ * `h` est ancré au MILIEU de chaque bande et interpolé linéairement entre les ancres : une
+ * frontière franche ferait sauter la projection de 50 % pour 1 W d'écart.
  */
-export const G_INFINI: Record<string, { ftp: number; thrPace: number; css: number; vam: number }> = {
-  debutant: { ftp: 0.24, thrPace: 0.18, css: 0.20, vam: 0.20 },
-  inter: { ftp: 0.08, thrPace: 0.06, css: 0.07, vam: 0.07 },
-  avance: { ftp: 0.04, thrPace: 0.03, css: 0.035, vam: 0.035 },
+export const G_PLAFOND: Record<string, number> = {
+  // 20-30 %/an chez le non-entraîné (heuristique convergente).
+  ftp: 0.25,
+  // Forte composante TECHNIQUE : la marge d'un nageur lent n'est pas aérobie, elle est dans
+  // le geste — et c'est précisément ce qui se travaille le plus vite quand on part de loin.
+  css: 0.22,
+  // Barnes & Kilding, Sports Med Open 2015 : l'économie de course ne gagne que 2-4 % et
+  // progresse lentement. La course est la discipline où l'on promet le moins.
+  thrPace: 0.15,
+  // Trail : même famille que la course (économie + aérobie), avec un peu plus de marge
+  // technique en montée. Faute de bandes de VAM publiées, `h` reprend celui de la CAP.
+  vam: 0.20,
 };
-const BUCKET_BY_LEVEL: Record<string, string> = { debutant: "debutant", inter: "inter", avance: "avance" };
-const BUCKET_BY_HISTORY: Record<string, string> = { reprise: "debutant", confirme: "inter", ancien: "avance" };
-const BUCKET_ORDER = ["debutant", "inter", "avance"];
+
+/** Ancres `[valeur, h]` par discipline, du plus de marge au moins de marge. */
+type Ancre = [number, number];
+/** Vélo : W/kg au seuil (profil de puissance de Coggan). Plus haut = moins de marge. */
+const ANCRES_WKG: Ancre[] = [[2.25, 1.0], [2.875, 0.75], [3.625, 0.5], [4.375, 0.28], [5.125, 0.12]];
+/** CAP : allure seuil en s/km. Plus LENT = plus de marge (l'axe est inversé). */
+const ANCRES_PACE: Ancre[] = [[360, 1.0], [307.5, 0.75], [262.5, 0.5], [225, 0.28], [195, 0.12]];
+/** Nage : CSS en s/100 m. Plus LENT = plus de marge. */
+const ANCRES_CSS: Ancre[] = [[150, 1.0], [127.5, 0.75], [112.5, 0.5], [97.5, 0.28], [82.5, 0.12]];
+
+/** Interpolation linéaire sur une suite d'ancres monotone (croissante ou décroissante). */
+function interpole(ancres: Ancre[], v: number): number {
+  const croissant = ancres[ancres.length - 1][0] > ancres[0][0];
+  const dans = (x: number, a: number, b: number) => (croissant ? x >= a && x <= b : x <= a && x >= b);
+  if (dans(v, -Infinity as number, ancres[0][0]) || (croissant ? v <= ancres[0][0] : v >= ancres[0][0])) return ancres[0][1];
+  const last = ancres[ancres.length - 1];
+  if (croissant ? v >= last[0] : v <= last[0]) return last[1];
+  for (let i = 1; i < ancres.length; i++) {
+    const [v0, h0] = ancres[i - 1], [v1, h1] = ancres[i];
+    if (dans(v, v0, v1)) return h0 + ((h1 - h0) * (v - v0)) / (v1 - v0);
+  }
+  return ancres[ancres.length - 1][1];
+}
+
+/**
+ * P2bis-d — AJUSTEMENTS DE BANDES (heuristiques assumées).
+ * On décale LA RÉFÉRENCE, jamais la marge de l'athlète : une femme de 3,0 W/kg n'est pas
+ * « en retard », elle est à sa place dans une bande décalée — et sa marge résiduelle se lit
+ * sur cette bande-là. Même raisonnement pour l'âge : après 35 ans, le déclin aérobie de
+ * l'athlète qui maintient l'intensité décale la référence de ~5 % par décennie.
+ */
+function decalage(sex?: string | null, age?: number | null): { wkg: number; temps: number } {
+  const femme = String(sex || "").toUpperCase().startsWith("F");
+  const decennies = age && age > 35 ? (age - 35) / 10 : 0;
+  return {
+    wkg: (femme ? -0.45 : 0) - 0.05 * 4.0 * decennies, // −5 %/décennie sur une référence ~4 W/kg
+    temps: (femme ? 0.10 : 0) + 0.05 * decennies,      // allures et CSS : +10 % femme, +5 %/décennie
+  };
+}
+
+/** La marge disponible sur une référence mesurée. `null` = référence absente → pas de marge calculable. */
+export function margeOf(
+  discipline: "ftp" | "thrPace" | "css" | "vam",
+  refs: { ftp: number; thrPace: number; css: number } | undefined,
+  weightKg?: number | null,
+  sex?: string | null,
+  age?: number | null
+): number | null {
+  if (!refs) return null;
+  const d = decalage(sex, age);
+  if (discipline === "ftp") {
+    if (!(refs.ftp > 0) || !(weightKg && weightKg > 0)) return null; // sans poids, pas de W/kg
+    return interpole(ANCRES_WKG.map(([v, h]) => [v + d.wkg, h] as Ancre), refs.ftp / weightKg);
+  }
+  if (discipline === "css") {
+    if (!(refs.css > 0)) return null;
+    return interpole(ANCRES_CSS.map(([v, h]) => [v * (1 + d.temps), h] as Ancre), refs.css);
+  }
+  // thrPace et vam partagent la bande de la course (aucune bande de VAM publiée).
+  if (!(refs.thrPace > 0)) return null;
+  return interpole(ANCRES_PACE.map(([v, h]) => [v * (1 + d.temps), h] as Ancre), refs.thrPace);
+}
+
+/**
+ * P2bis-c — `k_structure` : L'ANCIENNETÉ REDEVIENT UN SIMPLE MODIFICATEUR.
+ * Ce qu'on mesure, c'est le STIMULUS DE LA STRUCTURE, pas les années de pratique : quelqu'un
+ * qui s'entraîne au feeling depuis dix ans a encore tout le bénéfice d'un plan devant lui.
+ */
+export const K_STRUCTURE: Record<string, number> = { feeling: 1.0, intermittent: 0.85, suivi: 0.65 };
+/** Repli quand la question n'a pas été posée/répondue — `history` ne sert plus qu'à ça. */
+const K_PAR_HISTORY: Record<string, number> = { reprise: 1.0, confirme: 0.85, ancien: 0.75 };
+const K_DEFAUT = 0.85;
+
+/** P2bis-e — plafond absolu, non négociable, après TOUT calcul. */
+export const GAIN_MAX_ABSOLU = 0.30;
 
 /** P2 — constante de temps de la saturation : le gain ralentit, il ne s'accumule pas. */
 export const TAU_WEEKS = 20;
 /** P4 — Bosquet 2007, gain moyen d'un affûtage CONFORME. */
 export const TAPER_GAIN = 0.0196;
-/** P7 — au-delà, on refuse d'afficher un chrono projeté (repère : SEE de Rüst 2011 ≈ ±8 %). */
-export const SPREAD_MAX = 0.12;
-export const SPREAD_MIN = 0.03;
+/**
+ * P10 — FACTEUR VOLUME (dose-réponse). Deux athlètes de même profil, l'un à 6 h et l'autre à
+ * 14 h par semaine, recevaient la même projection : le plan lui-même n'entrait pas dans le
+ * modèle. `r` = volume hebdo moyen PRESCRIT en dev+spec+peak ÷ volume récent déclaré.
+ *
+ * Le plafond à 1,15 est délibéré : au-delà, le volume supplémentaire ne se convertit pas
+ * proportionnellement en performance et fait monter le risque de blessure. **Le moteur ne
+ * doit pas récompenser la surcharge** — c'est la priorité n°2 du manifeste, dans un endroit
+ * où l'on ne l'attendait pas.
+ */
+const ANCRES_VOLUME: Ancre[] = [[1.0, 0.75], [1.2, 1.0], [1.5, 1.15]];
+export function volumeFactor(prescribedMeanH?: number | null, volRecentH?: number | null): number | null {
+  if (!(prescribedMeanH && prescribedMeanH > 0) || !(volRecentH && volRecentH > 0)) return null;
+  return interpole(ANCRES_VOLUME, prescribedMeanH / volRecentH);
+}
+
+/**
+ * P7bis (R14.1) — LA FOURCHETTE DEVIENT ASYMÉTRIQUE, et porte sur le GAIN.
+ *
+ * La règle symétrique produisait une borne haute absurde : −42 s de natation sur 43 semaines,
+ * parce que l'élargissement de l'incertitude annulait le gain du côté pessimiste. Or
+ * **HERITAGE** (Bouchard, 483 sujets, programme identique) dit précisément ceci : 7 % des
+ * sujets gagnent ≤ 0,1 L/min et 8 % ≥ 0,7 L/min. Le pire cas d'un plan suivi, ce n'est pas de
+ * régresser — c'est de ne presque rien gagner. **La borne haute doit donc être ta forme
+ * d'aujourd'hui**, et le texte le dit.
+ */
+export const GAIN_BAND_LO = 0.15;
+export const GAIN_BAND_HI = 1.30;
+/** Au-delà de cette largeur de fourchette, la projection n'apprend plus rien : on refuse. */
+export const GAIN_BAND_MAX_WIDTH = 0.25;
 /** P8 — en dessous, le plan ne peut pas produire le gain qu'il prévoyait. */
 export const ADHERENCE_FLOOR = 0.5;
 /**
@@ -117,29 +277,60 @@ export const ADHERENCE_FLOOR = 0.5;
  */
 const ADHERENCE_UNKNOWN_FACTOR = 0.9;
 
-/**
- * Le plafond retenu est le PLUS BAS des deux que suggèrent `level` et `history`.
- *
- * Deux raisons, et la première suffit : la liste noire du handoff dit « ne jamais appliquer
- * un gain de débutant à un athlète expérimenté ». La seconde est la doctrine R12 — un
- * adjectif auto-déclaré (`level`) ne doit pas piloter un nombre plus haut que ce que la
- * réponse FACTUELLE (`history`, l'ancienneté de pratique) autorise. Un gain surestimé se
- * paie en promesse non tenue le jour J ; un gain sous-estimé se corrige au premier retest.
- */
-export function gainCeiling(level?: string, history?: string): { bucket: string; g: typeof G_INFINI[string] } {
-  const a = BUCKET_BY_LEVEL[String(level || "")] ?? null;
-  const b = BUCKET_BY_HISTORY[String(history || "")] ?? null;
-  const candidats = [a, b].filter((x): x is string => !!x);
-  const bucket = candidats.length
-    ? candidats.reduce((lo, x) => (BUCKET_ORDER.indexOf(x) > BUCKET_ORDER.indexOf(lo) ? x : lo))
-    : "inter";
-  return { bucket, g: G_INFINI[bucket] };
+/** `k_structure` retenu, et d'où il vient (pour la traçabilité et le plafond de confiance). */
+export function structureFactor(trainingStructure?: string | null, history?: string): { k: number; declared: boolean } {
+  const s = String(trainingStructure || "");
+  if (K_STRUCTURE[s] !== undefined) return { k: K_STRUCTURE[s], declared: true };
+  const h = K_PAR_HISTORY[String(history || "")];
+  return { k: h !== undefined ? h : K_DEFAUT, declared: false };
 }
 
-const LABEL_BUCKET: Record<string, string> = {
-  debutant: "débutant ou en reprise", inter: "intermédiaire / confirmé", avance: "avancé / longue date",
-};
 const LABEL_REF: Record<string, string> = { ftp: "FTP", thrPace: "allure seuil", css: "CSS", vam: "VAM" };
+const LABEL_MARGE = (h: number): string =>
+  h >= 0.85 ? "très grande" : h >= 0.62 ? "grande" : h >= 0.38 ? "moyenne" : h >= 0.2 ? "réduite" : "faible";
+const LABEL_STRUCTURE: Record<string, string> = {
+  feeling: "au feeling, sans plan", intermittent: "plan structuré par intermittence", suivi: "plan structuré suivi",
+};
+
+/**
+ * P9 — LE LEVIER POIDS, sous gardes dures. Rien ici n'est proposé ni suggéré : le levier
+ * n'existe QUE si l'athlète l'a demandé (`weight_lever`) ET a saisi lui-même une cible.
+ * Aucun calendrier, aucun rythme de perte, aucun apport — la frontière nutrition du manifeste
+ * s'applique telle quelle. Une sensibilité, jamais un objectif.
+ */
+function weightLeverOf(input: ProjectionInput): { lever: WeightLever | null; refus: string | null } {
+  if (!input.weightLeverAsked || !(input.weightTargetKg && input.weightTargetKg > 0)) return { lever: null, refus: null };
+  const now = input.weightKg || 0, cible = input.weightTargetKg;
+  if (!(now > 0) || cible >= now) return { lever: null, refus: null };
+  // Gardes DURES — chacune neutralise le levier en silence (afficher le refus serait déjà
+  // parler du poids à quelqu'un à qui on a décidé de ne pas en parler).
+  const h = input.heightCm && input.heightCm > 0 ? input.heightCm / 100 : 0;
+  const imcCible = h > 0 ? cible / (h * h) : 0;
+  if (h > 0 && imcCible < 18.5) return { lever: null, refus: "IMC cible sous 18,5" };
+  if (input.age != null && input.age < 18) return { lever: null, refus: "athlète mineur" };
+  if (input.medicalFlag) return { lever: null, refus: "drapeau médical actif" };
+  const semaines = Math.max(1, input.horizonWeeks);
+  if ((now - cible) / semaines > 0.5) return { lever: null, refus: "perte impliquée > 0,5 kg/semaine" };
+  const ftp = input.refs ? input.refs.ftp : 0;
+  // CAP : ~0,8 %/1 % de masse (fourchette 0,7-1,0 % dans la littérature sur le coût énergétique).
+  const runGainPct = ((now - cible) / now) * 0.008 * 100;
+  return {
+    lever: {
+      currentKg: Math.round(now * 10) / 10,
+      targetKg: Math.round(cible * 10) / 10,
+      wkgNow: ftp > 0 ? Math.round((ftp / now) * 100) / 100 : null,
+      wkgTarget: ftp > 0 ? Math.round((ftp / cible) * 100) / 100 : null,
+      runGainPct: Math.round(runGainPct * 100) / 100,
+      why: "Sensibilité, pas une cible : à FTP identique, ton rapport W/kg passerait de "
+        + (ftp > 0 ? Math.round((ftp / now) * 100) / 100 + " à " + Math.round((ftp / cible) * 100) / 100 + " W/kg" : "—")
+        + ", et le coût énergétique de la course baisse d'environ 0,8 % par 1 % de masse. Sur le vélo, "
+        + "l'effet ne se voit qu'en montée : à plat, c'est la puissance qui décide, pas le rapport. "
+        + "Ce chiffre montre ce que la balance changerait — il ne dit ni comment, ni à quel rythme, "
+        + "et ces questions-là se traitent avec un professionnel de santé, pas avec un plan d'entraînement.",
+    },
+    refus: null,
+  };
+}
 
 /**
  * P3 — LA MESURE DE L'ATHLÈTE PRIME SUR NOTRE HEURISTIQUE.
@@ -172,14 +363,40 @@ export function projectForm(input: ProjectionInput): ProjectionResult {
   const D = (id: string, what: string, val: string, why: string) => decisions.push({ id, what, val, why });
   const w = Math.max(0, input.horizonWeeks);
 
-  // ---- P2 : plafond par profil, saturation exponentielle ----
-  const { bucket, g } = gainCeiling(input.level, input.history);
+  // ---- P2bis : la marge se lit sur les références MESURÉES, plus sur un adjectif ----
   const sat = 1 - Math.exp(-w / TAU_WEEKS);
-  D("P2", "Marge de progression retenue", LABEL_BUCKET[bucket],
-    "Plafond du profil le plus prudent entre ton niveau et ton ancienneté de pratique — un gain "
-    + "surestimé se paie le jour J. La courbe SATURE (constante de temps " + TAU_WEEKS + " semaines) : "
-    + "les premières semaines rapportent beaucoup plus que les dernières. Ces plafonds sont des "
-    + "heuristiques de coaching, pas une loi : tes propres tests les remplacent (P3).");
+  const marge = {
+    ftp: margeOf("ftp", input.refs, input.weightKg, input.sex, input.age),
+    thrPace: margeOf("thrPace", input.refs, input.weightKg, input.sex, input.age),
+    css: margeOf("css", input.refs, input.weightKg, input.sex, input.age),
+    vam: margeOf("vam", input.refs, input.weightKg, input.sex, input.age),
+  };
+  const { k, declared: kDit } = structureFactor(input.trainingStructure, input.history);
+  const fVol = volumeFactor(input.prescribedMeanH, input.volRecentH);
+  const mDite = marge.ftp ?? marge.thrPace ?? marge.css;
+  D("P2", "Marge de progression retenue", mDite == null ? "non calculable" : LABEL_MARGE(mDite),
+    "Elle se lit sur tes références MESURÉES, pas sur ton ancienneté : des années de pratique au "
+    // Volontairement SANS unité rapportée au poids : quelqu'un qui n'a pas ouvert la question du
+    // poids (P9) ne doit pas la voir arriver par la porte d'une explication de marge. Le rapport
+    // puissance/masse n'apparaît que dans le levier, et seulement s'il a été demandé.
+    + "feeling ne rapprochent pas du plafond physiologique. Quelqu'un encore loin de son plafond a "
+    + "beaucoup de marge, quelqu'un qui en est proche en a peu — et c'est ça qui décide, pas le "
+    + "nombre d'années de pratique. La courbe "
+    + "SATURE (constante de temps " + TAU_WEEKS + " semaines) : les premières semaines rapportent bien "
+    + "plus que les dernières. Bandes vélo d'après le profil de puissance de Coggan ; bandes course et "
+    + "nage heuristiques — tes propres tests les remplacent (P3).");
+  D("P2-structure", "Structure de ton entraînement récent",
+    kDit ? LABEL_STRUCTURE[String(input.trainingStructure)] : "non renseignée (estimée)",
+    "Ce qui compte n'est pas depuis combien d'années tu t'entraînes, mais si tu as suivi un PLAN. "
+    + (kDit
+      ? "Un plan déjà suivi a consommé une partie du bénéfice qu'un plan apporte — la marge restante est plus petite, et c'est une bonne nouvelle sur ton niveau."
+      : "Sans ta réponse, on estime prudemment et la confiance de la projection reste plafonnée : renseigne-la au Profil pour l'affiner."));
+  if (fVol != null)
+    D("P10", "Volume du plan vs ton volume récent", "×" + fVol.toFixed(2) + " sur le gain",
+      "Un plan qui MONTE le volume produit plus qu'un plan de maintien : c'est la dose qui fait "
+      + "l'adaptation. Le facteur est plafonné à 1,15 volontairement — au-delà, le volume "
+      + "supplémentaire ne se convertit plus proportionnellement en performance et fait monter le "
+      + "risque de blessure. Le moteur ne récompense pas la surcharge.");
 
   // ---- P1 : adhérence, fenêtre glissante — jamais le % du plan entier ----
   let adhFactor: number;
@@ -218,23 +435,36 @@ export function projectForm(input: ProjectionInput): ProjectionResult {
 
   // ---- P3 puis composition finale, référence par référence ----
   const gainPct = { ftp: 0, thrPace: 0, css: 0, vam: 0 };
+  const gainBand = {
+    ftp: [0, 0], thrPace: [0, 0], css: [0, 0], vam: [0, 0],
+  } as ProjectionResult["gainBand"];
   let mesures = 0, priors = 0;
-  for (const k of ["ftp", "thrPace", "css", "vam"] as const) {
-    const prior = g[k] * sat;
+  for (const key of ["ftp", "thrPace", "css", "vam"] as const) {
+    // P2bis — sans marge calculable (référence absente, ou poids manquant pour les W/kg), on
+    // retombe sur une marge MOYENNE plutôt que sur zéro : ne rien projeter du tout parce qu'on
+    // ignore le poids serait une punition administrative, pas un raisonnement d'entraîneur.
+    const h = marge[key] ?? 0.5;
+    const plafond = G_PLAFOND[key] * h * k * (fVol ?? 1);
+    const prior = plafond * sat;
     let brut = prior;
-    const m = measuredRate(input.tests, k);
+    const m = measuredRate(input.tests, key);
     if (m) {
       const wm = m.n / (m.n + 2); // rétrécissement vers le prior : 2 points → 0,5 ; 10 points → 0,83
       const mesure = Math.max(0, m.ratePerWeek * w);
-      brut = Math.min(wm * mesure + (1 - wm) * prior, g[k] * sat); // BORNÉ par P2 : la courbe sature
+      brut = Math.min(wm * mesure + (1 - wm) * prior, prior); // BORNÉ par P2 : la courbe sature
       mesures++;
-      D("P3", "Ta progression mesurée sur " + LABEL_REF[k],
+      D("P3", "Ta progression mesurée sur " + LABEL_REF[key],
         (m.ratePerWeek * 100).toFixed(2) + "%/semaine sur " + m.n + " tests datés",
         "Tes propres tests remplacent notre heuristique, pondérés à " + Math.round(wm * 100) + "% "
         + "(deux points ne font pas une tendance, dix la font) et bornés par le plafond de ton profil — "
         + "prolonger un taux mesuré en ligne droite sur un an ferait de toi un champion du monde sur le papier.");
     } else priors++;
-    gainPct[k] = Math.round((brut * adhFactor + taper) * 10000) / 10000;
+    const g4 = (x: number) => Math.round(Math.min(GAIN_MAX_ABSOLU, Math.max(0, x)) * 10000) / 10000;
+    const ref = g4(brut * adhFactor + taper);
+    gainPct[key] = ref;
+    // P7bis — fourchette ASYMÉTRIQUE sur le gain : le pire cas d'un plan suivi n'est pas de
+    // régresser, c'est de ne presque rien gagner (HERITAGE).
+    gainBand[key] = [g4(GAIN_BAND_LO * ref), g4(GAIN_BAND_HI * ref)];
   }
   const gainSource: ProjectionResult["gainSource"] = mesures === 0 ? "prior" : priors === 0 ? "mesure" : "mixte";
 
@@ -242,32 +472,53 @@ export function projectForm(input: ProjectionInput): ProjectionResult {
   // Elle monte avec l'horizon (plus c'est loin, moins on sait) et avec l'ÂGE de la référence
   // (un test d'il y a un an ne décrit plus personne), et elle descend avec la régularité.
   const refAge = input.refAgeWeeks == null ? 0 : Math.max(0, input.refAgeWeeks);
-  const spreadBrut = 0.03 + 0.05 * (w / 52) + 0.03 * (refAge / 52) - 0.02 * (adherence - 0.5);
-  const spreadPct = Math.min(SPREAD_MAX, Math.max(SPREAD_MIN, spreadBrut));
-  const tropLoin = spreadBrut > SPREAD_MAX;
-  D("P7", "Incertitude de la projection", "±" + (spreadPct * 100).toFixed(1) + "%",
+  const largeur = Math.max(...(["ftp", "thrPace", "css"] as const).map((x) => gainBand[x][1] - gainBand[x][0]));
+  D("P7", "Fourchette de la projection", "gain entre ×" + GAIN_BAND_LO.toFixed(2) + " et ×" + GAIN_BAND_HI.toFixed(2) + " de la valeur de référence",
     "Un même programme produit des gains très différents d'une personne à l'autre — sur 483 sujets "
-    + "suivis 20 semaines (HERITAGE), 7 % n'ont presque rien gagné et 8 % ont énormément gagné. Une "
-    + "projection ponctuelle serait fausse par construction : seule une fourchette est honnête. "
-    + "Elle s'élargit avec l'horizon (" + Math.round(w) + " semaines)"
-    + (refAge > 0 ? " et avec l'âge de ta dernière référence (" + Math.round(refAge) + " semaines)" : "")
-    + ", et se resserre avec ta régularité.");
+    + "suivis 20 semaines avec le MÊME programme (HERITAGE), 7 % n'ont presque rien gagné et 8 % "
+    + "ont énormément gagné. Une projection ponctuelle serait fausse par construction. La fourchette "
+    + "est volontairement ASYMÉTRIQUE : au pire, ta forme d'aujourd'hui — le plan ne te rend pas plus "
+    + "lent, il peut seulement rapporter moins que prévu.");
 
   let applicable = true;
-  if (tropLoin) {
+  if (largeur > GAIN_BAND_MAX_WIDTH) {
     applicable = false;
-    D("P7-refus", "Pas de chrono projeté", "±" + (spreadBrut * 100).toFixed(1) + "% > ±" + SPREAD_MAX * 100 + "%",
-      "Trop tôt pour projeter un chrono : à cet horizon, la fourchette honnête serait si large "
-      + "qu'elle n'apprendrait rien. Voici ta forme d'AUJOURD'HUI — reviens quand la course "
-      + "approchera, la projection s'affinera d'elle-même.");
+    D("P7-refus", "Pas de chrono projeté", "fourchette de " + (largeur * 100).toFixed(0) + " points",
+      "Trop tôt pour projeter un chrono : à cet horizon et avec ce qu'on sait de toi, la fourchette "
+      + "honnête serait si large qu'elle n'apprendrait rien. Voici ta forme d'AUJOURD'HUI — reviens "
+      + "quand la course approchera, la projection s'affinera d'elle-même.");
   }
+  if (refAge > 52)
+    D("P7-age-ref", "Ancienneté de ta dernière référence", Math.round(refAge / 4.35) + " mois",
+      "Un test d'il y a plus d'un an ne décrit plus vraiment personne : la projection part d'un point "
+      + "de départ incertain. Un retest la rendrait nettement plus fiable — et c'est gratuit.");
 
-  const confidence: ProjectionResult["confidence"] =
-    !applicable || spreadPct >= 0.09 || adhFactor === 0 ? "faible"
-      : spreadPct <= 0.05 && (gainSource !== "prior" || adherence >= 0.8) ? "bonne"
-        : "moyenne";
+  // R14.1 — LA CONFIANCE EST HONNÊTE AU JOUR 0. Un plan jamais commencé affichait « confiance
+  // moyenne » : c'est une promesse que rien ne soutient encore. Tant qu'aucune semaine ne s'est
+  // écoulée, la seule valeur défendable est « faible ».
+  let confidence: ProjectionResult["confidence"];
+  if (!applicable || input.adherence == null || adhFactor === 0) confidence = "faible";
+  else if (largeur <= 0.10 && adherence >= 0.8 && (gainSource !== "prior" || refAge <= 26)) confidence = "bonne";
+  else confidence = "moyenne";
+  // Sans la question de structure, on ne sait pas ce que le plan a déjà consommé de marge :
+  // la confiance ne peut pas monter à « bonne ».
+  if (!kDit && confidence === "bonne") confidence = "moyenne";
 
-  return { applicable, horizonWeeks: Math.round(w * 10) / 10, adherence, gainPct, gainSource, spreadPct, confidence, decisions };
+  const { lever, refus } = weightLeverOf(input);
+  if (lever)
+    D("P9", "Levier poids (à ta demande)", lever.currentKg + " → " + lever.targetKg + " kg",
+      "Tu as demandé à voir ce levier et tu as saisi la cible toi-même : on montre une SENSIBILITÉ, "
+      + "jamais un objectif, et sans aucun rythme ni aucune consigne alimentaire — ce terrain revient "
+      + "à un professionnel de santé, pas à un plan d'entraînement.");
+  else if (refus)
+    D("P9-garde", "Levier poids neutralisé", refus,
+      "Ce levier ne s'affiche pas dans ce cas de figure. La priorité n°1 du manifeste est la santé, et "
+      + "elle passe avant une optimisation de quelques pourcents.");
+
+  return {
+    applicable, horizonWeeks: Math.round(w * 10) / 10, adherence, gainPct, gainBand, gainSource,
+    confidence, weightLever: lever, decisions,
+  };
 }
 
 /**

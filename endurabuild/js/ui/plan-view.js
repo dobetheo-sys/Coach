@@ -180,7 +180,14 @@ function predictionCardHTML(plan){
           h+='<div class="load-sub" style="margin:12px 0 2px;font-weight:600">Projet\u00e9 au '+d
             +' <span style="font-weight:400;color:#777">\u00b7 confiance '+pj.confidence+'</span></div>';
           pj.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
-          h+='<div class="load-sub" style="color:#777;margin-top:4px">Si tu suis ce plan \u2014 fourchette large \u00e0 dessein : \u00e0 programme identique, deux personnes ne progressent pas pareil.</div>';
+          h+='<div class="load-sub" style="color:#777;margin-top:4px">Si tu suis ce plan. La fourchette est volontairement ASYM\u00c9TRIQUE : au pire, ta forme d\u2019aujourd\u2019hui \u2014 un plan suivi ne rend pas plus lent, il peut seulement rapporter moins que pr\u00e9vu.</div>';
+          // R14.1 \u00a75 \u2014 le levier poids ne s'affiche QUE si l'athl\u00e8te l'a demand\u00e9 et a saisi sa
+          // cible. Une sensibilit\u00e9, jamais un objectif ; aucun rythme, aucune consigne alimentaire.
+          if(pj.weightLever){
+            const wl=pj.weightLever;
+            h+='<div class="load-sub" style="margin:10px 0 0;padding-top:8px;border-top:1px dashed #0002"><b>Sensibilit\u00e9 au poids (tu as demand\u00e9 ce levier)</b><br>'
+              +'<span style="color:#555">'+wl.why+'</span></div>';
+          }
         }
         pr.advice.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0;color:#8a6d00">\u26a0 '+x+'</div>';});
         // Le MOTIF d'un refus de projeter vaut autant que la projection : \u00ab trop t\u00f4t pour
