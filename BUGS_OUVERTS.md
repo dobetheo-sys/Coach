@@ -294,6 +294,76 @@ attendu: /vol_max=16h → pic annoncé 8[.,]7 h/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const a={sport:'tri',format:'70.3',level:'avance',history:'ancien',intent:'competition',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',ftp:'230',ftp_known:'oui',css:'2:00',css_known:'oui',vol_recent:'10',injury:'aucune',off_days:'non',shift_ok:'non',race_date:'2027-01-24'};for(const v of ['10','12','14','16']){const p=E.buildPlan('tri',{...a,vol_max:v});console.log('vol_max='+v+'h → pic annoncé '+p.volPeak+' h · pic livré '+(Math.max(...p.weeks.map(w=>w.vol_declared))).toFixed(1)+' h');}"
 ```
 
+### O-11 · Deux définitions de « l'allure course » à vélo, et une prose qui promet la mauvaise · 🟠 **OUVERT (trouvé en R19, correction reportée avec sa mesure)**
+
+Le brick disait dans sa NOTE « vélo en endurance, **dernier tiers @ allure course** » pendant que
+son step portait `bk.z2` sur la totalité. Mesuré sur un plan 70.3 : **881 min (14,7 h) d'allure
+course annoncées à l'athlète, portées par aucun step, comptées 100 % facile** par la répartition
+d'intensité. Un commentaire du module l'assumait — pour ne pas faire tomber la part de temps
+facile. C'est protéger la MÉTRIQUE et pas le plan, et c'est la leçon de R7 TRAIL non apprise
+ici : une intensité portée par une phrase n'existe pas.
+
+**Fait en R19 :** la note dit désormais ce que la séance fait. Le trou prose/structure est
+fermé, dans le sens qui ne coûte rien à personne.
+
+**Pas fait, et le motif est mesuré :** poser le tiers en `bk.rp` met **58 combinaisons de tri
+sous le plancher C26** (tri/70.3 : 27, tri/M : 16, tri/S : 15). Et surtout, en le construisant
+on découvre le vrai blocage :
+
+| source | « allure course » vélo |
+|---|---|
+| `renderer.ts` zone `bk.rp` | **0,80–0,88 × FTP** |
+| `predictor.ts` `TRI_BIKE["70.3"]` (jour J) | **0,752–0,822 × FTP** |
+
+Le moteur porte **deux définitions du même effort**, et la zone d'entraînement est plus dure
+que l'allure qu'il prescrit pour la course. Construire une séance sur `bk.rp` en croyant
+reproduire le jour J revient donc à faire rouler plus dur que le jour J — exactement le défaut
+que R15.2 a corrigé pour le relief, à un autre endroit.
+
+Trois choses à trancher ensemble, pas séparément : (1) réconcilier les deux définitions ;
+(2) décider si le plancher de temps facile doit rester uniforme, alors que la littérature
+décrit l'entraînement de longue distance comme PYRAMIDAL et non polarisé ; (3) alors seulement,
+reconstruire le tiers à allure course.
+
+```verify
+id: O-11
+quoi: la zone d'entraînement « allure course » vélo est plus dure que l'allure prescrite le jour J
+attendu: /bk\.rp 0[.,]8-0[.,]88 · jour J 70\.3 0[.,]7\d-0[.,]8\d/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const a={sport:'tri',format:'70.3',level:'inter',history:'confirme',intent:'competition',vol_max:'12',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',ftp:'230',ftp_known:'oui',css:'2:00',css_known:'oui',vol_recent:'8',injury:'aucune',off_days:'non',shift_ok:'non',race_date:'2027-06-13'};const p=E.buildPlan('tri',a);const it=E.predict('tri',a,p).items.find(i=>/Vélo/.test(i.leg));const m=/(\d+)\D+(\d+)\s*W/.exec(it.value);console.log('bk.rp 0.8-0.88 · jour J 70.3 '+(m[1]/230).toFixed(2)+'-'+(m[2]/230).toFixed(2))"
+```
+
+### O-12 · Ma mesure d'intensité d'affûtage était fausse — et j'ai failli « corriger » un moteur sain · ✅ **FERMÉ (R19, par rétractation)**
+
+Enregistré parce que c'est une leçon de MESURE, et que ce fichier existe pour ça.
+
+Audit du 01/08/2026 : j'ai conclu que « l'affûtage coupe l'intensité plus vite que le volume »
+sur la foi d'un compteur de **minutes DURES** (`.vo2 / .thr / .speed / .css`) tombant à zéro sur
+14 plans course et vélo. J'ai écrit une correction (coupe d'affûtage en deux passes, épargne du
+dernier jour de qualité), puis je l'ai mesurée :
+
+| | qualité en 1re semaine d'affûtage | semaines à zéro |
+|---|---|---|
+| moteur avant | 45 min | 2 |
+| **avec ma « correction »** | **38 min** | **4** |
+| moteur après retrait | 43 min | 0 |
+
+Le constat était un **artefact de la métrique** : `bk.rp`, `bk.ss` et `rn.mara` — c'est-à-dire
+le travail d'allure spécifique, exactement ce qu'un affûtage doit garder — sont classés
+MODÉRÉS, pas durs. Sur le bon critère (modéré + dur), le moteur d'avant était déjà **59/59
+conforme**. Ma correction était une régression ; elle est retirée.
+
+Ce qui reste vrai et acquis : `zoneClass()` a failli être dupliqué dans le générateur, et
+`bike/crit` — l'épreuve la plus dépendante de la puissance — n'a effectivement aucune minute
+de zone HAUTE en affûtage. C'est défendable (sweetspot + rappel d'allure), mais c'est le seul
+point de ce constat qui mériterait un regard d'entraîneur de piste.
+
+```verify
+id: O-12
+quoi: sur le critère corrigé (modéré + dur), l'affûtage garde sa qualité
+attendu: /, 0 sans aucune qualite/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const iso=w=>{const d=new Date(Date.now()+w*7*864e5);d.setUTCDate(d.getUTCDate()+((7-d.getUTCDay())%7));return d.toISOString().slice(0,10)};const B={level:'inter',history:'confirme',intent:'competition',vol_max:'10',sessions_max:'6',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',ftp:'230',ftp_known:'oui',css:'2:00',css_known:'oui',vol_recent:'7',injury:'aucune',off_days:'non',shift_ok:'non',terrain:'plat'};const S={run:['5k','semi','marathon'],bike:['crit','cyclo'],tri:['M','70.3']};let n=0,vide=0;for(const sp of Object.keys(S))for(const f of S[sp])for(const sem of [22,30,40]){let p;try{p=E.buildPlan(sp,{...B,format:f,race_date:iso(sem)})}catch(e){continue}const wk=p._v2.intensity.weekly,T=p.weeks.map((w,i)=>({i,ph:w.phase.id})).filter(x=>x.ph==='taper').slice(0,-1);for(const x of T){n++;if(wk[x.i].m+wk[x.i].h===0)vide++}}console.log(n+' semaines d affutage, '+vide+' sans aucune qualite')"
+```
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas

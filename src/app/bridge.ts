@@ -431,6 +431,8 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
     courseProfile: courseProfileOf(answers as never),
     // R18.2 — trois profils au lieu d'un : un triathlon n'est pas homogène.
     legProfiles: { swim: legProfileOf(answers as never, "swim"), bike: legProfileOf(answers as never, "bike"), run: legProfileOf(answers as never, "run") },
+    // R19.2 — la combinaison : seuil réglementaire à 24,5 °C, 4 à 7 % de temps de nage.
+    waterTempC: parseFloat(String(answers.water_temp_c ?? "")) || undefined,
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
     swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,

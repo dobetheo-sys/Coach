@@ -56,6 +56,8 @@ export interface PredictOpts {
    * décrit pas un plan d'eau). Rempli par `legProfileOf()` chez l'appelant, jamais deviné ici.
    */
   legProfiles?: { swim?: string; bike?: string; run?: string };
+  /** R19.2 — température de l'eau (°C). Absente = aucune correction de combinaison. */
+  waterTempC?: number;
   /** R7 TRAIL — objectif décodé (distance, D+, catégorie, VAM) : Riegel ne s'applique pas. */
   trail?: TrailObjective;
   /** Objectif swimrun décodé (§R10.3.2) — trois postes de temps. */
@@ -172,6 +174,43 @@ const SWIM_ENV: Record<string, ReliefFactor> = {
   mer_agitee: { lo: 1.06, hi: 1.14, label: "mer agitée (houle, respiration contrariée)" },
   eau_vive: { lo: 0.95, hi: 1.2, label: "eau vive (courant)" },
 };
+/**
+ * R19.2 — LA COMBINAISON. C'était le trou le plus large du modèle de natation.
+ *
+ * `water_temp_c` n'existait que pour le swimrun. En triathlon, rien : ni combinaison, ni seuil
+ * de légalité. Or c'est la variable DOMINANTE du leg natation — 4 à 7 % de temps, et une
+ * bascule RÉGLEMENTAIRE, pas continue. R18.2 avait ajouté par-dessus un raffinement de ±5 %
+ * (mer calme vs mer agitée) sur un modèle où ce facteur-là manquait : l'ordre de grandeur
+ * était inversé, on affinait le détail en ignorant le principal.
+ *
+ * `TRI_SWIM[format].factor` est calibré « combinaison comprise » : la référence PORTE donc la
+ * combinaison. La correction va dans un seul sens — SANS combinaison, on est plus lent. C'est
+ * le même piège d'ancrage que SWIM_ENV, et il se paie de la même façon si on l'inverse.
+ *
+ * Seuils : 24,5 °C est la borne haute commune (World Triathlon en âge-groupe, IRONMAN pour
+ * l'éligibilité au classement) ; au-delà la combinaison est interdite. Sous 15 °C, elle
+ * devient obligatoire et cesse de suffire à elle seule — c'est une question de sécurité, pas
+ * de chrono, et le manifeste range la santé en premier : le moteur AVERTIT au lieu d'estimer.
+ */
+export const WETSUIT = {
+  id: "R19.2",
+  maxLegalC: 24.5,
+  coldWarnC: 15,
+  /** Temps de nage SANS combinaison, la référence l'incluant. */
+  sansCombinaison: { lo: 1.04, hi: 1.07 } as ReliefFactor & { lo: number; hi: number },
+};
+/**
+ * Bande de correction due à la combinaison. `null` = température non renseignée, donc aucune
+ * correction — on ne devine pas une température d'eau à partir d'un format de course.
+ */
+export function wetsuitBandOf(waterTempC: unknown): { lo: number; hi: number; label: string } | null {
+  const t = typeof waterTempC === "number" ? waterTempC : parseFloat(String(waterTempC ?? ""));
+  if (!isFinite(t)) return null;
+  if (t > WETSUIT.maxLegalC)
+    return { lo: WETSUIT.sansCombinaison.lo, hi: WETSUIT.sansCombinaison.hi, label: "eau à " + t + " °C : combinaison INTERDITE (>" + WETSUIT.maxLegalC + " °C)" };
+  return { lo: 1, hi: 1, label: "eau à " + t + " °C : combinaison autorisée" };
+}
+
 export function swimEnvOf(value: unknown): ReliefFactor | null {
   const k = String(value ?? "").trim();
   return k ? SWIM_ENV[k] || null : null;
@@ -318,6 +357,11 @@ export function predictRace(
 ): Prediction {
   const decisions: Decision[] = [];
   const D = (id: string, what: string, val: string, why: string) => decisions.push({ id, what, val, why });
+  // R19.2 — conseils émis AVANT le rendu (sécurité liée à l'eau) : ils ne dépendent d'aucune
+  // référence chiffrée, donc ils doivent sortir même quand la prédiction refuse de projeter.
+  // Ils sont placés EN TÊTE de la liste : une consigne d'hypothermie passe avant un conseil
+  // de pacing.
+  const advice0: string[] = [];
 
   // Fourchette : ±3% de base ; ±2% si le plan est bien suivi ; décalée +3% en mode finisher.
   const followed = (opts.pctLoad ?? 0) >= 60 && (opts.streakWeeks ?? 0) >= 3;
@@ -337,10 +381,27 @@ export function predictRace(
   // qui prescrivent des watts (tri, vélo, duathlon).
   // R18.2 — le milieu de nage. Aucun repli sur le profil global : un relief ne décrit pas
   // un plan d'eau (voir SWIM_ENV).
-  const swimEnv = swimEnvOf(legs.swim);
+  const milieu = swimEnvOf(legs.swim);
+  const comb = wetsuitBandOf(opts.waterTempC);
+  // Les deux se COMPOSENT : un plan d'eau agité sans combinaison cumule les deux pénalités.
+  // Les multiplier plutôt que prendre le pire est le choix honnête — ce sont deux causes
+  // physiquement indépendantes (flottaison d'un côté, navigation et respiration de l'autre).
+  const swimEnv: ReliefFactor | null = (milieu || comb)
+    ? { lo: (milieu ? milieu.lo : 1) * (comb ? comb.lo : 1),
+        hi: (milieu ? milieu.hi : 1) * (comb ? comb.hi : 1),
+        label: [milieu ? milieu.label : null, comb && comb.lo !== 1 ? comb.label : null].filter(Boolean).join(" · ") || (comb ? comb.label : "") }
+    : null;
   const swimWhy = swimEnv && (swimEnv.lo !== 1 || swimEnv.hi !== 1)
-    ? " · " + swimEnv.label + " (×" + swimEnv.lo + "–" + swimEnv.hi + ")"
+    ? " · " + swimEnv.label + " (×" + Math.round(swimEnv.lo * 100) / 100 + "–" + Math.round(swimEnv.hi * 100) / 100 + ")"
     : "";
+  // SÉCURITÉ avant chrono : sous 15 °C, on ne raffine pas une estimation, on prévient.
+  {
+    const t = typeof opts.waterTempC === "number" ? opts.waterTempC : parseFloat(String(opts.waterTempC ?? ""));
+    if (isFinite(t) && t < WETSUIT.coldWarnC)
+      advice0.push("🌡 Eau à " + t + " °C. En dessous de " + WETSUIT.coldWarnC + " °C, la combinaison est obligatoire et ne suffit plus à elle seule : choc thermique à l'entrée, hyperventilation, extrémités qui lâchent. Fais au moins deux nages d'acclimatation en eau à cette température AVANT la course, avec bonnet néoprène, et n'y va jamais seul. Ce n'est pas une question de chrono.");
+    if (isFinite(t) && t > WETSUIT.maxLegalC)
+      advice0.push("🌡 Eau à " + t + " °C : au-delà de " + WETSUIT.maxLegalC + " °C la combinaison est interdite. Deux conséquences : tu nageras 4 à 7 % moins vite que l'estimation d'une nage en combinaison, et le risque bascule vers l'hyperthermie — entraîne-toi sans combinaison au moins une fois par semaine dans les six dernières semaines.");
+  }
   if (swimEnv && (swimEnv.lo !== 1 || swimEnv.hi !== 1))
     D("R18.2-nage", "Milieu de nage", swimEnv.label,
       swimEnv.lo < 1 && swimEnv.hi > 1
@@ -439,7 +500,12 @@ export function predictRace(
   // sortir un chiffre inventé — la fourchette honnête est la seule sortie acceptable.
   const mod = sportModule(sport);
   if (mod.predict) {
-    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy, swimrun: opts.swimrun });
+    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy,
+      legBands: {
+        swim: swimEnv ? [swimEnv.lo, swimEnv.hi] : null,
+        run: prof && prof.hi > 1 ? [prof.lo, prof.hi] : null,
+      },
+      swimrun: opts.swimrun });
   } else {
     advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }
@@ -454,7 +520,7 @@ export function predictRace(
 
   return {
     items: now.items,
-    advice: now.advice,
+    advice: [...advice0, ...now.advice],
     decisions,
     projected: buildProjection(sport, refs, opts, now, render),
   };

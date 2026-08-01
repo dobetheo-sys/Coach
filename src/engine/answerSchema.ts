@@ -236,7 +236,12 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   run_total_km: { ...numF("la course totale de ton épreuve", 1, 200, "km", ["swimrun"]), nature: "vecue" },
   longest_swim_m: { ...numF("ta plus longue nage", 50, 10000, "m", ["swimrun"]), nature: "vecue" },
   segments_n: { ...numF("le nombre de segments", 2, 60, "", ["swimrun"]), nature: "vecue" },
-  water_temp_c: { ...numF("la température de l'eau", -2, 35, "°C", ["swimrun"]), nature: "vecue" },
+  // R19.2 — le triathlon aussi. La combinaison vaut 4 à 7 % de temps de nage et sa légalité
+  // est un SEUIL RÉGLEMENTAIRE (24,5 °C) : c'est la variable dominante du leg natation, et
+  // elle n'existait que pour le swimrun. R18.2 avait ajouté par-dessus un raffinement de
+  // ±5 % (mer calme vs mer agitée) sur un modèle où ce facteur-là manquait — l'ordre de
+  // grandeur était inversé.
+  water_temp_c: { ...numF("la température de l'eau", -2, 35, "°C", ["swimrun", "tri"]), nature: "vecue" },
   team_swim_gap_sec: { ...numF("l'écart de nage du binôme", 0, 120, "s/100m", ["swimrun"]), nature: "mesuree" },
 };
 

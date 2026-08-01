@@ -503,6 +503,8 @@ export function renderTabProfile(plan) {
         + "</select></label>";
     };
     const RELIEF_OPTS = [["", "Comme au-dessus"], ["plat", "Plat"], ["vallonne", "Vallonné"], ["montagne", "Montagneux"]];
+    // R19.2 — la température de l'eau vit ici aussi : elle décide de la combinaison.
+    if (S.sport === "tri") html += row("pfWaterTemp", "🌡 Eau de la course (°C)", a.water_temp_c, "combinaison : interdite au-dessus de 24,5 °C");
     if (S.sport === "tri" || S.sport === "swimrun")
       html += legSel("pfLegSwim", "leg_swim_env", "🏊 Milieu de nage", [["", "Comme au-dessus"], ["bassin", "Bassin"], ["lac", "Lac / eau libre calme"], ["mer_calme", "Mer calme"], ["mer_agitee", "Mer agitée"], ["eau_vive", "Eau vive (courant)"]]);
     if (S.sport === "tri" || S.sport === "duathlon")
@@ -833,6 +835,8 @@ export function renderTabProfile(plan) {
     }
     // R18.2 — les trois profils par discipline. Ils touchent la prédiction ET le pacing du
     // jour J (le jour J est une séance du plan), d'où `changed++` : le plan est régénéré.
+    const wTemp = g("pfWaterTemp");
+    if (wTemp !== null && wTemp !== String(a.water_temp_c || "")) { S.answers.water_temp_c = wTemp; changed++; }
     for (const [id, cle] of [["pfLegSwim", "leg_swim_env"], ["pfLegBike", "leg_bike_prof"], ["pfLegRun", "leg_run_prof"]]) {
       const el = $(id);
       if (!el) continue;

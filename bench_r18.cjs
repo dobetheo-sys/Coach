@@ -121,17 +121,27 @@ check("R18.4-B", "le brick d'affûtage respecte ses bornes C21c et n'est jamais 
 
 check("R18.4-C", "l'affûtage réduit le VOLUME du brick, pas sa nature : il reste plus court que celui du pic", () => {
   const ko = [];
+  const sansAffutage = [];
   for (const sp of Object.keys(FORMATS_BRICK))
     for (const f of FORMATS_BRICK[sp]) {
       let p;
       try { p = E.buildPlan(sp, ans({ format: f, race_date: sunday(26) })); }
       catch (e) { if (e && e.code === "ENTREE_INVALIDE") continue; throw e; }
+      // R19.3 — DEPUIS QUE L'AFFÛTAGE SUIT LE FORMAT, certains formats courts n'ont qu'UNE
+      // semaine d'affûtage, et c'est la semaine de course. Le brick d'affûtage en est exclu
+      // par conception (R18.4-B) : il n'y a alors aucune semaine où le poser, et ce n'est pas
+      // un défaut. Ce qui compte reste couvert par R18.4-A : le dernier enchaînement tombe
+      // dans les deux dernières semaines quoi qu'il arrive. On ne relâche pas le critère —
+      // on lui retire un cas où il n'a pas d'objet, et on le dit.
+      const nTaper = p.weeks.filter((w) => w.phase.id === "taper").length;
       const dur = (ph) => { let m = 0; for (const w of p.weeks) if (w.phase.id === ph) for (const s of sessionsOf(w)) if (s.brick) m = Math.max(m, s.min || 0); return m; };
       const charge = Math.max(dur("spec"), dur("peak")), taper = dur("taper");
+      if (nTaper <= 1) { sansAffutage.push(`${sp}/${f}`); continue; }
       if (!charge || !taper) { ko.push(`${sp}/${f} : brick manquant (charge=${charge}, affûtage=${taper})`); continue; }
       if (taper >= charge) ko.push(`${sp}/${f} : brick d'affûtage ${taper}min ≥ brick de charge ${charge}min`);
     }
-  return { ok: !ko.length, info: ko.length ? ko[0] : "affûtage strictement plus court que la charge sur les 8 formats" };
+  return { ok: !ko.length, info: ko.length ? ko[0]
+    : "affûtage strictement plus court que la charge" + (sansAffutage.length ? ` · ${sansAffutage.length} format(s) à 1 semaine d'affûtage (= semaine de course), hors objet : ${sansAffutage.join(", ")}` : "") };
 });
 
 check("R18.4-D", "le brick d'affûtage n'est PAS une séance dure : aucune dose de zone haute au-delà du plafond", () => {

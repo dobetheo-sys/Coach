@@ -159,6 +159,44 @@ export const BRICK_BIKE_BOUNDS: Record<string, [number, number]> = rule(
 );
 
 /**
+ * R19.3 — LA DURÉE D'AFFÛTAGE SUIT L'ÉPREUVE, PAS LA LONGUEUR DE LA PRÉPARATION.
+ *
+ * R13.6 a corrigé un vrai défaut (six semaines d'affûtage sur un plan de 59 semaines) mais
+ * sur le MAUVAIS AXE : son plafond ne lisait que `weeks`. Mesuré avant correction — un
+ * **Sprint préparé sur 47 semaines recevait 3 semaines d'affûtage**, pour une épreuve de
+ * vingt minutes d'effort. Trois semaines de volume réduit de moitié sur un sprint, c'est du
+ * désentraînement organisé, exactement ce que R13.6 voulait empêcher chez les longs.
+ *
+ * Ce qui décide de la durée d'affûtage, c'est la fatigue accumulée et la durée de l'épreuve —
+ * pas le temps qu'on a mis à s'y préparer. Bosquet 2007 situe l'optimum général à 8-14 jours ;
+ * la pratique l'étire au-delà pour les formats longs, où le volume accumulé est bien plus
+ * élevé, et le raccourcit sur les formats courts, où la fraîcheur neuromusculaire se retrouve
+ * vite et où l'intensité doit rester présente jusque tard.
+ *
+ * En semaines : sprint/olympique ~1, demi-fond long ~2, très long ~3.
+ * Le plafond de la préparation reste appliqué EN PLUS (min des deux) : un plan de 12 semaines
+ * ne donne pas 3 semaines d'affûtage à un Ironman.
+ */
+export const TAPER_WEEKS_BY_FORMAT: Record<string, Record<string, number>> = rule(
+  "R19.3",
+  "la durée d'affûtage suit la distance de course et la charge accumulée, pas la longueur de la préparation",
+  {
+    run: { "5k": 1, "10k": 1, semi: 2, marathon: 3 },
+    bike: { crit: 1, clm: 1, route: 2, cyclo: 2, gravel: 2 },
+    swim: { sprint: 1, demifond: 1, fond: 2, ow: 2 },
+    tri: { S: 1, M: 1, "70.3": 2, Full: 3 },
+    duathlon: { S: 1, M: 1, L: 2, PM: 3 },
+    swimrun: { experience: 1, sprint: 1, series: 2, championship: 2 },
+  },
+);
+/** Trail : la catégorie d'effort DÉDUITE remplace le format (R7) — même échelle de durée. */
+export const TAPER_WEEKS_BY_TRAIL_CAT: Record<string, number> = rule(
+  "R19.3-t",
+  "en trail, c'est la catégorie d'effort déduite qui porte la charge accumulée",
+  { kv: 1, court: 1, long: 2, ultra: 3, ultra_long: 3, ultra_xl: 3 },
+);
+
+/**
  * R18.4 — LE BRICK D'AFFÛTAGE A SES PROPRES BORNES.
  *
  * `BRICK_BIKE_BOUNDS` (C21b) a été écrit quand le seul brick d'un plan était celui du pic :

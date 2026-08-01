@@ -645,7 +645,12 @@ const ANSWER_SCHEMA                            = {
   run_total_km: { ...numF("la course totale de ton épreuve", 1, 200, "km", ["swimrun"]), nature: "vecue" },
   longest_swim_m: { ...numF("ta plus longue nage", 50, 10000, "m", ["swimrun"]), nature: "vecue" },
   segments_n: { ...numF("le nombre de segments", 2, 60, "", ["swimrun"]), nature: "vecue" },
-  water_temp_c: { ...numF("la température de l'eau", -2, 35, "°C", ["swimrun"]), nature: "vecue" },
+  // R19.2 — le triathlon aussi. La combinaison vaut 4 à 7 % de temps de nage et sa légalité
+  // est un SEUIL RÉGLEMENTAIRE (24,5 °C) : c'est la variable dominante du leg natation, et
+  // elle n'existait que pour le swimrun. R18.2 avait ajouté par-dessus un raffinement de
+  // ±5 % (mer calme vs mer agitée) sur un modèle où ce facteur-là manquait — l'ordre de
+  // grandeur était inversé.
+  water_temp_c: { ...numF("la température de l'eau", -2, 35, "°C", ["swimrun", "tri"]), nature: "vecue" },
   team_swim_gap_sec: { ...numF("l'écart de nage du binôme", 0, 120, "s/100m", ["swimrun"]), nature: "mesuree" },
 };
 
@@ -1156,6 +1161,16 @@ class UnknownSportError extends Error {
                                                                                      
                   
      
+                                                                                   
+                                                                                           
+                                                                                          
+                                                                                               
+                                                                                               
+                                                            
+                                         
+     
+                                                                            
+     
                                                                                              
                                                                                                 
                                                                                                
@@ -1349,6 +1364,44 @@ const BRICK_BIKE_BOUNDS                                   = rule(
   "C21b",
   "un brick d'entraînement n'est ni une sortie longue déguisée ni un tour de pâté de maisons : ses bornes suivent le format de course",
   { S: [45, 90], M: [60, 120], "70.3": [90, 180], Full: [150, 300], L: [70, 150], PM: [150, 300] },
+);
+
+/**
+ * R19.3 — LA DURÉE D'AFFÛTAGE SUIT L'ÉPREUVE, PAS LA LONGUEUR DE LA PRÉPARATION.
+ *
+ * R13.6 a corrigé un vrai défaut (six semaines d'affûtage sur un plan de 59 semaines) mais
+ * sur le MAUVAIS AXE : son plafond ne lisait que `weeks`. Mesuré avant correction — un
+ * **Sprint préparé sur 47 semaines recevait 3 semaines d'affûtage**, pour une épreuve de
+ * vingt minutes d'effort. Trois semaines de volume réduit de moitié sur un sprint, c'est du
+ * désentraînement organisé, exactement ce que R13.6 voulait empêcher chez les longs.
+ *
+ * Ce qui décide de la durée d'affûtage, c'est la fatigue accumulée et la durée de l'épreuve —
+ * pas le temps qu'on a mis à s'y préparer. Bosquet 2007 situe l'optimum général à 8-14 jours ;
+ * la pratique l'étire au-delà pour les formats longs, où le volume accumulé est bien plus
+ * élevé, et le raccourcit sur les formats courts, où la fraîcheur neuromusculaire se retrouve
+ * vite et où l'intensité doit rester présente jusque tard.
+ *
+ * En semaines : sprint/olympique ~1, demi-fond long ~2, très long ~3.
+ * Le plafond de la préparation reste appliqué EN PLUS (min des deux) : un plan de 12 semaines
+ * ne donne pas 3 semaines d'affûtage à un Ironman.
+ */
+const TAPER_WEEKS_BY_FORMAT                                         = rule(
+  "R19.3",
+  "la durée d'affûtage suit la distance de course et la charge accumulée, pas la longueur de la préparation",
+  {
+    run: { "5k": 1, "10k": 1, semi: 2, marathon: 3 },
+    bike: { crit: 1, clm: 1, route: 2, cyclo: 2, gravel: 2 },
+    swim: { sprint: 1, demifond: 1, fond: 2, ow: 2 },
+    tri: { S: 1, M: 1, "70.3": 2, Full: 3 },
+    duathlon: { S: 1, M: 1, L: 2, PM: 3 },
+    swimrun: { experience: 1, sprint: 1, series: 2, championship: 2 },
+  },
+);
+/** Trail : la catégorie d'effort DÉDUITE remplace le format (R7) — même échelle de durée. */
+const TAPER_WEEKS_BY_TRAIL_CAT                         = rule(
+  "R19.3-t",
+  "en trail, c'est la catégorie d'effort déduite qui porte la charge accumulée",
+  { kv: 1, court: 1, long: 2, ultra: 3, ultra_long: 3, ultra_xl: 3 },
 );
 
 /**
@@ -2429,7 +2482,15 @@ class TrainingReasoningEngine {
     // bouge pas, C19 (peak ≥ 1) tient toujours.
     {
       const [, dev, spc, pk, tap] = phases;
-      const tapMax = Math.max(1, Math.min(Math.round(0.10 * weeks), weeks >= 30 ? 3 : 2));
+      // R19.3 — la durée d'affûtage vient d'abord du FORMAT DE COURSE (ce qui décide, c'est la
+      // charge accumulée et la durée de l'épreuve), et seulement ensuite de la longueur de la
+      // préparation. Prendre le min des deux : un plan court ne donne pas trois semaines
+      // d'affûtage à un Ironman, et un plan long n'en donne pas trois à un sprint.
+      const parFormat = a.sport === "trail"
+        ? (TAPER_WEEKS_BY_TRAIL_CAT[tObj?.category          ] ?? 2)
+        : (TAPER_WEEKS_BY_FORMAT[sp          ]?.[String(a.format ?? "")] ?? 2);
+      const parPrepa = Math.max(1, Math.min(Math.round(0.10 * weeks), weeks >= 30 ? 3 : 2));
+      const tapMax = Math.max(1, Math.min(parFormat, parPrepa));
       const pkMax = 5;
       let surplus = 0;
       if (tap.weeks > tapMax) { surplus += tap.weeks - tapMax; tap.weeks = tapMax; }
@@ -4351,14 +4412,27 @@ function buildTriSessions(kit            )              {
       // Répartition des intensités (manifeste) : le brick roule en Z2, le DERNIER TIERS
       // passe à l'allure course — la spécificité (transition, jambes entamées) est gardée
       // sans transformer 2 à 5h hebdo en zone grise (tri mesuré à 54-67% de temps facile).
-      S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : vélo en endurance, dernier tiers @ allure course, puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP.", det: "", steps: [
+      // R19.5 — LA PROSE NE PROMET PLUS CE QUE LA STRUCTURE NE PORTE PAS.
+      //
+      // La note disait « vélo en endurance, dernier tiers @ allure course » et le step portait
+      // `bk.z2` sur la TOTALITÉ du vélo. Mesuré sur un plan 70.3 : **881 min (14,7 h) d'allure
+      // course annoncées à l'athlète, portées par aucun step et comptées 100 % facile** par la
+      // répartition d'intensité. Un commentaire l'assumait pour ne pas faire tomber la part de
+      // temps facile — c'est-à-dire qu'on protégeait la MÉTRIQUE, pas le plan. Le dépôt a déjà
+      // payé cette leçon en R7 TRAIL : une intensité portée par une phrase n'existe pas.
+      //
+      // CE QUI EST FAIT ICI, ET CE QUI NE L'EST PAS. La note dit désormais ce que la séance
+      // FAIT : une sortie longue à vélo enchaînée à une course, ce qui est déjà la séance la
+      // plus spécifique du plan. Le tiers à allure course n'est PAS ajouté dans cette version,
+      // et le motif est mesuré, pas frileux : le poser en `bk.rp` met 58 combinaisons de tri
+      // sous le plancher de temps facile (C26) — et surtout, `bk.rp` vaut 0,80-0,88 de la FTP
+      // alors que le prédicteur prescrit 0,75-0,82 pour le jour J d'un 70.3. Le moteur porte
+      // donc DEUX définitions de « l'allure course », et il faut les réconcilier avant de
+      // construire une séance dessus. Suivi en `O-11` avec sa mesure.
+      S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : sortie longue à vélo en endurance, puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.", det: "", steps: [
         { role: "body", leg: "bike", durationMin: PT(bb.lo, Math.round(bb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2")                      }          ,
         { role: "body", leg: "run", durationMin: PT(br.lo, Math.round(br.hi * rf)), d: "rn" }          ,
       ], ...( { runInj }          ) });
-      // La SEMAINE DE COURSE est exclue : sa spécificité, c'est la course. Y poser un
-      // enchaînement à J-2 ou J-1 est le contraire d'un affûtage — et c'est aussi la semaine
-      // que R13.4/R15.7 remodèlent (déverrouillage de la veille, jour J), donc le seul endroit
-      // où une séance ajoutée ici se ferait de toute façon raboter par une autre règle.
     } else if (phase === "taper" && !medHold && kit.weekNum < kit.r.weeks) {
       // R18.4 — L'AFFÛTAGE GARDAIT LE VOLUME BAS ET PERDAIT LA SPÉCIFICITÉ.
       // Mesuré sur les 4 formats × 2 niveaux : le dernier enchaînement vélo→course tombait
@@ -5377,12 +5451,25 @@ function predictSwimrun(kit            )       {
     return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
   };
   const est = obj.paceKnown ? "" : " — ESTIMÉ d'après ton CSS et ton allure route, fais le test en tenue pour l'affiner";
-  items.push({ leg: "Temps estimé", value: fmtHM(obj.totalMinLo) + "–" + fmtHM(obj.totalMinHi),
-    why: obj.why + " · fourchette large assumée : sur cette épreuve, le terrain, l'eau et le binôme pèsent plus que la condition physique" });
-  items.push({ leg: "Dont nage", value: fmtHM(obj.swimMin) + " (" + Math.round(obj.swimTimeShare * 100) + "% du temps)",
-    why: "La nage pèse bien plus lourd en TEMPS qu'en distance : " + Math.round(obj.swimTotalM / 10) / 100 + " km nagés ne représentent qu'une fraction de la distance, mais un quart à un tiers du chrono" + est });
-  items.push({ leg: "Dont course", value: fmtHM(obj.runMin),
-    why: "Terrain de trail, jambes mouillées, chaussures pleines d'eau : compte une allure nettement plus lente que sur route" + est });
+  // R19.1 — LE MILIEU DE NAGE ET LE RELIEF ENTRENT ICI AUSSI.
+  // Les deux questions étaient posées au questionnaire swimrun et au Profil, et ne changeaient
+  // RIEN : ce module additionne trois postes qu'il met en forme lui-même (`fmtHM`), donc il ne
+  // passait ni par `swimRange` ni par `runRange`, les deux seuls endroits où les corrections
+  // étaient appliquées. Une question sans effet est une question qui ment sur ce qu'elle sert.
+  // Elles s'appliquent POSTE PAR POSTE, puis se propagent au total — pas l'inverse : appliquer
+  // une correction de nage au total reviendrait à ralentir aussi la course à pied.
+  const bS = kit.legBands.swim, bR = kit.legBands.run;
+  const swimLo = obj.swimMin * (bS ? bS[0] : 1), swimHi = obj.swimMin * (bS ? bS[1] : 1);
+  const runLo = obj.runMin * (bR ? bR[0] : 1), runHi = obj.runMin * (bR ? bR[1] : 1);
+  const deltaLo = (swimLo - obj.swimMin) + (runLo - obj.runMin);
+  const deltaHi = (swimHi - obj.swimMin) + (runHi - obj.runMin);
+  const bande = (lo        , hi        ) => (Math.round(lo) === Math.round(hi) ? fmtHM(lo) : fmtHM(lo) + "–" + fmtHM(hi));
+  items.push({ leg: "Temps estimé", value: fmtHM(obj.totalMinLo + deltaLo) + "–" + fmtHM(obj.totalMinHi + deltaHi),
+    why: obj.why + " · fourchette large assumée : sur cette épreuve, le terrain, l'eau et le binôme pèsent plus que la condition physique" + kit.swimWhy + kit.profWhy });
+  items.push({ leg: "Dont nage", value: bande(swimLo, swimHi) + " (" + Math.round(obj.swimTimeShare * 100) + "% du temps)",
+    why: "La nage pèse bien plus lourd en TEMPS qu'en distance : " + Math.round(obj.swimTotalM / 10) / 100 + " km nagés ne représentent qu'une fraction de la distance, mais un quart à un tiers du chrono" + kit.swimWhy + est });
+  items.push({ leg: "Dont course", value: bande(runLo, runHi),
+    why: "Terrain de trail, jambes mouillées, chaussures pleines d'eau : compte une allure nettement plus lente que sur route" + kit.profWhy + est });
   items.push({ leg: "Dont transitions", value: fmtHM(obj.transitionMin) + " (" + obj.transitions + " passages)",
     why: "Poste à part entière, jamais négligé : " + obj.segments + " segments nagés = " + obj.transitions + " transitions. C'est le temps le plus facile à récupérer — il s'entraîne" });
   if (obj.teamMode === "binome") {
@@ -9761,6 +9848,8 @@ function taperIsConform(plan
                                                                                                
      
                                                                
+                                                                                       
+                      
                                                                                               
                          
                                                                     
@@ -9877,6 +9966,43 @@ const SWIM_ENV                               = {
   mer_agitee: { lo: 1.06, hi: 1.14, label: "mer agitée (houle, respiration contrariée)" },
   eau_vive: { lo: 0.95, hi: 1.2, label: "eau vive (courant)" },
 };
+/**
+ * R19.2 — LA COMBINAISON. C'était le trou le plus large du modèle de natation.
+ *
+ * `water_temp_c` n'existait que pour le swimrun. En triathlon, rien : ni combinaison, ni seuil
+ * de légalité. Or c'est la variable DOMINANTE du leg natation — 4 à 7 % de temps, et une
+ * bascule RÉGLEMENTAIRE, pas continue. R18.2 avait ajouté par-dessus un raffinement de ±5 %
+ * (mer calme vs mer agitée) sur un modèle où ce facteur-là manquait : l'ordre de grandeur
+ * était inversé, on affinait le détail en ignorant le principal.
+ *
+ * `TRI_SWIM[format].factor` est calibré « combinaison comprise » : la référence PORTE donc la
+ * combinaison. La correction va dans un seul sens — SANS combinaison, on est plus lent. C'est
+ * le même piège d'ancrage que SWIM_ENV, et il se paie de la même façon si on l'inverse.
+ *
+ * Seuils : 24,5 °C est la borne haute commune (World Triathlon en âge-groupe, IRONMAN pour
+ * l'éligibilité au classement) ; au-delà la combinaison est interdite. Sous 15 °C, elle
+ * devient obligatoire et cesse de suffire à elle seule — c'est une question de sécurité, pas
+ * de chrono, et le manifeste range la santé en premier : le moteur AVERTIT au lieu d'estimer.
+ */
+const WETSUIT = {
+  id: "R19.2",
+  maxLegalC: 24.5,
+  coldWarnC: 15,
+  /** Temps de nage SANS combinaison, la référence l'incluant. */
+  sansCombinaison: { lo: 1.04, hi: 1.07 }                                             ,
+};
+/**
+ * Bande de correction due à la combinaison. `null` = température non renseignée, donc aucune
+ * correction — on ne devine pas une température d'eau à partir d'un format de course.
+ */
+function wetsuitBandOf(waterTempC         )                                                   {
+  const t = typeof waterTempC === "number" ? waterTempC : parseFloat(String(waterTempC ?? ""));
+  if (!isFinite(t)) return null;
+  if (t > WETSUIT.maxLegalC)
+    return { lo: WETSUIT.sansCombinaison.lo, hi: WETSUIT.sansCombinaison.hi, label: "eau à " + t + " °C : combinaison INTERDITE (>" + WETSUIT.maxLegalC + " °C)" };
+  return { lo: 1, hi: 1, label: "eau à " + t + " °C : combinaison autorisée" };
+}
+
 function swimEnvOf(value         )                      {
   const k = String(value ?? "").trim();
   return k ? SWIM_ENV[k] || null : null;
@@ -10023,6 +10149,11 @@ function predictRace(
 )             {
   const decisions             = [];
   const D = (id        , what        , val        , why        ) => decisions.push({ id, what, val, why });
+  // R19.2 — conseils émis AVANT le rendu (sécurité liée à l'eau) : ils ne dépendent d'aucune
+  // référence chiffrée, donc ils doivent sortir même quand la prédiction refuse de projeter.
+  // Ils sont placés EN TÊTE de la liste : une consigne d'hypothermie passe avant un conseil
+  // de pacing.
+  const advice0           = [];
 
   // Fourchette : ±3% de base ; ±2% si le plan est bien suivi ; décalée +3% en mode finisher.
   const followed = (opts.pctLoad ?? 0) >= 60 && (opts.streakWeeks ?? 0) >= 3;
@@ -10042,10 +10173,27 @@ function predictRace(
   // qui prescrivent des watts (tri, vélo, duathlon).
   // R18.2 — le milieu de nage. Aucun repli sur le profil global : un relief ne décrit pas
   // un plan d'eau (voir SWIM_ENV).
-  const swimEnv = swimEnvOf(legs.swim);
+  const milieu = swimEnvOf(legs.swim);
+  const comb = wetsuitBandOf(opts.waterTempC);
+  // Les deux se COMPOSENT : un plan d'eau agité sans combinaison cumule les deux pénalités.
+  // Les multiplier plutôt que prendre le pire est le choix honnête — ce sont deux causes
+  // physiquement indépendantes (flottaison d'un côté, navigation et respiration de l'autre).
+  const swimEnv                      = (milieu || comb)
+    ? { lo: (milieu ? milieu.lo : 1) * (comb ? comb.lo : 1),
+        hi: (milieu ? milieu.hi : 1) * (comb ? comb.hi : 1),
+        label: [milieu ? milieu.label : null, comb && comb.lo !== 1 ? comb.label : null].filter(Boolean).join(" · ") || (comb ? comb.label : "") }
+    : null;
   const swimWhy = swimEnv && (swimEnv.lo !== 1 || swimEnv.hi !== 1)
-    ? " · " + swimEnv.label + " (×" + swimEnv.lo + "–" + swimEnv.hi + ")"
+    ? " · " + swimEnv.label + " (×" + Math.round(swimEnv.lo * 100) / 100 + "–" + Math.round(swimEnv.hi * 100) / 100 + ")"
     : "";
+  // SÉCURITÉ avant chrono : sous 15 °C, on ne raffine pas une estimation, on prévient.
+  {
+    const t = typeof opts.waterTempC === "number" ? opts.waterTempC : parseFloat(String(opts.waterTempC ?? ""));
+    if (isFinite(t) && t < WETSUIT.coldWarnC)
+      advice0.push("🌡 Eau à " + t + " °C. En dessous de " + WETSUIT.coldWarnC + " °C, la combinaison est obligatoire et ne suffit plus à elle seule : choc thermique à l'entrée, hyperventilation, extrémités qui lâchent. Fais au moins deux nages d'acclimatation en eau à cette température AVANT la course, avec bonnet néoprène, et n'y va jamais seul. Ce n'est pas une question de chrono.");
+    if (isFinite(t) && t > WETSUIT.maxLegalC)
+      advice0.push("🌡 Eau à " + t + " °C : au-delà de " + WETSUIT.maxLegalC + " °C la combinaison est interdite. Deux conséquences : tu nageras 4 à 7 % moins vite que l'estimation d'une nage en combinaison, et le risque bascule vers l'hyperthermie — entraîne-toi sans combinaison au moins une fois par semaine dans les six dernières semaines.");
+  }
   if (swimEnv && (swimEnv.lo !== 1 || swimEnv.hi !== 1))
     D("R18.2-nage", "Milieu de nage", swimEnv.label,
       swimEnv.lo < 1 && swimEnv.hi > 1
@@ -10144,7 +10292,12 @@ function predictRace(
   // sortir un chiffre inventé — la fourchette honnête est la seule sortie acceptable.
   const mod = sportModule(sport);
   if (mod.predict) {
-    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy, swimrun: opts.swimrun });
+    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy,
+      legBands: {
+        swim: swimEnv ? [swimEnv.lo, swimEnv.hi] : null,
+        run: prof && prof.hi > 1 ? [prof.lo, prof.hi] : null,
+      },
+      swimrun: opts.swimrun });
   } else {
     advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }
@@ -10159,7 +10312,7 @@ function predictRace(
 
   return {
     items: now.items,
-    advice: now.advice,
+    advice: [...advice0, ...now.advice],
     decisions,
     projected: buildProjection(sport, refs, opts, now, render),
   };
@@ -11510,6 +11663,8 @@ function predictV2(sport        , answers            , plan                     
     courseProfile: courseProfileOf(answers         ),
     // R18.2 — trois profils au lieu d'un : un triathlon n'est pas homogène.
     legProfiles: { swim: legProfileOf(answers         , "swim"), bike: legProfileOf(answers         , "bike"), run: legProfileOf(answers         , "run") },
+    // R19.2 — la combinaison : seuil réglementaire à 24,5 °C, 4 à 7 % de temps de nage.
+    waterTempC: parseFloat(String(answers.water_temp_c ?? "")) || undefined,
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
     swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,

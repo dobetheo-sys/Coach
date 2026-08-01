@@ -67,14 +67,27 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
       // Répartition des intensités (manifeste) : le brick roule en Z2, le DERNIER TIERS
       // passe à l'allure course — la spécificité (transition, jambes entamées) est gardée
       // sans transformer 2 à 5h hebdo en zone grise (tri mesuré à 54-67% de temps facile).
-      S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : vélo en endurance, dernier tiers @ allure course, puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP.", det: "", steps: [
+      // R19.5 — LA PROSE NE PROMET PLUS CE QUE LA STRUCTURE NE PORTE PAS.
+      //
+      // La note disait « vélo en endurance, dernier tiers @ allure course » et le step portait
+      // `bk.z2` sur la TOTALITÉ du vélo. Mesuré sur un plan 70.3 : **881 min (14,7 h) d'allure
+      // course annoncées à l'athlète, portées par aucun step et comptées 100 % facile** par la
+      // répartition d'intensité. Un commentaire l'assumait pour ne pas faire tomber la part de
+      // temps facile — c'est-à-dire qu'on protégeait la MÉTRIQUE, pas le plan. Le dépôt a déjà
+      // payé cette leçon en R7 TRAIL : une intensité portée par une phrase n'existe pas.
+      //
+      // CE QUI EST FAIT ICI, ET CE QUI NE L'EST PAS. La note dit désormais ce que la séance
+      // FAIT : une sortie longue à vélo enchaînée à une course, ce qui est déjà la séance la
+      // plus spécifique du plan. Le tiers à allure course n'est PAS ajouté dans cette version,
+      // et le motif est mesuré, pas frileux : le poser en `bk.rp` met 58 combinaisons de tri
+      // sous le plancher de temps facile (C26) — et surtout, `bk.rp` vaut 0,80-0,88 de la FTP
+      // alors que le prédicteur prescrit 0,75-0,82 pour le jour J d'un 70.3. Le moteur porte
+      // donc DEUX définitions de « l'allure course », et il faut les réconcilier avant de
+      // construire une séance dessus. Suivi en `O-11` avec sa mesure.
+      S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : sortie longue à vélo en endurance, puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.", det: "", steps: [
         { role: "body", leg: "bike", durationMin: PT(bb.lo, Math.round(bb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string } as V1Step,
         { role: "body", leg: "run", durationMin: PT(br.lo, Math.round(br.hi * rf)), d: "rn" } as V1Step,
       ], ...( { runInj } as object) });
-      // La SEMAINE DE COURSE est exclue : sa spécificité, c'est la course. Y poser un
-      // enchaînement à J-2 ou J-1 est le contraire d'un affûtage — et c'est aussi la semaine
-      // que R13.4/R15.7 remodèlent (déverrouillage de la veille, jour J), donc le seul endroit
-      // où une séance ajoutée ici se ferait de toute façon raboter par une autre règle.
     } else if (phase === "taper" && !medHold && kit.weekNum < kit.r.weeks) {
       // R18.4 — L'AFFÛTAGE GARDAIT LE VOLUME BAS ET PERDAIT LA SPÉCIFICITÉ.
       // Mesuré sur les 4 formats × 2 niveaux : le dernier enchaînement vélo→course tombait

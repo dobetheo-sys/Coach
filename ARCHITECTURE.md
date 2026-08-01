@@ -1559,3 +1559,80 @@ Deux autres défauts trouvés **en lisant les plans** pendant le lot, enregistr�
 plan sur les trois formats — exactement le défaut que R13 a corrigé pour le tri) et `O-9` (le
 banc d'invariants porte quatre familles d'échecs pendant que la documentation le dit vert ;
 vérifié identique contre le moteur d'avant R18, donc dette et non régression).
+
+---
+
+## R19 — l'audit de mes propres résultats (01/08/2026)
+
+R18 livré, les résultats ont été repassés au crible de six regards de spécialistes —
+physiologie de l'entraînement, triathlon, course, vélo, natation, swimrun — **en mesurant sur
+le bundle livré**. Six incohérences en sont sorties. Trois étaient réelles et sont corrigées ;
+une était réelle et attend d'être tranchée ; **une était fausse, et c'est ma mesure qui
+l'était**.
+
+### R19.1 — deux questions inertes en swimrun (défaut introduit par R18.2)
+
+`leg_swim_env` et `leg_run_prof` ne changeaient **rien** en swimrun : son prédicteur additionne
+trois postes qu'il met en forme lui-même (`fmtHM`) et ne passe donc ni par `swimRange` ni par
+`runRange`, les deux seuls endroits où les corrections étaient appliquées. Les questions étaient
+pourtant posées au questionnaire ET au Profil.
+
+Le pire était du côté des gardes : la suite E2E swimrun assertait que le champ **existe**,
+jamais qu'il **agit**, et le critère `R18.2-A` ne couvrait que le tri. J'avais façonné la garde
+sur le code au lieu de la façonner sur la promesse. Le kit expose désormais `legBands` (les
+bandes brutes) pour les modules qui ont leur propre mise en forme.
+
+### R19.2 — la combinaison n'existait pas (et R18.2 avait affiné par-dessus)
+
+`water_temp_c` n'était déclaré que pour le swimrun. En triathlon : pas de température d'eau,
+donc pas de combinaison, donc pas de seuil de légalité. C'est la variable **dominante** du leg
+natation — 4 à 7 % de temps, et une bascule réglementaire à 24,5 °C — et R18.2 avait ajouté
+par-dessus un raffinement de ±5 % (mer calme vs mer agitée). **L'ordre de grandeur était
+inversé : on affinait le détail en ignorant le principal.**
+
+`WETSUIT` compose avec `SWIM_ENV` (deux causes physiquement indépendantes : flottaison d'un
+côté, navigation et respiration de l'autre). Et sous 15 °C le moteur **ne raffine pas une
+estimation, il prévient** — choc thermique, hyperventilation, acclimatation obligatoire. La
+santé avant le chrono.
+
+### R19.3 — la durée d'affûtage suivait la préparation, pas la course
+
+Mesuré : un **Sprint préparé sur 47 semaines recevait 3 semaines d'affûtage**, pour une épreuve
+de vingt minutes d'effort. R13.6 avait corrigé un vrai défaut (six semaines d'affûtage sur un
+plan de 59 semaines) mais sur le **mauvais axe** : son plafond ne lisait que `weeks`.
+
+`TAPER_WEEKS_BY_FORMAT` indexe désormais sur l'épreuve (sprint/olympique ~1 semaine, demi-fond
+long ~2, très long ~3), et le plafond de la préparation s'applique **en plus** (min des deux) :
+un plan court ne donne pas trois semaines d'affûtage à un Ironman.
+
+### R19.4 — LE CONSTAT ÉTAIT FAUX, ET LA CORRECTION ÉTAIT UNE RÉGRESSION
+
+À garder écrit, parce que c'est une leçon de mesure et que ce dépôt en vit.
+
+J'avais conclu que « l'affûtage coupe l'intensité plus vite que le volume », sur la foi d'un
+compteur de **minutes DURES** tombant à zéro sur 14 plans. J'ai écrit la correction, puis je
+l'ai mesurée :
+
+| | qualité en 1re semaine d'affûtage | semaines à zéro |
+|---|---|---|
+| moteur avant | 45 min | 2 |
+| **avec ma « correction »** | **38 min** | **4** |
+| après retrait | 43 min | 0 |
+
+Artefact de métrique : `bk.rp`, `bk.ss` et `rn.mara` — le travail d'allure spécifique, exactement
+ce qu'un affûtage doit garder — sont classés MODÉRÉS, pas durs. Sur le bon critère
+(modéré + dur), le moteur d'avant était **déjà 59/59 conforme**. Retiré. Suivi en `O-12`.
+
+### R19.5 — la prose promettait une allure que la structure ne portait pas
+
+La note du brick disait « vélo en endurance, **dernier tiers @ allure course** » et le step
+portait `bk.z2` sur la totalité : **881 min (14,7 h) d'allure course annoncées à l'athlète sur
+un plan 70.3, portées par aucun step, comptées 100 % facile**. Un commentaire l'assumait pour
+ne pas faire tomber la part de temps facile — protéger la MÉTRIQUE, pas le plan.
+
+**Fait :** la note dit ce que la séance fait. **Pas fait, et le motif est mesuré :** poser le
+tiers en `bk.rp` met 58 combinaisons de tri sous le plancher C26, et surtout la construction
+révèle que `bk.rp` vaut **0,80–0,88 × FTP** quand le prédicteur prescrit **0,752–0,822** pour
+le jour J d'un 70.3. Le moteur porte **deux définitions de « l'allure course »**, et la zone
+d'entraînement est plus dure que l'allure de course qu'il annonce. Il faut les réconcilier
+avant de construire une séance dessus — suivi en `O-11` avec sa commande de re-mesure.

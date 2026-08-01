@@ -413,6 +413,25 @@ plafonds SONT la table déclarée fausse, et ils sont arithmétiquement incompat
 `R14.1-B` (50 % d'écart exigé contre 45 % autorisé). **19 gates verts, E2E 8/8 (55 assertions),
 golden 758 inchangé** — la projection ne touche aucune séance.
 
+**R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
+de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
+corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur
+met en forme ses propres postes, donc ne passait ni par `swimRange` ni par `runRange`) et ma
+garde E2E vérifiait que le champ existe, jamais qu'il agit ; **R19.2** la combinaison n'existait
+pas dans le modèle de natation tri — 4 à 7 % de temps et un seuil réglementaire à 24,5 °C —
+pendant que R18.2 affinait à ±5 % par-dessus, ordre de grandeur inversé (et sous 15 °C le moteur
+prévient au lieu d'estimer) ; **R19.3** la durée d'affûtage suivait la longueur de la PRÉPA et
+non la course (un Sprint sur 47 semaines recevait 3 semaines d'affûtage). **R19.4 : le constat
+était FAUX et ma correction était une régression** — j'avais compté les minutes « dures » alors
+que le travail d'allure spécifique est classé MODÉRÉ ; sur le bon critère le moteur était déjà
+59/59 conforme, et ma correction faisait passer la qualité d'affûtage de 45 à 38 min avec 4
+semaines à zéro. Retirée (`O-12`). **R19.5** : la note du brick promettait « dernier tiers @
+allure course » sur un step 100 % `bk.z2` — 14,7 h annoncées et comptées facile sur un 70.3 ; la
+note est corrigée, la structure attend `O-11`, parce que la construire révèle que `bk.rp` vaut
+0,80-0,88 FTP quand le jour J d'un 70.3 est prescrit à 0,752-0,822 : **deux définitions de
+« l'allure course » dans le même moteur**.
+**21 gates verts, E2E 12/12, golden 900 recapturé, registre 12/12 re-mesuré.**
+
 **R18 livré — le premier lot qui vient d'un TEST, pas d'un audit** (retour du fondateur,
 01/08/2026, voir ARCHITECTURE.md « R18 » — banc `npm run audit:r18`, **21e gate CI**) : six
 constats, cinq défauts, dont deux plus larges que ce que le test pouvait voir.

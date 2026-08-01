@@ -234,6 +234,12 @@ function buildFreeSteps(){
       why:"Ton épreuve n'est pas d'un seul bloc. Chaque segment a son terrain, et chacun change une chose différente : le milieu de nage décale la fourchette de natation, le relief du vélo abaisse ta puissance cible, le relief à pied élargit ton temps de course. Tu peux tout laisser vide — on reprendra alors ton terrain général.",
       render(){
         let h = "";
+        // R19.2 — la température de l'eau décide de la COMBINAISON, qui vaut 4 à 7 % de temps
+        // de nage et bascule sur un seuil réglementaire (24,5 °C). C'est le facteur dominant
+        // du leg natation ; il manquait pendant qu'on affinait le milieu à ±5 %.
+        if (S.sport === "tri") h += '<div class="q"><span class="q-label">Température de l\'eau (°C, si tu la connais)</span>'
+          + '<div class="q-sub">Au-dessus de 24,5 °C la combinaison est interdite — tu nageras 4 à 7 % moins vite que l\'estimation, et on te le dira. En dessous de 15 °C, c\'est une question de sécurité avant d\'être une question de chrono.</div>'
+          + '<input type="number" data-input="water_temp_c" value="' + (a.water_temp_c || "") + '" placeholder="ex. 19" min="-2" max="35" step="0.5"></div>';
         if (nage) h += '<div class="q"><span class="q-label">La natation se passe où ?</span>'
           + '<div class="q-sub">Le bassin est plus rapide que l\'eau libre (ni navigation, ni houle). Un courant, lui, peut porter autant que freiner — on élargira la fourchette dans les deux sens.</div>'
           + '<div class="opts" data-key="leg_swim_env">'+opt("bassin","Bassin")+opt("lac","Lac / eau libre calme")+opt("mer_calme","Mer calme")+opt("mer_agitee","Mer agitée")+opt("eau_vive","Eau vive (courant)")+'</div></div>';

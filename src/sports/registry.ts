@@ -146,6 +146,16 @@ export interface PredictKit {
   /** Mention « · eau vive (×0.95–1.2) » à coller au « pourquoi » du leg natation. */
   swimWhy: string;
   /**
+   * R19.1 — LES BANDES BRUTES, pour les sports qui formatent leurs propres postes.
+   * `swimRange`/`runRange` rendent du texte déjà mis en forme : le swimrun, qui additionne
+   * trois postes en `fmtHM` avant de les afficher, ne pouvait pas les utiliser — et c'est
+   * exactement pour ça que `leg_swim_env` et `leg_run_prof` étaient INERTES chez lui alors que
+   * la question était posée. Un module qui a sa propre mise en forme doit pouvoir appliquer la
+   * correction sans passer par la mise en forme des autres.
+   * `null` = aucune correction déclarée.
+   */
+  legBands: { swim: [number, number] | null; run: [number, number] | null };
+  /**
    * R15.2 — LE RELIEF ENTRE DANS LA CIBLE D'INTENSITÉ VÉLO. Les trois sports qui prescrivent
    * une puissance (tri, vélo, duathlon) passent leur bande d'IF par ici : sans ce point unique,
    * un quatrième producteur de watts divergerait le jour où on l'ajoute — et cette fois sur le
