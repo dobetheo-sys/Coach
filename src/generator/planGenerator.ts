@@ -22,7 +22,7 @@ import { sessionLoad, intensitySplit, zoneClass, type AthleteRefs } from "../eng
 import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS, syncReturnRecovery } from "../engine/trailModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
 import { buildSessions } from "./sessionLibrary.ts";
-import { predictRace, courseProfileOf, legProfileOf } from "../engine/predictor.ts";
+import { predictRace, courseProfileOf, legProfileOf, raceBikeBand, bikeIFShift } from "../engine/predictor.ts";
 import { swimrunObjective } from "../sports/swimrun/objective.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { arbitrateVolRecent } from "../engine/measured.ts";
@@ -938,6 +938,18 @@ export function reconcileDeclaredVolume(
 }
 
 /**
+ * O-11 / R20.5 — la bande « allure course » vélo de cette épreuve, relief compris. Un seul
+ * point pour les deux appelants (génération et réparation) : deux copies auraient divergé, ce
+ * qui est très exactement le défaut qu'O-11 décrit.
+ */
+export function shiftedBikeRp(sport: string, format: string | undefined, a: AthleteProfile): { lo: number; hi: number } | undefined {
+  const b = raceBikeBand(sport, format);
+  if (!b) return undefined;
+  const shift = bikeIFShift(legProfileOf(a as never, "bike"));
+  return { lo: b.lo + shift, hi: b.hi + shift };
+}
+
+/**
  * C26c (R20.4) — LE TEMPS DUR HEBDOMADAIRE NE DÉPASSE PAS LE PLAFOND QUE C26 DÉCLARE.
  *
  * Voir `constraintMatrix.ts` (C26c) pour le raisonnement et la mesure. Ici, la mécanique :
@@ -979,7 +991,12 @@ function enforceHardTimeCap(
           if (h > cibleHard) { cibleHard = h; cible = s; }
         }
       if (!cible || cibleHard <= 0) break;
-      const durs = (cible.steps || []).filter((b) => b.role === "body" && zoneClass(b.zone) === "hard");
+      // R20.5 — la COUPE et la MESURE doivent classer pareil. `bk.rp` est dur ou modéré selon
+      // la bande de l'épreuve : lire `rpBand` ici aussi, sinon le cutter ne trouverait jamais
+      // le bloc que l'auditeur compte — deux définitions du mot « dur » dans le même moteur,
+      // le défaut O-11 reproduit à l'intérieur d'un seul lot.
+      const durs = (cible.steps || []).filter((b) => b.role === "body"
+        && zoneClass(b.zone, false, (b as { rpBand?: { lo: number; hi: number } }).rpBand) === "hard");
       if (!durs.length) break;
       // Le plus gros bloc dur de la séance : c'est lui qui porte le dosage.
       const b = durs.reduce((x, y) => ((y.reps || 1) * (y.durationMin || 0) > (x.reps || 1) * (x.durationMin || 0) ? y : x));
@@ -1050,7 +1067,17 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   if (opts?.noLoadFactor) r.loadFactor = 1;
   const a = profile;
   const fmt = a.format;
-  const refs: Refs = { ...r.baseRefs };
+  // O-11 / R20.5 — la zone « allure course » vélo lit la cible du JOUR J de cette épreuve,
+  // au lieu d'une constante 0,80–0,88 × FTP identique du sprint à l'Ironman. Un seul point
+  // décide (`raceBikeBand`), et c'est le même que celui de la prédiction.
+  //
+  // Le décalage de relief (R15.2) est appliqué ICI AUSSI, et par le même résolveur de parcours
+  // que la prédiction : une séance qui s'appelle « rappel race-pace » doit afficher le nombre
+  // que l'athlète verra sur son compteur le jour J. Reproduire la cible d'un parcours plat en
+  // préparation d'une épreuve de montagne, c'est apprendre le mauvais chiffre — le défaut que
+  // R15.2 a corrigé côté prédiction, à un mois d'intervalle, sur l'autre versant du même
+  // chemin.
+  const refs: Refs = { ...r.baseRefs, bikeRp: shiftedBikeRp(String(a.sport), fmt, a) };
   const days = buildDays(r, refs, r.hz);
 
   // ---- Bornes de bloc (R3.4b/R3.11/R3.12) — source unique, mêmes règles que V1.5 ----
@@ -1086,7 +1113,11 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // ce que l'auditeur refuse, et c'est l'auditeur qui a raison).
       if (b.leg === "bike") {
         const bb = BRICK_BIKE_BOUNDS[fmt || ""];
-        return { floor: bb ? bb[0] : 32, cap: Math.round((CAP_BRICK_BIKE[fmt] || 300) * brickRF) };
+        // R20.5 — le leg vélo du brick peut être en DEUX blocs (endurance puis allure course).
+        // Les bornes du format portent sur le TOTAL vélo : chaque bloc en reçoit sa part, sinon
+        // un brick coupé en deux hériterait de deux fois le plancher et doublerait mécaniquement.
+        const sh = (b as { share?: number }).share ?? 1;
+        return { floor: Math.round((bb ? bb[0] : 32) * sh), cap: Math.round((CAP_BRICK_BIKE[fmt] || 300) * brickRF * sh) };
       }
       return { floor: 8, cap: Math.round((CAP_BRICK_RUN[fmt] || 70) * brickRF) };
     }

@@ -294,8 +294,19 @@ const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
  * précisément le défaut O-11 (deux définitions de « l'allure course » à vélo), et il n'y a
  * aucune raison de le refaire en le voyant venir.
  */
-export function zoneClass(zone: unknown, runLegNoZone = false): "easy" | "mod" | "hard" {
+export function zoneClass(zone: unknown, runLegNoZone = false, rpBand?: { lo: number; hi: number }): "easy" | "mod" | "hard" {
   const z = typeof zone === "string" ? zone : "";
+  // R20.5 — `bk.rp` A CESSÉ D'ÊTRE UNE INTENSITÉ FIXE, DONC SA CLASSE AUSSI.
+  //
+  // Depuis O-11, « l'allure course » vélo vaut ce que l'épreuve demande : 0,70–0,76 × FTP sur
+  // un Ironman, 0,85–0,93 sur un sprint. Le premier est de l'endurance tenable six heures, le
+  // second est à la porte du seuil. Les ranger tous deux en « modéré » par un suffixe, c'est
+  // refaire à l'échelle de la classification l'erreur qu'O-11 vient de corriger à l'échelle du
+  // nombre : une table qui ne connaît pas la bande ne peut pas la juger.
+  //
+  // Seuil à 0,85 × FTP : c'est le bas de la zone sweetspot/seuil de Coggan. Au-dessus, l'effort
+  // se paie en récupération et doit compter dans le plafond de temps DUR (C26c).
+  if (z === "bk.rp" && rpBand) return rpBand.hi >= 0.85 ? "hard" : "mod";
   if (TRAIL_HARD.includes(z) || HARD_SUFFIX.some((s) => z.endsWith(s))) return "hard";
   if (TRAIL_MOD.includes(z) || MOD_SUFFIX.some((s) => z.endsWith(s)) || runLegNoZone) return "mod";
   return "easy";
@@ -338,7 +349,7 @@ export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS):
     // comptés modérés et la répartition d'intensité tomberait à 61 % de facile (mesuré) sur un
     // plan qui est en réalité polarisé. La zone déclarée est toujours plus précise que l'indice.
     const runLegNoZone = st.leg === "run" && !zone;
-    const cls = zoneClass(zone, runLegNoZone);
+    const cls = zoneClass(zone, runLegNoZone, (st as { rpBand?: { lo: number; hi: number } }).rpBand);
     if (cls === "hard") out.hardMin += stMin;
     else if (cls === "mod") out.modMin += stMin;
     else out.easyMin += stMin;

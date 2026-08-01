@@ -13,6 +13,16 @@ export interface Refs {
   /** R7 TRAIL — vitesse ascensionnelle seuil (m D+/h) : la référence d'intensité EN MONTÉE.
    *  L'allure au sol n'a aucun sens sur du vertical ; la VAM, oui. */
   vam?: number;
+  /**
+   * O-11 / R20.5 — LA BANDE « ALLURE COURSE » VÉLO DE **CETTE** ÉPREUVE.
+   *
+   * `ZDEF["bk.rp"]` valait 0,80–0,88 × FTP pour tout le monde, alors que le moteur prescrit
+   * lui-même 0,70–0,76 le jour J d'un Ironman et 0,85–0,93 sur un sprint. La zone
+   * d'entraînement était donc, selon le format, 15 % trop dure ou trop facile — sur un nombre
+   * que l'athlète est justement censé apprendre à tenir. Renseignée par `raceBikeBand()`, le
+   * point unique ; absente, `bk.rp` retombe sur la valeur historique de `ZDEF`.
+   */
+  bikeRp?: { lo: number; hi: number };
 }
 export type HrZones = Record<string, string> & { fcMax?: number };
 
@@ -66,8 +76,19 @@ export const TRAIL_DOWN_CUE = "en contrôle : buste relâché, cadence haute, pe
 
 const fk = (s: number) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
 
-export function fmtInt(key: string | null | undefined, refs: Refs, hz: HrZones): string {
+/**
+ * O-11 / R20.5 — `bk.rp` n'est plus une constante : c'est l'allure course de CETTE épreuve.
+ * Un seul point de substitution, traversé par les trois lecteurs de zone (`fmtInt`, `fmtIntHr`,
+ * `intOf`) : une substitution faite dans deux d'entre eux serait une troisième définition.
+ */
+function zoneOf(key: string | null | undefined, refs: Refs): ZoneDef | undefined {
   const d = key ? ZDEF[key] : undefined;
+  if (d && key === "bk.rp" && refs.bikeRp) return { ...d, lo: refs.bikeRp.lo, hi: refs.bikeRp.hi };
+  return d;
+}
+
+export function fmtInt(key: string | null | undefined, refs: Refs, hz: HrZones): string {
+  const d = zoneOf(key, refs);
   if (!d) return key || "";
   // R7 TRAIL — en montée : vitesse ascensionnelle si connue, sinon FC, sinon RPE. JAMAIS d'allure.
   if (d.ref === "vam") {
@@ -85,14 +106,14 @@ export function fmtInt(key: string | null | undefined, refs: Refs, hz: HrZones):
 /** Comme fmtInt, mais en préférant la FRÉQUENCE CARDIAQUE à l'allure : utilisé sur les
  *  blocs vallonnés (R7 §7), où une allure au sol moyenne ne décrit aucun effort réel. */
 export function fmtIntHr(key: string | null | undefined, refs: Refs, hz: HrZones): string {
-  const d = key ? ZDEF[key] : undefined;
+  const d = zoneOf(key, refs);
   if (!d) return key || "";
   if (d.hr && hz[d.hr]) return hz[d.hr];
   return fmtInt(key, refs, hz);
 }
 
-export const intOf = (key: string | null): { ref: string; lo: number; hi: number } | null => {
-  const d = key ? ZDEF[key] : undefined;
+export const intOf = (key: string | null, refs?: Refs): { ref: string; lo: number; hi: number } | null => {
+  const d = refs ? zoneOf(key, refs) : key ? ZDEF[key] : undefined;
   return d ? { ref: d.ref, lo: d.lo, hi: d.hi } : null;
 };
 
@@ -167,14 +188,22 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
   // Le rendu « brick » suppose un leg VÉLO et un leg COURSE (tri, duathlon). Un enchaînement
   // multi-disciplines d'une autre forme (swimrun : nage ↔ course, N fois) n'est PAS un brick —
   // la spec R10 le dit explicitement — et passe par le rendu générique de steps.
-  const bkLeg = bodies.find((b) => b.leg === "bike");
+  const bkLegs = bodies.filter((b) => b.leg === "bike");
   const rnLeg = bodies.find((b) => b.leg === "run");
-  if (s.brick && bkLeg && rnLeg) {
-    const bk = bkLeg;
+  if (s.brick && bkLegs.length && rnLeg) {
     const rn = rnLeg;
+    // R20.5 — LE VÉLO DU BRICK PEUT ÊTRE EN DEUX BLOCS, ET LE TEXTE LES REND TOUS LES DEUX.
+    //
+    // Le rendu ne lisait que le PREMIER leg vélo et ajoutait, en dur, la phrase « dernier tiers
+    // @ allure course » — sans chiffre. C'est très exactement le trou que R19.5 a fermé côté
+    // structure : une intensité annoncée par une phrase et portée par aucun step. Le tiers
+    // existe désormais RÉELLEMENT (bloc `bk.rp` à l'allure de l'épreuve) ; le texte l'affiche
+    // avec sa puissance, et la phrase en dur disparaît. Là où le tiers n'a pas lieu d'être
+    // (formats courts, voir le module tri), il n'est plus promis non plus.
     seg.push(
-      bk.durationMin + "min vélo @ " + fmtInt(bk.zone as string, refs, hz) +
-        ", dernier tiers @ allure course, échauffement progressif inclus, puis transition rapide + " + rn.durationMin + "min CAP" +
+      bkLegs.map((b) => b.durationMin + "min vélo @ " + fmtInt(b.zone as string, refs, hz)
+        + (b.suffix ? b.suffix : "")).join(", puis ")
+        + ", échauffement progressif inclus, puis transition rapide + " + rn.durationMin + "min CAP" +
         (s.runInj ? " souple, surface souple" : " @ allure cible")
     );
   } else {

@@ -1917,3 +1917,77 @@ C26c est la première qu'il ne satisfait pas, et c'est elle qui l'a révélé.
 Le harnais appelle désormais le moteur DIRECTEMENT, et un refus typé est un **comportement** —
 compté et affiché, comme au golden et au banc v7 — jamais une erreur et jamais un plan de repli.
 `audit:v1` passe de 486 à **459 combinaisons auditées + 27 refus déclarés**.
+
+## R20.5 — « l'allure course » à vélo n'a plus qu'une seule définition (O-11 fermé)
+
+**Le défaut.** Le moteur portait DEUX définitions du même effort, et la zone d'entraînement
+était la plus dure des deux :
+
+| source | « allure course » vélo |
+|---|---|
+| `ZDEF["bk.rp"]` — la zone prescrite à l'entraînement | **0,80–0,88 × FTP, du sprint à l'Ironman** |
+| `TRI_BIKE["Full"]` — la cible du jour J | **0,70–0,76 × FTP** |
+
+Sur un Ironman, une séance nommée « Rappel race-pace » faisait rouler **~15 % au-dessus de
+l'intensité que le moteur prescrit lui-même pour la course**. Sur un sprint, l'inverse : la
+séance était plus FACILE que la course (0,80–0,88 contre 0,85–0,93). Une zone figée ne peut pas
+décrire un effort dont la durée va de trente minutes à six heures.
+
+### (1) Un seul point
+
+`raceBikeBand(sport, format)` : les trois tables de puissance de course (`TRI_BIKE`,
+`DUA_BIKE_POWER` × pré-fatigue, `BIKE_POWER`) y convergent, et `bk.rp` la lit — **relief
+compris**, par le même résolveur de parcours que la prédiction (R15.2). Un seul point de
+substitution (`zoneOf`) traversé par les trois lecteurs de zone : une substitution faite dans
+deux d'entre eux aurait été une troisième définition.
+
+| FTP 230 W, plat | avant | après |
+|---|---|---|
+| tri/S | 184–202 W | **196–214 W** |
+| tri/70.3 | 184–202 W | **175–191 W** |
+| tri/Full | 184–202 W | **161–175 W** |
+| duathlon/PM | 184–202 W | **154–171 W** |
+| bike/cyclo | 184–202 W | **168–191 W** |
+
+### (2) Le plancher de temps facile mesurait le mauvais rapport
+
+`easyShareFloor` vaut `1 − plafondDur / minutesHebdo` : dérivé du plafond de temps DUR, et de
+lui seul, il décrit `facile / (facile + dur)`. Il était comparé à `facile / (facile + modéré +
+dur)` — une formule à deux seaux confrontée à une mesure sur trois. **Erreur d'unité**, même
+espèce qu'O-13.
+
+Mesuré sur un tri/70.3 confirmé/débutant : **70 % facile · 27 % modéré · 3 % DUR**, refusé par
+une règle dont la justification écrite est de borner le travail dur. Le même plan vaut **96 %**
+sur le rapport que la formule décrit. Le modéré n'est pas libéré pour autant : **C26d** (R20.4)
+le borne pour lui-même. La question ouverte d'O-11 — « pyramidal ou polarisé ? » — se dissout :
+le plancher gouverne la polarisation (facile vs dur), C26d gouverne la pyramide (le volume de
+modéré). `easyShare` (facile / tout) continue d'être calculé et exposé tel quel : c'est ce que
+le dashboard montre à l'athlète. **On change ce sur quoi on juge, pas ce qu'on montre.**
+
+### (3) Le tiers à allure course, là où il veut dire quelque chose
+
+Un seul critère gouverne deux décisions : la bande de l'épreuve. Au-dessus de **0,85 × FTP**
+(bas de la zone seuil de Coggan), « l'allure course » est une intensité qu'on SURVIT — elle
+compte alors DUR (`zoneClass` lit la bande) et le tiers ne se construit pas : sur un sprint le
+segment vélo dure vingt minutes, et les séances de qualité portent déjà ce stimulus. En dessous,
+c'est une allure qu'on TIENT, et l'apprendre pendant des heures est l'objet même de la séance.
+
+| vélo du brick, semaine de pic | |
+|---|---|
+| tri/S · tri/M | `bk.z2` seul |
+| tri/70.3 | `bk.z2` 120 min + **`bk.rp` 60 min @ 175–191 W** |
+| tri/Full | `bk.z2` 200 min + **`bk.rp` 100 min @ 161–175 W** |
+
+### Trois choses trouvées en le construisant
+
+1. **Le rendu ne montrait pas le second bloc.** Il lisait le PREMIER leg vélo et ajoutait, en
+   dur, « dernier tiers @ allure course » — sans chiffre. C'est exactement le trou que R19.5 a
+   fermé côté structure, resté ouvert côté texte : une intensité annoncée par une phrase. Le
+   texte affiche désormais les deux blocs avec leur puissance, et la phrase en dur disparaît.
+2. **La coupe et la mesure ne classaient pas pareil.** `enforceHardTimeCap` appelait
+   `zoneClass` sans la bande : il ne trouvait jamais le bloc que l'auditeur comptait comme dur.
+   Deux définitions du mot « dur » — le défaut O-11 reproduit à l'intérieur de son propre
+   correctif, en une seule séance de travail.
+3. **La borne du brick lisait un morceau de ce qu'elle nommait.** `brickCapViolations` prenait
+   `steps.find(leg === "bike")` : le jour où le leg est coupé en deux, un brick conforme devient
+   « trop court ». Elle SOMME désormais, et chaque bloc porte sa part des bornes du format.

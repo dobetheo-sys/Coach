@@ -231,13 +231,19 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
     for (const d of w.days)
       for (const s of d.sessions) {
         if (!s.brick || !s.steps) continue;
-        const bike = s.steps.find((st) => st.leg === "bike");
+        // R20.5 — le leg vélo peut être en PLUSIEURS blocs (endurance puis allure course, depuis
+        // que `bk.rp` décrit l'allure course de l'épreuve). La borne du format porte sur le
+        // TEMPS DE VÉLO du brick : on somme. Lire le premier bloc seulement aurait rendu un
+        // brick conforme « trop court » du jour où on l'a coupé en deux — un check qui mesure
+        // un morceau de ce qu'il nomme.
+        const bikeLegs = s.steps.filter((st) => st.leg === "bike" && st.durationMin != null);
         const taper = w.phase.id === "taper";
         const bounds = taper ? boundsTaper : boundsCharge;
-        if (!bike || bike.durationMin == null || !bounds) continue;
-        if (bike.durationMin > bounds[1] || bike.durationMin < bounds[0]) {
+        if (!bikeLegs.length || !bounds) continue;
+        const bikeMin = bikeLegs.reduce((t, st) => t + (st.reps || 1) * (st.durationMin || 0), 0);
+        if (bikeMin > bounds[1] || bikeMin < bounds[0]) {
           brickCapViolations++;
-          flags.push("S" + w.num + " : brick vélo " + bike.durationMin + "min hors bornes "
+          flags.push("S" + w.num + " : brick vélo " + Math.round(bikeMin) + "min hors bornes "
             + (taper ? "d'affûtage (C21c) " : "de charge (C21b) ") + "[" + bounds[0] + ", " + bounds[1] + "]");
         }
       }
@@ -379,8 +385,28 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   // moins d'une heure de qualité — moins que ce qu'il faut pour maintenir la VO2max.
   const chargeMin = weeks.filter((w) => !w.isRecup && w.phaseId !== "taper").map((w) => w.prescribedMin);
   const meanChargeMin = chargeMin.length ? chargeMin.reduce((a, b) => a + b, 0) / chargeMin.length : 0;
+  // R20.5 — LE PLANCHER SE MESURE SUR LE RAPPORT QU'IL DÉRIVE, PAS SUR UN AUTRE.
+  //
+  // `easyShareFloor` vaut `1 − plafondDur / minutesHebdo` : la formule est dérivée du plafond
+  // de temps DUR, et de lui seul. Elle décrit donc le rapport `facile / (facile + dur)`. Elle
+  // était comparée à `facile / (facile + modéré + dur)` — une formule à deux seaux confrontée à
+  // une mesure sur trois. Ce n'est pas un problème de calibration, c'est une erreur d'unité,
+  // même espèce qu'O-13 (la rampe en heures de plan contre des heures d'eau).
+  //
+  // Ce que ça donnait, mesuré sur un tri/70.3 confirmé/débutant : **70 % facile · 27 % modéré ·
+  // 3 % DUR**, en violation d'une règle dont la justification écrite est de borner le travail
+  // dur. Le même plan vaut **96 %** sur le rapport que la formule décrit réellement. Une règle
+  // qui déclare un plafond de dur et refuse un plan à 3 % de dur ne mesure pas ce qu'elle dit.
+  //
+  // Le modéré n'est pas pour autant libre : **C26d** le borne pour lui-même (40 %), ci-dessous.
+  // C'est la séparation que R20.4 a posée, appliquée jusqu'au bout.
+  //
+  // `easyShare` (facile / tout) reste calculé et EXPOSÉ tel quel : c'est le chiffre que le
+  // dashboard « répartition des intensités » affiche à l'athlète, et le sens usuel du ~80/20.
+  // On ne change pas ce qu'on montre, on change ce sur quoi on juge.
   const easyFloor = easyShareFloor(meanChargeMin, { history: opts.history, level: opts.level, injured: !!opts.injured });
-  if (easyShare < easyFloor) hard.push("répartition des intensités : " + Math.round(easyShare * 100) + "% de temps facile (<" + Math.round(easyFloor * 100) + "% pour " + Math.round(meanChargeMin / 6) / 10 + "h/sem — zone grise, manifeste ~80/20)");
+  const easyVsHard = easyTot + hardTot > 0 ? easyTot / (easyTot + hardTot) : 1;
+  if (easyVsHard < easyFloor) hard.push("répartition des intensités : " + Math.round(easyVsHard * 100) + "% de temps facile RAPPORTÉ AU TEMPS DUR (<" + Math.round(easyFloor * 100) + "% pour " + Math.round(meanChargeMin / 6) / 10 + "h/sem — zone grise, manifeste ~80/20)");
 
   // ---- C26c/C26d (R20.4) — LA RÈGLE MESURE ENFIN CE QUE SA JUSTIFICATION DIT ----
   //

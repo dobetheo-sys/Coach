@@ -503,6 +503,28 @@ n'existe plus depuis R7 ; le legacy satisfaisait toutes les règles auditées ju
 la première qu'il rate. Le harnais appelle le moteur directement : **459 combinaisons auditées +
 27 refus DÉCLARÉS.** **21 gates verts, E2E 13/13, golden 900 recapturé (259 écarts).**
 
+**R20.5 livré — « l'allure course » à vélo n'a plus qu'une seule définition** (O-11 fermé, voir
+ARCHITECTURE.md « R20.5 ») : le moteur portait DEUX définitions du même effort et la zone
+d'entraînement était la plus dure — `bk.rp` valait **0,80–0,88 × FTP du sprint à l'Ironman**
+quand le jour J d'un Ironman se roule à **0,70–0,76**. Une séance nommée « Rappel race-pace »
+faisait donc rouler **15 % au-dessus de l'intensité que le moteur prescrit lui-même pour la
+course** ; sur un sprint, l'inverse. **(1)** `raceBikeBand()` est le point unique — les trois
+tables de puissance de course y convergent, `bk.rp` la lit, relief compris (tri/Full 184–202 W →
+**161–175 W**, tri/S → **196–214 W**). **(2)** Le plancher de temps facile mesurait le mauvais
+rapport : `1 − plafondDur/minutes` est dérivé du plafond de DUR, il décrit
+`facile/(facile+dur)`, il était comparé à `facile/(facile+modéré+dur)` — erreur d'unité, même
+espèce qu'O-13. Mesuré : un tri/70.3 à **70 % facile · 27 % modéré · 3 % DUR** refusé par une
+règle censée borner le dur ; **96 %** sur le rapport que la formule décrit. C26d borne le modéré
+séparément, et la question « pyramidal vs polarisé » se dissout. `easyShare` reste affiché tel
+quel — on change ce sur quoi on JUGE, pas ce qu'on MONTRE. **(3)** Le tiers du brick à allure
+course existe là où il veut dire quelque chose : un seul critère (bande > 0,85 × FTP = du seuil)
+décide À LA FOIS de sa classe et de son existence — pas de tiers sur un sprint dont le vélo dure
+20 min, tiers sur 70.3 et Full où l'allure se TIENT. Trois défauts trouvés en le construisant :
+le rendu n'affichait pas le second bloc et gardait « dernier tiers @ allure course » **sans
+chiffre** (le trou de R19.5, resté ouvert côté texte) ; `enforceHardTimeCap` ne classait pas
+comme l'auditeur (O-11 reproduit dans son propre correctif) ; la borne du brick lisait le
+premier leg vélo au lieu de sommer. **21 gates verts, E2E 13/13, golden 900.**
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur

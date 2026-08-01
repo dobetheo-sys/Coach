@@ -11,6 +11,7 @@
 import type { Decision } from "./types.ts";
 import { sportModule, type PredictKit } from "../sports/registry.ts";
 import { T5_HIKE_SHARE, TRAIL_TECHNICITY, type TrailObjective } from "./trailModel.ts";
+import { DUA_BIKE_POWER, DUA_BIKE_PREFATIGUE } from "../sports/duathlon/tables.ts";
 import { projectForm, GAIN_BAND_LO, GAIN_BAND_HI,
   type ProjectionInput, type WeightLever } from "./projection.ts";
 
@@ -264,6 +265,42 @@ export const BIKE_POWER: Record<string, { lo: number; hi: number; note: string }
   cyclo: { lo: 0.73, hi: 0.83, note: "cyclosportive : tempo durable, garder du grain pour la fin" },
   gravel: { lo: 0.68, hi: 0.78, note: "gravel/ultra : endurance, la régularité bat la vitesse" },
 };
+/**
+ * O-11 / R20.5 — « L'ALLURE COURSE À VÉLO » N'A PLUS QU'UNE SEULE DÉFINITION.
+ *
+ * Le moteur en portait DEUX, et la zone d'entraînement était la plus dure des deux :
+ *
+ * | source | « allure course » vélo |
+ * |---|---|
+ * | `ZDEF["bk.rp"]` (la zone prescrite à l'entraînement) | **0,80–0,88 × FTP, quel que soit le format** |
+ * | `TRI_BIKE["Full"]` (la cible du jour J) | **0,70–0,76 × FTP** |
+ *
+ * Sur un Ironman, une séance nommée « Rappel race-pace » faisait donc rouler **~15 % au-dessus
+ * de l'intensité que le moteur prescrit lui-même pour la course** — et sur un sprint, l'inverse
+ * (0,80–0,88 contre 0,85–0,93 le jour J : la séance était plus FACILE que la course). Une zone
+ * figée ne peut pas décrire un effort dont la durée va de 30 minutes à six heures.
+ *
+ * C'est le même défaut que R15.2 a corrigé pour le relief, à un autre endroit du même chemin :
+ * deux producteurs du même nombre finissent toujours par diverger. Il n'y a donc plus qu'un
+ * point — celui-ci — et la zone `bk.rp` le lit.
+ *
+ * La pré-fatigue du duathlon est INCLUSE : le nombre que l'athlète doit apprendre à tenir est
+ * celui de sa course, pas celui d'un contre-la-montre frais. Le relief (`bikeIFShift`) n'est PAS
+ * inclus ici — il s'applique en aval, au même endroit pour la prédiction et pour la séance.
+ */
+export function raceBikeBand(sport: string, format: string | undefined): { lo: number; hi: number } | null {
+  const f = String(format ?? "");
+  if (sport === "tri") return TRI_BIKE[f] ?? null;
+  if (sport === "bike") { const b = BIKE_POWER[f]; return b ? { lo: b.lo, hi: b.hi } : null; }
+  if (sport === "duathlon") {
+    const pw = DUA_BIKE_POWER[f];
+    if (!pw) return null;
+    const pf = DUA_BIKE_PREFATIGUE[f] ?? 0.97;
+    return { lo: pw.lo * pf, hi: pw.hi * pf };
+  }
+  return null;
+}
+
 export const TRI_SWIM: Record<string, { dist: number; factor: number }> = {
   S: { dist: 750, factor: 1.04 },
   M: { dist: 1500, factor: 1.05 },

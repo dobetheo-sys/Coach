@@ -76,16 +76,48 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
       // temps facile — c'est-à-dire qu'on protégeait la MÉTRIQUE, pas le plan. Le dépôt a déjà
       // payé cette leçon en R7 TRAIL : une intensité portée par une phrase n'existe pas.
       //
-      // CE QUI EST FAIT ICI, ET CE QUI NE L'EST PAS. La note dit désormais ce que la séance
-      // FAIT : une sortie longue à vélo enchaînée à une course, ce qui est déjà la séance la
-      // plus spécifique du plan. Le tiers à allure course n'est PAS ajouté dans cette version,
-      // et le motif est mesuré, pas frileux : le poser en `bk.rp` met 58 combinaisons de tri
-      // sous le plancher de temps facile (C26) — et surtout, `bk.rp` vaut 0,80-0,88 de la FTP
-      // alors que le prédicteur prescrit 0,75-0,82 pour le jour J d'un 70.3. Le moteur porte
-      // donc DEUX définitions de « l'allure course », et il faut les réconcilier avant de
-      // construire une séance dessus. Suivi en `O-11` avec sa mesure.
-      S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : sortie longue à vélo en endurance, puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.", det: "", steps: [
-        { role: "body", leg: "bike", durationMin: PT(bb.lo, Math.round(bb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string } as V1Step,
+      // R20.5 — LE TIERS À ALLURE COURSE EXISTE ENFIN, PARCE QUE O-11 EST FERMÉ.
+      //
+      // R19.5 avait fermé le trou de PROSE (la note ne promet plus une intensité qu'aucun step
+      // ne porte) et laissé la structure de côté, avec deux motifs mesurés : le tiers en
+      // `bk.rp` mettait 58 combinaisons de tri sous le plancher de temps facile, et surtout
+      // `bk.rp` valait 0,80-0,88 de la FTP quand le jour J d'un 70.3 se roule à 0,76-0,83 —
+      // construire dessus aurait fait rouler plus dur que la course elle-même.
+      //
+      // Les deux motifs sont levés dans ce lot : `bk.rp` EST désormais l'allure course de
+      // l'épreuve (relief compris), et le plancher de temps facile n'est plus la règle qui
+      // gouverne l'intensité — C26c borne le temps DUR, or l'allure course vélo est MODÉRÉE.
+      // C'était la vraie raison de l'ordre de ces cinq lots.
+      //
+      // Deux blocs, un seul leg vélo pour l'auditeur (il somme) : les deux tiers en endurance,
+      // le dernier à l'allure exacte du jour J. Chaque bloc porte sa PART des bornes du format,
+      // sinon un brick coupé en deux hériterait deux fois du plancher.
+      // UN SEUL CRITÈRE, POUR DEUX DÉCISIONS. La bande d'allure course de l'épreuve décide à la
+      // fois de la CLASSE de l'effort (dur au-dessus de 0,85 × FTP — bas de la zone seuil de
+      // Coggan) et de l'EXISTENCE du tiers. Ce n'est pas une commodité : sur un sprint, la cible
+      // du jour J vaut 0,85–0,93 × FTP, c'est-à-dire du seuil, et le segment vélo de l'épreuve
+      // dure vingt minutes. Y ajouter un bloc de seuil DANS le brick, sur une enveloppe de 3 h,
+      // c'est charger de l'intensité que les séances de qualité portent déjà — mesuré : 30
+      // combinaisons de tri/S sous le plancher de temps facile, à 66-70 %. Sur un 70.3 ou un
+      // Ironman, l'allure course est au contraire une allure qu'on TIENT (0,70–0,83), et
+      // l'apprendre pendant des heures est précisément l'objet de la séance.
+      //
+      // Le brick d'un sprint garde donc son rôle : la transition. Celui d'un long y ajoute le
+      // pacing. C'est ce qu'un entraîneur ferait, et c'est ce que la mesure dit.
+      const rpBand = TRI_BIKE[fmt || ""];
+      const tiersRp = !!rpBand && rpBand.hi < 0.85;
+      const bikeTot = PT(bb.lo, Math.round(bb.hi * rf));
+      const bikeZ2 = tiersRp ? Math.max(1, Math.round(bikeTot * 2 / 3)) : bikeTot;
+      const bikeRp = Math.max(0, bikeTot - bikeZ2);
+      S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : sortie longue à vélo en endurance, "
+        + (tiersRp
+          ? "DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), "
+          : "")
+        + "puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.", det: "", steps: [
+        Object.assign({ role: "body", leg: "bike", durationMin: bikeZ2, zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string } as V1Step, { share: tiersRp ? 2 / 3 : 1 }),
+        // `rpBand` accompagne le step : c'est la bande réelle de CETTE épreuve, et c'est elle
+        // qui décide si l'effort compte dur ou modéré (R20.5).
+        ...(tiersRp ? [Object.assign({ role: "body", leg: "bike", durationMin: bikeRp, zone: "bk.rp", intensity: intOf("bk.rp") as unknown as string, suffix: " à l'allure de ton jour J" } as V1Step, { share: 1 / 3, rpBand })] : []),
         { role: "body", leg: "run", durationMin: PT(br.lo, Math.round(br.hi * rf)), d: "rn" } as V1Step,
       ], ...( { runInj } as object) });
     } else if (phase === "taper" && !medHold && kit.weekNum < kit.r.weeks) {

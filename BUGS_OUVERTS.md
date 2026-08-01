@@ -374,7 +374,7 @@ attendu: /nombre de séances[\s\S]*deux séances certains jours/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const a={sport:'tri',format:'70.3',level:'avance',history:'ancien',intent:'competition',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',ftp:'230',ftp_known:'oui',css:'2:00',css_known:'oui',vol_recent:'10',injury:'aucune',off_days:'non',shift_ok:'non',doubles:'parfois',race_date:'2027-01-24'};for(const v of ['10','16']){const p=E.buildPlan('tri',{...a,vol_max:v});const d=(p._v2.decisions||[]).find(x=>x.id==='R20.2');console.log('vol_max='+v+'h → pic livré '+p.volPeak+' h'+(d?' · '+d.val+' · '+d.why:' · (rien à expliquer)'));}"
 ```
 
-### O-11 · Deux définitions de « l'allure course » à vélo, et une prose qui promet la mauvaise · 🟠 **OUVERT (trouvé en R19, correction reportée avec sa mesure)**
+### O-11 · Deux définitions de « l'allure course » à vélo, et une prose qui promet la mauvaise · ✅ **FERMÉ (R20.5)**
 
 Le brick disait dans sa NOTE « vélo en endurance, **dernier tiers @ allure course** » pendant que
 son step portait `bk.z2` sur la totalité. Mesuré sur un plan 70.3 : **881 min (14,7 h) d'allure
@@ -405,11 +405,61 @@ Trois choses à trancher ensemble, pas séparément : (1) réconcilier les deux 
 décrit l'entraînement de longue distance comme PYRAMIDAL et non polarisé ; (3) alors seulement,
 reconstruire le tiers à allure course.
 
+---
+
+**FERMETURE (R20.5, 01/08/2026) — les trois points, dans cet ordre.**
+
+**(1) Une seule définition.** `raceBikeBand(sport, format)` est le point unique ; les trois
+tables de puissance de course (`TRI_BIKE`, `DUA_BIKE_POWER` × pré-fatigue, `BIKE_POWER`) y
+convergent, et la zone `bk.rp` la lit — **relief compris**, par le même résolveur de parcours
+que la prédiction (R15.2). Résultat : la zone d'entraînement EST la cible du jour J.
+
+| | avant (toutes épreuves) | après |
+|---|---|---|
+| tri/S | 184–202 W | **196–214 W** |
+| tri/70.3 | 184–202 W | **175–191 W** |
+| tri/Full | 184–202 W | **161–175 W** |
+| duathlon/PM | 184–202 W | **154–171 W** |
+| bike/cyclo | 184–202 W | **168–191 W** |
+
+(FTP 230 W, parcours plat. En montagne, 70.3 → 169–185 W : les mêmes chiffres que ceux que
+R15.2 avait documentés pour la prédiction.)
+
+**(2) Le plancher de temps facile mesurait le mauvais rapport.** `easyShareFloor` vaut
+`1 − plafondDur / minutesHebdo` : la formule est dérivée du plafond de temps DUR, et de lui
+seul — elle décrit donc `facile / (facile + dur)`. Elle était comparée à
+`facile / (facile + modéré + dur)` : une formule à deux seaux confrontée à une mesure sur trois.
+Erreur d'unité, même espèce qu'O-13. Mesuré sur un tri/70.3 confirmé/débutant : **70 % facile ·
+27 % modéré · 3 % DUR**, refusé par une règle dont la justification écrite est de borner le
+travail dur ; le même plan vaut **96 %** sur le rapport que la formule décrit. Le modéré n'est
+pas libéré pour autant — **C26d** (R20.4) le borne pour lui-même à 40 %. La question « pyramidal
+vs polarisé » se dissout : le plancher gouverne la polarisation (facile vs dur), C26d gouverne
+la pyramide (le volume de modéré).
+
+**(3) Le tiers à allure course existe — là où il veut dire quelque chose.** Un seul critère
+gouverne deux décisions : la bande de l'épreuve. Au-dessus de 0,85 × FTP (bas de la zone seuil
+de Coggan), « l'allure course » est une intensité qu'on SURVIT — elle compte alors DUR
+(`zoneClass` lit la bande, R20.5), et le tiers ne se construit pas : sur un sprint, le segment
+vélo dure vingt minutes et les séances de qualité portent déjà ce stimulus. En dessous, c'est
+une allure qu'on TIENT, et l'apprendre pendant des heures est l'objet même de la séance.
+
+| | vélo du brick en semaine de pic |
+|---|---|
+| tri/S | `bk.z2` 90 min |
+| tri/M | `bk.z2` 120 min |
+| tri/70.3 | `bk.z2` 120 min + **`bk.rp` 60 min** |
+| tri/Full | `bk.z2` 200 min + **`bk.rp` 100 min** |
+
+Mesuré en chemin, et corrigé : poser le tiers sans (2) mettait 30 combinaisons de tri/S sous le
+plancher ; le poser sans faire suivre la CLASSIFICATION laissait `enforceHardTimeCap` aveugle au
+bloc que l'auditeur comptait — deux définitions du mot « dur », le défaut O-11 reproduit à
+l'intérieur de son propre correctif.
+
 ```verify
 id: O-11
-quoi: la zone d'entraînement « allure course » vélo est plus dure que l'allure prescrite le jour J
-attendu: /bk\.rp 0[.,]8-0[.,]88 · jour J 70\.3 0[.,]7\d-0[.,]8\d/
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const a={sport:'tri',format:'70.3',level:'inter',history:'confirme',intent:'competition',vol_max:'12',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',ftp:'230',ftp_known:'oui',css:'2:00',css_known:'oui',vol_recent:'8',injury:'aucune',off_days:'non',shift_ok:'non',race_date:'2027-06-13'};const p=E.buildPlan('tri',a);const it=E.predict('tri',a,p).items.find(i=>/Vélo/.test(i.leg));const m=/(\d+)\D+(\d+)\s*W/.exec(it.value);console.log('bk.rp 0.8-0.88 · jour J 70.3 '+(m[1]/230).toFixed(2)+'-'+(m[2]/230).toFixed(2))"
+quoi: la zone d'entraînement « allure course » vélo lit le format, comme la cible du jour J
+attendu: /tri\/S 196-214W[\s\S]*tri\/70\.3 175-191W[\s\S]*tri\/Full 161-175W/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={intent:'competition',dispo:'partielle',doubles:'parfois',off_days:'non',shift_ok:'non',age:'35',sex:'H',pace_known:'oui',pace:'4:50',ftp_known:'oui',ftp:'230',css_known:'oui',css:'2:00',vol_recent:'8',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'plat',history:'confirme',level:'inter',vol_max:'12',sessions_max:'6'};for(const f of ['S','M','70.3','Full']){const p=E.buildPlan('tri',{...b,sport:'tri',format:f});let rp=null;for(const w of p.weeks)for(const d of w.days)for(const s of d.sessions||[]){const st=(s.steps||[]).find(x=>x.zone==='bk.rp');if(st&&!rp){const all=(s.det||'').match(/[0-9]+-[0-9]+ ?W/g)||[];rp=all[all.length-1];}}console.log('tri/'+f+' '+(rp||'pas de bloc allure course'));}"
 ```
 
 ### O-12 · Ma mesure d'intensité d'affûtage était fausse — et j'ai failli « corriger » un moteur sain · ✅ **FERMÉ (R19, par rétractation)**

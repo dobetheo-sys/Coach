@@ -9,9 +9,10 @@ import type { AthleteProfile, V1Plan } from "../engine/types.ts";
 import { auditPlan, type AuditOpts, type PlanAudit } from "../audit/coherenceScorer.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { R313_TAPER_MAX_VS_PEAK } from "../engine/constraintMatrix.ts";
-import { generatePlan, normalizeRestMinutes, reconcileDeclaredVolume, syncDerivedLabels } from "./planGenerator.ts";
+import { generatePlan, normalizeRestMinutes, reconcileDeclaredVolume, syncDerivedLabels, shiftedBikeRp } from "./planGenerator.ts";
 import { renderSess, type Refs } from "./renderer.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
+
 
 export interface AuditedPlan {
   plan: V1Plan;
@@ -310,7 +311,9 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
     refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 },
     ...auditOpts,
   };
-  const refs: Refs = { ...reasoned.baseRefs };
+  // O-11 / R20.5 — même bande « allure course » qu'à la génération : la boucle de réparation
+  // re-rend des séances, elle ne doit pas les re-rendre avec une AUTRE définition de bk.rp.
+  const refs: Refs = { ...reasoned.baseRefs, bikeRp: shiftedBikeRp(String(reasoned.profile.sport), reasoned.profile.format, reasoned.profile) };
   let audit = auditPlan(plan, opts);
   const repairs: string[] = [];
   let best = { plan, audit };

@@ -2814,8 +2814,19 @@ const TRAIL_DOWN_CUE = "en contrôle : buste relâché, cadence haute, petits pa
 
 const fk = (s        ) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
 
-function fmtInt(key                           , refs      , hz         )         {
+/**
+ * O-11 / R20.5 — `bk.rp` n'est plus une constante : c'est l'allure course de CETTE épreuve.
+ * Un seul point de substitution, traversé par les trois lecteurs de zone (`fmtInt`, `fmtIntHr`,
+ * `intOf`) : une substitution faite dans deux d'entre eux serait une troisième définition.
+ */
+function zoneOf(key                           , refs      )                      {
   const d = key ? ZDEF[key] : undefined;
+  if (d && key === "bk.rp" && refs.bikeRp) return { ...d, lo: refs.bikeRp.lo, hi: refs.bikeRp.hi };
+  return d;
+}
+
+function fmtInt(key                           , refs      , hz         )         {
+  const d = zoneOf(key, refs);
   if (!d) return key || "";
   // R7 TRAIL — en montée : vitesse ascensionnelle si connue, sinon FC, sinon RPE. JAMAIS d'allure.
   if (d.ref === "vam") {
@@ -2833,14 +2844,14 @@ function fmtInt(key                           , refs      , hz         )        
 /** Comme fmtInt, mais en préférant la FRÉQUENCE CARDIAQUE à l'allure : utilisé sur les
  *  blocs vallonnés (R7 §7), où une allure au sol moyenne ne décrit aucun effort réel. */
 function fmtIntHr(key                           , refs      , hz         )         {
-  const d = key ? ZDEF[key] : undefined;
+  const d = zoneOf(key, refs);
   if (!d) return key || "";
   if (d.hr && hz[d.hr]) return hz[d.hr];
   return fmtInt(key, refs, hz);
 }
 
-const intOf = (key               )                                                 => {
-  const d = key ? ZDEF[key] : undefined;
+const intOf = (key               , refs       )                                                 => {
+  const d = refs ? zoneOf(key, refs) : key ? ZDEF[key] : undefined;
   return d ? { ref: d.ref, lo: d.lo, hi: d.hi } : null;
 };
 
@@ -2915,14 +2926,22 @@ function renderSess(s                   , refs      , hz         , baseRefs     
   // Le rendu « brick » suppose un leg VÉLO et un leg COURSE (tri, duathlon). Un enchaînement
   // multi-disciplines d'une autre forme (swimrun : nage ↔ course, N fois) n'est PAS un brick —
   // la spec R10 le dit explicitement — et passe par le rendu générique de steps.
-  const bkLeg = bodies.find((b) => b.leg === "bike");
+  const bkLegs = bodies.filter((b) => b.leg === "bike");
   const rnLeg = bodies.find((b) => b.leg === "run");
-  if (s.brick && bkLeg && rnLeg) {
-    const bk = bkLeg;
+  if (s.brick && bkLegs.length && rnLeg) {
     const rn = rnLeg;
+    // R20.5 — LE VÉLO DU BRICK PEUT ÊTRE EN DEUX BLOCS, ET LE TEXTE LES REND TOUS LES DEUX.
+    //
+    // Le rendu ne lisait que le PREMIER leg vélo et ajoutait, en dur, la phrase « dernier tiers
+    // @ allure course » — sans chiffre. C'est très exactement le trou que R19.5 a fermé côté
+    // structure : une intensité annoncée par une phrase et portée par aucun step. Le tiers
+    // existe désormais RÉELLEMENT (bloc `bk.rp` à l'allure de l'épreuve) ; le texte l'affiche
+    // avec sa puissance, et la phrase en dur disparaît. Là où le tiers n'a pas lieu d'être
+    // (formats courts, voir le module tri), il n'est plus promis non plus.
     seg.push(
-      bk.durationMin + "min vélo @ " + fmtInt(bk.zone          , refs, hz) +
-        ", dernier tiers @ allure course, échauffement progressif inclus, puis transition rapide + " + rn.durationMin + "min CAP" +
+      bkLegs.map((b) => b.durationMin + "min vélo @ " + fmtInt(b.zone          , refs, hz)
+        + (b.suffix ? b.suffix : "")).join(", puis ")
+        + ", échauffement progressif inclus, puis transition rapide + " + rn.durationMin + "min CAP" +
         (s.runInj ? " souple, surface souple" : " @ allure cible")
     );
   } else {
@@ -3337,8 +3356,19 @@ const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
  * précisément le défaut O-11 (deux définitions de « l'allure course » à vélo), et il n'y a
  * aucune raison de le refaire en le voyant venir.
  */
-function zoneClass(zone         , runLegNoZone = false)                          {
+function zoneClass(zone         , runLegNoZone = false, rpBand                             )                          {
   const z = typeof zone === "string" ? zone : "";
+  // R20.5 — `bk.rp` A CESSÉ D'ÊTRE UNE INTENSITÉ FIXE, DONC SA CLASSE AUSSI.
+  //
+  // Depuis O-11, « l'allure course » vélo vaut ce que l'épreuve demande : 0,70–0,76 × FTP sur
+  // un Ironman, 0,85–0,93 sur un sprint. Le premier est de l'endurance tenable six heures, le
+  // second est à la porte du seuil. Les ranger tous deux en « modéré » par un suffixe, c'est
+  // refaire à l'échelle de la classification l'erreur qu'O-11 vient de corriger à l'échelle du
+  // nombre : une table qui ne connaît pas la bande ne peut pas la juger.
+  //
+  // Seuil à 0,85 × FTP : c'est le bas de la zone sweetspot/seuil de Coggan. Au-dessus, l'effort
+  // se paie en récupération et doit compter dans le plafond de temps DUR (C26c).
+  if (z === "bk.rp" && rpBand) return rpBand.hi >= 0.85 ? "hard" : "mod";
   if (TRAIL_HARD.includes(z) || HARD_SUFFIX.some((s) => z.endsWith(s))) return "hard";
   if (TRAIL_MOD.includes(z) || MOD_SUFFIX.some((s) => z.endsWith(s)) || runLegNoZone) return "mod";
   return "easy";
@@ -3381,7 +3411,7 @@ function intensitySplit(s            , refs              = DEFAULT_REFS)        
     // comptés modérés et la répartition d'intensité tomberait à 61 % de facile (mesuré) sur un
     // plan qui est en réalité polarisé. La zone déclarée est toujours plus précise que l'indice.
     const runLegNoZone = st.leg === "run" && !zone;
-    const cls = zoneClass(zone, runLegNoZone);
+    const cls = zoneClass(zone, runLegNoZone, (st                                           ).rpBand);
     if (cls === "hard") out.hardMin += stMin;
     else if (cls === "mod") out.modMin += stMin;
     else out.easyMin += stMin;
@@ -3674,13 +3704,19 @@ function auditPlan(plan        , opts            = {})            {
     for (const d of w.days)
       for (const s of d.sessions) {
         if (!s.brick || !s.steps) continue;
-        const bike = s.steps.find((st) => st.leg === "bike");
+        // R20.5 — le leg vélo peut être en PLUSIEURS blocs (endurance puis allure course, depuis
+        // que `bk.rp` décrit l'allure course de l'épreuve). La borne du format porte sur le
+        // TEMPS DE VÉLO du brick : on somme. Lire le premier bloc seulement aurait rendu un
+        // brick conforme « trop court » du jour où on l'a coupé en deux — un check qui mesure
+        // un morceau de ce qu'il nomme.
+        const bikeLegs = s.steps.filter((st) => st.leg === "bike" && st.durationMin != null);
         const taper = w.phase.id === "taper";
         const bounds = taper ? boundsTaper : boundsCharge;
-        if (!bike || bike.durationMin == null || !bounds) continue;
-        if (bike.durationMin > bounds[1] || bike.durationMin < bounds[0]) {
+        if (!bikeLegs.length || !bounds) continue;
+        const bikeMin = bikeLegs.reduce((t, st) => t + (st.reps || 1) * (st.durationMin || 0), 0);
+        if (bikeMin > bounds[1] || bikeMin < bounds[0]) {
           brickCapViolations++;
-          flags.push("S" + w.num + " : brick vélo " + bike.durationMin + "min hors bornes "
+          flags.push("S" + w.num + " : brick vélo " + Math.round(bikeMin) + "min hors bornes "
             + (taper ? "d'affûtage (C21c) " : "de charge (C21b) ") + "[" + bounds[0] + ", " + bounds[1] + "]");
         }
       }
@@ -3822,8 +3858,28 @@ function auditPlan(plan        , opts            = {})            {
   // moins d'une heure de qualité — moins que ce qu'il faut pour maintenir la VO2max.
   const chargeMin = weeks.filter((w) => !w.isRecup && w.phaseId !== "taper").map((w) => w.prescribedMin);
   const meanChargeMin = chargeMin.length ? chargeMin.reduce((a, b) => a + b, 0) / chargeMin.length : 0;
+  // R20.5 — LE PLANCHER SE MESURE SUR LE RAPPORT QU'IL DÉRIVE, PAS SUR UN AUTRE.
+  //
+  // `easyShareFloor` vaut `1 − plafondDur / minutesHebdo` : la formule est dérivée du plafond
+  // de temps DUR, et de lui seul. Elle décrit donc le rapport `facile / (facile + dur)`. Elle
+  // était comparée à `facile / (facile + modéré + dur)` — une formule à deux seaux confrontée à
+  // une mesure sur trois. Ce n'est pas un problème de calibration, c'est une erreur d'unité,
+  // même espèce qu'O-13 (la rampe en heures de plan contre des heures d'eau).
+  //
+  // Ce que ça donnait, mesuré sur un tri/70.3 confirmé/débutant : **70 % facile · 27 % modéré ·
+  // 3 % DUR**, en violation d'une règle dont la justification écrite est de borner le travail
+  // dur. Le même plan vaut **96 %** sur le rapport que la formule décrit réellement. Une règle
+  // qui déclare un plafond de dur et refuse un plan à 3 % de dur ne mesure pas ce qu'elle dit.
+  //
+  // Le modéré n'est pas pour autant libre : **C26d** le borne pour lui-même (40 %), ci-dessous.
+  // C'est la séparation que R20.4 a posée, appliquée jusqu'au bout.
+  //
+  // `easyShare` (facile / tout) reste calculé et EXPOSÉ tel quel : c'est le chiffre que le
+  // dashboard « répartition des intensités » affiche à l'athlète, et le sens usuel du ~80/20.
+  // On ne change pas ce qu'on montre, on change ce sur quoi on juge.
   const easyFloor = easyShareFloor(meanChargeMin, { history: opts.history, level: opts.level, injured: !!opts.injured });
-  if (easyShare < easyFloor) hard.push("répartition des intensités : " + Math.round(easyShare * 100) + "% de temps facile (<" + Math.round(easyFloor * 100) + "% pour " + Math.round(meanChargeMin / 6) / 10 + "h/sem — zone grise, manifeste ~80/20)");
+  const easyVsHard = easyTot + hardTot > 0 ? easyTot / (easyTot + hardTot) : 1;
+  if (easyVsHard < easyFloor) hard.push("répartition des intensités : " + Math.round(easyVsHard * 100) + "% de temps facile RAPPORTÉ AU TEMPS DUR (<" + Math.round(easyFloor * 100) + "% pour " + Math.round(meanChargeMin / 6) / 10 + "h/sem — zone grise, manifeste ~80/20)");
 
   // ---- C26c/C26d (R20.4) — LA RÈGLE MESURE ENFIN CE QUE SA JUSTIFICATION DIT ----
   //
@@ -4584,16 +4640,48 @@ function buildTriSessions(kit            )              {
       // temps facile — c'est-à-dire qu'on protégeait la MÉTRIQUE, pas le plan. Le dépôt a déjà
       // payé cette leçon en R7 TRAIL : une intensité portée par une phrase n'existe pas.
       //
-      // CE QUI EST FAIT ICI, ET CE QUI NE L'EST PAS. La note dit désormais ce que la séance
-      // FAIT : une sortie longue à vélo enchaînée à une course, ce qui est déjà la séance la
-      // plus spécifique du plan. Le tiers à allure course n'est PAS ajouté dans cette version,
-      // et le motif est mesuré, pas frileux : le poser en `bk.rp` met 58 combinaisons de tri
-      // sous le plancher de temps facile (C26) — et surtout, `bk.rp` vaut 0,80-0,88 de la FTP
-      // alors que le prédicteur prescrit 0,75-0,82 pour le jour J d'un 70.3. Le moteur porte
-      // donc DEUX définitions de « l'allure course », et il faut les réconcilier avant de
-      // construire une séance dessus. Suivi en `O-11` avec sa mesure.
-      S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : sortie longue à vélo en endurance, puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.", det: "", steps: [
-        { role: "body", leg: "bike", durationMin: PT(bb.lo, Math.round(bb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2")                      }          ,
+      // R20.5 — LE TIERS À ALLURE COURSE EXISTE ENFIN, PARCE QUE O-11 EST FERMÉ.
+      //
+      // R19.5 avait fermé le trou de PROSE (la note ne promet plus une intensité qu'aucun step
+      // ne porte) et laissé la structure de côté, avec deux motifs mesurés : le tiers en
+      // `bk.rp` mettait 58 combinaisons de tri sous le plancher de temps facile, et surtout
+      // `bk.rp` valait 0,80-0,88 de la FTP quand le jour J d'un 70.3 se roule à 0,76-0,83 —
+      // construire dessus aurait fait rouler plus dur que la course elle-même.
+      //
+      // Les deux motifs sont levés dans ce lot : `bk.rp` EST désormais l'allure course de
+      // l'épreuve (relief compris), et le plancher de temps facile n'est plus la règle qui
+      // gouverne l'intensité — C26c borne le temps DUR, or l'allure course vélo est MODÉRÉE.
+      // C'était la vraie raison de l'ordre de ces cinq lots.
+      //
+      // Deux blocs, un seul leg vélo pour l'auditeur (il somme) : les deux tiers en endurance,
+      // le dernier à l'allure exacte du jour J. Chaque bloc porte sa PART des bornes du format,
+      // sinon un brick coupé en deux hériterait deux fois du plancher.
+      // UN SEUL CRITÈRE, POUR DEUX DÉCISIONS. La bande d'allure course de l'épreuve décide à la
+      // fois de la CLASSE de l'effort (dur au-dessus de 0,85 × FTP — bas de la zone seuil de
+      // Coggan) et de l'EXISTENCE du tiers. Ce n'est pas une commodité : sur un sprint, la cible
+      // du jour J vaut 0,85–0,93 × FTP, c'est-à-dire du seuil, et le segment vélo de l'épreuve
+      // dure vingt minutes. Y ajouter un bloc de seuil DANS le brick, sur une enveloppe de 3 h,
+      // c'est charger de l'intensité que les séances de qualité portent déjà — mesuré : 30
+      // combinaisons de tri/S sous le plancher de temps facile, à 66-70 %. Sur un 70.3 ou un
+      // Ironman, l'allure course est au contraire une allure qu'on TIENT (0,70–0,83), et
+      // l'apprendre pendant des heures est précisément l'objet de la séance.
+      //
+      // Le brick d'un sprint garde donc son rôle : la transition. Celui d'un long y ajoute le
+      // pacing. C'est ce qu'un entraîneur ferait, et c'est ce que la mesure dit.
+      const rpBand = TRI_BIKE[fmt || ""];
+      const tiersRp = !!rpBand && rpBand.hi < 0.85;
+      const bikeTot = PT(bb.lo, Math.round(bb.hi * rf));
+      const bikeZ2 = tiersRp ? Math.max(1, Math.round(bikeTot * 2 / 3)) : bikeTot;
+      const bikeRp = Math.max(0, bikeTot - bikeZ2);
+      S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : sortie longue à vélo en endurance, "
+        + (tiersRp
+          ? "DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), "
+          : "")
+        + "puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.", det: "", steps: [
+        Object.assign({ role: "body", leg: "bike", durationMin: bikeZ2, zone: "bk.z2", intensity: intOf("bk.z2")                      }          , { share: tiersRp ? 2 / 3 : 1 }),
+        // `rpBand` accompagne le step : c'est la bande réelle de CETTE épreuve, et c'est elle
+        // qui décide si l'effort compte dur ou modéré (R20.5).
+        ...(tiersRp ? [Object.assign({ role: "body", leg: "bike", durationMin: bikeRp, zone: "bk.rp", intensity: intOf("bk.rp")                     , suffix: " à l'allure de ton jour J" }          , { share: 1 / 3, rpBand })] : []),
         { role: "body", leg: "run", durationMin: PT(br.lo, Math.round(br.hi * rf)), d: "rn" }          ,
       ], ...( { runInj }          ) });
     } else if (phase === "taper" && !medHold && kit.weekNum < kit.r.weeks) {
@@ -7740,6 +7828,18 @@ function reconcileDeclaredVolume(
 }
 
 /**
+ * O-11 / R20.5 — la bande « allure course » vélo de cette épreuve, relief compris. Un seul
+ * point pour les deux appelants (génération et réparation) : deux copies auraient divergé, ce
+ * qui est très exactement le défaut qu'O-11 décrit.
+ */
+function shiftedBikeRp(sport        , format                    , a                )                                         {
+  const b = raceBikeBand(sport, format);
+  if (!b) return undefined;
+  const shift = bikeIFShift(legProfileOf(a         , "bike"));
+  return { lo: b.lo + shift, hi: b.hi + shift };
+}
+
+/**
  * C26c (R20.4) — LE TEMPS DUR HEBDOMADAIRE NE DÉPASSE PAS LE PLAFOND QUE C26 DÉCLARE.
  *
  * Voir `constraintMatrix.ts` (C26c) pour le raisonnement et la mesure. Ici, la mécanique :
@@ -7781,7 +7881,12 @@ function enforceHardTimeCap(
           if (h > cibleHard) { cibleHard = h; cible = s; }
         }
       if (!cible || cibleHard <= 0) break;
-      const durs = (cible.steps || []).filter((b) => b.role === "body" && zoneClass(b.zone) === "hard");
+      // R20.5 — la COUPE et la MESURE doivent classer pareil. `bk.rp` est dur ou modéré selon
+      // la bande de l'épreuve : lire `rpBand` ici aussi, sinon le cutter ne trouverait jamais
+      // le bloc que l'auditeur compte — deux définitions du mot « dur » dans le même moteur,
+      // le défaut O-11 reproduit à l'intérieur d'un seul lot.
+      const durs = (cible.steps || []).filter((b) => b.role === "body"
+        && zoneClass(b.zone, false, (b                                           ).rpBand) === "hard");
       if (!durs.length) break;
       // Le plus gros bloc dur de la séance : c'est lui qui porte le dosage.
       const b = durs.reduce((x, y) => ((y.reps || 1) * (y.durationMin || 0) > (x.reps || 1) * (x.durationMin || 0) ? y : x));
@@ -7852,7 +7957,17 @@ function generatePlan(profile                , opts                             
   if (opts?.noLoadFactor) r.loadFactor = 1;
   const a = profile;
   const fmt = a.format;
-  const refs       = { ...r.baseRefs };
+  // O-11 / R20.5 — la zone « allure course » vélo lit la cible du JOUR J de cette épreuve,
+  // au lieu d'une constante 0,80–0,88 × FTP identique du sprint à l'Ironman. Un seul point
+  // décide (`raceBikeBand`), et c'est le même que celui de la prédiction.
+  //
+  // Le décalage de relief (R15.2) est appliqué ICI AUSSI, et par le même résolveur de parcours
+  // que la prédiction : une séance qui s'appelle « rappel race-pace » doit afficher le nombre
+  // que l'athlète verra sur son compteur le jour J. Reproduire la cible d'un parcours plat en
+  // préparation d'une épreuve de montagne, c'est apprendre le mauvais chiffre — le défaut que
+  // R15.2 a corrigé côté prédiction, à un mois d'intervalle, sur l'autre versant du même
+  // chemin.
+  const refs       = { ...r.baseRefs, bikeRp: shiftedBikeRp(String(a.sport), fmt, a) };
   const days = buildDays(r, refs, r.hz);
 
   // ---- Bornes de bloc (R3.4b/R3.11/R3.12) — source unique, mêmes règles que V1.5 ----
@@ -7888,7 +8003,11 @@ function generatePlan(profile                , opts                             
       // ce que l'auditeur refuse, et c'est l'auditeur qui a raison).
       if (b.leg === "bike") {
         const bb = BRICK_BIKE_BOUNDS[fmt || ""];
-        return { floor: bb ? bb[0] : 32, cap: Math.round((CAP_BRICK_BIKE[fmt] || 300) * brickRF) };
+        // R20.5 — le leg vélo du brick peut être en DEUX blocs (endurance puis allure course).
+        // Les bornes du format portent sur le TOTAL vélo : chaque bloc en reçoit sa part, sinon
+        // un brick coupé en deux hériterait de deux fois le plancher et doublerait mécaniquement.
+        const sh = (b                      ).share ?? 1;
+        return { floor: Math.round((bb ? bb[0] : 32) * sh), cap: Math.round((CAP_BRICK_BIKE[fmt] || 300) * brickRF * sh) };
       }
       return { floor: 8, cap: Math.round((CAP_BRICK_RUN[fmt] || 70) * brickRF) };
     }
@@ -9623,7 +9742,9 @@ function generateAudited(profile                , auditOpts                     
     refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 },
     ...auditOpts,
   };
-  const refs       = { ...reasoned.baseRefs };
+  // O-11 / R20.5 — même bande « allure course » qu'à la génération : la boucle de réparation
+  // re-rend des séances, elle ne doit pas les re-rendre avec une AUTRE définition de bk.rp.
+  const refs       = { ...reasoned.baseRefs, bikeRp: shiftedBikeRp(String(reasoned.profile.sport), reasoned.profile.format, reasoned.profile) };
   let audit = auditPlan(plan, opts);
   const repairs           = [];
   let best = { plan, audit };
@@ -10292,6 +10413,7 @@ function taperIsConform(plan
 
 
 
+
 /**
  * R14.1 — LA FORME PROJETÉE AU JOUR J, à côté de la forme actuelle (jamais à sa place).
  * L'UI affiche les deux, étiquetées : « Aujourd'hui : 4h00–4h15 » / « Projeté au 12/09/2027 :
@@ -10537,6 +10659,42 @@ const BIKE_POWER                                                           = {
   cyclo: { lo: 0.73, hi: 0.83, note: "cyclosportive : tempo durable, garder du grain pour la fin" },
   gravel: { lo: 0.68, hi: 0.78, note: "gravel/ultra : endurance, la régularité bat la vitesse" },
 };
+/**
+ * O-11 / R20.5 — « L'ALLURE COURSE À VÉLO » N'A PLUS QU'UNE SEULE DÉFINITION.
+ *
+ * Le moteur en portait DEUX, et la zone d'entraînement était la plus dure des deux :
+ *
+ * | source | « allure course » vélo |
+ * |---|---|
+ * | `ZDEF["bk.rp"]` (la zone prescrite à l'entraînement) | **0,80–0,88 × FTP, quel que soit le format** |
+ * | `TRI_BIKE["Full"]` (la cible du jour J) | **0,70–0,76 × FTP** |
+ *
+ * Sur un Ironman, une séance nommée « Rappel race-pace » faisait donc rouler **~15 % au-dessus
+ * de l'intensité que le moteur prescrit lui-même pour la course** — et sur un sprint, l'inverse
+ * (0,80–0,88 contre 0,85–0,93 le jour J : la séance était plus FACILE que la course). Une zone
+ * figée ne peut pas décrire un effort dont la durée va de 30 minutes à six heures.
+ *
+ * C'est le même défaut que R15.2 a corrigé pour le relief, à un autre endroit du même chemin :
+ * deux producteurs du même nombre finissent toujours par diverger. Il n'y a donc plus qu'un
+ * point — celui-ci — et la zone `bk.rp` le lit.
+ *
+ * La pré-fatigue du duathlon est INCLUSE : le nombre que l'athlète doit apprendre à tenir est
+ * celui de sa course, pas celui d'un contre-la-montre frais. Le relief (`bikeIFShift`) n'est PAS
+ * inclus ici — il s'applique en aval, au même endroit pour la prédiction et pour la séance.
+ */
+function raceBikeBand(sport        , format                    )                                    {
+  const f = String(format ?? "");
+  if (sport === "tri") return TRI_BIKE[f] ?? null;
+  if (sport === "bike") { const b = BIKE_POWER[f]; return b ? { lo: b.lo, hi: b.hi } : null; }
+  if (sport === "duathlon") {
+    const pw = DUA_BIKE_POWER[f];
+    if (!pw) return null;
+    const pf = DUA_BIKE_PREFATIGUE[f] ?? 0.97;
+    return { lo: pw.lo * pf, hi: pw.hi * pf };
+  }
+  return null;
+}
+
 const TRI_SWIM                                                   = {
   S: { dist: 750, factor: 1.04 },
   M: { dist: 1500, factor: 1.05 },
