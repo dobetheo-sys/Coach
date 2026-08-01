@@ -17,10 +17,25 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const N = process.argv[2] || "150";
+// R15.1 / O-1 — N passe de 150 à 400. Le tirage est SEMÉ (graine fixe dans `audit_v7.cjs`),
+// donc « 0 défaut à N=150 » était déterministe mais ARBITRAIRE : le seuil d'apparition de
+// D-DISC se situait juste au-dessus. Les budgets étant désormais des taux, monter N ne fait
+// plus déborder mécaniquement les autres checks — c'est ce qui rend ce changement possible.
+const N = process.argv[2] || "400";
 
 /** Seuil maximal toléré par check. 0 = garde-fou définitif, ne jamais remonter. */
-const BUDGET = {
+/**
+ * R15.1 / O-1 — LES BUDGETS SONT DES TAUX (‰ DE PROFILS), PLUS DES COMPTEURS.
+ *
+ * Ils étaient des compteurs ABSOLUS calibrés à N=150. Un budget de 12 sur 150 tirages vaut
+ * mécaniquement ~20 à N=253 : la CI passait au rouge en AUGMENTANT l'échantillon, c'est-à-dire
+ * en regardant mieux. Un budget qui dépend du paramètre d'échantillonnage n'est pas une
+ * mesure, c'est un artefact — et il rendait `N` intouchable, donc figeait l'angle mort O-1.
+ *
+ * Conversion : `budget_‰ = ancien_compteur / 150 × 1000`, autorisé = `ceil(‰ × N / 1000)`.
+ * **Zéro reste zéro** : les garde-fous de sécurité ne tolèrent aucun cas, quel que soit N.
+ */
+const BUDGET_PERMILLE = {
   // --- Garde-fous de SÉCURITÉ et de contrat : zéro, définitivement ---
   "U-MED": 0,        // drapeau médical contourné (R4.0) — bloquant
   "U-CRASH": 0,
@@ -53,19 +68,19 @@ const BUDGET = {
   "D-BRICK": 0,
   "D-TERRAIN": 0,
   // --- Dette restante, chiffrée : ne doit jamais remonter (voir R10_DEFECTS.md) ---
-  "U-DECL": 2,       // R5.3 — CORRIGÉ : la courbe annoncée se réconcilie avec le prescrit
-  "U-RACEDATE": 12,  // R4.8b — course lointaine : plafond assumé + avertissement
+  "U-DECL": 13,       // R5.3 — CORRIGÉ : la courbe annoncée se réconcilie avec le prescrit
+  "U-RACEDATE": 80,  // R4.8b — course lointaine : plafond assumé + avertissement
   "U-DUP": 0,        // R5.5 — CORRIGÉ : jamais deux fois la même séance de qualité par semaine
   "T-DPLUS": 0,      // R4.7a — CORRIGÉ : le D+ par bloc suit le terrain accessible (T1b)
-  "T-NIGHT": 2,      // R4.7b — la consigne nuit est un ATTRIBUT greffé sur les séances survivantes
-  "T-DPLUS-WK": 2,
-  "T-POLES-ADV": 2,
+  "T-NIGHT": 13,      // R4.7b — la consigne nuit est un ATTRIBUT greffé sur les séances survivantes
+  "T-DPLUS-WK": 13,
+  "T-POLES-ADV": 13,
   "S-NOVO2": 0,      // R5.4/R5.5 — CORRIGÉ : le stimulus change de support et de créneau
-  "S-LONGSWIM": 8,   // plus longue nage non répétée sur les valeurs extrêmes (saisies invraisemblables)
-  "S-MIX": 9,        // part course/nage du plan vs de la course
-  "S-RUN-STARVED": 10,
-  "S-PREREQ": 12,    // format RABATTU + avertissement (choix assumé, cf. R10_DEFECTS)
-  "D-DISC": 1,       // R5.2 — CORRIGÉ : couverture en dernier + aucune coupe n'orpheline la discipline principale
+  "S-LONGSWIM": 53,   // plus longue nage non répétée sur les valeurs extrêmes (saisies invraisemblables)
+  "S-MIX": 60,        // part course/nage du plan vs de la course
+  "S-RUN-STARVED": 67,
+  "S-PREREQ": 80,    // format RABATTU + avertissement (choix assumé, cf. R10_DEFECTS)
+  "D-DISC": 7,       // R5.2 — CORRIGÉ : couverture en dernier + aucune coupe n'orpheline la discipline principale
 };
 
 let failed = false;
@@ -85,9 +100,11 @@ for (const sport of SPORTS_V7) {
     // Ils sont comptés et affichés, jamais budgétés comme un défaut.
     if (id.startsWith("U-REFUS:")) continue;
     const key = id.startsWith("U-CRASH") ? "U-CRASH" : id;
-    const budget = BUDGET[key];
-    if (budget === undefined) { over.push(`${id} = ${n} (check INCONNU : ajouter son budget)`); continue; }
-    if (n > budget) over.push(`${id} = ${n} > ${budget}`);
+    const permille = BUDGET_PERMILLE[key];
+    if (permille === undefined) { over.push(`${id} = ${n} (check INCONNU : ajouter son budget)`); continue; }
+    // Zéro est ABSOLU (garde-fou de sécurité) ; sinon le budget suit la taille de l'échantillon.
+    const budget = permille === 0 ? 0 : Math.ceil((permille * Number(N)) / 1000);
+    if (n > budget) over.push(`${id} = ${n} > ${budget} (${permille}‰ × ${N})`);
   }
   const pct = Math.round((d.clean / d.cases) * 100);
   console.log(`${over.length ? "✖" : "✔"} ${sport.padEnd(9)} ${d.clean}/${d.cases} profils sans défaut (${pct}%) · ${d.refusals || 0} refus d'entrée · ${d.crashes} crash · ${d.nondet} non-déterminisme`);

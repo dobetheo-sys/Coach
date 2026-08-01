@@ -1,6 +1,6 @@
 # Bugs constatés et NON corrigés
 
-**État au 01/08/2026, commit `b35169b` + lot R15** (20 gates verts, E2E 8/8, golden 764).
+**État au 01/08/2026, commit `4222eaf` + lot R15.1** (20 gates verts, E2E 8/8, golden 764, `audit:v7` à N=400).
 
 > **Mise à jour R15 :** `O-2` et `O-3` sont traités ci-dessous ; `O-1` reste ouvert et son
 > périmètre s'est ÉLARGI (voir la note). Le handoff de revue a aussi apporté deux défauts
@@ -20,55 +20,51 @@ assumés entre deux règles, les chantiers humains, et les entrées de registre 
 
 ## §1 — Défauts ouverts, par gravité
 
-### O-1 · Le banc v7 tourne sous le seuil où son propre défaut apparaît ⚠️ **le plus grave**
+### O-1 · Le banc v7 mesurait sous le seuil de ses propres défauts · ✅ **FERMÉ (R15.1)**
 
-**Ce qui se passe.** `npm run audit:v7` échantillonne 150 profils par sport. Le check `D-DISC`
-(une semaine de charge qui perd une discipline entière — un duathlon sans un coup de pédale)
-a un budget de 1. Mesuré en faisant varier le seul nombre de profils :
+Les trois gestes demandés sont faits, **et c'est le troisième qui a tout trouvé.**
 
-| profils tirés | `D-DISC` mesuré | verdict CI |
+**1. Le tirage EST semé** (`audit_v7.cjs` : LCG, graine 1234567). Donc « `D-DISC` = 0 à N=150 »
+était déterministe, pas un coup de dé — la CI était stable mais **arbitraire**, exactement le
+cas que cette entrée décrivait. C'est maintenant écrit dans le banc.
+
+**2. Les budgets sont des TAUX** (`BUDGET_PERMILLE`, ‰ de profils) et non plus des compteurs
+absolus calibrés à N=150. Un budget qui dépend du paramètre d'échantillonnage n'est pas une
+mesure : c'était lui qui rendait `N` intouchable, et donc qui figeait cet angle mort. **Zéro
+reste zéro** — un garde-fou de sécurité ne tolère aucun cas, quel que soit N.
+
+**3. Les DIMENSIONS varient — et voilà ce que ça a révélé.** Les six `race_date` du banc
+(2026-10-04 … 2028-06-11) tombaient **toutes un dimanche** : le jour de la course n'était pas
+une dimension du fuzz, c'était une constante. Elles sont désormais relatives à l'ancre
+(4 horizons × 7 jours de semaine), ce qui ferme A-6 pour ce banc au passage. Dès ce changement,
+à N=150 inchangé :
+
+| | avant | après variation du jour J |
 |---|---|---|
-| **150 (valeur de la CI)** | **0** | ✅ vert |
-| 200 | 1 | ✅ vert (= budget) |
-| 253 | **2** | ❌ **dépasserait le budget** |
-| 280 | 2 | ❌ |
-| 400 | 2 | ❌ |
+| `U-STRUCT` | 0 | **66** |
+| `D-DISC` | 0 | **5** |
 
-**Pourquoi c'est grave.** Ce n'est pas « il reste 2 défauts » — c'est que **la CI est verte parce
-qu'elle ne regarde pas assez loin**. C'est exactement la famille de défauts que ce dépôt passe son
-temps à débusquer (N2 : aucun profil golden ne portait de date de course ; R14 : le golden
-regardait P5 au seul point où il ne bouge pas). Un garde-fou calibré sous le seuil d'apparition
-de ce qu'il surveille donne une assurance fausse, ce qui est pire que pas de garde-fou.
+- **`U-STRUCT` : le banc contredisait un contrat livré.** Il exigeait 7 jours par semaine, alors
+  que N2 (31/07) a délibérément rendu la dernière semaine courte — le plan s'arrête le soir du
+  jour J. Vérifié : les 66 sont TOUTES la dernière semaine, avec 1 à 6 jours selon le jour de
+  course (lundi → 1 jour, samedi → 6). Le check n'avait jamais protesté parce que toutes les
+  courses tombaient un dimanche, seul cas qui donne une dernière semaine pleine. **Un check
+  périmé depuis un mois, rendu invisible par une dimension non variée.**
+- **`D-DISC` : un vrai défaut, cinq fois pire que ce que cette entrée mesurait.** 112 semaines
+  d'affûtage de duathlon **sans un seul coup de pédale**, dont 108 en semaine de course.
+  Corrigé : le rattrapage de volume comble d'abord un trou de DISCIPLINE (il prenait la
+  discipline principale — « rn » en duathlon, celle qui était déjà là), plus une passe de
+  couverture indépendante du plancher, et un avertissement nommé quand la semaine est vraiment
+  trop courte.
 
-**Reproduire :**
+**N passe de 150 à 400**, et la CI reste verte — *après* correction, jamais en baissant le
+budget. Rétro-compatible : `npm run audit:v7 150` reste vert lui aussi.
+
+**Re-vérifier :**
 ```bash
-ENGINE=$PWD/endurabuild/js/engine.js node audit_v7.cjs duathlon 253
+npm run audit:v7            # N=400 par défaut, budgets en ‰
+npm run audit:v7 150        # l'ancien échantillon, toujours vert
 ```
-
-**⚠ Périmètre élargi (revue R15).** `D-DISC` n'est pas seul : **tous** les budgets du tableau
-v7 sont des compteurs ABSOLUS mesurés à N=150. Un budget de 12 sur 150 tirages vaut
-mécaniquement ~20 à N=253. Monter `N` fera donc déborder `U-RACEDATE`, `T-NIGHT`,
-`T-DPLUS-WK` et `T-POLES-ADV` **en même temps** — le lot est plus gros que ce que cette entrée
-laissait croire, et c'est une raison de plus de le traiter pour lui-même. Trois gestes, dans
-cet ordre : (1) **dire si le tirage est semé** — s'il ne l'est pas, `D-DISC = 0` à N=150 est un
-coup de dé et la CI est déjà instable ; (2) passer les budgets en **taux** (‰ de profils) et
-non en compteurs — un budget qui dépend du paramètre d'échantillonnage est un artefact, pas une
-mesure ; (3) **varier les DIMENSIONS, pas seulement leur nombre** (horizon, jour de la semaine
-de la course, sport, format, niveau, historique, volume, séances, blessure, drapeau médical).
-
-Le troisième point est le plus important, et il a été démontré à nos dépens : le banc R15 lui-même
-a d'abord rendu **0 défaut sur 72 profils à un seul horizon**, puis **291 sur 648** en calant la
-course un DIMANCHE et en balayant 9 horizons. Une dimension non variée masquait 100 % du défaut.
-**La leçon n'est donc pas « monter N » mais « varier les bonnes dimensions »** — un échantillon
-dix fois plus grand sur les mêmes axes n'aurait rien trouvé.
-
-**Pourquoi ce n'est pas corrigé ici.** Deux corrections possibles et elles ne se valent pas :
-monter `N` en CI (honnête, mais fait passer la CI au rouge tant que les 2 cas ne sont pas
-traités), ou traiter les 2 cas d'abord. Le bon ordre est : monter `N`, constater le rouge,
-corriger, garder `N` haut. C'est un lot à part entière — le faire en passant reviendrait à
-choisir le `N` qui arrange, c'est-à-dire à reproduire le défaut.
-
----
 
 ### O-2 · `R14.3-b` — le dénivelé vélo · ✅ **FERMÉ (R15.2)**
 
@@ -130,12 +126,12 @@ Ce ne sont pas des bugs : ce sont des endroits où **on ne saurait pas** qu'il y
 
 | # | angle mort | conséquence |
 |---|---|---|
-| A-1 | `audit:v7` tourne à N=150 (voir O-1) | Un défaut qui n'apparaît qu'au-delà ne sera jamais vu en CI. |
+| ~~A-1~~ | ~~`audit:v7` tourne à N=150~~ | ✅ **Fermé (R15.1)** : N=400, budgets en taux, jour de course varié. |
 | A-2 | Le golden master fige `vol_max` au profil de base sur presque toutes ses passes | Deux passes correctives ont déjà dû être ajoutées pour cette raison (« course datée » en N2, « volume et extrapolation » en R14). Le prochain paramètre figé produira le même angle mort. |
 | A-3 | `R14.3-b` n'a **aucun critère automatique** | Personne ne saura si le dénivelé vélo est traité, sauf à relire le code. |
 | A-4 | Le monolithe `Coach_Pro_V1.5.html` a le moteur à jour mais son **UI est gelée à R4** | Les régressions d'interface introduites depuis (5 onglets, carte Trail, étape terrain) ne s'y voient pas. C'est documenté et voulu — mais un utilisateur qui ouvrirait ce fichier verrait un produit d'il y a plusieurs lots. |
 | A-5 | **Aucune vérité terrain pour la projection R14/R14.1** — l'angle mort le plus profond du prédicteur | Les bandes `h`, `G_plafond`, `k_structure` sont des heuristiques que **rien ne valide**. On ne saura jamais qu'elles sont fausses tant que les projections ne seront pas confrontées aux résultats réels. *Premier geste, et il doit être fait MAINTENANT :* journaliser à chaque génération `{date, sport, format, horizon, refs mesurées, gainPct, gainBand, adhérence}` et, au passage du jour J, `{temps réel par leg}`. Sans cette ligne écrite aujourd'hui, la calibration sera impossible dans deux ans — les données n'existeront pas. |
-| A-6 | **Dates absolues** dans le golden et les scripts (`RACE_PASS_DATES`, `scripts/trace.mjs`, profils `measured`) | Un profil dont la course est « à 43 semaines » aujourd'hui sera à 30 semaines dans trois mois : le golden dérive tout seul, ou pire, **exerce silencieusement d'autres branches en gardant la même empreinte**. Le garde-fou d'échéance existe (`goldenMaster.mjs` prévient 8 semaines avant), mais il traite la panne, pas la dérive. Vérifier : `grep -rn "20[23][0-9]-[01][0-9]-[0-3][0-9]" scripts/ tests/` — toute date en dur est un futur A-2. |
+| A-6 | **Dates absolues** dans le golden et les scripts (`RACE_PASS_DATES`, `scripts/trace.mjs`, profils `measured`) — ⚠ **partiellement fermé** : `audit_v7.cjs` est passé en dates RELATIVES (R15.1), le golden et `trace.mjs` restent en absolu | Un profil dont la course est « à 43 semaines » aujourd'hui sera à 30 semaines dans trois mois : le golden dérive tout seul, ou pire, **exerce silencieusement d'autres branches en gardant la même empreinte**. Le garde-fou d'échéance existe (`goldenMaster.mjs` prévient 8 semaines avant), mais il traite la panne, pas la dérive. Vérifier : `grep -rn "20[23][0-9]-[01][0-9]-[0-3][0-9]" scripts/ tests/` — toute date en dur est un futur A-2. |
 
 ---
 

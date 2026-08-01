@@ -1145,3 +1145,47 @@ charge R6.3 sortait du champ de la photo. Le cas se dédouble — `mineur` (refu
 doit pas effacer la surveillance d'une règle ancienne.
 
 **20 gates verts, E2E 8/8, golden 764.**
+
+### R15.1 — O-1 fermé : la CI regardait à côté, pas seulement trop peu
+
+Les trois gestes du handoff, dans l'ordre, et **c'est le troisième qui a tout trouvé.**
+
+1. **Le tirage est SEMÉ** (LCG, graine 1234567). « `D-DISC` = 0 à N=150 » était donc
+   déterministe mais **arbitraire** — pas un coup de dé, comme le registre le craignait, mais
+   un seuil placé juste sous le point d'apparition. C'est écrit dans le banc désormais.
+2. **Les budgets deviennent des TAUX** (‰ de profils). Ils étaient des compteurs calibrés à
+   N=150 : la CI passait au rouge en AUGMENTANT l'échantillon, c'est-à-dire en regardant mieux.
+   C'est ce qui rendait `N` intouchable, et donc ce qui figeait l'angle mort. Zéro reste zéro.
+3. **Les dimensions varient.** Les six `race_date` du banc **tombaient toutes un dimanche** : le
+   jour de la course n'était pas une dimension du fuzz, c'était une constante. Elles sont
+   désormais relatives à l'ancre (4 horizons × 7 jours), ce qui ferme A-6 pour ce banc.
+
+**À N=150 INCHANGÉ, ce seul changement de dimension a fait apparaître :**
+
+| check | avant | après |
+|---|---|---|
+| `U-STRUCT` | 0 | **66** |
+| `D-DISC` | 0 | **5** |
+
+**`U-STRUCT` — le banc contredisait un contrat livré un mois plus tôt.** Il exigeait 7 jours par
+semaine ; N2 a délibérément rendu la dernière semaine courte (le plan s'arrête le soir du jour J).
+Vérifié : les 66 sont TOUTES la dernière semaine, avec exactement 1 à 6 jours selon le jour de
+course (lundi → 1 jour, samedi → 6). Le check n'avait jamais protesté parce que toutes les
+courses tombaient un dimanche — le seul cas qui donne une dernière semaine pleine.
+
+**`D-DISC` — un vrai défaut, cinq fois pire que ce que le registre mesurait.** 112 semaines
+d'affûtage de duathlon **sans un seul coup de pédale**, dont 108 en semaine de course : l'athlète
+montait sur son vélo le jour J sans l'avoir touché depuis dix jours. Deux causes : le rattrapage
+de volume de R15.7-A choisissait la discipline PRINCIPALE (« rn » en duathlon — celle qui était
+déjà présente), et la couverture n'était vérifiée qu'au titre du VOLUME, jamais pour elle-même.
+Le rattrapage comble maintenant un trou de discipline en priorité, une passe de couverture tourne
+indépendamment du plancher, et quand la semaine est vraiment trop courte on le DIT au lieu de
+forcer une séance dans un jour qui n'existe pas.
+
+**N passe de 150 à 400 et la CI est verte** — après correction, jamais en baissant un budget.
+`npm run audit:v7 150` reste vert lui aussi. Golden 764, 1 seul écart (un duathlon PM avec course
+le jeudi gagne l'avertissement d'enveloppe), recapturé.
+
+**La formulation qui reste**, et qui vaut mieux que celle du registre : *la leçon n'est pas
+« monter N » mais « varier les bonnes dimensions »* — un échantillon dix fois plus grand sur les
+mêmes axes n'aurait trouvé aucun des deux.

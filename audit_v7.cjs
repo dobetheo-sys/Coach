@@ -36,6 +36,33 @@ const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7ffffff
 const pick = (a) => a[Math.floor(rnd() * a.length) % a.length];
 
 /* ---------------- Dimensions ---------------- */
+/**
+ * R15.1 / O-1 — LES DATES DE COURSE ÉTAIENT SIX DIMANCHES, EN DUR.
+ *
+ * Mesuré : les six valeurs de `race_date` de ce banc (2026-10-04 … 2028-06-11) tombent TOUTES
+ * un dimanche. Le jour de la semaine du jour J n'était donc pas une dimension du fuzz — il
+ * était une CONSTANTE. Or c'est lui qui décide de la longueur de la dernière semaine (N2) et
+ * de la mise en page de la semaine de course : le handoff R15 a montré qu'en ne le variant pas,
+ * son propre banc rendait 0 défaut là où il y en avait 291 sur 648.
+ *
+ * Elles étaient aussi ABSOLUES (angle mort A-6 du registre) : « 2027-03-14 » vaut 33 semaines
+ * d'horizon aujourd'hui et 20 dans trois mois. Le banc dérivait tout seul, et pouvait se mettre
+ * à exercer d'autres branches sans que rien ne le signale. Elles sont désormais RELATIVES à
+ * l'ancre (le lundi de la semaine courante), donc stables en SENS : « dans 24 semaines, un
+ * mardi » veut dire la même chose dans un an.
+ *
+ * Le tirage reste DÉTERMINISTE (graine fixe ci-dessous) : à ancre égale, deux exécutions
+ * donnent le même échantillon.
+ */
+const ANCRE = (() => { const d = new Date(); d.setUTCHours(12, 0, 0, 0); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d; })();
+const RACE_DATES = [""];
+for (const sem of [10, 22, 34, 52]) {
+  for (let j = 0; j < 7; j++) {
+    const d = new Date(ANCRE.getTime() + (sem * 7 + j) * 864e5);
+    RACE_DATES.push(d.toISOString().slice(0, 10));
+  }
+}
+
 const COMMON = {
   intent: ["competition", "finir", "plaisir"],
   level: ["debutant", "inter", "avance"],
@@ -54,7 +81,7 @@ const COMMON = {
   med_pain: ["non", "oui"],
   med_dizzy: ["non", "oui"],
   med_treat: ["non", "oui"],
-  race_date: ["", "2026-10-04", "2026-12-13", "2027-03-14", "2027-05-09", "2027-09-12", "2028-06-11"],
+  race_date: RACE_DATES,
   weight_lever: ["non", "oui", "coach"],
   sleep: ["court", "moyen", "bon"],
   life_load: ["legere", "normale", "lourde"],
@@ -186,7 +213,16 @@ function runChecks(sport, a, plan, fail) {
 
   const seenDates = new Set();
   for (const w of weeks) {
-    if (w.days.length !== 7) F("U-STRUCT", `S${w.num} ${w.days.length} jours`);
+    // R15.1 / O-1 — LA DERNIÈRE SEMAINE PEUT ÊTRE COURTE, ET C'EST VOULU (N2, 31/07/2026).
+    // Le plan s'arrête le SOIR DU JOUR J : la dernière semaine fait 1 à 7 jours selon le jour
+    // de la course (lundi → 1 jour, samedi → 6). Ce check exigeait 7 jours partout et
+    // contredisait donc un contrat livré depuis un mois — sans jamais le signaler, parce que
+    // les six `race_date` du banc tombaient TOUTES un dimanche, seul cas qui donne une
+    // dernière semaine pleine. La dimension non variée masquait 100 % de l'écart : mesuré
+    // 66 « violations » à N=150 dès que le jour J varie, toutes sur la dernière semaine.
+    const derniere = w === weeks[weeks.length - 1];
+    if (w.days.length !== 7 && !(derniere && w.days.length >= 1 && w.days.length <= 7))
+      F("U-STRUCT", `S${w.num} ${w.days.length} jours`);
     let nSess = 0;
     const namesInWeek = new Map();
     for (const d of w.days) {

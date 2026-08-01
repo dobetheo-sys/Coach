@@ -595,7 +595,18 @@ export function reconcileDeclaredVolume(
       // séance » qui avait déjà coûté l'Ironman supprimé par une coupe d'affûtage.
       const nSess = () => last.days.reduce((t, d) => t + d.sessions.filter((s) => s.d !== "rs" && !s.race).length, 0);
       const raceIdx = last.days.findIndex((d) => d.sessions.some((s) => s.race));
-      const mainD = ctx?.mainDiscipline || "rn";
+      // R15.1 — LE RATTRAPAGE COMBLE D'ABORD UN TROU DE DISCIPLINE.
+      // Mesuré en variant le jour de la course (O-1) : 112 semaines d'affûtage de duathlon sans
+      // le moindre coup de pédale, dont 108 en semaine de course. La cause tenait au choix de
+      // la discipline du rattrapage : il prenait la discipline PRINCIPALE, qui vaut « rn » en
+      // duathlon — celle qui était déjà présente. Un plan de duathlon dont la dernière semaine
+      // ne contient que de la course n'est pas un plan de duathlon, et l'athlète monte sur son
+      // vélo le jour J sans l'avoir touché depuis dix jours.
+      const dispos = ctx?.disciplines || [];
+      const presente = (dd: string) => last.days.some((d) => d.sessions.some((s) => s.d === dd
+        || (s.d === "br" && (s.steps || []).some((b) => b.leg === (dd === "rn" ? "run" : "bike")))));
+      const manquante = dispos.find((dd) => !presente(dd));
+      const mainD = manquante || ctx?.mainDiscipline || "rn";
       const dz = mainD === "sw" ? "sw.easy" : mainD === "bk" ? "bk.z2" : "rn.easy";
       for (const d of last.days) {
         if (peakDeliv <= 0 || hors() >= peakDeliv * 0.30) break;
@@ -613,6 +624,32 @@ export function reconcileDeclaredVolume(
           steps: [{ role: "body", durationMin: Math.max(25, Math.min(60, Math.round(manque))), zone: dz } as V1Step] };
         d.charge = "facile"; d.slot = "facileR"; d.sessions = [sx];
         if (render) render(sx);
+      }
+      // R15.1 — COUVERTURE DES DISCIPLINES EN SEMAINE DE COURSE, indépendamment du plancher.
+      // Le rattrapage ci-dessus ne se déclenche que si le VOLUME manque. Or une semaine peut
+      // tenir son plancher et n'être composée que d'une seule discipline : mesuré, 102 semaines
+      // d'affûtage de duathlon sans un coup de pédale, dont 98 en semaine de course. Monter sur
+      // son vélo le jour J sans l'avoir touché depuis dix jours n'est pas un détail de
+      // couverture, c'est une sensation qu'on n'a pas réveillée.
+      // Quand la place manque VRAIMENT (semaine de 1-2 jours, budget saturé), on ne force pas :
+      // on le DIT, avec la formulation que l'auditeur externe reconnaît.
+      for (const dd of dispos) {
+        if (presente(dd)) continue;
+        const dzz = dd === "sw" ? "sw.easy" : dd === "bk" ? "bk.z2" : "rn.easy";
+        const libre = last.days.find((d, i) => !(d as GenDay).forced && !(raceIdx >= 0 && i >= raceIdx - 1)
+          && !d.sessions.some((s) => s.d !== "rs"));
+        if (libre && !(budget > 0 && nSess() + 1 > budget)) {
+          const sx: V1Session = { d: dd as "rn", name: "Rappel " + (dd === "bk" ? "vélo" : dd === "sw" ? "nage" : "course") + " (semaine de course)", det: "",
+            note: "Semaine de course : on réveille la discipline, on ne la travaille pas. Court, strictement facile — arriver le jour J sans avoir touché à l'une des disciplines coûte des sensations, pas de la forme.",
+            steps: [{ role: "body", durationMin: 30, zone: dzz } as V1Step] };
+          libre.charge = "facile"; libre.slot = "facileR"; libre.sessions = [sx];
+          if (render) render(sx);
+        } else if (!warnings.some((w) => /ne permet pas de faire tenir toutes les disciplines/.test(w))) {
+          warnings.push("La dernière semaine est trop courte pour faire tenir toutes les disciplines : "
+            + "ton enveloppe ne permet pas de faire tenir toutes les disciplines avant le jour J. "
+            + "Ce n'est pas grave si tu as roulé la semaine d'avant — mais si tu peux, ajoute 20 à 30 min "
+            + "très faciles dans la discipline manquante deux jours avant la course.");
+        }
       }
     }
   }
