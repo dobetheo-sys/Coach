@@ -1210,3 +1210,36 @@ comptait comme une erreur de génération. La CI gate sur cette commande : **ce 
 rouge en permanence**, et un gate rouge en permanence est un gate que plus personne ne lit. Un
 refus typé est désormais compté, affiché et haché à part, exactement comme `U-REFUS:` au banc
 v7 depuis R11.
+
+
+## R15.3 — mesurer la fréquence du repli avant d'arbitrer son contenu
+
+O-3 traînait depuis R10 avec la mention « coût faible et non chiffré ». Le handoff R15.3 a
+montré que l'entrée posait la mauvaise question : elle réclamait l'écart de CONTENU entre
+`facileR` et `facile2`, alors que ce qui décide est la FRÉQUENCE de déclenchement du repli.
+
+`scripts/measureFallback.mjs` (`npm run measure:fallback`) répond, avec le critère posé
+**avant** la mesure : < 5 % ferme l'entrée, > 20 % lui donne son lot. Résultat : **trail
+25,0 % des plans** (2,6 % des jours), **swimrun 44,4 %** (3,9 %) — l'entrée mérite son lot, et
+le sport le plus concerné n'était pas celui qui l'avait ouverte.
+
+**La méthode compte autant que le chiffre.** Aucune instrumentation dans `src/` : le repli est
+détecté post-hoc en comparant le plan émis au `weekSchema` que le module déclare — mesurer sans
+toucher au code mesuré, comme `npm run trace`. Trois pièges, tous conservés dans le script sous
+forme de gardes :
+
+1. **le balayage vide qui ressemble à un résultat.** Premier passage : 0,0 %. Cause — le
+   domaine de format du trail est un tableau vide (sa catégorie d'effort est déduite, R7), donc
+   la boucle ne produisait aucun profil. Le script sort désormais en erreur si un sport ne
+   génère aucun plan.
+2. **le contrôle croisé qui accuse la mauvaise méthode.** J'avais doublé la mesure par un
+   dénombrement insensible à l'ordre, qui rendait 0 % contre 25 %. C'est le contrôle qui était
+   faux : il supposait que les créneaux de repli DÉCLARÉS dans le schéma survivent au rendu,
+   alors que le budget de séances en éteint. Deux mesures qui divergent ne désignent pas
+   laquelle ment — il faut aller regarder les données brutes, ce qui a pris trois lignes.
+3. **l'hypothèse non testée.** La correspondance prévu ↔ rendu se fait par position ; elle ne
+   vaut que si les jours ne sont pas réordonnés. C'est vérifié à chaque exécution (les jours
+   portent leur nom canonique Lun→Dim) et le script refuse de publier si l'hypothèse tombe.
+
+Cinq sports sur sept ne déclarent pas de `weekSchema` (ils prennent celui du générateur) : la
+méthode ne peut rien en dire, et le script l'affiche au lieu de rendre un zéro.

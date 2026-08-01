@@ -63,6 +63,11 @@ dépôt — historique git si besoin.
   R14.1 : le gain s'indexe sur la **distance au potentiel** (références mesurées), fourchette
   asymétrique, vélo en deux lignes, levier poids sous gardes. Les critères que R14.1 périme
   restent AFFICHÉS dans `bench_r14.cjs` avec leur raison (statut `----`), jamais supprimés.
+- `npm run measure:fallback [sport|tous]` — **mesure R15.3** : à quelle fréquence le créneau
+  facile de repli (`easyFallbackSlot`) se déclenche. Détection POST-HOC (plan émis vs
+  `weekSchema` déclaré), zéro instrumentation dans `src/`. Vérifie sa propre hypothèse
+  (jours non réordonnés) et refuse de publier un taux sur un balayage vide. Trail 25,0 % des
+  plans · swimrun 44,4 % — c'est ce chiffre qui a tranché O-3.
 - `npm run golden:capture` / `golden:verify` — **golden master** (spec R10) : photographie
   758 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
   blessures/âges/terrain/volumes + **passe « course datée »** : 6 sports × les 7 jours de

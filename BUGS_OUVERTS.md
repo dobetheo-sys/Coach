@@ -78,17 +78,45 @@ O-2 disait *« premier geste attendu : écrire le critère, pas le correctif »*
 venu avec le handoff de revue (`R15.2-A/B/C/D`, gate `npm run audit:r15`) : c'est lui qui rend
 la fermeture vérifiable, et c'est pour ça que l'entrée peut être fermée plutôt que « faite ».
 
-### O-3 · `D10-8` — le créneau facile de repli du trail · ⏳ **la mesure manquante est nommée**
+### O-3 · `D10-8` — le créneau facile de repli du trail · 📊 **MESURÉ (R15.3) — mérite son lot**
 
-Inchangé dans le code, mais l'entrée était mal posée : elle réclamait l'écart entre `facileR`
-et `facile2` alors que la question qui décide est **la fréquence de déclenchement du repli**.
-Tant que ce taux n'existe pas, l'arbitrage d'entraînement n'est pas mûr — c'est la règle du
-dépôt (« mesurer d'abord ») appliquée à cette entrée elle-même.
+L'entrée réclamait l'écart de contenu entre `facileR` et `facile2`. Le handoff R15.3 a
+repositionné la question, et il avait raison : avant d'arbitrer QUEL créneau sert de repli, il
+faut savoir COMBIEN de plans passent par là. **Le critère a été posé avant la mesure** — < 5 %
+ferme l'entrée, > 20 % lui donne son lot — pour que le chiffre décide et pas l'inverse.
 
-**Critère de sortie chiffré, à produire avant tout correctif :** instrumenter
-`easyFallbackSlot`, balayer la matrice trail (niveaux × historiques × volumes × horizons),
-publier le taux. **< 5 %** → l'entrée se ferme en « sans impact mesurable », et c'est une
-décision. **> 20 %** → elle mérite son lot, avec mesure avant/après sur le golden.
+**Mesure** (`npm run measure:fallback`, balayage complet niveaux × historiques × volumes ×
+budgets de séances × disponibilités, 324 plans trail) :
+
+| sport | plans avec ≥1 repli | jours en repli |
+|---|---|---|
+| **trail** | **81 / 324 = 25,0 %** | 1 287 / 49 896 = 2,6 % |
+| swimrun | 576 / 1 296 = 44,4 % | 6 288 / 163 296 = 3,9 % |
+| run · bike · swim · tri · duathlon | non mesurables — ces modules ne DÉCLARENT pas de `weekSchema` (ils prennent celui du générateur), donc il n'existe pas de « créneau prévu » à comparer |
+
+**Verdict : 25,0 % > 20 % → l'entrée mérite son lot**, avec mesure avant/après sur le golden.
+Le taux par JOUR (2,6 %) dit la forme du défaut : le repli est fréquent à l'échelle du plan et
+rare à l'échelle de la semaine — typiquement une séance, sur une semaine, dans un plan sur
+quatre. Ça reste au-dessus du seuil posé, et le seuil ne se déplace pas parce que le chiffre
+déplaît. Le swimrun, lui, est presque deux fois plus concerné et n'était même pas dans la
+question d'origine.
+
+**Méthode, et ce qu'elle a coûté à valider.** Aucune instrumentation dans `src/` : le repli est
+détecté post-hoc en comparant le plan émis au `weekSchema` déclaré. Trois pièges rencontrés, les
+trois notés parce qu'ils se reproduiront :
+1. le premier balayage a rendu **0,0 %** — le domaine de format du trail est un tableau VIDE
+   (sa catégorie est déduite, R7), donc la boucle ne produisait aucun profil. Un balayage vide
+   qui affiche « 0 % » est le pire des faux verts ; le script échoue désormais s'il ne génère
+   aucun plan ;
+2. ma « méthode de contrôle » par dénombrement a rendu 0 % contre 25 % pour la méthode par
+   position — et c'est **le contrôle** qui était faux : il supposait que les créneaux de repli
+   du schéma survivent, alors que le budget de séances en éteint ;
+3. la correspondance par position n'est valide que si les jours ne sont pas réordonnés. C'est
+   désormais **vérifié à chaque exécution** (les jours portent leur nom canonique), pas supposé.
+
+**Reste à faire (le lot) :** décider `facileR` vs `facile2` pour le trail, avec mesure
+avant/après sur le golden — et traiter le swimrun dans le même mouvement, puisqu'il est plus
+concerné que le sport qui a ouvert l'entrée.
 
 ### O-4 · La même coche ne faisait pas la même chose selon l'onglet · ✅ **FERMÉ (R16.9)**
 
