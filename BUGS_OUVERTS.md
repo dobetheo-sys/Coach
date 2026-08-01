@@ -205,7 +205,7 @@ Voir ARCHITECTURE.md « R16.10 » pour la table avant/après et les deux verrous
 
 ---
 
-### O-8 · Le footing du swimrun n'a pas de bornes · 🔴 **OUVERT (trouvé en R18, hors périmètre du lot)**
+### O-8 · Le footing du swimrun n'a pas de bornes · ✅ **FERMÉ (R20.3) — après deux bornes fausses**
 
 Trouvé en lisant les plans pendant R18.4, pas en cherchant. Sur un swimrun à 12 h/sem, la plus
 longue séance du plan est un **« Footing facile »** :
@@ -229,11 +229,54 @@ rejoué la liste des leçons du sport précédent.
 Ce n'est pas dans R18 parce que R18 traite six constats de test nommés, et que celui-ci n'en
 fait pas partie — l'élargir en silence est précisément ce que ce registre existe pour empêcher.
 
+---
+
+**FERMETURE (R20.3, 01/08/2026) — et deux bornes réfutées avant la bonne.**
+
+Le créneau facile porte désormais un `bnd` (S14). Mesuré sur les quatre formats : le footing
+passe de 179-226 min à **115-150 min**, et la séance la plus longue du plan est la **pivot**
+partout — c'est-à-dire la séance qui EST la spécificité du sport.
+
+Ce qui a coûté deux tentatives, c'est de trouver **sur quoi** indexer la borne. Le banc v7 a
+réfuté les deux premières, sur le même check `S-MIX` (part de course du plan vs part de course
+de l'épreuve, 4 profils en défaut avant le lot) :
+
+| écriture de la borne | S-MIX |
+|---|---|
+| relative à la pivot de la MÊME semaine, ×0,70 | **158** |
+| indexée sur le temps de course à pied de l'épreuve, ×0,55 | **152** |
+| **relative à la pivot du PIC, ×0,90** | **0** |
+
+Les deux premières serraient le footing pendant la construction, là où il n'a aucune raison de
+suivre la rampe de spécificité de la pivot. En swimrun, les deux créneaux faciles PORTENT la
+course à pied du plan — il n'y a ni sortie longue course ni footing supplémentaire pour
+compenser. Les serrer, c'est sous-entraîner le limiteur réel du sport : j'aurais échangé un
+footing fictif contre un sous-entraînement réel, soit exactement le défaut que S13 venait de
+corriger en R16.10.
+
+Le défaut n'était pas qu'un footing soit LONG : c'était qu'il soit **la plus longue séance du
+plan**. La borne porte donc là-dessus.
+
+**Et le banc punissait une quatrième règle de sécurité.** Les 26 hits résiduels de S-MIX
+portaient **tous** une eau sous le seuil d'acclimatation S7 (25 à 16 °C, 1 à 13 °C) : sous
+17 °C, le module verrouille le second créneau facile sur une exposition au froid, au nom de la
+hiérarchie du manifeste — l'hypothermie n'est pas un arbitrage de spécificité. Même famille que
+le drapeau médical et les deux familles de blessures, exemptées en R16.10 ; le check ne le
+voyait pas parce que le footing sans bornes masquait le déséquilibre avec du volume fictif.
+**L'instrument était d'accord avec le moteur pour la mauvaise raison.** L'exemption se lit sur
+le PLAN (présence effective de la séance d'acclimatation), pas sur la température déclarée.
+
+Résultat : swimrun **89 % de profils propres** au banc v7 (contre 88 % avant le lot), **S-MIX
+0 aux trois tailles d'échantillon** (N=250/400/600) — son budget passe de 12 ‰ à **0, garde-fou
+définitif**.
+
+Reste ouvert, et c'est une question produit : voir **O-15**.
+
 ```verify
 id: O-8
-quoi: la plus longue séance d'un plan swimrun est un footing de plus de 150 min
-attendu: /Footing facile/
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swimrun',level:'inter',history:'confirme',intent:'competition',vol_max:'12',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',css:'2:00',css_known:'oui',vol_recent:'8',injury:'aucune',off_days:'non',shift_ok:'non',swim_total_m:'2000',run_total_km:'12',segments_n:'10',longest_swim_m:'600',water_temp_c:'18',team_mode:'solo',openwater_access:'saisonnier',swim_continuous:'oui',run_continuous:'oui',gear_test:'oui',race_date:'2027-01-24'};for(const f of ['experience','sprint','series']){const p=E.buildPlan('swimrun',{...b,format:f});let mx=0,nm='';for(const w of p.weeks)for(const d of w.days)for(const s of d.sessions||[])if((s.min||0)>mx){mx=s.min;nm=s.name;}if(mx>150)console.log(f+' : '+mx+' min « '+nm+' »');}"
+quoi: la plus longue séance d'un plan swimrun est la pivot, pas un footing
+attendu: /^(experience|sprint|series|championship) : pivot(\n|$)/m
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swimrun',level:'inter',history:'confirme',intent:'competition',vol_max:'12',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',css:'2:00',css_known:'oui',vol_recent:'8',injury:'aucune',off_days:'non',shift_ok:'non',doubles:'parfois',swim_total_m:'2000',run_total_km:'12',segments_n:'10',longest_swim_m:'600',water_temp_c:'18',team_mode:'solo',openwater_access:'saisonnier',swim_continuous:'oui',run_continuous:'oui',gear_test:'oui',race_date:'2027-11-24'};for(const f of ['experience','sprint','series','championship']){const p=E.buildPlan('swimrun',{...b,format:f});let mx=0,nm='';for(const w of p.weeks)for(const d of w.days)for(const s of d.sessions||[])if((s.min||0)>mx){mx=s.min;nm=s.name;}console.log(f+' : '+(/Footing/.test(nm)?'FOOTING '+mx+' min':'pivot')); }"
 ```
 
 ### O-9 · Le banc d'invariants n'est pas vert, et la documentation dit qu'il l'est · 🟠 **OUVERT (constaté en R18)**
@@ -433,6 +476,55 @@ QUART de la population : les deux seuls endroits qui consommaient le focus (`lim
 derrière `if (beginner)`. Un nageur intermédiaire qui déclare « ma limite, c'est la
 respiration » recevait « éducatifs », sans plus. Une limite ne disparaît pas quand on progresse.
 Trouvé par la garde R20.1, corrigé dans le même lot.
+
+### O-15 · L'eau froide fait passer le plan sous le seuil de spécificité, et l'exemption du banc le rend invisible · 🟠 **OUVERT (trouvé en R20.3)**
+
+Découvert en fermant O-8, et seulement parce que le footing sans bornes le masquait avec du
+volume fictif. Après la pose des bornes S14, **26 profils** du banc v7 tombaient plus de
+15 points sous la part de course de leur épreuve — et **les 26 portaient une eau sous le seuil
+d'acclimatation S7** (25 à 16 °C, 1 à 13 °C). Isolé toutes choses égales par ailleurs
+(15 profils : 5 blessures × 3 niveaux, mêmes distances, même épreuve) :
+
+| température de l'eau | profils sous le seuil |
+|---|---|
+| 16 °C | **3 / 15** |
+| 20 °C | **0 / 15** |
+
+Le mécanisme est identifié, son AMPLEUR ne l'est pas entièrement — sur le profil de référence
+l'écart entre 16 °C et 20 °C ne vaut que 3 points (56 % contre 59 % de course, pour une épreuve
+à 68 %), donc le froid ne CRÉE pas l'écart : il fait basculer au-dessus du seuil des plans déjà
+proches. Sous 17 °C, le module verrouille le second créneau facile sur l'exposition au froid et
+neutralise la bascule S13 (« ce créneau revient à la course quand l'épreuve est
+course-dominante »). Ce que la mesure ne dit pas encore : quelle part revient au verrou lui-même
+et quelle part au fait que ces épreuves sont déjà limites.
+
+Le verrou est JUSTE dans son principe — l'hypothermie est un risque vital, la spécificité une
+priorité 5. C'est sa PORTÉE qui n'a jamais été décidée : il s'applique à toutes les semaines,
+de la première à la dernière. Or S7 demande une exposition *régulière* (1 à 2 séances par
+semaine), pas la confiscation permanente d'un créneau : sur une prépa de 26 semaines, une
+acclimatation faite en semaine 1 ne vaut rien le jour J (l'adaptation au froid se perd), et
+c'est celle des dernières semaines qui compte.
+
+Trois choses à trancher ensemble, pas séparément :
+1. **à partir de quand** l'acclimatation entre dans le plan — une phase ? un nombre de semaines
+   avant le jour J ? et sur la température de l'eau à la DATE de la course, pas celle saisie
+   aujourd'hui ;
+2. **combien de semaines** elle occupe le créneau, et si elle peut cohabiter avec la bascule S13
+   au lieu de l'annuler ;
+3. **ce que le plan DIT** — aujourd'hui il ne dit rien de cet arbitrage, alors que c'est le seul
+   endroit du moteur où une règle de sécurité coûte de la spécificité en silence.
+
+Tant que ce n'est pas tranché, le banc v7 exempte ces plans de `S-MIX` : l'instrument ne doit pas
+punir une règle de sécurité (R16.10), mais l'exemption rend l'écart INVISIBLE au banc. C'est
+exactement pourquoi cette entrée existe — **une exemption sans entrée de registre est un défaut
+effacé.**
+
+```verify
+id: O-15
+quoi: sous le seuil d'acclimatation, des plans passent sous le seuil de spécificité — pas au-dessus
+attendu: /eau 16C : [1-9][0-9]?\/15[\s\S]*eau 20C : 0\/15/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swimrun',format:'sprint',level:'inter',history:'confirme',intent:'competition',vol_max:'10',sessions_max:'7',dispo:'partielle',age:'30',sex:'H',weight:'79',pace:'4:50',pace_known:'oui',css:'1:45',css_known:'oui',vol_recent:'7',off_days:'non',shift_ok:'non',doubles:'oui',swim_total_m:'2600',run_total_km:'9.2',race_dplus_m:'250',segments_n:'10',longest_swim_m:'600',team_mode:'binome',team_swim_gap_sec:'5',openwater_access:'saisonnier',swim_continuous:'oui',run_continuous:'oui',gear_test:'non',race_date:'2027-05-09'};const part=(p)=>{let rn=0,sw=0;for(const w of p.weeks){if(w.isRecup||w.phase.id==='taper')continue;for(const d of w.days)for(const s of d.sessions||[]){if(s.d==='rs')continue;if(s.d==='br'){for(const st of s.steps||[])if(st.leg||st.d){const m=(st.reps||1)*(st.durationMin||0);if(st.d==='sw')sw+=m;else rn+=m;}}else if(s.d==='sw')sw+=s.min||0;else if(s.d==='rn')rn+=s.min||0;}}return rn/(rn+sw);};for(const t of ['16','20']){let n=0,tot=0;for(const inj of ['aucune','hanche','tibia','genou','dos'])for(const lv of ['debutant','inter','avance']){const a={...b,water_temp_c:t,injury:inj,level:lv};try{const o=E.swimrunObjective(a);const p=E.buildPlan('swimrun',a);tot++;if(part(p)<(1-o.swimTimeShare)-0.15)n++;}catch(e){}}console.log('eau '+t+'C : '+n+'/'+tot+' profils sous le seuil de specificite');}"
+```
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 

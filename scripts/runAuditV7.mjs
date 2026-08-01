@@ -83,7 +83,13 @@ const BUDGET_PERMILLE = {
   // plan quelle que soit l'épreuve, de 45 % à 94 %) et l'exemption des règles de sécurité
   // côté banc. Résidu mesuré sur trois tailles d'échantillon (N=250 / 400 / 600) : 5-8 ‰.
   "S-LONGSWIM": 12,
-  "S-MIX": 12,
+  // R20.3 — S-MIX DEVIENT UN GARDE-FOU DÉFINITIF. Il tombe à **0 aux trois tailles**
+  // (N=250 / 400 / 600) après deux corrections qui se répondent : les bornes S14 du footing
+  // côté moteur, et l'exemption de l'acclimatation au froid côté banc — la quatrième règle de
+  // SÉCURITÉ que ce check punissait, après le drapeau médical et les deux familles de blessures
+  // (R16.10). Un budget qu'aucun cas n'occupe est un budget qui n'existe que pour laisser
+  // revenir le défaut : il passe à zéro.
+  "S-MIX": 0,
   "S-RUN-STARVED": 12,
   "S-PREREQ": 0,     // 0 aux trois tailles depuis R16.10 : devenu garde-fou permanent
   "D-DISC": 7,       // R5.2 — CORRIGÉ : couverture en dernier + aucune coupe n'orpheline la discipline principale

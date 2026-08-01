@@ -18,7 +18,48 @@ import {
   S12_PIVOT_MAX_SEGMENTS,
   OPENWATER_ACCESS,
   S13_MIX_FOLLOWS_RACE,
+  S14_EASY_RUN_VS_PEAK_PIVOT, S14_EASY_RUN_CAP_MIN, S14_EASY_RUN_FLOOR_MIN,
 } from "./tables.ts";
+
+/**
+ * S9 — DURÉE DE LA SÉANCE PIVOT, calculée en UN seul endroit.
+ *
+ * Le créneau `durLong` la construisait en ligne ; depuis S14 le créneau facile a besoin de la
+ * même formule, prise au PIC, pour s'y borner en dessous. Deux copies auraient divergé au
+ * premier ajustement de S9 — et la divergence aurait été silencieuse : un footing plafonné sur
+ * une pivot d'hier reste un footing plafonné, il ne lève rien.
+ *
+ * `progOverride` / `phaseOverride` servent à interroger la formule pour une AUTRE phase que
+ * celle en cours : c'est ainsi que le footing connaît la pivot du pic sans la construire.
+ */
+function pivotDurationMin(kit: SessionKit, totalMinMid: number, phaseOverride?: string, progOverride?: number): number {
+  const ph = phaseOverride ?? kit.phase;
+  const pr = progOverride ?? kit.prog;
+  const band = S9_LONG_SHARE[ph] || S9_LONG_SHARE.dev;
+  const share = band[0] + (band[1] - band[0]) * pr;
+  // Le plafond suit la semaine EN COURS, pas le pic : sur une semaine allégée, une pivot
+  // calibrée sur le pic représenterait 70 % du volume. `sessionScale` porte ce rapport —
+  // sauf quand on interroge le pic, qui est par définition la semaine à pleine échelle.
+  const scale = phaseOverride ? 1 : Math.min(1, kit.sessionScale || 1);
+  const weekCapMin = Math.round((kit.r.volPeak || 8) * 60 * 0.42 * scale);
+  return Math.min(weekCapMin, Math.max(40, Math.round(totalMinMid * share)));
+}
+
+/**
+ * S14 (R20.3) — bornes du créneau facile course. Le plafond est la pivot du PIC, c'est-à-dire
+ * la plus longue séance que ce plan produira : le footing ne peut donc jamais devenir la séance
+ * de référence, ce qui est exactement ce qu'O-8 reproche. Voir `tables.ts` pour les DEUX
+ * écritures précédentes, mesurées et réfutées par le banc v7 (S-MIX 4 → 158 puis 152).
+ *
+ * Le plancher est absolu ; le `Math.min` garantit qu'il ne peut jamais dépasser le plafond sur
+ * une épreuve très courte — une borne inversée est une borne qui ne borne plus.
+ */
+function easyRunBounds(kit: SessionKit, totalMinMid: number): { floor: number; cap: number } {
+  const pivotPeak = pivotDurationMin(kit, totalMinMid, "peak", 1);
+  const cap = Math.max(S14_EASY_RUN_FLOOR_MIN,
+    Math.min(S14_EASY_RUN_CAP_MIN, Math.round(pivotPeak * S14_EASY_RUN_VS_PEAK_PIVOT)));
+  return { floor: Math.min(S14_EASY_RUN_FLOOR_MIN, cap), cap };
+}
 
 /** Part de plaquettes autorisée dans la séance, par phase — S8, progressif et jamais d'emblée. */
 function paddleShare(phase: string, shoulder: boolean): number {
@@ -85,11 +126,9 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
     // S9 dimensionne la pivot en % du temps de COURSE. Elle reste néanmoins une séance dans
     // une semaine : au-delà d'environ la moitié du volume hebdo, ce n'est plus un plan, c'est
     // une course déguisée (et l'auditeur le signale à juste titre au-delà de 55 %).
-    // Le plafond suit la semaine EN COURS, pas le pic : sur une semaine allégée, une pivot
-    // calibrée sur le pic représenterait 70 % du volume. `sessionScale` porte déjà le rapport
-    // de la semaine à la charge de référence.
-    const weekCapMin = Math.round((kit.r.volPeak || 8) * 60 * 0.42 * Math.min(1, kit.sessionScale || 1));
-    const durMin = Math.min(weekCapMin, Math.max(40, Math.round(obj.totalMinMid * share)));
+    // R20.3 — le calcul vit désormais dans `pivotDurationMin` : le créneau facile en a besoin
+    // pour se borner en dessous (S14), et deux copies auraient divergé en silence.
+    const durMin = pivotDurationMin(kit, obj.totalMinMid);
     // Le motif reproduit la COURSE : mêmes transitions, même part de nage. Sur une séance plus
     // courte, on garde le NOMBRE de transitions et on raccourcit les segments — c'est la
     // compétence « entrer et sortir de l'eau » qui se travaille, pas la distance.
@@ -201,8 +240,12 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
     // dessous, donc jamais le sens qui sous-entraîne. Basculer ce créneau en nage « pour la
     // symétrie » a été essayé et mesuré : la part de course tombait à 17 %. Une règle qu'aucun
     // défaut ne réclame est une règle qui en crée un.
+    // S14 (R20.3) — LE FOOTING PORTE SES BORNES. Sans `bnd`, il était le seul bloc sans plafond
+    // de la semaine, donc le déversoir de toutes les passes de remplissage : mesuré jusqu'à
+    // 226 min, médiane 138-161 min, devant la pivot. Le plafond est RELATIF à la pivot de la
+    // même semaine — en swimrun c'est elle qui tient le rôle de sortie longue.
     S2.push({ d: "rn", name: "Footing facile", note: "Endurance fondamentale, allure de conversation. En swimrun, courir avec des jambes fatiguées par la nage est la norme : ce volume facile construit cette tolérance — et la course représente la majorité du temps de ta course.", det: "",
-      steps: [B(1, P(30, 55), "rn.easy", "", inj.impact ? " · surface souple" : " · sur sentier si possible")], ...({ plainBody: true } as object) });
+      steps: [Object.assign(B(1, P(30, 55), "rn.easy", "", inj.impact ? " · surface souple" : " · sur sentier si possible"), { bnd: easyRunBounds(kit, obj.totalMinMid) })], ...({ plainBody: true } as object) });
   } else if (slot === "facile2") {
     // R4.3 (audit v7) — LE PLAFOND D'ACCÈS À L'EAU LIBRE EST UN NOMBRE, PAS UN BOOLÉEN.
     // `maxSessionsPerWeek` (3 / 1 / 0) n'était lu que comme `=== 0`. La pivot consomme le
@@ -213,8 +256,11 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
       // S13 — ton épreuve court beaucoup plus qu'elle ne nage : ce second créneau facile,
       // qui était une nage de récupération, passe en course. La nage garde deux rendez-vous
       // par semaine (le créneau de qualité et la pivot) : elle ne disparaît jamais.
+      // S14 (R20.3) — même borne que le premier créneau facile : c'est le MÊME rôle, et S13 en
+      // a fait un second exemplaire. Le laisser sans plafond aurait rouvert le déversoir d'un
+      // cran plus loin, exactement sur les épreuves course-dominantes que S13 sert.
       S2.push({ d: "rn", name: "Footing facile (endurance)", note: "Sur ton épreuve, la course représente " + Math.round(runShare * 100) + " % du temps total contre " + Math.round(obj.swimTimeShare * 100) + " % pour la nage : ce second créneau facile lui revient. Allure de conversation, sur le terrain le plus proche de ta course.", det: "",
-        steps: [B(1, P(30, 50), "rn.easy", "", inj.impact ? " · surface souple" : " · sur sentier si possible")], ...({ plainBody: true } as object) });
+        steps: [Object.assign(B(1, P(30, 50), "rn.easy", "", inj.impact ? " · surface souple" : " · sur sentier si possible"), { bnd: easyRunBounds(kit, obj.totalMinMid) })], ...({ plainBody: true } as object) });
     } else if (cold && !medHold) {
       const inOpenWater = owForCold;
       S2.push({ d: "sw", name: inOpenWater ? "Acclimatation eau froide" : "Acclimatation au froid (bassin / douche)",

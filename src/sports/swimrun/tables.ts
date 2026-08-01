@@ -144,6 +144,71 @@ export const S9_LONG_SHARE: Record<string, [number, number]> = srule(
 );
 
 /**
+ * S14 (R20.3) — LE FOOTING FACILE PORTE SES BORNES, INDEXÉES SUR LE TEMPS DE COURSE À PIED
+ * DE L'ÉPREUVE.
+ *
+ * Le créneau facile course n'avait AUCUNE borne (`bnd` absent) : il devenait donc le déversoir
+ * de toutes les passes de remplissage du générateur. Mesuré sur un swimrun à 12 h/sem, la plus
+ * longue séance du plan était un « Footing facile » de 179 à 226 min selon le format, avec une
+ * MÉDIANE de 138 à 161 min — devant la pivot, qui plafonne à 110-180 min. Un footing de près de
+ * quatre heures n'est pas un footing : c'est une seconde sortie longue déguisée, et elle
+ * dominait la séance qui EST la spécificité du sport.
+ *
+ * C'est le défaut que R13 avait corrigé pour le triathlon (« Footing facile 213 min », D7 du
+ * banc v6) : le module swimrun est arrivé plus tard et personne n'a rejoué la liste des leçons
+ * du sport précédent.
+ *
+ * **Deux écritures de cette borne ont été mesurées et réfutées avant celle-ci**, par le banc v7,
+ * sur le même check `S-MIX` (part de course du plan vs part de course de l'épreuve — 4 profils
+ * en défaut avant le lot) :
+ *
+ * 1. *relative à la pivot de la MÊME semaine, ×0,70* → **S-MIX = 158**. La pivot part à 20-35 %
+ *    du temps de course en phase de base : le footing tombait à ~38 min pendant toute la
+ *    construction. Or il n'a aucune raison de suivre la rampe de SPÉCIFICITÉ de la pivot — il
+ *    construit l'endurance de base, qui est déjà là dès la première semaine.
+ * 2. *indexée sur le temps de course à pied de l'épreuve, ×0,55* → **S-MIX = 152**. Même
+ *    ordre de grandeur : le vrai problème n'était pas la rampe, c'était le NIVEAU. En swimrun,
+ *    les deux créneaux faciles PORTENT la course à pied du plan — il n'y a ni sortie longue
+ *    course ni footing supplémentaire pour compenser. Les serrer, c'est sous-entraîner le
+ *    limiteur réel du sport, soit exactement le défaut que S13 venait de corriger.
+ *
+ * Ce que ces deux échecs disent, et que la formulation d'O-8 disait déjà : le défaut n'est pas
+ * qu'un footing soit LONG, c'est qu'il soit **la plus longue séance du plan**, devant la séance
+ * qui EST la spécificité du sport. La borne porte donc exactement là-dessus — le footing plafonne
+ * juste sous la pivot du PIC, la séance la plus longue que le plan produira. Un footing de 2 h
+ * dans une prépa de 4 h de course reste un footing ; à 3 h 47 il a pris la place de la pivot.
+ *
+ * 0,90 : assez haut pour que les deux créneaux faciles portent la course à pied du plan, assez
+ * bas pour que la pivot reste la séance de référence — sur toutes les semaines, y compris celles
+ * où la pivot est encore courte.
+ */
+export const S14_EASY_RUN_VS_PEAK_PIVOT = srule(
+  "S14",
+  "le défaut n'est pas qu'un footing soit long, c'est qu'il dépasse la séance qui porte la spécificité du sport : la borne est la pivot du PIC, pas celle de la semaine en cours",
+  0.9,
+);
+
+/**
+ * S14 — plafond ABSOLU du footing, toutes épreuves confondues. Au-delà de deux heures et demie,
+ * une « sortie facile » n'est plus une sortie facile quelle que soit la durée de l'épreuve :
+ * elle porte sa propre récupération et cesse d'être ce que sa note promet. C'est la borne qui
+ * empêche un ultra-swimrun de rouvrir le déversoir par le haut, là où la pivot du pic serait
+ * elle-même très longue.
+ */
+export const S14_EASY_RUN_CAP_MIN = srule(
+  "S14",
+  "au-delà de 2 h 30 une sortie facile n'est plus un footing : elle porte sa propre récupération et devient une seconde sortie longue non spécifique",
+  150,
+);
+
+/** S14 — plancher du footing : en dessous, ce n'est plus de l'endurance fondamentale. */
+export const S14_EASY_RUN_FLOOR_MIN = srule(
+  "S14",
+  "un footing d'endurance fondamentale a besoin d'une trentaine de minutes pour produire son adaptation",
+  30,
+);
+
+/**
  * S12 — nombre maximal de segments reproduits dans UNE séance. Une course à 48 segments ne se
  * répète pas à l'entraînement : au-delà d'une douzaine d'entrées-sorties d'eau, la séance
  * devient la course elle-même. On travaille la compétence sur un nombre représentatif et on la

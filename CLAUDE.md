@@ -456,6 +456,28 @@ ce plan » appelait le plafond d'historique « ton volume déclaré » depuis l'
 **21 gates verts, E2E 13/13, golden 900 recapturé — 515 profils changent, et le SEUL champ qui
 diffère est le nombre de décisions : pas une séance, pas une minute.**
 
+**R20.3 livré — le footing du swimrun reçoit ses bornes** (O-8 fermé, voir ARCHITECTURE.md
+« R20.3 ») : le créneau facile course n'avait AUCUN `bnd`, il était donc le seul bloc sans
+plafond de la semaine et le déversoir de toutes les passes de remplissage — « Footing facile »
+de **179 à 226 min**, devant la pivot, sur le sport dont la pivot EST la spécificité. Le défaut
+que R13 avait corrigé pour le triathlon, jamais rejoué sur le module arrivé après.
+**Deux écritures de la borne ont été mesurées et RÉFUTÉES** par le banc v7 sur le même check
+`S-MIX` (part de course du plan vs part de course de l'épreuve, 4 profils en défaut avant le
+lot) : relative à la pivot de la même semaine → **158** ; indexée sur le temps de course de
+l'épreuve → **152**. Les deux serraient le footing pendant la construction, or en swimrun les
+deux créneaux faciles PORTENT la course à pied du plan — les serrer refait le défaut que S13
+venait de corriger. Le défaut n'était pas qu'un footing soit LONG mais qu'il soit **la plus
+longue séance du plan** : la borne est donc la **pivot du PIC** (×0,90, plafond absolu 2 h 30),
+et le footing passe à **115-150 min** avec la pivot en tête sur les quatre formats.
+Les 26 hits résiduels portaient **tous** une eau sous le seuil d'acclimatation : c'est la
+**quatrième règle de sécurité** que ce check punissait, après le drapeau médical et les deux
+familles de blessures (R16.10) — exemption lue sur le PLAN, jamais sur la température déclarée.
+Ce que l'exemption cache est enregistré (**O-15** : la portée du verrou froid n'a jamais été
+décidée — 3/15 profils sous le seuil à 16 °C, 0/15 à 20 °C) : une exemption sans entrée de
+registre est un défaut effacé. **swimrun 88 % → 89 % au banc v7, `S-MIX` à 0 aux trois tailles
+d'échantillon → budget 12 ‰ → 0 (garde-fou définitif), 21 gates verts, E2E 13/13, golden 900
+recapturé (136 écarts, TOUS en swimrun).**
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur

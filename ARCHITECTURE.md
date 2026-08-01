@@ -1768,3 +1768,69 @@ Deux gardes de fond, non négociables :
 
 La décision `R20.2` s'affiche **en tête de « Pourquoi ce plan »**, pas au fond du volet des
 décisions : c'est une réponse que l'athlète a saisie lui-même et dont il attend un effet.
+
+## R20.3 — le footing du swimrun reçoit ses bornes, après deux bornes fausses
+
+**Le défaut (O-8)** : le créneau facile course n'avait aucun `bnd`. Il était donc le seul bloc
+sans plafond de la semaine, c'est-à-dire le déversoir de toutes les passes de remplissage du
+générateur. Mesuré à 12 h/sem : « Footing facile » de **179 à 226 min** selon le format, médiane
+138-161 min, devant la pivot (110-180 min). Le même défaut que R13 avait corrigé pour le
+triathlon (« Footing facile 213 min », D7 du banc v6) : le module swimrun est arrivé plus tard
+et personne n'a rejoué la liste des leçons du sport précédent.
+
+### Ce qui a coûté deux tentatives : sur QUOI indexer la borne
+
+Le banc v7 a réfuté les deux premières écritures, sur le même check `S-MIX` — la part de course
+du plan comparée à celle de l'épreuve, 4 profils en défaut avant le lot :
+
+| écriture | S-MIX |
+|---|---|
+| relative à la pivot de la MÊME semaine, ×0,70 | **158** |
+| indexée sur le temps de course à pied de l'épreuve, ×0,55 | **152** |
+| **relative à la pivot du PIC, ×0,90** | **0** |
+
+La première serrait le footing à ~38 min pendant toute la phase de base, parce que la pivot y
+démarre à 20-35 % du temps de course : le footing n'a aucune raison de suivre la rampe de
+SPÉCIFICITÉ de la pivot, il construit l'endurance de base, qui est là dès la semaine 1. La
+seconde a montré que le problème n'était pas la rampe mais le NIVEAU : en swimrun, les deux
+créneaux faciles PORTENT la course à pied du plan — il n'y a ni sortie longue course ni footing
+supplémentaire pour compenser. Les serrer, c'est sous-entraîner le limiteur réel du sport,
+c'est-à-dire refaire le défaut que S13 venait de corriger en R16.10.
+
+Ce que ces deux échecs disent, et qu'O-8 disait déjà dans sa formulation : **le défaut n'est pas
+qu'un footing soit LONG, c'est qu'il soit la plus longue séance du plan**, devant la séance qui
+porte la spécificité. La borne finale porte exactement là-dessus — le footing plafonne juste sous
+la **pivot du PIC**, la plus longue séance que ce plan produira, plus un plafond absolu de 2 h 30
+pour qu'un ultra-swimrun ne rouvre pas le déversoir par le haut.
+
+Résultat : footing **179-226 → 115-150 min**, et la pivot est la séance la plus longue du plan
+sur les quatre formats.
+
+`pivotDurationMin()` devient le point unique où la durée de la pivot se calcule (elle était en
+ligne dans `durLong`), avec un paramètre de phase pour l'interroger au pic. Deux copies auraient
+divergé au premier ajustement de S9, et **silencieusement** : un footing plafonné sur une pivot
+d'hier reste un footing plafonné, il ne lève rien.
+
+### La quatrième règle de sécurité que le banc punissait
+
+Les 26 hits résiduels de `S-MIX` portaient **tous** une eau sous le seuil d'acclimatation S7
+(25 à 16 °C, 1 à 13 °C). Sous 17 °C le module verrouille le second créneau facile sur une
+exposition au froid, au nom de la hiérarchie du manifeste — l'hypothermie n'est pas un arbitrage
+de spécificité. Même famille que le drapeau médical et les deux familles de blessures, exemptées
+en R16.10 ; le check ne le voyait pas parce que le footing sans bornes masquait le déséquilibre
+avec du volume fictif. **L'instrument était d'accord avec le moteur pour la mauvaise raison.**
+
+L'exemption se lit sur le **PLAN** (présence effective de la séance d'acclimatation), pas sur la
+température déclarée : une règle qui ne s'applique pas n'exempte rien.
+
+Et parce qu'une exemption sans entrée de registre est un défaut effacé, ce que l'exemption cache
+est enregistré en **O-15** : la portée du verrou froid (toutes les semaines, de la première à la
+dernière) n'a jamais été décidée, alors que S7 demande une exposition régulière et pas une
+confiscation permanente. Isolé toutes choses égales par ailleurs : **3/15 profils sous le seuil
+à 16 °C, 0/15 à 20 °C.**
+
+### Bilan
+
+swimrun **88 % → 89 %** de profils propres au banc v7 · `S-MIX` **0 aux trois tailles
+d'échantillon** (N=250/400/600), son budget passe de 12 ‰ à **0, garde-fou définitif** · golden
+**136 écarts, tous en swimrun** — aucun autre sport n'est touché.
