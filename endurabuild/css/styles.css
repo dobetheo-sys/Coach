@@ -167,6 +167,10 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:#fffbe8;
 .ph-line{display:flex;gap:5px;margin:10px 0 18px;}
 .ph-seg{padding:10px 8px 8px;text-align:center;min-width:0;border:2.5px solid var(--ink);border-radius:4px 9px 5px 8px;box-shadow:3px 3px 0 var(--ink);}
 .ph-seg span{display:block;font-family:'Archivo Black',sans-serif;font-size:11px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* R16.4 — le libellé s'abrège quand la place manque, la frise reste proportionnelle.
+   Le nom complet reste dans title/aria-label : on raccourcit l'affichage, pas l'info. */
+.ph-seg .ph-abbr{display:none;}
+@media(max-width:560px){.ph-seg .ph-full{display:none;}.ph-seg .ph-abbr{display:block;}}
 .ph-seg em{font-family:'Space Grotesk',sans-serif;font-style:normal;font-weight:700;font-size:9px;color:var(--text2);}
 .vol-bars{display:flex;align-items:flex-end;gap:2px;height:58px;margin-top:8px;padding:0 2px;border-bottom:3px solid var(--ink);}
 .vb{flex:1;border:1.5px solid var(--ink);border-bottom:none;border-radius:3px 3px 0 0;min-width:3px;}

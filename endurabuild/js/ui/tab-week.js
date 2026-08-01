@@ -282,7 +282,7 @@ export function renderTabWeek(plan) {
   html += weeklyReviewHTML(plan); // R4.10 — bilan hebdo (dimanche)
   html += notifySetupHTML(); // R4.10 — réglage de l'heure du rappel (une fois)
   html += '<div class="card"><div class="eyebrow">Ta semaine</div>';
-  const wRange = w.days.length ? ' <span style="font-size:10px;color:#777;font-weight:400">du ' + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) + "</span>" : "";
+  const wRange = w.days.length ? ' <span style="font-size:10px;color:var(--muted);font-weight:400">du ' + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) + "</span>" : "";
   html += '<div class="gw"><div class="gw-h"><b>Semaine ' + w.num + "</b>" + wRange + "<span style=\"color:" + (w.phase.c || "#555") + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + "</em></div>";
   html += '<div class="gw-grid">';
   w.days.forEach((d) => {

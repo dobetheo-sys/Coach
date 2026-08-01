@@ -28,7 +28,11 @@ export function energyCardHTML(day, open) {
     + "<br><b>Total :</b> ~" + f(e.total) + " kcal"
     + (e.approximate ? '<br><span style="color:#8a6d00">Fourchette large : complète taille/âge au 📋 Profil pour l’affiner.</span>' : "")
     + "</div>"
-    + '<div style="font-size:12px;margin-top:8px;color:#3f3a30">' + e.macros.text + "</div>"
+    // R16.6 — une ligne par macro plutôt qu'un paragraphe de six lignes enchaînées.
+    + '<div style="font-size:12px;margin-top:8px;color:#3f3a30">'
+    + (e.macros.lines || []).map((l) => '<div style="margin:3px 0">• ' + l + "</div>").join("")
+    + '<div style="margin-top:6px;color:var(--muted)">C’est une photographie de la littérature, pas un menu ni une consigne.</div>'
+    + "</div>"
     + '<div class="load-sub" style="margin-top:8px">' + e.disclaimer + "</div></details>";
 }
 
@@ -50,7 +54,7 @@ export function nutritionCardHTML(day, tempC) {
       + '<div style="margin:6px 0 0 2px;color:#3f3a30"><b>Avant :</b> ' + a.before
       + "<br><b>Pendant :</b> " + a.during.text
       + (a.after ? "<br><b>Après :</b> " + a.after : "")
-      + '<br><span style="color:#777">Dépense estimée ~' + a.kcal[0] + "–" + a.kcal[1] + " kcal" + (wkg ? "" : " (renseigne ton poids dans 📋 Profil pour affiner)") + ".</span></div></details>";
+      + '<br><span style="color:var(--muted)">Dépense estimée ~' + a.kcal[0] + "–" + a.kcal[1] + " kcal" + (wkg ? "" : " (renseigne ton poids dans 📋 Profil pour affiner)") + ".</span></div></details>";
   });
   h += '<div class="load-sub" style="margin-top:8px">' + advs[0].a.disclaimer + "</div></div>";
   return h;

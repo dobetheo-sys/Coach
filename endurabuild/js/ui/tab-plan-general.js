@@ -2,7 +2,7 @@
 // bandeau « ce qui pilote ton plan », phases, barres de volume, calendrier, exports.
 // La prédiction de course N'EST PAS ici (brief onglets) — elle vit dans 📈 Avancement.
 import { SPORTS } from "../config.js";
-import { $, S, ebSave, fmtDay } from "../state.js";
+import { $, S, ebSave, fmtDay, todayISO } from "../state.js";
 import { curSteps, renderStep, reset } from "./steps.js";
 import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML } from "./plan-view.js";
 import { exportICS, exportJSON, exportPNG } from "../export.js";
@@ -80,7 +80,23 @@ export function renderTabPlanGeneral(plan) {
   // décisions reste en bas de l'onglet (`decisionsCardHTML`), à un lien d'ici.
   html += whyPlanCardHTML(plan);
   html += '<div class="ph-line">';
-  plan.phases.forEach((p) => { html += '<button type="button" class="ph-seg" data-phseg="' + p.nom + '" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span>' + p.nom + "</span><em>" + p.weeks + "sem</em></button>"; });
+  // R16.5 — RACCOURCI VERS LA SEMAINE EN COURS. Sur un plan de 59 semaines, l'atteindre
+  // depuis le haut de l'onglet demande de passer devant les badges, le « pourquoi », la frise
+  // et le graphique. Le repère est la vraie date du jour (`todayISO`, la même ancre que partout
+  // depuis R7) : le bouton n'apparaît que si cette semaine existe dans ce qui est affiché.
+  {
+    const t = todayISO();
+    const cur = plan.weeks.find((w) => w.days.some((d) => d.date === t));
+    if (cur) html += '<div style="margin:6px 0 2px"><button class="btn" id="goCurWk" type="button" '
+      + 'data-wk="' + cur.num + '">↓ Aller à la semaine en cours (S' + cur.num + ")</button></div>";
+  }
+  // R16.4 — LES PASTILLES DE PHASE TRONQUAIENT SUR MOBILE (« SPÉCIFIQ… », « P… » à 390 px).
+  // La frise est PROPORTIONNELLE à la longueur des phases (`flex: p.weeks`), ce qui est une
+  // information en soi : on la garde, et c'est le LIBELLÉ qui s'abrège. Les deux versions sont
+  // émises, le CSS bascule ; `title` + `aria-label` portent toujours le nom complet, donc rien
+  // n'est perdu ni pour la souris ni pour un lecteur d'écran.
+  const ABBR = { "Développement": "DÉV.", "Spécifique": "SPÉ.", "Affûtage": "AFF.", "Peak": "PIC", "Base": "BASE" };
+  plan.phases.forEach((p) => { html += '<button type="button" class="ph-seg" data-phseg="' + p.nom + '" title="' + p.nom + '" aria-label="' + p.nom + ", " + p.weeks + ' semaines" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span class="ph-full">' + p.nom + '</span><span class="ph-abbr">' + (ABBR[p.nom] || p.nom) + "</span><em>" + p.weeks + "sem</em></button>"; });
   html += "</div>";
   html += phaseObjectivesHTML(plan);
   html += '<div class="vol-bars">';
@@ -90,8 +106,8 @@ export function renderTabPlanGeneral(plan) {
   show.forEach((w, ix) => {
     if (!S.showAllWeeks && ix === 3) html += '<div class="wk-skip">⋯ semaines 4 à ' + (plan.totalWeeks - 1) + " ⋯</div>";
     const raceTag = w.race ? ' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700">🏁 COURSE ' + w.race + "</span>" : (w.postRace ? ' <span style="color:#9b72ff;font-size:10px">↳ récup post-course</span>' : "");
-    const wRange = w.days.length ? ' <span style="font-size:10px;color:#777;font-weight:400">du ' + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) + "</span>" : "";
-    html += '<div class="gw"><div class="gw-h"><b>Semaine ' + w.num + "</b>" + wRange + '<span style="color:' + w.phase.c + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + '</em></div><div class="gw-grid">';
+    const wRange = w.days.length ? ' <span style="font-size:10px;color:var(--muted);font-weight:400">du ' + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) + "</span>" : "";
+    html += '<div class="gw" id="gw' + w.num + '"><div class="gw-h"><b>Semaine ' + w.num + "</b>" + wRange + '<span style="color:' + w.phase.c + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + '</em></div><div class="gw-grid">';
     w.days.forEach((d) => {
       const bg = d.sessions.map((s) => "<span>" + ic[s.d] + "</span>").join("");
       const nm = d.sessions.map((s, si) => {
@@ -107,9 +123,18 @@ export function renderTabPlanGeneral(plan) {
   });
   html += decisionsCardHTML(plan); // « Les décisions du moteur » — la transparence, en langage neutre
   html += '<div class="warn" style="background:var(--bg2)">Intensités calibrées sur tes données. Les exports fonctionnent depuis cet onglet, quel que soit l’onglet consulté ensuite.</div>'
-    + '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="backBp" type="button">← Modifier</button><button class="btn gold" id="allW" type="button">' + (S.showAllWeeks ? "Réduire" : "Voir les " + plan.totalWeeks + " semaines") + '</button><button class="btn primary" id="prn" type="button">🖨 HTML</button><button class="btn" id="expIcs" type="button">📅 Agenda (.ics)</button><button class="btn" id="expJson" type="button">{ } JSON</button><button class="btn" id="expPng" type="button">🖼 PNG</button><button class="btn" id="restartBtn" type="button">Changer de sport</button></div></div>';
+    + '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="backBp" type="button">← Modifier</button><button class="btn gold" id="allW" type="button">' + (S.showAllWeeks ? "Réduire" : "Voir les " + plan.totalWeeks + " semaines") + '</button><button class="btn" id="prn" type="button">🖨 HTML</button><button class="btn" id="expIcs" type="button">📅 Agenda (.ics)</button><button class="btn" id="expJson" type="button">{ } JSON</button><button class="btn" id="expPng" type="button">🖼 PNG</button><button class="btn" id="restartBtn" type="button">Changer de sport</button></div></div>';
   $("screen").innerHTML = html;
   // R6 — la frise de phases est cliquable : ouvre le programme de la phase et y descend.
+  {
+    const g = document.getElementById("goCurWk");
+    if (g) g.onclick = () => {
+      // Si la semaine n'est pas rendue (vue repliée), on déplie d'abord puis on y va.
+      const aller = () => { const el = document.getElementById("gw" + g.dataset.wk); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
+      if (!document.getElementById("gw" + g.dataset.wk)) { S.showAllWeeks = true; renderTabPlanGeneral(plan); setTimeout(aller, 60); }
+      else aller();
+    };
+  }
   document.querySelectorAll("#screen [data-phseg]").forEach((b) => {
     b.onclick = () => {
       S._phOpen = S._phOpen === b.dataset.phseg ? null : b.dataset.phseg;

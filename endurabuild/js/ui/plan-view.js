@@ -106,7 +106,7 @@ function downloadPlan(){
     +'<p>'+plan.totalWeeks+' semaines · '+(plan.use10?"cycles de 10 jours":"semaines de 7 jours")+' · volume '+plan.volBase+'h → '+plan.volPeak+'h · objectif '+(a.format||"")+'</p>'
     +'<h2>Les décisions de ton plan</h2><ul>'+blue+'</ul>'
     +'<h2>Calendrier complet</h2>'+rows
-    +'<p style="margin-top:30px;font-size:11px;color:#777">Généré par EnduraBuild · à valider avec un professionnel de santé. Astuce : ouvre ce fichier et fais Imprimer → Enregistrer en PDF.</p>'
+    +'<p style="margin-top:30px;font-size:11px;color:#635b4a">Généré par EnduraBuild · à valider avec un professionnel de santé. Astuce : ouvre ce fichier et fais Imprimer → Enregistrer en PDF.</p>'
     +'</body></html>';
   const blob=new Blob([doc],{type:"text/html"});
   const url=URL.createObjectURL(blob);
@@ -178,9 +178,9 @@ function predictionCardHTML(plan){
         if(pj&&pj.applicable&&pj.items.length){
           const d=pj.raceDate?(fmtDay(pj.raceDate)+"/"+pj.raceDate.slice(0,4)):"le jour J";
           h+='<div class="load-sub" style="margin:12px 0 2px;font-weight:600">Projet\u00e9 au '+d
-            +' <span style="font-weight:400;color:#777">\u00b7 confiance '+pj.confidence+'</span></div>';
+            +' <span style="font-weight:400;color:var(--muted)">\u00b7 confiance '+pj.confidence+'</span></div>';
           pj.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
-          h+='<div class="load-sub" style="color:#777;margin-top:4px">Si tu suis ce plan. La fourchette est volontairement ASYM\u00c9TRIQUE : au pire, ta forme d\u2019aujourd\u2019hui \u2014 un plan suivi ne rend pas plus lent, il peut seulement rapporter moins que pr\u00e9vu.</div>';
+          h+='<div class="load-sub" style="color:var(--muted);margin-top:4px">Si tu suis ce plan. La fourchette est volontairement ASYM\u00c9TRIQUE : au pire, ta forme d\u2019aujourd\u2019hui \u2014 un plan suivi ne rend pas plus lent, il peut seulement rapporter moins que pr\u00e9vu.</div>';
           // R14.1 \u00a75 \u2014 le levier poids ne s'affiche QUE si l'athl\u00e8te l'a demand\u00e9 et a saisi sa
           // cible. Une sensibilit\u00e9, jamais un objectif ; aucun rythme, aucune consigne alimentaire.
           if(pj.weightLever){
@@ -194,9 +194,9 @@ function predictionCardHTML(plan){
         // projeter \u00bb est une information, le silence n'en est pas une.
         if(pj&&!pj.applicable){
           const why=(pj.decisions||[]).filter(x=>/^P7-refus$|^P8$|^P6-sans-chrono$/.test(x.id))[0];
-          if(why) h+='<div class="load-sub" style="margin:10px 0 0;color:#777"><b>Pas de chrono projet\u00e9</b> \u2014 '+why.why+'</div>';
+          if(why) h+='<div class="load-sub" style="margin:10px 0 0;color:var(--muted)"><b>Pas de chrono projet\u00e9</b> \u2014 '+why.why+'</div>';
         }
-        h+='<div class="load-sub" style="color:#777">Fourchette, pas promesse \u2014 elle se resserre quand le plan est bien suivi (streak + charge accomplie).</div></div>';
+        h+='<div class="load-sub" style="color:var(--muted)">Fourchette, pas promesse \u2014 elle se resserre quand le plan est bien suivi (streak + charge accomplie).</div></div>';
       }
     }catch(e){console.warn(e);}
   }
@@ -287,7 +287,7 @@ function whyPlanCardHTML(plan){
   if(!v2||!v2.decisions||!v2.decisions.length)return "";
   const D={};v2.decisions.forEach(d=>{D[d.id]=d;});
   const li=[];
-  const add=(txt,src)=>{if(txt)li.push('<li>'+txt+(src?' <span style="color:#777">('+src+')</span>':"")+"</li>");};
+  const add=(txt,src)=>{if(txt)li.push('<li>'+txt+(src?' <span style="color:var(--muted)">('+src+')</span>':"")+"</li>");};
   if(D.duree)add("Ta préparation fait <b>"+D.duree.val+"</b>, découpée en phases : on construit d'abord, on aiguise ensuite, on arrive frais.","durée");
   if(D.capacite&&D.utile)add("Le pic monte à ce que permet le plus petit des deux : ton volume déclaré (<b>"+D.capacite.val+"</b>) et ce que ton objectif demande vraiment (<b>"+D.utile.val+"</b>). Promettre plus serait une promesse que le plan ne tient pas.","plafonds");
   else if(D.capacite)add("Le pic est plafonné à ton volume déclaré : <b>"+D.capacite.val+"</b>.","plafond");

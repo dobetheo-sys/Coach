@@ -178,7 +178,10 @@ await page.evaluate(async () => {
 await page.waitForTimeout(300);
 const eTxt = await page.locator("#screen").textContent();
 ok(/Base \+ vie quotidienne/.test(eTxt) && /Entraînement du jour/.test(eTxt) && /Total/.test(eTxt), "carte dépense : base + entraînement + total affichés (ouverte par défaut)");
-ok(/protéines ~\d+/.test(eTxt) && /lipides ~\d+/.test(eTxt) && /glucides ~\d+/.test(eTxt), "macros indicatives affichées (fourchettes chiffrées)");
+// R16.6 — les macros passent d'un paragraphe continu à UNE LIGNE PAR MACRO : chaque libellé
+// commence donc par une majuscule. L'assertion devient insensible à la casse — son intention
+// (les fourchettes chiffrées sont affichées) est inchangée, c'est la mise en forme qui a bougé.
+ok(/protéines ~\d+/i.test(eTxt) && /lipides ~\d+/i.test(eTxt) && /glucides ~\d+/i.test(eTxt), "macros indicatives affichées (fourchettes chiffrées)");
 ok(/pas un menu/i.test(eTxt) && /pas une consigne/i.test(eTxt), "garde-fous affichés : photographie, pas un menu ni une consigne");
 ok(!/déficit|maigrir|perte de poids|restriction/i.test(eTxt), "aucun vocabulaire de restriction dans l'onglet Nutrition");
 ok(!/Journal alimentaire/.test(eTxt), "journal alimentaire retiré (décision R6)");
@@ -279,6 +282,25 @@ const r141 = await page.evaluate(async () => {
 ok(r141.ferme.struct, "la question « tes 12 derniers mois » est posée au Profil (marge de progression)");
 ok(!r141.ferme.cible, "sans demande explicite, AUCUN champ de poids cible n'est proposé (P9)");
 ok(r141.ouvert, "levier demandé : le champ de poids cible apparaît, et seulement alors");
+
+// ---- R16. Lot design : contraste, pastilles de phase, raccourci semaine en cours ----
+const r16 = await page.evaluate(async () => {
+  const { setTab } = await import("./js/ui/tabs.js");
+  setTab("general");
+  const html = document.querySelector("#screen").innerHTML;
+  const seg = document.querySelector("#screen [data-phseg]");
+  return {
+    dur777: /color:\s*#777/i.test(html),                       // R16.1
+    prnPrimary: !!document.querySelector("#prn.primary"),      // R16.3
+    abbr: !!(seg && seg.querySelector(".ph-abbr") && seg.querySelector(".ph-full")),
+    titre: !!(seg && seg.getAttribute("title")),               // R16.4
+    goCur: !!document.getElementById("goCurWk"),               // R16.5
+  };
+});
+ok(!r16.dur777, "R16.1 : plus aucun `color:#777` codé en dur dans le rendu (contraste AA)");
+ok(!r16.prnPrimary, "R16.3 : le bouton HTML n'est plus le seul export en rouge plein");
+ok(r16.abbr && r16.titre, "R16.4 : pastille de phase avec libellé long + abrégé, nom complet en title");
+ok(r16.goCur, "R16.5 : raccourci « aller à la semaine en cours » présent");
 
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + ")");
 if (errs.length) info(errs.slice(0, 4).join(" | "));

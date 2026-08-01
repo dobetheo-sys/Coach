@@ -42,6 +42,8 @@ export interface DailyEnergyEstimate {
     fatG: [number, number];
     carbsG: [number, number];
     text: string;
+    /** R16.6 — la même information, une ligne par macro (lisible sur mobile). */
+    lines: string[];
   };
   approximate: boolean; // true si taille/âge/sexe manquants (fourchette élargie)
   decisions: NutritionDecision[];
@@ -115,7 +117,19 @@ export function dailyEnergy(input: EnergyInput): DailyEnergyEstimate | null {
     "lipides ~" + fatG[0] + "–" + fatG[1] + " g/j (20–35 % de l'énergie — jamais moins de 20 %), " +
     "glucides ~" + carbsG[0] + "–" + carbsG[1] + " g/j (" + carbsPerKg[0] + "–" + carbsPerKg[1] + " g/kg pour " + (tMin >= 90 ? "un gros jour d'entraînement" : tMin >= 45 ? "un jour d'entraînement modéré" : "un jour léger ou de repos") + ", Burke 2011). " +
     "C'est une photographie de la littérature, pas un menu ni une consigne.";
+  // R16.6 — LES MACROS SE LISENT EN TROIS LIGNES, PAS EN UN PAVÉ.
+  // `text` reste la phrase continue (contrat existant, asserté par `demo:nutrition`) ; on
+  // ajoute la MÊME information découpée par macro, parce qu'un paragraphe de six lignes
+  // enchaînées se lit comme un mur sur mobile — et parce que c'est une estimation qu'on
+  // consulte, pas un texte qu'on lit. La source et l'avertissement ne bougent pas : c'est la
+  // mise en forme qui était en cause, pas le contenu.
+  const jourLbl = tMin >= 90 ? "un gros jour d'entraînement" : tMin >= 45 ? "un jour d'entraînement modéré" : "un jour léger ou de repos";
+  const macroLines: string[] = [
+    "Protéines ~" + proteinG[0] + "–" + proteinG[1] + " g/j — 1,2 à 1,7 g/kg (ACSM/AND/DC 2016)",
+    "Lipides ~" + fatG[0] + "–" + fatG[1] + " g/j — 20 à 35 % de l'énergie, jamais moins de 20 % (AMDR)",
+    "Glucides ~" + carbsG[0] + "–" + carbsG[1] + " g/j — " + carbsPerKg[0] + " à " + carbsPerKg[1] + " g/kg pour " + jourLbl + " (Burke 2011)",
+  ];
   D.push({ id: "N10", what: "Macros (répartition indicative)", val: "P " + proteinG[0] + "–" + proteinG[1] + " g · L " + fatG[0] + "–" + fatG[1] + " g · G " + carbsG[0] + "–" + carbsG[1] + " g", why: "protéines ACSM/AND/DC 2016, lipides AMDR (plancher 20 % — santé hormonale), glucides selon le volume du jour (Burke 2011)" });
 
-  return { bmr, daily, training, total, macros: { proteinG, fatG, carbsG, text: macroText }, approximate, decisions: D, disclaimer: ENERGY_DISCLAIMER };
+  return { bmr, daily, training, total, macros: { proteinG, fatG, carbsG, text: macroText, lines: macroLines }, approximate, decisions: D, disclaimer: ENERGY_DISCLAIMER };
 }

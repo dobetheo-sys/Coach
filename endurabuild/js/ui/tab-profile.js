@@ -95,7 +95,7 @@ function recordsHTML(plan, a) {
   Object.keys(longest).forEach((d) => rows.push({ lab: DISC_LABEL[d] + " — plus longue séance", val: Math.floor(longest[d].minutes / 60) + "h" + String(longest[d].minutes % 60).padStart(2, "0"), date: longest[d].date }));
   let h = '<div class="load-card"><div class="load-title">🏅 Records personnels</div>';
   if (!rows.length) h += '<div class="load-sub" style="margin-top:6px">Encore vides — ils se rempliront avec tes tests (FTP/allure/CSS), tes imports FIT/Strava et tes séances cochées ✓.</div>';
-  else rows.forEach((r) => { h += '<div style="display:flex;justify-content:space-between;gap:8px;margin:6px 0;font-size:13px;align-items:baseline"><span>' + r.lab + '</span><span style="text-align:right"><b>' + esc(r.val) + '</b>' + (r.date ? ' <span style="color:#777;font-size:11px">' + esc(r.date) + "</span>" : "") + "</span></div>"; });
+  else rows.forEach((r) => { h += '<div style="display:flex;justify-content:space-between;gap:8px;margin:6px 0;font-size:13px;align-items:baseline"><span>' + r.lab + '</span><span style="text-align:right"><b>' + esc(r.val) + '</b>' + (r.date ? ' <span style="color:var(--muted);font-size:11px">' + esc(r.date) + "</span>" : "") + "</span></div>"; });
   h += '<div class="load-sub" style="margin-top:4px">Un record se gagne, il ne se perd pas — on garde la meilleure valeur jamais atteinte, avec sa date.</div></div>';
   return h;
 }
@@ -194,7 +194,7 @@ function avatarSectionHTML(plan, todayISO) {
   let h = '<div class="load-card"><div style="display:flex;align-items:center;gap:16px">'
     + '<div id="avSvg">' + avatarSVG(visual, 96) + "</div>"
     + '<div style="flex:1"><div style="font-weight:800;font-size:16px">' + av.icon + " " + av.name + '</div>'
-    + '<div style="font-size:11px;color:#777">Niveau ' + av.level + "/" + (av.levels ? av.levels.length : 16) + " · " + av.xp + " XP" + (av.xpToNext ? " (" + av.xpInLevel + "/" + av.xpToNext + " dans ce niveau)" : " · niveau maximum") + "</div>"
+    + '<div style="font-size:11px;color:var(--muted)">Niveau ' + av.level + "/" + (av.levels ? av.levels.length : 16) + " · " + av.xp + " XP" + (av.xpToNext ? " (" + av.xpInLevel + "/" + av.xpToNext + " dans ce niveau)" : " · niveau maximum") + "</div>"
     + '<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:12px;overflow:hidden;margin-top:6px"><div style="height:100%;width:' + av.progressPct + '%;background:linear-gradient(90deg,#00a376,#00b8d9)"></div></div>'
     + (av.nextName ? '<div style="font-size:11px;margin-top:4px">Prochain : <b>' + av.nextIcon + " " + av.nextName + "</b>" + (av.nextUnlock ? " — débloque <b>" + av.nextUnlock + "</b>" : "") + " (encore " + (av.xpToNext - av.xpInLevel) + " XP).</div>" : "")
     + "</div></div>";
@@ -236,7 +236,7 @@ function disciplineLevelsHTML(plan) {
     const pct = next ? Math.min(100, Math.round(((n - DISC_LEVELS[idx][0]) / (next[0] - DISC_LEVELS[idx][0])) * 100)) : 100;
     return '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px"><span style="width:20px">' + ico + '</span><span style="width:86px">' + nom + '</span><b style="width:76px">' + DISC_LEVELS[idx][1] + '</b>'
       + '<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:#00a376"></div></div>'
-      + '<span style="width:82px;text-align:right;color:#777">' + (next ? n + "/" + next[0] + " → " + next[1] : n + " séances") + "</span></div>";
+      + '<span style="width:82px;text-align:right;color:var(--muted)">' + (next ? n + "/" + next[0] + " → " + next[1] : n + " séances") + "</span></div>";
   };
   return '<div style="margin-top:10px"><div style="font-size:12px;font-weight:700">Par discipline (séances validées)</div>'
     + row("🏊", "Natation", count.sw) + row("🚴", "Vélo", count.bk) + row("🏃", "Course", count.rn) + "</div>";
@@ -479,12 +479,12 @@ export function renderTabProfile(plan) {
   html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Tes 12 derniers mois</span><select id="pfTrainingStructure" style="flex:1;min-width:0">'
     + tsSel("", "Je préfère ne pas dire") + tsSel("feeling", "Au feeling, sans plan")
     + tsSel("intermittent", "Un plan, par périodes") + tsSel("suivi", "Un plan structuré, suivi") + "</select></label>";
-  html += '<div class="load-sub" style="margin:2px 0 6px;color:#777">Sert à estimer ta marge de progression d’ici la course — pas à juger. Sans réponse, on reste prudent.</div>';
+  html += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Sert à estimer ta marge de progression d’ici la course — pas à juger. Sans réponse, on reste prudent.</div>';
   // R14.1 §5 — le poids cible n'apparaît QUE si l'athlète a demandé ce levier. Jamais proposé,
   // jamais suggéré : c'est la frontière du manifeste, et elle ne bouge pas.
   if (a.weight_lever === "oui") {
     html += row("pfWeightTarget", "Poids cible (optionnel)", a.weight_target, "affiche une sensibilité, jamais un objectif");
-    html += '<div class="load-sub" style="margin:2px 0 6px;color:#777">Tu as demandé ce levier. L’app montre ce que la balance changerait sur tes chronos — elle ne propose ni rythme, ni alimentation : ces questions se traitent avec un professionnel de santé.</div>';
+    html += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Tu as demandé ce levier. L’app montre ce que la balance changerait sur tes chronos — elle ne propose ni rythme, ni alimentation : ces questions se traitent avec un professionnel de santé.</div>';
   }
   html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:150px">Rappel quotidien</span><input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label>';
   html += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
@@ -515,7 +515,7 @@ export function renderTabProfile(plan) {
   html += '<div class="load-card"><div class="load-title">📒 Journal d’évolution</div>';
   if (tests.length) {
     tests.forEach((t) => {
-      html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:12px;align-items:baseline"><span style="width:78px;color:#635b4a">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:#777">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
+      html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:12px;align-items:baseline"><span style="width:78px;color:#635b4a">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:var(--muted)">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
     });
   } else {
     html += '<div class="load-sub">Encore vide — il se remplira à chaque test (FTP, allure, CSS), import Strava/FIT, ou modification de profil ci-dessus.</div>';
