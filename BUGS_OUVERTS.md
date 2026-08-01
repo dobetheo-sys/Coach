@@ -121,9 +121,11 @@ attendu: /mérite son LOT/
 cmd: npm run measure:fallback trail
 ```
 
-**Reste à faire (le lot) :** décider `facileR` vs `facile2` pour le trail, avec mesure
-avant/après sur le golden — et traiter le swimrun dans le même mouvement, puisqu'il est plus
-concerné que le sport qui a ouvert l'entrée.
+**Reste à faire (le lot), périmètre ARBITRÉ (01/08/2026) : les DEUX sports dans le même
+mouvement.** Le swimrun est presque deux fois plus concerné (44,4 % contre 25,0 %) que le sport
+qui a ouvert l'entrée ; le traiter séparément referait le même travail deux fois sur le même
+mécanisme. Le lot décide `facileR` vs `facile2` pour trail ET swimrun, avec mesure avant/après
+sur le golden.
 
 ### O-4 · La même coche ne faisait pas la même chose selon l'onglet · ✅ **FERMÉ (R16.9)**
 
@@ -144,20 +146,27 @@ le seul producteur de cases. La leçon est celle du dépôt, appliquée à l'UI 
 pour un même geste finissent toujours par diverger**, et c'est le chemin le moins testé qui
 part en silence.
 
-### O-5 · La règle « rien avant le check-in » ne tenait que par une redirection · ⏳ **assoupli délibérément (R16.9)**
+### O-5 · La règle « rien avant le check-in » ne tenait que par une redirection · ✅ **FERMÉ (arbitrage, 01/08/2026)**
 
 📅 Semaine faisait respecter la règle produit R5 en REDIRIGEANT tout l'onglet vers Aujourd'hui.
-🗓 Plan, lui, affichait la saison entière — séances comprises — sans aucune porte. La règle
-n'a donc jamais tenu « partout » comme le prétendait ARCHITECTURE.md : elle tenait dans un
-onglet sur deux.
+🗓 Plan, lui, affichait la saison entière — séances comprises — sans aucune porte. La règle n'a
+donc jamais tenu « partout » comme le prétendait ARCHITECTURE.md : elle tenait dans un onglet
+sur deux, et personne ne l'avait remarqué parce que les deux écrans n'étaient jamais comparés.
 
-Arbitrage posé en R16.9, à assumer comme tel : ce que la règle vise est **la séance du JOUR
-montrée non adaptée**, pas la consultation de sa saison. La carte « Ta semaine » reste donc
-vide (avec un bouton vers le check-in) tant que le point du matin n'est pas fait ; la vue de
-saison reste accessible. **Ce qui reste ouvert** : la grille de saison affiche toujours les
-séances de la semaine courante, non adaptées, quand on déplie « Voir les N semaines ». Décider
-si c'est acceptable (une séance PLANIFIÉE n'est pas une séance PRESCRITE pour aujourd'hui) ou
-s'il faut masquer la semaine courante dans la saison tant que le check-in manque.
+**Arbitrage retenu, et il est explicite :** une séance **PLANIFIÉE** dans une vue de saison
+n'est pas une séance **PRESCRITE** pour aujourd'hui. Ce que la règle vise, c'est l'écran du
+matin — la séance du jour montrée sans avoir été adaptée à la forme réelle. Elle ne vise pas la
+consultation de son calendrier, qui est au contraire ce que l'athlète a payé.
+
+Ce qui est donc en place et ne bougera pas sans nouvelle décision :
+- la carte « Ta semaine » (tête de 🗓 Plan) reste **vide** tant que le point du matin n'est pas
+  fait, et propose le check-in ;
+- 🎯 Aujourd'hui garde son gate en diaporama, inchangé ;
+- la vue de saison dépliée montre les séances, **y compris celles de la semaine courante**.
+
+Les deux autres issues ont été écartées en connaissance de cause : masquer la semaine courante
+dans la saison creuse un trou au milieu du calendrier pour une cohérence de principe ; rétablir
+la redirection de tout l'onglet prend le plan en otage pour consulter sa propre préparation.
 
 ### O-6 · `golden:verify` — un gate de CI rouge en permanence depuis R15.7-C · ✅ **FERMÉ (R16.10-a)**
 
@@ -297,6 +306,14 @@ plus de 10 % de la semaine, donc toute recomposition casse mécaniquement le seu
    sous un certain volume hebdo ; exempter explicitement les semaines dont la plus petite
    séance dépasse 10 % du total ; ou accepter que C22 ne s'applique qu'au déclaré. **Aucune ne
    doit être choisie sans mesurer combien de configurations chacune laisse passer.**
+
+**Ordre ARBITRÉ (01/08/2026) : la granularité d'abord.** C'est une question de DÉFINITION, pas
+de code — elle ferme 4 sauts sur 7 et ne touche aucun plan, donc aucune empreinte du golden ne
+bouge. Les trois issues (plancher absolu en minutes sous un certain volume · exemption nommée
+des semaines dont la plus petite séance dépasse 10 % du total · C22 ne s'applique qu'au
+déclaré) doivent être MESURÉES l'une après l'autre — combien de configurations chacune laisse
+passer — avant qu'aucune ne soit choisie. La refonte de la courbe vient ensuite, en lot isolé,
+parce qu'elle re-hache les 900 empreintes et traverse les 20 gates.
 
 Ni l'un ni l'autre n'est fait : ce sont deux chapitres ouverts, désormais correctement séparés.
 `D2` (3/153 configurations avec ≥1 violation dure) et `F2` (8 séances à 40-43 % au lieu de

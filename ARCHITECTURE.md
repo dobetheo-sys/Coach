@@ -1140,7 +1140,7 @@ Découpage :
   resté dans un état sauvegardé) retombe sur le repli déjà en place.
 
 **La règle « aucune séance avant le point du matin » s'assouplit et se resserre en même
-temps.** Semaine la faisait respecter par une REDIRECTION de tout l'onglet vers Aujourd'hui.
+temps** (arbitrage confirmé, O-5 clos). Semaine la faisait respecter par une REDIRECTION de tout l'onglet vers Aujourd'hui.
 Ce que la règle vise, c'est la séance du JOUR montrée non adaptée — pas la consultation de
 sa saison. La carte « Ta semaine » reste donc vide (avec un bouton vers le check-in) tant
 que le point du matin n'est pas fait, et l'onglet n'est plus pris en otage.
