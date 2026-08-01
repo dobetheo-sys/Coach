@@ -110,7 +110,16 @@ function* profiles() {
     ["injury-tibia", { injury: "tibia" }], ["injury-genou", { injury: "genou" }],
     ["injury-epaule", { injury: "epaule" }], ["injury-dos", { injury: "dos" }],
     ["injury-multi", { injury: "tibia,genou" }],
-    ["mineur", { age: "16" }], ["master", { age: "62" }],
+    // R15.7-C — LE CAS « MINEUR » SE DÉDOUBLE, et c'est le but.
+    // La passe garde-fous prend le format le PLUS LONG de chaque sport : depuis R15.7-C, un
+    // mineur y reçoit un REFUS d'éligibilité, et le plan n'existe plus. Recapturer sans rien
+    // changer aurait donc SUPPRIMÉ du golden toute couverture de la protection de charge R6.3
+    // — le trou classique : une règle nouvelle qui efface la surveillance d'une règle ancienne.
+    // Les deux cas coexistent désormais : le refus est photographié (`mineur` sur format long),
+    // et la protection continue de l'être sur un format ouvert aux mineurs.
+    ["mineur", { age: "16" }],
+    ["mineur-format-ouvert", { age: "16" }, { run: "10k", tri: "M", duathlon: "M", trail: { race_distance_km: "28", race_dplus_m: "900" } }],
+    ["master", { age: "62" }],
     ["vol-min", { vol_max: "3", sessions_max: "3" }], ["vol-max", { vol_max: "20", sessions_max: "12" }],
     ["off-2j", { off_days: "oui", off_which: "lun,ven" }], ["doubles", { doubles: "oui", dispo: "quotidienne" }],
     ["vol-recent-bas", { vol_recent: "2", vol_max: "12" }],
@@ -130,9 +139,13 @@ function* profiles() {
   ];
   for (const [sport, fmts] of Object.entries(FORMATS)) {
     const format = fmts[fmts.length - 1];
-    for (const [label, over] of guards) {
-      const a = { ...base(), format, history: "confirme", level: "inter", intent: "competition",
-        ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : {}), ...over };
+    for (const [label, over, fmtOver] of guards) {
+      // `fmtOver` : format (ou données de course, en trail) substitué pour ce garde-fou.
+      const sub = fmtOver && fmtOver[sport];
+      const a = { ...base(), format: typeof sub === "string" ? sub : format,
+        history: "confirme", level: "inter", intent: "competition",
+        ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : {}), ...over,
+        ...(sub && typeof sub === "object" ? sub : {}) };
       yield { key: ["G", sport, format || "-", label].join("/"), sport, a };
     }
   }

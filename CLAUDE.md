@@ -397,3 +397,21 @@ Débusqué au passage : le §6 du handoff oubliait `R14.4` dans sa liste de crit
 plafonds SONT la table déclarée fausse, et ils sont arithmétiquement incompatibles avec le nouveau
 `R14.1-B` (50 % d'écart exigé contre 45 % autorisé). **19 gates verts, E2E 8/8 (55 assertions),
 golden 758 inchangé** — la projection ne touche aucune séance.
+
+**R15 (chapitres moteur) livré** (revue externe de `BUGS_OUVERTS.md`, voir R10_DEFECTS.md « R15 »
+— banc `npm run audit:r15`, **20e gate CI**) : **R15.7-C** un mineur pouvait générer un plan
+Ironman (15 ans + tri/Full accepté, 59 semaines, pic 7,7 h) — R6.3 modulait la charge mais rien
+ne croisait âge et FORMAT ; refus typé qui nomme la règle d'inscription et propose le format
+accessible, formats courts inchangés. **R15.2** le relief entre dans la cible d'intensité VÉLO
+(plat 175–191 W ↔ montagne 169–185 W, là où les deux donnaient 175–191) — un point unique
+`bikeIF` pour les trois sports qui prescrivent des watts, une seule clé de parcours.
+**R15.7-A/B** la semaine de course : **291/648 configurations sous 30 % du pic → 0**, et 12
+plans arrivaient au départ après 3 à 5 jours sans rien → 0. Quatre causes empilées, dont la
+dernière est la dixième occurrence de la même leçon : **le plancher tournait AVANT la
+décroissance d'affûtage**, qui retirait ce qu'il venait de poser — il passe après, et la
+décroissance reçoit le plancher comme borne basse. Le déverrouillage de la veille est protégé
+comme la course (R13.4) : la séance la plus courte par CONCEPTION est la victime idéale de toute
+règle « retirer la plus petite ». Golden **758 → 764** (le cas `mineur` se dédouble : le refus
+ET la protection R6.3 restent photographiés — une règle nouvelle ne doit pas effacer la
+surveillance d'une ancienne). Chapitres d'infrastructure R15.1/R15.3/R15.4/R15.6/R15.9 **ouverts**,
+suivis dans `BUGS_OUVERTS.md`.

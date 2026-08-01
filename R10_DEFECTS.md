@@ -1061,3 +1061,87 @@ plus relire.
 
 **Effet sur les plans : nul.** `golden:verify` reste à 758 profils, 0 écart — la projection ne
 touche aucune séance. **19 gates verts, E2E 8/8 (55 assertions).**
+
+## R15 — la revue du registre, et les deux défauts qu'il ne voyait pas (01/08/2026)
+
+Un handoff est arrivé pour auditer `BUGS_OUVERTS.md` lui-même, avec son banc
+(`bench_r15.cjs`, **20e gate CI**) : **6 échecs sur 10**, 4 non-régressions vertes. Les
+chapitres MOTEUR sont traités ici ; les chapitres d'infrastructure (budgets en taux, forme de
+la courbe, job swimrun, registre exécutable) restent ouverts et sont listés dans le registre.
+
+**Le handoff a commis O-1 avant de le dénoncer, et l'a écrit.** En construisant son banc, il a
+d'abord balayé 72 profils à un seul horizon avec des dates quelconques : **0 défaut**. En calant
+la course un DIMANCHE (le cas de la quasi-totalité des épreuves) et en balayant 9 horizons :
+**291 sur 648, soit 45 %**. Une dimension non variée masquait 100 % du défaut. La leçon n'est
+donc pas « monter N » mais **« varier les bonnes dimensions »** — un échantillon dix fois plus
+grand sur les mêmes axes n'aurait rien trouvé. C'est la formulation la plus utile qu'on ait eue
+de cet angle mort, et elle remplace celle du registre.
+
+**R15.7-C — un mineur pouvait préparer un Ironman.** `age: 15` + `tri/Full` était ACCEPTÉ :
+59 semaines, pic 7,7 h. R6.3 modulait correctement la charge (×0,70, zéro VO2max) mais **rien
+ne croisait l'âge et le format**. Or l'inscription à un IRONMAN, un 70.3 ou la plupart des
+marathons est refusée avant 18 ans. L'argument est celui qui existait déjà dans R11.4 — *« te
+vendre une préparation d'Ironman en un mois serait te mentir »* : préparer douze mois une
+épreuve où l'on ne pourra pas prendre le départ relève du même mensonge, en plus long. Refus
+typé (`ENTREE_INVALIDE`) qui nomme la règle d'inscription, propose le format accessible
+immédiatement, et dit que le plan long redeviendra possible à 18 ans. Les formats courts sont
+**inchangés** : R6.3 y fait déjà le travail.
+
+**R15.2 — le relief entre dans la cible d'intensité vélo** (ferme O-2 du registre). Un 70.3 à
+plat et un 70.3 de montagne prescrivaient **175–191 W dans les deux cas**. Décalage d'IF
+(vallonné −0,01, montagneux −0,025), conseil qui nomme l'indice de variabilité et la puissance
+NORMALISÉE. Les trois sports qui prescrivent des watts passent par un point unique (`bikeIF`
+dans le kit) : sans lui, le quatrième producteur divergerait — et cette fois sur le PACING, pas
+sur un affichage.
+
+**R15.7-A/B — la semaine de course.** Quatre causes empilées, trouvées l'une après l'autre :
+
+1. *Les rappels étaient intouchables.* La semaine de course ne contient QUE des rappels
+   (race-pace, nage CSS, allure course), tous porteurs d'une zone de qualité, donc tous sautés
+   par la règle U-DOSE. Aucun bloc n'était éligible et le plancher n'était jamais atteint. Ce
+   qui s'allonge désormais, c'est l'ÉCHAUFFEMENT et le RETOUR AU CALME — la dose de qualité
+   reste intouchable, et C13e continue de borner (une correction intermédiaire a produit un
+   « Rappel nage course » de 64 min : un rappel plus long que la séance qu'il rappelle).
+2. *La convergence était coupée à 3 tours*, alors que chaque pas est borné par C13/C13e : la
+   boucle s'arrête maintenant sur l'absence de PROGRÈS, pas sur un compteur.
+3. *La course comptait comme une séance* dans le budget de la semaine, qui saturait donc à elle
+   seule et interdisait le seul rattrapage disponible. Depuis R13.4 la course vaut `min: 0` et
+   sort de la charge — troisième fois que la confusion « la course est une séance » coûte
+   quelque chose.
+4. *Et surtout : le plancher tournait AVANT la décroissance d'affûtage.* Il posait ses séances,
+   la décroissance les retirait vingt lignes plus bas. Le plancher était écrit, exécuté, et sans
+   effet. **Dixième fois que ce dépôt paie la leçon du point de convergence.** Il passe après, et
+   la décroissance reçoit le plancher comme borne BASSE — les deux règles cessent de se
+   contredire en silence au lieu de se départager au hasard de l'ordre des passes.
+
+**R15.7-B** relève de la même famille que R13.4 : le déverrouillage de la veille est la séance
+la plus COURTE de la semaine, donc la victime idéale de toute règle « retirer la plus petite ».
+12 configurations sur 648 arrivaient au départ après **trois à cinq jours sans rien**. R13.4-C2
+plafonnait la veille à 25 min sans jamais exiger qu'elle existe : **un plafond sans plancher.**
+
+| | avant | après |
+|---|---|---|
+| semaine de course < 30 % du pic | **291/648 (45 %)** | **0/648** |
+| aucune séance dans les 3 derniers jours | 12/648 | **0/648** |
+| mineur + Ironman/70.3/marathon | accepté | **refus motivé** |
+| cible vélo plat ↔ montagne | 175–191 W dans les deux cas | 175–191 ↔ **169–185 W** |
+
+**Trois bancs ont dû suivre le changement de contrat**, ID conservés et raison écrite :
+`bench_r13` (R13.1-A10/A12/A13/NR1 testaient la protection R6.3 d'un mineur **sur un format
+70.3** — désormais refusé ; ils passent au format M, ouvert aux mineurs, où R6.3 fait exactement
+le travail qu'ils vérifient) et `bench_r14_1` (R14.1-I3 même raison ; R14.1-NR1 : la bande vélo
+de son profil de BASE passe de 175–191 à 173–189 parce qu'il porte `terrain: "vallonne"` —
+c'est R15.2, pas une régression, et à plat la bande ne bouge pas).
+
+**Un défaut introduit puis corrigé dans le même lot**, attrapé par le banc v7 (`U-OFF = 5`) : la
+conversion d'un jour OFF en endurance allégée ne vérifiait pas `forced` et fabriquait donc une
+séance un jour où l'athlète a déclaré ne pas pouvoir. La contrainte de vie passe avant la
+contrainte d'entraînement.
+
+**Et le golden allait perdre une couverture en gagnant une règle.** Sa passe garde-fous prend le
+format le plus LONG de chaque sport : le cas `mineur` y devenait un refus, et la protection de
+charge R6.3 sortait du champ de la photo. Le cas se dédouble — `mineur` (refus photographié) et
+`mineur-format-ouvert` (protection photographiée). **758 → 764 profils.** Une règle nouvelle ne
+doit pas effacer la surveillance d'une règle ancienne.
+
+**20 gates verts, E2E 8/8, golden 764.**

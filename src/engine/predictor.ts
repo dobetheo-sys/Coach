@@ -107,6 +107,30 @@ export function reliefOf(value: unknown): ReliefFactor | null {
 }
 
 /**
+ * R15.2 — LE RELIEF DESCEND LA CIBLE DE PUISSANCE (O-2 du registre, fermé).
+ *
+ * Mesuré avant correction : un 70.3 à plat et un 70.3 de montagne recevaient **175–191 W dans
+ * les deux cas** — `TRI_BIKE` ne connaissait que le format. Le relief était traité pour la
+ * course à pied depuis R6, jamais pour le vélo.
+ *
+ * Le mécanisme : sur parcours accidenté, le coût métabolique suit la puissance NORMALISÉE, et
+ * NP s'écarte d'autant plus de la moyenne que le terrain est irrégulier. Viser la même bande
+ * qu'à plat revient donc à rouler plus dur qu'on ne croit — et le prix se paie à pied. On
+ * descend la cible, on nomme l'indice de variabilité, et on ne prédit toujours PAS de chrono
+ * vélo (il dépend du parcours, on ne l'invente pas).
+ *
+ * Décalages d'IF (heuristique de praticiens, assumée comme telle) :
+ *   plat 0 · vallonné −0,01 · montagneux −0,025
+ * Même famille de risque que P6 (le pacing projeté) : c'est une règle de sécurité, pas un
+ * affichage — partir à la puissance d'un parcours plat sur 2 500 m de D+ ne se rattrape pas.
+ */
+const RELIEF_BIKE_IF: Record<string, number> = { plat: 0, vallonne: -0.01, montagne: -0.025 };
+export function bikeIFShift(courseProfile: unknown): number {
+  const k = String(courseProfile ?? "").trim();
+  return RELIEF_BIKE_IF[RELIEF_ALIAS[k] || k] ?? 0;
+}
+
+/**
  * R14.3-a — LE CHEMIN UNIQUE. `course_profile` (le parcours VISÉ, réponse la plus
  * spécifique, posée au Profil) prime ; à défaut on retombe sur `terrain` (le terrain
  * d'entraînement, qui est aussi la question « Le parcours » en vélo et duathlon).
@@ -249,6 +273,19 @@ export function predictRace(
   const prof = reliefOf(opts.courseProfile);
   if (prof && prof.hi > 1) D("PRED-parcours", "Profil du parcours", prof.label, "Le relief ralentit et augmente l'incertitude : fourchette ×" + prof.lo + "–" + prof.hi + " sur les temps de course à pied");
   const profWhy = prof && prof.hi > 1 ? " · " + prof.label + " (+" + Math.round((prof.lo - 1) * 100) + "–" + Math.round((prof.hi - 1) * 100) + "%)" : "";
+  // R15.2 — décalage d'IF vélo et sa justification, calculés UNE fois pour les trois sports
+  // qui prescrivent des watts (tri, vélo, duathlon).
+  const ifShift = bikeIFShift(opts.courseProfile);
+  const bikeWhy = ifShift < 0
+    ? " · cible ABAISSÉE de " + Math.round(-ifShift * 100) + " points pour le relief : sur un parcours "
+      + "accidenté le coût suit la puissance NORMALISÉE et non la moyenne, et l'indice de variabilité "
+      + "(IV = NP ÷ moyenne) monte vite. Rouler la bande du plat ici revient à rouler plus dur qu'on ne "
+      + "croit — ça se paie à pied, pas sur le vélo"
+    : "";
+  if (ifShift < 0)
+    D("R15.2", "Relief du parcours vélo", (prof ? prof.label : "accidenté") + " → IF " + (ifShift * 100).toFixed(1) + " pt",
+      "Le chrono vélo n'est pas prédit (il dépend du parcours), mais la CIBLE D'INTENSITÉ, elle, doit "
+      + "descendre : à puissance moyenne égale, un parcours vallonné coûte plus cher qu'un parcours plat.");
   // R14 P5 — l'exposant de Riegel suit le volume, et SEULEMENT pour une course sèche :
   // les legs course du tri/duathlon portent déjà leurs facteurs de fatigue calibrés à 1,06.
   const expo = sport === "run" ? riegelExponent(opts.runHoursPerWeek) : 1.06;
@@ -284,6 +321,11 @@ export function predictRace(
       return fmtT(lo) + "–" + fmtT(hi);
     };
     const riegelSec = (paceSecPerKm: number, distKm: number) => riegelSecWith(expo, paceSecPerKm, distKm);
+    // R15.2 — la bande d'IF vélo passe par le MÊME résolveur de parcours que la course
+    // (`courseProfileOf` en amont) : une seule clé, donc pas de « montagne vs montagneux » 2.0.
+    const bikeIF = (lo: number, hi: number): [number, number] => [
+      Math.max(0.3, lo + ifShift), Math.max(0.32, hi + ifShift),
+    ];
 
   // ---- R7 TRAIL : Riegel est INAPPLICABLE (un km de trail n'est pas un km de route).
   // Modèle à deux composantes : temps à plat + temps vertical (VAM), pénalisés par la
@@ -316,7 +358,7 @@ export function predictRace(
   // sortir un chiffre inventé — la fourchette honnête est la seule sortie acceptable.
   const mod = sportModule(sport);
   if (mod.predict) {
-    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, riegelSec, profWhy, swimrun: opts.swimrun });
+    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, riegelSec, profWhy, bikeIF, bikeWhy, swimrun: opts.swimrun });
   } else {
     advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }

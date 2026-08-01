@@ -115,14 +115,17 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
 
 /** Prédiction tri — extraction mécanique de la branche correspondante de `predictRace`. */
 export function predictTri(kit: PredictKit): void {
-  const { refs, format, items, advice, D, range, runRange, riegelSec, profWhy } = kit;
+  const { refs, format, items, advice, D, range, runRange, riegelSec, profWhy, bikeIF, bikeWhy } = kit;
   const sw = TRI_SWIM[format], bk = TRI_BIKE[format], rn = TRI_RUN[format];
   if (refs.css > 0 && sw) {
     const t = (sw.dist / 100) * refs.css * sw.factor;
     items.push({ leg: "Natation " + sw.dist + "m", value: range(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" });
   } else advice.push("CSS manquant → pas de projection natation (test 400/200m).");
   if (refs.ftp > 0 && bk) {
-    items.push({ leg: "Vélo", value: Math.round(refs.ftp * bk.lo) + "–" + Math.round(refs.ftp * bk.hi) + "W", why: "puissance normalisée qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" });
+    // R15.2 — la bande passe par `bikeIF` : le relief du parcours l'abaisse, une seule fois,
+    // au même endroit que pour le vélo seul et le duathlon.
+    const [blo, bhi] = bikeIF(bk.lo, bk.hi);
+    items.push({ leg: "Vélo", value: Math.round(refs.ftp * blo) + "–" + Math.round(refs.ftp * bhi) + "W", why: "puissance normalisée qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" + bikeWhy });
   } else advice.push("FTP manquante → pas de puissance cible vélo (test 20min × 0.95).");
   if (refs.thrPace > 0 && rn) {
     const t = riegelSec(refs.thrPace, rn.km) * rn.fatigue;

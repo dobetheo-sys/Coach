@@ -1,6 +1,12 @@
 # Bugs constatés et NON corrigés
 
-**État au 01/08/2026, commit `e9de76a`** (19 gates verts, E2E 8/8, golden 758).
+**État au 01/08/2026, commit `b35169b` + lot R15** (20 gates verts, E2E 8/8, golden 764).
+
+> **Mise à jour R15 :** `O-2` et `O-3` sont traités ci-dessous ; `O-1` reste ouvert et son
+> périmètre s'est ÉLARGI (voir la note). Le handoff de revue a aussi apporté deux défauts
+> mesurés qui n'étaient pas dans ce registre — ils sont corrigés et donc absents d'ici : le
+> plancher de la semaine de course (291/648 configurations sous 30 % du pic) et l'éligibilité
+> âge × format (un mineur générait un plan Ironman de 59 semaines).
 
 Ce fichier ne liste que ce qui est **mesuré et reproductible aujourd'hui**. Chaque entrée porte
 sa commande de vérification : une dette qu'on ne peut pas re-mesurer en une ligne n'est pas une
@@ -39,6 +45,23 @@ de ce qu'il surveille donne une assurance fausse, ce qui est pire que pas de gar
 ENGINE=$PWD/endurabuild/js/engine.js node audit_v7.cjs duathlon 253
 ```
 
+**⚠ Périmètre élargi (revue R15).** `D-DISC` n'est pas seul : **tous** les budgets du tableau
+v7 sont des compteurs ABSOLUS mesurés à N=150. Un budget de 12 sur 150 tirages vaut
+mécaniquement ~20 à N=253. Monter `N` fera donc déborder `U-RACEDATE`, `T-NIGHT`,
+`T-DPLUS-WK` et `T-POLES-ADV` **en même temps** — le lot est plus gros que ce que cette entrée
+laissait croire, et c'est une raison de plus de le traiter pour lui-même. Trois gestes, dans
+cet ordre : (1) **dire si le tirage est semé** — s'il ne l'est pas, `D-DISC = 0` à N=150 est un
+coup de dé et la CI est déjà instable ; (2) passer les budgets en **taux** (‰ de profils) et
+non en compteurs — un budget qui dépend du paramètre d'échantillonnage est un artefact, pas une
+mesure ; (3) **varier les DIMENSIONS, pas seulement leur nombre** (horizon, jour de la semaine
+de la course, sport, format, niveau, historique, volume, séances, blessure, drapeau médical).
+
+Le troisième point est le plus important, et il a été démontré à nos dépens : le banc R15 lui-même
+a d'abord rendu **0 défaut sur 72 profils à un seul horizon**, puis **291 sur 648** en calant la
+course un DIMANCHE et en balayant 9 horizons. Une dimension non variée masquait 100 % du défaut.
+**La leçon n'est donc pas « monter N » mais « varier les bonnes dimensions »** — un échantillon
+dix fois plus grand sur les mêmes axes n'aurait rien trouvé.
+
 **Pourquoi ce n'est pas corrigé ici.** Deux corrections possibles et elles ne se valent pas :
 monter `N` en CI (honnête, mais fait passer la CI au rouge tant que les 2 cas ne sont pas
 traités), ou traiter les 2 cas d'abord. Le bon ordre est : monter `N`, constater le rouge,
@@ -47,48 +70,29 @@ choisir le `N` qui arrange, c'est-à-dire à reproduire le défaut.
 
 ---
 
-### O-2 · `R14.3-b` — le dénivelé vélo n'est pas pris en compte (cas Nice)
+### O-2 · `R14.3-b` — le dénivelé vélo · ✅ **FERMÉ (R15.2)**
 
-**Ce qui se passe.** Sur un parcours vélo à fort dénivelé (~2 500 m D+ sur un 70.3 type Nice), le
-coût métabolique suit la puissance **normalisée**, pas la moyenne : NP et AP divergent nettement.
-La cible d'intensité devrait descendre (borne basse de la bande, voire −0,02) et le conseil de
-pacing mentionner l'indice de variabilité. Aujourd'hui, `TRI_BIKE` ne connaît que le format —
-un 70.3 plat et un 70.3 de montagne reçoivent la **même** bande de puissance cible.
+Le relief entre désormais dans la **cible d'intensité** vélo : plat 175–191 W · vallonné
+173–189 W · montagneux 169–185 W (FTP 230). Le conseil nomme l'indice de variabilité et la
+puissance NORMALISÉE. Une seule clé (`courseProfileOf`, la même que la course à pied), et les
+trois sports qui prescrivent des watts (tri, vélo, duathlon) passent par le même point —
+sans quoi un quatrième producteur divergerait, cette fois sur le PACING.
 
-**Portée.** Le relief est déjà traité pour la COURSE À PIED (`RELIEF`, R6 puis R14.3-a). Le vélo
-n'a jamais été fait. Le module a raison de ne pas prédire un temps de vélo ; c'est la **cible
-d'intensité** qui devrait bouger, et le conseil qui va avec.
+O-2 disait *« premier geste attendu : écrire le critère, pas le correctif »*. Le critère est
+venu avec le handoff de revue (`R15.2-A/B/C/D`, gate `npm run audit:r15`) : c'est lui qui rend
+la fermeture vérifiable, et c'est pour ça que l'entrée peut être fermée plutôt que « faite ».
 
-**Pourquoi ce n'est pas corrigé.** Le handoff R14 le classe explicitement en *revue manuelle,
-sans critère automatique*. Il n'existe donc aucun test qui dise quand c'est fait — et écrire la
-correction avant le critère, c'est se priver du seul moyen de savoir qu'elle marche. **Premier
-geste attendu : écrire le critère, pas le correctif.**
+### O-3 · `D10-8` — le créneau facile de repli du trail · ⏳ **la mesure manquante est nommée**
 
-**Coût pour l'athlète.** Il part au bon watt moyen sur un parcours où le bon watt moyen est trop
-haut — et le paie sur le marathon. C'est la même famille de risque que P6 (le pacing projeté),
-qui a été traitée comme règle de sécurité.
+Inchangé dans le code, mais l'entrée était mal posée : elle réclamait l'écart entre `facileR`
+et `facile2` alors que la question qui décide est **la fréquence de déclenchement du repli**.
+Tant que ce taux n'existe pas, l'arbitrage d'entraînement n'est pas mûr — c'est la règle du
+dépôt (« mesurer d'abord ») appliquée à cette entrée elle-même.
 
----
-
-### O-3 · `D10-8` — le créneau facile de repli du trail est probablement le mauvais
-
-**Ce qui se passe.** `SPORTS.trail` déclare `easyFallbackSlot: "facileR"` (séance facile pleine),
-là où `SPORTS.run` déclare `facile2` (footing court de récupération). C'est un héritage du code
-d'avant le registre (`sport === "run" ? "facile2" : "facileR"`), qui ne connaissait que la course.
-
-**Vérifier :**
-```bash
-grep -n easyFallbackSlot src/sports/*/index.ts
-```
-
-**Pourquoi ce n'est pas corrigé.** Pour un traileur, `facile2` serait vraisemblablement plus juste
-— mais c'est une **décision d'entraînement**, pas un correctif mécanique, et elle déplacera du
-volume sur tous les plans trail (donc le golden). Elle doit être tranchée pour elle-même, mesurée
-avant/après, pas glissée dans un lot qui parle d'autre chose.
-
-**Coût.** Faible et non chiffré à ce jour : personne n'a mesuré l'écart entre les deux options.
-
----
+**Critère de sortie chiffré, à produire avant tout correctif :** instrumenter
+`easyFallbackSlot`, balayer la matrice trail (niveaux × historiques × volumes × horizons),
+publier le taux. **< 5 %** → l'entrée se ferme en « sans impact mesurable », et c'est une
+décision. **> 20 %** → elle mérite son lot, avec mesure avant/après sur le golden.
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
@@ -130,6 +134,8 @@ Ce ne sont pas des bugs : ce sont des endroits où **on ne saurait pas** qu'il y
 | A-2 | Le golden master fige `vol_max` au profil de base sur presque toutes ses passes | Deux passes correctives ont déjà dû être ajoutées pour cette raison (« course datée » en N2, « volume et extrapolation » en R14). Le prochain paramètre figé produira le même angle mort. |
 | A-3 | `R14.3-b` n'a **aucun critère automatique** | Personne ne saura si le dénivelé vélo est traité, sauf à relire le code. |
 | A-4 | Le monolithe `Coach_Pro_V1.5.html` a le moteur à jour mais son **UI est gelée à R4** | Les régressions d'interface introduites depuis (5 onglets, carte Trail, étape terrain) ne s'y voient pas. C'est documenté et voulu — mais un utilisateur qui ouvrirait ce fichier verrait un produit d'il y a plusieurs lots. |
+| A-5 | **Aucune vérité terrain pour la projection R14/R14.1** — l'angle mort le plus profond du prédicteur | Les bandes `h`, `G_plafond`, `k_structure` sont des heuristiques que **rien ne valide**. On ne saura jamais qu'elles sont fausses tant que les projections ne seront pas confrontées aux résultats réels. *Premier geste, et il doit être fait MAINTENANT :* journaliser à chaque génération `{date, sport, format, horizon, refs mesurées, gainPct, gainBand, adhérence}` et, au passage du jour J, `{temps réel par leg}`. Sans cette ligne écrite aujourd'hui, la calibration sera impossible dans deux ans — les données n'existeront pas. |
+| A-6 | **Dates absolues** dans le golden et les scripts (`RACE_PASS_DATES`, `scripts/trace.mjs`, profils `measured`) | Un profil dont la course est « à 43 semaines » aujourd'hui sera à 30 semaines dans trois mois : le golden dérive tout seul, ou pire, **exerce silencieusement d'autres branches en gardant la même empreinte**. Le garde-fou d'échéance existe (`goldenMaster.mjs` prévient 8 semaines avant), mais il traite la panne, pas la dérive. Vérifier : `grep -rn "20[23][0-9]-[01][0-9]-[0-3][0-9]" scripts/ tests/` — toute date en dur est un futur A-2. |
 
 ---
 
@@ -141,6 +147,7 @@ qui n'existe plus, ce qui est le symétrique exact d'un défaut caché.
 | entrée | ce qu'elle affirme | ce qui est mesuré aujourd'hui |
 |---|---|---|
 | `R10_DEFECTS.md` **D10-9** (statut « ouvert ») | « Aucun garde-fou n'empêche la prochaine collision de noms dans le bundle : à ajouter » | **Corrigé.** `checkCollisions()` existe (`scripts/buildApp.mjs:94`, appelée l. 116) et fait échouer le build en nommant le doublon. |
+| **question R15.5** — « le harnais distingue-t-il un `xfail` qui PASSE d'un échec attendu ? » | Risque soulevé : le jour où quelqu'un corrige F2, le test rougirait et la correction serait annulée comme une régression | **Déjà correct, vérifié.** `audit_v6.mjs:942` : un test `expect:'fail'` qui passe s'affiche `★` et porte la note « ← CORRIGÉ : passer expect à 'pass' ». Il compte comme VERT, pas comme échec. Aucun travail nécessaire. |
 | `R10_DEFECTS.md` §C13e | « Reste 307 séances sous 10 min d'échauffement, toutes en trail… leur récupération n'est PAS chiffrée (7 % des blocs) » | **Corrigé** par le lot « la récupération devient une donnée » : sur 344 blocs à répétitions multiples mesurés (6 sports), **0 récupération non chiffrée**, et `F4` mesure **0 violation** du plancher de 10 min. |
 
 *(Ces deux corrections de registre ne sont pas appliquées dans ce fichier : le registre est le

@@ -51,11 +51,27 @@ const BASE = {
 const build = (sport, over) => E.buildPlan(sport, Object.assign({}, BASE, over));
 
 /* ================= R13.1 — âge : source unique ================= */
-const pAdult = build("tri", { format: "70.3", race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
+/**
+ * ⚠ FORMAT DES CAS MINEURS : « 70.3 » → « M » (R15.7-C, 01/08/2026). LES ID NE BOUGENT PAS.
+ *
+ * Ces cas testent la PROTECTION DE CHARGE d'un mineur (R6.3 : ×0,70, zéro VO2max, récup
+ * allongée). Ils la testaient sur un format 70.3 — c'est-à-dire sur une épreuve dont
+ * l'inscription est refusée avant 18 ans. R15.7-C ferme ce trou : un mineur reçoit désormais
+ * un REFUS motivé sur les formats réglementés, et non plus un plan d'un an pour une course
+ * où il ne pourra pas prendre le départ.
+ *
+ * Le contrat a donc changé, et ces cas doivent suivre — sinon ils testeraient un chemin que
+ * le moteur n'emprunte plus. Ils passent au format « M », ouvert aux mineurs, où R6.3 fait
+ * exactement le travail qu'ils vérifient. C'est le même geste que R11 sur E5/C2/E3 du banc v6 :
+ * l'instrument suit le contrat, l'identifiant reste, la raison est écrite.
+ * Le refus lui-même est couvert par R15.7-C1 du banc R15.
+ */
+const FMT_MINEUR = "M";
+const pAdult = build("tri", { format: FMT_MINEUR, race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
 const adultPeak = peakMin(pAdult);
 for (const age of ["10", "12", "13"]) {
   xfail("R13.1-A" + age, "mineur " + age + " ans : protection R6.3 appliquée", () => {
-    const p = build("tri", { age, format: "70.3", race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
+    const p = build("tri", { age, format: FMT_MINEUR, race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
     const minor = dec(p, "R6.3").some((d) => /mineur/i.test(d.what));
     const w = warns(p, /18 ans/).length > 0;
     const ok = minor && w && vo2Steps(p) === 0 && peakMin(p) <= adultPeak * 0.78;
@@ -63,12 +79,12 @@ for (const age of ["10", "12", "13"]) {
   });
 }
 xfail("R13.1-B", "98 ans : protection master appliquée (vol ×0.85, récup /3)", () => {
-  const p = build("tri", { age: "98", format: "70.3", race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
+  const p = build("tri", { age: "98", format: FMT_MINEUR, race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
   const master = dec(p, "R6.3").some((d) => /master/i.test(d.what));
   return { ok: master && peakMin(p) <= adultPeak * 0.9, info: `master:${master} pic:${(peakMin(p) / 60).toFixed(1)}h` };
 });
 check("R13.1-NR1", "non-régression : 15 ans protégé (0 VO2 + R6.3)", () => {
-  const p = build("tri", { age: "15", format: "70.3", race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
+  const p = build("tri", { age: "15", format: FMT_MINEUR, race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
   return { ok: vo2Steps(p) === 0 && dec(p, "R6.3").length > 0, info: "vo2:" + vo2Steps(p) };
 });
 check("R13.1-NR2", "non-régression : 30 ans garde sa VO2 / 65 ans master / 101 refusé", () => {

@@ -51,6 +51,10 @@ jobs:
       # (références mesurées), plus sur l'ancienneté ; fourchette asymétrique ; vélo en deux
       # lignes ; levier poids sous gardes dures. Périme R14.4 et R14.6-A/B du banc R14.
       - run: npm run audit:r14.1
+      # R15 — chapitres MOTEUR du handoff de revue du registre : relief vélo dans la cible
+      # d'intensité (O-2), plancher et déverrouillage de la semaine de course, et éligibilité
+      # âge × format (un mineur ne prépare pas douze mois une épreuve interdite à l'inscription).
+      - run: npm run audit:r15
       # R11.8 — banc de SENSIBILITÉ : toute réponse du questionnaire doit modifier le plan.
       # Une clé inerte fait échouer la CI — c'est ce qui empêche `cycle_sync` et `dispo` de
       # redevenir des cases à cocher sans effet.

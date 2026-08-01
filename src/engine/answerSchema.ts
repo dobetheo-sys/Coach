@@ -90,6 +90,35 @@ export const FORMATS_BY_SPORT: Record<string, string[]> = {
 };
 
 /**
+ * R15.7-C — ÉLIGIBILITÉ : ÂGE × FORMAT. Le moteur savait protéger un mineur (R6.3 : charge
+ * ×0,70, zéro VO2max, récupération allongée) mais **rien ne croisait l'âge et le format**.
+ * Mesuré : `age: 15` + `tri/Full` était accepté, 59 semaines, pic 7,7 h — une préparation
+ * d'un an pour une épreuve où l'inscription est refusée.
+ *
+ * L'argument est celui qui existe déjà dans le refus de R11.4 : *« te vendre une préparation
+ * d'Ironman en un mois serait te mentir »*. Préparer douze mois une épreuve à laquelle on ne
+ * pourra pas s'inscrire relève exactement du même mensonge, en plus long.
+ *
+ * Les âges sont ceux des règlements d'inscription les plus répandus (IRONMAN et 70.3 : 18 ans ;
+ * marathons de grandes villes : 18 à 20 ans ; ultras longs : 18 ans). Ils ne sont PAS une
+ * limite physiologique — les formats courts restent ouverts et protégés par R6.3, qui reste
+ * le bon outil pour la charge.
+ */
+export const AGE_MINI_FORMAT: Record<string, Record<string, number>> = {
+  tri: { Full: 18, "70.3": 18 },
+  run: { marathon: 18 },
+  duathlon: { PM: 18 },
+};
+/** Trail : la règle porte sur la DISTANCE, pas sur un format (le trail n'en a pas). */
+export const AGE_MINI_TRAIL_KM = 50;
+/** Le format immédiatement accessible, pour ne jamais refuser sans proposer. */
+const REPLI_FORMAT: Record<string, Record<string, string>> = {
+  tri: { Full: "M ou 70.3 à 18 ans", "70.3": "S ou M" },
+  run: { marathon: "10 km ou semi-marathon" },
+  duathlon: { PM: "S, M ou L" },
+};
+
+/**
  * Durée MINIMALE de préparation (R11.4). La table existe DÉJÀ dans la matrice de contraintes,
  * avec sa provenance : on la LIT, on n'en recopie pas une seconde — c'est précisément le
  * défaut que R11.1 corrige. Elle était calculée et jamais appliquée : le moteur acceptait de
@@ -318,6 +347,31 @@ export function validateAnswers(sport: string, raw: Record<string, unknown>, tod
           "« " + String(v) + " » n'est pas une date lisible pour " + spec.label + ". Format attendu : AAAA-MM-JJ (par exemple 2027-06-13).");
       }
       a[key] = d;
+    }
+  }
+
+  // ---- 2bis. éligibilité ÂGE × FORMAT (R15.7-C) ----
+  // Placé APRÈS la validation du schéma : `age` doit avoir été borné (R13.1) avant qu'on
+  // décide quoi que ce soit avec lui. Placé AVANT `minWeeks` : refuser sur la durée de
+  // préparation d'une course à laquelle on ne peut pas s'inscrire serait le mauvais motif.
+  {
+    const age = parseNum(a.age);
+    const fmt = String(a.format || "");
+    const distKm = parseNum(a.race_distance_km);
+    const mini = sport === "trail"
+      ? (distKm != null && distKm >= AGE_MINI_TRAIL_KM ? 18 : null)
+      : ((AGE_MINI_FORMAT[sport] || {})[fmt] ?? null);
+    if (mini != null && age != null && age < mini) {
+      const objet = sport === "trail" ? "un trail de " + distKm + " km" : "le format « " + fmt + " »";
+      const repli = sport === "trail"
+        ? "des distances plus courtes (jusqu'à " + (AGE_MINI_TRAIL_KM - 1) + " km)"
+        : ((REPLI_FORMAT[sport] || {})[fmt] || "un format plus court");
+      throw new EBInputError("format", fmt || String(distKm) + " km", "un format ouvert à " + age + " ans",
+        "À " + age + " ans, l'inscription à " + objet + " est refusée par la quasi-totalité des organisateurs : "
+        + "l'âge minimum y est de " + mini + " ans. Te construire une préparation de plusieurs mois pour une "
+        + "épreuve où tu ne pourras pas prendre le départ serait te mentir. Ce qui est possible tout de suite : "
+        + repli + " — et le plan long redeviendra disponible à tes " + mini + " ans, sans rien perdre de ce que "
+        + "tu auras construit d'ici là. C'est une règle d'inscription, pas un jugement sur ton niveau.");
     }
   }
 

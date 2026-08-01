@@ -2267,6 +2267,35 @@ const FORMATS_BY_SPORT                           = {
 };
 
 /**
+ * R15.7-C — ÉLIGIBILITÉ : ÂGE × FORMAT. Le moteur savait protéger un mineur (R6.3 : charge
+ * ×0,70, zéro VO2max, récupération allongée) mais **rien ne croisait l'âge et le format**.
+ * Mesuré : `age: 15` + `tri/Full` était accepté, 59 semaines, pic 7,7 h — une préparation
+ * d'un an pour une épreuve où l'inscription est refusée.
+ *
+ * L'argument est celui qui existe déjà dans le refus de R11.4 : *« te vendre une préparation
+ * d'Ironman en un mois serait te mentir »*. Préparer douze mois une épreuve à laquelle on ne
+ * pourra pas s'inscrire relève exactement du même mensonge, en plus long.
+ *
+ * Les âges sont ceux des règlements d'inscription les plus répandus (IRONMAN et 70.3 : 18 ans ;
+ * marathons de grandes villes : 18 à 20 ans ; ultras longs : 18 ans). Ils ne sont PAS une
+ * limite physiologique — les formats courts restent ouverts et protégés par R6.3, qui reste
+ * le bon outil pour la charge.
+ */
+const AGE_MINI_FORMAT                                         = {
+  tri: { Full: 18, "70.3": 18 },
+  run: { marathon: 18 },
+  duathlon: { PM: 18 },
+};
+/** Trail : la règle porte sur la DISTANCE, pas sur un format (le trail n'en a pas). */
+const AGE_MINI_TRAIL_KM = 50;
+/** Le format immédiatement accessible, pour ne jamais refuser sans proposer. */
+const REPLI_FORMAT                                         = {
+  tri: { Full: "M ou 70.3 à 18 ans", "70.3": "S ou M" },
+  run: { marathon: "10 km ou semi-marathon" },
+  duathlon: { PM: "S, M ou L" },
+};
+
+/**
  * Durée MINIMALE de préparation (R11.4). La table existe DÉJÀ dans la matrice de contraintes,
  * avec sa provenance : on la LIT, on n'en recopie pas une seconde — c'est précisément le
  * défaut que R11.1 corrige. Elle était calculée et jamais appliquée : le moteur acceptait de
@@ -2495,6 +2524,31 @@ function validateAnswers(sport        , raw                         , todayISO  
           "« " + String(v) + " » n'est pas une date lisible pour " + spec.label + ". Format attendu : AAAA-MM-JJ (par exemple 2027-06-13).");
       }
       a[key] = d;
+    }
+  }
+
+  // ---- 2bis. éligibilité ÂGE × FORMAT (R15.7-C) ----
+  // Placé APRÈS la validation du schéma : `age` doit avoir été borné (R13.1) avant qu'on
+  // décide quoi que ce soit avec lui. Placé AVANT `minWeeks` : refuser sur la durée de
+  // préparation d'une course à laquelle on ne peut pas s'inscrire serait le mauvais motif.
+  {
+    const age = parseNum(a.age);
+    const fmt = String(a.format || "");
+    const distKm = parseNum(a.race_distance_km);
+    const mini = sport === "trail"
+      ? (distKm != null && distKm >= AGE_MINI_TRAIL_KM ? 18 : null)
+      : ((AGE_MINI_FORMAT[sport] || {})[fmt] ?? null);
+    if (mini != null && age != null && age < mini) {
+      const objet = sport === "trail" ? "un trail de " + distKm + " km" : "le format « " + fmt + " »";
+      const repli = sport === "trail"
+        ? "des distances plus courtes (jusqu'à " + (AGE_MINI_TRAIL_KM - 1) + " km)"
+        : ((REPLI_FORMAT[sport] || {})[fmt] || "un format plus court");
+      throw new EBInputError("format", fmt || String(distKm) + " km", "un format ouvert à " + age + " ans",
+        "À " + age + " ans, l'inscription à " + objet + " est refusée par la quasi-totalité des organisateurs : "
+        + "l'âge minimum y est de " + mini + " ans. Te construire une préparation de plusieurs mois pour une "
+        + "épreuve où tu ne pourras pas prendre le départ serait te mentir. Ce qui est possible tout de suite : "
+        + repli + " — et le plan long redeviendra disponible à tes " + mini + " ans, sans rien perdre de ce que "
+        + "tu auras construit d'ici là. C'est une règle d'inscription, pas un jugement sur ton niveau.");
     }
   }
 
@@ -2839,6 +2893,15 @@ class UnknownSportError extends Error {
                                     
                                                      
                                                                         
+                  
+     
+                                                                                             
+                                                                                                
+                                                                                               
+                                  
+     
+                                                       
+                                                                                         
                   
                                                                                   
              
@@ -5808,10 +5871,11 @@ function buildBikeSessions(kit            )              {
 
 /** Prédiction bike — extraction mécanique de la branche correspondante de `predictRace`. */
 function predictBike(kit            )       {
-  const { refs, format, items, advice, D } = kit;
+  const { refs, format, items, advice, D, bikeIF, bikeWhy } = kit;
   const b = BIKE_POWER[format];
   if (refs.ftp > 0 && b) {
-    items.push({ leg: "Vélo", value: Math.round(refs.ftp * b.lo) + "–" + Math.round(refs.ftp * b.hi) + "W", why: b.note + " — cible en puissance NORMALISÉE (moyenne pondérée : les pointes montent au-dessus), le chrono dépend du parcours" });
+    const [blo, bhi] = bikeIF(b.lo, b.hi); // R15.2 — le relief abaisse la cible
+    items.push({ leg: "Vélo", value: Math.round(refs.ftp * blo) + "–" + Math.round(refs.ftp * bhi) + "W", why: b.note + " — cible en puissance NORMALISÉE (moyenne pondérée : les pointes montent au-dessus), le chrono dépend du parcours" + bikeWhy });
     D("PRED-bike", "Méthode vélo", "% FTP par format", "Prédire un chrono sans connaître le parcours serait mentir ; la puissance cible est transférable partout");
   } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir tes puissances cibles de course.");
 }
@@ -6036,14 +6100,17 @@ function buildTriSessions(kit            )              {
 
 /** Prédiction tri — extraction mécanique de la branche correspondante de `predictRace`. */
 function predictTri(kit            )       {
-  const { refs, format, items, advice, D, range, runRange, riegelSec, profWhy } = kit;
+  const { refs, format, items, advice, D, range, runRange, riegelSec, profWhy, bikeIF, bikeWhy } = kit;
   const sw = TRI_SWIM[format], bk = TRI_BIKE[format], rn = TRI_RUN[format];
   if (refs.css > 0 && sw) {
     const t = (sw.dist / 100) * refs.css * sw.factor;
     items.push({ leg: "Natation " + sw.dist + "m", value: range(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" });
   } else advice.push("CSS manquant → pas de projection natation (test 400/200m).");
   if (refs.ftp > 0 && bk) {
-    items.push({ leg: "Vélo", value: Math.round(refs.ftp * bk.lo) + "–" + Math.round(refs.ftp * bk.hi) + "W", why: "puissance normalisée qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" });
+    // R15.2 — la bande passe par `bikeIF` : le relief du parcours l'abaisse, une seule fois,
+    // au même endroit que pour le vélo seul et le duathlon.
+    const [blo, bhi] = bikeIF(bk.lo, bk.hi);
+    items.push({ leg: "Vélo", value: Math.round(refs.ftp * blo) + "–" + Math.round(refs.ftp * bhi) + "W", why: "puissance normalisée qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" + bikeWhy });
   } else advice.push("FTP manquante → pas de puissance cible vélo (test 20min × 0.95).");
   if (refs.thrPace > 0 && rn) {
     const t = riegelSec(refs.thrPace, rn.km) * rn.fatigue;
@@ -6307,7 +6374,7 @@ function buildDuathlonSessions(kit            )              {
 
 /** Prédiction duathlon — TROIS legs séparés, jamais un total (même règle que le tri). */
 function predictDuathlon(kit            )       {
-  const { refs, format, items, advice, D, runRange, riegelSec, profWhy } = kit;
+  const { refs, format, items, advice, D, runRange, riegelSec, profWhy, bikeIF, bikeWhy } = kit;
   const r1 = DUA_RUN1[format], bk = DUA_BIKE[format], pw = DUA_BIKE_POWER[format], r2 = DUA_RUN2[format];
   const pf = DUA_BIKE_PREFATIGUE[format] ?? 0.97;
   if (refs.thrPace > 0 && r1 && r2) {
@@ -6316,8 +6383,9 @@ function predictDuathlon(kit            )       {
   } else advice.push("Renseigne ton allure seuil (test : 30min à fond, allure moyenne) pour obtenir tes deux segments de course.");
   if (refs.ftp > 0 && bk && pw) {
     // §R10.2.4 — le facteur que le tri n'a jamais eu : le R1 dégrade la capacité du vélo.
-    items.push({ leg: "Vélo (" + bk.km + "km)", value: Math.round(refs.ftp * pw.lo * pf) + "–" + Math.round(refs.ftp * pw.hi * pf) + "W",
-      why: "puissance NORMALISÉE cible, réduite de " + Math.round((1 - pf) * 100) + "% : tu arrives sur le vélo avec un R1 dans les jambes — viser la puissance d'un contre-la-montre frais coûterait ton R2" });
+    const [dlo, dhi] = bikeIF(pw.lo, pw.hi); // R15.2 — le relief abaisse la cible, avant la pré-fatigue
+    items.push({ leg: "Vélo (" + bk.km + "km)", value: Math.round(refs.ftp * dlo * pf) + "–" + Math.round(refs.ftp * dhi * pf) + "W",
+      why: "puissance NORMALISÉE cible, réduite de " + Math.round((1 - pf) * 100) + "% : tu arrives sur le vélo avec un R1 dans les jambes — viser la puissance d'un contre-la-montre frais coûterait ton R2" + bikeWhy });
   } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir ta puissance cible vélo.");
   if (items.length) {
     D("PRED-duathlon", "Méthode duathlon", "3 legs séparés (R1 · vélo · R2)", "Un total additionnerait les incertitudes ET les transitions ; chaque segment a sa méthode, et le vélo porte en plus la pré-fatigue du R1");
@@ -7310,7 +7378,12 @@ function reconcileDeclaredVolume(
   /** Contexte des règles de SÉANCE tenues ici : la fenêtre piscine dépend du niveau.
    *  `keepTaperSwim` (R13.3) : le sport déclare que l'affûtage garde une nage par semaine —
    *  les coupes de fréquence l'évitent tant qu'une autre victime existe. */
-  ctx                                                                                                                                            ,
+  ctx                                                                                                                                           
+                                                                                         
+                                                                                        
+                                                                                   
+                                                                             
+                                  ,
 )       {
   // 3a — LE FILET DU DRAPEAU MÉDICAL, en tout premier et en tout dernier ressort. La PORTE est
   // dans les builders (`medicalZone`) ; ce filet rattrape ce qui a été écrit hors d'elle — une
@@ -7662,59 +7735,29 @@ function reconcileDeclaredVolume(
     }
   }
 
-  // R13.6 — LA SEMAINE DE COURSE A UN PLANCHER : 30 % DU PIC LIVRÉ (hors jour J).
-  // La borne HAUTE existait (R3.13 : ≤ 60 %), la basse non — mesuré : 14 % du pic sur le Full,
-  // l'athlète passait la semaine de course quasi à l'arrêt. Bosquet 2007 : l'affûtage optimal
-  // réduit de 40-60 %, il ne coupe pas le moteur — sous ~30 %, les sensations partent avec la
-  // fatigue. On regonfle les corps de séance simples (jamais le déverrouillage de la veille,
-  // jamais la course, jamais les blocs répétés dont la dose est un choix) ; la décroissance
-  // R5.3 juge le résultat juste après, et la fenêtre 30-60 % tient des deux côtés.
-  {
-    const last = plan.weeks[plan.weeks.length - 1];
-    const isRaceWeek = last && (plan.races || []).some((rc) => last.days.some((d) => d.date === rc.date && d.sessions.some((s) => s.race)));
-    if (isRaceWeek) {
-      const peakDeliv = Math.max(0, ...plan.weeks.filter((w) => w.phase.id === "peak").map(weekMinOf));
-      const hors = () => last.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.race ? 0 : s.min || 0), 0), 0);
-      if (peakDeliv > 0 && hors() < peakDeliv * 0.30) {
-        for (let g = 0; g < 3 && hors() < peakDeliv * 0.30; g++) {
-          const f = Math.min(2, (peakDeliv * 0.32) / Math.max(1, hors()));
-          if (f <= 1.02) break;
-          let touched = false;
-          for (const d of last.days)
-            for (const sx of d.sessions) {
-              // Jamais la LONGUE ni le brick : regonfler la sortie longue en semaine de course
-              // contredirait l'affûtage — et sans bornes de bloc, elle repassait au-dessus de
-              // C23 (sortie CAP débutant > 3 h, régression D7 du banc v6).
-              if (sx.race || sx.d === "rs" || !sx.steps || sx.long || sx.brick || /Déverrouillage/.test(sx.name)) continue;
-              for (const st of sx.steps) {
-                if (st.role !== "body" || (st.reps || 1) > 1) continue;
-                // Le complément de volume est de l'ENDURANCE : regonfler un bloc de qualité
-                // pour tenir un plancher fabriquait « Seuil course 1×124 min » en semaine de
-                // course (U-DOSE, banc v7) — une dose que personne ne prescrit, encore moins à
-                // J-5. Les blocs durs gardent leur dose, seuls les blocs faciles portent le
-                // plancher.
-                if (st.zone && IS_QUALITY_ZONE(String(st.zone))) continue;
-                if (st.durationMin) { st.durationMin = Math.round(st.durationMin * f); touched = true; }
-                else if (st.distanceM) { st.distanceM = Math.round((st.distanceM * f) / 25) * 25; touched = true; }
-              }
-              if (render) render(sx);
-            }
-          if (!touched) break;
-        }
-      }
-    }
-  }
-
   // R5.3 — L'AFFÛTAGE DÉCROÎT, POINT. La décroissance était jusqu'ici ÉMERGENTE (courbe + coupe
   // R3.13) : sur un cycle de 10 jours, la dérive des créneaux d'une semaine calendaire à l'autre
   // pouvait rendre la 3ᵉ semaine d'affûtage plus lourde que la 2ᵉ (147→98→123→88 mesuré, banc v6
   // D10). Une règle de sécurité ne doit pas dépendre d'un effet de bord : elle s'énonce et se
   // vérifie ici, en dernier, quelle que soit la passe qui a bougé une durée avant.
   {
+    // R15.7-A — LA DÉCROISSANCE NE DESCEND PAS SOUS LE PLANCHER DE LA SEMAINE DE COURSE.
+    // Deux règles spécifient la même quantité : la décroissance (chaque semaine d'affûtage ≤ la
+    // précédente) et le plancher R13.6-P3 (semaine de course ≥ 30 % du pic). Elles se
+    // contredisent dès que l'affûtage part de bas — et jusqu'ici la décroissance gagnait en
+    // silence, en RETIRANT les séances que le plancher venait de poser quelques lignes plus
+    // haut. Le plancher devient donc une borne BASSE de la décroissance : on décroît jusqu'à
+    // lui, jamais en dessous. Bosquet 2007 situe l'affûtage à −41/−60 % du volume de pic ;
+    // descendre à −73 % n'est plus de l'affûtage, c'est de l'arrêt.
+    const lastW = plan.weeks[plan.weeks.length - 1];
+    const isRaceW = lastW && (plan.races || []).some((rc) => lastW.days.some((d) => d.date === rc.date && d.sessions.some((s) => s.race)));
+    const peakForFloor = Math.max(0, ...plan.weeks.filter((w) => w.phase.id === "peak").map(weekMinOf));
+    const raceFloor = isRaceW && peakForFloor > 0 ? peakForFloor * 0.30 : 0;
     let prev = Infinity;
     for (const wk of plan.weeks) {
       if (wk.phase.id !== "taper") continue;
-      for (let g = 0; g < 6 && weekMinOf(wk) > prev; g++) {
+      const floorHere = raceFloor > 0 ? raceFloor : 0;
+      for (let g = 0; g < 6 && weekMinOf(wk) > prev && weekMinOf(wk) > floorHere; g++) {
         const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
         // Une seule séance restante : on ne peut plus RETIRER, il faut RÉDUIRE. Sans ce repli,
         // la décroissance de l'affûtage s'arrêtait net dès qu'une semaine tombait à une séance
@@ -7729,7 +7772,16 @@ function reconcileDeclaredVolume(
           }
           break;
         }
-        let cand = active.filter((d) => !d.sessions.some((s) => s.long || s.brick));
+        // R15.7-B — LE DÉVERROUILLAGE DE LA VEILLE N'EST JAMAIS UNE VICTIME.
+        // C'est la séance la plus COURTE de la semaine de course (17 min) : la décroissance,
+        // qui retire « la plus petite », la choisissait donc systématiquement. Mesuré : 12
+        // configurations sur 648 arrivaient au départ après TROIS à CINQ jours sans rien.
+        // Exactement le mécanisme de R13.4 (la course à `min: 0` était devenue la victime
+        // idéale) — une séance courte par CONCEPTION doit être protégée comme telle, sinon
+        // toute règle « retirer la plus petite » la supprime. R13.4-C2 plafonnait la veille
+        // à 25 min sans jamais exiger qu'elle existe : un plafond sans plancher.
+        let cand = active.filter((d) => !d.sessions.some((s) => s.long || s.brick || /Déverrouillage|avant course/i.test(s.name)));
+        if (!cand.length) cand = active.filter((d) => !d.sessions.some((s) => s.long || s.brick));
         // R13 — même orientation que partout : ne pas orpheliner une discipline du sport.
         // Et si TOUTE victime en orphelinerait une (2 jours actifs, 2 disciplines), on ne
         // retire plus : on RÉDUIT — la décroissance est servie, la spécificité aussi.
@@ -7763,6 +7815,123 @@ function reconcileDeclaredVolume(
       prev = weekMinOf(wk);
     }
   }
+  // R15.7-A — LE PLANCHER PASSE APRÈS LA DÉCROISSANCE, et c'est tout le correctif.
+  // Il vivait AVANT : il posait ses séances, puis la décroissance les retirait quelques
+  // lignes plus bas — le plancher était donc écrit, exécuté, et sans effet. Dixième fois
+  // que ce dépôt paie la leçon du point de convergence. La décroissance, elle, ne descend
+  // plus sous ce plancher (borne basse ajoutée ci-dessus) : les deux règles cessent de se
+  // contredire au lieu de se départager en silence.
+  // R13.6 — LA SEMAINE DE COURSE A UN PLANCHER : 30 % DU PIC LIVRÉ (hors jour J).
+  // La borne HAUTE existait (R3.13 : ≤ 60 %), la basse non — mesuré : 14 % du pic sur le Full,
+  // l'athlète passait la semaine de course quasi à l'arrêt. Bosquet 2007 : l'affûtage optimal
+  // réduit de 40-60 %, il ne coupe pas le moteur — sous ~30 %, les sensations partent avec la
+  // fatigue. On regonfle les corps de séance simples (jamais le déverrouillage de la veille,
+  // jamais la course, jamais les blocs répétés dont la dose est un choix) ; la décroissance
+  // R5.3 juge le résultat juste après, et la fenêtre 30-60 % tient des deux côtés.
+  {
+    const last = plan.weeks[plan.weeks.length - 1];
+    const isRaceWeek = last && (plan.races || []).some((rc) => last.days.some((d) => d.date === rc.date && d.sessions.some((s) => s.race)));
+    if (isRaceWeek) {
+      const peakDeliv = Math.max(0, ...plan.weeks.filter((w) => w.phase.id === "peak").map(weekMinOf));
+      const hors = () => last.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.race ? 0 : s.min || 0), 0), 0);
+      if (peakDeliv > 0 && hors() < peakDeliv * 0.30) {
+        // R15.7-A — la convergence était coupée à 3 tours : les caps de C13/C13e bornent chaque
+        // pas, donc trois multiplications ne suffisaient pas à atteindre le plancher (mesuré :
+        // 104 min pour une cible de 115). La boucle s'arrête sur l'absence de progrès
+        // (`touched`), pas sur un compteur arbitraire ; la borne haute reste là contre une
+        // pathologie, pas comme critère d'arrêt.
+        for (let g = 0; g < 12 && hors() < peakDeliv * 0.30; g++) {
+          const f = Math.min(2, (peakDeliv * 0.32) / Math.max(1, hors()));
+          if (f <= 1.02) break;
+          let touched = false;
+          for (const d of last.days)
+            for (const sx of d.sessions) {
+              // Jamais la LONGUE ni le brick : regonfler la sortie longue en semaine de course
+              // contredirait l'affûtage — et sans bornes de bloc, elle repassait au-dessus de
+              // C23 (sortie CAP débutant > 3 h, régression D7 du banc v6).
+              if (sx.race || sx.d === "rs" || !sx.steps || sx.long || sx.brick || /Déverrouillage/.test(sx.name)) continue;
+              const corps = sx.steps.filter((x) => x.role === "body")
+                .reduce((t, x) => t + (x.durationMin ? (x.reps || 1) * x.durationMin : 0), 0);
+              // C13e s'exprime aussi en MÈTRES en bassin : sans cette borne, l'échauffement
+              // de nage grossissait sans limite (mesuré : « Rappel nage course » à 64 min en
+              // semaine de course — un rappel qui dure plus longtemps que la séance qu'il
+              // rappelle n'est plus un rappel).
+              const corpsM = sx.steps.filter((x) => x.role === "body")
+                .reduce((t, x) => t + (x.distanceM ? (x.reps || 1) * x.distanceM : 0), 0);
+              for (const st of sx.steps) {
+                // R15.7-A — LES PARTIES FACILES DES RAPPELS PORTENT LE PLANCHER.
+                // Mesuré : 291/648 configurations sous 30 % du pic, parce que la semaine de
+                // course ne contient QUE des rappels (race-pace, nage CSS, allure course) —
+                // tous porteurs d'une zone de qualité, donc tous sautés par la règle U-DOSE.
+                // Aucun bloc n'était éligible, `touched` restait faux, et le plancher déclaré
+                // en R13.6-P3 n'était jamais atteint : un invariant énoncé mais jamais vérifié
+                // sur la matrice. La dose de qualité reste intouchable (c'est elle qui réveille
+                // sans fatiguer) ; ce qui s'allonge, c'est l'échauffement et le retour au calme —
+                // exactement ce qu'un entraîneur rallonge dans une semaine de course trop creuse.
+                if (st.role === "warmup" || st.role === "cooldown") {
+                  // C13e reste au-dessus : l'échauffement ne dépasse jamais le corps ; C13 borne
+                  // à 25 min. Le retour au calme suit la même borne haute.
+                  const capW = st.role === "warmup" ? Math.min(25, corps || 25) : 25;
+                  if (st.durationMin) {
+                    const v = Math.min(capW, Math.round(st.durationMin * f));
+                    if (v > st.durationMin) { st.durationMin = v; touched = true; }
+                  } else if (st.distanceM) {
+                    const capM = st.role === "warmup" ? (corpsM || st.distanceM) : Math.max(corpsM * 0.5, st.distanceM);
+                    const v = Math.min(capM, Math.round((st.distanceM * f) / 25) * 25);
+                    if (v > st.distanceM) { st.distanceM = Math.round(v / 25) * 25; touched = true; }
+                  }
+                  continue;
+                }
+                if (st.role !== "body" || (st.reps || 1) > 1) continue;
+                // Le complément de volume est de l'ENDURANCE : regonfler un bloc de qualité
+                // pour tenir un plancher fabriquait « Seuil course 1×124 min » en semaine de
+                // course (U-DOSE, banc v7) — une dose que personne ne prescrit, encore moins à
+                // J-5. Les blocs durs gardent leur dose, seuls les blocs faciles portent le
+                // plancher.
+                if (st.zone && IS_QUALITY_ZONE(String(st.zone))) continue;
+                if (st.durationMin) { st.durationMin = Math.round(st.durationMin * f); touched = true; }
+                else if (st.distanceM) { st.distanceM = Math.round((st.distanceM * f) / 25) * 25; touched = true; }
+              }
+              if (render) render(sx);
+            }
+          if (!touched) break;
+        }
+      }
+      // R15.7-A — SI ALLONGER NE SUFFIT PAS, UN JOUR OFF REDEVIENT DE L'ENDURANCE ALLÉGÉE.
+      // C'est la promesse écrite dans R13.6-P3 (« les jours OFF redeviennent de l'endurance
+      // allégée dans la limite du budget déclaré ») — elle n'existait qu'à l'INSERTION de la
+      // course, donc AVANT la décroissance d'affûtage et les coupes de budget qui vident la
+      // semaine ensuite. Une garantie vérifiée au milieu du pipeline ne vérifie que
+      // l'avant-dernier état : neuvième fois que ce dépôt paie cette leçon.
+      const budget = ctx?.sessionsMaxDeclared || 0;
+      // La COURSE ne consomme pas un créneau d'entraînement : depuis R13.4 elle vaut `min: 0`
+      // et sort de la charge. La compter dans le budget saturait la semaine à elle seule et
+      // interdisait le seul rattrapage disponible — la même confusion « la course est une
+      // séance » qui avait déjà coûté l'Ironman supprimé par une coupe d'affûtage.
+      const nSess = () => last.days.reduce((t, d) => t + d.sessions.filter((s) => s.d !== "rs" && !s.race).length, 0);
+      const raceIdx = last.days.findIndex((d) => d.sessions.some((s) => s.race));
+      const mainD = ctx?.mainDiscipline || "rn";
+      const dz = mainD === "sw" ? "sw.easy" : mainD === "bk" ? "bk.z2" : "rn.easy";
+      for (const d of last.days) {
+        if (peakDeliv <= 0 || hors() >= peakDeliv * 0.30) break;
+        if (budget > 0 && nSess() + 1 > budget) break;      // le budget déclaré tient (U-SESSBUDGET)
+        const i = last.days.indexOf(d);
+        // `forced` = jour d'indisponibilité DÉCLARÉ par l'athlète (U-OFF, banc v7). Un plancher
+        // de volume ne fabrique jamais une séance un jour où la personne a dit qu'elle ne
+        // pouvait pas : la contrainte de vie passe avant la contrainte d'entraînement.
+        if ((d          ).forced) continue;
+        if (raceIdx >= 0 && i >= raceIdx - 1) continue;     // ni la veille, ni le jour J
+        if (d.sessions.some((s) => s.d !== "rs")) continue; // seulement les jours vides
+        const manque = peakDeliv * 0.32 - hors();
+        const sx            = { d: mainD        , name: "Endurance allégée (semaine de course)", det: "",
+          note: "Semaine de course : on entretient le moteur sans le fatiguer. Allure strictement facile, arrêt net à la durée — la fraîcheur du jour J se construit aussi en continuant de bouger.",
+          steps: [{ role: "body", durationMin: Math.max(25, Math.min(60, Math.round(manque))), zone: dz }          ] };
+        d.charge = "facile"; d.slot = "facileR"; d.sessions = [sx];
+        if (render) render(sx);
+      }
+    }
+  }
+
   let forcedWeeks = 0;
   for (const wk of plan.weeks) {
     const lim = wk.phase.id === "taper" ? 1.25 : 1.4;
@@ -9418,7 +9587,7 @@ function generatePlan(profile                , opts                             
   }
 
   const plan         = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport          , "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport          , "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport          ).mainDiscipline, disciplines: sportModule(a.sport          ).disciplines });
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport          , "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport          , "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport          ).mainDiscipline, disciplines: sportModule(a.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined });
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation
@@ -9753,7 +9922,7 @@ function generateAudited(profile                , auditOpts                     
   // R5.3 — la courbe ANNONCÉE se réconcilie avec le prescrit une fois les réparations passées :
   // `reduceDay` et `applyTargetedRepairs` changent encore des durées, et un écart figé avant
   // elles ment à l'athlète dès la première réparation (même leçon que R5.1).
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport          , "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport          ).mainDiscipline, disciplines: sportModule(reasoned.profile.sport          ).disciplines });
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport          , "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport          ).mainDiscipline, disciplines: sportModule(reasoned.profile.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.
@@ -10486,6 +10655,30 @@ function reliefOf(value         )                      {
 }
 
 /**
+ * R15.2 — LE RELIEF DESCEND LA CIBLE DE PUISSANCE (O-2 du registre, fermé).
+ *
+ * Mesuré avant correction : un 70.3 à plat et un 70.3 de montagne recevaient **175–191 W dans
+ * les deux cas** — `TRI_BIKE` ne connaissait que le format. Le relief était traité pour la
+ * course à pied depuis R6, jamais pour le vélo.
+ *
+ * Le mécanisme : sur parcours accidenté, le coût métabolique suit la puissance NORMALISÉE, et
+ * NP s'écarte d'autant plus de la moyenne que le terrain est irrégulier. Viser la même bande
+ * qu'à plat revient donc à rouler plus dur qu'on ne croit — et le prix se paie à pied. On
+ * descend la cible, on nomme l'indice de variabilité, et on ne prédit toujours PAS de chrono
+ * vélo (il dépend du parcours, on ne l'invente pas).
+ *
+ * Décalages d'IF (heuristique de praticiens, assumée comme telle) :
+ *   plat 0 · vallonné −0,01 · montagneux −0,025
+ * Même famille de risque que P6 (le pacing projeté) : c'est une règle de sécurité, pas un
+ * affichage — partir à la puissance d'un parcours plat sur 2 500 m de D+ ne se rattrape pas.
+ */
+const RELIEF_BIKE_IF                         = { plat: 0, vallonne: -0.01, montagne: -0.025 };
+function bikeIFShift(courseProfile         )         {
+  const k = String(courseProfile ?? "").trim();
+  return RELIEF_BIKE_IF[RELIEF_ALIAS[k] || k] ?? 0;
+}
+
+/**
  * R14.3-a — LE CHEMIN UNIQUE. `course_profile` (le parcours VISÉ, réponse la plus
  * spécifique, posée au Profil) prime ; à défaut on retombe sur `terrain` (le terrain
  * d'entraînement, qui est aussi la question « Le parcours » en vélo et duathlon).
@@ -10628,6 +10821,19 @@ function predictRace(
   const prof = reliefOf(opts.courseProfile);
   if (prof && prof.hi > 1) D("PRED-parcours", "Profil du parcours", prof.label, "Le relief ralentit et augmente l'incertitude : fourchette ×" + prof.lo + "–" + prof.hi + " sur les temps de course à pied");
   const profWhy = prof && prof.hi > 1 ? " · " + prof.label + " (+" + Math.round((prof.lo - 1) * 100) + "–" + Math.round((prof.hi - 1) * 100) + "%)" : "";
+  // R15.2 — décalage d'IF vélo et sa justification, calculés UNE fois pour les trois sports
+  // qui prescrivent des watts (tri, vélo, duathlon).
+  const ifShift = bikeIFShift(opts.courseProfile);
+  const bikeWhy = ifShift < 0
+    ? " · cible ABAISSÉE de " + Math.round(-ifShift * 100) + " points pour le relief : sur un parcours "
+      + "accidenté le coût suit la puissance NORMALISÉE et non la moyenne, et l'indice de variabilité "
+      + "(IV = NP ÷ moyenne) monte vite. Rouler la bande du plat ici revient à rouler plus dur qu'on ne "
+      + "croit — ça se paie à pied, pas sur le vélo"
+    : "";
+  if (ifShift < 0)
+    D("R15.2", "Relief du parcours vélo", (prof ? prof.label : "accidenté") + " → IF " + (ifShift * 100).toFixed(1) + " pt",
+      "Le chrono vélo n'est pas prédit (il dépend du parcours), mais la CIBLE D'INTENSITÉ, elle, doit "
+      + "descendre : à puissance moyenne égale, un parcours vallonné coûte plus cher qu'un parcours plat.");
   // R14 P5 — l'exposant de Riegel suit le volume, et SEULEMENT pour une course sèche :
   // les legs course du tri/duathlon portent déjà leurs facteurs de fatigue calibrés à 1,06.
   const expo = sport === "run" ? riegelExponent(opts.runHoursPerWeek) : 1.06;
@@ -10663,6 +10869,11 @@ function predictRace(
       return fmtT(lo) + "–" + fmtT(hi);
     };
     const riegelSec = (paceSecPerKm        , distKm        ) => riegelSecWith(expo, paceSecPerKm, distKm);
+    // R15.2 — la bande d'IF vélo passe par le MÊME résolveur de parcours que la course
+    // (`courseProfileOf` en amont) : une seule clé, donc pas de « montagne vs montagneux » 2.0.
+    const bikeIF = (lo        , hi        )                   => [
+      Math.max(0.3, lo + ifShift), Math.max(0.32, hi + ifShift),
+    ];
 
   // ---- R7 TRAIL : Riegel est INAPPLICABLE (un km de trail n'est pas un km de route).
   // Modèle à deux composantes : temps à plat + temps vertical (VAM), pénalisés par la
@@ -10695,7 +10906,7 @@ function predictRace(
   // sortir un chiffre inventé — la fourchette honnête est la seule sortie acceptable.
   const mod = sportModule(sport);
   if (mod.predict) {
-    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, riegelSec, profWhy, swimrun: opts.swimrun });
+    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, riegelSec, profWhy, bikeIF, bikeWhy, swimrun: opts.swimrun });
   } else {
     advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }

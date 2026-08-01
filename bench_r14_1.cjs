@@ -130,7 +130,11 @@ check("R14.1-I2", "levier demandé : sensibilité affichée, aucune injonction, 
 });
 check("R14.1-I3", "gardes dures : IMC cible < 18,5, mineur, drapeau médical → levier neutralisé", () => {
   const bas = proj(ans({ weight_lever: "oui", weight_target: "58", height: "181" }));   // IMC 17,7
-  const min = proj(ans({ weight_lever: "oui", weight_target: "79", age: "16" }));
+  // R15.7-C — à 16 ans le format 70.3 est désormais REFUSÉ à l'inscription (le moteur le dit
+  // avant de générer). Ce cas teste la garde du LEVIER POIDS chez un mineur : il doit donc
+  // porter un format ouvert aux mineurs, sinon il mesure le refus d'éligibilité et non la garde.
+  // ID et assertion inchangés ; `off()` accepte déjà « pas de projection » comme neutralisation.
+  const min = proj(ans({ weight_lever: "oui", weight_target: "79", age: "16", format: "M", race_date: iso(20 * 7) }));
   const med = proj(ans({ weight_lever: "oui", weight_target: "79", med_pain: "oui" }));
   const off = (x) => x === null || (x.weightLever ?? null) === null; // pas de projection = pas de levier
   return { ok: off(bas) && off(min) && off(med), info: `IMC17,7:${off(bas)} mineur:${off(min)} drapeau médical:${off(med)}` };
@@ -142,7 +146,11 @@ check("R14.1-NR1", "la prédiction FORME ACTUELLE est inchangée par R14.1", () 
   const sw = leg(now, /Natation/i), bk = leg(now, /Vélo/i), rn = leg(now, /CAP|course/i);
   if (!sw || !bk || !rn) return { ok: false, info: "legs manquants" };
   const w = watts(bk.value);
-  return { ok: w && w[0] === 175 && w[1] === 191 && /^4\d'\d\d/.test(sw.value), info: `${sw.value} · ${bk.value} · ${rn.value}` };
+  // R15.2 (01/08/2026) — 175–191 W → 173–189 W : le profil de BASE porte `terrain: "vallonne"`,
+  // et le relief abaisse désormais la cible d'IF de 0,01. Ce n'est PAS une régression de R14.1,
+  // c'est le correctif O-2 du registre : à plat la bande reste 175–191 (vérifié par R15-NR).
+  // La non-régression garde son sens — la forme ACTUELLE ne bouge pas pour une autre raison.
+  return { ok: w && w[0] === 173 && w[1] === 189 && /^4\d'\d\d/.test(sw.value), info: `${sw.value} · ${bk.value} · ${rn.value}` };
 });
 check("R14.1-NR2", "P8 tient toujours : sans référence mesurée, rien n'est projeté", () => {
   const pj = proj(ans({ ftp_known: "non", pace_known: "non", css_known: "non", ftp: "", pace: "", css: "" }));

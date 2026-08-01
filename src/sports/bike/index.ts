@@ -36,10 +36,11 @@ export function buildBikeSessions(kit: SessionKit): V1Session[] {
 
 /** Prédiction bike — extraction mécanique de la branche correspondante de `predictRace`. */
 export function predictBike(kit: PredictKit): void {
-  const { refs, format, items, advice, D } = kit;
+  const { refs, format, items, advice, D, bikeIF, bikeWhy } = kit;
   const b = BIKE_POWER[format];
   if (refs.ftp > 0 && b) {
-    items.push({ leg: "Vélo", value: Math.round(refs.ftp * b.lo) + "–" + Math.round(refs.ftp * b.hi) + "W", why: b.note + " — cible en puissance NORMALISÉE (moyenne pondérée : les pointes montent au-dessus), le chrono dépend du parcours" });
+    const [blo, bhi] = bikeIF(b.lo, b.hi); // R15.2 — le relief abaisse la cible
+    items.push({ leg: "Vélo", value: Math.round(refs.ftp * blo) + "–" + Math.round(refs.ftp * bhi) + "W", why: b.note + " — cible en puissance NORMALISÉE (moyenne pondérée : les pointes montent au-dessus), le chrono dépend du parcours" + bikeWhy });
     D("PRED-bike", "Méthode vélo", "% FTP par format", "Prédire un chrono sans connaître le parcours serait mentir ; la puissance cible est transférable partout");
   } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir tes puissances cibles de course.");
 }

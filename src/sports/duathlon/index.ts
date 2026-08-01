@@ -120,7 +120,7 @@ export function buildDuathlonSessions(kit: SessionKit): V1Session[] {
 
 /** Prédiction duathlon — TROIS legs séparés, jamais un total (même règle que le tri). */
 export function predictDuathlon(kit: PredictKit): void {
-  const { refs, format, items, advice, D, runRange, riegelSec, profWhy } = kit;
+  const { refs, format, items, advice, D, runRange, riegelSec, profWhy, bikeIF, bikeWhy } = kit;
   const r1 = DUA_RUN1[format], bk = DUA_BIKE[format], pw = DUA_BIKE_POWER[format], r2 = DUA_RUN2[format];
   const pf = DUA_BIKE_PREFATIGUE[format] ?? 0.97;
   if (refs.thrPace > 0 && r1 && r2) {
@@ -129,8 +129,9 @@ export function predictDuathlon(kit: PredictKit): void {
   } else advice.push("Renseigne ton allure seuil (test : 30min à fond, allure moyenne) pour obtenir tes deux segments de course.");
   if (refs.ftp > 0 && bk && pw) {
     // §R10.2.4 — le facteur que le tri n'a jamais eu : le R1 dégrade la capacité du vélo.
-    items.push({ leg: "Vélo (" + bk.km + "km)", value: Math.round(refs.ftp * pw.lo * pf) + "–" + Math.round(refs.ftp * pw.hi * pf) + "W",
-      why: "puissance NORMALISÉE cible, réduite de " + Math.round((1 - pf) * 100) + "% : tu arrives sur le vélo avec un R1 dans les jambes — viser la puissance d'un contre-la-montre frais coûterait ton R2" });
+    const [dlo, dhi] = bikeIF(pw.lo, pw.hi); // R15.2 — le relief abaisse la cible, avant la pré-fatigue
+    items.push({ leg: "Vélo (" + bk.km + "km)", value: Math.round(refs.ftp * dlo * pf) + "–" + Math.round(refs.ftp * dhi * pf) + "W",
+      why: "puissance NORMALISÉE cible, réduite de " + Math.round((1 - pf) * 100) + "% : tu arrives sur le vélo avec un R1 dans les jambes — viser la puissance d'un contre-la-montre frais coûterait ton R2" + bikeWhy });
   } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir ta puissance cible vélo.");
   if (items.length) {
     D("PRED-duathlon", "Méthode duathlon", "3 legs séparés (R1 · vélo · R2)", "Un total additionnerait les incertitudes ET les transitions ; chaque segment a sa méthode, et le vélo porte en plus la pré-fatigue du R1");

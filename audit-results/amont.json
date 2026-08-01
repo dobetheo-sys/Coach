@@ -3460,9 +3460,9 @@
   "sport": "tri",
   "key": "age",
   "mut": "virgule FR",
-  "verdict": "valeur valide différente",
-  "delta": "pic 11.7→8.3h · sem 46→46 · séances 231→232",
-  "err": ""
+  "verdict": "ÉCHEC EXPLICITE",
+  "delta": "",
+  "err": "ENTREE_INVALIDE format = \"Full\" (attendu : un format ouvert à 12.5 ans"
  },
  {
   "cat": "T2 nombre",
@@ -4181,7 +4181,7 @@
   "key": "—",
   "mut": "vol_recent > vol_max",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 11.7→4h · sem 46→46 · séances 231→138",
+  "delta": "pic 11.7→4h · sem 46→46 · séances 231→139",
   "err": ""
  },
  {
@@ -4190,7 +4190,7 @@
   "key": "—",
   "mut": "3 séances / 20 h",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 11.7→8.9h · sem 46→46 · séances 231→138",
+  "delta": "pic 11.7→8.9h · sem 46→46 · séances 231→139",
   "err": ""
  },
  {
@@ -4199,7 +4199,7 @@
   "key": "—",
   "mut": "12 séances / 4 h",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 11.7→4h · sem 46→46 · séances 231→138",
+  "delta": "pic 11.7→4h · sem 46→46 · séances 231→139",
   "err": ""
  },
  {

@@ -137,6 +137,15 @@ export interface PredictKit {
   riegelSec: (thrPace: number, km: number) => number;
   /** Mention « + vallonné (+3–6%) » à coller aux fourchettes course. */
   profWhy: string;
+  /**
+   * R15.2 — LE RELIEF ENTRE DANS LA CIBLE D'INTENSITÉ VÉLO. Les trois sports qui prescrivent
+   * une puissance (tri, vélo, duathlon) passent leur bande d'IF par ici : sans ce point unique,
+   * un quatrième producteur de watts divergerait le jour où on l'ajoute — et cette fois sur le
+   * PACING, pas sur un affichage.
+   */
+  bikeIF: (lo: number, hi: number) => [number, number];
+  /** Mention de pacing à coller au « pourquoi » du leg vélo (vide sur parcours plat). */
+  bikeWhy: string;
   /** Objectif SWIMRUN décodé (trois postes) — présent seulement pour ce sport. */
   swimrun?: {
     category: string; swimTotalM: number; runTotalKm: number; segments: number; transitions: number;
