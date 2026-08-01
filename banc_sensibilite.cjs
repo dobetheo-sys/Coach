@@ -253,6 +253,41 @@ for (const [sp, lbl, mut] of PAIRES) {
   if (!d.length) pairesKo.push(sp + "/" + lbl);
 }
 
+/* ---- R20.2 — LE LEVIER PROPOSÉ DOIT EXISTER -------------------------------------------- */
+// Quand `vol_max` n'est pas atteint et que c'est la STRUCTURE de la semaine qui borne, le
+// moteur propose les doubles séances — mais SEULEMENT dans les sports où le garde
+// `doublesAddVolume` est déclaré. Une proposition qui ne changerait rien serait pire qu'un
+// silence : elle enverrait l'athlète modifier une réponse pour rien, et il n'aurait aucun
+// moyen de savoir que le moteur s'est trompé.
+//
+// Le garde est donc MESURÉ, dans les deux sens : déclaré ⟺ le pic monte réellement. C'est la
+// leçon R12 appliquée à un drapeau de module — une déclaration que rien ne vérifie finit par
+// décrire le code d'hier. Profil calibré pour que le nombre de séances soit le limiteur :
+// plafonds larges (vol_max haut, historique ancien, disponibilité quotidienne).
+const SEUIL_LEVIER = 1.05; // +5 % de pic : en dessous, ce n'est pas un levier, c'est du bruit
+const levierKo = [];
+for (const sp of SPORTS_ALL) {
+  const ref = { ...COMMUN, ...REF_SPORT[sp], vol_max: "14", sessions_max: "7", history: "ancien",
+    level: "avance", dispo: "quotidienne" };
+  let sans, avec;
+  try {
+    sans = E.buildPlan(sp, { ...ref, doubles: "non" }).volPeak;
+    avec = E.buildPlan(sp, { ...ref, doubles: "oui" }).volPeak;
+  } catch (e) { levierKo.push(sp + " : profil REFUSÉ — " + (e.human || e.message).slice(0, 60)); continue; }
+  const monte = sans > 0 && avec / sans >= SEUIL_LEVIER;
+  const declare = !!(E.sports?.[sp]?.guards || {}).doublesAddVolume;
+  const ok = monte === declare;
+  console.log("  levier doubles " + sp.padEnd(10) + (declare ? "déclaré" : "non déclaré").padEnd(12)
+    + "· pic " + sans.toFixed(1) + "h → " + avec.toFixed(1) + "h  " + (ok ? "✔" : "✖ la déclaration ne dit pas la mesure"));
+  if (!ok) levierKo.push(sp + " : " + (declare ? "déclaré mais le pic ne monte pas" : "non déclaré alors que le pic monte de "
+    + Math.round((avec / sans - 1) * 100) + " %"));
+}
+
+if(levierKo.length){
+  console.error("\n✖ garde `doublesAddVolume` : " + levierKo.join(" · "));
+  console.error("Le moteur ne doit JAMAIS proposer un levier qui ne bouge rien (R20.2). Corriger la déclaration du module, ou le module.");
+  process.exit(1);
+}
 if(inertes.length||inertesDerives.length||pairesKo.length){
   if(pairesKo.length) console.error("\n\u2716 paire(s) conditionnelle(s) INERTE(S) : "+pairesKo.join(", "));
   if(inertes.length) console.error("\n\u2716 clé(s) INERTE(S) dans la liste curée : "+inertes.join(", "));

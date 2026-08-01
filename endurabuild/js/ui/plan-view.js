@@ -292,8 +292,17 @@ function whyPlanCardHTML(plan){
   const li=[];
   const add=(txt,src)=>{if(txt)li.push('<li>'+txt+(src?' <span style="color:var(--muted)">('+src+')</span>':"")+"</li>");};
   if(D.duree)add("Ta préparation fait <b>"+D.duree.val+"</b>, découpée en phases : on construit d'abord, on aiguise ensuite, on arrive frais.","durée");
-  if(D.capacite&&D.utile)add("Le pic monte à ce que permet le plus petit des deux : ton volume déclaré (<b>"+D.capacite.val+"</b>) et ce que ton objectif demande vraiment (<b>"+D.utile.val+"</b>). Promettre plus serait une promesse que le plan ne tient pas.","plafonds");
-  else if(D.capacite)add("Le pic est plafonné à ton volume déclaré : <b>"+D.capacite.val+"</b>.","plafond");
+  // R20.2 — `capacite` est le plafond de l'HISTORIQUE, pas le volume déclaré par l'athlète.
+  // La phrase disait « ton volume déclaré » depuis l'origine : sur un profil où les deux
+  // diffèrent (le cas courant), elle renvoyait l'athlète corriger un curseur qui n'était pas
+  // celui qui bornait. C'est le même défaut que R20.2 traite dans le moteur, à l'affichage.
+  if(D.capacite&&D.utile)add("Le pic monte à ce que permet le plus petit des deux : ce que ton historique encaisse (<b>"+D.capacite.val+"</b>) et ce que ton objectif demande vraiment (<b>"+D.utile.val+"</b>). Promettre plus serait une promesse que le plan ne tient pas.","plafonds");
+  else if(D.capacite)add("Le pic est plafonné à ce que ton historique encaisse : <b>"+D.capacite.val+"</b>.","plafond");
+  // R20.2 — quand le volume max demandé n'est pas atteint, l'athlète l'apprend ICI, en tête,
+  // pas au fond d'un volet dépliable : c'est une réponse qu'il a lui-même saisie et dont il
+  // attend un effet. La phrase nomme le maillon qui a le plus retiré et, quand il en existe
+  // un, le levier qui le débloquerait.
+  if(D["R20.2"])add("<b>"+D["R20.2"].val+"</b>. "+D["R20.2"].why,"volume max");
   if(D.budget)add("<b>"+D.budget.val+"</b> séances par semaine"+(D["R10-depart"]?"" : "")+(D.recup?", avec une semaine allégée "+D.recup.val:"")+".","budget");
   if(D["R10-depart"])add("Le départ est calé sur ton volume RÉEL des derniers mois, pas sur ta cible : <b>"+D["R10-depart"].val+"</b>. C'est la marche la plus souvent trop haute.","reprise");
   if(D.impact)add("Pas plus de <b>"+D.impact.val+"</b> jours d'appui : c'est l'impact qui blesse, pas le volume.","impact");

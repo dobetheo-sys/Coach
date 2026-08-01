@@ -1690,3 +1690,81 @@ Dette déclarée : **`O-13`**, la rampe R10 ne mord jamais en natation. Le plafo
 de PLAN, or la nage est déjà convertie en heures d'EAU (`SWIM_TIME_FACTOR`) : les deux nombres
 ne mesurent pas la même chose. Corriger demande de décider ce que `vol_recent` veut dire pour un
 nageur — une question de produit avant d'être une ligne de code.
+
+## R20.2 — le volume max dit ce qui le bloque, et ce qui le débloquerait
+
+**Le constat de test** : « volume max à 12 h au lieu de 14 ». La mesure (O-10) allait plus loin
+que le constat — sur un 70.3, `vol_max` ne changeait plus RIEN au-delà de 10 h : 10, 12, 14,
+16 h donnaient le même plan à 0,1 h près. Une question du questionnaire devenait inerte au-delà
+d'un seuil que rien n'annonçait, et le moteur livrait un pic bas sans un mot.
+
+**Ce que le lot NE fait PAS** : forcer le volume vers le plafond demandé. Ce serait gonfler des
+séances au-delà de leurs bornes, c'est-à-dire défaire exactement ce que la sonde de capacité
+V2.1 protège. Aucun chiffre du plan ne bouge — le golden master le confirme : sur 900 profils,
+515 changent, et **le seul champ qui diffère est le nombre de décisions**. Pas une séance, pas
+une minute.
+
+### La chaîne de réduction, maillon par maillon
+
+`ReasonedPlan.volLimits` transmet désormais les MAILLONS, pas seulement leur produit :
+`declared`, `caps` (historique), `util` (volume utile du format), `marg`, `recup` (1B),
+`swimTime`, `med`, plus `sessionsMax`/`budget`. Le générateur reconstruit la chaîne, mesure ce
+que chaque maillon a retiré **en heures**, et nomme le plus gros. Le reste — l'écart entre le
+dernier plafond et le pic réellement livré — est attribué à la STRUCTURE de la semaine
+(nombre de séances × durée maximale de chacune), qui est le cas d'O-10.
+
+**Ma première écriture testait les plafonds dans l'ordre du calcul et nommait le premier qui
+mord.** Sur la natation, `caps` (10 h) mord avant `util` sur 14 h demandées : le moteur
+annonçait « c'est ton historique qui borne » pour un pic livré à **3,3 h** — faux de 7 h. Le
+vrai maillon y est la conversion en temps DANS l'eau (`SWIM_TIME_FACTOR`). Une explication
+approximative sur un chiffre que l'athlète a lui-même saisi est pire qu'un silence : elle
+l'envoie corriger la mauvaise réponse.
+
+Ce que ça donne, à `vol_max: 14 h`, profil `ancien`/`avancé` :
+
+| sport | pic livré | maillon nommé |
+|---|---|---|
+| course | 11,8 h | ton historique (−2 h) |
+| natation | 3,3 h | le temps réellement passé dans l'eau (−6 h) |
+| triathlon | 8,6 h | le nombre de séances (−5,4 h) → **levier proposé** |
+| duathlon | 9,4 h | ton historique (−3 h) |
+| vélo · trail · swimrun | ≥ 12,9 h | rien à expliquer (seuil : 85 % du demandé) |
+
+### Le levier n'est proposé que là où il existe
+
+Sur le 70.3 de la mesure, `doubles: "oui"` fait passer le pic de **8,7 h à 13,5 h**. La question
+n'était donc pas inerte : son levier était ailleurs, et personne ne le disait. Mais ce levier
+n'est réel que dans les sports dont les builders posent une seconde séance sous `dbl` — le
+triathlon, aujourd'hui seul. Proposer ailleurs « fais deux séances certains jours » enverrait
+l'athlète modifier une réponse pour rien, sans aucun moyen de savoir que le moteur s'est trompé.
+
+D'où le garde de module `doublesAddVolume`, **mesuré dans les deux sens** à chaque
+`npm run audit:sensibilite` : déclaré ⟺ le pic monte d'au moins 5 %. Vérifié rouge en retirant
+la déclaration du triathlon (« non déclaré alors que le pic monte de 55 % »). C'est la leçon
+R12 appliquée à un drapeau de module — une déclaration que rien ne vérifie finit par décrire
+le code d'hier.
+
+Deux gardes de fond, non négociables :
+
+- **Le diagnostic est honnête quel que soit le maillon** — drapeau médical, blessure et âge
+  sont nommés comme les autres, avec leur raison. Un athlète a le droit de savoir pourquoi son
+  plan est allégé.
+- **La PROPOSITION, elle, est gardée** : aucun levier n'est jamais suggéré à quelqu'un dont le
+  plan a été réduit pour le protéger. La phrase devient « ton plan est déjà allégé pour te
+  protéger : ce n'est pas le moment d'en ajouter ». Hiérarchie du manifeste, santé d'abord.
+
+### Deux rectifications trouvées en chemin
+
+1. **Le point 2 d'O-10 était faux, par un titre de colonne.** `p.volPeak` est le pic RÉELLEMENT
+   LIVRÉ (et c'est lui que l'UI affiche partout) ; `w.vol_declared` est la CIBLE de la courbe,
+   valeur interne invisible pour l'athlète. Mes colonnes étaient inversées : le livré (8,7 h)
+   est légèrement EN DESSOUS de la cible (9,5 h), pas au-dessus — soit le sens attendu, celui
+   d'une sonde de capacité qui fait son travail. Il n'y avait pas de défaut, seulement une
+   mesure mal étiquetée publiée telle quelle dans le registre.
+2. **La carte « Pourquoi ce plan » appelait le plafond d'historique « ton volume déclaré »**
+   depuis l'origine. Sur tout profil où les deux diffèrent — le cas courant — elle renvoyait
+   l'athlète vers un curseur qui n'était pas celui qui bornait. Même défaut que R20.2 traite
+   dans le moteur, un cran plus haut, à l'affichage.
+
+La décision `R20.2` s'affiche **en tête de « Pourquoi ce plan »**, pas au fond du volet des
+décisions : c'est une réponse que l'athlète a saisie lui-même et dont il attend un effet.

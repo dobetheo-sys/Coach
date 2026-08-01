@@ -433,6 +433,16 @@ export class TrainingReasoningEngine {
       trailLongCapMin,
       baseRefs: { ftp, thrPace, css },
       hz,
+      // R20.2 — les maillons sont transmis, pas seulement leur produit : c'est ce qui permet
+      // au générateur de nommer celui qui a le plus retiré au lieu d'annoncer un pic sans
+      // explication. `load` (blessure × âge) n'est pas ici : il s'applique en aval, APRÈS la
+      // sonde de capacité, et le générateur le lit dans `loadFactor`.
+      volLimits: {
+        declared: volMax, caps, util, marg, recup: recupFactor,
+        swimTime: guard(sp as string, "swimTimeFactor") ? SWIM_TIME_FACTOR : 1,
+        med: medFactor,
+        sessionsMax: parseInt(a.sessions_max || "7") || 7, budget: budgetPerWeek,
+      },
     };
   }
 }

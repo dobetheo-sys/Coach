@@ -434,6 +434,28 @@ n'est plus demandée en course à pied ni en natation). Dette déclarée : `O-13
 mord jamais en natation — erreur d'unité, décision produit à prendre.
 **21 gates verts, E2E 13/13, golden 900 recapturé, registre 13/13 re-mesuré.**
 
+**R20.2 livré — le volume max dit ce qui le bloque, et ce qui le débloquerait** (O-10 fermé,
+voir ARCHITECTURE.md « R20.2 ») : sur un 70.3, `vol_max` ne changeait plus RIEN au-delà de
+10 h — 10, 12, 14, 16 h donnaient le même plan à 0,1 h près, et la question continuait d'être
+posée comme si elle décidait. Le lot ne force AUCUN chiffre vers le plafond demandé (ce serait
+défaire la sonde de capacité V2.1) : il rend le chiffre explicable. `volLimits` transmet les
+MAILLONS de la réduction (historique · volume utile du format · marge hors compétition ·
+récupération · temps dans l'eau · drapeau médical · blessure/âge · structure de la semaine),
+le générateur mesure ce que chacun a retiré **en heures** et nomme le plus gros — décision
+`R20.2`, en tête de « Pourquoi ce plan ». Ma première écriture nommait le PREMIER plafond qui
+mord au lieu du plus gros : en natation elle annonçait « c'est ton historique » (10 h) pour un
+pic livré à 3,3 h, faux de 7 h — une explication approximative sur un chiffre que l'athlète a
+saisi lui-même l'envoie corriger la mauvaise réponse. Le levier des doubles n'est proposé que
+là où il existe (`doubles: "oui"` fait passer le 70.3 de **8,7 h à 13,5 h**) : garde de module
+`doublesAddVolume`, **mesuré dans les deux sens** par `audit:sensibilite`, vérifié rouge en
+retirant la déclaration du tri. Le diagnostic reste honnête sous drapeau médical, blessure ou
+âge ; **aucun levier n'y est jamais proposé**. Deux rectifications au passage : le point 2
+d'O-10 était faux **par un titre de colonne** (`volPeak` est le livré, `vol_declared` la cible
+interne — mes colonnes étaient inversées, il n'y avait pas de défaut), et la carte « Pourquoi
+ce plan » appelait le plafond d'historique « ton volume déclaré » depuis l'origine.
+**21 gates verts, E2E 13/13, golden 900 recapturé — 515 profils changent, et le SEUL champ qui
+diffère est le nombre de décisions : pas une séance, pas une minute.**
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur

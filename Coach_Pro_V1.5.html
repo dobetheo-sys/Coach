@@ -1913,6 +1913,31 @@ async function applyReadiness(){
                            
                                                           
                                                   
+     
+                                                                   
+    
+                                                                                              
+                                                                                           
+                                                                                         
+                                                             
+    
+                                                                                            
+                                                                                          
+                                                                                              
+                                                                                         
+                                  
+     
+              
+                                                                       
+                                                       
+                                                                                                       
+                                                                  
+                                                                         
+                                                                                 
+                                                                  
+                                                 
+                                                                                
+    
  
 
 // ===== src/engine/trace.ts =====
@@ -2852,6 +2877,11 @@ class UnknownSportError extends Error {
                                                                                           
                                                                          
                                   
+                                                                                              
+                                                                                              
+                                                                                        
+                                                                                             
+                             
  
 
 /**
@@ -4433,6 +4463,16 @@ class TrainingReasoningEngine {
       trailLongCapMin,
       baseRefs: { ftp, thrPace, css },
       hz,
+      // R20.2 — les maillons sont transmis, pas seulement leur produit : c'est ce qui permet
+      // au générateur de nommer celui qui a le plus retiré au lieu d'annoncer un pic sans
+      // explication. `load` (blessure × âge) n'est pas ici : il s'applique en aval, APRÈS la
+      // sonde de capacité, et le générateur le lit dans `loadFactor`.
+      volLimits: {
+        declared: volMax, caps, util, marg, recup: recupFactor,
+        swimTime: guard(sp          , "swimTimeFactor") ? SWIM_TIME_FACTOR : 1,
+        med: medFactor,
+        sessionsMax: parseInt(a.sessions_max || "7") || 7, budget: budgetPerWeek,
+      },
     };
   }
 }
@@ -6338,7 +6378,7 @@ registerSport({
   retestTypes: ["css", "ftp", "thrPace"],
     // Le tri NAGE : il hérite des planchers de séance en mètres (C24/C24b), comme la natation.
   // C'est précisément ce que `sport !== "run"` disait de façon détournée.
-  guards: { stripLongOnMedHold: true, singleRunVo2PerWeek: true, smoothOnAuditMetric: true, capacityProbe: true, swimSessionFloors: true, swimRacePrepFrequency: true },
+  guards: { stripLongOnMedHold: true, singleRunVo2PerWeek: true, smoothOnAuditMetric: true, capacityProbe: true, swimSessionFloors: true, swimRacePrepFrequency: true, doublesAddVolume: true },
 });
 
 // ===== src/sports/trail/index.ts =====
@@ -10393,6 +10433,94 @@ function generatePlan(profile                , opts                             
     if (chargeW.length) volPeak = Math.max(...chargeW.map((w) => w.vol));
   }
   const volBase = Math.round(volPeak * 0.58 * 10) / 10;
+
+  // ---- R20.2 — LE VOLUME MAX DIT CE QUI LE BLOQUE, ET CE QUI LE DÉBLOQUERAIT ----
+  //
+  // Constat de test du fondateur : « volume max à 12 h au lieu de 14 ». La mesure (O-10) a
+  // montré plus large que le constat — sur un 70.3, `vol_max` ne changeait plus RIEN au-delà
+  // de 10 h : 10, 12, 14, 16 h donnaient le même plan à 0,1 h près. La question continuait
+  // d'être posée comme si elle décidait, et le moteur livrait un pic bas sans un mot.
+  //
+  // Ce bloc ne change AUCUN chiffre du plan. Il rend le chiffre explicable, et c'est
+  // volontairement le seul geste : forcer le volume vers le plafond demandé reviendrait à
+  // gonfler des séances au-delà de ce que leurs bornes autorisent — soit exactement le défaut
+  // que la sonde de capacité V2.1 existe pour empêcher. « Un mauvais plan vaut mieux qu'un
+  // plan dangereux » ; un plan honnête sur sa limite vaut mieux qu'un plan muet.
+  //
+  // ON NOMME LE MAILLON QUI A LE PLUS RETIRÉ, PAS LE PREMIER QUI MORD. Ma première écriture
+  // testait les plafonds dans l'ordre du calcul : en natation, `caps` (10 h) mordait avant
+  // `util` sur 14 h demandées, et le moteur annonçait « c'est ton historique qui borne » pour
+  // un pic livré à 3,3 h — faux de 7 h. Une explication approximative sur un chiffre que
+  // l'athlète a lui-même saisi est pire que pas d'explication : elle l'envoie corriger la
+  // mauvaise réponse. La chaîne est donc reconstruite maillon par maillon et c'est la plus
+  // grosse baisse EN HEURES qui parle.
+  //
+  // Le diagnostic est honnête quel que soit le maillon ; c'est la PROPOSITION qui est gardée :
+  // aucun levier n'est jamais suggéré à quelqu'un dont le plan a été réduit pour le protéger
+  // (drapeau médical, blessure, âge) — hiérarchie du manifeste, santé d'abord.
+  {
+    const L = r.volLimits;
+    if (L.declared > 0 && volPeak < L.declared * 0.85) {
+      const h = (x        ) => (Math.round(x * 10) / 10).toString().replace(".", ",") + " h";
+      const nSess = Math.max(0, ...wl.filter((w) => !w.isRecup)
+        .map((w) => (w.days            ).reduce((t, d) => t + d.sessions.filter((s) => s.d !== "rs").length, 0)));
+      const peutDoubler = guard(a.sport          , "doublesAddVolume") && !r.dbl;
+      const dblRepondu = String(a.doubles ?? "");
+      const sante = r.medHold || r.loadFactor < 1;
+
+      // La chaîne, dans l'ordre où le moteur l'applique. Chaque maillon déclare ce qu'il a
+      // retiré (`de` → `a`) et la phrase qu'il dirait s'il était le principal responsable.
+      let v = L.declared;
+      const maillons                                                       = [];
+      const etape = (apres        , quoi        , pourquoi        ) => {
+        if (apres < v - 0.05) maillons.push({ retire: v - apres, quoi, pourquoi });
+        v = Math.min(v, apres);
+      };
+      etape(L.caps, "ton historique",
+        "Sur ce format, l'historique « " + String(r.profile.history ?? "") + " » permet d'encaisser " + h(L.caps)
+        + "/sem : au-delà, la charge s'accumule plus vite qu'elle ne s'assimile. Ce plafond monte tout seul, en tenant les semaines — pas en les forçant.");
+      etape(L.util, "le volume utile du format",
+        "Chaque format a un volume au-delà duquel les heures ne servent plus l'objectif : ici " + h(L.util)
+        + "/sem. Les heures supplémentaires coûteraient de la fraîcheur sans rien ajouter au jour J — si tu veux vraiment t'entraîner plus, c'est le format qu'il faut changer, pas le curseur.");
+      etape(v * L.marg, "la marge de sécurité hors compétition",
+        "Tu ne prépares pas une compétition : 10 % de marge sont retirés de tous les plafonds. La santé passe avant le chiffre.");
+      etape(v * L.recup, "ta récupération",
+        "Sommeil court et/ou charge de vie lourde : le moteur ne fait pas semblant de l'ignorer, il baisse réellement le contenu (règle 1B). Ce maillon-là remonte tout seul dès que le sommeil revient.");
+      etape(v * L.swimTime, "le temps réellement passé dans l'eau",
+        "En natation, le volume promis se compte en temps DANS l'eau — les longueurs de récupération, les départs et les consignes ne sont pas du volume d'entraînement. C'est la même séance, comptée honnêtement.");
+      etape(v * L.med, "le drapeau médical",
+        "Tu as signalé un symptôme à l'effort : ce plan est un plan de MAINTIEN, volontairement allégé. Le volume n'est pas le sujet tant que l'avis médical n'est pas donné.");
+      etape(v * (r.loadFactor < 1 ? r.loadFactor : 1), r.inj.count > 0 ? "tes zones fragiles" : "ton âge",
+        (r.inj.count > 0 ? "Ta ou tes zones fragiles (" + r.inj.list.join(", ") + ")" : "Ton âge")
+        + " abaissent volontairement le plafond de charge (R6.2/R6.3). Ce n'est pas un réglage à contourner : la marge que tu perds ici est celle qui te garde entier.");
+      // Le reste : ce que la STRUCTURE de la semaine ne sait pas porter — nombre de séances ×
+      // durée maximale de chacune. C'est le cas d'O-10, et le seul où un levier existe.
+      etape(volPeak, "le nombre de séances",
+        "Tes plafonds de charge autorisent " + h(v) + "/sem, mais une semaine ne contient que " + nSess
+        + " séances et aucune ne peut s'allonger indéfiniment sans devenir autre chose."
+        + (sante
+          ? " Ton plan est déjà allégé pour te protéger : ce n'est pas le moment d'en ajouter."
+          : peutDoubler
+            ? " Pour aller plus haut, il faudrait faire deux séances certains jours"
+              + (dblRepondu === "parfois"
+                ? " — tu as répondu « parfois » aux doubles, et le moteur n'en place que si tu réponds « oui »."
+                : " : passe « journées à 2 séances » sur « oui » au Profil.")
+              + " À toi de juger si ton quotidien le permet : deux séances mal récupérées valent moins qu'une bien faite."
+            : r.dbl
+              ? " Tu doubles déjà : au-delà, ce sont les durées maximales de séance qui bornent, et les allonger encore les transformerait en autre chose que ce qu'elles visent."
+              : " Sur ce sport, doubler ne changerait rien : les séances sont uniques par jour et bornées par leur objectif."));
+
+      if (maillons.length) {
+        const p = maillons.reduce((x, y) => (y.retire > x.retire ? y : x));
+        r.decisions.push({
+          id: "R20.2",
+          what: "Ton volume max demandé (" + h(L.declared) + ") n'est pas atteint",
+          val: "pic à " + h(volPeak) + " — ce qui borne, c'est " + p.quoi + " (−" + h(p.retire) + "/sem)",
+          why: p.pourquoi,
+        });
+      }
+    }
+  }
 
   // Courses intermédiaires : mini-affûtage semaine B/A, récup la semaine suivante
   const races                                   = [];

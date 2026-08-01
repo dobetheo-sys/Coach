@@ -197,5 +197,5 @@ registerSport({
   retestTypes: ["css", "ftp", "thrPace"],
     // Le tri NAGE : il hérite des planchers de séance en mètres (C24/C24b), comme la natation.
   // C'est précisément ce que `sport !== "run"` disait de façon détournée.
-  guards: { stripLongOnMedHold: true, singleRunVo2PerWeek: true, smoothOnAuditMetric: true, capacityProbe: true, swimSessionFloors: true, swimRacePrepFrequency: true },
+  guards: { stripLongOnMedHold: true, singleRunVo2PerWeek: true, smoothOnAuditMetric: true, capacityProbe: true, swimSessionFloors: true, swimRacePrepFrequency: true, doublesAddVolume: true },
 });

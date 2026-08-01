@@ -261,7 +261,7 @@ attendu: /I14 +la sortie longue est la plus longue +\d+ échecs/
 cmd: npm run audit:invariants
 ```
 
-### O-10 · `vol_max` ne pilote plus rien au-delà de 10 h, et l'annonce ne colle pas au livré · 🟠 **OUVERT (constaté en R18)**
+### O-10 · `vol_max` ne pilote plus rien au-delà de 10 h, et l'annonce ne colle pas au livré · ✅ **FERMÉ (R20.2) — et ma colonne 2 était fausse**
 
 Constat de test du fondateur : « Volume max à 12 h au lieu de 14, acceptable pour le 70.3 ».
 La mesure dit autre chose que le constat, et **autre chose que ce que j'avais écrit d'abord** :
@@ -287,11 +287,48 @@ Deux choses, et aucune n'est celle qu'on croyait :
 Le fondateur a tranché « acceptable » sur l'écart de volume ; l'entrée reste ouverte parce que
 le point 1 rend une question du questionnaire inerte au-delà d'un seuil que rien n'annonce.
 
+---
+
+**FERMETURE (R20.2, 01/08/2026) — et d'abord une rectification de ma propre mesure.**
+
+**Le point 2 ci-dessus est faux, et il l'est par un titre de colonne.** `p.volPeak` est le pic
+RÉELLEMENT LIVRÉ (le max des `w.vol`, et c'est lui que l'UI affiche partout) ; `w.vol_declared`
+est la CIBLE de la courbe de charge, une valeur interne que l'athlète ne voit nulle part. Mes
+deux colonnes étaient donc inversées : le livré (8,7 h) est légèrement EN DESSOUS de la cible
+(9,5 h), pas au-dessus. Le sens était l'inverse de ce que j'avais écrit, et c'est le sens
+attendu — la sonde de capacité V2.1 abaisse ce qu'elle ne sait pas porter. Il n'y a pas de
+défaut ici, seulement une mesure mal étiquetée, publiée telle quelle dans ce registre. Une
+mesure dont on ne vérifie pas ce que chaque champ veut dire ne mesure rien.
+
+**Le point 1 est réel, et il est traité — sans toucher un seul chiffre du plan.** Forcer le
+volume vers le plafond demandé reviendrait à gonfler des séances au-delà de leurs bornes,
+c'est-à-dire à défaire exactement ce que V2.1 protège. Le moteur DIT donc ce qui borne :
+il reconstruit la chaîne de réduction maillon par maillon (historique → volume utile du format
+→ marge hors compétition → récupération → temps dans l'eau → drapeau médical → blessure/âge →
+structure de la semaine) et nomme celui qui a **le plus retiré, en heures**. Décision `R20.2`,
+affichée en tête de « Pourquoi ce plan », pas au fond d'un volet.
+
+Ma première écriture testait les plafonds dans l'ORDRE DU CALCUL et nommait le premier qui
+mord : sur la natation, elle annonçait « c'est ton historique qui borne » (10 h) pour un pic
+livré à 3,3 h — faux de 7 h, et surtout elle envoyait l'athlète corriger la mauvaise réponse.
+Une explication approximative sur un chiffre qu'il a lui-même saisi est pire qu'un silence.
+
+Le levier des doubles est proposé **là où il existe** : garde de module `doublesAddVolume`,
+déclaré par le seul triathlon, et **mesuré dans les deux sens** à chaque `npm run
+audit:sensibilite` (déclaré ⟺ le pic monte d'au moins 5 %). Sur le 70.3 de la mesure ci-dessus,
+`doubles: "oui"` fait passer le pic de 8,7 h à **13,5 h** — la question n'était pas inerte, son
+levier était ailleurs et personne ne le disait. Le diagnostic reste honnête sous drapeau
+médical, blessure ou âge, mais **aucun levier n'y est jamais proposé** : on n'invite pas à
+charger davantage quelqu'un dont le plan a été réduit pour le protéger.
+
+Trouvé au passage, même famille : la carte « Pourquoi ce plan » appelait le plafond
+d'historique « ton volume déclaré » depuis l'origine — corrigé.
+
 ```verify
 id: O-10
-quoi: au-delà de 10h, vol_max ne change plus le plan d'un 70.3
-attendu: /vol_max=16h → pic annoncé 8[.,]7 h/
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const a={sport:'tri',format:'70.3',level:'avance',history:'ancien',intent:'competition',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',ftp:'230',ftp_known:'oui',css:'2:00',css_known:'oui',vol_recent:'10',injury:'aucune',off_days:'non',shift_ok:'non',race_date:'2027-01-24'};for(const v of ['10','12','14','16']){const p=E.buildPlan('tri',{...a,vol_max:v});console.log('vol_max='+v+'h → pic annoncé '+p.volPeak+' h · pic livré '+(Math.max(...p.weeks.map(w=>w.vol_declared))).toFixed(1)+' h');}"
+quoi: au-delà de 10h le pic ne bouge plus, mais le moteur NOMME le limiteur et son levier
+attendu: /nombre de séances[\s\S]*deux séances certains jours/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const a={sport:'tri',format:'70.3',level:'avance',history:'ancien',intent:'competition',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',ftp:'230',ftp_known:'oui',css:'2:00',css_known:'oui',vol_recent:'10',injury:'aucune',off_days:'non',shift_ok:'non',doubles:'parfois',race_date:'2027-01-24'};for(const v of ['10','16']){const p=E.buildPlan('tri',{...a,vol_max:v});const d=(p._v2.decisions||[]).find(x=>x.id==='R20.2');console.log('vol_max='+v+'h → pic livré '+p.volPeak+' h'+(d?' · '+d.val+' · '+d.why:' · (rien à expliquer)'));}"
 ```
 
 ### O-11 · Deux définitions de « l'allure course » à vélo, et une prose qui promet la mauvaise · 🟠 **OUVERT (trouvé en R19, correction reportée avec sa mesure)**

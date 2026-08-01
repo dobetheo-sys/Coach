@@ -52,6 +52,11 @@ export interface SportGuards {
    *  garantie (2e nage en spécifique/pic, alternance en dev) et l'affûtage garde une nage
    *  chaque semaine (les sensations d'eau se perdent en 10-14 jours). */
   swimRacePrepFrequency?: boolean;
+  /** R20.2 — répondre « oui » aux doubles séances AUGMENTE réellement le volume livrable dans
+   *  ce sport. Ce n'est vrai que là où les builders posent une seconde séance sous `dbl` : le
+   *  garde existe pour que le moteur ne PROPOSE jamais un levier qui ne bougerait rien.
+   *  Mesuré à chaque exécution de `npm run audit:sensibilite` — déclaration ⟺ effet réel. */
+  doublesAddVolume?: boolean;
 }
 
 /**

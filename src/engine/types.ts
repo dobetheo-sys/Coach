@@ -141,4 +141,29 @@ export interface ReasonedPlan {
   trailLongCapMin?: number;
   baseRefs: { ftp: number; thrPace: number; css: number };
   hz: Record<string, string> & { fcMax?: number };
+  /**
+   * R20.2 — LA CHAÎNE DE RÉDUCTION DU VOLUME, MAILLON PAR MAILLON.
+   *
+   * Le raisonnement calcule `min(volMax, caps, util) × marge × récup × tempsDansLEau` et n'en
+   * garde que le résultat : en aval, le générateur constatait un pic bas sans pouvoir dire
+   * POURQUOI, et la question « volume max ? » restait posée comme si elle décidait alors
+   * qu'au-delà d'un seuil elle ne décidait plus rien (O-10).
+   *
+   * Garder les maillons séparés permet de nommer celui qui a réellement retiré le plus — et
+   * pas simplement le premier qui mord. La différence n'est pas cosmétique : en natation,
+   * `caps` mord en premier (10 h < 14 h demandées) alors que le pic livré est à 3,3 h. Nommer
+   * l'historique là serait faux à 7 h près. Ces valeurs ne changent aucun calcul : elles
+   * rendent le calcul explicable.
+   */
+  volLimits: {
+    declared: number;    // h — `vol_max` tel que l'athlète l'a demandé
+    caps: number;        // h — plafond de l'historique
+    util: number;        // h — volume utile du format (au-delà, les heures ne servent plus l'objectif)
+    marg: number;        // × — marge de sécurité hors compétition
+    recup: number;       // × — 1B : sommeil court / charge de vie lourde
+    swimTime: number;    // × — le volume promis se convertit en temps DANS L'EAU
+    med: number;         // × — drapeau médical (plan de maintien)
+    sessionsMax: number; // séances/sem déclarées
+    budget: number;      // séances/sem retenues (déclaré ∧ implicite du volume)
+  };
 }
