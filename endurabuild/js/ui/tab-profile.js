@@ -69,6 +69,27 @@ function journalPrev(t) {
 // physiologiques datées — on garde la MEILLEURE, pas la dernière) et les séances réellement
 // faites (✓ du plan + imports FIT) pour les records empiriques (plus longue séance).
 const DISC_LABEL = { rn: "🏃 Course", bk: "🚴 Vélo", sw: "🏊 Natation", br: "🔁 Brick" };
+/**
+ * R16.7 — REPLIER LES BLOCS SECONDAIRES DU PROFIL.
+ *
+ * La page défilait d'un seul tenant sur quinze sections : éditer sa FTP demandait de traverser
+ * tout le reste. Ce qui reste OUVERT est ce qu'on vient consulter ou modifier (avatar, plans,
+ * échéance, résumé, références, retest) ; ce qui se replie est ce qu'on vient CHERCHER quand on
+ * le veut (records, badges, efficience, sauvegarde, journal).
+ *
+ * Le mécanisme est celui qui existe déjà pour « Conseils personnalisés » : `<details>`, donc
+ * accessible au clavier et lisible par un lecteur d'écran sans rien de spécifique à écrire.
+ * On transforme la carte plutôt que de dupliquer son rendu — un second chemin de rendu serait
+ * un second endroit à corriger.
+ */
+function repliable(h, ouvert) {
+  if (!h) return h;
+  return h
+    .replace('<div class="load-card">', '<details class="load-card"' + (ouvert ? " open" : "") + ">")
+    .replace(/<div class="load-title">([\s\S]*?)<\/div>/, '<summary class="load-title" style="cursor:pointer">$1</summary>')
+    .replace(/<\/div>\s*$/, "</details>");
+}
+
 function recordsHTML(plan, a) {
   const rows = [];
   const tests = Array.isArray(a.tests) ? a.tests.filter((t) => isFinite(+t.value)) : [];
@@ -492,11 +513,11 @@ export function renderTabProfile(plan) {
 
   // — Records personnels (R4-5, lecture seule) + badges + efficience (R5 : ici, pas
   // dans un onglet à part — le Profil raconte qui tu es et ce que tu as construit)
-  html += recordsHTML(plan, a);
+  html += repliable(recordsHTML(plan, a), false);
   let _badges = [];
   if (globalThis.EBV2 && globalThis.EBV2.badges) { try { _badges = globalThis.EBV2.badges(plan, a, tIso); } catch (e) {} }
-  html += badgesGalleryHTML(_badges);
-  html += efficiencyHTML();
+  html += repliable(badgesGalleryHTML(_badges), false);
+  html += repliable(efficiencyHTML(), false);
 
   // — Retest « boss fight » (R4.4) : suggestion de date + planification
   html += retestSuggestionHTML();
@@ -504,15 +525,18 @@ export function renderTabProfile(plan) {
 
   // — Sauvegarde : tout vit dans localStorage — un navigateur nettoyé = tout perdu.
   // Export/import JSON de l'état COMPLET (tous les plans + état partagé).
-  html += '<div class="load-card"><div class="load-title">💾 Sauvegarde</div>'
+  html += '<details class="load-card"><summary class="load-title" style="cursor:pointer">💾 Sauvegarde</summary>'
     + '<div class="load-sub" style="margin-top:6px">Tes plans vivent dans ce navigateur uniquement. Exporte une sauvegarde de temps en temps — et importe-la sur un nouvel appareil ou après un nettoyage.</div>'
     + '<div class="nav" style="margin-top:8px;flex-wrap:wrap;gap:8px"><button class="btn" id="pfBackup" type="button">Exporter ma sauvegarde</button>'
     + '<label class="btn" style="cursor:pointer;margin:0">Importer une sauvegarde<input type="file" id="pfRestore" accept=".json,application/json" style="display:none"></label></div>'
-    + '<div id="pfBackupMsg" class="load-sub" style="margin-top:6px"></div></div>';
+    + '<div id="pfBackupMsg" class="load-sub" style="margin-top:6px"></div></details>';
 
   // — Journal d'évolution (S.answers.tests, trié du plus récent au plus ancien)
   const tests = Array.isArray(a.tests) ? [...a.tests].sort((x, y) => String(y.date || "").localeCompare(String(x.date || ""))) : [];
-  html += '<div class="load-card"><div class="load-title">📒 Journal d’évolution</div>';
+  // Ouvert tant que Strava n'est pas connecté : ce bloc porte alors un appel à l'action
+  // (importer ses activités), et un CTA replié n'est pas un CTA.
+  const _connecte = !!(a.stravaAuth && a.stravaAuth.access_token);
+  html += '<details class="load-card"' + (_connecte ? "" : " open") + '><summary class="load-title" style="cursor:pointer">📒 Journal d’évolution, imports et Strava</summary>';
   if (tests.length) {
     tests.forEach((t) => {
       html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:12px;align-items:baseline"><span style="width:78px;color:#635b4a">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:var(--muted)">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
@@ -556,7 +580,7 @@ export function renderTabProfile(plan) {
     + (sAuth && sAuth.access_token ? "" : '<button class="btn" id="pfStravaBtnTok" type="button">Importer depuis Strava</button>')
     + '</div><div class="load-sub" style="margin-top:4px">Réglages Strava → « Mon API », scope <b>activity:read</b> — rien n’est écrit sur Strava.</div></details>'
     + '<div id="pfStravaMsg" class="load-sub" style="margin-top:4px"></div></div>';
-  html += "</div>";
+  html += "</details>";
 
   // — Conseils personnalisés (evalRules) : chaque réponse du questionnaire sans effet
   // direct sur le plan reste VISIBLE ici (ferritine, cycle, garde-fous santé…).

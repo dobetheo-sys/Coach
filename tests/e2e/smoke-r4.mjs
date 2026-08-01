@@ -45,6 +45,10 @@ ok(await page.locator("#pfRaceSave").count() === 1 && /Courses intermédiaires/.
 ok(await page.locator("#pfBackup").count() === 1, "bouton de sauvegarde (export JSON) présent dans Profil");
 ok(await page.locator("#pfRestore").count() === 1, "restauration depuis un fichier présente dans Profil");
 const dlBackup = page.waitForEvent("download", { timeout: 5000 }).catch(() => null);
+// R16.7 — la carte « 💾 Sauvegarde » est désormais repliée par défaut (bloc secondaire du
+// Profil). Le bouton existe, il n'est simplement plus visible tant que le `<details>` est
+// fermé : on l'ouvre, comme le ferait l'utilisateur. Les assertions ne bougent pas.
+await page.evaluate(() => { const b = document.getElementById("pfBackup"); const d = b && b.closest("details"); if (d) d.open = true; });
 await page.click("#pfBackup");
 const bk = await dlBackup;
 ok(bk !== null && /endurabuild/.test(bk ? bk.suggestedFilename() : ""), "la sauvegarde télécharge un fichier (" + (bk ? bk.suggestedFilename() : "aucun") + ")");

@@ -2,11 +2,11 @@
 
 **État au 01/08/2026, commit `4222eaf` + lot R15.1** (20 gates verts, E2E 8/8, golden 764, `audit:v7` à N=400).
 
-> **Mise à jour R15 :** `O-2` et `O-3` sont traités ci-dessous ; `O-1` reste ouvert et son
-> périmètre s'est ÉLARGI (voir la note). Le handoff de revue a aussi apporté deux défauts
-> mesurés qui n'étaient pas dans ce registre — ils sont corrigés et donc absents d'ici : le
-> plancher de la semaine de course (291/648 configurations sous 30 % du pic) et l'éligibilité
-> âge × format (un mineur générait un plan Ironman de 59 semaines).
+> **Mise à jour R15 / R15.1 :** les trois entrées de §1 sont traitées — `O-1` et `O-2` sont
+> **fermés**, `O-3` attend une mesure nommée. Le handoff de revue a aussi apporté deux défauts
+> qui n'étaient pas dans ce registre, corrigés et donc absents d'ici : le plancher de la semaine
+> de course (291/648 configurations sous 30 % du pic) et l'éligibilité âge × format (un mineur
+> générait un plan Ironman de 59 semaines). **§1 ne contient plus aucun défaut bloquant.**
 
 Ce fichier ne liste que ce qui est **mesuré et reproductible aujourd'hui**. Chaque entrée porte
 sa commande de vérification : une dette qu'on ne peut pas re-mesurer en une ligne n'est pas une
@@ -103,16 +103,16 @@ Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. I
 | **D3** | 4 sauts de charge à **+11 %** au lieu de +10 % | Le rapport dev→peak de la courbe vaut 1,18, donc **supérieur à C22 par construction**. Sur un plan court à deux récups consécutives, C22 voudrait le pic ≤ 273 min quand la hiérarchie du plan le veut > 248 : les deux tiennent dans 25 minutes et les planchers de séance interdisent de descendre. Réduire encore ferait passer le pic SOUS une semaine de base — on échangerait une violation contre une pire. **La correction de fond est dans la FORME de la courbe, pas dans une passe de rattrapage.** |
 | **F2** | 7 séances de qualité à ~42 % de temps en zone cible au lieu de 45 % | **Contradiction assumée entre deux règles.** Ces séances ont déjà leur échauffement et leur retour au calme à leur plancher (C13/C13b) ; atteindre 45 % demanderait exactement ce que C13c interdit (échauffer moins de 10 min avant un effort maximal). La priorité n°2 du manifeste (prévention des blessures) tranche. Le test reste en `expect:'fail'` **pour garder le chiffre sous les yeux**, pas parce qu'on l'a oublié. |
 
-### Banc v7 — budgets non nuls (`scripts/runAuditV7.mjs`)
+### Banc v7 — budgets non nuls (`scripts/runAuditV7.mjs`, en ‰ de profils depuis R15.1)
 
 | check | budget | nature |
 |---|---|---|
-| `U-RACEDATE` | 12 | Course très lointaine : plafond de durée assumé + avertissement (R4.8b). Comportement voulu. |
-| `U-DECL` | 2 | Lissage d'affûtage mesuré récups comprises (R4.8c). |
-| `T-NIGHT` | 2 | Consigne de nuit portée en ATTRIBUT sur les séances survivantes (R4.7b) plutôt que par une séance dédiée. |
-| `T-DPLUS-WK`, `T-POLES-ADV` | 2 chacun | Résiduels trail sur profils extrêmes. |
-| `D-DISC` | 1 | **Voir O-1 : le budget est respecté à N=150 et dépassé à N=253.** |
-| `S-LONGSWIM` `S-MIX` `S-RUN-STARVED` `S-PREREQ` | 8 · 9 · 10 · 12 | **Swimrun uniquement — donc NON EXERCÉS dans le produit V1** (le module est exclu du bundle, R12 §0). Ces budgets ne protègent rien tant que `EB_SWIMRUN=1` n'est pas activé. |
+| `U-RACEDATE` | 80 ‰ | Course très lointaine : plafond de durée assumé + avertissement (R4.8b). Comportement voulu. |
+| `U-DECL` | 13 ‰ | Lissage d'affûtage mesuré récups comprises (R4.8c). |
+| `T-NIGHT` | 13 ‰ | Consigne de nuit portée en ATTRIBUT sur les séances survivantes (R4.7b) plutôt que par une séance dédiée. |
+| `T-DPLUS-WK`, `T-POLES-ADV` | 13 ‰ chacun | Résiduels trail sur profils extrêmes. |
+| `D-DISC` | 7 ‰ | Corrigé en R15.1 (couverture de discipline en semaine de course) — mesuré 0 à N=400. |
+| `S-LONGSWIM` `S-MIX` `S-RUN-STARVED` `S-PREREQ` | 54 · 60 · 67 · 80 ‰ | **Swimrun uniquement — donc NON EXERCÉS dans le produit V1** (le module est exclu du bundle, R12 §0). Ces budgets ne protègent rien tant que `EB_SWIMRUN=1` n'est pas activé. |
 
 > ⚠️ La ligne swimrun mérite d'être lue deux fois : ce sont 39 défauts budgétés sur du code
 > **expédié dans `src/` mais absent du produit**. Ce n'est pas une dette du produit, c'est une

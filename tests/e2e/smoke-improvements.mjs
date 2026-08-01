@@ -207,6 +207,11 @@ await t6[0].click(); await page.waitForTimeout(300);
 const connTxt = await page.locator("#screen").textContent();
 ok(/Connecté \(Théo\)/.test(connTxt), "état connecté affiché (prénom Strava)");
 ok(await page.locator("#pfStravaBtn").count() === 1 && (await page.locator("#pfStravaOut").count()) === 1, "boutons « Importer mes activités » et « Se déconnecter » présents");
+// R16.7 — une fois CONNECTÉ, le bloc « Journal / imports / Strava » est replié (règle du
+// handoff : ouvert tant que c'est un CTA, replié quand c'est fait). Les contrôles existent
+// mais ne sont plus visibles tant que le `<details>` est fermé : on l'ouvre, comme le ferait
+// l'utilisateur. L'assertion qui suit est inchangée.
+await page.evaluate(() => { const d = document.getElementById("pfStravaOut"); const det = d && d.closest("details"); if (det) det.open = true; });
 await page.click("#pfStravaOut"); await page.waitForTimeout(300);
 ok(await page.locator("#pfStravaConnect").count() === 1, "déconnexion → retour à l'état non connecté");
 
@@ -301,6 +306,19 @@ ok(!r16.dur777, "R16.1 : plus aucun `color:#777` codé en dur dans le rendu (con
 ok(!r16.prnPrimary, "R16.3 : le bouton HTML n'est plus le seul export en rouge plein");
 ok(r16.abbr && r16.titre, "R16.4 : pastille de phase avec libellé long + abrégé, nom complet en title");
 ok(r16.goCur, "R16.5 : raccourci « aller à la semaine en cours » présent");
+const r167 = await page.evaluate(async () => {
+  const { setTab } = await import("./js/ui/tabs.js");
+  setTab("profile");
+  const scr = document.querySelector("#screen");
+  const replies = [...scr.querySelectorAll("details.load-card")];
+  const titres = replies.map((d) => (d.querySelector("summary") || {}).textContent || "");
+  // Ce qui doit rester DIRECTEMENT accessible : les références éditables (FTP/allure/CSS).
+  const refsVisibles = !!document.getElementById("pfFtp") || !!document.getElementById("pfPace") || !!document.getElementById("pfCss");
+  return { n: replies.length, titres, refsVisibles, fermes: replies.filter((d) => !d.open).length };
+});
+ok(r167.n >= 4, "R16.7 : les blocs secondaires du Profil sont repliables (" + r167.n + " cartes)");
+ok(r167.fermes >= 3, "R16.7 : au chargement, au moins 3 blocs sont repliés (" + r167.fermes + ")");
+ok(r167.refsVisibles, "R16.7 : les références d'entraînement restent directement éditables, jamais repliées");
 
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + ")");
 if (errs.length) info(errs.slice(0, 4).join(" | "));
