@@ -337,7 +337,7 @@ ne plus le faire évoluer (le moteur V2 est la source de vérité).
 Étapes suivantes : chantiers différés (nutrition — avis nutritionniste requis, dashboard,
 gamification, partage) et sources readiness FIT/Garmin quand l'accès existe.
 
-## Écran d'accueil : « Forme du jour » avant toute séance (`endurabuild/js/ui/tab-week.js`)
+## Écran d'accueil : « Forme du jour » avant toute séance (`tab-week.js`, fondu dans `tab-plan-general.js` + `session-life.js` en R16.9)
 
 Demande produit : à l'ouverture, l'app demande d'abord sommeil/VFC/énergie/ressenti, et
 n'affiche la séance qu'après. `renderTabWeek()` (l'onglet 📅 Semaine, écran par défaut)
@@ -404,8 +404,8 @@ collecte de données — tout dérive des métriques déjà calculées (`progres
   l'aperçu compact dans l'onglet Avancement reste en place (contexte différent, pas une
   duplication gênante).
 
-Barre à 5 onglets (`tabs.js`), fallback robuste `TABS[TABS.length - 1]` (plus d'index
-codé en dur qui casserait à un futur 6e onglet).
+Barre d'onglets (`tabs.js`), fallback robuste `TABS[TABS.length - 1]` (plus d'index
+codé en dur) — 5 onglets alors, 4 depuis R16.9.
 
 ## Séances repliables + glossaire éducatifs détaillé
 
@@ -437,7 +437,7 @@ Livraison détaillée dans `endurabuild/RAPPORT-R4.md`. Points structurants :
 - **Avatar SVG** (`avatar.js`) : chaque variable visuelle traçable à une donnée réelle
   (posture=7 jours réels, aura=streak, accessoires=badges, thème=accents sport).
 - **Partage story** (`export.js: storyBlob/shareStory`) : PNG 1080×1920, Web Share API
-  avec repli téléchargement ; modal félicitations à la coche ○→✓ (`tab-week.js`).
+  avec repli téléchargement ; modal félicitations à la coche ○→✓ (`session-life.js` depuis R16.9).
 
 ## Spec rétention (MESSAGE_CLAUDE_CODE_R4) — livraison
 
@@ -524,7 +524,7 @@ onglet par défaut : Aujourd'hui.
   aussi l'énergie du snapshot moteur (1 question athlète = 2 signaux moteur).
   `applyReadinessSnap()` (readiness.js) est le cœur commun diaporama/carte « Modifier ».
 - **`js/ui/tab-today.js`** — l'écran du quotidien : gate diaporama → séance du jour
-  (heroSessionHTML, exporté par tab-week) → checklist en direct → prédiction + chrono
+  (heroSessionHTML, exporté par session-life.js depuis R16.9) → checklist en direct → prédiction + chrono
   réel → courbe CTL/ATL/TSB → barre d'avancement → intensités → historique prévu/réel.
 - **`js/ui/tab-profile.js`** — identité d'abord : avatar + niveau + XP + teaser du
   niveau suivant (`EBV2.avatar.nextName/levels`), niveaux intermédiaires PAR DISCIPLINE
@@ -542,6 +542,8 @@ onglet par défaut : Aujourd'hui.
 - **`js/ui/tab-week.js`** — la grille de semaine, ⇄, bilan hebdo, contenu du jour,
   rappels, journal des verdicts, « Modifier ma forme du jour ». Sans check-in du jour →
   redirection vers Aujourd'hui (la règle « rien avant le check-in » tient partout).
+  **Supprimé en R16.9** : la grille et le ⇄ sont passés dans `tab-plan-general.js`, le
+  quotidien dans `tab-today.js`, les briques communes dans `session-life.js`.
 - **CSS (mobile.css)** — `tab-central` (icône ronde surélevée), `.doneBtn` redessiné
   (cercle fin, coche animée `ck-pop`), affordance `.gd-sess` (« détail »/« replier »),
   gros boutons du diaporama.
@@ -1056,3 +1058,93 @@ plafonds (int ≤ 12 %, avancé ≤ 6 %) sont exactement la table que l'addendum
 imposent un écart ancien/confirmé d'au moins 50 % là où `R14.1-B` en autorise 45 % — deux critères
 qui ne peuvent pas être vrais ensemble sans rendre `level` responsable d'un facteur 2 sur le gain.
 Un banc dont les tests disparaissent sans laisser de trace est un banc qu'on ne peut plus relire.
+
+
+## R16 — le lot design visuel (handoff `HANDOFF_R16_design_visuel.md`, 01/08/2026)
+
+Un audit visuel externe, renuméroté R16 (le handoff s'annonçait « R14 », déjà pris trois
+fois). Ordre imposé par le handoff lui-même : fixes mécaniques d'abord, restructuration
+du Profil ensuite, typographie et fusion d'onglets en dernier, chacune dans son commit.
+
+### R16.8 — l'échelle typographique : 21 tailles → 7 paliers
+
+**Mesuré.** 21 valeurs de `font-size` distinctes dans `styles.css`, dont quatre sous le
+pixel (7,5 / 8,5 / 11,5 / 12,5 px), plus 69 tailles inline dans les modules UI. Ce n'est
+pas une échelle, c'est une sédimentation : personne n'a jamais décidé qu'un rôle valait
+8,5 px, il valait « un peu moins que le voisin ».
+
+**Sept paliers** (`--fs-micro` 9 · `--fs-xs` 11 · `--fs-sm` 12 · `--fs-md` 13 · `--fs-lg`
+15 · `--fs-hand` 18 · `--fs-xl` 22), déclarés dans `:root`, un par RÔLE. Deux principes
+bornent la liste :
+
+- **l'échelle gouverne le TEXTE.** Un glyphe décoratif — emoji de carte sport, chevron de
+  `<details>`, séparateur de progression — se dimensionne en `em` relativement à son
+  porteur. Ce n'est pas de la typographie, et ça doit suivre ce qu'il décore. Les titres
+  display gardent leur `clamp()` fluide.
+- **le remappage se fait rôle par rôle**, jamais par substitution globale : deux rôles qui
+  partageaient une taille par accident doivent rester distincts. Le « pourquoi » d'une
+  séance (12) reste au-dessus de son détail technique (11) ; l'avertissement (13) au-dessus
+  du corps de carte (12).
+
+Une exception NOMMÉE aux variables : le **document exporté** (`plan-view.js`) est autonome
+et ne charge pas la feuille — ses tailles restent littérales, sous peine de retomber à la
+taille par défaut du navigateur. Même piège que les couleurs en R16.2.
+
+Effet mesuré : le plus petit texte réellement rendu passe de 7,5 px à 9 px sur les quatre
+onglets.
+
+**R16.8-a — et deux corrections successives qui ne regardaient pas la cause.** R16.4 avait
+« corrigé » les pastilles de phase tronquées en conditionnant l'abréviation à la largeur du
+VIEWPORT. La capture de contrôle de R16.8 montrait encore « P… » et « A… » à 1100 px : la
+frise répartit la place au prorata des semaines (`flex:N`), donc une phase d'UNE semaine est
+étroite à toute taille d'écran. La condition porte désormais sur la largeur du SEGMENT
+(`@container`, media query en repli), avec un plancher de 48 px pour le cas mesuré à 390 px
+où un segment recevait 23 px pour un libellé de 25. Et la vraie cause de l'écrasement était
+encore ailleurs : le bouton « aller à la semaine en cours » de R16.5 était émis À
+L'INTÉRIEUR de `.ph-line` (flex) et en devenait un item, raflant la place — corrigé en
+R16.9-a.
+
+**Garde : `tests/e2e/smoke-typo.mjs`** (9e suite E2E). Elle ne vérifie pas des valeurs
+absolues — un palier peut bouger, c'est le but d'avoir une échelle — mais les deux choses
+qu'une refonte typographique casse en silence : les RELATIONS d'ordre entre rôles, et le
+plancher de lisibilité. Plus le débordement réel des libellés de phase sur trois largeurs,
+et l'absence de taille littérale hors du document exporté.
+
+### R16.9 — fusion 📅 Semaine dans 🗓 Plan (5 onglets → 4)
+
+**C'est « Plan » qui survit** (choix confirmé) : il portait déjà la vue d'ensemble complète
+— saison, phases, décisions, exports — là où Semaine n'ajoutait qu'un recentrage.
+
+Le diff a révélé mieux qu'un recentrage : **la coche existait en deux versions.** Celle de
+Semaine ouvrait le feedback RPE, la célébration et le calcul de badges ; celle de Plan
+basculait un booléen en silence. Cocher la même séance ne faisait pas la même chose selon
+l'onglet par lequel on passait. Il n'en reste qu'une — `toggleDone`, dans `session-life.js`
+— et elle vaut pour TOUTE semaine affichée, pas seulement la courante.
+
+Découpage :
+
+- **`js/ui/session-life.js`** (nouveau) — la séance VÉCUE : `feedbackModal`, `showCongrats`,
+  `toggleDone`, `momentHTML`, `painBannerHTML`/`bindPainBanner`, `sickToggleHTML`/
+  `bindSickToggle`, `heroSessionHTML`. Ces fonctions vivaient dans `tab-week.js` et étaient
+  importées par `tab-today.js` : les laisser mourir avec l'onglet aurait fait disparaître la
+  boucle validation → feedback → célébration, qui n'a rien à voir avec un onglet. Étape 2 du
+  handoff : un module ne se supprime pas, il se vide d'abord.
+- **`js/ui/tab-plan-general.js`** — absorbe la carte « Ta semaine » (semaine courante, jour
+  du jour marqué), l'échange de deux jours ⇄, et la vraie coche. `weekGridHTML` devient le
+  SEUL producteur de cases : Plan et Semaine en dessinaient chacun une, avec la divergence
+  qui va avec.
+- **`js/ui/tab-today.js`** — reçoit ce qui relevait du QUOTIDIEN et pas du plan : contenu du
+  jour, bilan hebdo, réglage du rappel, déclaration de maladie, journal des adaptations,
+  « Modifier ma forme du jour ». Ils parlent de la journée, pas de la saison.
+- **`js/ui/tabs.js`** — `TABS` passe à 4 ; un identifiant d'onglet inconnu (un « week »
+  resté dans un état sauvegardé) retombe sur le repli déjà en place.
+
+**La règle « aucune séance avant le point du matin » s'assouplit et se resserre en même
+temps.** Semaine la faisait respecter par une REDIRECTION de tout l'onglet vers Aujourd'hui.
+Ce que la règle vise, c'est la séance du JOUR montrée non adaptée — pas la consultation de
+sa saison. La carte « Ta semaine » reste donc vide (avec un bouton vers le check-in) tant
+que le point du matin n'est pas fait, et l'onglet n'est plus pris en otage.
+
+Critères d'acceptation du handoff, tous assertés dans `smoke-checkin.mjs` : `TABS.length
+=== 4`, aucune erreur console sur les 4 onglets, cocher une séance ET voir la vue d'ensemble
+depuis le seul onglet Plan, aucun import restant vers `tab-week.js`.

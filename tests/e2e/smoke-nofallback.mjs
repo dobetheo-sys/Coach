@@ -31,7 +31,7 @@ await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "domcon
 await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v1", JSON.stringify(s)); }, runnerStateV1({}));
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "plan généré normalement (5 onglets)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "plan généré normalement (4 onglets)");
 ok(await page.locator("[role=alert]").count() === 0, "aucun écran d'échec quand tout va bien");
 
 // ---- 3. Moteur neutralisé → écran d'échec, PAS de plan dégradé ----
@@ -40,7 +40,7 @@ const failTxt = await page.evaluate(async () => {
   const saved = globalThis.EBV2;
   globalThis.EBV2 = undefined;            // simule un bundle absent
   invalidatePlan();
-  try { setTab("week"); } catch (e) { /* ne doit PAS remonter jusqu'ici */ }
+  try { setTab("general"); } catch (e) { /* ne doit PAS remonter jusqu'ici */ }
   const txt = document.querySelector("#screen").textContent;
   const alerts = document.querySelectorAll("[role=alert]").length;
   const bar = document.getElementById("ebTabbar");
@@ -57,7 +57,7 @@ ok(!failTxt.bar, "la barre d'onglets disparaît : pas de vue de plan sans plan")
 // ---- 4. Réessayer répare (le moteur est revenu) ----
 const back = await page.evaluate(async () => {
   const { invalidatePlan, setTab } = await import("./js/ui/tabs.js");
-  invalidatePlan(); setTab("week");
+  invalidatePlan(); setTab("general");
   return { plan: !!(await import("./js/state.js")).S.currentPlan, alerts: document.querySelectorAll("[role=alert]").length };
 });
 ok(back.plan && back.alerts === 0, "le moteur revenu, la génération repart (aucun état bloqué)");
@@ -82,7 +82,7 @@ const inv = await page.evaluate(async () => {
   const { invalidatePlan, setTab } = await import("./js/ui/tabs.js");
   const before = JSON.stringify(S.answers);
   S.answers.vol_max = "abc"; ebSave();
-  invalidatePlan(); setTab("week");
+  invalidatePlan(); setTab("general");
   const txt = document.querySelector("#screen").textContent;
   const out = {
     refus: /Le plan n’a pas été généré/.test(txt),
@@ -91,7 +91,7 @@ const inv = await page.evaluate(async () => {
     bouton: !!document.getElementById("ebFixInput"),
     profilIntact: JSON.parse(before).level === S.answers.level,
   };
-  S.answers = JSON.parse(before); ebSave(); invalidatePlan(); setTab("week");
+  S.answers = JSON.parse(before); ebSave(); invalidatePlan(); setTab("general");
   return out;
 });
 ok(inv.refus, "une valeur illisible fait REFUSER le plan (jamais un plan fantôme à 30 min de pic)");

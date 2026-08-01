@@ -24,10 +24,13 @@ await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_stat
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 
-// ---- 1. Échange de jours (⇄) dans Semaine : deux taps, persistant, réversible ----
+// ---- 1. Échange de jours (⇄) : deux taps, persistant, réversible ----
+// R16.9 — le ⇄ vivait dans Semaine ; il est dans Plan (index 1), et sur TOUTE semaine
+// affichée, pas seulement la courante — d'où le compte par carte plutôt que global.
 const tabs = await page.locator("#ebTabbar .tabbtn").all();
-await tabs[3].click(); await page.waitForTimeout(300);
-ok((await page.locator("#screen [data-swap]").count()) === 7, "un bouton ⇄ par jour de la semaine courante");
+await tabs[1].click(); await page.waitForTimeout(300);
+const carteSemaine = page.locator("#screen .card").filter({ hasText: "Ta semaine" }).first();
+ok((await carteSemaine.locator("[data-swap]").count()) === 7, "un bouton ⇄ par jour de la semaine courante");
 const before = await page.evaluate(async () => {
   const { S } = await import("./js/state.js");
   const t = new Date().toISOString().slice(0, 10);
@@ -73,8 +76,12 @@ ok(await page.locator(".eb-modal:has-text('Comment c’était')").count() === 0,
 if (await page.locator(".eb-overlay").count()) { await page.keyboard.press("Escape"); await page.waitForTimeout(200); }
 ok(await page.locator(".eb-overlay").count() === 0, "Échap ferme aussi la célébration");
 
-// ---- 3. Journal des adaptations (Semaine) ----
-ok(/Adaptations quotidiennes \(1 check-ins? · 1 ajustement/.test(await page.locator("#screen").textContent()), "carte « Adaptations quotidiennes » listée depuis readinessLog (Semaine)");
+// ---- 3. Journal des adaptations ----
+// R16.9 — il commente les check-ins, il a suivi dans 🎯 Aujourd'hui (index 2).
+const tJ = await page.locator("#ebTabbar .tabbtn").all();
+await tJ[2].click(); await page.waitForTimeout(300);
+ok(/Adaptations quotidiennes \(1 check-ins? · 1 ajustement/.test(await page.locator("#screen").textContent()), "carte « Adaptations quotidiennes » listée depuis readinessLog (Aujourd'hui)");
+await tJ[1].click(); await page.waitForTimeout(300);
 
 // ---- 3bis. R6 : valider la séance depuis Aujourd'hui + 3 formats de partage ----
 await page.evaluate(async () => {
@@ -136,7 +143,7 @@ ok(await page.locator("#ebBackToPlan").count() === 1, "« Revenir à mon plan en
 const prefilled = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return { age: S.answers.age, sex: S.answers.sex, pace: S.answers.pace }; });
 ok(prefilled.age === "35" && prefilled.sex === "H" && prefilled.pace === "4:30", "données de la personne pré-remplies (âge/sexe/allure) dans le nouveau plan");
 await page.click("#ebBackToPlan"); await page.waitForTimeout(500);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "retour : la vue plan est restaurée");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "retour : la vue plan est restaurée");
 const plansAfterBack = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.plans.length; });
 ok(plansAfterBack === 1, "le brouillon abandonné est retiré (pas de plan fantôme)");
 

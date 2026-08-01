@@ -22,7 +22,7 @@ const ASSETS = [
   "./js/ui/tab-plan-general.js",
   "./js/ui/tab-today.js",
   "./js/ui/tab-nutrition.js",
-  "./js/ui/tab-week.js",
+  "./js/ui/session-life.js",
   "./js/ui/checkin.js",
   "./js/ui/avatar.js",
   "./js/ui/celebrations.js",

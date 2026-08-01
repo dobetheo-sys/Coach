@@ -23,7 +23,7 @@ mieux qu'un plan dangereux. »
 | `Coach_Pro_V1.5.html` | **Le produit** — application autonome (~1600 lignes), tout le moteur |
 | `src/sports/registry.ts` + `src/sports/<sport>/` | **Le registre de sports** (R10) : un sport = un module qui DÉCLARE ses séances, sa prédiction, ses tests et ses `guards` (garde-fous). Un sport inconnu lève. |
 | `src/engine/trailModel.ts` + `src/generator/trailLibrary.ts` | **Le module trail** (R7) : catégorie déduite, charge à 3 axes (temps/D+/D−), 14 séances |
-| `endurabuild/` | **La PWA** — même produit en modules ES, mobile-first, installable/offline, vue plan en 5 onglets (voir ses RAPPORT-MIGRATION-PWA.md, RAPPORT-ONGLETS.md et RAPPORT-R4.md) ; UI = source de vérité désormais |
+| `endurabuild/` | **La PWA** — même produit en modules ES, mobile-first, installable/offline, vue plan en 4 onglets (voir ses RAPPORT-MIGRATION-PWA.md, RAPPORT-ONGLETS.md et RAPPORT-R4.md) ; UI = source de vérité désormais |
 | `ARCHITECTURE.md` | Choix techniques : pipeline du moteur, registre des règles R3.x/Cn, auditeur, conventions |
 | `src/` + `npm run audit:v1` | L'auditeur de cohérence — la spec exécutable (486 combinaisons) |
 | `ROADMAP-V2.md` | La cible V2 (raisonner → générer → auditer → adapter) |
@@ -227,7 +227,8 @@ liste blanche d'origines, tokens par fragment, sans état) + `server/README.md`
 au Profil, refresh auto, repli jeton manuel conservé). Reste HUMAIN : créer l'app
 Strava + déployer le worker (15 min, README).
 **Refonte R5 livrée** (premier retour du fondateur, 28/07/2026) : navigation en 5 onglets
-📋 Profil · 🗓 Plan · 🎯 Aujourd'hui (CENTRAL, mis en valeur) · 📅 Semaine · 🥗 Nutrition.
+📋 Profil · 🗓 Plan · 🎯 Aujourd'hui (CENTRAL, mis en valeur) · 📅 Semaine · 🥗 Nutrition
+(📅 Semaine fondue dans 🗓 Plan en R16.9 — quatre onglets aujourd'hui).
 Check-in en diaporama coach (`js/ui/checkin.js`), Aujourd'hui = séance du jour → prédiction
 → charge → avancement → intensités (`tab-today.js`), Profil = avatar/XP/teaser + niveaux
 par discipline (tri) + échéance + historique + retest suggéré + records, Plan = phases
@@ -397,6 +398,23 @@ Débusqué au passage : le §6 du handoff oubliait `R14.4` dans sa liste de crit
 plafonds SONT la table déclarée fausse, et ils sont arithmétiquement incompatibles avec le nouveau
 `R14.1-B` (50 % d'écart exigé contre 45 % autorisé). **19 gates verts, E2E 8/8 (55 assertions),
 golden 758 inchangé** — la projection ne touche aucune séance.
+
+**R16 (lot design visuel) livré** (handoff `HANDOFF_R16_design_visuel.md`, voir ARCHITECTURE.md
+« R16 ») : **R16.8** l'échelle typographique — 21 tailles distinctes dont quatre sous le pixel
+(7,5 / 8,5 / 11,5 / 12,5) → **7 paliers `--fs-*` déclarés**, un par rôle, plus un principe qui
+borne la liste (l'échelle gouverne le TEXTE ; un glyphe décoratif se dimensionne en `em`
+relativement à son porteur). Les 69 tailles inline des modules y passent aussi, avec UNE
+exception nommée : le document exporté, autonome, qui n'a pas les variables. Le plus petit
+texte réellement rendu passe de 7,5 px à 9 px. **R16.9** la **fusion 📅 Semaine → 🗓 Plan**
+(5 onglets → 4) : le diff a montré que **la coche existait en deux versions** — celle de
+Semaine ouvrait feedback + célébration + badges, celle de Plan basculait un booléen en silence ;
+il n'en reste qu'une (`toggleDone`, `session-life.js`), et elle vaut pour toute semaine
+affichée. Les briques de la séance VÉCUE sont extraites AVANT suppression (`session-life.js`),
+le quotidien part dans 🎯 Aujourd'hui, la grille et le ⇄ dans 🗓 Plan. Deux corrections
+successives des pastilles de phase tronquées ne regardaient pas la cause : ni le viewport
+(R16.4) ni l'abréviation, mais le bouton de R16.5 émis DANS la frise flex. Garde :
+`tests/e2e/smoke-typo.mjs` (9e suite E2E) — relations d'ordre entre rôles + plancher de
+lisibilité, jamais des valeurs absolues.
 
 **R15 (chapitres moteur) livré** (revue externe de `BUGS_OUVERTS.md`, voir R10_DEFECTS.md « R15 »
 — banc `npm run audit:r15`, **20e gate CI**) : **R15.7-C** un mineur pouvait générer un plan

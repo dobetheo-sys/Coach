@@ -90,6 +90,42 @@ dépôt (« mesurer d'abord ») appliquée à cette entrée elle-même.
 publier le taux. **< 5 %** → l'entrée se ferme en « sans impact mesurable », et c'est une
 décision. **> 20 %** → elle mérite son lot, avec mesure avant/après sur le golden.
 
+### O-4 · La même coche ne faisait pas la même chose selon l'onglet · ✅ **FERMÉ (R16.9)**
+
+Trouvé en diffant `tab-week.js` contre `tab-plan-general.js` avant leur fusion — pas cherché,
+rencontré. Il existait **deux implémentations du geste « ✓ séance faite »** : celle de
+📅 Semaine ouvrait le feedback RPE, posait le drapeau douleur le cas échéant, calculait les
+badges et célébrait ; celle de 🗓 Plan basculait `S.answers.done[k]` en silence. Deux chemins
+pour le même bouton, dessiné pareil, sur des vues du même plan.
+
+Conséquence mesurable : quelqu'un qui cochait ses séances depuis l'onglet Plan ne produisait
+**aucun `completions`** — donc aucun RPE, donc l'ajusteur du lendemain travaillait sur une
+fatigue sous-estimée, et le drapeau douleur ne pouvait jamais se poser. La boucle
+« le plan réagit » était coupée pour cet utilisateur, sans qu'aucun test ne le voie : chaque
+suite cochait depuis l'onglet où la coche complète existait.
+
+Fermé par construction : `toggleDone` (`session-life.js`) est le point unique, `weekGridHTML`
+le seul producteur de cases. La leçon est celle du dépôt, appliquée à l'UI — **deux chemins
+pour un même geste finissent toujours par diverger**, et c'est le chemin le moins testé qui
+part en silence.
+
+### O-5 · La règle « rien avant le check-in » ne tenait que par une redirection · ⏳ **assoupli délibérément (R16.9)**
+
+📅 Semaine faisait respecter la règle produit R5 en REDIRIGEANT tout l'onglet vers Aujourd'hui.
+🗓 Plan, lui, affichait la saison entière — séances comprises — sans aucune porte. La règle
+n'a donc jamais tenu « partout » comme le prétendait ARCHITECTURE.md : elle tenait dans un
+onglet sur deux.
+
+Arbitrage posé en R16.9, à assumer comme tel : ce que la règle vise est **la séance du JOUR
+montrée non adaptée**, pas la consultation de sa saison. La carte « Ta semaine » reste donc
+vide (avec un bouton vers le check-in) tant que le point du matin n'est pas fait ; la vue de
+saison reste accessible. **Ce qui reste ouvert** : la grille de saison affiche toujours les
+séances de la semaine courante, non adaptées, quand on déplie « Voir les N semaines ». Décider
+si c'est acceptable (une séance PLANIFIÉE n'est pas une séance PRESCRITE pour aujourd'hui) ou
+s'il faut masquer la semaine courante dans la saison tant que le check-in manque.
+
+---
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas
@@ -129,7 +165,7 @@ Ce ne sont pas des bugs : ce sont des endroits où **on ne saurait pas** qu'il y
 | ~~A-1~~ | ~~`audit:v7` tourne à N=150~~ | ✅ **Fermé (R15.1)** : N=400, budgets en taux, jour de course varié. |
 | A-2 | Le golden master fige `vol_max` au profil de base sur presque toutes ses passes | Deux passes correctives ont déjà dû être ajoutées pour cette raison (« course datée » en N2, « volume et extrapolation » en R14). Le prochain paramètre figé produira le même angle mort. |
 | A-3 | `R14.3-b` n'a **aucun critère automatique** | Personne ne saura si le dénivelé vélo est traité, sauf à relire le code. |
-| A-4 | Le monolithe `Coach_Pro_V1.5.html` a le moteur à jour mais son **UI est gelée à R4** | Les régressions d'interface introduites depuis (5 onglets, carte Trail, étape terrain) ne s'y voient pas. C'est documenté et voulu — mais un utilisateur qui ouvrirait ce fichier verrait un produit d'il y a plusieurs lots. |
+| A-4 | Le monolithe `Coach_Pro_V1.5.html` a le moteur à jour mais son **UI est gelée à R4** | Les régressions d'interface introduites depuis (les onglets — 5 puis 4 en R16.9 —, carte Trail, étape terrain) ne s'y voient pas. C'est documenté et voulu — mais un utilisateur qui ouvrirait ce fichier verrait un produit d'il y a plusieurs lots. |
 | A-5 | **Aucune vérité terrain pour la projection R14/R14.1** — l'angle mort le plus profond du prédicteur | Les bandes `h`, `G_plafond`, `k_structure` sont des heuristiques que **rien ne valide**. On ne saura jamais qu'elles sont fausses tant que les projections ne seront pas confrontées aux résultats réels. *Premier geste, et il doit être fait MAINTENANT :* journaliser à chaque génération `{date, sport, format, horizon, refs mesurées, gainPct, gainBand, adhérence}` et, au passage du jour J, `{temps réel par leg}`. Sans cette ligne écrite aujourd'hui, la calibration sera impossible dans deux ans — les données n'existeront pas. |
 | A-6 | **Dates absolues** dans le golden et les scripts (`RACE_PASS_DATES`, `scripts/trace.mjs`, profils `measured`) — ⚠ **partiellement fermé** : `audit_v7.cjs` est passé en dates RELATIVES (R15.1), le golden et `trace.mjs` restent en absolu | Un profil dont la course est « à 43 semaines » aujourd'hui sera à 30 semaines dans trois mois : le golden dérive tout seul, ou pire, **exerce silencieusement d'autres branches en gardant la même empreinte**. Le garde-fou d'échéance existe (`goldenMaster.mjs` prévient 8 semaines avant), mais il traite la panne, pas la dérive. Vérifier : `grep -rn "20[23][0-9]-[01][0-9]-[0-3][0-9]" scripts/ tests/` — toute date en dur est un futur A-2. |
 

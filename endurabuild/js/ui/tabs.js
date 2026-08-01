@@ -7,7 +7,6 @@ import { buildPlan, EBGenerationError } from "../app.js";
 import { renderTabProfile } from "./tab-profile.js";
 import { renderTabPlanGeneral } from "./tab-plan-general.js";
 import { renderTabToday } from "./tab-today.js";
-import { renderTabWeek } from "./tab-week.js";
 import { renderTabNutrition } from "./tab-nutrition.js";
 
 // Refonte R5 (retour utilisateur) : l'onglet CENTRAL 🎯 Aujourd'hui est l'écran du
@@ -15,11 +14,14 @@ import { renderTabNutrition } from "./tab-nutrition.js";
 // mis en valeur dans la barre (classe tab-central). L'ancien Avancement y est fondu,
 // l'ancien Suivi est redistribué (avatar/badges → Profil, checklist → Aujourd'hui),
 // et 🥗 Nutrition devient un onglet à part entière.
+// R16.9 — 📅 Semaine disparaît à son tour : elle n'ajoutait qu'un recentrage sur la semaine
+// courante, que 🗓 Plan porte désormais en carte de tête. Quatre onglets. Un identifiant
+// d'onglet inconnu (un « week » gardé dans un état sauvegardé, un lien ancien) retombe sur
+// le dernier onglet par le repli déjà en place dans `renderActiveTab`.
 const TABS = [
   ["profile", "\u{1F4CB}", "Profil", renderTabProfile],
   ["general", "\u{1F5D3}", "Plan", renderTabPlanGeneral],
   ["today", "\u{1F3AF}", "Aujourd’hui", renderTabToday],
-  ["week", "\u{1F4C5}", "Semaine", renderTabWeek],
   ["nutrition", "\u{1F957}", "Nutrition", renderTabNutrition],
 ];
 

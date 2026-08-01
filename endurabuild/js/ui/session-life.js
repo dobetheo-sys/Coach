@@ -1,59 +1,17 @@
-// Onglet 📅 Semaine — le calendrier de la semaine courante (refonte R5 : le check-in du
-// matin et la séance du jour vivent dans l'onglet central 🎯 Aujourd'hui ; ici, la grille
-// de la semaine, les échanges de jours ⇄, le bilan hebdo, le contenu du jour, les rappels).
-// La règle produit tient toujours : pas de séance visible avant le check-in → redirection
-// vers Aujourd'hui tant que la forme du jour n'est pas renseignée.
+// La SÉANCE VÉCUE — les briques communes à tous les écrans qui montrent, valident ou
+// commentent une séance : bandeaux de moment, drapeau douleur, déclaration de maladie,
+// séance du jour déjà adaptée, feedback post-séance, célébration et partage.
+//
+// R16.9 — ce module naît de la fusion de 📅 Semaine dans 🗓 Plan. Ces fonctions vivaient
+// dans `tab-week.js` et étaient importées par `tab-today.js` : les laisser mourir avec
+// l'onglet aurait fait disparaître la boucle validation → feedback → célébration, qui
+// n'a rien à voir avec un onglet. Elles sont donc EXTRAITES avant suppression, comme le
+// demandait l'étape 2 du handoff — un module ne se supprime pas, il se vide d'abord.
 import { S, $, ebSave, esc, fmtDay, todayISO } from "../state.js";
-import { readinessCardHTML, sessDetailsHTML, whyOf, techOf } from "./plan-view.js";
-import { applyReadiness, readinessDoneToday } from "./readiness.js";
+import { whyOf, techOf } from "./plan-view.js";
 import { avatarDataFor, avatarSVG } from "./avatar.js";
 import { celebrationMessage } from "./celebrations.js";
-import { notifySetupHTML, bindNotifySetup, scheduleDailyNotification, weeklyReviewHTML } from "../notifications.js";
-import { retestBannerHTML, bindRetestBanner } from "./retest.js";
-import { ensurePlan, invalidatePlan, setTab } from "./tabs.js";
 import { trapModal } from "./modal.js";
-
-// Déplacement de séance persistant (spec §8) : échange de deux jours d'une même semaine.
-// L'échange est stocké (answers.daySwaps) et réappliqué après chaque régénération ; les ✓
-// et feedbacks des deux jours sont remappés UNE fois à la création (ils suivent la séance).
-function toggleSwap(wnum, jA, jB) {
-  if (!Array.isArray(S.answers.daySwaps)) S.answers.daySwaps = [];
-  const ix = S.answers.daySwaps.findIndex(([w2, a2, b2]) => w2 === wnum && ((a2 === jA && b2 === jB) || (a2 === jB && b2 === jA)));
-  if (ix >= 0) S.answers.daySwaps.splice(ix, 1);
-  else S.answers.daySwaps.push([wnum, jA, jB]);
-  const remap = (obj) => {
-    if (!obj) return;
-    for (let i = 0; i < 8; i++) {
-      const kA = wnum + "|" + jA + "|" + i, kB = wnum + "|" + jB + "|" + i;
-      const tA = obj[kA], tB = obj[kB];
-      if (tB !== undefined) obj[kA] = tB; else delete obj[kA];
-      if (tA !== undefined) obj[kB] = tA; else delete obj[kB];
-    }
-  };
-  remap(S.answers.done);
-  remap(S.answers.completions);
-}
-function handleSwapClick(plan, wnum, jour) {
-  const p = S._swapPending;
-  if (!p || p.w !== wnum) { S._swapPending = { w: wnum, jour }; renderTabWeek(plan); return; }
-  if (p.jour === jour) { S._swapPending = null; renderTabWeek(plan); return; }
-  toggleSwap(wnum, p.jour, jour);
-  S._swapPending = null;
-  ebSave();
-  invalidatePlan();
-  let np = ensurePlan();
-  // Garde-fou : l'échange ne doit pas créer deux jours durs consécutifs (récupération d'abord)
-  const wk = np.weeks.find((x) => x.num === wnum);
-  const adjacentHard = !!wk && wk.days.some((d, i) => i > 0 && d.charge === "dur" && wk.days[i - 1].charge === "dur");
-  if (adjacentHard && !confirm("Cet échange crée deux jours durs consécutifs — le corps récupère mal comme ça. Garder quand même ?")) {
-    toggleSwap(wnum, p.jour, jour); // annulation : on remet tout comme avant
-    ebSave();
-    invalidatePlan();
-    np = ensurePlan();
-  }
-  renderTabWeek(np);
-}
-import { dailyContentHTML } from "./daily-content.js";
 import { shareStory, shareText } from "../export.js";
 
 // R4.0 — boucle de base : validation → FEEDBACK ≤10s (RPE 1-10, ressenti, douleur) →
@@ -158,22 +116,54 @@ export function showCongrats(plan, session, newBadge, todayISO) {
   });
 }
 
-const ic = { sw: "\u{1F3CA}", bk: "\u{1F6B4}", rn: "\u{1F3C3}", br: "\u{1F501}", rs: "\u{1F4AA}" };
-
-function currentWeek(plan) {
-  const today = todayISO();
-  return (
-    plan.weeks.find((w) => w.days.some((d) => d.date === today)) ||
-    plan.weeks.find((w) => w.days.some((d) => d.date >= today)) ||
-    plan.weeks[0]
-  );
+/**
+ * VALIDATION D'UNE SÉANCE — le point unique. R16.9 : la coche existait en DEUX versions,
+ * l'une dans 📅 Semaine (feedback + célébration + badges) et l'autre dans 🗓 Plan (bascule
+ * muette). Cocher la même séance ne faisait donc pas la même chose selon l'onglet — et le
+ * plan absorbant la semaine, c'est la version complète qui reste, partout.
+ * `rerender` re-rend la VUE appelante ; le plan n'est jamais recalculé ici.
+ */
+export function toggleDone(plan, k, todayIso, rerender) {
+  if (!S.answers.done) S.answers.done = {};
+  const checking = !S.answers.done[k]; // ○→✓ (la dé-coche ne célèbre rien)
+  let badgesBefore = [];
+  if (checking && globalThis.EBV2 && globalThis.EBV2.badges) {
+    try { badgesBefore = globalThis.EBV2.badges(plan, S.answers, todayIso); } catch (e) {}
+  }
+  if (S.answers.done[k]) delete S.answers.done[k];
+  else S.answers.done[k] = true;
+  ebSave();
+  const sc = window.pageYOffset;
+  rerender();
+  window.scrollTo(0, sc);
+  if (!checking) return;
+  // retrouver la séance depuis la clé "sem|jour|idx" (le plan, pas la vue)
+  const [wn, jour, si] = k.split("|");
+  const wk = plan.weeks.find((x) => String(x.num) === wn);
+  const dy = wk && wk.days.find((x) => x.jour === jour);
+  const sess = dy && dy.sessions[+si];
+  if (!sess) return;
+  const celebrate = () => {
+    let newBadge = null;
+    if (globalThis.EBV2 && globalThis.EBV2.badges) {
+      try {
+        const after = globalThis.EBV2.badges(plan, S.answers, todayIso);
+        newBadge = after.find((x) => !badgesBefore.some((y) => y.id === x.id)) || null;
+      } catch (e) {}
+    }
+    showCongrats(plan, sess, newBadge, todayIso);
+  };
+  // R4.0 — repos : validation directe (pas de RPE sur du repos) ; séance : feedback
+  // d'abord, puis re-rendu (le feedback peut poser le drapeau douleur → bandeau)
+  if (sess.d === "rs") celebrate();
+  else feedbackModal(plan, sess, k, () => { rerender(); celebrate(); });
 }
 
 // Célébrations « moment » (RESTE-A-FAIRE #6) : bannières ponctuelles aux instants qui
 // comptent — jour de course, veille de course, entrée en affûtage. Purement visuel,
 // calculé depuis le plan déjà généré ; dégrade proprement si les jours n'ont pas de date.
-export function momentHTML(plan, todayISO) {
-  const today = todayISO || todayISO();
+export function momentHTML(plan, todayIso) {
+  const today = todayIso || todayISO();
   const tomorrow = new Date(new Date(today + "T00:00:00Z").getTime() + 864e5).toISOString().slice(0, 10);
   const raceDates = (plan.races || []).map((r) => r.date);
   if (S.answers && S.answers.race_date) raceDates.push(S.answers.race_date);
@@ -191,8 +181,7 @@ export function momentHTML(plan, todayISO) {
 
 // R4.5 — bandeau douleur PERMANENT tant que le drapeau n'est pas levé : la qualité est
 // verrouillée par l'ajusteur (rouge forcé), la série est gelée, on recommande médecin/kiné.
-// Levée = action explicite + question de confirmation. Exporté (R5) : affiché aussi
-// dans l'onglet 🎯 Aujourd'hui.
+// Levée = action explicite + question de confirmation.
 export function painBannerHTML() {
   const pf = S.answers.painFlag;
   if (!pf || !pf.active) return "";
@@ -206,32 +195,32 @@ export function bindPainBanner(plan, rerender) {
     if (!confirm("Plus aucune douleur, ni à froid ni pendant l’effort ?")) return;
     S.answers.painFlag = { active: false, location: S.answers.painFlag.location, since: S.answers.painFlag.since, liftedAt: todayISO() };
     ebSave();
-    (rerender || (() => renderTabWeek(plan)))();
+    if (rerender) rerender();
   };
 }
 // R4.2 — maladie déclarée : gèle la série (le jour ne compte ni ne casse), jamais de culpabilisation.
-export function sickToggleHTML(todayISO) {
-  const sick = (S.answers.sickDates || []).includes(todayISO);
+export function sickToggleHTML(todayIso) {
+  const sick = (S.answers.sickDates || []).includes(todayIso);
   return '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:var(--fs-md)"><input type="checkbox" id="rdSick"' + (sick ? " checked" : "") + ' style="width:20px;height:20px"><span>🤒 Malade aujourd’hui — la série est gelée, la reprise attendra que ça aille mieux</span></label>';
 }
-export function bindSickToggle(plan, todayISO) {
+export function bindSickToggle(plan, todayIso) {
   const cb = $("rdSick");
   if (cb) cb.onchange = () => {
     if (!Array.isArray(S.answers.sickDates)) S.answers.sickDates = [];
-    if (cb.checked) { if (!S.answers.sickDates.includes(todayISO)) S.answers.sickDates.push(todayISO); }
-    else S.answers.sickDates = S.answers.sickDates.filter((d) => d !== todayISO);
+    if (cb.checked) { if (!S.answers.sickDates.includes(todayIso)) S.answers.sickDates.push(todayIso); }
+    else S.answers.sickDates = S.answers.sickDates.filter((d) => d !== todayIso);
     S.answers.sickDates = S.answers.sickDates.slice(-60);
     ebSave();
   };
 }
 
 // Séance du jour (déjà adaptée au verdict de forme) — ou, si repos, la prochaine séance
-// à venir. Exportée (R5) : rendue en PREMIER dans l'onglet central 🎯 Aujourd'hui.
+// à venir. Rendue en PREMIER dans l'onglet central 🎯 Aujourd'hui.
 const _verdictIc = { verte: "\u{1F7E2}", orange: "\u{1F7E0}", rouge: "\u{1F534}" };
 const _verdictLbl = { keep: "séance maintenue", reduce: "volume réduit", replace: "endurance à la place", rest: "repos conseillé", off: "repos complet" };
-export function heroSessionHTML(plan, todayISO) {
+export function heroSessionHTML(plan, todayIso) {
   if (!globalThis.EBV2 || !globalThis.EBV2.adjustToday) return "";
-  const snap = Object.assign({ date: todayISO }, S.answers.readiness || {});
+  const snap = Object.assign({ date: todayIso }, S.answers.readiness || {});
   let res;
   try { res = globalThis.EBV2.adjustToday(S.sport, S.answers, snap); } catch (e) { console.warn(e); return ""; }
   const v = res.adjustment.verdict;
@@ -246,135 +235,18 @@ export function heroSessionHTML(plan, todayISO) {
     // l'écran que l'athlète regarde tous les matins, et « pourquoi cette séance » y a plus de
     // valeur que la liste des blocs, qui reste à un clic.
     body = res.sessions.map((x) => {
-      const why = whyOf(x);
+      const w = whyOf(x);
       return '<div style="margin-top:8px"><b>' + x.name + "</b>"
-        + (why ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + why + "</div>" : "")
+        + (w ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + w + "</div>" : "")
         + (x.det ? '<details class="gd-sess" style="margin-top:4px"><summary>Le détail de la séance</summary><span class="gd-det">' + techOf(x) + "</span></details>" : "")
         + "</div>";
     }).join("");
   } else {
     const upcoming = [];
-    plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date > todayISO && d.sessions.some((s) => s.d !== "rs")) upcoming.push(d); }));
+    plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date > todayIso && d.sessions.some((s) => s.d !== "rs")) upcoming.push(d); }));
     upcoming.sort((a, b) => a.date.localeCompare(b.date));
     const nxt = upcoming[0];
     body = '<div style="margin-top:6px">\u{1F60C} Repos aujourd’hui.' + (nxt ? " Prochaine séance : <b>" + nxt.jour + "</b> · " + nxt.sessions.filter((s) => s.d !== "rs").map((s) => s.name).join(", ") : "") + "</div>";
   }
-  return '<div class="card">' + badge + '<div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayISO) + "</div>" + why + body + "</div>";
-}
-
-export function renderTabWeek(plan) {
-  const today = todayISO();
-  const moment = momentHTML(plan, today);
-
-  if (!readinessDoneToday()) {
-    setTab("today"); // règle produit : le check-in (diaporama d'Aujourd'hui) d'abord
-    return;
-  }
-
-  const w = currentWeek(plan);
-  const raceTag = w.race
-    ? ' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:var(--fs-micro);font-weight:700">\u{1F3C1} COURSE ' + w.race + "</span>"
-    : w.postRace ? ' <span style="color:#9b72ff;font-size:var(--fs-micro)">↳ récup post-course</span>' : "";
-  let html = moment;
-  html += painBannerHTML();
-  html += retestBannerHTML(today); // R4.4 — annonce J-7/veille/écran du jour J
-  html += dailyContentHTML(plan, today); // R4.9 — contenu du jour (anecdote/physio/stat/défi)
-  html += weeklyReviewHTML(plan); // R4.10 — bilan hebdo (dimanche)
-  html += notifySetupHTML(); // R4.10 — réglage de l'heure du rappel (une fois)
-  html += '<div class="card"><div class="eyebrow">Ta semaine</div>';
-  const wRange = w.days.length ? ' <span style="font-size:var(--fs-micro);color:var(--muted);font-weight:400">du ' + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) + "</span>" : "";
-  html += '<div class="gw"><div class="gw-h"><b>Semaine ' + w.num + "</b>" + wRange + "<span style=\"color:" + (w.phase.c || "#555") + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + "</em></div>";
-  html += '<div class="gw-grid">';
-  w.days.forEach((d) => {
-    const bg = d.sessions.map((s) => "<span>" + ic[s.d] + "</span>").join("");
-    const nm = d.sessions
-      .map((s, si) => {
-        const k = w.num + "|" + d.jour + "|" + si;
-        const dn = S.answers.done && S.answers.done[k];
-        // R4.2 — le REPOS se valide aussi (« récupération respectée ✓ », 1 tap) : un jour
-        // de repos validé compte STRICTEMENT autant qu'un jour de séance dans la streak.
-        const title = s.d === "rs" ? "Récupération respectée" : "Marquer fait";
-        const chk = '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" data-rest="' + (s.d === "rs" ? 1 : 0) + '" title="' + title + '" aria-label="' + title + ' : ' + s.name.replace(/"/g, "") + '">' + (dn ? "✓" : "○") + "</button> ";
-        return chk + sessDetailsHTML(s);
-      })
-      .join("");
-    // R7 — chaque jour du plan est annoté de sa VRAIE date calendrier (retour utilisateur)
-    const mark = "<i>" + (d.date === today ? "auj. · " : "") + fmtDay(d.date) + (plan.use10 ? " · C" + d.cyc + "J" + d.jc : "") + "</i>";
-    // §8 — déplacement de séance : ⇄ sur chaque jour, deux taps = échange persistant.
-    const pend = S._swapPending && S._swapPending.w === w.num && S._swapPending.jour === d.jour;
-    const swapBtn = '<button class="swapBtn" type="button" data-swap="' + w.num + "|" + d.jour + '" title="Échanger ce jour avec un autre" aria-label="Échanger ' + d.jour + ' avec un autre jour" style="border:none;background:' + (pend ? "#2e6bff" : "transparent") + ";color:" + (pend ? "#fff" : "#b3ab9b") + ';border-radius:5px;font-size:var(--fs-sm);cursor:pointer;padding:0 4px">⇄</button>';
-    html += '<div class="gd ' + d.charge + (d.date === today ? " today" : "") + (pend ? " swap-pend" : "") + '"' + (pend ? ' style="outline:2px dashed #2e6bff"' : "") + '><div class="gd-top"><b>' + d.jour + "</b>" + mark + swapBtn + '</div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
-  });
-  html += "</div>";
-  if (S._swapPending && S._swapPending.w === w.num)
-    html += '<div class="load-sub" style="margin-top:6px">⇄ <b>' + S._swapPending.jour + "</b> sélectionné — touche le jour avec lequel l’échanger (ou re-touche ⇄ pour annuler).</div>";
-  html += "</div>";
-  html += sickToggleHTML(today);
-  // Journal des adaptations quotidiennes (readinessLog) — la preuve que le plan réagit.
-  const rlog = Array.isArray(S.answers.readinessLog) ? S.answers.readinessLog : [];
-  if (rlog.length) {
-    const icV = { verte: "🟢", orange: "🟠", rouge: "🔴" };
-    const lblV = { keep: "maintenue", reduce: "réduite", replace: "remplacée par endurance", rest: "repos", off: "repos complet" };
-    const nAdapt = rlog.filter((x) => x.action !== "keep").length;
-    html += '<details class="load-card"><summary class="load-title">🤖 Adaptations quotidiennes (' + rlog.length + " check-ins · " + nAdapt + " ajustement" + (nAdapt > 1 ? "s" : "") + ")</summary>";
-    rlog.slice(-10).reverse().forEach((x) => { html += '<div style="font-size:var(--fs-sm);margin:4px 0">' + (icV[x.level] || "") + " " + x.date + " — séance " + (lblV[x.action] || x.action) + "</div>"; });
-    html += '<div class="load-sub" style="margin-top:4px">C’est la différence entre un plan PDF et un coach : chaque matin, la séance s’ajuste à ta forme réelle.</div></details>';
-  }
-  html += '<details class="load-card"><summary class="load-title">\u{1F321} Modifier ma forme du jour</summary>' + readinessCardHTML({ btnLabel: "Mettre à jour" }) + "</details>";
-  html += "</div>";
-  $("screen").innerHTML = html;
-  bindPainBanner(plan);
-  bindSickToggle(plan, today);
-  bindRetestBanner(today, () => renderTabWeek(ensurePlan())); // le retest a pu régénérer le plan
-  bindNotifySetup(plan, () => renderTabWeek(plan));
-  scheduleDailyNotification(plan);
-  const _rb = $("rdApply");
-  if (_rb) _rb.onclick = async () => { await applyReadiness(); renderTabWeek(plan); };
-  document.querySelectorAll("#screen [data-swap]").forEach((b) => {
-    b.onclick = (e) => {
-      e.stopPropagation();
-      const [wn, jour] = b.dataset.swap.split("|");
-      handleSwapClick(plan, +wn, jour);
-    };
-  });
-  document.querySelectorAll("#screen .doneBtn").forEach((b) => {
-    b.onclick = () => {
-      if (!S.answers.done) S.answers.done = {};
-      const k = b.dataset.dk;
-      const checking = !S.answers.done[k]; // ○→✓ (pas la dé-coche)
-      let badgesBefore = [];
-      if (checking && globalThis.EBV2 && globalThis.EBV2.badges) {
-        try { badgesBefore = globalThis.EBV2.badges(plan, S.answers, today); } catch (e) {}
-      }
-      if (S.answers.done[k]) delete S.answers.done[k];
-      else S.answers.done[k] = true;
-      ebSave();
-      const sc = window.pageYOffset;
-      renderTabWeek(plan); // re-rend la VUE — le plan n'est pas recalculé
-      window.scrollTo(0, sc);
-      if (checking) {
-        // retrouver la séance depuis la clé "sem|jour|idx" (le plan, pas la vue)
-        const [wn, jour, si] = k.split("|");
-        const wk = plan.weeks.find((x) => String(x.num) === wn);
-        const dy = wk && wk.days.find((x) => x.jour === jour);
-        const sess = dy && dy.sessions[+si];
-        if (sess) {
-          const celebrate = () => {
-            let newBadge = null;
-            if (globalThis.EBV2 && globalThis.EBV2.badges) {
-              try {
-                const after = globalThis.EBV2.badges(plan, S.answers, today);
-                newBadge = after.find((x) => !badgesBefore.some((y) => y.id === x.id)) || null;
-              } catch (e) {}
-            }
-            showCongrats(plan, sess, newBadge, today);
-          };
-          // R4.0 — repos : validation directe (pas de RPE sur du repos) ; séance : feedback
-          // d'abord, puis re-rendu (le feedback peut poser le drapeau douleur → bandeau)
-          if (sess.d === "rs") celebrate();
-          else feedbackModal(plan, sess, k, () => { renderTabWeek(plan); celebrate(); });
-        }
-      }
-    };
-  });
+  return '<div class="card">' + badge + '<div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayIso) + "</div>" + why + body + "</div>";
 }

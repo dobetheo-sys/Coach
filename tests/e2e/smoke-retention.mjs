@@ -37,7 +37,8 @@ await page.locator(".ph-obj").first().click(); await page.waitForTimeout(150);
 ok(/Semaine \d+ · [\d.]+h/.test(await page.locator(".ph-obj").first().textContent()), "ouvrir une phase liste ses semaines et leur état");
 
 // 2. Repos validable : les jours rs ont une coche « récupération respectée »
-await planTabs[3].click(); await page.waitForTimeout(250);
+// R16.9 — la grille est en tête de l'onglet Plan (index 1), Semaine n'existe plus.
+await planTabs[1].click(); await page.waitForTimeout(250);
 const restBtns = await page.locator('.doneBtn[data-rest="1"]').count();
 ok(restBtns > 0, "le repos se valide (coches présentes : " + restBtns + ")");
 

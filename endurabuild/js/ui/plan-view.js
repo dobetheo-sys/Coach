@@ -122,7 +122,7 @@ function downloadPlan(){
 // ===== MOTEUR V2 (bundle EBV2, injecté en fin de fichier) =====
 // La génération passe par le moteur TypeScript raisonné (src/ → npm run build:app).
 // Refonte onglets : l'ancien v2ExtrasHTML est scindé en deux —
-//   readinessCardHTML()  → carte « Forme du jour », rendue par l'onglet 📅 Semaine ;
+//   readinessCardHTML()  → carte « Forme du jour », rendue par l'onglet 🎯 Aujourd'hui (R16.9) ;
 //   progressCardsHTML(p) → régularité/badges, prédiction, historique, intensités,
 //                          décisions du moteur, rendus par l'onglet 📈 Avancement.
 function readinessCardHTML(opts){
