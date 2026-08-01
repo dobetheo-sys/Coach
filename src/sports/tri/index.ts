@@ -4,7 +4,7 @@
  * lissage sur métrique nage) : elles sont désormais des garde-fous DÉCLARÉS.
  */
 import type { V1Session, V1Step } from "../../engine/types.ts";
-import { C21_REPRISE_BRICK_FACTOR } from "../../engine/constraintMatrix.ts";
+import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS } from "../../engine/constraintMatrix.ts";
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { TRI_SWIM, TRI_BIKE, TRI_RUN } from "../../engine/predictor.ts";
@@ -70,6 +70,37 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
       S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : vélo en endurance, dernier tiers @ allure course, puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP.", det: "", steps: [
         { role: "body", leg: "bike", durationMin: PT(bb.lo, Math.round(bb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string } as V1Step,
         { role: "body", leg: "run", durationMin: PT(br.lo, Math.round(br.hi * rf)), d: "rn" } as V1Step,
+      ], ...( { runInj } as object) });
+      // La SEMAINE DE COURSE est exclue : sa spécificité, c'est la course. Y poser un
+      // enchaînement à J-2 ou J-1 est le contraire d'un affûtage — et c'est aussi la semaine
+      // que R13.4/R15.7 remodèlent (déverrouillage de la veille, jour J), donc le seul endroit
+      // où une séance ajoutée ici se ferait de toute façon raboter par une autre règle.
+    } else if (phase === "taper" && !medHold && kit.weekNum < kit.r.weeks) {
+      // R18.4 — L'AFFÛTAGE GARDAIT LE VOLUME BAS ET PERDAIT LA SPÉCIFICITÉ.
+      // Mesuré sur les 4 formats × 2 niveaux : le dernier enchaînement vélo→course tombait
+      // TROIS SEMAINES avant le jour J, sur toutes les combinaisons. R13.4 avait branché
+      // l'affûtage explicitement sur `dur1` et `dur2` — `durLong`, lui, retombait encore
+      // dans le `else` générique et rendait une sortie longue à pied. Le triathlète arrivait
+      // donc au départ sans avoir posé le pied par terre après le vélo depuis 21 jours, sur
+      // la transition qui est précisément la difficulté propre du sport.
+      // Le swimrun, lui, garde sa séance pivot en affûtage (sa `durLong` n'a jamais eu de
+      // garde de phase) : le modèle existait déjà dans le dépôt, il n'était pas appliqué ici.
+      //
+      // Ce que l'affûtage change, ce n'est pas la NATURE de la séance, c'est sa DOSE : même
+      // motif, un tiers du volume du pic, allure course des deux côtés. Bosquet 2007 —
+      // l'affûtage réduit le volume, PAS l'intensité ni la spécificité.
+      const rf = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1;
+      // C21c — la bande vient de la matrice, pas d'une table recopiée ici : c'est elle que
+      // l'auditeur relit, et deux tables qui disent la même chose finissent par diverger.
+      const tbb = BRICK_TAPER_BIKE_BOUNDS[fmt] || [25, 45];
+      const tb = { lo: tbb[0], hi: tbb[1] };
+      const tr = ({ S: { lo: 6, hi: 10 }, M: { lo: 8, hi: 12 }, "70.3": { lo: 10, hi: 16 }, Full: { lo: 12, hi: 20 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 8, hi: 12 };
+      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel de transition)", note: "Court, à l'allure du jour J : on ne construit plus rien, on entretient. Les jambes ont besoin de se rappeler la sensation « de coton » des premières foulées après le vélo — c'est une compétence, elle se perd, et elle ne se rattrape pas le jour de la course. Un tiers du volume du brick de pic, zéro fatigue résiduelle.", det: "", steps: [
+        // Le PLANCHER du leg vélo est la borne basse AUDITÉE (C21c), pas une fraction d'elle :
+        // sinon la décroissance d'affûtage descend la séance sous ce que la spec exige, et le
+        // générateur produit ce que l'auditeur refuse. Même discipline que C21b en charge.
+        { role: "body", leg: "bike", durationMin: PT(tb.lo, Math.round(tb.hi * rf)), zone: "bk.rp", intensity: intOf("bk.rp") as unknown as string, bnd: { floor: tb.lo, cap: tb.hi } } as V1Step,
+        { role: "body", leg: "run", durationMin: PT(tr.lo, Math.round(tr.hi * rf)), d: "rn", bnd: { floor: Math.max(5, Math.round(tr.lo * 0.6)), cap: tr.hi } } as V1Step,
       ], ...( { runInj } as object) });
     } else {
       const longRunCaps = ({ S: { lo: 30, hi: 60 }, M: { lo: 40, hi: 75 }, "70.3": { lo: 50, hi: 100 }, Full: { lo: 60, hi: 140 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 50, hi: 100 };

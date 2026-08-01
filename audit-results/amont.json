@@ -2138,7 +2138,7 @@
   "key": "intent",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2147,7 +2147,7 @@
   "key": "intent",
   "mut": "chaîne vide",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 8.8→7.9h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→7.9h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2156,7 +2156,7 @@
   "key": "intent",
   "mut": "clé absente",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 8.8→7.9h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→7.9h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2174,7 +2174,7 @@
   "key": "level",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2183,7 +2183,7 @@
   "key": "level",
   "mut": "chaîne vide",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2192,7 +2192,7 @@
   "key": "level",
   "mut": "clé absente",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2210,7 +2210,7 @@
   "key": "history",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2219,7 +2219,7 @@
   "key": "history",
   "mut": "chaîne vide",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2228,7 +2228,7 @@
   "key": "history",
   "mut": "clé absente",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2246,7 +2246,7 @@
   "key": "dispo",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2255,7 +2255,7 @@
   "key": "dispo",
   "mut": "chaîne vide",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 8.8→8.9h · sem 46→46 · séances 230→265",
+  "delta": "pic 8.8→8.9h · sem 46→46 · séances 231→265",
   "err": ""
  },
  {
@@ -2264,7 +2264,7 @@
   "key": "dispo",
   "mut": "clé absente",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 8.8→8.9h · sem 46→46 · séances 230→265",
+  "delta": "pic 8.8→8.9h · sem 46→46 · séances 231→265",
   "err": ""
  },
  {
@@ -2282,7 +2282,7 @@
   "key": "doubles",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2291,7 +2291,7 @@
   "key": "doubles",
   "mut": "chaîne vide",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2300,7 +2300,7 @@
   "key": "doubles",
   "mut": "clé absente",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2318,7 +2318,7 @@
   "key": "off_days",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2327,7 +2327,7 @@
   "key": "off_days",
   "mut": "chaîne vide",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2336,7 +2336,7 @@
   "key": "off_days",
   "mut": "clé absente",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2354,7 +2354,7 @@
   "key": "sex",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2363,7 +2363,7 @@
   "key": "sex",
   "mut": "chaîne vide",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2372,7 +2372,7 @@
   "key": "sex",
   "mut": "clé absente",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2390,7 +2390,7 @@
   "key": "sleep",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2399,7 +2399,7 @@
   "key": "sleep",
   "mut": "chaîne vide",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2408,7 +2408,7 @@
   "key": "sleep",
   "mut": "clé absente",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2426,7 +2426,7 @@
   "key": "life_load",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2435,7 +2435,7 @@
   "key": "life_load",
   "mut": "chaîne vide",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2444,7 +2444,7 @@
   "key": "life_load",
   "mut": "clé absente",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2462,7 +2462,7 @@
   "key": "ftp_known",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2471,7 +2471,7 @@
   "key": "ftp_known",
   "mut": "chaîne vide",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2480,7 +2480,7 @@
   "key": "ftp_known",
   "mut": "clé absente",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2498,7 +2498,7 @@
   "key": "pace_known",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2507,7 +2507,7 @@
   "key": "pace_known",
   "mut": "chaîne vide",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2516,7 +2516,7 @@
   "key": "pace_known",
   "mut": "clé absente",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2534,7 +2534,7 @@
   "key": "sessions_max",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2543,7 +2543,7 @@
   "key": "sessions_max",
   "mut": "chaîne vide",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2552,7 +2552,7 @@
   "key": "sessions_max",
   "mut": "clé absente",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2570,7 +2570,7 @@
   "key": "vol_max",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2606,7 +2606,7 @@
   "key": "vol_recent",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2615,7 +2615,7 @@
   "key": "vol_recent",
   "mut": "chaîne vide",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2624,7 +2624,7 @@
   "key": "vol_recent",
   "mut": "clé absente",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -2642,7 +2642,7 @@
   "key": "format",
   "mut": "casse fautive",
   "verdict": "sans effet",
-  "delta": "pic 8.8→8.8h · sem 46→46 · séances 230→230",
+  "delta": "pic 8.8→8.8h · sem 46→46 · séances 231→231",
   "err": ""
  },
  {
@@ -4109,7 +4109,7 @@
   "key": "race_date",
   "mut": "absente",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 8.8→8.1h · sem 46→12 · séances 230→60",
+  "delta": "pic 8.8→8.1h · sem 46→12 · séances 231→60",
   "err": ""
  },
  {
@@ -4127,7 +4127,7 @@
   "key": "race_date",
   "mut": "dans 20 ans",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 8.8→8.8h · sem 46→80 · séances 230→398",
+  "delta": "pic 8.8→8.8h · sem 46→80 · séances 231→399",
   "err": ""
  },
  {
@@ -4154,7 +4154,7 @@
   "key": "race_date",
   "mut": "absente",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 13.2→13.2h · sem 46→22 · séances 211→98",
+  "delta": "pic 13.2→13.2h · sem 46→22 · séances 211→99",
   "err": ""
  },
  {
@@ -4226,7 +4226,7 @@
   "key": "—",
   "mut": "débutant + Ironman + 20 h",
   "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 11.7→9.5h · sem 46→46 · séances 231→231",
+  "delta": "pic 11.7→9.5h · sem 46→46 · séances 231→230",
   "err": ""
  },
  {

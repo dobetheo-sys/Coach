@@ -73,20 +73,121 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   const totalDays = r.weeks * 7 - raceTailDays;
   const days: GenDay[] = [];
   let cyc = 0, dic = cycleLen, sinceR = 0, sch: DaySlot[] = [], isR = false;
+  // Cycles de CHARGE consécutifs — c'est lui qui empêche une règle de placement de coûter
+  // une semaine de charge de plus que la cadence de récupération de l'athlète (R18.5).
+  let chargeStreak = 0;
 
+  // R18.5 — LA CADENCE DE RÉCUPÉRATION IGNORAIT LES PHASES.
+  //
+  // Signalé au test sur un 70.3 : « 2 semaines de récup en spécifique ». La mesure a montré
+  // plus large — sur 240 plans (7 sports × formats × historiques × 4 dates de course),
+  // 75 % portaient une semaine de RÉCUP DANS LA PHASE PIC, et 75 % ouvraient une phase sur
+  // une décharge. Une seule cause : `sinceR` comptait les cycles depuis la dernière récup,
+  // globalement, sans jamais regarder où on se trouvait dans le plan.
+  //
+  // Deux conséquences, et la première est la plus chère. La phase PIC est plafonnée à trois
+  // semaines (R13.6) : y poser une récup, c'est en perdre un tiers — et c'est redondant,
+  // puisque l'affûtage qui suit immédiatement EST la décharge. La seconde est plus discrète :
+  // entrer dans un nouveau bloc et le décharger aussitôt gâche le seul moment où le
+  // changement de stimulus paie.
+  //
+  // On ne SUPPRIME aucune récupération — ce serait ajouter de la charge, et la santé passe
+  // avant la progression. On les DÉPLACE : celle qui allait tomber dans le pic est anticipée
+  // au dernier cycle du spécifique, celle qui ouvrait une phase glisse d'un cycle. Le nombre
+  // de semaines de récupération d'un plan ne change pas ; leur position, si.
+  // Deux décharges séparées par moins de deux cycles de charge, ce n'est plus une cadence,
+  // c'est un trou. Les anticipations de C27b et C27c s'y arrêtent : plutôt renoncer à une
+  // récupération (l'affûtage suit) que d'en empiler deux.
+  const MIN_CHARGE_ENTRE_RECUPS = 2;
+  const phaseOfWeek = (wk: number) => r.phases.find((p) => wk >= p.start && wk < p.end) || r.phases[4];
+  const cyclesDansPic = Math.max(1, Math.ceil((r.phases.find((p) => p.id === "peak")?.weeks || 0) * 7 / cycleLen));
   for (let i = 0; i < totalDays; i++) {
     const w = Math.floor(i / 7);
     const ph = r.phases.find((p) => w >= p.start && w < p.end) || r.phases[4];
     if (dic >= cycleLen) {
       cyc++; dic = 0;
       isR = ph.id !== "taper" && sinceR >= r.recupEvery - 1;
-      // D2 (audit v6) — la cadence de récup ne tombe JAMAIS sur la phase peak quand
-      // celle-ci est courte (≤ ~1 semaine) : sur un petit plan, la seule semaine de pic
-      // devenait une récup, et « la semaine max du plan » atterrissait mécaniquement en
-      // spec — violation structurelle. La récup glisse à la semaine suivante (taper la refuse
-      // déjà, la détente d'affûtage fait office de récupération).
-      if (isR && ph.id === "peak" && ph.weeks <= 1) isR = false;
+
+      const pas = cycleLen / 7;
+      const phaseSuivante = phaseOfWeek(w + pas)?.id;
+      const phaseDApres = phaseOfWeek(w + 2 * pas)?.id;
+
+      // C27a — une phase ne s'OUVRE jamais sur une décharge : entrer dans un bloc et le
+      // décharger aussitôt gâche le seul moment où le changement de stimulus paie.
+      // La récup est ANTICIPÉE au dernier cycle de la phase qui se termine, jamais REPORTÉE
+      // au cycle suivant. La première écriture reportait, et la mesure a montré ce que ça
+      // coûte : la plus longue série de semaines de charge consécutives passait de 4 à 5,
+      // c'est-à-dire une semaine de charge de plus que la cadence de l'athlète — on ne paie
+      // pas une question de placement en charge supplémentaire, la santé passe avant.
+      // Anticiper, c'est fermer le bloc par sa décharge et ouvrir le suivant à neuf : c'est
+      // aussi ce qu'un entraîneur écrit à la main.
+      // LE GARDE QUI DOMINE LES TROIS RÈGLES. C27a/b/c savent toutes REFUSER une position ;
+      // aucune n'a le droit de le faire au prix d'une semaine de charge de plus que la cadence
+      // de l'athlète. Mesuré avant ce garde : un profil « reprise » (récup toutes les 3
+      // semaines) enchaînait CINQ semaines de charge avant l'affûtage, parce que la récup due
+      // à l'ouverture du pic était refusée par C27a puis par C27b, et que la fenêtre
+      // d'anticipation était fermée. Le manifeste range la santé avant la progression et la
+      // progression avant la performance : une règle de placement ne bat jamais la cadence.
+      const peutRepousser = chargeStreak < r.recupEvery;
+      // C27a — une phase ne s'OUVRE jamais sur une décharge : entrer dans un bloc et le
+      // décharger aussitôt gâche le seul moment où le changement de stimulus paie.
+      // La récup est ANTICIPÉE au dernier cycle de la phase qui se termine, jamais REPORTÉE
+      // au cycle suivant. La première écriture reportait, et la mesure a montré ce que ça
+      // coûte : la plus longue série de semaines de charge consécutives passait de 4 à 5,
+      // c'est-à-dire une semaine de charge de plus que la cadence de l'athlète.
+      // Anticiper, c'est fermer le bloc par sa décharge et ouvrir le suivant à neuf : c'est
+      // aussi ce qu'un entraîneur écrit à la main.
+      const ouvreUnePhase = w > 0 && phaseOfWeek(Math.max(0, w - pas)) !== ph;
+      if (isR && ouvreUnePhase && peutRepousser) isR = false;
+      if (!isR && ph.id !== "taper" && phaseSuivante && phaseSuivante !== ph.id && phaseSuivante !== "taper"
+        && sinceR >= MIN_CHARGE_ENTRE_RECUPS && sinceR + 1 >= r.recupEvery - 1) isR = true;
+
+      // C27b — AUCUNE récupération dans la phase PIC tant que l'affûtage peut en tenir lieu ;
+      // elle est alors ANTICIPÉE au dernier cycle du spécifique. Le pic est la partie la plus
+      // spécifique du plan et R13.6 le plafonne : y poser une décharge en coûte une fraction
+      // entière, et la détente d'affûtage arrive de toute façon une semaine plus tard.
+      // `cyclesDansPic <= r.recupEvery` est le garde-fou, et il SERT : sur les longues
+      // préparations le pic monte à cinq semaines, et là il mérite vraiment sa récupération —
+      // la règle se désactive d'elle-même, C27c prend le relais pour la placer correctement.
+      // Ceci englobe l'ancien garde D2 (audit v6), qui ne protégeait le pic que lorsqu'il
+      // tenait en une seule semaine.
+      const picProtege = cyclesDansPic <= r.recupEvery;
+      if (isR && ph.id === "peak" && picProtege && peutRepousser) isR = false;
+      if (!isR && ph.id === "spec" && picProtege && phaseSuivante === "peak") {
+        // Dernier cycle du spécifique. Une récup tomberait-elle dans le pic si on ne faisait
+        // rien ? Au cycle j du pic (1..K), le compteur vaudra `sinceR + j` ; elle est due dès
+        // que `sinceR + j >= recupEvery - 1`. Donc elle tombe dans le pic ssi
+        // `sinceR + cyclesDansPic >= recupEvery - 1`.
+        // `sinceR >= MIN_CHARGE_ENTRE_RECUPS` est la condition qui manquait à la première
+        // écriture : sans elle, un plan dont le dernier cycle du spécifique suivait
+        // immédiatement une récup en prenait une SECONDE d'affilée (mesuré : S20 puis S21 sur
+        // un 70.3 de 26 semaines). Anticiper une décharge est utile ; en empiler deux ne l'est
+        // jamais. Quand la condition n'est pas remplie, on n'anticipe pas et C27b laisse
+        // simplement tomber la récup du pic : l'affûtage arrive derrière, il fait le travail.
+        if (sinceR >= MIN_CHARGE_ENTRE_RECUPS && sinceR + cyclesDansPic >= r.recupEvery - 1) isR = true;
+      }
+
+      // C27c — une récupération ne se COLLE jamais à l'affûtage. Quand le pic est assez long
+      // pour garder la sienne, elle tombait au choix sur son premier cycle (C27a s'en occupe)
+      // ou sur le dernier — c'est-à-dire juste avant la détente d'affûtage, soit deux à trois
+      // semaines de décharge d'affilée avant le départ, sur la fin de plan où la spécificité
+      // est censée être maximale. Elle est donc anticipée d'un cycle : le dernier cycle avant
+      // l'affûtage est toujours un cycle de CHARGE.
+      // `phaseSuivante !== "taper"` est essentiel : sans lui, l'anticipation se déclenchait
+      // sur le DERNIER cycle avant l'affûtage — exactement le cycle que la règle protège.
+      // Une anticipation ne peut viser que le cycle d'AVANT.
+      // Et C27c n'a pas le droit de rouvrir ce que C27b vient de fermer : dans un pic COURT
+      // (celui que l'affûtage décharge), il n'y a pas de « meilleure place » pour une récup,
+      // il n'y en a pas du tout. Sans cette exclusion, l'anticipation de C27c replaçait la
+      // récup au milieu du pic de trois semaines — au bit près le défaut d'origine.
+      const picSansRecup = ph.id === "peak" && picProtege;
+      if (!isR && !picSansRecup && ph.id !== "taper" && phaseSuivante !== "taper" && phaseDApres === "taper"
+        && sinceR >= MIN_CHARGE_ENTRE_RECUPS && sinceR + 1 >= r.recupEvery - 1) isR = true;
+      else if (isR && ph.id !== "taper" && phaseSuivante === "taper" && peutRepousser) isR = false;
+
       if (isR) sinceR = 0; else sinceR++;
+      // L'affûtage est lui-même une décharge : la série de charge repart de zéro en y entrant.
+      chargeStreak = isR || ph.id === "taper" ? 0 : chargeStreak + 1;
       sch = schema(r.use10, ph.id, isR, r);
     }
     const s = sch[dic] || { charge: "facile", slot: "facileR" };

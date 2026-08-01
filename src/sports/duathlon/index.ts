@@ -14,7 +14,7 @@
  *     qu'une CAP de half — on n'y gère pas, on y lutte.
  */
 import type { V1Session, V1Step } from "../../engine/types.ts";
-import { C21_REPRISE_BRICK_FACTOR } from "../../engine/constraintMatrix.ts";
+import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS } from "../../engine/constraintMatrix.ts";
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { DUA_RUN1, DUA_BIKE, DUA_RUN2, DUA_BIKE_POWER, DUA_BIKE_PREFATIGUE } from "./tables.ts";
@@ -92,6 +92,25 @@ export function buildDuathlonSessions(kit: SessionKit): V1Session[] {
             { role: "body", leg: "run", durationMin: PT(r2.lo, Math.round(r2.hi * rf)), d: "rn" } as V1Step,
           ], ...({ runInj } as object) });
       }
+      // Semaine de course exclue, même raison qu'en tri : sa spécificité c'est la course.
+    } else if (phase === "taper" && !medHold && kit.weekNum < kit.r.weeks) {
+      // R18.4 — même défaut qu'en triathlon, et il coûte plus cher ici : la transition
+      // vélo→R2 EST la difficulté du duathlon, et elle disparaissait des trois dernières
+      // semaines (mesuré sur les 3 formats × 2 niveaux). L'affûtage réduit la DOSE, pas la
+      // spécificité. On garde le sens vélo→R2, celui du jour J, et pas l'alternance :
+      // à l'affûtage on ne découvre plus rien, on rappelle ce qui va se passer.
+      const rf = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1;
+      // C21c — même bande que le tri, lue dans la matrice (l'auditeur relit la même).
+      const tbb = BRICK_TAPER_BIKE_BOUNDS[f] || [25, 45];
+      const r2 = DUA_RUN2[f] || { lo: 10, hi: 22 };
+      const tbLo = tbb[0], tbHi = tbb[1];
+      const trLo = Math.max(5, Math.round(r2.lo * 0.6)), trHi = Math.max(8, Math.round(r2.lo * 0.9));
+      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel vélo → R2)", note: "Court, à l'allure du jour J : on n'entraîne plus, on entretient. Le R2 se court sur des jambes de coton — c'est une compétence, elle se perd en trois semaines, et elle ne se rattrape pas le jour de la course. Zéro fatigue résiduelle.", det: "",
+        steps: [
+          // Plancher = la borne basse AUDITÉE (C21c), pas une fraction d'elle.
+          { role: "body", leg: "bike", durationMin: PT(tbLo, Math.round(tbHi * rf)), zone: "bk.rp", intensity: intOf("bk.rp") as unknown as string, bnd: { floor: tbLo, cap: tbHi } } as V1Step,
+          { role: "body", leg: "run", durationMin: PT(trLo, Math.round(trHi * rf)), d: "rn", bnd: { floor: Math.max(5, Math.round(trLo * 0.6)), cap: trHi } } as V1Step,
+        ], ...({ runInj } as object) });
     } else {
       // Hors phase spécifique : la longue est du VÉLO. Deux segments de course par semaine
       // suffisent en impact — allonger à pied ici serait le meilleur moyen de casser.

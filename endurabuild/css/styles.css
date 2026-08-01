@@ -32,6 +32,7 @@
   --fs-lg:15px;    /* saisie, libellé de question, en-tête de semaine, paragraphe d'intro */
   --fs-hand:18px;  /* Caveat (manuscrit) + grandes valeurs — la cursive a une petite hauteur d'x */
   --fs-xl:22px;    /* titre de section */
+  --fs-field:16px; /* saisie sur écran TACTILE — plancher iOS, voir R18.1 en fin de feuille */
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 /* iOS : body seul ne suffit pas — sans ça, un débordement horizontal permet de
@@ -309,3 +310,34 @@ details.load-card>summary{list-style:none;display:flex;align-items:center;justif
 details.load-card>summary::-webkit-details-marker{display:none;}
 details.load-card>summary::after{content:"▾";font-size:.9em;color:var(--muted);transition:transform .15s;}
 details.load-card[open]>summary::after{transform:rotate(180deg);}
+
+/* ============================================================
+   R18.1 — LE ZOOM QUE PERSONNE N'A DEMANDÉ
+   ============================================================
+   Signalé au test : « pas d'antizoom ». Le meta viewport était pourtant correct — la cause
+   est ailleurs, et elle est mécanique : iOS zoome AUTOMATIQUEMENT sur un champ dont la
+   taille de texte est sous 16 px, à la mise au point, et il ne dézoome jamais ensuite.
+   L'app en avait dix-sept au Profil et cinq dans « Aujourd'hui » (mesure au pointeur
+   tactile), dont les quatre selecteurs du check-in du matin — l'écran que l'utilisateur
+   touche tous les jours.
+
+   `css/mobile.css` posait pourtant la bonne valeur sur `input, select` depuis l'origine.
+   Elle ne s'appliquait à rien de ce qui compte : `.opt` (0,1,0) et `input[type=text]`
+   (0,1,1 — un selecteur d'ATTRIBUT pese autant qu'une classe) battent tous deux `select`
+   (0,0,1). Un correctif que la cascade annule est un correctif qu'on croit avoir. D'ou ce
+   bloc en FIN de feuille (a specificite egale, l'ordre source tranche) et la repetition
+   explicite des deux formes.
+
+   CE QU'ON NE FAIT PAS : `user-scalable=no` ni `maximum-scale=1`. Interdire le pinch-to-zoom
+   retire le zoom SUBI en retirant aussi le zoom VOULU — c'est la seule loupe d'un malvoyant
+   sur mobile, et le manifeste met la sante avant l'esthetique. On retire l'involontaire, on
+   laisse le volontaire ; `smoke-typo` asserte les deux moities.
+
+   `--fs-field` n'est pas un palier esthetique de l'echelle R16.8 : c'est une CONTRAINTE de
+   plateforme, d'ou son role propre et sa portee limitee au pointeur grossier — au
+   clavier-souris, la saisie garde `--fs-lg` et le rendu ne bouge pas. */
+@media (pointer:coarse){
+  input,select,textarea,
+  input[type=text],input[type=number],input[type=date],input[type=time],input[type=email],
+  input.opt,select.opt,textarea.opt{font-size:var(--fs-field);}
+}

@@ -55,6 +55,13 @@ jobs:
       # d'intensité (O-2), plancher et déverrouillage de la semaine de course, et éligibilité
       # âge × format (un mineur ne prépare pas douze mois une épreuve interdite à l'inscription).
       - run: npm run audit:r15
+      # R18 — retour de TEST du fondateur sur l'application livrée. Deux défauts moteur, tous
+      # deux plus larges que ce que le test avait vu : le brick disparaissait des trois
+      # dernières semaines en tri et en duathlon (la transition est une compétence, elle se
+      # perd), et la cadence de récupération ignorait les phases (75 % des plans déchargeaient
+      # DANS le pic). Le banc porte aussi l'arbitrage qui les borne : aucune règle de placement
+      # ne fait dépasser à l'athlète sa propre cadence de récupération.
+      - run: npm run audit:r18
       # R11.8 — banc de SENSIBILITÉ : toute réponse du questionnaire doit modifier le plan.
       # Une clé inerte fait échouer la CI — c'est ce qui empêche `cycle_sync` et `dispo` de
       # redevenir des cases à cocher sans effet.

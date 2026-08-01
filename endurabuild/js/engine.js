@@ -1323,6 +1323,35 @@ const BRICK_BIKE_BOUNDS                                   = rule(
 );
 
 /**
+ * R18.4 — LE BRICK D'AFFÛTAGE A SES PROPRES BORNES.
+ *
+ * `BRICK_BIKE_BOUNDS` (C21b) a été écrit quand le seul brick d'un plan était celui du pic :
+ * ses bornes disent « ni une sortie longue déguisée, ni un tour de pâté de maisons » pour une
+ * séance de CONSTRUCTION. L'affûtage poursuit l'objectif inverse — entretenir la compétence
+ * de transition à coût de fatigue nul — et un brick de 90 min à J-8 sur un 70.3 n'affûte rien.
+ *
+ * La tentation était d'exempter l'affûtage de C21b. C'est exactement le trou qu'on refuse :
+ * un brick sans borne redevient une sortie longue, et c'est comme ça qu'on met une séance de
+ * 2 h dans une semaine d'affûtage sans que rien ne le signale. L'affûtage reçoit donc SA
+ * bande, et elle est dérivée de l'autre : le PLAFOND d'un brick d'affûtage est le PLANCHER de
+ * la bande de charge du même format. Autrement dit, le brick le plus long qu'autorise
+ * l'affûtage est le plus court qu'exigeait la construction — la relation est vraie par
+ * construction pour les six formats, elle ne peut pas dériver.
+ *
+ * Bosquet 2007 (méta-analyse d'affûtage) : ce qu'on retire, c'est le VOLUME. Ni l'intensité,
+ * ni la spécificité — d'où le fait que cette séance existe encore du tout.
+ */
+const BRICK_TAPER_BIKE_BOUNDS                                   = rule(
+  "C21c",
+  "en affûtage le brick entretient la transition au lieu de la construire : sa bande est plafonnée au plancher de la bande de charge du format",
+  {
+    S: [20, BRICK_BIKE_BOUNDS.S[0]], M: [25, BRICK_BIKE_BOUNDS.M[0]],
+    "70.3": [30, BRICK_BIKE_BOUNDS["70.3"][0]], Full: [40, BRICK_BIKE_BOUNDS.Full[0]],
+    L: [30, BRICK_BIKE_BOUNDS.L[0]], PM: [40, BRICK_BIKE_BOUNDS.PM[0]],
+  },
+);
+
+/**
  * Plafond de DOSE par bloc de qualité (minutes dans la zone, répétitions comprises).
  * Ce n'est pas le nombre de répétitions qui blesse, c'est le temps passé dans la zone : le
  * plafond de reps seul laissait passer `5×14min` au seuil (70 min) parce que la mise à
@@ -3420,17 +3449,26 @@ function auditPlan(plan        , opts            = {})            {
   if (frcInTaper > 0) hard.push(frcInTaper + " séance(s) de force (basse cadence) en semaine d'affûtage (R13.4 : même coût de récupération que la VO2max)");
 
   // ---- Audit 2 : bornes du brick vélo par format ----
+  // R18.4 — la règle connaît maintenant DEUX bricks. C21b borne celui qui CONSTRUIT (charge,
+  // spécifique, pic) ; C21c borne celui qui ENTRETIENT (affûtage), et son plafond est le
+  // plancher de C21b — un brick d'affûtage ne peut donc jamais être plus long que le plus
+  // court des bricks de charge. L'affûtage n'est PAS exempté : une bande de moins serait un
+  // trou par lequel une sortie de 2 h reviendrait en semaine d'affûtage sans un mot.
   let brickCapViolations = 0;
-  const bounds = opts.format ? BRICK_BIKE_BOUNDS[opts.format] : undefined;
+  const boundsCharge = opts.format ? BRICK_BIKE_BOUNDS[opts.format] : undefined;
+  const boundsTaper = opts.format ? BRICK_TAPER_BIKE_BOUNDS[opts.format] : undefined;
   for (const w of plan.weeks)
     for (const d of w.days)
       for (const s of d.sessions) {
         if (!s.brick || !s.steps) continue;
         const bike = s.steps.find((st) => st.leg === "bike");
+        const taper = w.phase.id === "taper";
+        const bounds = taper ? boundsTaper : boundsCharge;
         if (!bike || bike.durationMin == null || !bounds) continue;
         if (bike.durationMin > bounds[1] || bike.durationMin < bounds[0]) {
           brickCapViolations++;
-          flags.push("S" + w.num + " : brick vélo " + bike.durationMin + "min hors bornes [" + bounds[0] + ", " + bounds[1] + "]");
+          flags.push("S" + w.num + " : brick vélo " + bike.durationMin + "min hors bornes "
+            + (taper ? "d'affûtage (C21c) " : "de charge (C21b) ") + "[" + bounds[0] + ", " + bounds[1] + "]");
         }
       }
   if (brickCapViolations > 0) hard.push(brickCapViolations + " brick(s) vélo hors bornes format (spec audit 2)");
@@ -4288,6 +4326,37 @@ function buildTriSessions(kit            )              {
         { role: "body", leg: "bike", durationMin: PT(bb.lo, Math.round(bb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2")                      }          ,
         { role: "body", leg: "run", durationMin: PT(br.lo, Math.round(br.hi * rf)), d: "rn" }          ,
       ], ...( { runInj }          ) });
+      // La SEMAINE DE COURSE est exclue : sa spécificité, c'est la course. Y poser un
+      // enchaînement à J-2 ou J-1 est le contraire d'un affûtage — et c'est aussi la semaine
+      // que R13.4/R15.7 remodèlent (déverrouillage de la veille, jour J), donc le seul endroit
+      // où une séance ajoutée ici se ferait de toute façon raboter par une autre règle.
+    } else if (phase === "taper" && !medHold && kit.weekNum < kit.r.weeks) {
+      // R18.4 — L'AFFÛTAGE GARDAIT LE VOLUME BAS ET PERDAIT LA SPÉCIFICITÉ.
+      // Mesuré sur les 4 formats × 2 niveaux : le dernier enchaînement vélo→course tombait
+      // TROIS SEMAINES avant le jour J, sur toutes les combinaisons. R13.4 avait branché
+      // l'affûtage explicitement sur `dur1` et `dur2` — `durLong`, lui, retombait encore
+      // dans le `else` générique et rendait une sortie longue à pied. Le triathlète arrivait
+      // donc au départ sans avoir posé le pied par terre après le vélo depuis 21 jours, sur
+      // la transition qui est précisément la difficulté propre du sport.
+      // Le swimrun, lui, garde sa séance pivot en affûtage (sa `durLong` n'a jamais eu de
+      // garde de phase) : le modèle existait déjà dans le dépôt, il n'était pas appliqué ici.
+      //
+      // Ce que l'affûtage change, ce n'est pas la NATURE de la séance, c'est sa DOSE : même
+      // motif, un tiers du volume du pic, allure course des deux côtés. Bosquet 2007 —
+      // l'affûtage réduit le volume, PAS l'intensité ni la spécificité.
+      const rf = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1;
+      // C21c — la bande vient de la matrice, pas d'une table recopiée ici : c'est elle que
+      // l'auditeur relit, et deux tables qui disent la même chose finissent par diverger.
+      const tbb = BRICK_TAPER_BIKE_BOUNDS[fmt] || [25, 45];
+      const tb = { lo: tbb[0], hi: tbb[1] };
+      const tr = ({ S: { lo: 6, hi: 10 }, M: { lo: 8, hi: 12 }, "70.3": { lo: 10, hi: 16 }, Full: { lo: 12, hi: 20 } }                                              )[fmt] || { lo: 8, hi: 12 };
+      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel de transition)", note: "Court, à l'allure du jour J : on ne construit plus rien, on entretient. Les jambes ont besoin de se rappeler la sensation « de coton » des premières foulées après le vélo — c'est une compétence, elle se perd, et elle ne se rattrape pas le jour de la course. Un tiers du volume du brick de pic, zéro fatigue résiduelle.", det: "", steps: [
+        // Le PLANCHER du leg vélo est la borne basse AUDITÉE (C21c), pas une fraction d'elle :
+        // sinon la décroissance d'affûtage descend la séance sous ce que la spec exige, et le
+        // générateur produit ce que l'auditeur refuse. Même discipline que C21b en charge.
+        { role: "body", leg: "bike", durationMin: PT(tb.lo, Math.round(tb.hi * rf)), zone: "bk.rp", intensity: intOf("bk.rp")                     , bnd: { floor: tb.lo, cap: tb.hi } }          ,
+        { role: "body", leg: "run", durationMin: PT(tr.lo, Math.round(tr.hi * rf)), d: "rn", bnd: { floor: Math.max(5, Math.round(tr.lo * 0.6)), cap: tr.hi } }          ,
+      ], ...( { runInj }          ) });
     } else {
       const longRunCaps = ({ S: { lo: 30, hi: 60 }, M: { lo: 40, hi: 75 }, "70.3": { lo: 50, hi: 100 }, Full: { lo: 60, hi: 140 } }                                              )[fmt] || { lo: 50, hi: 100 };
       S2.push({ d: "rn", long: true, name: "Sortie longue CAP", note: "Endurance fondamentale, allure facile et conversationnelle.", det: "", steps: [Object.assign(B(1, PT(longRunCaps.lo, longRunCaps.hi), "rn.easy", "", runInj ? " sur surface souple" : ""), { bnd: { floor: longRunCaps.lo, cap: longRunCaps.hi } })], ...( { plainBody: true }          ) });
@@ -4578,6 +4647,25 @@ function buildDuathlonSessions(kit            )              {
             { role: "body", leg: "run", durationMin: PT(r2.lo, Math.round(r2.hi * rf)), d: "rn" }          ,
           ], ...({ runInj }          ) });
       }
+      // Semaine de course exclue, même raison qu'en tri : sa spécificité c'est la course.
+    } else if (phase === "taper" && !medHold && kit.weekNum < kit.r.weeks) {
+      // R18.4 — même défaut qu'en triathlon, et il coûte plus cher ici : la transition
+      // vélo→R2 EST la difficulté du duathlon, et elle disparaissait des trois dernières
+      // semaines (mesuré sur les 3 formats × 2 niveaux). L'affûtage réduit la DOSE, pas la
+      // spécificité. On garde le sens vélo→R2, celui du jour J, et pas l'alternance :
+      // à l'affûtage on ne découvre plus rien, on rappelle ce qui va se passer.
+      const rf = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1;
+      // C21c — même bande que le tri, lue dans la matrice (l'auditeur relit la même).
+      const tbb = BRICK_TAPER_BIKE_BOUNDS[f] || [25, 45];
+      const r2 = DUA_RUN2[f] || { lo: 10, hi: 22 };
+      const tbLo = tbb[0], tbHi = tbb[1];
+      const trLo = Math.max(5, Math.round(r2.lo * 0.6)), trHi = Math.max(8, Math.round(r2.lo * 0.9));
+      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel vélo → R2)", note: "Court, à l'allure du jour J : on n'entraîne plus, on entretient. Le R2 se court sur des jambes de coton — c'est une compétence, elle se perd en trois semaines, et elle ne se rattrape pas le jour de la course. Zéro fatigue résiduelle.", det: "",
+        steps: [
+          // Plancher = la borne basse AUDITÉE (C21c), pas une fraction d'elle.
+          { role: "body", leg: "bike", durationMin: PT(tbLo, Math.round(tbHi * rf)), zone: "bk.rp", intensity: intOf("bk.rp")                     , bnd: { floor: tbLo, cap: tbHi } }          ,
+          { role: "body", leg: "run", durationMin: PT(trLo, Math.round(trHi * rf)), d: "rn", bnd: { floor: Math.max(5, Math.round(trLo * 0.6)), cap: trHi } }          ,
+        ], ...({ runInj }          ) });
     } else {
       // Hors phase spécifique : la longue est du VÉLO. Deux segments de course par semaine
       // suffisent en impact — allonger à pied ici serait le meilleur moyen de casser.
@@ -5372,20 +5460,121 @@ function buildDays(r              , refs      , hz         )           {
   const totalDays = r.weeks * 7 - raceTailDays;
   const days           = [];
   let cyc = 0, dic = cycleLen, sinceR = 0, sch            = [], isR = false;
+  // Cycles de CHARGE consécutifs — c'est lui qui empêche une règle de placement de coûter
+  // une semaine de charge de plus que la cadence de récupération de l'athlète (R18.5).
+  let chargeStreak = 0;
 
+  // R18.5 — LA CADENCE DE RÉCUPÉRATION IGNORAIT LES PHASES.
+  //
+  // Signalé au test sur un 70.3 : « 2 semaines de récup en spécifique ». La mesure a montré
+  // plus large — sur 240 plans (7 sports × formats × historiques × 4 dates de course),
+  // 75 % portaient une semaine de RÉCUP DANS LA PHASE PIC, et 75 % ouvraient une phase sur
+  // une décharge. Une seule cause : `sinceR` comptait les cycles depuis la dernière récup,
+  // globalement, sans jamais regarder où on se trouvait dans le plan.
+  //
+  // Deux conséquences, et la première est la plus chère. La phase PIC est plafonnée à trois
+  // semaines (R13.6) : y poser une récup, c'est en perdre un tiers — et c'est redondant,
+  // puisque l'affûtage qui suit immédiatement EST la décharge. La seconde est plus discrète :
+  // entrer dans un nouveau bloc et le décharger aussitôt gâche le seul moment où le
+  // changement de stimulus paie.
+  //
+  // On ne SUPPRIME aucune récupération — ce serait ajouter de la charge, et la santé passe
+  // avant la progression. On les DÉPLACE : celle qui allait tomber dans le pic est anticipée
+  // au dernier cycle du spécifique, celle qui ouvrait une phase glisse d'un cycle. Le nombre
+  // de semaines de récupération d'un plan ne change pas ; leur position, si.
+  // Deux décharges séparées par moins de deux cycles de charge, ce n'est plus une cadence,
+  // c'est un trou. Les anticipations de C27b et C27c s'y arrêtent : plutôt renoncer à une
+  // récupération (l'affûtage suit) que d'en empiler deux.
+  const MIN_CHARGE_ENTRE_RECUPS = 2;
+  const phaseOfWeek = (wk        ) => r.phases.find((p) => wk >= p.start && wk < p.end) || r.phases[4];
+  const cyclesDansPic = Math.max(1, Math.ceil((r.phases.find((p) => p.id === "peak")?.weeks || 0) * 7 / cycleLen));
   for (let i = 0; i < totalDays; i++) {
     const w = Math.floor(i / 7);
     const ph = r.phases.find((p) => w >= p.start && w < p.end) || r.phases[4];
     if (dic >= cycleLen) {
       cyc++; dic = 0;
       isR = ph.id !== "taper" && sinceR >= r.recupEvery - 1;
-      // D2 (audit v6) — la cadence de récup ne tombe JAMAIS sur la phase peak quand
-      // celle-ci est courte (≤ ~1 semaine) : sur un petit plan, la seule semaine de pic
-      // devenait une récup, et « la semaine max du plan » atterrissait mécaniquement en
-      // spec — violation structurelle. La récup glisse à la semaine suivante (taper la refuse
-      // déjà, la détente d'affûtage fait office de récupération).
-      if (isR && ph.id === "peak" && ph.weeks <= 1) isR = false;
+
+      const pas = cycleLen / 7;
+      const phaseSuivante = phaseOfWeek(w + pas)?.id;
+      const phaseDApres = phaseOfWeek(w + 2 * pas)?.id;
+
+      // C27a — une phase ne s'OUVRE jamais sur une décharge : entrer dans un bloc et le
+      // décharger aussitôt gâche le seul moment où le changement de stimulus paie.
+      // La récup est ANTICIPÉE au dernier cycle de la phase qui se termine, jamais REPORTÉE
+      // au cycle suivant. La première écriture reportait, et la mesure a montré ce que ça
+      // coûte : la plus longue série de semaines de charge consécutives passait de 4 à 5,
+      // c'est-à-dire une semaine de charge de plus que la cadence de l'athlète — on ne paie
+      // pas une question de placement en charge supplémentaire, la santé passe avant.
+      // Anticiper, c'est fermer le bloc par sa décharge et ouvrir le suivant à neuf : c'est
+      // aussi ce qu'un entraîneur écrit à la main.
+      // LE GARDE QUI DOMINE LES TROIS RÈGLES. C27a/b/c savent toutes REFUSER une position ;
+      // aucune n'a le droit de le faire au prix d'une semaine de charge de plus que la cadence
+      // de l'athlète. Mesuré avant ce garde : un profil « reprise » (récup toutes les 3
+      // semaines) enchaînait CINQ semaines de charge avant l'affûtage, parce que la récup due
+      // à l'ouverture du pic était refusée par C27a puis par C27b, et que la fenêtre
+      // d'anticipation était fermée. Le manifeste range la santé avant la progression et la
+      // progression avant la performance : une règle de placement ne bat jamais la cadence.
+      const peutRepousser = chargeStreak < r.recupEvery;
+      // C27a — une phase ne s'OUVRE jamais sur une décharge : entrer dans un bloc et le
+      // décharger aussitôt gâche le seul moment où le changement de stimulus paie.
+      // La récup est ANTICIPÉE au dernier cycle de la phase qui se termine, jamais REPORTÉE
+      // au cycle suivant. La première écriture reportait, et la mesure a montré ce que ça
+      // coûte : la plus longue série de semaines de charge consécutives passait de 4 à 5,
+      // c'est-à-dire une semaine de charge de plus que la cadence de l'athlète.
+      // Anticiper, c'est fermer le bloc par sa décharge et ouvrir le suivant à neuf : c'est
+      // aussi ce qu'un entraîneur écrit à la main.
+      const ouvreUnePhase = w > 0 && phaseOfWeek(Math.max(0, w - pas)) !== ph;
+      if (isR && ouvreUnePhase && peutRepousser) isR = false;
+      if (!isR && ph.id !== "taper" && phaseSuivante && phaseSuivante !== ph.id && phaseSuivante !== "taper"
+        && sinceR >= MIN_CHARGE_ENTRE_RECUPS && sinceR + 1 >= r.recupEvery - 1) isR = true;
+
+      // C27b — AUCUNE récupération dans la phase PIC tant que l'affûtage peut en tenir lieu ;
+      // elle est alors ANTICIPÉE au dernier cycle du spécifique. Le pic est la partie la plus
+      // spécifique du plan et R13.6 le plafonne : y poser une décharge en coûte une fraction
+      // entière, et la détente d'affûtage arrive de toute façon une semaine plus tard.
+      // `cyclesDansPic <= r.recupEvery` est le garde-fou, et il SERT : sur les longues
+      // préparations le pic monte à cinq semaines, et là il mérite vraiment sa récupération —
+      // la règle se désactive d'elle-même, C27c prend le relais pour la placer correctement.
+      // Ceci englobe l'ancien garde D2 (audit v6), qui ne protégeait le pic que lorsqu'il
+      // tenait en une seule semaine.
+      const picProtege = cyclesDansPic <= r.recupEvery;
+      if (isR && ph.id === "peak" && picProtege && peutRepousser) isR = false;
+      if (!isR && ph.id === "spec" && picProtege && phaseSuivante === "peak") {
+        // Dernier cycle du spécifique. Une récup tomberait-elle dans le pic si on ne faisait
+        // rien ? Au cycle j du pic (1..K), le compteur vaudra `sinceR + j` ; elle est due dès
+        // que `sinceR + j >= recupEvery - 1`. Donc elle tombe dans le pic ssi
+        // `sinceR + cyclesDansPic >= recupEvery - 1`.
+        // `sinceR >= MIN_CHARGE_ENTRE_RECUPS` est la condition qui manquait à la première
+        // écriture : sans elle, un plan dont le dernier cycle du spécifique suivait
+        // immédiatement une récup en prenait une SECONDE d'affilée (mesuré : S20 puis S21 sur
+        // un 70.3 de 26 semaines). Anticiper une décharge est utile ; en empiler deux ne l'est
+        // jamais. Quand la condition n'est pas remplie, on n'anticipe pas et C27b laisse
+        // simplement tomber la récup du pic : l'affûtage arrive derrière, il fait le travail.
+        if (sinceR >= MIN_CHARGE_ENTRE_RECUPS && sinceR + cyclesDansPic >= r.recupEvery - 1) isR = true;
+      }
+
+      // C27c — une récupération ne se COLLE jamais à l'affûtage. Quand le pic est assez long
+      // pour garder la sienne, elle tombait au choix sur son premier cycle (C27a s'en occupe)
+      // ou sur le dernier — c'est-à-dire juste avant la détente d'affûtage, soit deux à trois
+      // semaines de décharge d'affilée avant le départ, sur la fin de plan où la spécificité
+      // est censée être maximale. Elle est donc anticipée d'un cycle : le dernier cycle avant
+      // l'affûtage est toujours un cycle de CHARGE.
+      // `phaseSuivante !== "taper"` est essentiel : sans lui, l'anticipation se déclenchait
+      // sur le DERNIER cycle avant l'affûtage — exactement le cycle que la règle protège.
+      // Une anticipation ne peut viser que le cycle d'AVANT.
+      // Et C27c n'a pas le droit de rouvrir ce que C27b vient de fermer : dans un pic COURT
+      // (celui que l'affûtage décharge), il n'y a pas de « meilleure place » pour une récup,
+      // il n'y en a pas du tout. Sans cette exclusion, l'anticipation de C27c replaçait la
+      // récup au milieu du pic de trois semaines — au bit près le défaut d'origine.
+      const picSansRecup = ph.id === "peak" && picProtege;
+      if (!isR && !picSansRecup && ph.id !== "taper" && phaseSuivante !== "taper" && phaseDApres === "taper"
+        && sinceR >= MIN_CHARGE_ENTRE_RECUPS && sinceR + 1 >= r.recupEvery - 1) isR = true;
+      else if (isR && ph.id !== "taper" && phaseSuivante === "taper" && peutRepousser) isR = false;
+
       if (isR) sinceR = 0; else sinceR++;
+      // L'affûtage est lui-même une décharge : la série de charge repart de zéro en y entrant.
+      chargeStreak = isR || ph.id === "taper" ? 0 : chargeStreak + 1;
       sch = schema(r.use10, ph.id, isR, r);
     }
     const s = sch[dic] || { charge: "facile", slot: "facileR" };

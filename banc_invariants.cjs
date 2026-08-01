@@ -98,6 +98,60 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
     for (let i = 1; i < W.length; i++)
       if (W[i].w.isRecup && !W[i-1].w.isRecup && W[i].min >= W[i-1].min && W[i-1].min >= GRAIN_MIN)
         ko("I3", ctx, `sem ${W[i].w.num} (récup) ${Math.round(W[i].min)}min ≥ sem ${W[i-1].w.num} ${Math.round(W[i-1].min)}min`);
+    // I19 (R18.4) — LA SPÉCIFICITÉ MULTISPORT NE DISPARAÎT PAS DE L'AFFÛTAGE.
+    // Mesuré avant correction sur les 4 formats de tri et les 4 de duathlon, tous niveaux :
+    // le dernier enchaînement vélo↔course tombait TROIS SEMAINES avant le jour J, parce que
+    // le créneau `durLong` retombait en affûtage dans la branche générique. La transition est
+    // une compétence : elle se perd, et elle ne se rattrape pas le matin de la course.
+    // L'invariant ne demande pas UNE séance précise, il demande que le dernier enchaînement
+    // ne soit pas plus vieux que l'affûtage lui-même.
+    if (sp === "tri" || sp === "duathlon") {
+      const derniereAvecBrick = Math.max(0, ...W.filter((x) => sessionsOf(x.w).some((s) => s.brick)).map((x) => x.w.num));
+      // Deux semaines, pas « la longueur de l'affûtage » : la première écriture tolérait
+      // `max(2, nbSemainesDAffûtage)`, et sur l'horizon de ce banc l'affûtage fait trois
+      // semaines — le critère passait donc AUSSI sur le moteur d'avant R18, celui qui portait
+      // le défaut. Un critère calibré sur ce qu'on observe ne mesure rien.
+      const ecart = p.weeks.length - derniereAvecBrick;
+      if (!derniereAvecBrick) ko("I19", ctx, "aucun enchaînement (brick) dans tout le plan");
+      else if (ecart > 2) ko("I19", ctx, `dernier enchaînement en S${derniereAvecBrick}, course en S${p.weeks.length} : ${ecart} semaines sans transition avant le jour J`);
+    }
+
+    // I20 (R18.5) — LA CADENCE DE RÉCUPÉRATION CONNAÎT LES PHASES.
+    // Mesuré avant correction sur 240 plans : 75 % portaient une décharge DANS la phase pic
+    // (plafonnée à 5 semaines par R13.6 — on en perdait une fraction entière) et 75 %
+    // ouvraient une phase sur une décharge. Deux propriétés ici, et la seconde domine la
+    // première : aucune règle de placement n'a le droit de faire dépasser à l'athlète sa
+    // propre cadence de récupération. C'est l'ordre du manifeste — santé, puis progression.
+    //
+    // HONNÊTETÉ DE CETTE GARDE : sur les 54 configurations de ce banc (toutes en historique
+    // « confirme », une seule date de course), I20 était DÉJÀ vert contre le moteur d'avant
+    // R18 — le défaut y était invisible. C'est `bench_r18.cjs` qui discrimine, en balayant
+    // trois historiques et huit horizons. I20 est ici parce que c'est sa place doctrinale,
+    // pas parce que ce banc suffirait à le prouver.
+    {
+      for (let i = 1; i < W.length; i++) {
+        const cur = W[i].w, prev = W[i - 1].w;
+        if (cur.isRecup && cur.phase.id !== prev.phase.id && cur.phase.id !== "taper")
+          ko("I20", ctx, `sem ${cur.num} : la phase « ${cur.phase.id} » s'ouvre sur une semaine de récupération`);
+      }
+      // La décharge collée à l'affûtage et la décharge dans un pic court sont vérifiées par
+      // `bench_r18.cjs`, PAS ici : sur certains gabarits (cadence 3 + pic de 2 semaines) le
+      // moteur cède délibérément le placement pour ne pas dépasser la cadence, et le critère
+      // n'est juste qu'accompagné de la démonstration de cet arbitrage. Un invariant de ce
+      // banc doit être vrai SANS exception — l'écrire ici sans son arbitrage serait poser une
+      // règle qu'on saurait fausse.
+      // Jamais plus de semaines de charge consécutives que la cadence de l'athlète.
+      // `confirme`/`ancien` = 4, `reprise` = 3 (RECUP_EVERY) ; un master resserre encore, on
+      // prend donc la borne la plus large que ce banc puisse rencontrer avec son BASE.
+      const cadence = BASE.history === "reprise" ? 3 : 4;
+      let suite = 0;
+      for (const x of W) {
+        if (x.w.isRecup || x.w.phase.id === "taper") { suite = 0; continue; }
+        suite++;
+        if (suite > cadence) { ko("I20", ctx, `sem ${x.w.num} : ${suite} semaines de charge d'affilée, cadence déclarée ${cadence}`); break; }
+      }
+    }
+
     // I4 — pas de bond de plus de 35 % entre deux semaines de charge
     for (let i = 1; i < W.length; i++) {
       if (W[i].w.isRecup || W[i-1].w.isRecup || !W[i-1].min) continue;
@@ -208,6 +262,7 @@ const NAMES = {
   I10:"annoncé = réel", I11:"le nom colle à la dose", I12:"sortie longue ≤ 60 %", I14:"la sortie longue est la plus longue",
   I13:"monotonie du niveau", I15:"la course est au calendrier", I16:"veille de course allégée", I17:"jour J exclusif",
   I18:"le plan s'arrête le jour J",
+  I19:"la transition survit à l'affûtage", I20:"la récup connaît les phases",
 };
 const G = {};
 for (const f of fails) (G[f.id] ||= []).push(f);

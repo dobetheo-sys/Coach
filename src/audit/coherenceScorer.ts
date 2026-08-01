@@ -12,7 +12,7 @@
  */
 import type { V1Plan, V1Week } from "../harness/v1Harness.ts";
 import { sessionLoad, intensitySplit, DEFAULT_REFS, type AthleteRefs, type SessionLoad } from "../engine/loadModel.ts";
-import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS, easyShareFloor } from "../engine/constraintMatrix.ts";
+import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, easyShareFloor } from "../engine/constraintMatrix.ts";
 
 // Les bornes brick vélo (audit 2, « jamais dépassées, même de peu ») vivent désormais dans la
 // matrice de contraintes : l'auditeur et le générateur lisent LE MÊME tableau. La copie locale
@@ -219,17 +219,26 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   if (frcInTaper > 0) hard.push(frcInTaper + " séance(s) de force (basse cadence) en semaine d'affûtage (R13.4 : même coût de récupération que la VO2max)");
 
   // ---- Audit 2 : bornes du brick vélo par format ----
+  // R18.4 — la règle connaît maintenant DEUX bricks. C21b borne celui qui CONSTRUIT (charge,
+  // spécifique, pic) ; C21c borne celui qui ENTRETIENT (affûtage), et son plafond est le
+  // plancher de C21b — un brick d'affûtage ne peut donc jamais être plus long que le plus
+  // court des bricks de charge. L'affûtage n'est PAS exempté : une bande de moins serait un
+  // trou par lequel une sortie de 2 h reviendrait en semaine d'affûtage sans un mot.
   let brickCapViolations = 0;
-  const bounds = opts.format ? BRICK_BIKE_BOUNDS[opts.format] : undefined;
+  const boundsCharge = opts.format ? BRICK_BIKE_BOUNDS[opts.format] : undefined;
+  const boundsTaper = opts.format ? BRICK_TAPER_BIKE_BOUNDS[opts.format] : undefined;
   for (const w of plan.weeks)
     for (const d of w.days)
       for (const s of d.sessions) {
         if (!s.brick || !s.steps) continue;
         const bike = s.steps.find((st) => st.leg === "bike");
+        const taper = w.phase.id === "taper";
+        const bounds = taper ? boundsTaper : boundsCharge;
         if (!bike || bike.durationMin == null || !bounds) continue;
         if (bike.durationMin > bounds[1] || bike.durationMin < bounds[0]) {
           brickCapViolations++;
-          flags.push("S" + w.num + " : brick vélo " + bike.durationMin + "min hors bornes [" + bounds[0] + ", " + bounds[1] + "]");
+          flags.push("S" + w.num + " : brick vélo " + bike.durationMin + "min hors bornes "
+            + (taper ? "d'affûtage (C21c) " : "de charge (C21b) ") + "[" + bounds[0] + ", " + bounds[1] + "]");
         }
       }
   if (brickCapViolations > 0) hard.push(brickCapViolations + " brick(s) vélo hors bornes format (spec audit 2)");

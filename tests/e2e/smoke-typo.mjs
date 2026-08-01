@@ -21,12 +21,27 @@ const server = await startServer(PORT);
 const { ok, info, report } = makeReporter();
 
 // ---- 1. La source : l'échelle est DÉCLARÉE, et personne ne la contourne ----------------
-const css = readFileSync(new URL("../../endurabuild/css/styles.css", import.meta.url), "utf8");
+// Les COMMENTAIRES ne sont pas des règles : une explication qui cite `font-size:16px` pour
+// dire d'où vient une contrainte ne l'applique à rien. On les retire avant de mesurer,
+// sinon la garde punit le fait de documenter — et documenter est la règle de ce dépôt.
+const sansCommentaires = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "");
+const css = sansCommentaires(readFileSync(new URL("../../endurabuild/css/styles.css", import.meta.url), "utf8"));
 const paliers = [...css.matchAll(/--fs-[a-z]+:\s*([0-9.]+)px/g)].map((m) => +m[1]);
-ok(paliers.length >= 6 && paliers.length <= 8, "l'échelle compte 6 à 8 paliers (" + paliers.length + " : " + paliers.join(" / ") + "px)");
+ok(paliers.length >= 6 && paliers.length <= 9, "l'échelle compte 6 à 9 paliers (" + paliers.length + " : " + paliers.join(" / ") + "px)");
 ok(Math.min(...paliers) >= 9, "aucun palier sous 9 px (plus petit : " + Math.min(...paliers) + "px)");
 const durs = [...css.matchAll(/font-size:([0-9.]+)px/g)].map((m) => m[1]);
 ok(durs.length === 0, "aucune taille littérale dans la feuille" + (durs.length ? " — reste : " + durs.join(", ") : ""));
+
+// R18.1-a — `css/mobile.css` N'ÉTAIT PAS LU par cette garde, et il portait un `font-size:8px`
+// (le libellé « détail » des séances repliables) : sous le plancher que R16.8 affirme tenir.
+// La mesure de rendu ne le voyait pas non plus — un `::after` n'est pas un nœud de texte.
+// La couche mobile garde le droit d'écrire des valeurs concrètes (elle survit délibérément à
+// une régénération de `styles.css`) : on n'y exige donc PAS zéro littéral, on y exige le
+// PLANCHER — c'est la propriété qui protège quelqu'un, pas la propreté du fichier.
+const mob = sansCommentaires(readFileSync(new URL("../../endurabuild/css/mobile.css", import.meta.url), "utf8"));
+const sousPlancher = [...mob.matchAll(/font-size:\s*([0-9.]+)px/g)].map((m) => +m[1]).filter((v) => v < 9);
+ok(sousPlancher.length === 0, "css/mobile.css — aucune taille sous le plancher de 9 px"
+  + (sousPlancher.length ? " — reste : " + sousPlancher.join(", ") + "px" : ""));
 
 // Les modules UI : littéral toléré UNIQUEMENT dans le document exporté (plan-view.js), qui
 // est autonome et ne charge pas styles.css.
@@ -131,6 +146,44 @@ for (const t of ["profile", "general", "today", "nutrition"]) {
   });
   ok(mini.m >= 9, "onglet " + t + " — plus petit texte rendu : " + mini.m + "px (" + String(mini.quoi).slice(0, 40) + "), plancher 9px");
 }
+
+// ---- 5. R18.1 — aucun champ de saisie sous 16 px au doigt --------------------------------
+// La règle est imposée par iOS, pas par le goût : sous 16 px, la mise au point d'un champ
+// déclenche un zoom automatique que l'utilisateur n'a pas demandé et que rien ne défait.
+// On mesure au POINTEUR TACTILE (`hasTouch`), parce que la règle est conditionnée à lui —
+// la mesurer au clavier-souris aurait rendu la garde verte sans rien prouver.
+const tactile = await (await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, locale: "fr-FR" })).newPage();
+await tactile.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "domcontentloaded" });
+await tactile.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v1", JSON.stringify(s)); }, runnerStateV1());
+await tactile.reload({ waitUntil: "networkidle" });
+await tactile.waitForTimeout(700);
+await tactile.evaluate(async (iso) => {
+  const { S, ebSave } = await import("./js/state.js");
+  S.answers.readiness = { date: iso, sleepQuality: "bon", hrvStatus: "normale", energy: 80, feel: "frais" };
+  ebSave();
+}, iso);
+ok(await tactile.evaluate(() => matchMedia("(pointer:coarse)").matches), "le contexte de mesure est bien tactile (sinon la garde ne prouve rien)");
+for (const t of ["profile", "general", "today", "nutrition"]) {
+  await tactile.evaluate(async (t) => { const { setTab } = await import("./js/ui/tabs.js"); setTab(t); }, t);
+  await tactile.waitForTimeout(400);
+  const petits = await tactile.evaluate(() => {
+    const o = [];
+    document.querySelectorAll("input,select,textarea").forEach((e) => {
+      // Les cases à cocher et les sélecteurs de fichier ne déclenchent pas le zoom iOS :
+      // ils n'ouvrent pas de clavier. Les inclure aurait produit une garde impossible à
+      // tenir, donc une garde qu'on aurait fini par désactiver.
+      if (e.type === "checkbox" || e.type === "radio" || e.type === "file") return;
+      const f = parseFloat(getComputedStyle(e).fontSize);
+      if (f < 16) o.push((e.id || e.tagName) + (e.className ? "." + e.className : "") + " = " + f + "px");
+    });
+    return o;
+  });
+  ok(petits.length === 0, "onglet " + t + " — aucun champ sous 16px au doigt" + (petits.length ? " : " + petits.join(", ") : ""));
+}
+// Et le zoom VOLONTAIRE reste possible : c'est l'autre moitié de la décision.
+const meta = await tactile.evaluate(() => (document.querySelector('meta[name=viewport]') || {}).content || "");
+ok(!/user-scalable\s*=\s*no|maximum-scale/.test(meta),
+  "le pinch-to-zoom reste autorisé — on retire le zoom SUBI, jamais le zoom VOULU (" + meta + ")");
 
 ok(errs.length === 0, "aucune erreur JS sur les 4 onglets (" + errs.length + (errs.length ? " — " + errs[0] : "") + ")");
 

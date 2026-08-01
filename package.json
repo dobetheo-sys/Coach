@@ -30,6 +30,7 @@
     "audit:r14": "node bench_r14.cjs endurabuild/js/engine.js",
     "audit:r14.1": "node bench_r14_1.cjs endurabuild/js/engine.js",
     "audit:r15": "node bench_r15.cjs endurabuild/js/engine.js",
+    "audit:r18": "node bench_r18.cjs endurabuild/js/engine.js",
     "measure:fallback": "node scripts/measureFallback.mjs",
     "registry:check": "node scripts/registryCheck.mjs"
   },

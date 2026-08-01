@@ -27,8 +27,12 @@
 .doneBtn::after { content: ""; position: absolute; inset: -9px; }
 input[type="text"], input[type="number"], input[type="date"], select {
   min-height: 44px;
-  font-size: 16px; /* évite le zoom automatique iOS sur focus */
+  /* Le plancher anti-zoom iOS vit dans styles.css (R18.1, `--fs-field`) : posé ici, il
+     perdait la cascade contre `.opt` sur les champs les plus tapés de l'app. */
 }
+/* R18.1 — le double-tap zoome aussi. Les séances repliables et la frise de phases sont
+   tapées en rafale : sans ça, deux ouvertures rapprochées déclenchent un zoom navigateur. */
+summary, .ph-seg, .tabbtn, [role="button"] { touch-action: manipulation; }
 
 /* --- Accessibilité clavier/lecteur --- */
 :focus-visible {
@@ -148,7 +152,11 @@ body.has-tabs .hero, body.has-tabs .progress { display: none; }
 @keyframes ck-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
 /* Séances : suggestion visuelle de clicabilité (retour utilisateur) */
 .gd-sess summary { border-bottom: 1px dashed #b3ab9b; padding-bottom: 1px; }
-.gd-sess summary::after { content: "détail"; font-size: 8px; color: var(--text2, #635b4a); margin-left: 4px; opacity: .7; }
+/* R18.1-a — ce libellé était à 8 px : sous le plancher de lisibilité que R16.8 dit tenir.
+   Il y avait survécu parce que la garde `smoke-typo` ne lisait que `styles.css`, et parce
+   qu'un `::after` n'est pas un nœud de texte — les DEUX mesures le manquaient. Une garde
+   qui ne couvre pas un fichier ne prouve rien sur ce fichier. */
+.gd-sess summary::after { content: "détail"; font-size: var(--fs-micro); color: var(--text2, #635b4a); margin-left: 4px; opacity: .7; }
 .gd-sess[open] summary::after { content: "replier"; }
 /* Diaporama du check-in : gros boutons, une question par écran */
 .ck-opt { text-align: left; }

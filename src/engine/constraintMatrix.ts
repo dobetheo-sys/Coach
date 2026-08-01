@@ -159,6 +159,35 @@ export const BRICK_BIKE_BOUNDS: Record<string, [number, number]> = rule(
 );
 
 /**
+ * R18.4 — LE BRICK D'AFFÛTAGE A SES PROPRES BORNES.
+ *
+ * `BRICK_BIKE_BOUNDS` (C21b) a été écrit quand le seul brick d'un plan était celui du pic :
+ * ses bornes disent « ni une sortie longue déguisée, ni un tour de pâté de maisons » pour une
+ * séance de CONSTRUCTION. L'affûtage poursuit l'objectif inverse — entretenir la compétence
+ * de transition à coût de fatigue nul — et un brick de 90 min à J-8 sur un 70.3 n'affûte rien.
+ *
+ * La tentation était d'exempter l'affûtage de C21b. C'est exactement le trou qu'on refuse :
+ * un brick sans borne redevient une sortie longue, et c'est comme ça qu'on met une séance de
+ * 2 h dans une semaine d'affûtage sans que rien ne le signale. L'affûtage reçoit donc SA
+ * bande, et elle est dérivée de l'autre : le PLAFOND d'un brick d'affûtage est le PLANCHER de
+ * la bande de charge du même format. Autrement dit, le brick le plus long qu'autorise
+ * l'affûtage est le plus court qu'exigeait la construction — la relation est vraie par
+ * construction pour les six formats, elle ne peut pas dériver.
+ *
+ * Bosquet 2007 (méta-analyse d'affûtage) : ce qu'on retire, c'est le VOLUME. Ni l'intensité,
+ * ni la spécificité — d'où le fait que cette séance existe encore du tout.
+ */
+export const BRICK_TAPER_BIKE_BOUNDS: Record<string, [number, number]> = rule(
+  "C21c",
+  "en affûtage le brick entretient la transition au lieu de la construire : sa bande est plafonnée au plancher de la bande de charge du format",
+  {
+    S: [20, BRICK_BIKE_BOUNDS.S[0]], M: [25, BRICK_BIKE_BOUNDS.M[0]],
+    "70.3": [30, BRICK_BIKE_BOUNDS["70.3"][0]], Full: [40, BRICK_BIKE_BOUNDS.Full[0]],
+    L: [30, BRICK_BIKE_BOUNDS.L[0]], PM: [40, BRICK_BIKE_BOUNDS.PM[0]],
+  },
+);
+
+/**
  * Plafond de DOSE par bloc de qualité (minutes dans la zone, répétitions comprises).
  * Ce n'est pas le nombre de répétitions qui blesse, c'est le temps passé dans la zone : le
  * plafond de reps seul laissait passer `5×14min` au seuil (70 min) parce que la mise à
