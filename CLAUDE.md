@@ -409,6 +409,19 @@ plafonds SONT la table déclarée fausse, et ils sont arithmétiquement incompat
 `R14.1-B` (50 % d'écart exigé contre 45 % autorisé). **19 gates verts, E2E 8/8 (55 assertions),
 golden 758 inchangé** — la projection ne touche aucune séance.
 
+**R17.1 livré — l'avatar sait enfin comment tu vas AUJOURD'HUI** (brief avatar, voir
+ARCHITECTURE.md « R17.1 ») : la posture était pilotée par les séances des 7 derniers jours —
+ni la forme du jour, ni la progression, et corrélée à l'XP qui compte les mêmes séances. Deux
+canaux séparés désormais : **forme du jour** (posture + expression, 5 états lus au check-in du
+matin) et **progression** (équipement/décor/aura, le niveau cumulatif inchangé). Sans check-in,
+le visage est NEUTRE — jamais un sourire par défaut ; sous drapeau douleur, l'état plafonne à
+« fatigué·e ». Contrat de calques (`data-layer`, `data-piece`, `HEAD_ANCHOR` exporté) pour que
+le test lise des calques au lieu de deviner. Garde `tests/e2e/smoke-avatar.mjs` (11e suite,
+19 assertions) : AV1-A, AV1-B, AV6-A. **Bloqué et non contourné** : AV3/AV4 (progression
+pilotée par la performance) contredit « jamais un chrono, jamais décroissant » — arbitrage
+utilisateur requis ; AV7/AV8 (45 assets raster) sort du périmètre code ; AV11/AV12 (badges par
+zone) attend des badges par discipline, qui n'existent pas.
+
 **R16 (lot design visuel) livré** (handoff `HANDOFF_R16_design_visuel.md`, voir ARCHITECTURE.md
 « R16 ») : **R16.8** l'échelle typographique — 21 tailles distinctes dont quatre sous le pixel
 (7,5 / 8,5 / 11,5 / 12,5) → **7 paliers `--fs-*` déclarés**, un par rôle, plus un principe qui

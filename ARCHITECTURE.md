@@ -1289,3 +1289,63 @@ troisième a été prise — **traiter la dette et réintégrer le module** (R16
 surveillent plus du code non exécuté : le code est expédié, les checks tournent dans l'audit
 principal, et les budgets sont à la taille du résidu réel. Le « pire des deux mondes » que le
 handoff décrivait n'existe plus.
+
+
+## R17.1 — l'avatar gagne un canal « forme du jour » (brief avatar, §AV1/AV2/AV6)
+
+Le brief avatar arrive avec quinze décisions actées. **Trois seulement sont implémentables en
+l'état** ; le reste bute sur des dépendances de production (assets illustrés) ou sur une règle
+du dépôt. Ce chapitre livre les trois, et nomme les blocages plutôt que de les contourner.
+
+### Ce qui manquait vraiment
+
+`avatarSVG` pilotait la posture par les **séances des 7 derniers jours**. Ce signal n'est ni
+la forme d'aujourd'hui ni la progression long terme : c'est un troisième axe, corrélé au
+premier (l'XP compte aussi les séances faites) et sans rapport avec le second. L'avatar ne
+disait donc pas comment l'athlète va AUJOURD'HUI — alors que la donnée est collectée chaque
+matin depuis R5, au check-in.
+
+Conséquence directe : le critère **AV1-B** (« à forme du jour égale, la posture ne change pas
+quand le palier change ») était **structurellement infalsifiable** — la posture bougeait avec
+le nombre de séances, donc avec le palier.
+
+### Les deux canaux, et ce qu'ils ne partagent pas
+
+| canal | ce qui le pilote | ce qu'il rend |
+|---|---|---|
+| **forme du jour** | le check-in du matin (`readiness.energy`) | posture (5 variantes) + expression (calque tête, 5 états) |
+| **progression** | le niveau `EBV2.avatar` (16 paliers, régularité, cumulatif) | équipement, décor, aura, couleur |
+
+Deux garde-fous, tous deux au nom du manifeste :
+- **sans check-in du jour, le visage est NEUTRE** — jamais un sourire par défaut. L'app ne
+  prétend pas savoir comment tu vas si elle ne l'a pas demandé ;
+- **drapeau douleur actif → l'état plafonne à « fatigué·e »**. Un avatar souriant pendant
+  qu'un bandeau annonce une douleur, c'est le produit qui se contredit à l'écran.
+
+### Le contrat de calques, et pourquoi il n'est pas cosmétique
+
+Le SVG porte désormais `data-layer` (`decor`, `maillot`, `posture`, `gear`) et `data-piece`
+par pièce d'équipement. Ça sert deux choses : le test lit des CALQUES au lieu de deviner par
+expressions régulières, et une future bibliothèque de composants illustrés se branche sur la
+même structure. `HEAD_ANCHOR` est exporté (AV6) : le crâne et les cinq expressions le lisent
+tous les deux, donc l'ajout de morphologies ne redessinera pas les expressions.
+
+### Ce que l'implémentation a appris au critère
+
+**AV1-A ne peut pas se lire au pixel.** « À palier égal, équipement identique » : les
+chaussures se posent au bout des jambes ; si les jambes bougent, elles bougent. Le critère
+porte donc sur les **pièces présentes et leur couleur** — ce qu'on possède — pas sur leur
+position — où le corps les porte. Un test écrit sur les coordonnées aurait forcé des
+chaussures flottantes pour rester vert : l'instrument aurait dicté un défaut visuel.
+
+**Garde : `tests/e2e/smoke-avatar.mjs`** (11e suite E2E, 19 assertions) — AV1-A, AV1-B, AV6-A
+avec leurs identifiants d'origine, plus les deux garde-fous et l'annonce de l'état aux
+lecteurs d'écran.
+
+### Ce qui reste bloqué, et pourquoi
+
+| décision | blocage |
+|---|---|
+| **AV3 / AV4** — progression pilotée par un palier de PERFORMANCE (allure seuil, CSS, FTP/kg) | Contredit une règle écrite : l'XP est « basé uniquement sur la régularité — jamais un chrono, **jamais décroissant** » (CLAUDE.md, commentaire d'`avatarV2`, gate `demo:retention`). Deux problèmes distincts : ça inverse la hiérarchie du manifeste (performance = priorité 5, régularité = 3), et ça rend l'avatar **décroissant** — une blessure, une maladie, l'âge font perdre l'équipement, exactement quand l'athlète a le plus besoin de ne pas être puni. **Arbitrage utilisateur requis** : soit AV3 se réécrit sur le palier existant, soit la règle se réécrit dans le même commit que le code. |
+| **AV7 / AV8** — assets raster générés SDXL | Production d'images, hors périmètre du code (le brief le dit lui-même, étape 1). Et le standalone fait 1,57 Mo tout inline : 45 pièces raster en `data:` changent la nature du livrable offline — à chiffrer avant de s'engager. |
+| **AV11 / AV12** — badges par zone du corps | Les 7 badges de `badgesV2` sont **tous** de la régularité (`streak3`, `bloc-base`, `recup`…) : aucun ne porte de discipline. AV12 les mettrait donc tous sur le torse. Il faut d'abord créer des badges par discipline — ce que le brief ne prévoit pas. |
