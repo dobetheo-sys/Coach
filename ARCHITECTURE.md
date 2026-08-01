@@ -1834,3 +1834,86 @@ confiscation permanente. Isolé toutes choses égales par ailleurs : **3/15 prof
 swimrun **88 % → 89 %** de profils propres au banc v7 · `S-MIX` **0 aux trois tailles
 d'échantillon** (N=250/400/600), son budget passe de 12 ‰ à **0, garde-fou définitif** · golden
 **136 écarts, tous en swimrun** — aucun autre sport n'est touché.
+
+## R20.4 — C26 mesure enfin ce que sa propre justification dit
+
+**Le défaut.** C26 déclare depuis son écriture, noir sur blanc : *« la règle physiologiquement
+vraie est le PLAFOND DE TEMPS DUR (≈60 min/semaine) ; la part de facile en est la conséquence
+arithmétique »*. Et la seule chose que l'auditeur mesurait était la part de facile —
+c'est-à-dire la grandeur DÉRIVÉE, et sur un dénominateur qui mélange le modéré et le dur.
+La grandeur que la justification désigne comme physiologique n'était vérifiée nulle part.
+
+Mesuré sur **7 356 semaines de charge** (7 sports × formats × historiques × niveaux ×
+4 enveloppes de volume) :
+
+| | avant | après |
+|---|---|---|
+| semaines au-dessus du plafond de temps DUR que C26 déclare | **1 095 (15 %)** | 0 hors tolérance |
+| pire cas | **112 min chez un DÉBUTANT** (plafond 25) | 6 min au-dessus de 60, dans la tolérance |
+| semaines au-dessus de 35 % de temps MODÉRÉ | 2 sur 7 356 | 2 sur 7 356 |
+
+La règle punissait donc la grandeur inoffensive et ne regardait jamais la dangereuse. Le pire
+cas est le profil que C26b décrit lui-même comme limité par son **tissu conjonctif** — celui qui
+ne prévient pas avant la tendinopathie.
+
+C'est la leçon d'**O-12** payée une seconde fois : `bk.rp`, `bk.ss`, `rn.mara` sont MODÉRÉS, et
+les mettre dans le même sac que la VO2max fait dire à une mesure autre chose que ce qu'on croit
+lire. Mon erreur R19.4 venait de là ; ici c'était l'auditeur qui la portait depuis l'origine.
+
+### Deux invariants au lieu d'un
+
+- **C26c** — le temps DUR hebdomadaire ne dépasse pas `hardTimeCapMin()` (le plafond que
+  C26/C26b déclaraient déjà : 60 min, 35 en reprise, 25 chez un débutant, ×0,6 sous blessure),
+  à une tolérance de ×1,1 près — le temps dur se quantifie par répétitions, exiger la minute
+  exacte ferait retirer une répétition entière pour deux minutes d'écart.
+- **C26d** — le modéré a sa PROPRE borne, plus large (40 %), et c'est délibéré : il coûte peu en
+  récupération centrale et beaucoup moins en charge tissulaire, donc il n'a pas à partager le
+  plafond du dur ; mais une semaine majoritairement modérée est la zone grise que le manifeste
+  refuse. La borne est posée **au-dessus** de ce que le moteur produit aujourd'hui (2 semaines
+  sur 7 356) : elle existe pour empêcher une dérive future, pas pour valider l'état présent.
+  Une borne calibrée au ras du comportement actuel se contente de photographier ce qu'elle juge.
+
+Les deux se mesurent **par semaine**, pas en moyenne de plan : deux semaines à 20 et 100 min ont
+la même moyenne qu'un plan sage à 60, et ce n'est pas le même plan.
+
+### La coupe : par RÉPÉTITIONS, jamais par durée de répétition
+
+`enforceHardTimeCap()` tourne au point de convergence, avant le point fixe C22. Elle retire des
+répétitions en commençant par la séance qui porte le plus de temps dur — écorner la plus grosse
+coûte moins à la structure que d'écorner trois séances pour le même total.
+
+C'est la leçon d'**I14** sur un autre axe : dans un bloc d'intervalles, la durée de la répétition
+EST le stimulus. Un 5×4 min à VO2max ramené à 5×2 min n'entraîne plus rien et porte encore son
+nom. Le nombre de répétitions, lui, est le dosage.
+
+Deux exceptions nommées : un bloc CONTINU (une répétition unique — seuil tenu) n'a pas de dosage
+à retirer, on le raccourcit jusqu'à un plancher de 8 min ; en dessous, la séance est **déclassée
+en endurance** plutôt que de garder son nom sur un contenu qui ne le porte plus (arbitrage C13d).
+Ma première écriture PRÉFIXAIT le nom et produisait « Endurance nage seuil (+dist) » — une séance
+qui se contredit dans son propre titre. Le nom est remplacé : une séance déclassée n'est pas
+l'ancienne avec un adjectif, c'est une autre séance.
+
+Résultat : **314 séances déclassées sur 648 plans** (≈ 0,5 par plan), **aucun plan ne perd toute
+sa qualité** (le piège d'O-12, vérifié explicitement), part de temps facile médiane 83 % → **86 %**.
+
+`zoneClass()` est exporté de `loadModel.ts` : le générateur doit reconnaître un bloc dur, ce que
+`intensitySplit` savait déjà faire. Recopier la liste des suffixes aurait donné deux définitions
+du mot « dur » dans le même moteur — le défaut O-11 exactement, et il n'y a aucune raison de le
+refaire en le voyant venir.
+
+### Ce que C26c a débusqué : `audit:v1` mesurait le générateur MORT
+
+`loadV1()` charge bien le bundle V2 et **lève** s'il n'y arrive pas — c'est le correctif de la
+série « mesures rendues honnêtes ». Mais il appelait ensuite `buildPlan` du HTML, qui est un
+**wrapper** : il tente `EBV2.buildPlan`, **attrape toute exception** et retombe sur
+`buildPlanLegacy`. Un refus d'entrée typé — le contrat R11, celui qui dit « ce format n'existe
+pas » — était donc avalé.
+
+`SPORTS.run.formats` du HTML gelé contient encore `trail`, sorti de `run` depuis R7 : **27 des
+486 combinaisons** de `audit:v1` mesuraient le générateur legacy en croyant mesurer le produit.
+Personne ne l'avait vu parce que le legacy satisfaisait toutes les règles auditées jusqu'ici ;
+C26c est la première qu'il ne satisfait pas, et c'est elle qui l'a révélé.
+
+Le harnais appelle désormais le moteur DIRECTEMENT, et un refus typé est un **comportement** —
+compté et affiché, comme au golden et au banc v7 — jamais une erreur et jamais un plan de repli.
+`audit:v1` passe de 486 à **459 combinaisons auditées + 27 refus déclarés**.

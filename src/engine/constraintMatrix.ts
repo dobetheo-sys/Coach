@@ -339,6 +339,61 @@ export const C26b_HARD_TIME_BY_HISTORY: Record<string, number> = rule(
 export const C26b_HARD_TIME_BEGINNER_MIN = rule("C26b-deb", "un débutant construit son tissu conjonctif avant sa puissance : la qualité reste marginale", 25);
 export const C26b_INJURY_FACTOR = rule("C26b-bless", "une blessure déclarée dit au présent ce que l'historique dit au passé", 0.6);
 
+/**
+ * C26c (R20.4) — LE PLAFOND DE TEMPS DUR EST VÉRIFIÉ. AVANT, IL ÉTAIT SEULEMENT DÉCLARÉ.
+ *
+ * C26 dit, noir sur blanc : « la règle physiologiquement vraie est le PLAFOND DE TEMPS DUR
+ * (≈60 min/semaine) ; la part de facile en est la conséquence arithmétique ». Et pourtant la
+ * seule chose que l'auditeur mesurait était la part de facile — c'est-à-dire la grandeur
+ * DÉRIVÉE, et sur le mauvais dénominateur : `easy / (easy + modéré + dur)`. Le temps DUR, la
+ * grandeur que la justification désigne comme physiologique, n'était vérifié nulle part.
+ *
+ * Les deux conséquences, mesurées sur 7 356 semaines de charge (7 sports × formats × historiques
+ * × niveaux × 4 enveloppes de volume) :
+ *
+ * 1. **1 095 semaines (15 %) dépassaient le plafond que C26 déclare.** Pire cas : un DÉBUTANT
+ *    en préparation de semi à 10 h/sem recevait **112 min de travail dur** contre un plafond
+ *    déclaré de 25 — quatre fois et demie. Le profil que C26b décrit comme limité par son
+ *    tissu conjonctif, celui qui ne prévient pas avant la tendinopathie.
+ * 2. **Le modéré, lui, ne débordait jamais** : 2 semaines sur 7 356 au-dessus de 35 % du temps.
+ *    La règle punissait donc la grandeur inoffensive et ne regardait pas la dangereuse.
+ *
+ * C'est la leçon d'O-12 payée une seconde fois : `bk.rp`, `bk.ss`, `rn.mara` sont MODÉRÉS, et
+ * les mettre dans le même sac que la VO2max fait dire à une mesure autre chose que ce qu'on
+ * croit lire. Ma propre erreur R19.4 venait de là ; ici c'était l'auditeur qui la portait.
+ *
+ * Le plafond ne change pas — c'est `hardTimeCapMin()`, celui que C26/C26b déclaraient déjà. La
+ * TOLÉRANCE existe parce que le temps dur d'une semaine se quantifie par répétitions : on ne
+ * peut pas atteindre 60,0 min avec des blocs de 4 min. Elle est délibérément petite.
+ */
+export const C26c_HARD_TIME_TOLERANCE = rule(
+  "C26c",
+  "le temps dur se quantifie par RÉPÉTITIONS : exiger la minute exacte ferait retirer une répétition entière pour deux minutes d'écart",
+  1.1,
+);
+
+/**
+ * C26d (R20.4) — LE MODÉRÉ A SA PROPRE BORNE, PLUS LARGE, ET C'EST VOULU.
+ *
+ * Une fois le temps dur borné pour lui-même, il reste à dire ce qu'on attend du modéré — sinon
+ * la seule règle qui le concernait disparaît et un plan pourrait devenir 100 % tempo.
+ *
+ * Le modéré n'est pas du dur en plus petit : il coûte peu en récupération centrale et beaucoup
+ * moins en charge tissulaire, ce qui est précisément la raison pour laquelle il ne doit pas
+ * partager le plafond du dur. Mais une semaine majoritairement en zone modérée est la « zone
+ * grise » que le manifeste refuse — trop dur pour récupérer, trop facile pour progresser.
+ *
+ * 40 % : mesuré à 2 semaines sur 7 356 au-dessus de 35 % aujourd'hui. La borne est donc posée
+ * AU-DESSUS de ce que le moteur produit, volontairement : elle existe pour empêcher une dérive
+ * future, pas pour valider l'état présent. Une borne calibrée au ras du comportement actuel est
+ * une borne qui se contente de photographier ce qu'elle est censée juger.
+ */
+export const C26d_MOD_SHARE_MAX = rule(
+  "C26d",
+  "le modéré ne partage pas le plafond du dur (il coûte moins en récupération et en charge tissulaire), mais une semaine majoritairement modérée est la zone grise que le manifeste refuse",
+  0.40,
+);
+
 export interface EasyFloorCtx {
   history?: string;
   level?: string;

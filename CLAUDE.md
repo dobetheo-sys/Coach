@@ -478,6 +478,31 @@ registre est un défaut effacé. **swimrun 88 % → 89 % au banc v7, `S-MIX` à 
 d'échantillon → budget 12 ‰ → 0 (garde-fou définitif), 21 gates verts, E2E 13/13, golden 900
 recapturé (136 écarts, TOUS en swimrun).**
 
+**R20.4 livré — C26 mesure enfin ce que sa propre justification dit** (voir ARCHITECTURE.md
+« R20.4 ») : C26 déclare depuis son écriture que la grandeur physiologique est le **plafond de
+temps DUR** hebdomadaire et que la part de facile n'en est que la conséquence. Seule la
+conséquence était vérifiée — et sur un dénominateur qui mélange le modéré et le dur. Mesuré sur
+**7 356 semaines de charge : 1 095 (15 %) au-dessus du plafond que la règle déclare**, jusqu'à
+**112 min de travail dur chez un DÉBUTANT dont le plafond est 25** — le profil que C26b décrit
+lui-même comme limité par son tissu conjonctif. Pendant ce temps le modéré, seul puni par
+l'ancienne formulation, ne débordait que 2 fois sur 7 356 : la règle punissait la grandeur
+inoffensive et ne regardait jamais la dangereuse. Leçon d'O-12 payée une seconde fois.
+**C26c** borne le temps dur pour lui-même (tolérance ×1,1 — il se quantifie par répétitions) ;
+**C26d** donne au modéré sa propre borne, plus large (40 %), posée AU-DESSUS de ce que le moteur
+produit : une borne calibrée au ras du comportement actuel se contente de le photographier. Les
+deux se mesurent PAR SEMAINE, pas en moyenne. La coupe retire des **RÉPÉTITIONS, jamais la durée
+d'une répétition** (leçon I14 : dans un intervalle, la durée EST le stimulus) ; sous le plancher,
+la séance est DÉCLASSÉE en endurance et **change de nom** — ma première écriture préfixait et
+produisait « Endurance nage seuil », une séance qui se contredit dans son titre. 314 séances
+déclassées sur 648 plans, **aucun plan ne perd toute sa qualité** (le piège d'O-12, vérifié),
+part facile médiane 83 % → 86 %.
+Débusqué par C26c : **`audit:v1` mesurait le générateur MORT sur 27 de ses 486 combinaisons.**
+Le harnais chargeait bien le bundle, mais appelait le `buildPlan` du HTML — un wrapper qui
+attrape TOUTE exception et retombe sur le legacy, y compris un refus d'entrée typé. `run/trail`
+n'existe plus depuis R7 ; le legacy satisfaisait toutes les règles auditées jusqu'ici, C26c est
+la première qu'il rate. Le harnais appelle le moteur directement : **459 combinaisons auditées +
+27 refus DÉCLARÉS.** **21 gates verts, E2E 13/13, golden 900 recapturé (259 écarts).**
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur

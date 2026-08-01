@@ -12,7 +12,7 @@
  */
 import type { V1Plan, V1Week } from "../harness/v1Harness.ts";
 import { sessionLoad, intensitySplit, DEFAULT_REFS, type AthleteRefs, type SessionLoad } from "../engine/loadModel.ts";
-import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, easyShareFloor } from "../engine/constraintMatrix.ts";
+import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, easyShareFloor, hardTimeCapMin, C26c_HARD_TIME_TOLERANCE, C26d_MOD_SHARE_MAX } from "../engine/constraintMatrix.ts";
 
 // Les bornes brick vélo (audit 2, « jamais dépassées, même de peu ») vivent désormais dans la
 // matrice de contraintes : l'auditeur et le générateur lisent LE MÊME tableau. La copie locale
@@ -358,13 +358,20 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   // ---- Manifeste : répartition des intensités (~80/20). Part FACILE du temps sur les
   // ---- semaines de charge : <70% = zone grise installée (dur), 70-73% = borderline (souple).
   let easyTot = 0, modTot = 0, hardTot = 0;
+  // C26c/C26d (R20.4) — les deux grandeurs se mesurent aussi PAR SEMAINE : un plafond de temps
+  // dur hebdomadaire ne se vérifie pas sur une moyenne de plan. Deux semaines à 20 et 100 min
+  // ont la même moyenne qu'un plan sage à 60, et ce n'est pas le même plan.
+  const perWeekHard: { num: number; hard: number; mod: number; tot: number }[] = [];
   for (const w of plan.weeks) {
     if (w.isRecup || w.phase.id === "taper") continue;
+    let wh = 0, wm = 0, we = 0;
     for (const d of w.days)
       for (const s of d.sessions) {
         const sp = intensitySplit(s, refs);
-        easyTot += sp.easyMin; modTot += sp.modMin; hardTot += sp.hardMin;
+        we += sp.easyMin; wm += sp.modMin; wh += sp.hardMin;
       }
+    easyTot += we; modTot += wm; hardTot += wh;
+    perWeekHard.push({ num: w.num, hard: wh, mod: wm, tot: we + wm + wh });
   }
   const easyShare = easyTot + modTot + hardTot > 0 ? easyTot / (easyTot + modTot + hardTot) : 1;
   // C26 — le plancher suit le VOLUME : 80/20 est la conséquence d'un plafond de temps dur
@@ -374,6 +381,28 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   const meanChargeMin = chargeMin.length ? chargeMin.reduce((a, b) => a + b, 0) / chargeMin.length : 0;
   const easyFloor = easyShareFloor(meanChargeMin, { history: opts.history, level: opts.level, injured: !!opts.injured });
   if (easyShare < easyFloor) hard.push("répartition des intensités : " + Math.round(easyShare * 100) + "% de temps facile (<" + Math.round(easyFloor * 100) + "% pour " + Math.round(meanChargeMin / 6) / 10 + "h/sem — zone grise, manifeste ~80/20)");
+
+  // ---- C26c/C26d (R20.4) — LA RÈGLE MESURE ENFIN CE QUE SA JUSTIFICATION DIT ----
+  //
+  // C26 déclare depuis toujours que la grandeur physiologique est le PLAFOND DE TEMPS DUR
+  // hebdomadaire, et que la part de facile en est la conséquence arithmétique. Seule la
+  // conséquence était vérifiée — et sur un dénominateur qui mélange le modéré et le dur.
+  // Mesuré avant correction sur 7 356 semaines de charge : **1 095 (15 %) au-dessus du plafond
+  // que C26 déclare**, jusqu'à 112 min de dur chez un DÉBUTANT dont le plafond est 25 ; et le
+  // modéré, seul puni par l'ancienne formulation, ne débordait que 2 fois sur 7 356.
+  const capHard = hardTimeCapMin({ history: opts.history, level: opts.level, injured: !!opts.injured });
+  const overHard = perWeekHard.filter((w) => w.hard > capHard * C26c_HARD_TIME_TOLERANCE);
+  if (overHard.length) {
+    const pire = overHard.reduce((x, y) => (y.hard > x.hard ? y : x));
+    hard.push("C26c : " + overHard.length + " semaine(s) au-dessus du plafond de temps DUR ("
+      + capHard + " min/sem pour ce profil) — pire : S" + pire.num + " à " + Math.round(pire.hard) + " min");
+  }
+  const overMod = perWeekHard.filter((w) => w.tot > 0 && w.mod / w.tot > C26d_MOD_SHARE_MAX);
+  if (overMod.length) {
+    const pire = overMod.reduce((x, y) => (y.mod / y.tot > x.mod / x.tot ? y : x));
+    hard.push("C26d : " + overMod.length + " semaine(s) à plus de " + Math.round(C26d_MOD_SHARE_MAX * 100)
+      + "% de temps MODÉRÉ (zone grise) — pire : S" + pire.num + " à " + Math.round((pire.mod / pire.tot) * 100) + "%");
+  }
 
   // ---- Cohérence : une nage FACILE/RÉCUP ne dépasse jamais la « longue » de sa semaine
   // (une « Récup eau » de 2150m n'est pas une récup). Les séances de qualité (jours durs)

@@ -286,6 +286,21 @@ export interface IntensitySplit {
 const HARD_SUFFIX = [".vo2", ".thr", ".speed", ".css"];
 const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
 /**
+ * C26c (R20.4) — LA CLASSIFICATION EST EXPOSÉE, parce qu'un second lecteur en a besoin.
+ *
+ * Le générateur doit désormais BORNER le temps dur, donc reconnaître un bloc dur — exactement
+ * la question que `intensitySplit` répond déjà. Recopier la liste des suffixes dans
+ * `planGenerator` aurait donné deux définitions du mot « dur » dans le même moteur : c'est
+ * précisément le défaut O-11 (deux définitions de « l'allure course » à vélo), et il n'y a
+ * aucune raison de le refaire en le voyant venir.
+ */
+export function zoneClass(zone: unknown, runLegNoZone = false): "easy" | "mod" | "hard" {
+  const z = typeof zone === "string" ? zone : "";
+  if (TRAIL_HARD.includes(z) || HARD_SUFFIX.some((s) => z.endsWith(s))) return "hard";
+  if (TRAIL_MOD.includes(z) || MOD_SUFFIX.some((s) => z.endsWith(s)) || runLegNoZone) return "mod";
+  return "easy";
+}
+/**
  * D10-6 — zones TRAIL (R7). Elles ne portent aucun des suffixes ci-dessus : `tr.vam` et
  * `tr.flatthr` tombaient donc en « facile », et la répartition 80/20 comme le garde-fou de
  * polarisation étaient AVEUGLES sur tout le trail (100% de facile mesuré sur les 27 profils).
@@ -323,11 +338,7 @@ export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS):
     // comptés modérés et la répartition d'intensité tomberait à 61 % de facile (mesuré) sur un
     // plan qui est en réalité polarisé. La zone déclarée est toujours plus précise que l'indice.
     const runLegNoZone = st.leg === "run" && !zone;
-    const cls = TRAIL_HARD.includes(zone) || HARD_SUFFIX.some((z) => zone.endsWith(z))
-      ? "hard"
-      : TRAIL_MOD.includes(zone) || MOD_SUFFIX.some((z) => zone.endsWith(z)) || runLegNoZone
-        ? "mod"
-        : "easy";
+    const cls = zoneClass(zone, runLegNoZone);
     if (cls === "hard") out.hardMin += stMin;
     else if (cls === "mod") out.modMin += stMin;
     else out.easyMin += stMin;

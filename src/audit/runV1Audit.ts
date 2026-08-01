@@ -91,6 +91,30 @@ const v1 = loadV1();
 const results: ComboResult[] = [];
 const allFlags = new Map<string, number>();
 let errors = 0;
+const refus: string[] = [];
+
+/**
+ * R20.4 — LE HARNAIS NE MESURE PLUS LE GÉNÉRATEUR DE REPLI, MÊME PAR RICOCHET.
+ *
+ * `loadV1()` charge bien le bundle V2 (correctif de la série « mesures rendues honnêtes ») et
+ * LÈVE s'il n'y arrive pas. Mais il appelle ensuite `buildPlan` du HTML, qui est un WRAPPER :
+ * il tente `EBV2.buildPlan`, **attrape toute exception** et retombe sur `buildPlanLegacy`. Un
+ * refus d'entrée typé — le contrat R11, celui qui dit « ce format n'existe pas » — était donc
+ * avalé, et le harnais auditait le générateur mort en croyant auditer le produit.
+ *
+ * Mesuré : `SPORTS.run.formats` du HTML gelé contient encore `trail`, sorti de `run` depuis R7.
+ * **27 des 486 combinaisons** (1 format × 3 historiques × 3 niveaux × 3 intentions) mesuraient
+ * le legacy. Personne ne l'avait vu parce que le legacy satisfaisait toutes les règles auditées
+ * jusqu'ici ; C26c est la première qu'il ne satisfait pas, et c'est elle qui l'a révélé.
+ *
+ * On appelle donc le moteur DIRECTEMENT. Un refus typé est un COMPORTEMENT (il se compte et
+ * s'affiche, comme au golden et au banc v7), jamais une erreur et jamais un plan de repli.
+ */
+const EB = (globalThis as { EBV2?: { buildPlan: (s: string, a: Record<string, string>) => unknown } }).EBV2;
+function planOf(sport: string, a: Record<string, string>) {
+  if (!EB) throw new Error("bundle EBV2 absent — le harnais auditerait le générateur de repli");
+  return EB.buildPlan(sport, a);
+}
 
 for (const sport of Object.keys(v1.SPORTS)) {
   const formats = v1.SPORTS[sport].formats.map((f) => f[0]);
@@ -102,8 +126,12 @@ for (const sport of Object.keys(v1.SPORTS)) {
           const a = { ...baseAnswers(), format, history, level, intent };
           let audit: PlanAudit;
           try {
-            audit = auditPlan(v1.buildPlan(a), { sport, format, level, history, refs: REFS });
+            audit = auditPlan(planOf(sport, a) as never, { sport, format, level, history, refs: REFS });
           } catch (e) {
+            if ((e as { code?: string }).code === "ENTREE_INVALIDE") {
+              refus.push(sport + "/" + format + " : " + String((e as { human?: string }).human ?? "").slice(0, 90));
+              continue;
+            }
             errors++;
             console.error("ERREUR", sport, format, history, level, intent, e);
             continue;
@@ -254,6 +282,15 @@ writeFileSync(join(outDir, "v1-audit.md"), md);
 
 console.log(md);
 console.log("→ audit-results/v1-audit.json (" + results.length + " combinaisons)");
+// R20.4 — les refus typés se COMPTENT et s'AFFICHENT : un format sorti du domaine (run/trail
+// depuis R7) n'est pas une combinaison auditée, et ne doit surtout pas être auditée sur le
+// générateur de repli. Même contrat que `U-REFUS:` au banc v7 et `ENTREE_INVALIDE` au golden.
+if (refus.length) {
+  const parGroupe = new Map<string, number>();
+  for (const r of refus) parGroupe.set(r.split(" : ")[0], (parGroupe.get(r.split(" : ")[0]) || 0) + 1);
+  console.log("   " + refus.length + " combinaison(s) REFUSÉE(S) par le contrat d'entrée (non auditées, comportement voulu) :");
+  for (const [k, n] of parGroupe) console.log("     · " + k + " × " + n + " — " + refus.find((r) => r.startsWith(k))!.split(" : ")[1]);
+}
 
 // Mode garde-fou (CI) : toute violation dure ou erreur de génération fait échouer le run.
 const failing = results.filter((r) => r.hardViolations.length > 0);

@@ -14,10 +14,11 @@ import {
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
   BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_BIKE, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
   C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN, RACE_EVE_CAP_MIN,
+  hardTimeCapMin, C26c_HARD_TIME_TOLERANCE,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, type Refs } from "./renderer.ts";
-import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
+import { sessionLoad, intensitySplit, zoneClass, type AthleteRefs } from "../engine/loadModel.ts";
 import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS, syncReturnRecovery } from "../engine/trailModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
 import { buildSessions } from "./sessionLibrary.ts";
@@ -69,7 +70,11 @@ export function reconcileDeclaredVolume(
      *  dérivé du volume : en semaine de course, ce dernier s'effondre avec le volume et
      *  couperait la FRÉQUENCE — exactement ce que Bosquet 2007 dit de ne pas faire
      *  (« volume réduit de 41-60 %, intensité ET FRÉQUENCE maintenues »). */
-    sessionsMaxDeclared?: number },
+    sessionsMaxDeclared?: number;
+    /** C26c (R20.4) — ce qui LIMITE cet athlète : le plafond de temps dur en dépend
+     *  (récupération centrale chez l'entraîné, tissu conjonctif en reprise ou chez un débutant,
+     *  blessure déclarée au présent). Mêmes clés que celles passées à `auditPlan`. */
+    history?: string; level?: string; injured?: boolean },
 ): void {
   // 3a — LE FILET DU DRAPEAU MÉDICAL, en tout premier et en tout dernier ressort. La PORTE est
   // dans les builders (`medicalZone`) ; ce filet rattrape ce qui a été écrit hors d'elle — une
@@ -889,6 +894,27 @@ export function reconcileDeclaredVolume(
     }
   }
 
+  // ---- C26c (R20.4) — LE PLAFOND DE TEMPS DUR, ENFIN APPLIQUÉ ----
+  //
+  // C26 déclare depuis toujours que la grandeur physiologique est le temps DUR hebdomadaire
+  // (~60 min, 35 en reprise, 25 chez un débutant) et que la part de facile n'en est que la
+  // conséquence. Rien ne l'appliquait : mesuré sur 7 356 semaines de charge, **1 095 (15 %)
+  // au-dessus**, jusqu'à 112 min de dur chez un DÉBUTANT — le profil dont C26b dit lui-même
+  // qu'il est limité par son tissu conjonctif, celui qui ne prévient pas.
+  //
+  // ON RETIRE DES RÉPÉTITIONS, JAMAIS LA DURÉE D'UNE RÉPÉTITION. C'est la leçon d'I14, sur un
+  // autre axe : dans un bloc d'intervalles, la durée de la répétition EST le stimulus — un
+  // 5×4 min à VO2max ramené à 5×2 min n'est plus une séance de VO2max, c'est une séance qui
+  // n'entraîne rien et qui porte encore son nom. Le nombre de répétitions, lui, est le
+  // dosage : c'est par lui qu'on ajuste.
+  //
+  // Deux exceptions nommées, toutes deux parce que retirer y ferait plus de mal que garder :
+  //   · un bloc CONTINU (une répétition unique — seuil tenu, CSS continu) n'a pas de dosage à
+  //     retirer : on le raccourcit jusqu'à un plancher, en dessous duquel il est déclassé ;
+  //   · la dernière répétition d'un bloc ne disparaît jamais en silence — la séance perd son
+  //     statut de séance de qualité (elle passe en endurance) plutôt que de garder son nom sur
+  //     un contenu qui ne le porte plus. Même arbitrage que C13d.
+  enforceHardTimeCap(plan, ctx, render);
   // …et une dernière fois APRÈS toutes les passes de ce point de convergence : elles peuvent
   // recomposer une séance (déclassement C13d, remplacement de course, greffe).
   enforceMedicalHold(plan, !!ctx?.medHold);
@@ -909,6 +935,76 @@ export function reconcileDeclaredVolume(
   if (forcedWeeks > 0)
     warnings.push("Sur " + forcedWeeks + " semaine(s) de charge, la structure minimale de ce plan (une séance digne de ce nom ne descend pas sous 30 min, une sortie longue encore moins) dépasse le volume hebdomadaire que tu as déclaré. Le chiffre annoncé a été aligné sur ce qui t'est réellement prescrit — mieux vaut une courbe honnête qu'une promesse que le plan ne tient pas. Deux remèdes, à toi de choisir : relever le volume dont tu disposes, ou viser un objectif plus court.");
 
+}
+
+/**
+ * C26c (R20.4) — LE TEMPS DUR HEBDOMADAIRE NE DÉPASSE PAS LE PLAFOND QUE C26 DÉCLARE.
+ *
+ * Voir `constraintMatrix.ts` (C26c) pour le raisonnement et la mesure. Ici, la mécanique :
+ * on retire des RÉPÉTITIONS, en commençant par la séance qui porte le plus de temps dur, et
+ * on s'arrête dès que la semaine est sous le plafond. La séance la plus chargée d'abord :
+ * réduire d'une répétition la plus grosse séance coûte moins à la structure du plan que
+ * d'écorner trois séances pour le même total.
+ *
+ * `PLANCHER_CONTINU` : en dessous, un bloc continu de seuil n'est plus un stimulus de seuil.
+ * La séance est alors DÉCLASSÉE en endurance plutôt que raccourcie encore — l'arbitrage C13d,
+ * appliqué à l'intensité au lieu de l'échauffement.
+ */
+const C26C_PLANCHER_CONTINU_MIN = 8;
+function enforceHardTimeCap(
+  plan: V1Plan,
+  ctx: { history?: string; level?: string; injured?: boolean; beginner?: boolean } | undefined,
+  render?: (s: V1Session) => void,
+): void {
+  const cap = hardTimeCapMin({
+    history: ctx?.history,
+    level: ctx?.level ?? (ctx?.beginner ? "debutant" : undefined),
+    injured: !!ctx?.injured,
+  }) * C26c_HARD_TIME_TOLERANCE;
+
+  for (const w of plan.weeks) {
+    if (w.isRecup || w.phase.id === "taper") continue;
+    const hardOf = (s: V1Session) => intensitySplit(s as never).hardMin;
+    const weekHard = () => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + hardOf(s), 0), 0);
+    // Borne d'itération : chaque tour retire au moins une répétition ou déclasse un bloc, donc
+    // le nombre de blocs durs du plan majore le nombre de tours. La borne existe pour qu'un
+    // futur bloc « irréductible » fasse rendre un plan imparfait plutôt qu'une boucle infinie.
+    for (let tour = 0; tour < 200 && weekHard() > cap; tour++) {
+      // La séance la plus dure de la semaine, hors course et hors séance verrouillée.
+      let cible: V1Session | null = null, cibleHard = 0;
+      for (const d of w.days)
+        for (const s of d.sessions) {
+          if (s.d === "rs" || (s as { race?: boolean }).race) continue;
+          const h = hardOf(s);
+          if (h > cibleHard) { cibleHard = h; cible = s; }
+        }
+      if (!cible || cibleHard <= 0) break;
+      const durs = (cible.steps || []).filter((b) => b.role === "body" && zoneClass(b.zone) === "hard");
+      if (!durs.length) break;
+      // Le plus gros bloc dur de la séance : c'est lui qui porte le dosage.
+      const b = durs.reduce((x, y) => ((y.reps || 1) * (y.durationMin || 0) > (x.reps || 1) * (x.durationMin || 0) ? y : x));
+      if ((b.reps || 1) > 1) {
+        b.reps = (b.reps || 1) - 1;
+      } else if ((b.durationMin || 0) > C26C_PLANCHER_CONTINU_MIN) {
+        // Bloc continu : pas de dosage à retirer, on raccourcit — jusqu'au plancher.
+        b.durationMin = Math.max(C26C_PLANCHER_CONTINU_MIN, Math.round((b.durationMin || 0) * 0.8));
+      } else {
+        // Plus rien à retirer sans mentir sur ce que la séance est : elle DEVIENT ce qu'elle
+        // est réellement devenue. Le nom et la note suivent — une séance qui change de nature
+        // et garde son titre est le défaut que R19.5 a fermé côté prose.
+        const disc = String(b.d ?? cible.d);
+        b.zone = (disc === "sw" ? "sw" : disc === "bk" ? "bk" : "rn") + ".easy";
+        b.intensity = "easy" as unknown as string;
+        // Le nom est REMPLACÉ, pas préfixé. Ma première écriture posait « Endurance » devant
+        // le nom d'origine et produisait « Endurance nage seuil (+dist) » — une séance qui se
+        // contredit dans son propre titre. Une séance déclassée n'est pas l'ancienne séance
+        // avec un adjectif : c'est une autre séance, et elle porte son vrai nom.
+        cible.name = disc === "sw" ? "Nage endurance" : disc === "bk" ? "Vélo endurance" : "Footing endurance";
+        cible.note = "Le plafond de travail dur de ta semaine est atteint : cette séance passe en endurance. Ce n'est pas une punition — c'est ce qui rend les séances dures de ta semaine réellement assimilables.";
+      }
+      if (render) render(cible);
+    }
+  }
 }
 
 /**
@@ -2414,7 +2510,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   }
 
   const plan: V1Plan = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport as string, "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined });
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport as string, "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0 });
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation

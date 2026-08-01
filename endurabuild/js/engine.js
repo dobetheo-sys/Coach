@@ -1594,6 +1594,61 @@ const C26b_HARD_TIME_BY_HISTORY                         = rule(
 const C26b_HARD_TIME_BEGINNER_MIN = rule("C26b-deb", "un débutant construit son tissu conjonctif avant sa puissance : la qualité reste marginale", 25);
 const C26b_INJURY_FACTOR = rule("C26b-bless", "une blessure déclarée dit au présent ce que l'historique dit au passé", 0.6);
 
+/**
+ * C26c (R20.4) — LE PLAFOND DE TEMPS DUR EST VÉRIFIÉ. AVANT, IL ÉTAIT SEULEMENT DÉCLARÉ.
+ *
+ * C26 dit, noir sur blanc : « la règle physiologiquement vraie est le PLAFOND DE TEMPS DUR
+ * (≈60 min/semaine) ; la part de facile en est la conséquence arithmétique ». Et pourtant la
+ * seule chose que l'auditeur mesurait était la part de facile — c'est-à-dire la grandeur
+ * DÉRIVÉE, et sur le mauvais dénominateur : `easy / (easy + modéré + dur)`. Le temps DUR, la
+ * grandeur que la justification désigne comme physiologique, n'était vérifié nulle part.
+ *
+ * Les deux conséquences, mesurées sur 7 356 semaines de charge (7 sports × formats × historiques
+ * × niveaux × 4 enveloppes de volume) :
+ *
+ * 1. **1 095 semaines (15 %) dépassaient le plafond que C26 déclare.** Pire cas : un DÉBUTANT
+ *    en préparation de semi à 10 h/sem recevait **112 min de travail dur** contre un plafond
+ *    déclaré de 25 — quatre fois et demie. Le profil que C26b décrit comme limité par son
+ *    tissu conjonctif, celui qui ne prévient pas avant la tendinopathie.
+ * 2. **Le modéré, lui, ne débordait jamais** : 2 semaines sur 7 356 au-dessus de 35 % du temps.
+ *    La règle punissait donc la grandeur inoffensive et ne regardait pas la dangereuse.
+ *
+ * C'est la leçon d'O-12 payée une seconde fois : `bk.rp`, `bk.ss`, `rn.mara` sont MODÉRÉS, et
+ * les mettre dans le même sac que la VO2max fait dire à une mesure autre chose que ce qu'on
+ * croit lire. Ma propre erreur R19.4 venait de là ; ici c'était l'auditeur qui la portait.
+ *
+ * Le plafond ne change pas — c'est `hardTimeCapMin()`, celui que C26/C26b déclaraient déjà. La
+ * TOLÉRANCE existe parce que le temps dur d'une semaine se quantifie par répétitions : on ne
+ * peut pas atteindre 60,0 min avec des blocs de 4 min. Elle est délibérément petite.
+ */
+const C26c_HARD_TIME_TOLERANCE = rule(
+  "C26c",
+  "le temps dur se quantifie par RÉPÉTITIONS : exiger la minute exacte ferait retirer une répétition entière pour deux minutes d'écart",
+  1.1,
+);
+
+/**
+ * C26d (R20.4) — LE MODÉRÉ A SA PROPRE BORNE, PLUS LARGE, ET C'EST VOULU.
+ *
+ * Une fois le temps dur borné pour lui-même, il reste à dire ce qu'on attend du modéré — sinon
+ * la seule règle qui le concernait disparaît et un plan pourrait devenir 100 % tempo.
+ *
+ * Le modéré n'est pas du dur en plus petit : il coûte peu en récupération centrale et beaucoup
+ * moins en charge tissulaire, ce qui est précisément la raison pour laquelle il ne doit pas
+ * partager le plafond du dur. Mais une semaine majoritairement en zone modérée est la « zone
+ * grise » que le manifeste refuse — trop dur pour récupérer, trop facile pour progresser.
+ *
+ * 40 % : mesuré à 2 semaines sur 7 356 au-dessus de 35 % aujourd'hui. La borne est donc posée
+ * AU-DESSUS de ce que le moteur produit, volontairement : elle existe pour empêcher une dérive
+ * future, pas pour valider l'état présent. Une borne calibrée au ras du comportement actuel est
+ * une borne qui se contente de photographier ce qu'elle est censée juger.
+ */
+const C26d_MOD_SHARE_MAX = rule(
+  "C26d",
+  "le modéré ne partage pas le plafond du dur (il coûte moins en récupération et en charge tissulaire), mais une semaine majoritairement modérée est la zone grise que le manifeste refuse",
+  0.40,
+);
+
                                
                    
                  
@@ -3274,6 +3329,21 @@ function sessionLoad(s            , refs              = DEFAULT_REFS)           
 const HARD_SUFFIX = [".vo2", ".thr", ".speed", ".css"];
 const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
 /**
+ * C26c (R20.4) — LA CLASSIFICATION EST EXPOSÉE, parce qu'un second lecteur en a besoin.
+ *
+ * Le générateur doit désormais BORNER le temps dur, donc reconnaître un bloc dur — exactement
+ * la question que `intensitySplit` répond déjà. Recopier la liste des suffixes dans
+ * `planGenerator` aurait donné deux définitions du mot « dur » dans le même moteur : c'est
+ * précisément le défaut O-11 (deux définitions de « l'allure course » à vélo), et il n'y a
+ * aucune raison de le refaire en le voyant venir.
+ */
+function zoneClass(zone         , runLegNoZone = false)                          {
+  const z = typeof zone === "string" ? zone : "";
+  if (TRAIL_HARD.includes(z) || HARD_SUFFIX.some((s) => z.endsWith(s))) return "hard";
+  if (TRAIL_MOD.includes(z) || MOD_SUFFIX.some((s) => z.endsWith(s)) || runLegNoZone) return "mod";
+  return "easy";
+}
+/**
  * D10-6 — zones TRAIL (R7). Elles ne portent aucun des suffixes ci-dessus : `tr.vam` et
  * `tr.flatthr` tombaient donc en « facile », et la répartition 80/20 comme le garde-fou de
  * polarisation étaient AVEUGLES sur tout le trail (100% de facile mesuré sur les 27 profils).
@@ -3311,11 +3381,7 @@ function intensitySplit(s            , refs              = DEFAULT_REFS)        
     // comptés modérés et la répartition d'intensité tomberait à 61 % de facile (mesuré) sur un
     // plan qui est en réalité polarisé. La zone déclarée est toujours plus précise que l'indice.
     const runLegNoZone = st.leg === "run" && !zone;
-    const cls = TRAIL_HARD.includes(zone) || HARD_SUFFIX.some((z) => zone.endsWith(z))
-      ? "hard"
-      : TRAIL_MOD.includes(zone) || MOD_SUFFIX.some((z) => zone.endsWith(z)) || runLegNoZone
-        ? "mod"
-        : "easy";
+    const cls = zoneClass(zone, runLegNoZone);
     if (cls === "hard") out.hardMin += stMin;
     else if (cls === "mod") out.modMin += stMin;
     else out.easyMin += stMin;
@@ -3735,13 +3801,20 @@ function auditPlan(plan        , opts            = {})            {
   // ---- Manifeste : répartition des intensités (~80/20). Part FACILE du temps sur les
   // ---- semaines de charge : <70% = zone grise installée (dur), 70-73% = borderline (souple).
   let easyTot = 0, modTot = 0, hardTot = 0;
+  // C26c/C26d (R20.4) — les deux grandeurs se mesurent aussi PAR SEMAINE : un plafond de temps
+  // dur hebdomadaire ne se vérifie pas sur une moyenne de plan. Deux semaines à 20 et 100 min
+  // ont la même moyenne qu'un plan sage à 60, et ce n'est pas le même plan.
+  const perWeekHard                                                            = [];
   for (const w of plan.weeks) {
     if (w.isRecup || w.phase.id === "taper") continue;
+    let wh = 0, wm = 0, we = 0;
     for (const d of w.days)
       for (const s of d.sessions) {
         const sp = intensitySplit(s, refs);
-        easyTot += sp.easyMin; modTot += sp.modMin; hardTot += sp.hardMin;
+        we += sp.easyMin; wm += sp.modMin; wh += sp.hardMin;
       }
+    easyTot += we; modTot += wm; hardTot += wh;
+    perWeekHard.push({ num: w.num, hard: wh, mod: wm, tot: we + wm + wh });
   }
   const easyShare = easyTot + modTot + hardTot > 0 ? easyTot / (easyTot + modTot + hardTot) : 1;
   // C26 — le plancher suit le VOLUME : 80/20 est la conséquence d'un plafond de temps dur
@@ -3751,6 +3824,28 @@ function auditPlan(plan        , opts            = {})            {
   const meanChargeMin = chargeMin.length ? chargeMin.reduce((a, b) => a + b, 0) / chargeMin.length : 0;
   const easyFloor = easyShareFloor(meanChargeMin, { history: opts.history, level: opts.level, injured: !!opts.injured });
   if (easyShare < easyFloor) hard.push("répartition des intensités : " + Math.round(easyShare * 100) + "% de temps facile (<" + Math.round(easyFloor * 100) + "% pour " + Math.round(meanChargeMin / 6) / 10 + "h/sem — zone grise, manifeste ~80/20)");
+
+  // ---- C26c/C26d (R20.4) — LA RÈGLE MESURE ENFIN CE QUE SA JUSTIFICATION DIT ----
+  //
+  // C26 déclare depuis toujours que la grandeur physiologique est le PLAFOND DE TEMPS DUR
+  // hebdomadaire, et que la part de facile en est la conséquence arithmétique. Seule la
+  // conséquence était vérifiée — et sur un dénominateur qui mélange le modéré et le dur.
+  // Mesuré avant correction sur 7 356 semaines de charge : **1 095 (15 %) au-dessus du plafond
+  // que C26 déclare**, jusqu'à 112 min de dur chez un DÉBUTANT dont le plafond est 25 ; et le
+  // modéré, seul puni par l'ancienne formulation, ne débordait que 2 fois sur 7 356.
+  const capHard = hardTimeCapMin({ history: opts.history, level: opts.level, injured: !!opts.injured });
+  const overHard = perWeekHard.filter((w) => w.hard > capHard * C26c_HARD_TIME_TOLERANCE);
+  if (overHard.length) {
+    const pire = overHard.reduce((x, y) => (y.hard > x.hard ? y : x));
+    hard.push("C26c : " + overHard.length + " semaine(s) au-dessus du plafond de temps DUR ("
+      + capHard + " min/sem pour ce profil) — pire : S" + pire.num + " à " + Math.round(pire.hard) + " min");
+  }
+  const overMod = perWeekHard.filter((w) => w.tot > 0 && w.mod / w.tot > C26d_MOD_SHARE_MAX);
+  if (overMod.length) {
+    const pire = overMod.reduce((x, y) => (y.mod / y.tot > x.mod / x.tot ? y : x));
+    hard.push("C26d : " + overMod.length + " semaine(s) à plus de " + Math.round(C26d_MOD_SHARE_MAX * 100)
+      + "% de temps MODÉRÉ (zone grise) — pire : S" + pire.num + " à " + Math.round((pire.mod / pire.tot) * 100) + "%");
+  }
 
   // ---- Cohérence : une nage FACILE/RÉCUP ne dépasse jamais la « longue » de sa semaine
   // (une « Récup eau » de 2150m n'est pas une récup). Les séances de qualité (jours durs)
@@ -6777,7 +6872,11 @@ function reconcileDeclaredVolume(
                                                                                         
                                                                                    
                                                                              
-                                  ,
+                                 
+                                                                                    
+                                                                                                
+                                                                                      
+                                                         ,
 )       {
   // 3a — LE FILET DU DRAPEAU MÉDICAL, en tout premier et en tout dernier ressort. La PORTE est
   // dans les builders (`medicalZone`) ; ce filet rattrape ce qui a été écrit hors d'elle — une
@@ -7597,6 +7696,27 @@ function reconcileDeclaredVolume(
     }
   }
 
+  // ---- C26c (R20.4) — LE PLAFOND DE TEMPS DUR, ENFIN APPLIQUÉ ----
+  //
+  // C26 déclare depuis toujours que la grandeur physiologique est le temps DUR hebdomadaire
+  // (~60 min, 35 en reprise, 25 chez un débutant) et que la part de facile n'en est que la
+  // conséquence. Rien ne l'appliquait : mesuré sur 7 356 semaines de charge, **1 095 (15 %)
+  // au-dessus**, jusqu'à 112 min de dur chez un DÉBUTANT — le profil dont C26b dit lui-même
+  // qu'il est limité par son tissu conjonctif, celui qui ne prévient pas.
+  //
+  // ON RETIRE DES RÉPÉTITIONS, JAMAIS LA DURÉE D'UNE RÉPÉTITION. C'est la leçon d'I14, sur un
+  // autre axe : dans un bloc d'intervalles, la durée de la répétition EST le stimulus — un
+  // 5×4 min à VO2max ramené à 5×2 min n'est plus une séance de VO2max, c'est une séance qui
+  // n'entraîne rien et qui porte encore son nom. Le nombre de répétitions, lui, est le
+  // dosage : c'est par lui qu'on ajuste.
+  //
+  // Deux exceptions nommées, toutes deux parce que retirer y ferait plus de mal que garder :
+  //   · un bloc CONTINU (une répétition unique — seuil tenu, CSS continu) n'a pas de dosage à
+  //     retirer : on le raccourcit jusqu'à un plancher, en dessous duquel il est déclassé ;
+  //   · la dernière répétition d'un bloc ne disparaît jamais en silence — la séance perd son
+  //     statut de séance de qualité (elle passe en endurance) plutôt que de garder son nom sur
+  //     un contenu qui ne le porte plus. Même arbitrage que C13d.
+  enforceHardTimeCap(plan, ctx, render);
   // …et une dernière fois APRÈS toutes les passes de ce point de convergence : elles peuvent
   // recomposer une séance (déclassement C13d, remplacement de course, greffe).
   enforceMedicalHold(plan, !!ctx?.medHold);
@@ -7617,6 +7737,76 @@ function reconcileDeclaredVolume(
   if (forcedWeeks > 0)
     warnings.push("Sur " + forcedWeeks + " semaine(s) de charge, la structure minimale de ce plan (une séance digne de ce nom ne descend pas sous 30 min, une sortie longue encore moins) dépasse le volume hebdomadaire que tu as déclaré. Le chiffre annoncé a été aligné sur ce qui t'est réellement prescrit — mieux vaut une courbe honnête qu'une promesse que le plan ne tient pas. Deux remèdes, à toi de choisir : relever le volume dont tu disposes, ou viser un objectif plus court.");
 
+}
+
+/**
+ * C26c (R20.4) — LE TEMPS DUR HEBDOMADAIRE NE DÉPASSE PAS LE PLAFOND QUE C26 DÉCLARE.
+ *
+ * Voir `constraintMatrix.ts` (C26c) pour le raisonnement et la mesure. Ici, la mécanique :
+ * on retire des RÉPÉTITIONS, en commençant par la séance qui porte le plus de temps dur, et
+ * on s'arrête dès que la semaine est sous le plafond. La séance la plus chargée d'abord :
+ * réduire d'une répétition la plus grosse séance coûte moins à la structure du plan que
+ * d'écorner trois séances pour le même total.
+ *
+ * `PLANCHER_CONTINU` : en dessous, un bloc continu de seuil n'est plus un stimulus de seuil.
+ * La séance est alors DÉCLASSÉE en endurance plutôt que raccourcie encore — l'arbitrage C13d,
+ * appliqué à l'intensité au lieu de l'échauffement.
+ */
+const C26C_PLANCHER_CONTINU_MIN = 8;
+function enforceHardTimeCap(
+  plan        ,
+  ctx                                                                                         ,
+  render                         ,
+)       {
+  const cap = hardTimeCapMin({
+    history: ctx?.history,
+    level: ctx?.level ?? (ctx?.beginner ? "debutant" : undefined),
+    injured: !!ctx?.injured,
+  }) * C26c_HARD_TIME_TOLERANCE;
+
+  for (const w of plan.weeks) {
+    if (w.isRecup || w.phase.id === "taper") continue;
+    const hardOf = (s           ) => intensitySplit(s         ).hardMin;
+    const weekHard = () => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + hardOf(s), 0), 0);
+    // Borne d'itération : chaque tour retire au moins une répétition ou déclasse un bloc, donc
+    // le nombre de blocs durs du plan majore le nombre de tours. La borne existe pour qu'un
+    // futur bloc « irréductible » fasse rendre un plan imparfait plutôt qu'une boucle infinie.
+    for (let tour = 0; tour < 200 && weekHard() > cap; tour++) {
+      // La séance la plus dure de la semaine, hors course et hors séance verrouillée.
+      let cible                   = null, cibleHard = 0;
+      for (const d of w.days)
+        for (const s of d.sessions) {
+          if (s.d === "rs" || (s                      ).race) continue;
+          const h = hardOf(s);
+          if (h > cibleHard) { cibleHard = h; cible = s; }
+        }
+      if (!cible || cibleHard <= 0) break;
+      const durs = (cible.steps || []).filter((b) => b.role === "body" && zoneClass(b.zone) === "hard");
+      if (!durs.length) break;
+      // Le plus gros bloc dur de la séance : c'est lui qui porte le dosage.
+      const b = durs.reduce((x, y) => ((y.reps || 1) * (y.durationMin || 0) > (x.reps || 1) * (x.durationMin || 0) ? y : x));
+      if ((b.reps || 1) > 1) {
+        b.reps = (b.reps || 1) - 1;
+      } else if ((b.durationMin || 0) > C26C_PLANCHER_CONTINU_MIN) {
+        // Bloc continu : pas de dosage à retirer, on raccourcit — jusqu'au plancher.
+        b.durationMin = Math.max(C26C_PLANCHER_CONTINU_MIN, Math.round((b.durationMin || 0) * 0.8));
+      } else {
+        // Plus rien à retirer sans mentir sur ce que la séance est : elle DEVIENT ce qu'elle
+        // est réellement devenue. Le nom et la note suivent — une séance qui change de nature
+        // et garde son titre est le défaut que R19.5 a fermé côté prose.
+        const disc = String(b.d ?? cible.d);
+        b.zone = (disc === "sw" ? "sw" : disc === "bk" ? "bk" : "rn") + ".easy";
+        b.intensity = "easy"                     ;
+        // Le nom est REMPLACÉ, pas préfixé. Ma première écriture posait « Endurance » devant
+        // le nom d'origine et produisait « Endurance nage seuil (+dist) » — une séance qui se
+        // contredit dans son propre titre. Une séance déclassée n'est pas l'ancienne séance
+        // avec un adjectif : c'est une autre séance, et elle porte son vrai nom.
+        cible.name = disc === "sw" ? "Nage endurance" : disc === "bk" ? "Vélo endurance" : "Footing endurance";
+        cible.note = "Le plafond de travail dur de ta semaine est atteint : cette séance passe en endurance. Ce n'est pas une punition — c'est ce qui rend les séances dures de ta semaine réellement assimilables.";
+      }
+      if (render) render(cible);
+    }
+  }
 }
 
 /**
@@ -9122,7 +9312,7 @@ function generatePlan(profile                , opts                             
   }
 
   const plan         = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport          , "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport          , "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport          ).mainDiscipline, disciplines: sportModule(a.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined });
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport          , "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport          , "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport          ).mainDiscipline, disciplines: sportModule(a.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0 });
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation
@@ -9457,7 +9647,7 @@ function generateAudited(profile                , auditOpts                     
   // R5.3 — la courbe ANNONCÉE se réconcilie avec le prescrit une fois les réparations passées :
   // `reduceDay` et `applyTargetedRepairs` changent encore des durées, et un écart figé avant
   // elles ment à l'athlète dès la première réparation (même leçon que R5.1).
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport          , "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport          ).mainDiscipline, disciplines: sportModule(reasoned.profile.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined });
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport          , "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport          ).mainDiscipline, disciplines: sportModule(reasoned.profile.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0 });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.
