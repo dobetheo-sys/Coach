@@ -18,7 +18,7 @@ import {
   FORBIDDEN_OUTPUT,
   type NutritionAdvice,
 } from "../nutrition/nutritionCalculator.ts";
-import { dailyEnergy, ENERGY_DISCLAIMER } from "../nutrition/energyEstimator.ts";
+import { dailyEnergy, ENERGY_DISCLAIMER, REST_MET_KCAL_PER_KG_H } from "../nutrition/energyEstimator.ts";
 
 let failures = 0;
 const check = (label: string, cond: boolean, detail?: string) => {
@@ -102,7 +102,23 @@ check("nutritionForSession : repos (rs) → null", nutritionForSession({ d: "rs"
 // une ESTIMATION de dépense + répartition indicative — jamais une cible d'apport.
 const full = dailyEnergy({ weightKg: 75, heightCm: 180, age: 35, sex: "H", trainingKcal: [600, 800], trainingMin: 75 });
 check("Énergie : profil complet → BMR plausible (~1500–2000 kcal/j)", !!full && full.bmr[0] >= 1500 && full.bmr[1] <= 2100 && !full.approximate);
-check("Énergie : total = vie quotidienne + entraînement, fourchettes ordonnées", !!full && full.total[0] === full.daily[0] + full.training[0] && full.total[0] <= full.total[1] && full.daily[0] >= full.bmr[0]);
+// N11 — CE CRITÈRE A CHANGÉ DE FORMULE, volontairement : il assertait
+// `total = daily + training`, c'est-à-dire exactement le double comptage. Les MET sont une
+// dépense BRUTE (1 MET = le repos) et `daily` couvre déjà 24 h : ce qui s'ajoute à la journée,
+// c'est l'entraînement NET. La ligne brute reste publiée (`training`), le recouvrement aussi.
+check("Énergie : total = vie quotidienne + entraînement NET, fourchettes ordonnées", !!full && full.total[0] === full.daily[0] + full.trainingNet[0] && full.total[0] <= full.total[1] && full.daily[0] >= full.bmr[0]);
+check("N11 : le repos des heures d'entraînement n'est compté qu'une fois", !!full && full.restOverlap > 0 && full.trainingNet[1] < full.training[1] && full.total[1] < full.daily[1] + full.training[1]);
+check("N11 : le recouvrement vaut 1 MET × poids × heures (à l'arrondi près)", !!full && Math.abs(full.restOverlap - REST_MET_KCAL_PER_KG_H * 75 * (75 / 60)) <= 10);
+check("N11 : jour de repos → aucun recouvrement, et la dépense d'UNE séance reste brute", (() => {
+  const r = dailyEnergy({ weightKg: 70, trainingKcal: [0, 0], trainingMin: 0 });
+  return !!r && r.restOverlap === 0 && r.total[0] === r.daily[0];
+})());
+check("N11 : la correction est motivée à l'écran (décision N11 tracée)", !!full && full.decisions.some((d) => d.id === "N11" && /une seule fois|déjà/i.test(d.what + " " + d.why)));
+check("N11 : jamais de total inférieur à la journée seule (le net ne descend pas sous 0)",
+  [[0, 0, 0], [200, 300, 30], [600, 800, 75], [1200, 1600, 150], [40, 60, 240]].every(([lo, hi, min]) => {
+    const e = dailyEnergy({ weightKg: 60, heightCm: 170, age: 40, sex: "F", trainingKcal: [lo, hi], trainingMin: min });
+    return !!e && e.total[0] >= e.daily[0] && e.trainingNet[0] >= 0 && e.total[0] <= e.total[1];
+  }));
 const noWeight = dailyEnergy({ weightKg: 0 });
 check("Énergie : sans poids → null (on n'estime jamais sur du vide)", noWeight === null);
 const partial = dailyEnergy({ weightKg: 62 });

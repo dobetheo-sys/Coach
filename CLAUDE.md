@@ -601,6 +601,29 @@ L'entrée se ferme donc sur le CONTENU : 25 % et 44 % de plans qui passent par u
 pas un défaut — un jour dur déclassé, c'est le moteur qui fait son travail.
 **22 gates verts, E2E 13/13, golden 900 recapturé (2 profils).**
 
+**N11 livré — le repos des heures d'entraînement n'était compté deux fois** (voir
+ARCHITECTURE.md « N11 ») : trouvé en préparant le dossier de relecture diététique, en refaisant
+les calculs à la main pour les décrire. `daily` = BMR × NAP couvre les **24 heures** (le NAP de
+la FAO est le rapport de la dépense TOTALE au métabolisme de base) et `training` vient des
+**MET**, qui sont une dépense BRUTE — un MET EST le métabolisme de repos. Le repos de chaque
+heure d'entraînement était donc additionné deux fois : **+80 kcal sur 1 h, +150 sur 2 h, +380 sur
+5 h, soit 2,5 % à 8,1 % du total affiché**, et toujours dans le sens qui GONFLE la dépense — sur
+un écran de nutrition, une dépense surestimée se lit comme une autorisation, et l'athlète qui
+s'entraîne le plus était le plus mal servi. Correction : `total = daily + (training − 1 kcal/kg/h
+× poids × heures)`, `REST_MET_KCAL_PER_KG_H` portant sa provenance (c'est la définition du MET,
+pas un coefficient d'ajustement). **Ce qui ne change pas** : la dépense d'UNE séance (N7) reste
+BRUTE — c'est la bonne réponse à « combien coûte cette séance », le recouvrement n'existe qu'en
+l'ajoutant à une journée déjà comptée en entier. Et le recouvrement est **publié**
+(`restOverlap`/`trainingNet`, ligne affichée sur la carte 🔥, décision `N11`) plutôt que
+retranché en silence : une carte dont les trois lignes ne s'additionnent pas est une carte qu'on
+soupçonne. `demo:nutrition` portait une assertion qui **encodait le défaut**
+(`total = daily + training`) — réécrite sur le net, 5 critères N11, **vérifiée rouge** en forçant
+la constante à 0. Frontière NON franchie, délibérément : le même passage a montré que les macros
+N10 sont en substance une **cible d'apport** (leurs trois sources sont des références d'apport, et
+leur somme en kcal ne coïncide pas avec la dépense affichée sur la même carte) — c'est la ligne
+que seul un avis diététicien peut trancher, la question part telle quelle au professionnel.
+**22 gates verts, E2E 13/13, golden 900 inchangé** — la nutrition ne touche aucune séance.
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur

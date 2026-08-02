@@ -2195,3 +2195,73 @@ après `audit:v1` (R20.4) et l'ancrage calendaire du banc R14 (R20.7).
 25 % et 44 % de plans qui passent par un repli ne sont pas un défaut en soi : un jour dur
 déclassé pour cause de fatigue ou de collage, c'est le moteur qui fait son travail. Le défaut
 était ce que ce repli PRODUISAIT.
+
+## N11 — le repos des heures d'entraînement n'est plus compté deux fois
+
+Trouvé en préparant le dossier de relecture diététique (H-3) : pour écrire ce que chaque règle
+calcule, il a fallu refaire les calculs à la main. C'est de l'arithmétique, pas de la diététique
+— et c'est pour cette raison que la correction n'attend pas l'avis du professionnel.
+
+### Le défaut
+
+Deux grandeurs se sommaient dans `dailyEnergy()` :
+
+- **`daily`** = BMR × NAP (1,35–1,55). Le NAP de la FAO/WHO/UNU est le rapport de la dépense
+  **totale des 24 heures** au métabolisme de base. Il couvre donc déjà toute la journée.
+- **`training`** = la somme des dépenses N7, calculées en **MET**. Un MET est par définition le
+  métabolisme de repos (3,5 mL O₂/kg/min ≈ 1 kcal/kg/h) : une heure de course à 10 MET coûte
+  10 × poids kcal, **dont 1 × poids que la personne aurait dépensés allongée sur son canapé**.
+
+Le repos de chaque heure d'entraînement était donc compté une fois dans `daily` et une seconde
+fois dans `training`.
+
+| jour (75 kg, 180 cm, 35 ans, H) | avant | après | écart |
+|---|---|---|---|
+| repos | 2 190–2 770 | 2 190–2 770 | 0 |
+| 1 h facile | 2 490–3 170 | 2 410–3 090 | −80 kcal (2,5 %) |
+| 2 h moyenne | 2 790–3 570 | 2 640–3 420 | −150 kcal (4,2 %) |
+| 5 h de sortie longue | 3 590–4 670 | 3 210–4 290 | −380 kcal (**8,1 %**) |
+
+L'erreur croît avec le volume et **va toujours dans le sens qui gonfle la dépense**. Sur un écran
+de nutrition, le sens compte autant que la taille : une dépense surestimée se lit comme une
+autorisation, et l'athlète qui s'entraîne le plus était le plus mal servi.
+
+### La règle
+
+```
+recouvrement = 1 kcal/kg/h × poids × heures d'entraînement
+total        = daily + (training − recouvrement)
+```
+
+`REST_MET_KCAL_PER_KG_H = 1` porte sa provenance : ce n'est pas un coefficient d'ajustement,
+c'est la définition du MET.
+
+### Ce qui NE change pas, et pourquoi
+
+**La dépense affichée pour UNE séance (N7) reste brute.** C'est la bonne réponse à « combien
+coûte cette séance » ; le recouvrement n'existe que lorsqu'on additionne la séance à une journée
+déjà comptée en entier. `training` reste donc la valeur brute dans la sortie.
+
+**Le recouvrement est PUBLIÉ, pas retranché en silence** : `restOverlap` et `trainingNet`
+s'ajoutent au contrat, la carte 🔥 affiche la ligne `− 90 kcal : le repos de ces heures-là est
+déjà compté dans ta journée (un MET, c'est le repos)`, et la décision `N11` la motive. Une carte
+dont les trois lignes affichées ne s'additionnent pas est une carte qu'on soupçonne — et
+l'explication apprend au passage ce qu'est un MET.
+
+### La garde
+
+`demo:nutrition` (CI) portait une assertion qui **encodait le défaut** :
+`total[0] === daily[0] + training[0]`. Elle est réécrite sur `trainingNet`, avec cinq critères
+N11 : le recouvrement existe et vaut 1 MET × poids × heures, le net est strictement sous le brut,
+un jour de repos ne retranche rien, la décision est tracée, et le total ne passe jamais sous la
+journée seule. **Vérifiée rouge** en forçant `REST_MET_KCAL_PER_KG_H = 0` (2 critères tombent).
+
+### Ce que le lot ne corrige PAS, délibérément
+
+Le même passage en revue a montré que **les macros N10 sont en substance une cible d'apport** :
+protéines 1,2–1,7 g/kg, lipides 20–35 % de l'énergie, glucides 3–10 g/kg sont toutes des
+références d'APPORT dans leurs sources, et leur somme en kcal ne coïncide pas avec la dépense
+affichée sur la même carte (55 kg : 1 235–2 200 contre 1 670–2 120 ; 95 kg : 4 135–7 410 contre
+6 940–8 470). C'est la frontière que `CLAUDE.md` déclare bloquée par un avis diététicien, donc
+rien n'a été touché : la question part telle quelle au professionnel — « ces trois chiffres
+sont-ils affichables sans encadrement, et si oui sous quelle forme ? »

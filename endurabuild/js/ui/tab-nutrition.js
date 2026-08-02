@@ -25,6 +25,10 @@ export function energyCardHTML(day, open) {
     + '<div style="font-size:var(--fs-sm);margin-top:8px">'
     + "<b>Base + vie quotidienne :</b> ~" + f(e.daily) + " kcal (métabolisme de base ~" + f(e.bmr) + ")<br>"
     + "<b>Entraînement du jour :</b> " + (e.training[1] ? "~" + f(e.training) + " kcal" : "repos — 0 kcal d’entraînement")
+    // N11 — le repos de ces heures-là est déjà dans la ligne du dessus : on le retire, et on
+    // le DIT. Retranché en silence, le total ne tomberait pas juste et la carte deviendrait
+    // suspecte ; affiché, il explique au passage ce qu'est un MET.
+    + (e.restOverlap > 0 ? '<br><span style="color:var(--muted)">− ' + e.restOverlap + " kcal : le repos de ces heures-là est déjà compté dans ta journée (un MET, c'est le repos)</span>" : "")
     + "<br><b>Total :</b> ~" + f(e.total) + " kcal"
     + (e.approximate ? '<br><span style="color:#8a6d00">Fourchette large : complète taille/âge au 📋 Profil pour l’affiner.</span>' : "")
     + "</div>"
