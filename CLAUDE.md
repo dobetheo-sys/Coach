@@ -729,6 +729,32 @@ dupliquer une copie ferait deux sources de vérité). **U9b** : plus de « forma
 — **vérifiés rouges** (U10 : 4 affichages sur 4 sans le correctif).
 **22 gates verts, E2E 14/14 (13 assertions d'usage), golden 900 inchangé, registre 15/15.**
 
+**P11 livré — le modèle de gain n'avait qu'un régime, celui de l'entraîné** (voir ARCHITECTURE.md
+« P11 ») : `G_PLAFOND.thrPace = 0,15` vient de Barnes & Kilding 2015, qui mesure ce que gagne
+l'**économie de course** — le raffinement à la marge d'un geste déjà acquis. Les premiers mois de
+quelqu'un qui part de zéro sont un autre phénomène (débit cardiaque, capillarisation, densité
+mitochondriale, apprentissage du geste), donc pas la même borne. `regimeDebutant(volRecentH)` rend
+une position **interpolée** entre 4 h/sem (entraîné, modèle publié inchangé) et 1,5 h/sem (part de
+zéro) ; trois grandeurs la suivent — plafond de discipline (thrPace 0,25), constante de temps
+(τ 20 → 9 semaines), plafond absolu (0,32). **Le déclencheur est MESURÉ, pas déclaré** : il se lit
+sur `vol_recent`, jamais sur `history` — troisième application de la leçon R14.1.
+**Ma première calibration était fautive et est retirée** : elle visait à faire entrer dans la
+fourchette la trajectoire réelle du fondateur (0 → 46'30 au 10 km en 8 semaines, sur un passé de
+sélectionné en équipe de France junior) et donnait **32,1 % de gain sur 16 semaines**, affiché à
+tout le monde. Calibrer sur UN cas, et le plus favorable qui soit, c'est exactement ce que
+HERITAGE interdit — 7 % des sujets gagnent ≤ 0,1 L/min et 8 % ≥ 0,7 L/min sous programme
+identique. Le cas réel reste donc **dehors** de la fourchette, et le code le dit.
+**Le piège du zéro, deux maillons de plus** : `bridge.ts` effaçait `vol_recent = 0` (`|| null`) —
+0 h projetait **7,43 %** contre **8,55 %** à 1 h, déclarer zéro donnait moins que déclarer une
+heure — et `volumeFactor` portait le même défaut, LATENT, qui aurait mordu dès la correction du
+pont. C'est le piège que R20.1 avait nommé sur la rampe R10 ; la leçon n'est pas de le corriger,
+c'est de le corriger **sur tout le chemin**. Mesuré après : 7'00/0 h/16 sem passe de 7,43 % à
+**21,50 %**, et au-dessus de 4 h/sem **rien ne bouge au chiffre près** (5,18 % · 3,02 % · 2,05 %).
+Le prototype `feasibility.ts` cesse de porter sa copie des constantes et les IMPORTE (R11.1).
+Gardes **P11-A à P11-F** au banc `audit:r14.1`, qui assertent les DEUX moitiés — l'inversion
+disparue ET l'entraîné intact — **vérifiées rouges** (3 sur 6) contre le moteur d'avant P11.
+**22 gates verts, E2E 14/14, golden 900 inchangé** — la projection ne touche aucune séance.
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur

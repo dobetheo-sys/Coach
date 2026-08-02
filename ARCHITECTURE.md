@@ -2543,3 +2543,115 @@ Débusqué en écrivant cette garde : ma première assertion exigeait l'ÉGALIT�
 profil capable et le témoin. Fausse — 107 min contre 92 — parce que les bornes de séance se
 calculent depuis l'allure. Le risque à garder n'est pas « le plan change », c'est « le plan
 RÉTRÉCIT ».
+
+## P11 — le régime débutant entre dans la prédiction livrée, et le piège du zéro se ferme
+
+Le modèle de gain de R14/R14.1 n'avait qu'un seul régime : celui de l'athlète **entraîné**. Sa
+constante de tête pour la course, `G_PLAFOND.thrPace = 0,15`, vient de Barnes & Kilding 2015 —
+qui mesure ce que gagne l'**économie de course**, c'est-à-dire le raffinement à la marge d'un
+geste déjà acquis. Les premiers mois de quelqu'un qui part de zéro ne sont pas ce phénomène :
+c'est du débit cardiaque, de la capillarisation, de la densité mitochondriale et l'apprentissage
+d'un geste. Pas le même phénomène, donc pas la même borne.
+
+### Le déclencheur, et pourquoi il ne calibre PAS le modèle
+
+Un cas réel rapporté par le fondateur : première sortie de 13 min à 5'30/km terminée à 185 BPM,
+puis **46'30 au 10 km huit semaines plus tard**, en partant de zéro course — sur un passé de
+sportif de haut niveau (sélection équipe de France junior) après cinq ans d'arrêt.
+
+Ma première écriture visait à faire entrer ce chrono dans la fourchette basse : `thrPace = 0,35`,
+cap absolu 0,42. Mesuré : **32,1 % de gain projeté sur 16 semaines**. Un tiers de son allure
+seuil en quatre mois, affiché à tout le monde. Retirée, parce que la méthode est fautive —
+calibrer sur UN cas, et le plus favorable qui soit. **HERITAGE** (Bouchard, 483 sujets, programme
+identique) dit précisément pourquoi : 7 % des sujets gagnent ≤ 0,1 L/min et 8 % ≥ 0,7 L/min ; la
+variabilité inter-individuelle EST le phénomène. Un modèle calé sur le 92ᵉ centile promet à tout
+le monde ce qu'un sur douze obtiendra, et l'athlète à qui on l'a promis ira chercher la différence
+dans la charge — priorité n°2 du manifeste.
+
+Le cas réel reste donc **dehors** : depuis 6'30/km à 8 semaines, le modèle projette aujourd'hui
+53'14 – 1 h 04 là où il autorisait 1 h 01 – 1 h 05. Le défaut corrigé n'est pas « le modèle ne
+prédit pas cet athlète-là », c'est « le modèle applique un plafond d'entraîné à quelqu'un qui n'en
+est pas un ».
+
+### La règle
+
+`regimeDebutant(volRecentH)` rend une position dans le régime — **0 = entraîné, 1 = part de
+zéro** — interpolée linéairement entre `RG_VOL_ENTRAINE_H = 4` et `RG_VOL_DEBUTANT_H = 1,5`
+h/semaine. Trois grandeurs suivent cette position, chacune interpolée, **jamais à seuil franc** :
+
+| grandeur | entraîné | débutant | pourquoi |
+|---|---|---|---|
+| plafond de discipline | `G_PLAFOND` | `G_PLAFOND_DEBUTANT` (thrPace 0,25 · ftp 0,32 · css 0,30 · vam 0,27) | pas le même phénomène physiologique |
+| constante de temps τ | 20 semaines | 9 semaines | le gain du débutant est bien plus précoce |
+| plafond absolu | `GAIN_MAX_ABSOLU` | 0,32 | celui de l'entraîné a été écrit pour l'entraîné |
+
+**Le déclencheur est MESURÉ, pas déclaré** — c'est toute la leçon de R14.1, qui a dépouillé
+`history` de son pouvoir sur les chiffres. Le régime se lit sur `vol_recent`, une donnée que le
+questionnaire collecte déjà et rend obligatoire (R10). Quelqu'un à 0-2 h/semaine depuis des mois
+EST un débutant au sens de la physiologie, quoi qu'il coche par ailleurs.
+
+**Statut des constantes.** `thrPace = 0,25` est une borne DÉCLARÉE, pas une mesure : ordre de
+grandeur cohérent avec « VO2max +15 à 25 % chez le sédentaire sur 8 à 12 semaines », majoré de ce
+que gagnent l'économie et le geste depuis une base basse. Les trois autres reprennent le même
+rapport. Même statut assumé que les bandes de marge course et nage de R14.1, et le code le dit.
+
+### Le piège du zéro, sur TOUT le chemin
+
+Le régime ne servait à rien tant que le zéro n'atteignait pas le modèle. Il était effacé **deux
+fois**, à deux maillons différents :
+
+1. `src/app/bridge.ts` — `parseFloat(String(answers.vol_recent || "")) || null` : « je ne
+   m'entraîne pas du tout » arrivait au projecteur comme « je n'ai pas répondu ». C'est celui qui
+   se voyait à l'écran. Mesuré avant correction, 10 km à 16 semaines depuis 7'00/km :
+   **0 h → 7,43 % de gain, 1 h → 8,55 %**. Déclarer zéro donnait moins que déclarer une heure.
+2. `volumeFactor()` — le test était `volRecentH > 0`, donc le facteur volume disparaissait pour
+   exactement la population dont le plan multiplie le volume le plus. Défaut **latent** : sur le
+   chemin livré, le zéro n'arrivait même pas jusque-là. Il aurait mordu dès la correction du pont.
+
+C'est le piège que **R20.1** avait nommé sur la rampe R10 (« le piège du `|| undefined` sur un
+zéro »). La leçon utile n'est pas « corriger le piège » mais **le corriger sur tout le chemin** :
+une valeur légitime effacée à n'importe quel maillon est effacée pour de bon. Point unique
+`readNumber()` dans le pont, qui sait que zéro est une réponse.
+
+### Mesures (prédiction livrée, 10 km, allure seuil 5'45/km sauf mention)
+
+| profil | avant | après |
+|---|---|---|
+| 7'00 · 0 h · 16 sem | 7,43 % | **21,50 %** |
+| 7'00 · 1 h · 16 sem | 8,55 % | 21,50 % |
+| 5'45 · 0 h · 16 sem | 6,90 % | 19,97 % |
+| 5'45 · 0 h · 8 sem | 4,13 % | 14,15 % |
+| 5'45 · 2 h · 16 sem | 7,94 % | 16,81 % |
+| 5'45 · 4 h · 16 sem | 5,18 % | **5,18 %** |
+| 4'30 · 6 h · 16 sem | 3,02 % | **3,02 %** |
+| 4'00 · 10 h · 16 sem | 2,05 % | **2,05 %** |
+
+Au-delà de 4 h/semaine, **rien ne bouge, au chiffre près** : le modèle publié s'applique tel
+quel. **Golden : 900 profils, 0 écart** — la projection ne touche aucune séance.
+
+### Les gardes (banc `audit:r14.1`, P11-A à P11-F)
+
+Elles assertent les **deux moitiés**, pas une seule — une garde qui ne vérifierait que « le
+débutant gagne plus » laisserait passer une régression sur l'entraîné, et c'est exactement la
+forme de défaut que R20.1 a nommée.
+
+- **P11-A** : déclarer 0 h ne projette jamais moins que déclarer 1 h (l'inversion).
+- **P11-B** : au-delà de 4 h/sem, plateau strict (4 h = 6 h = 10 h) et sous le plafond publié.
+- **P11-C** : décroissance monotone sur dix paliers, aucun saut relatif > 40 % (une bascule d'un
+  modèle à l'autre en ferait ~75 %). La borne vise le seuil franc, **pas** le comportement actuel
+  — une borne posée au ras de ce que le moteur produit ne fait que le photographier (leçon C26d).
+- **P11-D** : partir de zéro projette ≥ 2× l'entraîné — sinon le régime ne sert à rien.
+- **P11-E** : le gain du débutant est précoce (rapport 8/16 sem 0,709 contre 0,598).
+- **P11-F** : le plafond absolu tient, aucun gain > 32 %.
+
+**Vérifiées rouges** contre le moteur d'avant P11 : A, C et D échouent (3 sur 6). B, E et F
+passent des deux côtés — B est une non-régression par construction, F une borne.
+
+### Le prototype cesse de porter sa propre copie
+
+`src/engine/feasibility.ts` avait écrit le régime en local, sous portée limitée (« un prototype
+apprend, le produit ne change que sur décision »). La décision prise, il **importe** désormais les
+constantes de `projection.ts` et n'en garde aucune copie — R11.1 / R20.5 / U9. Deux tables
+identiques dans deux fichiers, c'est la garantie que le jour où la calibration bouge d'un côté,
+l'autre répond encore l'ancien chiffre ; et ce serait le **diagnostic**, celui qu'on lit AVANT de
+s'engager, qui mentirait.

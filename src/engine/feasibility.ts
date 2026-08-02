@@ -23,6 +23,7 @@
 import { riegelExponent } from "./predictor.ts";
 import {
   G_PLAFOND, GAIN_MAX_ABSOLU, TAU_WEEKS, TAPER_GAIN,
+  G_PLAFOND_DEBUTANT, RG_GAIN_MAX_DEBUTANT, RG_TAU_DEBUTANT, regimeDebutant,
   margeOf, structureFactor, volumeFactor,
 } from "./projection.ts";
 import type { Decision } from "./types.ts";
@@ -31,59 +32,21 @@ import type { Decision } from "./types.ts";
 export const RUN_DIST_KM: Record<string, number> = { "5k": 5, "10k": 10, semi: 21.0975, marathon: 42.195 };
 
 /**
- * RG — LE RÉGIME : le modèle de gain n'a pas de version « débutant », et ça se voit.
+ * RG — LE RÉGIME DÉBUTANT est né ICI, dans ce prototype, et il N'Y VIT PLUS.
  *
- * CE QUI L'A RÉVÉLÉ. Un retour direct : « 0 course → 46'30 au 10 km en 2 mois ». Mesuré contre
- * le modèle tel qu'il était, pour un profil parti d'une allure seuil de 7'00/km :
+ * Il a été écrit d'abord en local, sous portée limitée : « ces constantes ne touchent pas
+ * `projection.ts` ; un prototype apprend, le produit ne change que sur décision ». La décision
+ * a été prise — le régime est devenu **P11** dans `src/engine/projection.ts`, avec sa
+ * justification complète, sa calibration confrontée à une trajectoire réelle et ses gardes CI.
  *
- *   ce que le modèle autorisait sur 8 semaines : 7,6 % de gain → **56'09**
- *   ce qui s'est réellement passé :                              **46'30**
+ * Ce module l'IMPORTE donc, et n'en garde aucune copie. Deux tables identiques dans deux
+ * fichiers, c'est exactement ce que R11.1, R20.5 et U9 interdisent ailleurs dans le moteur : le
+ * jour où la calibration bouge d'un côté, l'autre continue de répondre l'ancien chiffre — et
+ * c'est le diagnostic, celui que l'athlète lit AVANT de s'engager, qui mentirait.
  *
- * Deux causes, toutes deux vérifiables dans les constantes :
- *
- * 1. **`G_PLAFOND.thrPace = 0,15` est un plafond d'athlète ENTRAÎNÉ.** Sa provenance
- *    (Barnes & Kilding 2015) mesure ce que gagne l'ÉCONOMIE DE COURSE — le raffinement à la
- *    marge d'un geste déjà acquis. Les premiers mois de quelqu'un qui part de zéro ne sont pas
- *    ça : ce sont du débit cardiaque, de la capillarisation, de la densité mitochondriale, et
- *    l'apprentissage du geste. Ce n'est pas le même phénomène, donc pas la même borne.
- *
- * 2. **`ANCRES_PACE` sature à 6'00/km** (h = 1,0 au-delà). Un coureur à 7'30 et un coureur à
- *    6'00 reçoivent donc la MÊME marge — or c'est précisément la zone où vivent les débutants.
- *    La table ne discrimine plus là où il faudrait qu'elle discrimine le plus.
- *
- * LE DÉCLENCHEUR EST MESURÉ, PAS DÉCLARÉ. C'est toute la leçon de R14.1 : `history = "ancien"`
- * pilotait un chiffre, et c'était faux. Ici le régime se lit sur `vol_recent`, une donnée que
- * le questionnaire collecte déjà et rend obligatoire (R10). Quelqu'un à 0-2 h/semaine depuis
- * des mois EST un débutant, au sens de la physiologie, quoi qu'il coche par ailleurs.
- *
- * INTERPOLÉ, jamais à seuil franc — le commentaire de `G_PLAFOND` le dit déjà pour ses propres
- * bandes : « une frontière franche ferait sauter la projection de 50 % pour 1 W d'écart ».
- *
- * HEURISTIQUE ASSUMÉE, ÉCRITE COMME TELLE. Le dépôt a déjà ce statut pour les bandes de marge
- * course et nage (R14.1). L'ordre de grandeur retenu s'appuie sur un résultat ancien et
- * répliqué — VO2max +15 à 25 % chez le sédentaire sur 8 à 12 semaines — auquel s'ajoute, en
- * PERFORMANCE, ce que gagnent l'économie et l'allure de course depuis une base basse. D'où un
- * plafond de performance nettement au-dessus des 15 % de l'entraîné. Ce n'est pas une mesure :
- * c'est une borne déclarée, et elle doit être confrontée à des données réelles avant d'être
- * promue ailleurs que dans ce diagnostic.
- *
- * PORTÉE STRICTEMENT LIMITÉE. Ces constantes vivent ICI et ne touchent pas `projection.ts` :
- * la prédiction livrée aux athlètes ne bouge pas d'un chiffre, le golden ne bouge pas, les
- * bancs R14/R14.1 ne bougent pas. Un prototype apprend ; le produit ne change que sur décision.
+ * Une seule chose reste locale : la LECTURE du volume. La projection lit `volRecentH` (toutes
+ * disciplines confondues) ; ici la question est la course à pied, donc `runHoursPerWeek`.
  */
-export const RG_VOL_DEBUTANT_H = 1.5;   // h/sem : en dessous, régime « part de zéro »
-export const RG_VOL_ENTRAINE_H = 4;     // h/sem : au-dessus, le modèle publié s'applique tel quel
-export const RG_G_PLAFOND_DEBUTANT = 0.35; // heuristique assumée (voir ci-dessus)
-export const RG_TAU_DEBUTANT = 9;       // le gain du débutant est bien plus précoce (τ entraîné = 20)
-export const RG_GAIN_MAX_DEBUTANT = 0.42;
-
-/** Position dans le régime : 0 = entraîné (modèle publié), 1 = part de zéro. */
-export function regimeDebutant(volRecentH?: number | null): number {
-  const v = volRecentH == null || !isFinite(volRecentH) ? RG_VOL_ENTRAINE_H : Math.max(0, volRecentH);
-  if (v <= RG_VOL_DEBUTANT_H) return 1;
-  if (v >= RG_VOL_ENTRAINE_H) return 0;
-  return (RG_VOL_ENTRAINE_H - v) / (RG_VOL_ENTRAINE_H - RG_VOL_DEBUTANT_H);
-}
 
 export interface FeasibilityInput {
   format: string;              // "10k" | "semi" | "marathon" | "5k"
@@ -195,7 +158,7 @@ export function assessFeasibility(input: FeasibilityInput): FeasibilityResult {
   const fVol = volumeFactor(input.prescribedMeanH, input.runHoursPerWeek) ?? 1;
   // RG — le régime interpole ENTRE les deux modèles, il n'en choisit pas un.
   const rg = regimeDebutant(input.runHoursPerWeek);
-  const plafondDisc = G_PLAFOND.thrPace + rg * (RG_G_PLAFOND_DEBUTANT - G_PLAFOND.thrPace);
+  const plafondDisc = G_PLAFOND.thrPace + rg * (G_PLAFOND_DEBUTANT.thrPace - G_PLAFOND.thrPace);
   const capAbsolu = GAIN_MAX_ABSOLU + rg * (RG_GAIN_MAX_DEBUTANT - GAIN_MAX_ABSOLU);
   const tau = TAU_WEEKS + rg * (RG_TAU_DEBUTANT - TAU_WEEKS);
   const gInf = Math.min(capAbsolu, plafondDisc * marge * k * fVol);

@@ -458,7 +458,19 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
       trainingStructure: String(answers.training_structure || "") || null,
       // R14.1 P10 — dose-réponse : ce que le plan PRESCRIT face à ce que l'athlète fait déjà.
       prescribedMeanH: prescribedMeanHours(p),
-      volRecentH: parseFloat(String(answers.vol_recent || "")) || null,
+      // P11 — LE PIÈGE DU ZÉRO, TROISIÈME OCCURRENCE, ET LA SEULE QUI SE VOYAIT À L'ÉCRAN.
+      //
+      // `parseFloat("0") || null` vaut `null` : « je ne m'entraîne pas du tout » arrivait au
+      // projecteur comme « je n'ai pas répondu ». Les deux corrections faites en amont
+      // (`volumeFactor`, le régime P11) ne servaient donc À RIEN dans le produit livré — le
+      // chiffre n'atteignait jamais le modèle. Mesuré sur la prédiction affichée, 10 km à
+      // 16 semaines depuis 7'00/km : **0 h → 7,4 % de gain, 1 h → 21,5 %**. Déclarer zéro
+      // donnait trois fois moins que déclarer une heure, sur la carte que l'athlète lit.
+      //
+      // Troisième fois : R20.1 (rampe R10), P11 (`volumeFactor`), ici. La leçon n'est pas
+      // « corriger le piège » mais « le corriger sur TOUT LE CHEMIN » — une valeur légitime
+      // effacée à n'importe quel maillon est effacée pour de bon.
+      volRecentH: readNumber(answers.vol_recent),
       // R14.1 P9 — le levier poids n'existe que si l'athlète l'a demandé ET a saisi sa cible.
       weightLeverAsked: answers.weight_lever === "oui",
       weightTargetKg: parseFloat(String(answers.weight_target || "")) || null,
@@ -484,6 +496,20 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
  * dit si le plan MONTE la charge ou la maintient — et un plan de maintien ne fait pas
  * progresser autant, quoi qu'on affiche.
  */
+/**
+ * P11 — lecture d'un nombre qui SAIT que zéro est une réponse.
+ *
+ * `parseFloat(x) || null` confond « 0 » et « rien ». Sur un volume d'entraînement récent, ces
+ * deux cas sont l'exact opposé l'un de l'autre : l'un est l'information la plus forte que le
+ * questionnaire puisse recevoir (« je pars de zéro »), l'autre est son absence. Point unique,
+ * pour que la prochaine lecture de ce genre n'ait pas à réinventer la garde.
+ */
+function readNumber(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = parseFloat(String(v));
+  return isFinite(n) ? n : null;
+}
+
 function prescribedMeanHours(plan: V1Plan): number | null {
   const w = plan.weeks.filter((x) => !x.isRecup && ["dev", "spec", "peak"].includes(String(x.phase && x.phase.id)));
   if (!w.length) return null;
