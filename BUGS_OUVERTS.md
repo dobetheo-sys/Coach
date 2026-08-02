@@ -1,12 +1,21 @@
 # Bugs constatés et NON corrigés
 
-**État au 01/08/2026, commit `4222eaf` + lot R15.1** (20 gates verts, E2E 8/8, golden 764, `audit:v7` à N=400).
+**État au 02/08/2026, chantier R20 terminé** (22 gates verts, E2E 13/13, golden 900,
+`audit:v7` à N=400, `registry:check` 14/14).
 
-> **Mise à jour R15 / R15.1 :** les trois entrées de §1 sont traitées — `O-1` et `O-2` sont
-> **fermés**, `O-3` attend une mesure nommée. Le handoff de revue a aussi apporté deux défauts
-> qui n'étaient pas dans ce registre, corrigés et donc absents d'ici : le plancher de la semaine
-> de course (291/648 configurations sous 30 % du pic) et l'éligibilité âge × format (un mineur
-> générait un plan Ironman de 59 semaines). **§1 ne contient plus aucun défaut bloquant.**
+> **§1 EST ENTIÈREMENT FERMÉ — 15 entrées, 0 ouverte.** Le chantier R20 a fermé les six
+> dernières : `O-8` (footing swimrun sans bornes), `O-9` (banc d'invariants ni vert ni
+> bloquant), `O-10` (`vol_max` inerte), `O-11` (deux allures course à vélo), `O-13` (rampe R10
+> inerte en natation), `O-15` (portée du verrou froid), plus `O-3` (le créneau de repli) et
+> `O-14` (`swim_limit`).
+>
+> **Ce que ça ne veut PAS dire.** Un registre vide ne dit pas que le moteur est sans défaut : il
+> dit que tout ce qu'on a MESURÉ est traité. Les six lots de R20 ont trouvé la moitié de leurs
+> défauts en corrigeant les autres — et trois d'entre eux étaient des INSTRUMENTS qui
+> mesuraient autre chose que ce qu'ils annonçaient (`audit:v1` sur le générateur mort, le banc
+> R14 dépendant du jour de la semaine, `measure:fallback` suivant la déclaration au lieu du
+> plan). La prochaine entrée viendra d'un test réel ou d'un regard extérieur, pas de ce
+> fichier.
 
 Ce fichier ne liste que ce qui est **mesuré et reproductible aujourd'hui**. Chaque entrée porte
 sa commande de vérification : une dette qu'on ne peut pas re-mesurer en une ligne n'est pas une
