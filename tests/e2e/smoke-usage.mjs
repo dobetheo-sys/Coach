@@ -99,6 +99,52 @@ for (let k = 0; k < 7; k++) {
 }
 ok(declenche.length === 0, "U1 — un plan créé à l'instant n'annonce aucune séance manquée, les 7 jours" + (declenche.length ? " (encore : " + declenche.join(", ") + ")" : ""));
 
+// ── U1b — LE MIROIR, ET C'EST LA MOITIÉ QUI MANQUAIT.
+//
+// Le critère ci-dessus n'assertе que « la relance ne se déclenche pas ». Pris seul, il serait
+// **satisfait en supprimant la fonctionnalité** : une garde qui ne vérifie qu'une absence ne
+// garde rien. Trouvé en traversant la deuxième semaine — c'est exactement la forme des trois
+// instruments démasqués en R20, appliquée à une garde que je venais d'écrire.
+//
+// Ici on décroche pour de VRAI : on crée le plan, on n'ouvre plus l'app pendant neuf jours, et
+// la relance doit apparaître. Le message n'a d'intérêt que s'il arrive quand il le faut.
+{
+  const { ctx, page } = await session(LUNDI);
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(300);
+  await ctx.close();
+}
+{
+  // on rejoue la création au lundi, puis on saute au mardi de la semaine suivante
+  const creation = await session(LUNDI);
+  await passeCheckin(creation.page);
+  const etat = await creation.ctx.storageState();
+  await creation.ctx.close();
+
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR", isMobile: true, hasTouch: true, timezoneId: "Europe/Paris", storageState: etat });
+  await ctx.addInitScript(`(()=>{const F=${LUNDI + 9 * 864e5};const d=F-Date.now();const R=Date;const D=function(...a){return a.length?new R(...a):new R(R.now()+d);};D.now=()=>R.now()+d;D.parse=R.parse;D.UTC=R.UTC;D.prototype=R.prototype;globalThis.Date=D;})()`);
+  const page = await ctx.newPage();
+  await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  await passeCheckin(page);
+  await page.waitForTimeout(500);
+  ok(await page.evaluate(() => /La vie a pris le dessus/.test(document.body.innerText || "")),
+     "U1b — après neuf jours sans rien faire, la relance se déclenche BIEN (le miroir d'U1)");
+  await ctx.close();
+}
+
+// ── U8 — un jour de repos n'est pas une séance qui s'appelle « OFF »
+{
+  const { ctx, page } = await session(LUNDI); // 63 profils sur 63 démarrent par un lundi de repos
+  await passeCheckin(page);
+  await page.waitForTimeout(400);
+  const t = await page.evaluate(() => document.body.innerText || "");
+  ok(/Repos aujourd’hui/.test(t), "U8 — le jour de repos se lit « Repos aujourd'hui », pas « OFF »");
+  ok(/Prochaine séance/.test(t), "U8 — et il annonce la prochaine séance (le message existait, il était mort)");
+  await ctx.close();
+}
+
 // ── U2 — matin / journée / soir
 for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point du jour", "point du matin"], [21, "point du soir", "point du matin"]]) {
   const { ctx, page } = await session(Date.UTC(2026, 7, 4, h - 2, 0, 0)); // Paris = UTC+2 en août

@@ -279,3 +279,87 @@ renforcé) — mon premier sélecteur était faux, pas l'app.
 - **La deuxième journée d'usage.** Tout ce rapport porte sur le premier contact. Ce que devient
   l'app au bout d'une semaine — quand des séances sont cochées, quand un verdict rouge tombe —
   demande une traversée sur plusieurs jours simulés.
+
+---
+
+# Deuxième partie — la deuxième semaine d'usage
+
+**02/08/2026.** Le premier tour ne couvrait que le premier contact. Celui-ci vit **dix jours** :
+séances validées, verdict rouge, décrochage réel, drapeau douleur, levée du drapeau. La date du
+navigateur est figée puis avancée jour après jour, l'état persiste comme chez un vrai
+utilisateur.
+
+**Résultat brut : cinq soupçons, un seul défaut réel. Quatre étaient mon instrument.**
+
+C'est le résultat le plus utile de ce tour, et il mérite d'être dit avant les corrections.
+
+## Le défaut réel — U8 : un jour de repos s'affiche « OFF »
+
+Le moteur matérialise le repos par une séance `{d:"rs", name:"OFF", min:0}`. C'est le bon choix
+côté plan : la grille a une case par jour, et le repos se **valide** comme le reste (R4 — le
+repos validé compte dans la série).
+
+Mais le héros du jour testait `res.sessions.length`, qui vaut donc 1. L'athlète lisait :
+
+> **AUJOURD'HUI · LUN · 03/08**
+> **OFF**
+> Le détail de la séance ▸ *(n'ouvre rien)*
+
+…pendant que la branche écrite exactement pour ce cas, juste en dessous dans le même fichier,
+n'était **jamais atteinte** :
+
+> 😌 Repos aujourd'hui. Prochaine séance : **Mar 04/08** · Sweetspot vélo
+
+**Le bon message existait et était mort.**
+
+| | |
+|---|---|
+| jours de repos en semaine 1 (7 sports × niveaux × densités) | **153 / 441** — un tiers des ouvertures |
+| profils dont le **jour 1** est un repos | **63 / 63 — 100 %** |
+
+Le second chiffre est le plus dur : le lundi est un jour de récupération dans tous les gabarits
+hebdomadaires, ce qui est juste en régime établi. Mais en semaine 1 d'un plan créé le jour même,
+il n'y a rien à récupérer — et quelqu'un qui vient de répondre à 37 questions recevait **« OFF »**
+comme tout premier écran.
+
+**Corrigé (U8)** : un jour dont toutes les séances sont des `rs` n'est pas « une séance », donc la
+branche existante s'affiche. La prochaine séance est nommée **avec sa date**. Aucun changement au
+plan, aucune minute ajoutée — on ne fabrique pas une séance pour occuper quelqu'un.
+
+## Le trou dans ma propre garde — U1b
+
+`smoke-usage` n'assertait que « la relance ne se déclenche pas sur un plan neuf ». Pris seul, ce
+critère est **satisfait en supprimant la fonctionnalité**.
+
+Vérifié : en remplaçant le corps de `missedSessionsCheck` par `return ""`, **U1 reste vert**.
+
+`U1b` ajoute le miroir — on décroche pour de vrai (neuf jours sans rien), la relance **doit**
+apparaître. Les deux critères ensemble tiennent la règle ; l'un sans l'autre ne tient rien.
+
+C'est la forme des trois instruments démasqués en R20, appliquée à une garde que je venais
+d'écrire la veille.
+
+## Les quatre soupçons qui étaient mon instrument
+
+| ce que j'avais noté | ce qui se passait vraiment |
+|---|---|
+| « la validation ne change rien à l'écran » | elle enregistre (`done` 0→1), ouvre le feedback RPE et célèbre — je lisais le haut de page non défilé |
+| « aucune relance après 3 séances manquées » | seuls **2** jours d'entraînement avaient été manqués (les autres étaient des jours de repos) — le compte était juste |
+| « le drapeau douleur ne se lève pas » | la levée passe par un `confirm()` natif, que Playwright **rejette par défaut** ; avec le dialogue accepté, le drapeau se lève et le bandeau disparaît |
+| « aucun chemin pour signaler une douleur » | il est dans le feedback post-séance (`🩹 Douleur pendant ou après`), exactement là où la spec R4 le place |
+
+Vérifié aussi, et conforme : le verdict rouge **repose** vraiment (vert → `keep`, orange →
+`reduce`, rouge → `rest`). Mon « 🔴 séance maintenue » venait d'un jour qui était déjà un repos.
+
+## Ce que ce tour apprend sur la méthode
+
+Sept observations au premier tour, cinq réelles. Cinq au second, une réelle. Le rendement chute —
+c'est normal, les défauts faciles sont pris. **Mais le taux de faux constats, lui, monte** : trois
+sur sept, puis quatre sur cinq.
+
+La cause est toujours la même : **une mesure qui porte sur une grandeur voisine de celle qu'elle
+nomme**. Lire le haut d'une page et croire lire l'écran. Compter des jours et croire compter des
+séances. Cliquer un bouton et croire avoir confirmé.
+
+La règle pratique qui en sort : **avant d'écrire qu'une chose est cassée, la casser exprès et
+vérifier que la mesure change.** C'est ce qui a démasqué les quatre.

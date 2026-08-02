@@ -672,6 +672,28 @@ n'étaient pas une temporisation. Trois faux constats sur sept, tous de la même
 mesure qui porte sur une grandeur voisine de celle qu'elle nomme.
 **22 gates verts, E2E 14/14, golden 900 inchangé.**
 
+**U8 + U1b livré — la deuxième semaine d'usage** (voir `RAPPORT_TOUR_USAGE.md` 2ᵉ partie) : dix
+jours vécus dans l'app — séances validées, verdict rouge, décrochage réel, drapeau douleur.
+**Cinq soupçons, UN défaut réel : quatre étaient mon instrument**, et c'est le résultat le plus
+utile du tour. **U8** : le moteur matérialise le repos par une séance `{d:"rs", name:"OFF"}` —
+bon choix côté plan (le repos se VALIDE et compte dans la série), mais le héros du jour testait
+`res.sessions.length`, qui vaut donc 1. L'athlète lisait un **« OFF »** sec avec un « Le détail de
+la séance » qui n'ouvre rien, pendant que la branche écrite exactement pour ce cas — « 😌 Repos
+aujourd'hui. Prochaine séance : Mar 04/08 · Sweetspot vélo » — n'était **jamais atteinte** : le
+bon message existait et était mort. Mesuré : **153 jours de repos sur 441** en semaine 1 (un tiers
+des ouvertures) et **63 profils sur 63 démarrent par un lundi de repos** — quelqu'un qui crée son
+plan un lundi, après 37 questions, recevait « OFF » comme tout premier écran. Aucune minute
+ajoutée : on ne fabrique pas une séance pour occuper quelqu'un. **U1b** : `smoke-usage`
+n'assertait que « la relance ne se déclenche PAS sur un plan neuf » — critère **satisfait en
+supprimant la fonctionnalité**, vérifié (U1 reste vert avec `missedSessionsCheck` vidée). Le
+miroir manquait : on décroche neuf jours pour de vrai, la relance doit apparaître. Les quatre faux
+constats, consignés : la validation enregistre bien (je lisais le haut de page non défilé), la
+relance ne manquait pas (seuls 2 jours d'entraînement avaient été ratés), le drapeau douleur se
+lève bien (`confirm()` natif, que Playwright rejette par défaut), et le chemin pour signaler une
+douleur existe (feedback post-séance). Règle qui en sort : **avant d'écrire qu'une chose est
+cassée, la casser exprès et vérifier que la mesure change** — c'est ce qui a démasqué les quatre.
+**22 gates verts, E2E 14/14 (12 assertions d'usage), golden 900 inchangé.**
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur
