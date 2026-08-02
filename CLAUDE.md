@@ -581,6 +581,26 @@ marge : mesurée en la désactivant, elle cachait 26 profils, elle en cache **1 
 250/400/600), tous dans la fenêtre où le verrou fait son travail.
 **22 gates verts, E2E 13/13, golden 900 recapturé.**
 
+**R20.9 livré — le créneau de repli, et la question posée n'était pas la bonne** (O-3 fermé, voir
+ARCHITECTURE.md « R20.9 ») : l'entrée demandait « `facileR` ou `facile2` ». En regardant ce que
+chaque créneau PRODUIT, trois défauts sont apparus, dont deux plus graves que le choix du slot.
+**(1)** le repli du trail n'était pas un repli : `facileR` produit « Marche rapide en montée
+(bâtons) », une sortie avec dénivelé et renfo excentrique — remplacer une séance de charge par
+une autre séance de charge qui porte un nom rassurant. Le trail bascule sur `facile2`
+(« Footing récup »). **(2)** N jours déclassés donnaient **N séances IDENTIQUES** : mesuré sous
+drapeau médical, **3 × « Marche rapide en montée »** en trail et **4 × « Footing facile »** en
+swimrun — sur le sport dont la spécificité EST d'alterner nage et course. `applyWeeklyVariety`
+ne pouvait rien y faire : tous ces jours portaient le même créneau. Le repli ALTERNE désormais
+entre les deux créneaux faciles, le déclaré passant en premier. **(3) l'instrument suivait la
+déclaration, pas le plan** : `measure:fallback` testait `d.slot === easyFallbackSlot`, donc en
+changeant le repli du trail le taux est tombé de 25,0 % à **0,0 %** et le verdict allait fermer
+O-3 sur ce chiffre. Compté sur n'importe quel créneau facile : **25,0 % avant, 25,0 % après,
+1 287 jours dans les deux cas** — la fréquence n'avait pas bougé d'un jour. Troisième occurrence
+de cette famille dans R20, après `audit:v1` (R20.4) et l'ancrage calendaire du banc R14 (R20.7).
+L'entrée se ferme donc sur le CONTENU : 25 % et 44 % de plans qui passent par un repli ne sont
+pas un défaut — un jour dur déclassé, c'est le moteur qui fait son travail.
+**22 gates verts, E2E 13/13, golden 900 recapturé (2 profils).**
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur

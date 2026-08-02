@@ -2145,3 +2145,53 @@ une eau froide. Mesurée en la désactivant, elle cache aujourd'hui **1 à 4 pro
 verrou fait exactement son travail. L'exemption reste (l'instrument ne doit pas punir une règle
 de sécurité, R16.10) et `S-MIX` garde son budget à 0, mais **elle est passée d'un angle mort à
 une marge**.
+
+## R20.9 — le créneau de repli (O-3 fermé), et la question posée n'était pas la bonne
+
+O-3 demandait « quel créneau facile sert de repli, `facileR` ou `facile2` ». En regardant ce que
+chaque créneau PRODUIT, trois défauts sont apparus, dont deux plus graves que le choix du slot.
+
+### 1. Le repli du trail n'était pas une séance de repli
+
+`easyFallbackSlot` est le créneau construit quand un jour DUR est déclassé — fatigue,
+anti-collage, drapeau médical. En trail, `facileR` produit **« Marche rapide en montée
+(bâtons) »** : une sortie avec dénivelé et renfo excentrique. Remplacer une séance de charge par
+une autre séance de charge qui porte un nom rassurant, ce n'est pas un repli.
+
+`facile2` produit « Footing récup ». Le trail bascule.
+
+### 2. N jours déclassés donnaient N séances IDENTIQUES
+
+Mesuré sous drapeau médical — le cas où tous les jours durs tombent d'un coup, et où le plan
+doit être un plan de MAINTIEN :
+
+| | avant | après |
+|---|---|---|
+| trail, semaine sous drapeau médical | **3 × « Marche rapide en montée »** | 2 × « Footing récup » + 2 × marche (35 min) |
+| swimrun, idem | **4 × « Footing facile »** + 1 nage | 3 × footing + 2 × nage |
+
+Sur le swimrun, dont la spécificité EST d'alterner nage et course, un plan de maintien livrait
+quatre footings identiques. `applyWeeklyVariety` ne pouvait rien y faire : tous ces jours
+portaient le MÊME créneau, elle n'avait aucune autre séance à piocher.
+
+Le repli alterne désormais entre les deux créneaux faciles du sport, **le créneau déclaré
+passant en premier** (c'est le choix du module, il garde la main). La variété n'est pas un
+confort ici : un plan de maintien qui répète la même sortie est un plan qu'on arrête de suivre.
+
+### 3. L'instrument suivait la déclaration, pas le plan
+
+`measure:fallback` testait `d.slot === easyFallbackSlot`. En basculant le trail de `facileR` à
+`facile2`, le taux affiché est tombé de **25,0 % à 0,0 %** — et sa ligne de verdict allait
+fermer O-3 sur ce chiffre.
+
+Vérifié en comptant sur N'IMPORTE QUEL créneau facile : **25,0 % avant, 25,0 % après, 1 287 jours
+dans les deux cas.** La fréquence n'avait pas bougé d'un jour ; seule la séance produite avait
+changé. Un instrument dont le verdict suit la valeur déclarée par le module mesure la
+déclaration, pas le comportement — troisième occurrence de cette famille dans le chantier R20,
+après `audit:v1` (R20.4) et l'ancrage calendaire du banc R14 (R20.7).
+
+### Pourquoi l'entrée se ferme sur le CONTENU et pas sur la fréquence
+
+25 % et 44 % de plans qui passent par un repli ne sont pas un défaut en soi : un jour dur
+déclassé pour cause de fatigue ou de collage, c'est le moteur qui fait son travail. Le défaut
+était ce que ce repli PRODUISAIT.

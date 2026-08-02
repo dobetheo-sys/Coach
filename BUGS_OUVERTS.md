@@ -78,7 +78,7 @@ O-2 disait *« premier geste attendu : écrire le critère, pas le correctif »*
 venu avec le handoff de revue (`R15.2-A/B/C/D`, gate `npm run audit:r15`) : c'est lui qui rend
 la fermeture vérifiable, et c'est pour ça que l'entrée peut être fermée plutôt que « faite ».
 
-### O-3 · `D10-8` — le créneau facile de repli du trail · 📊 **MESURÉ (R15.3) — mérite son lot**
+### O-3 · `D10-8` — le créneau facile de repli du trail · ✅ **FERMÉ (R20.9) — et la question posée n'était pas la bonne**
 
 L'entrée réclamait l'écart de contenu entre `facileR` et `facile2`. Le handoff R15.3 a
 repositionné la question, et il avait raison : avant d'arbitrer QUEL créneau sert de repli, il
@@ -126,6 +126,43 @@ mouvement.** Le swimrun est presque deux fois plus concerné (44,4 % contre 25,0
 qui a ouvert l'entrée ; le traiter séparément referait le même travail deux fois sur le même
 mécanisme. Le lot décide `facileR` vs `facile2` pour trail ET swimrun, avec mesure avant/après
 sur le golden.
+
+---
+
+**FERMETURE (R20.9, 02/08/2026) — et la question de l'entrée n'était pas la bonne.**
+
+L'entrée demandait « quel créneau sert de repli ». En regardant ce que chaque créneau PRODUIT,
+le vrai défaut est apparu, et il est plus grave que le choix du slot :
+
+**1. Le repli du trail n'était pas une séance de repli.** `facileR` produit « Marche rapide en
+montée (bâtons) » — une sortie avec dénivelé et renfo excentrique. Quand un jour DUR est
+déclassé (fatigue, anti-collage, drapeau médical), le remplacer par ça, c'est remplacer une
+séance de charge par une autre séance de charge qui porte un nom rassurant. `facile2` produit
+« Footing récup », qui est exactement ce qu'un jour déclassé doit devenir. Le trail bascule.
+
+**2. N jours déclassés donnaient N séances IDENTIQUES.** Mesuré sous drapeau médical — le cas où
+tous les jours durs tombent d'un coup, et où le plan doit être un plan de MAINTIEN :
+
+| | avant | après |
+|---|---|---|
+| trail, semaine sous drapeau médical | **3 × « Marche rapide en montée »** | 2 × « Footing récup » + 2 × marche (35 min) |
+| swimrun, idem | **4 × « Footing facile »** + 1 nage | 3 × footing + 2 × nage |
+
+Sur le swimrun, dont la spécificité EST d'alterner nage et course, un plan de maintien livrait
+quatre footings identiques. La passe de variété ne pouvait rien y faire : tous ces jours
+portaient le MÊME créneau, elle n'avait pas d'autre séance à piocher. Le repli alterne désormais
+entre les deux créneaux faciles du sport, le créneau déclaré passant en premier.
+
+**3. L'instrument suivait la déclaration, pas le plan.** `measure:fallback` testait
+`d.slot === easyFallbackSlot`. En basculant le trail de `facileR` à `facile2`, le taux affiché
+est tombé de 25,0 % à **0,0 %** et la ligne de verdict allait fermer cette entrée sur ce chiffre.
+Vérifié en comptant sur N'IMPORTE QUEL créneau facile : **25,0 % avant, 25,0 % après, 1 287 jours
+dans les deux cas.** La fréquence n'avait pas bougé d'un jour — seule la séance produite avait
+changé. Le détecteur regarde désormais ce que le plan fait.
+
+C'est pourquoi cette entrée se ferme sur le CONTENU et non sur la fréquence : 25 % et 44 % de
+plans qui passent par un repli ne sont pas un défaut en soi (un jour dur déclassé pour cause de
+fatigue, c'est le moteur qui fait son travail). Le défaut était ce que ce repli produisait.
 
 ### O-4 · La même coche ne faisait pas la même chose selon l'onglet · ✅ **FERMÉ (R16.9)**
 

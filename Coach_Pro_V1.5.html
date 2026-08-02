@@ -6590,7 +6590,17 @@ registerSport({
   // "facileR", PAS "facile2" : c'est ce que l'ancien code faisait (`sport === "run" ? … : …`
   // ne connaissait que la course). Le déclarer autrement changerait les plans trail — ce
   // serait une DÉCISION, pas une extraction. Candidate à réexaminer (voir R10_DEFECTS.md).
-  easyFallbackSlot: "facileR",
+  // R20.9 (O-3) — LE REPLI DU TRAIL PASSE DE `facileR` À `facile2`, ET C'EST MESURÉ.
+  //
+  // `easyFallbackSlot` est le créneau qu'on construit quand un jour DUR est déclassé — fatigue,
+  // anti-collage, drapeau médical. En trail, `facileR` produit « Marche rapide en montée
+  // (bâtons) » : une sortie de 30 min à 5 h avec du dénivelé et du renfo excentrique. Ce n'est
+  // pas une séance de repli, c'est une séance de charge qui porte un autre nom.
+  //
+  // Mesuré sous drapeau médical — le cas où le plan doit être un plan de MAINTIEN sans la
+  // moindre intensité : la semaine livrait **trois « Marche rapide en montée » identiques**.
+  // `facile2` produit « Footing récup », qui est exactement ce qu'un jour déclassé doit devenir.
+  easyFallbackSlot: "facile2",
   weekSchema: (phase, isRecup, r) => trailWeekSchema(phase, isRecup, r.trail .category),
   buildSessions: buildTrailSessionsFromKit,
   retestTypes: ["thrPace", "vam"],
@@ -7921,15 +7931,30 @@ function buildDays(r              , refs      , hz         )           {
   }
 
   // medHold : retirer l'intensité (dur1/dur2 ; tri : aussi le brick) avant génération
-  if (r.medHold)
+  //
+  // R20.9 (O-3) — LE REPLI ALTERNE, SINON N JOURS DÉCLASSÉS DONNENT N SÉANCES IDENTIQUES.
+  //
+  // `easyFallbackSlot` était appliqué tel quel à chaque jour déclassé. Sous drapeau médical,
+  // c'est-à-dire quand TOUS les jours durs tombent d'un coup, la semaine livrait la même séance
+  // trois ou quatre fois : mesuré **3 × « Marche rapide en montée (bâtons) »** en trail et
+  // **4 × « Footing facile »** en swimrun — sur le sport dont la spécificité est justement
+  // d'alterner nage et course. La passe de variété (`applyWeeklyVariety`) ne pouvait rien y
+  // faire : tous ces jours portaient le MÊME créneau, elle n'avait pas d'autre séance à piocher.
+  //
+  // Le créneau déclaré reste le PRÉFÉRÉ — c'est le choix du module, et il passe en premier.
+  // Le second créneau facile prend le relais un jour sur deux. La variété n'est pas un confort
+  // ici : un plan de maintien qui répète la même sortie est un plan qu'on arrête de suivre.
+  if (r.medHold) {
+    const replis           = [mod.easyFallbackSlot, mod.easyFallbackSlot === "facile2" ? "facileR" : "facile2"];
+    const stripLong = guard(sp          , "stripLongOnMedHold");
+    let nRepli = 0;
     for (const d of days) {
-      // Le brick tri EST de l'intensité : sur avis médical en attente, la longue tombe aussi.
-      const stripLong = guard(sp          , "stripLongOnMedHold");
       if (d.charge === "dur" && (d.slot === "dur1" || d.slot === "dur2" || (stripLong && d.slot === "durLong"))) {
         d.charge = "facile";
-        d.slot = mod.easyFallbackSlot;
+        d.slot = replis[nRepli++ % replis.length];
       }
     }
+  }
 
   // Séances + rendu. Dates absolues ALIGNÉES sur le calendrier réel : le jour étiqueté
   // « Lun » tombe un VRAI lundi (le plan est régénéré à chaque ouverture — sans cet

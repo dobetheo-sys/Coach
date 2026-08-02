@@ -237,15 +237,30 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   }
 
   // medHold : retirer l'intensité (dur1/dur2 ; tri : aussi le brick) avant génération
-  if (r.medHold)
+  //
+  // R20.9 (O-3) — LE REPLI ALTERNE, SINON N JOURS DÉCLASSÉS DONNENT N SÉANCES IDENTIQUES.
+  //
+  // `easyFallbackSlot` était appliqué tel quel à chaque jour déclassé. Sous drapeau médical,
+  // c'est-à-dire quand TOUS les jours durs tombent d'un coup, la semaine livrait la même séance
+  // trois ou quatre fois : mesuré **3 × « Marche rapide en montée (bâtons) »** en trail et
+  // **4 × « Footing facile »** en swimrun — sur le sport dont la spécificité est justement
+  // d'alterner nage et course. La passe de variété (`applyWeeklyVariety`) ne pouvait rien y
+  // faire : tous ces jours portaient le MÊME créneau, elle n'avait pas d'autre séance à piocher.
+  //
+  // Le créneau déclaré reste le PRÉFÉRÉ — c'est le choix du module, et il passe en premier.
+  // Le second créneau facile prend le relais un jour sur deux. La variété n'est pas un confort
+  // ici : un plan de maintien qui répète la même sortie est un plan qu'on arrête de suivre.
+  if (r.medHold) {
+    const replis: string[] = [mod.easyFallbackSlot, mod.easyFallbackSlot === "facile2" ? "facileR" : "facile2"];
+    const stripLong = guard(sp as string, "stripLongOnMedHold");
+    let nRepli = 0;
     for (const d of days) {
-      // Le brick tri EST de l'intensité : sur avis médical en attente, la longue tombe aussi.
-      const stripLong = guard(sp as string, "stripLongOnMedHold");
       if (d.charge === "dur" && (d.slot === "dur1" || d.slot === "dur2" || (stripLong && d.slot === "durLong"))) {
         d.charge = "facile";
-        d.slot = mod.easyFallbackSlot;
+        d.slot = replis[nRepli++ % replis.length];
       }
     }
+  }
 
   // Séances + rendu. Dates absolues ALIGNÉES sur le calendrier réel : le jour étiqueté
   // « Lun » tombe un VRAI lundi (le plan est régénéré à chaque ouverture — sans cet
