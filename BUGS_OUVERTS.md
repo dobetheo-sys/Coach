@@ -1,21 +1,26 @@
 # Bugs constatés et NON corrigés
 
-**État au 02/08/2026, chantier R20 terminé** (22 gates verts, E2E 13/13, golden 900,
-`audit:v7` à N=400, `registry:check` 14/14).
+**État au 02/08/2026, chantier R20 terminé + N11** (22 gates verts, E2E 13/13, golden 900,
+`audit:v7` à N=400, `registry:check` 15/15).
 
-> **§1 EST ENTIÈREMENT FERMÉ — 15 entrées, 0 ouverte.** Le chantier R20 a fermé les six
-> dernières : `O-8` (footing swimrun sans bornes), `O-9` (banc d'invariants ni vert ni
-> bloquant), `O-10` (`vol_max` inerte), `O-11` (deux allures course à vélo), `O-13` (rampe R10
-> inerte en natation), `O-15` (portée du verrou froid), plus `O-3` (le créneau de repli) et
-> `O-14` (`swim_limit`).
+> **§1 — 16 entrées, 1 ouverte (`O-16`).** Le chantier R20 avait fermé les six dernières :
+> `O-8` (footing swimrun sans bornes), `O-9` (banc d'invariants ni vert ni bloquant), `O-10`
+> (`vol_max` inerte), `O-11` (deux allures course à vélo), `O-13` (rampe R10 inerte en
+> natation), `O-15` (portée du verrou froid), plus `O-3` (le créneau de repli) et `O-14`
+> (`swim_limit`).
 >
-> **Ce que ça ne veut PAS dire.** Un registre vide ne dit pas que le moteur est sans défaut : il
-> dit que tout ce qu'on a MESURÉ est traité. Les six lots de R20 ont trouvé la moitié de leurs
+> **Puis §1 a rouvert le jour même, et pas depuis un banc.** `O-16` — l'estimation énergétique
+> journalière n'oppose aucune borne d'âge, alors que son équation est validée chez l'adulte —
+> a été trouvée en **rédigeant le dossier de relecture diététique** : décrire ce que chaque
+> règle calcule oblige à refaire ses calculs. Le même passage a corrigé `N11` (le repos des
+> heures d'entraînement compté deux fois). Aucun des 22 gates ne regardait ces deux choses.
+>
+> **Ce que ça confirme.** Un registre vide ne dit pas que le moteur est sans défaut : il dit
+> que tout ce qu'on a MESURÉ est traité. Les six lots de R20 ont trouvé la moitié de leurs
 > défauts en corrigeant les autres — et trois d'entre eux étaient des INSTRUMENTS qui
 > mesuraient autre chose que ce qu'ils annonçaient (`audit:v1` sur le générateur mort, le banc
 > R14 dépendant du jour de la semaine, `measure:fallback` suivant la déclaration au lieu du
-> plan). La prochaine entrée viendra d'un test réel ou d'un regard extérieur, pas de ce
-> fichier.
+> plan). La prochaine entrée est venue, comme annoncé, d'ailleurs que de ce fichier.
 
 Ce fichier ne liste que ce qui est **mesuré et reproductible aujourd'hui**. Chaque entrée porte
 sa commande de vérification : une dette qu'on ne peut pas re-mesurer en une ligne n'est pas une
@@ -710,6 +715,44 @@ id: O-15
 quoi: l'acclimatation ne déplace plus la spécificité hors des dernières semaines
 attendu: /eau 16C : 0\/15[\s\S]*eau 20C : 0\/15/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swimrun',format:'sprint',level:'inter',history:'confirme',intent:'competition',vol_max:'10',sessions_max:'7',dispo:'partielle',age:'30',sex:'H',weight:'79',pace:'4:50',pace_known:'oui',css:'1:45',css_known:'oui',vol_recent:'7',off_days:'non',shift_ok:'non',doubles:'oui',swim_total_m:'2600',run_total_km:'9.2',race_dplus_m:'250',segments_n:'10',longest_swim_m:'600',team_mode:'binome',team_swim_gap_sec:'5',openwater_access:'saisonnier',swim_continuous:'oui',run_continuous:'oui',gear_test:'non',race_date:'2027-05-09'};const part=(p)=>{let rn=0,sw=0;for(const w of p.weeks){if(w.isRecup||w.phase.id==='taper')continue;for(const d of w.days)for(const s of d.sessions||[]){if(s.d==='rs')continue;if(s.d==='br'){for(const st of s.steps||[])if(st.leg||st.d){const m=(st.reps||1)*(st.durationMin||0);if(st.d==='sw')sw+=m;else rn+=m;}}else if(s.d==='sw')sw+=s.min||0;else if(s.d==='rn')rn+=s.min||0;}}return rn/(rn+sw);};for(const t of ['16','20']){let n=0,tot=0;for(const inj of ['aucune','hanche','tibia','genou','dos'])for(const lv of ['debutant','inter','avance']){const a={...b,water_temp_c:t,injury:inj,level:lv};try{const o=E.swimrunObjective(a);const p=E.buildPlan('swimrun',a);tot++;if(part(p)<(1-o.swimTimeShare)-0.15)n++;}catch(e){}}console.log('eau '+t+'C : '+n+'/'+tot+' profils sous le seuil de specificite');}"
+```
+
+### O-16 · L'estimation énergétique journalière n'oppose aucune borne d'âge · 🔴 **OUVERT** (avis diététicien demandé)
+
+Trouvé en préparant le dossier de relecture diététique (H-3), en décrivant ce que chaque règle
+calcule. `dailyEnergy()` repose sur **Mifflin-St Jeor 1990, validée chez l'ADULTE**, et sur le NAP
+de la FAO. Ni l'une ni l'autre ne s'applique à un enfant ou à un adolescent en croissance. Le
+moteur ne leur oppose pourtant aucune borne :
+
+| âge déclaré (52 kg, 162 cm, F, 1 h d'entraînement) | ce que l'écran affiche |
+|---|---|
+| **12 ans** | **1 750–2 480 kcal** · protéines 60–90 g/j |
+| 15 ans | 2 010–2 560 kcal · protéines 60–90 g/j |
+| 35 ans | 1 890–2 400 kcal · protéines 60–90 g/j |
+
+À 12 ans, l'âge sort même de la bande 14–90 de la table de référence : le moteur retombe sur
+l'enveloppe 25–55 ans et produit un chiffre **hors du domaine de son équation, sans le dire**.
+La garde IMC (15–45) ne voit rien ici — l'IMC de ce profil est parfaitement normal.
+
+C'est le même angle mort que R15.7-C avait fermé côté FORMAT (un mineur ne peut plus générer un
+plan Ironman) : la règle croisait âge et format, personne n'a rejoué le croisement sur l'écran de
+nutrition, arrivé après.
+
+**Pourquoi c'est OUVERT et pas corrigé** : la correction technique est d'une ligne, mais elle
+porte trois décisions qui ne m'appartiennent pas — où placer la borne ; faut-il couper
+l'estimation SEULE (N8–N11) ou aussi le ravitaillement d'effort (N1–N7), qui semble utile à un
+jeune sportif ; et que MONTRER à la place. C'est la question 3 du dossier envoyé au
+professionnel. La correction suivra sa réponse, avec sa justification en clair dans le code.
+
+**Direction sûre en attendant une réponse** : ne rien afficher coûte moins cher que d'afficher un
+chiffre faux — c'est déjà le choix fait pour la garde IMC. Si la réponse tarde, couper par
+défaut sous 16 ans est le repli à prendre.
+
+```verify
+id: O-16
+quoi: l'estimation journalière est-elle encore calculée pour un mineur / un enfant
+attendu: /12 ans : [0-9]/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;for(const age of [12,15,35]){const r=E.dailyEnergy({weight:'52',height:'162',age:String(age),sex:'F'},[{d:'rn',min:60}]);console.log(age+' ans : '+(r?r.total.join('-')+' kcal':'aucune estimation'));}"
 ```
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)

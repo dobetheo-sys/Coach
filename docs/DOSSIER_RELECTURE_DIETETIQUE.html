@@ -1,0 +1,635 @@
+<title>Dossier de relecture diététique — EnduraBuild</title>
+<style>
+  :root {
+    --paper: #F6F7F5;
+    --panel: #FFFFFF;
+    --ink: #17211D;
+    --muted: #5C6A63;
+    --rule: #DBE0DA;
+    --accent: #1E6B57;
+    --accent-soft: #E7F0EC;
+    --query: #8A4F0C;
+    --query-soft: #F6EDE0;
+    --halt: #8E2F28;
+    --halt-soft: #F6E7E5;
+    --shadow: 0 1px 2px rgba(23, 33, 29, .05), 0 8px 24px -18px rgba(23, 33, 29, .35);
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0E1311;
+      --panel: #151C19;
+      --ink: #E4EAE5;
+      --muted: #93A29A;
+      --rule: #26302B;
+      --accent: #63C0A4;
+      --accent-soft: #16241F;
+      --query: #D9A05B;
+      --query-soft: #241C11;
+      --halt: #E0827A;
+      --halt-soft: #251614;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -18px rgba(0, 0, 0, .9);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #F6F7F5; --panel: #FFFFFF; --ink: #17211D; --muted: #5C6A63; --rule: #DBE0DA;
+    --accent: #1E6B57; --accent-soft: #E7F0EC; --query: #8A4F0C; --query-soft: #F6EDE0;
+    --halt: #8E2F28; --halt-soft: #F6E7E5;
+    --shadow: 0 1px 2px rgba(23, 33, 29, .05), 0 8px 24px -18px rgba(23, 33, 29, .35);
+  }
+  :root[data-theme="dark"] {
+    --paper: #0E1311; --panel: #151C19; --ink: #E4EAE5; --muted: #93A29A; --rule: #26302B;
+    --accent: #63C0A4; --accent-soft: #16241F; --query: #D9A05B; --query-soft: #241C11;
+    --halt: #E0827A; --halt-soft: #251614;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -18px rgba(0, 0, 0, .9);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 47rem; margin: 0 auto; padding: 0 1.5rem 6rem; }
+
+  /* — En-tête ————————————————————————————————— */
+  header.masthead {
+    padding: 4rem 0 2rem;
+    border-bottom: 2px solid var(--ink);
+  }
+  .kicker {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 1.1rem;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(2.1rem, 6vw, 3.1rem);
+    line-height: 1.08;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+  }
+  .standfirst {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    line-height: 1.5;
+    color: var(--muted);
+    margin: 0 0 1.6rem;
+    max-width: 34rem;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem 2rem;
+    font-family: var(--mono);
+    font-size: .78rem;
+    color: var(--muted);
+    padding-bottom: .4rem;
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  /* — Sections ———————————————————————————————— */
+  section { padding-top: 3.4rem; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 .5rem;
+  }
+  h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(1.5rem, 3.6vw, 1.95rem);
+    line-height: 1.2;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-weight: 650;
+    font-size: 1.02rem;
+    letter-spacing: -.005em;
+    margin: 2.2rem 0 .6rem;
+  }
+  p { margin: 0 0 1.05rem; max-width: 38rem; }
+  a { color: var(--accent); text-underline-offset: .18em; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+  strong { font-weight: 650; }
+  .lead { font-size: 1.06rem; }
+
+  /* — Le registre des règles ————————————————————— */
+  .registre { display: flex; flex-direction: column; gap: 0; margin-top: 1.6rem; }
+  .regle {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    gap: 0 1.4rem;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--rule);
+  }
+  .regle:last-child { border-bottom: 1px solid var(--rule); }
+  .rid {
+    font-family: var(--mono);
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: .02em;
+  }
+  .rsrc {
+    font-family: var(--mono);
+    font-size: .7rem;
+    line-height: 1.45;
+    color: var(--muted);
+    margin-top: .35rem;
+  }
+  .rbody > :first-child { margin-top: 0; }
+  .rtitre { font-weight: 650; margin: 0 0 .3rem; }
+  .rval {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: .93rem;
+    color: var(--ink);
+    background: var(--accent-soft);
+    border-radius: 3px;
+    padding: .12rem .4rem;
+    display: inline-block;
+    margin-bottom: .55rem;
+  }
+  .rbody p { font-size: .96rem; margin-bottom: .6rem; max-width: none; }
+  .rbody p:last-child { margin-bottom: 0; }
+
+  /* — Ce que l'athlète lit à l'écran ——————————————— */
+  .ecran {
+    border-left: 2px solid var(--accent);
+    padding: .1rem 0 .1rem .9rem;
+    margin: .8rem 0 .2rem;
+  }
+  .ecran-lbl {
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: .3rem;
+  }
+  q { quotes: "«\00a0" "\00a0»"; }
+  .ecran q {
+    font-family: var(--serif);
+    font-size: .99rem;
+    line-height: 1.55;
+    quotes: "«\00a0" "\00a0»";
+  }
+  .ecran .ligne { margin-bottom: .45rem; }
+  .ecran .ligne:last-child { margin-bottom: 0; }
+  .ecran .qui {
+    font-family: var(--mono);
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    margin-right: .45rem;
+  }
+
+  /* — Encadrés ————————————————————————————————— */
+  .encadre {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 1.4rem 1.5rem;
+    box-shadow: var(--shadow);
+    margin: 1.6rem 0;
+  }
+  .encadre.halt { border-left: 3px solid var(--halt); background: var(--halt-soft); box-shadow: none; }
+  .encadre.query { border-left: 3px solid var(--query); background: var(--query-soft); box-shadow: none; }
+  .encadre h3 { margin-top: 0; }
+  .encadre p:last-child { margin-bottom: 0; }
+  .encadre p { max-width: none; }
+
+  /* — Listes ———————————————————————————————————— */
+  ul.puces { margin: 0 0 1.05rem; padding-left: 1.1rem; max-width: 38rem; }
+  ul.puces li { margin-bottom: .5rem; }
+  ul.puces li::marker { color: var(--accent); }
+
+  ul.gardes { list-style: none; margin: 1.2rem 0 0; padding: 0; }
+  ul.gardes li {
+    display: grid;
+    grid-template-columns: 1.4rem 1fr;
+    gap: .7rem;
+    padding: .7rem 0;
+    border-top: 1px solid var(--rule);
+    font-size: .97rem;
+  }
+  ul.gardes li:last-child { border-bottom: 1px solid var(--rule); }
+  ul.gardes .coche { color: var(--accent); font-weight: 700; font-family: var(--mono); }
+
+  /* — Tableau ————————————————————————————————— */
+  .tablewrap { overflow-x: auto; margin: 1.4rem 0; -webkit-overflow-scrolling: touch; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 30rem;
+    font-size: .92rem;
+    font-variant-numeric: tabular-nums;
+  }
+  caption {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: .6rem;
+  }
+  th, td { text-align: right; padding: .55rem .7rem; border-bottom: 1px solid var(--rule); }
+  th:first-child, td:first-child { text-align: left; padding-left: 0; }
+  td:last-child, th:last-child { padding-right: 0; }
+  thead th {
+    font-family: var(--mono);
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--ink);
+  }
+  tbody td { font-family: var(--mono); }
+  tbody td:first-child { font-family: var(--sans); }
+  .ecart { color: var(--query); font-weight: 600; }
+
+  /* — Questions ————————————————————————————————— */
+  .questions { counter-reset: q; margin-top: 1.6rem; }
+  .question {
+    border-top: 1px solid var(--rule);
+    padding: 1.7rem 0;
+  }
+  .question:last-child { border-bottom: 1px solid var(--rule); }
+  .qhead {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-bottom: .55rem;
+  }
+  .qnum {
+    counter-increment: q;
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .12em;
+    color: var(--query);
+  }
+  .qnum::before { content: "Question " counter(q, decimal-leading-zero); }
+  .qtitre {
+    font-family: var(--serif);
+    font-size: 1.28rem;
+    line-height: 1.32;
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 0 0 .7rem;
+  }
+  .question p { font-size: .97rem; max-width: 38rem; }
+  .question p:last-child { margin-bottom: 0; }
+  .priorite {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: .66rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--query);
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    padding: .08rem .38rem;
+    vertical-align: .12em;
+  }
+
+  footer {
+    margin-top: 4rem;
+    padding-top: 1.6rem;
+    border-top: 2px solid var(--ink);
+    font-size: .9rem;
+    color: var(--muted);
+  }
+  footer p { max-width: 38rem; }
+
+  @media (max-width: 34rem) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 1.15rem 4rem; }
+    header.masthead { padding-top: 2.6rem; }
+    .regle { grid-template-columns: 1fr; gap: .5rem; }
+    .rsrc { margin-top: .1rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker">Demande d'avis professionnel</p>
+  <h1>Ce qu'une application d'entraînement dit à un sportif au sujet de son alimentation</h1>
+  <p class="standfirst">Onze règles, leurs valeurs, leurs sources, et les mots exacts que l'athlète lit sur son écran. Nous vous demandons de dire où s'arrête l'information et où commence le conseil.</p>
+  <div class="meta">
+    <span><b>Produit</b> EnduraBuild — plan d'entraînement multisport</span>
+    <span><b>Version du moteur</b> N1 à N11</span>
+    <span><b>Date</b> 2 août 2026</span>
+  </div>
+</header>
+
+<section>
+  <p class="eyebrow">Le contexte en trente secondes</p>
+  <h2>Ce que fait l'application, et pourquoi elle vous écrit</h2>
+  <p class="lead">EnduraBuild construit des plans d'entraînement d'endurance — course, vélo, natation, triathlon, trail — pour des amateurs qui préparent une épreuve. Elle est utilisée sans encadrement : pas d'entraîneur, pas de suivi médical, pas de professionnel de santé dans la boucle.</p>
+  <p>À côté du plan, deux écrans parlent d'alimentation. Le premier donne le <strong>ravitaillement d'une séance</strong> — quoi boire, quoi manger pendant trois heures de vélo. Le second affiche une <strong>estimation de la dépense énergétique de la journée</strong> et une répartition de macronutriments.</p>
+  <p>Le premier écran nous paraît défendable : il répond à une question d'effort. Le second nous inquiète, et c'est la raison de ce dossier. Nous nous sommes fixé une frontière — <em>estimer une dépense, jamais prescrire un apport</em> — et nous ne savons pas si nous la tenons vraiment.</p>
+
+  <div class="encadre">
+    <h3>Ce que nous vous demandons</h3>
+    <p>Pas de valider des chiffres : ils sont tous repris de consensus publiés, et vous les connaissez mieux que nous. Nous vous demandons de juger <strong>ce que produit leur mise à l'écran</strong>, sans professionnel pour l'accompagner — et de nous dire ce qu'il faut retirer, reformuler ou encadrer.</p>
+    <p>Les six questions sont rassemblées à la fin. La première est celle qui bloque une fonctionnalité déjà écrite : nous ne la publierons pas sans votre réponse.</p>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Nos garde-fous</p>
+  <h2>La frontière, telle qu'elle est codée aujourd'hui</h2>
+  <p>Ces règles ne sont pas des intentions : elles sont vérifiées à chaque modification du logiciel, et une violation empêche la mise en production.</p>
+
+  <ul class="gardes">
+    <li><span class="coche">↳</span><span><strong>Jamais de cible d'apport, jamais de menu, jamais de déficit.</strong> Cinq mots sont interdits en sortie et testés à chaque build : <span class="rval">déficit · perte de poids · maigrir · restriction · brûler des graisses</span></span></li>
+    <li><span class="coche">↳</span><span><strong>Un avertissement accompagne obligatoirement chaque écran</strong>, et il nomme votre profession comme le recours.</span></li>
+    <li><span class="coche">↳</span><span><strong>Sans poids saisi, aucune estimation n'est calculée.</strong> On n'affiche pas un chiffre sur des données absentes.</span></li>
+    <li><span class="coche">↳</span><span><strong>Hors IMC 15–45, rien n'est affiché du tout</strong> — pas d'estimation dégradée, pas de fourchette élargie. Un tableau calorique propre et autoritaire nous paraît être exactement le mauvais objet à mettre sous les yeux de quelqu'un dans cette situation. Un message d'orientation le remplace.</span></li>
+    <li><span class="coche">↳</span><span><strong>Bornes dures :</strong> jamais plus de <span class="rval">90 g</span> de glucides par heure, jamais plus de <span class="rval">1 000 ml</span> de boisson par heure (hyponatrémie de dilution).</span></li>
+    <li><span class="coche">↳</span><span><strong>Une séance dure ou longue impose deux consignes de sécurité</strong> : jamais à jeun au départ, et une récupération proposée à l'arrivée.</span></li>
+    <li><span class="coche">↳</span><span><strong>Le journal alimentaire a été retiré du produit</strong> en juillet 2026. Compter ce qu'on mange, dans une application qui affiche par ailleurs une dépense, nous a paru un engrenage que nous ne voulions pas fabriquer.</span></li>
+  </ul>
+
+  <div class="encadre halt">
+    <h3>Ce que nous nous interdisons de faire seuls</h3>
+    <p>Le conseil nutritionnel à proprement parler — une cible d'apport, un menu, un accompagnement de poids — est bloqué dans notre feuille de route tant qu'un professionnel n'a pas tranché. Ce dossier existe parce que nous soupçonnons d'avoir franchi cette ligne <strong>sans le vouloir</strong>, sur l'écran des macronutriments. Voir la question 1.</p>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Le registre</p>
+  <h2>Les onze règles</h2>
+  <p>Chaque règle porte un identifiant, une valeur, une source publiée et une justification affichée à l'athlète. Les règles N1 à N7 concernent le ravitaillement d'une séance ; N8 à N11, l'estimation de la journée.</p>
+
+  <div class="registre">
+
+    <article class="regle">
+      <div><div class="rid">N1</div><div class="rsrc">ACSM / AND / DC 2016</div></div>
+      <div class="rbody">
+        <p class="rtitre">Glucides pendant l'effort — séance courte</p>
+        <span class="rval">aucun nécessaire</span>
+        <p>Déclenchée sous 60 minutes, ou sous 75 minutes si l'intensité est facile. Motif affiché : les réserves de glycogène suffisent largement.</p>
+        <div class="ecran">
+          <span class="ecran-lbl">Texte à l'écran</span>
+          <div class="ligne"><q>De l'eau suffit — pas besoin de glucides sur une sortie courte et facile.</q></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="regle">
+      <div><div class="rid">N2</div><div class="rsrc">Jeukendrup 2014</div></div>
+      <div class="rbody">
+        <p class="rtitre">Glucides pendant l'effort — 1 h à 2 h 30</p>
+        <span class="rval">30–60 g/h</span>
+        <p>Également déclenchée sous 75 minutes lorsque la séance est intense.</p>
+        <div class="ecran">
+          <span class="ecran-lbl">Texte à l'écran</span>
+          <div class="ligne"><q>Vise 30–60 g de glucides par heure (boisson, gel ou solide au choix — ce que tu digères bien).</q></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="regle">
+      <div><div class="rid">N3</div><div class="rsrc">Jeukendrup 2014</div></div>
+      <div class="rbody">
+        <p class="rtitre">Glucides pendant l'effort — au-delà de 2 h 30</p>
+        <span class="rval">60–90 g/h</span>
+        <p>Motif affiché : l'oxydation plafonne vers 60 g/h pour le glucose seul, le mélange glucose–fructose repousse la limite. 90 g/h est une borne dure du logiciel.</p>
+        <div class="ecran">
+          <span class="ecran-lbl">Texte à l'écran</span>
+          <div class="ligne"><q>Vise 60–90 g de glucides par heure — au-delà de 60 g/h, mélange glucose + fructose, et entraîne ton tube digestif à l'entraînement, jamais de nouveauté le jour J.</q></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="regle">
+      <div><div class="rid">N4</div><div class="rsrc">ACSM 2007 — remplacement hydrique</div></div>
+      <div class="rbody">
+        <p class="rtitre">Hydratation</p>
+        <span class="rval">0–500 ml/h sous 1 h · 400–800 ml/h au-delà · +200 ml/h dès 25&nbsp;°C · plafond 1 000 ml/h</span>
+        <p>Le sodium (~300–600 mg/L) est ajouté au-delà d'une heure à partir de 25&nbsp;°C, et au-delà de 45 minutes à partir de 28&nbsp;°C. La température vient de la météo réelle du jour, par géolocalisation.</p>
+        <p>Cas particulier codé : en natation, la consigne ajoute <q>oui, même en natation : on ne sent pas la sueur dans l'eau</q>.</p>
+        <div class="ecran">
+          <span class="ecran-lbl">Texte à l'écran — sortie de 3 h à 27 °C</span>
+          <div class="ligne"><q>Bois régulièrement, 600–1000 ml/h à la soif, avec du sodium (boisson d'effort ou pastille, ~300–600 mg/L) vu la chaleur. Jamais plus d'1 L/h.</q></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="regle">
+      <div><div class="rid">N5</div><div class="rsrc">ISSN 2017 — nutrient timing</div></div>
+      <div class="rbody">
+        <p class="rtitre">Récupération après une séance dure ou longue</p>
+        <span class="rval">~1–1,2 g/kg glucides + ~0,25–0,35 g/kg protéines, dans les 30–60 min</span>
+        <p>Sans poids saisi, la consigne devient qualitative (<q>une collation glucides + protéines</q>) plutôt que chiffrée.</p>
+        <div class="ecran">
+          <span class="ecran-lbl">Texte à l'écran — 75 kg</span>
+          <div class="ligne"><q>Dans les 30–60 min : ~75–90 g de glucides + ~20–25 g de protéines (pour 75 kg), puis un vrai repas.</q></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="regle">
+      <div><div class="rid">N6</div><div class="rsrc">Règle de sécurité interne</div></div>
+      <div class="rbody">
+        <p class="rtitre">Jamais à jeun sur une séance dure ou longue</p>
+        <span class="rval">consigne obligatoire</span>
+        <p>C'est la seule règle du module qui ne vienne pas d'un consensus chiffré mais d'un principe : l'hypoglycémie d'effort est un risque évitable. Sur une séance courte et facile, l'application dit explicitement que les deux se défendent — elle ne pousse pas au jeûne, elle ne l'interdit pas non plus.</p>
+        <div class="ecran">
+          <span class="ecran-lbl">Texte à l'écran</span>
+          <div class="ligne"><q>Ne pars pas à jeun : un vrai repas 2–3 h avant, ou une collation glucidique 30–60 min avant. Une séance longue à jeun dégrade la qualité et augmente le risque de malaise.</q></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="regle">
+      <div><div class="rid">N7</div><div class="rsrc">Compendium d'Ainsworth (MET)</div></div>
+      <div class="rbody">
+        <p class="rtitre">Dépense estimée d'une séance</p>
+        <span class="rval">MET × poids × durée, arrondi à 50 kcal</span>
+        <p>Les MET retenus vont de 6 (natation facile) à 14 (course dure), en fourchette par sport et par intensité. Sans poids saisi, un gabarit 60–80 kg élargit la fourchette au lieu d'inventer une précision.</p>
+        <div class="ecran">
+          <span class="ecran-lbl">Texte à l'écran</span>
+          <div class="ligne"><q>Dépense estimée ~1800–2250 kcal.</q></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="regle">
+      <div><div class="rid">N8</div><div class="rsrc">Mifflin-St Jeor 1990</div></div>
+      <div class="rbody">
+        <p class="rtitre">Métabolisme de base</p>
+        <span class="rval">10 × poids + 6,25 × taille − 5 × âge + (5 | −161)</span>
+        <p>±5 % affichés d'office, l'équation ayant environ 10 % d'erreur individuelle même complète. Chaque donnée manquante — taille, âge, sexe — élargit la fourchette au lieu de la deviner : sans aucune, on balaie des gabarits de 158 à 185 cm et de 25 à 55 ans, et l'écran signale que la fourchette est large.</p>
+      </div>
+    </article>
+
+    <article class="regle">
+      <div><div class="rid">N9</div><div class="rsrc">FAO / WHO / UNU 2001 (NAP)</div></div>
+      <div class="rbody">
+        <p class="rtitre">Dépense de la journée</p>
+        <span class="rval">base × 1,35–1,55 + entraînement du jour</span>
+        <p>Le facteur 1,35–1,55 couvre la vie quotidienne, d'un travail assis à une journée modérément active.</p>
+        <div class="ecran">
+          <span class="ecran-lbl">Texte à l'écran</span>
+          <div class="ligne"><q>une information pour comprendre, jamais une cible à atteindre ni à creuser</q></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="regle">
+      <div><div class="rid">N10</div><div class="rsrc">ACSM/AND/DC 2016 · AMDR · Burke 2011</div></div>
+      <div class="rbody">
+        <p class="rtitre">Macronutriments — répartition indicative</p>
+        <span class="rval">protéines 1,2–1,7 g/kg · lipides 20–35 % de l'énergie · glucides 3–10 g/kg selon le volume du jour</span>
+        <p>Les glucides suivent la durée d'entraînement du jour : 3–5 g/kg sous 45 minutes, 5–7 g/kg jusqu'à 1 h 30, 6–10 g/kg au-delà. Le plancher lipidique de 20 % est présenté comme un plancher de santé.</p>
+        <p><strong>C'est cette règle qui fait l'objet de la question 1.</strong></p>
+        <div class="ecran">
+          <span class="ecran-lbl">Texte à l'écran — 75 kg, 1 h 15 d'entraînement</span>
+          <div class="ligne"><span class="qui">Ligne 1</span><q>Protéines ~90–130 g/j — 1,2 à 1,7 g/kg (ACSM/AND/DC 2016)</q></div>
+          <div class="ligne"><span class="qui">Ligne 2</span><q>Lipides ~60–135 g/j — 20 à 35 % de l'énergie, jamais moins de 20 % (AMDR)</q></div>
+          <div class="ligne"><span class="qui">Ligne 3</span><q>Glucides ~375–525 g/j — 5 à 7 g/kg pour un jour d'entraînement modéré (Burke 2011)</q></div>
+          <div class="ligne"><span class="qui">Puis</span><q>C'est une photographie de la littérature, pas un menu ni une consigne.</q></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="regle">
+      <div><div class="rid">N11</div><div class="rsrc">Définition du MET</div></div>
+      <div class="rbody">
+        <p class="rtitre">Le repos des heures d'entraînement n'est compté qu'une fois</p>
+        <span class="rval">− 1 kcal/kg/h × heures d'entraînement</span>
+        <p>Corrigé le jour de la rédaction de ce dossier, en refaisant les calculs à la main pour les décrire. Le facteur d'activité physique de la FAO rapporte la dépense des <em>24 heures</em> au métabolisme de base : il couvre déjà la séance. Les MET, eux, sont une dépense brute — 1 MET <em>est</em> le métabolisme de repos. Le repos des heures d'entraînement était donc additionné deux fois.</p>
+        <p>L'erreur allait de 80 kcal pour une heure à 380 kcal pour cinq heures, soit 2,5 % à 8,1 % du total affiché — <strong>toujours dans le sens qui gonfle la dépense</strong>, et d'autant plus que la personne s'entraînait. Le retrait est désormais affiché à l'écran plutôt qu'appliqué en silence.</p>
+        <div class="ecran">
+          <span class="ecran-lbl">Texte à l'écran</span>
+          <div class="ligne"><q>− 90 kcal : le repos de ces heures-là est déjà compté dans ta journée (un MET, c'est le repos)</q></div>
+        </div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Ce que nous soupçonnons</p>
+  <h2>Le point qui nous a fait vous écrire</h2>
+  <p>Nous nous étions dit : une <em>dépense</em> s'affiche, un <em>apport</em> se prescrit. La première est une information, le second est votre métier.</p>
+  <p>En reprenant les sources de la règle N10, nous constatons que <strong>les trois références sont des références d'apport</strong>. 1,2–1,7 g/kg de protéines, c'est une recommandation d'ingestion. 20–35 % de l'énergie en lipides, c'est un intervalle de répartition alimentaire. 3–10 g/kg de glucides, c'est ce qu'il est conseillé de manger. Aucune des trois ne décrit ce que le corps dépense.</p>
+  <p>Et si l'on convertit ces grammes en kilocalories, ils ne coïncident pas avec la dépense affichée juste au-dessus, sur la même carte :</p>
+
+  <div class="tablewrap">
+    <table>
+      <caption>Ce que l'écran affiche, pour trois profils</caption>
+      <thead>
+        <tr><th scope="col">Profil</th><th scope="col">Dépense estimée</th><th scope="col">Macros converties</th><th scope="col">Écart</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>55 kg, jour de repos</td><td>1 650–2 080 kcal</td><td>1 235–2 200 kcal</td><td class="ecart">−25 % en bas</td></tr>
+        <tr><td>75 kg, 1 h 15</td><td>2 700–3 480 kcal</td><td>2 400–3 835 kcal</td><td class="ecart">−11 % / +10 %</td></tr>
+        <tr><td>95 kg, 2 h 30</td><td>3 380–4 430 kcal</td><td>3 415–5 970 kcal</td><td class="ecart">+35 % en haut</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Autrement dit : quelqu'un qui lit la borne basse des trois lignes de macros mange nettement moins que la dépense que le même écran vient de lui annoncer. Nous ne savons pas ce que produit cette lecture chez une personne seule devant son téléphone, et nous n'avons pas la compétence pour le savoir.</p>
+  <p>Nous n'avons rien modifié en l'attendant : la question part telle quelle.</p>
+</section>
+
+<section>
+  <p class="eyebrow">Vos réponses</p>
+  <h2>Ce sur quoi nous demandons votre avis</h2>
+  <p>Six questions, dans l'ordre où elles nous inquiètent. Un avis en une phrase par question nous suffit — et un « je ne trancherais pas ça sans voir la personne » est une réponse que nous saurons appliquer.</p>
+
+  <div class="questions">
+
+    <article class="question">
+      <div class="qhead"><span class="qnum"></span><span class="priorite">bloque une fonctionnalité</span></div>
+      <h3 class="qtitre">Ces trois chiffres de macronutriments sont-ils affichables sans encadrement professionnel, et si oui sous quelle forme&nbsp;?</h3>
+      <p>Nous voyons quatre issues et n'avons pas de préférence : les retirer ; ne garder que les protéines ; les afficher en grammes par kilo sans jamais les totaliser en grammes par jour ; ou les conserver tels quels avec une formulation différente. Si vous en voyez une cinquième, elle nous intéresse davantage.</p>
+    </article>
+
+    <article class="question">
+      <div class="qhead"><span class="qnum"></span></div>
+      <h3 class="qtitre">Afficher un nombre de calories dépensées est-il approprié pour un public d'amateurs non suivis&nbsp;?</h3>
+      <p>Notre seul filtre est l'IMC : hors de 15–45, rien ne s'affiche. C'est une garde grossière — elle ne voit ni un antécédent de trouble du comportement alimentaire, ni une perte de poids récente, ni une relation difficile au chiffre chez quelqu'un dont l'IMC est parfaitement normal. Faut-il un filtre supplémentaire, une question posée en amont, ou faut-il que l'affichage soit désactivé par défaut et activé volontairement&nbsp;?</p>
+    </article>
+
+    <article class="question">
+      <div class="qhead"><span class="qnum"></span><span class="priorite">défaut mesuré</span></div>
+      <h3 class="qtitre">Faut-il couper l'estimation journalière en dessous d'un certain âge&nbsp;?</h3>
+      <p>Constat fait en préparant ce dossier : l'équation de Mifflin-St Jeor est validée chez l'adulte, et <strong>le moteur n'oppose aucune borne d'âge à l'estimation journalière</strong>. Un profil de 12 ans reçoit aujourd'hui « 1 750–2 480 kcal » et « protéines 60–90 g/j » — des chiffres qui paraissent précis alors que l'équation est hors de son domaine.</p>
+      <p>Nous savons corriger cela en une ligne. Nous ne savons pas où placer la borne, ni s'il faut couper l'estimation seule ou aussi les consignes de ravitaillement d'effort, qui elles nous semblent utiles à un jeune sportif.</p>
+    </article>
+
+    <article class="question">
+      <div class="qhead"><span class="qnum"></span></div>
+      <h3 class="qtitre">La fenêtre de récupération de 30–60 minutes est-elle toujours ce que vous diriez&nbsp;?</h3>
+      <p>Nous nous appuyons sur la position ISSN de 2017. La littérature a bougé depuis sur l'urgence réelle de cette fenêtre chez un amateur qui s'entraîne une fois par jour. Faut-il l'élargir, la nuancer, ou la réserver aux journées à deux séances&nbsp;?</p>
+    </article>
+
+    <article class="question">
+      <div class="qhead"><span class="qnum"></span></div>
+      <h3 class="qtitre">La borne de 90 g de glucides par heure est-elle assez encadrée&nbsp;?</h3>
+      <p>Le texte mentionne l'entraînement digestif progressif et interdit toute nouveauté le jour de la course. Mais 90 g/h reste affiché comme un objectif atteignable dès la première sortie longue de la préparation. Faut-il conditionner la fourchette haute à une progression, et si oui sur quel critère&nbsp;?</p>
+    </article>
+
+    <article class="question">
+      <div class="qhead"><span class="qnum"></span></div>
+      <h3 class="qtitre">Quels mots faut-il ajouter à notre liste d'interdits&nbsp;?</h3>
+      <p>Cinq expressions sont bannies de toute sortie du logiciel et vérifiées automatiquement. La liste vient de notre intuition, pas de votre pratique. Ce qui nous intéresse le plus, ce sont les tournures qui paraissent neutres à l'ingénieur qui les écrit et ne le sont pas pour la personne qui les lit.</p>
+    </article>
+
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Suite</p>
+  <h2>Ce qui se passe après votre réponse</h2>
+  <p>Chacune de vos réponses devient une règle du moteur, avec un identifiant, votre justification en clair dans le code, et une vérification automatique qui empêche quiconque de la défaire par la suite. C'est la manière dont fonctionne tout le reste de l'application : une décision se mesure, ou elle n'existe pas.</p>
+  <p>Si votre réponse est « retirez cet écran », il sera retiré. Nous l'avons déjà fait pour le journal alimentaire.</p>
+
+  <div class="encadre query">
+    <h3>Une précision sur ce que vous engagez</h3>
+    <p>Nous ne cherchons pas une caution : votre nom n'apparaîtra nulle part dans le produit sans votre accord explicite, et rien de ce dossier ne sera présenté aux utilisateurs comme validé par un professionnel. Nous cherchons à savoir où arrêter une machine qui, laissée à elle-même, continuera d'ajouter des chiffres.</p>
+  </div>
+</section>
+
+<footer>
+  <p>Dossier établi le 2 août 2026 à partir des règles N1 à N11 du moteur EnduraBuild. Toutes les valeurs citées sont extraites du code en production ; tous les textes entre guillemets sont les chaînes réellement affichées, non reformulées pour ce document.</p>
+</footer>
+
+</div>
