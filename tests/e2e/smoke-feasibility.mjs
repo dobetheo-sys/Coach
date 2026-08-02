@@ -97,6 +97,13 @@ await page.waitForTimeout(800);
 ok(await page.locator("#rvCard").count() > 0, "RV-UI — la carte « chrono visé » est présente dans l'onglet Plan");
 ok(await page.locator("#rvIn").count() > 0, "RV-UI — elle porte un champ de saisie");
 
+// ── U12 — repliée tant qu'elle n'a rien à dire : l'onglet Plan fait déjà 7,7 écrans sur un
+// téléphone, une question OPTIONNELLE n'a pas à coûter de la place à qui ne l'utilise pas.
+ok(!(await page.evaluate(() => document.getElementById("rvCard").open)),
+  "U12 — sans chrono saisi, la carte est REPLIÉE");
+await page.click("#rvCard summary");
+await page.waitForTimeout(200);
+
 // ── L'empreinte du plan AVANT toute saisie
 const avant = await empreinte(page);
 
@@ -109,11 +116,17 @@ ok(/atteignable|juste|d'ici là|au-delà|pas assez/i.test(texte), "RV-UI-A — u
 ok(/Comment on arrive là/.test(texte), "RV-UI-A — et il est MOTIVÉ (les décisions sont consultables)");
 ok(!/NaN|undefined|\[object/.test(texte), "RV-UI-A — le verdict ne laisse fuiter aucune valeur brute");
 
+// ── U12 — une fois un chrono saisi, elle s'ouvre d'office : replier ce qu'on vient de
+// demander serait cacher la réponse.
+ok(await page.evaluate(() => document.getElementById("rvCard").open),
+  "U12 — avec un chrono saisi, la carte est OUVERTE");
+
 // ── RV-UI-B : LE PLAN N'A PAS BOUGÉ. C'est la moitié qui compte.
 const apres = await empreinte(page);
 ok(avant === apres, "RV-UI-B — le plan est IDENTIQUE avec et sans chrono visé (séance par séance)");
 
 // ── Une saisie illisible le dit, et ne devine pas
+await page.locator("#rvCard").evaluate((e) => { e.open = true; });
 await page.fill("#rvIn", "trois heures");
 await page.locator("#rvIn").dispatchEvent("change");
 await page.waitForTimeout(600);

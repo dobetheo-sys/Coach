@@ -385,7 +385,7 @@ sous une documentation qui le disait vert. **20 invariants × 54 configurations,
 ```verify
 id: O-9
 quoi: le banc d'invariants est vert ET bloquant
-attendu: /✓ les 20 invariants tiennent sur les 54 configurations/
+attendu: /✓ les \d+ invariants tiennent sur les 54 configurations/
 cmd: npm run audit:invariants
 ```
 
@@ -887,6 +887,51 @@ id: O-18
 quoi: la saturation de la table de marge sous 6'00/km, et l'absence de verdict hors course
 attendu: /7:00 = 6:30 : OUI[\s\S]*hors course : null/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const iso=(d)=>new Date(Date.now()+d*864e5).toISOString().slice(0,10);const b={format:'10k',level:'debutant',history:'reprise',intent:'competition',vol_max:'6',vol_recent:'0',sessions_max:'4',dispo:'quotidienne',age:'30',sex:'H',weight:'78',height:'180',injury:'aucune',off_days:'non',shift_ok:'non',doubles:'non',sleep:'moyen',life_load:'normale',activity:'actif',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'plat',pace_known:'oui',race_date:iso(112)};const g=(pace)=>{const a={...b,pace};return E.predict('run',a,E.buildPlan('run',a)).projected.gainPct.thrPace;};console.log('7:00 = 6:30 : '+(Math.abs(g('7:00')-g('6:30'))<1e-9?'OUI':'non'));console.log('hors course : '+E.feasibility('swim',{...b,target_time:'30:00'},null));"
+```
+
+### O-19 · L'affûtage coupe la FRÉQUENCE, que sa propre source dit de maintenir · ⏳ **OUVERT — partiellement traité (C29)**
+
+Trouvé en relisant des plans comme un entraîneur, pas comme un auditeur. `ARCHITECTURE.md` cite
+**Bosquet 2007** pour le +1,96 % d'affûtage. Cette méta-analyse — et Mujika — décrivent l'affûtage
+par **trois bras** : volume −41/−60 %, **intensité maintenue**, **fréquence maintenue à ≥ 80 %**.
+Seul le premier est vérifié (R3.13). Personne ne regarde le troisième.
+
+**Mesuré (180 profils, 5 sports × formats × niveaux × enveloppes) : fréquence médiane 75 % du pic,
+94 profils sur 180 (52 %) sous le seuil de 80 %.** Marathon inter : 3 séances d'affûtage contre 5
+au pic. Natation débutant et 70.3 débutant : 40 %.
+
+**Corollaire, sur les formats où la sortie longue EST la spécificité** : elle est explicitement
+exclue des victimes de la décroissance, donc elle survit pendant que tout le reste disparaît.
+
+| profil | séance longue affûtage/pic | semaine affûtage/pic |
+|---|---|---|
+| run/marathon | **79 %** (142' / 180') | 46 % |
+| run/semi | 70 % | 46 % |
+| bike/cyclo | 65 % | 55 % |
+
+Un marathonien recevait donc : lundi OFF, mardi OFF, mercredi OFF, jeudi 48', vendredi OFF,
+**samedi 141'**, dimanche 47'. Quatre jours de repos et 2 h 21 de sortie longue huit jours avant
+sa course. Ce n'est pas un affûtage, c'est une semaine de repos avec une sortie longue posée
+dessus. La cible de volume est tenue ; c'est la MONNAIE qui est fausse.
+
+**CE QUI EST FAIT — C29.** La décroissance d'affûtage (`planGenerator.ts`) réduit désormais les
+séances au lieu d'en supprimer une quand le retrait ferait passer la semaine sous 80 % de la
+fréquence du pic. Vérifié : **3 profils améliorés (natation débutant 20 % → 40 %), 0 dégradé.**
+
+**CE QUI RESTE — et pourquoi ce n'est pas fermé.** Ma première hypothèse était que la décroissance
+était la cause ; elle est fausse, et le correctif l'a montré (aucun des 15 profils mesurés n'a
+bougé). Les jours OFF de l'affûtage viennent de **deux autres passes**, toutes deux adossées à
+R3.13 (« l'affûtage pèse au plus 60 % du pic ») : elles retirent des jours parce que réduire n'a
+jamais été essayé. Les corriger, c'est arbitrer entre R3.13 (règle de sécurité) et le bras
+fréquence — un choix de produit, pas une correction mécanique.
+
+**Reste après C29 : 52 % des profils sous 80 %, médiane 75 %.**
+
+```verify
+id: O-19
+quoi: la fréquence d'affûtage face au plancher de 80 % que Bosquet/Mujika déclarent
+attendu: /sous 80 % : \d+/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const iso=(d)=>new Date(Date.now()+d*864e5).toISOString().slice(0,10);const B={intent:'competition',dispo:'quotidienne',shift_ok:'non',doubles:'non',off_days:'non',sex:'H',sleep:'moyen',life_load:'normale',activity:'actif',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',weight_lever:'non',age:'35',weight:'75',height:'178'};const R={run:{pace_known:'oui',pace:'4:40',terrain:'plat'},bike:{ftp_known:'oui',ftp:'240',terrain:'plat'}};const F={run:['10k','semi','marathon'],bike:['cyclo']};let n=0,sous=0;for(const sp of Object.keys(F))for(const f of F[sp])for(const lv of ['debutant','inter','avance']){let p;try{p=E.buildPlan(sp,Object.assign({},B,{level:lv,history:lv==='debutant'?'reprise':'confirme',format:f,vol_max:'10',vol_recent:'6',sessions_max:'6',race_date:iso(140)},R[sp]));}catch(e){continue;}const nb=(w)=>w.days.filter(d=>d.sessions.some(s=>s.d!=='rs'&&(s.min||0)>0&&!s.race)).length;const pk=p.weeks.filter(w=>w.phase.id==='peak'&&!w.isRecup),tp=p.weeks.filter(w=>w.phase.id==='taper');if(!pk.length||!tp.length)continue;const np=Math.max(...pk.map(nb));if(!np)continue;n++;if(Math.min(...tp.map(nb))/np<0.8)sous++;}console.log('profils : '+n);console.log('sous 80 % : '+sous);"
 ```
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)

@@ -2737,3 +2737,108 @@ aveugle dirait exactement la même chose.** La suite change donc une réponse do
 déplace le plan (volume 6 h → 3 h) et exige que l'empreinte le voie. Sans ce critère, `RV-UI-B`
 ne prouverait rien — c'est la leçon des trois instruments démasqués en R20 (`audit:v1`,
 l'ancrage calendaire du banc R14, `measure:fallback`), appliquée d'avance.
+
+## C28 / C29 / U11–U13 — le lot des trois relectures (coach, développeur, client)
+
+Traversée du produit sous trois regards successifs, chacun mesurant ce que les 22 gates ne
+regardent pas : ils vérifient tous ce que le moteur PRODUIT, jamais ce qu'un entraîneur
+DÉFENDRAIT ni ce qu'une personne LIT.
+
+### C28 — une course en milieu de semaine mettait 156 minutes à J-2
+
+Le plus grave du lot. Marathon, dernière semaine, selon le jour du départ :
+
+| jour J | jours | volume | % du pic | plus grosse séance |
+|---|---|---|---|---|
+| dimanche | 7 | 2,3 h | 23 % | 63' à J-6 |
+| **mercredi** | **3** | **2,9 h** | **30 %** | **156' à J-2** |
+| jeudi | 4 | 2,9 h | 30 % | 98' à J-3 |
+| vendredi | 5 | 2,9 h | 30 % | 82' à J-4 |
+
+Une cyclosportive un mercredi : **168 minutes deux jours avant le départ**. Sur 84 profils
+balayés sur les sept jours possibles, **36 dépassaient 45 minutes à J-2**.
+
+**Deux causes, et la seconde est la leçon.**
+
+1. **Le plancher ne se proratisait pas.** N2 coupe la dernière semaine au soir du jour J : une
+   course un mercredi laisse trois jours. Le plancher R15.7-A réclamait 30 % du pic sans
+   regarder cette longueur, et il n'y avait que deux jours pour le porter, dont la veille
+   plafonnée à 25 min. Le signe qui ne trompe pas : **la relation était non monotone** — trois
+   jours portaient 2,9 h, sept jours 2,3 h. Plus la semaine est courte, plus elle est chargée.
+   Correctif : prorata sur les jours d'entraînement réels, qui ne change **rien** à une course
+   le dimanche — le cas de très loin le plus fréquent.
+2. **Les plafonds de la fenêtre d'approche EXISTAIENT et arrivaient trop tôt.** N3/N4 borne
+   J-1 à 25 min et J-2/J-3 à 62 — mais cette passe tourne pendant la construction, avant le
+   plancher et avant la mise à l'échelle. Vérifié en bisectant : la séance de rattrapage était
+   **créée à 30 min et ressortait à 156**. Elle n'était pas fabriquée trop grosse, elle était
+   grossie après coup. **Onzième fois que ce dépôt paie la même leçon** (R13.6-A1 sur C22,
+   R15.7-A sur ce plancher exact, I14 sur les garanties de séance) : une garantie vérifiée au
+   milieu du pipeline ne vérifie que l'avant-dernier état. Le plafond ne se déplace pas, il se
+   **rejoue au point fixe**.
+
+**Résultat : J-2 max 168' → 63'.** Et un défaut voisin tombe avec : **la veille elle-même
+dépassait sa borne** (36' mesurés contre 25 déclarés) — R13.4 fuyait par le même trou.
+
+**Garde `I21`** (banc d'invariants, 7 jours de la semaine × 6 sports) — **vérifiée rouge** contre
+le moteur d'avant : 10 échecs. Débusqué en l'écrivant : le banc annonçait « les **20**
+invariants » alors que sa table en déclarait 22 — un compte écrit à la main qui ment dès qu'on
+lui ajoute une ligne. Il est dérivé désormais.
+
+### C29 — l'affûtage coupe la fréquence, que sa propre source dit de maintenir
+
+Bosquet 2007, cité ici pour le +1,96 %, décrit **trois bras** : volume −41/−60 %, intensité
+maintenue, **fréquence ≥ 80 %**. Seul le premier était vérifié. Mesuré : **médiane 75 %, 52 %
+des profils sous 80 %**. La décroissance réduit désormais au lieu de supprimer quand le retrait
+passerait sous ce plancher — **3 profils améliorés, 0 dégradé**.
+
+**Partiellement traité, et c'est dit** : ma première hypothèse (la décroissance est la cause)
+était fausse, le correctif l'a montré en ne bougeant aucun des 15 profils mesurés. Les jours OFF
+viennent de deux autres passes adossées à R3.13. Entrée `O-19` au registre, avec ses chiffres.
+
+### U11 — le jour où le plan est créé, on montre le plan
+
+Mesuré côté client : **8 écrans, 30 gestes** pour finir le questionnaire — et le premier écran
+affiché ensuite était le check-in, donc **trois questions de plus**. Le portillon est juste pour
+qui REVIENT ; il est faux à la seconde zéro, et c'est cette seconde qui décide si la personne
+reste. Même famille qu'U1 : une mécanique bonne au régime permanent, appliquée à un instant où
+elle n'a pas de sens.
+
+**Ce qui ne change pas** : le portillon lui-même. 🎯 Aujourd'hui demande toujours le point du
+jour avant de montrer la séance. On change l'onglet d'ARRIVÉE, pas la règle — et seulement le
+jour de la création.
+
+Écrit faux du premier coup, et gardé écrit : mon test lisait `plan_start`, en commentant que
+`ensurePlan()` l'avait déjà posé. Faux — `renderPlan()` fait `invalidatePlan(); renderTabs();`
+et c'est `renderTabs` qui déclenche `ensurePlan`. L'ancre n'existe pas encore au moment du test.
+La garde E2E est sortie rouge sur ses trois critères.
+
+### U12 / U13 — la place et les mots
+
+- **U12** : la carte « chrono visé » se replie tant qu'aucun chrono n'est saisi. L'onglet 🗓 Plan
+  fait **7,7 écrans de défilement** sur un téléphone et cette carte y ajoutait **462 px (7 %)**
+  pour une question optionnelle. Une fonctionnalité facultative ne coûte pas de place à ceux qui
+  ne l'utilisent pas. Ouverte d'office dès qu'un chrono existe : replier ce qu'on vient de
+  demander serait cacher la réponse.
+- **U13** : le mot « premium » disparaît. Il fabriquait une objection commerciale que le produit
+  dément deux lignes plus bas (« Gratuit — “premium” veut juste dire “plus poussé” »). Devient
+  « l'essentiel » / « réglage fin », et « Tout est inclus — il n'y a rien à payer, ici ni
+  ailleurs ».
+
+### D1 / D2 — le développeur
+
+- **D1** : un état illisible ne s'efface plus en silence. Testé en écrivant du JSON tronqué dans
+  `eb_state_v2` : l'app repartait de zéro sans un mot **et le premier `ebSave` écrasait les
+  octets d'origine**. Le chemin est atteignable — la restauration JSON du Profil fait d'un
+  fichier édité à la main une entrée officiellement supportée. La copie part sous une clé datée.
+  `ebSave` cesse aussi d'avaler tout échec d'écriture (Safari en navigation privée : l'athlète
+  voyait ses ✓, rien n'était persisté).
+- **D2** : `feasibility.js` cesse de redéfinir son échappeur et importe `esc` (R11.1) — la règle
+  « jamais deux fois la même table », enfreinte dans le code qui venait de l'invoquer.
+
+### Ce que ces relectures ont validé, et qu'il faut dire aussi
+
+L'état hostile est bien traité : `pace: "<img src=x onerror=…>"` et `level: "martien"` produisent
+un **refus typé en français clair**, zéro injection, zéro erreur JS. Le garde-fou de collision de
+noms du bundle **mord** (vérifié en provoquant une collision). Les cibles tactiles tiennent le
+44×44. La progression de fond des plans est saine (longue 72' → 180' sur 13 semaines, récup bien
+placées, allures correctement dérivées du seuil).

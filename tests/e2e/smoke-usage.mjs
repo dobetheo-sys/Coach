@@ -71,8 +71,17 @@ async function session(fauxMs) {
   return { ctx, page };
 }
 
-/** Répond aux trois diapos et chronomètre l'apparition de la séance. */
+/** Répond aux trois diapos et chronomètre l'apparition de la séance.
+ *
+ *  U11 — depuis que la génération arrive sur 🗓 Plan le jour même, il faut d'abord ALLER sur
+ *  🎯 Aujourd'hui : le check-in y vit toujours, il n'est simplement plus l'écran d'accueil.
+ *  Le rôle de cette fonction est inchangé, c'est le point de départ qui a bougé. */
 async function passeCheckin(page) {
+  const bouton = page.locator('#ebTabbar .tabbtn[data-tab="today"]');
+  if (await bouton.count()) {
+    const actif = await page.evaluate(() => (document.querySelector("#ebTabbar .tabbtn.active") || {}).dataset?.tab);
+    if (actif !== "today") { await bouton.click(); await page.waitForTimeout(500); }
+  }
   for (let i = 0; i < 6; i++) {
     const n = await page.locator(".ck-opt").count();
     if (!n) break;
@@ -181,6 +190,10 @@ ok(declenche.length === 0, "U1 — un plan créé à l'instant n'annonce aucune 
 // ── U2 — matin / journée / soir
 for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point du jour", "point du matin"], [21, "point du soir", "point du matin"]]) {
   const { ctx, page } = await session(Date.UTC(2026, 7, 4, h - 2, 0, 0)); // Paris = UTC+2 en août
+  // U11 — le check-in n'est plus l'écran d'arrivée le jour de la création : on va le chercher
+  // là où il vit. C'est le POINT DE DÉPART qui a changé, pas ce que ce critère mesure.
+  await page.click('#ebTabbar .tabbtn[data-tab="today"]');
+  await page.waitForTimeout(600);
   const txt = await page.evaluate(() => (document.body.innerText || "").toLowerCase());
   ok(txt.includes(attendu) && (!interdit || !txt.includes(interdit)), "U2 — à " + h + " h, le check-in s'appelle « " + attendu + " »");
   await ctx.close();
@@ -223,6 +236,52 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   });
   for (const [cle, z] of Object.entries(cibles))
     ok(!!z && z.w >= 24 && z.h >= 24, "U4 — la cible « " + cle + " » atteint le minimum tactile" + (z ? " (" + Math.round(z.w) + "×" + Math.round(z.h) + ")" : " — introuvable"));
+  await ctx.close();
+}
+
+// ── U11 — LE JOUR OÙ LE PLAN EST CRÉÉ, ON MONTRE LE PLAN.
+//
+// Mesuré côté client : 8 écrans et 30 gestes pour finir le questionnaire, et le premier écran
+// affiché ensuite était le check-in — trois questions de plus. On vérifie les DEUX moitiés :
+// le premier jour arrive sur le plan, ET le portillon du quotidien n'a pas disparu pour autant
+// (un correctif qui supprimerait le check-in serait pire que le défaut).
+{
+  const { ctx, page } = await session(LUNDI);
+  const onglet = await page.evaluate(() => (document.querySelector("#ebTabbar .tabbtn.active") || {}).dataset?.tab);
+  const txt = await page.evaluate(() => (document.getElementById("screen") || {}).innerText || "");
+  ok(onglet === "general", "U11 — après génération, on arrive sur le PLAN (onglet : " + onglet + ")");
+  ok(!/point du (matin|jour|soir)/i.test(txt.slice(0, 400)),
+    "U11 — le premier écran n'est plus un quatrième questionnaire");
+  ok(/semaine|phase|plan/i.test(txt), "U11 — et c'est bien le plan qui s'y trouve");
+  // Le portillon existe toujours : 🎯 Aujourd'hui demande le point du jour avant la séance.
+  await page.click('#ebTabbar .tabbtn[data-tab="today"]');
+  await page.waitForTimeout(600);
+  const today = await page.evaluate(() => (document.getElementById("screen") || {}).innerText || "");
+  ok(/point du (matin|jour|soir)/i.test(today),
+    "U11 — le check-in n'a pas été supprimé, il a juste cessé d'être l'écran d'arrivée");
+  await ctx.close();
+}
+
+// ── D1 — UN ÉTAT ILLISIBLE NE S'EFFACE PAS EN SILENCE.
+//
+// Testé en écrivant du JSON tronqué dans `eb_state_v2` : l'app repartait de zéro sans un mot ET
+// le premier `ebSave` écrasait les octets d'origine. Le chemin est atteignable — la restauration
+// JSON du Profil fait d'un fichier édité à la main une entrée officiellement supportée.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR" });
+  const page = await ctx.newPage();
+  await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
+  await page.evaluate(() => localStorage.setItem("eb_state_v2", '{"plans":[{"id":"p1","sport":"run","answers":{'));
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  // On force une écriture (le clic sur un sport en déclenche une) pour reproduire l'écrasement.
+  await page.click('.sport-card[data-sport="run"]').catch(() => {});
+  await page.waitForTimeout(400);
+  const sauve = await page.evaluate(() => Object.keys(localStorage)
+    .filter((k) => /^eb_state_v2_corrompu_/.test(k))
+    .map((k) => localStorage.getItem(k))[0] || null);
+  ok(!!sauve && sauve.startsWith('{"plans":[{"id":"p1"'),
+    "D1 — l'état illisible est mis de côté au lieu d'être écrasé");
   await ctx.close();
 }
 

@@ -36,6 +36,35 @@ const TABS = [
 
 let activeTab = "today"; // défaut : l'onglet central — le point du matin d'abord
 
+/**
+ * U11 — LE JOUR OÙ LE PLAN EST CRÉÉ, ON MONTRE LE PLAN.
+ *
+ * Mesuré en traversant l'app comme un nouvel utilisateur : **8 écrans, 30 gestes** pour arriver
+ * au bout du questionnaire — et le tout premier écran affiché ensuite était le check-in, donc
+ * TROIS QUESTIONS DE PLUS. La personne vient de payer trente réponses pour voir son plan ; on
+ * lui en redemande.
+ *
+ * Le check-in en diaporama est juste — pour quelqu'un qui REVIENT. Il est faux à la seconde
+ * zéro, et c'est cette seconde-là qui décide si la personne reste. Même famille qu'U1, où
+ * consoler quelqu'un d'un décrochage qui n'avait pas eu lieu était pire qu'un reproche : une
+ * mécanique bonne au régime permanent, appliquée à un instant où elle n'a pas de sens.
+ *
+ * CE QUI NE CHANGE PAS : le portillon lui-même. 🎯 Aujourd'hui continue de demander le point du
+ * jour avant de montrer la séance, tous les jours, y compris le premier. On change l'onglet
+ * d'ARRIVÉE, pas la règle — et seulement le jour de la création (`plan_start`), parce qu'un
+ * check-in n'a de toute façon rien à adapter sur un plan qui n'a pas encore d'historique.
+ *
+ * ATTENTION À L'ORDRE, ET J'AI DÛ LE MESURER POUR LE VOIR. Ma première écriture testait
+ * `!!S.answers.plan_start && … === todayISO()` en commentant « ensurePlan a déjà posé
+ * plan_start à ce stade ». Faux : `renderPlan()` fait `invalidatePlan(); renderTabs();` et c'est
+ * `renderTabs` → `renderActiveTab` → `ensurePlan` qui pose l'ancre. Au moment du test, elle
+ * n'existe pas encore — la garde E2E est sortie rouge sur les trois critères. L'ancre ABSENTE
+ * est donc, elle aussi, le signe d'une création à l'instant.
+ */
+function jourDeCreation() {
+  return !S.answers.plan_start || S.answers.plan_start === todayISO();
+}
+
 /** Le SEUL endroit où le plan se (re)calcule. Invalidé par reset/Modifier/édition profil. */
 export function ensurePlan() {
   if (!S.currentPlan) {
@@ -166,6 +195,8 @@ export function setTab(id) {
 export function renderTabs() {
   S.onPlan = true;
   ebSave();
+  // U11 — l'arrivée sur le plan le jour de sa création.
+  if (jourDeCreation() && activeTab === "today") activeTab = "general";
   document.body.classList.add("has-tabs");
   let bar = $("ebTabbar");
   if (!bar) {

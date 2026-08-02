@@ -269,6 +269,30 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
       if (!dernier || !dernier.sessions.some(isRace))
         ko("I18", `${sp}/course ${iso}`, `le dernier jour du plan (${dernier ? dernier.date : "—"}) n'est pas la course`);
     }
+    // I21 (C28) — LES TROIS JOURS QUI PRÉCÈDENT LA COURSE SONT PLAFONNÉS, ET ÇA TIENT
+    // JUSQU'À LA SORTIE. Les plafonds existaient depuis N3/N4 (J-1 ≤ 25 min, J-2/J-3 ≤ 62),
+    // mais cette passe tourne pendant la construction : le plancher de semaine de course les
+    // regonflait ensuite. Mesuré avant le correctif — **156 min à J-2 d'un marathon, 168 à
+    // J-2 d'une cyclosportive**, et la veille elle-même à 36 min alors que R13.4 la borne à 25.
+    //
+    // Le JOUR DE LA SEMAINE est la variable du défaut, comme pour I18 : une course le dimanche
+    // laisse six jours pour porter le plancher et ne montre rien. Les sept sont testés.
+    for (const iso of ["2027-06-07", "2027-06-08", "2027-06-09", "2027-06-10", "2027-06-11", "2027-06-12", "2027-06-13"]) {
+      const p3 = E.buildPlan(sp, { ...BASE, ...extra, ...ENV[1].a, level: "inter", race_date: iso });
+      const jours = p3.weeks.flatMap((w) => w.days);
+      const ix = jours.findIndex((d) => d.sessions.some(isRace));
+      if (ix < 1) continue;
+      for (let k = 1; k <= 3; k++) {
+        const d = jours[ix - k];
+        if (!d) continue;
+        const min = d.sessions.reduce((t, x) => t + (isRace(x) ? 0 : x.min || 0), 0);
+        // Tolérance de 1 min : les durées rendues sont arrondies à la minute entière (F3).
+        const cap = (k === 1 ? 25 : 63) + 1;
+        if (min > cap)
+          ko("I21", `${sp}/course ${iso}`, `J-${k} porte ${min} min (plafond ${cap - 1}) — ` +
+            d.sessions.filter((x) => !isRace(x) && (x.min || 0) > 0).map((x) => x.name + " " + x.min + "'").join(", "));
+      }
+    }
   }
 
   // I13 — monotonie du niveau déclaré : plus l'athlète est fort, plus la charge est élevée
@@ -288,6 +312,7 @@ const NAMES = {
   I13:"monotonie du niveau", I15:"la course est au calendrier", I16:"veille de course allégée", I17:"jour J exclusif",
   I18:"le plan s'arrête le jour J",
   I19:"la transition survit à l'affûtage", I20:"la récup connaît les phases",
+  I21:"les 3 jours avant la course sont plafonnés",
 };
 const G = {};
 for (const f of fails) (G[f.id] ||= []).push(f);
@@ -323,4 +348,4 @@ if (fails.length) {
   console.error("Un invariant est une propriété que le plan tient TOUJOURS. S'il casse, c'est le moteur qu'on corrige — ou l'invariant qu'on démontre périmé, avec sa mesure.");
   process.exit(1);
 }
-console.log("\n✓ les 20 invariants tiennent sur les 54 configurations.");
+console.log("\n✓ les " + Object.keys(NAMES).length + " invariants tiennent sur les 54 configurations.");

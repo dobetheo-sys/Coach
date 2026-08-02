@@ -539,7 +539,7 @@ function renderStep(){
   if(S.tier==="free")p=Array.from({length:fT},(_,i)=>'<div class="pstep '+(i<S.step?"done":i===S.step?"cur":"")+'"></div>').join("")+'<div class="psep">★</div>'+Array.from({length:pT},()=>'<div class="pstep prem"></div>').join("");
   else p=Array.from({length:fT},()=>'<div class="pstep done"></div>').join("")+'<div class="psep">★</div>'+Array.from({length:pT},(_,i)=>'<div class="pstep prem '+(i<S.step?"done":i===S.step?"cur":"")+'"></div>').join("");
   $("progress").innerHTML=p;
-  if($("tierBadge")){$("tierBadge").className="tier-badge "+(S.tier==="free"?"free":"premium");$("tierBadge").textContent=(S.tier==="free"?"● ":"★ ")+SPORTS[S.sport].nom+(S.tier==="free"?" · gratuit":" · premium");}
+  if($("tierBadge")){$("tierBadge").className="tier-badge "+(S.tier==="free"?"free":"premium");$("tierBadge").textContent=(S.tier==="free"?"● ":"★ ")+SPORTS[S.sport].nom+(S.tier==="free"?" · l'essentiel":" · réglage fin");}
   if(S.step>=steps.length){renderBlueprint();return;}
   const st=steps[S.step];
   $("screen").innerHTML='<div class="card"><div class="eyebrow">'+st.eyebrow+'</div><h2>'+st.title+'</h2><div class="why">'+st.why+'</div>'+st.render()
@@ -563,9 +563,9 @@ function renderBlueprint(){
   if(med)html+='<div class="warn"><strong>⚠️ Signal médical déclaré.</strong> Consulte un médecin avant de démarrer toute intensité.</div>';
   if(S.tier==="free"){
     html+='<div class="eyebrow">'+SPORTS[S.sport].nom+' — prêt</div><h2>Ton plan est prêt 🎯</h2>'
-      +'<div class="why">On a tout ce qu\'il faut. Génère ton calendrier, ou affine encore avec quelques questions premium.</div>'
+      +'<div class="why">On a tout ce qu\'il faut. Génère ton calendrier, ou affine encore avec quelques questions de plus.</div>'
       +'<div class="gate"><h3>⚡ Voir mon plan</h3><button class="btn gold" id="genBtn" type="button">Générer mon calendrier</button></div>'
-      +'<div class="gate" style="background:var(--bg2)"><h3>★ Aller plus loin</h3><p>Sommeil, contraintes de semaine, tests, nutrition, courses intermédiaires : quelques écrans de plus pour calibrer plus finement. <b>Gratuit</b> — « premium » veut juste dire « plus poussé ».</p><button class="btn" id="goPremium" type="button">Affiner (gratuit) →</button></div>'
+      +'<div class="gate" style="background:var(--bg2)"><h3>★ Aller plus loin</h3><p>Sommeil, contraintes de semaine, tests, nutrition, courses intermédiaires : quelques écrans de plus pour calibrer plus finement. <b>Tout est inclus</b> — il n\'y a rien à payer, ici ni ailleurs.</p><button class="btn" id="goPremium" type="button">Affiner mon plan →</button></div>'
       +'<div class="nav"><button class="btn" id="prevBtn" type="button">← Modifier</button><button class="btn" id="restartBtn" type="button">Changer de sport</button></div></div>';
     $("screen").innerHTML=html;$("genBtn").onclick=()=>renderPlan();$("goPremium").onclick=()=>{S.tier="premium";S.step=0;renderStep();};
     $("prevBtn").onclick=()=>{S.step--;renderStep();};$("restartBtn").onclick=()=>reset();

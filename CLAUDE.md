@@ -760,6 +760,42 @@ Gardes **P11-A à P11-F** au banc `audit:r14.1`, qui assertent les DEUX moitiés
 disparue ET l'entraîné intact — **vérifiées rouges** (3 sur 6) contre le moteur d'avant P11.
 **22 gates verts, E2E 14/14, golden 900 inchangé** — la projection ne touche aucune séance.
 
+**C28/C29 + U11–U13 + D1/D2 livrés — le lot des trois relectures** (coach · développeur · client,
+voir ARCHITECTURE.md « C28 / C29 / U11–U13 ») : traversée du produit sous trois regards, chacun
+mesurant ce qu'aucun des 22 gates ne regarde — ils vérifient tous ce que le moteur PRODUIT,
+jamais ce qu'un entraîneur DÉFENDRAIT ni ce qu'une personne LIT.
+**C28 — une course en milieu de semaine mettait 156 min à J-2** (168 pour une cyclosportive ;
+36 profils sur 84 au-dessus de 45 min). Deux causes : le plancher de semaine de course
+appliquait 30 % du pic à une semaine TRONQUÉE sans prorata — relation **non monotone**, trois
+jours portaient 2,9 h quand sept jours en portaient 2,3 — et surtout **les plafonds d'approche
+existaient déjà** (J-1 ≤ 25, J-2/J-3 ≤ 62) mais tournaient AVANT le plancher : bisecté, la
+séance était créée à 30 min et ressortait à 156. **Onzième paiement de la même leçon** — une
+garantie vérifiée au milieu du pipeline ne vérifie que l'avant-dernier état ; le plafond se
+REJOUE au point fixe. J-2 max **168' → 63'**, et la veille cesse de fuir elle aussi (36' → 23'
+pour une borne déclarée à 25). Garde `I21` (7 jours × 6 sports), **vérifiée rouge** (10 échecs).
+**C29 — l'affûtage coupe la fréquence, que Bosquet 2007 dit de maintenir** : la source citée ici
+pour le +1,96 % décrit TROIS bras (volume −41/−60 %, intensité maintenue, **fréquence ≥ 80 %**),
+seul le premier était vérifié. Mesuré : médiane **75 %**, 52 % des profils sous 80 %, et la
+sortie longue — exclue des victimes — survivait à **79 % du pic** quand la semaine tombait à
+46 %. La décroissance réduit désormais au lieu de supprimer sous le plancher de fréquence
+(3 profils améliorés, 0 dégradé). **Partiellement traité, et c'est dit** : ma première hypothèse
+était fausse (le correctif n'a bougé aucun des 15 profils mesurés), les jours OFF viennent de
+deux autres passes adossées à R3.13 — entrée **O-19** au registre avec ses chiffres.
+**U11 — après 8 écrans et 30 gestes, le premier écran était un quatrième questionnaire.** Le
+jour de la création, on arrive sur 🗓 Plan ; le portillon du check-in ne bouge pas, il cesse
+seulement d'être l'écran d'arrivée. Écrit faux du premier coup et gardé écrit : mon test lisait
+`plan_start` en supposant qu'`ensurePlan()` l'avait posé — c'est `renderTabs` qui le déclenche,
+l'ancre n'existe pas encore. **U12** : la carte « chrono visé » se replie (462 px, 7 % d'un
+onglet qui fait 7,7 écrans). **U13** : « premium » disparaît — il fabriquait une objection
+commerciale que le produit dément deux lignes plus bas. **D1** : un état illisible ne s'efface
+plus en silence (il était ÉCRASÉ au premier `ebSave` — mesuré), et l'échec d'écriture cesse
+d'être muet. **D2** : `feasibility.js` importe `esc` au lieu de le redéfinir (R11.1, enfreint
+dans le code qui venait de l'invoquer).
+Validé au passage, et dit aussi : l'état hostile produit un refus typé sans injection ni erreur
+JS, le garde-fou de collision du bundle MORD (vérifié en provoquant une collision), les cibles
+tactiles tiennent le 44×44.
+**22 gates verts, E2E 15/15, golden 900 recapturé (31 profils), registre 18/18.**
+
 **RV livré — le raisonnement inverse, et il ne construit rien** (voir ARCHITECTURE.md « RV ») :
 le moteur ne savait construire QUE en avant — d'où tu pars, jusqu'où la courbe peut monter.
 `src/engine/feasibility.ts` prend le problème par l'autre bout : une épreuve, un chrono visé, et

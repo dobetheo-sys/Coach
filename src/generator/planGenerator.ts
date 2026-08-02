@@ -444,9 +444,45 @@ export function reconcileDeclaredVolume(
     const isRaceW = lastW && (plan.races || []).some((rc) => lastW.days.some((d) => d.date === rc.date && d.sessions.some((s) => s.race)));
     const peakForFloor = Math.max(0, ...plan.weeks.filter((w) => w.phase.id === "peak").map(weekMinOf));
     const raceFloor = isRaceW && peakForFloor > 0 ? peakForFloor * 0.30 : 0;
+    // C29 — L'AFFÛTAGE COUPE LE VOLUME, PAS LA FRÉQUENCE.
+    //
+    // Bosquet 2007 — la source que ce fichier cite déjà deux fois — décrit l'affûtage par TROIS
+    // bras : volume −41/−60 %, **intensité maintenue**, **fréquence maintenue à ≥ 80 %**. Seul
+    // le premier était vérifié (R3.13). La décroissance ci-dessous retire des JOURS, et elle
+    // exclut de ses victimes la sortie longue et le brick — donc elle coupait exactement le
+    // bras qu'il faut garder et gardait exactement celui qu'il faut couper.
+    //
+    // Mesuré avant : **fréquence médiane 67 % du pic, 9 profils sur 15 sous 80 %** (marathon
+    // inter : 3 séances contre 5). Et la sortie longue ne baissait que de 21 % quand la semaine
+    // baissait de 54 % — un marathonien recevait 4 jours OFF et **2 h 21 de sortie longue huit
+    // jours avant sa course**. Ce n'est pas un affûtage, c'est une semaine de repos avec une
+    // sortie longue posée dessus.
+    //
+    // Le correctif ne touche pas la cible de volume : la décroissance décroît autant qu'avant.
+    // Il change la MONNAIE — sous le plancher de fréquence, on réduit les séances au lieu d'en
+    // supprimer une. La réduction est proportionnelle et atteint la sortie longue, qui cesse
+    // d'être un sanctuaire.
+    const peakDays = Math.max(0, ...plan.weeks.filter((w) => w.phase.id === "peak")
+      .map((w) => w.days.filter((d) => d.sessions.some((s) => s.d !== "rs" && !s.race)).length));
+    const freqPlancher = peakDays > 0 ? Math.ceil(peakDays * 0.8) : 0;
     let prev = Infinity;
     for (const wk of plan.weeks) {
       if (wk.phase.id !== "taper") continue;
+      /** Réduction proportionnelle de TOUTE la semaine — les répétitions d'abord (leçon I14 :
+       *  dans un intervalle, la durée EST le stimulus), la durée ensuite. */
+      const reduire = (f: number) => {
+        for (const d of wk.days) for (const sx of d.sessions) {
+          if (sx.d === "rs" || sx.race || !sx.steps) continue;
+          if (/Déverrouillage/i.test(sx.name)) continue; // R15.7-B — jamais la veille
+          for (const st of sx.steps) {
+            if (st.role !== "body") continue;
+            if ((st.reps || 1) > 1) st.reps = Math.max(1, Math.floor((st.reps || 1) * f));
+            else if (st.durationMin) st.durationMin = Math.max(5, Math.round(st.durationMin * f));
+            else if (st.distanceM) st.distanceM = Math.max(150, Math.round((st.distanceM * f) / 25) * 25);
+          }
+          if (render) render(sx);
+        }
+      };
       const floorHere = raceFloor > 0 ? raceFloor : 0;
       for (let g = 0; g < 6 && weekMinOf(wk) > prev && weekMinOf(wk) > floorHere; g++) {
         const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
@@ -484,18 +520,12 @@ export function reconcileDeclaredVolume(
           if (cand2.length) cand = cand2;
           else if (cand.some(sole)) orphanOnly = true;
         }
-        if (orphanOnly && prev > 0) {
-          const f = Math.max(0.5, (prev * 0.95) / weekMinOf(wk));
-          for (const d of wk.days) for (const sx of d.sessions) {
-            if (sx.d === "rs" || sx.race || !sx.steps) continue;
-            for (const st of sx.steps) {
-              if (st.role !== "body") continue;
-              if ((st.reps || 1) > 1) st.reps = Math.max(1, Math.floor((st.reps || 1) * f));
-              else if (st.durationMin) st.durationMin = Math.max(5, Math.round(st.durationMin * f));
-              else if (st.distanceM) st.distanceM = Math.max(150, Math.round((st.distanceM * f) / 25) * 25);
-            }
-            if (render) render(sx);
-          }
+        // C29 — sous le plancher de fréquence, on RÉDUIT au lieu de RETIRER. Même geste que la
+        // branche orpheline ci-dessous, pour une raison voisine : quand supprimer coûterait plus
+        // que la décroissance ne rapporte, c'est la taille qui cède, pas le nombre de jours.
+        const sousLePlancher = freqPlancher > 0 && active.length - 1 < freqPlancher;
+        if ((orphanOnly || sousLePlancher) && prev > 0) {
+          reduire(Math.max(0.5, (prev * 0.95) / weekMinOf(wk)));
           continue;
         }
         const victim = (cand.length ? cand : active).reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
@@ -523,7 +553,26 @@ export function reconcileDeclaredVolume(
     const last = plan.weeks[plan.weeks.length - 1];
     const isRaceWeek = last && (plan.races || []).some((rc) => last.days.some((d) => d.date === rc.date && d.sessions.some((s) => s.race)));
     if (isRaceWeek) {
-      const peakDeliv = Math.max(0, ...plan.weeks.filter((w) => w.phase.id === "peak").map(weekMinOf));
+      const peakDeliv0 = Math.max(0, ...plan.weeks.filter((w) => w.phase.id === "peak").map(weekMinOf));
+      // C28 — LE PLANCHER SE PRORATISE À LA LONGUEUR RÉELLE DE LA SEMAINE.
+      //
+      // N2 coupe la dernière semaine au soir du jour J : une course un mercredi laisse TROIS
+      // jours. Le plancher, lui, réclamait 30 % du pic sans regarder cette longueur — et il
+      // n'y a que deux jours pour le porter, dont la veille plafonnée à 25 min (R13.4). Tout
+      // atterrissait sur le seul jour restant : mesuré, **156 min à J-2 d'un marathon, 168 à
+      // J-2 d'une cyclosportive**.
+      //
+      // Le signe qui ne trompe pas : la relation était NON MONOTONE. Une semaine de 3 jours
+      // portait 2,9 h, une de 7 jours 2,3 h — plus la semaine est courte, plus elle est
+      // chargée. L'exact inverse d'un affûtage.
+      //
+      // Le prorata se calcule sur les jours D'ENTRAÎNEMENT (la course n'en est pas un, R13.4)
+      // rapportés à une semaine pleine. Il ne change RIEN à une course le dimanche, qui est le
+      // cas de très loin le plus fréquent — c'est exactement ce qu'on veut d'un correctif de
+      // ce genre : il ne mord que là où le défaut vit.
+      const joursUtiles = Math.max(0, last.days.length - 1);
+      const prorata = Math.min(1, joursUtiles / 6);
+      const peakDeliv = peakDeliv0 * prorata;
       const hors = () => last.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.race ? 0 : s.min || 0), 0), 0);
       if (peakDeliv > 0 && hors() < peakDeliv * 0.30) {
         // R15.7-A — la convergence était coupée à 3 tours : les caps de C13/C13e bornent chaque
@@ -655,6 +704,44 @@ export function reconcileDeclaredVolume(
             + "ton enveloppe ne permet pas de faire tenir toutes les disciplines avant le jour J. "
             + "Ce n'est pas grave si tu as roulé la semaine d'avant — mais si tu peux, ajoute 20 à 30 min "
             + "très faciles dans la discipline manquante deux jours avant la course.");
+        }
+      }
+      // C28b — LA FENÊTRE D'APPROCHE EST RE-APPLIQUÉE ICI, ET C'EST TOUT LE CORRECTIF.
+      //
+      // Les plafonds des jours qui précèdent la course (J-1 ≤ 25 min, J-2/J-3 ≤ 62) EXISTENT
+      // depuis N3/N4 — mais cette passe tourne pendant la CONSTRUCTION, avant le plancher
+      // ci-dessus et avant la mise à l'échelle finale. Vérifié en bisectant : la séance de
+      // rattrapage était créée à 30 min et ressortait à **156**. Elle n'était pas fabriquée
+      // trop grosse, elle était GROSSIE après coup.
+      //
+      // Onzième fois que ce dépôt paie la même leçon (R13.6-A1 sur C22, R15.7-A sur ce plancher
+      // exact, I14 sur les garanties de séance) : **une garantie vérifiée au milieu du pipeline
+      // ne vérifie que l'avant-dernier état.** Le plafond ne se déplace pas, il se REJOUE au
+      // point fixe. Aucun nouveau chiffre : `RACE_EVE_CAP_MIN` et le facteur 2,5 sont ceux de
+      // N3/N4, lus au même endroit (R11.1).
+      for (const rc of plan.races || []) {
+        const ix = last.days.findIndex((d) => d.date === rc.date && d.sessions.some((s) => s.race));
+        if (ix < 0) continue;
+        const prep = rc.prio === "A" ? 3 : 1;
+        for (let k = 1; k <= prep; k++) {
+          const d = last.days[ix - k];
+          if (!d) continue;
+          const capMin = k === 1 ? RACE_EVE_CAP_MIN : Math.round(RACE_EVE_CAP_MIN * 2.5);
+          for (const sx of d.sessions) {
+            if (sx.d === "rs" || sx.race || !sx.steps || (sx.min || 0) <= capMin) continue;
+            // On RÉDUIT, on ne reconstruit pas : la séance garde son identité (discipline, nom,
+            // note) et perd seulement ce qui l'a fait grossir. Reconstruire ici écraserait le
+            // déverrouillage de la veille, que R15.7-B protège justement contre les passes
+            // tardives.
+            const facteur = capMin / (sx.min || capMin);
+            for (const st of sx.steps) {
+              if (st.durationMin) st.durationMin = Math.max(1, Math.round(st.durationMin * facteur));
+              if (st.distanceM) st.distanceM = Math.max(25, Math.round((st.distanceM * facteur) / 25) * 25);
+            }
+            sx.long = false;
+            sx.brick = false;
+            if (render) render(sx);
+          }
         }
       }
     }

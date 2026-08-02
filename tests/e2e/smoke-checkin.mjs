@@ -40,8 +40,19 @@ await page.click("#nextBtn");
 await page.click("#genBtn");
 await page.waitForTimeout(400);
 
-// 1. Écran d'accueil = diaporama de check-in sur l'onglet central, PAS de séance visible
-ok(await page.locator("#ckSlide").count() === 1, "diaporama de check-in visible à l'ouverture");
+// 1. U11 — L'ÉCRAN D'ARRIVÉE A CHANGÉ, LE PORTILLON N'A PAS BOUGÉ.
+//
+// Le jour où le plan est créé, on arrive sur 🗓 Plan : après 8 écrans et 30 gestes de
+// questionnaire, présenter TROIS QUESTIONS DE PLUS était le moment où l'on perdait des gens.
+// Ce que ce fichier vérifie reste identique — « aucune séance visible avant le check-in » — mais
+// sur l'onglet où cette règle a toujours eu son sens : 🎯 Aujourd'hui. (Elle n'a jamais été
+// globale : 🗓 Plan a toujours affiché la grille, à un clic, avant tout check-in.)
+ok(await page.evaluate(() => (document.querySelector("#ebTabbar .tabbtn.active") || {}).dataset?.tab) === "general",
+  "U11 — le jour de la création, on arrive sur le PLAN et pas sur un quatrième questionnaire");
+await page.click('#ebTabbar .tabbtn[data-tab="today"]');
+await page.waitForTimeout(600);
+
+ok(await page.locator("#ckSlide").count() === 1, "diaporama de check-in visible à l'ouverture de 🎯 Aujourd'hui");
 ok(/1\/3/.test(await page.locator("#ckSlide").textContent()), "écran 1/3 (sommeil) affiché");
 ok(/dormi combien/.test(await page.locator("#ckSlide").textContent()), "le sommeil est demandé en HEURES (signal mesuré, audit v6 A5)");
 ok(await page.locator(".gw-grid").count() === 0, "AUCUNE grille de semaine visible avant le check-in");

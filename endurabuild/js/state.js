@@ -37,7 +37,24 @@ function ebActivate(id){
   return true;
 }
 // Persistance : clé versionnée eb_state_v2 (tableau de plans). survit au rafraîchissement.
-function ebSave(){try{ebSyncActive();liftShared();localStorage.setItem("eb_state_v2",JSON.stringify({plans:S.plans,activePlanId:S.activePlanId,shared:S.shared}));}catch(e){}}
+/** D2 — l'écriture peut ÉCHOUER (quota, Safari en navigation privée) et l'échec était muet :
+ *  l'athlète cochait ses séances, voyait le ✓, et rien n'était persisté. On le DIT une fois. */
+let ebSaveKO=false;
+function ebSave(){
+  try{
+    ebSyncActive();liftShared();
+    localStorage.setItem("eb_state_v2",JSON.stringify({plans:S.plans,activePlanId:S.activePlanId,shared:S.shared}));
+    ebSaveKO=false;
+  }catch(e){
+    if(!ebSaveKO){
+      ebSaveKO=true;
+      try{console.warn("EB: sauvegarde impossible —",e&&e.name);}catch(_){}
+      // Pas de modale : on ne bloque pas quelqu'un au milieu d'une séance. Un bandeau discret
+      // que l'UI peut lire (`S.saveFailed`) suffit à ce que l'information existe quelque part.
+      S.saveFailed=true;
+    }
+  }
+}
 // Chargement + MIGRATION automatique de l'ancien format mono-plan eb_state_v1 (on ne fait
 // jamais perdre son plan à un utilisateur existant ; l'ancienne clé est laissée en place
 // par prudence — elle ne sera plus lue dès que la v2 existe).
@@ -94,7 +111,25 @@ function ebLoad(){
       return purgePastRace(migrateTrailPlans({plans:[e],activePlanId:e.id,shared:{}}));
     }
     return null;
-  }catch(e){return null;}
+  }catch(e){
+    // D1 — UN ÉTAT ILLISIBLE NE S'EFFACE PAS EN SILENCE.
+    //
+    // Avant : `catch → return null`, l'app repartait du questionnaire d'accueil sans un mot, et
+    // le PREMIER `ebSave` réécrivait par-dessus les octets d'origine. Testé en vrai : après un
+    // rechargement, la copie corrompue avait disparu — un support à qui on dit « j'ai tout
+    // perdu » n'a plus rien à réparer.
+    //
+    // Le chemin est atteignable : l'app expose une RESTAURATION JSON au Profil, donc un fichier
+    // édité à la main est une entrée officiellement supportée — et c'est exactement d'où vient
+    // du JSON malformé. On met la copie de côté sous une clé datée et on le signale ; elle ne
+    // sert peut-être jamais, mais elle coûte quelques kilo-octets et elle est la seule chose qui
+    // reste quand tout le reste a disparu.
+    try{
+      const brut=localStorage.getItem("eb_state_v2");
+      if(brut) localStorage.setItem("eb_state_v2_corrompu_"+todayISO(),brut);
+    }catch(_){}
+    return null;
+  }
 }
 // « Changer de sport » (reset) : n'efface QUE le plan actif — les autres plans du profil
 // sont conservés. L'appelant (steps.js reset()) a déjà remis l'état de travail à zéro ;

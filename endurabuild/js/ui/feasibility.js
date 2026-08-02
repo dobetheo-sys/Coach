@@ -12,7 +12,7 @@
 // La saisie vit ICI plutôt qu'au Profil : la question (« est-ce que mon objectif tient ? ») et
 // sa réponse doivent être au même endroit. Un champ au Profil et un verdict trois onglets plus
 // loin, c'est deux écrans pour une seule idée.
-import { $, S, ebSave } from "../state.js";
+import { $, S, ebSave, esc } from "../state.js";
 
 const V = {
   atteignable: { pic: "🟢", titre: "Atteignable" },
@@ -30,13 +30,20 @@ export function feasibilityApplies() {
 export function feasibilityCardHTML(plan) {
   if (!feasibilityApplies()) return "";
   const saisi = String(S.answers.target_time || "");
-  let html = '<div class="card" id="rvCard"><div class="eyebrow">Ton objectif</div>'
-    + "<h2>🎯 Ton chrono visé</h2>"
+  // U12 — LA CARTE SE REPLIE TANT QU'ELLE N'A RIEN À DIRE.
+  //
+  // L'onglet 🗓 Plan fait déjà 7,7 écrans de défilement sur un téléphone ; cette carte y ajoutait
+  // 462 px (7 % de l'onglet) pour poser une question OPTIONNELLE à laquelle la plupart des gens
+  // ne répondront pas. Une fonctionnalité facultative n'a pas à coûter de la place à ceux qui ne
+  // l'utilisent pas. Ouverte d'office dès qu'un chrono est saisi : à ce moment-là, elle a une
+  // réponse à donner, et la replier serait cacher ce qu'on vient de demander.
+  let html = '<details class="card" id="rvCard"' + (saisi ? " open" : "") + '>'
+    + '<summary><span class="eyebrow">Ton objectif</span><h2 style="display:inline">🎯 Ton chrono visé</h2></summary>'
     + '<div class="why">Optionnel. Si tu vises un temps précis, on te dit franchement ce qu’il exige — '
     + "et si l’horizon qui te reste peut le produire. <b>Ta réponse ne change pas ton plan</b> : "
     + "l’entraînement se construit sur ce que ton corps peut encaisser, jamais sur ce qu’on aimerait afficher.</div>"
     + '<div class="q"><span class="q-label">Chrono visé (h:mm:ss ou mm:ss)</span>'
-    + '<input type="text" inputmode="numeric" data-input="target_time" id="rvIn" value="' + saisi.replace(/"/g, "&quot;") + '" placeholder="ex. 3:30:00"></div>';
+    + '<input type="text" inputmode="numeric" data-input="target_time" id="rvIn" value="' + esc(saisi) + '" placeholder="ex. 3:30:00"></div>';
 
   let res = null;
   try { if (saisi) res = globalThis.EBV2.feasibility("run", S.answers, plan); } catch (e) { res = null; }
@@ -46,24 +53,28 @@ export function feasibilityCardHTML(plan) {
   } else if (res) {
     const v = V[res.verdict] || V.indeterminable;
     html += '<div class="warn" style="background:var(--bg2)"><b>' + v.pic + " " + v.titre + "</b><br>"
-      + escape2(res.human) + "</div>";
+      + md(res.human) + "</div>";
     if (res.decisions && res.decisions.length) {
       html += "<details><summary>Comment on arrive là</summary><div style=\"margin-top:6px\">";
       res.decisions.forEach((d) => {
-        html += '<div style="margin:6px 0"><b>' + escape2(d.what) + "</b> : " + escape2(String(d.val))
-          + '<div class="why">' + escape2(d.why) + "</div></div>";
+        html += '<div style="margin:6px 0"><b>' + esc(d.what) + "</b> : " + esc(d.val)
+          + '<div class="why">' + md(d.why) + "</div></div>";
       });
       html += "</div></details>";
     }
   }
-  return html + "</div>";
+  return html + "</details>";
 }
 
-/** Le gras des messages du moteur est du markdown volontaire ; le reste est échappé. */
-function escape2(t) {
-  return String(t == null ? "" : t)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+/**
+ * R11.1 — UN SEUL ÉCHAPPEUR. Ma première écriture en redéfinissait un ici (`escape2`), alors
+ * que `state.js` exporte `esc` depuis l'origine — exactement la règle « jamais deux fois la
+ * même table » que ce dépôt applique partout, enfreinte dans le code qui venait de l'invoquer.
+ * On échappe TOUT avec la fonction commune, PUIS on rend le gras : le `<b>` ne peut donc venir
+ * que du `**` du moteur, jamais d'un `<` qui aurait survécu.
+ */
+function md(t) {
+  return esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
 }
 
 /**
