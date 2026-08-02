@@ -20,7 +20,7 @@ import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
 import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
 import { validateAnswers, assertPlanIsAPlan, EBInputError, ANSWER_SCHEMA, FORMATS_BY_SPORT } from "../engine/answerSchema.ts";
 import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
-import { dailyEnergy, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
+import { dailyEnergy, energyRefusalNotice, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
 import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
 
 interface AppAnswers extends Record<string, unknown> {
@@ -547,6 +547,20 @@ function dailyEnergyV2(answers: AppAnswers, sessions?: { d: string; min?: number
   });
 }
 
+/** O-16 — POURQUOI l'estimation n'est pas affichée, quand elle ne l'est pas. `dailyEnergy`
+ *  retourne `null` dans trois cas très différents : pas de poids saisi, âge sous la borne
+ *  (O-16), gabarit hors des bornes de validation des équations (E4). L'UI montrait le même
+ *  repli « renseigne ton poids » dans les trois — donc elle envoyait un mineur et une personne
+ *  hors bornes corriger une donnée qui n'était pas en cause. Null ici = « aucun motif à
+ *  expliquer », c'est-à-dire la donnée manquante. */
+function energyRefusalV2(answers: AppAnswers): string | null {
+  return energyRefusalNotice({
+    weightKg: parseFloat(String(answers.weight || "")) || null,
+    heightCm: parseFloat(String(answers.height || "")) || null,
+    age: parseInt(String(answers.age || "")) || null,
+  });
+}
+
 // R7 — date du jour en heure LOCALE de l'appareil (jamais toISOString/UTC : le plan
 // vit dans le calendrier de l'athlète, pas celui de Greenwich).
 function localTodayISO(): string {
@@ -607,5 +621,6 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   arbitrateVolRecent,
   sessionNutrition: nutritionForSession,
   dailyEnergy: dailyEnergyV2,
+  energyRefusal: energyRefusalV2,
   version: "v2-sprint9",
 };

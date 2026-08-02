@@ -81,6 +81,44 @@ export function bmiGuardNotice(weightKg?: number | null, heightCm?: number | nul
   return "Les chiffres saisis sortent des bornes sur lesquelles les équations de dépense énergétique sont validées : aucune estimation n'est affichée. Si ces valeurs sont exactes, un accompagnement médical ou diététique sera plus utile qu'un calculateur.";
 }
 
+/**
+ * O-16 — GARDE D'ÂGE. Mifflin-St Jeor est validée chez l'ADULTE, et le NAP de la FAO décrit
+ * une dépense d'adulte : ni l'une ni l'autre ne s'applique à un organisme en croissance, dont
+ * la dépense de base rapportée au poids est plus élevée et surtout beaucoup plus variable d'un
+ * individu à l'autre. Le moteur ne leur opposait pourtant AUCUNE borne — un profil de 12 ans
+ * recevait « 1 750–2 480 kcal » et « protéines 60–90 g/j », un chiffre qui a l'air précis alors
+ * que l'équation est hors de son domaine (à 12 ans, l'âge sort même de la bande 14–90 de
+ * `basalRange` : le moteur retombait sur l'enveloppe 25–55 ans sans le dire).
+ *
+ * La garde IMC ne voyait rien ici : l'IMC d'un adolescent de gabarit normal l'est aussi.
+ *
+ * Ce qui est coupé et ce qui ne l'est pas — décision du fondateur (02/08/2026), en attendant la
+ * réponse du dossier de relecture diététique (question 3) : on coupe l'ESTIMATION JOURNALIÈRE
+ * (N8–N11) et les macros, on garde le RAVITAILLEMENT D'EFFORT (N1–N7). Un adolescent qui roule
+ * trois heures a besoin de savoir quoi boire ; il n'a besoin d'aucun tableau calorique. Le sens
+ * de l'erreur tranche : ne rien afficher coûte moins cher qu'un chiffre faux, et c'est déjà le
+ * choix fait pour l'IMC.
+ *
+ * Refus seulement si l'âge est CONNU et sous la borne — un âge absent n'est pas une preuve de
+ * minorité, et couper dessus retirerait l'écran à des adultes qui n'ont pas rempli le champ.
+ */
+export const MIN_AGE_FOR_ENERGY_ESTIMATE = 16;
+export function ageGuardNotice(age?: number | null): string | null {
+  if (age == null || !isFinite(age) || !(age > 0)) return null;
+  if (age >= MIN_AGE_FOR_ENERGY_ESTIMATE) return null;
+  return "Les équations de dépense énergétique utilisées ici sont validées chez l'adulte : avant " + MIN_AGE_FOR_ENERGY_ESTIMATE + " ans, elles donneraient un chiffre qui a l'air précis sans l'être. Aucune estimation n'est affichée. Les conseils de ravitaillement de chaque séance, eux, restent valables. Pour des repères d'apport à cet âge, un(e) diététicien(ne) est le bon interlocuteur.";
+}
+
+/**
+ * Le motif du refus, quand il y en a un. La garde IMC portait ce message depuis l'audit v6 et
+ * son commentaire disait « l'UI peut afficher ce message à la place » — l'UI ne l'a jamais
+ * affiché, elle montrait le repli « renseigne ton poids », c'est-à-dire une invitation à
+ * corriger une donnée qui n'était pas en cause. Un point unique, lu par la carte 🔥.
+ */
+export function energyRefusalNotice(input: { weightKg?: number | null; heightCm?: number | null; age?: number | null }): string | null {
+  return ageGuardNotice(input.age) ?? bmiGuardNotice(input.weightKg, input.heightCm);
+}
+
 /** N8 — métabolisme de base (Mifflin-St Jeor), en enveloppe [min, max] honnête :
  *  chaque donnée manquante élargit la fourchette au lieu d'inventer une précision. */
 export function basalRange(weightKg: number, heightCm?: number | null, age?: number | null, sex?: string | null): { bmr: [number, number]; approximate: boolean } {
@@ -103,7 +141,7 @@ export function basalRange(weightKg: number, heightCm?: number | null, age?: num
 export function dailyEnergy(input: EnergyInput): DailyEnergyEstimate | null {
   const w = input.weightKg;
   if (!w || !(w > 25) || !(w < 300)) return null;
-  if (bmiGuardNotice(w, input.heightCm)) return null; // E4 — hors bornes de validation : rien
+  if (energyRefusalNotice({ weightKg: w, heightCm: input.heightCm, age: input.age })) return null; // E4 + O-16
   const D: NutritionDecision[] = [];
   const { bmr, approximate } = basalRange(w, input.heightCm, input.age, input.sex);
   D.push({ id: "N8", what: "Métabolisme de base", val: bmr[0] + "–" + bmr[1] + " kcal/j", why: "équation de Mifflin-St Jeor (la mieux validée, ADA 2005)" + (approximate ? " — fourchette élargie car taille/âge/sexe incomplets au Profil" : " avec tes données du Profil") + " ; ce que ton corps dépense au repos complet" });

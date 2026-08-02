@@ -624,6 +624,27 @@ leur somme en kcal ne coïncide pas avec la dépense affichée sur la même cart
 que seul un avis diététicien peut trancher, la question part telle quelle au professionnel.
 **22 gates verts, E2E 13/13, golden 900 inchangé** — la nutrition ne touche aucune séance.
 
+**O-16 livré — l'estimation énergétique n'oppose plus « aucune » borne d'âge** (voir
+ARCHITECTURE.md « O-16 ») : trouvé dans le même passage que N11. `dailyEnergy()` repose sur
+**Mifflin-St Jeor, validée chez l'ADULTE**, et sur le NAP de la FAO — et n'opposait **aucune**
+borne d'âge : un profil de 12 ans recevait « 1 750–2 480 kcal » et « protéines 60–90 g/j », un
+chiffre qui a l'air précis alors que l'équation est hors de son domaine (à 12 ans l'âge sort même
+de la bande 14–90 de `basalRange`, donc le moteur retombait sur l'enveloppe 25–55 ans sans le
+dire). La garde IMC ne voyait rien : l'IMC d'un adolescent de gabarit normal l'est aussi. Même
+angle mort que **R15.7-C** avait fermé côté FORMAT, jamais rejoué sur l'écran de nutrition arrivé
+après. **Décision du fondateur** : borne à 16 ans, coupant l'estimation journalière (N8–N11 +
+macros) et **jamais le ravitaillement d'effort** (N1–N7) — un adolescent qui roule trois heures a
+besoin de savoir quoi boire, pas d'un tableau calorique ; refus sur un âge **connu** seulement
+(un âge absent n'est pas une preuve de minorité). Débusqué en le corrigeant : **le message
+d'orientation de la garde IMC n'a JAMAIS été affiché** — `bmiGuardNotice` le porte depuis l'audit
+v6 et son commentaire dit « l'UI peut afficher ce message à la place », mais la carte montrait
+« Renseigne ton poids » dans les TROIS cas de refus, renvoyant une personne hors bornes (et
+maintenant un mineur) corriger une donnée qui n'était pas en cause. Point unique
+`energyRefusalNotice()`, exposé par `EBV2.energyRefusal`. Un garde-fou dont personne ne lit le
+motif est un garde-fou à moitié posé — la forme d'O-9 appliquée à un message d'interface.
+8 critères en CI, **vérifiés rouges** en abaissant la borne à 0.
+**22 gates verts, E2E 13/13, golden 900 inchangé, registre 15/15.**
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur

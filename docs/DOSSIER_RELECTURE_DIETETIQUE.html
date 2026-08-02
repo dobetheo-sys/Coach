@@ -378,6 +378,7 @@
     <li><span class="coche">↳</span><span><strong>Un avertissement accompagne obligatoirement chaque écran</strong>, et il nomme votre profession comme le recours.</span></li>
     <li><span class="coche">↳</span><span><strong>Sans poids saisi, aucune estimation n'est calculée.</strong> On n'affiche pas un chiffre sur des données absentes.</span></li>
     <li><span class="coche">↳</span><span><strong>Hors IMC 15–45, rien n'est affiché du tout</strong> — pas d'estimation dégradée, pas de fourchette élargie. Un tableau calorique propre et autoritaire nous paraît être exactement le mauvais objet à mettre sous les yeux de quelqu'un dans cette situation. Un message d'orientation le remplace.</span></li>
+    <li><span class="coche">↳</span><span><strong>Sous 16 ans, l'estimation journalière et les macros ne s'affichent pas</strong> — les équations sont validées chez l'adulte. Le ravitaillement d'effort, lui, reste : un adolescent qui roule trois heures a besoin de savoir quoi boire. Voir la question 3.</span></li>
     <li><span class="coche">↳</span><span><strong>Bornes dures :</strong> jamais plus de <span class="rval">90 g</span> de glucides par heure, jamais plus de <span class="rval">1 000 ml</span> de boisson par heure (hyponatrémie de dilution).</span></li>
     <li><span class="coche">↳</span><span><strong>Une séance dure ou longue impose deux consignes de sécurité</strong> : jamais à jeun au départ, et une récupération proposée à l'arrivée.</span></li>
     <li><span class="coche">↳</span><span><strong>Le journal alimentaire a été retiré du produit</strong> en juillet 2026. Compter ce qu'on mange, dans une application qui affiche par ailleurs une dépense, nous a paru un engrenage que nous ne voulions pas fabriquer.</span></li>
@@ -589,10 +590,11 @@
     </article>
 
     <article class="question">
-      <div class="qhead"><span class="qnum"></span><span class="priorite">défaut mesuré</span></div>
-      <h3 class="qtitre">Faut-il couper l'estimation journalière en dessous d'un certain âge&nbsp;?</h3>
-      <p>Constat fait en préparant ce dossier : l'équation de Mifflin-St Jeor est validée chez l'adulte, et <strong>le moteur n'oppose aucune borne d'âge à l'estimation journalière</strong>. Un profil de 12 ans reçoit aujourd'hui « 1 750–2 480 kcal » et « protéines 60–90 g/j » — des chiffres qui paraissent précis alors que l'équation est hors de son domaine.</p>
-      <p>Nous savons corriger cela en une ligne. Nous ne savons pas où placer la borne, ni s'il faut couper l'estimation seule ou aussi les consignes de ravitaillement d'effort, qui elles nous semblent utiles à un jeune sportif.</p>
+      <div class="qhead"><span class="qnum"></span><span class="priorite">corrigé — à confirmer</span></div>
+      <h3 class="qtitre">Nous avons coupé l'estimation journalière sous 16 ans. Est-ce la bonne borne&nbsp;?</h3>
+      <p>Constat fait en préparant ce dossier : l'équation de Mifflin-St Jeor est validée chez l'adulte, et le moteur n'opposait <strong>aucune</strong> borne d'âge à l'estimation journalière. Un profil de 12 ans recevait « 1 750–2 480 kcal » et « protéines 60–90 g/j » — des chiffres qui paraissent précis alors que l'équation est hors de son domaine. Notre garde IMC ne voyait rien : l'IMC d'un adolescent de gabarit normal l'est aussi.</p>
+      <p>Nous n'avons pas attendu votre réponse pour couper, parce que le sens de l'erreur ne laissait pas le choix : ne rien afficher coûte moins cher qu'un chiffre faux. <strong>La borne est à 16 ans, et elle ne coupe que l'estimation journalière et les macros</strong> — les consignes de ravitaillement d'effort restent, un adolescent qui roule trois heures a besoin de savoir quoi boire.</p>
+      <p>Ce que nous vous demandons : <strong>16 ans est-il le bon seuil</strong>, et avons-nous coupé au bon endroit&nbsp;? C'est une constante dans le code — la déplacer prend une ligne.</p>
     </article>
 
     <article class="question">

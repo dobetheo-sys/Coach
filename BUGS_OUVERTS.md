@@ -3,17 +3,19 @@
 **État au 02/08/2026, chantier R20 terminé + N11** (22 gates verts, E2E 13/13, golden 900,
 `audit:v7` à N=400, `registry:check` 15/15).
 
-> **§1 — 16 entrées, 1 ouverte (`O-16`).** Le chantier R20 avait fermé les six dernières :
+> **§1 — 16 entrées, 0 ouverte.** Le chantier R20 avait fermé les six dernières :
 > `O-8` (footing swimrun sans bornes), `O-9` (banc d'invariants ni vert ni bloquant), `O-10`
 > (`vol_max` inerte), `O-11` (deux allures course à vélo), `O-13` (rampe R10 inerte en
 > natation), `O-15` (portée du verrou froid), plus `O-3` (le créneau de repli) et `O-14`
 > (`swim_limit`).
 >
-> **Puis §1 a rouvert le jour même, et pas depuis un banc.** `O-16` — l'estimation énergétique
-> journalière n'oppose aucune borne d'âge, alors que son équation est validée chez l'adulte —
-> a été trouvée en **rédigeant le dossier de relecture diététique** : décrire ce que chaque
-> règle calcule oblige à refaire ses calculs. Le même passage a corrigé `N11` (le repos des
-> heures d'entraînement compté deux fois). Aucun des 22 gates ne regardait ces deux choses.
+> **Puis §1 a rouvert et refermé le jour même, et pas depuis un banc.** `O-16` — l'estimation
+> énergétique journalière n'opposait aucune borne d'âge, alors que son équation est validée chez
+> l'adulte — a été trouvée en **rédigeant le dossier de relecture diététique** : décrire ce que
+> chaque règle calcule oblige à refaire ses calculs. Le même passage a corrigé `N11` (le repos
+> des heures d'entraînement compté deux fois), et la correction d'`O-16` a elle-même débusqué un
+> message de garde que l'UI n'affichait nulle part. Aucun des 22 gates ne regardait rien de tout
+> cela.
 >
 > **Ce que ça confirme.** Un registre vide ne dit pas que le moteur est sans défaut : il dit
 > que tout ce qu'on a MESURÉ est traité. Les six lots de R20 ont trouvé la moitié de leurs
@@ -717,7 +719,7 @@ attendu: /eau 16C : 0\/15[\s\S]*eau 20C : 0\/15/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swimrun',format:'sprint',level:'inter',history:'confirme',intent:'competition',vol_max:'10',sessions_max:'7',dispo:'partielle',age:'30',sex:'H',weight:'79',pace:'4:50',pace_known:'oui',css:'1:45',css_known:'oui',vol_recent:'7',off_days:'non',shift_ok:'non',doubles:'oui',swim_total_m:'2600',run_total_km:'9.2',race_dplus_m:'250',segments_n:'10',longest_swim_m:'600',team_mode:'binome',team_swim_gap_sec:'5',openwater_access:'saisonnier',swim_continuous:'oui',run_continuous:'oui',gear_test:'non',race_date:'2027-05-09'};const part=(p)=>{let rn=0,sw=0;for(const w of p.weeks){if(w.isRecup||w.phase.id==='taper')continue;for(const d of w.days)for(const s of d.sessions||[]){if(s.d==='rs')continue;if(s.d==='br'){for(const st of s.steps||[])if(st.leg||st.d){const m=(st.reps||1)*(st.durationMin||0);if(st.d==='sw')sw+=m;else rn+=m;}}else if(s.d==='sw')sw+=s.min||0;else if(s.d==='rn')rn+=s.min||0;}}return rn/(rn+sw);};for(const t of ['16','20']){let n=0,tot=0;for(const inj of ['aucune','hanche','tibia','genou','dos'])for(const lv of ['debutant','inter','avance']){const a={...b,water_temp_c:t,injury:inj,level:lv};try{const o=E.swimrunObjective(a);const p=E.buildPlan('swimrun',a);tot++;if(part(p)<(1-o.swimTimeShare)-0.15)n++;}catch(e){}}console.log('eau '+t+'C : '+n+'/'+tot+' profils sous le seuil de specificite');}"
 ```
 
-### O-16 · L'estimation énergétique journalière n'oppose aucune borne d'âge · 🔴 **OUVERT** (avis diététicien demandé)
+### O-16 · L'estimation énergétique journalière n'opposait aucune borne d'âge · ✅ **FERMÉ (O-16)**
 
 Trouvé en préparant le dossier de relecture diététique (H-3), en décrivant ce que chaque règle
 calcule. `dailyEnergy()` repose sur **Mifflin-St Jeor 1990, validée chez l'ADULTE**, et sur le NAP
@@ -738,21 +740,32 @@ C'est le même angle mort que R15.7-C avait fermé côté FORMAT (un mineur ne p
 plan Ironman) : la règle croisait âge et format, personne n'a rejoué le croisement sur l'écran de
 nutrition, arrivé après.
 
-**Pourquoi c'est OUVERT et pas corrigé** : la correction technique est d'une ligne, mais elle
-porte trois décisions qui ne m'appartiennent pas — où placer la borne ; faut-il couper
-l'estimation SEULE (N8–N11) ou aussi le ravitaillement d'effort (N1–N7), qui semble utile à un
-jeune sportif ; et que MONTRER à la place. C'est la question 3 du dossier envoyé au
-professionnel. La correction suivra sa réponse, avec sa justification en clair dans le code.
+**Tranché par le fondateur (02/08/2026), sans attendre la réponse du dossier** : la borne est à
+**16 ans**, et elle coupe l'ESTIMATION JOURNALIÈRE (N8–N11 + macros) — **pas le ravitaillement
+d'effort** (N1–N7). Un adolescent qui roule trois heures a besoin de savoir quoi boire ; il n'a
+besoin d'aucun tableau calorique. Le sens de l'erreur tranche : ne rien afficher coûte moins
+cher qu'un chiffre faux. Le refus est **motivé et nomme l'âge**, il reste réversible en une
+constante si le professionnel répond autre chose (question 3 du dossier reste posée).
 
-**Direction sûre en attendant une réponse** : ne rien afficher coûte moins cher que d'afficher un
-chiffre faux — c'est déjà le choix fait pour la garde IMC. Si la réponse tarde, couper par
-défaut sous 16 ans est le repli à prendre.
+Refus seulement sur un âge **connu** et sous la borne : un âge absent n'est pas une preuve de
+minorité, et couper dessus retirerait l'écran à des adultes qui n'ont pas rempli le champ.
+
+**Trouvé en le corrigeant — le message d'orientation de la garde IMC n'a JAMAIS été affiché.**
+`bmiGuardNotice` porte son texte depuis l'audit v6, et son commentaire dit « l'UI peut afficher
+ce message à la place ». L'UI affichait le repli « Renseigne ton **poids** dans l'onglet
+📋 Profil » dans les TROIS cas de refus — donc elle envoyait une personne hors bornes de
+validation, et maintenant un mineur, corriger une donnée qui n'était pas en cause. Point unique
+`energyRefusalNotice()` désormais, lu par la carte 🔥 (`EBV2.energyRefusal`). Un garde-fou dont
+personne ne lit le motif est un garde-fou à moitié posé — même famille qu'O-9 (un banc dont
+personne ne lit le rapport).
+
+8 critères en CI (`demo:nutrition`), **vérifiés rouges** en abaissant la borne à 0.
 
 ```verify
 id: O-16
-quoi: l'estimation journalière est-elle encore calculée pour un mineur / un enfant
-attendu: /12 ans : [0-9]/
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;for(const age of [12,15,35]){const r=E.dailyEnergy({weight:'52',height:'162',age:String(age),sex:'F'},[{d:'rn',min:60}]);console.log(age+' ans : '+(r?r.total.join('-')+' kcal':'aucune estimation'));}"
+quoi: l'estimation journalière est coupée sous 16 ans, et le ravitaillement d'effort ne l'est pas
+attendu: /12 ans : aucune estimation[\s\S]*15 ans : aucune estimation[\s\S]*16 ans : [0-9][\s\S]*35 ans : [0-9][\s\S]*ravitaillement 12 ans : ok/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;for(const age of [12,15,16,35]){const r=E.dailyEnergy({weight:'52',height:'162',age:String(age),sex:'F'},[{d:'rn',min:60}]);console.log(age+' ans : '+(r?r.total.join('-')+' kcal':'aucune estimation'));}const a=E.sessionNutrition({d:'bk',name:'Sortie longue',det:'',min:180,long:true,steps:[{role:'body',durationMin:180,zone:'bk.z2'}]},{tempC:27,weightKg:52});console.log('ravitaillement 12 ans : '+(a&&a.during.drinkMlPerH[1]>0&&a.after?'ok':'COUPE'));"
 ```
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)

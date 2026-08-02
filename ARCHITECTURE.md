@@ -2265,3 +2265,65 @@ affichée sur la même carte (55 kg : 1 235–2 200 contre 1 670–2 120 ; 95 kg
 6 940–8 470). C'est la frontière que `CLAUDE.md` déclare bloquée par un avis diététicien, donc
 rien n'a été touché : la question part telle quelle au professionnel — « ces trois chiffres
 sont-ils affichables sans encadrement, et si oui sous quelle forme ? »
+
+## O-16 — l'estimation énergétique n'oppose plus « aucune » borne d'âge
+
+Trouvé en rédigeant le dossier de relecture diététique, comme N11 : décrire ce qu'une règle
+calcule oblige à refaire ses calculs.
+
+### Le défaut
+
+`dailyEnergy()` repose sur **Mifflin-St Jeor**, validée chez l'ADULTE, et sur le **NAP de la
+FAO**, qui décrit une dépense d'adulte. Ni l'une ni l'autre ne s'applique à un organisme en
+croissance. Le moteur ne leur opposait aucune borne :
+
+| âge déclaré (52 kg, 162 cm, F, 1 h) | ce que l'écran affichait |
+|---|---|
+| **12 ans** | **1 750–2 480 kcal** · protéines 60–90 g/j |
+| 15 ans | 2 010–2 560 kcal · protéines 60–90 g/j |
+| 35 ans | 1 890–2 400 kcal · protéines 60–90 g/j |
+
+À 12 ans l'âge sort même de la bande 14–90 de `basalRange` : le moteur retombait sur l'enveloppe
+25–55 ans et produisait un chiffre **hors du domaine de son équation, sans le dire**. La garde
+IMC ne voyait rien — l'IMC d'un adolescent de gabarit normal l'est aussi.
+
+C'est le même angle mort que **R15.7-C** avait fermé côté FORMAT (un mineur ne peut plus générer
+un plan Ironman). La règle croisait âge et format ; personne n'a rejoué le croisement sur l'écran
+de nutrition, arrivé après. Troisième occurrence dans le dépôt de « la garde couvre là où le code
+a été écrit, pas là où il sert » (R20.1).
+
+### La règle
+
+`MIN_AGE_FOR_ENERGY_ESTIMATE = 16`. La coupe porte sur l'**estimation journalière** (N8–N11 et
+les macros) — **jamais sur le ravitaillement d'effort** (N1–N7). Un adolescent qui roule trois
+heures a besoin de savoir quoi boire ; il n'a besoin d'aucun tableau calorique.
+
+Refus seulement sur un âge **connu** et sous la borne : un âge absent n'est pas une preuve de
+minorité, et couper dessus retirerait l'écran à des adultes qui n'ont pas rempli le champ. Même
+forme que la garde IMC, qui ne refuse que sur des valeurs saisies.
+
+C'est une décision produit, pas une conclusion de la littérature — la question 3 du dossier reste
+posée au professionnel, et la borne est une constante qu'une réponse déplace en une ligne.
+
+### Ce que la correction a débusqué : un motif que rien n'affichait
+
+`bmiGuardNotice` porte son message d'orientation depuis l'audit v6, et son commentaire dit
+« l'UI peut afficher ce message à la place ». **L'UI ne l'a jamais affiché.** `energyCardHTML`
+montrait le même repli dans les trois cas de refus :
+
+> Renseigne ton **poids** dans l'onglet 📋 Profil pour voir l'estimation.
+
+Donc une personne dont le gabarit sort des bornes de validation — et, depuis ce lot, un mineur —
+était renvoyée corriger une donnée qui n'était pas en cause. `energyRefusalNotice()` devient le
+point unique (âge d'abord, IMC ensuite), exposé par `EBV2.energyRefusal` et lu par la carte 🔥.
+
+Un garde-fou dont personne ne lit le motif est un garde-fou à moitié posé : c'est la forme d'O-9
+(un banc dont personne ne lit le rapport) appliquée à un message d'interface.
+
+### Les gardes
+
+8 critères dans `demo:nutrition` (CI) : la coupe existe sous la borne, elle s'arrête à la borne,
+l'âge inconnu n'est pas traité comme une minorité, le ravitaillement d'effort survit, le refus
+nomme l'âge et **ne parle pas du poids**, le motif IMC est enfin lisible, l'absence de motif se
+distingue du refus, et aucun refus ne contient de vocabulaire de restriction. **Vérifiés rouges**
+en abaissant la borne à 0.

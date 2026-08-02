@@ -18,7 +18,7 @@ import {
   FORBIDDEN_OUTPUT,
   type NutritionAdvice,
 } from "../nutrition/nutritionCalculator.ts";
-import { dailyEnergy, ENERGY_DISCLAIMER, REST_MET_KCAL_PER_KG_H } from "../nutrition/energyEstimator.ts";
+import { dailyEnergy, energyRefusalNotice, ENERGY_DISCLAIMER, REST_MET_KCAL_PER_KG_H } from "../nutrition/energyEstimator.ts";
 
 let failures = 0;
 const check = (label: string, cond: boolean, detail?: string) => {
@@ -119,6 +119,28 @@ check("N11 : jamais de total inférieur à la journée seule (le net ne descend 
     const e = dailyEnergy({ weightKg: 60, heightCm: 170, age: 40, sex: "F", trainingKcal: [lo, hi], trainingMin: min });
     return !!e && e.total[0] >= e.daily[0] && e.trainingNet[0] >= 0 && e.total[0] <= e.total[1];
   }));
+// O-16 — la garde d'âge. Coupe l'ESTIMATION JOURNALIÈRE, jamais le ravitaillement d'effort.
+check("O-16 : sous 16 ans → aucune estimation journalière", [10, 12, 14, 15].every((age) => dailyEnergy({ weightKg: 52, heightCm: 162, age, sex: "F", trainingKcal: [300, 400], trainingMin: 60 }) === null));
+check("O-16 : à partir de 16 ans → l'estimation existe de nouveau", [16, 17, 35, 72].every((age) => !!dailyEnergy({ weightKg: 52, heightCm: 162, age, sex: "F", trainingKcal: [300, 400], trainingMin: 60 })));
+check("O-16 : âge inconnu → on n'invente pas une minorité (l'estimation reste)", !!dailyEnergy({ weightKg: 52, heightCm: 162, age: null, sex: "F" }) && !!dailyEnergy({ weightKg: 52 }));
+check("O-16 : le ravitaillement d'effort N1–N7 n'est PAS coupé (un ado doit savoir quoi boire)", (() => {
+  const a = nutritionForSession({ d: "bk", name: "Sortie longue", det: "", min: 180, long: true, steps: [{ role: "body", durationMin: 180, zone: "bk.z2" }] }, { tempC: 27, weightKg: 52 });
+  return !!a && !!a.during.carbsGPerH && a.during.drinkMlPerH[1] > 0 && !!a.after;
+})());
+check("O-16 : le refus est MOTIVÉ, et il nomme l'âge — pas le poids manquant", (() => {
+  const m = energyRefusalNotice({ weightKg: 52, heightCm: 162, age: 12 });
+  return !!m && /adulte/i.test(m) && /16 ans/.test(m) && !/poids/i.test(m) && /ravitaillement/i.test(m);
+})());
+check("O-16 : le motif du refus IMC est enfin lisible par l'UI (E4 portait un message que rien n'affichait)", (() => {
+  const m = energyRefusalNotice({ weightKg: 35, heightCm: 180, age: 30 });
+  return !!m && /bornes/i.test(m) && dailyEnergy({ weightKg: 35, heightCm: 180, age: 30 }) === null;
+})());
+check("O-16 : sans motif, pas de message (donnée manquante ≠ refus)", energyRefusalNotice({ weightKg: 70, heightCm: 178, age: 30 }) === null && energyRefusalNotice({ weightKg: null, heightCm: null, age: null }) === null);
+check("O-16 : le refus ne parle jamais de restriction", [12, 15].every((age) => {
+  const m = (energyRefusalNotice({ weightKg: 52, heightCm: 162, age }) || "").toLowerCase();
+  return FORBIDDEN_OUTPUT.every((w) => !m.includes(w));
+}));
+
 const noWeight = dailyEnergy({ weightKg: 0 });
 check("Énergie : sans poids → null (on n'estime jamais sur du vide)", noWeight === null);
 const partial = dailyEnergy({ weightKg: 62 });

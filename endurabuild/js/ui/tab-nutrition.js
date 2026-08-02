@@ -17,8 +17,16 @@ export function energyCardHTML(day, open) {
   let e;
   try { e = globalThis.EBV2.dailyEnergy(S.answers, day ? day.sessions : []); } catch (err) { return ""; }
   if (!e) {
+    // O-16 — dire POURQUOI. `dailyEnergy` rend null pour trois raisons distinctes (pas de
+    // poids · âge sous la borne · gabarit hors bornes de validation) et cette carte les
+    // confondait toutes dans « renseigne ton poids » : un adolescent, ou quelqu'un dont l'IMC
+    // sort des bornes, était renvoyé corriger une donnée qui n'était pas en cause.
+    let motif = "";
+    try { motif = (globalThis.EBV2.energyRefusal && globalThis.EBV2.energyRefusal(S.answers)) || ""; } catch (err) { motif = ""; }
     return '<details class="load-card"' + (open ? " open" : "") + '><summary class="load-title">🔥 Dépense estimée du jour</summary>'
-      + '<div class="load-sub" style="margin-top:6px">Renseigne ton <b>poids</b> dans l’onglet 📋 Profil pour voir l’estimation (taille, âge et sexe l’affinent). Aucune estimation sans donnée réelle.</div></details>';
+      + '<div class="load-sub" style="margin-top:6px">'
+      + (motif || "Renseigne ton <b>poids</b> dans l’onglet 📋 Profil pour voir l’estimation (taille, âge et sexe l’affinent). Aucune estimation sans donnée réelle.")
+      + "</div></details>";
   }
   const f = (r) => r[0] === r[1] ? r[0] : r[0] + "–" + r[1];
   return '<details class="load-card"' + (open ? " open" : "") + '><summary class="load-title">🔥 Dépense estimée du jour <span style="font-weight:400">· ~' + f(e.total) + " kcal</span></summary>"
