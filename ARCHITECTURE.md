@@ -2472,3 +2472,74 @@ la même chose, ce que R11.1 interdit explicitement.
 `U9` entre au banc v6 (9 sports balayés) ; `U10` entre dans `smoke-usage` (quatre jours
 échantillonnés après le décrochage, exactement un affichage attendu). **Vérifiés rouges** en
 réintroduisant chaque défaut — U10 remonte à 4 affichages sur 4, U9 redevient une régression.
+
+## O-17 — informer plutôt que bloquer : la règle qui tranche cette famille de choix
+
+### Le principe (décision du fondateur, 02/08/2026)
+
+> « Notre rôle est d'informer au mieux et de laisser l'athlète choisir entre son besoin de
+> résultats ou de sécurité. Le but n'est jamais de bloquer mais d'accompagner au mieux, **sauf
+> si réelle mise en danger**. »
+
+Cette phrase gouverne une famille entière de décisions, pas seulement O-17. Elle sépare deux
+choses que le moteur mélangeait jusqu'ici implicitement :
+
+**Ce qui BLOQUE — la « réelle mise en danger ».** Ces garde-fous restent durs et ne se
+négocient pas : drapeau médical (plan de maintien), drapeau douleur (qualité verrouillée),
+mineur × format (R15.7-C), garde IMC (E4), borne d'âge de l'estimation énergétique (O-16),
+course trop proche (R11.4), bornes physiologiques (E3). Leur point commun : l'athlète ne peut
+pas évaluer le risque, ou le coût de l'erreur est irréversible.
+
+**Ce qui INFORME — tout le reste.** Un risque réel, compréhensible, dont l'athlète peut peser
+le coût contre ce qu'il vient chercher. Le moteur explique, nomme le mécanisme, et laisse
+décider. Canal 2 de R11.2 (`warnings`).
+
+Le coût de se tromper de catégorie est symétrique et il faut le dire : brider un athlète capable
+n'est pas neutre — c'est le plan qu'il quitte pour s'entraîner seul, sans aucun garde-fou. La
+régularité est priorité 3 du manifeste, pas priorité 7.
+
+### Le cas qui l'a fait écrire
+
+Ancien sportif de haut niveau (sélection nationale junior), cinq ans sans rien, première course à
+**5'30/km sur 13 min terminée à 185 BPM**, puis **46'30 au 10 km en 8 semaines**.
+
+Moteur musculaire et neuromusculaire conservé, système aérobie à zéro, tissus conjonctifs qui
+n'ont rien encaissé depuis cinq ans. Mesuré — deux profils déclarant tous deux `vol_recent = 0` :
+
+| | semaine 1 | séance de seuil |
+|---|---|---|
+| capacité réelle (seuil 5'45) | 4 séances · **118 min** | **@ 5'45-6'02/km** |
+| vrai débutant (seuil 7'00) | 4 séances · **118 min** | @ 7'00-7'21/km |
+
+Le VOLUME est bien protégé — la rampe R10 lit le volume récent, nul dans les deux cas.
+L'INTENSITÉ, elle, suit la capacité mesurée sans rien savoir de l'historique de charge. Et rien
+n'arrête cet athlète, puisqu'il en est physiquement capable : c'est le patron de blessure le plus
+fréquent de la reprise chez l'ancien sportif.
+
+### Le déclencheur ne pose aucune constante nouvelle
+
+`history = "ancien"` existe dans le schéma, et **R14.1 l'a délibérément dépouillé** de tout
+pouvoir sur les chiffres — « un adjectif auto-déclaré ne pilote aucun chiffre ». On ne le
+réhabilite pas. On croise deux MESURES déjà collectées :
+
+- **volume récent ≤ 2 h/sem** (R10, obligatoire) ;
+- **une référence saisie plus rapide que l'ancre la plus lente de sa discipline**, lue par
+  `margeOf` : cette fonction rend 1,0 à quelqu'un assis sur cette ancre — le repère « débutant »
+  du modèle. Être plus rapide, c'est avoir une capacité au-dessus de ce repère, **par
+  définition**. On réutilise la table de R14.1 au lieu d'en poser une seconde (R11.1), et on
+  hérite gratuitement de son décalage par sexe et par âge.
+
+### La preuve que ce n'est pas un blocage déguisé
+
+**Golden : 15 profils sur 900 changent, et le SEUL champ qui diffère est `_v2.warnings`.** Pas
+une séance, pas une minute. Le message s'ajoute, il ne retire rien.
+
+Garde `O17` au banc v6, qui assertе les DEUX moitiés de la décision : l'avertissement existe pour
+qui en a besoin (et pas pour les autres — vrai débutant, coureur régulier, reprise douce : aucun),
+le message rend explicitement la décision à l'athlète, il n'ordonne pas, **et le plan ne rétrécit
+pas**.
+
+Débusqué en écrivant cette garde : ma première assertion exigeait l'ÉGALITÉ des volumes entre le
+profil capable et le témoin. Fausse — 107 min contre 92 — parce que les bornes de séance se
+calculent depuis l'allure. Le risque à garder n'est pas « le plan change », c'est « le plan
+RÉTRÉCIT ».

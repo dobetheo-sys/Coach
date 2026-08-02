@@ -19,7 +19,8 @@
  * Interdit : rendre un plan sans qu'aucun des trois canaux ne se soit exprimé.
  */
 import type { AthleteProfile } from "./types.ts";
-import { MIN_WEEKS } from "./constraintMatrix.ts";
+import { MIN_WEEKS, parsePaceSec } from "./constraintMatrix.ts";
+import { margeOf } from "./projection.ts";
 import { trailObjective, T6_MIN_WEEKS } from "./trailModel.ts";
 
 /** Refus d'entrée : porteur de la clé, de la valeur reçue et de ce qui était attendu. */
@@ -501,6 +502,70 @@ export function validateAnswers(sport: string, raw: Record<string, unknown>, tod
   if (a.css_known === "oui" && (a.css == null || a.css === "")) {
     warnings.push("Tu as répondu connaître ton CSS mais aucune valeur n'est enregistrée : le plan travaille sur une estimation.");
   }
+  // ---- O-17 — LA CAPACITÉ QUI DÉPASSE L'HISTORIQUE DE CHARGE ----
+  //
+  // Cas réel : ancien sportif de haut niveau, cinq ans sans rien, première course à 5'30/km sur
+  // 13 min terminée à 185 BPM. Le moteur musculaire et neuromusculaire est conservé, le système
+  // aérobie est à zéro, et les tissus conjonctifs n'ont rien encaissé depuis cinq ans.
+  //
+  // Mesuré — deux profils déclarant tous deux `vol_recent = 0`, même format, même volume max :
+  // la semaine 1 est IDENTIQUE (4 séances, 118 min), mais la séance de seuil tourne à 5'45/km
+  // pour l'ancien sportif contre 7'00/km pour le vrai débutant. Le volume est bien protégé par
+  // la rampe R10 ; l'INTENSITÉ, elle, suit la capacité mesurée sans rien savoir de l'historique
+  // de charge. Et rien n'arrête cet athlète, puisqu'il en est physiquement capable.
+  //
+  // POURQUOI UN AVERTISSEMENT ET NON UNE CONTRAINTE — décision du fondateur (02/08/2026) :
+  // « notre rôle est d'informer au mieux et de laisser l'athlète choisir entre son besoin de
+  // résultats ou de sécurité ; le but n'est jamais de bloquer mais d'accompagner au mieux, sauf
+  // si réelle mise en danger. » Ce cas n'est pas une mise en danger au sens des garde-fous durs
+  // (drapeau médical, drapeau douleur, mineur × format, garde IMC, course trop proche) : c'est
+  // un risque RÉEL mais assumable, et brider un athlète capable a son propre coût — celui du
+  // plan qu'il quitte pour s'entraîner seul, sans aucun garde-fou. La régularité est priorité 3.
+  //
+  // LE DÉCLENCHEUR EST MESURÉ, PAS DÉCLARÉ. `history = "ancien"` existe dans ce schéma, et
+  // R14.1 l'a délibérément dépouillé de tout pouvoir sur les chiffres (« un adjectif
+  // auto-déclaré ne pilote aucun chiffre »). On ne le réhabilite pas : on croise deux MESURES
+  // que le questionnaire collecte déjà — le volume récent (R10, obligatoire) et la référence
+  // saisie. Une capacité de coureur entraîné sur un historique de charge nul, c'est un écart
+  // qui se constate ; « ancien sportif » n'est qu'une façon de le raconter.
+  // LE SEUIL DE « CAPACITÉ RÉELLE » N'EST PAS UNE CONSTANTE INVENTÉE : c'est la bande de marge
+  // du modèle de projection, lue à l'envers. `margeOf` rend 1,0 à quelqu'un assis sur l'ancre la
+  // plus lente de sa discipline — le repère « débutant » du moteur. Être PLUS RAPIDE que cette
+  // ancre, c'est avoir une capacité au-dessus de ce repère, par définition. On réutilise donc la
+  // table existante plutôt que d'en poser une seconde (R11.1), et on hérite gratuitement de son
+  // décalage par sexe et par âge (R14.1) : une femme de 50 ans n'est pas jugée contre la même
+  // référence qu'un homme de 25.
+  const O17_VOL_MAX_H = 2; // au-delà, l'historique de charge existe
+  if (volRec != null && volRec <= O17_VOL_MAX_H) {
+    const pace = a.pace ? parsePaceSec(a.pace, "run") : 0;
+    const css = a.css ? parsePaceSec(a.css, "swim") : 0;
+    const poids = parseNum(a.weight), ftp = parseNum(a.ftp);
+    const refs = { ftp: ftp ?? 0, thrPace: pace, css };
+    const sexe = typeof a.sex === "string" ? a.sex : null;
+    const age = parseNum(a.age);
+    const auDessus = (d: "ftp" | "thrPace" | "css"): boolean => {
+      const m = margeOf(d, refs, poids, sexe, age);
+      return m != null && m < 1; // plus rapide / plus puissant que l'ancre la plus basse
+    };
+    const fortes: string[] = [];
+    if (pace > 0 && auDessus("thrPace")) fortes.push("ton allure seuil en course");
+    if (ftp != null && poids != null && auDessus("ftp")) fortes.push("ta puissance au seuil à vélo");
+    if (css > 0 && auDessus("css")) fortes.push("ton CSS en natation");
+    if (fortes.length) {
+      warnings.push(
+        "Tu déclares " + volRec + " h/semaine sur les derniers mois, et " + fortes.join(" et ")
+        + " dit tout autre chose : tu as gardé une vraie capacité. Le plan en tient compte pour tes "
+        + "allures — mais il faut que tu saches ceci, parce que c'est toi qui décides. "
+        + "Le cœur et les muscles reviennent en quelques semaines ; les TENDONS, les aponévroses et "
+        + "l'os mettent des MOIS. Tu es donc capable de courir plus vite et plus longtemps que ce que "
+        + "tes tissus tolèrent aujourd'hui, et rien dans ton ressenti ne te préviendra avant la "
+        + "blessure. C'est le scénario de reprise le plus fréquent chez l'ancien sportif. "
+        + "Le plan part volontairement bas : la tentation sera d'en faire plus, et c'est précisément "
+        + "là que ça casse. Si une douleur apparaît, signale-la — elle verrouille l'intensité, et "
+        + "c'est trois semaines de perdues au lieu de trois mois.");
+    }
+  }
+
   const needW = (MIN_WEEKS[sport] || {})[String(a.format || "")];
   if (needW != null && needW >= 20 && (a.level === "debutant" || a.history === "reprise")) {
     warnings.push("Tu vises un format long en te déclarant " + (a.level === "debutant" ? "débutant" : "en reprise")

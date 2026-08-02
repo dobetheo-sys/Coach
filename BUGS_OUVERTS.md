@@ -3,7 +3,7 @@
 **État au 02/08/2026, chantier R20 terminé + N11** (22 gates verts, E2E 13/13, golden 900,
 `audit:v7` à N=400, `registry:check` 15/15).
 
-> **§1 — 17 entrées, 1 ouverte (`O-17`).** Le chantier R20 avait fermé les six dernières :
+> **§1 — 17 entrées, 0 ouverte.** Le chantier R20 avait fermé les six dernières :
 > `O-8` (footing swimrun sans bornes), `O-9` (banc d'invariants ni vert ni bloquant), `O-10`
 > (`vol_max` inerte), `O-11` (deux allures course à vélo), `O-13` (rampe R10 inerte en
 > natation), `O-15` (portée du verrou froid), plus `O-3` (le créneau de repli) et `O-14`
@@ -768,7 +768,7 @@ attendu: /12 ans : aucune estimation[\s\S]*15 ans : aucune estimation[\s\S]*16 a
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;for(const age of [12,15,16,35]){const r=E.dailyEnergy({weight:'52',height:'162',age:String(age),sex:'F'},[{d:'rn',min:60}]);console.log(age+' ans : '+(r?r.total.join('-')+' kcal':'aucune estimation'));}const a=E.sessionNutrition({d:'bk',name:'Sortie longue',det:'',min:180,long:true,steps:[{role:'body',durationMin:180,zone:'bk.z2'}]},{tempC:27,weightKg:52});console.log('ravitaillement 12 ans : '+(a&&a.during.drinkMlPerH[1]>0&&a.after?'ok':'COUPE'));"
 ```
 
-### O-17 · La rampe protège du volume passé, pas de l'écart capacité / tissu · 🔴 **OUVERT** (décision produit)
+### O-17 · La rampe protège du volume passé, pas de l'écart capacité / tissu · ✅ **FERMÉ — par un avertissement, pas par une contrainte**
 
 Trouvé sur un cas réel rapporté par le fondateur : **ancien sportif de haut niveau** (sélection
 nationale junior), **5 ans sans sport**, première course à **5'30/km sur 13 min, terminée à
@@ -805,17 +805,54 @@ physiquement capable, donc rien ne l'arrête.
    revenir demanderait un déclencheur MESURÉ, pas l'adjectif — par exemple l'écart entre la
    capacité mesurée et l'historique de volume, qui sont deux champs déjà collectés.
 
-**Ce qu'il faudrait décider** : (a) l'intensité doit-elle être bornée les premières semaines
-quand capacité mesurée et historique de charge divergent fortement ? (b) si oui, sur quel
-critère mesurable, et pendant combien de semaines ? (c) ou bien la bonne réponse est-elle un
-AVERTISSEMENT nommé plutôt qu'une contrainte — le moteur explique le risque tendineux et laisse
-l'athlète décider, comme il le fait déjà pour genou + vélo (R13 annexe A2) ?
+**Tranché par le fondateur (02/08/2026), et la décision dépasse ce cas** :
+
+> « Notre rôle est d'informer au mieux et de laisser l'athlète choisir entre son besoin de
+> résultats ou de sécurité. Le but n'est jamais de bloquer mais d'accompagner au mieux, **sauf
+> si réelle mise en danger**. »
+
+C'est l'option (c) : un **avertissement nommé**, canal 2 de R11.2, et **aucune contrainte**. Le
+plan n'est pas bridé d'une minute.
+
+La seconde moitié de la phrase compte autant que la première : les garde-fous DURS existants
+relèvent tous de la « réelle mise en danger » et ne bougent pas — drapeau médical, drapeau
+douleur, mineur × format (R15.7-C), garde IMC, borne d'âge de l'estimation énergétique (O-16),
+course trop proche (R11.4). Ce cas-ci n'en est pas : c'est un risque réel et assumable, et
+brider un athlète capable a son propre coût — celui du plan qu'il quitte pour s'entraîner seul,
+sans aucun garde-fou. La régularité est priorité 3.
+
+**Le déclencheur est MESURÉ, et il ne pose aucune constante nouvelle.** `history = "ancien"`
+existe mais R14.1 l'a délibérément dépouillé de tout pouvoir sur les chiffres. On croise donc
+deux mesures déjà collectées — volume récent ≤ 2 h/sem (R10, obligatoire) et une référence
+saisie — et le seuil de « capacité réelle » est **la bande de marge du modèle de projection lue
+à l'envers** : `margeOf` rend 1,0 à quelqu'un assis sur l'ancre la plus lente de sa discipline,
+donc être plus rapide que cette ancre, c'est avoir une capacité au-dessus du repère débutant, par
+définition. On hérite gratuitement du décalage par sexe et par âge (R14.1).
+
+**Mesuré après correction** — l'avertissement se déclenche là où il faut et nulle part ailleurs :
+
+| profil | avertissement |
+|---|---|
+| seuil 5'45/km · 0 h/sem | **oui** |
+| seuil 7'00/km · 0 h/sem (vrai débutant) | non |
+| seuil 5'45/km · 5 h/sem (régulier) | non |
+| seuil 6'30/km · 1 h/sem (reprise douce) | non |
+
+**Golden : 15 profils sur 900 changent, et le SEUL champ qui diffère est `_v2.warnings`** — pas
+une séance, pas une minute. C'est la preuve exécutable que l'avertissement n'est pas un blocage
+déguisé. Garde `O17` au banc v6, qui assertе les deux moitiés : le message existe, ET le plan ne
+rétrécit pas.
+
+Débusqué en écrivant la garde : ma première assertion exigeait l'ÉGALITÉ des volumes entre le
+profil capable et le témoin. Elle était fausse — 107 min contre 92 — parce que les bornes de
+séance se calculent depuis l'allure. Le risque à garder n'est pas « le plan change », c'est
+« le plan RÉTRÉCIT ».
 
 ```verify
 id: O-17
-quoi: deux profils à volume nul mais capacités très différentes reçoivent-ils la même intensité de seuil
-attendu: /ancien : seuil 5.4[0-9][\s\S]*debutant : seuil 7.0[0-9]/
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={format:'10k',level:'inter',intent:'competition',vol_max:'6',sessions_max:'4',dispo:'partielle',age:'28',sex:'H',weight:'80',height:'182',injury:'aucune',off_days:'non',shift_ok:'non',doubles:'non',sleep:'moyen',life_load:'normale',activity:'actif',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'plat',pace_known:'oui',vol_recent:'0'};for(const [l,p,h] of [['ancien','5:45','ancien'],['debutant','7:00','reprise']]){const pl=E.buildPlan('run',{...b,pace:p,history:h});const w=pl.weeks[0];const min=w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.d!=='rs'?(s.min||0):0),0),0);let seuil='';for(const d of w.days)for(const s of d.sessions)if(/[Ss]euil/.test(s.name||'')&&s.det){const m=String(s.det).match(/@ ([0-9]+.[0-9]+)-/);if(m)seuil=m[1];}console.log(l+' : seuil '+seuil+' · semaine 1 '+min+' min');}"
+quoi: la capacité qui dépasse l'historique de charge est-elle SIGNALÉE, sans brider le plan
+attendu: /capable : AVERTI[\s\S]*debutant : non[\s\S]*regulier : non[\s\S]*bride : non/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={format:'10k',level:'inter',intent:'competition',vol_max:'6',sessions_max:'4',dispo:'partielle',age:'28',sex:'H',weight:'80',height:'182',injury:'aucune',off_days:'non',shift_ok:'non',doubles:'non',sleep:'moyen',life_load:'normale',activity:'actif',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'plat',pace_known:'oui'};const P=(pace,vr)=>E.buildPlan('run',{...b,pace,vol_recent:vr});const A=(p)=>((p._v2&&p._v2.warnings)||[]).some(w=>/tendons/i.test(w));const M=(p)=>p.weeks[0].days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.d!=='rs'?(s.min||0):0),0),0);const cap=P('5:45','0'),tem=P('7:00','0');console.log('capable : '+(A(cap)?'AVERTI':'non'));console.log('debutant : '+(A(tem)?'AVERTI':'non'));console.log('regulier : '+(A(P('5:45','5'))?'AVERTI':'non'));console.log('bride : '+(M(cap)<M(tem)?'OUI':'non'));"
 ```
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)

@@ -15,6 +15,17 @@ prime sur la commodité technique.
 Une fonctionnalité ne doit jamais dégrader les quatre premiers points. « Un mauvais plan vaut
 mieux qu'un plan dangereux. »
 
+**Informer plutôt que bloquer (décision du fondateur, 02/08/2026 — voir ARCHITECTURE.md
+« O-17 »)** : *« notre rôle est d'informer au mieux et de laisser l'athlète choisir entre son
+besoin de résultats ou de sécurité ; le but n'est jamais de bloquer mais d'accompagner au mieux,
+**sauf si réelle mise en danger** »*. Ce qui BLOQUE reste dur et ne se négocie pas — drapeau
+médical, drapeau douleur, mineur × format (R15.7-C), garde IMC, borne d'âge de l'estimation
+énergétique (O-16), course trop proche (R11.4), bornes physiologiques. Leur point commun :
+l'athlète ne peut pas évaluer le risque, ou l'erreur est irréversible. **Tout le reste informe**
+(canal `warnings`, R11.2). Se tromper de catégorie coûte dans les deux sens : brider un athlète
+capable, c'est le plan qu'il quitte pour s'entraîner seul, sans aucun garde-fou — et la
+régularité est priorité 3, pas priorité 7.
+
 ## Les fichiers qui comptent
 
 | Fichier | Rôle |

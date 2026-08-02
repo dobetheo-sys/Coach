@@ -511,6 +511,46 @@ test("E4", "Poids invraisemblable → estimation énergétique refusée", "pass"
 // mot. Le principe du projet est l'inverse : « un plan faux est plus dangereux que pas de
 // plan ». Une entrée fausse doit donc être REFUSÉE, et le refus doit être TYPÉ (clé, valeur,
 // attendu) pour que l'athlète puisse le réparer lui-même.
+// O-17 — LA CAPACITÉ QUI DÉPASSE L'HISTORIQUE DE CHARGE : on INFORME, on ne bride pas.
+//
+// Décision du fondateur (02/08/2026) : « notre rôle est d'informer au mieux et de laisser
+// l'athlète choisir entre son besoin de résultats ou de sécurité ; le but n'est jamais de
+// bloquer mais d'accompagner au mieux, sauf si réelle mise en danger. »
+//
+// Ce critère garde les DEUX moitiés de cette phrase, et la seconde compte autant que la
+// première : l'avertissement existe pour qui en a besoin, ET le plan n'est pas bridé pour
+// autant. Un correctif qui aurait rabaissé l'intensité aurait été un blocage déguisé.
+test("O17", "capacité > historique de charge : le moteur AVERTIT, et ne bride pas", "pass", () => {
+  const bad = [];
+  const base = { format: "10k", vol_max: "6", sessions_max: "4", pace_known: "oui" };
+  const plan = (pace, volRecent) => E.buildPlan("run", { ...profile("run"), ...base, pace, vol_recent: volRecent });
+  const avert = (p) => ((p._v2 && p._v2.warnings) || []).some((w) => /tendons/i.test(w));
+  const minutes = (p) => p.weeks[0].days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.d !== "rs" ? (s.min || 0) : 0), 0), 0);
+
+  const capable = plan("5:45", "0");
+  if (!avert(capable)) bad.push("capacité réelle + 0 h/sem : AUCUN avertissement");
+  // … et il ne se déclenche pas à tort
+  if (avert(plan("7:00", "0"))) bad.push("vrai débutant : avertissement à tort");
+  if (avert(plan("5:45", "5"))) bad.push("coureur régulier : avertissement à tort");
+
+  // LE PLAN N'EST PAS BRIDÉ — c'est la moitié qu'on oublierait en premier.
+  //
+  // Ma première écriture assertait l'ÉGALITÉ des volumes, et elle était fausse : 107 min contre
+  // 92 min pour le témoin. Les deux plans diffèrent légitimement, parce que les bornes de séance
+  // se calculent depuis l'allure et que les deux profils n'ont pas la même. Le risque à garder
+  // n'est pas « le plan change », c'est « le plan RÉTRÉCIT » — un avertissement qui coûterait du
+  // volume serait un blocage déguisé, et c'est exactement ce que la décision produit exclut.
+  const temoin = plan("7:00", "0");
+  if (minutes(capable) < minutes(temoin))
+    bad.push(`le plan a RÉTRÉCI : ${minutes(capable)} min contre ${minutes(temoin)} min pour le témoin`);
+
+  // Le message informe sans culpabiliser ni ordonner.
+  const w = ((capable._v2 && capable._v2.warnings) || []).find((x) => /tendons/i.test(x)) || "";
+  if (!/c'est toi qui décides/i.test(w)) bad.push("le message ne rend pas la décision à l'athlète");
+  if (/tu dois|il faut que tu ralentisses|interdit/i.test(w)) bad.push("le message ordonne au lieu d'informer");
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "avertit, n'ordonne pas, ne bride pas" };
+});
+
 // U9 — LE REFUS NOMME CE QUE L'ATHLÈTE A DEMANDÉ.
 //
 // La dernière phrase du refus « course trop proche » était écrite en dur : « Te vendre une
