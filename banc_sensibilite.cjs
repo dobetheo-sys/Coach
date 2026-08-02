@@ -157,9 +157,11 @@ const EXEMPT = {
  * porte son entrée de registre et sa mesure. Le banc l'affiche à chaque exécution — c'est la
  * différence entre une dette et un oubli. Vider cette table est un objectif, pas une option.
  */
-const DETTE = {
-  "swim/vol_recent": "O-13 — la rampe R10 ne mord jamais en natation : son plancher est en heures de PLAN, or la nage est déjà convertie en heures d'eau (SWIM_TIME_FACTOR). Comparer les deux est une erreur d'unité, et la corriger demande de décider ce que `vol_recent` veut dire pour un nageur.",
-};
+// R20.7 — TABLE VIDE, ET C'EST LE BUT. `swim/vol_recent` y figurait (O-13 : la rampe R10 ne
+// mordait jamais en natation, erreur d'unité). Le défaut est corrigé, l'entrée est retirée :
+// une dette qui reste déclarée après sa correction est un mensonge de plus, dans l'autre sens.
+// La table reste, parce que la prochaine dette doit avoir où se déclarer — avec sa raison.
+const DETTE = {};
 
 const REF_SPORT = {
   run: { format: "marathon", terrain: "route", pace_known: "oui", pace: "4:50" },

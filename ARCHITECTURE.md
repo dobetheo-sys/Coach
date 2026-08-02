@@ -2035,3 +2035,75 @@ Exit 1 sur le moindre échec (vérifié rouge en cassant un seuil), et **entrée
 
 L'ordre comptait : rendre bloquant un banc dont on n'a pas trié les échecs revient à figer la
 dette au lieu de la traiter.
+
+## R20.7 — la rampe de départ mord enfin en natation (O-13), et un gate qui dépendait du jour
+
+### Le défaut : l'athlète et le moteur ne parlaient pas la même unité
+
+Le nageur répond en heures de PISCINE. Le moteur compte la natation en heures DANS L'EAU
+(`SWIM_TIME_FACTOR = 0,4` : les consignes, les départs et les temps d'arrêt ne sont pas du
+volume d'entraînement). La rampe R10 comparait les deux — des euros à des dollars — et le
+chiffre déclaré arrivait donc toujours au-dessus de la courbe.
+
+| `vol_recent` déclaré | semaine 1, avant | après | pic, après |
+|---|---|---|---|
+| 0 h | 1,6 h | **1,3 h** | 1,6 h |
+| 2 h | 1,6 h | **1,4 h** | 1,7 h |
+| 5 h | 1,6 h | 1,6 h | 2,7 h |
+| 10 h | 1,6 h | 1,6 h | 2,7 h |
+
+Le comportement au-dessus de 5 h est INCHANGÉ, et c'est la vérification qui compte : un nageur
+qui fait déjà cinq heures de piscine est au-dessus de la semaine 1 du plan. La rampe ne mord que
+là où elle doit.
+
+**Décision produit (fondateur)** : la question posée à l'athlète ne change pas. Lui demander de
+retrancher ses temps d'arrêt serait lui demander un calcul qu'il ne peut pas faire. C'est au
+moteur de convertir.
+
+### Deux corrections que ce défaut a entraînées
+
+1. **La chaîne d'explication de R20.2 souffrait de la même faute d'unité.** Elle comparait des
+   baisses d'AVANT la conversion à des baisses d'APRÈS et annonçait « c'est ton historique,
+   −5 h » pour un pic livré à 1,6 h — ces 5 h n'existent pas dans l'unité du chiffre affiché.
+   Chaque baisse est désormais multipliée par le produit des facteurs qui la suivent.
+2. **La rampe est devenue un MAILLON de cette chaîne.** Sur une prépa courte, un athlète qui
+   repart de zéro n'a pas le temps de rejoindre la courbe : c'est la rampe qui décide du pic, et
+   elle n'était nommée nulle part. `_rampCeilH` retient le plus haut plafond réellement imposé —
+   `_rampCap` en fin de boucle vaut souvent `Infinity` et ne dirait plus rien.
+
+### Ce que la CI a révélé : `audit:r14` dépendait du JOUR DE LA SEMAINE
+
+En passant les gates, `audit:r14` est apparu rouge. Vérification faite, **le rouge n'était pas
+dans mon diff** : le banc était déjà rouge au commit précédent — il l'était devenu en passant
+minuit UTC pendant la session.
+
+Ses dates sont des décalages sur `Date.now()`. Or le moteur compte les semaines entre le LUNDI
+de l'ancrage et le LUNDI de la course (R8) : selon le jour où la CI tourne, le même critère
+décrit un plan de N ou de N+1 semaines. Balayé sur les sept jours, moteur inchangé :
+
+| critère | lundi → jeudi | vendredi → dimanche |
+|---|---|---|
+| `R14.3-B` (gain à J-10) | 2,6-2,8 % → **ROUGE** (seuil 2,5) | 2,3-2,4 % → vert |
+| `R14.5-A` / `R14.5-B` (adhérence) | **ROUGE** | vert |
+
+C'est la famille de défaut d'**O-1** (les six `race_date` du banc v7 tombaient toutes un
+dimanche) : une dimension que la mesure ne contrôle pas et qui décide de son verdict.
+
+Trois corrections, toutes dans le BANC :
+
+- **l'ancrage passe au lundi de la semaine courante** — le banc reste relatif (il ne périme pas
+  avec le temps) et devient déterministe sur la longueur de plan ;
+- **`R14.3-B` porte sur le RAPPORT**, pas seulement sur une valeur absolue. Mesuré : le gain
+  J-10 dérive de 2,3 à 2,8 % selon le jour, mais le rapport J-10 / J-60 reste à **0,40-0,45**.
+  C'est lui que la règle énonce (« à l'approche de la course, le gain se réduit »). Le plafond
+  absolu passe à 3 % — la plage réelle du moteur est 2,3-2,8 % pour un bénéfice d'affûtage de
+  1,96 % et ~1,4 semaine de prépa encore devant ; 2,5 % était une marge choisie à l'écriture,
+  pas une valeur mesurée. **Le critère est plus fort qu'avant : deux assertions au lieu d'une,
+  et la principale est insensible au calendrier.**
+- **`R14.5` reçoit un passé.** Les deux critères comparent des taux d'adhérence sur les 6
+  semaines écoulées ; sans `plan_start`, le plan démarre la semaine COURANTE et la fenêtre est
+  vide le lundi. Le commentaire de `markDone` décrivait déjà ce piège — il n'avait réparé que
+  l'échantillonneur, pas la FENÊTRE. Le plan est désormais ancré huit semaines en arrière.
+
+Vérifié : `audit:r14` est vert **les sept jours**, et les quatre autres bancs datés
+(`r14.1`, `r15`, `r18`, `sensibilite`) le sont aussi — balayés de la même façon.

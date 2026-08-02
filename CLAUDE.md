@@ -547,6 +547,26 @@ identique, c'est la même montée, plus courte. **Puis le banc garde** : exit 1 
 un banc dont on n'a pas trié les échecs fige la dette au lieu de la traiter.
 **22 gates verts, E2E 13/13, golden 900 (un seul profil change, de 5 min).**
 
+**R20.7 livré — la rampe de départ mord enfin en natation (O-13), et un gate qui dépendait du
+JOUR** (voir ARCHITECTURE.md « R20.7 ») : le nageur répond en heures de PISCINE, le moteur
+compte en heures DANS L'EAU (`SWIM_TIME_FACTOR`) — la rampe R10 comparait les deux et le chiffre
+déclaré arrivait toujours au-dessus de la courbe. `vol_recent` à 0, 2, 5 ou 10 h donnait le même
+plan à la minute près. **Décision du fondateur : c'est au MOTEUR de convertir**, pas à l'athlète
+de retrancher ses temps d'arrêt. Semaine 1 passe de 1,6 h à **1,3 h** pour qui repart de zéro,
+et reste inchangée au-dessus de 5 h — la rampe ne mord que là où elle doit. Deux corrections
+entraînées : la chaîne d'explication de R20.2 souffrait de la MÊME faute d'unité (elle annonçait
+« ton historique, −5 h » pour un pic livré à 1,6 h — ces 5 h n'existent pas dans l'unité du
+chiffre affiché), et la rampe est devenue un maillon de cette chaîne.
+**Trouvé en passant les gates : `audit:r14` dépendait du jour de la semaine.** Ses dates sont
+des décalages sur `Date.now()` quand le moteur compte les semaines de LUNDI à LUNDI : balayé sur
+les sept jours à moteur inchangé, le banc était **rouge du lundi au jeudi et vert du vendredi au
+dimanche**. Famille d'O-1 — une dimension que la mesure ne contrôle pas et qui décide de son
+verdict. Ancrage au lundi ; `R14.3-B` porte désormais sur le RAPPORT J-10/J-60 (stable à
+0,40-0,45 quand la valeur absolue dérive de 2,3 à 2,8 %), donc **deux assertions au lieu d'une**;
+`R14.5` reçoit un passé de 8 semaines, sans quoi sa fenêtre d'adhérence est vide le lundi.
+Vérifié vert **les sept jours**, et les quatre autres bancs datés balayés de même.
+**22 gates verts, E2E 13/13, golden 900 recapturé.**
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur

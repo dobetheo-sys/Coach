@@ -1348,8 +1348,28 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   // R20.1-a — `>= 0`, pas `> 0` : voir `arbitrateVolRecent`. Quelqu'un qui repart de ZÉRO est
   // celui à qui il faut le départ le plus prudent, et le test strict lui donnait le moins
   // prudent. Le plancher de 2 h reste : on ne prescrit pas une semaine 1 vide, on la borne.
-  let _rampCap = isFinite(volRecent) && volRecent >= 0 ? Math.max(2, volRecent * 1.1) : Infinity;
+  //
+  // R20.7 (O-13) — LA RAMPE ET L'ATHLÈTE NE PARLAIENT PAS LA MÊME UNITÉ EN NATATION.
+  //
+  // Le nageur répond en heures de PISCINE — le temps qu'il y passe. Le moteur, lui, compte la
+  // natation en heures DANS L'EAU (`SWIM_TIME_FACTOR` : les consignes, les départs et les temps
+  // d'arrêt ne sont pas du volume d'entraînement). Comparer les deux, c'est comparer des euros
+  // à des dollars : le chiffre déclaré arrivait toujours au-dessus de la courbe, donc la rampe
+  // ne mordait JAMAIS. Mesuré avant correction — `vol_recent` à 0, 2, 5 ou 10 h donnait le même
+  // plan à la minute près : semaine 1 à 1,6 h dans les quatre cas.
+  //
+  // On convertit AVANT de comparer, et le plancher suit la même unité — un plancher de 2 h
+  // « génériques » vaudrait 5 h de piscine et ne bornerait plus rien.
+  //
+  // La question posée à l'athlète ne change pas : lui demander de retrancher ses temps de repos
+  // serait lui demander un calcul qu'il ne peut pas faire, et la plupart répondraient de toute
+  // façon le temps passé à la piscine. C'est au moteur de convertir, pas à l'athlète.
+  const _rampUnit = r.volLimits.swimTime; // 1 partout ailleurs qu'en natation
+  let _rampCap = isFinite(volRecent) && volRecent >= 0
+    ? Math.max(2 * _rampUnit, volRecent * _rampUnit * 1.1)
+    : Infinity;
   let _rampWeeks = 0;
+  let _rampCeilH = 0; // R20.7 — plus haut plafond réellement imposé par la rampe (0 = jamais mordu)
   const wl: V1Week[] = [];
   let _maxChargeMin = 0;
   let _prevLw = 0;
@@ -1468,6 +1488,10 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       if (targetH > capW + 0.05) {
         targetH = capW;
         _rampWeeks++;
+        // R20.7 — on retient le PLUS HAUT plafond que la rampe a réellement imposé. C'est lui
+        // qui dit ce que la rampe a coûté au pic ; `_rampCap` en fin de boucle vaut souvent
+        // `Infinity` (la rampe a fini par rejoindre la courbe) et ne dirait plus rien.
+        if (!isRW) _rampCeilH = Math.max(_rampCeilH, capW);
       }
       if (!isRW) {
         _rampCap *= C22_MAX_WEEKLY_GROWTH;
@@ -2257,11 +2281,31 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
 
       // La chaîne, dans l'ordre où le moteur l'applique. Chaque maillon déclare ce qu'il a
       // retiré (`de` → `a`) et la phrase qu'il dirait s'il était le principal responsable.
+      // R20.7 — TOUTES LES BAISSES SONT EXPRIMÉES DANS LA MÊME UNITÉ, CELLE DU PIC LIVRÉ.
+      //
+      // La chaîne comparait des baisses d'AVANT la conversion en temps d'eau (heures
+      // « génériques » : ce que l'athlète peut consacrer à s'entraîner) à des baisses d'APRÈS
+      // (heures réellement passées dans l'eau). Mesuré sur une prépa de natation en reprise :
+      // elle annonçait « c'est ton historique, −5 h » pour un pic livré à 1,6 h — ces 5 h
+      // n'existent pas dans l'unité du chiffre affiché. Troisième fois que ce chantier
+      // rencontre la même faute d'unité (O-13, le plancher de temps facile de R20.5, et ici ma
+      // propre chaîne) : elle ne se voit jamais tant qu'on n'écrit pas les deux grandeurs
+      // côte à côte.
+      //
+      // Chaque baisse est donc multipliée par le produit des facteurs qui la SUIVENT — ce que
+      // le maillon a réellement coûté sur le chiffre final. `queue` se met à jour au fur et à
+      // mesure : un facteur qui s'applique cesse de compter pour les baisses déjà enregistrées.
       let v = L.declared;
+      let queue = L.marg * L.recup * L.swimTime * L.med * (r.loadFactor < 1 ? r.loadFactor : 1);
       const maillons: { retire: number; quoi: string; pourquoi: string }[] = [];
       const etape = (apres: number, quoi: string, pourquoi: string) => {
-        if (apres < v - 0.05) maillons.push({ retire: v - apres, quoi, pourquoi });
+        if (apres < v - 0.05) maillons.push({ retire: (v - apres) * queue, quoi, pourquoi });
         v = Math.min(v, apres);
+      };
+      /** Un maillon MULTIPLICATIF : il consomme sa part de `queue` en s'appliquant. */
+      const facteur = (f: number, quoi: string, pourquoi: string) => {
+        if (f > 0 && f < 1) queue /= f;
+        etape(v * f, quoi, pourquoi);
       };
       etape(L.caps, "ton historique",
         "Sur ce format, l'historique « " + String(r.profile.history ?? "") + " » permet d'encaisser " + h(L.caps)
@@ -2269,15 +2313,23 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       etape(L.util, "le volume utile du format",
         "Chaque format a un volume au-delà duquel les heures ne servent plus l'objectif : ici " + h(L.util)
         + "/sem. Les heures supplémentaires coûteraient de la fraîcheur sans rien ajouter au jour J — si tu veux vraiment t'entraîner plus, c'est le format qu'il faut changer, pas le curseur.");
-      etape(v * L.marg, "la marge de sécurité hors compétition",
+      facteur(L.marg, "la marge de sécurité hors compétition",
         "Tu ne prépares pas une compétition : 10 % de marge sont retirés de tous les plafonds. La santé passe avant le chiffre.");
-      etape(v * L.recup, "ta récupération",
+      facteur(L.recup, "ta récupération",
         "Sommeil court et/ou charge de vie lourde : le moteur ne fait pas semblant de l'ignorer, il baisse réellement le contenu (règle 1B). Ce maillon-là remonte tout seul dès que le sommeil revient.");
-      etape(v * L.swimTime, "le temps réellement passé dans l'eau",
+      facteur(L.swimTime, "le temps réellement passé dans l'eau",
         "En natation, le volume promis se compte en temps DANS l'eau — les longueurs de récupération, les départs et les consignes ne sont pas du volume d'entraînement. C'est la même séance, comptée honnêtement.");
-      etape(v * L.med, "le drapeau médical",
+      facteur(L.med, "le drapeau médical",
         "Tu as signalé un symptôme à l'effort : ce plan est un plan de MAINTIEN, volontairement allégé. Le volume n'est pas le sujet tant que l'avis médical n'est pas donné.");
-      etape(v * (r.loadFactor < 1 ? r.loadFactor : 1), r.inj.count > 0 ? "tes zones fragiles" : "ton âge",
+      // R20.7 — LA RAMPE DE DÉPART EST UN MAILLON, ELLE AUSSI. Sur une préparation courte, un
+      // athlète qui repart de zéro n'a pas le temps de rejoindre la courbe : la montée est
+      // bornée à +10 %/semaine (R10/C22) et c'est ELLE qui décide du pic, pas les plafonds.
+      // Mesuré en fermant O-13 : natation `fond`, 12 semaines, `vol_recent: 0` → pic 1,6 h,
+      // et la chaîne nommait un plafond que le plan n'approchait même pas.
+      etape(_rampCeilH > 0 ? _rampCeilH : v, "ton point de départ",
+        "Tu repars de " + h(isFinite(volRecent) ? volRecent : 0) + "/sem : la montée est bornée à +10 % par semaine, et sur "
+        + r.weeks + " semaines elle n'a pas le temps de rejoindre ce que tes plafonds autorisent. Ce n'est pas une limite technique, c'est la marche la plus souvent trop haute — celle du début. Avec plus de semaines devant toi, le même profil monterait plus haut.");
+      facteur(r.loadFactor < 1 ? r.loadFactor : 1, r.inj.count > 0 ? "tes zones fragiles" : "ton âge",
         (r.inj.count > 0 ? "Ta ou tes zones fragiles (" + r.inj.list.join(", ") + ")" : "Ton âge")
         + " abaissent volontairement le plafond de charge (R6.2/R6.3). Ce n'est pas un réglage à contourner : la marge que tu perds ici est celle qui te garde entier.");
       // Le reste : ce que la STRUCTURE de la semaine ne sait pas porter — nombre de séances ×

@@ -526,7 +526,7 @@ attendu: /, 0 sans aucune qualite/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const iso=w=>{const d=new Date(Date.now()+w*7*864e5);d.setUTCDate(d.getUTCDate()+((7-d.getUTCDay())%7));return d.toISOString().slice(0,10)};const B={level:'inter',history:'confirme',intent:'competition',vol_max:'10',sessions_max:'6',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',ftp:'230',ftp_known:'oui',css:'2:00',css_known:'oui',vol_recent:'7',injury:'aucune',off_days:'non',shift_ok:'non',terrain:'plat'};const S={run:['5k','semi','marathon'],bike:['crit','cyclo'],tri:['M','70.3']};let n=0,vide=0;for(const sp of Object.keys(S))for(const f of S[sp])for(const sem of [22,30,40]){let p;try{p=E.buildPlan(sp,{...B,format:f,race_date:iso(sem)})}catch(e){continue}const wk=p._v2.intensity.weekly,T=p.weeks.map((w,i)=>({i,ph:w.phase.id})).filter(x=>x.ph==='taper').slice(0,-1);for(const x of T){n++;if(wk[x.i].m+wk[x.i].h===0)vide++}}console.log(n+' semaines d affutage, '+vide+' sans aucune qualite')"
 ```
 
-### O-13 · La rampe R10 ne mord jamais en natation — erreur d'unité · 🟠 **OUVERT (trouvé par la garde R20.1)**
+### O-13 · La rampe R10 ne mord jamais en natation — erreur d'unité · ✅ **FERMÉ (R20.7)**
 
 Trouvé par le balayage dérivé du schéma, pas en cherchant : `vol_recent` est la seule clé du
 schéma qui reste inerte dans un sport (la natation) une fois les exemptions posées.
@@ -544,11 +544,39 @@ l'eau, ou des heures d'entraînement toutes disciplines ? C'est une question de 
 d'être une ligne de code, d'où l'entrée plutôt qu'un correctif rapide. Elle est portée comme
 DETTE DÉCLARÉE dans `banc_sensibilite.cjs` : le banc l'affiche à chaque exécution.
 
+---
+
+**FERMETURE (R20.7, 02/08/2026) — décision du fondateur : c'est au MOTEUR de convertir.**
+
+La question posée à l'athlète ne bouge pas. Lui demander de retrancher ses temps d'arrêt serait
+lui demander un calcul qu'il ne peut pas faire, et la plupart répondraient de toute façon le
+temps passé à la piscine. Le moteur applique `SWIM_TIME_FACTOR` au chiffre déclaré **avant** de
+le comparer, et le plancher de la rampe suit la même unité — sinon un plancher de 2 h
+« génériques » vaudrait 5 h de piscine et ne bornerait toujours rien.
+
+| `vol_recent` déclaré | semaine 1, avant | semaine 1, après | pic, après |
+|---|---|---|---|
+| 0 h | 1,6 h | **1,3 h** | 1,6 h |
+| 2 h | 1,6 h | **1,4 h** | 1,7 h |
+| 5 h | 1,6 h | 1,6 h | 2,7 h |
+| 10 h | 1,6 h | 1,6 h | 2,7 h |
+
+Le comportement au-dessus de 5 h est INCHANGÉ, et c'est la vérification qui compte : un nageur
+qui fait déjà cinq heures de piscine par semaine est au-dessus de la semaine 1 du plan, la rampe
+n'a rien à borner chez lui. Elle ne mord que là où elle doit — sur celui qui repart de rien.
+
+**Trouvé en corrigeant** : la chaîne d'explication de R20.2 souffrait de la MÊME faute d'unité.
+Elle comparait des baisses d'avant la conversion (heures « génériques ») à des baisses d'après
+(heures d'eau) et annonçait « c'est ton historique, −5 h » pour un pic livré à 1,6 h — ces 5 h
+n'existent pas dans l'unité du chiffre affiché. Chaque baisse est désormais ramenée à l'unité
+du pic. Et la rampe est devenue un MAILLON de cette chaîne : sur une prépa courte, c'est elle
+qui décide du pic, et elle n'était nommée nulle part.
+
 ```verify
 id: O-13
-quoi: en natation, le volume récent déclaré ne change pas la semaine 1
-attendu: /DETTE CONNUE/
-cmd: npm run audit:sensibilite
+quoi: en natation, le volume récent déclaré change la semaine 1
+attendu: /vol_recent= 0h → S1 1[.,]3h[\s\S]*vol_recent= 5h → S1 1[.,]6h/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swim',format:'fond',intent:'competition',dispo:'partielle',doubles:'parfois',off_days:'non',shift_ok:'non',age:'35',sex:'H',css_known:'oui',css:'2:00',milieu:'bassin',swim_limit:'technique',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',sessions_max:'6',vol_max:'10',history:'reprise',level:'inter'};for(const vr of ['0','2','5','10']){const p=E.buildPlan('swim',{...b,vol_recent:vr});console.log('vol_recent='+vr.padStart(2)+'h → S1 '+p.weeks[0].vol+'h · pic '+p.volPeak+'h');}"
 ```
 
 ### O-14 · `swim_limit` n'agissait que pour les débutants · ✅ **FERMÉ (R20.1-d)**
