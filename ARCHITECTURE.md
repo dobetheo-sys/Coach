@@ -2107,3 +2107,41 @@ Trois corrections, toutes dans le BANC :
 
 Vérifié : `audit:r14` est vert **les sept jours**, et les quatre autres bancs datés
 (`r14.1`, `r15`, `r18`, `sensibilite`) le sont aussi — balayés de la même façon.
+
+## R20.8 — l'acclimatation au froid n'occupe que les dernières semaines (O-15 fermé)
+
+Sous 17 °C d'eau, le module verrouillait le second créneau facile sur une exposition au froid —
+**de la première à la dernière semaine**. Le principe est juste (l'hypothermie est un risque
+vital, la spécificité une priorité 5) ; c'est sa PORTÉE qui n'avait jamais été décidée.
+
+L'adaptation au froid — vasoconstriction périphérique, réponse au choc thermique, tolérance du
+réflexe inspiratoire — s'installe en quelques semaines d'exposition régulière et **se perd tout
+aussi vite à l'arrêt**. Celle de la semaine 1 d'une prépa de 26 semaines ne vaut rien le jour J,
+pendant qu'elle coûte de la spécificité toutes les semaines.
+
+**Décision (fondateur)** : le verrou démarre à **8 semaines du jour J** ; avant, la bascule S13
+reprend son droit et le créneau retourne à la discipline que l'épreuve demande.
+
+Le calcul se fait en semaines RESTANTES, pas en phases : une prépa de 12 semaines et une de 40
+n'ont pas les mêmes phases au même endroit, mais elles ont toutes les deux un « J-8 semaines ».
+Sur une prépa plus courte que 8 semaines la condition est vraie partout — et c'est voulu, il n'y
+a alors plus de marge à arbitrer.
+
+8 semaines : au-dessus de la fenêtre d'installation décrite (2 à 6 semaines), avec la marge
+d'une prépa réelle où l'on rate des séances. Le choix penche délibérément du côté long — c'est
+une règle de sécurité, et une acclimatation trop courte coûte plus cher qu'une semaine de
+spécificité en moins.
+
+| | avant | après |
+|---|---|---|
+| profils sous le seuil de spécificité à 16 °C | **3 / 15** | **0 / 15** |
+| séances d'acclimatation sur une prépa de 41 semaines | 51 | **10** |
+
+### Ce que ça change pour l'instrument
+
+L'exemption `S-MIX` du banc v7 (R20.3) existait parce que les 26 hits résiduels portaient tous
+une eau froide. Mesurée en la désactivant, elle cache aujourd'hui **1 à 4 profils** (N = 250 /
+400 / 600) contre 26 — et tous dans la fenêtre des 8 dernières semaines, c'est-à-dire là où le
+verrou fait exactement son travail. L'exemption reste (l'instrument ne doit pas punir une règle
+de sécurité, R16.10) et `S-MIX` garde son budget à 0, mais **elle est passée d'un angle mort à
+une marge**.

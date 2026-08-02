@@ -567,6 +567,20 @@ verdict. Ancrage au lundi ; `R14.3-B` porte désormais sur le RAPPORT J-10/J-60 
 Vérifié vert **les sept jours**, et les quatre autres bancs datés balayés de même.
 **22 gates verts, E2E 13/13, golden 900 recapturé.**
 
+**R20.8 livré — l'acclimatation au froid n'occupe que les dernières semaines** (O-15 fermé, voir
+ARCHITECTURE.md « R20.8 ») : sous 17 °C, le module verrouillait le second créneau facile sur une
+exposition au froid **de la première à la dernière semaine**. Le principe est juste ; c'est sa
+PORTÉE qui n'avait jamais été décidée — l'adaptation au froid s'installe en quelques semaines et
+se PERD à l'arrêt, donc celle de la semaine 1 d'une prépa de 26 semaines ne vaut rien le jour J
+pendant qu'elle coûte de la spécificité tout du long. **Décision du fondateur** : le verrou
+démarre à **8 semaines du jour J**, en semaines RESTANTES et non en phases (une prépa de 12 et
+une de 40 n'ont pas les mêmes phases au même endroit, mais toutes deux un « J-8 semaines »).
+Profils sous le seuil de spécificité à 16 °C : **3/15 → 0/15** ; séances d'acclimatation sur une
+prépa de 41 semaines : **51 → 10**. Et l'exemption `S-MIX` du banc v7 passe d'un angle mort à une
+marge : mesurée en la désactivant, elle cachait 26 profils, elle en cache **1 à 4** (N =
+250/400/600), tous dans la fenêtre où le verrou fait son travail.
+**22 gates verts, E2E 13/13, golden 900 recapturé.**
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur

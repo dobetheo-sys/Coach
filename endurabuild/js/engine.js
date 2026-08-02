@@ -5209,7 +5209,26 @@ const S6_TEAM = srule(
 const S7_COLD = srule(
   "S7",
   "l'eau froide dégrade la nage et la lucidité avant de mettre en danger : l'acclimatation se planifie comme une qualité physique",
-  { wetsuitMandatoryBelowC: 19, acclimationBelowC: 17, minSessionsPerWeek: 1, idealSessionsPerWeek: 2 },
+  { wetsuitMandatoryBelowC: 19, acclimationBelowC: 17, minSessionsPerWeek: 1, idealSessionsPerWeek: 2,
+    /**
+     * S7bis (R20.8, O-15) — L'ACCLIMATATION NE DURE PAS TOUTE LA PRÉPARATION.
+     *
+     * Le verrou froid confisquait le second créneau facile de la PREMIÈRE à la DERNIÈRE semaine.
+     * Or l'adaptation au froid (vasoconstriction périphérique, réponse au choc thermique,
+     * tolérance du réflexe inspiratoire) s'installe en quelques semaines d'exposition régulière
+     * et se PERD tout aussi vite à l'arrêt : celle de la semaine 1 d'une prépa de 26 semaines ne
+     * vaut rien le jour J. Pendant ce temps elle coûtait de la spécificité tout du long — mesuré
+     * en R20.3 : sur une épreuve à 68 % de course à pied, le plan n'en faisait courir que 45 %.
+     *
+     * Elle démarre donc à 8 semaines du jour J. Avant, la bascule S13 reprend son droit et le
+     * créneau retourne à la discipline que l'épreuve demande.
+     *
+     * 8 semaines : au-dessus de la fenêtre d'installation décrite (2 à 6 semaines d'exposition
+     * régulière), avec la marge d'une prépa réelle où l'on rate des séances. Le choix penche
+     * délibérément du côté long — c'est une règle de SÉCURITÉ, et une acclimatation trop courte
+     * coûte plus cher qu'une semaine de spécificité en moins.
+     */
+    acclimationWeeksBeforeRace: 8 },
 );
 
 /**
@@ -5594,7 +5613,19 @@ function buildSwimrunSessions(kit            )              {
   const owForCold = false;
   const shoulder = inj.shoulder;
   const team = obj.teamMode === "binome";
-  const cold = obj.waterTempC != null && obj.waterTempC < S7_COLD.acclimationBelowC;
+  // S7bis (R20.8, O-15) — LE VERROU FROID NE COUVRE QUE LES DERNIÈRES SEMAINES.
+  //
+  // Voir `tables.ts` : l'adaptation au froid s'installe en quelques semaines et se perd à
+  // l'arrêt, donc celle de la semaine 1 d'une prépa longue ne sert à rien le jour J — pendant
+  // qu'elle coûte de la spécificité toutes les semaines. Elle démarre à 8 semaines de la course.
+  //
+  // Le calcul se fait en semaines RESTANTES, pas en phases : une prépa de 12 semaines et une de
+  // 40 n'ont pas les mêmes phases au même endroit, mais elles ont toutes les deux un « J-8
+  // semaines ». Sur une prépa PLUS COURTE que 8 semaines, la condition est vraie partout — et
+  // c'est voulu : il n'y a alors plus de marge à arbitrer.
+  const semainesRestantes = Math.max(0, kit.r.weeks - kit.weekNum + 1);
+  const froidPertinent = semainesRestantes <= S7_COLD.acclimationWeeksBeforeRace;
+  const cold = obj.waterTempC != null && obj.waterTempC < S7_COLD.acclimationBelowC && froidPertinent;
   const pad = paddleShare(phase, shoulder);
   // S13 — LE CRÉNEAU FACILE SECONDAIRE SUIT LA COURSE. La structure hebdomadaire était un
   // constant (2 nages, 2 courses, la pivot) : la part de course du plan valait 63-64 % que

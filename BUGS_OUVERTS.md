@@ -587,7 +587,7 @@ derrière `if (beginner)`. Un nageur intermédiaire qui déclare « ma limite, c
 respiration » recevait « éducatifs », sans plus. Une limite ne disparaît pas quand on progresse.
 Trouvé par la garde R20.1, corrigé dans le même lot.
 
-### O-15 · L'eau froide fait passer le plan sous le seuil de spécificité, et l'exemption du banc le rend invisible · 🟠 **OUVERT (trouvé en R20.3)**
+### O-15 · L'eau froide fait passer le plan sous le seuil de spécificité, et l'exemption du banc le rend invisible · ✅ **FERMÉ (R20.8)**
 
 Découvert en fermant O-8, et seulement parce que le footing sans bornes le masquait avec du
 volume fictif. Après la pose des bornes S14, **26 profils** du banc v7 tombaient plus de
@@ -629,10 +629,40 @@ punir une règle de sécurité (R16.10), mais l'exemption rend l'écart INVISIBL
 exactement pourquoi cette entrée existe — **une exemption sans entrée de registre est un défaut
 effacé.**
 
+---
+
+**FERMETURE (R20.8, 02/08/2026) — décision du fondateur : seulement les dernières semaines.**
+
+L'adaptation au froid s'installe en quelques semaines d'exposition régulière et se PERD à
+l'arrêt : celle de la semaine 1 d'une prépa de 26 semaines ne vaut rien le jour J, pendant
+qu'elle coûte de la spécificité toutes les semaines. Le verrou démarre désormais à **8 semaines
+du jour J** (`S7bis.acclimationWeeksBeforeRace`) ; avant, la bascule S13 reprend son droit.
+
+Le calcul se fait en semaines RESTANTES, pas en phases : une prépa de 12 semaines et une de 40
+n'ont pas les mêmes phases au même endroit, mais elles ont toutes les deux un « J-8 semaines ».
+Sur une prépa plus courte que 8 semaines la condition est vraie partout — et c'est voulu, il n'y
+a alors plus de marge à arbitrer.
+
+8 semaines : au-dessus de la fenêtre d'installation décrite (2 à 6 semaines), avec la marge
+d'une prépa réelle où l'on rate des séances. Le choix penche délibérément du côté long — c'est
+une règle de sécurité, et une acclimatation trop courte coûte plus cher qu'une semaine de
+spécificité en moins.
+
+| | avant | après |
+|---|---|---|
+| profils sous le seuil de spécificité à 16 °C | **3 / 15** | **0 / 15** |
+| séances d'acclimatation sur une prépa de 41 semaines | 51 | **10** |
+
+**Et l'exemption du banc v7 ne masque presque plus rien** — c'était la vraie raison d'être de
+cette entrée. Mesurée en la désactivant, elle cachait **26 profils** en R20.3 ; elle en cache
+**1 à 4** aujourd'hui (N = 250 / 400 / 600), tous dans la fenêtre des 8 dernières semaines,
+c'est-à-dire là où le verrou fait exactement son travail. L'exemption reste (l'instrument ne
+doit pas punir une règle de sécurité — R16.10) et `S-MIX` garde son budget à 0.
+
 ```verify
 id: O-15
-quoi: sous le seuil d'acclimatation, des plans passent sous le seuil de spécificité — pas au-dessus
-attendu: /eau 16C : [1-9][0-9]?\/15[\s\S]*eau 20C : 0\/15/
+quoi: l'acclimatation ne déplace plus la spécificité hors des dernières semaines
+attendu: /eau 16C : 0\/15[\s\S]*eau 20C : 0\/15/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swimrun',format:'sprint',level:'inter',history:'confirme',intent:'competition',vol_max:'10',sessions_max:'7',dispo:'partielle',age:'30',sex:'H',weight:'79',pace:'4:50',pace_known:'oui',css:'1:45',css_known:'oui',vol_recent:'7',off_days:'non',shift_ok:'non',doubles:'oui',swim_total_m:'2600',run_total_km:'9.2',race_dplus_m:'250',segments_n:'10',longest_swim_m:'600',team_mode:'binome',team_swim_gap_sec:'5',openwater_access:'saisonnier',swim_continuous:'oui',run_continuous:'oui',gear_test:'non',race_date:'2027-05-09'};const part=(p)=>{let rn=0,sw=0;for(const w of p.weeks){if(w.isRecup||w.phase.id==='taper')continue;for(const d of w.days)for(const s of d.sessions||[]){if(s.d==='rs')continue;if(s.d==='br'){for(const st of s.steps||[])if(st.leg||st.d){const m=(st.reps||1)*(st.durationMin||0);if(st.d==='sw')sw+=m;else rn+=m;}}else if(s.d==='sw')sw+=s.min||0;else if(s.d==='rn')rn+=s.min||0;}}return rn/(rn+sw);};for(const t of ['16','20']){let n=0,tot=0;for(const inj of ['aucune','hanche','tibia','genou','dos'])for(const lv of ['debutant','inter','avance']){const a={...b,water_temp_c:t,injury:inj,level:lv};try{const o=E.swimrunObjective(a);const p=E.buildPlan('swimrun',a);tot++;if(part(p)<(1-o.swimTimeShare)-0.15)n++;}catch(e){}}console.log('eau '+t+'C : '+n+'/'+tot+' profils sous le seuil de specificite');}"
 ```
 

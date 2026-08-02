@@ -93,7 +93,19 @@ export function buildSwimrunSessions(kit: SessionKit): V1Session[] {
   const owForCold = false;
   const shoulder = inj.shoulder;
   const team = obj.teamMode === "binome";
-  const cold = obj.waterTempC != null && obj.waterTempC < S7_COLD.acclimationBelowC;
+  // S7bis (R20.8, O-15) — LE VERROU FROID NE COUVRE QUE LES DERNIÈRES SEMAINES.
+  //
+  // Voir `tables.ts` : l'adaptation au froid s'installe en quelques semaines et se perd à
+  // l'arrêt, donc celle de la semaine 1 d'une prépa longue ne sert à rien le jour J — pendant
+  // qu'elle coûte de la spécificité toutes les semaines. Elle démarre à 8 semaines de la course.
+  //
+  // Le calcul se fait en semaines RESTANTES, pas en phases : une prépa de 12 semaines et une de
+  // 40 n'ont pas les mêmes phases au même endroit, mais elles ont toutes les deux un « J-8
+  // semaines ». Sur une prépa PLUS COURTE que 8 semaines, la condition est vraie partout — et
+  // c'est voulu : il n'y a alors plus de marge à arbitrer.
+  const semainesRestantes = Math.max(0, kit.r.weeks - kit.weekNum + 1);
+  const froidPertinent = semainesRestantes <= S7_COLD.acclimationWeeksBeforeRace;
+  const cold = obj.waterTempC != null && obj.waterTempC < S7_COLD.acclimationBelowC && froidPertinent;
   const pad = paddleShare(phase, shoulder);
   // S13 — LE CRÉNEAU FACILE SECONDAIRE SUIT LA COURSE. La structure hebdomadaire était un
   // constant (2 nages, 2 courses, la pivot) : la part de course du plan valait 63-64 % que
