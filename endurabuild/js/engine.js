@@ -889,10 +889,32 @@ function validateAnswers(sport        , raw                         , todayISO  
     if (need && weeksFromAnchor >= 1 && weeksFromAnchor + 1 < need) {
       const shorter = (formats || []).slice(0, Math.max(0, (formats || []).indexOf(String(a.format))));
       const okDate = new Date(new Date(today + "T00:00:00Z").getTime() + need * 7 * 864e5).toISOString().slice(0, 10);
+      const reste = weeksFromAnchor + 1;
+      // U9 — LE REFUS NOMME CE QUE L'ATHLÈTE A DEMANDÉ, PAS UN IRONMAN.
+      //
+      // La dernière phrase était écrite en dur : « Te vendre une préparation d'Ironman en un
+      // mois serait te mentir ». Mesuré : **9 refus sur 9** la servaient, sur les SEPT sports —
+      // un nageur qui prépare un 1500 m et un coureur qui prépare un 10 km s'entendaient parler
+      // d'Ironman. C'est le moment le plus honnête du produit (il refuse une préparation pour
+      // ne pas blesser) et il montrait qu'il ne lisait pas la réponse saisie : la crédibilité
+      // d'un « non » tient entièrement à ça.
+      //
+      // On ne fabrique PAS de table de libellés ici : les noms lisibles des formats vivent dans
+      // `config.js`, côté UI, et en dupliquer une seconde copie dans le schéma créerait deux
+      // sources de vérité pour la même chose. La phrase se passe du libellé — « cette
+      // préparation », c'est la sienne, et c'est plus juste qu'une étiquette de catalogue.
+      //
+      // U9b — et on ne propose plus « un format plus court » quand il n'en existe aucun : sur
+      // le format le plus court du sport (tri/S mesuré), l'ancienne phrase envoyait chercher
+      // une issue qui n'existe pas.
+      const issues = sport === "trail"
+        ? ["viser une course plus courte (distance et D+)"]
+        : shorter.length ? ["viser un format plus court (" + shorter.join(", ") + ")"] : [];
+      issues.push("viser une course à partir du " + okDate);
       throw new EBInputError("race_date", race, "au moins " + need + " semaines avant la course",
-        "Il reste " + (weeksFromAnchor + 1) + " semaine(s) avant ta course, et une préparation honnête de ce format en demande au moins " + need + ". "
-        + "Deux issues : viser " + (sport === "trail" ? "une course plus courte (distance et D+)" : "un format plus court" + (shorter.length ? " (" + shorter.join(", ") + ")" : ""))
-        + ", ou une course à partir du " + okDate + ". Te vendre une préparation d'Ironman en un mois serait te mentir, et te blesser.");
+        "Il reste " + reste + " semaine(s) avant ta course, et une préparation honnête de ce format en demande au moins " + need + ". "
+        + (issues.length > 1 ? "Deux issues : " + issues[0] + ", ou " + issues[1] : "Une seule issue : " + issues[0])
+        + ". Te vendre cette préparation en " + reste + " semaine" + (reste > 1 ? "s" : "") + " serait te mentir, et te blesser.");
     }
   }
 

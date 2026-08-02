@@ -694,6 +694,30 @@ douleur existe (feedback post-séance). Règle qui en sort : **avant d'écrire q
 cassée, la casser exprès et vérifier que la mesure change** — c'est ce qui a démasqué les quatre.
 **22 gates verts, E2E 14/14 (12 assertions d'usage), golden 900 inchangé.**
 
+**U9 + U10 livré — la fin du plan** (voir `RAPPORT_TOUR_USAGE.md` 3ᵉ partie) : affûtage, veille,
+jour J. Les bandeaux de fin sont bons et tombent au bon jour (« ✂️ L'affûtage commence », « 🎉
+Veille de course », « 🏁 Jour de course »). Deux défauts derrière. **U10** : l'en-tête de
+`notifications.js` promet depuis son écriture « UNE seule fois, jamais de rafale » — le garde
+`relanceSent` ne couvrait que la NOTIFICATION, le bandeau se ré-affichait à chaque rendu. Mesuré
+sur un plan de 10 semaines sans rien cocher : présent de **J+7 à J+70, soit 64 jours d'affilée**,
+veille et JOUR J compris. Le matin de sa course, la personne lisait « 🏁 Jour de course… » suivi de
+« 🌿 La vie a pris le dessus — trois séances sont passées ». Même famille qu'U1, au pire moment
+possible. La clé du « déjà dit » devient le **premier** jour du décrochage et non le dernier —
+c'était le point, le dernier change tous les jours donc ne dampait rien ; **14 jours affichés sur 16
+échantillonnés → 1**, et **jamais la veille ni le jour J** (R13.4 : le jour J n'est pas un jour
+d'entraînement). Vérifié que le message **revient pour un nouveau décrochage** (épisode 1 J+7,
+cinq jours de séances validées, épisode 2 J+22) — un correctif qui l'éteint à vie serait pire que
+le défaut. **U9** : le refus « course trop proche » est le moment le plus honnête du produit (il
+décline pour ne pas blesser, explique, propose deux issues, offre « Corriger ma réponse ») — et sa
+dernière phrase était écrite en dur : « Te vendre une préparation **d'Ironman** en un mois serait
+te mentir ». **9 refus sur 9**, sur les sept sports : un nageur qui prépare un 1500 m et un coureur
+qui prépare un 10 km s'entendaient parler d'Ironman. Devient « te vendre **cette préparation** en
+3 semaines » — aucune table de libellés créée dans le schéma (ils vivent dans `config.js`, en
+dupliquer une copie ferait deux sources de vérité). **U9b** : plus de « format plus court » proposé
+à qui a déjà le plus court du sport. Gardes : `U9` au banc v6 (9 sports), `U10` dans `smoke-usage`
+— **vérifiés rouges** (U10 : 4 affichages sur 4 sans le correctif).
+**22 gates verts, E2E 14/14 (13 assertions d'usage), golden 900 inchangé, registre 15/15.**
+
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
 corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur

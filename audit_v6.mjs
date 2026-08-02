@@ -511,6 +511,36 @@ test("E4", "Poids invraisemblable → estimation énergétique refusée", "pass"
 // mot. Le principe du projet est l'inverse : « un plan faux est plus dangereux que pas de
 // plan ». Une entrée fausse doit donc être REFUSÉE, et le refus doit être TYPÉ (clé, valeur,
 // attendu) pour que l'athlète puisse le réparer lui-même.
+// U9 — LE REFUS NOMME CE QUE L'ATHLÈTE A DEMANDÉ.
+//
+// La dernière phrase du refus « course trop proche » était écrite en dur : « Te vendre une
+// préparation d'Ironman en un mois serait te mentir ». Mesuré avant correction : **9 refus sur
+// 9**, sur les SEPT sports — un nageur qui prépare un 1500 m et un coureur qui prépare un 10 km
+// s'entendaient parler d'Ironman. C'est le moment le plus honnête du produit (il refuse une
+// préparation pour ne pas blesser) et il montrait qu'il ne lisait pas la réponse saisie.
+//
+// Second volet : ne pas proposer « un format plus court » à qui a déjà le plus court du sport.
+test("U9", "le refus « course trop proche » ne parle jamais d'une autre épreuve que la sienne", "pass", () => {
+  const bad = [];
+  const course = new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);
+  const cas = [["run", "10k"], ["run", "marathon"], ["bike", "cyclo"], ["swim", "fond"],
+    ["tri", "S"], ["tri", "Full"], ["duathlon", "M"], ["trail", "?"], ["swimrun", "sprint"]];
+  let vus = 0;
+  for (const [sp, fmt] of cas) {
+    let h = null;
+    try { E.buildPlan(sp, { ...profile(sp), format: fmt, race_date: course }); }
+    catch (e) { h = e.human || ""; }
+    if (!h || !/semaine\(s\) avant ta course/.test(h)) continue;
+    vus++;
+    if (/Ironman/.test(h)) bad.push(`${sp}/${fmt} : parle d'Ironman`);
+    // « un format plus court » sans en nommer aucun = une issue qui n'existe pas
+    if (/format plus court(?!\s*\()/.test(h)) bad.push(`${sp}/${fmt} : propose un format plus court sans en nommer un`);
+    if (!/serait te mentir/.test(h)) bad.push(`${sp}/${fmt} : la phrase de refus a disparu`);
+  }
+  if (vus < 5) bad.push(`seulement ${vus} refus observés — l'échantillon ne prouve rien`);
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || `${vus} refus, tous nomment la bonne épreuve` };
+});
+
 test("E5", "buildPlan REFUSE une entrée invalide, avec un refus typé et réparable", "pass", () => {
   const bad = [];
   const mutants = [

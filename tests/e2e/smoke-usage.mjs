@@ -134,6 +134,39 @@ ok(declenche.length === 0, "U1 — un plan créé à l'instant n'annonce aucune 
   await ctx.close();
 }
 
+// ── U10 — la relance se dit UNE FOIS par décrochage, jamais en boucle.
+//
+// L'en-tête de `notifications.js` promet « UNE seule fois, jamais de rafale » depuis son
+// écriture. Le garde ne couvrait que la NOTIFICATION ; le bandeau, lui, se ré-affichait à
+// chaque rendu. Mesuré : présent de J+7 à J+70 sur un plan de 10 semaines — **64 jours
+// d'affilée**, veille de course et JOUR J compris.
+//
+// Ce critère vérifie les deux moitiés : il apparaît (sinon on l'aurait éteint), et il se tait
+// ensuite. Le retour pour un SECOND décrochage est vérifié à part, hors CI, parce qu'il demande
+// de valider des séances sur cinq jours simulés — ici on garde le comportement quotidien.
+{
+  const creation = await session(LUNDI);
+  await passeCheckin(creation.page);
+  const st = await creation.ctx.storageState();
+  await creation.ctx.close();
+
+  const vu = [];
+  for (const k of [9, 12, 16, 21]) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR", isMobile: true, hasTouch: true, timezoneId: "Europe/Paris", storageState: vu.etat || st });
+    await ctx.addInitScript(`(()=>{const F=${LUNDI} + ${k} * 864e5;const d=F-Date.now();const R=Date;const D=function(...a){return a.length?new R(...a):new R(R.now()+d);};D.now=()=>R.now()+d;D.parse=R.parse;D.UTC=R.UTC;D.prototype=R.prototype;globalThis.Date=D;})()`);
+    const page = await ctx.newPage();
+    await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
+    await page.waitForTimeout(800);
+    await passeCheckin(page);
+    await page.waitForTimeout(400);
+    vu.push({ k, on: await page.evaluate(() => /La vie a pris le dessus/.test(document.body.innerText || "")) });
+    vu.etat = await ctx.storageState();
+    await ctx.close();
+  }
+  const n = vu.filter((x) => x.on).length;
+  ok(n === 1, "U10 — la relance se dit UNE fois par décrochage, pas en boucle (" + n + " jour" + (n > 1 ? "s" : "") + " sur " + vu.length + " : " + vu.filter((x) => x.on).map((x) => "J+" + x.k).join(", ") + ")");
+}
+
 // ── U8 — un jour de repos n'est pas une séance qui s'appelle « OFF »
 {
   const { ctx, page } = await session(LUNDI); // 63 profils sur 63 démarrent par un lundi de repos

@@ -2410,3 +2410,65 @@ celle qu'elle nomme** :
 
 Trois faux constats sur sept. La leçon centrale de R20 vaut aussi quand c'est moi qui tiens
 l'instrument.
+
+## U9 + U10 — la fin du plan
+
+Troisième traversée côté usage (`RAPPORT_TOUR_USAGE.md`), sur l'autre extrémité : affûtage,
+semaine de course, veille, jour J. Le moteur y avait beaucoup travaillé (R13.4, R15.7-A/B,
+R19.3) ; personne n'avait regardé les écrans.
+
+**Ce qui marche** : les trois bandeaux de fin tombent au bon jour et disent ce qu'il faut
+(« ✂️ L'affûtage commence… ne rajoute rien », « 🎉 Veille de course… des jambes fraîches »,
+« 🏁 Jour de course… départ prudent, finis fort »).
+
+### U10 — la relance ne s'éteignait jamais
+
+L'en-tête de `notifications.js` promet, depuis son écriture, « **UNE seule fois, jamais de
+rafale** ». `relanceSent` ne gardait que la NOTIFICATION ; le bandeau était recalculé à chaque
+rendu.
+
+| | avant | après |
+|---|---|---|
+| premier → dernier affichage | J+7 → **J+70** (64 jours) | J+7, puis silence |
+| jours affichés (16 échantillonnés) | **14** | **1** |
+| veille de course · jour J | oui · **oui** | non · non |
+
+Le matin de sa course, l'athlète lisait le bandeau de course suivi de « 🌿 La vie a pris le
+dessus — trois séances sont passées ». Même famille qu'U1 — la boucle de rétention retournée
+contre celui qu'elle protège — au pire moment disponible.
+
+**La clé est le PREMIER jour du décrochage, pas le dernier.** C'est tout le correctif : le
+dernier change chaque jour, donc y indexer un « déjà montré » ne dampait rien. Avec le premier,
+la clé reste stable tant que l'athlète ne reprend pas → un message par ÉPISODE.
+
+**U10b** : jamais la veille ni le jour d'une course (R13.4 — le jour J n'est pas un jour
+d'entraînement).
+
+**Vérifié dans les deux sens**, parce qu'un correctif qui éteint le message à vie serait pire que
+le défaut : épisode 1 à J+7 → silence → cinq jours de séances validées → **épisode 2 à J+22**.
+
+### U9 — le refus nomme ce que l'athlète a demandé
+
+Le refus « course trop proche » est le moment le plus honnête du produit : il décline une
+préparation pour ne pas blesser, explique le minimum requis, propose deux issues, conserve le
+profil, et offre « Corriger ma réponse » / « Réessayer ». Sa dernière phrase était écrite en dur :
+
+> Te vendre une préparation **d'Ironman** en un mois serait te mentir, et te blesser.
+
+**9 refus sur 9**, sur les sept sports. Un nageur qui prépare un 1500 m, un coureur qui prépare
+un 10 km. La crédibilité d'un « non » tient à ce que la personne se reconnaisse dans ce qu'on lui
+refuse.
+
+Elle devient : « Te vendre **cette préparation** en 3 semaines serait te mentir, et te blesser. »
+**Aucune table de libellés n'est créée ici** — les noms lisibles des formats vivent dans
+`config.js`, côté UI ; en dupliquer une copie dans le schéma ferait deux sources de vérité pour
+la même chose, ce que R11.1 interdit explicitement.
+
+**U9b** : plus de « viser un format plus court » proposé à qui a déjà le plus court du sport
+(`tri/S` mesuré) — le message dit alors « Une seule issue : viser une course à partir du … ».
+
+### Les gardes
+
+`U9` entre au banc v6 (9 sports balayés) ; `U10` entre dans `smoke-usage` (quatre jours
+échantillonnés après le décrochage, exactement un affichage attendu). **Vérifiés rouges** en
+réintroduisant chaque défaut — U10 remonte à 4 affichages sur 4, U9 redevient une régression.

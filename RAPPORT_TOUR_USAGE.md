@@ -363,3 +363,102 @@ séances. Cliquer un bouton et croire avoir confirmé.
 
 La règle pratique qui en sort : **avant d'écrire qu'une chose est cassée, la casser exprès et
 vérifier que la mesure change.** C'est ce qui a démasqué les quatre.
+
+---
+
+# Troisième partie — la fin du plan
+
+**02/08/2026.** L'autre extrémité : affûtage, semaine de course, veille, jour J, lendemain. Le
+moteur y a beaucoup travaillé (R13.4, R15.7-A/B, R19.3) mais personne n'avait regardé les écrans
+au moment où l'enjeu de l'athlète est maximal. Plan de triathlon sprint sur 10 semaines, course
+un dimanche.
+
+## Ce qui marche, et qu'il faut dire
+
+Les bandeaux de fin de plan sont bons, et ils tombent au bon jour :
+
+| jour | ce que l'app dit |
+|---|---|
+| début d'affûtage | ✂️ L'affûtage commence. Le volume descend, la forme monte — le plus dur est derrière toi. Ne rajoute rien. |
+| veille | 🎉 Veille de course. Objectif du jour : des jambes fraîches. Repos, hydratation, matériel préparé — demain tu récoltes. |
+| jour J | 🏁 Jour de course. Tout le travail est fait — départ prudent, finis fort. Bonne course ! |
+
+## U10 — la relance ne s'éteignait jamais
+
+L'en-tête de `notifications.js` promet, depuis son écriture : *« relance bienveillante après
+3 séances manquées consécutives — **UNE seule fois, jamais de rafale** »*. Le garde
+(`relanceSent`) ne couvrait que la **notification**. Le bandeau, lui, était recalculé et
+ré-affiché à chaque rendu.
+
+Mesuré sur un plan de 10 semaines où l'athlète ne coche jamais rien :
+
+| | |
+|---|---|
+| premier affichage | J+7 |
+| dernier affichage | **J+70** |
+| durée | **64 jours d'affilée** |
+| la veille de la course | **oui** |
+| le jour J | **oui** |
+
+Le matin de sa course, la personne lisait :
+
+> 🏁 Jour de course. Tout le travail est fait — départ prudent, finis fort. Bonne course !
+> 🌿 La vie a pris le dessus — ça arrive. Trois séances sont passées…
+
+Un message écrit pour relever quelqu'un **une fois** devient un reproche permanent quand il ne
+s'éteint jamais. C'est la même famille qu'U1 : la boucle de rétention qui se retourne contre
+celui qu'elle protège — sauf qu'ici elle le fait au pire moment possible.
+
+**Corrigé (U10)** : la clé du « déjà dit » devient le **premier** jour du décrochage, pas le
+dernier. C'était le point : le dernier change tous les jours, donc y indexer le garde ne dampait
+rien. Avec le premier, la clé reste stable tant que l'athlète ne reprend pas.
+
+**Corrigé (U10b)** : jamais la veille ni le jour d'une course. R13.4 a établi que le jour J n'est
+pas un jour d'entraînement ; lui superposer un rappel de séances manquées était le pire choix
+disponible.
+
+| | avant | après |
+|---|---|---|
+| jours d'affichage (16 échantillonnés sur 70) | **14** | **1** |
+| veille / jour J | oui / oui | non / non |
+
+**Et il revient pour un nouveau décrochage** — vérifié explicitement, parce qu'un correctif qui
+éteint le message à vie aurait été pire que le défaut : épisode 1 à J+7, silence, cinq jours de
+séances validées, puis épisode 2 → **le message revient à J+22**. Un message par épisode.
+
+## U9 — le refus « course trop proche » parlait d'Ironman à tout le monde
+
+Trouvé en tentant de traverser la fin d'un plan mal dimensionné. Le refus est le moment le plus
+honnête du produit : il décline une préparation pour ne pas blesser, explique pourquoi, propose
+deux issues, conserve le profil, et offre « Corriger ma réponse » / « Réessayer ». Tout cela est
+juste.
+
+Sauf la dernière phrase, écrite en dur :
+
+> Te vendre une préparation **d'Ironman** en un mois serait te mentir, et te blesser.
+
+Mesuré : **9 refus sur 9**, sur les sept sports. Un nageur qui prépare un 1500 m, un coureur qui
+prépare un 10 km, un traileur — tous s'entendaient parler d'Ironman. La crédibilité d'un « non »
+tient entièrement à ce que la personne se reconnaisse dans ce qu'on lui refuse.
+
+**Corrigé (U9)** : « Te vendre **cette préparation** en 3 semaines serait te mentir, et te
+blesser. » Aucune table de libellés n'est créée ici — les noms lisibles vivent dans `config.js`,
+côté UI, et en dupliquer une copie dans le schéma ferait deux sources de vérité pour la même
+chose. « Cette préparation » est la sienne, et c'est plus juste qu'une étiquette de catalogue.
+
+**U9b** : on ne propose plus « un format plus court » à qui a déjà le plus court du sport. Sur
+`tri/S`, mesuré, l'ancienne phrase envoyait chercher une issue inexistante ; elle dit maintenant
+« Une seule issue : viser une course à partir du … ».
+
+## Les gardes
+
+- **`U9`** entre au banc v6 (`npm run audit:v6`) — 9 sports balayés, vérifié rouge en
+  réintroduisant la phrase en dur.
+- **`U10`** entre dans `smoke-usage` — quatre jours échantillonnés après le décrochage, exactement
+  un affichage attendu. Vérifié rouge : sans le correctif, **4 sur 4**.
+
+## Ce que je n'ai pas pu regarder
+
+Le **lendemain de la course** ne dit rien de la course. La saisie du chrono réel existe
+(lot « Améliorations ») mais je n'ai pas vérifié si elle est proposée spontanément à ce
+moment-là — ça mérite un passage dédié.
