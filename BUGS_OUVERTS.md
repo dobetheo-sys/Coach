@@ -3,7 +3,7 @@
 **État au 02/08/2026, chantier R20 terminé + N11** (22 gates verts, E2E 13/13, golden 900,
 `audit:v7` à N=400, `registry:check` 15/15).
 
-> **§1 — 16 entrées, 0 ouverte.** Le chantier R20 avait fermé les six dernières :
+> **§1 — 17 entrées, 1 ouverte (`O-17`).** Le chantier R20 avait fermé les six dernières :
 > `O-8` (footing swimrun sans bornes), `O-9` (banc d'invariants ni vert ni bloquant), `O-10`
 > (`vol_max` inerte), `O-11` (deux allures course à vélo), `O-13` (rampe R10 inerte en
 > natation), `O-15` (portée du verrou froid), plus `O-3` (le créneau de repli) et `O-14`
@@ -766,6 +766,56 @@ id: O-16
 quoi: l'estimation journalière est coupée sous 16 ans, et le ravitaillement d'effort ne l'est pas
 attendu: /12 ans : aucune estimation[\s\S]*15 ans : aucune estimation[\s\S]*16 ans : [0-9][\s\S]*35 ans : [0-9][\s\S]*ravitaillement 12 ans : ok/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;for(const age of [12,15,16,35]){const r=E.dailyEnergy({weight:'52',height:'162',age:String(age),sex:'F'},[{d:'rn',min:60}]);console.log(age+' ans : '+(r?r.total.join('-')+' kcal':'aucune estimation'));}const a=E.sessionNutrition({d:'bk',name:'Sortie longue',det:'',min:180,long:true,steps:[{role:'body',durationMin:180,zone:'bk.z2'}]},{tempC:27,weightKg:52});console.log('ravitaillement 12 ans : '+(a&&a.during.drinkMlPerH[1]>0&&a.after?'ok':'COUPE'));"
+```
+
+### O-17 · La rampe protège du volume passé, pas de l'écart capacité / tissu · 🔴 **OUVERT** (décision produit)
+
+Trouvé sur un cas réel rapporté par le fondateur : **ancien sportif de haut niveau** (sélection
+nationale junior), **5 ans sans sport**, première course à **5'30/km sur 13 min, terminée à
+185 BPM**. Puis **46'30 au 10 km en 8 semaines**.
+
+Ce profil n'est ni un débutant ni un entraîné : c'est un **moteur musculaire et neuromusculaire
+largement conservé, posé sur un système aérobie à zéro et sur des tissus conjonctifs qui n'ont
+rien encaissé depuis cinq ans**. C'est le patron de blessure classique de la reprise chez
+l'ancien athlète : la capacité à pousser dépasse de loin ce que le tendon, l'aponévrose et l'os
+tolèrent.
+
+**Mesuré** — deux profils déclarant tous deux `vol_recent = 0`, même format, même volume max :
+
+| | semaine 1 | allure du créneau facile | allure de la séance de SEUIL |
+|---|---|---|---|
+| ancien sportif, seuil 5'45/km | 4 séances · **118 min** | 6'40-7'15/km | **5'45-6'02/km** |
+| vrai débutant, seuil 7'00/km | 4 séances · **118 min** | 7'00-7'21/km | 7'00-7'21/km |
+
+**Le volume est identique — c'est défendable, la rampe R10 lit le volume récent et il est nul
+dans les deux cas.** Ce qui ne l'est peut-être pas, c'est que **l'intensité, elle, suit la
+capacité mesurée sans rien savoir de l'historique de CHARGE**. L'ancien sportif court son seuil
+1'15/km plus vite que le débutant, sur des tissus tout aussi naïfs — et surtout, il en est
+physiquement capable, donc rien ne l'arrête.
+
+**Pourquoi ce n'est pas traité d'office.** Trois raisons, toutes bonnes :
+
+1. C'est un changement CÔTÉ PLAN : il toucherait le golden, les 22 gates et la promesse de
+   volume. Rien à voir avec le diagnostic `feasibility.ts`, qui ne construit rien.
+2. La correction n'est pas évidente. Brider l'intensité d'un athlète capable est aussi un
+   risque — celui de lui donner un plan qui ne le fait pas progresser, et qu'il quittera pour
+   s'entraîner seul, sans garde-fou du tout. Le manifeste place la régularité en priorité 3.
+3. `history = "ancien"` existe déjà dans le schéma, et **R14.1 l'a délibérément dépouillé** de
+   son pouvoir sur les chiffres (« un adjectif auto-déclaré ne pilote aucun chiffre »). Y
+   revenir demanderait un déclencheur MESURÉ, pas l'adjectif — par exemple l'écart entre la
+   capacité mesurée et l'historique de volume, qui sont deux champs déjà collectés.
+
+**Ce qu'il faudrait décider** : (a) l'intensité doit-elle être bornée les premières semaines
+quand capacité mesurée et historique de charge divergent fortement ? (b) si oui, sur quel
+critère mesurable, et pendant combien de semaines ? (c) ou bien la bonne réponse est-elle un
+AVERTISSEMENT nommé plutôt qu'une contrainte — le moteur explique le risque tendineux et laisse
+l'athlète décider, comme il le fait déjà pour genou + vélo (R13 annexe A2) ?
+
+```verify
+id: O-17
+quoi: deux profils à volume nul mais capacités très différentes reçoivent-ils la même intensité de seuil
+attendu: /ancien : seuil 5.4[0-9][\s\S]*debutant : seuil 7.0[0-9]/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={format:'10k',level:'inter',intent:'competition',vol_max:'6',sessions_max:'4',dispo:'partielle',age:'28',sex:'H',weight:'80',height:'182',injury:'aucune',off_days:'non',shift_ok:'non',doubles:'non',sleep:'moyen',life_load:'normale',activity:'actif',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'plat',pace_known:'oui',vol_recent:'0'};for(const [l,p,h] of [['ancien','5:45','ancien'],['debutant','7:00','reprise']]){const pl=E.buildPlan('run',{...b,pace:p,history:h});const w=pl.weeks[0];const min=w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.d!=='rs'?(s.min||0):0),0),0);let seuil='';for(const d of w.days)for(const s of d.sessions)if(/[Ss]euil/.test(s.name||'')&&s.det){const m=String(s.det).match(/@ ([0-9]+.[0-9]+)-/);if(m)seuil=m[1];}console.log(l+' : seuil '+seuil+' · semaine 1 '+min+' min');}"
 ```
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
