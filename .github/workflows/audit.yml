@@ -76,6 +76,11 @@ jobs:
       # d'échecs pendant que la documentation le disait vert. Un rapport que rien ne lit
       # vaut zéro.
       - run: npm run audit:invariants
+      # RV — le raisonnement inverse (chrono visé). Son critère central, `RV-INVARIANT`,
+      # assertе que le plan émis est IDENTIQUE au bit près avec et sans objectif de temps :
+      # c'est la garantie que la performance reste une SORTIE et jamais une entrée qui
+      # construit (priorité n°5 du manifeste sous les quatre premières).
+      - run: npm run demo:faisabilite
       # Golden master : 814 plans photographiés, détection d'écart au bit près. Les empreintes
       # sont versionnées ; tout changement de plan doit être VOULU et recapturé explicitement.
       - run: npm run golden:verify

@@ -22,6 +22,7 @@ import { validateAnswers, assertPlanIsAPlan, EBInputError, ANSWER_SCHEMA, FORMAT
 import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
 import { dailyEnergy, energyRefusalNotice, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
 import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
+import { assessFeasibility } from "../engine/feasibility.ts";
 
 interface AppAnswers extends Record<string, unknown> {
   format?: string;
@@ -594,6 +595,70 @@ function localTodayISO(): string {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 
+/**
+ * RV — LE DIAGNOSTIC DE FAISABILITÉ, exposé à l'UI.
+ *
+ * Une seule chose est à comprendre en lisant ce pont : **il ne rend qu'un verdict**. Le chrono
+ * visé n'entre dans AUCUNE des entrées de `buildPlan` — le plan est construit d'abord, il est
+ * passé ici en lecture pour connaître le volume prescrit et l'horizon, et le verdict s'écrit
+ * par-dessus. Laisser un objectif de temps augmenter une charge, ce serait la priorité n°5 du
+ * manifeste qui écrase les quatre premières. `RV-INVARIANT` (`demo:faisabilite`) mesure cette
+ * propriété au bit près, et `RV-UI` (E2E) la remesure sur le plan affiché.
+ *
+ * Course à pied seulement, pour l'instant : le prototype inverse Riegel, qui ne s'applique ni
+ * au trail (T-8) ni aux épreuves à enchaînements. Sur les autres sports il rend `null` — pas un
+ * verdict prudent, RIEN : une carte absente se comprend, un verdict tiède se croit.
+ */
+export function feasibilityV2(sport: string, answers: AppAnswers, plan?: V1Plan & { _v2?: V2PlanMeta }) {
+  if (sport !== "run") return null;
+  const targetSec = parseChronoSec(answers.target_time);
+  if (targetSec == null) return null;
+  const p = plan ?? generatePlan(toProfile(sport, answers)).plan;
+  const today = localTodayISO();
+  const horizonWeeks = weeksUntilRace(p, answers, today);
+  return assessFeasibility({
+    format: String(answers.format || ""),
+    targetSec,
+    thrPaceSecPerKm: answers.pace_known === "oui" ? parsePaceSec(answers.pace, "run") : 0,
+    horizonWeeks: horizonWeeks ?? 0,
+    runHoursPerWeek: readNumber(answers.vol_recent),
+    prescribedMeanH: prescribedMeanHours(p),
+    weightKg: readNumber(answers.weight),
+    sex: typeof answers.sex === "string" ? answers.sex : null,
+    age: readNumber(answers.age),
+    trainingStructure: String(answers.training_structure || "") || null,
+    history: String(answers.history || "") || undefined,
+  });
+}
+
+/**
+ * « 3:30:00 », « 45:00 », « 46'30 » → secondes. `null` sur tout le reste, y compris une saisie
+ * en cours de frappe — le champ est OPTIONNEL, une saisie incomplète ne doit rien afficher et
+ * surtout pas un verdict sur un chrono deviné.
+ *
+ * Hors `ANSWER_SCHEMA`, au même titre que `pace` et `css` : le schéma ne connaît pas le type
+ * « durée », et lui en inventer un pour un champ qui ne pilote aucune séance serait payer le
+ * prix d'une clé de schéma (validation dure, refus d'entrée typé) pour un affichage.
+ */
+export function parseChronoSec(v: unknown): number | null {
+  const s = String(v ?? "").trim().replace(/'/g, ":").replace(/\s/g, "");
+  if (!s) return null;
+  const m = s.match(/^(\d{1,2}):([0-5]?\d)(?::([0-5]?\d))?$/);
+  if (!m) return null;
+  if (m[3] != null) {
+    const sec = (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]); // h:mm:ss, sans ambiguïté
+    return sec >= 600 && sec <= 43200 ? sec : null;
+  }
+  // `X:YY` est ambigu — « 46:30 » veut dire 46 min 30, « 3:30 » veut dire 3 h 30. On ne DEVINE
+  // pas : on écarte la lecture qui est hors domaine. Aucun format de course à pied du moteur
+  // n'est courable en moins de 10 minutes, donc une lecture mm:ss sous ce plancher n'est pas un
+  // chrono — c'est la lecture h:mm qui est la bonne. Une seule des deux tient debout à la fois.
+  const mmss = (+m[1]) * 60 + (+m[2]);
+  const sec = mmss >= 600 ? mmss : (+m[1]) * 3600 + (+m[2]) * 60;
+  // Au-delà de 12 h on sort du domaine de Riegel et des formats déclarés.
+  return sec >= 600 && sec <= 43200 ? sec : null;
+}
+
 declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
 (globalThis as Record<string, unknown>).EBV2 = {
   buildPlan: buildPlanV2,
@@ -648,5 +713,9 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   sessionNutrition: nutritionForSession,
   dailyEnergy: dailyEnergyV2,
   energyRefusal: energyRefusalV2,
+  // RV — le diagnostic de faisabilité (chrono visé). Rend `null` hors course à pied et sans
+  // chrono saisi. Il ne touche jamais le plan : c'est un VERDICT, pas une entrée.
+  feasibility: feasibilityV2,
+  parseChronoSec,
   version: "v2-sprint9",
 };

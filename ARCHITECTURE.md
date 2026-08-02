@@ -2655,3 +2655,85 @@ constantes de `projection.ts` et n'en garde aucune copie — R11.1 / R20.5 / U9.
 identiques dans deux fichiers, c'est la garantie que le jour où la calibration bouge d'un côté,
 l'autre répond encore l'ancien chiffre ; et ce serait le **diagnostic**, celui qu'on lit AVANT de
 s'engager, qui mentirait.
+
+## RV — le raisonnement inverse : une épreuve, un chrono visé, un verdict
+
+Le moteur construit **en avant** : d'où tu pars (rampe R10), jusqu'où la courbe peut monter.
+Ce module prend le problème par l'autre bout — une épreuve, un chrono visé — et déroule à
+reculons ce que ça EXIGE, jusqu'à aujourd'hui.
+
+### Ce qu'il ne fait pas, et c'est sa raison d'être
+
+**Il ne construit AUCUN plan et ne touche à AUCUN plafond.** Le chrono visé n'entre dans aucune
+entrée de `buildPlan` : le plan est construit d'abord, la carte le lit, le verdict s'écrit
+par-dessus. Tout R14/R14.1 existe pour que la performance soit une **sortie estimée** et jamais
+une cible qui construit — P6 le résume : « le temps se projette, l'intensité s'ancre ». Laisser
+un objectif de temps augmenter une charge, ce serait la priorité n°5 du manifeste qui écrase les
+quatre premières, et c'est très exactement ce qu'un athlète motivé ferait à notre place si on lui
+en donnait le bouton.
+
+Deux gardes mesurent cette propriété, à deux niveaux :
+- `RV-INVARIANT` (`npm run demo:faisabilite`, **23ᵉ gate CI**) — le plan émis par le moteur est
+  identique **au bit près** avec et sans `target_time`.
+- `RV-UI-B` (`tests/e2e/smoke-feasibility.mjs`, **15ᵉ suite E2E**) — le plan **affiché** ne bouge
+  pas d'un caractère quand le chrono est saisi. C'est par l'écran qu'un défaut arriverait
+  réellement, et c'est la forme de trou que R19.1 a laissée passer (la garde vérifiait que le
+  champ existe, jamais qu'il agissait — ici, jamais qu'il **n'**agissait **pas**).
+
+### Aucun modèle nouveau
+
+Chaque étape **inverse** un modèle déjà sourcé et déjà audité. Un second modèle de performance
+serait un second jeu de vérités, ce que R11.1, R20.5 et U9 interdisent partout ailleurs.
+
+| étape | ce qu'elle rend | modèle inversé |
+|---|---|---|
+| RV1 | allure seuil requise le jour J | Riegel, exposant piloté par le volume (P5), inversion en forme close |
+| RV2 | écart à combler, en % | comparaison à l'allure seuil MESURÉE |
+| RV3 | gain maximal du profil (asymptote) | P2bis : `G∞ = plafond × marge mesurée × structure × volume`, régime P11 compris |
+| RV4 | refus d'estimer | au-delà de ce qu'un CYCLE produit |
+| RV5 | semaines nécessaires | saturation exponentielle en τ (P11 : τ suit le régime) |
+| RV6 | verdict | `atteignable` · `juste` · `hors-horizon` · `hors-modele` · `indeterminable` |
+
+### L'erreur que j'ai faite en l'écrivant, et qui vaut d'être gardée
+
+Ma première version concluait « impossible **quelle que soit la durée de préparation** » — elle
+lisait `G_PLAFOND` comme un plafond de **carrière**. Or sa provenance dit autre chose : Barnes &
+Kilding 2015 mesure ce que gagne l'économie de course **sur un cycle**, et la projection
+l'utilise sur l'horizon d'UNE préparation. Rien dans ce dépôt ne mesure « de combien cette
+personne peut progresser, un jour ».
+
+Mesuré avec la lecture fautive : un marathon de 4 h 01 visé en 3 h 30 sur 16 semaines — objectif
+banal, atteint par des milliers de coureurs — sortait « impossible ». Sept cas sur neuf
+sortaient ainsi. Un verdict faux **dans ce sens-là** est pire que pas de verdict : il décourage
+quelqu'un dont l'objectif tient debout. La réponse honnête est celle que P7/P8 emploient déjà —
+**refuser d'estimer, en disant pourquoi** (« ça se joue sur plusieurs saisons »), plutôt
+qu'estimer mal.
+
+### La carte
+
+`endurabuild/js/ui/feasibility.js`, dans l'onglet 🗓 Plan, juste après « Pourquoi ce plan » — la
+même question posée dans l'autre sens. La **saisie vit dans la carte**, pas au Profil : un champ
+au Profil et un verdict trois onglets plus loin, c'est deux écrans pour une seule idée.
+
+- **Champ optionnel.** Sans chrono, la carte se réduit à sa question ; le plan est déjà complet
+  sans elle.
+- **`target_time` est HORS `ANSWER_SCHEMA`**, au même titre que `pace` et `css` : le schéma ne
+  connaît pas le type « durée », et lui en inventer un ferait payer à un champ d'affichage le
+  prix d'une clé de schéma (validation dure, refus d'entrée typé) pour zéro séance pilotée. Il
+  échappe donc aussi, légitimement, au balayage `audit:sensibilite` — dont la question est
+  « cette clé agit-elle sur le plan ? », à laquelle la réponse doit ici être **non**.
+- **`h:mm:ss` ou `mm:ss`.** `X:YY` est ambigu (« 46:30 » = 46 min 30, « 3:30 » = 3 h 30) : on ne
+  devine pas, on **écarte la lecture hors domaine** — aucun format de course à pied du moteur
+  n'est courable en moins de 10 minutes, donc une lecture mm:ss sous ce plancher n'en est pas
+  une. Une seule des deux tient debout à la fois. Une saisie illisible le **dit**.
+- **Course à pied seulement.** Ailleurs, `EBV2.feasibility` rend `null` — pas un verdict prudent,
+  RIEN : une carte absente se comprend, un verdict tiède se croit. Riegel ne s'applique ni au
+  trail (T-8) ni aux épreuves à enchaînements.
+
+### Le critère qui garde l'instrument lui-même
+
+`RV-UI-B` compare deux empreintes de l'écran et conclut « rien n'a bougé ». **Une empreinte
+aveugle dirait exactement la même chose.** La suite change donc une réponse dont on sait qu'elle
+déplace le plan (volume 6 h → 3 h) et exige que l'empreinte le voie. Sans ce critère, `RV-UI-B`
+ne prouverait rien — c'est la leçon des trois instruments démasqués en R20 (`audit:v1`,
+l'ancrage calendaire du banc R14, `measure:fallback`), appliquée d'avance.

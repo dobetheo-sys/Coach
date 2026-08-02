@@ -855,6 +855,40 @@ attendu: /capable : AVERTI[\s\S]*debutant : non[\s\S]*regulier : non[\s\S]*bride
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={format:'10k',level:'inter',intent:'competition',vol_max:'6',sessions_max:'4',dispo:'partielle',age:'28',sex:'H',weight:'80',height:'182',injury:'aucune',off_days:'non',shift_ok:'non',doubles:'non',sleep:'moyen',life_load:'normale',activity:'actif',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'plat',pace_known:'oui'};const P=(pace,vr)=>E.buildPlan('run',{...b,pace,vol_recent:vr});const A=(p)=>((p._v2&&p._v2.warnings)||[]).some(w=>/tendons/i.test(w));const M=(p)=>p.weeks[0].days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.d!=='rs'?(s.min||0):0),0),0);const cap=P('5:45','0'),tem=P('7:00','0');console.log('capable : '+(A(cap)?'AVERTI':'non'));console.log('debutant : '+(A(tem)?'AVERTI':'non'));console.log('regulier : '+(A(P('5:45','5'))?'AVERTI':'non'));console.log('bride : '+(M(cap)<M(tem)?'OUI':'non'));"
 ```
 
+### O-18 · Le diagnostic RV ne connaît qu'un sport, et sa table de marge sature là où il sert le plus · ⏳ **OUVERT — limites déclarées, pas défauts cachés**
+
+Le raisonnement inverse (`src/engine/feasibility.ts`, carte « 🎯 Ton chrono visé ») est livré avec
+**deux limites nommées**. Les écrire ici, c'est la différence entre une portée assumée et un
+angle mort.
+
+**(1) Course à pied seulement.** L'inversion de Riegel ne s'applique ni au trail (le module dit
+lui-même que Riegel y est inapplicable, T-8) ni aux épreuves à enchaînements, dont le temps se
+décompose par poste. Sur les six autres sports, `EBV2.feasibility` rend `null` : aucune carte,
+aucun verdict prudent. C'est la bonne réponse aujourd'hui — une carte absente se comprend, un
+verdict tiède se croit — mais l'athlète de trail qui vise une barrière horaire pose exactement la
+même question, et le module trail porte déjà son prédicteur. La suite naturelle est un verdict
+trail bâti sur `trailModel`, pas sur Riegel.
+
+**(2) `ANCRES_PACE` sature à 6'00/km.** Mesuré en construisant P11 : un coureur à 7'00/km et un
+coureur à 6'30/km reçoivent la MÊME marge (`margeOf` rend 1,0 au-delà de l'ancre la plus lente),
+donc **la même projection à volume égal** — 23,5 % dans les deux cas. C'est précisément la zone
+où vivent les débutants, c'est-à-dire la population que le régime P11 vient de rendre
+distinguable. Le régime discrimine sur le VOLUME et non sur l'allure ; la table de marge, elle,
+ne discrimine plus du tout en dessous de 6'00. Conséquence côté RV : deux athlètes de niveaux
+réellement différents peuvent recevoir le même verdict.
+
+Ce n'est pas une régression — la table est ainsi depuis R14.1, et son commentaire assume ses
+bandes comme des heuristiques. Ce qui est nouveau, c'est qu'on SAIT maintenant que la saturation
+tombe au mauvais endroit. Étendre les ancres vers 8'00-9'00/km demande des références, pas une
+intuition : c'est la même exigence qui a fait retirer ma première calibration de P11.
+
+```verify
+id: O-18
+quoi: la saturation de la table de marge sous 6'00/km, et l'absence de verdict hors course
+attendu: /7:00 = 6:30 : OUI[\s\S]*hors course : null/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const iso=(d)=>new Date(Date.now()+d*864e5).toISOString().slice(0,10);const b={format:'10k',level:'debutant',history:'reprise',intent:'competition',vol_max:'6',vol_recent:'0',sessions_max:'4',dispo:'quotidienne',age:'30',sex:'H',weight:'78',height:'180',injury:'aucune',off_days:'non',shift_ok:'non',doubles:'non',sleep:'moyen',life_load:'normale',activity:'actif',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'plat',pace_known:'oui',race_date:iso(112)};const g=(pace)=>{const a={...b,pace};return E.predict('run',a,E.buildPlan('run',a)).projected.gainPct.thrPace;};console.log('7:00 = 6:30 : '+(Math.abs(g('7:00')-g('6:30'))<1e-9?'OUI':'non'));console.log('hors course : '+E.feasibility('swim',{...b,target_time:'30:00'},null));"
+```
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas

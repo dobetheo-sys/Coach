@@ -2,7 +2,7 @@
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
    une météo périmée est pire qu'une absence de météo). */
-const VERSION = "eb-pwa-v16"; // v16 : R10 phase 0 — générateur legacy supprimé, échec de génération VISIBLE
+const VERSION = "eb-pwa-v17"; // v17 : RV — carte « chrono visé » (module ui/feasibility.js)
 const ASSETS = [
   "./",
   "./index.html",
@@ -29,6 +29,7 @@ const ASSETS = [
   "./js/ui/retest.js",
   "./js/ui/modal.js",
   "./js/ui/daily-content.js",
+  "./js/ui/feasibility.js",
   "./js/notifications.js",
   "./js/strava.js",
   "./assets/fonts/archivo-black-400.woff2",

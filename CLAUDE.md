@@ -88,6 +88,11 @@ dépôt — historique git si besoin.
   enchaîne et range chacune en **reproduit** / **ne reproduit plus (→ §4)** / **commande
   cassée**. Volontairement HORS CI : il rejoue des gates qui y tournent déjà. À lancer quand on
   reprend le registre — c'est ce qui empêche une dette de devenir un souvenir.
+- `npm run demo:faisabilite` — **le raisonnement inverse** (RV) : une épreuve, un chrono visé, un
+  verdict déroulé à reculons. **23ᵉ gate CI.** Son critère central, `RV-INVARIANT`, assertе que le
+  plan émis est IDENTIQUE au bit près avec et sans objectif de temps — la performance reste une
+  SORTIE, jamais une entrée qui construit. Aucun modèle nouveau : chaque étape INVERSE un modèle
+  déjà sourcé (Riegel/P5, P2bis, régime P11).
 - `npm run measure:fallback [sport|tous]` — **mesure R15.3** : à quelle fréquence le créneau
   facile de repli (`easyFallbackSlot`) se déclenche. Détection POST-HOC (plan émis vs
   `weekSchema` déclaré), zéro instrumentation dans `src/`. Vérifie sa propre hypothèse
@@ -754,6 +759,37 @@ Le prototype `feasibility.ts` cesse de porter sa copie des constantes et les IMP
 Gardes **P11-A à P11-F** au banc `audit:r14.1`, qui assertent les DEUX moitiés — l'inversion
 disparue ET l'entraîné intact — **vérifiées rouges** (3 sur 6) contre le moteur d'avant P11.
 **22 gates verts, E2E 14/14, golden 900 inchangé** — la projection ne touche aucune séance.
+
+**RV livré — le raisonnement inverse, et il ne construit rien** (voir ARCHITECTURE.md « RV ») :
+le moteur ne savait construire QUE en avant — d'où tu pars, jusqu'où la courbe peut monter.
+`src/engine/feasibility.ts` prend le problème par l'autre bout : une épreuve, un chrono visé, et
+ce que ça EXIGE déroulé à reculons jusqu'à aujourd'hui. **Aucun modèle nouveau** — chaque étape
+INVERSE un modèle déjà sourcé et déjà audité (Riegel avec l'exposant piloté par le volume P5,
+inversé en forme close ; P2bis pour ce que le profil peut produire, régime P11 compris). Un
+second modèle de performance serait un second jeu de vérités, ce que R11.1/R20.5/U9 interdisent
+partout ailleurs. Cinq verdicts : `atteignable` · `juste` · `hors-horizon` · `hors-modele` ·
+`indeterminable`, chacun motivé par ses décisions `RV1`–`RV6`.
+**Ce qu'il ne fait PAS est sa raison d'être** : il ne construit aucun plan et ne touche aucun
+plafond. Le chrono visé n'entre dans AUCUNE entrée de `buildPlan` — laisser un objectif de temps
+augmenter une charge, ce serait la priorité n°5 du manifeste qui écrase les quatre premières, et
+c'est ce qu'un athlète motivé ferait à notre place si on lui en donnait le bouton. Deux gardes,
+à deux niveaux : `RV-INVARIANT` (moteur, plan identique au bit près) et **`RV-UI-B`** (le plan
+AFFICHÉ ne bouge pas d'un caractère) — c'est par l'écran qu'un défaut arriverait, et c'est la
+forme de trou que R19.1 a laissée passer. La suite garde aussi **son propre instrument** : elle
+change un volume (6 h → 3 h) et exige que l'empreinte le voie — sans quoi « rien n'a bougé »
+serait ce que dirait une empreinte aveugle.
+**Une erreur corrigée en l'écrivant, gardée écrite** : ma première version lisait `G_PLAFOND`
+comme un plafond de CARRIÈRE et concluait « impossible quelle que soit la durée de préparation ».
+Sa provenance dit autre chose — Barnes & Kilding 2015 mesure un CYCLE. Mesuré : un marathon de
+4 h 01 visé en 3 h 30 sur 16 semaines sortait « impossible », 7 cas sur 9 aussi. Un verdict faux
+dans ce sens-là décourage quelqu'un dont l'objectif tient debout ; la réponse honnête est celle
+de P7/P8 — **refuser d'estimer en disant pourquoi**.
+Carte « 🎯 Ton chrono visé » dans l'onglet 🗓 Plan, saisie DANS la carte (un champ au Profil et un
+verdict trois onglets plus loin, c'est deux écrans pour une idée), `h:mm:ss` ou `mm:ss` avec
+levée d'ambiguïté par le domaine et non par la devinette, illisible → le dit. Course à pied
+seulement : ailleurs `null`, pas un verdict prudent — une carte absente se comprend, un verdict
+tiède se croit. `target_time` reste HORS `ANSWER_SCHEMA`, comme `pace` et `css`.
+**23 gates verts, E2E 15/15, golden 900 inchangé.**
 
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels

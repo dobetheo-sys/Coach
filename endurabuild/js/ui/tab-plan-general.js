@@ -23,6 +23,7 @@ import { exportICS, exportJSON, exportPNG } from "../export.js";
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
+import { feasibilityCardHTML, bindFeasibility } from "./feasibility.js";
 
 const ic = { sw: "\u{1F3CA}", bk: "\u{1F6B4}", rn: "\u{1F3C3}", br: "\u{1F501}", rs: "\u{1F4AA}" };
 
@@ -199,6 +200,9 @@ export function renderTabPlanGeneral(plan) {
   // contre-positionnement du produit, pas une option de confort. Le détail complet des
   // décisions reste en bas de l'onglet (`decisionsCardHTML`), à un lien d'ici.
   html += whyPlanCardHTML(plan);
+  // RV — le chrono visé et son verdict, juste après « pourquoi ce plan » : c'est la même
+  // question posée dans l'autre sens. Absente hors course à pied (le prototype inverse Riegel).
+  html += feasibilityCardHTML(plan);
   // R16.5 — RACCOURCI VERS LA SEMAINE EN COURS. Sur un plan de 59 semaines, l'atteindre
   // depuis le haut de l'onglet demande de passer devant les badges, le « pourquoi », la frise
   // et le graphique. Le repère est la vraie date du jour (`todayISO`, la même ancre que partout
@@ -237,6 +241,8 @@ export function renderTabPlanGeneral(plan) {
   $("screen").innerHTML = html;
   const rerender = () => renderTabPlanGeneral(plan);
   bindPainBanner(plan, rerender);
+  bindFeasibility(rerender);
+  bindFeasibility(rerender);
   bindRetestBanner(today, () => renderTabPlanGeneral(ensurePlan())); // le retest a pu régénérer le plan
   // R6 — la frise de phases est cliquable : ouvre le programme de la phase et y descend.
   {
