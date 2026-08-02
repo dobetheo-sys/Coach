@@ -10,7 +10,10 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   // R18.3 — la navigation à cinq onglets, et surtout : un geste, une implémentation.
   "smoke-tabs.mjs",
   // R20.1 — les SEPT questionnaires se traversent : aucune suite ne passait par le triathlon.
-  "smoke-questionnaires.mjs"];
+  "smoke-questionnaires.mjs",
+  // U1-U7 — le PREMIER CONTACT : ce que la personne lit, et ce qu'elle attend. Aucune autre
+  // suite ne regarde ça — elles vérifient toutes ce que le moteur produit.
+  "smoke-usage.mjs"];
 let failed = 0;
 for (const s of SUITES) {
   console.log("\n━━━ " + s + " ━━━");

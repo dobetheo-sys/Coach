@@ -96,7 +96,7 @@ dépôt — historique git si besoin.
   (instance unique par module, imports circulaires préservés), CSS et polices en `data:`.
   Sert à tester l'app hors ligne d'un double-clic — le monolithe `Coach_Pro_V1.5.html`
   a le moteur à jour mais son UI est gelée à R4 (ni carte Trail, ni étape terrain).
-- `npm run test:e2e` — 9 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
+- `npm run test:e2e` — 14 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
   job CI `e2e` séparé). Seule exception au zéro-dépendance : Playwright, devDependency de
   TEST uniquement (`npm install` d'abord ; local : `/opt/pw-browsers/chromium` détecté,
   sinon `EB_CHROMIUM`).
@@ -644,6 +644,33 @@ maintenant un mineur) corriger une donnée qui n'était pas en cause. Point uniq
 motif est un garde-fou à moitié posé — la forme d'O-9 appliquée à un message d'interface.
 8 critères en CI, **vérifiés rouges** en abaissant la borne à 0.
 **22 gates verts, E2E 13/13, golden 900 inchangé, registre 15/15.**
+
+**U1–U7 livré — le premier contact** (traversée côté usage, voir `RAPPORT_TOUR_USAGE.md` et
+ARCHITECTURE.md « U1–U7 ») : cinq corrections qui ne viennent d'aucun banc, mais d'avoir traversé
+la PWA **comme un utilisateur sur téléphone**. Aucun des 22 gates ne les regardait — ils mesurent
+tous ce que le moteur PRODUIT, jamais ce que la personne LIT. **U1** : le premier écran d'un plan
+créé à l'instant pouvait annoncer « 🌿 La vie a pris le dessus — trois séances sont passées ». Le
+plan démarre au lundi de la semaine en cours (R8/R9, décision juste) et `missedSessionsCheck` ne
+distinguait pas « tu as décroché » de « ton plan n'existait pas encore » — **1 jour sur 7
+(dimanche) → 0 sur 7**, en lisant `plan_start` qui portait déjà l'information. C'est le plus grave
+du lot : toute la boucle R4 est construite pour ne jamais reprocher, et consoler quelqu'un qui n'a
+rien fait de mal est pire qu'un reproche. **U2** : `greeting()` connaît l'heure depuis toujours,
+mais la phrase disait « point du **matin** » en dur — à 14 h l'écran affichait « Bon après-midi
+C'est l'heure du point du matin » ; point unique `pointLabel()` (matin/jour/soir). **U3** : le
+« score d'audit 70/100 » était montré à l'athlète — mesuré sur 30 profils, médiane 100, et les
+3 plans sous 80 sont **les trois Ironman**, avec **0 violation dure** : celui qui prépare
+l'épreuve la plus dure recevait la note la plus basse, pour un plan valide. **U4** : le ⇄
+d'échange de jours faisait **18×14 px** (WCAG 2.5.8 : 24×24 minimum) — 44×44 au doigt désormais.
+**U7** : la séance attendait la météo (`await fetchWeather()` avant le calcul, timeout de
+géolocalisation) — **3 262 ms → 782-957 ms** en lançant la recherche à l'ouverture du diaporama,
+zéro comportement changé. Garde : `tests/e2e/smoke-usage.mjs`, **14e suite E2E**, U1 balayé sur
+les **sept jours** (la fenêtre dépendait du jour — même leçon que le banc R14 en R20.7),
+**vérifiée rouge** en réintroduisant les cinq défauts (5 échecs sur 9). **Deux de mes constats
+initiaux étaient FAUX** et restent écrits dans le rapport : la coche ○ n'a jamais été trop petite
+(son `::after` la porte à 44×44, mon instrument lisait le mauvais rectangle) et les 3,2 s
+n'étaient pas une temporisation. Trois faux constats sur sept, tous de la même famille — une
+mesure qui porte sur une grandeur voisine de celle qu'elle nomme.
+**22 gates verts, E2E 14/14, golden 900 inchangé.**
 
 **R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
 de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels

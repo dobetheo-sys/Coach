@@ -318,7 +318,21 @@ function decisionsCardHTML(plan){
   let h="";
   const v2=plan&&plan._v2;
   if(v2){
-    h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+') \u2014 score d\u2019audit '+v2.score+'/100</summary><ul style="font-size:var(--fs-sm);line-height:1.6;margin:8px 0 0;padding-left:18px">';
+    // U3 — LE SCORE D'AUDIT N'EST PLUS MONTRÉ À L'ATHLÈTE.
+    //
+    // Le titre affichait « score d'audit 70/100 ». Mesuré sur 30 profils (10 formats ×
+    // 3 niveaux) : médiane 100, 3 plans sous 80 — et ces trois-là sont **les trois Ironman**,
+    // à tous les niveaux, avec **zéro violation dure**. Donc la personne qui prépare l'épreuve
+    // la plus dure du catalogue, sur onze mois, était précisément celle à qui l'app annonçait
+    // la note la plus basse, pour un plan parfaitement valide.
+    //
+    // Le chiffre est juste : c'est un score de critères SOUPLES, bas parce qu'un Ironman sature
+    // les plafonds. Mais un score sur 100 ne se lit que d'une façon — comme une note — et
+    // l'athlète n'a rien à en faire : le plan est soit assez bon pour être suivi, soit il ne
+    // l'est pas, et cette question-là est tranchée par les violations DURES, qui sont listées
+    // juste en dessous. Le score reste dans `plan._v2.score` pour le développement et les
+    // bancs ; il ne s'affiche plus.
+    h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+')</summary><ul style="font-size:var(--fs-sm);line-height:1.6;margin:8px 0 0;padding-left:18px">';
     // D1 (audit v6) — les règles non satisfaites sont calculées et attachées au plan :
     // on ne les jette plus à l'affichage. Langage neutre (pas de bandeau rouge — décision
     // R5 du fondateur), mais EN TÊTE de liste, pas cachées.

@@ -1,8 +1,17 @@
 # Tour du produit côté usage — ce qui accroche quand on traverse l'app sur un téléphone
 
-**02/08/2026.** Pas un audit du moteur : une traversée de la PWA comme le ferait quelqu'un qui
-l'installe, dans un vrai Chromium, en 390×844 (iPhone 13/14/15) et en 320×568 (iPhone SE).
-Profil de référence : triathlon 70.3, niveau intermédiaire, 6 séances, 10 h/sem.
+**02/08/2026 — corrigé le jour même.** Pas un audit du moteur : une traversée de la PWA comme
+le ferait quelqu'un qui l'installe, dans un vrai Chromium, en 390×844 (iPhone 13/14/15) et en
+320×568 (iPhone SE). Profil de référence : triathlon 70.3, intermédiaire, 6 séances, 10 h/sem.
+
+> **Cinq des sept points sont corrigés** (`U1` à `U7`) et gardés par une 14ᵉ suite E2E,
+> `tests/e2e/smoke-usage.mjs`, **vérifiée rouge** en réintroduisant les cinq défauts (5 échecs
+> sur 9 assertions). Les deux restants sont des arbitrages produit, pas des défauts.
+>
+> **Deux de mes constats initiaux étaient FAUX** et sont rectifiés ci-dessous à leur place : la
+> coche ○ n'a jamais été une cible trop petite, et l'attente de 3,2 s n'était pas une
+> temporisation. Les deux erreurs venaient de mon instrument, pas du produit — je les laisse
+> écrites plutôt que de les effacer.
 
 Tout ce qui suit est **mesuré**, pas supposé. Les scripts de mesure sont reproductibles ; ce qui
 n'a pas pu être établi est dit comme tel, et deux pistes que j'ai suivies puis **réfutées** sont
@@ -12,7 +21,7 @@ Classé par ce que ça coûte à la personne, pas par difficulté de correction.
 
 ---
 
-## 1. Un plan créé un dimanche accueille par « la vie a pris le dessus »
+## 1. Un plan créé un dimanche accueille par « la vie a pris le dessus » · ✅ CORRIGÉ (U1)
 
 **Le premier écran d'un plan créé à l'instant peut annoncer trois séances manquées.**
 
@@ -48,13 +57,14 @@ elle console quelqu'un qui n'a rien fait de mal, sur son tout premier écran, à
 vient de nous accorder sa confiance. Le message est bienveillant ; c'est son déclenchement qui
 ne l'est pas.
 
-**Direction de correction** : ne compter comme manquée qu'une séance dont la date est
-**postérieure à la création du plan** (`plan_start` existe déjà et porte cette information depuis
-le lot « Améliorations »).
+**Corrigé (U1)** : `missedSessionsCheck` ne regarde plus que les jours **postérieurs à
+`plan_start`** — le champ existait déjà et portait exactement l'information manquante. Sans lui
+(plans antérieurs à ce champ), le comportement d'origine reste le repli, donc aucun plan existant
+ne change de comportement. Re-balayé sur les sept jours : **0/7**.
 
 ---
 
-## 2. « Bonsoir 🌙 C'est l'heure du point du matin »
+## 2. « Bonsoir 🌙 C'est l'heure du point du matin » · ✅ CORRIGÉ (U2)
 
 Le salut est **conscient de l'heure** — cinq états dans `checkin.js:11` :
 
@@ -80,12 +90,14 @@ toute heure : la contradiction est visible dès qu'on ouvre l'app l'après-midi 
 c'est-à-dire souvent. Quelqu'un a pris soin d'écrire cinq saluts ; le reste de la phrase annule
 ce soin.
 
-**Direction** : nommer la chose par ce qu'elle est (« ton point », « point du jour »), ou faire
-suivre l'heure aux quatre occurrences comme elle est déjà suivie au salut.
+**Corrigé (U2)** : un point unique, `pointLabel()`, qui suit l'heure comme le salut le faisait
+déjà — **Point du matin** avant midi, **Point du jour** l'après-midi, **Point du soir** ensuite.
+Les cinq occurrences le consomment (bandeau, phrase de coach, écran de fin, onglet Semaine,
+bouton « refaire »). Vérifié aux trois heures.
 
 ---
 
-## 3. L'app annonce à l'athlète que son plan vaut 70/100
+## 3. L'app annonce à l'athlète que son plan vaut 70/100 · ✅ CORRIGÉ (U3)
 
 Onglet 🗓 Plan, en clair dans le titre d'une section (`plan-view.js:321`) :
 
@@ -108,35 +120,46 @@ sature les plafonds. Mais l'athlète ne dispose d'aucun moyen de le savoir, et u
 se lit que d'une façon : comme une note. Or il n'y a rien à en faire — le plan est soit assez bon
 pour être suivi, soit il ne l'est pas.
 
-**Direction** : garder le score pour le développement (il est précieux) et ne montrer à l'athlète
-que ce sur quoi il peut agir. La carte « Pourquoi ce plan » de R20.2 fait déjà exactement ça,
-juste au-dessus, et bien.
+**Corrigé (U3)** : le score ne s'affiche plus. Il reste dans `plan._v2.score` pour le
+développement et les bancs — il est précieux là. Les **violations dures** restent listées en tête
+des décisions : c'est la seule information de cette famille sur laquelle l'athlète puisse agir, et
+la carte « Pourquoi ce plan » de R20.2, juste au-dessus, fait déjà le travail d'explication.
 
 ---
 
-## 4. Des cibles tactiles sous le minimum, dont une à 18×14 px
+## 4. Une cible tactile à 18×14 px · ✅ CORRIGÉ (U4) — et une erreur de mesure de ma part
 
-Mesuré au rendu réel, en pixels CSS, sur un viewport tactile :
+**Ma première mesure lisait le mauvais rectangle.** Elle prenait le `getBoundingClientRect()`
+du bouton seul — or la coche ○ porte depuis son écriture un `::after` invisible en
+`inset: -9px` qui **étend sa zone de toucher à 44 × 44** tout en la gardant discrète à 26 px.
+Le commentaire du CSS le dit noir sur blanc. La coche n'a donc **jamais** été un défaut, et les
+« 220 contrôles sous 44 px » de mon premier comptage sont un artefact du même biais.
 
-| contrôle | taille | où | libellé accessible |
+Ce qui était réel : le **⇄**, arrivé après, n'avait jamais reçu ce traitement.
+
+| contrôle | à l'œil | au doigt (avant) | au doigt (après) |
 |---|---|---|---|
-| **⇄** (échanger deux jours) | **18 × 14** | 📅 Semaine, une par jour | oui |
-| ○ / ✓ (marquer fait) | 26 × 26 | Semaine et Plan | oui |
-| boutons de la frise de phases | 26 × 26 | 🗓 Plan | oui |
+| **⇄** (échanger deux jours) | 18 × 14 | **22 × 18** | **44 × 44** |
+| ○ / ✓ (marquer fait) | 26 × 26 | 44 × 44 (déjà) | 44 × 44 |
 
-Le minimum de la WCAG 2.5.8 est **24 × 24** ; le confort tactile communément retenu est 44 × 44.
-Le **⇄ est sous les deux**, et c'est le geste que R18/R16 ont introduit pour réparer une semaine
-qui ne tombe pas bien — donc un geste que l'on fait précisément quand on est contrarié.
+Le minimum de la WCAG 2.5.8 est 24 × 24 ; le confort tactile retenu est 44 × 44. Le ⇄ était sous
+les deux — et c'est le geste introduit pour réparer une semaine qui ne tombe pas bien, donc un
+geste qu'on fait précisément quand on est déjà contrarié.
 
-Volumétrie : **220 contrôles sous 44 px sur l'onglet 🗓 Plan**, 21 sur 📅 Semaine, 12 sur
-📋 Profil. Tous portent un `aria-label` correct — l'accessibilité au lecteur d'écran est faite,
-c'est **la taille du doigt** qui manque.
+**Corrigé (U4)** : `.swapBtn` reçoit le même traitement que `.doneBtn` — 24 px à l'œil, 44 × 44
+au doigt via un `::after`. Tous ces contrôles portaient déjà un `aria-label` correct :
+l'accessibilité au lecteur d'écran était faite depuis le début, c'est la taille du doigt qui
+manquait.
+
+**La leçon est la quatrième du même genre dans ce dépôt** : un instrument qui mesure une
+grandeur voisine de celle qu'il nomme produit un faux défaut aussi facilement qu'il en cache un
+vrai.
 
 Aucun débordement horizontal nulle part, à 390 px comme à 320 px : la leçon de R18.1 tient.
 
 ---
 
-## 5. Le plan est un mur de 5 310 px
+## 5. Le plan est un mur de 5 310 px · ⚖️ arbitrage, non corrigé
 
 Hauteur de page mesurée, à 390 px de large :
 
@@ -158,7 +181,7 @@ utile.
 
 ---
 
-## 6. Le questionnaire : 8 écrans, 37 gestes
+## 6. Le questionnaire : 8 écrans, 37 gestes · ⚖️ arbitrage, non corrigé
 
 Chronométré de bout en bout, sport choisi → plan affiché : **8 s** de machine, mais **37 gestes**
 humains.
@@ -182,25 +205,36 @@ chaque réponse agisse (garde `audit:sensibilite`). À arbitrer, pas à corriger
 
 ---
 
-## 7. Trois secondes fixes avant de voir sa séance
+## 7. Trois secondes d'attente avant de voir sa séance · ✅ CORRIGÉ (U7)
 
 Après la dernière question du check-in :
 
 > **C'est noté 👍** — Je regarde ta forme, ta fatigue des derniers jours et la météo — ta séance
 > arrive…
 
-La séance apparaît **3,26 s** plus tard. J'ai d'abord cru à une attente réseau (la phrase parle
-de météo) et j'ai vérifié dans trois conditions :
+La séance apparaissait **3,26 s** plus tard, à la milliseconde près dans trois conditions réseau
+(normal, hors ligne, réseau qui ne répond jamais), sans **aucun** appel externe.
 
-| condition | séance affichée après | appels réseau externes |
+**J'en avais conclu « temporisation fixe ». C'était faux**, et l'absence d'appels réseau aurait
+dû me mettre la puce à l'oreille : s'il n'y a aucun appel, c'est que rien n'est jamais parti.
+En lisant le code, la cause est nette — `applyReadinessSnap` fait `await fetchWeather()` **avant**
+de calculer la séance, et `fetchWeather` attend la géolocalisation avec un `timeout: 3000`. Dans
+mon environnement la permission n'était jamais accordée : le timeout expirait, d'où les 3,26 s
+identiques. Sur un vrai téléphone avec la localisation accordée, c'est un vrai appel réseau — et
+alors mon test « hors ligne » n'a **pas** testé ce qu'il prétendait.
+
+**Corrigé (U7)** : on ne retire pas la météo (manifeste §6 — la canicule durcit le verdict, la
+pluie donne des consignes) et on ne réduit pas le timeout — un vrai téléphone met parfois deux
+secondes à se localiser. On la lance simplement **à l'ouverture du diaporama** : l'athlète répond
+à trois questions pendant ce temps, et la réponse est là quand le moteur en a besoin.
+
+| | avant | après |
 |---|---|---|
-| réseau normal | 3 262 ms | **aucun** |
-| hors ligne (requêtes coupées) | 3 261 ms | aucun |
-| réseau qui ne répond jamais | 3 259 ms | aucun |
+| délai après la dernière réponse | **3 262 ms** | **782–957 ms** |
 
-**C'est une temporisation fixe, pas une attente réseau** — l'app ne se bloque donc jamais hors
-ligne sur cet écran, ce qui est la bonne nouvelle du test. Reste que 3,2 s d'attente répétés
-chaque matin, pour une donnée déjà calculée, se paient en agacement au bout d'une semaine.
+Zéro seconde ajoutée à qui que ce soit, zéro comportement changé — l'attente est simplement
+déplacée là où elle ne se voit pas. Le cache vaut pour la journée, puisque le check-in est
+rejouable.
 
 ---
 
@@ -220,6 +254,12 @@ pas un `click()` injecté) sélectionne l'option et débloque le bouton immédia
 instrument : cliquer un groupe re-rend l'écran, et ma liste de nœuds devenait obsolète en cours
 d'itération.
 
+**Une troisième s'est ajoutée en corrigeant** (§4 et §7 ci-dessus) : la coche ○ n'était pas trop
+petite — mon instrument ne voyait pas son `::after` —, et l'attente de 3,2 s n'était pas une
+temporisation mais un `await` sur la géolocalisation. Trois faux constats sur sept, tous de la
+même famille : **une mesure qui porte sur une grandeur voisine de celle qu'elle nomme**. C'est la
+leçon centrale du chantier R20, et elle vaut aussi quand c'est moi qui tiens l'instrument.
+
 **Aucune erreur JavaScript** sur toute la traversée, dans aucune des sept exécutions.
 **Onglet actif correctement marqué** (`class="active"`, `aria-current`, graisse 700, contraste
 renforcé) — mon premier sélecteur était faux, pas l'app.
@@ -228,10 +268,11 @@ renforcé) — mon premier sélecteur était faux, pas l'app.
 
 ## Ce que je n'ai pas pu mesurer
 
-- **La fenêtre du point n°1 selon la densité de la semaine.** Il faudrait un automate qui
-  franchisse le questionnaire à 7 séances / disponibilité quotidienne ; le mien n'y arrive pas
-  pour la raison expliquée ci-dessus. À faire avant de dimensionner la correction : si la fenêtre
-  est de 3 ou 4 jours sur 7 pour un profil courant, le point monte encore en gravité.
+- **La fenêtre du point n°1 selon la densité de la semaine.** Elle n'a plus d'objet pour
+  dimensionner la correction — U1 supprime la cause quelle que soit la densité, puisqu'il ne
+  reste plus aucun jour antérieur au plan dans le compte. Elle resterait utile pour savoir
+  combien d'utilisateurs l'ont rencontrée avant le correctif ; ce n'est pas mesurable a
+  posteriori.
 - **Le rendu sur un vrai iPhone.** Chromium n'est pas Safari : le zoom involontaire (R18.1), le
   rebond de défilement et le comportement du clavier ne se mesurent honnêtement que sur
   l'appareil.

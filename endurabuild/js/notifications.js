@@ -60,15 +60,35 @@ export function scheduleDailyNotification(plan) {
   }
 }
 
-/** 3 séances manquées consécutives → relance UNIQUE, encourageante, reprise allégée. */
+/** 3 séances manquées consécutives → relance UNIQUE, encourageante, reprise allégée.
+ *
+ *  U1 — UNE SÉANCE ANTÉRIEURE AU PLAN N'EST PAS UNE SÉANCE MANQUÉE.
+ *
+ *  Le plan démarre au LUNDI de la semaine en cours (R8/R9) : c'est la bonne décision, elle
+ *  évite d'attendre une semaine pour commencer. Mais elle place des jours d'entraînement AVANT
+ *  la création du plan, et cette fonction ne comptait que « non coché et passé » — donc elle ne
+ *  distinguait pas « tu as décroché » de « ton plan n'existait pas encore ».
+ *
+ *  Mesuré, sur les sept jours de la semaine à date figée : un plan de triathlon créé un
+ *  DIMANCHE accueillait l'athlète, sur son tout PREMIER écran, par « La vie a pris le dessus —
+ *  trois séances sont passées ». Le message est bienveillant ; son déclenchement ne l'était
+ *  pas. Toute la boucle de rétention (R4) est construite pour ne jamais reprocher — consoler
+ *  quelqu'un qui n'a rien fait de mal est pire qu'un reproche, parce que ça se produit à la
+ *  seconde où il vient d'accorder sa confiance.
+ *
+ *  `plan_start` est posé à la création du plan (`tabs.js`) et porte déjà exactement
+ *  l'information manquante. Sans lui (plans d'avant ce champ), on ne change rien : le
+ *  comportement d'origine reste le repli.
+ */
 export function missedSessionsCheck(plan) {
   const done = S.answers.done || {};
   const sick = S.answers.sickDates || [];
   const pf = S.answers.painFlag;
   const today = todayISO();
+  const depuis = S.answers.plan_start || null; // U1 — rien avant ça ne peut être « manqué »
   let missed = 0, lastMissedDate = null;
   const days = [];
-  plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date && d.date < today) days.push({ w, d }); }));
+  plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date && d.date < today && (!depuis || d.date >= depuis)) days.push({ w, d }); }));
   days.sort((a, b) => a.d.date.localeCompare(b.d.date));
   for (let i = days.length - 1; i >= 0; i--) {
     const { w, d } = days[i];

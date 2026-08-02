@@ -22,6 +22,7 @@ import { $, S, ebSave, fmtDay, todayISO } from "../state.js";
 import { weekGridHTML, weekHeaderHTML, currentWeek, handleSwapClick } from "./tab-plan-general.js";
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
 import { readinessDoneToday } from "./readiness.js";
+import { pointLabelInline } from "./checkin.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan, setTab } from "./tabs.js";
 
@@ -76,10 +77,10 @@ export function renderTabWeek(plan) {
   // c'était le bon geste : consulter sa semaine n'est pas dangereux, montrer une séance du
   // jour NON adaptée à la forme du matin, si. On garde l'invitation, la grille reste lisible.
   if (!readinessDoneToday()) {
-    html += '<div class="card"><div class="eyebrow">Ton point du matin</div>'
+    html += '<div class="card"><div class="eyebrow">Ton ' + pointLabelInline() + '</div>'
       + '<div class="load-sub">Pas encore fait — la séance d’aujourd’hui n’est donc pas encore adaptée à ta forme. '
       + "Une minute suffit, et tu récupères une semaine juste.</div>"
-      + '<div class="nav" style="margin-top:10px"><button class="btn primary" id="wkGoCheckin" type="button">→ Faire mon point du matin</button></div></div>';
+      + '<div class="nav" style="margin-top:10px"><button class="btn primary" id="wkGoCheckin" type="button">→ Faire mon ' + pointLabelInline() + '</button></div></div>';
   }
 
   html += '<div class="card"><div class="eyebrow">📅 Ta semaine</div>'

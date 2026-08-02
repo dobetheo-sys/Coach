@@ -2327,3 +2327,86 @@ l'âge inconnu n'est pas traité comme une minorité, le ravitaillement d'effort
 nomme l'âge et **ne parle pas du poids**, le motif IMC est enfin lisible, l'absence de motif se
 distingue du refus, et aucun refus ne contient de vocabulaire de restriction. **Vérifiés rouges**
 en abaissant la borne à 0.
+
+## U1–U7 — le premier contact (traversée côté usage)
+
+Cinq corrections qui ne viennent d'aucun banc du moteur, mais d'une **traversée de la PWA comme
+utilisateur** (`RAPPORT_TOUR_USAGE.md`), en 390×844 et 320×568. Leur point commun : **aucun des
+22 gates ne les regardait**, parce qu'ils mesurent tous ce que le moteur PRODUIT — jamais ce que
+la personne LIT, ni ce qu'elle attend.
+
+### U1 — une séance antérieure au plan n'est pas une séance manquée
+
+Le premier écran d'un plan créé à l'instant pouvait annoncer : « 🌿 **La vie a pris le dessus** —
+trois séances sont passées ». Le plan démarre au lundi de la semaine en cours (R8/R9, décision
+juste) ; `missedSessionsCheck` comptait tout jour passé non coché, sans distinguer « tu as
+décroché » de « ton plan n'existait pas encore ».
+
+Balayé sur les sept jours à date figée : **1 jour sur 7** (dimanche) avant, **0 sur 7** après.
+La correction lit `plan_start`, qui portait déjà l'information ; sans lui, le comportement
+d'origine reste le repli, donc aucun plan existant ne change.
+
+C'est le point le plus grave du lot, et pas pour sa fréquence : toute la boucle de rétention R4
+est construite pour ne jamais reprocher, et consoler quelqu'un qui n'a rien fait de mal est pire
+qu'un reproche — ça se produit à la seconde où il accorde sa confiance.
+
+### U2 — le nom du check-in suit l'heure, comme le salut
+
+`greeting()` connaît l'heure depuis toujours (cinq états). La phrase qui le suivait disait
+« point du **matin** » en dur, à cinq endroits : à 14 h l'écran affichait mot pour mot « Bon
+après-midi C'est l'heure du point du matin. » Point unique `pointLabel()` — Point du matin /
+du jour / du soir.
+
+### U3 — le score d'audit n'est plus montré à l'athlète
+
+Le titre affichait « score d'audit 70/100 ». Mesuré sur 30 profils : **médiane 100**, 3 sous 80,
+et ces trois-là sont **les trois Ironman**, à tous les niveaux, avec **0 violation dure**. La
+personne qui prépare l'épreuve la plus dure recevait la note la plus basse, pour un plan valide.
+
+Le chiffre est juste (critères souples, bas parce qu'un Ironman sature les plafonds) mais un
+score sur 100 ne se lit que comme une note, et l'athlète n'a rien à en faire : la question « ce
+plan est-il suivable » est tranchée par les violations DURES, listées juste en dessous. Le score
+reste dans `plan._v2.score` pour le développement.
+
+### U4 — le ⇄ d'échange de jours atteint le minimum tactile
+
+18 × 14 px au rendu, quand la WCAG 2.5.8 pose 24 × 24 en minimum. C'est le geste introduit pour
+réparer une semaine qui ne tombe pas bien — donc un geste qu'on fait quand on est déjà contrarié.
+`.swapBtn` reçoit le traitement de `.doneBtn` : discret à l'œil, **44 × 44 au doigt** via un
+`::after` invisible.
+
+### U7 — la séance n'attend plus la météo
+
+`applyReadinessSnap` faisait `await fetchWeather()` **avant** de calculer la séance, et
+`fetchWeather` attend la géolocalisation (`timeout: 3000`) : **3 262 ms** d'écran « ta séance
+arrive… » après la dernière réponse, chaque matin, pour une donnée d'appoint.
+
+On ne retire pas la météo (manifeste §6) et on ne réduit pas le timeout — un vrai téléphone met
+parfois deux secondes à se localiser. `primeWeather()` la lance **à l'ouverture du diaporama** :
+l'athlète répond à trois questions pendant ce temps. **3 262 ms → 782-957 ms**, zéro comportement
+changé.
+
+### La garde
+
+`tests/e2e/smoke-usage.mjs` — **14ᵉ suite E2E**, 9 assertions. U1 balaie les **sept jours de la
+semaine** à date figée : la fenêtre dépendait du jour, donc six jours sur sept un test l'aurait
+ratée (même leçon que le banc R14 en R20.7). **Vérifiée rouge** en réintroduisant les cinq
+défauts : 5 échecs sur 9.
+
+### Deux constats initiaux qui étaient FAUX
+
+Ils sont laissés écrits dans le rapport plutôt qu'effacés, parce qu'ils sont de la même famille
+que les trois instruments démasqués en R20 — **une mesure qui porte sur une grandeur voisine de
+celle qu'elle nomme** :
+
+- **la coche ○ n'a jamais été trop petite** : elle porte un `::after` en `inset: -9px` depuis son
+  écriture, donc 44 × 44 au doigt. Mon instrument lisait le `getBoundingClientRect()` du bouton
+  seul — d'où aussi les « 220 contrôles sous 44 px » de mon premier comptage, un artefact ;
+- **les 3,2 s n'étaient pas une temporisation** : j'avais conclu « délai fixe » de ce que la
+  mesure était identique hors ligne et avec un réseau bloqué. L'absence de tout appel réseau
+  aurait dû me mettre en alerte — s'il n'y a aucun appel, c'est que rien n'est jamais parti. La
+  cause était l'`await` sur la géolocalisation, et mon test « hors ligne » n'a donc pas testé ce
+  qu'il prétendait.
+
+Trois faux constats sur sept. La leçon centrale de R20 vaut aussi quand c'est moi qui tiens
+l'instrument.

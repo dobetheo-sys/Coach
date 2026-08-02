@@ -4,12 +4,29 @@
 // l'énergie du snapshot moteur : une seule question côté athlète, deux signaux côté
 // moteur). Aucune séance visible avant la fin — la règle produit ne change pas.
 import { S, $, esc } from "../state.js";
-import { applyReadinessSnap, verdictHTML } from "./readiness.js";
+import { applyReadinessSnap, verdictHTML, primeWeather } from "./readiness.js";
 
 function greeting() {
   const h = new Date().getHours();
   return h < 5 ? "Debout tôt 🌙" : h < 12 ? "Salut ☀️" : h < 18 ? "Bon après-midi" : h < 22 ? "Bonsoir 🌙" : "Encore debout 🦉";
 }
+
+// U2 — LE NOM DU CHECK-IN SUIT L'HEURE, COMME LE SALUT.
+//
+// `greeting()` connaît l'heure depuis toujours et en donne cinq versions. La phrase qui le
+// suivait disait « point du MATIN » en dur — donc à 14 h l'app affichait, à l'écran, mot pour
+// mot : « Bon après-midi C'est l'heure du point du matin. » Le check-in est rejouable à la
+// demande et l'app s'ouvre dessus à toute heure : la contradiction se voit dès qu'on ouvre
+// l'app l'après-midi ou le soir, c'est-à-dire souvent.
+//
+// Un point unique, utilisé partout où le nom apparaissait (bandeau du diaporama, phrase de
+// coach, écran de fin, onglet Semaine, bouton « refaire »).
+export function pointLabel() {
+  const h = new Date().getHours();
+  return h < 12 ? "Point du matin" : h < 18 ? "Point du jour" : "Point du soir";
+}
+/** Le même nom en minuscules, pour l'insérer dans une phrase. */
+export function pointLabelInline() { return pointLabel().toLowerCase(); }
 
 // Chaque écran : phrase de coach (réagit à la réponse précédente), options en gros
 // boutons. `set` écrit dans le brouillon, `react` donne la phrase d'accueil du suivant.
@@ -19,7 +36,7 @@ const SLIDES = [
     // A5 (audit v6) — la question porte sur les HEURES (un signal mesuré) et non plus sur
     // la seule impression : une nuit sous 4h30 est un rouge en soi, quel que soit le moral.
     // Une question côté athlète, deux signaux côté moteur (sleepHours + sleepQuality).
-    coach: () => greeting() + " C’est l’heure du point du matin. Première question : tu as dormi combien de temps ?",
+    coach: () => greeting() + " C’est l’heure de ton " + pointLabelInline() + ". Première question : tu as dormi combien de temps ?",
     options: [
       { val: "8", ico: "🛌", label: "8h ou plus", react: "Excellent, c’est la meilleure des récups." },
       { val: "7", ico: "😴", label: "7-8h", react: "Parfait, c’est la meilleure des récups." },
@@ -75,7 +92,11 @@ export function checkinSlideshowHTML() {
   const ck = S._ck || (S._ck = { step: 0 });
   const slide = SLIDES[ck.step];
   if (!slide) return "";
-  let h = '<div class="card" id="ckSlide"><div class="eyebrow">Point du matin · ' + (ck.step + 1) + "/" + SLIDES.length + "</div>";
+  // U7 — on lance la recherche météo MAINTENANT, pendant que l'athlète répond aux trois
+  // questions : elle sera prête au moment où le moteur en a besoin, au lieu de faire attendre
+  // 3,2 s devant « ta séance arrive… ».
+  primeWeather();
+  let h = '<div class="card" id="ckSlide"><div class="eyebrow">' + pointLabel() + ' · ' + (ck.step + 1) + "/" + SLIDES.length + "</div>";
   h += '<h2 style="font-size:var(--fs-hand);line-height:1.4">' + esc(slide.coach(ck)) + "</h2>";
   h += '<div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">';
   slide.options.forEach((o) => {
@@ -111,7 +132,7 @@ export function bindCheckinSlideshow(rerender, onDone) {
       if (ck.step < SLIDES.length) { rerender(); return; }
       // Fin du diaporama → verdict (la météo peut prendre ~3.5 s : écran d'attente coach)
       const sc = $("ckSlide");
-      if (sc) sc.innerHTML = '<div class="eyebrow">Point du matin</div><h2 style="font-size:var(--fs-hand)">C’est noté 👍</h2><div class="load-sub" style="margin-top:8px">Je regarde ta forme, ta fatigue des derniers jours et la météo — ta séance arrive…</div>';
+      if (sc) sc.innerHTML = '<div class="eyebrow">' + pointLabel() + '</div><h2 style="font-size:var(--fs-hand)">C’est noté 👍</h2><div class="load-sub" style="margin-top:8px">Je regarde ta forme, ta fatigue des derniers jours et la météo — ta séance arrive…</div>';
       const out = await applyReadinessSnap(ck);
       S._ck = null;
       onDone(out);
