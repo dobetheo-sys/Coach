@@ -3713,3 +3713,58 @@ préparation ». Le blocage reste dur SOUS le plancher, et il y reste pour la ra
 fonde la liste — sous 12 semaines de marathon ou 26 d'Ironman, il ne reste plus que
 l'affûtage et le pic (R13.6 les plafonne à 3 et 5) : ce n'est plus une préparation
 raccourcie, c'est une préparation absente. Au-dessus, l'athlète décide, informé.
+
+
+---
+
+## R22b — le refus emmène sur la réponse en cause, et sept suites E2E sortaient en code 0
+
+Retour du fondateur sur capture : *« le bouton "corriger ma réponse" devrait directement
+donner un calendrier »*.
+
+### Le défaut
+
+`renderGenerationFailure` envoyait à `curSteps().length - 1` — la **dernière** étape du
+questionnaire, quelle que soit la clé refusée. Sur un refus `race_date`, l'athlète
+atterrissait sur une étape qui ne contient aucune date et devait la chercher. Le refus
+NOMME pourtant la clé, et il l'affiche à l'écran juste sous le bouton : l'information
+était là, le bouton ne la lisait pas.
+
+**Correctif** : l'étape est TROUVÉE, pas déclarée — on cherche laquelle rend un champ
+portant `data-input="<clé>"` ou `data-key="<clé>"`. Une table « clé → numéro d'étape »
+serait une seconde source de vérité, et elle deviendrait fausse à la première
+réorganisation du questionnaire — U14 en a justement réorganisé l'ordre, et quatre suites
+E2E codaient la séquence en dur. Puis le champ est focalisé et, si le navigateur le
+permet, `showPicker()` ouvre le calendrier natif ; le focus reste le repli, jamais une
+exception pour un confort d'affichage. Le correctif vaut pour TOUTE clé refusée (âge,
+format, volume), pas seulement la date.
+
+### CE QUE LA CONTRE-PREUVE A TROUVÉ, ET QUI EST PLUS GRAVE
+
+En cassant le ciblage pour vérifier que la nouvelle suite rougissait, elle est sortie
+**verte**. Deux causes, emboîtées :
+
+1. **La suite MOURAIT au lieu de rapporter.** Le champ absent faisait lever
+   `el.value = …`, exception non rattrapée, aucune ligne `FAIL` produite — et mon
+   comptage de lignes `FAIL` en concluait « vert ». **C'est exactement la faute
+   d'instrument de R21, refaite le même jour**, à deux heures d'intervalle.
+2. **Et en remesurant sur le CODE DE SORTIE**, la vraie grandeur : `run-all.mjs` lit
+   `r.status`, mais `makeReporter().report()` se contente de RENDRE 0/1 sans jamais
+   sortir. **Sept suites sur dix-sept finissaient par `report();`** — `smoke-avatar`,
+   `smoke-feasibility`, `smoke-projlog`, `smoke-questionnaires`, `smoke-tabs`,
+   `smoke-typo`, `smoke-usage` — elles sortaient donc en 0 quoi qu'elles trouvent, et la
+   CI les comptait vertes. Parmi elles, les gardes d'U1/U8/U10/U14/U15/U16, celle des
+   sept questionnaires (R20.1), celle du plancher typographique (R16.8), et celle que
+   j'avais écrite le matin même (A-5).
+
+**Même mécanisme qu'O-9/R20.6** : le banc d'invariants sortait en code 0 quoi qu'il
+trouve et n'était pas en CI, ce qui lui a fait porter quatre familles d'échecs pendant
+que la documentation le disait vert. Un rapport que rien ne lit vaut zéro.
+
+**L'ordre de R20.6 a été respecté** : les sept ont d'abord été mesurées — **0 échec sur
+137 assertions**, donc aucune dette cachée — AVANT d'être rendues bloquantes. Rendre
+bloquant un banc dont on n'a pas trié les échecs fige la dette au lieu de la traiter.
+
+Les 17 suites sortent désormais en `process.exit(report())`. Garde `smoke-refus.mjs`
+(**17ᵉ suite**), 8 critères, **vérifiée rouge** sur deux cassures (retour à la dernière
+étape : 4 échecs ; champ non focalisé : 1 échec).

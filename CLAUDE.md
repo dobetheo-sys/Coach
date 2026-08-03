@@ -991,6 +991,28 @@ critère de dureté est « l'athlète ne peut pas évaluer le risque, ou l'erreu
 « ai-je déjà une base ? » se tranche et rater sa course se rattrape.
 **26 gates verts, E2E 16/16, golden 900 inchangé, registre 24/24.**
 
+**R22b livré — le refus emmène sur la réponse en cause, et SEPT suites E2E sortaient en code 0**
+(retour du fondateur sur capture, voir ARCHITECTURE.md « R22b ») : le bouton « Corriger ma
+réponse » renvoyait à la **dernière** étape du questionnaire quelle que soit la clé refusée — sur
+un refus `race_date`, l'athlète atterrissait sur une étape sans date et devait la chercher. Le
+refus NOMME pourtant la clé et l'affiche juste sous le bouton : l'information était là, le bouton
+ne la lisait pas. L'étape est désormais **trouvée** (on cherche laquelle rend `data-input="<clé>"`)
+et non déclarée — une table « clé → étape » deviendrait fausse à la première réorganisation, et
+U14 en a justement réorganisé l'ordre. Le champ est focalisé, `showPicker()` ouvre le calendrier
+natif, le focus reste le repli. Vaut pour TOUTE clé refusée, pas seulement la date.
+**Et la contre-preuve a trouvé plus grave.** En cassant le ciblage, la suite est sortie **verte** :
+elle MOURAIT au lieu de rapporter (exception non rattrapée, aucune ligne `FAIL`, et mon comptage de
+lignes en concluait « vert » — **la faute d'instrument de R21, refaite le même jour**). Remesuré
+sur le CODE DE SORTIE, la vraie grandeur : `run-all.mjs` lit `r.status`, mais `report()` se
+contente de RENDRE 0/1 sans jamais sortir — **sept suites sur dix-sept finissaient par
+`report();`**, donc sortaient en 0 quoi qu'elles trouvent, CI comprise. Parmi elles les gardes
+d'U1/U8/U10/U14/U15/U16, des sept questionnaires (R20.1), du plancher typographique (R16.8), et
+celle écrite le matin même (A-5). Même mécanisme qu'O-9/R20.6. **L'ordre de R20.6 a été respecté** :
+les sept mesurées d'abord — **0 échec sur 137 assertions**, aucune dette cachée — AVANT d'être
+rendues bloquantes. Garde `smoke-refus.mjs` (**17ᵉ suite**), 8 critères, **vérifiée rouge** sur
+deux cassures.
+**26 gates verts, E2E 17/17, golden 900 inchangé, registre 24/24.**
+
 **I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
 ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en
 trail, un DÉBUTANT recevait un pic de **575 min** contre **547** pour un INTER, et sur le D+ aussi

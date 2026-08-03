@@ -152,8 +152,43 @@ function renderGenerationFailure(err) {
       invalidatePlan();
       const st = await import("./steps.js");
       hideTabs(); S.onPlan = false; ebSave();
-      S.step = Math.max(0, st.curSteps().length - 1);
+      // ── LE BOUTON VISE LA RÉPONSE EN CAUSE, PLUS LA DERNIÈRE ÉTAPE ──
+      //
+      // Il envoyait à `curSteps().length - 1` quelle que soit la clé refusée : sur un refus
+      // `race_date`, l'athlète atterrissait sur une étape qui ne contient pas de date et
+      // devait la chercher. Le refus nomme pourtant la clé, et l'affiche à l'écran.
+      //
+      // L'étape est TROUVÉE, pas déclarée : on cherche laquelle rend un champ portant cette
+      // clé. Une table « clé → numéro d'étape » serait une seconde source de vérité, et elle
+      // deviendrait fausse à la première réorganisation du questionnaire — U14 en a justement
+      // réorganisé l'ordre, et quatre suites E2E codaient la séquence en dur.
+      const key = String(cause.key || "").replace(/[^\w-]/g, "");
+      const steps = st.curSteps();
+      let idx = -1;
+      if (key) {
+        const motif = new RegExp('data-(?:input|key)="' + key + '"');
+        for (let i = 0; i < steps.length; i++) {
+          let html = "";
+          try { html = steps[i].render() || ""; } catch (e) { html = ""; }
+          if (motif.test(html)) { idx = i; break; }
+        }
+      }
+      S.step = idx >= 0 ? idx : Math.max(0, steps.length - 1);
       st.renderStep();
+      // …et le champ s'OUVRE. Pour une date, c'est le calendrier natif : demander de corriger
+      // une date puis laisser l'athlète chercher le champ, c'est faire la moitié du chemin.
+      requestAnimationFrame(() => {
+        const el = key && document.querySelector('[data-input="' + key + '"], [data-key="' + key + '"]');
+        if (!el) return;
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        if (typeof el.focus === "function") el.focus({ preventScroll: true });
+        // `showPicker()` exige une activation transitoire : le clic la fournit, mais l'import
+        // dynamique peut l'avoir consommée. On tente, et le focus reste le repli — jamais
+        // d'exception qui remonterait pour un confort d'affichage.
+        if (el.tagName === "INPUT" && typeof el.showPicker === "function") {
+          try { el.showPicker(); } catch (e) { /* le champ est focalisé, ça suffit */ }
+        }
+      });
     };
     const rb = $("ebRetryGen");
     if (rb) rb.onclick = () => { invalidatePlan(); renderActiveTab(); };
