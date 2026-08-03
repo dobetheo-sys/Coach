@@ -12399,30 +12399,45 @@ function findDay(plan        , date        )                                    
   return null;
 }
 
-/** Charge des 7 jours précédant `date` : prévue par le plan vs réellement effectuée. */
-function acuteGap(plan        , snapshot                   )                                                                {
-  const end = new Date(snapshot.date + "T00:00:00Z").getTime();
-  const start = end - 7 * 864e5;
+/**
+ * Charge des `days` jours précédant `date` : prévue par le plan vs réellement effectuée.
+ *
+ * R21 — exportée pour que le détecteur de déviation lise le MÊME chiffre que l'ajusteur.
+ * Deux calculs de « charge des 7 derniers jours » finiraient par diverger, et c'est
+ * exactement le genre de divergence qu'O-23 vient d'exposer entre le moteur et l'UI (R11.1).
+ * `ratio` est `null` quand rien n'a été effectué OU quand rien n'était prévu : un ratio
+ * calculé sur un dénominateur nul serait un chiffre inventé.
+ */
+function loadWindow(plan        , completed                                , date        , days = 7) 
+                                                              {
+  const end = new Date(date + "T00:00:00Z").getTime();
+  const start = end - days * 864e5;
   let plannedMin = 0;
   for (const w of plan.weeks)
     for (const d of w.days) {
       const t = new Date(((d                     ).date || "1970-01-01") + "T00:00:00Z").getTime();
       if (t >= start && t < end) plannedMin += dayMinutes(d);
     }
-  const doneMin = (snapshot.completed || [])
+  const doneMin = (completed || [])
     .filter((c) => {
       const t = new Date(c.date + "T00:00:00Z").getTime();
       return t >= start && t < end;
     })
     .reduce((t, c) => t + c.minutes, 0);
-  return { plannedMin, doneMin, ratio: plannedMin > 0 && snapshot.completed ? doneMin / plannedMin : null };
+  return { plannedMin, doneMin, ratio: plannedMin > 0 && completed ? doneMin / plannedMin : null };
+}
+
+function acuteGap(plan        , snapshot                   )                                                                {
+  return loadWindow(plan, snapshot.completed, snapshot.date, 7);
 }
 
 function downgrade(level                )                 {
   return level === "verte" ? "orange" : "rouge";
 }
 
-/** Réduit le corps des séances d'un jour (×f), re-rend, renvoie les minutes. */
+/** Réduit le corps des séances d'un jour (×f), re-rend, renvoie les minutes.
+ *  R21 — exportée : le recalcul de fenêtre réduit EXACTEMENT comme l'ajusteur du matin.
+ *  Une seconde façon de réduire une séance serait une seconde définition de « réduire ». */
 function reduceDay(day       , f        , refs      , hz                        , baseRefs      )       {
   for (const s of day.sessions) {
     if (!s.steps || !s.steps.length) continue;
@@ -12568,6 +12583,829 @@ function adjustDay(reasoned              , plan        , date        , snapshot 
     throw new Error("Invariant readiness violé : " + originalMinutes.toFixed(1) + " → " + adjustedMinutes.toFixed(1) + "min (" + action + ")");
   }
   return { date, action, verdict, originalMinutes, adjustedMinutes, decisions };
+}
+
+// ===== src/readiness/gpxTcxParser.ts =====
+/**
+ * R21 — PARSEURS GPX ET TCX, zéro dépendance.
+ *
+ * ================================================================================
+ * POURQUOI ILS N'EXISTAIENT PAS, ET POURQUOI ILS EXISTENT MAINTENANT
+ * ================================================================================
+ *
+ * `measured.ts` annonce depuis son écriture que « l'athlète apporte ses fichiers
+ * (FIT/GPX/TCX) ». Seul le FIT était livré. Les deux autres formats sont ceux que
+ * rendent les exports Polar, Suunto, Zwift, TrainingPeaks et la plupart des
+ * applications qui refusent le binaire Garmin — les ignorer revenait à réserver
+ * l'import souverain aux possesseurs d'une montre Garmin.
+ *
+ * ================================================================================
+ * CE QU'ILS LISENT, ET CE QU'ILS REFUSENT DE DEVINER
+ * ================================================================================
+ *
+ * TCX est un format de RÉSUMÉ : chaque `<Lap>` porte `TotalTimeSeconds`,
+ * `DistanceMeters`, éventuellement la FC et la puissance moyennes. On les somme.
+ * C'est la lecture la plus fiable des trois formats.
+ *
+ * GPX n'a AUCUN résumé : il n'y a que des points. La durée vient de l'écart entre
+ * le premier et le dernier `<time>`, la distance d'une somme de haversines. Deux
+ * conséquences dites plutôt que cachées :
+ *
+ *   · un GPX sans horodatage (trace de parcours, pas d'activité) ne rend RIEN, et
+ *     le dit — il décrit un itinéraire, pas une séance ;
+ *   · la distance GPS est bruitée ; on ne l'utilise pas pour prétendre à une
+ *     précision qu'elle n'a pas. Elle sert à une vitesse MOYENNE, la grandeur que
+ *     le détecteur compare à une bande de plusieurs pour cent de large.
+ *
+ * **La puissance n'est jamais estimée.** Ni en GPX, ni en TCX quand le champ est
+ * absent. O-22 a coûté 18 % d'erreur sur une FTP pour avoir dérivé une grandeur
+ * d'une autre qui lui ressemblait ; on ne recommence pas avec un modèle de
+ * puissance déduit d'une pente et d'une vitesse.
+ *
+ * ================================================================================
+ * SUR L'ANALYSE PAR EXPRESSIONS RÉGULIÈRES
+ * ================================================================================
+ *
+ * Il n'y a pas de DOM côté Node, et le dépôt s'interdit toute dépendance npm.
+ * L'analyse est donc un balayage de motifs, ce qui est acceptable ICI et
+ * seulement ici : les deux schémas sont figés depuis quinze ans, les champs lus
+ * sont des feuilles sans attributs, et un fichier mal formé produit un refus
+ * motivé plutôt qu'un chiffre faux. Ce n'est pas un analyseur XML général et il
+ * ne doit jamais servir à autre chose.
+ */
+                                                                     
+
+/** Rayon terrestre moyen (m) — WGS84, valeur usuelle. */
+const R_TERRE = 6371000;
+
+function haversine(la1        , lo1        , la2        , lo2        )         {
+  const r = Math.PI / 180;
+  const dLa = (la2 - la1) * r, dLo = (lo2 - lo1) * r;
+  const a = Math.sin(dLa / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin(dLo / 2) ** 2;
+  return 2 * R_TERRE * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/** La date ISO (locale au fichier : les horodatages GPX/TCX sont en UTC). */
+const jourDe = (iso        )         => iso.slice(0, 10);
+
+/**
+ * Discipline déduite du libellé de sport du fichier. Un sport inconnu rend
+ * « autre » — le détecteur ignore alors la séance au lieu de la ranger de force
+ * dans une discipline, ce qui produirait une fausse correspondance.
+ */
+function disciplineDe(sport                           )                       {
+  const s = String(sport || "").toLowerCase();
+  if (/run|cours|marche|walk|hik|trail/.test(s)) return "rn";
+  if (/bik|cycl|ride|velo|vélo|virtual/.test(s)) return "bk";
+  if (/swim|nage|nata/.test(s)) return "sw";
+  return "autre";
+}
+
+const nombre = (x                    )                     => {
+  if (x == null) return undefined;
+  const v = Number(x);
+  return isFinite(v) ? v : undefined;
+};
+
+/** Toutes les valeurs d'une balise feuille, dans l'ordre du document. */
+function feuilles(xml        , tag        )           {
+  const re = new RegExp("<" + tag + "(?:\\s[^>]*)?>([^<]*)</" + tag + ">", "gi");
+  const out           = [];
+  let m                        ;
+  while ((m = re.exec(xml))) out.push(m[1].trim());
+  return out;
+}
+
+// ================================================================================
+// TCX
+// ================================================================================
+
+function parseTcx(xml        )                    {
+  if (!/<TrainingCenterDatabase/i.test(xml)) throw new Error("Ce fichier n'est pas un TCX (balise TrainingCenterDatabase absente)");
+  const out                    = [];
+  const reAct = /<Activity\b([^>]*)>([\s\S]*?)<\/Activity>/gi;
+  let m                        ;
+  while ((m = reAct.exec(xml))) {
+    const sport = (/Sport\s*=\s*"([^"]*)"/i.exec(m[1]) || [])[1];
+    const corps = m[2];
+    const id = feuilles(corps, "Id")[0];
+    if (!id) continue; // un `<Id>` est l'horodatage de départ : sans lui, pas de date
+    let sec = 0, dist = 0, hrSum = 0, hrN = 0, pwSum = 0, pwN = 0;
+    const reLap = /<Lap\b[^>]*>([\s\S]*?)<\/Lap>/gi;
+    let l                        ;
+    while ((l = reLap.exec(corps))) {
+      const lap = l[1];
+      sec += nombre(feuilles(lap, "TotalTimeSeconds")[0]) || 0;
+      dist += nombre(feuilles(lap, "DistanceMeters")[0]) || 0;
+      // `<AverageHeartRateBpm><Value>…` : la feuille utile est `Value`, imbriquée.
+      const hrBloc = /<AverageHeartRateBpm[^>]*>([\s\S]*?)<\/AverageHeartRateBpm>/i.exec(lap);
+      const hr = hrBloc ? nombre(feuilles(hrBloc[1], "Value")[0]) : undefined;
+      if (hr) { hrSum += hr; hrN++; }
+      // La puissance vit dans les extensions Garmin ; absente, elle reste ABSENTE.
+      const pw = nombre(feuilles(lap, "ns3:AvgWatts")[0]) ?? nombre(feuilles(lap, "AvgWatts")[0]);
+      if (pw) { pwSum += pw; pwN++; }
+    }
+    if (sec <= 0) continue;
+    out.push({
+      date: jourDe(id),
+      d: disciplineDe(sport),
+      minutes: Math.round(sec / 60),
+      distanceM: dist > 0 ? Math.round(dist) : undefined,
+      avgSpeedMs: dist > 0 ? dist / sec : undefined,
+      avgPowerW: pwN ? Math.round(pwSum / pwN) : undefined,
+      source: "TCX",
+    });
+    void hrN; void hrSum; // lus pour valider le format, non utilisés par le détecteur
+  }
+  if (!out.length) throw new Error("Aucune activité exploitable dans ce TCX (ni durée, ni date de départ)");
+  return out;
+}
+
+// ================================================================================
+// GPX
+// ================================================================================
+
+function parseGpx(xml        )                    {
+  if (!/<gpx/i.test(xml)) throw new Error("Ce fichier n'est pas un GPX (balise gpx absente)");
+  const out                    = [];
+  const reTrk = /<trk>([\s\S]*?)<\/trk>/gi;
+  let m                        ;
+  while ((m = reTrk.exec(xml))) {
+    const trk = m[1];
+    const type = feuilles(trk, "type")[0];
+    const pts                                            = [];
+    const rePt = /<trkpt\b([^>]*)>([\s\S]*?)<\/trkpt>/gi;
+    let p                        ;
+    while ((p = rePt.exec(trk))) {
+      const lat = nombre((/lat\s*=\s*"([^"]*)"/i.exec(p[1]) || [])[1]);
+      const lon = nombre((/lon\s*=\s*"([^"]*)"/i.exec(p[1]) || [])[1]);
+      const ts = feuilles(p[2], "time")[0];
+      if (lat == null || lon == null || !ts) continue;
+      const t = Date.parse(ts);
+      if (!isFinite(t)) continue;
+      pts.push({ lat, lon, t });
+    }
+    // Un GPX sans horodatage décrit un ITINÉRAIRE, pas une séance. On refuse, et on
+    // le dit : en tirer une durée reviendrait à inventer le temps passé dessus.
+    if (pts.length < 2) continue;
+    const sec = (pts[pts.length - 1].t - pts[0].t) / 1000;
+    if (sec <= 0) continue;
+    let dist = 0;
+    for (let i = 1; i < pts.length; i++) dist += haversine(pts[i - 1].lat, pts[i - 1].lon, pts[i].lat, pts[i].lon);
+    out.push({
+      date: new Date(pts[0].t).toISOString().slice(0, 10),
+      d: disciplineDe(type),
+      minutes: Math.round(sec / 60),
+      distanceM: Math.round(dist),
+      avgSpeedMs: dist > 0 ? dist / sec : undefined,
+      // Pas de puissance en GPX standard, et on n'en DÉDUIT pas (leçon O-22).
+      source: "GPX",
+    });
+  }
+  if (!out.length) throw new Error("Aucune trace horodatée dans ce GPX — un itinéraire sans temps ne décrit pas une séance");
+  return out;
+}
+
+/** Aiguillage sur l'extension, avec un refus lisible pour tout le reste. */
+function parseActivityText(nom        , texte        )                    {
+  if (/\.tcx$/i.test(nom)) return parseTcx(texte);
+  if (/\.gpx$/i.test(nom)) return parseGpx(texte);
+  throw new Error("Format non reconnu : « " + nom +" » (attendus : .gpx, .tcx — le .fit passe par son propre parseur)");
+}
+
+// ===== src/coach/deviationDetector.ts =====
+/**
+ * R21 §1 — DÉTECTEUR DE DÉVIATION POST-INGESTION.
+ *
+ * ================================================================================
+ * CE QU'IL FAIT, ET CE QU'IL NE FAIT PAS
+ * ================================================================================
+ *
+ * Il COMPARE ce qui a été fait à ce qui était prévu, et rend des signaux. Il ne
+ * touche à aucun plan, n'écrit nulle part, ne notifie personne : c'est une
+ * fonction pure, donc mesurable au cas par cas — la condition pour qu'un
+ * déclencheur automatique soit défendable.
+ *
+ * **Pas de ML, pas de score composite.** Trois règles à seuil, chacune nommée,
+ * chacune avec sa raison. Un score agrégé serait plus « intelligent » et
+ * inauditable : on ne saurait jamais dire à l'athlète POURQUOI son plan a changé,
+ * ce qui est précisément la promesse du produit.
+ *
+ * ================================================================================
+ * LA SOURCE D'INGESTION N'EST PAS UN CRITÈRE
+ * ================================================================================
+ *
+ * Le détecteur consomme `IngestedSession`, la forme commune que produisent le
+ * parseur FIT, les parseurs GPX/TCX et l'import Strava. Filtrer sur la
+ * provenance serait un défaut : un athlète connecté à Strava recevrait moins de
+ * coaching qu'un athlète qui téléverse ses fichiers, pour une raison qui ne
+ * regarde que notre plomberie.
+ *
+ * ================================================================================
+ * LES TROIS RÈGLES
+ * ================================================================================
+ *
+ * D1 · ALLURE / PUISSANCE — écart > 10 % à la cible de la séance.
+ *      La cible n'est pas inventée : c'est la bande de la zone dominante du corps
+ *      de séance, lue par `intOf()` — le MÊME point que celui qui écrit la
+ *      consigne affichée à l'athlète (R11.1). L'écart se compte à partir du BORD
+ *      de la bande, pas de son centre : une séance dans sa fourchette n'est pas
+ *      une déviation, même à 9 % du milieu.
+ *
+ *      ⚠ Le SENS dépend de la référence : `thrPace` et `css` sont des SECONDES
+ *      (plus petit = plus rapide = plus dur), `ftp` est en WATTS (plus grand =
+ *      plus dur). Confondre les deux inverserait le diagnostic sur la moitié des
+ *      sports — c'est la faute d'unité qu'O-13, O-25 et R20.5 ont déjà coûtée.
+ *
+ * D2 · SÉANCE MANQUÉE — une séance planifiée, non-repos, dont la date est passée
+ *      de plus de 24 h et à laquelle rien ne correspond (ni ✓, ni import).
+ *
+ * D3 · CHARGE 7 JOURS — écart > 15 % entre le réalisé et le prévu sur la fenêtre
+ *      glissante. Le calcul est celui de l'ajusteur (`loadWindow`), importé et
+ *      non recopié : deux définitions de « charge des 7 derniers jours »
+ *      finiraient par diverger.
+ *
+ * ================================================================================
+ * POURQUOI LA DIRECTION EST PORTÉE PAR LE SIGNAL
+ * ================================================================================
+ *
+ * `direction` distingue « au-dessus » de « en-dessous ». Ce n'est pas décoratif :
+ * le déclencheur en aval s'en sert pour ne JAMAIS remonter la charge sur un
+ * signal « en-dessous » (manifeste — « on ne rattrape jamais le volume manqué »).
+ * Un signal qui ne porterait que sa magnitude absolue rendrait cette garantie
+ * impossible à écrire.
+ */
+                                                                   
+
+
+// ---- SEUILS, avec leur provenance -------------------------------------------
+/** D1 — écart d'intensité au-delà du BORD de la bande cible. Handoff R21 §1. */
+const SEUIL_INTENSITE = 0.10;
+/** D3 — écart de charge cumulée sur 7 jours. Handoff R21 §1. */
+const SEUIL_CHARGE_7J = 0.15;
+/** D2 — délai après lequel une séance sans correspondance est déclarée manquée. */
+const DELAI_MANQUEE_H = 24;
+/** Fenêtre de la charge cumulée, en jours. Alignée sur celle de l'ajusteur. */
+const FENETRE_CHARGE_J = 7;
+
+                                                                                    
+
+/**
+ * Le contrat du handoff — `{ type, magnitude, session_id, timestamp }` — plus ce
+ * que ce dépôt exige de toute décision : de quoi l'expliquer à un humain
+ * (`what` / `why`, le format `{id, what, val, why}` des règles pédagogiques) et
+ * de quoi la traiter sans la réinterpréter (`direction`).
+ */
+                                  
+                      
+                                                                       
+                    
+                                                                                    
+                     
+                           
+                                        
+                                              
+                                      
+                                         
+ 
+
+/**
+ * La forme commune de toute séance INGÉRÉE, quelle que soit sa provenance.
+ * `avgSpeedMs` et `avgPowerW` sont optionnels : une montre sans capteur de
+ * puissance ne rend pas de watts, et c'est un cas normal, pas une erreur.
+ */
+                                  
+                      
+                                     
+                  
+                     
+                      
+                     
+                      
+                  
+ 
+
+const sessionKey = (weekNum        , jour        , idx        ) => weekNum + "|" + jour + "|" + idx;
+
+/** La zone dominante du CORPS de séance — celle qui porte l'intention. */
+function targetZone(s           )                {
+  const body = (s.steps || []).filter((st) => st.role === "body" && typeof st.zone === "string");
+  if (!body.length) return null;
+  // La zone la plus représentée en durée : sur « 20min Z2 + 4×4min VO2 », l'intention
+  // est le VO2max, mais c'est le seul cas où la durée ne décide pas. On prend donc la
+  // zone la PLUS DURE présente, cohérent avec `sessionIntensity` qui classe déjà ainsi.
+  const ordre = ["easy", "rec", "flat", "easyup", "hike", "aero", "z2", "climb", "mara", "tempo", "frc", "rp", "ss", "asc", "css", "thr", "flatthr", "speed", "vam", "vo2"];
+  let best                = null, bestRank = -1;
+  for (const st of body) {
+    const z = st.zone          ;
+    const suf = z.split(".")[1] || "";
+    const r = ordre.indexOf(suf);
+    if (r > bestRank) { bestRank = r; best = z; }
+  }
+  return best;
+}
+
+/**
+ * L'écart d'une séance réalisée à sa bande cible, en relatif et signé.
+ * `null` quand on ne sait pas comparer — et NE PAS SAVOIR N'EST PAS UN ÉCART :
+ * une séance sans capteur, une zone sans référence chiffrée (descente en trail,
+ * où le moteur refuse délibérément toute cible — R7 §7) ne produisent aucun
+ * signal. Inventer un écart sur une donnée absente serait pire que se taire.
+ */
+function ecartCible(s           , ing                 , refs      ) 
+                                                                                                             {
+  const z = targetZone(s);
+  if (!z) return null;
+  const band = intOf(z, refs);
+  if (!band) return null;
+
+  if (band.ref === "ftp") {
+    const w = ing.normPowerW ?? ing.avgPowerW;
+    if (!w || !refs.ftp) return null;
+    const lo = refs.ftp * band.lo, hi = refs.ftp * band.hi;
+    if (w > hi) return { ecart: (w - hi) / hi, direction: "au-dessus", type: "puissance", cible: Math.round(lo) + "-" + Math.round(hi) + " W" };
+    if (w < lo) return { ecart: (lo - w) / lo, direction: "en-dessous", type: "puissance", cible: Math.round(lo) + "-" + Math.round(hi) + " W" };
+    return { ecart: 0, direction: "au-dessus", type: "puissance", cible: Math.round(lo) + "-" + Math.round(hi) + " W" };
+  }
+
+  // thrPace (sec/km) et css (sec/100m) : des SECONDES. Plus PETIT = plus RAPIDE = plus DUR.
+  const base = band.ref === "css" ? refs.css : refs.thrPace;
+  if (!base || !ing.avgSpeedMs || ing.avgSpeedMs <= 0) return null;
+  const realise = band.ref === "css" ? 100 / ing.avgSpeedMs : 1000 / ing.avgSpeedMs;
+  const rapide = base * band.lo; // borne RAPIDE (secondes les plus basses)
+  const lent = base * band.hi;   // borne LENTE
+  const unite = band.ref === "css" ? "/100m" : "/km";
+  const fk = (x        ) => Math.floor(x / 60) + "'" + String(Math.round(x % 60)).padStart(2, "0");
+  const cible = fk(rapide) + "-" + fk(lent) + unite;
+  if (realise < rapide) return { ecart: (rapide - realise) / rapide, direction: "au-dessus", type: "allure", cible };
+  if (realise > lent) return { ecart: (realise - lent) / lent, direction: "en-dessous", type: "allure", cible };
+  return { ecart: 0, direction: "au-dessus", type: "allure", cible };
+}
+
+/** Une séance ingérée correspond-elle à une séance planifiée ? Même jour, même discipline. */
+function correspond(s           , ing                 )          {
+  if (s.d === "rs") return false;
+  if (ing.d === "autre") return false;
+  // Un brick (`br`) se réalise en vélo puis course : les deux disciplines lui correspondent.
+  if (s.d === "br") return ing.d === "br" || ing.d === "bk" || ing.d === "rn";
+  return s.d === ing.d;
+}
+
+                              
+               
+             
+                                                                                    
+                              
+                                                                                         
+                                 
+                                                                   
+                                 
+                                                                    
+                
+ 
+
+const jourAvant = (iso        , n        ) =>
+  new Date(new Date(iso + "T00:00:00Z").getTime() - n * 864e5).toISOString().slice(0, 10);
+
+function detectDeviations(input             )                    {
+  const { plan, refs, ingested, done = {}, completed, today } = input;
+  const out                    = [];
+  const timestamp = new Date().toISOString();
+
+  // ---- D1 · allure / puissance ------------------------------------------------
+  // On ne compare QUE les séances passées : une séance de demain n'a pas de réalisé.
+  for (const w of plan.weeks)
+    for (const d of w.days                                 ) {
+      if (!d.date || d.date > today) continue;
+      d.sessions.forEach((s, si) => {
+        const ing = ingested.find((x) => x.date === d.date && correspond(s, x));
+        if (!ing) return;
+        const e = ecartCible(s, ing, refs);
+        if (!e || e.ecart <= SEUIL_INTENSITE) return;
+        out.push({
+          type: e.type,
+          magnitude: Math.round(e.ecart * 1000) / 1000,
+          session_id: sessionKey(w.num, d.jour, si),
+          timestamp,
+          direction: e.direction,
+          date: d.date ,
+          what: Math.round(e.ecart * 100) + " % " + e.direction + " de la cible (" + e.cible + ")",
+          why: e.direction === "au-dessus"
+            ? "« " + s.name + " » a été " + (e.type === "allure" ? "courue" : "roulée") + " plus fort que prévu : le gain est faible et la fatigue, elle, est bien réelle."
+            : "« " + s.name + " » est restée sous sa cible : le stimulus visé n'a pas été atteint.",
+        });
+      });
+    }
+
+  // ---- D2 · séance manquée ----------------------------------------------------
+  // « Passée de plus de 24 h » : la veille est encore rattrapable dans la journée,
+  // et déclarer manquée une séance d'hier soir à 8 h du matin serait un reproche faux
+  // (la forme du défaut U1, qu'on ne rejoue pas ici).
+  const limite = jourAvant(today, DELAI_MANQUEE_H / 24);
+  for (const w of plan.weeks)
+    for (const d of w.days                                 ) {
+      if (!d.date || d.date >= limite) continue;
+      d.sessions.forEach((s, si) => {
+        if (s.d === "rs") return;
+        const id = sessionKey(w.num, d.jour, si);
+        if (done[id]) return;
+        if (ingested.some((x) => x.date === d.date && correspond(s, x))) return;
+        out.push({
+          type: "seance_manquee",
+          magnitude: Math.round(s.min || 0),
+          session_id: id,
+          timestamp,
+          direction: "en-dessous",
+          date: d.date ,
+          what: "« " + s.name + " » (" + Math.round(s.min || 0) + " min) sans trace",
+          why: "Rien n'a été enregistré ni coché pour cette séance plus de 24 h après. Ça arrive — la suite en tient compte, sans rattrapage.",
+        });
+      });
+    }
+
+  // ---- D3 · charge cumulée 7 jours -------------------------------------------
+  const gap = loadWindow(plan, completed, today, FENETRE_CHARGE_J);
+  if (gap.ratio !== null) {
+    const ecart = Math.abs(gap.ratio - 1);
+    if (ecart > SEUIL_CHARGE_7J) {
+      const dessus = gap.ratio > 1;
+      out.push({
+        type: "charge_7j",
+        magnitude: Math.round(ecart * 1000) / 1000,
+        session_id: "7j|" + today,
+        timestamp,
+        direction: dessus ? "au-dessus" : "en-dessous",
+        date: today,
+        what: Math.round(gap.doneMin) + " min réalisées pour " + Math.round(gap.plannedMin) + " min prévues (" + Math.round(gap.ratio * 100) + " %)",
+        why: dessus
+          ? "Tu en as fait nettement plus que prévu sur 7 jours : c'est la fatigue accumulée qui décide de la suite, pas la motivation du moment."
+          : "La semaine écoulée est plus légère que prévu. On repart de là où tu en es, sans chercher à rattraper.",
+      });
+    }
+  }
+
+  return out;
+}
+
+/** Le signal le plus significatif — celui qu'on montre. `null` si la liste est vide. */
+function signalMajeur(signals                   )                         {
+  if (!signals.length) return null;
+  // Une SURCHARGE prime : c'est le seul cas où l'inaction coûte une blessure. Ensuite la
+  // charge cumulée (elle décrit la semaine), puis le reste, du plus grand écart au plus petit.
+  const rang = (s                 ) =>
+    s.direction === "au-dessus" ? 0 : s.type === "charge_7j" ? 1 : 2;
+  return [...signals].sort((a, b) => rang(a) - rang(b) || b.magnitude - a.magnitude)[0];
+}
+
+
+// ===== src/coach/notificationSink.ts =====
+/**
+ * R21 §3 — LE CANAL DE NOTIFICATION, ET SON INTERFACE.
+ *
+ * ================================================================================
+ * DEUX LIGNES, ET C'EST UNE CONTRAINTE, PAS UN STYLE
+ * ================================================================================
+ *
+ * Le format est celui du handoff :
+ *
+ *   « Écart détecté : [métrique]. J'ai ajusté [séance] → [nouvelle séance].
+ *     Raison : [motif]. »
+ *
+ * Une notification qu'on ne lit pas en entier au premier coup d'œil ne sert à
+ * rien, et U16 a mesuré ce que coûte la densité : la version la plus dense de
+ * l'app faisait 1,61 caractère par pixel rendu. `assertDeuxLignes()` fait échouer
+ * la construction plutôt que d'émettre une notification trop longue — un contrôle
+ * qui prévient ne vaut que s'il bloque (la leçon d'O-9).
+ *
+ * **Pas de jargon, pas de méthodologie.** Le handoff l'exclut explicitement, et
+ * c'est cohérent avec le produit : « Bosquet 2007 » a sa place dans le code et
+ * dans la carte « Pourquoi ce plan », pas dans une alerte de trois secondes.
+ *
+ * ================================================================================
+ * POURQUOI UNE INTERFACE ALORS QU'IL N'Y A QU'UN CANAL
+ * ================================================================================
+ *
+ * `NotificationSink` existe pour que le jour où un canal externe arrive
+ * (WhatsApp, Telegram, push serveur), rien du coach n'ait à changer : il émet
+ * une `CoachNotification`, il ne sait pas où elle va.
+ *
+ * Ce n'est PAS de l'abstraction spéculative gratuite : le dépôt a déjà tranché
+ * que le push app fermée demande un backend (H-2, « on n'annonce pas ce qu'on ne
+ * peut pas tenir »). L'interface est donc la forme honnête de cette dette — le
+ * point d'ancrage est prêt, et rien ne prétend que le canal existe.
+ *
+ * Le MVP n'a qu'un puits : `InAppSink`, qui écrit dans une boîte de réception
+ * lue par la PWA. Aucune permission navigateur n'est demandée : `notifications.js`
+ * gère déjà le cas des notifications système, et en redemander une seconde fois
+ * pour un autre motif serait la façon la plus sûre de se faire refuser les deux.
+ */
+                                                              
+
+                                    
+                                    
+             
+                                                              
+                  
+                                                                                     
+                          
+                                                                                 
+                        
+ 
+
+                                   
+                                                   
+ 
+
+/** Longueur au-delà de laquelle une « ligne » n'en est plus une sur un téléphone. */
+const MAX_CAR_PAR_LIGNE = 120;
+
+function assertDeuxLignes(lines          )       {
+  if (lines.length === 0 || lines.length > 2)
+    throw new Error("Notification R21 : " + lines.length + " ligne(s), le format en autorise 1 ou 2");
+  for (const l of lines)
+    if (l.length > MAX_CAR_PAR_LIGNE)
+      throw new Error("Notification R21 : ligne de " + l.length + " caractères (max " + MAX_CAR_PAR_LIGNE + ") — « " + l.slice(0, 40) + "… »");
+}
+
+                                
+                                                                           
+                 
+                                                          
+                
+                                              
+                 
+ 
+
+/**
+ * Fabrique les 1 ou 2 lignes. `recalc` absent = rien n'a été ajusté, et on le dit
+ * plutôt que de laisser croire à une action : une notification qui annonce un
+ * ajustement inexistant est pire qu'un silence.
+ */
+function formatNotification(signal                 , recalc                      )                    {
+  const l1 = "Écart détecté : " + signal.what + ".";
+  const lines = recalc
+    ? [l1, "J'ai ajusté " + recalc.before + " → " + recalc.after + ". Raison : " + recalc.reason]
+    : [l1, signal.why];
+  assertDeuxLignes(lines);
+  return { at: new Date().toISOString(), lines, signal, recalculated: !!recalc };
+}
+
+/** Le puits du MVP : une boîte de réception in-app, bornée, sans permission requise. */
+class InAppSink                             {
+           inbox                      = [];
+  // Pas de propriété de paramètre (`constructor(private max)`) : Node exécute le
+  // TypeScript en mode « strip-only » et la refuse. Contrainte du dépôt — zéro outil
+  // de compilation —, pas un choix de style.
+           max        ;
+  constructor(max = 30) { this.max = max; }
+  send(n                   )       {
+    this.inbox.push(n);
+    if (this.inbox.length > this.max) this.inbox.splice(0, this.inbox.length - this.max);
+  }
+}
+
+/** Puits muet — sert aux mesures : détecter et recalculer sans rien émettre. */
+class NullSink                             {
+  send()       { /* volontairement vide */ }
+}
+
+// ===== src/coach/proactiveCoach.ts =====
+/**
+ * R21 §2 — LE DÉCLENCHEUR DE RECALCUL, ET SA GARANTIE.
+ *
+ * ================================================================================
+ * LA GARANTIE, AVANT TOUT LE RESTE : ON NE REMONTE JAMAIS LA CHARGE
+ * ================================================================================
+ *
+ * `dailyAdjuster.ts` porte depuis le Sprint 2 une règle qui n'est pas négociable :
+ *
+ *     « <60 % → on n'essaie JAMAIS de rattraper le volume manqué (règle de coach) »
+ *
+ * et l'assertion qui la tient (`Invariant readiness violé`, jetée si un ajustement
+ * produit plus de minutes qu'avant). Un déclencheur automatique qui répondrait à
+ * « tu as raté trois séances » en ajoutant du volume ferait exactement ce que la
+ * priorité n°2 du manifeste interdit — et il le ferait tout seul, la nuit, sans
+ * que personne le regarde. C'est la raison pour laquelle **ce module ne sait que
+ * réduire.**
+ *
+ * Conséquence assumée, et elle mérite d'être dite parce qu'elle nuance un critère
+ * d'acceptation du handoff : un signal « en-dessous » (séance manquée, semaine
+ * légère) DÉCLENCHE bien un recalcul — mais un recalcul qui allège la rampe à
+ * venir, jamais un qui la charge. On ne récupère pas une séance perdue ; on cesse
+ * de prescrire la suite comme si elle avait eu lieu. C'est la même chose qu'un
+ * entraîneur fait, et c'est l'inverse de ce que fait un athlète laissé seul.
+ *
+ * ================================================================================
+ * LA FENÊTRE DE 14 JOURS EST UNE BORNE, PAS UN BALAYAGE
+ * ================================================================================
+ *
+ * « Recalcul de la fenêtre glissante 14 jours, PAS tout le plan » : la fenêtre
+ * borne ce que le déclencheur a le droit de toucher. À l'intérieur, il ne modifie
+ * que les jours qui le NÉCESSITENT — au plus `MAX_JOURS_TOUCHES`. Réduire
+ * quatorze jours d'un coup sur un seul import serait une sur-réaction que
+ * personne n'a demandée, et qui viderait deux semaines de plan sur une montre mal
+ * calibrée.
+ *
+ * Les jours passés ne sont jamais touchés : on ne réécrit pas ce qui a eu lieu.
+ *
+ * ================================================================================
+ * IL NE GÉNÈRE RIEN
+ * ================================================================================
+ *
+ * Aucun appel au générateur, aucune re-planification : il RÉDUIT des séances
+ * existantes, avec `reduceDay()` — la fonction que l'ajusteur du matin utilise
+ * déjà. Deux façons de réduire une séance seraient deux définitions de
+ * « réduire » (R11.1), et c'est le genre d'écart que ce dépôt a payé six fois.
+ *
+ * ================================================================================
+ * TOUT EST JOURNALISÉ
+ * ================================================================================
+ *
+ * Chaque recalcul produit un `RecalcLogEntry` : avant, après, raison en une
+ * phrase. Un plan qui change sans que l'athlète puisse savoir pourquoi est
+ * exactement le produit que ce dépôt refuse d'être.
+ */
+                                                                                
+                                                     
+
+
+
+/** Borne du handoff : la fenêtre glissante que le déclencheur a le droit de toucher. */
+const FENETRE_RECALC_J = 14;
+/** Nombre maximum de jours réellement modifiés par événement. Voir l'en-tête. */
+const MAX_JOURS_TOUCHES = 3;
+
+/**
+ * Facteurs de réduction. Modestes et DIFFÉRENTS selon la cause :
+ * une surcharge avérée justifie plus qu'un manque, parce qu'elle décrit une
+ * fatigue déjà encaissée, tandis qu'un manque décrit une progression à ne pas
+ * poursuivre comme si de rien n'était.
+ */
+const F_SURCHARGE = 0.85;
+const F_MANQUE = 0.90;
+
+                                 
+               
+                     
+                                            
+                                           
+                 
+ 
+
+                              
+                             
+                                                           
+                                
+                        
+                                         
+                        
+ 
+
+const jourApres = (iso        , n        ) =>
+  new Date(new Date(iso + "T00:00:00Z").getTime() + n * 864e5).toISOString().slice(0, 10);
+
+/** Les jours STRICTEMENT à venir dans la fenêtre, dans l'ordre chronologique. */
+function joursFenetre(plan        , today        )                                                                              {
+  const fin = jourApres(today, FENETRE_RECALC_J);
+  const out                                                                              = [];
+  for (const w of plan.weeks)
+    w.days.forEach((d, idx) => {
+      const dd = (d                     ).date;
+      if (!dd || dd <= today || dd > fin) return;
+      out.push({ day: d                             , week: w, idx });
+    });
+  return out.sort((a, b) => String(a.day.date).localeCompare(String(b.day.date)));
+}
+
+/**
+ * Applique la réduction aux jours qui portent la charge — les séances de QUALITÉ
+ * d'abord. Alléger un footing facile ne soulage rien : c'est l'intensité qui coûte,
+ * et c'est elle qu'un athlète fatigué tient le moins bien. Même logique que
+ * l'ajusteur, qui remplace la qualité et laisse le facile tranquille.
+ */
+function recalculerFenetre(
+  reasoned              , plan        , today        ,
+  facteur        , raison        ,
+)                   {
+  const refs       = { ...reasoned.baseRefs };
+  const log                   = [];
+  const candidats = joursFenetre(plan, today)
+    .filter(({ day }) => day.sessions.some((s) => {
+      const i = sessionIntensity(s);
+      return i === "difficile" || i === "moderee";
+    }));
+  for (const { day, week, idx } of candidats.slice(0, MAX_JOURS_TOUCHES)) {
+    const avantNom = day.sessions.map((s) => s.name).join(" + ");
+    const avantMin = dayMinutes(day);
+    // `reduceDay` mute en place : on garde de quoi ANNULER. Sans ça, une violation
+    // détectée laisserait derrière elle le jour déjà alourdi — l'assertion dirait la
+    // vérité et le plan porterait quand même la charge ajoutée.
+    const avantSteps = JSON.stringify(day.sessions.map((s) => s.steps));
+    reduceDay(day, facteur, refs, reasoned.hz, reasoned.baseRefs);
+    const apresMin = dayMinutes(day);
+    // ── LA GARANTIE D'ABORD, LE RESTE ENSUITE. L'ORDRE EST LE CORRECTIF. ──
+    //
+    // Ma première écriture testait le « rien n'a bougé » AVANT la garantie :
+    //
+    //     if (apresMin >= avantMin - 0.5) continue;   // ← une HAUSSE passe ici
+    //     if (apresMin > avantMin) throw …            // ← jamais atteint
+    //
+    // Une hausse satisfait la première condition, donc sortait par `continue` : elle
+    // était appliquée au plan (`reduceDay` mute en place), non journalisée, et
+    // l'assertion était du code mort. Mesuré : `reduceDay(f = 1.2)` fait passer un bloc
+    // de 5 à 6 répétitions — la clause `Math.min` protège `durationMin` et `distanceM`,
+    // PAS `reps`. La garantie n'est donc pas structurelle : cette ligne EST ce qui
+    // sépare le plan d'une charge ajoutée automatiquement, la nuit, sans témoin.
+    //
+    // Douzième fois que ce dépôt paie la même leçon sous une autre forme : une garantie
+    // placée après une sortie anticipée ne garantit rien.
+    if (apresMin > avantMin + 0.5) {
+      const restaure = JSON.parse(avantSteps)                                   ;
+      day.sessions.forEach((s, i) => { s.steps = restaure[i]; });
+      throw new Error("Invariant R21 violé : recalcul de fenêtre à la HAUSSE (" + avantMin.toFixed(1) + " → " + apresMin.toFixed(1) + " min)");
+    }
+    // Une réduction qui ne réduit rien n'est pas une entrée de journal : on ne
+    // fabrique pas la preuve d'une action qui n'a pas eu lieu.
+    if (apresMin >= avantMin - 0.5) continue;
+    log.push({
+      date: day.date ,
+      session_id: week.num + "|" + day.jour + "|" + idx,
+      before: { name: avantNom, minutes: Math.round(avantMin) },
+      after: { name: day.sessions.map((s) => s.name).join(" + "), minutes: Math.round(apresMin) },
+      reason: raison,
+    });
+  }
+  return log;
+}
+
+                              
+                         
+               
+             
+                              
+                                 
+                                 
+                
+                         
+ 
+
+/**
+ * Le point d'entrée : appelé APRÈS chaque ingestion de séance.
+ *
+ * Détecte → décide → recalcule (à la baisse, dans la fenêtre) → journalise →
+ * notifie. Aucun de ces cinq gestes n'est optionnel, et l'ordre compte : notifier
+ * avant de recalculer annoncerait un ajustement qui pourrait ne pas avoir lieu.
+ */
+function onSessionIngested(input             )              {
+  const { reasoned, plan, refs, ingested, done, completed, today, sink } = input;
+  const decisions             = [];
+  const D = (id        , what        , val                 , why        ) => decisions.push({ id, what, val, why });
+
+  const signals = detectDeviations({ plan, refs, ingested, done, completed, today });
+  const major = signalMajeur(signals);
+
+  if (!major) {
+    D("R21-aucun", "Aucune déviation", signals.length, "Ce qui a été fait correspond à ce qui était prévu : le plan ne bouge pas, et c'est une information en soi.");
+    return { signals, major: null, log: [], notification: null, decisions };
+  }
+
+  D("R21-signal", "Déviation retenue", major.type + " " + major.direction, major.why);
+
+  const surcharge = major.direction === "au-dessus";
+  const facteur = surcharge ? F_SURCHARGE : F_MANQUE;
+  const raison = surcharge
+    ? "tu as encaissé plus que prévu, on laisse le corps encaisser"
+    : "la progression repart d'où tu en es, sans rattrapage";
+
+  const log = recalculerFenetre(reasoned, plan, today, facteur, raison);
+
+  if (log.length) {
+    D("R21-recalc", "Recalcul " + FENETRE_RECALC_J + " jours",
+      log.length + " jour(s) allégé(s)",
+      "Seuls les " + FENETRE_RECALC_J + " prochains jours sont concernés, et uniquement à la BAISSE : on ne rattrape jamais un volume manqué, et on n'ajoute jamais de charge sur une fatigue constatée.");
+  } else {
+    D("R21-sans-effet", "Rien à alléger", "0 jour",
+      "Aucune séance de qualité dans les " + FENETRE_RECALC_J + " prochains jours : il n'y a rien à réduire, et on ne touche pas au reste pour faire quelque chose.");
+  }
+
+  const resume                       = log.length
+    ? { before: log[0].before.name + " (" + log[0].before.minutes + " min)", after: log[0].after.minutes + " min", reason: raison }
+    : null;
+  const notification = formatNotification(major, resume);
+  sink.send(notification);
+
+  return { signals, major, log, notification, decisions };
+}
+
+/** Journal lisible — le format « avant / après / raison » demandé par le handoff. */
+function formatLog(log                  )         {
+  if (!log.length) return "(aucun recalcul)";
+  return log.map((e) =>
+    e.date + "  " + e.session_id + "\n"
+    + "    avant : " + e.before.name + " — " + e.before.minutes + " min\n"
+    + "    après : " + e.after.name + " — " + e.after.minutes + " min\n"
+    + "    raison : " + e.reason
+  ).join("\n");
 }
 
 // ===== src/nutrition/nutritionCalculator.ts =====
@@ -12927,6 +13765,10 @@ function dailyEnergy(input             )                             {
 
 
 
+
+
+
+/** R21 — exportée : la spec du coach proactif construit ses profils comme le pont, pas autrement. */
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
 }
@@ -13558,10 +14400,37 @@ function parseChronoSec(v         )                {
   return sec >= 600 && sec <= 43200 ? sec : null;
 }
 
-;                                                                      
+                                                                       
+/**
+ * R21 — LE COACH PROACTIF, côté application.
+ *
+ * Appelé APRÈS chaque ingestion de séance (FIT, GPX, TCX, Strava). Il régénère le
+ * plan depuis les réponses — comme `adjustTodayV2` —, détecte les déviations, et
+ * ne recalcule QUE la fenêtre de 14 jours, uniquement à la baisse.
+ *
+ * Ce qu'il rend est une PROPOSITION : le pont ne persiste rien. C'est l'appelant
+ * (l'UI) qui décide d'écrire, et l'athlète qui voit ce qui a changé — un plan qui
+ * se réécrirait tout seul dans le stockage, sans un écran, serait exactement le
+ * produit opaque que ce dépôt refuse d'être.
+ */
+function coachOnIngestV2(sport        , answers            , ingested                   , today        ) {
+  const { plan, reasoned } = generatePlan(toProfile(sport, answers));
+  const completed = (answers.completed                                  )
+    || completedFromDone(plan, answers, today);
+  const sink = new InAppSink();
+  const res = onSessionIngested({
+    reasoned, plan, refs: reasoned.baseRefs, ingested,
+    done: (answers.done || {})                           ,
+    completed, today, sink,
+  });
+  return { ...res, inbox: sink.inbox, plan };
+}
+
 (globalThis                           ).EBV2 = {
   buildPlan: buildPlanV2,
   adjustToday: adjustTodayV2,
+  coachOnIngest: coachOnIngestV2,
+  parseActivityText,
   assessReadiness,
   progress: progressV2,
   predict: predictV2,

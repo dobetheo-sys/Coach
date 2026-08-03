@@ -3507,3 +3507,106 @@ Cinq critères `O-25` dans `tests/e2e/smoke-improvements.mjs` :
   ici pour la vitesse.
 
 Le critère (b) est **vérifié rouge** contre le moteur d'avant.
+
+---
+
+## R21 — le coach proactif : détecter une déviation, recalculer, prévenir
+
+Livré depuis le handoff « Coach proactif : notifications + recalcul déclenché ».
+`src/coach/` — trois modules, plus les parseurs GPX/TCX qui manquaient.
+
+### Quatre prémisses du handoff, vérifiées avant d'écrire une ligne
+
+Trois ne tenaient plus, et le dire valait mieux que construire dessus :
+
+| prémisse | état mesuré |
+|---|---|
+| lot nommé « R13 » | **Pris.** `bench_r13.cjs` est le 17ᵉ gate CI, « R13 » apparaît 22 fois dans la documentation. Livré sous **R21**, vérifié libre. |
+| « Strava/Garmin hors scope, import souverain uniquement (décision juin 2026) » | **Périmée.** Strava OAuth est déployé et en production depuis le 03/08 (H-1, O-22/O-23/O-25). Aucune intégration tierce n'est AJOUTÉE — c'est l'esprit de la contrainte et il est tenu —, mais le détecteur consomme `IngestedSession` sans regarder la provenance : filtrer sur la source donnerait moins de coaching à un athlète connecté qu'à un athlète qui téléverse, pour une raison qui ne regarde que notre plomberie. |
+| « appeler le module de recalcul existant (suspension des floors de récup) » | **N'existe pas sous ce nom.** Le module réel est `adjustDay` (`dailyAdjuster.ts`), et il ajuste **un jour**, pas une fenêtre. La fenêtre de 14 jours est donc construite ici, en RÉUTILISANT `reduceDay()` — aucune re-génération, conformément à « pas de refonte du moteur ». |
+| « GPX/TCX » | **Absents.** Seul le FIT était livré, alors que `measured.ts` annonce les trois depuis son écriture. Écrits (`gpxTcxParser.ts`). |
+
+### La garantie qui commande tout le reste
+
+`dailyAdjuster.ts` porte depuis le Sprint 2 : *« <60 % → on n'essaie JAMAIS de rattraper
+le volume manqué »*. Un déclencheur automatique qui répondrait à « tu as raté trois
+séances » en ajoutant du volume ferait ce que la priorité n°2 du manifeste interdit — et
+le ferait seul, sans témoin. **`proactiveCoach` ne sait donc que réduire.**
+
+Conséquence assumée, qui nuance un critère d'acceptation du handoff : un signal
+« en-dessous » déclenche bien un recalcul, mais un recalcul qui **allège la rampe à
+venir**. On ne récupère pas une séance perdue ; on cesse de prescrire la suite comme si
+elle avait eu lieu.
+
+### Les trois règles (`deviationDetector.ts`), pures et à seuil
+
+**D1 · allure/puissance > 10 %** — l'écart se compte à partir du **bord** de la bande
+cible, pas de son centre : une séance dans sa fourchette n'est pas une déviation. La
+bande vient de `intOf()`, le même point que la consigne affichée à l'athlète (R11.1).
+⚠ `thrPace`/`css` sont des SECONDES (plus petit = plus dur), `ftp` des WATTS (plus grand
+= plus dur) — confondre les deux inverserait le diagnostic sur la moitié des sports.
+**D2 · séance manquée après 24 h** — ni cochée, ni importée. La veille n'est jamais
+déclarée manquée : reprocher une séance encore rattrapable est le défaut U1.
+**D3 · charge 7 jours > 15 %** — via `loadWindow()`, **importée de l'ajusteur** et non
+recopiée.
+
+Pas de score composite : un agrégat serait plus « intelligent » et inauditable, et on ne
+pourrait plus dire POURQUOI le plan a changé.
+
+### Le recalcul (`proactiveCoach.ts`) — 14 jours comme BORNE
+
+La fenêtre limite ce que le déclencheur a le droit de toucher ; à l'intérieur il ne
+modifie que les jours de QUALITÉ qui le nécessitent, au plus 3. Réduire quatorze jours
+d'un coup sur un import viderait deux semaines de plan sur une montre mal calibrée. Le
+passé n'est jamais réécrit. Chaque changement produit un `RecalcLogEntry`
+(avant / après / raison en une phrase).
+
+### La notification (`notificationSink.ts`) — deux lignes, assertées
+
+`assertDeuxLignes()` **lève** plutôt que d'émettre trop long : un contrôle qui ne bloque
+pas ne vaut rien (O-9). `NotificationSink` existe pour qu'un canal externe se branche
+sans toucher au coach — la forme honnête de la dette H-2 (« pas de push app fermée sans
+backend »), pas de l'abstraction spéculative.
+
+### UN DÉFAUT DANS MON PROPRE MODULE, TROUVÉ EN CASSANT EXPRÈS
+
+La première écriture plaçait la garantie **après** la sortie anticipée :
+
+```js
+if (apresMin >= avantMin - 0.5) continue;   // ← une HAUSSE passe ici
+if (apresMin > avantMin) throw …            // ← jamais atteint
+```
+
+Une hausse satisfait la première condition : elle sortait par `continue`, était appliquée
+au plan (`reduceDay` mute en place), non journalisée, et l'assertion était du **code
+mort**. Et la garantie n'est pas structurelle — mesuré : `reduceDay(f = 1.2)` fait passer
+un bloc de **5 à 6 répétitions**, la clause `Math.min` protège `durationMin` et
+`distanceM`, **pas `reps`**. Cette ligne EST ce qui sépare le plan d'une charge ajoutée
+automatiquement. Douzième fois que ce dépôt paie la même leçon : une garantie placée après
+une sortie anticipée ne garantit rien. Le jour est désormais **restauré** avant de lever,
+pour qu'une violation ne laisse pas derrière elle le jour déjà alourdi.
+
+### ET MA CONTRE-PREUVE ÉTAIT FAUSSE D'ABORD
+
+Premier passage : trois cassures délibérées, **trois fois vert**. Deux causes, et aucune
+n'était le moteur.
+
+1. **Le critère de fenêtre recalculait sa borne depuis la constante testée** — porter
+   `FENETRE_RECALC_J` à 400 déplaçait le poteau avec le ballon. `14` est désormais un
+   littéral dans la mesure, plus une lecture.
+2. **Mon instrument comptait les lignes `✖`** — or une exception n'en produit aucune. La
+   garde AVAIT levé ; c'est ma mesure qui regardait le mauvais signal. Recompté sur le
+   **code de sortie**, ce que la CI lit réellement.
+
+Sixième occurrence dans ce dépôt d'une mesure portant sur une grandeur voisine de celle
+qu'elle nomme — cette fois dans un instrument que je venais d'écrire pour surveiller du
+code que je venais d'écrire.
+
+**Six cassures, six rouges** après correction : rattrapage du volume, fenêtre à 400 jours,
+passé modifiable, seuil d'intensité à 90 %, « manquée » dès le lendemain, journal
+enregistrant des recalculs sans effet.
+
+### Ce qui n'a PAS été fait, et pourquoi
+
+Hors périmètre déclaré du handoff, non construit : chat conversationnel, citation de
+méthodologie dans les messages, export vers montre. Aucune dépendance ajoutée.

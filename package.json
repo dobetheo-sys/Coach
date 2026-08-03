@@ -35,7 +35,8 @@
     "audit:r18": "node bench_r18.cjs endurabuild/js/engine.js",
     "measure:fallback": "node scripts/measureFallback.mjs",
     "registry:check": "node scripts/registryCheck.mjs",
-    "demo:faisabilite": "node src/audit/feasibilityDemo.ts"
+    "demo:faisabilite": "node src/audit/feasibilityDemo.ts",
+    "demo:proactif": "node src/audit/proactiveDemo.ts"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

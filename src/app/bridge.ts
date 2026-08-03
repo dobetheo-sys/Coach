@@ -15,6 +15,10 @@ import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
 import { predictRace, courseProfileOf, legProfileOf, type Prediction } from "../engine/predictor.ts";
 import { adherenceWindow, taperIsConform, margeOf } from "../engine/projection.ts";
+import { onSessionIngested } from "../coach/proactiveCoach.ts";
+import { InAppSink } from "../coach/notificationSink.ts";
+import type { IngestedSession } from "../coach/deviationDetector.ts";
+import { parseActivityText } from "../readiness/gpxTcxParser.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
 import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
@@ -28,7 +32,8 @@ interface AppAnswers extends Record<string, unknown> {
   format?: string;
 }
 
-function toProfile(sport: string, answers: AppAnswers): AthleteProfile {
+/** R21 — exportée : la spec du coach proactif construit ses profils comme le pont, pas autrement. */
+export function toProfile(sport: string, answers: AppAnswers): AthleteProfile {
   return { ...(answers as object), sport } as AthleteProfile;
 }
 
@@ -660,9 +665,36 @@ export function parseChronoSec(v: unknown): number | null {
 }
 
 declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
+/**
+ * R21 — LE COACH PROACTIF, côté application.
+ *
+ * Appelé APRÈS chaque ingestion de séance (FIT, GPX, TCX, Strava). Il régénère le
+ * plan depuis les réponses — comme `adjustTodayV2` —, détecte les déviations, et
+ * ne recalcule QUE la fenêtre de 14 jours, uniquement à la baisse.
+ *
+ * Ce qu'il rend est une PROPOSITION : le pont ne persiste rien. C'est l'appelant
+ * (l'UI) qui décide d'écrire, et l'athlète qui voit ce qui a changé — un plan qui
+ * se réécrirait tout seul dans le stockage, sans un écran, serait exactement le
+ * produit opaque que ce dépôt refuse d'être.
+ */
+function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedSession[], today: string) {
+  const { plan, reasoned } = generatePlan(toProfile(sport, answers));
+  const completed = (answers.completed as CompletedSession[] | undefined)
+    || completedFromDone(plan, answers, today);
+  const sink = new InAppSink();
+  const res = onSessionIngested({
+    reasoned, plan, refs: reasoned.baseRefs, ingested,
+    done: (answers.done || {}) as Record<string, boolean>,
+    completed, today, sink,
+  });
+  return { ...res, inbox: sink.inbox, plan };
+}
+
 (globalThis as Record<string, unknown>).EBV2 = {
   buildPlan: buildPlanV2,
   adjustToday: adjustTodayV2,
+  coachOnIngest: coachOnIngestV2,
+  parseActivityText,
   assessReadiness,
   progress: progressV2,
   predict: predictV2,

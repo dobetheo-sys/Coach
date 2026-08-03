@@ -66,6 +66,13 @@ const ORDER = [
   "src/readiness/readinessSource.ts",
   "src/readiness/fitParser.ts",
   "src/readiness/dailyAdjuster.ts",
+  // R21 — le coach proactif. L'ordre suit les dépendances : le détecteur lit le rendu
+  // des zones et la charge de l'ajusteur, le déclencheur lit le détecteur et le puits
+  // de notification. Les parseurs GPX/TCX n'ont que des imports de TYPE, donc effacés.
+  "src/readiness/gpxTcxParser.ts",
+  "src/coach/deviationDetector.ts",
+  "src/coach/notificationSink.ts",
+  "src/coach/proactiveCoach.ts",
   "src/nutrition/nutritionCalculator.ts",
   "src/nutrition/energyEstimator.ts",
   "src/app/bridge.ts",

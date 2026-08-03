@@ -88,6 +88,11 @@ dépôt — historique git si besoin.
   enchaîne et range chacune en **reproduit** / **ne reproduit plus (→ §4)** / **commande
   cassée**. Volontairement HORS CI : il rejoue des gates qui y tournent déjà. À lancer quand on
   reprend le registre — c'est ce qui empêche une dette de devenir un souvenir.
+- `npm run demo:proactif` — **le coach proactif** (R21) : détection de déviation après ingestion
+  (allure/puissance > 10 %, séance manquée > 24 h, charge 7 j > 15 %), recalcul BORNÉ à la fenêtre
+  de 14 jours, notification en deux lignes. **25ᵉ gate CI.** Sa raison d'être est le §3 : le
+  déclencheur ne sait que RÉDUIRE — « on ne rattrape jamais le volume manqué » tenu jusque dans
+  l'automatisme. Vérifié rouge sur six cassures délibérées.
 - `npm run demo:faisabilite` — **le raisonnement inverse** (RV) : une épreuve, un chrono visé, un
   verdict déroulé à reculons. **23ᵉ gate CI.** Son critère central, `RV-INVARIANT`, assertе que le
   plan émis est IDENTIQUE au bit près avec et sans objectif de temps — la performance reste une
@@ -917,6 +922,37 @@ promettre « toujours » et dit ce qui est vrai. Cinq critères `O-25`, dont tro
 10 min » ; la fenêtre est bornée par le TEMPS et non par le nombre de points), le critère (b)
 **vérifié rouge** — il rendait exactement le 5'37 du symptôme.
 **24 gates verts, E2E 16/16, golden 900 inchangé, registre 24/24.**
+
+**R21 livré — le coach proactif : détecter, recalculer, prévenir** (handoff « notifications +
+recalcul déclenché », voir ARCHITECTURE.md « R21 » — banc `npm run demo:proactif`, **25ᵉ gate CI**) :
+`src/coach/` détecte une déviation après chaque ingestion de séance, recalcule la fenêtre de
+14 jours et notifie en deux lignes. **Trois des quatre prémisses du handoff ne tenaient plus et
+c'est dit** : « R13 » est pris (17ᵉ gate, 22 occurrences en doc) → livré sous **R21** ; « Strava
+hors scope, décision juin 2026 » est périmé (OAuth déployé le 03/08) — aucune intégration n'est
+AJOUTÉE, mais le détecteur consomme `IngestedSession` **sans regarder la provenance**, sans quoi un
+athlète connecté recevrait moins de coaching qu'un athlète qui téléverse ; « le module de recalcul
+existant (floors de récup) » n'existe pas sous ce nom — le vrai est `adjustDay`, qui ajuste UN jour,
+donc la fenêtre est construite ici en réutilisant `reduceDay()` (aucune re-génération) ; et
+**GPX/TCX étaient absents** alors que `measured.ts` les annonce depuis son écriture (écrits,
+zéro dépendance). **La garantie commande tout le reste** : le Sprint 2 pose « on ne rattrape JAMAIS
+le volume manqué », donc **ce module ne sait que réduire** — un signal « en-dessous » allège la
+rampe à venir au lieu de la charger. Trois règles pures à seuil, sans score composite (un agrégat
+serait inauditable) : intensité > 10 % comptée **au bord de la bande** et non à son centre, séance
+manquée après 24 h (jamais la veille — c'est le reproche faux d'U1), charge 7 j > 15 % via
+`loadWindow` **importée de l'ajusteur**. Les 14 jours sont une BORNE : au plus 3 jours de qualité
+touchés, jamais le passé, tout journalisé.
+**Un défaut dans mon propre module, et ma contre-preuve était fausse d'abord.** La garantie était
+placée APRÈS la sortie anticipée (`if (rien n'a bougé) continue;` puis `if (hausse) throw`) : une
+hausse sortait par le `continue`, était appliquée au plan et l'assertion était du **code mort** —
+et elle n'est pas structurelle, mesuré, `reduceDay(f = 1.2)` fait passer un bloc de **5 à 6
+répétitions** (le `Math.min` protège `durationMin` et `distanceM`, **pas `reps`**). Douzième
+paiement de la leçon. Puis mes trois premières cassures délibérées sont sorties **VERTES** : le
+critère de fenêtre **recalculait sa borne depuis la constante testée** (400 déplaçait le poteau avec
+le ballon), et mon instrument **comptait les lignes `✖`** alors qu'une exception n'en produit
+aucune — la garde avait levé, ma mesure regardait ailleurs. Sixième occurrence d'une mesure portant
+sur une grandeur voisine de celle qu'elle nomme, cette fois dans l'instrument que je venais
+d'écrire. **Six cassures, six rouges** après correction.
+**25 gates verts, E2E 16/16, golden 900 inchangé, registre 24/24.**
 
 **I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
 ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en
