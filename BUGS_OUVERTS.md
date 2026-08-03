@@ -992,6 +992,43 @@ footing plat et le back-to-back, qui l'absorbent ; chez l'inter, la mise à l'é
 sans avoir utilisé la marge disponible. C'est là qu'il faut chercher — pas dans les plafonds,
 qui sont corrects, mais dans la passe qui remplit la semaine.
 
+**ET LE DERNIER MORCEAU : `level` N'AGIT PAS SUR LA COURBE TRAIL.** Charge des dix premières
+semaines, débutant et inter, même profil :
+
+```
+D+ : 770 770 740 600 730 700 710 600 730 730   ← IDENTIQUE aux deux niveaux
+D- : 860 860 910   0 1000 1090 1140   0 1180 1220   ← IDENTIQUE aux deux niveaux
+```
+
+Les deux plans sont **rigoureusement identiques jusqu'à la semaine ~36**. Le niveau ne diverge
+qu'au bloc de pic. Le seul endroit où `level` mord vraiment en trail est **C23** — le plafond de
+sortie longue du débutant (180 min).
+
+**Et ce plafond se REMBOURSE ailleurs.** Le surplus que C23 retire de la longue est redistribué
+sur le footing plat (79' contre 55') et le back-to-back (108' contre 69'), si bien que la semaine
+du débutant finit **au-dessus** de celle de l'inter — sur les minutes ET sur le D+. Un plafond de
+sécurité qui se rembourse sur les autres séances n'est pas un plafond : c'est un déplacement.
+Même famille que R15.7-A (le plancher posait des séances que la décroissance retirait juste
+après) ou C28 (le plafond d'approche appliqué avant le plancher qui le défaisait).
+
+**L'ARBITRAGE À PRENDRE, ET IL EST PRODUIT.** Deux issues, exclusives :
+
+1. **Le plafond ne se rembourse pas** — quand C23 coupe la longue d'un débutant, la semaine reste
+   plus légère d'autant. C'est la lecture stricte de la priorité n°2 (prévention) : si on juge
+   qu'un débutant ne doit pas dépasser 3 h de sortie longue, lui rendre ces minutes en dénivelé
+   ailleurs annule la décision. Effet de bord : le débutant reçoit un volume total plus bas que
+   ce que sa courbe annonce — il faudra que la courbe le dise (R20.2).
+2. **La courbe de l'inter devient atteignable** — le pic déclaré 10,2 h n'est pas livrable
+   (547 min pour 612), et c'est ce trou qui laisse le débutant passer devant. Rendre la courbe
+   honnête (annoncer ce qui est livrable) ne suffirait PAS : l'inter livrerait 9,1 h contre 9,6
+   au débutant, et I13 resterait rouge. Il faudrait donc DÉBLOQUER ce qui plafonne l'inter — et
+   ce n'est ni T1 (indexé sur `history`, jamais atteint : 860 pour un plafond à 3 000) ni T2b
+   (mesuré, il clampe mais pas au pic).
+
+**Recommandation : l'issue 1.** Elle est plus courte, elle va dans le sens de la sécurité, et
+elle corrige la cause plutôt que le symptôme. L'issue 2 demande de comprendre pourquoi la mise à
+l'échelle laisse 145 min de marge inutilisée sur la longue de l'inter — un chantier à part.
+
 **LE BANC BASCULE AVEC LE CALENDRIER, ET C'EST LA SECONDE MOITIÉ.** `BASE.race_date` est
 figée au 2027-06-13, mais la LONGUEUR du plan se compte depuis aujourd'hui : l'horizon raccourcit
 d'une semaine tous les sept jours, et l'allocation de phases bascule avec lui. La CI est **verte
