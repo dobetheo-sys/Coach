@@ -132,8 +132,19 @@ const HEROS=["cycle","volume","intent","sante"];
 
 export { CATS, HEROS, PREMIUM_STEPS_DEF, QLABELS, RULE_CAT, SPORTS, VLAB, VLAB_Q };
 
-// R6 — relais OAuth Strava par défaut : renseigner ICI l'URL du worker une fois déployé
-// (server/README.md) — tous les utilisateurs auront alors la connexion en 1 clic, sans
-// rien coller. Vide = pas encore déployé (repli : champ URL en réglages avancés + jeton).
-const STRAVA_RELAY_DEFAULT = "";
+// R6 — relais OAuth Strava par défaut : l'URL du worker déployé (server/README.md), pour que
+// la connexion se fasse en UN clic sans que personne ait à coller quoi que ce soit. Vide =
+// pas encore déployé (repli : champ URL en réglages avancés + jeton manuel).
+//
+// H-1 — DÉPLOYÉ LE 03/08/2026. Ce qu'il y a DANS cette chaîne et ce qu'il n'y a pas :
+// c'est une URL PUBLIQUE, rien d'autre. Le `client_secret` Strava vit dans les variables
+// Cloudflare (type *Secret*, illisible même depuis le tableau de bord) et ne traverse jamais
+// ce dépôt — c'est toute la raison d'être du relais. Le `client_id` (269639) n'est pas ici
+// non plus : le worker le porte, alors qu'il aurait pu être public sans risque. Un identifiant
+// de moins dans le code d'une app 100 % côté client est un identifiant de moins à faire suivre
+// le jour où il change.
+//
+// Vérifié après déploiement : la racine du worker répond
+// « Relais OAuth Strava EnduraBuild — endpoints : /auth, /callback, /refresh ».
+const STRAVA_RELAY_DEFAULT = "https://fragrant-truth-668f.dobetheo.workers.dev";
 export { STRAVA_RELAY_DEFAULT };

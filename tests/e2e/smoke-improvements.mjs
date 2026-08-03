@@ -200,8 +200,35 @@ await t6[0].click(); await page.waitForTimeout(300);
 ok(await page.locator("#pfStravaConnect").count() === 1, "bouton « Se connecter avec Strava » présent au Profil");
 ok(await page.locator("#pfStravaRelay").count() === 1, "champ URL du relais présent (server/README.md)");
 ok(await page.locator("#pfStravaTok").count() === 1, "repli jeton manuel conservé");
-await page.click("#pfStravaConnect"); await page.waitForTimeout(150);
-ok(/relais/i.test(await page.locator("#pfStravaMsg").textContent()), "sans URL de relais → message d'aide, pas de redirection");
+// H-1 (03/08/2026) — CE CRITÈRE ASSERTAIT UN PRODUIT NON DÉPLOYÉ.
+// Il vérifiait « sans URL de relais → message d'aide, pas de redirection », et il tenait
+// uniquement parce que `STRAVA_RELAY_DEFAULT` était VIDE. Le worker étant en ligne, le bouton
+// fait désormais son travail : il navigue vers le relais, l'élément `#pfStravaMsg` disparaît
+// avec la page, et le test expirait. Une garde qui dépend de ce qu'une fonctionnalité ne soit
+// pas branchée s'éteint le jour où on la branche — c'est-à-dire au moment précis où elle
+// commencerait à servir.
+//
+// On vérifie donc la propriété qui compte VRAIMENT, et elle est plus forte : le clic part vers
+// `<relais>/auth` en passant l'origine de l'app comme `return`. C'est ce couple que le worker
+// re-valide contre `APP_ORIGINS` — si l'un des deux est faux, la connexion échoue chez
+// l'utilisateur avec un 403 que personne ne sait interpréter.
+const origineApp = new URL(page.url()).origin;
+let cible = "";
+// On SERT une page vide au lieu d'annuler : `route.abort()` laisse l'onglet sur
+// `chrome-error://chromewebdata`, et les imports dynamiques de la suite échouent ensuite.
+await page.route("**/auth?**", (route) => {
+  cible = route.request().url();
+  route.fulfill({ status: 200, contentType: "text/html", body: "<html><body>relais</body></html>" });
+});
+await page.click("#pfStravaConnect");
+await page.waitForTimeout(500);
+ok(/\/auth\?return=/.test(cible), "le clic part vers `<relais>/auth` (" + (cible ? "atteint" : "AUCUNE navigation") + ")");
+ok(cible.includes(encodeURIComponent(origineApp)),
+  "et il passe l'ORIGINE de l'app comme `return` — c'est elle que le worker compare à APP_ORIGINS");
+await page.unroute("**/auth?**");
+// Retour dans l'app pour la suite des critères (le clic nous en a fait sortir).
+await page.goBack({ waitUntil: "networkidle" });
+await page.waitForTimeout(600);
 const authOk = await page.evaluate(async () => {
   const payload = btoa(JSON.stringify({ access_token: "at123", refresh_token: "rt456", expires_at: Math.floor(Date.now() / 1000) + 21600, athlete: { id: 1, firstname: "Théo" } }));
   location.hash = "#strava_auth=" + encodeURIComponent(payload);
