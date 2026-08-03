@@ -115,7 +115,12 @@ const whyBeforeWhat = await page.evaluate(() => {
     order: why.compareDocumentPosition(det) & Node.DOCUMENT_POSITION_FOLLOWING ? "why-first" : "det-first",
     noDup: !/\u{1F4A1}/u.test(det.textContent) };
 });
-ok(whyBeforeWhat && whyBeforeWhat.hasWhy && whyBeforeWhat.nWhy > 5, "les séances de la grille portent leur justification (" + (whyBeforeWhat && whyBeforeWhat.nWhy) + ")");
+// U15 — l'onglet Plan ouvre sur UNE semaine (la courante) et non plus quatre : le seuil
+// portait sur le nombre de séances affichées, pas sur la propriété mesurée. Une semaine
+// d'entraînement en porte 3 à 7 ; le critère devient « toutes celles qui sont là ont leur
+// justification », ce qui est la propriété qu'on voulait garder depuis le début.
+ok(whyBeforeWhat && whyBeforeWhat.hasWhy && whyBeforeWhat.nWhy >= 3,
+  "les séances de la grille portent leur justification (" + (whyBeforeWhat && whyBeforeWhat.nWhy) + ")");
 ok(whyBeforeWhat && whyBeforeWhat.order === "why-first", "le POURQUOI passe devant le QUOI dans le détail d'une séance");
 ok(whyBeforeWhat && whyBeforeWhat.noDup, "la justification n'est plus dupliquée en queue de description technique");
 const t2b = await page.locator("#ebTabbar .tabbtn").all();

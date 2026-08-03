@@ -307,13 +307,22 @@ const r16 = await page.evaluate(async () => {
     prnPrimary: !!document.querySelector("#prn.primary"),      // R16.3
     abbr: !!(seg && seg.querySelector(".ph-abbr") && seg.querySelector(".ph-full")),
     titre: !!(seg && seg.getAttribute("title")),               // R16.4
-    goCur: !!document.getElementById("goCurWk"),               // R16.5
+    // U15 — le raccourci « aller à la semaine en cours » n'a d'objet que dans la vue COMPLÈTE :
+    // par défaut, cette semaine est désormais la seule affichée, donc « y aller » n'a plus de
+    // sens. On le cherche là où il sert — après avoir déplié les N semaines.
+    goCurDefaut: !!document.getElementById("goCurWk"),
   };
+});
+const r16b = await page.evaluate(() => {
+  const b = document.getElementById("allW");
+  if (b) b.click();
+  return { goCurComplet: !!document.getElementById("goCurWk") };
 });
 ok(!r16.dur777, "R16.1 : plus aucun `color:#777` codé en dur dans le rendu (contraste AA)");
 ok(!r16.prnPrimary, "R16.3 : le bouton HTML n'est plus le seul export en rouge plein");
 ok(r16.abbr && r16.titre, "R16.4 : pastille de phase avec libellé long + abrégé, nom complet en title");
-ok(r16.goCur, "R16.5 : raccourci « aller à la semaine en cours » présent");
+ok(!r16.goCurDefaut, "U15 : pas de raccourci « aller à la semaine en cours » quand elle est la seule affichée");
+ok(r16b.goCurComplet, "R16.5 : le raccourci « aller à la semaine en cours » existe dans la vue complète");
 const r167 = await page.evaluate(async () => {
   const { setTab } = await import("./js/ui/tabs.js");
   setTab("profile");

@@ -2987,3 +2987,53 @@ Trois pièces :
 **et le socle contient toujours** les drapeaux médicaux, l'âge et l'enveloppe. La seconde moitié
 est celle qu'on oublierait : un « raccourci » qui sauterait une garde de sécurité serait une
 régression, pas un progrès.
+
+## U15 — l'onglet Plan ouvre sur la semaine en cours
+
+Troisième arbitrage du fondateur : « tout replier sauf la semaine en cours ». La mesure a dit où
+était le poids, et ce n'était pas où je l'aurais deviné.
+
+### Ce qui faisait le mur
+
+Onglet 🗓 Plan, marathon, 390 px de large : **5 164 px, 6,1 écrans de défilement**.
+
+| part | px | % |
+|---|---|---|
+| **grilles de semaines** | **2 901** | **56 %** |
+| « Pourquoi ce plan » | 513 | 10 % |
+| objectifs de phase | 145 | 3 % |
+| carte « chrono visé » | 122 | 2 % |
+| décisions du moteur | 61 | 1 % |
+| graphique de volume | 58 | 1 % |
+| frise des phases | 55 | 1 % |
+
+Quatre semaines étaient dépliées d'office — les trois premières, plus la dernière. Ni le
+« pourquoi » ni le graphique ne pesaient : **ce sont les semaines qu'on ne regarde pas**.
+La semaine 1 n'a d'intérêt qu'au premier jour ; ensuite c'est la semaine COURANTE qu'on vient
+voir.
+
+**5 164 → 3 086 px, 6,1 → 3,7 écrans.** Le bouton « Voir les N semaines » n'a pas bougé : on
+change le défaut, pas la possibilité.
+
+### Ce que je n'ai PAS fait, et pourquoi
+
+« Tout replier » inclurait « Pourquoi ce plan » (513 px, le deuxième poste). **R6 a décidé
+l'inverse, explicitement** : « le “pourquoi” EN TÊTE, dépliée : l'explicabilité est le
+contre-positionnement du produit, pas une option de confort. » Replier cette carte reviendrait à
+défaire une décision antérieure qui ne portait pas sur la longueur mais sur ce que le produit
+est. Le poste mesuré était ailleurs, et il est traité ; la carte reste ouverte, et l'arbitrage
+entre les deux décisions revient au fondateur s'il veut aller plus loin.
+
+Corollaire retiré au passage : le raccourci « ↓ aller à la semaine en cours » (R16.5) n'a plus
+d'objet dans la vue par défaut — cette semaine y est la seule affichée. Il reste dans la vue
+complète, où il sert.
+
+### La garde
+
+`U15` dans `smoke-usage`, sur les **deux moitiés** : la vue par défaut est courte (1 grille,
+< 5 écrans) ET le plan reste ENTIER à un bouton (43 semaines dépliées). Un raccourcissement qui
+rendrait des semaines inatteignables serait une perte, pas un gain.
+
+Trois assertions E2E existantes ont été mises à jour, chacune avec sa raison écrite : elles
+comptaient des grilles ou cherchaient le raccourci **à l'endroit où il n'a plus d'objet** —
+c'est le nombre affiché d'office qui a changé, pas ce qui est atteignable.

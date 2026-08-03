@@ -338,6 +338,35 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   await ctx.close();
 }
 
+// ── U15 — L'ONGLET PLAN OUVRE SUR LA SEMAINE EN COURS, ET LE RESTE EST À UN BOUTON.
+//
+// Mesuré sur un marathon à 390 px : l'onglet faisait 6,1 écrans de défilement et **56 % de sa
+// hauteur était les grilles de semaines** — quatre dépliées d'office (les trois premières, plus
+// la dernière). Ni le « pourquoi » (10 %) ni le graphique (1 %) ne faisaient le mur : ce sont
+// les semaines qu'on ne regarde pas.
+//
+// Les deux moitiés : la vue par défaut est courte, ET le plan reste ENTIER à un bouton. Un
+// raccourcissement qui rendrait des semaines inatteignables serait une perte, pas un gain.
+{
+  const { ctx, page } = await session(LUNDI);
+  await page.click('#ebTabbar .tabbtn[data-tab="general"]');
+  await page.waitForTimeout(900);
+  const defaut = await page.evaluate(() => ({
+    grilles: document.querySelectorAll("#screen .gw-grid").length,
+    hauteur: document.body.scrollHeight,
+    bouton: !!document.getElementById("allW"),
+  }));
+  ok(defaut.grilles === 1, "U15 — l'onglet Plan ouvre sur UNE semaine (" + defaut.grilles + ")");
+  ok(defaut.hauteur < 844 * 5, "U15 — moins de 5 écrans de défilement (" + (defaut.hauteur / 844).toFixed(1) + ")");
+  ok(defaut.bouton, "U15 — le bouton « Voir les N semaines » est là");
+  const complet = await page.evaluate(() => {
+    document.getElementById("allW").click();
+    return document.querySelectorAll("#screen .gw-grid").length;
+  });
+  ok(complet > 5, "U15 — et il déplie TOUT le plan (" + complet + " semaines) : rien n'est devenu inatteignable");
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 report();

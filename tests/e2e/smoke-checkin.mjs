@@ -102,7 +102,14 @@ ok(await page.locator("details .load-title:has-text('Adaptations quotidiennes')"
 // pouvoir COCHER une séance faite ET voir la vue d'ensemble, sans changer d'onglet.
 const tabs = await page.locator("#ebTabbar .tabbtn").all();
 await tabs[1].click(); await page.waitForTimeout(300);
-ok(await page.locator("#screen .gw-grid").count() >= 2, "Plan montre la semaine courante ET la saison (" + (await page.locator("#screen .gw-grid").count()) + " grilles)");
+// U15 — l'onglet s'ouvre sur la SEMAINE EN COURSE seule (56 % de sa hauteur était fait de
+// semaines dépliées qu'on ne regarde pas). Ce que ce critère mesure ne change pas : depuis
+// 🗓 Plan seul, on doit voir une grille cochable ET la vue d'ensemble de la saison. C'est le
+// NOMBRE de grilles ouvertes d'office qui a changé, pas ce qui est atteignable.
+ok(await page.locator("#screen .gw-grid").count() === 1, "Plan ouvre sur la semaine en cours (1 grille)");
+ok(await page.locator("#screen .ph-line").count() === 1 && await page.locator("#screen .vol-bars").count() === 1,
+  "…et la vue d'ensemble de la saison est sur le même écran (frise + courbe)");
+ok(await page.locator("#allW").count() === 1, "…et les autres semaines sont à un bouton");
 ok(await page.locator("#screen .doneBtn").count() > 0, "la coche ✓ d'une séance est atteignable depuis Plan");
 ok(await page.locator("#screen [data-swap]").count() > 0, "l'échange de jours ⇄ a survécu à la fusion");
 const planTxt = await page.locator("#screen").textContent();

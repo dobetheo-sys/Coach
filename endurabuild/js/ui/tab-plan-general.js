@@ -208,7 +208,9 @@ export function renderTabPlanGeneral(plan) {
   // et le graphique. Le repère est la vraie date du jour (`todayISO`, la même ancre que partout
   // depuis R7) : le bouton n'apparaît que si cette semaine existe dans ce qui est affiché.
   {
-    const cur = plan.weeks.find((w) => w.days.some((d) => d.date === today));
+    // U15 — le raccourci n'a d'objet que dans la vue COMPLÈTE : en vue par défaut, la semaine
+    // en cours est la seule affichée, donc « y aller » n'a plus de sens.
+    const cur = S.showAllWeeks && plan.weeks.find((w) => w.days.some((d) => d.date === today));
     if (cur) html += '<div style="margin:6px 0 2px"><button class="btn" id="goCurWk" type="button" '
       + 'data-wk="' + cur.num + '">↓ Aller à la semaine en cours (S' + cur.num + ")</button></div>";
   }
@@ -230,11 +232,24 @@ export function renderTabPlanGeneral(plan) {
   html += '<div class="vol-bars">';
   plan.weeks.forEach((w) => { const h = Math.max(8, Math.round((w.vol / plan.volPeak) * 52)); html += '<div class="vb" style="height:' + h + "px;background:" + (w.isRecup ? "#9b72ff" : w.phase.c) + '" title="S' + w.num + " " + w.vol + 'h"></div>'; });
   html += '</div><div class="vol-cap">1 barre = 1 semaine · violet = récup</div>';
-  const show = S.showAllWeeks ? plan.weeks : [...plan.weeks.slice(0, 3), plan.weeks[plan.weeks.length - 1]];
-  show.forEach((w, ix) => {
-    if (!S.showAllWeeks && ix === 3) html += '<div class="wk-skip">⋯ semaines 4 à ' + (plan.totalWeeks - 1) + " ⋯</div>";
+  // U15 — L'ONGLET S'OUVRE SUR LA SEMAINE EN COURS, PAS SUR QUATRE SEMAINES.
+  //
+  // Mesuré sur un marathon à 390 px : l'onglet faisait 5 164 px (6,1 écrans de défilement) et
+  // **56 % de cette hauteur était les grilles de semaines** — quatre étaient dépliées d'office
+  // (les trois premières, plus la dernière). Ce n'est ni le « pourquoi » (10 %) ni le graphique
+  // (1 %) qui font le mur : ce sont les semaines qu'on ne regarde pas.
+  //
+  // La semaine 1 n'a d'intérêt qu'au premier jour ; ensuite c'est la semaine COURANTE qu'on
+  // vient voir. Le bouton « Voir les N semaines » n'a pas bougé — on change le défaut, pas la
+  // possibilité.
+  const courante = plan.weeks.find((w) => w.days.some((d) => d.date === today)) || plan.weeks[0];
+  const show = S.showAllWeeks ? plan.weeks : [courante];
+  show.forEach((w) => {
     html += '<div class="gw" id="gw' + w.num + '">' + weekHeaderHTML(w) + weekGridHTML(plan, w, today) + "</div>";
   });
+  if (!S.showAllWeeks && plan.totalWeeks > 1)
+    html += '<div class="wk-skip">⋯ ' + (plan.totalWeeks - 1) + " autre" + (plan.totalWeeks > 2 ? "s" : "")
+      + " semaine" + (plan.totalWeeks > 2 ? "s" : "") + " — « Voir les " + plan.totalWeeks + " semaines » ci-dessous ⋯</div>";
   html += decisionsCardHTML(plan); // « Les décisions du moteur » — la transparence, en langage neutre
   html += '<div class="warn" style="background:var(--bg2)">Intensités calibrées sur tes données. Les exports fonctionnent depuis cet onglet, quel que soit l’onglet consulté ensuite.</div>'
     + '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="backBp" type="button">← Modifier</button><button class="btn gold" id="allW" type="button">' + (S.showAllWeeks ? "Réduire" : "Voir les " + plan.totalWeeks + " semaines") + '</button><button class="btn" id="prn" type="button">🖨 HTML</button><button class="btn" id="expIcs" type="button">📅 Agenda (.ics)</button><button class="btn" id="expJson" type="button">{ } JSON</button><button class="btn" id="expPng" type="button">🖼 PNG</button><button class="btn" id="restartBtn" type="button">Changer de sport</button></div></div>';

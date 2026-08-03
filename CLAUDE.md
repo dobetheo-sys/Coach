@@ -760,6 +760,22 @@ Gardes **P11-A à P11-F** au banc `audit:r14.1`, qui assertent les DEUX moitiés
 disparue ET l'entraîné intact — **vérifiées rouges** (3 sur 6) contre le moteur d'avant P11.
 **22 gates verts, E2E 14/14, golden 900 inchangé** — la projection ne touche aucune séance.
 
+**U15 livré — l'onglet Plan ouvre sur la semaine en cours** (voir ARCHITECTURE.md « U15 ») :
+troisième arbitrage du fondateur (« tout replier sauf la semaine en cours »). La mesure a dit où
+était le poids : sur un marathon à 390 px, l'onglet faisait **5 164 px (6,1 écrans)** et **56 %
+de cette hauteur était les grilles de semaines** — quatre dépliées d'office (les trois premières
+plus la dernière). Ni le « pourquoi » (10 %) ni le graphique (1 %) ne faisaient le mur : ce sont
+les semaines qu'on ne regarde pas. **5 164 → 3 086 px, 6,1 → 3,7 écrans** ; le bouton « Voir les
+N semaines » n'a pas bougé — on change le défaut, pas la possibilité.
+**Ce que je n'ai PAS fait, et pourquoi** : « tout replier » inclurait « Pourquoi ce plan »
+(513 px, deuxième poste), mais **R6 a décidé l'inverse explicitement** (« l'explicabilité est le
+contre-positionnement du produit, pas une option de confort »). Le poste mesuré était ailleurs et
+il est traité ; l'arbitrage entre les deux décisions revient au fondateur. Corollaire retiré : le
+raccourci « ↓ aller à la semaine en cours » (R16.5) n'a plus d'objet quand cette semaine est la
+seule affichée — il reste dans la vue complète. Garde `U15` sur les deux moitiés : vue par défaut
+courte ET plan ENTIER à un bouton (43 semaines dépliées).
+**22 gates verts sur 23, E2E 15/15, golden 900 inchangé.**
+
 **U14 (préalable) livré — un défaut tacite va vers la prudence, et il est dit** (voir
 ARCHITECTURE.md « U14 ») : avant de laisser sauter une question, il faut savoir ce que vaut son
 absence. Mesuré : un plan construit SANS réponse à « ta disponibilité » était identique au
