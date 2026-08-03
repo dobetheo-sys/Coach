@@ -3319,3 +3319,101 @@ ajouter, aucun format d'entrée à changer, aucune migration.
 **Garde** : `O-23` dans `tests/e2e/smoke-improvements.mjs` — trois tests dont deux le même jour,
 `syncRefsFromTests()`, la référence doit valoir 230. **Vérifiée rouge** contre le code d'avant
 (elle rendait 188).
+
+---
+
+## O-24 — la version du service worker est dérivée du contenu servi
+
+**Le défaut le plus coûteux trouvé jusqu'ici, parce que c'est le seul dont aucune mesure du dépôt
+ne pouvait rien dire.** Les 23 gates étaient verts, le golden était vert, le correctif était sur
+`main` — et l'utilisateur voyait toujours l'ancien comportement. Toutes les gardes de ce dépôt
+mesurent ce que le moteur PRODUIT ou ce que le code CONTIENT ; aucune ne mesurait ce que le
+navigateur SERT.
+
+Trouvé en cherchant pourquoi O-22 et O-23, tous deux livrés et mergés, ne changeaient rien sur le
+téléphone du fondateur.
+
+### Le mécanisme
+
+`endurabuild/sw.js` sert l'app en **cache-first** : un asset trouvé en cache est rendu sans jamais
+interroger le réseau. C'est le bon choix — l'app est autonome et doit marcher hors ligne — et il a
+un corollaire qui n'était tenu par rien :
+
+```js
+self.addEventListener("activate", (e) => {
+  caches.keys().then((keys) => keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)))
+});
+```
+
+**Le cache n'est purgé qu'au changement de `VERSION`**, et `VERSION` était une constante que
+quelqu'un devait penser à incrémenter à la main. Personne n'y pensait :
+
+```
+Dernier bump de VERSION : 8ba7c3d — RV (« eb-pwa-v17 »)
+Commits touchant un asset CACHÉ depuis : 12
+Modules servis modifiés depuis        : 14
+```
+
+Soit **U14, U15, U16, I14b, O-21, A-5, A-6, O-22, O-23**. Neuf lots de correctifs qui
+n'atteignaient aucun navigateur ayant déjà ouvert l'app. Le fondateur a redéployé son worker
+Strava, s'est déconnecté, reconnecté, réimporté — et a revu 188 W. Il testait le code d'avant O-22,
+et les trois échanges qui ont suivi cherchaient le défaut dans Strava.
+
+### Le second trou, dans la même liste
+
+`ASSETS` était écrite à la main elle aussi. Comparée au disque, il y manquait `js/measured.js`,
+`js/projection-log.js` et `js/ui/tab-week.js` — trois modules **vivants**, importés au démarrage
+(`tabs.js` importe `renderTabWeek`). En ligne, ils sont simplement chargés par le réseau et le
+défaut ne se voit pas. Hors ligne, l'app casse. **Un cache qui oublie un module ne casse pas chez
+nous : il casse chez quelqu'un, dans le métro.**
+
+### La forme est connue, l'habillage est nouveau
+
+R18.1 : « un correctif que la cascade annule est un correctif qu'on croit avoir ». U16 :
+`.gd-det { font-size: 11px }` écrasait sur mobile — le seul endroit où le produit se lit —
+l'aération posée deux étages plus haut. Ici c'est le CACHE qui annule, et il annule **tout** : pas
+une règle CSS, la totalité du produit.
+
+### Le correctif : la VERSION est l'empreinte
+
+`scripts/buildSW.mjs` calcule `VERSION` comme le hachage SHA-256 du **contenu** de tous les assets
+servis, et dérive `ASSETS` du **disque**. Deux blocs générés entre marqueurs dans `sw.js`, sur le
+modèle de `__EBV2_BUNDLE__` :
+
+```
+// __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
+const VERSION = "eb-pwa-427a67ad3069";
+// __/SW_VERSION__
+```
+
+`VERSION` change **si et seulement si** un fichier servi change. Il n'existe plus d'état « à jour
+dans le dépôt mais périmé dans le service worker » : l'un est fonction de l'autre. C'est R11.1
+appliqué au couple fichiers ↔ numéro qui les version — la même raison qui interdit d'écrire deux
+fois la même table de constantes interdit de tenir à la main un chiffre qui décrit un contenu.
+
+Deux détails qui comptent :
+
+- **Le NOM entre dans le hachage autant que le contenu.** Retirer un module du cache change ce que
+  l'app sert hors ligne, même si aucun octet des autres fichiers n'a bougé.
+- **`sw.js` ne se met pas lui-même en cache.** Le navigateur le recharge par un chemin dédié ; s'y
+  mettre reviendrait à se rendre immortel.
+
+### La garde — 24ᵉ gate CI
+
+`npm run check:sw` échoue si le `sw.js` committé est périmé, exactement comme `check:app` pour le
+bundle du monolithe. **Vérifiée rouge** en modifiant un module sans reconstruire :
+
+```
+✖ endurabuild/sw.js est PÉRIMÉ.
+  Des fichiers servis par le service worker ont changé sans que sa VERSION suive.
+  Conséquence : les navigateurs qui ont déjà ouvert l'app continueront de servir
+  l'ANCIENNE version depuis leur cache — le correctif n'atteindra personne.
+  Corriger : npm run build:sw   (puis committer sw.js)
+```
+
+Le message nomme la **conséquence**, pas le symptôme : « sw.js est périmé » ne dit à personne
+qu'un correctif ne va atteindre aucun utilisateur.
+
+C'est la seule forme de correction qui vaille ici. La cause n'était pas une erreur de calcul ni un
+mauvais arbitrage — c'était « quelqu'un doit s'en souvenir », et la réponse à ça n'est jamais une
+convention mieux écrite : c'est de retirer le souvenir du chemin.

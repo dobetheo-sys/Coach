@@ -866,6 +866,31 @@ interdit, ici entre le moteur et l'UI. Départage par POSITION, le journal étan
 un CSS — non mesuré sur donnée réelle, suivi dans O-22.
 **23 gates verts, E2E 16/16, golden 900 inchangé, registre 22/22.**
 
+**O-24 livré — le cache de l'app servait la version d'il y a neuf lots** (voir ARCHITECTURE.md
+« O-24 ») : **le défaut le plus coûteux trouvé jusqu'ici, parce que c'est le seul dont aucune
+mesure ne pouvait rien dire.** Les 23 gates verts, le golden vert, le correctif sur `main` — et
+l'utilisateur voyait toujours l'ancien comportement. Trouvé en cherchant pourquoi O-22 et O-23,
+tous deux livrés et mergés, ne changeaient rien sur le téléphone du fondateur. `endurabuild/sw.js`
+sert l'app en **cache-first** (bon choix : l'app doit marcher hors ligne) et son corollaire n'était
+tenu par rien — le cache n'est purgé qu'au changement de `VERSION`, et `VERSION` était une
+constante à incrémenter **de mémoire**. Mesuré : dernier bump à RV, depuis **12 commits touchant
+14 modules servis** — U14, U15, U16, I14b, O-21, A-5, A-6, O-22, O-23, neuf lots qui n'atteignaient
+aucun navigateur ayant déjà ouvert l'app. Le fondateur a redéployé son worker, s'est reconnecté, a
+réimporté, et a revu 188 W : il testait le code d'avant O-22. Second trou dans la même liste :
+`ASSETS`, écrite à la main aussi, oubliait `measured.js`, `projection-log.js` et `tab-week.js` —
+trois modules VIVANTS, donc trois trous dans la promesse « ça marche hors ligne ». La forme est
+connue, l'habillage est nouveau : « un correctif que la cascade annule est un correctif qu'on croit
+avoir » (R18.1, U16) — ici c'est le CACHE qui annule, et il annule **tout**, pas une règle CSS.
+**Correctif : la VERSION est l'empreinte** — `scripts/buildSW.mjs` la calcule comme le hachage du
+contenu servi et dérive `ASSETS` du disque ; elle change si et seulement si un fichier change, il
+n'y a plus d'état « à jour dans le dépôt, périmé dans le service worker » (R11.1 appliqué au couple
+fichiers ↔ numéro qui les version). Le NOM entre dans le hachage autant que le contenu : retirer un
+module change ce que l'app sert hors ligne. **`npm run check:sw`, 24ᵉ gate CI**, même motif que
+`check:app`, **vérifiée rouge** en modifiant un module sans reconstruire. L'oubli devient
+impossible au lieu d'improbable — la seule correction qui vaille pour un défaut dont la cause était
+« quelqu'un doit s'en souvenir ».
+**24 gates verts, E2E 16/16, golden 900 inchangé, registre 23/23.**
+
 **I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
 ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en
 trail, un DÉBUTANT recevait un pic de **575 min** contre **547** pour un INTER, et sur le D+ aussi

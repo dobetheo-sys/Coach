@@ -1384,6 +1384,64 @@ attendu: /y\.i - x\.i/
 cmd: grep -n "y.i - x.i" endurabuild/js/ui/tab-profile.js
 ```
 
+---
+
+### O-24 · Le cache de l'app servait la version d'il y a neuf lots · ✅ **FERMÉ (03/08/2026)**
+
+**Le défaut le plus coûteux trouvé jusqu'ici, parce que c'est le seul dont la mesure ne pouvait
+rien dire.** Les 23 gates étaient verts, le golden était vert, le correctif était sur `main` — et
+l'utilisateur voyait toujours l'ancien comportement.
+
+Trouvé en cherchant pourquoi O-22 et O-23, tous deux livrés et mergés, ne changeaient rien sur le
+téléphone du fondateur.
+
+**Le mécanisme.** `endurabuild/sw.js` sert l'app en **cache-first** : un asset trouvé en cache est
+rendu sans jamais interroger le réseau. C'est le bon choix — l'app doit marcher hors ligne — et il
+a un corollaire qui n'était tenu par rien : le cache n'est purgé qu'au changement de `VERSION`, et
+`VERSION` était une constante que quelqu'un devait penser à incrémenter à la main.
+
+Personne n'y pensait. Mesuré :
+
+```
+Dernier bump de VERSION : 8ba7c3d — RV (« eb-pwa-v17 »)
+Commits touchant un asset CACHÉ depuis : 12
+Modules servis modifiés depuis        : 14
+```
+
+Soit **U14, U15, U16, I14b, O-21, A-5, A-6, O-22, O-23** — neuf lots de correctifs qui
+n'atteignaient aucun navigateur ayant déjà ouvert l'app. Le fondateur a redéployé son worker
+Strava, s'est déconnecté, reconnecté, réimporté, et a revu 188 W : il testait le code d'avant O-22.
+
+**Et un second trou, dans la même liste.** `ASSETS` était écrite à la main elle aussi ; il y
+manquait `js/measured.js`, `js/projection-log.js` et `js/ui/tab-week.js` — trois modules VIVANTS,
+importés au démarrage. Un cache qui oublie un module ne casse pas en ligne : il casse chez
+quelqu'un, dans le métro.
+
+**La forme est connue, l'habillage est nouveau.** « Un correctif que la cascade annule est un
+correctif qu'on croit avoir » (R18.1), `.gd-det { font-size: 11px }` qui écrasait sur mobile
+l'aération posée deux étages plus haut (U16). Ici c'est le CACHE qui annule, et il annule **tout**
+— pas une règle CSS, la totalité du produit.
+
+**Correctif : la VERSION est l'empreinte.** `scripts/buildSW.mjs` calcule `VERSION` comme le
+hachage du CONTENU de tous les assets servis, et dérive `ASSETS` du disque. Elle change si et
+seulement si un fichier change ; il n'y a plus d'état « à jour dans le dépôt, périmé dans le
+service worker » (R11.1 appliqué au couple fichiers ↔ numéro qui les version). Le nom entre dans
+le hachage autant que le contenu : retirer un module change ce que l'app sert hors ligne, même si
+aucun autre octet ne bouge.
+
+**Garde : `npm run check:sw`, 24ᵉ gate CI**, exactement le motif déjà éprouvé de
+`build:app`/`check:app`. **Vérifiée rouge** en modifiant un module sans reconstruire (code de
+sortie 1, message qui nomme la conséquence plutôt que le symptôme). L'oubli devient impossible au
+lieu d'improbable — c'est la seule forme de correction qui vaille pour un défaut dont la cause
+était « quelqu'un doit s'en souvenir ».
+
+```verify
+id: O-24
+quoi: la VERSION du service worker est dérivée du contenu servi, et un gate refuse un sw.js périmé
+attendu: /✓ sw\.js à jour/
+cmd: npm run --silent check:sw
+```
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas

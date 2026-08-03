@@ -1,43 +1,61 @@
 /* Service worker EnduraBuild — app shell en cache pour l'offline (PWA).
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
-   une météo périmée est pire qu'une absence de météo). */
-const VERSION = "eb-pwa-v17"; // v17 : RV — carte « chrono visé » (module ui/feasibility.js)
+   une météo périmée est pire qu'une absence de météo).
+
+   O-24 — VERSION ET ASSETS SONT GÉNÉRÉS, PLUS ÉCRITS À LA MAIN.
+   Le cache-first ne se purge qu'au changement de VERSION. Tant que c'était une
+   constante à incrémenter de mémoire, elle ne l'était pas : mesuré, elle était
+   restée à « v17 » pendant 12 commits touchant 14 modules servis, donc neuf lots
+   de correctifs n'atteignaient aucun navigateur ayant déjà ouvert l'app.
+   VERSION est désormais le HACHAGE du contenu servi : elle change si et seulement
+   si un fichier change. Reconstruire : `npm run build:sw` (vérifié en CI par
+   `npm run check:sw`, comme `check:app` pour le bundle du monolithe). */
+
+// __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
+const VERSION = "eb-pwa-427a67ad3069";
+// __/SW_VERSION__
+
+// __SW_ASSETS__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./css/styles.css",
   "./css/mobile.css",
+  "./css/styles.css",
   "./js/app.js",
-  "./js/engine.js",
-  "./js/state.js",
   "./js/config.js",
+  "./js/engine.js",
   "./js/export.js",
-  "./js/ui/steps.js",
-  "./js/ui/plan-view.js",
-  "./js/ui/readiness.js",
-  "./js/ui/tabs.js",
-  "./js/ui/tab-profile.js",
-  "./js/ui/tab-plan-general.js",
-  "./js/ui/tab-today.js",
-  "./js/ui/tab-nutrition.js",
-  "./js/ui/session-life.js",
-  "./js/ui/checkin.js",
+  "./js/measured.js",
+  "./js/notifications.js",
+  "./js/projection-log.js",
+  "./js/state.js",
+  "./js/strava.js",
   "./js/ui/avatar.js",
   "./js/ui/celebrations.js",
-  "./js/ui/retest.js",
-  "./js/ui/modal.js",
+  "./js/ui/checkin.js",
   "./js/ui/daily-content.js",
   "./js/ui/feasibility.js",
-  "./js/notifications.js",
-  "./js/strava.js",
+  "./js/ui/modal.js",
+  "./js/ui/plan-view.js",
+  "./js/ui/readiness.js",
+  "./js/ui/retest.js",
+  "./js/ui/session-life.js",
+  "./js/ui/steps.js",
+  "./js/ui/tab-nutrition.js",
+  "./js/ui/tab-plan-general.js",
+  "./js/ui/tab-profile.js",
+  "./js/ui/tab-today.js",
+  "./js/ui/tab-week.js",
+  "./js/ui/tabs.js",
   "./assets/fonts/archivo-black-400.woff2",
   "./assets/fonts/space-grotesk-500-700.woff2",
   "./assets/fonts/caveat-600-700.woff2",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
 ];
+// __/SW_ASSETS__
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));

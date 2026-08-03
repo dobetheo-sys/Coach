@@ -28,6 +28,12 @@ jobs:
       - run: npm run demo:retention
       # Le bundle EBV2 committé dans le HTML doit correspondre aux sources src/
       - run: npm run check:app
+      # O-24 — le service worker sert l'app en cache-first : tant que sa VERSION ne
+      # change pas, un navigateur qui a déjà ouvert l'app NE VOIT AUCUN correctif.
+      # Elle était incrémentée à la main, donc elle ne l'était pas : 12 commits et
+      # 14 modules servis avaient passé sans qu'elle bouge. Elle est maintenant le
+      # hachage du contenu, et ce gate refuse un sw.js désynchronisé.
+      - run: npm run check:sw
       # Banc de régression externe (audit v6, 29/07/2026) : sort en 1 à la moindre
       # RÉGRESSION (test attendu vert qui échoue). La dette connue ne casse pas la CI —
       # c'est le but : elle documente l'écart sans bloquer le travail.
