@@ -3687,12 +3687,29 @@ course) + 1`). Corrigé en reculant de `need − 1`. Le témoin de §5 portait l
 et le corriger là aussi importait : sans ça la comparaison aurait été fausse **dans le
 sens rassurant**.
 
-### ⚠️ EN ATTENTE D'ARBITRAGE
+### ARBITRAGE RENDU (fondateur, 04/08/2026)
 
-`CLAUDE.md` liste « course trop proche (R11.4) » parmi les blocages qui ne se négocient
-pas. Ce lot revient dessus. L'argument : le critère de dureté que le manifeste énonce
-lui-même est *« l'athlète ne peut pas évaluer le risque, ou l'erreur est irréversible »*,
-or « ai-je déjà une base ? » se tranche, et rater sa course se rattrape. Le lot est donc
-un **alignement sur O-17** (« informer plutôt que bloquer ») plutôt qu'une entorse — mais
-c'est une décision de fondateur, pas une déduction de code. **Tant qu'elle n'est pas
-prise, ce lot reste sur sa branche** et la liste de `CLAUDE.md` reste vraie sur `main`.
+> « on garde le plancher et on autorise tout ce qui est au dessus »
+
+Le plancher dérivé est retenu, et la frontière est vérifiée sur les **12 formats** du
+dépôt — pas seulement sur celui du brief :
+
+```
+run/5k      need  6  plancher  5   ≤4 refusé | ≥5 autorisé
+run/semi          12           9   ≤8        | ≥9
+run/marathon      16          12   ≤11       | ≥12
+tri/S              8           6   ≤5        | ≥6
+tri/70.3          20          14   ≤13       | ≥14
+tri/Full          36          26   ≤25       | ≥26
+bike/cyclo        14          10   ≤9        | ≥10
+swim/ow           14          10   ≤9        | ≥10
+duathlon/PM       24          17   ≤16       | ≥17
+swimrun/champ.    30          21   ≤20       | ≥21
+```
+
+**Conséquence sur le manifeste, assumée et appliquée** : « course trop proche (R11.4) »
+quitte la liste des blocages durs de `CLAUDE.md` pour devenir « course sous le PLANCHER de
+préparation ». Le blocage reste dur SOUS le plancher, et il y reste pour la raison qui
+fonde la liste — sous 12 semaines de marathon ou 26 d'Ironman, il ne reste plus que
+l'affûtage et le pic (R13.6 les plafonne à 3 et 5) : ce n'est plus une préparation
+raccourcie, c'est une préparation absente. Au-dessus, l'athlète décide, informé.

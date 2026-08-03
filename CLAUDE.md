@@ -20,7 +20,8 @@ mieux qu'un plan dangereux. »
 besoin de résultats ou de sécurité ; le but n'est jamais de bloquer mais d'accompagner au mieux,
 **sauf si réelle mise en danger** »*. Ce qui BLOQUE reste dur et ne se négocie pas — drapeau
 médical, drapeau douleur, mineur × format (R15.7-C), garde IMC, borne d'âge de l'estimation
-énergétique (O-16), course trop proche (R11.4), bornes physiologiques. Leur point commun :
+énergétique (O-16), **course sous le PLANCHER de préparation** (R11.4 borné par R22 — au-dessus
+du plancher, le refus devient franchissable sur choix explicite), bornes physiologiques. Leur point commun :
 l'athlète ne peut pas évaluer le risque, ou l'erreur est irréversible. **Tout le reste informe**
 (canal `warnings`, R11.2). Se tromper de catégorie coûte dans les deux sens : brider un athlète
 capable, c'est le plan qu'il quitte pour s'entraîner seul, sans aucun garde-fou — et la
@@ -88,6 +89,12 @@ dépôt — historique git si besoin.
   enchaîne et range chacune en **reproduit** / **ne reproduit plus (→ §4)** / **commande
   cassée**. Volontairement HORS CI : il rejoue des gates qui y tournent déjà. À lancer quand on
   reprend le registre — c'est ce qui empêche une dette de devenir un souvenir.
+- `npm run demo:troncature` — **la préparation tronquée** (R22) : le refus « course trop proche »
+  devient franchissable AU-DESSUS d'un plancher dérivé (on ne retire que des semaines de mise en
+  route, donc au plus la phase `base` — marathon 12, Ironman 26, 5 km 5). **26ᵉ gate CI.** Son
+  §5 est la garde qui compte : le plan tronqué est IDENTIQUE, séance par séance, aux dernières
+  semaines de celui d'un athlète parti à l'heure — la contrainte « on ne touche qu'à l'entrée et
+  à la sortie » devient une propriété mesurée, pas une intention.
 - `npm run demo:proactif` — **le coach proactif** (R21) : détection de déviation après ingestion
   (allure/puissance > 10 %, séance manquée > 24 h, charge 7 j > 15 %), recalcul BORNÉ à la fenêtre
   de 14 jours, notification en deux lignes. **25ᵉ gate CI.** Sa raison d'être est le §3 : le
@@ -953,6 +960,36 @@ aucune — la garde avait levé, ma mesure regardait ailleurs. Sixième occurren
 sur une grandeur voisine de celle qu'elle nomme, cette fois dans l'instrument que je venais
 d'écrire. **Six cassures, six rouges** après correction.
 **25 gates verts, E2E 16/16, golden 900 inchangé, registre 24/24.**
+
+**R22 livré — la préparation tronquée : le refus « course trop proche » devient franchissable**
+(brief « transformer ce hard block en option de bypass contrôlée », **décision du fondateur du
+04/08/2026 : on garde le plancher et on autorise tout ce qui est au-dessus** — voir
+ARCHITECTURE.md « R22 », banc `npm run demo:troncature`, **26ᵉ gate CI**) : sans le drapeau
+`truncate_prep`, le refus R11.4 est **intact mot pour mot**, jusqu'à sa dernière phrase (« serait
+te mentir, et te blesser »). Avec lui, le pont pose une `plan_start` VIRTUELLE, laisse le
+générateur produire le plan complet, puis **coupe le début et renumérote** — la périodisation
+n'est pas touchée, et `§5` du banc le prouve : le plan tronqué est identique séance par séance aux
+dernières semaines de celui d'un athlète parti à l'heure. **Trois écarts avec le brief, mesurés
+avant d'écrire** : le seuil n'est pas 16 semaines mais dépend du sport ET du format (6 pour un
+5 km, 36 pour un Ironman — « 16 » est le cas du marathon, et une date virtuelle à `course − 16`
+donnerait 20 semaines de trop à un Ironman) ; « tronquer les 2 premières semaines » est le cas
+particulier de 14/16, le nombre retiré est `need − reste` ; et **un plancher absolu unique de
+8 semaines ne tient pas** — il autoriserait un Ironman préparé en 8 semaines, exactement ce que
+R11.4 existe pour refuser. Le plancher est donc **dérivé** plutôt qu'inventé : on ne retire que des
+semaines de MISE EN ROUTE, donc au plus la durée de la phase `base` (30 %) — la formulation du
+bandeau que le brief demande lui-même. Vérifié sur les **12 formats** : tout ce qui est au-dessus
+du plancher est autorisé, tout ce qui est en dessous refusé avec un motif dédié, et le bouton
+n'apparaît PAS quand le contournement serait de toute façon refusé (`bypass.possible`, transporté
+par l'erreur — le recalculer côté UI ferait deux règles de plancher, R11.1).
+**Une erreur à moi, attrapée par la spec** : ma première date virtuelle reculait de `need` et
+livrait 15 semaines au lieu de 14 — le moteur compte sa travée INCLUSIVEMENT ; le témoin du §5
+portait la même faute, et le corriger là aussi importait, sinon la comparaison aurait été fausse
+**dans le sens rassurant**.
+**Conséquence sur le manifeste, assumée** : « course trop proche » quitte la liste des blocages
+durs pour devenir « course sous le PLANCHER de préparation ». C'est un alignement sur O-17 — le
+critère de dureté est « l'athlète ne peut pas évaluer le risque, ou l'erreur est irréversible », or
+« ai-je déjà une base ? » se tranche et rater sa course se rattrape.
+**26 gates verts, E2E 16/16, golden 900 inchangé, registre 24/24.**
 
 **I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
 ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en
