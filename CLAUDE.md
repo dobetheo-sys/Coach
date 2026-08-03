@@ -760,6 +760,33 @@ Gardes **P11-A à P11-F** au banc `audit:r14.1`, qui assertent les DEUX moitiés
 disparue ET l'entraîné intact — **vérifiées rouges** (3 sur 6) contre le moteur d'avant P11.
 **22 gates verts, E2E 14/14, golden 900 inchangé** — la projection ne touche aucune séance.
 
+**O-21 : mécanisme corrigé — « dev ≤ pic » n'a pas d'objet quand le pic n'a aucune semaine de
+charge** (voir `BUGS_OUVERTS.md` « O-21 ») : **ma piste du matin était fausse et c'est écrit.**
+J'avais noté « la courbe déclarée décroît » ; mesuré, elle ne décroît pas — **la seule semaine de
+PIC de ces plans est une semaine de RÉCUPÉRATION** (102 min) quand les semaines de dev montent à
+162. L'auditeur exclut les décharges de ses candidats (à juste titre), le pic ne contribuait donc
+AUCUN candidat, et la règle concluait « la semaine de volume max dépasse la meilleure semaine
+peak » — énoncé **faux** : il n'y a pas de semaine de pic à dépasser. La récup dans le pic est
+VOULUE (C27b la refuse, mais R18.5 a tranché que la cadence de l'athlète l'emporte sur tout
+placement) ; ce qui n'avait jamais été considéré, c'est sa conséquence sur une prépa courte, où le
+pic tient en une seule semaine. La règle dit désormais ce qui est vrai — « aucune semaine de PIC
+en charge » — dans le canal des AVERTISSEMENTS, la cause étant un arbitrage assumé. Même famille
+que les trois invariants retirés par R20.6. **Mesuré sur 729 plans sans date : 216 profils
+portaient cette violation dure insatisfiable → 0, réparations 952 → 356** (596 coupes qui ne
+réparaient rien, et qui ne coupaient pas la même semaine selon l'allure).
+**Trois de mes mesures ont visé la mauvaise population dans la même heure** : le corpus V2 (702)
+et mon premier balayage (486) donnaient **0 occurrence** et j'ai failli retirer le correctif comme
+inerte (le sort de C23b) — les deux portaient sur des plans DATÉS, or le défaut ne vit que sur les
+plans **sans date de course** (`minWeeks`), où il touche **29,6 %**. Le golden ne bouge pas pour
+la même raison : ses 900 profils portent tous une date.
+**Ce qui reste est un ARBITRAGE, pas un défaut** : l'inversion persiste (2 cas) et sa cause est en
+amont — les courbes déclarées diffèrent (786 min à 5:45/km contre 852 à 7:00/km, à `vol_max`
+identique) parce que la sonde de capacité lit des plafonds de séance **exprimés en distance**, qui
+donnent mécaniquement plus de minutes à qui court moins vite. La question est d'entraînement : la
+sortie longue d'un 10 km se prescrit-elle en distance ou en temps ? Tout le moteur compte déjà en
+TEMPS, ce qui plaide pour le temps — mais c'est une décision de fond.
+**23 gates verts, E2E 16/16, golden 900 inchangé, registre 20/20.**
+
 **A-5 · A-6 · O-19 livrés — les trois angles morts de la mesure** (audit complet du 03/08/2026,
 voir ARCHITECTURE.md et `BUGS_OUVERTS.md` §3) :
 

@@ -1146,7 +1146,51 @@ cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;cons
 ```
 
 
-### O-21 · À capacité déclarée plus HAUTE, le plan est plus PETIT — l'inversion sur l'axe allure · ⏳ **OUVERT**
+### O-21 · À capacité déclarée plus HAUTE, le plan est plus PETIT — l'inversion sur l'axe allure · 🟡 **MÉCANISME CORRIGÉ (03/08/2026), RÉSIDU = UN ARBITRAGE**
+
+> **CE QUI EST CORRIGÉ, ET MA PISTE DU MATIN ÉTAIT FAUSSE.** J'avais écrit « la courbe déclarée
+> décroît (base au-dessus du pic) ». Mesuré : elle ne décroît pas. **La seule semaine de PIC de
+> ces plans est une semaine de RÉCUPÉRATION** (102 min) pendant que les semaines de dev montent à
+> 162. Or l'auditeur exclut — à juste titre — les semaines de décharge de ses candidats : le pic
+> ne contribuait alors AUCUN candidat, et la règle concluait « la semaine de volume max dépasse
+> la meilleure semaine peak ». Énoncé **faux** : il n'y a pas de semaine de pic à dépasser.
+>
+> La récup dans le pic est **voulue** : C27b la refuse, mais son garde dominant dit que la CADENCE
+> de l'athlète l'emporte sur toute règle de placement (R18.5, arbitrage compté et démontré). Ce
+> qui n'avait jamais été considéré, c'est sa conséquence sur une prépa COURTE, où le pic tient en
+> une seule semaine : le plan n'a plus aucune semaine de pic en charge.
+>
+> La règle dit désormais **ce qui est vrai** — « aucune semaine de PIC en charge » — et le dit
+> dans le canal des AVERTISSEMENTS, la cause étant un arbitrage assumé et non un défaut de
+> génération. Même famille que les trois invariants retirés par R20.6 (I6/I8/I12) : une règle
+> appliquée là où son objet n'existe pas.
+>
+> **Mesuré sur 729 plans sans date de course : 216 profils portaient cette violation dure
+> insatisfiable → 0, et les réparations tombent de 952 à 356** — 596 coupes de semaines qui ne
+> réparaient rien, et qui ne coupaient PAS LA MÊME semaine selon l'allure déclarée. C'était le
+> mécanisme de l'inversion.
+>
+> **TROIS DE MES MESURES ONT VISÉ LA MAUVAISE POPULATION, DANS LA MÊME HEURE.** Le corpus V2
+> (702 profils) et mon premier balayage (486) donnaient **0 occurrence**, et j'ai failli retirer
+> le correctif comme inerte (le sort de C23b). Les deux portaient sur des plans DATÉS ; le défaut
+> ne vit que sur les plans **sans date de course**, construits sur `minWeeks` — c'est-à-dire
+> l'athlète qui n'a pas encore d'objectif calé. Là, il touche **29,6 %** des plans. Le golden ne
+> bouge pas d'un profil pour la même raison : ses 900 profils portent tous une date.
+>
+> **CE QUI RESTE — ET C'EST UN ARBITRAGE, PAS UN DÉFAUT.** L'inversion elle-même persiste
+> (`inversions d'allure : 2`), et sa cause est en AMONT de la réparation : les courbes DÉCLARÉES
+> diffèrent (786 min pour 5:45/km contre 852 pour 7:00/km, à `vol_max` identique). C'est la sonde
+> de capacité (V2.1, « la promesse suit ce que les plafonds permettent ») qui lit des plafonds de
+> séance dépendants de l'allure — un plafond exprimé en **distance** donne mécaniquement plus de
+> MINUTES à qui court moins vite.
+>
+> La question à trancher est d'entraînement, pas de code : **la sortie longue d'un 10 km se
+> prescrit-elle en distance ou en temps ?** En distance, le coureur lent passe plus de temps sur
+> ses appuis pour le même « stimulus kilométrique » — plus de fatigue et plus de risque, ce qui
+> heurte les priorités 1 et 2 du manifeste. En temps, les deux reçoivent la même charge et le
+> kilométrage suit. Tout le moteur compte déjà en TEMPS (`vol_max` est en heures), ce qui plaide
+> pour le temps — mais c'est une décision de fond, elle revient au fondateur.
+
 
 Trouvée en fermant O-20, par le critère `O17` du banc v6 qui est passé rouge. Le réflexe aurait
 été de conclure « I14b a bridé le plan » : **c'est faux, et c'est mesuré**. Le plan de l'athlète
