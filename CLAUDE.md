@@ -760,6 +760,54 @@ Gardes **P11-A à P11-F** au banc `audit:r14.1`, qui assertent les DEUX moitiés
 disparue ET l'entraîné intact — **vérifiées rouges** (3 sur 6) contre le moteur d'avant P11.
 **22 gates verts, E2E 14/14, golden 900 inchangé** — la projection ne touche aucune séance.
 
+**I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
+ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en
+trail, un DÉBUTANT recevait un pic de **575 min** contre **547** pour un INTER, et sur le D+ aussi
+(1 130 m contre 860). Quatre hypothèses avaient déjà été réfutées (T1, T2b, « des séances moins
+pentues », et le correctif `C23b` mesuré INERTE puis retiré). La cinquième se lit en instrumentant
+le pipeline : la semaine de l'inter **sort de la boucle R3.3 à 603 min pour une cible de 600** — la
+courbe et le remplissage n'ont jamais été en cause. C'est `enforceLabelVsDose` (I14, « la sortie
+longue est la plus longue de sa semaine ») qui ramène ensuite « Descente en charge » de **210 à
+159 min**, et **plus aucune passe ne rend ces 51 minutes**. **Pourquoi le débutant y échappe est
+le cœur de l'affaire** : le plafond que I14 impose aux autres séances EST la durée livrée de la
+sortie longue, et la sienne est épinglée à 180 min par **C23, un plafond de SÉCURITÉ**, quand
+celle de l'inter s'arrête librement à 167. Le débutant hérite du plafond le PLUS HAUT, ne se fait
+rien retirer, et passe devant — **un plafond de sécurité qui augmente la charge de celui qu'il
+protège**. La forme est connue **dans l'autre sens** : onze fois « une garantie vérifiée au milieu
+du pipeline ne vérifie que l'avant-dernier état », onze fois la réponse a été de REJOUER la
+garantie au point fixe ; ici c'est le miroir — une garantie de SÉANCE retire des minutes après la
+boucle de volume, et c'est la BOUCLE qui n'est jamais rejouée. `refillEasyAfterLabelCap()` rend
+ces minutes aux séances FACILES et à elles seules (R4.1), sous quatre bornes qui viennent toutes
+d'une règle existante : blocs plats et non-qualité, jamais plus de 0,80 × la sortie longue
+(R20.3), jamais au-dessus de la courbe déclarée, jamais une semaine hors pic au-dessus du pic
+livré. **I13 passe de 13 échecs sur 114 combinaisons à 0**, balayé sur 6 sports × 21 horizons —
+traité systémiquement, pas au point d'échantillonnage qui rendait le défaut intermittent ; pic de
+l'inter 547 → **596** (déclaré 600), débutant inchangé à 575 ; **62 semaines regarnies, 1 365
+minutes rendues** sur les 702 profils.
+**Deux erreurs à moi, gardées écrites.** Ma première écriture était **inerte** : j'ai filtré les
+blocs receveurs sur `!st.gradient` en pensant « sans pente », alors que **`flat` EST une valeur de
+`gradient`** — j'excluais donc le footing PLAT, précisément le bloc que R4.1 désigne. Receveuses
+vides sur les 41 semaines ; `EN_PENTE()` est désormais la seule définition (R11.1). Ma deuxième
+remplissait fidèlement une courbe qui DÉCROÎT sur les profils courts et amplifiait l'inversion —
+la borne « dev ≤ pic », qui existait mais n'était vérifiée qu'APRÈS par la boucle de réparation,
+est lue au moment où la passe agit (onzième application de la leçon, à ma propre passe ; vérifiée
+non inerte : elle mord 10 fois sur 702).
+**Ce que la fermeture a fait remonter — O-21.** Le critère `O17` du banc v6 est passé rouge. Le
+réflexe aurait été de conclure « I14b a bridé le plan » : **c'est faux, et c'est mesuré** — le plan
+de l'athlète capable fait **107 min avant comme après**, au caractère près ; c'est le TÉMOIN qui a
+bougé (92 → 120), parce qu'il livre enfin sa propre courbe. Le critère nomme « le plan a rétréci »
+et mesure « le témoin a changé » — sixième occurrence d'une mesure portant sur une grandeur
+voisine de celle qu'elle nomme. Mais ce qu'il expose est un VRAI défaut, **antérieur à ce lot** :
+à `vol_recent: 5`, avant comme après, le coureur à 5:45/km reçoit **100 min** et celui à 7:00/km
+**106** — chiffres identiques dans les deux états. Inversion de monotonie sur l'axe **ALLURE**,
+cousine d'I13 (axe NIVEAU). Décision du fondateur (03/08/2026) : **dette déclarée plutôt que
+témoin réécrit** — `O17` passe en `expect: 'fail'` et reste AFFICHÉ avec son chiffre, comme
+D2/D3/F2 ; ré-ancrer son témoin effacerait ce qu'il vient de trouver, et les deux candidats
+mesurés étaient instables. Suivi en **O-21**, avec sa piste : la courbe déclarée décroît sur ce
+profil (base au-dessus du pic).
+**23 gates verts — plus aucun rouge —, E2E 15/15, golden 900 recapturé (59 profils : trail 35,
+course 14, vélo 9), registre 20/20.**
+
 **U16 livré — le déroulement d'une séance se déroule, il ne s'entasse pas** (retour du
 fondateur : « trop dense », voir ARCHITECTURE.md « U16 ») : aucun des 23 gates ne regarde ça —
 ils mesurent tous ce que le moteur PRODUIT, jamais la forme sous laquelle une personne le LIT.

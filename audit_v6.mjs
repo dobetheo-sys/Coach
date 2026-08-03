@@ -520,7 +520,27 @@ test("E4", "Poids invraisemblable → estimation énergétique refusée", "pass"
 // Ce critère garde les DEUX moitiés de cette phrase, et la seconde compte autant que la
 // première : l'avertissement existe pour qui en a besoin, ET le plan n'est pas bridé pour
 // autant. Un correctif qui aurait rabaissé l'intensité aurait été un blocage déguisé.
-test("O17", "capacité > historique de charge : le moteur AVERTIT, et ne bride pas", "pass", () => {
+// O17 — DETTE DÉCLARÉE DEPUIS O-20 (03/08/2026), ET C'EST SA SECONDE MOITIÉ QUI L'EST.
+//
+// La première moitié (le moteur AVERTIT, sans ordonner) tient et continue d'être vérifiée ici.
+// La seconde — « le plan n'est pas bridé » — compare le plan de l'athlète capable à celui d'un
+// ATHLÈTE DIFFÉRENT (7:00/km). Ce témoin a bougé quand I14b a rendu aux séances faciles ce que
+// le plafond de libellé leur prenait, et le critère est passé rouge SANS QUE LE SUJET RÉTRÉCISSE :
+// le plan de l'athlète capable fait **107 min avant comme après**, au caractère près ; c'est le
+// témoin qui est passé de 92 à 120, parce qu'il livre enfin sa propre courbe.
+//
+// Ce que le critère expose est néanmoins un VRAI défaut, et il PRÉEXISTE : à `vol_recent: 5`,
+// avant comme après I14b, le coureur à 5:45/km reçoit **100 min** et celui à 7:00/km **106** —
+// chiffres identiques dans les deux états. C'est une inversion de monotonie sur l'axe ALLURE,
+// cousine d'I13 (niveau) que ce lot vient de fermer. O17 ne la voyait que sur une cellule, et
+// seulement parce que son témoin était lui-même sous-servi.
+//
+// Décision du fondateur (03/08/2026) : **dette déclarée plutôt que témoin réécrit.** Ré-ancrer
+// le témoin sur l'athlète lui-même effacerait ce que le banc vient de trouver — et les deux
+// candidats mesurés étaient instables (la rampe R10 fait légitimement baisser un plan à faible
+// `vol_recent`). Le critère reste donc AFFICHÉ, avec son chiffre, comme D2/D3/F2 : suivi en
+// **O-21** dans BUGS_OUVERTS.md, à repasser en `"pass"` DANS LE MÊME COMMIT que sa correction.
+test("O17", "capacité > historique de charge : le moteur AVERTIT, et ne bride pas", "fail", () => {
   const bad = [];
   const base = { format: "10k", vol_max: "6", sessions_max: "4", pace_known: "oui" };
   const plan = (pace, volRecent) => E.buildPlan("run", { ...profile("run"), ...base, pace, vol_recent: volRecent });

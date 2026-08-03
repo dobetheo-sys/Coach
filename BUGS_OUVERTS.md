@@ -951,7 +951,42 @@ attendu: /sous 80 % : \d+/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const iso=(d)=>new Date(Date.now()+d*864e5).toISOString().slice(0,10);const B={intent:'competition',dispo:'quotidienne',shift_ok:'non',doubles:'non',off_days:'non',sex:'H',sleep:'moyen',life_load:'normale',activity:'actif',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',weight_lever:'non',age:'35',weight:'75',height:'178'};const R={run:{pace_known:'oui',pace:'4:40',terrain:'plat'},bike:{ftp_known:'oui',ftp:'240',terrain:'plat'}};const F={run:['10k','semi','marathon'],bike:['cyclo']};let n=0,sous=0;for(const sp of Object.keys(F))for(const f of F[sp])for(const lv of ['debutant','inter','avance']){let p;try{p=E.buildPlan(sp,Object.assign({},B,{level:lv,history:lv==='debutant'?'reprise':'confirme',format:f,vol_max:'10',vol_recent:'6',sessions_max:'6',race_date:iso(140)},R[sp]));}catch(e){continue;}const nb=(w)=>w.days.filter(d=>d.sessions.some(s=>s.d!=='rs'&&(s.min||0)>0&&!s.race)).length;const pk=p.weeks.filter(w=>w.phase.id==='peak'&&!w.isRecup),tp=p.weeks.filter(w=>w.phase.id==='taper');if(!pk.length||!tp.length)continue;const np=Math.max(...pk.map(nb));if(!np)continue;n++;if(Math.min(...tp.map(nb))/np<0.8)sous++;}console.log('profils : '+n);console.log('sous 80 % : '+sous);"
 ```
 
-### O-20 · En trail, un DÉBUTANT reçoit un pic plus lourd qu'un INTER — et le banc ne le voit qu'un jour sur deux · ⏳ **OUVERT**
+### O-20 · En trail, un DÉBUTANT reçoit un pic plus lourd qu'un INTER — et le banc ne le voit qu'un jour sur deux · ✅ **FERMÉ (I14b, 03/08/2026)**
+
+> **RÉSOLU — la cause est `enforceLabelVsDose`, et le débutant y échappe à cause d'un plafond de
+> SÉCURITÉ.** Cinquième hypothèse, et la bonne : mesurée pas à pas, la semaine de l'inter SORT de
+> la boucle R3.3 à **603 min pour une cible de 600** — la courbe et le remplissage n'ont jamais
+> été en cause. C'est I14 (« la sortie longue est la plus longue de sa semaine ») qui ramène
+> ensuite « Descente en charge » de **210 à 159 min**, et **plus aucune passe ne rend ces 51
+> minutes**. Le débutant y échappe parce que le plafond que I14 impose aux autres séances EST la
+> durée livrée de sa sortie longue : la sienne est épinglée à 180 min par **C23**, celle de
+> l'inter s'arrête librement à 167. Le débutant hérite du plafond le PLUS HAUT, ne se fait rien
+> retirer, et passe devant — un plafond de sécurité qui augmente la charge de celui qu'il protège.
+>
+> La forme est connue **dans l'autre sens** : ce dépôt a payé onze fois « une garantie vérifiée au
+> milieu du pipeline ne vérifie que l'avant-dernier état », et y a toujours répondu en REJOUANT la
+> garantie au point fixe. Ici c'est le miroir — une garantie de SÉANCE retire des minutes après la
+> boucle de volume, et c'est la BOUCLE qui n'est jamais rejouée.
+>
+> **`I14b`** rend ce que le plafond a pris, aux séances FACILES et à elles seules (R4.1), sans
+> jamais dépasser la sortie longue (×0,80 : R20.3 — une facile ne rivalise pas avec la pivot), ni
+> la courbe déclarée, ni le pic livré. Mesuré : **13 échecs sur 114 combinaisons → 0**, balayé sur
+> 6 sports × 21 horizons — donc traité SYSTÉMIQUEMENT, pas au seul point d'échantillonnage.
+> Le pic de l'inter passe de 547 à 596 min ; celui du débutant ne bouge pas (575).
+>
+> **Deux erreurs à moi, gardées écrites.** (1) Ma première écriture était **inerte** : j'ai filtré
+> les blocs receveurs sur `!st.gradient` en pensant « sans pente », alors que `flat` EST une valeur
+> de `gradient` — j'excluais donc le footing PLAT, précisément le bloc que R4.1 désigne. Receveuses
+> vides sur les 41 semaines. `EN_PENTE()` est désormais la seule définition (R11.1). (2) Ma
+> deuxième écriture remplissait fidèlement une courbe qui DÉCROÎT sur certains profils et
+> amplifiait l'inversion ; la borne « dev ≤ pic » — qui existait déjà, mais n'était vérifiée
+> qu'APRÈS, par la boucle de réparation — est lue au moment où la passe agit. Elle mord 10 fois
+> sur 702 profils (vérifié non inerte).
+>
+> **Ce que la fermeture a fait remonter : voir O-21.**
+
+*(Diagnostic d'origine conservé ci-dessous — les quatre hypothèses réfutées sont ce qui a empêché
+la cinquième d'être tentée deux fois.)*
 
 Trouvé en passant les gates après le lot O-19. `audit:invariants` **I13** (« monotonie du niveau :
 plus l'athlète est fort, plus la charge est élevée ») est **rouge**, et il l'était déjà avant ce
@@ -1081,8 +1116,61 @@ banc déterministe, sinon on fige la dette au lieu de la traiter (leçon R20.6).
 ```verify
 id: O-20
 quoi: la monotonie du niveau en trail, balayée sur tous les horizons plutôt qu'un seul
-attendu: /trail : \d+ horizons? non monotones?/
+attendu: /trail : 0 horizons? non monotones?/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const B={intent:'competition',history:'confirme',injury:'aucune',dispo:'partielle',doubles:'parfois',off_days:'non',sleep:'moyen',life_load:'normale',age:'38',weight:'79',sex:'H',weight_lever:'non',sessions_max:'7',vol_max:'10',vol_recent:'5',race_distance_km:'45',race_dplus_m:'2200',race_technicity:'mixte',race_night:'non',train_dplus_access:'collines',poles:'oui',vam_known:'non',pace_known:'oui',pace:'4:50'};const mx=(p)=>Math.max(...p.weeks.map(w=>w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0)));let ko=0;for(let sem=12;sem<=52;sem+=2){const rd=new Date(Date.now()+sem*7*864e5).toISOString().slice(0,10);let v=[];try{for(const lv of ['debutant','inter','avance'])v.push(mx(E.buildPlan('trail',Object.assign({},B,{level:lv,race_date:rd}))));}catch(e){continue;}if(!(v[0]<=v[1]&&v[1]<=v[2]))ko++;}console.log('trail : '+ko+' horizons non monotones');"
+```
+
+
+### O-21 · À capacité déclarée plus HAUTE, le plan est plus PETIT — l'inversion sur l'axe allure · ⏳ **OUVERT**
+
+Trouvée en fermant O-20, par le critère `O17` du banc v6 qui est passé rouge. Le réflexe aurait
+été de conclure « I14b a bridé le plan » : **c'est faux, et c'est mesuré**. Le plan de l'athlète
+capable fait **107 min avant comme après**, au caractère près. C'est le TÉMOIN d'O17 qui a bougé
+(92 → 120 min), parce que I14b lui rend enfin ce que le plafond de libellé lui prenait. Le
+critère nomme « le plan a rétréci » et mesure « le témoin a changé » — sixième occurrence dans ce
+dépôt d'une mesure qui porte sur une grandeur voisine de celle qu'elle nomme.
+
+**Mais ce qu'il expose est un vrai défaut, et il PRÉEXISTE à I14b.** Profil 10 km, `vol_max: 6`,
+`sessions_max: 4`, seule l'allure seuil déclarée varie :
+
+| `vol_recent` | allure | S1 livrée | plan total | avant I14b | après I14b |
+|---|---|---|---|---|---|
+| 5 h | **5:45/km** (rapide) | 100 min | 746 min | identique | identique |
+| 5 h | 7:00/km (lent) | **106 min** | **772 min** | identique | identique |
+| 0 h | 5:45/km | 107 min | 754 min | 107 / 699 | 107 / 754 |
+| 0 h | 7:00/km | 120 min | 790 min | 92 / 706 | 120 / 790 |
+
+Les deux lignes `vol_recent: 5` sont **rigoureusement inchangées** par ce lot : l'inversion y est
+antérieure. O17 ne la voyait que sur la cellule `vol_recent: 0`, et seulement parce que son témoin
+était lui-même sous-servi — un défaut en masquait un autre.
+
+**C'est une inversion de monotonie sur l'axe ALLURE, cousine d'I13 (axe NIVEAU)** que ce lot vient
+de fermer. Le mécanisme n'est pas le même : les deux profils portent ici une **violation dure non
+réparée** (« la semaine de volume max dépasse la meilleure semaine peak de >5 % »), parce que la
+courbe DÉCLARÉE décroît — S1 en base à 120 min au-dessus de la phase de pic. La boucle de
+réparation coupe alors une semaine, et **elle ne choisit pas la même victime selon l'allure** :
+S1 chez le rapide, S4/S5 chez le lent.
+
+**Ce qu'il faudra regarder** — dans cet ordre, la première ligne étant probablement la cause :
+1. **pourquoi la courbe déclarée décroît** sur ce profil (6 semaines, 10 km, 6 h/sem) : une phase
+   de base au-dessus de la phase de pic est une inversion de périodisation à la SOURCE, pas une
+   affaire de réparation. La sonde de capacité (V2.1) fait dépendre la courbe déclarée de
+   l'allure — d'où deux courbes différentes pour deux allures ;
+2. pourquoi la boucle de réparation choisit S1 comme victime chez le rapide ;
+3. seulement ensuite, si l'inversion persiste, un invariant de monotonie sur l'allure — le
+   pendant d'I13.
+
+**Le critère `O17` est passé en `expect: 'fail'`** (dette déclarée, décision du fondateur du
+03/08/2026) : il reste AFFICHÉ avec son chiffre, comme D2/D3/F2, plutôt que réécrit — ré-ancrer
+son témoin effacerait ce qu'il vient de trouver, et les deux candidats de témoin mesurés étaient
+instables (la rampe R10 fait légitimement baisser un plan à faible `vol_recent`). À repasser en
+`'pass'` **dans le même commit** que sa correction.
+
+```verify
+id: O-21
+quoi: à allure seuil plus rapide, le plan livré n'est pas plus petit (axe allure, cousin d'I13)
+attendu: /inversions? d'allure : \d+/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(pace,vr)=>({intent:'competition',format:'10k',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',level:'inter',history:'confirme',injury:'aucune',sessions_max:'4',vol_max:'6',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',pace,vol_recent:String(vr),terrain:'route'});const tot=(p)=>p.weeks.reduce((t,w)=>t+w.days.reduce((a,d)=>a+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0),0);let ko=0;for(const vr of [0,5]){const rapide=tot(E.buildPlan('run',P('5:45',vr))),lent=tot(E.buildPlan('run',P('7:00',vr)));if(rapide<lent)ko++;}console.log(\"inversions d'allure : \"+ko);"
 ```
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
@@ -1090,7 +1178,7 @@ cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;cons
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas
 échouer la CI **par décision explicite**, pas par oubli.
 
-### Banc v6 — 3 dettes (`npm run audit:v6` → « 55 vert · 3 dette connue · 0 régression »)
+### Banc v6 — 4 dettes (`npm run audit:v6` → « 57 vert · 4 dette connue · 0 régression »)
 
 | id | ce qui reste | pourquoi c'est laissé |
 |---|---|---|
@@ -1101,7 +1189,7 @@ Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. I
 ```verify
 id: DETTE-v6
 quoi: 3 dettes connues, 0 régression
-attendu: /3 dette connue · ✖ 0 régression/
+attendu: /4 dette connue · ✖ 0 régression/
 cmd: npm run audit:v6
 ```
 
@@ -1202,7 +1290,7 @@ Ni l'un ni l'autre n'est fait : ce sont deux chapitres ouverts, désormais corre
 ```verify
 id: D3
 quoi: 7 sauts C22 encore présents, D2 et F2 inchangés
-attendu: /3 dette connue/
+attendu: /4 dette connue/
 cmd: npm run audit:v6
 ```
 

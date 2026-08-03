@@ -7090,6 +7090,23 @@ function applyPolarizationGuard(r              , days          , ctx            
  */
 const QUALITY_SUFFIX = /\.(vo2|thr|css|rp|ss|frc|speed|mara)$/;
 const QUALITY_TRAIL = ["tr.vam", "tr.asc", "tr.climb", "tr.flatthr"];
+/**
+ * R11.1 — UNE SEULE DÉFINITION DE « EN PENTE ». `flat` EST UNE VALEUR DE `gradient`, PAS SON
+ * ABSENCE. En trail, tout bloc en porte une ; tester `!st.gradient` exclut donc le footing PLAT,
+ * c'est-à-dire précisément le bloc que R4.1 désigne pour absorber du volume. Je l'ai écrit ainsi
+ * du premier coup et la passe I14b est sortie inerte — receveuses vides sur les 41 semaines.
+ */
+/**
+ * I14b — jusqu'où une séance FACILE peut absorber ce que le plafond de libellé a retiré, en
+ * part de la sortie longue de la semaine. 0,80 laisse la pivot visiblement pivot : au-dessus,
+ * la semaine porte deux sorties longues sans le dire ; en dessous, le remplissage ne sert plus
+ * à rien sur les semaines où il n'existe qu'une seule receveuse.
+ */
+const I14B_EASY_VS_LONG = 0.8;
+
+const EN_PENTE = (st                       )          =>
+  st.gradient === "up" || st.gradient === "down" || st.gradient === "rolling";
+
 const IS_QUALITY_ZONE = (zone        )          =>
   QUALITY_SUFFIX.test(zone) || QUALITY_TRAIL.includes(zone);
 
@@ -7152,6 +7169,12 @@ function reconcileDeclaredVolume(
   //   2. si la structure minimale dépasse encore l'enveloppe déclarée, le chiffre annoncé
   //      s'aligne sur le prescrit ET un AVERTISSEMENT le dit, avec les deux remèdes. Le
   //      silence était le défaut : un athlète ne peut pas arbitrer ce qu'on ne lui dit pas.
+  /**
+   * I14b — CE QUE LE PLAFOND DE LIBELLÉ RETIRE, PAR SEMAINE. Renseigné par `enforceLabelVsDose`,
+   * consommé par `refillEasyAfterLabelCap` : sans ce compte, la semaine perd des minutes que
+   * plus aucune passe ne sait lui rendre (voir la justification complète sur la fonction).
+   */
+  const _labelCut = new Map                ();
   const MIN_WORTH_MIN = 15;
   const dayMin = (d       ) => d.sessions.reduce((u, sx) => u + (sx.min || 0), 0);
   const weekMinOf = (wk        ) => wk.days.reduce((t, d) => t + dayMin(d), 0);
@@ -7163,6 +7186,10 @@ function reconcileDeclaredVolume(
   // rouvrait l'inversion de périodisation sur 4 combinaisons de trail. Une semaine ne peut pas
   // être vérifiée sur un contenu qui va encore changer.
   enforceLabelVsDose();
+  // I14b — et ce qu'elle vient de retirer retourne aux séances faciles (O-20). Ici, PAS en fin
+  // de course : les garanties hebdomadaires qui suivent (T2/T2b, C22, C26c) doivent voir la
+  // semaine telle qu'elle sera livrée, pas un état intermédiaire qu'on regonflera après elles.
+  refillEasyAfterLabelCap();
 
   // T2 / T2b — LA PROGRESSION VERTICALE SE RE-VÉRIFIE APRÈS TOUTE COUPE DE SÉANCE.
   //
@@ -8021,7 +8048,7 @@ function reconcileDeclaredVolume(
           // Plancher à 2 répétitions : une séance de descente avec une seule descente n'est plus
           // une séance de descente. Si le plafond n'est pas atteint à 2, la boucle s'arrête et le
           // banc le dira — un résidu mesuré vaut mieux qu'une séance dénaturée.
-          const enPente = st.gradient === "up" || st.gradient === "down" || st.gradient === "rolling";
+          const enPente = EN_PENTE(st);
           if (enPente) {
             // On arrondit à l'INFÉRIEUR, contrairement aux blocs plats : sur un axe de charge
             // qui casse en premier, une répétition de trop ne se rattrape pas la semaine
@@ -8091,8 +8118,127 @@ function reconcileDeclaredVolume(
         for (const sx of all) {
           if (sx === lg || sx.race || sx.brick || sx.long) continue;
           if (sx.d !== lg.d) continue; // « la plus longue DANS SA DISCIPLINE »
-          if ((sx.min || 0) > (lg.min || 0)) shrinkTo(sx, lg.min || 0);
+          if ((sx.min || 0) > (lg.min || 0)) {
+            const avant = sx.min || 0;
+            shrinkTo(sx, lg.min || 0);
+            _labelCut.set(wk.num, (_labelCut.get(wk.num) || 0) + Math.max(0, avant - (sx.min || 0)));
+          }
         }
+      }
+    }
+  }
+
+  /**
+   * I14b — CE QUE LE PLAFOND DE LIBELLÉ RETIRE, LA SEMAINE LE RÉCUPÈRE SUR SES SÉANCES FACILES.
+   *
+   * LE DÉFAUT (O-20). En trail, un DÉBUTANT recevait un pic hebdomadaire plus lourd qu'un INTER
+   * — 575 min contre 547, et sur le D+ aussi (1 130 m contre 860). L'invariant I13 (« plus
+   * l'athlète est fort, plus la charge est élevée ») était rouge, et il avait raison.
+   *
+   * La chaîne, mesurée pas à pas :
+   *   1. la courbe déclare 600 min pour l'inter, et R3.3 les livre — la semaine sort de sa
+   *      boucle à **603 min**. La courbe n'a jamais été en cause ;
+   *   2. `enforceLabelVsDose` applique I14 (« la sortie longue est la plus longue de sa
+   *      semaine ») et ramène « Descente en charge » de **210 à 159 min** ;
+   *   3. **plus aucune passe ne rend ces 51 minutes.** La semaine finit à 551, puis 547.
+   *
+   * ET POURQUOI LE DÉBUTANT Y ÉCHAPPE — c'est le cœur de l'affaire. Le plafond que I14 impose
+   * aux autres séances EST la durée livrée de la sortie longue. Celle du débutant est épinglée
+   * à 180 min par **C23, un plafond de SÉCURITÉ** ; celle de l'inter, libre, s'arrête à 167. Le
+   * débutant hérite donc du plafond le PLUS HAUT, ne se fait rien retirer, et passe devant.
+   * **Un plafond de sécurité qui augmente la charge de celui qu'il protège** : il ne se
+   * rembourse pas (l'hypothèse C23b, mesurée et réfutée), il déplace le plafond d'une autre
+   * règle.
+   *
+   * LA FORME DU DÉFAUT EST CONNUE, DANS L'AUTRE SENS. Ce dépôt a payé onze fois « une garantie
+   * vérifiée au milieu du pipeline ne vérifie que l'avant-dernier état » (R15.7-A, C28, I14
+   * elle-même…) et la réponse a toujours été de REJOUER la garantie au point fixe. Ici c'est
+   * le miroir : une garantie de SÉANCE retire des minutes APRÈS la boucle de volume, et c'est
+   * la BOUCLE qui n'est jamais rejouée. Le remède est le même — rendre la main à ce qui a été
+   * défait.
+   *
+   * OÙ VONT LES MINUTES : R4.1 l'a déjà tranché — « le déversement de volume va vers les
+   * séances FACILES, jamais vers un bloc de qualité ». On ne touche donc QUE des blocs plats et
+   * non-qualité :
+   *   · pas la sortie longue (la gonfler pour tenir une promesse serait ajouter du volume) ;
+   *   · pas un bloc en pente — les axes verticaux ont leurs propres courbes (T2/T2b), qui se
+   *     re-clampent juste après : leur donner des mètres ici serait leur en reprendre là ;
+   *   · pas un bloc de qualité (repCap, R4.1) ni une séance de récupération (C25) ;
+   *   · jamais au-delà de la sortie longue de la semaine, sinon I14 recouperait ce qu'on rend ;
+   *   · jamais au-delà de ce que la COURBE annonce : on rend ce qui a été retiré, on n'ajoute
+   *     pas une minute que l'athlète n'avait pas déjà acceptée.
+   */
+  function refillEasyAfterLabelCap()       {
+    // « DEV ≤ PIC » EST UNE RÈGLE DE PÉRIODISATION, ET ELLE VAUT AUSSI POUR CE QU'ON REND.
+    //
+    // Mesuré, et c'est ma propre passe qui l'a créé : sur un 10 km de six semaines dont la
+    // courbe DÉCROÎT (S1 déclarée à 120 min, phase de pic plus basse — un défaut de courbe
+    // indépendant, qui vaut à ce profil une violation dure dans les deux états), remplir
+    // fidèlement chaque semaine amplifiait l'inversion. La boucle de réparation coupait alors
+    // la semaine 1 de l'athlète CAPABLE (107 min) pendant que le témoin plus lent gardait ses
+    // 120 — l'inversion de niveau que je suis précisément en train de corriger, recréée trois
+    // profils plus loin (banc v6, `O17`).
+    //
+    // La règle existe déjà : l'auditeur refuse qu'une semaine de base ou de développement
+    // dépasse la meilleure semaine de pic. Elle n'était vérifiée qu'APRÈS, par la boucle de
+    // réparation — donc mon remplissage lui donnait du travail au lieu de la respecter. On la
+    // lit au moment où l'on agit : onzième application de « une garantie qui tourne après la
+    // mutation ne vérifie que l'avant-dernier état », cette fois à ma propre passe.
+    const picLivre = Math.max(0, ...plan.weeks
+      .filter((wk) => wk.phase.id === "peak" && !wk.isRecup)
+      .map((wk) => weekMinOf(wk)));
+    for (const wk of plan.weeks) {
+      const cut = _labelCut.get(wk.num) || 0;
+      if (cut <= 0) continue;
+      const cur = weekMinOf(wk);
+      let cible = Math.round((wk.vol || 0) * 60);
+      // Une semaine hors pic ne remonte jamais au-dessus du pic LIVRÉ (5 % de tolérance : la
+      // borne de l'auditeur, pas une seconde définition).
+      if (picLivre > 0 && wk.phase.id !== "peak" && wk.phase.id !== "taper")
+        cible = Math.min(cible, Math.round(picLivre * 1.05));
+      // Le manque est borné par les DEUX : ce que le plafond a pris, et ce qui reste sous la
+      // courbe. La semaine ne remonte jamais au-dessus de ce qu'elle annonce.
+      let manque = Math.min(cut, cible - cur);
+      if (manque <= 1) continue;
+      const all = wk.days.flatMap((d) => d.sessions).filter((sx) => sx.d !== "rs" && sx.steps && sx.steps.length);
+      const longMin = Math.max(0, ...all.filter((sx) => sx.long).map((sx) => sx.min || 0));
+      if (longMin <= 0) continue;
+      const receveuses = all.filter((sx) => !sx.long && !sx.race && !sx.brick && !sx.recovery
+        && (sx.steps || []).some((st) => st.role === "body" && !EN_PENTE(st) && st.distanceM == null
+          && st.durationMin != null && !IS_QUALITY_ZONE(String(st.zone || ""))));
+      // La plus courte d'abord : rendre à celle qui a le plus de marge sous la sortie longue
+      // répartit au lieu de concentrer, et évite de recréer une séance qui domine la semaine.
+      receveuses.sort((x, y) => (x.min || 0) - (y.min || 0));
+      // R20.3 — UNE SÉANCE FACILE NE RIVALISE PAS AVEC LA PIVOT. I14 seule bornerait chaque
+      // receveuse à la DURÉE de la sortie longue : mesuré, le footing de l'inter montait alors à
+      // 161 min à côté d'une longue de 163 — la règle tenait à deux minutes près pendant qu'un
+      // entraîneur y aurait vu deux sorties longues. C'est le défaut que R20.3 a corrigé en
+      // swimrun (« le footing ne devient pas la plus longue séance du plan »), et il se rejoue à
+      // l'identique dès qu'une passe de remplissage n'a qu'une seule receveuse.
+      const plafondFacile = Math.round(longMin * I14B_EASY_VS_LONG);
+      for (const sx of receveuses) {
+        if (manque <= 1) break;
+        const place = Math.min(manque, plafondFacile - (sx.min || 0));
+        if (place <= 1) continue;
+        const cible2 = (sx.min || 0) + place;
+        for (let g = 0; g < 4 && (sx.min || 0) < cible2 - 0.5; g++) {
+          const avant = sx.min || 0;
+          const f = cible2 / avant;
+          let touche = false;
+          for (const st of sx.steps || []) {
+            if (st.role !== "body" || EN_PENTE(st) || st.distanceM != null || st.durationMin == null) continue;
+            if (IS_QUALITY_ZONE(String(st.zone || ""))) continue;
+            // Le plafond de bloc DÉCLARÉ garde le dernier mot : c'est lui qui borne un footing
+            // (R20.3, O-8), et une passe de remplissage n'a pas à le contourner.
+            const capBloc = st.bnd ? st.bnd.cap : Infinity;
+            const suiv = Math.min(capBloc, Math.round(st.durationMin * f));
+            if (suiv > st.durationMin) { st.durationMin = suiv; touche = true; }
+          }
+          if (!touche) break;
+          if (render) render(sx);
+        }
+        const rendu = Math.max(0, (sx.min || 0) - (cible2 - place));
+        manque -= rendu;
       }
     }
   }
