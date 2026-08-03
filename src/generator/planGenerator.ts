@@ -747,6 +747,87 @@ export function reconcileDeclaredVolume(
     }
   }
 
+  // C29c — L'AFFÛTAGE REND LES JOURS QU'IL A PRIS POUR RIEN.
+  //
+  // Décision du fondateur (03/08/2026) : l'affûtage réduit le VOLUME, pas la FRÉQUENCE.
+  // Bosquet 2007 et Mujika — la source déjà citée ici pour le +1,96 % — décrivent trois bras :
+  // volume −41/−60 %, intensité maintenue, **fréquence ≥ 80 %**. Seul le premier était vérifié.
+  //
+  // Les deux passes qui retirent un jour d'affûtage le font tant que la semaine dépasse le
+  // plafond R3.13. Elles ont raison AU MOMENT où elles s'exécutent — mais les passes suivantes
+  // réduisent encore, et le jour a été sacrifié pour rien. Mesuré sur un semi : semaine
+  // d'affûtage livrée à **46 % du pic** (plafond : 60 %) avec DEUX jours coupés. Sur 90 profils
+  // comparables, 76 des 95 jours perdus portaient le nom de cette coupe.
+  //
+  // C'est la forme exacte de C28 — une décision prise au milieu du pipeline sur un état qui va
+  // encore changer. On ne touche donc pas aux passes : on RÉPARE AU POINT FIXE, là où le plan
+  // ne bougera plus. Le rendu ne peut pas violer R3.13 : on ne redonne que la marge qui reste
+  // sous le plafond, et jamais plus.
+  //
+  // Ce qu'on ne restitue JAMAIS : un jour que l'athlète a déclaré indisponible, un jour de repos
+  // du gabarit (« Repos / mobilité »), le garde-fou d'impact (« OFF (récup impact) »), et la
+  // semaine de course — elle a ses propres règles (R13.4/R15.7).
+  {
+    const picJours = Math.max(0, ...plan.weeks.filter((w) => w.phase.id === "peak" && !w.isRecup)
+      .map((w) => w.days.filter((d) => d.sessions.some((s) => s.d !== "rs" && (s.min || 0) > 0)).length));
+    const picMin = Math.max(0, ...plan.weeks.filter((w) => w.phase.id === "peak" && !w.isRecup).map(weekMinOf));
+    const plancherFreq = picJours > 0 ? Math.ceil(picJours * 0.8) : 0;
+    if (plancherFreq > 0 && picMin > 0) for (const wk of plan.weeks) {
+      if (wk.phase.id !== "taper") continue;
+      if (wk.days.some((d) => d.sessions.some((s) => s.race))) continue; // R13.4 possède la semaine de course
+      const actifs = () => wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs" && (s.min || 0) > 0)).length;
+      const dz = ctx?.mainDiscipline === "sw" ? "sw.easy" : ctx?.mainDiscipline === "bk" ? "bk.z2" : "rn.easy";
+      const cible = Math.min(weekMinOf(wk), picMin * R313_TAPER_MAX_VS_PEAK);
+      // FILET : la restitution DOIT pouvoir se payer. Les planchers de step (10 min de corps,
+      // C13c/C13e sur l'échauffement) empêchent parfois la semaine de redescendre à sa cible
+      // après l'ajout — mesuré : **35 combinaisons sur 459 au-dessus de R3.13** avec la
+      // première écriture. R3.13 est une règle de SÉCURITÉ ; on ne la négocie pas contre une
+      // règle de qualité. On photographie donc la semaine avant, et on se RÉTRACTE si le
+      // rééquilibrage n'aboutit pas. Un jour rendu qui coûte la fraîcheur du jour J n'est pas
+      // un jour rendu, c'est une régression.
+      const avant = wk.days.map((d) => ({ d, charge: d.charge, slot: d.slot, sessions: d.sessions.map((s) => structuredClone(s)) }));
+      let rendus = 0;
+      for (const d of wk.days) {
+        if (actifs() >= plancherFreq) break;
+        if ((d as GenDay).forced) continue;
+        const nom = d.sessions[0] && d.sessions[0].name;
+        if (!/^OFF \(affûtage/.test(String(nom || ""))) continue;
+        // 25 min : c'est un jour d'ENTRETIEN, pas un jour d'entraînement. En dessous de 20, une
+        // séance ne vaut pas le déplacement (MIN_WORTH_MIN) ; au-dessus de 40, on rajoute de la
+        // charge dans un affûtage, ce qui est l'inverse de ce qu'on cherche.
+        const sx: V1Session = { d: (ctx?.mainDiscipline || "rn") as "rn", name: "Entretien (affûtage)", det: "",
+          note: "Affûtage : le volume descend, la fréquence reste. Une sortie courte et strictement facile entretient le geste et la circulation — ce qu'on gagne maintenant, c'est de la fraîcheur, pas de la forme.",
+          steps: [{ role: "body", durationMin: 25, zone: dz } as V1Step] };
+        d.charge = "facile"; d.slot = "facileR"; d.sessions = [sx];
+        if (render) render(sx);
+        rendus++;
+      }
+      // NEUTRE EN VOLUME, et c'est le cœur de la décision. On ne redonne pas des minutes : on
+      // redonne des JOURS, et les minutes viennent des séances déjà là. La semaine retrouve
+      // exactement le total qu'elle avait (ou le plafond R3.13 si elle le dépassait), répartie
+      // sur plus de jours plus courts — c'est la définition de l'affûtage de Bosquet/Mujika.
+      // Jamais le déverrouillage de la veille (R15.7-B), jamais la course.
+      if (rendus > 0 && weekMinOf(wk) > cible) {
+        const f = cible / weekMinOf(wk);
+        for (const d of wk.days) for (const sx of d.sessions) {
+          if (sx.d === "rs" || sx.race || !sx.steps || /Déverrouillage/i.test(sx.name)) continue;
+          for (const st of sx.steps) {
+            if (st.role !== "body") continue;
+            if ((st.reps || 1) > 1) st.reps = Math.max(1, Math.round((st.reps || 1) * f));
+            else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
+            else if (st.distanceM) st.distanceM = Math.max(150, Math.round((st.distanceM * f) / 25) * 25);
+          }
+          if (render) render(sx);
+        }
+      }
+      // La vérification, et la rétractation si elle échoue. Tolérance 1 min (F3 : les durées
+      // rendues sont arrondies à la minute entière).
+      if (rendus > 0 && weekMinOf(wk) > picMin * R313_TAPER_MAX_VS_PEAK + 1) {
+        for (const snap of avant) { snap.d.charge = snap.charge; snap.d.slot = snap.slot; snap.d.sessions = snap.sessions; }
+      }
+    }
+  }
+
   let forcedWeeks = 0;
   for (const wk of plan.weeks) {
     const lim = wk.phase.id === "taper" ? 1.25 : 1.4;
@@ -986,6 +1067,23 @@ export function reconcileDeclaredVolume(
         const metersOf = () => sx.steps!.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
         const tot = metersOf();
         if (tot <= 0 || tot >= floorM) continue;
+        // C29b — EN AFFÛTAGE, UNE NAGE COURTE SE GARDE : ni supprimée, ni remontée.
+        //
+        // Décision du fondateur (03/08/2026) : l'affûtage réduit le VOLUME, pas la FRÉQUENCE —
+        // c'est ce que décrivent Bosquet 2007 et Mujika, déjà cités ici pour le +1,96 %
+        // (volume −41/−60 %, intensité maintenue, **fréquence ≥ 80 %**). Le plancher de séance
+        // piscine dit « sous X mètres, ça ne vaut pas le déplacement » : vrai dans une semaine
+        // de CHARGE, faux dans un affûtage, où une nage courte EST l'objectif (R13.3 le dit
+        // deux passes plus loin — « les sensations d'eau se perdent en 10-14 jours »).
+        //
+        // Mesuré avant : un nageur débutant recevait **2 jours actifs sur 6 au pic**, quatre
+        // séances effacées d'un coup pour cause de trop petite taille. Le commentaire d'à côté
+        // avait déjà nommé le risque (« un affûtage sans une seule séance n'affûte rien, il
+        // désentraîne ») et ne protégeait que la DERNIÈRE séance.
+        //
+        // La semaine de récupération de milieu de plan garde, elle, l'ancien comportement : son
+        // objet est de retirer de la charge, pas de préparer une course dans dix jours.
+        if (wk.phase.id === "taper") continue;
         if (decharge) {
           if (wk.days.reduce((t, dd) => t + dd.sessions.filter((x) => x.d !== "rs").length, 0) <= 1) continue;
           const i2 = d.sessions.indexOf(sx);
@@ -1647,6 +1745,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
           if (s.d !== "sw" || !s.steps || !s.steps.length) continue;
           const meters = s.steps.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
           if (meters === 0 || meters >= swFloor) continue;
+          if (ph.id === "taper") continue; // C29b — voir la note au plancher piscine
           if (dechargeWeek) {
             // …mais une semaine de décharge n'est pas une semaine VIDE. Retirer sans borne
             // vidait les quatre dernières semaines d'un plan de nage débutant saturé, où
@@ -1981,6 +2080,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
           const body = s.steps.filter((st) => st.role === "body" && st.distanceM != null).sort((x, y) => (y.reps || 1) * (y.distanceM || 0) - (x.reps || 1) * (x.distanceM || 0))[0];
           if (!body || !body.distanceM) continue;
           const t0 = totOf();
+          if (w.phase.id === "taper" && t0 > 0 && t0 < swFloorF) continue; // C29b
           if (decharge && t0 > 0 && t0 < swFloorF) {
             const restants = wd2.reduce((t, dd) => t + dd.sessions.filter((x) => x.d !== "rs").length, 0);
             if (restants <= 1) continue;

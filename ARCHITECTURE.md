@@ -2842,3 +2842,66 @@ un **refus typé en français clair**, zéro injection, zéro erreur JS. Le gard
 noms du bundle **mord** (vérifié en provoquant une collision). Les cibles tactiles tiennent le
 44×44. La progression de fond des plans est saine (longue 72' → 180' sur 13 semaines, récup bien
 placées, allures correctement dérivées du seuil).
+
+## C29b / C29c — l'affûtage garde ses jours et les raccourcit (décision du fondateur)
+
+**Décision du fondateur (03/08/2026)** : l'affûtage réduit le **volume**, pas la **fréquence** —
+des jours plus courts, tous gardés. R3.13 (l'affûtage pèse au plus 60 % du pic) n'est pas
+négociée : c'est la MONNAIE de la réduction qui change.
+
+Bosquet 2007 et Mujika — la source déjà citée ici pour le +1,96 % — décrivent trois bras :
+volume −41/−60 %, **intensité maintenue**, **fréquence ≥ 80 %**. Seul le premier était vérifié.
+
+### Ce que j'ai cru, et ce qui était vrai
+
+Trois hypothèses successives, deux fausses, chacune réfutée par la mesure :
+
+1. « C'est la décroissance d'affûtage » → **faux**. C29 n'a bougé aucun des 15 profils mesurés.
+2. « C'est le plancher de séance piscine » → **vrai, mais partiel** (C29b, nageur débutant
+   33 % → 67 %). Trois blocs de suppression **identiques** dans le même fichier, et mon premier
+   `grep` n'en voyait qu'un : le bundle en contenait trois.
+3. « Ce sont les deux passes R3.13 » → **vrai, et c'est le gros** : 76 des 95 jours perdus
+   portent le nom de cette coupe.
+
+### C29c — la réparation au point fixe, neutre en volume
+
+Les deux passes de retrait ont **raison au moment où elles s'exécutent** : la semaine dépasse
+alors le plafond. Mais les passes suivantes réduisent encore, et le jour a été sacrifié pour
+rien. Mesuré sur un semi : semaine d'affûtage livrée à **46 % du pic pour un plafond de 60 %,
+avec deux jours coupés**. Forme exacte de C28 — une décision prise au milieu du pipeline sur un
+état qui va encore changer.
+
+On ne touche donc pas aux passes : on **rend les jours au point fixe**, et la restitution est
+**neutre en volume** — on redonne des JOURS, les minutes viennent des séances déjà là. La
+semaine retrouve son total, répartie sur plus de jours plus courts. C'est la définition de
+l'affûtage de Bosquet/Mujika.
+
+**Elle porte son propre filet.** Première écriture : **35 combinaisons sur 459 au-dessus de
+R3.13**, parce que les planchers de step (corps ≥ 10 min, C13c/C13e sur l'échauffement)
+empêchent parfois la semaine de redescendre après l'ajout. R3.13 est une règle de SÉCURITÉ ; on
+ne la négocie pas contre une règle de qualité. La semaine est donc photographiée avant, vérifiée
+après rééquilibrage, et la restitution **se rétracte** si le plafond ne tient pas.
+
+**Résultat : 68 % → 30 % des profils sous le plancher de fréquence, médiane 75 % → 83 %.** La
+sortie longue baisse avec (semi : 91' → 81'). Il reste 30 % : ceux où le rééquilibrage ne peut
+pas se payer sans franchir R3.13, et où la rétractation joue. Suivi en `O-19`.
+
+### Quatre instruments qui dépendaient de la date
+
+Ce lot en a démasqué **trois de plus**, tous de la famille R20.7 (« une dimension que la mesure
+ne contrôle pas décide de son verdict ») :
+
+- **Mon balayage de fréquence** datait la course à `aujourd'hui + 140 jours`. En franchissant
+  minuit UTC pendant la session, elle est passée du dimanche au lundi : la dernière semaine est
+  tombée à un jour (N2), sa fréquence à 0, et **la médiane de 75 % à 0 %**. Les chiffres publiés
+  dans `O-19` (« 52 % sur 180 profils ») étaient faux et sont corrigés (68 % sur 90 profils
+  comparables). Date ancrée sur un dimanche, semaine de course exclue.
+- **`smoke-r4`** assertait « le POURQUOI de la séance est visible sans rien ouvrir » — en
+  supposant que le jour courant portait une séance. Un tiers des jours de plan sont des jours de
+  repos (mesuré en U8 : 153 sur 441). Le critère distingue désormais les deux cas.
+- **`audit:invariants` I13** est vert en CI (exécutée le 02/08) et rouge en local le 03/08, à
+  code identique : `race_date` est figée mais la LONGUEUR du plan se compte depuis aujourd'hui.
+  Balayé sur 21 horizons × 6 sports : **13 échecs sur 114, tous en trail** — un débutant reçoit
+  un pic de 575 min quand un inter en reçoit 547. Défaut réel et systémique côté trail, rendu
+  intermittent par un échantillonnage à un seul horizon. Enregistré en `O-20`, **non traité** :
+  rendre le banc déterministe avant d'avoir corrigé le défaut figerait la dette (leçon R20.6).

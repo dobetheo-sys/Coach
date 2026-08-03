@@ -120,11 +120,30 @@ ok(whyBeforeWhat && whyBeforeWhat.order === "why-first", "le POURQUOI passe deva
 ok(whyBeforeWhat && whyBeforeWhat.noDup, "la justification n'est plus dupliquée en queue de description technique");
 const t2b = await page.locator("#ebTabbar .tabbtn").all();
 await t2b[2].click(); await page.waitForTimeout(400);
+// U11 — la génération arrive désormais sur 🗓 Plan, donc le check-in n'a pas encore été
+// répondu quand on ouvre 🎯 Aujourd'hui. Le portillon n'a pas changé : on le passe, comme un
+// utilisateur le ferait. Ce que ce critère mesure (le POURQUOI visible sans rien ouvrir) est
+// inchangé — c'est le chemin pour y arriver qui a bougé.
+for (let i = 0; i < 6 && (await page.locator(".ck-opt").count()); i++) {
+  const n = await page.locator(".ck-opt").count();
+  await page.locator(".ck-opt").nth(Math.min(1, n - 1)).click();
+  await page.waitForTimeout(320);
+}
+await page.waitForTimeout(600);
+// Ce critère suppose que « aujourd'hui » porte une SÉANCE. Un tiers des jours de plan sont
+// des jours de repos (mesuré en U8 : 153 sur 441 en semaine 1), et le jour de la semaine
+// n'est pas contrôlé par le test : il tombait donc rouge un jour sur trois, au hasard du
+// calendrier. Troisième instrument de ce dépôt à dépendre de la date, après le banc R14
+// (R20.7) et le balayage de fréquence de C29. On distingue les deux cas au lieu de subir
+// l'un des deux : séance → le POURQUOI est visible sans rien ouvrir ; repos → le message de
+// repos est là (U8), et le critère de la séance ne s'applique pas.
 const heroWhy = await page.evaluate(() => {
   const c = document.querySelector("#screen");
-  return { visibleWhy: !!c.querySelector(".gd-why"), hidden: !!c.querySelector("details.gd-sess") };
+  return { visibleWhy: !!c.querySelector(".gd-why"), hidden: !!c.querySelector("details.gd-sess"),
+    repos: /Repos aujourd/i.test(c.innerText || "") };
 });
-ok(heroWhy.visibleWhy, "dans Aujourd'hui, le « pourquoi » de la séance est visible SANS rien ouvrir (§5)");
+ok(heroWhy.visibleWhy || heroWhy.repos, "dans Aujourd'hui, le « pourquoi » de la séance est visible SANS rien ouvrir (§5)"
+  + (heroWhy.repos ? " — jour de REPOS aujourd'hui, critère non applicable, message de repos présent" : ""));
 
 // ---- 6. Onglet Nutrition : journal alimentaire RETIRÉ (décision utilisateur R6) ----
 // R18.3 — Nutrition n'est plus le 4e onglet (📅 Semaine est revenue devant). Par NOM.

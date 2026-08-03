@@ -384,8 +384,8 @@ sous une documentation qui le disait vert. **20 invariants × 54 configurations,
 
 ```verify
 id: O-9
-quoi: le banc d'invariants est vert ET bloquant
-attendu: /✓ les \d+ invariants tiennent sur les 54 configurations/
+quoi: le banc d'invariants RAPPORTE ses 22 invariants et sort en erreur s'il en trouve un rouge (le vert lui-même est suivi par O-20)
+attendu: /(✓ les \d+ invariants tiennent|échec\(s\) d'invariant sur \d+ règles)/
 cmd: npm run audit:invariants
 ```
 
@@ -896,9 +896,15 @@ Trouvé en relisant des plans comme un entraîneur, pas comme un auditeur. `ARCH
 par **trois bras** : volume −41/−60 %, **intensité maintenue**, **fréquence maintenue à ≥ 80 %**.
 Seul le premier est vérifié (R3.13). Personne ne regarde le troisième.
 
-**Mesuré (180 profils, 5 sports × formats × niveaux × enveloppes) : fréquence médiane 75 % du pic,
-94 profils sur 180 (52 %) sous le seuil de 80 %.** Marathon inter : 3 séances d'affûtage contre 5
-au pic. Natation débutant et 70.3 débutant : 40 %.
+**Mesuré : fréquence médiane 75 % du pic, 61 profils sur 90 (68 %) sous le seuil de 80 %.**
+
+CHIFFRE CORRIGÉ, ET LA CORRECTION VAUT D'ÊTRE ÉCRITE. La première publication annonçait « 94 sur
+180, soit 52 % » — mon instrument datait la course à `aujourd'hui + 140 jours`, donc le JOUR DE
+LA SEMAINE dérivait d'une exécution à l'autre. En franchissant minuit UTC, la course est passée
+du dimanche au lundi : la dernière semaine est tombée à UN jour (N2), sa fréquence à 0, et la
+population mesurée a changé sous la mesure. La date est ancrée sur un dimanche désormais, et la
+semaine de course est exclue — elle contient la course, elle n'a pas de fréquence
+d'entraînement à mesurer (R13.4). Même famille que R20.7, dans mon propre outillage.
 
 **Corollaire, sur les formats où la sortie longue EST la spécificité** : elle est explicitement
 exclue des victimes de la décroissance, donc elle survit pendant que tout le reste disparaît.
@@ -914,24 +920,75 @@ Un marathonien recevait donc : lundi OFF, mardi OFF, mercredi OFF, jeudi 48', ve
 sa course. Ce n'est pas un affûtage, c'est une semaine de repos avec une sortie longue posée
 dessus. La cible de volume est tenue ; c'est la MONNAIE qui est fausse.
 
-**CE QUI EST FAIT — C29.** La décroissance d'affûtage (`planGenerator.ts`) réduit désormais les
-séances au lieu d'en supprimer une quand le retrait ferait passer la semaine sous 80 % de la
-fréquence du pic. Vérifié : **3 profils améliorés (natation débutant 20 % → 40 %), 0 dégradé.**
+**DÉCISION DU FONDATEUR (03/08/2026) : des jours plus COURTS, tous gardés.** R3.13 (l'affûtage
+pèse au plus 60 % du pic) n'est pas négociée ; c'est la MONNAIE de la réduction qui change.
 
-**CE QUI RESTE — et pourquoi ce n'est pas fermé.** Ma première hypothèse était que la décroissance
-était la cause ; elle est fausse, et le correctif l'a montré (aucun des 15 profils mesurés n'a
-bougé). Les jours OFF de l'affûtage viennent de **deux autres passes**, toutes deux adossées à
-R3.13 (« l'affûtage pèse au plus 60 % du pic ») : elles retirent des jours parce que réduire n'a
-jamais été essayé. Les corriger, c'est arbitrer entre R3.13 (règle de sécurité) et le bras
-fréquence — un choix de produit, pas une correction mécanique.
+**C29** — la décroissance réduit au lieu de supprimer sous le plancher de fréquence.
+**C29b** — en affûtage, une nage sous le plancher de séance n'est plus SUPPRIMÉE : le plancher
+(« sous X mètres, ça ne vaut pas le déplacement ») est une règle de semaine de CHARGE, alors
+qu'en affûtage une nage courte EST l'objectif. Trois blocs de suppression identiques traités
+d'un coup. Nageur débutant : **33 % → 67 %**.
+**C29c** — l'affûtage REND les jours qu'il a pris pour rien. Les deux passes de retrait ont
+raison au moment où elles s'exécutent, mais les passes suivantes réduisent encore : mesuré sur
+un semi, semaine d'affûtage livrée à **46 % du pic pour un plafond de 60 %, avec deux jours
+coupés**. 76 des 95 jours perdus portaient le nom de cette coupe. La réparation se fait au POINT
+FIXE (même forme que C28) et elle est **neutre en volume** : on redonne des jours, les minutes
+viennent des séances déjà là. Elle porte son propre filet — la semaine est vérifiée après
+rééquilibrage et la restitution se RÉTRACTE si R3.13 ne tient pas (première écriture : 35
+combinaisons sur 459 au-dessus du plafond).
 
-**Reste après C29 : 52 % des profils sous 80 %, médiane 75 %.**
+**Résultat : 68 % → 30 % des profils sous 80 %, médiane 75 % → 83 %.** La sortie longue baisse
+avec (semi : 91' → 81').
+
+**CE QUI RESTE.** 30 % des profils restent sous le plancher de fréquence : ce sont ceux où le
+rééquilibrage ne peut pas se payer sans franchir R3.13, et la rétractation joue. Fermer
+complètement demanderait de descendre les planchers de step en affûtage — un autre arbitrage.
 
 ```verify
 id: O-19
 quoi: la fréquence d'affûtage face au plancher de 80 % que Bosquet/Mujika déclarent
 attendu: /sous 80 % : \d+/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const iso=(d)=>new Date(Date.now()+d*864e5).toISOString().slice(0,10);const B={intent:'competition',dispo:'quotidienne',shift_ok:'non',doubles:'non',off_days:'non',sex:'H',sleep:'moyen',life_load:'normale',activity:'actif',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',weight_lever:'non',age:'35',weight:'75',height:'178'};const R={run:{pace_known:'oui',pace:'4:40',terrain:'plat'},bike:{ftp_known:'oui',ftp:'240',terrain:'plat'}};const F={run:['10k','semi','marathon'],bike:['cyclo']};let n=0,sous=0;for(const sp of Object.keys(F))for(const f of F[sp])for(const lv of ['debutant','inter','avance']){let p;try{p=E.buildPlan(sp,Object.assign({},B,{level:lv,history:lv==='debutant'?'reprise':'confirme',format:f,vol_max:'10',vol_recent:'6',sessions_max:'6',race_date:iso(140)},R[sp]));}catch(e){continue;}const nb=(w)=>w.days.filter(d=>d.sessions.some(s=>s.d!=='rs'&&(s.min||0)>0&&!s.race)).length;const pk=p.weeks.filter(w=>w.phase.id==='peak'&&!w.isRecup),tp=p.weeks.filter(w=>w.phase.id==='taper');if(!pk.length||!tp.length)continue;const np=Math.max(...pk.map(nb));if(!np)continue;n++;if(Math.min(...tp.map(nb))/np<0.8)sous++;}console.log('profils : '+n);console.log('sous 80 % : '+sous);"
+```
+
+### O-20 · En trail, un DÉBUTANT reçoit un pic plus lourd qu'un INTER — et le banc ne le voit qu'un jour sur deux · ⏳ **OUVERT**
+
+Trouvé en passant les gates après le lot O-19. `audit:invariants` **I13** (« monotonie du niveau :
+plus l'athlète est fort, plus la charge est élevée ») est **rouge**, et il l'était déjà avant ce
+lot — vérifié en le rejouant contre le moteur committé.
+
+**Mesuré** (profil du banc, `history: confirme` fixe, seul `level` varie) :
+
+| niveau | pic hebdomadaire livré | semaine |
+|---|---|---|
+| débutant | **575 min** | S41 |
+| inter | 547 min | S38 |
+| avancé | 547 min | S38 |
+
+Le détail des deux semaines montre que ce n'est pas un écart de gabarit mais de RÉPARTITION :
+le débutant reçoit « Longue trail 180' + Back-to-back 108' », l'inter « 167' + 69' ». Et l'inter
+n'atteint pas son propre volume déclaré (547 min livrés pour 10 h annoncées).
+
+**LE BANC BASCULE AVEC LE CALENDRIER, ET C'EST LA MOITIÉ LA PLUS GÊNANTE.** `BASE.race_date` est
+figée au 2027-06-13, mais la LONGUEUR du plan se compte depuis aujourd'hui : l'horizon raccourcit
+d'une semaine tous les sept jours, et l'allocation de phases bascule avec lui. La CI est **verte
+sur le dernier commit** (exécutée le 02/08) et le même code est **rouge en local** le 03/08.
+
+Balayé sur 21 horizons (12 à 52 semaines) × 6 sports : **13 échecs sur 114 combinaisons, TOUS en
+trail.** Le défaut est donc réel et systémique côté trail ; c'est l'échantillonnage à un seul
+horizon qui le rend intermittent.
+
+**Quatrième instrument de ce dépôt à dépendre de la date**, après le banc R14 (R20.7), mon
+balayage de fréquence de C29 et l'assertion « le pourquoi est visible » de `smoke-r4` (qui
+supposait que le jour courant portait une séance — un jour sur trois est un jour de repos). Les
+deux derniers sont corrigés ; celui-ci demande de traiter le défaut trail AVANT de rendre le
+banc déterministe, sinon on fige la dette au lieu de la traiter (leçon R20.6).
+
+```verify
+id: O-20
+quoi: la monotonie du niveau en trail, balayée sur tous les horizons plutôt qu'un seul
+attendu: /trail : \d+ horizons? non monotones?/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const B={intent:'competition',history:'confirme',injury:'aucune',dispo:'partielle',doubles:'parfois',off_days:'non',sleep:'moyen',life_load:'normale',age:'38',weight:'79',sex:'H',weight_lever:'non',sessions_max:'7',vol_max:'10',vol_recent:'5',race_distance_km:'45',race_dplus_m:'2200',race_technicity:'mixte',race_night:'non',train_dplus_access:'collines',poles:'oui',vam_known:'non',pace_known:'oui',pace:'4:50'};const mx=(p)=>Math.max(...p.weeks.map(w=>w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0)));let ko=0;for(let sem=12;sem<=52;sem+=2){const rd=new Date(Date.now()+sem*7*864e5).toISOString().slice(0,10);let v=[];try{for(const lv of ['debutant','inter','avance'])v.push(mx(E.buildPlan('trail',Object.assign({},B,{level:lv,race_date:rd}))));}catch(e){continue;}if(!(v[0]<=v[1]&&v[1]<=v[2]))ko++;}console.log('trail : '+ko+' horizons non monotones');"
 ```
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)

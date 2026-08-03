@@ -760,6 +760,32 @@ Gardes **P11-A à P11-F** au banc `audit:r14.1`, qui assertent les DEUX moitiés
 disparue ET l'entraîné intact — **vérifiées rouges** (3 sur 6) contre le moteur d'avant P11.
 **22 gates verts, E2E 14/14, golden 900 inchangé** — la projection ne touche aucune séance.
 
+**C29b/C29c livrés — l'affûtage garde ses jours et les raccourcit** (décision du fondateur,
+03/08/2026, voir ARCHITECTURE.md « C29b / C29c ») : l'affûtage réduit le VOLUME, pas la
+FRÉQUENCE — R3.13 n'est pas négociée, c'est la MONNAIE de la réduction qui change. **Trois
+hypothèses, deux fausses, chacune réfutée par la mesure** : la décroissance (C29, aucun des 15
+profils mesurés n'a bougé) ; le plancher de séance piscine (**C29b**, vrai mais partiel — nageur
+débutant 33 % → 67 %, et mon premier `grep` ne voyait qu'un des TROIS blocs de suppression
+identiques) ; les deux passes R3.13 (**C29c**, 76 des 95 jours perdus). Ces passes ont raison au
+moment où elles s'exécutent — puis les suivantes réduisent encore, et le jour a été sacrifié pour
+rien : semaine d'affûtage livrée à **46 % du pic pour un plafond de 60 %, deux jours coupés**.
+Forme exacte de C28. On rend donc les jours **au point fixe**, **neutre en volume** (on redonne
+des JOURS, les minutes viennent des séances déjà là), avec un filet qui **se rétracte** si R3.13
+ne tient plus — ma première écriture mettait 35 combinaisons sur 459 au-dessus du plafond.
+**68 % → 30 % des profils sous le plancher de fréquence, médiane 75 % → 83 %**, sortie longue en
+baisse (semi 91' → 81'). Reste 30 % là où le rééquilibrage ne peut pas se payer — suivi en O-19.
+**Trois instruments de plus démasqués comme dépendants de la DATE** (famille R20.7) : mon propre
+balayage de fréquence (la course est passée du dimanche au lundi en franchissant minuit — la
+médiane est tombée de 75 % à 0 %, et **les chiffres que j'avais publiés dans O-19 étaient faux**,
+corrigés) ; l'assertion `smoke-r4` « le pourquoi est visible » qui supposait que le jour courant
+portait une séance (un tiers sont des jours de repos) ; et **`audit:invariants` I13**, vert en CI
+le 02/08 et rouge en local le 03/08 à code identique. Balayé sur 21 horizons × 6 sports :
+**13 échecs sur 114, tous en trail** — un débutant reçoit un pic de 575 min quand un inter en
+reçoit 547. Enregistré en **O-20**, non traité : rendre le banc déterministe avant d'avoir
+corrigé le défaut figerait la dette (leçon R20.6).
+**21 gates verts sur 22** (`audit:invariants` rouge sur I13/O-20, pré-existant et indépendant de
+ce lot — vérifié contre le moteur committé), **E2E 15/15, golden 900 recapturé, registre 19/19.**
+
 **C28/C29 + U11–U13 + D1/D2 livrés — le lot des trois relectures** (coach · développeur · client,
 voir ARCHITECTURE.md « C28 / C29 / U11–U13 ») : traversée du produit sous trois regards, chacun
 mesurant ce qu'aucun des 22 gates ne regarde — ils vérifient tous ce que le moteur PRODUIT,
