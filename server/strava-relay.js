@@ -23,7 +23,13 @@
 
 const STRAVA_AUTH = "https://www.strava.com/oauth/authorize";
 const STRAVA_TOKEN = "https://www.strava.com/oauth/token";
-const SCOPE = "activity:read_all"; // lecture seule — on n'écrit jamais sur Strava
+// O-22 — `profile:read_all` s'ajoute pour lire la FTP que l'athlète a DÉCLARÉE dans son
+// profil Strava. C'est la source la plus fiable : un chiffre qu'il a posé lui-même, le plus
+// souvent issu d'un vrai test — là où l'estimation depuis les activités s'est révélée fausse
+// de 18 % sur le premier compte réel branché (188 W annoncés pour 230 déclarés).
+// Les deux périmètres restent en LECTURE SEULE : on n'écrit jamais sur Strava, et on ne
+// demande ni les activités privées d'autrui, ni le moindre droit d'écriture.
+const SCOPE = "activity:read_all,profile:read_all";
 
 function allowedOrigin(env, origin) {
   return String(env.APP_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean).includes(origin);
