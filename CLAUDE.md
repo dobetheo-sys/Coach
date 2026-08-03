@@ -760,6 +760,25 @@ Gardes **P11-A à P11-F** au banc `audit:r14.1`, qui assertent les DEUX moitiés
 disparue ET l'entraîné intact — **vérifiées rouges** (3 sur 6) contre le moteur d'avant P11.
 **22 gates verts, E2E 14/14, golden 900 inchangé** — la projection ne touche aucune séance.
 
+**U14 (préalable) livré — un défaut tacite va vers la prudence, et il est dit** (voir
+ARCHITECTURE.md « U14 ») : avant de laisser sauter une question, il faut savoir ce que vaut son
+absence. Mesuré : un plan construit SANS réponse à « ta disponibilité » était identique au
+caractère près à `dispo: "quotidienne"` — **la valeur la plus permissive de son domaine**. Sauter
+la question donnait le plan de quelqu'un qui peut s'entraîner tous les jours, et rien ne le
+disait. Le repli devient **`partielle`** (médiane du domaine) : un défaut se choisit dans le sens
+de la sécurité, pas dans celui de la commodité de code. `dispo` et `doubles` n'avaient en outre
+**aucun `fallback` déclaré** — leur repli n'était donc pas journalisé, alors que c'est la seule
+raison d'être de ce champ (R11.2). Ma suspicion de départ était fausse et c'est dit : les replis
+SONT journalisés, comme décisions `R11-defaut-*` ; seules ces deux clés manquaient.
+Blast radius isolé : golden **889 écarts sur 900**, venant **entièrement** de la ligne de
+journalisation `doubles` (le profil de base ne renseigne pas cette clé) — le changement de défaut
+`dispo` ne touche AUCUN plan du golden, tous le déclarent. Garde `U14` au banc v6, **vérifiée
+rouge** (4 échecs). Reste du chantier : réordonner le questionnaire et offrir « générer
+maintenant » dès le socle complet — socle incompressible : format + date, les trois drapeaux
+médicaux, l'âge, et volume/séances/volume récent.
+**22 gates verts sur 23** (`audit:invariants` rouge sur I13/O-20), **E2E 15/15, golden 900
+recapturé, registre 19/19.**
+
 **C29b/C29c livrés — l'affûtage garde ses jours et les raccourcit** (décision du fondateur,
 03/08/2026, voir ARCHITECTURE.md « C29b / C29c ») : l'affûtage réduit le VOLUME, pas la
 FRÉQUENCE — R3.13 n'est pas négociée, c'est la MONNAIE de la réduction qui change. **Trois

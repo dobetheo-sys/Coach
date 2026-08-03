@@ -482,7 +482,18 @@ function applyPeakSignature(r: ReasonedPlan, days: GenDay[]): void {
  * ordinaire.
  */
 function applyAvailability(r: ReasonedPlan, days: GenDay[]): void {
-  const dispo = String(r.profile.dispo || "quotidienne");
+  // U14 — LE DÉFAUT TACITE DE `dispo` ÉTAIT LE PLUS PERMISSIF DE SON DOMAINE.
+  //
+  // Mesuré en préparant le questionnaire court : un plan construit SANS réponse à « ta
+  // disponibilité » est identique, au caractère près, à un plan `dispo: "quotidienne"` — la
+  // valeur qui autorise le plus de jours d'entraînement. Quelqu'un qui saute la question
+  // recevait donc le plan de quelqu'un qui peut s'entraîner tous les jours.
+  //
+  // Un défaut se choisit dans le sens de la sécurité, pas dans celui de la commodité de code.
+  // `partielle` est la valeur médiane du domaine et celle qu'un inconnu a le plus de chances de
+  // vivre. Et il est DÉCLARÉ dans le schéma (`fallback`), donc journalisé : R11.2 — « un défaut
+  // tacite est un mensonge par omission ».
+  const dispo = String(r.profile.dispo || "partielle");
   // « Week-end surtout » ne veut pas dire « uniquement le week-end » : deux jours de week-end
   // plus deux créneaux de semaine, c'est ce que fait réellement quelqu'un qui répond ça. À
   // trois jours, le plan perdait un stimulus entier (la VO2 en swimrun, le travail de côte en

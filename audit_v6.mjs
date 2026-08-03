@@ -560,6 +560,32 @@ test("O17", "capacité > historique de charge : le moteur AVERTIT, et ne bride p
 // préparation pour ne pas blesser) et il montrait qu'il ne lisait pas la réponse saisie.
 //
 // Second volet : ne pas proposer « un format plus court » à qui a déjà le plus court du sport.
+// U14 — LE DÉFAUT D'UNE RÉPONSE ABSENTE VA VERS LA PRUDENCE, ET IL EST DIT.
+//
+// Mesuré en préparant le questionnaire court : un plan construit SANS réponse à « ta
+// disponibilité » était identique, au caractère près, à `dispo: "quotidienne"` — la valeur qui
+// autorise le PLUS de jours d'entraînement. Sauter la question donnait donc le plan de
+// quelqu'un qui peut s'entraîner tous les jours, et rien ne le disait. Un défaut se choisit
+// dans le sens de la sécurité (priorité n°2) et R11.2 exige qu'il soit journalisé : « un défaut
+// tacite est un mensonge par omission ».
+test("U14", "un défaut tacite va vers la prudence, et il est journalisé", "pass", () => {
+  const bad = [];
+  const base = { format: "10k", vol_max: "6", sessions_max: "5", vol_recent: "3",
+    med_pain: "non", med_dizzy: "non", med_treat: "non", age: "38", sex: "H", weight: "75" };
+  const emp = (a) => JSON.stringify(E.buildPlan("run", a).weeks
+    .map((w) => [w.vol, w.days.map((d) => d.sessions.map((x) => [x.d, x.name, x.min]))]));
+  const sans = emp(base);
+  if (sans === emp({ ...base, dispo: "quotidienne" }))
+    bad.push("l'absence de `dispo` équivaut encore à « quotidienne » — le plus permissif du domaine");
+  if (sans !== emp({ ...base, dispo: "partielle" }))
+    bad.push("l'absence de `dispo` n'équivaut pas au défaut DÉCLARÉ (« partielle »)");
+  const dec = ((E.buildPlan("run", base)._v2 || {}).decisions || [])
+    .filter((d) => /^R11-defaut-/.test(d.id)).map((d) => d.id.replace("R11-defaut-", ""));
+  for (const k of ["dispo", "doubles", "intent", "level", "history"])
+    if (!dec.includes(k)) bad.push("défaut non journalisé : " + k);
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "défaut prudent (« partielle ») et journalisé : " + dec.join(", ") };
+});
+
 test("U9", "le refus « course trop proche » ne parle jamais d'une autre épreuve que la sienne", "pass", () => {
   const bad = [];
   const course = new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);

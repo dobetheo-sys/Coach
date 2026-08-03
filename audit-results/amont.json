@@ -130,8 +130,8 @@
   "sport": "tri",
   "key": "dispo",
   "mut": "chaîne vide",
-  "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 11.7→12.1h · sem 45→45 · séances 227→260",
+  "verdict": "sans effet",
+  "delta": "pic 11.7→11.7h · sem 45→45 · séances 227→227",
   "err": ""
  },
  {
@@ -139,8 +139,8 @@
   "sport": "tri",
   "key": "dispo",
   "mut": "clé absente",
-  "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 11.7→12.1h · sem 45→45 · séances 227→260",
+  "verdict": "sans effet",
+  "delta": "pic 11.7→11.7h · sem 45→45 · séances 227→227",
   "err": ""
  },
  {
@@ -1246,8 +1246,8 @@
   "sport": "bike",
   "key": "dispo",
   "mut": "chaîne vide",
-  "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 12.8→12.9h · sem 45→45 · séances 226→260",
+  "verdict": "sans effet",
+  "delta": "pic 12.8→12.8h · sem 45→45 · séances 226→226",
   "err": ""
  },
  {
@@ -1255,8 +1255,8 @@
   "sport": "bike",
   "key": "dispo",
   "mut": "clé absente",
-  "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 12.8→12.9h · sem 45→45 · séances 226→260",
+  "verdict": "sans effet",
+  "delta": "pic 12.8→12.8h · sem 45→45 · séances 226→226",
   "err": ""
  },
  {
@@ -1750,8 +1750,8 @@
   "sport": "swim",
   "key": "dispo",
   "mut": "chaîne vide",
-  "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 3.3→3.7h · sem 45→45 · séances 225→259",
+  "verdict": "sans effet",
+  "delta": "pic 3.3→3.3h · sem 45→45 · séances 225→225",
   "err": ""
  },
  {
@@ -1759,8 +1759,8 @@
   "sport": "swim",
   "key": "dispo",
   "mut": "clé absente",
-  "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 3.3→3.7h · sem 45→45 · séances 225→259",
+  "verdict": "sans effet",
+  "delta": "pic 3.3→3.3h · sem 45→45 · séances 225→225",
   "err": ""
  },
  {
@@ -2254,8 +2254,8 @@
   "sport": "duathlon",
   "key": "dispo",
   "mut": "chaîne vide",
-  "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 8.8→8.9h · sem 45→45 · séances 227→260",
+  "verdict": "sans effet",
+  "delta": "pic 8.8→8.8h · sem 45→45 · séances 227→227",
   "err": ""
  },
  {
@@ -2263,8 +2263,8 @@
   "sport": "duathlon",
   "key": "dispo",
   "mut": "clé absente",
-  "verdict": "DÉRIVE ANNONCÉE",
-  "delta": "pic 8.8→8.9h · sem 45→45 · séances 227→260",
+  "verdict": "sans effet",
+  "delta": "pic 8.8→8.8h · sem 45→45 · séances 227→227",
   "err": ""
  },
  {

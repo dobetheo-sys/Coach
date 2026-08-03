@@ -2905,3 +2905,52 @@ ne contrôle pas décide de son verdict ») :
   un pic de 575 min quand un inter en reçoit 547. Défaut réel et systémique côté trail, rendu
   intermittent par un échantillonnage à un seul horizon. Enregistré en `O-20`, **non traité** :
   rendre le banc déterministe avant d'avoir corrigé le défaut figerait la dette (leçon R20.6).
+
+## U14 (préalable) — un défaut tacite va vers la prudence, et il est dit
+
+Premier morceau du chantier « un plan en 5 questions, puis affiner ». Avant de laisser sauter
+une question, il faut savoir ce que vaut son absence. Mesuré, et il y avait un défaut.
+
+### Ce que l'absence d'une réponse produisait
+
+Un plan construit **sans** réponse à « ta disponibilité » était identique, au caractère près, à
+un plan `dispo: "quotidienne"` — **la valeur qui autorise le plus de jours d'entraînement de tout
+son domaine**. Quelqu'un qui saute la question recevait donc le plan de quelqu'un qui peut
+s'entraîner tous les jours, et rien ne le disait.
+
+Un défaut se choisit dans le sens de la sécurité (priorité n°2), pas dans celui de la commodité
+de code — `|| "quotidienne"` était la valeur qui rendait la ligne la plus courte à écrire.
+Le repli devient **`partielle`**, la valeur médiane du domaine.
+
+### Et il est journalisé
+
+`dispo` et `doubles` n'avaient **aucun `fallback` déclaré** dans `ANSWER_SCHEMA` : leur repli
+n'était donc pas journalisé, alors que la seule raison d'être de ce champ est justement le
+journal (R11.2 — « un défaut tacite est un mensonge par omission »). Les deux sont déclarés ;
+leur repli apparaît désormais dans « Les décisions du moteur » (`R11-defaut-dispo`,
+`R11-defaut-doubles`), à côté d'`intent`, `level` et `history` qui l'étaient déjà.
+
+**Vérifié au passage, et ma suspicion était fausse** : je croyais que les replis n'étaient pas
+journalisés du tout. Ils le sont — comme décisions `R11-defaut-*`, pas comme avertissements.
+R11.2 tenait ; ce sont seulement les deux clés non déclarées qui manquaient.
+
+### Blast radius, mesuré et isolé
+
+Le golden est passé à **889 écarts sur 900** — et l'isolation a montré qu'ils venaient
+**entièrement** de la ligne de journalisation `doubles` (le profil de base du golden ne renseigne
+pas cette clé, chaque profil gagne donc une décision). Le changement de défaut `dispo`, lui, ne
+touche **aucun** plan du golden : tous ses profils déclarent `dispo`. Pas une séance, pas une
+minute — seulement une ligne d'explication de plus.
+
+### La garde
+
+`U14` au banc v6, **vérifiée rouge** contre le moteur d'avant (4 échecs : l'équivalence avec
+« quotidienne », la non-équivalence avec le défaut déclaré, et les deux clés non journalisées).
+Elle assertе les deux moitiés : le défaut va vers la prudence, ET il est dit.
+
+**Ce qui reste du chantier U14** : réordonner le questionnaire (les réponses essentielles
+d'abord), relâcher la validation de l'écran « capacité » à ses trois réponses structurantes, et
+offrir « ⚡ Générer mon plan maintenant » dès que le socle est complet. Le socle ne peut pas
+descendre sous : format + date, les trois drapeaux médicaux, l'âge, et le trio
+volume/séances/volume récent — ce sont les réponses dont l'absence coûte une garde de sécurité
+(drapeau médical, borne d'âge et mineur × format, rampe R10).
