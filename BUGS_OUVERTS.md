@@ -1242,6 +1242,73 @@ attendu: /inversions d'allure : 2$/m
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(pace,vr)=>({intent:'competition',format:'10k',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',level:'inter',history:'confirme',injury:'aucune',sessions_max:'4',vol_max:'6',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',pace,vol_recent:String(vr),terrain:'route'});const tot=(p)=>p.weeks.reduce((t,w)=>t+w.days.reduce((a,d)=>a+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0),0);let ko=0;for(const vr of [0,5]){const rapide=tot(E.buildPlan('run',P('5:45',vr))),lent=tot(E.buildPlan('run',P('7:00',vr)));if(rapide<lent)ko++;}console.log(\"inversions d'allure : \"+ko);"
 ```
 
+
+### O-22 · L'import Strava appelle « FTP » la puissance d'une sortie entière · ⏳ **OUVERT**
+
+Trouvé par le fondateur le 03/08/2026, en branchant son propre compte — **premier défaut du dépôt
+remonté par une donnée réelle** plutôt que par un banc.
+
+**Mesuré sur son compte** : l'import annonce **188 W** quand sa FTP déclarée sur Strava est
+**230 W** — 18 % en dessous. Et ce n'est pas cosmétique : la valeur importée est PROMUE en
+référence vivante (`tab-profile.js:31` pose `S.answers.ftp` et `ftp_known = "oui"`), donc **toutes
+les zones vélo du plan sont calculées dessus**.
+
+**La cause est une erreur de grandeur**, `steps.js:498` :
+
+```js
+const best = powRides.reduce((m, a) => Math.max(m, a.weighted_average_watts || a.average_watts || 0), 0);
+const ftp  = Math.round(best * 0.95);
+```
+
+Le coefficient 0,95 est la règle classique « FTP ≈ 95 % de la meilleure puissance sur **20
+MINUTES** », c'est-à-dire d'un test maximal de vingt minutes. Il est ici appliqué à la puissance
+NORMALISÉE d'une **sortie entière** — qui peut durer trois heures en endurance. 188 ÷ 0,95 = 198 W
+= la meilleure NP de sortie du fondateur, sur une sortie de 1 h 17.
+
+Le libellé entretient la confusion : `source: "Strava (meilleure sortie ≥20min)"` se lit comme
+« meilleure puissance sur 20 min » alors qu'il signifie « meilleure sortie de plus de 20 min ».
+Même famille que les six mesures démasquées en R20 : **une grandeur nommée pour une grandeur
+voisine**.
+
+**LE SENS DE L'ERREUR CHANGE AVEC L'ATHLÈTE, ET C'EST CE QUI LE REND DANGEREUX.**
+Pour qui roule surtout en endurance, l'estimation est BASSE : zones trop faciles, sous-charge —
+désagréable, pas risqué. Pour qui a fait une seule sortie courte et très dure dans ses 50
+dernières activités, elle est HAUTE : le plan prescrit alors des watts que l'athlète ne tient
+pas, sur toutes ses séances de vélo. C'est ce second cas qui heurte les priorités 1 et 2 du
+manifeste, et rien ne le distingue du premier aujourd'hui.
+
+**TROIS ISSUES, À ARBITRER.**
+
+1. **Ne plus estimer du tout** et le DIRE. Le message existe déjà pour le cas sans capteur
+   (« FTP non estimée : pas de capteur de puissance »). L'étendre : une sortie entière ne dit
+   pas la FTP. Honnête, gratuit, et cohérent avec P7/P8 (refuser d'estimer en disant pourquoi).
+2. **Estimer pour de vrai** : lire les flux de puissance (`/activities/{id}/streams`) et chercher
+   la meilleure moyenne glissante sur 20 min. C'est la grandeur que le 0,95 attend. Coût : un
+   appel API par activité, donc un quota et une latence.
+3. **Lire la FTP DÉCLARÉE sur Strava** (`/athlete` rend `ftp`). Demande le périmètre
+   `profile:read_all` en plus d'`activity:read_all`, donc une ré-autorisation de tous les
+   comptes déjà connectés. À noter : c'est une valeur DÉCLARÉE — R14.1 a payé cher la leçon
+   « un chiffre auto-déclaré ne pilote rien » —, mais contrairement à un adjectif, elle vient
+   le plus souvent d'un vrai test, et l'athlète peut la corriger.
+
+**Recommandation : 1 immédiatement, puis 2.** Ne pas afficher un chiffre faux coûte moins qu'un
+chiffre faux qui pilote des zones ; et l'issue 2 rend la grandeur que le coefficient attend.
+
+**Contournement pour l'athlète, aujourd'hui** : saisir la FTP à la main au Profil — la saisie
+prime sur l'import et régénère le plan.
+
+Les deux autres références importées portent le même soupçon et n'ont PAS été mesurées :
+`thrPace` prend la course la plus rapide EN MOYENNE (le code le dit lui-même : « estimation
+basse »), `css` la nage la plus rapide en moyenne. Leur libellé est plus honnête, leur méthode
+reste une moyenne de sortie.
+
+```verify
+id: O-22
+quoi: l'import Strava dérive la FTP de la puissance d'une SORTIE, pas d'un effort de 20 min
+attendu: /best \* 0\.95|meilleure sortie ≥20min/
+cmd: grep -n "0.95\|meilleure sortie" endurabuild/js/ui/steps.js
+```
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas
