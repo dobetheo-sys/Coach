@@ -760,6 +760,55 @@ Gardes **P11-A à P11-F** au banc `audit:r14.1`, qui assertent les DEUX moitiés
 disparue ET l'entraîné intact — **vérifiées rouges** (3 sur 6) contre le moteur d'avant P11.
 **22 gates verts, E2E 14/14, golden 900 inchangé** — la projection ne touche aucune séance.
 
+**A-5 · A-6 · O-19 livrés — les trois angles morts de la mesure** (audit complet du 03/08/2026,
+voir ARCHITECTURE.md et `BUGS_OUVERTS.md` §3) :
+
+**A-5 — le journal de projection existe enfin.** Le registre l'appelait « l'angle mort le plus
+profond du prédicteur » : les bandes `h`, `G_plafond`, `k_structure` de P2bis et le régime P11
+sont des heuristiques que **rien ne valide**. C'est le seul chantier du dépôt dont le coût
+AUGMENTE avec l'attente — tous les autres défauts restent aussi chers demain, celui-ci détruit
+chaque jour une donnée qui n'existera plus jamais. `endurabuild/js/projection-log.js` écrit **une
+entrée par semaine ISO** (la projection ne bouge pas d'un jour à l'autre : l'adhérence est une
+fenêtre glissante de six semaines, P1) portant de quoi REFAIRE le calcul sans le code de
+l'époque : horizon, références mesurées, `gainPct`, `gainBand`, adhérence, confiance, temps
+annoncés, et le MOTIF quand le moteur refuse de projeter. `noteRaceResult()` referme la boucle au
+jour J en attachant le temps réel **à son horizon d'origine** — `raceResult.predicted` ne
+contenait que la prédiction RECALCULÉE le jour même, qui ne dit rien de ce qui était annoncé
+quatre mois plus tôt. **Il n'est relu par AUCUNE partie du moteur, et c'est sa garde principale** :
+un journal qui rebouclerait serait une seconde source de vérité (R11.1/R20.5/U9) et, pire, une
+boucle qui se confirme elle-même. `smoke-projlog.mjs` (**16ᵉ suite E2E**) l'asserte sur ses deux
+moitiés, **vérifiée rouge** (7 critères sur 11). La calibration reste HUMAINE et hors ligne : P11
+a montré qu'un cas unique ne calibre rien (HERITAGE).
+
+**A-6 — ce n'était pas de l'hygiène, c'était une échéance datée.** Simulé le temps qui passe :
+`banc_grand_public` et `bench_r13` MOURAIENT dès **+90 jours**, `banc_invariants` à **+200** — sur
+une exception non rattrapée (`ENTREE_INVALIDE : au moins 22 semaines avant la course`), donc un
+gate rouge avec une trace de pile à la place d'un verdict, et `banc_invariants` avait **neuf
+semaines** devant lui. Point unique `bench-dates.cjs` : `courseDans(N)` rend le dimanche situé
+exactement N semaines entières après le lundi courant — jour fixe ET horizon fixe, les deux
+mécanismes réglés d'un coup. Cinq bancs ancrés, **vérifiés verts à +400 jours**, contre-preuve
+faite. **Le golden garde ses dates ABSOLUES, délibérément** : mesuré 0 écart à +200 jours — un
+golden doit être REPRODUCTIBLE, pas suivre le calendrier ; l'application mécanique l'aurait fait
+dériver chaque semaine. Trouvé en chemin : la prose d'`audit_v7` annonçait depuis R15.1 « elles
+sont désormais RELATIVES » alors que **quatre dates absolues subsistaient**.
+
+**O-19 — la prose décrivait une correction que la commande n'avait jamais reçue.** L'entrée
+annonce depuis R20.7 que « la semaine de course est exclue » et que « la date est ancrée » ; sa
+commande ne faisait ni l'un ni l'autre et renvoyait **12/12** contre 30 % annoncés. Balayée sur
+les sept jours, à moteur inchangé : de **2/12 (82 %) à 12/12 (0 %)** selon le seul jour de la
+course. Le 0 % est l'artefact que R20.6 avait retiré du banc d'invariants (I6/I8/I12 : « la course
+objectif n'est pas une séance d'entraînement »), jamais rejoué ici — **sixième occurrence de la
+famille R20.7**. Ma première correction était insuffisante et c'est dit : exclure « la semaine qui
+porte la course » supprime trois profils légitimes (sur un 10 km, l'unique semaine d'affûtage EST
+la semaine de course, sept jours terminés par l'épreuve), et normaliser par jour disponible ne
+suffit pas non plus. Bosquet compte des séances PAR SEMAINE : la mesure DÉCLARE son domaine (≥ 5
+jours) et s'ancre au lundi. **3/12 sous 80 %, moyenne 80 %, identique les sept jours.**
+
+**Et 2 motifs de garde sur 20 n'en étaient pas** : `O-9` acceptait le VERT ET LE ROUGE (écrit
+ainsi tant qu'O-20 rendait le banc rouge), `O-21` — le mien, écrit le matin même avec le défaut
+que j'auditais — acceptait n'importe quel nombre. Les deux épinglés sur la valeur mesurée.
+**23 gates verts, E2E 16/16, golden 900 inchangé, registre 20/20.**
+
 **I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
 ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en
 trail, un DÉBUTANT recevait un pic de **575 min** contre **547** pour un INTER, et sur le D+ aussi
