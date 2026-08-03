@@ -384,8 +384,8 @@ sous une documentation qui le disait vert. **20 invariants × 54 configurations,
 
 ```verify
 id: O-9
-quoi: le banc d'invariants RAPPORTE ses 22 invariants et sort en erreur s'il en trouve un rouge (le vert lui-même est suivi par O-20)
-attendu: /(✓ les \d+ invariants tiennent|échec\(s\) d'invariant sur \d+ règles)/
+quoi: le banc d'invariants est VERT sur ses 22 invariants (le motif acceptait le vert ET le rouge tant qu'O-20 était ouvert — O-20 est fermé depuis I14b)
+attendu: /✓ les 22 invariants tiennent/
 cmd: npm run audit:invariants
 ```
 
@@ -940,15 +940,40 @@ combinaisons sur 459 au-dessus du plafond).
 **Résultat : 68 % → 30 % des profils sous 80 %, médiane 75 % → 83 %.** La sortie longue baisse
 avec (semi : 91' → 81').
 
-**CE QUI RESTE.** 30 % des profils restent sous le plancher de fréquence : ce sont ceux où le
-rééquilibrage ne peut pas se payer sans franchir R3.13, et la rétractation joue. Fermer
-complètement demanderait de descendre les planchers de step en affûtage — un autre arbitrage.
+**CE QUI RESTE : 3 profils sur 12 (25 %), moyenne 80 %.** Ce sont ceux où le rééquilibrage ne
+peut pas se payer sans franchir R3.13, et la rétractation joue. Fermer complètement demanderait
+de descendre les planchers de step en affûtage — un autre arbitrage.
+
+**ET LA COMMANDE DE VÉRIFICATION, ELLE, MENTAIT — TROISIÈME INSTRUMENT DE CETTE ENTRÉE.**
+La prose ci-dessus annonce depuis R20.7 que « la semaine de course est exclue » et que « la date
+est ancrée sur un dimanche ». **La commande ne faisait ni l'un ni l'autre** : elle datait la
+course à `aujourd'hui + 140 jours` et prenait le MINIMUM sur toutes les semaines d'affûtage, y
+compris le moignon d'un jour qui porte la course et n'a, par conception (R13.4), aucun jour
+d'entraînement. Elle renvoyait donc **12/12**, contre 30 % annoncés. Balayée sur les sept jours de
+la semaine, à moteur inchangé :
+
+| jour de la course | lun | mar | mer | jeu | ven | sam | dim |
+|---|---|---|---|---|---|---|---|
+| sous 80 % | 12/12 | 12/12 | 12/12 | 12/12 | 5/12 | 2/12 | 2/12 |
+| moyenne | **0 %** | **0 %** | 41 % | 61 % | 77 % | 82 % | 82 % |
+
+C'est exactement ce que R20.6 a retiré du banc d'invariants (I6/I8/I12 : « la course objectif
+n'est pas une séance d'entraînement »), jamais rejoué sur cette mesure-ci.
+
+**Deux corrections d'instrument, et la première était insuffisante.** Exclure « la semaine qui
+porte la course » est trop grossier : sur un 10 km, l'unique semaine d'affûtage EST la semaine de
+course, elle fait sept jours et se termine par l'épreuve — l'exclure supprimait trois profils
+légitimes. Normaliser par jour DISPONIBLE ne suffit pas non plus (un moignon de deux jours dont le
+seul jour libre est un repos donne 0 %). Bosquet compte des séances **par semaine** : une semaine
+de un ou deux jours n'en est pas une. La mesure DÉCLARE donc son domaine — **au moins 5 jours
+disponibles** — et la date est **ancrée au lundi courant, en semaines entières** (recette R20.7).
+Vérifiée identique les sept jours : **3/12, moyenne 80 %**.
 
 ```verify
 id: O-19
 quoi: la fréquence d'affûtage face au plancher de 80 % que Bosquet/Mujika déclarent
-attendu: /sous 80 % : \d+/
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const iso=(d)=>new Date(Date.now()+d*864e5).toISOString().slice(0,10);const B={intent:'competition',dispo:'quotidienne',shift_ok:'non',doubles:'non',off_days:'non',sex:'H',sleep:'moyen',life_load:'normale',activity:'actif',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',weight_lever:'non',age:'35',weight:'75',height:'178'};const R={run:{pace_known:'oui',pace:'4:40',terrain:'plat'},bike:{ftp_known:'oui',ftp:'240',terrain:'plat'}};const F={run:['10k','semi','marathon'],bike:['cyclo']};let n=0,sous=0;for(const sp of Object.keys(F))for(const f of F[sp])for(const lv of ['debutant','inter','avance']){let p;try{p=E.buildPlan(sp,Object.assign({},B,{level:lv,history:lv==='debutant'?'reprise':'confirme',format:f,vol_max:'10',vol_recent:'6',sessions_max:'6',race_date:iso(140)},R[sp]));}catch(e){continue;}const nb=(w)=>w.days.filter(d=>d.sessions.some(s=>s.d!=='rs'&&(s.min||0)>0&&!s.race)).length;const pk=p.weeks.filter(w=>w.phase.id==='peak'&&!w.isRecup),tp=p.weeks.filter(w=>w.phase.id==='taper');if(!pk.length||!tp.length)continue;const np=Math.max(...pk.map(nb));if(!np)continue;n++;if(Math.min(...tp.map(nb))/np<0.8)sous++;}console.log('profils : '+n);console.log('sous 80 % : '+sous);"
+attendu: /sous 80 % : 3\/12/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const lun=new Date();lun.setUTCDate(lun.getUTCDate()-((lun.getUTCDay()+6)%7));const c=new Date(lun);c.setUTCDate(c.getUTCDate()+20*7-1);const iso=c.toISOString().slice(0,10);const B={intent:'competition',dispo:'quotidienne',shift_ok:'non',doubles:'non',off_days:'non',sex:'H',sleep:'moyen',life_load:'normale',activity:'actif',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',weight_lever:'non',age:'35',weight:'75',height:'178'};const R={run:{pace_known:'oui',pace:'4:40',terrain:'plat'},bike:{ftp_known:'oui',ftp:'240',terrain:'plat'}};const F={run:['10k','semi','marathon'],bike:['cyclo']};const nb=(w)=>w.days.filter(d=>d.sessions.some(s=>s.d!=='rs'&&(s.min||0)>0&&!s.race)).length;const dispo=(w)=>w.days.filter(d=>!d.sessions.some(s=>s.race)).length;let n=0,sous=0;for(const sp of Object.keys(F))for(const f of F[sp])for(const lv of ['debutant','inter','avance']){let p;try{p=E.buildPlan(sp,Object.assign({},B,{level:lv,history:lv==='debutant'?'reprise':'confirme',format:f,vol_max:'10',vol_recent:'6',sessions_max:'6',race_date:iso},R[sp]));}catch(e){continue;}const pk=p.weeks.filter(w=>w.phase.id==='peak'&&!w.isRecup&&dispo(w)>=5);const tp=p.weeks.filter(w=>w.phase.id==='taper'&&dispo(w)>=5);if(!pk.length||!tp.length)continue;const np=Math.max(...pk.map(nb));if(!np)continue;n++;if(Math.min(...tp.map(nb))/np<0.8)sous++;}console.log('profils : '+n);console.log('sous 80 % : '+sous+'/'+n);"
 ```
 
 ### O-20 · En trail, un DÉBUTANT reçoit un pic plus lourd qu'un INTER — et le banc ne le voit qu'un jour sur deux · ✅ **FERMÉ (I14b, 03/08/2026)**
@@ -1169,7 +1194,7 @@ instables (la rampe R10 fait légitimement baisser un plan à faible `vol_recent
 ```verify
 id: O-21
 quoi: à allure seuil plus rapide, le plan livré n'est pas plus petit (axe allure, cousin d'I13)
-attendu: /inversions? d'allure : \d+/
+attendu: /inversions d'allure : 2$/m
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(pace,vr)=>({intent:'competition',format:'10k',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',level:'inter',history:'confirme',injury:'aucune',sessions_max:'4',vol_max:'6',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',pace,vol_recent:String(vr),terrain:'route'});const tot=(p)=>p.weeks.reduce((t,w)=>t+w.days.reduce((a,d)=>a+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0),0);let ko=0;for(const vr of [0,5]){const rapide=tot(E.buildPlan('run',P('5:45',vr))),lent=tot(E.buildPlan('run',P('7:00',vr)));if(rapide<lent)ko++;}console.log(\"inversions d'allure : \"+ko);"
 ```
 
