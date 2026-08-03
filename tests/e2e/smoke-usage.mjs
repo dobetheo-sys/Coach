@@ -285,6 +285,59 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   await ctx.close();
 }
 
+// ── U14 — LE PLAN EST ATTEIGNABLE EN QUATRE ÉCRANS, ET LE SOCLE NE PEUT PAS MAIGRIR.
+//
+// Mesuré côté client avant le lot : 8 écrans, 30 gestes avant le premier plan — le moment où
+// l'on perd des gens. Les questions ne sont pas supprimées : elles passent APRÈS le moment où
+// le plan devient montrable, et ce qu'on ne répond pas prend un défaut prudent et journalisé.
+//
+// Ce critère garde les DEUX moitiés, et la seconde est celle qu'on oublierait : le socle
+// contient toujours les réponses dont l'absence coûte une garde de sécurité. Un « raccourci »
+// qui sauterait les drapeaux médicaux ou l'âge serait une régression, pas un progrès.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR", isMobile: true, hasTouch: true });
+  const page = await ctx.newPage();
+  await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+  await page.click('.sport-card[data-sport="run"]');
+  await page.waitForTimeout(250);
+  const REP2 = { intent: "competition", format: "10k", med_pain: "non", med_dizzy: "non", med_treat: "non",
+    sex: "H", sessions_max: "5", vol_max: "7", vol_recent: "3" };
+  let ecrans = 0, vuSocle = { medical: false, age: false, enveloppe: false };
+  for (let i = 0; i < 15; i++) {
+    ecrans++;
+    if (await page.locator('.opts[data-key="med_pain"]').count()) vuSocle.medical = true;
+    if (await page.locator('[data-input="age"]').count()) vuSocle.age = true;
+    if (await page.locator('.opts[data-key="vol_recent"]').count()) vuSocle.enveloppe = true;
+    await page.evaluate(async ({ r }) => {
+      const w = (m) => new Promise((x) => setTimeout(x, m));
+      for (const g of document.querySelectorAll(".opts[data-key]")) {
+        if (g.querySelector(".opt.sel")) continue;
+        const b = r[g.dataset.key] && g.querySelector('.opt[data-val="' + r[g.dataset.key] + '"]');
+        if (b) { b.click(); await w(20); }
+      }
+      const age = document.querySelector('[data-input="age"]');
+      if (age && !age.value) { age.value = "38"; age.dispatchEvent(new Event("input", { bubbles: true })); age.dispatchEvent(new Event("change", { bubbles: true })); }
+      const d = document.querySelector('[data-input="race_date"]');
+      if (d && !d.value) { d.value = new Date(Date.now() + 112 * 864e5).toISOString().slice(0, 10); d.dispatchEvent(new Event("input", { bubbles: true })); d.dispatchEvent(new Event("change", { bubbles: true })); }
+    }, { r: REP2 });
+    await page.waitForTimeout(200);
+    if (await page.locator("#genNowBtn").isVisible().catch(() => false)) { await page.click("#genNowBtn"); break; }
+    const n = page.locator("#nextBtn");
+    if (!(await n.count()) || !(await n.isEnabled())) break;
+    await n.click();
+    await page.waitForTimeout(150);
+  }
+  await page.waitForTimeout(1400);
+  ok(ecrans <= 5, "U14 — le plan est atteignable en " + ecrans + " écran(s) (≤ 5 attendu)");
+  ok(await page.evaluate(() => !!document.getElementById("ebTabbar")), "U14 — et c'est bien un plan qui s'affiche au bout");
+  for (const [cle, vu] of Object.entries(vuSocle))
+    ok(vu, "U14 — le socle contient toujours « " + cle + " » (une garde de sécurité en dépend)");
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 report();

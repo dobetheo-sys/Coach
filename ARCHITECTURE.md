@@ -2948,9 +2948,42 @@ minute — seulement une ligne d'explication de plus.
 « quotidienne », la non-équivalence avec le défaut déclaré, et les deux clés non journalisées).
 Elle assertе les deux moitiés : le défaut va vers la prudence, ET il est dit.
 
-**Ce qui reste du chantier U14** : réordonner le questionnaire (les réponses essentielles
-d'abord), relâcher la validation de l'écran « capacité » à ses trois réponses structurantes, et
-offrir « ⚡ Générer mon plan maintenant » dès que le socle est complet. Le socle ne peut pas
-descendre sous : format + date, les trois drapeaux médicaux, l'âge, et le trio
-volume/séances/volume récent — ce sont les réponses dont l'absence coûte une garde de sécurité
-(drapeau médical, borne d'âge et mineur × format, rampe R10).
+### Le chemin court, livré
+
+**8 écrans / 30 gestes → 4 écrans / 16 gestes**, mesuré par un robot qui ne répond QUE ce qu'il
+faut pour avancer.
+
+Trois pièces :
+
+1. **L'ordre met en tête ce dont l'absence coûte une garde de sécurité** — format + date, les
+   trois drapeaux médicaux, l'âge (bornes physiologiques, mineur × format R15.7-C) et le trio
+   volume/séances/volume récent (l'enveloppe et la rampe R10). Réordonné **par identifiant**
+   plutôt qu'en déplaçant les blocs : aucune fonction de rendu ne bouge d'une ligne, et un sport
+   auquel une étape manque n'a rien de spécial à faire.
+2. **La validation de l'écran « capacité » ne retient que ses trois réponses structurantes.** Les
+   cinq autres restent à l'écran, dans le même ordre : on ne retire pas une question, on cesse
+   d'en faire un péage.
+3. **« ⚡ Générer mon plan maintenant »** dès que le socle est complet. Le bloc est TOUJOURS émis
+   et sa visibilité suit les réponses (`refreshNav`) : calculé au seul moment du rendu, il
+   n'apparaissait qu'à l'écran SUIVANT celui qui complétait le socle — mesuré, **il coûtait un
+   écran de plus**. Un état qui dépend des réponses se rafraîchit quand les réponses changent,
+   pas quand la page se redessine.
+
+### Deux défauts trouvés en construisant
+
+- **Le champ « poids » n'avait ni `min` ni `max`** alors que le schéma déclare 25–250 : le
+  navigateur laissait saisir 10 kg et l'athlète récoltait un refus typé au lieu d'être empêché.
+  Les bornes viennent du schéma (R11.1).
+- **Quatre suites E2E codaient la SÉQUENCE des écrans en dur** et sont toutes tombées sur une
+  réorganisation légitime — alors qu'aucune ne mesure l'ordre : elles mesurent le CONTENU de
+  certains écrans. Un test qui code une séquence qu'il ne teste pas se casse à chaque
+  réorganisation. `traverserQuestionnaire()` (harness) répond à ce qui est **à l'écran**, quel
+  qu'il soit, avec un crochet `surEcran` pour les assertions qui visent un écran particulier —
+  accrochées à son contenu, plus à son rang.
+
+### La garde
+
+`U14` dans `smoke-usage` : le plan est atteignable en **≤ 5 écrans**, c'en est bien un au bout,
+**et le socle contient toujours** les drapeaux médicaux, l'âge et l'enveloppe. La seconde moitié
+est celle qu'on oublierait : un « raccourci » qui sauterait une garde de sécurité serait une
+régression, pas un progrès.

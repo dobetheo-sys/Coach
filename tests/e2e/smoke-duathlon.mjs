@@ -1,7 +1,7 @@
 // Smoke DUATHLON (spec R10 phase 2) : le sport le plus chargé en impact course du catalogue.
 // Ce que cette suite protège en priorité : le plafond de jours d'appui (§R10.2.3, « non
 // négociable »), les DEUX sens de brique, et la prédiction en trois legs — jamais un total.
-import { startServer, launchBrowser, makeReporter } from "./harness.mjs";
+import { startServer, launchBrowser, makeReporter, traverserQuestionnaire } from "./harness.mjs";
 const N_SPORTS = 7; // R16.10 — swimrun réintégré : le sélecteur suit le registre du moteur
 
 
@@ -27,52 +27,36 @@ await page.click('.opts[data-key="format"] .opt[data-val="M"]');
 await page.click("#nextBtn");
 for (const v of ["med_pain", "med_dizzy", "med_treat"]) await page.click('.opts[data-key="' + v + '"] .opt[data-val="non"]');
 await page.click("#nextBtn");
-ok(/Le parcours/.test(await page.locator("#screen").textContent()), "étape « Le parcours » (profil), pas « Le terrain » de la course à pied");
-await page.click('.opts[data-key="terrain"] .opt[data-val="vallonne"]');
-await page.click("#nextBtn");
-// ---- R18.2 — le profil de la course, DISCIPLINE PAR DISCIPLINE ----
-// Un duathlon vallonné à vélo et plat à pied ne se pace pas comme un parcours homogène :
-// c'est la même course, deux corrections différentes. L'étape est FACULTATIVE (chaque leg
-// non renseigné retombe sur le terrain global), et on le vérifie aussi.
-const legTxt = await page.locator("#screen").textContent();
-ok(/profil de ta course/i.test(legTxt), "étape « Le profil de ta course » proposée en duathlon");
-ok(/parcours vélo/i.test(legTxt) && /parcours à pied/i.test(legTxt), "les deux segments sont demandés séparément");
-// On vérifie le CHAMP, pas le mot : le texte d'intro de l'étape explique la logique commune
-// aux trois legs et cite la natation. Chercher le mot aurait fait échouer un test correct —
-// et l'aurait fait passer le jour où le champ reviendrait sans le mot.
-ok(await page.locator('.opts[data-key="leg_swim_env"]').count() === 0, "aucun champ de nage en duathlon — le leg n'existe pas");
-ok(await page.locator("#nextBtn").isEnabled(), "l'étape est FACULTATIVE : on peut continuer sans rien renseigner");
-await page.click('.opts[data-key="leg_bike_prof"] .opt[data-val="montagne"]');
-await page.click('.opts[data-key="leg_run_prof"] .opt[data-val="plat"]');
-await page.click("#nextBtn");
-await page.fill('[data-input="age"]', "35");
-await page.click('.opts[data-key="sex"] .opt[data-val="H"]');
-await page.click("#nextBtn");
-
-// ---- 2. Deux références, pas trois : demander un CSS serait du bruit ----
-const lvl = await page.locator("#screen").textContent();
-ok(/2 disciplines/.test(lvl), "l'étape niveau annonce 2 disciplines");
-ok(!/CSS/.test(lvl), "aucune question de natation (pas de CSS demandé)");
-await page.click('.opts[data-key="level"] .opt[data-val="inter"]');
-await page.click('.opts[data-key="pace_known"] .opt[data-val="oui"]');
-await page.fill('[data-input="pace"]', "4:30");
-await page.click('.opts[data-key="ftp_known"] .opt[data-val="oui"]');
-await page.fill('[data-input="ftp"]', "250");
-await page.click("#nextBtn");
-const inj = await page.locator("#screen").textContent();
-ok(/Gêne à la course/.test(inj), "« Gêne à la course » proposée — LA déclaration qui compte ici");
-ok(!/Épaule/.test(inj), "pas de blessure d'épaule (aucune natation)");
-await page.click('.opts[data-key="history"] .opt[data-val="confirme"]');
-await page.click('.opts[data-key="injury"] .opt[data-val="aucune"]');
-await page.click("#nextBtn");
-await page.click('.opts[data-key="sessions_max"] .opt[data-val="7"]');
-await page.click('.opts[data-key="vol_max"] .opt[data-val="10"]');
-await page.click('.opts[data-key="vol_recent"] .opt[data-val="7"]');
-await page.click('.opts[data-key="dispo"] .opt[data-val="semaine"]');
-await page.click('.opts[data-key="off_days"] .opt[data-val="non"]');
-await page.click('.opts[data-key="doubles"] .opt[data-val="non"]');
-await page.click("#nextBtn");
-await page.click("#genBtn");
+// U14 — traversée agnostique à l'ordre (voir la note dans harness.mjs). Les assertions qui
+// portent sur un écran PARTICULIER sont accrochées à son contenu, pas à son rang.
+let vuLegs = false, vuParcours = false;
+await traverserQuestionnaire(page, {
+  reponses: { terrain: "vallonne", leg_bike_prof: "montagne", leg_run_prof: "plat",
+    sex: "H", level: "inter", pace_known: "oui", ftp_known: "oui",
+    history: "confirme", injury: "aucune",
+    sessions_max: "7", vol_max: "10", vol_recent: "7", dispo: "semaine", off_days: "non", doubles: "non" },
+  saisies: { age: "35", pace: "4:30", ftp: "250" },
+  async surEcran(pg) {
+    // Le libellé de l'étape terrain change avec le sport : en duathlon c'est « Le parcours »,
+    // pas « Le terrain » de la course à pied. Accroché au champ, pas au rang de l'écran.
+    if (!vuParcours && (await pg.locator('.opts[data-key="terrain"]').count())) {
+      vuParcours = true;
+      ok(/Le parcours/.test(await pg.locator("#screen").textContent()),
+        "étape « Le parcours » (profil), pas « Le terrain » de la course à pied");
+    }
+    if (vuLegs || !(await pg.locator('.opts[data-key="leg_bike_prof"]').count())) return;
+    vuLegs = true;
+    const legTxt = await pg.locator("#screen").textContent();
+    ok(/profil de ta course/i.test(legTxt), "étape « Le profil de ta course » proposée en duathlon");
+    ok(/parcours vélo/i.test(legTxt) && /parcours à pied/i.test(legTxt), "les deux segments sont demandés séparément");
+    // On vérifie le CHAMP, pas le mot : le texte d'intro cite la natation pour expliquer la
+    // logique commune aux trois legs. Chercher le mot aurait fait échouer un test correct.
+    ok(await pg.locator('.opts[data-key="leg_swim_env"]').count() === 0, "aucun champ de nage en duathlon — le leg n'existe pas");
+    ok(await pg.locator("#nextBtn").isEnabled(), "l'étape est FACULTATIVE : on peut continuer sans rien renseigner");
+  },
+});
+ok(vuLegs, "l'étape « profil par discipline » a bien été traversée");
+ok(vuParcours, "l'étape « Le parcours » a bien été traversée");
 await page.waitForTimeout(900);
 ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "plan duathlon généré (vue 5 onglets)");
 

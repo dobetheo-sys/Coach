@@ -1,7 +1,7 @@
 // R5 — écran d'accueil : check-in en DIAPORAMA (sommeil → VFC optionnelle → ressenti)
 // AVANT toute séance (une fois par jour), onglet central Aujourd'hui, protocoles
 // (pas de calculateur), pont FIT → références vivantes.
-import { startServer, launchBrowser, makeReporter } from "./harness.mjs";
+import { startServer, launchBrowser, makeReporter, traverserQuestionnaire } from "./harness.mjs";
 
 const PORT = 8420;
 const server = await startServer(PORT);
@@ -16,28 +16,28 @@ page.on("pageerror", (e) => consoleErrs.push(String(e)));
 await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
 // Onboarding complet au clic — vérifie le questionnaire réel, pas un état injecté.
 await page.click('.sport-card[data-sport="run"]');
-await page.click('.opts[data-key="intent"] .opt[data-val="competition"]');
-await page.click('.opts[data-key="format"] .opt[data-val="10k"]');
-await page.click("#nextBtn");
-for (const v of ["med_pain", "med_dizzy", "med_treat"]) await page.click('.opts[data-key="' + v + '"] .opt[data-val="non"]');
-await page.click("#nextBtn");
-await page.click('.opts[data-key="terrain"] .opt[data-val="route"]'); await page.click("#nextBtn");
-await page.fill('[data-input="age"]', "35"); await page.click('.opts[data-key="sex"] .opt[data-val="H"]'); await page.click("#nextBtn");
-await page.click('.opts[data-key="level"] .opt[data-val="inter"]');
-await page.click('.opts[data-key="pace_known"] .opt[data-val="non"]');
-const protoPace = await page.locator("#hrB").textContent();
-ok(/Comment obtenir ton allure/.test(protoPace), "protocole allure seuil affiché quand pace_known=non");
-ok(/onglet 📋 Profil/.test(protoPace), "protocole pointe vers l'onglet Profil pour remplir plus tard");
-await page.click("#nextBtn");
-await page.click('.opts[data-key="history"] .opt[data-val="confirme"]'); await page.click('.opts[data-key="injury"] .opt[data-val="aucune"]'); await page.click("#nextBtn");
-await page.click('.opts[data-key="sessions_max"] .opt[data-val="5"]');
-await page.click('.opts[data-key="vol_max"] .opt[data-val="7"]');
-await page.click('.opts[data-key="vol_recent"] .opt[data-val="3"]');
-await page.click('.opts[data-key="dispo"] .opt[data-val="semaine"]');
-await page.click('.opts[data-key="off_days"] .opt[data-val="non"]');
-await page.click('.opts[data-key="doubles"] .opt[data-val="non"]');
-await page.click("#nextBtn");
-await page.click("#genBtn");
+// U14 — LE QUESTIONNAIRE SE TRAVERSE SANS QUE LE TEST EN CONNAISSE L'ORDRE.
+//
+// Cette suite codait la séquence des écrans en dur. Elle est tombée le jour où l'ordre a changé
+// pour une bonne raison (mettre en tête ce dont l'absence coûte une garde de sécurité) — alors
+// qu'elle ne mesure PAS l'ordre : elle mesure ce qui vient après. Un test qui code une séquence
+// qu'il ne teste pas se casse à chaque réorganisation légitime.
+let vuProtocole = false;
+await traverserQuestionnaire(page, {
+  reponses: { intent: "competition", format: "10k", med_pain: "non", med_dizzy: "non", med_treat: "non",
+    terrain: "route", sex: "H", level: "inter", pace_known: "non", history: "confirme", injury: "aucune",
+    sessions_max: "5", vol_max: "7", vol_recent: "3", dispo: "semaine", off_days: "non", doubles: "non" },
+  saisies: { age: "35" },
+  async surEcran(pg) {
+    if (vuProtocole || !(await pg.locator("#hrB").count())) return;
+    const proto = await pg.locator("#hrB").textContent();
+    if (!/Comment obtenir/.test(proto || "")) return;
+    vuProtocole = true;
+    ok(/Comment obtenir ton allure/.test(proto), "protocole allure seuil affiché quand pace_known=non");
+    ok(/onglet 📋 Profil/.test(proto), "protocole pointe vers l'onglet Profil pour remplir plus tard");
+  },
+});
+ok(vuProtocole, "l'écran du protocole d'allure a bien été traversé");
 await page.waitForTimeout(400);
 
 // 1. U11 — L'ÉCRAN D'ARRIVÉE A CHANGÉ, LE PORTILLON N'A PAS BOUGÉ.

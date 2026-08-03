@@ -272,7 +272,7 @@ function buildFreeSteps(){
   steps.push({id:"profil",title:"Profil physique",eyebrow:"Gratuit — Qui tu es",
     why:"Âge calibre zones et récup. Poids optionnel (affine le ravitaillement, éditable plus tard). Le sexe ne sert qu'à des garde-fous précis.",
     render(){return '<div class="q-sub">Ces plans sont calibrés pour des adultes. En dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée par un entraîneur — ne suis pas un plan avancé tel quel.</div><div class="row"><div class="q"><span class="q-label">Âge</span><input type="number" min="14" max="90" data-input="age" placeholder="32"></div>'
-      +'<div class="q"><span class="q-label">Poids (kg, optionnel)</span><input type="number" data-input="weight" placeholder="—"></div></div>'
+      +'<div class="q"><span class="q-label">Poids (kg, optionnel)</span><input type="number" min="25" max="250" data-input="weight" placeholder="—"></div></div>'
       +'<div class="q" style="margin-top:18px"><span class="q-label">Sexe</span><div class="opts" data-key="sex">'+opt("H","Homme")+opt("F","Femme")+opt("np","Préfère ne pas préciser")+'</div></div>';},
     valid(a){return a.age&&a.sex;}});
 
@@ -298,9 +298,48 @@ function buildFreeSteps(){
     branches(a){
       branch("cycleBranch",a.dispo==="quotidienne",'<div class="branch"><div class="branch-tag">↳ Cycle long possible</div><div class="q"><span class="q-label">Un cycle de 10 jours glisse sur le calendrier (ta séance longue change de jour). OK ?</span><div class="opts" data-key="shift_ok">'+opt("oui","Oui, peu importe")+opt("non","Non, repères fixes")+'</div></div></div>');
       branch("offBranch",a.off_days==="oui",'<div class="branch"><div class="branch-tag">↳ Jours bloqués</div><div class="q"><span class="q-label">Lesquels ?</span><div class="opts" data-key="off_which" data-multi="1">'+["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].map(j=>opt(j,j)).join("")+'</div></div></div>');},
-    valid(a){return a.sessions_max&&a.vol_max&&a.vol_recent&&a.dispo&&a.doubles&&a.off_days&&(a.dispo!=="quotidienne"||a.shift_ok)&&(a.off_days==="non"||a.off_which);}});
+    // U14 — LA VALIDATION NE RETIENT QUE LES TROIS RÉPONSES QUI STRUCTURENT.
+    //
+    // L'écran en pose huit ; trois seulement décident de la forme du plan : le nombre de
+    // séances (C1), le volume de pic (le seul champ VRAIMENT requis du schéma) et le volume
+    // récent (la rampe R10, celle qui protège une reprise). Les cinq autres affinent, et leur
+    // absence a désormais un repli PRUDENT et JOURNALISÉ (voir la note `dispo` de weekBuilder :
+    // le défaut tacite était « quotidienne », le plus permissif du domaine).
+    //
+    // Elles restent à l'écran, dans le même ordre : on ne retire pas une question, on cesse
+    // d'en faire un péage.
+    valid(a){return a.sessions_max&&a.vol_max&&a.vol_recent;}});
 
-  return steps;
+  // U14 — L'ORDRE MET EN TÊTE CE DONT L'ABSENCE COÛTE UNE GARDE DE SÉCURITÉ.
+  //
+  // Mesuré côté client : 8 écrans et 30 gestes avant le premier plan. Le socle ci-dessous est
+  // incompressible et il est court — format et date (sans quoi il n'y a pas de plan), les trois
+  // drapeaux médicaux (le seul blocage dur du produit), l'âge (bornes physiologiques, garde
+  // mineur × format R15.7-C) et le trio volume/séances/volume récent (l'enveloppe et la rampe).
+  // Tout le reste — terrain, niveau, historique, blessures, allures — affine, et son absence
+  // est prudente et journalisée (R11.2). On ne SUPPRIME aucune question : on les met après le
+  // moment où le plan devient montrable.
+  //
+  // Réordonner par identifiant plutôt que déplacer les blocs : les fonctions de rendu ne
+  // bougent pas d'une ligne, et un sport auquel une étape manque n'a rien de spécial à faire.
+  const tete = SOCLE_IDS.map((id) => steps.find((x) => x.id === id)).filter(Boolean);
+  return [...tete, ...steps.filter((x) => !tete.includes(x))];
+}
+
+/** U14 — les étapes du socle, dans l'ordre. Une seule liste : l'ordre du questionnaire et
+ *  la condition d'apparition du bouton lisent la même (R11.1). */
+const SOCLE_IDS = ["intent", "medical", "profil", "dispo"];
+
+/** U14 — le socle est-il complet ? C'est la condition d'apparition de « générer maintenant ». */
+function socleComplet(){
+  const a=S.answers, cfg=curCfg();
+  if(!a.med_pain||!a.med_dizzy||!a.med_treat) return false;   // le seul blocage dur du produit
+  if(!a.age) return false;                                     // bornes physio + mineur × format
+  if(!a.sessions_max||!a.vol_max||!a.vol_recent) return false; // enveloppe + rampe R10
+  // Le trail et le swimrun décrivent leur objectif par des DONNÉES, pas par un format : sans
+  // elles il n'y a pas d'objectif à préparer (R7 TRAIL, R10 phase 3).
+  if(S.sport==="trail") return !!(a.race_distance_km&&a.race_dplus_m);
+  return !!(a.format||!cfg.formats);
 }
 // Méthode pour obtenir une référence qu'on ne connaît pas encore — remplace les
 // calculateurs manuels (retirés, redondants avec l'édition directe du Profil) :
@@ -492,7 +531,13 @@ function bindInputs(scope){
   scope.querySelectorAll("[data-input]").forEach(inp=>{const key=inp.dataset.input;if(S.answers[key])inp.value=S.answers[key];inp.oninput=()=>{S.answers[key]=inp.value;refreshNav();ebSave();};});
 }
 function refreshTrail(){ /* fil de décision retiré — remplacé par le bandeau visuel du plan */ }
-function refreshNav(){const st=curSteps()[S.step],b=$("nextBtn");if(b&&st)b.disabled=!st.valid(S.answers);}
+function refreshNav(){
+  const st=curSteps()[S.step],b=$("nextBtn");
+  if(b&&st)b.disabled=!st.valid(S.answers);
+  // U14 — « générer maintenant » suit les réponses, pas le rendu.
+  const g=$("genNowWrap");
+  if(g)g.style.display=(S.tier==="free"&&socleComplet())?"":"none";
+}
 // R6 — pendant le questionnaire d'un NOUVEAU plan, on doit toujours pouvoir revenir au
 // plan en cours (retour utilisateur : « impossible de retourner à l'accueil »). Le
 // brouillon jamais terminé est retiré de la liste — pas de plan fantôme.
@@ -543,9 +588,25 @@ function renderStep(){
   if(S.step>=steps.length){renderBlueprint();return;}
   const st=steps[S.step];
   $("screen").innerHTML='<div class="card"><div class="eyebrow">'+st.eyebrow+'</div><h2>'+st.title+'</h2><div class="why">'+st.why+'</div>'+st.render()
-    +'<div class="nav"><button class="btn" id="prevBtn" type="button" '+(S.step===0&&S.tier==="free"?'style="visibility:hidden"':'')+'>← Retour</button><button class="btn primary" id="nextBtn" type="button">Continuer →</button></div></div>'
+    +'<div class="nav"><button class="btn" id="prevBtn" type="button" '+(S.step===0&&S.tier==="free"?'style="visibility:hidden"':'')+'>← Retour</button><button class="btn primary" id="nextBtn" type="button">Continuer →</button></div>'
+    // U14 — DÈS QUE LE SOCLE EST COMPLET, LE PLAN EST À UN CLIC.
+    //
+    // Le reste du questionnaire affine ; il ne conditionne plus l'accès. Le bouton dit ce qu'il
+    // fait ET ce qu'il coûte : les réponses non données prendront leur valeur par défaut, et
+    // ces défauts sont visibles dans « Les décisions du moteur » (R11.2).
+    // Le bloc est TOUJOURS émis et sa visibilité suit les réponses (`refreshNav`) : calculé au
+    // seul moment du rendu, il n'apparaissait qu'à l'écran SUIVANT celui qui complétait le
+    // socle — mesuré, il coûtait un écran de plus. Un état qui dépend des réponses doit se
+    // rafraîchir quand les réponses changent, pas quand la page se redessine.
+    +(S.tier==="free"
+      ? '<div class="gate" id="genNowWrap" style="background:var(--bg2);margin-top:14px;display:none"><h3>⚡ Ton plan est déjà constructible</h3>'
+        +'<p>Les questions qui suivent l\'affinent — elles ne sont pas obligatoires. Ce que tu ne réponds pas prend une valeur par défaut prudente, et le plan te dit laquelle.</p>'
+        +'<button class="btn gold" id="genNowBtn" type="button">Générer mon plan maintenant →</button></div>'
+      : "")
+    +'</div>'
     +backToPlanHTML();
   bindBackToPlan();
+  { const g=$("genNowBtn"); if(g) g.onclick=()=>renderPlan(); }
   bindInputs($("screen"));if(st.branches)st.branches(S.answers);
   $("prevBtn").onclick=()=>{if(S.step===0&&S.tier==="premium"){S.tier="free";S.step=buildFreeSteps().length;}else if(S.step===0){S.sport=null;S.started=false;document.body.dataset.sport="";}else S.step--;renderStep();};
   $("nextBtn").onclick=()=>{S.step++;renderStep();};

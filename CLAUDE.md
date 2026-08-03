@@ -773,9 +773,22 @@ SONT journalisés, comme décisions `R11-defaut-*` ; seules ces deux clés manqu
 Blast radius isolé : golden **889 écarts sur 900**, venant **entièrement** de la ligne de
 journalisation `doubles` (le profil de base ne renseigne pas cette clé) — le changement de défaut
 `dispo` ne touche AUCUN plan du golden, tous le déclarent. Garde `U14` au banc v6, **vérifiée
-rouge** (4 échecs). Reste du chantier : réordonner le questionnaire et offrir « générer
-maintenant » dès le socle complet — socle incompressible : format + date, les trois drapeaux
-médicaux, l'âge, et volume/séances/volume récent.
+rouge** (4 échecs).
+**Et le chemin court est livré : 8 écrans / 30 gestes → 4 écrans / 16 gestes.** L'ordre met en
+tête ce dont l'absence coûte une garde de sécurité (format + date, les trois drapeaux médicaux,
+l'âge, le trio volume/séances/volume récent) ; la validation de l'écran « capacité » ne retient
+que ses trois réponses structurantes ; « ⚡ Générer mon plan maintenant » apparaît dès le socle
+complet. Aucune question n'est SUPPRIMÉE : elles passent après le moment où le plan devient
+montrable. Le bouton a coûté un écran de plus à ma première écriture — calculé au rendu, il
+n'apparaissait qu'à l'écran SUIVANT celui qui complétait le socle ; sa visibilité suit désormais
+les réponses (`refreshNav`).
+Deux défauts trouvés en construisant : **le champ « poids » n'avait ni `min` ni `max`** (le
+navigateur laissait saisir 10 kg, l'athlète récoltait un refus typé au lieu d'être empêché), et
+**quatre suites E2E codaient la SÉQUENCE des écrans en dur** — toutes tombées sur une
+réorganisation légitime, alors qu'aucune ne mesure l'ordre. `traverserQuestionnaire()` répond
+désormais à ce qui est À L'ÉCRAN, avec un crochet pour les assertions qui visent un écran
+précis. Garde `U14` dans `smoke-usage` : ≤ 5 écrans, un vrai plan au bout, **et le socle contient
+toujours** les drapeaux médicaux, l'âge et l'enveloppe.
 **22 gates verts sur 23** (`audit:invariants` rouge sur I13/O-20), **E2E 15/15, golden 900
 recapturé, registre 19/19.**
 
