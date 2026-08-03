@@ -4867,8 +4867,13 @@ function renderSess(s                   , refs      , hz         , baseRefs     
         const dd           = [];
         if (b.dplusM) dd.push("D+ " + b.dplusM + "m");
         if (b.dmoinsM) dd.push("D− " + b.dmoinsM + "m");
-        if (dd.length) str += " · " + dd.join(" / ") + " cible";
-        if (b.mode === "run_hike") str += " · marche assumée dans les pentes raides";
+        // U16 — LE POINT MÉDIAN NE SÉPARE QUE DES BLOCS. Ces deux compléments décrivent le
+        // MÊME bloc que ce qui précède ; les coller avec le séparateur de blocs donnait au
+        // symbole deux sens dans la même phrase, et l'UI qui déroule la séance en une ligne
+        // par bloc découpait un bloc vallonné en trois. Même règle que R11.1 appliquée à un
+        // caractère : un symbole, un sens.
+        if (dd.length) str += ", " + dd.join(" / ") + " cible";
+        if (b.mode === "run_hike") str += ", marche assumée dans les pentes raides";
       } else {
         if (b.zone) str += " @ " + fmtInt(b.zone          , refs, hz);
         if (b.surface === "escalier") str += " en escaliers";

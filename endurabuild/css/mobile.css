@@ -70,7 +70,11 @@ body {
   .hero p { font-size: 13px; }
   .gw-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .gd { min-height: 96px; font-size: 12px; }
-  .gd-det { font-size: 11px; line-height: 1.35; }
+  /* U16 — RÈGLE RETIRÉE, ET ELLE NE CHANGEAIT QUE L'INTERLIGNE. Son `font-size: 11px` était
+     la valeur EXACTE de `--fs-xs` (le doublon littéral que R16.8 a chassé partout ailleurs) ;
+     il ne restait donc que `line-height: 1.35`, qui écrasait sur MOBILE — le seul endroit où
+     le produit se lit vraiment — l'interligne aéré posé dans styles.css. Un correctif que la
+     cascade annule est un correctif qu'on croit avoir : la leçon de R18.1, deux étages plus bas. */
   .nav { position: sticky; bottom: 0; background: var(--bg, #f1eadb); padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); z-index: 5; }
   .nav .btn { flex: 1 1 45%; }
   .load-card { padding: 10px; }

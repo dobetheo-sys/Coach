@@ -3037,3 +3037,85 @@ rendrait des semaines inatteignables serait une perte, pas un gain.
 Trois assertions E2E existantes ont été mises à jour, chacune avec sa raison écrite : elles
 comptaient des grilles ou cherchaient le raccourci **à l'endroit où il n'a plus d'objet** —
 c'est le nombre affiché d'office qui a changé, pas ce qui est atteignable.
+
+## U16 — le déroulement d'une séance se déroule, il ne s'entasse pas
+
+Retour du fondateur, en deux mots : « trop dense ». Rien dans les 23 gates ne regarde ça — ils
+mesurent tous ce que le moteur PRODUIT, jamais la forme sous laquelle une personne le LIT.
+
+### La mesure
+
+Tous les blocs repliables de l'onglet 🗓 Plan, dépliés, sur un marathon à 390 px. La grandeur
+retenue est le **caractère par pixel rendu** (et non le nombre de caractères : on ne retire pas
+un mot d'une explication, c'est la promesse d'explicabilité du produit) plus la longueur du
+**plus long morceau d'un seul tenant**, celui au-delà duquel l'œil décroche.
+
+| bloc | avant | après |
+|---|---|---|
+| une séance dépliée (« Seuil progressif ») | **1,61 c/px** · plus long morceau 97 car. | 1,17 · 68 |
+| « Footing facile » | 1,43 · 99 | 1,24 · 99 |
+| 🧠 Les décisions du moteur (9) | **1,60 c/px** · 213 car. · 19 blocs | 1,17 · 184 · 29 |
+| 🧭 Pourquoi ce plan (jamais repliée) | 1,58 · 513 px | 1,44 · 558 px |
+| 🎯 Ton chrono visé (ma propre prose) | 265 car. d'un seul tenant | 124 |
+
+Le pire cas absolu était une VO2max : **296 caractères d'un seul tenant**, quatre blocs collés
+par des points médians, en 11 px gris à interligne 1,35.
+
+### Ce qui change
+
+**Le déroulement devient une liste** — une ligne par bloc, ce qui est la façon dont un
+entraîneur écrit une séance. `techListHTML()` ne fabrique AUCUN texte : `renderSess` reste le
+seul producteur (règle du dépôt), on coupe sur le séparateur de blocs qu'il pose déjà. Une
+séance d'un seul bloc reste une ligne — une puce solitaire n'est pas une liste.
+
+**Le point médian ne sépare plus que des blocs** (`renderer.ts`). Le rendu vallonné du trail
+l'utilisait aussi À L'INTÉRIEUR d'un bloc, pour accrocher le D+/D− cible et la mention de marche :
+le symbole avait deux sens dans la même phrase, et la coupe découpait un bloc vallonné en trois.
+Ces deux compléments passent à la virgule. C'est la règle R11.1 appliquée à un caractère : un
+symbole, un sens. **Seul écart au golden : 54 profils, tous en trail, ce seul champ.**
+
+**Les décisions du moteur passent à trois niveaux** (intitulé discret, valeur en avant,
+justification en gris aéré) au lieu d'une coulée unique — le mur qui avait déclenché le retour.
+
+**Une règle mobile retirée** : `mobile.css` fixait `.gd-det { font-size: 11px; line-height: 1.35 }`.
+Sa taille était la valeur EXACTE de `--fs-xs` (le doublon littéral que R16.8 a chassé partout
+ailleurs) ; il ne restait donc que l'interligne, qui écrasait sur MOBILE — le seul endroit où le
+produit se lit vraiment — l'aération posée dans `styles.css`. Un correctif que la cascade annule
+est un correctif qu'on croit avoir : la leçon de R18.1, deux étages plus bas.
+
+### Deux fois mon propre travail dans le viseur
+
+Ma première écriture de « Pourquoi ce plan » était **inerte** : à 7 px de marge, la carte passait
+de 513 à 514 px — les puces retirées rendaient exactement ce que les marges prenaient. Un
+correctif qui ne bouge pas le chiffre qu'il vise est du bruit. L'air se paie en hauteur, et il
+fallait l'assumer (11 px, interligne 1,62 → 1,44 c/px).
+
+Et le plus long pavé de tout l'onglet n'était pas produit par le moteur : c'étaient **mes 265
+caractères** d'introduction du chrono visé, trois idées en une phrase. Coupées en trois lignes,
+sans qu'un mot disparaisse — l'engagement « ta réponse ne change pas ton plan » reste entier.
+
+### Le coût, dit
+
+Tout déplié, l'onglet passe de 7 688 à 8 061 px (+5 %). À l'ARRIVÉE, rien d'ouvert, il fait
+**3,7 écrans** — U15 a déjà réglé ce qui s'affiche d'office. L'air ne coûte donc qu'à qui ouvre.
+
+### Les gardes
+
+`U16` dans `smoke-usage` (3 assertions), **vérifiée rouge** contre le rendu d'avant (2 critères
+sur 3 tombent). Elle porte sur la PROPRIÉTÉ — une séance de plusieurs blocs se lit en plusieurs
+lignes, aucun morceau d'un seul tenant au-delà de 180 caractères — et ne dit rien d'une puce,
+d'un tiret ou d'une classe : une garde qui décrit sa propre implémentation ne garde rien.
+
+**Mon instrument était faux d'abord, et de la façon la plus prévisible.** Il comptait les points
+médians dans le texte RENDU pour savoir combien de blocs porte une séance — c'est-à-dire
+précisément ce que la mise en page venait de remplacer par des retours à la ligne. Il trouvait
+**0 séance à plusieurs blocs** sur un plan qui en est plein, donc il aurait été satisfait par
+n'importe quoi. Cinquième occurrence dans ce dépôt d'une mesure lue APRÈS la transformation
+qu'elle est censée juger (après `audit:v1` en R20.4, l'ancrage calendaire du banc R14 en R20.7,
+`measure:fallback` en R20.9, et le comptage post-hoc de C29). Le nombre de blocs se lit
+désormais sur le MODÈLE, le nombre de lignes sur le DOM.
+
+`smoke-r4` a fait son travail au passage : son assertion « le POURQUOI passe devant le QUOI »
+interrogeait `.gd-det`, qui n'existe plus dès qu'une séance a deux blocs — elle a levé une
+erreur au lieu de mesurer. La propriété ne change pas d'un iota, seul le conteneur à interroger
+change (`.gd-det, .gd-steps`).

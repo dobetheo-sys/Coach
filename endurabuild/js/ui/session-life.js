@@ -8,7 +8,7 @@
 // n'a rien à voir avec un onglet. Elles sont donc EXTRAITES avant suppression, comme le
 // demandait l'étape 2 du handoff — un module ne se supprime pas, il se vide d'abord.
 import { S, $, ebSave, esc, fmtDay, todayISO } from "../state.js";
-import { whyOf, techOf } from "./plan-view.js";
+import { whyOf, techOf, techListHTML } from "./plan-view.js";
 import { avatarDataFor, avatarSVG } from "./avatar.js";
 import { celebrationMessage } from "./celebrations.js";
 import { trapModal } from "./modal.js";
@@ -254,7 +254,7 @@ export function heroSessionHTML(plan, todayIso) {
       const w = whyOf(x);
       return '<div style="margin-top:8px"><b>' + x.name + "</b>"
         + (w ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + w + "</div>" : "")
-        + (x.det ? '<details class="gd-sess" style="margin-top:4px"><summary>Le détail de la séance</summary><span class="gd-det">' + techOf(x) + "</span></details>" : "")
+        + (x.det ? '<details class="gd-sess" style="margin-top:4px"><summary>Le détail de la séance</summary>' + techListHTML(techOf(x)) + "</details>" : "")
         + "</div>";
     }).join("");
   } else {

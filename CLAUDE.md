@@ -760,6 +760,37 @@ Gardes **P11-A à P11-F** au banc `audit:r14.1`, qui assertent les DEUX moitiés
 disparue ET l'entraîné intact — **vérifiées rouges** (3 sur 6) contre le moteur d'avant P11.
 **22 gates verts, E2E 14/14, golden 900 inchangé** — la projection ne touche aucune séance.
 
+**U16 livré — le déroulement d'une séance se déroule, il ne s'entasse pas** (retour du
+fondateur : « trop dense », voir ARCHITECTURE.md « U16 ») : aucun des 23 gates ne regarde ça —
+ils mesurent tous ce que le moteur PRODUIT, jamais la forme sous laquelle une personne le LIT.
+Mesuré en **caractères par pixel rendu** (pas en caractères : on ne retire pas un mot d'une
+explication) : le pire cas était une VO2max à **296 caractères d'un seul tenant**, quatre blocs
+collés par des points médians, en 11 px gris à interligne 1,35 — **1,61 c/px**, devant tout le
+reste, y compris le mur des décisions du moteur (1,60). **Le déroulement devient une LISTE**, une
+ligne par bloc, ce qui est la façon dont un entraîneur écrit une séance ; `techListHTML()` ne
+fabrique AUCUN texte (`renderSess` reste le seul producteur) et coupe sur le séparateur que le
+moteur pose déjà. Pour que cette coupe soit exacte, **le point médian cesse d'avoir deux sens** :
+le rendu vallonné du trail l'utilisait aussi À L'INTÉRIEUR d'un bloc, ces deux compléments passent
+à la virgule — R11.1 appliquée à un caractère. Décisions du moteur à trois niveaux (1,60 → 1,17),
+séance dépliée 1,61 → 1,17, « Pourquoi ce plan » 1,58 → 1,44. **Une règle mobile retirée** :
+`.gd-det { font-size: 11px }` était la valeur EXACTE de `--fs-xs` (le doublon littéral chassé par
+R16.8) ; il ne restait que `line-height: 1.35`, qui écrasait sur MOBILE — le seul endroit où le
+produit se lit — l'aération posée dans `styles.css`. Un correctif que la cascade annule est un
+correctif qu'on croit avoir : R18.1, deux étages plus bas.
+**Deux fois mon propre travail dans le viseur** : ma première écriture de « Pourquoi ce plan »
+était **inerte** (513 → 514 px — les puces retirées rendaient exactement ce que les marges
+prenaient), et le plus long pavé de tout l'onglet n'était pas produit par le moteur mais par
+**mes 265 caractères** d'introduction du chrono visé. Coût dit : tout déplié +5 % de hauteur, mais
+**3,7 écrans à l'arrivée** — l'air ne coûte qu'à qui ouvre. Garde `U16` dans `smoke-usage`,
+**vérifiée rouge** (2 critères sur 3), portant sur la PROPRIÉTÉ et non sur ma mise en page.
+**Mon instrument était faux d'abord** : il comptait les points médians dans le texte RENDU,
+c'est-à-dire ce que la mise en page venait de remplacer par des retours à la ligne — **0 séance à
+plusieurs blocs** sur un plan qui en est plein, donc satisfait par n'importe quoi. Cinquième
+occurrence dans ce dépôt d'une mesure lue APRÈS la transformation qu'elle juge.
+**22 gates verts sur 23** (`audit:invariants` rouge sur I13/O-20, pré-existant et indépendant),
+**E2E 15/15 (30 assertions d'usage), golden 900 recapturé — 54 profils, tous en trail, ce seul
+champ.**
+
 **U15 livré — l'onglet Plan ouvre sur la semaine en cours** (voir ARCHITECTURE.md « U15 ») :
 troisième arbitrage du fondateur (« tout replier sauf la semaine en cours »). La mesure a dit où
 était le poids : sur un marathon à 390 px, l'onglet faisait **5 164 px (6,1 écrans)** et **56 %

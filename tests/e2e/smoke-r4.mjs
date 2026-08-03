@@ -110,7 +110,13 @@ const whyBeforeWhat = await page.evaluate(() => {
   const d = ds.find((x) => x.querySelector(".gd-why"));
   if (!d) return { hasWhy: false, nSess: ds.length };
   d.open = true;
-  const why = d.querySelector(".gd-why"), det = d.querySelector(".gd-det");
+  // U16 — le « quoi » d'une séance se rend en LISTE (`.gd-steps`, une ligne par bloc) dès
+  // qu'elle en compte plus d'un, et en `.gd-det` sinon. La propriété vérifiée ne change pas
+  // d'un iota — le POURQUOI passe devant le QUOI —, seul le conteneur à interroger change.
+  // Sans ce `,`, la garde levait un TypeError au lieu de mesurer : elle a fait son travail.
+  const why = d.querySelector(".gd-why"), det = d.querySelector(".gd-det, .gd-steps");
+  if (!det) return { hasWhy: true, nWhy: document.querySelectorAll("#screen .gd-why").length,
+    order: "det-absent", noDup: true };
   return { hasWhy: true, nWhy: document.querySelectorAll("#screen .gd-why").length,
     order: why.compareDocumentPosition(det) & Node.DOCUMENT_POSITION_FOLLOWING ? "why-first" : "det-first",
     noDup: !/\u{1F4A1}/u.test(det.textContent) };

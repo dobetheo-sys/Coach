@@ -367,6 +367,61 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   await ctx.close();
 }
 
+// ── U16 — LE DÉROULEMENT D'UNE SÉANCE SE DÉROULE, IL NE S'ENTASSE PAS.
+//
+// Retour du fondateur : « trop dense ». Mesuré en dépliant toutes les séances d'un plan
+// marathon à 390 px : une VO2max sortait **296 caractères d'un seul tenant**, quatre blocs
+// collés par des points médians, en 11 px gris à interligne 1,35 — le pavé le plus dense de
+// l'app (1,61 caractère par pixel, devant les décisions du moteur et devant tout le reste).
+//
+// La garde porte sur la PROPRIÉTÉ, pas sur ma mise en page : une séance de plusieurs blocs se
+// lit en autant de lignes, et aucun morceau de texte d'un seul tenant ne dépasse la longueur
+// au-delà de laquelle l'œil décroche. Elle ne dit RIEN d'une puce, d'un tiret ou d'une classe —
+// une garde qui décrit sa propre implémentation ne garde rien (leçon R16.8, qui vérifie des
+// relations d'ordre et jamais des valeurs absolues).
+{
+  const { ctx, page } = await session(LUNDI);
+  await page.click('#ebTabbar .tabbtn[data-tab="general"]');
+  await page.waitForTimeout(900);
+  const m = await page.evaluate(async () => {
+    // L'INSTRUMENT NE DOIT PAS LIRE SA PROPRE SORTIE. Ma première écriture comptait les points
+    // médians dans le texte RENDU pour savoir combien de blocs porte une séance — or c'est
+    // précisément ce que la mise en page vient de remplacer par des retours à la ligne. Elle
+    // trouvait 0 séance à plusieurs blocs sur un plan qui en est plein, et aurait donc été
+    // satisfaite par n'importe quoi. Même famille que les quatre mesures démasquées en R20 :
+    // une grandeur lue APRÈS la transformation qu'elle est censée juger. Le nombre de blocs se
+    // lit donc sur le MODÈLE (`s.det`, que l'UI ne touche pas), le nombre de lignes sur le DOM.
+    const { S } = await import("./js/state.js");
+    const attendu = new Set();
+    for (const w of S.currentPlan.weeks) for (const d of w.days) for (const s of d.sessions) {
+      if (!s.det) continue;
+      if (s.det.split(" — \u{1F4A1} ")[0].split(" \u00b7 ").length > 1) attendu.add(s.name);
+    }
+    document.getElementById("allW").click();
+    document.querySelectorAll("#screen details.gd-sess").forEach((d) => { d.open = true; });
+    const rendu = new Set();
+    let pire = 0, pireTxt = "";
+    for (const d of document.querySelectorAll("#screen details.gd-sess")) {
+      const corps = d.querySelector(".gd-det, .gd-steps");
+      if (!corps) continue;
+      const nom = (d.querySelector("summary") || {}).textContent || "";
+      if (corps.querySelectorAll("li").length > 1) rendu.add(nom.trim());
+      for (const t of (corps.innerText || "").split(/\n+/)) {
+        if (t.trim().length > pire) { pire = t.trim().length; pireTxt = t.trim().slice(0, 60); }
+      }
+    }
+    const manquantes = [...attendu].filter((n) => !rendu.has(n));
+    return { multi: attendu.size, listees: attendu.size - manquantes.length, manquantes: manquantes.slice(0, 3), pire, pireTxt };
+  });
+  ok(m.multi > 0, "U16 — l'instrument voit des séances à plusieurs blocs (" + m.multi + ")");
+  ok(m.listees === m.multi,
+    "U16 — chacune se lit en plusieurs lignes (" + m.listees + "/" + m.multi + ")"
+    + (m.manquantes.length ? " — non déroulée(s) : " + m.manquantes.join(", ") : ""));
+  ok(m.pire <= 180,
+    "U16 — plus aucun pavé d'un seul tenant (le plus long fait " + m.pire + " car. : « " + m.pireTxt + "… »)");
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 report();

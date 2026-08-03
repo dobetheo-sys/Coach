@@ -235,8 +235,18 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 
 /* ===== DÉTAIL SÉANCE ===== */
 /* §5 (R6) — le POURQUOI d'une séance, visible avant le QUOI (héros) ou en tête du détail. */
-.gd-why{display:block;font-weight:500;font-size:var(--fs-sm);color:var(--text2);margin:2px 0 4px;line-height:1.45;font-style:italic;}
-.gd-det{display:block;font-weight:500;font-size:var(--fs-xs);color:var(--text2);margin:2px 0 5px;line-height:1.4;}
+.gd-why{display:block;font-weight:500;font-size:var(--fs-sm);color:var(--text2);margin:2px 0 6px;line-height:1.55;font-style:italic;}
+.gd-det{display:block;font-weight:500;font-size:var(--fs-xs);color:var(--text2);margin:2px 0 5px;line-height:1.55;}
+/* U16 — LE DÉROULEMENT DE LA SÉANCE, UNE LIGNE PAR BLOC.
+ *
+ * Mesuré avant : une VO2max déroulée sortait 296 caractères d'un seul tenant, à interligne
+ * 1,35 — le pavé le plus dense de l'app (1,61 caractère par pixel, devant tout le reste).
+ * Le tiret n'est pas décoratif : il donne à l'œil un point d'accroche par bloc, ce que le
+ * point médian au fil du texte ne faisait pas. Aucun mot n'est retiré. */
+.gd-steps{list-style:none;margin:4px 0 6px;padding:0;font-weight:500;font-size:var(--fs-xs);color:var(--text2);}
+.gd-steps li{position:relative;padding:0 0 0 12px;margin-top:4px;line-height:1.55;}
+.gd-steps li:first-child{margin-top:0;}
+.gd-steps li::before{content:"–";position:absolute;left:0;opacity:.6;}
 .gd-sess{margin:1px 0;}
 .gd-sess summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:4px;}
 .gd-sess summary::-webkit-details-marker{display:none;}
@@ -341,3 +351,28 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
   input[type=text],input[type=number],input[type=date],input[type=time],input[type=email],
   input.opt,select.opt,textarea.opt{font-size:var(--fs-field);}
 }
+
+/* U16 — LES LISTES D'EXPLICATION RESPIRENT.
+ *
+ * Retour du fondateur : « trop dense ». Mesuré en dépliant tous les blocs de l'onglet Plan —
+ * « Les décisions du moteur » sortait **1 214 caractères en 19 blocs sur 758 px**, empilés dans
+ * un `<ul>` sans séparation : neuf paragraphes collés les uns aux autres, l'intitulé, la valeur
+ * et la justification sur la même coulée de texte. Le contenu est bon, c'est sa mise en page qui
+ * en fait un mur.
+ *
+ * Trois niveaux au lieu d'un : l'intitulé devient une étiquette discrète, la VALEUR passe au
+ * premier plan (c'est ce qu'on vient chercher), la justification descend en gris plus aéré. On
+ * ne retire pas un mot — R11.2 et l'explicabilité restent entières. */
+.exp-list{list-style:none;margin:10px 0 0;padding:0;}
+.exp-row{padding:9px 0;border-top:1px solid var(--bg2,#e8e0cf);}
+.exp-row:first-child{border-top:none;padding-top:2px;}
+.exp-lbl{font-size:var(--fs-micro);text-transform:uppercase;letter-spacing:.06em;color:var(--text2);}
+.exp-val{font-size:var(--fs-md);font-weight:700;line-height:1.35;margin-top:1px;}
+.exp-why{font-size:var(--fs-sm);color:var(--text2);line-height:1.6;margin-top:4px;}
+/* « Pourquoi ce plan » : mêmes respirations, mais la phrase reste une phrase.
+ * MESURÉ, ET MA PREMIÈRE ÉCRITURE ÉTAIT INERTE : à 7 px de marge et 1,55 d'interligne, la carte
+ * passait de 513 à 514 px — les puces retirées rendaient exactement ce que les marges prenaient.
+ * Un correctif qui ne bouge pas le chiffre qu'il vise est du bruit ; c'est 1,58 caractère par
+ * pixel qu'il fallait faire baisser, et l'air se paie forcément en hauteur. */
+.exp-list.exp-plain .exp-row{padding:11px 0;}
+.exp-list.exp-plain .exp-row>div{font-size:var(--fs-md);line-height:1.62;}
