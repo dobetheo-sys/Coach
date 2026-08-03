@@ -194,6 +194,29 @@ ok(/pas un menu/i.test(eTxt) && /pas une consigne/i.test(eTxt), "garde-fous affi
 ok(!/déficit|maigrir|perte de poids|restriction/i.test(eTxt), "aucun vocabulaire de restriction dans l'onglet Nutrition");
 ok(!/Journal alimentaire/.test(eTxt), "journal alimentaire retiré (décision R6)");
 
+// ---- O-23 : « latest » rend le plus RÉCENT, même à date égale ----
+//
+// Le tri ne portait que sur la date, et `Array.prototype.sort` est STABLE depuis ES2019 :
+// à date égale l'ordre d'insertion est conservé, donc `[0]` était le PREMIER inséré — le plus
+// VIEUX. Une fonction nommée `latest` qui rend le plus ancien. Plusieurs tests le même jour,
+// c'est la normale (trois imports Strava d'affilée en branchant un compte), et le défaut rendait
+// alors TOUT correctif d'import invisible : la nouvelle valeur entrait dans le journal sans
+// jamais devenir la référence.
+const o23 = await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  const { syncRefsFromTests } = await import("./js/ui/tab-profile.js");
+  S.answers.tests = [
+    { type: "ftp", value: 210, date: "2026-07-01", source: "ancien" },
+    { type: "ftp", value: 188, date: "2026-08-03", source: "import 1" },
+    { type: "ftp", value: 230, date: "2026-08-03", source: "import 2, LE BON" },
+  ];
+  ebSave();
+  syncRefsFromTests();
+  return { ftp: S.answers.ftp, known: S.answers.ftp_known };
+});
+ok(o23.ftp === "230", "O-23 — à date égale, la référence prend le DERNIER test inscrit (" + o23.ftp + "W, attendu 230)");
+ok(o23.known === "oui", "O-23 — et elle se déclare connue");
+
 // ---- 6. Strava OAuth : connexion via relais au Profil, repli jeton manuel ----
 const t6 = await page.locator("#ebTabbar .tabbtn").all();
 await t6[0].click(); await page.waitForTimeout(300);

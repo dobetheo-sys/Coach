@@ -836,6 +836,36 @@ ainsi tant qu'O-20 rendait le banc rouge), `O-21` — le mien, écrit le matin m
 que j'auditais — acceptait n'importe quel nombre. Les deux épinglés sur la valeur mesurée.
 **23 gates verts, E2E 16/16, golden 900 inchangé, registre 20/20.**
 
+**H-1 · O-22 · O-23 livrés — Strava est branché, et le premier défaut remonté par une DONNÉE
+RÉELLE** (03/08/2026, voir ARCHITECTURE.md « O-22 / O-23 ») : le relais est déployé (app Strava,
+worker Cloudflare, `STRAVA_RELAY_DEFAULT` renseigné — le `client_secret` vit uniquement en
+variable de type *Secret* côté Cloudflare, jamais dans le dépôt), et le fondateur a branché son
+compte. **O-22** : l'import annonçait **188 W** pour une FTP déclarée à **230** — 18 % en dessous,
+sur une valeur PROMUE en référence vivante, donc toutes les zones vélo du plan. La cause est une
+erreur de grandeur : le coefficient 0,95 code la règle « FTP ≈ 95 % de la meilleure puissance sur
+20 MINUTES », il était appliqué à la puissance normalisée d'une **sortie entière** (188 ÷ 0,95 =
+198 W = la meilleure NP du fondateur, sur 1 h 17), et le libellé « meilleure sortie ≥20min » se
+lisait comme « meilleure puissance sur 20 min ». **Le sens de l'erreur change avec l'athlète, et
+c'est ce qui la rend dangereuse** : basse pour qui roule en endurance (sous-charge), HAUTE pour qui
+a une seule sortie courte et dure dans ses 50 dernières activités — le plan prescrit alors des
+watts qu'il ne tient pas. Cascade livrée : FTP déclarée du profil (`/athlete`, périmètre
+`profile:read_all`), sinon la **meilleure moyenne glissante sur 20 min réelles** (`streams`,
+`bestRollingMean` borné par le TEMPS et non par le nombre d'échantillons) × 0,95 ; `thrPace` ne
+retient plus que les sorties de 10-15 km. Le registre recommandait « ne plus estimer, et le dire »
+d'abord, parce qu'il chiffrait le coût de la FTP déclarée à une ré-autorisation de tous les
+comptes connectés — **il n'y en avait aucun**, le relais venait d'être déployé.
+**O-23, et sans lui le correctif d'O-22 serait resté INVISIBLE** : trouvé sur la capture du journal
+du fondateur, trois imports du même jour. `latest()` triait sur la seule DATE, et
+`Array.prototype.sort` est **stable depuis ES2019** — à date égale l'ordre d'insertion est
+conservé, donc `[0]` est le PREMIER inséré, le plus VIEUX. Une fonction nommée `latest` qui rend le
+plus ancien. Un nouvel import aurait écrit 230 W dans le journal et `S.answers.ftp` serait resté à
+188. Le moteur, lui, avait raison depuis toujours (`measuredRate` trie en croissant et prend le
+dernier) : deux chemins lisaient le même journal et en tiraient deux valeurs — la forme que R11.1
+interdit, ici entre le moteur et l'UI. Départage par POSITION, le journal étant append-only.
+**Ce qui reste** : `css` est encore estimée depuis la nage la plus rapide EN MOYENNE, qui n'est pas
+un CSS — non mesuré sur donnée réelle, suivi dans O-22.
+**23 gates verts, E2E 16/16, golden 900 inchangé, registre 22/22.**
+
 **I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
 ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en
 trail, un DÉBUTANT recevait un pic de **575 min** contre **547** pour un INTER, et sur le D+ aussi

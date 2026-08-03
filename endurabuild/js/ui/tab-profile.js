@@ -25,7 +25,29 @@ const _fmtColon = (s) => Math.floor(s / 60) + ":" + String(Math.round(s % 60)).p
 // le nombre de références effectivement mises à jour.
 export function syncRefsFromTests() {
   const tests = Array.isArray(S.answers.tests) ? S.answers.tests : [];
-  const latest = (type) => tests.filter((t) => t.type === type && isFinite(t.value)).sort((x, y) => String(y.date || "").localeCompare(String(x.date || "")))[0];
+  // O-23 — « LATEST » RENDAIT LE PLUS ANCIEN QUAND DEUX TESTS PARTAGENT UNE DATE.
+  //
+  // Le tri ne portait que sur la DATE, et `Array.prototype.sort` est STABLE depuis ES2019 :
+  // à date égale, l'ordre d'insertion est conservé, donc `[0]` est le PREMIER inséré —
+  // c'est-à-dire le plus VIEUX. Une fonction nommée `latest` qui rend le plus ancien.
+  //
+  // Ce n'est pas un cas de bord : plusieurs tests le même jour, c'est la normale. Le
+  // fondateur a lancé trois imports Strava d'affilée en branchant son compte ; mesuré sur
+  // son journal, un quatrième import corrigé (FTP 230 W) n'aurait RIEN changé — `latest`
+  // aurait continué de rendre le 188 W du premier. Le correctif d'O-22 serait resté
+  // invisible, et on aurait cherché le défaut dans l'import.
+  //
+  // Le moteur, lui, était juste : `measuredRate` (projection.ts) trie en ordre CROISSANT et
+  // prend le dernier élément, donc à date égale il obtient bien le plus récent. Les deux
+  // chemins disaient déjà deux choses différentes du même journal.
+  //
+  // À date égale, on départage par POSITION : le journal est append-only, l'ordre du tableau
+  // est donc l'ordre chronologique à l'intérieur d'une journée.
+  const latest = (type) => {
+    const c = tests.map((t, i) => ({ t, i })).filter(({ t }) => t.type === type && isFinite(t.value));
+    c.sort((x, y) => String(y.t.date || "").localeCompare(String(x.t.date || "")) || (y.i - x.i));
+    return c.length ? c[0].t : undefined;
+  };
   let n = 0;
   const ftp = latest("ftp");
   if (ftp) { const v = String(Math.round(ftp.value)); if (S.answers.ftp_known !== "oui" || S.answers.ftp !== v) { S.answers.ftp = v; S.answers.ftp_known = "oui"; n++; } }
