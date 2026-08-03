@@ -11,6 +11,7 @@
  *   ENGINE=/chemin/engine.js  ou  STANDALONE=/chemin/EnduraBuild-standalone.html
  * Par défaut : le bundle de la PWA de ce dépôt. */
 const fs = require("fs"), path = require("path");
+const { courseDans, courseUn } = require("./bench-dates.cjs"); // A-6 — voir bench-dates.cjs
 (function loadEngine() {
   globalThis.window = globalThis;
   const direct = process.env.ENGINE || path.join(__dirname, "endurabuild/js/engine.js");
@@ -60,7 +61,7 @@ const ATTENDU=["sleep","life_load","dispo","level","history","cycle_sync","age",
  "leg_swim_env","leg_bike_prof","leg_run_prof"];
 const REF={intent:"competition",level:"inter",history:"confirme",injury:"aucune",sessions_max:"9",vol_max:"13",
  vol_recent:"7",dispo:"partielle",doubles:"parfois",off_days:"non",sleep:"moyen",life_load:"normale",age:"30",
- weight:"79",sex:"H",race_date:"2027-06-13",weight_lever:"non",format:"Full",ftp_known:"oui",ftp:"227",
+ weight:"79",sex:"H",race_date:courseDans(45),weight_lever:"non",format:"Full",ftp_known:"oui",ftp:"227",
  pace_known:"oui",pace:"4:50",css_known:"non"};
 const base=fp(E.buildPlan("tri",REF));
 const T=[
@@ -76,7 +77,7 @@ const T=[
  // avec un cycle de 28 jours et un plan démarrant un jour 1, les deux coïncident toutes les
  // quatre semaines et il n'y a alors rien à déplacer (comportement correct, mais qui ne teste
  // rien).
- ["sex=F + cycle_sync=oui",{sex:"F",cycle_sync:"oui",cycle_start:"2026-08-10",cycle_len:"30"}],
+ ["sex=F + cycle_sync=oui",{sex:"F",cycle_sync:"oui",cycle_start:courseUn(2, 1),cycle_len:"30"}],
  ["age=18",{age:"18"}],["age=55",{age:"55"}],["age=70",{age:"70"}],
  ["weight_lever=oui",{weight_lever:"oui",weight:"85"}],
  ["off_days=oui (Lun+Ven)",{off_days:"oui",off_which:"Lun,Ven"}],

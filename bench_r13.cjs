@@ -12,6 +12,7 @@
  */
 "use strict";
 const fs = require("fs");
+const { courseDans, courseUn } = require("./bench-dates.cjs"); // A-6 — voir bench-dates.cjs
 const path = require("path");
 
 const ENGINE = process.argv[2] || "./js/engine.js";
@@ -45,7 +46,7 @@ const BASE = {
   off_days: "non", sex: "H", sleep: "moyen", life_load: "normale", activity: "actif",
   injury: "aucune", med_pain: "non", med_dizzy: "non", med_treat: "non", weight_lever: "oui",
   age: "30", weight: "85", height: "181", vol_max: "12", vol_recent: "9", sessions_max: "8",
-  race_date: "2027-09-12", format: "Full", terrain: "vallonne",
+  race_date: courseDans(58), format: "Full", terrain: "vallonne",
   ftp_known: "oui", ftp: "227", pace_known: "oui", pace: "4:50", css_known: "oui", css: "2:00",
 };
 const build = (sport, over) => E.buildPlan(sport, Object.assign({}, BASE, over));
@@ -67,11 +68,11 @@ const build = (sport, over) => E.buildPlan(sport, Object.assign({}, BASE, over))
  * Le refus lui-même est couvert par R15.7-C1 du banc R15.
  */
 const FMT_MINEUR = "M";
-const pAdult = build("tri", { format: FMT_MINEUR, race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
+const pAdult = build("tri", { format: FMT_MINEUR, race_date: courseDans(41), vol_max: "10", sessions_max: "6" });
 const adultPeak = peakMin(pAdult);
 for (const age of ["10", "12", "13"]) {
   xfail("R13.1-A" + age, "mineur " + age + " ans : protection R6.3 appliquée", () => {
-    const p = build("tri", { age, format: FMT_MINEUR, race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
+    const p = build("tri", { age, format: FMT_MINEUR, race_date: courseDans(41), vol_max: "10", sessions_max: "6" });
     const minor = dec(p, "R6.3").some((d) => /mineur/i.test(d.what));
     const w = warns(p, /18 ans/).length > 0;
     const ok = minor && w && vo2Steps(p) === 0 && peakMin(p) <= adultPeak * 0.78;
@@ -79,16 +80,16 @@ for (const age of ["10", "12", "13"]) {
   });
 }
 xfail("R13.1-B", "98 ans : protection master appliquée (vol ×0.85, récup /3)", () => {
-  const p = build("tri", { age: "98", format: FMT_MINEUR, race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
+  const p = build("tri", { age: "98", format: FMT_MINEUR, race_date: courseDans(41), vol_max: "10", sessions_max: "6" });
   const master = dec(p, "R6.3").some((d) => /master/i.test(d.what));
   return { ok: master && peakMin(p) <= adultPeak * 0.9, info: `master:${master} pic:${(peakMin(p) / 60).toFixed(1)}h` };
 });
 check("R13.1-NR1", "non-régression : 15 ans protégé (0 VO2 + R6.3)", () => {
-  const p = build("tri", { age: "15", format: FMT_MINEUR, race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
+  const p = build("tri", { age: "15", format: FMT_MINEUR, race_date: courseDans(41), vol_max: "10", sessions_max: "6" });
   return { ok: vo2Steps(p) === 0 && dec(p, "R6.3").length > 0, info: "vo2:" + vo2Steps(p) };
 });
 check("R13.1-NR2", "non-régression : 30 ans garde sa VO2 / 65 ans master / 101 refusé", () => {
-  const p65 = build("tri", { age: "65", format: "70.3", race_date: "2027-05-16", vol_max: "10", sessions_max: "6" });
+  const p65 = build("tri", { age: "65", format: "70.3", race_date: courseDans(41), vol_max: "10", sessions_max: "6" });
   let refused = false; try { build("tri", { age: "101" }); } catch (e) { refused = e.code === "ENTREE_INVALIDE"; }
   return { ok: vo2Steps(pAdult) > 0 && dec(p65, "R6.3").some((d) => /master/i.test(d.what)) && refused, info: "" };
 });
@@ -130,7 +131,7 @@ check("R13.3-NR", "non-régression doubles=oui : 2,2–3,2 nages/sem, css prése
 });
 
 /* ================= R13.4 — semaine de course ================= */
-for (const [fmt, rd] of [["Full", "2027-09-12"], ["70.3", "2027-05-16"]]) {
+for (const [fmt, rd] of [["Full", courseDans(58)], ["70.3", courseDans(41)]]) {
   const p = build("tri", { format: fmt, race_date: rd, doubles: "oui", dispo: "quotidienne", shift_ok: "non", sessions_max: "9" });
   xfail("R13.4-C1-" + fmt, fmt + " : zéro bloc de force (bk.frc) en affûtage", () => {
     let frc = 0; for (const w of taperWeeks(p)) for (const d of w.days) for (const s of d.sessions) for (const st of (s.steps || [])) if (st.zone === "bk.frc") frc++;
@@ -160,7 +161,7 @@ for (const [fmt, rd] of [["Full", "2027-09-12"], ["70.3", "2027-05-16"]]) {
 // presque. Le critère doit valoir pour LES DEUX — c'est le même athlète à un an près.
 for (const hist of ["confirme", "ancien"]) {
   xfail("R13.5-E1-" + hist, `swim/fond/épaule (history=${hist}) : périodisation vivante + promesse honnête`, () => {
-    const p = build("swim", { injury: "epaule", format: "fond", race_date: "2026-12-13", vol_max: "10", sessions_max: "6", history: hist });
+    const p = build("swim", { injury: "epaule", format: "fond", race_date: courseDans(19), vol_max: "10", sessions_max: "6", history: hist });
     const cw = chargeWeeks(p).map(weekMin);
     const flat = Math.max(...cw) / Math.max(1, Math.min(...cw));
     const promised = (dec(p, "V2.1")[0] || { val: "" }).val;
@@ -179,7 +180,7 @@ xfail("R13.6-P1", "Full 59 sem : affûtage 2–3 semaines, peak ≤ 5", () => {
   return { ok: t >= 2 && t <= 3 && pk <= 5, info: `taper=${t} peak=${pk} (total ${p.weeks.length})` };
 });
 check("R13.6-P2", "plan court (run semi 16 sem) : affûtage 1–2 semaines", () => {
-  const p = build("run", { format: "semi", race_date: "2026-11-22", terrain: "route", vol_max: "6", sessions_max: "5" });
+  const p = build("run", { format: "semi", race_date: courseDans(16), terrain: "route", vol_max: "6", sessions_max: "5" });
   const t = taperWeeks(p).length;
   return { ok: t >= 1 && t <= 2, info: `taper=${t} (total ${p.weeks.length})` };
 });
@@ -201,7 +202,7 @@ check("ANX-C22", "aucun saut charge→charge > +10,5 % (Full, minutes exactes)",
   return { ok: bad.length === 0, info: bad.join(" ") };
 });
 check("ANX-GEN", "genou déclaré + plan vélo pur : un avertissement existe", () => {
-  const p = build("bike", { injury: "genou", format: "cyclo", race_date: "2026-12-13", terrain: "vallonne", vol_max: "10", sessions_max: "6" });
+  const p = build("bike", { injury: "genou", format: "cyclo", race_date: courseDans(19), terrain: "vallonne", vol_max: "10", sessions_max: "6" });
   return { ok: warns(p, /genou/i).length > 0, info: "warnings genou: " + warns(p, /genou/i).length };
 });
 

@@ -10,6 +10,7 @@
  * Par défaut : ./modules/js/engine.js, sinon ./EnduraBuild-standalone-1.html
  */
 const fs = require("fs"), path = require("path");
+const { courseDans, courseUn } = require("./bench-dates.cjs"); // A-6 — voir bench-dates.cjs
 function loadEngine() {
   const direct = process.env.ENGINE || path.join(__dirname, "modules/js/engine.js");
   if (fs.existsSync(direct)) { require(direct); return; }
@@ -45,11 +46,17 @@ const pick = (a) => a[Math.floor(rnd() * a.length) % a.length];
  * de la mise en page de la semaine de course : le handoff R15 a montré qu'en ne le variant pas,
  * son propre banc rendait 0 défaut là où il y en avait 291 sur 648.
  *
- * Elles étaient aussi ABSOLUES (angle mort A-6 du registre) : « 2027-03-14 » vaut 33 semaines
+ * Elles étaient aussi ABSOLUES (angle mort A-6 du registre) : « 2027-03-14 » vaut 32 semaines
  * d'horizon aujourd'hui et 20 dans trois mois. Le banc dérivait tout seul, et pouvait se mettre
- * à exercer d'autres branches sans que rien ne le signale. Elles sont désormais RELATIVES à
- * l'ancre (le lundi de la semaine courante), donc stables en SENS : « dans 24 semaines, un
- * mardi » veut dire la même chose dans un an.
+ * à exercer d'autres branches sans que rien ne le signale.
+ *
+ * A-6 (03/08/2026) — CE PARAGRAPHE ANNONÇAIT « ELLES SONT DÉSORMAIS RELATIVES » ET QUATRE
+ * DATES ABSOLUES SUBSISTAIENT DANS CE FICHIER. R15.1 avait rendu relatif le TIRAGE (le jour de
+ * la semaine, la dimension qui manquait) mais laissé les six ancres en dur. Même forme que le
+ * défaut trouvé le même jour sur la commande de vérification d'O-19 : la prose décrit une
+ * correction que l'instrument n'a jamais reçue, et personne ne relit la prose contre le code.
+ * Elles passent par `bench-dates.cjs` — point unique du dépôt —, donc stables en SENS : « dans
+ * 32 semaines, un dimanche » veut dire la même chose dans un an.
  *
  * Le tirage reste DÉTERMINISTE (graine fixe ci-dessous) : à ancre égale, deux exécutions
  * donnent le même échantillon.
@@ -141,7 +148,7 @@ const BASE = {
     intent: "competition", med_pain: "non", med_dizzy: "non", med_treat: "non",
     age: "30", sex: "H", weight: "79", history: "confirme", injury: "aucune",
     sessions_max: "7", vol_max: "10", vol_recent: "7", dispo: "partielle",
-    off_days: "non", doubles: "oui", level: "inter", race_date: "2027-05-09",
+    off_days: "non", doubles: "oui", level: "inter", race_date: courseDans(40),
     race_distance_km: "62", race_dplus_m: "3200", race_technicity: "technique",
     race_night: "partielle", race_cutoff_h: "14", train_dplus_access: "collines",
     treadmill: "non", poles: "oui", pace_known: "oui", pace: "4:50",
@@ -151,7 +158,7 @@ const BASE = {
     intent: "competition", med_pain: "non", med_dizzy: "non", med_treat: "non",
     age: "30", sex: "H", weight: "79", history: "confirme", injury: "aucune",
     sessions_max: "7", vol_max: "10", vol_recent: "7", dispo: "partielle",
-    off_days: "non", doubles: "oui", level: "inter", race_date: "2027-05-09",
+    off_days: "non", doubles: "oui", level: "inter", race_date: courseDans(40),
     format: "sprint", swim_total_m: "2600", run_total_km: "9.2", race_dplus_m: "250",
     segments_n: "10", longest_swim_m: "600", water_temp_c: "16", team_mode: "binome",
     team_swim_gap_sec: "5", openwater_access: "saisonnier", swim_continuous: "oui",
@@ -162,7 +169,7 @@ const BASE = {
     intent: "competition", med_pain: "non", med_dizzy: "non", med_treat: "non",
     age: "30", sex: "H", weight: "79", history: "confirme", injury: "aucune",
     sessions_max: "7", vol_max: "10", vol_recent: "7", dispo: "partielle",
-    off_days: "non", doubles: "oui", level: "inter", race_date: "2027-05-09",
+    off_days: "non", doubles: "oui", level: "inter", race_date: courseDans(40),
     format: "M", terrain: "vallonne", pace_known: "oui", pace: "4:50",
     ftp_known: "oui", ftp: "227",
   },

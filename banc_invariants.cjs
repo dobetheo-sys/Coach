@@ -7,6 +7,7 @@
 /* Chargement portable du moteur (même contrat que `audit_v7.cjs` / `audit_amont.cjs`) :
  *   ENGINE=/chemin/engine.js  ou  STANDALONE=/chemin/EnduraBuild-standalone.html */
 const fs = require("fs"), path = require("path");
+const { courseDans, courseUn } = require("./bench-dates.cjs"); // A-6 — voir bench-dates.cjs
 (function loadEngine() {
   globalThis.window = globalThis;
   const direct = process.env.ENGINE || path.join(__dirname, "endurabuild/js/engine.js");
@@ -25,7 +26,7 @@ if (!E) throw new Error("globalThis.EBV2 absent après chargement du moteur");
 
 const BASE = { intent:"competition", history:"confirme", injury:"aucune", dispo:"partielle",
   doubles:"parfois", off_days:"non", sleep:"moyen", life_load:"normale", age:"38", weight:"79",
-  sex:"H", race_date:"2027-06-13", weight_lever:"non" };
+  sex:"H", race_date:courseDans(45), weight_lever:"non" };
 const SPORTS = {
   run:{format:"marathon",terrain:"route",treadmill:"non",pace_known:"oui",pace:"4:50"},
   bike:{format:"cyclo",terrain:"plat",ftp_known:"oui",ftp:"227"},
@@ -232,7 +233,7 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
   // I15/I16/I17 — les courses : présence au calendrier, veille allégée, jour J exclusif
   {
     const withRace = { ...BASE, ...extra, ...ENV[1].a, level:"inter",
-      races:"oui", race1_date:"2027-03-14", race1_prio:"A" };
+      races:"oui", race1_date:courseDans(32), race1_prio:"A" };
     const p = E.buildPlan(sp, withRace);
     const ctx = `${sp}/courses`;
     const dayOf = (iso) => { for (const w of p.weeks) for (const d of w.days) if (d.date === iso) return d; return null; };
@@ -243,14 +244,14 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
       ko("I15", ctx, `jour de la course objectif (${BASE.race_date}) : aucune séance de course — ` +
         (objectif.sessions.filter((x) => x.d !== "rs").map((x) => x.name + " " + x.min + "min").join(" + ") || "repos"));
     // I16 — la veille d'une course, rien de long
-    for (const iso of [BASE.race_date, "2027-03-14"]) {
+    for (const iso of [BASE.race_date, courseDans(32)]) {
       const veille = dayOf(new Date(new Date(iso + "T12:00:00Z").getTime() - 864e5).toISOString().slice(0, 10));
       if (!veille) continue;
       const mx = Math.max(0, ...veille.sessions.filter((x) => x.d !== "rs" && !isRace(x)).map((x) => x.min || 0));
       if (mx > 60) ko("I16", ctx, `veille de la course du ${iso} : séance de ${mx}min`);
     }
     // I17 — le jour d'une course, aucune autre séance
-    const jourJ = dayOf("2027-03-14");
+    const jourJ = dayOf(courseDans(32));
     if (jourJ) {
       const autres = jourJ.sessions.filter((x) => x.d !== "rs" && !isRace(x));
       if (autres.length) ko("I17", ctx, `jour de course intermédiaire : ${autres.map((x) => x.name).join(", ")} en plus`);
@@ -260,7 +261,7 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
     // dimanche. Une course un mercredi laissait quatre jours de « Repos post-course », une
     // course un lundi en laissait six. Le jour de la semaine est LA variable du défaut : un
     // seul cas testé (un dimanche) le rendait invisible. Les sept sont testés.
-    for (const iso of ["2027-06-07", "2027-06-08", "2027-06-09", "2027-06-10", "2027-06-11", "2027-06-12", "2027-06-13"]) {
+    for (const iso of [1,2,3,4,5,6,7].map((j) => courseUn(45, j))) {
       const p2 = E.buildPlan(sp, { ...BASE, ...extra, ...ENV[1].a, level: "inter", race_date: iso });
       const derniere = p2.weeks[p2.weeks.length - 1];
       const apres = derniere.days.filter((d) => d.date && d.date > iso);
@@ -277,7 +278,7 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
     //
     // Le JOUR DE LA SEMAINE est la variable du défaut, comme pour I18 : une course le dimanche
     // laisse six jours pour porter le plancher et ne montre rien. Les sept sont testés.
-    for (const iso of ["2027-06-07", "2027-06-08", "2027-06-09", "2027-06-10", "2027-06-11", "2027-06-12", "2027-06-13"]) {
+    for (const iso of [1,2,3,4,5,6,7].map((j) => courseUn(45, j))) {
       const p3 = E.buildPlan(sp, { ...BASE, ...extra, ...ENV[1].a, level: "inter", race_date: iso });
       const jours = p3.weeks.flatMap((w) => w.days);
       const ix = jours.findIndex((d) => d.sessions.some(isRace));

@@ -17,6 +17,7 @@
  *   ENGINE=/chemin/engine.js  ou  STANDALONE=/chemin/EnduraBuild-standalone.html
  * Par défaut : le bundle de la PWA de ce dépôt. */
 const fs = require("fs"), path = require("path");
+const { courseDans, courseUn } = require("./bench-dates.cjs"); // A-6 — voir bench-dates.cjs
 (function loadEngine() {
   globalThis.window = globalThis;
   const direct = process.env.ENGINE || path.join(__dirname, "endurabuild/js/engine.js");
@@ -73,7 +74,7 @@ const BASE = {
   intent: "competition", level: "inter", history: "confirme", injury: "aucune",
   sessions_max: "9", vol_max: "13", vol_recent: "7", dispo: "partielle",
   doubles: "parfois", off_days: "non", sleep: "moyen", life_load: "normale",
-  age: "30", weight: "79", sex: "H", race_date: "2027-06-13", weight_lever: "non",
+  age: "30", weight: "79", sex: "H", race_date: courseDans(45), weight_lever: "non",
 };
 const REF = {
   tri: { ...BASE, format: "Full", ftp_known: "oui", ftp: "227", pace_known: "oui", pace: "4:50", css_known: "non", terrain: "vallonne" },

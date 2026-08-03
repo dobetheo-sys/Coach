@@ -8,6 +8,10 @@
  */
 import { buildPlanV2 } from "../src/app/bridge.ts";
 import { traceOn, traceDump } from "../src/engine/trace.ts";
+import { createRequire } from "node:module";
+// A-6 — `trace.mjs` est un OUTIL DE DIAGNOSTIC, pas un golden : sa date doit suivre le
+// calendrier, sinon la trace finit par décrire un plan que le moteur refuserait aujourd'hui.
+const { courseDans } = createRequire(import.meta.url)("../bench-dates.cjs");
 
 const [sport = "swim", envLbl = "moyenne", level = "inter"] = process.argv.slice(2);
 const ENV = { petite: { sessions_max: "3", vol_max: "4", vol_recent: "1" }, moyenne: { sessions_max: "7", vol_max: "10", vol_recent: "5" }, grosse: { sessions_max: "12", vol_max: "16", vol_recent: "10" } };
@@ -21,7 +25,7 @@ const SPORTS = {
 };
 const a = { intent: "competition", history: "confirme", injury: "aucune", dispo: "partielle", doubles: "parfois",
   off_days: "non", sleep: "moyen", life_load: "normale", age: "38", weight: "79", sex: "H",
-  race_date: "2027-06-13", weight_lever: "non", level, ...SPORTS[sport], ...ENV[envLbl] };
+  race_date: courseDans(45), weight_lever: "non", level, ...SPORTS[sport], ...ENV[envLbl] };
 
 traceOn(null);
 const sansTrace = JSON.stringify(buildPlanV2(sport, a));
