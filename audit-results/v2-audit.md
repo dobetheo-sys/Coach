@@ -4,11 +4,11 @@ Généré par `npm run audit:v2`. 594 combinaisons via le moteur V2, scorées pa
 
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| run | 108 | 0.98 | 0.91–1.00 | 0 | 0 | 0 | 0.43 | 0 | 84% | 22 | 98 |
-| bike | 135 | 0.99 | 0.91–1.00 | 0 | 0 | 0 | 0.47 | 0 | 91% | 12 | 99 |
+| run | 108 | 0.98 | 0.91–1.00 | 0 | 0 | 0 | 0.43 | 0 | 84% | 24 | 98 |
+| bike | 135 | 0.99 | 0.91–1.00 | 0 | 0 | 0 | 0.47 | 0 | 91% | 14 | 99 |
 | swim | 108 | 0.97 | 0.90–0.99 | 0 | 0 | 0 | 0.47 | 0 | 85% | 0 | 97 |
 | tri | 108 | 0.98 | 0.92–1.00 | 0 | 0 | 0 | 0.42 | 0 | 75% | 0 | 95 |
-| trail | 27 | 0.95 | 0.90–0.96 | 0 | 0 | 0 | 0.30 | 0 | 95% | 0 | 90 |
+| trail | 27 | 0.95 | 0.93–0.98 | 0 | 0 | 0 | 0.30 | 0 | 95% | 0 | 90 |
 | duathlon | 108 | 0.97 | 0.91–1.00 | 0 | 0 | 0 | 0.40 | 0 | 87% | 12 | 98 |
 
 ## V1.5 ↔ V2 (même auditeur, mêmes 486 profils)
@@ -19,7 +19,7 @@ Généré par `npm run audit:v2`. 594 combinaisons via le moteur V2, scorées pa
 | bike | 0.99 → 0.99 | 0.90 → 0.90 | 99 → 99 |
 | swim | 0.97 → 0.97 | 0.86 → 0.86 | 97 → 97 |
 | tri | 0.98 → 0.98 | 0.90 → 0.90 | 95 → 95 |
-| trail | NaN → 0.95 | 1.00 → 0.90 | NaN → 90 |
+| trail | NaN → 0.95 | 1.00 → 0.91 | NaN → 90 |
 | duathlon | NaN → 0.97 | 1.00 → 0.89 | NaN → 98 |
 
 ## Décisions du moteur — exemple (tri / 70.3 / confirme / inter / competition)

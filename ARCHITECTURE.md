@@ -3119,3 +3119,94 @@ désormais sur le MODÈLE, le nombre de lignes sur le DOM.
 interrogeait `.gd-det`, qui n'existe plus dès qu'une séance a deux blocs — elle a levé une
 erreur au lieu de mesurer. La propriété ne change pas d'un iota, seul le conteneur à interroger
 change (`.gd-det, .gd-steps`).
+
+## I14b — ce que le plafond de libellé retire, la semaine le récupère (O-20 fermé)
+
+`audit:invariants` **I13** (« plus l'athlète est fort, plus la charge est élevée ») était rouge
+depuis R18 : en trail, un DÉBUTANT recevait un pic de **575 min** contre **547** pour un INTER, et
+sur le D+ aussi (1 130 m contre 860). C'était le seul gate rouge du dépôt, et il avait raison.
+
+### La chaîne, mesurée pas à pas
+
+Quatre hypothèses avaient été réfutées avant (T1, T2b, « le débutant a des séances moins
+pentues », et le correctif `C23b` mesuré INERTE puis retiré). La cinquième est la bonne, et elle
+se lit en instrumentant le pipeline :
+
+| étape | semaine de pic de l'inter |
+|---|---|
+| cible de la courbe | 600 min |
+| sortie de la boucle R3.3 | **603 min** — la courbe et le remplissage n'ont jamais été en cause |
+| `enforceLabelVsDose` (I14) | **551 min** — « Descente en charge » ramenée de 210 à 159 |
+| livré | 547 min |
+
+**I14 dit « la sortie longue est la plus longue de sa semaine » et plafonne les AUTRES séances à
+la durée LIVRÉE de cette longue. Plus aucune passe ne rend les 51 minutes retirées.**
+
+### Pourquoi le débutant y échappe — c'est le cœur de l'affaire
+
+Le plafond que I14 impose aux autres séances EST la durée de la sortie longue. Celle du débutant
+est épinglée à **180 min par C23, un plafond de SÉCURITÉ** ; celle de l'inter, libre, s'arrête à
+167. Le débutant hérite donc du plafond le PLUS HAUT, ne se fait rien retirer, et passe devant.
+**Un plafond de sécurité qui augmente la charge de celui qu'il protège** — il ne se rembourse pas
+(l'hypothèse `C23b`, mesurée et réfutée), il déplace le plafond d'une autre règle.
+
+### La forme du défaut, connue dans l'autre sens
+
+Ce dépôt a payé onze fois « une garantie vérifiée au milieu du pipeline ne vérifie que
+l'avant-dernier état » (R15.7-A, C28, I14 elle-même…) et y a toujours répondu en REJOUANT la
+garantie au point fixe. Ici c'est le miroir : une garantie de **SÉANCE** retire des minutes APRÈS
+la boucle de volume, et c'est **la BOUCLE** qui n'est jamais rejouée.
+
+### Le correctif
+
+`refillEasyAfterLabelCap()` rend ce que `enforceLabelVsDose` a pris, avec quatre bornes dont
+chacune vient d'une règle qui existait déjà :
+
+| borne | d'où elle vient |
+|---|---|
+| uniquement des blocs **plats et non-qualité** | R4.1 — « le déversement va vers les séances FACILES » |
+| jamais plus de **0,80 × la sortie longue** | R20.3 — une facile ne rivalise pas avec la pivot |
+| jamais au-dessus de la **courbe déclarée** | on rend ce qui a été pris, on n'ajoute pas |
+| une semaine hors pic jamais au-dessus du **pic livré** (+5 %) | « dev ≤ pic », déjà dans l'auditeur |
+
+Ni la sortie longue (la gonfler pour tenir une promesse serait ajouter du volume), ni un bloc en
+pente (les axes verticaux ont leurs propres courbes T2/T2b, re-clampées juste après : leur donner
+des mètres ici serait leur en reprendre là), ni une séance de récupération (C25).
+
+**Mesuré : I13 passe de 13 échecs sur 114 combinaisons à 0**, balayé sur 6 sports × 21 horizons —
+donc traité systémiquement, pas au seul point d'échantillonnage qui rendait le défaut
+intermittent. Le pic de l'inter passe de 547 à **596 min** (déclaré 600), celui du débutant ne
+bouge pas (575). Sur les 702 profils du corpus V2 : **62 semaines regarnies, 1 365 minutes
+rendues**, ~22 min par semaine — la passe est étroite, et non inerte (vérifié).
+
+### Deux erreurs à moi, gardées écrites
+
+**(1) Ma première écriture était inerte**, et pour une raison qui se voit au premier coup d'œil
+une fois qu'on la sait : j'ai filtré les blocs receveurs sur `!st.gradient` en pensant « sans
+pente », alors que **`flat` EST une valeur de `gradient`, pas son absence**. En trail tout bloc en
+porte une : j'excluais donc le footing PLAT, précisément le bloc que R4.1 désigne. Receveuses
+vides sur les 41 semaines. `EN_PENTE()` est désormais la seule définition, partagée avec
+`shrinkTo` qui la portait en local (R11.1).
+
+**(2) Ma deuxième écriture remplissait fidèlement une courbe qui DÉCROÎT** sur certains profils
+courts, et amplifiait l'inversion : la boucle de réparation coupait alors la semaine 1 de
+l'athlète CAPABLE pendant que le témoin plus lent gardait la sienne — l'inversion de niveau que je
+corrigeais, recréée trois profils plus loin. La règle « dev ≤ pic » existait, mais n'était
+vérifiée qu'APRÈS, par la boucle de réparation : mon remplissage lui donnait du travail au lieu de
+la respecter. Elle est lue au moment où la passe agit — onzième application de la leçon, cette
+fois à ma propre passe. Borne vérifiée **non inerte** : elle mord 10 fois sur 702 profils.
+
+### Ce que la fermeture a fait remonter : O-21
+
+Le critère `O17` du banc v6 est passé rouge. Le réflexe aurait été de conclure « I14b a bridé le
+plan » : **c'est faux, et c'est mesuré** — le plan de l'athlète capable fait 107 min avant comme
+après, au caractère près. C'est le TÉMOIN qui a bougé (92 → 120), parce qu'il livre enfin sa
+propre courbe. Le critère nomme « le plan a rétréci » et mesure « le témoin a changé ».
+
+Mais ce qu'il expose est un vrai défaut, **antérieur à ce lot** : à `vol_recent: 5`, avant comme
+après, le coureur à 5:45/km reçoit 100 min et celui à 7:00/km 106 — chiffres identiques dans les
+deux états. Une inversion de monotonie sur l'axe **ALLURE**, cousine d'I13 (axe NIVEAU). Décision
+du fondateur : **dette déclarée plutôt que témoin réécrit** — `O17` passe en `expect: 'fail'` et
+reste AFFICHÉ avec son chiffre, comme D2/D3/F2. Ré-ancrer son témoin effacerait ce qu'il vient de
+trouver. Suivi en **O-21** dans `BUGS_OUVERTS.md`, avec la piste : la courbe déclarée décroît sur
+ce profil (base au-dessus du pic), et c'est probablement là qu'est la cause.
