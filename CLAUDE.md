@@ -891,6 +891,33 @@ impossible au lieu d'improbable — la seule correction qui vaille pour un défa
 « quelqu'un doit s'en souvenir ».
 **24 gates verts, E2E 16/16, golden 900 inchangé, registre 23/23.**
 
+**O-25 livré — le seuil importé n'était pas un effort maximal, et l'import défaisait la
+correction** (voir ARCHITECTURE.md « O-25 ») : remonté par le fondateur une fois O-24 fermé, donc
+**le premier retour où il voyait enfin le code livré**. Un symptôme, deux causes. **(a)**
+`disciplineRegistry.ts` énonce le raccourci en entier — « un 10-15 km récent **À FOND** est une
+bonne estimation » — et O-22 n'avait posé que la fenêtre de distance : une sortie longue tranquille
+de 12 km y entre et n'est pas un test. Mesuré : **5'37/km annoncé pour un seuil réel à 4'42**,
+55 s/km, toutes les zones de course décalées d'un cran, et l'erreur est systématiquement BASSE
+(une moyenne de sortie ne peut qu'être plus lente que le seuil) donc sous-charge silencieuse. Même
+défaut qu'O-22 sur un autre poste : **un raccourci de protocole appliqué à une grandeur qui n'est
+pas celle qu'il attend.** Cascade calquée sur celle de la FTP : une COURSE déclarée telle sur
+Strava (`workout_type === 1`, 10-15 km), sinon la **meilleure moyenne glissante de 10 min** lue
+dans le flux de vitesse — le protocole du seuil est « 3 min + 10 min à fond », et cette grandeur
+vit À L'INTÉRIEUR des séances au lieu d'être noyée dans une moyenne —, sinon **aucune estimation
+et on le dit** (P7/P8). `bestRollingMean` sert les deux références, écrite une seule fois (R11.1).
+**(b)** « la saisie manuelle prime TOUJOURS sur l'import » était faux : saisie et import atterrissent
+dans le MÊME journal à la MÊME date, et le départage par position posé par O-23 fait gagner le
+dernier inséré — l'import, puisqu'on corrige d'abord et qu'on réimporte ensuite. **Conséquence
+directe de mon correctif O-23** : juste, mais incomplet — il fallait dire ce que « le plus récent »
+signifie quand deux sources parlent le même jour. Une valeur **saisie** (ou issue d'un retest guidé)
+bat désormais tout import de la même date ; au-delà la date reprend la main, un import postérieur
+dit quelque chose de neuf et geler la valeur à vie serait le défaut symétrique. Le message cesse de
+promettre « toujours » et dit ce qui est vrai. Cinq critères `O-25`, dont trois sur
+`bestRollingMean` (elle trouve le bloc rapide ; un effort de 8 min ne rend PAS une « moyenne de
+10 min » ; la fenêtre est bornée par le TEMPS et non par le nombre de points), le critère (b)
+**vérifié rouge** — il rendait exactement le 5'37 du symptôme.
+**24 gates verts, E2E 16/16, golden 900 inchangé, registre 24/24.**
+
 **I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
 ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en
 trail, un DÉBUTANT recevait un pic de **575 min** contre **547** pour un INTER, et sur le D+ aussi

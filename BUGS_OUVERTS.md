@@ -1442,6 +1442,74 @@ attendu: /✓ sw\.js à jour/
 cmd: npm run --silent check:sw
 ```
 
+---
+
+### O-25 · L'allure seuil importée n'était pas un effort maximal, et l'import défaisait la correction · ✅ **FERMÉ (03/08/2026)**
+
+Remonté par le fondateur une fois O-24 fermé — donc **le premier retour où il voyait enfin le code
+qu'on lui livrait**. Deux défauts distincts, qui se combinaient pour produire un seul symptôme :
+« mon seuil passe à 5'37 au lieu de 4'42 ».
+
+#### (a) La fenêtre de distance sans le « à fond »
+
+`disciplineRegistry.ts` énonce le raccourci en entier : *« un 10-15 km récent **À FOND** est une
+bonne estimation »*. O-22 avait posé la fenêtre de distance — c'était juste, et c'était la moitié
+de la règle. L'autre moitié n'était vérifiée par rien : **une sortie longue tranquille de 12 km
+entre exactement dans la fenêtre et n'est pas un test.**
+
+Mesuré sur le compte du fondateur : **5'37/km annoncé pour un seuil réel à 4'42**, soit 55 s/km
+d'écart et toutes les zones de course décalées d'un cran. C'est exactement le défaut d'O-22 sur un
+autre poste : **un raccourci de protocole appliqué à une grandeur qui n'est pas celle qu'il
+attend.** Le sens de l'erreur est cette fois systématiquement BAS — on prend une moyenne de
+sortie, elle ne peut qu'être plus lente que le seuil — donc sous-charge silencieuse.
+
+**Cascade livrée**, calquée sur celle de la FTP :
+
+1. **Une COURSE, déclarée telle sur Strava** (`workout_type === 1`), entre 10 et 15 km. C'est le
+   « à fond » du protocole, attesté par l'athlète lui-même.
+2. **La meilleure moyenne glissante de 10 minutes**, lue dans le flux de vitesse
+   (`velocity_smooth`). Le protocole du seuil est « 3 min + 10 min à fond » : c'est la grandeur
+   qu'il attend, et elle vit **à l'intérieur** des séances (un tempo, une côte, une fin de sortie)
+   au lieu d'être noyée dans une moyenne de sortie. Même fonction que pour la puissance —
+   `bestRollingMean`, une seule fois écrite (R11.1).
+3. **Aucune estimation, et on le dit** (P7/P8), avec les deux issues : corriger au Profil, ou
+   faire le test.
+
+#### (b) « La saisie manuelle prime toujours sur l'import » était faux
+
+Le message de l'import le promet depuis son écriture. Il ne primait pas : la saisie et l'import
+atterrissent dans le **même journal**, à la **même date**, et le départage par position posé par
+O-23 fait gagner le dernier inséré — c'est-à-dire l'import, puisque l'ordre naturel est de
+corriger d'abord et de réimporter ensuite.
+
+Mesuré, et le banc rend le chiffre exact du symptôme :
+
+```
+FAIL O-25 — un import du même jour ne défait pas ta correction (5:37, attendu 4:42)
+```
+
+C'est une **conséquence directe d'O-23** : en réparant « latest rend le plus ancien », j'ai fait
+gagner l'import contre la correction. Le correctif était juste et incomplet — il fallait dire ce
+que « le plus récent » signifie quand deux sources parlent le même jour.
+
+**Règle livrée** : une valeur **saisie** (ou issue d'un **retest guidé** — un protocole exécuté
+volontairement) bat tout import de la même date. Au-delà, la date reprend la main : un import
+postérieur dit quelque chose de neuf, et geler la valeur à vie serait le défaut symétrique. Les
+deux moitiés sont assertées. Le message d'interface cesse de promettre « toujours » et dit ce qui
+est vrai : « ta correction prime sur cet import et sur tout import du même jour ».
+
+**Gardes** : cinq critères `O-25` dans `tests/e2e/smoke-improvements.mjs` — les deux moitiés de la
+règle de priorité, plus trois sur `bestRollingMean` (elle trouve le bloc rapide ; un effort de
+8 min ne rend PAS une « moyenne de 10 min » ; la fenêtre est bornée par le TEMPS et non par le
+nombre de points). Le critère (b) **vérifié rouge** contre le moteur d'avant.
+
+```verify
+id: O-25
+quoi: l'allure seuil vient d'une course déclarée ou du meilleur 10 min, jamais d'une moyenne de sortie
+attendu: /velocity_smooth[\s\S]*workout_type|workout_type[\s\S]*velocity_smooth/
+cmd: grep -n "workout_type\|velocity_smooth\|meilleur 10 min" endurabuild/js/ui/steps.js
+```
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas
