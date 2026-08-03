@@ -526,9 +526,11 @@ const _fk100=s=>Math.floor(s/60)+"'"+String(Math.round(s%60)).padStart(2,"0");
  *      pilote des zones.
  *
  * Pour l'allure seuil, le protocole du dépôt nomme lui-même son raccourci : un 10-15 km
- * couru à fond. On prend donc la course la plus rapide DANS CETTE FENÊTRE DE DISTANCE,
- * au lieu de la course la plus rapide toutes distances confondues — un 5 km rapide et un
- * marathon ne disent pas la même chose du seuil.
+ * couru À FOND. La fenêtre de distance ne suffit donc pas — une sortie longue tranquille
+ * de 12 km y entre et n'est pas un test (mesuré : 5'37/km annoncé pour un seuil réel à
+ * 4'42, O-25). Même cascade que pour la FTP : une COURSE déclarée telle sur Strava, sinon
+ * la meilleure moyenne glissante de 10 min lue dans les flux de vitesse (le « 10 min à
+ * fond » du protocole, qui vit À L'INTÉRIEUR des séances), sinon aucune estimation.
  *
  * CE QUI N'EST PAS TRAITÉ ICI, ET C'EST DIT : le CSS. Son protocole (400 m + 200 m) ne se
  * reconstitue pas depuis un résumé d'activité, et « la nage la plus rapide en moyenne »
@@ -586,18 +588,57 @@ async function stravaImport(oauthTok){
     if(ftp>0){S.answers.tests.push({type:"ftp",value:ftp,date:today,source:ftpSrc});added.push("FTP "+ftp+"W");}
 
     // ---- Allure seuil -------------------------------------------------------
-    // Le protocole du dépôt le dit : « un 10-15 km récent à fond est une bonne estimation ».
-    // On borne donc la DISTANCE au lieu de prendre la course la plus rapide toutes
-    // distances confondues — un 5 km rapide et un marathon ne disent pas la même chose
-    // du seuil, et l'ancienne version les mettait en concurrence.
-    const runs=acts.filter(a=>/Run/.test(sport(a))&&(a.average_speed||0)>0
-      &&(a.distance||0)>=10000&&(a.distance||0)<=15000);
-    if(runs.length){
-      const fast=runs.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
-      if(fast>0){const sk=Math.round(1000/fast);
-        S.answers.tests.push({type:"thrPace",value:sk,date:today,source:"Strava (10-15 km le plus rapide — protocole du plan)"});
-        added.push("allure seuil "+_fk100(sk)+"/km");}
-    } else notes.push("Allure seuil non estimée : aucune course entre 10 et 15 km dans tes 50 dernières activités. C'est la distance que le protocole retient — sur plus court ou plus long, la moyenne ne dit pas le seuil.");
+    // O-25 — LE PROTOCOLE DIT « À FOND », ET RIEN NE VÉRIFIAIT LE « À FOND ».
+    //
+    // La version précédente prenait la course la plus rapide EN MOYENNE dans la fenêtre
+    // 10-15 km. Borner la distance était juste ; c'est l'autre moitié du protocole qui
+    // manquait — « un 10-15 km récent À FOND est une bonne estimation ». Une sortie
+    // longue tranquille de 12 km entre exactement dans la fenêtre et n'a rien d'un test.
+    //
+    // Mesuré sur le compte du fondateur : 5'37/km annoncé pour un seuil réel à 4'42 —
+    // 55 s/km d'écart, soit toutes les zones de course décalées d'un cran. Exactement le
+    // défaut d'O-22 sur un autre poste : un coefficient (ici un raccourci de protocole)
+    // appliqué à une grandeur qui n'est pas celle qu'il attend.
+    //
+    // Trois sources, par confiance décroissante — et la troisième est de REFUSER :
+    //
+    //   1. UNE COURSE, déclarée telle sur Strava (`workout_type === 1`). C'est le « à
+    //      fond » du protocole, attesté par l'athlète lui-même. Fenêtre 10-15 km.
+    //   2. LA MEILLEURE MOYENNE GLISSANTE DE 10 MINUTES, lue dans les flux de vitesse.
+    //      `disciplineRegistry.ts` nomme le protocole du seuil « 3min + 10min à fond » :
+    //      c'est la grandeur qu'il attend, et elle vit à l'intérieur des séances (un
+    //      tempo, une côte, une fin de sortie) au lieu d'être noyée dans une moyenne.
+    //      Même geste que pour la FTP (`bestRollingMean`), même raison.
+    //   3. AUCUNE ESTIMATION, et on le DIT. Règle P7/P8 du prédicteur : un refus motivé
+    //      vaut mieux qu'un chiffre faux qui pilote toutes les allures prescrites.
+    const runs=acts.filter(a=>/Run/.test(sport(a))&&(a.average_speed||0)>0);
+    let sk=0,skSrc="";
+    const courses=runs.filter(a=>a.workout_type===1&&(a.distance||0)>=10000&&(a.distance||0)<=15000);
+    if(courses.length){
+      const fast=courses.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
+      if(fast>0){sk=Math.round(1000/fast);skSrc="Strava (ta course de 10-15 km — protocole du plan)";}
+    }
+    if(!sk){
+      // Les sorties les plus rapides d'abord : le meilleur 10 min a le plus de chances d'y
+      // être. Bornées à six, comme pour la puissance — chaque flux est un appel API.
+      const cand=runs.slice().sort((x,y)=>(y.average_speed||0)-(x.average_speed||0)).slice(0,6);
+      let best10=0;
+      for(const a of cand){
+        try{
+          const rs=await api("/activities/"+a.id+"/streams?keys=velocity_smooth,time&key_by_type=true");
+          if(!rs.ok)continue;
+          const js=await rs.json();
+          const v=js&&js.velocity_smooth&&js.velocity_smooth.data,t=js&&js.time&&js.time.data;
+          best10=Math.max(best10,bestRollingMean(v,t,600));
+        }catch(e){ /* une sortie illisible n'arrête pas les autres */ }
+      }
+      if(best10>0){sk=Math.round(1000/best10);skSrc="Strava (ton meilleur 10 min continu)";}
+    }
+    if(sk>0){
+      S.answers.tests.push({type:"thrPace",value:sk,date:today,source:skSrc});
+      added.push("allure seuil "+_fk100(sk)+"/km");
+    } else if(runs.length) notes.push("Allure seuil non estimée : aucune course déclarée entre 10 et 15 km, et aucun bloc de 10 minutes continues exploitable dans tes sorties. La moyenne d'une sortie tranquille ne dit pas ton seuil — corrige-la au Profil, ou fais le test (3 min + 10 min à fond).");
+    else notes.push("Allure seuil non estimée : aucune course à pied dans tes 50 dernières activités.");
 
     // ---- CSS ----------------------------------------------------------------
     // Son protocole (400m + 200m à fond) ne se reconstitue pas depuis un résumé
@@ -607,7 +648,7 @@ async function stravaImport(oauthTok){
     if(swims.length){const fast=swims.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
       if(fast>0){const s100=Math.round(100/fast);S.answers.tests.push({type:"css",value:s100,date:today,source:"Strava (nage la plus rapide)"});added.push("CSS ≈ "+_fk100(s100)+"/100m");}}
 
-    setS((added.length?("Importé : "+added.join(" · ")+". <span class='q-sub'>Tu peux corriger n'importe quelle valeur au Profil — la saisie manuelle prime toujours sur l'import.</span>"):"Aucune donnée exploitable.")+(notes.length?("<br><span class='q-sub'>⚠ "+notes.join(" ")+"</span>"):""));
+    setS((added.length?("Importé : "+added.join(" · ")+". <span class='q-sub'>Tu peux corriger n'importe quelle valeur au Profil — ta correction prime sur cet import et sur tout import du même jour.</span>"):"Aucune donnée exploitable.")+(notes.length?("<br><span class='q-sub'>⚠ "+notes.join(" ")+"</span>"):""));
     ebSave();
   }catch(e){setS("Échec réseau (CORS ou token invalide). Renseigne les valeurs à la main si besoin.");}
 }
@@ -616,6 +657,9 @@ async function stravaImport(oauthTok){
  * le nombre d'échantillons : les flux Strava ne sont pas à pas régulier (pauses, capteur
  * intermittent), et compter les points donnerait une « fenêtre de 20 min » qui couvre
  * parfois une heure. C'est la même faute d'unité que celle qu'on corrige ici.
+ *
+ * Sert aux DEUX références lues dans un flux — la puissance sur 20 min (FTP, O-22) et la
+ * vitesse sur 10 min (allure seuil, O-25). Un seul calcul pour une seule idée (R11.1).
  */
 function bestRollingMean(vals,times,win){
   if(!Array.isArray(vals)||!Array.isArray(times)||vals.length!==times.length||vals.length<30)return 0;
@@ -758,4 +802,6 @@ function renderBlueprint(){
 }
 function reset(){S.sport=null;S.answers={};S.step=0;S.tier="free";S.started=false;S.showAllWeeks=false;S.onPlan=false;invalidatePlan();ebClear();document.body.dataset.intent="";document.body.dataset.sport="";renderStep();}
 
-export { _fk100, bindInputs, branch, buildFreeSteps, buildPremiumSteps, curCfg, curSteps, ebParseT, evalRules, injuryOpts, levelStep, opt, refreshNav, refreshTrail, renderBlueprint, renderSportPick, renderStep, reset, rulesGrouped, stravaImport, vlab };
+// `bestRollingMean` est exportée pour être MESURÉE (O-25) : c'est le cœur des deux
+// références lues dans un flux, et une fenêtre fausse se voit sur un chiffre plausible.
+export { _fk100, bestRollingMean, bindInputs, branch, buildFreeSteps, buildPremiumSteps, curCfg, curSteps, ebParseT, evalRules, injuryOpts, levelStep, opt, refreshNav, refreshTrail, renderBlueprint, renderSportPick, renderStep, reset, rulesGrouped, stravaImport, vlab };

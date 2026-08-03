@@ -43,9 +43,30 @@ export function syncRefsFromTests() {
   //
   // À date égale, on départage par POSITION : le journal est append-only, l'ordre du tableau
   // est donc l'ordre chronologique à l'intérieur d'une journée.
+  //
+  // O-25 — SAUF QUE LA POSITION SEULE DÉFAISAIT LA CORRECTION DE L'ATHLÈTE.
+  //
+  // Le message de l'import promet depuis son écriture : « la saisie manuelle prime TOUJOURS sur
+  // l'import ». Elle ne primait pas. La saisie et l'import atterrissent dans le MÊME journal, à
+  // la MÊME date, et le départage par position fait gagner le dernier inséré — c'est-à-dire
+  // l'import, puisque l'ordre naturel est de corriger d'abord et de réimporter ensuite. Mesuré
+  // sur le compte du fondateur : allure seuil corrigée à 4'42, réimport, retour à 5'37, sans
+  // qu'aucun message ne le signale.
+  //
+  // La règle devient celle que le produit promettait déjà : **une valeur SAISIE bat tout import
+  // du même jour**. Au-delà, la date reprend la main — un import postérieur dit quelque chose de
+  // neuf (une course courue trois semaines plus tard), et geler la valeur à vie serait le défaut
+  // symétrique de celui qu'on corrige.
+  //
+  // Le retest guidé compte comme une saisie : c'est un protocole exécuté volontairement, pas une
+  // déduction faite à la place de l'athlète.
+  const DELIBERE = (t) => /^(profil|retest)/.test(String(t.source || ""));
   const latest = (type) => {
     const c = tests.map((t, i) => ({ t, i })).filter(({ t }) => t.type === type && isFinite(t.value));
-    c.sort((x, y) => String(y.t.date || "").localeCompare(String(x.t.date || "")) || (y.i - x.i));
+    c.sort((x, y) =>
+      String(y.t.date || "").localeCompare(String(x.t.date || ""))
+      || (DELIBERE(y.t) ? 1 : 0) - (DELIBERE(x.t) ? 1 : 0)
+      || (y.i - x.i));
     return c.length ? c[0].t : undefined;
   };
   let n = 0;

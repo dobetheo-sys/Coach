@@ -217,6 +217,61 @@ const o23 = await page.evaluate(async () => {
 ok(o23.ftp === "230", "O-23 — à date égale, la référence prend le DERNIER test inscrit (" + o23.ftp + "W, attendu 230)");
 ok(o23.known === "oui", "O-23 — et elle se déclare connue");
 
+// ---- O-25 : ta correction n'est pas défaite par un import du même jour ----
+//
+// Le message de l'import promet depuis son écriture « la saisie manuelle prime TOUJOURS sur
+// l'import ». Elle ne primait pas : la saisie et l'import atterrissent dans le MÊME journal, à la
+// MÊME date, et O-23 venait de faire gagner le dernier inséré — c'est-à-dire l'import, puisqu'on
+// corrige d'abord et qu'on importe ensuite. La personne tapait 4'42, réimportait, et retrouvait
+// 5'37 sans que rien ne le lui dise.
+const o25 = await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  const { syncRefsFromTests } = await import("./js/ui/tab-profile.js");
+  S.answers.tests = [
+    { type: "thrPace", value: 282, date: "2026-08-03", source: "profil (modification manuelle)" },
+    { type: "thrPace", value: 337, date: "2026-08-03", source: "Strava (course la plus rapide)" },
+  ];
+  ebSave();
+  syncRefsFromTests();
+  const apresImport = S.answers.pace;
+  // …mais un import PLUS RÉCENT reste légitime : une course courue trois semaines plus tard
+  // dit quelque chose de neuf, et geler la valeur à vie serait le défaut symétrique.
+  S.answers.tests.push({ type: "thrPace", value: 262, date: "2026-08-24", source: "Strava (course)" });
+  ebSave();
+  syncRefsFromTests();
+  return { apresImport, apresPlusTard: S.answers.pace };
+});
+ok(o25.apresImport === "4:42",
+  "O-25 — un import du même jour ne défait pas ta correction (" + o25.apresImport + ", attendu 4:42)");
+ok(o25.apresPlusTard === "4:22",
+  "O-25 — mais un import POSTÉRIEUR reste pris en compte (" + o25.apresPlusTard + ", attendu 4:22)");
+
+// La fenêtre de `bestRollingMean` est bornée par le TEMPS, pas par le nombre de points — c'est
+// la faute d'unité qu'O-22 corrigeait pour la puissance et qu'O-25 rejoue pour la vitesse. Elle
+// se vérifie sur un flux SYNTHÉTIQUE, parce qu'un chiffre faux y reste parfaitement plausible.
+const brm = await page.evaluate(async () => {
+  const { bestRollingMean } = await import("./js/ui/steps.js");
+  // 30 min à 3 m/s, avec 10 min à 5 m/s au milieu, échantillonné toutes les 2 s.
+  const t = [], v = [];
+  for (let s = 0; s < 1800; s += 2) { t.push(s); v.push(s >= 600 && s < 1200 ? 5 : 3); }
+  // Le même effort, mais le flux s'arrête à 8 min : aucune fenêtre de 10 min n'existe.
+  const tc = t.filter((s) => s < 480), vc = v.slice(0, tc.length);
+  // Pas d'échantillonnage IRRÉGULIER : 600 points espacés de 5 s couvrent 50 min, pas 10.
+  const ti = [], vi = [];
+  for (let s = 0; s < 3000; s += 5) { ti.push(s); vi.push(s < 1500 ? 2 : 6); }
+  return {
+    bloc: bestRollingMean(v, t, 600),
+    court: bestRollingMean(vc, tc, 600),
+    irregulier: bestRollingMean(vi, ti, 600),
+  };
+});
+ok(Math.abs(brm.bloc - 5) < 0.05,
+  "O-25 — le meilleur 10 min trouve le bloc rapide (" + brm.bloc.toFixed(2) + " m/s, attendu 5,00)");
+ok(brm.court === 0,
+  "O-25 — un effort de 8 min ne rend PAS une « moyenne de 10 min » (refuser vaut mieux qu'estimer)");
+ok(Math.abs(brm.irregulier - 6) < 0.05,
+  "O-25 — la fenêtre est bornée par le TEMPS, pas par le nombre de points (" + brm.irregulier.toFixed(2) + " m/s, attendu 6,00)");
+
 // ---- 6. Strava OAuth : connexion via relais au Profil, repli jeton manuel ----
 const t6 = await page.locator("#ebTabbar .tabbtn").all();
 await t6[0].click(); await page.waitForTimeout(300);

@@ -3417,3 +3417,93 @@ qu'un correctif ne va atteindre aucun utilisateur.
 C'est la seule forme de correction qui vaille ici. La cause n'était pas une erreur de calcul ni un
 mauvais arbitrage — c'était « quelqu'un doit s'en souvenir », et la réponse à ça n'est jamais une
 convention mieux écrite : c'est de retirer le souvenir du chemin.
+
+---
+
+## O-25 — le seuil importé n'était pas un effort maximal, et l'import défaisait la correction
+
+Remonté par le fondateur une fois O-24 fermé — donc **le premier retour où il voyait enfin le code
+qu'on lui livrait**. Un seul symptôme (« mon seuil passe à 5'37 au lieu de 4'42 »), deux défauts
+indépendants qui se combinaient.
+
+### (a) La fenêtre de distance sans le « à fond »
+
+`src/engine/disciplineRegistry.ts` énonce le raccourci en entier :
+
+> « 3 min + 10 min à fond. **UN 10-15 KM RÉCENT À FOND EST UNE BONNE ESTIMATION.** »
+
+O-22 avait posé la fenêtre de distance — c'était juste, et c'était la moitié de la règle. L'autre
+moitié n'était vérifiée par rien : **une sortie longue tranquille de 12 km entre exactement dans
+la fenêtre et n'est pas un test.**
+
+Mesuré sur le compte du fondateur : **5'37/km annoncé pour un seuil réel à 4'42.** 55 s/km d'écart,
+donc toutes les zones de course décalées d'un cran, et la prédiction avec.
+
+C'est le défaut d'O-22 sur un autre poste — un raccourci de protocole appliqué à une grandeur qui
+n'est pas celle qu'il attend. Avec une différence qui compte : **ici le sens de l'erreur est
+toujours le même.** Une moyenne de sortie ne peut qu'être plus lente qu'un seuil, donc l'estimation
+est systématiquement basse, donc c'est une sous-charge — moins brutale que la sur-prescription
+qu'O-22 pouvait produire, mais silencieuse : rien dans le plan ne paraît anormal.
+
+**Cascade livrée, calquée sur celle de la FTP :**
+
+1. **Une COURSE, déclarée telle sur Strava** (`workout_type === 1`), entre 10 et 15 km. C'est le
+   « à fond » du protocole, attesté par l'athlète lui-même — pas déduit à sa place.
+2. **La meilleure moyenne glissante de 10 minutes**, lue dans le flux `velocity_smooth`. Le
+   protocole du seuil est « 3 min + 10 min à fond » : c'est exactement la grandeur qu'il attend, et
+   elle vit **à l'intérieur** des séances — un tempo, une côte, une fin de sortie — au lieu d'être
+   noyée dans une moyenne de sortie entière. Même fonction que pour la puissance, `bestRollingMean`,
+   écrite une seule fois (R11.1) et exportée pour être mesurée.
+3. **Aucune estimation, et on le dit** (P7/P8), avec les deux issues nommées : corriger au Profil,
+   ou faire le test.
+
+### (b) « La saisie manuelle prime toujours sur l'import » était faux
+
+Le message affiché après chaque import le promet depuis son écriture. Il ne primait pas.
+
+La saisie manuelle et l'import atterrissent dans le **même journal** (`S.answers.tests`), à la
+**même date**, et le départage par position posé par O-23 fait gagner le dernier inséré — donc
+l'import, puisque l'ordre naturel est de corriger d'abord et de réimporter ensuite pour voir.
+
+```
+FAIL O-25 — un import du même jour ne défait pas ta correction (5:37, attendu 4:42)
+```
+
+Le banc rend le chiffre exact du symptôme, ce qui vaut confirmation que les deux défauts se
+combinaient bien sur ce cas.
+
+**C'est une conséquence directe de mon correctif O-23.** En réparant « `latest` rend le plus
+ancien », j'ai fait gagner l'import contre la correction de l'athlète. Le correctif était juste et
+**incomplet** : il fallait aussi dire ce que « le plus récent » signifie quand deux sources parlent
+le même jour. Un départage par position répond à « lequel a été écrit en dernier » ; la question
+posée était « lequel fait autorité ».
+
+**Règle livrée** — la priorité est d'abord la DATE, puis la NATURE de la source, puis la position :
+
+```js
+const DELIBERE = (t) => /^(profil|retest)/.test(String(t.source || ""));
+```
+
+Une valeur **saisie**, ou issue d'un **retest guidé** (un protocole exécuté volontairement, pas une
+déduction), bat tout import de la même date. Au-delà, la date reprend la main : un import postérieur
+dit quelque chose de neuf — une course courue trois semaines plus tard — et geler la valeur à vie
+serait le défaut symétrique de celui qu'on corrige. Les deux moitiés sont assertées ; sans la
+seconde, le critère serait satisfait en gelant la référence pour toujours (la leçon d'U1b).
+
+Le message d'interface cesse de promettre « toujours » et dit ce qui est vrai : *« ta correction
+prime sur cet import et sur tout import du même jour »*. Corriger le code sans corriger la phrase
+aurait laissé une promesse encore légèrement fausse.
+
+### Gardes
+
+Cinq critères `O-25` dans `tests/e2e/smoke-improvements.mjs` :
+
+- les deux moitiés de la règle de priorité — la correction tient, l'import postérieur passe ;
+- `bestRollingMean` trouve le bloc rapide (5,00 m/s dans 30 min à 3 m/s) ;
+- un effort de **8 minutes ne rend PAS** une « moyenne de 10 minutes » — refuser vaut mieux
+  qu'estimer, et c'est ce refus qui fait tenir la source 3 de la cascade ;
+- la fenêtre est bornée par le **TEMPS**, pas par le nombre de points (600 points espacés de 5 s
+  couvrent 50 min, pas 10) — la faute d'unité qu'O-22 avait corrigée pour la puissance, rejouée
+  ici pour la vitesse.
+
+Le critère (b) est **vérifié rouge** contre le moteur d'avant.
