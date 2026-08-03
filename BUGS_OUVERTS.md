@@ -1011,7 +1011,41 @@ sécurité qui se rembourse sur les autres séances n'est pas un plafond : c'est
 Même famille que R15.7-A (le plancher posait des séances que la décroissance retirait juste
 après) ou C28 (le plafond d'approche appliqué avant le plancher qui le défaisait).
 
-**L'ARBITRAGE À PRENDRE, ET IL EST PRODUIT.** Deux issues, exclusives :
+**L'ISSUE 1 A ÉTÉ CHOISIE, IMPLÉMENTÉE — ET RÉFUTÉE PAR LA MESURE.**
+
+Décision du fondateur (03/08/2026) : « le plafond ne se rembourse pas ». Implémenté (`C23b`) :
+`blockBounds` remonte le drapeau `hard`, `scaleBlock` COMPTE les minutes qu'une borne dure
+refuse, et la boucle R3.3 abaisse sa cible d'autant — les minutes retirées par un plafond du
+manifeste ne repartent plus dans les autres séances.
+
+**Mesuré : zéro refus.** Le compteur n'a été alimenté sur AUCUNE semaine, et le golden n'a
+bougé sur aucun des 900 profils. Le plafond dur ne mord jamais pendant la mise à l'échelle : la
+longue du débutant atteint 180 par un autre chemin (la passe D7, qui coupe APRÈS), et il n'y a
+donc aucun remboursement à empêcher. **Le correctif est inerte, il a été retiré** — expédier du
+code qui ne change rien est précisément ce que ce dépôt refuse.
+
+**Quatrième hypothèse réfutée sur cette entrée**, après T1, T2b et « le débutant a des séances
+moins pentues ». Ce que chaque réfutation a coûté est écrit ici exprès : c'est ce qui empêche la
+cinquième d'être tentée deux fois.
+
+**CE QUE LA MESURE DIT MAINTENANT.** Le déséquilibre ne vient pas d'un plafond qui déborde mais
+de la COMPOSITION des semaines :
+
+| | débutant | inter |
+|---|---|---|
+| Montées (qualité, `repCap`) | 78' | 97' |
+| Footing plat (facile) | **79'** | 55' |
+| Back-to-back (facile) | **108'** | 69' |
+| total | **575'** | 547' |
+
+La semaine de l'inter est dominée par des blocs de QUALITÉ, plafonnés en répétitions (R4.1) ;
+celle du débutant par des blocs FACILES, qui peuvent absorber du volume (`repMax` 15). Quand
+R3.3 vise 600 min, les blocs de qualité de l'inter refusent — et R4.1 dit que « le déversement
+doit aller vers les séances FACILES ». **Il n'y va pas** : le footing plat de l'inter reste à
+55' quand celui du débutant monte à 79'. C'est là qu'il faut chercher la prochaine fois : ce
+qui empêche les séances faciles de l'inter d'absorber ce que sa qualité refuse.
+
+**L'ARBITRAGE INITIAL, gardé pour mémoire.** Deux issues étaient envisagées :
 
 1. **Le plafond ne se rembourse pas** — quand C23 coupe la longue d'un débutant, la semaine reste
    plus légère d'autant. C'est la lecture stricte de la priorité n°2 (prévention) : si on juge
