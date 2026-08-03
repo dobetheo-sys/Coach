@@ -22,6 +22,9 @@ const ORDER = [
   "src/engine/trace.ts",
   "src/engine/medicalHold.ts",
   "src/engine/measured.ts",
+  // R22 — la règle de troncature, lue par le schéma (pour proposer la sortie) et par
+  // le pont (pour l'appliquer). Doit précéder answerSchema, qui l'importe.
+  "src/engine/truncatedPrep.ts",
   "src/engine/answerSchema.ts",
   "src/engine/cycleModel.ts",
   // R10 phase 1 — le REGISTRE avant tout : `registerSport()` doit exister quand les modules

@@ -23,6 +23,7 @@ import { assessReadiness, validateSnapshot, type CompletedSession, type Readines
 import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
 import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
 import { validateAnswers, assertPlanIsAPlan, EBInputError, ANSWER_SCHEMA, FORMATS_BY_SPORT } from "../engine/answerSchema.ts";
+import { planTroncature, semainesRequises, PLANCHER_ABSOLU_SEM, type TruncatePlan } from "../engine/truncatedPrep.ts";
 import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
 import { dailyEnergy, energyRefusalNotice, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
 import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
@@ -65,6 +66,62 @@ export function completedFromDone(plan: V1Plan, answers: AppAnswers, beforeDate:
   return out;
 }
 
+/**
+ * R22 — Prépare la troncature : rend les réponses AVEC une `plan_start` virtuelle, ou
+ * `null` si le contournement n'a pas lieu d'être (drapeau absent, format qui ne le
+ * permet pas, date lointaine). Ne décide rien : la règle vit dans `truncatedPrep.ts`.
+ */
+function prepareTroncature(sport: string, a: AppAnswers): { answers: AppAnswers; plan: TruncatePlan } | null {
+  if (a.truncate_prep !== true || !a.race_date) return null;
+  const today = localTodayISO();
+  const anchor = a.plan_start && String(a.plan_start) < today ? String(a.plan_start) : today;
+  const reste = Math.floor(
+    (new Date(String(a.race_date) + "T00:00:00Z").getTime() - new Date(anchor + "T00:00:00Z").getTime()) / (7 * 864e5)
+  ) + 1;
+  const t = planTroncature(semainesRequises(sport, toProfile(sport, a)), reste);
+  if (!t || !t.possible || t.aRetirer <= 0) return null;
+  // La date de départ virtuelle. Le moteur compte sa travée INCLUSIVEMENT —
+  // `span = semaines(ancre → lundi de course) + 1` (reasoningEngine) — donc pour obtenir
+  // `need` semaines il faut reculer de `need − 1`, pas de `need`. Ma première écriture
+  // reculait de `need` et livrait 15 semaines au lieu de 14 : la spec l'a attrapé.
+  const lundiCourse = new Date(String(a.race_date) + "T00:00:00Z");
+  lundiCourse.setUTCDate(lundiCourse.getUTCDate() - ((lundiCourse.getUTCDay() + 6) % 7));
+  const virtuel = new Date(lundiCourse.getTime() - (t.need - 1) * 7 * 864e5).toISOString().slice(0, 10);
+  return { answers: { ...a, plan_start: virtuel }, plan: t };
+}
+
+/**
+ * R22 — Applique la troncature EN SORTIE : retire les `aRetirer` premières semaines,
+ * renumérote de 1 à N, et laisse une trace explicite dans `plan.meta`.
+ *
+ * Les DATES ne sont pas retouchées : elles sont déjà les vraies dates calendaires, et
+ * les semaines retirées sont précisément celles qui tombaient dans le passé (c'est tout
+ * l'intérêt de la date virtuelle). Les réécrire les décalerait d'une semaine — le défaut
+ * que R7 a corrigé.
+ */
+function applyTroncature(plan: V1Plan, t: TruncatePlan, res: { warnings: string[]; decisions: { id: string; what: string; val: string | number; why: string }[] }): void {
+  const avant = plan.weeks.length;
+  if (t.aRetirer <= 0 || t.aRetirer >= avant) return;
+  plan.weeks = plan.weeks.slice(t.aRetirer);
+  plan.weeks.forEach((w, i) => { w.num = i + 1; });
+  (plan as V1Plan & { meta?: Record<string, unknown> }).meta = {
+    ...((plan as V1Plan & { meta?: Record<string, unknown> }).meta || {}),
+    truncated: true,
+    original_weeks: avant,
+    truncated_weeks: t.aRetirer,
+    delivered_weeks: plan.weeks.length,
+    floor_weeks: t.plancher,
+  };
+  res.decisions.push({
+    id: "R22-troncature",
+    what: "Préparation raccourcie",
+    val: avant + " → " + plan.weeks.length + " semaines",
+    why: "Ta course est proche : les " + t.aRetirer + " premières semaines de mise en route ont été "
+      + "retirées plutôt que de comprimer la préparation entière. La progression est donc plus dense "
+      + "dès la première semaine, et elle suppose une base déjà acquise.",
+  });
+}
+
 /** Génère le plan via le moteur V2 (raisonne → génère → audite → répare) — forme V1Plan. */
 export function buildPlanV2(sport: string, answers: AppAnswers): V1Plan & { _v2?: V2PlanMeta } {
   // R11 — LE CONTRAT D'ENTRÉE, avant toute génération. Trois sorties possibles et jamais une
@@ -78,8 +135,20 @@ export function buildPlanV2(sport: string, answers: AppAnswers): V1Plan & { _v2?
       "Le sport « " + sport + " » n'est pas disponible dans cette version. Sports proposés : " + knownSports().join(", ") + ".");
   }
   const vr = validateAnswers(sport, answers as Record<string, unknown>, localTodayISO());
-  const res = generateAudited(toProfile(sport, vr.answers as unknown as AppAnswers));
+  // ── R22 — PRÉPARATION TRONQUÉE : date de départ VIRTUELLE en entrée ──
+  //
+  // Le brief est explicite et c'est la bonne contrainte : on ne touche PAS à la logique de
+  // périodisation. On ment au générateur sur UNE seule chose — la date à laquelle la prépa
+  // a commencé — puis on coupe le début de ce qu'il a produit. Entre les deux, il fabrique
+  // exactement le plan qu'il aurait fait pour quelqu'un d'à l'heure, et l'auditeur le note
+  // sur ses règles habituelles.
+  //
+  // La date virtuelle est `course − need`, pas `course − 16 semaines` : `need` vaut 6 pour
+  // un 5 km et 36 pour un Ironman (voir `truncatedPrep.ts`).
+  const troncature = prepareTroncature(sport, vr.answers as unknown as AppAnswers);
+  const res = generateAudited(toProfile(sport, (troncature ? troncature.answers : vr.answers) as unknown as AppAnswers));
   const plan = res.plan as V1Plan & { _v2?: V2PlanMeta };
+  if (troncature) applyTroncature(plan, troncature.plan, res);
   // R11.6 — un plan vide n'est pas un plan : le contrôle ne peut se faire qu'ICI, une fois
   // qu'on sait ce qui a réellement été produit.
   assertPlanIsAPlan(sport, vr.answers.format as string | undefined, plan.weeks as never);

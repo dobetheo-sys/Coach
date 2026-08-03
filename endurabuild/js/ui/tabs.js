@@ -130,6 +130,19 @@ function renderGenerationFailure(err) {
       + "<p><b>Ton profil est conservé</b> — rien n’a été perdu.</p>"
       + '<div class="nav" style="gap:10px"><button type="button" class="btn primary" id="ebFixInput">Corriger ma réponse</button>'
       + '<button type="button" class="btn" id="ebRetryGen">Réessayer</button></div>'
+      // R22 — LA TROISIÈME SORTIE, et seulement quand elle existe VRAIMENT.
+      // `cause.bypass` est calculé par le moteur (`truncatedPrep`) et voyage sur l'erreur :
+      // décider ici si le bouton s'affiche demanderait de recopier la règle de plancher,
+      // donc d'en avoir deux (R11.1). Sur un Ironman à 14 semaines, `possible` est faux et
+      // le bouton n'apparaît pas — proposer une issue qui sera refusée serait pire que rien.
+      + (cause.bypass && cause.bypass.possible
+        ? '<div class="why" style="margin-top:12px;border-top:1px solid var(--line,#ddd);padding-top:12px">'
+          + "<b>Tu es déjà en préparation ?</b> Le plan peut démarrer directement en charge, en "
+          + "retirant les " + cause.bypass.aRetirer + " premières semaines de mise en route. "
+          + "Cela suppose une base d'entraînement déjà acquise."
+          + '<div style="margin-top:8px"><button type="button" class="btn" id="ebTruncate">'
+          + "Continuer quand même (prépa déjà avancée)</button></div></div>"
+        : "")
       + '<div class="why" style="margin-top:10px">Réponse concernée : <code>' + String(cause.key)
       + "</code> = <code>" + JSON.stringify(cause.value) + "</code> — attendu : " + String(cause.expected) + "</div></div>";
     // On renvoie au QUESTIONNAIRE, pas au Profil : le Profil est une vue du plan, et il n'y a
@@ -144,6 +157,16 @@ function renderGenerationFailure(err) {
     };
     const rb = $("ebRetryGen");
     if (rb) rb.onclick = () => { invalidatePlan(); renderActiveTab(); };
+    // R22 — le drapeau est posé DANS les réponses, donc il persiste : sans ça, la moindre
+    // régénération (changement d'onglet, réouverture) ramènerait le refus, et l'athlète
+    // devrait re-cliquer chaque fois. Il reste réversible depuis le questionnaire.
+    const tb = $("ebTruncate");
+    if (tb) tb.onclick = () => {
+      S.answers.truncate_prep = true;
+      ebSave();
+      invalidatePlan();
+      renderActiveTab();
+    };
     return;
   }
   screen.innerHTML =

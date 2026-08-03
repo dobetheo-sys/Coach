@@ -36,7 +36,8 @@
     "measure:fallback": "node scripts/measureFallback.mjs",
     "registry:check": "node scripts/registryCheck.mjs",
     "demo:faisabilite": "node src/audit/feasibilityDemo.ts",
-    "demo:proactif": "node src/audit/proactiveDemo.ts"
+    "demo:proactif": "node src/audit/proactiveDemo.ts",
+    "demo:troncature": "node src/audit/truncateDemo.ts"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

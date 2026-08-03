@@ -22,6 +22,9 @@ import type { AthleteProfile } from "./types.ts";
 import { MIN_WEEKS, parsePaceSec } from "./constraintMatrix.ts";
 import { margeOf } from "./projection.ts";
 import { trailObjective, T6_MIN_WEEKS } from "./trailModel.ts";
+// R22 — la règle de troncature vit dans UN module, lue ici (pour proposer la sortie)
+// et par le pont (pour l'appliquer). L'écrire deux fois, c'est l'écrire deux fois faux.
+import { planTroncature, motifPlancher, type TruncatePlan } from "./truncatedPrep.ts";
 
 /** Refus d'entrée : porteur de la clé, de la valeur reçue et de ce qui était attendu. */
 export class EBInputError extends Error {
@@ -467,10 +470,33 @@ export function validateAnswers(sport: string, raw: Record<string, unknown>, tod
         ? ["viser une course plus courte (distance et D+)"]
         : shorter.length ? ["viser un format plus court (" + shorter.join(", ") + ")"] : [];
       issues.push("viser une course à partir du " + okDate);
-      throw new EBInputError("race_date", race, "au moins " + need + " semaines avant la course",
-        "Il reste " + reste + " semaine(s) avant ta course, et une préparation honnête de ce format en demande au moins " + need + ". "
-        + (issues.length > 1 ? "Deux issues : " + issues[0] + ", ou " + issues[1] : "Une seule issue : " + issues[0])
-        + ". Te vendre cette préparation en " + reste + " semaine" + (reste > 1 ? "s" : "") + " serait te mentir, et te blesser.");
+
+      // ── R22 — LA TROISIÈME SORTIE : la préparation TRONQUÉE ──
+      //
+      // Le refus ne change pas d'un mot par défaut. Il gagne une porte, et cette porte
+      // n'est franchissable que si l'athlète la pousse EXPLICITEMENT (`truncate_prep`) et
+      // que le format le permet (`planTroncature`). Alignement sur O-17 : ce blocage-ci
+      // ne remplit pas le critère de dureté du manifeste — « ai-je déjà une base ? » est
+      // une question que l'athlète sait trancher, et rater sa course est réversible.
+      const trunc = planTroncature(need, reste);
+      if (a.truncate_prep === true && trunc && trunc.possible) {
+        // On NE LÈVE PAS : la génération continue, et c'est le pont qui applique la date
+        // virtuelle et la troncature. Ici on ne fait qu'ouvrir, et l'annoncer.
+        warnings.push("Préparation raccourcie à " + trunc.reste + " semaines : les "
+          + trunc.aRetirer + " premières semaines de mise en route ont été retirées, "
+          + "parce que ta course est proche. Cela suppose une base d'entraînement déjà acquise.");
+      } else {
+        // Le refus, augmenté de ce qu'il faut à l'UI pour proposer (ou non) la sortie.
+        // `bypass` voyage sur l'erreur plutôt que dans un second calcul côté interface :
+        // deux façons de décider si le contournement est offert seraient deux règles.
+        const e = new EBInputError("race_date", race, "au moins " + need + " semaines avant la course",
+          "Il reste " + reste + " semaine(s) avant ta course, et une préparation honnête de ce format en demande au moins " + need + ". "
+          + (issues.length > 1 ? "Deux issues : " + issues[0] + ", ou " + issues[1] : "Une seule issue : " + issues[0])
+          + ". Te vendre cette préparation en " + reste + " semaine" + (reste > 1 ? "s" : "") + " serait te mentir, et te blesser."
+          + (trunc && !trunc.possible ? " " + motifPlancher(trunc) : ""));
+        (e as unknown as { bypass?: TruncatePlan | null }).bypass = trunc;
+        throw e;
+      }
     }
   }
 

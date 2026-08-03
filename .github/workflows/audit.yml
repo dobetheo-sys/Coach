@@ -31,6 +31,11 @@ jobs:
       # du gate : un déclencheur automatique qui « rattrape » un volume manqué ferait
       # tout seul ce que la priorité n°2 du manifeste interdit.
       - run: npm run demo:proactif
+      # R22 — préparation TRONQUÉE. Le gate vérifie les deux moitiés : sans le drapeau le
+      # refus dur de R11.4 est intact mot pour mot, et avec le drapeau le plan livré est
+      # identique aux dernières semaines de celui d'un athlète parti à l'heure (la
+      # contrainte « on ne touche qu'à l'entrée et à la sortie » devient une propriété).
+      - run: npm run demo:troncature
       # Le bundle EBV2 committé dans le HTML doit correspondre aux sources src/
       - run: npm run check:app
       # O-24 — le service worker sert l'app en cache-first : tant que sa VERSION ne

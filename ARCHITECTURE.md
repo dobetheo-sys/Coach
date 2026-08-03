@@ -3610,3 +3610,89 @@ enregistrant des recalculs sans effet.
 
 Hors périmètre déclaré du handoff, non construit : chat conversationnel, citation de
 méthodologie dans les messages, export vers montre. Aucune dépendance ajoutée.
+
+---
+
+## R22 — la préparation tronquée : le refus « course trop proche » devient franchissable
+
+Livré depuis le brief « transformer ce hard block en option de bypass contrôlée ».
+⚠️ **En attente d'arbitrage du fondateur sur un point** — voir la fin de cette section.
+
+### Trois écarts avec le brief, mesurés avant d'écrire
+
+**1. Le seuil n'est pas 16 semaines.** Il dépend du sport ET du format (`MIN_WEEKS`, plus
+`T6_MIN_WEEKS` par catégorie d'effort en trail) : 6 pour un 5 km, 16 pour un marathon,
+36 pour un Ironman. « 16 » est le cas du marathon. Une date virtuelle à `course − 16
+semaines` donnerait 20 semaines de trop à un Ironman. La date est `course − need`.
+
+**2. « Tronquer les 2 premières semaines » est le cas particulier de 14/16.** Le nombre
+retiré est `need − reste` : 2 sur un marathon à 14 semaines, 6 sur un Ironman à 30.
+
+**3. Un plancher absolu unique de 8 semaines ne tient pas.** Il autoriserait un Ironman
+préparé en 8 semaines — exactement ce que R11.4 existe pour refuser. Le plancher est
+donc **dérivé** plutôt qu'inventé : on ne retire que des semaines de MISE EN ROUTE,
+c'est-à-dire au plus la durée de la phase `base` (`PHASE_PCTS`, 30 %). C'est la
+formulation du bandeau que le brief demande lui-même. Le 8 absolu subsiste comme
+plancher inférieur quand le format demande davantage, et ne s'applique pas aux formats
+dont le minimum est déjà ≤ 8 (sinon un 5 km serait bloqué à une semaine près).
+
+| format | need | retirable | plancher | 14 sem. | 10 sem. |
+|---|---|---|---|---|---|
+| marathon | 16 | 4 | 12 | ✅ | ❌ |
+| semi | 12 | 3 | 9 | ✅ | ✅ |
+| Ironman | 36 | 10 | 26 | ❌ | ❌ |
+| 5 km | 6 | 1 | 5 | ✅ | ✅ |
+
+Le cas limite du brief (10 semaines) est bien refusé sur un marathon.
+
+### Le mécanisme — entrée et sortie, jamais le milieu
+
+La contrainte du brief est la bonne : la périodisation n'est pas touchée. On ment au
+générateur sur UNE chose — la date à laquelle la prépa a commencé — puis on coupe le
+début de ce qu'il a produit. Entre les deux il fabrique exactement le plan d'un athlète
+parti à l'heure, et l'auditeur le note sur ses règles habituelles (0 violation dure).
+
+Les DATES ne sont pas retouchées : les semaines retirées sont précisément celles qui
+tombaient dans le passé — c'est tout l'intérêt de la date virtuelle. Les réécrire les
+décalerait d'une semaine (le défaut que R7 a corrigé).
+
+`plan.meta` porte la trace : `truncated`, `original_weeks`, `truncated_weeks`,
+`delivered_weeks`, `floor_weeks`. Le bandeau UI se lit sur ce booléen, jamais sur la
+présence d'un mot dans une phrase — une chaîne cherchée dans un texte est une devinette
+qui casse au premier reformulage.
+
+### La règle vit dans UN module
+
+`truncatedPrep.ts` est lu par le schéma (pour proposer la sortie) et par le pont (pour
+l'appliquer). Le refus transporte son verdict sur l'erreur (`e.bypass`) : décider côté UI
+si le bouton s'affiche demanderait de recopier la règle de plancher, donc d'en avoir deux
+(R11.1). Sur un Ironman à 14 semaines, `possible` est faux et **le bouton n'apparaît
+pas** — proposer une issue qui sera refusée est pire que ne rien proposer.
+
+### La garde — 26ᵉ gate CI (`npm run demo:troncature`, 38 critères)
+
+§1 sans le drapeau, le refus est intact **mot pour mot**, jusqu'à « te mentir, et te
+blesser ». §2 quatorze semaines livrées, renumérotées, `meta` complète. §3 le plancher
+(12 passe, 11 non). §4 le plancher est proportionné (Ironman à 14 semaines refusé, motif
+« 26 semaines » et non « 8 »). **§5 est la garde qui compte** : le plan tronqué est
+identique, séance par séance, aux semaines 3-16 du plan d'un athlète parti à l'heure —
+sans quoi « on ne touche qu'à l'entrée et à la sortie » resterait une intention. Elle
+porte son propre contrôle d'instrument (l'empreinte sait distinguer deux semaines).
+
+### Une erreur à moi, attrapée par la spec
+
+Ma première date virtuelle reculait de `need` semaines et livrait **15** semaines au lieu
+de 14 : le moteur compte sa travée INCLUSIVEMENT (`span = semaines(ancre → lundi de
+course) + 1`). Corrigé en reculant de `need − 1`. Le témoin de §5 portait la même faute,
+et le corriger là aussi importait : sans ça la comparaison aurait été fausse **dans le
+sens rassurant**.
+
+### ⚠️ EN ATTENTE D'ARBITRAGE
+
+`CLAUDE.md` liste « course trop proche (R11.4) » parmi les blocages qui ne se négocient
+pas. Ce lot revient dessus. L'argument : le critère de dureté que le manifeste énonce
+lui-même est *« l'athlète ne peut pas évaluer le risque, ou l'erreur est irréversible »*,
+or « ai-je déjà une base ? » se tranche, et rater sa course se rattrape. Le lot est donc
+un **alignement sur O-17** (« informer plutôt que bloquer ») plutôt qu'une entorse — mais
+c'est une décision de fondateur, pas une déduction de code. **Tant qu'elle n'est pas
+prise, ce lot reste sur sa branche** et la liste de `CLAUDE.md` reste vraie sur `main`.

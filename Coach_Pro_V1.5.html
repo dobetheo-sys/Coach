@@ -2211,6 +2211,142 @@ function arbitrateVolRecent(
   };
 }
 
+// ===== src/engine/truncatedPrep.ts =====
+/**
+ * R22 — LA PRÉPARATION TRONQUÉE : le refus « course trop proche » devient franchissable.
+ *
+ * ================================================================================
+ * CE QUI CHANGE, ET CE QUI NE CHANGE PAS
+ * ================================================================================
+ *
+ * R11.4 refuse de générer quand il reste moins de semaines que le format n'en
+ * demande. Le refus RESTE le comportement par défaut, mot pour mot : sans
+ * `truncate_prep`, rien ne bouge. Ce module ajoute une SORTIE à ce refus, pour
+ * l'athlète qui est déjà entraîné et qui le déclare.
+ *
+ * C'est un alignement sur O-17, pas une entorse : *« notre rôle est d'informer au
+ * mieux et de laisser l'athlète choisir… le but n'est jamais de bloquer mais
+ * d'accompagner, sauf si réelle mise en danger »*. Le critère du manifeste pour
+ * qu'un blocage reste DUR est que « l'athlète ne peut pas évaluer le risque, ou
+ * l'erreur est irréversible ». Or « ai-je déjà une base ? » est précisément une
+ * question qu'un athlète sait trancher, et rater sa course n'est pas irréversible.
+ * L'inverse l'est davantage : un athlète capable qu'on renvoie sans plan
+ * s'entraînera seul, sans aucun garde-fou — et la régularité est priorité 3.
+ *
+ * ================================================================================
+ * TROIS ÉCARTS AVEC LE BRIEF, MESURÉS
+ * ================================================================================
+ *
+ * **1. Le seuil n'est PAS 16 semaines.** Il dépend du sport ET du format
+ * (`MIN_WEEKS`, plus `T6_MIN_WEEKS` par catégorie d'effort en trail) :
+ *
+ *     5 km 6 · 10 km 8 · semi 12 · marathon 16 · tri S 8 · tri M 12
+ *     70.3 20 · Ironman 36 · swimrun championship 30 …
+ *
+ * « 16 » est le cas du marathon. Une date de départ virtuelle à `course − 16
+ * semaines` donnerait 20 semaines de trop à un Ironman et 10 de trop à un 5 km.
+ * La date virtuelle est donc `course − need`, où `need` est lu à la source unique.
+ *
+ * **2. « Tronquer les 2 premières semaines » est le cas particulier de 14/16.**
+ * Le nombre de semaines à retirer est `need − reste`. À 14 semaines sur un
+ * marathon ça fait bien 2 ; sur un Ironman à 30 semaines ça en fait 6.
+ *
+ * **3. Un plancher ABSOLU unique de 8 semaines ne tient pas.** Il autoriserait un
+ * Ironman préparé en 8 semaines — exactement ce que R11.4 existe pour refuser, et
+ * ce que le refus appelle « te mentir, et te blesser ». Le plancher est donc
+ * proportionné au format, et il est DÉRIVÉ plutôt qu'inventé :
+ *
+ *     on ne peut retirer que des semaines de MISE EN ROUTE,
+ *     c'est-à-dire au plus la durée de la phase `base` (PHASE_PCTS, 30 %).
+ *
+ * C'est la formulation exacte du bandeau que le brief demande lui-même
+ * (« les 2 premières semaines **de mise en route** ont été supprimées »). Au-delà,
+ * on ne raccourcit plus la mise en route : on ampute le développement, et le plan
+ * cesse d'être celui que l'auditeur a validé.
+ *
+ * Un plancher absolu de 8 semaines s'y ajoute quand le format en demande plus —
+ * en dessous, aucune périodisation n'a de sens (il ne reste plus que l'affûtage et
+ * le pic, R13.6 les plafonnant à 3 et 5). Il ne s'applique pas aux formats dont le
+ * minimum est déjà ≤ 8 : bloquer un 5 km à 5 semaines au nom d'un plancher pensé
+ * pour l'Ironman serait le sur-blocage que le manifeste reproche.
+ *
+ * Ce que ça donne :
+ *
+ *   | format          | need | retirable | plancher | 14 sem. | 10 sem. |
+ *   |-----------------|------|-----------|----------|---------|---------|
+ *   | marathon        |  16  |     4     |    12    |   ✅    |   ❌    |
+ *   | semi            |  12  |     3     |     9    |   ✅    |   ✅    |
+ *   | Ironman         |  36  |    10     |    26    |   ❌    |   ❌    |
+ *   | 5 km            |   6  |     1     |     5    |   ✅    |   ✅    |
+ *
+ * Le cas limite du brief (10 semaines) est bien refusé sur un marathon.
+ */
+
+
+/**
+ * Plancher absolu, en semaines. En dessous, il ne reste plus de quoi périodiser :
+ * l'affûtage (≤3) et le pic (≤5) occuperaient tout le plan. Ne s'applique qu'aux
+ * formats dont le minimum le dépasse.
+ */
+const PLANCHER_ABSOLU_SEM = 8;
+
+/**
+ * La part de la phase de MISE EN ROUTE — la seule qu'on s'autorise à retirer.
+ *
+ * Lue À L'APPEL et non au chargement du module : le bundle est une concaténation à
+ * portée unique, et `answerSchema` (qui importe ce fichier) y précède
+ * `constraintMatrix`. Un `const` de tête aurait lu `PHASE_PCTS` avant son
+ * initialisation — le build l'a refusé, ce pour quoi son auto-test existe.
+ */
+const partBase = () => PHASE_PCTS.find((p) => p.id === "base") .pct;
+
+                               
+                                                                                   
+               
+                                         
+                
+                                                                       
+                    
+                                                                        
+                   
+                                                                  
+                    
+                                                                            
+                   
+ 
+
+/** Le `need` du format — un seul point de lecture, trail compris. */
+function semainesRequises(sport        , profile                )                     {
+  if (sport === "trail") return T6_MIN_WEEKS[trailObjective(profile).category];
+  return (MIN_WEEKS[sport                          ] || {})[String(profile.format || "")];
+}
+
+/**
+ * Décide si une préparation tronquée est possible, et de combien.
+ * Fonction PURE : elle ne connaît ni le plan, ni l'UI, ni le drapeau de l'athlète.
+ * C'est ce qui permet de l'appeler à la fois depuis le refus (pour proposer la
+ * sortie) et depuis la génération (pour l'appliquer) sans écrire la règle deux fois.
+ */
+function planTroncature(need                    , reste        )                      {
+  if (!need || !isFinite(reste)) return null;
+  const retirable = Math.floor(need * partBase());
+  const plancherPhases = need - retirable;
+  // Le plancher absolu ne mord que si le format demande davantage : sinon il
+  // interdirait un contournement d'UNE semaine sur un 5 km.
+  const plancher = need > PLANCHER_ABSOLU_SEM
+    ? Math.max(plancherPhases, PLANCHER_ABSOLU_SEM)
+    : plancherPhases;
+  const possible = reste >= plancher && reste < need;
+  return { need, reste, retirable, plancher, possible, aRetirer: possible ? need - reste : 0 };
+}
+
+/** Le motif du refus quand même le contournement est impossible. Jamais un reproche. */
+function motifPlancher(t              )         {
+  return "Il reste " + t.reste + " semaine(s), et même en supposant une base déjà acquise, "
+    + "ce format n'est pas préparable en moins de " + t.plancher + " semaines : en dessous, "
+    + "il ne reste plus que l'affûtage et le pic — un plan qui n'aurait de plan que le nom.";
+}
+
 // ===== src/engine/answerSchema.ts =====
 /**
  * R11 — LE CONTRAT D'ENTRÉE DU MOTEUR.
@@ -2235,6 +2371,9 @@ function arbitrateVolRecent(
                                                  
 
 
+
+// R22 — la règle de troncature vit dans UN module, lue ici (pour proposer la sortie)
+// et par le pont (pour l'appliquer). L'écrire deux fois, c'est l'écrire deux fois faux.
 
 /** Refus d'entrée : porteur de la clé, de la valeur reçue et de ce qui était attendu. */
 class EBInputError extends Error {
@@ -2680,10 +2819,33 @@ function validateAnswers(sport        , raw                         , todayISO  
         ? ["viser une course plus courte (distance et D+)"]
         : shorter.length ? ["viser un format plus court (" + shorter.join(", ") + ")"] : [];
       issues.push("viser une course à partir du " + okDate);
-      throw new EBInputError("race_date", race, "au moins " + need + " semaines avant la course",
-        "Il reste " + reste + " semaine(s) avant ta course, et une préparation honnête de ce format en demande au moins " + need + ". "
-        + (issues.length > 1 ? "Deux issues : " + issues[0] + ", ou " + issues[1] : "Une seule issue : " + issues[0])
-        + ". Te vendre cette préparation en " + reste + " semaine" + (reste > 1 ? "s" : "") + " serait te mentir, et te blesser.");
+
+      // ── R22 — LA TROISIÈME SORTIE : la préparation TRONQUÉE ──
+      //
+      // Le refus ne change pas d'un mot par défaut. Il gagne une porte, et cette porte
+      // n'est franchissable que si l'athlète la pousse EXPLICITEMENT (`truncate_prep`) et
+      // que le format le permet (`planTroncature`). Alignement sur O-17 : ce blocage-ci
+      // ne remplit pas le critère de dureté du manifeste — « ai-je déjà une base ? » est
+      // une question que l'athlète sait trancher, et rater sa course est réversible.
+      const trunc = planTroncature(need, reste);
+      if (a.truncate_prep === true && trunc && trunc.possible) {
+        // On NE LÈVE PAS : la génération continue, et c'est le pont qui applique la date
+        // virtuelle et la troncature. Ici on ne fait qu'ouvrir, et l'annoncer.
+        warnings.push("Préparation raccourcie à " + trunc.reste + " semaines : les "
+          + trunc.aRetirer + " premières semaines de mise en route ont été retirées, "
+          + "parce que ta course est proche. Cela suppose une base d'entraînement déjà acquise.");
+      } else {
+        // Le refus, augmenté de ce qu'il faut à l'UI pour proposer (ou non) la sortie.
+        // `bypass` voyage sur l'erreur plutôt que dans un second calcul côté interface :
+        // deux façons de décider si le contournement est offert seraient deux règles.
+        const e = new EBInputError("race_date", race, "au moins " + need + " semaines avant la course",
+          "Il reste " + reste + " semaine(s) avant ta course, et une préparation honnête de ce format en demande au moins " + need + ". "
+          + (issues.length > 1 ? "Deux issues : " + issues[0] + ", ou " + issues[1] : "Une seule issue : " + issues[0])
+          + ". Te vendre cette préparation en " + reste + " semaine" + (reste > 1 ? "s" : "") + " serait te mentir, et te blesser."
+          + (trunc && !trunc.possible ? " " + motifPlancher(trunc) : ""));
+        (e                                               ).bypass = trunc;
+        throw e;
+      }
     }
   }
 
@@ -15536,6 +15698,7 @@ function dailyEnergy(input             )                             {
 
 
 
+
 /** R21 — exportée : la spec du coach proactif construit ses profils comme le pont, pas autrement. */
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
@@ -15569,6 +15732,62 @@ function completedFromDone(plan        , answers            , beforeDate        
   return out;
 }
 
+/**
+ * R22 — Prépare la troncature : rend les réponses AVEC une `plan_start` virtuelle, ou
+ * `null` si le contournement n'a pas lieu d'être (drapeau absent, format qui ne le
+ * permet pas, date lointaine). Ne décide rien : la règle vit dans `truncatedPrep.ts`.
+ */
+function prepareTroncature(sport        , a            )                                                     {
+  if (a.truncate_prep !== true || !a.race_date) return null;
+  const today = localTodayISO();
+  const anchor = a.plan_start && String(a.plan_start) < today ? String(a.plan_start) : today;
+  const reste = Math.floor(
+    (new Date(String(a.race_date) + "T00:00:00Z").getTime() - new Date(anchor + "T00:00:00Z").getTime()) / (7 * 864e5)
+  ) + 1;
+  const t = planTroncature(semainesRequises(sport, toProfile(sport, a)), reste);
+  if (!t || !t.possible || t.aRetirer <= 0) return null;
+  // La date de départ virtuelle. Le moteur compte sa travée INCLUSIVEMENT —
+  // `span = semaines(ancre → lundi de course) + 1` (reasoningEngine) — donc pour obtenir
+  // `need` semaines il faut reculer de `need − 1`, pas de `need`. Ma première écriture
+  // reculait de `need` et livrait 15 semaines au lieu de 14 : la spec l'a attrapé.
+  const lundiCourse = new Date(String(a.race_date) + "T00:00:00Z");
+  lundiCourse.setUTCDate(lundiCourse.getUTCDate() - ((lundiCourse.getUTCDay() + 6) % 7));
+  const virtuel = new Date(lundiCourse.getTime() - (t.need - 1) * 7 * 864e5).toISOString().slice(0, 10);
+  return { answers: { ...a, plan_start: virtuel }, plan: t };
+}
+
+/**
+ * R22 — Applique la troncature EN SORTIE : retire les `aRetirer` premières semaines,
+ * renumérote de 1 à N, et laisse une trace explicite dans `plan.meta`.
+ *
+ * Les DATES ne sont pas retouchées : elles sont déjà les vraies dates calendaires, et
+ * les semaines retirées sont précisément celles qui tombaient dans le passé (c'est tout
+ * l'intérêt de la date virtuelle). Les réécrire les décalerait d'une semaine — le défaut
+ * que R7 a corrigé.
+ */
+function applyTroncature(plan        , t              , res                                                                                                      )       {
+  const avant = plan.weeks.length;
+  if (t.aRetirer <= 0 || t.aRetirer >= avant) return;
+  plan.weeks = plan.weeks.slice(t.aRetirer);
+  plan.weeks.forEach((w, i) => { w.num = i + 1; });
+  (plan                                               ).meta = {
+    ...((plan                                               ).meta || {}),
+    truncated: true,
+    original_weeks: avant,
+    truncated_weeks: t.aRetirer,
+    delivered_weeks: plan.weeks.length,
+    floor_weeks: t.plancher,
+  };
+  res.decisions.push({
+    id: "R22-troncature",
+    what: "Préparation raccourcie",
+    val: avant + " → " + plan.weeks.length + " semaines",
+    why: "Ta course est proche : les " + t.aRetirer + " premières semaines de mise en route ont été "
+      + "retirées plutôt que de comprimer la préparation entière. La progression est donc plus dense "
+      + "dès la première semaine, et elle suppose une base déjà acquise.",
+  });
+}
+
 /** Génère le plan via le moteur V2 (raisonne → génère → audite → répare) — forme V1Plan. */
 function buildPlanV2(sport        , answers            )                                {
   // R11 — LE CONTRAT D'ENTRÉE, avant toute génération. Trois sorties possibles et jamais une
@@ -15582,8 +15801,20 @@ function buildPlanV2(sport        , answers            )                        
       "Le sport « " + sport + " » n'est pas disponible dans cette version. Sports proposés : " + knownSports().join(", ") + ".");
   }
   const vr = validateAnswers(sport, answers                           , localTodayISO());
-  const res = generateAudited(toProfile(sport, vr.answers                         ));
+  // ── R22 — PRÉPARATION TRONQUÉE : date de départ VIRTUELLE en entrée ──
+  //
+  // Le brief est explicite et c'est la bonne contrainte : on ne touche PAS à la logique de
+  // périodisation. On ment au générateur sur UNE seule chose — la date à laquelle la prépa
+  // a commencé — puis on coupe le début de ce qu'il a produit. Entre les deux, il fabrique
+  // exactement le plan qu'il aurait fait pour quelqu'un d'à l'heure, et l'auditeur le note
+  // sur ses règles habituelles.
+  //
+  // La date virtuelle est `course − need`, pas `course − 16 semaines` : `need` vaut 6 pour
+  // un 5 km et 36 pour un Ironman (voir `truncatedPrep.ts`).
+  const troncature = prepareTroncature(sport, vr.answers                         );
+  const res = generateAudited(toProfile(sport, (troncature ? troncature.answers : vr.answers)                         ));
   const plan = res.plan                                 ;
+  if (troncature) applyTroncature(plan, troncature.plan, res);
   // R11.6 — un plan vide n'est pas un plan : le contrôle ne peut se faire qu'ICI, une fois
   // qu'on sait ce qui a réellement été produit.
   assertPlanIsAPlan(sport, vr.answers.format                      , plan.weeks         );
