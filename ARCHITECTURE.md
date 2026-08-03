@@ -3210,3 +3210,112 @@ du fondateur : **dette déclarée plutôt que témoin réécrit** — `O17` pass
 reste AFFICHÉ avec son chiffre, comme D2/D3/F2. Ré-ancrer son témoin effacerait ce qu'il vient de
 trouver. Suivi en **O-21** dans `BUGS_OUVERTS.md`, avec la piste : la courbe déclarée décroît sur
 ce profil (base au-dessus du pic), et c'est probablement là qu'est la cause.
+
+---
+
+## O-22 / O-23 — Strava branché, et le premier défaut remonté par une DONNÉE RÉELLE
+
+**Contexte : H-1 est fait.** L'app Strava est créée, le worker Cloudflare (`server/strava-relay.js`)
+est déployé, `STRAVA_RELAY_DEFAULT` est renseigné dans `endurabuild/js/config.js`. Le
+`client_secret` vit **uniquement** en variable Cloudflare de type *Secret* — il n'est jamais passé à
+l'agent, n'apparaît dans aucun commit, et n'existe pas dans le dépôt. Le `client_id` est public par
+nature mais reste lui aussi hors du code : il vit dans l'environnement du worker, ce qui laisse une
+seule chose à changer le jour où l'app Strava change.
+
+Le fondateur a branché son compte, et l'import a produit un chiffre faux. **C'est le premier défaut
+du dépôt remonté par une donnée réelle** plutôt que par un banc — les 23 gates ne pouvaient pas le
+voir, parce qu'ils mesurent ce que le moteur PRODUIT à partir de références, jamais d'où ces
+références viennent.
+
+### O-22 — le coefficient attendait une grandeur, on lui en donnait une autre
+
+Mesuré : l'import annonçait **188 W** quand la FTP déclarée sur Strava est **230 W**, soit 18 % en
+dessous. Ce n'est pas cosmétique — la valeur importée est PROMUE en référence vivante
+(`S.answers.ftp` + `ftp_known = "oui"`), donc **toutes les zones vélo du plan** sont calculées
+dessus.
+
+La cause tient en deux lignes :
+
+```js
+const best = powRides.reduce((m, a) => Math.max(m, a.weighted_average_watts || a.average_watts || 0), 0);
+const ftp  = Math.round(best * 0.95);
+```
+
+Le 0,95 code la règle classique « FTP ≈ 95 % de la meilleure puissance sur **20 MINUTES** »,
+c'est-à-dire d'un test maximal de vingt minutes. Il était appliqué à la puissance normalisée d'une
+**sortie entière**, qui peut durer trois heures en endurance : 188 ÷ 0,95 = 198 W = la meilleure NP
+de sortie du fondateur, sur une sortie de 1 h 17. Le libellé entretenait la confusion —
+`"Strava (meilleure sortie ≥20min)"` se lit comme « meilleure puissance sur 20 min » alors qu'il
+signifie « meilleure sortie de plus de 20 min ». **Une grandeur nommée pour une grandeur voisine**,
+la famille des six mesures démasquées en R20, cette fois dans le produit et non dans un instrument.
+
+**Le sens de l'erreur change avec l'athlète, et c'est ce qui la rend dangereuse.** Pour qui roule
+surtout en endurance, l'estimation est BASSE : zones trop faciles, sous-charge — désagréable, pas
+risqué. Pour qui a fait une seule sortie courte et très dure dans ses 50 dernières activités, elle
+est HAUTE : le plan prescrit alors des watts que l'athlète ne tient pas, sur **toutes** ses séances
+de vélo. C'est ce second cas qui heurte les priorités 1 et 2 du manifeste, et rien ne le
+distinguait du premier.
+
+**Cascade livrée** (`stravaImport`, `endurabuild/js/ui/steps.js`) :
+
+1. **La FTP déclarée du profil** — `/athlete` rend `ftp`, sous périmètre `profile:read_all`.
+   Source affichée : « Strava (FTP de ton profil) ». C'est une valeur déclarée, et R14.1 a payé
+   cher la leçon « un chiffre auto-déclaré ne pilote rien » ; la différence avec un adjectif de
+   questionnaire est qu'elle vient le plus souvent d'un vrai test, et que l'athlète la corrige sur
+   son propre écran.
+2. **À défaut : la meilleure moyenne glissante sur 20 minutes RÉELLES** —
+   `/activities/{id}/streams?keys=watts,time`, `bestRollingMean(vals, times, 1200)`. La fenêtre est
+   bornée par le **TEMPS** et non par le nombre d'échantillons : les flux Strava ne sont pas à pas
+   constant (arrêts, pauses auto), et une fenêtre de 1 200 points n'est pas une fenêtre de
+   20 minutes. C'est enfin la grandeur que le 0,95 attend. Bornée à six sorties, pour ne pas
+   exploser le quota API.
+3. `thrPace` cesse de lire « la course la plus rapide en moyenne » : elle ne retient que les
+   sorties de **10 à 15 km**, le raccourci de protocole que le dépôt utilise déjà ailleurs.
+
+**L'ordre des issues du registre a été inversé, avec sa raison.** `BUGS_OUVERTS.md` recommandait
+« ne plus estimer du tout et le dire » d'abord, parce qu'il chiffrait le coût de la FTP déclarée à
+« une ré-autorisation de tous les comptes déjà connectés ». Au moment où le défaut a été trouvé,
+**aucun compte n'était connecté** : le relais venait d'être déployé le jour même. Le coût était
+nul, et l'issue 3 donne la valeur que l'athlète attend. Une recommandation de registre se relit
+contre l'état du monde au moment où on l'applique.
+
+**Ce qui n'est PAS traité** : `css` est toujours estimée depuis la nage la plus rapide EN MOYENNE,
+ce qui n'est pas un CSS (il se mesure sur un 400 m et un 200 m). Même famille que le défaut
+corrigé ici. Non mesuré sur donnée réelle — pas de compte de test portant de la natation — donc
+suivi dans O-22 plutôt que promu en entrée neuve : un défaut dont on ne sait pas dire le chiffre
+AVANT n'est pas prêt à être corrigé.
+
+### O-23 — la fonction nommée `latest` rendait le plus ANCIEN
+
+Trouvé en regardant la capture du journal du fondateur **après** le correctif d'O-22 : trois
+imports Strava du même jour, et la référence vivante n'était pas celle du dernier.
+
+```js
+c.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+return c[0];        // « le plus récent »
+```
+
+Le tri ne porte que sur la DATE. `Array.prototype.sort` est **STABLE depuis ES2019** : à date
+égale, l'ordre d'insertion est conservé, donc `c[0]` est le **PREMIER inséré**, c'est-à-dire le
+plus VIEUX.
+
+**La conséquence est que le correctif d'O-22 serait resté invisible.** Un nouvel import aurait
+écrit 230 W dans le journal, `latest("ftp")` aurait continué de rendre le 188 W du premier import
+du jour, et `S.answers.ftp` — la référence que le moteur lit vraiment — n'aurait pas bougé. On
+aurait cherché le défaut dans l'import, qui venait d'être corrigé. Plusieurs tests le même jour
+n'est pas un cas de bord : c'est ce que produit quiconque branche un compte et relance l'import
+pour voir.
+
+**Le moteur avait raison depuis toujours** : `measuredRate` (`src/engine/projection.ts`) trie en
+ordre CROISSANT et prend le **dernier** élément, donc à date égale il obtient bien le plus récent.
+Les deux chemins lisaient le même journal et en tiraient deux valeurs différentes — la forme exacte
+que R11.1 interdit, ici entre le moteur et l'UI plutôt qu'entre deux tables de constantes. C'est
+aussi pourquoi le défaut ne se voyait nulle part : la prédiction, elle, était juste.
+
+**Correctif** : départage par POSITION à date égale (`(y.i - x.i)`). Le journal est append-only,
+l'ordre du tableau EST l'ordre chronologique à l'intérieur d'une journée — aucune horloge à
+ajouter, aucun format d'entrée à changer, aucune migration.
+
+**Garde** : `O-23` dans `tests/e2e/smoke-improvements.mjs` — trois tests dont deux le même jour,
+`syncRefsFromTests()`, la référence doit valoir 230. **Vérifiée rouge** contre le code d'avant
+(elle rendait 188).

@@ -1243,7 +1243,7 @@ cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;cons
 ```
 
 
-### O-22 · L'import Strava appelle « FTP » la puissance d'une sortie entière · ⏳ **OUVERT**
+### O-22 · L'import Strava appelle « FTP » la puissance d'une sortie entière · ✅ **FERMÉ (03/08/2026) — issues 3 puis 2, et sa fermeture a découvert O-23**
 
 Trouvé par le fondateur le 03/08/2026, en branchant son propre compte — **premier défaut du dépôt
 remonté par une donnée réelle** plutôt que par un banc.
@@ -1302,11 +1302,86 @@ Les deux autres références importées portent le même soupçon et n'ont PAS �
 basse »), `css` la nage la plus rapide en moyenne. Leur libellé est plus honnête, leur méthode
 reste une moyenne de sortie.
 
+**FERMÉ le 03/08/2026 — les issues 3 PUIS 2, dans cet ordre, et pas l'issue 1.** L'arbitrage
+recommandé ci-dessus (« 1 immédiatement ») supposait que l'issue 3 coûtait une ré-autorisation de
+tous les comptes connectés : au moment où le défaut a été trouvé, **aucun compte n'était encore
+connecté** — le relais venait d'être déployé (H-1). Le coût de l'issue 3 était donc nul, et elle
+donne la valeur que l'athlète attend. Cascade livrée dans `stravaImport` :
+
+1. **La FTP déclarée du profil** (`/athlete`, périmètre `profile:read_all`) — `ftpSrc = "Strava
+   (FTP de ton profil)"`. C'est une valeur déclarée, et R14.1 dit qu'un chiffre auto-déclaré ne
+   pilote rien ; la différence est qu'elle est CORRIGEABLE par l'athlète, sur son propre écran, et
+   qu'elle vient le plus souvent d'un test.
+2. **À défaut : la meilleure moyenne glissante sur 20 minutes RÉELLES** (`/activities/{id}/streams`,
+   `bestRollingMean` borné par le TEMPS et non par le nombre d'échantillons — les flux Strava ne
+   sont pas à pas constant), × 0,95. C'est la grandeur que le coefficient attend depuis toujours.
+   Bornée à six sorties pour ne pas exploser le quota API.
+3. `thrPace` cesse de lire « la course la plus rapide en moyenne » : elle ne retient que les
+   sorties de **10 à 15 km**, le raccourci de protocole que le dépôt utilise déjà ailleurs.
+
+**Ce qui n'est PAS traité, et reste ouvert** : `css` est toujours estimée depuis la nage la plus
+rapide EN MOYENNE, ce qui n'est pas un CSS (le CSS se mesure sur un 400 m et un 200 m). Même
+famille que le défaut fermé ici. Non mesuré sur donnée réelle, pas de compte de test avec de la
+natation — suivi ici plutôt que dans une entrée neuve tant que le chiffre n'existe pas.
+
+**Et sa fermeture a découvert O-23** : le correctif serait resté INVISIBLE. Voir ci-dessous.
+
 ```verify
 id: O-22
-quoi: l'import Strava dérive la FTP de la puissance d'une SORTIE, pas d'un effort de 20 min
-attendu: /best \* 0\.95|meilleure sortie ≥20min/
-cmd: grep -n "0.95\|meilleure sortie" endurabuild/js/ui/steps.js
+quoi: l'import Strava lit la FTP déclarée, sinon la meilleure moyenne sur 20 min réelles
+attendu: /FTP de ton profil[\s\S]*bestRollingMean|bestRollingMean[\s\S]*FTP de ton profil/
+cmd: grep -n "FTP de ton profil\|bestRollingMean\|meilleure sortie ≥20min" endurabuild/js/ui/steps.js
+```
+
+---
+
+### O-23 · La fonction nommée `latest` rendait le test le plus ANCIEN · ✅ **FERMÉ (03/08/2026)**
+
+Trouvé en regardant la capture du journal du fondateur après le correctif d'O-22 : trois imports
+Strava du **même jour**, et la référence vivante affichée n'était pas celle du dernier.
+
+**Le mécanisme est un tri incomplet**, `tab-profile.js` :
+
+```js
+c.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+return c[0];        // « le plus récent »
+```
+
+Le tri ne porte que sur la DATE. `Array.prototype.sort` est **STABLE depuis ES2019** : à date
+égale, l'ordre d'insertion est conservé — donc `c[0]` est le **PREMIER inséré**, c'est-à-dire le
+plus VIEUX. Une fonction nommée `latest` qui rend le plus ancien.
+
+Reproduit sur trois tests, dont deux le même jour :
+
+```
+Trois tests le MÊME jour ; le plus récent est le 3e (230 W).
+  latest() rend : 188 W — « import 1 »
+  DÉFAUT : la fonction nommée « latest » rend le PLUS ANCIEN
+```
+
+**LA CONSÉQUENCE EST QUE LE CORRECTIF D'O-22 SERAIT RESTÉ INVISIBLE.** Un nouvel import aurait
+écrit 230 W dans le journal, `latest("ftp")` aurait continué de rendre le 188 W du premier import
+du jour, et `S.answers.ftp` — la référence que le moteur lit vraiment — n'aurait pas bougé. On
+aurait cherché le défaut dans l'import, qui venait d'être corrigé. Plusieurs tests le même jour
+n'est pas un cas de bord : c'est ce que produit quiconque branche un compte et relance l'import
+pour voir.
+
+**Le moteur, lui, avait raison depuis toujours** : `measuredRate` (`src/engine/projection.ts`)
+trie en ordre CROISSANT et prend le **dernier** élément, donc à date égale il obtient bien le plus
+récent. Les deux chemins lisaient déjà le même journal et en tiraient deux valeurs différentes —
+la forme exacte que R11.1 interdit, ici entre le moteur et l'UI plutôt qu'entre deux tables.
+
+**Correctif** : départage par POSITION à date égale (`(y.i - x.i)`). Le journal est append-only,
+l'ordre du tableau EST l'ordre chronologique à l'intérieur d'une journée — aucune horloge à
+ajouter, aucun format d'entrée à changer. Garde `O-23` dans `tests/e2e/smoke-improvements.mjs` :
+trois tests dont deux le même jour, `syncRefsFromTests()`, la référence doit valoir 230.
+**Vérifiée rouge** contre le code d'avant (elle rendait 188).
+
+```verify
+id: O-23
+quoi: à date égale, `latest` départage par position et rend le DERNIER test inscrit
+attendu: /y\.i - x\.i/
+cmd: grep -n "y.i - x.i" endurabuild/js/ui/tab-profile.js
 ```
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
@@ -1482,7 +1557,7 @@ document historique du dépôt, il se corrige dans son propre commit avec la mes
 
 | # | sujet | nature |
 |---|---|---|
-| H-1 | `STRAVA_RELAY_DEFAULT = ""` dans `endurabuild/js/config.js` | **Déploiement humain, 15 min** : créer l'app Strava + déployer le worker (`server/README.md`). Le code est livré et testé ; il attend un secret. |
+| ~~H-1~~ | ~~`STRAVA_RELAY_DEFAULT = ""` dans `endurabuild/js/config.js`~~ | ✅ **FAIT le 03/08/2026** : app Strava créée (client `269639`), worker Cloudflare déployé, `STRAVA_RELAY_DEFAULT` renseigné, connexion confirmée en production (`✓ Connecté`). Le `client_secret` vit UNIQUEMENT en variable de type *Secret* côté Cloudflare — jamais dans le dépôt, jamais dans un commit. Périmètre `activity:read_all,profile:read_all` (le second ajouté par O-22). Une garde E2E qui supposait le relais ABSENT a dû être réécrite : elle mesurait l'absence de déploiement, pas un comportement. |
 | H-2 | Notifications push app fermée | Demande un backend. Décision produit assumée : on n'annonce pas ce qu'on ne peut pas tenir. |
 | H-3 | CONSEIL nutritionnel (par opposition aux ESTIMATIONS, livrées) | Bloqué sur avis diététicien. **Ligne à ne pas franchir**, manifeste. |
 | H-4 | Candidature API MyFitnessPal | Démarche humaine. |
