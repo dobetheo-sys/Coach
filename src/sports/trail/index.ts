@@ -24,7 +24,17 @@ registerSport({
   // "facileR", PAS "facile2" : c'est ce que l'ancien code faisait (`sport === "run" ? … : …`
   // ne connaissait que la course). Le déclarer autrement changerait les plans trail — ce
   // serait une DÉCISION, pas une extraction. Candidate à réexaminer (voir R10_DEFECTS.md).
-  easyFallbackSlot: "facileR",
+  // R20.9 (O-3) — LE REPLI DU TRAIL PASSE DE `facileR` À `facile2`, ET C'EST MESURÉ.
+  //
+  // `easyFallbackSlot` est le créneau qu'on construit quand un jour DUR est déclassé — fatigue,
+  // anti-collage, drapeau médical. En trail, `facileR` produit « Marche rapide en montée
+  // (bâtons) » : une sortie de 30 min à 5 h avec du dénivelé et du renfo excentrique. Ce n'est
+  // pas une séance de repli, c'est une séance de charge qui porte un autre nom.
+  //
+  // Mesuré sous drapeau médical — le cas où le plan doit être un plan de MAINTIEN sans la
+  // moindre intensité : la semaine livrait **trois « Marche rapide en montée » identiques**.
+  // `facile2` produit « Footing récup », qui est exactement ce qu'un jour déclassé doit devenir.
+  easyFallbackSlot: "facile2",
   weekSchema: (phase, isRecup, r) => trailWeekSchema(phase, isRecup, r.trail!.category),
   buildSessions: buildTrailSessionsFromKit,
   retestTypes: ["thrPace", "vam"],

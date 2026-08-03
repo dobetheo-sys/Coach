@@ -55,6 +55,13 @@ jobs:
       # d'intensité (O-2), plancher et déverrouillage de la semaine de course, et éligibilité
       # âge × format (un mineur ne prépare pas douze mois une épreuve interdite à l'inscription).
       - run: npm run audit:r15
+      # R18 — retour de TEST du fondateur sur l'application livrée. Deux défauts moteur, tous
+      # deux plus larges que ce que le test avait vu : le brick disparaissait des trois
+      # dernières semaines en tri et en duathlon (la transition est une compétence, elle se
+      # perd), et la cadence de récupération ignorait les phases (75 % des plans déchargeaient
+      # DANS le pic). Le banc porte aussi l'arbitrage qui les borne : aucune règle de placement
+      # ne fait dépasser à l'athlète sa propre cadence de récupération.
+      - run: npm run audit:r18
       # R11.8 — banc de SENSIBILITÉ : toute réponse du questionnaire doit modifier le plan.
       # Une clé inerte fait échouer la CI — c'est ce qui empêche `cycle_sync` et `dispo` de
       # redevenir des cases à cocher sans effet.
@@ -63,6 +70,17 @@ jobs:
       # d'une V1) : 0 séance sans repère exécutable, aucun adjectif auto-déclaré ne pilote un
       # chiffre, aucune référence sans chemin d'acquisition dans l'outil.
       - run: npm run audit:public
+      # R20.6 — BANC D'INVARIANTS, désormais BLOQUANT (O-9). 20 propriétés que le plan tient
+      # TOUJOURS, sur 54 configurations (6 sports × 3 enveloppes × 3 niveaux). Il sortait en
+      # code 0 quoi qu'il trouve et n'était pas en CI : il a donc porté quatre familles
+      # d'échecs pendant que la documentation le disait vert. Un rapport que rien ne lit
+      # vaut zéro.
+      - run: npm run audit:invariants
+      # RV — le raisonnement inverse (chrono visé). Son critère central, `RV-INVARIANT`,
+      # assertе que le plan émis est IDENTIQUE au bit près avec et sans objectif de temps :
+      # c'est la garantie que la performance reste une SORTIE et jamais une entrée qui
+      # construit (priorité n°5 du manifeste sous les quatre premières).
+      - run: npm run demo:faisabilite
       # Golden master : 814 plans photographiés, détection d'écart au bit près. Les empreintes
       # sont versionnées ; tout changement de plan doit être VOULU et recapturé explicitement.
       - run: npm run golden:verify

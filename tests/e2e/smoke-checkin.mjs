@@ -1,7 +1,7 @@
 // R5 — écran d'accueil : check-in en DIAPORAMA (sommeil → VFC optionnelle → ressenti)
 // AVANT toute séance (une fois par jour), onglet central Aujourd'hui, protocoles
 // (pas de calculateur), pont FIT → références vivantes.
-import { startServer, launchBrowser, makeReporter } from "./harness.mjs";
+import { startServer, launchBrowser, makeReporter, traverserQuestionnaire } from "./harness.mjs";
 
 const PORT = 8420;
 const server = await startServer(PORT);
@@ -16,37 +16,48 @@ page.on("pageerror", (e) => consoleErrs.push(String(e)));
 await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
 // Onboarding complet au clic — vérifie le questionnaire réel, pas un état injecté.
 await page.click('.sport-card[data-sport="run"]');
-await page.click('.opts[data-key="intent"] .opt[data-val="competition"]');
-await page.click('.opts[data-key="format"] .opt[data-val="10k"]');
-await page.click("#nextBtn");
-for (const v of ["med_pain", "med_dizzy", "med_treat"]) await page.click('.opts[data-key="' + v + '"] .opt[data-val="non"]');
-await page.click("#nextBtn");
-await page.click('.opts[data-key="terrain"] .opt[data-val="route"]'); await page.click("#nextBtn");
-await page.fill('[data-input="age"]', "35"); await page.click('.opts[data-key="sex"] .opt[data-val="H"]'); await page.click("#nextBtn");
-await page.click('.opts[data-key="level"] .opt[data-val="inter"]');
-await page.click('.opts[data-key="pace_known"] .opt[data-val="non"]');
-const protoPace = await page.locator("#hrB").textContent();
-ok(/Comment obtenir ton allure/.test(protoPace), "protocole allure seuil affiché quand pace_known=non");
-ok(/onglet 📋 Profil/.test(protoPace), "protocole pointe vers l'onglet Profil pour remplir plus tard");
-await page.click("#nextBtn");
-await page.click('.opts[data-key="history"] .opt[data-val="confirme"]'); await page.click('.opts[data-key="injury"] .opt[data-val="aucune"]'); await page.click("#nextBtn");
-await page.click('.opts[data-key="sessions_max"] .opt[data-val="5"]');
-await page.click('.opts[data-key="vol_max"] .opt[data-val="7"]');
-await page.click('.opts[data-key="vol_recent"] .opt[data-val="3"]');
-await page.click('.opts[data-key="dispo"] .opt[data-val="semaine"]');
-await page.click('.opts[data-key="off_days"] .opt[data-val="non"]');
-await page.click('.opts[data-key="doubles"] .opt[data-val="non"]');
-await page.click("#nextBtn");
-await page.click("#genBtn");
+// U14 — LE QUESTIONNAIRE SE TRAVERSE SANS QUE LE TEST EN CONNAISSE L'ORDRE.
+//
+// Cette suite codait la séquence des écrans en dur. Elle est tombée le jour où l'ordre a changé
+// pour une bonne raison (mettre en tête ce dont l'absence coûte une garde de sécurité) — alors
+// qu'elle ne mesure PAS l'ordre : elle mesure ce qui vient après. Un test qui code une séquence
+// qu'il ne teste pas se casse à chaque réorganisation légitime.
+let vuProtocole = false;
+await traverserQuestionnaire(page, {
+  reponses: { intent: "competition", format: "10k", med_pain: "non", med_dizzy: "non", med_treat: "non",
+    terrain: "route", sex: "H", level: "inter", pace_known: "non", history: "confirme", injury: "aucune",
+    sessions_max: "5", vol_max: "7", vol_recent: "3", dispo: "semaine", off_days: "non", doubles: "non" },
+  saisies: { age: "35" },
+  async surEcran(pg) {
+    if (vuProtocole || !(await pg.locator("#hrB").count())) return;
+    const proto = await pg.locator("#hrB").textContent();
+    if (!/Comment obtenir/.test(proto || "")) return;
+    vuProtocole = true;
+    ok(/Comment obtenir ton allure/.test(proto), "protocole allure seuil affiché quand pace_known=non");
+    ok(/onglet 📋 Profil/.test(proto), "protocole pointe vers l'onglet Profil pour remplir plus tard");
+  },
+});
+ok(vuProtocole, "l'écran du protocole d'allure a bien été traversé");
 await page.waitForTimeout(400);
 
-// 1. Écran d'accueil = diaporama de check-in sur l'onglet central, PAS de séance visible
-ok(await page.locator("#ckSlide").count() === 1, "diaporama de check-in visible à l'ouverture");
+// 1. U11 — L'ÉCRAN D'ARRIVÉE A CHANGÉ, LE PORTILLON N'A PAS BOUGÉ.
+//
+// Le jour où le plan est créé, on arrive sur 🗓 Plan : après 8 écrans et 30 gestes de
+// questionnaire, présenter TROIS QUESTIONS DE PLUS était le moment où l'on perdait des gens.
+// Ce que ce fichier vérifie reste identique — « aucune séance visible avant le check-in » — mais
+// sur l'onglet où cette règle a toujours eu son sens : 🎯 Aujourd'hui. (Elle n'a jamais été
+// globale : 🗓 Plan a toujours affiché la grille, à un clic, avant tout check-in.)
+ok(await page.evaluate(() => (document.querySelector("#ebTabbar .tabbtn.active") || {}).dataset?.tab) === "general",
+  "U11 — le jour de la création, on arrive sur le PLAN et pas sur un quatrième questionnaire");
+await page.click('#ebTabbar .tabbtn[data-tab="today"]');
+await page.waitForTimeout(600);
+
+ok(await page.locator("#ckSlide").count() === 1, "diaporama de check-in visible à l'ouverture de 🎯 Aujourd'hui");
 ok(/1\/3/.test(await page.locator("#ckSlide").textContent()), "écran 1/3 (sommeil) affiché");
 ok(/dormi combien/.test(await page.locator("#ckSlide").textContent()), "le sommeil est demandé en HEURES (signal mesuré, audit v6 A5)");
 ok(await page.locator(".gw-grid").count() === 0, "AUCUNE grille de semaine visible avant le check-in");
 ok(await page.locator(".doneBtn").count() === 0, "AUCUNE coche de séance visible avant le check-in");
-ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "4 onglets (Profil/Plan/Aujourd'hui/Nutrition) — R16.9 a fondu Semaine dans Plan");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "5 onglets (Profil/Plan/Aujourd'hui/Semaine/Nutrition) — R18.3 a restauré Semaine, et 🎯 Aujourd'hui redevient réellement CENTRAL (3e sur 5)");
 ok(await page.locator("#ebTabbar .tabbtn.tab-central").count() === 1, "l'onglet central Aujourd'hui est mis en valeur");
 
 // 2. Diaporama : 3 taps (nuit courte → VFC basse → vidé), phrases de coach
@@ -91,7 +102,14 @@ ok(await page.locator("details .load-title:has-text('Adaptations quotidiennes')"
 // pouvoir COCHER une séance faite ET voir la vue d'ensemble, sans changer d'onglet.
 const tabs = await page.locator("#ebTabbar .tabbtn").all();
 await tabs[1].click(); await page.waitForTimeout(300);
-ok(await page.locator("#screen .gw-grid").count() >= 2, "Plan montre la semaine courante ET la saison (" + (await page.locator("#screen .gw-grid").count()) + " grilles)");
+// U15 — l'onglet s'ouvre sur la SEMAINE EN COURSE seule (56 % de sa hauteur était fait de
+// semaines dépliées qu'on ne regarde pas). Ce que ce critère mesure ne change pas : depuis
+// 🗓 Plan seul, on doit voir une grille cochable ET la vue d'ensemble de la saison. C'est le
+// NOMBRE de grilles ouvertes d'office qui a changé, pas ce qui est atteignable.
+ok(await page.locator("#screen .gw-grid").count() === 1, "Plan ouvre sur la semaine en cours (1 grille)");
+ok(await page.locator("#screen .ph-line").count() === 1 && await page.locator("#screen .vol-bars").count() === 1,
+  "…et la vue d'ensemble de la saison est sur le même écran (frise + courbe)");
+ok(await page.locator("#allW").count() === 1, "…et les autres semaines sont à un bouton");
 ok(await page.locator("#screen .doneBtn").count() > 0, "la coche ✓ d'une séance est atteignable depuis Plan");
 ok(await page.locator("#screen [data-swap]").count() > 0, "l'échange de jours ⇄ a survécu à la fusion");
 const planTxt = await page.locator("#screen").textContent();

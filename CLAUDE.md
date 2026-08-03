@@ -15,6 +15,17 @@ prime sur la commodité technique.
 Une fonctionnalité ne doit jamais dégrader les quatre premiers points. « Un mauvais plan vaut
 mieux qu'un plan dangereux. »
 
+**Informer plutôt que bloquer (décision du fondateur, 02/08/2026 — voir ARCHITECTURE.md
+« O-17 »)** : *« notre rôle est d'informer au mieux et de laisser l'athlète choisir entre son
+besoin de résultats ou de sécurité ; le but n'est jamais de bloquer mais d'accompagner au mieux,
+**sauf si réelle mise en danger** »*. Ce qui BLOQUE reste dur et ne se négocie pas — drapeau
+médical, drapeau douleur, mineur × format (R15.7-C), garde IMC, borne d'âge de l'estimation
+énergétique (O-16), course trop proche (R11.4), bornes physiologiques. Leur point commun :
+l'athlète ne peut pas évaluer le risque, ou l'erreur est irréversible. **Tout le reste informe**
+(canal `warnings`, R11.2). Se tromper de catégorie coûte dans les deux sens : brider un athlète
+capable, c'est le plan qu'il quitte pour s'entraîner seul, sans aucun garde-fou — et la
+régularité est priorité 3, pas priorité 7.
+
 ## Les fichiers qui comptent
 
 | Fichier | Rôle |
@@ -55,6 +66,10 @@ dépôt — historique git si besoin.
   PROMESSES, pas à l'auditeur interne — c'est ainsi qu'il a trouvé le contournement du drapeau
   médical et les doses de 90 min de seuil que `auditPlan()` notait 100/100. **11e gate CI**,
   budget par check dans `scripts/runAuditV7.mjs` (0 = garde-fou définitif).
+- `npm run audit:r18` — **banc du retour de TEST du fondateur** (`bench_r18.cjs`, 13 critères,
+  21e gate CI). Rouge sur 10 de ses 13 critères contre le moteur d'avant le lot. Il porte aussi
+  l'arbitrage qui borne R18.5 (« la cadence gagne sur le placement »), **compté et démontré** à
+  chaque exécution — 34 gabarits, chacun vérifié en retirant la décharge litigieuse.
 - `npm run audit:r13` / `audit:r14` / `audit:r14.1` — **bancs des handoffs externes**
   (`bench_r13.cjs`, `bench_r14.cjs`, `bench_r14_1.cjs`), 17e à 19e gates CI. R13 : âge, CSS
   print, nage du tri mono-séance, semaine de course, épaule, plafonds de phases. R14 : la
@@ -63,11 +78,21 @@ dépôt — historique git si besoin.
   R14.1 : le gain s'indexe sur la **distance au potentiel** (références mesurées), fourchette
   asymétrique, vélo en deux lignes, levier poids sous gardes. Les critères que R14.1 périme
   restent AFFICHÉS dans `bench_r14.cjs` avec leur raison (statut `----`), jamais supprimés.
+- `npm run audit:invariants` — **20 invariants × 54 configurations** (7 sports × 3 enveloppes ×
+  3 niveaux), **22e gate CI depuis R20.6**. Une propriété que le plan tient TOUJOURS : dev ≤ pic,
+  échauffement ≤ corps, la sortie longue est la plus longue de sa discipline, le plan s'arrête le
+  jour J… Il sortait en code 0 quoi qu'il trouve et n'était pas en CI — d'où les quatre familles
+  d'échecs qu'il a portées sous une documentation qui le disait vert (O-9). Il bloque désormais.
 - `npm run registry:check` — **le registre s'exécute** (R15.9) : chaque entrée mesurable de
   `BUGS_OUVERTS.md` porte un bloc ` ```verify ` (`id`, `quoi`, `attendu`, `cmd`), le script les
   enchaîne et range chacune en **reproduit** / **ne reproduit plus (→ §4)** / **commande
   cassée**. Volontairement HORS CI : il rejoue des gates qui y tournent déjà. À lancer quand on
   reprend le registre — c'est ce qui empêche une dette de devenir un souvenir.
+- `npm run demo:faisabilite` — **le raisonnement inverse** (RV) : une épreuve, un chrono visé, un
+  verdict déroulé à reculons. **23ᵉ gate CI.** Son critère central, `RV-INVARIANT`, assertе que le
+  plan émis est IDENTIQUE au bit près avec et sans objectif de temps — la performance reste une
+  SORTIE, jamais une entrée qui construit. Aucun modèle nouveau : chaque étape INVERSE un modèle
+  déjà sourcé (Riegel/P5, P2bis, régime P11).
 - `npm run measure:fallback [sport|tous]` — **mesure R15.3** : à quelle fréquence le créneau
   facile de repli (`easyFallbackSlot`) se déclenche. Détection POST-HOC (plan émis vs
   `weekSchema` déclaré), zéro instrumentation dans `src/`. Vérifie sa propre hypothèse
@@ -87,7 +112,7 @@ dépôt — historique git si besoin.
   (instance unique par module, imports circulaires préservés), CSS et polices en `data:`.
   Sert à tester l'app hors ligne d'un double-clic — le monolithe `Coach_Pro_V1.5.html`
   a le moteur à jour mais son UI est gelée à R4 (ni carte Trail, ni étape terrain).
-- `npm run test:e2e` — 9 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
+- `npm run test:e2e` — 14 suites Playwright contre la PWA (`tests/e2e/`, vrai Chromium,
   job CI `e2e` séparé). Seule exception au zéro-dépendance : Playwright, devDependency de
   TEST uniquement (`npm install` d'abord ; local : `/opt/pw-browsers/chromium` détecté,
   sinon `EB_CHROMIUM`).
@@ -408,6 +433,559 @@ Débusqué au passage : le §6 du handoff oubliait `R14.4` dans sa liste de crit
 plafonds SONT la table déclarée fausse, et ils sont arithmétiquement incompatibles avec le nouveau
 `R14.1-B` (50 % d'écart exigé contre 45 % autorisé). **19 gates verts, E2E 8/8 (55 assertions),
 golden 758 inchangé** — la projection ne touche aucune séance.
+
+**R20.1 livré — les gardes cessent de couvrir « là où le code a été écrit »** (décision du
+fondateur, voir ARCHITECTURE.md « R20.1 ») : mes deux défauts de R19 avaient la MÊME forme —
+la garde couvrait le sport où le code avait été écrit, pas celui où il servait. Deux gardes,
+parce que les deux défauts étaient de deux types. **`audit:sensibilite` est dérivé du SCHÉMA** :
+toute clé déclarée doit agir dans CHAQUE sport où elle est déclarée (148 couples sport × clé,
+aucune liste à maintenir, 5 paires pour les clés conditionnelles, exemptions nommées une par
+une). **`smoke-questionnaires`** (13e suite E2E) traverse les SEPT questionnaires — aucune ne
+passait par le triathlon, ce qui avait laissé filer le `ReferenceError` de R19.2 ; vérifiée
+ROUGE en réintroduisant ce défaut. Quatre défauts trouvés le jour même par ces gardes :
+**`vol_recent: 0`** — « je ne m'entraîne pas du tout » était lu comme « pas de réponse » (le
+piège du `|| undefined` sur un zéro) : semaine 1 à **3,9 h au lieu de 2,0 h** sur un profil
+`reprise`, exactement la population que la rampe R10 protège ; **le jour J du swimrun ne
+portait aucun temps prédit** (le générateur ne lui passait pas son objectif décodé) — ce qui
+rendait aussi `leg_swim_env`/`leg_run_prof` inertes sur le plan malgré R19.1 ; **`gear_test`
+n'était lu nulle part** alors que le module dit lui-même que sans test en tenue les allures ne
+sont pas des références ; **`swim_limit` n'agissait que pour les débutants** (O-14) alors que
+CLAUDE.md le disait « câblé sur ses 4 valeurs ». Le schéma cesse aussi de sur-déclarer (la FTP
+n'est plus demandée en course à pied ni en natation). Dette déclarée : `O-13`, la rampe R10 ne
+mord jamais en natation — erreur d'unité, décision produit à prendre.
+**21 gates verts, E2E 13/13, golden 900 recapturé, registre 13/13 re-mesuré.**
+
+**R20.2 livré — le volume max dit ce qui le bloque, et ce qui le débloquerait** (O-10 fermé,
+voir ARCHITECTURE.md « R20.2 ») : sur un 70.3, `vol_max` ne changeait plus RIEN au-delà de
+10 h — 10, 12, 14, 16 h donnaient le même plan à 0,1 h près, et la question continuait d'être
+posée comme si elle décidait. Le lot ne force AUCUN chiffre vers le plafond demandé (ce serait
+défaire la sonde de capacité V2.1) : il rend le chiffre explicable. `volLimits` transmet les
+MAILLONS de la réduction (historique · volume utile du format · marge hors compétition ·
+récupération · temps dans l'eau · drapeau médical · blessure/âge · structure de la semaine),
+le générateur mesure ce que chacun a retiré **en heures** et nomme le plus gros — décision
+`R20.2`, en tête de « Pourquoi ce plan ». Ma première écriture nommait le PREMIER plafond qui
+mord au lieu du plus gros : en natation elle annonçait « c'est ton historique » (10 h) pour un
+pic livré à 3,3 h, faux de 7 h — une explication approximative sur un chiffre que l'athlète a
+saisi lui-même l'envoie corriger la mauvaise réponse. Le levier des doubles n'est proposé que
+là où il existe (`doubles: "oui"` fait passer le 70.3 de **8,7 h à 13,5 h**) : garde de module
+`doublesAddVolume`, **mesuré dans les deux sens** par `audit:sensibilite`, vérifié rouge en
+retirant la déclaration du tri. Le diagnostic reste honnête sous drapeau médical, blessure ou
+âge ; **aucun levier n'y est jamais proposé**. Deux rectifications au passage : le point 2
+d'O-10 était faux **par un titre de colonne** (`volPeak` est le livré, `vol_declared` la cible
+interne — mes colonnes étaient inversées, il n'y avait pas de défaut), et la carte « Pourquoi
+ce plan » appelait le plafond d'historique « ton volume déclaré » depuis l'origine.
+**21 gates verts, E2E 13/13, golden 900 recapturé — 515 profils changent, et le SEUL champ qui
+diffère est le nombre de décisions : pas une séance, pas une minute.**
+
+**R20.3 livré — le footing du swimrun reçoit ses bornes** (O-8 fermé, voir ARCHITECTURE.md
+« R20.3 ») : le créneau facile course n'avait AUCUN `bnd`, il était donc le seul bloc sans
+plafond de la semaine et le déversoir de toutes les passes de remplissage — « Footing facile »
+de **179 à 226 min**, devant la pivot, sur le sport dont la pivot EST la spécificité. Le défaut
+que R13 avait corrigé pour le triathlon, jamais rejoué sur le module arrivé après.
+**Deux écritures de la borne ont été mesurées et RÉFUTÉES** par le banc v7 sur le même check
+`S-MIX` (part de course du plan vs part de course de l'épreuve, 4 profils en défaut avant le
+lot) : relative à la pivot de la même semaine → **158** ; indexée sur le temps de course de
+l'épreuve → **152**. Les deux serraient le footing pendant la construction, or en swimrun les
+deux créneaux faciles PORTENT la course à pied du plan — les serrer refait le défaut que S13
+venait de corriger. Le défaut n'était pas qu'un footing soit LONG mais qu'il soit **la plus
+longue séance du plan** : la borne est donc la **pivot du PIC** (×0,90, plafond absolu 2 h 30),
+et le footing passe à **115-150 min** avec la pivot en tête sur les quatre formats.
+Les 26 hits résiduels portaient **tous** une eau sous le seuil d'acclimatation : c'est la
+**quatrième règle de sécurité** que ce check punissait, après le drapeau médical et les deux
+familles de blessures (R16.10) — exemption lue sur le PLAN, jamais sur la température déclarée.
+Ce que l'exemption cache est enregistré (**O-15** : la portée du verrou froid n'a jamais été
+décidée — 3/15 profils sous le seuil à 16 °C, 0/15 à 20 °C) : une exemption sans entrée de
+registre est un défaut effacé. **swimrun 88 % → 89 % au banc v7, `S-MIX` à 0 aux trois tailles
+d'échantillon → budget 12 ‰ → 0 (garde-fou définitif), 21 gates verts, E2E 13/13, golden 900
+recapturé (136 écarts, TOUS en swimrun).**
+
+**R20.4 livré — C26 mesure enfin ce que sa propre justification dit** (voir ARCHITECTURE.md
+« R20.4 ») : C26 déclare depuis son écriture que la grandeur physiologique est le **plafond de
+temps DUR** hebdomadaire et que la part de facile n'en est que la conséquence. Seule la
+conséquence était vérifiée — et sur un dénominateur qui mélange le modéré et le dur. Mesuré sur
+**7 356 semaines de charge : 1 095 (15 %) au-dessus du plafond que la règle déclare**, jusqu'à
+**112 min de travail dur chez un DÉBUTANT dont le plafond est 25** — le profil que C26b décrit
+lui-même comme limité par son tissu conjonctif. Pendant ce temps le modéré, seul puni par
+l'ancienne formulation, ne débordait que 2 fois sur 7 356 : la règle punissait la grandeur
+inoffensive et ne regardait jamais la dangereuse. Leçon d'O-12 payée une seconde fois.
+**C26c** borne le temps dur pour lui-même (tolérance ×1,1 — il se quantifie par répétitions) ;
+**C26d** donne au modéré sa propre borne, plus large (40 %), posée AU-DESSUS de ce que le moteur
+produit : une borne calibrée au ras du comportement actuel se contente de le photographier. Les
+deux se mesurent PAR SEMAINE, pas en moyenne. La coupe retire des **RÉPÉTITIONS, jamais la durée
+d'une répétition** (leçon I14 : dans un intervalle, la durée EST le stimulus) ; sous le plancher,
+la séance est DÉCLASSÉE en endurance et **change de nom** — ma première écriture préfixait et
+produisait « Endurance nage seuil », une séance qui se contredit dans son titre. 314 séances
+déclassées sur 648 plans, **aucun plan ne perd toute sa qualité** (le piège d'O-12, vérifié),
+part facile médiane 83 % → 86 %.
+Débusqué par C26c : **`audit:v1` mesurait le générateur MORT sur 27 de ses 486 combinaisons.**
+Le harnais chargeait bien le bundle, mais appelait le `buildPlan` du HTML — un wrapper qui
+attrape TOUTE exception et retombe sur le legacy, y compris un refus d'entrée typé. `run/trail`
+n'existe plus depuis R7 ; le legacy satisfaisait toutes les règles auditées jusqu'ici, C26c est
+la première qu'il rate. Le harnais appelle le moteur directement : **459 combinaisons auditées +
+27 refus DÉCLARÉS.** **21 gates verts, E2E 13/13, golden 900 recapturé (259 écarts).**
+
+**R20.5 livré — « l'allure course » à vélo n'a plus qu'une seule définition** (O-11 fermé, voir
+ARCHITECTURE.md « R20.5 ») : le moteur portait DEUX définitions du même effort et la zone
+d'entraînement était la plus dure — `bk.rp` valait **0,80–0,88 × FTP du sprint à l'Ironman**
+quand le jour J d'un Ironman se roule à **0,70–0,76**. Une séance nommée « Rappel race-pace »
+faisait donc rouler **15 % au-dessus de l'intensité que le moteur prescrit lui-même pour la
+course** ; sur un sprint, l'inverse. **(1)** `raceBikeBand()` est le point unique — les trois
+tables de puissance de course y convergent, `bk.rp` la lit, relief compris (tri/Full 184–202 W →
+**161–175 W**, tri/S → **196–214 W**). **(2)** Le plancher de temps facile mesurait le mauvais
+rapport : `1 − plafondDur/minutes` est dérivé du plafond de DUR, il décrit
+`facile/(facile+dur)`, il était comparé à `facile/(facile+modéré+dur)` — erreur d'unité, même
+espèce qu'O-13. Mesuré : un tri/70.3 à **70 % facile · 27 % modéré · 3 % DUR** refusé par une
+règle censée borner le dur ; **96 %** sur le rapport que la formule décrit. C26d borne le modéré
+séparément, et la question « pyramidal vs polarisé » se dissout. `easyShare` reste affiché tel
+quel — on change ce sur quoi on JUGE, pas ce qu'on MONTRE. **(3)** Le tiers du brick à allure
+course existe là où il veut dire quelque chose : un seul critère (bande > 0,85 × FTP = du seuil)
+décide À LA FOIS de sa classe et de son existence — pas de tiers sur un sprint dont le vélo dure
+20 min, tiers sur 70.3 et Full où l'allure se TIENT. Trois défauts trouvés en le construisant :
+le rendu n'affichait pas le second bloc et gardait « dernier tiers @ allure course » **sans
+chiffre** (le trou de R19.5, resté ouvert côté texte) ; `enforceHardTimeCap` ne classait pas
+comme l'auditeur (O-11 reproduit dans son propre correctif) ; la borne du brick lisait le
+premier leg vélo au lieu de sommer. **21 gates verts, E2E 13/13, golden 900.**
+
+**R20.6 livré — le banc d'invariants garde enfin** (O-9 fermé, voir ARCHITECTURE.md « R20.6 ») :
+`CLAUDE.md` annonçait « banc d'invariants vert sur ses 19 tests » — il ne l'était pas, et ne
+l'était pas avant R18 non plus. Le mécanisme du silence EST le défaut : le banc sortait en code
+**0 quoi qu'il trouve**, et **il n'était pas en CI**. Un rapport que rien ne lit vaut zéro.
+**Trois invariants PÉRIMÉS** — la course objectif n'est pas une séance d'entraînement : `I6` (54)
+réclamait une durée non nulle quand le jour J porte `min: 0` par conception (R13.4) ; `I8` (15)
+comptait la course dans un budget d'entraînement ; `I12` (3) mesurait la dominance d'une sortie
+longue dans la SEMAINE DE COURSE, où il n'y en a pas. **Un VRAI défaut — `I14`** (6), plus large
+que « le trail débutant » : « Marche rapide en montée » à **295 min quand la sortie longue du
+même athlète est plafonnée à 180** (C23). La 2ᵉ passe d'I14 interdisait de toucher un bloc en
+pente non répété et son commentaire assumait le résidu ; or ce qui était interdit, c'était de
+changer la VITESSE ASCENSIONNELLE — réduire durée ET dénivelé du même facteur la laisse
+identique, c'est la même montée, plus courte. **Puis le banc garde** : exit 1 (vérifié rouge),
+**22ᵉ gate CI**, 20 invariants × 54 configurations, 0 échec. L'ordre comptait : rendre bloquant
+un banc dont on n'a pas trié les échecs fige la dette au lieu de la traiter.
+**22 gates verts, E2E 13/13, golden 900 (un seul profil change, de 5 min).**
+
+**R20.7 livré — la rampe de départ mord enfin en natation (O-13), et un gate qui dépendait du
+JOUR** (voir ARCHITECTURE.md « R20.7 ») : le nageur répond en heures de PISCINE, le moteur
+compte en heures DANS L'EAU (`SWIM_TIME_FACTOR`) — la rampe R10 comparait les deux et le chiffre
+déclaré arrivait toujours au-dessus de la courbe. `vol_recent` à 0, 2, 5 ou 10 h donnait le même
+plan à la minute près. **Décision du fondateur : c'est au MOTEUR de convertir**, pas à l'athlète
+de retrancher ses temps d'arrêt. Semaine 1 passe de 1,6 h à **1,3 h** pour qui repart de zéro,
+et reste inchangée au-dessus de 5 h — la rampe ne mord que là où elle doit. Deux corrections
+entraînées : la chaîne d'explication de R20.2 souffrait de la MÊME faute d'unité (elle annonçait
+« ton historique, −5 h » pour un pic livré à 1,6 h — ces 5 h n'existent pas dans l'unité du
+chiffre affiché), et la rampe est devenue un maillon de cette chaîne.
+**Trouvé en passant les gates : `audit:r14` dépendait du jour de la semaine.** Ses dates sont
+des décalages sur `Date.now()` quand le moteur compte les semaines de LUNDI à LUNDI : balayé sur
+les sept jours à moteur inchangé, le banc était **rouge du lundi au jeudi et vert du vendredi au
+dimanche**. Famille d'O-1 — une dimension que la mesure ne contrôle pas et qui décide de son
+verdict. Ancrage au lundi ; `R14.3-B` porte désormais sur le RAPPORT J-10/J-60 (stable à
+0,40-0,45 quand la valeur absolue dérive de 2,3 à 2,8 %), donc **deux assertions au lieu d'une**;
+`R14.5` reçoit un passé de 8 semaines, sans quoi sa fenêtre d'adhérence est vide le lundi.
+Vérifié vert **les sept jours**, et les quatre autres bancs datés balayés de même.
+**22 gates verts, E2E 13/13, golden 900 recapturé.**
+
+**R20.8 livré — l'acclimatation au froid n'occupe que les dernières semaines** (O-15 fermé, voir
+ARCHITECTURE.md « R20.8 ») : sous 17 °C, le module verrouillait le second créneau facile sur une
+exposition au froid **de la première à la dernière semaine**. Le principe est juste ; c'est sa
+PORTÉE qui n'avait jamais été décidée — l'adaptation au froid s'installe en quelques semaines et
+se PERD à l'arrêt, donc celle de la semaine 1 d'une prépa de 26 semaines ne vaut rien le jour J
+pendant qu'elle coûte de la spécificité tout du long. **Décision du fondateur** : le verrou
+démarre à **8 semaines du jour J**, en semaines RESTANTES et non en phases (une prépa de 12 et
+une de 40 n'ont pas les mêmes phases au même endroit, mais toutes deux un « J-8 semaines »).
+Profils sous le seuil de spécificité à 16 °C : **3/15 → 0/15** ; séances d'acclimatation sur une
+prépa de 41 semaines : **51 → 10**. Et l'exemption `S-MIX` du banc v7 passe d'un angle mort à une
+marge : mesurée en la désactivant, elle cachait 26 profils, elle en cache **1 à 4** (N =
+250/400/600), tous dans la fenêtre où le verrou fait son travail.
+**22 gates verts, E2E 13/13, golden 900 recapturé.**
+
+**R20.9 livré — le créneau de repli, et la question posée n'était pas la bonne** (O-3 fermé, voir
+ARCHITECTURE.md « R20.9 ») : l'entrée demandait « `facileR` ou `facile2` ». En regardant ce que
+chaque créneau PRODUIT, trois défauts sont apparus, dont deux plus graves que le choix du slot.
+**(1)** le repli du trail n'était pas un repli : `facileR` produit « Marche rapide en montée
+(bâtons) », une sortie avec dénivelé et renfo excentrique — remplacer une séance de charge par
+une autre séance de charge qui porte un nom rassurant. Le trail bascule sur `facile2`
+(« Footing récup »). **(2)** N jours déclassés donnaient **N séances IDENTIQUES** : mesuré sous
+drapeau médical, **3 × « Marche rapide en montée »** en trail et **4 × « Footing facile »** en
+swimrun — sur le sport dont la spécificité EST d'alterner nage et course. `applyWeeklyVariety`
+ne pouvait rien y faire : tous ces jours portaient le même créneau. Le repli ALTERNE désormais
+entre les deux créneaux faciles, le déclaré passant en premier. **(3) l'instrument suivait la
+déclaration, pas le plan** : `measure:fallback` testait `d.slot === easyFallbackSlot`, donc en
+changeant le repli du trail le taux est tombé de 25,0 % à **0,0 %** et le verdict allait fermer
+O-3 sur ce chiffre. Compté sur n'importe quel créneau facile : **25,0 % avant, 25,0 % après,
+1 287 jours dans les deux cas** — la fréquence n'avait pas bougé d'un jour. Troisième occurrence
+de cette famille dans R20, après `audit:v1` (R20.4) et l'ancrage calendaire du banc R14 (R20.7).
+L'entrée se ferme donc sur le CONTENU : 25 % et 44 % de plans qui passent par un repli ne sont
+pas un défaut — un jour dur déclassé, c'est le moteur qui fait son travail.
+**22 gates verts, E2E 13/13, golden 900 recapturé (2 profils).**
+
+**N11 livré — le repos des heures d'entraînement n'était compté deux fois** (voir
+ARCHITECTURE.md « N11 ») : trouvé en préparant le dossier de relecture diététique, en refaisant
+les calculs à la main pour les décrire. `daily` = BMR × NAP couvre les **24 heures** (le NAP de
+la FAO est le rapport de la dépense TOTALE au métabolisme de base) et `training` vient des
+**MET**, qui sont une dépense BRUTE — un MET EST le métabolisme de repos. Le repos de chaque
+heure d'entraînement était donc additionné deux fois : **+80 kcal sur 1 h, +150 sur 2 h, +380 sur
+5 h, soit 2,5 % à 8,1 % du total affiché**, et toujours dans le sens qui GONFLE la dépense — sur
+un écran de nutrition, une dépense surestimée se lit comme une autorisation, et l'athlète qui
+s'entraîne le plus était le plus mal servi. Correction : `total = daily + (training − 1 kcal/kg/h
+× poids × heures)`, `REST_MET_KCAL_PER_KG_H` portant sa provenance (c'est la définition du MET,
+pas un coefficient d'ajustement). **Ce qui ne change pas** : la dépense d'UNE séance (N7) reste
+BRUTE — c'est la bonne réponse à « combien coûte cette séance », le recouvrement n'existe qu'en
+l'ajoutant à une journée déjà comptée en entier. Et le recouvrement est **publié**
+(`restOverlap`/`trainingNet`, ligne affichée sur la carte 🔥, décision `N11`) plutôt que
+retranché en silence : une carte dont les trois lignes ne s'additionnent pas est une carte qu'on
+soupçonne. `demo:nutrition` portait une assertion qui **encodait le défaut**
+(`total = daily + training`) — réécrite sur le net, 5 critères N11, **vérifiée rouge** en forçant
+la constante à 0. Frontière NON franchie, délibérément : le même passage a montré que les macros
+N10 sont en substance une **cible d'apport** (leurs trois sources sont des références d'apport, et
+leur somme en kcal ne coïncide pas avec la dépense affichée sur la même carte) — c'est la ligne
+que seul un avis diététicien peut trancher, la question part telle quelle au professionnel.
+**22 gates verts, E2E 13/13, golden 900 inchangé** — la nutrition ne touche aucune séance.
+
+**O-16 livré — l'estimation énergétique n'oppose plus « aucune » borne d'âge** (voir
+ARCHITECTURE.md « O-16 ») : trouvé dans le même passage que N11. `dailyEnergy()` repose sur
+**Mifflin-St Jeor, validée chez l'ADULTE**, et sur le NAP de la FAO — et n'opposait **aucune**
+borne d'âge : un profil de 12 ans recevait « 1 750–2 480 kcal » et « protéines 60–90 g/j », un
+chiffre qui a l'air précis alors que l'équation est hors de son domaine (à 12 ans l'âge sort même
+de la bande 14–90 de `basalRange`, donc le moteur retombait sur l'enveloppe 25–55 ans sans le
+dire). La garde IMC ne voyait rien : l'IMC d'un adolescent de gabarit normal l'est aussi. Même
+angle mort que **R15.7-C** avait fermé côté FORMAT, jamais rejoué sur l'écran de nutrition arrivé
+après. **Décision du fondateur** : borne à 16 ans, coupant l'estimation journalière (N8–N11 +
+macros) et **jamais le ravitaillement d'effort** (N1–N7) — un adolescent qui roule trois heures a
+besoin de savoir quoi boire, pas d'un tableau calorique ; refus sur un âge **connu** seulement
+(un âge absent n'est pas une preuve de minorité). Débusqué en le corrigeant : **le message
+d'orientation de la garde IMC n'a JAMAIS été affiché** — `bmiGuardNotice` le porte depuis l'audit
+v6 et son commentaire dit « l'UI peut afficher ce message à la place », mais la carte montrait
+« Renseigne ton poids » dans les TROIS cas de refus, renvoyant une personne hors bornes (et
+maintenant un mineur) corriger une donnée qui n'était pas en cause. Point unique
+`energyRefusalNotice()`, exposé par `EBV2.energyRefusal`. Un garde-fou dont personne ne lit le
+motif est un garde-fou à moitié posé — la forme d'O-9 appliquée à un message d'interface.
+8 critères en CI, **vérifiés rouges** en abaissant la borne à 0.
+**22 gates verts, E2E 13/13, golden 900 inchangé, registre 15/15.**
+
+**U1–U7 livré — le premier contact** (traversée côté usage, voir `RAPPORT_TOUR_USAGE.md` et
+ARCHITECTURE.md « U1–U7 ») : cinq corrections qui ne viennent d'aucun banc, mais d'avoir traversé
+la PWA **comme un utilisateur sur téléphone**. Aucun des 22 gates ne les regardait — ils mesurent
+tous ce que le moteur PRODUIT, jamais ce que la personne LIT. **U1** : le premier écran d'un plan
+créé à l'instant pouvait annoncer « 🌿 La vie a pris le dessus — trois séances sont passées ». Le
+plan démarre au lundi de la semaine en cours (R8/R9, décision juste) et `missedSessionsCheck` ne
+distinguait pas « tu as décroché » de « ton plan n'existait pas encore » — **1 jour sur 7
+(dimanche) → 0 sur 7**, en lisant `plan_start` qui portait déjà l'information. C'est le plus grave
+du lot : toute la boucle R4 est construite pour ne jamais reprocher, et consoler quelqu'un qui n'a
+rien fait de mal est pire qu'un reproche. **U2** : `greeting()` connaît l'heure depuis toujours,
+mais la phrase disait « point du **matin** » en dur — à 14 h l'écran affichait « Bon après-midi
+C'est l'heure du point du matin » ; point unique `pointLabel()` (matin/jour/soir). **U3** : le
+« score d'audit 70/100 » était montré à l'athlète — mesuré sur 30 profils, médiane 100, et les
+3 plans sous 80 sont **les trois Ironman**, avec **0 violation dure** : celui qui prépare
+l'épreuve la plus dure recevait la note la plus basse, pour un plan valide. **U4** : le ⇄
+d'échange de jours faisait **18×14 px** (WCAG 2.5.8 : 24×24 minimum) — 44×44 au doigt désormais.
+**U7** : la séance attendait la météo (`await fetchWeather()` avant le calcul, timeout de
+géolocalisation) — **3 262 ms → 782-957 ms** en lançant la recherche à l'ouverture du diaporama,
+zéro comportement changé. Garde : `tests/e2e/smoke-usage.mjs`, **14e suite E2E**, U1 balayé sur
+les **sept jours** (la fenêtre dépendait du jour — même leçon que le banc R14 en R20.7),
+**vérifiée rouge** en réintroduisant les cinq défauts (5 échecs sur 9). **Deux de mes constats
+initiaux étaient FAUX** et restent écrits dans le rapport : la coche ○ n'a jamais été trop petite
+(son `::after` la porte à 44×44, mon instrument lisait le mauvais rectangle) et les 3,2 s
+n'étaient pas une temporisation. Trois faux constats sur sept, tous de la même famille — une
+mesure qui porte sur une grandeur voisine de celle qu'elle nomme.
+**22 gates verts, E2E 14/14, golden 900 inchangé.**
+
+**U8 + U1b livré — la deuxième semaine d'usage** (voir `RAPPORT_TOUR_USAGE.md` 2ᵉ partie) : dix
+jours vécus dans l'app — séances validées, verdict rouge, décrochage réel, drapeau douleur.
+**Cinq soupçons, UN défaut réel : quatre étaient mon instrument**, et c'est le résultat le plus
+utile du tour. **U8** : le moteur matérialise le repos par une séance `{d:"rs", name:"OFF"}` —
+bon choix côté plan (le repos se VALIDE et compte dans la série), mais le héros du jour testait
+`res.sessions.length`, qui vaut donc 1. L'athlète lisait un **« OFF »** sec avec un « Le détail de
+la séance » qui n'ouvre rien, pendant que la branche écrite exactement pour ce cas — « 😌 Repos
+aujourd'hui. Prochaine séance : Mar 04/08 · Sweetspot vélo » — n'était **jamais atteinte** : le
+bon message existait et était mort. Mesuré : **153 jours de repos sur 441** en semaine 1 (un tiers
+des ouvertures) et **63 profils sur 63 démarrent par un lundi de repos** — quelqu'un qui crée son
+plan un lundi, après 37 questions, recevait « OFF » comme tout premier écran. Aucune minute
+ajoutée : on ne fabrique pas une séance pour occuper quelqu'un. **U1b** : `smoke-usage`
+n'assertait que « la relance ne se déclenche PAS sur un plan neuf » — critère **satisfait en
+supprimant la fonctionnalité**, vérifié (U1 reste vert avec `missedSessionsCheck` vidée). Le
+miroir manquait : on décroche neuf jours pour de vrai, la relance doit apparaître. Les quatre faux
+constats, consignés : la validation enregistre bien (je lisais le haut de page non défilé), la
+relance ne manquait pas (seuls 2 jours d'entraînement avaient été ratés), le drapeau douleur se
+lève bien (`confirm()` natif, que Playwright rejette par défaut), et le chemin pour signaler une
+douleur existe (feedback post-séance). Règle qui en sort : **avant d'écrire qu'une chose est
+cassée, la casser exprès et vérifier que la mesure change** — c'est ce qui a démasqué les quatre.
+**22 gates verts, E2E 14/14 (12 assertions d'usage), golden 900 inchangé.**
+
+**U9 + U10 livré — la fin du plan** (voir `RAPPORT_TOUR_USAGE.md` 3ᵉ partie) : affûtage, veille,
+jour J. Les bandeaux de fin sont bons et tombent au bon jour (« ✂️ L'affûtage commence », « 🎉
+Veille de course », « 🏁 Jour de course »). Deux défauts derrière. **U10** : l'en-tête de
+`notifications.js` promet depuis son écriture « UNE seule fois, jamais de rafale » — le garde
+`relanceSent` ne couvrait que la NOTIFICATION, le bandeau se ré-affichait à chaque rendu. Mesuré
+sur un plan de 10 semaines sans rien cocher : présent de **J+7 à J+70, soit 64 jours d'affilée**,
+veille et JOUR J compris. Le matin de sa course, la personne lisait « 🏁 Jour de course… » suivi de
+« 🌿 La vie a pris le dessus — trois séances sont passées ». Même famille qu'U1, au pire moment
+possible. La clé du « déjà dit » devient le **premier** jour du décrochage et non le dernier —
+c'était le point, le dernier change tous les jours donc ne dampait rien ; **14 jours affichés sur 16
+échantillonnés → 1**, et **jamais la veille ni le jour J** (R13.4 : le jour J n'est pas un jour
+d'entraînement). Vérifié que le message **revient pour un nouveau décrochage** (épisode 1 J+7,
+cinq jours de séances validées, épisode 2 J+22) — un correctif qui l'éteint à vie serait pire que
+le défaut. **U9** : le refus « course trop proche » est le moment le plus honnête du produit (il
+décline pour ne pas blesser, explique, propose deux issues, offre « Corriger ma réponse ») — et sa
+dernière phrase était écrite en dur : « Te vendre une préparation **d'Ironman** en un mois serait
+te mentir ». **9 refus sur 9**, sur les sept sports : un nageur qui prépare un 1500 m et un coureur
+qui prépare un 10 km s'entendaient parler d'Ironman. Devient « te vendre **cette préparation** en
+3 semaines » — aucune table de libellés créée dans le schéma (ils vivent dans `config.js`, en
+dupliquer une copie ferait deux sources de vérité). **U9b** : plus de « format plus court » proposé
+à qui a déjà le plus court du sport. Gardes : `U9` au banc v6 (9 sports), `U10` dans `smoke-usage`
+— **vérifiés rouges** (U10 : 4 affichages sur 4 sans le correctif).
+**22 gates verts, E2E 14/14 (13 assertions d'usage), golden 900 inchangé, registre 15/15.**
+
+**P11 livré — le modèle de gain n'avait qu'un régime, celui de l'entraîné** (voir ARCHITECTURE.md
+« P11 ») : `G_PLAFOND.thrPace = 0,15` vient de Barnes & Kilding 2015, qui mesure ce que gagne
+l'**économie de course** — le raffinement à la marge d'un geste déjà acquis. Les premiers mois de
+quelqu'un qui part de zéro sont un autre phénomène (débit cardiaque, capillarisation, densité
+mitochondriale, apprentissage du geste), donc pas la même borne. `regimeDebutant(volRecentH)` rend
+une position **interpolée** entre 4 h/sem (entraîné, modèle publié inchangé) et 1,5 h/sem (part de
+zéro) ; trois grandeurs la suivent — plafond de discipline (thrPace 0,25), constante de temps
+(τ 20 → 9 semaines), plafond absolu (0,32). **Le déclencheur est MESURÉ, pas déclaré** : il se lit
+sur `vol_recent`, jamais sur `history` — troisième application de la leçon R14.1.
+**Ma première calibration était fautive et est retirée** : elle visait à faire entrer dans la
+fourchette la trajectoire réelle du fondateur (0 → 46'30 au 10 km en 8 semaines, sur un passé de
+sélectionné en équipe de France junior) et donnait **32,1 % de gain sur 16 semaines**, affiché à
+tout le monde. Calibrer sur UN cas, et le plus favorable qui soit, c'est exactement ce que
+HERITAGE interdit — 7 % des sujets gagnent ≤ 0,1 L/min et 8 % ≥ 0,7 L/min sous programme
+identique. Le cas réel reste donc **dehors** de la fourchette, et le code le dit.
+**Le piège du zéro, deux maillons de plus** : `bridge.ts` effaçait `vol_recent = 0` (`|| null`) —
+0 h projetait **7,43 %** contre **8,55 %** à 1 h, déclarer zéro donnait moins que déclarer une
+heure — et `volumeFactor` portait le même défaut, LATENT, qui aurait mordu dès la correction du
+pont. C'est le piège que R20.1 avait nommé sur la rampe R10 ; la leçon n'est pas de le corriger,
+c'est de le corriger **sur tout le chemin**. Mesuré après : 7'00/0 h/16 sem passe de 7,43 % à
+**21,50 %**, et au-dessus de 4 h/sem **rien ne bouge au chiffre près** (5,18 % · 3,02 % · 2,05 %).
+Le prototype `feasibility.ts` cesse de porter sa copie des constantes et les IMPORTE (R11.1).
+Gardes **P11-A à P11-F** au banc `audit:r14.1`, qui assertent les DEUX moitiés — l'inversion
+disparue ET l'entraîné intact — **vérifiées rouges** (3 sur 6) contre le moteur d'avant P11.
+**22 gates verts, E2E 14/14, golden 900 inchangé** — la projection ne touche aucune séance.
+
+**U16 livré — le déroulement d'une séance se déroule, il ne s'entasse pas** (retour du
+fondateur : « trop dense », voir ARCHITECTURE.md « U16 ») : aucun des 23 gates ne regarde ça —
+ils mesurent tous ce que le moteur PRODUIT, jamais la forme sous laquelle une personne le LIT.
+Mesuré en **caractères par pixel rendu** (pas en caractères : on ne retire pas un mot d'une
+explication) : le pire cas était une VO2max à **296 caractères d'un seul tenant**, quatre blocs
+collés par des points médians, en 11 px gris à interligne 1,35 — **1,61 c/px**, devant tout le
+reste, y compris le mur des décisions du moteur (1,60). **Le déroulement devient une LISTE**, une
+ligne par bloc, ce qui est la façon dont un entraîneur écrit une séance ; `techListHTML()` ne
+fabrique AUCUN texte (`renderSess` reste le seul producteur) et coupe sur le séparateur que le
+moteur pose déjà. Pour que cette coupe soit exacte, **le point médian cesse d'avoir deux sens** :
+le rendu vallonné du trail l'utilisait aussi À L'INTÉRIEUR d'un bloc, ces deux compléments passent
+à la virgule — R11.1 appliquée à un caractère. Décisions du moteur à trois niveaux (1,60 → 1,17),
+séance dépliée 1,61 → 1,17, « Pourquoi ce plan » 1,58 → 1,44. **Une règle mobile retirée** :
+`.gd-det { font-size: 11px }` était la valeur EXACTE de `--fs-xs` (le doublon littéral chassé par
+R16.8) ; il ne restait que `line-height: 1.35`, qui écrasait sur MOBILE — le seul endroit où le
+produit se lit — l'aération posée dans `styles.css`. Un correctif que la cascade annule est un
+correctif qu'on croit avoir : R18.1, deux étages plus bas.
+**Deux fois mon propre travail dans le viseur** : ma première écriture de « Pourquoi ce plan »
+était **inerte** (513 → 514 px — les puces retirées rendaient exactement ce que les marges
+prenaient), et le plus long pavé de tout l'onglet n'était pas produit par le moteur mais par
+**mes 265 caractères** d'introduction du chrono visé. Coût dit : tout déplié +5 % de hauteur, mais
+**3,7 écrans à l'arrivée** — l'air ne coûte qu'à qui ouvre. Garde `U16` dans `smoke-usage`,
+**vérifiée rouge** (2 critères sur 3), portant sur la PROPRIÉTÉ et non sur ma mise en page.
+**Mon instrument était faux d'abord** : il comptait les points médians dans le texte RENDU,
+c'est-à-dire ce que la mise en page venait de remplacer par des retours à la ligne — **0 séance à
+plusieurs blocs** sur un plan qui en est plein, donc satisfait par n'importe quoi. Cinquième
+occurrence dans ce dépôt d'une mesure lue APRÈS la transformation qu'elle juge.
+**22 gates verts sur 23** (`audit:invariants` rouge sur I13/O-20, pré-existant et indépendant),
+**E2E 15/15 (30 assertions d'usage), golden 900 recapturé — 54 profils, tous en trail, ce seul
+champ.**
+
+**U15 livré — l'onglet Plan ouvre sur la semaine en cours** (voir ARCHITECTURE.md « U15 ») :
+troisième arbitrage du fondateur (« tout replier sauf la semaine en cours »). La mesure a dit où
+était le poids : sur un marathon à 390 px, l'onglet faisait **5 164 px (6,1 écrans)** et **56 %
+de cette hauteur était les grilles de semaines** — quatre dépliées d'office (les trois premières
+plus la dernière). Ni le « pourquoi » (10 %) ni le graphique (1 %) ne faisaient le mur : ce sont
+les semaines qu'on ne regarde pas. **5 164 → 3 086 px, 6,1 → 3,7 écrans** ; le bouton « Voir les
+N semaines » n'a pas bougé — on change le défaut, pas la possibilité.
+**Ce que je n'ai PAS fait, et pourquoi** : « tout replier » inclurait « Pourquoi ce plan »
+(513 px, deuxième poste), mais **R6 a décidé l'inverse explicitement** (« l'explicabilité est le
+contre-positionnement du produit, pas une option de confort »). Le poste mesuré était ailleurs et
+il est traité ; l'arbitrage entre les deux décisions revient au fondateur. Corollaire retiré : le
+raccourci « ↓ aller à la semaine en cours » (R16.5) n'a plus d'objet quand cette semaine est la
+seule affichée — il reste dans la vue complète. Garde `U15` sur les deux moitiés : vue par défaut
+courte ET plan ENTIER à un bouton (43 semaines dépliées).
+**22 gates verts sur 23, E2E 15/15, golden 900 inchangé.**
+
+**U14 (préalable) livré — un défaut tacite va vers la prudence, et il est dit** (voir
+ARCHITECTURE.md « U14 ») : avant de laisser sauter une question, il faut savoir ce que vaut son
+absence. Mesuré : un plan construit SANS réponse à « ta disponibilité » était identique au
+caractère près à `dispo: "quotidienne"` — **la valeur la plus permissive de son domaine**. Sauter
+la question donnait le plan de quelqu'un qui peut s'entraîner tous les jours, et rien ne le
+disait. Le repli devient **`partielle`** (médiane du domaine) : un défaut se choisit dans le sens
+de la sécurité, pas dans celui de la commodité de code. `dispo` et `doubles` n'avaient en outre
+**aucun `fallback` déclaré** — leur repli n'était donc pas journalisé, alors que c'est la seule
+raison d'être de ce champ (R11.2). Ma suspicion de départ était fausse et c'est dit : les replis
+SONT journalisés, comme décisions `R11-defaut-*` ; seules ces deux clés manquaient.
+Blast radius isolé : golden **889 écarts sur 900**, venant **entièrement** de la ligne de
+journalisation `doubles` (le profil de base ne renseigne pas cette clé) — le changement de défaut
+`dispo` ne touche AUCUN plan du golden, tous le déclarent. Garde `U14` au banc v6, **vérifiée
+rouge** (4 échecs).
+**Et le chemin court est livré : 8 écrans / 30 gestes → 4 écrans / 16 gestes.** L'ordre met en
+tête ce dont l'absence coûte une garde de sécurité (format + date, les trois drapeaux médicaux,
+l'âge, le trio volume/séances/volume récent) ; la validation de l'écran « capacité » ne retient
+que ses trois réponses structurantes ; « ⚡ Générer mon plan maintenant » apparaît dès le socle
+complet. Aucune question n'est SUPPRIMÉE : elles passent après le moment où le plan devient
+montrable. Le bouton a coûté un écran de plus à ma première écriture — calculé au rendu, il
+n'apparaissait qu'à l'écran SUIVANT celui qui complétait le socle ; sa visibilité suit désormais
+les réponses (`refreshNav`).
+Deux défauts trouvés en construisant : **le champ « poids » n'avait ni `min` ni `max`** (le
+navigateur laissait saisir 10 kg, l'athlète récoltait un refus typé au lieu d'être empêché), et
+**quatre suites E2E codaient la SÉQUENCE des écrans en dur** — toutes tombées sur une
+réorganisation légitime, alors qu'aucune ne mesure l'ordre. `traverserQuestionnaire()` répond
+désormais à ce qui est À L'ÉCRAN, avec un crochet pour les assertions qui visent un écran
+précis. Garde `U14` dans `smoke-usage` : ≤ 5 écrans, un vrai plan au bout, **et le socle contient
+toujours** les drapeaux médicaux, l'âge et l'enveloppe.
+**22 gates verts sur 23** (`audit:invariants` rouge sur I13/O-20), **E2E 15/15, golden 900
+recapturé, registre 19/19.**
+
+**C29b/C29c livrés — l'affûtage garde ses jours et les raccourcit** (décision du fondateur,
+03/08/2026, voir ARCHITECTURE.md « C29b / C29c ») : l'affûtage réduit le VOLUME, pas la
+FRÉQUENCE — R3.13 n'est pas négociée, c'est la MONNAIE de la réduction qui change. **Trois
+hypothèses, deux fausses, chacune réfutée par la mesure** : la décroissance (C29, aucun des 15
+profils mesurés n'a bougé) ; le plancher de séance piscine (**C29b**, vrai mais partiel — nageur
+débutant 33 % → 67 %, et mon premier `grep` ne voyait qu'un des TROIS blocs de suppression
+identiques) ; les deux passes R3.13 (**C29c**, 76 des 95 jours perdus). Ces passes ont raison au
+moment où elles s'exécutent — puis les suivantes réduisent encore, et le jour a été sacrifié pour
+rien : semaine d'affûtage livrée à **46 % du pic pour un plafond de 60 %, deux jours coupés**.
+Forme exacte de C28. On rend donc les jours **au point fixe**, **neutre en volume** (on redonne
+des JOURS, les minutes viennent des séances déjà là), avec un filet qui **se rétracte** si R3.13
+ne tient plus — ma première écriture mettait 35 combinaisons sur 459 au-dessus du plafond.
+**68 % → 30 % des profils sous le plancher de fréquence, médiane 75 % → 83 %**, sortie longue en
+baisse (semi 91' → 81'). Reste 30 % là où le rééquilibrage ne peut pas se payer — suivi en O-19.
+**Trois instruments de plus démasqués comme dépendants de la DATE** (famille R20.7) : mon propre
+balayage de fréquence (la course est passée du dimanche au lundi en franchissant minuit — la
+médiane est tombée de 75 % à 0 %, et **les chiffres que j'avais publiés dans O-19 étaient faux**,
+corrigés) ; l'assertion `smoke-r4` « le pourquoi est visible » qui supposait que le jour courant
+portait une séance (un tiers sont des jours de repos) ; et **`audit:invariants` I13**, vert en CI
+le 02/08 et rouge en local le 03/08 à code identique. Balayé sur 21 horizons × 6 sports :
+**13 échecs sur 114, tous en trail** — un débutant reçoit un pic de 575 min quand un inter en
+reçoit 547. Enregistré en **O-20**, non traité : rendre le banc déterministe avant d'avoir
+corrigé le défaut figerait la dette (leçon R20.6).
+**21 gates verts sur 22** (`audit:invariants` rouge sur I13/O-20, pré-existant et indépendant de
+ce lot — vérifié contre le moteur committé), **E2E 15/15, golden 900 recapturé, registre 19/19.**
+
+**C28/C29 + U11–U13 + D1/D2 livrés — le lot des trois relectures** (coach · développeur · client,
+voir ARCHITECTURE.md « C28 / C29 / U11–U13 ») : traversée du produit sous trois regards, chacun
+mesurant ce qu'aucun des 22 gates ne regarde — ils vérifient tous ce que le moteur PRODUIT,
+jamais ce qu'un entraîneur DÉFENDRAIT ni ce qu'une personne LIT.
+**C28 — une course en milieu de semaine mettait 156 min à J-2** (168 pour une cyclosportive ;
+36 profils sur 84 au-dessus de 45 min). Deux causes : le plancher de semaine de course
+appliquait 30 % du pic à une semaine TRONQUÉE sans prorata — relation **non monotone**, trois
+jours portaient 2,9 h quand sept jours en portaient 2,3 — et surtout **les plafonds d'approche
+existaient déjà** (J-1 ≤ 25, J-2/J-3 ≤ 62) mais tournaient AVANT le plancher : bisecté, la
+séance était créée à 30 min et ressortait à 156. **Onzième paiement de la même leçon** — une
+garantie vérifiée au milieu du pipeline ne vérifie que l'avant-dernier état ; le plafond se
+REJOUE au point fixe. J-2 max **168' → 63'**, et la veille cesse de fuir elle aussi (36' → 23'
+pour une borne déclarée à 25). Garde `I21` (7 jours × 6 sports), **vérifiée rouge** (10 échecs).
+**C29 — l'affûtage coupe la fréquence, que Bosquet 2007 dit de maintenir** : la source citée ici
+pour le +1,96 % décrit TROIS bras (volume −41/−60 %, intensité maintenue, **fréquence ≥ 80 %**),
+seul le premier était vérifié. Mesuré : médiane **75 %**, 52 % des profils sous 80 %, et la
+sortie longue — exclue des victimes — survivait à **79 % du pic** quand la semaine tombait à
+46 %. La décroissance réduit désormais au lieu de supprimer sous le plancher de fréquence
+(3 profils améliorés, 0 dégradé). **Partiellement traité, et c'est dit** : ma première hypothèse
+était fausse (le correctif n'a bougé aucun des 15 profils mesurés), les jours OFF viennent de
+deux autres passes adossées à R3.13 — entrée **O-19** au registre avec ses chiffres.
+**U11 — après 8 écrans et 30 gestes, le premier écran était un quatrième questionnaire.** Le
+jour de la création, on arrive sur 🗓 Plan ; le portillon du check-in ne bouge pas, il cesse
+seulement d'être l'écran d'arrivée. Écrit faux du premier coup et gardé écrit : mon test lisait
+`plan_start` en supposant qu'`ensurePlan()` l'avait posé — c'est `renderTabs` qui le déclenche,
+l'ancre n'existe pas encore. **U12** : la carte « chrono visé » se replie (462 px, 7 % d'un
+onglet qui fait 7,7 écrans). **U13** : « premium » disparaît — il fabriquait une objection
+commerciale que le produit dément deux lignes plus bas. **D1** : un état illisible ne s'efface
+plus en silence (il était ÉCRASÉ au premier `ebSave` — mesuré), et l'échec d'écriture cesse
+d'être muet. **D2** : `feasibility.js` importe `esc` au lieu de le redéfinir (R11.1, enfreint
+dans le code qui venait de l'invoquer).
+Validé au passage, et dit aussi : l'état hostile produit un refus typé sans injection ni erreur
+JS, le garde-fou de collision du bundle MORD (vérifié en provoquant une collision), les cibles
+tactiles tiennent le 44×44.
+**22 gates verts, E2E 15/15, golden 900 recapturé (31 profils), registre 18/18.**
+
+**RV livré — le raisonnement inverse, et il ne construit rien** (voir ARCHITECTURE.md « RV ») :
+le moteur ne savait construire QUE en avant — d'où tu pars, jusqu'où la courbe peut monter.
+`src/engine/feasibility.ts` prend le problème par l'autre bout : une épreuve, un chrono visé, et
+ce que ça EXIGE déroulé à reculons jusqu'à aujourd'hui. **Aucun modèle nouveau** — chaque étape
+INVERSE un modèle déjà sourcé et déjà audité (Riegel avec l'exposant piloté par le volume P5,
+inversé en forme close ; P2bis pour ce que le profil peut produire, régime P11 compris). Un
+second modèle de performance serait un second jeu de vérités, ce que R11.1/R20.5/U9 interdisent
+partout ailleurs. Cinq verdicts : `atteignable` · `juste` · `hors-horizon` · `hors-modele` ·
+`indeterminable`, chacun motivé par ses décisions `RV1`–`RV6`.
+**Ce qu'il ne fait PAS est sa raison d'être** : il ne construit aucun plan et ne touche aucun
+plafond. Le chrono visé n'entre dans AUCUNE entrée de `buildPlan` — laisser un objectif de temps
+augmenter une charge, ce serait la priorité n°5 du manifeste qui écrase les quatre premières, et
+c'est ce qu'un athlète motivé ferait à notre place si on lui en donnait le bouton. Deux gardes,
+à deux niveaux : `RV-INVARIANT` (moteur, plan identique au bit près) et **`RV-UI-B`** (le plan
+AFFICHÉ ne bouge pas d'un caractère) — c'est par l'écran qu'un défaut arriverait, et c'est la
+forme de trou que R19.1 a laissée passer. La suite garde aussi **son propre instrument** : elle
+change un volume (6 h → 3 h) et exige que l'empreinte le voie — sans quoi « rien n'a bougé »
+serait ce que dirait une empreinte aveugle.
+**Une erreur corrigée en l'écrivant, gardée écrite** : ma première version lisait `G_PLAFOND`
+comme un plafond de CARRIÈRE et concluait « impossible quelle que soit la durée de préparation ».
+Sa provenance dit autre chose — Barnes & Kilding 2015 mesure un CYCLE. Mesuré : un marathon de
+4 h 01 visé en 3 h 30 sur 16 semaines sortait « impossible », 7 cas sur 9 aussi. Un verdict faux
+dans ce sens-là décourage quelqu'un dont l'objectif tient debout ; la réponse honnête est celle
+de P7/P8 — **refuser d'estimer en disant pourquoi**.
+Carte « 🎯 Ton chrono visé » dans l'onglet 🗓 Plan, saisie DANS la carte (un champ au Profil et un
+verdict trois onglets plus loin, c'est deux écrans pour une idée), `h:mm:ss` ou `mm:ss` avec
+levée d'ambiguïté par le domaine et non par la devinette, illisible → le dit. Course à pied
+seulement : ailleurs `null`, pas un verdict prudent — une carte absente se comprend, un verdict
+tiède se croit. `target_time` reste HORS `ANSWER_SCHEMA`, comme `pace` et `css`.
+**23 gates verts, E2E 15/15, golden 900 inchangé.**
+
+**R19 livré — l'audit de mes propres résultats** (voir ARCHITECTURE.md « R19 ») : les livrables
+de R18 repassés au crible de six regards de spécialistes, en MESURANT. Trois défauts réels
+corrigés — **R19.1** deux questions livrées par R18.2 étaient INERTES en swimrun (son prédicteur
+met en forme ses propres postes, donc ne passait ni par `swimRange` ni par `runRange`) et ma
+garde E2E vérifiait que le champ existe, jamais qu'il agit ; **R19.2** la combinaison n'existait
+pas dans le modèle de natation tri — 4 à 7 % de temps et un seuil réglementaire à 24,5 °C —
+pendant que R18.2 affinait à ±5 % par-dessus, ordre de grandeur inversé (et sous 15 °C le moteur
+prévient au lieu d'estimer) ; **R19.3** la durée d'affûtage suivait la longueur de la PRÉPA et
+non la course (un Sprint sur 47 semaines recevait 3 semaines d'affûtage). **R19.4 : le constat
+était FAUX et ma correction était une régression** — j'avais compté les minutes « dures » alors
+que le travail d'allure spécifique est classé MODÉRÉ ; sur le bon critère le moteur était déjà
+59/59 conforme, et ma correction faisait passer la qualité d'affûtage de 45 à 38 min avec 4
+semaines à zéro. Retirée (`O-12`). **R19.5** : la note du brick promettait « dernier tiers @
+allure course » sur un step 100 % `bk.z2` — 14,7 h annoncées et comptées facile sur un 70.3 ; la
+note est corrigée, la structure attend `O-11`, parce que la construire révèle que `bk.rp` vaut
+0,80-0,88 FTP quand le jour J d'un 70.3 est prescrit à 0,752-0,822 : **deux définitions de
+« l'allure course » dans le même moteur**.
+**21 gates verts, E2E 12/12, golden 900 recapturé, registre 12/12 re-mesuré.**
+
+**R18 livré — le premier lot qui vient d'un TEST, pas d'un audit** (retour du fondateur,
+01/08/2026, voir ARCHITECTURE.md « R18 » — banc `npm run audit:r18`, **21e gate CI**) : six
+constats, cinq défauts, dont deux plus larges que ce que le test pouvait voir.
+**R18.1** le zoom involontaire — le viewport était bon, la cause est qu'iOS zoome sur tout champ
+sous 16 px et ne dézoome jamais ; 22 champs concernés, dont les quatre sélecteurs du check-in du
+matin. `css/mobile.css` posait la bonne valeur depuis l'origine mais **perdait la cascade**
+contre `.opt` et contre `input[type=text]` — un correctif que la cascade annule est un correctif
+qu'on croit avoir. On ne pose PAS `user-scalable=no` : retirer le zoom subi en retirant le zoom
+voulu supprime la seule loupe d'un malvoyant. En chemin, `smoke-typo` ne lisait pas
+`css/mobile.css`, qui portait un texte à 8 px sous le plancher de 9 que R16.8 affirme tenir —
+et la mesure de rendu ne le voyait pas non plus (un `::after` n'est pas un nœud de texte).
+**R18.2** le profil de course **par discipline** — R14.3-a avait unifié `terrain` et
+`course_profile` en une clé, ce qui était juste, mais cette clé décrit le parcours comme s'il
+était homogène ; un triathlon ne l'est jamais. `legProfileOf()` prolonge la cascade d'un cran
+(leg → global → terrain), la nage a son propre domaine (un relief ne décrit pas un plan d'eau),
+et `eau_vive` élargit **des deux côtés** parce qu'un courant porte autant qu'il freine.
+**R18.3** retour à cinq onglets — 🎯 Aujourd'hui redevient réellement central (3e sur 5) ;
+📅 Semaine revient SANS la coche en deux versions que R16.9 avait débusquée (elle consomme
+`weekGridHTML`/`toggleDone`). Débusqué au passage : `handleSwapClick` re-rendait Plan en dur.
+**R18.4** le brick disparaissait de l'affûtage — mesuré sur 4 formats de tri × 4 de duathlon,
+tous niveaux : **trois semaines** sans enchaînement avant le jour J, parce que `durLong`
+retombait dans la branche générique là où R13.4 n'avait branché que `dur1`/`dur2`. **C21c** :
+le plafond du brick d'affûtage EST le plancher de la bande de charge — la relation ne peut pas
+dériver. Ma première écriture mettait 48 min continues à allure course dans une semaine
+d'affûtage ; le banc v7 l'a trouvée (158 profils duathlon, 59 % → 89 %) et avait raison au-delà
+de sa règle.
+**R18.5** la cadence de récup ignorait les phases — 75 % des plans déchargeaient DANS le pic.
+C27a/b/c **déplacent** sans jamais supprimer, et un garde les domine : aucune règle de placement
+ne fait dépasser à l'athlète sa propre cadence. Les 34 arbitrages où la cadence gagne sont
+comptés ET démontrés à chaque exécution du banc.
+Enregistrés non traités (`BUGS_OUVERTS.md`) : **O-8** le footing swimrun sans bornes (182-228
+min, la plus longue séance du plan — le défaut que R13 a corrigé pour le tri), **O-9** le banc
+d'invariants porte quatre familles d'échecs pendant que la doc le dit vert (dette, pas
+régression : identique contre le moteur d'avant R18), **O-10** `vol_max` inerte au-delà de 10 h.
+**21 gates verts, E2E 12/12 suites, golden 900 recapturé.**
 
 **R17.1 livré — l'avatar sait enfin comment tu vas AUJOURD'HUI** (brief avatar, voir
 ARCHITECTURE.md « R17.1 ») : la posture était pilotée par les séances des 7 derniers jours —

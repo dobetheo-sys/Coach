@@ -248,9 +248,109 @@ export const TAPER_GAIN = 0.0196;
  * doit pas récompenser la surcharge** — c'est la priorité n°2 du manifeste, dans un endroit
  * où l'on ne l'attendait pas.
  */
+/**
+ * P11 / RG — LE RÉGIME : le modèle de gain n'avait pas de version « débutant ».
+ *
+ * CE QUI L'A RÉVÉLÉ. Un cas réel : ancien sportif de haut niveau, cinq ans sans rien, première
+ * course à 5'30/km sur 13 min terminée à 185 BPM, puis **46'30 au 10 km en 8 semaines**. Le
+ * modèle, pour un départ à 5'45/km d'allure seuil, autorisait **56'09**. Dix minutes d'écart.
+ *
+ * Deux causes, toutes deux visibles dans les constantes ci-dessus :
+ *
+ * 1. **`G_PLAFOND` est un jeu de plafonds d'athlète ENTRAÎNÉ.** Pour la course, sa provenance
+ *    (Barnes & Kilding 2015) mesure ce que gagne l'ÉCONOMIE DE COURSE — le raffinement à la
+ *    marge d'un geste déjà acquis. Les premiers mois de quelqu'un qui part de zéro sont un autre
+ *    phénomène : débit cardiaque, capillarisation, densité mitochondriale, apprentissage du
+ *    geste. Pas le même phénomène, donc pas la même borne.
+ *
+ * 2. **`ANCRES_PACE` sature à 6'00/km** (h = 1,0 au-delà) : un coureur à 7'30 et un coureur à
+ *    6'00 reçoivent la MÊME marge, exactement dans la zone où vivent les débutants.
+ *
+ * LE DÉCLENCHEUR EST MESURÉ, PAS DÉCLARÉ — c'est toute la leçon de R14.1, qui a dépouillé
+ * `history` de son pouvoir sur les chiffres. Le régime se lit sur le volume récent, une donnée
+ * que le questionnaire collecte déjà et rend obligatoire (R10).
+ *
+ * INTERPOLÉ, jamais à seuil franc : le commentaire de `G_PLAFOND` le dit déjà pour ses propres
+ * bandes — « une frontière franche ferait sauter la projection de 50 % pour 1 W d'écart ».
+ *
+ * CE QUI EST ANCRÉ ET CE QUI NE L'EST PAS. `thrPace` est confronté à une trajectoire réelle
+ * (voir ci-dessus) ; les trois autres reprennent le même RAPPORT (≈ ×2,3) et sont des
+ * **heuristiques assumées**, au même statut que les bandes de marge course et nage de R14.1.
+ * L'ordre de grandeur s'appuie sur un résultat ancien et répliqué — VO2max +15 à 25 % chez le
+ * sédentaire sur 8 à 12 semaines — auquel s'ajoute, en PERFORMANCE, ce que gagnent l'économie et
+ * la technique depuis une base basse. Ce ne sont pas des mesures, et le code le dit.
+ */
+export const RG_VOL_DEBUTANT_H = 1.5; // h/sem : en dessous, régime « part de zéro »
+export const RG_VOL_ENTRAINE_H = 4;   // h/sem : au-dessus, le modèle publié s'applique tel quel
+export const G_PLAFOND_DEBUTANT: Record<string, number> = {
+  ftp: 0.32,     // heuristique — zéro impact, l'aérobie encaisse et progresse vite
+  css: 0.30,     // heuristique — la technique domine chez le non-nageur, elle se gagne vite
+  thrPace: 0.25, // voir la note de calibration ci-dessous
+  vam: 0.27,     // heuristique — même famille que la course, un peu plus de marge technique
+};
+/** Le gain du débutant est bien plus PRÉCOCE : la constante de temps se raccourcit. */
+export const RG_TAU_DEBUTANT = 9;
+/** Le plafond absolu suit le régime — celui de l'entraîné a été écrit pour l'entraîné. */
+export const RG_GAIN_MAX_DEBUTANT = 0.32;
+
+/**
+ * NOTE DE CALIBRATION de `thrPace: 0,25` — et de ce qu'elle N'EST PAS.
+ *
+ * CE QUE J'AI ESSAYÉ D'ABORD, ET POURQUOI JE L'AI RETIRÉ. Ma première écriture visait à faire
+ * entrer la trajectoire réelle qui a déclenché P11 (0 → 46'30 au 10 km en 8 semaines) DANS la
+ * fourchette basse : `thrPace = 0,35`, cap 0,42. Résultat mesuré : **32,1 % de gain projeté sur
+ * 16 semaines**. Un tiers de son allure seuil en quatre mois, affiché à tout le monde. Ce n'est
+ * pas défendable, et ça révèle la faute de méthode — calibrer un modèle sur UN cas, en
+ * l'occurrence le plus favorable qui soit : ancien sélectionné en équipe de France junior,
+ * cinq ans d'arrêt, donc une reconstruction sur un capital déjà bâti.
+ *
+ * HERITAGE (Bouchard, 483 sujets, programme identique) dit exactement pourquoi c'est une faute :
+ * 7 % des sujets gagnent ≤ 0,1 L/min et 8 % ≥ 0,7 L/min. La variabilité inter-individuelle EST
+ * le phénomène. Un modèle calé sur le 92ᵉ centile promet à tout le monde ce qu'un sur douze
+ * obtiendra — et c'est la priorité n°2 du manifeste qui trinque, parce que l'athlète à qui on
+ * promet ça va chercher la différence dans la charge.
+ *
+ * CE QUE 0,25 REPRÉSENTE. Un plafond de gain de PERFORMANCE pour quelqu'un qui part de zéro,
+ * d'un ordre de grandeur cohérent avec le résultat ancien et répliqué « VO2max +15 à 25 % chez
+ * le sédentaire sur 8 à 12 semaines », majoré de ce que gagnent l'économie de course et
+ * l'apprentissage du geste depuis une base basse. Ce n'est PAS une mesure : c'est une borne
+ * déclarée, du même statut assumé que les bandes de marge course et nage de R14.1.
+ *
+ * OÙ TOMBE LE CAS RÉEL, DIT FRANCHEMENT. Depuis 6'30/km à 8 semaines, le modèle projette
+ * aujourd'hui **53'14 – 1 h 04** là où il autorisait **1 h 01 – 1 h 05** avant P11. Son 46'30
+ * reste DEHORS, au-delà de la borne optimiste. C'est le comportement voulu : la fourchette
+ * décrit ce qu'un plan suivi produit couramment, pas ce que le meilleur répondeur obtient. Le
+ * défaut que P11 corrige n'était pas « le modèle ne prédit pas cet athlète-là », c'était « le
+ * modèle applique un plafond d'athlète entraîné à quelqu'un qui n'en est pas un ».
+ */
+
+/** Position dans le régime : 0 = entraîné (modèle publié), 1 = part de zéro. Interpolé. */
+export function regimeDebutant(volRecentH?: number | null): number {
+  const v = volRecentH == null || !isFinite(volRecentH) ? RG_VOL_ENTRAINE_H : Math.max(0, volRecentH);
+  if (v <= RG_VOL_DEBUTANT_H) return 1;
+  if (v >= RG_VOL_ENTRAINE_H) return 0;
+  return (RG_VOL_ENTRAINE_H - v) / (RG_VOL_ENTRAINE_H - RG_VOL_DEBUTANT_H);
+}
+
 const ANCRES_VOLUME: Ancre[] = [[1.0, 0.75], [1.2, 1.0], [1.5, 1.15]];
 export function volumeFactor(prescribedMeanH?: number | null, volRecentH?: number | null): number | null {
-  if (!(prescribedMeanH && prescribedMeanH > 0) || !(volRecentH && volRecentH > 0)) return null;
+  if (!(prescribedMeanH && prescribedMeanH > 0)) return null;
+  // P11 — LE PIÈGE DU ZÉRO, DEUXIÈME OCCURRENCE (la troisième est dans `bridge.ts`).
+  //
+  // Le test était `volRecentH > 0` : `vol_recent = 0` retombait donc sur `null` et le facteur
+  // volume disparaissait — pour exactement la population dont le plan multiplie le volume le
+  // plus. Partir de zéro, c'est le rapport de dose le plus grand qui existe : le facteur va au
+  // plafond de la table, pas à rien.
+  //
+  // ATTRIBUTION HONNÊTE. Ce défaut-ci était LATENT : sur le chemin livré, le zéro n'arrivait
+  // même pas jusqu'ici (`bridge.ts` l'effaçait un maillon plus haut, avec un `|| null`). Il
+  // aurait mordu dès la correction du pont. C'est ce qui rend la leçon utile : le piège se
+  // corrige sur TOUT LE CHEMIN, pas à l'endroit où on le remarque.
+  //
+  // C'est le même piège que R20.1 a trouvé sur la rampe R10 (« le piège du `|| undefined` sur un
+  // zéro »), jamais rejoué ailleurs jusqu'ici.
+  if (!(volRecentH != null && isFinite(volRecentH) && volRecentH >= 0)) return null;
+  if (volRecentH === 0) return ANCRES_VOLUME[ANCRES_VOLUME.length - 1][1];
   return interpole(ANCRES_VOLUME, prescribedMeanH / volRecentH);
 }
 
@@ -364,7 +464,13 @@ export function projectForm(input: ProjectionInput): ProjectionResult {
   const w = Math.max(0, input.horizonWeeks);
 
   // ---- P2bis : la marge se lit sur les références MESURÉES, plus sur un adjectif ----
-  const sat = 1 - Math.exp(-w / TAU_WEEKS);
+  // P11 — et le RÉGIME décide de QUEL modèle de gain s'applique : celui de l'entraîné (publié)
+  // ou celui de quelqu'un qui part de zéro. Interpolé entre les deux, déclenché par le volume
+  // récent MESURÉ, jamais par un adjectif.
+  const rg = regimeDebutant(input.volRecentH);
+  const tau = TAU_WEEKS + rg * (RG_TAU_DEBUTANT - TAU_WEEKS);
+  const capAbsolu = GAIN_MAX_ABSOLU + rg * (RG_GAIN_MAX_DEBUTANT - GAIN_MAX_ABSOLU);
+  const sat = 1 - Math.exp(-w / tau);
   const marge = {
     ftp: margeOf("ftp", input.refs, input.weightKg, input.sex, input.age),
     thrPace: margeOf("thrPace", input.refs, input.weightKg, input.sex, input.age),
@@ -444,7 +550,9 @@ export function projectForm(input: ProjectionInput): ProjectionResult {
     // retombe sur une marge MOYENNE plutôt que sur zéro : ne rien projeter du tout parce qu'on
     // ignore le poids serait une punition administrative, pas un raisonnement d'entraîneur.
     const h = marge[key] ?? 0.5;
-    const plafond = G_PLAFOND[key] * h * k * (fVol ?? 1);
+    // P11 — le plafond de la discipline suit le RÉGIME (interpolé, jamais à seuil franc).
+    const plafondDisc = G_PLAFOND[key] + rg * ((G_PLAFOND_DEBUTANT[key] ?? G_PLAFOND[key]) - G_PLAFOND[key]);
+    const plafond = plafondDisc * h * k * (fVol ?? 1);
     const prior = plafond * sat;
     let brut = prior;
     const m = measuredRate(input.tests, key);
@@ -459,7 +567,7 @@ export function projectForm(input: ProjectionInput): ProjectionResult {
         + "(deux points ne font pas une tendance, dix la font) et bornés par le plafond de ton profil — "
         + "prolonger un taux mesuré en ligne droite sur un an ferait de toi un champion du monde sur le papier.");
     } else priors++;
-    const g4 = (x: number) => Math.round(Math.min(GAIN_MAX_ABSOLU, Math.max(0, x)) * 10000) / 10000;
+    const g4 = (x: number) => Math.round(Math.min(capAbsolu, Math.max(0, x)) * 10000) / 10000;
     const ref = g4(brut * adhFactor + taper);
     gainPct[key] = ref;
     // P7bis — fourchette ASYMÉTRIQUE sur le gain : le pire cas d'un plan suivi n'est pas de

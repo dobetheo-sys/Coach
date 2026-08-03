@@ -8,7 +8,7 @@
 // déclaration de maladie, journal des adaptations, retouche de la forme du jour. Ils
 // arrivent après le bloc « Ta préparation », donc après le check-in dont ils dépendent.
 import { S, $, ebSave, fmtDay, todayISO } from "../state.js";
-import { checkinSlideshowHTML, bindCheckinSlideshow } from "./checkin.js";
+import { checkinSlideshowHTML, bindCheckinSlideshow, pointLabelInline } from "./checkin.js";
 import { loadChartSVG, progressBarCardHTML, predictionCardHTML, intensityCardHTML, historyCardHTML, readinessCardHTML } from "./plan-view.js";
 import { momentHTML, painBannerHTML, bindPainBanner, sickToggleHTML, bindSickToggle, heroSessionHTML, feedbackModal, showCongrats } from "./session-life.js";
 import { readinessDoneToday, applyReadiness } from "./readiness.js";
@@ -194,7 +194,7 @@ export function renderTabToday(plan) {
   html += readinessLogHTML();
   html += '<details class="load-card"><summary class="load-title">\u{1F321} Modifier ma forme du jour</summary>' + readinessCardHTML({ btnLabel: "Mettre à jour" }) + "</details>";
   html += "</div>";
-  html += '<div style="text-align:center;margin:4px 0 10px"><button class="btn" id="tdRedoCheckin" type="button" style="font-size:var(--fs-sm);padding:6px 14px">↻ Refaire mon point du matin</button></div>';
+  html += '<div style="text-align:center;margin:4px 0 10px"><button class="btn" id="tdRedoCheckin" type="button" style="font-size:var(--fs-sm);padding:8px 14px;min-height:44px">↻ Refaire mon ' + pointLabelInline() + '</button></div>';
   $("screen").innerHTML = html;
   bindSickToggle(plan, today);
   bindNotifySetup(plan, () => renderTabToday(plan));

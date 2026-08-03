@@ -9,9 +9,10 @@ import type { AthleteProfile, V1Plan } from "../engine/types.ts";
 import { auditPlan, type AuditOpts, type PlanAudit } from "../audit/coherenceScorer.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { R313_TAPER_MAX_VS_PEAK } from "../engine/constraintMatrix.ts";
-import { generatePlan, normalizeRestMinutes, reconcileDeclaredVolume, syncDerivedLabels } from "./planGenerator.ts";
+import { generatePlan, normalizeRestMinutes, reconcileDeclaredVolume, syncDerivedLabels, shiftedBikeRp } from "./planGenerator.ts";
 import { renderSess, type Refs } from "./renderer.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
+
 
 export interface AuditedPlan {
   plan: V1Plan;
@@ -310,7 +311,9 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
     refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 },
     ...auditOpts,
   };
-  const refs: Refs = { ...reasoned.baseRefs };
+  // O-11 / R20.5 — même bande « allure course » qu'à la génération : la boucle de réparation
+  // re-rend des séances, elle ne doit pas les re-rendre avec une AUTRE définition de bk.rp.
+  const refs: Refs = { ...reasoned.baseRefs, bikeRp: shiftedBikeRp(String(reasoned.profile.sport), reasoned.profile.format, reasoned.profile) };
   let audit = auditPlan(plan, opts);
   const repairs: string[] = [];
   let best = { plan, audit };
@@ -334,7 +337,7 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
   // R5.3 — la courbe ANNONCÉE se réconcilie avec le prescrit une fois les réparations passées :
   // `reduceDay` et `applyTargetedRepairs` changent encore des durées, et un écart figé avant
   // elles ment à l'athlète dès la première réparation (même leçon que R5.1).
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport as string, "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport as string, "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport as string).mainDiscipline, disciplines: sportModule(reasoned.profile.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined });
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport as string, "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport as string, "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport as string).mainDiscipline, disciplines: sportModule(reasoned.profile.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0 });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.

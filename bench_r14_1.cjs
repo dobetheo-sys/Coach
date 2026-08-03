@@ -140,6 +140,79 @@ check("R14.1-I3", "gardes dures : IMC cible < 18,5, mineur, drapeau médical →
   return { ok: off(bas) && off(min) && off(med), info: `IMC17,7:${off(bas)} mineur:${off(min)} drapeau médical:${off(med)}` };
 });
 
+/* ========== P11 — LE RÉGIME DÉBUTANT (et le piège du zéro) ==========
+ *
+ * Ces critères tournent sur un profil de COURSE À PIED : le régime se lit sur le volume récent,
+ * et c'est en course que la trajectoire réelle qui l'a déclenché a été observée.
+ *
+ * Ils vérifient les DEUX moitiés, pas une seule. Une garde qui n'assertait que « le débutant
+ * gagne plus » laisserait passer une régression sur l'entraîné — et c'est exactement la forme
+ * de défaut que R20.1 a nommée : la garde couvre le cas pour lequel le code a été écrit, pas
+ * celui où il sert.
+ */
+const RUN = {
+  intent: "competition", level: "debutant", history: "reprise", dispo: "quotidienne", shift_ok: "non",
+  off_days: "non", sex: "H", sleep: "moyen", life_load: "normale", activity: "actif", injury: "aucune",
+  med_pain: "non", med_dizzy: "non", med_treat: "non", weight_lever: "non",
+  age: "30", weight: "78", height: "180", vol_max: "6", sessions_max: "4",
+  format: "10k", terrain: "plat", pace_known: "oui", pace: "5:45",
+};
+/** Gain projeté sur l'allure seuil, pour un volume récent et un horizon donnés. */
+const gRun = (volRecent, weeks, extra) => {
+  const a = Object.assign({}, RUN, { vol_recent: String(volRecent), race_date: iso(weeks * 7) }, extra || {});
+  const pj = (E.predict("run", a, E.buildPlan("run", a)) || {}).projected;
+  if (!pj || !pj.gainPct) throw new Error("pas de projection (vol_recent=" + volRecent + ")");
+  return pj.gainPct.thrPace;
+};
+
+check("P11-A", "le piège du zéro : déclarer 0 h ne projette JAMAIS moins que déclarer 1 h", () => {
+  const z = gRun(0, 16), un = gRun(1, 16), deux = gRun(2, 16);
+  return {
+    ok: z >= un - 1e-9 && un >= deux - 1e-9,
+    info: `0 h ${(z * 100).toFixed(2)}% · 1 h ${(un * 100).toFixed(2)}% · 2 h ${(deux * 100).toFixed(2)}%`,
+  };
+});
+check("P11-B", "l'entraîné ne bouge pas : au-delà de 4 h/sem le modèle publié s'applique tel quel", () => {
+  const q = gRun(4, 16), s = gRun(6, 16), d = gRun(10, 16);
+  // Plateau strict (rg = 0 partout) ET sous le plafond de l'entraîné (G_PLAFOND.thrPace = 0,15).
+  return {
+    ok: Math.abs(q - s) < 1e-9 && Math.abs(s - d) < 1e-9 && s <= 0.15,
+    info: `4 h ${(q * 100).toFixed(2)}% · 6 h ${(s * 100).toFixed(2)}% · 10 h ${(d * 100).toFixed(2)}%`,
+  };
+});
+check("P11-C", "le régime est INTERPOLÉ : décroissance monotone, aucun seuil franc", () => {
+  const paliers = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 6].map((v) => [v, gRun(v, 16)]);
+  let mono = true, saut = 0;
+  for (let i = 1; i < paliers.length; i++) {
+    if (paliers[i][1] > paliers[i - 1][1] + 1e-9) mono = false;
+    const rel = (paliers[i - 1][1] - paliers[i][1]) / Math.max(1e-9, paliers[i - 1][1]);
+    if (rel > saut) saut = rel;
+  }
+  // 40 % : la borne vise le SEUIL FRANC (bascule d'un modèle à l'autre = ~75 % en un palier),
+  // pas le comportement actuel. Une borne posée au ras de ce que le moteur produit aujourd'hui
+  // ne fait que le photographier — c'est la leçon de C26d (R20.4).
+  return {
+    ok: mono && saut <= 0.40,
+    info: (mono ? "monotone" : "NON monotone") + ` · plus grand saut relatif ${(saut * 100).toFixed(0)} % (≤ 40 attendu)`,
+  };
+});
+check("P11-D", "le régime SERT à quelque chose : partir de zéro projette ≥ 2× l'entraîné", () => {
+  const z = gRun(0, 16), e = gRun(6, 16);
+  return { ok: z >= 2 * e, info: `0 h ${(z * 100).toFixed(2)}% vs 6 h ${(e * 100).toFixed(2)}% (×${(z / e).toFixed(1)})` };
+});
+check("P11-E", "le gain du débutant est PRÉCOCE : τ plus court, donc 8/16 sem plus proche de 1", () => {
+  const rDeb = gRun(0, 8) / gRun(0, 16), rEnt = gRun(6, 8) / gRun(6, 16);
+  return { ok: rDeb > rEnt, info: `débutant ${rDeb.toFixed(3)} · entraîné ${rEnt.toFixed(3)}` };
+});
+check("P11-F", "le plafond absolu du régime tient : aucun gain projeté au-dessus de 32 %", () => {
+  let max = 0, où = "";
+  for (const v of [0, 1, 2, 3]) for (const w of [8, 16, 30, 52]) {
+    const g = gRun(v, w, { pace: "8:00" }); // la marge la plus large que la table sache lire
+    if (g > max) { max = g; où = v + " h / " + w + " sem"; }
+  }
+  return { ok: max <= 0.32 + 1e-9, info: `maximum ${(max * 100).toFixed(2)} % (${où})` };
+});
+
 /* ========== Non-régressions ========== */
 check("R14.1-NR1", "la prédiction FORME ACTUELLE est inchangée par R14.1", () => {
   const { now } = both(ans({}));

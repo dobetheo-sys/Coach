@@ -87,7 +87,17 @@ export function swimrunObjective(a: AthleteProfile): SwimrunObjective {
   // ---- Références EN TENUE : mesurées si le test est fait, estimées sinon (§R10.3.3) ----
   const measuredSwim = srPaceToSec(a.swimrun_swim_pace, 400);
   const measuredRun = srPaceToSec(a.swimrun_run_pace, 1200);
-  const paceKnown = measuredSwim > 0 && measuredRun > 0;
+  // R20.1-c — `gear_test` ne servait à RIEN. La question « as-tu fait le test en tenue
+  // complète ? » était posée au questionnaire swimrun et lue nulle part dans le moteur : le
+  // balayage dérivé du schéma (R20.1) l'a trouvée inerte.
+  //
+  // Le module dit pourtant lui-même ce qu'elle vaut : « les allures ne transfèrent PAS en
+  // swimrun — combinaison, chaussures mouillées, pull buoy, plaquettes, terrain. Le seul test
+  // qui vaut se fait en tenue COMPLÈTE. » Deux chronos saisis SANS ce test ne sont donc pas
+  // des références mesurées : ce sont des estimations qui se croient mesurées, et elles
+  // resserrent la fourchette à tort. `gear_test` entre donc exactement là où l'argument du
+  // module le place — dans la confiance qu'on accorde aux références.
+  const paceKnown = measuredSwim > 0 && measuredRun > 0 && String(a.gear_test ?? "") !== "non";
   const cssSec = srPaceToSec(a.css, 300) || 130;
   const roadSec = srPaceToSec(a.pace, 1200) || (level === "debutant" ? 390 : level === "avance" ? 280 : 330);
   let swimPaceSec = measuredSwim || Math.round(cssSec * S4_GEAR_FACTORS.swim);

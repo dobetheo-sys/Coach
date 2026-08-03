@@ -11,6 +11,7 @@
 import type { Decision } from "./types.ts";
 import { sportModule, type PredictKit } from "../sports/registry.ts";
 import { T5_HIKE_SHARE, TRAIL_TECHNICITY, type TrailObjective } from "./trailModel.ts";
+import { DUA_BIKE_POWER, DUA_BIKE_PREFATIGUE } from "../sports/duathlon/tables.ts";
 import { projectForm, GAIN_BAND_LO, GAIN_BAND_HI,
   type ProjectionInput, type WeightLever } from "./projection.ts";
 
@@ -50,6 +51,14 @@ export interface PredictOpts {
   pctLoad?: number; // % de charge du plan accomplie
   streakWeeks?: number;
   courseProfile?: string; // "plat" | "vallonne" | "montagne" — profil du parcours visé
+  /**
+   * R18.2 — profils PAR DISCIPLINE (multisport). Chaque entrée absente retombe sur
+   * `courseProfile` pour le vélo et la course ; la nage ne retombe sur rien (un relief ne
+   * décrit pas un plan d'eau). Rempli par `legProfileOf()` chez l'appelant, jamais deviné ici.
+   */
+  legProfiles?: { swim?: string; bike?: string; run?: string };
+  /** R19.2 — température de l'eau (°C). Absente = aucune correction de combinaison. */
+  waterTempC?: number;
   /** R7 TRAIL — objectif décodé (distance, D+, catégorie, VAM) : Riegel ne s'applique pas. */
   trail?: TrailObjective;
   /** Objectif swimrun décodé (§R10.3.2) — trois postes de temps. */
@@ -143,6 +152,92 @@ export function courseProfileOf(a: { course_profile?: unknown; terrain?: unknown
   return terrain || undefined;
 }
 
+/**
+ * R18.2 — LE MILIEU DE NAGE. Ce n'est pas un relief, et ça ne se traite pas comme tel.
+ *
+ * La référence n'est PAS le bassin : `TRI_SWIM[format].factor` est calibré « peloton,
+ * combinaison et navigation compris », donc sur de l'eau libre calme. Le lac vaut donc 1.00,
+ * et le bassin est plus RAPIDE que la référence — se tromper de point d'ancrage aurait
+ * ralenti tout le monde de 5 % en croyant corriger.
+ *
+ * `eau_vive` est le cas que le fondateur a cité, et c'est le plus intéressant : un courant
+ * peut porter autant qu'il freine. Sa bande est donc ASYMÉTRIQUE ET LARGE, dans les deux
+ * sens — on refuse de faire semblant de savoir de quel côté. Même honnêteté que RELIEF pour
+ * la course, qui élargit au lieu de décaler.
+ *
+ * Heuristiques de praticiens, assumées comme telles : aucune de ces valeurs n'est mesurée,
+ * et c'est écrit ici plutôt que sous-entendu.
+ */
+const SWIM_ENV: Record<string, ReliefFactor> = {
+  bassin: { lo: 0.94, hi: 0.97, label: "bassin (pas de navigation, appuis aux murs)" },
+  lac: { lo: 1.0, hi: 1.0, label: "lac / eau libre calme" },
+  mer_calme: { lo: 1.01, hi: 1.05, label: "mer calme" },
+  mer_agitee: { lo: 1.06, hi: 1.14, label: "mer agitée (houle, respiration contrariée)" },
+  eau_vive: { lo: 0.95, hi: 1.2, label: "eau vive (courant)" },
+};
+/**
+ * R19.2 — LA COMBINAISON. C'était le trou le plus large du modèle de natation.
+ *
+ * `water_temp_c` n'existait que pour le swimrun. En triathlon, rien : ni combinaison, ni seuil
+ * de légalité. Or c'est la variable DOMINANTE du leg natation — 4 à 7 % de temps, et une
+ * bascule RÉGLEMENTAIRE, pas continue. R18.2 avait ajouté par-dessus un raffinement de ±5 %
+ * (mer calme vs mer agitée) sur un modèle où ce facteur-là manquait : l'ordre de grandeur
+ * était inversé, on affinait le détail en ignorant le principal.
+ *
+ * `TRI_SWIM[format].factor` est calibré « combinaison comprise » : la référence PORTE donc la
+ * combinaison. La correction va dans un seul sens — SANS combinaison, on est plus lent. C'est
+ * le même piège d'ancrage que SWIM_ENV, et il se paie de la même façon si on l'inverse.
+ *
+ * Seuils : 24,5 °C est la borne haute commune (World Triathlon en âge-groupe, IRONMAN pour
+ * l'éligibilité au classement) ; au-delà la combinaison est interdite. Sous 15 °C, elle
+ * devient obligatoire et cesse de suffire à elle seule — c'est une question de sécurité, pas
+ * de chrono, et le manifeste range la santé en premier : le moteur AVERTIT au lieu d'estimer.
+ */
+export const WETSUIT = {
+  id: "R19.2",
+  maxLegalC: 24.5,
+  coldWarnC: 15,
+  /** Temps de nage SANS combinaison, la référence l'incluant. */
+  sansCombinaison: { lo: 1.04, hi: 1.07 } as ReliefFactor & { lo: number; hi: number },
+};
+/**
+ * Bande de correction due à la combinaison. `null` = température non renseignée, donc aucune
+ * correction — on ne devine pas une température d'eau à partir d'un format de course.
+ */
+export function wetsuitBandOf(waterTempC: unknown): { lo: number; hi: number; label: string } | null {
+  const t = typeof waterTempC === "number" ? waterTempC : parseFloat(String(waterTempC ?? ""));
+  if (!isFinite(t)) return null;
+  if (t > WETSUIT.maxLegalC)
+    return { lo: WETSUIT.sansCombinaison.lo, hi: WETSUIT.sansCombinaison.hi, label: "eau à " + t + " °C : combinaison INTERDITE (>" + WETSUIT.maxLegalC + " °C)" };
+  return { lo: 1, hi: 1, label: "eau à " + t + " °C : combinaison autorisée" };
+}
+
+export function swimEnvOf(value: unknown): ReliefFactor | null {
+  const k = String(value ?? "").trim();
+  return k ? SWIM_ENV[k] || null : null;
+}
+
+/**
+ * R18.2 — LE RÉSOLVEUR PAR DISCIPLINE, point unique.
+ *
+ * Trois niveaux, du plus précis au plus général : la réponse du LEG, puis le profil de course
+ * global (`course_profile`), puis le terrain d'entraînement (`terrain`). C'est la même
+ * cascade que `courseProfileOf`, prolongée d'un cran — pas un second vocabulaire.
+ *
+ * La nage ne retombe sur RIEN : le profil global décrit un relief, et un relief ne dit rien
+ * d'un plan d'eau. Retomber dessus aurait produit un « lac montagneux » traité comme du plat.
+ */
+export type RaceLeg = "swim" | "bike" | "run";
+export function legProfileOf(a: { leg_swim_env?: unknown; leg_bike_prof?: unknown; leg_run_prof?: unknown; course_profile?: unknown; terrain?: unknown }, leg: RaceLeg): string | undefined {
+  if (leg === "swim") {
+    const v = String(a.leg_swim_env ?? "").trim();
+    return v && SWIM_ENV[v] ? v : undefined;
+  }
+  const propre = String((leg === "bike" ? a.leg_bike_prof : a.leg_run_prof) ?? "").trim();
+  if (propre && reliefOf(propre)) return propre;
+  return courseProfileOf(a);
+}
+
 /** Garde de build : toute valeur du domaine `terrain` est classée (relief ou neutre). */
 export function assertTerrainCovered(domain: readonly string[]): void {
   const orphelines = domain.filter((v) => !RELIEF[v] && !(RELIEF_NEUTRAL as readonly string[]).includes(v));
@@ -170,6 +265,42 @@ export const BIKE_POWER: Record<string, { lo: number; hi: number; note: string }
   cyclo: { lo: 0.73, hi: 0.83, note: "cyclosportive : tempo durable, garder du grain pour la fin" },
   gravel: { lo: 0.68, hi: 0.78, note: "gravel/ultra : endurance, la régularité bat la vitesse" },
 };
+/**
+ * O-11 / R20.5 — « L'ALLURE COURSE À VÉLO » N'A PLUS QU'UNE SEULE DÉFINITION.
+ *
+ * Le moteur en portait DEUX, et la zone d'entraînement était la plus dure des deux :
+ *
+ * | source | « allure course » vélo |
+ * |---|---|
+ * | `ZDEF["bk.rp"]` (la zone prescrite à l'entraînement) | **0,80–0,88 × FTP, quel que soit le format** |
+ * | `TRI_BIKE["Full"]` (la cible du jour J) | **0,70–0,76 × FTP** |
+ *
+ * Sur un Ironman, une séance nommée « Rappel race-pace » faisait donc rouler **~15 % au-dessus
+ * de l'intensité que le moteur prescrit lui-même pour la course** — et sur un sprint, l'inverse
+ * (0,80–0,88 contre 0,85–0,93 le jour J : la séance était plus FACILE que la course). Une zone
+ * figée ne peut pas décrire un effort dont la durée va de 30 minutes à six heures.
+ *
+ * C'est le même défaut que R15.2 a corrigé pour le relief, à un autre endroit du même chemin :
+ * deux producteurs du même nombre finissent toujours par diverger. Il n'y a donc plus qu'un
+ * point — celui-ci — et la zone `bk.rp` le lit.
+ *
+ * La pré-fatigue du duathlon est INCLUSE : le nombre que l'athlète doit apprendre à tenir est
+ * celui de sa course, pas celui d'un contre-la-montre frais. Le relief (`bikeIFShift`) n'est PAS
+ * inclus ici — il s'applique en aval, au même endroit pour la prédiction et pour la séance.
+ */
+export function raceBikeBand(sport: string, format: string | undefined): { lo: number; hi: number } | null {
+  const f = String(format ?? "");
+  if (sport === "tri") return TRI_BIKE[f] ?? null;
+  if (sport === "bike") { const b = BIKE_POWER[f]; return b ? { lo: b.lo, hi: b.hi } : null; }
+  if (sport === "duathlon") {
+    const pw = DUA_BIKE_POWER[f];
+    if (!pw) return null;
+    const pf = DUA_BIKE_PREFATIGUE[f] ?? 0.97;
+    return { lo: pw.lo * pf, hi: pw.hi * pf };
+  }
+  return null;
+}
+
 export const TRI_SWIM: Record<string, { dist: number; factor: number }> = {
   S: { dist: 750, factor: 1.04 },
   M: { dist: 1500, factor: 1.05 },
@@ -263,19 +394,59 @@ export function predictRace(
 ): Prediction {
   const decisions: Decision[] = [];
   const D = (id: string, what: string, val: string, why: string) => decisions.push({ id, what, val, why });
+  // R19.2 — conseils émis AVANT le rendu (sécurité liée à l'eau) : ils ne dépendent d'aucune
+  // référence chiffrée, donc ils doivent sortir même quand la prédiction refuse de projeter.
+  // Ils sont placés EN TÊTE de la liste : une consigne d'hypothermie passe avant un conseil
+  // de pacing.
+  const advice0: string[] = [];
 
   // Fourchette : ±3% de base ; ±2% si le plan est bien suivi ; décalée +3% en mode finisher.
   const followed = (opts.pctLoad ?? 0) >= 60 && (opts.streakWeeks ?? 0) >= 3;
   const shift = intent === "finir" ? 0.03 : 0;
   if (followed) D("PRED-forme", "Fourchette resserrée", "±2%", "Plan bien suivi (streak ≥3 semaines, charge accomplie ≥60%) : la projection est plus fiable");
   if (shift > 0) D("PRED-finisher", "Pacing conservateur", "+3%", "Objectif finisher : on vise l'arrivée en forme, pas la marge d'erreur");
+  // R18.2 — chaque leg lit SON profil ; à défaut, le profil global. Un triathlon n'est pas
+  // homogène : nager en eau vive, rouler en montagne et courir à plat, ce sont trois
+  // corrections indépendantes, et une clé unique en appliquait une troisième, fausse pour
+  // les trois. Les sports mono-discipline ne passent pas de `legProfiles` : rien ne bouge.
+  const legs = opts.legProfiles || {};
   // Fourchette COURSE À PIED avec profil de parcours (R6) — le relief élargit et décale.
-  const prof = reliefOf(opts.courseProfile);
+  const prof = reliefOf(legs.run ?? opts.courseProfile);
   if (prof && prof.hi > 1) D("PRED-parcours", "Profil du parcours", prof.label, "Le relief ralentit et augmente l'incertitude : fourchette ×" + prof.lo + "–" + prof.hi + " sur les temps de course à pied");
   const profWhy = prof && prof.hi > 1 ? " · " + prof.label + " (+" + Math.round((prof.lo - 1) * 100) + "–" + Math.round((prof.hi - 1) * 100) + "%)" : "";
   // R15.2 — décalage d'IF vélo et sa justification, calculés UNE fois pour les trois sports
   // qui prescrivent des watts (tri, vélo, duathlon).
-  const ifShift = bikeIFShift(opts.courseProfile);
+  // R18.2 — le milieu de nage. Aucun repli sur le profil global : un relief ne décrit pas
+  // un plan d'eau (voir SWIM_ENV).
+  const milieu = swimEnvOf(legs.swim);
+  const comb = wetsuitBandOf(opts.waterTempC);
+  // Les deux se COMPOSENT : un plan d'eau agité sans combinaison cumule les deux pénalités.
+  // Les multiplier plutôt que prendre le pire est le choix honnête — ce sont deux causes
+  // physiquement indépendantes (flottaison d'un côté, navigation et respiration de l'autre).
+  const swimEnv: ReliefFactor | null = (milieu || comb)
+    ? { lo: (milieu ? milieu.lo : 1) * (comb ? comb.lo : 1),
+        hi: (milieu ? milieu.hi : 1) * (comb ? comb.hi : 1),
+        label: [milieu ? milieu.label : null, comb && comb.lo !== 1 ? comb.label : null].filter(Boolean).join(" · ") || (comb ? comb.label : "") }
+    : null;
+  const swimWhy = swimEnv && (swimEnv.lo !== 1 || swimEnv.hi !== 1)
+    ? " · " + swimEnv.label + " (×" + Math.round(swimEnv.lo * 100) / 100 + "–" + Math.round(swimEnv.hi * 100) / 100 + ")"
+    : "";
+  // SÉCURITÉ avant chrono : sous 15 °C, on ne raffine pas une estimation, on prévient.
+  {
+    const t = typeof opts.waterTempC === "number" ? opts.waterTempC : parseFloat(String(opts.waterTempC ?? ""));
+    if (isFinite(t) && t < WETSUIT.coldWarnC)
+      advice0.push("🌡 Eau à " + t + " °C. En dessous de " + WETSUIT.coldWarnC + " °C, la combinaison est obligatoire et ne suffit plus à elle seule : choc thermique à l'entrée, hyperventilation, extrémités qui lâchent. Fais au moins deux nages d'acclimatation en eau à cette température AVANT la course, avec bonnet néoprène, et n'y va jamais seul. Ce n'est pas une question de chrono.");
+    if (isFinite(t) && t > WETSUIT.maxLegalC)
+      advice0.push("🌡 Eau à " + t + " °C : au-delà de " + WETSUIT.maxLegalC + " °C la combinaison est interdite. Deux conséquences : tu nageras 4 à 7 % moins vite que l'estimation d'une nage en combinaison, et le risque bascule vers l'hyperthermie — entraîne-toi sans combinaison au moins une fois par semaine dans les six dernières semaines.");
+  }
+  if (swimEnv && (swimEnv.lo !== 1 || swimEnv.hi !== 1))
+    D("R18.2-nage", "Milieu de nage", swimEnv.label,
+      swimEnv.lo < 1 && swimEnv.hi > 1
+        ? "Un courant peut porter autant qu'il freine : la fourchette s'élargit DANS LES DEUX SENS plutôt que de décaler dans un sens qu'on ne connaît pas."
+        : swimEnv.hi < 1
+          ? "En bassin il n'y a ni navigation ni houle, et les murs rendent du temps : la référence d'eau libre est trop lente ici."
+          : "La navigation, la houle et la respiration contrariée coûtent du temps : la fourchette monte et s'élargit.");
+  const ifShift = bikeIFShift(legs.bike ?? opts.courseProfile);
   const bikeWhy = ifShift < 0
     ? " · cible ABAISSÉE de " + Math.round(-ifShift * 100) + " points pour le relief : sur un parcours "
       + "accidenté le coût suit la puissance NORMALISÉE et non la moyenne, et l'indice de variabilité "
@@ -283,7 +454,7 @@ export function predictRace(
       + "croit — ça se paie à pied, pas sur le vélo"
     : "";
   if (ifShift < 0)
-    D("R15.2", "Relief du parcours vélo", (prof ? prof.label : "accidenté") + " → IF " + (ifShift * 100).toFixed(1) + " pt",
+    D("R15.2", "Relief du parcours vélo", (reliefOf(legs.bike ?? opts.courseProfile) || { label: "accidenté" }).label + " → IF " + (ifShift * 100).toFixed(1) + " pt",
       "Le chrono vélo n'est pas prédit (il dépend du parcours), mais la CIBLE D'INTENSITÉ, elle, doit "
       + "descendre : à puissance moyenne égale, un parcours vallonné coûte plus cher qu'un parcours plat.");
   // R14 P5 — l'exposant de Riegel suit le volume, et SEULEMENT pour une course sèche :
@@ -317,6 +488,14 @@ export function predictRace(
     const runRange = (sec: number) => {
       if (!prof) return range(sec);
       const lo = sec * prof.lo * (1 + shift - spread), hi = sec * prof.hi * (1 + shift + spread);
+      note(lo, hi);
+      return fmtT(lo) + "–" + fmtT(hi);
+    };
+    // R18.2 — même forme que `runRange` : le milieu de nage élargit la fourchette au lieu de
+    // décaler un chiffre. Sans réponse, c'est `range` — donc rien ne bouge pour l'existant.
+    const swimRange = (sec: number) => {
+      if (!swimEnv) return range(sec);
+      const lo = sec * swimEnv.lo * (1 + shift - spread), hi = sec * swimEnv.hi * (1 + shift + spread);
       note(lo, hi);
       return fmtT(lo) + "–" + fmtT(hi);
     };
@@ -358,7 +537,12 @@ export function predictRace(
   // sortir un chiffre inventé — la fourchette honnête est la seule sortie acceptable.
   const mod = sportModule(sport);
   if (mod.predict) {
-    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, riegelSec, profWhy, bikeIF, bikeWhy, swimrun: opts.swimrun });
+    mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy,
+      legBands: {
+        swim: swimEnv ? [swimEnv.lo, swimEnv.hi] : null,
+        run: prof && prof.hi > 1 ? [prof.lo, prof.hi] : null,
+      },
+      swimrun: opts.swimrun });
   } else {
     advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }
@@ -373,7 +557,7 @@ export function predictRace(
 
   return {
     items: now.items,
-    advice: now.advice,
+    advice: [...advice0, ...now.advice],
     decisions,
     projected: buildProjection(sport, refs, opts, now, render),
   };

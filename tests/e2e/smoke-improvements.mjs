@@ -24,10 +24,12 @@ await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 
 // ---- 1. Échange de jours (⇄) : deux taps, persistant, réversible ----
-// R16.9 — le ⇄ vivait dans Semaine ; il est dans Plan (index 1), et sur TOUTE semaine
-// affichée, pas seulement la courante — d'où le compte par carte plutôt que global.
-const tabs = await page.locator("#ebTabbar .tabbtn").all();
-await tabs[1].click(); await page.waitForTimeout(300);
+// R18.3 — 📅 Semaine est restaurée et reprend la carte de la semaine courante. Le ⇄ existe
+// aussi dans 🗓 Plan, sur TOUTE semaine affichée : c'est la même grille (`weekGridHTML`),
+// donc le même geste. On navigue par NOM d'onglet, pas par index — un index se recasse au
+// prochain changement d'ordre, et c'est ce qui vient d'arriver à cette ligne.
+await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("week"); });
+await page.waitForTimeout(400);
 const carteSemaine = page.locator("#screen .card").filter({ hasText: "Ta semaine" }).first();
 ok((await carteSemaine.locator("[data-swap]").count()) === 7, "un bouton ⇄ par jour de la semaine courante");
 const before = await page.evaluate(async () => {
@@ -142,7 +144,7 @@ ok(await page.locator("#ebBackToPlan").count() === 1, "« Revenir à mon plan en
 const prefilled = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return { age: S.answers.age, sex: S.answers.sex, pace: S.answers.pace }; });
 ok(prefilled.age === "35" && prefilled.sex === "H" && prefilled.pace === "4:30", "données de la personne pré-remplies (âge/sexe/allure) dans le nouveau plan");
 await page.click("#ebBackToPlan"); await page.waitForTimeout(500);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "retour : la vue plan est restaurée");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "retour : la vue plan est restaurée");
 const plansAfterBack = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.plans.length; });
 ok(plansAfterBack === 1, "le brouillon abandonné est retiré (pas de plan fantôme)");
 
@@ -305,13 +307,22 @@ const r16 = await page.evaluate(async () => {
     prnPrimary: !!document.querySelector("#prn.primary"),      // R16.3
     abbr: !!(seg && seg.querySelector(".ph-abbr") && seg.querySelector(".ph-full")),
     titre: !!(seg && seg.getAttribute("title")),               // R16.4
-    goCur: !!document.getElementById("goCurWk"),               // R16.5
+    // U15 — le raccourci « aller à la semaine en cours » n'a d'objet que dans la vue COMPLÈTE :
+    // par défaut, cette semaine est désormais la seule affichée, donc « y aller » n'a plus de
+    // sens. On le cherche là où il sert — après avoir déplié les N semaines.
+    goCurDefaut: !!document.getElementById("goCurWk"),
   };
+});
+const r16b = await page.evaluate(() => {
+  const b = document.getElementById("allW");
+  if (b) b.click();
+  return { goCurComplet: !!document.getElementById("goCurWk") };
 });
 ok(!r16.dur777, "R16.1 : plus aucun `color:#777` codé en dur dans le rendu (contraste AA)");
 ok(!r16.prnPrimary, "R16.3 : le bouton HTML n'est plus le seul export en rouge plein");
 ok(r16.abbr && r16.titre, "R16.4 : pastille de phase avec libellé long + abrégé, nom complet en title");
-ok(r16.goCur, "R16.5 : raccourci « aller à la semaine en cours » présent");
+ok(!r16.goCurDefaut, "U15 : pas de raccourci « aller à la semaine en cours » quand elle est la seule affichée");
+ok(r16b.goCurComplet, "R16.5 : le raccourci « aller à la semaine en cours » existe dans la vue complète");
 const r167 = await page.evaluate(async () => {
   const { setTab } = await import("./js/ui/tabs.js");
   setTab("profile");

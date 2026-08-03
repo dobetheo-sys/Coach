@@ -52,6 +52,11 @@ export interface SportGuards {
    *  garantie (2e nage en spécifique/pic, alternance en dev) et l'affûtage garde une nage
    *  chaque semaine (les sensations d'eau se perdent en 10-14 jours). */
   swimRacePrepFrequency?: boolean;
+  /** R20.2 — répondre « oui » aux doubles séances AUGMENTE réellement le volume livrable dans
+   *  ce sport. Ce n'est vrai que là où les builders posent une seconde séance sous `dbl` : le
+   *  garde existe pour que le moteur ne PROPOSE jamais un levier qui ne bougerait rien.
+   *  Mesuré à chaque exécution de `npm run audit:sensibilite` — déclaration ⟺ effet réel. */
+  doublesAddVolume?: boolean;
 }
 
 /**
@@ -137,6 +142,24 @@ export interface PredictKit {
   riegelSec: (thrPace: number, km: number) => number;
   /** Mention « + vallonné (+3–6%) » à coller aux fourchettes course. */
   profWhy: string;
+  /**
+   * R18.2 — fourchette NATATION élargie par le milieu de course (bassin, lac, mer, eau vive).
+   * Sans réponse, c'est `range` à l'identique. Symétrique de `runRange` pour le relief : on
+   * élargit l'incertitude, on n'invente pas un décalage.
+   */
+  swimRange: (sec: number) => string;
+  /** Mention « · eau vive (×0.95–1.2) » à coller au « pourquoi » du leg natation. */
+  swimWhy: string;
+  /**
+   * R19.1 — LES BANDES BRUTES, pour les sports qui formatent leurs propres postes.
+   * `swimRange`/`runRange` rendent du texte déjà mis en forme : le swimrun, qui additionne
+   * trois postes en `fmtHM` avant de les afficher, ne pouvait pas les utiliser — et c'est
+   * exactement pour ça que `leg_swim_env` et `leg_run_prof` étaient INERTES chez lui alors que
+   * la question était posée. Un module qui a sa propre mise en forme doit pouvoir appliquer la
+   * correction sans passer par la mise en forme des autres.
+   * `null` = aucune correction déclarée.
+   */
+  legBands: { swim: [number, number] | null; run: [number, number] | null };
   /**
    * R15.2 — LE RELIEF ENTRE DANS LA CIBLE D'INTENSITÉ VÉLO. Les trois sports qui prescrivent
    * une puissance (tri, vélo, duathlon) passent leur bande d'IF par ici : sans ce point unique,

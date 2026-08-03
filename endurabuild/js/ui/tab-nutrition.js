@@ -17,14 +17,26 @@ export function energyCardHTML(day, open) {
   let e;
   try { e = globalThis.EBV2.dailyEnergy(S.answers, day ? day.sessions : []); } catch (err) { return ""; }
   if (!e) {
+    // O-16 — dire POURQUOI. `dailyEnergy` rend null pour trois raisons distinctes (pas de
+    // poids · âge sous la borne · gabarit hors bornes de validation) et cette carte les
+    // confondait toutes dans « renseigne ton poids » : un adolescent, ou quelqu'un dont l'IMC
+    // sort des bornes, était renvoyé corriger une donnée qui n'était pas en cause.
+    let motif = "";
+    try { motif = (globalThis.EBV2.energyRefusal && globalThis.EBV2.energyRefusal(S.answers)) || ""; } catch (err) { motif = ""; }
     return '<details class="load-card"' + (open ? " open" : "") + '><summary class="load-title">🔥 Dépense estimée du jour</summary>'
-      + '<div class="load-sub" style="margin-top:6px">Renseigne ton <b>poids</b> dans l’onglet 📋 Profil pour voir l’estimation (taille, âge et sexe l’affinent). Aucune estimation sans donnée réelle.</div></details>';
+      + '<div class="load-sub" style="margin-top:6px">'
+      + (motif || "Renseigne ton <b>poids</b> dans l’onglet 📋 Profil pour voir l’estimation (taille, âge et sexe l’affinent). Aucune estimation sans donnée réelle.")
+      + "</div></details>";
   }
   const f = (r) => r[0] === r[1] ? r[0] : r[0] + "–" + r[1];
   return '<details class="load-card"' + (open ? " open" : "") + '><summary class="load-title">🔥 Dépense estimée du jour <span style="font-weight:400">· ~' + f(e.total) + " kcal</span></summary>"
     + '<div style="font-size:var(--fs-sm);margin-top:8px">'
     + "<b>Base + vie quotidienne :</b> ~" + f(e.daily) + " kcal (métabolisme de base ~" + f(e.bmr) + ")<br>"
     + "<b>Entraînement du jour :</b> " + (e.training[1] ? "~" + f(e.training) + " kcal" : "repos — 0 kcal d’entraînement")
+    // N11 — le repos de ces heures-là est déjà dans la ligne du dessus : on le retire, et on
+    // le DIT. Retranché en silence, le total ne tomberait pas juste et la carte deviendrait
+    // suspecte ; affiché, il explique au passage ce qu'est un MET.
+    + (e.restOverlap > 0 ? '<br><span style="color:var(--muted)">− ' + e.restOverlap + " kcal : le repos de ces heures-là est déjà compté dans ta journée (un MET, c'est le repos)</span>" : "")
     + "<br><b>Total :</b> ~" + f(e.total) + " kcal"
     + (e.approximate ? '<br><span style="color:#8a6d00">Fourchette large : complète taille/âge au 📋 Profil pour l’affiner.</span>' : "")
     + "</div>"

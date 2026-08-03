@@ -32,6 +32,7 @@
   --fs-lg:15px;    /* saisie, libellé de question, en-tête de semaine, paragraphe d'intro */
   --fs-hand:18px;  /* Caveat (manuscrit) + grandes valeurs — la cursive a une petite hauteur d'x */
   --fs-xl:22px;    /* titre de section */
+  --fs-field:16px; /* saisie sur écran TACTILE — plancher iOS, voir R18.1 en fin de feuille */
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 /* iOS : body seul ne suffit pas — sans ça, un débordement horizontal permet de
@@ -234,8 +235,18 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 
 /* ===== DÉTAIL SÉANCE ===== */
 /* §5 (R6) — le POURQUOI d'une séance, visible avant le QUOI (héros) ou en tête du détail. */
-.gd-why{display:block;font-weight:500;font-size:var(--fs-sm);color:var(--text2);margin:2px 0 4px;line-height:1.45;font-style:italic;}
-.gd-det{display:block;font-weight:500;font-size:var(--fs-xs);color:var(--text2);margin:2px 0 5px;line-height:1.4;}
+.gd-why{display:block;font-weight:500;font-size:var(--fs-sm);color:var(--text2);margin:2px 0 6px;line-height:1.55;font-style:italic;}
+.gd-det{display:block;font-weight:500;font-size:var(--fs-xs);color:var(--text2);margin:2px 0 5px;line-height:1.55;}
+/* U16 — LE DÉROULEMENT DE LA SÉANCE, UNE LIGNE PAR BLOC.
+ *
+ * Mesuré avant : une VO2max déroulée sortait 296 caractères d'un seul tenant, à interligne
+ * 1,35 — le pavé le plus dense de l'app (1,61 caractère par pixel, devant tout le reste).
+ * Le tiret n'est pas décoratif : il donne à l'œil un point d'accroche par bloc, ce que le
+ * point médian au fil du texte ne faisait pas. Aucun mot n'est retiré. */
+.gd-steps{list-style:none;margin:4px 0 6px;padding:0;font-weight:500;font-size:var(--fs-xs);color:var(--text2);}
+.gd-steps li{position:relative;padding:0 0 0 12px;margin-top:4px;line-height:1.55;}
+.gd-steps li:first-child{margin-top:0;}
+.gd-steps li::before{content:"–";position:absolute;left:0;opacity:.6;}
 .gd-sess{margin:1px 0;}
 .gd-sess summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:4px;}
 .gd-sess summary::-webkit-details-marker{display:none;}
@@ -309,3 +320,59 @@ details.load-card>summary{list-style:none;display:flex;align-items:center;justif
 details.load-card>summary::-webkit-details-marker{display:none;}
 details.load-card>summary::after{content:"▾";font-size:.9em;color:var(--muted);transition:transform .15s;}
 details.load-card[open]>summary::after{transform:rotate(180deg);}
+
+/* ============================================================
+   R18.1 — LE ZOOM QUE PERSONNE N'A DEMANDÉ
+   ============================================================
+   Signalé au test : « pas d'antizoom ». Le meta viewport était pourtant correct — la cause
+   est ailleurs, et elle est mécanique : iOS zoome AUTOMATIQUEMENT sur un champ dont la
+   taille de texte est sous 16 px, à la mise au point, et il ne dézoome jamais ensuite.
+   L'app en avait dix-sept au Profil et cinq dans « Aujourd'hui » (mesure au pointeur
+   tactile), dont les quatre selecteurs du check-in du matin — l'écran que l'utilisateur
+   touche tous les jours.
+
+   `css/mobile.css` posait pourtant la bonne valeur sur `input, select` depuis l'origine.
+   Elle ne s'appliquait à rien de ce qui compte : `.opt` (0,1,0) et `input[type=text]`
+   (0,1,1 — un selecteur d'ATTRIBUT pese autant qu'une classe) battent tous deux `select`
+   (0,0,1). Un correctif que la cascade annule est un correctif qu'on croit avoir. D'ou ce
+   bloc en FIN de feuille (a specificite egale, l'ordre source tranche) et la repetition
+   explicite des deux formes.
+
+   CE QU'ON NE FAIT PAS : `user-scalable=no` ni `maximum-scale=1`. Interdire le pinch-to-zoom
+   retire le zoom SUBI en retirant aussi le zoom VOULU — c'est la seule loupe d'un malvoyant
+   sur mobile, et le manifeste met la sante avant l'esthetique. On retire l'involontaire, on
+   laisse le volontaire ; `smoke-typo` asserte les deux moities.
+
+   `--fs-field` n'est pas un palier esthetique de l'echelle R16.8 : c'est une CONTRAINTE de
+   plateforme, d'ou son role propre et sa portee limitee au pointeur grossier — au
+   clavier-souris, la saisie garde `--fs-lg` et le rendu ne bouge pas. */
+@media (pointer:coarse){
+  input,select,textarea,
+  input[type=text],input[type=number],input[type=date],input[type=time],input[type=email],
+  input.opt,select.opt,textarea.opt{font-size:var(--fs-field);}
+}
+
+/* U16 — LES LISTES D'EXPLICATION RESPIRENT.
+ *
+ * Retour du fondateur : « trop dense ». Mesuré en dépliant tous les blocs de l'onglet Plan —
+ * « Les décisions du moteur » sortait **1 214 caractères en 19 blocs sur 758 px**, empilés dans
+ * un `<ul>` sans séparation : neuf paragraphes collés les uns aux autres, l'intitulé, la valeur
+ * et la justification sur la même coulée de texte. Le contenu est bon, c'est sa mise en page qui
+ * en fait un mur.
+ *
+ * Trois niveaux au lieu d'un : l'intitulé devient une étiquette discrète, la VALEUR passe au
+ * premier plan (c'est ce qu'on vient chercher), la justification descend en gris plus aéré. On
+ * ne retire pas un mot — R11.2 et l'explicabilité restent entières. */
+.exp-list{list-style:none;margin:10px 0 0;padding:0;}
+.exp-row{padding:9px 0;border-top:1px solid var(--bg2,#e8e0cf);}
+.exp-row:first-child{border-top:none;padding-top:2px;}
+.exp-lbl{font-size:var(--fs-micro);text-transform:uppercase;letter-spacing:.06em;color:var(--text2);}
+.exp-val{font-size:var(--fs-md);font-weight:700;line-height:1.35;margin-top:1px;}
+.exp-why{font-size:var(--fs-sm);color:var(--text2);line-height:1.6;margin-top:4px;}
+/* « Pourquoi ce plan » : mêmes respirations, mais la phrase reste une phrase.
+ * MESURÉ, ET MA PREMIÈRE ÉCRITURE ÉTAIT INERTE : à 7 px de marge et 1,55 d'interligne, la carte
+ * passait de 513 à 514 px — les puces retirées rendaient exactement ce que les marges prenaient.
+ * Un correctif qui ne bouge pas le chiffre qu'il vise est du bruit ; c'est 1,58 caractère par
+ * pixel qu'il fallait faire baisser, et l'air se paie forcément en hauteur. */
+.exp-list.exp-plain .exp-row{padding:11px 0;}
+.exp-list.exp-plain .exp-row>div{font-size:var(--fs-md);line-height:1.62;}

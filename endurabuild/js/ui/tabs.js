@@ -8,24 +8,62 @@ import { renderTabProfile } from "./tab-profile.js";
 import { renderTabPlanGeneral } from "./tab-plan-general.js";
 import { renderTabToday } from "./tab-today.js";
 import { renderTabNutrition } from "./tab-nutrition.js";
+import { renderTabWeek } from "./tab-week.js";
 
 // Refonte R5 (retour utilisateur) : l'onglet CENTRAL 🎯 Aujourd'hui est l'écran du
 // quotidien (check-in diaporama → séance du jour → prédiction → charge → avancement),
 // mis en valeur dans la barre (classe tab-central). L'ancien Avancement y est fondu,
 // l'ancien Suivi est redistribué (avatar/badges → Profil, checklist → Aujourd'hui),
 // et 🥗 Nutrition devient un onglet à part entière.
-// R16.9 — 📅 Semaine disparaît à son tour : elle n'ajoutait qu'un recentrage sur la semaine
-// courante, que 🗓 Plan porte désormais en carte de tête. Quatre onglets. Un identifiant
-// d'onglet inconnu (un « week » gardé dans un état sauvegardé, un lien ancien) retombe sur
-// le dernier onglet par le repli déjà en place dans `renderActiveTab`.
+// R16.9 avait fondu 📅 Semaine dans 🗓 Plan (cinq onglets → quatre). R18.3 la RESTAURE, sur
+// retour du fondateur après test : « je préférais 5 onglets que 4, l'œil humain aime les
+// chiffres impairs ». Et il a une raison de plus que l'esthétique : 🎯 Aujourd'hui est
+// l'onglet CENTRAL du produit depuis R5 — avec quatre onglets, « central » n'existe pas.
+// L'ordre ci-dessous le place en TROISIÈME sur cinq, donc réellement au milieu.
+//
+// Ce que la restauration ne ramène PAS : la coche en deux versions. R16.9 avait découvert
+// que cocher depuis Semaine et cocher depuis Plan ne faisaient pas la même chose — le
+// nouveau `tab-week.js` consomme `weekGridHTML` et `toggleDone` comme 🗓 Plan, sans
+// redessiner sa propre grille. Un identifiant d'onglet inconnu retombe sur le dernier onglet
+// par le repli déjà en place dans `renderActiveTab`.
 const TABS = [
   ["profile", "\u{1F4CB}", "Profil", renderTabProfile],
   ["general", "\u{1F5D3}", "Plan", renderTabPlanGeneral],
   ["today", "\u{1F3AF}", "Aujourd’hui", renderTabToday],
+  ["week", "\u{1F4C5}", "Semaine", renderTabWeek],
   ["nutrition", "\u{1F957}", "Nutrition", renderTabNutrition],
 ];
 
 let activeTab = "today"; // défaut : l'onglet central — le point du matin d'abord
+
+/**
+ * U11 — LE JOUR OÙ LE PLAN EST CRÉÉ, ON MONTRE LE PLAN.
+ *
+ * Mesuré en traversant l'app comme un nouvel utilisateur : **8 écrans, 30 gestes** pour arriver
+ * au bout du questionnaire — et le tout premier écran affiché ensuite était le check-in, donc
+ * TROIS QUESTIONS DE PLUS. La personne vient de payer trente réponses pour voir son plan ; on
+ * lui en redemande.
+ *
+ * Le check-in en diaporama est juste — pour quelqu'un qui REVIENT. Il est faux à la seconde
+ * zéro, et c'est cette seconde-là qui décide si la personne reste. Même famille qu'U1, où
+ * consoler quelqu'un d'un décrochage qui n'avait pas eu lieu était pire qu'un reproche : une
+ * mécanique bonne au régime permanent, appliquée à un instant où elle n'a pas de sens.
+ *
+ * CE QUI NE CHANGE PAS : le portillon lui-même. 🎯 Aujourd'hui continue de demander le point du
+ * jour avant de montrer la séance, tous les jours, y compris le premier. On change l'onglet
+ * d'ARRIVÉE, pas la règle — et seulement le jour de la création (`plan_start`), parce qu'un
+ * check-in n'a de toute façon rien à adapter sur un plan qui n'a pas encore d'historique.
+ *
+ * ATTENTION À L'ORDRE, ET J'AI DÛ LE MESURER POUR LE VOIR. Ma première écriture testait
+ * `!!S.answers.plan_start && … === todayISO()` en commentant « ensurePlan a déjà posé
+ * plan_start à ce stade ». Faux : `renderPlan()` fait `invalidatePlan(); renderTabs();` et c'est
+ * `renderTabs` → `renderActiveTab` → `ensurePlan` qui pose l'ancre. Au moment du test, elle
+ * n'existe pas encore — la garde E2E est sortie rouge sur les trois critères. L'ancre ABSENTE
+ * est donc, elle aussi, le signe d'une création à l'instant.
+ */
+function jourDeCreation() {
+  return !S.answers.plan_start || S.answers.plan_start === todayISO();
+}
 
 /** Le SEUL endroit où le plan se (re)calcule. Invalidé par reset/Modifier/édition profil. */
 export function ensurePlan() {
@@ -157,6 +195,8 @@ export function setTab(id) {
 export function renderTabs() {
   S.onPlan = true;
   ebSave();
+  // U11 — l'arrivée sur le plan le jour de sa création.
+  if (jourDeCreation() && activeTab === "today") activeTab = "general";
   document.body.classList.add("has-tabs");
   let bar = $("ebTabbar");
   if (!bar) {

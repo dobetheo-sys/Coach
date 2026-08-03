@@ -68,7 +68,7 @@ const SPORTS = {
    Cœur commun + modules par sport (tri / run / bike / swim)
    ============================================================ */
 const PREMIUM_STEPS_DEF=[
-  {id:"recovery",title:"Sommeil & vie",eyebrow:"Premium — Récupération",why:"Le sommeil est ton 1er outil de récup, le stress de vie consomme la même capacité. Ils modulent ton plafond.",
+  {id:"recovery",title:"Sommeil & vie",eyebrow:"Réglage fin — Récupération",why:"Le sommeil est ton 1er outil de récup, le stress de vie consomme la même capacité. Ils modulent ton plafond.",
    render(){return '<div class="q"><span class="q-label">Sommeil moyen</span><div class="opts" data-key="sleep">'+opt("court","<6h30")+opt("moyen","6h30-7h30")+opt("bon",">7h30")+'</div></div>'
      +'<div class="q"><span class="q-label">Charge de vie</span><div class="opts" data-key="life_load">'+opt("legere","Légère")+opt("normale","Normale")+opt("lourde","Lourde")+'</div></div>';},
    valid(a){return a.sleep&&a.life_load;}},
@@ -86,7 +86,7 @@ const PREMIUM_STEPS_DEF=[
        '<div class="q"><span class="q-label">1er jour de tes dernières règles</span><div class="q-sub">Sert uniquement à situer les semaines. Rien n\'est transmis nulle part.</div><input type="date" id="qCycleStart" data-input="cycle_start" value="'+(a.cycle_start||"")+'" style="width:100%"></div>'
        +'<div class="q"><span class="q-label">Longueur de ton cycle (jours)</span><div class="q-sub">28 par défaut si tu ne sais pas.</div><input type="number" min="21" max="40" id="qCycleLen" data-input="cycle_len" value="'+(a.cycle_len||"28")+'" style="width:100%"></div>');},
    valid(a){return a.weight_lever&&(a.sex!=="F"||(a.cycle_sync&&(a.cycle_sync!=="oui"||a.cycle_start)));}},
-  {id:"races",title:"Courses intermédiaires",eyebrow:"Premium — Le chemin",why:"Des laboratoires avant le jour J : on place une récup juste après chacune, et un mini-affûtage avant les courses importantes.",
+  {id:"races",title:"Courses intermédiaires",eyebrow:"Réglage fin — Le chemin",why:"Des laboratoires avant le jour J : on place une récup juste après chacune, et un mini-affûtage avant les courses importantes.",
    render(){return '<div class="q"><span class="q-label">Des courses avant l\'objectif ?</span><div class="opts" data-key="races">'+opt("oui","Oui")+opt("non","Pas encore")+'</div></div><div id="racesB"></div>';},
    branches(a){
      branch("racesB",a.races==="oui",'<div class="branch"><div class="branch-tag">↳ Tes courses (dates pour les placer dans le calendrier)</div>'

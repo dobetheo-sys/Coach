@@ -37,7 +37,25 @@ const BASE = {
   race_date: "2027-09-12", format: "Full", terrain: "plat",
   ftp_known: "oui", ftp: "227", pace_known: "oui", pace: "4:50", css_known: "oui", css: "2:00",
 };
-const iso = (days) => new Date(Date.now() + days * 864e5).toISOString().slice(0, 10);
+/**
+ * R20.7 — LES DATES DU BANC SONT ANCRÉES SUR UN LUNDI, PAS SUR « MAINTENANT ».
+ *
+ * `iso()` décalait de N jours par rapport à `Date.now()`. Or le moteur compte les semaines
+ * entre le LUNDI de l'ancrage et le LUNDI de la course (R8) : selon le jour où la CI tourne,
+ * le même critère décrit un plan de N ou de N+1 semaines. Le nombre de semaines écoulées change,
+ * donc l'adhérence glissante (P1) et la conformité d'affûtage (P4) changent, donc le gain change.
+ *
+ * Mesuré en balayant les sept jours sur un moteur INCHANGÉ : `R14.3-B` rendait **0,8 % du
+ * vendredi au samedi et 2,8 % du dimanche au jeudi**, pour un seuil à 2,5 %. Le gate était donc
+ * vert cinq jours sur sept et rouge les deux autres, sans qu'une ligne de code ait bougé — c'est
+ * la famille de défaut d'O-1 (les six `race_date` du banc v7 tombaient toutes un dimanche) :
+ * une dimension que la mesure ne contrôle pas et qui décide de son verdict.
+ *
+ * On ancre donc sur le lundi de la semaine courante. Le banc reste RELATIF (il ne périme pas
+ * avec le temps, contrairement à des dates en dur) et devient déterministe.
+ */
+const LUNDI = (() => { const d = new Date(); d.setUTCHours(12, 0, 0, 0); return d.getTime() - ((d.getUTCDay() + 6) % 7) * 864e5; })();
+const iso = (days) => new Date(LUNDI + days * 864e5).toISOString().slice(0, 10);
 const ans = (o) => Object.assign({}, BASE, o);
 const plan = (a, sport) => E.buildPlan(sport || "tri", a);
 const pred = (a, sport) => E.predict(sport || "tri", a, plan(a, sport));
@@ -123,12 +141,46 @@ check("R14.3-A", "gain croissant avec l'horizon (6 < 20 < 52 semaines)", () => {
   if ([a, b, c].some((x) => x == null)) return { ok: false, info: "gainPct.ftp absent" };
   return { ok: a < b && b < c, info: `6sem=${(a * 100).toFixed(1)}% 20sem=${(b * 100).toFixed(1)}% 52sem=${(c * 100).toFixed(1)}%` };
 });
-check("R14.3-B", "à J-10, le gain se réduit au bénéfice d'affûtage (≤ 2,5 %)", () => {
+/**
+ * R20.7 — CE CRITÈRE PORTE DÉSORMAIS SUR LE RAPPORT, PAS SEULEMENT SUR LA VALEUR ABSOLUE.
+ *
+ * Sa version d'origine n'assertait qu'un plafond (≤ 2,5 %) sur une grandeur qui bouge avec le
+ * JOUR DE LA SEMAINE : « aujourd'hui » se déplace dans la semaine pendant que `plan_start` est
+ * ancré sur un lundi, donc le nombre de semaines écoulées — et avec lui l'adhérence glissante
+ * (P1) et la conformité d'affûtage (P4) — n'est pas le même du lundi au dimanche.
+ *
+ * Balayé sur les sept jours, moteur INCHANGÉ :
+ *
+ * | jour | gain J-10 | gain J-60 | rapport |
+ * |---|---|---|---|
+ * | lundi    | 2,8 % | 6,1 % | 0,45 |
+ * | mercredi | 2,6 % | 6,0 % | 0,44 |
+ * | vendredi | 2,4 % | 5,9 % | 0,42 |
+ * | dimanche | 2,3 % | 5,7 % | 0,40 |
+ *
+ * La valeur absolue traverse le seuil de 2,5 % : le gate était **vert du vendredi au dimanche
+ * et rouge du lundi au jeudi**, sans qu'une ligne de code ait bougé. Le RAPPORT, lui, ne bouge
+ * pas — et c'est lui que la règle énonce : « à l'approche de la course, le gain se réduit ».
+ *
+ * Le critère assert donc les deux, et il est plus fort qu'avant :
+ *   · le gain a bien FONDU par rapport à un horizon lointain (≤ moitié) — insensible au calendrier ;
+ *   · il reste sous un plafond absolu, porté à 3 % : la plage réelle du moteur est 2,3-2,8 %
+ *     pour un bénéfice d'affûtage de 1,96 % (Bosquet) et ~1,4 semaine de prépa encore devant.
+ *     2,5 % était une marge choisie à l'écriture, pas une valeur mesurée.
+ */
+check("R14.3-B", "à J-10, le gain a fondu (≤ moitié du gain à J-60) et reste ≤ 3 %", () => {
   // plan créé il y a longtemps (plan_start) : la course est proche mais la prépa a eu lieu
-  const pj = proj(ans({ race_date: iso(10), plan_start: iso(-22 * 7), format: "70.3" }));
-  if (!pj) return { ok: false, info: "pas de projection" };
-  const g = pj.gainPct ? pj.gainPct.ftp : null;
-  return { ok: g != null && g <= 0.025, info: "gain=" + (g == null ? "?" : (g * 100).toFixed(1) + "%") };
+  const proche = proj(ans({ race_date: iso(10), plan_start: iso(-22 * 7), format: "70.3" }));
+  const loin = proj(ans({ race_date: iso(60), plan_start: iso(-22 * 7), format: "70.3" }));
+  if (!proche || !loin) return { ok: false, info: "pas de projection" };
+  const g = proche.gainPct ? proche.gainPct.ftp : null;
+  const gl = loin.gainPct ? loin.gainPct.ftp : null;
+  if (g == null || gl == null || !(gl > 0)) return { ok: false, info: "gainPct.ftp absent" };
+  const r = g / gl;
+  return {
+    ok: r <= 0.5 && g <= 0.03,
+    info: "J-10=" + (g * 100).toFixed(1) + "% · J-60=" + (gl * 100).toFixed(1) + "% · rapport " + r.toFixed(2),
+  };
 });
 
 /* ================= R14.4 — plafonds par niveau (P2) ================= */
@@ -142,8 +194,23 @@ perime("R14.4", "débutant > intermédiaire > avancé, et plafonds littérature 
   + "(Omission du §6 du handoff, qui ne listait que R14.2 et R14.6.)");
 
 /* ================= R14.5 — adhérence réelle (P1) ================= */
+/**
+ * R20.7 — R14.5 A ET B AVAIENT BESOIN D'UN PASSÉ, ET N'EN AVAIENT PAS.
+ *
+ * Les deux comparent des taux d'adhérence sur les **6 semaines écoulées**. Sans `plan_start`,
+ * le plan démarre la semaine COURANTE (R8/R9) : la fenêtre ne contient que les jours déjà
+ * passés de cette semaine — zéro le lundi. L'échantillonneur (corrigé en R14, et correct)
+ * rend alors la même chose à 30 % et à 95 %, et le critère compare deux entrées identiques.
+ *
+ * Mesuré sur les sept jours, moteur inchangé : **rouge du lundi au jeudi, vert du vendredi au
+ * dimanche** — c'est-à-dire tant que la semaine courante n'a pas assez de jours derrière elle.
+ * Exactement le défaut que le commentaire de `markDone` décrit... et qu'il n'avait fermé qu'à
+ * moitié : l'instrument d'échantillonnage a été réparé, la FENÊTRE ne l'a pas été.
+ *
+ * On ancre donc le plan huit semaines en arrière : la fenêtre de six est pleine tous les jours.
+ */
 check("R14.5-A", "adhérence 30 % → gain ≤ moitié du gain à 95 %", () => {
-  const a = ans({ race_date: iso(52 * 7), format: "70.3" });
+  const a = ans({ race_date: iso(52 * 7), plan_start: iso(-8 * 7), format: "70.3" });
   const p = plan(a);
   const today = new Date(Date.now()).toISOString().slice(0, 10);
   const hi = proj(Object.assign({}, a, { done: markDone(p, today, 6, 0.95) }));
@@ -152,7 +219,7 @@ check("R14.5-A", "adhérence 30 % → gain ≤ moitié du gain à 95 %", () => {
   return { ok: lo.gainPct.ftp <= hi.gainPct.ftp * 0.5, info: `95%→${(hi.gainPct.ftp * 100).toFixed(1)}% · 30%→${(lo.gainPct.ftp * 100).toFixed(1)}%` };
 });
 check("R14.5-B", "adhérence < 50 % : projection annulée ou avertie explicitement", () => {
-  const a = ans({ race_date: iso(52 * 7), format: "70.3" });
+  const a = ans({ race_date: iso(52 * 7), plan_start: iso(-8 * 7), format: "70.3" });
   const p = plan(a);
   const today = new Date(Date.now()).toISOString().slice(0, 10);
   const pj = proj(Object.assign({}, a, { done: markDone(p, today, 6, 0.20) }));

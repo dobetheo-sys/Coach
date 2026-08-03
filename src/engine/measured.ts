@@ -122,8 +122,19 @@ export function arbitrateVolRecent(
   declaredRaw: string | number | null | undefined,
   m: MeasuredSnapshot | null | undefined,
 ): VolRecentArbitration {
+  // R20.1-a — ZÉRO EST UNE RÉPONSE, PAS UNE ABSENCE DE RÉPONSE.
+  //
+  // Le test était `dec > 0` : déclarer « je ne m'entraîne pas du tout en ce moment » était donc
+  // lu comme « je n'ai pas répondu », et la rampe R10 ne se déclenchait pas. Mesuré sur un
+  // profil `reprise` en préparation marathon : **semaine 1 à 3,9 h au lieu de 2,0 h** — presque
+  // le double, sur exactement la population que cette rampe existe pour protéger. Quelqu'un
+  // qui repart de zéro est celui à qui il faut le départ le plus prudent, et c'est lui qui
+  // recevait le départ le moins prudent.
+  //
+  // Trouvé par le balayage dérivé du schéma (R20.1), pas par un test écrit à la main : aucune
+  // liste de cas ne pensait à essayer la borne basse d'un domaine qui commence à 0.
   const dec = parseFloat(String(declaredRaw ?? ""));
-  const declared = isFinite(dec) && dec > 0 ? dec : null;
+  const declared = isFinite(dec) && dec >= 0 ? dec : null;
   const meas = measuredWeeklyHours(m);
   if (meas == null) {
     return { hours: declared, declared, measured: null, source: declared == null ? "aucun" : "declare", why: "" };

@@ -4,7 +4,7 @@
  * lissage sur métrique nage) : elles sont désormais des garde-fous DÉCLARÉS.
  */
 import type { V1Session, V1Step } from "../../engine/types.ts";
-import { C21_REPRISE_BRICK_FACTOR } from "../../engine/constraintMatrix.ts";
+import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS } from "../../engine/constraintMatrix.ts";
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { TRI_SWIM, TRI_BIKE, TRI_RUN } from "../../engine/predictor.ts";
@@ -67,9 +67,91 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
       // Répartition des intensités (manifeste) : le brick roule en Z2, le DERNIER TIERS
       // passe à l'allure course — la spécificité (transition, jambes entamées) est gardée
       // sans transformer 2 à 5h hebdo en zone grise (tri mesuré à 54-67% de temps facile).
-      S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : vélo en endurance, dernier tiers @ allure course, puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP.", det: "", steps: [
-        { role: "body", leg: "bike", durationMin: PT(bb.lo, Math.round(bb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string } as V1Step,
+      // R19.5 — LA PROSE NE PROMET PLUS CE QUE LA STRUCTURE NE PORTE PAS.
+      //
+      // La note disait « vélo en endurance, dernier tiers @ allure course » et le step portait
+      // `bk.z2` sur la TOTALITÉ du vélo. Mesuré sur un plan 70.3 : **881 min (14,7 h) d'allure
+      // course annoncées à l'athlète, portées par aucun step et comptées 100 % facile** par la
+      // répartition d'intensité. Un commentaire l'assumait pour ne pas faire tomber la part de
+      // temps facile — c'est-à-dire qu'on protégeait la MÉTRIQUE, pas le plan. Le dépôt a déjà
+      // payé cette leçon en R7 TRAIL : une intensité portée par une phrase n'existe pas.
+      //
+      // R20.5 — LE TIERS À ALLURE COURSE EXISTE ENFIN, PARCE QUE O-11 EST FERMÉ.
+      //
+      // R19.5 avait fermé le trou de PROSE (la note ne promet plus une intensité qu'aucun step
+      // ne porte) et laissé la structure de côté, avec deux motifs mesurés : le tiers en
+      // `bk.rp` mettait 58 combinaisons de tri sous le plancher de temps facile, et surtout
+      // `bk.rp` valait 0,80-0,88 de la FTP quand le jour J d'un 70.3 se roule à 0,76-0,83 —
+      // construire dessus aurait fait rouler plus dur que la course elle-même.
+      //
+      // Les deux motifs sont levés dans ce lot : `bk.rp` EST désormais l'allure course de
+      // l'épreuve (relief compris), et le plancher de temps facile n'est plus la règle qui
+      // gouverne l'intensité — C26c borne le temps DUR, or l'allure course vélo est MODÉRÉE.
+      // C'était la vraie raison de l'ordre de ces cinq lots.
+      //
+      // Deux blocs, un seul leg vélo pour l'auditeur (il somme) : les deux tiers en endurance,
+      // le dernier à l'allure exacte du jour J. Chaque bloc porte sa PART des bornes du format,
+      // sinon un brick coupé en deux hériterait deux fois du plancher.
+      // UN SEUL CRITÈRE, POUR DEUX DÉCISIONS. La bande d'allure course de l'épreuve décide à la
+      // fois de la CLASSE de l'effort (dur au-dessus de 0,85 × FTP — bas de la zone seuil de
+      // Coggan) et de l'EXISTENCE du tiers. Ce n'est pas une commodité : sur un sprint, la cible
+      // du jour J vaut 0,85–0,93 × FTP, c'est-à-dire du seuil, et le segment vélo de l'épreuve
+      // dure vingt minutes. Y ajouter un bloc de seuil DANS le brick, sur une enveloppe de 3 h,
+      // c'est charger de l'intensité que les séances de qualité portent déjà — mesuré : 30
+      // combinaisons de tri/S sous le plancher de temps facile, à 66-70 %. Sur un 70.3 ou un
+      // Ironman, l'allure course est au contraire une allure qu'on TIENT (0,70–0,83), et
+      // l'apprendre pendant des heures est précisément l'objet de la séance.
+      //
+      // Le brick d'un sprint garde donc son rôle : la transition. Celui d'un long y ajoute le
+      // pacing. C'est ce qu'un entraîneur ferait, et c'est ce que la mesure dit.
+      const rpBand = TRI_BIKE[fmt || ""];
+      const tiersRp = !!rpBand && rpBand.hi < 0.85;
+      const bikeTot = PT(bb.lo, Math.round(bb.hi * rf));
+      const bikeZ2 = tiersRp ? Math.max(1, Math.round(bikeTot * 2 / 3)) : bikeTot;
+      const bikeRp = Math.max(0, bikeTot - bikeZ2);
+      S2.push({ d: "br", long: true, brick: true, name: "Brick vélo+CAP", note: "Le brick simule la course : sortie longue à vélo en endurance, "
+        + (tiersRp
+          ? "DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), "
+          : "")
+        + "puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.", det: "", steps: [
+        Object.assign({ role: "body", leg: "bike", durationMin: bikeZ2, zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string } as V1Step, { share: tiersRp ? 2 / 3 : 1 }),
+        // `rpBand` accompagne le step : c'est la bande réelle de CETTE épreuve, et c'est elle
+        // qui décide si l'effort compte dur ou modéré (R20.5).
+        ...(tiersRp ? [Object.assign({ role: "body", leg: "bike", durationMin: bikeRp, zone: "bk.rp", intensity: intOf("bk.rp") as unknown as string, suffix: " à l'allure de ton jour J" } as V1Step, { share: 1 / 3, rpBand })] : []),
         { role: "body", leg: "run", durationMin: PT(br.lo, Math.round(br.hi * rf)), d: "rn" } as V1Step,
+      ], ...( { runInj } as object) });
+    } else if (phase === "taper" && !medHold && kit.weekNum < kit.r.weeks) {
+      // R18.4 — L'AFFÛTAGE GARDAIT LE VOLUME BAS ET PERDAIT LA SPÉCIFICITÉ.
+      // Mesuré sur les 4 formats × 2 niveaux : le dernier enchaînement vélo→course tombait
+      // TROIS SEMAINES avant le jour J, sur toutes les combinaisons. R13.4 avait branché
+      // l'affûtage explicitement sur `dur1` et `dur2` — `durLong`, lui, retombait encore
+      // dans le `else` générique et rendait une sortie longue à pied. Le triathlète arrivait
+      // donc au départ sans avoir posé le pied par terre après le vélo depuis 21 jours, sur
+      // la transition qui est précisément la difficulté propre du sport.
+      // Le swimrun, lui, garde sa séance pivot en affûtage (sa `durLong` n'a jamais eu de
+      // garde de phase) : le modèle existait déjà dans le dépôt, il n'était pas appliqué ici.
+      //
+      // Ce que l'affûtage change, ce n'est pas la NATURE de la séance, c'est sa DOSE : même
+      // motif, un tiers du volume du pic, allure course des deux côtés. Bosquet 2007 —
+      // l'affûtage réduit le volume, PAS l'intensité ni la spécificité.
+      const rf = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1;
+      // C21c — la bande vient de la matrice, pas d'une table recopiée ici : c'est elle que
+      // l'auditeur relit, et deux tables qui disent la même chose finissent par diverger.
+      const tbb = BRICK_TAPER_BIKE_BOUNDS[fmt] || [25, 45];
+      const tb = { lo: tbb[0], hi: tbb[1] };
+      const tr = ({ S: { lo: 6, hi: 10 }, M: { lo: 8, hi: 12 }, "70.3": { lo: 10, hi: 16 }, Full: { lo: 12, hi: 20 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 8, hi: 12 };
+      // LE LEG VÉLO ROULE EN Z2, PAS À L'ALLURE COURSE. Première écriture : `bk.rp` sur tout
+      // le bloc — mesuré par le banc v7, 158 profils de duathlon en violation de dose (48 min
+      // continues en zone haute). C'était juste, et pas seulement pour l'auditeur : 45 min à
+      // allure course EST une séance dure, c'est-à-dire l'exact contraire d'un affûtage.
+      // Même structure que le brick de pic : le corps en endurance, l'allure course rappelée
+      // sur la fin et portée par la consigne, jamais par la zone du bloc entier.
+      S2.push({ d: "br", long: true, brick: true, name: "Brick d'affûtage (rappel de transition)", note: "Court : on ne construit plus rien, on entretient. Vélo en endurance, les DIX dernières minutes à l'allure du jour J, puis on enchaîne vite. Les jambes ont besoin de se rappeler la sensation « de coton » des premières foulées après le vélo — c'est une compétence, elle se perd, et elle ne se rattrape pas le matin de la course. Un tiers du volume du brick de pic, zéro fatigue résiduelle.", det: "", steps: [
+        // Le PLANCHER du leg vélo est la borne basse AUDITÉE (C21c), pas une fraction d'elle :
+        // sinon la décroissance d'affûtage descend la séance sous ce que la spec exige, et le
+        // générateur produit ce que l'auditeur refuse. Même discipline que C21b en charge.
+        { role: "body", leg: "bike", durationMin: PT(tb.lo, Math.round(tb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string, bnd: { floor: tb.lo, cap: tb.hi } } as V1Step,
+        { role: "body", leg: "run", durationMin: PT(tr.lo, Math.round(tr.hi * rf)), d: "rn", bnd: { floor: Math.max(5, Math.round(tr.lo * 0.6)), cap: tr.hi } } as V1Step,
       ], ...( { runInj } as object) });
     } else {
       const longRunCaps = ({ S: { lo: 30, hi: 60 }, M: { lo: 40, hi: 75 }, "70.3": { lo: 50, hi: 100 }, Full: { lo: 60, hi: 140 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 50, hi: 100 };
@@ -115,11 +197,13 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
 
 /** Prédiction tri — extraction mécanique de la branche correspondante de `predictRace`. */
 export function predictTri(kit: PredictKit): void {
-  const { refs, format, items, advice, D, range, runRange, riegelSec, profWhy, bikeIF, bikeWhy } = kit;
+  const { refs, format, items, advice, D, range, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy } = kit;
   const sw = TRI_SWIM[format], bk = TRI_BIKE[format], rn = TRI_RUN[format];
   if (refs.css > 0 && sw) {
     const t = (sw.dist / 100) * refs.css * sw.factor;
-    items.push({ leg: "Natation " + sw.dist + "m", value: range(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" });
+    // R18.2 — la fourchette natation suit le MILIEU de la course. Le facteur `sw.factor` est
+    // calibré sur de l'eau libre calme : c'est le lac qui vaut 1, pas le bassin.
+    items.push({ leg: "Natation " + sw.dist + "m", value: swimRange(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" + swimWhy });
   } else advice.push("CSS manquant → pas de projection natation (test 400/200m).");
   if (refs.ftp > 0 && bk) {
     // R15.2 — la bande passe par `bikeIF` : le relief du parcours l'abaisse, une seule fois,
@@ -145,5 +229,5 @@ registerSport({
   retestTypes: ["css", "ftp", "thrPace"],
     // Le tri NAGE : il hérite des planchers de séance en mètres (C24/C24b), comme la natation.
   // C'est précisément ce que `sport !== "run"` disait de façon détournée.
-  guards: { stripLongOnMedHold: true, singleRunVo2PerWeek: true, smoothOnAuditMetric: true, capacityProbe: true, swimSessionFloors: true, swimRacePrepFrequency: true },
+  guards: { stripLongOnMedHold: true, singleRunVo2PerWeek: true, smoothOnAuditMetric: true, capacityProbe: true, swimSessionFloors: true, swimRacePrepFrequency: true, doublesAddVolume: true },
 });

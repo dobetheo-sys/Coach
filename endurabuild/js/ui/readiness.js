@@ -2,7 +2,25 @@
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
 import { $, S, ebSave, todayISO } from "../state.js";
 
-function fetchWeather(){return new Promise(res=>{
+// U7 — LA MÉTÉO SE CHERCHE PENDANT QUE L'ATHLÈTE RÉPOND, PAS APRÈS.
+//
+// Mesuré : après la dernière question du check-in, l'écran « ta séance arrive… » restait
+// **3,26 s** avant d'afficher la séance. Ce n'était pas une temporisation cosmétique — c'est
+// `fetchWeather` qui bloquait, sur le `timeout: 3000` de la géolocalisation, parce que la
+// séance était calculée APRÈS la météo (`await fetchWeather()` dans `applyReadinessSnap`).
+// Chaque matin, pour une donnée d'appoint.
+//
+// On ne retire pas la météo (manifeste §6 : la canicule durcit le verdict, la pluie donne des
+// consignes) et on ne réduit pas le timeout — un vrai téléphone met parfois deux secondes à se
+// localiser. On la lance simplement AU MOMENT OÙ LE DIAPORAMA S'OUVRE : l'athlète répond à
+// trois questions pendant ce temps, et la réponse est là quand il en a besoin. Zéro seconde
+// ajoutée, zéro comportement changé — juste l'attente déplacée là où elle ne se voit pas.
+//
+// Le cache est valable pour la journée : le check-in est rejouable (« ↻ Refaire mon point »)
+// et il serait absurde de re-localiser trois fois de suite. `maximumAge` faisait déjà ce
+// travail côté navigateur ; ici on couvre aussi l'appel HTTP.
+let _wxCache = null; // { date, promise }
+function requestWeather(){return new Promise(res=>{
   if(!navigator.geolocation)return res(null);
   const to=setTimeout(()=>res(null),3500);
   navigator.geolocation.getCurrentPosition(pos=>{
@@ -11,6 +29,13 @@ function fetchWeather(){return new Promise(res=>{
       .catch(()=>{clearTimeout(to);res(null);});
   },()=>{clearTimeout(to);res(null);},{timeout:3000,maximumAge:600000});
 });}
+/** Démarre la recherche météo sans l'attendre. Appelé à l'ouverture du check-in. */
+export function primeWeather(){
+  const d=todayISO();
+  if(!_wxCache||_wxCache.date!==d)_wxCache={date:d,promise:requestWeather()};
+  return _wxCache.promise;
+}
+function fetchWeather(){return primeWeather();}
 /** Verdict lisible + séances du jour, en HTML — factorisé pour le rendu direct ET le
  *  ré-affichage (retour à l'onglet Semaine sans re-décrocher la météo). */
 function verdictHTML(res,weather){

@@ -12,7 +12,7 @@
  */
 import type { V1Plan, V1Week } from "../harness/v1Harness.ts";
 import { sessionLoad, intensitySplit, DEFAULT_REFS, type AthleteRefs, type SessionLoad } from "../engine/loadModel.ts";
-import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS, easyShareFloor } from "../engine/constraintMatrix.ts";
+import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, easyShareFloor, hardTimeCapMin, C26c_HARD_TIME_TOLERANCE, C26d_MOD_SHARE_MAX } from "../engine/constraintMatrix.ts";
 
 // Les bornes brick vélo (audit 2, « jamais dépassées, même de peu ») vivent désormais dans la
 // matrice de contraintes : l'auditeur et le générateur lisent LE MÊME tableau. La copie locale
@@ -219,17 +219,32 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   if (frcInTaper > 0) hard.push(frcInTaper + " séance(s) de force (basse cadence) en semaine d'affûtage (R13.4 : même coût de récupération que la VO2max)");
 
   // ---- Audit 2 : bornes du brick vélo par format ----
+  // R18.4 — la règle connaît maintenant DEUX bricks. C21b borne celui qui CONSTRUIT (charge,
+  // spécifique, pic) ; C21c borne celui qui ENTRETIENT (affûtage), et son plafond est le
+  // plancher de C21b — un brick d'affûtage ne peut donc jamais être plus long que le plus
+  // court des bricks de charge. L'affûtage n'est PAS exempté : une bande de moins serait un
+  // trou par lequel une sortie de 2 h reviendrait en semaine d'affûtage sans un mot.
   let brickCapViolations = 0;
-  const bounds = opts.format ? BRICK_BIKE_BOUNDS[opts.format] : undefined;
+  const boundsCharge = opts.format ? BRICK_BIKE_BOUNDS[opts.format] : undefined;
+  const boundsTaper = opts.format ? BRICK_TAPER_BIKE_BOUNDS[opts.format] : undefined;
   for (const w of plan.weeks)
     for (const d of w.days)
       for (const s of d.sessions) {
         if (!s.brick || !s.steps) continue;
-        const bike = s.steps.find((st) => st.leg === "bike");
-        if (!bike || bike.durationMin == null || !bounds) continue;
-        if (bike.durationMin > bounds[1] || bike.durationMin < bounds[0]) {
+        // R20.5 — le leg vélo peut être en PLUSIEURS blocs (endurance puis allure course, depuis
+        // que `bk.rp` décrit l'allure course de l'épreuve). La borne du format porte sur le
+        // TEMPS DE VÉLO du brick : on somme. Lire le premier bloc seulement aurait rendu un
+        // brick conforme « trop court » du jour où on l'a coupé en deux — un check qui mesure
+        // un morceau de ce qu'il nomme.
+        const bikeLegs = s.steps.filter((st) => st.leg === "bike" && st.durationMin != null);
+        const taper = w.phase.id === "taper";
+        const bounds = taper ? boundsTaper : boundsCharge;
+        if (!bikeLegs.length || !bounds) continue;
+        const bikeMin = bikeLegs.reduce((t, st) => t + (st.reps || 1) * (st.durationMin || 0), 0);
+        if (bikeMin > bounds[1] || bikeMin < bounds[0]) {
           brickCapViolations++;
-          flags.push("S" + w.num + " : brick vélo " + bike.durationMin + "min hors bornes [" + bounds[0] + ", " + bounds[1] + "]");
+          flags.push("S" + w.num + " : brick vélo " + Math.round(bikeMin) + "min hors bornes "
+            + (taper ? "d'affûtage (C21c) " : "de charge (C21b) ") + "[" + bounds[0] + ", " + bounds[1] + "]");
         }
       }
   if (brickCapViolations > 0) hard.push(brickCapViolations + " brick(s) vélo hors bornes format (spec audit 2)");
@@ -349,13 +364,20 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   // ---- Manifeste : répartition des intensités (~80/20). Part FACILE du temps sur les
   // ---- semaines de charge : <70% = zone grise installée (dur), 70-73% = borderline (souple).
   let easyTot = 0, modTot = 0, hardTot = 0;
+  // C26c/C26d (R20.4) — les deux grandeurs se mesurent aussi PAR SEMAINE : un plafond de temps
+  // dur hebdomadaire ne se vérifie pas sur une moyenne de plan. Deux semaines à 20 et 100 min
+  // ont la même moyenne qu'un plan sage à 60, et ce n'est pas le même plan.
+  const perWeekHard: { num: number; hard: number; mod: number; tot: number }[] = [];
   for (const w of plan.weeks) {
     if (w.isRecup || w.phase.id === "taper") continue;
+    let wh = 0, wm = 0, we = 0;
     for (const d of w.days)
       for (const s of d.sessions) {
         const sp = intensitySplit(s, refs);
-        easyTot += sp.easyMin; modTot += sp.modMin; hardTot += sp.hardMin;
+        we += sp.easyMin; wm += sp.modMin; wh += sp.hardMin;
       }
+    easyTot += we; modTot += wm; hardTot += wh;
+    perWeekHard.push({ num: w.num, hard: wh, mod: wm, tot: we + wm + wh });
   }
   const easyShare = easyTot + modTot + hardTot > 0 ? easyTot / (easyTot + modTot + hardTot) : 1;
   // C26 — le plancher suit le VOLUME : 80/20 est la conséquence d'un plafond de temps dur
@@ -363,8 +385,50 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   // moins d'une heure de qualité — moins que ce qu'il faut pour maintenir la VO2max.
   const chargeMin = weeks.filter((w) => !w.isRecup && w.phaseId !== "taper").map((w) => w.prescribedMin);
   const meanChargeMin = chargeMin.length ? chargeMin.reduce((a, b) => a + b, 0) / chargeMin.length : 0;
+  // R20.5 — LE PLANCHER SE MESURE SUR LE RAPPORT QU'IL DÉRIVE, PAS SUR UN AUTRE.
+  //
+  // `easyShareFloor` vaut `1 − plafondDur / minutesHebdo` : la formule est dérivée du plafond
+  // de temps DUR, et de lui seul. Elle décrit donc le rapport `facile / (facile + dur)`. Elle
+  // était comparée à `facile / (facile + modéré + dur)` — une formule à deux seaux confrontée à
+  // une mesure sur trois. Ce n'est pas un problème de calibration, c'est une erreur d'unité,
+  // même espèce qu'O-13 (la rampe en heures de plan contre des heures d'eau).
+  //
+  // Ce que ça donnait, mesuré sur un tri/70.3 confirmé/débutant : **70 % facile · 27 % modéré ·
+  // 3 % DUR**, en violation d'une règle dont la justification écrite est de borner le travail
+  // dur. Le même plan vaut **96 %** sur le rapport que la formule décrit réellement. Une règle
+  // qui déclare un plafond de dur et refuse un plan à 3 % de dur ne mesure pas ce qu'elle dit.
+  //
+  // Le modéré n'est pas pour autant libre : **C26d** le borne pour lui-même (40 %), ci-dessous.
+  // C'est la séparation que R20.4 a posée, appliquée jusqu'au bout.
+  //
+  // `easyShare` (facile / tout) reste calculé et EXPOSÉ tel quel : c'est le chiffre que le
+  // dashboard « répartition des intensités » affiche à l'athlète, et le sens usuel du ~80/20.
+  // On ne change pas ce qu'on montre, on change ce sur quoi on juge.
   const easyFloor = easyShareFloor(meanChargeMin, { history: opts.history, level: opts.level, injured: !!opts.injured });
-  if (easyShare < easyFloor) hard.push("répartition des intensités : " + Math.round(easyShare * 100) + "% de temps facile (<" + Math.round(easyFloor * 100) + "% pour " + Math.round(meanChargeMin / 6) / 10 + "h/sem — zone grise, manifeste ~80/20)");
+  const easyVsHard = easyTot + hardTot > 0 ? easyTot / (easyTot + hardTot) : 1;
+  if (easyVsHard < easyFloor) hard.push("répartition des intensités : " + Math.round(easyVsHard * 100) + "% de temps facile RAPPORTÉ AU TEMPS DUR (<" + Math.round(easyFloor * 100) + "% pour " + Math.round(meanChargeMin / 6) / 10 + "h/sem — zone grise, manifeste ~80/20)");
+
+  // ---- C26c/C26d (R20.4) — LA RÈGLE MESURE ENFIN CE QUE SA JUSTIFICATION DIT ----
+  //
+  // C26 déclare depuis toujours que la grandeur physiologique est le PLAFOND DE TEMPS DUR
+  // hebdomadaire, et que la part de facile en est la conséquence arithmétique. Seule la
+  // conséquence était vérifiée — et sur un dénominateur qui mélange le modéré et le dur.
+  // Mesuré avant correction sur 7 356 semaines de charge : **1 095 (15 %) au-dessus du plafond
+  // que C26 déclare**, jusqu'à 112 min de dur chez un DÉBUTANT dont le plafond est 25 ; et le
+  // modéré, seul puni par l'ancienne formulation, ne débordait que 2 fois sur 7 356.
+  const capHard = hardTimeCapMin({ history: opts.history, level: opts.level, injured: !!opts.injured });
+  const overHard = perWeekHard.filter((w) => w.hard > capHard * C26c_HARD_TIME_TOLERANCE);
+  if (overHard.length) {
+    const pire = overHard.reduce((x, y) => (y.hard > x.hard ? y : x));
+    hard.push("C26c : " + overHard.length + " semaine(s) au-dessus du plafond de temps DUR ("
+      + capHard + " min/sem pour ce profil) — pire : S" + pire.num + " à " + Math.round(pire.hard) + " min");
+  }
+  const overMod = perWeekHard.filter((w) => w.tot > 0 && w.mod / w.tot > C26d_MOD_SHARE_MAX);
+  if (overMod.length) {
+    const pire = overMod.reduce((x, y) => (y.mod / y.tot > x.mod / x.tot ? y : x));
+    hard.push("C26d : " + overMod.length + " semaine(s) à plus de " + Math.round(C26d_MOD_SHARE_MAX * 100)
+      + "% de temps MODÉRÉ (zone grise) — pire : S" + pire.num + " à " + Math.round((pire.mod / pire.tot) * 100) + "%");
+  }
 
   // ---- Cohérence : une nage FACILE/RÉCUP ne dépasse jamais la « longue » de sa semaine
   // (une « Récup eau » de 2150m n'est pas une récup). Les séances de qualité (jours durs)

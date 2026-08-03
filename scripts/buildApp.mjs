@@ -60,6 +60,9 @@ const ORDER = [
   "src/generator/repairLoop.ts",
   "src/engine/projection.ts",
   "src/engine/predictor.ts",
+  // RV — le diagnostic de faisabilité (chrono visé). Après `predictor` : il en importe
+  // `riegelExponent`, et après `projection` dont il lit les constantes de régime (P11).
+  "src/engine/feasibility.ts",
   "src/readiness/readinessSource.ts",
   "src/readiness/fitParser.ts",
   "src/readiness/dailyAdjuster.ts",

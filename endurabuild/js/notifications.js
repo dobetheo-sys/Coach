@@ -60,15 +60,35 @@ export function scheduleDailyNotification(plan) {
   }
 }
 
-/** 3 séances manquées consécutives → relance UNIQUE, encourageante, reprise allégée. */
+/** 3 séances manquées consécutives → relance UNIQUE, encourageante, reprise allégée.
+ *
+ *  U1 — UNE SÉANCE ANTÉRIEURE AU PLAN N'EST PAS UNE SÉANCE MANQUÉE.
+ *
+ *  Le plan démarre au LUNDI de la semaine en cours (R8/R9) : c'est la bonne décision, elle
+ *  évite d'attendre une semaine pour commencer. Mais elle place des jours d'entraînement AVANT
+ *  la création du plan, et cette fonction ne comptait que « non coché et passé » — donc elle ne
+ *  distinguait pas « tu as décroché » de « ton plan n'existait pas encore ».
+ *
+ *  Mesuré, sur les sept jours de la semaine à date figée : un plan de triathlon créé un
+ *  DIMANCHE accueillait l'athlète, sur son tout PREMIER écran, par « La vie a pris le dessus —
+ *  trois séances sont passées ». Le message est bienveillant ; son déclenchement ne l'était
+ *  pas. Toute la boucle de rétention (R4) est construite pour ne jamais reprocher — consoler
+ *  quelqu'un qui n'a rien fait de mal est pire qu'un reproche, parce que ça se produit à la
+ *  seconde où il vient d'accorder sa confiance.
+ *
+ *  `plan_start` est posé à la création du plan (`tabs.js`) et porte déjà exactement
+ *  l'information manquante. Sans lui (plans d'avant ce champ), on ne change rien : le
+ *  comportement d'origine reste le repli.
+ */
 export function missedSessionsCheck(plan) {
   const done = S.answers.done || {};
   const sick = S.answers.sickDates || [];
   const pf = S.answers.painFlag;
   const today = todayISO();
-  let missed = 0, lastMissedDate = null;
+  const depuis = S.answers.plan_start || null; // U1 — rien avant ça ne peut être « manqué »
+  let missed = 0, lastMissedDate = null, firstMissedDate = null;
   const days = [];
-  plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date && d.date < today) days.push({ w, d }); }));
+  plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date && d.date < today && (!depuis || d.date >= depuis)) days.push({ w, d }); }));
   days.sort((a, b) => a.d.date.localeCompare(b.d.date));
   for (let i = days.length - 1; i >= 0; i--) {
     const { w, d } = days[i];
@@ -78,12 +98,46 @@ export function missedSessionsCheck(plan) {
     if (!sessions.length) continue; // les jours de repos n'entrent pas dans le compte des « séances manquées »
     if (sick.includes(d.date) || (pf && pf.active && pf.since && d.date >= pf.since)) continue; // gel : pas une « séance manquée »
     if (sessions.every((x) => done[x.k])) break;
-    missed++; if (!lastMissedDate) lastMissedDate = d.date;
+    missed++;
+    if (!lastMissedDate) lastMissedDate = d.date;
+    firstMissedDate = d.date; // on remonte le temps : le dernier vu est le PLUS ANCIEN du décrochage
   }
   if (missed < 3) return "";
-  const key = "relance-" + lastMissedDate;
-  const alreadySent = S.answers.relanceSent === key;
-  if (!alreadySent) { S.answers.relanceSent = key; ebSave(); notify("On reprend en douceur ?", "3 séances sont passées — aucune importance. Une reprise facile en Z2 et la machine repart."); }
+
+  // U10 — « UNE seule fois, jamais de rafale ». C'est écrit en tête de ce module depuis son
+  // écriture, et le garde ne couvrait que la NOTIFICATION : le bandeau, lui, était recalculé et
+  // ré-affiché à chaque rendu.
+  //
+  // Mesuré sur un plan de 10 semaines où l'athlète ne coche jamais rien : le bandeau apparaît à
+  // **J+7 et il est encore là à J+70** — soit 64 jours d'affilée, la VEILLE de la course et LE
+  // JOUR J compris. Le matin de sa course, la personne lisait :
+  //
+  //     🏁 Jour de course. Tout le travail est fait — départ prudent, finis fort.
+  //     🌿 La vie a pris le dessus — trois séances sont passées…
+  //
+  // Un message écrit pour relever quelqu'un une fois devient un reproche permanent quand il ne
+  // s'éteint jamais. Même famille qu'U1 : la boucle de rétention qui se retourne contre celui
+  // qu'elle protège.
+  //
+  // La clé est le PREMIER jour du décrochage en cours, pas le dernier : le dernier change
+  // chaque jour, donc y indexer le « déjà montré » ne dampait rien. Avec le premier, la clé
+  // reste stable tant que l'athlète ne reprend pas — un message par ÉPISODE. Qu'il reprenne
+  // puis décroche à nouveau, et un nouvel épisode donne un nouveau message : c'est bien ce
+  // qu'on veut.
+  const key = "relance-" + firstMissedDate;
+  if (S.answers.relanceSent === key) return ""; // déjà dit pour ce décrochage-ci
+
+  // U10b — jamais la veille ni le jour d'une course. R13.4 a établi que le jour J n'est pas un
+  // jour d'entraînement ; lui superposer un rappel de séances manquées est le pire moment que
+  // le produit puisse choisir.
+  const courses = (plan.races || []).map((r) => r.date);
+  if (S.answers.race_date) courses.push(S.answers.race_date);
+  const demain = new Date(new Date(today + "T00:00:00Z").getTime() + 864e5).toISOString().slice(0, 10);
+  if (courses.includes(today) || courses.includes(demain)) return "";
+
+  S.answers.relanceSent = key;
+  ebSave();
+  notify("On reprend en douceur ?", "3 séances sont passées — aucune importance. Une reprise facile en Z2 et la machine repart.");
   return '<div class="warn" style="background:#e9defc">🌿 <b>La vie a pris le dessus — ça arrive.</b> '
     + 'Trois séances sont passées, et ce n’est ni grave ni un échec : le plan encaisse. '
     + 'Reprends par la prochaine séance FACILE telle quelle, sans rien rattraper — la régularité sur toute la préparation compte plus qu’une semaine parfaite.</div>';

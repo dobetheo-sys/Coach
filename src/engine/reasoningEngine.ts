@@ -10,6 +10,7 @@ import type { AthleteProfile, Decision, Phase, ReasonedPlan } from "./types.ts";
 import {
   MIN_WEEKS, HISTORY_CAPS, UTIL, MARGIN, RECUP_FACTORS, PHASE_PCTS,
   BANDS, C22_MAX_WEEKLY_GROWTH, RECUP_WEEK_FACTOR, RECUP_EVERY,
+  TAPER_WEEKS_BY_FORMAT, TAPER_WEEKS_BY_TRAIL_CAT,
   BEGINNER_SWIM_VOLPEAK_CAP_H, SWIM_TIME_FACTOR, C20_BEGINNER_SWIM_H_PER_SESSION,
   MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, R6_AGE_LOAD, R6_PAIN_CONTRAINDICATION, readInjuries, boundedOrZero,
   parsePaceSec,
@@ -266,7 +267,15 @@ export class TrainingReasoningEngine {
     // bouge pas, C19 (peak ≥ 1) tient toujours.
     {
       const [, dev, spc, pk, tap] = phases;
-      const tapMax = Math.max(1, Math.min(Math.round(0.10 * weeks), weeks >= 30 ? 3 : 2));
+      // R19.3 — la durée d'affûtage vient d'abord du FORMAT DE COURSE (ce qui décide, c'est la
+      // charge accumulée et la durée de l'épreuve), et seulement ensuite de la longueur de la
+      // préparation. Prendre le min des deux : un plan court ne donne pas trois semaines
+      // d'affûtage à un Ironman, et un plan long n'en donne pas trois à un sprint.
+      const parFormat = a.sport === "trail"
+        ? (TAPER_WEEKS_BY_TRAIL_CAT[tObj?.category as string] ?? 2)
+        : (TAPER_WEEKS_BY_FORMAT[sp as string]?.[String(a.format ?? "")] ?? 2);
+      const parPrepa = Math.max(1, Math.min(Math.round(0.10 * weeks), weeks >= 30 ? 3 : 2));
+      const tapMax = Math.max(1, Math.min(parFormat, parPrepa));
       const pkMax = 5;
       let surplus = 0;
       if (tap.weeks > tapMax) { surplus += tap.weeks - tapMax; tap.weeks = tapMax; }
@@ -424,6 +433,16 @@ export class TrainingReasoningEngine {
       trailLongCapMin,
       baseRefs: { ftp, thrPace, css },
       hz,
+      // R20.2 — les maillons sont transmis, pas seulement leur produit : c'est ce qui permet
+      // au générateur de nommer celui qui a le plus retiré au lieu d'annoncer un pic sans
+      // explication. `load` (blessure × âge) n'est pas ici : il s'applique en aval, APRÈS la
+      // sonde de capacité, et le générateur le lit dans `loadFactor`.
+      volLimits: {
+        declared: volMax, caps, util, marg, recup: recupFactor,
+        swimTime: guard(sp as string, "swimTimeFactor") ? SWIM_TIME_FACTOR : 1,
+        med: medFactor,
+        sessionsMax: parseInt(a.sessions_max || "7") || 7, budget: budgetPerWeek,
+      },
     };
   }
 }

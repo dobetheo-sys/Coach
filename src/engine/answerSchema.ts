@@ -19,7 +19,8 @@
  * Interdit : rendre un plan sans qu'aucun des trois canaux ne se soit exprimé.
  */
 import type { AthleteProfile } from "./types.ts";
-import { MIN_WEEKS } from "./constraintMatrix.ts";
+import { MIN_WEEKS, parsePaceSec } from "./constraintMatrix.ts";
+import { margeOf } from "./projection.ts";
 import { trailObjective, T6_MIN_WEEKS } from "./trailModel.ts";
 
 /** Refus d'entrée : porteur de la clé, de la valeur reçue et de ce qui était attendu. */
@@ -140,8 +141,8 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   intent: { ...enumF("ton intention", ["competition", "finir", "plaisir"]), fallback: "plaisir/finir (marge de 0,9 sur le volume)" , nature: "vecue" },
   level: { ...enumF("ton niveau", ["debutant", "inter", "avance"]), fallback: "inter" , nature: "estimee" },
   history: { ...enumF("ton historique d'entraînement", ["reprise", "confirme", "ancien"]), fallback: "confirme" , nature: "vecue" },
-  dispo: { ...enumF("ta disponibilité", ["quotidienne", "semaine", "partielle", "weekend"]), nature: "vecue" },
-  doubles: { ...enumF("les doubles séances", ["oui", "parfois", "non"]), nature: "vecue" },
+  dispo: { ...enumF("ta disponibilité", ["quotidienne", "semaine", "partielle", "weekend"]), fallback: "partielle (le défaut se choisit dans le sens de la sécurité, pas de la commodité)" , nature: "vecue" },
+  doubles: { ...enumF("les doubles séances", ["oui", "parfois", "non"]), fallback: "non (aucune seconde séance dans la journée)" , nature: "vecue" },
   off_days: { ...enumF("les jours bloqués", OUI_NON), nature: "vecue" },
   off_which: { type: "csv", label: "tes jours bloqués", domain: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] , nature: "vecue" },
   shift_ok: { ...enumF("le décalage de tes jours", OUI_NON), nature: "vecue" },
@@ -172,11 +173,11 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   race_date: { type: "date", label: "la date de ta course" , nature: "vecue" },
   plan_start: { type: "date", label: "le départ de ton plan" , nature: "vecue" },
   // ---- Références mesurées ----
-  ftp_known: { ...enumF("« connais-tu ta FTP »", OUI_NON), nature: "vecue" },
-  pace_known: { ...enumF("« connais-tu ton allure seuil »", OUI_NON), nature: "vecue" },
-  css_known: { ...enumF("« connais-tu ton CSS »", OUI_NON), nature: "vecue" },
+  ftp_known: { ...enumF("« connais-tu ta FTP »", OUI_NON, ["bike", "tri", "duathlon"]), nature: "vecue" },
+  pace_known: { ...enumF("« connais-tu ton allure seuil »", OUI_NON, ["run", "trail", "tri", "duathlon", "swimrun"]), nature: "vecue" },
+  css_known: { ...enumF("« connais-tu ton CSS »", OUI_NON, ["swim", "tri", "swimrun"]), nature: "vecue" },
   vam_known: { ...enumF("« connais-tu ta VAM »", OUI_NON, ["trail"]), nature: "vecue" },
-  ftp: { ...numF("ta FTP", 50, 600, "W"), nature: "mesuree" },
+  ftp: { ...numF("ta FTP", 50, 600, "W", ["bike", "tri", "duathlon"]), nature: "mesuree" },
   vam: { ...numF("ta VAM", 200, 2500, "m/h", ["trail"]), nature: "mesuree" },
   // R12.1 — la montée VÉCUE : deux chiffres que tout le monde peut donner, d'où l'on déduit
   // la VAM. Bornes larges à dessein : c'est un souvenir, pas un protocole.
@@ -192,17 +193,44 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   // Poids cible : JAMAIS proposé ni suggéré par l'outil (P9). Il n'existe que si l'athlète a
   // demandé le levier ET saisi la valeur lui-même, et il ne produit qu'une SENSIBILITÉ.
   weight_target: { ...numF("ton poids cible", 35, 200, "kg"), nature: "vecue" },
+  // R20.1 — LES CLÉS SONT DÉCLARÉES POUR LES SPORTS OÙ ELLES ONT UN SENS, et pour eux seuls.
+  // Le balayage dérivé du schéma (`audit:sensibilite`) a montré ce que coûtait l'inverse : la
+  // FTP était déclarée pour la COURSE À PIED et la NATATION, `terrain` pour la natation et le
+  // swimrun, l'accès au tapis pour les sept sports. Ces clés y étaient évidemment inertes —
+  // et une clé inerte noyait le signal des VRAIES inerties dans le rapport. Un schéma qui
+  // sur-déclare rend sa propre garde illisible.
   // ---- Terrain / milieu ----
-  terrain: { ...enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"]), nature: "vecue" },
+  terrain: { ...enumF("ton terrain", ["plat", "vallonne", "montagne", "route", "trail", "piste", "mixte"], ["run", "bike", "tri", "duathlon"]), nature: "vecue" },
+  // ---- R18.2 — LE PROFIL DE COURSE PAR DISCIPLINE ----
+  // Retour du fondateur après test : « dans la construction avancée je veux qu'on définisse
+  // le profil de la course (ex triathlon : eau vive, vélo montagneux, course plate) ».
+  // Il a raison sur un point qu'aucune règle du dépôt ne couvrait : R14.3-a a unifié
+  // `terrain` et `course_profile` en UNE clé — ce qui était le bon geste contre la divergence
+  // silencieuse —, mais cette clé unique décrit le parcours comme s'il était homogène. Un
+  // triathlon ne l'est jamais : on peut nager en eau vive, rouler en montagne et courir à
+  // plat, et les trois corrections sont indépendantes. Une clé globale en applique une
+  // troisième, fausse pour les trois.
+  //
+  // Ces clés ne remplacent pas la clé globale, elles la SPÉCIALISENT : `legProfileOf()`
+  // retombe dessus quand un leg n'est pas renseigné, exactement comme `courseProfileOf`
+  // retombe sur `terrain`. Un seul chemin, trois niveaux de précision — la leçon de R14.3-a
+  // tient, on ne recrée pas deux vocabulaires.
+  //
+  // Le milieu de nage a son propre domaine parce que ce n'est PAS un relief : « montagneux »
+  // ne veut rien dire dans l'eau, et l'incertitude n'y est pas de même nature (un courant
+  // peut porter autant que freiner — voir SWIM_ENV dans `predictor.ts`).
+  leg_swim_env: { ...enumF("le milieu de nage de ta course", ["bassin", "lac", "mer_calme", "mer_agitee", "eau_vive"], ["tri", "swimrun"]), nature: "vecue" },
+  leg_bike_prof: { ...enumF("le profil du parcours vélo", ["plat", "vallonne", "montagne"], ["tri", "duathlon"]), nature: "vecue" },
+  leg_run_prof: { ...enumF("le profil du parcours à pied", ["plat", "vallonne", "montagne"], ["tri", "duathlon", "swimrun"]), nature: "vecue" },
   milieu: { ...enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim"]), nature: "vecue" },
   swim_limit: { ...enumF("ta limite en natation", ["technique", "respiration", "endurance", "peur"], ["swim"]), nature: "vecue" },
-  treadmill: { ...enumF("l'accès au tapis", OUI_NON), nature: "vecue" },
+  treadmill: { ...enumF("l'accès au tapis", OUI_NON, ["trail"]), nature: "vecue" },
   // ---- Trail ----
   race_technicity: { ...enumF("la technicité de ta course", ["roulant", "mixte", "technique", "alpin"], ["trail"]), nature: "vecue" },
   race_night: { ...enumF("la part de nuit", ["non", "partielle", "majoritaire"], ["trail"]), nature: "vecue" },
   train_dplus_access: { ...enumF("le dénivelé accessible", ["plat", "collines", "montagne"], ["trail"]), nature: "vecue" },
   poles: { ...enumF("les bâtons", ["oui", "non", "a_decider"], ["trail"]), nature: "vecue" },
-  race_distance_km: { ...numF("la distance de ta course", 1, 500, "km", ["trail", "swimrun"]), requiredFor: ["trail"] , nature: "vecue" },
+  race_distance_km: { ...numF("la distance de ta course", 1, 500, "km", ["trail"]), requiredFor: ["trail"] , nature: "vecue" },
   race_dplus_m: { ...numF("le D+ de ta course", 0, 30000, "m", ["trail"]), required: true , nature: "vecue" },
   race_cutoff_h: { ...numF("la barrière horaire", 1, 200, "h", ["trail"]), nature: "vecue" },
   // ---- Swimrun ----
@@ -215,7 +243,12 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   run_total_km: { ...numF("la course totale de ton épreuve", 1, 200, "km", ["swimrun"]), nature: "vecue" },
   longest_swim_m: { ...numF("ta plus longue nage", 50, 10000, "m", ["swimrun"]), nature: "vecue" },
   segments_n: { ...numF("le nombre de segments", 2, 60, "", ["swimrun"]), nature: "vecue" },
-  water_temp_c: { ...numF("la température de l'eau", -2, 35, "°C", ["swimrun"]), nature: "vecue" },
+  // R19.2 — le triathlon aussi. La combinaison vaut 4 à 7 % de temps de nage et sa légalité
+  // est un SEUIL RÉGLEMENTAIRE (24,5 °C) : c'est la variable dominante du leg natation, et
+  // elle n'existait que pour le swimrun. R18.2 avait ajouté par-dessus un raffinement de
+  // ±5 % (mer calme vs mer agitée) sur un modèle où ce facteur-là manquait — l'ordre de
+  // grandeur était inversé.
+  water_temp_c: { ...numF("la température de l'eau", -2, 35, "°C", ["swimrun", "tri"]), nature: "vecue" },
   team_swim_gap_sec: { ...numF("l'écart de nage du binôme", 0, 120, "s/100m", ["swimrun"]), nature: "mesuree" },
 };
 
@@ -412,10 +445,32 @@ export function validateAnswers(sport: string, raw: Record<string, unknown>, tod
     if (need && weeksFromAnchor >= 1 && weeksFromAnchor + 1 < need) {
       const shorter = (formats || []).slice(0, Math.max(0, (formats || []).indexOf(String(a.format))));
       const okDate = new Date(new Date(today + "T00:00:00Z").getTime() + need * 7 * 864e5).toISOString().slice(0, 10);
+      const reste = weeksFromAnchor + 1;
+      // U9 — LE REFUS NOMME CE QUE L'ATHLÈTE A DEMANDÉ, PAS UN IRONMAN.
+      //
+      // La dernière phrase était écrite en dur : « Te vendre une préparation d'Ironman en un
+      // mois serait te mentir ». Mesuré : **9 refus sur 9** la servaient, sur les SEPT sports —
+      // un nageur qui prépare un 1500 m et un coureur qui prépare un 10 km s'entendaient parler
+      // d'Ironman. C'est le moment le plus honnête du produit (il refuse une préparation pour
+      // ne pas blesser) et il montrait qu'il ne lisait pas la réponse saisie : la crédibilité
+      // d'un « non » tient entièrement à ça.
+      //
+      // On ne fabrique PAS de table de libellés ici : les noms lisibles des formats vivent dans
+      // `config.js`, côté UI, et en dupliquer une seconde copie dans le schéma créerait deux
+      // sources de vérité pour la même chose. La phrase se passe du libellé — « cette
+      // préparation », c'est la sienne, et c'est plus juste qu'une étiquette de catalogue.
+      //
+      // U9b — et on ne propose plus « un format plus court » quand il n'en existe aucun : sur
+      // le format le plus court du sport (tri/S mesuré), l'ancienne phrase envoyait chercher
+      // une issue qui n'existe pas.
+      const issues = sport === "trail"
+        ? ["viser une course plus courte (distance et D+)"]
+        : shorter.length ? ["viser un format plus court (" + shorter.join(", ") + ")"] : [];
+      issues.push("viser une course à partir du " + okDate);
       throw new EBInputError("race_date", race, "au moins " + need + " semaines avant la course",
-        "Il reste " + (weeksFromAnchor + 1) + " semaine(s) avant ta course, et une préparation honnête de ce format en demande au moins " + need + ". "
-        + "Deux issues : viser " + (sport === "trail" ? "une course plus courte (distance et D+)" : "un format plus court" + (shorter.length ? " (" + shorter.join(", ") + ")" : ""))
-        + ", ou une course à partir du " + okDate + ". Te vendre une préparation d'Ironman en un mois serait te mentir, et te blesser.");
+        "Il reste " + reste + " semaine(s) avant ta course, et une préparation honnête de ce format en demande au moins " + need + ". "
+        + (issues.length > 1 ? "Deux issues : " + issues[0] + ", ou " + issues[1] : "Une seule issue : " + issues[0])
+        + ". Te vendre cette préparation en " + reste + " semaine" + (reste > 1 ? "s" : "") + " serait te mentir, et te blesser.");
     }
   }
 
@@ -447,6 +502,70 @@ export function validateAnswers(sport: string, raw: Record<string, unknown>, tod
   if (a.css_known === "oui" && (a.css == null || a.css === "")) {
     warnings.push("Tu as répondu connaître ton CSS mais aucune valeur n'est enregistrée : le plan travaille sur une estimation.");
   }
+  // ---- O-17 — LA CAPACITÉ QUI DÉPASSE L'HISTORIQUE DE CHARGE ----
+  //
+  // Cas réel : ancien sportif de haut niveau, cinq ans sans rien, première course à 5'30/km sur
+  // 13 min terminée à 185 BPM. Le moteur musculaire et neuromusculaire est conservé, le système
+  // aérobie est à zéro, et les tissus conjonctifs n'ont rien encaissé depuis cinq ans.
+  //
+  // Mesuré — deux profils déclarant tous deux `vol_recent = 0`, même format, même volume max :
+  // la semaine 1 est IDENTIQUE (4 séances, 118 min), mais la séance de seuil tourne à 5'45/km
+  // pour l'ancien sportif contre 7'00/km pour le vrai débutant. Le volume est bien protégé par
+  // la rampe R10 ; l'INTENSITÉ, elle, suit la capacité mesurée sans rien savoir de l'historique
+  // de charge. Et rien n'arrête cet athlète, puisqu'il en est physiquement capable.
+  //
+  // POURQUOI UN AVERTISSEMENT ET NON UNE CONTRAINTE — décision du fondateur (02/08/2026) :
+  // « notre rôle est d'informer au mieux et de laisser l'athlète choisir entre son besoin de
+  // résultats ou de sécurité ; le but n'est jamais de bloquer mais d'accompagner au mieux, sauf
+  // si réelle mise en danger. » Ce cas n'est pas une mise en danger au sens des garde-fous durs
+  // (drapeau médical, drapeau douleur, mineur × format, garde IMC, course trop proche) : c'est
+  // un risque RÉEL mais assumable, et brider un athlète capable a son propre coût — celui du
+  // plan qu'il quitte pour s'entraîner seul, sans aucun garde-fou. La régularité est priorité 3.
+  //
+  // LE DÉCLENCHEUR EST MESURÉ, PAS DÉCLARÉ. `history = "ancien"` existe dans ce schéma, et
+  // R14.1 l'a délibérément dépouillé de tout pouvoir sur les chiffres (« un adjectif
+  // auto-déclaré ne pilote aucun chiffre »). On ne le réhabilite pas : on croise deux MESURES
+  // que le questionnaire collecte déjà — le volume récent (R10, obligatoire) et la référence
+  // saisie. Une capacité de coureur entraîné sur un historique de charge nul, c'est un écart
+  // qui se constate ; « ancien sportif » n'est qu'une façon de le raconter.
+  // LE SEUIL DE « CAPACITÉ RÉELLE » N'EST PAS UNE CONSTANTE INVENTÉE : c'est la bande de marge
+  // du modèle de projection, lue à l'envers. `margeOf` rend 1,0 à quelqu'un assis sur l'ancre la
+  // plus lente de sa discipline — le repère « débutant » du moteur. Être PLUS RAPIDE que cette
+  // ancre, c'est avoir une capacité au-dessus de ce repère, par définition. On réutilise donc la
+  // table existante plutôt que d'en poser une seconde (R11.1), et on hérite gratuitement de son
+  // décalage par sexe et par âge (R14.1) : une femme de 50 ans n'est pas jugée contre la même
+  // référence qu'un homme de 25.
+  const O17_VOL_MAX_H = 2; // au-delà, l'historique de charge existe
+  if (volRec != null && volRec <= O17_VOL_MAX_H) {
+    const pace = a.pace ? parsePaceSec(a.pace, "run") : 0;
+    const css = a.css ? parsePaceSec(a.css, "swim") : 0;
+    const poids = parseNum(a.weight), ftp = parseNum(a.ftp);
+    const refs = { ftp: ftp ?? 0, thrPace: pace, css };
+    const sexe = typeof a.sex === "string" ? a.sex : null;
+    const age = parseNum(a.age);
+    const auDessus = (d: "ftp" | "thrPace" | "css"): boolean => {
+      const m = margeOf(d, refs, poids, sexe, age);
+      return m != null && m < 1; // plus rapide / plus puissant que l'ancre la plus basse
+    };
+    const fortes: string[] = [];
+    if (pace > 0 && auDessus("thrPace")) fortes.push("ton allure seuil en course");
+    if (ftp != null && poids != null && auDessus("ftp")) fortes.push("ta puissance au seuil à vélo");
+    if (css > 0 && auDessus("css")) fortes.push("ton CSS en natation");
+    if (fortes.length) {
+      warnings.push(
+        "Tu déclares " + volRec + " h/semaine sur les derniers mois, et " + fortes.join(" et ")
+        + " dit tout autre chose : tu as gardé une vraie capacité. Le plan en tient compte pour tes "
+        + "allures — mais il faut que tu saches ceci, parce que c'est toi qui décides. "
+        + "Le cœur et les muscles reviennent en quelques semaines ; les TENDONS, les aponévroses et "
+        + "l'os mettent des MOIS. Tu es donc capable de courir plus vite et plus longtemps que ce que "
+        + "tes tissus tolèrent aujourd'hui, et rien dans ton ressenti ne te préviendra avant la "
+        + "blessure. C'est le scénario de reprise le plus fréquent chez l'ancien sportif. "
+        + "Le plan part volontairement bas : la tentation sera d'en faire plus, et c'est précisément "
+        + "là que ça casse. Si une douleur apparaît, signale-la — elle verrouille l'intensité, et "
+        + "c'est trois semaines de perdues au lieu de trois mois.");
+    }
+  }
+
   const needW = (MIN_WEEKS[sport] || {})[String(a.format || "")];
   if (needW != null && needW >= 20 && (a.level === "debutant" || a.history === "reprise")) {
     warnings.push("Tu vises un format long en te déclarant " + (a.level === "debutant" ? "débutant" : "en reprise")

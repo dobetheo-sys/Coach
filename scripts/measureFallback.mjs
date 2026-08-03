@@ -93,7 +93,17 @@ function measure(sport) {
         // qui porte encore une vraie séance. Un créneau prévu dur devenu `off` n'est pas un
         // repli : c'est le budget de séances, une autre passe, une autre décision.
         const porteSeance = (d.sessions || []).some((x) => x.d !== "rs");
-        if (d.slot === fb && porteSeance && prevu && QUALITY_SLOTS.has(prevu)) { joursReplies++; vu = true; }
+        // R20.9 — LE DÉTECTEUR REGARDE CE QUE LE PLAN FAIT, PAS CE QUE LE MODULE DÉCLARE.
+        //
+        // Il testait `d.slot === easyFallbackSlot`. Son verdict dépendait donc de la VALEUR
+        // déclarée par le module, pas du comportement mesuré : en changeant le repli du trail
+        // de `facileR` à `facile2` (R20.9), le taux affiché est tombé de 25,0 % à **0,0 %** et
+        // la ligne de verdict allait fermer O-3 sur ce chiffre. Vérifié en comptant sur
+        // N'IMPORTE QUEL créneau facile : **25,0 % avant, 25,0 % après, 1 287 jours dans les
+        // deux cas** — la fréquence n'avait pas bougé d'un jour, seule la séance produite avait
+        // changé. Un instrument qui suit la déclaration au lieu du plan mesure la déclaration.
+        const surCreneauFacile = /^facile/.test(String(d.slot || ""));
+        if (surCreneauFacile && porteSeance && prevu && QUALITY_SLOTS.has(prevu)) { joursReplies++; vu = true; }
       });
     }
     if (vu) plansAvecRepli++;

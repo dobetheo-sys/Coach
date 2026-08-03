@@ -8,7 +8,7 @@
 // n'a rien à voir avec un onglet. Elles sont donc EXTRAITES avant suppression, comme le
 // demandait l'étape 2 du handoff — un module ne se supprime pas, il se vide d'abord.
 import { S, $, ebSave, esc, fmtDay, todayISO } from "../state.js";
-import { whyOf, techOf } from "./plan-view.js";
+import { whyOf, techOf, techListHTML } from "./plan-view.js";
 import { avatarDataFor, avatarSVG } from "./avatar.js";
 import { celebrationMessage } from "./celebrations.js";
 import { trapModal } from "./modal.js";
@@ -229,8 +229,24 @@ export function heroSessionHTML(plan, todayIso) {
   // (RPE d'hier, douleur, sommeil… — c'est la différence entre un PDF statique et un coach).
   const why = res.adjustment.action !== "keep" && v.drivers.length
     ? '<div class="load-sub" style="margin:4px 0 0">↳ ' + v.drivers.join(" · ") + "</div>" : "";
+  // U8 — UN JOUR DE REPOS N'EST PAS UNE SÉANCE QUI S'APPELLE « OFF ».
+  //
+  // Le moteur matérialise le repos par une séance `{d:"rs", name:"OFF", min:0}` — c'est le bon
+  // choix côté plan (la grille a une case pour chaque jour, et le repos se VALIDE comme le
+  // reste). Mais le héros du jour testait `res.sessions.length`, qui vaut donc 1 : l'athlète
+  // lisait un **« OFF »** sec, avec un « Le détail de la séance » qui n'ouvre rien.
+  //
+  // Pendant ce temps la branche du dessous — « 😌 Repos aujourd'hui. Prochaine séance : Mar ·
+  // Sweetspot vélo » — écrite exactement pour ce cas, n'était JAMAIS atteinte. Le bon message
+  // existait déjà et était mort.
+  //
+  // Mesuré : **153 jours sur 441** en semaine 1 (7 sports × niveaux × densités) sont des jours
+  // de repos, soit un tiers des ouvertures de l'app. Et **63 profils sur 63** démarrent par un
+  // lundi de repos : quelqu'un qui crée son plan un lundi, après avoir répondu à 37 questions,
+  // recevait « OFF » comme tout premier écran.
+  const queDuRepos = res.sessions.every((x) => x.d === "rs");
   let body;
-  if (res.sessions.length) {
+  if (res.sessions.length && !queDuRepos) {
     // §5 (R6) — dans le HÉROS d'Aujourd'hui, le POURQUOI est VISIBLE sans rien ouvrir : c'est
     // l'écran que l'athlète regarde tous les matins, et « pourquoi cette séance » y a plus de
     // valeur que la liste des blocs, qui reste à un clic.
@@ -238,7 +254,7 @@ export function heroSessionHTML(plan, todayIso) {
       const w = whyOf(x);
       return '<div style="margin-top:8px"><b>' + x.name + "</b>"
         + (w ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + w + "</div>" : "")
-        + (x.det ? '<details class="gd-sess" style="margin-top:4px"><summary>Le détail de la séance</summary><span class="gd-det">' + techOf(x) + "</span></details>" : "")
+        + (x.det ? '<details class="gd-sess" style="margin-top:4px"><summary>Le détail de la séance</summary>' + techListHTML(techOf(x)) + "</details>" : "")
         + "</div>";
     }).join("");
   } else {
@@ -246,7 +262,9 @@ export function heroSessionHTML(plan, todayIso) {
     plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date > todayIso && d.sessions.some((s) => s.d !== "rs")) upcoming.push(d); }));
     upcoming.sort((a, b) => a.date.localeCompare(b.date));
     const nxt = upcoming[0];
-    body = '<div style="margin-top:6px">\u{1F60C} Repos aujourd’hui.' + (nxt ? " Prochaine séance : <b>" + nxt.jour + "</b> · " + nxt.sessions.filter((s) => s.d !== "rs").map((s) => s.name).join(", ") : "") + "</div>";
+    body = '<div style="margin-top:6px">\u{1F60C} Repos aujourd’hui.'
+      + (nxt ? " Prochaine séance : <b>" + nxt.jour + " " + fmtDay(nxt.date) + "</b> · " + nxt.sessions.filter((s) => s.d !== "rs").map((s) => s.name).join(", ") : "")
+      + "</div>";
   }
   return '<div class="card">' + badge + '<div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayIso) + "</div>" + why + body + "</div>";
 }

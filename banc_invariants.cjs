@@ -98,6 +98,60 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
     for (let i = 1; i < W.length; i++)
       if (W[i].w.isRecup && !W[i-1].w.isRecup && W[i].min >= W[i-1].min && W[i-1].min >= GRAIN_MIN)
         ko("I3", ctx, `sem ${W[i].w.num} (récup) ${Math.round(W[i].min)}min ≥ sem ${W[i-1].w.num} ${Math.round(W[i-1].min)}min`);
+    // I19 (R18.4) — LA SPÉCIFICITÉ MULTISPORT NE DISPARAÎT PAS DE L'AFFÛTAGE.
+    // Mesuré avant correction sur les 4 formats de tri et les 4 de duathlon, tous niveaux :
+    // le dernier enchaînement vélo↔course tombait TROIS SEMAINES avant le jour J, parce que
+    // le créneau `durLong` retombait en affûtage dans la branche générique. La transition est
+    // une compétence : elle se perd, et elle ne se rattrape pas le matin de la course.
+    // L'invariant ne demande pas UNE séance précise, il demande que le dernier enchaînement
+    // ne soit pas plus vieux que l'affûtage lui-même.
+    if (sp === "tri" || sp === "duathlon") {
+      const derniereAvecBrick = Math.max(0, ...W.filter((x) => sessionsOf(x.w).some((s) => s.brick)).map((x) => x.w.num));
+      // Deux semaines, pas « la longueur de l'affûtage » : la première écriture tolérait
+      // `max(2, nbSemainesDAffûtage)`, et sur l'horizon de ce banc l'affûtage fait trois
+      // semaines — le critère passait donc AUSSI sur le moteur d'avant R18, celui qui portait
+      // le défaut. Un critère calibré sur ce qu'on observe ne mesure rien.
+      const ecart = p.weeks.length - derniereAvecBrick;
+      if (!derniereAvecBrick) ko("I19", ctx, "aucun enchaînement (brick) dans tout le plan");
+      else if (ecart > 2) ko("I19", ctx, `dernier enchaînement en S${derniereAvecBrick}, course en S${p.weeks.length} : ${ecart} semaines sans transition avant le jour J`);
+    }
+
+    // I20 (R18.5) — LA CADENCE DE RÉCUPÉRATION CONNAÎT LES PHASES.
+    // Mesuré avant correction sur 240 plans : 75 % portaient une décharge DANS la phase pic
+    // (plafonnée à 5 semaines par R13.6 — on en perdait une fraction entière) et 75 %
+    // ouvraient une phase sur une décharge. Deux propriétés ici, et la seconde domine la
+    // première : aucune règle de placement n'a le droit de faire dépasser à l'athlète sa
+    // propre cadence de récupération. C'est l'ordre du manifeste — santé, puis progression.
+    //
+    // HONNÊTETÉ DE CETTE GARDE : sur les 54 configurations de ce banc (toutes en historique
+    // « confirme », une seule date de course), I20 était DÉJÀ vert contre le moteur d'avant
+    // R18 — le défaut y était invisible. C'est `bench_r18.cjs` qui discrimine, en balayant
+    // trois historiques et huit horizons. I20 est ici parce que c'est sa place doctrinale,
+    // pas parce que ce banc suffirait à le prouver.
+    {
+      for (let i = 1; i < W.length; i++) {
+        const cur = W[i].w, prev = W[i - 1].w;
+        if (cur.isRecup && cur.phase.id !== prev.phase.id && cur.phase.id !== "taper")
+          ko("I20", ctx, `sem ${cur.num} : la phase « ${cur.phase.id} » s'ouvre sur une semaine de récupération`);
+      }
+      // La décharge collée à l'affûtage et la décharge dans un pic court sont vérifiées par
+      // `bench_r18.cjs`, PAS ici : sur certains gabarits (cadence 3 + pic de 2 semaines) le
+      // moteur cède délibérément le placement pour ne pas dépasser la cadence, et le critère
+      // n'est juste qu'accompagné de la démonstration de cet arbitrage. Un invariant de ce
+      // banc doit être vrai SANS exception — l'écrire ici sans son arbitrage serait poser une
+      // règle qu'on saurait fausse.
+      // Jamais plus de semaines de charge consécutives que la cadence de l'athlète.
+      // `confirme`/`ancien` = 4, `reprise` = 3 (RECUP_EVERY) ; un master resserre encore, on
+      // prend donc la borne la plus large que ce banc puisse rencontrer avec son BASE.
+      const cadence = BASE.history === "reprise" ? 3 : 4;
+      let suite = 0;
+      for (const x of W) {
+        if (x.w.isRecup || x.w.phase.id === "taper") { suite = 0; continue; }
+        suite++;
+        if (suite > cadence) { ko("I20", ctx, `sem ${x.w.num} : ${suite} semaines de charge d'affilée, cadence déclarée ${cadence}`); break; }
+      }
+    }
+
     // I4 — pas de bond de plus de 35 % entre deux semaines de charge
     for (let i = 1; i < W.length; i++) {
       if (W[i].w.isRecup || W[i-1].w.isRecup || !W[i-1].min) continue;
@@ -110,8 +164,14 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
         const { wu, body } = warmBody(s);
         if (wu > 0 && body > 0 && wu > body)
           ko("I5", ctx, `sem ${w.num} « ${s.name} » échauffement ${Math.round(wu)}min > corps ${Math.round(body)}min`);
-        // I6 — pas de séance vide
-        if (!(s.min > 0)) ko("I6", ctx, `sem ${w.num} « ${s.name} » durée nulle`);
+        // I6 — pas de séance vide. R20.6 : LA COURSE OBJECTIF EST EXCLUE, et c'est l'invariant
+        // qui était périmé, pas le moteur. Depuis R13.4, le jour J porte `min: 0` PAR
+        // CONCEPTION — c'est ce qui l'empêche d'être la victime des passes de coupe et ce qui
+        // fait que la charge de la semaine ne compte pas la course comme un entraînement. Le
+        // banc, lui, réclamait une durée. 54 « échecs » qui disaient tous la même chose : un
+        // contrat livré, qu'aucune règle ne contredit, et que ce check ne connaissait pas.
+        // Même exclusion que celle déjà posée sur I14 (`!/🏁/`), pour la même raison.
+        if (!(s.min > 0) && !/🏁/.test(s.name || "")) ko("I6", ctx, `sem ${w.num} « ${s.name} » durée nulle`);
         // I7 — la somme des steps rend compte de la durée annoncée de la séance
         if ((s.steps || []).length && s.min > 15) {
           let acc = 0;
@@ -124,8 +184,14 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
             ko("I7", ctx, `sem ${w.num} « ${s.name} » : ${s.min}min annoncées, ${Math.round(acc)}min comptabilisées (${Math.round(100*acc/s.min)}%)`);
         }
       }
-      // I8 — le nombre de séances respecte le plafond déclaré
-      if (n > Number(env.a.sessions_max)) ko("I8", ctx, `sem ${w.num} : ${n} séances > plafond ${env.a.sessions_max}`);
+      // I8 — le nombre de séances respecte le plafond déclaré. R20.6 : MÊME FAMILLE QUE I6.
+      // `sessions_max` est un budget d'ENTRAÎNEMENT — ce que l'athlète peut caser dans sa
+      // semaine. La course objectif ne s'y range pas : elle a lieu, elle n'est pas une séance
+      // qu'on décide de faire ou non, et l'en exclure est déjà ce que le moteur fait
+      // (R15.7-A : `sessionsMaxDeclared` protège la fréquence en semaine de course). 15
+      // « échecs » qui étaient tous la semaine du jour J, sur les 7 sports.
+      const nHorsCourse = sessionsOf(w).filter((s) => !/🏁/.test(s.name || "")).length;
+      if (nHorsCourse > Number(env.a.sessions_max)) ko("I8", ctx, `sem ${w.num} : ${nHorsCourse} séances > plafond ${env.a.sessions_max}`);
       // I9 — le volume hebdo respecte l'enveloppe déclarée
       if (min / 60 > Number(env.a.vol_max) * 1.05)
         ko("I9", ctx, `sem ${w.num} : ${(min/60).toFixed(1)}h > enveloppe ${env.a.vol_max}h`);
@@ -144,10 +210,23 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
           if ((s.min || 0) < mx * 0.85) ko("I14", ctx, `sem ${w.num} « ${s.name} » ${s.min}min alors que la plus longue de la semaine fait ${mx}min`);
         }
       }
-      // I12 — la sortie longue ne dépasse pas la moitié du volume de la semaine
+      // I12 — la sortie longue ne dépasse pas la moitié du volume de la semaine.
+      //
+      // R20.6 — DEUX EXCLUSIONS, MESURÉES. Les 3 échecs restants étaient TOUS la SEMAINE DE
+      // COURSE d'un trail à petite enveloppe : « Endurance allégée (semaine de course) » 54 min
+      // sur un total de 80 (plus le jour J à 0). Il n'y a pas de sortie longue dans cette
+      // semaine — `longest` y désigne simplement la plus grosse de trois séances minuscules,
+      // et la dominance qu'on mesure est celle d'une structure d'affûtage voulue (R13.4 /
+      // R15.7-A), pas d'un déséquilibre de charge.
+      //   · les semaines de DÉCHARGE (récup, affûtage) sortent du champ — comme dans toutes les
+      //     règles de volume de ce dépôt ;
+      //   · la course ne compte pas dans le nombre de séances (même raison qu'en I6 et I8).
+      // Vérifié après exclusion : plus aucune semaine de CHARGE ne dépasse le seuil.
+      if (w.isRecup || w.phase.id === "taper") continue;
+      const nEntrainement = sessionsOf(w).filter((s) => !/🏁/.test(s.name || "")).length;
       const longest = Math.max(0, ...sessionsOf(w).map((s) => s.min || 0));
-      if (min > 0 && n >= 4 && longest / min > 0.6)
-        ko("I12", ctx, `sem ${w.num} : sortie longue ${longest}min = ${Math.round(100*longest/min)}% du volume (${n} séances)`);
+      if (min > 0 && nEntrainement >= 4 && longest / min > 0.6)
+        ko("I12", ctx, `sem ${w.num} : sortie longue ${longest}min = ${Math.round(100*longest/min)}% du volume (${nEntrainement} séances)`);
     }
   }
   // I15/I16/I17 — les courses : présence au calendrier, veille allégée, jour J exclusif
@@ -190,6 +269,30 @@ for (const [sp, extra] of Object.entries(SPORTS)) {
       if (!dernier || !dernier.sessions.some(isRace))
         ko("I18", `${sp}/course ${iso}`, `le dernier jour du plan (${dernier ? dernier.date : "—"}) n'est pas la course`);
     }
+    // I21 (C28) — LES TROIS JOURS QUI PRÉCÈDENT LA COURSE SONT PLAFONNÉS, ET ÇA TIENT
+    // JUSQU'À LA SORTIE. Les plafonds existaient depuis N3/N4 (J-1 ≤ 25 min, J-2/J-3 ≤ 62),
+    // mais cette passe tourne pendant la construction : le plancher de semaine de course les
+    // regonflait ensuite. Mesuré avant le correctif — **156 min à J-2 d'un marathon, 168 à
+    // J-2 d'une cyclosportive**, et la veille elle-même à 36 min alors que R13.4 la borne à 25.
+    //
+    // Le JOUR DE LA SEMAINE est la variable du défaut, comme pour I18 : une course le dimanche
+    // laisse six jours pour porter le plancher et ne montre rien. Les sept sont testés.
+    for (const iso of ["2027-06-07", "2027-06-08", "2027-06-09", "2027-06-10", "2027-06-11", "2027-06-12", "2027-06-13"]) {
+      const p3 = E.buildPlan(sp, { ...BASE, ...extra, ...ENV[1].a, level: "inter", race_date: iso });
+      const jours = p3.weeks.flatMap((w) => w.days);
+      const ix = jours.findIndex((d) => d.sessions.some(isRace));
+      if (ix < 1) continue;
+      for (let k = 1; k <= 3; k++) {
+        const d = jours[ix - k];
+        if (!d) continue;
+        const min = d.sessions.reduce((t, x) => t + (isRace(x) ? 0 : x.min || 0), 0);
+        // Tolérance de 1 min : les durées rendues sont arrondies à la minute entière (F3).
+        const cap = (k === 1 ? 25 : 63) + 1;
+        if (min > cap)
+          ko("I21", `${sp}/course ${iso}`, `J-${k} porte ${min} min (plafond ${cap - 1}) — ` +
+            d.sessions.filter((x) => !isRace(x) && (x.min || 0) > 0).map((x) => x.name + " " + x.min + "'").join(", "));
+      }
+    }
   }
 
   // I13 — monotonie du niveau déclaré : plus l'athlète est fort, plus la charge est élevée
@@ -208,6 +311,8 @@ const NAMES = {
   I10:"annoncé = réel", I11:"le nom colle à la dose", I12:"sortie longue ≤ 60 %", I14:"la sortie longue est la plus longue",
   I13:"monotonie du niveau", I15:"la course est au calendrier", I16:"veille de course allégée", I17:"jour J exclusif",
   I18:"le plan s'arrête le jour J",
+  I19:"la transition survit à l'affûtage", I20:"la récup connaît les phases",
+  I21:"les 3 jours avant la course sont plafonnés",
 };
 const G = {};
 for (const f of fails) (G[f.id] ||= []).push(f);
@@ -227,3 +332,20 @@ for (const id of Object.keys(NAMES)) {
     if (seen.size >= 8) { console.log(`  … et ${G[id].length - 8} autres`); break; }
   }
 }
+
+/* ---- R20.6 — LE BANC GARDE, IL NE SE CONTENTE PLUS DE RAPPORTER ------------------------- */
+//
+// O-9 : ce banc sortait en code 0 quoi qu'il trouve. Il a donc porté QUATRE familles d'échecs
+// pendant que `CLAUDE.md` annonçait « vert sur ses 19 tests » — et personne ne l'a vu, parce
+// qu'un rapport que rien ne lit vaut zéro. C'est la forme la plus coûteuse de dette : elle ne
+// se signale pas, et elle rend fausse la documentation qui la cite.
+//
+// Les 20 invariants sont verts (I6/I8/I12 étaient PÉRIMÉS — la course objectif n'est pas une
+// séance d'entraînement ; I14 était un VRAI défaut, corrigé côté moteur). Le banc bloque donc
+// désormais, et il entre en CI : à partir d'ici, un invariant qui casse arrête la chaîne.
+if (fails.length) {
+  console.error(`\n✖ ${fails.length} échec(s) d'invariant sur ${Object.keys(NAMES).length} règles.`);
+  console.error("Un invariant est une propriété que le plan tient TOUJOURS. S'il casse, c'est le moteur qu'on corrige — ou l'invariant qu'on démontre périmé, avec sa mesure.");
+  process.exit(1);
+}
+console.log("\n✓ les " + Object.keys(NAMES).length + " invariants tiennent sur les 54 configurations.");

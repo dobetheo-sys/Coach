@@ -339,7 +339,26 @@ function runChecks(sport, a, plan, fail) {
     const obj = E.swimrunObjective(a);
     const raceRunShare = obj ? 1 - obj.swimTimeShare : 0.6;
     const degenerate = obj && (obj.transitionMin > obj.swimMin + obj.runMin || obj.segments * 100 > obj.swimTotalM);
-    if (rnT + swT > 0 && !degenerate && !medHold && !injRun && !injSwim) {
+    // R20.3 — L'ACCLIMATATION AU FROID EST LA QUATRIÈME RÈGLE DE SÉCURITÉ QUE CE CHECK PUNISSAIT.
+    //
+    // Même famille que le drapeau médical et les blessures ci-dessus (R16.10), et découverte de
+    // la même manière : quand `water_temp_c` passe sous le seuil S7 (17 °C), le module VERROUILLE
+    // le second créneau facile sur une exposition au froid — c'est écrit dans le module, au nom
+    // de la hiérarchie du manifeste, et l'hypothermie est un risque vital, pas un choix de
+    // spécificité. Le plan s'écarte donc de la course POUR UNE RAISON DE SÉCURITÉ.
+    //
+    // Ce n'est pas une exemption de confort : mesuré au moment de poser les bornes S14, les
+    // **26 hits de S-MIX portaient TOUS une eau sous le seuil** (25 à 16 °C, 1 à 13 °C). Le check
+    // ne voyait rien avant parce que le footing sans bornes gonflait jusqu'à 226 min et masquait
+    // le déséquilibre avec du volume fictif — l'instrument était d'accord avec le moteur pour la
+    // mauvaise raison.
+    //
+    // L'exemption se lit sur le PLAN, pas sur l'entrée : c'est la présence effective de la séance
+    // d'acclimatation qui exempte, pas une température déclarée. Une règle qui ne s'applique pas
+    // n'exempte rien.
+    let acclim = 0;
+    for (const w of weeks) for (const d of w.days) for (const s of d.sessions) if (/Acclimatation/i.test(s.name || "")) acclim++;
+    if (rnT + swT > 0 && !degenerate && !medHold && !injRun && !injSwim && !acclim) {
       const planRunShare = rnT / (rnT + swT);
       if (planRunShare < raceRunShare - 0.15) F("S-MIX", `plan ${Math.round(planRunShare * 100)}% de course vs ${Math.round(raceRunShare * 100)}% dans la course (écart ${Math.round((raceRunShare - planRunShare) * 100)} pts)`);
     }

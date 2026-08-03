@@ -13,15 +13,16 @@ import { generateAudited } from "../generator/repairLoop.ts";
 import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
-import { predictRace, courseProfileOf, type Prediction } from "../engine/predictor.ts";
+import { predictRace, courseProfileOf, legProfileOf, type Prediction } from "../engine/predictor.ts";
 import { adherenceWindow, taperIsConform, margeOf } from "../engine/projection.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
 import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
 import { validateAnswers, assertPlanIsAPlan, EBInputError, ANSWER_SCHEMA, FORMATS_BY_SPORT } from "../engine/answerSchema.ts";
 import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
-import { dailyEnergy, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
+import { dailyEnergy, energyRefusalNotice, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
 import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
+import { assessFeasibility } from "../engine/feasibility.ts";
 
 interface AppAnswers extends Record<string, unknown> {
   format?: string;
@@ -429,6 +430,11 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
     // R6 — profil du parcours (Profil) · R14.3-a — résolveur UNIQUE, partagé avec le jour J :
     // `course_profile` (le parcours visé) prime, `terrain` prend le relais à défaut.
     courseProfile: courseProfileOf(answers as never),
+    // R18.2 — trois profils au lieu d'un : un triathlon n'est pas homogène.
+    legProfiles: { swim: legProfileOf(answers as never, "swim"), bike: legProfileOf(answers as never, "bike"), run: legProfileOf(answers as never, "run") },
+    // R19.2 — la combinaison : seuil réglementaire à 24,5 °C, 4 à 7 % de temps de nage.
+    // R20.1-a — `isFinite`, pas `||` : 0 est une réponse. Même piège que `vol_recent`.
+    waterTempC: (() => { const t = parseFloat(String(answers.water_temp_c ?? "")); return isFinite(t) ? t : undefined; })(),
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
     swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,
@@ -453,7 +459,19 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
       trainingStructure: String(answers.training_structure || "") || null,
       // R14.1 P10 — dose-réponse : ce que le plan PRESCRIT face à ce que l'athlète fait déjà.
       prescribedMeanH: prescribedMeanHours(p),
-      volRecentH: parseFloat(String(answers.vol_recent || "")) || null,
+      // P11 — LE PIÈGE DU ZÉRO, TROISIÈME OCCURRENCE, ET LA SEULE QUI SE VOYAIT À L'ÉCRAN.
+      //
+      // `parseFloat("0") || null` vaut `null` : « je ne m'entraîne pas du tout » arrivait au
+      // projecteur comme « je n'ai pas répondu ». Les deux corrections faites en amont
+      // (`volumeFactor`, le régime P11) ne servaient donc À RIEN dans le produit livré — le
+      // chiffre n'atteignait jamais le modèle. Mesuré sur la prédiction affichée, 10 km à
+      // 16 semaines depuis 7'00/km : **0 h → 7,4 % de gain, 1 h → 21,5 %**. Déclarer zéro
+      // donnait trois fois moins que déclarer une heure, sur la carte que l'athlète lit.
+      //
+      // Troisième fois : R20.1 (rampe R10), P11 (`volumeFactor`), ici. La leçon n'est pas
+      // « corriger le piège » mais « le corriger sur TOUT LE CHEMIN » — une valeur légitime
+      // effacée à n'importe quel maillon est effacée pour de bon.
+      volRecentH: readNumber(answers.vol_recent),
       // R14.1 P9 — le levier poids n'existe que si l'athlète l'a demandé ET a saisi sa cible.
       weightLeverAsked: answers.weight_lever === "oui",
       weightTargetKg: parseFloat(String(answers.weight_target || "")) || null,
@@ -479,6 +497,20 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
  * dit si le plan MONTE la charge ou la maintient — et un plan de maintien ne fait pas
  * progresser autant, quoi qu'on affiche.
  */
+/**
+ * P11 — lecture d'un nombre qui SAIT que zéro est une réponse.
+ *
+ * `parseFloat(x) || null` confond « 0 » et « rien ». Sur un volume d'entraînement récent, ces
+ * deux cas sont l'exact opposé l'un de l'autre : l'un est l'information la plus forte que le
+ * questionnaire puisse recevoir (« je pars de zéro »), l'autre est son absence. Point unique,
+ * pour que la prochaine lecture de ce genre n'ait pas à réinventer la garde.
+ */
+function readNumber(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = parseFloat(String(v));
+  return isFinite(n) ? n : null;
+}
+
 function prescribedMeanHours(plan: V1Plan): number | null {
   const w = plan.weeks.filter((x) => !x.isRecup && ["dev", "spec", "peak"].includes(String(x.phase && x.phase.id)));
   if (!w.length) return null;
@@ -542,11 +574,89 @@ function dailyEnergyV2(answers: AppAnswers, sessions?: { d: string; min?: number
   });
 }
 
+/** O-16 — POURQUOI l'estimation n'est pas affichée, quand elle ne l'est pas. `dailyEnergy`
+ *  retourne `null` dans trois cas très différents : pas de poids saisi, âge sous la borne
+ *  (O-16), gabarit hors des bornes de validation des équations (E4). L'UI montrait le même
+ *  repli « renseigne ton poids » dans les trois — donc elle envoyait un mineur et une personne
+ *  hors bornes corriger une donnée qui n'était pas en cause. Null ici = « aucun motif à
+ *  expliquer », c'est-à-dire la donnée manquante. */
+function energyRefusalV2(answers: AppAnswers): string | null {
+  return energyRefusalNotice({
+    weightKg: parseFloat(String(answers.weight || "")) || null,
+    heightCm: parseFloat(String(answers.height || "")) || null,
+    age: parseInt(String(answers.age || "")) || null,
+  });
+}
+
 // R7 — date du jour en heure LOCALE de l'appareil (jamais toISOString/UTC : le plan
 // vit dans le calendrier de l'athlète, pas celui de Greenwich).
 function localTodayISO(): string {
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+/**
+ * RV — LE DIAGNOSTIC DE FAISABILITÉ, exposé à l'UI.
+ *
+ * Une seule chose est à comprendre en lisant ce pont : **il ne rend qu'un verdict**. Le chrono
+ * visé n'entre dans AUCUNE des entrées de `buildPlan` — le plan est construit d'abord, il est
+ * passé ici en lecture pour connaître le volume prescrit et l'horizon, et le verdict s'écrit
+ * par-dessus. Laisser un objectif de temps augmenter une charge, ce serait la priorité n°5 du
+ * manifeste qui écrase les quatre premières. `RV-INVARIANT` (`demo:faisabilite`) mesure cette
+ * propriété au bit près, et `RV-UI` (E2E) la remesure sur le plan affiché.
+ *
+ * Course à pied seulement, pour l'instant : le prototype inverse Riegel, qui ne s'applique ni
+ * au trail (T-8) ni aux épreuves à enchaînements. Sur les autres sports il rend `null` — pas un
+ * verdict prudent, RIEN : une carte absente se comprend, un verdict tiède se croit.
+ */
+export function feasibilityV2(sport: string, answers: AppAnswers, plan?: V1Plan & { _v2?: V2PlanMeta }) {
+  if (sport !== "run") return null;
+  const targetSec = parseChronoSec(answers.target_time);
+  if (targetSec == null) return null;
+  const p = plan ?? generatePlan(toProfile(sport, answers)).plan;
+  const today = localTodayISO();
+  const horizonWeeks = weeksUntilRace(p, answers, today);
+  return assessFeasibility({
+    format: String(answers.format || ""),
+    targetSec,
+    thrPaceSecPerKm: answers.pace_known === "oui" ? parsePaceSec(answers.pace, "run") : 0,
+    horizonWeeks: horizonWeeks ?? 0,
+    runHoursPerWeek: readNumber(answers.vol_recent),
+    prescribedMeanH: prescribedMeanHours(p),
+    weightKg: readNumber(answers.weight),
+    sex: typeof answers.sex === "string" ? answers.sex : null,
+    age: readNumber(answers.age),
+    trainingStructure: String(answers.training_structure || "") || null,
+    history: String(answers.history || "") || undefined,
+  });
+}
+
+/**
+ * « 3:30:00 », « 45:00 », « 46'30 » → secondes. `null` sur tout le reste, y compris une saisie
+ * en cours de frappe — le champ est OPTIONNEL, une saisie incomplète ne doit rien afficher et
+ * surtout pas un verdict sur un chrono deviné.
+ *
+ * Hors `ANSWER_SCHEMA`, au même titre que `pace` et `css` : le schéma ne connaît pas le type
+ * « durée », et lui en inventer un pour un champ qui ne pilote aucune séance serait payer le
+ * prix d'une clé de schéma (validation dure, refus d'entrée typé) pour un affichage.
+ */
+export function parseChronoSec(v: unknown): number | null {
+  const s = String(v ?? "").trim().replace(/'/g, ":").replace(/\s/g, "");
+  if (!s) return null;
+  const m = s.match(/^(\d{1,2}):([0-5]?\d)(?::([0-5]?\d))?$/);
+  if (!m) return null;
+  if (m[3] != null) {
+    const sec = (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]); // h:mm:ss, sans ambiguïté
+    return sec >= 600 && sec <= 43200 ? sec : null;
+  }
+  // `X:YY` est ambigu — « 46:30 » veut dire 46 min 30, « 3:30 » veut dire 3 h 30. On ne DEVINE
+  // pas : on écarte la lecture qui est hors domaine. Aucun format de course à pied du moteur
+  // n'est courable en moins de 10 minutes, donc une lecture mm:ss sous ce plancher n'est pas un
+  // chrono — c'est la lecture h:mm qui est la bonne. Une seule des deux tient debout à la fois.
+  const mmss = (+m[1]) * 60 + (+m[2]);
+  const sec = mmss >= 600 ? mmss : (+m[1]) * 3600 + (+m[2]) * 60;
+  // Au-delà de 12 h on sort du domaine de Riegel et des formats déclarés.
+  return sec >= 600 && sec <= 43200 ? sec : null;
 }
 
 declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
@@ -602,5 +712,10 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
   arbitrateVolRecent,
   sessionNutrition: nutritionForSession,
   dailyEnergy: dailyEnergyV2,
+  energyRefusal: energyRefusalV2,
+  // RV — le diagnostic de faisabilité (chrono visé). Rend `null` hors course à pied et sans
+  // chrono saisi. Il ne touche jamais le plan : c'est un VERDICT, pas une entrée.
+  feasibility: feasibilityV2,
+  parseChronoSec,
   version: "v2-sprint9",
 };

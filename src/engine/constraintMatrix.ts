@@ -159,6 +159,73 @@ export const BRICK_BIKE_BOUNDS: Record<string, [number, number]> = rule(
 );
 
 /**
+ * R19.3 — LA DURÉE D'AFFÛTAGE SUIT L'ÉPREUVE, PAS LA LONGUEUR DE LA PRÉPARATION.
+ *
+ * R13.6 a corrigé un vrai défaut (six semaines d'affûtage sur un plan de 59 semaines) mais
+ * sur le MAUVAIS AXE : son plafond ne lisait que `weeks`. Mesuré avant correction — un
+ * **Sprint préparé sur 47 semaines recevait 3 semaines d'affûtage**, pour une épreuve de
+ * vingt minutes d'effort. Trois semaines de volume réduit de moitié sur un sprint, c'est du
+ * désentraînement organisé, exactement ce que R13.6 voulait empêcher chez les longs.
+ *
+ * Ce qui décide de la durée d'affûtage, c'est la fatigue accumulée et la durée de l'épreuve —
+ * pas le temps qu'on a mis à s'y préparer. Bosquet 2007 situe l'optimum général à 8-14 jours ;
+ * la pratique l'étire au-delà pour les formats longs, où le volume accumulé est bien plus
+ * élevé, et le raccourcit sur les formats courts, où la fraîcheur neuromusculaire se retrouve
+ * vite et où l'intensité doit rester présente jusque tard.
+ *
+ * En semaines : sprint/olympique ~1, demi-fond long ~2, très long ~3.
+ * Le plafond de la préparation reste appliqué EN PLUS (min des deux) : un plan de 12 semaines
+ * ne donne pas 3 semaines d'affûtage à un Ironman.
+ */
+export const TAPER_WEEKS_BY_FORMAT: Record<string, Record<string, number>> = rule(
+  "R19.3",
+  "la durée d'affûtage suit la distance de course et la charge accumulée, pas la longueur de la préparation",
+  {
+    run: { "5k": 1, "10k": 1, semi: 2, marathon: 3 },
+    bike: { crit: 1, clm: 1, route: 2, cyclo: 2, gravel: 2 },
+    swim: { sprint: 1, demifond: 1, fond: 2, ow: 2 },
+    tri: { S: 1, M: 1, "70.3": 2, Full: 3 },
+    duathlon: { S: 1, M: 1, L: 2, PM: 3 },
+    swimrun: { experience: 1, sprint: 1, series: 2, championship: 2 },
+  },
+);
+/** Trail : la catégorie d'effort DÉDUITE remplace le format (R7) — même échelle de durée. */
+export const TAPER_WEEKS_BY_TRAIL_CAT: Record<string, number> = rule(
+  "R19.3-t",
+  "en trail, c'est la catégorie d'effort déduite qui porte la charge accumulée",
+  { kv: 1, court: 1, long: 2, ultra: 3, ultra_long: 3, ultra_xl: 3 },
+);
+
+/**
+ * R18.4 — LE BRICK D'AFFÛTAGE A SES PROPRES BORNES.
+ *
+ * `BRICK_BIKE_BOUNDS` (C21b) a été écrit quand le seul brick d'un plan était celui du pic :
+ * ses bornes disent « ni une sortie longue déguisée, ni un tour de pâté de maisons » pour une
+ * séance de CONSTRUCTION. L'affûtage poursuit l'objectif inverse — entretenir la compétence
+ * de transition à coût de fatigue nul — et un brick de 90 min à J-8 sur un 70.3 n'affûte rien.
+ *
+ * La tentation était d'exempter l'affûtage de C21b. C'est exactement le trou qu'on refuse :
+ * un brick sans borne redevient une sortie longue, et c'est comme ça qu'on met une séance de
+ * 2 h dans une semaine d'affûtage sans que rien ne le signale. L'affûtage reçoit donc SA
+ * bande, et elle est dérivée de l'autre : le PLAFOND d'un brick d'affûtage est le PLANCHER de
+ * la bande de charge du même format. Autrement dit, le brick le plus long qu'autorise
+ * l'affûtage est le plus court qu'exigeait la construction — la relation est vraie par
+ * construction pour les six formats, elle ne peut pas dériver.
+ *
+ * Bosquet 2007 (méta-analyse d'affûtage) : ce qu'on retire, c'est le VOLUME. Ni l'intensité,
+ * ni la spécificité — d'où le fait que cette séance existe encore du tout.
+ */
+export const BRICK_TAPER_BIKE_BOUNDS: Record<string, [number, number]> = rule(
+  "C21c",
+  "en affûtage le brick entretient la transition au lieu de la construire : sa bande est plafonnée au plancher de la bande de charge du format",
+  {
+    S: [20, BRICK_BIKE_BOUNDS.S[0]], M: [25, BRICK_BIKE_BOUNDS.M[0]],
+    "70.3": [30, BRICK_BIKE_BOUNDS["70.3"][0]], Full: [40, BRICK_BIKE_BOUNDS.Full[0]],
+    L: [30, BRICK_BIKE_BOUNDS.L[0]], PM: [40, BRICK_BIKE_BOUNDS.PM[0]],
+  },
+);
+
+/**
  * Plafond de DOSE par bloc de qualité (minutes dans la zone, répétitions comprises).
  * Ce n'est pas le nombre de répétitions qui blesse, c'est le temps passé dans la zone : le
  * plafond de reps seul laissait passer `5×14min` au seuil (70 min) parce que la mise à
@@ -271,6 +338,61 @@ export const C26b_HARD_TIME_BY_HISTORY: Record<string, number> = rule(
 );
 export const C26b_HARD_TIME_BEGINNER_MIN = rule("C26b-deb", "un débutant construit son tissu conjonctif avant sa puissance : la qualité reste marginale", 25);
 export const C26b_INJURY_FACTOR = rule("C26b-bless", "une blessure déclarée dit au présent ce que l'historique dit au passé", 0.6);
+
+/**
+ * C26c (R20.4) — LE PLAFOND DE TEMPS DUR EST VÉRIFIÉ. AVANT, IL ÉTAIT SEULEMENT DÉCLARÉ.
+ *
+ * C26 dit, noir sur blanc : « la règle physiologiquement vraie est le PLAFOND DE TEMPS DUR
+ * (≈60 min/semaine) ; la part de facile en est la conséquence arithmétique ». Et pourtant la
+ * seule chose que l'auditeur mesurait était la part de facile — c'est-à-dire la grandeur
+ * DÉRIVÉE, et sur le mauvais dénominateur : `easy / (easy + modéré + dur)`. Le temps DUR, la
+ * grandeur que la justification désigne comme physiologique, n'était vérifié nulle part.
+ *
+ * Les deux conséquences, mesurées sur 7 356 semaines de charge (7 sports × formats × historiques
+ * × niveaux × 4 enveloppes de volume) :
+ *
+ * 1. **1 095 semaines (15 %) dépassaient le plafond que C26 déclare.** Pire cas : un DÉBUTANT
+ *    en préparation de semi à 10 h/sem recevait **112 min de travail dur** contre un plafond
+ *    déclaré de 25 — quatre fois et demie. Le profil que C26b décrit comme limité par son
+ *    tissu conjonctif, celui qui ne prévient pas avant la tendinopathie.
+ * 2. **Le modéré, lui, ne débordait jamais** : 2 semaines sur 7 356 au-dessus de 35 % du temps.
+ *    La règle punissait donc la grandeur inoffensive et ne regardait pas la dangereuse.
+ *
+ * C'est la leçon d'O-12 payée une seconde fois : `bk.rp`, `bk.ss`, `rn.mara` sont MODÉRÉS, et
+ * les mettre dans le même sac que la VO2max fait dire à une mesure autre chose que ce qu'on
+ * croit lire. Ma propre erreur R19.4 venait de là ; ici c'était l'auditeur qui la portait.
+ *
+ * Le plafond ne change pas — c'est `hardTimeCapMin()`, celui que C26/C26b déclaraient déjà. La
+ * TOLÉRANCE existe parce que le temps dur d'une semaine se quantifie par répétitions : on ne
+ * peut pas atteindre 60,0 min avec des blocs de 4 min. Elle est délibérément petite.
+ */
+export const C26c_HARD_TIME_TOLERANCE = rule(
+  "C26c",
+  "le temps dur se quantifie par RÉPÉTITIONS : exiger la minute exacte ferait retirer une répétition entière pour deux minutes d'écart",
+  1.1,
+);
+
+/**
+ * C26d (R20.4) — LE MODÉRÉ A SA PROPRE BORNE, PLUS LARGE, ET C'EST VOULU.
+ *
+ * Une fois le temps dur borné pour lui-même, il reste à dire ce qu'on attend du modéré — sinon
+ * la seule règle qui le concernait disparaît et un plan pourrait devenir 100 % tempo.
+ *
+ * Le modéré n'est pas du dur en plus petit : il coûte peu en récupération centrale et beaucoup
+ * moins en charge tissulaire, ce qui est précisément la raison pour laquelle il ne doit pas
+ * partager le plafond du dur. Mais une semaine majoritairement en zone modérée est la « zone
+ * grise » que le manifeste refuse — trop dur pour récupérer, trop facile pour progresser.
+ *
+ * 40 % : mesuré à 2 semaines sur 7 356 au-dessus de 35 % aujourd'hui. La borne est donc posée
+ * AU-DESSUS de ce que le moteur produit, volontairement : elle existe pour empêcher une dérive
+ * future, pas pour valider l'état présent. Une borne calibrée au ras du comportement actuel est
+ * une borne qui se contente de photographier ce qu'elle est censée juger.
+ */
+export const C26d_MOD_SHARE_MAX = rule(
+  "C26d",
+  "le modéré ne partage pas le plafond du dur (il coûte moins en récupération et en charge tissulaire), mais une semaine majoritairement modérée est la zone grise que le manifeste refuse",
+  0.40,
+);
 
 export interface EasyFloorCtx {
   history?: string;

@@ -113,7 +113,26 @@ export const S6_TEAM = srule(
 export const S7_COLD = srule(
   "S7",
   "l'eau froide dégrade la nage et la lucidité avant de mettre en danger : l'acclimatation se planifie comme une qualité physique",
-  { wetsuitMandatoryBelowC: 19, acclimationBelowC: 17, minSessionsPerWeek: 1, idealSessionsPerWeek: 2 },
+  { wetsuitMandatoryBelowC: 19, acclimationBelowC: 17, minSessionsPerWeek: 1, idealSessionsPerWeek: 2,
+    /**
+     * S7bis (R20.8, O-15) — L'ACCLIMATATION NE DURE PAS TOUTE LA PRÉPARATION.
+     *
+     * Le verrou froid confisquait le second créneau facile de la PREMIÈRE à la DERNIÈRE semaine.
+     * Or l'adaptation au froid (vasoconstriction périphérique, réponse au choc thermique,
+     * tolérance du réflexe inspiratoire) s'installe en quelques semaines d'exposition régulière
+     * et se PERD tout aussi vite à l'arrêt : celle de la semaine 1 d'une prépa de 26 semaines ne
+     * vaut rien le jour J. Pendant ce temps elle coûtait de la spécificité tout du long — mesuré
+     * en R20.3 : sur une épreuve à 68 % de course à pied, le plan n'en faisait courir que 45 %.
+     *
+     * Elle démarre donc à 8 semaines du jour J. Avant, la bascule S13 reprend son droit et le
+     * créneau retourne à la discipline que l'épreuve demande.
+     *
+     * 8 semaines : au-dessus de la fenêtre d'installation décrite (2 à 6 semaines d'exposition
+     * régulière), avec la marge d'une prépa réelle où l'on rate des séances. Le choix penche
+     * délibérément du côté long — c'est une règle de SÉCURITÉ, et une acclimatation trop courte
+     * coûte plus cher qu'une semaine de spécificité en moins.
+     */
+    acclimationWeeksBeforeRace: 8 },
 );
 
 /**
@@ -141,6 +160,71 @@ export const S9_LONG_SHARE: Record<string, [number, number]> = srule(
   "S9",
   "reproduire la durée de course à l'entraînement est contre-productif ; le pic à 80 % trois semaines avant est le compromis documenté",
   { base: [0.2, 0.35], dev: [0.35, 0.55], spec: [0.55, 0.7], peak: [0.7, 0.8], taper: [0.25, 0.4] },
+);
+
+/**
+ * S14 (R20.3) — LE FOOTING FACILE PORTE SES BORNES, INDEXÉES SUR LE TEMPS DE COURSE À PIED
+ * DE L'ÉPREUVE.
+ *
+ * Le créneau facile course n'avait AUCUNE borne (`bnd` absent) : il devenait donc le déversoir
+ * de toutes les passes de remplissage du générateur. Mesuré sur un swimrun à 12 h/sem, la plus
+ * longue séance du plan était un « Footing facile » de 179 à 226 min selon le format, avec une
+ * MÉDIANE de 138 à 161 min — devant la pivot, qui plafonne à 110-180 min. Un footing de près de
+ * quatre heures n'est pas un footing : c'est une seconde sortie longue déguisée, et elle
+ * dominait la séance qui EST la spécificité du sport.
+ *
+ * C'est le défaut que R13 avait corrigé pour le triathlon (« Footing facile 213 min », D7 du
+ * banc v6) : le module swimrun est arrivé plus tard et personne n'a rejoué la liste des leçons
+ * du sport précédent.
+ *
+ * **Deux écritures de cette borne ont été mesurées et réfutées avant celle-ci**, par le banc v7,
+ * sur le même check `S-MIX` (part de course du plan vs part de course de l'épreuve — 4 profils
+ * en défaut avant le lot) :
+ *
+ * 1. *relative à la pivot de la MÊME semaine, ×0,70* → **S-MIX = 158**. La pivot part à 20-35 %
+ *    du temps de course en phase de base : le footing tombait à ~38 min pendant toute la
+ *    construction. Or il n'a aucune raison de suivre la rampe de SPÉCIFICITÉ de la pivot — il
+ *    construit l'endurance de base, qui est déjà là dès la première semaine.
+ * 2. *indexée sur le temps de course à pied de l'épreuve, ×0,55* → **S-MIX = 152**. Même
+ *    ordre de grandeur : le vrai problème n'était pas la rampe, c'était le NIVEAU. En swimrun,
+ *    les deux créneaux faciles PORTENT la course à pied du plan — il n'y a ni sortie longue
+ *    course ni footing supplémentaire pour compenser. Les serrer, c'est sous-entraîner le
+ *    limiteur réel du sport, soit exactement le défaut que S13 venait de corriger.
+ *
+ * Ce que ces deux échecs disent, et que la formulation d'O-8 disait déjà : le défaut n'est pas
+ * qu'un footing soit LONG, c'est qu'il soit **la plus longue séance du plan**, devant la séance
+ * qui EST la spécificité du sport. La borne porte donc exactement là-dessus — le footing plafonne
+ * juste sous la pivot du PIC, la séance la plus longue que le plan produira. Un footing de 2 h
+ * dans une prépa de 4 h de course reste un footing ; à 3 h 47 il a pris la place de la pivot.
+ *
+ * 0,90 : assez haut pour que les deux créneaux faciles portent la course à pied du plan, assez
+ * bas pour que la pivot reste la séance de référence — sur toutes les semaines, y compris celles
+ * où la pivot est encore courte.
+ */
+export const S14_EASY_RUN_VS_PEAK_PIVOT = srule(
+  "S14",
+  "le défaut n'est pas qu'un footing soit long, c'est qu'il dépasse la séance qui porte la spécificité du sport : la borne est la pivot du PIC, pas celle de la semaine en cours",
+  0.9,
+);
+
+/**
+ * S14 — plafond ABSOLU du footing, toutes épreuves confondues. Au-delà de deux heures et demie,
+ * une « sortie facile » n'est plus une sortie facile quelle que soit la durée de l'épreuve :
+ * elle porte sa propre récupération et cesse d'être ce que sa note promet. C'est la borne qui
+ * empêche un ultra-swimrun de rouvrir le déversoir par le haut, là où la pivot du pic serait
+ * elle-même très longue.
+ */
+export const S14_EASY_RUN_CAP_MIN = srule(
+  "S14",
+  "au-delà de 2 h 30 une sortie facile n'est plus un footing : elle porte sa propre récupération et devient une seconde sortie longue non spécifique",
+  150,
+);
+
+/** S14 — plancher du footing : en dessous, ce n'est plus de l'endurance fondamentale. */
+export const S14_EASY_RUN_FLOOR_MIN = srule(
+  "S14",
+  "un footing d'endurance fondamentale a besoin d'une trentaine de minutes pour produire son adaptation",
+  30,
 );
 
 /**

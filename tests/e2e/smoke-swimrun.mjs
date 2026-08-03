@@ -2,7 +2,7 @@
 // (jamais présentées comme mesurées quand elles sont estimées), les transitions comme poste de
 // temps à part entière, le prérequis d'entrée qui REFUSE un format long, et la substitution
 // quand l'eau libre n'est pas accessible.
-import { startServer, launchBrowser, makeReporter } from "./harness.mjs";
+import { startServer, launchBrowser, makeReporter, traverserQuestionnaire } from "./harness.mjs";
 
 const PORT = 8540;
 const server = await startServer(PORT);
@@ -50,36 +50,35 @@ await page.fill('[data-input="water_temp_c"]', "16");
 await page.click("#nextBtn");
 for (const v of ["med_pain", "med_dizzy", "med_treat"]) await page.click('.opts[data-key="' + v + '"] .opt[data-val="non"]');
 await page.click("#nextBtn");
-await page.fill('[data-input="age"]', "35");
-await page.click('.opts[data-key="sex"] .opt[data-val="H"]');
-await page.click("#nextBtn");
-
-// ---- 3. Références EN TENUE : le test d'abord, le repli ensuite (et annoncé) ----
-const lvlTxt = await page.locator("#screen").textContent();
-ok(/EN TENUE/.test(lvlTxt), "l'étape niveau demande le test EN TENUE avant tout");
-ok(/pull buoy/.test(lvlTxt) && /longe/.test(lvlTxt), "le protocole du test est décrit (matériel complet, partenaire, longe)");
-await page.click('.opts[data-key="level"] .opt[data-val="inter"]');
-await page.click('.opts[data-key="gear_test"] .opt[data-val="non"]');
-await page.click('.opts[data-key="css_known"] .opt[data-val="oui"]');
-await page.fill('[data-input="css"]', "1:45");
-await page.click('.opts[data-key="pace_known"] .opt[data-val="oui"]');
-await page.fill('[data-input="pace"]', "4:50");
-await page.click("#nextBtn");
-const injTxt = await page.locator("#screen").textContent();
-ok(/Épaule \(plaquettes\)/.test(injTxt), "blessure « épaule (plaquettes) » proposée — la zone n°1 du swimrun");
-await page.click('.opts[data-key="history"] .opt[data-val="confirme"]');
-await page.click('.opts[data-key="injury"] .opt[data-val="aucune"]');
-await page.click("#nextBtn");
-await page.click('.opts[data-key="sessions_max"] .opt[data-val="7"]');
-await page.click('.opts[data-key="vol_max"] .opt[data-val="10"]');
-await page.click('.opts[data-key="vol_recent"] .opt[data-val="7"]');
-await page.click('.opts[data-key="dispo"] .opt[data-val="semaine"]');
-await page.click('.opts[data-key="off_days"] .opt[data-val="non"]');
-await page.click('.opts[data-key="doubles"] .opt[data-val="non"]');
-await page.click("#nextBtn");
-await page.click("#genBtn");
+// U14 — traversée agnostique à l'ordre (voir la note dans harness.mjs). Chaque assertion est
+// accrochée au CONTENU de son écran, plus à son rang.
+const vus = {};
+await traverserQuestionnaire(page, {
+  reponses: { leg_swim_env: "mer_agitee", sex: "H", level: "inter", gear_test: "non",
+    css_known: "oui", pace_known: "oui", history: "confirme", injury: "aucune",
+    sessions_max: "7", vol_max: "10", vol_recent: "7", dispo: "semaine", off_days: "non", doubles: "non" },
+  saisies: { age: "35", css: "1:45", pace: "4:50" },
+  async surEcran(pg) {
+    const txt = await pg.locator("#screen").textContent();
+    if (!vus.legs && (await pg.locator('.opts[data-key="leg_swim_env"]').count())) {
+      vus.legs = true;
+      ok(/profil de ta course/i.test(txt), "étape « Le profil de ta course » proposée en swimrun");
+      ok(/natation se passe où/i.test(txt), "le milieu de nage est demandé (mer agitée ≠ lac)");
+      ok(!/parcours vélo/i.test(txt), "aucune question de vélo en swimrun — le leg n'existe pas");
+    }
+    if (!vus.level && /EN TENUE/.test(txt)) {
+      vus.level = true;
+      ok(/pull buoy/.test(txt) && /longe/.test(txt), "le protocole du test est décrit (matériel complet, partenaire, longe)");
+    }
+    if (!vus.inj && (await pg.locator('.opts[data-key="injury"]').count())) {
+      vus.inj = true;
+      ok(/Épaule \(plaquettes\)/.test(txt), "blessure « épaule (plaquettes) » proposée — la zone n°1 du swimrun");
+    }
+  },
+});
+ok(vus.legs && vus.level && vus.inj, "les trois écrans à contenu spécifique ont été traversés");
 await page.waitForTimeout(1000);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "plan swimrun généré (vue 4 onglets)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "plan swimrun généré (vue 5 onglets)");
 
 // ---- 4. Le plan : la séance pivot reproduit les transitions et la part de nage ----
 const plan = await page.evaluate(async () => {

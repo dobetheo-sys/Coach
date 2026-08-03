@@ -24,7 +24,7 @@ await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 const v2state = await page.evaluate(() => JSON.parse(localStorage.getItem("eb_state_v2") || "null"));
 ok(!!(v2state && Array.isArray(v2state.plans) && v2state.plans.length === 1 && v2state.plans[0].sport === "run"), "migration v1→v2 : plan repris sans perte (plans=" + (v2state ? v2state.plans.length : "null") + ")");
-ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "l'app restaure directement la vue plan (4 onglets)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "l'app restaure directement la vue plan (5 onglets)");
 
 // ---- 2. Profil : avatar/niveau/XP + records + plans + sauvegarde + retest suggéré ----
 const tabs = await page.locator("#ebTabbar .tabbtn").all();
@@ -75,7 +75,7 @@ await page.evaluate(() => {
 });
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "retour au plan 1 : la vue plan est restaurée");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "retour au plan 1 : la vue plan est restaurée");
 const t2 = await page.locator("#ebTabbar .tabbtn").all();
 await t2[0].click(); await page.waitForTimeout(250);
 ok(/Mes plans \(2\)/.test(await page.locator("#screen").textContent()), "les 2 plans sont listés dans le sélecteur");
@@ -110,25 +110,56 @@ const whyBeforeWhat = await page.evaluate(() => {
   const d = ds.find((x) => x.querySelector(".gd-why"));
   if (!d) return { hasWhy: false, nSess: ds.length };
   d.open = true;
-  const why = d.querySelector(".gd-why"), det = d.querySelector(".gd-det");
+  // U16 — le « quoi » d'une séance se rend en LISTE (`.gd-steps`, une ligne par bloc) dès
+  // qu'elle en compte plus d'un, et en `.gd-det` sinon. La propriété vérifiée ne change pas
+  // d'un iota — le POURQUOI passe devant le QUOI —, seul le conteneur à interroger change.
+  // Sans ce `,`, la garde levait un TypeError au lieu de mesurer : elle a fait son travail.
+  const why = d.querySelector(".gd-why"), det = d.querySelector(".gd-det, .gd-steps");
+  if (!det) return { hasWhy: true, nWhy: document.querySelectorAll("#screen .gd-why").length,
+    order: "det-absent", noDup: true };
   return { hasWhy: true, nWhy: document.querySelectorAll("#screen .gd-why").length,
     order: why.compareDocumentPosition(det) & Node.DOCUMENT_POSITION_FOLLOWING ? "why-first" : "det-first",
     noDup: !/\u{1F4A1}/u.test(det.textContent) };
 });
-ok(whyBeforeWhat && whyBeforeWhat.hasWhy && whyBeforeWhat.nWhy > 5, "les séances de la grille portent leur justification (" + (whyBeforeWhat && whyBeforeWhat.nWhy) + ")");
+// U15 — l'onglet Plan ouvre sur UNE semaine (la courante) et non plus quatre : le seuil
+// portait sur le nombre de séances affichées, pas sur la propriété mesurée. Une semaine
+// d'entraînement en porte 3 à 7 ; le critère devient « toutes celles qui sont là ont leur
+// justification », ce qui est la propriété qu'on voulait garder depuis le début.
+ok(whyBeforeWhat && whyBeforeWhat.hasWhy && whyBeforeWhat.nWhy >= 3,
+  "les séances de la grille portent leur justification (" + (whyBeforeWhat && whyBeforeWhat.nWhy) + ")");
 ok(whyBeforeWhat && whyBeforeWhat.order === "why-first", "le POURQUOI passe devant le QUOI dans le détail d'une séance");
 ok(whyBeforeWhat && whyBeforeWhat.noDup, "la justification n'est plus dupliquée en queue de description technique");
 const t2b = await page.locator("#ebTabbar .tabbtn").all();
 await t2b[2].click(); await page.waitForTimeout(400);
+// U11 — la génération arrive désormais sur 🗓 Plan, donc le check-in n'a pas encore été
+// répondu quand on ouvre 🎯 Aujourd'hui. Le portillon n'a pas changé : on le passe, comme un
+// utilisateur le ferait. Ce que ce critère mesure (le POURQUOI visible sans rien ouvrir) est
+// inchangé — c'est le chemin pour y arriver qui a bougé.
+for (let i = 0; i < 6 && (await page.locator(".ck-opt").count()); i++) {
+  const n = await page.locator(".ck-opt").count();
+  await page.locator(".ck-opt").nth(Math.min(1, n - 1)).click();
+  await page.waitForTimeout(320);
+}
+await page.waitForTimeout(600);
+// Ce critère suppose que « aujourd'hui » porte une SÉANCE. Un tiers des jours de plan sont
+// des jours de repos (mesuré en U8 : 153 sur 441 en semaine 1), et le jour de la semaine
+// n'est pas contrôlé par le test : il tombait donc rouge un jour sur trois, au hasard du
+// calendrier. Troisième instrument de ce dépôt à dépendre de la date, après le banc R14
+// (R20.7) et le balayage de fréquence de C29. On distingue les deux cas au lieu de subir
+// l'un des deux : séance → le POURQUOI est visible sans rien ouvrir ; repos → le message de
+// repos est là (U8), et le critère de la séance ne s'applique pas.
 const heroWhy = await page.evaluate(() => {
   const c = document.querySelector("#screen");
-  return { visibleWhy: !!c.querySelector(".gd-why"), hidden: !!c.querySelector("details.gd-sess") };
+  return { visibleWhy: !!c.querySelector(".gd-why"), hidden: !!c.querySelector("details.gd-sess"),
+    repos: /Repos aujourd/i.test(c.innerText || "") };
 });
-ok(heroWhy.visibleWhy, "dans Aujourd'hui, le « pourquoi » de la séance est visible SANS rien ouvrir (§5)");
+ok(heroWhy.visibleWhy || heroWhy.repos, "dans Aujourd'hui, le « pourquoi » de la séance est visible SANS rien ouvrir (§5)"
+  + (heroWhy.repos ? " — jour de REPOS aujourd'hui, critère non applicable, message de repos présent" : ""));
 
 // ---- 6. Onglet Nutrition : journal alimentaire RETIRÉ (décision utilisateur R6) ----
-const t3 = await page.locator("#ebTabbar .tabbtn").all();
-await t3[3].click(); await page.waitForTimeout(300);
+// R18.3 — Nutrition n'est plus le 4e onglet (📅 Semaine est revenue devant). Par NOM.
+await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("nutrition"); });
+await page.waitForTimeout(400);
 const nutTxt = await page.locator("#screen").textContent();
 ok(await page.locator("#njCard").count() === 0 && !/Journal alimentaire/.test(nutTxt), "journal alimentaire retiré de l'onglet Nutrition");
 ok(/Dépense estimée du jour/.test(nutTxt) && /Ravitaillement|carburant/i.test(nutTxt), "l'onglet Nutrition garde dépense estimée + ravitaillement");

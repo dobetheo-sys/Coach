@@ -268,6 +268,26 @@ function techOf(s){
   return (i<0?d:d.slice(0,i)).trim();
 }
 /**
+ * U16 — LE DÉROULEMENT DE LA SÉANCE SE DÉROULE VRAIMENT.
+ *
+ * Retour du fondateur : « trop dense ». Mesuré en dépliant les séances d'un plan marathon :
+ * une VO2max sortait **296 caractères d'un seul tenant**, quatre blocs collés par des points
+ * médians, en 11 px gris à interligne 1,35. Le contenu est juste ; c'est sa mise en page qui
+ * en fait un pavé. Un entraîneur écrit une séance en LISTE — échauffement, corps, retour au
+ * calme —, jamais en paragraphe.
+ *
+ * On ne fabrique AUCUN texte ici : `renderSess` reste le seul producteur (règle du dépôt), on
+ * se contente de couper sur le séparateur de blocs qu'il pose déjà. C'est pour que cette coupe
+ * soit exacte que le rendu vallonné cesse d'utiliser le même symbole à l'intérieur d'un bloc.
+ * Un seul segment ⇒ pas de liste : une ligne unique n'a pas besoin d'être une puce.
+ */
+function techListHTML(tech){
+  if(!tech)return "";
+  const segs=tech.split(" · ").map(x=>x.trim()).filter(Boolean);
+  if(segs.length<2)return '<span class="gd-det">'+tech+"</span>";
+  return '<ul class="gd-steps">'+segs.map(x=>"<li>"+x+"</li>").join("")+"</ul>";
+}
+/**
  * Le bloc repliable d'une séance dans une grille. Le POURQUOI passe devant le QUOI : quand
  * l'athlète ouvre une séance, la première chose qu'il lit est la raison d'être de la séance,
  * pas la liste des blocs. C'est l'ordre dans lequel un entraîneur parle.
@@ -277,7 +297,7 @@ function sessDetailsHTML(s,style){
   const why=whyOf(s),tech=techOf(s);
   return '<details class="gd-sess"'+(style?' style="'+style+'"':"")+'><summary><b>'+s.name+"</b></summary>"
     +(why?'<span class="gd-why">\u{1F4A1} '+why+"</span>":"")
-    +'<span class="gd-det">'+tech+"</span></details>";
+    +techListHTML(tech)+"</details>";
 }
 
 /**
@@ -290,15 +310,25 @@ function whyPlanCardHTML(plan){
   if(!v2||!v2.decisions||!v2.decisions.length)return "";
   const D={};v2.decisions.forEach(d=>{D[d.id]=d;});
   const li=[];
-  const add=(txt,src)=>{if(txt)li.push('<li>'+txt+(src?' <span style="color:var(--muted)">('+src+')</span>':"")+"</li>");};
+  // U16 — une ligne par idée, avec de l'air entre elles (voir `.exp-list` dans styles.css).
+  const add=(txt,src)=>{if(txt)li.push('<li class="exp-row"><div>'+txt+(src?' <span class="exp-lbl">'+src+'</span>':"")+"</div></li>");};
   if(D.duree)add("Ta préparation fait <b>"+D.duree.val+"</b>, découpée en phases : on construit d'abord, on aiguise ensuite, on arrive frais.","durée");
-  if(D.capacite&&D.utile)add("Le pic monte à ce que permet le plus petit des deux : ton volume déclaré (<b>"+D.capacite.val+"</b>) et ce que ton objectif demande vraiment (<b>"+D.utile.val+"</b>). Promettre plus serait une promesse que le plan ne tient pas.","plafonds");
-  else if(D.capacite)add("Le pic est plafonné à ton volume déclaré : <b>"+D.capacite.val+"</b>.","plafond");
+  // R20.2 — `capacite` est le plafond de l'HISTORIQUE, pas le volume déclaré par l'athlète.
+  // La phrase disait « ton volume déclaré » depuis l'origine : sur un profil où les deux
+  // diffèrent (le cas courant), elle renvoyait l'athlète corriger un curseur qui n'était pas
+  // celui qui bornait. C'est le même défaut que R20.2 traite dans le moteur, à l'affichage.
+  if(D.capacite&&D.utile)add("Le pic monte à ce que permet le plus petit des deux : ce que ton historique encaisse (<b>"+D.capacite.val+"</b>) et ce que ton objectif demande vraiment (<b>"+D.utile.val+"</b>). Promettre plus serait une promesse que le plan ne tient pas.","plafonds");
+  else if(D.capacite)add("Le pic est plafonné à ce que ton historique encaisse : <b>"+D.capacite.val+"</b>.","plafond");
+  // R20.2 — quand le volume max demandé n'est pas atteint, l'athlète l'apprend ICI, en tête,
+  // pas au fond d'un volet dépliable : c'est une réponse qu'il a lui-même saisie et dont il
+  // attend un effet. La phrase nomme le maillon qui a le plus retiré et, quand il en existe
+  // un, le levier qui le débloquerait.
+  if(D["R20.2"])add("<b>"+D["R20.2"].val+"</b>. "+D["R20.2"].why,"volume max");
   if(D.budget)add("<b>"+D.budget.val+"</b> séances par semaine"+(D["R10-depart"]?"" : "")+(D.recup?", avec une semaine allégée "+D.recup.val:"")+".","budget");
   if(D["R10-depart"])add("Le départ est calé sur ton volume RÉEL des derniers mois, pas sur ta cible : <b>"+D["R10-depart"].val+"</b>. C'est la marche la plus souvent trop haute.","reprise");
   if(D.impact)add("Pas plus de <b>"+D.impact.val+"</b> jours d'appui : c'est l'impact qui blesse, pas le volume.","impact");
   let h='<div class="load-card"><div class="load-title">\u{1F9ED} Pourquoi ce plan</div>'
-    +'<ul style="font-size:var(--fs-md);line-height:1.55;margin:8px 0 0;padding-left:18px">'+li.join("")+"</ul>";
+    +'<ul class="exp-list exp-plain">'+li.join("")+"</ul>";
   if(v2.warnings&&v2.warnings.length)
     h+='<div class="load-sub" style="margin-top:8px">\u26A0 Ce que le moteur n\u2019a pas pu faire sous tes contraintes : '+v2.warnings[0]+(v2.warnings.length>1?' <a href="#motorDecisions" style="color:inherit">et '+(v2.warnings.length-1)+' autre'+(v2.warnings.length>2?"s":"")+"\u2026</a>":"")+"</div>";
   h+='<div class="load-sub" style="margin-top:6px"><a href="#motorDecisions" style="color:inherit">\u2193 Les '+v2.decisions.length+' décisions du moteur, en détail</a></div></div>';
@@ -309,17 +339,33 @@ function decisionsCardHTML(plan){
   let h="";
   const v2=plan&&plan._v2;
   if(v2){
-    h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+') \u2014 score d\u2019audit '+v2.score+'/100</summary><ul style="font-size:var(--fs-sm);line-height:1.6;margin:8px 0 0;padding-left:18px">';
+    // U3 — LE SCORE D'AUDIT N'EST PLUS MONTRÉ À L'ATHLÈTE.
+    //
+    // Le titre affichait « score d'audit 70/100 ». Mesuré sur 30 profils (10 formats ×
+    // 3 niveaux) : médiane 100, 3 plans sous 80 — et ces trois-là sont **les trois Ironman**,
+    // à tous les niveaux, avec **zéro violation dure**. Donc la personne qui prépare l'épreuve
+    // la plus dure du catalogue, sur onze mois, était précisément celle à qui l'app annonçait
+    // la note la plus basse, pour un plan parfaitement valide.
+    //
+    // Le chiffre est juste : c'est un score de critères SOUPLES, bas parce qu'un Ironman sature
+    // les plafonds. Mais un score sur 100 ne se lit que d'une façon — comme une note — et
+    // l'athlète n'a rien à en faire : le plan est soit assez bon pour être suivi, soit il ne
+    // l'est pas, et cette question-là est tranchée par les violations DURES, qui sont listées
+    // juste en dessous. Le score reste dans `plan._v2.score` pour le développement et les
+    // bancs ; il ne s'affiche plus.
+    h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+')</summary><ul class="exp-list">';
     // D1 (audit v6) — les règles non satisfaites sont calculées et attachées au plan :
     // on ne les jette plus à l'affichage. Langage neutre (pas de bandeau rouge — décision
     // R5 du fondateur), mais EN TÊTE de liste, pas cachées.
     if(v2.hardViolations&&v2.hardViolations.length){
-      h+='<li style="color:#a33"><b>Règles non satisfaites malgré réparation ('+v2.hardViolations.length+') :</b><br>'+v2.hardViolations.map(x=>'· '+x).join('<br>')+'<br><span style="color:#555">Le moteur a rendu le meilleur plan possible sous tes contraintes — ces points expliquent le score.</span></li>';
+      h+='<li class="exp-row" style="color:#a33"><b>Règles non satisfaites malgré réparation ('+v2.hardViolations.length+') :</b><br>'+v2.hardViolations.map(x=>'· '+x).join('<br>')+'<br><span style="color:#555">Le moteur a rendu le meilleur plan possible sous tes contraintes — ces points expliquent le score.</span></li>';
     }
-    v2.decisions.forEach(d=>{h+='<li><b>'+d.what+' :</b> '+d.val+'<br><span style="color:#555">'+d.why+'</span></li>';});
-    if(v2.warnings.length)h+='<li><b>Limites connues de ce plan :</b> '+v2.warnings.join(" ")+'</li>';
+    // U16 — trois niveaux : l'intitulé s'efface, la VALEUR est ce qu'on vient chercher, la
+    // justification descend en gris aéré. Aucun mot retiré.
+    v2.decisions.forEach(d=>{h+='<li class="exp-row"><div class="exp-lbl">'+d.what+'</div><div class="exp-val">'+d.val+'</div><div class="exp-why">'+d.why+'</div></li>';});
+    if(v2.warnings.length)h+='<li class="exp-row"><div class="exp-lbl">Limites connues de ce plan</div><div class="exp-why">'+v2.warnings.join(" ")+'</div></li>';
     if(v2.repairs&&v2.repairs.length){
-      h+='<li><details style="cursor:pointer"><summary>Réparations tentées par le moteur ('+v2.repairs.length+')</summary><div style="color:#555;margin-top:4px">'+v2.repairs.map(x=>'· '+x).join('<br>')+'</div></details></li>';
+      h+='<li class="exp-row"><details style="cursor:pointer"><summary>Réparations tentées par le moteur ('+v2.repairs.length+')</summary><div style="color:#555;margin-top:4px">'+v2.repairs.map(x=>'· '+x).join('<br>')+'</div></details></li>';
     }
     h+='</ul></details>';
   }
@@ -328,4 +374,4 @@ function decisionsCardHTML(plan){
 // Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
 // pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
 
-export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf };
+export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };

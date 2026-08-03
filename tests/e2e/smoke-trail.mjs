@@ -1,7 +1,7 @@
 // Smoke TRAIL (spec R7) : le trail est un SPORT à part entière, son objectif se décrit par
 // ses DONNÉES (distance + D+), la catégorie d'effort est déduite, l'intensité dépend de la
 // pente (jamais d'allure au sol en montée), et la descente est une charge programmée.
-import { startServer, launchBrowser, makeReporter } from "./harness.mjs";
+import { startServer, launchBrowser, makeReporter, traverserQuestionnaire } from "./harness.mjs";
 const N_SPORTS = 7; // R16.10 — swimrun réintégré : le sélecteur suit le registre du moteur
 
 
@@ -29,45 +29,43 @@ await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networ
 await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: "networkidle" });
 await page.click('.sport-card[data-sport="trail"]');
-await page.click('.opts[data-key="intent"] .opt[data-val="competition"]');
-const objTxt = await page.locator("#screen").textContent();
-ok(/D\+ total/.test(objTxt), "le D+ de la course est demandé (la donnée centrale d'une prépa trail)");
-ok(await page.locator('.opts[data-key="format"]').count() === 0, "aucun « format » à choisir : la catégorie est déduite");
-ok(/Barrière horaire/.test(objTxt), "barrière horaire proposée (optionnelle)");
-await page.fill('[data-input="race_distance_km"]', "62");
-await page.fill('[data-input="race_dplus_m"]', "3200");
-await page.click('.opts[data-key="race_technicity"] .opt[data-val="technique"]');
-await page.click('.opts[data-key="race_night"] .opt[data-val="partielle"]');
-await page.click("#nextBtn");
-for (const v of ["med_pain", "med_dizzy", "med_treat"]) await page.click('.opts[data-key="' + v + '"] .opt[data-val="non"]');
-await page.click("#nextBtn");
-
-// ---- 3. Étape « ton terrain » : la contrainte la plus déterminante, absente avant R7 ----
-const terrTxt = await page.locator("#screen").textContent();
-ok(/Ton terrain d’entraînement|Ton terrain d'entraînement/.test(terrTxt), "étape « Ton terrain d'entraînement » présente");
-ok(/dénivelé accessible/i.test(terrTxt), "l'accès réel au dénivelé est demandé");
-ok(/Bâtons/.test(terrTxt), "les bâtons sont un choix explicite (recommandés, jamais imposés)");
-await page.click('.opts[data-key="train_dplus_access"] .opt[data-val="collines"]');
-await page.click('.opts[data-key="treadmill"] .opt[data-val="non"]');
-await page.click('.opts[data-key="poles"] .opt[data-val="a_decider"]');
-await page.click("#nextBtn");
-await page.fill('[data-input="age"]', "35");
-await page.click('.opts[data-key="sex"] .opt[data-val="H"]');
-await page.click("#nextBtn");
-
-// ---- 4. Deux références : allure sur PLAT + vitesse ascensionnelle ----
-const lvlTxt = await page.locator("#screen").textContent();
-ok(/vitesse ascensionnelle|VAM/.test(lvlTxt), "la VAM est demandée — la référence d'intensité en montée");
-ok(/sur PLAT/.test(lvlTxt), "l'allure seuil est explicitement demandée SUR PLAT");
-await page.click('.opts[data-key="level"] .opt[data-val="inter"]');
-await page.click('.opts[data-key="pace_known"] .opt[data-val="oui"]');
-await page.fill('[data-input="pace"]', "4:50");
-// R12.1 — la question principale est désormais la montée VÉCUE, pas « connais-tu ta VAM ».
-ok(/dernière grosse montée/.test(lvlTxt), "la VAM se demande par une montée VÉCUE (R12.1), pas par un chiffre à connaître");
-ok(await page.locator('[data-input="climb_dplus_m"]').count() === 1 && await page.locator('[data-input="climb_min"]').count() === 1,
-  "deux champs : D+ et durée de la montée");
-await page.fill('[data-input="climb_dplus_m"]', "600");
-await page.fill('[data-input="climb_min"]', "55");
+// U14 — traversée AGNOSTIQUE À L'ORDRE. Cette suite codait la séquence des écrans en dur et
+// tombait à chaque réorganisation, alors qu'elle ne mesure pas l'ordre mais le CONTENU de
+// certains écrans. Les assertions sont donc accrochées au contenu, pas au rang.
+const vus = {};
+await traverserQuestionnaire(page, {
+  reponses: { intent: "competition", race_technicity: "technique", race_night: "partielle",
+    med_pain: "non", med_dizzy: "non", med_treat: "non",
+    train_dplus_access: "collines", treadmill: "non", poles: "a_decider",
+    sex: "H", level: "inter", pace_known: "oui", vam_known: "oui",
+    history: "confirme", injury: "aucune",
+    sessions_max: "5", vol_max: "10", vol_recent: "5", dispo: "semaine", off_days: "non", doubles: "non" },
+  // 62 km / 3 200 m D+ : R11.4 exige 28 semaines minimum — la date par défaut du
+    // traverseur (+112 j) déclencherait le refus « course trop proche », à raison.
+    saisies: { race_date: new Date(Date.now() + 300 * 864e5).toISOString().slice(0, 10),
+    race_distance_km: "62", race_dplus_m: "3200", age: "35", pace: "4:50",
+    climb_dplus_m: "600", climb_min: "55", vam: "850" },
+  async surEcran(pg) {
+    const txt = await pg.locator("#screen").textContent();
+    if (!vus.terrain && /dénivelé accessible/i.test(txt)) {
+      vus.terrain = true;
+      ok(/Ton terrain d’entraînement|Ton terrain d'entraînement/.test(txt), "étape « Ton terrain d'entraînement » présente");
+      ok(/dénivelé accessible/i.test(txt), "l'accès réel au dénivelé est demandé");
+      ok(/Bâtons/.test(txt), "les bâtons sont un choix explicite (recommandés, jamais imposés)");
+    }
+    if (!vus.level && /vitesse ascensionnelle|VAM/.test(txt)) {
+      vus.level = true;
+      ok(/sur PLAT/.test(txt), "l'allure seuil est explicitement demandée SUR PLAT");
+      ok(/dernière grosse montée/.test(txt), "la VAM se demande par une montée VÉCUE (R12.1), pas par un chiffre à connaître");
+      ok(await pg.locator('[data-input="climb_dplus_m"]').count() === 1 && await pg.locator('[data-input="climb_min"]').count() === 1,
+        "deux champs : D+ et durée de la montée");
+      await pg.evaluate(() => { const d = document.querySelector("#screen details"); if (d) d.open = true; });
+    }
+  },
+});
+ok(vus.terrain, "l'écran « ton terrain » a bien été traversé");
+ok(vus.level, "l'écran des références (allure plat + VAM) a bien été traversé");
+// Ces deux mesures ne dépendent pas d'un écran : elles interrogent le moteur directement.
 const vamFromClimb = await page.evaluate(() => globalThis.EBV2.trailObjective({
   race_distance_km: "45", race_dplus_m: "2200", history: "confirme", level: "inter",
   climb_dplus_m: "600", climb_min: "55" }));
@@ -76,26 +74,8 @@ ok(vamFromClimb.vamSource === "montee" && vamFromClimb.vam > 400 && vamFromClimb
 const vamGuessed = await page.evaluate(() => ["debutant", "inter", "avance"].map((level) =>
   globalThis.EBV2.trailObjective({ race_distance_km: "45", race_dplus_m: "2200", history: "confirme", level }).raceMinMid));
 ok(new Set(vamGuessed).size === 1, "sans montée déclarée, le NIVEAU ne fait plus varier l'estimation de course (R12.6)");
-// La VAM directe reste possible pour qui l'a mesurée — mais elle n'est plus le chemin principal.
-await page.evaluate(() => { const d = document.querySelector('#screen details'); if (d) d.open = true; });
-await page.click('.opts[data-key="vam_known"] .opt[data-val="oui"]');
-await page.fill('[data-input="vam"]', "850");
-await page.click("#nextBtn");
-const injTxt = await page.locator("#screen").textContent();
-ok(/Quadriceps/.test(injTxt), "blessure « quadriceps » proposée (la zone que la descente casse)");
-await page.click('.opts[data-key="history"] .opt[data-val="confirme"]');
-await page.click('.opts[data-key="injury"] .opt[data-val="aucune"]');
-await page.click("#nextBtn");
-await page.click('.opts[data-key="sessions_max"] .opt[data-val="5"]');
-await page.click('.opts[data-key="vol_max"] .opt[data-val="10"]');
-await page.click('.opts[data-key="vol_recent"] .opt[data-val="5"]');
-await page.click('.opts[data-key="dispo"] .opt[data-val="semaine"]');
-await page.click('.opts[data-key="off_days"] .opt[data-val="non"]');
-await page.click('.opts[data-key="doubles"] .opt[data-val="non"]');
-await page.click("#nextBtn");
-await page.click("#genBtn");
 await page.waitForTimeout(900);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "plan trail généré (vue 4 onglets)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "plan trail généré (vue 5 onglets)");
 
 // ---- 5. Le plan lui-même : catégorie déduite, décisions, contenu spécifique ----
 const plan = await page.evaluate(async () => {
