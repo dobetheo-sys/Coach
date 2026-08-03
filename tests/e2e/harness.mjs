@@ -113,7 +113,10 @@ export async function traverserQuestionnaire(page, { reponses = {}, saisies = {}
     // Un crochet pour les assertions qui doivent voir un écran PARTICULIER (le protocole
     // d'allure, par exemple) sans que la suite ait à savoir à quel rang il tombe.
     if (surEcran) await surEcran(page);
-    if (await page.locator("#" + arret).count()) { await page.click("#" + arret); break; }
+    // VISIBILITÉ, pas présence : depuis U14, « générer maintenant » est TOUJOURS dans le DOM
+    // et c'est son affichage qui suit les réponses. Un `count()` le voit donc dès le premier
+    // écran et la traversée s'arrête sur un bouton qu'on ne peut pas cliquer.
+    if (await page.locator("#" + arret).isVisible().catch(() => false)) { await page.click("#" + arret); break; }
     const suivant = page.locator("#nextBtn");
     if (!(await suivant.count()) || !(await suivant.isEnabled())) break;
     await suivant.click();
