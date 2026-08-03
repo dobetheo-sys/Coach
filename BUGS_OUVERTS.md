@@ -384,8 +384,8 @@ sous une documentation qui le disait vert. **20 invariants × 54 configurations,
 
 ```verify
 id: O-9
-quoi: le banc d'invariants RAPPORTE ses 22 invariants et sort en erreur s'il en trouve un rouge (le vert lui-même est suivi par O-20)
-attendu: /(✓ les \d+ invariants tiennent|échec\(s\) d'invariant sur \d+ règles)/
+quoi: le banc d'invariants est VERT sur ses 22 invariants (le motif acceptait le vert ET le rouge tant qu'O-20 était ouvert — O-20 est fermé depuis I14b)
+attendu: /✓ les 22 invariants tiennent/
 cmd: npm run audit:invariants
 ```
 
@@ -940,15 +940,40 @@ combinaisons sur 459 au-dessus du plafond).
 **Résultat : 68 % → 30 % des profils sous 80 %, médiane 75 % → 83 %.** La sortie longue baisse
 avec (semi : 91' → 81').
 
-**CE QUI RESTE.** 30 % des profils restent sous le plancher de fréquence : ce sont ceux où le
-rééquilibrage ne peut pas se payer sans franchir R3.13, et la rétractation joue. Fermer
-complètement demanderait de descendre les planchers de step en affûtage — un autre arbitrage.
+**CE QUI RESTE : 3 profils sur 12 (25 %), moyenne 80 %.** Ce sont ceux où le rééquilibrage ne
+peut pas se payer sans franchir R3.13, et la rétractation joue. Fermer complètement demanderait
+de descendre les planchers de step en affûtage — un autre arbitrage.
+
+**ET LA COMMANDE DE VÉRIFICATION, ELLE, MENTAIT — TROISIÈME INSTRUMENT DE CETTE ENTRÉE.**
+La prose ci-dessus annonce depuis R20.7 que « la semaine de course est exclue » et que « la date
+est ancrée sur un dimanche ». **La commande ne faisait ni l'un ni l'autre** : elle datait la
+course à `aujourd'hui + 140 jours` et prenait le MINIMUM sur toutes les semaines d'affûtage, y
+compris le moignon d'un jour qui porte la course et n'a, par conception (R13.4), aucun jour
+d'entraînement. Elle renvoyait donc **12/12**, contre 30 % annoncés. Balayée sur les sept jours de
+la semaine, à moteur inchangé :
+
+| jour de la course | lun | mar | mer | jeu | ven | sam | dim |
+|---|---|---|---|---|---|---|---|
+| sous 80 % | 12/12 | 12/12 | 12/12 | 12/12 | 5/12 | 2/12 | 2/12 |
+| moyenne | **0 %** | **0 %** | 41 % | 61 % | 77 % | 82 % | 82 % |
+
+C'est exactement ce que R20.6 a retiré du banc d'invariants (I6/I8/I12 : « la course objectif
+n'est pas une séance d'entraînement »), jamais rejoué sur cette mesure-ci.
+
+**Deux corrections d'instrument, et la première était insuffisante.** Exclure « la semaine qui
+porte la course » est trop grossier : sur un 10 km, l'unique semaine d'affûtage EST la semaine de
+course, elle fait sept jours et se termine par l'épreuve — l'exclure supprimait trois profils
+légitimes. Normaliser par jour DISPONIBLE ne suffit pas non plus (un moignon de deux jours dont le
+seul jour libre est un repos donne 0 %). Bosquet compte des séances **par semaine** : une semaine
+de un ou deux jours n'en est pas une. La mesure DÉCLARE donc son domaine — **au moins 5 jours
+disponibles** — et la date est **ancrée au lundi courant, en semaines entières** (recette R20.7).
+Vérifiée identique les sept jours : **3/12, moyenne 80 %**.
 
 ```verify
 id: O-19
 quoi: la fréquence d'affûtage face au plancher de 80 % que Bosquet/Mujika déclarent
-attendu: /sous 80 % : \d+/
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const iso=(d)=>new Date(Date.now()+d*864e5).toISOString().slice(0,10);const B={intent:'competition',dispo:'quotidienne',shift_ok:'non',doubles:'non',off_days:'non',sex:'H',sleep:'moyen',life_load:'normale',activity:'actif',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',weight_lever:'non',age:'35',weight:'75',height:'178'};const R={run:{pace_known:'oui',pace:'4:40',terrain:'plat'},bike:{ftp_known:'oui',ftp:'240',terrain:'plat'}};const F={run:['10k','semi','marathon'],bike:['cyclo']};let n=0,sous=0;for(const sp of Object.keys(F))for(const f of F[sp])for(const lv of ['debutant','inter','avance']){let p;try{p=E.buildPlan(sp,Object.assign({},B,{level:lv,history:lv==='debutant'?'reprise':'confirme',format:f,vol_max:'10',vol_recent:'6',sessions_max:'6',race_date:iso(140)},R[sp]));}catch(e){continue;}const nb=(w)=>w.days.filter(d=>d.sessions.some(s=>s.d!=='rs'&&(s.min||0)>0&&!s.race)).length;const pk=p.weeks.filter(w=>w.phase.id==='peak'&&!w.isRecup),tp=p.weeks.filter(w=>w.phase.id==='taper');if(!pk.length||!tp.length)continue;const np=Math.max(...pk.map(nb));if(!np)continue;n++;if(Math.min(...tp.map(nb))/np<0.8)sous++;}console.log('profils : '+n);console.log('sous 80 % : '+sous);"
+attendu: /sous 80 % : 3\/12/
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const lun=new Date();lun.setUTCDate(lun.getUTCDate()-((lun.getUTCDay()+6)%7));const c=new Date(lun);c.setUTCDate(c.getUTCDate()+20*7-1);const iso=c.toISOString().slice(0,10);const B={intent:'competition',dispo:'quotidienne',shift_ok:'non',doubles:'non',off_days:'non',sex:'H',sleep:'moyen',life_load:'normale',activity:'actif',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',weight_lever:'non',age:'35',weight:'75',height:'178'};const R={run:{pace_known:'oui',pace:'4:40',terrain:'plat'},bike:{ftp_known:'oui',ftp:'240',terrain:'plat'}};const F={run:['10k','semi','marathon'],bike:['cyclo']};const nb=(w)=>w.days.filter(d=>d.sessions.some(s=>s.d!=='rs'&&(s.min||0)>0&&!s.race)).length;const dispo=(w)=>w.days.filter(d=>!d.sessions.some(s=>s.race)).length;let n=0,sous=0;for(const sp of Object.keys(F))for(const f of F[sp])for(const lv of ['debutant','inter','avance']){let p;try{p=E.buildPlan(sp,Object.assign({},B,{level:lv,history:lv==='debutant'?'reprise':'confirme',format:f,vol_max:'10',vol_recent:'6',sessions_max:'6',race_date:iso},R[sp]));}catch(e){continue;}const pk=p.weeks.filter(w=>w.phase.id==='peak'&&!w.isRecup&&dispo(w)>=5);const tp=p.weeks.filter(w=>w.phase.id==='taper'&&dispo(w)>=5);if(!pk.length||!tp.length)continue;const np=Math.max(...pk.map(nb));if(!np)continue;n++;if(Math.min(...tp.map(nb))/np<0.8)sous++;}console.log('profils : '+n);console.log('sous 80 % : '+sous+'/'+n);"
 ```
 
 ### O-20 · En trail, un DÉBUTANT reçoit un pic plus lourd qu'un INTER — et le banc ne le voit qu'un jour sur deux · ✅ **FERMÉ (I14b, 03/08/2026)**
@@ -1121,7 +1146,51 @@ cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;cons
 ```
 
 
-### O-21 · À capacité déclarée plus HAUTE, le plan est plus PETIT — l'inversion sur l'axe allure · ⏳ **OUVERT**
+### O-21 · À capacité déclarée plus HAUTE, le plan est plus PETIT — l'inversion sur l'axe allure · 🟡 **MÉCANISME CORRIGÉ (03/08/2026), RÉSIDU = UN ARBITRAGE**
+
+> **CE QUI EST CORRIGÉ, ET MA PISTE DU MATIN ÉTAIT FAUSSE.** J'avais écrit « la courbe déclarée
+> décroît (base au-dessus du pic) ». Mesuré : elle ne décroît pas. **La seule semaine de PIC de
+> ces plans est une semaine de RÉCUPÉRATION** (102 min) pendant que les semaines de dev montent à
+> 162. Or l'auditeur exclut — à juste titre — les semaines de décharge de ses candidats : le pic
+> ne contribuait alors AUCUN candidat, et la règle concluait « la semaine de volume max dépasse
+> la meilleure semaine peak ». Énoncé **faux** : il n'y a pas de semaine de pic à dépasser.
+>
+> La récup dans le pic est **voulue** : C27b la refuse, mais son garde dominant dit que la CADENCE
+> de l'athlète l'emporte sur toute règle de placement (R18.5, arbitrage compté et démontré). Ce
+> qui n'avait jamais été considéré, c'est sa conséquence sur une prépa COURTE, où le pic tient en
+> une seule semaine : le plan n'a plus aucune semaine de pic en charge.
+>
+> La règle dit désormais **ce qui est vrai** — « aucune semaine de PIC en charge » — et le dit
+> dans le canal des AVERTISSEMENTS, la cause étant un arbitrage assumé et non un défaut de
+> génération. Même famille que les trois invariants retirés par R20.6 (I6/I8/I12) : une règle
+> appliquée là où son objet n'existe pas.
+>
+> **Mesuré sur 729 plans sans date de course : 216 profils portaient cette violation dure
+> insatisfiable → 0, et les réparations tombent de 952 à 356** — 596 coupes de semaines qui ne
+> réparaient rien, et qui ne coupaient PAS LA MÊME semaine selon l'allure déclarée. C'était le
+> mécanisme de l'inversion.
+>
+> **TROIS DE MES MESURES ONT VISÉ LA MAUVAISE POPULATION, DANS LA MÊME HEURE.** Le corpus V2
+> (702 profils) et mon premier balayage (486) donnaient **0 occurrence**, et j'ai failli retirer
+> le correctif comme inerte (le sort de C23b). Les deux portaient sur des plans DATÉS ; le défaut
+> ne vit que sur les plans **sans date de course**, construits sur `minWeeks` — c'est-à-dire
+> l'athlète qui n'a pas encore d'objectif calé. Là, il touche **29,6 %** des plans. Le golden ne
+> bouge pas d'un profil pour la même raison : ses 900 profils portent tous une date.
+>
+> **CE QUI RESTE — ET C'EST UN ARBITRAGE, PAS UN DÉFAUT.** L'inversion elle-même persiste
+> (`inversions d'allure : 2`), et sa cause est en AMONT de la réparation : les courbes DÉCLARÉES
+> diffèrent (786 min pour 5:45/km contre 852 pour 7:00/km, à `vol_max` identique). C'est la sonde
+> de capacité (V2.1, « la promesse suit ce que les plafonds permettent ») qui lit des plafonds de
+> séance dépendants de l'allure — un plafond exprimé en **distance** donne mécaniquement plus de
+> MINUTES à qui court moins vite.
+>
+> La question à trancher est d'entraînement, pas de code : **la sortie longue d'un 10 km se
+> prescrit-elle en distance ou en temps ?** En distance, le coureur lent passe plus de temps sur
+> ses appuis pour le même « stimulus kilométrique » — plus de fatigue et plus de risque, ce qui
+> heurte les priorités 1 et 2 du manifeste. En temps, les deux reçoivent la même charge et le
+> kilométrage suit. Tout le moteur compte déjà en TEMPS (`vol_max` est en heures), ce qui plaide
+> pour le temps — mais c'est une décision de fond, elle revient au fondateur.
+
 
 Trouvée en fermant O-20, par le critère `O17` du banc v6 qui est passé rouge. Le réflexe aurait
 été de conclure « I14b a bridé le plan » : **c'est faux, et c'est mesuré**. Le plan de l'athlète
@@ -1169,8 +1238,75 @@ instables (la rampe R10 fait légitimement baisser un plan à faible `vol_recent
 ```verify
 id: O-21
 quoi: à allure seuil plus rapide, le plan livré n'est pas plus petit (axe allure, cousin d'I13)
-attendu: /inversions? d'allure : \d+/
+attendu: /inversions d'allure : 2$/m
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(pace,vr)=>({intent:'competition',format:'10k',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',level:'inter',history:'confirme',injury:'aucune',sessions_max:'4',vol_max:'6',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',pace,vol_recent:String(vr),terrain:'route'});const tot=(p)=>p.weeks.reduce((t,w)=>t+w.days.reduce((a,d)=>a+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0),0);let ko=0;for(const vr of [0,5]){const rapide=tot(E.buildPlan('run',P('5:45',vr))),lent=tot(E.buildPlan('run',P('7:00',vr)));if(rapide<lent)ko++;}console.log(\"inversions d'allure : \"+ko);"
+```
+
+
+### O-22 · L'import Strava appelle « FTP » la puissance d'une sortie entière · ⏳ **OUVERT**
+
+Trouvé par le fondateur le 03/08/2026, en branchant son propre compte — **premier défaut du dépôt
+remonté par une donnée réelle** plutôt que par un banc.
+
+**Mesuré sur son compte** : l'import annonce **188 W** quand sa FTP déclarée sur Strava est
+**230 W** — 18 % en dessous. Et ce n'est pas cosmétique : la valeur importée est PROMUE en
+référence vivante (`tab-profile.js:31` pose `S.answers.ftp` et `ftp_known = "oui"`), donc **toutes
+les zones vélo du plan sont calculées dessus**.
+
+**La cause est une erreur de grandeur**, `steps.js:498` :
+
+```js
+const best = powRides.reduce((m, a) => Math.max(m, a.weighted_average_watts || a.average_watts || 0), 0);
+const ftp  = Math.round(best * 0.95);
+```
+
+Le coefficient 0,95 est la règle classique « FTP ≈ 95 % de la meilleure puissance sur **20
+MINUTES** », c'est-à-dire d'un test maximal de vingt minutes. Il est ici appliqué à la puissance
+NORMALISÉE d'une **sortie entière** — qui peut durer trois heures en endurance. 188 ÷ 0,95 = 198 W
+= la meilleure NP de sortie du fondateur, sur une sortie de 1 h 17.
+
+Le libellé entretient la confusion : `source: "Strava (meilleure sortie ≥20min)"` se lit comme
+« meilleure puissance sur 20 min » alors qu'il signifie « meilleure sortie de plus de 20 min ».
+Même famille que les six mesures démasquées en R20 : **une grandeur nommée pour une grandeur
+voisine**.
+
+**LE SENS DE L'ERREUR CHANGE AVEC L'ATHLÈTE, ET C'EST CE QUI LE REND DANGEREUX.**
+Pour qui roule surtout en endurance, l'estimation est BASSE : zones trop faciles, sous-charge —
+désagréable, pas risqué. Pour qui a fait une seule sortie courte et très dure dans ses 50
+dernières activités, elle est HAUTE : le plan prescrit alors des watts que l'athlète ne tient
+pas, sur toutes ses séances de vélo. C'est ce second cas qui heurte les priorités 1 et 2 du
+manifeste, et rien ne le distingue du premier aujourd'hui.
+
+**TROIS ISSUES, À ARBITRER.**
+
+1. **Ne plus estimer du tout** et le DIRE. Le message existe déjà pour le cas sans capteur
+   (« FTP non estimée : pas de capteur de puissance »). L'étendre : une sortie entière ne dit
+   pas la FTP. Honnête, gratuit, et cohérent avec P7/P8 (refuser d'estimer en disant pourquoi).
+2. **Estimer pour de vrai** : lire les flux de puissance (`/activities/{id}/streams`) et chercher
+   la meilleure moyenne glissante sur 20 min. C'est la grandeur que le 0,95 attend. Coût : un
+   appel API par activité, donc un quota et une latence.
+3. **Lire la FTP DÉCLARÉE sur Strava** (`/athlete` rend `ftp`). Demande le périmètre
+   `profile:read_all` en plus d'`activity:read_all`, donc une ré-autorisation de tous les
+   comptes déjà connectés. À noter : c'est une valeur DÉCLARÉE — R14.1 a payé cher la leçon
+   « un chiffre auto-déclaré ne pilote rien » —, mais contrairement à un adjectif, elle vient
+   le plus souvent d'un vrai test, et l'athlète peut la corriger.
+
+**Recommandation : 1 immédiatement, puis 2.** Ne pas afficher un chiffre faux coûte moins qu'un
+chiffre faux qui pilote des zones ; et l'issue 2 rend la grandeur que le coefficient attend.
+
+**Contournement pour l'athlète, aujourd'hui** : saisir la FTP à la main au Profil — la saisie
+prime sur l'import et régénère le plan.
+
+Les deux autres références importées portent le même soupçon et n'ont PAS été mesurées :
+`thrPace` prend la course la plus rapide EN MOYENNE (le code le dit lui-même : « estimation
+basse »), `css` la nage la plus rapide en moyenne. Leur libellé est plus honnête, leur méthode
+reste une moyenne de sortie.
+
+```verify
+id: O-22
+quoi: l'import Strava dérive la FTP de la puissance d'une SORTIE, pas d'un effort de 20 min
+attendu: /best \* 0\.95|meilleure sortie ≥20min/
+cmd: grep -n "0.95\|meilleure sortie" endurabuild/js/ui/steps.js
 ```
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
@@ -1306,8 +1442,8 @@ Ce ne sont pas des bugs : ce sont des endroits où **on ne saurait pas** qu'il y
 | A-2 | Le golden master fige `vol_max` au profil de base sur presque toutes ses passes | Deux passes correctives ont déjà dû être ajoutées pour cette raison (« course datée » en N2, « volume et extrapolation » en R14). Le prochain paramètre figé produira le même angle mort. |
 | A-3 | `R14.3-b` n'a **aucun critère automatique** | Personne ne saura si le dénivelé vélo est traité, sauf à relire le code. |
 | A-4 | Le monolithe `Coach_Pro_V1.5.html` a le moteur à jour mais son **UI est gelée à R4** | Les régressions d'interface introduites depuis (les onglets — 5 puis 4 en R16.9 —, carte Trail, étape terrain) ne s'y voient pas. C'est documenté et voulu — mais un utilisateur qui ouvrirait ce fichier verrait un produit d'il y a plusieurs lots. |
-| A-5 | **Aucune vérité terrain pour la projection R14/R14.1** — l'angle mort le plus profond du prédicteur | Les bandes `h`, `G_plafond`, `k_structure` sont des heuristiques que **rien ne valide**. On ne saura jamais qu'elles sont fausses tant que les projections ne seront pas confrontées aux résultats réels. *Premier geste, et il doit être fait MAINTENANT :* journaliser à chaque génération `{date, sport, format, horizon, refs mesurées, gainPct, gainBand, adhérence}` et, au passage du jour J, `{temps réel par leg}`. Sans cette ligne écrite aujourd'hui, la calibration sera impossible dans deux ans — les données n'existeront pas. |
-| A-6 | **Dates absolues** dans le golden et les scripts (`RACE_PASS_DATES`, `scripts/trace.mjs`, profils `measured`) — ⚠ **partiellement fermé** : `audit_v7.cjs` est passé en dates RELATIVES (R15.1), le golden et `trace.mjs` restent en absolu | Un profil dont la course est « à 43 semaines » aujourd'hui sera à 30 semaines dans trois mois : le golden dérive tout seul, ou pire, **exerce silencieusement d'autres branches en gardant la même empreinte**. Le garde-fou d'échéance existe (`goldenMaster.mjs` prévient 8 semaines avant), mais il traite la panne, pas la dérive. Vérifier : `grep -rn "20[23][0-9]-[01][0-9]-[0-3][0-9]" scripts/ tests/` — toute date en dur est un futur A-2. |
+| ~~A-5~~ | ~~**Aucune vérité terrain pour la projection R14/R14.1**~~ ✅ **PREMIER GESTE FAIT (03/08/2026)** | `endurabuild/js/projection-log.js` — le journal existe. **Une entrée par semaine ISO** (la projection ne bouge pas d'un jour à l'autre : l'adhérence est une fenêtre glissante de six semaines, P1 — journaliser chaque ouverture coûterait sept fois le stockage pour la même information), portant de quoi REFAIRE le calcul sans le code de l'époque : horizon, références mesurées qui ont servi d'ancre, `gainPct`, `gainBand`, adhérence, confiance, temps annoncés par discipline, et le MOTIF quand le moteur refuse de projeter (P8 — un refus est une donnée). `noteRaceResult()` referme la boucle au passage du jour J en attachant le temps réel à la projection journalisée **à son horizon d'origine** : `raceResult.predicted` ne contenait que la prédiction RECALCULÉE le jour J, laquelle ne dit rien de ce que le moteur annonçait quatre mois plus tôt. **Ce qui reste à faire est HUMAIN** : la calibration se fait hors ligne, sur les données exportées, et seulement quand une POPULATION aura couru — P11 a montré qu'un cas unique ne calibre rien (HERITAGE). ⚠ **Le journal n'est relu par AUCUNE partie du moteur, et c'est sa garde principale** : un journal qui influencerait la projection serait une seconde source de vérité (R11.1/R20.5/U9) et, pire, une boucle qui se confirme elle-même — le moteur calibré sur ses propres annonces mesurerait sa cohérence au lieu de sa justesse. `A5-B` l'asserte au caractère près (`tests/e2e/smoke-projlog.mjs`, 16ᵉ suite E2E), avec le critère « l'empreinte SAIT voir un changement » sans lequel elle serait satisfaite par une mesure aveugle. Suite **vérifiée rouge** (7 critères sur 11) en désactivant le journal.
+| ~~A-6~~ | ~~**Dates absolues** dans le golden et les scripts~~ ✅ **FERMÉ (03/08/2026) — et l'application mécanique aurait cassé le golden** | Point unique `bench-dates.cjs`. **Mesuré : ce n'était pas de l'hygiène, c'était une échéance datée** — `banc_grand_public` et `bench_r13` MOURAIENT à +90 jours, `banc_invariants` à +200, sur une exception non rattrapée (`ENTREE_INVALIDE : au moins 22 semaines avant la course`) et non sur un défaut. Cinq bancs ancrés, **vérifiés verts à +400 jours**, contre-preuve faite (les mêmes, non ancrés, rouges à +90/+200). **Le golden reste en dates ABSOLUES, délibérément** : mesuré 0 écart à +200 jours — un golden doit être REPRODUCTIBLE, pas suivre le calendrier ; le rendre relatif l'aurait fait dériver chaque semaine. Sa seule exposition (l'horizon de `RACE_PASS_DATES`) est couverte par sa garde d'échéance, vérifiée déclenchante à +290 jours.
 
 ---
 

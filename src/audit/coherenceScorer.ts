@@ -278,7 +278,32 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
     const peakPhaseBestM = Math.max(0, ...candidates.filter((w) => w.phaseId === "peak").map((w) => w.swimMeters));
     if (peakByMeters.phaseId === "peak" || (peakPhaseBestM > 0 && peakByMeters.swimMeters <= peakPhaseBestM * 1.05)) peakInPeakPhase = true;
   }
-  if (!peakInPeakPhase)
+  // O-21 — « DEV ≤ PIC » N'A PAS D'OBJET QUAND LE PIC N'A AUCUNE SEMAINE DE CHARGE.
+  //
+  // `candidates` exclut les semaines de récupération (c'est juste : on ne compare pas une
+  // décharge à une semaine de charge). Sur les préparations COURTES, la phase de pic tient en
+  // une seule semaine — et R18.5 a tranché que la CADENCE de récupération de l'athlète l'emporte
+  // sur toute règle de placement, C27b comprise. Cette semaine unique peut donc être une
+  // décharge, et le pic ne contribue alors AUCUN candidat.
+  //
+  // La règle concluait « la semaine de volume max dépasse la meilleure semaine peak » — un
+  // énoncé FAUX : il n'y a pas de semaine de pic à dépasser. Et le coût n'était pas cosmétique :
+  // la violation étant structurellement insatisfiable, la boucle de réparation coupait une
+  // semaine au hasard, et **PAS LA MÊME selon l'allure déclarée** — c'est ce qui produisait
+  // l'inversion O-21 (à 5:45/km l'athlète recevait moins qu'à 7:00/km).
+  //
+  // Même famille que les trois invariants que R20.6 a retirés du banc (I6/I8/I12) : une règle
+  // appliquée là où son objet n'existe pas. On dit donc ce qui est VRAI — le plan n'a pas de
+  // semaine de pic en charge — et on le dit dans le canal des avertissements, parce que la
+  // cause est un arbitrage assumé (la cadence de l'athlète), pas un défaut de génération.
+  const picSansCharge = !peakPhaseBest
+    && weeks.some((w) => w.phaseId === "peak")
+    && weeks.filter((w) => w.phaseId === "peak").every((w) => w.isRecup);
+  if (!peakInPeakPhase && picSansCharge)
+    soft.push("aucune semaine de PIC en charge : sur ce plan court, la seule semaine de pic est une "
+      + "décharge — la cadence de récupération de l'athlète l'emporte sur le placement (R18.5). "
+      + "La règle « dev ≤ pic » n'a pas d'objet ici.");
+  else if (!peakInPeakPhase)
     hard.push(
       "semaine de volume max (S" + peakByMin.num + ", " + peakByMin.phaseId + ") dépasse la meilleure semaine peak de >5% (spec audit 2)"
     );

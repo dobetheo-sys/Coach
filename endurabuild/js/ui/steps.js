@@ -473,42 +473,163 @@ function injuryOpts(){
 
 function ebParseT(v){const m=String(v||"").split(":");return m.length===2?(+m[0])*60+(+m[1]):parseFloat(v);}
 // ===== §10 — LECTURE Strava (OAuth 2.0, jeton personnel) : alimente a.tests (R3.8) =====
-// Lecture seule : on lit les activités récentes et on estime FTP / allure seuil / CSS.
-// Aucune écriture vers Strava. CORS supporté par l'API GET Strava avec un bearer token.
+// Formate des secondes en m'ss (allure au km, temps au 100 m).
 const _fk100=s=>Math.floor(s/60)+"'"+String(Math.round(s%60)).padStart(2,"0");
+/**
+ * O-22 — L'IMPORT LIT LA GRANDEUR QUE LE PROTOCOLE NOMME.
+ *
+ * ================================================================================
+ * LE DÉFAUT, TROUVÉ SUR UNE DONNÉE RÉELLE
+ * ================================================================================
+ *
+ * Premier défaut de ce dépôt remonté par un VRAI compte plutôt que par un banc : le
+ * fondateur branche son Strava, l'import annonce **188 W** quand sa FTP est **230**.
+ *
+ * L'ancien calcul prenait la puissance normalisée la plus élevée parmi les sorties de
+ * plus de 20 minutes, et la multipliait par 0,95 :
+ *
+ *     const best = powRides.reduce((m,a) => Math.max(m, a.weighted_average_watts || …), 0);
+ *     const ftp  = Math.round(best * 0.95);
+ *
+ * Le 0,95 vient de `disciplineRegistry.ts` — « FTP (20min à fond) : FTP ≈ 95 % de la
+ * puissance moyenne ». Il attend donc la puissance moyenne d'un effort MAXIMAL DE VINGT
+ * MINUTES. Il était appliqué à la moyenne d'une sortie ENTIÈRE, qui peut durer trois
+ * heures en endurance. 188 ÷ 0,95 = 198 W = la meilleure NP de sortie, sur 1 h 17.
+ *
+ * Et l'erreur CHANGE DE SENS selon l'athlète, ce qui la rend dangereuse : basse pour qui
+ * roule en endurance (zones trop faciles, sous-charge), HAUTE pour qui a fait une seule
+ * sortie courte et très dure — et là le plan prescrit des watts que l'athlète ne tient
+ * pas, sur toutes ses séances de vélo. Priorités 1 et 2 du manifeste.
+ *
+ * ================================================================================
+ * CE QUE L'IMPORT FAIT MAINTENANT — RIEN D'INVENTÉ
+ * ================================================================================
+ *
+ * `src/engine/disciplineRegistry.ts` est la source de vérité du dépôt sur « comment un
+ * effort devient une référence ». On s'y conforme au lieu d'écrire un second modèle
+ * (R11.1) :
+ *
+ *   FTP       « 20 minutes à fond : FTP ≈ 95 % de la puissance moyenne »
+ *   Seuil     « 3min + 10min à fond. UN 10-15 KM RÉCENT À FOND EST UNE BONNE ESTIMATION. »
+ *   CSS       « 400m + 200m à fond »
+ *
+ * Trois sources pour la FTP, par ordre de confiance décroissante :
+ *
+ *   1. LA FTP DÉCLARÉE SUR STRAVA (`GET /athlete` → `ftp`). C'est le chiffre que
+ *      l'athlète a posé lui-même, le plus souvent issu d'un vrai test. R14.1 a payé cher
+ *      la leçon « un ADJECTIF auto-déclaré ne pilote aucun chiffre » — mais une FTP n'est
+ *      pas un adjectif : c'est une mesure, et l'athlète peut la corriger d'un geste.
+ *   2. LA MEILLEURE MOYENNE GLISSANTE DE 20 MIN, lue dans les flux de puissance
+ *      (`/activities/{id}/streams`). C'est très exactement la grandeur que le 0,95 attend.
+ *   3. AUCUNE ESTIMATION, et on le DIT. C'est la règle P7/P8 du prédicteur appliquée
+ *      ici : refuser d'estimer en donnant le motif vaut mieux qu'un chiffre faux qui
+ *      pilote des zones.
+ *
+ * Pour l'allure seuil, le protocole du dépôt nomme lui-même son raccourci : un 10-15 km
+ * couru à fond. On prend donc la course la plus rapide DANS CETTE FENÊTRE DE DISTANCE,
+ * au lieu de la course la plus rapide toutes distances confondues — un 5 km rapide et un
+ * marathon ne disent pas la même chose du seuil.
+ *
+ * CE QUI N'EST PAS TRAITÉ ICI, ET C'EST DIT : le CSS. Son protocole (400 m + 200 m) ne se
+ * reconstitue pas depuis un résumé d'activité, et « la nage la plus rapide en moyenne »
+ * n'est pas un CSS. Il reste en l'état, avec son libellé, et l'entrée O-22 le porte.
+ */
 async function stravaImport(oauthTok){
   // Deux chemins vers le même import : token OAuth (relais serveur) ou jeton manuel collé.
   const tok=(oauthTok||((document.getElementById("pfStravaTok")||{}).value||"")).trim();
   const st=document.getElementById("pfStravaMsg");
   const setS=h=>{if(st)st.innerHTML=h;};
   if(!tok){setS("Colle d'abord un token d'accès Strava (Réglages → Mon API, scope <b>activity:read</b>) — ou connecte-toi via le relais ci-dessus.");return;}
+  const api=(p)=>fetch("https://www.strava.com/api/v3"+p,{headers:{Authorization:"Bearer "+tok}});
   setS("Lecture de tes activités récentes…");
   try{
-    const r=await fetch("https://www.strava.com/api/v3/athlete/activities?per_page=50",{headers:{Authorization:"Bearer "+tok}});
+    const r=await api("/athlete/activities?per_page=50");
     if(!r.ok){setS("Strava a refusé la requête ("+r.status+"). Vérifie le token et le scope activity:read.");return;}
     const acts=await r.json();
     if(!Array.isArray(acts)||!acts.length){setS("Aucune activité récente trouvée.");return;}
     if(!Array.isArray(S.answers.tests))S.answers.tests=[];
     const today=todayISO(),added=[],notes=[];
     const sport=a=>a.sport_type||a.type||"";
-    // FTP : uniquement si une sortie porte de la PUISSANCE (la vitesse seule ne dit rien de la FTP).
-    const rides=acts.filter(a=>/Ride/.test(sport(a))&&(a.moving_time||0)>=1200);
-    const powRides=rides.filter(a=>a.weighted_average_watts||a.average_watts);
-    if(powRides.length){const best=powRides.reduce((m,a)=>Math.max(m,a.weighted_average_watts||a.average_watts||0),0);
-      if(best>0){const ftp=Math.round(best*0.95);S.answers.tests.push({type:"ftp",value:ftp,date:today,source:"Strava (meilleure sortie ≥20min)"});added.push("FTP ≈ "+ftp+"W");}}
-    else if(rides.length)notes.push("FTP non estimée : pas de capteur de puissance sur tes sorties. Saisis-la, ou fais un test 20min ci-dessus.");
-    // Allure seuil : course récente la plus rapide EN MOYENNE — c'est un plancher conservateur
-    // si tes sorties sont faciles. Un vrai seuil vient du protocole 3min/10min.
-    const runs=acts.filter(a=>/Run/.test(sport(a))&&(a.moving_time||0)>=1200&&(a.average_speed||0)>0);
-    if(runs.length){const fast=runs.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
-      if(fast>0){const sk=Math.round(1000/fast);S.answers.tests.push({type:"thrPace",value:sk,date:today,source:"Strava (course la plus rapide, estimation basse)"});added.push("allure de réf. ≈ "+_fk100(sk)+"/km");}}
+
+    // ---- FTP ----------------------------------------------------------------
+    // 1. Ce que l'athlète a DÉCLARÉ sur Strava. Demande le périmètre `profile:read_all` ;
+    //    sans lui (jeton manuel à l'ancienne), l'appel échoue et on passe à la suite —
+    //    un import ne doit jamais s'arrêter parce qu'une source optionnelle manque.
+    let ftp=0,ftpSrc="";
+    try{
+      const ra=await api("/athlete");
+      if(ra.ok){const me=await ra.json();
+        if(me&&isFinite(+me.ftp)&&+me.ftp>0){ftp=Math.round(+me.ftp);ftpSrc="Strava (FTP de ton profil)";}}
+    }catch(e){ /* périmètre absent ou réseau : on tente l'estimation */ }
+
+    // 2. À défaut : la meilleure moyenne glissante de 20 min, la grandeur que 0,95 attend.
+    if(!ftp){
+      const rides=acts.filter(a=>/Ride/.test(sport(a))&&(a.moving_time||0)>=1500
+        &&(a.weighted_average_watts||a.average_watts));
+      // On ne télécharge pas cinquante flux : les sorties les plus intenses d'abord, et
+      // on s'arrête tôt. Chaque flux est un appel API, donc du quota et de l'attente.
+      const cand=rides.sort((x,y)=>(y.weighted_average_watts||y.average_watts||0)-(x.weighted_average_watts||x.average_watts||0)).slice(0,6);
+      let best20=0;
+      for(const a of cand){
+        try{
+          const rs=await api("/activities/"+a.id+"/streams?keys=watts,time&key_by_type=true");
+          if(!rs.ok)continue;
+          const js=await rs.json();
+          const w=js&&js.watts&&js.watts.data,t=js&&js.time&&js.time.data;
+          best20=Math.max(best20,bestRollingMean(w,t,1200));
+        }catch(e){ /* une sortie illisible n'arrête pas les autres */ }
+      }
+      if(best20>0){ftp=Math.round(best20*0.95);ftpSrc="Strava (meilleure moyenne sur 20 min réelles)";}
+      else if(rides.length)notes.push("FTP non estimée : aucune de tes sorties ne contient 20 minutes continues exploitables. Renseigne-la au Profil, ou fais le test de 20 min.");
+      else notes.push("FTP non estimée : pas de capteur de puissance sur tes sorties. Saisis-la, ou fais un test 20min ci-dessus.");
+    }
+    if(ftp>0){S.answers.tests.push({type:"ftp",value:ftp,date:today,source:ftpSrc});added.push("FTP "+ftp+"W");}
+
+    // ---- Allure seuil -------------------------------------------------------
+    // Le protocole du dépôt le dit : « un 10-15 km récent à fond est une bonne estimation ».
+    // On borne donc la DISTANCE au lieu de prendre la course la plus rapide toutes
+    // distances confondues — un 5 km rapide et un marathon ne disent pas la même chose
+    // du seuil, et l'ancienne version les mettait en concurrence.
+    const runs=acts.filter(a=>/Run/.test(sport(a))&&(a.average_speed||0)>0
+      &&(a.distance||0)>=10000&&(a.distance||0)<=15000);
+    if(runs.length){
+      const fast=runs.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
+      if(fast>0){const sk=Math.round(1000/fast);
+        S.answers.tests.push({type:"thrPace",value:sk,date:today,source:"Strava (10-15 km le plus rapide — protocole du plan)"});
+        added.push("allure seuil "+_fk100(sk)+"/km");}
+    } else notes.push("Allure seuil non estimée : aucune course entre 10 et 15 km dans tes 50 dernières activités. C'est la distance que le protocole retient — sur plus court ou plus long, la moyenne ne dit pas le seuil.");
+
+    // ---- CSS ----------------------------------------------------------------
+    // Son protocole (400m + 200m à fond) ne se reconstitue pas depuis un résumé
+    // d'activité ; « la nage la plus rapide en moyenne » n'est PAS un CSS. Laissé en
+    // l'état, libellé compris, et suivi dans O-22.
     const swims=acts.filter(a=>/Swim/.test(sport(a))&&(a.moving_time||0)>=600&&(a.average_speed||0)>0);
     if(swims.length){const fast=swims.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
       if(fast>0){const s100=Math.round(100/fast);S.answers.tests.push({type:"css",value:s100,date:today,source:"Strava (nage la plus rapide)"});added.push("CSS ≈ "+_fk100(s100)+"/100m");}}
-    setS((added.length?("Importé : "+added.join(" · ")+". <span class='q-sub'>Valeurs estimées à partir de tes séances — affine avec un test si besoin.</span>"):"Aucune donnée d'allure/puissance exploitable.")+(notes.length?("<br><span class='q-sub'>⚠ "+notes.join(" ")+"</span>"):""));
+
+    setS((added.length?("Importé : "+added.join(" · ")+". <span class='q-sub'>Tu peux corriger n'importe quelle valeur au Profil — la saisie manuelle prime toujours sur l'import.</span>"):"Aucune donnée exploitable.")+(notes.length?("<br><span class='q-sub'>⚠ "+notes.join(" ")+"</span>"):""));
     ebSave();
   }catch(e){setS("Échec réseau (CORS ou token invalide). Renseigne les valeurs à la main si besoin.");}
 }
+/**
+ * La meilleure moyenne sur une fenêtre de `win` secondes, bornée par le TEMPS et non par
+ * le nombre d'échantillons : les flux Strava ne sont pas à pas régulier (pauses, capteur
+ * intermittent), et compter les points donnerait une « fenêtre de 20 min » qui couvre
+ * parfois une heure. C'est la même faute d'unité que celle qu'on corrige ici.
+ */
+function bestRollingMean(vals,times,win){
+  if(!Array.isArray(vals)||!Array.isArray(times)||vals.length!==times.length||vals.length<30)return 0;
+  let best=0,i=0,sum=0;
+  for(let j=0;j<vals.length;j++){
+    sum+=(+vals[j]||0);
+    while(i<j&&times[j]-times[i]>win){sum-=(+vals[i]||0);i++;}
+    // On n'accepte que les fenêtres réellement pleines : une sortie de 12 min ne peut pas
+    // rendre une « moyenne de 20 min ».
+    if(times[j]-times[i]>=win*0.95)best=Math.max(best,sum/(j-i+1));
+  }
+  return best;
+}
+
 function buildPremiumSteps(){return PREMIUM_STEPS_DEF;}
 
 /* ============================================================

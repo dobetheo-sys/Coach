@@ -12,6 +12,7 @@
  */
 "use strict";
 const path = require("path");
+const { courseDans, courseUn } = require("./bench-dates.cjs"); // A-6 — voir bench-dates.cjs
 require(path.resolve(process.argv[2] || "./js/engine.js"));
 const E = globalThis.EBV2;
 if (!E || typeof E.predict !== "function") { console.error("EBV2.predict introuvable."); process.exit(2); }
@@ -34,7 +35,7 @@ const BASE = {
   doubles: "oui", off_days: "non", sex: "H", sleep: "moyen", life_load: "normale", activity: "actif",
   injury: "aucune", med_pain: "non", med_dizzy: "non", med_treat: "non", weight_lever: "oui",
   age: "30", weight: "85", height: "181", vol_max: "12", vol_recent: "9", sessions_max: "9",
-  race_date: "2027-09-12", format: "Full", terrain: "plat",
+  race_date: courseDans(58), format: "Full", terrain: "plat",
   ftp_known: "oui", ftp: "227", pace_known: "oui", pace: "4:50", css_known: "oui", css: "2:00",
 };
 /**
@@ -240,8 +241,8 @@ perime("R14.6-B", "au-delà de ±12 %, on n'affiche pas de temps projeté",
 /* ================= R14.7 — le journal de tests prime (P3) ================= */
 check("R14.7", "deux tests datés → taux MESURÉ utilisé et tracé", () => {
   const tests = [
-    { type: "ftp", value: 200, date: "2026-01-15", source: "test" },
-    { type: "ftp", value: 227, date: "2026-07-15", source: "test" },
+    { type: "ftp", value: 200, date: courseUn(-28, 4), source: "test" },
+    { type: "ftp", value: 227, date: courseUn(-2, 3), source: "test" },
   ];
   const pj = proj(ans({ tests, race_date: iso(52 * 7), format: "70.3" }));
   if (!pj) return { ok: false, info: "pas de projection" };

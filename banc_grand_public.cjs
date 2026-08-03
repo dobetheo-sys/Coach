@@ -7,6 +7,7 @@
 /* Chargement portable du moteur (même contrat que `audit_v7.cjs` / `audit_amont.cjs`) :
  *   ENGINE=/chemin/engine.js  ou  STANDALONE=/chemin/EnduraBuild-standalone.html */
 const fs = require("fs"), path = require("path");
+const { courseDans, courseUn } = require("./bench-dates.cjs"); // A-6 — voir bench-dates.cjs
 (function loadEngine() {
   globalThis.window = globalThis;
   const direct = process.env.ENGINE || path.join(__dirname, "endurabuild/js/engine.js");
@@ -28,7 +29,7 @@ const CUE = /\d+['’]\d{2}\s*\/\s*(km|100m)|\d{2,4}\s*W\b|\d{2,3}\s*-\s*\d{2,3}
 
 const B = { intent:"finir", history:"reprise", injury:"aucune", sessions_max:"5", vol_max:"7", vol_recent:"3",
   dispo:"partielle", doubles:"non", off_days:"non", sleep:"moyen", life_load:"normale", age:"38", weight:"82",
-  sex:"H", race_date:"2027-04-11", weight_lever:"non",
+  sex:"H", race_date:courseDans(36), weight_lever:"non",
   ftp_known:"non", pace_known:"non", css_known:"non", vam_known:"non" };
 const SPORTS = {
   run:{format:"semi",terrain:"route",treadmill:"non"}, bike:{format:"cyclo",terrain:"plat"},

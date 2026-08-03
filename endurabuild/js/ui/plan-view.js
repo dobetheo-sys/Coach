@@ -4,6 +4,7 @@ import { SPORTS } from "../config.js";
 import { S, todayISO, fmtDay } from "../state.js";
 import { evalRules } from "../ui/steps.js";
 import { renderTabs, invalidatePlan, ensurePlan } from "./tabs.js";
+import { logProjection } from "../projection-log.js"; // A-5 — enregistre, ne reboucle jamais
 
 const _IFZ={"bk.z2":.65,"bk.ss":.90,"bk.vo2":1.12,"bk.frc":.82,"bk.rp":.84,"bk.thr":1.0,
   "rn.easy":.68,"rn.mara":.84,"rn.thr":.98,"rn.vo2":1.10,"rn.rec":.60,
@@ -170,6 +171,11 @@ function predictionCardHTML(plan){
   if(globalThis.EBV2&&globalThis.EBV2.predict){
     try{
       const pr=globalThis.EBV2.predict(S.sport,S.answers,plan);
+      // A-5 — LE JOURNAL DE PROJECTION. On journalise la prédiction TELLE QU'AFFICHÉE (une par
+      // semaine ISO), jamais un second calcul : un journal qui divergerait de l'écran serait le
+      // défaut de R19.5 transposé. Il n'est relu par AUCUNE partie du moteur — voir l'en-tête
+      // de `projection-log.js` pour pourquoi ce reflux est interdit.
+      logProjection(S.sport,S.answers,pr);
       if(pr.items.length||pr.advice.length){
         h+='<div class="load-card"><div class="load-title">\ud83d\udd2e Pr\u00e9diction de course</div>';
         // R14 \u2014 DEUX PR\u00c9DICTIONS, TOUJOURS \u00c9TIQUET\u00c9ES. La forme ACTUELLE reste l'ancre (c'est

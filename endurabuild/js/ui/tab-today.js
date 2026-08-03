@@ -16,6 +16,7 @@ import { dailyContentHTML } from "./daily-content.js";
 import { notifySetupHTML, bindNotifySetup, scheduleDailyNotification, weeklyReviewHTML, missedSessionsCheck } from "../notifications.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan } from "./tabs.js";
+import { noteRaceResult } from "../projection-log.js"; // A-5
 
 const ROLE_LABEL = { warmup: "Échauffement", body: "Corps de séance", cooldown: "Retour au calme" };
 function stepGroupsFor(session) {
@@ -229,6 +230,12 @@ export function renderTabToday(plan) {
     let predicted = "";
     try { const pr = globalThis.EBV2.predict(S.sport, S.answers, plan); if (pr.items.length) predicted = pr.items.map((i) => i.leg + " " + i.value).join(" · "); } catch (e) {}
     S.answers.raceResult = { date: S.answers.race_date, time: t, predicted };
+    // A-5 — ON REFERME LA BOUCLE. `predicted` ci-dessus est la prédiction RECALCULÉE
+    // aujourd'hui, le jour de la course : elle ne dit rien de ce que le moteur annonçait il y
+    // a quatre mois, et c'est justement ce couple-là — annoncé à H semaines / réalisé — qui
+    // permettra un jour de calibrer P2bis et P11. `noteRaceResult` attache le temps réel à la
+    // dernière projection JOURNALISÉE, à son horizon d'origine.
+    noteRaceResult(t);
     ebSave();
     renderTabToday(plan);
   };
