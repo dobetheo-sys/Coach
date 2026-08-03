@@ -957,19 +957,42 @@ Trouvé en passant les gates après le lot O-19. `audit:invariants` **I13** (« 
 plus l'athlète est fort, plus la charge est élevée ») est **rouge**, et il l'était déjà avant ce
 lot — vérifié en le rejouant contre le moteur committé.
 
-**Mesuré** (profil du banc, `history: confirme` fixe, seul `level` varie) :
+**Mesuré** (profil du banc, `history: confirme` fixe, seul `level` varie, `vol_max: 10`) :
 
-| niveau | pic hebdomadaire livré | semaine |
+| niveau | pic livré (min) | D+ de cette semaine | cible de la courbe |
+|---|---|---|---|
+| débutant | **575** | **1 130 m** | 9,6 h = 576 min |
+| inter | 547 | 860 m | 10,2 h = 612 min |
+| avancé | 547 | 860 m | 10,2 h = 612 min |
+
+**Le défaut est réel, et sur LES DEUX AXES.** Ma première hypothèse était que le débutant reçoit
+plus de MINUTES parce que ses séances sont moins denses en dénivelé — le module trail dit
+lui-même que la charge se mesure en temps, D+ et D− (R7 TRAIL), donc « plus de minutes » n'aurait
+pas suffi à conclure. Mesuré : le débutant reçoit **aussi plus de D+** (1 130 contre 860 dans la
+semaine de pic, 1 320 contre 980 sur le plan). Hypothèse réfutée, l'invariant a raison.
+
+**LA COURBE EST BONNE, C'EST LA LIVRAISON QUI NE SUIT PAS.** Le pic DÉCLARÉ est correctement
+ordonné (débutant 9,6 h < inter 10,2 h). Le débutant livre exactement sa cible (575 pour 576) ;
+**l'inter est 53 minutes en dessous de la sienne** (547 pour 612). Ce n'est donc pas le débutant
+qui est sur-servi, c'est l'inter qui n'arrive pas à remplir sa courbe.
+
+**L'ÉCART SE CONCENTRE SUR LA SORTIE LONGUE, ET IL RESTE DE LA PLACE.**
+
+| | débutant | inter |
 |---|---|---|
-| débutant | **575 min** | S41 |
-| inter | 547 min | S38 |
-| avancé | 547 min | S38 |
+| Longue trail | **180'** (borne : cap 180, `hard: true`) | 167' (borne : cap **312**, `hard: false`) |
+| Montées | 78' (12'×3) | 97' (12'×4) |
+| Footing plat | 79' | 55' |
+| Descente en charge | 130' | 159' |
+| Back-to-back | 108' | 69' |
 
-Le détail des deux semaines montre que ce n'est pas un écart de gabarit mais de RÉPARTITION :
-le débutant reçoit « Longue trail 180' + Back-to-back 108' », l'inter « 167' + 69' ». Et l'inter
-n'atteint pas son propre volume déclaré (547 min livrés pour 10 h annoncées).
+La longue du débutant est **exactement sur son plafond C23** (180) ; celle de l'inter s'arrête à
+167 avec **145 minutes de marge inutilisée**. Le surplus du débutant se redistribue sur le
+footing plat et le back-to-back, qui l'absorbent ; chez l'inter, la mise à l'échelle s'arrête
+sans avoir utilisé la marge disponible. C'est là qu'il faut chercher — pas dans les plafonds,
+qui sont corrects, mais dans la passe qui remplit la semaine.
 
-**LE BANC BASCULE AVEC LE CALENDRIER, ET C'EST LA MOITIÉ LA PLUS GÊNANTE.** `BASE.race_date` est
+**LE BANC BASCULE AVEC LE CALENDRIER, ET C'EST LA SECONDE MOITIÉ.** `BASE.race_date` est
 figée au 2027-06-13, mais la LONGUEUR du plan se compte depuis aujourd'hui : l'horizon raccourcit
 d'une semaine tous les sept jours, et l'allocation de phases bascule avec lui. La CI est **verte
 sur le dernier commit** (exécutée le 02/08) et le même code est **rouge en local** le 03/08.
