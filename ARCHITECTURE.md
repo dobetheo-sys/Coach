@@ -4034,6 +4034,18 @@ H-1 une VFC seulement déclarée ne pèse rien. Retirer une question dont on n'a
 l'effet, c'est se fier à une lecture de code ; ici la lecture disait la bonne chose, et elle a
 été confirmée.
 
+### `hrv_track` est HORS `ANSWER_SCHEMA`, et c'est délibéré
+
+Le schéma est le contrat des clés qui **pilotent le plan** — c'est de lui que `audit:sensibilite`
+dérive son exigence (R20.1 : toute clé déclarée doit agir dans chaque sport où elle est
+déclarée). `hrv_track` ne construit aucune séance : il décide de ce qu'on **collecte** au
+check-in, donc du verdict quotidien de qui l'active, et de rien d'autre. L'y déclarer ferait
+échouer un gate pour une bonne raison — la clé serait inerte sur le plan — et la sortir de la
+mesure par une exemption serait pire. Même traitement que `pace`, `css` et `target_time`.
+
+Ce n'est pas pour autant une question « UI pure » au sens de CLAUDE.md : son effet est réel et
+il est mesuré, simplement ailleurs — `smoke-checkin.mjs`, sur les trois états de la clé.
+
 ### Et ce qu'on demande à qui l'active, c'est la VALEUR
 
 Les adjectifs « basse / normale / haute » disparaissent du diaporama : depuis H-1, seule une
