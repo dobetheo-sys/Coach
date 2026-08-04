@@ -34,6 +34,7 @@ const ORDER = [
   "src/engine/disciplineRegistry.ts",
   "src/engine/trailModel.ts",
   "src/engine/reasoningEngine.ts",
+  "src/engine/stepScale.ts",
   "src/generator/renderer.ts",
   // C30 — le plancher spécifique de la sortie longue. Après `renderer` (il lit `ZDEF["rn.easy"]`,
   // la seule définition de l'allure d'endurance) et avant les modules de sport qui l'appellent.

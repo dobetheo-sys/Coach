@@ -4781,6 +4781,72 @@ class TrainingReasoningEngine {
   }
 }
 
+// ===== src/engine/stepScale.ts =====
+/**
+ * LE POINT UNIQUE DE « RÉDUIRE (OU AGRANDIR) UN STEP D'UN FACTEUR ».
+ *
+ * Avant ce fichier, cette opération était écrite 25 fois dans le dépôt, en 6 variantes qui
+ * n'étaient pas d'accord entre elles : `Math.round` ici, `Math.floor` là, plancher 1, 5, 8,
+ * 10, 150 ou 200 selon le site, et surtout — le clamp « ne remonte JAMAIS au-dessus de la
+ * valeur d'origine » (A3, audit v6) posé sur `durationMin` et `distanceM` de `reduceDay`
+ * mais PAS sur ses `reps` : mesuré, `reduceDay(f = 1.2)` faisait passer un bloc de 5 à
+ * 6 répétitions pendant que son commentaire promettait le contraire. C'est le bug que la
+ * garantie runtime de R21 attrapait à l'exécution ; il est désormais impossible à écrire.
+ *
+ * CE QUE CE POINT UNIQUE N'UNIFORMISE PAS, délibérément : les paramètres. Chaque site garde
+ * son mode d'arrondi et ses planchers — ils sont sémantiques (un plancher de 200 m en nage
+ * n'est pas un plancher de 8 min en course), et les écraser aurait déplacé le golden de
+ * 900 profils pour du confort de lecture. Ce qui est unifié, c'est l'INVARIANT :
+ *
+ *   avec `clampToOriginal`, un facteur ≤ 1 ne peut JAMAIS augmenter reps, durée ou distance.
+ *
+ * L'ordre des cibles est celui de tout le dépôt (leçon I14) : les RÉPÉTITIONS d'abord —
+ * dans un intervalle, la durée d'une répétition EST le stimulus, on n'y touche pas — puis
+ * la durée, puis la distance (quantum 25 m, la convention piscine).
+ */
+                                         
+
+                                
+                                                                                      
+                              
+                                                        
+                   
+                                                                                 
+                    
+                                                                                          
+                                                                                             
+                                                                                             
+                                                                                             
+                        
+                            
+ 
+
+/** Met à l'échelle le dosage d'un step `body`. Rend true si quelque chose a changé. */
+function scaleStepDose(st        , f        , opts               )          {
+  if (st.role !== "body") return false;
+  const clamp = (orig        , next        ) => (opts.clampToOriginal ? Math.min(orig, next) : next);
+  if ((st.reps || 1) > 1) {
+    const reps = st.reps          ;
+    const next = clamp(reps, Math.max(1, Math[opts.repsMode](reps * f)));
+    if (next === reps) return false;
+    st.reps = next;
+    return true;
+  }
+  if (st.durationMin) {
+    const next = clamp(st.durationMin, Math.max(opts.durFloor, Math.round(st.durationMin * f)));
+    if (next === st.durationMin) return false;
+    st.durationMin = next;
+    return true;
+  }
+  if (st.distanceM) {
+    const next = clamp(st.distanceM, Math.max(opts.distFloor, Math.round((st.distanceM * f) / 25) * 25));
+    if (next === st.distanceM) return false;
+    st.distanceM = next;
+    return true;
+  }
+  return false;
+}
+
 // ===== src/generator/renderer.ts =====
 /**
  * Rendu V2 — port fidèle de renderSess/stepMin/ZDEF de Coach_Pro_V1.5 (R3.1/R3.8/C13).
@@ -9167,6 +9233,7 @@ function applyPolarizationGuard(r              , days          , ctx            
 
 
 
+
 /**
  * Une zone de QUALITÉ — source unique. Le prédicat vivait en local dans `scaleBlock` (V2.2 :
  * un bloc de qualité ne grandit pas tout seul) ; C13d en a besoin aussi, et deux copies d'une
@@ -9637,9 +9704,7 @@ function reconcileDeclaredVolume(
           if (/Déverrouillage/i.test(sx.name)) continue; // R15.7-B — jamais la veille
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
-            if ((st.reps || 1) > 1) st.reps = Math.max(1, Math.floor((st.reps || 1) * f));
-            else if (st.durationMin) st.durationMin = Math.max(5, Math.round(st.durationMin * f));
-            else if (st.distanceM) st.distanceM = Math.max(150, Math.round((st.distanceM * f) / 25) * 25);
+            scaleStepDose(st, f, { repsMode: "floor", durFloor: 5, distFloor: 150 });
           }
           if (render) render(sx);
         }
@@ -9974,9 +10039,7 @@ function reconcileDeclaredVolume(
           if (sx.d === "rs" || sx.race || !sx.steps || /Déverrouillage/i.test(sx.name)) continue;
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
-            if ((st.reps || 1) > 1) st.reps = Math.max(1, Math.round((st.reps || 1) * f));
-            else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
-            else if (st.distanceM) st.distanceM = Math.max(150, Math.round((st.distanceM * f) / 25) * 25);
+            scaleStepDose(st, f, { repsMode: "round", durFloor: 10, distFloor: 150 });
           }
           if (render) render(sx);
         }
@@ -12108,6 +12171,7 @@ function generatePlan(profile                , opts                             
 
 
 
+
 const MAX_ITERATIONS = 3;
 
 /** Minutes d'une semaine mesurées avec le MODÈLE DE L'AUDITEUR (récup inter-répétitions
@@ -12208,9 +12272,7 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
                 if (!s.steps || !s.steps.length) continue;
                 for (const st of s.steps) {
                   if (st.role !== "body") continue;
-                  if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
-                  else if (st.durationMin) st.durationMin = Math.max(8, Math.round(st.durationMin * f));
-                  else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+                  scaleStepDose(st, f, { repsMode: "floor", durFloor: 8, distFloor: 200 });
                 }
                 fixSwimBounds(s);
                 renderSess(s, refs, hz, baseRefs);
@@ -12234,9 +12296,7 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
           if (!s.steps || !s.steps.length) continue;
           for (const st of s.steps) {
             if (st.role !== "body") continue;
-            if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
-            else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
-            else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+            scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200 });
           }
           fixSwimBounds(s);
           renderSess(s, refs, hz, baseRefs);
@@ -12284,9 +12344,7 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
               if (!s.steps || !s.steps.length) continue;
               for (const st of s.steps) {
                 if (st.role !== "body") continue;
-                if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
-                else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
-                else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+                scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200 });
               }
               fixSwimBounds(s);
               renderSess(s, refs, hz, baseRefs);
@@ -14475,6 +14533,7 @@ function importFitBytes(buf                          )            {
 
 
 
+
 const HARD_ZONES = [".vo2", ".thr", ".speed", ".css"];
 const MODERATE_ZONES = [".ss", ".rp", ".frc", ".mara", ".tempo"];
 
@@ -14540,10 +14599,12 @@ function reduceDay(day       , f        , refs      , hz                        
     for (const st of s.steps) {
       if (st.role !== "body") continue;
       // A3 (audit v6) — les planchers ne remontent JAMAIS au-dessus de la valeur d'origine :
-      // une réduction est une réduction, même sur une séance déjà courte.
-      if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.round(st.reps * f));
-      else if (st.durationMin) st.durationMin = Math.min(st.durationMin, Math.max(10, Math.round(st.durationMin * f)));
-      else if (st.distanceM) st.distanceM = Math.min(st.distanceM, Math.max(200, Math.round((st.distanceM * f) / 25) * 25));
+      // une réduction est une réduction, même sur une séance déjà courte. `clampToOriginal`
+      // porte cette promesse pour les TROIS champs — l'ancienne écriture la posait sur la
+      // durée et la distance mais pas sur `reps` : mesuré, f = 1,2 faisait passer un bloc de
+      // 5 à 6 répétitions pendant que ce commentaire promettait le contraire (trouvé par la
+      // garantie runtime de R21, fermé par le point unique `stepScale`).
+      scaleStepDose(st, f, { repsMode: "round", durFloor: 10, distFloor: 200, clampToOriginal: true });
     }
     renderSess(s, refs, hz, baseRefs);
   }

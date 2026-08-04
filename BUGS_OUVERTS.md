@@ -1582,6 +1582,37 @@ cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;cons
 ```
 
 
+### O-27 · Pendant une passe de RÉDUCTION, un plancher absolu peut AUGMENTER un step court · ⏳ **OUVERT — mesuré, 19 profils golden**
+
+Trouvé en créant le point unique `src/engine/stepScale.ts` (25 écritures de « réduire un step
+d'un facteur », 6 variantes qui n'étaient pas d'accord). Le point unique porte un drapeau
+`clampToOriginal` — la promesse A3 de l'audit v6 : *« les planchers ne remontent JAMAIS
+au-dessus de la valeur d'origine »*. Ce drapeau a fermé un bug réel : `reduceDay(f = 1,2)`
+faisait passer un bloc de **5 à 6 répétitions** (le `Math.min` protégeait durée et distance,
+pas `reps`) pendant que son commentaire promettait le contraire. Fermé, garde au banc R21,
+vérifiée rouge.
+
+**Mais activer le même clamp sur les cinq trios du GÉNÉRATEUR n'est pas gratuit : 19 profils
+golden bougent.** Le mécanisme : `Math.max(10, round(dur × f))` sur une durée de 9 min à
+f = 0,9 rend **10** — une passe de réduction qui ALLONGE un step court jusqu'à son plancher
+« digne ». Sémantiquement, c'est ce qu'A3 appelle un défaut ; historiquement, c'est un
+comportement validé, photographié dans le golden, et possiblement porteur (les planchers de
+dignité de l'audit v6 D3-D7/D10 interagissent avec les fenêtres de séance).
+
+Décision de ce lot : **ne pas changer en douce un comportement validé dans un lot d'hygiène.**
+Les trios du générateur gardent leur sémantique (golden au bit près, vérifié), le clamp reste
+opt-in, `reduceDay` (chemin d'ADAPTATION quotidienne, où la promesse A3 est écrite noir sur
+blanc) le pose. Trancher les 19 cas est une décision d'entraînement : un step de 9 min dans une
+semaine d'affûtage doit-il remonter à 10 « pour rester digne », ou descendre comme demandé ?
+
+```verify
+id: O-27
+quoi: le clamp A3 est posé sur le chemin d'adaptation, et le comportement est asserté par le gate R21
+attendu: /cablage clampToOriginal : 1$/m
+cmd: node -e "const fs=require('fs');const n=(fs.readFileSync('src/readiness/dailyAdjuster.ts','utf8').match(/clampToOriginal: true/g)||[]).length;console.log('cablage clampToOriginal : '+n);"
+```
+
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas

@@ -9,6 +9,7 @@
  * corrige l'écart V1.5 nage non-débutante (6.3h déclarées / 3.6h livrables).
  */
 import type { AthleteProfile, ReasonedPlan, V1Plan, V1Session, V1Step, V1Week } from "../engine/types.ts";
+import { scaleStepDose } from "../engine/stepScale.ts";
 import {
   BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH,
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
@@ -503,9 +504,7 @@ export function reconcileDeclaredVolume(
           if (/Déverrouillage/i.test(sx.name)) continue; // R15.7-B — jamais la veille
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
-            if ((st.reps || 1) > 1) st.reps = Math.max(1, Math.floor((st.reps || 1) * f));
-            else if (st.durationMin) st.durationMin = Math.max(5, Math.round(st.durationMin * f));
-            else if (st.distanceM) st.distanceM = Math.max(150, Math.round((st.distanceM * f) / 25) * 25);
+            scaleStepDose(st, f, { repsMode: "floor", durFloor: 5, distFloor: 150 });
           }
           if (render) render(sx);
         }
@@ -840,9 +839,7 @@ export function reconcileDeclaredVolume(
           if (sx.d === "rs" || sx.race || !sx.steps || /Déverrouillage/i.test(sx.name)) continue;
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
-            if ((st.reps || 1) > 1) st.reps = Math.max(1, Math.round((st.reps || 1) * f));
-            else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
-            else if (st.distanceM) st.distanceM = Math.max(150, Math.round((st.distanceM * f) / 25) * 25);
+            scaleStepDose(st, f, { repsMode: "round", durFloor: 10, distFloor: 150 });
           }
           if (render) render(sx);
         }

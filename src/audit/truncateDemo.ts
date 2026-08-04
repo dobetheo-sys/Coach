@@ -32,17 +32,15 @@ function ok(cond: boolean, label: string): void {
 }
 const titre = (t: string) => console.log("\n" + t + "\n" + "─".repeat(Math.min(78, t.length + 2)));
 
-// Dates ancrées au lundi (A-6) : sans ça le verdict dépendrait du jour d'exécution.
-function lundiCourant(): Date {
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-  return d;
-}
+// Dates ancrées au lundi (A-6) — IMPORTÉES du point unique `bench-dates.cjs`, pas
+// recopiées : ma première écriture en portait une copie, c'est-à-dire la faute
+// exacte qu'A-6 venait de corriger, commise dans le lot qui en parlait (R11.1).
+import benchDates from "../../bench-dates.cjs";
+const { lundiCourant, courseDans } = benchDates as unknown as {
+  lundiCourant: () => Date; courseDans: (n: number) => string;
+};
 const L0 = lundiCourant();
 const iso = (d: Date) => d.toISOString().slice(0, 10);
-/** Le dimanche situé exactement `n` semaines pleines après le lundi courant. */
-const courseDans = (n: number) => iso(new Date(L0.getTime() + (n * 7 - 1) * 864e5));
 
 const BASE: AppAnswers = {
   history: "confirme", level: "inter", intent: "competition",
