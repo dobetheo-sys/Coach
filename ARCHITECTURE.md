@@ -4120,10 +4120,27 @@ contre le bundle INTACT — mon harnais ne vérifiait pas le code de sortie du b
 sortie de là, désormais appliquée : **une cassure doit prouver qu'elle a changé le comportement
 avant que son verdict ne compte** (vol_max=999 accepté ; « @ » vide rendu à l'écran).
 
-Les deux muets sont de vrais trous : `audit:amont` accepte une dérive silencieuse sur les bornes
-numériques (sa promesse littérale est « zéro dérive silencieuse ») ; `audit:public` vérifie la
-présence d'un chemin de repli, pas le CONTENU rendu — huitième occurrence de « mesurer la
-voisine ». Correctifs côté banc, à vérifier rouges contre les recettes d'O-28/O-29.
+Les deux muets étaient de vrais trous, **tous deux fermés le jour même** :
+
+- **`audit:amont`** (O-28) acceptait une dérive silencieuse sur les bornes, alors que sa promesse
+  littérale est « zéro dérive silencieuse ». Nouvelle section **T5**, dérivée du schéma : pour
+  chaque clé numérique bornée, `min − 1` et `max + 1` doivent lever un `ENTREE_INVALIDE` portant
+  **cette clé** — 70 bornes éprouvées sur 22 clés, **70/70 rouges** sous la cassure.
+  *Une correction a été écrite puis RETIRÉE avant celle-ci* : resserrer le prédicat « annoncée »
+  pour exiger que l'explication nomme la clé mutée. Mesurée **0 verdict changé sur 472** et
+  toujours verte contre la cassure — `R20.2` parle de « ton volume max » dans chaque plan. Inerte,
+  donc retirée (C23b, R19.4/O-12).
+- **`audit:public`** (O-29) testait la séance ENTIÈRE contre une alternance de mots-repères : un
+  échauffement qui dit « progressif » suffisait à couvrir un bloc de travail annoncé
+  « 3×5min @  ». Nouvelle section **E** : dans le texte rendu, chaque `@` doit être suivi d'un
+  repère avant le prochain séparateur — propriété du LIVRÉ, éprouvée sur 6 sports × 3 niveaux ×
+  {avec, sans références}. Vérifiée rouge.
+
+**Et le correctif d'O-28 a payé la leçon une troisième fois dans la même heure** : mes deux
+premières écritures de son critère cherchaient la clé dans le MESSAGE du refus par regex, et
+toutes deux ont échoué sur l'échappement (`"\\\\b"` = antislash littéral ; `"\\b"` = retour
+arrière) — **70 refus bien réels comptés comme absents**, un banc rouge pour rien. La clé se lit
+désormais sur `EBInputError.key` : un contrat typé se lit sur son type, jamais dans sa prose.
 
 Vérifiés en direct par ailleurs, sans cassure dédiée : `golden:verify` (a mordu deux fois dans la
 même journée — 121 puis 19 écarts sur des expériences réelles), `audit:v2` (rouge sur l'import

@@ -110,7 +110,7 @@ function build(sport, a) {
     const v2 = p._v2 || {};
     return { ok: true, s: sig(p), warn: (v2.warnings || []).join(" | "), dec: (v2.decisions || []).map((d) => d.id + "=" + d.val).join(" | ") };
   } catch (e) {
-    return { ok: false, err: String(e.message || e).slice(0, 70), typed: (e && e.code) === "ENTREE_INVALIDE" };
+    return { ok: false, err: String(e.message || e).slice(0, 70), typed: (e && e.code) === "ENTREE_INVALIDE", key: e && e.key };
   }
 }
 // Mutations qui remplacent une valeur par une AUTRE VALEUR VALIDE : le plan DOIT changer.
@@ -204,6 +204,62 @@ for (const [lbl, mut] of CROSS) {
   const a = { ...REF.tri };
   for (const [k, v] of Object.entries(mut)) { if (v === undefined) delete a[k]; else a[k] = v; }
   rec("T4 croisé", "tri", "—", lbl, build("tri", a), refs.tri);
+}
+
+// T5 — LES BORNES DU SCHÉMA SONT DES REFUS, PAS DES SUGGESTIONS (O-28)
+//
+// Ce banc promet « zéro dérive silencieuse ». Mesuré en cassant exprès — refus typé hors
+// bornes remplacé par un clamp silencieux — il restait VERT : `vol_max: "-5"` clampé à 1
+// faisait passer le plan de 11,7 h de pic à 3,5 h et de 227 séances à 129, classé
+// « DÉRIVE ANNONCÉE » parce que les décisions du plan avaient changé… puisque le plan avait
+// changé. L'ancien prédicat nommait « une explication NOUVELLE » et mesurait « la
+// concaténation diffère » — huitième occurrence de la famille, ici dans le banc lui-même.
+//
+// UNE PREMIÈRE CORRECTION A ÉTÉ ÉCRITE PUIS RETIRÉE, et c'est écrit plutôt qu'effacé :
+// exiger que l'explication NOMME la clé mutée (mots dérivés du libellé de schéma). Mesurée :
+// **0 verdict changé sur 472** contre le moteur intact, et **toujours verte** contre la
+// cassure — parce que `R20.2` parle légitimement de « ton volume max » dans chaque plan. Une
+// correction inerte est retirée ici comme ailleurs (C23b, R19.4/O-12).
+//
+// Ce qui ferme le trou est plus simple et ne devine rien : le schéma DÉCLARE des bornes,
+// donc une valeur hors bornes doit être REFUSÉE, typée, en nommant sa clé. Pas de liste à
+// maintenir — les clés et leurs bornes sont lues dans `answerSchema` (R11.1, la recette
+// d'`audit:sensibilite`), donc une borne ajoutée demain est testée demain.
+console.log("\n=== T5 · bornes numériques du schéma : hors bornes = refus typé ===");
+{
+  const SCHEMA = E.answerSchema || {};
+  const numKeys = Object.keys(SCHEMA).filter((k) => {
+    const sp = SCHEMA[k];
+    return sp && sp.type === "number" && typeof sp.min === "number" && typeof sp.max === "number";
+  });
+  let vus = 0, muets = 0;
+  for (const sp of SPORTS) {
+    if (!refs[sp].ok) continue;
+    for (const k of numKeys) {
+      if (!(k in REF[sp])) continue;                       // clé hors du questionnaire de ce sport
+      const spec = SCHEMA[k];
+      for (const [lbl, v] of [["sous le min", String(spec.min - 1)], ["au-dessus du max", String(spec.max + 1)]]) {
+        const a = { ...REF[sp], [k]: v };
+        const res = build(sp, a);
+        vus++;
+        // Le refus doit être TYPÉ et porter SUR CETTE CLÉ : un refus qui nomme une autre clé
+        // (l'âge qui déclenche la garde de format, par exemple) laisse la borne de `k` non
+        // testée — c'est un vert obtenu par un autre chemin.
+        // La clé est lue sur l'ERREUR (`EBInputError.key`), pas cherchée dans son message :
+        // ma première écriture parsait la prose avec une regex, et les deux tentatives ont
+        // échoué sur l'échappement (`"\\\\b"` = antislash littéral, `"\\b"` = retour arrière) —
+        // 70 refus bien réels comptés comme absents. Un contrat typé se lit sur son type.
+        const refuseIci = !res.ok && res.typed && res.key === k;
+        if (!refuseIci) {
+          muets++;
+          rows.push({ cat: "T5 bornes", sport: sp, key: k, mut: lbl, verdict: "DÉRIVE SILENCIEUSE FORTE",
+            delta: res.ok ? `ACCEPTÉ : pic ${refs[sp].s.peak}→${res.s.peak}h · séances ${refs[sp].s.n}→${res.s.n}` : "refus qui ne nomme pas " + k,
+            err: res.err || "" });
+        }
+      }
+    }
+  }
+  console.log(`${vus} bornes éprouvées (${numKeys.length} clés numériques du schéma) · ${muets} non tenue(s)`);
 }
 
 // ---------- rapport ----------

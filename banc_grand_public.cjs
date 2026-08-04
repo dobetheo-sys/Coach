@@ -120,7 +120,46 @@ const devinee = chain.filter(([, r, i]) => r === "NON" || i === "NON");
 if (devinee.length) console.log(`\n⚠ ${devinee.length} référence(s) au chemin d'acquisition incomplet : ${devinee.map(x=>x[0]).join(", ")}`);
 else console.log("\n✓ toute référence a un chemin d'acquisition dans l'outil");
 
-if (fail || bFail || devinee.length || dFail) {
+console.log("\n=== E · aucun repère d'intensité VIDE dans le texte rendu (O-29) ===");
+// Le §A teste la SÉANCE entière : il suffit qu'un échauffement dise « progressif » pour que
+// la séance passe, même si son bloc de travail annonce « 3×5min @  » — un `@` suivi de rien.
+// Mesuré en cassant exprès (recette d'O-29 : repli RPE et FC de `rn.thr` vidés) : le rendu
+// portait bien le trou, et ce banc restait VERT. Il vérifiait la présence d'un chemin de
+// repli, pas le CONTENU rendu — la mesure portait sur une grandeur voisine de celle qu'elle
+// nomme.
+//
+// Ici on lit le texte que l'athlète a sous les yeux : chaque `@` doit être suivi d'un repère
+// avant le prochain séparateur (`·`, `(`, `—`, fin). C'est une propriété du LIVRÉ, elle ne
+// suppose rien du chemin qui l'a produite — et elle vaut avec ou sans références déclarées,
+// puisqu'un `@` vide n'est jamais acceptable.
+let eFail = 0;
+{
+  const AVEC_REFS = { ftp_known: "oui", ftp: "240", pace_known: "oui", pace: "4:50", css_known: "oui", css: "1:55", vam_known: "oui", vam: "900" };
+  const segApres = (txt, i) => {
+    const reste = txt.slice(i + 1);
+    const fin = reste.search(/[·(—]|$/);
+    return reste.slice(0, fin < 0 ? reste.length : fin).trim();
+  };
+  for (const [sp, extra] of Object.entries(SPORTS)) {
+    for (const lv of ["debutant", "inter", "avance"]) {
+      for (const [refLbl, refs] of [["sans références", {}], ["avec références", AVEC_REFS]]) {
+        let p;
+        try { p = E.buildPlan(sp, { ...B, ...extra, ...refs, level: lv }); } catch (e) { continue; }
+        for (const w of p.weeks) for (const d of w.days) for (const s of d.sessions) {
+          const txt = String(s.det || "");
+          for (let i = txt.indexOf("@"); i >= 0; i = txt.indexOf("@", i + 1)) {
+            if (segApres(txt, i)) continue;
+            eFail++;
+            if (eFail <= 6) console.log(`  ${sp}/${lv}/${refLbl} · « ${s.name} » : ${txt.slice(Math.max(0, i - 28), i + 12).replace(/\s+/g, " ")}`);
+          }
+        }
+      }
+    }
+  }
+}
+console.log(eFail ? `\n⚠ ${eFail} repère(s) d'intensité vide(s) — « @ » suivi de rien` : "\n✓ aucun « @ » sans repère : chaque dose annoncée porte son intensité");
+
+if (fail || bFail || devinee.length || dFail || eFail) {
   console.error("\n\u2716 le chemin sans références n'est pas tenu.");
   process.exit(1);
 }
