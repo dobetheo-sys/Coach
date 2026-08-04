@@ -136,4 +136,9 @@ ok(!!aria && /vid/i.test(aria[1]), "l'état de forme est annoncé aux lecteurs d
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + (errs.length ? " — " + errs[0] : "") + ")");
 await browser.close();
 server.close();
-report();
+// La suite doit SORTIR en code non nul quand elle échoue : `run-all.mjs` lit le code de
+// sortie du processus, et `report()` se contente de le RENDRE. Sept suites sur dix-sept
+// finissaient par `report();` — elles sortaient donc en 0 quoi qu'elles trouvent, et la
+// CI les comptait vertes. Même mécanisme que le banc d'invariants d'O-9/R20.6 : un
+// rapport que rien ne lit vaut zéro.
+process.exit(report());

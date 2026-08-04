@@ -22,6 +22,9 @@ const ORDER = [
   "src/engine/trace.ts",
   "src/engine/medicalHold.ts",
   "src/engine/measured.ts",
+  // R22 — la règle de troncature, lue par le schéma (pour proposer la sortie) et par
+  // le pont (pour l'appliquer). Doit précéder answerSchema, qui l'importe.
+  "src/engine/truncatedPrep.ts",
   "src/engine/answerSchema.ts",
   "src/engine/cycleModel.ts",
   // R10 phase 1 — le REGISTRE avant tout : `registerSport()` doit exister quand les modules
@@ -66,6 +69,14 @@ const ORDER = [
   "src/readiness/readinessSource.ts",
   "src/readiness/fitParser.ts",
   "src/readiness/dailyAdjuster.ts",
+  // R21 — le coach proactif. L'ordre suit les dépendances : le détecteur lit le rendu
+  // des zones et la charge de l'ajusteur, le déclencheur lit le détecteur et le puits
+  // de notification. Les parseurs GPX/TCX n'ont que des imports de TYPE, donc effacés.
+  "src/readiness/importLimits.ts",
+  "src/readiness/gpxTcxParser.ts",
+  "src/coach/deviationDetector.ts",
+  "src/coach/notificationSink.ts",
+  "src/coach/proactiveCoach.ts",
   "src/nutrition/nutritionCalculator.ts",
   "src/nutrition/energyEstimator.ts",
   "src/app/bridge.ts",

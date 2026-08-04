@@ -20,7 +20,8 @@ mieux qu'un plan dangereux. »
 besoin de résultats ou de sécurité ; le but n'est jamais de bloquer mais d'accompagner au mieux,
 **sauf si réelle mise en danger** »*. Ce qui BLOQUE reste dur et ne se négocie pas — drapeau
 médical, drapeau douleur, mineur × format (R15.7-C), garde IMC, borne d'âge de l'estimation
-énergétique (O-16), course trop proche (R11.4), bornes physiologiques. Leur point commun :
+énergétique (O-16), **course sous le PLANCHER de préparation** (R11.4 borné par R22 — au-dessus
+du plancher, le refus devient franchissable sur choix explicite), bornes physiologiques. Leur point commun :
 l'athlète ne peut pas évaluer le risque, ou l'erreur est irréversible. **Tout le reste informe**
 (canal `warnings`, R11.2). Se tromper de catégorie coûte dans les deux sens : brider un athlète
 capable, c'est le plan qu'il quitte pour s'entraîner seul, sans aucun garde-fou — et la
@@ -88,6 +89,17 @@ dépôt — historique git si besoin.
   enchaîne et range chacune en **reproduit** / **ne reproduit plus (→ §4)** / **commande
   cassée**. Volontairement HORS CI : il rejoue des gates qui y tournent déjà. À lancer quand on
   reprend le registre — c'est ce qui empêche une dette de devenir un souvenir.
+- `npm run demo:troncature` — **la préparation tronquée** (R22) : le refus « course trop proche »
+  devient franchissable AU-DESSUS d'un plancher dérivé (on ne retire que des semaines de mise en
+  route, donc au plus la phase `base` — marathon 12, Ironman 26, 5 km 5). **26ᵉ gate CI.** Son
+  §5 est la garde qui compte : le plan tronqué est IDENTIQUE, séance par séance, aux dernières
+  semaines de celui d'un athlète parti à l'heure — la contrainte « on ne touche qu'à l'entrée et
+  à la sortie » devient une propriété mesurée, pas une intention.
+- `npm run demo:proactif` — **le coach proactif** (R21) : détection de déviation après ingestion
+  (allure/puissance > 10 %, séance manquée > 24 h, charge 7 j > 15 %), recalcul BORNÉ à la fenêtre
+  de 14 jours, notification en deux lignes. **25ᵉ gate CI.** Sa raison d'être est le §3 : le
+  déclencheur ne sait que RÉDUIRE — « on ne rattrape jamais le volume manqué » tenu jusque dans
+  l'automatisme. Vérifié rouge sur six cassures délibérées.
 - `npm run demo:faisabilite` — **le raisonnement inverse** (RV) : une épreuve, un chrono visé, un
   verdict déroulé à reculons. **23ᵉ gate CI.** Son critère central, `RV-INVARIANT`, assertе que le
   plan émis est IDENTIQUE au bit près avec et sans objectif de temps — la performance reste une
@@ -917,6 +929,119 @@ promettre « toujours » et dit ce qui est vrai. Cinq critères `O-25`, dont tro
 10 min » ; la fenêtre est bornée par le TEMPS et non par le nombre de points), le critère (b)
 **vérifié rouge** — il rendait exactement le 5'37 du symptôme.
 **24 gates verts, E2E 16/16, golden 900 inchangé, registre 24/24.**
+
+**R21 livré — le coach proactif : détecter, recalculer, prévenir** (handoff « notifications +
+recalcul déclenché », voir ARCHITECTURE.md « R21 » — banc `npm run demo:proactif`, **25ᵉ gate CI**) :
+`src/coach/` détecte une déviation après chaque ingestion de séance, recalcule la fenêtre de
+14 jours et notifie en deux lignes. **Trois des quatre prémisses du handoff ne tenaient plus et
+c'est dit** : « R13 » est pris (17ᵉ gate, 22 occurrences en doc) → livré sous **R21** ; « Strava
+hors scope, décision juin 2026 » est périmé (OAuth déployé le 03/08) — aucune intégration n'est
+AJOUTÉE, mais le détecteur consomme `IngestedSession` **sans regarder la provenance**, sans quoi un
+athlète connecté recevrait moins de coaching qu'un athlète qui téléverse ; « le module de recalcul
+existant (floors de récup) » n'existe pas sous ce nom — le vrai est `adjustDay`, qui ajuste UN jour,
+donc la fenêtre est construite ici en réutilisant `reduceDay()` (aucune re-génération) ; et
+**GPX/TCX étaient absents** alors que `measured.ts` les annonce depuis son écriture (écrits,
+zéro dépendance). **La garantie commande tout le reste** : le Sprint 2 pose « on ne rattrape JAMAIS
+le volume manqué », donc **ce module ne sait que réduire** — un signal « en-dessous » allège la
+rampe à venir au lieu de la charger. Trois règles pures à seuil, sans score composite (un agrégat
+serait inauditable) : intensité > 10 % comptée **au bord de la bande** et non à son centre, séance
+manquée après 24 h (jamais la veille — c'est le reproche faux d'U1), charge 7 j > 15 % via
+`loadWindow` **importée de l'ajusteur**. Les 14 jours sont une BORNE : au plus 3 jours de qualité
+touchés, jamais le passé, tout journalisé.
+**Un défaut dans mon propre module, et ma contre-preuve était fausse d'abord.** La garantie était
+placée APRÈS la sortie anticipée (`if (rien n'a bougé) continue;` puis `if (hausse) throw`) : une
+hausse sortait par le `continue`, était appliquée au plan et l'assertion était du **code mort** —
+et elle n'est pas structurelle, mesuré, `reduceDay(f = 1.2)` fait passer un bloc de **5 à 6
+répétitions** (le `Math.min` protège `durationMin` et `distanceM`, **pas `reps`**). Douzième
+paiement de la leçon. Puis mes trois premières cassures délibérées sont sorties **VERTES** : le
+critère de fenêtre **recalculait sa borne depuis la constante testée** (400 déplaçait le poteau avec
+le ballon), et mon instrument **comptait les lignes `✖`** alors qu'une exception n'en produit
+aucune — la garde avait levé, ma mesure regardait ailleurs. Sixième occurrence d'une mesure portant
+sur une grandeur voisine de celle qu'elle nomme, cette fois dans l'instrument que je venais
+d'écrire. **Six cassures, six rouges** après correction.
+**25 gates verts, E2E 16/16, golden 900 inchangé, registre 24/24.**
+
+**R22 livré — la préparation tronquée : le refus « course trop proche » devient franchissable**
+(brief « transformer ce hard block en option de bypass contrôlée », **décision du fondateur du
+04/08/2026 : on garde le plancher et on autorise tout ce qui est au-dessus** — voir
+ARCHITECTURE.md « R22 », banc `npm run demo:troncature`, **26ᵉ gate CI**) : sans le drapeau
+`truncate_prep`, le refus R11.4 est **intact mot pour mot**, jusqu'à sa dernière phrase (« serait
+te mentir, et te blesser »). Avec lui, le pont pose une `plan_start` VIRTUELLE, laisse le
+générateur produire le plan complet, puis **coupe le début et renumérote** — la périodisation
+n'est pas touchée, et `§5` du banc le prouve : le plan tronqué est identique séance par séance aux
+dernières semaines de celui d'un athlète parti à l'heure. **Trois écarts avec le brief, mesurés
+avant d'écrire** : le seuil n'est pas 16 semaines mais dépend du sport ET du format (6 pour un
+5 km, 36 pour un Ironman — « 16 » est le cas du marathon, et une date virtuelle à `course − 16`
+donnerait 20 semaines de trop à un Ironman) ; « tronquer les 2 premières semaines » est le cas
+particulier de 14/16, le nombre retiré est `need − reste` ; et **un plancher absolu unique de
+8 semaines ne tient pas** — il autoriserait un Ironman préparé en 8 semaines, exactement ce que
+R11.4 existe pour refuser. Le plancher est donc **dérivé** plutôt qu'inventé : on ne retire que des
+semaines de MISE EN ROUTE, donc au plus la durée de la phase `base` (30 %) — la formulation du
+bandeau que le brief demande lui-même. Vérifié sur les **12 formats** : tout ce qui est au-dessus
+du plancher est autorisé, tout ce qui est en dessous refusé avec un motif dédié, et le bouton
+n'apparaît PAS quand le contournement serait de toute façon refusé (`bypass.possible`, transporté
+par l'erreur — le recalculer côté UI ferait deux règles de plancher, R11.1).
+**Une erreur à moi, attrapée par la spec** : ma première date virtuelle reculait de `need` et
+livrait 15 semaines au lieu de 14 — le moteur compte sa travée INCLUSIVEMENT ; le témoin du §5
+portait la même faute, et le corriger là aussi importait, sinon la comparaison aurait été fausse
+**dans le sens rassurant**.
+**Conséquence sur le manifeste, assumée** : « course trop proche » quitte la liste des blocages
+durs pour devenir « course sous le PLANCHER de préparation ». C'est un alignement sur O-17 — le
+critère de dureté est « l'athlète ne peut pas évaluer le risque, ou l'erreur est irréversible », or
+« ai-je déjà une base ? » se tranche et rater sa course se rattrape.
+**26 gates verts, E2E 16/16, golden 900 inchangé, registre 24/24.**
+
+**R22b livré — le refus emmène sur la réponse en cause, et SEPT suites E2E sortaient en code 0**
+(retour du fondateur sur capture, voir ARCHITECTURE.md « R22b ») : le bouton « Corriger ma
+réponse » renvoyait à la **dernière** étape du questionnaire quelle que soit la clé refusée — sur
+un refus `race_date`, l'athlète atterrissait sur une étape sans date et devait la chercher. Le
+refus NOMME pourtant la clé et l'affiche juste sous le bouton : l'information était là, le bouton
+ne la lisait pas. L'étape est désormais **trouvée** (on cherche laquelle rend `data-input="<clé>"`)
+et non déclarée — une table « clé → étape » deviendrait fausse à la première réorganisation, et
+U14 en a justement réorganisé l'ordre. Le champ est focalisé, `showPicker()` ouvre le calendrier
+natif, le focus reste le repli. Vaut pour TOUTE clé refusée, pas seulement la date.
+**Et la contre-preuve a trouvé plus grave.** En cassant le ciblage, la suite est sortie **verte** :
+elle MOURAIT au lieu de rapporter (exception non rattrapée, aucune ligne `FAIL`, et mon comptage de
+lignes en concluait « vert » — **la faute d'instrument de R21, refaite le même jour**). Remesuré
+sur le CODE DE SORTIE, la vraie grandeur : `run-all.mjs` lit `r.status`, mais `report()` se
+contente de RENDRE 0/1 sans jamais sortir — **sept suites sur dix-sept finissaient par
+`report();`**, donc sortaient en 0 quoi qu'elles trouvent, CI comprise. Parmi elles les gardes
+d'U1/U8/U10/U14/U15/U16, des sept questionnaires (R20.1), du plancher typographique (R16.8), et
+celle écrite le matin même (A-5). Même mécanisme qu'O-9/R20.6. **L'ordre de R20.6 a été respecté** :
+les sept mesurées d'abord — **0 échec sur 137 assertions**, aucune dette cachée — AVANT d'être
+rendues bloquantes. Garde `smoke-refus.mjs` (**17ᵉ suite**), 8 critères, **vérifiée rouge** sur
+deux cassures.
+**26 gates verts, E2E 17/17, golden 900 inchangé, registre 24/24.**
+
+**S-4 · S-8 · S-CACHE livrés — les quatre correctifs de la grille de sécurité** (voir
+ARCHITECTURE.md « S-4 / S-8 / S-CACHE », garde `tests/e2e/smoke-securite.mjs`, **18ᵉ suite**) :
+**(1)** le bouton d'import FIT disait « Importer **un** fichier » alors que le lot MARCHE depuis
+le 28/07 (`multiple` + `for (const f of files)`) — la priorité n°1 de l'état des lieux
+(« fastidieux, fichier par fichier ») était **un mot**, pas une fonctionnalité manquante.
+**(2)** Borne de taille d'import (25 Mo, `src/readiness/importLimits.ts`), contrôlée AVANT
+`arrayBuffer()` et **rejouée dans les trois parseurs** — une garde qui dépend de son appelant n'est
+pas une garde. Ce n'est pas une faille (l'app est locale, le fichier vient de l'athlète) mais un
+déni de service contre soi-même, au pire symptôme : une app qui ne répond plus, sans un mot.
+**(3)** CSP en `<meta>` : `connect-src` borné aux hôtes réellement appelés, relus DEPUIS LE CODE
+par la garde. **Ma première écriture y mettait `https:` en plus** « parce que l'URL du relais est
+configurable » — c'était se tromper de compromis, `https:` autorise l'exfiltration vers n'importe
+quel hôte, soit exactement ce que la ligne existe pour empêcher ; `*.workers.dev` couvre le relais
+déployé et tout worker monté selon `server/README.md`, et un critère interdit désormais le joker.
+**(4)** Le service worker ne fait plus `skipWaiting()` : il attend que la page le demande. Il
+prenait le contrôle EN PLEIN MILIEU d'une session — la page ouverte restait ancienne mais son
+prochain import dynamique (`await import("./steps.js")`) venait du nouveau cache : une page
+ancienne chargeant un module neuf. Bandeau « ✨ Nouvelle version prête », rechargement sur
+`controllerchange` (jamais avant la bascule), `reg.update()` au retour dans l'app (une PWA installée
+est gelée puis reprise, pas renavigée), et **rien à la première installation** — proposer « nouvelle
+version » à qui vient d'ouvrir l'app serait faux. C'est la moitié qui manquait à O-24 : la version
+du cache était devenue juste, sa PROPAGATION restait muette.
+**Deux erreurs à moi, attrapées par les suites existantes** : `frame-ancestors` est **ignoré** en
+`<meta>` (il exige un en-tête HTTP) — il ne protégeait de rien ET produisait une erreur de console
+à chaque chargement, ce que les suites détectent comme « erreur JS » (**6/18 suites rouges** avant
+de le retirer) ; et mon bandeau portait une taille littérale `14px`, refusée par le plancher
+typographique de R16.8 — l'échelle `--fs-*` est la seule source. L'anti-cadrage reste donc une
+limite d'hébergement NOMMÉE : GitHub Pages ne permet pas de poser cet en-tête.
+**26 gates verts, E2E 18/18, golden 900 inchangé, registre 24/24.**
 
 **I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
 ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en

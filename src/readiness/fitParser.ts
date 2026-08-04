@@ -12,6 +12,7 @@
  * la source de ces signaux, comme documenté dans readinessSource.ts.
  */
 import type { CompletedSession } from "./readinessSource.ts";
+import { assertImportSize } from "./importLimits.ts";
 
 /** Époque FIT : 1989-12-31T00:00:00Z. */
 const FIT_EPOCH_S = 631065600;
@@ -55,6 +56,7 @@ function readNum(b: Uint8Array, o: number, size: number, le: boolean): number | 
 
 /** Décode les messages `session` d'un fichier FIT. Jette une Error si l'en-tête est invalide. */
 export function parseFit(bytes: Uint8Array): FitSession[] {
+  assertImportSize("FIT", bytes.length); // S-8 — avant toute lecture
   if (bytes.length < 12) throw new Error("Fichier trop court pour être un FIT");
   const headerSize = bytes[0];
   if ((headerSize !== 12 && headerSize !== 14) || String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]) !== ".FIT")

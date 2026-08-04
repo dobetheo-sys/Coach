@@ -16,7 +16,7 @@
 import type { Decision, ReasonedPlan, V1Day, V1Plan, V1Session } from "../engine/types.ts";
 import { R6_PAIN_CONTRAINDICATION } from "../engine/constraintMatrix.ts";
 import { renderSess, type Refs } from "../generator/renderer.ts";
-import { assessReadiness, type ReadinessSnapshot, type ReadinessVerdict, type ReadinessLevel } from "./readinessSource.ts";
+import { assessReadiness, type CompletedSession, type ReadinessSnapshot, type ReadinessVerdict, type ReadinessLevel } from "./readinessSource.ts";
 
 export type AdjustAction = "keep" | "reduce" | "replace" | "rest" | "off";
 
@@ -43,7 +43,7 @@ export function sessionIntensity(s: V1Session): IntensityClass {
   return "facile";
 }
 
-const dayMinutes = (d: V1Day) => d.sessions.reduce((t, s) => t + (s.min || 0), 0);
+export const dayMinutes = (d: V1Day) => d.sessions.reduce((t, s) => t + (s.min || 0), 0);
 
 function findDay(plan: V1Plan, date: string): { day: V1Day; week: V1Plan["weeks"][0] } | null {
   for (const w of plan.weeks)
@@ -51,31 +51,46 @@ function findDay(plan: V1Plan, date: string): { day: V1Day; week: V1Plan["weeks"
   return null;
 }
 
-/** Charge des 7 jours précédant `date` : prévue par le plan vs réellement effectuée. */
-function acuteGap(plan: V1Plan, snapshot: ReadinessSnapshot): { plannedMin: number; doneMin: number; ratio: number | null } {
-  const end = new Date(snapshot.date + "T00:00:00Z").getTime();
-  const start = end - 7 * 864e5;
+/**
+ * Charge des `days` jours précédant `date` : prévue par le plan vs réellement effectuée.
+ *
+ * R21 — exportée pour que le détecteur de déviation lise le MÊME chiffre que l'ajusteur.
+ * Deux calculs de « charge des 7 derniers jours » finiraient par diverger, et c'est
+ * exactement le genre de divergence qu'O-23 vient d'exposer entre le moteur et l'UI (R11.1).
+ * `ratio` est `null` quand rien n'a été effectué OU quand rien n'était prévu : un ratio
+ * calculé sur un dénominateur nul serait un chiffre inventé.
+ */
+export function loadWindow(plan: V1Plan, completed: CompletedSession[] | undefined, date: string, days = 7):
+{ plannedMin: number; doneMin: number; ratio: number | null } {
+  const end = new Date(date + "T00:00:00Z").getTime();
+  const start = end - days * 864e5;
   let plannedMin = 0;
   for (const w of plan.weeks)
     for (const d of w.days) {
       const t = new Date(((d as { date?: string }).date || "1970-01-01") + "T00:00:00Z").getTime();
       if (t >= start && t < end) plannedMin += dayMinutes(d);
     }
-  const doneMin = (snapshot.completed || [])
+  const doneMin = (completed || [])
     .filter((c) => {
       const t = new Date(c.date + "T00:00:00Z").getTime();
       return t >= start && t < end;
     })
     .reduce((t, c) => t + c.minutes, 0);
-  return { plannedMin, doneMin, ratio: plannedMin > 0 && snapshot.completed ? doneMin / plannedMin : null };
+  return { plannedMin, doneMin, ratio: plannedMin > 0 && completed ? doneMin / plannedMin : null };
+}
+
+function acuteGap(plan: V1Plan, snapshot: ReadinessSnapshot): { plannedMin: number; doneMin: number; ratio: number | null } {
+  return loadWindow(plan, snapshot.completed, snapshot.date, 7);
 }
 
 function downgrade(level: ReadinessLevel): ReadinessLevel {
   return level === "verte" ? "orange" : "rouge";
 }
 
-/** Réduit le corps des séances d'un jour (×f), re-rend, renvoie les minutes. */
-function reduceDay(day: V1Day, f: number, refs: Refs, hz: Record<string, string>, baseRefs: Refs): void {
+/** Réduit le corps des séances d'un jour (×f), re-rend, renvoie les minutes.
+ *  R21 — exportée : le recalcul de fenêtre réduit EXACTEMENT comme l'ajusteur du matin.
+ *  Une seconde façon de réduire une séance serait une seconde définition de « réduire ». */
+export function reduceDay(day: V1Day, f: number, refs: Refs, hz: Record<string, string>, baseRefs: Refs): void {
   for (const s of day.sessions) {
     if (!s.steps || !s.steps.length) continue;
     for (const st of s.steps) {

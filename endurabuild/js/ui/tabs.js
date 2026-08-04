@@ -130,6 +130,19 @@ function renderGenerationFailure(err) {
       + "<p><b>Ton profil est conservé</b> — rien n’a été perdu.</p>"
       + '<div class="nav" style="gap:10px"><button type="button" class="btn primary" id="ebFixInput">Corriger ma réponse</button>'
       + '<button type="button" class="btn" id="ebRetryGen">Réessayer</button></div>'
+      // R22 — LA TROISIÈME SORTIE, et seulement quand elle existe VRAIMENT.
+      // `cause.bypass` est calculé par le moteur (`truncatedPrep`) et voyage sur l'erreur :
+      // décider ici si le bouton s'affiche demanderait de recopier la règle de plancher,
+      // donc d'en avoir deux (R11.1). Sur un Ironman à 14 semaines, `possible` est faux et
+      // le bouton n'apparaît pas — proposer une issue qui sera refusée serait pire que rien.
+      + (cause.bypass && cause.bypass.possible
+        ? '<div class="why" style="margin-top:12px;border-top:1px solid var(--line,#ddd);padding-top:12px">'
+          + "<b>Tu es déjà en préparation ?</b> Le plan peut démarrer directement en charge, en "
+          + "retirant les " + cause.bypass.aRetirer + " premières semaines de mise en route. "
+          + "Cela suppose une base d'entraînement déjà acquise."
+          + '<div style="margin-top:8px"><button type="button" class="btn" id="ebTruncate">'
+          + "Continuer quand même (prépa déjà avancée)</button></div></div>"
+        : "")
       + '<div class="why" style="margin-top:10px">Réponse concernée : <code>' + String(cause.key)
       + "</code> = <code>" + JSON.stringify(cause.value) + "</code> — attendu : " + String(cause.expected) + "</div></div>";
     // On renvoie au QUESTIONNAIRE, pas au Profil : le Profil est une vue du plan, et il n'y a
@@ -139,11 +152,56 @@ function renderGenerationFailure(err) {
       invalidatePlan();
       const st = await import("./steps.js");
       hideTabs(); S.onPlan = false; ebSave();
-      S.step = Math.max(0, st.curSteps().length - 1);
+      // ── LE BOUTON VISE LA RÉPONSE EN CAUSE, PLUS LA DERNIÈRE ÉTAPE ──
+      //
+      // Il envoyait à `curSteps().length - 1` quelle que soit la clé refusée : sur un refus
+      // `race_date`, l'athlète atterrissait sur une étape qui ne contient pas de date et
+      // devait la chercher. Le refus nomme pourtant la clé, et l'affiche à l'écran.
+      //
+      // L'étape est TROUVÉE, pas déclarée : on cherche laquelle rend un champ portant cette
+      // clé. Une table « clé → numéro d'étape » serait une seconde source de vérité, et elle
+      // deviendrait fausse à la première réorganisation du questionnaire — U14 en a justement
+      // réorganisé l'ordre, et quatre suites E2E codaient la séquence en dur.
+      const key = String(cause.key || "").replace(/[^\w-]/g, "");
+      const steps = st.curSteps();
+      let idx = -1;
+      if (key) {
+        const motif = new RegExp('data-(?:input|key)="' + key + '"');
+        for (let i = 0; i < steps.length; i++) {
+          let html = "";
+          try { html = steps[i].render() || ""; } catch (e) { html = ""; }
+          if (motif.test(html)) { idx = i; break; }
+        }
+      }
+      S.step = idx >= 0 ? idx : Math.max(0, steps.length - 1);
       st.renderStep();
+      // …et le champ s'OUVRE. Pour une date, c'est le calendrier natif : demander de corriger
+      // une date puis laisser l'athlète chercher le champ, c'est faire la moitié du chemin.
+      requestAnimationFrame(() => {
+        const el = key && document.querySelector('[data-input="' + key + '"], [data-key="' + key + '"]');
+        if (!el) return;
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        if (typeof el.focus === "function") el.focus({ preventScroll: true });
+        // `showPicker()` exige une activation transitoire : le clic la fournit, mais l'import
+        // dynamique peut l'avoir consommée. On tente, et le focus reste le repli — jamais
+        // d'exception qui remonterait pour un confort d'affichage.
+        if (el.tagName === "INPUT" && typeof el.showPicker === "function") {
+          try { el.showPicker(); } catch (e) { /* le champ est focalisé, ça suffit */ }
+        }
+      });
     };
     const rb = $("ebRetryGen");
     if (rb) rb.onclick = () => { invalidatePlan(); renderActiveTab(); };
+    // R22 — le drapeau est posé DANS les réponses, donc il persiste : sans ça, la moindre
+    // régénération (changement d'onglet, réouverture) ramènerait le refus, et l'athlète
+    // devrait re-cliquer chaque fois. Il reste réversible depuis le questionnaire.
+    const tb = $("ebTruncate");
+    if (tb) tb.onclick = () => {
+      S.answers.truncate_prep = true;
+      ebSave();
+      invalidatePlan();
+      renderActiveTab();
+    };
     return;
   }
   screen.innerHTML =

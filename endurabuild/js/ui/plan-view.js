@@ -333,7 +333,23 @@ function whyPlanCardHTML(plan){
   if(D.budget)add("<b>"+D.budget.val+"</b> séances par semaine"+(D["R10-depart"]?"" : "")+(D.recup?", avec une semaine allégée "+D.recup.val:"")+".","budget");
   if(D["R10-depart"])add("Le départ est calé sur ton volume RÉEL des derniers mois, pas sur ta cible : <b>"+D["R10-depart"].val+"</b>. C'est la marche la plus souvent trop haute.","reprise");
   if(D.impact)add("Pas plus de <b>"+D.impact.val+"</b> jours d'appui : c'est l'impact qui blesse, pas le volume.","impact");
-  let h='<div class="load-card"><div class="load-title">\u{1F9ED} Pourquoi ce plan</div>'
+  // R22 — LE BANDEAU DE PRÉPARATION TRONQUÉE, EN TÊTE ET HORS DU REPLIABLE.
+  //
+  // Il se lit sur `plan.meta`, posé par le pont, et non sur la présence d'un mot dans les
+  // avertissements : `meta.truncated` est un booléen que l'UI peut croire, une chaîne
+  // cherchée dans une phrase est une devinette qui casse au premier reformulage.
+  // Non repliable, comme les réserves moteur de R4 : ce que le plan SUPPOSE n'est pas
+  // une option de confort — c'est la condition sous laquelle il tient.
+  const m=plan&&plan.meta;
+  let h="";
+  if(m&&m.truncated)
+    h+='<div class="load-card" role="note" style="border-color:#c47f00;background:#fff8e6">'
+      +'<div class="load-title">⚠️ Prépa raccourcie à '+m.delivered_weeks+' semaines</div>'
+      +'<div class="load-sub">Les '+m.truncated_weeks+' premières semaines de mise en route ont été '
+      +'retirées, parce que ta date de course est proche. <b>Cela suppose une base d’entraînement '
+      +'déjà acquise.</b> La progression est plus dense dès la première semaine : sois '
+      +'attentif aux signaux de fatigue, et n’hésite pas à alléger au moindre doute.</div></div>';
+  h+='<div class="load-card"><div class="load-title">\u{1F9ED} Pourquoi ce plan</div>'
     +'<ul class="exp-list exp-plain">'+li.join("")+"</ul>";
   if(v2.warnings&&v2.warnings.length)
     h+='<div class="load-sub" style="margin-top:8px">\u26A0 Ce que le moteur n\u2019a pas pu faire sous tes contraintes : '+v2.warnings[0]+(v2.warnings.length>1?' <a href="#motorDecisions" style="color:inherit">et '+(v2.warnings.length-1)+' autre'+(v2.warnings.length>2?"s":"")+"\u2026</a>":"")+"</div>";

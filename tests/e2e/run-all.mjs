@@ -13,7 +13,7 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   "smoke-questionnaires.mjs",
   // U1-U7 — le PREMIER CONTACT : ce que la personne lit, et ce qu'elle attend. Aucune autre
   // suite ne regarde ça — elles vérifient toutes ce que le moteur produit.
-  "smoke-usage.mjs", "smoke-projlog.mjs",
+  "smoke-usage.mjs", "smoke-projlog.mjs", "smoke-refus.mjs", "smoke-securite.mjs",
   // RV — le chrono visé : la carte existe ET le plan ne bouge pas. La seconde moitié est la
   // raison d'être de la suite.
   "smoke-feasibility.mjs"];

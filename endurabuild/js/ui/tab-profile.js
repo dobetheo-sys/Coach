@@ -614,7 +614,7 @@ export function renderTabProfile(plan) {
   // de l'ajusteur (S.answers.fitSessions, même contrat que les ✓).
   if (globalThis.EBV2 && globalThis.EBV2.importFit) {
     html += '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-      + '<label class="btn" style="cursor:pointer;margin:0">📂 Importer un fichier .FIT<input type="file" id="pfFit" accept=".fit,.FIT" multiple style="display:none"></label>'
+      + '<label class="btn" style="cursor:pointer;margin:0">📂 Importer mes fichiers .FIT <span class="q-sub">(plusieurs à la fois)</span><input type="file" id="pfFit" accept=".fit,.FIT" multiple style="display:none"></label>'
       + '<span class="load-sub" style="margin:0">export de ta montre — lu ici, jamais envoyé</span></div>'
       + '<div id="pfFitMsg" class="load-sub" style="margin-top:6px"></div>';
   }
@@ -730,6 +730,9 @@ export function renderTabProfile(plan) {
     if (!Array.isArray(S.answers.fitRich)) S.answers.fitRich = [];
     for (const f of files) {
       try {
+        // S-8 — la taille est contrôlée AVANT `arrayBuffer()` : lire 500 Mo en mémoire pour
+        // découvrir ensuite que c'est trop gros, c'est avoir déjà payé le coût qu'on refuse.
+        globalThis.EBV2.assertImportSize(f.name, f.size);
         const imp = globalThis.EBV2.importFit(await f.arrayBuffer());
         imp.tests.forEach((t) => { S.answers.tests.push(t); nT++; });
         imp.completed.forEach((c) => {
