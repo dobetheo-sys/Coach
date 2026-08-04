@@ -1113,6 +1113,28 @@ le plancher d'affûtage de Bosquet. Au passage, Riegel n'a plus qu'une écriture
 de `feasibility` délègue au prédicteur.
 **27 gates verts, E2E 18/18, golden 900 recapturé (121 profils, tous en course), registre 25/25.**
 
+**C31 livré — le back-to-back marathon : la longue trop longue se coupe en deux jours d'affilée**
+(décision du fondateur, 04/08/2026, populations bornées par un audit de littérature préalable —
+voir ARCHITECTURE.md « C31 ») : quand C30 est refusé par le plafond C23 (marathon @ 7:00/km :
+cible 334 min, plafond 180), **ce qui manque se court le lendemain** de la longue, en Z2, jambes
+fatiguées — `min(manque, 0,6 × 180)`, soit 180 + 108 @ 7:00, 180 + 63 @ 5:45. **Marathon
+seulement** (le mécanisme est la déplétion glycogénique — sous ~2 h 30 d'épreuve il n'opère pas,
+le semi est dehors), **jamais un débutant** (Nielsen 2014 : la fluctuation de charge est LE
+mécanisme de blessure du novice, et un week-end doublé en est un pic), jamais sous drapeau
+médical ni blessure d'impact, **≤ 3 week-ends par prépa** (semaines de pic en charge). Le conflit
+avec la garde d'impact (`runImpactCap` pose un OFF après la longue) est résolu par ÉCHANGE : la
+récup se décale d'un jour, elle n'est pas supprimée. La passe tourne AVANT la boucle R3.3 —
+charge redistribuée, jamais ajoutée. **Deux défauts de ma première écriture, trouvés par le banc
+d'invariants** : poser-puis-écraser n'est pas poser (I14 a vu un « jour 2 » compressé à 30 min
+sous un nom qu'il ne tenait plus → la paire ne se pose que si 180 + jour 2 ≤ 60 % du pic promis),
+et le seuil de pose doit ÊTRE le seuil du filet (poser dès 15 min de manque puis déclasser
+laissait l'échange de jours orphelin — l'inversion I13 de 4 min venait de là ;
+`C31_MIN_JOUR2_MIN = 45`, une constante pour les deux). Gardes `C31-A`/`C31-B` au banc v6,
+**vérifiées rouges sur trois cassures** ; deux limites PUBLIÉES — le filet du point fixe n'a
+aucun déclencheur actuel (défense en profondeur, cassure K4 verte et c'est dit), et le golden ne
+couvre pas C31 (aucun profil marathon + allure lente : famille A-2).
+**27 gates verts, E2E 18/18, golden 900 : 0 écart, registre 26/26.**
+
 **H-1b livré — la VFC devient un CHOIX, posé une fois** (retour du fondateur : *« déjà la VFC est
 un point avancé, je me demande s'il ne vaut pas mieux le demander comme une option »*, voir
 ARCHITECTURE.md « H-1b ») : elle occupait **une diapo sur trois du check-in quotidien de TOUT LE

@@ -4091,6 +4091,64 @@ plafond tenant déjà), gardée pour le jour où quelqu'un fera gagner le planch
 dans le module qui déclare lui-même IMPORTER ses modèles plutôt que les redéclarer. C30 en aurait
 fait une troisième. `riegelSecWith` est exporté, les deux autres délèguent.
 
+## C31 — le back-to-back marathon : la longue trop longue se coupe en deux jours
+
+Décision du fondateur (04/08/2026) : *« le but était de couper une sortie longue trop longue en
+2 jours d'affilé »* — le back-to-back que le trail porte depuis R7, sorti du trail pour le seul
+format de course où son mécanisme opère. L'arbitrage des populations a fait l'objet d'un audit
+de littérature préalable (demandé par le fondateur : « audite un professionnel en physiologie
+pour trancher ») dont les conclusions BORNENT le lot :
+
+- **Marathon seulement.** Le mécanisme est la déplétion glycogénique + la fatigue cumulée ;
+  sous ~2 h 30 d'épreuve (semi compris), il n'opère pas. Le cap des 3 h (Daniels) est un
+  plafond de **coût de récupération**, pas de tissu — et couper en deux est la réponse exacte
+  à un plafond de coût.
+- **Jamais un débutant.** « For advanced runners only » (la source de la méthode elle-même),
+  et le mécanisme de blessure le mieux établi chez le novice est la FLUCTUATION de charge
+  (Nielsen 2014 : > 30 %/sem) — or un week-end doublé EST un pic de fluctuation. Coût d'erreur
+  asymétrique : 71 jours médians d'arrêt (PLOS One 2014), soit la prépa entière.
+- **Jamais** sous drapeau médical ni avec une blessure d'impact.
+- **≤ 3 week-ends par prépa** (les dernières semaines de pic en charge) — la source borne la
+  fréquence ainsi.
+
+### Le déclencheur est mesuré, la dose est le manque
+
+C30 calcule la cible de spécificité et sait quand C23 (180 min) la refuse : `capped`. Le jour 2
+court **ce qui manque** — `min(cible − 180, 0,6 × 180)` — le lendemain de la longue, en Z2,
+« jambes fatiguées ». Marathon @ 7:00/km : 180 + **108** ; @ 5:45 : 180 + **63**. La passe tourne
+AVANT la sonde de capacité et la boucle R3.3 : la charge est **redistribuée** dans le budget de
+la semaine, jamais ajoutée, et toutes les garanties aval voient le jour 2.
+
+### Le conflit avec la garde d'impact, résolu par échange
+
+Le moteur place déjà un OFF/récup après la sortie longue (`runImpactCap`) : dans les semaines
+mesurées, le lendemain de la longue n'est presque jamais un footing. « Deux jours d'affilée »
+assume précisément de courir AVANT cette récup, pas de la supprimer : le contenu du lendemain
+est **échangé** avec le premier jour facile qui suit dans la semaine. La récup existe toujours,
+un jour plus tard ; le nombre de jours de repos de la semaine ne change pas. (Le trail n'a pas
+ce conflit : son back-to-back est dans son SCHÉMA de semaine — même concept, même nom de séance.)
+
+### Deux défauts de ma première écriture, trouvés par le banc d'invariants
+
+1. **Poser-puis-écraser n'est pas poser.** Sans borne budgétaire, R3.3 compressait le jour 2 à
+   30 min sur les enveloppes serrées (le plancher déclaré ne survit pas à `blockBounds` — le
+   mécanisme d'O-26) et la séance gardait un nom qu'elle ne tenait plus — `I14` l'a vu. La
+   paire ne se pose que si `180 + jour2 ≤ 60 % du pic promis` (l'esprit d'I12).
+2. **Le seuil de pose EST le seuil du filet.** Ma première écriture posait dès 15 min de manque ;
+   le filet déclassait ensuite le jour 2 minuscule, mais l'ÉCHANGE de jours restait — une
+   perturbation structurelle sans la fonctionnalité, et la source d'une inversion I13 de 4 min.
+   `C31_MIN_JOUR2_MIN = 45`, une constante pour les deux (R11.1).
+
+### Gardes, et ce qu'elles ne couvrent pas
+
+`C31-A`/`C31-B` (banc v6) épinglent le nominal (posé en pic, dose qui suit le manque, longue
+intacte, ≤ 3 week-ends) et les cinq exclusions — **vérifiés rouges sur trois cassures** (C31
+retiré, exclusion débutant sautée, dose figée). Deux limites publiées : **le filet du point
+fixe n'est déclenché par aucun profil actuel** (la pose bornée l'empêche en amont — défense en
+profondeur au même statut que le filet de R21, la cassure K4 reste verte et c'est dit) ; et
+**le golden ne couvre pas C31** (0 écart sur 900 : aucun profil golden ne porte marathon +
+allure lente — la famille d'angle mort A-2 ; les valeurs exactes vivent dans C31-A).
+
 ## H-1b — la VFC devient un CHOIX, posé une fois
 
 Retour du fondateur dans la foulée de H-1 : *« personne n'importe réellement des fichiers .FIT

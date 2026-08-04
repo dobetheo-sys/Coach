@@ -59,6 +59,12 @@ export const C30_PART_TEMPS_COURSE = 0.9;
 /** Part de la distance de course que la sortie longue couvre au minimum (décision fondateur). */
 export const C30_PART_DISTANCE = 0.7;
 
+/** C31 — la durée MINIMALE d'un « jour 2 » de back-to-back (min). En dessous, ce n'est pas
+ *  la moitié d'une très longue sortie, c'est un footing avec un nom d'emprunt : on ne pose
+ *  pas la paire (et le filet du point fixe déclasse tout jour 2 qui serait retombé sous ce
+ *  seuil). UNE constante pour les deux — deux seuils divergeraient à la première retouche. */
+export const C31_MIN_JOUR2_MIN = 45;
+
 export interface LongRunFloor {
   /** Le plancher à appliquer, déjà borné par le plafond. */
   floor: number;

@@ -704,6 +704,60 @@ test("C30-B", "un plancher de spécificité ne passe JAMAIS devant un plafond de
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "C23 et le plafond blessure tiennent, le plancher cède" };
 });
 
+// ── C31 — LE BACK-TO-BACK MARATHON (décision du fondateur, 04/08/2026) ──────────────────
+//
+// « Couper une sortie longue trop longue en deux jours d'affilée ». Le déclencheur est
+// MESURÉ : C30 capped sur marathon, manque ≥ 45 min. Trois critères pour les trois faces :
+// il se pose là où il doit (et JAMAIS ailleurs — quatre exclusions sourcées), sa dose est
+// celle du manque, et la longue reste la plus longue de sa semaine.
+const c31Scan = (over) => {
+  const p = E.buildPlan("run", { ...profile("run"), format: "marathon", intent: "competition",
+    med_pain: "non", med_dizzy: "non", med_treat: "non", injury: "aucune", sessions_max: "5",
+    vol_max: "8", dispo: "quotidienne", doubles: "oui", pace_known: "oui", pace: "7:00",
+    vol_recent: "6", terrain: "route", level: "inter", history: "confirme", ...over });
+  const b2b = [];
+  let slMax = 0;
+  p.weeks.forEach((w) => w.days.forEach((d) => d.sessions.forEach((x) => {
+    if (/Back-to-back \(jour 2/.test(x.name)) b2b.push({ sem: w.num, phase: w.phase.id, min: x.min || 0 });
+    if (x.long && (x.min || 0) > slMax) slMax = x.min || 0;
+  })));
+  return { b2b, slMax };
+};
+
+test("C31-A", "le back-to-back se pose en PIC quand le manque le justifie, à la dose du manque", "pass", () => {
+  const bad = [];
+  // marathon @7:00 : manque ~154 → jour 2 à min(154, 108) = 108 min, en phase de pic.
+  const g = c31Scan({});
+  if (!g.b2b.length) bad.push("7:00 : aucun back-to-back posé");
+  else {
+    if (g.b2b.some((x) => x.phase !== "peak")) bad.push("posé hors phase de pic : " + JSON.stringify(g.b2b));
+    if (g.b2b.length > 3) bad.push(g.b2b.length + " week-ends — la source borne à 2-3 par prépa");
+    if (g.b2b.some((x) => x.min < 45)) bad.push("jour 2 sous 45 min (le filet aurait dû déclasser) : " + JSON.stringify(g.b2b));
+    if (g.b2b.some((x) => x.min > 108 + 2)) bad.push("jour 2 au-dessus de 0,6 × longue : " + JSON.stringify(g.b2b));
+    if (g.b2b.some((x) => x.min >= g.slMax)) bad.push("le jour 2 dispute son titre à la longue (I14)");
+  }
+  // et la dose SUIT le manque : à 5:45 (manque ~90), le jour 2 est plus court qu'à 7:00.
+  const h = c31Scan({ pace: "5:45" });
+  if (h.b2b.length && g.b2b.length && !(h.b2b[0].min < g.b2b[0].min)) bad.push("la dose ne suit pas le manque (5:45 → " + (h.b2b[0] || {}).min + " vs 7:00 → " + g.b2b[0].min + ")");
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || g.b2b.length + " week-end(s), jour 2 à " + g.b2b.map((x) => x.min).join("/") + " min, longue " + g.slMax + " intacte" };
+});
+
+test("C31-B", "les quatre exclusions tiennent : débutant, médical, blessure d'impact, autre format", "pass", () => {
+  const bad = [];
+  const cas = [
+    ["débutant", { level: "debutant", history: "reprise" }],
+    ["drapeau médical", { med_treat: "oui" }],
+    ["blessure d'impact (pied)", { injury: "pied" }],
+    ["semi (mécanisme absent sous ~2h30)", { format: "semi" }],
+    ["manque < 45 min (4:50)", { pace: "4:50" }],
+  ];
+  for (const [nom, over] of cas) {
+    const g = c31Scan(over);
+    if (g.b2b.length) bad.push(nom + " reçoit un back-to-back : " + JSON.stringify(g.b2b));
+  }
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "5 profils exclus, 0 back-to-back — la population de la méthode est celle de ses sources" };
+});
+
 test("E5", "buildPlan REFUSE une entrée invalide, avec un refus typé et réparable", "pass", () => {
   const bad = [];
   const mutants = [
