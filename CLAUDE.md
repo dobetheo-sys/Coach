@@ -1043,6 +1043,23 @@ typographique de R16.8 — l'échelle `--fs-*` est la seule source. L'anti-cadra
 limite d'hébergement NOMMÉE : GitHub Pages ne permet pas de poser cet en-tête.
 **26 gates verts, E2E 18/18, golden 900 inchangé, registre 24/24.**
 
+**S-1 arbitré — le moteur reste PUBLIC** (décision du fondateur, 04/08/2026 : « restons en public
+pour le moment », voir ARCHITECTURE.md « S-1 » et BUGS_OUVERTS.md) : la grille de sécurité ouvrait
+sur « le moteur tourne exclusivement côté serveur » — case inchochable, et pas par oubli : **il n'y
+a pas de serveur**. Mesuré sur le fichier servi (`engine.js`, 925 Ko) : `Bosquet` ×21, `Riegel`
+×25, `G_PLAFOND` ×7, `HISTORY_CAPS` ×8, commentaires compris. **On assume**, à titre révisable.
+Ce que ça ACHÈTE : hors-ligne, zéro-compte (aucune donnée ne quitte le téléphone), zéro-infra, et
+l'explicabilité qui EST le contre-positionnement du produit. Ce que ça COÛTE, dit franchement : le
+moteur est copiable, et le **« secret des affaires » (loi 2018) ne s'applique pas** — il exige des
+mesures de protection raisonnables, or un moteur publié n'en est pas une. La protection réelle est
+le **droit d'auteur** (`LICENSE`, déjà cohérente) et la **concurrence déloyale** ; vérifié qu'aucun
+document ne revendique le contraire, et gardé par un bloc `verify`. Les §1/§2/§5/§6 de la grille
+deviennent **hors architecture** plutôt qu'« en retard » ; le §6 garde sa valeur préventive (`src/`
+ne contient aucune notion de produit ni de prix — à PRÉSERVER). Reste HUMAIN : `H-6` CGU,
+`H-7` Soleau. Réouverture si modèle payant à l'usage ou copie constatée — **et le retour arrière
+coûte d'autant plus cher qu'il y a d'utilisateurs** (un backend introduit après coup demande de
+migrer l'état de chacun depuis son `localStorage`).
+
 **I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
 ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en
 trail, un DÉBUTANT recevait un pic de **575 min** contre **547** pour un INTER, et sur le D+ aussi
