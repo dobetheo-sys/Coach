@@ -3918,3 +3918,96 @@ ou une **copie constatée** qui change le calcul. Un troisième point mérite d'
 d'avance : **plus l'app a d'utilisateurs, plus le retour arrière coûte** — un backend
 introduit après coup demande de migrer l'état de chacun depuis son `localStorage`. Ce coût
 croît, il ne décroît jamais.
+
+
+---
+
+## H-1 (VFC) — la variabilité cardiaque devient une mesure, plus un adjectif
+
+L'état des lieux du 04/08 nomme le HRV *« l'écart connaissance/implémentation le plus ancien
+et le plus documenté »*. En allant regarder, le défaut n'est pas celui qu'on croit.
+
+### Le défaut n'est PAS « le HRV manque »
+
+`hrvStatus` existe depuis le Sprint 2, il est collecté au check-in, et il pèse **−2 sur le
+registre OBJECTIF** de `assessReadiness` — le registre que l'audit v6 (A4) a créé
+*précisément* pour qu'« un ressenti déclaratif ne puisse pas effacer une mesure ».
+
+Sauf que `hrvStatus` **est** un ressenti déclaratif. Son type le dit lui-même :
+
+```ts
+export type HrvStatus = "basse" | "normale" | "haute"; // vs moyenne glissante 7j de l'athlète
+```
+
+…et **rien dans le dépôt ne calculait cette moyenne glissante**. L'athlète regardait sa montre
+et cochait une case à l'œil. Un adjectif auto-déclaré, rangé parmi les mesures, qui pilotait
+deux points du verdict quotidien — donc le remplacement d'une séance de qualité par de
+l'endurance.
+
+C'est la leçon **R14.1** payée une quatrième fois. Et l'ironie tient en trois lignes de
+distance : le signal juste à côté, la FC de repos, se compare à une baseline glissante calculée
+depuis l'historique depuis l'audit v6.
+
+### Le modèle, et sa provenance
+
+- **Espace logarithmique.** Le rMSSD est distribué de façon très asymétrique ; le monitoring
+  travaille sur `ln(rMSSD)`. Moyenner les millisecondes brutes donnerait un poids excessif aux
+  valeurs hautes.
+- **Moyenne glissante 7 jours** — Plews et al. (2013, *Sports Medicine*). Le résultat central
+  de cette littérature est que la valeur d'un matin isolé est trop bruitée pour décider quoi que
+  ce soit ; c'est la moyenne hebdomadaire qui suit l'adaptation. Le champ le disait déjà.
+- **Bande « normale » = ±0,5 écart-type** — le plus petit changement qui vaille la peine
+  (convention Hopkins, largement reprise en monitoring VFC).
+- **L'écart-type se mesure sur 28 jours, pas 7.** La variabilité propre d'un athlète ne se lit
+  pas sur sept points, et une bande calculée sur la même fenêtre que la moyenne se rétrécirait
+  à chaque semaine calme : le plan deviendrait hypersensible au moment précis où l'athlète va
+  bien.
+- **Sous 7 matins, on ne classe pas**, et on dit pourquoi. Une « moyenne sur 7 jours » calculée
+  sur trois points n'est pas une moyenne sur 7 jours (P7/P8).
+
+### Ce qui change dans le verdict
+
+| provenance | registre | poids | driver |
+|---|---|---|---|
+| valeur comparée à la base | **objectif** | −2 / +1 | « VFC sous ta bande habituelle (base 60 ms) » |
+| case cochée | **subjectif** | −1 / +1 | « VFC que tu as jugée basse (déclarée, non comparée à ta base) » |
+| rien | — | — | aucun driver : on n'invente pas un signal absent |
+
+La déclaration n'est pas jetée — elle vaut mieux que rien. Elle cesse d'être **maquillée en
+mesure**, et le driver le dit, pour que l'athlète sache ce qui a compté dans son verdict.
+
+Le classement se fait en **un seul point**, dans le pont, comme le drapeau douleur et le RPE :
+le faire côté interface demanderait d'y recopier la fenêtre, l'écart-type et le seuil (R11.1),
+et aucun appelant ne peut l'oublier.
+
+**Le piège du zéro, fermé aux deux bouts** : 0, valeur négative et valeur aberrante sont
+refusés (un 0 n'est pas une VFC nulle, c'est une saisie fausse ou un artefact de capteur), et
+la mesure du jour n'entre pas dans sa propre base — elle amortirait l'écart qu'on cherche à
+détecter.
+
+### LE BANC v6 A ROUGI, ET LE CORRIGER VALAIT MIEUX QUE LE CONTOURNER
+
+`A4` est passé rouge. Le réflexe interdit ici serait de ré-ancrer le témoin — c'est ce que
+l'arbitrage d'O-21 refuse explicitement. Mais le cas est différent, et il faut le dire
+précisément :
+
+Le critère s'appelle **« signal OBJECTIF non annulable par le déclaratif subjectif »**, et sa
+fixture passait `hrvStatus: "basse"` **sans valeur ni base** — c'est-à-dire une case cochée.
+Elle utilisait donc un déclaratif comme signal objectif : exactement la confusion que ce lot
+corrige, et que le titre du critère dénonce. L'intention était juste, la fixture ne
+correspondait pas au titre.
+
+Traitement : la fixture reçoit une VFC **mesurée** (le critère teste enfin ce qu'il annonce), et
+**`A4b` est ajouté** pour épingler la moitié nouvelle — une VFC déclarée ne pèse pas comme une
+mesurée, et le driver l'annonce. Le banc couvre désormais les deux faces au lieu de les
+confondre, et rien n'est perdu. `A4b` est **vérifié rouge** contre le moteur d'avant.
+
+### Garde
+
+`npm run demo:hrv` — 27 critères, **27ᵉ gate CI**. **Vérifié rouge sur quatre cassures** :
+la déclaration qui repèse comme une mesure (le défaut d'origine, 3 ✖), le classement dès une
+mesure (6 ✖), les bornes physiologiques retirées (1 ✖), la mesure du jour entrant dans sa
+propre base (1 ✖).
+
+Et le §4 porte l'invariant qui prime sur tout : **une VFC, quelle que soit sa valeur, ne peut
+jamais faire monter la charge.**

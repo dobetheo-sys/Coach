@@ -60,10 +60,18 @@ const SLIDES = [
       { val: "skip", ico: "🤷", label: "Je ne la suis pas", react: "Aucun souci, le ressenti suffit." },
     ],
     set: (d, v) => { d.hrvStatus = v === "skip" ? "normale" : v; },
+    // H-1 — LA VALEUR, parce que la case n'est qu'un avis. Renseignée, elle est comparée à
+    // la base glissante 7 j de l'athlète et devient une MESURE ; sinon la case reste, mais
+    // elle est traitée pour ce qu'elle est (registre subjectif). Optionnelle, jamais bloquante.
+    extraHRV: true,
     // A6 (audit v6) — la FC au réveil était supportée par le moteur et jamais collectée :
     // champ optionnel ici (une frappe, jamais bloquant), baseline glissante 7 jours calculée
     // depuis l'historique dès la 3e mesure.
     extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:#635b4a">'
+      + '<span>VFC du matin (optionnel)</span><input type="number" id="ckHrv" inputmode="numeric" min="5" max="250" value="' + (d.hrvValue || "") + '" placeholder="ex. 62" style="width:88px">'
+      + "<span>ms</span></label>"
+      + '<div class="q-sub" style="margin-top:4px">Le chiffre de ta montre (rMSSD). Avec lui, ta VFC est comparée à TA base des 7 derniers matins au lieu d\'être devinée.</div>'
+      + '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:#635b4a">'
       + '<span>FC au réveil (optionnel)</span><input type="number" id="ckHr" inputmode="numeric" min="30" max="120" value="' + (d.restingHr || "") + '" placeholder="ex. 52" style="width:88px">'
       + "<span>bpm</span></label>",
   },
@@ -125,6 +133,13 @@ export function bindCheckinSlideshow(rerender, onDone) {
       if (hrEl) {
         const v = parseInt(hrEl.value || "");
         if (v >= 30 && v <= 120) ck.restingHr = v; else delete ck.restingHr;
+      }
+      // H-1 — la VALEUR de VFC. Bornes physiologiques : hors d'elles, c'est une saisie
+      // fausse ou un artefact de capteur, et on préfère RIEN à une base empoisonnée.
+      const hrvEl = $("ckHrv");
+      if (hrvEl) {
+        const v = parseInt(hrvEl.value || "");
+        if (v >= 5 && v <= 250) ck.hrvValue = v; else delete ck.hrvValue;
       }
       slide.set(ck, opt.val, opt);
       ck._react = opt.react || "";

@@ -26,6 +26,14 @@ export interface ReadinessSnapshot {
   sleepQuality?: SleepQuality;
   sleepHours?: number;
   hrvStatus?: HrvStatus;
+  /** H-1 — la VALEUR du matin (rMSSD, ms). C'est elle qui fait de la VFC une mesure. */
+  hrvValue?: number;
+  /** H-1 — d'où vient `hrvStatus` : d'une comparaison à la base, ou d'une case cochée.
+   *  Sans ce champ, `assessReadiness` ne peut pas savoir dans quel registre le ranger —
+   *  et c'est exactement l'erreur qu'il faisait (une déclaration comptée comme mesure). */
+  hrvSource?: "mesure" | "declare";
+  /** Base glissante 7 j, en ms — affichée pour que l'athlète sache à quoi on l'a comparé. */
+  hrvBaselineMs?: number;
   restingHr?: number; // bpm du matin
   restingHrBaseline?: number; // moyenne habituelle
   energy?: number; // 0-100 (équivalent Body Battery)
@@ -96,8 +104,29 @@ export function assessReadiness(s: ReadinessSnapshot): ReadinessVerdict {
     if (s.sleepHours != null && s.sleepHours < 6.5) objectif -= 1; else subjectif -= 1;
     drivers.push("sommeil moyen");
   } else if (s.sleepQuality === "bon") { subjectif += 1; drivers.push("sommeil bon"); }
-  if (s.hrvStatus === "basse") { objectif -= 2; drivers.push("HRV sous ta moyenne 7j"); }
-  else if (s.hrvStatus === "haute") { objectif += 1; drivers.push("HRV au-dessus de ta moyenne"); }
+  // H-1 — LA VFC PÈSE SELON CE QU'ELLE EST, PAS SELON SON NOM.
+  //
+  // `hrvStatus` pesait −2 sur le registre OBJECTIF — celui que A4 a créé pour qu'un ressenti
+  // déclaratif ne puisse pas effacer une mesure. Or il ÉTAIT un ressenti déclaratif : son
+  // propre type annonce « vs moyenne glissante 7j de l'athlète » et rien ne calculait cette
+  // moyenne. L'athlète cochait « basse » à l'œil, et ça valait deux points de mesure.
+  // Quatrième paiement de la leçon R14.1 — un adjectif auto-déclaré ne pilote aucun chiffre.
+  //
+  // Désormais : comparée à la base de l'athlète (`hrvBaseline`), elle est OBJECTIVE et garde
+  // son poids ; simplement cochée, elle passe au registre SUBJECTIF, avec un poids moindre.
+  // La déclaration n'est pas jetée — elle vaut mieux que rien — elle cesse d'être maquillée
+  // en mesure, et le driver le DIT pour que l'athlète sache ce qui a compté.
+  const hrvMesuree = s.hrvSource === "mesure";
+  const hrvRef = s.hrvBaselineMs != null ? " (base " + s.hrvBaselineMs + " ms)" : "";
+  if (s.hrvStatus === "basse") {
+    if (hrvMesuree) { objectif -= 2; drivers.push("VFC sous ta bande habituelle" + hrvRef); }
+    else { subjectif -= 1; drivers.push("VFC que tu as jugée basse (déclarée, non comparée à ta base)"); }
+  } else if (s.hrvStatus === "haute") {
+    if (hrvMesuree) { objectif += 1; drivers.push("VFC au-dessus de ta bande habituelle" + hrvRef); }
+    else { subjectif += 1; drivers.push("VFC que tu as jugée haute (déclarée)"); }
+  } else if (hrvMesuree && s.hrvStatus === "normale") {
+    drivers.push("VFC dans ta bande habituelle" + hrvRef);
+  }
   if (s.energy != null) {
     if (s.energy < 25) { subjectif -= 2; drivers.push("énergie très basse (" + s.energy + "/100)"); }
     else if (s.energy < 45) { subjectif -= 1; drivers.push("énergie basse (" + s.energy + "/100)"); }
@@ -134,7 +163,8 @@ export function assessReadiness(s: ReadinessSnapshot): ReadinessVerdict {
  *  sans cette validation, une faute de frappe côté UI faisait disparaître un signal de
  *  sécurité en silence (audit v6). En dev, on veut du bruit ; en prod, une trace. */
 export const SNAPSHOT_KEYS = [
-  "date", "sleepQuality", "sleepHours", "hrvStatus", "restingHr", "restingHrBaseline",
+  "date", "sleepQuality", "sleepHours", "hrvStatus", "hrvValue", "hrvSource", "hrvBaselineMs",
+  "restingHr", "restingHrBaseline",
   "energy", "feel", "completed", "weather", "painFlag", "painLocation", "lastRpe",
 ] as const;
 export function validateSnapshot(s: Record<string, unknown>): string[] {

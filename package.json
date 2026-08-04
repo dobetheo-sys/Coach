@@ -37,7 +37,8 @@
     "registry:check": "node scripts/registryCheck.mjs",
     "demo:faisabilite": "node src/audit/feasibilityDemo.ts",
     "demo:proactif": "node src/audit/proactiveDemo.ts",
-    "demo:troncature": "node src/audit/truncateDemo.ts"
+    "demo:troncature": "node src/audit/truncateDemo.ts",
+    "demo:hrv": "node src/audit/hrvDemo.ts"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

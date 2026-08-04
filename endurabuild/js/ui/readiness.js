@@ -71,8 +71,20 @@ async function applyReadinessSnap(base){
     S.answers.hrRestLog.push({date:snap.date,v:hr});
     S.answers.hrRestLog=S.answers.hrRestLog.slice(-30);
   }
+  // H-1 — LE JOURNAL DE VFC. Même mécanique que `hrRestLog`, et pour la même raison : sans
+  // historique, « basse » n'est qu'un avis. Le CLASSEMENT n'est pas fait ici — le pont le
+  // fait avec `hrvBaseline` (fenêtres, écart-type, seuil). L'UI collecte et conserve, le
+  // modèle décide : recopier les constantes ici en ferait une seconde définition (R11.1).
+  const hrv=parseInt(base.hrvValue);
+  if(hrv>=5&&hrv<=250){
+    snap.hrvValue=hrv;
+    if(!Array.isArray(S.answers.hrvLog))S.answers.hrvLog=[];
+    S.answers.hrvLog=S.answers.hrvLog.filter(x=>x.date!==snap.date);
+    S.answers.hrvLog.push({date:snap.date,v:hrv});
+    S.answers.hrvLog=S.answers.hrvLog.slice(-60);
+  }
   const wx=await fetchWeather();if(wx&&wx.tmaxC!=null)snap.weather=wx;
-  S.answers.readiness={date:snap.date,sleepQuality:snap.sleepQuality,hrvStatus:snap.hrvStatus,energy:snap.energy,feel:snap.feel,sleepHours:snap.sleepHours,restingHr:snap.restingHr};ebSave();
+  S.answers.readiness={date:snap.date,sleepQuality:snap.sleepQuality,hrvStatus:snap.hrvStatus,hrvValue:snap.hrvValue,energy:snap.energy,feel:snap.feel,sleepHours:snap.sleepHours,restingHr:snap.restingHr};ebSave();
   let res;try{res=globalThis.EBV2.adjustToday(S.sport,S.answers,snap);}catch(e){console.warn(e);return null;}
   // Historique des verdicts : chaque adaptation quotidienne est archivée (une entrée par
   // jour, la dernière gagne) — montre combien de fois le plan s'est réellement adapté.

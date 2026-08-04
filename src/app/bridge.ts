@@ -22,6 +22,7 @@ import { parseActivityText } from "../readiness/gpxTcxParser.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
 import { MAX_IMPORT_BYTES, assertImportSize, EBImportTooLarge } from "../readiness/importLimits.ts";
+import { hrvBaseline, classerHrv, hrvValide, type HrvMesure } from "../readiness/hrvBaseline.ts";
 import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
 import { validateAnswers, assertPlanIsAPlan, EBInputError, ANSWER_SCHEMA, FORMATS_BY_SPORT } from "../engine/answerSchema.ts";
 import { planTroncature, semainesRequises, PLANCHER_ABSOLU_SEM, type TruncatePlan } from "../engine/truncatedPrep.ts";
@@ -211,6 +212,22 @@ export function adjustTodayV2(sport: string, answers: AppAnswers, snapshot: Read
   // R4.5/R4.7 — le drapeau douleur et le RPE de la dernière séance validée entrent
   // AUTOMATIQUEMENT dans la photo du jour (aucun appelant ne peut les oublier) :
   // douleur active → rouge forcé ; RPE ≥8 hier → signal de fatigue annoncé.
+  // H-1 — LA VFC EST CLASSÉE ICI, un seul point, comme le drapeau douleur et le RPE.
+  //
+  // L'UI collecte la VALEUR et tient le journal ; le MODÈLE décide. Classer côté interface
+  // demanderait d'y recopier la fenêtre, l'écart-type et le seuil — trois constantes de plus
+  // à faire diverger (R11.1). Et aucun appelant ne peut oublier de le faire.
+  if (hrvValide(snapshot.hrvValue)) {
+    const b = hrvBaseline(answers.hrvLog as HrvMesure[] | undefined, snapshot.date);
+    const v = classerHrv(snapshot.hrvValue, b);
+    snapshot = v
+      ? { ...snapshot, hrvStatus: v.status, hrvSource: "mesure", hrvBaselineMs: b.moyenneMs ?? undefined }
+      // Base trop courte : la valeur est notée, elle ne pilote rien, et la déclaration
+      // reprend la main EN TANT QUE déclaration. On ne fabrique pas une mesure.
+      : { ...snapshot, hrvSource: "declare" };
+  } else if (snapshot.hrvStatus != null) {
+    snapshot = { ...snapshot, hrvSource: "declare" };
+  }
   const pf = answers.painFlag as { active?: boolean; location?: string } | undefined;
   if (snapshot.painFlag == null && pf && pf.active) snapshot = { ...snapshot, painFlag: true, painLocation: pf.location };
   if (snapshot.lastRpe == null && answers.completions) {
@@ -768,6 +785,8 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // pas une seconde valeur écrite dans l'interface.
   maxImportBytes: MAX_IMPORT_BYTES,
   assertImportSize,
+  // H-1 — l'UI affiche la base et le motif de refus ; elle ne les RECALCULE pas.
+  hrvBaseline: (log: HrvMesure[] | undefined, date: string) => hrvBaseline(log, date),
   parseActivityText,
   assessReadiness,
   progress: progressV2,

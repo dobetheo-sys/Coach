@@ -174,11 +174,36 @@ test("A3", "Jour rouge : jamais plus de minutes qu'avant ajustement", "pass", ()
   return { ok: bad.length === 0, detail: bad.slice(0, 3).join(" ; ") || "ok" };
 });
 
+// H-1 — LA FIXTURE D'A4 A ÉTÉ CORRIGÉE, ET IL FAUT DIRE POURQUOI.
+//
+// Le critère s'appelle « signal OBJECTIF non annulable par le déclaratif subjectif », et sa
+// fixture passait une VFC SANS valeur ni base — c'est-à-dire une case cochée à l'œil. Elle
+// utilisait donc un déclaratif comme signal objectif : exactement la confusion que H-1
+// corrige, et que le titre du critère dénonce.
+//
+// Ce n'est pas « ré-ancrer un témoin pour qu'il passe » (ce que l'arbitrage d'O-21 interdit) :
+// l'intention du critère est conservée mot pour mot, on lui donne enfin une entrée qui
+// correspond à son titre. Et rien n'est perdu — A4b, ci-dessous, épingle la MOITIÉ NOUVELLE :
+// une VFC déclarée ne doit PAS peser comme une VFC mesurée. Le banc couvre désormais les deux
+// faces au lieu de les confondre.
 test("A4", "Signal objectif non annulable par le déclaratif subjectif", "pass", () => {
   const v = E.assessReadiness({
-    date: isoIn(0), hrvStatus: "basse", sleepQuality: "bon", energy: 75,
+    date: isoIn(0), hrvStatus: "basse", hrvSource: "mesure", hrvBaselineMs: 60,
+    sleepQuality: "bon", energy: 75,
   });
-  return { ok: v.level !== "verte", detail: `HRV basse + sommeil bon + énergie 75 → ${v.level}` };
+  return { ok: v.level !== "verte", detail: `VFC basse MESURÉE + sommeil bon + énergie 75 → ${v.level}` };
+});
+
+test("A4b", "Une VFC DÉCLARÉE ne pèse pas comme une VFC mesurée", "pass", () => {
+  const base = { date: isoIn(0), sleepQuality: "bon", energy: 75 };
+  const mes = E.assessReadiness({ ...base, hrvStatus: "basse", hrvSource: "mesure", hrvBaselineMs: 60 });
+  const dec = E.assessReadiness({ ...base, hrvStatus: "basse", hrvSource: "declare" });
+  const rang = (l) => (l === "rouge" ? 2 : l === "orange" ? 1 : 0);
+  const ditQuElleEstDeclaree = dec.drivers.some((d) => /déclarée|jugée/.test(d));
+  return {
+    ok: rang(mes.level) > rang(dec.level) && ditQuElleEstDeclaree,
+    detail: `mesurée → ${mes.level} · déclarée → ${dec.level} (et le driver l'annonce : ${ditQuElleEstDeclaree})`,
+  };
 });
 
 test("A5", "Sommeil très court (<4h) → au moins rouge", "pass", () => {
