@@ -4011,3 +4011,76 @@ propre base (1 ✖).
 
 Et le §4 porte l'invariant qui prime sur tout : **une VFC, quelle que soit sa valeur, ne peut
 jamais faire monter la charge.**
+
+## H-1b — la VFC devient un CHOIX, posé une fois
+
+Retour du fondateur dans la foulée de H-1 : *« personne n'importe réellement des fichiers .FIT
+dans la vraie vie, ça demande trop de friction — déjà la VFC est un point avancé, je me demande
+s'il ne vaut pas mieux le demander comme une option »*. Le constat est juste et se mesure : la
+VFC occupait **une diapo sur trois du check-in quotidien de TOUT LE MONDE**, pour un signal qui
+demande une montre ou une bague, un protocole stable et un relevé chaque matin au réveil. Une
+friction imposée à tous pour une minorité — et posée tous les jours, pas une fois.
+
+### La question est posée UNE FOIS, en fin de questionnaire
+
+`hrv_track` (« Tu relèves ta VFC le matin ? ») est la dernière étape, marquée optionnelle. Sans
+« oui », la diapo VFC **n'existe pas** : le check-in retombe à deux écrans, sommeil → ressenti.
+
+**Ce qu'on a vérifié avant de retirer quoi que ce soit** : que l'absence de la diapo ne change
+**aucun verdict** pour qui ne la suivait pas. Mesuré sur les **36 combinaisons** de sommeil (3)
+× énergie (4) × ressenti (3) : **0 écart**, ni sur le niveau, ni sur le score, ni sur les
+drivers. Ce n'est pas un hasard — l'ancien « je ne la suis pas » écrivait `"normale"`, et depuis
+H-1 une VFC seulement déclarée ne pèse rien. Retirer une question dont on n'a pas mesuré
+l'effet, c'est se fier à une lecture de code ; ici la lecture disait la bonne chose, et elle a
+été confirmée.
+
+### Et ce qu'on demande à qui l'active, c'est la VALEUR
+
+Les adjectifs « basse / normale / haute » disparaissent du diaporama : depuis H-1, seule une
+valeur comparée à la base de l'athlète est une mesure. La diapo demande donc le rMSSD en
+millisecondes, et l'opt-in l'annonce (« ta montre affiche un chiffre en ms ») pour que personne
+ne coche « oui » et ne se retrouve devant un champ qu'il ne sait pas remplir.
+
+L'adjectif est retiré des **deux** endroits où il vivait — le diaporama et le sélecteur du
+panneau « Modifier ma forme du jour ». En corriger un seul, c'est le correctif qu'on croit
+avoir (R18.1, U16, O-24).
+
+### Deux effets de bord, traités
+
+- **La FC au réveil déménage sur la diapo sommeil.** Elle vivait sur la diapo VFC : la laisser
+  là l'aurait fait disparaître pour tous ceux qui ne suivent pas leur VFC — un signal
+  **objectif** (audit v6, A6) perdu au passage d'un lot qui ne le visait pas. Sa place est de
+  toute façon celle-là : c'est la même mesure du même réveil.
+- **`hrvStatus` n'a plus de valeur par défaut.** `applyReadinessSnap` écrivait
+  `base.hrvStatus || "normale"` — un adjectif inventé, rangé dans l'état et relu ensuite comme
+  une réponse de l'athlète. Il était inerte, mais latent : la première règle qui lirait
+  `hrvStatus` sans regarder `hrvSource` verrait une déclaration fantôme. Le champ n'existe
+  désormais que si quelqu'un l'a réellement dit.
+
+### La garde, et ce que le harnais a failli lui cacher
+
+`tests/e2e/smoke-checkin.mjs` couvre les **deux moitiés** — un critère qui ne vérifierait que la
+disparition serait satisfait en supprimant la fonctionnalité (la leçon d'U1b) :
+
+| état de `hrv_track` | attendu |
+|---|---|
+| absent (question sautée) | 2 diapos, aucun champ VFC |
+| `"non"` explicite | 2 diapos — mesuré séparément de l'absence |
+| `"oui"` | 3 diapos, champ `#ckHrv` en ms, aucun adjectif, valeur journalisée |
+
+**Le harnais répondait « oui » à ma place et la suite aurait mesuré la mauvaise branche.**
+`traverserQuestionnaire` coche la PREMIÈRE option de tout groupe qu'on ne lui a pas nommé
+(U14) — pour `hrv_track`, c'est « Oui, je la relève ». La suite aurait donc vérifié le
+comportement de l'opt-in en croyant vérifier celui du défaut, et serait passée verte. La clé est
+effacée explicitement pour mesurer l'absence.
+
+**Vérifiée rouge sur quatre cassures** : la diapo redevenue inconditionnelle (16 ✖), l'opt-in lu
+à l'envers — `!== "non"` au lieu de `=== "oui"` (15 ✖), la FC au réveil renvoyée sur la diapo
+VFC (3 ✖), les adjectifs de retour à la place de la valeur (5 ✖).
+
+Une note d'instrument, parce qu'elle a coûté deux passes : les trois premières cassures sortaient
+bien en **code 1**, mais sur un `TimeoutError` de Playwright — trente secondes perdues et
+**aucune ligne de rapport**, le collecteur n'imprimant qu'à `report()`. Le verdict était juste,
+le diagnostic nul. Les taps du diaporama passent par un helper qui RAPPORTE l'option manquante.
+Ce n'est pas la faute d'instrument de R21/R22b (le code de sortie ne mentait pas), mais c'en est
+le voisinage : une garde doit dire ce qui a lâché.

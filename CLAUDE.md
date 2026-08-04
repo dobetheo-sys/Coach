@@ -1079,6 +1079,35 @@ déclarée ne pèse pas comme une mesurée) : le banc couvre les deux faces au l
 et `A4b` est **vérifié rouge** contre le moteur d'avant.
 **27 gates verts, E2E 18/18, golden 900 inchangé, registre 24/24.**
 
+**H-1b livré — la VFC devient un CHOIX, posé une fois** (retour du fondateur : *« déjà la VFC est
+un point avancé, je me demande s'il ne vaut pas mieux le demander comme une option »*, voir
+ARCHITECTURE.md « H-1b ») : elle occupait **une diapo sur trois du check-in quotidien de TOUT LE
+MONDE** pour un signal qui demande une montre, un protocole stable et un relevé chaque matin —
+une friction imposée à tous pour une minorité, et posée tous les jours plutôt qu'une fois. La
+question est désormais unique (`hrv_track`, dernière étape du questionnaire, optionnelle) ; sans
+« oui » la diapo **n'existe pas** et le check-in retombe à deux écrans, sommeil → ressenti.
+**Mesuré avant de retirer quoi que ce soit** : sur les **36 combinaisons** de sommeil × énergie ×
+ressenti, l'absence de la diapo ne change **aucun verdict** — ni niveau, ni score, ni drivers ;
+l'ancien « je ne la suis pas » écrivait `"normale"`, qui depuis H-1 ne pèse rien. Et ce qu'on
+demande à qui l'active est la **VALEUR en ms**, pas un adjectif — retiré des **deux** endroits où
+il vivait (diaporama et panneau « Modifier ma forme du jour »), en corriger un seul étant le
+correctif qu'on croit avoir (R18.1). Deux effets de bord traités : **la FC au réveil déménage sur
+la diapo sommeil** — elle vivait sur la diapo VFC et aurait disparu avec elle pour tous les
+non-suiveurs, soit un signal OBJECTIF (audit v6, A6) perdu au passage d'un lot qui ne le visait
+pas — et **`hrvStatus` n'a plus de valeur par défaut** (`|| "normale"` écrivait un adjectif que
+personne n'avait déclaré : inerte, mais la première règle qui lirait `hrvStatus` sans regarder
+`hrvSource` y verrait une déclaration fantôme).
+**Le harnais répondait « oui » à ma place** : `traverserQuestionnaire` coche la PREMIÈRE option de
+tout groupe qu'on ne lui a pas nommé (U14), donc la suite aurait mesuré le comportement de
+l'opt-in en croyant mesurer celui du défaut — et serait passée verte. La clé est effacée
+explicitement, et le « non » explicite est mesuré **séparément** de l'absence. Garde dans
+`smoke-checkin.mjs` (47 assertions), **vérifiée rouge sur quatre cassures** : diapo redevenue
+inconditionnelle (16 ✖), opt-in lu à l'envers (15 ✖), FC au réveil renvoyée sur la diapo VFC
+(3 ✖), adjectifs de retour (5 ✖). Note d'instrument : les trois premières sortaient bien en code
+1, mais sur un `TimeoutError` — donc **aucune ligne de rapport** (le collecteur n'imprime qu'à
+`report()`) ; les taps passent maintenant par un helper qui NOMME l'option manquante.
+**27 gates verts, E2E 18/18, golden 900 inchangé, registre 24/24.**
+
 **S-1 arbitré — le moteur reste PUBLIC** (décision du fondateur, 04/08/2026 : « restons en public
 pour le moment », voir ARCHITECTURE.md « S-1 » et BUGS_OUVERTS.md) : la grille de sécurité ouvrait
 sur « le moteur tourne exclusivement côté serveur » — case inchochable, et pas par oubli : **il n'y

@@ -55,8 +55,14 @@ function verdictHTML(res,weather){
 async function applyReadinessSnap(base){
   if(!globalThis.EBV2)return null;
   const snap={date:todayISO(),
-    sleepQuality:base.sleepQuality||"moyen",hrvStatus:base.hrvStatus||"normale",
+    sleepQuality:base.sleepQuality||"moyen",
     energy:parseInt(base.energy)||55,feel:base.feel||"normal"};
+  // H-1b — PLUS DE `hrvStatus` PAR DÉFAUT. Il valait « normale » quand personne n'avait rien
+  // déclaré : un adjectif inventé, écrit dans l'état et relu ensuite comme une réponse. Il
+  // était inerte (H-1 ne fait peser que la VFC MESURÉE), mais un défaut latent — la première
+  // règle qui lirait `hrvStatus` sans regarder `hrvSource` verrait une déclaration fantôme.
+  // Le champ n'existe désormais que si quelqu'un l'a réellement dit.
+  if(base.hrvStatus)snap.hrvStatus=base.hrvStatus;
   // A5/A6 (audit v6) — signaux MESURÉS enfin transmis au moteur (ils étaient supportés
   // depuis Sprint 2 et jamais collectés) : heures de sommeil, FC au réveil, et baseline
   // glissante 7 jours calculée depuis l'historique (dès 3 mesures, sinon seuil absolu).
@@ -101,7 +107,11 @@ async function applyReadiness(){
   const btn=$("rdApply");if(btn)btn.disabled=true;
   if($("rdResult"))$("rdResult").innerHTML='<div class="load-sub">Analyse en cours…</div>';
   const out=await applyReadinessSnap({
-    sleepQuality:$("rdSleep").value,hrvStatus:$("rdHrv")?$("rdHrv").value:"normale",
+    sleepQuality:$("rdSleep").value,
+    // H-1b — plus de VFC DÉCLARÉE ici non plus. Elle vivait à DEUX endroits (le diaporama et
+    // ce panneau) : n'en corriger qu'un, c'est le correctif qu'on croit avoir (R18.1). Depuis
+    // H-1, seule une valeur comparée à la base de l'athlète est une mesure ; un adjectif coché
+    // ne l'est pas, et il n'apporte rien que `feel` et `energy` ne portent déjà.
     energy:parseInt($("rdEnergy").value),feel:$("rdFeel").value});
   if(btn)btn.disabled=false;
   if(!out)return null;
