@@ -95,6 +95,12 @@ dépôt — historique git si besoin.
   §5 est la garde qui compte : le plan tronqué est IDENTIQUE, séance par séance, aux dernières
   semaines de celui d'un athlète parti à l'heure — la contrainte « on ne touche qu'à l'entrée et
   à la sortie » devient une propriété mesurée, pas une intention.
+- `npm run demo:hrv` — **la VFC devient une mesure** (H-1) : moyenne glissante 7 j en espace
+  log (Plews 2013), bande ±0,5 écart-type (plus petit changement qui vaille la peine), refus
+  de classer sous 7 matins. **27ᵉ gate CI.** Son §2 est la raison d'être du lot : `hrvStatus`
+  pesait −2 sur le registre OBJECTIF — celui que A4 a créé pour qu'un ressenti ne puisse pas
+  effacer une mesure — alors qu'il ÉTAIT un ressenti coché à l'œil. Vérifié rouge sur quatre
+  cassures.
 - `npm run demo:proactif` — **le coach proactif** (R21) : détection de déviation après ingestion
   (allure/puissance > 10 %, séance manquée > 24 h, charge 7 j > 15 %), recalcul BORNÉ à la fenêtre
   de 14 jours, notification en deux lignes. **25ᵉ gate CI.** Sa raison d'être est le §3 : le
@@ -1042,6 +1048,65 @@ de le retirer) ; et mon bandeau portait une taille littérale `14px`, refusée p
 typographique de R16.8 — l'échelle `--fs-*` est la seule source. L'anti-cadrage reste donc une
 limite d'hébergement NOMMÉE : GitHub Pages ne permet pas de poser cet en-tête.
 **26 gates verts, E2E 18/18, golden 900 inchangé, registre 24/24.**
+
+**H-1 livré — la VFC devient une MESURE, plus un adjectif** (voir ARCHITECTURE.md « H-1 (VFC) »,
+banc `npm run demo:hrv`, **27ᵉ gate CI**) : l'état des lieux appelait le HRV « l'écart
+connaissance/implémentation le plus ancien ». Le défaut mesuré n'est pas « le HRV manque » —
+`hrvStatus` est collecté depuis le Sprint 2 et pèse **−2 sur le registre OBJECTIF**, celui que
+l'audit v6 (A4) a créé précisément pour qu'*« un ressenti déclaratif ne puisse pas effacer une
+mesure »*. Or `hrvStatus` EST un ressenti déclaratif : son propre type annonce « vs moyenne
+glissante 7j de l'athlète » et **rien dans le dépôt ne calculait cette moyenne**. L'athlète
+cochait « basse » à l'œil, et ça valait deux points de mesure. **Quatrième paiement de la leçon
+R14.1** — un adjectif auto-déclaré ne pilote aucun chiffre — avec l'ironie que le signal voisin,
+la FC de repos, fait la bonne chose depuis l'audit v6.
+`src/readiness/hrvBaseline.ts` : moyenne glissante **7 jours en espace log** (le rMSSD est très
+asymétrique ; Plews et al. 2013 — la valeur d'un matin isolé est trop bruitée, c'est sa moyenne
+hebdomadaire qui suit l'adaptation), bande « normale » = **±0,5 écart-type** (plus petit
+changement qui vaille la peine, convention Hopkins), écart-type mesuré sur **28 jours** et non 7
+(une bande calculée sur la même fenêtre que la moyenne se rétrécirait à chaque semaine calme —
+le plan deviendrait hypersensible au moment où l'athlète va bien), et **refus de classer sous
+7 matins** avec son motif (P7/P8). Le classement se fait en **un point**, dans le pont, comme le
+drapeau douleur et le RPE. Comparée à la base → registre OBJECTIF, poids inchangé ; simplement
+cochée → registre SUBJECTIF, et **le driver l'annonce** pour que l'athlète sache ce qui a compté.
+Le piège du zéro est fermé aux deux bouts : 0, négatif et aberrant sont refusés (un 0 n'est pas
+une VFC nulle), et la mesure du jour n'entre pas dans sa propre base — elle amortirait l'écart
+qu'on cherche à voir.
+**Le banc v6 a rougi, et le corriger valait mieux que le contourner** : `A4` s'appelle « signal
+OBJECTIF non annulable par le déclaratif » et sa fixture passait une VFC **sans valeur ni base**
+— elle utilisait donc un déclaratif comme signal objectif, la confusion même que le lot corrige.
+Fixture alignée sur le titre, et **`A4b` ajouté** pour épingler la moitié nouvelle (une VFC
+déclarée ne pèse pas comme une mesurée) : le banc couvre les deux faces au lieu de les confondre,
+et `A4b` est **vérifié rouge** contre le moteur d'avant.
+**27 gates verts, E2E 18/18, golden 900 inchangé, registre 24/24.**
+
+**H-1b livré — la VFC devient un CHOIX, posé une fois** (retour du fondateur : *« déjà la VFC est
+un point avancé, je me demande s'il ne vaut pas mieux le demander comme une option »*, voir
+ARCHITECTURE.md « H-1b ») : elle occupait **une diapo sur trois du check-in quotidien de TOUT LE
+MONDE** pour un signal qui demande une montre, un protocole stable et un relevé chaque matin —
+une friction imposée à tous pour une minorité, et posée tous les jours plutôt qu'une fois. La
+question est désormais unique (`hrv_track`, dernière étape du questionnaire, optionnelle) ; sans
+« oui » la diapo **n'existe pas** et le check-in retombe à deux écrans, sommeil → ressenti.
+**Mesuré avant de retirer quoi que ce soit** : sur les **36 combinaisons** de sommeil × énergie ×
+ressenti, l'absence de la diapo ne change **aucun verdict** — ni niveau, ni score, ni drivers ;
+l'ancien « je ne la suis pas » écrivait `"normale"`, qui depuis H-1 ne pèse rien. Et ce qu'on
+demande à qui l'active est la **VALEUR en ms**, pas un adjectif — retiré des **deux** endroits où
+il vivait (diaporama et panneau « Modifier ma forme du jour »), en corriger un seul étant le
+correctif qu'on croit avoir (R18.1). Deux effets de bord traités : **la FC au réveil déménage sur
+la diapo sommeil** — elle vivait sur la diapo VFC et aurait disparu avec elle pour tous les
+non-suiveurs, soit un signal OBJECTIF (audit v6, A6) perdu au passage d'un lot qui ne le visait
+pas — et **`hrvStatus` n'a plus de valeur par défaut** (`|| "normale"` écrivait un adjectif que
+personne n'avait déclaré : inerte, mais la première règle qui lirait `hrvStatus` sans regarder
+`hrvSource` y verrait une déclaration fantôme).
+**Le harnais répondait « oui » à ma place** : `traverserQuestionnaire` coche la PREMIÈRE option de
+tout groupe qu'on ne lui a pas nommé (U14), donc la suite aurait mesuré le comportement de
+l'opt-in en croyant mesurer celui du défaut — et serait passée verte. La clé est effacée
+explicitement, et le « non » explicite est mesuré **séparément** de l'absence. Garde dans
+`smoke-checkin.mjs` (47 assertions), **vérifiée rouge sur quatre cassures** : diapo redevenue
+inconditionnelle (16 ✖), opt-in lu à l'envers (15 ✖), FC au réveil renvoyée sur la diapo VFC
+(3 ✖), adjectifs de retour (5 ✖). Note d'instrument : les trois premières sortaient bien en code
+1, mais sur un `TimeoutError` — donc **aucune ligne de rapport** (le collecteur n'imprime qu'à
+`report()`) ; les taps passent maintenant par un helper qui NOMME l'option manquante.
+**27 gates verts, E2E 18/18, golden 900 inchangé, registre 24/24.**
 
 **S-1 arbitré — le moteur reste PUBLIC** (décision du fondateur, 04/08/2026 : « restons en public
 pour le moment », voir ARCHITECTURE.md « S-1 » et BUGS_OUVERTS.md) : la grille de sécurité ouvrait

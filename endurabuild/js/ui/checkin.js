@@ -30,6 +30,11 @@ export function pointLabelInline() { return pointLabel().toLowerCase(); }
 
 // Chaque écran : phrase de coach (réagit à la réponse précédente), options en gros
 // boutons. `set` écrit dans le brouillon, `react` donne la phrase d'accueil du suivant.
+/** H-1b — les diapos RÉELLEMENT montrées. `onlyIf` absent = toujours. Point unique : la
+ *  barre de progression, le compteur « n/N » et la navigation la lisent tous — trois lectures
+ *  de listes différentes donneraient un « 2/3 » sur un diaporama de deux écrans. */
+function slidesActives() { return SLIDES.filter((s) => !s.onlyIf || s.onlyIf()); }
+
 const SLIDES = [
   {
     id: "sleep",
@@ -49,23 +54,30 @@ const SLIDES = [
       d.sleepHours = H[v];
       d.sleepQuality = +v >= 7 ? "bon" : +v >= 6 ? "moyen" : "mauvais";
     },
-  },
-  {
-    id: "hrv",
-    coach: (d) => (d._react ? d._react + " " : "") + "Ta montre t’affiche une VFC ce matin ? (optionnel — si tu ne la suis pas, passe)",
-    options: [
-      { val: "haute", ico: "📈", label: "Haute", react: "Bon signal — ton corps encaisse bien." },
-      { val: "normale", ico: "➖", label: "Normale", react: "RAS, on continue." },
-      { val: "basse", ico: "📉", label: "Basse", react: "OK, prudence aujourd’hui alors." },
-      { val: "skip", ico: "🤷", label: "Je ne la suis pas", react: "Aucun souci, le ressenti suffit." },
-    ],
-    set: (d, v) => { d.hrvStatus = v === "skip" ? "normale" : v; },
-    // A6 (audit v6) — la FC au réveil était supportée par le moteur et jamais collectée :
-    // champ optionnel ici (une frappe, jamais bloquant), baseline glissante 7 jours calculée
-    // depuis l'historique dès la 3e mesure.
+    // H-1b — LA FC AU RÉVEIL DÉMÉNAGE ICI, et ce n'est pas cosmétique : elle vivait sur la
+    // diapo VFC, qui devient optionnelle. La laisser là l'aurait fait disparaître pour tous
+    // ceux qui ne suivent pas leur VFC — un signal OBJECTIF perdu au passage d'un lot qui
+    // ne le visait pas. Sa place est de toute façon ici : c'est la même mesure du réveil.
     extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:#635b4a">'
       + '<span>FC au réveil (optionnel)</span><input type="number" id="ckHr" inputmode="numeric" min="30" max="120" value="' + (d.restingHr || "") + '" placeholder="ex. 52" style="width:88px">'
       + "<span>bpm</span></label>",
+  },
+  {
+    id: "hrv",
+    // H-1b — CETTE DIAPO N'EXISTE QUE POUR QUI A DIT « OUI » EN FIN DE QUESTIONNAIRE.
+    // Elle occupait un tiers du check-in de TOUT LE MONDE pour un signal avancé. Et elle
+    // demande maintenant la VALEUR : depuis H-1, un adjectif coché n'est pas une mesure.
+    onlyIf: () => S.answers.hrv_track === "oui",
+    coach: (d) => (d._react ? d._react + " " : "") + "Ta VFC de ce matin ? (le chiffre de ta montre, en ms)",
+    options: [
+      { val: "ok", ico: "✅", label: "C'est noté", react: "Bien reçu." },
+      { val: "skip", ico: "🤷", label: "Pas de mesure aujourd'hui", react: "Pas grave, on fait sans." },
+    ],
+    set: () => { /* la valeur est lue dans `extraHTML` ci-dessous, comme la FC au réveil */ },
+    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:#635b4a">'
+      + '<span>VFC (rMSSD)</span><input type="number" id="ckHrv" inputmode="numeric" min="5" max="250" value="' + (d.hrvValue || "") + '" placeholder="ex. 62" style="width:88px">'
+      + "<span>ms</span></label>"
+      + '<div class="q-sub" style="margin-top:4px">Comparée à TA base des 7 derniers matins. Sous 7 mesures, elle est notée sans rien piloter — et on te le dit.</div>',
   },
   {
     id: "feel",
@@ -82,7 +94,7 @@ const SLIDES = [
 
 function dotsHTML(step) {
   return '<div style="display:flex;gap:6px;justify-content:center;margin-top:14px">'
-    + SLIDES.map((_, i) => '<span style="width:8px;height:8px;border-radius:50%;border:1.5px solid #16130e;background:' + (i < step ? "#16130e" : i === step ? "#f0b429" : "transparent") + '"></span>').join("")
+    + slidesActives().map((_, i) => '<span style="width:8px;height:8px;border-radius:50%;border:1.5px solid #16130e;background:' + (i < step ? "#16130e" : i === step ? "#f0b429" : "transparent") + '"></span>').join("")
     + "</div>";
 }
 
@@ -90,13 +102,13 @@ function dotsHTML(step) {
  *  S._ck (jamais persisté — un check-in abandonné recommence, c'est 3 taps). */
 export function checkinSlideshowHTML() {
   const ck = S._ck || (S._ck = { step: 0 });
-  const slide = SLIDES[ck.step];
+  const slide = slidesActives()[ck.step];
   if (!slide) return "";
   // U7 — on lance la recherche météo MAINTENANT, pendant que l'athlète répond aux trois
   // questions : elle sera prête au moment où le moteur en a besoin, au lieu de faire attendre
   // 3,2 s devant « ta séance arrive… ».
   primeWeather();
-  let h = '<div class="card" id="ckSlide"><div class="eyebrow">' + pointLabel() + ' · ' + (ck.step + 1) + "/" + SLIDES.length + "</div>";
+  let h = '<div class="card" id="ckSlide"><div class="eyebrow">' + pointLabel() + ' · ' + (ck.step + 1) + "/" + slidesActives().length + "</div>";
   h += '<h2 style="font-size:var(--fs-hand);line-height:1.4">' + esc(slide.coach(ck)) + "</h2>";
   h += '<div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">';
   slide.options.forEach((o) => {
@@ -113,7 +125,7 @@ export function checkinSlideshowHTML() {
  *  (out = {snap, res} de applyReadinessSnap) — l'appelant re-rend son onglet. */
 export function bindCheckinSlideshow(rerender, onDone) {
   const ck = S._ck || (S._ck = { step: 0 });
-  const slide = SLIDES[ck.step];
+  const slide = slidesActives()[ck.step];
   if (!slide) return;
   const back = $("ckBack");
   if (back) back.onclick = () => { ck.step = Math.max(0, ck.step - 1); rerender(); };
@@ -126,10 +138,17 @@ export function bindCheckinSlideshow(rerender, onDone) {
         const v = parseInt(hrEl.value || "");
         if (v >= 30 && v <= 120) ck.restingHr = v; else delete ck.restingHr;
       }
+      // H-1 — la VALEUR de VFC. Bornes physiologiques : hors d'elles, c'est une saisie
+      // fausse ou un artefact de capteur, et on préfère RIEN à une base empoisonnée.
+      const hrvEl = $("ckHrv");
+      if (hrvEl) {
+        const v = parseInt(hrvEl.value || "");
+        if (v >= 5 && v <= 250) ck.hrvValue = v; else delete ck.hrvValue;
+      }
       slide.set(ck, opt.val, opt);
       ck._react = opt.react || "";
       ck.step++;
-      if (ck.step < SLIDES.length) { rerender(); return; }
+      if (ck.step < slidesActives().length) { rerender(); return; }
       // Fin du diaporama → verdict (la météo peut prendre ~3.5 s : écran d'attente coach)
       const sc = $("ckSlide");
       if (sc) sc.innerHTML = '<div class="eyebrow">' + pointLabel() + '</div><h2 style="font-size:var(--fs-hand)">C’est noté 👍</h2><div class="load-sub" style="margin-top:8px">Je regarde ta forme, ta fatigue des derniers jours et la météo — ta séance arrive…</div>';

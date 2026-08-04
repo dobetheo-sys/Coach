@@ -310,6 +310,29 @@ function buildFreeSteps(){
     // d'en faire un péage.
     valid(a){return a.sessions_max&&a.vol_max&&a.vol_recent;}});
 
+  // H-1b — L'OPT-IN VFC, EN DERNIÈRE ÉTAPE ET UNE SEULE FOIS.
+  //
+  // La VFC est un signal AVANCÉ : elle demande une montre ou une bague, un protocole stable,
+  // et un chiffre relevé chaque matin. Mesuré, elle occupait UN TIERS du check-in quotidien —
+  // trois diapos, dont une pour un signal que la plupart des gens ne suivent pas. C'est une
+  // friction imposée à tout le monde pour une minorité.
+  //
+  // Elle devient donc un CHOIX, posé ici, une fois. Non par défaut : le check-in retombe à
+  // deux diapos (sommeil → ressenti). Mesuré : sur 36 combinaisons de sommeil × énergie ×
+  // ressenti, retirer la diapo ne change AUCUN verdict pour qui ne la suivait pas — l'ancien
+  // « je ne la suis pas » écrivait « normale », qui ne pesait rien.
+  //
+  // Et ce qu'on demande à qui l'active, c'est la VALEUR, pas un adjectif : depuis H-1, seule
+  // une valeur comparée à la base de l'athlète est une mesure. L'adjectif est retiré des DEUX
+  // endroits où il vivait (le diaporama et le panneau avancé) — en corriger un seul, c'est le
+  // correctif qu'on croit avoir (R18.1).
+  steps.push({id:"hrv_track",title:"Ta variabilité cardiaque",eyebrow:"Gratuit — Optionnel",
+    why:"Signal avancé, et le plus utile qu'on connaisse pour repérer une fatigue avant qu'elle ne se voie. Il demande un chiffre chaque matin, au réveil, dans les mêmes conditions. Si tu ne le suis pas, dis-le : on ne te posera plus la question.",
+    render(){return '<div class="q"><span class="q-label">Tu relèves ta VFC le matin ?</span>'
+      +'<div class="q-sub">Ta montre ou ta bague affiche un chiffre en millisecondes (rMSSD). On le compare à TA base des 7 derniers matins — jamais à une norme.</div>'
+      +'<div class="opts" data-key="hrv_track">'+opt("oui","Oui, je la relève")+opt("non","Non, je ne la suis pas")+'</div></div>';},
+    valid(){return true;}}); // optionnelle : ne pas répondre = ne pas la suivre
+
   // U14 — L'ORDRE MET EN TÊTE CE DONT L'ABSENCE COÛTE UNE GARDE DE SÉCURITÉ.
   //
   // Mesuré côté client : 8 écrans et 30 gestes avant le premier plan. Le socle ci-dessous est

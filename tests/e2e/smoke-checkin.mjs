@@ -13,6 +13,40 @@ const consoleErrs = [];
 page.on("console", (m) => { if (m.type() === "error") consoleErrs.push(m.text()); });
 page.on("pageerror", (e) => consoleErrs.push(String(e)));
 
+/** H-1b — TAPER SUR UNE OPTION DU DIAPORAMA SANS ATTENDRE 30 s SI ELLE N'EST PAS LÀ.
+ *
+ *  Vérifié en cassant le lot exprès : la suite sortait bien en 1, mais sur un `TimeoutError`
+ *  de Playwright — donc trente secondes perdues et, surtout, AUCUNE ligne de rapport (le
+ *  collecteur n'imprime qu'à `report()`, jamais atteint). Le verdict était juste et le
+ *  diagnostic nul. Ce n'est pas la faute d'instrument de R21/R22b — le code de sortie ne
+ *  ment pas ici — mais c'en est le voisinage : une garde doit dire CE QUI a lâché. */
+async function tap(sel, quoi) {
+  const el = page.locator(sel);
+  if (!(await el.count())) { ok(false, "option « " + quoi + " » absente du diaporama (" + sel + ")"); return false; }
+  await el.click();
+  await page.waitForTimeout(180);
+  return true;
+}
+/** Remplir un champ optionnel du diaporama sans mourir s'il a disparu. */
+async function remplir(sel, val, quoi) {
+  if (!(await page.locator(sel).count())) { ok(false, "champ « " + quoi + " » absent du diaporama (" + sel + ")"); return false; }
+  await page.fill(sel, val);
+  return true;
+}
+/** Le texte de la diapo courante, "" si le diaporama n'est plus là. */
+async function texteDiapo() {
+  const el = page.locator("#ckSlide");
+  return (await el.count()) ? (await el.textContent()) || "" : "";
+}
+/** Fin du diaporama : le verdict peut prendre ~3,5 s (météo). Même règle que `tap` — on
+ *  RAPPORTE que le diaporama n'a pas rendu la main au lieu de mourir sur un timeout. */
+async function finDuDiaporama() {
+  const parti = await page.waitForSelector("#ckSlide", { state: "detached", timeout: 20000 }).then(() => true).catch(() => false);
+  if (!parti) ok(false, "le diaporama ne rend pas la main après la dernière réponse (bloqué sur une diapo)");
+  await page.waitForTimeout(300);
+  return parti;
+}
+
 await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
 // Onboarding complet au clic — vérifie le questionnaire réel, pas un état injecté.
 await page.click('.sport-card[data-sport="run"]');
@@ -23,12 +57,21 @@ await page.click('.sport-card[data-sport="run"]');
 // qu'elle ne mesure PAS l'ordre : elle mesure ce qui vient après. Un test qui code une séquence
 // qu'il ne teste pas se casse à chaque réorganisation légitime.
 let vuProtocole = false;
+let vuHrvTrack = false;
 await traverserQuestionnaire(page, {
   reponses: { intent: "competition", format: "10k", med_pain: "non", med_dizzy: "non", med_treat: "non",
     terrain: "route", sex: "H", level: "inter", pace_known: "non", history: "confirme", injury: "aucune",
     sessions_max: "5", vol_max: "7", vol_recent: "3", dispo: "semaine", off_days: "non", doubles: "non" },
   saisies: { age: "35" },
   async surEcran(pg) {
+    // H-1b — l'opt-in doit être ATTEIGNABLE dans le questionnaire, sinon la diapo VFC serait
+    // simplement supprimée pour tout le monde au lieu d'être rendue optionnelle.
+    if (!vuHrvTrack && (await pg.locator('[data-key="hrv_track"]').count())) {
+      vuHrvTrack = true;
+      const q = await pg.locator('[data-key="hrv_track"]').locator("xpath=..").textContent();
+      ok(/rMSSD|millisecondes/.test(q || ""), "H-1b — l'opt-in annonce que ce qu'on demandera est un CHIFFRE en ms, pas un ressenti");
+      ok(await pg.locator('[data-key="hrv_track"] [data-val="non"]').count() === 1, "H-1b — « je ne la suis pas » est un vrai choix, posé une fois");
+    }
     if (vuProtocole || !(await pg.locator("#hrB").count())) return;
     const proto = await pg.locator("#hrB").textContent();
     if (!/Comment obtenir/.test(proto || "")) return;
@@ -38,6 +81,15 @@ await traverserQuestionnaire(page, {
   },
 });
 ok(vuProtocole, "l'écran du protocole d'allure a bien été traversé");
+// H-1b — LE CAS « PAS DE RÉPONSE », qui est le vrai défaut du produit : la question est
+// optionnelle (`valid(){return true}`), donc on peut la dépasser sans rien dire. Le harnais,
+// lui, coche la PREMIÈRE option de tout groupe qu'on ne lui a pas nommé — il aurait répondu
+// « oui » et cette suite aurait mesuré la mauvaise branche sans le dire. On efface la clé pour
+// mesurer l'absence ; l'autre non-suivi (« non » explicite) est vérifié au §8bis.
+await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  delete S.answers.hrv_track; ebSave();
+});
 await page.waitForTimeout(400);
 
 // 1. U11 — L'ÉCRAN D'ARRIVÉE A CHANGÉ, LE PORTILLON N'A PAS BOUGÉ.
@@ -53,33 +105,37 @@ await page.click('#ebTabbar .tabbtn[data-tab="today"]');
 await page.waitForTimeout(600);
 
 ok(await page.locator("#ckSlide").count() === 1, "diaporama de check-in visible à l'ouverture de 🎯 Aujourd'hui");
-ok(/1\/3/.test(await page.locator("#ckSlide").textContent()), "écran 1/3 (sommeil) affiché");
-ok(/dormi combien/.test(await page.locator("#ckSlide").textContent()), "le sommeil est demandé en HEURES (signal mesuré, audit v6 A5)");
+ok(/1\/2/.test(await texteDiapo()), "H-1b — écran 1/2 : sans opt-in VFC, le check-in fait DEUX diapos");
+ok(/dormi combien/.test(await texteDiapo()), "le sommeil est demandé en HEURES (signal mesuré, audit v6 A5)");
 ok(await page.locator(".gw-grid").count() === 0, "AUCUNE grille de semaine visible avant le check-in");
 ok(await page.locator(".doneBtn").count() === 0, "AUCUNE coche de séance visible avant le check-in");
 ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "5 onglets (Profil/Plan/Aujourd'hui/Semaine/Nutrition) — R18.3 a restauré Semaine, et 🎯 Aujourd'hui redevient réellement CENTRAL (3e sur 5)");
 ok(await page.locator("#ebTabbar .tabbtn.tab-central").count() === 1, "l'onglet central Aujourd'hui est mis en valeur");
 
-// 2. Diaporama : 3 taps (nuit courte → VFC basse → vidé), phrases de coach
-await page.click('[data-ck-opt="4"]'); // moins de 5h
-await page.waitForTimeout(150);
-const s2 = await page.locator("#ckSlide").textContent();
-ok(/2\/3/.test(s2) && /VFC/.test(s2), "écran 2/3 : VFC, présentée comme optionnelle");
+// 2. H-1b — LE DIAPORAMA PAR DÉFAUT : DEUX TAPS (nuit courte → vidé), phrases de coach.
+//
+// La VFC occupait un tiers du check-in de TOUT LE MONDE pour un signal que la plupart des gens
+// ne relèvent pas. Elle est maintenant demandée UNE FOIS, en fin de questionnaire ; sans opt-in
+// la diapo n'existe pas. Ce que ce bloc vérifie n'a pas changé — la FC au réveil est toujours
+// collectée, le retour est toujours possible, la phrase de coach réagit toujours — mais sur le
+// diaporama réellement montré. La FC au réveil a DÉMÉNAGÉ sur la diapo sommeil : la laisser
+// sur la diapo VFC l'aurait fait disparaître avec elle, pour un signal objectif qu'aucune
+// partie de ce lot ne visait.
+ok(await page.locator("#ckHr").count() === 1, "H-1b — la FC au réveil est collectée sur la diapo SOMMEIL (elle survit à la disparition de la VFC) — audit v6 A6");
+await remplir("#ckHr", "58", "FC au réveil");
+ok(await page.locator("#ckHrv").count() === 0, "H-1b — aucun champ VFC tant que l'athlète n'a pas dit qu'il la relève");
+await tap('[data-ck-opt="4"]', "moins de 5h"); // diapo sommeil
+const s2 = await texteDiapo();
+ok(/2\/2/.test(s2), "H-1b — écran 2/2 : on passe directement au ressenti");
+ok(/tu te sens comment/.test(s2), "…et c'est bien la question du ressenti");
 ok(/lever le pied|tenir compte|Nuit courte/.test(s2), "phrase de coach qui réagit à la réponse précédente");
-ok(await page.locator('[data-ck-opt="skip"]').count() === 1, "« Je ne la suis pas » est un vrai choix");
-ok(await page.locator("#ckHr").count() === 1, "FC au réveil collectée (optionnelle) — audit v6 A6");
-await page.fill("#ckHr", "58");
 ok(await page.locator("#ckBack").count() === 1, "retour possible (← Revenir)");
-await page.click('[data-ck-opt="basse"]');
-await page.waitForTimeout(150);
-ok(/3\/3/.test(await page.locator("#ckSlide").textContent()), "écran 3/3 : ressenti");
-await page.click('[data-ck-opt="vide"]');
+await tap('[data-ck-opt="vide"]', "vidé·e");
 // la météo peut prendre ~3.5s — attendre la DISPARITION du diaporama (fin du verdict)
-await page.waitForSelector("#ckSlide", { state: "detached", timeout: 20000 });
-await page.waitForTimeout(300);
+await finDuDiaporama();
 
 // 3. Après le diaporama : séance du jour en PREMIER sur l'onglet central
-ok(await page.locator("#ckSlide").count() === 0, "le diaporama disparaît après la 3e réponse");
+ok(await page.locator("#ckSlide").count() === 0, "le diaporama disparaît après la dernière réponse");
 const screenTxt = await page.locator("#screen").textContent();
 ok(/Aujourd’hui/.test(screenTxt), "carte « Aujourd'hui » (séance du jour) affichée en premier");
 ok(/Prédiction de course|prédiction/i.test(screenTxt) || true, "prédiction présente sous la séance");
@@ -137,6 +193,53 @@ const bridgeCheck = await page.evaluate(() => {
   return { hasPaceTest: imp.tests.some((t) => t.type === "thrPace") };
 });
 ok(bridgeCheck.hasPaceTest, "FIT : une course importée produit un test thrPace exploitable");
+
+// 8. H-1b — L'AUTRE MOITIÉ : QUI DIT « OUI » RETROUVE LA DIAPO, ET ELLE DEMANDE LA VALEUR.
+//
+// Un critère qui ne vérifierait que la disparition serait satisfait en supprimant purement et
+// simplement la fonctionnalité (la leçon d'U1b). Les deux moitiés sont donc mesurées : absente
+// sans opt-in, présente avec — et présente en demandant un CHIFFRE, parce que depuis H-1 seule
+// une valeur comparée à la base de l'athlète est une mesure. Un adjectif coché ne pèse rien.
+ok(vuHrvTrack, "H-1b — l'opt-in VFC a bien été traversé dans le questionnaire");
+await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  S.answers.hrv_track = "oui";
+  delete S.answers.readiness;      // on rejoue le point du jour
+  S._ck = null;
+  ebSave();
+});
+await page.click('#ebTabbar .tabbtn[data-tab="today"]');
+await page.waitForTimeout(600);
+ok(/1\/3/.test(await texteDiapo() || ""), "H-1b — avec l'opt-in, le check-in repasse à TROIS diapos");
+await tap('[data-ck-opt="7"]', "7-8h");
+const sHrv = await texteDiapo();
+ok(/2\/3/.test(sHrv) && /VFC/.test(sHrv), "…et la diapo 2/3 est bien celle de la VFC");
+ok(await page.locator("#ckHrv").count() === 1, "H-1b — elle demande la VALEUR en ms (#ckHrv), pas un adjectif");
+ok(await page.locator('[data-ck-opt="basse"]').count() === 0 && await page.locator('[data-ck-opt="haute"]').count() === 0,
+  "H-1b — les adjectifs « basse »/« haute » ont disparu du diaporama (H-1 : ils pesaient comme une mesure)");
+await remplir("#ckHrv", "62", "VFC en ms");
+await tap('[data-ck-opt="ok"]', "c'est noté");
+await tap('[data-ck-opt="normal"]', "normal");
+await finDuDiaporama();
+const hrvLog = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.answers.hrvLog; });
+ok(Array.isArray(hrvLog) && hrvLog.length === 1 && hrvLog[0].v === 62,
+  "H-1b — la valeur saisie entre dans le journal de VFC (base glissante H-1) : " + JSON.stringify(hrvLog));
+// Le second point du jour a écrasé le premier (une entrée par jour) : la FC au réveil de la
+// diapo sommeil a suivi le déménagement et est toujours enregistrée.
+const hrLog = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.answers.hrRestLog; });
+ok(Array.isArray(hrLog) && hrLog.length >= 1 && hrLog[0].v === 58, "H-1b — la FC au réveil collectée sur la diapo sommeil est bien journalisée : " + JSON.stringify(hrLog));
+
+// 8bis. Le « non » EXPLICITE se comporte comme l'absence. Deux états distincts dans l'état
+// sauvegardé, un seul comportement attendu : les mesurer séparément est ce qui empêche un
+// `=== "non"` écrit à la place d'un `!== "oui"` (ou l'inverse) de passer inaperçu.
+await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  S.answers.hrv_track = "non";
+  delete S.answers.readiness; S._ck = null; ebSave();
+});
+await page.click('#ebTabbar .tabbtn[data-tab="today"]');
+await page.waitForTimeout(600);
+ok(/1\/2/.test(await texteDiapo() || ""), "H-1b — « non » explicite donne le même check-in à deux diapos que l'absence de réponse");
 
 ok(consoleErrs.length === 0, "aucune erreur console (" + consoleErrs.length + ")");
 if (consoleErrs.length) info("erreurs: " + consoleErrs.slice(0, 5).join(" | "));

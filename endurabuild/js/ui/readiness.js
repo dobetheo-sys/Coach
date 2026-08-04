@@ -55,8 +55,14 @@ function verdictHTML(res,weather){
 async function applyReadinessSnap(base){
   if(!globalThis.EBV2)return null;
   const snap={date:todayISO(),
-    sleepQuality:base.sleepQuality||"moyen",hrvStatus:base.hrvStatus||"normale",
+    sleepQuality:base.sleepQuality||"moyen",
     energy:parseInt(base.energy)||55,feel:base.feel||"normal"};
+  // H-1b — PLUS DE `hrvStatus` PAR DÉFAUT. Il valait « normale » quand personne n'avait rien
+  // déclaré : un adjectif inventé, écrit dans l'état et relu ensuite comme une réponse. Il
+  // était inerte (H-1 ne fait peser que la VFC MESURÉE), mais un défaut latent — la première
+  // règle qui lirait `hrvStatus` sans regarder `hrvSource` verrait une déclaration fantôme.
+  // Le champ n'existe désormais que si quelqu'un l'a réellement dit.
+  if(base.hrvStatus)snap.hrvStatus=base.hrvStatus;
   // A5/A6 (audit v6) — signaux MESURÉS enfin transmis au moteur (ils étaient supportés
   // depuis Sprint 2 et jamais collectés) : heures de sommeil, FC au réveil, et baseline
   // glissante 7 jours calculée depuis l'historique (dès 3 mesures, sinon seuil absolu).
@@ -71,8 +77,20 @@ async function applyReadinessSnap(base){
     S.answers.hrRestLog.push({date:snap.date,v:hr});
     S.answers.hrRestLog=S.answers.hrRestLog.slice(-30);
   }
+  // H-1 — LE JOURNAL DE VFC. Même mécanique que `hrRestLog`, et pour la même raison : sans
+  // historique, « basse » n'est qu'un avis. Le CLASSEMENT n'est pas fait ici — le pont le
+  // fait avec `hrvBaseline` (fenêtres, écart-type, seuil). L'UI collecte et conserve, le
+  // modèle décide : recopier les constantes ici en ferait une seconde définition (R11.1).
+  const hrv=parseInt(base.hrvValue);
+  if(hrv>=5&&hrv<=250){
+    snap.hrvValue=hrv;
+    if(!Array.isArray(S.answers.hrvLog))S.answers.hrvLog=[];
+    S.answers.hrvLog=S.answers.hrvLog.filter(x=>x.date!==snap.date);
+    S.answers.hrvLog.push({date:snap.date,v:hrv});
+    S.answers.hrvLog=S.answers.hrvLog.slice(-60);
+  }
   const wx=await fetchWeather();if(wx&&wx.tmaxC!=null)snap.weather=wx;
-  S.answers.readiness={date:snap.date,sleepQuality:snap.sleepQuality,hrvStatus:snap.hrvStatus,energy:snap.energy,feel:snap.feel,sleepHours:snap.sleepHours,restingHr:snap.restingHr};ebSave();
+  S.answers.readiness={date:snap.date,sleepQuality:snap.sleepQuality,hrvStatus:snap.hrvStatus,hrvValue:snap.hrvValue,energy:snap.energy,feel:snap.feel,sleepHours:snap.sleepHours,restingHr:snap.restingHr};ebSave();
   let res;try{res=globalThis.EBV2.adjustToday(S.sport,S.answers,snap);}catch(e){console.warn(e);return null;}
   // Historique des verdicts : chaque adaptation quotidienne est archivée (une entrée par
   // jour, la dernière gagne) — montre combien de fois le plan s'est réellement adapté.
@@ -89,7 +107,11 @@ async function applyReadiness(){
   const btn=$("rdApply");if(btn)btn.disabled=true;
   if($("rdResult"))$("rdResult").innerHTML='<div class="load-sub">Analyse en cours…</div>';
   const out=await applyReadinessSnap({
-    sleepQuality:$("rdSleep").value,hrvStatus:$("rdHrv")?$("rdHrv").value:"normale",
+    sleepQuality:$("rdSleep").value,
+    // H-1b — plus de VFC DÉCLARÉE ici non plus. Elle vivait à DEUX endroits (le diaporama et
+    // ce panneau) : n'en corriger qu'un, c'est le correctif qu'on croit avoir (R18.1). Depuis
+    // H-1, seule une valeur comparée à la base de l'athlète est une mesure ; un adjectif coché
+    // ne l'est pas, et il n'apporte rien que `feel` et `energy` ne portent déjà.
     energy:parseInt($("rdEnergy").value),feel:$("rdFeel").value});
   if(btn)btn.disabled=false;
   if(!out)return null;

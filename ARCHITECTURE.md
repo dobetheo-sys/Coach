@@ -3918,3 +3918,181 @@ ou une **copie constatée** qui change le calcul. Un troisième point mérite d'
 d'avance : **plus l'app a d'utilisateurs, plus le retour arrière coûte** — un backend
 introduit après coup demande de migrer l'état de chacun depuis son `localStorage`. Ce coût
 croît, il ne décroît jamais.
+
+
+---
+
+## H-1 (VFC) — la variabilité cardiaque devient une mesure, plus un adjectif
+
+L'état des lieux du 04/08 nomme le HRV *« l'écart connaissance/implémentation le plus ancien
+et le plus documenté »*. En allant regarder, le défaut n'est pas celui qu'on croit.
+
+### Le défaut n'est PAS « le HRV manque »
+
+`hrvStatus` existe depuis le Sprint 2, il est collecté au check-in, et il pèse **−2 sur le
+registre OBJECTIF** de `assessReadiness` — le registre que l'audit v6 (A4) a créé
+*précisément* pour qu'« un ressenti déclaratif ne puisse pas effacer une mesure ».
+
+Sauf que `hrvStatus` **est** un ressenti déclaratif. Son type le dit lui-même :
+
+```ts
+export type HrvStatus = "basse" | "normale" | "haute"; // vs moyenne glissante 7j de l'athlète
+```
+
+…et **rien dans le dépôt ne calculait cette moyenne glissante**. L'athlète regardait sa montre
+et cochait une case à l'œil. Un adjectif auto-déclaré, rangé parmi les mesures, qui pilotait
+deux points du verdict quotidien — donc le remplacement d'une séance de qualité par de
+l'endurance.
+
+C'est la leçon **R14.1** payée une quatrième fois. Et l'ironie tient en trois lignes de
+distance : le signal juste à côté, la FC de repos, se compare à une baseline glissante calculée
+depuis l'historique depuis l'audit v6.
+
+### Le modèle, et sa provenance
+
+- **Espace logarithmique.** Le rMSSD est distribué de façon très asymétrique ; le monitoring
+  travaille sur `ln(rMSSD)`. Moyenner les millisecondes brutes donnerait un poids excessif aux
+  valeurs hautes.
+- **Moyenne glissante 7 jours** — Plews et al. (2013, *Sports Medicine*). Le résultat central
+  de cette littérature est que la valeur d'un matin isolé est trop bruitée pour décider quoi que
+  ce soit ; c'est la moyenne hebdomadaire qui suit l'adaptation. Le champ le disait déjà.
+- **Bande « normale » = ±0,5 écart-type** — le plus petit changement qui vaille la peine
+  (convention Hopkins, largement reprise en monitoring VFC).
+- **L'écart-type se mesure sur 28 jours, pas 7.** La variabilité propre d'un athlète ne se lit
+  pas sur sept points, et une bande calculée sur la même fenêtre que la moyenne se rétrécirait
+  à chaque semaine calme : le plan deviendrait hypersensible au moment précis où l'athlète va
+  bien.
+- **Sous 7 matins, on ne classe pas**, et on dit pourquoi. Une « moyenne sur 7 jours » calculée
+  sur trois points n'est pas une moyenne sur 7 jours (P7/P8).
+
+### Ce qui change dans le verdict
+
+| provenance | registre | poids | driver |
+|---|---|---|---|
+| valeur comparée à la base | **objectif** | −2 / +1 | « VFC sous ta bande habituelle (base 60 ms) » |
+| case cochée | **subjectif** | −1 / +1 | « VFC que tu as jugée basse (déclarée, non comparée à ta base) » |
+| rien | — | — | aucun driver : on n'invente pas un signal absent |
+
+La déclaration n'est pas jetée — elle vaut mieux que rien. Elle cesse d'être **maquillée en
+mesure**, et le driver le dit, pour que l'athlète sache ce qui a compté dans son verdict.
+
+Le classement se fait en **un seul point**, dans le pont, comme le drapeau douleur et le RPE :
+le faire côté interface demanderait d'y recopier la fenêtre, l'écart-type et le seuil (R11.1),
+et aucun appelant ne peut l'oublier.
+
+**Le piège du zéro, fermé aux deux bouts** : 0, valeur négative et valeur aberrante sont
+refusés (un 0 n'est pas une VFC nulle, c'est une saisie fausse ou un artefact de capteur), et
+la mesure du jour n'entre pas dans sa propre base — elle amortirait l'écart qu'on cherche à
+détecter.
+
+### LE BANC v6 A ROUGI, ET LE CORRIGER VALAIT MIEUX QUE LE CONTOURNER
+
+`A4` est passé rouge. Le réflexe interdit ici serait de ré-ancrer le témoin — c'est ce que
+l'arbitrage d'O-21 refuse explicitement. Mais le cas est différent, et il faut le dire
+précisément :
+
+Le critère s'appelle **« signal OBJECTIF non annulable par le déclaratif subjectif »**, et sa
+fixture passait `hrvStatus: "basse"` **sans valeur ni base** — c'est-à-dire une case cochée.
+Elle utilisait donc un déclaratif comme signal objectif : exactement la confusion que ce lot
+corrige, et que le titre du critère dénonce. L'intention était juste, la fixture ne
+correspondait pas au titre.
+
+Traitement : la fixture reçoit une VFC **mesurée** (le critère teste enfin ce qu'il annonce), et
+**`A4b` est ajouté** pour épingler la moitié nouvelle — une VFC déclarée ne pèse pas comme une
+mesurée, et le driver l'annonce. Le banc couvre désormais les deux faces au lieu de les
+confondre, et rien n'est perdu. `A4b` est **vérifié rouge** contre le moteur d'avant.
+
+### Garde
+
+`npm run demo:hrv` — 27 critères, **27ᵉ gate CI**. **Vérifié rouge sur quatre cassures** :
+la déclaration qui repèse comme une mesure (le défaut d'origine, 3 ✖), le classement dès une
+mesure (6 ✖), les bornes physiologiques retirées (1 ✖), la mesure du jour entrant dans sa
+propre base (1 ✖).
+
+Et le §4 porte l'invariant qui prime sur tout : **une VFC, quelle que soit sa valeur, ne peut
+jamais faire monter la charge.**
+
+## H-1b — la VFC devient un CHOIX, posé une fois
+
+Retour du fondateur dans la foulée de H-1 : *« personne n'importe réellement des fichiers .FIT
+dans la vraie vie, ça demande trop de friction — déjà la VFC est un point avancé, je me demande
+s'il ne vaut pas mieux le demander comme une option »*. Le constat est juste et se mesure : la
+VFC occupait **une diapo sur trois du check-in quotidien de TOUT LE MONDE**, pour un signal qui
+demande une montre ou une bague, un protocole stable et un relevé chaque matin au réveil. Une
+friction imposée à tous pour une minorité — et posée tous les jours, pas une fois.
+
+### La question est posée UNE FOIS, en fin de questionnaire
+
+`hrv_track` (« Tu relèves ta VFC le matin ? ») est la dernière étape, marquée optionnelle. Sans
+« oui », la diapo VFC **n'existe pas** : le check-in retombe à deux écrans, sommeil → ressenti.
+
+**Ce qu'on a vérifié avant de retirer quoi que ce soit** : que l'absence de la diapo ne change
+**aucun verdict** pour qui ne la suivait pas. Mesuré sur les **36 combinaisons** de sommeil (3)
+× énergie (4) × ressenti (3) : **0 écart**, ni sur le niveau, ni sur le score, ni sur les
+drivers. Ce n'est pas un hasard — l'ancien « je ne la suis pas » écrivait `"normale"`, et depuis
+H-1 une VFC seulement déclarée ne pèse rien. Retirer une question dont on n'a pas mesuré
+l'effet, c'est se fier à une lecture de code ; ici la lecture disait la bonne chose, et elle a
+été confirmée.
+
+### `hrv_track` est HORS `ANSWER_SCHEMA`, et c'est délibéré
+
+Le schéma est le contrat des clés qui **pilotent le plan** — c'est de lui que `audit:sensibilite`
+dérive son exigence (R20.1 : toute clé déclarée doit agir dans chaque sport où elle est
+déclarée). `hrv_track` ne construit aucune séance : il décide de ce qu'on **collecte** au
+check-in, donc du verdict quotidien de qui l'active, et de rien d'autre. L'y déclarer ferait
+échouer un gate pour une bonne raison — la clé serait inerte sur le plan — et la sortir de la
+mesure par une exemption serait pire. Même traitement que `pace`, `css` et `target_time`.
+
+Ce n'est pas pour autant une question « UI pure » au sens de CLAUDE.md : son effet est réel et
+il est mesuré, simplement ailleurs — `smoke-checkin.mjs`, sur les trois états de la clé.
+
+### Et ce qu'on demande à qui l'active, c'est la VALEUR
+
+Les adjectifs « basse / normale / haute » disparaissent du diaporama : depuis H-1, seule une
+valeur comparée à la base de l'athlète est une mesure. La diapo demande donc le rMSSD en
+millisecondes, et l'opt-in l'annonce (« ta montre affiche un chiffre en ms ») pour que personne
+ne coche « oui » et ne se retrouve devant un champ qu'il ne sait pas remplir.
+
+L'adjectif est retiré des **deux** endroits où il vivait — le diaporama et le sélecteur du
+panneau « Modifier ma forme du jour ». En corriger un seul, c'est le correctif qu'on croit
+avoir (R18.1, U16, O-24).
+
+### Deux effets de bord, traités
+
+- **La FC au réveil déménage sur la diapo sommeil.** Elle vivait sur la diapo VFC : la laisser
+  là l'aurait fait disparaître pour tous ceux qui ne suivent pas leur VFC — un signal
+  **objectif** (audit v6, A6) perdu au passage d'un lot qui ne le visait pas. Sa place est de
+  toute façon celle-là : c'est la même mesure du même réveil.
+- **`hrvStatus` n'a plus de valeur par défaut.** `applyReadinessSnap` écrivait
+  `base.hrvStatus || "normale"` — un adjectif inventé, rangé dans l'état et relu ensuite comme
+  une réponse de l'athlète. Il était inerte, mais latent : la première règle qui lirait
+  `hrvStatus` sans regarder `hrvSource` verrait une déclaration fantôme. Le champ n'existe
+  désormais que si quelqu'un l'a réellement dit.
+
+### La garde, et ce que le harnais a failli lui cacher
+
+`tests/e2e/smoke-checkin.mjs` couvre les **deux moitiés** — un critère qui ne vérifierait que la
+disparition serait satisfait en supprimant la fonctionnalité (la leçon d'U1b) :
+
+| état de `hrv_track` | attendu |
+|---|---|
+| absent (question sautée) | 2 diapos, aucun champ VFC |
+| `"non"` explicite | 2 diapos — mesuré séparément de l'absence |
+| `"oui"` | 3 diapos, champ `#ckHrv` en ms, aucun adjectif, valeur journalisée |
+
+**Le harnais répondait « oui » à ma place et la suite aurait mesuré la mauvaise branche.**
+`traverserQuestionnaire` coche la PREMIÈRE option de tout groupe qu'on ne lui a pas nommé
+(U14) — pour `hrv_track`, c'est « Oui, je la relève ». La suite aurait donc vérifié le
+comportement de l'opt-in en croyant vérifier celui du défaut, et serait passée verte. La clé est
+effacée explicitement pour mesurer l'absence.
+
+**Vérifiée rouge sur quatre cassures** : la diapo redevenue inconditionnelle (16 ✖), l'opt-in lu
+à l'envers — `!== "non"` au lieu de `=== "oui"` (15 ✖), la FC au réveil renvoyée sur la diapo
+VFC (3 ✖), les adjectifs de retour à la place de la valeur (5 ✖).
+
+Une note d'instrument, parce qu'elle a coûté deux passes : les trois premières cassures sortaient
+bien en **code 1**, mais sur un `TimeoutError` de Playwright — trente secondes perdues et
+**aucune ligne de rapport**, le collecteur n'imprimant qu'à `report()`. Le verdict était juste,
+le diagnostic nul. Les taps du diaporama passent par un helper qui RAPPORTE l'option manquante.
+Ce n'est pas la faute d'instrument de R21/R22b (le code de sortie ne mentait pas), mais c'en est
+le voisinage : une garde doit dire ce qui a lâché.
