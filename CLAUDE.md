@@ -1013,6 +1013,36 @@ rendues bloquantes. Garde `smoke-refus.mjs` (**17ᵉ suite**), 8 critères, **v�
 deux cassures.
 **26 gates verts, E2E 17/17, golden 900 inchangé, registre 24/24.**
 
+**S-4 · S-8 · S-CACHE livrés — les quatre correctifs de la grille de sécurité** (voir
+ARCHITECTURE.md « S-4 / S-8 / S-CACHE », garde `tests/e2e/smoke-securite.mjs`, **18ᵉ suite**) :
+**(1)** le bouton d'import FIT disait « Importer **un** fichier » alors que le lot MARCHE depuis
+le 28/07 (`multiple` + `for (const f of files)`) — la priorité n°1 de l'état des lieux
+(« fastidieux, fichier par fichier ») était **un mot**, pas une fonctionnalité manquante.
+**(2)** Borne de taille d'import (25 Mo, `src/readiness/importLimits.ts`), contrôlée AVANT
+`arrayBuffer()` et **rejouée dans les trois parseurs** — une garde qui dépend de son appelant n'est
+pas une garde. Ce n'est pas une faille (l'app est locale, le fichier vient de l'athlète) mais un
+déni de service contre soi-même, au pire symptôme : une app qui ne répond plus, sans un mot.
+**(3)** CSP en `<meta>` : `connect-src` borné aux hôtes réellement appelés, relus DEPUIS LE CODE
+par la garde. **Ma première écriture y mettait `https:` en plus** « parce que l'URL du relais est
+configurable » — c'était se tromper de compromis, `https:` autorise l'exfiltration vers n'importe
+quel hôte, soit exactement ce que la ligne existe pour empêcher ; `*.workers.dev` couvre le relais
+déployé et tout worker monté selon `server/README.md`, et un critère interdit désormais le joker.
+**(4)** Le service worker ne fait plus `skipWaiting()` : il attend que la page le demande. Il
+prenait le contrôle EN PLEIN MILIEU d'une session — la page ouverte restait ancienne mais son
+prochain import dynamique (`await import("./steps.js")`) venait du nouveau cache : une page
+ancienne chargeant un module neuf. Bandeau « ✨ Nouvelle version prête », rechargement sur
+`controllerchange` (jamais avant la bascule), `reg.update()` au retour dans l'app (une PWA installée
+est gelée puis reprise, pas renavigée), et **rien à la première installation** — proposer « nouvelle
+version » à qui vient d'ouvrir l'app serait faux. C'est la moitié qui manquait à O-24 : la version
+du cache était devenue juste, sa PROPAGATION restait muette.
+**Deux erreurs à moi, attrapées par les suites existantes** : `frame-ancestors` est **ignoré** en
+`<meta>` (il exige un en-tête HTTP) — il ne protégeait de rien ET produisait une erreur de console
+à chaque chargement, ce que les suites détectent comme « erreur JS » (**6/18 suites rouges** avant
+de le retirer) ; et mon bandeau portait une taille littérale `14px`, refusée par le plancher
+typographique de R16.8 — l'échelle `--fs-*` est la seule source. L'anti-cadrage reste donc une
+limite d'hébergement NOMMÉE : GitHub Pages ne permet pas de poser cet en-tête.
+**26 gates verts, E2E 18/18, golden 900 inchangé, registre 24/24.**
+
 **I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
 ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en
 trail, un DÉBUTANT recevait un pic de **575 min** contre **547** pour un INTER, et sur le D+ aussi

@@ -53,6 +53,58 @@ if (globalThis.EB_STANDALONE) {
 } else if ("serviceWorker" in navigator) {
   addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js")
+      .then((reg) => {
+        // S-CACHE — LA MISE À JOUR SE VOIT, ET ELLE SE CHOISIT.
+        //
+        // Le service worker sert l'app en cache-first : une nouvelle version s'installe en
+        // arrière-plan mais la page ouverte garde l'ancienne jusqu'au prochain lancement.
+        // Personne n'était « coincé » — mais personne n'était prévenu non plus, et rien ne
+        // permettait de l'appliquer tout de suite. C'est la moitié qui manquait à O-24 :
+        // la version du cache était devenue juste, sa PROPAGATION restait muette.
+        const propose = () => {
+          if (document.getElementById("ebUpdBar")) return;
+          const b = document.createElement("div");
+          b.id = "ebUpdBar";
+          b.setAttribute("role", "status");
+          b.style.cssText = "position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));"
+            + "z-index:9999;background:#0c1016;color:#fff;border-radius:12px;padding:12px 14px;"
+            + "display:flex;gap:12px;align-items:center;justify-content:space-between;"
+            + "box-shadow:0 6px 24px rgba(0,0,0,.25);font-size:var(--fs-lg)"; // R16.8 — l'échelle déclarée, jamais un littéral
+          b.innerHTML = '<span>✨ Nouvelle version prête</span>'
+            + '<span style="display:flex;gap:8px">'
+            + '<button type="button" id="ebUpdGo" style="min-height:44px;padding:0 14px;border:0;border-radius:9px;background:#e63946;color:#fff;font:inherit;font-weight:700">Recharger</button>'
+            + '<button type="button" id="ebUpdNo" aria-label="Plus tard" style="min-height:44px;min-width:44px;border:0;border-radius:9px;background:transparent;color:#fff;font:inherit">Plus tard</button>'
+            + "</span>";
+          document.body.appendChild(b);
+          document.getElementById("ebUpdGo").onclick = () => {
+            // On demande la bascule ; le rechargement suit `controllerchange`, jamais avant :
+            // recharger pendant que l'ancien worker sert encore rendrait la même version.
+            if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          };
+          document.getElementById("ebUpdNo").onclick = () => b.remove();
+        };
+        if (reg.waiting) propose();
+        reg.addEventListener("updatefound", () => {
+          const sw = reg.installing;
+          if (!sw) return;
+          sw.addEventListener("statechange", () => {
+            // `controller` absent = première installation : il n'y a rien à remplacer, et
+            // proposer « nouvelle version » à quelqu'un qui vient d'ouvrir l'app serait faux.
+            if (sw.state === "installed" && navigator.serviceWorker.controller) propose();
+          });
+        });
+        let recharge = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (recharge) return; // une seule fois : `controllerchange` peut se répéter
+          recharge = true;
+          location.reload();
+        });
+        // Une PWA installée sur l'écran d'accueil est souvent GELÉE puis reprise plutôt que
+        // renavigée : sans ce contrôle au retour, elle peut ne jamais revérifier.
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") reg.update().catch(() => {});
+        });
+      })
       .catch((e) => console.warn("EnduraBuild : service worker non enregistré —", e && e.message));
   });
 }

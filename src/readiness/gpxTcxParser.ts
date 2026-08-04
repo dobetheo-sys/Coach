@@ -46,6 +46,7 @@
  * ne doit jamais servir à autre chose.
  */
 import type { IngestedSession } from "../coach/deviationDetector.ts";
+import { assertImportSize } from "./importLimits.ts";
 
 /** Rayon terrestre moyen (m) — WGS84, valeur usuelle. */
 const R_TERRE = 6371000;
@@ -93,6 +94,10 @@ function feuilles(xml: string, tag: string): string[] {
 // ================================================================================
 
 export function parseTcx(xml: string): IngestedSession[] {
+  // S-8 — la borne est REJOUÉE ici : l'UI la vérifie déjà sur le fichier, mais un parseur
+  // exporté peut être appelé par un autre chemin, et une garde qui dépend de son appelant
+  // n'est pas une garde.
+  assertImportSize("TCX", xml.length);
   if (!/<TrainingCenterDatabase/i.test(xml)) throw new Error("Ce fichier n'est pas un TCX (balise TrainingCenterDatabase absente)");
   const out: IngestedSession[] = [];
   const reAct = /<Activity\b([^>]*)>([\s\S]*?)<\/Activity>/gi;
@@ -138,6 +143,7 @@ export function parseTcx(xml: string): IngestedSession[] {
 // ================================================================================
 
 export function parseGpx(xml: string): IngestedSession[] {
+  assertImportSize("GPX", xml.length);
   if (!/<gpx/i.test(xml)) throw new Error("Ce fichier n'est pas un GPX (balise gpx absente)");
   const out: IngestedSession[] = [];
   const reTrk = /<trk>([\s\S]*?)<\/trk>/gi;

@@ -21,6 +21,7 @@ import type { IngestedSession } from "../coach/deviationDetector.ts";
 import { parseActivityText } from "../readiness/gpxTcxParser.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
 import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
+import { MAX_IMPORT_BYTES, assertImportSize, EBImportTooLarge } from "../readiness/importLimits.ts";
 import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
 import { validateAnswers, assertPlanIsAPlan, EBInputError, ANSWER_SCHEMA, FORMATS_BY_SPORT } from "../engine/answerSchema.ts";
 import { planTroncature, semainesRequises, PLANCHER_ABSOLU_SEM, type TruncatePlan } from "../engine/truncatedPrep.ts";
@@ -763,6 +764,10 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   buildPlan: buildPlanV2,
   adjustToday: adjustTodayV2,
   coachOnIngest: coachOnIngestV2,
+  // S-8 — l'UI contrôle la taille AVANT de lire le fichier : la borne est celle du moteur,
+  // pas une seconde valeur écrite dans l'interface.
+  maxImportBytes: MAX_IMPORT_BYTES,
+  assertImportSize,
   parseActivityText,
   assessReadiness,
   progress: progressV2,

@@ -14165,6 +14165,7 @@ function readNum(b            , o        , size        , le         )           
 
 /** Décode les messages `session` d'un fichier FIT. Jette une Error si l'en-tête est invalide. */
 function parseFit(bytes            )               {
+  assertImportSize("FIT", bytes.length); // S-8 — avant toute lecture
   if (bytes.length < 12) throw new Error("Fichier trop court pour être un FIT");
   const headerSize = bytes[0];
   if ((headerSize !== 12 && headerSize !== 14) || String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]) !== ".FIT")
@@ -14515,6 +14516,68 @@ function adjustDay(reasoned              , plan        , date        , snapshot 
   return { date, action, verdict, originalMinutes, adjustedMinutes, decisions };
 }
 
+// ===== src/readiness/importLimits.ts =====
+/**
+ * S-8 — LES BORNES DE L'IMPORT DE FICHIERS (grille de sécurité, §8).
+ *
+ * ================================================================================
+ * CE QUE ÇA PROTÈGE, ET CE QUE ÇA NE PROTÈGE PAS
+ * ================================================================================
+ *
+ * Les trois parseurs du dépôt (FIT, GPX, TCX) sont écrits ici, sans dépendance :
+ * il n'y a donc **aucune bibliothèque tierce à mettre en bac à sable**, et aucun
+ * contenu n'est jamais évalué — le point 8.2 de la grille est réglé par
+ * construction, pas par une mesure.
+ *
+ * Restait le point 8.1, et il manquait vraiment : **aucune borne de taille.** Un
+ * GPX de 500 Mo fige l'onglet le temps que le balayage de points se termine, et
+ * mon propre parseur GPX itère sur tous les points sans plafond. Ce n'est pas une
+ * faille — l'app est locale, il n'y a pas de serveur à saturer, et le fichier
+ * vient de l'athlète lui-même. C'est un **déni de service contre soi-même**, avec
+ * le pire symptôme possible : une app qui ne répond plus, sans un mot.
+ *
+ * La borne est donc là pour DIRE quelque chose, pas pour se défendre d'un
+ * attaquant. Le refus nomme la taille et le plafond.
+ *
+ * ================================================================================
+ * POURQUOI 25 Mo
+ * ================================================================================
+ *
+ * Un FIT d'activité fait quelques dizaines de kilo-octets ; une longue sortie très
+ * échantillonnée, quelques centaines. Un GPX est plus verbeux (XML) : une trace
+ * d'ultra à la seconde monte à quelques mégaoctets. 25 Mo laisse passer très
+ * largement le pire cas légitime — un fichier au-dessus n'est pas une séance, c'est
+ * une erreur de sélection ou un export de saison entière.
+ *
+ * La borne vit ICI et pas dans chaque appelant : trois copies d'un plafond, ce
+ * sont trois plafonds qui divergeront (R11.1).
+ */
+
+/** Plafond de taille d'un fichier d'activité importé. Voir l'en-tête pour le choix. */
+const MAX_IMPORT_BYTES = 25 * 1024 * 1024;
+
+/** Erreur typée — l'athlète doit pouvoir la lire, pas un développeur. */
+class EBImportTooLarge extends Error {
+  code = "IMPORT_TROP_GROS";
+  human        ;
+  constructor(nom        , taille        ) {
+    const mo = (n        ) => (n / (1024 * 1024)).toFixed(1).replace(".", ",");
+    super("IMPORT_TROP_GROS " + nom + " = " + taille + " octets");
+    this.name = "EBImportTooLarge";
+    this.human = "« " + nom + " » fait " + mo(taille) + " Mo, au-delà de la limite de "
+      + mo(MAX_IMPORT_BYTES) + " Mo. Un fichier d'activité en fait quelques centaines de kilo-octets : "
+      + "vérifie que c'est bien une séance et pas un export complet.";
+  }
+}
+
+/**
+ * Lève si le fichier dépasse le plafond. Appelée AVANT toute lecture ou analyse —
+ * contrôler après avoir tout parcouru ne protège de rien, c'est le parcours qui coûte.
+ */
+function assertImportSize(nom        , taille        )       {
+  if (isFinite(taille) && taille > MAX_IMPORT_BYTES) throw new EBImportTooLarge(nom, taille);
+}
+
 // ===== src/readiness/gpxTcxParser.ts =====
 /**
  * R21 — PARSEURS GPX ET TCX, zéro dépendance.
@@ -14611,6 +14674,10 @@ function feuilles(xml        , tag        )           {
 // ================================================================================
 
 function parseTcx(xml        )                    {
+  // S-8 — la borne est REJOUÉE ici : l'UI la vérifie déjà sur le fichier, mais un parseur
+  // exporté peut être appelé par un autre chemin, et une garde qui dépend de son appelant
+  // n'est pas une garde.
+  assertImportSize("TCX", xml.length);
   if (!/<TrainingCenterDatabase/i.test(xml)) throw new Error("Ce fichier n'est pas un TCX (balise TrainingCenterDatabase absente)");
   const out                    = [];
   const reAct = /<Activity\b([^>]*)>([\s\S]*?)<\/Activity>/gi;
@@ -14656,6 +14723,7 @@ function parseTcx(xml        )                    {
 // ================================================================================
 
 function parseGpx(xml        )                    {
+  assertImportSize("GPX", xml.length);
   if (!/<gpx/i.test(xml)) throw new Error("Ce fichier n'est pas un GPX (balise gpx absente)");
   const out                    = [];
   const reTrk = /<trk>([\s\S]*?)<\/trk>/gi;
@@ -15699,6 +15767,7 @@ function dailyEnergy(input             )                             {
 
 
 
+
 /** R21 — exportée : la spec du coach proactif construit ses profils comme le pont, pas autrement. */
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
@@ -16429,6 +16498,10 @@ function coachOnIngestV2(sport        , answers            , ingested           
   buildPlan: buildPlanV2,
   adjustToday: adjustTodayV2,
   coachOnIngest: coachOnIngestV2,
+  // S-8 — l'UI contrôle la taille AVANT de lire le fichier : la borne est celle du moteur,
+  // pas une seconde valeur écrite dans l'interface.
+  maxImportBytes: MAX_IMPORT_BYTES,
+  assertImportSize,
   parseActivityText,
   assessReadiness,
   progress: progressV2,

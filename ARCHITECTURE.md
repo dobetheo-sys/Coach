@@ -3768,3 +3768,84 @@ bloquant un banc dont on n'a pas trié les échecs fige la dette au lieu de la t
 Les 17 suites sortent désormais en `process.exit(report())`. Garde `smoke-refus.mjs`
 (**17ᵉ suite**), 8 critères, **vérifiée rouge** sur deux cassures (retour à la dernière
 étape : 4 échecs ; champ non focalisé : 1 échec).
+
+
+---
+
+## S-4 / S-8 / S-CACHE — les quatre correctifs de la grille de sécurité
+
+Issus de la revue de `audit_securite_endurabuild.md` contre le code réel. Les sections
+§1 (moteur côté serveur), §2 (auth/API) et §5 (anti-scraping) restent **sans objet** tant
+que le produit est une PWA sans backend — c'est un arbitrage de fond, pas un correctif.
+Quatre points étaient en revanche réels et bon marché.
+
+### S-8a — le bouton mentait, le code était juste
+
+L'état des lieux nomme « import par lot » comme priorité n°1 (« fastidieux, fichier par
+fichier »). Mesuré : le champ porte `multiple` **depuis le 28/07**, et le gestionnaire fait
+`for (const f of files)`. Le lot fonctionne. Ce qui disait le contraire, c'est le bouton :
+« 📂 Importer **un** fichier .FIT ». Un mot — et le meilleur rapport gain/coût des deux
+documents remis.
+
+### S-8b — la borne de taille
+
+Aucun plafond sur les imports. Ce n'est pas une faille : l'app est locale, il n'y a pas de
+serveur à saturer, et le fichier vient de l'athlète. C'est un **déni de service contre
+soi-même** — un GPX de 500 Mo fige l'onglet pendant que le parseur balaie ses points —
+avec le pire symptôme possible : une app qui ne répond plus, sans un mot.
+
+`MAX_IMPORT_BYTES = 25 Mo` (`src/readiness/importLimits.ts`), contrôlé **avant**
+`arrayBuffer()` côté UI — lire 400 Mo pour découvrir ensuite que c'est trop, c'est avoir
+déjà payé le coût qu'on refuse — et **rejoué dans les trois parseurs** : une garde qui
+dépend de son appelant n'est pas une garde. Le point 8.2 (bac à sable des bibliothèques
+tierces) est réglé **par construction** : les trois parseurs sont écrits ici, sans
+dépendance, et n'évaluent jamais de contenu.
+
+### S-4 — la politique de sécurité du contenu
+
+Ce qu'elle protège réellement sans serveur : `connect-src`. L'app ne parle qu'à trois
+hôtes — mesuré, aucun autre `fetch` dans `js/`. Sous cette politique, une injection qui
+passerait `esc()` ne peut exfiltrer nulle part.
+
+**Ma première écriture ajoutait `https:`** au motif que l'URL du relais est configurable.
+C'était se tromper de compromis : `https:` autorise n'importe quel hôte, c'est-à-dire
+exactement ce que la directive existe pour empêcher — une protection qui a l'air d'en être
+une. `*.workers.dev` couvre le relais déployé et tout worker monté selon `server/README.md` ;
+un relais sur domaine personnel demanderait de l'ajouter, coût nommé plutôt que contourné.
+Un critère de la garde interdit désormais le joker.
+
+`'unsafe-inline'` sur les **styles** est assumé (361 attributs `style=` dans les modules) ;
+les **scripts** restent en `'self'`, la page n'en a aucun en ligne.
+
+**`frame-ancestors` a été retiré** : la directive est **ignorée** quand la politique arrive
+par `<meta>` — elle exige un en-tête HTTP. Elle ne protégeait de rien et produisait une
+erreur de console à chaque chargement, que les suites E2E détectent comme « erreur JS » :
+**6 suites sur 18 rouges** jusqu'à son retrait. L'anti-cadrage est donc une limite de
+l'hébergement (GitHub Pages ne pose pas d'en-têtes), nommée plutôt que simulée.
+
+### S-CACHE — la propagation des mises à jour
+
+O-24 avait rendu la VERSION du cache juste. Il restait sa **propagation** :
+
+- **`skipWaiting()` retiré.** Il faisait basculer la nouvelle version au milieu d'une
+  session : la page ouverte gardait son HTML et ses modules de l'ANCIEN cache, mais son
+  prochain import dynamique — `await import("./steps.js")`, le chemin « Corriger ma
+  réponse » — venait du NOUVEAU. Une page ancienne chargeant un module neuf : rare, et
+  impossible à reproduire quand ça arrive. Un seul import dynamique dans l'app, mesuré.
+- **Bandeau « ✨ Nouvelle version prête »** sur `updatefound`, avec `SKIP_WAITING` envoyé au
+  worker en attente quand l'athlète accepte. Rechargement sur `controllerchange` **et
+  jamais avant** : recharger pendant que l'ancien worker sert encore rendrait la même
+  version.
+- **`reg.update()` sur `visibilitychange`** : une PWA installée sur l'écran d'accueil est
+  souvent gelée puis reprise plutôt que renavigée ; sans ça elle peut ne jamais revérifier.
+- **Rien à la première installation** (`navigator.serviceWorker.controller` absent) :
+  annoncer « nouvelle version » à quelqu'un qui vient d'ouvrir l'app serait faux.
+
+Qui ne clique jamais l'obtient quand même au prochain lancement complet. C'est toujours
+automatique — ce n'est plus brutal.
+
+### Garde
+
+`tests/e2e/smoke-securite.mjs`, **18ᵉ suite**, 21 critères. Le plus utile n'est pas
+« la CSP existe » mais **« tout hôte appelé par `fetch()` est déclaré »** : la liste est
+relue DEPUIS LE CODE, donc un hôte ajouté demain sans déclaration fera rougir la suite.

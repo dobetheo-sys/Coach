@@ -13,7 +13,7 @@
    `npm run check:sw`, comme `check:app` pour le bundle du monolithe). */
 
 // __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
-const VERSION = "eb-pwa-ab83a983ecfc";
+const VERSION = "eb-pwa-9249388d9064";
 // __/SW_VERSION__
 
 // __SW_ASSETS__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
@@ -57,8 +57,25 @@ const ASSETS = [
 ];
 // __/SW_ASSETS__
 
+/*
+  S-CACHE — PLUS DE `skipWaiting()` AUTOMATIQUE.
+
+  Il faisait prendre le contrôle à la nouvelle version AU MILIEU d'une session. La page
+  ouverte, elle, avait déjà chargé son HTML et ses modules depuis l'ANCIEN cache : elle
+  restait ancienne, mais son prochain import dynamique (`await import("./steps.js")`,
+  chemin « Corriger ma réponse ») venait du NOUVEAU cache. Une page ancienne chargeant un
+  module neuf — rare, et impossible à reproduire quand ça arrive.
+
+  La nouvelle version ATTEND donc, et la page propose de recharger (`app.js`). Qui ne
+  clique jamais l'obtient quand même au prochain lancement complet : c'est automatique,
+  ce n'est simplement plus brutal. `SKIP_WAITING` permet à la page de déclencher la bascule
+  quand l'athlète a dit oui — c'est lui qui choisit le moment, pas le hasard du réseau.
+*/
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(ASSETS)));
+});
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(

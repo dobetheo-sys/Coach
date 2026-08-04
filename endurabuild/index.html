@@ -2,6 +2,40 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<!--
+  S-4 — POLITIQUE DE SÉCURITÉ DU CONTENU.
+
+  Ce qu'elle protège vraiment ici : `connect-src`. L'app est 100 % locale et ne parle qu'à
+  TROIS hôtes — mesuré, il n'existe aucun autre `fetch` dans `js/`. Si une injection
+  survenait malgré `esc()`, elle ne pourrait exfiltrer nulle part : ni balise, ni requête
+  vers un domaine tiers. C'est la seule ligne de défense qui ait du sens sans serveur.
+
+  `strava.com` est là parce que l'import lit l'API directement depuis le navigateur avec un
+  jeton porteur (le relais ne fait QUE l'échange OAuth). `open-meteo.com` pour la météo.
+  `*.workers.dev` pour le relais : son `/auth` est une NAVIGATION (hors `connect-src`), mais
+  son `/refresh` est un `fetch`, donc il doit être déclaré.
+
+  Ma première écriture mettait `https:` en plus, « parce que l'URL du relais est
+  configurable ». C'était se tromper de compromis : `https:` autorise l'exfiltration vers
+  n'importe quel hôte, c'est-à-dire exactement ce que cette ligne existe pour empêcher.
+  `*.workers.dev` couvre le relais déployé ET tout worker Cloudflare monté en suivant
+  `server/README.md`. Un relais sur un domaine PERSONNEL demanderait d'ajouter ce domaine
+  ici — c'est un coût assumé, et il est nommé plutôt que contourné.
+
+  `'unsafe-inline'` sur les STYLES est assumé : 361 attributs `style=` vivent dans les
+  modules. Le retirer demanderait de réécrire tout le rendu — et un style injecté ne
+  peut rien exfiltrer sous ce `connect-src`. Les SCRIPTS, eux, restent en `'self'` :
+  aucun script inline dans la page, la contrainte tient sans rien casser.
+
+  `blob:` en `img-src` : les partages (story 9:16, carte 1:1) passent par `toBlob()`.
+
+  PAS de `frame-ancestors` : cette directive est IGNORÉE quand la politique est délivrée par
+  une balise `<meta>` — elle exige un en-tête HTTP. La laisser ne protégeait de rien et
+  produisait une erreur de console à chaque chargement (attrapée par les suites E2E, qui
+  assertent « aucune erreur JS »). L'anti-cadrage demande donc un en-tête que GitHub Pages
+  ne permet pas de poser : c'est une limite de l'hébergement, nommée plutôt que simulée.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.open-meteo.com https://www.strava.com https://*.workers.dev; form-action 'none'; base-uri 'self'; object-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f1eadb">
 <title>EnduraBuild — Ton plan d'endurance raisonné</title>
