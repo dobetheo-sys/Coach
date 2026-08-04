@@ -1613,6 +1613,46 @@ cmd: node -e "const fs=require('fs');const n=(fs.readFileSync('src/readiness/dai
 ```
 
 
+### O-28 · `audit:amont` ne voit pas une dérive silencieuse sur les bornes numériques · ⏳ **OUVERT — garde muette, cassure vérifiée active**
+
+Trouvé par l'audit des gardes (04/08/2026) : pour chacun des huit gates jamais vérifiés rouges,
+casser exprès ce qu'il prétend protéger et vérifier qu'il rougit. Six mordent (`audit:v1` sur la
+garantie R3.13 finale, `demo:repair` sur `applyTargetedRepairs`, `demo:readiness` sur le registre
+objectif, `demo:fit` sur la signature, `demo:measured` sur l'arbitrage, `demo:retention` sur la
+série gratuite). Deux sont muets — celui-ci et O-29.
+
+**La cassure, vérifiée ACTIVE avant le verdict** (la leçon a coûté trois faux verdicts dans ce
+même audit : un `reduire(f=1)` réparé par la garantie aval, un bundle refusé par l'auto-test du
+build, un `coerce` que personne ne lit) : remplacer le refus typé hors bornes d'`answerSchema`
+par un clamp silencieux — `vol_max: "999"` **accepté, clampé à 40, plan généré, aucun journal**.
+Mesuré : le comportement change (« vol_max=999 accepté en silence »), le build passe, et
+`audit:amont` — dont la promesse est « 551 entrées fausses → refus MOTIVÉ, sans effet, ou dérive
+ANNONCÉE ; zéro dérive silencieuse » — reste **vert**.
+
+Le banc classe donc « valeur hors bornes → plan différent sans un mot » dans une catégorie
+acceptable. À corriger CÔTÉ BANC : pour les entrées numériques hors bornes, exiger le refus typé
+OU une ligne de journal — un plan qui diffère du refus attendu sans trace est la définition de la
+dérive silencieuse.
+
+*Pas de bloc `verify` : la mesure demande une mutation du moteur (sed + build + gate + restore),
+hors de portée du registre. La recette exacte est ci-dessus ; le correctif du banc devra être
+vérifié rouge contre elle.*
+
+### O-29 · `audit:public` ne voit pas une séance au repère d'intensité VIDE · ⏳ **OUVERT — garde muette, cassure vérifiée active**
+
+Même méthode, même statut. La cassure : vider le repli RPE de la zone `rn.thr`
+(`fb: ""`, `hr: null`) — pour l'athlète sans allure déclarée, la séance rend littéralement
+**« 3×5min @  »**, un `@` suivi de rien. C'est mot pour mot le défaut que le banc existe pour
+empêcher (« 0 séance sans repère exécutable », R12). Vérifié : le rendu porte bien le trou, le
+build passe, et `audit:public` reste **vert**.
+
+Le banc vérifie vraisemblablement la PRÉSENCE d'un chemin de repli, pas le CONTENU rendu — une
+mesure qui porte sur une grandeur voisine de celle qu'elle nomme (huitième occurrence de la
+famille). À corriger côté banc : asserter le texte rendu (`@` jamais suivi de vide, chaque bloc
+de qualité porte allure, FC ou RPE).
+
+*Pas de bloc `verify` : même raison qu'O-28 — mutation du moteur requise, recette ci-dessus.*
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas

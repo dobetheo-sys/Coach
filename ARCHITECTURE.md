@@ -4091,6 +4091,46 @@ plafond tenant déjà), gardée pour le jour où quelqu'un fera gagner le planch
 dans le module qui déclare lui-même IMPORTER ses modèles plutôt que les redéclarer. C30 en aurait
 fait une troisième. `riegelSecWith` est exporté, les deux autres délèguent.
 
+## Audit des gardes — casser exprès, huit gates, deux muets
+
+Décision du fondateur (04/08/2026) : « la chasse au bug ». Le gisement identifié n'était pas le
+code du moteur — c'était les GARDES elles-mêmes : deux familles s'étaient répétées toute la
+session (une mesure qui nomme une grandeur et en mesure une voisine ; des gardes qui ne gardent
+pas — les 7 suites E2E muettes de R22b, le banc d'invariants d'O-9). Méthode : pour chacun des
+huit gates jamais vérifiés rouges, **casser exprès ce qu'il prétend protéger et vérifier qu'il
+rougit** (la règle d'U8, appliquée aux instruments).
+
+| gate | cassure | verdict |
+|---|---|---|
+| `audit:v1` | garantie finale R3.13 court-circuitée | **ROUGE ✓** |
+| `demo:repair` | `applyTargetedRepairs` rendu inerte | **ROUGE ✓** |
+| `demo:readiness` | +10 sur le registre objectif (rouge impossible) | **ROUGE ✓** |
+| `demo:fit` | signature .FIT plus vérifiée | **ROUGE ✓** |
+| `demo:measured` | l'arbitrage ignore le mesuré | **ROUGE ✓** |
+| `demo:retention` | la série se gagne sans valider | **ROUGE ✓** |
+| `audit:amont` | bornes numériques clampées en silence | **VERT — muet, O-28** |
+| `audit:public` | repère d'intensité vidé (« 3×5min @  ») | **VERT — muet, O-29** |
+
+**L'audit a d'abord attrapé son propre instrument, trois fois** — et c'est le résultat de
+méthode : (1) `reduire(f=1)` laissait `audit:v1` vert parce que la garantie FINALE réparait
+derrière — le moteur avait raison, pas ma cassure ; (2) une cassure de `validateAnswers` au
+mauvais type a fait refuser le bundle par l'**auto-test du build**, et le gate a tourné vert
+contre le bundle INTACT — mon harnais ne vérifiait pas le code de sortie du build ; (3) un
+`coerce` ajouté au schéma n'était lu par personne — cassure inerte, vert immérité. Règle
+sortie de là, désormais appliquée : **une cassure doit prouver qu'elle a changé le comportement
+avant que son verdict ne compte** (vol_max=999 accepté ; « @ » vide rendu à l'écran).
+
+Les deux muets sont de vrais trous : `audit:amont` accepte une dérive silencieuse sur les bornes
+numériques (sa promesse littérale est « zéro dérive silencieuse ») ; `audit:public` vérifie la
+présence d'un chemin de repli, pas le CONTENU rendu — huitième occurrence de « mesurer la
+voisine ». Correctifs côté banc, à vérifier rouges contre les recettes d'O-28/O-29.
+
+Vérifiés en direct par ailleurs, sans cassure dédiée : `golden:verify` (a mordu deux fois dans la
+même journée — 121 puis 19 écarts sur des expériences réelles), `audit:v2` (rouge sur l'import
+manquant de C31), `check:sw` (rouge sur bundle non reconstruit). Les bancs R13-R18, sensibilité,
+v6/v7 et les demos récents (hrv, proactif, troncature, nutrition N11) avaient déjà leur
+vérification rouge d'origine, documentée dans leurs lots.
+
 ## C31 — le back-to-back marathon : la longue trop longue se coupe en deux jours
 
 Décision du fondateur (04/08/2026) : *« le but était de couper une sortie longue trop longue en
