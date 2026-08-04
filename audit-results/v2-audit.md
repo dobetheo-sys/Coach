@@ -4,7 +4,7 @@ Généré par `npm run audit:v2`. 594 combinaisons via le moteur V2, scorées pa
 
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| run | 108 | 0.98 | 0.91–1.00 | 0 | 0 | 0 | 0.43 | 0 | 84% | 24 | 98 |
+| run | 108 | 0.98 | 0.91–1.00 | 0 | 0 | 0 | 0.46 | 0 | 84% | 22 | 98 |
 | bike | 135 | 0.99 | 0.91–1.00 | 0 | 0 | 0 | 0.47 | 0 | 91% | 14 | 99 |
 | swim | 108 | 0.97 | 0.90–0.99 | 0 | 0 | 0 | 0.47 | 0 | 85% | 0 | 97 |
 | tri | 108 | 0.98 | 0.92–1.00 | 0 | 0 | 0 | 0.42 | 0 | 75% | 0 | 95 |
@@ -15,7 +15,7 @@ Généré par `npm run audit:v2`. 594 combinaisons via le moteur V2, scorées pa
 
 | Sport | Ratio pic méd V1.5 → V2 | Pire ratio V1.5 → V2 | Score moyen V1.5 → V2 |
 |---|---|---|---|
-| run | 0.98 → 0.98 | 0.90 → 0.90 | 98 → 98 |
+| run | 0.98 → 0.98 | 0.89 → 0.89 | 98 → 98 |
 | bike | 0.99 → 0.99 | 0.90 → 0.90 | 99 → 99 |
 | swim | 0.97 → 0.97 | 0.86 → 0.86 | 97 → 97 |
 | tri | 0.98 → 0.98 | 0.90 → 0.90 | 95 → 95 |

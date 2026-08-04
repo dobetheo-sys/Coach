@@ -35,6 +35,11 @@ const ORDER = [
   "src/engine/trailModel.ts",
   "src/engine/reasoningEngine.ts",
   "src/generator/renderer.ts",
+  // C30 — le plancher spécifique de la sortie longue. Après `renderer` (il lit `ZDEF["rn.easy"]`,
+  // la seule définition de l'allure d'endurance) et avant les modules de sport qui l'appellent.
+  // Ses lectures de `predictor` (RUN_KM, Riegel) se font à l'APPEL, donc son rang devant lui
+  // n'a pas d'importance — c'est ce que le §ORDER assume déjà pour `RUN_KM` dans `sports/run`.
+  "src/engine/longRunSpecificity.ts",
   "src/engine/loadModel.ts",
   "src/audit/coherenceScorer.ts",
   "src/generator/sessionLibrary.ts",

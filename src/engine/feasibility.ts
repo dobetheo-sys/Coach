@@ -20,7 +20,7 @@
  * Un second modèle de performance serait un second jeu de vérités : c'est précisément ce que
  * R11.1, R20.5 et U9 interdisent ailleurs dans le moteur.
  */
-import { riegelExponent } from "./predictor.ts";
+import { riegelExponent, riegelSecWith } from "./predictor.ts";
 import {
   G_PLAFOND, GAIN_MAX_ABSOLU, TAU_WEEKS, TAPER_GAIN,
   G_PLAFOND_DEBUTANT, RG_GAIN_MAX_DEBUTANT, RG_TAU_DEBUTANT, regimeDebutant,
@@ -104,10 +104,11 @@ export function requiredThresholdPace(targetSec: number, distKm: number, exponen
   return (3600 * Math.pow(targetSec / 3600, 1 / exponent)) / distKm;
 }
 
-/** Le chrono qu'une allure seuil donnée permet — le sens direct, pour rendre le verdict lisible. */
+/** Le chrono qu'une allure seuil donnée permet — le sens direct, pour rendre le verdict lisible.
+ *  DÉLÈGUE au prédicteur (R11.1) : c'était une copie ligne pour ligne de `riegelSecWith`, et
+ *  ce module dit lui-même qu'il IMPORTE ses modèles au lieu de les redéclarer. */
 export function timeFromThresholdPace(thrPaceSecPerKm: number, distKm: number, exponent: number): number {
-  const d1h = 3600 / thrPaceSecPerKm;
-  return 3600 * Math.pow(distKm / d1h, exponent);
+  return riegelSecWith(exponent, thrPaceSecPerKm, distKm);
 }
 
 export function assessFeasibility(input: FeasibilityInput): FeasibilityResult {

@@ -652,6 +652,58 @@ test("U9", "le refus « course trop proche » ne parle jamais d'une autre épreu
   return { ok: bad.length === 0, detail: bad.join(" ; ") || `${vus} refus, tous nomment la bonne épreuve` };
 });
 
+// ── C30 — LA SORTIE LONGUE CONNAÎT L'ÉPREUVE (décision du fondateur, 04/08/2026) ────────
+//
+// « se rapprocher du temps visé sur l'épreuve a minima, et au moins 70 % de la distance ».
+//
+// ⚠ PORTÉE MESURÉE, ET ELLE EST PETITE : sur 180 profils de course (4 formats × 3 niveaux ×
+// 5 allures × 3 enveloppes), C30 en déplace **7**, de 2 à 6 minutes. La règle est juste ;
+// ce qui la borne est en aval et c'est documenté en O-26 — `blockBounds` remplace le plancher
+// déclaré par un « plancher digne » de 30 min, et le vrai facteur limitant est le volume
+// hebdomadaire d'une prépa de format court. Ces critères gardent donc ce que C30 fait
+// VRAIMENT, pas ce qu'on aimerait qu'il fasse : un critère écrit sur l'intention serait vert
+// avant le correctif comme après. (Première écriture : trois cassures, trois verts.)
+const c30Long = (over) => {
+  const p = E.buildPlan("run", { ...profile("run"), intent: "competition", med_pain: "non", med_dizzy: "non",
+    med_treat: "non", injury: "aucune", sessions_max: "5", dispo: "quotidienne", doubles: "oui",
+    pace_known: "oui", vol_recent: "3", terrain: "route", ...over });
+  let sl = 0;
+  p.weeks.forEach((w) => w.days.forEach((d) => d.sessions.forEach((x) => { if (x.long && (x.min || 0) > sl) sl = x.min; })));
+  return sl;
+};
+
+test("C30-A", "C30 allonge la sortie longue des coureurs LENTS — les 7 profils qu'il déplace", "pass", () => {
+  // Les valeurs sont celles mesurées APRÈS le lot ; sans C30 elles valent 57/115/122/116.
+  // Un test d'égalité et non d'inégalité : c'est ce qui le rend rouge dans les deux sens.
+  const attendu = [
+    ["10k", "debutant", "8:30", "6", 63], ["10k", "debutant", "8:30", "8", 63],
+    ["semi", "debutant", "8:30", "8", 117], ["semi", "inter", "7:00", "8", 124],
+    ["semi", "inter", "8:30", "8", 119], ["semi", "avance", "7:00", "8", 124],
+    ["semi", "avance", "8:30", "8", 119],
+  ];
+  const bad = [];
+  for (const [format, level, pace, vol_max, min] of attendu) {
+    const sl = c30Long({ format, level, pace, vol_max });
+    if (sl !== min) bad.push(`${format}/${level}/${pace}/${vol_max}h : ${sl} au lieu de ${min}`);
+  }
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "les 7 profils déplacés par C30 tiennent leur valeur" };
+});
+
+test("C30-B", "un plancher de spécificité ne passe JAMAIS devant un plafond de sécurité", "pass", () => {
+  // NON-RÉGRESSION, et il faut le dire : ce critère était déjà vert avant C30, parce que le
+  // plafond tenait déjà. Il existe pour le jour où quelqu'un décidera de faire gagner le
+  // plancher (c'est la suite naturelle d'O-26) — sur marathon, « se rapprocher du temps de
+  // course » voudrait dire 3h20 à 5h25 de sortie longue, et C23 plafonne à 180.
+  const bad = [];
+  for (const pace of ["4:30", "5:45", "7:00", "8:30"]) {
+    const sl = c30Long({ format: "marathon", pace, level: "debutant", history: "reprise", vol_max: "8" });
+    if (sl > 180) bad.push(`marathon débutant @${pace} : ${sl}min > 180 (C23)`);
+  }
+  const slPied = c30Long({ format: "semi", pace: "8:30", injury: "pied", vol_max: "8" });
+  if (slPied > Math.round(130 * 0.85)) bad.push(`semi + pied fragile : ${slPied}min > plafond ×0,85`);
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "C23 et le plafond blessure tiennent, le plancher cède" };
+});
+
 test("E5", "buildPlan REFUSE une entrée invalide, avec un refus typé et réparable", "pass", () => {
   const bad = [];
   const mutants = [

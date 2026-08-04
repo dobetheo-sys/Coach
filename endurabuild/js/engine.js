@@ -3313,6 +3313,122 @@ function renderSess(s                   , refs      , hz         , baseRefs     
   return det;
 }
 
+// ===== src/engine/longRunSpecificity.ts =====
+/**
+ * C30 — LA SORTIE LONGUE EST SPÉCIFIQUE DE L'ÉPREUVE, PAS SEULEMENT DU BUDGET.
+ *
+ * Décision du fondateur (04/08/2026), en réponse à la question posée par O-21 (« la sortie
+ * longue se prescrit-elle en distance ou en temps ? ») :
+ *
+ *   « il faudrait quelque chose entre les deux : se rapprocher du temps visé sur l'épreuve
+ *     a minima, et au moins 70 % de la distance »
+ *
+ * ─── CE QUE LA MESURE A DIT AVANT D'ÉCRIRE UNE LIGNE ───────────────────────────────────────
+ *
+ * La prémisse d'O-21 était fausse, et c'est écrit ici plutôt qu'effacé : la sortie longue est
+ * prescrite en TEMPS depuis toujours (`durCaps` en minutes dans chaque module de sport). Entre
+ * 5:45/km et 7:00/km sur un 10 km, elle fait **178 min contre 176** — l'écart est nul, et
+ * l'inversion résiduelle d'O-21 (6 min sur 790) vient du SEUIL, pas d'elle.
+ *
+ * Ce que la règle du fondateur corrige est donc un AUTRE défaut, réel et non couvert : la
+ * longue ne connaissait pas l'épreuve. Mesuré sur les quatre formats × trois allures, le
+ * coureur LENT était systématiquement le plus mal servi — c'est lui qui passe le plus de temps
+ * sur son épreuve, et c'est sa longue qui en couvrait la plus petite part :
+ *
+ *   10 km à 7:00/km  → longue 47-50 min pour une course de 71 min et 59 min de « 70 % »
+ *   semi  à 7:00/km  → longue 115-125 min pour une course de 156 min
+ *
+ * ─── LA RÈGLE ──────────────────────────────────────────────────────────────────────────────
+ *
+ * Le PLANCHER de la sortie longue au pic devient le plus exigeant des deux repères, et
+ * JAMAIS au-dessus du plafond existant :
+ *
+ *   plancher = min( plafond , max( plancher d'origine , T_SPEC × temps de course ,
+ *                                  temps pour couvrir PART_DIST × la distance en Z2 ) )
+ *
+ * `min(plafond, …)` n'est pas un détail d'implémentation, c'est la règle de sécurité du
+ * chapitre. Sur marathon, « se rapprocher du temps de course » voudrait dire une sortie longue
+ * de 3 h 20 à 5 h 25 : C23 plafonne à 180 min, et c'est le consensus de tous les plans marathon
+ * sérieux. **Un plancher ne passe jamais devant un plafond** — priorités 1 et 2 du manifeste.
+ * Le plafond qui mord est REMONTÉ à l'appelant (`capped`) pour que le plan puisse le nommer,
+ * au lieu de livrer un chiffre plus petit que la promesse sans un mot (R20.2).
+ *
+ * ─── CE QUI N'ENTRE PAS DANS LE CALCUL, DÉLIBÉRÉMENT ───────────────────────────────────────
+ *
+ * **Le `target_time` de la carte « chrono visé » n'est PAS lu ici, et ne le sera jamais.** Le
+ * temps de course utilisé est celui que le moteur PRÉDIT depuis les références mesurées de
+ * l'athlète. Laisser un objectif de chrono augmenter une charge, c'est la priorité n°5 du
+ * manifeste qui écrase les quatre premières — et c'est exactement ce que `RV-INVARIANT`
+ * (gate CI) interdit : le plan émis est identique au bit près avec et sans objectif de temps.
+ *
+ * Sans allure seuil mesurée, il n'y a pas de temps de course : la règle ne s'applique pas et
+ * les bornes d'origine tiennent (P7/P8 — pas d'estimation sans matière, et on ne devine pas
+ * une charge).
+ */
+
+
+/** Part du temps de course que la sortie longue vise « a minima » (décision fondateur).
+ *  0,90 et non 1,00 : « se rapprocher de » — la longue se court en Z2, pas à l'allure de
+ *  course, et l'égaler en durée coûterait plus de fatigue qu'elle n'apporte de spécificité. */
+const C30_PART_TEMPS_COURSE = 0.9;
+/** Part de la distance de course que la sortie longue couvre au minimum (décision fondateur). */
+const C30_PART_DISTANCE = 0.7;
+
+                               
+                                                            
+                
+                                                                                
+                 
+                                                                         
+                  
+                                                                                         
+                                         
+ 
+
+/**
+ * C30 — le plancher spécifique de la sortie longue d'une COURSE À PIED sur distance connue.
+ * Rend `null` quand la règle n'a pas d'objet : pas de format à distance connue, pas d'allure
+ * seuil mesurée, ou cible déjà atteinte par les bornes d'origine.
+ *
+ * @param fmt          format de course (`5k`, `10k`, `semi`, `marathon`)
+ * @param thrPaceSecPerKm allure seuil MESURÉE (0 = inconnue → règle sans objet)
+ * @param floorMin     plancher d'origine du créneau, en minutes
+ * @param capMin       plafond d'origine du créneau, en minutes (C23, blessures… déjà appliqués)
+ * @param runHoursPerWeek volume de course hebdomadaire, pour l'exposant de Riegel (P5)
+ */
+function longRunSpecificityFloor(
+  fmt                    ,
+  thrPaceSecPerKm        ,
+  floorMin        ,
+  capMin        ,
+  runHoursPerWeek         
+)                      {
+  const km = fmt ? RUN_KM[fmt] : 0;
+  if (!(km > 0) || !(thrPaceSecPerKm > 0) || !(capMin > 0)) return null;
+
+  // Repère 1 — le TEMPS de course, prédit depuis la référence mesurée (jamais un objectif).
+  const courseMin = riegelSecWith(riegelExponent(runHoursPerWeek), thrPaceSecPerKm, km) / 60;
+  const parTemps = C30_PART_TEMPS_COURSE * courseMin;
+
+  // Repère 2 — la DISTANCE, convertie en minutes à l'allure à laquelle la longue se court
+  // vraiment. `ZDEF["rn.easy"]` est la seule définition de cette allure (R11.1) ; on prend le
+  // BAS de la bande (le plus rapide) — un plancher se calcule sur l'hypothèse la moins
+  // gourmande, sinon il gonfle par le seul jeu de l'incertitude.
+  const easy = ZDEF["rn.easy"];
+  const parDistance = (C30_PART_DISTANCE * km * thrPaceSecPerKm * easy.lo) / 60;
+
+  const target = Math.max(parTemps, parDistance);
+  if (!(target > floorMin)) return null; // les bornes d'origine suffisent déjà
+
+  const floor = Math.min(capMin, target);
+  return {
+    floor: Math.round(floor),
+    target: Math.round(target),
+    capped: target > capMin,
+    driver: parTemps >= parDistance ? "temps" : "distance",
+  };
+}
+
 // ===== src/engine/loadModel.ts =====
 /**
  * loadModel — quantification de charge par séance (Sprint 0 : durée prescrite).
@@ -4602,8 +4718,9 @@ function trailWeekSchema(phase        , isRecup         , cat               )   
 
 
 
+
 function buildRunSessions(kit            )              {
-  const { a, fmt, slot, phase, lvl, finisher, beginner, medHold, inj, noVo2, G, S2, P, W, C, Bd, B } = kit;
+  const { r, a, fmt, slot, phase, lvl, finisher, beginner, medHold, inj, noVo2, G, S2, P, W, C, Bd, B } = kit;
   const injImp = inj.impact;
   // R4.1 — trail modulaire (registre de disciplines) : volume en TEMPS + D+, allure en
   // GAP/RPE, compétence descente travaillée à part, prudence excentrique si impact fragile.
@@ -4639,11 +4756,24 @@ function buildRunSessions(kit            )              {
     // le plus d'impacts — son plafond baisse selon la zone (pied ×0.85, hanche ×0.9).
     if (inj.list.includes("pied")) durCaps.hi = Math.round(durCaps.hi * 0.85);
     else if (inj.list.includes("hanche")) durCaps.hi = Math.round(durCaps.hi * 0.9);
-    const durMin = P(durCaps.lo, durCaps.hi);
+    // C30 — LE PLANCHER CONNAÎT L'ÉPREUVE (décision du fondateur, 04/08/2026).
+    //
+    // Mesuré : la longue d'un coureur à 7:00/km faisait 47-50 min pour une course de 71 min.
+    // Le plancher vise désormais le plus exigeant de deux repères — 90 % du temps de course
+    // prédit, 70 % de sa distance — et JAMAIS au-dessus du plafond ci-dessus, qui vient d'être
+    // baissé par C23 et par les blessures. C'est l'ordre qui compte : un plancher calculé
+    // avant les plafonds les annulerait, et ce sont eux qui portent la sécurité.
+    //
+    // Il PROGRESSE avec la phase (`P`) au lieu de s'appliquer dès la semaine 1 : la cible est
+    // celle du PIC, et un plancher plat contredirait la rampe R10 — quelqu'un qui repart de
+    // zéro recevrait sa sortie longue de fin de prépa dès le premier lundi.
+    const spec = longRunSpecificityFloor(fmt, r.baseRefs.thrPace, durCaps.lo, durCaps.hi, parseFloat(String(a.vol_max ?? "")) || undefined);
+    const floorNow = spec ? Math.max(durCaps.lo, Math.round(P(durCaps.lo, spec.floor))) : durCaps.lo;
+    const durMin = Math.max(P(durCaps.lo, durCaps.hi), floorNow);
     // Trail (registre R4.1) : volume en TEMPS + D+ cible — jamais en km seul. Le D+ suit
     // la durée (~350-450m/h) ; descentes en contrôle, surtout avec un passif d'impact.
     const dplus = isTrail ? trailElevationTarget(durMin) : null;
-    S2.push({ d: "rn", long: true, name: isTrail ? "Sortie longue trail" : "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : isTrail ? "En trail on compte le TEMPS et le D+, pas les kilomètres. Monte au train, descends en contrôle" + (injImp ? " — descentes prudentes, ta zone fragile encaisse la charge excentrique" : "") + "." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", (isTrail && dplus ? " · D+ cible " + dplus.lo + "-" + dplus.hi + "m" : "") + (phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : "")), { bnd: { floor: durCaps.lo, cap: durCaps.hi, hard: beginner } }), ], ...( { plainBody: true }          ) });
+    S2.push({ d: "rn", long: true, name: isTrail ? "Sortie longue trail" : "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : isTrail ? "En trail on compte le TEMPS et le D+, pas les kilomètres. Monte au train, descends en contrôle" + (injImp ? " — descentes prudentes, ta zone fragile encaisse la charge excentrique" : "") + "." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", (isTrail && dplus ? " · D+ cible " + dplus.lo + "-" + dplus.hi + "m" : "") + (phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : "")), { bnd: { floor: floorNow, cap: durCaps.hi, hard: beginner } }), ], ...( { plainBody: true }          ) });
   } else if (slot === "facileR") {
     S2.push({ d: "rn", name: "Footing facile", note: beginner ? "Allure de conversation, sans forcer : c'est le volume facile qui fait progresser." : "Endurance fondamentale : allure de conversation. Ce volume facile construit l'aérobie sans user.", det: "", steps: [B(1, P(30, 50), "rn.easy", "", G && !injImp ? " · termine par " + G.replace("+ ", "") : "")], ...( { plainBody: true }          ) });
   } else if (slot === "facile2") {
@@ -11618,7 +11748,11 @@ function riegelExponent(runHoursPerWeek         )         {
   return 1.06;
 }
 
-/** Riegel : temps sur D depuis l'allure seuil (tenable ~1h), t = 3600 × (D/D₁ₕ)^exp */
+/** Riegel : temps sur D depuis l'allure seuil (tenable ~1h), t = 3600 × (D/D₁ₕ)^exp
+ *
+ *  EXPORTÉE depuis C30 (R11.1) : `feasibility.timeFromThresholdPace` en portait une copie
+ *  ligne pour ligne, et la spécificité de la sortie longue en aurait fait une troisième.
+ *  Trois écritures de Riegel, c'est trois vérités le jour où l'exposant bouge. */
 function riegelSecWith(exp        , thrPaceSecPerKm        , distKm        )         {
   const d1h = 3600 / thrPaceSecPerKm;
   return 3600 * Math.pow(distKm / d1h, exp);
@@ -12034,10 +12168,11 @@ function requiredThresholdPace(targetSec        , distKm        , exponent      
   return (3600 * Math.pow(targetSec / 3600, 1 / exponent)) / distKm;
 }
 
-/** Le chrono qu'une allure seuil donnée permet — le sens direct, pour rendre le verdict lisible. */
+/** Le chrono qu'une allure seuil donnée permet — le sens direct, pour rendre le verdict lisible.
+ *  DÉLÈGUE au prédicteur (R11.1) : c'était une copie ligne pour ligne de `riegelSecWith`, et
+ *  ce module dit lui-même qu'il IMPORTE ses modèles au lieu de les redéclarer. */
 function timeFromThresholdPace(thrPaceSecPerKm        , distKm        , exponent        )         {
-  const d1h = 3600 / thrPaceSecPerKm;
-  return 3600 * Math.pow(distKm / d1h, exponent);
+  return riegelSecWith(exponent, thrPaceSecPerKm, distKm);
 }
 
 function assessFeasibility(input                  )                    {

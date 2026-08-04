@@ -1079,6 +1079,40 @@ déclarée ne pèse pas comme une mesurée) : le banc couvre les deux faces au l
 et `A4b` est **vérifié rouge** contre le moteur d'avant.
 **27 gates verts, E2E 18/18, golden 900 inchangé, registre 24/24.**
 
+**C30 livré — la sortie longue connaît l'épreuve, et n'y arrive qu'à moitié** (décision du
+fondateur, 04/08/2026 : « quelque chose entre les deux : se rapprocher du temps visé sur l'épreuve
+a minima, et au moins 70 % de la distance », voir ARCHITECTURE.md « C30 » et BUGS_OUVERTS.md
+« O-26 ») : **la prémisse d'O-21 était fausse et elle reste écrite** — la sortie longue est
+prescrite en TEMPS depuis toujours (`durCaps` en minutes), et entre 5:45/km et 7:00/km sur un
+10 km elle fait **178 min contre 176** ; l'inversion résiduelle venait du SEUIL. Ce que la règle
+du fondateur corrige est un AUTRE défaut, réel : la longue ne connaissait pas l'épreuve, et le
+coureur **lent** était le plus mal servi — **47-50 min pour une course de 71 min** sur 10 km,
+115-125 pour 156 sur semi. `src/engine/longRunSpecificity.ts` : le plancher vise le plus exigeant
+de deux repères (90 % du temps de course PRÉDIT, 70 % de la distance en Z2), **jamais au-dessus du
+plafond** — sur marathon, « se rapprocher du temps de course » voudrait dire 3 h 20 à 5 h 25 de
+sortie longue, C23 plafonne à 180 et un plancher ne passe jamais devant un plafond. Il PROGRESSE
+avec la phase (la cible est celle du pic ; un plancher plat contredirait la rampe R10), et
+**`target_time` n'est pas lu** — laisser un objectif de chrono augmenter une charge, c'est ce que
+`RV-INVARIANT` interdit sous CI.
+**PORTÉE MESURÉE : 7 profils sur 180, et c'est le résultat le plus important du lot.** Cibles de
+spécificité atteintes 24/48 → **31/48**, concentrées sur les débutants — pas sur la population que
+la mesure désignait. La cause est nommée (**O-26**) : `blockBounds` jette le plancher déclaré par
+le bloc et le remplace par un « plancher digne » de 30 min, par décision de l'audit v6 (D3-D7/D10,
+« les planchers de séance ne gagnent plus contre la courbe »). Et **forcer le plancher ne marche
+pas** — mesuré, les cibles tombent à **30/48** : le facteur limitant est le volume hebdomadaire
+d'une prépa de format court (pic à 140-152 min, la longue y pèse déjà 36-39 %). La suite est un
+arbitrage d'entraînement, pas du code — trois issues chiffrées dans O-26.
+**Ma première garde valait zéro** : écrite sur l'INTENTION, elle était satisfaite par le moteur
+d'AVANT — trois cassures, **trois verts**. Septième occurrence d'un critère qui nomme une grandeur
+et en mesure une voisine, cette fois dans la garde d'un correctif que je venais d'écrire. Réécrite
+sur les 7 profils déplacés avec leurs valeurs (`C30-A`, banc v6), **vérifiée rouge sur trois
+cassures** ; **une quatrième reste verte et c'est publié** — passer la part de distance de 70 % à
+50 % ne change rien, le repère TEMPS dominant partout : la moitié « distance » de la règle n'a
+encore jamais mordu. Effet de bord favorable non visé : **O-19 passe de 3/12 à 2/12** profils sous
+le plancher d'affûtage de Bosquet. Au passage, Riegel n'a plus qu'une écriture (R11.1) — la copie
+de `feasibility` délègue au prédicteur.
+**27 gates verts, E2E 18/18, golden 900 recapturé (121 profils, tous en course), registre 25/25.**
+
 **H-1b livré — la VFC devient un CHOIX, posé une fois** (retour du fondateur : *« déjà la VFC est
 un point avancé, je me demande s'il ne vaut pas mieux le demander comme une option »*, voir
 ARCHITECTURE.md « H-1b ») : elle occupait **une diapo sur trois du check-in quotidien de TOUT LE

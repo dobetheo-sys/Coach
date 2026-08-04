@@ -4012,6 +4012,85 @@ propre base (1 ✖).
 Et le §4 porte l'invariant qui prime sur tout : **une VFC, quelle que soit sa valeur, ne peut
 jamais faire monter la charge.**
 
+## C30 — la sortie longue connaît l'épreuve (et n'y arrive qu'à moitié)
+
+Décision du fondateur (04/08/2026), en réponse à la question qu'O-21 lui posait — « la sortie
+longue se prescrit-elle en distance ou en temps ? » :
+
+> « il faudrait quelque chose entre les deux : se rapprocher du temps visé sur l'épreuve a
+> minima, et au moins 70 % de la distance »
+
+### La prémisse d'O-21 était fausse, et elle reste écrite
+
+**La sortie longue est prescrite en TEMPS depuis toujours** — `durCaps` est en minutes dans
+chaque module de sport (5 km 40-74, 10 km 50-90, semi 70-130, marathon 90-180). Mesuré entre
+5:45/km et 7:00/km sur un 10 km : **178 min contre 176**, l'écart est nul. L'inversion résiduelle
+d'O-21 (6 min sur 790) vient du **seuil**, pas d'elle. La question désignait le mauvais coupable ;
+c'est ma formulation qui était fautive, pas la réponse du fondateur.
+
+### Ce que la règle corrige vraiment
+
+La longue ne connaissait pas l'épreuve. Mesuré sur 4 formats × 3 allures, le coureur **LENT**
+était systématiquement le plus mal servi — c'est lui qui passe le plus de temps sur son épreuve,
+et c'est sa longue qui en couvrait la plus petite part :
+
+| | longue livrée | temps de course | 70 % de la distance |
+|---|---|---|---|
+| 10 km @ 7:00/km | 47-50 min | 71 min | 59 min |
+| semi @ 7:00/km | 115-125 min | 156 min | 125 min |
+
+`src/engine/longRunSpecificity.ts` :
+
+```
+plancher = min( plafond , max( plancher d'origine , 0,90 × temps de course ,
+                               temps pour couvrir 0,70 × la distance en Z2 ) )
+```
+
+`min(plafond, …)` **est** la règle de sécurité du chapitre, pas un détail d'implémentation : sur
+marathon, « se rapprocher du temps de course » voudrait dire une sortie longue de 3 h 20 à
+5 h 25. C23 plafonne à 180 min, et le consensus marathon s'y tient. Un plancher ne passe jamais
+devant un plafond (priorités 1 et 2). Le plancher **progresse** avec la phase : la cible est celle
+du PIC, un plancher plat contredirait la rampe R10.
+
+**`target_time` n'est PAS lu, et ne le sera jamais.** Le temps de course vient du modèle de
+prédiction sur les références MESURÉES. Laisser un objectif de chrono augmenter une charge, c'est
+la priorité n°5 qui écrase les quatre premières, et c'est ce que `RV-INVARIANT` interdit sous CI.
+
+### PORTÉE MESURÉE : 7 profils sur 180 — et c'est le résultat le plus important du lot
+
+Sur 180 profils de course (4 formats × 3 niveaux × 5 allures × 3 enveloppes), C30 en déplace
+**7**, de 2 à 6 minutes. Sur la grille de spécificité, les cibles atteintes passent de **24/48 à
+31/48**, concentrées sur les débutants — pas sur la population que la mesure désignait.
+
+La cause est nommée et suivie en **O-26** : `blockBounds` jette le plancher déclaré par le bloc
+et le remplace par un « plancher digne » forfaitaire de 30 min, par décision de l'audit v6
+(D3-D7/D10, « les planchers de séance ne gagnent plus contre la courbe »). Et **forcer le
+plancher ne marche pas** — testé, les cibles tombent à **30/48**, donc moins bien : le vrai
+facteur limitant est le volume hebdomadaire d'une prépa de format court (semaine de pic à
+140-152 min, la longue y pèse déjà 36-39 %). La suite demande un arbitrage, pas du code.
+
+### La garde, et ma première version qui valait zéro
+
+Écrite sur l'INTENTION (« la longue couvre 70 % de la distance »), elle était satisfaite par le
+moteur d'AVANT C30 : **trois cassures délibérées, trois verts.** Septième occurrence dans ce
+dépôt d'un critère qui nomme une grandeur et en mesure une voisine — cette fois dans la garde
+d'un correctif que je venais d'écrire.
+
+Réécrite sur les **7 profils que C30 déplace réellement**, avec leurs valeurs exactes (`C30-A`,
+banc v6), elle rougit sur trois cassures : C30 retiré, plancher devant plafond (`min` → `max`),
+part du temps de course 0,9 → 0,6. **Une quatrième reste verte et c'est un résultat publié** :
+passer la part de distance de 70 % à 50 % ne change rien, parce que sur ces 7 profils le repère
+TEMPS domine toujours — la moitié « distance » de la règle n'a encore jamais mordu.
+
+`C30-B` est étiqueté pour ce qu'il est : une **non-régression** (il était vert avant C30, le
+plafond tenant déjà), gardée pour le jour où quelqu'un fera gagner le plancher.
+
+### Au passage — Riegel n'a plus qu'une écriture (R11.1)
+
+`feasibility.timeFromThresholdPace` était une copie ligne pour ligne de `predictor.riegelSecWith`,
+dans le module qui déclare lui-même IMPORTER ses modèles plutôt que les redéclarer. C30 en aurait
+fait une troisième. `riegelSecWith` est exporté, les deux autres délèguent.
+
 ## H-1b — la VFC devient un CHOIX, posé une fois
 
 Retour du fondateur dans la foulée de H-1 : *« personne n'importe réellement des fichiers .FIT
