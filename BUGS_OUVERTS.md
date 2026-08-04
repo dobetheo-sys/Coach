@@ -1679,6 +1679,38 @@ document historique du dépôt, il se corrige dans son propre commit avec la mes
 
 ---
 
+### S-1 · Le moteur tourne dans le navigateur, et il y reste · ✅ **ARBITRÉ (04/08/2026) — décision RÉVISABLE**
+
+> « Restons en public pour le moment »
+
+La grille de sécurité ouvre sur « le moteur tourne exclusivement côté serveur ». Cette case
+ne pouvait pas être cochée : **il n'y a pas de serveur.** Mesuré sur le fichier réellement
+servi (`endurabuild/js/engine.js`, 925 Ko) : `Bosquet` ×21, `Riegel` ×25, `G_PLAFOND` ×7,
+`HISTORY_CAPS` ×8 — les règles, les seuils, et les commentaires qui les justifient.
+
+**Décision : on assume.** Ce que ça achète — hors-ligne, zéro-compte, zéro-infra, et
+l'explicabilité qui est le contre-positionnement du produit. Ce que ça coûte — le moteur est
+copiable, et **le « secret des affaires » (loi 2018) ne s'applique pas** : il exige des
+mesures de protection raisonnables, or un moteur publié n'en est pas une. La protection
+réelle est le **droit d'auteur** (`LICENSE`, déjà en place) et la **concurrence déloyale**.
+
+Conséquence de registre : les §1, §2, §5 et §6 de la grille deviennent **hors architecture**
+plutôt que « en retard ». Ce qui reste est HUMAIN et suivi en §5 : `H-6` (CGU) et `H-7`
+(Soleau). Détail et déclencheurs de réouverture dans ARCHITECTURE.md « S-1 ».
+
+**Pas de bloc `verify` ici, et c'est une conclusion, pas un oubli.** J'ai essayé deux fois de
+mécaniser « aucun document ne revendique le secret des affaires ». La première comptait les
+OCCURRENCES du terme et rendait 1 — le paragraphe qui explique que la protection ne s'applique
+PAS le mentionne forcément : une mesure qui compte une négation comme une revendication. La
+seconde cherchait les mentions non niées et en trouvait trois, dont **deux étaient le motif de
+la garde elle-même** : l'instrument se mesurait. Cette affirmation porte sur de la prose
+nuancée, et ce dépôt sait ce que ça coûte de faire servir de la prose de donnée (R3-final,
+1 740 récupérations comptées 0 min). Elle reste donc une vérification HUMAINE, à faire si une
+stratégie juridique se construit — le point à ne pas perdre étant qu'un moteur publié n'ouvre
+pas droit à cette protection, quelles que soient les CGU.
+
+---
+
 ## §5 — Hors périmètre du moteur (ce ne sont PAS des bugs)
 
 | # | sujet | nature |
@@ -1686,6 +1718,8 @@ document historique du dépôt, il se corrige dans son propre commit avec la mes
 | ~~H-1~~ | ~~`STRAVA_RELAY_DEFAULT = ""` dans `endurabuild/js/config.js`~~ | ✅ **FAIT le 03/08/2026** : app Strava créée (client `269639`), worker Cloudflare déployé, `STRAVA_RELAY_DEFAULT` renseigné, connexion confirmée en production (`✓ Connecté`). Le `client_secret` vit UNIQUEMENT en variable de type *Secret* côté Cloudflare — jamais dans le dépôt, jamais dans un commit. Périmètre `activity:read_all,profile:read_all` (le second ajouté par O-22). Une garde E2E qui supposait le relais ABSENT a dû être réécrite : elle mesurait l'absence de déploiement, pas un comportement. |
 | H-2 | Notifications push app fermée | Demande un backend. Décision produit assumée : on n'annonce pas ce qu'on ne peut pas tenir. |
 | H-3 | CONSEIL nutritionnel (par opposition aux ESTIMATIONS, livrées) | Bloqué sur avis diététicien. **Ligne à ne pas franchir**, manifeste. |
+| H-6 | **CGU/CGV** — clauses anti-reverse-engineering, anti-scraping, anti-réutilisation commerciale | Démarche humaine (juriste). Devient le levier PRINCIPAL depuis la décision `S-1` : le moteur étant public, la protection est le droit d'auteur et la concurrence déloyale, pas le secret des affaires. |
+| H-7 | **Enveloppe Soleau / dépôt INPI** | Démarche humaine, peu coûteuse. Ne protège pas l'algorithme ; date la méthode et appuie une action en concurrence déloyale. |
 | H-4 | Candidature API MyFitnessPal | Démarche humaine. |
 | ~~H-5~~ | ~~Swimrun hors V1~~ | ✅ **R16.10** : réintégré après traitement de la dette (78 % → 89 % de profils propres). Le drapeau `EB_SWIMRUN` n'existe plus. |
 

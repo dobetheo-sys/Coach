@@ -3849,3 +3849,72 @@ automatique — ce n'est plus brutal.
 `tests/e2e/smoke-securite.mjs`, **18ᵉ suite**, 21 critères. Le plus utile n'est pas
 « la CSP existe » mais **« tout hôte appelé par `fetch()` est déclaré »** : la liste est
 relue DEPUIS LE CODE, donc un hôte ajouté demain sans déclaration fera rougir la suite.
+
+
+---
+
+## S-1 — le moteur reste PUBLIC (décision du fondateur, 04/08/2026)
+
+> « Restons en public pour le moment »
+
+La grille de sécurité ouvrait sur : *« Le moteur de génération tourne exclusivement côté
+serveur, jamais dans le bundle JS front »*. Cette case ne pouvait pas être cochée, et pas
+par oubli : **EnduraBuild n'a pas de serveur**. Mesuré sur `endurabuild/js/engine.js`, le
+fichier réellement servi — 925 Ko contenant `Bosquet` ×21, `Riegel` ×25, `G_PLAFOND` ×7,
+`HISTORY_CAPS` ×8, et surtout les commentaires qui expliquent POURQUOI chaque constante
+vaut ce qu'elle vaut.
+
+Trois issues étaient sur la table (assumer · basculer côté serveur · hybride). **L'issue 1
+est retenue, à titre révisable.**
+
+### Ce que la décision ACHÈTE
+
+Ce sont trois propriétés livrées, et elles disparaîtraient toutes avec un backend :
+
+- **le hors-ligne** — l'app fonctionne dans un tunnel, en montagne, en avion (service
+  worker, O-24 / S-CACHE) ;
+- **le zéro-compte** — aucune donnée personnelle ne quitte le téléphone : pas d'inscription,
+  pas de mot de passe, pas de base à protéger, pas de fuite possible ;
+- **le zéro-infra** — pas de serveur à payer, à surveiller, ni à maintenir à jour.
+
+Et une quatrième, qui est le contre-positionnement du produit : **l'explicabilité**. Le
+moteur explique chacune de ses décisions ; une partie de la valeur tient précisément à ce
+que les règles soient lisibles. Les cacher irait contre ce qu'on vend.
+
+### Ce que la décision COÛTE, dit franchement
+
+- **Le moteur est copiable.** Quelqu'un de motivé peut lire les règles et les réimplémenter.
+- **Le « secret des affaires » (loi de 2018) ne s'applique pas** — il exige des mesures de
+  protection raisonnables, et un moteur intégralement publié n'en est pas un, quelles que
+  soient les CGU. Vérifié à la main : **aucun document du dépôt ne revendique cette
+  protection**. Ce contrôle reste HUMAIN — deux tentatives de le mécaniser ont échoué, la
+  seconde parce que le motif de la garde se comptait lui-même (détail dans `BUGS_OUVERTS.md`,
+  entrée `S-1`). Le point à ne pas perdre : une stratégie juridique ne doit pas se construire
+  plus tard sur cette base.
+- **La protection réelle est donc le DROIT D'AUTEUR sur le code** (`LICENSE`, tous droits
+  réservés, déjà en place et déjà cohérente : le dépôt est public *pour l'hébergement*, sans
+  aucune licence d'usage accordée) **et la concurrence déloyale**.
+
+### Ce que la décision REND SANS OBJET
+
+Les sections §1, §2 (auth/API), §5 (anti-scraping) et §6 (séparation moteur/commerce) de la
+grille cessent d'être des cases à cocher : elles décrivent un produit qui n'existe pas.
+Elles ne sont pas « en retard », elles sont **hors architecture**. Le §6 garde toutefois une
+valeur préventive : `src/` ne contient aujourd'hui aucune notion de produit ni de prix, et
+cette séparation est à **préserver**, pas à créer.
+
+### Ce qui reste, et qui est HUMAIN
+
+- **CGU/CGV** avec clauses anti-reverse-engineering, anti-scraping, anti-réutilisation
+  commerciale. Absentes. C'est le levier qui compte maintenant.
+- **Enveloppe Soleau / dépôt INPI** — peu cher, date la méthode. N'empêche pas la copie,
+  appuie une action.
+
+### Ce qui ferait rouvrir la question
+
+La décision est datée et provisoire (« pour le moment »). Deux déclencheurs identifiés :
+un modèle **payant à l'usage** (là, le moteur devient l'actif qu'on vend, pas l'argument),
+ou une **copie constatée** qui change le calcul. Un troisième point mérite d'être su
+d'avance : **plus l'app a d'utilisateurs, plus le retour arrière coûte** — un backend
+introduit après coup demande de migrer l'état de chacun depuis son `localStorage`. Ce coût
+croît, il ne décroît jamais.
