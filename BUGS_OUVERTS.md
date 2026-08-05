@@ -1152,7 +1152,7 @@ cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;cons
 ```
 
 
-### O-21 · À capacité déclarée plus HAUTE, le plan est plus PETIT — l'inversion sur l'axe allure · 🟡 **MÉCANISME CORRIGÉ (03/08/2026), RÉSIDU = UN ARBITRAGE**
+### O-21 · À capacité déclarée plus HAUTE, le plan est plus PETIT — l'inversion sur l'axe allure · 🟡 **DEUX MÉCANISMES CORRIGÉS (03 et 05/08/2026), RÉSIDU MESURÉ ET PUBLIÉ**
 
 > **CE QUI EST CORRIGÉ, ET MA PISTE DU MATIN ÉTAIT FAUSSE.** J'avais écrit « la courbe déclarée
 > décroît (base au-dessus du pic) ». Mesuré : elle ne décroît pas. **La seule semaine de PIC de
@@ -1196,6 +1196,58 @@ cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;cons
 > heurte les priorités 1 et 2 du manifeste. En temps, les deux reçoivent la même charge et le
 > kilométrage suit. Tout le moteur compte déjà en TEMPS (`vol_max` est en heures), ce qui plaide
 > pour le temps — mais c'est une décision de fond, elle revient au fondateur.
+>
+> ─────────────────────────────────────────────────────────────────────────────────────────────
+>
+> **CORRECTION DU 05/08/2026 (« corrige », fondateur) — ET LA QUESTION CI-DESSUS N'ÉTAIT PAS LA
+> BONNE.** C30 a mesuré depuis que la sortie longue est prescrite en TEMPS depuis toujours
+> (`durCaps` en minutes) : entre 5:45/km et 7:00/km sur un 10 km elle fait 178 min contre 176.
+> Le dilemme « distance ou temps » n'était donc pas le mécanisme. Instrumenté passe par passe sur
+> le même profil à deux allures, il y en avait **deux**, et aucun n'est un arbitrage :
+>
+> **(1) Le remplissage d'I14b est structurellement MORT sur une semaine plate.** I14 ramène chaque
+> séance à la durée de la sortie longue ; le plafond des receveuses du remplissage
+> (`0,80 × longue`, R20.3) tombe alors SOUS cette valeur, `place` est négatif, et rien n'est rendu.
+> Mesuré sur un 10 km à 4 séances : quatre séances à 41-43 min pour une longue de 41, `_labelCut`
+> à **27 min par semaine**, et le remplissage en rendait **zéro**. Ce sont les semaines de PIC et de
+> SPÉCIFIQUE qui portent le plus de qualité par rapport à leur longue, donc ce sont elles que I14
+> coupe le plus — la périodisation s'inversait. Ce qui reste à rendre va désormais à la **sortie
+> longue elle-même** : ce ne sont pas des minutes ajoutées, ce sont celles que la même passe vient
+> de retirer à la même semaine, et une longue plus longue RELÈVE le plafond d'I14 au lieu de le
+> violer.
+>
+> **(2) La garantie A2/I1 se rabattait sur une semaine de pic en RÉCUPÉRATION.** Son `peakBest`
+> lisait `peakAny` faute de `peakNR` : sur une prépa dont l'unique semaine de pic est une décharge
+> — le cas exact que la première moitié de cette entrée avait documenté côté AUDITEUR — tout le
+> plan était raboté au volume d'une semaine de récup. **Et deux fois** : `D4` réduit ensuite cette
+> semaine, donc le second passage de `reconcileDeclaredVolume` repart d'un plafond plus bas.
+> Mesuré sur un 10 km à 6 séances : **1032 → 807 min au deuxième passage, sur une entrée
+> IDENTIQUE**, quand le même profil à une allure plus lente (donc avec un pic en charge) ne perdait
+> que 36 min. L'auditeur avait déjà tranché ce cas en AVERTISSEMENT ; le générateur dit maintenant
+> la même chose que lui — deux réponses à la même question, c'est ce que R11.1 interdit.
+>
+> **PORTÉE, sur 432 profils × 4 allures** (la dispersion du total livré sur l'axe allure, à
+> entrées identiques par ailleurs) :
+>
+> | | avant | après |
+> |---|---|---|
+> | dispersion médiane | 0,7 % | **0,7 %** |
+> | dispersion p90 | 16,2 % | **5,0 %** |
+> | dispersion max | 44,1 % | **36,1 %** |
+> | pire inversion entre deux allures voisines | +38,7 % | **+24,3 %** |
+> | profils non monotones (> +2 %) | 83 (19,2 %) | 73 (16,9 %) |
+>
+> **CE QUI RESTE, ET IL RESTE.** Le p90 tombe de deux tiers — la queue longue est traitée — mais le
+> **compte** de profils non monotones bouge à peine, et le maximum reste à 36 %. Les séquences
+> résiduelles ne sont pas monotones dans un sens ou dans l'autre, elles sont **erratiques**
+> (`845 846 847 903`, `1282 1061 1319 1077`) : ce n'est pas une règle qui penche, c'est du bruit de
+> convergence entre passes. Le traiter demanderait de rendre le point de convergence idempotent,
+> c'est-à-dire de reprendre l'ORDRE des passes de `reconcileDeclaredVolume` — un chantier à part
+> entière, pas une correction. **L'entrée reste donc ouverte, avec ce chiffre plutôt qu'une
+> promesse.**
+>
+> **La dette `O17` du banc v6 est PAYÉE dans le commit de la correction** (protocole du dépôt) :
+> son `expect` repasse à `'pass'`, et le témoin n'a pas été réécrit — c'est le moteur qui a changé.
 
 
 Trouvée en fermant O-20, par le critère `O17` du banc v6 qui est passé rouge. Le réflexe aurait
@@ -1243,9 +1295,9 @@ instables (la rampe R10 fait légitimement baisser un plan à faible `vol_recent
 
 ```verify
 id: O-21
-quoi: à allure seuil plus rapide, le plan livré n'est pas plus petit (axe allure, cousin d'I13)
-attendu: /inversions d'allure : 2$/m
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(pace,vr)=>({intent:'competition',format:'10k',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',level:'inter',history:'confirme',injury:'aucune',sessions_max:'4',vol_max:'6',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',pace,vol_recent:String(vr),terrain:'route'});const tot=(p)=>p.weeks.reduce((t,w)=>t+w.days.reduce((a,d)=>a+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0),0);let ko=0;for(const vr of [0,5]){const rapide=tot(E.buildPlan('run',P('5:45',vr))),lent=tot(E.buildPlan('run',P('7:00',vr)));if(rapide<lent)ko++;}console.log(\"inversions d'allure : \"+ko);"
+quoi: le résidu d'inversion sur l'axe allure, après les deux mécanismes corrigés (05/08/2026)
+attendu: /inversions d'allure : 1 · écart max 0,2 %$/m
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(pace,vr)=>({intent:'competition',format:'10k',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',level:'inter',history:'confirme',injury:'aucune',sessions_max:'4',vol_max:'6',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',pace,vol_recent:String(vr),terrain:'route'});const tot=(p)=>p.weeks.reduce((t,w)=>t+w.days.reduce((a,d)=>a+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0),0);let ko=0,mx=0;for(const vr of [0,5]){const rapide=tot(E.buildPlan('run',P('5:45',vr))),lent=tot(E.buildPlan('run',P('7:00',vr)));if(rapide<lent){ko++;mx=Math.max(mx,100*(lent/rapide-1));}}console.log(\"inversions d'allure : \"+ko+' · écart max '+mx.toFixed(1).replace('.',',')+' %');"
 ```
 
 
@@ -1516,73 +1568,85 @@ attendu: /velocity_smooth[\s\S]*workout_type|workout_type[\s\S]*velocity_smooth/
 cmd: grep -n "workout_type\|velocity_smooth\|meilleur 10 min" endurabuild/js/ui/steps.js
 ```
 
-### O-26 · Le plancher d'une séance n'atteint jamais la boucle de volume — C30 en est à 4 % de sa portée · ⏳ **OUVERT — mesuré, et il demande un arbitrage**
+### O-26 · La sortie longue n'atteignait pas sa cible de spécificité · ✅ **FERMÉ — C30b (décision du fondateur, 05/08/2026)**
 
-Trouvé en implémentant **C30** (décision du fondateur du 04/08/2026 : « se rapprocher du temps
-visé sur l'épreuve a minima, et au moins 70 % de la distance »).
+Trouvé en implémentant **C30** (« se rapprocher du temps visé sur l'épreuve a minima, et au moins
+70 % de la distance »). La règle était écrite, juste, et ne faisait presque rien : **7 profils
+déplacés sur 180**, cibles atteintes **31/48**.
 
-**La règle est écrite, elle est juste, et elle ne fait presque rien.** Mesuré sur 180 profils de
-course (4 formats × 3 niveaux × 5 allures × 3 enveloppes) : C30 en déplace **7**, de 2 à 6
-minutes. Sur la grille de spécificité (24 profils × 2 cibles), les cibles atteintes passent de
-**24/48 à 31/48** — un progrès réel, mais concentré sur les débutants, c'est-à-dire pas sur la
-population que la mesure désignait.
+**Décision du fondateur (05/08/2026)** : *« oui si elle respecte les plafonds ; en semaine de pic,
+la sortie longue peut représenter 70 % du volume de semaine si nécessaire »*. Livré sous **C30b**
+(`raiseLongRunToSpecificity`, `planGenerator.ts`) : la longue monte vers sa cible, et les minutes
+sont **PRISES aux séances faciles de la même semaine** (R4.1 — jamais à la qualité). Le volume de
+la semaine ne bouge pas d'une minute : c'est une redistribution, pas une charge en plus, et c'est
+ce qui la rend compatible avec « si elle respecte les plafonds ».
 
-**La cause est nommée, et elle est en aval du module de sport.** `blockBounds`
-(`planGenerator.ts`) est la SEULE source de bornes du scaling — c'est une bonne chose. Mais pour
-un bloc de sortie longue ordinaire (sans pente, `reps = 1`), elle **jette le plancher déclaré
-par le bloc** et le remplace par un « plancher digne » forfaitaire :
+**Cibles atteintes 31/48 → 46/48 ; 28 profils déplacés sur 96** (4 formats × 3 niveaux ×
+4 allures × 2 enveloppes), tous en 10 km et en semi, tous chez des coureurs à 5:45/km et plus
+lents. Le plus gros déplacement : **10 km @ 8:30/km, 47 → 76 min**, +62 %, sur exactement la
+population pour laquelle C30 avait été écrit. Aucun profil à 4:30/km (le rapide atteignait déjà
+sa cible), aucun sur marathon (la longue y est au plafond C23 depuis toujours, C31 prend le
+relais). Les **2 profils restants** manquent leur cible de **2 minutes** : les séances donneuses
+sont à leur plancher, il n'y a plus rien à déplacer.
 
-```ts
-const fl = s.d === "bk" ? 35 : 30; // C8/C16 — plancher digne, pas la borne basse du format
-return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
-```
+**Trois choses que la mesure a corrigées dans mon travail, gardées écrites.**
 
-Le `bnd.floor` que C30 calcule n'arrive donc jamais jusqu'à R3.3. Ce n'est pas un oubli : c'est
-la décision **D3-D7/D10 de l'audit v6**, « les planchers de séance ne gagnent plus contre la
-courbe ». C30 demande l'inverse pour une séance.
+**(a) Ma première écriture faisait son travail puis se le faisait annuler.** Placée juste après
+`refillEasyAfterLabelCap`, elle montait bien la longue d'un débutant sur 10 km de 55 à 64 min sur
+quatre semaines — puis `enforceHardTimeCap` rabotait le total de la semaine et le point fixe C22
+la rescalait **proportionnellement** : 64 → 57, 53, 55. Trois gains sur quatre effacés, et la
+mesure finale disait « la passe est inerte » alors qu'elle agissait puis était défaite.
+**Douzième paiement de la leçon du point fixe**, cette fois sur ma propre passe. Elle est rejouée
+après le point fixe — ce qu'elle peut se permettre parce qu'elle est neutre en volume, ne déplace
+que des minutes faciles (donc hors d'atteinte de C26c/C26d) et ne fait que MONTER la longue (donc
+va dans le sens d'I14 au lieu de le rouvrir). Elle est aussi rejouée dans le **dernier**
+`reconcileDeclaredVolume`, celui du `repairLoop` : c'est lui dont la sortie est livrée.
 
-**ET FORCER LE PLANCHER NE MARCHE PAS — c'est le résultat qui compte.** Testé
-(`floor = max(30, bnd.floor)` pour les blocs longs) : les cibles atteintes passent de **31/48 à
-30/48**, donc *moins bien*. La longue du 10 km à 7:00/km monte de 48 à 55 min pour une cible de
-64, et s'arrête là. Le facteur limitant n'est pas le plancher : c'est le **volume hebdomadaire
-d'une prépa de format court**. Sur ce profil, la semaine de pic livrée fait **140-152 min** et la
-longue y pèse déjà **36-39 %**. La porter à 64 min en ferait 44 % de la semaine.
+**(b) « Semaine de pic » n'existe pas comme phase sur une prépa courte.** Restreinte à
+`phase.id === "peak"`, la passe se déclenchait **0 fois sur les 48 profils de la grille** — parce
+qu'une prépa de 5 km ou de 10 km n'a **aucune** semaine de phase `peak` (base → dev → spec →
+taper), et que c'est justement la population que C30 sert le plus mal. « En semaine de pic » se
+lit donc sur la CHARGE quand la phase n'existe pas : les semaines les plus lourdes du plan, celles
+que l'athlète appelle sa plus grosse semaine. Même famille qu'**O-21**, qui a dû dire ce que vaut
+« dev ≤ pic » quand aucune semaine de pic ne porte de charge. La cohorte se lit sur la courbe
+**déclarée** et non sur les minutes livrées — mesuré, une cohorte calculée sur les minutes changeait
+entre deux passages et une semaine portée à sa cible en sortait au second.
 
-**Ce qui reste à trancher, et c'est une question d'entraînement :** une prépa 10 km pour
-quelqu'un qui court 71 min sur l'épreuve doit-elle rester à **2,4 h/semaine** ? `R20.2` répond
-déjà *pourquoi* elle y reste (« ce qui borne, c'est le nombre de séances : 5 séances, et aucune
-ne peut s'allonger indéfiniment »), et cette réponse est cohérente — mais elle ne dit pas si
-c'est **souhaitable**. Trois issues, aucune gratuite :
+**(c) La borne des 70 % n'a encore jamais mordu, et c'est publié.** Part de la longue mesurée :
+**médiane 33 %, maximum 55 %** — la permission du fondateur laisse 15 points inutilisés. Cassure
+délibérée : porter la borne à ×9 (donc la retirer) **ne change rien** (`K4` verte). Ce qui borne
+réellement, c'est le **plafond de séance du format** (5 km 74, 10 km 90, semi 130, marathon 180).
+C'est le pendant exact de la moitié « 70 % de la distance » de C30, elle aussi jamais mordante :
+la règle du fondateur est respectée dans les deux sens, et le facteur limitant est ailleurs.
 
-1. **le volume utile d'un format court s'indexe sur le TEMPS de course** et non sur sa seule
-   distance (le coureur lent reçoit plus de minutes) — c'est la lecture la plus proche de
-   l'arbitrage du fondateur, et elle rouvre l'inversion d'O-21 dans le sens qu'il assume ;
-2. **la sortie longue a droit à une part plus grande de la semaine** sur les formats courts —
-   plus local, mais déséquilibre la semaine et heurte D3-D7/D10 ;
-3. **on assume** que la spécificité complète n'est pas atteignable sous 5 séances, et on le
-   DIT dans « Pourquoi ce plan » (le motif de R20.2 étendu à la sortie longue).
+**Ce qui n'a PAS été fait, et pourquoi.** Les trois issues envisagées en ouvrant cette entrée —
+indexer le volume utile sur le TEMPS de course (1), élargir la part hebdomadaire (2), assumer et
+le dire (3) — sont tranchées par la mesure : (2) est livré et suffit, (1) reste une refonte de
+`UTIL` et de la sonde de capacité que rien ne réclame plus, (3) n'a plus d'objet sur 46 profils
+sur 48. `blockBounds` continue de remplacer le plancher déclaré par son « plancher digne »
+forfaitaire (décision D3-D7/D10 de l'audit v6) et **c'est très bien ainsi** : forcer ce plancher
+avait été mesuré et rendait les choses PIRES (30/48 au lieu de 31). Le correctif ne passe pas par
+le plancher, il passe par la répartition.
 
-Ma préférence va à **(3) puis (1)** : (3) est honnête et coûte peu, (1) est la vraie réponse
-mais demande de reprendre `UTIL` et la sonde de capacité, donc un lot à part entière.
-
-**Note de méthode — ma première garde valait zéro.** Écrite sur l'INTENTION (« la longue couvre
-70 % de la distance »), elle était satisfaite par le moteur d'AVANT C30 : trois cassures
-délibérées, **trois verts**. Septième occurrence dans ce dépôt d'un critère qui nomme une
-grandeur et en mesure une voisine. Réécrite sur les 7 profils que C30 déplace réellement, avec
-leurs valeurs, elle rougit sur trois cassures (C30 retiré, plancher devant plafond, part du temps
-de course 0,9 → 0,6). **Une quatrième reste verte et c'est un résultat** : passer la part de
-distance de 70 % à 50 % ne change rien, parce que sur ces 7 profils le repère TEMPS domine
-toujours. La moitié « distance » de la règle n'a encore jamais mordu.
+**Gardes** : `C30-A` (banc v6) re-épinglé sur les valeurs livrées, avec les **trois états
+successifs** écrits (sans rien → C30 seul → C30b) et quatre témoins qui ne doivent pas bouger ;
+`C30b-A` (nouveau) porte le mécanisme — part ≤ 70 %, chiffre de la décision relu sur le plan
+LIVRÉ, et neutralité en volume vue du dehors (la semaine ne dépasse pas sa courbe annoncée).
+**Vérifiées rouges sur trois cassures sur quatre** ; la quatrième est le résultat (c) ci-dessus.
+Le golden gagne une sous-passe `C30b/run/10k` — sa passe « allure » existante regardait
+`vol_max: 10`, la bonne enveloppe pour C31 mais la mauvaise pour C30b (à 10 h la longue est déjà
+butée sur son plafond aux trois formats), **quatrième occurrence du même angle mort qu'A-2**,
+vérifié en retirant C30b du moteur.
 
 ```verify
 id: O-26
-quoi: C30 ne déplace qu'une poignée de profils, le plancher n'atteignant pas la boucle de volume
-attendu: /déplacés par C30 : 7$/m
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const L=(o)=>{const a=Object.assign({intent:'competition',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',history:'confirme',injury:'aucune',sessions_max:'5',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',vol_recent:'3',terrain:'route'},o);let s=0;try{const p=E.buildPlan('run',a);p.weeks.forEach(w=>w.days.forEach(d=>d.sessions.forEach(x=>{if(x.long&&(x.min||0)>s)s=x.min;})))}catch(e){s=-1}return s};let n=0,b=0;for(const format of ['5k','10k','semi','marathon'])for(const level of ['debutant','inter','avance'])for(const pace of ['4:00','4:30','5:45','7:00','8:30'])for(const vol_max of ['4','6','8']){n++;}console.log('profils : '+n);const M={'10k/debutant/8:30/6':63,'10k/debutant/8:30/8':63,'semi/debutant/8:30/8':117,'semi/inter/7:00/8':124,'semi/inter/8:30/8':119,'semi/avance/7:00/8':124,'semi/avance/8:30/8':119};let ok=0;for(const k in M){const [format,level,pace,vol_max]=k.split('/');if(L({format,level,pace,vol_max})===M[k])ok++;}console.log('déplacés par C30 : '+ok);"
+quoi: C30b porte la sortie longue à sa cible de spécificité et la garde sous 70 % de la semaine
+attendu: /cibles C30b : 6\/6 · part max \d+ %/m
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(o)=>E.buildPlan('run',Object.assign({intent:'competition',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',history:'confirme',level:'inter',injury:'aucune',sessions_max:'5',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',vol_recent:'3',terrain:'route'},o));const M={'10k/8:30/8':79,'10k/7:00/6':64,'semi/8:30/8':130,'semi/7:00/6':130,'10k/4:30/8':59,'marathon/4:30/8':180};let ok=0,part=0;for(const k in M){const [format,pace,vol_max]=k.split('/');const p=P({format,pace,vol_max});let s=0;p.weeks.forEach(w=>{const ss=w.days.flatMap(d=>d.sessions).filter(x=>x.d!=='rs');const t=ss.reduce((a,x)=>a+(x.min||0),0);ss.forEach(x=>{if(x.long&&(x.min||0)>s)s=x.min;if(x.long&&t)part=Math.max(part,100*(x.min||0)/t);})});if(s===M[k])ok++;}console.log('cibles C30b : '+ok+'/6 · part max '+Math.round(part)+' %');"
 ```
 
 
-### O-27 · Pendant une passe de RÉDUCTION, un plancher absolu peut AUGMENTER un step court · ⏳ **OUVERT — mesuré, 19 profils golden**
+### O-27 · Pendant une passe de RÉDUCTION, un plancher absolu peut AUGMENTER un step court · ✅ **FERMÉ (fondateur, 05/08/2026 : « pas très dangereux mais corrige si facile »)**
 
 Trouvé en créant le point unique `src/engine/stepScale.ts` (25 écritures de « réduire un step
 d'un facteur », 6 variantes qui n'étaient pas d'accord). Le point unique porte un drapeau
@@ -1599,11 +1663,24 @@ f = 0,9 rend **10** — une passe de réduction qui ALLONGE un step court jusqu'
 comportement validé, photographié dans le golden, et possiblement porteur (les planchers de
 dignité de l'audit v6 D3-D7/D10 interagissent avec les fenêtres de séance).
 
-Décision de ce lot : **ne pas changer en douce un comportement validé dans un lot d'hygiène.**
-Les trios du générateur gardent leur sémantique (golden au bit près, vérifié), le clamp reste
-opt-in, `reduceDay` (chemin d'ADAPTATION quotidienne, où la promesse A3 est écrite noir sur
-blanc) le pose. Trancher les 19 cas est une décision d'entraînement : un step de 9 min dans une
-semaine d'affûtage doit-il remonter à 10 « pour rester digne », ou descendre comme demandé ?
+**TRANCHÉ.** Les cinq trios du générateur posent `clampToOriginal` — vérifié d'abord que les
+cinq sont bien des passes de RÉDUCTION (`f < 1` dans les cinq contextes : décroissance
+d'affûtage, R3.13, et les trois coupes de la boucle de réparation). Une réduction ne peut plus
+rendre plus qu'elle a reçu, et c'est désormais **structurel** : le point unique `stepScale`
+l'applique aux trois champs, il n'y a plus de site où l'écrire autrement.
+
+**Ce que ça déplace, mesuré sur 189 profils de contrôle (7 sports × historiques × niveaux ×
+intentions)** : **173 inchangés, 15 en baisse, 1 en hausse** — `duathlon/S/reprise/debutant`,
+1268 → 1277 min, soit **+0,7 %**. Golden : 19 empreintes, toutes sur les minutes FACILES, de 1 à
+4 min par semaine.
+
+**La hausse résiduelle est signalée sans être attribuée.** Le mécanisme plausible est un effet de
+second ordre — le clamp laisse un état intermédiaire plus petit, et une passe de PLANCHER en aval
+(qui a le droit d'ajouter) occupe le budget libéré ; la seule semaine concernée est en phase
+d'affûtage, où ces passes se croisent le plus. Mais l'attribution n'a pas été tracée, et écrire
+« c'est le plancher » sans l'avoir mesuré serait exactement ce que ce registre reproche ailleurs.
+Ce qui EST établi : aucune violation dure sur les 27 gates, et l'invariant de step tient
+partout.
 
 ```verify
 id: O-27
@@ -1673,18 +1750,21 @@ acceptable. **Vérifiée rouge contre la recette ci-dessus.**
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas
 échouer la CI **par décision explicite**, pas par oubli.
 
-### Banc v6 — 4 dettes (`npm run audit:v6` → « 57 vert · 4 dette connue · 0 régression »)
+### Banc v6 — 3 dettes (`npm run audit:v6` → « 64 vert · 3 dette connue · 0 régression »)
 
 | id | ce qui reste | pourquoi c'est laissé |
 |---|---|---|
 | **D2** | 2 configurations sur 153 (`swim/sprint\|demifond/debutant/reprise`) portent encore une violation dure | Tout le plan tient entre 45 min et 1 h de nage par semaine, les 4 séances sont AU plancher (C15 : 850 m ; C20 : 0,42 h/séance) et l'écart semaine max ↔ pic est de 5 minutes. **Il n'y a plus de marge sous les planchers pour exprimer une hiérarchie.** Un rabotage a été tenté : sans effet, les planchers le reprennent immédiatement ; le code a été retiré plutôt que laissé inerte. |
 | **D3** | 4 sauts de charge à **+11 %** au lieu de +10 % | Le rapport dev→peak de la courbe vaut 1,18, donc **supérieur à C22 par construction**. Sur un plan court à deux récups consécutives, C22 voudrait le pic ≤ 273 min quand la hiérarchie du plan le veut > 248 : les deux tiennent dans 25 minutes et les planchers de séance interdisent de descendre. Réduire encore ferait passer le pic SOUS une semaine de base — on échangerait une violation contre une pire. **La correction de fond est dans la FORME de la courbe, pas dans une passe de rattrapage.** |
+_`O17` a quitté cette table le 05/08/2026 : sa dette est payée par la correction d'O-21, et son
+`expect` est repassé à `'pass'` dans le même commit._
+
 | **F2** | 7 séances de qualité à ~42 % de temps en zone cible au lieu de 45 % | **Contradiction assumée entre deux règles.** Ces séances ont déjà leur échauffement et leur retour au calme à leur plancher (C13/C13b) ; atteindre 45 % demanderait exactement ce que C13c interdit (échauffer moins de 10 min avant un effort maximal). La priorité n°2 du manifeste (prévention des blessures) tranche. Le test reste en `expect:'fail'` **pour garder le chiffre sous les yeux**, pas parce qu'on l'a oublié. |
 
 ```verify
 id: DETTE-v6
 quoi: 3 dettes connues, 0 régression
-attendu: /4 dette connue · ✖ 0 régression/
+attendu: /3 dette connue · ✖ 0 régression/
 cmd: npm run audit:v6
 ```
 
@@ -1785,7 +1865,7 @@ Ni l'un ni l'autre n'est fait : ce sont deux chapitres ouverts, désormais corre
 ```verify
 id: D3
 quoi: 7 sauts C22 encore présents, D2 et F2 inchangés
-attendu: /4 dette connue/
+attendu: /3 dette connue/
 cmd: npm run audit:v6
 ```
 
@@ -1799,7 +1879,7 @@ Ce ne sont pas des bugs : ce sont des endroits où **on ne saurait pas** qu'il y
 |---|---|---|
 | ~~A-1~~ | ~~`audit:v7` tourne à N=150~~ | ✅ **Fermé (R15.1)** : N=400, budgets en taux, jour de course varié. |
 | A-2 | Le golden master fige `vol_max` au profil de base sur presque toutes ses passes | Deux passes correctives ont déjà dû être ajoutées pour cette raison (« course datée » en N2, « volume et extrapolation » en R14). Le prochain paramètre figé produira le même angle mort. |
-| A-3 | `R14.3-b` n'a **aucun critère automatique** | Personne ne saura si le dénivelé vélo est traité, sauf à relire le code. |
+| ~~A-3~~ | ~~`R14.3-b` n'a **aucun critère automatique**~~ | ✅ **FAUX depuis R15.2 — déplacée au §4** : les critères existent (`R15.2-A/B/C/D`, gate `audit:r15`) et sont verts. |
 | A-4 | Le monolithe `Coach_Pro_V1.5.html` a le moteur à jour mais son **UI est gelée à R4** | Les régressions d'interface introduites depuis (les onglets — 5 puis 4 en R16.9 —, carte Trail, étape terrain) ne s'y voient pas. C'est documenté et voulu — mais un utilisateur qui ouvrirait ce fichier verrait un produit d'il y a plusieurs lots. |
 | ~~A-5~~ | ~~**Aucune vérité terrain pour la projection R14/R14.1**~~ ✅ **PREMIER GESTE FAIT (03/08/2026)** | `endurabuild/js/projection-log.js` — le journal existe. **Une entrée par semaine ISO** (la projection ne bouge pas d'un jour à l'autre : l'adhérence est une fenêtre glissante de six semaines, P1 — journaliser chaque ouverture coûterait sept fois le stockage pour la même information), portant de quoi REFAIRE le calcul sans le code de l'époque : horizon, références mesurées qui ont servi d'ancre, `gainPct`, `gainBand`, adhérence, confiance, temps annoncés par discipline, et le MOTIF quand le moteur refuse de projeter (P8 — un refus est une donnée). `noteRaceResult()` referme la boucle au passage du jour J en attachant le temps réel à la projection journalisée **à son horizon d'origine** : `raceResult.predicted` ne contenait que la prédiction RECALCULÉE le jour J, laquelle ne dit rien de ce que le moteur annonçait quatre mois plus tôt. **Ce qui reste à faire est HUMAIN** : la calibration se fait hors ligne, sur les données exportées, et seulement quand une POPULATION aura couru — P11 a montré qu'un cas unique ne calibre rien (HERITAGE). ⚠ **Le journal n'est relu par AUCUNE partie du moteur, et c'est sa garde principale** : un journal qui influencerait la projection serait une seconde source de vérité (R11.1/R20.5/U9) et, pire, une boucle qui se confirme elle-même — le moteur calibré sur ses propres annonces mesurerait sa cohérence au lieu de sa justesse. `A5-B` l'asserte au caractère près (`tests/e2e/smoke-projlog.mjs`, 16ᵉ suite E2E), avec le critère « l'empreinte SAIT voir un changement » sans lequel elle serait satisfaite par une mesure aveugle. Suite **vérifiée rouge** (7 critères sur 11) en désactivant le journal.
 | ~~A-6~~ | ~~**Dates absolues** dans le golden et les scripts~~ ✅ **FERMÉ (03/08/2026) — et l'application mécanique aurait cassé le golden** | Point unique `bench-dates.cjs`. **Mesuré : ce n'était pas de l'hygiène, c'était une échéance datée** — `banc_grand_public` et `bench_r13` MOURAIENT à +90 jours, `banc_invariants` à +200, sur une exception non rattrapée (`ENTREE_INVALIDE : au moins 22 semaines avant la course`) et non sur un défaut. Cinq bancs ancrés, **vérifiés verts à +400 jours**, contre-preuve faite (les mêmes, non ancrés, rouges à +90/+200). **Le golden reste en dates ABSOLUES, délibérément** : mesuré 0 écart à +200 jours — un golden doit être REPRODUCTIBLE, pas suivre le calendrier ; le rendre relatif l'aurait fait dériver chaque semaine. Sa seule exposition (l'horizon de `RACE_PASS_DATES`) est couverte par sa garde d'échéance, vérifiée déclenchante à +290 jours.
@@ -1813,6 +1893,7 @@ qui n'existe plus, ce qui est le symétrique exact d'un défaut caché.
 
 | entrée | ce qu'elle affirme | ce qui est mesuré aujourd'hui |
 |---|---|---|
+| **A-3** (§3, statut « angle mort ») | « `R14.3-b` n'a aucun critère automatique : personne ne saura si le dénivelé vélo est traité, sauf à relire le code » | **Faux depuis R15.2, mesuré le 05/08/2026.** O-2 EST R14.3-b, et sa fermeture a livré ses critères — `R15.2-A/B/C/D` dans `npm run audit:r15`, les quatre verts : bande de puissance qui descend avec le relief (plat 175–191 W, montagne 169–185, écart 6 W), vallonné strictement entre les deux, conseil de pacing qui nomme la puissance normalisée, clé unique `terrain`. L'entrée O-2 le disait déjà en toutes lettres (« le critère est venu avec le handoff de revue ») ; c'est le tableau des angles morts qui n'avait pas suivi. Un angle mort qui n'en est plus fait croire à une cécité qu'on n'a pas — le symétrique du défaut caché, et la raison d'être de ce §4. |
 | `R10_DEFECTS.md` **D10-9** (statut « ouvert ») | « Aucun garde-fou n'empêche la prochaine collision de noms dans le bundle : à ajouter » | **Corrigé.** `checkCollisions()` existe (`scripts/buildApp.mjs:94`, appelée l. 116) et fait échouer le build en nommant le doublon. |
 | **question R15.5** — « le harnais distingue-t-il un `xfail` qui PASSE d'un échec attendu ? » | Risque soulevé : le jour où quelqu'un corrige F2, le test rougirait et la correction serait annulée comme une régression | **Déjà correct, vérifié.** `audit_v6.mjs:942` : un test `expect:'fail'` qui passe s'affiche `★` et porte la note « ← CORRIGÉ : passer expect à 'pass' ». Il compte comme VERT, pas comme échec. Aucun travail nécessaire. |
 | `R10_DEFECTS.md` §C13e | « Reste 307 séances sous 10 min d'échauffement, toutes en trail… leur récupération n'est PAS chiffrée (7 % des blocs) » | **Corrigé** par le lot « la récupération devient une donnée » : sur 344 blocs à répétitions multiples mesurés (6 sports), **0 récupération non chiffrée**, et `F4` mesure **0 violation** du plancher de 10 min. |
@@ -1874,11 +1955,11 @@ pas droit à cette protection, quelles que soient les CGU.
 | # | sujet | nature |
 |---|---|---|
 | ~~H-1~~ | ~~`STRAVA_RELAY_DEFAULT = ""` dans `endurabuild/js/config.js`~~ | ✅ **FAIT le 03/08/2026** : app Strava créée (client `269639`), worker Cloudflare déployé, `STRAVA_RELAY_DEFAULT` renseigné, connexion confirmée en production (`✓ Connecté`). Le `client_secret` vit UNIQUEMENT en variable de type *Secret* côté Cloudflare — jamais dans le dépôt, jamais dans un commit. Périmètre `activity:read_all,profile:read_all` (le second ajouté par O-22). Une garde E2E qui supposait le relais ABSENT a dû être réécrite : elle mesurait l'absence de déploiement, pas un comportement. |
-| H-2 | Notifications push app fermée | Demande un backend. Décision produit assumée : on n'annonce pas ce qu'on ne peut pas tenir. |
-| H-3 | CONSEIL nutritionnel (par opposition aux ESTIMATIONS, livrées) | Bloqué sur avis diététicien. **Ligne à ne pas franchir**, manifeste. |
-| H-6 | **CGU/CGV** — clauses anti-reverse-engineering, anti-scraping, anti-réutilisation commerciale | Démarche humaine (juriste). Devient le levier PRINCIPAL depuis la décision `S-1` : le moteur étant public, la protection est le droit d'auteur et la concurrence déloyale, pas le secret des affaires. |
-| H-7 | **Enveloppe Soleau / dépôt INPI** | Démarche humaine, peu coûteuse. Ne protège pas l'algorithme ; date la méthode et appuie une action en concurrence déloyale. |
-| H-4 | Candidature API MyFitnessPal | Démarche humaine. |
+| H-2 | Notifications push app fermée | ✅ **POSITION CONFIRMÉE (fondateur, 05/08/2026)**. Demande un backend ; S-1 a acté qu'il n'y en a pas. On n'annonce pas ce qu'on ne peut pas tenir — l'entrée reste ouverte comme RAPPEL, pas comme dette. |
+| H-3 | CONSEIL nutritionnel (par opposition aux ESTIMATIONS, livrées) | ✅ **POSITION CONFIRMÉE (fondateur, 05/08/2026)** : reste **bloqué sur avis diététicien**. ⚠ « Validé » désigne la POSITION, pas l'obtention de l'avis — aucun conseil nutritionnel ne peut être livré tant qu'un professionnel n'a pas tranché, et notamment la question ouverte par N11 : les macros N10 sont en substance une **cible d'apport** (leurs trois sources sont des références d'apport, et leur somme en kcal ne coïncide pas avec la dépense affichée sur la même carte). **Ligne à ne pas franchir**, manifeste. |
+| ~~H-6~~ | ~~**CGU/CGV** — clauses anti-reverse-engineering, anti-scraping, anti-réutilisation commerciale~~ | 🚫 **ABANDONNÉ (fondateur, 05/08/2026) — et sa conséquence est écrite ici.** L'entrée disait que les CGU deviennent le levier PRINCIPAL depuis `S-1` (le moteur étant public, le secret des affaires ne s'applique pas). Les abandonner laisse **`LICENSE` — le droit d'auteur — comme seule protection**, sans le support contractuel qui rend une réutilisation attaquable. C'est un arbitrage assumé, pas un oubli. Réouverture naturelle : modèle payant, copie constatée, ou première levée de fonds (la due diligence les demandera). |
+| ~~H-7~~ | ~~**Enveloppe Soleau / dépôt INPI**~~ | 🚫 **ABANDONNÉ (fondateur, 05/08/2026).** Ne protégeait pas l'algorithme : il DATAIT la méthode, ce qui appuie une action en concurrence déloyale. Sans lui, l'antériorité devra s'établir autrement — l'historique git public du dépôt en est une trace horodatée, plus faible qu'un dépôt INPI mais non nulle. |
+| ~~H-4~~ | ~~Candidature API MyFitnessPal~~ | 🚫 **ABANDONNÉ (fondateur, 05/08/2026).** Sans objet depuis R6 : le journal alimentaire a été retiré du produit sur décision utilisateur, donc il n'y a plus rien à alimenter. L'entrée avait survécu à la fonctionnalité qu'elle servait. |
 | ~~H-5~~ | ~~Swimrun hors V1~~ | ✅ **R16.10** : réintégré après traitement de la dette (78 % → 89 % de profils propres). Le drapeau `EB_SWIMRUN` n'existe plus. |
 
 ---

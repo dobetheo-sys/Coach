@@ -7,8 +7,8 @@ Seuils : sur-prescrit > 1.4, sous-prescrit < 0.5, alerte séance longue > 55% de
 
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Récup+lourde | Longue >55% | Sans volume/plan | Couverture | Score moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| tri | 108 | 0.98 | 0.92–1.00 | 0 | 0 | 0 | 0.42 | 0 | 0 | 0.0 | 100% | 95 |
-| run | 108 | 0.98 | 0.91–1.00 | 0 | 0 | 0 | 0.46 | 0 | 0 | 0.0 | 100% | 98 |
+| tri | 108 | 0.98 | 0.92–1.00 | 0 | 0 | 0 | 0.43 | 0 | 0 | 0.0 | 100% | 95 |
+| run | 108 | 0.98 | 0.91–1.00 | 0 | 0 | 0 | 0.49 | 0 | 0 | 0.0 | 100% | 98 |
 | bike | 135 | 0.99 | 0.91–1.00 | 0 | 0 | 0 | 0.47 | 0 | 0 | 0.0 | 100% | 99 |
 | swim | 108 | 0.97 | 0.90–0.99 | 0 | 0 | 0 | 0.47 | 0 | 0 | 0.0 | 100% | 97 |
 
@@ -22,7 +22,7 @@ Seuils : sur-prescrit > 1.4, sous-prescrit < 0.5, alerte séance longue > 55% de
 
 ## Règles du manifeste (note.md)
 
-- Saut >+10% de la courbe déclarée entre semaines de charge : **35** combinaisons en échec
+- Saut >+10% de la courbe déclarée entre semaines de charge : **31** combinaisons en échec
 - Saut >+25% de volume réel (métrique audit) : **0** en échec (sauts +15–25% tolérés comme bruit de métrique : 14 combos concernés)
 - Deux longues CAP consécutives : **0** en échec
 - Sortie longue CAP >3h pour un débutant : **0** en échec
@@ -35,6 +35,6 @@ Recoupement d'estimateurs : écart médian |nos minutes − s.min du générateu
 ## Pires cas (ratio pic le plus extrême par sport)
 
 - **tri** : 70.3/reprise/inter/plaisir → ratio 0.90 (déclaré 8.0h, prescrit 7.2h), longue 39%
-- **run** : 5k/confirme/debutant/finir → ratio 0.89 (déclaré 2.3h, prescrit 2.0h), longue 39%
+- **run** : 10k/reprise/debutant/competition → ratio 0.89 (déclaré 3.3h, prescrit 3.0h), longue 46%
 - **bike** : crit/reprise/debutant/competition → ratio 0.90 (déclaré 4.3h, prescrit 3.9h), longue 38%
 - **swim** : sprint/confirme/debutant/competition → ratio 0.86 (déclaré 1.0h, prescrit 0.9h), longue 32%

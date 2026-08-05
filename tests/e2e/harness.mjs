@@ -100,6 +100,13 @@ export async function traverserQuestionnaire(page, { reponses = {}, saisies = {}
           else if (inp.type === "number") {
             const lo = parseFloat(inp.min), hi = parseFloat(inp.max);
             if (!isFinite(lo) || !isFinite(hi)) continue;
+            // ⚠ CE MILIEU DE PLAGE EST UN BOUCHON DE VALIDATION, PAS UN ATHLÈTE.
+            // Trouvé en livrant PW (le chrono vélo) : les bornes de `weight` sont 25-250 kg,
+            // donc le milieu vaut **138 kg**, et une suite qui ne déclare pas de poids mesurait
+            // le vélo d'un duathlète de 138 kg — 40 km en 1 h 57 au lieu de 1 h 14. Le modèle
+            // avait raison, l'entrée était absurde, et rien ne le disait.
+            // Toute suite qui asserte une grandeur dépendant d'un champ libre doit donc le
+            // DÉCLARER dans `saisies` : ce remplissage ne sert qu'à franchir la validation.
             v = String(Math.round((lo + hi) / 2));
           } else continue;
         }

@@ -116,8 +116,18 @@ check("R14.1-H", "plan jamais commencé → confiance « faible »", () => {
 check("R14.1-I1", "levier poids absent tant qu'il n'est pas demandé", () => {
   const pj = proj(ans({ weight_lever: "non" }));
   if (!pj) return { ok: false, info: "pas de projection" };
-  const txt = JSON.stringify(pj);
-  return { ok: (pj.weightLever ?? null) === null && !/kg\b/.test(txt), info: pj.weightLever ? "weightLever présent sans demande" : "" };
+  const txt = JSON.stringify(pj).toLowerCase();
+  // LE CRITÈRE MESURE LE LEVIER, PAS LES DEUX LETTRES « KG ».
+  // Écrit d'abord comme `!/kg\b/`, il interdisait le mot « kg » N'IMPORTE OÙ dans la
+  // projection — une ceinture posée sur l'UNITÉ au lieu de la NOTION. PW l'a fait passer rouge
+  // en publiant une hypothèse de modèle parfaitement légitime (« 85 kg tout compris », la masse
+  // qui entre dans l'équation de Martin) : le critère nommait « le levier poids fuite » et
+  // mesurait « le mot kg apparaît ». Neuvième occurrence de cette famille dans ce dépôt.
+  // Il porte désormais sur le vocabulaire du LEVIER — le même que celui d'I2 — plus `w/kg`,
+  // qui est la grandeur que P9 affiche quand il est demandé.
+  const levier = /(w\/kg|poids cible|perte de poids|kg à perdre|perds|tu dois|il faut|régime|déficit|kcal)/.test(txt);
+  return { ok: (pj.weightLever ?? null) === null && !levier,
+    info: pj.weightLever ? "weightLever présent sans demande" : levier ? "vocabulaire du levier poids présent sans demande" : "" };
 });
 check("R14.1-I2", "levier demandé : sensibilité affichée, aucune injonction, aucun calendrier", () => {
   const pj = proj(ans({ weight_lever: "oui", weight_target: "79" }));

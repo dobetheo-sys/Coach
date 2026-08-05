@@ -563,9 +563,19 @@ test("E4", "Poids invraisemblable → estimation énergétique refusée", "pass"
 // Décision du fondateur (03/08/2026) : **dette déclarée plutôt que témoin réécrit.** Ré-ancrer
 // le témoin sur l'athlète lui-même effacerait ce que le banc vient de trouver — et les deux
 // candidats mesurés étaient instables (la rampe R10 fait légitimement baisser un plan à faible
-// `vol_recent`). Le critère reste donc AFFICHÉ, avec son chiffre, comme D2/D3/F2 : suivi en
-// **O-21** dans BUGS_OUVERTS.md, à repasser en `"pass"` DANS LE MÊME COMMIT que sa correction.
-test("O17", "capacité > historique de charge : le moteur AVERTIT, et ne bride pas", "fail", () => {
+// `vol_recent`). Le critère reste donc AFFICHÉ, avec son chiffre, comme D2/D3/F2.
+//
+// ── DETTE PAYÉE (O-21, 05/08/2026) : `expect` repasse à `"pass"`, dans le commit de la
+// correction, comme le protocole l'exige. Le témoin n'a PAS été réécrit — c'est le moteur qui a
+// changé. Deux causes, mesurées : (1) sur une semaine PLATE, le remplissage d'I14b était
+// structurellement mort (son plafond de receveuse, `0,80 × longue`, tombe SOUS la valeur que
+// I14 vient d'imposer) et les minutes retirées disparaissaient ; elles reviennent désormais à
+// la sortie longue elle-même. (2) La garantie A2/I1 se rabattait sur une semaine de pic en
+// RÉCUPÉRATION quand il n'y avait pas de pic en charge, et rabotait tout le plan à ce
+// plafond-là — deux fois, le second passage repartant d'un plafond encore abaissé par D4.
+// L'auditeur, lui, avait déjà tranché ce cas en AVERTISSEMENT (O-21, première moitié) : le
+// générateur dit maintenant la même chose que lui.
+test("O17", "capacité > historique de charge : le moteur AVERTIT, et ne bride pas", "pass", () => {
   const bad = [];
   const base = { format: "10k", vol_max: "6", sessions_max: "4", pace_known: "oui" };
   const plan = (pace, volRecent) => E.buildPlan("run", { ...profile("run"), ...base, pace, vol_recent: volRecent });
@@ -652,6 +662,79 @@ test("U9", "le refus « course trop proche » ne parle jamais d'une autre épreu
   return { ok: bad.length === 0, detail: bad.join(" ; ") || `${vus} refus, tous nomment la bonne épreuve` };
 });
 
+// ── PW — LE VÉLO A ENFIN UN CHRONO, ET LE TRIATHLON UN TOTAL ───────────────────────────
+//
+// Trois faces, parce que le risque est différent sur chacune : le chrono existe et il est
+// PLAUSIBLE ; il RÉAGIT à ce dont il dépend (relief, position, poids) ; et il REFUSE quand la
+// matière manque, au lieu d'inventer une masse.
+const triPred = (over) => E.predict("tri", { ...profile("tri"), format: "70.3", ftp_known: "oui", ftp: "250",
+  pace_known: "oui", pace: "4:30", css_known: "oui", css: "1:40", weight: "75", terrain: "plat", ...over });
+const legOf = (p, re) => (p.items || []).find((i) => re.test(i.leg)) || null;
+const secOf = (v) => { const m = String(v).split(/[–-]/)[0].trim();
+  const a = m.match(/^(\d+)h(\d+)$/), b = m.match(/^(\d+)'(\d+)$/);
+  return a ? +a[1] * 3600 + +a[2] * 60 : b ? +b[1] * 60 + +b[2] : NaN; };
+
+test("PW-A", "le chrono vélo existe sur les 4 formats de tri, et il est plausible", "pass", () => {
+  // Les bornes sont larges À DESSEIN : ce critère garde l'ORDRE DE GRANDEUR, pas une
+  // calibration. Une garde serrée sur des valeurs exactes se casserait à chaque retouche de
+  // CdA sans rien dire de plus — et ce qu'on veut savoir, c'est « ce chrono est-il celui d'un
+  // triathlète ou celui d'un bug ». Vitesses attendues : 30-42 km/h selon le format.
+  const bad = [];
+  for (const [format, km] of [["S", 20], ["M", 40], ["70.3", 90], ["Full", 180]]) {
+    const it = legOf(triPred({ format }), new RegExp("Vélo " + km + "km"));
+    if (!it) { bad.push(format + " : aucun chrono vélo"); continue; }
+    const kmh = km / (secOf(it.value) / 3600);
+    if (!(kmh > 28 && kmh < 45)) bad.push(`${format} : ${kmh.toFixed(1)} km/h hors [28, 45]`);
+    if (!/Martin/.test(it.why)) bad.push(format + " : le chrono ne dit pas d'où il vient");
+    if (!/CdA/.test(it.why)) bad.push(format + " : les hypothèses ne sont pas affichées");
+  }
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "4 formats, vitesses dans la plage d'un triathlète" };
+});
+
+test("PW-B", "le total inclut les transitions, et il est la somme de ses parts", "pass", () => {
+  const bad = [];
+  for (const format of ["S", "M", "70.3", "Full"]) {
+    const p = triPred({ format });
+    const tot = legOf(p, /Total/);
+    if (!tot) { bad.push(format + " : pas de total"); continue; }
+    const parts = ["Natation", "Vélo \\d+km", "CAP"].map((re) => legOf(p, new RegExp(re)));
+    if (parts.some((x) => !x)) { bad.push(format + " : un segment manque alors que le total sort"); continue; }
+    const somme = parts.reduce((t, x) => t + secOf(x.value), 0);
+    const total = secOf(tot.value);
+    // Le total DOIT dépasser la somme des trois segments — de la valeur des transitions.
+    const trans = total - somme;
+    if (trans <= 0) bad.push(`${format} : total ${total}s ≤ somme des segments ${somme}s — les transitions ne sont pas comptées`);
+    else if (trans < 120 || trans > 900) bad.push(`${format} : ${Math.round(trans / 60)} min de transitions, hors [2, 15]`);
+    if (!/T1/.test(tot.why) || !/T2/.test(tot.why)) bad.push(format + " : le total ne dit pas qu'il compte les transitions");
+  }
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "4 formats : total = segments + T1 + T2" };
+});
+
+test("PW-C", "le chrono RÉAGIT au relief et au poids, et REFUSE sans poids", "pass", () => {
+  const bad = [];
+  const t = (over) => { const it = legOf(triPred(over), /Vélo 90km/); return it ? secOf(it.value) : null; };
+  const plat = t({ terrain: "plat" }), vall = t({ terrain: "vallonne" }), mont = t({ terrain: "montagne" });
+  if (!(plat && vall && mont)) bad.push("un des trois reliefs ne rend pas de chrono");
+  else {
+    if (!(vall > plat)) bad.push(`vallonné (${vall}s) pas plus lent que plat (${plat}s)`);
+    if (!(mont > vall)) bad.push(`montagne (${mont}s) pas plus lent que vallonné (${vall}s)`);
+    // Ordres de grandeur visés à la calibration : +5 à +15 % en vallonné, +18 à +40 % en montagne.
+    const pv = 100 * (vall / plat - 1), pm = 100 * (mont / plat - 1);
+    if (pv < 5 || pv > 15) bad.push(`vallonné +${pv.toFixed(0)} % hors [5, 15]`);
+    if (pm < 18 || pm > 40) bad.push(`montagne +${pm.toFixed(0)} % hors [18, 40]`);
+  }
+  // Le poids : plus lourd = plus lent (roulement et pente). S'il n'agissait pas, l'entrée
+  // serait décorative — c'est exactement ce que R20.1 a mesuré ailleurs.
+  const l60 = t({ weight: "60" }), l95 = t({ weight: "95" });
+  if (!(l60 && l95 && l95 > l60)) bad.push("le poids n'agit pas sur le chrono vélo");
+  // …et sans poids, on REFUSE en le disant (P7/P8), on n'invente pas une masse.
+  const sans = triPred({ weight: "" });
+  if (legOf(sans, /Vélo 90km/)) bad.push("un chrono vélo est produit SANS poids déclaré");
+  if (legOf(sans, /Total/)) bad.push("un total est produit alors que le vélo n'est pas estimé");
+  if (!(sans.advice || []).some((a) => /[Pp]oids manquant/.test(a))) bad.push("le refus n'est pas expliqué à l'athlète");
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "relief et poids agissent ; sans poids, refus motivé" };
+});
+
 // ── C30 — LA SORTIE LONGUE CONNAÎT L'ÉPREUVE (décision du fondateur, 04/08/2026) ────────
 //
 // « se rapprocher du temps visé sur l'épreuve a minima, et au moins 70 % de la distance ».
@@ -672,14 +755,35 @@ const c30Long = (over) => {
   return sl;
 };
 
-test("C30-A", "C30 allonge la sortie longue des coureurs LENTS — les 7 profils qu'il déplace", "pass", () => {
-  // Les valeurs sont celles mesurées APRÈS le lot ; sans C30 elles valent 57/115/122/116.
+test("C30-A", "C30 + C30b allongent la sortie longue des coureurs LENTS — les profils déplacés", "pass", () => {
   // Un test d'égalité et non d'inégalité : c'est ce qui le rend rouge dans les deux sens.
+  //
+  // TROIS ÉTATS SUCCESSIFS, gardés écrits parce que c'est la seule façon de voir ce que chaque
+  // règle a payé. Sur `10k/inter/8:30/8h` : **47** min sans rien, **47** avec C30 seul (le
+  // plancher était calculé puis annulé en aval — O-26), **76** avec C30b. Sur
+  // `semi/inter/7:00/8h` : 122 → 124 → **130**, le plafond de format.
+  //
+  // C30b a élargi la population de 7 profils à **28 sur 96** (4 formats × 3 niveaux ×
+  // 4 allures × 2 enveloppes) — tous en 10 km et en semi, tous chez des coureurs à 5:45 et
+  // plus lents. Aucun à 4:30 (le rapide atteignait déjà sa cible), aucun sur marathon (la
+  // longue y est au plafond C23 depuis toujours, et c'est C31 qui prend le relais).
   const attendu = [
-    ["10k", "debutant", "8:30", "6", 63], ["10k", "debutant", "8:30", "8", 63],
-    ["semi", "debutant", "8:30", "8", 117], ["semi", "inter", "7:00", "8", 124],
-    ["semi", "inter", "8:30", "8", 119], ["semi", "avance", "7:00", "8", 124],
-    ["semi", "avance", "8:30", "8", 119],
+    // les 7 profils que C30 déplaçait déjà
+    ["10k", "debutant", "8:30", "6", 79], ["10k", "debutant", "8:30", "8", 79],
+    ["semi", "debutant", "8:30", "8", 130], ["semi", "inter", "7:00", "8", 130],
+    ["semi", "inter", "8:30", "8", 130], ["semi", "avance", "7:00", "8", 130],
+    ["semi", "avance", "8:30", "8", 130],
+    // ceux que C30b ajoute — la moitié du gain de ce chapitre est là
+    ["10k", "debutant", "7:00", "6", 64], ["10k", "inter", "7:00", "8", 64],
+    ["10k", "inter", "8:30", "8", 79], ["10k", "avance", "5:45", "8", 59],
+    ["semi", "debutant", "7:00", "6", 130], ["semi", "debutant", "8:30", "6", 130],
+    // …et LE COUREUR RAPIDE, qui n'est plus un témoin immobile — O-21 l'a bougé, pas C30b.
+    // Ces trois-là ne doivent RIEN à la spécificité (leur cible est déjà atteinte) : ils
+    // montent parce que le remplissage d'I14b rend enfin à la sortie longue les minutes que
+    // le plafond de libellé lui avait prises. Gardés ici, avec cette raison, plutôt que
+    // retirés — c'est la seule façon de voir qu'un même chiffre a DEUX causes possibles.
+    ["10k", "inter", "4:30", "8", 59], ["5k", "inter", "8:30", "8", 69],
+    ["semi", "inter", "4:30", "8", 120], ["marathon", "inter", "4:30", "8", 180],
   ];
   const bad = [];
   for (const [format, level, pace, vol_max, min] of attendu) {
@@ -687,6 +791,49 @@ test("C30-A", "C30 allonge la sortie longue des coureurs LENTS — les 7 profils
     if (sl !== min) bad.push(`${format}/${level}/${pace}/${vol_max}h : ${sl} au lieu de ${min}`);
   }
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "les 7 profils déplacés par C30 tiennent leur valeur" };
+});
+
+test("C30b-A", "C30b REDISTRIBUE — la semaine ne grossit pas, et la longue reste sous 70 %", "pass", () => {
+  // La permission du fondateur (05/08/2026) est « jusqu'à 70 % du volume de semaine SI
+  // NÉCESSAIRE ». Deux moitiés, et la seconde est celle qui compte : c'est une redistribution,
+  // pas une charge en plus. Si un jour quelqu'un fait monter la longue sans prendre les minutes
+  // ailleurs, ce critère le voit — et il verrait aussi bien l'inverse, une longue qu'on
+  // laisserait dépasser la borne.
+  const bad = [];
+  let vus = 0, partMax = 0;
+  for (const [format, pace, vol_max] of [["10k", "8:30", "8"], ["10k", "7:00", "6"], ["semi", "8:30", "8"], ["semi", "7:00", "6"]]) {
+    const p = E.buildPlan("run", { ...profile("run"), intent: "competition", med_pain: "non", med_dizzy: "non",
+      med_treat: "non", injury: "aucune", sessions_max: "5", dispo: "quotidienne", doubles: "oui",
+      pace_known: "oui", vol_recent: "3", terrain: "route", format, pace, vol_max });
+    const dec = ((p._v2 || {}).decisions || []).filter((d) => d.id === "C30b");
+    if (!dec.length) { bad.push(`${format}@${pace}/${vol_max}h : aucune décision C30b alors que la longue devrait monter`); continue; }
+    vus += dec.length;
+    for (const d of dec) {
+      const num = Number((/sem\. (\d+)/.exec(String(d.what)) || [])[1]);
+      const wk = p.weeks.find((w) => w.num === num);
+      if (!wk) { bad.push(`${format}@${pace} : la décision cite la semaine ${num}, qui n'existe pas`); continue; }
+      const ss = wk.days.flatMap((x) => x.sessions).filter((x) => x.d !== "rs");
+      const tot = ss.reduce((t, x) => t + (x.min || 0), 0);
+      const lg = ss.find((x) => x.long && !x.race);
+      if (!lg || !tot) { bad.push(`${format}@${pace} S${num} : pas de sortie longue dans la semaine citée`); continue; }
+      const part = (100 * (lg.min || 0)) / tot;
+      partMax = Math.max(partMax, part);
+      // (a) la borne du fondateur
+      if (part > 70) bad.push(`${format}@${pace} S${num} : la longue pèse ${Math.round(part)} % de la semaine (> 70 %)`);
+      // (b) LE CHIFFRE ANNONCÉ EST CELUI DU PLAN LIVRÉ — pas celui de l'instant où la passe a agi.
+      const attendu = `${Math.round(lg.min || 0)} min, soit ${Math.round(part)} % de la semaine`;
+      if (String(d.val) !== attendu) bad.push(`${format}@${pace} S${num} : la décision annonce « ${d.val} », le plan porte « ${attendu} »`);
+      // (c) LA NEUTRALITÉ EN VOLUME, VUE DU DEHORS. C30b tourne APRÈS le point fixe : si elle
+      // ajoutait des minutes au lieu d'en déplacer, plus aucune passe ne le corrigerait et la
+      // semaine dépasserait la courbe annoncée. Mesuré, les semaines touchées tiennent entre
+      // 0,90 et 1,01 fois leur courbe ; la borne est à 1,05 pour ne pas transformer ce critère
+      // en photographie du comportement actuel.
+      const decl = (wk.vol || 0) * 60;
+      if (decl > 0 && tot > 1.05 * decl) bad.push(`${format}@${pace} S${num} : ${Math.round(tot)} min prescrites pour ${Math.round(decl)} annoncées — C30b a AJOUTÉ au lieu de déplacer`);
+    }
+  }
+  if (vus < 4) bad.push(`seulement ${vus} décision(s) observée(s) — l'échantillon ne prouve rien`);
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || `${vus} décisions, part max ${Math.round(partMax)} % (permission 70 %)` };
 });
 
 test("C30-B", "un plancher de spécificité ne passe JAMAIS devant un plafond de sécurité", "pass", () => {

@@ -117,7 +117,7 @@ dépôt — historique git si besoin.
   (jours non réordonnés) et refuse de publier un taux sur un balayage vide. Trail 25,0 % des
   plans · swimrun 44,4 % — c'est ce chiffre qui a tranché O-3.
 - `npm run golden:capture` / `golden:verify` — **golden master** (spec R10) : photographie
-  758 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
+  945 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
   blessures/âges/terrain/volumes + **passe « course datée »** : 6 sports × les 7 jours de
   semaine possibles pour le jour J — sans elle, toute la branche ancrée sur une course était
   hors couverture, et c'est ce trou qui a laissé vivre N2 — plus une passe « volume et
@@ -1113,6 +1113,125 @@ le plancher d'affûtage de Bosquet. Au passage, Riegel n'a plus qu'une écriture
 de `feasibility` délègue au prédicteur.
 **27 gates verts, E2E 18/18, golden 900 recapturé (121 profils, tous en course), registre 25/25.**
 
+**U17 · A-2 · A-3 livrés — trois blocages levés sans arbitrage** (voir ARCHITECTURE.md
+« U17 / A-2 / A-3 ») : **U17** — le titre de séance, cible la plus FRÉQUENTE de l'app (ouvrir le
+détail, replié par défaut depuis U16), mesuré au rendu à **254 × 17 px** : la seule cible tactile
+du produit sans marge verticale, quand la carte repliable voisine a 8 px. Ce n'était pas une
+décision de design mais un standard à appliquer — **U4 a tranché 44 px pour ce dépôt** ; on passe
+à **45**. Garde `U17` sur le rectangle RENDU (pas sur la règle CSS : la hauteur dépend aussi de
+la police, que R16.8 peut bouger), **vérifiée rouge** à 17 px. **A-2** — le golden ne regardait
+**aucun coureur lent** (profil de base à 4:30/km), or C30 et C31 ne mordent que là : troisième
+occurrence de cet angle mort, et elle était PUBLIÉE comme une limite en livrant C31. Passe
+« allure » (2 formats × 4 allures à `vol_max: 10`, l'enveloppe où le back-to-back peut se payer),
+**900 → 908 profils**, et la photo DISCRIMINE — back-to-back à 5:45/7:00/8:30, absent à 4:30.
+**A-3** — l'entrée affirmait que `R14.3-b` n'a aucun critère automatique : **faux depuis R15.2**
+(`R15.2-A/B/C/D`, quatre verts). Déplacée au §4 — un angle mort qui n'en est plus fait croire à
+une cécité qu'on n'a pas.
+**27 gates verts, E2E 18/18, golden 908, registre 26/26.**
+
+**PW livré — le vélo a un CHRONO, et le triathlon un TOTAL avec transitions** (demande du
+fondateur, 05/08/2026 : « j'ai juste les watt pas le temps… le temps total estimé notamment sur
+le triathlon, en incluant les transitions », voir ARCHITECTURE.md « PW ») : le prédicteur rendait
+un chrono pour la nage et la course, et des WATTS pour le vélo — c'est-à-dire rien pour le
+segment qui pèse **48 à 55 % du temps total**. `src/engine/cyclingSpeed.ts` est le point unique
+« une puissance, une vitesse » : modèle de **Martin et al. (1998)**, validé à ±2,7 %, résolu par
+bissection. Ce qui n'est pas mesurable — CdA, Crr, masse du vélo — est déclaré comme HYPOTHÈSE
+avec sa fourchette, et **c'est cette fourchette qui devient l'incertitude annoncée**, pas un ±x %
+décoratif ; l'hypothèse est AFFICHÉE avec le chrono. Le poids, lui, est une entrée réelle : sans
+lui le module REFUSE et le dit (P7/P8) — un poids inventé fausserait le roulement ET la pente,
+dans le sens rassurant. Livré : **Sprint 1h10–1h16 · Olympique 2h23–2h33 · 70.3 4h52–5h16 ·
+Ironman 10h13–11h03** (FTP 250, 75 kg, plat), duathlon compris ; le vélo seul ne reçoit qu'une
+VITESSE, le questionnaire ne demandant pas la distance d'une cyclosportive.
+**Le relief SORT du modèle** au lieu d'être un coefficient posé à côté (R11.1) — et **deux
+calibrations fausses avant la bonne, gardées écrites** : « pente moyenne 2,5 % et 5 % » posée au
+jugé (absurde : 5 % sur 90 km = 2 250 m de D+), puis les vraies pentes moyennes 1 % et 2 % avec un
+commentaire annonçant « +9 % et +23 % » quand le code produisait **+3 % et +11 %**. La cause est
+que **le D+ n'est pas étalé sur la moitié du parcours** : 1 800 m se montent sur 25 km à 7 %, et la
+vitesse s'effondre non linéairement avec la pente. Le profil se décrit donc par deux grandeurs
+PUBLIÉES — D+ pour 100 km et part de la distance montante — dont la pente découle : **plat 157 min
+· vallonné 171 (+9 %) · montagne 199 (+27 %)**. **La fourchette du total est la SOMME des bornes**
+et non leur composition en quadrature : la principale incertitude n'est pas le hasard segment par
+segment, c'est la forme du jour, et ce jour-là elle l'est ou elle ne l'est pas sur les trois à la
+fois. Le total ne sort que si les TROIS segments sont estimés.
+**Deux angles morts trouvés en posant les gardes.** Le golden ne bougeait pas d'un bit quand on
+changeait le CdA de 10 % : il photographie le **PLAN, pas la prédiction** — les temps prédits n'y
+entrent que par la ligne « ⏱ Prévu » du jour J, donc la passe avait besoin d'une date de course
+(cinquième occurrence de la famille A-2). Et cette passe en a débusqué un **réel** : le jour J ne
+recevait pas le poids, donc la carte Prédiction affichait un chrono pendant que la ligne du jour J
+affichait des watts — deux écrans de la même app, deux réponses (forme exacte de R20.1-b).
+**Et le harnais E2E fabriquait un athlète de 138 kg** : il remplit tout champ libre non déclaré par
+le MILIEU de ses bornes, soit 138 pour `weight` (25-250) — 40 km en **1 h 57 au lieu de 1 h 14**,
+le modèle ayant raison sur une entrée absurde que rien ne signalait (famille U14). Deux critères
+E2E encodaient la décision renversée (« aucun total ») : **réécrits, pas supprimés**.
+Gardes `PW-A`/`PW-B`/`PW-C` au banc v6, **vérifiées rouges sur quatre cassures** ; `R14.1-I1`
+a rougi à tort (elle nommait « le levier poids fuite » et mesurait « le mot *kg* apparaît » —
+neuvième occurrence de cette famille) et porte désormais sur le vocabulaire du levier.
+**27 gates verts, E2E 18/18, golden 945 recapturé.**
+
+**O-21 (2e correction) — deux passes se rabattaient sur un état estropié, et « distance ou temps »
+n'était pas la question** (« corrige », fondateur — voir ARCHITECTURE.md « O-21 (2e correction) ») :
+l'entrée laissait un « résidu = arbitrage » (la sortie longue se prescrit-elle en distance ou en
+temps ?). **C30 y avait déjà répondu** — elle se prescrit en TEMPS depuis toujours, 178 min contre
+176 entre 5:45/km et 7:00/km. Instrumenté passe par passe, il y avait **deux** mécanismes, aucun
+n'étant un arbitrage. **(1)** Le remplissage d'I14b est **mort sur une semaine plate** : I14 ramène
+chaque séance à la durée de la sortie longue, et le plafond des receveuses (`0,80 × longue`, R20.3)
+tombe alors SOUS cette valeur — mesuré, quatre séances à 41-43 min pour une longue de **41**,
+`_labelCut` à **27 min par semaine**, et **zéro** rendu. Ce sont les semaines de pic et de
+spécifique qui portent le plus de qualité par rapport à leur longue, donc celles que I14 coupe le
+plus : la périodisation s'inversait, et A2/I1 rabotait TOUT le plan jusqu'au pic estropié —
+**−263 min (−19 %) à 5:45/km, 0 à 7:00/km**. Ce qui reste à rendre va désormais à la sortie longue
+elle-même : ce sont les minutes que la même passe vient de retirer à la même semaine, et une longue
+plus longue RELÈVE le plafond d'I14 au lieu de le violer. **(2)** A2/I1 se rabattait sur une semaine
+de pic en **RÉCUPÉRATION** (`peakAny` faute de `peakNR`) — le cas exact que la première moitié d'O-21
+avait documenté côté AUDITEUR — et rabotait deux fois, `D4` abaissant le plafond entre les deux
+passages : **1032 → 807 min au deuxième passage sur une entrée IDENTIQUE**, quand le profil voisin
+ne perdait que 36 min. L'auditeur avait déjà tranché ce cas en avertissement ; le générateur dit
+maintenant la même chose que lui (R11.1).
+**Portée sur 432 profils × 4 allures** — dispersion du total livré : **p90 16,2 % → 5,0 %**, max
+44,1 → 36,1 %, pire inversion entre allures voisines +38,7 → **+24,3 %**, profils non monotones
+83 → 73. **Le compte bouge à peine et c'est publié** : les séquences résiduelles ne sont pas
+monotones dans un sens ou dans l'autre, elles sont ERRATIQUES (`845 846 847 903`) — du bruit de
+convergence entre passes, dont le traitement demande de rendre le point de convergence idempotent.
+**O-21 reste ouverte avec ce chiffre plutôt qu'avec une promesse.** La dette `O17` du banc v6,
+déclarée par O-21, est **payée dans le même commit** (`expect` → `'pass'`, témoin NON réécrit —
+c'est le moteur qui a changé) ; le banc passe de 4 à 3 dettes.
+**27 gates verts, E2E 18/18, golden 912 recapturé (115 profils, tous vers plus de facile),
+registre 26/26.**
+
+**C30b livré — O-26 fermé : la sortie longue atteint sa cible, et les minutes viennent des
+séances faciles** (décision du fondateur, 05/08/2026 : « oui si elle respecte les plafonds ; en
+semaine de pic, la sortie longue peut représenter 70 % du volume de semaine si nécessaire », voir
+ARCHITECTURE.md « C30b ») : C30 calculait la bonne cible et ne l'atteignait presque jamais —
+**7 profils déplacés sur 180**. `raiseLongRunToSpecificity()` monte la longue vers sa cible et
+**PREND les minutes aux séances faciles de la même semaine** (R4.1, dans l'autre sens) : le total
+de la semaine ne bouge pas d'une minute, c'est une redistribution, et c'est ce qui la rend
+compatible avec « si elle respecte les plafonds ». **Cibles atteintes 31/48 → 46/48 · 28 profils
+déplacés sur 96**, tous en 10 km et en semi, tous chez des coureurs à 5:45/km et plus lents —
+**10 km @ 8:30/km passe de 47 à 76 min**, exactement la population pour laquelle C30 avait été
+écrit. Les 2 restants manquent de 2 min : les donneuses sont à leur plancher.
+**Ma première écriture faisait son travail puis se le faisait annuler.** Placée juste après
+`refillEasyAfterLabelCap`, elle montait bien la longue de 55 à 64 min sur quatre semaines — puis
+`enforceHardTimeCap` rabotait le total et le point fixe C22 la rescalait **proportionnellement** :
+64 → 57, 53, 55. Trois gains sur quatre effacés, et ma mesure concluait « passe inerte » alors
+qu'elle agissait puis était défaite. **Douzième paiement de la leçon du point fixe**, sur ma propre
+passe. Rejouée après le point fixe — ce qu'elle peut se permettre parce qu'elle est neutre en
+volume, ne déplace que du FACILE (donc hors d'atteinte de C26c/C26d) et ne fait que MONTER la
+longue (donc va dans le sens d'I14) — et aussi dans le **dernier** `reconcileDeclaredVolume`,
+celui dont la sortie est livrée. **Deuxième correction : « semaine de pic » n'existe pas comme
+PHASE sur une prépa courte** — restreinte à `phase.id === "peak"`, la passe se déclenchait **0 fois
+sur 48 profils**, une prépa de 5 ou 10 km n'ayant aucune semaine `peak` ; elle se lit donc sur la
+CHARGE à défaut de phase, cohorte prise sur la courbe DÉCLARÉE (sur les minutes livrées, elle
+changeait entre deux passages). **Et la borne des 70 % n'a encore jamais mordu, c'est publié** :
+part médiane 33 %, max 55 % ; la retirer (borne à ×9) ne change RIEN — ce qui borne est le plafond
+de séance du format, comme la moitié « 70 % de la distance » de C30 qui n'a jamais mordu non plus.
+Gardes : `C30-A` re-épinglé avec ses **trois états successifs** (sans rien → C30 → C30b) et quatre
+témoins immobiles, `C30b-A` sur le mécanisme (part ≤ 70 %, chiffre de la décision **relu sur le
+plan livré**, neutralité en volume vue du dehors), **vérifiées rouges sur 3 cassures sur 4**. Le
+golden gagne une sous-passe `C30b/run/10k` — sa passe « allure » regardait `vol_max: 10`, la bonne
+enveloppe pour C31 mais la mauvaise pour C30b (à 10 h la longue est déjà butée sur son plafond aux
+trois formats) : **quatrième occurrence du même angle mort qu'A-2**, vérifié en retirant C30b.
+**27 gates verts, E2E 18/18, golden 912 recapturé, registre 26/26.**
+
 **C31 livré — le back-to-back marathon : la longue trop longue se coupe en deux jours d'affilée**
 (décision du fondateur, 04/08/2026, populations bornées par un audit de littérature préalable —
 voir ARCHITECTURE.md « C31 ») : quand C30 est refusé par le plafond C23 (marathon @ 7:00/km :
@@ -1176,10 +1295,19 @@ mesures de protection raisonnables, or un moteur publié n'en est pas une. La pr
 le **droit d'auteur** (`LICENSE`, déjà cohérente) et la **concurrence déloyale** ; vérifié qu'aucun
 document ne revendique le contraire, et gardé par un bloc `verify`. Les §1/§2/§5/§6 de la grille
 deviennent **hors architecture** plutôt qu'« en retard » ; le §6 garde sa valeur préventive (`src/`
-ne contient aucune notion de produit ni de prix — à PRÉSERVER). Reste HUMAIN : `H-6` CGU,
-`H-7` Soleau. Réouverture si modèle payant à l'usage ou copie constatée — **et le retour arrière
-coûte d'autant plus cher qu'il y a d'utilisateurs** (un backend introduit après coup demande de
-migrer l'état de chacun depuis son `localStorage`).
+ne contient aucune notion de produit ni de prix — à PRÉSERVER). Réouverture si modèle payant à
+l'usage ou copie constatée — **et le retour arrière coûte d'autant plus cher qu'il y a
+d'utilisateurs** (un backend introduit après coup demande de migrer l'état de chacun depuis son
+`localStorage`).
+**Suite donnée aux démarches humaines (fondateur, 05/08/2026)** : `H-6` (CGU) et `H-7` (Soleau)
+sont **abandonnés**, `H-4` (MyFitnessPal) aussi — sans objet depuis que R6 a retiré le journal
+alimentaire. `H-2` (push serveur) et `H-3` (conseil nutritionnel) voient leur POSITION confirmée
+et restent en l'état. **La conséquence de l'abandon de H-6 est écrite plutôt que tue** : S-1
+avait identifié les CGU comme le levier PRINCIPAL une fois le moteur public, puisque le secret
+des affaires ne s'applique pas ; sans elles, **`LICENSE` — le droit d'auteur — est la seule
+protection**, sans le support contractuel qui rend une réutilisation attaquable. Arbitrage
+assumé, pas un oubli. Et `H-3` reste **bloqué sur avis diététicien** : « validé » y désigne la
+position, jamais l'obtention de l'avis.
 
 **I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
 ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en

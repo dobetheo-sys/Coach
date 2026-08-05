@@ -7,7 +7,7 @@ import type { V1Session, V1Step } from "../../engine/types.ts";
 import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS } from "../../engine/constraintMatrix.ts";
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
-import { TRI_SWIM, TRI_BIKE, TRI_RUN } from "../../engine/predictor.ts";
+import { TRI_SWIM, TRI_BIKE, TRI_RUN, TRI_BIKE_KM, TRI_TRANSITION } from "../../engine/predictor.ts";
 
 export function buildTriSessions(kit: SessionKit): V1Session[] {
   const { a, fmt, slot, phase, prog, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
@@ -197,25 +197,77 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
 
 /** Prédiction tri — extraction mécanique de la branche correspondante de `predictRace`. */
 export function predictTri(kit: PredictKit): void {
-  const { refs, format, items, advice, D, range, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy } = kit;
+  const { refs, format, items, advice, D, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy,
+    bikeTime, totalOf, fmtRange, athleteKg } = kit;
   const sw = TRI_SWIM[format], bk = TRI_BIKE[format], rn = TRI_RUN[format];
+  // PW — les bornes de chaque segment, gardées pour le TOTAL. `null` = segment non estimé, et
+  // le total ne s'affiche alors pas : mieux vaut trois lignes sur quatre qu'un total faux.
+  const bornes: Record<"swim" | "bike" | "run", [number, number] | null> = { swim: null, bike: null, run: null };
+  const capte = (lo: number, hi: number, k: "swim" | "bike" | "run") => { bornes[k] = [lo, hi]; };
+
   if (refs.css > 0 && sw) {
     const t = (sw.dist / 100) * refs.css * sw.factor;
     // R18.2 — la fourchette natation suit le MILIEU de la course. Le facteur `sw.factor` est
     // calibré sur de l'eau libre calme : c'est le lac qui vaut 1, pas le bassin.
-    items.push({ leg: "Natation " + sw.dist + "m", value: swimRange(t), why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" + swimWhy });
+    const v = swimRange(t);
+    const b = kit.legBands.swim;
+    capte(t * (b ? b[0] : 1) * 0.97, t * (b ? b[1] : 1) * 1.03, "swim");
+    items.push({ leg: "Natation " + sw.dist + "m", value: v, why: "CSS × " + sw.factor + " — peloton, combinaison et navigation compris" + swimWhy });
   } else advice.push("CSS manquant → pas de projection natation (test 400/200m).");
+
   if (refs.ftp > 0 && bk) {
     // R15.2 — la bande passe par `bikeIF` : le relief du parcours l'abaisse, une seule fois,
     // au même endroit que pour le vélo seul et le duathlon.
     const [blo, bhi] = bikeIF(bk.lo, bk.hi);
-    items.push({ leg: "Vélo", value: Math.round(refs.ftp * blo) + "–" + Math.round(refs.ftp * bhi) + "W", why: "puissance normalisée qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" + bikeWhy });
+    items.push({ leg: "Vélo — intensité", value: Math.round(refs.ftp * blo) + "–" + Math.round(refs.ftp * bhi) + "W", why: "puissance normalisée qui laisse des jambes pour courir — dépasser cette bande se paie sur la CAP" + bikeWhy });
+    // PW — ET LE CHRONO QUI VA AVEC. La puissance est une consigne, pas une réponse : le vélo
+    // pèse 45 à 55 % du temps total selon le format, et l'athlète ne pouvait pas le lire.
+    const est = bikeTime(TRI_BIKE_KM[format], bk.lo, bk.hi);
+    if (est) {
+      capte(est.lo, est.hi, "bike");
+      items.push({
+        leg: "Vélo " + TRI_BIKE_KM[format] + "km",
+        value: fmtRange(est.lo, est.hi),
+        why: "converti depuis la puissance par le modèle de Martin (1998) : " + est.kmhLo.toFixed(1).replace(".", ",")
+          + "–" + est.kmhHi.toFixed(1).replace(".", ",") + " km/h de moyenne. Hypothèses — " + est.hypothese
+          + ". Si tu roules dans une autre position, lis ce chrono de travers : l'aérodynamique pèse plus que les watts au-delà de 30 km/h.",
+      });
+    } else if (!(athleteKg && athleteKg > 0)) {
+      advice.push("Poids manquant → pas de chrono vélo, seulement la puissance cible. Renseigne-le au Profil : sans lui, impossible de convertir des watts en vitesse (le poids entre dans le roulement ET dans la pente).");
+    }
   } else advice.push("FTP manquante → pas de puissance cible vélo (test 20min × 0.95).");
+
   if (refs.thrPace > 0 && rn) {
     const t = riegelSec(refs.thrPace, rn.km) * rn.fatigue;
-    items.push({ leg: "CAP " + (rn.km >= 21 ? (rn.km > 22 ? "marathon" : "semi") : rn.km + "km"), value: runRange(t), why: "Riegel × " + rn.fatigue + " de fatigue post-vélo (facteur " + format + ")" + profWhy });
+    const v = runRange(t);
+    const b = kit.legBands.run;
+    capte(t * (b ? b[0] : 1) * 0.97, t * (b ? b[1] : 1) * 1.03, "run");
+    items.push({ leg: "CAP " + (rn.km >= 21 ? (rn.km > 22 ? "marathon" : "semi") : rn.km + "km"), value: v, why: "Riegel × " + rn.fatigue + " de fatigue post-vélo (facteur " + format + ")" + profWhy });
   } else advice.push("Allure seuil manquante → pas de projection CAP (test 30min).");
-  if (items.length) D("PRED-tri", "Méthode tri", "legs séparés", "Un total additionnerait les incertitudes ; chaque leg a sa méthode et sa fourchette");
+
+  // PW — LE TOTAL, TRANSITIONS COMPRISES. Il n'existait pas, au motif qu'« un total
+  // additionnerait les incertitudes ». C'est vrai, et l'athlète l'additionne quand même — de
+  // tête, sans les transitions, donc plus mal. Il ne sort QUE si les trois segments sont
+  // estimés : un total à deux tiers serait faux de la valeur du tiers manquant.
+  const tr = TRI_TRANSITION[format];
+  if (bornes.swim && bornes.bike && bornes.run && tr) {
+    const [lo, hi] = totalOf([bornes.swim, bornes.bike, bornes.run], tr.t1 + tr.t2);
+    items.push({
+      leg: "🏁 Total estimé",
+      value: fmtRange(lo, hi),
+      why: "natation + T1 + vélo + T2 + course à pied. Transitions comptées "
+        + Math.round(tr.t1 / 60) + " min et " + Math.round(tr.t2 / 60)
+        + " min (médianes d'âge-groupe — un premier " + format + " avec sac de transition fait plus long). "
+        + "La fourchette est la SOMME des bornes et non leur composition en quadrature : le jour J, "
+        + "la forme est bonne ou elle ne l'est pas sur les trois segments à la fois.",
+    });
+    D("PW-total", "Total avec transitions", fmtRange(lo, hi).replace(/–.*/, "") + " au mieux",
+      "Le vélo pèse " + Math.round(100 * (bornes.bike[0] + bornes.bike[1]) / (lo + hi)) + " % du total sur ce format : "
+      + "sans son chrono, la prédiction laissait de côté son plus gros poste.");
+  }
+  if (items.length) D("PRED-tri", "Méthode tri", "legs séparés puis total",
+    "Chaque leg garde SA méthode et SA fourchette — nage au CSS, vélo par la physique, course par Riegel. "
+    + "Le total les additionne à la fin ; il ne les remplace pas par une moyenne qui masquerait le segment faible.");
 }
 
 registerSport({

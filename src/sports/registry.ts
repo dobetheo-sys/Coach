@@ -16,6 +16,7 @@
  * un sport inconnu lève au lieu de produire un plan silencieux.
  */
 import type { AthleteProfile, ReasonedPlan, Sport, V1Session } from "../engine/types.ts";
+import type { BikeTimeEstimate } from "../engine/cyclingSpeed.ts";
 
 export type Slot = "dur1" | "dur2" | "durLong" | "facileR" | "facile2" | "recup" | "off";
 
@@ -169,6 +170,18 @@ export interface PredictKit {
   bikeIF: (lo: number, hi: number) => [number, number];
   /** Mention de pacing à coller au « pourquoi » du leg vélo (vide sur parcours plat). */
   bikeWhy: string;
+  /**
+   * PW — LE CHRONO VÉLO, converti depuis la puissance (`cyclingSpeed.ts`, modèle Martin 1998).
+   * Rend `null` quand il manque la matière (poids de l'athlète, FTP, distance) : le sport DIT
+   * alors ce qui manque plutôt que d'afficher un chiffre de remplacement (P7/P8).
+   */
+  bikeTime: (distKm: number | undefined, ifLo: number, ifHi: number) => BikeTimeEstimate | null;
+  /** PW — somme des bornes de plusieurs segments + transitions (voir la justification au site). */
+  totalOf: (parts: [number, number][], transitionSec: number) => [number, number];
+  /** PW — met en forme une fourchette de secondes ET l'enregistre pour la projection (R14). */
+  fmtRange: (lo: number, hi: number) => string;
+  /** PW — poids déclaré (kg). Absent = pas de chrono vélo, et c'est à dire. */
+  athleteKg?: number;
   /** Objectif SWIMRUN décodé (trois postes) — présent seulement pour ce sport. */
   swimrun?: {
     category: string; swimTotalM: number; runTotalKm: number; segments: number; transitions: number;

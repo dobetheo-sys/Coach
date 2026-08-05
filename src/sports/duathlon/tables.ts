@@ -80,3 +80,16 @@ export const DUA_HISTORY_CAPS: Record<string, Record<string, number>> = {
 
 /** Heures UTILES par format — au-delà, le volume ne sert plus l'objectif. */
 export const DUA_UTIL: Record<string, number> = { S: 8, M: 10, L: 13, PM: 17 };
+
+/**
+ * PW — TRANSITIONS DU DUATHLON (secondes). Plus courtes qu'en triathlon, et pour une raison
+ * concrète : il n'y a pas de combinaison à quitter ni de sac de nage à gérer. T1 = chausser,
+ * casque, partir ; T2 = poser le vélo, changer de chaussures. Médianes d'âge-groupe, pas des
+ * optima — un athlète rodé fait deux fois plus vite, un premier Powerman fait plus long.
+ */
+export const DUA_TRANSITION: Record<string, { t1: number; t2: number }> = {
+  S: { t1: 60, t2: 45 },
+  M: { t1: 75, t2: 60 },
+  L: { t1: 90, t2: 75 },
+  PM: { t1: 150, t2: 120 },
+};

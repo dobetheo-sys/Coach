@@ -527,6 +527,9 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
     // R19.2 — la combinaison : seuil réglementaire à 24,5 °C, 4 à 7 % de temps de nage.
     // R20.1-a — `isFinite`, pas `||` : 0 est une réponse. Même piège que `vol_recent`.
     waterTempC: (() => { const t = parseFloat(String(answers.water_temp_c ?? "")); return isFinite(t) ? t : undefined; })(),
+    // PW — le poids, pour convertir une puissance en vitesse. Optionnel au Profil : absent, le
+    // prédicteur REFUSE le chrono vélo et le dit, plutôt que d'inventer une masse.
+    athleteKg: (() => { const w = parseFloat(String(answers.weight ?? "")); return isFinite(w) && w > 0 ? w : undefined; })(),
     // R7 TRAIL — l'objectif décodé (catégorie, temps estimé, VAM) : Riegel ne s'applique pas
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
     swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,

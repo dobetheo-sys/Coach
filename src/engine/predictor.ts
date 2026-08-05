@@ -12,6 +12,7 @@ import type { Decision } from "./types.ts";
 import { sportModule, type PredictKit } from "../sports/registry.ts";
 import { T5_HIKE_SHARE, TRAIL_TECHNICITY, type TrailObjective } from "./trailModel.ts";
 import { DUA_BIKE_POWER, DUA_BIKE_PREFATIGUE } from "../sports/duathlon/tables.ts";
+import { bikeTimeEstimate, assumedSetup, type BikeTimeEstimate } from "./cyclingSpeed.ts";
 import { projectForm, GAIN_BAND_LO, GAIN_BAND_HI,
   type ProjectionInput, type WeightLever } from "./projection.ts";
 
@@ -59,6 +60,13 @@ export interface PredictOpts {
   legProfiles?: { swim?: string; bike?: string; run?: string };
   /** R19.2 — température de l'eau (°C). Absente = aucune correction de combinaison. */
   waterTempC?: number;
+  /**
+   * PW — poids de l'athlète (kg), pour convertir une puissance en vitesse (`cyclingSpeed.ts`).
+   * ABSENT = pas de chrono vélo, et le refus est DIT (P7/P8) : le poids entre dans le
+   * roulement ET dans la pente, un poids inventé fausserait les deux — et dans le sens
+   * rassurant sur un parcours plat, ce qui est le pire des deux sens.
+   */
+  athleteKg?: number;
   /** R7 TRAIL — objectif décodé (distance, D+, catégorie, VAM) : Riegel ne s'applique pas. */
   trail?: TrailObjective;
   /** Objectif swimrun décodé (§R10.3.2) — trois postes de temps. */
@@ -313,6 +321,33 @@ export const TRI_BIKE: Record<string, { lo: number; hi: number }> = {
   "70.3": { lo: 0.76, hi: 0.83 },
   Full: { lo: 0.7, hi: 0.76 },
 };
+/**
+ * PW — DISTANCES VÉLO OFFICIELLES (World Triathlon / Ironman). Elles n'étaient nulle part :
+ * le moteur connaissait la distance de nage et celle de la course à pied, mais pas celle du
+ * segment le plus long des quatre formats. C'est ce trou qui rendait le chrono vélo
+ * inatteignable, bien plus que l'absence d'un modèle.
+ */
+export const TRI_BIKE_KM: Record<string, number> = { S: 20, M: 40, "70.3": 90, Full: 180 };
+
+/**
+ * PW — LES TRANSITIONS SONT DU TEMPS DE COURSE, ET ELLES NE SONT PAS NÉGLIGEABLES.
+ *
+ * Sur un Ironman, T1 + T2 pèsent un quart d'heure : les oublier, c'est annoncer un total faux
+ * de la valeur d'un ravitaillement complet. Les valeurs sont des MÉDIANES d'âge-groupe lues sur
+ * les classements publics, pas des optima — un athlète expérimenté sur une transition courte
+ * fait mieux, un premier Ironman avec sac de transition et tente de change fait pire.
+ *
+ * Elles montent avec le format pour une raison concrète et non par proportionnalité : sur
+ * longue distance la transition inclut un sac à récupérer, une tenue à changer, et souvent
+ * plusieurs centaines de mètres à pied dans le parc à vélos.
+ */
+export const TRI_TRANSITION: Record<string, { t1: number; t2: number }> = {
+  S: { t1: 120, t2: 75 },
+  M: { t1: 150, t2: 90 },
+  "70.3": { t1: 300, t2: 210 },
+  Full: { t1: 480, t2: 360 },
+};
+
 export const TRI_RUN: Record<string, { km: number; fatigue: number }> = {
   S: { km: 5, fatigue: 1.03 },
   M: { km: 10, fatigue: 1.05 },
@@ -509,6 +544,39 @@ export function predictRace(
     const bikeIF = (lo: number, hi: number): [number, number] => [
       Math.max(0.3, lo + ifShift), Math.max(0.32, hi + ifShift),
     ];
+    /**
+     * PW — LE CHRONO VÉLO. Rend `null` quand il manque la matière (poids, FTP, distance) :
+     * l'appelant DIT alors ce qui manque, il n'affiche pas un chiffre de remplacement.
+     * Le relief passe par `legProfiles.bike` — la même clé que la cible d'intensité, donc
+     * pas de « montagne vs montagneux » 2.0 (R14.3-a).
+     */
+    const bikeTime = (distKm: number | undefined, ifLo: number, ifHi: number): BikeTimeEstimate | null => {
+      if (!(refs.ftp > 0)) return null;
+      const [blo, bhi] = bikeIF(ifLo, ifHi);
+      return bikeTimeEstimate(distKm, refs.ftp * blo, refs.ftp * bhi, opts.athleteKg,
+        assumedSetup(sport, format), legs.bike ?? opts.courseProfile);
+    };
+    /**
+     * PW — LE TOTAL, ET POURQUOI SA FOURCHETTE EST LA SOMME DES EXTRÊMES.
+     *
+     * Le moteur refusait le total au motif qu'« il additionnerait les incertitudes ». C'est
+     * exact — et c'est justement ce qu'on veut voir. Deux compositions étaient possibles :
+     * en QUADRATURE (racine de la somme des carrés), qui suppose les erreurs indépendantes et
+     * les fait donc s'annuler en partie ; ou en SOMME DES BORNES, qui les suppose corrélées.
+     * La seconde est retenue parce que la corrélation est réelle : la principale incertitude
+     * n'est pas le hasard segment par segment, c'est « la forme du jour est-elle celle qu'on
+     * a mesurée » — et ce jour-là, elle l'est ou elle ne l'est pas sur les trois segments à la
+     * fois. Elle donne la fourchette la plus LARGE, ce qui est le bon sens de l'erreur pour un
+     * athlète qui prépare un départ.
+     *
+     * Il ne s'affiche QUE si les trois segments sont estimés : un total à deux segments sur
+     * trois serait faux de la valeur du troisième, et personne ne lirait l'astérisque.
+     */
+    const totalOf = (parts: [number, number][], transitionSec: number): [number, number] => [
+      parts.reduce((t, p) => t + p[0], transitionSec),
+      parts.reduce((t, p) => t + p[1], transitionSec),
+    ];
+    const fmtRange = (lo: number, hi: number) => { note(lo, hi); return fmtT(lo) + "–" + fmtT(hi); };
 
   // ---- R7 TRAIL : Riegel est INAPPLICABLE (un km de trail n'est pas un km de route).
   // Modèle à deux composantes : temps à plat + temps vertical (VAM), pénalisés par la
@@ -542,6 +610,7 @@ export function predictRace(
   const mod = sportModule(sport);
   if (mod.predict) {
     mod.predict({ format, refs, items, advice, D: Dloc, range, runRange, swimRange, riegelSec, profWhy, swimWhy, bikeIF, bikeWhy,
+      bikeTime, totalOf, fmtRange, athleteKg: opts.athleteKg,
       legBands: {
         swim: swimEnv ? [swimEnv.lo, swimEnv.hi] : null,
         run: prof && prof.hi > 1 ? [prof.lo, prof.hi] : null,

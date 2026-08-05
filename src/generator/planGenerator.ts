@@ -29,7 +29,7 @@ import { guard, sportModule } from "../sports/registry.ts";
 import { arbitrateVolRecent } from "../engine/measured.ts";
 import { record as traceRecord, traceEnabled } from "../engine/trace.ts";
 import { enforceMedicalHold } from "../engine/medicalHold.ts";
-import { longRunSpecificityFloor, C31_MIN_JOUR2_MIN } from "../engine/longRunSpecificity.ts";
+import { longRunSpecificityFloor, C31_MIN_JOUR2_MIN, C30_PART_SEMAINE_PIC } from "../engine/longRunSpecificity.ts";
 
 interface BoundedSession extends V1Session {
   social?: boolean;
@@ -77,6 +77,10 @@ export const IS_QUALITY_ZONE = (zone: string): boolean =>
  * modifient encore les durées après la génération, et un chiffre dérivé qu'on fige trop tôt
  * ment dès la première réparation.
  */
+/** C30b — les décisions produites par `raiseLongRunToSpecificity`, remontées à l'appelant :
+ *  `reconcileDeclaredVolume` ne connaît pas le journal de décisions du plan. */
+export const _c30b: { id: string; what: string; val: string; why: string; wk: number }[] = [];
+
 export function reconcileDeclaredVolume(
   plan: V1Plan, warnings: string[],
   /** Rendu : nécessaire pour que le texte d'une séance RÉDUITE ne mente pas sur sa durée. */
@@ -93,12 +97,17 @@ export function reconcileDeclaredVolume(
     /** C26c (R20.4) — ce qui LIMITE cet athlète : le plafond de temps dur en dépend
      *  (récupération centrale chez l'entraîné, tissu conjonctif en reprise ou chez un débutant,
      *  blessure déclarée au présent). Mêmes clés que celles passées à `auditPlan`. */
-    history?: string; level?: string; injured?: boolean },
+    history?: string; level?: string; injured?: boolean;
+    /** C30b (O-26) — la cible de spécificité de la sortie longue, en minutes, calculée par
+     *  `longRunSpecificityFloor` dans `generatePlan` (qui seul connaît le sport, le format et
+     *  les références). Absente = la règle n'a pas d'objet ici. */
+    longSpecTargetMin?: number },
 ): void {
   // 3a — LE FILET DU DRAPEAU MÉDICAL, en tout premier et en tout dernier ressort. La PORTE est
   // dans les builders (`medicalZone`) ; ce filet rattrape ce qui a été écrit hors d'elle — une
   // passe tardive, un module futur, une séance construite à la main. Il est ici pour que le
   // prochain producteur de séances n'ait pas besoin de connaître la règle pour la respecter.
+  _c30b.length = 0;
   enforceMedicalHold(plan, !!ctx?.medHold);
   // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
   // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
@@ -257,9 +266,23 @@ export function reconcileDeclaredVolume(
   // devient une garantie FINALE et stricte, sixième du même point de convergence.
   {
     const wm = (wk: V1Week) => weekMinOf(wk);
+    // O-21 — SANS SEMAINE DE PIC EN CHARGE, LA RÈGLE N'A PAS D'OBJET, ET ELLE NE CLAMPE RIEN.
+    //
+    // Le repli `peakAny` prenait la semaine de pic MÊME QUAND C'EST UNE DÉCHARGE. Sur une prépa
+    // courte dont l'unique semaine de pic est une récup (cas mesuré et documenté par O-21 côté
+    // auditeur), tout le plan se faisait raboter au volume d'une semaine de RÉCUPÉRATION — et
+    // deux fois, parce que `D4` réduit ensuite cette même semaine et que le second passage de
+    // `reconcileDeclaredVolume` recommence sur un plafond devenu plus bas. Mesuré sur un 10 km à
+    // 6 séances : **1032 → 807 min au deuxième passage, sur une entrée IDENTIQUE**, quand le
+    // profil voisin (une allure seuil plus lente, donc une semaine de pic en charge) ne perdait
+    // que 36 min. C'était le mécanisme de l'inversion sur l'axe allure.
+    //
+    // L'auditeur a déjà tranché ce cas : « aucune semaine de PIC en charge » est un
+    // AVERTISSEMENT, pas une violation dure, la cause étant l'arbitrage R18.5 (la cadence de
+    // récup de l'athlète l'emporte sur le placement). Le générateur dit désormais la même chose
+    // que lui — deux réponses différentes à la même question, c'est ce que R11.1 interdit.
     const peakNR = plan.weeks.filter((wk) => wk.phase.id === "peak" && !wk.isRecup).map(wm);
-    const peakAny = plan.weeks.filter((wk) => wk.phase.id === "peak").map(wm);
-    const peakBest = Math.max(0, ...(peakNR.length ? peakNR : peakAny));
+    const peakBest = Math.max(0, ...peakNR);
     if (peakBest > 0) for (const wk of plan.weeks) {
       if (wk.phase.id === "peak" || wk.phase.id === "taper" || wk.isRecup) continue;
       for (let g = 0; g < 5 && wm(wk) > peakBest; g++) {
@@ -505,7 +528,7 @@ export function reconcileDeclaredVolume(
           if (/Déverrouillage/i.test(sx.name)) continue; // R15.7-B — jamais la veille
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
-            scaleStepDose(st, f, { repsMode: "floor", durFloor: 5, distFloor: 150 });
+            scaleStepDose(st, f, { repsMode: "floor", durFloor: 5, distFloor: 150, clampToOriginal: true });
           }
           if (render) render(sx);
         }
@@ -840,7 +863,7 @@ export function reconcileDeclaredVolume(
           if (sx.d === "rs" || sx.race || !sx.steps || /Déverrouillage/i.test(sx.name)) continue;
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
-            scaleStepDose(st, f, { repsMode: "round", durFloor: 10, distFloor: 150 });
+            scaleStepDose(st, f, { repsMode: "round", durFloor: 10, distFloor: 150, clampToOriginal: true });
           }
           if (render) render(sx);
         }
@@ -1117,6 +1140,112 @@ export function reconcileDeclaredVolume(
    *   · jamais au-delà de ce que la COURBE annonce : on rend ce qui a été retiré, on n'ajoute
    *     pas une minute que l'athlète n'avait pas déjà acceptée.
    */
+  /**
+   * C30b — LA SORTIE LONGUE ATTEINT SA CIBLE DE SPÉCIFICITÉ, EN SEMAINE DE PIC (O-26 fermé).
+   *
+   * Décision du fondateur (05/08/2026) : *« oui si elle respecte les plafonds ; en semaine de
+   * pic, la sortie longue peut représenter 70 % du volume de semaine si nécessaire »*.
+   *
+   * C30 calculait déjà la bonne cible et ne l'atteignait presque jamais : mesuré, **7 profils
+   * sur 180**. La cause (O-26) est que `blockBounds` remplace le plancher déclaré par un
+   * « plancher digne » forfaitaire, et surtout que le vrai facteur limitant est le VOLUME
+   * hebdomadaire d'une prépa de format court — forcer le plancher dans `blockBounds` a été
+   * mesuré et rendait les choses PIRES (30/48 cibles au lieu de 31).
+   *
+   * La permission du fondateur débloque exactement ce qui manquait : ce n'est pas la semaine
+   * qui grossit, c'est la RÉPARTITION qui change. La longue monte vers sa cible, et les minutes
+   * viennent des séances FACILES de la même semaine (R4.1 — jamais de la qualité). Trois bornes,
+   * toutes issues de règles existantes :
+   *   · le plafond de SÉANCE déclaré par le bloc (C23 débutant, blessures) — jamais franchi ;
+   *   · 70 % du volume de la semaine (C30_PART_SEMAINE_PIC) — la permission, pas une cible ;
+   *   · le total de la semaine ne bouge pas — on prend avant de donner, et jamais sous les
+   *     planchers des receveuses.
+   *
+   * Semaines de PIC en charge uniquement : une semaine de base dominée à 70 % par une seule
+   * séance n'est pas une semaine de base, et l'invariant I12 continue d'y exiger 60 %.
+   */
+  function raiseLongRunToSpecificity(): void {
+    const cibleSpec = ctx?.longSpecTargetMin;
+    if (!(cibleSpec && cibleSpec > 0)) return;
+    // « SEMAINE DE PIC » QUAND LE PLAN N'A PAS DE PHASE DE PIC.
+    //
+    // Mesuré avant d'élargir quoi que ce soit : sur les 48 profils de la grille C30, la passe
+    // restreinte à `phase.id === "peak"` se déclenchait **0 fois**. Deux raisons distinctes, et
+    // seule la seconde est un défaut de la passe :
+    //   · là où une phase de pic existe (semi, marathon), la longue y est DÉJÀ à son plafond de
+    //     séance — la part hebdomadaire n'a jamais été le facteur limitant, le plafond de format
+    //     l'est. La permission du fondateur n'y débloque rien, et c'est un résultat, pas un bug ;
+    //   · une prépa de 5 km ou de 10 km n'a **aucune** semaine de phase `peak` (base → dev →
+    //     spec → taper). Or c'est précisément la population que C30 sert le plus mal.
+    // « En semaine de pic » se lit donc sur la CHARGE et non sur le nom de la phase : à défaut
+    // de phase de pic, ce sont les semaines les plus lourdes du plan — ce que l'athlète appelle
+    // sa plus grosse semaine. Même famille qu'O-21, qui a dû dire ce que vaut « dev ≤ pic »
+    // quand aucune semaine de pic ne porte de charge.
+    // La cohorte se lit sur la courbe DÉCLARÉE (`wk.vol`), pas sur les minutes livrées à
+    // l'instant où la passe tourne : les minutes bougent encore entre les passages, donc une
+    // cohorte calculée sur elles change d'un appel à l'autre — mesuré, une semaine portée à sa
+    // cible au premier passage en sortait au second et redescendait. La courbe déclarée, elle,
+    // est celle que l'athlète a sous les yeux, et elle ne bouge plus.
+    const enCharge = plan.weeks.filter((wk) => !wk.isRecup && wk.phase.id !== "taper");
+    const aUnPic = enCharge.some((wk) => wk.phase.id === "peak");
+    const picDeclare = Math.max(0, ...enCharge.map((wk) => wk.vol || 0));
+    const estPic = (wk: V1Week) => (aUnPic
+      ? wk.phase.id === "peak" && !wk.isRecup
+      : enCharge.includes(wk) && (wk.vol || 0) >= 0.95 * picDeclare);
+    for (const wk of plan.weeks) {
+      if (!estPic(wk)) continue;
+      const semaine = weekMinOf(wk);
+      if (!(semaine > 0)) continue;
+      const all = wk.days.flatMap((d) => d.sessions).filter((sx) => sx.d !== "rs" && sx.steps && sx.steps.length);
+      const lg = all.find((sx) => sx.long && !sx.race);
+      if (!lg) continue;
+      const corps = (lg.steps || []).filter((st) => st.role === "body" && !EN_PENTE(st) && st.durationMin != null);
+      if (corps.length !== 1) continue; // une longue de route est UN bloc continu ; sinon on ne touche pas
+      const capSeance = corps[0].bnd ? corps[0].bnd.cap : Number.MAX_SAFE_INTEGER;
+      const cible = Math.floor(Math.min(cibleSpec, capSeance, semaine * C30_PART_SEMAINE_PIC));
+      // LE MANQUE EST BORNÉ PAR LA MARGE DU BLOC, PAS SEULEMENT PAR CELLE DE LA SÉANCE.
+      // `lg.min` est la durée porte-à-porte (R5.6a : récup inter-blocs comprise), le plafond
+      // porte sur le BLOC. Sans cette borne, une longue déjà au plafond pouvait prendre des
+      // minutes aux séances faciles et les perdre dans le `Math.min` du bas — la semaine
+      // maigrissait pour rien. Mesuré sur le golden : 5 profils marathon émettaient une
+      // décision C30b qui ne déplaçait pas une minute.
+      const manque = Math.min(cible - (lg.min || 0), capSeance - (corps[0].durationMin || 0));
+      if (manque <= 1) continue;
+      // ON PREND AVANT DE DONNER : sans ça, la semaine grossirait le temps que les receveuses
+      // cèdent, et une garantie de volume qui tourne entre les deux verrait un état faux.
+      const donneuses = all.filter((sx) => sx !== lg && !sx.race && !sx.brick
+        && (sx.steps || []).some((st) => st.role === "body" && !EN_PENTE(st) && st.distanceM == null
+          && st.durationMin != null && !IS_QUALITY_ZONE(String(st.zone || ""))));
+      // La plus LONGUE d'abord : elle a le plus de marge au-dessus de son plancher, donc on
+      // répartit le prélèvement au lieu de vider la plus petite.
+      donneuses.sort((x, y) => (y.min || 0) - (x.min || 0));
+      let pris = 0;
+      for (const sx of donneuses) {
+        if (pris >= manque) break;
+        for (const st of sx.steps || []) {
+          if (pris >= manque) break;
+          if (st.role !== "body" || EN_PENTE(st) || st.distanceM != null || st.durationMin == null) continue;
+          if (IS_QUALITY_ZONE(String(st.zone || ""))) continue;
+          const plancher = st.bnd ? st.bnd.floor : 10;
+          const dispo = st.durationMin - plancher;
+          if (dispo <= 0) continue;
+          const retire = Math.min(dispo, manque - pris);
+          st.durationMin -= retire;
+          pris += retire;
+        }
+        if (render) render(sx);
+      }
+      if (pris <= 1) continue; // rien à donner : la longue ne monte pas, la semaine ne bouge pas
+      corps[0].durationMin = Math.min(capSeance, (corps[0].durationMin || 0) + pris);
+      if (render) render(lg);
+      _c30b.push({
+        wk: wk.num, id: "C30b", what: "Sortie longue portée à sa cible de spécificité (sem. " + wk.num + ")",
+        val: Math.round(lg.min || 0) + " min, soit " + Math.round(100 * (lg.min || 0) / weekMinOf(wk)) + " % de la semaine",
+        why: "Ta course demande environ " + Math.round(cibleSpec) + " min de spécificité. En semaine de pic, la sortie longue peut prendre jusqu'à " + Math.round(C30_PART_SEMAINE_PIC * 100) + " % du volume : le volume de la semaine ne change pas, ce sont les séances faciles qui cèdent les minutes.",
+      });
+    }
+  }
+
   function refillEasyAfterLabelCap(): void {
     // « DEV ≤ PIC » EST UNE RÈGLE DE PÉRIODISATION, ET ELLE VAUT AUSSI POUR CE QU'ON REND.
     //
@@ -1188,6 +1317,40 @@ export function reconcileDeclaredVolume(
         }
         const rendu = Math.max(0, (sx.min || 0) - (cible2 - place));
         manque -= rendu;
+      }
+      // O-21 — ET S'IL RESTE À RENDRE, C'EST LA SORTIE LONGUE QUI LE PREND.
+      //
+      // Sur une semaine PLATE, le remplissage ci-dessus est structurellement mort : I14 vient de
+      // ramener chaque séance à la durée de la sortie longue, et le plafond des receveuses
+      // (`0,80 × longMin`, R20.3) est alors SOUS leur valeur courante — `place` est négatif, rien
+      // n'est placé, et les minutes retirées disparaissent. Mesuré sur un 10 km à 4 séances : les
+      // quatre séances de la semaine sortaient à 41-43 min pour une longue de 41, `_labelCut`
+      // valait 27 min, et le remplissage en rendait ZÉRO.
+      //
+      // La conséquence n'est pas locale, et c'est elle qui coûte : ce sont les semaines de PIC et
+      // de SPÉCIFIQUE qui portent le plus de qualité par rapport à leur sortie longue, donc ce
+      // sont elles que I14 coupe le plus. La périodisation s'inverse — dev au-dessus du pic — et
+      // la garantie A2/I1 rabote alors TOUT le plan jusqu'au pic estropié. Mesuré sur un même
+      // profil à deux allures seuil : **−263 min (−19 %) à 5:45/km, 0 à 7:00/km**. C'est le
+      // mécanisme entier de l'inversion sur l'axe allure (O-21).
+      //
+      // Rendre ces minutes à la sortie longue n'est pas « gonfler la longue » (ce que I14 refuse,
+      // à raison) : ce sont les minutes que la MÊME passe vient de retirer à la MÊME semaine, et
+      // les rendre là est le seul endroit qui ne rouvre rien — une longue plus longue RELÈVE le
+      // plafond d'I14 au lieu de le violer. Bornes : le plafond de bloc déclaré (C23, blessures)
+      // et la cible de la semaine, déjà calculée plus haut.
+      if (manque > 1) {
+        const lg = all.find((sx) => sx.long && !sx.race);
+        const corps = (lg?.steps || []).filter((st) => st.role === "body" && !EN_PENTE(st)
+          && st.distanceM == null && st.durationMin != null && !IS_QUALITY_ZONE(String(st.zone || "")));
+        if (lg && corps.length === 1) {
+          const capBloc = corps[0].bnd ? corps[0].bnd.cap : Infinity;
+          const place = Math.min(manque, capBloc - (corps[0].durationMin || 0));
+          if (place > 1) {
+            corps[0].durationMin = (corps[0].durationMin || 0) + place;
+            if (render) render(lg);
+          }
+        }
       }
     }
   }
@@ -1286,6 +1449,26 @@ export function reconcileDeclaredVolume(
   // saut N→N+1 qu'on venait de fermer (mesuré : 3 sauts à +11 % survivaient). Rien ne réduit
   // ni ne gonfle après cette ligne.
   for (let p = 0; p < 3 && enforceC22Final(); p++);
+
+  // C30b — LA SORTIE LONGUE ATTEINT SA CIBLE DE SPÉCIFICITÉ, ET C'EST ICI QU'ELLE LE PEUT.
+  //
+  // Douzième paiement de la même leçon, et ma propre passe cette fois. Placée juste après
+  // `refillEasyAfterLabelCap`, elle FAISAIT son travail — mesuré à l'instrumentation, la longue
+  // d'un débutant sur 10 km montait bien de 55 à 64 min sur quatre semaines — puis
+  // `enforceHardTimeCap` rabotait le total de la semaine et le point fixe C22 la rescalait
+  // PROPORTIONNELLEMENT : 64 → 57, 53, 55. Trois des quatre gains effacés, et la mesure
+  // finale disait « la passe ne sert à rien » alors qu'elle servait puis était annulée.
+  //
+  // Elle est donc rejouée après le point fixe, comme les six autres garanties de ce point de
+  // convergence. Elle peut l'être sans rouvrir aucune d'elles, et c'est ce qui l'autorise à
+  // passer après la ligne « rien ne réduit ni ne gonfle après » :
+  //   · elle est NEUTRE EN VOLUME — elle prend avant de donner, le total de la semaine ne bouge
+  //     pas d'une minute, donc ni C22, ni « dev ≤ pic », ni R3.13 ne voient quoi que ce soit ;
+  //   · elle ne déplace que des minutes FACILES (R4.1), donc C26c/C26d (temps dur, temps
+  //     modéré) sont hors d'atteinte ;
+  //   · elle ne fait que MONTER la sortie longue, ce qui va dans le sens d'I14 au lieu de le
+  //     rouvrir.
+  raiseLongRunToSpecificity();
 
   if (forcedWeeks > 0)
     warnings.push("Sur " + forcedWeeks + " semaine(s) de charge, la structure minimale de ce plan (une séance digne de ce nom ne descend pas sous 30 min, une sortie longue encore moins) dépasse le volume hebdomadaire que tu as déclaré. Le chiffre annoncé a été aligné sur ce qui t'est réellement prescrit — mieux vaut une courbe honnête qu'une promesse que le plan ne tient pas. Deux remèdes, à toi de choisir : relever le volume dont tu disposes, ou viser un objectif plus court.");
@@ -2886,6 +3069,13 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
             // R19.2 — la combinaison. `|| undefined` aurait relu 0 °C comme « pas de réponse »
             // (le piège de `vol_recent`, R20.1-a) : on teste la finitude, pas la vérité.
             waterTempC: (() => { const t = parseFloat(String(a.water_temp_c ?? "")); return isFinite(t) ? t : undefined; })(),
+            // PW — LE POIDS, ICI AUSSI. Sans lui, la ligne « ⏱ Prévu » du jour J affichait des
+            // WATTS là où la carte Prédiction affichait un CHRONO : deux écrans de la même app,
+            // deux réponses. C'est la forme exacte de R20.1-b (le jour J du swimrun ne recevait
+            // pas son objectif décodé) et de R14.3-a (deux clés pour le relief) — un paramètre
+            // branché d'un côté du pont et pas de l'autre. Mesuré : la passe « chrono vélo » du
+            // golden ne bougeait pas d'un bit quand on changeait le CdA de 10 %.
+            athleteKg: (() => { const w = parseFloat(String(a.weight ?? "")); return isFinite(w) && w > 0 ? w : undefined; })(),
             runHoursPerWeek: a.sport === "run" ? parseFloat(String(a.vol_max ?? "")) || undefined : undefined,
           });
           if (pred.items.length) predDet = " — ⏱ Prévu : " + pred.items.map((it) => it.leg + " " + it.value).join(" · ");
@@ -3048,7 +3238,14 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   }
 
   const plan: V1Plan = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races };
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { swimFloors: guard(a.sport as string, "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0 });
+  // C30b (O-26) — la cible de spécificité, calculée ICI (seul endroit qui connaît sport, format
+  // et références mesurées) et passée à la passe qui l'applique.
+  const _spec30 = String(a.sport) === "run"
+    ? longRunSpecificityFloor(fmt, r.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(a.vol_max ?? "")) || undefined)
+    : null;
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport as string, "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0 });
+
+  for (const d of _c30b) r.decisions.push(d);
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation

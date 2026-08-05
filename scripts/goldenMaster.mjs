@@ -181,6 +181,72 @@ function* profiles() {
       plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[6] };
     yield { key: ["P5", "run", "marathon", v + "h"].join("/"), sport: "run", a };
   }
+  // ---- Passe « allure » (C30 / C31) ----------------------------------------
+  // TROISIÈME OCCURRENCE DU MÊME ANGLE MORT (A-2), et celle-ci était PUBLIÉE comme une limite
+  // en livrant C31 : le profil de base court à 4:30/km. Or C30 (le plancher de spécificité de
+  // la sortie longue) et C31 (le back-to-back marathon) ne mordent que chez le coureur LENT —
+  // c'est lui qui passe le plus de temps sur son épreuve. La photo ne regardait donc aucun
+  // profil où ces deux règles existent : 121 empreintes ont bougé en livrant C30 sans qu'une
+  // seule ne couvre C31, et sa garde a dû vivre entièrement dans `C31-A` (banc v6).
+  //
+  // Quatre allures qui balaient le domaine (rapide → très lent) × les deux formats où les
+  // règles opèrent. `vol_max: 10` parce que c'est l'enveloppe où le back-to-back a de quoi
+  // se payer — à 6 h la borne budgétaire l'interdit, et photographier une règle là où elle
+  // ne s'applique jamais, c'est refaire l'angle mort qu'on est en train de fermer.
+  for (const fmt of ["semi", "marathon"]) {
+    for (const p of ["4:30", "5:45", "7:00", "8:30"]) {
+      const a = { ...base(), format: fmt, pace: p, pace_known: "oui", vol_max: "10", vol_recent: "8",
+        sessions_max: "6", history: "confirme", level: "inter", intent: "competition",
+        plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[6] };
+      yield { key: ["C30", "run", fmt, p].join("/"), sport: "run", a };
+    }
+  }
+  // ---- Passe « chrono vélo » (PW) ------------------------------------------
+  // CINQUIÈME OCCURRENCE DU MÊME ANGLE MORT (famille A-2), et celle-ci s'est vue en LIVRANT :
+  // aucun profil du golden ne porte de `weight`. Or le chrono vélo et le total avec transitions
+  // n'existent QUE si le poids est déclaré — sans lui, `bikeTimeEstimate` refuse (P7/P8). Les
+  // 912 profils voyaient donc uniquement le renommage du libellé (« Vélo » → « Vélo —
+  // intensité »), et pas une seule des minutes que ce chapitre produit.
+  //
+  // Trois sports × leurs formats × trois reliefs, avec un poids : c'est le relief qui fait le
+  // plus bouger le chrono (+9 % vallonné, +27 % montagne), donc c'est lui qu'il faut balayer.
+  //
+  // ET IL A FALLU DEUX ÉCRITURES : la première posait `weight` mais AUCUNE date de course, et
+  // le golden ne bougeait pas d'un bit quand on changeait le CdA de 10 %. La raison est
+  // structurelle et vaut d'être écrite — **le golden photographie le PLAN, pas la prédiction**.
+  // Les temps prédits n'entrent dans la photo que par UN chemin : la ligne « ⏱ Prévu » de la
+  // séance du JOUR J, qui n'existe que si une date de course est déclarée. Sans elle, cette
+  // passe surveillait du vide, exactement comme la passe « allure » surveillait `vol_max: 10`
+  // en croyant regarder C30b.
+  for (const [sport, formats] of [["tri", ["S", "M", "70.3", "Full"]], ["duathlon", ["S", "M", "L", "PM"]], ["bike", ["cyclo", "clm", "gravel"]]]) {
+    for (const format of formats) {
+      for (const terrain of ["plat", "vallonne", "montagne"]) {
+        const a = { ...base(), format, terrain, weight: "75", height: "178", sex: "H",
+          history: "confirme", level: "inter", intent: "competition",
+          plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[6] };
+        yield { key: ["PW", sport, format, terrain].join("/"), sport, a };
+      }
+    }
+  }
+
+  // ---- Sous-passe « allure × petite enveloppe » (C30b) ----------------------
+  // ET LA PASSE CI-DESSUS NE VOYAIT TOUJOURS PAS C30b — quatrième occurrence du même angle
+  // mort, cette fois d'un cran plus fin. `vol_max: 10` est la bonne enveloppe pour C31 (le
+  // back-to-back a besoin de place pour se payer), mais c'est la MAUVAISE pour le plancher de
+  // spécificité : à 10 h la sortie longue est déjà BUTÉE sur son plafond de séance aux trois
+  // formats (10 km 90, semi 130, marathon 180), donc le plancher peut monter sans qu'une seule
+  // minute ne bouge. Vérifié en retirant C30b du moteur : les quatre profils 10 km de la passe
+  // ci-dessus rendaient EXACTEMENT le même plan.
+  //
+  // La règle ne se voit que là où le plancher a de la marge SOUS le plafond : le 10 km à
+  // 6 h/semaine (47 → 76 min à 8:30/km). Le 5 km reste dehors, et c'est mesuré aussi — sa
+  // cible (~38 min à 8:30) est sous ce que le créneau livre déjà (40 min), la règle n'y a
+  // jamais d'objet.
+  for (const p of ["4:30", "5:45", "7:00", "8:30"]) {
+    const a = { ...base(), format: "10k", pace: p, pace_known: "oui", vol_max: "6", vol_recent: "3",
+      sessions_max: "5", history: "confirme", level: "inter", intent: "competition" };
+    yield { key: ["C30b", "run", "10k", p].join("/"), sport: "run", a };
+  }
 }
 
 // ---- Normalisation canonique --------------------------------------------
