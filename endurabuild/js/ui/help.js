@@ -37,6 +37,19 @@
  * automatique sur `.load-sub` aurait replié les trois familles d'un coup — et le manifeste dit
  * l'inverse (« informer plutôt que bloquer » suppose que l'information ARRIVE).
  *
+ * ─── LE « ? » NE PAIE QUE DANS UN TITRE — MESURÉ, ET MA DEUXIÈME PASSE A ÉTÉ RETIRÉE ──────
+ *
+ * Six blocs supplémentaires ont été convertis EN PLACE (le « ? » posé là où le paragraphe
+ * était, au milieu d'une carte, sans titre où s'accrocher). Résultat mesuré : la prose tombe de
+ * 770 à 645 px… et **l'onglet GRANDIT de 3 908 à 3 958 px**. Le bouton prend sa propre ligne :
+ * il coûte à peu près ce qu'un paragraphe court rapportait. La passe a été retirée.
+ *
+ * La règle qui en sort, et c'est elle qui gouverne les conversions suivantes : **le « ? » ne
+ * paie que s'il se glisse dans un titre DÉJÀ affiché** — là il coûte zéro hauteur et rend celle
+ * du paragraphe (mesuré sur les trois premiers : 4 045 → 3 908 px pour 198 px de prose). Une
+ * explication au milieu d'une carte demande donc d'abord un libellé auquel s'accrocher, pas un
+ * bouton de plus. C'est un travail de structure, pas de repli.
+ *
  * ─── POURQUOI PAS `<details>` ─────────────────────────────────────────────────────────────
  *
  * Le dépôt s'en sert déjà pour les SÉANCES (U16), où le repli porte sur un bloc entier qui a un
