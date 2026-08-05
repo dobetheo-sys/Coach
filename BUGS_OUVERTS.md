@@ -1152,7 +1152,67 @@ cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;cons
 ```
 
 
-### O-21 · À capacité déclarée plus HAUTE, le plan est plus PETIT — l'inversion sur l'axe allure · 🟡 **DEUX MÉCANISMES CORRIGÉS (03 et 05/08/2026), RÉSIDU MESURÉ ET PUBLIÉ**
+### O-21 · À capacité déclarée plus HAUTE, le plan est plus PETIT — l'inversion sur l'axe allure · 🟡 **TROIS MÉCANISMES CORRIGÉS (03 et 05/08/2026), RÉSIDU RAMENÉ À +5,0 %**
+
+> **CORRECTION DU 05/08/2026, 3ᵉ MÉCANISME — ET « DU BRUIT DE CONVERGENCE » ÉTAIT UN DIAGNOSTIC
+> PARESSEUX.** Cette entrée concluait, après la 2ᵉ correction, que les séquences résiduelles
+> « ne sont pas monotones dans un sens ou dans l'autre, elles sont ERRATIQUES — du bruit de
+> convergence entre passes », et renvoyait le traitement à « un chantier à part entière, pas une
+> correction ». **C'était faux.** Instrumenté passe par passe sur `10k/debutant/confirme/3s/6h/vr5`
+> (`4:30 → 1282 · 5:45 → 1061 · 7:00 → 1319 · 8:30 → 1077`), il n'y avait ni bruit ni chantier :
+> **une seule règle, une seule ligne, et un seuil.**
+>
+> **CE QUE LA MESURE A DIT, DANS L'ORDRE.** Avant réparation les quatre plans sont presque
+> identiques (1311 · 1270 · 1340 · 1269, soit 5,6 % d'écart) : la divergence est CRÉÉE plus loin.
+> La semaine de récup S7 délivre **190 min à 4:30 et 143 à 5:45** pour une cible identique de
+> 198 — et le détail dit tout : **trois séances d'un côté, deux de l'autre**. La règle « une
+> récup ne dépasse jamais sa voisine » trouvait S7 à **198 min contre 192 chez la voisine** —
+> SIX minutes au-dessus de sa borne — et les payait avec une séance de **55 min**. Un
+> dépassement de 3 % réglé par une coupe de 25 %, neuf fois trop.
+>
+> **`cutSmallestSessionIn` est TOUT-OU-RIEN**, donc une minute d'écart chez la voisine bascule
+> une séance entière hors de la semaine ; et la semaine de récup ainsi amputée devient la
+> référence de tout ce qui suit. Aucune règle ne « penchait » selon l'allure : c'est le SEUIL qui
+> est brutal, et l'allure ne faisait que décider de quel côté on tombe. Ce que l'entrée lisait
+> comme du bruit était une marche.
+>
+> **LE CORRECTIF ÉTAIT DÉJÀ ÉCRIT QUINZE LIGNES PLUS HAUT.** La règle de monotonie de l'AFFÛTAGE,
+> dans le même bloc, réduit d'abord le corps des séances (`scaleWeekBody`) et ne coupe un jour que
+> si les planchers empêchent d'y arriver. La règle de la récup sautait directement à la coupe.
+> C'est aussi la décision déjà prise deux fois dans ce dépôt — **C29/C29b/C29c : « l'affûtage
+> réduit le VOLUME, pas la FRÉQUENCE »** — jamais rejouée ici. La borne se paie donc en volume,
+> la fréquence ne cédant qu'en dernier recours.
+>
+> | sur 432 profils × 4 allures | avant | après |
+> |---|---|---|
+> | **pire inversion entre deux allures voisines** | **+24,3 %** | **+5,0 %** |
+> | dispersion p90 | 5,0 % | 4,6 % |
+> | dispersion médiane | 0,7 % | 0,6 % |
+> | profils non monotones (> +2 %) | 73 (16,9 %) | 67 (15,5 %) |
+>
+> **CE QUI NE BOUGE PAS, ET POURQUOI CE N'EST PAS UN DÉFAUT.** La dispersion MAX reste à 36,1 %,
+> et le profil qui la porte est `semi/inter/reprise/3s/6h/vr5 : 2413 2291 2188 1773` —
+> **strictement DÉCROISSANT** de l'allure rapide à l'allure lente. Ce n'est pas une inversion :
+> c'est la variation monotone que les bornes de séance produisent légitimement (O17 l'a déjà
+> arbitrée). La grandeur qu'O-21 nomme est l'INVERSION, et c'est elle qui tombe de 24,3 à 5,0 %.
+> Le compte de profils non monotones bouge peu parce que les résidus sont désormais de petites
+> oscillations à ±4 % (`937 928 970 896`), pas des marches de 20 %.
+>
+> **ET LE GOLDEN A REFAIT L'ANGLE MORT QUE CETTE ENTRÉE AVAIT ELLE-MÊME NOMMÉ.** Sa 1ʳᵉ
+> correction écrivait « le golden ne bouge pas parce que ses profils portent tous une date » —
+> la leçon n'avait pas été appliquée, et les 945 profils rendaient **0 écart** face à ce
+> correctif. Une sous-passe `O-21b` est ajoutée (**945 → 949**). **Ma première écriture de cette
+> passe était DÉCORATIVE et c'est mesuré** : elle héritait du `dispo: "semaine"` du profil de
+> base, sous lequel les quatre allures rendent le MÊME plan à la minute près (1 487 min) — elle
+> surveillait du vide, pendant que son commentaire affirmait le contraire. Avec
+> `dispo: "quotidienne"` elle discrimine, **vérifiée en retirant le correctif : 2 écarts, sur
+> 5:45 et 8:30 exactement.** Cinquième occurrence de cette famille (A-2, N2, C30b, PW).
+>
+> Garde CI : **`O-21b`** au banc v6, deux moitiés — la fréquence des semaines de récup ne dépend
+> pas de l'allure (le mécanisme) ET aucune allure plus lente ne reçoit un plan plus gros de plus
+> de 6 % (l'inversion) —, **vérifiée rouge** en repassant la borne au paiement par la fréquence.
+>
+> ─────────────────────────────────────────────────────────────────────────────────────────────
 
 > **CE QUI EST CORRIGÉ, ET MA PISTE DU MATIN ÉTAIT FAUSSE.** J'avais écrit « la courbe déclarée
 > décroît (base au-dessus du pic) ». Mesuré : elle ne décroît pas. **La seule semaine de PIC de
@@ -1237,14 +1297,19 @@ cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;cons
 > | pire inversion entre deux allures voisines | +38,7 % | **+24,3 %** |
 > | profils non monotones (> +2 %) | 83 (19,2 %) | 73 (16,9 %) |
 >
-> **CE QUI RESTE, ET IL RESTE.** Le p90 tombe de deux tiers — la queue longue est traitée — mais le
-> **compte** de profils non monotones bouge à peine, et le maximum reste à 36 %. Les séquences
-> résiduelles ne sont pas monotones dans un sens ou dans l'autre, elles sont **erratiques**
-> (`845 846 847 903`, `1282 1061 1319 1077`) : ce n'est pas une règle qui penche, c'est du bruit de
-> convergence entre passes. Le traiter demanderait de rendre le point de convergence idempotent,
-> c'est-à-dire de reprendre l'ORDRE des passes de `reconcileDeclaredVolume` — un chantier à part
-> entière, pas une correction. **L'entrée reste donc ouverte, avec ce chiffre plutôt qu'une
-> promesse.**
+> **CE QUI RESTAIT APRÈS CE 2ᵉ MÉCANISME.** Le p90 tombe de deux tiers — la queue longue est
+> traitée — mais le **compte** de profils non monotones bouge à peine, et le maximum reste à 36 %.
+> Les séquences résiduelles ne sont pas monotones dans un sens ou dans l'autre, elles paraissent
+> **erratiques** (`845 846 847 903`, `1282 1061 1319 1077`), d'où le diagnostic posé ici :
+> « du bruit de convergence entre passes », à traiter en rendant le point de convergence
+> idempotent — « un chantier à part entière, pas une correction ».
+>
+> ⚠️ **CE DIAGNOSTIC ÉTAIT FAUX, et le bloc en tête de cette entrée le remplace.** Il n'y avait
+> ni bruit ni chantier : une seule règle (« une récup ne dépasse jamais sa voisine ») qui payait
+> six minutes de dépassement avec une séance de 55 min. Ce qui ressemblait à du bruit était une
+> MARCHE, et l'allure ne faisait que décider de quel côté on tombe. La leçon est gardée écrite :
+> conclure « c'est du bruit » sans avoir instrumenté passe par passe, c'est refermer une piste
+> avec une hypothèse — et ici cette hypothèse a coûté une correction reportée.
 >
 > **La dette `O17` du banc v6 est PAYÉE dans le commit de la correction** (protocole du dépôt) :
 > son `expect` repasse à `'pass'`, et le témoin n'a pas été réécrit — c'est le moteur qui a changé.
@@ -1295,7 +1360,7 @@ instables (la rampe R10 fait légitimement baisser un plan à faible `vol_recent
 
 ```verify
 id: O-21
-quoi: le résidu d'inversion sur l'axe allure, après les deux mécanismes corrigés (05/08/2026)
+quoi: le résidu d'inversion sur l'axe allure, après les TROIS mécanismes corrigés (05/08/2026). Ce profil-ci (inter, 4 séances) n'était pas de ceux que le 3e touche — son résidu de 0,2 % est inchangé, et c'est la raison pour laquelle il reste le témoin : il mesure la queue, pas la marche. La marche, elle, est épinglée par `O-21b` au banc v6 et par la sous-passe golden du même nom.
 attendu: /inversions d'allure : 1 · écart max 0,2 %$/m
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(pace,vr)=>({intent:'competition',format:'10k',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',level:'inter',history:'confirme',injury:'aucune',sessions_max:'4',vol_max:'6',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',pace,vol_recent:String(vr),terrain:'route'});const tot=(p)=>p.weeks.reduce((t,w)=>t+w.days.reduce((a,d)=>a+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0),0);let ko=0,mx=0;for(const vr of [0,5]){const rapide=tot(E.buildPlan('run',P('5:45',vr))),lent=tot(E.buildPlan('run',P('7:00',vr)));if(rapide<lent){ko++;mx=Math.max(mx,100*(lent/rapide-1));}}console.log(\"inversions d'allure : \"+ko+' · écart max '+mx.toFixed(1).replace('.',',')+' %');"
 ```

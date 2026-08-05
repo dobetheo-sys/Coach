@@ -606,6 +606,50 @@ test("O17", "capacité > historique de charge : le moteur AVERTIT, et ne bride p
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "avertit, n'ordonne pas, ne bride pas" };
 });
 
+// O-21b — LA BORNE « RÉCUP ≤ SEMAINE PRÉCÉDENTE » SE PAIE EN VOLUME, PAS EN FRÉQUENCE.
+//
+// Ce que le critère épingle est le MÉCANISME du résidu d'O-21, pas un total. La règle sautait
+// directement à `cutSmallestSessionIn` : mesuré, une semaine de récup à 198 min dont la voisine
+// en délivre 192 est SIX minutes au-dessus de sa borne, et elle les payait avec une séance de
+// 55 min — un dépassement de 3 % réglé par une coupe de 25 %.
+//
+// La coupe est TOUT-OU-RIEN, donc une minute de différence chez la voisine bascule une séance
+// entière hors de la semaine : à `vol_max` identique, un coureur à 5:45/km franchissait la borne
+// là où un coureur à 4:30/km ne la franchissait pas, et recevait un plan 20 % PLUS PETIT. Aucune
+// règle ne « penchait » — c'est le seuil qui était brutal.
+//
+// Deux moitiés, et la seconde est celle qu'on oublierait : la fréquence doit rester COMPARABLE
+// entre allures (le mécanisme), ET le plan ne doit pas grossir quand l'allure ralentit
+// (l'inversion elle-même, mesurée sur les quatre allures deux à deux).
+test("O-21b", "récup : la borne se paie en volume — aucune allure ne perd une séance ni ne gagne un plan", "pass", () => {
+  const bad = [];
+  const ALL = ["4:30", "5:45", "7:00", "8:30"];
+  const base = { format: "10k", level: "debutant", history: "confirme",
+    sessions_max: "3", vol_max: "6", vol_recent: "5", pace_known: "oui" };
+  const nSess = (w) => w.days.reduce((t, d) => t + d.sessions.filter((s) => s.d !== "rs").length, 0);
+  const tot = (p) => p.weeks.reduce((t, w) => t + w.days.reduce((a, d) =>
+    a + d.sessions.reduce((u, s) => u + (s.race ? 0 : s.min || 0), 0), 0), 0);
+
+  const plans = ALL.map((pace) => E.buildPlan("run", { ...profile("run"), ...base, pace }));
+
+  // (1) LE MÉCANISME — les semaines de récup gardent le même nombre de séances d'une allure à
+  // l'autre. Avant : 3 séances à 4:30 et 7:00, 2 à 5:45 et 8:30.
+  const freq = plans.map((p) => p.weeks.filter((w) => w.isRecup).map(nSess).join("+"));
+  if (new Set(freq).size > 1)
+    bad.push("la fréquence des semaines de récup dépend de l'allure : " + ALL.map((a, i) => a + "→" + freq[i]).join(" "));
+
+  // (2) L'INVERSION — un athlète qui déclare une allure PLUS LENTE ne reçoit pas un plan plus
+  // gros. Tolérance 6 % : les bornes de séance se calculent depuis l'allure, donc les plans
+  // diffèrent légitimement un peu (c'est l'arbitrage déjà écrit dans O17). Avant : +24,3 %.
+  const t = plans.map(tot);
+  for (let i = 1; i < t.length; i++)
+    if (t[i] > t[i - 1] * 1.06)
+      bad.push(`${ALL[i]} reçoit +${(100 * (t[i] / t[i - 1] - 1)).toFixed(1)} % vs ${ALL[i - 1]} (${t[i - 1]}→${t[i]} min)`);
+
+  return { ok: bad.length === 0, detail: bad.join(" ; ")
+    || `récup ${freq[0]} séances aux 4 allures · totaux ${t.join(" ")} min` };
+});
+
 // U9 — LE REFUS NOMME CE QUE L'ATHLÈTE A DEMANDÉ.
 //
 // La dernière phrase du refus « course trop proche » était écrite en dur : « Te vendre une

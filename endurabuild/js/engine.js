@@ -10325,9 +10325,34 @@ function generatePlan(profile                , opts                             
         prevT = wmW(w);
       }
       // et les coupes ci-dessus ne recréent JAMAIS une récup plus chargée que sa voisine
+      //
+      // O-21 (3e correction) — ON PAIE CETTE BORNE EN VOLUME, PAS EN FRÉQUENCE. Cette règle
+      // sautait directement à `cutSmallestSessionIn`, quand la règle de monotonie de l'affûtage
+      // écrite QUINZE LIGNES PLUS HAUT réduit d'abord le corps des séances et ne coupe un jour
+      // que si la réduction n'y arrive pas. La même décision est déjà prise ailleurs dans le
+      // dépôt (C29/C29b/C29c : « l'affûtage réduit le VOLUME, pas la FRÉQUENCE ») ; elle n'avait
+      // jamais été rejouée ici.
+      //
+      // Ce que ça coûtait, mesuré : une semaine de récup à 198 min dont la voisine en délivre
+      // 192 est SIX minutes au-dessus de sa borne — et elle les payait avec une séance de
+      // 55 min. Un dépassement de 3 % réglé par une coupe de 25 %, neuf fois trop.
+      //
+      // Et c'est la marche qui produisait le résidu d'O-21 : `cutSmallestSessionIn` est une
+      // opération TOUT-OU-RIEN, donc une minute de différence chez la voisine bascule une
+      // séance entière hors de la semaine. À `vol_max` identique, un coureur à 5:45/km
+      // franchissait la borne et un coureur à 4:30/km non — le premier recevait un plan
+      // 20 % plus petit, sans qu'aucune règle ne « penche » : c'est le seuil qui est brutal.
       let prevM = 0;
       for (const w of wl) {
         if (w.isRecup && prevM > 0) {
+          // 1) le corps des séances cède d'abord — même écriture que la monotonie d'affûtage
+          for (let g = 0; g < 4 && wmW(w) > prevM; g++) {
+            const before = wmW(w);
+            scaleWeekBody(w.days            , Math.max(0.7, (prevM * 0.97) / before));
+            renderWeek(w.days            );
+            if (before - wmW(w) < 0.5) break; // les planchers de séance bloquent : inutile d'insister
+          }
+          // 2) et seulement si les planchers empêchent d'y arriver, la fréquence cède
           for (let g = 0; g < 3 && wmW(w) > prevM && nSess(w) > 1; g++) {
             if (!cutSmallestSessionIn(w.days            )) break;
             renderWeek(w.days            );

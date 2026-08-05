@@ -1113,6 +1113,37 @@ le plancher d'affûtage de Bosquet. Au passage, Riegel n'a plus qu'une écriture
 de `feasibility` délègue au prédicteur.
 **27 gates verts, E2E 18/18, golden 900 recapturé (121 profils, tous en course), registre 25/25.**
 
+**O-21 (3e correction) — « du bruit de convergence » était un diagnostic paresseux** (voir
+ARCHITECTURE.md « O-21 (3e correction) ») : la 2ᵉ correction laissait un résidu qu'elle
+qualifiait de **bruit entre passes**, à traiter par « un chantier à part entière ». Instrumenté
+passe par passe sur `10k/debutant/confirme/3s/6h/vr5` (`1282 · 1061 · 1319 · 1077` selon la seule
+allure déclarée), il n'y avait ni bruit ni chantier : **une règle, une ligne, un seuil**. Avant
+réparation les quatre plans sont presque identiques (5,6 % d'écart) et la courbe déclarée est
+IDENTIQUE au moment où elle est calculée — la divergence naît plus loin. La semaine de récup
+délivre **190 min à 4:30 et 143 à 5:45** pour la même cible de 198, avec **trois séances d'un
+côté et deux de l'autre** : la règle « une récup ne dépasse jamais sa voisine » la trouvait
+**6 minutes** au-dessus de sa borne (198 contre 192) et les payait avec une séance de **55 min**.
+`cutSmallestSessionIn` étant TOUT-OU-RIEN, une minute d'écart chez la voisine bascule 55 minutes
+hors de la semaine, et cette récup amputée devient la référence de tout ce qui suit. Aucune règle
+ne « penchait » selon l'allure : **c'est le seuil qui est brutal**, l'allure ne décidant que du
+côté où l'on tombe — ce qui ressemblait à du bruit était une marche. **Le correctif était déjà
+écrit quinze lignes plus haut** : la règle de monotonie de l'AFFÛTAGE, dans le même bloc, réduit
+d'abord le corps des séances et ne coupe un jour que si les planchers l'exigent ; c'est aussi la
+décision prise deux fois dans ce dépôt (**C29/C29b/C29c**, « on réduit le VOLUME, pas la
+FRÉQUENCE »), jamais rejouée ici. **Pire inversion entre deux allures voisines : +24,3 % →
++5,0 %** (p90 5,0 → 4,6 %, non monotones 73 → 67 sur 432 profils). Ce qui ne bouge pas est
+PUBLIÉ : la dispersion max reste à 36,1 %, portée par un profil **strictement décroissant**
+(`2413 2291 2188 1773`) — variation monotone légitime, pas une inversion. **Et le golden a refait
+l'angle mort que l'entrée avait elle-même nommé** (« ses profils portent tous une date ») : 0
+écart sur 945 face à ce correctif → sous-passe `O-21b`, **945 → 949**. **Ma première écriture de
+cette passe était DÉCORATIVE et c'est mesuré** — elle héritait du `dispo: "semaine"` du profil de
+base, sous lequel les quatre allures rendent le MÊME plan à la minute près (1 487 min) ; avec
+`dispo: "quotidienne"` elle discrimine, vérifiée en retirant le correctif : **2 écarts, sur 5:45
+et 8:30 exactement**. Cinquième occurrence de cette famille (A-2, N2, C30b, PW). Garde `O-21b` au
+banc v6 (fréquence indépendante de l'allure ET aucun plan plus gros de >6 % à allure plus lente),
+**vérifiée rouge**.
+**24 gates verts, E2E 18/18, golden 949 recapturé, registre 26/26.**
+
 **U17 · A-2 · A-3 livrés — trois blocages levés sans arbitrage** (voir ARCHITECTURE.md
 « U17 / A-2 / A-3 ») : **U17** — le titre de séance, cible la plus FRÉQUENTE de l'app (ouvrir le
 détail, replié par défaut depuis U16), mesuré au rendu à **254 × 17 px** : la seule cible tactile

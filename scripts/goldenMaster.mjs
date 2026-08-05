@@ -247,6 +247,32 @@ function* profiles() {
       sessions_max: "5", history: "confirme", level: "inter", intent: "competition" };
     yield { key: ["C30b", "run", "10k", p].join("/"), sport: "run", a };
   }
+
+  // ---- Sous-passe « récup sans date de course » (O-21b) ---------------------
+  // CINQUIÈME OCCURRENCE DU MÊME ANGLE MORT, et celle-ci était déjà écrite noir sur blanc dans
+  // le registre : O-21 disait, à sa première correction, « le golden ne bouge pas d'un profil
+  // parce que ses profils portent tous une date ». La leçon n'avait pas été appliquée — la
+  // sous-passe C30b ci-dessus n'a effectivement pas de `race_date`, mais elle balaie un INTER
+  // à 5 séances, et la borne « récup ≤ semaine précédente » ne mord pas là.
+  //
+  // Le défaut d'O-21b vit sur les préparations construites sur `minWeeks` (l'athlète qui n'a
+  // pas encore calé sa date), là où la phase de PIC tient en une seule semaine et où cette
+  // semaine peut être une décharge (R18.5 : la cadence de l'athlète l'emporte sur le placement).
+  // ET MA PREMIÈRE ÉCRITURE DE CETTE PASSE ÉTAIT DÉCORATIVE — mesurée, pas supposée. Elle
+  // héritait du `dispo: "semaine"` de `base()`, et sous cette contrainte les QUATRE allures
+  // rendent le MÊME plan à la minute près (1 487 min) : l'allure n'y change rien, donc la passe
+  // ne pouvait rien voir. Le commentaire que j'avais écrit affirmait le contraire. Il faut
+  // `dispo: "quotidienne"` pour que la semaine ait assez de jours pour que la borne morde.
+  //
+  // Vérifié dans les deux états — sans le correctif : 1282 / **1061** / 1319 / **1077** min,
+  // et les semaines de récup de 5:45 et 8:30 tombent à 2 séances ; avec : 1282 / 1284 / 1319 /
+  // 1275 et 3 séances partout.
+  for (const p of ["4:30", "5:45", "7:00", "8:30"]) {
+    const a = { ...base(), format: "10k", pace: p, pace_known: "oui", vol_max: "6", vol_recent: "5",
+      sessions_max: "3", history: "confirme", level: "debutant", intent: "competition",
+      dispo: "quotidienne", shift_ok: "oui", off_days: "non", doubles: "oui", terrain: "route" };
+    yield { key: ["O-21b", "run", "10k", p].join("/"), sport: "run", a };
+  }
 }
 
 // ---- Normalisation canonique --------------------------------------------
