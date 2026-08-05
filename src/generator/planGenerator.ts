@@ -3069,6 +3069,13 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
             // R19.2 — la combinaison. `|| undefined` aurait relu 0 °C comme « pas de réponse »
             // (le piège de `vol_recent`, R20.1-a) : on teste la finitude, pas la vérité.
             waterTempC: (() => { const t = parseFloat(String(a.water_temp_c ?? "")); return isFinite(t) ? t : undefined; })(),
+            // PW — LE POIDS, ICI AUSSI. Sans lui, la ligne « ⏱ Prévu » du jour J affichait des
+            // WATTS là où la carte Prédiction affichait un CHRONO : deux écrans de la même app,
+            // deux réponses. C'est la forme exacte de R20.1-b (le jour J du swimrun ne recevait
+            // pas son objectif décodé) et de R14.3-a (deux clés pour le relief) — un paramètre
+            // branché d'un côté du pont et pas de l'autre. Mesuré : la passe « chrono vélo » du
+            // golden ne bougeait pas d'un bit quand on changeait le CdA de 10 %.
+            athleteKg: (() => { const w = parseFloat(String(a.weight ?? "")); return isFinite(w) && w > 0 ? w : undefined; })(),
             runHoursPerWeek: a.sport === "run" ? parseFloat(String(a.vol_max ?? "")) || undefined : undefined,
           });
           if (pred.items.length) predDet = " — ⏱ Prévu : " + pred.items.map((it) => it.leg + " " + it.value).join(" · ");

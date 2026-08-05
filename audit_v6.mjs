@@ -662,6 +662,79 @@ test("U9", "le refus « course trop proche » ne parle jamais d'une autre épreu
   return { ok: bad.length === 0, detail: bad.join(" ; ") || `${vus} refus, tous nomment la bonne épreuve` };
 });
 
+// ── PW — LE VÉLO A ENFIN UN CHRONO, ET LE TRIATHLON UN TOTAL ───────────────────────────
+//
+// Trois faces, parce que le risque est différent sur chacune : le chrono existe et il est
+// PLAUSIBLE ; il RÉAGIT à ce dont il dépend (relief, position, poids) ; et il REFUSE quand la
+// matière manque, au lieu d'inventer une masse.
+const triPred = (over) => E.predict("tri", { ...profile("tri"), format: "70.3", ftp_known: "oui", ftp: "250",
+  pace_known: "oui", pace: "4:30", css_known: "oui", css: "1:40", weight: "75", terrain: "plat", ...over });
+const legOf = (p, re) => (p.items || []).find((i) => re.test(i.leg)) || null;
+const secOf = (v) => { const m = String(v).split(/[–-]/)[0].trim();
+  const a = m.match(/^(\d+)h(\d+)$/), b = m.match(/^(\d+)'(\d+)$/);
+  return a ? +a[1] * 3600 + +a[2] * 60 : b ? +b[1] * 60 + +b[2] : NaN; };
+
+test("PW-A", "le chrono vélo existe sur les 4 formats de tri, et il est plausible", "pass", () => {
+  // Les bornes sont larges À DESSEIN : ce critère garde l'ORDRE DE GRANDEUR, pas une
+  // calibration. Une garde serrée sur des valeurs exactes se casserait à chaque retouche de
+  // CdA sans rien dire de plus — et ce qu'on veut savoir, c'est « ce chrono est-il celui d'un
+  // triathlète ou celui d'un bug ». Vitesses attendues : 30-42 km/h selon le format.
+  const bad = [];
+  for (const [format, km] of [["S", 20], ["M", 40], ["70.3", 90], ["Full", 180]]) {
+    const it = legOf(triPred({ format }), new RegExp("Vélo " + km + "km"));
+    if (!it) { bad.push(format + " : aucun chrono vélo"); continue; }
+    const kmh = km / (secOf(it.value) / 3600);
+    if (!(kmh > 28 && kmh < 45)) bad.push(`${format} : ${kmh.toFixed(1)} km/h hors [28, 45]`);
+    if (!/Martin/.test(it.why)) bad.push(format + " : le chrono ne dit pas d'où il vient");
+    if (!/CdA/.test(it.why)) bad.push(format + " : les hypothèses ne sont pas affichées");
+  }
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "4 formats, vitesses dans la plage d'un triathlète" };
+});
+
+test("PW-B", "le total inclut les transitions, et il est la somme de ses parts", "pass", () => {
+  const bad = [];
+  for (const format of ["S", "M", "70.3", "Full"]) {
+    const p = triPred({ format });
+    const tot = legOf(p, /Total/);
+    if (!tot) { bad.push(format + " : pas de total"); continue; }
+    const parts = ["Natation", "Vélo \\d+km", "CAP"].map((re) => legOf(p, new RegExp(re)));
+    if (parts.some((x) => !x)) { bad.push(format + " : un segment manque alors que le total sort"); continue; }
+    const somme = parts.reduce((t, x) => t + secOf(x.value), 0);
+    const total = secOf(tot.value);
+    // Le total DOIT dépasser la somme des trois segments — de la valeur des transitions.
+    const trans = total - somme;
+    if (trans <= 0) bad.push(`${format} : total ${total}s ≤ somme des segments ${somme}s — les transitions ne sont pas comptées`);
+    else if (trans < 120 || trans > 900) bad.push(`${format} : ${Math.round(trans / 60)} min de transitions, hors [2, 15]`);
+    if (!/T1/.test(tot.why) || !/T2/.test(tot.why)) bad.push(format + " : le total ne dit pas qu'il compte les transitions");
+  }
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "4 formats : total = segments + T1 + T2" };
+});
+
+test("PW-C", "le chrono RÉAGIT au relief et au poids, et REFUSE sans poids", "pass", () => {
+  const bad = [];
+  const t = (over) => { const it = legOf(triPred(over), /Vélo 90km/); return it ? secOf(it.value) : null; };
+  const plat = t({ terrain: "plat" }), vall = t({ terrain: "vallonne" }), mont = t({ terrain: "montagne" });
+  if (!(plat && vall && mont)) bad.push("un des trois reliefs ne rend pas de chrono");
+  else {
+    if (!(vall > plat)) bad.push(`vallonné (${vall}s) pas plus lent que plat (${plat}s)`);
+    if (!(mont > vall)) bad.push(`montagne (${mont}s) pas plus lent que vallonné (${vall}s)`);
+    // Ordres de grandeur visés à la calibration : +5 à +15 % en vallonné, +18 à +40 % en montagne.
+    const pv = 100 * (vall / plat - 1), pm = 100 * (mont / plat - 1);
+    if (pv < 5 || pv > 15) bad.push(`vallonné +${pv.toFixed(0)} % hors [5, 15]`);
+    if (pm < 18 || pm > 40) bad.push(`montagne +${pm.toFixed(0)} % hors [18, 40]`);
+  }
+  // Le poids : plus lourd = plus lent (roulement et pente). S'il n'agissait pas, l'entrée
+  // serait décorative — c'est exactement ce que R20.1 a mesuré ailleurs.
+  const l60 = t({ weight: "60" }), l95 = t({ weight: "95" });
+  if (!(l60 && l95 && l95 > l60)) bad.push("le poids n'agit pas sur le chrono vélo");
+  // …et sans poids, on REFUSE en le disant (P7/P8), on n'invente pas une masse.
+  const sans = triPred({ weight: "" });
+  if (legOf(sans, /Vélo 90km/)) bad.push("un chrono vélo est produit SANS poids déclaré");
+  if (legOf(sans, /Total/)) bad.push("un total est produit alors que le vélo n'est pas estimé");
+  if (!(sans.advice || []).some((a) => /[Pp]oids manquant/.test(a))) bad.push("le refus n'est pas expliqué à l'athlète");
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "relief et poids agissent ; sans poids, refus motivé" };
+});
+
 // ── C30 — LA SORTIE LONGUE CONNAÎT L'ÉPREUVE (décision du fondateur, 04/08/2026) ────────
 //
 // « se rapprocher du temps visé sur l'épreuve a minima, et au moins 70 % de la distance ».

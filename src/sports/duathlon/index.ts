@@ -17,7 +17,7 @@ import type { V1Session, V1Step } from "../../engine/types.ts";
 import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS } from "../../engine/constraintMatrix.ts";
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
-import { DUA_RUN1, DUA_BIKE, DUA_RUN2, DUA_BIKE_POWER, DUA_BIKE_PREFATIGUE } from "./tables.ts";
+import { DUA_RUN1, DUA_BIKE, DUA_RUN2, DUA_BIKE_POWER, DUA_BIKE_PREFATIGUE, DUA_TRANSITION } from "./tables.ts";
 
 /** Bandes de progression par phase — même échelle que le tri (le brick monte lentement). */
 const PHASE_BAND: Record<string, [number, number]> = {
@@ -145,18 +145,44 @@ export function predictDuathlon(kit: PredictKit): void {
   const { refs, format, items, advice, D, runRange, riegelSec, profWhy, bikeIF, bikeWhy } = kit;
   const r1 = DUA_RUN1[format], bk = DUA_BIKE[format], pw = DUA_BIKE_POWER[format], r2 = DUA_RUN2[format];
   const pf = DUA_BIKE_PREFATIGUE[format] ?? 0.97;
+  const bornes: Record<"r1" | "bike" | "r2", [number, number] | null> = { r1: null, bike: null, r2: null };
+  const bnd = kit.legBands.run;
+  const capte = (t: number, k: "r1" | "r2") => { bornes[k] = [t * (bnd ? bnd[0] : 1) * 0.97, t * (bnd ? bnd[1] : 1) * 1.03]; };
   if (refs.thrPace > 0 && r1 && r2) {
-    items.push({ leg: "R1 (" + r1.km + "km)", value: runRange(riegelSec(refs.thrPace, r1.km)), why: "Riegel depuis ton allure seuil — le R1 se court frais, c'est le seul segment où c'est vrai" + profWhy });
-    items.push({ leg: "R2 (" + r2.km + "km)", value: runRange(riegelSec(refs.thrPace, r2.km) * r2.fatigue), why: "Riegel × " + r2.fatigue + " de fatigue post-vélo — un R2 se court plus lentement qu'un R1 de même distance, même quand il est plus court" + profWhy });
+    const t1 = riegelSec(refs.thrPace, r1.km), t2 = riegelSec(refs.thrPace, r2.km) * r2.fatigue;
+    items.push({ leg: "R1 (" + r1.km + "km)", value: runRange(t1), why: "Riegel depuis ton allure seuil — le R1 se court frais, c'est le seul segment où c'est vrai" + profWhy });
+    capte(t1, "r1");
+    items.push({ leg: "R2 (" + r2.km + "km)", value: runRange(t2), why: "Riegel × " + r2.fatigue + " de fatigue post-vélo — un R2 se court plus lentement qu'un R1 de même distance, même quand il est plus court" + profWhy });
+    capte(t2, "r2");
   } else advice.push("Renseigne ton allure seuil (test : 30min à fond, allure moyenne) pour obtenir tes deux segments de course.");
   if (refs.ftp > 0 && bk && pw) {
     // §R10.2.4 — le facteur que le tri n'a jamais eu : le R1 dégrade la capacité du vélo.
     const [dlo, dhi] = bikeIF(pw.lo, pw.hi); // R15.2 — le relief abaisse la cible, avant la pré-fatigue
-    items.push({ leg: "Vélo (" + bk.km + "km)", value: Math.round(refs.ftp * dlo * pf) + "–" + Math.round(refs.ftp * dhi * pf) + "W",
+    items.push({ leg: "Vélo (" + bk.km + "km) — intensité", value: Math.round(refs.ftp * dlo * pf) + "–" + Math.round(refs.ftp * dhi * pf) + "W",
       why: "puissance NORMALISÉE cible, réduite de " + Math.round((1 - pf) * 100) + "% : tu arrives sur le vélo avec un R1 dans les jambes — viser la puissance d'un contre-la-montre frais coûterait ton R2" + bikeWhy });
+    // PW — le chrono. La pré-fatigue `pf` est DANS la puissance transmise : le chrono décrit le
+    // vélo tel qu'il se roule en course, pas tel qu'un contre-la-montre frais irait.
+    const est = kit.bikeTime(bk.km, pw.lo * pf, pw.hi * pf);
+    if (est) {
+      bornes.bike = [est.lo, est.hi];
+      items.push({ leg: "Vélo (" + bk.km + "km) — temps", value: kit.fmtRange(est.lo, est.hi),
+        why: "converti depuis la puissance par le modèle de Martin (1998) : " + est.kmhLo.toFixed(1).replace(".", ",")
+          + "–" + est.kmhHi.toFixed(1).replace(".", ",") + " km/h. Hypothèses — " + est.hypothese + "." });
+    } else if (!(kit.athleteKg && kit.athleteKg > 0))
+      advice.push("Poids manquant → pas de chrono vélo, seulement la puissance cible. Renseigne-le au Profil.");
   } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir ta puissance cible vélo.");
+  // PW — le TOTAL du duathlon, transitions comprises. Deux transitions comme en triathlon, mais
+  // plus courtes : on n'y quitte pas de combinaison, on chausse et on part.
+  if (bornes.r1 && bornes.bike && bornes.r2) {
+    const tr = DUA_TRANSITION[format] || { t1: 60, t2: 45 };
+    const [lo, hi] = kit.totalOf([bornes.r1, bornes.bike, bornes.r2], tr.t1 + tr.t2);
+    items.push({ leg: "🏁 Total estimé", value: kit.fmtRange(lo, hi),
+      why: "R1 + T1 + vélo + T2 + R2. Transitions comptées " + Math.round(tr.t1 / 60) + " et "
+        + Math.round(tr.t2 / 60) + " min (on ne quitte pas de combinaison : elles sont plus courtes qu'en triathlon). "
+        + "La fourchette est la SOMME des bornes — le jour J, la forme est bonne ou elle ne l'est pas sur les trois segments à la fois." });
+  }
   if (items.length) {
-    D("PRED-duathlon", "Méthode duathlon", "3 legs séparés (R1 · vélo · R2)", "Un total additionnerait les incertitudes ET les transitions ; chaque segment a sa méthode, et le vélo porte en plus la pré-fatigue du R1");
+    D("PRED-duathlon", "Méthode duathlon", "3 legs séparés puis total", "Chaque segment garde sa méthode — Riegel pour les deux courses, la physique pour le vélo, et le vélo porte en plus la pré-fatigue du R1");
     advice.push("Le piège du duathlon est le R1 : parti à l'allure d'un 10 km sec, il te coûte le vélo ET le R2. Cours-le 10 à 15 s/km plus lentement que ta référence sur la distance.");
   }
 }

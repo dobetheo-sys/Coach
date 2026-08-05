@@ -41,6 +41,10 @@ const ORDER = [
   // Ses lectures de `predictor` (RUN_KM, Riegel) se font à l'APPEL, donc son rang devant lui
   // n'a pas d'importance — c'est ce que le §ORDER assume déjà pour `RUN_KM` dans `sports/run`.
   "src/engine/longRunSpecificity.ts",
+  // PW — le point unique « puissance → vitesse » (modèle Martin 1998). Aucune dépendance sur
+  // les autres modules du bundle : il ne fait que de la physique. Il doit précéder `predictor`
+  // et les modules de sport, qui l'appellent tous les trois (tri, vélo, duathlon).
+  "src/engine/cyclingSpeed.ts",
   "src/engine/loadModel.ts",
   "src/audit/coherenceScorer.ts",
   "src/generator/sessionLibrary.ts",

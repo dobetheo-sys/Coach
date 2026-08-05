@@ -4196,6 +4196,126 @@ le disait en toutes lettres — c'est le tableau des angles morts qui n'avait pa
 au §4 : **un angle mort qui n'en est plus fait croire à une cécité qu'on n'a pas**, le symétrique
 exact du défaut caché.
 
+## PW — le vélo a un chrono, et le triathlon un total avec transitions
+
+**Demande du fondateur (05/08/2026)** : *« travaille sur les prédictions de courses notamment en
+vélo, j'ai juste les watt pas le temps, trouve un moyen pour que j'ai le temps total estimé
+notamment sur le triathlon, en incluant les transitions »*.
+
+### Le défaut, chiffré
+
+Le prédicteur rendait un CHRONO pour la nage et la course à pied, et des WATTS pour le vélo. Or
+le vélo est le segment le plus long des quatre formats de triathlon — mesuré sur le plan livré,
+**48 à 55 % du temps total**. L'athlète recevait donc une prédiction amputée de sa plus grosse
+moitié, et aucun total. Le commentaire du moteur assumait ce choix (« un total additionnerait
+les incertitudes ») : c'est vrai, et ce n'est pas une raison suffisante — l'athlète fait ce
+total de tête, sans les transitions, donc plus mal.
+
+### Le modèle : de la physique, pas un abaque
+
+`src/engine/cyclingSpeed.ts` est le point unique « une puissance, une vitesse ». Il applique
+**Martin et al. (1998), J Appl Biomech 14:276-291** — validé à ±2,7 % — et résout en `v` par
+bissection :
+
+    P_roue = v · (Crr·m·g·cos θ + m·g·sin θ) + ½·ρ·CdA·v³ ,  P_roue = η · P_pédales
+
+Ce qui n'est pas mesurable par l'app est déclaré comme HYPOTHÈSE avec sa fourchette — CdA, Crr,
+masse du vélo — et **c'est cette fourchette qui devient l'incertitude annoncée**, pas un ±x %
+choisi pour faire joli. Le CdA domine : 30 % de traînée entre les cocottes et les prolongateurs,
+soit une dizaine de minutes sur 90 km. L'hypothèse est AFFICHÉE avec le chrono, pour que
+l'athlète qui roule autrement sache de combien le lire de travers.
+
+**Le poids, lui, est une entrée réelle** (`weight`, Profil). Sans lui, le module REFUSE et
+l'appelant le DIT (P7/P8) : un poids inventé fausserait le roulement ET la pente, et dans le sens
+rassurant sur un parcours plat — le pire des deux sens.
+
+### Le relief SORT du modèle au lieu d'être posé à côté
+
+Un parcours vallonné coûte du temps même en revenant à son point de départ : on perd beaucoup en
+montée, on regagne peu en descente. Ce coût n'est pas un coefficient ajouté — il tombe de la même
+équation appliquée à trois segments (montée, descente, plat). C'est R11.1 appliqué au relief : un
+coefficient « pénalité de relief » aurait été un second jeu de vérités à côté d'un modèle qui sait
+déjà répondre.
+
+**Deux calibrations fausses avant la bonne, et elles restent écrites.** (1) « pente moyenne 2,5 %
+et 5 % », posée au jugé — absurde : 5 % sur 90 km voudrait dire 2 250 m de D+. (2) Ramenée aux
+vraies pentes moyennes (1 % et 2 %), en annonçant dans le commentaire « +9 % et +23 % » de
+surcoût : mesuré, **+3 % et +11 %** — un commentaire qui annonçait un chiffre que le code ne
+produisait pas, et un chiffre trop faible de moitié. La cause est que **le D+ n'est pas étalé sur
+la moitié du parcours** : 1 800 m se montent sur 25 km de cols à 7 %, pas sur 45 km à 2 %, et la
+vitesse s'effondre de façon très non linéaire avec la pente. Le profil se décrit donc par deux
+grandeurs que les organisateurs PUBLIENT — **D+ pour 100 km** et **part de la distance passée à
+monter** — dont la pente des sections montantes DÉCOULE. Résultat mesuré et inscrit dans le
+fichier : **plat 157 min · vallonné 171 (+9 %) · montagne 199 (+27 %)**, calé sur l'écart observé
+entre un 70.3 roulant et un 70.3 de montagne.
+
+### Le total, et pourquoi sa fourchette est la somme des bornes
+
+Deux compositions étaient possibles : en QUADRATURE (erreurs indépendantes, elles s'annulent en
+partie) ou en SOMME DES BORNES (erreurs corrélées). La seconde est retenue parce que la
+corrélation est réelle — la principale incertitude n'est pas le hasard segment par segment, c'est
+« la forme du jour est-elle celle qu'on a mesurée », et ce jour-là elle l'est ou elle ne l'est pas
+sur les trois segments à la fois. C'est aussi la fourchette la plus large, le bon sens de l'erreur
+pour quelqu'un qui prépare un départ. **Le total ne sort que si les trois segments sont estimés** :
+un total à deux tiers serait faux de la valeur du tiers manquant, et personne ne lit l'astérisque.
+
+Les transitions (`TRI_TRANSITION`, `DUA_TRANSITION`) sont des médianes d'âge-groupe, pas des
+optima, et elles montent avec le format pour une raison concrète : sur longue distance, il y a un
+sac à récupérer, une tenue à changer et souvent plusieurs centaines de mètres à pied dans le parc.
+
+### Ce que ça donne
+
+| format | nage | vélo | CAP | **total** |
+|---|---|---|---|---|
+| Sprint | 12'37–13'23 | 33'42–36'53 | 21'12–22'30 | **1h10–1h16** |
+| Olympique | 25'28–27'02 | 1h08–1h14 | 45'03–47'50 | **2h23–2h33** |
+| 70.3 | 32'34–34'34 | 2h29–2h45 | 1h42–1h48 | **4h52–5h16** |
+| Ironman | 1h06–1h10 | 5h09–5h41 | 3h43–3h56 | **10h13–11h03** |
+
+(FTP 250 W, 75 kg, allure seuil 4:30/km, CSS 1:40/100m, parcours plat.)
+
+Le **duathlon** reçoit le même traitement, pré-fatigue du R1 comprise dans la puissance
+transmise. Le **vélo seul** ne reçoit qu'une VITESSE et pas un chrono : le questionnaire ne
+demande pas la distance d'une cyclosportive (elle va de 80 à 250 km), et le moteur ne l'invente
+pas — l'athlète la connaît, il fait la division.
+
+### Gardes, et les deux angles morts trouvés en les posant
+
+`PW-A` (le chrono existe sur les 4 formats et sa vitesse est celle d'un triathlète), `PW-B` (le
+total dépasse la somme des segments exactement de la valeur des transitions), `PW-C` (le chrono
+réagit au relief et au poids, et REFUSE sans poids). **Vérifiées rouges sur quatre cassures.**
+
+Le golden gagne une passe « chrono vélo », et **il a fallu deux écritures** : la première posait
+un `weight` mais aucune date de course, et la photo ne bougeait pas d'un bit quand on changeait le
+CdA de 10 %. La raison est structurelle et vaut d'être sue — **le golden photographie le PLAN, pas
+la prédiction** : les temps prédits n'y entrent que par la ligne « ⏱ Prévu » de la séance du jour
+J. Cinquième occurrence de la famille A-2.
+
+Et cette passe en a débusqué un autre, réel celui-là : **le jour J ne recevait pas le poids**.
+`planGenerator` appelle `predictRace` avec ses propres options, et `athleteKg` n'y était pas —
+la carte Prédiction affichait un chrono pendant que la ligne du jour J affichait des watts, deux
+écrans de la même app avec deux réponses. Forme exacte de R20.1-b (le jour J du swimrun sans son
+objectif décodé) et de R14.3-a.
+
+**Et le harnais E2E fabriquait un athlète de 138 kg.** `traverserQuestionnaire` remplit tout champ
+libre non déclaré par le MILIEU de ses bornes — pour `weight` (25-250 kg), cela fait **138**. Tant
+qu'aucune règle ne lisait le poids pour produire un chiffre affiché, c'était inoffensif ; PW l'a
+rendu visible d'un coup — 40 km en **1 h 57 au lieu de 1 h 14**. Le modèle avait raison, l'entrée
+était absurde, et rien ne le disait. Le remplissage est désormais commenté pour ce qu'il est (un
+bouchon de validation, pas un athlète) et la suite duathlon DÉCLARE son poids. Famille U14 : un
+défaut tacite qui n'est pas neutre.
+
+**Deux critères E2E encodaient la décision renversée** — « trois legs, et AUCUN total », en citant
+son motif d'alors. Ils sont RÉÉCRITS et non supprimés : le motif reste vrai (un total additionne
+bien les incertitudes) mais il ne justifie plus de se taire, et ce qu'ils gardent désormais est
+que le total EXISTE et vaut la somme des segments PLUS les transitions.
+
+**Une garde existante a rougi, et la corriger valait mieux que la contourner** : `R14.1-I1`
+s'appelle « le levier poids est absent tant qu'il n'est pas demandé » et mesurait « le mot *kg*
+n'apparaît nulle part ». Mon hypothèse de modèle (« 85 kg tout compris ») l'a fait échouer sans
+qu'aucun levier ne fuite — neuvième occurrence d'un critère qui nomme une grandeur et en mesure
+une voisine. Il porte désormais sur le VOCABULAIRE du levier, pas sur l'unité.
+
 ## O-21 (2e correction) — deux passes qui se rabattaient sur un état estropié
 
 L'entrée O-21 laissait un « résidu = arbitrage » : la sortie longue se prescrit-elle en distance

@@ -117,7 +117,7 @@ dépôt — historique git si besoin.
   (jours non réordonnés) et refuse de publier un taux sur un balayage vide. Trail 25,0 % des
   plans · swimrun 44,4 % — c'est ce chiffre qui a tranché O-3.
 - `npm run golden:capture` / `golden:verify` — **golden master** (spec R10) : photographie
-  912 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
+  945 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
   blessures/âges/terrain/volumes + **passe « course datée »** : 6 sports × les 7 jours de
   semaine possibles pour le jour J — sans elle, toute la branche ancrée sur une course était
   hors couverture, et c'est ce trou qui a laissé vivre N2 — plus une passe « volume et
@@ -1128,6 +1128,45 @@ occurrence de cet angle mort, et elle était PUBLIÉE comme une limite en livran
 (`R15.2-A/B/C/D`, quatre verts). Déplacée au §4 — un angle mort qui n'en est plus fait croire à
 une cécité qu'on n'a pas.
 **27 gates verts, E2E 18/18, golden 908, registre 26/26.**
+
+**PW livré — le vélo a un CHRONO, et le triathlon un TOTAL avec transitions** (demande du
+fondateur, 05/08/2026 : « j'ai juste les watt pas le temps… le temps total estimé notamment sur
+le triathlon, en incluant les transitions », voir ARCHITECTURE.md « PW ») : le prédicteur rendait
+un chrono pour la nage et la course, et des WATTS pour le vélo — c'est-à-dire rien pour le
+segment qui pèse **48 à 55 % du temps total**. `src/engine/cyclingSpeed.ts` est le point unique
+« une puissance, une vitesse » : modèle de **Martin et al. (1998)**, validé à ±2,7 %, résolu par
+bissection. Ce qui n'est pas mesurable — CdA, Crr, masse du vélo — est déclaré comme HYPOTHÈSE
+avec sa fourchette, et **c'est cette fourchette qui devient l'incertitude annoncée**, pas un ±x %
+décoratif ; l'hypothèse est AFFICHÉE avec le chrono. Le poids, lui, est une entrée réelle : sans
+lui le module REFUSE et le dit (P7/P8) — un poids inventé fausserait le roulement ET la pente,
+dans le sens rassurant. Livré : **Sprint 1h10–1h16 · Olympique 2h23–2h33 · 70.3 4h52–5h16 ·
+Ironman 10h13–11h03** (FTP 250, 75 kg, plat), duathlon compris ; le vélo seul ne reçoit qu'une
+VITESSE, le questionnaire ne demandant pas la distance d'une cyclosportive.
+**Le relief SORT du modèle** au lieu d'être un coefficient posé à côté (R11.1) — et **deux
+calibrations fausses avant la bonne, gardées écrites** : « pente moyenne 2,5 % et 5 % » posée au
+jugé (absurde : 5 % sur 90 km = 2 250 m de D+), puis les vraies pentes moyennes 1 % et 2 % avec un
+commentaire annonçant « +9 % et +23 % » quand le code produisait **+3 % et +11 %**. La cause est
+que **le D+ n'est pas étalé sur la moitié du parcours** : 1 800 m se montent sur 25 km à 7 %, et la
+vitesse s'effondre non linéairement avec la pente. Le profil se décrit donc par deux grandeurs
+PUBLIÉES — D+ pour 100 km et part de la distance montante — dont la pente découle : **plat 157 min
+· vallonné 171 (+9 %) · montagne 199 (+27 %)**. **La fourchette du total est la SOMME des bornes**
+et non leur composition en quadrature : la principale incertitude n'est pas le hasard segment par
+segment, c'est la forme du jour, et ce jour-là elle l'est ou elle ne l'est pas sur les trois à la
+fois. Le total ne sort que si les TROIS segments sont estimés.
+**Deux angles morts trouvés en posant les gardes.** Le golden ne bougeait pas d'un bit quand on
+changeait le CdA de 10 % : il photographie le **PLAN, pas la prédiction** — les temps prédits n'y
+entrent que par la ligne « ⏱ Prévu » du jour J, donc la passe avait besoin d'une date de course
+(cinquième occurrence de la famille A-2). Et cette passe en a débusqué un **réel** : le jour J ne
+recevait pas le poids, donc la carte Prédiction affichait un chrono pendant que la ligne du jour J
+affichait des watts — deux écrans de la même app, deux réponses (forme exacte de R20.1-b).
+**Et le harnais E2E fabriquait un athlète de 138 kg** : il remplit tout champ libre non déclaré par
+le MILIEU de ses bornes, soit 138 pour `weight` (25-250) — 40 km en **1 h 57 au lieu de 1 h 14**,
+le modèle ayant raison sur une entrée absurde que rien ne signalait (famille U14). Deux critères
+E2E encodaient la décision renversée (« aucun total ») : **réécrits, pas supprimés**.
+Gardes `PW-A`/`PW-B`/`PW-C` au banc v6, **vérifiées rouges sur quatre cassures** ; `R14.1-I1`
+a rougi à tort (elle nommait « le levier poids fuite » et mesurait « le mot *kg* apparaît » —
+neuvième occurrence de cette famille) et porte désormais sur le vocabulaire du levier.
+**27 gates verts, E2E 18/18, golden 945 recapturé.**
 
 **O-21 (2e correction) — deux passes se rabattaient sur un état estropié, et « distance ou temps »
 n'était pas la question** (« corrige », fondateur — voir ARCHITECTURE.md « O-21 (2e correction) ») :

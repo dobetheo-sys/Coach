@@ -35,7 +35,9 @@ await traverserQuestionnaire(page, {
     sex: "H", level: "inter", pace_known: "oui", ftp_known: "oui",
     history: "confirme", injury: "aucune",
     sessions_max: "7", vol_max: "10", vol_recent: "7", dispo: "semaine", off_days: "non", doubles: "non" },
-  saisies: { age: "35", pace: "4:30", ftp: "250" },
+  // `weight` est DÉCLARÉ : sans lui le harnais remplit le milieu des bornes du champ,
+  // soit 138 kg, et le chrono vélo mesuré ci-dessous serait celui d'un autre athlète (PW).
+  saisies: { age: "35", pace: "4:30", ftp: "250", weight: "75" },
   async surEcran(pg) {
     // Le libellé de l'étape terrain change avec le sport : en duathlon c'est « Le parcours »,
     // pas « Le terrain » de la course à pied. Accroché au champ, pas au rang de l'écran.
@@ -82,15 +84,33 @@ ok(plan.names.some((n) => /Brick vélo → R2/.test(n)), "brique vélo → R2 pr
 ok(plan.longs.some((l) => l.startsWith("bk")), "la sortie longue hors phase spécifique est à VÉLO (l'impact à pied est déjà le facteur limitant)");
 ok(plan.empty === 0, "aucun jour vide (le défaut D10-7 ne peut pas se reproduire ici)");
 
-// ---- 4. Prédiction : trois legs, jamais un total, et la pré-fatigue du R1 sur le vélo ----
+// ---- 4. Prédiction : les segments, LE TOTAL, et la pré-fatigue du R1 sur le vélo ----
+//
+// PW (05/08/2026) — CES DEUX CRITÈRES ENCODAIENT UNE DÉCISION QUI A ÉTÉ RENVERSÉE.
+// Ils exigeaient « trois legs, et AUCUN total », en citant le motif d'alors (« additionner les
+// incertitudes serait mentir »). Le fondateur a demandé l'inverse : un temps total, transitions
+// comprises. Le motif reste vrai — un total additionne bien les incertitudes — mais il ne
+// justifie plus de se taire : l'athlète fait ce total de tête, sans les transitions, donc plus
+// mal. Les critères sont donc RÉÉCRITS et non supprimés, et ils gardent ce qui compte
+// désormais : le total EXISTE, et il vaut la somme des segments PLUS les transitions.
 const pred = await page.evaluate(async () => {
   const { S } = await import("./js/state.js");
   const p = globalThis.EBV2.predict("duathlon", S.answers, S.currentPlan);
   return { items: p.items.map((i) => i.leg + ": " + i.value), whys: p.items.map((i) => i.why).join(" "), advice: p.advice.join(" ") };
 });
-ok(pred.items.length === 3, "trois legs séparés : " + pred.items.join(" · "));
-ok(!/total/i.test(pred.items.join(" ")), "aucun temps total affiché (additionner les incertitudes serait mentir)");
-const w = pred.items.find((i) => /Vélo/.test(i));
+ok(pred.items.length === 5, "R1 · R2 · vélo (intensité + temps) · total : " + pred.items.join(" · "));
+{
+  const sec = (v) => { const m = String(v).split(/[–-]/)[0].trim();
+    const a = m.match(/^(\d+)h(\d+)$/), b = m.match(/^(\d+)'(\d+)$/);
+    return a ? +a[1] * 3600 + +a[2] * 60 : b ? +b[1] * 60 + +b[2] : NaN; };
+  const tot = pred.items.find((i) => /Total/.test(i));
+  ok(!!tot, "un temps total est affiché (décision du fondateur, PW)");
+  const parts = ["R1 ", "R2 ", "temps"].map((k) => pred.items.find((i) => i.includes(k)));
+  const somme = parts.reduce((t, x) => t + (x ? sec(x.split(": ")[1]) : NaN), 0);
+  const trans = tot ? sec(tot.split(": ")[1]) - somme : NaN;
+  ok(trans > 60 && trans < 600, "le total dépasse la somme des segments de la valeur des transitions (" + Math.round(trans / 60) + " min)");
+}
+const w = pred.items.find((i) => /Vélo.*intensité/.test(i));
 const watts = w ? +w.match(/(\d+)–/)[1] : 0;
 ok(watts > 150 && watts < 250, "puissance vélo cible plausible pour 250W de FTP (" + w + ")");
 ok(/pré-fatigue|R1 dans les jambes/i.test(pred.whys), "la puissance vélo est explicitement réduite par la pré-fatigue du R1 (§R10.2.4)");

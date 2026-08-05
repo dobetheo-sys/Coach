@@ -40,8 +40,21 @@ export function predictBike(kit: PredictKit): void {
   const b = BIKE_POWER[format];
   if (refs.ftp > 0 && b) {
     const [blo, bhi] = bikeIF(b.lo, b.hi); // R15.2 — le relief abaisse la cible
-    items.push({ leg: "Vélo", value: Math.round(refs.ftp * blo) + "–" + Math.round(refs.ftp * bhi) + "W", why: b.note + " — cible en puissance NORMALISÉE (moyenne pondérée : les pointes montent au-dessus), le chrono dépend du parcours" + bikeWhy });
-    D("PRED-bike", "Méthode vélo", "% FTP par format", "Prédire un chrono sans connaître le parcours serait mentir ; la puissance cible est transférable partout");
+    items.push({ leg: "Vélo — intensité", value: Math.round(refs.ftp * blo) + "–" + Math.round(refs.ftp * bhi) + "W", why: b.note + " — cible en puissance NORMALISÉE (moyenne pondérée : les pointes montent au-dessus)" + bikeWhy });
+    // PW — LA VITESSE, PAS LE CHRONO. Le moteur ne connaît pas la distance d'une cyclosportive
+    // (elle va de 80 à 250 km), donc il ne peut pas rendre un temps sans l'inventer. Mais il
+    // peut convertir la puissance en VITESSE MOYENNE, ce qui est la moitié utile de la
+    // réponse : l'athlète connaît sa distance, il fait la division. C'est le maximum honnête
+    // ici — et ça vaut mieux que le refus complet d'avant, qui laissait des watts tout seuls.
+    const est = kit.bikeTime(100, b.lo, b.hi);
+    if (est) items.push({
+      leg: "Vélo — vitesse",
+      value: est.kmhLo.toFixed(1).replace(".", ",") + "–" + est.kmhHi.toFixed(1).replace(".", ",") + " km/h",
+      why: "converti depuis la puissance par le modèle de Martin (1998). Multiplie par ta distance pour ton chrono — le moteur ne la connaît pas et ne l'invente pas. Hypothèses — " + est.hypothese + ".",
+    });
+    else if (!(kit.athleteKg && kit.athleteKg > 0))
+      advice.push("Renseigne ton poids au Profil : sans lui, impossible de convertir tes watts en vitesse (le poids entre dans le roulement ET dans la pente).");
+    D("PRED-bike", "Méthode vélo", "% FTP par format + vitesse", "Le chrono dépend d'une distance que le questionnaire ne demande pas ; la puissance et la vitesse moyenne, elles, sont transférables sur n'importe quel parcours");
   } else advice.push("Renseigne ta FTP (test 20min × 0.95) pour obtenir tes puissances cibles de course.");
 }
 

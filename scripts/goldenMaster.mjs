@@ -201,6 +201,34 @@ function* profiles() {
       yield { key: ["C30", "run", fmt, p].join("/"), sport: "run", a };
     }
   }
+  // ---- Passe « chrono vélo » (PW) ------------------------------------------
+  // CINQUIÈME OCCURRENCE DU MÊME ANGLE MORT (famille A-2), et celle-ci s'est vue en LIVRANT :
+  // aucun profil du golden ne porte de `weight`. Or le chrono vélo et le total avec transitions
+  // n'existent QUE si le poids est déclaré — sans lui, `bikeTimeEstimate` refuse (P7/P8). Les
+  // 912 profils voyaient donc uniquement le renommage du libellé (« Vélo » → « Vélo —
+  // intensité »), et pas une seule des minutes que ce chapitre produit.
+  //
+  // Trois sports × leurs formats × trois reliefs, avec un poids : c'est le relief qui fait le
+  // plus bouger le chrono (+9 % vallonné, +27 % montagne), donc c'est lui qu'il faut balayer.
+  //
+  // ET IL A FALLU DEUX ÉCRITURES : la première posait `weight` mais AUCUNE date de course, et
+  // le golden ne bougeait pas d'un bit quand on changeait le CdA de 10 %. La raison est
+  // structurelle et vaut d'être écrite — **le golden photographie le PLAN, pas la prédiction**.
+  // Les temps prédits n'entrent dans la photo que par UN chemin : la ligne « ⏱ Prévu » de la
+  // séance du JOUR J, qui n'existe que si une date de course est déclarée. Sans elle, cette
+  // passe surveillait du vide, exactement comme la passe « allure » surveillait `vol_max: 10`
+  // en croyant regarder C30b.
+  for (const [sport, formats] of [["tri", ["S", "M", "70.3", "Full"]], ["duathlon", ["S", "M", "L", "PM"]], ["bike", ["cyclo", "clm", "gravel"]]]) {
+    for (const format of formats) {
+      for (const terrain of ["plat", "vallonne", "montagne"]) {
+        const a = { ...base(), format, terrain, weight: "75", height: "178", sex: "H",
+          history: "confirme", level: "inter", intent: "competition",
+          plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[6] };
+        yield { key: ["PW", sport, format, terrain].join("/"), sport, a };
+      }
+    }
+  }
+
   // ---- Sous-passe « allure × petite enveloppe » (C30b) ----------------------
   // ET LA PASSE CI-DESSUS NE VOYAIT TOUJOURS PAS C30b — quatrième occurrence du même angle
   // mort, cette fois d'un cran plus fin. `vol_max: 10` est la bonne enveloppe pour C31 (le
