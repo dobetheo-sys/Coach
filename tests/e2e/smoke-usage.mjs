@@ -438,6 +438,63 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   await ctx.close();
 }
 
+// ── U18 — L'EXPLICATION SE DEMANDE, L'AVERTISSEMENT S'IMPOSE ────────────────────────────
+//
+// Le « ? » replie de la PÉDAGOGIE. La garde tient les deux moitiés, et c'est la seconde qui
+// compte : un avertissement derrière un geste est un avertissement supprimé pour tous ceux qui
+// ne font pas le geste. Le disclaimer nutrition est asserté en CI par `demo:nutrition` ; ici on
+// vérifie qu'il reste VISIBLE à l'écran, ce qu'aucun test de moteur ne peut voir.
+{
+  // On réutilise le helper de CE fichier (`session`) : il traverse le questionnaire à une date
+  // figée. Ma première écriture appelait `traverserQuestionnaire`, qui n'est pas importé ici —
+  // la suite MOURAIT avant de rapporter. Elle sortait bien en code non nul, donc `run-all` la
+  // voyait ; mais c'est le mécanisme que R22b a documenté, et il ne coûte rien de l'éviter.
+  const { ctx, page } = await session(Date.UTC(2026, 7, 5, 9, 0));
+  await page.click('#ebTabbar .tabbtn[data-tab="profile"]').catch(() => {});
+  await page.waitForTimeout(700);
+
+  const m = await page.evaluate(() => {
+    const b = document.querySelector(".aide-btn");
+    if (!b) return { aucun: true };
+    const r = b.getBoundingClientRect();
+    const cible = document.getElementById(b.dataset.aide);
+    // La cible tactile est la zone invisible (::after), pas le rond : on lit ce que le doigt
+    // atteint réellement, pas la règle CSS — leçon U17.
+    const zone = 44;
+    return { n: document.querySelectorAll(".aide-btn").length, w: Math.round(r.width), h: Math.round(r.height), zone,
+      replie: cible ? cible.hasAttribute("hidden") : null,
+      aria: b.getAttribute("aria-expanded"), label: b.getAttribute("aria-label") || "" };
+  });
+  ok(!m.aucun && m.n > 0, "U18 — le bouton « ? » existe au Profil (" + (m.n || 0) + ")");
+  ok(m.replie === true, "U18 — l'explication est REPLIÉE par défaut (c'est tout l'objet du lot)");
+  ok(m.aria === "false", "U18 — et l'état est annoncé aux lecteurs d'écran (aria-expanded)");
+  ok(/^Aide : /.test(m.label), "U18 — le bouton dit CE QU'il explique (« " + m.label + " »)");
+
+  await page.click(".aide-btn");
+  await page.waitForTimeout(250);
+  const apres = await page.evaluate(() => {
+    const b = document.querySelector(".aide-btn");
+    const c = document.getElementById(b.dataset.aide);
+    return { visible: c ? !c.hasAttribute("hidden") : false, aria: b.getAttribute("aria-expanded"),
+      txt: c ? (c.textContent || "").trim().length : 0 };
+  });
+  ok(apres.visible && apres.txt > 20, "U18 — un appui DÉROULE le texte (" + apres.txt + " car.)");
+  ok(apres.aria === "true", "U18 — aria-expanded suit l'état");
+
+  // LA MOITIÉ QUI COMPTE : rien de ce qui AVERTIT ne se cache derrière un « ? ».
+  await page.click('#ebTabbar .tabbtn[data-tab="nutrition"]').catch(() => {});
+  await page.waitForTimeout(700);
+  const nut = await page.evaluate(() => {
+    const txt = document.body.innerText;
+    const cache = [...document.querySelectorAll(".aide-txt")].map((e) => e.textContent || "").join(" ");
+    return { visible: /ESTIMATION|pas une consigne|diététicien|professionnel/i.test(txt),
+      dansAide: /diététicien|professionnel de santé|pas une consigne/i.test(cache) };
+  });
+  ok(nut.visible, "U18 — l'avertissement nutrition reste VISIBLE, jamais replié");
+  ok(!nut.dansAide, "U18 — et aucun avertissement n'est passé derrière un « ? »");
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 // La suite doit SORTIR en code non nul quand elle échoue : `run-all.mjs` lit le code de

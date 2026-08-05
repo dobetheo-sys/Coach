@@ -376,3 +376,26 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
  * pixel qu'il fallait faire baisser, et l'air se paie forcément en hauteur. */
 .exp-list.exp-plain .exp-row{padding:11px 0;}
 .exp-list.exp-plain .exp-row>div{font-size:var(--fs-md);line-height:1.62;}
+
+/* U18 — LE « ? » QUI DÉROULE UNE EXPLICATION (voir js/ui/help.js).
+   Il se pose DANS un titre existant : d'où `vertical-align:middle` et une marge à gauche
+   seulement. Il ne coûte aucune ligne — c'est tout l'intérêt par rapport à un <details>,
+   qui aurait ajouté un titre pour en cacher un.
+   La taille vient de l'échelle `--fs-*` (R16.8) : aucune valeur littérale, sinon le plancher
+   de lisibilité et la garde `smoke-typo` cessent de gouverner ce composant. */
+.aide-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;margin-left:7px;padding:0;vertical-align:middle;
+  font-family:inherit;font-size:var(--fs-xs);font-weight:800;line-height:1;
+  color:var(--ink);background:var(--bg2);border:2px solid var(--ink);border-radius:50%;
+  box-shadow:1.5px 1.5px 0 var(--ink);cursor:pointer;flex:0 0 auto;
+  /* La CIBLE tactile fait 44px (U4/U17) sans que le rond en fasse autant : c'est la zone
+     invisible autour du bouton qui reçoit le doigt. Un rond de 44px dans un titre serait
+     énorme ; une cible de 22px serait irratrapable au pouce. */
+  position:relative;
+}
+.aide-btn::after{content:"";position:absolute;top:50%;left:50%;width:44px;height:44px;transform:translate(-50%,-50%);}
+.aide-btn.on{background:var(--accent2,#dcecff);box-shadow:inset 1.5px 1.5px 0 var(--ink);}
+.aide-btn:focus-visible{outline:3px solid var(--ink);outline-offset:2px;}
+.aide-txt{margin-top:6px;}
+.aide-txt[hidden]{display:none;}
