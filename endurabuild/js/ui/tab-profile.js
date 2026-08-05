@@ -9,6 +9,7 @@ import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc, todayISO } from "../stat
 import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js";
 import { renderPlan } from "./plan-view.js";
 import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
+import { aide } from "./help.js";
 import { stravaConnect, stravaAccessToken, stravaDisconnect, stravaRelayUrl } from "../strava.js";
 import { AVATAR_THEMES, avatarDataFor, avatarSVG } from "./avatar.js";
 import { shareStory } from "../export.js";
@@ -157,10 +158,10 @@ function recordsHTML(plan, a) {
   });
   (Array.isArray(a.fitSessions) ? a.fitSessions : []).forEach((c) => seen(c.d, c.minutes, c.date));
   Object.keys(longest).forEach((d) => rows.push({ lab: DISC_LABEL[d] + " — plus longue séance", val: Math.floor(longest[d].minutes / 60) + "h" + String(longest[d].minutes % 60).padStart(2, "0"), date: longest[d].date }));
-  let h = '<div class="load-card"><div class="load-title">🏅 Records personnels</div>';
+  let h = '<div class="load-card"><div class="load-title">🏅 Records personnels' + aide('Un record se gagne, il ne se perd pas — on garde la meilleure valeur jamais atteinte, avec sa date.', { label: 'les records personnels' }) + '</div>';
   if (!rows.length) h += '<div class="load-sub" style="margin-top:6px">Encore vides — ils se rempliront avec tes tests (FTP/allure/CSS), tes imports FIT/Strava et tes séances cochées ✓.</div>';
   else rows.forEach((r) => { h += '<div style="display:flex;justify-content:space-between;gap:8px;margin:6px 0;font-size:var(--fs-md);align-items:baseline"><span>' + r.lab + '</span><span style="text-align:right"><b>' + esc(r.val) + '</b>' + (r.date ? ' <span style="color:var(--muted);font-size:var(--fs-xs)">' + esc(r.date) + "</span>" : "") + "</span></div>"; });
-  h += '<div class="load-sub" style="margin-top:4px">Un record se gagne, il ne se perd pas — on garde la meilleure valeur jamais atteinte, avec sa date.</div></div>';
+  h += '</div>';
   return h;
 }
 
@@ -371,9 +372,8 @@ function trailProfileHTML(a) {
   const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:6px"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
   const sel = (id, cur, opts) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:6px"><span style="width:150px">' + opts.lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
     + opts.list.map((o) => '<option value="' + o[0] + '"' + ((cur || "") === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></label>";
-  let h = '<div class="load-card"><div class="load-title">⛰ Ta course et ton terrain</div>';
+  let h = '<div class="load-card"><div class="load-title">⛰ Ta course et ton terrain' + aide('Le D+ compte autant que la distance : il décide de la catégorie d’effort, donc de tout le reste.', { label: 'la course et le terrain' }) + '</div>';
   if (a.trailMigrated) h += '<div class="load-sub" style="margin-top:6px;color:#a33"><b>À vérifier :</b> ton plan trail a été repris depuis l’ancienne version, où le dénivelé n’était pas demandé. Renseigne la vraie distance et le vrai D+ de ta course : ce sont eux qui décident de la durée de préparation, du volume et du contenu des séances.</div>';
-  else h += '<div class="load-sub" style="margin-top:4px">Le D+ compte autant que la distance : il décide de la catégorie d’effort, donc de tout le reste.</div>';
   h += row("pfTrailKm", "Distance (km)", a.race_distance_km, "62");
   h += row("pfTrailDplus", "D+ total (m)", a.race_dplus_m, "3200");
   // R12.1 — la montée VÉCUE d'abord : c'est la question à laquelle tout le monde sait répondre.
@@ -434,8 +434,7 @@ function raceInterHTML(a) {
     + '<option value="B"' + (cur === "B" ? " selected" : "") + '>B — préparation (mini-affûtage)</option></select>';
   const rowR = (n, d, p) => '<div style="display:flex;gap:8px;align-items:center;font-size:var(--fs-md);flex-wrap:wrap"><span style="width:70px">Course ' + n + '</span>'
     + '<input type="date" id="pfRace' + n + 'd" value="' + esc(d || "") + '" style="flex:1;min-width:130px">' + prioSel("pfRace" + n + "p", p) + "</div>";
-  return '<div class="load-card"><div class="load-title">🏁 Courses intermédiaires</div>'
-    + '<div class="load-sub" style="margin-top:4px">Une course AVANT ton objectif ? Le moteur allège la semaine, place la course à sa vraie date avec sa consigne de pacing, et met la semaine suivante en récupération.</div>'
+  return '<div class="load-card"><div class="load-title">🏁 Courses intermédiaires' + aide('Une course AVANT ton objectif ? Le moteur allège la semaine, place la course à sa vraie date avec sa consigne de pacing, et met la semaine suivante en récupération.', { label: 'les courses intermédiaires' }) + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">' + rowR(1, a.race1_date, a.race1_prio) + rowR(2, a.race2_date, a.race2_prio) + "</div>"
     + '<div class="nav" style="margin-top:8px"><button class="btn" id="pfRaceSave" type="button">Enregistrer mes courses</button></div>'
     + '<div id="pfRaceMsg" class="load-sub" style="margin-top:6px"></div></div>';

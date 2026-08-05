@@ -9,6 +9,7 @@ import { renderTabPlanGeneral } from "./tab-plan-general.js";
 import { renderTabToday } from "./tab-today.js";
 import { renderTabNutrition } from "./tab-nutrition.js";
 import { renderTabWeek } from "./tab-week.js";
+import { brancherAide } from "./help.js";
 
 // Refonte R5 (retour utilisateur) : l'onglet CENTRAL 🎯 Aujourd'hui est l'écran du
 // quotidien (check-in diaporama → séance du jour → prédiction → charge → avancement),
@@ -251,6 +252,10 @@ export function setTab(id) {
 
 /** Point d'entrée après génération (remplace l'ancien renderPlan monolithique). */
 export function renderTabs() {
+  // U18 — l'écouteur délégué du « ? » est branché ici, une fois : chaque re-rendu d'onglet
+  // remplace le HTML, donc un écouteur posé sur les boutons eux-mêmes disparaîtrait avec eux.
+  brancherAide();
+
   S.onPlan = true;
   ebSave();
   // U11 — l'arrivée sur le plan le jour de sa création.
