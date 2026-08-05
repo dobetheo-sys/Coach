@@ -1582,7 +1582,7 @@ cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;cons
 ```
 
 
-### O-27 · Pendant une passe de RÉDUCTION, un plancher absolu peut AUGMENTER un step court · ⏳ **OUVERT — mesuré, 19 profils golden**
+### O-27 · Pendant une passe de RÉDUCTION, un plancher absolu peut AUGMENTER un step court · ✅ **FERMÉ (fondateur, 05/08/2026 : « pas très dangereux mais corrige si facile »)**
 
 Trouvé en créant le point unique `src/engine/stepScale.ts` (25 écritures de « réduire un step
 d'un facteur », 6 variantes qui n'étaient pas d'accord). Le point unique porte un drapeau
@@ -1599,11 +1599,24 @@ f = 0,9 rend **10** — une passe de réduction qui ALLONGE un step court jusqu'
 comportement validé, photographié dans le golden, et possiblement porteur (les planchers de
 dignité de l'audit v6 D3-D7/D10 interagissent avec les fenêtres de séance).
 
-Décision de ce lot : **ne pas changer en douce un comportement validé dans un lot d'hygiène.**
-Les trios du générateur gardent leur sémantique (golden au bit près, vérifié), le clamp reste
-opt-in, `reduceDay` (chemin d'ADAPTATION quotidienne, où la promesse A3 est écrite noir sur
-blanc) le pose. Trancher les 19 cas est une décision d'entraînement : un step de 9 min dans une
-semaine d'affûtage doit-il remonter à 10 « pour rester digne », ou descendre comme demandé ?
+**TRANCHÉ.** Les cinq trios du générateur posent `clampToOriginal` — vérifié d'abord que les
+cinq sont bien des passes de RÉDUCTION (`f < 1` dans les cinq contextes : décroissance
+d'affûtage, R3.13, et les trois coupes de la boucle de réparation). Une réduction ne peut plus
+rendre plus qu'elle a reçu, et c'est désormais **structurel** : le point unique `stepScale`
+l'applique aux trois champs, il n'y a plus de site où l'écrire autrement.
+
+**Ce que ça déplace, mesuré sur 189 profils de contrôle (7 sports × historiques × niveaux ×
+intentions)** : **173 inchangés, 15 en baisse, 1 en hausse** — `duathlon/S/reprise/debutant`,
+1268 → 1277 min, soit **+0,7 %**. Golden : 19 empreintes, toutes sur les minutes FACILES, de 1 à
+4 min par semaine.
+
+**La hausse résiduelle est signalée sans être attribuée.** Le mécanisme plausible est un effet de
+second ordre — le clamp laisse un état intermédiaire plus petit, et une passe de PLANCHER en aval
+(qui a le droit d'ajouter) occupe le budget libéré ; la seule semaine concernée est en phase
+d'affûtage, où ces passes se croisent le plus. Mais l'attribution n'a pas été tracée, et écrire
+« c'est le plancher » sans l'avoir mesuré serait exactement ce que ce registre reproche ailleurs.
+Ce qui EST établi : aucune violation dure sur les 27 gates, et l'invariant de step tient
+partout.
 
 ```verify
 id: O-27
@@ -1875,11 +1888,11 @@ pas droit à cette protection, quelles que soient les CGU.
 | # | sujet | nature |
 |---|---|---|
 | ~~H-1~~ | ~~`STRAVA_RELAY_DEFAULT = ""` dans `endurabuild/js/config.js`~~ | ✅ **FAIT le 03/08/2026** : app Strava créée (client `269639`), worker Cloudflare déployé, `STRAVA_RELAY_DEFAULT` renseigné, connexion confirmée en production (`✓ Connecté`). Le `client_secret` vit UNIQUEMENT en variable de type *Secret* côté Cloudflare — jamais dans le dépôt, jamais dans un commit. Périmètre `activity:read_all,profile:read_all` (le second ajouté par O-22). Une garde E2E qui supposait le relais ABSENT a dû être réécrite : elle mesurait l'absence de déploiement, pas un comportement. |
-| H-2 | Notifications push app fermée | Demande un backend. Décision produit assumée : on n'annonce pas ce qu'on ne peut pas tenir. |
-| H-3 | CONSEIL nutritionnel (par opposition aux ESTIMATIONS, livrées) | Bloqué sur avis diététicien. **Ligne à ne pas franchir**, manifeste. |
-| H-6 | **CGU/CGV** — clauses anti-reverse-engineering, anti-scraping, anti-réutilisation commerciale | Démarche humaine (juriste). Devient le levier PRINCIPAL depuis la décision `S-1` : le moteur étant public, la protection est le droit d'auteur et la concurrence déloyale, pas le secret des affaires. |
-| H-7 | **Enveloppe Soleau / dépôt INPI** | Démarche humaine, peu coûteuse. Ne protège pas l'algorithme ; date la méthode et appuie une action en concurrence déloyale. |
-| H-4 | Candidature API MyFitnessPal | Démarche humaine. |
+| H-2 | Notifications push app fermée | ✅ **POSITION CONFIRMÉE (fondateur, 05/08/2026)**. Demande un backend ; S-1 a acté qu'il n'y en a pas. On n'annonce pas ce qu'on ne peut pas tenir — l'entrée reste ouverte comme RAPPEL, pas comme dette. |
+| H-3 | CONSEIL nutritionnel (par opposition aux ESTIMATIONS, livrées) | ✅ **POSITION CONFIRMÉE (fondateur, 05/08/2026)** : reste **bloqué sur avis diététicien**. ⚠ « Validé » désigne la POSITION, pas l'obtention de l'avis — aucun conseil nutritionnel ne peut être livré tant qu'un professionnel n'a pas tranché, et notamment la question ouverte par N11 : les macros N10 sont en substance une **cible d'apport** (leurs trois sources sont des références d'apport, et leur somme en kcal ne coïncide pas avec la dépense affichée sur la même carte). **Ligne à ne pas franchir**, manifeste. |
+| ~~H-6~~ | ~~**CGU/CGV** — clauses anti-reverse-engineering, anti-scraping, anti-réutilisation commerciale~~ | 🚫 **ABANDONNÉ (fondateur, 05/08/2026) — et sa conséquence est écrite ici.** L'entrée disait que les CGU deviennent le levier PRINCIPAL depuis `S-1` (le moteur étant public, le secret des affaires ne s'applique pas). Les abandonner laisse **`LICENSE` — le droit d'auteur — comme seule protection**, sans le support contractuel qui rend une réutilisation attaquable. C'est un arbitrage assumé, pas un oubli. Réouverture naturelle : modèle payant, copie constatée, ou première levée de fonds (la due diligence les demandera). |
+| ~~H-7~~ | ~~**Enveloppe Soleau / dépôt INPI**~~ | 🚫 **ABANDONNÉ (fondateur, 05/08/2026).** Ne protégeait pas l'algorithme : il DATAIT la méthode, ce qui appuie une action en concurrence déloyale. Sans lui, l'antériorité devra s'établir autrement — l'historique git public du dépôt en est une trace horodatée, plus faible qu'un dépôt INPI mais non nulle. |
+| ~~H-4~~ | ~~Candidature API MyFitnessPal~~ | 🚫 **ABANDONNÉ (fondateur, 05/08/2026).** Sans objet depuis R6 : le journal alimentaire a été retiré du produit sur décision utilisateur, donc il n'y a plus rien à alimenter. L'entrée avait survécu à la fonctionnalité qu'elle servait. |
 | ~~H-5~~ | ~~Swimrun hors V1~~ | ✅ **R16.10** : réintégré après traitement de la dette (78 % → 89 % de profils propres). Le drapeau `EB_SWIMRUN` n'existe plus. |
 
 ---

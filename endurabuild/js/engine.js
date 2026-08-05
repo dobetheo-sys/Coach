@@ -7943,7 +7943,7 @@ function reconcileDeclaredVolume(
           if (/Déverrouillage/i.test(sx.name)) continue; // R15.7-B — jamais la veille
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
-            scaleStepDose(st, f, { repsMode: "floor", durFloor: 5, distFloor: 150 });
+            scaleStepDose(st, f, { repsMode: "floor", durFloor: 5, distFloor: 150, clampToOriginal: true });
           }
           if (render) render(sx);
         }
@@ -8278,7 +8278,7 @@ function reconcileDeclaredVolume(
           if (sx.d === "rs" || sx.race || !sx.steps || /Déverrouillage/i.test(sx.name)) continue;
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
-            scaleStepDose(st, f, { repsMode: "round", durFloor: 10, distFloor: 150 });
+            scaleStepDose(st, f, { repsMode: "round", durFloor: 10, distFloor: 150, clampToOriginal: true });
           }
           if (render) render(sx);
         }
@@ -10628,7 +10628,7 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
                 if (!s.steps || !s.steps.length) continue;
                 for (const st of s.steps) {
                   if (st.role !== "body") continue;
-                  scaleStepDose(st, f, { repsMode: "floor", durFloor: 8, distFloor: 200 });
+                  scaleStepDose(st, f, { repsMode: "floor", durFloor: 8, distFloor: 200, clampToOriginal: true });
                 }
                 fixSwimBounds(s);
                 renderSess(s, refs, hz, baseRefs);
@@ -10652,7 +10652,7 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
           if (!s.steps || !s.steps.length) continue;
           for (const st of s.steps) {
             if (st.role !== "body") continue;
-            scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200 });
+            scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200, clampToOriginal: true });
           }
           fixSwimBounds(s);
           renderSess(s, refs, hz, baseRefs);
@@ -10700,7 +10700,7 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
               if (!s.steps || !s.steps.length) continue;
               for (const st of s.steps) {
                 if (st.role !== "body") continue;
-                scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200 });
+                scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200, clampToOriginal: true });
               }
               fixSwimBounds(s);
               renderSess(s, refs, hz, baseRefs);

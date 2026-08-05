@@ -123,7 +123,7 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
                 if (!s.steps || !s.steps.length) continue;
                 for (const st of s.steps) {
                   if (st.role !== "body") continue;
-                  scaleStepDose(st, f, { repsMode: "floor", durFloor: 8, distFloor: 200 });
+                  scaleStepDose(st, f, { repsMode: "floor", durFloor: 8, distFloor: 200, clampToOriginal: true });
                 }
                 fixSwimBounds(s);
                 renderSess(s, refs, hz, baseRefs);
@@ -147,7 +147,7 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
           if (!s.steps || !s.steps.length) continue;
           for (const st of s.steps) {
             if (st.role !== "body") continue;
-            scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200 });
+            scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200, clampToOriginal: true });
           }
           fixSwimBounds(s);
           renderSess(s, refs, hz, baseRefs);
@@ -195,7 +195,7 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
               if (!s.steps || !s.steps.length) continue;
               for (const st of s.steps) {
                 if (st.role !== "body") continue;
-                scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200 });
+                scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200, clampToOriginal: true });
               }
               fixSwimBounds(s);
               renderSess(s, refs, hz, baseRefs);

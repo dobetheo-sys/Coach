@@ -1192,10 +1192,19 @@ mesures de protection raisonnables, or un moteur publié n'en est pas une. La pr
 le **droit d'auteur** (`LICENSE`, déjà cohérente) et la **concurrence déloyale** ; vérifié qu'aucun
 document ne revendique le contraire, et gardé par un bloc `verify`. Les §1/§2/§5/§6 de la grille
 deviennent **hors architecture** plutôt qu'« en retard » ; le §6 garde sa valeur préventive (`src/`
-ne contient aucune notion de produit ni de prix — à PRÉSERVER). Reste HUMAIN : `H-6` CGU,
-`H-7` Soleau. Réouverture si modèle payant à l'usage ou copie constatée — **et le retour arrière
-coûte d'autant plus cher qu'il y a d'utilisateurs** (un backend introduit après coup demande de
-migrer l'état de chacun depuis son `localStorage`).
+ne contient aucune notion de produit ni de prix — à PRÉSERVER). Réouverture si modèle payant à
+l'usage ou copie constatée — **et le retour arrière coûte d'autant plus cher qu'il y a
+d'utilisateurs** (un backend introduit après coup demande de migrer l'état de chacun depuis son
+`localStorage`).
+**Suite donnée aux démarches humaines (fondateur, 05/08/2026)** : `H-6` (CGU) et `H-7` (Soleau)
+sont **abandonnés**, `H-4` (MyFitnessPal) aussi — sans objet depuis que R6 a retiré le journal
+alimentaire. `H-2` (push serveur) et `H-3` (conseil nutritionnel) voient leur POSITION confirmée
+et restent en l'état. **La conséquence de l'abandon de H-6 est écrite plutôt que tue** : S-1
+avait identifié les CGU comme le levier PRINCIPAL une fois le moteur public, puisque le secret
+des affaires ne s'applique pas ; sans elles, **`LICENSE` — le droit d'auteur — est la seule
+protection**, sans le support contractuel qui rend une réutilisation attaquable. Arbitrage
+assumé, pas un oubli. Et `H-3` reste **bloqué sur avis diététicien** : « validé » y désigne la
+position, jamais l'obtention de l'avis.
 
 **I14b livré — O-20 fermé : ce que le plafond de libellé retire, la semaine le récupère** (voir
 ARCHITECTURE.md « I14b ») : `audit:invariants` **I13** était le SEUL gate rouge du dépôt — en
