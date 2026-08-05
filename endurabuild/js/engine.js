@@ -3591,11 +3591,16 @@ function longRunSpecificityFloor(
  * Un parcours vallonné coûte du temps même quand il revient à son point de départ : à puissance
  * constante on perd BEAUCOUP en montée et on regagne PEU en descente, parce que la descente est
  * bornée par l'air et par le pilotage. Ce coût n'est pas ajouté par un coefficient : il TOMBE de
- * la même équation, appliquée à une moitié montante et une moitié descendante. Une seule
- * hypothèse en plus — la pente moyenne du parcours, déduite de sa classe (plat / vallonné /
- * montagne) — et rien d'autre à calibrer. C'est la leçon R11.1 appliquée au relief : un second
- * coefficient « pénalité de relief » aurait été un second jeu de vérités à côté d'un modèle qui
- * sait déjà répondre.
+ * la même équation, appliquée à TROIS segments — la part montante, la part descendante, et le
+ * plat qui reste. C'est la leçon R11.1 appliquée au relief : un second coefficient « pénalité de
+ * relief » aurait été un second jeu de vérités à côté d'un modèle qui sait déjà répondre.
+ *
+ * Les deux grandeurs qui décrivent le parcours (D+ pour 100 km, part de la distance montante) et
+ * la calibration qui les fixe sont documentées sur `RELIEF_PROFILE`, plus bas — avec les deux
+ * écritures fausses qui l'ont précédée. Ce paragraphe a d'ailleurs annoncé « une moitié montante
+ * et une moitié descendante » alors que le code avait déjà cessé de faire ça : troisième
+ * commentaire de ce fichier à décrire un modèle que le code ne portait plus, et le seul qui ait
+ * survécu au premier commit.
  */
 
 /** Accélération de la pesanteur (m/s²) — valeur normale, ISO 80000-3. */
