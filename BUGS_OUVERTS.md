@@ -1152,7 +1152,7 @@ cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;cons
 ```
 
 
-### O-21 · À capacité déclarée plus HAUTE, le plan est plus PETIT — l'inversion sur l'axe allure · 🟡 **MÉCANISME CORRIGÉ (03/08/2026), RÉSIDU = UN ARBITRAGE**
+### O-21 · À capacité déclarée plus HAUTE, le plan est plus PETIT — l'inversion sur l'axe allure · 🟡 **DEUX MÉCANISMES CORRIGÉS (03 et 05/08/2026), RÉSIDU MESURÉ ET PUBLIÉ**
 
 > **CE QUI EST CORRIGÉ, ET MA PISTE DU MATIN ÉTAIT FAUSSE.** J'avais écrit « la courbe déclarée
 > décroît (base au-dessus du pic) ». Mesuré : elle ne décroît pas. **La seule semaine de PIC de
@@ -1196,6 +1196,58 @@ cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;cons
 > heurte les priorités 1 et 2 du manifeste. En temps, les deux reçoivent la même charge et le
 > kilométrage suit. Tout le moteur compte déjà en TEMPS (`vol_max` est en heures), ce qui plaide
 > pour le temps — mais c'est une décision de fond, elle revient au fondateur.
+>
+> ─────────────────────────────────────────────────────────────────────────────────────────────
+>
+> **CORRECTION DU 05/08/2026 (« corrige », fondateur) — ET LA QUESTION CI-DESSUS N'ÉTAIT PAS LA
+> BONNE.** C30 a mesuré depuis que la sortie longue est prescrite en TEMPS depuis toujours
+> (`durCaps` en minutes) : entre 5:45/km et 7:00/km sur un 10 km elle fait 178 min contre 176.
+> Le dilemme « distance ou temps » n'était donc pas le mécanisme. Instrumenté passe par passe sur
+> le même profil à deux allures, il y en avait **deux**, et aucun n'est un arbitrage :
+>
+> **(1) Le remplissage d'I14b est structurellement MORT sur une semaine plate.** I14 ramène chaque
+> séance à la durée de la sortie longue ; le plafond des receveuses du remplissage
+> (`0,80 × longue`, R20.3) tombe alors SOUS cette valeur, `place` est négatif, et rien n'est rendu.
+> Mesuré sur un 10 km à 4 séances : quatre séances à 41-43 min pour une longue de 41, `_labelCut`
+> à **27 min par semaine**, et le remplissage en rendait **zéro**. Ce sont les semaines de PIC et de
+> SPÉCIFIQUE qui portent le plus de qualité par rapport à leur longue, donc ce sont elles que I14
+> coupe le plus — la périodisation s'inversait. Ce qui reste à rendre va désormais à la **sortie
+> longue elle-même** : ce ne sont pas des minutes ajoutées, ce sont celles que la même passe vient
+> de retirer à la même semaine, et une longue plus longue RELÈVE le plafond d'I14 au lieu de le
+> violer.
+>
+> **(2) La garantie A2/I1 se rabattait sur une semaine de pic en RÉCUPÉRATION.** Son `peakBest`
+> lisait `peakAny` faute de `peakNR` : sur une prépa dont l'unique semaine de pic est une décharge
+> — le cas exact que la première moitié de cette entrée avait documenté côté AUDITEUR — tout le
+> plan était raboté au volume d'une semaine de récup. **Et deux fois** : `D4` réduit ensuite cette
+> semaine, donc le second passage de `reconcileDeclaredVolume` repart d'un plafond plus bas.
+> Mesuré sur un 10 km à 6 séances : **1032 → 807 min au deuxième passage, sur une entrée
+> IDENTIQUE**, quand le même profil à une allure plus lente (donc avec un pic en charge) ne perdait
+> que 36 min. L'auditeur avait déjà tranché ce cas en AVERTISSEMENT ; le générateur dit maintenant
+> la même chose que lui — deux réponses à la même question, c'est ce que R11.1 interdit.
+>
+> **PORTÉE, sur 432 profils × 4 allures** (la dispersion du total livré sur l'axe allure, à
+> entrées identiques par ailleurs) :
+>
+> | | avant | après |
+> |---|---|---|
+> | dispersion médiane | 0,7 % | **0,7 %** |
+> | dispersion p90 | 16,2 % | **5,0 %** |
+> | dispersion max | 44,1 % | **36,1 %** |
+> | pire inversion entre deux allures voisines | +38,7 % | **+24,3 %** |
+> | profils non monotones (> +2 %) | 83 (19,2 %) | 73 (16,9 %) |
+>
+> **CE QUI RESTE, ET IL RESTE.** Le p90 tombe de deux tiers — la queue longue est traitée — mais le
+> **compte** de profils non monotones bouge à peine, et le maximum reste à 36 %. Les séquences
+> résiduelles ne sont pas monotones dans un sens ou dans l'autre, elles sont **erratiques**
+> (`845 846 847 903`, `1282 1061 1319 1077`) : ce n'est pas une règle qui penche, c'est du bruit de
+> convergence entre passes. Le traiter demanderait de rendre le point de convergence idempotent,
+> c'est-à-dire de reprendre l'ORDRE des passes de `reconcileDeclaredVolume` — un chantier à part
+> entière, pas une correction. **L'entrée reste donc ouverte, avec ce chiffre plutôt qu'une
+> promesse.**
+>
+> **La dette `O17` du banc v6 est PAYÉE dans le commit de la correction** (protocole du dépôt) :
+> son `expect` repasse à `'pass'`, et le témoin n'a pas été réécrit — c'est le moteur qui a changé.
 
 
 Trouvée en fermant O-20, par le critère `O17` du banc v6 qui est passé rouge. Le réflexe aurait
@@ -1243,9 +1295,9 @@ instables (la rampe R10 fait légitimement baisser un plan à faible `vol_recent
 
 ```verify
 id: O-21
-quoi: à allure seuil plus rapide, le plan livré n'est pas plus petit (axe allure, cousin d'I13)
-attendu: /inversions d'allure : 2$/m
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(pace,vr)=>({intent:'competition',format:'10k',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',level:'inter',history:'confirme',injury:'aucune',sessions_max:'4',vol_max:'6',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',pace,vol_recent:String(vr),terrain:'route'});const tot=(p)=>p.weeks.reduce((t,w)=>t+w.days.reduce((a,d)=>a+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0),0);let ko=0;for(const vr of [0,5]){const rapide=tot(E.buildPlan('run',P('5:45',vr))),lent=tot(E.buildPlan('run',P('7:00',vr)));if(rapide<lent)ko++;}console.log(\"inversions d'allure : \"+ko);"
+quoi: le résidu d'inversion sur l'axe allure, après les deux mécanismes corrigés (05/08/2026)
+attendu: /inversions d'allure : 1 · écart max 0,2 %$/m
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(pace,vr)=>({intent:'competition',format:'10k',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',level:'inter',history:'confirme',injury:'aucune',sessions_max:'4',vol_max:'6',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',pace,vol_recent:String(vr),terrain:'route'});const tot=(p)=>p.weeks.reduce((t,w)=>t+w.days.reduce((a,d)=>a+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0),0);let ko=0,mx=0;for(const vr of [0,5]){const rapide=tot(E.buildPlan('run',P('5:45',vr))),lent=tot(E.buildPlan('run',P('7:00',vr)));if(rapide<lent){ko++;mx=Math.max(mx,100*(lent/rapide-1));}}console.log(\"inversions d'allure : \"+ko+' · écart max '+mx.toFixed(1).replace('.',',')+' %');"
 ```
 
 
@@ -1590,7 +1642,7 @@ vérifié en retirant C30b du moteur.
 id: O-26
 quoi: C30b porte la sortie longue à sa cible de spécificité et la garde sous 70 % de la semaine
 attendu: /cibles C30b : 6\/6 · part max \d+ %/m
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(o)=>E.buildPlan('run',Object.assign({intent:'competition',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',history:'confirme',level:'inter',injury:'aucune',sessions_max:'5',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',vol_recent:'3',terrain:'route'},o));const M={'10k/8:30/8':76,'10k/7:00/6':63,'semi/8:30/8':130,'semi/7:00/6':130,'10k/4:30/8':47,'marathon/4:30/8':180};let ok=0,part=0;for(const k in M){const [format,pace,vol_max]=k.split('/');const p=P({format,pace,vol_max});let s=0;p.weeks.forEach(w=>{const ss=w.days.flatMap(d=>d.sessions).filter(x=>x.d!=='rs');const t=ss.reduce((a,x)=>a+(x.min||0),0);ss.forEach(x=>{if(x.long&&(x.min||0)>s)s=x.min;if(x.long&&t)part=Math.max(part,100*(x.min||0)/t);})});if(s===M[k])ok++;}console.log('cibles C30b : '+ok+'/6 · part max '+Math.round(part)+' %');"
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(o)=>E.buildPlan('run',Object.assign({intent:'competition',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',history:'confirme',level:'inter',injury:'aucune',sessions_max:'5',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',vol_recent:'3',terrain:'route'},o));const M={'10k/8:30/8':79,'10k/7:00/6':64,'semi/8:30/8':130,'semi/7:00/6':130,'10k/4:30/8':59,'marathon/4:30/8':180};let ok=0,part=0;for(const k in M){const [format,pace,vol_max]=k.split('/');const p=P({format,pace,vol_max});let s=0;p.weeks.forEach(w=>{const ss=w.days.flatMap(d=>d.sessions).filter(x=>x.d!=='rs');const t=ss.reduce((a,x)=>a+(x.min||0),0);ss.forEach(x=>{if(x.long&&(x.min||0)>s)s=x.min;if(x.long&&t)part=Math.max(part,100*(x.min||0)/t);})});if(s===M[k])ok++;}console.log('cibles C30b : '+ok+'/6 · part max '+Math.round(part)+' %');"
 ```
 
 
@@ -1698,18 +1750,21 @@ acceptable. **Vérifiée rouge contre la recette ci-dessus.**
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas
 échouer la CI **par décision explicite**, pas par oubli.
 
-### Banc v6 — 4 dettes (`npm run audit:v6` → « 57 vert · 4 dette connue · 0 régression »)
+### Banc v6 — 3 dettes (`npm run audit:v6` → « 64 vert · 3 dette connue · 0 régression »)
 
 | id | ce qui reste | pourquoi c'est laissé |
 |---|---|---|
 | **D2** | 2 configurations sur 153 (`swim/sprint\|demifond/debutant/reprise`) portent encore une violation dure | Tout le plan tient entre 45 min et 1 h de nage par semaine, les 4 séances sont AU plancher (C15 : 850 m ; C20 : 0,42 h/séance) et l'écart semaine max ↔ pic est de 5 minutes. **Il n'y a plus de marge sous les planchers pour exprimer une hiérarchie.** Un rabotage a été tenté : sans effet, les planchers le reprennent immédiatement ; le code a été retiré plutôt que laissé inerte. |
 | **D3** | 4 sauts de charge à **+11 %** au lieu de +10 % | Le rapport dev→peak de la courbe vaut 1,18, donc **supérieur à C22 par construction**. Sur un plan court à deux récups consécutives, C22 voudrait le pic ≤ 273 min quand la hiérarchie du plan le veut > 248 : les deux tiennent dans 25 minutes et les planchers de séance interdisent de descendre. Réduire encore ferait passer le pic SOUS une semaine de base — on échangerait une violation contre une pire. **La correction de fond est dans la FORME de la courbe, pas dans une passe de rattrapage.** |
+_`O17` a quitté cette table le 05/08/2026 : sa dette est payée par la correction d'O-21, et son
+`expect` est repassé à `'pass'` dans le même commit._
+
 | **F2** | 7 séances de qualité à ~42 % de temps en zone cible au lieu de 45 % | **Contradiction assumée entre deux règles.** Ces séances ont déjà leur échauffement et leur retour au calme à leur plancher (C13/C13b) ; atteindre 45 % demanderait exactement ce que C13c interdit (échauffer moins de 10 min avant un effort maximal). La priorité n°2 du manifeste (prévention des blessures) tranche. Le test reste en `expect:'fail'` **pour garder le chiffre sous les yeux**, pas parce qu'on l'a oublié. |
 
 ```verify
 id: DETTE-v6
 quoi: 3 dettes connues, 0 régression
-attendu: /4 dette connue · ✖ 0 régression/
+attendu: /3 dette connue · ✖ 0 régression/
 cmd: npm run audit:v6
 ```
 
@@ -1810,7 +1865,7 @@ Ni l'un ni l'autre n'est fait : ce sont deux chapitres ouverts, désormais corre
 ```verify
 id: D3
 quoi: 7 sauts C22 encore présents, D2 et F2 inchangés
-attendu: /4 dette connue/
+attendu: /3 dette connue/
 cmd: npm run audit:v6
 ```
 

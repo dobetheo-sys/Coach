@@ -1129,6 +1129,36 @@ occurrence de cet angle mort, et elle était PUBLIÉE comme une limite en livran
 une cécité qu'on n'a pas.
 **27 gates verts, E2E 18/18, golden 908, registre 26/26.**
 
+**O-21 (2e correction) — deux passes se rabattaient sur un état estropié, et « distance ou temps »
+n'était pas la question** (« corrige », fondateur — voir ARCHITECTURE.md « O-21 (2e correction) ») :
+l'entrée laissait un « résidu = arbitrage » (la sortie longue se prescrit-elle en distance ou en
+temps ?). **C30 y avait déjà répondu** — elle se prescrit en TEMPS depuis toujours, 178 min contre
+176 entre 5:45/km et 7:00/km. Instrumenté passe par passe, il y avait **deux** mécanismes, aucun
+n'étant un arbitrage. **(1)** Le remplissage d'I14b est **mort sur une semaine plate** : I14 ramène
+chaque séance à la durée de la sortie longue, et le plafond des receveuses (`0,80 × longue`, R20.3)
+tombe alors SOUS cette valeur — mesuré, quatre séances à 41-43 min pour une longue de **41**,
+`_labelCut` à **27 min par semaine**, et **zéro** rendu. Ce sont les semaines de pic et de
+spécifique qui portent le plus de qualité par rapport à leur longue, donc celles que I14 coupe le
+plus : la périodisation s'inversait, et A2/I1 rabotait TOUT le plan jusqu'au pic estropié —
+**−263 min (−19 %) à 5:45/km, 0 à 7:00/km**. Ce qui reste à rendre va désormais à la sortie longue
+elle-même : ce sont les minutes que la même passe vient de retirer à la même semaine, et une longue
+plus longue RELÈVE le plafond d'I14 au lieu de le violer. **(2)** A2/I1 se rabattait sur une semaine
+de pic en **RÉCUPÉRATION** (`peakAny` faute de `peakNR`) — le cas exact que la première moitié d'O-21
+avait documenté côté AUDITEUR — et rabotait deux fois, `D4` abaissant le plafond entre les deux
+passages : **1032 → 807 min au deuxième passage sur une entrée IDENTIQUE**, quand le profil voisin
+ne perdait que 36 min. L'auditeur avait déjà tranché ce cas en avertissement ; le générateur dit
+maintenant la même chose que lui (R11.1).
+**Portée sur 432 profils × 4 allures** — dispersion du total livré : **p90 16,2 % → 5,0 %**, max
+44,1 → 36,1 %, pire inversion entre allures voisines +38,7 → **+24,3 %**, profils non monotones
+83 → 73. **Le compte bouge à peine et c'est publié** : les séquences résiduelles ne sont pas
+monotones dans un sens ou dans l'autre, elles sont ERRATIQUES (`845 846 847 903`) — du bruit de
+convergence entre passes, dont le traitement demande de rendre le point de convergence idempotent.
+**O-21 reste ouverte avec ce chiffre plutôt qu'avec une promesse.** La dette `O17` du banc v6,
+déclarée par O-21, est **payée dans le même commit** (`expect` → `'pass'`, témoin NON réécrit —
+c'est le moteur qui a changé) ; le banc passe de 4 à 3 dettes.
+**27 gates verts, E2E 18/18, golden 912 recapturé (115 profils, tous vers plus de facile),
+registre 26/26.**
+
 **C30b livré — O-26 fermé : la sortie longue atteint sa cible, et les minutes viennent des
 séances faciles** (décision du fondateur, 05/08/2026 : « oui si elle respecte les plafonds ; en
 semaine de pic, la sortie longue peut représenter 70 % du volume de semaine si nécessaire », voir

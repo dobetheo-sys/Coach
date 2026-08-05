@@ -563,9 +563,19 @@ test("E4", "Poids invraisemblable → estimation énergétique refusée", "pass"
 // Décision du fondateur (03/08/2026) : **dette déclarée plutôt que témoin réécrit.** Ré-ancrer
 // le témoin sur l'athlète lui-même effacerait ce que le banc vient de trouver — et les deux
 // candidats mesurés étaient instables (la rampe R10 fait légitimement baisser un plan à faible
-// `vol_recent`). Le critère reste donc AFFICHÉ, avec son chiffre, comme D2/D3/F2 : suivi en
-// **O-21** dans BUGS_OUVERTS.md, à repasser en `"pass"` DANS LE MÊME COMMIT que sa correction.
-test("O17", "capacité > historique de charge : le moteur AVERTIT, et ne bride pas", "fail", () => {
+// `vol_recent`). Le critère reste donc AFFICHÉ, avec son chiffre, comme D2/D3/F2.
+//
+// ── DETTE PAYÉE (O-21, 05/08/2026) : `expect` repasse à `"pass"`, dans le commit de la
+// correction, comme le protocole l'exige. Le témoin n'a PAS été réécrit — c'est le moteur qui a
+// changé. Deux causes, mesurées : (1) sur une semaine PLATE, le remplissage d'I14b était
+// structurellement mort (son plafond de receveuse, `0,80 × longue`, tombe SOUS la valeur que
+// I14 vient d'imposer) et les minutes retirées disparaissaient ; elles reviennent désormais à
+// la sortie longue elle-même. (2) La garantie A2/I1 se rabattait sur une semaine de pic en
+// RÉCUPÉRATION quand il n'y avait pas de pic en charge, et rabotait tout le plan à ce
+// plafond-là — deux fois, le second passage repartant d'un plafond encore abaissé par D4.
+// L'auditeur, lui, avait déjà tranché ce cas en AVERTISSEMENT (O-21, première moitié) : le
+// générateur dit maintenant la même chose que lui.
+test("O17", "capacité > historique de charge : le moteur AVERTIT, et ne bride pas", "pass", () => {
   const bad = [];
   const base = { format: "10k", vol_max: "6", sessions_max: "4", pace_known: "oui" };
   const plan = (pace, volRecent) => E.buildPlan("run", { ...profile("run"), ...base, pace, vol_recent: volRecent });
@@ -685,18 +695,22 @@ test("C30-A", "C30 + C30b allongent la sortie longue des coureurs LENTS — les 
   // plus lents. Aucun à 4:30 (le rapide atteignait déjà sa cible), aucun sur marathon (la
   // longue y est au plafond C23 depuis toujours, et c'est C31 qui prend le relais).
   const attendu = [
-    // les 7 profils que C30 déplaçait déjà, à leur nouvelle valeur
-    ["10k", "debutant", "8:30", "6", 77], ["10k", "debutant", "8:30", "8", 77],
+    // les 7 profils que C30 déplaçait déjà
+    ["10k", "debutant", "8:30", "6", 79], ["10k", "debutant", "8:30", "8", 79],
     ["semi", "debutant", "8:30", "8", 130], ["semi", "inter", "7:00", "8", 130],
     ["semi", "inter", "8:30", "8", 130], ["semi", "avance", "7:00", "8", 130],
     ["semi", "avance", "8:30", "8", 130],
-    // et ceux que C30b ajoute — la moitié du gain du lot est là
-    ["10k", "debutant", "7:00", "6", 64], ["10k", "inter", "7:00", "8", 63],
-    ["10k", "inter", "8:30", "8", 76], ["10k", "avance", "5:45", "8", 52],
+    // ceux que C30b ajoute — la moitié du gain de ce chapitre est là
+    ["10k", "debutant", "7:00", "6", 64], ["10k", "inter", "7:00", "8", 64],
+    ["10k", "inter", "8:30", "8", 79], ["10k", "avance", "5:45", "8", 59],
     ["semi", "debutant", "7:00", "6", 130], ["semi", "debutant", "8:30", "6", 130],
-    // …et les témoins qui ne doivent PAS bouger : le rapide, et le marathon au plafond
-    ["10k", "inter", "4:30", "8", 47], ["semi", "inter", "4:30", "8", 120],
-    ["marathon", "inter", "4:30", "8", 180], ["5k", "inter", "8:30", "8", 40],
+    // …et LE COUREUR RAPIDE, qui n'est plus un témoin immobile — O-21 l'a bougé, pas C30b.
+    // Ces trois-là ne doivent RIEN à la spécificité (leur cible est déjà atteinte) : ils
+    // montent parce que le remplissage d'I14b rend enfin à la sortie longue les minutes que
+    // le plafond de libellé lui avait prises. Gardés ici, avec cette raison, plutôt que
+    // retirés — c'est la seule façon de voir qu'un même chiffre a DEUX causes possibles.
+    ["10k", "inter", "4:30", "8", 59], ["5k", "inter", "8:30", "8", 69],
+    ["semi", "inter", "4:30", "8", 120], ["marathon", "inter", "4:30", "8", 180],
   ];
   const bad = [];
   for (const [format, level, pace, vol_max, min] of attendu) {

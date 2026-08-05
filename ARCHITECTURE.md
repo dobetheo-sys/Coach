@@ -4196,6 +4196,76 @@ le disait en toutes lettres — c'est le tableau des angles morts qui n'avait pa
 au §4 : **un angle mort qui n'en est plus fait croire à une cécité qu'on n'a pas**, le symétrique
 exact du défaut caché.
 
+## O-21 (2e correction) — deux passes qui se rabattaient sur un état estropié
+
+L'entrée O-21 laissait un « résidu = arbitrage » : la sortie longue se prescrit-elle en distance
+ou en temps ? **C30 a répondu à cette question au passage — elle se prescrit en TEMPS depuis
+toujours** (`durCaps` en minutes), et entre 5:45/km et 7:00/km sur un 10 km elle fait 178 min
+contre 176. Ce n'était donc pas le mécanisme. Instrumenté passe par passe sur le même profil à
+deux allures, il y en avait **deux**, et aucun des deux n'est un arbitrage.
+
+### (1) Le remplissage d'I14b est mort sur une semaine plate
+
+I14 ramène chaque séance à la durée de la sortie longue. Le plafond des receveuses du
+remplissage — `0,80 × longue`, posé par R20.3 pour qu'un footing ne rivalise pas avec la pivot —
+tombe alors **sous** la valeur que I14 vient d'imposer : `place` est négatif, rien n'est placé, et
+les minutes retirées disparaissent. Mesuré sur un 10 km à 4 séances : quatre séances à 41-43 min
+pour une sortie longue de **41**, `_labelCut` à **27 min par semaine**, et le remplissage en
+rendait **zéro**.
+
+La conséquence n'est pas locale, et c'est elle qui coûte : ce sont les semaines de PIC et de
+SPÉCIFIQUE qui portent le plus de qualité relativement à leur sortie longue, donc ce sont elles
+que I14 coupe le plus. La périodisation s'inverse — dev au-dessus du pic — et la garantie A2/I1
+rabote alors **tout** le plan jusqu'au pic estropié. Mesuré sur un même profil à deux allures
+seuil : **−263 min (−19 %) à 5:45/km, 0 à 7:00/km.**
+
+Ce qui reste à rendre va désormais à la **sortie longue elle-même**, bornée par son plafond de
+bloc déclaré et par la cible de la semaine. Ce n'est pas « gonfler la longue » (ce que I14 refuse,
+à raison) : ce sont les minutes que la MÊME passe vient de retirer à la MÊME semaine, et les
+rendre là est le seul endroit qui ne rouvre rien — une longue plus longue RELÈVE le plafond d'I14
+au lieu de le violer.
+
+### (2) A2/I1 se rabattait sur une semaine de pic en RÉCUPÉRATION
+
+Son `peakBest` lisait `peakAny` faute de `peakNR`. Sur une prépa courte dont l'unique semaine de
+pic est une décharge — **le cas exact que la première moitié d'O-21 avait documenté côté
+auditeur** — tout le plan était raboté au volume d'une semaine de récupération. Et **deux fois** :
+`D4` réduit ensuite cette même semaine, donc le second passage de `reconcileDeclaredVolume` repart
+d'un plafond encore plus bas. Mesuré sur un 10 km à 6 séances : **1032 → 807 min au deuxième
+passage, sur une entrée IDENTIQUE**, quand le même profil à une allure plus lente (donc avec un
+pic en charge) ne perdait que 36 min.
+
+L'auditeur avait déjà tranché ce cas en AVERTISSEMENT, la cause étant l'arbitrage R18.5 (la
+cadence de récup de l'athlète l'emporte sur le placement). Le générateur dit maintenant la même
+chose que lui : **deux réponses différentes à la même question, c'est ce que R11.1 interdit.**
+
+### Portée, et ce qui reste
+
+Dispersion du total livré sur l'axe allure, 432 profils × 4 allures, entrées identiques par
+ailleurs :
+
+| | avant | après |
+|---|---|---|
+| médiane | 0,7 % | **0,7 %** |
+| p90 | 16,2 % | **5,0 %** |
+| max | 44,1 % | **36,1 %** |
+| pire inversion entre allures voisines | +38,7 % | **+24,3 %** |
+| profils non monotones (> +2 %) | 83 (19,2 %) | 73 (16,9 %) |
+
+Le p90 tombe de deux tiers — la queue longue est traitée — mais le **compte** bouge à peine. Les
+séquences résiduelles ne sont pas monotones dans un sens ou dans l'autre, elles sont
+**erratiques** (`845 846 847 903`) : ce n'est pas une règle qui penche, c'est du bruit de
+convergence entre passes. Le traiter demanderait de rendre le point de convergence idempotent —
+reprendre l'ORDRE des passes de `reconcileDeclaredVolume`, un chantier à part entière.
+**L'entrée O-21 reste ouverte avec ce chiffre, plutôt qu'avec une promesse.**
+
+La dette `O17` du banc v6, déclarée par O-21, est **payée dans le commit de la correction** : son
+`expect` repasse à `'pass'`, et le témoin n'a pas été réécrit — c'est le moteur qui a changé.
+Effet de bord mesuré et assumé : **115 profils du golden bougent, tous dans le même sens** (part
+facile en hausse, part dure en baisse) — les minutes rendues à la sortie longue sont des minutes
+faciles. Et `C30-A` perd trois de ses quatre « témoins immobiles » : ils montent, mais pour une
+raison qui n'est PAS la spécificité, et le critère le dit.
+
 ## C30b — la sortie longue atteint sa cible, et les minutes viennent des séances faciles (O-26)
 
 **Décision du fondateur, 05/08/2026** : *« oui si elle respecte les plafonds ; en semaine de pic,

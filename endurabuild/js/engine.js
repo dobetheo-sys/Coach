@@ -7719,9 +7719,23 @@ function reconcileDeclaredVolume(
   // devient une garantie FINALE et stricte, sixième du même point de convergence.
   {
     const wm = (wk        ) => weekMinOf(wk);
+    // O-21 — SANS SEMAINE DE PIC EN CHARGE, LA RÈGLE N'A PAS D'OBJET, ET ELLE NE CLAMPE RIEN.
+    //
+    // Le repli `peakAny` prenait la semaine de pic MÊME QUAND C'EST UNE DÉCHARGE. Sur une prépa
+    // courte dont l'unique semaine de pic est une récup (cas mesuré et documenté par O-21 côté
+    // auditeur), tout le plan se faisait raboter au volume d'une semaine de RÉCUPÉRATION — et
+    // deux fois, parce que `D4` réduit ensuite cette même semaine et que le second passage de
+    // `reconcileDeclaredVolume` recommence sur un plafond devenu plus bas. Mesuré sur un 10 km à
+    // 6 séances : **1032 → 807 min au deuxième passage, sur une entrée IDENTIQUE**, quand le
+    // profil voisin (une allure seuil plus lente, donc une semaine de pic en charge) ne perdait
+    // que 36 min. C'était le mécanisme de l'inversion sur l'axe allure.
+    //
+    // L'auditeur a déjà tranché ce cas : « aucune semaine de PIC en charge » est un
+    // AVERTISSEMENT, pas une violation dure, la cause étant l'arbitrage R18.5 (la cadence de
+    // récup de l'athlète l'emporte sur le placement). Le générateur dit désormais la même chose
+    // que lui — deux réponses différentes à la même question, c'est ce que R11.1 interdit.
     const peakNR = plan.weeks.filter((wk) => wk.phase.id === "peak" && !wk.isRecup).map(wm);
-    const peakAny = plan.weeks.filter((wk) => wk.phase.id === "peak").map(wm);
-    const peakBest = Math.max(0, ...(peakNR.length ? peakNR : peakAny));
+    const peakBest = Math.max(0, ...peakNR);
     if (peakBest > 0) for (const wk of plan.weeks) {
       if (wk.phase.id === "peak" || wk.phase.id === "taper" || wk.isRecup) continue;
       for (let g = 0; g < 5 && wm(wk) > peakBest; g++) {
@@ -8756,6 +8770,40 @@ function reconcileDeclaredVolume(
         }
         const rendu = Math.max(0, (sx.min || 0) - (cible2 - place));
         manque -= rendu;
+      }
+      // O-21 — ET S'IL RESTE À RENDRE, C'EST LA SORTIE LONGUE QUI LE PREND.
+      //
+      // Sur une semaine PLATE, le remplissage ci-dessus est structurellement mort : I14 vient de
+      // ramener chaque séance à la durée de la sortie longue, et le plafond des receveuses
+      // (`0,80 × longMin`, R20.3) est alors SOUS leur valeur courante — `place` est négatif, rien
+      // n'est placé, et les minutes retirées disparaissent. Mesuré sur un 10 km à 4 séances : les
+      // quatre séances de la semaine sortaient à 41-43 min pour une longue de 41, `_labelCut`
+      // valait 27 min, et le remplissage en rendait ZÉRO.
+      //
+      // La conséquence n'est pas locale, et c'est elle qui coûte : ce sont les semaines de PIC et
+      // de SPÉCIFIQUE qui portent le plus de qualité par rapport à leur sortie longue, donc ce
+      // sont elles que I14 coupe le plus. La périodisation s'inverse — dev au-dessus du pic — et
+      // la garantie A2/I1 rabote alors TOUT le plan jusqu'au pic estropié. Mesuré sur un même
+      // profil à deux allures seuil : **−263 min (−19 %) à 5:45/km, 0 à 7:00/km**. C'est le
+      // mécanisme entier de l'inversion sur l'axe allure (O-21).
+      //
+      // Rendre ces minutes à la sortie longue n'est pas « gonfler la longue » (ce que I14 refuse,
+      // à raison) : ce sont les minutes que la MÊME passe vient de retirer à la MÊME semaine, et
+      // les rendre là est le seul endroit qui ne rouvre rien — une longue plus longue RELÈVE le
+      // plafond d'I14 au lieu de le violer. Bornes : le plafond de bloc déclaré (C23, blessures)
+      // et la cible de la semaine, déjà calculée plus haut.
+      if (manque > 1) {
+        const lg = all.find((sx) => sx.long && !sx.race);
+        const corps = (lg?.steps || []).filter((st) => st.role === "body" && !EN_PENTE(st)
+          && st.distanceM == null && st.durationMin != null && !IS_QUALITY_ZONE(String(st.zone || "")));
+        if (lg && corps.length === 1) {
+          const capBloc = corps[0].bnd ? corps[0].bnd.cap : Infinity;
+          const place = Math.min(manque, capBloc - (corps[0].durationMin || 0));
+          if (place > 1) {
+            corps[0].durationMin = (corps[0].durationMin || 0) + place;
+            if (render) render(lg);
+          }
+        }
       }
     }
   }
