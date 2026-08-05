@@ -1113,6 +1113,22 @@ le plancher d'affûtage de Bosquet. Au passage, Riegel n'a plus qu'une écriture
 de `feasibility` délègue au prédicteur.
 **27 gates verts, E2E 18/18, golden 900 recapturé (121 profils, tous en course), registre 25/25.**
 
+**U17 · A-2 · A-3 livrés — trois blocages levés sans arbitrage** (voir ARCHITECTURE.md
+« U17 / A-2 / A-3 ») : **U17** — le titre de séance, cible la plus FRÉQUENTE de l'app (ouvrir le
+détail, replié par défaut depuis U16), mesuré au rendu à **254 × 17 px** : la seule cible tactile
+du produit sans marge verticale, quand la carte repliable voisine a 8 px. Ce n'était pas une
+décision de design mais un standard à appliquer — **U4 a tranché 44 px pour ce dépôt** ; on passe
+à **45**. Garde `U17` sur le rectangle RENDU (pas sur la règle CSS : la hauteur dépend aussi de
+la police, que R16.8 peut bouger), **vérifiée rouge** à 17 px. **A-2** — le golden ne regardait
+**aucun coureur lent** (profil de base à 4:30/km), or C30 et C31 ne mordent que là : troisième
+occurrence de cet angle mort, et elle était PUBLIÉE comme une limite en livrant C31. Passe
+« allure » (2 formats × 4 allures à `vol_max: 10`, l'enveloppe où le back-to-back peut se payer),
+**900 → 908 profils**, et la photo DISCRIMINE — back-to-back à 5:45/7:00/8:30, absent à 4:30.
+**A-3** — l'entrée affirmait que `R14.3-b` n'a aucun critère automatique : **faux depuis R15.2**
+(`R15.2-A/B/C/D`, quatre verts). Déplacée au §4 — un angle mort qui n'en est plus fait croire à
+une cécité qu'on n'a pas.
+**27 gates verts, E2E 18/18, golden 908, registre 26/26.**
+
 **C31 livré — le back-to-back marathon : la longue trop longue se coupe en deux jours d'affilée**
 (décision du fondateur, 04/08/2026, populations bornées par un audit de littérature préalable —
 voir ARCHITECTURE.md « C31 ») : quand C30 est refusé par le plafond C23 (marathon @ 7:00/km :

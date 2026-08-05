@@ -181,6 +181,26 @@ function* profiles() {
       plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[6] };
     yield { key: ["P5", "run", "marathon", v + "h"].join("/"), sport: "run", a };
   }
+  // ---- Passe « allure » (C30 / C31) ----------------------------------------
+  // TROISIÈME OCCURRENCE DU MÊME ANGLE MORT (A-2), et celle-ci était PUBLIÉE comme une limite
+  // en livrant C31 : le profil de base court à 4:30/km. Or C30 (le plancher de spécificité de
+  // la sortie longue) et C31 (le back-to-back marathon) ne mordent que chez le coureur LENT —
+  // c'est lui qui passe le plus de temps sur son épreuve. La photo ne regardait donc aucun
+  // profil où ces deux règles existent : 121 empreintes ont bougé en livrant C30 sans qu'une
+  // seule ne couvre C31, et sa garde a dû vivre entièrement dans `C31-A` (banc v6).
+  //
+  // Quatre allures qui balaient le domaine (rapide → très lent) × les deux formats où les
+  // règles opèrent. `vol_max: 10` parce que c'est l'enveloppe où le back-to-back a de quoi
+  // se payer — à 6 h la borne budgétaire l'interdit, et photographier une règle là où elle
+  // ne s'applique jamais, c'est refaire l'angle mort qu'on est en train de fermer.
+  for (const fmt of ["semi", "marathon"]) {
+    for (const p of ["4:30", "5:45", "7:00", "8:30"]) {
+      const a = { ...base(), format: fmt, pace: p, pace_known: "oui", vol_max: "10", vol_recent: "8",
+        sessions_max: "6", history: "confirme", level: "inter", intent: "competition",
+        plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[6] };
+      yield { key: ["C30", "run", fmt, p].join("/"), sport: "run", a };
+    }
+  }
 }
 
 // ---- Normalisation canonique --------------------------------------------

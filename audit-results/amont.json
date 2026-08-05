@@ -3939,7 +3939,7 @@
   "mut": "dans 3 semaines",
   "verdict": "ÉCHEC EXPLICITE",
   "delta": "",
-  "err": "ENTREE_INVALIDE race_date = \"2026-08-25\" (attendu : au moins 36 semain"
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-26\" (attendu : au moins 36 semain"
  },
  {
   "cat": "T3 date",
@@ -3984,7 +3984,7 @@
   "mut": "dans 3 semaines",
   "verdict": "ÉCHEC EXPLICITE",
   "delta": "",
-  "err": "ENTREE_INVALIDE race_date = \"2026-08-25\" (attendu : au moins 16 semain"
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-26\" (attendu : au moins 16 semain"
  },
  {
   "cat": "T3 date",
@@ -4029,7 +4029,7 @@
   "mut": "dans 3 semaines",
   "verdict": "ÉCHEC EXPLICITE",
   "delta": "",
-  "err": "ENTREE_INVALIDE race_date = \"2026-08-25\" (attendu : au moins 14 semain"
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-26\" (attendu : au moins 14 semain"
  },
  {
   "cat": "T3 date",
@@ -4074,7 +4074,7 @@
   "mut": "dans 3 semaines",
   "verdict": "ÉCHEC EXPLICITE",
   "delta": "",
-  "err": "ENTREE_INVALIDE race_date = \"2026-08-25\" (attendu : au moins 12 semain"
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-26\" (attendu : au moins 12 semain"
  },
  {
   "cat": "T3 date",
@@ -4119,7 +4119,7 @@
   "mut": "dans 3 semaines",
   "verdict": "ÉCHEC EXPLICITE",
   "delta": "",
-  "err": "ENTREE_INVALIDE race_date = \"2026-08-25\" (attendu : au moins 12 semain"
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-26\" (attendu : au moins 12 semain"
  },
  {
   "cat": "T3 date",
@@ -4164,7 +4164,7 @@
   "mut": "dans 3 semaines",
   "verdict": "ÉCHEC EXPLICITE",
   "delta": "",
-  "err": "ENTREE_INVALIDE race_date = \"2026-08-25\" (attendu : au moins 22 semain"
+  "err": "ENTREE_INVALIDE race_date = \"2026-08-26\" (attendu : au moins 22 semain"
  },
  {
   "cat": "T3 date",

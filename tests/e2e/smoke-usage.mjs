@@ -10,6 +10,7 @@
 //   U2 — le nom du check-in suit l'heure, comme le salut le faisait déjà ;
 //   U3 — le score d'audit ne s'affiche plus, les décisions du moteur restent ;
 //   U4 — les cibles tactiles atteignent 24 px au minimum, zone ::after comprise ;
+//   U17 — le titre de séance (la cible la plus fréquente) atteint 44 px de haut ;
 //   U7 — la séance apparaît sans attendre la météo.
 //
 // U1 est la raison d'être de cette suite : la fenêtre dépendait du JOUR DE LA SEMAINE, donc
@@ -236,6 +237,21 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   });
   for (const [cle, z] of Object.entries(cibles))
     ok(!!z && z.w >= 24 && z.h >= 24, "U4 — la cible « " + cle + " » atteint le minimum tactile" + (z ? " (" + Math.round(z.w) + "×" + Math.round(z.h) + ")" : " — introuvable"));
+
+  // U17 — LE TITRE DE SÉANCE : LA CIBLE LA PLUS FRÉQUENTE, ET LA PLUS PETITE.
+  //
+  // Mesuré au rendu (390 px) : 254 × 17 px. C'est le geste qu'on fait le plus — ouvrir le
+  // détail d'une séance, replié par défaut depuis U16 — et c'était la seule cible du produit
+  // sans marge verticale (la carte repliable voisine a `padding: 8px 0`, celle-ci avait 1 px).
+  // Un doigt fait ~34 px ; WCAG 2.5.8 pose 24 en minimum absolu, et U4 a tranché 44 pour ce
+  // dépôt. Ce critère porte sur le rectangle RENDU, pas sur la règle CSS : c'est la hauteur
+  // effective qui compte, et elle dépend aussi de la taille de police (R16.8 peut la bouger).
+  const sums = await page.evaluate(() => [...document.querySelectorAll(".gd-sess summary")]
+    .map((s) => { const r = s.getBoundingClientRect(); return { h: Math.round(r.height), w: Math.round(r.width) }; })
+    .filter((x) => x.w > 0));
+  const mini = sums.length ? Math.min(...sums.map((x) => x.h)) : 0;
+  ok(sums.length >= 3, "U17 — des titres de séance sont rendus dans la grille (" + sums.length + ")");
+  ok(mini >= 44, "U17 — le titre de séance atteint 44 px de haut, le standard posé par U4 (mini mesuré : " + mini + " px)");
   await ctx.close();
 }
 

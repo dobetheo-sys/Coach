@@ -171,7 +171,16 @@ body.has-tabs .hero, body.has-tabs .progress { display: none; }
 }
 @keyframes ck-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
 /* Séances : suggestion visuelle de clicabilité (retour utilisateur) */
-.gd-sess summary { border-bottom: 1px dashed #b3ab9b; padding-bottom: 1px; }
+/* U17 — LA CIBLE LA PLUS FRÉQUENTE ÉTAIT LA PLUS PETITE.
+   Mesuré au rendu (390 px) : 254 × 17 px. C'est le geste qu'on fait le plus dans l'app —
+   ouvrir le détail d'une séance, replié par défaut depuis U16 — et c'était la SEULE cible
+   tactile du produit sans marge verticale : la carte repliable voisine a `padding: 8px 0`,
+   celle-ci avait 1 px. Un doigt fait ~34 px ; WCAG 2.5.8 pose 24 en minimum absolu, et
+   U4 a tranché 44 × 44 comme le standard de ce dépôt en réparant le ⇄.
+   Le padding est posé sur le SUMMARY et non sur un pseudo-élément : un `::after` en
+   position absolue agrandit la zone de toucher mais laisse la ligne serrée à l'œil, alors
+   qu'ici l'espace manque aussi visuellement — les titres de séance se touchent. */
+.gd-sess summary { border-bottom: 1px dashed #b3ab9b; padding: 15px 0 14px; }
 /* R18.1-a — ce libellé était à 8 px : sous le plancher de lisibilité que R16.8 dit tenir.
    Il y avait survécu parce que la garde `smoke-typo` ne lisait que `styles.css`, et parce
    qu'un `::after` n'est pas un nœud de texte — les DEUX mesures le manquaient. Une garde

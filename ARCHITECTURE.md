@@ -4148,6 +4148,54 @@ manquant de C31), `check:sw` (rouge sur bundle non reconstruit). Les bancs R13-R
 v6/v7 et les demos récents (hrv, proactif, troncature, nutrition N11) avaient déjà leur
 vérification rouge d'origine, documentée dans leurs lots.
 
+## U17 / A-2 / A-3 — trois blocages levés sans arbitrage
+
+Trois situations qui traînaient et dont aucune ne demandait de décision produit : la première
+applique un standard déjà tranché, les deux autres sont des mesures qui manquaient.
+
+### U17 — le titre de séance : la cible la plus fréquente était la plus petite
+
+Trouvé au tour d'usage. Mesuré au rendu (390 px) : **254 × 17 px** — et c'est le geste qu'on
+fait le plus dans l'app, ouvrir le détail d'une séance, replié par défaut depuis U16. C'était la
+seule cible tactile du produit sans marge verticale :
+
+```css
+.gd-sess summary        { padding-bottom: 1px; }   /* 17 px */
+details.load-card summary { padding: 8px 0; }      /* ~33 px */
+```
+
+Un doigt fait ~34 px ; WCAG 2.5.8 pose 24 en minimum absolu, et **U4 a tranché 44 pour ce dépôt**
+en réparant le ⇄. Ce n'était donc pas une décision de design à prendre, mais un standard à
+appliquer : `padding: 15px 0 14px` → **45 px**. Le padding est sur le `summary` et non sur un
+pseudo-élément : un `::after` absolu agrandit la zone de toucher mais laisse la ligne serrée à
+l'œil, or ici l'espace manquait aussi visuellement — les titres se touchaient.
+Garde `U17` (`smoke-usage`), sur le rectangle RENDU et non sur la règle CSS — la hauteur dépend
+aussi de la taille de police, que R16.8 peut bouger. **Vérifiée rouge** (17 px) en remettant
+l'ancien padding.
+
+### A-2 — le golden ne regardait aucun coureur lent
+
+Troisième occurrence du même angle mort, et celle-ci était **publiée comme une limite** en
+livrant C31 : le profil de base du golden court à **4:30/km**. Or C30 et C31 ne mordent que chez
+le coureur LENT — c'est lui qui passe le plus de temps sur son épreuve. La photo ne couvrait donc
+aucun profil où ces deux règles existent : 121 empreintes ont bougé en livrant C30 sans qu'une
+seule ne couvre C31, dont la garde a dû vivre entièrement dans `C31-A`.
+
+Passe « allure » : 2 formats × 4 allures (4:30 → 8:30) à `vol_max: 10`, l'enveloppe où le
+back-to-back a de quoi se payer — photographier une règle là où elle ne s'applique jamais
+referait l'angle mort qu'on ferme. **900 → 908 profils**, et la photo DISCRIMINE : back-to-back
+présent à 5:45/7:00/8:30, **absent à 4:30** où le plafond ne mord pas.
+
+### A-3 — un angle mort qui n'en était plus un
+
+L'entrée affirmait que `R14.3-b` (le dénivelé vélo) n'a **aucun critère automatique**. Faux
+depuis R15.2 : O-2 *est* R14.3-b, sa fermeture a livré `R15.2-A/B/C/D` dans `npm run audit:r15`,
+et les quatre sont verts (plat 175–191 W · montagne 169–185, écart 6 W ; vallonné strictement
+entre les deux ; le conseil nomme la puissance normalisée ; clé unique `terrain`). L'entrée O-2
+le disait en toutes lettres — c'est le tableau des angles morts qui n'avait pas suivi. Déplacée
+au §4 : **un angle mort qui n'en est plus fait croire à une cécité qu'on n'a pas**, le symétrique
+exact du défaut caché.
+
 ## C31 — le back-to-back marathon : la longue trop longue se coupe en deux jours
 
 Décision du fondateur (04/08/2026) : *« le but était de couper une sortie longue trop longue en
