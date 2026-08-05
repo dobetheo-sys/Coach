@@ -41,12 +41,9 @@ const titre = (t: string) => console.log("\n" + t + "\n" + "─".repeat(Math.min
 // ---- Un plan réel, daté, reproductible --------------------------------------
 // Ancré au lundi comme les bancs (A-6) : sans ça, le verdict dépendrait du jour où
 // la commande tourne — la famille de défauts que R20.7 a mise au jour six fois.
-function lundiCourant(): Date {
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-  return d;
-}
+// IMPORTÉ de `bench-dates.cjs` (le point unique qu'A-6 a créé), plus recopié.
+import benchDates from "../../bench-dates.cjs";
+const { lundiCourant } = benchDates as unknown as { lundiCourant: () => Date };
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const plus = (base: Date, n: number) => iso(new Date(base.getTime() + n * 864e5));
 
@@ -244,26 +241,35 @@ titre("§3 — LA GARANTIE : jamais de charge en plus, sur AUCUN scénario");
 
   // ── ET LA GARANTIE EST TESTÉE LÀ OÙ ELLE PEUT CASSER ──
   //
-  // Les deux critères ci-dessus décrivent une PROPRIÉTÉ du résultat ; ils ne disent pas
-  // si quoi que ce soit l'empêche. Mesuré en cassant exprès : porter le facteur de
-  // réduction à 1,2 les laissait VERTS. `reduceDay` protège `durationMin` et `distanceM`
-  // par un `Math.min`, mais PAS `reps` — un bloc passe de 5 à 6 répétitions. La
-  // garantie n'est donc pas structurelle, elle tient à une seule ligne, et c'est cette
-  // ligne qu'il faut épingler.
-  let leve = "";
-  try {
+  // HISTORIQUE DU CRITÈRE, parce qu'il a changé de forme et que la raison doit rester
+  // lisible. À l'écriture de R21, `reduceDay(f = 1,2)` faisait GROSSIR un bloc (5 → 6
+  // répétitions : le `Math.min` protégeait durée et distance, pas `reps`), et ce critère
+  // vérifiait que le FILET runtime de `recalculerFenetre` attrapait la hausse (throw +
+  // restauration). Depuis le point unique `stepScale` (`clampToOriginal`), la hausse est
+  // neutralisée AVANT le filet : elle n'est plus rattrapée, elle n'a jamais lieu — une
+  // protection strictement plus forte (l'ancienne appliquait la hausse puis la défaisait).
+  // Le critère asserte donc la propriété FORTE, aux deux étages :
+  //   1. `reduceDay` lui-même, sur le cas exact du bug d'origine (reps = 5, f = 1,2) ;
+  //   2. le point d'entrée complet, qui doit rester sans un gramme de hausse.
+  // Le filet de `recalculerFenetre` RESTE en place (défense en profondeur pour tout futur
+  // chemin de réduction) ; s'il lève à nouveau un jour, c'est qu'une nouvelle écriture a
+  // contourné `stepScale` — et ce critère le verra par la comparaison avant/après.
+  {
     const { plan: p2, reasoned: r2 } = frais();
-    // Un jour de qualité dans la fenêtre, dont le corps est à répétitions : le seul
-    // profil de séance que `reduceDay` peut faire GROSSIR.
     const cible = joursQualiteFenetre(p2, TODAY)[0];
     if (!cible) throw new Error("PAS-DE-CIBLE");
     for (const s of cible.sessions) for (const st of (s.steps || [])) if (st.role === "body") { st.reps = 5; st.durationMin = 4; delete st.distanceM; }
-    // On appelle la fonction qui PORTE l'assertion, avec un facteur qui augmente.
-    // Pas de trappe de test dans le point d'entrée : un paramètre caché qui n'existe
-    // que pour la mesure finirait par exister aussi en production.
-    recalculerFenetre(r2, p2, TODAY, 1.2, "cassure délibérée");
-  } catch (e) { leve = String((e as Error).message); }
-  ok(/Invariant R21 violé/.test(leve), "un recalcul à la HAUSSE lève, il ne passe pas en silence (« " + leve.slice(0, 48) + " »)");
+    const repsAvant = cible.sessions.flatMap((s) => s.steps || []).filter((st) => st.role === "body").map((st) => st.reps);
+    const minAvant = p2.weeks.reduce((t, w) => t + w.days.reduce((a, d) => a + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0), 0);
+    let leve = "";
+    try { recalculerFenetre(r2, p2, TODAY, 1.2, "cassure délibérée"); } catch (e) { leve = String((e as Error).message); }
+    const repsApres = cible.sessions.flatMap((s) => s.steps || []).filter((st) => st.role === "body").map((st) => st.reps);
+    const minApres = p2.weeks.reduce((t, w) => t + w.days.reduce((a, d) => a + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0), 0);
+    ok(repsApres.every((r0, i) => (r0 || 1) <= (repsAvant[i] || 1)),
+      "le cas du bug d'origine est IMPOSSIBLE : reps 5 + f=1,2 ne grossit plus (" + repsAvant.join(",") + " → " + repsApres.join(",") + ") — stepScale.clampToOriginal");
+    ok(minApres <= minAvant + 0.5 && !leve,
+      "un recalcul demandé à la HAUSSE reste sans effet — neutralisé AVANT le filet, qui n'a plus rien à attraper (" + Math.round(minAvant) + " → " + Math.round(minApres) + " min)");
+  }
 }
 
 /** Les jours de qualité de la fenêtre — même sélection que le recalcul. */

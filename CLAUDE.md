@@ -1079,6 +1079,62 @@ déclarée ne pèse pas comme une mesurée) : le banc couvre les deux faces au l
 et `A4b` est **vérifié rouge** contre le moteur d'avant.
 **27 gates verts, E2E 18/18, golden 900 inchangé, registre 24/24.**
 
+**C30 livré — la sortie longue connaît l'épreuve, et n'y arrive qu'à moitié** (décision du
+fondateur, 04/08/2026 : « quelque chose entre les deux : se rapprocher du temps visé sur l'épreuve
+a minima, et au moins 70 % de la distance », voir ARCHITECTURE.md « C30 » et BUGS_OUVERTS.md
+« O-26 ») : **la prémisse d'O-21 était fausse et elle reste écrite** — la sortie longue est
+prescrite en TEMPS depuis toujours (`durCaps` en minutes), et entre 5:45/km et 7:00/km sur un
+10 km elle fait **178 min contre 176** ; l'inversion résiduelle venait du SEUIL. Ce que la règle
+du fondateur corrige est un AUTRE défaut, réel : la longue ne connaissait pas l'épreuve, et le
+coureur **lent** était le plus mal servi — **47-50 min pour une course de 71 min** sur 10 km,
+115-125 pour 156 sur semi. `src/engine/longRunSpecificity.ts` : le plancher vise le plus exigeant
+de deux repères (90 % du temps de course PRÉDIT, 70 % de la distance en Z2), **jamais au-dessus du
+plafond** — sur marathon, « se rapprocher du temps de course » voudrait dire 3 h 20 à 5 h 25 de
+sortie longue, C23 plafonne à 180 et un plancher ne passe jamais devant un plafond. Il PROGRESSE
+avec la phase (la cible est celle du pic ; un plancher plat contredirait la rampe R10), et
+**`target_time` n'est pas lu** — laisser un objectif de chrono augmenter une charge, c'est ce que
+`RV-INVARIANT` interdit sous CI.
+**PORTÉE MESURÉE : 7 profils sur 180, et c'est le résultat le plus important du lot.** Cibles de
+spécificité atteintes 24/48 → **31/48**, concentrées sur les débutants — pas sur la population que
+la mesure désignait. La cause est nommée (**O-26**) : `blockBounds` jette le plancher déclaré par
+le bloc et le remplace par un « plancher digne » de 30 min, par décision de l'audit v6 (D3-D7/D10,
+« les planchers de séance ne gagnent plus contre la courbe »). Et **forcer le plancher ne marche
+pas** — mesuré, les cibles tombent à **30/48** : le facteur limitant est le volume hebdomadaire
+d'une prépa de format court (pic à 140-152 min, la longue y pèse déjà 36-39 %). La suite est un
+arbitrage d'entraînement, pas du code — trois issues chiffrées dans O-26.
+**Ma première garde valait zéro** : écrite sur l'INTENTION, elle était satisfaite par le moteur
+d'AVANT — trois cassures, **trois verts**. Septième occurrence d'un critère qui nomme une grandeur
+et en mesure une voisine, cette fois dans la garde d'un correctif que je venais d'écrire. Réécrite
+sur les 7 profils déplacés avec leurs valeurs (`C30-A`, banc v6), **vérifiée rouge sur trois
+cassures** ; **une quatrième reste verte et c'est publié** — passer la part de distance de 70 % à
+50 % ne change rien, le repère TEMPS dominant partout : la moitié « distance » de la règle n'a
+encore jamais mordu. Effet de bord favorable non visé : **O-19 passe de 3/12 à 2/12** profils sous
+le plancher d'affûtage de Bosquet. Au passage, Riegel n'a plus qu'une écriture (R11.1) — la copie
+de `feasibility` délègue au prédicteur.
+**27 gates verts, E2E 18/18, golden 900 recapturé (121 profils, tous en course), registre 25/25.**
+
+**C31 livré — le back-to-back marathon : la longue trop longue se coupe en deux jours d'affilée**
+(décision du fondateur, 04/08/2026, populations bornées par un audit de littérature préalable —
+voir ARCHITECTURE.md « C31 ») : quand C30 est refusé par le plafond C23 (marathon @ 7:00/km :
+cible 334 min, plafond 180), **ce qui manque se court le lendemain** de la longue, en Z2, jambes
+fatiguées — `min(manque, 0,6 × 180)`, soit 180 + 108 @ 7:00, 180 + 63 @ 5:45. **Marathon
+seulement** (le mécanisme est la déplétion glycogénique — sous ~2 h 30 d'épreuve il n'opère pas,
+le semi est dehors), **jamais un débutant** (Nielsen 2014 : la fluctuation de charge est LE
+mécanisme de blessure du novice, et un week-end doublé en est un pic), jamais sous drapeau
+médical ni blessure d'impact, **≤ 3 week-ends par prépa** (semaines de pic en charge). Le conflit
+avec la garde d'impact (`runImpactCap` pose un OFF après la longue) est résolu par ÉCHANGE : la
+récup se décale d'un jour, elle n'est pas supprimée. La passe tourne AVANT la boucle R3.3 —
+charge redistribuée, jamais ajoutée. **Deux défauts de ma première écriture, trouvés par le banc
+d'invariants** : poser-puis-écraser n'est pas poser (I14 a vu un « jour 2 » compressé à 30 min
+sous un nom qu'il ne tenait plus → la paire ne se pose que si 180 + jour 2 ≤ 60 % du pic promis),
+et le seuil de pose doit ÊTRE le seuil du filet (poser dès 15 min de manque puis déclasser
+laissait l'échange de jours orphelin — l'inversion I13 de 4 min venait de là ;
+`C31_MIN_JOUR2_MIN = 45`, une constante pour les deux). Gardes `C31-A`/`C31-B` au banc v6,
+**vérifiées rouges sur trois cassures** ; deux limites PUBLIÉES — le filet du point fixe n'a
+aucun déclencheur actuel (défense en profondeur, cassure K4 verte et c'est dit), et le golden ne
+couvre pas C31 (aucun profil marathon + allure lente : famille A-2).
+**27 gates verts, E2E 18/18, golden 900 : 0 écart, registre 26/26.**
+
 **H-1b livré — la VFC devient un CHOIX, posé une fois** (retour du fondateur : *« déjà la VFC est
 un point avancé, je me demande s'il ne vaut pas mieux le demander comme une option »*, voir
 ARCHITECTURE.md « H-1b ») : elle occupait **une diapo sur trois du check-in quotidien de TOUT LE

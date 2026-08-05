@@ -969,10 +969,16 @@ de un ou deux jours n'en est pas une. La mesure DÉCLARE donc son domaine — **
 disponibles** — et la date est **ancrée au lundi courant, en semaines entières** (recette R20.7).
 Vérifiée identique les sept jours : **3/12, moyenne 80 %**.
 
+**Mise à jour du 04/08/2026 — C30 a fait baisser ce chiffre sans le viser : 3/12 → 2/12.** La
+sortie longue d'un coureur lent est plus longue au pic ET en affûtage (le plancher de spécificité
+progresse avec la phase, il ne s'éteint pas à l'affûtage), donc le rapport affûtage/pic monte.
+C'est une bonne nouvelle et un rappel : ce compteur mesure un RAPPORT, il bouge quand l'un ou
+l'autre de ses deux termes bouge. Le reste d'O-19 est inchangé — la cause n'est pas traitée.
+
 ```verify
 id: O-19
 quoi: la fréquence d'affûtage face au plancher de 80 % que Bosquet/Mujika déclarent
-attendu: /sous 80 % : 3\/12/
+attendu: /sous 80 % : 2\/12/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const lun=new Date();lun.setUTCDate(lun.getUTCDate()-((lun.getUTCDay()+6)%7));const c=new Date(lun);c.setUTCDate(c.getUTCDate()+20*7-1);const iso=c.toISOString().slice(0,10);const B={intent:'competition',dispo:'quotidienne',shift_ok:'non',doubles:'non',off_days:'non',sex:'H',sleep:'moyen',life_load:'normale',activity:'actif',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',weight_lever:'non',age:'35',weight:'75',height:'178'};const R={run:{pace_known:'oui',pace:'4:40',terrain:'plat'},bike:{ftp_known:'oui',ftp:'240',terrain:'plat'}};const F={run:['10k','semi','marathon'],bike:['cyclo']};const nb=(w)=>w.days.filter(d=>d.sessions.some(s=>s.d!=='rs'&&(s.min||0)>0&&!s.race)).length;const dispo=(w)=>w.days.filter(d=>!d.sessions.some(s=>s.race)).length;let n=0,sous=0;for(const sp of Object.keys(F))for(const f of F[sp])for(const lv of ['debutant','inter','avance']){let p;try{p=E.buildPlan(sp,Object.assign({},B,{level:lv,history:lv==='debutant'?'reprise':'confirme',format:f,vol_max:'10',vol_recent:'6',sessions_max:'6',race_date:iso},R[sp]));}catch(e){continue;}const pk=p.weeks.filter(w=>w.phase.id==='peak'&&!w.isRecup&&dispo(w)>=5);const tp=p.weeks.filter(w=>w.phase.id==='taper'&&dispo(w)>=5);if(!pk.length||!tp.length)continue;const np=Math.max(...pk.map(nb));if(!np)continue;n++;if(Math.min(...tp.map(nb))/np<0.8)sous++;}console.log('profils : '+n);console.log('sous 80 % : '+sous+'/'+n);"
 ```
 
@@ -1509,6 +1515,158 @@ quoi: l'allure seuil vient d'une course déclarée ou du meilleur 10 min, jamais
 attendu: /velocity_smooth[\s\S]*workout_type|workout_type[\s\S]*velocity_smooth/
 cmd: grep -n "workout_type\|velocity_smooth\|meilleur 10 min" endurabuild/js/ui/steps.js
 ```
+
+### O-26 · Le plancher d'une séance n'atteint jamais la boucle de volume — C30 en est à 4 % de sa portée · ⏳ **OUVERT — mesuré, et il demande un arbitrage**
+
+Trouvé en implémentant **C30** (décision du fondateur du 04/08/2026 : « se rapprocher du temps
+visé sur l'épreuve a minima, et au moins 70 % de la distance »).
+
+**La règle est écrite, elle est juste, et elle ne fait presque rien.** Mesuré sur 180 profils de
+course (4 formats × 3 niveaux × 5 allures × 3 enveloppes) : C30 en déplace **7**, de 2 à 6
+minutes. Sur la grille de spécificité (24 profils × 2 cibles), les cibles atteintes passent de
+**24/48 à 31/48** — un progrès réel, mais concentré sur les débutants, c'est-à-dire pas sur la
+population que la mesure désignait.
+
+**La cause est nommée, et elle est en aval du module de sport.** `blockBounds`
+(`planGenerator.ts`) est la SEULE source de bornes du scaling — c'est une bonne chose. Mais pour
+un bloc de sortie longue ordinaire (sans pente, `reps = 1`), elle **jette le plancher déclaré
+par le bloc** et le remplace par un « plancher digne » forfaitaire :
+
+```ts
+const fl = s.d === "bk" ? 35 : 30; // C8/C16 — plancher digne, pas la borne basse du format
+return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
+```
+
+Le `bnd.floor` que C30 calcule n'arrive donc jamais jusqu'à R3.3. Ce n'est pas un oubli : c'est
+la décision **D3-D7/D10 de l'audit v6**, « les planchers de séance ne gagnent plus contre la
+courbe ». C30 demande l'inverse pour une séance.
+
+**ET FORCER LE PLANCHER NE MARCHE PAS — c'est le résultat qui compte.** Testé
+(`floor = max(30, bnd.floor)` pour les blocs longs) : les cibles atteintes passent de **31/48 à
+30/48**, donc *moins bien*. La longue du 10 km à 7:00/km monte de 48 à 55 min pour une cible de
+64, et s'arrête là. Le facteur limitant n'est pas le plancher : c'est le **volume hebdomadaire
+d'une prépa de format court**. Sur ce profil, la semaine de pic livrée fait **140-152 min** et la
+longue y pèse déjà **36-39 %**. La porter à 64 min en ferait 44 % de la semaine.
+
+**Ce qui reste à trancher, et c'est une question d'entraînement :** une prépa 10 km pour
+quelqu'un qui court 71 min sur l'épreuve doit-elle rester à **2,4 h/semaine** ? `R20.2` répond
+déjà *pourquoi* elle y reste (« ce qui borne, c'est le nombre de séances : 5 séances, et aucune
+ne peut s'allonger indéfiniment »), et cette réponse est cohérente — mais elle ne dit pas si
+c'est **souhaitable**. Trois issues, aucune gratuite :
+
+1. **le volume utile d'un format court s'indexe sur le TEMPS de course** et non sur sa seule
+   distance (le coureur lent reçoit plus de minutes) — c'est la lecture la plus proche de
+   l'arbitrage du fondateur, et elle rouvre l'inversion d'O-21 dans le sens qu'il assume ;
+2. **la sortie longue a droit à une part plus grande de la semaine** sur les formats courts —
+   plus local, mais déséquilibre la semaine et heurte D3-D7/D10 ;
+3. **on assume** que la spécificité complète n'est pas atteignable sous 5 séances, et on le
+   DIT dans « Pourquoi ce plan » (le motif de R20.2 étendu à la sortie longue).
+
+Ma préférence va à **(3) puis (1)** : (3) est honnête et coûte peu, (1) est la vraie réponse
+mais demande de reprendre `UTIL` et la sonde de capacité, donc un lot à part entière.
+
+**Note de méthode — ma première garde valait zéro.** Écrite sur l'INTENTION (« la longue couvre
+70 % de la distance »), elle était satisfaite par le moteur d'AVANT C30 : trois cassures
+délibérées, **trois verts**. Septième occurrence dans ce dépôt d'un critère qui nomme une
+grandeur et en mesure une voisine. Réécrite sur les 7 profils que C30 déplace réellement, avec
+leurs valeurs, elle rougit sur trois cassures (C30 retiré, plancher devant plafond, part du temps
+de course 0,9 → 0,6). **Une quatrième reste verte et c'est un résultat** : passer la part de
+distance de 70 % à 50 % ne change rien, parce que sur ces 7 profils le repère TEMPS domine
+toujours. La moitié « distance » de la règle n'a encore jamais mordu.
+
+```verify
+id: O-26
+quoi: C30 ne déplace qu'une poignée de profils, le plancher n'atteignant pas la boucle de volume
+attendu: /déplacés par C30 : 7$/m
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const L=(o)=>{const a=Object.assign({intent:'competition',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',history:'confirme',injury:'aucune',sessions_max:'5',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',vol_recent:'3',terrain:'route'},o);let s=0;try{const p=E.buildPlan('run',a);p.weeks.forEach(w=>w.days.forEach(d=>d.sessions.forEach(x=>{if(x.long&&(x.min||0)>s)s=x.min;})))}catch(e){s=-1}return s};let n=0,b=0;for(const format of ['5k','10k','semi','marathon'])for(const level of ['debutant','inter','avance'])for(const pace of ['4:00','4:30','5:45','7:00','8:30'])for(const vol_max of ['4','6','8']){n++;}console.log('profils : '+n);const M={'10k/debutant/8:30/6':63,'10k/debutant/8:30/8':63,'semi/debutant/8:30/8':117,'semi/inter/7:00/8':124,'semi/inter/8:30/8':119,'semi/avance/7:00/8':124,'semi/avance/8:30/8':119};let ok=0;for(const k in M){const [format,level,pace,vol_max]=k.split('/');if(L({format,level,pace,vol_max})===M[k])ok++;}console.log('déplacés par C30 : '+ok);"
+```
+
+
+### O-27 · Pendant une passe de RÉDUCTION, un plancher absolu peut AUGMENTER un step court · ⏳ **OUVERT — mesuré, 19 profils golden**
+
+Trouvé en créant le point unique `src/engine/stepScale.ts` (25 écritures de « réduire un step
+d'un facteur », 6 variantes qui n'étaient pas d'accord). Le point unique porte un drapeau
+`clampToOriginal` — la promesse A3 de l'audit v6 : *« les planchers ne remontent JAMAIS
+au-dessus de la valeur d'origine »*. Ce drapeau a fermé un bug réel : `reduceDay(f = 1,2)`
+faisait passer un bloc de **5 à 6 répétitions** (le `Math.min` protégeait durée et distance,
+pas `reps`) pendant que son commentaire promettait le contraire. Fermé, garde au banc R21,
+vérifiée rouge.
+
+**Mais activer le même clamp sur les cinq trios du GÉNÉRATEUR n'est pas gratuit : 19 profils
+golden bougent.** Le mécanisme : `Math.max(10, round(dur × f))` sur une durée de 9 min à
+f = 0,9 rend **10** — une passe de réduction qui ALLONGE un step court jusqu'à son plancher
+« digne ». Sémantiquement, c'est ce qu'A3 appelle un défaut ; historiquement, c'est un
+comportement validé, photographié dans le golden, et possiblement porteur (les planchers de
+dignité de l'audit v6 D3-D7/D10 interagissent avec les fenêtres de séance).
+
+Décision de ce lot : **ne pas changer en douce un comportement validé dans un lot d'hygiène.**
+Les trios du générateur gardent leur sémantique (golden au bit près, vérifié), le clamp reste
+opt-in, `reduceDay` (chemin d'ADAPTATION quotidienne, où la promesse A3 est écrite noir sur
+blanc) le pose. Trancher les 19 cas est une décision d'entraînement : un step de 9 min dans une
+semaine d'affûtage doit-il remonter à 10 « pour rester digne », ou descendre comme demandé ?
+
+```verify
+id: O-27
+quoi: le clamp A3 est posé sur le chemin d'adaptation, et le comportement est asserté par le gate R21
+attendu: /cablage clampToOriginal : 1$/m
+cmd: node -e "const fs=require('fs');const n=(fs.readFileSync('src/readiness/dailyAdjuster.ts','utf8').match(/clampToOriginal: true/g)||[]).length;console.log('cablage clampToOriginal : '+n);"
+```
+
+
+### O-28 · `audit:amont` ne voit pas une dérive silencieuse sur les bornes numériques · ✅ **FERMÉ (04/08/2026) — et ma première correction était INERTE**
+
+Trouvé par l'audit des gardes (04/08/2026) : pour chacun des huit gates jamais vérifiés rouges,
+casser exprès ce qu'il prétend protéger et vérifier qu'il rougit. Six mordent (`audit:v1` sur la
+garantie R3.13 finale, `demo:repair` sur `applyTargetedRepairs`, `demo:readiness` sur le registre
+objectif, `demo:fit` sur la signature, `demo:measured` sur l'arbitrage, `demo:retention` sur la
+série gratuite). Deux sont muets — celui-ci et O-29.
+
+**La cassure, vérifiée ACTIVE avant le verdict** (la leçon a coûté trois faux verdicts dans ce
+même audit : un `reduire(f=1)` réparé par la garantie aval, un bundle refusé par l'auto-test du
+build, un `coerce` que personne ne lit) : remplacer le refus typé hors bornes d'`answerSchema`
+par un clamp silencieux — `vol_max: "999"` **accepté, clampé à 40, plan généré, aucun journal**.
+Mesuré : le comportement change (« vol_max=999 accepté en silence »), le build passe, et
+`audit:amont` — dont la promesse est « 551 entrées fausses → refus MOTIVÉ, sans effet, ou dérive
+ANNONCÉE ; zéro dérive silencieuse » — reste **vert**.
+
+**CE QUI L'A FERMÉ — après une correction retirée.** Ma première idée était de resserrer le
+prédicat : une explication ne compterait que si elle NOMME la clé mutée (mots dérivés de
+`answerSchema[k].label`). Écrite, puis **mesurée : 0 verdict changé sur 472** contre le moteur
+intact, **et toujours verte contre la cassure** — parce que `R20.2` parle légitimement de « ton
+volume max » dans chaque plan, donc le prédicat par mots-clés était satisfait par une explication
+présente des deux côtés. Correction inerte, retirée comme C23b et R19.4/O-12.
+
+Ce qui ferme le trou ne devine rien : le schéma DÉCLARE des bornes, donc une valeur hors bornes
+doit être **refusée, typée, en nommant sa clé**. Nouvelle section **T5** dans `audit_amont.cjs`,
+dérivée du schéma (`answerSchema`, R11.1 — la recette d'`audit:sensibilite`) : pour chaque clé
+numérique bornée présente dans le questionnaire du sport, `min − 1` et `max + 1` doivent lever un
+`ENTREE_INVALIDE` **portant cette clé**. `70 bornes éprouvées (22 clés) · 0 non tenue`.
+**Vérifié rouge contre la recette ci-dessus : 70/70.**
+
+*Note d'instrument, gardée écrite : mes deux premières écritures du critère cherchaient la clé
+dans le MESSAGE du refus par regex, et toutes deux ont échoué sur l'échappement — `"\\\\b"` dans le
+fichier JS vaut « antislash littéral + b », `"\\b"` vaut le caractère retour arrière. Résultat :
+70 refus bien réels comptés comme absents, un banc rouge pour rien. La clé est lue sur la
+propriété `EBInputError.key` — un contrat typé se lit sur son type, pas dans sa prose.*
+
+### O-29 · `audit:public` ne voit pas une séance au repère d'intensité VIDE · ✅ **FERMÉ (04/08/2026)**
+
+Même méthode, même statut. La cassure : vider le repli RPE de la zone `rn.thr`
+(`fb: ""`, `hr: null`) — pour l'athlète sans allure déclarée, la séance rend littéralement
+**« 3×5min @  »**, un `@` suivi de rien. C'est mot pour mot le défaut que le banc existe pour
+empêcher (« 0 séance sans repère exécutable », R12). Vérifié : le rendu porte bien le trou, le
+build passe, et `audit:public` reste **vert**.
+
+**La cause, mesurée** : le §A teste la SÉANCE ENTIÈRE contre une alternance de mots-repères. Il
+suffit qu'un échauffement dise « progressif » pour que la séance passe — même si son bloc de
+travail annonce « 3×5min @  ». Le banc vérifiait la présence d'un chemin de repli, pas le CONTENU
+rendu : une mesure qui porte sur une grandeur voisine de celle qu'elle nomme.
+
+**Section E** ajoutée à `banc_grand_public.cjs` : dans le texte que l'athlète a sous les yeux,
+chaque `@` doit être suivi d'un repère avant le prochain séparateur (`·`, `(`, `—`, fin). C'est
+une propriété du LIVRÉ — elle ne suppose rien du chemin qui l'a produite — et elle est éprouvée
+sur les 6 sports × 3 niveaux × {sans références, avec références}, un `@` vide n'étant jamais
+acceptable. **Vérifiée rouge contre la recette ci-dessus.**
 
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 

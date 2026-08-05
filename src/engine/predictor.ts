@@ -359,8 +359,12 @@ export function riegelExponent(runHoursPerWeek?: number): number {
   return 1.06;
 }
 
-/** Riegel : temps sur D depuis l'allure seuil (tenable ~1h), t = 3600 × (D/D₁ₕ)^exp */
-function riegelSecWith(exp: number, thrPaceSecPerKm: number, distKm: number): number {
+/** Riegel : temps sur D depuis l'allure seuil (tenable ~1h), t = 3600 × (D/D₁ₕ)^exp
+ *
+ *  EXPORTÉE depuis C30 (R11.1) : `feasibility.timeFromThresholdPace` en portait une copie
+ *  ligne pour ligne, et la spécificité de la sortie longue en aurait fait une troisième.
+ *  Trois écritures de Riegel, c'est trois vérités le jour où l'exposant bouge. */
+export function riegelSecWith(exp: number, thrPaceSecPerKm: number, distKm: number): number {
   const d1h = 3600 / thrPaceSecPerKm;
   return 3600 * Math.pow(distKm / d1h, exp);
 }

@@ -6,12 +6,13 @@
  */
 import type { V1Session } from "../../engine/types.ts";
 import { C23_BEGINNER_LONG_RUN_CAP_MIN } from "../../engine/constraintMatrix.ts";
+import { longRunSpecificityFloor } from "../../engine/longRunSpecificity.ts";
 import { trailElevationTarget } from "../../engine/disciplineRegistry.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { RUN_KM } from "../../engine/predictor.ts";
 
 export function buildRunSessions(kit: SessionKit): V1Session[] {
-  const { a, fmt, slot, phase, lvl, finisher, beginner, medHold, inj, noVo2, G, S2, P, W, C, Bd, B } = kit;
+  const { r, a, fmt, slot, phase, lvl, finisher, beginner, medHold, inj, noVo2, G, S2, P, W, C, Bd, B } = kit;
   const injImp = inj.impact;
   // R4.1 — trail modulaire (registre de disciplines) : volume en TEMPS + D+, allure en
   // GAP/RPE, compétence descente travaillée à part, prudence excentrique si impact fragile.
@@ -47,11 +48,24 @@ export function buildRunSessions(kit: SessionKit): V1Session[] {
     // le plus d'impacts — son plafond baisse selon la zone (pied ×0.85, hanche ×0.9).
     if (inj.list.includes("pied")) durCaps.hi = Math.round(durCaps.hi * 0.85);
     else if (inj.list.includes("hanche")) durCaps.hi = Math.round(durCaps.hi * 0.9);
-    const durMin = P(durCaps.lo, durCaps.hi);
+    // C30 — LE PLANCHER CONNAÎT L'ÉPREUVE (décision du fondateur, 04/08/2026).
+    //
+    // Mesuré : la longue d'un coureur à 7:00/km faisait 47-50 min pour une course de 71 min.
+    // Le plancher vise désormais le plus exigeant de deux repères — 90 % du temps de course
+    // prédit, 70 % de sa distance — et JAMAIS au-dessus du plafond ci-dessus, qui vient d'être
+    // baissé par C23 et par les blessures. C'est l'ordre qui compte : un plancher calculé
+    // avant les plafonds les annulerait, et ce sont eux qui portent la sécurité.
+    //
+    // Il PROGRESSE avec la phase (`P`) au lieu de s'appliquer dès la semaine 1 : la cible est
+    // celle du PIC, et un plancher plat contredirait la rampe R10 — quelqu'un qui repart de
+    // zéro recevrait sa sortie longue de fin de prépa dès le premier lundi.
+    const spec = longRunSpecificityFloor(fmt, r.baseRefs.thrPace, durCaps.lo, durCaps.hi, parseFloat(String(a.vol_max ?? "")) || undefined);
+    const floorNow = spec ? Math.max(durCaps.lo, Math.round(P(durCaps.lo, spec.floor))) : durCaps.lo;
+    const durMin = Math.max(P(durCaps.lo, durCaps.hi), floorNow);
     // Trail (registre R4.1) : volume en TEMPS + D+ cible — jamais en km seul. Le D+ suit
     // la durée (~350-450m/h) ; descentes en contrôle, surtout avec un passif d'impact.
     const dplus = isTrail ? trailElevationTarget(durMin) : null;
-    S2.push({ d: "rn", long: true, name: isTrail ? "Sortie longue trail" : "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : isTrail ? "En trail on compte le TEMPS et le D+, pas les kilomètres. Monte au train, descends en contrôle" + (injImp ? " — descentes prudentes, ta zone fragile encaisse la charge excentrique" : "") + "." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", (isTrail && dplus ? " · D+ cible " + dplus.lo + "-" + dplus.hi + "m" : "") + (phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : "")), { bnd: { floor: durCaps.lo, cap: durCaps.hi, hard: beginner } }), ], ...( { plainBody: true } as object) });
+    S2.push({ d: "rn", long: true, name: isTrail ? "Sortie longue trail" : "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : isTrail ? "En trail on compte le TEMPS et le D+, pas les kilomètres. Monte au train, descends en contrôle" + (injImp ? " — descentes prudentes, ta zone fragile encaisse la charge excentrique" : "") + "." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", (isTrail && dplus ? " · D+ cible " + dplus.lo + "-" + dplus.hi + "m" : "") + (phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : "")), { bnd: { floor: floorNow, cap: durCaps.hi, hard: beginner } }), ], ...( { plainBody: true } as object) });
   } else if (slot === "facileR") {
     S2.push({ d: "rn", name: "Footing facile", note: beginner ? "Allure de conversation, sans forcer : c'est le volume facile qui fait progresser." : "Endurance fondamentale : allure de conversation. Ce volume facile construit l'aérobie sans user.", det: "", steps: [B(1, P(30, 50), "rn.easy", "", G && !injImp ? " · termine par " + G.replace("+ ", "") : "")], ...( { plainBody: true } as object) });
   } else if (slot === "facile2") {

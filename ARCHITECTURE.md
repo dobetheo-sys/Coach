@@ -4012,6 +4012,200 @@ propre base (1 ✖).
 Et le §4 porte l'invariant qui prime sur tout : **une VFC, quelle que soit sa valeur, ne peut
 jamais faire monter la charge.**
 
+## C30 — la sortie longue connaît l'épreuve (et n'y arrive qu'à moitié)
+
+Décision du fondateur (04/08/2026), en réponse à la question qu'O-21 lui posait — « la sortie
+longue se prescrit-elle en distance ou en temps ? » :
+
+> « il faudrait quelque chose entre les deux : se rapprocher du temps visé sur l'épreuve a
+> minima, et au moins 70 % de la distance »
+
+### La prémisse d'O-21 était fausse, et elle reste écrite
+
+**La sortie longue est prescrite en TEMPS depuis toujours** — `durCaps` est en minutes dans
+chaque module de sport (5 km 40-74, 10 km 50-90, semi 70-130, marathon 90-180). Mesuré entre
+5:45/km et 7:00/km sur un 10 km : **178 min contre 176**, l'écart est nul. L'inversion résiduelle
+d'O-21 (6 min sur 790) vient du **seuil**, pas d'elle. La question désignait le mauvais coupable ;
+c'est ma formulation qui était fautive, pas la réponse du fondateur.
+
+### Ce que la règle corrige vraiment
+
+La longue ne connaissait pas l'épreuve. Mesuré sur 4 formats × 3 allures, le coureur **LENT**
+était systématiquement le plus mal servi — c'est lui qui passe le plus de temps sur son épreuve,
+et c'est sa longue qui en couvrait la plus petite part :
+
+| | longue livrée | temps de course | 70 % de la distance |
+|---|---|---|---|
+| 10 km @ 7:00/km | 47-50 min | 71 min | 59 min |
+| semi @ 7:00/km | 115-125 min | 156 min | 125 min |
+
+`src/engine/longRunSpecificity.ts` :
+
+```
+plancher = min( plafond , max( plancher d'origine , 0,90 × temps de course ,
+                               temps pour couvrir 0,70 × la distance en Z2 ) )
+```
+
+`min(plafond, …)` **est** la règle de sécurité du chapitre, pas un détail d'implémentation : sur
+marathon, « se rapprocher du temps de course » voudrait dire une sortie longue de 3 h 20 à
+5 h 25. C23 plafonne à 180 min, et le consensus marathon s'y tient. Un plancher ne passe jamais
+devant un plafond (priorités 1 et 2). Le plancher **progresse** avec la phase : la cible est celle
+du PIC, un plancher plat contredirait la rampe R10.
+
+**`target_time` n'est PAS lu, et ne le sera jamais.** Le temps de course vient du modèle de
+prédiction sur les références MESURÉES. Laisser un objectif de chrono augmenter une charge, c'est
+la priorité n°5 qui écrase les quatre premières, et c'est ce que `RV-INVARIANT` interdit sous CI.
+
+### PORTÉE MESURÉE : 7 profils sur 180 — et c'est le résultat le plus important du lot
+
+Sur 180 profils de course (4 formats × 3 niveaux × 5 allures × 3 enveloppes), C30 en déplace
+**7**, de 2 à 6 minutes. Sur la grille de spécificité, les cibles atteintes passent de **24/48 à
+31/48**, concentrées sur les débutants — pas sur la population que la mesure désignait.
+
+La cause est nommée et suivie en **O-26** : `blockBounds` jette le plancher déclaré par le bloc
+et le remplace par un « plancher digne » forfaitaire de 30 min, par décision de l'audit v6
+(D3-D7/D10, « les planchers de séance ne gagnent plus contre la courbe »). Et **forcer le
+plancher ne marche pas** — testé, les cibles tombent à **30/48**, donc moins bien : le vrai
+facteur limitant est le volume hebdomadaire d'une prépa de format court (semaine de pic à
+140-152 min, la longue y pèse déjà 36-39 %). La suite demande un arbitrage, pas du code.
+
+### La garde, et ma première version qui valait zéro
+
+Écrite sur l'INTENTION (« la longue couvre 70 % de la distance »), elle était satisfaite par le
+moteur d'AVANT C30 : **trois cassures délibérées, trois verts.** Septième occurrence dans ce
+dépôt d'un critère qui nomme une grandeur et en mesure une voisine — cette fois dans la garde
+d'un correctif que je venais d'écrire.
+
+Réécrite sur les **7 profils que C30 déplace réellement**, avec leurs valeurs exactes (`C30-A`,
+banc v6), elle rougit sur trois cassures : C30 retiré, plancher devant plafond (`min` → `max`),
+part du temps de course 0,9 → 0,6. **Une quatrième reste verte et c'est un résultat publié** :
+passer la part de distance de 70 % à 50 % ne change rien, parce que sur ces 7 profils le repère
+TEMPS domine toujours — la moitié « distance » de la règle n'a encore jamais mordu.
+
+`C30-B` est étiqueté pour ce qu'il est : une **non-régression** (il était vert avant C30, le
+plafond tenant déjà), gardée pour le jour où quelqu'un fera gagner le plancher.
+
+### Au passage — Riegel n'a plus qu'une écriture (R11.1)
+
+`feasibility.timeFromThresholdPace` était une copie ligne pour ligne de `predictor.riegelSecWith`,
+dans le module qui déclare lui-même IMPORTER ses modèles plutôt que les redéclarer. C30 en aurait
+fait une troisième. `riegelSecWith` est exporté, les deux autres délèguent.
+
+## Audit des gardes — casser exprès, huit gates, deux muets
+
+Décision du fondateur (04/08/2026) : « la chasse au bug ». Le gisement identifié n'était pas le
+code du moteur — c'était les GARDES elles-mêmes : deux familles s'étaient répétées toute la
+session (une mesure qui nomme une grandeur et en mesure une voisine ; des gardes qui ne gardent
+pas — les 7 suites E2E muettes de R22b, le banc d'invariants d'O-9). Méthode : pour chacun des
+huit gates jamais vérifiés rouges, **casser exprès ce qu'il prétend protéger et vérifier qu'il
+rougit** (la règle d'U8, appliquée aux instruments).
+
+| gate | cassure | verdict |
+|---|---|---|
+| `audit:v1` | garantie finale R3.13 court-circuitée | **ROUGE ✓** |
+| `demo:repair` | `applyTargetedRepairs` rendu inerte | **ROUGE ✓** |
+| `demo:readiness` | +10 sur le registre objectif (rouge impossible) | **ROUGE ✓** |
+| `demo:fit` | signature .FIT plus vérifiée | **ROUGE ✓** |
+| `demo:measured` | l'arbitrage ignore le mesuré | **ROUGE ✓** |
+| `demo:retention` | la série se gagne sans valider | **ROUGE ✓** |
+| `audit:amont` | bornes numériques clampées en silence | **VERT — muet, O-28** |
+| `audit:public` | repère d'intensité vidé (« 3×5min @  ») | **VERT — muet, O-29** |
+
+**L'audit a d'abord attrapé son propre instrument, trois fois** — et c'est le résultat de
+méthode : (1) `reduire(f=1)` laissait `audit:v1` vert parce que la garantie FINALE réparait
+derrière — le moteur avait raison, pas ma cassure ; (2) une cassure de `validateAnswers` au
+mauvais type a fait refuser le bundle par l'**auto-test du build**, et le gate a tourné vert
+contre le bundle INTACT — mon harnais ne vérifiait pas le code de sortie du build ; (3) un
+`coerce` ajouté au schéma n'était lu par personne — cassure inerte, vert immérité. Règle
+sortie de là, désormais appliquée : **une cassure doit prouver qu'elle a changé le comportement
+avant que son verdict ne compte** (vol_max=999 accepté ; « @ » vide rendu à l'écran).
+
+Les deux muets étaient de vrais trous, **tous deux fermés le jour même** :
+
+- **`audit:amont`** (O-28) acceptait une dérive silencieuse sur les bornes, alors que sa promesse
+  littérale est « zéro dérive silencieuse ». Nouvelle section **T5**, dérivée du schéma : pour
+  chaque clé numérique bornée, `min − 1` et `max + 1` doivent lever un `ENTREE_INVALIDE` portant
+  **cette clé** — 70 bornes éprouvées sur 22 clés, **70/70 rouges** sous la cassure.
+  *Une correction a été écrite puis RETIRÉE avant celle-ci* : resserrer le prédicat « annoncée »
+  pour exiger que l'explication nomme la clé mutée. Mesurée **0 verdict changé sur 472** et
+  toujours verte contre la cassure — `R20.2` parle de « ton volume max » dans chaque plan. Inerte,
+  donc retirée (C23b, R19.4/O-12).
+- **`audit:public`** (O-29) testait la séance ENTIÈRE contre une alternance de mots-repères : un
+  échauffement qui dit « progressif » suffisait à couvrir un bloc de travail annoncé
+  « 3×5min @  ». Nouvelle section **E** : dans le texte rendu, chaque `@` doit être suivi d'un
+  repère avant le prochain séparateur — propriété du LIVRÉ, éprouvée sur 6 sports × 3 niveaux ×
+  {avec, sans références}. Vérifiée rouge.
+
+**Et le correctif d'O-28 a payé la leçon une troisième fois dans la même heure** : mes deux
+premières écritures de son critère cherchaient la clé dans le MESSAGE du refus par regex, et
+toutes deux ont échoué sur l'échappement (`"\\\\b"` = antislash littéral ; `"\\b"` = retour
+arrière) — **70 refus bien réels comptés comme absents**, un banc rouge pour rien. La clé se lit
+désormais sur `EBInputError.key` : un contrat typé se lit sur son type, jamais dans sa prose.
+
+Vérifiés en direct par ailleurs, sans cassure dédiée : `golden:verify` (a mordu deux fois dans la
+même journée — 121 puis 19 écarts sur des expériences réelles), `audit:v2` (rouge sur l'import
+manquant de C31), `check:sw` (rouge sur bundle non reconstruit). Les bancs R13-R18, sensibilité,
+v6/v7 et les demos récents (hrv, proactif, troncature, nutrition N11) avaient déjà leur
+vérification rouge d'origine, documentée dans leurs lots.
+
+## C31 — le back-to-back marathon : la longue trop longue se coupe en deux jours
+
+Décision du fondateur (04/08/2026) : *« le but était de couper une sortie longue trop longue en
+2 jours d'affilé »* — le back-to-back que le trail porte depuis R7, sorti du trail pour le seul
+format de course où son mécanisme opère. L'arbitrage des populations a fait l'objet d'un audit
+de littérature préalable (demandé par le fondateur : « audite un professionnel en physiologie
+pour trancher ») dont les conclusions BORNENT le lot :
+
+- **Marathon seulement.** Le mécanisme est la déplétion glycogénique + la fatigue cumulée ;
+  sous ~2 h 30 d'épreuve (semi compris), il n'opère pas. Le cap des 3 h (Daniels) est un
+  plafond de **coût de récupération**, pas de tissu — et couper en deux est la réponse exacte
+  à un plafond de coût.
+- **Jamais un débutant.** « For advanced runners only » (la source de la méthode elle-même),
+  et le mécanisme de blessure le mieux établi chez le novice est la FLUCTUATION de charge
+  (Nielsen 2014 : > 30 %/sem) — or un week-end doublé EST un pic de fluctuation. Coût d'erreur
+  asymétrique : 71 jours médians d'arrêt (PLOS One 2014), soit la prépa entière.
+- **Jamais** sous drapeau médical ni avec une blessure d'impact.
+- **≤ 3 week-ends par prépa** (les dernières semaines de pic en charge) — la source borne la
+  fréquence ainsi.
+
+### Le déclencheur est mesuré, la dose est le manque
+
+C30 calcule la cible de spécificité et sait quand C23 (180 min) la refuse : `capped`. Le jour 2
+court **ce qui manque** — `min(cible − 180, 0,6 × 180)` — le lendemain de la longue, en Z2,
+« jambes fatiguées ». Marathon @ 7:00/km : 180 + **108** ; @ 5:45 : 180 + **63**. La passe tourne
+AVANT la sonde de capacité et la boucle R3.3 : la charge est **redistribuée** dans le budget de
+la semaine, jamais ajoutée, et toutes les garanties aval voient le jour 2.
+
+### Le conflit avec la garde d'impact, résolu par échange
+
+Le moteur place déjà un OFF/récup après la sortie longue (`runImpactCap`) : dans les semaines
+mesurées, le lendemain de la longue n'est presque jamais un footing. « Deux jours d'affilée »
+assume précisément de courir AVANT cette récup, pas de la supprimer : le contenu du lendemain
+est **échangé** avec le premier jour facile qui suit dans la semaine. La récup existe toujours,
+un jour plus tard ; le nombre de jours de repos de la semaine ne change pas. (Le trail n'a pas
+ce conflit : son back-to-back est dans son SCHÉMA de semaine — même concept, même nom de séance.)
+
+### Deux défauts de ma première écriture, trouvés par le banc d'invariants
+
+1. **Poser-puis-écraser n'est pas poser.** Sans borne budgétaire, R3.3 compressait le jour 2 à
+   30 min sur les enveloppes serrées (le plancher déclaré ne survit pas à `blockBounds` — le
+   mécanisme d'O-26) et la séance gardait un nom qu'elle ne tenait plus — `I14` l'a vu. La
+   paire ne se pose que si `180 + jour2 ≤ 60 % du pic promis` (l'esprit d'I12).
+2. **Le seuil de pose EST le seuil du filet.** Ma première écriture posait dès 15 min de manque ;
+   le filet déclassait ensuite le jour 2 minuscule, mais l'ÉCHANGE de jours restait — une
+   perturbation structurelle sans la fonctionnalité, et la source d'une inversion I13 de 4 min.
+   `C31_MIN_JOUR2_MIN = 45`, une constante pour les deux (R11.1).
+
+### Gardes, et ce qu'elles ne couvrent pas
+
+`C31-A`/`C31-B` (banc v6) épinglent le nominal (posé en pic, dose qui suit le manque, longue
+intacte, ≤ 3 week-ends) et les cinq exclusions — **vérifiés rouges sur trois cassures** (C31
+retiré, exclusion débutant sautée, dose figée). Deux limites publiées : **le filet du point
+fixe n'est déclenché par aucun profil actuel** (la pose bornée l'empêche en amont — défense en
+profondeur au même statut que le filet de R21, la cassure K4 reste verte et c'est dit) ; et
+**le golden ne couvre pas C31** (0 écart sur 900 : aucun profil golden ne porte marathon +
+allure lente — la famille d'angle mort A-2 ; les valeurs exactes vivent dans C31-A).
+
 ## H-1b — la VFC devient un CHOIX, posé une fois
 
 Retour du fondateur dans la foulée de H-1 : *« personne n'importe réellement des fichiers .FIT

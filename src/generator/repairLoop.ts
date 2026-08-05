@@ -6,6 +6,7 @@
  * explicites — c'est un output de coaching précieux, pas un échec.
  */
 import type { AthleteProfile, V1Plan } from "../engine/types.ts";
+import { scaleStepDose } from "../engine/stepScale.ts";
 import { auditPlan, type AuditOpts, type PlanAudit } from "../audit/coherenceScorer.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { R313_TAPER_MAX_VS_PEAK } from "../engine/constraintMatrix.ts";
@@ -122,9 +123,7 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
                 if (!s.steps || !s.steps.length) continue;
                 for (const st of s.steps) {
                   if (st.role !== "body") continue;
-                  if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
-                  else if (st.durationMin) st.durationMin = Math.max(8, Math.round(st.durationMin * f));
-                  else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+                  scaleStepDose(st, f, { repsMode: "floor", durFloor: 8, distFloor: 200 });
                 }
                 fixSwimBounds(s);
                 renderSess(s, refs, hz, baseRefs);
@@ -148,9 +147,7 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
           if (!s.steps || !s.steps.length) continue;
           for (const st of s.steps) {
             if (st.role !== "body") continue;
-            if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
-            else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
-            else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+            scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200 });
           }
           fixSwimBounds(s);
           renderSess(s, refs, hz, baseRefs);
@@ -198,9 +195,7 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
               if (!s.steps || !s.steps.length) continue;
               for (const st of s.steps) {
                 if (st.role !== "body") continue;
-                if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
-                else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
-                else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+                scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200 });
               }
               fixSwimBounds(s);
               renderSess(s, refs, hz, baseRefs);

@@ -14,6 +14,7 @@
  * chaque ajustement porte un {id, what, val, why}.
  */
 import type { Decision, ReasonedPlan, V1Day, V1Plan, V1Session } from "../engine/types.ts";
+import { scaleStepDose } from "../engine/stepScale.ts";
 import { R6_PAIN_CONTRAINDICATION } from "../engine/constraintMatrix.ts";
 import { renderSess, type Refs } from "../generator/renderer.ts";
 import { assessReadiness, type CompletedSession, type ReadinessSnapshot, type ReadinessVerdict, type ReadinessLevel } from "./readinessSource.ts";
@@ -96,10 +97,12 @@ export function reduceDay(day: V1Day, f: number, refs: Refs, hz: Record<string, 
     for (const st of s.steps) {
       if (st.role !== "body") continue;
       // A3 (audit v6) — les planchers ne remontent JAMAIS au-dessus de la valeur d'origine :
-      // une réduction est une réduction, même sur une séance déjà courte.
-      if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.round(st.reps * f));
-      else if (st.durationMin) st.durationMin = Math.min(st.durationMin, Math.max(10, Math.round(st.durationMin * f)));
-      else if (st.distanceM) st.distanceM = Math.min(st.distanceM, Math.max(200, Math.round((st.distanceM * f) / 25) * 25));
+      // une réduction est une réduction, même sur une séance déjà courte. `clampToOriginal`
+      // porte cette promesse pour les TROIS champs — l'ancienne écriture la posait sur la
+      // durée et la distance mais pas sur `reps` : mesuré, f = 1,2 faisait passer un bloc de
+      // 5 à 6 répétitions pendant que ce commentaire promettait le contraire (trouvé par la
+      // garantie runtime de R21, fermé par le point unique `stepScale`).
+      scaleStepDose(st, f, { repsMode: "round", durFloor: 10, distFloor: 200, clampToOriginal: true });
     }
     renderSess(s, refs, hz, baseRefs);
   }

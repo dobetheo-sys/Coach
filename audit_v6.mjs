@@ -652,6 +652,112 @@ test("U9", "le refus « course trop proche » ne parle jamais d'une autre épreu
   return { ok: bad.length === 0, detail: bad.join(" ; ") || `${vus} refus, tous nomment la bonne épreuve` };
 });
 
+// ── C30 — LA SORTIE LONGUE CONNAÎT L'ÉPREUVE (décision du fondateur, 04/08/2026) ────────
+//
+// « se rapprocher du temps visé sur l'épreuve a minima, et au moins 70 % de la distance ».
+//
+// ⚠ PORTÉE MESURÉE, ET ELLE EST PETITE : sur 180 profils de course (4 formats × 3 niveaux ×
+// 5 allures × 3 enveloppes), C30 en déplace **7**, de 2 à 6 minutes. La règle est juste ;
+// ce qui la borne est en aval et c'est documenté en O-26 — `blockBounds` remplace le plancher
+// déclaré par un « plancher digne » de 30 min, et le vrai facteur limitant est le volume
+// hebdomadaire d'une prépa de format court. Ces critères gardent donc ce que C30 fait
+// VRAIMENT, pas ce qu'on aimerait qu'il fasse : un critère écrit sur l'intention serait vert
+// avant le correctif comme après. (Première écriture : trois cassures, trois verts.)
+const c30Long = (over) => {
+  const p = E.buildPlan("run", { ...profile("run"), intent: "competition", med_pain: "non", med_dizzy: "non",
+    med_treat: "non", injury: "aucune", sessions_max: "5", dispo: "quotidienne", doubles: "oui",
+    pace_known: "oui", vol_recent: "3", terrain: "route", ...over });
+  let sl = 0;
+  p.weeks.forEach((w) => w.days.forEach((d) => d.sessions.forEach((x) => { if (x.long && (x.min || 0) > sl) sl = x.min; })));
+  return sl;
+};
+
+test("C30-A", "C30 allonge la sortie longue des coureurs LENTS — les 7 profils qu'il déplace", "pass", () => {
+  // Les valeurs sont celles mesurées APRÈS le lot ; sans C30 elles valent 57/115/122/116.
+  // Un test d'égalité et non d'inégalité : c'est ce qui le rend rouge dans les deux sens.
+  const attendu = [
+    ["10k", "debutant", "8:30", "6", 63], ["10k", "debutant", "8:30", "8", 63],
+    ["semi", "debutant", "8:30", "8", 117], ["semi", "inter", "7:00", "8", 124],
+    ["semi", "inter", "8:30", "8", 119], ["semi", "avance", "7:00", "8", 124],
+    ["semi", "avance", "8:30", "8", 119],
+  ];
+  const bad = [];
+  for (const [format, level, pace, vol_max, min] of attendu) {
+    const sl = c30Long({ format, level, pace, vol_max });
+    if (sl !== min) bad.push(`${format}/${level}/${pace}/${vol_max}h : ${sl} au lieu de ${min}`);
+  }
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "les 7 profils déplacés par C30 tiennent leur valeur" };
+});
+
+test("C30-B", "un plancher de spécificité ne passe JAMAIS devant un plafond de sécurité", "pass", () => {
+  // NON-RÉGRESSION, et il faut le dire : ce critère était déjà vert avant C30, parce que le
+  // plafond tenait déjà. Il existe pour le jour où quelqu'un décidera de faire gagner le
+  // plancher (c'est la suite naturelle d'O-26) — sur marathon, « se rapprocher du temps de
+  // course » voudrait dire 3h20 à 5h25 de sortie longue, et C23 plafonne à 180.
+  const bad = [];
+  for (const pace of ["4:30", "5:45", "7:00", "8:30"]) {
+    const sl = c30Long({ format: "marathon", pace, level: "debutant", history: "reprise", vol_max: "8" });
+    if (sl > 180) bad.push(`marathon débutant @${pace} : ${sl}min > 180 (C23)`);
+  }
+  const slPied = c30Long({ format: "semi", pace: "8:30", injury: "pied", vol_max: "8" });
+  if (slPied > Math.round(130 * 0.85)) bad.push(`semi + pied fragile : ${slPied}min > plafond ×0,85`);
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "C23 et le plafond blessure tiennent, le plancher cède" };
+});
+
+// ── C31 — LE BACK-TO-BACK MARATHON (décision du fondateur, 04/08/2026) ──────────────────
+//
+// « Couper une sortie longue trop longue en deux jours d'affilée ». Le déclencheur est
+// MESURÉ : C30 capped sur marathon, manque ≥ 45 min. Trois critères pour les trois faces :
+// il se pose là où il doit (et JAMAIS ailleurs — quatre exclusions sourcées), sa dose est
+// celle du manque, et la longue reste la plus longue de sa semaine.
+const c31Scan = (over) => {
+  const p = E.buildPlan("run", { ...profile("run"), format: "marathon", intent: "competition",
+    med_pain: "non", med_dizzy: "non", med_treat: "non", injury: "aucune", sessions_max: "5",
+    vol_max: "8", dispo: "quotidienne", doubles: "oui", pace_known: "oui", pace: "7:00",
+    vol_recent: "6", terrain: "route", level: "inter", history: "confirme", ...over });
+  const b2b = [];
+  let slMax = 0;
+  p.weeks.forEach((w) => w.days.forEach((d) => d.sessions.forEach((x) => {
+    if (/Back-to-back \(jour 2/.test(x.name)) b2b.push({ sem: w.num, phase: w.phase.id, min: x.min || 0 });
+    if (x.long && (x.min || 0) > slMax) slMax = x.min || 0;
+  })));
+  return { b2b, slMax };
+};
+
+test("C31-A", "le back-to-back se pose en PIC quand le manque le justifie, à la dose du manque", "pass", () => {
+  const bad = [];
+  // marathon @7:00 : manque ~154 → jour 2 à min(154, 108) = 108 min, en phase de pic.
+  const g = c31Scan({});
+  if (!g.b2b.length) bad.push("7:00 : aucun back-to-back posé");
+  else {
+    if (g.b2b.some((x) => x.phase !== "peak")) bad.push("posé hors phase de pic : " + JSON.stringify(g.b2b));
+    if (g.b2b.length > 3) bad.push(g.b2b.length + " week-ends — la source borne à 2-3 par prépa");
+    if (g.b2b.some((x) => x.min < 45)) bad.push("jour 2 sous 45 min (le filet aurait dû déclasser) : " + JSON.stringify(g.b2b));
+    if (g.b2b.some((x) => x.min > 108 + 2)) bad.push("jour 2 au-dessus de 0,6 × longue : " + JSON.stringify(g.b2b));
+    if (g.b2b.some((x) => x.min >= g.slMax)) bad.push("le jour 2 dispute son titre à la longue (I14)");
+  }
+  // et la dose SUIT le manque : à 5:45 (manque ~90), le jour 2 est plus court qu'à 7:00.
+  const h = c31Scan({ pace: "5:45" });
+  if (h.b2b.length && g.b2b.length && !(h.b2b[0].min < g.b2b[0].min)) bad.push("la dose ne suit pas le manque (5:45 → " + (h.b2b[0] || {}).min + " vs 7:00 → " + g.b2b[0].min + ")");
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || g.b2b.length + " week-end(s), jour 2 à " + g.b2b.map((x) => x.min).join("/") + " min, longue " + g.slMax + " intacte" };
+});
+
+test("C31-B", "les quatre exclusions tiennent : débutant, médical, blessure d'impact, autre format", "pass", () => {
+  const bad = [];
+  const cas = [
+    ["débutant", { level: "debutant", history: "reprise" }],
+    ["drapeau médical", { med_treat: "oui" }],
+    ["blessure d'impact (pied)", { injury: "pied" }],
+    ["semi (mécanisme absent sous ~2h30)", { format: "semi" }],
+    ["manque < 45 min (4:50)", { pace: "4:50" }],
+  ];
+  for (const [nom, over] of cas) {
+    const g = c31Scan(over);
+    if (g.b2b.length) bad.push(nom + " reçoit un back-to-back : " + JSON.stringify(g.b2b));
+  }
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "5 profils exclus, 0 back-to-back — la population de la méthode est celle de ses sources" };
+});
+
 test("E5", "buildPlan REFUSE une entrée invalide, avec un refus typé et réparable", "pass", () => {
   const bad = [];
   const mutants = [

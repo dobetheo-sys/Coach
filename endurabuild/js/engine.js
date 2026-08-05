@@ -3013,6 +3013,72 @@ class TrainingReasoningEngine {
   }
 }
 
+// ===== src/engine/stepScale.ts =====
+/**
+ * LE POINT UNIQUE DE « RÉDUIRE (OU AGRANDIR) UN STEP D'UN FACTEUR ».
+ *
+ * Avant ce fichier, cette opération était écrite 25 fois dans le dépôt, en 6 variantes qui
+ * n'étaient pas d'accord entre elles : `Math.round` ici, `Math.floor` là, plancher 1, 5, 8,
+ * 10, 150 ou 200 selon le site, et surtout — le clamp « ne remonte JAMAIS au-dessus de la
+ * valeur d'origine » (A3, audit v6) posé sur `durationMin` et `distanceM` de `reduceDay`
+ * mais PAS sur ses `reps` : mesuré, `reduceDay(f = 1.2)` faisait passer un bloc de 5 à
+ * 6 répétitions pendant que son commentaire promettait le contraire. C'est le bug que la
+ * garantie runtime de R21 attrapait à l'exécution ; il est désormais impossible à écrire.
+ *
+ * CE QUE CE POINT UNIQUE N'UNIFORMISE PAS, délibérément : les paramètres. Chaque site garde
+ * son mode d'arrondi et ses planchers — ils sont sémantiques (un plancher de 200 m en nage
+ * n'est pas un plancher de 8 min en course), et les écraser aurait déplacé le golden de
+ * 900 profils pour du confort de lecture. Ce qui est unifié, c'est l'INVARIANT :
+ *
+ *   avec `clampToOriginal`, un facteur ≤ 1 ne peut JAMAIS augmenter reps, durée ou distance.
+ *
+ * L'ordre des cibles est celui de tout le dépôt (leçon I14) : les RÉPÉTITIONS d'abord —
+ * dans un intervalle, la durée d'une répétition EST le stimulus, on n'y touche pas — puis
+ * la durée, puis la distance (quantum 25 m, la convention piscine).
+ */
+                                         
+
+                                
+                                                                                      
+                              
+                                                        
+                   
+                                                                                 
+                    
+                                                                                          
+                                                                                             
+                                                                                             
+                                                                                             
+                        
+                            
+ 
+
+/** Met à l'échelle le dosage d'un step `body`. Rend true si quelque chose a changé. */
+function scaleStepDose(st        , f        , opts               )          {
+  if (st.role !== "body") return false;
+  const clamp = (orig        , next        ) => (opts.clampToOriginal ? Math.min(orig, next) : next);
+  if ((st.reps || 1) > 1) {
+    const reps = st.reps          ;
+    const next = clamp(reps, Math.max(1, Math[opts.repsMode](reps * f)));
+    if (next === reps) return false;
+    st.reps = next;
+    return true;
+  }
+  if (st.durationMin) {
+    const next = clamp(st.durationMin, Math.max(opts.durFloor, Math.round(st.durationMin * f)));
+    if (next === st.durationMin) return false;
+    st.durationMin = next;
+    return true;
+  }
+  if (st.distanceM) {
+    const next = clamp(st.distanceM, Math.max(opts.distFloor, Math.round((st.distanceM * f) / 25) * 25));
+    if (next === st.distanceM) return false;
+    st.distanceM = next;
+    return true;
+  }
+  return false;
+}
+
 // ===== src/generator/renderer.ts =====
 /**
  * Rendu V2 — port fidèle de renderSess/stepMin/ZDEF de Coach_Pro_V1.5 (R3.1/R3.8/C13).
@@ -3311,6 +3377,128 @@ function renderSess(s                   , refs      , hz         , baseRefs     
   s.min = Math.round(steps.reduce((t, x) => t + (x._min || 0), 0));
   s.det = det;
   return det;
+}
+
+// ===== src/engine/longRunSpecificity.ts =====
+/**
+ * C30 — LA SORTIE LONGUE EST SPÉCIFIQUE DE L'ÉPREUVE, PAS SEULEMENT DU BUDGET.
+ *
+ * Décision du fondateur (04/08/2026), en réponse à la question posée par O-21 (« la sortie
+ * longue se prescrit-elle en distance ou en temps ? ») :
+ *
+ *   « il faudrait quelque chose entre les deux : se rapprocher du temps visé sur l'épreuve
+ *     a minima, et au moins 70 % de la distance »
+ *
+ * ─── CE QUE LA MESURE A DIT AVANT D'ÉCRIRE UNE LIGNE ───────────────────────────────────────
+ *
+ * La prémisse d'O-21 était fausse, et c'est écrit ici plutôt qu'effacé : la sortie longue est
+ * prescrite en TEMPS depuis toujours (`durCaps` en minutes dans chaque module de sport). Entre
+ * 5:45/km et 7:00/km sur un 10 km, elle fait **178 min contre 176** — l'écart est nul, et
+ * l'inversion résiduelle d'O-21 (6 min sur 790) vient du SEUIL, pas d'elle.
+ *
+ * Ce que la règle du fondateur corrige est donc un AUTRE défaut, réel et non couvert : la
+ * longue ne connaissait pas l'épreuve. Mesuré sur les quatre formats × trois allures, le
+ * coureur LENT était systématiquement le plus mal servi — c'est lui qui passe le plus de temps
+ * sur son épreuve, et c'est sa longue qui en couvrait la plus petite part :
+ *
+ *   10 km à 7:00/km  → longue 47-50 min pour une course de 71 min et 59 min de « 70 % »
+ *   semi  à 7:00/km  → longue 115-125 min pour une course de 156 min
+ *
+ * ─── LA RÈGLE ──────────────────────────────────────────────────────────────────────────────
+ *
+ * Le PLANCHER de la sortie longue au pic devient le plus exigeant des deux repères, et
+ * JAMAIS au-dessus du plafond existant :
+ *
+ *   plancher = min( plafond , max( plancher d'origine , T_SPEC × temps de course ,
+ *                                  temps pour couvrir PART_DIST × la distance en Z2 ) )
+ *
+ * `min(plafond, …)` n'est pas un détail d'implémentation, c'est la règle de sécurité du
+ * chapitre. Sur marathon, « se rapprocher du temps de course » voudrait dire une sortie longue
+ * de 3 h 20 à 5 h 25 : C23 plafonne à 180 min, et c'est le consensus de tous les plans marathon
+ * sérieux. **Un plancher ne passe jamais devant un plafond** — priorités 1 et 2 du manifeste.
+ * Le plafond qui mord est REMONTÉ à l'appelant (`capped`) pour que le plan puisse le nommer,
+ * au lieu de livrer un chiffre plus petit que la promesse sans un mot (R20.2).
+ *
+ * ─── CE QUI N'ENTRE PAS DANS LE CALCUL, DÉLIBÉRÉMENT ───────────────────────────────────────
+ *
+ * **Le `target_time` de la carte « chrono visé » n'est PAS lu ici, et ne le sera jamais.** Le
+ * temps de course utilisé est celui que le moteur PRÉDIT depuis les références mesurées de
+ * l'athlète. Laisser un objectif de chrono augmenter une charge, c'est la priorité n°5 du
+ * manifeste qui écrase les quatre premières — et c'est exactement ce que `RV-INVARIANT`
+ * (gate CI) interdit : le plan émis est identique au bit près avec et sans objectif de temps.
+ *
+ * Sans allure seuil mesurée, il n'y a pas de temps de course : la règle ne s'applique pas et
+ * les bornes d'origine tiennent (P7/P8 — pas d'estimation sans matière, et on ne devine pas
+ * une charge).
+ */
+
+
+/** Part du temps de course que la sortie longue vise « a minima » (décision fondateur).
+ *  0,90 et non 1,00 : « se rapprocher de » — la longue se court en Z2, pas à l'allure de
+ *  course, et l'égaler en durée coûterait plus de fatigue qu'elle n'apporte de spécificité. */
+const C30_PART_TEMPS_COURSE = 0.9;
+/** Part de la distance de course que la sortie longue couvre au minimum (décision fondateur). */
+const C30_PART_DISTANCE = 0.7;
+
+/** C31 — la durée MINIMALE d'un « jour 2 » de back-to-back (min). En dessous, ce n'est pas
+ *  la moitié d'une très longue sortie, c'est un footing avec un nom d'emprunt : on ne pose
+ *  pas la paire (et le filet du point fixe déclasse tout jour 2 qui serait retombé sous ce
+ *  seuil). UNE constante pour les deux — deux seuils divergeraient à la première retouche. */
+const C31_MIN_JOUR2_MIN = 45;
+
+                               
+                                                            
+                
+                                                                                
+                 
+                                                                         
+                  
+                                                                                         
+                                         
+ 
+
+/**
+ * C30 — le plancher spécifique de la sortie longue d'une COURSE À PIED sur distance connue.
+ * Rend `null` quand la règle n'a pas d'objet : pas de format à distance connue, pas d'allure
+ * seuil mesurée, ou cible déjà atteinte par les bornes d'origine.
+ *
+ * @param fmt          format de course (`5k`, `10k`, `semi`, `marathon`)
+ * @param thrPaceSecPerKm allure seuil MESURÉE (0 = inconnue → règle sans objet)
+ * @param floorMin     plancher d'origine du créneau, en minutes
+ * @param capMin       plafond d'origine du créneau, en minutes (C23, blessures… déjà appliqués)
+ * @param runHoursPerWeek volume de course hebdomadaire, pour l'exposant de Riegel (P5)
+ */
+function longRunSpecificityFloor(
+  fmt                    ,
+  thrPaceSecPerKm        ,
+  floorMin        ,
+  capMin        ,
+  runHoursPerWeek         
+)                      {
+  const km = fmt ? RUN_KM[fmt] : 0;
+  if (!(km > 0) || !(thrPaceSecPerKm > 0) || !(capMin > 0)) return null;
+
+  // Repère 1 — le TEMPS de course, prédit depuis la référence mesurée (jamais un objectif).
+  const courseMin = riegelSecWith(riegelExponent(runHoursPerWeek), thrPaceSecPerKm, km) / 60;
+  const parTemps = C30_PART_TEMPS_COURSE * courseMin;
+
+  // Repère 2 — la DISTANCE, convertie en minutes à l'allure à laquelle la longue se court
+  // vraiment. `ZDEF["rn.easy"]` est la seule définition de cette allure (R11.1) ; on prend le
+  // BAS de la bande (le plus rapide) — un plancher se calcule sur l'hypothèse la moins
+  // gourmande, sinon il gonfle par le seul jeu de l'incertitude.
+  const easy = ZDEF["rn.easy"];
+  const parDistance = (C30_PART_DISTANCE * km * thrPaceSecPerKm * easy.lo) / 60;
+
+  const target = Math.max(parTemps, parDistance);
+  if (!(target > floorMin)) return null; // les bornes d'origine suffisent déjà
+
+  const floor = Math.min(capMin, target);
+  return {
+    floor: Math.round(floor),
+    target: Math.round(target),
+    capped: target > capMin,
+    driver: parTemps >= parDistance ? "temps" : "distance",
+  };
 }
 
 // ===== src/engine/loadModel.ts =====
@@ -4602,8 +4790,9 @@ function trailWeekSchema(phase        , isRecup         , cat               )   
 
 
 
+
 function buildRunSessions(kit            )              {
-  const { a, fmt, slot, phase, lvl, finisher, beginner, medHold, inj, noVo2, G, S2, P, W, C, Bd, B } = kit;
+  const { r, a, fmt, slot, phase, lvl, finisher, beginner, medHold, inj, noVo2, G, S2, P, W, C, Bd, B } = kit;
   const injImp = inj.impact;
   // R4.1 — trail modulaire (registre de disciplines) : volume en TEMPS + D+, allure en
   // GAP/RPE, compétence descente travaillée à part, prudence excentrique si impact fragile.
@@ -4639,11 +4828,24 @@ function buildRunSessions(kit            )              {
     // le plus d'impacts — son plafond baisse selon la zone (pied ×0.85, hanche ×0.9).
     if (inj.list.includes("pied")) durCaps.hi = Math.round(durCaps.hi * 0.85);
     else if (inj.list.includes("hanche")) durCaps.hi = Math.round(durCaps.hi * 0.9);
-    const durMin = P(durCaps.lo, durCaps.hi);
+    // C30 — LE PLANCHER CONNAÎT L'ÉPREUVE (décision du fondateur, 04/08/2026).
+    //
+    // Mesuré : la longue d'un coureur à 7:00/km faisait 47-50 min pour une course de 71 min.
+    // Le plancher vise désormais le plus exigeant de deux repères — 90 % du temps de course
+    // prédit, 70 % de sa distance — et JAMAIS au-dessus du plafond ci-dessus, qui vient d'être
+    // baissé par C23 et par les blessures. C'est l'ordre qui compte : un plancher calculé
+    // avant les plafonds les annulerait, et ce sont eux qui portent la sécurité.
+    //
+    // Il PROGRESSE avec la phase (`P`) au lieu de s'appliquer dès la semaine 1 : la cible est
+    // celle du PIC, et un plancher plat contredirait la rampe R10 — quelqu'un qui repart de
+    // zéro recevrait sa sortie longue de fin de prépa dès le premier lundi.
+    const spec = longRunSpecificityFloor(fmt, r.baseRefs.thrPace, durCaps.lo, durCaps.hi, parseFloat(String(a.vol_max ?? "")) || undefined);
+    const floorNow = spec ? Math.max(durCaps.lo, Math.round(P(durCaps.lo, spec.floor))) : durCaps.lo;
+    const durMin = Math.max(P(durCaps.lo, durCaps.hi), floorNow);
     // Trail (registre R4.1) : volume en TEMPS + D+ cible — jamais en km seul. Le D+ suit
     // la durée (~350-450m/h) ; descentes en contrôle, surtout avec un passif d'impact.
     const dplus = isTrail ? trailElevationTarget(durMin) : null;
-    S2.push({ d: "rn", long: true, name: isTrail ? "Sortie longue trail" : "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : isTrail ? "En trail on compte le TEMPS et le D+, pas les kilomètres. Monte au train, descends en contrôle" + (injImp ? " — descentes prudentes, ta zone fragile encaisse la charge excentrique" : "") + "." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", (isTrail && dplus ? " · D+ cible " + dplus.lo + "-" + dplus.hi + "m" : "") + (phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : "")), { bnd: { floor: durCaps.lo, cap: durCaps.hi, hard: beginner } }), ], ...( { plainBody: true }          ) });
+    S2.push({ d: "rn", long: true, name: isTrail ? "Sortie longue trail" : "Sortie longue", note: beginner ? "Cours lentement, vraiment : tu dois pouvoir parler tout du long. Marche si besoin, c'est OK." : isTrail ? "En trail on compte le TEMPS et le D+, pas les kilomètres. Monte au train, descends en contrôle" + (injImp ? " — descentes prudentes, ta zone fragile encaisse la charge excentrique" : "") + "." : "Allure d'endurance, jamais forcée. La longue construit l'endurance de base.", det: "", steps: [Object.assign(B(1, durMin, "rn.easy", "", (isTrail && dplus ? " · D+ cible " + dplus.lo + "-" + dplus.hi + "m" : "") + (phase === "spec" || phase === "peak" ? (!finisher && !medHold ? ", derniers 15-20min @ allure cible" : "") : "")), { bnd: { floor: floorNow, cap: durCaps.hi, hard: beginner } }), ], ...( { plainBody: true }          ) });
   } else if (slot === "facileR") {
     S2.push({ d: "rn", name: "Footing facile", note: beginner ? "Allure de conversation, sans forcer : c'est le volume facile qui fait progresser." : "Endurance fondamentale : allure de conversation. Ce volume facile construit l'aérobie sans user.", det: "", steps: [B(1, P(30, 50), "rn.easy", "", G && !injImp ? " · termine par " + G.replace("+ ", "") : "")], ...( { plainBody: true }          ) });
   } else if (slot === "facile2") {
@@ -7269,6 +7471,8 @@ function applyPolarizationGuard(r              , days          , ctx            
 
 
 
+
+
 /**
  * Une zone de QUALITÉ — source unique. Le prédicat vivait en local dans `scaleBlock` (V2.2 :
  * un bloc de qualité ne grandit pas tout seul) ; C13d en a besoin aussi, et deux copies d'une
@@ -7739,9 +7943,7 @@ function reconcileDeclaredVolume(
           if (/Déverrouillage/i.test(sx.name)) continue; // R15.7-B — jamais la veille
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
-            if ((st.reps || 1) > 1) st.reps = Math.max(1, Math.floor((st.reps || 1) * f));
-            else if (st.durationMin) st.durationMin = Math.max(5, Math.round(st.durationMin * f));
-            else if (st.distanceM) st.distanceM = Math.max(150, Math.round((st.distanceM * f) / 25) * 25);
+            scaleStepDose(st, f, { repsMode: "floor", durFloor: 5, distFloor: 150 });
           }
           if (render) render(sx);
         }
@@ -8076,9 +8278,7 @@ function reconcileDeclaredVolume(
           if (sx.d === "rs" || sx.race || !sx.steps || /Déverrouillage/i.test(sx.name)) continue;
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
-            if ((st.reps || 1) > 1) st.reps = Math.max(1, Math.round((st.reps || 1) * f));
-            else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
-            else if (st.distanceM) st.distanceM = Math.max(150, Math.round((st.distanceM * f) / 25) * 25);
+            scaleStepDose(st, f, { repsMode: "round", durFloor: 10, distFloor: 150 });
           }
           if (render) render(sx);
         }
@@ -8672,6 +8872,104 @@ function generatePlan(profile                , opts                             
   // chemin.
   const refs       = { ...r.baseRefs, bikeRp: shiftedBikeRp(String(a.sport), fmt, a) };
   const days = buildDays(r, refs, r.hz);
+
+  // ---- C31 — LA SORTIE LONGUE TROP LONGUE SE COUPE EN DEUX JOURS D'AFFILÉE (marathon) ----
+  //
+  // Décision du fondateur (04/08/2026) : « le but était de couper une sortie longue trop
+  // longue en 2 jours d'affilé » — le back-to-back que le trail porte depuis R7, sorti du
+  // trail pour le SEUL format de course où le mécanisme qu'il exploite opère.
+  //
+  // Le déclencheur est MESURÉ, jamais déclaré : C30 calcule la cible de spécificité
+  // (90 % du temps de course prédit) et sait quand le plafond C23 (180 min) la refuse —
+  // `capped`. Ce qui MANQUE est couru le lendemain, sur jambes non récupérées. Provenance :
+  // deux sorties modérées consécutives donnent un stimulus comparable à une seule très
+  // longue avec un risque moindre (la littérature ultra, reprise par Daniels pour le cap
+  // des 3 h : c'est un plafond de COÛT DE RÉCUPÉRATION, pas de tissu — et couper en deux
+  // est la réponse à un plafond de coût).
+  //
+  // QUATRE EXCLUSIONS, toutes sourcées, aucune négociable ici :
+  //  · MARATHON SEULEMENT — le mécanisme est la déplétion glycogénique + la fatigue
+  //    cumulée ; sous ~2 h 30 d'épreuve (semi compris) il n'opère pas, et le trail a déjà
+  //    son back-to-back (réservé à l'ultra, même logique).
+  //  · JAMAIS UN DÉBUTANT — « for advanced runners only », et le mécanisme de blessure le
+  //    mieux établi chez le novice est la FLUCTUATION de charge (Nielsen 2014 : > 30 %/sem),
+  //    or un week-end doublé EST un pic de fluctuation par construction. Le coût d'erreur
+  //    est asymétrique : 71 jours médians d'arrêt (PLOS One 2014) = la prépa entière.
+  //  · JAMAIS sous drapeau médical, ni avec une blessure d'impact — deux longues en 24 h
+  //    est la charge d'impact maximale que ce moteur sache écrire.
+  //  · 2-3 WEEK-ENDS PAR PRÉPA, pas chaque semaine (les 3 dernières semaines de PIC en
+  //    charge) — la source de la méthode elle-même borne la fréquence ainsi.
+  //
+  // La passe tourne AVANT la sonde de capacité et la boucle R3.3 : la charge est
+  // REDISTRIBUÉE dans le budget de la semaine, jamais ajoutée par-dessus (la promesse de
+  // volume suit ce que les plafonds permettent, V2.1) — et toutes les garanties aval
+  // (I14, C26, plafonds d'approche, affûtage) voient le jour 2 comme n'importe quelle
+  // séance. Onzième leçon appliquée en amont pour une fois : rien à rejouer au point fixe,
+  // la passe précède tout.
+  if (a.sport === "run" && fmt === "marathon" && !r.beginner && !r.medHold && !r.inj.impact) {
+    const spec31 = longRunSpecificityFloor(fmt, r.baseRefs.thrPace, 90, 180, parseFloat(String(a.vol_max ?? "")) || undefined);
+    const manque = spec31 && spec31.capped ? spec31.target - 180 : 0;
+    // Le seuil de POSE est le seuil du FILET (C31_MIN_JOUR2_MIN) : ma première écriture
+    // posait dès 15 min de manque, le filet déclassait ensuite le jour 2 minuscule — mais
+    // l'ÉCHANGE de jours, lui, restait : une perturbation structurelle sans la
+    // fonctionnalité, et la source de l'inversion I13 de 4 min qu'elle a coûtée au banc.
+    if (manque >= C31_MIN_JOUR2_MIN) {
+      const b2bMin = Math.min(Math.round(manque), Math.round(0.6 * 180));
+      // LA PAIRE NE SE POSE QUE LÀ OÙ LA SEMAINE PEUT LA PAYER. Première écriture sans cette
+      // borne, mesurée au banc d'invariants : sur les enveloppes serrées, R3.3 compressait le
+      // jour 2 à 30 min (le plancher déclaré ne survit pas à `blockBounds` — O-26) et la
+      // séance gardait un nom qu'elle ne tenait plus. Poser-puis-écraser n'est pas poser :
+      // si 180 + jour 2 dépassent 60 % du pic PROMIS (l'esprit d'I12 — la charge du
+      // week-end domine la semaine sans la dévorer), il n'y a pas de back-to-back du tout.
+      const picMin = (r.peakH || 0) * 60;
+      if (picMin > 0 && 180 + b2bMin > 0.6 * picMin) { /* budget insuffisant : rien à poser */ }
+      else {
+      const semainesPic = [...new Set(days.filter((d) => d.phaseId === "peak" && !d.isR).map((d) => d.week))].slice(-3);
+      let poses = 0;
+      const estFacileRn = (d        ) => !d.forced && !d.race &&
+        d.sessions.some((x) => x.d === "rn" && !x.race && !x.long && (x.steps || []).some((st) => st.role === "body")) &&
+        !d.sessions.some((x) => x.d === "rn" && (x.steps || []).some((st) => st.role === "body" && st.zone && !/easy|rec/.test(String(st.zone))));
+      for (const wn of semainesPic) {
+        const wd = days.filter((d) => d.week === wn);
+        const iLong = wd.findIndex((d) => d.slot === "durLong");
+        let lendemain = iLong >= 0 ? wd[iLong + 1] : undefined;
+        // Le lendemain doit exister DANS la semaine (longue le dimanche → pas de jour 2 :
+        // on ne déborde pas sur la semaine suivante, la structure hebdomadaire prime).
+        if (!lendemain || lendemain.forced || lendemain.race) continue;
+        // LE CONFLIT AVEC LA GARDE D'IMPACT, RÉSOLU PAR ÉCHANGE ET NON PAR ÉCRASEMENT.
+        // Le moteur place déjà un OFF/récup APRÈS la sortie longue (garde `runImpactCap`) :
+        // dans les semaines mesurées, le lendemain de la longue n'est presque jamais un
+        // footing. « Deux jours d'affilée » — la décision — assume précisément de courir
+        // AVANT cette récup, pas de la supprimer : on ÉCHANGE donc le contenu du lendemain
+        // avec le premier jour facile qui suit dans la semaine. La récup existe toujours,
+        // un jour plus tard ; le nombre de jours de repos de la semaine ne change pas.
+        if (!estFacileRn(lendemain)) {
+          const j = wd.findIndex((d, i) => i > iLong + 1 && estFacileRn(d));
+          if (j < 0) continue; // aucune séance facile à décaler : pas de jour 2 cette semaine
+          const cible = wd[j];
+          [lendemain.charge, cible.charge] = [cible.charge, lendemain.charge];
+          [lendemain.slot, cible.slot] = [cible.slot, lendemain.slot];
+          [lendemain.sessions, cible.sessions] = [cible.sessions, lendemain.sessions];
+          [lendemain.isR, cible.isR] = [cible.isR, lendemain.isR];
+        }
+        const sx = lendemain.sessions.find((x) => x.d === "rn" && !x.race && (x.steps || []).some((st) => st.role === "body"));
+        if (!sx || sx.long) continue;
+        sx.name = "Back-to-back (jour 2, jambes fatiguées)";
+        sx.note = "Ta course durera plus longtemps que le plafond raisonnable d'une seule sortie (3 h) : le reste se court AUJOURD'HUI, sur des jambes qui n'ont pas récupéré d'hier. C'est la version sécurisée de la très longue sortie — même stimulus d'endurance, coût de récupération divisé. Rythme très facile, marche assumée si besoin.";
+        sx.recovery = undefined;
+        sx.steps = [{ role: "body", d: "rn", zone: "rn.easy", durationMin: b2bMin, bnd: { floor: Math.min(45, b2bMin), cap: b2bMin } }];
+        renderSess(sx, refs, r.hz, r.baseRefs);
+        r.decisions.push({
+          id: "C31", what: "Back-to-back — la longue coupée en deux (sem. " + wn + ")",
+          val: "longue plafonnée à 3 h + " + b2bMin + " min le lendemain",
+          why: "Ta course demande ~" + Math.round(spec31 .target) + " min de spécificité ; une seule sortie au-delà de 3 h coûte plus en récupération qu'elle n'apporte (Daniels). Deux jours d'affilée donnent le même stimulus pour moins de casse — la méthode des ultras, bornée aux week-ends de pic.",
+        });
+        poses++;
+      }
+      if (traceEnabled() && poses) traceRecord({ pass: "C31-backToBack", weekNum: 0, date: "", sessionName: "Back-to-back", discipline: "rn", field: "durationMin", before: 0, after: b2bMin, reason: "C30 capped, manque " + Math.round(manque) + " min" });
+      }
+    }
+  }
 
   // ---- Bornes de bloc (R3.4b/R3.11/R3.12) — source unique, mêmes règles que V1.5 ----
   let _capScale = 1;
@@ -10192,6 +10490,25 @@ function generatePlan(profile                , opts                             
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation
+
+  // C31 — LE FILET AU POINT FIXE : un jour 2 devenu minuscule est DÉCLASSÉ, pas gardé.
+  // L'éligibilité budgétaire (60 % du pic promis) évite normalement la compression, mais
+  // aucune passe amont ne garantit l'aval (la leçon payée douze fois) : si toutes les
+  // réductions cumulées ont ramené le back-to-back sous 45 min, il n'est plus « la moitié
+  // d'une très longue sortie » — c'est un footing, et il reprend le nom et la note d'un
+  // footing (C13d : une séance qui ne tient plus sa promesse change de nom). La décision
+  // C31 de cette semaine-là est retirée du journal : une explication qui décrit une séance
+  // disparue est pire qu'aucune explication.
+  for (const wk of plan.weeks) {
+    for (const d of wk.days) for (const sx of d.sessions) {
+      if (!/^Back-to-back \(jour 2/.test(sx.name)) continue;
+      if ((sx.min || 0) >= C31_MIN_JOUR2_MIN) continue;
+      sx.name = "Footing facile";
+      sx.note = "Endurance fondamentale : allure de conversation. Ce volume facile construit l'aérobie sans user.";
+      renderSess(sx, refs, r.hz, r.baseRefs);
+      r.decisions = r.decisions.filter((dc) => !(dc.id === "C31" && dc.what.includes("(sem. " + wk.num + ")")));
+    }
+  }
   return { plan, reasoned: r };
 }
 
@@ -10204,6 +10521,7 @@ function generatePlan(profile                , opts                             
  * explicites — c'est un output de coaching précieux, pas un échec.
  */
                                                                  
+
 
 
 
@@ -10310,9 +10628,7 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
                 if (!s.steps || !s.steps.length) continue;
                 for (const st of s.steps) {
                   if (st.role !== "body") continue;
-                  if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
-                  else if (st.durationMin) st.durationMin = Math.max(8, Math.round(st.durationMin * f));
-                  else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+                  scaleStepDose(st, f, { repsMode: "floor", durFloor: 8, distFloor: 200 });
                 }
                 fixSwimBounds(s);
                 renderSess(s, refs, hz, baseRefs);
@@ -10336,9 +10652,7 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
           if (!s.steps || !s.steps.length) continue;
           for (const st of s.steps) {
             if (st.role !== "body") continue;
-            if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
-            else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
-            else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+            scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200 });
           }
           fixSwimBounds(s);
           renderSess(s, refs, hz, baseRefs);
@@ -10386,9 +10700,7 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
               if (!s.steps || !s.steps.length) continue;
               for (const st of s.steps) {
                 if (st.role !== "body") continue;
-                if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
-                else if (st.durationMin) st.durationMin = Math.max(10, Math.round(st.durationMin * f));
-                else if (st.distanceM) st.distanceM = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+                scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200 });
               }
               fixSwimBounds(s);
               renderSess(s, refs, hz, baseRefs);
@@ -11618,7 +11930,11 @@ function riegelExponent(runHoursPerWeek         )         {
   return 1.06;
 }
 
-/** Riegel : temps sur D depuis l'allure seuil (tenable ~1h), t = 3600 × (D/D₁ₕ)^exp */
+/** Riegel : temps sur D depuis l'allure seuil (tenable ~1h), t = 3600 × (D/D₁ₕ)^exp
+ *
+ *  EXPORTÉE depuis C30 (R11.1) : `feasibility.timeFromThresholdPace` en portait une copie
+ *  ligne pour ligne, et la spécificité de la sortie longue en aurait fait une troisième.
+ *  Trois écritures de Riegel, c'est trois vérités le jour où l'exposant bouge. */
 function riegelSecWith(exp        , thrPaceSecPerKm        , distKm        )         {
   const d1h = 3600 / thrPaceSecPerKm;
   return 3600 * Math.pow(distKm / d1h, exp);
@@ -12034,10 +12350,11 @@ function requiredThresholdPace(targetSec        , distKm        , exponent      
   return (3600 * Math.pow(targetSec / 3600, 1 / exponent)) / distKm;
 }
 
-/** Le chrono qu'une allure seuil donnée permet — le sens direct, pour rendre le verdict lisible. */
+/** Le chrono qu'une allure seuil donnée permet — le sens direct, pour rendre le verdict lisible.
+ *  DÉLÈGUE au prédicteur (R11.1) : c'était une copie ligne pour ligne de `riegelSecWith`, et
+ *  ce module dit lui-même qu'il IMPORTE ses modèles au lieu de les redéclarer. */
 function timeFromThresholdPace(thrPaceSecPerKm        , distKm        , exponent        )         {
-  const d1h = 3600 / thrPaceSecPerKm;
-  return 3600 * Math.pow(distKm / d1h, exponent);
+  return riegelSecWith(exponent, thrPaceSecPerKm, distKm);
 }
 
 function assessFeasibility(input                  )                    {
@@ -12572,6 +12889,7 @@ function importFitBytes(buf                          )            {
 
 
 
+
 const HARD_ZONES = [".vo2", ".thr", ".speed", ".css"];
 const MODERATE_ZONES = [".ss", ".rp", ".frc", ".mara", ".tempo"];
 
@@ -12637,10 +12955,12 @@ function reduceDay(day       , f        , refs      , hz                        
     for (const st of s.steps) {
       if (st.role !== "body") continue;
       // A3 (audit v6) — les planchers ne remontent JAMAIS au-dessus de la valeur d'origine :
-      // une réduction est une réduction, même sur une séance déjà courte.
-      if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.round(st.reps * f));
-      else if (st.durationMin) st.durationMin = Math.min(st.durationMin, Math.max(10, Math.round(st.durationMin * f)));
-      else if (st.distanceM) st.distanceM = Math.min(st.distanceM, Math.max(200, Math.round((st.distanceM * f) / 25) * 25));
+      // une réduction est une réduction, même sur une séance déjà courte. `clampToOriginal`
+      // porte cette promesse pour les TROIS champs — l'ancienne écriture la posait sur la
+      // durée et la distance mais pas sur `reps` : mesuré, f = 1,2 faisait passer un bloc de
+      // 5 à 6 répétitions pendant que ce commentaire promettait le contraire (trouvé par la
+      // garantie runtime de R21, fermé par le point unique `stepScale`).
+      scaleStepDose(st, f, { repsMode: "round", durFloor: 10, distFloor: 200, clampToOriginal: true });
     }
     renderSess(s, refs, hz, baseRefs);
   }
