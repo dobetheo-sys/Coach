@@ -50,6 +50,27 @@
  * explication au milieu d'une carte demande donc d'abord un libellé auquel s'accrocher, pas un
  * bouton de plus. C'est un travail de structure, pas de repli.
  *
+ * ─── U18b — ET CE QUI PESAIT VRAIMENT AU PROFIL N'ÉTAIT PAS DE LA PROSE ────────────────────
+ *
+ * La suite de la demande du fondateur (« ou les dérouler ») s'est jouée ailleurs. Sur les
+ * 3 908 px de l'onglet Profil, le plus gros bloc unique n'était aucun des 26 paragraphes : c'est
+ * la carte « ⚙ Références d'entraînement », **1 081 px de FORMULAIRE** — 14 à 17 lignes (FTP,
+ * allure seuil, CSS, volumes, séances, poids, taille, profils de parcours par discipline,
+ * température de l'eau, 12 derniers mois, rappel quotidien) ouvertes en permanence sur un onglet
+ * qu'on visite pour regarder sa progression, pas pour ressaisir sa FTP.
+ *
+ * Repliée avec le mécanisme `repliable` que le Profil applique depuis R5 : **3 908 → 2 872 px,
+ * 4,6 → 3,4 écrans (−27 %)** — plus que les trois « ? » et la passe retirée réunis. Rien n'est
+ * supprimé ni déplacé ; le bouton « Enregistrer → régénérer le plan » reste dans la carte.
+ *
+ * NOTE D'INSTRUMENT, et elle vaut d'être écrite avec le résultat : `prose.mjs` mesure la somme
+ * des RECTANGLES des blocs `.load-sub`, et dans ce Chromium un élément placé dans un `<details>`
+ * fermé rend encore un rectangle non nul. Il affichait donc **770 px de prose avant comme
+ * après** le repli — aveugle à la seule chose qui venait de changer. La grandeur honnête est
+ * `document.body.scrollHeight`, celle que la personne fait défiler ; c'est elle que le critère
+ * E2E épingle. Dixième fois dans ce dépôt qu'une mesure porte sur une grandeur VOISINE de celle
+ * qu'elle nomme.
+ *
  * ─── POURQUOI PAS `<details>` ─────────────────────────────────────────────────────────────
  *
  * Le dépôt s'en sert déjà pour les SÉANCES (U16), où le repli porte sur un bloc entier qui a un
@@ -94,6 +115,16 @@ export function brancherAide() {
     if (!b) return;
     const cible = document.getElementById(b.dataset.aide);
     if (!cible) return;
+    // PAS de `preventDefault()` ici, et c'est un correctif que j'ai écrit puis RETIRÉ. Le « ? »
+    // se pose dans un titre, et certains titres sont des `<summary>` (les cartes que le Profil
+    // replie depuis R5) : j'ai supposé qu'un appui faisait deux choses — dérouler l'aide ET
+    // ouvrir la carte — et posé un `preventDefault()`. Mesuré avec ET sans, au clic synthétique
+    // puis au VRAI clic souris : `details.open` vaut `false` dans les quatre cas. Le double
+    // effet n'a jamais existé — l'« activation behavior » d'un `<summary>` ne s'applique pas
+    // quand la cible est un descendant INTERACTIF, et `aide()` rend un `<button>`. Un correctif
+    // inerte se retire (précédents C23b, R19.4/O-12) : il donnerait à croire qu'il protège
+    // quelque chose. Ce qui reste protégé l'est par la nature du `<button>`, et un critère E2E
+    // l'épingle — vérifié rouge en le remplaçant par un `<span>`.
     const ouvert = !cible.hasAttribute("hidden");
     if (ouvert) cible.setAttribute("hidden", ""); else cible.removeAttribute("hidden");
     b.setAttribute("aria-expanded", ouvert ? "false" : "true");
