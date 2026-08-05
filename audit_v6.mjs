@@ -672,14 +672,31 @@ const c30Long = (over) => {
   return sl;
 };
 
-test("C30-A", "C30 allonge la sortie longue des coureurs LENTS — les 7 profils qu'il déplace", "pass", () => {
-  // Les valeurs sont celles mesurées APRÈS le lot ; sans C30 elles valent 57/115/122/116.
+test("C30-A", "C30 + C30b allongent la sortie longue des coureurs LENTS — les profils déplacés", "pass", () => {
   // Un test d'égalité et non d'inégalité : c'est ce qui le rend rouge dans les deux sens.
+  //
+  // TROIS ÉTATS SUCCESSIFS, gardés écrits parce que c'est la seule façon de voir ce que chaque
+  // règle a payé. Sur `10k/inter/8:30/8h` : **47** min sans rien, **47** avec C30 seul (le
+  // plancher était calculé puis annulé en aval — O-26), **76** avec C30b. Sur
+  // `semi/inter/7:00/8h` : 122 → 124 → **130**, le plafond de format.
+  //
+  // C30b a élargi la population de 7 profils à **28 sur 96** (4 formats × 3 niveaux ×
+  // 4 allures × 2 enveloppes) — tous en 10 km et en semi, tous chez des coureurs à 5:45 et
+  // plus lents. Aucun à 4:30 (le rapide atteignait déjà sa cible), aucun sur marathon (la
+  // longue y est au plafond C23 depuis toujours, et c'est C31 qui prend le relais).
   const attendu = [
-    ["10k", "debutant", "8:30", "6", 63], ["10k", "debutant", "8:30", "8", 63],
-    ["semi", "debutant", "8:30", "8", 117], ["semi", "inter", "7:00", "8", 124],
-    ["semi", "inter", "8:30", "8", 119], ["semi", "avance", "7:00", "8", 124],
-    ["semi", "avance", "8:30", "8", 119],
+    // les 7 profils que C30 déplaçait déjà, à leur nouvelle valeur
+    ["10k", "debutant", "8:30", "6", 77], ["10k", "debutant", "8:30", "8", 77],
+    ["semi", "debutant", "8:30", "8", 130], ["semi", "inter", "7:00", "8", 130],
+    ["semi", "inter", "8:30", "8", 130], ["semi", "avance", "7:00", "8", 130],
+    ["semi", "avance", "8:30", "8", 130],
+    // et ceux que C30b ajoute — la moitié du gain du lot est là
+    ["10k", "debutant", "7:00", "6", 64], ["10k", "inter", "7:00", "8", 63],
+    ["10k", "inter", "8:30", "8", 76], ["10k", "avance", "5:45", "8", 52],
+    ["semi", "debutant", "7:00", "6", 130], ["semi", "debutant", "8:30", "6", 130],
+    // …et les témoins qui ne doivent PAS bouger : le rapide, et le marathon au plafond
+    ["10k", "inter", "4:30", "8", 47], ["semi", "inter", "4:30", "8", 120],
+    ["marathon", "inter", "4:30", "8", 180], ["5k", "inter", "8:30", "8", 40],
   ];
   const bad = [];
   for (const [format, level, pace, vol_max, min] of attendu) {
@@ -687,6 +704,49 @@ test("C30-A", "C30 allonge la sortie longue des coureurs LENTS — les 7 profils
     if (sl !== min) bad.push(`${format}/${level}/${pace}/${vol_max}h : ${sl} au lieu de ${min}`);
   }
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "les 7 profils déplacés par C30 tiennent leur valeur" };
+});
+
+test("C30b-A", "C30b REDISTRIBUE — la semaine ne grossit pas, et la longue reste sous 70 %", "pass", () => {
+  // La permission du fondateur (05/08/2026) est « jusqu'à 70 % du volume de semaine SI
+  // NÉCESSAIRE ». Deux moitiés, et la seconde est celle qui compte : c'est une redistribution,
+  // pas une charge en plus. Si un jour quelqu'un fait monter la longue sans prendre les minutes
+  // ailleurs, ce critère le voit — et il verrait aussi bien l'inverse, une longue qu'on
+  // laisserait dépasser la borne.
+  const bad = [];
+  let vus = 0, partMax = 0;
+  for (const [format, pace, vol_max] of [["10k", "8:30", "8"], ["10k", "7:00", "6"], ["semi", "8:30", "8"], ["semi", "7:00", "6"]]) {
+    const p = E.buildPlan("run", { ...profile("run"), intent: "competition", med_pain: "non", med_dizzy: "non",
+      med_treat: "non", injury: "aucune", sessions_max: "5", dispo: "quotidienne", doubles: "oui",
+      pace_known: "oui", vol_recent: "3", terrain: "route", format, pace, vol_max });
+    const dec = ((p._v2 || {}).decisions || []).filter((d) => d.id === "C30b");
+    if (!dec.length) { bad.push(`${format}@${pace}/${vol_max}h : aucune décision C30b alors que la longue devrait monter`); continue; }
+    vus += dec.length;
+    for (const d of dec) {
+      const num = Number((/sem\. (\d+)/.exec(String(d.what)) || [])[1]);
+      const wk = p.weeks.find((w) => w.num === num);
+      if (!wk) { bad.push(`${format}@${pace} : la décision cite la semaine ${num}, qui n'existe pas`); continue; }
+      const ss = wk.days.flatMap((x) => x.sessions).filter((x) => x.d !== "rs");
+      const tot = ss.reduce((t, x) => t + (x.min || 0), 0);
+      const lg = ss.find((x) => x.long && !x.race);
+      if (!lg || !tot) { bad.push(`${format}@${pace} S${num} : pas de sortie longue dans la semaine citée`); continue; }
+      const part = (100 * (lg.min || 0)) / tot;
+      partMax = Math.max(partMax, part);
+      // (a) la borne du fondateur
+      if (part > 70) bad.push(`${format}@${pace} S${num} : la longue pèse ${Math.round(part)} % de la semaine (> 70 %)`);
+      // (b) LE CHIFFRE ANNONCÉ EST CELUI DU PLAN LIVRÉ — pas celui de l'instant où la passe a agi.
+      const attendu = `${Math.round(lg.min || 0)} min, soit ${Math.round(part)} % de la semaine`;
+      if (String(d.val) !== attendu) bad.push(`${format}@${pace} S${num} : la décision annonce « ${d.val} », le plan porte « ${attendu} »`);
+      // (c) LA NEUTRALITÉ EN VOLUME, VUE DU DEHORS. C30b tourne APRÈS le point fixe : si elle
+      // ajoutait des minutes au lieu d'en déplacer, plus aucune passe ne le corrigerait et la
+      // semaine dépasserait la courbe annoncée. Mesuré, les semaines touchées tiennent entre
+      // 0,90 et 1,01 fois leur courbe ; la borne est à 1,05 pour ne pas transformer ce critère
+      // en photographie du comportement actuel.
+      const decl = (wk.vol || 0) * 60;
+      if (decl > 0 && tot > 1.05 * decl) bad.push(`${format}@${pace} S${num} : ${Math.round(tot)} min prescrites pour ${Math.round(decl)} annoncées — C30b a AJOUTÉ au lieu de déplacer`);
+    }
+  }
+  if (vus < 4) bad.push(`seulement ${vus} décision(s) observée(s) — l'échantillon ne prouve rien`);
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || `${vus} décisions, part max ${Math.round(partMax)} % (permission 70 %)` };
 });
 
 test("C30-B", "un plancher de spécificité ne passe JAMAIS devant un plafond de sécurité", "pass", () => {

@@ -59,6 +59,21 @@ export const C30_PART_TEMPS_COURSE = 0.9;
 /** Part de la distance de course que la sortie longue couvre au minimum (décision fondateur). */
 export const C30_PART_DISTANCE = 0.7;
 
+/** C30b — PART MAXIMALE DU VOLUME HEBDOMADAIRE QUE LA SORTIE LONGUE PEUT PRENDRE, EN SEMAINE
+ *  DE PIC UNIQUEMENT (décision du fondateur, 05/08/2026 : « oui si elle respecte les plafonds ;
+ *  en semaine de pic, la sortie longue peut représenter 70 % du volume de semaine si
+ *  nécessaire »).
+ *
+ *  C'est une PERMISSION, pas une cible : la longue ne monte que si sa cible de spécificité
+ *  (C30) le demande, et jamais au-delà de son plafond de séance (C23, blessures). Hors semaine
+ *  de pic, la borne d'origine (60 %, invariant I12) continue de s'appliquer — une semaine de
+ *  base dominée à 70 % par une seule séance n'est pas une semaine de base.
+ *
+ *  Le volume de la semaine ne change pas : ce qui monte dans la longue est PRIS aux séances
+ *  faciles de la même semaine (R4.1 — jamais à la qualité). C'est une redistribution, pas une
+ *  charge en plus, et c'est ce qui la rend compatible avec « si elle respecte les plafonds ». */
+export const C30_PART_SEMAINE_PIC = 0.70;
+
 /** C31 — la durée MINIMALE d'un « jour 2 » de back-to-back (min). En dessous, ce n'est pas
  *  la moitié d'une très longue sortie, c'est un footing avec un nom d'emprunt : on ne pose
  *  pas la paire (et le filet du point fixe déclasse tout jour 2 qui serait retombé sous ce

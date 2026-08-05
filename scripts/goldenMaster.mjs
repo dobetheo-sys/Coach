@@ -201,6 +201,24 @@ function* profiles() {
       yield { key: ["C30", "run", fmt, p].join("/"), sport: "run", a };
     }
   }
+  // ---- Sous-passe « allure × petite enveloppe » (C30b) ----------------------
+  // ET LA PASSE CI-DESSUS NE VOYAIT TOUJOURS PAS C30b — quatrième occurrence du même angle
+  // mort, cette fois d'un cran plus fin. `vol_max: 10` est la bonne enveloppe pour C31 (le
+  // back-to-back a besoin de place pour se payer), mais c'est la MAUVAISE pour le plancher de
+  // spécificité : à 10 h la sortie longue est déjà BUTÉE sur son plafond de séance aux trois
+  // formats (10 km 90, semi 130, marathon 180), donc le plancher peut monter sans qu'une seule
+  // minute ne bouge. Vérifié en retirant C30b du moteur : les quatre profils 10 km de la passe
+  // ci-dessus rendaient EXACTEMENT le même plan.
+  //
+  // La règle ne se voit que là où le plancher a de la marge SOUS le plafond : le 10 km à
+  // 6 h/semaine (47 → 76 min à 8:30/km). Le 5 km reste dehors, et c'est mesuré aussi — sa
+  // cible (~38 min à 8:30) est sous ce que le créneau livre déjà (40 min), la règle n'y a
+  // jamais d'objet.
+  for (const p of ["4:30", "5:45", "7:00", "8:30"]) {
+    const a = { ...base(), format: "10k", pace: p, pace_known: "oui", vol_max: "6", vol_recent: "3",
+      sessions_max: "5", history: "confirme", level: "inter", intent: "competition" };
+    yield { key: ["C30b", "run", "10k", p].join("/"), sport: "run", a };
+  }
 }
 
 // ---- Normalisation canonique --------------------------------------------

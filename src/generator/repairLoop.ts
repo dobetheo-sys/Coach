@@ -10,7 +10,8 @@ import { scaleStepDose } from "../engine/stepScale.ts";
 import { auditPlan, type AuditOpts, type PlanAudit } from "../audit/coherenceScorer.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { R313_TAPER_MAX_VS_PEAK } from "../engine/constraintMatrix.ts";
-import { generatePlan, normalizeRestMinutes, reconcileDeclaredVolume, syncDerivedLabels, shiftedBikeRp } from "./planGenerator.ts";
+import { longRunSpecificityFloor } from "../engine/longRunSpecificity.ts";
+import { generatePlan, normalizeRestMinutes, reconcileDeclaredVolume, syncDerivedLabels, shiftedBikeRp, _c30b } from "./planGenerator.ts";
 import { renderSess, type Refs } from "./renderer.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 
@@ -332,11 +333,46 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
   // R5.3 — la courbe ANNONCÉE se réconcilie avec le prescrit une fois les réparations passées :
   // `reduceDay` et `applyTargetedRepairs` changent encore des durées, et un écart figé avant
   // elles ment à l'athlète dès la première réparation (même leçon que R5.1).
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { swimFloors: guard(reasoned.profile.sport as string, "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport as string, "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport as string).mainDiscipline, disciplines: sportModule(reasoned.profile.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0 });
+  // C30b — la cible de spécificité est passée ICI AUSSI. Sans elle, le dernier appel à
+  // `reconcileDeclaredVolume` rejoue toutes les autres garanties et rescale les semaines une
+  // dernière fois : la longue portée à sa cible juste avant redescendait de quelques minutes,
+  // et le seul point du pipeline dont la sortie est LIVRÉE ne portait pas la garantie.
+  const _spec30f = String(reasoned.profile.sport) === "run"
+    ? longRunSpecificityFloor(String(reasoned.profile.format ?? ""), reasoned.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(reasoned.profile.vol_max ?? "")) || undefined)
+    : null;
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { longSpecTargetMin: _spec30f ? _spec30f.target : undefined, swimFloors: guard(reasoned.profile.sport as string, "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport as string, "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport as string).mainDiscipline, disciplines: sportModule(reasoned.profile.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0 });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.
   syncDerivedLabels(best.plan);
+  // …et les décisions C30b sont celles du DERNIER passage, pas celles d'un état intermédiaire :
+  // le chiffre affiché à l'athlète (« 64 min, soit 33 % de la semaine ») doit décrire le plan
+  // qu'il a sous les yeux. Même règle que « l'audit rendu est celui du plan rendu », ci-dessous.
+  // L'UNION des deux passages, jamais le seul dernier : une semaine portée à sa cible AVANT le
+  // point fixe n'a plus rien à corriger après, et la retirer du journal reviendrait à cacher la
+  // décision précisément là où elle a le mieux marché. Le libellé du dernier passage prime,
+  // c'est lui qui décrit le plan livré.
+  const _frais = new Map(_c30b.map((d) => [d.wk, d]));
+  const _c30bFinal = reasoned.decisions.filter((d) => d.id === "C30b").map((d) => {
+    const w = Number((/sem\. (\d+)/.exec(String(d.what)) || [])[1]);
+    return _frais.get(w) || d;
+  });
+  for (const d of _c30b) if (!_c30bFinal.includes(d)) _c30bFinal.push(d);
+  // …et le CHIFFRE est relu sur le plan livré, jamais gardé de l'instant où la passe a agi :
+  // entre les deux, le point fixe C22 a pu rescaler la semaine. Une décision qui annonce
+  // « 64 min, soit 33 % » sur un plan qui en porte 61 est un mensonge de quelques minutes,
+  // c'est-à-dire exactement le genre que ce dépôt passe son temps à traquer.
+  for (const d of _c30bFinal) {
+    const w = Number((/sem\. (\d+)/.exec(String(d.what)) || [])[1]);
+    const wk = best.plan.weeks.find((x) => x.num === w);
+    if (!wk) continue;
+    const ss = wk.days.flatMap((x) => x.sessions).filter((x) => x.d !== "rs");
+    const lg = ss.find((x) => x.long && !x.race);
+    const tot = ss.reduce((t, x) => t + (x.min || 0), 0);
+    if (lg && tot > 0) d.val = Math.round(lg.min || 0) + " min, soit " + Math.round((100 * (lg.min || 0)) / tot) + " % de la semaine";
+  }
+  for (let i = reasoned.decisions.length - 1; i >= 0; i--) if (reasoned.decisions[i].id === "C30b") reasoned.decisions.splice(i, 1);
+  for (const d of _c30bFinal) reasoned.decisions.push(d);
 
   // L'AUDIT RENDU EST CELUI DU PLAN RENDU.
   //

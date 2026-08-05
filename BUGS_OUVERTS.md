@@ -1516,69 +1516,81 @@ attendu: /velocity_smooth[\s\S]*workout_type|workout_type[\s\S]*velocity_smooth/
 cmd: grep -n "workout_type\|velocity_smooth\|meilleur 10 min" endurabuild/js/ui/steps.js
 ```
 
-### O-26 · Le plancher d'une séance n'atteint jamais la boucle de volume — C30 en est à 4 % de sa portée · ⏳ **OUVERT — mesuré, et il demande un arbitrage**
+### O-26 · La sortie longue n'atteignait pas sa cible de spécificité · ✅ **FERMÉ — C30b (décision du fondateur, 05/08/2026)**
 
-Trouvé en implémentant **C30** (décision du fondateur du 04/08/2026 : « se rapprocher du temps
-visé sur l'épreuve a minima, et au moins 70 % de la distance »).
+Trouvé en implémentant **C30** (« se rapprocher du temps visé sur l'épreuve a minima, et au moins
+70 % de la distance »). La règle était écrite, juste, et ne faisait presque rien : **7 profils
+déplacés sur 180**, cibles atteintes **31/48**.
 
-**La règle est écrite, elle est juste, et elle ne fait presque rien.** Mesuré sur 180 profils de
-course (4 formats × 3 niveaux × 5 allures × 3 enveloppes) : C30 en déplace **7**, de 2 à 6
-minutes. Sur la grille de spécificité (24 profils × 2 cibles), les cibles atteintes passent de
-**24/48 à 31/48** — un progrès réel, mais concentré sur les débutants, c'est-à-dire pas sur la
-population que la mesure désignait.
+**Décision du fondateur (05/08/2026)** : *« oui si elle respecte les plafonds ; en semaine de pic,
+la sortie longue peut représenter 70 % du volume de semaine si nécessaire »*. Livré sous **C30b**
+(`raiseLongRunToSpecificity`, `planGenerator.ts`) : la longue monte vers sa cible, et les minutes
+sont **PRISES aux séances faciles de la même semaine** (R4.1 — jamais à la qualité). Le volume de
+la semaine ne bouge pas d'une minute : c'est une redistribution, pas une charge en plus, et c'est
+ce qui la rend compatible avec « si elle respecte les plafonds ».
 
-**La cause est nommée, et elle est en aval du module de sport.** `blockBounds`
-(`planGenerator.ts`) est la SEULE source de bornes du scaling — c'est une bonne chose. Mais pour
-un bloc de sortie longue ordinaire (sans pente, `reps = 1`), elle **jette le plancher déclaré
-par le bloc** et le remplace par un « plancher digne » forfaitaire :
+**Cibles atteintes 31/48 → 46/48 ; 28 profils déplacés sur 96** (4 formats × 3 niveaux ×
+4 allures × 2 enveloppes), tous en 10 km et en semi, tous chez des coureurs à 5:45/km et plus
+lents. Le plus gros déplacement : **10 km @ 8:30/km, 47 → 76 min**, +62 %, sur exactement la
+population pour laquelle C30 avait été écrit. Aucun profil à 4:30/km (le rapide atteignait déjà
+sa cible), aucun sur marathon (la longue y est au plafond C23 depuis toujours, C31 prend le
+relais). Les **2 profils restants** manquent leur cible de **2 minutes** : les séances donneuses
+sont à leur plancher, il n'y a plus rien à déplacer.
 
-```ts
-const fl = s.d === "bk" ? 35 : 30; // C8/C16 — plancher digne, pas la borne basse du format
-return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
-```
+**Trois choses que la mesure a corrigées dans mon travail, gardées écrites.**
 
-Le `bnd.floor` que C30 calcule n'arrive donc jamais jusqu'à R3.3. Ce n'est pas un oubli : c'est
-la décision **D3-D7/D10 de l'audit v6**, « les planchers de séance ne gagnent plus contre la
-courbe ». C30 demande l'inverse pour une séance.
+**(a) Ma première écriture faisait son travail puis se le faisait annuler.** Placée juste après
+`refillEasyAfterLabelCap`, elle montait bien la longue d'un débutant sur 10 km de 55 à 64 min sur
+quatre semaines — puis `enforceHardTimeCap` rabotait le total de la semaine et le point fixe C22
+la rescalait **proportionnellement** : 64 → 57, 53, 55. Trois gains sur quatre effacés, et la
+mesure finale disait « la passe est inerte » alors qu'elle agissait puis était défaite.
+**Douzième paiement de la leçon du point fixe**, cette fois sur ma propre passe. Elle est rejouée
+après le point fixe — ce qu'elle peut se permettre parce qu'elle est neutre en volume, ne déplace
+que des minutes faciles (donc hors d'atteinte de C26c/C26d) et ne fait que MONTER la longue (donc
+va dans le sens d'I14 au lieu de le rouvrir). Elle est aussi rejouée dans le **dernier**
+`reconcileDeclaredVolume`, celui du `repairLoop` : c'est lui dont la sortie est livrée.
 
-**ET FORCER LE PLANCHER NE MARCHE PAS — c'est le résultat qui compte.** Testé
-(`floor = max(30, bnd.floor)` pour les blocs longs) : les cibles atteintes passent de **31/48 à
-30/48**, donc *moins bien*. La longue du 10 km à 7:00/km monte de 48 à 55 min pour une cible de
-64, et s'arrête là. Le facteur limitant n'est pas le plancher : c'est le **volume hebdomadaire
-d'une prépa de format court**. Sur ce profil, la semaine de pic livrée fait **140-152 min** et la
-longue y pèse déjà **36-39 %**. La porter à 64 min en ferait 44 % de la semaine.
+**(b) « Semaine de pic » n'existe pas comme phase sur une prépa courte.** Restreinte à
+`phase.id === "peak"`, la passe se déclenchait **0 fois sur les 48 profils de la grille** — parce
+qu'une prépa de 5 km ou de 10 km n'a **aucune** semaine de phase `peak` (base → dev → spec →
+taper), et que c'est justement la population que C30 sert le plus mal. « En semaine de pic » se
+lit donc sur la CHARGE quand la phase n'existe pas : les semaines les plus lourdes du plan, celles
+que l'athlète appelle sa plus grosse semaine. Même famille qu'**O-21**, qui a dû dire ce que vaut
+« dev ≤ pic » quand aucune semaine de pic ne porte de charge. La cohorte se lit sur la courbe
+**déclarée** et non sur les minutes livrées — mesuré, une cohorte calculée sur les minutes changeait
+entre deux passages et une semaine portée à sa cible en sortait au second.
 
-**Ce qui reste à trancher, et c'est une question d'entraînement :** une prépa 10 km pour
-quelqu'un qui court 71 min sur l'épreuve doit-elle rester à **2,4 h/semaine** ? `R20.2` répond
-déjà *pourquoi* elle y reste (« ce qui borne, c'est le nombre de séances : 5 séances, et aucune
-ne peut s'allonger indéfiniment »), et cette réponse est cohérente — mais elle ne dit pas si
-c'est **souhaitable**. Trois issues, aucune gratuite :
+**(c) La borne des 70 % n'a encore jamais mordu, et c'est publié.** Part de la longue mesurée :
+**médiane 33 %, maximum 55 %** — la permission du fondateur laisse 15 points inutilisés. Cassure
+délibérée : porter la borne à ×9 (donc la retirer) **ne change rien** (`K4` verte). Ce qui borne
+réellement, c'est le **plafond de séance du format** (5 km 74, 10 km 90, semi 130, marathon 180).
+C'est le pendant exact de la moitié « 70 % de la distance » de C30, elle aussi jamais mordante :
+la règle du fondateur est respectée dans les deux sens, et le facteur limitant est ailleurs.
 
-1. **le volume utile d'un format court s'indexe sur le TEMPS de course** et non sur sa seule
-   distance (le coureur lent reçoit plus de minutes) — c'est la lecture la plus proche de
-   l'arbitrage du fondateur, et elle rouvre l'inversion d'O-21 dans le sens qu'il assume ;
-2. **la sortie longue a droit à une part plus grande de la semaine** sur les formats courts —
-   plus local, mais déséquilibre la semaine et heurte D3-D7/D10 ;
-3. **on assume** que la spécificité complète n'est pas atteignable sous 5 séances, et on le
-   DIT dans « Pourquoi ce plan » (le motif de R20.2 étendu à la sortie longue).
+**Ce qui n'a PAS été fait, et pourquoi.** Les trois issues envisagées en ouvrant cette entrée —
+indexer le volume utile sur le TEMPS de course (1), élargir la part hebdomadaire (2), assumer et
+le dire (3) — sont tranchées par la mesure : (2) est livré et suffit, (1) reste une refonte de
+`UTIL` et de la sonde de capacité que rien ne réclame plus, (3) n'a plus d'objet sur 46 profils
+sur 48. `blockBounds` continue de remplacer le plancher déclaré par son « plancher digne »
+forfaitaire (décision D3-D7/D10 de l'audit v6) et **c'est très bien ainsi** : forcer ce plancher
+avait été mesuré et rendait les choses PIRES (30/48 au lieu de 31). Le correctif ne passe pas par
+le plancher, il passe par la répartition.
 
-Ma préférence va à **(3) puis (1)** : (3) est honnête et coûte peu, (1) est la vraie réponse
-mais demande de reprendre `UTIL` et la sonde de capacité, donc un lot à part entière.
-
-**Note de méthode — ma première garde valait zéro.** Écrite sur l'INTENTION (« la longue couvre
-70 % de la distance »), elle était satisfaite par le moteur d'AVANT C30 : trois cassures
-délibérées, **trois verts**. Septième occurrence dans ce dépôt d'un critère qui nomme une
-grandeur et en mesure une voisine. Réécrite sur les 7 profils que C30 déplace réellement, avec
-leurs valeurs, elle rougit sur trois cassures (C30 retiré, plancher devant plafond, part du temps
-de course 0,9 → 0,6). **Une quatrième reste verte et c'est un résultat** : passer la part de
-distance de 70 % à 50 % ne change rien, parce que sur ces 7 profils le repère TEMPS domine
-toujours. La moitié « distance » de la règle n'a encore jamais mordu.
+**Gardes** : `C30-A` (banc v6) re-épinglé sur les valeurs livrées, avec les **trois états
+successifs** écrits (sans rien → C30 seul → C30b) et quatre témoins qui ne doivent pas bouger ;
+`C30b-A` (nouveau) porte le mécanisme — part ≤ 70 %, chiffre de la décision relu sur le plan
+LIVRÉ, et neutralité en volume vue du dehors (la semaine ne dépasse pas sa courbe annoncée).
+**Vérifiées rouges sur trois cassures sur quatre** ; la quatrième est le résultat (c) ci-dessus.
+Le golden gagne une sous-passe `C30b/run/10k` — sa passe « allure » existante regardait
+`vol_max: 10`, la bonne enveloppe pour C31 mais la mauvaise pour C30b (à 10 h la longue est déjà
+butée sur son plafond aux trois formats), **quatrième occurrence du même angle mort qu'A-2**,
+vérifié en retirant C30b du moteur.
 
 ```verify
 id: O-26
-quoi: C30 ne déplace qu'une poignée de profils, le plancher n'atteignant pas la boucle de volume
-attendu: /déplacés par C30 : 7$/m
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const L=(o)=>{const a=Object.assign({intent:'competition',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',history:'confirme',injury:'aucune',sessions_max:'5',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',vol_recent:'3',terrain:'route'},o);let s=0;try{const p=E.buildPlan('run',a);p.weeks.forEach(w=>w.days.forEach(d=>d.sessions.forEach(x=>{if(x.long&&(x.min||0)>s)s=x.min;})))}catch(e){s=-1}return s};let n=0,b=0;for(const format of ['5k','10k','semi','marathon'])for(const level of ['debutant','inter','avance'])for(const pace of ['4:00','4:30','5:45','7:00','8:30'])for(const vol_max of ['4','6','8']){n++;}console.log('profils : '+n);const M={'10k/debutant/8:30/6':63,'10k/debutant/8:30/8':63,'semi/debutant/8:30/8':117,'semi/inter/7:00/8':124,'semi/inter/8:30/8':119,'semi/avance/7:00/8':124,'semi/avance/8:30/8':119};let ok=0;for(const k in M){const [format,level,pace,vol_max]=k.split('/');if(L({format,level,pace,vol_max})===M[k])ok++;}console.log('déplacés par C30 : '+ok);"
+quoi: C30b porte la sortie longue à sa cible de spécificité et la garde sous 70 % de la semaine
+attendu: /cibles C30b : 6\/6 · part max \d+ %/m
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(o)=>E.buildPlan('run',Object.assign({intent:'competition',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',history:'confirme',level:'inter',injury:'aucune',sessions_max:'5',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',vol_recent:'3',terrain:'route'},o));const M={'10k/8:30/8':76,'10k/7:00/6':63,'semi/8:30/8':130,'semi/7:00/6':130,'10k/4:30/8':47,'marathon/4:30/8':180};let ok=0,part=0;for(const k in M){const [format,pace,vol_max]=k.split('/');const p=P({format,pace,vol_max});let s=0;p.weeks.forEach(w=>{const ss=w.days.flatMap(d=>d.sessions).filter(x=>x.d!=='rs');const t=ss.reduce((a,x)=>a+(x.min||0),0);ss.forEach(x=>{if(x.long&&(x.min||0)>s)s=x.min;if(x.long&&t)part=Math.max(part,100*(x.min||0)/t);})});if(s===M[k])ok++;}console.log('cibles C30b : '+ok+'/6 · part max '+Math.round(part)+' %');"
 ```
 
 

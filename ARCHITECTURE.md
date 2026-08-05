@@ -4196,6 +4196,73 @@ le disait en toutes lettres — c'est le tableau des angles morts qui n'avait pa
 au §4 : **un angle mort qui n'en est plus fait croire à une cécité qu'on n'a pas**, le symétrique
 exact du défaut caché.
 
+## C30b — la sortie longue atteint sa cible, et les minutes viennent des séances faciles (O-26)
+
+**Décision du fondateur, 05/08/2026** : *« oui si elle respecte les plafonds ; en semaine de pic,
+la sortie longue peut représenter 70 % du volume de semaine si nécessaire »* — en réponse à O-26,
+qui mesurait C30 à **7 profils déplacés sur 180**.
+
+`raiseLongRunToSpecificity()` (`planGenerator.ts`) monte la sortie longue vers la cible calculée
+par C30, et **prend les minutes aux séances faciles de la même semaine** (R4.1 : le déversement
+de volume va vers le facile, jamais vers la qualité — ici dans l'autre sens, même règle). Trois
+bornes, toutes issues d'une règle existante : le plafond de SÉANCE déclaré par le bloc (C23
+débutant, blessures), 70 % du volume de la semaine (`C30_PART_SEMAINE_PIC`), et le total de la
+semaine qui **ne bouge pas** — on prend avant de donner.
+
+**Cibles de spécificité atteintes : 31/48 → 46/48. 28 profils déplacés sur 96**, tous en 10 km et
+en semi, tous chez des coureurs à 5:45/km et plus lents ; le plus gros déplacement est
+**10 km @ 8:30/km, 47 → 76 min**. Les 2 profils restants manquent de 2 minutes — les donneuses
+sont à leur plancher.
+
+### Où la passe tourne, et pourquoi ce n'est pas là qu'elle était
+
+Ma première écriture était placée juste après `refillEasyAfterLabelCap`. Elle **faisait son
+travail** — la longue d'un débutant sur 10 km montait de 55 à 64 min sur quatre semaines — puis
+`enforceHardTimeCap` rabotait le total de la semaine et le point fixe C22 la rescalait
+**proportionnellement** : 64 → 57, 53, 55. Trois gains sur quatre effacés, et la mesure finale
+disait « la passe est inerte » alors qu'elle agissait puis se faisait défaire. **Douzième paiement
+de la leçon du point fixe**, cette fois sur ma propre passe.
+
+Elle est rejouée **après** `enforceC22Final`, malgré le commentaire « rien ne réduit ni ne gonfle
+après cette ligne » — et elle peut se le permettre pour trois raisons vérifiables : elle est
+**neutre en volume** (donc C22, « dev ≤ pic » et R3.13 ne voient rien), elle ne déplace que des
+minutes **faciles** (donc C26c/C26d, qui bornent le dur et le modéré, sont hors d'atteinte), et
+elle ne fait que **monter** la longue (donc elle va dans le sens d'I14 au lieu de le rouvrir).
+Elle tourne aussi dans le **dernier** `reconcileDeclaredVolume`, celui du `repairLoop` : c'est lui
+dont la sortie est livrée à l'athlète.
+
+### « Semaine de pic » quand le plan n'a pas de phase de pic
+
+Restreinte à `phase.id === "peak"`, la passe se déclenchait **0 fois sur 48 profils** — une prépa
+de 5 km ou de 10 km n'a **aucune** semaine de phase `peak` (base → dev → spec → taper), et c'est
+précisément la population que C30 sert le plus mal. « En semaine de pic » se lit donc sur la
+CHARGE à défaut de phase : les semaines les plus lourdes du plan, ce que l'athlète appelle sa plus
+grosse semaine. Même famille qu'**O-21**, qui a dû dire ce que vaut « dev ≤ pic » quand aucune
+semaine de pic ne porte de charge. La cohorte se lit sur la courbe **déclarée** (`wk.vol`) et non
+sur les minutes livrées : mesuré, une cohorte calculée sur les minutes changeait entre deux
+passages, et une semaine portée à sa cible en sortait au second pour y redescendre.
+
+### La borne des 70 % n'a encore jamais mordu, et c'est publié
+
+Part de la longue mesurée : **médiane 33 %, maximum 55 %**. Cassure délibérée — porter la borne à
+×9, donc la retirer — **ne change rien**. Ce qui borne réellement, c'est le **plafond de séance du
+format** (5 km 74, 10 km 90, semi 130, marathon 180). C'est le pendant exact de la moitié « 70 %
+de la distance » de C30, elle aussi jamais mordante : la permission du fondateur est respectée
+dans les deux sens, et le facteur limitant est ailleurs.
+
+### Gardes
+
+`C30-A` (banc v6) re-épinglé sur les valeurs livrées, avec les **trois états successifs** écrits
+(sans rien → C30 seul → C30b) et quatre témoins qui ne doivent pas bouger. `C30b-A` porte le
+mécanisme : part ≤ 70 %, **chiffre de la décision relu sur le plan LIVRÉ** (entre le moment où la
+passe agit et la sortie, C22 a pu rescaler — une décision qui annonce 64 min sur un plan qui en
+porte 61 est le genre de mensonge de quelques minutes que ce dépôt traque), et neutralité en
+volume vue du dehors. **Vérifiées rouges sur trois cassures sur quatre** ; la quatrième est le
+résultat ci-dessus. Le golden gagne une sous-passe `C30b/run/10k` : sa passe « allure » regardait
+`vol_max: 10`, la bonne enveloppe pour C31 mais la mauvaise pour C30b — à 10 h la longue est déjà
+butée sur son plafond aux trois formats, donc le plancher pouvait monter sans qu'une minute ne
+bouge. **Quatrième occurrence du même angle mort qu'A-2**, vérifié en retirant C30b du moteur.
+
 ## C31 — le back-to-back marathon : la longue trop longue se coupe en deux jours
 
 Décision du fondateur (04/08/2026) : *« le but était de couper une sortie longue trop longue en

@@ -117,7 +117,7 @@ dépôt — historique git si besoin.
   (jours non réordonnés) et refuse de publier un taux sur un balayage vide. Trail 25,0 % des
   plans · swimrun 44,4 % — c'est ce chiffre qui a tranché O-3.
 - `npm run golden:capture` / `golden:verify` — **golden master** (spec R10) : photographie
-  758 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
+  912 plans (6 sports × formats × historiques × niveaux × intentions + passe garde-fous
   blessures/âges/terrain/volumes + **passe « course datée »** : 6 sports × les 7 jours de
   semaine possibles pour le jour J — sans elle, toute la branche ancrée sur une course était
   hors couverture, et c'est ce trou qui a laissé vivre N2 — plus une passe « volume et
@@ -1128,6 +1128,40 @@ occurrence de cet angle mort, et elle était PUBLIÉE comme une limite en livran
 (`R15.2-A/B/C/D`, quatre verts). Déplacée au §4 — un angle mort qui n'en est plus fait croire à
 une cécité qu'on n'a pas.
 **27 gates verts, E2E 18/18, golden 908, registre 26/26.**
+
+**C30b livré — O-26 fermé : la sortie longue atteint sa cible, et les minutes viennent des
+séances faciles** (décision du fondateur, 05/08/2026 : « oui si elle respecte les plafonds ; en
+semaine de pic, la sortie longue peut représenter 70 % du volume de semaine si nécessaire », voir
+ARCHITECTURE.md « C30b ») : C30 calculait la bonne cible et ne l'atteignait presque jamais —
+**7 profils déplacés sur 180**. `raiseLongRunToSpecificity()` monte la longue vers sa cible et
+**PREND les minutes aux séances faciles de la même semaine** (R4.1, dans l'autre sens) : le total
+de la semaine ne bouge pas d'une minute, c'est une redistribution, et c'est ce qui la rend
+compatible avec « si elle respecte les plafonds ». **Cibles atteintes 31/48 → 46/48 · 28 profils
+déplacés sur 96**, tous en 10 km et en semi, tous chez des coureurs à 5:45/km et plus lents —
+**10 km @ 8:30/km passe de 47 à 76 min**, exactement la population pour laquelle C30 avait été
+écrit. Les 2 restants manquent de 2 min : les donneuses sont à leur plancher.
+**Ma première écriture faisait son travail puis se le faisait annuler.** Placée juste après
+`refillEasyAfterLabelCap`, elle montait bien la longue de 55 à 64 min sur quatre semaines — puis
+`enforceHardTimeCap` rabotait le total et le point fixe C22 la rescalait **proportionnellement** :
+64 → 57, 53, 55. Trois gains sur quatre effacés, et ma mesure concluait « passe inerte » alors
+qu'elle agissait puis était défaite. **Douzième paiement de la leçon du point fixe**, sur ma propre
+passe. Rejouée après le point fixe — ce qu'elle peut se permettre parce qu'elle est neutre en
+volume, ne déplace que du FACILE (donc hors d'atteinte de C26c/C26d) et ne fait que MONTER la
+longue (donc va dans le sens d'I14) — et aussi dans le **dernier** `reconcileDeclaredVolume`,
+celui dont la sortie est livrée. **Deuxième correction : « semaine de pic » n'existe pas comme
+PHASE sur une prépa courte** — restreinte à `phase.id === "peak"`, la passe se déclenchait **0 fois
+sur 48 profils**, une prépa de 5 ou 10 km n'ayant aucune semaine `peak` ; elle se lit donc sur la
+CHARGE à défaut de phase, cohorte prise sur la courbe DÉCLARÉE (sur les minutes livrées, elle
+changeait entre deux passages). **Et la borne des 70 % n'a encore jamais mordu, c'est publié** :
+part médiane 33 %, max 55 % ; la retirer (borne à ×9) ne change RIEN — ce qui borne est le plafond
+de séance du format, comme la moitié « 70 % de la distance » de C30 qui n'a jamais mordu non plus.
+Gardes : `C30-A` re-épinglé avec ses **trois états successifs** (sans rien → C30 → C30b) et quatre
+témoins immobiles, `C30b-A` sur le mécanisme (part ≤ 70 %, chiffre de la décision **relu sur le
+plan livré**, neutralité en volume vue du dehors), **vérifiées rouges sur 3 cassures sur 4**. Le
+golden gagne une sous-passe `C30b/run/10k` — sa passe « allure » regardait `vol_max: 10`, la bonne
+enveloppe pour C31 mais la mauvaise pour C30b (à 10 h la longue est déjà butée sur son plafond aux
+trois formats) : **quatrième occurrence du même angle mort qu'A-2**, vérifié en retirant C30b.
+**27 gates verts, E2E 18/18, golden 912 recapturé, registre 26/26.**
 
 **C31 livré — le back-to-back marathon : la longue trop longue se coupe en deux jours d'affilée**
 (décision du fondateur, 04/08/2026, populations bornées par un audit de littérature préalable —
