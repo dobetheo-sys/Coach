@@ -366,9 +366,15 @@ AUTRE commit est refusé tant que le fantôme est « in progress » (« Please c
 Deux SHA ont été condamnés ainsi dans la même journée (`4a146fba` à 12 h 40, `db5ada9` à
 14 h 56 — le second par mon propre `workflow_dispatch` de relance, qui a re-payé le même timeout).
 
-**Correctifs :** le timeout de `deploy-pages` passe à 30 min dans `pages.yml` (un timeout court
-ne protège de rien ici — le job a fini de construire, il ne fait qu'attendre — mais il transforme
-un backend lent en SHA condamné). Si l'incident se reproduit : ne PAS re-runner le run échoué (il
-empile un second artefact « github-pages » et `deploy-pages` refuse) ; attendre l'expiration du
-fantôme (~1 h) puis pousser un commit neuf — et vérifier le run du workflow « Déploiement PWA »,
-pas celui de l'audit.
+**Premier correctif, RÉFUTÉ par le run suivant :** passer le timeout de `deploy-pages` à 30 min.
+Le log a répondu — « timeout set to the maximum of 600000 milliseconds » : **l'action plafonne
+son timeout à 10 min et écrase en silence toute valeur au-dessus.** Le run d'`ed37aefd` a donc
+refait l'incident à l'identique, troisième SHA condamné de la journée.
+
+**Correctif tenu :** l'étape `deploy-pages@v4` est remplacée dans `pages.yml` par une étape
+`github-script` qui fait la même chose — créer le déploiement, attendre le statut — avec UNE
+différence : elle n'annule JAMAIS. Un backend lent finit par aboutir côté serveur, même après le
+verdict du job ; annuler, c'est condamner le commit. Si l'incident se reproduit : ne PAS
+re-runner le run échoué (il empile un second artefact « github-pages » et la recherche
+d'artefact refuse) ; attendre l'expiration du fantôme (~1 h) puis pousser un commit neuf — et
+vérifier le run du workflow « Déploiement PWA », pas celui de l'audit.

@@ -4,6 +4,18 @@
 # (iPhone/Safari) : l'app s'installe comme une app native, offline compris (service
 # worker), SANS APK ni store. Un vrai APK reste possible plus tard via PWABuilder,
 # qui a justement besoin de cette URL.
+#
+# POURQUOI l'étape de déploiement est écrite à la main et non actions/deploy-pages@v4
+# (incident du 06/08/2026, consigné dans RETOUR_R23.md) : ce jour-là le backend Pages
+# mettait plus de 10 minutes à propager. Or deploy-pages PLAFONNE son timeout à
+# 600 000 ms — « timeout set to the maximum of 600000 milliseconds », un 30 min
+# demandé est écrasé en silence — et à l'échéance il ANNULE le déploiement en cours.
+# L'identifiant d'un déploiement Pages est le SHA du commit : l'état « annulé » colle
+# au commit, qui devient indéployable, et le fantôme bloque aussi les commits
+# suivants. Trois SHA condamnés dans la journée. L'étape ci-dessous fait la même
+# chose que l'action (créer le déploiement, attendre le statut) avec UNE différence :
+# elle n'annule JAMAIS — un backend lent finit par aboutir côté serveur, même après
+# le verdict du job.
 name: Déploiement PWA (GitHub Pages)
 
 on:
@@ -25,24 +37,84 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.config.outputs.base_url }}
     steps:
       - uses: actions/checkout@v4
       # enablement: true — active Pages tout seul au premier passage ; si jamais le
       # jeton n'y suffit pas : Settings → Pages → Source « GitHub Actions » (une fois).
-      - uses: actions/configure-pages@v5
+      - id: config
+        uses: actions/configure-pages@v5
         with:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: endurabuild/
       - id: deployment
-        uses: actions/deploy-pages@v4
+        name: Créer le déploiement et attendre — sans jamais annuler
+        uses: actions/github-script@v7
         with:
-          # 30 min au lieu des 10 par défaut. Le 06/08/2026, le backend Pages a mis
-          # plus de 10 min à propager deux déploiements de suite : le timeout de
-          # l'action a alors ANNULÉ le déploiement en cours, et cet état « annulé »
-          # colle au SHA — tout redéploiement du même commit meurt ensuite en 5 s.
-          # Un timeout court ne protège de rien ici (le job est déjà fini de
-          # construire) ; il transforme un backend lent en SHA condamné.
-          timeout: 1800000
+          script: |
+            const { owner, repo } = context.repo;
+            // L'artefact « github-pages » de CE run (même recherche que deploy-pages).
+            const { data: arts } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner, repo, run_id: context.runId });
+            const art = arts.artifacts.find(a => a.name === "github-pages");
+            if (!art) { core.setFailed("Artefact github-pages introuvable dans ce run."); return; }
+
+            const idToken = await core.getIDToken();
+            let dep;
+            try {
+              const res = await github.request("POST /repos/{owner}/{repo}/pages/deployments", {
+                owner, repo,
+                artifact_id: art.id,
+                pages_build_version: context.sha,
+                oidc_token: idToken,
+              });
+              dep = res.data;
+            } catch (e) {
+              // Cas connu : un fantôme « in progress » d'un commit précédent bloque la
+              // création. Le motif est rendu tel quel — la sortie est d'attendre son
+              // expiration puis de pousser un commit neuf, jamais de re-runner.
+              core.setFailed("Création du déploiement refusée : " + e.message);
+              return;
+            }
+            const depId = dep.id ?? context.sha;
+            core.info("Déploiement créé pour " + context.sha + " (ID " + depId + ")");
+
+            // On attend LONGTEMPS (55 min < timeout du job) et on n'annule JAMAIS :
+            // si le backend est lent, le déploiement aboutira côté serveur même après
+            // la fin du job. Annuler, c'est condamner le commit (incident du 06/08).
+            const debut = Date.now();
+            const MAX_MS = 55 * 60 * 1000;
+            const TERMINAUX_KO = [
+              "deployment_failed", "deployment_content_failed",
+              "deployment_cancelled", "deployment_lost",
+            ];
+            let erreursTransitoires = 0;
+            for (;;) {
+              await new Promise(r => setTimeout(r, 10_000));
+              let statut;
+              try {
+                const { data: st } = await github.request(
+                  "GET /repos/{owner}/{repo}/pages/deployments/{pages_deployment_id}",
+                  { owner, repo, pages_deployment_id: depId });
+                statut = st.status;
+              } catch (e) {
+                if (++erreursTransitoires > 10) { core.setFailed("Statut illisible 10 fois de suite : " + e.message); return; }
+                core.info("Lecture du statut en erreur (" + erreursTransitoires + "/10) : " + e.message);
+                continue;
+              }
+              core.info("Statut : " + statut);
+              if (statut === "succeed") { core.info("Déployé ✅"); return; }
+              if (TERMINAUX_KO.includes(statut)) {
+                core.setFailed("Le backend a terminé le déploiement en échec : " + statut);
+                return;
+              }
+              if (Date.now() - debut > MAX_MS) {
+                core.setFailed(
+                  "Toujours pas propagé après 55 min. ON N'ANNULE PAS : le déploiement " +
+                  "reste vivant côté serveur et peut encore aboutir. Ne pas re-runner ce " +
+                  "run ; vérifier le site avant toute nouvelle tentative.");
+                return;
+              }
+            }
