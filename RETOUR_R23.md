@@ -233,12 +233,34 @@ test ». Et une option « ajouter automatiquement des retests dans le plan ».
 
 > *« J'aimerai que la connexion à Strava soit plus accessible dans l'app, c'est un outil important »*
 
-### R23.17 · Séances cliquables dans le détail (onglet Plan) · **à VÉRIFIER d'abord**
+### R23.17 · Séances cliquables · 🔍 **MESURÉ (06/08/2026) — le diagnostic change**
 
 > *« J'aimerai que l'on puisse voir le détail des séances en cliquant dessus »*
 
 U16 a livré exactement ça (séances repliables partout, `<details>`). Soit c'est une régression, soit
 l'affordance ne se voit pas sur la vue concernée. **À mesurer avant d'écrire une ligne.**
+
+**Mesuré, sur un semi à 5 séances :**
+
+| onglet | blocs `<details>` | ce qu'ils portent |
+|---|---|---|
+| 🗓 Plan | **19** | cartes (chrono visé, prédiction, intensités, phases) **et** les séances de la grille |
+| 📅 Semaine | **9** | « Seuil progressif », « Endurance soutenue », « Footing récup »… — les séances |
+| 🎯 Aujourd'hui | **0** | rien n'est repliable |
+
+Donc **ce n'est pas une régression** : les séances SONT cliquables là où il y a une grille. Le trou
+réel est 🎯 Aujourd'hui — la séance du jour y est affichée en héros, dépliée, et **n'a aucun
+`<details>`** : il n'y a rien à ouvrir, donc rien qui invite à le faire. C'est cohérent avec le
+reste du lot (l'onglet est désormais « ce que je fais maintenant »), mais le détail complet d'une
+séance ne s'y atteint pas.
+
+*Note d'instrument, gardée écrite* : ma première sonde filtrait les `<summary>` sur `/min|km|@/`
+et comptait **0 séance cliquable partout** — y compris dans 📅 Semaine où elles le sont
+manifestement. Les titres de séance ne contiennent ni minutes ni kilomètres (« Seuil
+progressif »), le filtre ne mesurait donc rien. Sans l'affichage des `summary` bruts, j'aurais
+conclu à une régression générale et corrigé un défaut qui n'existe pas.
+
+**Reste à faire** : rendre la séance du jour dépliable dans 🎯 Aujourd'hui.
 
 ---
 
