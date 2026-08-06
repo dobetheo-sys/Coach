@@ -4316,6 +4316,59 @@ n'apparaît nulle part ». Mon hypothèse de modèle (« 85 kg tout compris ») 
 qu'aucun levier ne fuite — neuvième occurrence d'un critère qui nomme une grandeur et en mesure
 une voisine. Il porte désormais sur le VOCABULAIRE du levier, pas sur l'unité.
 
+## U19 — « Continuer » désactivé disait non, sans dire pourquoi
+
+Retour du fondateur (06/08/2026) : *« questionnaire pour avancer »*.
+
+### La mesure, sur les six écrans du triathlon
+
+| | à l'arrivée sur l'écran | questions à l'écran | ce que la page dit |
+|---|---|---|---|
+| écran 1 | **Continuer désactivé** | 3 | rien |
+| écran 2 | **désactivé** | 3 | rien |
+| écran 3 | **désactivé** | 3 | rien |
+| écran 4 | **désactivé** | **6** | rien |
+| écran 5 | actif | 4 | — |
+| écran 6 | **désactivé** | 4 | rien |
+
+`refreshNav()` fait `b.disabled = !st.valid(S.answers)` : opacité 0,4 et `cursor: not-allowed`,
+c'est-à-dire **rien au doigt**. Cinq écrans sur six s'ouvrent sur un bouton mort, et sur celui qui
+porte six questions on ne sait même pas laquelle bloque.
+
+### Ce qui est corrigé, et ce qui ne l'est pas
+
+Le blocage lui-même **reste** : ce sont des réponses dont le moteur a besoin, et une garde E2E de
+swimrun dit déjà « impossible de continuer sur un format long sans les bases ». Ce qui n'était pas
+défendable, c'est le silence — le manifeste range « informer » avant tout, et un bouton mort et
+muet ne fait ni l'un ni l'autre.
+
+### Ce qui manque est DÉRIVÉ, pas déclaré
+
+Aucune liste de clés obligatoires n'est écrite dans l'UI : deux listes à deux endroits divergent
+toujours (R11.1), et « obligatoire » est **déjà** encodé dans le `valid(a)` de l'étape. On SONDE
+donc cette fonction, qui est pure — on remplit les réponses absentes avec une valeur plausible,
+puis on retire les clés une à une : une clé dont le retrait rend l'étape invalide est requise.
+C'est ce qui fait que « Poids (kg, optionnel) » et « Date (si connue) » ne sont **jamais**
+réclamées, sans qu'aucun code n'ait à savoir qu'elles sont facultatives.
+
+Si tout remplir ne suffit pas — cas d'une réponse déjà donnée mais hors bornes — on ne peut pas
+isoler : on nomme alors tout ce qui est vide, plutôt que de se taire.
+
+### Le message arrive au moment où la question se pose
+
+Sur un écran vierge, tout manque par construction : le dire serait réclamer avant même qu'on ait
+commencé, et ce produit ne reproche rien (U1). Le message n'apparaît qu'une fois l'écran **entamé**
+— une réponse donnée, et ça bloque encore. C'est exactement l'instant où l'on se demande pourquoi
+ça ne passe pas. `aria-live="polite"`, sans quoi un lecteur d'écran ne l'annoncerait jamais (rien
+ne prend le focus).
+
+Rendu mesuré : « Il manque encore « Quel objectif ? » » · « Il manque encore — « Volume horaire
+max (pic) ? », « Volume RÉEL des 3-6 derniers mois ? » ».
+
+Garde `U19` dans `smoke-questionnaires` (6 critères), **vérifiée rouge sur trois cassures** :
+message retiré (2 rouges), sonde du `valid()` court-circuitée — donc l'optionnel réclamé (1
+rouge), message affiché sur écran vierge (1 rouge).
+
 ## O-21 (3e correction) — la borne de la récup se payait en FRÉQUENCE
 
 La 2ᵉ correction (ci-dessous) laissait un résidu qu'elle qualifiait de **« bruit de convergence

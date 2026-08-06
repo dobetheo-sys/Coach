@@ -1113,6 +1113,29 @@ le plancher d'affûtage de Bosquet. Au passage, Riegel n'a plus qu'une écriture
 de `feasibility` délègue au prédicteur.
 **27 gates verts, E2E 18/18, golden 900 recapturé (121 profils, tous en course), registre 25/25.**
 
+**U19 livré — « Continuer » désactivé disait non, sans dire pourquoi** (retour du fondateur,
+06/08/2026 : *« questionnaire pour avancer »* — voir ARCHITECTURE.md « U19 ») : mesuré en
+traversant les six écrans du triathlon, on **ARRIVE sur cinq d'entre eux avec « Continuer → »
+désactivé** (opacité 0,4, `cursor: not-allowed` — c'est-à-dire rien au doigt), et **rien à l'écran
+ne dit ce qui manque** ; l'un d'eux porte **six questions**, donc on ne sait même pas laquelle
+bloque. Le blocage lui-même RESTE — ce sont des réponses dont le moteur a besoin, et une garde E2E
+de swimrun dit déjà « impossible de continuer sur un format long sans les bases ». Ce qui n'était
+pas défendable, c'est le silence : le manifeste range « informer » avant tout, et un bouton mort et
+muet ne fait ni l'un ni l'autre. **Ce qui manque est DÉRIVÉ, pas déclaré** : aucune liste de clés
+obligatoires n'est écrite dans l'UI (deux listes à deux endroits divergent toujours, R11.1) —
+« obligatoire » est déjà encodé dans le `valid(a)` de l'étape, qui est une fonction PURE, donc on
+la sonde : on remplit les réponses absentes avec une valeur plausible, puis on retire les clés une
+à une ; une clé dont le retrait rend l'étape invalide est requise. C'est ce qui fait que « Poids
+(kg, optionnel) » et « Date (si connue) » ne sont **jamais** réclamées, sans qu'aucun code n'ait à
+savoir qu'elles sont facultatives. **Et le message arrive au moment où la question se pose** : sur
+un écran vierge tout manque par construction, le dire serait réclamer avant qu'on ait commencé (ce
+produit ne reproche rien — U1) ; il n'apparaît qu'une fois l'écran ENTAMÉ — une réponse donnée, et
+ça bloque encore. `aria-live="polite"`, sans quoi rien ne l'annoncerait (aucun élément ne prend le
+focus). Garde `U19` dans `smoke-questionnaires` (6 critères), **vérifiée rouge sur trois
+cassures** — message retiré (2 rouges), sonde du `valid()` court-circuitée donc l'optionnel
+réclamé (1), message affiché sur écran vierge (1).
+**24 gates verts, E2E 18/18, golden 949 inchangé** — le questionnaire ne touche aucune séance.
+
 **O-21 (3e correction) — « du bruit de convergence » était un diagnostic paresseux** (voir
 ARCHITECTURE.md « O-21 (3e correction) ») : la 2ᵉ correction laissait un résidu qu'elle
 qualifiait de **bruit entre passes**, à traiter par « un chantier à part entière ». Instrumenté
