@@ -13,7 +13,7 @@ import { loadChartSVG, historyCardHTML, readinessCardHTML } from "./plan-view.js
 import { momentHTML, painBannerHTML, bindPainBanner, sickToggleHTML, bindSickToggle, heroSessionHTML, feedbackModal, showCongrats } from "./session-life.js";
 import { readinessDoneToday, applyReadiness } from "./readiness.js";
 import { dailyContentHTML } from "./daily-content.js";
-import { notifySetupHTML, bindNotifySetup, scheduleDailyNotification, weeklyReviewHTML, missedSessionsCheck } from "../notifications.js";
+import { scheduleDailyNotification, weeklyReviewHTML, missedSessionsCheck } from "../notifications.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan } from "./tabs.js";
 import { noteRaceResult } from "../projection-log.js"; // A-5
@@ -181,7 +181,11 @@ export function renderTabToday(plan) {
   // et les semaines ; ces cartes suivent le check-in dont elles dépendent.
   html += dailyContentHTML(plan, today);       // R4.9 — anecdote / physio / stat perso / micro-défi
   html += weeklyReviewHTML(plan);              // R4.10 — bilan hebdo (dimanche)
-  html += notifySetupHTML();                   // R4.10 — réglage de l'heure du rappel (une fois)
+  // R24.7 — le réglage du rappel a quitté Aujourd'hui (retour fondateur, 06/08 : « je veux que
+  // l'onglet rappel de séance bascule dans profil »). C'est un RÉGLAGE de l'app, pas un fait du
+  // jour — et le Profil porte déjà sa carte « 🔔 Rappel quotidien » (R23.11). L'y laisser aussi
+  // ici, c'était deux chemins vers le même geste dans deux onglets (la forme que R23.12b a
+  // retirée). La carte de premier réglage (notifySetupHTML) est supprimée avec son appelant.
   html += '<div class="card">' + sickToggleHTML(today);
   html += readinessLogHTML();
   html += '<details class="load-card"><summary class="load-title">\u{1F321} Modifier ma forme du jour</summary>' + readinessCardHTML({ btnLabel: "Mettre à jour" }) + "</details>";
@@ -189,7 +193,6 @@ export function renderTabToday(plan) {
   html += '<div style="text-align:center;margin:4px 0 10px"><button class="btn" id="tdRedoCheckin" type="button" style="font-size:var(--fs-sm);padding:8px 14px;min-height:44px">↻ Refaire mon ' + pointLabelInline() + '</button></div>';
   $("screen").innerHTML = html;
   bindSickToggle(plan, today);
-  bindNotifySetup(plan, () => renderTabToday(plan));
   scheduleDailyNotification(plan);
   {
     const rb = $("rdApply");

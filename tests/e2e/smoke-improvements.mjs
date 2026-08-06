@@ -414,6 +414,9 @@ const meas = await page.evaluate(async () => {
 ok(meas.shown, "avec des séances importées, la carte « Ce que tu as réellement fait » apparaît");
 ok(meas.arb, "l'arbitrage mesuré vs déclaré est annoncé AVANT d'être appliqué");
 ok(meas.hasBtn && !meas.applied, "rien n'est appliqué sans le geste de l'athlète (aucun écrasement silencieux)");
+// R24.2 — la carte mesurée vit dans le journal, qui est désormais TOUJOURS replié (le CTA
+// Strava qui le maintenait ouvert est parti en premier écran) : on l'ouvre, comme l'athlète.
+await page.evaluate(() => { const b = document.getElementById("pfMeasApply"); for (let p = b; p; p = p.parentElement) if (p.tagName === "DETAILS") p.open = true; });
 await page.click("#pfMeasApply"); await page.waitForTimeout(500);
 const measApplied = await page.evaluate(async () => {
   const { S } = await import("./js/state.js");

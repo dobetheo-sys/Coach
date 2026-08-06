@@ -11,6 +11,7 @@ import { renderPlan } from "./plan-view.js";
 import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
 import { aide } from "./help.js";
 import { stravaConnect, stravaAccessToken, stravaDisconnect, stravaRelayUrl } from "../strava.js";
+import { requestNotifyPermission } from "../notifications.js";
 import { AVATAR_THEMES, avatarDataFor, avatarSVG } from "./avatar.js";
 import { shareStory } from "../export.js";
 import { evalRules } from "./steps.js";
@@ -128,10 +129,29 @@ const DISC_LABEL = { rn: "🏃 Course", bk: "🚴 Vélo", sw: "🏊 Natation", b
  */
 function repliable(h, ouvert) {
   if (!h) return h;
-  return h
-    .replace('<div class="load-card">', '<details class="load-card"' + (ouvert ? " open" : "") + ">")
-    .replace(/<div class="load-title">([\s\S]*?)<\/div>/, '<summary class="load-title" style="cursor:pointer">$1</summary>')
-    .replace(/<\/div>\s*$/, "</details>");
+  h = h.replace('<div class="load-card">', '<details class="load-card"' + (ouvert ? " open" : "") + ">");
+  // R24.1 — LA CAUSE RÉELLE DE « record personnel sort du cadre » (retour fondateur, 06/08).
+  // L'ancienne regex NON-GOURMANDE fermait le <summary> au PREMIER </div> rencontré — or un
+  // titre qui porte une infobulle aide() contient les <div> de l'infobulle : le summary se
+  // fermait au milieu, le parseur HTML recollait les morceaux, et TOUT le corps de la carte
+  // (les lignes de records) était expulsé HORS du <details> — littéralement hors du cadre.
+  // On cherche donc le </div> qui ferme VRAIMENT le titre, en comptant la profondeur.
+  const OUV = '<div class="load-title">';
+  const deb = h.indexOf(OUV);
+  if (deb >= 0) {
+    const re = /<div\b|<\/div>/g;
+    re.lastIndex = deb + OUV.length;
+    let depth = 1, m, fin = -1;
+    while ((m = re.exec(h))) {
+      depth += m[0] === "</div>" ? -1 : 1;
+      if (depth === 0) { fin = m.index; break; }
+    }
+    if (fin > 0) {
+      h = h.slice(0, deb) + '<summary class="load-title" style="cursor:pointer">'
+        + h.slice(deb + OUV.length, fin) + "</summary>" + h.slice(fin + "</div>".length);
+    }
+  }
+  return h.replace(/<\/div>\s*$/, "</details>");
 }
 
 function recordsHTML(plan, a) {
@@ -167,7 +187,11 @@ function recordsHTML(plan, a) {
   Object.keys(longest).forEach((d) => rows.push({ lab: DISC_LABEL[d] + " — plus longue séance", val: Math.floor(longest[d].minutes / 60) + "h" + String(longest[d].minutes % 60).padStart(2, "0"), date: longest[d].date }));
   let h = '<div class="load-card"><div class="load-title">🏅 Records personnels' + aide('Un record se gagne, il ne se perd pas — on garde la meilleure valeur jamais atteinte, avec sa date.', { label: 'les records personnels' }) + '</div>';
   if (!rows.length) h += '<div class="load-sub" style="margin-top:6px">Encore vides — ils se rempliront avec tes tests (FTP/allure/CSS), tes imports FIT/Strava et tes séances cochées ✓.</div>';
-  else rows.forEach((r) => { h += '<div style="display:flex;justify-content:space-between;gap:8px;margin:6px 0;font-size:var(--fs-md);align-items:baseline"><span>' + r.lab + '</span><span style="text-align:right"><b>' + esc(r.val) + '</b>' + (r.date ? ' <span style="color:var(--muted);font-size:var(--fs-xs)">' + esc(r.date) + "</span>" : "") + "</span></div>"; });
+  // R24.1 — « record personnel sort du cadre » (retour fondateur, 06/08) : la ligne était un
+  // flex SANS retour à la ligne — un libellé long (« 🏃 Course à pied — plus longue séance »)
+  // plus une valeur datée dépassaient du cadre sur mobile. `flex-wrap` + `min-width:0` : la
+  // valeur passe à la ligne sous le libellé au lieu de percer la carte.
+  else rows.forEach((r) => { h += '<div style="display:flex;justify-content:space-between;gap:4px 8px;margin:6px 0;font-size:var(--fs-md);align-items:baseline;flex-wrap:wrap"><span style="min-width:0;overflow-wrap:anywhere">' + r.lab + '</span><span style="text-align:right;min-width:0;margin-left:auto"><b>' + esc(r.val) + '</b>' + (r.date ? ' <span style="color:var(--muted);font-size:var(--fs-xs)">' + esc(r.date) + "</span>" : "") + "</span></div>"; });
   h += '</div>';
   return h;
 }
@@ -431,6 +455,77 @@ function bindTrailProfile() {
   };
 }
 
+// R24.3 — LA CARTE DE LA COURSE (retour fondateur, 06/08 : « je voulais séparer les données
+// athlète — FTP, CSS, seuil — et les paramètres de course, à mettre sur le profil dédié à la
+// course »). Ces champs vivaient au milieu des références physiologiques : le profil du
+// parcours, l'eau de la course et les profils par discipline décrivent l'ÉPREUVE, pas le
+// corps. Mêmes ids qu'avant (pfCourseProfile, pfWaterTemp, pfLeg*) : le gestionnaire
+// d'enregistrement les lit par id, il ne sait pas dans quelle carte ils vivent.
+// Le trail garde SA carte (⛰ trailProfileHTML) — distance, D+, technicité y sont déjà.
+// R24.2 — le bloc Strava, extrait du journal pour vivre en premier écran. Contenu inchangé
+// (mêmes ids, mêmes gestionnaires) : seule sa PLACE change. Connecté : ligne compacte +
+// import. Pas connecté : le CTA à un bouton de R6, enfin visible sans dérouler quoi que ce soit.
+function stravaCardHTML(a) {
+  const sAuth = a.stravaAuth;
+  let h = '<div class="load-card"><div class="load-title">🔗 Strava</div>';
+  if (sAuth && sAuth.access_token) {
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">'
+      + '<span style="font-size:var(--fs-sm)">✓ Connecté' + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + "</span>"
+      + '<button class="btn" id="pfStravaBtn" type="button">Importer mes activités</button>'
+      + '<button class="btn" id="pfStravaOut" type="button">Se déconnecter</button></div>';
+  } else {
+    // R6 — UX guidée : UN bouton. L'URL du relais vit en config (déployée pour tous)
+    // ou dans les réglages avancés — l'utilisateur normal n'a rien à coller.
+    h += '<div style="margin-top:6px"><button class="btn primary" id="pfStravaConnect" type="button" style="width:100%;font-size:var(--fs-lg);padding:12px 16px">🔗 Se connecter avec Strava</button></div>'
+      + '<div class="load-sub" style="margin-top:4px">Un clic → autorisation sur Strava → retour ici. Lecture seule (jamais d’écriture), tes activités alimentent tes références (FTP/allure/CSS).</div>'
+      + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Réglages avancés (relais)</summary>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
+      + '<input type="text" id="pfStravaRelay" placeholder="URL du relais (voir server/README.md)" value="' + esc(a.stravaRelay || "") + '" style="flex:1;min-width:180px"></div>'
+      + '<div class="load-sub" style="margin-top:4px">Le relais garde le secret Strava hors de l’app — déploiement pas-à-pas dans server/README.md.</div></details>';
+  }
+  h += (S._stravaError ? '<div class="load-sub" style="margin-top:4px;color:#b3261e">Connexion Strava refusée (' + esc(S._stravaError) + ") — réessaie ou utilise le jeton manuel.</div>" : "")
+    + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Repli : jeton manuel (sans serveur)</summary>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
+    + '<input type="text" id="pfStravaTok" placeholder="token d’accès Strava" style="flex:1;min-width:180px">'
+    + (sAuth && sAuth.access_token ? "" : '<button class="btn" id="pfStravaBtnTok" type="button">Importer depuis Strava</button>')
+    + '</div><div class="load-sub" style="margin-top:4px">Réglages Strava → « Mon API », scope <b>activity:read</b> — rien n’est écrit sur Strava.</div></details>'
+    + '<div id="pfStravaMsg" class="load-sub" style="margin-top:4px"></div></div>';
+  return h;
+}
+
+function raceCardHTML(a) {
+  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:4px"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
+  let h = '<div class="load-card"><div class="load-title">🏁 Ta course' + aide('Ces réglages décrivent l’ÉPREUVE (relief, eau, milieu) — ils affinent la prédiction et le pacing du jour J. Tes références physiologiques, elles, vivent dans « ⚙ Références d’entraînement ».', { label: 'les paramètres de la course' }) + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">';
+  // R6 — profil du parcours visé : affine la PRÉDICTION (temps course à pied) sans toucher au plan.
+  const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
+  h += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Profil du parcours</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
+    + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
+  // R18.2 — DISCIPLINE PAR DISCIPLINE pour les épreuves multisport : un triathlon n'est
+  // jamais homogène. « Comme au-dessus » retombe sur la réponse globale, puis sur le
+  // terrain : un seul chemin (`legProfileOf`), trois niveaux de précision.
+  if (S.sport === "tri" || S.sport === "duathlon" || S.sport === "swimrun") {
+    const legSel = (id, cle, lab, opts) => {
+      const cur = String(a[cle] || "");
+      return '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:4px"><span style="width:150px">' + lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
+        + opts.map(([v, l]) => '<option value="' + v + '"' + (cur === v ? " selected" : "") + ">" + l + "</option>").join("")
+        + "</select></label>";
+    };
+    const RELIEF_OPTS = [["", "Comme au-dessus"], ["plat", "Plat"], ["vallonne", "Vallonné"], ["montagne", "Montagneux"]];
+    // R19.2 — la température de l'eau décide de la combinaison.
+    if (S.sport === "tri") h += row("pfWaterTemp", "🌡 Eau de la course (°C)", a.water_temp_c, "combinaison : interdite au-dessus de 24,5 °C");
+    if (S.sport === "tri" || S.sport === "swimrun")
+      h += legSel("pfLegSwim", "leg_swim_env", "🏊 Milieu de nage", [["", "Comme au-dessus"], ["bassin", "Bassin"], ["lac", "Lac / eau libre calme"], ["mer_calme", "Mer calme"], ["mer_agitee", "Mer agitée"], ["eau_vive", "Eau vive (courant)"]]);
+    if (S.sport === "tri" || S.sport === "duathlon")
+      h += legSel("pfLegBike", "leg_bike_prof", "🚴 Parcours vélo", RELIEF_OPTS);
+    h += legSel("pfLegRun", "leg_run_prof", "🏃 Parcours à pied", RELIEF_OPTS);
+    h += '<div class="load-sub" style="margin:2px 0 0;color:var(--muted)">Ton épreuve n’est pas d’un seul bloc : on peut nager en eau vive, rouler en montagne et courir à plat. « Comme au-dessus » est un choix parfaitement valable.</div>';
+  }
+  h += '</div><div class="nav" style="margin-top:10px"><button class="btn" id="pfSaveRace" type="button">Enregistrer</button></div>'
+    + '<div id="pfMsgRace" class="load-sub" style="margin-top:6px"></div></div>';
+  return h;
+}
+
 // R10 — courses intermédiaires RÉELLES (dates + priorité), pour TOUS les profils :
 // branchées sur la mécanique moteur existante — la semaine de la course est allégée
 // (mini-affûtage si B), la suivante est en récup, et le JOUR J porte une séance 🏁
@@ -515,9 +610,18 @@ export function renderTabProfile(plan) {
   // R5 — l'identité d'abord : avatar, niveau, XP, teaser du niveau suivant
   html += avatarSectionHTML(plan, tIso);
   html += '<div class="why">Modifie une valeur : le plan est régénéré et le changement est consigné dans ton journal d’évolution.</div>';
+  // R24.2 — STRAVA EN PREMIER ÉCRAN (retour fondateur, 06/08 : « onglet de connexion Strava en
+  // fin de page, je le veux dans le premier écran »). Le bloc de connexion vivait replié au
+  // fond du Profil, dans le journal — un CTA qu'on ne voit qu'en cherchant. Il monte ici, en
+  // carte propre ; le journal (en bas) garde l'historique et les imports FIT. Un seul bloc
+  // Strava dans l'onglet : le déplacer, pas le dupliquer (R23.12b — deux chemins vers le même
+  // geste dans deux endroits, c'est ce qu'on vient de retirer).
+  html += stravaCardHTML(a);
   html += plansSelectorHTML();
   html += planDeadlineHTML(plan);
   if (sp === "trail") html += trailProfileHTML(a);
+  // R24.3 — les paramètres de l'épreuve, dans la carte dédiée à la course.
+  html += raceCardHTML(a);
   html += raceInterHTML(a);
   html += '<div class="bp-cat">' + summaryRows(a) + "</div>";
 
@@ -546,32 +650,11 @@ export function renderTabProfile(plan) {
   // Taille : réintroduite AVEC un effet réel (métabolisme de base Mifflin-St Jeor, carte
   // « Dépense estimée » de l'onglet Semaine) — règle d'influence des paramètres respectée.
   ref += row("pfHeight", "Taille (cm, optionnel)", a.height, "affine la dépense de base");
-  // R6 — profil du parcours visé : affine la PRÉDICTION (temps course à pied) sans
-  // toucher au plan. Vallonné/montagneux → fourchette décalée et élargie, justifiée.
-  const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
-  ref += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Profil du parcours visé</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
-    + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
-  // R18.2 — et DISCIPLINE PAR DISCIPLINE pour les épreuves multisport. La ligne ci-dessus
-  // décrit le parcours comme s'il était homogène ; un triathlon ne l'est jamais. Chaque leg
-  // laissé sur « comme au-dessus » retombe sur cette réponse globale, puis sur le terrain :
-  // un seul chemin (`legProfileOf`), trois niveaux de précision.
-  if (S.sport === "tri" || S.sport === "duathlon" || S.sport === "swimrun") {
-    const legSel = (id, cle, lab, opts) => {
-      const cur = String(a[cle] || "");
-      return '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:4px"><span style="width:150px">' + lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
-        + opts.map(([v, l]) => '<option value="' + v + '"' + (cur === v ? " selected" : "") + ">" + l + "</option>").join("")
-        + "</select></label>";
-    };
-    const RELIEF_OPTS = [["", "Comme au-dessus"], ["plat", "Plat"], ["vallonne", "Vallonné"], ["montagne", "Montagneux"]];
-    // R19.2 — la température de l'eau vit ici aussi : elle décide de la combinaison.
-    if (S.sport === "tri") ref += row("pfWaterTemp", "🌡 Eau de la course (°C)", a.water_temp_c, "combinaison : interdite au-dessus de 24,5 °C");
-    if (S.sport === "tri" || S.sport === "swimrun")
-      ref += legSel("pfLegSwim", "leg_swim_env", "🏊 Milieu de nage", [["", "Comme au-dessus"], ["bassin", "Bassin"], ["lac", "Lac / eau libre calme"], ["mer_calme", "Mer calme"], ["mer_agitee", "Mer agitée"], ["eau_vive", "Eau vive (courant)"]]);
-    if (S.sport === "tri" || S.sport === "duathlon")
-      ref += legSel("pfLegBike", "leg_bike_prof", "🚴 Parcours vélo", RELIEF_OPTS);
-    ref += legSel("pfLegRun", "leg_run_prof", "🏃 Parcours à pied", RELIEF_OPTS);
-    ref += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Ton épreuve n’est pas d’un seul bloc : on peut nager en eau vive, rouler en montagne et courir à plat. Chaque segment corrige une chose différente — et « Comme au-dessus » est un choix parfaitement valable.</div>';
-  }
+  // R24.3 — les paramètres DE LA COURSE ne vivent plus ici (retour fondateur, 06/08 :
+  // « séparer les données athlète des paramètres de course »). Le profil du parcours, la
+  // température de l'eau et les profils par discipline sont partis dans la carte « 🏁 Ta
+  // course » (raceCardHTML), rendue à côté de l'échéance et des courses intermédiaires.
+  // Ici ne restent que les références DU CORPS : FTP, allures, volumes, poids, structure.
   // R14.1 §1-c — LA QUESTION QUI REMPLACE L'ANCIENNETÉ dans le calcul de la marge de
   // progression. Elle est ici (Profil) et pas dans le questionnaire d'entrée, pour ne pas
   // alourdir le tunnel. Ce qu'elle mesure : le STIMULUS DE LA STRUCTURE. Quelqu'un qui court
@@ -625,10 +708,9 @@ export function renderTabProfile(plan) {
 
   // — Journal d'évolution (S.answers.tests, trié du plus récent au plus ancien)
   const tests = Array.isArray(a.tests) ? [...a.tests].sort((x, y) => String(y.date || "").localeCompare(String(x.date || ""))) : [];
-  // Ouvert tant que Strava n'est pas connecté : ce bloc porte alors un appel à l'action
-  // (importer ses activités), et un CTA replié n'est pas un CTA.
-  const _connecte = !!(a.stravaAuth && a.stravaAuth.access_token);
-  html += '<details class="load-card"' + (_connecte ? "" : " open") + '><summary class="load-title" style="cursor:pointer">📒 Journal d’évolution, imports et Strava</summary>';
+  // R24.2 — le bloc Strava est parti en premier écran (stravaCardHTML) : le journal n'a plus
+  // de CTA à porter, il redevient une archive repliée.
+  html += '<details class="load-card"><summary class="load-title" style="cursor:pointer">📒 Journal d’évolution et imports</summary>';
   if (tests.length) {
     tests.forEach((t) => {
       html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:var(--fs-sm);align-items:baseline"><span style="width:78px;color:#635b4a">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:var(--muted)">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
@@ -646,32 +728,8 @@ export function renderTabProfile(plan) {
       + '<span class="load-sub" style="margin:0">export de ta montre — lu ici, jamais envoyé</span></div>'
       + '<div id="pfFitMsg" class="load-sub" style="margin-top:6px"></div>';
   }
-  // Import Strava (lecture seule) — connexion OAuth via le relais serveur (server/README.md)
-  // en chemin principal, jeton manuel conservé en repli. Même journal, même pont vers le plan.
-  const sAuth = a.stravaAuth;
-  html += '<div style="margin-top:10px"><div style="font-weight:700;font-size:var(--fs-sm)">🔗 Strava</div>';
-  if (sAuth && sAuth.access_token) {
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
-      + '<span style="font-size:var(--fs-sm)">✓ Connecté' + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + "</span>"
-      + '<button class="btn" id="pfStravaBtn" type="button">Importer mes activités</button>'
-      + '<button class="btn" id="pfStravaOut" type="button">Se déconnecter</button></div>';
-  } else {
-    // R6 — UX guidée : UN bouton. L'URL du relais vit en config (déployée pour tous)
-    // ou dans les réglages avancés — l'utilisateur normal n'a rien à coller.
-    html += '<div style="margin-top:4px"><button class="btn primary" id="pfStravaConnect" type="button" style="width:100%;font-size:var(--fs-lg);padding:12px 16px">🔗 Se connecter avec Strava</button></div>'
-      + '<div class="load-sub" style="margin-top:4px">Un clic → autorisation sur Strava → retour ici. Lecture seule (jamais d’écriture), tes activités alimentent tes références (FTP/allure/CSS).</div>'
-      + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Réglages avancés (relais)</summary>'
-      + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
-      + '<input type="text" id="pfStravaRelay" placeholder="URL du relais (voir server/README.md)" value="' + esc(a.stravaRelay || "") + '" style="flex:1;min-width:180px"></div>'
-      + '<div class="load-sub" style="margin-top:4px">Le relais garde le secret Strava hors de l’app — déploiement pas-à-pas dans server/README.md.</div></details>';
-  }
-  html += (S._stravaError ? '<div class="load-sub" style="margin-top:4px;color:#b3261e">Connexion Strava refusée (' + esc(S._stravaError) + ") — réessaie ou utilise le jeton manuel.</div>" : "")
-    + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Repli : jeton manuel (sans serveur)</summary>'
-    + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
-    + '<input type="text" id="pfStravaTok" placeholder="token d’accès Strava" style="flex:1;min-width:180px">'
-    + (sAuth && sAuth.access_token ? "" : '<button class="btn" id="pfStravaBtnTok" type="button">Importer depuis Strava</button>')
-    + '</div><div class="load-sub" style="margin-top:4px">Réglages Strava → « Mon API », scope <b>activity:read</b> — rien n’est écrit sur Strava.</div></details>'
-    + '<div id="pfStravaMsg" class="load-sub" style="margin-top:4px"></div></div>';
+  // R24.2 — l'import Strava (connexion, jeton, réglages relais) vit désormais dans la carte
+  // « 🔗 Strava » du premier écran (stravaCardHTML). Ici : journal, mesure, FIT.
   html += "</details>";
 
   // R23.10 — LES CONSEILS PERSONNALISÉS SONT PARTIS DANS 🗓 PLAN.
@@ -854,7 +912,10 @@ export function renderTabProfile(plan) {
   if (stravaOut) stravaOut.onclick = () => { stravaDisconnect(); renderTabProfile(plan); };
   const stravaTokBtn = $("pfStravaBtnTok");
   if (stravaTokBtn) stravaTokBtn.onclick = () => runStravaImport(stravaTokBtn);
-  $("pfSave").onclick = () => {
+  // R24.3 — le même enregistrement sert les DEUX cartes (⚙ références et 🏁 course) : le
+  // gestionnaire lit chaque champ par id, où qu'il vive, et le message s'affiche dans la
+  // carte d'où le geste est parti. Deux boutons, UNE règle (R11.1).
+  const doSave = () => {
     const today = todayISO();
     if (!Array.isArray(S.answers.tests)) S.answers.tests = [];
     // R23.1 — quatrième et dernière écriture du journal de tests. Elle passe par la même borne
@@ -903,7 +964,7 @@ export function renderTabProfile(plan) {
     const nt = g("pfNotif");
     if (nt !== null && nt !== "" && nt !== String(a.notifyTime || "")) {
       S.answers.notifyTime = nt; changed++; // rappel quotidien : réglage pur, pas de régénération
-      if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+      requestNotifyPermission(); // point unique de la demande de permission (notifications.js)
     }
     const wgt = g("pfWeight");
     if (wgt !== null && wgt !== "" && parseFloat(wgt) > 0 && wgt !== String(a.weight || "")) {
@@ -942,11 +1003,16 @@ export function renderTabProfile(plan) {
     const refus = horsBornes.length
       ? " ⚠ Hors bornes physiologiques, donc non enregistré : " + horsBornes.map((t) => LAB_BORNE[t] || t).join(", ") + " — vérifie l'unité et la saisie."
       : "";
-    if (!changed) { const m = $("pfMsg"); if (m) m.textContent = (horsBornes.length ? "Rien d'enregistré." + refus : "Aucun changement détecté."); return; }
+    // Le verdict s'écrit dans les DEUX cartes : celle d'où le geste est parti est forcément l'une des deux.
+    const dire = (txt) => { for (const id of ["pfMsg", "pfMsgRace"]) { const m = $(id); if (m) m.textContent = txt; } };
+    if (!changed) { dire(horsBornes.length ? "Rien d'enregistré." + refus : "Aucun changement détecté."); return; }
     if (planChanged) invalidatePlan(); // le plan sera régénéré UNE fois, ici — pas au changement d'onglet
     ebSave();
     renderTabProfile(ensurePlan());
-    const m = $("pfMsg");
-    if (m) m.textContent = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + (planChanged ? " — plan régénéré, journal mis à jour." : " — journal mis à jour (poids/taille n’affectent que ravitaillement et dépense estimée, pas le plan).") + refus;
+    const done = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + (planChanged ? " — plan régénéré, journal mis à jour." : " — journal mis à jour (poids/taille n’affectent que ravitaillement et dépense estimée, pas le plan).") + refus;
+    for (const id of ["pfMsg", "pfMsgRace"]) { const m = $(id); if (m) m.textContent = done; }
   };
+  $("pfSave").onclick = doSave;
+  const btnRace = $("pfSaveRace");
+  if (btnRace) btnRace.onclick = doSave;
 }

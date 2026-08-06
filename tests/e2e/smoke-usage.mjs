@@ -648,6 +648,77 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(prof.rappel && prof.champRappel, "R23.11 — le rappel quotidien a sa propre carte, hors des références repliées");
   ok(!prof.edit && !prof.reset, "R23.12b — « modifier mes réponses » et « changer de sport » ne sont plus au Profil");
 
+  // R24 (retour fondateur, 06/08 soir) — le Profil sépare l'ATHLÈTE de la COURSE, et Strava
+  // monte en premier écran. Les critères regardent l'ORDRE DOM et l'APPARTENANCE aux cartes,
+  // pas seulement la présence : « présent quelque part » est ce qui a laissé vivre le défaut.
+  const r24 = await page.evaluate(() => {
+    const screen = document.querySelector("#screen");
+    const cards = [...screen.querySelectorAll(".load-card")];
+    const cardOf = (el) => { for (let p = el; p; p = p.parentElement) if (p.classList && p.classList.contains("load-card")) return p; return null; };
+    const titre = (c) => (c.querySelector(".load-title") || {}).textContent || "";
+    // NOTE D'INSTRUMENT — matcher le DÉBUT du titre, pas son contenu : l'infobulle aide() vit
+    // DANS l'élément de titre, et celle de « 🏁 Ta course » cite « ⚙ Références d'entraînement »
+    // — une regex libre attrapait donc la carte course comme carte références (nRefs: 2).
+    const parTitre = (prefixe) => cards.find((c) => titre(c).trim().startsWith(prefixe));
+    const stravaCard = parTitre("🔗 Strava");
+    const refsCard = parTitre("⚙ Références");
+    const raceCard = parTitre("🏁 Ta course");
+    const cp = document.getElementById("pfCourseProfile");
+    const recCard = cards.find((c) => /🏅 Records personnels/.test(titre(c)));
+    let recOverflow = false;
+    if (recCard) { recCard.open = true; recOverflow = recCard.scrollWidth > recCard.clientWidth + 1; }
+    return {
+      stravaAvantRefs: !!(stravaCard && refsCard) && cards.indexOf(stravaCard) < cards.indexOf(refsCard),
+      connectUnique: document.querySelectorAll("#pfStravaConnect").length === 1,
+      raceCarte: !!raceCard, cpDansRace: !!(cp && cardOf(cp) === raceCard),
+      cpHorsRefs: !!(cp && refsCard && cardOf(cp) !== refsCard),
+      saveRace: !!document.getElementById("pfSaveRace"),
+      recOverflow,
+    };
+  });
+  ok(r24.stravaAvantRefs && r24.connectUnique,
+    "R24.2 — la carte 🔗 Strava vit AVANT les références (premier écran), et le bouton de connexion n'existe qu'une fois");
+  ok(r24.raceCarte && r24.cpDansRace && r24.cpHorsRefs && r24.saveRace,
+    "R24.3 — « 🏁 Ta course » existe, porte le profil du parcours (sorti des références) et son propre Enregistrer");
+  // R24.1 — LE CRITÈRE A BESOIN DE LA MATIÈRE DU SYMPTÔME. Vérifié : sans record dans l'état,
+  // la cassure (retour au flex sans retour à la ligne) restait VERTE — une carte vide ne
+  // déborde de rien. On injecte donc un record d'allure et une plus longue séance datée (le
+  // couple libellé long + valeur + date du défaut réel), on re-rend, puis on mesure.
+  // La cassure d'origine (regex non-gourmande de `repliable`) a été vérifiée ROUGE par ce
+  // critère AVANT le correctif : le <details> ne contenait que le titre, les lignes rendues
+  // hors du cadre — le symptôme exact du retour fondateur.
+  const injecte = await page.evaluate(() => {
+    const raw = JSON.parse(localStorage.getItem("eb_state_v2"));
+    const pl = (raw.plans && raw.plans.find((x) => x.id === raw.activePlanId)) || (raw.plans || [])[0];
+    if (!pl) return "aucun plan";
+    pl.answers = pl.answers || {};
+    pl.answers.tests = (pl.answers.tests || []).concat([{ type: "thrPace", value: 292, date: "2026-08-01", source: "import strava (activité 1234567890)" }]);
+    pl.answers.fitSessions = (pl.answers.fitSessions || []).concat([{ d: "rn", minutes: 222, date: "2026-08-02" }]);
+    localStorage.setItem("eb_state_v2", JSON.stringify(raw));
+    return true;
+  });
+  if (injecte !== true) throw new Error("R24.1 : impossible d'injecter les records de test");
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  await page.click('#ebTabbar .tabbtn[data-tab="profile"]').catch(() => {});
+  await page.waitForTimeout(700);
+  const rec = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll("#screen .load-card")];
+    const c = cards.find((x) => (((x.querySelector(".load-title") || {}).textContent) || "").trim().startsWith("🏅 Records"));
+    if (!c) return { present: false };
+    c.open = true;
+    return { present: true, overflow: c.scrollWidth > c.clientWidth + 1, lignes: c.textContent.includes("plus longue séance") };
+  });
+  ok(rec.present && rec.lignes && !rec.overflow,
+    "R24.1 — avec de VRAIS records (allure importée + plus longue séance), la carte ne déborde pas de son cadre");
+
+  // R24.7 — le réglage du rappel a quitté 🎯 Aujourd'hui : mesuré sur le MODULE SERVI (la
+  // carte ne s'affichait qu'avant tout réglage — un état que le parcours de test a déjà
+  // dépassé, donc le rendu ne discrimine pas ; leçon R23.12b).
+  const srcToday = await page.evaluate(async () => (await (await fetch("./js/ui/tab-today.js")).text()));
+  ok(!/notifySetupHTML\(\)/.test(srcToday),
+    "R24.7 — 🎯 Aujourd'hui n'appelle plus la carte « Rappel de séance » (le Profil est le seul foyer du réglage)");
+
   await page.click('#ebTabbar .tabbtn[data-tab="general"]').catch(() => {});
   await page.waitForTimeout(700);
   const surPlan = await page.evaluate(() => {
