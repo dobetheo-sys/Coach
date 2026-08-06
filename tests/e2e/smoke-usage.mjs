@@ -634,6 +634,30 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   const src = await page.evaluate(async () => (await (await fetch("./js/ui/tab-today.js")).text()));
   ok(!auj.direct && !/summary class="load-title">⏱ Suivre ma séance en direct/.test(src),
     "R23.12b — « suivre ma séance en direct » est supprimé (absent du module, pas seulement du rendu du jour)");
+
+  // R23.10 / R23.11 / R23.12b — le Profil se recentre sur QUI TU ES.
+  await page.click('#ebTabbar .tabbtn[data-tab="profile"]').catch(() => {});
+  await page.waitForTimeout(700);
+  const prof = await page.evaluate(() => {
+    const t = document.querySelector("#screen").textContent || "";
+    return { conseils: /Conseils personnalisés/.test(t), rappel: /🔔 Rappel quotidien/.test(t),
+      champRappel: !!document.getElementById("pfNotif"),
+      edit: !!document.getElementById("pfEdit"), reset: !!document.getElementById("pfReset") };
+  });
+  ok(!prof.conseils, "R23.10 — les conseils personnalisés ont quitté 📋 Profil");
+  ok(prof.rappel && prof.champRappel, "R23.11 — le rappel quotidien a sa propre carte, hors des références repliées");
+  ok(!prof.edit && !prof.reset, "R23.12b — « modifier mes réponses » et « changer de sport » ne sont plus au Profil");
+
+  await page.click('#ebTabbar .tabbtn[data-tab="general"]').catch(() => {});
+  await page.waitForTimeout(700);
+  const surPlan = await page.evaluate(() => {
+    const t = document.querySelector("#screen").textContent || "";
+    return { conseils: /Conseils personnalisés/.test(t),
+      edit: !!document.getElementById("backBp"), reset: !!document.getElementById("restartBtn") };
+  });
+  ok(surPlan.conseils, "R23.10 — …et ils sont bien ARRIVÉS dans 🗓 Plan (déplacés, pas supprimés)");
+  ok(surPlan.edit && surPlan.reset,
+    "R23.12b — modifier et changer de sport restent atteignables, à un seul endroit (🗓 Plan)");
   await ctx.close();
 }
 

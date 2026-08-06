@@ -167,9 +167,19 @@ qu'on lit AVANT son plan.
 3,8 à **5,2 écrans** et U15 est passée rouge. On n'a pas relâché la garde — on a tenu la demande
 (« version plus compacte, puis un déroulable ») : les deux cartes arrivent repliées, **4,3 écrans**.
 
-**Encore ouverts** : R23.10 (conseils personnalisés → Plan), R23.11 (rappel quotidien à part au
-Profil), R23.13 (séparer athlète / course), et « modifier mes réponses / changer de plan » à
-retirer du Profil.
+**R23.10 · R23.11 · R23.12b (reste) — livrés le 06/08/2026 aussi.** Les conseils personnalisés
+partent du Profil pour 🗓 Plan (repliés) : ce sont des conseils sur la PRÉPARATION, pas des données
+d'identité — le Profil raconte qui tu es, le Plan dit ce qu'on en fait. Le rappel quotidien prend
+sa propre carte : il vivait entre le CSS et le poids cible, et depuis U18b cette carte est
+REPLIÉE — il y serait devenu invisible. « Modifier mes réponses » et « changer de sport » quittent
+le Profil : 🗓 Plan les porte déjà, et deux chemins vers le même geste dans deux onglets, c'est un
+de trop.
+
+Débusqué en le faisant : retirer les deux boutons sans retirer leurs gestionnaires levait un
+`null` **à chaque rendu de l'onglet** — trois erreurs console par visite, attrapées par
+`smoke-r4` (« aucune erreur console »).
+
+**Encore ouvert** : R23.13 (séparer athlète / course, avec le dénivelé exact).
 
 ### (détail d'origine)
 

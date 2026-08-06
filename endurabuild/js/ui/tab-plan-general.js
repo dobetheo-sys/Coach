@@ -17,7 +17,7 @@
 // La prédiction de course N'EST PAS ici (brief onglets) — elle vit dans 🎯 Aujourd'hui.
 import { SPORTS } from "../config.js";
 import { $, S, ebSave, esc, fmtDay, todayISO } from "../state.js";
-import { curSteps, renderStep, reset } from "./steps.js";
+import { curSteps, renderStep, reset, evalRules, rulesGrouped} from "./steps.js";
 import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, predictionCardHTML, intensityCardHTML } from "./plan-view.js";
 import { exportICS, exportJSON, exportPNG } from "../export.js";
 
@@ -310,6 +310,14 @@ export function renderTabPlanGeneral(plan) {
   if (!S.showAllWeeks && plan.totalWeeks > 1)
     html += '<div class="wk-skip">⋯ ' + (plan.totalWeeks - 1) + " autre" + (plan.totalWeeks > 2 ? "s" : "")
       + " semaine" + (plan.totalWeeks > 2 ? "s" : "") + " — « Voir les " + plan.totalWeeks + " semaines » ci-dessous ⋯</div>";
+  // R23.10 — LES CONSEILS PERSONNALISÉS ARRIVENT ICI, venus du Profil : ce sont des conseils sur
+  // la PRÉPARATION, pas des données d'identité. Repliés, comme au Profil — on ne les impose pas.
+  {
+    const rules = evalRules(a, S.tier);
+    if (rules.length)
+      html += '<details class="load-card"><summary class="load-title" style="cursor:pointer">🧭 Conseils personnalisés ('
+        + rules.length + ")</summary><div style=\"margin-top:8px\">" + rulesGrouped(rules) + "</div></details>";
+  }
   html += whyPlanCardHTML(plan); // R23.6 — descendue ici, juste avant le détail dont elle est le résumé
   html += decisionsCardHTML(plan); // « Les décisions du moteur » — la transparence, en langage neutre
   html += '<div class="warn" style="background:var(--bg2)">Intensités calibrées sur tes données. Les exports fonctionnent depuis cet onglet, quel que soit l’onglet consulté ensuite.</div>'
