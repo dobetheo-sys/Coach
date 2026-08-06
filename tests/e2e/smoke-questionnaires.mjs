@@ -113,6 +113,52 @@ for (const sport of SPORTS) {
   await page.context().close();
 }
 
+// ── U19 — LE BOUTON DÉSACTIVÉ DIT CE QU'IL ATTEND ────────────────────────────────────────
+//
+// Retour du fondateur (06/08/2026) : « questionnaire pour avancer ». Mesuré avant correction :
+// on ARRIVE sur cinq écrans du tri sur six avec « Continuer → » désactivé, et rien à l'écran ne
+// dit ce qui manque — un écran portant jusqu'à SIX questions.
+//
+// La garde tient les TROIS moitiés, et la troisième est celle qu'on oublierait : le message ne
+// doit jamais réclamer une réponse FACULTATIVE. C'est elle qui vérifie que « ce qui manque » est
+// dérivé du `valid()` de l'étape et non d'une liste de clés recopiée à côté.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR" });
+  const page = await ctx.newPage();
+  await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
+  await page.click('.sport-card[data-sport="tri"]');
+  await page.waitForTimeout(400);
+  const lire = () => page.evaluate(() => {
+    const z = document.getElementById("navManque");
+    return { existe: !!z, visible: !!z && z.style.display !== "none",
+      txt: (z && z.textContent || "").trim(), bloque: document.getElementById("nextBtn").disabled,
+      live: z && z.getAttribute("aria-live") };
+  });
+
+  const vierge = await lire();
+  ok(vierge.existe, "U19 — la zone de message existe sous « Continuer »");
+  ok(vierge.bloque && !vierge.visible,
+    "U19 — sur un écran VIERGE, on ne réclame rien (le produit ne reproche pas avant qu'on ait commencé)");
+
+  await page.evaluate(() => document.querySelector('.opts[data-key="intent"] .opt').click());
+  await page.waitForTimeout(200);
+  const entame = await lire();
+  ok(entame.bloque && entame.visible && /Il manque/.test(entame.txt),
+    "U19 — une réponse donnée et ça bloque encore : le message arrive (« " + entame.txt + " »)");
+  ok(/objectif/i.test(entame.txt),
+    "U19 — et il NOMME la question qui manque, pas un message générique");
+  ok(!/si connue|optionnel/i.test(entame.txt),
+    "U19 — une question FACULTATIVE n'est jamais réclamée (« Date (si connue) » reste dehors)");
+  ok(entame.live === "polite", "U19 — le message est annoncé aux lecteurs d'écran (aria-live)");
+
+  await page.evaluate(() => { const g = document.querySelector('.opts[data-key="format"]'); if (g) g.querySelector(".opt").click(); });
+  await page.waitForTimeout(200);
+  const complet = await lire();
+  ok(!complet.bloque && !complet.visible,
+    "U19 — tout le requis donné : le message disparaît et « Continuer » s'active");
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 // La suite doit SORTIR en code non nul quand elle échoue : `run-all.mjs` lit le code de

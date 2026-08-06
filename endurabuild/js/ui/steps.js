@@ -719,9 +719,70 @@ function bindInputs(scope){
   scope.querySelectorAll("[data-input]").forEach(inp=>{const key=inp.dataset.input;if(S.answers[key])inp.value=S.answers[key];inp.oninput=()=>{S.answers[key]=inp.value;refreshNav();ebSave();};});
 }
 function refreshTrail(){ /* fil de décision retiré — remplacé par le bandeau visuel du plan */ }
+
+// U19 — « CONTINUER » DÉSACTIVÉ DISAIT NON, SANS DIRE POURQUOI.
+//
+// Retour du fondateur (06/08/2026) : *« questionnaire pour avancer »*. Mesuré en traversant les
+// six écrans du tri : on ARRIVE sur cinq d'entre eux avec « Continuer → » désactivé (opacité 0,4,
+// `cursor: not-allowed` — invisible au doigt), et **rien à l'écran ne dit ce qui manque**. Un
+// écran porte jusqu'à SIX questions : on ne sait donc même pas laquelle bloque.
+//
+// Le blocage lui-même est légitime — ce sont des réponses dont le moteur a besoin, et une garde
+// E2E de swimrun dit « impossible de continuer sur un format long sans les bases ». Ce qui ne
+// l'est pas, c'est le silence : le manifeste range « informer » avant tout, et un bouton mort
+// et muet ne fait ni l'un ni l'autre.
+//
+// CE QUI MANQUE EST DÉRIVÉ, PAS DÉCLARÉ. Aucune liste de clés obligatoires n'est écrite ici —
+// deux listes écrites à deux endroits divergent toujours (R11.1), et « obligatoire » est déjà
+// encodé dans le `valid(a)` de l'étape. On SONDE donc cette fonction, qui est pure : on remplit
+// les réponses absentes avec une valeur plausible, puis on retire les clés une à une. Une clé
+// dont le retrait rend l'étape invalide est requise ; les autres (« Poids, optionnel », « Date
+// si connue ») ne sont jamais nommées. C'est ce qui empêche le message de réclamer une réponse
+// facultative.
+function valeurPlausible(k,root){
+  const o=root.querySelector('.opts[data-key="'+k+'"] .opt');
+  if(o)return o.dataset.val;
+  const i=root.querySelector('[data-input="'+k+'"]');
+  if(!i)return "1";
+  if(i.type==="date")return new Date(Date.now()+180*864e5).toISOString().slice(0,10);
+  if(i.placeholder&&/^[\d.:]+$/.test(i.placeholder))return i.placeholder;
+  return i.min||"1";
+}
+function libelleDe(k,root){
+  const el=root.querySelector('.opts[data-key="'+k+'"]')||root.querySelector('[data-input="'+k+'"]');
+  const q=el&&el.closest(".q"),lab=q&&q.querySelector(".q-label");
+  return lab?(lab.textContent||"").trim():k;
+}
+function reponsesManquantes(st,a,root){
+  if(!st||!root||st.valid(a))return [];
+  const cles=[...new Set([...root.querySelectorAll(".opts[data-key]")].map(e=>e.dataset.key)
+    .concat([...root.querySelectorAll("[data-input]")].map(e=>e.dataset.input)))];
+  const vide=k=>a[k]===undefined||a[k]===null||a[k]==="";
+  const manque=cles.filter(vide);
+  if(!manque.length)return [];
+  const plein={...a};manque.forEach(k=>{plein[k]=valeurPlausible(k,root);});
+  // Si tout remplir ne suffit pas, c'est qu'une réponse DÉJÀ donnée est hors bornes (un âge de
+  // 5 ans, un volume absurde) : on ne peut pas isoler, on nomme tout ce qui est vide.
+  if(!st.valid(plein))return manque;
+  return manque.filter(k=>{const t={...plein};delete t[k];return !st.valid(t);});
+}
 function refreshNav(){
   const st=curSteps()[S.step],b=$("nextBtn");
   if(b&&st)b.disabled=!st.valid(S.answers);
+  // Le message n'apparaît QUE si l'écran est déjà entamé. Sur un écran vierge, tout manque par
+  // construction — le dire serait réclamer avant même qu'on ait commencé, et ce produit ne
+  // reproche rien (U1). Il arrive au moment exact où on se demande pourquoi ça ne passe pas :
+  // une réponse donnée, et ça bloque encore.
+  const z=$("navManque"),root=$("screen");
+  if(z&&st&&root){
+    const manque=b&&b.disabled?reponsesManquantes(st,S.answers,root):[];
+    const entame=[...root.querySelectorAll(".opts[data-key]")].some(e=>e.querySelector(".opt.sel"))
+      ||[...root.querySelectorAll("[data-input]")].some(e=>e.value);
+    if(manque.length&&entame){
+      z.textContent="Il manque encore "+(manque.length>1?"— ":"")+manque.map(k=>"« "+libelleDe(k,root)+" »").join(", ");
+      z.style.display="";
+    } else z.style.display="none";
+  }
   // U14 — « générer maintenant » suit les réponses, pas le rendu.
   const g=$("genNowWrap");
   if(g)g.style.display=(S.tier==="free"&&socleComplet())?"":"none";
@@ -777,6 +838,9 @@ function renderStep(){
   const st=steps[S.step];
   $("screen").innerHTML='<div class="card"><div class="eyebrow">'+st.eyebrow+'</div><h2>'+st.title+'</h2><div class="why">'+st.why+'</div>'+st.render()
     +'<div class="nav"><button class="btn" id="prevBtn" type="button" '+(S.step===0&&S.tier==="free"?'style="visibility:hidden"':'')+'>← Retour</button><button class="btn primary" id="nextBtn" type="button">Continuer →</button></div>'
+    // U19 — ce que le bouton désactivé ne disait pas. `aria-live` parce que le message apparaît
+    // sans que rien ne prenne le focus : sans lui, un lecteur d'écran ne l'annoncerait jamais.
+    +'<div id="navManque" class="load-sub" role="status" aria-live="polite" style="display:none;margin-top:8px;text-align:center;color:var(--muted)"></div>'
     // U14 — DÈS QUE LE SOCLE EST COMPLET, LE PLAN EST À UN CLIC.
     //
     // Le reste du questionnaire affine ; il ne conditionne plus l'accès. Le bouton dit ce qu'il

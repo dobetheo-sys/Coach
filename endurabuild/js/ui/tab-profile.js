@@ -515,23 +515,34 @@ export function renderTabProfile(plan) {
   html += '<div class="bp-cat">' + summaryRows(a) + "</div>";
 
   // — Références physiologiques éditables (celles que le moteur lit : a.ftp / a.pace / a.css)
-  html += '<div class="load-card"><div class="load-title">⚙ Références d’entraînement</div><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">';
+  //
+  // U18b — LA CARTE EST REPLIÉE, et c'est le geste du lot qui pèse vraiment. Ce n'est pas de la
+  // prose : ce sont 14 à 17 LIGNES DE FORMULAIRE (1 081 px mesurés sur 3 908) ouvertes en
+  // permanence sur un onglet qu'on ouvre pour regarder sa progression, pas pour ressaisir sa
+  // FTP. Des sous-titres n'y auraient rien changé — la règle sortie de la passe RETIRÉE (« le
+  // "?" ne paie que dans un titre ») dit qu'un bouton de plus, posé au milieu d'une carte, coûte
+  // à peu près ce qu'il rend. Ici le titre existe déjà et le repli porte sur le bloc ENTIER :
+  // c'est le mécanisme `repliable` que le Profil applique depuis R5 à tout ce qu'on vient
+  // CHERCHER quand on le veut. Rien n'est retiré ni déplacé, et « Enregistrer → régénérer le
+  // plan » reste DANS la carte, donc à un geste de la modification qu'il valide.
+  let ref = "";
+  ref += '<div class="load-card"><div class="load-title">⚙ Références d’entraînement</div><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">';
   const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
-  if (sp === "bike" || sp === "tri") html += row("pfFtp", "FTP (watts)", a.ftp_known === "oui" ? a.ftp : "", "ex. 220");
-  if (sp === "run" || sp === "tri") html += row("pfPace", "Allure seuil (min:s /km)", a.pace_known === "oui" ? a.pace : "", "ex. 4:30");
-  if (sp === "swim" || sp === "tri") html += row("pfCss", "CSS (min:s /100m)", a.css_known === "oui" ? a.css : "", "ex. 1:55");
-  html += row("pfVol", "Volume max (h/sem)", a.vol_max, "ex. 8");
+  if (sp === "bike" || sp === "tri") ref += row("pfFtp", "FTP (watts)", a.ftp_known === "oui" ? a.ftp : "", "ex. 220");
+  if (sp === "run" || sp === "tri") ref += row("pfPace", "Allure seuil (min:s /km)", a.pace_known === "oui" ? a.pace : "", "ex. 4:30");
+  if (sp === "swim" || sp === "tri") ref += row("pfCss", "CSS (min:s /100m)", a.css_known === "oui" ? a.css : "", "ex. 1:55");
+  ref += row("pfVol", "Volume max (h/sem)", a.vol_max, "ex. 8");
   // R10 — le POINT DE DÉPART : le plan démarre du volume réellement fait ces derniers mois
-  html += row("pfVolRecent", "Volume récent (h/sem, 3-6 mois)", a.vol_recent, "ex. 4 — le plan part de là");
-  html += row("pfSess", "Séances max /sem", a.sessions_max, "ex. 5");
-  html += row("pfWeight", "Poids (kg, optionnel)", a.weight, "affine ravito + dépense");
+  ref += row("pfVolRecent", "Volume récent (h/sem, 3-6 mois)", a.vol_recent, "ex. 4 — le plan part de là");
+  ref += row("pfSess", "Séances max /sem", a.sessions_max, "ex. 5");
+  ref += row("pfWeight", "Poids (kg, optionnel)", a.weight, "affine ravito + dépense");
   // Taille : réintroduite AVEC un effet réel (métabolisme de base Mifflin-St Jeor, carte
   // « Dépense estimée » de l'onglet Semaine) — règle d'influence des paramètres respectée.
-  html += row("pfHeight", "Taille (cm, optionnel)", a.height, "affine la dépense de base");
+  ref += row("pfHeight", "Taille (cm, optionnel)", a.height, "affine la dépense de base");
   // R6 — profil du parcours visé : affine la PRÉDICTION (temps course à pied) sans
   // toucher au plan. Vallonné/montagneux → fourchette décalée et élargie, justifiée.
   const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
-  html += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Profil du parcours visé</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
+  ref += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Profil du parcours visé</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
     + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
   // R18.2 — et DISCIPLINE PAR DISCIPLINE pour les épreuves multisport. La ligne ci-dessus
   // décrit le parcours comme s'il était homogène ; un triathlon ne l'est jamais. Chaque leg
@@ -546,13 +557,13 @@ export function renderTabProfile(plan) {
     };
     const RELIEF_OPTS = [["", "Comme au-dessus"], ["plat", "Plat"], ["vallonne", "Vallonné"], ["montagne", "Montagneux"]];
     // R19.2 — la température de l'eau vit ici aussi : elle décide de la combinaison.
-    if (S.sport === "tri") html += row("pfWaterTemp", "🌡 Eau de la course (°C)", a.water_temp_c, "combinaison : interdite au-dessus de 24,5 °C");
+    if (S.sport === "tri") ref += row("pfWaterTemp", "🌡 Eau de la course (°C)", a.water_temp_c, "combinaison : interdite au-dessus de 24,5 °C");
     if (S.sport === "tri" || S.sport === "swimrun")
-      html += legSel("pfLegSwim", "leg_swim_env", "🏊 Milieu de nage", [["", "Comme au-dessus"], ["bassin", "Bassin"], ["lac", "Lac / eau libre calme"], ["mer_calme", "Mer calme"], ["mer_agitee", "Mer agitée"], ["eau_vive", "Eau vive (courant)"]]);
+      ref += legSel("pfLegSwim", "leg_swim_env", "🏊 Milieu de nage", [["", "Comme au-dessus"], ["bassin", "Bassin"], ["lac", "Lac / eau libre calme"], ["mer_calme", "Mer calme"], ["mer_agitee", "Mer agitée"], ["eau_vive", "Eau vive (courant)"]]);
     if (S.sport === "tri" || S.sport === "duathlon")
-      html += legSel("pfLegBike", "leg_bike_prof", "🚴 Parcours vélo", RELIEF_OPTS);
-    html += legSel("pfLegRun", "leg_run_prof", "🏃 Parcours à pied", RELIEF_OPTS);
-    html += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Ton épreuve n’est pas d’un seul bloc : on peut nager en eau vive, rouler en montagne et courir à plat. Chaque segment corrige une chose différente — et « Comme au-dessus » est un choix parfaitement valable.</div>';
+      ref += legSel("pfLegBike", "leg_bike_prof", "🚴 Parcours vélo", RELIEF_OPTS);
+    ref += legSel("pfLegRun", "leg_run_prof", "🏃 Parcours à pied", RELIEF_OPTS);
+    ref += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Ton épreuve n’est pas d’un seul bloc : on peut nager en eau vive, rouler en montagne et courir à plat. Chaque segment corrige une chose différente — et « Comme au-dessus » est un choix parfaitement valable.</div>';
   }
   // R14.1 §1-c — LA QUESTION QUI REMPLACE L'ANCIENNETÉ dans le calcul de la marge de
   // progression. Elle est ici (Profil) et pas dans le questionnaire d'entrée, pour ne pas
@@ -560,19 +571,20 @@ export function renderTabProfile(plan) {
   // depuis quinze ans au feeling a encore devant lui tout ce qu'un plan apporte ; quelqu'un
   // qui suit un plan depuis trois ans en a déjà consommé la plus grande part.
   const tsSel = (v, lab) => '<option value="' + v + '"' + ((a.training_structure || "") === v ? " selected" : "") + ">" + lab + "</option>";
-  html += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Tes 12 derniers mois</span><select id="pfTrainingStructure" style="flex:1;min-width:0">'
+  ref += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Tes 12 derniers mois</span><select id="pfTrainingStructure" style="flex:1;min-width:0">'
     + tsSel("", "Je préfère ne pas dire") + tsSel("feeling", "Au feeling, sans plan")
     + tsSel("intermittent", "Un plan, par périodes") + tsSel("suivi", "Un plan structuré, suivi") + "</select></label>";
-  html += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Sert à estimer ta marge de progression d’ici la course — pas à juger. Sans réponse, on reste prudent.</div>';
+  ref += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Sert à estimer ta marge de progression d’ici la course — pas à juger. Sans réponse, on reste prudent.</div>';
   // R14.1 §5 — le poids cible n'apparaît QUE si l'athlète a demandé ce levier. Jamais proposé,
   // jamais suggéré : c'est la frontière du manifeste, et elle ne bouge pas.
   if (a.weight_lever === "oui") {
-    html += row("pfWeightTarget", "Poids cible (optionnel)", a.weight_target, "affiche une sensibilité, jamais un objectif");
-    html += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Tu as demandé ce levier. L’app montre ce que la balance changerait sur tes chronos — elle ne propose ni rythme, ni alimentation : ces questions se traitent avec un professionnel de santé.</div>';
+    ref += row("pfWeightTarget", "Poids cible (optionnel)", a.weight_target, "affiche une sensibilité, jamais un objectif");
+    ref += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Tu as demandé ce levier. L’app montre ce que la balance changerait sur tes chronos — elle ne propose ni rythme, ni alimentation : ces questions se traitent avec un professionnel de santé.</div>';
   }
-  html += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Rappel quotidien</span><input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label>';
-  html += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
+  ref += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Rappel quotidien</span><input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label>';
+  ref += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
     + '<div id="pfMsg" class="load-sub" style="margin-top:6px"></div></div>';
+  html += repliable(ref, false);
 
   // — Records personnels (R4-5, lecture seule) + badges + efficience (R5 : ici, pas
   // dans un onglet à part — le Profil raconte qui tu es et ce que tu as construit)

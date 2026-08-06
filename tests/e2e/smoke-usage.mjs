@@ -492,6 +492,67 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   });
   ok(nut.visible, "U18 — l'avertissement nutrition reste VISIBLE, jamais replié");
   ok(!nut.dansAide, "U18 — et aucun avertissement n'est passé derrière un « ? »");
+
+  // ── U18b — LA CARTE DE RÉFÉRENCES EST REPLIÉE, ET RIEN N'EST DEVENU INATTEIGNABLE ──────
+  //
+  // Deux moitiés, comme U15. La première seule serait satisfaite en SUPPRIMANT la carte ; la
+  // seconde seule serait satisfaite en ne repliant rien.
+  //
+  // NOTE D'INSTRUMENT, et elle vaut d'être écrite : la grandeur mesurée ici est
+  // `document.body.scrollHeight`, PAS la somme des rectangles de prose. Dans ce Chromium, un
+  // élément dans un `<details>` fermé rend encore un rectangle non nul — l'instrument de mesure
+  // de prose (`prose.mjs`) affichait donc 770 px de prose AVANT comme APRÈS le repli, aveugle à
+  // ce qui venait de changer. C'est la famille de fautes que ce dépôt a nommée neuf fois : une
+  // mesure qui porte sur une grandeur voisine de celle qu'elle nomme. Le défilement est la
+  // grandeur que la personne subit, donc c'est elle qu'on épingle.
+  await page.click('#ebTabbar .tabbtn[data-tab="profile"]').catch(() => {});
+  await page.waitForTimeout(700);
+  const refs = await page.evaluate(() => {
+    const carte = [...document.querySelectorAll("details.load-card")]
+      .find((d) => /Références d/.test((d.querySelector("summary") || {}).textContent || ""));
+    return { existe: !!carte, ouverte: carte ? carte.open : null,
+      h: Math.round(carte ? carte.getBoundingClientRect().height : 0),
+      page: document.body.scrollHeight, vp: window.innerHeight,
+      champs: ["pfVol", "pfSess", "pfVolRecent", "pfSave"].filter((id) => document.getElementById(id)).length };
+  });
+  ok(refs.existe && refs.ouverte === false,
+    "U18b — la carte « ⚙ Références d'entraînement » est REPLIÉE par défaut (" + refs.h + " px)");
+  ok(refs.page / refs.vp < 4,
+    "U18b — le Profil tient sous 4 écrans (" + (refs.page / refs.vp).toFixed(1) + ")");
+  ok(refs.champs === 4,
+    "U18b — les champs du formulaire sont toujours dans la page (" + refs.champs + "/4)");
+
+  // La carte peut être ABSENTE (c'est le cas que K2 fabrique en retirant le repli). Sans ce
+  // garde-fou, l'évaluation lève, la suite MEURT, et elle sort bien en code 1 — mais sans
+  // publier une seule ligne `FAIL`. C'est le mécanisme que R22b a nommé : un critère qui tue
+  // son harnais au lieu de rapporter ne dit à personne CE QUI a cassé.
+  const depli = await page.evaluate(() => {
+    const carte = [...document.querySelectorAll("details.load-card")]
+      .find((d) => /Références d/.test((d.querySelector("summary") || {}).textContent || ""));
+    if (!carte) return { absente: true, h: 0, vol: false, save: false };
+    carte.open = true;
+    const vu = (id) => { const e = document.getElementById(id); return !!e && e.getBoundingClientRect().width > 0; };
+    return { h: Math.round(carte.getBoundingClientRect().height), vol: vu("pfVol"), save: vu("pfSave") };
+  });
+  ok(depli.h > 400 && depli.vol && depli.save,
+    "U18b — et un geste rend TOUT le formulaire (" + depli.h + " px, « Enregistrer » compris)");
+
+  // Le « ? » vit dans un titre, et certains titres sont des `<summary>` : un appui ne doit pas
+  // faire deux choses à la fois. Ce que ce critère protège n'est PAS une ligne de code — c'est
+  // le fait que `aide()` rende un élément INTERACTIF (`<button>`), seule raison pour laquelle
+  // l'« activation behavior » du `<summary>` ne se déclenche pas. Vérifié rouge en remplaçant le
+  // `<button>` par un `<span>` ; vérifié VERT avec et sans `preventDefault()`, ce qui est
+  // précisément ce qui a fait retirer ce `preventDefault()` de `help.js` comme inerte.
+  const dbl = await page.evaluate(() => {
+    const b = [...document.querySelectorAll("summary .aide-btn")][0];
+    if (!b) return { sansObjet: true };
+    const det = b.closest("details");
+    const avant = det.open;
+    b.click();
+    return { avant, apres: det.open, aide: !document.getElementById(b.dataset.aide).hasAttribute("hidden") };
+  });
+  ok(dbl.sansObjet || (dbl.aide && dbl.apres === dbl.avant),
+    "U18b — le « ? » posé dans un titre repliable déroule l'aide SANS ouvrir la carte");
   await ctx.close();
 }
 

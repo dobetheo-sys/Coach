@@ -4316,6 +4316,125 @@ n'apparaît nulle part ». Mon hypothèse de modèle (« 85 kg tout compris ») 
 qu'aucun levier ne fuite — neuvième occurrence d'un critère qui nomme une grandeur et en mesure
 une voisine. Il porte désormais sur le VOCABULAIRE du levier, pas sur l'unité.
 
+## U19 — « Continuer » désactivé disait non, sans dire pourquoi
+
+Retour du fondateur (06/08/2026) : *« questionnaire pour avancer »*.
+
+### La mesure, sur les six écrans du triathlon
+
+| | à l'arrivée sur l'écran | questions à l'écran | ce que la page dit |
+|---|---|---|---|
+| écran 1 | **Continuer désactivé** | 3 | rien |
+| écran 2 | **désactivé** | 3 | rien |
+| écran 3 | **désactivé** | 3 | rien |
+| écran 4 | **désactivé** | **6** | rien |
+| écran 5 | actif | 4 | — |
+| écran 6 | **désactivé** | 4 | rien |
+
+`refreshNav()` fait `b.disabled = !st.valid(S.answers)` : opacité 0,4 et `cursor: not-allowed`,
+c'est-à-dire **rien au doigt**. Cinq écrans sur six s'ouvrent sur un bouton mort, et sur celui qui
+porte six questions on ne sait même pas laquelle bloque.
+
+### Ce qui est corrigé, et ce qui ne l'est pas
+
+Le blocage lui-même **reste** : ce sont des réponses dont le moteur a besoin, et une garde E2E de
+swimrun dit déjà « impossible de continuer sur un format long sans les bases ». Ce qui n'était pas
+défendable, c'est le silence — le manifeste range « informer » avant tout, et un bouton mort et
+muet ne fait ni l'un ni l'autre.
+
+### Ce qui manque est DÉRIVÉ, pas déclaré
+
+Aucune liste de clés obligatoires n'est écrite dans l'UI : deux listes à deux endroits divergent
+toujours (R11.1), et « obligatoire » est **déjà** encodé dans le `valid(a)` de l'étape. On SONDE
+donc cette fonction, qui est pure — on remplit les réponses absentes avec une valeur plausible,
+puis on retire les clés une à une : une clé dont le retrait rend l'étape invalide est requise.
+C'est ce qui fait que « Poids (kg, optionnel) » et « Date (si connue) » ne sont **jamais**
+réclamées, sans qu'aucun code n'ait à savoir qu'elles sont facultatives.
+
+Si tout remplir ne suffit pas — cas d'une réponse déjà donnée mais hors bornes — on ne peut pas
+isoler : on nomme alors tout ce qui est vide, plutôt que de se taire.
+
+### Le message arrive au moment où la question se pose
+
+Sur un écran vierge, tout manque par construction : le dire serait réclamer avant même qu'on ait
+commencé, et ce produit ne reproche rien (U1). Le message n'apparaît qu'une fois l'écran **entamé**
+— une réponse donnée, et ça bloque encore. C'est exactement l'instant où l'on se demande pourquoi
+ça ne passe pas. `aria-live="polite"`, sans quoi un lecteur d'écran ne l'annoncerait jamais (rien
+ne prend le focus).
+
+Rendu mesuré : « Il manque encore « Quel objectif ? » » · « Il manque encore — « Volume horaire
+max (pic) ? », « Volume RÉEL des 3-6 derniers mois ? » ».
+
+Garde `U19` dans `smoke-questionnaires` (6 critères), **vérifiée rouge sur trois cassures** :
+message retiré (2 rouges), sonde du `valid()` court-circuitée — donc l'optionnel réclamé (1
+rouge), message affiché sur écran vierge (1 rouge).
+
+## O-21 (3e correction) — la borne de la récup se payait en FRÉQUENCE
+
+La 2ᵉ correction (ci-dessous) laissait un résidu qu'elle qualifiait de **« bruit de convergence
+entre passes »**, à traiter par « un chantier à part entière ». **Ce diagnostic était faux**, et
+la leçon est celle-là : conclure « c'est du bruit » sans avoir instrumenté passe par passe, c'est
+refermer une piste avec une hypothèse.
+
+### Ce que la mesure a dit, dans l'ordre
+
+Profil `10k/debutant/confirme/3s/6h/vr5`, seule l'allure seuil varie —
+`4:30 → 1282 · 5:45 → 1061 · 7:00 → 1319 · 8:30 → 1077 min` :
+
+1. **Avant réparation, les quatre plans sont presque identiques** (1311 · 1270 · 1340 · 1269,
+   5,6 % d'écart). La divergence est donc CRÉÉE en aval, pas héritée de la courbe.
+2. **La courbe déclarée est identique au moment où elle est calculée** — instrumentée semaine par
+   semaine, `targetH` de S7 vaut 198 min aux deux allures. Ce qui diffère est le LIVRÉ.
+3. La semaine de récup S7 délivre **190 min à 4:30 et 143 à 5:45** pour cette même cible de 198,
+   et le détail de la semaine dit tout : **trois séances d'un côté, deux de l'autre**.
+4. La règle « une récup ne dépasse jamais sa voisine » trouvait S7 à **198 min contre 192 chez la
+   voisine** — SIX minutes au-dessus de sa borne — et les payait avec une séance de **55 min**.
+
+### Le mécanisme : un seuil tout-ou-rien, pas du bruit
+
+`cutSmallestSessionIn` retire une séance ENTIÈRE. Une minute de différence chez la voisine fait
+donc basculer 55 minutes hors de la semaine, et la récup ainsi amputée devient la référence de
+tout ce qui suit (les réparations « la semaine max doit rester en phase peak » passent de ×0,96
+à ×0,72, et le plan entier suit). Aucune règle ne « penchait » selon l'allure : **c'est le seuil
+qui est brutal**, l'allure ne décidant que du côté où l'on tombe. Ce qui ressemblait à du bruit
+était une marche.
+
+### Le correctif était déjà écrit quinze lignes plus haut
+
+Dans le même bloc, la règle de monotonie de l'**affûtage** réduit d'abord le corps des séances
+(`scaleWeekBody`) et ne coupe un jour que si les planchers empêchent d'y arriver. Celle de la
+récup sautait directement à la coupe. C'est aussi la décision déjà prise deux fois dans ce dépôt
+— **C29/C29b/C29c : « l'affûtage réduit le VOLUME, pas la FRÉQUENCE »** — jamais rejouée ici. La
+borne se paie donc en volume ; la fréquence ne cède qu'en dernier recours.
+
+### Portée, et ce qui ne bouge pas
+
+| sur 432 profils × 4 allures | avant | après |
+|---|---|---|
+| **pire inversion entre deux allures voisines** | **+24,3 %** | **+5,0 %** |
+| dispersion p90 | 5,0 % | 4,6 % |
+| profils non monotones (> +2 %) | 73 (16,9 %) | 67 (15,5 %) |
+
+La dispersion MAX reste à 36,1 %, portée par `semi/inter/reprise/3s/6h/vr5 :
+2413 2291 2188 1773` — **strictement décroissante** de l'allure rapide à la lente. Ce n'est pas
+une inversion mais la variation monotone que les bornes de séance produisent légitimement (O17
+l'a déjà arbitrée). La grandeur qu'O-21 nomme est l'INVERSION, et c'est elle qui tombe.
+
+### Le golden a refait l'angle mort que l'entrée avait elle-même nommé
+
+O-21 écrivait, dès sa 1ʳᵉ correction, « le golden ne bouge pas parce que ses profils portent tous
+une date ». La leçon n'avait pas été appliquée : les 945 profils rendaient **0 écart** face à ce
+correctif. Sous-passe `O-21b` ajoutée (**945 → 949**). **Ma première écriture de cette passe était
+décorative, et c'est mesuré** : elle héritait du `dispo: "semaine"` du profil de base, sous lequel
+les quatre allures rendent le MÊME plan à la minute près (1 487 min) — elle surveillait du vide
+pendant que son commentaire affirmait le contraire. Avec `dispo: "quotidienne"` elle discrimine,
+vérifiée en retirant le correctif : **2 écarts, sur 5:45 et 8:30 exactement.** Cinquième
+occurrence de cette famille (A-2, N2, C30b, PW).
+
+Garde CI : **`O-21b`** au banc v6, deux moitiés — la fréquence des semaines de récup ne dépend pas
+de l'allure (le mécanisme) ET aucune allure plus lente ne reçoit un plan plus gros de plus de 6 %
+(l'inversion) —, **vérifiée rouge** en repassant la borne au paiement par la fréquence.
+
 ## O-21 (2e correction) — deux passes qui se rabattaient sur un état estropié
 
 L'entrée O-21 laissait un « résidu = arbitrage » : la sortie longue se prescrit-elle en distance
