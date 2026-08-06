@@ -522,6 +522,39 @@ test("E3", "FTP hors bornes physiologiques → refus typé (jamais des zones rat
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "ok" };
 });
 
+// R23.1 — E3 NE COUVRAIT QUE LES CLÉS NUMÉRIQUES DU SCHÉMA, donc jamais l'allure seuil ni le CSS.
+//
+// Remonté par le fondateur (06/08/2026) : « il note un seuil à moins d'une minute au kilomètre,
+// sans doute l'artefact d'une course ». `PHYSIO_BOUNDS` bornait `ftp`, `hrMax`, `hrRest`,
+// `weight`, `height`, `age` — pas `thrPace` ni `css`, saisies en `min:s` donc sans `min`/`max`
+// dans `ANSWER_SCHEMA`. Or ce sont les DEUX références qui pilotent toutes les zones de course
+// et de nage, et la valeur importée est promue en référence vivante.
+//
+// Même famille que R20.1 (la garde couvre le sport où le code a été écrit, pas celui où il sert)
+// et O-16 (borne d'âge fermée côté format, jamais rejouée sur l'écran arrivé après).
+//
+// Le critère tient les DEUX moitiés : l'artefact est refusé, ET la mesure vraie passe. La
+// première seule serait satisfaite en refusant tout.
+test("R23.1", "allure seuil et CSS : un artefact est refusé, une mesure vraie passe", "pass", () => {
+  const bad = [];
+  if (typeof E.testDansBornes !== "function") return { ok: false, detail: "point unique absent du bundle" };
+  // ce qui doit être REFUSÉ — dont le 55 s/km exact du symptôme
+  for (const [t, v, quoi] of [["thrPace", 55, "le seuil < 1 min/km du symptôme"],
+    ["thrPace", 20, "trace en véhicule"], ["thrPace", 1500, "25 min/km"],
+    ["css", 30, "sous le record du monde du 100 m"], ["css", 600, "10 min/100m"],
+    ["ftp", 9999, "FTP absurde"]])
+    if (E.testDansBornes(t, v) != null) bad.push(t + "=" + v + " ACCEPTÉ (" + quoi + ")");
+  // ce qui doit PASSER — sans quoi le critère serait satisfait en refusant tout
+  for (const [t, v, quoi] of [["thrPace", 150, "2'30/km, record du monde 10 km"],
+    ["thrPace", 270, "4'30/km"], ["thrPace", 900, "15'/km, marche"],
+    ["css", 50, "record du monde 100 m NL"], ["css", 115, "1'55/100m"],
+    ["ftp", 250, "FTP courante"]])
+    if (E.testDansBornes(t, v) == null) bad.push(t + "=" + v + " REFUSÉ à tort (" + quoi + ")");
+  // un type non borné n'est pas inventé : la fonction ne prétend pas être un validateur universel
+  if (E.testDansBornes("vma", 18) == null) bad.push("un type sans borne déclarée devrait passer");
+  return { ok: bad.length === 0, detail: bad.join(" ; ") || "6 artefacts refusés, 6 mesures vraies acceptées" };
+});
+
 test("E4", "Poids invraisemblable → estimation énergétique refusée", "pass", () => {
   const a = profile("tri", { format: "70.3", weight: "35", height: "180" });
   const p = E.buildPlan("tri", a);

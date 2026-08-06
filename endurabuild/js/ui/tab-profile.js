@@ -136,7 +136,14 @@ function repliable(h, ouvert) {
 
 function recordsHTML(plan, a) {
   const rows = [];
-  const tests = Array.isArray(a.tests) ? a.tests.filter((t) => isFinite(+t.value)) : [];
+  // R23.1 — LE JOURNAL EXISTANT PORTE DÉJÀ DES ARTEFACTS, et c'est le symptôme qu'on m'a
+  // remonté : « un seuil à moins d'une minute au kilomètre ». Borner les ÉCRITURES protège les
+  // imports à venir ; ça ne nettoie pas ce qui est déjà écrit chez les gens. On filtre donc
+  // aussi à la LECTURE — un record est ce qu'on a fait de mieux, pas ce qu'une trace a cru voir.
+  const _borne = globalThis.EBV2 && globalThis.EBV2.testDansBornes;
+  const tests = Array.isArray(a.tests)
+    ? a.tests.filter((t) => isFinite(+t.value) && (!_borne || _borne(t.type, +t.value) != null))
+    : [];
   const best = (type, cmp) => tests.filter((t) => t.type === type).sort(cmp)[0];
   const ftp = best("ftp", (x, y) => y.value - x.value);
   if (ftp) rows.push({ lab: "⚡ Meilleure FTP", val: Math.round(ftp.value) + " W", date: ftp.date });
@@ -835,7 +842,12 @@ export function renderTabProfile(plan) {
   $("pfSave").onclick = () => {
     const today = todayISO();
     if (!Array.isArray(S.answers.tests)) S.answers.tests = [];
+    // R23.1 — quatrième et dernière écriture du journal de tests. Elle passe par la même borne
+    // que les trois autres : une valeur hors bornes physiologiques n'entre pas, et le dit.
+    const horsBornes = [];
     const log = (type, value, prev, apply) => {
+      const f = globalThis.EBV2 && globalThis.EBV2.testDansBornes;
+      if (f && typeof value === "number" && f(type, value) == null) { horsBornes.push(type); return; }
       S.answers.tests.push({ type, value, prev: prev != null && prev !== "" ? prev : undefined, date: today, source: "profil (modification manuelle)" });
       apply();
     };
@@ -909,11 +921,17 @@ export function renderTabProfile(plan) {
     if (wt !== null && wt !== String(a.weight_target || "")) {
       S.answers.weight_target = wt; changed++;
     }
-    if (!changed) { const m = $("pfMsg"); if (m) m.textContent = "Aucun changement détecté."; return; }
+    // R23.1 — une valeur refusée n'est pas un silence. Le libellé nomme la mesure et la borne,
+    // pour que l'athlète voie si c'est une faute de frappe (« 45 » pour 4:50) ou une unité.
+    const LAB_BORNE = { ftp: "la FTP", thrPace: "l'allure seuil", css: "le CSS", vma: "la VMA" };
+    const refus = horsBornes.length
+      ? " ⚠ Hors bornes physiologiques, donc non enregistré : " + horsBornes.map((t) => LAB_BORNE[t] || t).join(", ") + " — vérifie l'unité et la saisie."
+      : "";
+    if (!changed) { const m = $("pfMsg"); if (m) m.textContent = (horsBornes.length ? "Rien d'enregistré." + refus : "Aucun changement détecté."); return; }
     if (planChanged) invalidatePlan(); // le plan sera régénéré UNE fois, ici — pas au changement d'onglet
     ebSave();
     renderTabProfile(ensurePlan());
     const m = $("pfMsg");
-    if (m) m.textContent = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + (planChanged ? " — plan régénéré, journal mis à jour." : " — journal mis à jour (poids/taille n’affectent que ravitaillement et dépense estimée, pas le plan).");
+    if (m) m.textContent = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + (planChanged ? " — plan régénéré, journal mis à jour." : " — journal mis à jour (poids/taille n’affectent que ravitaillement et dépense estimée, pas le plan).") + refus;
   };
 }

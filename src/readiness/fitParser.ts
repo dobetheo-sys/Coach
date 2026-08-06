@@ -13,6 +13,7 @@
  */
 import type { CompletedSession } from "./readinessSource.ts";
 import { assertImportSize } from "./importLimits.ts";
+import { testDansBornes } from "../engine/constraintMatrix.ts";
 
 /** Époque FIT : 1989-12-31T00:00:00Z. */
 const FIT_EPOCH_S = 631065600;
@@ -151,13 +152,22 @@ export function fitToImport(sessions: FitSession[]): FitImport {
     if (s.sport !== "autre" && s.minutes > 0) completed.push({ date: s.date, d: s.sport, minutes: s.minutes });
     if (s.sport === "bk" && s.minutes >= 20) {
       const p = s.normPowerW || s.avgPowerW;
-      if (p && p > 0) tests.push({ type: "ftp", value: Math.round(p * 0.95), date: s.date, source: "FIT (sortie " + s.minutes + "min)" });
+      // R23.1 — une mesure hors bornes physiologiques n'entre pas dans le journal, et le DIT.
+      const ftpV = p && p > 0 ? testDansBornes("ftp", Math.round(p * 0.95)) : null;
+      if (ftpV != null) tests.push({ type: "ftp", value: ftpV, date: s.date, source: "FIT (sortie " + s.minutes + "min)" });
+      else if (p && p > 0) notes.push("Sortie vélo du " + s.date + " : puissance hors bornes physiologiques (" + Math.round(p) + " W) — FTP non retenue.");
       else notes.push("Sortie vélo du " + s.date + " sans puissance : FTP non estimée (capteur requis).");
     }
-    if (s.sport === "rn" && s.minutes >= 20 && s.avgSpeedMs && s.avgSpeedMs > 0)
-      tests.push({ type: "thrPace", value: Math.round(1000 / s.avgSpeedMs), date: s.date, source: "FIT (course " + s.minutes + "min, estimation basse)" });
-    if (s.sport === "sw" && s.minutes >= 10 && s.avgSpeedMs && s.avgSpeedMs > 0)
-      tests.push({ type: "css", value: Math.round(100 / s.avgSpeedMs), date: s.date, source: "FIT (nage " + s.minutes + "min)" });
+    if (s.sport === "rn" && s.minutes >= 20 && s.avgSpeedMs && s.avgSpeedMs > 0) {
+      const v = testDansBornes("thrPace", Math.round(1000 / s.avgSpeedMs));
+      if (v != null) tests.push({ type: "thrPace", value: v, date: s.date, source: "FIT (course " + s.minutes + "min, estimation basse)" });
+      else notes.push("Course du " + s.date + " : allure hors bornes physiologiques — non retenue (trace GPS ou activité mal étiquetée).");
+    }
+    if (s.sport === "sw" && s.minutes >= 10 && s.avgSpeedMs && s.avgSpeedMs > 0) {
+      const v = testDansBornes("css", Math.round(100 / s.avgSpeedMs));
+      if (v != null) tests.push({ type: "css", value: v, date: s.date, source: "FIT (nage " + s.minutes + "min)" });
+      else notes.push("Nage du " + s.date + " : allure hors bornes physiologiques — non retenue.");
+    }
     // R12.3 — VAM depuis la montre. Deux garde-fous : une sortie PLATE ne produit pas de VAM
     // exploitable (on exige une pente moyenne réelle), et la moyenne d'une sortie entière
     // sous-estime la VAM seuil — on l'annonce comme une estimation BASSE plutôt que de la
