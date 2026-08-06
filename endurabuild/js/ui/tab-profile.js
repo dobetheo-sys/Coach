@@ -531,13 +531,27 @@ function raceCardHTML(a) {
 // (mini-affûtage si B), la suivante est en récup, et le JOUR J porte une séance 🏁
 // avec sa consigne de pacing. Avant, seul le questionnaire premium posait la question.
 function raceInterHTML(a) {
+  // R23.18 — la priorité A− existe : un OBJECTIF secondaire, couru pour de vrai (mini-affûtage
+  // −40 %, vraie récupération derrière). Le moteur exige ≥ 4 semaines avant la course A
+  // (décision du fondateur) — en dessous, il la traite en B et le dit dans les décisions.
   const prioSel = (id, cur) => '<select id="' + id + '" style="flex:1;min-width:0">'
-    + '<option value="C"' + (cur !== "B" ? " selected" : "") + '>C — laboratoire (on s’entraîne à travers)</option>'
-    + '<option value="B"' + (cur === "B" ? " selected" : "") + '>B — préparation (mini-affûtage)</option></select>';
-  const rowR = (n, d, p) => '<div style="display:flex;gap:8px;align-items:center;font-size:var(--fs-md);flex-wrap:wrap"><span style="width:70px">Course ' + n + '</span>'
-    + '<input type="date" id="pfRace' + n + 'd" value="' + esc(d || "") + '" style="flex:1;min-width:130px">' + prioSel("pfRace" + n + "p", p) + "</div>";
-  return '<div class="load-card"><div class="load-title">🏁 Courses intermédiaires' + aide('Une course AVANT ton objectif ? Le moteur allège la semaine, place la course à sa vraie date avec sa consigne de pacing, et met la semaine suivante en récupération.', { label: 'les courses intermédiaires' }) + '</div>'
-    + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">' + rowR(1, a.race1_date, a.race1_prio) + rowR(2, a.race2_date, a.race2_prio) + "</div>"
+    + '<option value="C"' + (cur !== "B" && cur !== "A-" ? " selected" : "") + '>C — laboratoire (on s’entraîne à travers)</option>'
+    + '<option value="B"' + (cur === "B" ? " selected" : "") + '>B — préparation (mini-affûtage)</option>'
+    + '<option value="A-"' + (cur === "A-" ? " selected" : "") + '>A− — objectif secondaire (≥ 4 sem avant l’A)</option></select>';
+  // Le FORMAT de la course intermédiaire : c'est lui qui permet au moteur de dimensionner la
+  // récupération (une A− plus longue que l'A coûte un jour de plus). Optionnel — sans réponse,
+  // le moteur suppose un format comparable et l'écrit dans ses décisions.
+  const fmtSel = (id, cur) => {
+    const list = (SPORTS[S.sport] && SPORTS[S.sport].formats) || [];
+    if (!list.length) return "";
+    return '<select id="' + id + '" style="flex:1;min-width:0"><option value="">Format ? (optionnel)</option>'
+      + list.map(([v, l]) => '<option value="' + v + '"' + ((cur || "") === v ? " selected" : "") + ">" + l + "</option>").join("") + "</select>";
+  };
+  const rowR = (n, d, p, f) => '<div style="display:flex;gap:8px;align-items:center;font-size:var(--fs-md);flex-wrap:wrap"><span style="width:70px">Course ' + n + '</span>'
+    + '<input type="date" id="pfRace' + n + 'd" value="' + esc(d || "") + '" style="flex:1;min-width:130px">' + prioSel("pfRace" + n + "p", p)
+    + fmtSel("pfRace" + n + "f", f) + "</div>";
+  return '<div class="load-card"><div class="load-title">🏁 Courses intermédiaires' + aide('Une course AVANT ton objectif ? C = on s’entraîne à travers. B = semaine allégée. A− = un VRAI objectif secondaire : mini-affûtage, tu la cours à fond, récupération réelle derrière — à 4 semaines minimum de ta course A.', { label: 'les courses intermédiaires' }) + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">' + rowR(1, a.race1_date, a.race1_prio, a.race1_format) + rowR(2, a.race2_date, a.race2_prio, a.race2_format) + "</div>"
     + '<div class="nav" style="margin-top:8px"><button class="btn" id="pfRaceSave" type="button">Enregistrer mes courses</button></div>'
     + '<div id="pfRaceMsg" class="load-sub" style="margin-top:6px"></div></div>';
 }
@@ -548,17 +562,24 @@ function bindRaceInter() {
     const a = S.answers;
     const d1 = ($("pfRace1d") || {}).value || "", p1 = ($("pfRace1p") || {}).value || "C";
     const d2 = ($("pfRace2d") || {}).value || "", p2 = ($("pfRace2p") || {}).value || "C";
-    const before = [a.race1_date || "", a.race1_prio || "", a.race2_date || "", a.race2_prio || "", a.races || ""].join("|");
-    a.race1_date = d1; a.race1_prio = d1 ? p1 : "";
-    a.race2_date = d2; a.race2_prio = d2 ? p2 : "";
+    const f1 = ($("pfRace1f") || {}).value || "", f2 = ($("pfRace2f") || {}).value || "";
+    const before = [a.race1_date || "", a.race1_prio || "", a.race1_format || "", a.race2_date || "", a.race2_prio || "", a.race2_format || "", a.races || ""].join("|");
+    a.race1_date = d1; a.race1_prio = d1 ? p1 : ""; a.race1_format = d1 ? f1 : "";
+    a.race2_date = d2; a.race2_prio = d2 ? p2 : ""; a.race2_format = d2 ? f2 : "";
     a.races = d1 || d2 ? "oui" : "non";
-    const after = [a.race1_date, a.race1_prio, a.race2_date, a.race2_prio, a.races].join("|");
+    const after = [a.race1_date, a.race1_prio, a.race1_format, a.race2_date, a.race2_prio, a.race2_format, a.races].join("|");
     const m = $("pfRaceMsg");
     if (after === before) { if (m) m.textContent = "Aucun changement détecté."; return; }
     let warn = "";
     for (const d of [d1, d2]) {
       if (d && a.race_date && d >= a.race_date) warn = " ⚠️ Une date est le jour de (ou après) ton objectif A — elle sera ignorée par le plan.";
       else if (d && a.plan_start && d < a.plan_start) warn = " ⚠️ Une date est avant le début du plan — elle sera ignorée.";
+    }
+    // R23.18 — prévenir AU MOMENT DE LA SAISIE, pas seulement dans les décisions du plan :
+    // une A− à moins de 4 semaines de l'A sera traitée en B, autant le dire tout de suite.
+    for (const [d, p2b] of [[d1, p1], [d2, p2]]) {
+      if (d && p2b === "A-" && a.race_date && (Date.parse(a.race_date) - Date.parse(d)) / 864e5 < 28)
+        warn += " ⚠️ A− à moins de 4 semaines de ta course A : le moteur la traitera comme une course B (l'affûtage de l'A passe d'abord).";
     }
     const desc = [d1 ? d1 + " (" + (d1 ? p1 : "") + ")" : "", d2 ? d2 + " (" + p2 + ")" : ""].filter(Boolean).join(" · ") || "aucune";
     if (!Array.isArray(a.tests)) a.tests = [];
