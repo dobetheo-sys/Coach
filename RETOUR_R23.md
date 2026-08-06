@@ -81,13 +81,37 @@ ma toute première version ne parvenait pas à répondre au check-in dans le con
 témoin (mardi 23 h 40, réponse donnée) sortait « portillon », ce qui a suffi à la disqualifier
 avant qu'elle ne serve à conclure quoi que ce soit.
 
-### R23.3 · On ne peut pas sortir de la validation de séance · **DÉFAUT**
+### R23.3 · On ne peut pas sortir de la validation de séance · ✅ **LIVRÉ (06/08/2026)**
 
 > *« une fois clicker On ne peut pas sortir de la validation de la scéance en cas d'erreur de clic »*
 > *« Interphase de validation trop imposant »*
 
-Un geste involontaire enferme. Deux choses : une sortie (Échap / fermeture / retour), et une
-interface moins imposante.
+Un geste involontaire enferme. Deux choses : une sortie, et une interface moins imposante.
+
+**La cause, mesurée** : les trois modales du produit (feedback post-séance, félicitations,
+révélation de retest) n'offraient **qu'Échap** — une touche qui n'existe pas sur un téléphone,
+c'est-à-dire sur le seul appareil où ce produit se vit. Aucune croix, aucun clic sur le voile.
+La sortie EXISTAIT donc, et ne servait à personne : même forme qu'**U8** (« le bon message existait
+et était mort ») — ce n'est pas une fonctionnalité manquante, c'est une fonctionnalité
+inatteignable. Et les critères E2E d'accessibilité passaient tous, puisqu'ils testent Échap.
+
+**Livré** : deux sorties posées dans `trapModal` — le point unique, plutôt que dans les trois
+appelants (c'est justement l'absence de point unique qui leur avait fait partager le même trou).
+Une **croix** (44×44, le standard U4, `aria-label="Fermer"`, le focus allant toujours au premier
+contrôle UTILE et non à elle) et le **clic sur le voile**.
+
+Garde `R23.3` dans `smoke-improvements` (8 critères), vérifiée rouge sur deux cassures — croix
+retirée (5 rouges) et clic sur le voile débranché (1 rouge).
+
+**Une limite PUBLIÉE** : `trapModal` ne ferme sur le voile que si le geste commence ET finit sur
+lui, sans quoi un glissement parti d'un bouton fermerait la modale — le défaut symétrique. Le
+mécanisme est réel (mesuré en isolé : un `mousedown` sur un bouton suivi d'un `mouseup` sur le
+voile produit bien un `click` ciblant le voile). Mais **le critère que j'avais écrit pour lui ne
+discriminait pas** : vérifié en retirant la garde, il sortait vert. Il est retiré plutôt que gardé
+en décoration, et la limite est écrite dans la suite : cette garde-là n'est couverte par aucun
+test. À reprendre avec un harnais qui sait rejouer un glissement dans la modale réelle.
+
+**Reste de R23.3** : « interface trop imposante » — non traité dans ce lot.
 
 ### R23.4 · L'image de partage : fond transparent, et le texte déborde · **DÉFAUT + esthétique**
 
