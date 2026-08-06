@@ -482,9 +482,13 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(apres.aria === "true", "U18 — aria-expanded suit l'état");
 
   // LA MOITIÉ QUI COMPTE : rien de ce qui AVERTIT ne se cache derrière un « ? ».
-  await page.click('#ebTabbar .tabbtn[data-tab="nutrition"]').catch(() => {});
-  await page.waitForTimeout(700);
+  // R24.9 — la nutrition vit réduite dans 🎯 Aujourd'hui : on y va, on DÉPLIE (le repli est la
+  // demande du fondateur, le principe U18 devient « une fois la carte ouverte, l'avertissement
+  // est en clair, jamais derrière une infobulle »).
+  await passeCheckin(page);
+  await page.waitForTimeout(600);
   const nut = await page.evaluate(() => {
+    [...document.querySelectorAll("#screen details")].forEach((d) => { d.open = true; });
     const txt = document.body.innerText;
     const cache = [...document.querySelectorAll(".aide-txt")].map((e) => e.textContent || "").join(" ");
     return { visible: /ESTIMATION|pas une consigne|diététicien|professionnel/i.test(txt),
@@ -589,6 +593,30 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(!m.err && m.encre > 5000, "R23.4 — et la carte n'est pas vide pour autant (" + m.encre + " pixels d'encre)");
   ok(!m.err && m.droite < m.w - 20,
     "R23.4 — rien ne déborde du cadre (pixel le plus à droite : " + m.droite + "/" + m.w + ")");
+
+  // R24.4 — MÊME CONTRAT POUR L'IMAGE POST-SÉANCE (story 9:16 et carte 1:1) : fond
+  // transparent, encre présente, plaque claire sous l'avatar (sans elle la silhouette sombre
+  // disparaît sur une photo de nuit — on vérifie qu'un pixel du centre est CLAIR et opaque).
+  for (const fmt of ["story", "square"]) {
+    const st = await page.evaluate(async (f) => {
+      const mod = await import("./js/export.js");
+      const blob = await mod.storyBlob({ sessionName: "Sweetspot vélo", detail: "3×12min — récup 5min", sport: "tri", streak: 4, accent: "#ff7a1a",
+        avatarSVG: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 110"><circle cx="50" cy="30" r="14" fill="#16130e"/></svg>' }, f);
+      if (!blob) return { err: true };
+      const bmp = await createImageBitmap(blob);
+      const c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height;
+      const x = c.getContext("2d"); x.drawImage(bmp, 0, 0);
+      const px = (X, Y) => [...x.getImageData(X, Y, 1, 1).data];
+      const coin = px(2, Math.round(bmp.height / 2)), centre = px(Math.round(bmp.width / 2), f === "square" ? 420 : 640);
+      let encre = 0; const full = x.getImageData(0, 0, bmp.width, bmp.height).data;
+      for (let i = 3; i < full.length; i += 4) if (full[i] > 200) encre++;
+      return { w: bmp.width, h: bmp.height, coinAlpha: coin[3], centre, encre };
+    }, fmt);
+    ok(!st.err && st.coinAlpha === 0 && st.encre > 5000,
+      "R24.4 — l'image post-séance (" + fmt + ") est transparente hors encre (" + (st.err ? "erreur" : st.coinAlpha + " · " + st.encre + " px d'encre") + ")");
+    ok(!st.err && st.centre[3] > 200 && st.centre[0] > 180 && st.centre[1] > 170,
+      "R24.4 — la plaque claire porte l'avatar (centre " + (st.centre || []).join(",") + ") : lisible sur photo sombre");
+  }
   await ctx.close();
 }
 
@@ -653,6 +681,38 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   });
   ok(marqueur.svgTrouve && marqueur.iciTexte,
     "R24.6 — la courbe de charge marque visuellement « tu es ici » à la semaine courante");
+
+  // R24.9 — la nutrition vit RÉDUITE dans 🎯 Aujourd'hui, et l'onglet a disparu de la barre.
+  const nut24 = await page.evaluate(() => {
+    const t = document.querySelector("#screen").textContent || "";
+    return { onglets: document.querySelectorAll("#ebTabbar .tabbtn").length,
+      boutonNutrition: !!document.querySelector('#ebTabbar .tabbtn[data-tab="nutrition"]'),
+      section: /🥗 Nutrition du jour|Dépense estimée du jour/.test(t), ravito: /Ravitaillement/.test(t),
+      seanceAujourdhui: /séance/i.test((document.querySelector("#screen") || {}).textContent || "") };
+  });
+  const jourAvecSeance = await page.evaluate(async () => {
+    const { S, todayISO } = await import("./js/state.js");
+    let day = null;
+    (S.currentPlan || { weeks: [] }).weeks.forEach((w) => w.days.forEach((d) => { if (d.date === todayISO()) day = d; }));
+    return !!(day && day.sessions.some((x) => x.d !== "rs"));
+  });
+  ok(nut24.onglets === 4 && !nut24.boutonNutrition,
+    "R24.9 — la barre compte 4 onglets, sans Nutrition");
+  ok(nut24.section && (nut24.ravito || !jourAvecSeance),
+    "R24.9 — …et la nutrition du jour vit en version réduite dans 🎯 Aujourd'hui (ravito dès qu'il y a une séance"
+    + (jourAvecSeance ? "" : " — jour de repos aujourd'hui, dépense seule") + ")");
+
+  // R24.8 — l'en-tête de 📅 Semaine résume les distances par discipline. Le profil de la
+  // suite (tri, FTP + allure + CSS + poids connus) permet les trois conversions : les km
+  // portent le « ~ » qui signale une estimation dérivée des références.
+  await page.click('#ebTabbar .tabbtn[data-tab="week"]').catch(() => {});
+  await page.waitForTimeout(700);
+  const km24 = await page.evaluate(() => {
+    const t = (document.querySelector("#screen").textContent || "").replace(/\s+/g, " ");
+    return { run: /🏃 ~[\d,]+ km/.test(t), bike: /🚴 ~[\d,]+ km/.test(t), swim: /🏊 ~?[\d,]+ km/.test(t) };
+  });
+  ok(km24.run && km24.bike && km24.swim,
+    "R24.8 — 📅 Semaine ouvre sur les distances par discipline (course, vélo, nage), estimations marquées ~");
   ok(!auj.intens, "R23.9 — idem pour la répartition des intensités");
   // MESURE SUR LE MODULE, PAS SUR UN JOUR ÉCHANTILLONNÉ. Ma première écriture lisait le texte
   // rendu — et elle passait alors que le bloc était TOUJOURS LÀ : le jour tiré au sort n'avait

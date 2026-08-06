@@ -45,6 +45,7 @@ const ORDER = [
   // les autres modules du bundle : il ne fait que de la physique. Il doit précéder `predictor`
   // et les modules de sport, qui l'appellent tous les trois (tri, vélo, duathlon).
   "src/engine/cyclingSpeed.ts",
+  "src/engine/weekDistances.ts", // R24.8 — distances de la semaine par discipline
   "src/engine/loadModel.ts",
   "src/audit/coherenceScorer.ts",
   "src/generator/sessionLibrary.ts",

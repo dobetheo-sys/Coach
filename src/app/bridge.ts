@@ -30,6 +30,7 @@ import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
 import { dailyEnergy, energyRefusalNotice, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
 import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
 import { assessFeasibility } from "../engine/feasibility.ts";
+import { weekDistances } from "../engine/weekDistances.ts";
 
 interface AppAnswers extends Record<string, unknown> {
   format?: string;
@@ -850,5 +851,8 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // règle E3 ne vivait que dans le moteur, et les trois écritures côté UI ne la voyaient pas.
   testDansBornes,
   physioBounds: PHYSIO_BOUNDS,
+  // R24.8 — les distances de la semaine par discipline (temps exact, km si les références
+  // le permettent — jamais un chiffre inventé). Sert l'en-tête de l'onglet 📅 Semaine.
+  weekDistances,
   version: "v2-sprint9",
 };

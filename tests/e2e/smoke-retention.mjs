@@ -1,6 +1,6 @@
 // Smoke rétention (adapté R5) : trail (registre disciplines), repos validable, feedback
 // RPE → célébration → teaser, drapeau douleur (pose/verrou/levée), série au Profil.
-// Ordre des onglets R5 : 0=Profil · 1=Plan · 2=Aujourd'hui · 3=Semaine · 4=Nutrition.
+// Ordre des onglets (R24.9) : 0=Profil · 1=Plan · 2=Aujourd'hui · 3=Semaine.
 import { startServer, launchBrowser, makeReporter, runnerStateV1 } from "./harness.mjs";
 
 const PORT = 8510;

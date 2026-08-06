@@ -10,8 +10,9 @@
 import { S, $, ebSave, fmtDay, todayISO } from "../state.js";
 import { checkinSlideshowHTML, bindCheckinSlideshow, pointLabelInline } from "./checkin.js";
 import { loadChartSVG, historyCardHTML, readinessCardHTML } from "./plan-view.js";
+import { nutritionCardHTML, energyCardHTML } from "./tab-nutrition.js";
 import { momentHTML, painBannerHTML, bindPainBanner, sickToggleHTML, bindSickToggle, heroSessionHTML, feedbackModal, showCongrats } from "./session-life.js";
-import { readinessDoneToday, applyReadiness } from "./readiness.js";
+import { readinessDoneToday, applyReadiness, fetchWeather } from "./readiness.js";
 import { dailyContentHTML } from "./daily-content.js";
 import { scheduleDailyNotification, weeklyReviewHTML, missedSessionsCheck } from "../notifications.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
@@ -128,6 +129,30 @@ function readinessLogHTML() {
   return h;
 }
 
+/** Le jour courant du plan (null hors plan). */
+function jourDuPlan(plan, today) {
+  let day = null;
+  plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date === today) day = d; }));
+  return day;
+}
+/** Le ravito du jour, REPLIÉ : la carte de tab-nutrition, transformée en <details>. Le titre
+ *  de cette carte ne contient pas de div imbriqué (leçon repliable/R24.1 vérifiée), donc le
+ *  premier </div> ferme bien le titre. */
+function ravitoReplie(day, tempC) {
+  const ravito = nutritionCardHTML(day, tempC);
+  return ravito
+    ? ravito.replace('<div class="load-card" id="nutCard"><div class="load-title">', '<details class="load-card" id="nutCard"><summary class="load-title" style="cursor:pointer">')
+        .replace("</div>", "</summary>").replace(/<\/div>$/, "</details>")
+    : "";
+}
+function nutritionReduiteHTML(plan, today) {
+  const day = jourDuPlan(plan, today);
+  const rav = ravitoReplie(day, null);
+  const energie = energyCardHTML(day, false); // repliée : la version réduite demandée
+  if (!rav && !energie) return "";
+  return '<div class="card"><div class="eyebrow">🥗 Nutrition du jour</div><div id="nutRedu">' + rav + "</div>" + energie + "</div>";
+}
+
 export function renderTabToday(plan) {
   const today = todayISO();
   const moment = momentHTML(plan, today);
@@ -158,6 +183,11 @@ export function renderTabToday(plan) {
   html += missedSessionsCheck(plan);
   html += heroSessionHTML(plan, today); // la séance du jour, EN PREMIER
   html += todayValidateHTML(plan, today); // R6 — valider directement ici (feedback → partages)
+  // R24.9 (retour fondateur, 06/08) — « l'onglet nutrition passe dans l'onglet jours mais de
+  // manière réduite ». Le ravitaillement et la dépense sont des faits du JOUR : ils vivent ici,
+  // repliés (la version « réduite » demandée), rendus par les MÊMES fonctions que portait
+  // l'onglet Nutrition — déplacées, pas dupliquées (R23.12b). La météo affine en différé.
+  html += nutritionReduiteHTML(plan, today);
   // R23.7 / R23.9 / R23.12b — 🎯 AUJOURD'HUI REDEVIENT « CE QUE JE FAIS MAINTENANT ».
   //
   // Retour du fondateur (06/08/2026) : la prédiction, la charge et la répartition des intensités
@@ -193,6 +223,16 @@ export function renderTabToday(plan) {
   html += '<div style="text-align:center;margin:4px 0 10px"><button class="btn" id="tdRedoCheckin" type="button" style="font-size:var(--fs-sm);padding:8px 14px;min-height:44px">↻ Refaire mon ' + pointLabelInline() + '</button></div>';
   $("screen").innerHTML = html;
   bindSickToggle(plan, today);
+  // R24.9 — la météo affine le ravito en différé, sans re-rendre l'onglet ni défaire le repli.
+  {
+    const zone = $("nutRedu");
+    const day = jourDuPlan(plan, today);
+    if (zone && day) fetchWeather().then((wx) => {
+      if (!wx || wx.tmaxC == null) return;
+      const el = $("nutRedu");
+      if (el) el.innerHTML = ravitoReplie(day, wx.tmaxC);
+    });
+  }
   scheduleDailyNotification(plan);
   {
     const rb = $("rdApply");

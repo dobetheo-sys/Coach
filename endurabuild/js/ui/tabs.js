@@ -7,7 +7,6 @@ import { buildPlan, EBGenerationError } from "../app.js";
 import { renderTabProfile } from "./tab-profile.js";
 import { renderTabPlanGeneral } from "./tab-plan-general.js";
 import { renderTabToday } from "./tab-today.js";
-import { renderTabNutrition } from "./tab-nutrition.js";
 import { renderTabWeek } from "./tab-week.js";
 import { brancherAide } from "./help.js";
 
@@ -27,12 +26,18 @@ import { brancherAide } from "./help.js";
 // nouveau `tab-week.js` consomme `weekGridHTML` et `toggleDone` comme 🗓 Plan, sans
 // redessiner sa propre grille. Un identifiant d'onglet inconnu retombe sur le dernier onglet
 // par le repli déjà en place dans `renderActiveTab`.
+// R24.9 (retour fondateur, 06/08) — l'onglet Nutrition DISPARAÎT de la barre : son contenu
+// (ravitaillement du jour + dépense estimée) vit en version réduite dans 🎯 Aujourd'hui,
+// rendu par les mêmes fonctions (tab-nutrition.js reste le module, il perd son onglet).
+// Cette décision RÉVISE la préférence « cinq onglets, l'œil aime les chiffres impairs »
+// de R18.3 — c'est le même décideur qui tranche, et l'assumer ici vaut mieux que de garder
+// un onglet creux pour faire un compte impair. Un état sauvegardé sur l'onglet « nutrition »
+// retombe sur le dernier onglet par le repli déjà en place dans `renderActiveTab`.
 const TABS = [
   ["profile", "\u{1F4CB}", "Profil", renderTabProfile],
   ["general", "\u{1F5D3}", "Plan", renderTabPlanGeneral],
   ["today", "\u{1F3AF}", "Aujourd’hui", renderTabToday],
   ["week", "\u{1F4C5}", "Semaine", renderTabWeek],
-  ["nutrition", "\u{1F957}", "Nutrition", renderTabNutrition],
 ];
 
 let activeTab = "today"; // défaut : l'onglet central — le point du matin d'abord

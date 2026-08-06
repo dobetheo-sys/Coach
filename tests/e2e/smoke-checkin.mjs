@@ -109,7 +109,7 @@ ok(/1\/2/.test(await texteDiapo()), "H-1b — écran 1/2 : sans opt-in VFC, le c
 ok(/dormi combien/.test(await texteDiapo()), "le sommeil est demandé en HEURES (signal mesuré, audit v6 A5)");
 ok(await page.locator(".gw-grid").count() === 0, "AUCUNE grille de semaine visible avant le check-in");
 ok(await page.locator(".doneBtn").count() === 0, "AUCUNE coche de séance visible avant le check-in");
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "5 onglets (Profil/Plan/Aujourd'hui/Semaine/Nutrition) — R18.3 a restauré Semaine, et 🎯 Aujourd'hui redevient réellement CENTRAL (3e sur 5)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "4 onglets (Profil/Plan/Aujourd'hui/Semaine) — R24.9 : Nutrition vit réduite dans Aujourd'hui");
 ok(await page.locator("#ebTabbar .tabbtn.tab-central").count() === 1, "l'onglet central Aujourd'hui est mis en valeur");
 
 // 2. H-1b — LE DIAPORAMA PAR DÉFAUT : DEUX TAPS (nuit courte → vidé), phrases de coach.

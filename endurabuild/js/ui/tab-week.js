@@ -83,8 +83,26 @@ export function renderTabWeek(plan) {
       + '<div class="nav" style="margin-top:10px"><button class="btn primary" id="wkGoCheckin" type="button">→ Faire mon ' + pointLabelInline() + '</button></div></div>';
   }
 
-  html += '<div class="card"><div class="eyebrow">📅 Ta semaine</div>'
-    + '<div class="gw">' + weekHeaderHTML(w) + weekGridHTML(plan, w, today) + "</div>";
+  html += '<div class="card"><div class="eyebrow">📅 Ta semaine</div>';
+  // R24.8 (retour fondateur, 06/08) — « un résumé de chaque distance en km par discipline en
+  // haut de la page ». Le calcul vit dans le MOTEUR (EBV2.weekDistances) : mètres prescrits
+  // comptés exacts, minutes converties par les références MESURÉES — sans référence, pas de
+  // km inventé, le temps seul s'affiche. Le « ~ » signale une conversion.
+  if (globalThis.EBV2 && globalThis.EBV2.weekDistances) {
+    try {
+      const DL = { rn: "🏃", bk: "🚴", sw: "🏊" };
+      const dists = globalThis.EBV2.weekDistances(w, S.answers).filter((x) => DL[x.d] && (x.min > 0 || x.km));
+      if (dists.length) {
+        const fmtKm = (x) => (x.approx ? "~" : "") + String(x.km).replace(".", ",") + " km";
+        const fmtMin = (m) => (m >= 60 ? Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0") : m + " min");
+        html += '<div class="load-sub" style="display:flex;gap:14px;flex-wrap:wrap;margin:2px 0 8px;font-size:var(--fs-md)">'
+          + dists.map((x) => "<span><b>" + DL[x.d] + " " + (x.km != null ? fmtKm(x) : fmtMin(x.min)) + "</b>"
+            + (x.km != null && x.min > 0 ? ' <span style="color:var(--muted)">· ' + fmtMin(x.min) + "</span>" : "") + "</span>").join("")
+          + "</div>";
+      }
+    } catch (e) {}
+  }
+  html += '<div class="gw">' + weekHeaderHTML(w) + weekGridHTML(plan, w, today) + "</div>";
   if (S._swapPending && S._swapPending.w === w.num)
     html += '<div class="load-sub" style="margin-top:6px">⇄ <b>' + S._swapPending.jour + "</b> sélectionné — touche le jour avec lequel l’échanger (ou re-touche ⇄ pour annuler).</div>";
   else

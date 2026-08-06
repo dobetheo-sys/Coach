@@ -210,7 +210,7 @@ ok(await page.locator("#ebBackToPlan").count() === 1, "« Revenir à mon plan en
 const prefilled = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return { age: S.answers.age, sex: S.answers.sex, pace: S.answers.pace }; });
 ok(prefilled.age === "35" && prefilled.sex === "H" && prefilled.pace === "4:30", "données de la personne pré-remplies (âge/sexe/allure) dans le nouveau plan");
 await page.click("#ebBackToPlan"); await page.waitForTimeout(500);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "retour : la vue plan est restaurée");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "retour : la vue plan est restaurée (4 onglets — R24.9)");
 const plansAfterBack = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.plans.length; });
 ok(plansAfterBack === 1, "le brouillon abandonné est retiré (pas de plan fantôme)");
 
@@ -230,13 +230,13 @@ ok(/Réalisé : 44:30/.test(await page.locator("#screen").textContent()), "chron
 const rr = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.answers.raceResult; });
 ok(rr && rr.time === "44:30" && rr.date === today, "raceResult persisté avec la date de course");
 
-// ---- 5. Onglet Nutrition : estimation énergétique (jamais une cible) ----
+// ---- 5. Nutrition (R24.9 : réduite dans 🎯 Aujourd'hui) : estimation énergétique, jamais une cible ----
 await page.evaluate(async () => {
   const { S, ebSave } = await import("./js/state.js");
   delete S.answers.weight;
   ebSave();
   const { setTab } = await import("./js/ui/tabs.js");
-  setTab("nutrition");
+  setTab("today"); // R24.9 — l'onglet Nutrition n'existe plus : sa version réduite vit ici
 });
 await page.waitForTimeout(300);
 const noWtxt = await page.locator("#screen").textContent();
@@ -247,17 +247,17 @@ await page.evaluate(async () => {
   S.answers.height = "180";
   ebSave();
   const { setTab } = await import("./js/ui/tabs.js");
-  setTab("nutrition");
+  setTab("today");
 });
 await page.waitForTimeout(300);
 const eTxt = await page.locator("#screen").textContent();
-ok(/Base \+ vie quotidienne/.test(eTxt) && /Entraînement du jour/.test(eTxt) && /Total/.test(eTxt), "carte dépense : base + entraînement + total affichés (ouverte par défaut)");
+ok(/Base \+ vie quotidienne/.test(eTxt) && /Entraînement du jour/.test(eTxt) && /Total/.test(eTxt), "carte dépense : base + entraînement + total présents (repliée dans Aujourd'hui — R24.9)");
 // R16.6 — les macros passent d'un paragraphe continu à UNE LIGNE PAR MACRO : chaque libellé
 // commence donc par une majuscule. L'assertion devient insensible à la casse — son intention
 // (les fourchettes chiffrées sont affichées) est inchangée, c'est la mise en forme qui a bougé.
 ok(/protéines ~\d+/i.test(eTxt) && /lipides ~\d+/i.test(eTxt) && /glucides ~\d+/i.test(eTxt), "macros indicatives affichées (fourchettes chiffrées)");
 ok(/pas un menu/i.test(eTxt) && /pas une consigne/i.test(eTxt), "garde-fous affichés : photographie, pas un menu ni une consigne");
-ok(!/déficit|maigrir|perte de poids|restriction/i.test(eTxt), "aucun vocabulaire de restriction dans l'onglet Nutrition");
+ok(!/déficit|maigrir|perte de poids|restriction/i.test(eTxt), "aucun vocabulaire de restriction dans la nutrition du jour");
 ok(!/Journal alimentaire/.test(eTxt), "journal alimentaire retiré (décision R6)");
 
 // ---- O-23 : « latest » rend le plus RÉCENT, même à date égale ----
