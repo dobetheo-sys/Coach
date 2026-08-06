@@ -38,3 +38,11 @@ jobs:
           path: endurabuild/
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # 30 min au lieu des 10 par défaut. Le 06/08/2026, le backend Pages a mis
+          # plus de 10 min à propager deux déploiements de suite : le timeout de
+          # l'action a alors ANNULÉ le déploiement en cours, et cet état « annulé »
+          # colle au SHA — tout redéploiement du même commit meurt ensuite en 5 s.
+          # Un timeout court ne protège de rien ici (le job est déjà fini de
+          # construire) ; il transforme un backend lent en SHA condamné.
+          timeout: 1800000

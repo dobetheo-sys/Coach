@@ -347,19 +347,28 @@ génération. Le premier est ce qu'attend l'utilisateur ; le second est ce que f
 
 ---
 
-## Incident de déploiement du 06/08/2026 — le jumeau annulé
+## Incident de déploiement du 06/08/2026 — le SHA empoisonné (diagnostic corrigé deux fois)
 
-Le push du merge R23 a déclenché DEUX runs « Déploiement PWA » jumeaux sur le même commit.
-Le premier a déployé avec succès à 12 h 37. Le second, coincé en file d'attente, a atteint son
-timeout à 12 h 40 et son nettoyage a exécuté « Canceled deployment with ID 4a146fba… » —
-**l'identifiant d'un déploiement Pages est le SHA du commit**, il a donc annulé le déploiement
-réussi de son jumeau, et le site est retombé sur la version précédente.
+**Mon premier diagnostic — « deux runs jumeaux dont le nettoyage s'entretue » — était FAUX, et il
+est gardé écrit.** Les « jumeaux » étaient en réalité les DEUX workflows du dépôt (« Audit de
+cohérence » et « Déploiement PWA »), déclenchés par le même push à la même seconde : il n'y a
+jamais eu deux runs de déploiement sur un commit. J'ai même annoncé un déploiement « vert » en
+lisant le run d'AUDIT — un run vert du mauvais workflow. Même famille que les instruments qui
+mesurent une grandeur voisine de celle qu'ils nomment.
 
-Conséquence en cascade : tout nouveau déploiement du même SHA (re-run, `workflow_dispatch`)
-mourait en cinq secondes sur « Deployment cancelled » — l'état annulé colle au SHA. La seule
-sortie : un commit neuf sur `main`. C'est la raison d'être de ce paragraphe.
+**Le mécanisme réel, lu dans les logs :** ce jour-là, le backend Pages mettait plus de dix
+minutes à propager un déploiement (ceux du matin passaient en moins d'une minute). Or
+`deploy-pages@v4` porte un timeout par défaut de 10 min, et son nettoyage ANNULE alors le
+déploiement en cours — « Canceled deployment with ID <sha> » : **l'identifiant d'un déploiement
+Pages est le SHA du commit**, et cet état « annulé » colle au SHA. Tout redéploiement du même
+commit meurt ensuite en cinq secondes (« Deployment cancelled »), et tout déploiement d'un
+AUTRE commit est refusé tant que le fantôme est « in progress » (« Please cancel <sha> first »).
+Deux SHA ont été condamnés ainsi dans la même journée (`4a146fba` à 12 h 40, `db5ada9` à
+14 h 56 — le second par mon propre `workflow_dispatch` de relance, qui a re-payé le même timeout).
 
-Leçon pour le dépôt : le workflow porte `concurrency: group: pages` avec `cancel-in-progress:
-true`, mais deux runs créés dans la même seconde sont passés ensemble. Si l'incident se
-reproduit, ne PAS re-runner le run échoué (il empile un second artefact « github-pages » et
-`deploy-pages` refuse) : pousser un commit neuf.
+**Correctifs :** le timeout de `deploy-pages` passe à 30 min dans `pages.yml` (un timeout court
+ne protège de rien ici — le job a fini de construire, il ne fait qu'attendre — mais il transforme
+un backend lent en SHA condamné). Si l'incident se reproduit : ne PAS re-runner le run échoué (il
+empile un second artefact « github-pages » et `deploy-pages` refuse) ; attendre l'expiration du
+fantôme (~1 h) puis pousser un commit neuf — et vérifier le run du workflow « Déploiement PWA »,
+pas celui de l'audit.
