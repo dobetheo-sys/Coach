@@ -556,6 +556,111 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   await ctx.close();
 }
 
+// ── R23.4 — LA CARTE DE PARTAGE SE POSE SUR UNE PHOTO ────────────────────────────────────
+//
+// Deux propriétés, et la seconde est celle qui tient quoi qu'il arrive : le fond est TRANSPARENT
+// (sans quoi « par-dessus une photo » n'a pas de sens), et RIEN NE DÉBORDE du cadre — quelle que
+// soit la police effectivement utilisée, puisque `txt()` rétrécit une ligne trop large.
+{
+  const { ctx, page } = await session(Date.UTC(2026, 7, 5, 9, 0));
+  const m = await page.evaluate(async () => {
+    const mod = await import("./js/export.js");
+    const canvases = [];
+    const vrai = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob = function (cb, t) { canvases.push(this); return vrai.call(this, cb, t); };
+    await mod.exportPNG();
+    await new Promise((r) => setTimeout(r, 400));
+    HTMLCanvasElement.prototype.toBlob = vrai;
+    const c = canvases[0];
+    if (!c) return { err: true };
+    const x = c.getContext("2d");
+    const a = (px, py) => x.getImageData(px, py, 1, 1).data[3];
+    const coins = [a(2, 2), a(c.width - 3, 2), a(2, c.height - 3), a(c.width - 3, c.height - 3)];
+    const full = x.getImageData(0, 0, c.width, c.height).data;
+    let droite = 0, encre = 0;
+    for (let py = 0; py < c.height; py++) for (let pxx = c.width - 1; pxx > droite; pxx--)
+      if (full[(py * c.width + pxx) * 4 + 3] > 30) { droite = pxx; break; }
+    for (let i = 3; i < full.length; i += 4) if (full[i] > 200) encre++;
+    return { w: c.width, coins, droite, encre };
+  });
+  ok(!m.err, "R23.4 — la carte de partage se rend (canvas produit)");
+  ok(!m.err && m.coins.every((v) => v === 0),
+    "R23.4 — le fond est TRANSPARENT aux quatre coins (" + (m.coins || []).join(",") + ")");
+  ok(!m.err && m.encre > 5000, "R23.4 — et la carte n'est pas vide pour autant (" + m.encre + " pixels d'encre)");
+  ok(!m.err && m.droite < m.w - 20,
+    "R23.4 — rien ne déborde du cadre (pixel le plus à droite : " + m.droite + "/" + m.w + ")");
+  await ctx.close();
+}
+
+// ── R23.5 / R23.6 / R23.7 / R23.9 / R23.12 — LES DÉPLACEMENTS ───────────────────────────
+//
+// Ce bloc garde l'ORDRE et l'APPARTENANCE, pas la mise en page : ce qu'on vient voir en premier
+// dans 🗓 Plan, et ce que 🎯 Aujourd'hui ne porte plus. Les deux moitiés comptent — la seconde
+// interdit qu'une carte soit dupliquée dans les deux onglets au lieu d'y être déplacée.
+{
+  const { ctx, page } = await session(Date.UTC(2026, 7, 5, 9, 0));
+  await page.click('#ebTabbar .tabbtn[data-tab="general"]').catch(() => {});
+  await page.waitForTimeout(800);
+  const plan = await page.evaluate(() => {
+    const t = document.querySelector("#screen").textContent || "";
+    const pos = (re) => { const m = t.match(re); return m ? m.index : -1; };
+    return { t, decompte: /J−\d+/.test(t), avancement: /Semaine \d+ \/ \d+/.test(t),
+      partage: !!document.getElementById("expPng"),
+      posAvancement: pos(/Semaine \d+ \/ \d+/), posPourquoi: pos(/Pourquoi ce plan/),
+      pred: /Prédiction de course/.test(t), intens: /Répartition des intensités/.test(t),
+      libelles: /Version imprimable/.test(t) && /Ajouter à mon agenda/.test(t) && !/🖼 PNG/.test(t) };
+  });
+  ok(plan.decompte, "R23.5 — le décompte des jours avant la course est en tête de 🗓 Plan");
+  ok(plan.avancement, "R23.5 — l'avancement du plan aussi (semaine N / total)");
+  ok(plan.partage, "R23.12 — et le bouton « 📤 Partage » est sous l'avancement");
+  ok(plan.posAvancement >= 0 && plan.posPourquoi > plan.posAvancement,
+    "R23.6 — « Pourquoi ce plan » vient APRÈS l'avancement, plus avant (l'info d'abord)");
+  ok(plan.pred && plan.intens, "R23.7 / R23.9 — la prédiction et les intensités vivent dans 🗓 Plan");
+  ok(plan.libelles, "R23.12c — les exports portent des noms lisibles (imprimable · agenda), plus « PNG »");
+
+  await page.click('#ebTabbar .tabbtn[data-tab="today"]').catch(() => {});
+  await page.waitForTimeout(800);
+  const auj = await page.evaluate(() => {
+    const t = document.querySelector("#screen").textContent || "";
+    return { pred: /Prédiction de course/.test(t), intens: /Répartition des intensités/.test(t),
+      direct: /Suivre ma séance en direct/.test(t) };
+  });
+  ok(!auj.pred, "R23.7 — …et elles ont bien QUITTÉ 🎯 Aujourd'hui (déplacées, pas dupliquées)");
+  ok(!auj.intens, "R23.9 — idem pour la répartition des intensités");
+  // MESURE SUR LE MODULE, PAS SUR UN JOUR ÉCHANTILLONNÉ. Ma première écriture lisait le texte
+  // rendu — et elle passait alors que le bloc était TOUJOURS LÀ : le jour tiré au sort n'avait
+  // pas de séance, donc la liste était vide. Un critère satisfait par le hasard de la date ne
+  // garde rien ; on interroge donc le source servi, qui ne dépend d'aucun jour.
+  const src = await page.evaluate(async () => (await (await fetch("./js/ui/tab-today.js")).text()));
+  ok(!auj.direct && !/summary class="load-title">⏱ Suivre ma séance en direct/.test(src),
+    "R23.12b — « suivre ma séance en direct » est supprimé (absent du module, pas seulement du rendu du jour)");
+
+  // R23.10 / R23.11 / R23.12b — le Profil se recentre sur QUI TU ES.
+  await page.click('#ebTabbar .tabbtn[data-tab="profile"]').catch(() => {});
+  await page.waitForTimeout(700);
+  const prof = await page.evaluate(() => {
+    const t = document.querySelector("#screen").textContent || "";
+    return { conseils: /Conseils personnalisés/.test(t), rappel: /🔔 Rappel quotidien/.test(t),
+      champRappel: !!document.getElementById("pfNotif"),
+      edit: !!document.getElementById("pfEdit"), reset: !!document.getElementById("pfReset") };
+  });
+  ok(!prof.conseils, "R23.10 — les conseils personnalisés ont quitté 📋 Profil");
+  ok(prof.rappel && prof.champRappel, "R23.11 — le rappel quotidien a sa propre carte, hors des références repliées");
+  ok(!prof.edit && !prof.reset, "R23.12b — « modifier mes réponses » et « changer de sport » ne sont plus au Profil");
+
+  await page.click('#ebTabbar .tabbtn[data-tab="general"]').catch(() => {});
+  await page.waitForTimeout(700);
+  const surPlan = await page.evaluate(() => {
+    const t = document.querySelector("#screen").textContent || "";
+    return { conseils: /Conseils personnalisés/.test(t),
+      edit: !!document.getElementById("backBp"), reset: !!document.getElementById("restartBtn") };
+  });
+  ok(surPlan.conseils, "R23.10 — …et ils sont bien ARRIVÉS dans 🗓 Plan (déplacés, pas supprimés)");
+  ok(surPlan.edit && surPlan.reset,
+    "R23.12b — modifier et changer de sport restent atteignables, à un seul endroit (🗓 Plan)");
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 // La suite doit SORTIR en code non nul quand elle échoue : `run-all.mjs` lit le code de

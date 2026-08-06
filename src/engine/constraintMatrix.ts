@@ -504,11 +504,63 @@ export const PHYSIO_BOUNDS: Record<string, { min: number; max: number; unit: str
     get weight() { return schemaBound("weight", "kg"); },
     get height() { return schemaBound("height", "cm"); },
     get age() { return schemaBound("age", "ans"); },
+    // R23.1 — L'ALLURE SEUIL ET LE CSS N'AVAIENT AUCUNE BORNE, et ce sont les deux références qui
+    // pilotent TOUTES les zones de course et de nage.
+    //
+    // Remonté par le fondateur (06/08/2026) : « il note un seuil à moins d'une minute au
+    // kilomètre, sans doute l'artefact d'une course ». E3 existe depuis l'audit v6 et dit
+    // exactement pourquoi — « une FTP de 9999 W produit des zones absurdes affichées sans bruit »
+    // — mais elle n'a jamais couvert que les clés NUMÉRIQUES du schéma. `pace` et `css` sont
+    // saisies en `min:s`, elles n'ont donc ni `min` ni `max` dans `ANSWER_SCHEMA`, et personne
+    // n'a rejoué la règle sur elles. Même famille que R20.1 (la garde couvre le sport où le code
+    // a été écrit, pas celui où il sert) et O-16 (borne d'âge fermée côté format, jamais rejouée
+    // sur l'écran arrivé après).
+    //
+    // Le coût n'est pas cosmétique : la valeur est PROMUE en référence vivante (`S.answers.pace`),
+    // donc un artefact — glitch GPS, portion en voiture, sortie vélo étiquetée « course » —
+    // devient l'allure sur laquelle tout le plan calcule ses zones.
+    //
+    // Bornes LOCALES et assumées, comme `hrRest` : elles ne peuvent pas être dérivées du schéma,
+    // qui ne porte pas ces deux clés en numérique. Provenance :
+    //   · seuil 150 s/km = 2'30/km. Le record du monde du 10 km est à 2'34/km ; une allure SEUIL
+    //     (tenable ~1 h) plus rapide que le record du monde n'est pas une mesure, c'est un
+    //     artefact. Borne haute 1200 s/km = 20'/km : au-delà on marche, et on ne refuse pas un
+    //     débutant — la borne basse est la seule qui protège.
+    //   · CSS 50 s/100m : le record du monde du 100 m nage libre est à 46,8 s, sur 100 m lancés.
+    //     Un CSS (allure tenable) plus rapide n'existe pas. Borne haute 300 s/100m = 5'/100m.
+    thrPace: { min: 150, max: 1200, unit: "s/km" },
+    css: { min: 50, max: 300, unit: "s/100m" },
   },
 );
 export function boundedOrZero(key: keyof typeof PHYSIO_BOUNDS & string, v: number): number {
   const b = PHYSIO_BOUNDS[key];
   return Number.isFinite(v) && v >= b.min && v <= b.max ? v : 0;
+}
+
+/**
+ * R23.1 — LE POINT UNIQUE « CETTE MESURE EST-ELLE HUMAINE ? ».
+ *
+ * Quatre endroits écrivent dans le journal de tests (`a.tests`) : le parseur FIT, l'import
+ * Strava, le retest guidé et la saisie manuelle du Profil. Aucun ne bornait quoi que ce soit —
+ * et quatre écritures d'une même règle, c'est ce que R11.1 interdit. Le contrôle vit ici, dans
+ * le module qui porte déjà E3, et les quatre appelants passent par lui.
+ *
+ * Rend `null` plutôt que 0 : un 0 est une valeur, et le piège du zéro a déjà coûté trois
+ * corrections dans ce dépôt (R20.1 `vol_recent`, P11 `bridge`, `volumeFactor`). `null` ne peut
+ * pas être confondu avec une mesure.
+ *
+ * Un type INCONNU passe : cette fonction borne ce qu'elle sait borner et ne prétend pas être un
+ * validateur universel. Une borne qu'on ne peut pas justifier vaut moins que pas de borne — elle
+ * refuserait des mesures vraies en donnant l'air d'avoir vérifié.
+ */
+export const TEST_BOUND_KEY: Record<string, string> = {
+  ftp: "ftp", thrPace: "thrPace", css: "css",
+};
+export function testDansBornes(type: string, value: number): number | null {
+  const k = TEST_BOUND_KEY[type];
+  if (!k) return Number.isFinite(value) ? value : null;
+  const b = PHYSIO_BOUNDS[k];
+  return Number.isFinite(value) && value >= b.min && value <= b.max ? value : null;
 }
 
 /** R6.1 — contre-indications par localisation de douleur : une douleur de charge se

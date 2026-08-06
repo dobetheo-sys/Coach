@@ -608,7 +608,20 @@ async function stravaImport(oauthTok){
       else if(rides.length)notes.push("FTP non estimée : aucune de tes sorties ne contient 20 minutes continues exploitables. Renseigne-la au Profil, ou fais le test de 20 min.");
       else notes.push("FTP non estimée : pas de capteur de puissance sur tes sorties. Saisis-la, ou fais un test 20min ci-dessus.");
     }
-    if(ftp>0){S.answers.tests.push({type:"ftp",value:ftp,date:today,source:ftpSrc});added.push("FTP "+ftp+"W");}
+    // R23.1 — LE POINT UNIQUE « cette mesure est-elle humaine ? ». Trois écritures vivent dans
+    // ce fichier, et aucune ne bornait quoi que ce soit : un artefact (glitch GPS, portion en
+    // voiture, sortie vélo étiquetée course) devenait la référence VIVANTE sur laquelle le plan
+    // calcule ses zones. La règle E3 existait, elle ne couvrait que les clés numériques du
+    // schéma — donc jamais `pace` ni `css`, saisies en `min:s`.
+    const borne=(type,val)=>{
+      const f=globalThis.EBV2&&globalThis.EBV2.testDansBornes;
+      return f?f(type,val):val; // moteur absent (repli legacy) : on ne bloque pas l'import
+    };
+    if(ftp>0){
+      const v=borne("ftp",ftp);
+      if(v!=null){S.answers.tests.push({type:"ftp",value:v,date:today,source:ftpSrc});added.push("FTP "+v+"W");}
+      else notes.push("FTP écartée : "+ftp+" W est hors des bornes physiologiques — c'est un artefact, pas une mesure.");
+    }
 
     // ---- Allure seuil -------------------------------------------------------
     // O-25 — LE PROTOCOLE DIT « À FOND », ET RIEN NE VÉRIFIAIT LE « À FOND ».
@@ -657,9 +670,11 @@ async function stravaImport(oauthTok){
       }
       if(best10>0){sk=Math.round(1000/best10);skSrc="Strava (ton meilleur 10 min continu)";}
     }
-    if(sk>0){
+    if(sk>0&&borne("thrPace",sk)!=null){
       S.answers.tests.push({type:"thrPace",value:sk,date:today,source:skSrc});
       added.push("allure seuil "+_fk100(sk)+"/km");
+    } else if(sk>0){
+      notes.push("Allure seuil écartée : "+_fk100(sk)+"/km est hors des bornes physiologiques — c'est l'artefact d'une trace (GPS, véhicule, activité mal étiquetée), pas ton seuil.");
     } else if(runs.length) notes.push("Allure seuil non estimée : aucune course déclarée entre 10 et 15 km, et aucun bloc de 10 minutes continues exploitable dans tes sorties. La moyenne d'une sortie tranquille ne dit pas ton seuil — corrige-la au Profil, ou fais le test (3 min + 10 min à fond).");
     else notes.push("Allure seuil non estimée : aucune course à pied dans tes 50 dernières activités.");
 
@@ -669,7 +684,9 @@ async function stravaImport(oauthTok){
     // l'état, libellé compris, et suivi dans O-22.
     const swims=acts.filter(a=>/Swim/.test(sport(a))&&(a.moving_time||0)>=600&&(a.average_speed||0)>0);
     if(swims.length){const fast=swims.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
-      if(fast>0){const s100=Math.round(100/fast);S.answers.tests.push({type:"css",value:s100,date:today,source:"Strava (nage la plus rapide)"});added.push("CSS ≈ "+_fk100(s100)+"/100m");}}
+      if(fast>0){const s100=Math.round(100/fast);
+        if(borne("css",s100)!=null){S.answers.tests.push({type:"css",value:s100,date:today,source:"Strava (nage la plus rapide)"});added.push("CSS ≈ "+_fk100(s100)+"/100m");}
+        else notes.push("CSS écarté : "+_fk100(s100)+"/100m est hors des bornes physiologiques.");}}
 
     setS((added.length?("Importé : "+added.join(" · ")+". <span class='q-sub'>Tu peux corriger n'importe quelle valeur au Profil — ta correction prime sur cet import et sur tout import du même jour.</span>"):"Aucune donnée exploitable.")+(notes.length?("<br><span class='q-sub'>⚠ "+notes.join(" ")+"</span>"):""));
     ebSave();

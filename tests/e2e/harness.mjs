@@ -56,7 +56,12 @@ export function runnerStateV1(extra = {}) {
       intent: "competition", format: "10k", terrain: "route", history: "confirme", level: "inter",
       vol_max: "7", sessions_max: "5", dispo: "semaine", off_days: "non", doubles: "non", injury: "aucune",
       age: "35", sex: "H", pace_known: "oui", pace: "4:30", med_pain: "non", med_dizzy: "non", med_treat: "non",
-      readiness: { date: new Date().toISOString().slice(0, 10), sleepQuality: "bon", hrvStatus: "normale", energy: 80, feel: "frais" },
+      // R23.2 — la journée d'entraînement commence à 4 h, pas à minuit. Ce champ portait la
+      // date calendaire UTC : entre 00 h et 04 h (heure du système, celle que la page voit par
+      // défaut), le portillon aurait relu un autre jour et bloqué toutes les suites qui passent
+      // par cet état. On réplique la règle ici parce que ce code tourne côté NODE, avant que la
+      // page existe — la constante vit dans `state.js` (JOUR_ENTRAINEMENT_DEBUT_H = 4).
+      readiness: { date: (() => { const d = new Date(); if (d.getHours() < 4) d.setDate(d.getDate() - 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })(), sleepQuality: "bon", hrvStatus: "normale", energy: 80, feel: "frais" },
     }, extra),
     tier: "free", step: 10, started: true, onPlan: true,
   };

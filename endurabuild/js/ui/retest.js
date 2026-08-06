@@ -98,6 +98,15 @@ export function bindRetestBanner(todayISO, rerenderWeek) {
     const T = TYPES[r.type];
     const val = T.parse(($("rtResult") || {}).value);
     if (!val || !isFinite(val) || val <= 0) { $("rtMsg").textContent = "Résultat illisible — format attendu : " + T.unit + "."; return; }
+    // R23.1 — même borne que l'import : un protocole guidé n'immunise pas contre une faute de
+    // frappe, et le résultat d'un retest recale les zones EN DIRECT (`syncRefsFromTests`).
+    {
+      const f = globalThis.EBV2 && globalThis.EBV2.testDansBornes;
+      if (f && f(r.type, val) == null) {
+        $("rtMsg").textContent = "Ce résultat est hors des bornes physiologiques — vérifie la saisie (unité attendue : " + T.unit + ").";
+        return;
+      }
+    }
     if (!Array.isArray(S.answers.tests)) S.answers.tests = [];
     // valeur précédente (la plus récente du même type) AVANT d'enregistrer
     const prev = S.answers.tests.filter((t) => t.type === r.type && isFinite(+t.value)).sort((x, y) => String(y.date || "").localeCompare(String(x.date || "")))[0];

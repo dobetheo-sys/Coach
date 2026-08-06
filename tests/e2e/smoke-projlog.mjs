@@ -40,8 +40,9 @@ const SAI = { age: "38", pace: "4:40", weight: "72" };
  */
 async function ouvrirAujourdhui(page) {
   await page.evaluate(async () => {
-    const { S, ebSave, todayISO } = await import("./js/state.js");
-    S.answers.readiness = { date: todayISO(), sleepQuality: "bon", hrvStatus: "normale", energy: 80, feel: "frais" };
+    // R23.2 — même repère que le portillon qui relit cette date (R11.1).
+    const { S, ebSave, jourEntrainementISO } = await import("./js/state.js");
+    S.answers.readiness = { date: jourEntrainementISO(), sleepQuality: "bon", hrvStatus: "normale", energy: 80, feel: "frais" };
     ebSave();
     const { setTab } = await import("./js/ui/tabs.js");
     setTab("today");
@@ -74,11 +75,28 @@ const journal = (page) => page.evaluate(() => {
   return (e && e.answers && e.answers.projLog) || [];
 });
 
-/** L'empreinte de ce qui est AFFICHÉ — c'est par l'écran qu'un reflux arriverait à l'athlète. */
-const empreinte = (page) => page.evaluate(() => {
-  const sc = document.getElementById("screen");
-  return sc ? (sc.innerText || "").replace(/\s+/g, " ").trim() : "";
-});
+/** L'empreinte de ce qui est AFFICHÉ — c'est par l'écran qu'un reflux arriverait à l'athlète.
+ *
+ *  R23.7 — ELLE PHOTOGRAPHIE L'ÉCRAN OÙ LA PRÉDICTION VIT DÉSORMAIS : 🗓 Plan. Elle lisait
+ *  🎯 Aujourd'hui, et quand la carte Prédiction en est partie, l'empreinte est devenue AVEUGLE
+ *  au changement d'allure — c'est l'auto-contrôle A5-B qui l'a dit (« l'instrument sait-il
+ *  voir ? »), exactement le rôle pour lequel il a été écrit. Le journal, lui, n'a jamais cessé
+ *  d'être écrit (A5-A vert) : il s'écrit au rendu de la carte, où qu'elle vive. On déplie les
+ *  `<details>` avant de lire : `innerText` ignore le contenu replié, et la prédiction arrive
+ *  repliée depuis R23.7 — une empreinte du seul texte visible serait à nouveau aveugle. */
+const empreinte = async (page) => {
+  await page.evaluate(async () => {
+    const { setTab } = await import("./js/ui/tabs.js");
+    setTab("general");
+  });
+  await page.waitForTimeout(500);
+  return page.evaluate(() => {
+    const sc = document.getElementById("screen");
+    if (!sc) return "";
+    sc.querySelectorAll("details").forEach((d) => { d.open = true; });
+    return (sc.innerText || "").replace(/\s+/g, " ").trim();
+  });
+};
 
 const { ctx, page } = await session();
 

@@ -140,8 +140,22 @@ const screenTxt = await page.locator("#screen").textContent();
 ok(/Aujourd’hui/.test(screenTxt), "carte « Aujourd'hui » (séance du jour) affichée en premier");
 ok(/Prédiction de course|prédiction/i.test(screenTxt) || true, "prédiction présente sous la séance");
 ok(/Charge estimée/.test(screenTxt), "courbe charge/fatigue/forme présente");
-ok(/Régularité & avancement|de la charge du plan accomplie/.test(screenTxt), "barre d'avancement de la prépa présente");
-ok(/Répartition des intensités/.test(screenTxt), "répartition des intensités présente");
+// R23.7 / R23.9 — L'AVANCEMENT ET LES INTENSITÉS ONT DÉMÉNAGÉ DANS 🗓 PLAN (décision du
+// fondateur du 06/08/2026). Les critères ne changent pas de nature — ils vérifient toujours que
+// ces informations EXISTENT et sont atteignables ; ils regardent où elles vivent désormais. Les
+// laisser pointer sur 🎯 Aujourd'hui aurait été garder la trace d'une organisation abandonnée.
+const planTxtR23 = await page.evaluate(async () => {
+  const { setTab } = await import("./js/ui/tabs.js");
+  setTab("general");
+  await new Promise((r) => setTimeout(r, 400));
+  return document.querySelector("#screen").textContent || "";
+});
+ok(/Semaine \d+ \/ \d+/.test(planTxtR23), "R23.5 — l'avancement de la prépa est dans 🗓 Plan, en tête");
+ok(/Répartition des intensités/.test(planTxtR23), "R23.9 — la répartition des intensités est dans 🗓 Plan");
+// et elles ont bien QUITTÉ 🎯 Aujourd'hui : déplacées, pas dupliquées
+ok(!/Répartition des intensités/.test(screenTxt), "R23.9 — …et plus dans 🎯 Aujourd'hui");
+await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("today"); });
+await page.waitForTimeout(400);
 
 // 4. Même jour : pas de nouvelle question ; verdict archivé
 const doneToday = await page.evaluate(async () => (await import("./js/ui/readiness.js")).readinessDoneToday());
@@ -170,7 +184,7 @@ ok(await page.locator("#screen .doneBtn").count() > 0, "la coche ✓ d'une séan
 ok(await page.locator("#screen [data-swap]").count() > 0, "l'échange de jours ⇄ a survécu à la fusion");
 const planTxt = await page.locator("#screen").textContent();
 ok(/Sous-objectifs/.test(planTxt) && /décisions du moteur/i.test(planTxt), "la vue d'ensemble (phases + décisions) est sur le même écran");
-ok(/Agenda \(\.ics\)/.test(planTxt), "les exports sont sur le même écran");
+ok(/Ajouter à mon agenda/.test(planTxt), "les exports sont sur le même écran (R23.12c : libellé lisible, plus « Agenda (.ics) »)");
 
 // 6. Verdict moteur cohérent avec des signaux tous dégradés
 const verdictLevel = await page.evaluate(() => {
@@ -243,6 +257,71 @@ ok(/1\/2/.test(await texteDiapo() || ""), "H-1b — « non » explicite donne le
 
 ok(consoleErrs.length === 0, "aucune erreur console (" + consoleErrs.length + ")");
 if (consoleErrs.length) info("erreurs: " + consoleErrs.slice(0, 5).join(" | "));
+
+// ── R23.2 — LA JOURNÉE D'ENTRAÎNEMENT NE COMMENCE PAS À MINUIT ──────────────────────────
+//
+// Retour du fondateur (06/08/2026) : « blocage de l'onglet avec les questions "sommeil… etc"
+// alors que j'ai ouvert l'application hier à minuit donc avant même de dormir ». Le portillon
+// comparait `readiness.date` à la date CALENDAIRE : à 00 h 10 elle a changé, donc l'app
+// redemandait « comment as-tu dormi ? » à quelqu'un qui n'était pas allé se coucher — et lui
+// cachait sa séance tant qu'il n'avait pas répondu.
+//
+// Miroir exact de R7 (« fini l'app qui vit hier entre 22 h et minuit ») : là c'était la date lue
+// en UTC, ici c'est la journée coupée au mauvais endroit.
+//
+// Le critère balaie la frontière DES DEUX CÔTÉS. Vérifié contre le moteur d'avant : à 00 h 10 et
+// 03 h 50 il rendait « portillon ». Note d'instrument : les heures sont des heures de PARIS et
+// l'ancre est en UTC — ma première écriture confondait les deux et étiquetait 05 h 30 « 03 h 30 ».
+{
+  const MARDI20H = Date.UTC(2026, 7, 4, 18, 0); // mardi 4 août 2026, 20 h à Paris (CEST)
+  const ctxAt = async (ms, state) => {
+    const o = { viewport: { width: 390, height: 844 }, locale: "fr-FR", timezoneId: "Europe/Paris" };
+    if (state) o.storageState = state;
+    const c = await browser.newContext(o);
+    await c.addInitScript(`(()=>{const F=${ms};const d=F-Date.now();const R=Date;const D=function(...a){return a.length?new R(...a):new R(R.now()+d);};D.now=()=>R.now()+d;D.parse=R.parse;D.UTC=R.UTC;D.prototype=R.prototype;globalThis.Date=D;})()`);
+    return c;
+  };
+  const c0 = await ctxAt(MARDI20H);
+  const p0 = await c0.newPage();
+  await p0.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
+  await p0.evaluate(() => localStorage.clear());
+  await p0.reload({ waitUntil: "networkidle" });
+  await p0.waitForTimeout(300);
+  await p0.click('.sport-card[data-sport="run"]');
+  await traverserQuestionnaire(p0, { reponses: { intent: "competition", format: "10k", med_pain: "non",
+    med_dizzy: "non", med_treat: "non", level: "inter", history: "confirme", injury: "aucune",
+    sessions_max: "5", vol_max: "6", vol_recent: "4", dispo: "quotidienne", hrv_track: "non", pace_known: "oui" },
+    saisies: { age: "38", pace: "4:30", weight: "70" } });
+  await p0.waitForTimeout(1200);
+  // le check-in est répondu le MARDI SOIR, horodaté par le repère de l'app elle-même
+  const stamp = await p0.evaluate(async () => {
+    const { S, ebSave, jourEntrainementISO } = await import("./js/state.js");
+    S.answers.readiness = { date: jourEntrainementISO(), sleepQuality: "bon", energy: 3, feel: "ok" };
+    ebSave(); return S.answers.readiness.date;
+  });
+  ok(stamp === "2026-08-04", "R23.2 — un check-in répondu mardi 20 h est horodaté au mardi (" + stamp + ")");
+  const etat = await c0.storageState();
+  await c0.close();
+
+  const portillonA = async (deltaH) => {
+    const c = await ctxAt(MARDI20H + deltaH * 36e5, etat);
+    const p = await c.newPage();
+    await p.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
+    await p.waitForTimeout(600);
+    await p.click('#ebTabbar .tabbtn[data-tab="today"]').catch(() => {});
+    await p.waitForTimeout(700);
+    const n = await p.evaluate(() => document.querySelectorAll(".ck-opt").length);
+    await c.close();
+    return n > 0;
+  };
+  // AVANT la frontière : on n'a pas encore dormi, on ne redemande pas — et la séance reste visible
+  ok(!(await portillonA(3.67)), "R23.2 — mardi 23 h 40 : pas de nouvelle question (le témoin)");
+  ok(!(await portillonA(4.17)), "R23.2 — mercredi 00 h 10 : la séance reste visible, on ne redemande pas avant d'avoir dormi");
+  ok(!(await portillonA(7.83)), "R23.2 — mercredi 03 h 50 : toujours la veille");
+  // APRÈS la frontière : c'est un vrai réveil, la question a un objet
+  ok(await portillonA(8.17), "R23.2 — mercredi 04 h 10 : nouvelle journée, le check-in est demandé");
+  ok(await portillonA(12), "R23.2 — mercredi 08 h 00 : idem (le portillon n'a pas été supprimé)");
+}
 
 server.close();
 await browser.close();

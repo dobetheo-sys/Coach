@@ -9,7 +9,7 @@
 // arrivent après le bloc « Ta préparation », donc après le check-in dont ils dépendent.
 import { S, $, ebSave, fmtDay, todayISO } from "../state.js";
 import { checkinSlideshowHTML, bindCheckinSlideshow, pointLabelInline } from "./checkin.js";
-import { loadChartSVG, progressBarCardHTML, predictionCardHTML, intensityCardHTML, historyCardHTML, readinessCardHTML } from "./plan-view.js";
+import { loadChartSVG, historyCardHTML, readinessCardHTML } from "./plan-view.js";
 import { momentHTML, painBannerHTML, bindPainBanner, sickToggleHTML, bindSickToggle, heroSessionHTML, feedbackModal, showCongrats } from "./session-life.js";
 import { readinessDoneToday, applyReadiness } from "./readiness.js";
 import { dailyContentHTML } from "./daily-content.js";
@@ -30,24 +30,12 @@ function checklistStore(dateISO) {
   }
   return S.answers.sessionChecklist.items;
 }
-// Suivi en direct de la séance (déplacé de l'ancien onglet Suivi) : cocher au fil de la
-// séance ; tout coché → le ✓ « fait » se coche pour toutes les séances du jour.
-function todayChecklistHTML(resSessions, todayISO) {
-  if (!resSessions.length) return "";
-  const state = checklistStore(todayISO);
-  let h = '<details class="load-card"><summary class="load-title">⏱ Suivre ma séance en direct</summary><div class="load-sub" style="margin-top:6px">Coche au fil de la séance : une fois tout fait, elle passe automatiquement en « ✓ ».</div>';
-  resSessions.forEach((s, si) => {
-    const groups = stepGroupsFor(s);
-    h += '<div style="margin-top:8px"><b style="font-size:var(--fs-sm)">' + s.name + "</b>";
-    (groups || ["all"]).forEach((r) => {
-      const k = si + "|" + r;
-      h += '<label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:var(--fs-md)"><input type="checkbox" data-ck="' + k + '"' + (state[k] ? " checked" : "") + ' style="width:20px;height:20px"><span>' + (ROLE_LABEL[r] || "Fait") + "</span></label>";
-    });
-    h += "</div>";
-  });
-  h += "</details>";
-  return h;
-}
+// R23.12b — « SUIVRE MA SÉANCE EN DIRECT » EST SUPPRIMÉ.
+//
+// Décision du fondateur (06/08/2026) : « personne ne fait ça ». Le bloc proposait de cocher les
+// étapes au fil de la séance ; il supposait qu'on tienne son téléphone en main pendant l'effort.
+// La validation POST-séance reste, elle, et c'est elle qui nourrit la boucle (feedback → RPE →
+// célébration). Rien d'autre ne consommait cette fonction.
 function syncDoneFromChecklist(resSessions, plan, todayISO) {
   if (!resSessions.length) return;
   let w = null, d = null;
@@ -170,15 +158,18 @@ export function renderTabToday(plan) {
   html += missedSessionsCheck(plan);
   html += heroSessionHTML(plan, today); // la séance du jour, EN PREMIER
   html += todayValidateHTML(plan, today); // R6 — valider directement ici (feedback → partages)
-  html += todayChecklistHTML(resSessions, today);
+  // R23.7 / R23.9 / R23.12b — 🎯 AUJOURD'HUI REDEVIENT « CE QUE JE FAIS MAINTENANT ».
+  //
+  // Retour du fondateur (06/08/2026) : la prédiction, la charge et la répartition des intensités
+  // sont des propriétés de la PRÉPARATION — elles remontent dans 🗓 Plan, sous l'avancement.
+  // « Régularité d'avancement » est supprimée (« peu visuelle et importante pour l'utilisation »),
+  // et « suivre ma séance en direct » aussi (« personne ne fait ça »). Ce qui reste ici est ce
+  // qui se décide aujourd'hui : la séance, sa validation, et le résultat d'une course du jour.
   html += '<div class="card"><div class="eyebrow">Ta préparation</div>';
-  html += predictionCardHTML(plan);
   html += raceResultCardHTML(plan);
   html += '<div class="load-card"><div class="load-title">Charge estimée — fitness · fatigue · forme</div>' + loadChartSVG(plan)
     + '<div class="load-leg"><span style="color:#2e6bff">▬ Fitness (CTL)</span> · <span style="color:#ff7a1a">▬ Fatigue (ATL)</span> · <span style="color:#00a376">▬ Forme (TSB)</span></div>'
     + '<div class="load-sub">Estimée depuis la durée et l’intensité de chaque séance. La forme remonte à l’affûtage — c’est le but. Séances cochées : <b>' + _doneN + " / " + _totalS + "</b>" + (_totalS ? " (" + Math.round((_doneN / _totalS) * 100) + "%)" : "") + ".</div></div>";
-  html += progressBarCardHTML(plan); // la barre d'avancement, liée à la même charge
-  html += intensityCardHTML(plan);
   html += historyCardHTML(plan);
   html += "</div>";
   // R6 — le check-in du matin doit rester accessible : celui qui a déjà répondu (ou dont

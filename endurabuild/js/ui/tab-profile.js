@@ -13,7 +13,7 @@ import { aide } from "./help.js";
 import { stravaConnect, stravaAccessToken, stravaDisconnect, stravaRelayUrl } from "../strava.js";
 import { AVATAR_THEMES, avatarDataFor, avatarSVG } from "./avatar.js";
 import { shareStory } from "../export.js";
-import { evalRules, rulesGrouped } from "./steps.js";
+import { evalRules } from "./steps.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 
 const _fmtSec = (s) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
@@ -136,7 +136,14 @@ function repliable(h, ouvert) {
 
 function recordsHTML(plan, a) {
   const rows = [];
-  const tests = Array.isArray(a.tests) ? a.tests.filter((t) => isFinite(+t.value)) : [];
+  // R23.1 — LE JOURNAL EXISTANT PORTE DÉJÀ DES ARTEFACTS, et c'est le symptôme qu'on m'a
+  // remonté : « un seuil à moins d'une minute au kilomètre ». Borner les ÉCRITURES protège les
+  // imports à venir ; ça ne nettoie pas ce qui est déjà écrit chez les gens. On filtre donc
+  // aussi à la LECTURE — un record est ce qu'on a fait de mieux, pas ce qu'une trace a cru voir.
+  const _borne = globalThis.EBV2 && globalThis.EBV2.testDansBornes;
+  const tests = Array.isArray(a.tests)
+    ? a.tests.filter((t) => isFinite(+t.value) && (!_borne || _borne(t.type, +t.value) != null))
+    : [];
   const best = (type, cmp) => tests.filter((t) => t.type === type).sort(cmp)[0];
   const ftp = best("ftp", (x, y) => y.value - x.value);
   if (ftp) rows.push({ lab: "⚡ Meilleure FTP", val: Math.round(ftp.value) + " W", date: ftp.date });
@@ -581,10 +588,20 @@ export function renderTabProfile(plan) {
     ref += row("pfWeightTarget", "Poids cible (optionnel)", a.weight_target, "affiche une sensibilité, jamais un objectif");
     ref += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Tu as demandé ce levier. L’app montre ce que la balance changerait sur tes chronos — elle ne propose ni rythme, ni alimentation : ces questions se traitent avec un professionnel de santé.</div>';
   }
-  ref += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Rappel quotidien</span><input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label>';
+
   ref += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
     + '<div id="pfMsg" class="load-sub" style="margin-top:6px"></div></div>';
   html += repliable(ref, false);
+  // R23.11 — LE RAPPEL QUOTIDIEN PREND SA PROPRE CARTE.
+  //
+  // Il vivait au milieu des références physiologiques, entre le CSS et le poids cible — ce n'est
+  // ni une mesure ni un paramètre de course, c'est un réglage de l'app. Et depuis U18b la carte
+  // des références est REPLIÉE : y laisser le rappel l'aurait rendu invisible pour qui ne
+  // l'ouvre pas. Une carte à part, courte, avec son propre bouton d'enregistrement.
+  html += '<div class="load-card"><div class="load-title">🔔 Rappel quotidien</div>'
+    + '<div class="load-sub" style="margin-top:6px">Une notification à l\'heure que tu choisis, tant que l\'app est ouverte ou en arrière-plan. Vide = aucun rappel.</div>'
+    + '<label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:var(--fs-md)"><span style="width:150px">Heure</span>'
+    + '<input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label></div>';
 
   // — Records personnels (R4-5, lecture seule) + badges + efficience (R5 : ici, pas
   // dans un onglet à part — le Profil raconte qui tu es et ce que tu as construit)
@@ -657,14 +674,18 @@ export function renderTabProfile(plan) {
     + '<div id="pfStravaMsg" class="load-sub" style="margin-top:4px"></div></div>';
   html += "</details>";
 
-  // — Conseils personnalisés (evalRules) : chaque réponse du questionnaire sans effet
-  // direct sur le plan reste VISIBLE ici (ferritine, cycle, garde-fous santé…).
-  const _rules = evalRules(a, S.tier);
-  if (_rules.length) {
-    html += '<details class="load-card"><summary class="load-title">🧭 Conseils personnalisés (' + _rules.length + ")</summary>"
-      + '<div style="margin-top:8px">' + rulesGrouped(_rules) + "</div></details>";
-  }
-  html += '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="pfEdit" type="button">← Modifier mes réponses</button><button class="btn" id="pfReset" type="button">Changer de sport</button></div></div>';
+  // R23.10 — LES CONSEILS PERSONNALISÉS SONT PARTIS DANS 🗓 PLAN.
+  //
+  // Décision du fondateur (06/08/2026) : « conseil personnalisé : apparition plutôt à l'onglet
+  // plan ». C'est juste — ce sont des conseils SUR LA PRÉPARATION (ferritine, cycle, garde-fous
+  // santé), pas des données d'identité. Le Profil raconte qui tu es ; le Plan dit ce qu'on en
+  // fait. Ils sont RENDUS là-bas, par le même `evalRules` : pas de second chemin (R11.1).
+  //
+  // R23.12b — ET LES DEUX BOUTONS DE PIED DE PAGE PARTENT AUSSI : « modifier mes réponses » et
+  // « changer de sport » (« n'a pas sa place ici »). Ils ne disparaissent pas du produit —
+  // 🗓 Plan porte déjà « ← Modifier » et « Changer de sport », au même endroit que les exports.
+  // Les garder ici, c'était deux chemins vers le même geste, dans deux onglets.
+  html += "</div>";
   $("screen").innerHTML = html;
 
   // Avatar : thème (accents sport) + partage — mêmes mécanismes que l'ancien onglet Suivi.
@@ -713,8 +734,9 @@ export function renderTabProfile(plan) {
       location.reload();
     } catch (e) { if (m) m.textContent = "⚠ Fichier illisible."; }
   };
-  $("pfEdit").onclick = () => { S.step = curSteps().length - 1; renderStep(); };
-  $("pfReset").onclick = () => reset();
+  // R23.12b — « modifier mes réponses » et « changer de sport » ont quitté le Profil : leurs
+  // gestionnaires partent avec eux. Les laisser aurait levé sur un élément absent — un `null` à
+  // chaque rendu de l'onglet, c'est-à-dire une erreur console à chaque visite.
   bindRaceInter();
   bindTrailProfile();
   // R6 §3 — l'athlète arbitre : il voit la mesure, il décide de la brancher ou de la retirer.
@@ -835,7 +857,12 @@ export function renderTabProfile(plan) {
   $("pfSave").onclick = () => {
     const today = todayISO();
     if (!Array.isArray(S.answers.tests)) S.answers.tests = [];
+    // R23.1 — quatrième et dernière écriture du journal de tests. Elle passe par la même borne
+    // que les trois autres : une valeur hors bornes physiologiques n'entre pas, et le dit.
+    const horsBornes = [];
     const log = (type, value, prev, apply) => {
+      const f = globalThis.EBV2 && globalThis.EBV2.testDansBornes;
+      if (f && typeof value === "number" && f(type, value) == null) { horsBornes.push(type); return; }
       S.answers.tests.push({ type, value, prev: prev != null && prev !== "" ? prev : undefined, date: today, source: "profil (modification manuelle)" });
       apply();
     };
@@ -909,11 +936,17 @@ export function renderTabProfile(plan) {
     if (wt !== null && wt !== String(a.weight_target || "")) {
       S.answers.weight_target = wt; changed++;
     }
-    if (!changed) { const m = $("pfMsg"); if (m) m.textContent = "Aucun changement détecté."; return; }
+    // R23.1 — une valeur refusée n'est pas un silence. Le libellé nomme la mesure et la borne,
+    // pour que l'athlète voie si c'est une faute de frappe (« 45 » pour 4:50) ou une unité.
+    const LAB_BORNE = { ftp: "la FTP", thrPace: "l'allure seuil", css: "le CSS", vma: "la VMA" };
+    const refus = horsBornes.length
+      ? " ⚠ Hors bornes physiologiques, donc non enregistré : " + horsBornes.map((t) => LAB_BORNE[t] || t).join(", ") + " — vérifie l'unité et la saisie."
+      : "";
+    if (!changed) { const m = $("pfMsg"); if (m) m.textContent = (horsBornes.length ? "Rien d'enregistré." + refus : "Aucun changement détecté."); return; }
     if (planChanged) invalidatePlan(); // le plan sera régénéré UNE fois, ici — pas au changement d'onglet
     ebSave();
     renderTabProfile(ensurePlan());
     const m = $("pfMsg");
-    if (m) m.textContent = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + (planChanged ? " — plan régénéré, journal mis à jour." : " — journal mis à jour (poids/taille n’affectent que ravitaillement et dépense estimée, pas le plan).");
+    if (m) m.textContent = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + (planChanged ? " — plan régénéré, journal mis à jour." : " — journal mis à jour (poids/taille n’affectent que ravitaillement et dépense estimée, pas le plan).") + refus;
   };
 }

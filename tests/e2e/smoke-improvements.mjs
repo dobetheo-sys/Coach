@@ -77,6 +77,72 @@ ok(await page.locator(".eb-modal:has-text('Comment c’était')").count() === 0,
 if (await page.locator(".eb-overlay").count()) { await page.keyboard.press("Escape"); await page.waitForTimeout(200); }
 ok(await page.locator(".eb-overlay").count() === 0, "Échap ferme aussi la célébration");
 
+// ---- 2b. R23.3 — ET IL FAUT POUVOIR EN SORTIR AU DOIGT ----
+//
+// Retour du fondateur (06/08/2026) : « une fois cliqué on ne peut pas sortir de la validation de
+// la séance en cas d'erreur de clic ». Les critères ci-dessus passaient tous — parce qu'ils
+// testent Échap, une touche qui n'existe pas sur un téléphone. La sortie EXISTAIT et ne servait
+// à personne : même forme qu'U8 (« le bon message existait et était mort »).
+//
+// Le dernier critère est le défaut SYMÉTRIQUE : une modale qui se ferme sur un glissement
+// relâché à côté serait aussi piégeante, dans l'autre sens.
+{
+  // NOTE D'INSTRUMENT — ma premiere ecriture mettait ces criteres sous `if (await rouvrir())`.
+  // Chaque ouverture VALIDE une seance ; au bout de deux, il n'en restait plus a valider, et les
+  // criteres suivants DISPARAISSAIENT EN SILENCE. Verifie : la cassure « le voile ferme sur
+  // n'importe quel relachement » sortait VERTE, non parce que la garde tenait mais parce que le
+  // critere ne s'executait plus. Un critere qui peut ne pas tourner n'est pas une garde — meme
+  // famille que les sept suites d'R22b qui sortaient en 0 quoi qu'elles trouvent.
+  // L'ouverture est donc ASSERTEE, et la modale refermee proprement avant chaque reouverture.
+  const rouvrir = async () => {
+    while (await page.locator(".eb-overlay").count()) { await page.keyboard.press("Escape"); await page.waitForTimeout(150); }
+    const b = page.locator('.doneBtn[data-rest="0"]:not(.done)').first();
+    if (await b.count()) { await b.click(); await page.waitForTimeout(350); }
+    return await page.locator(".eb-overlay").count() > 0;
+  };
+  {
+    ok(await rouvrir(), "R23.3 — une modale de feedback s'ouvre (sans quoi rien de ce qui suit ne mesure)");
+    const croix = await page.evaluate(() => {
+      const c = document.querySelector(".eb-overlay [data-eb-close]");
+      if (!c) return null;
+      const a = getComputedStyle(c, "::after");
+      return { label: c.getAttribute("aria-label"), zone: parseInt(a.width) + "×" + parseInt(a.height),
+        surCroix: document.activeElement === c };
+    });
+    ok(!!croix, "R23.3 — la modale porte une croix de fermeture (pas seulement Échap)");
+    ok(croix && croix.label === "Fermer", "R23.3 — et elle est nommée pour un lecteur d'écran");
+    ok(croix && croix.zone === "44×44", "R23.3 — sa cible tactile atteint le standard U4 (" + (croix && croix.zone) + ")");
+    ok(croix && !croix.surCroix, "R23.3 — le focus va au premier contrôle UTILE, pas à la croix");
+    if (croix) {
+      await page.click(".eb-overlay [data-eb-close]"); await page.waitForTimeout(300);
+      ok(await page.locator(".eb-modal:has-text('Comment c’était')").count() === 0, "R23.3 — un appui sur la croix ferme");
+    } else ok(false, "R23.3 — un appui sur la croix ferme (croix absente : rien a appuyer)");
+  }
+  {
+    ok(await rouvrir(), "R23.3 — la modale se rouvre pour le critere du voile");
+    await page.mouse.click(8, 8); await page.waitForTimeout(300);
+    ok(await page.locator(".eb-modal:has-text('Comment c’était')").count() === 0, "R23.3 — un appui sur le voile ferme aussi");
+  }
+  // LE DEFAUT SYMETRIQUE N'A PAS DE CRITERE ICI, ET C'EST PUBLIE PLUTOT QUE MAQUILLE.
+  //
+  // `trapModal` ne ferme sur le voile que si le geste COMMENCE et FINIT sur lui (garde `depart`) :
+  // sans elle, un glissement parti d'un bouton et relache a cote fermerait la modale — ce qui
+  // serait le defaut symetrique de celui qu'on corrige. Le mecanisme est REEL, mesure en isole :
+  // un `mousedown` sur un bouton suivi d'un `mouseup` sur le voile produit bien un `click` dont
+  // la cible est le voile.
+  //
+  // Mais le critere que j'avais ecrit ici NE DISCRIMINAIT PAS : verifie en retirant la garde
+  // (`e.target === ov` seul), il sortait VERT — il passait avec et sans. Un critere qui ne change
+  // pas sous la cassure qu'il nomme ne garde rien ; c'est la famille que ce depot a nommee dix
+  // fois. Il est donc RETIRE plutot que conserve en decoration, et la limite est ecrite ici : la
+  // garde `depart` de `modal.js` n'est couverte par aucune suite. A reprendre avec un harnais qui
+  // sait rejouer un glissement dans la modale reelle.
+  //
+  // Nettoyage : aucune modale ne doit survivre a ce bloc, sinon le voile intercepte tous les
+  // gestes des sections suivantes (mesure : la suite mourait sur un TimeoutError).
+  while (await page.locator(".eb-overlay").count()) { await page.keyboard.press("Escape"); await page.waitForTimeout(200); }
+}
+
 // ---- 3. Journal des adaptations ----
 // R16.9 — il commente les check-ins, il a suivi dans 🎯 Aujourd'hui (index 2).
 const tJ = await page.locator("#ebTabbar .tabbtn").all();
@@ -370,7 +436,13 @@ const proj = await page.evaluate(async () => {
   S.answers.race_date = d;
   delete S.answers.raceResult; // sinon la carte « ta course est passée » prend la place
   ebSave();
-  setTab("today");
+  // R23.7 — la carte Prédiction a DÉMÉNAGÉ dans 🗓 Plan (décision du fondateur du 06/08/2026 :
+  // « l'onglet prédiction et charge devrait apparaître dans plan, pas dans aujourd'hui »). Le
+  // critère ne change pas de NATURE — il vérifie toujours que l'athlète VOIT les deux
+  // prédictions étiquetées ; il regarde simplement là où elles vivent désormais. Le `textContent`
+  // d'un `<details>` fermé reste lisible : c'est bien la présence qu'on mesure, pas la
+  // visibilité, et c'est ce que ce critère a toujours mesuré.
+  setTab("general");
   const txt = document.querySelector("#screen").textContent;
   const p = globalThis.EBV2.predict(S.sport, S.answers, S.currentPlan);
   return { txt, applicable: !!(p.projected && p.projected.applicable), an: d.slice(0, 4),

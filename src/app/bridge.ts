@@ -5,7 +5,7 @@
  */
 import type { AthleteProfile, V1Plan, V1Step } from "../engine/types.ts";
 import { intensitySplit } from "../engine/loadModel.ts";
-import { parsePaceSec, HISTORY_CAPS, UTIL, MARGIN, MIN_WEEKS } from "../engine/constraintMatrix.ts";
+import { parsePaceSec, HISTORY_CAPS, UTIL, MARGIN, MIN_WEEKS, testDansBornes, PHYSIO_BOUNDS } from "../engine/constraintMatrix.ts";
 import { trailObjective, TRAIL_HISTORY_CAPS, TRAIL_UTIL } from "../engine/trailModel.ts";
 import { swimrunObjective } from "../sports/swimrun/objective.ts";
 import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
@@ -845,5 +845,10 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // chrono saisi. Il ne touche jamais le plan : c'est un VERDICT, pas une entrée.
   feasibility: feasibilityV2,
   parseChronoSec,
+  // R23.1 — LE POINT UNIQUE « cette mesure est-elle humaine ? », exposé à l'UI. Les quatre
+  // écritures du journal de tests (FIT, Strava, retest, saisie manuelle) passent par lui : la
+  // règle E3 ne vivait que dans le moteur, et les trois écritures côté UI ne la voyaient pas.
+  testDansBornes,
+  physioBounds: PHYSIO_BOUNDS,
   version: "v2-sprint9",
 };
