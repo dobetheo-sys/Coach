@@ -618,6 +618,25 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(plan.pred && plan.intens, "R23.7 / R23.9 — la prédiction et les intensités vivent dans 🗓 Plan");
   ok(plan.libelles, "R23.12c — les exports portent des noms lisibles (imprimable · agenda), plus « PNG »");
 
+  // R24.5 / R24.6 (retour fondateur, 06/08 soir) — la Prédiction ouvre sur le TEMPS TOTAL
+  // (aujourd'hui + fin de plan), le détail par segment est un dépliable ; et la courbe de
+  // charge porte le marqueur « tu es ici » à la semaine courante.
+  const pred24 = await page.evaluate(() => {
+    [...document.querySelectorAll("#screen details")].forEach((d) => { d.open = true; });
+    const t = document.querySelector("#screen").textContent || "";
+    const nid = [...document.querySelectorAll("#screen details summary")]
+      .find((x) => /Le détail, segment par segment/.test(x.textContent || ""));
+    return {
+      auj: /Courue aujourd’hui : /.test(t.replace(/\s+/g, " ")),
+      proj: /plan suivi : /.test(t.replace(/\s+/g, " ")),
+      detailRepliable: !!nid,
+      detailContenu: nid ? /ta forme mesurée/.test(nid.parentElement.textContent || "") : false,
+    };
+  });
+  ok(pred24.auj && pred24.proj, "R24.5 — la Prédiction ouvre sur le temps total : courue aujourd'hui ET à la fin du plan");
+  ok(pred24.detailRepliable && pred24.detailContenu,
+    "R24.5 — le détail segment par segment vit dans un dépliable, et il contient bien la forme mesurée");
+
   await page.click('#ebTabbar .tabbtn[data-tab="today"]').catch(() => {});
   await page.waitForTimeout(800);
   const auj = await page.evaluate(() => {
@@ -626,6 +645,14 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
       direct: /Suivre ma séance en direct/.test(t) };
   });
   ok(!auj.pred, "R23.7 — …et elles ont bien QUITTÉ 🎯 Aujourd'hui (déplacées, pas dupliquées)");
+  await passeCheckin(page);
+  await page.waitForTimeout(600);
+  const marqueur = await page.evaluate(() => {
+    const svg = [...document.querySelectorAll("#screen svg")].find((x) => /tu es ici|Courbe de charge/.test(x.outerHTML));
+    return { svgTrouve: !!svg, iciTexte: !!svg && svg.outerHTML.includes("tu es ici") };
+  });
+  ok(marqueur.svgTrouve && marqueur.iciTexte,
+    "R24.6 — la courbe de charge marque visuellement « tu es ici » à la semaine courante");
   ok(!auj.intens, "R23.9 — idem pour la répartition des intensités");
   // MESURE SUR LE MODULE, PAS SUR UN JOUR ÉCHANTILLONNÉ. Ma première écriture lisait le texte
   // rendu — et elle passait alors que le bloc était TOUJOURS LÀ : le jour tiré au sort n'avait
