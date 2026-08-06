@@ -1,6 +1,6 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
-import { $, S, ebSave, todayISO } from "../state.js";
+import { $, S, ebSave, todayISO, jourEntrainementISO } from "../state.js";
 
 // U7 — LA MÉTÉO SE CHERCHE PENDANT QUE L'ATHLÈTE RÉPOND, PAS APRÈS.
 //
@@ -90,7 +90,11 @@ async function applyReadinessSnap(base){
     S.answers.hrvLog=S.answers.hrvLog.slice(-60);
   }
   const wx=await fetchWeather();if(wx&&wx.tmaxC!=null)snap.weather=wx;
-  S.answers.readiness={date:snap.date,sleepQuality:snap.sleepQuality,hrvStatus:snap.hrvStatus,hrvValue:snap.hrvValue,energy:snap.energy,feel:snap.feel,sleepHours:snap.sleepHours,restingHr:snap.restingHr};ebSave();
+  // R23.2 — L'HORODATAGE DU CHECK-IN SUIT LA JOURNÉE D'ENTRAÎNEMENT, pas le calendrier : c'est
+  // le MÊME repère que le portillon qui le relit (`readinessDoneToday`), et deux repères pour la
+  // même question divergeraient (R11.1). `snap.date`, lui, reste la date CALENDAIRE — l'ajusteur
+  // s'en sert pour choisir la séance du jour, et la décaler ferait adapter la séance d'hier.
+  S.answers.readiness={date:jourEntrainementISO(),sleepQuality:snap.sleepQuality,hrvStatus:snap.hrvStatus,hrvValue:snap.hrvValue,energy:snap.energy,feel:snap.feel,sleepHours:snap.sleepHours,restingHr:snap.restingHr};ebSave();
   let res;try{res=globalThis.EBV2.adjustToday(S.sport,S.answers,snap);}catch(e){console.warn(e);return null;}
   // Historique des verdicts : chaque adaptation quotidienne est archivée (une entrée par
   // jour, la dernière gagne) — montre combien de fois le plan s'est réellement adapté.
@@ -122,7 +126,10 @@ async function applyReadiness(){
  *  question tant que le jour ne change pas — ergonomique, jamais insistant). */
 function readinessDoneToday(){
   const r=S.answers.readiness;
-  return !!(r&&r.date===todayISO());
+  // R23.2 — la JOURNÉE D'ENTRAÎNEMENT, pas la date calendaire : à 00 h 10 on n'a pas encore
+  // dormi, la question « comment as-tu dormi ? » n'a pas d'objet et la séance ne doit pas être
+  // cachée derrière elle.
+  return !!(r&&r.date===jourEntrainementISO());
 }
 
 export { applyReadiness, applyReadinessSnap, fetchWeather, readinessDoneToday, verdictHTML };

@@ -244,6 +244,71 @@ ok(/1\/2/.test(await texteDiapo() || ""), "H-1b — « non » explicite donne le
 ok(consoleErrs.length === 0, "aucune erreur console (" + consoleErrs.length + ")");
 if (consoleErrs.length) info("erreurs: " + consoleErrs.slice(0, 5).join(" | "));
 
+// ── R23.2 — LA JOURNÉE D'ENTRAÎNEMENT NE COMMENCE PAS À MINUIT ──────────────────────────
+//
+// Retour du fondateur (06/08/2026) : « blocage de l'onglet avec les questions "sommeil… etc"
+// alors que j'ai ouvert l'application hier à minuit donc avant même de dormir ». Le portillon
+// comparait `readiness.date` à la date CALENDAIRE : à 00 h 10 elle a changé, donc l'app
+// redemandait « comment as-tu dormi ? » à quelqu'un qui n'était pas allé se coucher — et lui
+// cachait sa séance tant qu'il n'avait pas répondu.
+//
+// Miroir exact de R7 (« fini l'app qui vit hier entre 22 h et minuit ») : là c'était la date lue
+// en UTC, ici c'est la journée coupée au mauvais endroit.
+//
+// Le critère balaie la frontière DES DEUX CÔTÉS. Vérifié contre le moteur d'avant : à 00 h 10 et
+// 03 h 50 il rendait « portillon ». Note d'instrument : les heures sont des heures de PARIS et
+// l'ancre est en UTC — ma première écriture confondait les deux et étiquetait 05 h 30 « 03 h 30 ».
+{
+  const MARDI20H = Date.UTC(2026, 7, 4, 18, 0); // mardi 4 août 2026, 20 h à Paris (CEST)
+  const ctxAt = async (ms, state) => {
+    const o = { viewport: { width: 390, height: 844 }, locale: "fr-FR", timezoneId: "Europe/Paris" };
+    if (state) o.storageState = state;
+    const c = await browser.newContext(o);
+    await c.addInitScript(`(()=>{const F=${ms};const d=F-Date.now();const R=Date;const D=function(...a){return a.length?new R(...a):new R(R.now()+d);};D.now=()=>R.now()+d;D.parse=R.parse;D.UTC=R.UTC;D.prototype=R.prototype;globalThis.Date=D;})()`);
+    return c;
+  };
+  const c0 = await ctxAt(MARDI20H);
+  const p0 = await c0.newPage();
+  await p0.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
+  await p0.evaluate(() => localStorage.clear());
+  await p0.reload({ waitUntil: "networkidle" });
+  await p0.waitForTimeout(300);
+  await p0.click('.sport-card[data-sport="run"]');
+  await traverserQuestionnaire(p0, { reponses: { intent: "competition", format: "10k", med_pain: "non",
+    med_dizzy: "non", med_treat: "non", level: "inter", history: "confirme", injury: "aucune",
+    sessions_max: "5", vol_max: "6", vol_recent: "4", dispo: "quotidienne", hrv_track: "non", pace_known: "oui" },
+    saisies: { age: "38", pace: "4:30", weight: "70" } });
+  await p0.waitForTimeout(1200);
+  // le check-in est répondu le MARDI SOIR, horodaté par le repère de l'app elle-même
+  const stamp = await p0.evaluate(async () => {
+    const { S, ebSave, jourEntrainementISO } = await import("./js/state.js");
+    S.answers.readiness = { date: jourEntrainementISO(), sleepQuality: "bon", energy: 3, feel: "ok" };
+    ebSave(); return S.answers.readiness.date;
+  });
+  ok(stamp === "2026-08-04", "R23.2 — un check-in répondu mardi 20 h est horodaté au mardi (" + stamp + ")");
+  const etat = await c0.storageState();
+  await c0.close();
+
+  const portillonA = async (deltaH) => {
+    const c = await ctxAt(MARDI20H + deltaH * 36e5, etat);
+    const p = await c.newPage();
+    await p.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
+    await p.waitForTimeout(600);
+    await p.click('#ebTabbar .tabbtn[data-tab="today"]').catch(() => {});
+    await p.waitForTimeout(700);
+    const n = await p.evaluate(() => document.querySelectorAll(".ck-opt").length);
+    await c.close();
+    return n > 0;
+  };
+  // AVANT la frontière : on n'a pas encore dormi, on ne redemande pas — et la séance reste visible
+  ok(!(await portillonA(3.67)), "R23.2 — mardi 23 h 40 : pas de nouvelle question (le témoin)");
+  ok(!(await portillonA(4.17)), "R23.2 — mercredi 00 h 10 : la séance reste visible, on ne redemande pas avant d'avoir dormi");
+  ok(!(await portillonA(7.83)), "R23.2 — mercredi 03 h 50 : toujours la veille");
+  // APRÈS la frontière : c'est un vrai réveil, la question a un objet
+  ok(await portillonA(8.17), "R23.2 — mercredi 04 h 10 : nouvelle journée, le check-in est demandé");
+  ok(await portillonA(12), "R23.2 — mercredi 08 h 00 : idem (le portillon n'a pas été supprimé)");
+}
+
 server.close();
 await browser.close();
 process.exit(report());

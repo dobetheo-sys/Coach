@@ -54,7 +54,7 @@ Signalé dans la même phrase, à traiter avec — mais c'est un second symptôm
 
 ## 2. Défauts d'usage
 
-### R23.2 · Le portillon du check-in se déclenche à minuit · **DÉFAUT**
+### R23.2 · Le portillon du check-in se déclenche à minuit · ✅ **LIVRÉ (06/08/2026)**
 
 > *« Blocage de l'onglet avec les questions "sommeil.. etc" alors que j'ai ouvert l'application
 > hier à minuit donc avant même de dormir »*
@@ -62,6 +62,24 @@ Signalé dans la même phrase, à traiter avec — mais c'est un second symptôm
 Le check-in est indexé sur la DATE (`S.answers.readiness.date`). Ouvrir l'app à 00 h 10 déclenche
 « comment as-tu dormi ? » avant même d'être allé se coucher. La journée d'entraînement ne commence
 pas à minuit — il faut une frontière de jour qui suive l'usage, pas le calendrier.
+
+**Livré** : `jourEntrainementISO()` (point unique, `state.js`), frontière à **4 h locales**. Ce
+n'est pas un réglage arbitraire — c'est l'heure après laquelle un réveil est un vrai réveil (les
+départs les plus matinaux, Ironman et ultra, sont à 5-6 h, et on se lève une à deux heures avant).
+Portée volontairement étroite : la frontière ne sert QU'AU portillon et à l'horodatage de la
+réponse (un seul repère, R11.1) ; elle ne touche ni le jour du plan, ni la séance affichée, ni les
+séries — décaler ces notions changerait quelle séance est « celle du jour ».
+
+Mesuré, à check-in répondu le mardi 20 h : **23 h 40 visible · 00 h 10 visible · 03 h 50 visible ·
+04 h 10 portillon · 08 h 00 portillon**. Avant le correctif, tout ce qui suivait minuit était un
+portillon. Garde `R23.2` dans `smoke-checkin` (6 critères balayant la frontière **des deux
+côtés**), vérifiée rouge sur deux cassures.
+
+*Note d'instrument, gardée écrite* : ma première sonde étiquetait « 03 h 30 » ce qui était en fait
+05 h 30 — j'avais compté les décalages comme des heures de Paris alors que l'ancre est en UTC. Et
+ma toute première version ne parvenait pas à répondre au check-in dans le contexte de départ : le
+témoin (mardi 23 h 40, réponse donnée) sortait « portillon », ce qui a suffi à la disqualifier
+avant qu'elle ne serve à conclure quoi que ce soit.
 
 ### R23.3 · On ne peut pas sortir de la validation de séance · **DÉFAUT**
 
@@ -148,6 +166,21 @@ l'affordance ne se voit pas sur la vue concernée. **À mesurer avant d'écrire 
 
 > *« est ce qu'on peut faire une prépa multi course ? Comme deux objectifs A ? Calibrer 2 objectifs
 > sur 1 seul plan (ça serait une option premium à terme si on y arrive) »*
+>
+> **Cadrage du fondateur (06/08/2026)** : *« la course renseignée serait la course optimale et
+> l'intermédiaire un objectif A- »*.
+
+Ce cadrage tranche la question la plus difficile, celle de la hiérarchie : il n'y a pas deux pics
+égaux à concilier. La course déclarée reste **l'objectif A** — c'est elle qui gouverne la durée de
+préparation, la spécificité et le vrai affûtage. L'intermédiaire devient un **A-** : plus qu'une
+course B (elle mérite une décharge réelle avant, pas un simple allègement, et une récupération
+dimensionnée derrière), moins qu'un A (elle ne déplace pas le pic et ne s'approprie pas la
+spécificité).
+
+Reste à décider avant d'écrire : l'écart minimal entre A- et A (trop près, l'affûtage du A- mange
+la dernière phase de charge du A ; trop loin, c'est une course B), et ce qu'on fait quand les
+formats diffèrent (un 10 km en A- pendant une prépa Ironman ne demande pas le même aménagement
+qu'un semi).
 
 Réponse courte : **oui, c'est faisable, et c'est un vrai chantier de périodisation**, pas une option
 d'affichage. Le moteur construit une courbe UNIQUE qui monte vers un pic puis affûte. Deux
@@ -174,7 +207,18 @@ déjà dans le moteur) ; table des barrières horaires ; simulateur « et si je 
 P9 existe déjà, sous gardes) ; convertisseur température/combinaison (le seuil 24,5 °C est déjà
 codé) ; estimation du D+ effort (km-effort, déjà dans le module trail).
 
-### R23.20 · La nutrition devient un canal de vente · **arbitrage, HORS PÉRIMÈTRE ACTUEL**
+### R23.20 · La nutrition devient un canal de vente · ⛔ **ABANDONNÉ (décision du fondateur, 06/08/2026)**
+
+> *« ok annule le canal de vente pour le moment »*
+
+Décision prise, entrée close. Ce qui RESTE ouvert de ce point, et qui n'est pas la même chose : la
+**densification** du ravitaillement dans 🎯 Aujourd'hui (juste les informations du jour). Elle est
+un déplacement, elle ne touche aucune frontière, et elle reste à faire.
+
+La raison pour laquelle je l'avais signalé reste écrite ci-dessous — non pas pour rouvrir le sujet,
+mais parce qu'une décision sans son motif est une décision qu'on reprend par erreur dans six mois.
+
+
 
 > *« L'onglet nutrition est très dense aussi, il mérite peut-être d'être plus direct dans l'onglet
 > aujourd'hui dans un premier temps avec juste les informations du jour ? Remplacer à terme par le

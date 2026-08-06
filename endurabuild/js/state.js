@@ -142,6 +142,37 @@ const $ = id => document.getElementById(id);
 // de jour réel et de jour du plan » (retour utilisateur). Toute comparaison avec les
 // dates du plan (chaînes YYYY-MM-DD) passe par ce helper, jamais par toISOString.
 function todayISO(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+/**
+ * R23.2 — LA JOURNÉE D'ENTRAÎNEMENT NE COMMENCE PAS À MINUIT.
+ *
+ * Retour du fondateur (06/08/2026) : *« Blocage de l'onglet avec les questions "sommeil… etc"
+ * alors que j'ai ouvert l'application hier à minuit donc avant même de dormir »*. Le portillon du
+ * check-in compare `readiness.date` à la date CALENDAIRE : à 00 h 10, elle a changé, donc l'app
+ * redemande « comment as-tu dormi ? » à quelqu'un qui n'est pas encore allé se coucher — et lui
+ * cache sa séance tant qu'il n'a pas répondu.
+ *
+ * C'est le MIROIR exact du défaut que R7 a corrigé (« fini l'app qui vit hier entre 22 h et
+ * minuit ») : là on lisait la date en UTC, ici on la lit à la bonne heure mais on coupe la
+ * journée au mauvais endroit. Une journée d'entraînement se termine quand on dort, pas quand
+ * l'horloge repasse à zéro.
+ *
+ * Frontière à 4 h du matin, locale. Ce n'est pas un réglage arbitraire : c'est l'heure après
+ * laquelle un réveil est un vrai réveil (les départs de course les plus matinaux — Ironman,
+ * ultra — sont à 5-6 h, et on se lève une à deux heures avant). Avant 4 h, on est encore la
+ * veille : c'est ce que dit le corps, et c'est ce que dit le bon sens de quelqu'un qui consulte
+ * son plan avant d'aller dormir.
+ *
+ * Portée VOLONTAIREMENT étroite : cette frontière ne sert QU'AU check-in du matin (le portillon
+ * et l'horodatage de la réponse, un seul et même repère — R11.1). Elle ne touche NI le jour du
+ * plan, NI la séance affichée, NI les séries : décaler ces notions-là changerait quelle séance
+ * est « celle du jour », ce que personne n'a demandé et qui casserait des gardes existantes.
+ */
+const JOUR_ENTRAINEMENT_DEBUT_H = 4;
+function jourEntrainementISO(){
+  const d=new Date();
+  if(d.getHours()<JOUR_ENTRAINEMENT_DEBUT_H)d.setDate(d.getDate()-1);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
 /** Date courte pour l'affichage calendrier des jours du plan : "29/07". */
 function fmtDay(iso){return iso?iso.slice(8,10)+"/"+iso.slice(5,7):"";}
-export { $, S, ebActivate, ebClear, ebLoad, ebNewPlanEntry, ebSave, esc, fmtDay, todayISO };
+export { $, S, ebActivate, ebClear, ebLoad, ebNewPlanEntry, ebSave, esc, fmtDay, todayISO, jourEntrainementISO, JOUR_ENTRAINEMENT_DEBUT_H };
