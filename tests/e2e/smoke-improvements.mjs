@@ -436,7 +436,13 @@ const proj = await page.evaluate(async () => {
   S.answers.race_date = d;
   delete S.answers.raceResult; // sinon la carte « ta course est passée » prend la place
   ebSave();
-  setTab("today");
+  // R23.7 — la carte Prédiction a DÉMÉNAGÉ dans 🗓 Plan (décision du fondateur du 06/08/2026 :
+  // « l'onglet prédiction et charge devrait apparaître dans plan, pas dans aujourd'hui »). Le
+  // critère ne change pas de NATURE — il vérifie toujours que l'athlète VOIT les deux
+  // prédictions étiquetées ; il regarde simplement là où elles vivent désormais. Le `textContent`
+  // d'un `<details>` fermé reste lisible : c'est bien la présence qu'on mesure, pas la
+  // visibilité, et c'est ce que ce critère a toujours mesuré.
+  setTab("general");
   const txt = document.querySelector("#screen").textContent;
   const p = globalThis.EBV2.predict(S.sport, S.answers, S.currentPlan);
   return { txt, applicable: !!(p.projected && p.projected.applicable), an: d.slice(0, 4),

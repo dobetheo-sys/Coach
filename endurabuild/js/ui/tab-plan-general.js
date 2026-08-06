@@ -16,10 +16,46 @@
 //
 // La prédiction de course N'EST PAS ici (brief onglets) — elle vit dans 🎯 Aujourd'hui.
 import { SPORTS } from "../config.js";
-import { $, S, ebSave, fmtDay, todayISO } from "../state.js";
+import { $, S, ebSave, esc, fmtDay, todayISO } from "../state.js";
 import { curSteps, renderStep, reset } from "./steps.js";
-import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML } from "./plan-view.js";
+import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, predictionCardHTML, intensityCardHTML } from "./plan-view.js";
 import { exportICS, exportJSON, exportPNG } from "../export.js";
+
+// R23.5 — L'AVANCEMENT ET LE DECOMPTE, EN TETE DE L'ONGLET PLAN.
+//
+// Trois informations et rien d'autre : dans combien de jours, ou j'en suis, et de quoi partager.
+// Le decompte ne s'affiche que si une date de course est declaree — sans elle il n'a pas d'objet,
+// et inventer un « J−? » serait pire que se taire.
+/** Replie une carte deja rendue derriere son titre. Meme mecanisme que le Profil depuis R5 :
+ *  on transforme la carte plutot que de dupliquer son rendu — un second chemin serait un second
+ *  endroit a corriger (R11.1). Si la carte est vide, on ne fabrique pas un titre pour rien. */
+function replier(h, titre) {
+  if (!h || !h.trim()) return h;
+  return '<details class="load-card" style="margin-top:10px"><summary class="load-title" style="cursor:pointer">'
+    + titre + "</summary>" + h + "</details>";
+}
+function avancementPlanHTML(plan, today) {
+  const rd = S.answers.race_date;
+  let tete = "";
+  if (rd) {
+    const j = Math.round((new Date(rd + "T00:00:00").getTime() - new Date(today + "T00:00:00").getTime()) / 864e5);
+    tete = j > 1 ? '<div style="font-size:var(--fs-xl);font-weight:900;line-height:1">J−' + j + "</div>"
+        + '<div class="load-sub">avant ' + esc(String(S.answers.format || "ta course")) + "</div>"
+      : j === 1 ? '<div style="font-size:var(--fs-lg);font-weight:900">Demain, jour J</div>'
+      : j === 0 ? '<div style="font-size:var(--fs-lg);font-weight:900">🏁 C’est aujourd’hui</div>'
+      : '<div class="load-sub">Course passée le ' + esc(rd) + "</div>";
+  }
+  let barre = "";
+  try {
+    const pg = globalThis.EBV2.progress(plan, S.answers, today);
+    barre = '<div style="margin-top:10px;font-size:var(--fs-md)"><b>Semaine ' + pg.weekNow + " / " + pg.totalWeeks + "</b>"
+      + ' · <span style="color:var(--muted)">' + pg.pctLoad + "% de la charge accomplie</span></div>"
+      + '<div style="margin-top:6px;height:12px;border-radius:6px;background:#0000001a;overflow:hidden">'
+      + '<div style="height:100%;width:' + Math.max(0, Math.min(100, pg.pctLoad)) + '%;background:var(--accent)"></div></div>';
+  } catch (e) {}
+  return '<div class="load-card" style="margin-top:10px">' + tete + barre
+    + '<div class="nav" style="margin-top:12px"><button class="btn" id="expPng" type="button">📤 Partage</button></div></div>';
+}
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
@@ -196,10 +232,21 @@ export function renderTabPlanGeneral(plan) {
   html += '<div class="card"><div class="eyebrow">Plan général — ' + SPORTS[S.sport].nom + "</div><h2>Ta saison en un coup d’œil</h2>"
     + '<div class="why">' + plan.totalWeeks + " semaines en " + (plan.use10 ? "cycles de 10 jours (qui glissent)" : "semaines de 7 jours") + ", volume " + plan.volBase + "h → " + plan.volPeak + "h.</div>";
   html += driverBand(a);
-  // §5 (R6) — « Pourquoi ce plan » EN TÊTE, dépliée : l'explicabilité est le
-  // contre-positionnement du produit, pas une option de confort. Le détail complet des
-  // décisions reste en bas de l'onglet (`decisionsCardHTML`), à un lien d'ici.
-  html += whyPlanCardHTML(plan);
+  // R23.5 / R23.12 — CE QU'ON VIENT VOIR EN PREMIER : ou j'en suis, et dans combien de jours.
+  //
+  // Retour du fondateur (06/08/2026) : « je veux en haut de la page la vision de l'avancement du
+  // plan avec le decompte des jours avant la course », et « l'export PNG est interessant dans
+  // l'idee mais mal nomme et devrait peut-etre etre sous l'avancement du plan sous le nom
+  // Partage ». Les deux vont ensemble : on partage ce qu'on vient de regarder.
+  html += avancementPlanHTML(plan, today);
+  // R23.6 — « POURQUOI CE PLAN » DESCEND, ET C'EST UNE DECISION QUI EN REVISE UNE AUTRE.
+  //
+  // R6 l'avait mise EN TETE, dépliée, au motif que « l'explicabilité est le contre-positionnement
+  // du produit, pas une option de confort ». Le fondateur tranche l'inverse (06/08/2026) :
+  // « Pourquoi ce plan trop tot, l'utilisateur veut d'abord les infos ». Les deux ont raison sur
+  // leur objet — l'explicabilité RESTE (elle n'est ni repliée ni retirée), elle cesse seulement
+  // d'etre ce qu'on lit AVANT son plan. Elle se place donc juste avant le détail des décisions,
+  // dont elle est le résumé : les deux vivent cote a cote au lieu d'encadrer tout l'onglet.
   // RV — le chrono visé et son verdict, juste après « pourquoi ce plan » : c'est la même
   // question posée dans l'autre sens. Absente hors course à pied (le prototype inverse Riegel).
   html += feasibilityCardHTML(plan);
@@ -228,6 +275,19 @@ export function renderTabPlanGeneral(plan) {
   const ABBR = { "Développement": "DÉV.", "Spécifique": "SPÉ.", "Affûtage": "AFF.", "Peak": "PIC", "Base": "BASE" };
   plan.phases.forEach((p) => { html += '<button type="button" class="ph-seg" data-phseg="' + p.nom + '" title="' + p.nom + '" aria-label="' + p.nom + ", " + p.weeks + ' semaines" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span class="ph-full">' + p.nom + '</span><span class="ph-abbr">' + (ABBR[p.nom] || p.nom) + "</span><em>" + p.weeks + "sem</em></button>"; });
   html += "</div>";
+  // R23.7 / R23.9 — LA PREDICTION ET LA REPARTITION DES INTENSITES APPARTIENNENT AU PLAN.
+  //
+  // « L'onglet prediction et charge devrait apparaitre dans plan juste sous l'etat d'avancement
+  // du plan, pas dans aujourd'hui » · « repartition des intensites appartient a l'onglet plan et
+  // pas aujourd'hui ». C'est juste : ce sont des proprietes de la PREPARATION, pas du jour. Elles
+  // sont retirees de 🎯 Aujourd'hui, qui redevient « ce que je fais maintenant ».
+  // ... et elles arrivent REPLIEES, comme la demande le precise : « dans une version plus compacte
+  // avec juste les temps actuels et les temps projetes, puis un deroulable avec les explications ».
+  // Mesure a l'appui : deployees, l'onglet passait de 3,8 a 5,2 ecrans — la garde U15 (« le Plan
+  // tient sous 5 ecrans ») est passee ROUGE, ce qui est exactement son role. On ne relache pas la
+  // garde, on tient la demande : `<details>` ferme, un geste pour tout voir.
+  html += replier(predictionCardHTML(plan), "🎯 Prédiction de course");
+  html += replier(intensityCardHTML(plan), "⚡ Répartition des intensités");
   html += phaseObjectivesHTML(plan);
   html += '<div class="vol-bars">';
   plan.weeks.forEach((w) => { const h = Math.max(8, Math.round((w.vol / plan.volPeak) * 52)); html += '<div class="vb" style="height:' + h + "px;background:" + (w.isRecup ? "#9b72ff" : w.phase.c) + '" title="S' + w.num + " " + w.vol + 'h"></div>'; });
@@ -250,9 +310,10 @@ export function renderTabPlanGeneral(plan) {
   if (!S.showAllWeeks && plan.totalWeeks > 1)
     html += '<div class="wk-skip">⋯ ' + (plan.totalWeeks - 1) + " autre" + (plan.totalWeeks > 2 ? "s" : "")
       + " semaine" + (plan.totalWeeks > 2 ? "s" : "") + " — « Voir les " + plan.totalWeeks + " semaines » ci-dessous ⋯</div>";
+  html += whyPlanCardHTML(plan); // R23.6 — descendue ici, juste avant le détail dont elle est le résumé
   html += decisionsCardHTML(plan); // « Les décisions du moteur » — la transparence, en langage neutre
   html += '<div class="warn" style="background:var(--bg2)">Intensités calibrées sur tes données. Les exports fonctionnent depuis cet onglet, quel que soit l’onglet consulté ensuite.</div>'
-    + '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="backBp" type="button">← Modifier</button><button class="btn gold" id="allW" type="button">' + (S.showAllWeeks ? "Réduire" : "Voir les " + plan.totalWeeks + " semaines") + '</button><button class="btn" id="prn" type="button">🖨 HTML</button><button class="btn" id="expIcs" type="button">📅 Agenda (.ics)</button><button class="btn" id="expJson" type="button">{ } JSON</button><button class="btn" id="expPng" type="button">🖼 PNG</button><button class="btn" id="restartBtn" type="button">Changer de sport</button></div></div>';
+    + '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="backBp" type="button">← Modifier</button><button class="btn gold" id="allW" type="button">' + (S.showAllWeeks ? "Revenir à la semaine en cours" : "Voir tout le plan (" + plan.totalWeeks + " semaines)") + '</button><button class="btn" id="prn" type="button">🖨 Version imprimable</button><button class="btn" id="expIcs" type="button">📅 Ajouter à mon agenda</button><button class="btn" id="expJson" type="button">{ } JSON</button><button class="btn" id="restartBtn" type="button">Changer de sport</button></div></div>';
   $("screen").innerHTML = html;
   const rerender = () => renderTabPlanGeneral(plan);
   bindPainBanner(plan, rerender);

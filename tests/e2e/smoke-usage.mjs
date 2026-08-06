@@ -592,6 +592,51 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   await ctx.close();
 }
 
+// ── R23.5 / R23.6 / R23.7 / R23.9 / R23.12 — LES DÉPLACEMENTS ───────────────────────────
+//
+// Ce bloc garde l'ORDRE et l'APPARTENANCE, pas la mise en page : ce qu'on vient voir en premier
+// dans 🗓 Plan, et ce que 🎯 Aujourd'hui ne porte plus. Les deux moitiés comptent — la seconde
+// interdit qu'une carte soit dupliquée dans les deux onglets au lieu d'y être déplacée.
+{
+  const { ctx, page } = await session(Date.UTC(2026, 7, 5, 9, 0));
+  await page.click('#ebTabbar .tabbtn[data-tab="general"]').catch(() => {});
+  await page.waitForTimeout(800);
+  const plan = await page.evaluate(() => {
+    const t = document.querySelector("#screen").textContent || "";
+    const pos = (re) => { const m = t.match(re); return m ? m.index : -1; };
+    return { t, decompte: /J−\d+/.test(t), avancement: /Semaine \d+ \/ \d+/.test(t),
+      partage: !!document.getElementById("expPng"),
+      posAvancement: pos(/Semaine \d+ \/ \d+/), posPourquoi: pos(/Pourquoi ce plan/),
+      pred: /Prédiction de course/.test(t), intens: /Répartition des intensités/.test(t),
+      libelles: /Version imprimable/.test(t) && /Ajouter à mon agenda/.test(t) && !/🖼 PNG/.test(t) };
+  });
+  ok(plan.decompte, "R23.5 — le décompte des jours avant la course est en tête de 🗓 Plan");
+  ok(plan.avancement, "R23.5 — l'avancement du plan aussi (semaine N / total)");
+  ok(plan.partage, "R23.12 — et le bouton « 📤 Partage » est sous l'avancement");
+  ok(plan.posAvancement >= 0 && plan.posPourquoi > plan.posAvancement,
+    "R23.6 — « Pourquoi ce plan » vient APRÈS l'avancement, plus avant (l'info d'abord)");
+  ok(plan.pred && plan.intens, "R23.7 / R23.9 — la prédiction et les intensités vivent dans 🗓 Plan");
+  ok(plan.libelles, "R23.12c — les exports portent des noms lisibles (imprimable · agenda), plus « PNG »");
+
+  await page.click('#ebTabbar .tabbtn[data-tab="today"]').catch(() => {});
+  await page.waitForTimeout(800);
+  const auj = await page.evaluate(() => {
+    const t = document.querySelector("#screen").textContent || "";
+    return { pred: /Prédiction de course/.test(t), intens: /Répartition des intensités/.test(t),
+      direct: /Suivre ma séance en direct/.test(t) };
+  });
+  ok(!auj.pred, "R23.7 — …et elles ont bien QUITTÉ 🎯 Aujourd'hui (déplacées, pas dupliquées)");
+  ok(!auj.intens, "R23.9 — idem pour la répartition des intensités");
+  // MESURE SUR LE MODULE, PAS SUR UN JOUR ÉCHANTILLONNÉ. Ma première écriture lisait le texte
+  // rendu — et elle passait alors que le bloc était TOUJOURS LÀ : le jour tiré au sort n'avait
+  // pas de séance, donc la liste était vide. Un critère satisfait par le hasard de la date ne
+  // garde rien ; on interroge donc le source servi, qui ne dépend d'aucun jour.
+  const src = await page.evaluate(async () => (await (await fetch("./js/ui/tab-today.js")).text()));
+  ok(!auj.direct && !/summary class="load-title">⏱ Suivre ma séance en direct/.test(src),
+    "R23.12b — « suivre ma séance en direct » est supprimé (absent du module, pas seulement du rendu du jour)");
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 // La suite doit SORTIR en code non nul quand elle échoue : `run-all.mjs` lit le code de

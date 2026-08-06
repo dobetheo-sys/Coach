@@ -140,8 +140,22 @@ const screenTxt = await page.locator("#screen").textContent();
 ok(/Aujourd’hui/.test(screenTxt), "carte « Aujourd'hui » (séance du jour) affichée en premier");
 ok(/Prédiction de course|prédiction/i.test(screenTxt) || true, "prédiction présente sous la séance");
 ok(/Charge estimée/.test(screenTxt), "courbe charge/fatigue/forme présente");
-ok(/Régularité & avancement|de la charge du plan accomplie/.test(screenTxt), "barre d'avancement de la prépa présente");
-ok(/Répartition des intensités/.test(screenTxt), "répartition des intensités présente");
+// R23.7 / R23.9 — L'AVANCEMENT ET LES INTENSITÉS ONT DÉMÉNAGÉ DANS 🗓 PLAN (décision du
+// fondateur du 06/08/2026). Les critères ne changent pas de nature — ils vérifient toujours que
+// ces informations EXISTENT et sont atteignables ; ils regardent où elles vivent désormais. Les
+// laisser pointer sur 🎯 Aujourd'hui aurait été garder la trace d'une organisation abandonnée.
+const planTxtR23 = await page.evaluate(async () => {
+  const { setTab } = await import("./js/ui/tabs.js");
+  setTab("general");
+  await new Promise((r) => setTimeout(r, 400));
+  return document.querySelector("#screen").textContent || "";
+});
+ok(/Semaine \d+ \/ \d+/.test(planTxtR23), "R23.5 — l'avancement de la prépa est dans 🗓 Plan, en tête");
+ok(/Répartition des intensités/.test(planTxtR23), "R23.9 — la répartition des intensités est dans 🗓 Plan");
+// et elles ont bien QUITTÉ 🎯 Aujourd'hui : déplacées, pas dupliquées
+ok(!/Répartition des intensités/.test(screenTxt), "R23.9 — …et plus dans 🎯 Aujourd'hui");
+await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("today"); });
+await page.waitForTimeout(400);
 
 // 4. Même jour : pas de nouvelle question ; verdict archivé
 const doneToday = await page.evaluate(async () => (await import("./js/ui/readiness.js")).readinessDoneToday());
@@ -170,7 +184,7 @@ ok(await page.locator("#screen .doneBtn").count() > 0, "la coche ✓ d'une séan
 ok(await page.locator("#screen [data-swap]").count() > 0, "l'échange de jours ⇄ a survécu à la fusion");
 const planTxt = await page.locator("#screen").textContent();
 ok(/Sous-objectifs/.test(planTxt) && /décisions du moteur/i.test(planTxt), "la vue d'ensemble (phases + décisions) est sur le même écran");
-ok(/Agenda \(\.ics\)/.test(planTxt), "les exports sont sur le même écran");
+ok(/Ajouter à mon agenda/.test(planTxt), "les exports sont sur le même écran (R23.12c : libellé lisible, plus « Agenda (.ics) »)");
 
 // 6. Verdict moteur cohérent avec des signaux tous dégradés
 const verdictLevel = await page.evaluate(() => {

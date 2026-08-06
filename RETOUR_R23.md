@@ -149,7 +149,29 @@ demande, qui portait sur la carte du PLAN.
 
 ---
 
-## 3. Déplacements — l'information existe, elle est au mauvais endroit
+## 3. Déplacements — ✅ **LIVRÉS (06/08/2026)**, sauf R23.10 / R23.11 / R23.13
+
+Livrés : **R23.5** (décompte J−N + avancement en tête de 🗓 Plan) · **R23.6** (« Pourquoi ce
+plan » descend juste avant le détail des décisions) · **R23.7** et **R23.9** (prédiction et
+intensités quittent 🎯 Aujourd'hui pour 🗓 Plan, **repliées** — la version compacte que tu
+demandais) · **R23.12** (le bouton devient « 📤 Partage », sous l'avancement) · **R23.12b** (« suivre
+ma séance en direct » supprimé) · **R23.12c** (« Voir tout le plan », « Version imprimable »,
+« Ajouter à mon agenda »).
+
+**R23.6 révise une décision antérieure, et c'est assumé** : R6 avait mis « Pourquoi ce plan » en
+tête au motif que « l'explicabilité est le contre-positionnement du produit ». Les deux ont raison
+sur leur objet — l'explicabilité RESTE (ni repliée ni retirée), elle cesse seulement d'être ce
+qu'on lit AVANT son plan.
+
+**La garde U15 a fait son travail** : déployées, les cartes déplacées faisaient passer 🗓 Plan de
+3,8 à **5,2 écrans** et U15 est passée rouge. On n'a pas relâché la garde — on a tenu la demande
+(« version plus compacte, puis un déroulable ») : les deux cartes arrivent repliées, **4,3 écrans**.
+
+**Encore ouverts** : R23.10 (conseils personnalisés → Plan), R23.11 (rappel quotidien à part au
+Profil), R23.13 (séparer athlète / course), et « modifier mes réponses / changer de plan » à
+retirer du Profil.
+
+### (détail d'origine)
 
 | ID | Ce qui bouge | D'où | Vers | Note |
 |---|---|---|---|---|
