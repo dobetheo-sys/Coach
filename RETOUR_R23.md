@@ -344,3 +344,22 @@ Deux choses très différentes, à ne pas traiter ensemble :
 Recoupe R23.13. Le point à trancher : une modification depuis le plan REGÉNÈRE le plan (donc les ✓
 et le journal doivent survivre — ils vivent déjà par plan) ou bien elle n'agit qu'à la prochaine
 génération. Le premier est ce qu'attend l'utilisateur ; le second est ce que fait le bouton actuel.
+
+---
+
+## Incident de déploiement du 06/08/2026 — le jumeau annulé
+
+Le push du merge R23 a déclenché DEUX runs « Déploiement PWA » jumeaux sur le même commit.
+Le premier a déployé avec succès à 12 h 37. Le second, coincé en file d'attente, a atteint son
+timeout à 12 h 40 et son nettoyage a exécuté « Canceled deployment with ID 4a146fba… » —
+**l'identifiant d'un déploiement Pages est le SHA du commit**, il a donc annulé le déploiement
+réussi de son jumeau, et le site est retombé sur la version précédente.
+
+Conséquence en cascade : tout nouveau déploiement du même SHA (re-run, `workflow_dispatch`)
+mourait en cinq secondes sur « Deployment cancelled » — l'état annulé colle au SHA. La seule
+sortie : un commit neuf sur `main`. C'est la raison d'être de ce paragraphe.
+
+Leçon pour le dépôt : le workflow porte `concurrency: group: pages` avec `cancel-in-progress:
+true`, mais deux runs créés dans la même seconde sont passés ensemble. Si l'incident se
+reproduit, ne PAS re-runner le run échoué (il empile un second artefact « github-pages » et
+`deploy-pages` refuse) : pousser un commit neuf.
