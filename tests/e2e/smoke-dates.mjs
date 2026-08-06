@@ -30,7 +30,12 @@ info("date locale (UTC+14) : " + local.iso + " · date UTC : " + local.utc + (lo
 // Le check-in gate compare readiness.date à la date LOCALE → poser la readiness du jour local
 await page.evaluate(async (iso) => {
   const { S, ebSave } = await import("./js/state.js");
-  S.answers.readiness = { date: iso, sleepQuality: "bon", hrvStatus: "normale", energy: 80, feel: "frais" };
+  // R23.2 — l'horodatage du check-in suit la JOURNÉE D'ENTRAÎNEMENT, pas la date calendaire.
+  // Ce test injectait la date calendaire : vert la plupart du temps, ROUGE dès que l'heure
+  // locale simulée tombe entre minuit et 4 h (en UTC+14, c'est chaque jour de 10 h à 14 h UTC).
+  // Le portillon compare au repère de l'app — on horodate donc avec LE MÊME repère (R11.1).
+  const { jourEntrainementISO } = await import("./js/state.js");
+  S.answers.readiness = { date: jourEntrainementISO(), sleepQuality: "bon", hrvStatus: "normale", energy: 80, feel: "frais" };
   ebSave();
   const { setTab } = await import("./js/ui/tabs.js");
   setTab("today");
@@ -97,7 +102,12 @@ info("UTC−11 : locale " + local2.iso + " · UTC " + local2.utc + (local2.iso !
 ok(local2.app === local2.iso, "todayISO() = date locale aussi en UTC−11 (app: " + local2.app + ")");
 const inPlan2 = await page2.evaluate(async (iso) => {
   const { S, ebSave } = await import("./js/state.js");
-  S.answers.readiness = { date: iso, sleepQuality: "bon", hrvStatus: "normale", energy: 80, feel: "frais" };
+  // R23.2 — l'horodatage du check-in suit la JOURNÉE D'ENTRAÎNEMENT, pas la date calendaire.
+  // Ce test injectait la date calendaire : vert la plupart du temps, ROUGE dès que l'heure
+  // locale simulée tombe entre minuit et 4 h (en UTC+14, c'est chaque jour de 10 h à 14 h UTC).
+  // Le portillon compare au repère de l'app — on horodate donc avec LE MÊME repère (R11.1).
+  const { jourEntrainementISO } = await import("./js/state.js");
+  S.answers.readiness = { date: jourEntrainementISO(), sleepQuality: "bon", hrvStatus: "normale", energy: 80, feel: "frais" };
   ebSave();
   const { setTab } = await import("./js/ui/tabs.js");
   setTab("general");
