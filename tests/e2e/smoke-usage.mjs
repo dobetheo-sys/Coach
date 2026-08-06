@@ -556,6 +556,42 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   await ctx.close();
 }
 
+// ── R23.4 — LA CARTE DE PARTAGE SE POSE SUR UNE PHOTO ────────────────────────────────────
+//
+// Deux propriétés, et la seconde est celle qui tient quoi qu'il arrive : le fond est TRANSPARENT
+// (sans quoi « par-dessus une photo » n'a pas de sens), et RIEN NE DÉBORDE du cadre — quelle que
+// soit la police effectivement utilisée, puisque `txt()` rétrécit une ligne trop large.
+{
+  const { ctx, page } = await session(Date.UTC(2026, 7, 5, 9, 0));
+  const m = await page.evaluate(async () => {
+    const mod = await import("./js/export.js");
+    const canvases = [];
+    const vrai = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob = function (cb, t) { canvases.push(this); return vrai.call(this, cb, t); };
+    await mod.exportPNG();
+    await new Promise((r) => setTimeout(r, 400));
+    HTMLCanvasElement.prototype.toBlob = vrai;
+    const c = canvases[0];
+    if (!c) return { err: true };
+    const x = c.getContext("2d");
+    const a = (px, py) => x.getImageData(px, py, 1, 1).data[3];
+    const coins = [a(2, 2), a(c.width - 3, 2), a(2, c.height - 3), a(c.width - 3, c.height - 3)];
+    const full = x.getImageData(0, 0, c.width, c.height).data;
+    let droite = 0, encre = 0;
+    for (let py = 0; py < c.height; py++) for (let pxx = c.width - 1; pxx > droite; pxx--)
+      if (full[(py * c.width + pxx) * 4 + 3] > 30) { droite = pxx; break; }
+    for (let i = 3; i < full.length; i += 4) if (full[i] > 200) encre++;
+    return { w: c.width, coins, droite, encre };
+  });
+  ok(!m.err, "R23.4 — la carte de partage se rend (canvas produit)");
+  ok(!m.err && m.coins.every((v) => v === 0),
+    "R23.4 — le fond est TRANSPARENT aux quatre coins (" + (m.coins || []).join(",") + ")");
+  ok(!m.err && m.encre > 5000, "R23.4 — et la carte n'est pas vide pour autant (" + m.encre + " pixels d'encre)");
+  ok(!m.err && m.droite < m.w - 20,
+    "R23.4 — rien ne déborde du cadre (pixel le plus à droite : " + m.droite + "/" + m.w + ")");
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 // La suite doit SORTIR en code non nul quand elle échoue : `run-all.mjs` lit le code de

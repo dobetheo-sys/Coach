@@ -41,21 +41,66 @@ function exportICS(){try{
   _dl("plan-"+(S.sport||"eb")+".ics","text/calendar;charset=utf-8",L.join("\r\n"));
 }catch(e){alert("Export impossible : "+e.message);}}
 
-// ===== Export PNG (RESTE-A-FAIRE #1) : carte partageable du plan, canvas natif =====
-function exportPNG(){try{
+// ===== R23.4 — LA CARTE DE PARTAGE SE POSE SUR UNE PHOTO =====
+//
+// Retour du fondateur (06/08/2026) : *« Problème d'affichage du texte, je voudrais que ce soit en
+// transparence, qu'on puisse l'ajouter par-dessus une photo, pas un fond coloré, retravaille
+// peut-être l'esthétique »*. Trois choses, et la première n'était pas dans la demande.
+//
+// (1) LE CANVAS DESSINAIT SANS JAMAIS ATTENDRE LES POLICES. `fillText` utilise ce qui est chargé
+// À CET INSTANT ; si « Archivo Black » et « Space Grotesk » ne le sont pas encore, le navigateur
+// retombe sur sa police système, dont les métriques sont différentes. `document.fonts.ready` est
+// désormais attendu, avec un délai de garde — une police qui ne vient pas ne doit pas empêcher
+// de partager.
+//
+// HONNÊTETÉ SUR CE POINT : c'est une correction de JUSTESSE, pas un défaut reproduit. J'ai tenté
+// de simuler l'absence de police (retrait de la feuille de style + `document.fonts.clear()`) et
+// la mesure est sortie IDENTIQUE au cas normal — retirer un `<link>` ne décharge pas des polices
+// déjà chargées. Je ne peux donc pas affirmer que c'était la cause du « problème d'affichage »
+// signalé. Ce qui GARANTIT le cadre, quelle que soit la police effectivement utilisée, c'est le
+// rétrécissement de `txt()` ci-dessous — lui est mesuré (pixel opaque le plus à droite : 1019
+// sur 1080).
+//
+// (2) LE FOND DEVIENT TRANSPARENT. Le beige `#f1eadb` disparaît, `toBlob` en PNG conserve l'alpha.
+//
+// (3) ET C'EST (2) QUI FORCE À REVOIR L'ESTHÉTIQUE, pas un choix de goût. Sur un fond inconnu,
+// l'encre sombre d'origine (`#0c1016`) est illisible dès que la photo est sombre — et une carte
+// qu'on ne peut poser que sur une photo claire n'est pas une carte transparente. Le texte passe
+// donc en BLANC avec un halo sombre : c'est la solution des sous-titres vidéo, la seule qui tienne
+// sur un fond qu'on ne contrôle pas. Les couleurs de phases et les barres restent telles quelles —
+// elles sont saturées, elles se lisent sur clair comme sur sombre.
+//
+// `txt()` est le point unique du texte : halo, et RÉTRÉCISSEMENT si la ligne dépasse la largeur
+// utile. Même sans (1), une chaîne trop longue ne peut plus sortir du cadre.
+const _EB_HALO="rgba(0,0,0,.78)";
+function _ebTxt(x,s,px,py,{size,weight=500,family="Space Grotesk",color="#fff",max=960,halo=true}){
+  const set=(sz)=>{x.font=weight+" "+sz+"px '"+family+"',sans-serif";};
+  let sz=size;set(sz);
+  while(sz>12&&x.measureText(s).width>max){sz-=2;set(sz);}
+  if(halo){x.save();x.shadowColor=_EB_HALO;x.shadowBlur=Math.max(8,Math.round(sz/3));
+    x.fillStyle=color;x.fillText(s,px,py);x.fillText(s,px,py);x.restore();} // deux passes : le halo se densifie
+  else{x.fillStyle=color;x.fillText(s,px,py);}
+  return sz;
+}
+/** Les polices de la carte, ou la promesse tenue quand même. Un partage ne doit jamais rester
+ *  suspendu parce qu'une police n'arrive pas — on dessine alors avec ce qu'on a. */
+async function _ebFontsPretes(ms=1500){
+  if(!document.fonts||!document.fonts.ready)return;
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,ms))]);}catch(e){}
+}
+
+async function exportPNG(){try{
+  await _ebFontsPretes();
   const a=S.answers,plan=buildPlan(a),v2=plan._v2||{};
   const W=1080,H=1350,c=document.createElement("canvas");c.width=W;c.height=H;
   const x=c.getContext("2d");
-  x.fillStyle="#f1eadb";x.fillRect(0,0,W,H);
-  x.fillStyle="#0c1016";x.font="900 92px 'Archivo Black',sans-serif";x.fillText("ENDURABUILD",60,140);
-  x.font="700 44px 'Space Grotesk',sans-serif";x.fillStyle="#e63946";
-  x.fillText((SPORTS[S.sport]?SPORTS[S.sport].nom:S.sport)+" · "+(a.format||""),60,220);
-  x.fillStyle="#0c1016";x.font="500 36px 'Space Grotesk',sans-serif";
-  x.fillText(plan.totalWeeks+" semaines · "+plan.volBase+"h → "+plan.volPeak+"h"+(v2.score?" · audit "+v2.score+"/100":""),60,290);
+  // FOND TRANSPARENT : aucun `fillRect` de fond. Le PNG conserve l'alpha.
+  _ebTxt(x,"ENDURABUILD",60,140,{size:92,weight:900,family:"Archivo Black"});
+  _ebTxt(x,(SPORTS[S.sport]?SPORTS[S.sport].nom:S.sport)+" · "+(a.format||""),60,220,{size:44,weight:700,color:"#ff5c68"});
+  _ebTxt(x,plan.totalWeeks+" semaines · "+plan.volBase+"h → "+plan.volPeak+"h",60,290,{size:36});
   let y=360;
-  (plan.phases||[]).forEach(p=>{const w=(W-120)*p.weeks/plan.totalWeeks;x.fillStyle=p.c;x.fillRect(60+((plan.phases.indexOf(p)===0)?0:0),y,0,0);});
   let px=60;(plan.phases||[]).forEach(p=>{const w=(W-120)*p.weeks/plan.totalWeeks;x.fillStyle=p.c;x.fillRect(px,y,Math.max(2,w-4),46);px+=w;});
-  x.font="500 28px 'Space Grotesk',sans-serif";x.fillStyle="#555";x.fillText("Base → Développement → Spécifique → Peak → Affûtage",60,y+90);
+  _ebTxt(x,"Base → Développement → Spécifique → Peak → Affûtage",60,y+90,{size:28,color:"rgba(255,255,255,.9)"});
   y+=160;
   const mx=Math.max(1,...plan.weeks.map(w=>w.vol));
   const bw=(W-120)/plan.weeks.length;
@@ -63,18 +108,18 @@ function exportPNG(){try{
   y+=300;
   if(globalThis.EBV2&&globalThis.EBV2.predict){try{
     const pr=globalThis.EBV2.predict(S.sport,S.answers,plan);
-    if(pr.items.length){x.fillStyle="#0c1016";x.font="700 40px 'Space Grotesk',sans-serif";x.fillText("Prédiction de course",60,y);y+=56;
-      x.font="500 34px 'Space Grotesk',sans-serif";
-      pr.items.forEach(it=>{x.fillText(it.leg+" : "+it.value,60,y);y+=48;});}
+    if(pr.items.length){_ebTxt(x,"Prédiction de course",60,y,{size:40,weight:700});y+=56;
+      pr.items.forEach(it=>{_ebTxt(x,it.leg+" : "+it.value,60,y,{size:34});y+=48;});}
   }catch(e){}}
   if(globalThis.EBV2&&globalThis.EBV2.progress){try{
     const pg=globalThis.EBV2.progress(plan,S.answers,todayISO());
-    y+=30;x.fillStyle="#0c1016";x.font="700 40px 'Space Grotesk',sans-serif";
-    x.fillText("Semaine "+pg.weekNow+"/"+pg.totalWeeks+" · "+pg.pctLoad+"% de la charge accomplie"+(pg.streakWeeks?" · streak "+pg.streakWeeks:""),60,y);
-    y+=40;x.fillStyle="#e8e0cf";x.fillRect(60,y,W-120,26);x.fillStyle="#00a376";x.fillRect(60,y,(W-120)*pg.pctLoad/100,26);
+    y+=30;
+    _ebTxt(x,"Semaine "+pg.weekNow+"/"+pg.totalWeeks+" · "+pg.pctLoad+"% de la charge accomplie"+(pg.streakWeeks?" · streak "+pg.streakWeeks:""),60,y,{size:40,weight:700});
+    // la piste de la barre devient un blanc translucide : sur une photo, un beige opaque ferait
+    // une tache rectangulaire, alors que la barre elle-même reste pleine et lisible
+    y+=40;x.fillStyle="rgba(255,255,255,.35)";x.fillRect(60,y,W-120,26);x.fillStyle="#00c98d";x.fillRect(60,y,(W-120)*pg.pctLoad/100,26);
   }catch(e){}}
-  x.fillStyle="#777";x.font="500 26px 'Space Grotesk',sans-serif";
-  x.fillText("Généré par EnduraBuild — plan raisonné, chaque décision justifiée",60,H-60);
+  _ebTxt(x,"Généré par EnduraBuild — plan raisonné, chaque décision justifiée",60,H-60,{size:26,color:"rgba(255,255,255,.85)"});
   c.toBlob(b=>{const u=URL.createObjectURL(b);const l=document.createElement("a");l.href=u;l.download="enduraBuild-"+(S.sport||"plan")+".png";document.body.appendChild(l);l.click();setTimeout(()=>{document.body.removeChild(l);URL.revokeObjectURL(u);},200);},"image/png");
 }catch(e){console.warn("exportPNG",e);}}
 
@@ -85,6 +130,11 @@ function exportPNG(){try{
 // Pas de tracé GPS : l'import FIT actuel ne lit que le résumé de séance (pas les records
 // GPS point à point) — on ne promet pas de carte qu'on n'a pas.
 async function storyBlob(o,format){
+  // R23.4 — MEME DEFAUT QUE LA CARTE DE PLAN : ce canvas dessinait sans attendre les polices,
+  // donc avec les metriques du repli quand elles n'etaient pas encore chargees. Le fond degrade
+  // reste, lui : la demande de transparence portait sur la carte du PLAN, et transformer cette
+  // image-ci sans qu'on l'ait decide serait deborder de la demande.
+  await _ebFontsPretes();
   // o : {sessionName, detail, sport, streak, badge:{icon,label}|null, avatarSVG, accent}
   // format (R6 — plusieurs types de partage) : "story" 1080×1920 (défaut) | "square" 1080×1080
   const sq=format==="square";

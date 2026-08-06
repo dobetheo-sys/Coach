@@ -113,13 +113,39 @@ test. À reprendre avec un harnais qui sait rejouer un glissement dans la modale
 
 **Reste de R23.3** : « interface trop imposante » — non traité dans ce lot.
 
-### R23.4 · L'image de partage : fond transparent, et le texte déborde · **DÉFAUT + esthétique**
+### R23.4 · L'image de partage : fond transparent · ✅ **LIVRÉ (06/08/2026)**
 
 > *« Problème d'affichage du texte, je voudrait que ça soit en transparence, que l'on puisse
 > l'ajouter par dessus une photo, pas un fond coloré, retravaille peut être l'esthétique »*
 
 PNG à fond transparent pour surimpression sur une photo — donc typographie qui tient sur clair
-comme sur sombre (contour ou ombre portée), et pas seulement sur le beige actuel.
+comme sur sombre, et pas seulement sur le beige actuel.
+
+**Livré, trois choses.** Le beige `#f1eadb` disparaît (l'alpha est conservé par `toBlob`). Le
+texte passe en **blanc avec un halo sombre** — c'est la solution des sous-titres vidéo, la seule
+qui tienne sur un fond qu'on ne contrôle pas ; l'encre sombre d'origine était illisible dès que la
+photo est sombre, et une carte qu'on ne peut poser que sur une photo claire n'est pas une carte
+transparente. Ce n'est donc pas un choix de goût mais une conséquence de la transparence. Les
+couleurs de phases et les barres restent : elles sont saturées, elles se lisent des deux côtés.
+Enfin `txt()` devient le point unique du texte, avec **rétrécissement** si une ligne dépasse la
+largeur utile.
+
+Mesuré : alpha 0 aux quatre coins, 242 369 pixels d'encre, pixel opaque le plus à droite **1019
+sur 1080**. Garde `R23.4` dans `smoke-usage` (4 critères), vérifiée rouge sur deux cassures — fond
+beige remis (2 rouges), rétrécissement retiré avec une ligne trop longue (1 rouge).
+
+**Ce que je n'ai PAS démontré, et c'est écrit dans le code.** Le canvas dessinait sans jamais
+attendre les polices (`document.fonts.ready` absent) : `fillText` utilise ce qui est chargé à cet
+instant, et une police de repli a d'autres métriques. L'attente est ajoutée — c'est juste — mais
+**je n'ai pas reproduit le débordement** : ma simulation d'absence de police (retrait de la
+feuille de style + `document.fonts.clear()`) rendait une mesure IDENTIQUE au cas normal, parce
+que retirer un `<link>` ne décharge pas des polices déjà chargées. Je ne peux donc pas affirmer
+que c'était la cause du « problème d'affichage » que tu as vu. Ce qui garantit le cadre quoi qu'il
+arrive, c'est le rétrécissement — lui est mesuré.
+
+**Pas touché** : le fond dégradé de l'image de partage post-séance (`storyBlob`). Elle reçoit
+l'attente des polices, mais transformer son esthétique sans décision serait déborder de la
+demande, qui portait sur la carte du PLAN.
 
 ---
 
