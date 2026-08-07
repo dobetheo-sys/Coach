@@ -7,15 +7,14 @@ import { buildPlan, EBGenerationError } from "../app.js";
 import { renderTabProfile } from "./tab-profile.js";
 import { renderTabPlanGeneral } from "./tab-plan-general.js";
 import { renderTabToday } from "./tab-today.js";
-import { renderTabNutrition } from "./tab-nutrition.js";
+import { renderTabOutils } from "./tab-outils.js";
 import { renderTabWeek } from "./tab-week.js";
 import { brancherAide } from "./help.js";
 
 // Refonte R5 (retour utilisateur) : l'onglet CENTRAL 🎯 Aujourd'hui est l'écran du
 // quotidien (check-in diaporama → séance du jour → prédiction → charge → avancement),
 // mis en valeur dans la barre (classe tab-central). L'ancien Avancement y est fondu,
-// l'ancien Suivi est redistribué (avatar/badges → Profil, checklist → Aujourd'hui),
-// et 🥗 Nutrition devient un onglet à part entière.
+// l'ancien Suivi est redistribué (avatar/badges → Profil, checklist → Aujourd'hui).
 // R16.9 avait fondu 📅 Semaine dans 🗓 Plan (cinq onglets → quatre). R18.3 la RESTAURE, sur
 // retour du fondateur après test : « je préférais 5 onglets que 4, l'œil humain aime les
 // chiffres impairs ». Et il a une raison de plus que l'esthétique : 🎯 Aujourd'hui est
@@ -27,12 +26,18 @@ import { brancherAide } from "./help.js";
 // nouveau `tab-week.js` consomme `weekGridHTML` et `toggleDone` comme 🗓 Plan, sans
 // redessiner sa propre grille. Un identifiant d'onglet inconnu retombe sur le dernier onglet
 // par le repli déjà en place dans `renderActiveTab`.
+//
+// 🧰 Outils (retour utilisateur, 07/08/2026) : 🥗 Nutrition, seule au milieu des quatre
+// onglets qui rythment le quotidien du plan, s'est faite oublier. Elle vit désormais dans
+// un onglet à consulter plutôt qu'à suivre — `tab-outils.js` porte sa propre navigation en
+// SOUS-onglets, extensible à d'autres outils sans toucher cette barre-ci. Le compte reste à
+// CINQ (Outils prend la place de Nutrition) : la position centrale d'Aujourd'hui ne bouge pas.
 const TABS = [
   ["profile", "\u{1F4CB}", "Profil", renderTabProfile],
   ["general", "\u{1F5D3}", "Plan", renderTabPlanGeneral],
   ["today", "\u{1F3AF}", "Aujourd’hui", renderTabToday],
   ["week", "\u{1F4C5}", "Semaine", renderTabWeek],
-  ["nutrition", "\u{1F957}", "Nutrition", renderTabNutrition],
+  ["outils", "\u{1F9F0}", "Outils", renderTabOutils],
 ];
 
 let activeTab = "today"; // défaut : l'onglet central — le point du matin d'abord

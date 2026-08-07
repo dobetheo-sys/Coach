@@ -123,6 +123,10 @@ body.has-tabs { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 body.has-tabs .nav { position: static; padding: 10px 0; }
 body.has-tabs .hero, body.has-tabs .progress { display: none; }
 
+/* --- 🧰 Outils : sous-onglets internes (nutrition, et ce qui viendra ensuite) --- */
+.subtabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.subtab.active { background: var(--acc); color: #fff; }
+
 /* --- Onglet Semaine : la case du jour saute aux yeux (style papier/collage) --- */
 .gd.today {
   outline: 3px solid #e63946;

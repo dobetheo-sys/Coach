@@ -158,7 +158,9 @@ ok(heroWhy.visibleWhy || heroWhy.repos, "dans Aujourd'hui, le « pourquoi » de 
 
 // ---- 6. Onglet Nutrition : journal alimentaire RETIRÉ (décision utilisateur R6) ----
 // R18.3 — Nutrition n'est plus le 4e onglet (📅 Semaine est revenue devant). Par NOM.
-await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("nutrition"); });
+// 07/08/2026 — Nutrition vit désormais sous 🧰 Outils (sous-onglet par défaut) : on cible
+// l'onglet "outils", le contenu nutrition reste inchangé.
+await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("outils"); });
 await page.waitForTimeout(400);
 const nutTxt = await page.locator("#screen").textContent();
 ok(await page.locator("#njCard").count() === 0 && !/Journal alimentaire/.test(nutTxt), "journal alimentaire retiré de l'onglet Nutrition");

@@ -236,7 +236,7 @@ await page.evaluate(async () => {
   delete S.answers.weight;
   ebSave();
   const { setTab } = await import("./js/ui/tabs.js");
-  setTab("nutrition");
+  setTab("outils"); // 07/08/2026 — Nutrition vit sous 🧰 Outils (sous-onglet par défaut)
 });
 await page.waitForTimeout(300);
 const noWtxt = await page.locator("#screen").textContent();
@@ -247,7 +247,7 @@ await page.evaluate(async () => {
   S.answers.height = "180";
   ebSave();
   const { setTab } = await import("./js/ui/tabs.js");
-  setTab("nutrition");
+  setTab("outils"); // 07/08/2026 — Nutrition vit sous 🧰 Outils (sous-onglet par défaut)
 });
 await page.waitForTimeout(300);
 const eTxt = await page.locator("#screen").textContent();

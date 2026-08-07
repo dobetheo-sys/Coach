@@ -482,7 +482,7 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(apres.aria === "true", "U18 — aria-expanded suit l'état");
 
   // LA MOITIÉ QUI COMPTE : rien de ce qui AVERTIT ne se cache derrière un « ? ».
-  await page.click('#ebTabbar .tabbtn[data-tab="nutrition"]').catch(() => {});
+  await page.click('#ebTabbar .tabbtn[data-tab="outils"]').catch(() => {});
   await page.waitForTimeout(700);
   const nut = await page.evaluate(() => {
     const txt = document.body.innerText;

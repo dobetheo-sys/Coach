@@ -5,7 +5,7 @@
 // recopie cet état dans l'entrée active avant de persister, ebActivate() fait l'inverse.
 // currentPlan : le plan généré UNE fois (refonte onglets) — jamais persisté (recalculé au
 // chargement/changement de plan), jamais recalculé au changement d'onglet (ui/tabs.js).
-const S = { sport:null, answers:{}, rules:[], step:0, tier:"free", started:false, prevRuleIds:new Set(), showAllWeeks:false, currentPlan:null, onPlan:false, plans:[], activePlanId:null, shared:{} };
+const S = { sport:null, answers:{}, rules:[], step:0, tier:"free", started:false, prevRuleIds:new Set(), showAllWeeks:false, currentPlan:null, onPlan:false, plans:[], activePlanId:null, shared:{}, toolsSubTab:null };
 // État PAR PERSONNE (pas par plan) : le sommeil, la VFC, la douleur, la maladie, le poids
 // et les réglages de notification appartiennent au corps/à l'appareil — ils suivent
 // l'utilisateur d'un plan à l'autre (fini le re-check-in après un changement de plan).
