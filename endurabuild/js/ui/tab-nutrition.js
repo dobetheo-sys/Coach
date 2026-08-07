@@ -4,8 +4,9 @@
 // chaque séance (N1–N7, météo comprise), journal alimentaire (Open Food Facts + CSV MFP).
 // La frontière ne bouge pas : des ESTIMATIONS et des photographies de consensus — jamais
 // une cible d'apport, jamais un menu ; l'avertissement du moteur est TOUJOURS affiché.
-import { S, $, todayISO } from "../state.js";
+import { S, $, esc, todayISO } from "../state.js";
 import { fetchWeather } from "./readiness.js";
+import { productCategoryFor, CATALOG, CATEGORY_LABELS } from "../shop-catalog.js";
 // R6 — le journal alimentaire (Open Food Facts + CSV) est RETIRÉ sur décision
 // utilisateur : trop de saisie pour trop peu de valeur ; l'onglet reste
 // estimations + ravitaillement. (Les données foodLog éventuelles restent
@@ -61,12 +62,21 @@ export function nutritionCardHTML(day, tempC) {
     const drinkSummary = a.during.drinkMlPerH[0] === 0
       ? "eau à la soif"
       : a.during.drinkMlPerH[0] + "–" + a.during.drinkMlPerH[1] + " ml/h" + (a.during.sodium ? " + sodium" : "");
+    const cat = productCategoryFor(a.during);
+    const chip = cat
+      ? '<div class="shop-chip" style="margin-top:6px;font-size:var(--fs-sm)">'
+        + (CATALOG[cat]
+            ? '🛒 <a href="' + esc(CATALOG[cat].url) + '">' + esc(CATALOG[cat].name) + " — " + CATALOG[cat].priceEUR + "€</a>"
+            : "🕐 Catégorie : " + esc(CATEGORY_LABELS[cat]) + ' · <a href="#" data-waitlist>Rejoindre la liste d\'attente</a>')
+      + "</div>"
+      : "";
     h += '<details style="margin-top:6px;font-size:var(--fs-sm)"><summary style="cursor:pointer"><b>' + s.name + "</b> — "
       + (a.during.carbsGPerH ? a.during.carbsGPerH[0] + "–" + a.during.carbsGPerH[1] + " g/h de glucides, " + drinkSummary : drinkSummary) + "</summary>"
       + '<div style="margin:6px 0 0 2px;color:#3f3a30"><b>Avant :</b> ' + a.before
       + "<br><b>Pendant :</b> " + a.during.text
       + (a.after ? "<br><b>Après :</b> " + a.after : "")
-      + '<br><span style="color:var(--muted)">Dépense estimée ~' + a.kcal[0] + "–" + a.kcal[1] + " kcal" + (wkg ? "" : " (renseigne ton poids dans 📋 Profil pour affiner)") + ".</span></div></details>";
+      + '<br><span style="color:var(--muted)">Dépense estimée ~' + a.kcal[0] + "–" + a.kcal[1] + " kcal" + (wkg ? "" : " (renseigne ton poids dans 📋 Profil pour affiner)") + ".</span>"
+      + chip + "</div></details>";
   });
   h += '<div class="load-sub" style="margin-top:8px">' + advs[0].a.disclaimer + "</div></div>";
   return h;
