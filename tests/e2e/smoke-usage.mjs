@@ -482,11 +482,12 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(apres.aria === "true", "U18 — aria-expanded suit l'état");
 
   // LA MOITIÉ QUI COMPTE : rien de ce qui AVERTIT ne se cache derrière un « ? ».
-  // R24.9 — la nutrition vit réduite dans 🎯 Aujourd'hui : on y va, on DÉPLIE (le repli est la
-  // demande du fondateur, le principe U18 devient « une fois la carte ouverte, l'avertissement
-  // est en clair, jamais derrière une infobulle »).
-  await passeCheckin(page);
-  await page.waitForTimeout(600);
+  // 07/08/2026 — Nutrition vit sous 🧰 Outils (sous-onglet par défaut) ; le principe U18 tient
+  // toujours : une fois la carte affichée, l'avertissement est en clair, jamais derrière une
+  // infobulle. On force l'ouverture des `<details>` restants ci-dessous (défensif — la version
+  // COMPLÈTE de la carte n'en a pas besoin, mais un futur outil pourrait en ajouter).
+  await page.click('#ebTabbar .tabbtn[data-tab="outils"]').catch(() => {});
+  await page.waitForTimeout(700);
   const nut = await page.evaluate(() => {
     [...document.querySelectorAll("#screen details")].forEach((d) => { d.open = true; });
     const txt = document.body.innerText;
@@ -682,7 +683,9 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(marqueur.svgTrouve && marqueur.iciTexte,
     "R24.6 — la courbe de charge marque visuellement « tu es ici » à la semaine courante");
 
-  // R24.9 — la nutrition vit RÉDUITE dans 🎯 Aujourd'hui, et l'onglet a disparu de la barre.
+  // R24.9 — la nutrition vit RÉDUITE dans 🎯 Aujourd'hui, sans y avoir son propre onglet.
+  // 07/08/2026 — l'onglet dédié n'a pas disparu pour de bon : 🧰 Outils lui redonne un
+  // cinquième onglet (version COMPLÈTE, tunnel de commande compris), la barre revient à 5.
   const nut24 = await page.evaluate(() => {
     const t = document.querySelector("#screen").textContent || "";
     return { onglets: document.querySelectorAll("#ebTabbar .tabbtn").length,
@@ -696,8 +699,8 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
     (S.currentPlan || { weeks: [] }).weeks.forEach((w) => w.days.forEach((d) => { if (d.date === todayISO()) day = d; }));
     return !!(day && day.sessions.some((x) => x.d !== "rs"));
   });
-  ok(nut24.onglets === 4 && !nut24.boutonNutrition,
-    "R24.9 — la barre compte 4 onglets, sans Nutrition");
+  ok(nut24.onglets === 5 && !nut24.boutonNutrition,
+    "R24.9 — la barre compte 5 onglets (🧰 Outils a repris la place de Nutrition, jamais un bouton nommé « nutrition »)");
   ok(nut24.section && (nut24.ravito || !jourAvecSeance),
     "R24.9 — …et la nutrition du jour vit en version réduite dans 🎯 Aujourd'hui (ravito dès qu'il y a une séance"
     + (jourAvecSeance ? "" : " — jour de repos aujourd'hui, dépense seule") + ")");

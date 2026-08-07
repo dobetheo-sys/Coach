@@ -30,7 +30,7 @@ await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "domcon
 await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v1", JSON.stringify(s)); }, runnerStateV1({}));
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "plan généré normalement (4 onglets — R24)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "plan généré normalement (5 onglets)");
 ok(await page.locator("[role=alert]").count() === 0, "aucun écran d'échec quand tout va bien");
 
 // ---- 3. Moteur neutralisé → écran d'échec, PAS de plan dégradé ----

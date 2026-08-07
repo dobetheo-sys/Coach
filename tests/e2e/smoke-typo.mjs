@@ -147,7 +147,7 @@ await page.setViewportSize({ width: 1100, height: 900 });
 // ---- 4. Le plancher de lisibilité, sur les CINQ onglets --------------------------------
 // R18.3 — « week » est revenu : un onglet non balayé est un onglet non gardé, et c'est
 // exactement comme ça que `css/mobile.css` avait gardé un texte de 8 px pendant tout R16.
-for (const t of ["profile", "general", "today", "week"]) { // R24.9 — plus d'onglet nutrition
+for (const t of ["profile", "general", "today", "week", "outils"]) {
   await page.evaluate(async (t) => { const { setTab } = await import("./js/ui/tabs.js"); setTab(t); }, t);
   await page.waitForTimeout(400);
   const mini = await page.evaluate(() => {
@@ -185,7 +185,7 @@ await tactile.evaluate(async (iso) => {
   ebSave();
 }, iso);
 ok(await tactile.evaluate(() => matchMedia("(pointer:coarse)").matches), "le contexte de mesure est bien tactile (sinon la garde ne prouve rien)");
-for (const t of ["profile", "general", "today", "week"]) { // R24.9 — plus d'onglet nutrition
+for (const t of ["profile", "general", "today", "week", "outils"]) {
   await tactile.evaluate(async (t) => { const { setTab } = await import("./js/ui/tabs.js"); setTab(t); }, t);
   await tactile.waitForTimeout(400);
   const petits = await tactile.evaluate(() => {

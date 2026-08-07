@@ -24,7 +24,7 @@ await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 const v2state = await page.evaluate(() => JSON.parse(localStorage.getItem("eb_state_v2") || "null"));
 ok(!!(v2state && Array.isArray(v2state.plans) && v2state.plans.length === 1 && v2state.plans[0].sport === "run"), "migration v1→v2 : plan repris sans perte (plans=" + (v2state ? v2state.plans.length : "null") + ")");
-ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "l'app restaure directement la vue plan (4 onglets — R24.9 : nutrition fondue dans Aujourd'hui)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "l'app restaure directement la vue plan (5 onglets)");
 
 // ---- 2. Profil : avatar/niveau/XP + records + plans + sauvegarde + retest suggéré ----
 const tabs = await page.locator("#ebTabbar .tabbtn").all();
@@ -79,7 +79,7 @@ await page.evaluate(() => {
 });
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "retour au plan 1 : la vue plan est restaurée");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "retour au plan 1 : la vue plan est restaurée");
 const t2 = await page.locator("#ebTabbar .tabbtn").all();
 await t2[0].click(); await page.waitForTimeout(250);
 ok(/Mes plans \(2\)/.test(await page.locator("#screen").textContent()), "les 2 plans sont listés dans le sélecteur");
@@ -160,13 +160,15 @@ const heroWhy = await page.evaluate(() => {
 ok(heroWhy.visibleWhy || heroWhy.repos, "dans Aujourd'hui, le « pourquoi » de la séance est visible SANS rien ouvrir (§5)"
   + (heroWhy.repos ? " — jour de REPOS aujourd'hui, critère non applicable, message de repos présent" : ""));
 
-// ---- 6. Nutrition : journal alimentaire RETIRÉ (R6) — et l'onglet lui-même a disparu (R24.9),
-// la version réduite vit dans 🎯 Aujourd'hui. Le critère suit le contenu, pas l'onglet.
-await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("today"); });
+// ---- 6. Nutrition : journal alimentaire RETIRÉ (R6). L'onglet dédié avait disparu (R24.9,
+// version réduite dans 🎯 Aujourd'hui) ; 07/08/2026 il revient sous 🧰 Outils (sous-onglet
+// par défaut) pour la version COMPLÈTE — la réduite dans Aujourd'hui reste inchangée,
+// couverte par ailleurs (smoke-usage.mjs). Le critère suit le contenu, pas l'onglet.
+await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("outils"); });
 await page.waitForTimeout(400);
 const nutTxt = await page.locator("#screen").textContent();
-ok(await page.locator("#njCard").count() === 0 && !/Journal alimentaire/.test(nutTxt), "journal alimentaire retiré (aucune trace dans la nutrition du jour)");
-ok(/Dépense estimée du jour/.test(nutTxt) && /Ravitaillement/i.test(nutTxt), "la nutrition réduite d'Aujourd'hui garde dépense estimée + ravitaillement (R24.9)");
+ok(await page.locator("#njCard").count() === 0 && !/Journal alimentaire/.test(nutTxt), "journal alimentaire retiré de Outils > Nutrition");
+ok(/Dépense estimée du jour/.test(nutTxt) && /Ravitaillement/i.test(nutTxt), "Outils > Nutrition garde dépense estimée + ravitaillement");
 
 // ---- 7. R16.9 : la coche ✓ → feedback RPE → félicitations vit désormais dans Plan ----
 // (c'était la coche de Semaine ; celle de Plan basculait un booléen en silence.)

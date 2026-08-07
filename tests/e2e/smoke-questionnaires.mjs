@@ -108,7 +108,7 @@ for (const sport of SPORTS) {
 
   const barre = await page.locator("#ebTabbar .tabbtn").count();
   ok(!bloque, sport.padEnd(9) + " — le questionnaire se traverse" + (bloque ? " : " + bloque : " (" + (etapes + 1) + " étapes)"));
-  ok(barre === 4, sport.padEnd(9) + " — un plan est généré (barre à 4 onglets — R24, vue : " + barre + ")");
+  ok(barre === 5, sport.padEnd(9) + " — un plan est généré (barre à 5 onglets, vue : " + barre + ")");
   ok(errs.length === 0, sport.padEnd(9) + " — aucune erreur JS" + (errs.length ? " : " + errs[0].slice(0, 120) : ""));
   await page.context().close();
 }
