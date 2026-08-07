@@ -85,12 +85,26 @@ const meneuseDe = (n, v, c) => (v >= n && v >= c ? "velo" : n >= c ? "natation" 
 const POSTURES = {
   // Reprises de avatar.js (canal forme du jour, R17.1) — « normal » applique la règle CD1 :
   // pose en A symétrique, le torse et ses marqueurs restent dégagés.
-  feu: { arms: '<path d="M50 54 L30 28" /><path d="M50 54 L70 28" />', legs: '<path d="M50 74 L36 96" /><path d="M50 74 L62 90 L65 97" />' },
-  frais: { arms: '<path d="M50 54 L32 34" /><path d="M50 54 L68 34" />', legs: '<path d="M50 74 L38 96" /><path d="M50 74 L62 92 L64 98" />' },
-  normal: { arms: '<path d="M50 54 L36 67" /><path d="M50 54 L64 67" />', legs: '<path d="M50 74 L42 97" /><path d="M50 74 L58 97" />' },
-  fatigue: { arms: '<path d="M50 54 L36 70" /><path d="M50 54 L64 70" />', legs: '<path d="M50 74 L44 98" /><path d="M50 74 L56 98" />' },
-  vide: { arms: '<path d="M50 56 L37 74" /><path d="M50 56 L63 74" />', legs: '<path d="M50 76 L45 99" /><path d="M50 76 L55 99" />' },
+  // La pose est une DONNÉE (hanche, genou éventuel, pied par jambe), plus un dessin : les
+  // pièces portées (chaussures, bas) et la ceinture se CALCULENT depuis les pieds et les
+  // jambes de la pose RENDUE. Ma première écriture les dessinait aux coordonnées de la pose
+  // normale — en « feu », les chaussures flottaient à côté des pieds. C'est le défaut que
+  // smoke-avatar avait nommé sans pouvoir le voir ici : « les chaussures se posent au bout
+  // des jambes ; si les jambes bougent, elles bougent ».
+  feu: { arms: '<path d="M50 54 L30 28" /><path d="M50 54 L70 28" />', hip: [50, 74], L: { foot: [36, 96] }, R: { knee: [62, 90], foot: [65, 97] } },
+  frais: { arms: '<path d="M50 54 L32 34" /><path d="M50 54 L68 34" />', hip: [50, 74], L: { foot: [38, 96] }, R: { knee: [62, 92], foot: [64, 98] } },
+  normal: { arms: '<path d="M50 54 L36 67" /><path d="M50 54 L64 67" />', hip: [50, 74], L: { foot: [42, 97] }, R: { foot: [58, 97] } },
+  fatigue: { arms: '<path d="M50 54 L36 70" /><path d="M50 54 L64 70" />', hip: [50, 74], L: { foot: [44, 98] }, R: { foot: [56, 98] } },
+  vide: { arms: '<path d="M50 56 L37 74" /><path d="M50 56 L63 74" />', hip: [50, 76], L: { foot: [45, 99] }, R: { foot: [55, 99] } },
 };
+const n1 = (x) => String(Math.round(x * 10) / 10);
+const legPath = (hip, leg) => '<path d="M' + n1(hip[0]) + " " + n1(hip[1]) + (leg.knee ? " L" + n1(leg.knee[0]) + " " + n1(leg.knee[1]) : "") + " L" + n1(leg.foot[0]) + " " + n1(leg.foot[1]) + '" />';
+const legsOf = (pose) => legPath(pose.hip, pose.L) + legPath(pose.hip, pose.R);
+/** Les deux pieds de la pose, avec leur signe « vers l'extérieur » (gauche −1, droite +1). */
+const feetOf = (pose) => [{ x: pose.L.foot[0], y: pose.L.foot[1], s: -1 }, { x: pose.R.foot[0], y: pose.R.foot[1], s: 1 }];
+const lerp = (h, d, t) => [h[0] + (d[0] - h[0]) * t, h[1] + (d[1] - h[1]) * t];
+/** Un segment ancré sur un pied : offsets horizontaux SIGNÉS vers l'extérieur, verticaux absolus. */
+const segAt = (f, a, ya, b, yb, attr) => '<path d="M' + n1(f.x + a * f.s) + " " + n1(f.y + ya) + " L" + n1(f.x + b * f.s) + " " + n1(f.y + yb) + '"' + (attr || "") + "/>";
 
 // ---- pièces portées (générations 1..6) ----
 const bon = (fill, extra) => '<path d="M40 33 A10 10 0 0 1 60 33 Z" fill="' + fill + '" stroke="' + INK + '" stroke-width="1.5"/>' + (extra || "");
@@ -111,30 +125,41 @@ const P_LUNETTES = [
 const torse = (c) => '<path d="M50 46 L50 74" stroke="' + c + '" stroke-width="9"/>';
 const manches = (c, pose) => '<g stroke="' + c + '" stroke-width="5" stroke-linecap="round">' + pose.arms + "</g>";
 const P_MAILLOT_COL = ["#e8dfc8", ACC.velo, ACC.velo, ACC.velo, BBR, OR];
-const shoe = (c, extra) => '<g stroke="' + c + '" stroke-width="5" stroke-linecap="round"><path d="M44 98 L40 99"/><path d="M56 98 L60 99"/></g>' + (extra || "");
-const carbone = '<g stroke="' + INK + '" stroke-width="1.6" stroke-linecap="round"><path d="M44 100 L39.5 101"/><path d="M56 100 L60.5 101"/></g>';
-const P_CHAUSSURES = [
-  shoe("#b9ac8f"), shoe(ACC.course),
-  shoe(ACC.course, '<g stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M44 99.6 L40 100.6"/><path d="M56 99.6 L60 100.6"/></g>'),
-  shoe(ACC.course, carbone),
-  shoe(BBR, carbone + '<g stroke-width="1.6" stroke-linecap="round"><path d="M43 97.5 L40.5 98.2" stroke="#fff"/><path d="M57 97.5 L59.5 98.2" stroke="' + RGE + '"/></g>'),
-  shoe(OR, carbone),
-];
-const P_BAS = [
-  '<g stroke="#b9ac8f" stroke-width="6" stroke-linecap="round"><path d="M50 74 L46.5 83"/><path d="M50 74 L53.5 83"/></g>',
-  '<g stroke="' + ACC.course + '" stroke-width="6" stroke-linecap="round"><path d="M50 74 L46.5 83"/><path d="M50 74 L53.5 83"/></g>',
-  '<g stroke="' + NUIT + '" stroke-width="6" stroke-linecap="round"><path d="M50 74 L45 87"/><path d="M50 74 L55 87"/></g>',
-  '<g stroke="' + NUIT + '" stroke-width="6" stroke-linecap="round"><path d="M50 74 L45 87"/><path d="M50 74 L55 87"/></g><g stroke="' + ACC.course + '" stroke-width="2" stroke-linecap="round"><path d="M46.4 83.5 L45.4 86"/><path d="M53.6 83.5 L54.6 86"/></g>',
-  '<g stroke="' + BBR + '" stroke-width="6" stroke-linecap="round"><path d="M50 74 L45 87"/><path d="M50 74 L55 87"/></g><g stroke-width="2" stroke-linecap="round"><path d="M46.4 83.5 L45.4 86" stroke="#fff"/><path d="M53.6 83.5 L54.6 86" stroke="' + RGE + '"/></g>',
-  '<g stroke="' + OR + '" stroke-width="6" stroke-linecap="round"><path d="M50 74 L45 87"/><path d="M50 74 L55 87"/></g>',
-];
-const ceintureSVG = (gen, niveau) => {
+const shoeSVG = (c, pose, extra) => '<g stroke="' + c + '" stroke-width="5" stroke-linecap="round">' + feetOf(pose).map((f) => segAt(f, -2, 1, 2, 2)).join("") + "</g>" + (extra || "");
+const carboneSVG = (pose) => '<g stroke="' + INK + '" stroke-width="1.6" stroke-linecap="round">' + feetOf(pose).map((f) => segAt(f, -2, 3, 2.5, 4)).join("") + "</g>";
+const chaussuresSVG = (gen, pose) => {
   if (gen <= 0) return "";
+  if (gen === 1) return shoeSVG("#b9ac8f", pose);
+  if (gen === 2) return shoeSVG(ACC.course, pose);
+  if (gen === 3) return shoeSVG(ACC.course, pose, '<g stroke="#fff" stroke-width="2.2" stroke-linecap="round">' + feetOf(pose).map((f) => segAt(f, -2, 2.6, 2, 3.6)).join("") + "</g>");
+  if (gen === 4) return shoeSVG(ACC.course, pose, carboneSVG(pose));
+  if (gen === 5) return shoeSVG(BBR, pose, carboneSVG(pose) + '<g stroke-width="1.6" stroke-linecap="round">' + feetOf(pose).map((f) => segAt(f, -1, 0.5, 1.5, 1.2, ' stroke="' + (f.s < 0 ? "#fff" : RGE) + '"')).join("") + "</g>");
+  return shoeSVG(OR, pose, carboneSVG(pose));
+};
+// Le bas suit la JAMBE de la pose (hanche → genou s'il existe, sinon le pied) : short à
+// t≈0,39, cuissard à t≈0,57 — les valeurs qui reproduisent le dessin de la pose normale.
+const basSVG = (gen, pose) => {
+  if (gen <= 0) return "";
+  const cols = ["#b9ac8f", ACC.course, NUIT, NUIT, BBR, OR];
+  const t = gen >= 3 ? 0.565 : 0.391;
+  const seg = (leg, ta, tb, attr) => {
+    const d = leg.knee || leg.foot;
+    const a = lerp(pose.hip, d, ta), b = lerp(pose.hip, d, tb);
+    return '<path d="M' + n1(a[0]) + " " + n1(a[1]) + " L" + n1(b[0]) + " " + n1(b[1]) + '"' + (attr || "") + "/>";
+  };
+  let s = '<g stroke="' + cols[gen - 1] + '" stroke-width="6" stroke-linecap="round">' + seg(pose.L, 0, t) + seg(pose.R, 0, t) + "</g>";
+  if (gen === 4) s += '<g stroke="' + ACC.course + '" stroke-width="2" stroke-linecap="round">' + seg(pose.L, 0.413, 0.522) + seg(pose.R, 0.413, 0.522) + "</g>";
+  if (gen === 5) s += '<g stroke-width="2" stroke-linecap="round">' + seg(pose.L, 0.413, 0.522, ' stroke="#fff"') + seg(pose.R, 0.413, 0.522, ' stroke="' + RGE + '"') + "</g>";
+  return s;
+};
+const ceintureSVG = (gen, niveau, dy) => {
+  if (gen <= 0) return "";
+  const d = dy || 0; // la ceinture est à la hanche : elle suit la pose (« vide » descend de 2)
   const cc = gen >= 5 ? OR : ACC.course;
-  if (gen === 1) return '<rect x="46.5" y="68" width="7" height="5.5" rx="1" fill="#fff" stroke="' + INK + '" stroke-width="1"/><text x="50" y="72.4" font-size="3.6" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">' + niveau + "</text>";
-  let s = '<path d="M45.8 73 L54.2 73" stroke="' + cc + '" stroke-width="2.6" stroke-linecap="round"/>';
-  if (gen >= 3) s += '<rect x="47" y="74" width="6" height="4.5" rx="1" fill="' + (gen === 6 ? OR : "#fff") + '" stroke="' + INK + '" stroke-width="1"/><text x="50" y="77.8" font-size="3.4" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">' + (gen === 6 ? "1" : niveau) + "</text>";
-  if (gen === 4) s += '<rect x="43.6" y="72" width="2.4" height="5" rx="1.1" fill="' + ACC.natation + '" stroke="' + INK + '" stroke-width="0.8"/><rect x="54" y="72" width="2.4" height="5" rx="1.1" fill="' + ACC.natation + '" stroke="' + INK + '" stroke-width="0.8"/>';
+  if (gen === 1) return '<rect x="46.5" y="' + n1(68 + d) + '" width="7" height="5.5" rx="1" fill="#fff" stroke="' + INK + '" stroke-width="1"/><text x="50" y="' + n1(72.4 + d) + '" font-size="3.6" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">' + niveau + "</text>";
+  let s = '<path d="M45.8 ' + n1(73 + d) + " L54.2 " + n1(73 + d) + '" stroke="' + cc + '" stroke-width="2.6" stroke-linecap="round"/>';
+  if (gen >= 3) s += '<rect x="47" y="' + n1(74 + d) + '" width="6" height="4.5" rx="1" fill="' + (gen === 6 ? OR : "#fff") + '" stroke="' + INK + '" stroke-width="1"/><text x="50" y="' + n1(77.8 + d) + '" font-size="3.4" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">' + (gen === 6 ? "1" : niveau) + "</text>";
+  if (gen === 4) s += '<rect x="43.6" y="' + n1(72 + d) + '" width="2.4" height="5" rx="1.1" fill="' + ACC.natation + '" stroke="' + INK + '" stroke-width="0.8"/><rect x="54" y="' + n1(72 + d) + '" width="2.4" height="5" rx="1.1" fill="' + ACC.natation + '" stroke="' + INK + '" stroke-width="0.8"/>';
   return s;
 };
 
@@ -271,7 +296,7 @@ export function avatarTriSVG(v, size) {
     + (gMail === 3 ? '<path d="M50 46 L50 60" stroke="' + INK + '" stroke-width="9" opacity="0.35"/>' : "")
     + (gMail === 5 ? '<path d="M50 55 L50 62" stroke="#fff" stroke-width="9"/><path d="M50 62 L50 69" stroke="' + RGE + '" stroke-width="9"/>' : "")
     + "</g>"
-    + '<g>' + pose.arms + pose.legs + "</g>"
+    + '<g>' + pose.arms + legsOf(pose) + "</g>"
     + "</g>";
   if (gMail >= 4) corps += manches(gMail === 5 ? BBR : mailCol, pose);
   const gLun = gN(3);
@@ -282,10 +307,11 @@ export function avatarTriSVG(v, size) {
   // les trois MARQUEURS (dès le niveau 1 chacun, or à 30)
   const mkNat = gN(1) > 0 ? '<text x="50" y="30.6" font-size="4.4" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + (gN(1) === 5 ? "#fff" : INK) + '">' + nat + "</text>" : "";
   const mkVelo = velo >= 1 ? '<rect x="45.4" y="49.5" width="9.2" height="6.4" rx="1.2" fill="' + (velo >= 30 ? OR : "#fff") + '" stroke="' + INK + '" stroke-width="1.1"/><text x="50" y="54.6" font-size="4.4" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">' + velo + "</text>" : "";
-  const bas = pick(P_BAS, gC(3));
-  const ceinture = gC(4) > 0 ? ceintureSVG(gC(4), course >= 30 && gC(4) < 6 ? course : gC(4) === 6 ? 6 : course)
-    : course >= 1 ? ceintureSVG(1, course) : "";
-  const shoes = pick(P_CHAUSSURES, gC(1));
+  const bas = basSVG(gC(3), pose);
+  const dyHanche = pose.hip[1] - 74;
+  const ceinture = gC(4) > 0 ? ceintureSVG(gC(4), course >= 30 && gC(4) < 6 ? course : gC(4) === 6 ? 6 : course, dyHanche)
+    : course >= 1 ? ceintureSVG(1, course, dyHanche) : "";
+  const shoes = chaussuresSVG(gC(1), pose);
   const laurier = legende ? '<g stroke="#00734f" stroke-width="2.2" fill="none" stroke-linecap="round"><path d="M40 28 Q44 21 50 20"/><path d="M60 28 Q56 21 50 20"/><path d="M41 26 L38 24"/><path d="M43 23 L41 20"/><path d="M59 26 L62 24"/><path d="M57 23 L59 20"/></g>' : "";
   const podium = legende ? '<rect x="36" y="99" width="28" height="7.5" rx="2" fill="' + OR + '" stroke="' + INK + '" stroke-width="1.6"/><text x="50" y="105" font-size="5.4" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">1</text>' : "";
   const rayons = legende ? '<g stroke="' + OR + '" stroke-width="1.8" opacity="0.5" stroke-linecap="round"><path d="M50 4 L50 0.5"/><path d="M32 7.5 L29.5 4"/><path d="M68 7.5 L70.5 4"/></g>' : "";
@@ -330,6 +356,41 @@ export function avatarTriUnlock(disc, L) {
 // dans le monde de la natation, le torse dans celui du vélo, les jambes dans celui de la
 // course. Le 2×3 : deux colonnes de décor par bande, la colonne centrale reste calme.
 
+// Les cinq poses du canal forme du jour, à l'échelle du triptyque (épaule 62, hanche 106,
+// jambes ~2× plus longues que le composite) — mêmes proportions, mêmes règles d'attache.
+const STORY_POSTURES = {
+  feu: { arms: '<path d="M50 62 L23 22"/><path d="M50 62 L77 22"/>', hip: [50, 106], L: { foot: [31, 148] }, R: { knee: [66, 137], foot: [71, 150] } },
+  frais: { arms: '<path d="M50 62 L26 31"/><path d="M50 62 L74 31"/>', hip: [50, 106], L: { foot: [34, 148] }, R: { knee: [66, 140], foot: [69, 152] } },
+  normal: { arms: '<path d="M50 62 L31 82"/><path d="M50 62 L69 82"/>', hip: [50, 106], L: { foot: [39, 150] }, R: { foot: [61, 150] } },
+  fatigue: { arms: '<path d="M50 62 L31 87"/><path d="M50 62 L69 87"/>', hip: [50, 106], L: { foot: [42, 152] }, R: { foot: [58, 152] } },
+  vide: { arms: '<path d="M50 65 L32 93"/><path d="M50 65 L68 93"/>', hip: [50, 109], L: { foot: [43, 153] }, R: { foot: [57, 153] } },
+};
+// Le bas du triptyque commence 3 sous la hanche (t≈0,07) : short t=0,273, cuissard t=0,5.
+const storyBasSVG = (gen, pose) => {
+  if (gen <= 0) return "";
+  const cols = ["#b9ac8f", ACC.course, NUIT, NUIT, BBR, OR];
+  const t = gen >= 3 ? 0.5 : 0.273;
+  const seg = (leg, ta, tb, attr) => {
+    const d = leg.knee || leg.foot;
+    const a = lerp(pose.hip, d, ta), b = lerp(pose.hip, d, tb);
+    return '<path d="M' + n1(a[0]) + " " + n1(a[1]) + " L" + n1(b[0]) + " " + n1(b[1]) + '"' + (attr || "") + "/>";
+  };
+  let s = '<g stroke="' + cols[gen - 1] + '" stroke-width="7.4" stroke-linecap="round">' + seg(pose.L, 0.068, t) + seg(pose.R, 0.068, t) + "</g>";
+  if (gen === 4) s += '<g stroke="' + ACC.course + '" stroke-width="2.4" stroke-linecap="round">' + seg(pose.L, 0.386, 0.477) + seg(pose.R, 0.386, 0.477) + "</g>";
+  if (gen === 5) s += '<g stroke-width="2.4" stroke-linecap="round">' + seg(pose.L, 0.386, 0.477, ' stroke="#fff"') + seg(pose.R, 0.386, 0.477, ' stroke="' + RGE + '"') + "</g>";
+  return s;
+};
+const storyShoeSVG = (gen, pose) => {
+  if (gen <= 0) return "";
+  const scol = ["#b9ac8f", ACC.course, ACC.course, ACC.course, BBR, OR][gen - 1];
+  const F = feetOf(pose);
+  let s = '<g stroke="' + scol + '" stroke-width="6.2" stroke-linecap="round">' + F.map((f) => segAt(f, -1, 1.5, 4, 2.8)).join("") + "</g>";
+  if (gen === 3) s += '<g stroke="#fff" stroke-width="2.6" stroke-linecap="round">' + F.map((f) => segAt(f, -1, 3.4, 3.6, 4.6)).join("") + "</g>";
+  if (gen >= 4) s += '<g stroke="' + INK + '" stroke-width="1.9" stroke-linecap="round">' + F.map((f) => segAt(f, -1, 4, 4.4, 5.4)).join("") + "</g>";
+  if (gen === 5) s += '<g stroke-width="1.9" stroke-linecap="round">' + F.map((f) => segAt(f, 0.4, -0.4, 3, 0.3, ' stroke="' + (f.s < 0 ? "#fff" : RGE) + '"')).join("") + "</g>";
+  return s;
+};
+
 export function avatarTriStorySVG(v, size) {
   const sz = size || 300;
   const nat = Math.max(0, Math.min(30, v.natation | 0));
@@ -340,6 +401,7 @@ export function avatarTriStorySVG(v, size) {
   const boucle = Math.ceil(lead / 5);
   const legende = nat >= 30 && velo >= 30 && course >= 30;
   const acc = ACC[meneuseDe(nat, velo, course)];
+  const pose = STORY_POSTURES[v.mood] || STORY_POSTURES.normal;
 
   let s = '<rect x="0" y="0" width="100" height="59" fill="' + ACC.natation + '" opacity="0.07"/>'
     + '<rect x="0" y="59" width="100" height="59" fill="' + ACC.velo + '" opacity="0.05"/>'
@@ -428,10 +490,10 @@ export function avatarTriStorySVG(v, size) {
     + '<path d="M50 48 L50 106" stroke="' + mailCol + '" stroke-width="11"/>'
     + (gMail === 3 ? '<path d="M50 48 L50 66" stroke="' + INK + '" stroke-width="11" opacity="0.35"/>' : "")
     + (gMail === 5 ? '<path d="M50 60 L50 70" stroke="#fff" stroke-width="11"/><path d="M50 70 L50 80" stroke="' + RGE + '" stroke-width="11"/>' : "")
-    + '<path d="M50 62 L31 82"/><path d="M50 62 L69 82"/>'
-    + '<path d="M50 106 L39 150"/><path d="M50 106 L61 150"/>'
+    + pose.arms
+    + legsOf(pose)
     + "</g>";
-  if (gMail >= 4) s += '<g stroke="' + (gMail === 5 ? BBR : mailCol) + '" stroke-width="6" stroke-linecap="round"><path d="M50 62 L31 82"/><path d="M50 62 L69 82"/></g>';
+  if (gMail >= 4) s += '<g stroke="' + (gMail === 5 ? BBR : mailCol) + '" stroke-width="6" stroke-linecap="round">' + pose.arms + "</g>";
   s += gLun > 0 ? '<path d="M46 42 L54 42" stroke="' + INK + '" stroke-width="1.6" stroke-linecap="round"/>'
     : '<circle cx="45.5" cy="32.5" r="1.5" fill="' + INK + '"/><circle cx="54.5" cy="32.5" r="1.5" fill="' + INK + '"/><path d="M46 42 L54 42" stroke="' + INK + '" stroke-width="1.6" stroke-linecap="round"/>';
   if (gLun > 0) {
@@ -454,31 +516,20 @@ export function avatarTriStorySVG(v, size) {
       + '<circle cx="46.2" cy="54.1" r="0.55" fill="' + INK + '"/><circle cx="53.8" cy="54.1" r="0.55" fill="' + INK + '"/>'
       + '<text x="50" y="59.2" font-size="5" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">' + velo + "</text>";
   }
-  if (gBas > 0) {
-    const bcol = ["#b9ac8f", ACC.course, NUIT, NUIT, BBR, OR][gBas - 1];
-    const long_ = gBas >= 3;
-    s += '<g stroke="' + bcol + '" stroke-width="7.4" stroke-linecap="round"><path d="M50 109 L' + (long_ ? "44 128" : "45.6 118") + '"/><path d="M50 109 L' + (long_ ? "56 128" : "54.4 118") + '"/></g>';
-    if (gBas === 4) s += '<g stroke="' + ACC.course + '" stroke-width="2.4" stroke-linecap="round"><path d="M45.4 123 L44.3 127"/><path d="M54.6 123 L55.7 127"/></g>';
-    if (gBas === 5) s += '<g stroke-width="2.4" stroke-linecap="round"><path d="M45.4 123 L44.3 127" stroke="#fff"/><path d="M54.6 123 L55.7 127" stroke="' + RGE + '"/></g>';
-  }
+  s += storyBasSVG(gBas, pose);
+  const dyH = pose.hip[1] - 106; // la ceinture est à la hanche : elle suit la pose
   if (gCeint > 0) {
     const cc = gCeint >= 5 ? OR : ACC.course;
-    s += '<path d="M44.6 100 L55.4 100" stroke="' + cc + '" stroke-width="3.2" stroke-linecap="round"/>'
-      + '<rect x="45.4" y="101.5" width="9.2" height="7" rx="1.3" fill="' + (course >= 30 ? OR : "#fff") + '" stroke="' + INK + '" stroke-width="1.25"/>'
-      + '<text x="50" y="106.8" font-size="4.8" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">' + course + "</text>";
-    if (gCeint === 4) s += '<rect x="41.2" y="98.6" width="3" height="6.4" rx="1.4" fill="' + ACC.natation + '" stroke="' + INK + '" stroke-width="0.95"/><rect x="55.8" y="98.6" width="3" height="6.4" rx="1.4" fill="' + ACC.natation + '" stroke="' + INK + '" stroke-width="0.95"/>';
+    s += '<path d="M44.6 ' + n1(100 + dyH) + " L55.4 " + n1(100 + dyH) + '" stroke="' + cc + '" stroke-width="3.2" stroke-linecap="round"/>'
+      + '<rect x="45.4" y="' + n1(101.5 + dyH) + '" width="9.2" height="7" rx="1.3" fill="' + (course >= 30 ? OR : "#fff") + '" stroke="' + INK + '" stroke-width="1.25"/>'
+      + '<text x="50" y="' + n1(106.8 + dyH) + '" font-size="4.8" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">' + course + "</text>";
+    if (gCeint === 4) s += '<rect x="41.2" y="' + n1(98.6 + dyH) + '" width="3" height="6.4" rx="1.4" fill="' + ACC.natation + '" stroke="' + INK + '" stroke-width="0.95"/><rect x="55.8" y="' + n1(98.6 + dyH) + '" width="3" height="6.4" rx="1.4" fill="' + ACC.natation + '" stroke="' + INK + '" stroke-width="0.95"/>';
   } else if (course >= 1) {
-    s += '<rect x="45.4" y="99.5" width="9.2" height="7" rx="1.3" fill="#fff" stroke="' + INK + '" stroke-width="1.25"/>'
-      + '<circle cx="46.8" cy="100.7" r="0.5" fill="' + INK + '"/><circle cx="53.2" cy="100.7" r="0.5" fill="' + INK + '"/>'
-      + '<text x="50" y="104.8" font-size="4.8" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">' + course + "</text>";
+    s += '<rect x="45.4" y="' + n1(99.5 + dyH) + '" width="9.2" height="7" rx="1.3" fill="#fff" stroke="' + INK + '" stroke-width="1.25"/>'
+      + '<circle cx="46.8" cy="' + n1(100.7 + dyH) + '" r="0.5" fill="' + INK + '"/><circle cx="53.2" cy="' + n1(100.7 + dyH) + '" r="0.5" fill="' + INK + '"/>'
+      + '<text x="50" y="' + n1(104.8 + dyH) + '" font-size="4.8" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">' + course + "</text>";
   }
-  if (gShoe > 0) {
-    const scol = ["#b9ac8f", ACC.course, ACC.course, ACC.course, BBR, OR][gShoe - 1];
-    s += '<g stroke="' + scol + '" stroke-width="6.2" stroke-linecap="round"><path d="M40 151.5 L35 152.8"/><path d="M60 151.5 L65 152.8"/></g>';
-    if (gShoe === 3) s += '<g stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M40 153.4 L35.4 154.6"/><path d="M60 153.4 L64.6 154.6"/></g>';
-    if (gShoe >= 4) s += '<g stroke="' + INK + '" stroke-width="1.9" stroke-linecap="round"><path d="M40 154 L34.6 155.4"/><path d="M60 154 L65.4 155.4"/></g>';
-    if (gShoe === 5) s += '<g stroke-width="1.9" stroke-linecap="round"><path d="M38.6 149.6 L36 150.3" stroke="#fff"/><path d="M61.4 149.6 L64 150.3" stroke="' + RGE + '"/></g>';
-  }
+  s += storyShoeSVG(gShoe, pose);
   if (legende) s += '<g stroke="#00734f" stroke-width="2.6" fill="none" stroke-linecap="round"><path d="M37 22 Q42 13.5 50 12.5"/><path d="M63 22 Q58 13.5 50 12.5"/><path d="M38.4 19.5 L34.8 17"/><path d="M41 15.6 L38.6 11.8"/><path d="M61.6 19.5 L65.2 17"/><path d="M59 15.6 L61.4 11.8"/></g>'
     + '<rect x="36" y="155" width="28" height="7" rx="2" fill="' + OR + '" stroke="' + INK + '" stroke-width="1.6"/><text x="50" y="160.4" font-size="5" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">1</text>'
     + '<g stroke="' + OR + '" stroke-width="1.8" opacity="0.5" stroke-linecap="round"><path d="M50 3.6 L50 0.6"/><path d="M32 6.5 L29.8 3.4"/><path d="M68 6.5 L70.2 3.4"/></g>';

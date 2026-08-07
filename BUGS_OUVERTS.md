@@ -1810,6 +1810,36 @@ une propriété du LIVRÉ — elle ne suppose rien du chemin qui l'a produite �
 sur les 6 sports × 3 niveaux × {sans références, avec références}, un `@` vide n'étant jamais
 acceptable. **Vérifiée rouge contre la recette ci-dessus.**
 
+### O-30 · Les seuils XP 17-30 de l'avatar composite sont une extrapolation NON calibrée · ⏳ **OUVERT — dette déclarée, décision produit**
+
+R25 fait passer l'avatar de 16 à **30 niveaux par discipline**. Les 16 premiers seuils sont les
+seuils HISTORIQUES décalés d'un cran (le niveau 0 — silhouette nue — existe désormais) : pour un
+compte existant, même XP → même visuel, c'est la non-régression, elle se lit en XP et non en
+numéro de niveau, et elle est gardée par `demo:avatartri` (10 XP → niveau 1, 3 500 → 15).
+
+Les seuils **17 à 30** (4 500 … 120 000) n'ont, eux, AUCUNE base mesurée : ils prolongent la
+courbe des 16 premiers par une progression « qui a l'air raisonnable ». À 10 XP la séance
+(repos exclu), le niveau 30 d'une discipline demande ~12 000 séances validées — c'est
+délibérément « une carrière », mais personne n'a décidé si la carrière visée est de 5 ans ou de
+30. Le risque n'est pas technique : un palier trop lointain cesse de motiver (le teaser
+« prochain : … » devient un horizon), un palier trop proche brade l'or. La calibration demande
+des données d'usage réelles qui n'existent pas encore — la même exigence qui a fait retirer ma
+première calibration de P11 (un cas unique ne calibre rien, HERITAGE).
+
+Ce qui est VERROUILLÉ en attendant : les seuils sont épinglés (le bloc ci-dessous rougit si
+quelqu'un les bouge « en passant »), monotones, bornés à 30, et le niveau ne décroît jamais
+(l'XP est un cumul). Réviser les seuils 17-30 est une décision PRODUIT du fondateur, pas un
+correctif — le jour venu, la migration devra relire ce paragraphe : changer un seuil change le
+niveau AFFICHÉ d'athlètes existants, et l'avatar ne doit jamais se déshabiller (la règle
+d'AV3-C, étendue à une refonte de barème).
+
+```verify
+id: O-30
+quoi: les seuils 17-30 restent épinglés tels que déclarés (extrapolation assumée, pas calibrée)
+attendu: /10->1 · 3500->15 · 119999->29 · 120000->30 · monotone OUI/
+cmd: node -e "import('./src/app/bridge.ts').then(m=>{const L=m.avatarTriLevel;let mono=true;for(let x=0,p=0;x<=130000;x+=250){const l=L(x);if(l<p)mono=false;p=l;}console.log('10->'+L(10)+' · 3500->'+L(3500)+' · 119999->'+L(119999)+' · 120000->'+L(120000)+' · monotone '+(mono?'OUI':'non'));})"
+```
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas

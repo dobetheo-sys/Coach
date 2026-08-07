@@ -199,6 +199,31 @@ check("120000 XP → niveau 30 · au-delà → toujours 30", avatarTriLevel(1200
   const feu = avatarTriSVG({ natation: 12, velo: 8, course: 27, mood: "feu" }, 120);
   check("la posture (forme du jour) change le rendu sans toucher aux marqueurs (R17.1 préservé)",
     feu !== marque && feu.includes(">12<") && feu.includes(">8<") && feu.includes(">27<"));
+
+  // ---- 11. L'ATTACHE : les pièces suivent la pose rendue, pas la pose normale ----
+  // Le défaut corrigé : les postures bougeaient les jambes mais chaussures/bas/ceinture
+  // restaient dessinées aux coordonnées de la pose NORMALE — en « feu », les chaussures
+  // flottaient à côté des pieds. Les ancrages ci-dessous sont CALCULÉS depuis la pose
+  // (pied feu gauche (36,96) → chaussure M38 97 ; genou droit (62,90) → cuissard L56.8 83),
+  // pas recopiés du rendu : un critère qui recopie sa cible est toujours vert.
+  check("pose normale → chaussures aux pieds normaux (M44 98 L40 99)", marque.includes("M44 98 L40 99"));
+  check("pose « feu » → chaussures aux pieds de LA pose : gauche (36,96) → M38 97 L34 98",
+    feu.includes("M38 97 L34 98") && !feu.includes("M44 98 L40 99"));
+  check("pose « feu », jambe pliée → le pied (65,97) garde sa chaussure (M63 98 L67 99)",
+    feu.includes("M63 98 L67 99"));
+  check("pose « feu » → le cuissard suit la CUISSE (hanche→genou (62,90), t=0.565 → L56.8 83)",
+    feu.includes("L56.8 83"));
+  const videC = avatarTriSVG({ natation: 12, velo: 8, course: 27, mood: "vide" }, 120);
+  check("pose « vide » (hanche 76) → la ceinture descend avec elle (M45.8 75, plus 73)",
+    videC.includes("M45.8 75 L54.2 75") && !videC.includes("M45.8 73 L54.2 73"));
+  // et le triptyque : les MÊMES poses, à son échelle — le partage montre la forme du jour
+  const stFeu = avatarTriStorySVG({ natation: 12, velo: 8, course: 27, mood: "feu" }, 200);
+  check("triptyque « feu » ≠ triptyque sans mood, marqueurs intacts",
+    stFeu !== story && stFeu.includes(">12<") && stFeu.includes(">8<") && stFeu.includes(">27<"));
+  check("triptyque « feu » → chaussure au pied de la pose story (31,148) → M32 149.5 L27 150.8",
+    stFeu.includes("M32 149.5 L27 150.8") && !stFeu.includes("M40 151.5 L35 152.8"));
+  check("triptyque sans mood → pose normale inchangée (M40 151.5 L35 152.8)",
+    story.includes("M40 151.5 L35 152.8"));
 }
 
 if (failures) { console.error("\nDémo avatar composite : " + failures + " garantie(s) en échec."); process.exit(1); }

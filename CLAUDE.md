@@ -101,6 +101,12 @@ dépôt — historique git si besoin.
   pesait −2 sur le registre OBJECTIF — celui que A4 a créé pour qu'un ressenti ne puisse pas
   effacer une mesure — alors qu'il ÉTAIT un ressenti coché à l'œil. Vérifié rouge sur quatre
   cassures.
+- `npm run demo:avatartri` — **l'avatar composite** (R25) : XP par discipline recomptée depuis
+  `answers.done` (repos = 0, brick +5/+5, tiers partagés), moteur de boucles (5 items × 6
+  générations par discipline), passe exhaustive (0..30)³ sur les DEUX rendus (59 582 SVG), et
+  l'ATTACHE — chaussures/bas/ceinture calculés depuis la pose rendue, jamais la pose normale.
+  **28ᵉ gate CI**, module `avatar-tri.js` PUR (zéro import) donc exécutable en node sans
+  navigateur. Vérifié rouge sur cassures (pieds épinglés, cuissard sans genou, crédit du repos).
 - `npm run demo:proactif` — **le coach proactif** (R21) : détection de déviation après ingestion
   (allure/puissance > 10 %, séance manquée > 24 h, charge 7 j > 15 %), recalcul BORNÉ à la fenêtre
   de 14 jours, notification en deux lignes. **25ᵉ gate CI.** Sa raison d'être est le §3 : le
@@ -1135,6 +1141,34 @@ focus). Garde `U19` dans `smoke-questionnaires` (6 critères), **vérifiée roug
 cassures** — message retiré (2 rouges), sonde du `valid()` court-circuitée donc l'optionnel
 réclamé (1), message affiché sur écran vierge (1).
 **24 gates verts, E2E 18/18, golden 949 inchangé** — le questionnaire ne touche aucune séance.
+
+**R25 livré — l'avatar composite : trois disciplines, trente niveaux, un système en boucles**
+(spec validée sur MAQUETTES par le fondateur, 07-08/08/2026 — voir ARCHITECTURE.md « R25 »,
+banc `npm run demo:avatartri`, **28ᵉ gate CI**) : l'avatar 16 niveaux de R9 laisse place à
+**trois jauges par discipline** (natation/vélo/course, 0..30 chacune). Le système est en
+BOUCLES : 5 items par discipline, chaque niveau fait passer UN item à sa génération suivante,
+6 générations = 30 niveaux, aucun niveau vide — `AVATAR_TRI_ROULEMENTS` est la source unique
+(le libellé « prochain niveau » s'en DÉRIVE, jamais une seconde table), quatre cumulatifs
+décidés un par un, l'or partout en génération 6, trois **marqueurs de niveau** (bonnet, dossard
+de poitrine, ceinture-dossard) dès le niveau 1. Quatre décisions fondateur : migration =
+recomptage EXACT de l'historique par discipline, **le repos ne donne pas d'XP** (il reste
+compté par la streak), le maillot suit la génération vélo (l'accent choisi reste celui des
+partagés), badges/semaines régulières en tiers égaux. **Le niveau 0 existe** (silhouette nue) :
+les 16 seuils historiques sont décalés d'un cran — même XP, même visuel pour un compte
+existant ; les seuils 17-30 (jusqu'à 120 000) sont une extrapolation NON calibrée, dette
+déclarée (**O-30**). Deux rendus dans `avatar-tri.js`, module **PUR** (zéro import — la passe
+exhaustive (0..30)³ tourne en node : 59 582 SVG bien formés) : composite carré pour les cartes,
+**triptyque story** (tête = natation, torse = vélo, jambes = course) pour le partage 9:16 et le
+plein écran. Les trois canaux R17.1/R17.2 sont préservés. **Et l'ATTACHE, défaut de ma propre
+étape 3** : les postures bougeaient les jambes mais chaussures/bas/ceinture restaient aux
+coordonnées de la pose normale — en « feu », les chaussures flottaient à côté des pieds, la
+règle que `smoke-avatar` énonce depuis R17.1 sans garder ce module. La pose devient une DONNÉE
+(hanche, genou, pied) et chaque pièce se CALCULE depuis elle ; le triptyque reçoit les cinq
+poses à son échelle. Ancrages attendus **calculés, pas recopiés du rendu**, vérifiés rouges sur
+deux cassures (pieds épinglés → 4 ✖, cuissard sans genou → 1 ✖). En passant les gates : cinq
+suites E2E attendaient « 5 onglets » (dette R24 jamais rejouée) — mises à 4 ; assertions avatar
+de `smoke-r4` réécrites sur le contrat composite.
+**28 gates verts, E2E 18/18, golden 949 inchangé** — l'avatar ne touche aucune séance.
 
 **O-21 (3e correction) — « du bruit de convergence » était un diagnostic paresseux** (voir
 ARCHITECTURE.md « O-21 (3e correction) ») : la 2ᵉ correction laissait un résidu qu'elle
