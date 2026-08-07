@@ -19,6 +19,18 @@ function loadSeries(plan){
   const byWeek={};out.forEach(o=>byWeek[o.week]=o);
   return Object.keys(byWeek).map(k=>byWeek[k]);
 }
+// Retour du fondateur (07/08/2026) : « le graphique de charge, on a enfin notre position, mais
+// c'est illisible sur téléphone. » Cause mesurée : `width="100%"` avec un `viewBox` dont la
+// largeur suit le nombre de SEMAINES (22 px/semaine) — sur un plan court ça tient dans l'écran,
+// mais sur une préparation longue (un 70.3 à 43 semaines fait W=946) le conteneur mobile
+// (~350 px) FORCE le SVG à se comprimer à 37 % de sa taille dessinée. Tout rétrécit avec —
+// traits, ET texte : le "9" px du plancher typographique (R16.8) devenait ~3 px, illisible par
+// construction, pas par accident de rendu.
+// Le SVG n'est donc plus mis à l'échelle : il se dessine à sa taille NATURELLE (1 unité = 1 px,
+// donc le plancher de 9 px reste 9 px), dans un conteneur qui DÉFILE horizontalement plutôt que
+// de compresser (le même principe que les tableaux/grilles larges du produit). `bindLoadChart`
+// centre le défilement sur « tu es ici » au premier rendu — sur un plan de 43 semaines, personne
+// ne doit chercher sa position en faisant défiler dix écrans.
 function loadChartSVG(plan){
   const S2=loadSeries(plan);if(!S2.length)return"";
   const W=Math.max(320,S2.length*22),H=150,PL=34,PR=10,PT=12,PB=22,iw=W-PL-PR,ih=H-PT-PB;
@@ -28,19 +40,20 @@ function loadChartSVG(plan){
   const yL=v=>PT+ih-(v/maxL)*ih;              // CTL/ATL (0..max)
   const yB=v=>PT+ih/2-(v/tsbMax)*(ih/2);      // TSB (centré sur 0)
   const line=(sel,col,w)=>"<polyline fill=\"none\" stroke=\""+col+"\" stroke-width=\""+w+"\" points=\""+S2.map((o,i)=>x(i).toFixed(1)+","+sel(o).toFixed(1)).join(" ")+"\"/>";
-  let g="<svg viewBox=\"0 0 "+W+" "+H+"\" width=\"100%\" style=\"max-width:"+W+"px;display:block;margin:6px auto\" role=\"img\" aria-label=\"Courbe de charge CTL ATL TSB\">";
+  let g="<svg viewBox=\"0 0 "+W+" "+H+"\" width=\""+W+"\" height=\""+H+"\" style=\"display:block\" role=\"img\" aria-label=\"Courbe de charge CTL ATL TSB\">";
   g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"#0002\" stroke-dasharray=\"3 3\"/>";
   g+=line(o=>yB(o.tsb),"#00a376",2)+line(o=>yL(o.ctl),"#2e6bff",2.5)+line(o=>yL(o.atl),"#ff7a1a",1.8);
   g+="<text x=\"2\" y=\""+(PT+8)+"\" font-size=\"9\" fill=\"#635b4a\">charge</text>";
   // R24.6 (retour fondateur, 06/08) — « montre visuellement là où on en est » : un trait
   // vertical à la semaine COURANTE, ancré sur les dates réelles du plan (R7), avec un point
   // sur la courbe de fitness. Pas de marqueur hors plan (avant le départ ou après la course).
+  let xNow=null;
   {
     const tIso=todayISO();let wkNow=null;
     plan.weeks.forEach(w=>w.days.forEach(d=>{if(d.date===tIso)wkNow=w.num;}));
     const iNow=wkNow!=null?S2.findIndex(o=>o.week===wkNow):-1;
     if(iNow>=0){
-      const xn=x(iNow);
+      const xn=x(iNow);xNow=xn;
       g+="<line x1=\""+xn.toFixed(1)+"\" y1=\""+PT+"\" x2=\""+xn.toFixed(1)+"\" y2=\""+(PT+ih)+"\" stroke=\"#16130e\" stroke-width=\"1.5\" stroke-dasharray=\"2 3\"/>";
       g+="<circle cx=\""+xn.toFixed(1)+"\" cy=\""+yL(S2[iNow].ctl).toFixed(1)+"\" r=\"3.5\" fill=\"#2e6bff\" stroke=\"#16130e\" stroke-width=\"1\"/>";
       const gauche=xn>W-70;
@@ -48,7 +61,18 @@ function loadChartSVG(plan){
     }
   }
   g+="</svg>";
-  return g;
+  return "<div id=\"loadChartWrap\" style=\"overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px auto\""
+    +(xNow!=null?" data-now-x=\""+xNow.toFixed(1)+"\"":"")+">"+g+"</div>";
+}
+/** Centre le défilement horizontal sur « tu es ici » — sans ça, une prépa longue oblige à
+ *  chercher sa position à tâtons. Sans effet (et sans erreur) si le graphique est absent ou
+ *  tient déjà tout entier dans son conteneur. À appeler après insertion dans le DOM. */
+function bindLoadChart(){
+  const el=document.getElementById("loadChartWrap");
+  if(!el)return;
+  const xn=parseFloat(el.dataset.nowX);
+  if(!isFinite(xn))return;
+  el.scrollLeft=Math.max(0,xn-el.clientWidth/2);
 }
 
 /* ============================================================
@@ -433,4 +457,4 @@ function decisionsCardHTML(plan){
 // Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
 // pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
 
-export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
+export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, bindLoadChart, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };

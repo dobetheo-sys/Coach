@@ -219,6 +219,25 @@ export function bindSickToggle(plan, todayIso) {
 // à venir. Rendue en PREMIER dans l'onglet central 🎯 Aujourd'hui.
 const _verdictIc = { verte: "\u{1F7E2}", orange: "\u{1F7E0}", rouge: "\u{1F534}" };
 const _verdictLbl = { keep: "séance maintenue", reduce: "volume réduit", replace: "endurance à la place", rest: "repos conseillé", off: "repos complet" };
+// Retour du fondateur (07/08/2026) : « la séance du jour, plus visuelle. » Le héros du jour
+// était du texte pur (nom en gras, une phrase de pourquoi, un lien replié) — rien ne dit au
+// premier coup d'œil « c'est de la nage » ou « c'est du vélo ». Un badge rond par discipline,
+// couleur + pictogramme : mêmes 5 codes que le moteur émet (`sw/bk/rn/br/rs`, vérifié
+// exhaustivement par `demo:avatartri`), mêmes accents que `SPORTS[*].accent` (config.js) et
+// que le composite de l'avatar (R25) — un athlète qui a vu son avatar en vélo bleu retrouve le
+// même bleu ici, pas une troisième palette.
+const _DISC_BADGE = {
+  sw: { ic: "🏊", ac: "#00b8d9" }, bk: { ic: "🚴", ac: "#2e6bff" }, rn: { ic: "🏃", ac: "#ff7a1a" },
+  br: { ic: "🔁", ac: "#9b72ff" }, rs: { ic: "😌", ac: "#00a376" },
+};
+function discBadgeHTML(d) {
+  const b = _DISC_BADGE[d] || _DISC_BADGE.rn;
+  // R16.8 — un glyphe décoratif se dimensionne en `em`, jamais en px littéral : ce n'est pas
+  // de la typographie, l'échelle --fs-* ne le régit pas (voir styles.css :root).
+  return '<div aria-hidden="true" style="flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:' + b.ac
+    + ';border:2px solid #16130e;display:flex;align-items:center;justify-content:center;font-size:1.2em;line-height:1">' + b.ic + "</div>";
+}
+
 export function heroSessionHTML(plan, todayIso) {
   if (!globalThis.EBV2 || !globalThis.EBV2.adjustToday) return "";
   const snap = Object.assign({ date: todayIso }, S.answers.readiness || {});
@@ -253,10 +272,11 @@ export function heroSessionHTML(plan, todayIso) {
     // valeur que la liste des blocs, qui reste à un clic.
     body = res.sessions.map((x) => {
       const w = whyOf(x);
-      return '<div style="margin-top:8px"><b>' + x.name + "</b>"
+      return '<div style="display:flex;gap:10px;align-items:flex-start;margin-top:10px">' + discBadgeHTML(x.d)
+        + '<div style="flex:1;min-width:0"><b>' + x.name + "</b>"
         + (w ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + w + "</div>" : "")
         + (x.det ? '<details class="gd-sess" style="margin-top:4px"><summary>Le détail de la séance</summary>' + techListHTML(techOf(x)) + "</details>" : "")
-        + "</div>";
+        + "</div></div>";
     }).join("");
   } else {
     const upcoming = [];

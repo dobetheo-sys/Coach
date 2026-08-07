@@ -191,32 +191,58 @@ function hashDate(dateISO, mod) {
   return h % mod;
 }
 
-export function dailyContentHTML(plan, todayISO) {
-  const pf = S.answers.painFlag;
-  let kind, icon, title, body;
+// Contexte du jour partagé par `microDefiHTML` et `dailyContentHTML` (R11.1 — un seul calcul
+// de « repos » / « veille de qualité », pas deux copies qui pourraient un jour diverger).
+function dayContext(plan, todayISO) {
   const day = plan.weeks.flatMap((w) => w.days).find((d) => d.date === todayISO);
   const isRest = !day || day.sessions.every((s) => s.d === "rs");
-  // veille de séance de qualité ? (micro-défi interdit la veille de qualité)
   const tomorrow = new Date(new Date(todayISO + "T00:00:00Z").getTime() + 864e5).toISOString().slice(0, 10);
   const dayT = plan.weeks.flatMap((w) => w.days).find((d) => d.date === tomorrow);
   const hardTomorrow = !!(dayT && dayT.sessions.some((s) => (s.steps || []).some((st) => st.role === "body" && typeof st.zone === "string" && [".vo2", ".thr", ".speed", ".css"].some((z) => st.zone.endsWith(z)))));
+  return { day, isRest, hardTomorrow };
+}
+
+// Retour du fondateur (07/08/2026) : « j'aime bien l'idée de micro-défi, mets-le en valeur
+// juste sous la séance du jour. » Il vivait noyé dans la rotation à 4 issues de
+// `dailyContentHTML` (1 chance sur 4, mélangé à l'anecdote/la physio/la stat) — une idée qu'on
+// veut mettre en avant ne se cache pas dans un tirage au sort. Il devient sa PROPRE carte,
+// affichée systématiquement quand il est légitime (mêmes règles de sécurité qu'avant : jamais
+// sous drapeau douleur, jamais la veille d'une séance de qualité, jamais un jour de repos —
+// zéro volume ajouté, zéro distraction avant l'effort qui compte). `dailyContentHTML` perd sa
+// 4e branche : la rotation ne porte plus que sur anecdote/physio/stat, dans tous les cas.
+export function microDefiHTML(plan, todayISO) {
+  const pf = S.answers.painFlag;
+  if (pf && pf.active) return "";
+  const { isRest, hardTomorrow } = dayContext(plan, todayISO);
+  if (isRest || hardTomorrow) return "";
+  const body = CHALLENGES[hashDate(todayISO + "c", CHALLENGES.length)];
+  return '<div class="load-card" style="border-color:var(--gold);border-width:3px;background:#fff8e6">'
+    + '<div class="load-title" style="color:var(--gold)">🎯 Micro-défi du jour <span style="font-weight:400;color:var(--muted);font-size:var(--fs-xs)">— zéro volume en plus</span></div>'
+    + '<div style="margin-top:6px;font-size:var(--fs-md);line-height:1.55">' + body + "</div></div>";
+}
+
+export function dailyContentHTML(plan, todayISO) {
+  const pf = S.answers.painFlag;
+  let kind, icon, title, body;
+  const { day } = dayContext(plan, todayISO);
 
   if (pf && pf.active) {
     kind = "recup"; icon = "🩹"; title = "Pendant que ça répare";
     body = RECOVERY_CONTENT[hashDate(todayISO, RECOVERY_CONTENT.length)];
   } else {
-    // rotation déterministe par date ; pondération contextuelle (spec §10)
-    const roll = hashDate(todayISO, isRest ? 3 : hardTomorrow ? 3 : 4); // 4e type (défi) exclu si repos… non : repos → physio/anecdote/stat ; veille qualité → pas de défi
+    // rotation déterministe par date, sur les trois contenus qui restent ici (le défi a sa
+    // propre carte désormais — voir microDefiHTML) ; pondération contextuelle (spec §10)
+    const roll = hashDate(todayISO, 3);
     const phase = (day && day.phaseId) || (plan.weeks.find((w) => w.days.some((d) => d.date >= todayISO)) || plan.weeks[0]).phase.id;
     const isRecupW = plan.weeks.some((w) => w.isRecup && w.days.some((d) => d.date === todayISO));
     const physioPool = PHYSIO[isRecupW ? "recup" : phase] || PHYSIO.base;
     if (roll === 0) { kind = "anecdote"; icon = "📜"; title = "Petite histoire d'endurance"; body = ANECDOTES[hashDate(todayISO + "a", ANECDOTES.length)]; }
     else if (roll === 1) { kind = "physio"; icon = "🔬"; title = "Ce que ton corps fabrique en ce moment"; body = physioPool[hashDate(todayISO + "p", physioPool.length)]; }
-    else if (roll === 2) {
+    else {
       const stat = personalStat(plan, todayISO);
       if (stat) { kind = "stat"; icon = "📊"; title = "Ta stat du jour"; body = stat; }
       else { kind = "anecdote"; icon = "📜"; title = "Petite histoire d'endurance"; body = ANECDOTES[hashDate(todayISO + "a", ANECDOTES.length)]; }
-    } else { kind = "defi"; icon = "🎯"; title = "Micro-défi technique (zéro volume en plus)"; body = CHALLENGES[hashDate(todayISO + "c", CHALLENGES.length)]; }
+    }
   }
   return '<details class="load-card" open><summary class="load-title">' + icon + " " + title + '</summary><div class="load-sub" style="margin-top:6px;font-size:var(--fs-md);line-height:1.55">' + body + "</div></details>";
 }

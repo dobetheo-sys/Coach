@@ -533,7 +533,18 @@ function raceInterHTML(a) {
   // R23.18 — la priorité A− existe : un OBJECTIF secondaire, couru pour de vrai (mini-affûtage
   // −40 %, vraie récupération derrière). Le moteur exige ≥ 4 semaines avant la course A
   // (décision du fondateur) — en dessous, il la traite en B et le dit dans les décisions.
-  const prioSel = (id, cur) => '<select id="' + id + '" style="flex:1;min-width:0">'
+  //
+  // Retour du fondateur (07/08/2026) : « illisible ». Mesuré sur 390px : date + 2 selects sur
+  // UNE ligne (`flex:1;min-width:0`) se comprimaient jusqu'à afficher un « C » et un « F » seuls
+  // — la lettre qui reste quand le navigateur n'a plus la place pour le mot. La carte devient
+  // deux lignes par course (date pleine largeur, puis priorité/format CÔTE À CÔTE avec un vrai
+  // plancher de largeur — 3 champs ne tiennent pas sur une ligne de 350px, 2 oui). Pas de
+  // légende visible au-dessus des selects (une première écriture en ajoutait une par champ —
+  // mesuré, elle a fait passer le Profil de 4,0 à 4,3 écrans, le plancher posé par U18b) : le
+  // texte de l'option elle-même se suffit une fois qu'il a la place de s'afficher
+  // (« C — laboratoire… » dit ce que « C » seul ne disait pas), `aria-label` porte le rôle
+  // pour qui n'a pas la vue.
+  const prioSel = (id, cur) => '<select id="' + id + '" aria-label="Priorité de la course" style="width:100%">'
     + '<option value="C"' + (cur !== "B" && cur !== "A-" ? " selected" : "") + '>C — laboratoire (on s’entraîne à travers)</option>'
     + '<option value="B"' + (cur === "B" ? " selected" : "") + '>B — préparation (mini-affûtage)</option>'
     + '<option value="A-"' + (cur === "A-" ? " selected" : "") + '>A− — objectif secondaire (≥ 4 sem avant l’A)</option></select>';
@@ -543,15 +554,30 @@ function raceInterHTML(a) {
   const fmtSel = (id, cur) => {
     const list = (SPORTS[S.sport] && SPORTS[S.sport].formats) || [];
     if (!list.length) return "";
-    return '<select id="' + id + '" style="flex:1;min-width:0"><option value="">Format ? (optionnel)</option>'
+    return '<select id="' + id + '" aria-label="Format de la course" style="width:100%"><option value="">Format ? (optionnel)</option>'
       + list.map(([v, l]) => '<option value="' + v + '"' + ((cur || "") === v ? " selected" : "") + ">" + l + "</option>").join("") + "</select>";
   };
-  const rowR = (n, d, p, f) => '<div style="display:flex;gap:8px;align-items:center;font-size:var(--fs-md);flex-wrap:wrap"><span style="width:70px">Course ' + n + '</span>'
-    + '<input type="date" id="pfRace' + n + 'd" value="' + esc(d || "") + '" style="flex:1;min-width:130px">' + prioSel("pfRace" + n + "p", p)
-    + fmtSel("pfRace" + n + "f", f) + "</div>";
+  const rowR = (n, d, p, f) => {
+    const fmtField = fmtSel("pfRace" + n + "f", f);
+    return '<div style="display:flex;gap:8px;align-items:center"><span style="font-weight:700;font-size:var(--fs-md);min-width:64px">Course ' + n + '</span>'
+      + '<input type="date" id="pfRace' + n + 'd" value="' + esc(d || "") + '" style="flex:1;min-width:0"></div>'
+      + '<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">'
+      + '<div style="flex:2;min-width:150px">' + prioSel("pfRace" + n + "p", p) + '</div>'
+      + (fmtField ? '<div style="flex:1;min-width:110px">' + fmtField + '</div>' : "")
+      + '</div>';
+  };
+  // Deux courses affichées d'office, c'est deux fois le coût vertical qu'une seule pèse déjà —
+  // mesuré : le Profil passait à 4,2 écrans (plafond U18b : 4,0) sur un profil qui ne déclare
+  // AUCUNE deuxième course. La très grande majorité des plans n'en ont qu'une (voire aucune) ;
+  // la Course 2 se replie donc derrière un geste, SAUF si elle porte déjà une date — une donnée
+  // existante ne se cache jamais derrière un tiroir fermé par défaut (même règle que U18b pour
+  // la carte de références).
+  const course2 = a.race2_date
+    ? '<div style="margin-top:10px">' + rowR(2, a.race2_date, a.race2_prio, a.race2_format) + "</div>"
+    : '<details style="margin-top:8px"><summary style="cursor:pointer;font-size:var(--fs-sm);color:var(--muted)">+ Ajouter une deuxième course intermédiaire</summary><div style="margin-top:8px">' + rowR(2, a.race2_date, a.race2_prio, a.race2_format) + "</div></details>";
   return '<div class="load-card"><div class="load-title">🏁 Courses intermédiaires' + aide('Une course AVANT ton objectif ? C = on s’entraîne à travers. B = semaine allégée. A− = un VRAI objectif secondaire : mini-affûtage, tu la cours à fond, récupération réelle derrière — à 4 semaines minimum de ta course A.', { label: 'les courses intermédiaires' }) + '</div>'
-    + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">' + rowR(1, a.race1_date, a.race1_prio, a.race1_format) + rowR(2, a.race2_date, a.race2_prio, a.race2_format) + "</div>"
-    + '<div class="nav" style="margin-top:8px"><button class="btn" id="pfRaceSave" type="button">Enregistrer mes courses</button></div>'
+    + '<div style="margin-top:8px">' + rowR(1, a.race1_date, a.race1_prio, a.race1_format) + course2 + "</div>"
+    + '<div class="nav" style="margin-top:10px"><button class="btn" id="pfRaceSave" type="button">Enregistrer mes courses</button></div>'
     + '<div id="pfRaceMsg" class="load-sub" style="margin-top:6px"></div></div>';
 }
 function bindRaceInter() {
