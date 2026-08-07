@@ -15,7 +15,7 @@ import {
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
   BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_BIKE, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
   C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN, RACE_EVE_CAP_MIN,
-  hardTimeCapMin, C26c_HARD_TIME_TOLERANCE,
+  hardTimeCapMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, type Refs } from "./renderer.ts";
@@ -474,6 +474,46 @@ export function reconcileDeclaredVolume(
         victim.charge = "off";
         victim.slot = "off";
         victim.sessions = [{ d: "rs", name: "OFF (affûtage)", det: "repos — la dernière semaine pèse au plus 60 % du pic : c'est ce qui te met frais sur la ligne", steps: [], min: 0 }];
+      }
+    }
+  }
+
+  // R23.18 — LE MINI-AFFÛTAGE A− MORD SUR LE PLAN LIVRÉ. Le facteur posé sur `wk.vol` au
+  // moment de l'insertion de course est INERTE — mesuré : 201 min livrées dans la semaine A−
+  // que le facteur soit 0,6 ou 0,75, identiques à une semaine B, parce que le point de
+  // convergence recalcule tout depuis les minutes livrées (la leçon du point fixe, une fois
+  // de plus, sur la passe écrite le jour même). La garantie s'énonce donc ICI, en dernier,
+  // comme R3.13 : la semaine d'une course A− pèse au plus 60 % de la semaine PRÉCÉDENTE
+  // (hors jour de course) — un mini-affûtage réel, réduit par les CORPS de séance, jamais
+  // par la fréquence (C29).
+  {
+    const A_MOINS_FACTOR = 0.60;
+    const TAPER_BODY_FLOOR_MIN = 10;
+    for (let wi = 1; wi < plan.weeks.length; wi++) {
+      const wk = plan.weeks[wi] as V1Week & { race?: string };
+      if (wk.race !== "A-") continue;
+      const horsCourse = () => wk.days.reduce((t, d) => t + d.sessions.reduce((u, sx) => u + (sx.race ? 0 : sx.min || 0), 0), 0);
+      const cap = weekMinOf(plan.weeks[wi - 1]) * A_MOINS_FACTOR;
+      if (cap <= 0) continue;
+      for (let g = 0; g < 6 && horsCourse() > cap; g++) {
+        const before = horsCourse();
+        const f = cap / before;
+        for (const d of wk.days) for (const sx of d.sessions) {
+          if (sx.d === "rs" || sx.race || !sx.steps) continue;
+          let touched = false;
+          for (const st of sx.steps) {
+            if (st.role !== "body") continue;
+            if (st.durationMin) {
+              const next = Math.max(TAPER_BODY_FLOOR_MIN, Math.round(st.durationMin * f));
+              if (next < st.durationMin) { st.durationMin = next; touched = true; }
+            } else if (st.distanceM) {
+              const next = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+              if (next < st.distanceM) { st.distanceM = next; touched = true; }
+            }
+          }
+          if (touched && render) render(sx);
+        }
+        if (before - horsCourse() < 0.5) break; // tout est au plancher : on livre ce qui reste
       }
     }
   }
@@ -2999,7 +3039,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   }
 
   // Courses intermédiaires : mini-affûtage semaine B/A, récup la semaine suivante
-  const races: { date: string; prio: string }[] = [];
+  const races: { date: string; prio: string; longer?: boolean }[] = [];
   // N1 — LA COURSE OBJECTIF EST DANS LE PLAN. Le mécanisme d'insertion existait et n'était
   // jamais appliqué à la course pour laquelle le plan existe : le jour J, l'athlète recevait
   // « Footing facile 22 min » sur les 6 sports. Pire, la veille, le bandeau annonçait « des
@@ -3014,8 +3054,49 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   if (a.race_date && !r.medHold) races.push({ date: a.race_date, prio: "A" });
   // N5 — une date de course secondaire renseignée SANS `races:"oui"` était ignorée en silence.
   // R11 : on l'applique ou on lève ; jamais un champ rempli qui ne fait rien.
-  if (a.race1_date && !r.medHold) races.push({ date: a.race1_date, prio: a.race1_prio || "C" });
-  if (a.race2_date && !r.medHold) races.push({ date: a.race2_date, prio: a.race2_prio || "C" });
+  // R23.18 — LA COURSE INTERMÉDIAIRE PEUT ÊTRE UN OBJECTIF A− (décision du fondateur,
+  // 06/08/2026 : « la course renseignée serait la course optimale et l'intermédiaire un
+  // objectif A− », fenêtre « 4 semaines minimum » avant l'A). Une A− se COURT pour de vrai :
+  // mini-affûtage plus profond qu'une B, récupération réelle derrière. Deux règles la bornent :
+  //  · FENÊTRE : ≥ 28 jours avant la course A — en dessous, un vrai objectif mangerait
+  //    l'affûtage de l'A. On ne supprime pas la course : son TRAITEMENT est dégradé en B,
+  //    et la décision le dit (informer, O-17 — la course reste à sa date).
+  //  · FORMAT : la « taille » d'un format se lit dans MIN_WEEKS (les semaines de préparation
+  //    qu'il exige — la table qui existe déjà, jamais une seconde échelle, R11.1). Une A− plus
+  //    LONGUE que l'A est acceptée (le refus serait un blocage sans mise en danger) mais elle
+  //    coûte : fenêtre requise +7 jours et un jour de récupération de plus derrière — l'effort
+  //    d'un format supérieur se paie en jours, pas en discours. Format non renseigné : on
+  //    suppose « comparable » et la décision l'écrit.
+  const _magnitude = (fmt?: string): number | null =>
+    (fmt && (MIN_WEEKS[a.sport as keyof typeof MIN_WEEKS] || {})[fmt]) || null;
+  const _resolveInterPrio = (n: number, date: string, prio: string, fmt?: string): { prio: string; longer: boolean } => {
+    if (prio !== "A-") return { prio: prio || "C", longer: false };
+    const aMag = _magnitude(a.format as string), iMag = _magnitude(fmt);
+    const longer = aMag != null && iMag != null && iMag > aMag;
+    if (!a.race_date) {
+      r.decisions.push({ id: "R23.18-fenetre", what: "Course " + n + " : A− sans course A datée",
+        val: "traitée comme une course B",
+        why: "Un objectif A− se définit PAR RAPPORT à ta course A — sans date d'objectif principal, on la traite en course de préparation (mini-affûtage), pas en second objectif" });
+      return { prio: "B", longer };
+    }
+    const gapJours = Math.round((Date.parse(a.race_date + "T12:00:00Z") - Date.parse(date + "T12:00:00Z")) / 864e5);
+    const requis = 28 + (longer ? 7 : 0);
+    if (gapJours < requis) {
+      r.decisions.push({ id: "R23.18-fenetre", what: "Course " + n + " : trop proche de ta course A pour être un objectif A−",
+        val: gapJours + " jours avant l'A (minimum : " + requis + (longer ? ", format plus long compris" : "") + ")",
+        why: "Courir un vrai objectif à moins de 4 semaines de ta course A mange son affûtage — la course reste à sa date, traitée en course B (mini-affûtage léger), et ta course A garde sa préparation" });
+      return { prio: "B", longer };
+    }
+    r.decisions.push({ id: "R23.18", what: "Course " + n + " : objectif A−",
+      val: gapJours + " jours avant ta course A" + (fmt ? " · format " + fmt : " · format non renseigné, supposé comparable") + (longer ? " (plus long que l'A : récupération élargie)" : ""),
+      why: "Tu la cours pour de vrai : semaine de course en mini-affûtage (−40 %), deux jours allégés avant, " + (longer ? "trois" : "deux") + " jours de récupération après, semaine suivante réduite — puis la préparation de l'A reprend" });
+    return { prio: "A-", longer };
+  };
+  // `longer` n'est posé QUE lorsqu'il est vrai : `plan.races` est PHOTOGRAPHIÉ par le golden
+  // (949 profils), et un `longer: false` décoratif sur la course A avait changé 92 empreintes
+  // sans changer une seule séance — un champ sérialisé n'est jamais gratuit.
+  if (a.race1_date && !r.medHold) { const rp = _resolveInterPrio(1, a.race1_date, a.race1_prio || "C", (a as { race1_format?: string }).race1_format); races.push(rp.longer ? { date: a.race1_date, prio: rp.prio, longer: true } : { date: a.race1_date, prio: rp.prio }); }
+  if (a.race2_date && !r.medHold) { const rp = _resolveInterPrio(2, a.race2_date, a.race2_prio || "C", (a as { race2_format?: string }).race2_format); races.push(rp.longer ? { date: a.race2_date, prio: rp.prio, longer: true } : { date: a.race2_date, prio: rp.prio }); }
   for (const rc of races) {
     // La semaine d'une course intermédiaire se trouve par SA DATE dans la grille datée
     // (l'ancien offset depuis « aujourd'hui » se décale dès que la semaine 1 commence au lundi).
@@ -3107,10 +3188,12 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         }
         rd.sessions = [{
           d: mainD as "rn",
-          name: "🏁 Course " + rc.prio,
+          name: "🏁 Course " + (rc.prio === "A-" ? "A−" : rc.prio),
           race: true,
           det: (rc.prio === "A"
             ? "LE JOUR J. Départ contrôlé à ton allure cible, la première moitié doit te sembler facile — c'est le seul pacing qui tient. — 💡 Tout ce qui devait être construit l'est : aujourd'hui, tu exécutes."
+            : rc.prio === "A-"
+            ? "Objectif A− : tu la cours POUR DE VRAI. Départ contrôlé, première moitié retenue, finis à fond — un chrono honnête, pas une répétition. — 💡 C'est un vrai objectif : le mini-affûtage est fait, la récupération suivra, et ta course A reste devant."
             : rc.prio === "C"
               ? "Course laboratoire : départ contrôlé, teste ton ravito et ton pacing — on enchaîne l'entraînement derrière. — 💡 Objectif : apprendre en conditions réelles, pas performer."
               : "Course de préparation : mini-affûtage fait, tu peux appuyer. Départ contrôlé, finis fort. — 💡 Objectif : valider allures et stratégie avant l'objectif A.") + predDet,
@@ -3131,8 +3214,10 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       //   A → 3 jours allégés avant, 2 jours de récup après (c'est l'objectif du plan)
       //   B → veille allégée, 1 jour de récup après
       //   C → veille allégée seulement : la course TIENT LIEU de séance de qualité.
-      const prep = rc.prio === "A" ? 3 : 1;
-      const after = rc.prio === "A" ? 2 : rc.prio === "B" ? 1 : 0;
+      // R23.18 — l'A− est entre l'A et la B : 2 jours allégés avant, 2 (ou 3 si son format
+      // dépasse celui de l'A) jours de récupération après.
+      const prep = rc.prio === "A" ? 3 : rc.prio === "A-" ? 2 : 1;
+      const after = rc.prio === "A" ? 2 : rc.prio === "A-" ? (rc.longer ? 3 : 2) : rc.prio === "B" ? 1 : 0;
       const allDays = wl.flatMap((w) => w.days as GenDay[]);
       const raceT = new Date(rc.date + "T12:00:00Z").getTime();
       const dayAt = (offsetDays: number) => allDays.find((d) => d.date === new Date(raceT + offsetDays * 864e5).toISOString().slice(0, 10));
@@ -3191,7 +3276,13 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         d.sessions = [{ d: "rs", name: "Repos post-course", det: "récupération — marche, hydratation, fierté", steps: [], min: 0 }];
       }
       if (rc.prio !== "C") {
-        wk.vol = Math.round(wk.vol * 0.75 * 10) / 10;
+        // R23.18 — le facteur posé ICI est un INDICE de cible pour les passes intermédiaires :
+        // mesuré, il est INERTE sur le plan livré (201 min hors course à 0,6 comme à 0,75 —
+        // le point de convergence recalcule wk.vol depuis les minutes livrées). La garantie
+        // du mini-affûtage A− (semaine ≤ 60 % de la précédente) vit AU POINT FIXE, dans le
+        // bloc « R23.18 — LE MINI-AFFÛTAGE A− MORD » — la leçon du point fixe, payée le jour
+        // même de l'écriture de cette passe.
+        wk.vol = Math.round(wk.vol * (rc.prio === "A-" ? 0.6 : 0.75) * 10) / 10;
         wk.taperRace = true;
       }
       // R13.6 — LA SEMAINE DE COURSE A UN PLANCHER : ~30 % DU PIC, HORS JOUR J. Entre le

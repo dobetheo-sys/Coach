@@ -50,10 +50,13 @@ const setTab = (t) => page.evaluate(async (t) => { const { setTab } = await impo
 await setTab("today");
 await page.waitForTimeout(400);
 const barre = await page.evaluate(() => [...document.querySelectorAll("#ebTabbar .tabbtn")].map((b) => b.dataset.tab));
+// 07/08/2026 — R24.9 avait retiré Nutrition (4 onglets, nutrition réduite dans Aujourd'hui) ;
+// 🧰 Outils lui redonne un cinquième onglet (version COMPLÈTE, tunnel de commande compris).
 ok(barre.length === 5, "cinq onglets (" + barre.join(" · ") + ")");
 ok(barre.indexOf("today") === 2,
   "🎯 Aujourd’hui est le TROISIÈME sur cinq — « central » n'est pas qu'un style, c'est une position, et un nombre pair la rendait impossible");
 ok(barre.includes("week"), "📅 Semaine est bien de retour dans la barre");
+ok(barre.includes("outils"), "🧰 Outils occupe le cinquième onglet");
 
 // ---- 2. Le contenu : Semaine apporte ce que Plan ne portait pas -------------------------
 await setTab("week");

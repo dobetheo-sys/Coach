@@ -27,11 +27,17 @@ import { brancherAide } from "./help.js";
 // redessiner sa propre grille. Un identifiant d'onglet inconnu retombe sur le dernier onglet
 // par le repli déjà en place dans `renderActiveTab`.
 //
-// 🧰 Outils (retour utilisateur, 07/08/2026) : 🥗 Nutrition, seule au milieu des quatre
-// onglets qui rythment le quotidien du plan, s'est faite oublier. Elle vit désormais dans
-// un onglet à consulter plutôt qu'à suivre — `tab-outils.js` porte sa propre navigation en
-// SOUS-onglets, extensible à d'autres outils sans toucher cette barre-ci. Le compte reste à
-// CINQ (Outils prend la place de Nutrition) : la position centrale d'Aujourd'hui ne bouge pas.
+// R24.9 (retour fondateur, 06/08) — l'onglet Nutrition avait DISPARU de la barre : son
+// contenu du JOUR (ravitaillement + dépense estimée) vit en version réduite dans
+// 🎯 Aujourd'hui, rendu par les mêmes fonctions (tab-nutrition.js reste le module). Cette
+// décision révisait la préférence « cinq onglets, l'œil aime les chiffres impairs » de R18.3.
+//
+// 🧰 Outils (retour utilisateur, 07/08/2026) : la version réduite ne loge pas tout — le
+// ravitaillement sur l'ENSEMBLE du plan (tunnel de commande compris) n'a pas sa place dans
+// un résumé du jour. Outils lui donne un foyer, à consulter plutôt qu'à suivre —
+// `tab-outils.js` porte sa propre navigation en SOUS-onglets (Nutrition en premier
+// arrivant), extensible sans toucher cette barre-ci. Le compte revient à CINQ (Outils prend
+// la place de Nutrition) : la position centrale d'Aujourd'hui ne bouge pas.
 const TABS = [
   ["profile", "\u{1F4CB}", "Profil", renderTabProfile],
   ["general", "\u{1F5D3}", "Plan", renderTabPlanGeneral],

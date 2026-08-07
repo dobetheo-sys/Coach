@@ -165,25 +165,6 @@ export function weeklyReviewHTML(plan) {
     + (keyNext ? "<br>Séance clé de la semaine prochaine : <b>" + keyNext.name + "</b>." : "") + "</div></div>";
 }
 
-/** Carte de réglage (Semaine, une fois) + champ au Profil. */
-export function notifySetupHTML() {
-  if (S.answers.notifyTime || S.answers.notifyDismissed) return "";
-  return '<div class="load-card" id="notifSetup"><div class="load-title">🔔 Rappel de séance</div>'
-    + '<div class="load-sub" style="margin-top:6px">Choisis l’heure de ton rappel quotidien. Limite honnête : sans serveur, la notification ne part que si l’app est ouverte — sinon tu la reçois à l’ouverture suivante.</div>'
-    + '<div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap"><input type="time" id="notifTime" value="07:00">'
-    + '<button class="btn primary" id="notifOk" type="button">Activer</button>'
-    + '<button class="btn" id="notifNo" type="button">Non merci</button></div></div>';
-}
-export function bindNotifySetup(plan, rerender) {
-  const ok = document.getElementById("notifOk");
-  if (ok) ok.onclick = async () => {
-    const t = (document.getElementById("notifTime") || {}).value || "07:00";
-    const perm = await requestNotifyPermission();
-    S.answers.notifyTime = t;
-    ebSave();
-    if (perm === "granted") scheduleDailyNotification(plan);
-    rerender();
-  };
-  const no = document.getElementById("notifNo");
-  if (no) no.onclick = () => { S.answers.notifyDismissed = true; ebSave(); rerender(); };
-}
+// R24.7 — la carte de premier réglage du rappel (notifySetupHTML/bindNotifySetup) est
+// SUPPRIMÉE : le Profil porte la carte « 🔔 Rappel quotidien » (R23.11), seule entrée du
+// réglage. La garder exportée sans appelant serait du code mort qui repousserait un jour.

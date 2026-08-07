@@ -31,9 +31,10 @@ const tabs = await page.locator("#ebTabbar .tabbtn").all();
 await tabs[0].click(); await page.waitForTimeout(250);
 const profTxt = await page.locator("#screen").textContent();
 ok(await page.locator("#avSvg svg").count() === 1, "avatar SVG affiché en tête de Profil (R5)");
-ok(/Niveau \d+\/16 · \d+ XP/.test(profTxt), "niveau X/16 + XP affichés");
-ok(/Prochain : .+ — débloque .+ \(encore \d+ XP\)/.test(profTxt), "teaser du prochain déblocage affiché (R9)");
-ok(/Les 16 niveaux et ce qu'ils débloquent/.test(profTxt), "liste des 16 niveaux consultable");
+// R25 — l'avatar composite : trois jauges 0-30, une par discipline (remplace « Niveau X/16 »).
+ok(/niv \d+\/30/.test(profTxt), "les jauges par discipline affichent « niv X/30 » (R25)");
+ok(/prochain : .+ \(encore \d+ XP\)/.test(profTxt), "teaser du prochain déblocage par discipline (R9→R25)");
+ok(/Les 30 niveaux/.test(profTxt), "les 30 niveaux de chaque discipline sont consultables (dérivés du roulement)");
 ok(/Records personnels/.test(profTxt), "carte « Records personnels » présente dans Profil");
 ok(/4'22/.test(profTxt), "meilleure allure seuil retenue (262s = 4'22), pas la plus récente");
 ok(/Mes plans \(1\)/.test(profTxt), "sélecteur « Mes plans » présent (1 plan après migration)");
@@ -57,7 +58,10 @@ ok(await page.locator("[data-av-theme]").count() === 4, "4 thèmes de couleur (a
 await page.locator('[data-av-theme="swim"]').click(); await page.waitForTimeout(250);
 const themeSaved = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.answers.avatarTheme; });
 ok(themeSaved === "swim", "choix de thème persisté (avatarTheme=" + themeSaved + ")");
-ok(/#00b8d9/.test(await page.locator("#avSvg svg").innerHTML()), "le SVG reprend la couleur du thème choisi");
+// R25 — le composite colore chaque zone par SA discipline : le thème ne pilote plus le SVG
+// de la carte, il reste l'accent du PARTAGE (décision n°3). On vérifie donc la persistance,
+// déjà couverte ci-dessus, et que le composite porte bien les couleurs des disciplines.
+ok(/#00b8d9|#2e6bff|#ff7a1a/.test(await page.locator("#avSvg svg").innerHTML()), "le composite porte les couleurs des disciplines");
 
 // ---- 4. Multi-plans : nouveau plan → questionnaire vierge, retour au 1er sans perte ----
 await page.click("#pfNewPlan"); await page.waitForTimeout(300);
@@ -156,15 +160,15 @@ const heroWhy = await page.evaluate(() => {
 ok(heroWhy.visibleWhy || heroWhy.repos, "dans Aujourd'hui, le « pourquoi » de la séance est visible SANS rien ouvrir (§5)"
   + (heroWhy.repos ? " — jour de REPOS aujourd'hui, critère non applicable, message de repos présent" : ""));
 
-// ---- 6. Onglet Nutrition : journal alimentaire RETIRÉ (décision utilisateur R6) ----
-// R18.3 — Nutrition n'est plus le 4e onglet (📅 Semaine est revenue devant). Par NOM.
-// 07/08/2026 — Nutrition vit désormais sous 🧰 Outils (sous-onglet par défaut) : on cible
-// l'onglet "outils", le contenu nutrition reste inchangé.
+// ---- 6. Nutrition : journal alimentaire RETIRÉ (R6). L'onglet dédié avait disparu (R24.9,
+// version réduite dans 🎯 Aujourd'hui) ; 07/08/2026 il revient sous 🧰 Outils (sous-onglet
+// par défaut) pour la version COMPLÈTE — la réduite dans Aujourd'hui reste inchangée,
+// couverte par ailleurs (smoke-usage.mjs). Le critère suit le contenu, pas l'onglet.
 await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("outils"); });
 await page.waitForTimeout(400);
 const nutTxt = await page.locator("#screen").textContent();
-ok(await page.locator("#njCard").count() === 0 && !/Journal alimentaire/.test(nutTxt), "journal alimentaire retiré de l'onglet Nutrition");
-ok(/Dépense estimée du jour/.test(nutTxt) && /Ravitaillement|carburant/i.test(nutTxt), "l'onglet Nutrition garde dépense estimée + ravitaillement");
+ok(await page.locator("#njCard").count() === 0 && !/Journal alimentaire/.test(nutTxt), "journal alimentaire retiré de Outils > Nutrition");
+ok(/Dépense estimée du jour/.test(nutTxt) && /Ravitaillement/i.test(nutTxt), "Outils > Nutrition garde dépense estimée + ravitaillement");
 
 // ---- 7. R16.9 : la coche ✓ → feedback RPE → félicitations vit désormais dans Plan ----
 // (c'était la coche de Semaine ; celle de Plan basculait un booléen en silence.)

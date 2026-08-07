@@ -9,7 +9,8 @@
 // demandait l'étape 2 du handoff — un module ne se supprime pas, il se vide d'abord.
 import { S, $, ebSave, esc, fmtDay, todayISO } from "../state.js";
 import { whyOf, techOf, techListHTML } from "./plan-view.js";
-import { avatarDataFor, avatarSVG } from "./avatar.js";
+import { avatarTriDataFor, avatarTheme } from "./avatar.js";
+import { avatarTriSVG, avatarTriStorySVG } from "./avatar-tri.js";
 import { celebrationMessage } from "./celebrations.js";
 import { trapModal } from "./modal.js";
 import { shareStory, shareText } from "../export.js";
@@ -75,11 +76,11 @@ export function showCongrats(plan, session, newBadge, todayISO) {
   document.querySelectorAll(".eb-overlay").forEach((e) => e.remove());
   let streak = 0; // R4.2 — série par JOUR (le repos validé compte autant qu'une séance)
   try { streak = globalThis.EBV2.adherence(plan, S.answers, todayISO).days || 0; } catch (e) {}
-  const av = avatarDataFor(plan, todayISO);
+  const av = avatarTriDataFor(plan, todayISO);
   const ov = document.createElement("div");
   ov.className = "eb-overlay";
   ov.innerHTML = '<div class="eb-modal" role="dialog" aria-label="Séance validée">'
-    + '<div style="display:flex;justify-content:center">' + avatarSVG(av, 110) + "</div>"
+    + '<div style="display:flex;justify-content:center">' + avatarTriSVG(av, 110) + "</div>"
     + '<h2 style="text-align:center;margin:8px 0 2px;font-size:var(--fs-hand);line-height:1.35">' + celebrationMessage(session) + "</h2>"
     + '<div style="text-align:center;font-weight:700;margin-top:6px">' + session.name + "</div>"
     + (session.det ? '<div style="text-align:center;font-size:var(--fs-sm);color:#635b4a;margin-top:2px">' + String(session.det).split("—")[0].slice(0, 60) + "</div>" : "")
@@ -99,7 +100,7 @@ export function showCongrats(plan, session, newBadge, todayISO) {
   ov.querySelector("#ebCloseCongrats").onclick = closeOv;
   ov.onclick = (e) => { if (e.target === ov) closeOv(); };
   // R6 — plusieurs types de partage : story 9:16, carte 1:1, texte (repli presse-papiers)
-  const shareOpts = { sessionName: session.name, detail: session.det, sport: S.sport, streak, badge: newBadge, avatarSVG: avatarSVG(av, 520), accent: av.accent };
+  const shareOpts = { sessionName: session.name, detail: session.det, sport: S.sport, streak, badge: newBadge, avatarSVG: avatarTriStorySVG(av, 520), avatarAspect: 1.78, accent: avatarTheme() };
   const bindShare = (id, label, fn) => {
     const btn = ov.querySelector(id);
     if (btn) btn.onclick = async () => {

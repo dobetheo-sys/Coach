@@ -56,9 +56,19 @@ const fichiers = [];
 const fuites = [];
 for (const f of fichiers) {
   const nom = f.pathname.split("/").pop();
+  // L'exemption du document exporté (R16.8 : autonome, sans styles.css) était une PLAGE DE
+  // NUMÉROS DE LIGNE en dur — toute insertion en amont du fichier la décalait et le critère
+  // rougissait sur du code exempté depuis toujours (constaté en R24). Elle s'ancre désormais
+  // sur le CONTENU : la travée entre le commentaire qui déclare l'exception et la fin du
+  // gabarit HTML qu'elle couvre.
+  let dansDocExporte = false;
   readFileSync(f, "utf8").split("\n").forEach((l, i) => {
+    if (nom === "plan-view.js") {
+      if (l.includes("le DOCUMENT EXPORTÉ est autonome")) dansDocExporte = true;
+      if (dansDocExporte && l.includes("</body></html>")) { dansDocExporte = false; return; }
+    }
     if (!/font-size:[0-9.]+px/.test(l)) return;
-    if (nom === "plan-view.js" && i + 1 >= 96 && i + 1 <= 115) return; // le document exporté
+    if (dansDocExporte) return;
     fuites.push(nom + ":" + (i + 1));
   });
 }

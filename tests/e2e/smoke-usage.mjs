@@ -482,9 +482,14 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(apres.aria === "true", "U18 — aria-expanded suit l'état");
 
   // LA MOITIÉ QUI COMPTE : rien de ce qui AVERTIT ne se cache derrière un « ? ».
+  // 07/08/2026 — Nutrition vit sous 🧰 Outils (sous-onglet par défaut) ; le principe U18 tient
+  // toujours : une fois la carte affichée, l'avertissement est en clair, jamais derrière une
+  // infobulle. On force l'ouverture des `<details>` restants ci-dessous (défensif — la version
+  // COMPLÈTE de la carte n'en a pas besoin, mais un futur outil pourrait en ajouter).
   await page.click('#ebTabbar .tabbtn[data-tab="outils"]').catch(() => {});
   await page.waitForTimeout(700);
   const nut = await page.evaluate(() => {
+    [...document.querySelectorAll("#screen details")].forEach((d) => { d.open = true; });
     const txt = document.body.innerText;
     const cache = [...document.querySelectorAll(".aide-txt")].map((e) => e.textContent || "").join(" ");
     return { visible: /ESTIMATION|pas une consigne|diététicien|professionnel/i.test(txt),
@@ -589,6 +594,30 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(!m.err && m.encre > 5000, "R23.4 — et la carte n'est pas vide pour autant (" + m.encre + " pixels d'encre)");
   ok(!m.err && m.droite < m.w - 20,
     "R23.4 — rien ne déborde du cadre (pixel le plus à droite : " + m.droite + "/" + m.w + ")");
+
+  // R24.4 — MÊME CONTRAT POUR L'IMAGE POST-SÉANCE (story 9:16 et carte 1:1) : fond
+  // transparent, encre présente, plaque claire sous l'avatar (sans elle la silhouette sombre
+  // disparaît sur une photo de nuit — on vérifie qu'un pixel du centre est CLAIR et opaque).
+  for (const fmt of ["story", "square"]) {
+    const st = await page.evaluate(async (f) => {
+      const mod = await import("./js/export.js");
+      const blob = await mod.storyBlob({ sessionName: "Sweetspot vélo", detail: "3×12min — récup 5min", sport: "tri", streak: 4, accent: "#ff7a1a",
+        avatarSVG: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 110"><circle cx="50" cy="30" r="14" fill="#16130e"/></svg>' }, f);
+      if (!blob) return { err: true };
+      const bmp = await createImageBitmap(blob);
+      const c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height;
+      const x = c.getContext("2d"); x.drawImage(bmp, 0, 0);
+      const px = (X, Y) => [...x.getImageData(X, Y, 1, 1).data];
+      const coin = px(2, Math.round(bmp.height / 2)), centre = px(Math.round(bmp.width / 2), f === "square" ? 420 : 640);
+      let encre = 0; const full = x.getImageData(0, 0, bmp.width, bmp.height).data;
+      for (let i = 3; i < full.length; i += 4) if (full[i] > 200) encre++;
+      return { w: bmp.width, h: bmp.height, coinAlpha: coin[3], centre, encre };
+    }, fmt);
+    ok(!st.err && st.coinAlpha === 0 && st.encre > 5000,
+      "R24.4 — l'image post-séance (" + fmt + ") est transparente hors encre (" + (st.err ? "erreur" : st.coinAlpha + " · " + st.encre + " px d'encre") + ")");
+    ok(!st.err && st.centre[3] > 200 && st.centre[0] > 180 && st.centre[1] > 170,
+      "R24.4 — la plaque claire porte l'avatar (centre " + (st.centre || []).join(",") + ") : lisible sur photo sombre");
+  }
   await ctx.close();
 }
 
@@ -618,6 +647,25 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(plan.pred && plan.intens, "R23.7 / R23.9 — la prédiction et les intensités vivent dans 🗓 Plan");
   ok(plan.libelles, "R23.12c — les exports portent des noms lisibles (imprimable · agenda), plus « PNG »");
 
+  // R24.5 / R24.6 (retour fondateur, 06/08 soir) — la Prédiction ouvre sur le TEMPS TOTAL
+  // (aujourd'hui + fin de plan), le détail par segment est un dépliable ; et la courbe de
+  // charge porte le marqueur « tu es ici » à la semaine courante.
+  const pred24 = await page.evaluate(() => {
+    [...document.querySelectorAll("#screen details")].forEach((d) => { d.open = true; });
+    const t = document.querySelector("#screen").textContent || "";
+    const nid = [...document.querySelectorAll("#screen details summary")]
+      .find((x) => /Le détail, segment par segment/.test(x.textContent || ""));
+    return {
+      auj: /Courue aujourd’hui : /.test(t.replace(/\s+/g, " ")),
+      proj: /plan suivi : /.test(t.replace(/\s+/g, " ")),
+      detailRepliable: !!nid,
+      detailContenu: nid ? /ta forme mesurée/.test(nid.parentElement.textContent || "") : false,
+    };
+  });
+  ok(pred24.auj && pred24.proj, "R24.5 — la Prédiction ouvre sur le temps total : courue aujourd'hui ET à la fin du plan");
+  ok(pred24.detailRepliable && pred24.detailContenu,
+    "R24.5 — le détail segment par segment vit dans un dépliable, et il contient bien la forme mesurée");
+
   await page.click('#ebTabbar .tabbtn[data-tab="today"]').catch(() => {});
   await page.waitForTimeout(800);
   const auj = await page.evaluate(() => {
@@ -626,6 +674,48 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
       direct: /Suivre ma séance en direct/.test(t) };
   });
   ok(!auj.pred, "R23.7 — …et elles ont bien QUITTÉ 🎯 Aujourd'hui (déplacées, pas dupliquées)");
+  await passeCheckin(page);
+  await page.waitForTimeout(600);
+  const marqueur = await page.evaluate(() => {
+    const svg = [...document.querySelectorAll("#screen svg")].find((x) => /tu es ici|Courbe de charge/.test(x.outerHTML));
+    return { svgTrouve: !!svg, iciTexte: !!svg && svg.outerHTML.includes("tu es ici") };
+  });
+  ok(marqueur.svgTrouve && marqueur.iciTexte,
+    "R24.6 — la courbe de charge marque visuellement « tu es ici » à la semaine courante");
+
+  // R24.9 — la nutrition vit RÉDUITE dans 🎯 Aujourd'hui, sans y avoir son propre onglet.
+  // 07/08/2026 — l'onglet dédié n'a pas disparu pour de bon : 🧰 Outils lui redonne un
+  // cinquième onglet (version COMPLÈTE, tunnel de commande compris), la barre revient à 5.
+  const nut24 = await page.evaluate(() => {
+    const t = document.querySelector("#screen").textContent || "";
+    return { onglets: document.querySelectorAll("#ebTabbar .tabbtn").length,
+      boutonNutrition: !!document.querySelector('#ebTabbar .tabbtn[data-tab="nutrition"]'),
+      section: /🥗 Nutrition du jour|Dépense estimée du jour/.test(t), ravito: /Ravitaillement/.test(t),
+      seanceAujourdhui: /séance/i.test((document.querySelector("#screen") || {}).textContent || "") };
+  });
+  const jourAvecSeance = await page.evaluate(async () => {
+    const { S, todayISO } = await import("./js/state.js");
+    let day = null;
+    (S.currentPlan || { weeks: [] }).weeks.forEach((w) => w.days.forEach((d) => { if (d.date === todayISO()) day = d; }));
+    return !!(day && day.sessions.some((x) => x.d !== "rs"));
+  });
+  ok(nut24.onglets === 5 && !nut24.boutonNutrition,
+    "R24.9 — la barre compte 5 onglets (🧰 Outils a repris la place de Nutrition, jamais un bouton nommé « nutrition »)");
+  ok(nut24.section && (nut24.ravito || !jourAvecSeance),
+    "R24.9 — …et la nutrition du jour vit en version réduite dans 🎯 Aujourd'hui (ravito dès qu'il y a une séance"
+    + (jourAvecSeance ? "" : " — jour de repos aujourd'hui, dépense seule") + ")");
+
+  // R24.8 — l'en-tête de 📅 Semaine résume les distances par discipline. Le profil de la
+  // suite (tri, FTP + allure + CSS + poids connus) permet les trois conversions : les km
+  // portent le « ~ » qui signale une estimation dérivée des références.
+  await page.click('#ebTabbar .tabbtn[data-tab="week"]').catch(() => {});
+  await page.waitForTimeout(700);
+  const km24 = await page.evaluate(() => {
+    const t = (document.querySelector("#screen").textContent || "").replace(/\s+/g, " ");
+    return { run: /🏃 ~[\d,]+ km/.test(t), bike: /🚴 ~[\d,]+ km/.test(t), swim: /🏊 ~?[\d,]+ km/.test(t) };
+  });
+  ok(km24.run && km24.bike && km24.swim,
+    "R24.8 — 📅 Semaine ouvre sur les distances par discipline (course, vélo, nage), estimations marquées ~");
   ok(!auj.intens, "R23.9 — idem pour la répartition des intensités");
   // MESURE SUR LE MODULE, PAS SUR UN JOUR ÉCHANTILLONNÉ. Ma première écriture lisait le texte
   // rendu — et elle passait alors que le bloc était TOUJOURS LÀ : le jour tiré au sort n'avait
@@ -647,6 +737,77 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(!prof.conseils, "R23.10 — les conseils personnalisés ont quitté 📋 Profil");
   ok(prof.rappel && prof.champRappel, "R23.11 — le rappel quotidien a sa propre carte, hors des références repliées");
   ok(!prof.edit && !prof.reset, "R23.12b — « modifier mes réponses » et « changer de sport » ne sont plus au Profil");
+
+  // R24 (retour fondateur, 06/08 soir) — le Profil sépare l'ATHLÈTE de la COURSE, et Strava
+  // monte en premier écran. Les critères regardent l'ORDRE DOM et l'APPARTENANCE aux cartes,
+  // pas seulement la présence : « présent quelque part » est ce qui a laissé vivre le défaut.
+  const r24 = await page.evaluate(() => {
+    const screen = document.querySelector("#screen");
+    const cards = [...screen.querySelectorAll(".load-card")];
+    const cardOf = (el) => { for (let p = el; p; p = p.parentElement) if (p.classList && p.classList.contains("load-card")) return p; return null; };
+    const titre = (c) => (c.querySelector(".load-title") || {}).textContent || "";
+    // NOTE D'INSTRUMENT — matcher le DÉBUT du titre, pas son contenu : l'infobulle aide() vit
+    // DANS l'élément de titre, et celle de « 🏁 Ta course » cite « ⚙ Références d'entraînement »
+    // — une regex libre attrapait donc la carte course comme carte références (nRefs: 2).
+    const parTitre = (prefixe) => cards.find((c) => titre(c).trim().startsWith(prefixe));
+    const stravaCard = parTitre("🔗 Strava");
+    const refsCard = parTitre("⚙ Références");
+    const raceCard = parTitre("🏁 Ta course");
+    const cp = document.getElementById("pfCourseProfile");
+    const recCard = cards.find((c) => /🏅 Records personnels/.test(titre(c)));
+    let recOverflow = false;
+    if (recCard) { recCard.open = true; recOverflow = recCard.scrollWidth > recCard.clientWidth + 1; }
+    return {
+      stravaAvantRefs: !!(stravaCard && refsCard) && cards.indexOf(stravaCard) < cards.indexOf(refsCard),
+      connectUnique: document.querySelectorAll("#pfStravaConnect").length === 1,
+      raceCarte: !!raceCard, cpDansRace: !!(cp && cardOf(cp) === raceCard),
+      cpHorsRefs: !!(cp && refsCard && cardOf(cp) !== refsCard),
+      saveRace: !!document.getElementById("pfSaveRace"),
+      recOverflow,
+    };
+  });
+  ok(r24.stravaAvantRefs && r24.connectUnique,
+    "R24.2 — la carte 🔗 Strava vit AVANT les références (premier écran), et le bouton de connexion n'existe qu'une fois");
+  ok(r24.raceCarte && r24.cpDansRace && r24.cpHorsRefs && r24.saveRace,
+    "R24.3 — « 🏁 Ta course » existe, porte le profil du parcours (sorti des références) et son propre Enregistrer");
+  // R24.1 — LE CRITÈRE A BESOIN DE LA MATIÈRE DU SYMPTÔME. Vérifié : sans record dans l'état,
+  // la cassure (retour au flex sans retour à la ligne) restait VERTE — une carte vide ne
+  // déborde de rien. On injecte donc un record d'allure et une plus longue séance datée (le
+  // couple libellé long + valeur + date du défaut réel), on re-rend, puis on mesure.
+  // La cassure d'origine (regex non-gourmande de `repliable`) a été vérifiée ROUGE par ce
+  // critère AVANT le correctif : le <details> ne contenait que le titre, les lignes rendues
+  // hors du cadre — le symptôme exact du retour fondateur.
+  const injecte = await page.evaluate(() => {
+    const raw = JSON.parse(localStorage.getItem("eb_state_v2"));
+    const pl = (raw.plans && raw.plans.find((x) => x.id === raw.activePlanId)) || (raw.plans || [])[0];
+    if (!pl) return "aucun plan";
+    pl.answers = pl.answers || {};
+    pl.answers.tests = (pl.answers.tests || []).concat([{ type: "thrPace", value: 292, date: "2026-08-01", source: "import strava (activité 1234567890)" }]);
+    pl.answers.fitSessions = (pl.answers.fitSessions || []).concat([{ d: "rn", minutes: 222, date: "2026-08-02" }]);
+    localStorage.setItem("eb_state_v2", JSON.stringify(raw));
+    return true;
+  });
+  if (injecte !== true) throw new Error("R24.1 : impossible d'injecter les records de test");
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  await page.click('#ebTabbar .tabbtn[data-tab="profile"]').catch(() => {});
+  await page.waitForTimeout(700);
+  const rec = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll("#screen .load-card")];
+    const c = cards.find((x) => (((x.querySelector(".load-title") || {}).textContent) || "").trim().startsWith("🏅 Records"));
+    if (!c) return { present: false };
+    c.open = true;
+    return { present: true, overflow: c.scrollWidth > c.clientWidth + 1, lignes: c.textContent.includes("plus longue séance") };
+  });
+  ok(rec.present && rec.lignes && !rec.overflow,
+    "R24.1 — avec de VRAIS records (allure importée + plus longue séance), la carte ne déborde pas de son cadre");
+
+  // R24.7 — le réglage du rappel a quitté 🎯 Aujourd'hui : mesuré sur le MODULE SERVI (la
+  // carte ne s'affichait qu'avant tout réglage — un état que le parcours de test a déjà
+  // dépassé, donc le rendu ne discrimine pas ; leçon R23.12b).
+  const srcToday = await page.evaluate(async () => (await (await fetch("./js/ui/tab-today.js")).text()));
+  ok(!/notifySetupHTML\(\)/.test(srcToday),
+    "R24.7 — 🎯 Aujourd'hui n'appelle plus la carte « Rappel de séance » (le Profil est le seul foyer du réglage)");
 
   await page.click('#ebTabbar .tabbtn[data-tab="general"]').catch(() => {});
   await page.waitForTimeout(700);
