@@ -60,7 +60,7 @@ await traverserQuestionnaire(page, {
 ok(vuLegs, "l'étape « profil par discipline » a bien été traversée");
 ok(vuParcours, "l'étape « Le parcours » a bien été traversée");
 await page.waitForTimeout(900);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "plan duathlon généré (vue 5 onglets)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "plan duathlon généré (vue 4 onglets — R24)");
 
 // ---- 3. Le plan : garde-fou d'impact, deux sens de brique, longue à vélo ----
 const plan = await page.evaluate(async () => {

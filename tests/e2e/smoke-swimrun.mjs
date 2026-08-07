@@ -78,7 +78,7 @@ await traverserQuestionnaire(page, {
 });
 ok(vus.legs && vus.level && vus.inj, "les trois écrans à contenu spécifique ont été traversés");
 await page.waitForTimeout(1000);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "plan swimrun généré (vue 5 onglets)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "plan swimrun généré (vue 4 onglets — R24)");
 
 // ---- 4. Le plan : la séance pivot reproduit les transitions et la part de nage ----
 const plan = await page.evaluate(async () => {

@@ -492,22 +492,28 @@ export function avatarTriLevel(xp: number): number {
   for (const seuil of AVATAR_TRI_XP) if (xp >= seuil) n++;
   return n; // 0..30
 }
-/** Discipline créditée par une séance validée. `null` = aucune (décision n°2 : le repos). */
-export function avatarTriDiscOf(d: string | undefined): AvatarDiscipline | null {
-  if (d === "rs") return null;
-  if (d === "sw") return "natation";
-  if (d === "bk") return "velo";
-  if (d === "rn") return "course";
+/**
+ * Crédits d'XP d'une séance validée — LA source unique du mapping discipline.
+ * `[]` = aucun (décision n°2 : le repos). Le BRICK (`br`) crédite les deux disciplines
+ * qu'il enchaîne, +5/+5 — même précédent que les niveaux par discipline du Profil, qui le
+ * comptent pour les deux depuis R5, et la somme reste 10 : l'invariant
+ * « Σ XP directs = (séances − repos) × 10 » tient.
+ */
+export function avatarTriCreditsOf(d: string | undefined): [AvatarDiscipline, number][] {
+  if (!d || d === "rs") return [];
+  if (d === "sw") return [["natation", 10]];
+  if (d === "bk") return [["velo", 10]];
+  if (d === "rn") return [["course", 10]];
+  if (d === "br") return [["velo", 5], ["course", 5]];
   // Repli pour l'inclassable (renfo…) — décision n°1 : `course` par défaut, jamais perdu.
-  return d ? "course" : null;
+  return [["course", 10]];
 }
 export function avatarTriV2(plan: V1Plan, answers: AppAnswers, todayISO: string): AvatarTriState {
   const doneRec = (answers.done as Record<string, boolean>) || {};
   const xp: Record<AvatarDiscipline, number> = { natation: 0, velo: 0, course: 0 };
   for (const w of plan.weeks) for (const d of w.days) d.sessions.forEach((s, si) => {
     if (!doneRec[w.num + "|" + d.jour + "|" + si]) return;
-    const disc = avatarTriDiscOf((s as { d?: string }).d);
-    if (disc) xp[disc] += 10;
+    for (const [disc, pts] of avatarTriCreditsOf((s as { d?: string }).d)) xp[disc] += pts;
   });
   // Partagés (décision n°4) : tiers plancher — déterministe, et personne ne reçoit plus
   // que sa part (le reste de la division n'est attribué à personne plutôt qu'à quelqu'un).

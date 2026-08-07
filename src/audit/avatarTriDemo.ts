@@ -15,7 +15,7 @@
  *   7. la LÉGENDE exige les trois disciplines à 30 — jamais deux (critères 7-8 du brief).
  */
 import { generatePlan } from "../generator/planGenerator.ts";
-import { avatarTriV2, avatarTriLevel, avatarTriDiscOf, badgesV2, progressV2 } from "../app/bridge.ts";
+import { avatarTriV2, avatarTriLevel, avatarTriCreditsOf, badgesV2, progressV2 } from "../app/bridge.ts";
 // Le moteur de boucles et les DEUX rendus sont un module PUR (zéro import) : c'est ce qui
 // permet de les exécuter ici, en node, sans navigateur — dont la passe exhaustive (0..30)³.
 import {
@@ -91,12 +91,14 @@ const tiersDe = (answers: Record<string, unknown>) => {
     [av.natation.xp, av.velo.xp, av.course.xp].join("/") + " vs tiers=" + t);
 }
 
-// ---- 3. L'inclassable retombe sur course, le vide sur personne ----
-check("d inconnu (renfo…) → course", avatarTriDiscOf("st") === "course");
-check("d absent → personne", avatarTriDiscOf(undefined) === null);
-check("rs → personne · sw → natation · bk → vélo · rn → course",
-  avatarTriDiscOf("rs") === null && avatarTriDiscOf("sw") === "natation"
-  && avatarTriDiscOf("bk") === "velo" && avatarTriDiscOf("rn") === "course");
+// ---- 3. La table des crédits : source unique du mapping ----
+const cr = (d: string | undefined) => JSON.stringify(avatarTriCreditsOf(d));
+check("d inconnu (renfo…) → course +10", cr("st") === '[["course",10]]');
+check("d absent → personne · rs → personne", cr(undefined) === "[]" && cr("rs") === "[]");
+check("sw → natation +10 · bk → vélo +10 · rn → course +10",
+  cr("sw") === '[["natation",10]]' && cr("bk") === '[["velo",10]]' && cr("rn") === '[["course",10]]');
+check("le BRICK crédite les deux disciplines qu'il enchaîne, +5/+5 (la somme reste 10)",
+  cr("br") === '[["velo",5],["course",5]]');
 
 // ---- 5. Niveau ← XP : pure, bornée, monotone — le niveau 0 existe ----
 check("0 XP → niveau 0 (la silhouette nue des maquettes)", avatarTriLevel(0) === 0);

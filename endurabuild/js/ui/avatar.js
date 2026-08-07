@@ -100,6 +100,25 @@ export function avatarDataFor(plan, todayISO) {
   return out;
 }
 
+/** R25 étape 4 — l'état du COMPOSITE (3 jauges) depuis les données réelles, même contrat de
+ *  traçabilité qu'`avatarDataFor` : niveaux = XP par discipline (EBV2.avatarTri, régularité
+ *  pure), mood = check-in du matin, perf = canal 3 (R17.2). Repli sûr 0/0/0 : l'avatar ne
+ *  bloque jamais l'écran qui le porte. */
+export function avatarTriDataFor(plan, todayISO) {
+  const out = {
+    natation: 0, velo: 0, course: 0, meneuse: "course", legende: false,
+    mood: moodOf(S.answers.readiness, S.answers.painFlag, todayISO), perf: null, tri: null,
+  };
+  if (!globalThis.EBV2 || !globalThis.EBV2.avatarTri) return out;
+  try {
+    const t = globalThis.EBV2.avatarTri(plan, S.answers, todayISO);
+    out.natation = t.natation.level; out.velo = t.velo.level; out.course = t.course.level;
+    out.meneuse = t.meneuse; out.legende = t.legende; out.tri = t;
+    out.perf = globalThis.EBV2.perfTier ? globalThis.EBV2.perfTier(S.sport, S.answers) : null;
+  } catch (e) { /* avatar par défaut, jamais bloquant */ }
+  return out;
+}
+
 /** Silhouette SVG évolutive. `size` en px. Chaque niveau AJOUTE une couche (équipement de
  *  l'athlète en alternance avec le décor) — voir AVATAR_LEVELS (bridge) pour le registre. */
 export function avatarSVG(v, size) {

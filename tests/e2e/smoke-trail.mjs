@@ -75,7 +75,7 @@ const vamGuessed = await page.evaluate(() => ["debutant", "inter", "avance"].map
   globalThis.EBV2.trailObjective({ race_distance_km: "45", race_dplus_m: "2200", history: "confirme", level }).raceMinMid));
 ok(new Set(vamGuessed).size === 1, "sans montée déclarée, le NIVEAU ne fait plus varier l'estimation de course (R12.6)");
 await page.waitForTimeout(900);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "plan trail généré (vue 5 onglets)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "plan trail généré (vue 4 onglets — Nutrition fondue dans Aujourd’hui, R24)");
 
 // ---- 5. Le plan lui-même : catégorie déduite, décisions, contenu spécifique ----
 const plan = await page.evaluate(async () => {

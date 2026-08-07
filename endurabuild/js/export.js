@@ -155,7 +155,10 @@ async function storyBlob(o,format){
     await new Promise(res=>{
       const b=new Blob([o.avatarSVG],{type:"image/svg+xml"});const u=URL.createObjectURL(b);
       const im=new Image();
-      const dims=sq?[W/2-170,250,340,374]:[W/2-260,360,520,572];
+      // R25 — le triptyque (aspect 1,78) remplace peu à peu le carré (1,1) : les dimensions
+      // suivent l'aspect DÉCLARÉ par l'appelant au lieu d'être codées pour un seul format.
+      const asp=o.avatarAspect||1.1;
+      const dims=sq?[W/2-170,250,340,Math.round(340*asp)]:(asp>1.4?[W/2-210,300,420,Math.round(420*asp)]:[W/2-260,360,520,Math.round(520*asp)]);
       im.onload=()=>{
         const pad=26,r=32,[dx,dy,dw,dh]=dims;
         x.save();x.fillStyle="rgba(246,239,227,.92)";

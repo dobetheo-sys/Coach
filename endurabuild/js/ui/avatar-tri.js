@@ -290,14 +290,39 @@ export function avatarTriSVG(v, size) {
   const podium = legende ? '<rect x="36" y="99" width="28" height="7.5" rx="2" fill="' + OR + '" stroke="' + INK + '" stroke-width="1.6"/><text x="50" y="105" font-size="5.4" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="' + INK + '">1</text>' : "";
   const rayons = legende ? '<g stroke="' + OR + '" stroke-width="1.8" opacity="0.5" stroke-linecap="round"><path d="M50 4 L50 0.5"/><path d="M32 7.5 L29.5 4"/><path d="M68 7.5 L70.5 4"/></g>' : "";
 
+  // CANAL 3 (R17.2) — la forme physique, repris tel quel de avatar.js : un repère qui se
+  // DÉPLACE, jamais rouge, absent sans référence mesurée. Le composite ne le perd pas.
+  let perf = "";
+  if (v.perf && Number.isFinite(v.perf.tier)) {
+    const t = Math.max(1, Math.min(10, v.perf.tier));
+    const x = 18 + ((t - 1) / 9) * 64;
+    let grad = "";
+    for (let i = 0; i < 10; i++) {
+      const gx = 18 + (i / 9) * 64;
+      grad += '<line x1="' + gx.toFixed(1) + '" y1="109.5" x2="' + gx.toFixed(1) + '" y2="' + (i === t - 1 ? 105 : 107.5) + '" stroke="' + INK + '" stroke-width="' + (i === t - 1 ? 1.6 : 0.8) + '" opacity="' + (i === t - 1 ? 0.9 : 0.3) + '"/>';
+    }
+    perf = '<g data-layer="perf" data-tier="' + t + '">' + grad
+      + '<path d="M' + x.toFixed(1) + ' 103 l-2.6 -3.4 h5.2 z" fill="' + acc + '" stroke="' + INK + '" stroke-width="0.8"/></g>';
+  }
+
   const label = "Avatar triathlète — natation " + nat + ", vélo " + velo + ", course " + course + (legende ? ", LÉGENDE" : "");
   return '<svg viewBox="0 0 100 110" width="' + s + '" height="' + Math.round(s * 1.1) + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="' + label + '">'
     + fond + sol + lumiere + ombres
     + planEau + materiel + ambN + ambV + ambC + rayons
     + corps + visage + bonnet + mkNat + mkVelo + bas + shoes + ceinture
     + bike + equip
-    + laurier + podium
+    + laurier + podium + perf
     + "</svg>";
+}
+
+/** Libellé de ce que débloque le niveau L (1..30) d'une discipline — dérivé du roulement,
+ *  jamais une seconde table (R11.1) : position ((L−1) mod 5)+1, génération ⌈L/5⌉. */
+export function avatarTriUnlock(disc, L) {
+  if (L < 1 || L > 30) return null;
+  const items = AVATAR_TRI_ROULEMENTS[disc];
+  if (!items) return null;
+  const it = items[(L - 1) % 5];
+  return { item: it.id, libelle: it.gens[Math.floor((L - 1) / 5)] };
 }
 
 // ───────────────────────── LE TRIPTYQUE STORY (partage / plein écran) ─────────────────────────

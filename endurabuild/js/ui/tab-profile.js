@@ -12,8 +12,13 @@ import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
 import { aide } from "./help.js";
 import { stravaConnect, stravaAccessToken, stravaDisconnect, stravaRelayUrl } from "../strava.js";
 import { requestNotifyPermission } from "../notifications.js";
-import { AVATAR_THEMES, avatarDataFor, avatarSVG } from "./avatar.js";
+import { AVATAR_THEMES, avatarDataFor, avatarTriDataFor } from "./avatar.js";
+// R25 étape 4 — le COMPOSITE remplace l'ancien rendu 16 niveaux sur la carte (l'ancien
+// module reste exporté et gardé par smoke-avatar : c'est le moteur de boucles qui prend
+// le relais côté écran, pas une suppression).
+import { avatarTriSVG, avatarTriStorySVG, avatarTriUnlock } from "./avatar-tri.js";
 import { shareStory } from "../export.js";
+import { trapModal } from "./modal.js";
 import { evalRules } from "./steps.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 
@@ -276,66 +281,60 @@ function bindPlansSelector() {
   };
 }
 
-// ===== R5 — la gamification vit au Profil : avatar, niveau, XP, teaser du niveau
-// suivant (et niveaux intermédiaires par discipline en triathlon), badges, efficience.
-// L'XP reste 100% régularité (jamais un chrono, jamais décroissant) — inchangé.
+// ===== R25 étape 4 — la gamification vit au Profil : l'AVATAR COMPOSITE (3 jauges 0-30,
+// une par discipline), badges, efficience. L'XP reste 100% régularité (jamais un chrono,
+// jamais décroissant) — inchangé ; seul le COMPTE est désormais par discipline. Les anciens
+// « niveaux intermédiaires tri » (Découverte→Machine) sont REMPLACÉS par les jauges : ils
+// comptaient la même chose (les ✓ par discipline) avec une deuxième échelle — deux échelles
+// pour une idée, c'est la forme que R11.1 interdit.
+const JAUGES = [["natation", "🏊", "Natation"], ["velo", "🚴", "Vélo"], ["course", "🏃", "Course"]];
 function avatarSectionHTML(plan, todayISO) {
-  if (!globalThis.EBV2 || !globalThis.EBV2.avatar) return "";
-  let av, adh = null;
-  try { av = globalThis.EBV2.avatar(plan, S.answers, todayISO); } catch (e) { return ""; }
+  if (!globalThis.EBV2 || !globalThis.EBV2.avatarTri) return "";
+  let tri;
+  try { tri = globalThis.EBV2.avatarTri(plan, S.answers, todayISO); } catch (e) { return ""; }
+  let adh = null;
   try { adh = globalThis.EBV2.adherence(plan, S.answers, todayISO); } catch (e) {}
-  const visual = avatarDataFor(plan, todayISO);
+  const visual = avatarTriDataFor(plan, todayISO);
   const themes = AVATAR_THEMES.map(([k, c]) =>
     '<button class="doneBtn" data-av-theme="' + k + '" type="button" title="' + (SPORTS[k] ? SPORTS[k].nom : k) + '" style="background:' + c + ";border-color:#16130e" + (S.answers.avatarTheme === k ? ";outline:3px solid #16130e;outline-offset:2px" : "") + '"> </button>').join(" ");
-  let h = '<div class="load-card"><div style="display:flex;align-items:center;gap:16px">'
-    + '<div id="avSvg">' + avatarSVG(visual, 96) + "</div>"
-    + '<div style="flex:1"><div style="font-weight:800;font-size:var(--fs-lg)">' + av.icon + " " + av.name + '</div>'
-    + '<div style="font-size:var(--fs-xs);color:var(--muted)">Niveau ' + av.level + "/" + (av.levels ? av.levels.length : 16) + " · " + av.xp + " XP" + (av.xpToNext ? " (" + av.xpInLevel + "/" + av.xpToNext + " dans ce niveau)" : " · niveau maximum") + "</div>"
-    + '<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:12px;overflow:hidden;margin-top:6px"><div style="height:100%;width:' + av.progressPct + '%;background:linear-gradient(90deg,#00a376,#00b8d9)"></div></div>'
-    + (av.nextName ? '<div style="font-size:var(--fs-xs);margin-top:4px">Prochain : <b>' + av.nextIcon + " " + av.nextName + "</b>" + (av.nextUnlock ? " — débloque <b>" + av.nextUnlock + "</b>" : "") + " (encore " + (av.xpToNext - av.xpInLevel) + " XP).</div>" : "")
-    + "</div></div>";
+  const titre = tri.legende ? "🏆 LÉGENDE du triathlon"
+    : (JAUGES.find(([k]) => k === tri.meneuse) || JAUGES[2])[1] + " Meneuse : " + (JAUGES.find(([k]) => k === tri.meneuse) || JAUGES[2])[2].toLowerCase();
+  const jauge = ([k, ico, nom]) => {
+    const d = tri[k];
+    const next = d.level < 30 ? avatarTriUnlock(k, d.level + 1) : null;
+    return '<div style="display:flex;align-items:center;gap:8px;margin-top:5px;font-size:var(--fs-sm)">'
+      + '<span style="width:20px">' + ico + '</span><span style="width:70px">' + nom + '</span><b style="width:56px">niv ' + d.level + "/30</b>"
+      + '<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + d.progressPct + '%;background:#00a376"></div></div></div>'
+      + (next ? '<div style="font-size:var(--fs-xs);color:var(--muted);margin-left:28px">prochain : <b>' + next.libelle + "</b> (encore " + (d.xpToNext - d.xpInLevel) + " XP)</div>" : "");
+  };
+  let h = '<div class="load-card"><div style="display:flex;align-items:center;gap:14px">'
+    + '<button id="avSvg" type="button" aria-label="Voir mon avatar en grand" style="background:none;border:none;padding:0;cursor:pointer">' + avatarTriSVG(visual, 96) + "</button>"
+    + '<div style="flex:1"><div style="font-weight:800;font-size:var(--fs-lg)">' + titre + "</div>"
+    + JAUGES.map(jauge).join("")
+    + "</div></div>"
+;
   if (adh) {
     if (adh.frozenToday) h += '<div class="load-sub" style="margin-top:8px">❄️ Série <b>gelée</b> (douleur ou maladie) : ' + adh.days + " jour" + (adh.days > 1 ? "s" : "") + " au compteur, rien n’est perdu.</div>";
     else if (adh.days > 1) h += '<div style="margin-top:8px;font-size:var(--fs-md)">🔥 <b>Série : ' + adh.days + " jours</b> — repos validé compris.</div>";
     else h += '<div class="load-sub" style="margin-top:8px">Nouvelle série — la régularité sur toute la préparation compte plus qu’une série parfaite.</div>';
   }
-  h += disciplineLevelsHTML(plan);
-  if (av.levels) {
-    h += '<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer">Les ' + av.levels.length + " niveaux et ce qu'ils débloquent</summary><div style=\"margin-top:6px\">";
-    av.levels.forEach((l) => {
-      const got = av.level >= l.level;
-      h += '<div style="font-size:var(--fs-xs);margin:3px 0;' + (got ? "" : "opacity:0.55") + '">' + (got ? "✓" : "○") + " <b>" + l.icon + " " + l.name + "</b> (" + l.xp + " XP) — " + l.unlock + "</div>";
-    });
-    h += "</div></details>";
-  }
-  h += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:var(--fs-sm);font-weight:700">Couleur du maillot :</span>' + themes
+  // Les 30 niveaux de chaque discipline, DÉRIVÉS du roulement (jamais une seconde table).
+  // UN seul <details> pour les trois : le Profil doit tenir sous 4 écrans (U18b).
+  h += '<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer">Les 30 niveaux de chaque discipline</summary><div style="margin-top:6px">'
+    + JAUGES.map(([k, ico, nom]) => {
+      const d = tri[k];
+      let liste = "";
+      for (let L = 1; L <= 30; L++) {
+        const u = avatarTriUnlock(k, L);
+        const got = d.level >= L;
+        liste += '<div style="font-size:var(--fs-xs);margin:3px 0;' + (got ? "" : "opacity:0.55") + '">' + (got ? "✓" : "○") + " <b>niv " + L + "</b> — " + u.libelle + "</div>";
+      }
+      return '<div style="font-weight:700;font-size:var(--fs-sm);margin-top:8px">' + ico + " " + nom + "</div>" + liste;
+    }).join("") + "</div></details>";
+  h += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:var(--fs-sm);font-weight:700">Couleur d’accent :</span>' + themes
     + '<button class="btn" id="avShare" type="button" style="margin-left:auto">📸 Partager</button></div>'
-    + '<div class="load-sub" style="margin-top:8px">Tout est traçable : équipement et décor = ton niveau (régularité pure) · posture = tes 7 derniers jours · couleur de l’aura = ta série. Jamais un chrono, jamais décroissant.</div></div>';
+    + '<div class="load-sub" style="margin-top:8px">Touche l’avatar pour le voir en grand. Tout est traçable : chaque jauge = tes séances validées de SA discipline (régularité pure, le repos ne compte pas en XP) · numéros portés = tes niveaux · posture = ta forme du jour · l’or = le niveau 30. Jamais un chrono, jamais décroissant.</div></div>';
   return h;
-}
-// Niveaux intermédiaires PAR DISCIPLINE (triathlon) : progression par nombre de séances
-// validées dans chaque sport — pur affichage, entièrement traçable aux ✓.
-const DISC_LEVELS = [[0, "Découverte"], [4, "Régulier"], [10, "Solide"], [20, "Affûté"], [35, "Machine"]];
-function disciplineLevelsHTML(plan) {
-  if (S.sport !== "tri") return "";
-  const done = S.answers.done || {};
-  const count = { sw: 0, bk: 0, rn: 0 };
-  plan.weeks.forEach((w) => w.days.forEach((d) => d.sessions.forEach((s, si) => {
-    const k = w.num + "|" + d.jour + "|" + si;
-    if (done[k] && count[s.d] !== undefined) count[s.d]++;
-    if (done[k] && s.d === "br") { count.bk++; count.rn++; } // le brick compte pour les deux
-  })));
-  const row = (ico, nom, n) => {
-    let idx = 0;
-    for (let i = 0; i < DISC_LEVELS.length; i++) if (n >= DISC_LEVELS[i][0]) idx = i;
-    const next = DISC_LEVELS[idx + 1];
-    const pct = next ? Math.min(100, Math.round(((n - DISC_LEVELS[idx][0]) / (next[0] - DISC_LEVELS[idx][0])) * 100)) : 100;
-    return '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:var(--fs-sm)"><span style="width:20px">' + ico + '</span><span style="width:86px">' + nom + '</span><b style="width:76px">' + DISC_LEVELS[idx][1] + '</b>'
-      + '<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:#00a376"></div></div>'
-      + '<span style="width:82px;text-align:right;color:var(--muted)">' + (next ? n + "/" + next[0] + " → " + next[1] : n + " séances") + "</span></div>";
-  };
-  return '<div style="margin-top:10px"><div style="font-size:var(--fs-sm);font-weight:700">Par discipline (séances validées)</div>'
-    + row("🏊", "Natation", count.sw) + row("🚴", "Vélo", count.bk) + row("🏃", "Course", count.rn) + "</div>";
 }
 function badgesGalleryHTML(badges) {
   if (!badges.length) return "";
@@ -774,14 +773,29 @@ export function renderTabProfile(plan) {
   const _avShare = $("avShare");
   if (_avShare) _avShare.onclick = async () => {
     _avShare.disabled = true; _avShare.textContent = "Génération…";
-    let av2 = null, streak = 0;
-    try { av2 = globalThis.EBV2.avatar(plan, S.answers, tIso); } catch (e) {}
+    let streak = 0;
     try { streak = globalThis.EBV2.adherence(plan, S.answers, tIso).days || 0; } catch (e) {}
-    const visual = avatarDataFor(plan, tIso);
+    const v = avatarTriDataFor(plan, tIso);
+    const nom = v.legende ? "🏆 LÉGENDE du triathlon" : "🏊 " + v.natation + " · 🚴 " + v.velo + " · 🏃 " + v.course;
     try {
-      await shareStory({ sessionName: av2 ? av2.icon + " " + av2.name + " · niveau " + av2.level : "Mon avatar", detail: "", sport: S.sport, streak, badge: null, avatarSVG: avatarSVG(visual, 520), accent: visual.accent });
+      // R25 — le PARTAGE, c'est le TRIPTYQUE : les trois mondes empilés, format story.
+      await shareStory({ sessionName: nom, detail: "", sport: S.sport, streak, badge: null, avatarSVG: avatarTriStorySVG(v, 520), avatarAspect: 1.78, accent: avatarDataFor(plan, tIso).accent });
     } catch (e) { console.warn(e); }
     _avShare.disabled = false; _avShare.textContent = "📸 Partager";
+  };
+  // R25 — toucher l'avatar = le voir EN GRAND (le triptyque plein écran). C'est ce qui rend
+  // le détail dessiné visible ailleurs qu'au partage — la réponse à la preuve d'échelle.
+  const _avBig = $("avSvg");
+  if (_avBig) _avBig.onclick = () => {
+    document.querySelectorAll(".eb-overlay").forEach((e) => e.remove());
+    const v = avatarTriDataFor(plan, tIso);
+    const ov = document.createElement("div");
+    ov.className = "eb-overlay";
+    const hMax = Math.min(Math.round(window.innerHeight * 0.82), 640);
+    ov.innerHTML = '<div class="eb-modal" role="dialog" aria-label="Mon avatar en grand" style="display:flex;justify-content:center;max-height:92vh;overflow:auto">'
+      + avatarTriStorySVG(v, Math.round(hMax / 1.78)) + "</div>";
+    document.body.appendChild(ov);
+    trapModal(ov, () => ov.remove());
   };
 
   bindPlansSelector();
