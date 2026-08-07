@@ -15926,6 +15926,94 @@ function avatarV2(plan        , answers            , todayISO        )          
 }
 
 /**
+ * R25 étape 2 — L'AVATAR COMPOSITE : l'XP PAR DISCIPLINE (spec validée 07-08/08/2026).
+ *
+ * Trois jauges indépendantes (natation / vélo / course), 0-30 chacune. L'XP n'est PAS
+ * stocké : comme `avatarV2`, il est RECALCULÉ depuis les coches ✓ — c'est ce qui rend la
+ * « migration » exacte plutôt que forfaitaire (décision fondateur n°1) : chaque séance du
+ * plan porte sa discipline (`s.d`), on recompte l'historique existant par discipline. Un
+ * triathlète qui a validé trente nages ne redémarre pas nageur niveau 0, et rien n'est
+ * dumpé arbitrairement dans `course`.
+ *
+ * Décisions fondateur (08/08/2026) :
+ *   2. le REPOS validé ne donne PAS d'XP (il compte pour la streak, pas pour les jauges) ;
+ *   4. badges (+80) et semaines régulières (+120) créditent la discipline identifiable,
+ *      sinon les trois à parts égales — or ni les badges actuels ni une semaine régulière
+ *      ne portent de discipline : ils partent donc en tiers (Math.floor, déterministe).
+ *
+ * NIVEAU 0 EXISTE (l'état « silhouette nue » des maquettes) : le niveau n (1-30) se gagne.
+ * Conséquence assumée : les seuils sont ceux du brief DÉCALÉS d'un cran — l'ancien
+ * « niveau 1 Départ » (0 XP, rien de visible) devient le niveau 0, et l'ancien « niveau 2 »
+ * (10 XP, premier équipement) devient le niveau 1. À XP ÉGAL, l'athlète voit donc la même
+ * chose qu'avant : la non-régression du critère 11 du brief se lit en XP, pas en numéro de
+ * niveau. Le 30ᵉ seuil (120 000) prolonge la suite du brief (×1,25) — comme les seuils
+ * 17-29, il est une EXTRAPOLATION NON CALIBRÉE sur l'économie XP réelle, à recalibrer
+ * produit (§4 du brief, inchangé).
+ */
+                                                              
+                                  
+                                                                                      
+ 
+                                 
+                                                                            
+                                                                                              
+                            
+                                                                         
+                   
+ 
+// Seuils des niveaux 1..30 (niveau 0 = 0 XP, rien à gagner). 1-15 = les seuils existants
+// décalés d'un cran ; 16-30 = l'extrapolation du brief + un 30ᵉ prolongé (NON calibrés).
+const AVATAR_TRI_XP           = [
+  10, 25, 50, 90, 150, 230, 340, 480, 660, 900, 1200, 1600, 2100, 2700, 3500,
+  4500, 5800, 7400, 9400, 12000, 15200, 19300, 24500, 31000, 39000, 49000, 61500, 77000, 96000, 120000,
+];
+/** Niveau ← XP, fonction PURE (testée isolément par demo:avatartri). */
+function avatarTriLevel(xp        )         {
+  let n = 0;
+  for (const seuil of AVATAR_TRI_XP) if (xp >= seuil) n++;
+  return n; // 0..30
+}
+/** Discipline créditée par une séance validée. `null` = aucune (décision n°2 : le repos). */
+function avatarTriDiscOf(d                    )                          {
+  if (d === "rs") return null;
+  if (d === "sw") return "natation";
+  if (d === "bk") return "velo";
+  if (d === "rn") return "course";
+  // Repli pour l'inclassable (renfo…) — décision n°1 : `course` par défaut, jamais perdu.
+  return d ? "course" : null;
+}
+function avatarTriV2(plan        , answers            , todayISO        )                 {
+  const doneRec = (answers.done                           ) || {};
+  const xp                                   = { natation: 0, velo: 0, course: 0 };
+  for (const w of plan.weeks) for (const d of w.days) d.sessions.forEach((s, si) => {
+    if (!doneRec[w.num + "|" + d.jour + "|" + si]) return;
+    const disc = avatarTriDiscOf((s                  ).d);
+    if (disc) xp[disc] += 10;
+  });
+  // Partagés (décision n°4) : tiers plancher — déterministe, et personne ne reçoit plus
+  // que sa part (le reste de la division n'est attribué à personne plutôt qu'à quelqu'un).
+  const badges = badgesV2(plan, answers, todayISO);
+  const pg = progressV2(plan, answers, todayISO);
+  const regularWeeks = pg.weekly.filter((w) => w.complete && w.ok).length;
+  const tiers = Math.floor((badges.length * 80 + regularWeeks * 120) / 3);
+  const etat = (total        )                  => {
+    const level = avatarTriLevel(total);
+    const cur = level > 0 ? AVATAR_TRI_XP[level - 1] : 0;
+    const next = level < 30 ? AVATAR_TRI_XP[level] : null;
+    const xpInLevel = total - cur;
+    const xpToNext = next !== null ? next - cur : 0;
+    return {
+      xp: total, level, xpInLevel, xpToNext,
+      progressPct: next !== null ? Math.max(0, Math.min(100, Math.round((xpInLevel / xpToNext) * 100))) : 100,
+    };
+  };
+  const natation = etat(xp.natation + tiers), velo = etat(xp.velo + tiers), course = etat(xp.course + tiers);
+  const meneuse                   = velo.xp >= natation.xp && velo.xp >= course.xp ? "velo"
+    : natation.xp >= course.xp ? "natation" : "course";
+  return { natation, velo, course, meneuse, legende: natation.level >= 30 && velo.level >= 30 && course.level >= 30 };
+}
+
+/**
  * R17.2 — LE TROISIÈME CANAL : LA FORME PHYSIQUE, MONTRÉE SANS RIEN RETIRER.
  *
  * Le brief avatar (AV3/AV4) voulait piloter l'ÉQUIPEMENT par un palier de performance. Refusé,
@@ -16278,6 +16366,9 @@ function coachOnIngestV2(sport        , answers            , ingested           
   predict: predictV2,
   badges: badgesV2,
   avatar: avatarV2,
+  // R25 — l'avatar composite (3 jauges 0-30). `avatar` (16 niveaux) reste exposé tel quel
+  // tant que le rendu composite n'a pas remplacé l'ancien (non-régression de l'étape 3).
+  avatarTri: avatarTriV2,
   perfTier: perfTierV2,
   adherence: adherenceV2,
   disciplines: DISCIPLINE_REGISTRY,
