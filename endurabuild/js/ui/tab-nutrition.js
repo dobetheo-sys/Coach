@@ -4,9 +4,10 @@
 // chaque séance (N1–N7, météo comprise), journal alimentaire (Open Food Facts + CSV MFP).
 // La frontière ne bouge pas : des ESTIMATIONS et des photographies de consensus — jamais
 // une cible d'apport, jamais un menu ; l'avertissement du moteur est TOUJOURS affiché.
-import { S, $, esc, todayISO } from "../state.js";
+import { S, $, esc, ebSave, todayISO } from "../state.js";
 import { fetchWeather } from "./readiness.js";
 import { productCategoryFor, CATALOG, CATEGORY_LABELS } from "../shop-catalog.js";
+import { estimatePlanNeed, needSummary, shopPromptDue, submitOrder, FLAVOR_OPTIONS, FORMAT_OPTIONS } from "../shop-order.js";
 // R6 — le journal alimentaire (Open Food Facts + CSV) est RETIRÉ sur décision
 // utilisateur : trop de saisie pour trop peu de valeur ; l'onglet reste
 // estimations + ravitaillement. (Les données foodLog éventuelles restent
@@ -82,6 +83,74 @@ export function nutritionCardHTML(day, tempC) {
   return h;
 }
 
+// Tunnel de commande — goût/format, sur l'ensemble du plan (07/08/2026). Ponctuel : la
+// carte reste toujours accessible repliée, et ne s'ouvre d'elle-même qu'au premier passage
+// puis tous les 28 jours tant que rien n'est commandé (shopPromptDue) — jamais un rappel
+// permanent (H-1b), jamais un refus définitif. PAS DE SERVEUR pour l'instant : submitOrder()
+// est un stub local, et la carte le DIT plutôt que de simuler une confirmation.
+function shopOrderCardHTML(plan, today) {
+  const order = S.answers.shopOrder || null;
+  if (order && order.status === "ordered") {
+    const summary = needSummary(order.grams);
+    if (!summary) return "";
+    return '<div class="load-card" id="shopCard"><div class="load-title">🛒 Ta demande de ravitaillement</div>'
+      + '<div class="load-sub" style="margin-top:6px">Enregistrée le ' + esc(order.orderedAt) + " — " + esc(summary)
+      + " · goût <b>" + esc(order.flavor) + "</b> · format <b>" + esc(order.format) + "</b>"
+      + '<br><span style="color:var(--muted)">Le service de commande n’est pas encore actif — ta demande reste sur cet appareil, on te préviendra dès qu’il le sera.</span></div>'
+      + '<button class="btn" id="shopEdit" type="button" style="margin-top:8px">Modifier ma demande</button></div>';
+  }
+  const wkg = parseFloat(S.answers.weight) > 0 ? parseFloat(S.answers.weight) : null;
+  const need = estimatePlanNeed(plan, wkg);
+  if (!need) return ""; // aucune séance de plus d'1h dans ce plan : rien à proposer
+  const due = shopPromptDue(order, S.answers.plan_start, today);
+  const flavorSel = order && order.flavor;
+  const formatSel = order && order.format;
+  return '<details class="load-card" id="shopCard"' + (due ? " open" : "") + '>'
+    + '<summary class="load-title" style="cursor:pointer">🛒 Ravitailler ce plan</summary>'
+    + '<div class="load-sub" style="margin-top:6px">Sur l’ensemble du plan, tes séances de plus d’une heure demandent environ <b>'
+    + esc(needSummary(need)) + '</b> de glucides à couvrir.</div>'
+    + '<div class="q"><span class="q-label">Goût préféré</span><select id="shopFlavor">'
+    + FLAVOR_OPTIONS.map((f) => '<option value="' + esc(f) + '"' + (f === flavorSel ? " selected" : "") + '>' + esc(f) + "</option>").join("")
+    + '</select></div>'
+    + '<div class="q"><span class="q-label">Format préféré</span><select id="shopFormat">'
+    + FORMAT_OPTIONS.map((f) => '<option value="' + esc(f) + '"' + (f === formatSel ? " selected" : "") + '>' + esc(f) + "</option>").join("")
+    + '</select></div>'
+    + '<button class="btn primary" id="shopOk" type="button" style="margin-top:8px">Réserver ma demande</button>'
+    + '<div class="load-sub" style="margin-top:6px">Aucun paiement, aucune expédition pour l’instant : le service de commande n’est pas encore actif. '
+    + "Ta demande sera enregistrée sur cet appareil, on te préviendra dès qu’il le sera.</div>"
+    + "</details>";
+}
+
+function bindShopOrder(plan, today, rerender) {
+  const card = $("shopCard");
+  if (card && card.tagName === "DETAILS" && !card.dataset.shopBound) {
+    card.dataset.shopBound = "1";
+    card.addEventListener("toggle", () => {
+      if (!card.open) {
+        S.answers.shopOrder = Object.assign({}, S.answers.shopOrder || {}, { lastPromptAt: today });
+        ebSave();
+      }
+    });
+  }
+  const ok = $("shopOk");
+  if (ok) ok.onclick = async () => {
+    const flavor = ($("shopFlavor") || {}).value || FLAVOR_OPTIONS[0];
+    const format = ($("shopFormat") || {}).value || FORMAT_OPTIONS[0];
+    const wkg = parseFloat(S.answers.weight) > 0 ? parseFloat(S.answers.weight) : null;
+    const need = estimatePlanNeed(plan, wkg) || {};
+    await submitOrder({ flavor, format, grams: need }); // stub — aucun réseau pour l'instant
+    S.answers.shopOrder = { status: "ordered", flavor, format, grams: need, orderedAt: today, lastPromptAt: today };
+    ebSave();
+    rerender();
+  };
+  const edit = $("shopEdit");
+  if (edit) edit.onclick = () => {
+    S.answers.shopOrder = Object.assign({}, S.answers.shopOrder || {}, { status: undefined, lastPromptAt: today });
+    ebSave();
+    rerender();
+  };
+}
+
 export function renderTabNutrition(plan) {
   const today = todayISO();
   let todayDay = null;
@@ -91,8 +160,10 @@ export function renderTabNutrition(plan) {
     + '<div class="why">Des estimations et des repères issus des consensus publiés — jamais un régime, jamais une cible d’apport. Ce qui compte : manger assez pour t’entraîner.</div>';
   html += energyCardHTML(todayDay, true); // dépense théorique + macros indicatives, ouvert
   html += nutritionCardHTML(todayDay, null); // ravitaillement par séance (météo en différé)
+  html += shopOrderCardHTML(plan, today); // tunnel de commande — sur l'ensemble du plan
   html += "</div>";
   $("screen").innerHTML = html;
+  bindShopOrder(plan, today, () => renderTabNutrition(plan));
 
   if (todayDay) fetchWeather().then((wx) => {
     const el = $("nutCard");
