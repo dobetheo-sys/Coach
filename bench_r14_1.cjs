@@ -18,7 +18,13 @@ if (!E || typeof E.predict !== "function") { console.error("EBV2.predict introuv
 /* ---------------- outillage ---------------- */
 const R = [];
 const check = (id, label, fn) => { try { const r = fn(); R.push({ id, label, ok: !!r.ok, info: r.info || "" }); } catch (e) { R.push({ id, label, ok: false, info: "EXCEPTION: " + (e.human || e.message) }); } };
-const iso = (d) => new Date(Date.now() + d * 864e5).toISOString().slice(0, 10);
+// A-6 — ce banc était le SIXIÈME à dater depuis `Date.now()` brut, et le chantier A-6 l'avait
+// manqué : `iso(43*7)` faisait dériver le nombre de semaines livrées avec le jour courant, et
+// `R14.1-G` comparait deux plans dont les horizons ne basculaient pas le même jour — rouge le
+// vendredi 07/08/2026 uniquement (maintien déjà basculé à 11,1 %, montée encore à 11,2 %),
+// vert les six autres jours. Même mécanisme que R20.7 sur bench_r14. L'ancrage au lundi via
+// le point unique règle le jour ET l'horizon d'un coup.
+const { courseDans } = require("./bench-dates.cjs");
 
 /** Profil réel de l'écran de production : FTP 230, CSS 2'15, seuil 4:41, 85 kg, 70.3 à 43 sem. */
 const BASE = {
@@ -26,7 +32,7 @@ const BASE = {
   doubles: "oui", off_days: "non", sex: "H", sleep: "moyen", life_load: "normale", activity: "actif",
   injury: "aucune", med_pain: "non", med_dizzy: "non", med_treat: "non", weight_lever: "non",
   age: "30", weight: "85", height: "181", vol_max: "11", vol_recent: "9", sessions_max: "8",
-  race_date: iso(43 * 7), format: "70.3", terrain: "vallonne",
+  race_date: courseDans(43), format: "70.3", terrain: "vallonne",
   ftp_known: "oui", ftp: "230", pace_known: "oui", pace: "4:41", css_known: "oui", css: "2:15",
 };
 const ans = (o) => Object.assign({}, BASE, o);
@@ -58,7 +64,7 @@ check("R14.1-C", "cas réel : 2,7 W/kg sur 43 sem → gain FTP dans [8 %, 20 %],
   return { ok: f >= 0.08 && f <= 0.20 && c >= 0.08, info: `FTP ${(f * 100).toFixed(1)}% · CSS ${(c * 100).toFixed(1)}% · seuil ${(pj.gainPct.thrPace * 100).toFixed(1)}%` };
 });
 check("R14.1-C2", "plafonds absolus : aucun gain > 30 % quelle que soit la marge", () => {
-  const pj = proj(ans({ ftp: "90", css: "3:30", pace: "7:30", race_date: iso(150 * 7), level: "debutant", history: "reprise", intent: "finir" }));
+  const pj = proj(ans({ ftp: "90", css: "3:30", pace: "7:30", race_date: courseDans(150), level: "debutant", history: "reprise", intent: "finir" }));
   if (!pj || !pj.gainPct) return { ok: false, info: "gainPct absent" };
   const max = Math.max(pj.gainPct.ftp, pj.gainPct.css, pj.gainPct.thrPace);
   return { ok: max <= 0.30, info: "gain max = " + (max * 100).toFixed(1) + "%" };
@@ -144,7 +150,7 @@ check("R14.1-I3", "gardes dures : IMC cible < 18,5, mineur, drapeau médical →
   // avant de générer). Ce cas teste la garde du LEVIER POIDS chez un mineur : il doit donc
   // porter un format ouvert aux mineurs, sinon il mesure le refus d'éligibilité et non la garde.
   // ID et assertion inchangés ; `off()` accepte déjà « pas de projection » comme neutralisation.
-  const min = proj(ans({ weight_lever: "oui", weight_target: "79", age: "16", format: "M", race_date: iso(20 * 7) }));
+  const min = proj(ans({ weight_lever: "oui", weight_target: "79", age: "16", format: "M", race_date: courseDans(20) }));
   const med = proj(ans({ weight_lever: "oui", weight_target: "79", med_pain: "oui" }));
   const off = (x) => x === null || (x.weightLever ?? null) === null; // pas de projection = pas de levier
   return { ok: off(bas) && off(min) && off(med), info: `IMC17,7:${off(bas)} mineur:${off(min)} drapeau médical:${off(med)}` };
@@ -169,7 +175,7 @@ const RUN = {
 };
 /** Gain projeté sur l'allure seuil, pour un volume récent et un horizon donnés. */
 const gRun = (volRecent, weeks, extra) => {
-  const a = Object.assign({}, RUN, { vol_recent: String(volRecent), race_date: iso(weeks * 7) }, extra || {});
+  const a = Object.assign({}, RUN, { vol_recent: String(volRecent), race_date: courseDans(weeks) }, extra || {});
   const pj = (E.predict("run", a, E.buildPlan("run", a)) || {}).projected;
   if (!pj || !pj.gainPct) throw new Error("pas de projection (vol_recent=" + volRecent + ")");
   return pj.gainPct.thrPace;
