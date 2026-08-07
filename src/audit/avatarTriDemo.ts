@@ -16,6 +16,11 @@
  */
 import { generatePlan } from "../generator/planGenerator.ts";
 import { avatarTriV2, avatarTriLevel, avatarTriDiscOf, badgesV2, progressV2 } from "../app/bridge.ts";
+// Le moteur de boucles et les DEUX rendus sont un module PUR (zéro import) : c'est ce qui
+// permet de les exécuter ici, en node, sans navigateur — dont la passe exhaustive (0..30)³.
+import {
+  AVATAR_TRI_ROULEMENTS, avatarTriGen, avatarTriSlots, avatarTriSVG, avatarTriStorySVG,
+} from "../../endurabuild/js/ui/avatar-tri.js";
 import type { AthleteProfile } from "../engine/types.ts";
 
 let failures = 0;
@@ -123,6 +128,75 @@ check("120000 XP → niveau 30 · au-delà → toujours 30", avatarTriLevel(1200
   const answers: Record<string, unknown> = { done: cocher(() => true) };
   const av = avatarTriV2(plan, answers as never, today);
   check("un plan entier coché ne fait pas une légende (les seuils 17-30 se méritent)", av.legende === false);
+}
+
+// ═══════════ ÉTAPE 3 — le moteur de boucles et les deux rendus (module pur) ═══════════
+
+// ---- 8. Le résolveur de slots : 0 ou 1 génération par item, pour tout niveau (critère 1) ----
+{
+  let ok = true, cause = "";
+  for (const disc of ["natation", "velo", "course"] as const) {
+    for (let L = 0; L <= 30; L++) {
+      const slots = avatarTriSlots(disc, L);
+      if (slots.length !== 5) { ok = false; cause = disc + " L" + L + " → " + slots.length + " slots"; }
+      for (const sl of slots) if (sl.gen < 0 || sl.gen > 6) { ok = false; cause = disc + "/" + sl.id + " L" + L + " gen=" + sl.gen; }
+    }
+  }
+  check("résolveur : 5 slots par discipline, génération 0..6, pour tout niveau 0..30", ok, cause);
+  // Vérifiée sur TOUTE la grille contre la définition écrite en clair — mes premiers points
+  // d'échantillonnage ne discriminaient pas « /5 » de « /4 » (la cassure délibérée n'était
+  // attrapée que par les critères voisins) : un critère qui NOMME la règle doit la mesurer.
+  {
+    let ok = true, cause = "";
+    for (let L = 0; L <= 30 && ok; L++) for (let p = 1; p <= 5; p++) {
+      const attendu = L >= p ? Math.min(6, Math.floor((L - p) / 5) + 1) : 0;
+      if (avatarTriGen(L, p) !== attendu) { ok = false; cause = "L" + L + " p" + p + " → " + avatarTriGen(L, p) + " ≠ " + attendu; break; }
+    }
+    check("la règle du roulement (p + 5(g−1)) tient sur TOUTE la grille 0..30 × 1..5", ok, cause);
+  }
+  check("niveau 0 → aucun item · niveau 30 → tous les items en génération 6",
+    avatarTriSlots("natation", 0).every((sl) => sl.gen === 0)
+    && (["natation", "velo", "course"] as const).every((d) => avatarTriSlots(d, 30).every((sl) => sl.gen === 6)));
+  const cumuls = Object.entries(AVATAR_TRI_ROULEMENTS)
+    .flatMap(([d, items]) => (items as { id: string; mode: string }[]).filter((i) => i.mode === "ajoute").map((i) => d + "/" + i.id))
+    .sort().join(" ");
+  check("les 4 cumulatifs décidés par le fondateur, et eux seuls",
+    cumuls === "course/ambiance natation/materiel velo/ambiance velo/parcours", cumuls);
+}
+
+// ---- 9. La passe exhaustive (0..30)³ : les DEUX rendus, aucun crash, jamais vide (critère 9) ----
+{
+  let n = 0, bad = "";
+  for (let a = 0; a <= 30 && !bad; a++) for (let b = 0; b <= 30 && !bad; b++) for (let c = 0; c <= 30; c++) {
+    const svg1 = avatarTriSVG({ natation: a, velo: b, course: c }, 120);
+    const svg2 = avatarTriStorySVG({ natation: a, velo: b, course: c }, 200);
+    if (!svg1.startsWith("<svg") || !svg1.endsWith("</svg>") || !svg2.startsWith("<svg") || !svg2.endsWith("</svg>")) { bad = a + "/" + b + "/" + c; break; }
+    n += 2;
+  }
+  check("passe exhaustive (0..30)³ : " + n + " rendus produits, tous des SVG bien formés", !bad && n === 31 * 31 * 31 * 2, bad || "n=" + n);
+}
+
+// ---- 10. Les invariants de rendu vérifiables mécaniquement ----
+{
+  const max = avatarTriSVG({ natation: 30, velo: 30, course: 30 }, 120);
+  const arches = (max.match(/>ARRIVÉE</g) || []).length;
+  check("30/30/30 → UNE seule arche/un seul texte ARRIVÉE (règle 5 de l'audit design)", arches === 1, arches + " occurrences");
+  check("30/30/30 → DÉPART s'est effacé (une scène, un seul mot)", !max.includes(">DÉPART<"));
+  const bonnets = (max.match(/A10 10 0 0 1 60 33/g) || []).length;
+  check("30/30/30 → exactement UN bonnet, UNE ceinture (critère 2 : slots à occupant unique)",
+    bonnets === 1 && (max.match(/M45\.8 73 L54\.2 73/g) || []).length === 1);
+  check("30/30/30 → laurier + podium (légende) présents", max.includes("#00734f") && max.includes(">1</text>"));
+  const nu = avatarTriSVG({ natation: 0, velo: 0, course: 0 }, 120);
+  check("0/0/0 → la silhouette nue : ni bonnet, ni vélo, ni marqueur", !nu.includes("A10 10 0 0 1 60 33") && !nu.includes("cy=\"96.5\"") && !/font-weight="bold"/.test(nu));
+  const marque = avatarTriSVG({ natation: 12, velo: 8, course: 27 }, 120);
+  check("les trois marqueurs affichent le niveau exact (12/8/27)",
+    marque.includes(">12<") && marque.includes(">8<") && marque.includes(">27<"));
+  const story = avatarTriStorySVG({ natation: 12, velo: 8, course: 27 }, 200);
+  check("le triptyque porte les trois mêmes marqueurs", story.includes(">12<") && story.includes(">8<") && story.includes(">27<"));
+  // le canal forme du jour reste étanche : à niveaux égaux, seuls les calques de posture bougent
+  const feu = avatarTriSVG({ natation: 12, velo: 8, course: 27, mood: "feu" }, 120);
+  check("la posture (forme du jour) change le rendu sans toucher aux marqueurs (R17.1 préservé)",
+    feu !== marque && feu.includes(">12<") && feu.includes(">8<") && feu.includes(">27<"));
 }
 
 if (failures) { console.error("\nDémo avatar composite : " + failures + " garantie(s) en échec."); process.exit(1); }
