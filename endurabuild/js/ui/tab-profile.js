@@ -11,8 +11,14 @@ import { renderPlan } from "./plan-view.js";
 import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
 import { aide } from "./help.js";
 import { stravaConnect, stravaAccessToken, stravaDisconnect, stravaRelayUrl } from "../strava.js";
-import { AVATAR_THEMES, avatarDataFor, avatarSVG } from "./avatar.js";
+import { requestNotifyPermission } from "../notifications.js";
+import { AVATAR_THEMES, avatarDataFor, avatarTriDataFor } from "./avatar.js";
+// R25 étape 4 — le COMPOSITE remplace l'ancien rendu 16 niveaux sur la carte (l'ancien
+// module reste exporté et gardé par smoke-avatar : c'est le moteur de boucles qui prend
+// le relais côté écran, pas une suppression).
+import { avatarTriSVG, avatarTriStorySVG, avatarTriUnlock } from "./avatar-tri.js";
 import { shareStory } from "../export.js";
+import { trapModal } from "./modal.js";
 import { evalRules } from "./steps.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 
@@ -128,10 +134,29 @@ const DISC_LABEL = { rn: "🏃 Course", bk: "🚴 Vélo", sw: "🏊 Natation", b
  */
 function repliable(h, ouvert) {
   if (!h) return h;
-  return h
-    .replace('<div class="load-card">', '<details class="load-card"' + (ouvert ? " open" : "") + ">")
-    .replace(/<div class="load-title">([\s\S]*?)<\/div>/, '<summary class="load-title" style="cursor:pointer">$1</summary>')
-    .replace(/<\/div>\s*$/, "</details>");
+  h = h.replace('<div class="load-card">', '<details class="load-card"' + (ouvert ? " open" : "") + ">");
+  // R24.1 — LA CAUSE RÉELLE DE « record personnel sort du cadre » (retour fondateur, 06/08).
+  // L'ancienne regex NON-GOURMANDE fermait le <summary> au PREMIER </div> rencontré — or un
+  // titre qui porte une infobulle aide() contient les <div> de l'infobulle : le summary se
+  // fermait au milieu, le parseur HTML recollait les morceaux, et TOUT le corps de la carte
+  // (les lignes de records) était expulsé HORS du <details> — littéralement hors du cadre.
+  // On cherche donc le </div> qui ferme VRAIMENT le titre, en comptant la profondeur.
+  const OUV = '<div class="load-title">';
+  const deb = h.indexOf(OUV);
+  if (deb >= 0) {
+    const re = /<div\b|<\/div>/g;
+    re.lastIndex = deb + OUV.length;
+    let depth = 1, m, fin = -1;
+    while ((m = re.exec(h))) {
+      depth += m[0] === "</div>" ? -1 : 1;
+      if (depth === 0) { fin = m.index; break; }
+    }
+    if (fin > 0) {
+      h = h.slice(0, deb) + '<summary class="load-title" style="cursor:pointer">'
+        + h.slice(deb + OUV.length, fin) + "</summary>" + h.slice(fin + "</div>".length);
+    }
+  }
+  return h.replace(/<\/div>\s*$/, "</details>");
 }
 
 function recordsHTML(plan, a) {
@@ -167,7 +192,11 @@ function recordsHTML(plan, a) {
   Object.keys(longest).forEach((d) => rows.push({ lab: DISC_LABEL[d] + " — plus longue séance", val: Math.floor(longest[d].minutes / 60) + "h" + String(longest[d].minutes % 60).padStart(2, "0"), date: longest[d].date }));
   let h = '<div class="load-card"><div class="load-title">🏅 Records personnels' + aide('Un record se gagne, il ne se perd pas — on garde la meilleure valeur jamais atteinte, avec sa date.', { label: 'les records personnels' }) + '</div>';
   if (!rows.length) h += '<div class="load-sub" style="margin-top:6px">Encore vides — ils se rempliront avec tes tests (FTP/allure/CSS), tes imports FIT/Strava et tes séances cochées ✓.</div>';
-  else rows.forEach((r) => { h += '<div style="display:flex;justify-content:space-between;gap:8px;margin:6px 0;font-size:var(--fs-md);align-items:baseline"><span>' + r.lab + '</span><span style="text-align:right"><b>' + esc(r.val) + '</b>' + (r.date ? ' <span style="color:var(--muted);font-size:var(--fs-xs)">' + esc(r.date) + "</span>" : "") + "</span></div>"; });
+  // R24.1 — « record personnel sort du cadre » (retour fondateur, 06/08) : la ligne était un
+  // flex SANS retour à la ligne — un libellé long (« 🏃 Course à pied — plus longue séance »)
+  // plus une valeur datée dépassaient du cadre sur mobile. `flex-wrap` + `min-width:0` : la
+  // valeur passe à la ligne sous le libellé au lieu de percer la carte.
+  else rows.forEach((r) => { h += '<div style="display:flex;justify-content:space-between;gap:4px 8px;margin:6px 0;font-size:var(--fs-md);align-items:baseline;flex-wrap:wrap"><span style="min-width:0;overflow-wrap:anywhere">' + r.lab + '</span><span style="text-align:right;min-width:0;margin-left:auto"><b>' + esc(r.val) + '</b>' + (r.date ? ' <span style="color:var(--muted);font-size:var(--fs-xs)">' + esc(r.date) + "</span>" : "") + "</span></div>"; });
   h += '</div>';
   return h;
 }
@@ -252,66 +281,60 @@ function bindPlansSelector() {
   };
 }
 
-// ===== R5 — la gamification vit au Profil : avatar, niveau, XP, teaser du niveau
-// suivant (et niveaux intermédiaires par discipline en triathlon), badges, efficience.
-// L'XP reste 100% régularité (jamais un chrono, jamais décroissant) — inchangé.
+// ===== R25 étape 4 — la gamification vit au Profil : l'AVATAR COMPOSITE (3 jauges 0-30,
+// une par discipline), badges, efficience. L'XP reste 100% régularité (jamais un chrono,
+// jamais décroissant) — inchangé ; seul le COMPTE est désormais par discipline. Les anciens
+// « niveaux intermédiaires tri » (Découverte→Machine) sont REMPLACÉS par les jauges : ils
+// comptaient la même chose (les ✓ par discipline) avec une deuxième échelle — deux échelles
+// pour une idée, c'est la forme que R11.1 interdit.
+const JAUGES = [["natation", "🏊", "Natation"], ["velo", "🚴", "Vélo"], ["course", "🏃", "Course"]];
 function avatarSectionHTML(plan, todayISO) {
-  if (!globalThis.EBV2 || !globalThis.EBV2.avatar) return "";
-  let av, adh = null;
-  try { av = globalThis.EBV2.avatar(plan, S.answers, todayISO); } catch (e) { return ""; }
+  if (!globalThis.EBV2 || !globalThis.EBV2.avatarTri) return "";
+  let tri;
+  try { tri = globalThis.EBV2.avatarTri(plan, S.answers, todayISO); } catch (e) { return ""; }
+  let adh = null;
   try { adh = globalThis.EBV2.adherence(plan, S.answers, todayISO); } catch (e) {}
-  const visual = avatarDataFor(plan, todayISO);
+  const visual = avatarTriDataFor(plan, todayISO);
   const themes = AVATAR_THEMES.map(([k, c]) =>
     '<button class="doneBtn" data-av-theme="' + k + '" type="button" title="' + (SPORTS[k] ? SPORTS[k].nom : k) + '" style="background:' + c + ";border-color:#16130e" + (S.answers.avatarTheme === k ? ";outline:3px solid #16130e;outline-offset:2px" : "") + '"> </button>').join(" ");
-  let h = '<div class="load-card"><div style="display:flex;align-items:center;gap:16px">'
-    + '<div id="avSvg">' + avatarSVG(visual, 96) + "</div>"
-    + '<div style="flex:1"><div style="font-weight:800;font-size:var(--fs-lg)">' + av.icon + " " + av.name + '</div>'
-    + '<div style="font-size:var(--fs-xs);color:var(--muted)">Niveau ' + av.level + "/" + (av.levels ? av.levels.length : 16) + " · " + av.xp + " XP" + (av.xpToNext ? " (" + av.xpInLevel + "/" + av.xpToNext + " dans ce niveau)" : " · niveau maximum") + "</div>"
-    + '<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:12px;overflow:hidden;margin-top:6px"><div style="height:100%;width:' + av.progressPct + '%;background:linear-gradient(90deg,#00a376,#00b8d9)"></div></div>'
-    + (av.nextName ? '<div style="font-size:var(--fs-xs);margin-top:4px">Prochain : <b>' + av.nextIcon + " " + av.nextName + "</b>" + (av.nextUnlock ? " — débloque <b>" + av.nextUnlock + "</b>" : "") + " (encore " + (av.xpToNext - av.xpInLevel) + " XP).</div>" : "")
-    + "</div></div>";
+  const titre = tri.legende ? "🏆 LÉGENDE du triathlon"
+    : (JAUGES.find(([k]) => k === tri.meneuse) || JAUGES[2])[1] + " Meneuse : " + (JAUGES.find(([k]) => k === tri.meneuse) || JAUGES[2])[2].toLowerCase();
+  const jauge = ([k, ico, nom]) => {
+    const d = tri[k];
+    const next = d.level < 30 ? avatarTriUnlock(k, d.level + 1) : null;
+    return '<div style="display:flex;align-items:center;gap:8px;margin-top:5px;font-size:var(--fs-sm)">'
+      + '<span style="width:20px">' + ico + '</span><span style="width:70px">' + nom + '</span><b style="width:56px">niv ' + d.level + "/30</b>"
+      + '<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + d.progressPct + '%;background:#00a376"></div></div></div>'
+      + (next ? '<div style="font-size:var(--fs-xs);color:var(--muted);margin-left:28px">prochain : <b>' + next.libelle + "</b> (encore " + (d.xpToNext - d.xpInLevel) + " XP)</div>" : "");
+  };
+  let h = '<div class="load-card"><div style="display:flex;align-items:center;gap:14px">'
+    + '<button id="avSvg" type="button" aria-label="Voir mon avatar en grand" style="background:none;border:none;padding:0;cursor:pointer">' + avatarTriSVG(visual, 96) + "</button>"
+    + '<div style="flex:1"><div style="font-weight:800;font-size:var(--fs-lg)">' + titre + "</div>"
+    + JAUGES.map(jauge).join("")
+    + "</div></div>"
+;
   if (adh) {
     if (adh.frozenToday) h += '<div class="load-sub" style="margin-top:8px">❄️ Série <b>gelée</b> (douleur ou maladie) : ' + adh.days + " jour" + (adh.days > 1 ? "s" : "") + " au compteur, rien n’est perdu.</div>";
     else if (adh.days > 1) h += '<div style="margin-top:8px;font-size:var(--fs-md)">🔥 <b>Série : ' + adh.days + " jours</b> — repos validé compris.</div>";
     else h += '<div class="load-sub" style="margin-top:8px">Nouvelle série — la régularité sur toute la préparation compte plus qu’une série parfaite.</div>';
   }
-  h += disciplineLevelsHTML(plan);
-  if (av.levels) {
-    h += '<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer">Les ' + av.levels.length + " niveaux et ce qu'ils débloquent</summary><div style=\"margin-top:6px\">";
-    av.levels.forEach((l) => {
-      const got = av.level >= l.level;
-      h += '<div style="font-size:var(--fs-xs);margin:3px 0;' + (got ? "" : "opacity:0.55") + '">' + (got ? "✓" : "○") + " <b>" + l.icon + " " + l.name + "</b> (" + l.xp + " XP) — " + l.unlock + "</div>";
-    });
-    h += "</div></details>";
-  }
-  h += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:var(--fs-sm);font-weight:700">Couleur du maillot :</span>' + themes
+  // Les 30 niveaux de chaque discipline, DÉRIVÉS du roulement (jamais une seconde table).
+  // UN seul <details> pour les trois : le Profil doit tenir sous 4 écrans (U18b).
+  h += '<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer">Les 30 niveaux de chaque discipline</summary><div style="margin-top:6px">'
+    + JAUGES.map(([k, ico, nom]) => {
+      const d = tri[k];
+      let liste = "";
+      for (let L = 1; L <= 30; L++) {
+        const u = avatarTriUnlock(k, L);
+        const got = d.level >= L;
+        liste += '<div style="font-size:var(--fs-xs);margin:3px 0;' + (got ? "" : "opacity:0.55") + '">' + (got ? "✓" : "○") + " <b>niv " + L + "</b> — " + u.libelle + "</div>";
+      }
+      return '<div style="font-weight:700;font-size:var(--fs-sm);margin-top:8px">' + ico + " " + nom + "</div>" + liste;
+    }).join("") + "</div></details>";
+  h += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:var(--fs-sm);font-weight:700">Couleur d’accent :</span>' + themes
     + '<button class="btn" id="avShare" type="button" style="margin-left:auto">📸 Partager</button></div>'
-    + '<div class="load-sub" style="margin-top:8px">Tout est traçable : équipement et décor = ton niveau (régularité pure) · posture = tes 7 derniers jours · couleur de l’aura = ta série. Jamais un chrono, jamais décroissant.</div></div>';
+    + '<div class="load-sub" style="margin-top:8px">Touche l’avatar pour le voir en grand. Tout est traçable : chaque jauge = tes séances validées de SA discipline (régularité pure, le repos ne compte pas en XP) · numéros portés = tes niveaux · posture = ta forme du jour · l’or = le niveau 30. Jamais un chrono, jamais décroissant.</div></div>';
   return h;
-}
-// Niveaux intermédiaires PAR DISCIPLINE (triathlon) : progression par nombre de séances
-// validées dans chaque sport — pur affichage, entièrement traçable aux ✓.
-const DISC_LEVELS = [[0, "Découverte"], [4, "Régulier"], [10, "Solide"], [20, "Affûté"], [35, "Machine"]];
-function disciplineLevelsHTML(plan) {
-  if (S.sport !== "tri") return "";
-  const done = S.answers.done || {};
-  const count = { sw: 0, bk: 0, rn: 0 };
-  plan.weeks.forEach((w) => w.days.forEach((d) => d.sessions.forEach((s, si) => {
-    const k = w.num + "|" + d.jour + "|" + si;
-    if (done[k] && count[s.d] !== undefined) count[s.d]++;
-    if (done[k] && s.d === "br") { count.bk++; count.rn++; } // le brick compte pour les deux
-  })));
-  const row = (ico, nom, n) => {
-    let idx = 0;
-    for (let i = 0; i < DISC_LEVELS.length; i++) if (n >= DISC_LEVELS[i][0]) idx = i;
-    const next = DISC_LEVELS[idx + 1];
-    const pct = next ? Math.min(100, Math.round(((n - DISC_LEVELS[idx][0]) / (next[0] - DISC_LEVELS[idx][0])) * 100)) : 100;
-    return '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:var(--fs-sm)"><span style="width:20px">' + ico + '</span><span style="width:86px">' + nom + '</span><b style="width:76px">' + DISC_LEVELS[idx][1] + '</b>'
-      + '<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:#00a376"></div></div>'
-      + '<span style="width:82px;text-align:right;color:var(--muted)">' + (next ? n + "/" + next[0] + " → " + next[1] : n + " séances") + "</span></div>";
-  };
-  return '<div style="margin-top:10px"><div style="font-size:var(--fs-sm);font-weight:700">Par discipline (séances validées)</div>'
-    + row("🏊", "Natation", count.sw) + row("🚴", "Vélo", count.bk) + row("🏃", "Course", count.rn) + "</div>";
 }
 function badgesGalleryHTML(badges) {
   if (!badges.length) return "";
@@ -431,18 +454,103 @@ function bindTrailProfile() {
   };
 }
 
+// R24.3 — LA CARTE DE LA COURSE (retour fondateur, 06/08 : « je voulais séparer les données
+// athlète — FTP, CSS, seuil — et les paramètres de course, à mettre sur le profil dédié à la
+// course »). Ces champs vivaient au milieu des références physiologiques : le profil du
+// parcours, l'eau de la course et les profils par discipline décrivent l'ÉPREUVE, pas le
+// corps. Mêmes ids qu'avant (pfCourseProfile, pfWaterTemp, pfLeg*) : le gestionnaire
+// d'enregistrement les lit par id, il ne sait pas dans quelle carte ils vivent.
+// Le trail garde SA carte (⛰ trailProfileHTML) — distance, D+, technicité y sont déjà.
+// R24.2 — le bloc Strava, extrait du journal pour vivre en premier écran. Contenu inchangé
+// (mêmes ids, mêmes gestionnaires) : seule sa PLACE change. Connecté : ligne compacte +
+// import. Pas connecté : le CTA à un bouton de R6, enfin visible sans dérouler quoi que ce soit.
+function stravaCardHTML(a) {
+  const sAuth = a.stravaAuth;
+  let h = '<div class="load-card"><div class="load-title">🔗 Strava</div>';
+  if (sAuth && sAuth.access_token) {
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">'
+      + '<span style="font-size:var(--fs-sm)">✓ Connecté' + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + "</span>"
+      + '<button class="btn" id="pfStravaBtn" type="button">Importer mes activités</button>'
+      + '<button class="btn" id="pfStravaOut" type="button">Se déconnecter</button></div>';
+  } else {
+    // R6 — UX guidée : UN bouton. L'URL du relais vit en config (déployée pour tous)
+    // ou dans les réglages avancés — l'utilisateur normal n'a rien à coller.
+    h += '<div style="margin-top:6px"><button class="btn primary" id="pfStravaConnect" type="button" style="width:100%;font-size:var(--fs-lg);padding:12px 16px">🔗 Se connecter avec Strava</button></div>'
+      + '<div class="load-sub" style="margin-top:4px">Un clic → autorisation sur Strava → retour ici. Lecture seule (jamais d’écriture), tes activités alimentent tes références (FTP/allure/CSS).</div>'
+      + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Réglages avancés (relais)</summary>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
+      + '<input type="text" id="pfStravaRelay" placeholder="URL du relais (voir server/README.md)" value="' + esc(a.stravaRelay || "") + '" style="flex:1;min-width:180px"></div>'
+      + '<div class="load-sub" style="margin-top:4px">Le relais garde le secret Strava hors de l’app — déploiement pas-à-pas dans server/README.md.</div></details>';
+  }
+  h += (S._stravaError ? '<div class="load-sub" style="margin-top:4px;color:#b3261e">Connexion Strava refusée (' + esc(S._stravaError) + ") — réessaie ou utilise le jeton manuel.</div>" : "")
+    + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Repli : jeton manuel (sans serveur)</summary>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
+    + '<input type="text" id="pfStravaTok" placeholder="token d’accès Strava" style="flex:1;min-width:180px">'
+    + (sAuth && sAuth.access_token ? "" : '<button class="btn" id="pfStravaBtnTok" type="button">Importer depuis Strava</button>')
+    + '</div><div class="load-sub" style="margin-top:4px">Réglages Strava → « Mon API », scope <b>activity:read</b> — rien n’est écrit sur Strava.</div></details>'
+    + '<div id="pfStravaMsg" class="load-sub" style="margin-top:4px"></div></div>';
+  return h;
+}
+
+function raceCardHTML(a) {
+  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:4px"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
+  let h = '<div class="load-card"><div class="load-title">🏁 Ta course' + aide('Ces réglages décrivent l’ÉPREUVE (relief, eau, milieu) — ils affinent la prédiction et le pacing du jour J. Tes références physiologiques, elles, vivent dans « ⚙ Références d’entraînement ».', { label: 'les paramètres de la course' }) + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">';
+  // R6 — profil du parcours visé : affine la PRÉDICTION (temps course à pied) sans toucher au plan.
+  const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
+  h += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Profil du parcours</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
+    + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
+  // R18.2 — DISCIPLINE PAR DISCIPLINE pour les épreuves multisport : un triathlon n'est
+  // jamais homogène. « Comme au-dessus » retombe sur la réponse globale, puis sur le
+  // terrain : un seul chemin (`legProfileOf`), trois niveaux de précision.
+  if (S.sport === "tri" || S.sport === "duathlon" || S.sport === "swimrun") {
+    const legSel = (id, cle, lab, opts) => {
+      const cur = String(a[cle] || "");
+      return '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:4px"><span style="width:150px">' + lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
+        + opts.map(([v, l]) => '<option value="' + v + '"' + (cur === v ? " selected" : "") + ">" + l + "</option>").join("")
+        + "</select></label>";
+    };
+    const RELIEF_OPTS = [["", "Comme au-dessus"], ["plat", "Plat"], ["vallonne", "Vallonné"], ["montagne", "Montagneux"]];
+    // R19.2 — la température de l'eau décide de la combinaison.
+    if (S.sport === "tri") h += row("pfWaterTemp", "🌡 Eau de la course (°C)", a.water_temp_c, "combinaison : interdite au-dessus de 24,5 °C");
+    if (S.sport === "tri" || S.sport === "swimrun")
+      h += legSel("pfLegSwim", "leg_swim_env", "🏊 Milieu de nage", [["", "Comme au-dessus"], ["bassin", "Bassin"], ["lac", "Lac / eau libre calme"], ["mer_calme", "Mer calme"], ["mer_agitee", "Mer agitée"], ["eau_vive", "Eau vive (courant)"]]);
+    if (S.sport === "tri" || S.sport === "duathlon")
+      h += legSel("pfLegBike", "leg_bike_prof", "🚴 Parcours vélo", RELIEF_OPTS);
+    h += legSel("pfLegRun", "leg_run_prof", "🏃 Parcours à pied", RELIEF_OPTS);
+    h += '<div class="load-sub" style="margin:2px 0 0;color:var(--muted)">Ton épreuve n’est pas d’un seul bloc : on peut nager en eau vive, rouler en montagne et courir à plat. « Comme au-dessus » est un choix parfaitement valable.</div>';
+  }
+  h += '</div><div class="nav" style="margin-top:10px"><button class="btn" id="pfSaveRace" type="button">Enregistrer</button></div>'
+    + '<div id="pfMsgRace" class="load-sub" style="margin-top:6px"></div></div>';
+  return h;
+}
+
 // R10 — courses intermédiaires RÉELLES (dates + priorité), pour TOUS les profils :
 // branchées sur la mécanique moteur existante — la semaine de la course est allégée
 // (mini-affûtage si B), la suivante est en récup, et le JOUR J porte une séance 🏁
 // avec sa consigne de pacing. Avant, seul le questionnaire premium posait la question.
 function raceInterHTML(a) {
+  // R23.18 — la priorité A− existe : un OBJECTIF secondaire, couru pour de vrai (mini-affûtage
+  // −40 %, vraie récupération derrière). Le moteur exige ≥ 4 semaines avant la course A
+  // (décision du fondateur) — en dessous, il la traite en B et le dit dans les décisions.
   const prioSel = (id, cur) => '<select id="' + id + '" style="flex:1;min-width:0">'
-    + '<option value="C"' + (cur !== "B" ? " selected" : "") + '>C — laboratoire (on s’entraîne à travers)</option>'
-    + '<option value="B"' + (cur === "B" ? " selected" : "") + '>B — préparation (mini-affûtage)</option></select>';
-  const rowR = (n, d, p) => '<div style="display:flex;gap:8px;align-items:center;font-size:var(--fs-md);flex-wrap:wrap"><span style="width:70px">Course ' + n + '</span>'
-    + '<input type="date" id="pfRace' + n + 'd" value="' + esc(d || "") + '" style="flex:1;min-width:130px">' + prioSel("pfRace" + n + "p", p) + "</div>";
-  return '<div class="load-card"><div class="load-title">🏁 Courses intermédiaires' + aide('Une course AVANT ton objectif ? Le moteur allège la semaine, place la course à sa vraie date avec sa consigne de pacing, et met la semaine suivante en récupération.', { label: 'les courses intermédiaires' }) + '</div>'
-    + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">' + rowR(1, a.race1_date, a.race1_prio) + rowR(2, a.race2_date, a.race2_prio) + "</div>"
+    + '<option value="C"' + (cur !== "B" && cur !== "A-" ? " selected" : "") + '>C — laboratoire (on s’entraîne à travers)</option>'
+    + '<option value="B"' + (cur === "B" ? " selected" : "") + '>B — préparation (mini-affûtage)</option>'
+    + '<option value="A-"' + (cur === "A-" ? " selected" : "") + '>A− — objectif secondaire (≥ 4 sem avant l’A)</option></select>';
+  // Le FORMAT de la course intermédiaire : c'est lui qui permet au moteur de dimensionner la
+  // récupération (une A− plus longue que l'A coûte un jour de plus). Optionnel — sans réponse,
+  // le moteur suppose un format comparable et l'écrit dans ses décisions.
+  const fmtSel = (id, cur) => {
+    const list = (SPORTS[S.sport] && SPORTS[S.sport].formats) || [];
+    if (!list.length) return "";
+    return '<select id="' + id + '" style="flex:1;min-width:0"><option value="">Format ? (optionnel)</option>'
+      + list.map(([v, l]) => '<option value="' + v + '"' + ((cur || "") === v ? " selected" : "") + ">" + l + "</option>").join("") + "</select>";
+  };
+  const rowR = (n, d, p, f) => '<div style="display:flex;gap:8px;align-items:center;font-size:var(--fs-md);flex-wrap:wrap"><span style="width:70px">Course ' + n + '</span>'
+    + '<input type="date" id="pfRace' + n + 'd" value="' + esc(d || "") + '" style="flex:1;min-width:130px">' + prioSel("pfRace" + n + "p", p)
+    + fmtSel("pfRace" + n + "f", f) + "</div>";
+  return '<div class="load-card"><div class="load-title">🏁 Courses intermédiaires' + aide('Une course AVANT ton objectif ? C = on s’entraîne à travers. B = semaine allégée. A− = un VRAI objectif secondaire : mini-affûtage, tu la cours à fond, récupération réelle derrière — à 4 semaines minimum de ta course A.', { label: 'les courses intermédiaires' }) + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">' + rowR(1, a.race1_date, a.race1_prio, a.race1_format) + rowR(2, a.race2_date, a.race2_prio, a.race2_format) + "</div>"
     + '<div class="nav" style="margin-top:8px"><button class="btn" id="pfRaceSave" type="button">Enregistrer mes courses</button></div>'
     + '<div id="pfRaceMsg" class="load-sub" style="margin-top:6px"></div></div>';
 }
@@ -453,17 +561,24 @@ function bindRaceInter() {
     const a = S.answers;
     const d1 = ($("pfRace1d") || {}).value || "", p1 = ($("pfRace1p") || {}).value || "C";
     const d2 = ($("pfRace2d") || {}).value || "", p2 = ($("pfRace2p") || {}).value || "C";
-    const before = [a.race1_date || "", a.race1_prio || "", a.race2_date || "", a.race2_prio || "", a.races || ""].join("|");
-    a.race1_date = d1; a.race1_prio = d1 ? p1 : "";
-    a.race2_date = d2; a.race2_prio = d2 ? p2 : "";
+    const f1 = ($("pfRace1f") || {}).value || "", f2 = ($("pfRace2f") || {}).value || "";
+    const before = [a.race1_date || "", a.race1_prio || "", a.race1_format || "", a.race2_date || "", a.race2_prio || "", a.race2_format || "", a.races || ""].join("|");
+    a.race1_date = d1; a.race1_prio = d1 ? p1 : ""; a.race1_format = d1 ? f1 : "";
+    a.race2_date = d2; a.race2_prio = d2 ? p2 : ""; a.race2_format = d2 ? f2 : "";
     a.races = d1 || d2 ? "oui" : "non";
-    const after = [a.race1_date, a.race1_prio, a.race2_date, a.race2_prio, a.races].join("|");
+    const after = [a.race1_date, a.race1_prio, a.race1_format, a.race2_date, a.race2_prio, a.race2_format, a.races].join("|");
     const m = $("pfRaceMsg");
     if (after === before) { if (m) m.textContent = "Aucun changement détecté."; return; }
     let warn = "";
     for (const d of [d1, d2]) {
       if (d && a.race_date && d >= a.race_date) warn = " ⚠️ Une date est le jour de (ou après) ton objectif A — elle sera ignorée par le plan.";
       else if (d && a.plan_start && d < a.plan_start) warn = " ⚠️ Une date est avant le début du plan — elle sera ignorée.";
+    }
+    // R23.18 — prévenir AU MOMENT DE LA SAISIE, pas seulement dans les décisions du plan :
+    // une A− à moins de 4 semaines de l'A sera traitée en B, autant le dire tout de suite.
+    for (const [d, p2b] of [[d1, p1], [d2, p2]]) {
+      if (d && p2b === "A-" && a.race_date && (Date.parse(a.race_date) - Date.parse(d)) / 864e5 < 28)
+        warn += " ⚠️ A− à moins de 4 semaines de ta course A : le moteur la traitera comme une course B (l'affûtage de l'A passe d'abord).";
     }
     const desc = [d1 ? d1 + " (" + (d1 ? p1 : "") + ")" : "", d2 ? d2 + " (" + p2 + ")" : ""].filter(Boolean).join(" · ") || "aucune";
     if (!Array.isArray(a.tests)) a.tests = [];
@@ -515,9 +630,18 @@ export function renderTabProfile(plan) {
   // R5 — l'identité d'abord : avatar, niveau, XP, teaser du niveau suivant
   html += avatarSectionHTML(plan, tIso);
   html += '<div class="why">Modifie une valeur : le plan est régénéré et le changement est consigné dans ton journal d’évolution.</div>';
+  // R24.2 — STRAVA EN PREMIER ÉCRAN (retour fondateur, 06/08 : « onglet de connexion Strava en
+  // fin de page, je le veux dans le premier écran »). Le bloc de connexion vivait replié au
+  // fond du Profil, dans le journal — un CTA qu'on ne voit qu'en cherchant. Il monte ici, en
+  // carte propre ; le journal (en bas) garde l'historique et les imports FIT. Un seul bloc
+  // Strava dans l'onglet : le déplacer, pas le dupliquer (R23.12b — deux chemins vers le même
+  // geste dans deux endroits, c'est ce qu'on vient de retirer).
+  html += stravaCardHTML(a);
   html += plansSelectorHTML();
   html += planDeadlineHTML(plan);
   if (sp === "trail") html += trailProfileHTML(a);
+  // R24.3 — les paramètres de l'épreuve, dans la carte dédiée à la course.
+  html += raceCardHTML(a);
   html += raceInterHTML(a);
   html += '<div class="bp-cat">' + summaryRows(a) + "</div>";
 
@@ -546,32 +670,11 @@ export function renderTabProfile(plan) {
   // Taille : réintroduite AVEC un effet réel (métabolisme de base Mifflin-St Jeor, carte
   // « Dépense estimée » de l'onglet Semaine) — règle d'influence des paramètres respectée.
   ref += row("pfHeight", "Taille (cm, optionnel)", a.height, "affine la dépense de base");
-  // R6 — profil du parcours visé : affine la PRÉDICTION (temps course à pied) sans
-  // toucher au plan. Vallonné/montagneux → fourchette décalée et élargie, justifiée.
-  const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
-  ref += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Profil du parcours visé</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
-    + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
-  // R18.2 — et DISCIPLINE PAR DISCIPLINE pour les épreuves multisport. La ligne ci-dessus
-  // décrit le parcours comme s'il était homogène ; un triathlon ne l'est jamais. Chaque leg
-  // laissé sur « comme au-dessus » retombe sur cette réponse globale, puis sur le terrain :
-  // un seul chemin (`legProfileOf`), trois niveaux de précision.
-  if (S.sport === "tri" || S.sport === "duathlon" || S.sport === "swimrun") {
-    const legSel = (id, cle, lab, opts) => {
-      const cur = String(a[cle] || "");
-      return '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:4px"><span style="width:150px">' + lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
-        + opts.map(([v, l]) => '<option value="' + v + '"' + (cur === v ? " selected" : "") + ">" + l + "</option>").join("")
-        + "</select></label>";
-    };
-    const RELIEF_OPTS = [["", "Comme au-dessus"], ["plat", "Plat"], ["vallonne", "Vallonné"], ["montagne", "Montagneux"]];
-    // R19.2 — la température de l'eau vit ici aussi : elle décide de la combinaison.
-    if (S.sport === "tri") ref += row("pfWaterTemp", "🌡 Eau de la course (°C)", a.water_temp_c, "combinaison : interdite au-dessus de 24,5 °C");
-    if (S.sport === "tri" || S.sport === "swimrun")
-      ref += legSel("pfLegSwim", "leg_swim_env", "🏊 Milieu de nage", [["", "Comme au-dessus"], ["bassin", "Bassin"], ["lac", "Lac / eau libre calme"], ["mer_calme", "Mer calme"], ["mer_agitee", "Mer agitée"], ["eau_vive", "Eau vive (courant)"]]);
-    if (S.sport === "tri" || S.sport === "duathlon")
-      ref += legSel("pfLegBike", "leg_bike_prof", "🚴 Parcours vélo", RELIEF_OPTS);
-    ref += legSel("pfLegRun", "leg_run_prof", "🏃 Parcours à pied", RELIEF_OPTS);
-    ref += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Ton épreuve n’est pas d’un seul bloc : on peut nager en eau vive, rouler en montagne et courir à plat. Chaque segment corrige une chose différente — et « Comme au-dessus » est un choix parfaitement valable.</div>';
-  }
+  // R24.3 — les paramètres DE LA COURSE ne vivent plus ici (retour fondateur, 06/08 :
+  // « séparer les données athlète des paramètres de course »). Le profil du parcours, la
+  // température de l'eau et les profils par discipline sont partis dans la carte « 🏁 Ta
+  // course » (raceCardHTML), rendue à côté de l'échéance et des courses intermédiaires.
+  // Ici ne restent que les références DU CORPS : FTP, allures, volumes, poids, structure.
   // R14.1 §1-c — LA QUESTION QUI REMPLACE L'ANCIENNETÉ dans le calcul de la marge de
   // progression. Elle est ici (Profil) et pas dans le questionnaire d'entrée, pour ne pas
   // alourdir le tunnel. Ce qu'elle mesure : le STIMULUS DE LA STRUCTURE. Quelqu'un qui court
@@ -625,10 +728,9 @@ export function renderTabProfile(plan) {
 
   // — Journal d'évolution (S.answers.tests, trié du plus récent au plus ancien)
   const tests = Array.isArray(a.tests) ? [...a.tests].sort((x, y) => String(y.date || "").localeCompare(String(x.date || ""))) : [];
-  // Ouvert tant que Strava n'est pas connecté : ce bloc porte alors un appel à l'action
-  // (importer ses activités), et un CTA replié n'est pas un CTA.
-  const _connecte = !!(a.stravaAuth && a.stravaAuth.access_token);
-  html += '<details class="load-card"' + (_connecte ? "" : " open") + '><summary class="load-title" style="cursor:pointer">📒 Journal d’évolution, imports et Strava</summary>';
+  // R24.2 — le bloc Strava est parti en premier écran (stravaCardHTML) : le journal n'a plus
+  // de CTA à porter, il redevient une archive repliée.
+  html += '<details class="load-card"><summary class="load-title" style="cursor:pointer">📒 Journal d’évolution et imports</summary>';
   if (tests.length) {
     tests.forEach((t) => {
       html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:var(--fs-sm);align-items:baseline"><span style="width:78px;color:#635b4a">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:var(--muted)">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
@@ -646,32 +748,8 @@ export function renderTabProfile(plan) {
       + '<span class="load-sub" style="margin:0">export de ta montre — lu ici, jamais envoyé</span></div>'
       + '<div id="pfFitMsg" class="load-sub" style="margin-top:6px"></div>';
   }
-  // Import Strava (lecture seule) — connexion OAuth via le relais serveur (server/README.md)
-  // en chemin principal, jeton manuel conservé en repli. Même journal, même pont vers le plan.
-  const sAuth = a.stravaAuth;
-  html += '<div style="margin-top:10px"><div style="font-weight:700;font-size:var(--fs-sm)">🔗 Strava</div>';
-  if (sAuth && sAuth.access_token) {
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
-      + '<span style="font-size:var(--fs-sm)">✓ Connecté' + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + "</span>"
-      + '<button class="btn" id="pfStravaBtn" type="button">Importer mes activités</button>'
-      + '<button class="btn" id="pfStravaOut" type="button">Se déconnecter</button></div>';
-  } else {
-    // R6 — UX guidée : UN bouton. L'URL du relais vit en config (déployée pour tous)
-    // ou dans les réglages avancés — l'utilisateur normal n'a rien à coller.
-    html += '<div style="margin-top:4px"><button class="btn primary" id="pfStravaConnect" type="button" style="width:100%;font-size:var(--fs-lg);padding:12px 16px">🔗 Se connecter avec Strava</button></div>'
-      + '<div class="load-sub" style="margin-top:4px">Un clic → autorisation sur Strava → retour ici. Lecture seule (jamais d’écriture), tes activités alimentent tes références (FTP/allure/CSS).</div>'
-      + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Réglages avancés (relais)</summary>'
-      + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
-      + '<input type="text" id="pfStravaRelay" placeholder="URL du relais (voir server/README.md)" value="' + esc(a.stravaRelay || "") + '" style="flex:1;min-width:180px"></div>'
-      + '<div class="load-sub" style="margin-top:4px">Le relais garde le secret Strava hors de l’app — déploiement pas-à-pas dans server/README.md.</div></details>';
-  }
-  html += (S._stravaError ? '<div class="load-sub" style="margin-top:4px;color:#b3261e">Connexion Strava refusée (' + esc(S._stravaError) + ") — réessaie ou utilise le jeton manuel.</div>" : "")
-    + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Repli : jeton manuel (sans serveur)</summary>'
-    + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
-    + '<input type="text" id="pfStravaTok" placeholder="token d’accès Strava" style="flex:1;min-width:180px">'
-    + (sAuth && sAuth.access_token ? "" : '<button class="btn" id="pfStravaBtnTok" type="button">Importer depuis Strava</button>')
-    + '</div><div class="load-sub" style="margin-top:4px">Réglages Strava → « Mon API », scope <b>activity:read</b> — rien n’est écrit sur Strava.</div></details>'
-    + '<div id="pfStravaMsg" class="load-sub" style="margin-top:4px"></div></div>';
+  // R24.2 — l'import Strava (connexion, jeton, réglages relais) vit désormais dans la carte
+  // « 🔗 Strava » du premier écran (stravaCardHTML). Ici : journal, mesure, FIT.
   html += "</details>";
 
   // R23.10 — LES CONSEILS PERSONNALISÉS SONT PARTIS DANS 🗓 PLAN.
@@ -695,14 +773,29 @@ export function renderTabProfile(plan) {
   const _avShare = $("avShare");
   if (_avShare) _avShare.onclick = async () => {
     _avShare.disabled = true; _avShare.textContent = "Génération…";
-    let av2 = null, streak = 0;
-    try { av2 = globalThis.EBV2.avatar(plan, S.answers, tIso); } catch (e) {}
+    let streak = 0;
     try { streak = globalThis.EBV2.adherence(plan, S.answers, tIso).days || 0; } catch (e) {}
-    const visual = avatarDataFor(plan, tIso);
+    const v = avatarTriDataFor(plan, tIso);
+    const nom = v.legende ? "🏆 LÉGENDE du triathlon" : "🏊 " + v.natation + " · 🚴 " + v.velo + " · 🏃 " + v.course;
     try {
-      await shareStory({ sessionName: av2 ? av2.icon + " " + av2.name + " · niveau " + av2.level : "Mon avatar", detail: "", sport: S.sport, streak, badge: null, avatarSVG: avatarSVG(visual, 520), accent: visual.accent });
+      // R25 — le PARTAGE, c'est le TRIPTYQUE : les trois mondes empilés, format story.
+      await shareStory({ sessionName: nom, detail: "", sport: S.sport, streak, badge: null, avatarSVG: avatarTriStorySVG(v, 520), avatarAspect: 1.78, accent: avatarDataFor(plan, tIso).accent });
     } catch (e) { console.warn(e); }
     _avShare.disabled = false; _avShare.textContent = "📸 Partager";
+  };
+  // R25 — toucher l'avatar = le voir EN GRAND (le triptyque plein écran). C'est ce qui rend
+  // le détail dessiné visible ailleurs qu'au partage — la réponse à la preuve d'échelle.
+  const _avBig = $("avSvg");
+  if (_avBig) _avBig.onclick = () => {
+    document.querySelectorAll(".eb-overlay").forEach((e) => e.remove());
+    const v = avatarTriDataFor(plan, tIso);
+    const ov = document.createElement("div");
+    ov.className = "eb-overlay";
+    const hMax = Math.min(Math.round(window.innerHeight * 0.82), 640);
+    ov.innerHTML = '<div class="eb-modal" role="dialog" aria-label="Mon avatar en grand" style="display:flex;justify-content:center;max-height:92vh;overflow:auto">'
+      + avatarTriStorySVG(v, Math.round(hMax / 1.78)) + "</div>";
+    document.body.appendChild(ov);
+    trapModal(ov, () => ov.remove());
   };
 
   bindPlansSelector();
@@ -854,7 +947,10 @@ export function renderTabProfile(plan) {
   if (stravaOut) stravaOut.onclick = () => { stravaDisconnect(); renderTabProfile(plan); };
   const stravaTokBtn = $("pfStravaBtnTok");
   if (stravaTokBtn) stravaTokBtn.onclick = () => runStravaImport(stravaTokBtn);
-  $("pfSave").onclick = () => {
+  // R24.3 — le même enregistrement sert les DEUX cartes (⚙ références et 🏁 course) : le
+  // gestionnaire lit chaque champ par id, où qu'il vive, et le message s'affiche dans la
+  // carte d'où le geste est parti. Deux boutons, UNE règle (R11.1).
+  const doSave = () => {
     const today = todayISO();
     if (!Array.isArray(S.answers.tests)) S.answers.tests = [];
     // R23.1 — quatrième et dernière écriture du journal de tests. Elle passe par la même borne
@@ -903,7 +999,7 @@ export function renderTabProfile(plan) {
     const nt = g("pfNotif");
     if (nt !== null && nt !== "" && nt !== String(a.notifyTime || "")) {
       S.answers.notifyTime = nt; changed++; // rappel quotidien : réglage pur, pas de régénération
-      if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+      requestNotifyPermission(); // point unique de la demande de permission (notifications.js)
     }
     const wgt = g("pfWeight");
     if (wgt !== null && wgt !== "" && parseFloat(wgt) > 0 && wgt !== String(a.weight || "")) {
@@ -942,11 +1038,16 @@ export function renderTabProfile(plan) {
     const refus = horsBornes.length
       ? " ⚠ Hors bornes physiologiques, donc non enregistré : " + horsBornes.map((t) => LAB_BORNE[t] || t).join(", ") + " — vérifie l'unité et la saisie."
       : "";
-    if (!changed) { const m = $("pfMsg"); if (m) m.textContent = (horsBornes.length ? "Rien d'enregistré." + refus : "Aucun changement détecté."); return; }
+    // Le verdict s'écrit dans les DEUX cartes : celle d'où le geste est parti est forcément l'une des deux.
+    const dire = (txt) => { for (const id of ["pfMsg", "pfMsgRace"]) { const m = $(id); if (m) m.textContent = txt; } };
+    if (!changed) { dire(horsBornes.length ? "Rien d'enregistré." + refus : "Aucun changement détecté."); return; }
     if (planChanged) invalidatePlan(); // le plan sera régénéré UNE fois, ici — pas au changement d'onglet
     ebSave();
     renderTabProfile(ensurePlan());
-    const m = $("pfMsg");
-    if (m) m.textContent = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + (planChanged ? " — plan régénéré, journal mis à jour." : " — journal mis à jour (poids/taille n’affectent que ravitaillement et dépense estimée, pas le plan).") + refus;
+    const done = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + (planChanged ? " — plan régénéré, journal mis à jour." : " — journal mis à jour (poids/taille n’affectent que ravitaillement et dépense estimée, pas le plan).") + refus;
+    for (const id of ["pfMsg", "pfMsgRace"]) { const m = $(id); if (m) m.textContent = done; }
   };
+  $("pfSave").onclick = doSave;
+  const btnRace = $("pfSaveRace");
+  if (btnRace) btnRace.onclick = doSave;
 }

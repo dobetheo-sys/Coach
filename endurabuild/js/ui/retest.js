@@ -10,7 +10,8 @@ import { $, S, ebSave, esc, todayISO } from "../state.js";
 import { syncRefsFromTests } from "./tab-profile.js";
 import { invalidatePlan, ensurePlan, setTab } from "./tabs.js";
 import { shareStory } from "../export.js";
-import { avatarDataFor, avatarSVG } from "./avatar.js";
+import { avatarTriDataFor } from "./avatar.js";
+import { avatarTriSVG, avatarTriStorySVG } from "./avatar-tri.js";
 import { trapModal } from "./modal.js";
 
 const TYPES = {
@@ -124,7 +125,7 @@ export function bindRetestBanner(todayISO, rerenderWeek) {
 function showReveal(plan, type, val, prevVal, todayISO, rerenderWeek) {
   const T = TYPES[type];
   document.querySelectorAll(".eb-overlay").forEach((e) => e.remove());
-  const av = avatarDataFor(plan, todayISO);
+  const av = avatarTriDataFor(plan, todayISO);
   let deltaHTML = "";
   let deltaTxt = "";
   if (prevVal != null) {
@@ -148,7 +149,7 @@ function showReveal(plan, type, val, prevVal, todayISO, rerenderWeek) {
   const ov = document.createElement("div");
   ov.className = "eb-overlay";
   ov.innerHTML = '<div class="eb-modal" role="dialog" aria-label="Résultat du retest">'
-    + '<div style="display:flex;justify-content:center">' + avatarSVG(av, 100) + "</div>"
+    + '<div style="display:flex;justify-content:center">' + avatarTriSVG(av, 100) + "</div>"
     + '<h2 style="text-align:center;margin:8px 0 2px">🥊 Retest ' + T.label + "</h2>" + deltaHTML
     + '<div class="nav" style="justify-content:center;margin-top:14px;gap:10px;flex-wrap:wrap">'
     + '<button class="btn gold" id="rtShare" type="button">📸 Carte RETEST</button>'
@@ -162,7 +163,7 @@ function showReveal(plan, type, val, prevVal, todayISO, rerenderWeek) {
     const b = ov.querySelector("#rtShare");
     b.disabled = true; b.textContent = "Génération…";
     try {
-      await shareStory({ title: "RETEST 🥊", sessionName: T.label, detail: deltaTxt, sport: S.sport, streak: 0, badge: null, avatarSVG: avatarSVG(av, 520), accent: "#9b72ff" });
+      await shareStory({ title: "RETEST 🥊", sessionName: T.label, detail: deltaTxt, sport: S.sport, streak: 0, badge: null, avatarSVG: avatarTriStorySVG(av, 520), avatarAspect: 1.78, accent: "#9b72ff" });
     } catch (e) { console.warn(e); }
     b.disabled = false; b.textContent = "📸 Carte RETEST";
   };

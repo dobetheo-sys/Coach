@@ -56,9 +56,19 @@ const fichiers = [];
 const fuites = [];
 for (const f of fichiers) {
   const nom = f.pathname.split("/").pop();
+  // L'exemption du document exporté (R16.8 : autonome, sans styles.css) était une PLAGE DE
+  // NUMÉROS DE LIGNE en dur — toute insertion en amont du fichier la décalait et le critère
+  // rougissait sur du code exempté depuis toujours (constaté en R24). Elle s'ancre désormais
+  // sur le CONTENU : la travée entre le commentaire qui déclare l'exception et la fin du
+  // gabarit HTML qu'elle couvre.
+  let dansDocExporte = false;
   readFileSync(f, "utf8").split("\n").forEach((l, i) => {
+    if (nom === "plan-view.js") {
+      if (l.includes("le DOCUMENT EXPORTÉ est autonome")) dansDocExporte = true;
+      if (dansDocExporte && l.includes("</body></html>")) { dansDocExporte = false; return; }
+    }
     if (!/font-size:[0-9.]+px/.test(l)) return;
-    if (nom === "plan-view.js" && i + 1 >= 96 && i + 1 <= 115) return; // le document exporté
+    if (dansDocExporte) return;
     fuites.push(nom + ":" + (i + 1));
   });
 }
@@ -137,7 +147,7 @@ await page.setViewportSize({ width: 1100, height: 900 });
 // ---- 4. Le plancher de lisibilité, sur les CINQ onglets --------------------------------
 // R18.3 — « week » est revenu : un onglet non balayé est un onglet non gardé, et c'est
 // exactement comme ça que `css/mobile.css` avait gardé un texte de 8 px pendant tout R16.
-for (const t of ["profile", "general", "today", "week", "nutrition"]) {
+for (const t of ["profile", "general", "today", "week"]) { // R24.9 — plus d'onglet nutrition
   await page.evaluate(async (t) => { const { setTab } = await import("./js/ui/tabs.js"); setTab(t); }, t);
   await page.waitForTimeout(400);
   const mini = await page.evaluate(() => {
@@ -175,7 +185,7 @@ await tactile.evaluate(async (iso) => {
   ebSave();
 }, iso);
 ok(await tactile.evaluate(() => matchMedia("(pointer:coarse)").matches), "le contexte de mesure est bien tactile (sinon la garde ne prouve rien)");
-for (const t of ["profile", "general", "today", "week", "nutrition"]) {
+for (const t of ["profile", "general", "today", "week"]) { // R24.9 — plus d'onglet nutrition
   await tactile.evaluate(async (t) => { const { setTab } = await import("./js/ui/tabs.js"); setTab(t); }, t);
   await tactile.waitForTimeout(400);
   const petits = await tactile.evaluate(() => {

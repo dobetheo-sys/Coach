@@ -4714,3 +4714,86 @@ bien en **code 1**, mais sur un `TimeoutError` de Playwright — trente secondes
 le diagnostic nul. Les taps du diaporama passent par un helper qui RAPPORTE l'option manquante.
 Ce n'est pas la faute d'instrument de R21/R22b (le code de sortie ne mentait pas), mais c'en est
 le voisinage : une garde doit dire ce qui a lâché.
+
+## R25 — l'avatar composite : trois disciplines, trente niveaux, un système en boucles
+
+Refonte complète de l'avatar (remplace le 16-niveaux de R9 côté rendu et côté compteur),
+construite MAQUETTES D'ABORD : chaque étape du système a été rendue en PDF et validée par le
+fondateur avant la première ligne dans `endurabuild/` (« très bien on valide », 07/08/2026).
+Quatre décisions fondateur cadrent l'implémentation : **(1)** la migration est un recomptage
+EXACT de l'historique par discipline (« gardé l'expérience pour le compte de chaque athlète »),
+**(2)** « les repos ne donnent pas d'exp » — le repos validé reste compté par la streak,
+ailleurs, **(3)** le thème choisi reste l'accent des éléments partagés, le MAILLOT suit la
+génération vélo, **(4)** badges et semaines régulières partent en TIERS égaux dans les trois
+jauges.
+
+### Le système en boucles (spec validée, remplace les tables du brief R13)
+
+Chaque discipline tourne en **boucles de 5 niveaux** ; chaque niveau fait passer UN item à sa
+génération suivante ; 6 boucles = 30 niveaux, aucun niveau vide. L'item en position `p` atteint
+sa génération `g` au niveau `p + 5(g−1)` — `avatarTriGen(L, pos)` est la fonction pure, le
+registre `AVATAR_TRI_ROULEMENTS` est la source unique (R11.1 : l'ordre EST le roulement, et
+`avatarTriUnlock` DÉRIVE le libellé « prochain niveau » du même registre, jamais d'une seconde
+table). Roulement différent par discipline (le niveau 1 débloque l'objet iconique) :
+NATATION bonnet → plan d'eau → lunettes → matériel → ambiance ; VÉLO le vélo → maillot →
+parcours → équipement → ambiance ; COURSE chaussures → parcours → bas → ceinture → ambiance.
+Deux modes par item, décidés un par un par le fondateur : « remplace » ou « s'ajoute » —
+exactement quatre cumulatifs (matériel nat, parcours vélo, ambiance vélo, ambiance course).
+L'OR est partout la génération 6, le national la 5. Trois **marqueurs de niveau** (décision
+fondateur : « type sur le dossard, sur le bonnet, sur le short ») : numéro sur le bonnet
+(natation), dossard de poitrine (vélo), ceinture-dossard (course) — dès le niveau 1, or à 30.
+Les 7 règles de l'audit design (character designer + graphiste, validées sur maquettes) sont
+en tête de `avatar-tri.js` ; une partie est vérifiée mécaniquement (une seule arche, DÉPART
+s'efface devant ARRIVÉE, slots à occupant unique).
+
+### L'XP par discipline — jamais stockée, toujours recomptée
+
+`avatarTriV2` (bridge) recompte tout depuis `answers.done` : une nage crédite la NATATION et
+elle seule (+10), un vélo le VÉLO, une course la COURSE, le brick +5/+5, l'inclassable retombe
+sur COURSE (jamais perdu, jamais réparti au hasard), le repos ne crédite personne. Badges ×80
+et semaines régulières ×120 partent en tiers plancher dans les trois jauges. **Le niveau 0
+existe** (la silhouette nue des maquettes) : les 16 seuils historiques sont décalés d'un cran —
+même XP, même visuel qu'avant pour un compte existant, c'est la non-régression qui se lit en XP
+et non en numéro de niveau. Les seuils 17-30 (jusqu'à 120 000) sont une extrapolation NON
+calibrée — dette déclarée, voir `BUGS_OUVERTS.md` « O-30 ».
+
+### Deux rendus, un module PUR
+
+`endurabuild/js/ui/avatar-tri.js` n'a AUCUN import : c'est ce qui permet à
+`npm run demo:avatartri` (**28ᵉ gate CI**) d'exécuter en node, sans navigateur, la passe
+exhaustive (0..30)³ sur les DEUX rendus — 59 582 SVG bien formés. Le **composite carré**
+(viewBox 0 0 100 110, même géométrie de silhouette que l'ancien avatar — les postures « forme
+du jour » s'y posent telles quelles) sert les cartes 96-110 px ; le **triptyque story**
+(0 0 100 178, trois bandes : la tête dans le monde de la natation, le torse dans celui du vélo,
+les jambes dans celui de la course) sert le partage 9:16 et le plein écran. Les trois canaux de
+R17.1/R17.2 sont préservés : progression (niveaux), forme du jour (postures), forme physique
+(repère qui se déplace, jamais rouge, absent sans mesure).
+
+### L'attache — les pièces suivent la pose rendue, pas la pose normale
+
+Défaut de ma première écriture de l'étape 3, corrigé dans ce lot : les postures bougeaient les
+jambes mais chaussures, bas et ceinture restaient DESSINÉS aux coordonnées de la pose normale —
+en « feu », les chaussures flottaient à côté des pieds. `smoke-avatar` avait pourtant énoncé la
+règle depuis R17.1 (« les chaussures se posent au bout des jambes ; si les jambes bougent,
+elles bougent ») — mais elle garde `avatar.js`, pas ce module. La pose devient une DONNÉE
+(hanche, genou éventuel, pied par jambe) et chaque pièce se CALCULE depuis elle : chaussures
+ancrées aux pieds avec un signe « vers l'extérieur », bas interpolé le long de la cuisse
+(hanche → genou s'il existe, sinon le pied), ceinture décalée avec la hanche (« vide » descend
+de 2). Le triptyque reçoit les cinq poses à son échelle — le partage montre désormais la forme
+du jour — sous les mêmes règles d'attache. Les ancrages attendus des critères sont **calculés
+depuis la pose**, pas recopiés du rendu (un critère qui recopie sa cible est toujours vert) ;
+**vérifiés rouges sur deux cassures** : pieds épinglés à la pose normale (4 ✖), cuissard qui
+ignore le genou (1 ✖).
+
+### Le câblage (étape 4) et ce qu'il a fait tomber
+
+Carte Profil : trois jauges (niv X/30, « prochain : <libellé> (encore N XP) » dérivé du
+roulement), composite cliquable → triptyque plein écran (`trapModal`), partage story via
+`avatarTriStorySVG` (aspect 1,78 transporté jusqu'à `export.js`), UN SEUL `<details>` « Les 30
+niveaux de chaque discipline » (le plafond U18b des 4 écrans tenait à ça). Célébration et
+retest rendent le composite. Chemin de repli : sans plan ni séances, `avatarTriDataFor` rend
+0/0/0 — la silhouette nue, jamais un crash. En passant les gates : **cinq suites E2E
+attendaient « 5 onglets »** (dette de la fusion R24, jamais rejouée sur trail / duathlon /
+swimrun / nofallback / questionnaires) — mises à 4 ; les assertions avatar de `smoke-r4`
+réécrites sur le contrat composite (l'ancien SVG teinté au thème n'existe plus : le composite
+porte les couleurs des trois disciplines).

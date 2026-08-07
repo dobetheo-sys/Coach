@@ -50,7 +50,7 @@ const setTab = (t) => page.evaluate(async (t) => { const { setTab } = await impo
 await setTab("today");
 await page.waitForTimeout(400);
 const barre = await page.evaluate(() => [...document.querySelectorAll("#ebTabbar .tabbtn")].map((b) => b.dataset.tab));
-ok(barre.length === 5, "cinq onglets (" + barre.join(" · ") + ")");
+ok(barre.length === 4, "quatre onglets — R24.9 (" + barre.join(" · ") + ")");
 ok(barre.indexOf("today") === 2,
   "🎯 Aujourd’hui est le TROISIÈME sur cinq — « central » n'est pas qu'un style, c'est une position, et un nombre pair la rendait impossible");
 ok(barre.includes("week"), "📅 Semaine est bien de retour dans la barre");

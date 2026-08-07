@@ -1393,6 +1393,66 @@ test("G3", "Ajustement ORANGE : réduction effective du volume", "pass", () => {
   return { ok: med < 0.85, detail: `médiane ${Math.round(med * 100)} % du volume initial (n=${ratios.length})` };
 });
 
+// ── R23.18 — le double objectif A/A− ────────────────────────────────
+// Décision du fondateur (06/08/2026) : la course déclarée est l'objectif A, l'intermédiaire
+// peut être un A− — un VRAI objectif, à 4 semaines minimum de l'A. La « taille » d'un format
+// se lit dans MIN_WEEKS (la table existante, R11.1) : un A− plus long que l'A coûte une
+// fenêtre +7 j et un jour de récupération de plus. Sous la fenêtre : traitement dégradé en B,
+// AVEC une décision nommée — la course reste à sa date (O-17 : informer, pas bloquer).
+const _r2318 = (raceOffset, over) => {
+  const p = build("run", Object.assign({ format: "marathon", race_date: isoIn(16 * 7), plan_start: undefined,
+    races: "oui", race1_date: isoIn(16 * 7 - raceOffset), race1_prio: "A-" }, over || {}));
+  const dec = (p._v2 && p._v2.decisions || []).filter((d) => /^R23\.18/.test(d.id));
+  let day = null;
+  p.weeks.forEach((w) => w.days.forEach((d) => d.sessions.forEach((sx) => {
+    if (sx.race && !/Course A$/.test((sx.name || "").trim())) day = { w, sx };
+  })));
+  const all = p.weeks.flatMap((w) => w.days);
+  const idx = all.findIndex((d) => day && d.sessions.includes(day.sx));
+  let repos = 0;
+  for (let k = idx + 1; k < all.length && idx >= 0; k++) {
+    if (all[k].sessions.some((sx) => /Repos post-course/.test(sx.name))) repos++; else break;
+  }
+  return { p, dec, day, repos };
+};
+test("R23.18-A", "A− à ≥4 semaines : vraie course A−, 2 jours de récup, décision nommée", "pass", () => {
+  const r = _r2318(42, { race1_format: "semi" });
+  const okNom = r.day && /Course A−/.test(r.day.sx.name);
+  const okDet = r.day && /POUR DE VRAI/i.test(r.day.sx.det || "");
+  const okDec = r.dec.some((d) => d.id === "R23.18");
+  return { ok: !!(okNom && okDet && okDec && r.repos === 2),
+    detail: `nom=${r.day && r.day.sx.name} · repos=${r.repos} · décisions=${r.dec.map((d) => d.id).join(",") || "aucune"}` };
+});
+test("R23.18-B", "A− à <4 semaines : dégradée en B, décision R23.18-fenetre (jamais un silence)", "pass", () => {
+  const r = _r2318(14, { race1_format: "semi" });
+  const okNom = r.day && /Course B/.test(r.day.sx.name);
+  const okDec = r.dec.some((d) => d.id === "R23.18-fenetre");
+  return { ok: !!(okNom && okDec), detail: `nom=${r.day && r.day.sx.name} · décisions=${r.dec.map((d) => d.id).join(",") || "aucune"}` };
+});
+test("R23.18-C", "A− d'un format PLUS LONG que l'A : acceptée, récupération élargie (3 jours)", "pass", () => {
+  // marathon (16 sem requises) avec un A− « trail » (18) : plus long → 3 jours de repos après.
+  const r = _r2318(42, { race1_format: "trail" });
+  const okDec = r.dec.some((d) => d.id === "R23.18" && /plus long/.test(d.val));
+  return { ok: !!(r.day && /Course A−/.test(r.day.sx.name) && okDec && r.repos === 3),
+    detail: `nom=${r.day && r.day.sx.name} · repos=${r.repos} · ${r.dec.map((d) => d.val).join(" ; ") || "aucune décision"}` };
+});
+test("R23.18-D", "Le mini-affûtage A− MORD sur le livré : semaine A− ≤ 60 % de la précédente", "pass", () => {
+  // NOTE D'INSTRUMENT — ma première écriture comparait wk.vol A− contre wk.vol B : elle est
+  // restée VERTE avec le facteur cassé, parce que le point de convergence recalcule wk.vol
+  // depuis les minutes livrées (201 min dans les trois états mesurés — facteur 0,6, 0,75, B).
+  // La garantie vit donc au POINT FIXE, et on la mesure là où elle mord : une course en
+  // MILIEU DE SEMAINE (mercredi), qui laisse assez de jours pleins pour dépasser 60 % sans
+  // le bloc (mesuré : 69 % sans, 60 % avec).
+  const p = build("run", { format: "marathon", race_date: isoIn(16 * 7), vol_max: "10", vol_recent: "8",
+    sessions_max: "6", dispo: "quotidienne", races: "oui", race1_date: isoIn(16 * 7 - 39), race1_prio: "A-", race1_format: "semi" });
+  let wi = -1;
+  p.weeks.forEach((w, k) => w.days.forEach((d) => d.sessions.forEach((sx) => { if (sx.race && !/Course A$/.test((sx.name || "").trim())) wi = k; })));
+  if (wi < 1) return { ok: false, detail: "semaine A− introuvable" };
+  const mins = (w) => w.days.reduce((t, d) => t + d.sessions.reduce((u, sx) => u + (sx.race ? 0 : sx.min || 0), 0), 0);
+  const ratio = mins(p.weeks[wi]) / Math.max(1, mins(p.weeks[wi - 1]));
+  return { ok: ratio <= 0.62, detail: `semaine A− ${mins(p.weeks[wi])} min · précédente ${mins(p.weeks[wi - 1])} min · ratio ${Math.round(ratio * 100)} % (cap 60 %)` };
+});
+
 // ─────────────────────────────────────────────────────────────────────
 // Exécution
 // ─────────────────────────────────────────────────────────────────────

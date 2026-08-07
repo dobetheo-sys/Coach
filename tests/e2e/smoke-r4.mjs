@@ -24,16 +24,17 @@ await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 const v2state = await page.evaluate(() => JSON.parse(localStorage.getItem("eb_state_v2") || "null"));
 ok(!!(v2state && Array.isArray(v2state.plans) && v2state.plans.length === 1 && v2state.plans[0].sport === "run"), "migration v1→v2 : plan repris sans perte (plans=" + (v2state ? v2state.plans.length : "null") + ")");
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "l'app restaure directement la vue plan (5 onglets)");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "l'app restaure directement la vue plan (4 onglets — R24.9 : nutrition fondue dans Aujourd'hui)");
 
 // ---- 2. Profil : avatar/niveau/XP + records + plans + sauvegarde + retest suggéré ----
 const tabs = await page.locator("#ebTabbar .tabbtn").all();
 await tabs[0].click(); await page.waitForTimeout(250);
 const profTxt = await page.locator("#screen").textContent();
 ok(await page.locator("#avSvg svg").count() === 1, "avatar SVG affiché en tête de Profil (R5)");
-ok(/Niveau \d+\/16 · \d+ XP/.test(profTxt), "niveau X/16 + XP affichés");
-ok(/Prochain : .+ — débloque .+ \(encore \d+ XP\)/.test(profTxt), "teaser du prochain déblocage affiché (R9)");
-ok(/Les 16 niveaux et ce qu'ils débloquent/.test(profTxt), "liste des 16 niveaux consultable");
+// R25 — l'avatar composite : trois jauges 0-30, une par discipline (remplace « Niveau X/16 »).
+ok(/niv \d+\/30/.test(profTxt), "les jauges par discipline affichent « niv X/30 » (R25)");
+ok(/prochain : .+ \(encore \d+ XP\)/.test(profTxt), "teaser du prochain déblocage par discipline (R9→R25)");
+ok(/Les 30 niveaux/.test(profTxt), "les 30 niveaux de chaque discipline sont consultables (dérivés du roulement)");
 ok(/Records personnels/.test(profTxt), "carte « Records personnels » présente dans Profil");
 ok(/4'22/.test(profTxt), "meilleure allure seuil retenue (262s = 4'22), pas la plus récente");
 ok(/Mes plans \(1\)/.test(profTxt), "sélecteur « Mes plans » présent (1 plan après migration)");
@@ -57,7 +58,10 @@ ok(await page.locator("[data-av-theme]").count() === 4, "4 thèmes de couleur (a
 await page.locator('[data-av-theme="swim"]').click(); await page.waitForTimeout(250);
 const themeSaved = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.answers.avatarTheme; });
 ok(themeSaved === "swim", "choix de thème persisté (avatarTheme=" + themeSaved + ")");
-ok(/#00b8d9/.test(await page.locator("#avSvg svg").innerHTML()), "le SVG reprend la couleur du thème choisi");
+// R25 — le composite colore chaque zone par SA discipline : le thème ne pilote plus le SVG
+// de la carte, il reste l'accent du PARTAGE (décision n°3). On vérifie donc la persistance,
+// déjà couverte ci-dessus, et que le composite porte bien les couleurs des disciplines.
+ok(/#00b8d9|#2e6bff|#ff7a1a/.test(await page.locator("#avSvg svg").innerHTML()), "le composite porte les couleurs des disciplines");
 
 // ---- 4. Multi-plans : nouveau plan → questionnaire vierge, retour au 1er sans perte ----
 await page.click("#pfNewPlan"); await page.waitForTimeout(300);
@@ -75,7 +79,7 @@ await page.evaluate(() => {
 });
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
-ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "retour au plan 1 : la vue plan est restaurée");
+ok(await page.locator("#ebTabbar .tabbtn").count() === 4, "retour au plan 1 : la vue plan est restaurée");
 const t2 = await page.locator("#ebTabbar .tabbtn").all();
 await t2[0].click(); await page.waitForTimeout(250);
 ok(/Mes plans \(2\)/.test(await page.locator("#screen").textContent()), "les 2 plans sont listés dans le sélecteur");
@@ -156,13 +160,13 @@ const heroWhy = await page.evaluate(() => {
 ok(heroWhy.visibleWhy || heroWhy.repos, "dans Aujourd'hui, le « pourquoi » de la séance est visible SANS rien ouvrir (§5)"
   + (heroWhy.repos ? " — jour de REPOS aujourd'hui, critère non applicable, message de repos présent" : ""));
 
-// ---- 6. Onglet Nutrition : journal alimentaire RETIRÉ (décision utilisateur R6) ----
-// R18.3 — Nutrition n'est plus le 4e onglet (📅 Semaine est revenue devant). Par NOM.
-await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("nutrition"); });
+// ---- 6. Nutrition : journal alimentaire RETIRÉ (R6) — et l'onglet lui-même a disparu (R24.9),
+// la version réduite vit dans 🎯 Aujourd'hui. Le critère suit le contenu, pas l'onglet.
+await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("today"); });
 await page.waitForTimeout(400);
 const nutTxt = await page.locator("#screen").textContent();
-ok(await page.locator("#njCard").count() === 0 && !/Journal alimentaire/.test(nutTxt), "journal alimentaire retiré de l'onglet Nutrition");
-ok(/Dépense estimée du jour/.test(nutTxt) && /Ravitaillement|carburant/i.test(nutTxt), "l'onglet Nutrition garde dépense estimée + ravitaillement");
+ok(await page.locator("#njCard").count() === 0 && !/Journal alimentaire/.test(nutTxt), "journal alimentaire retiré (aucune trace dans la nutrition du jour)");
+ok(/Dépense estimée du jour/.test(nutTxt) && /Ravitaillement/i.test(nutTxt), "la nutrition réduite d'Aujourd'hui garde dépense estimée + ravitaillement (R24.9)");
 
 // ---- 7. R16.9 : la coche ✓ → feedback RPE → félicitations vit désormais dans Plan ----
 // (c'était la coche de Semaine ; celle de Plan basculait un booléen en silence.)

@@ -73,10 +73,11 @@ function exportICS(){try{
 // `txt()` est le point unique du texte : halo, et RÉTRÉCISSEMENT si la ligne dépasse la largeur
 // utile. Même sans (1), une chaîne trop longue ne peut plus sortir du cadre.
 const _EB_HALO="rgba(0,0,0,.78)";
-function _ebTxt(x,s,px,py,{size,weight=500,family="Space Grotesk",color="#fff",max=960,halo=true}){
+function _ebTxt(x,s,px,py,{size,weight=500,family="Space Grotesk",color="#fff",max=960,halo=true,center=0}){
   const set=(sz)=>{x.font=weight+" "+sz+"px '"+family+"',sans-serif";};
   let sz=size;set(sz);
   while(sz>12&&x.measureText(s).width>max){sz-=2;set(sz);}
+  if(center)px=Math.max(40,center/2-x.measureText(s).width/2); // R24.4 — centrage au point unique
   if(halo){x.save();x.shadowColor=_EB_HALO;x.shadowBlur=Math.max(8,Math.round(sz/3));
     x.fillStyle=color;x.fillText(s,px,py);x.fillText(s,px,py);x.restore();} // deux passes : le halo se densifie
   else{x.fillStyle=color;x.fillText(s,px,py);}
@@ -130,10 +131,13 @@ async function exportPNG(){try{
 // Pas de tracé GPS : l'import FIT actuel ne lit que le résumé de séance (pas les records
 // GPS point à point) — on ne promet pas de carte qu'on n'a pas.
 async function storyBlob(o,format){
-  // R23.4 — MEME DEFAUT QUE LA CARTE DE PLAN : ce canvas dessinait sans attendre les polices,
-  // donc avec les metriques du repli quand elles n'etaient pas encore chargees. Le fond degrade
-  // reste, lui : la demande de transparence portait sur la carte du PLAN, et transformer cette
-  // image-ci sans qu'on l'ait decide serait deborder de la demande.
+  // R24.4 (retour fondateur, 06/08 soir : « toujours pas de fond transparent type png pour le
+  // partage ? ») — la demande de R23.4 est ÉTENDUE à l'image post-séance : même contrat que la
+  // carte du plan. Fond dégradé SUPPRIMÉ, alpha conservé, texte blanc à halo sombre (la seule
+  // encre qui tienne sur une photo qu'on ne contrôle pas), et tout le texte passe par _ebTxt —
+  // le point unique halo + rétrécissement + centrage (le centrage vivait ici en copie manuelle).
+  // L'avatar garde ses couleurs sombres : il se pose sur une PLAQUE claire translucide, façon
+  // autocollant — sans elle, la silhouette disparaîtrait sur une photo de nuit.
   await _ebFontsPretes();
   // o : {sessionName, detail, sport, streak, badge:{icon,label}|null, avatarSVG, accent}
   // format (R6 — plusieurs types de partage) : "story" 1080×1920 (défaut) | "square" 1080×1080
@@ -141,43 +145,40 @@ async function storyBlob(o,format){
   const W=1080,H=sq?1080:1920,c=document.createElement("canvas");c.width=W;c.height=H;
   const x=c.getContext("2d");
   const acc=o.accent||"#ff7a1a";
-  const grad=x.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0,"#f1eadb");grad.addColorStop(1,acc+"33");
-  x.fillStyle=grad;x.fillRect(0,0,W,H);
+  // FOND TRANSPARENT : aucun fillRect plein cadre. Les deux barres d'accent restent (saturées,
+  // lisibles sur clair comme sur sombre) — ce sont elles qui « tiennent » la composition.
   x.fillStyle=acc;x.fillRect(0,0,W,18);x.fillRect(0,H-18,W,18);
-  x.fillStyle="#16130e";x.font="900 "+(sq?66:88)+"px 'Archivo Black',sans-serif";x.fillText(o.title||"SÉANCE FAITE ✔",70,sq?140:190);
-  x.fillStyle=acc;x.font="700 "+(sq?42:52)+"px 'Space Grotesk',sans-serif";
-  x.fillText((SPORTS[o.sport]?SPORTS[o.sport].ico+" "+SPORTS[o.sport].nom:o.sport||""),70,sq?210:290);
-  // avatar au centre (SVG → Image via blob URL, même origine)
+  _ebTxt(x,o.title||"SÉANCE FAITE ✔",70,sq?140:190,{size:sq?66:88,weight:900,family:"Archivo Black",max:W-140});
+  _ebTxt(x,(SPORTS[o.sport]?SPORTS[o.sport].ico+" "+SPORTS[o.sport].nom:o.sport||""),70,sq?210:290,{size:sq?42:52,weight:700,color:acc,max:W-140});
+  // avatar au centre (SVG → Image via blob URL, même origine), sur sa plaque claire
   if(o.avatarSVG){
     await new Promise(res=>{
       const b=new Blob([o.avatarSVG],{type:"image/svg+xml"});const u=URL.createObjectURL(b);
       const im=new Image();
-      const dims=sq?[W/2-170,250,340,374]:[W/2-260,360,520,572];
-      im.onload=()=>{x.drawImage(im,dims[0],dims[1],dims[2],dims[3]);URL.revokeObjectURL(u);res();};
+      // R25 — le triptyque (aspect 1,78) remplace peu à peu le carré (1,1) : les dimensions
+      // suivent l'aspect DÉCLARÉ par l'appelant au lieu d'être codées pour un seul format.
+      const asp=o.avatarAspect||1.1;
+      const dims=sq?[W/2-170,250,340,Math.round(340*asp)]:(asp>1.4?[W/2-210,300,420,Math.round(420*asp)]:[W/2-260,360,520,Math.round(520*asp)]);
+      im.onload=()=>{
+        const pad=26,r=32,[dx,dy,dw,dh]=dims;
+        x.save();x.fillStyle="rgba(246,239,227,.92)";
+        x.beginPath();
+        if(x.roundRect)x.roundRect(dx-pad,dy-pad,dw+2*pad,dh+2*pad,r);else x.rect(dx-pad,dy-pad,dw+2*pad,dh+2*pad);
+        x.fill();x.restore();
+        x.drawImage(im,dx,dy,dw,dh);URL.revokeObjectURL(u);res();
+      };
       im.onerror=()=>{URL.revokeObjectURL(u);res();};im.src=u;
     });
   }
-  x.fillStyle="#16130e";x.font="800 "+(sq?52:64)+"px 'Space Grotesk',sans-serif";
-  const name=(o.sessionName||"").slice(0,28);
-  x.fillText(name,Math.max(40,W/2-x.measureText(name).width/2),sq?700:1080);
-  if(o.detail){x.font="500 "+(sq?32:40)+"px 'Space Grotesk',sans-serif";x.fillStyle="#3f3a30";
-    const det=String(o.detail).split("—")[0].slice(0,44);
-    x.fillText(det,Math.max(40,W/2-x.measureText(det).width/2),sq?755:1150);}
+  _ebTxt(x,(o.sessionName||"").slice(0,28),0,sq?700:1080,{size:sq?52:64,weight:800,max:W-80,center:W});
+  if(o.detail)_ebTxt(x,String(o.detail).split("—")[0].slice(0,44),0,sq?755:1150,{size:sq?32:40,color:"rgba(255,255,255,.92)",max:W-80,center:W});
   let y=sq?840:1280;
-  if(o.streak>1){x.font="700 "+(sq?44:54)+"px 'Space Grotesk',sans-serif";x.fillStyle="#16130e";
-    const t="🔥 "+o.streak+" jours d'affilée";
-    x.fillText(t,Math.max(40,W/2-x.measureText(t).width/2),y);y+=sq?66:90;}
-  if(o.badge){x.font="700 "+(sq?40:50)+"px 'Space Grotesk',sans-serif";x.fillStyle="#8a6d00";
-    const t=o.badge.icon+" Badge débloqué : "+o.badge.label;
-    x.fillText(t.slice(0,40),Math.max(40,W/2-x.measureText(t.slice(0,40)).width/2),y);y+=sq?66:90;}
-  x.font="500 "+(sq?28:36)+"px 'Space Grotesk',sans-serif";x.fillStyle="#777";
+  if(o.streak>1){_ebTxt(x,"🔥 "+o.streak+" jours d'affilée",0,y,{size:sq?44:54,weight:700,max:W-80,center:W});y+=sq?66:90;}
+  if(o.badge){_ebTxt(x,(o.badge.icon+" Badge débloqué : "+o.badge.label).slice(0,40),0,y,{size:sq?40:50,weight:700,color:"#ffd76a",max:W-80,center:W});y+=sq?66:90;}
   const d=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
-  x.fillText(d,Math.max(40,W/2-x.measureText(d).width/2),y+20);
-  x.font="700 "+(sq?32:40)+"px 'Space Grotesk',sans-serif";x.fillStyle="#16130e";
-  x.fillText("ENDURABUILD",70,H-(sq?66:80));
-  x.font="500 "+(sq?24:30)+"px 'Space Grotesk',sans-serif";x.fillStyle="#777";
-  x.fillText("plan raisonné · chaque décision justifiée",70,H-(sq?34:40));
+  _ebTxt(x,d,0,y+20,{size:sq?28:36,color:"rgba(255,255,255,.85)",max:W-80,center:W});
+  _ebTxt(x,"ENDURABUILD",70,H-(sq?66:80),{size:sq?32:40,weight:700,max:W-140});
+  _ebTxt(x,"plan raisonné · chaque décision justifiée",70,H-(sq?34:40),{size:sq?24:30,color:"rgba(255,255,255,.85)",max:W-140});
   return new Promise(res=>c.toBlob(res,"image/png"));
 }
 /** Partage natif (feuille OS → Story Instagram/etc.) ; repli : téléchargement du PNG.

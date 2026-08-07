@@ -32,6 +32,21 @@ function loadChartSVG(plan){
   g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"#0002\" stroke-dasharray=\"3 3\"/>";
   g+=line(o=>yB(o.tsb),"#00a376",2)+line(o=>yL(o.ctl),"#2e6bff",2.5)+line(o=>yL(o.atl),"#ff7a1a",1.8);
   g+="<text x=\"2\" y=\""+(PT+8)+"\" font-size=\"9\" fill=\"#635b4a\">charge</text>";
+  // R24.6 (retour fondateur, 06/08) — « montre visuellement là où on en est » : un trait
+  // vertical à la semaine COURANTE, ancré sur les dates réelles du plan (R7), avec un point
+  // sur la courbe de fitness. Pas de marqueur hors plan (avant le départ ou après la course).
+  {
+    const tIso=todayISO();let wkNow=null;
+    plan.weeks.forEach(w=>w.days.forEach(d=>{if(d.date===tIso)wkNow=w.num;}));
+    const iNow=wkNow!=null?S2.findIndex(o=>o.week===wkNow):-1;
+    if(iNow>=0){
+      const xn=x(iNow);
+      g+="<line x1=\""+xn.toFixed(1)+"\" y1=\""+PT+"\" x2=\""+xn.toFixed(1)+"\" y2=\""+(PT+ih)+"\" stroke=\"#16130e\" stroke-width=\"1.5\" stroke-dasharray=\"2 3\"/>";
+      g+="<circle cx=\""+xn.toFixed(1)+"\" cy=\""+yL(S2[iNow].ctl).toFixed(1)+"\" r=\"3.5\" fill=\"#2e6bff\" stroke=\"#16130e\" stroke-width=\"1\"/>";
+      const gauche=xn>W-70;
+      g+="<text x=\""+(gauche?xn-5:xn+5).toFixed(1)+"\" y=\""+(PT+ih-4)+"\" font-size=\"9\" font-weight=\"bold\" fill=\"#16130e\""+(gauche?" text-anchor=\"end\"":"")+">tu es ici</text>";
+    }
+  }
   g+="</svg>";
   return g;
 }
@@ -166,6 +181,16 @@ function progressBarCardHTML(plan){
   }
   return h;
 }
+/** R24.5 — l'item qui porte le TEMPS de l'épreuve, pour l'afficher en tête de carte.
+ *  On ne CALCULE rien ici (R11.1 : le prédicteur est la seule source) : on repère l'item que
+ *  le moteur a déjà émis — « 🏁 Total estimé » (multisport, PW), « Temps estimé » (trail),
+ *  sinon le premier item dont la valeur est un temps (jamais des watts ni une vitesse). */
+function tempsTotalItem(items){
+  if(!Array.isArray(items)||!items.length)return null;
+  return items.find(x=>/Total estim|Temps estim/.test(String(x.leg)))
+    ||items.find(x=>/\d(h|')\d/.test(String(x.value))&&!/(W|km\/h|km-effort|m\/h|%)/.test(String(x.value)))
+    ||null;
+}
 function predictionCardHTML(plan){
   let h="";
   if(globalThis.EBV2&&globalThis.EBV2.predict){
@@ -182,6 +207,17 @@ function predictionCardHTML(plan){
         // la v\u00e9rit\u00e9 mesur\u00e9e) ; la forme PROJET\u00c9E dit o\u00f9 l'entra\u00eenement m\u00e8ne, avec sa date de
         // r\u00e9f\u00e9rence et sa confiance. Jamais l'une sans l'autre, jamais un chiffre nu.
         const pj=pr.projected;
+        // R24.5 (retour fondateur, 06/08) — LE TEMPS TOTAL D'ABORD : « si elle était courue
+        // aujourd'hui » et « à la fin du plan ». Les deux chiffres viennent des items DÉJÀ émis
+        // par le prédicteur ; le détail segment par segment passe en dépliable.
+        const tNow=tempsTotalItem(pr.items);
+        const tProj=(pj&&pj.applicable)?tempsTotalItem(pj.items):null;
+        const dRef=(pj&&pj.raceDate)?(fmtDay(pj.raceDate)+"/"+pj.raceDate.slice(0,4)):"la fin du plan";
+        if(tNow){
+          h+='<div style="margin:10px 0 2px;font-size:var(--fs-lg)">Courue <b>aujourd\u2019hui</b> : <b>'+tNow.value+'</b></div>';
+          if(tProj)h+='<div style="margin:2px 0 2px;font-size:var(--fs-lg)">\u00c0 <b>'+dRef+'</b>, plan suivi : <b>'+tProj.value+'</b> <span style="font-size:var(--fs-xs);color:var(--muted)">confiance '+pj.confidence+'</span></div>';
+          h+='<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer;font-weight:600">Le d\u00e9tail, segment par segment</summary>';
+        }
         h+='<div class="load-sub" style="margin:8px 0 2px;font-weight:600">Aujourd\u2019hui \u2014 ta forme mesur\u00e9e</div>';
         pr.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
         if(pj&&pj.applicable&&pj.items.length){
@@ -205,6 +241,7 @@ function predictionCardHTML(plan){
           const why=(pj.decisions||[]).filter(x=>/^P7-refus$|^P8$|^P6-sans-chrono$/.test(x.id))[0];
           if(why) h+='<div class="load-sub" style="margin:10px 0 0;color:var(--muted)"><b>Pas de chrono projet\u00e9</b> \u2014 '+why.why+'</div>';
         }
+        if(tNow)h+='</details>';
         h+='<div class="load-sub" style="color:var(--muted)">Fourchette, pas promesse \u2014 elle se resserre quand le plan est bien suivi (streak + charge accomplie).</div></div>';
       }
     }catch(e){console.warn(e);}

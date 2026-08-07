@@ -1810,6 +1810,36 @@ une propriété du LIVRÉ — elle ne suppose rien du chemin qui l'a produite �
 sur les 6 sports × 3 niveaux × {sans références, avec références}, un `@` vide n'étant jamais
 acceptable. **Vérifiée rouge contre la recette ci-dessus.**
 
+### O-30 · Les seuils XP 17-30 de l'avatar composite sont une extrapolation NON calibrée · ⏳ **OUVERT — dette déclarée, décision produit**
+
+R25 fait passer l'avatar de 16 à **30 niveaux par discipline**. Les 16 premiers seuils sont les
+seuils HISTORIQUES décalés d'un cran (le niveau 0 — silhouette nue — existe désormais) : pour un
+compte existant, même XP → même visuel, c'est la non-régression, elle se lit en XP et non en
+numéro de niveau, et elle est gardée par `demo:avatartri` (10 XP → niveau 1, 3 500 → 15).
+
+Les seuils **17 à 30** (4 500 … 120 000) n'ont, eux, AUCUNE base mesurée : ils prolongent la
+courbe des 16 premiers par une progression « qui a l'air raisonnable ». À 10 XP la séance
+(repos exclu), le niveau 30 d'une discipline demande ~12 000 séances validées — c'est
+délibérément « une carrière », mais personne n'a décidé si la carrière visée est de 5 ans ou de
+30. Le risque n'est pas technique : un palier trop lointain cesse de motiver (le teaser
+« prochain : … » devient un horizon), un palier trop proche brade l'or. La calibration demande
+des données d'usage réelles qui n'existent pas encore — la même exigence qui a fait retirer ma
+première calibration de P11 (un cas unique ne calibre rien, HERITAGE).
+
+Ce qui est VERROUILLÉ en attendant : les seuils sont épinglés (le bloc ci-dessous rougit si
+quelqu'un les bouge « en passant »), monotones, bornés à 30, et le niveau ne décroît jamais
+(l'XP est un cumul). Réviser les seuils 17-30 est une décision PRODUIT du fondateur, pas un
+correctif — le jour venu, la migration devra relire ce paragraphe : changer un seuil change le
+niveau AFFICHÉ d'athlètes existants, et l'avatar ne doit jamais se déshabiller (la règle
+d'AV3-C, étendue à une refonte de barème).
+
+```verify
+id: O-30
+quoi: les seuils 17-30 restent épinglés tels que déclarés (extrapolation assumée, pas calibrée)
+attendu: /10->1 · 3500->15 · 119999->29 · 120000->30 · monotone OUI/
+cmd: node -e "import('./src/app/bridge.ts').then(m=>{const L=m.avatarTriLevel;let mono=true;for(let x=0,p=0;x<=130000;x+=250){const l=L(x);if(l<p)mono=false;p=l;}console.log('10->'+L(10)+' · 3500->'+L(3500)+' · 119999->'+L(119999)+' · 120000->'+L(120000)+' · monotone '+(mono?'OUI':'non'));})"
+```
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas
@@ -1947,6 +1977,7 @@ Ce ne sont pas des bugs : ce sont des endroits où **on ne saurait pas** qu'il y
 | ~~A-3~~ | ~~`R14.3-b` n'a **aucun critère automatique**~~ | ✅ **FAUX depuis R15.2 — déplacée au §4** : les critères existent (`R15.2-A/B/C/D`, gate `audit:r15`) et sont verts. |
 | A-4 | Le monolithe `Coach_Pro_V1.5.html` a le moteur à jour mais son **UI est gelée à R4** | Les régressions d'interface introduites depuis (les onglets — 5 puis 4 en R16.9 —, carte Trail, étape terrain) ne s'y voient pas. C'est documenté et voulu — mais un utilisateur qui ouvrirait ce fichier verrait un produit d'il y a plusieurs lots. |
 | ~~A-5~~ | ~~**Aucune vérité terrain pour la projection R14/R14.1**~~ ✅ **PREMIER GESTE FAIT (03/08/2026)** | `endurabuild/js/projection-log.js` — le journal existe. **Une entrée par semaine ISO** (la projection ne bouge pas d'un jour à l'autre : l'adhérence est une fenêtre glissante de six semaines, P1 — journaliser chaque ouverture coûterait sept fois le stockage pour la même information), portant de quoi REFAIRE le calcul sans le code de l'époque : horizon, références mesurées qui ont servi d'ancre, `gainPct`, `gainBand`, adhérence, confiance, temps annoncés par discipline, et le MOTIF quand le moteur refuse de projeter (P8 — un refus est une donnée). `noteRaceResult()` referme la boucle au passage du jour J en attachant le temps réel à la projection journalisée **à son horizon d'origine** : `raceResult.predicted` ne contenait que la prédiction RECALCULÉE le jour J, laquelle ne dit rien de ce que le moteur annonçait quatre mois plus tôt. **Ce qui reste à faire est HUMAIN** : la calibration se fait hors ligne, sur les données exportées, et seulement quand une POPULATION aura couru — P11 a montré qu'un cas unique ne calibre rien (HERITAGE). ⚠ **Le journal n'est relu par AUCUNE partie du moteur, et c'est sa garde principale** : un journal qui influencerait la projection serait une seconde source de vérité (R11.1/R20.5/U9) et, pire, une boucle qui se confirme elle-même — le moteur calibré sur ses propres annonces mesurerait sa cohérence au lieu de sa justesse. `A5-B` l'asserte au caractère près (`tests/e2e/smoke-projlog.mjs`, 16ᵉ suite E2E), avec le critère « l'empreinte SAIT voir un changement » sans lequel elle serait satisfaite par une mesure aveugle. Suite **vérifiée rouge** (7 critères sur 11) en désactivant le journal.
+| A-7 | **Trois bancs datent encore leur `race_date` depuis `Date.now()` brut** — `bench_r15.cjs` (`iso(wk*7)`, trois usages), `audit_v6.mjs` (`isoIn`), `audit_amont.cjs` (« dans 3 semaines ») | La bombe A-6/R20.7 a mordu une **septième fois** le vendredi 07/08/2026 : `bench_r14_1.cjs` datait ainsi, et `R14.1-G` comparait deux plans dont les horizons ne basculaient pas le même jour — **rouge ce jour-là uniquement**, vert les six autres (vérifié en rejouant le banc aux sept dates). Corrigé pour r14.1 (ancré sur `courseDans`, vérifié vert les 7 jours). Les trois restants sont VERTS aujourd'hui et leurs critères semblent moins sensibles à l'horizon (refus mineurs, mutations d'entrée) — mais « semble » est exactement ce que cette famille punit. Les ancrer demande de re-vérifier chaque banc sur les sept jours, pas un `sed`. |
 | ~~A-6~~ | ~~**Dates absolues** dans le golden et les scripts~~ ✅ **FERMÉ (03/08/2026) — et l'application mécanique aurait cassé le golden** | Point unique `bench-dates.cjs`. **Mesuré : ce n'était pas de l'hygiène, c'était une échéance datée** — `banc_grand_public` et `bench_r13` MOURAIENT à +90 jours, `banc_invariants` à +200, sur une exception non rattrapée (`ENTREE_INVALIDE : au moins 22 semaines avant la course`) et non sur un défaut. Cinq bancs ancrés, **vérifiés verts à +400 jours**, contre-preuve faite (les mêmes, non ancrés, rouges à +90/+200). **Le golden reste en dates ABSOLUES, délibérément** : mesuré 0 écart à +200 jours — un golden doit être REPRODUCTIBLE, pas suivre le calendrier ; le rendre relatif l'aurait fait dériver chaque semaine. Sa seule exposition (l'horizon de `RACE_PASS_DATES`) est couverte par sa garde d'échéance, vérifiée déclenchante à +290 jours.
 
 ---

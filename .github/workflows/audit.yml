@@ -41,6 +41,7 @@ jobs:
       # effacer une mesure — alors qu'il ÉTAIT un ressenti auto-déclaré. Une déclaration ne
       # doit plus jamais peser comme une valeur comparée à la base de l'athlète.
       - run: npm run demo:hrv
+      - run: npm run demo:avatartri
       # Le bundle EBV2 committé dans le HTML doit correspondre aux sources src/
       - run: npm run check:app
       # O-24 — le service worker sert l'app en cache-first : tant que sa VERSION ne
