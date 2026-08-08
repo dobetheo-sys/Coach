@@ -9,11 +9,11 @@
 // arrivent après le bloc « Ta préparation », donc après le check-in dont ils dépendent.
 import { S, $, ebSave, fmtDay, todayISO } from "../state.js";
 import { checkinSlideshowHTML, bindCheckinSlideshow, pointLabelInline } from "./checkin.js";
-import { loadChartSVG, historyCardHTML, readinessCardHTML } from "./plan-view.js";
+import { loadChartSVG, bindLoadChart, historyCardHTML, readinessCardHTML } from "./plan-view.js";
 import { nutritionCardHTML, energyCardHTML } from "./tab-nutrition.js";
 import { momentHTML, painBannerHTML, bindPainBanner, sickToggleHTML, bindSickToggle, heroSessionHTML, feedbackModal, showCongrats } from "./session-life.js";
 import { readinessDoneToday, applyReadiness, fetchWeather } from "./readiness.js";
-import { dailyContentHTML } from "./daily-content.js";
+import { dailyContentHTML, microDefiHTML } from "./daily-content.js";
 import { scheduleDailyNotification, weeklyReviewHTML, missedSessionsCheck } from "../notifications.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan } from "./tabs.js";
@@ -182,6 +182,11 @@ export function renderTabToday(plan) {
   html += retestBannerHTML(today);
   html += missedSessionsCheck(plan);
   html += heroSessionHTML(plan, today); // la séance du jour, EN PREMIER
+  // Retour du fondateur (07/08/2026) : « j'aime bien l'idée de micro-défi, mets-le en valeur
+  // juste sous la séance du jour. » Sa propre carte (mêmes règles de sécurité qu'avant :
+  // jamais sous drapeau douleur, jamais la veille d'une séance de qualité, jamais un jour de
+  // repos), plutôt que noyé 1 fois sur 4 dans « contenu du jour » (dailyContentHTML, plus bas).
+  html += microDefiHTML(plan, today);
   html += todayValidateHTML(plan, today); // R6 — valider directement ici (feedback → partages)
   // R24.9 (retour fondateur, 06/08) — « l'onglet nutrition passe dans l'onglet jours mais de
   // manière réduite ». Le ravitaillement et la dépense sont des faits du JOUR : ils vivent ici,
@@ -209,7 +214,7 @@ export function renderTabToday(plan) {
   // déclaration de maladie, le journal des adaptations et la retouche de la forme du jour
   // n'ont jamais parlé du PLAN — ils parlent de la JOURNÉE. L'onglet Plan garde la saison
   // et les semaines ; ces cartes suivent le check-in dont elles dépendent.
-  html += dailyContentHTML(plan, today);       // R4.9 — anecdote / physio / stat perso / micro-défi
+  html += dailyContentHTML(plan, today);       // R4.9 — anecdote / physio / stat perso (le micro-défi a sa propre carte, plus haut)
   html += weeklyReviewHTML(plan);              // R4.10 — bilan hebdo (dimanche)
   // R24.7 — le réglage du rappel a quitté Aujourd'hui (retour fondateur, 06/08 : « je veux que
   // l'onglet rappel de séance bascule dans profil »). C'est un RÉGLAGE de l'app, pas un fait du
@@ -222,6 +227,7 @@ export function renderTabToday(plan) {
   html += "</div>";
   html += '<div style="text-align:center;margin:4px 0 10px"><button class="btn" id="tdRedoCheckin" type="button" style="font-size:var(--fs-sm);padding:8px 14px;min-height:44px">↻ Refaire mon ' + pointLabelInline() + '</button></div>';
   $("screen").innerHTML = html;
+  bindLoadChart();
   bindSickToggle(plan, today);
   // R24.9 — la météo affine le ravito en différé, sans re-rendre l'onglet ni défaire le repli.
   {
