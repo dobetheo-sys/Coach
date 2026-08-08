@@ -105,7 +105,10 @@ export function renderTabWeek(plan) {
       }
     } catch (e) {}
   }
-  html += '<div class="gw">' + weekHeaderHTML(w) + weekGridHTML(plan, w, today) + "</div>";
+  // Retour utilisateur (08/08/2026, 2e passage) : « Afficher d'office le détail des séances » —
+  // Semaine n'affiche jamais qu'UNE semaine (contrairement à Plan, qui peut en déplier N), donc
+  // le repli par défaut de U16 n'a pas la même justification ici. `openDetails=true`.
+  html += '<div class="gw">' + weekHeaderHTML(w) + weekGridHTML(plan, w, today, true) + "</div>";
   if (S._swapPending && S._swapPending.w === w.num)
     html += '<div class="load-sub" style="margin-top:6px">⇄ <b>' + S._swapPending.jour + "</b> sélectionné — touche le jour avec lequel l’échanger (ou re-touche ⇄ pour annuler).</div>";
   else

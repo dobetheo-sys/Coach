@@ -263,12 +263,17 @@ export function heroSessionHTML(plan, todayIso) {
     // §5 (R6) — dans le HÉROS d'Aujourd'hui, le POURQUOI est VISIBLE sans rien ouvrir : c'est
     // l'écran que l'athlète regarde tous les matins, et « pourquoi cette séance » y a plus de
     // valeur que la liste des blocs, qui reste à un clic.
+    // Retour utilisateur (08/08/2026, 2e passage) : « mettre plus en valeur le corps de
+    // séance, c'est le point d'intérêt de l'onglet ». Le détail technique restait replié
+    // par défaut — le même geste que Plan/Semaine (U16), pertinent là où plusieurs séances
+    // se lisent d'un coup, mais Aujourd'hui n'en montre QU'UNE (ou deux, brick) : c'est la
+    // raison d'être de l'onglet, elle s'ouvre d'office ici. `open` uniquement dans ce héros.
     body = res.sessions.map((x) => {
       const w = whyOf(x);
       return '<div style="display:flex;gap:10px;align-items:flex-start;margin-top:10px">' + discBadgeHTML(x.d)
         + '<div style="flex:1;min-width:0"><b>' + x.name + "</b>"
         + (w ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + w + "</div>" : "")
-        + (x.det ? '<details class="gd-sess" style="margin-top:4px"><summary>Le détail de la séance</summary>' + techListHTML(techOf(x)) + "</details>" : "")
+        + (x.det ? '<details class="gd-sess" open style="margin-top:4px"><summary>Le détail de la séance</summary>' + techListHTML(techOf(x)) + "</details>" : "")
         + "</div></div>";
     }).join("");
   } else {
@@ -280,5 +285,10 @@ export function heroSessionHTML(plan, todayIso) {
       + (nxt ? " Prochaine séance : <b>" + nxt.jour + " " + fmtDay(nxt.date) + "</b> · " + nxt.sessions.filter((s) => s.d !== "rs").map((s) => s.name).join(", ") : "")
       + "</div>";
   }
-  return '<div class="card">' + badge + '<div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayIso) + "</div>" + why + body + "</div>";
+  // Mesuré : la carte "Charge" (SVG) plus bas dans l'onglet pèse davantage en pixels que le
+  // héros, qui utilisait le même style `.card` générique que le reste — rien ne distinguait
+  // « la séance du jour » de « ta charge » ou de « ta prédiction ». Bordure et ombre à
+  // l'accent du sport (déjà utilisé par le bouton primaire et le badge de discipline) pour
+  // que l'œil s'y pose en premier, sans dupliquer une nouvelle classe CSS pour un seul rôle.
+  return '<div class="card" style="border-color:var(--acc);box-shadow:6px 6px 0 var(--acc)">' + badge + '<div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayIso) + "</div>" + why + body + "</div>";
 }
