@@ -7,7 +7,7 @@
 import { S, $, esc, ebSave, todayISO } from "../state.js";
 import { fetchWeather } from "./readiness.js";
 import {
-  estimateTotalNeed, estimatePeriodNeed, needSummary, nextEcheance, subscriptionView,
+  estimateTotalNeed, estimatePeriodDetail, nextEcheance, subscriptionView,
   shopPromptDue, submitOrder, CADENCES, FLAVOR_OPTIONS, FORMAT_OPTIONS,
 } from "../shop-order.js";
 // R6 — le journal alimentaire (Open Food Facts + CSV) est RETIRÉ sur décision
@@ -88,6 +88,27 @@ export function nutritionCardHTML(day, tempC) {
 // vue à chaque ouverture d'onglet comme le reste de ce module.
 let shopEditing = false;
 
+/** Rendu du détail séance par séance — en UNITÉS de produit (gels, boissons) et un prix,
+ *  pas en grammes bruts : c'est ainsi qu'on pense un ravitaillement à commander. Le nom du
+ *  produit et son prix viennent de CATALOG dès qu'un vrai fournisseur existe pour la
+ *  catégorie (REFERENCE_PRODUCTS.gel.unitPriceEUR sert de repli tant que non). */
+function periodDetailHTML(detail) {
+  if (!detail) return "Rien à couvrir sur la période qui vient — le prochain envoi s’ajustera aux semaines qui en ont besoin.";
+  const ligne = (s) => {
+    const parts = [];
+    if (s.gelUnits) parts.push(s.gelUnits + " × " + esc(s.gelName || "gel") + (s.gelName ? "" : " (30 g)"));
+    if (s.drinkUnits) parts.push(s.drinkUnits + " × boisson (500 ml)");
+    return "<li>" + esc(s.name) + " — " + parts.join(" + ") + "</li>";
+  };
+  const t = detail.totals;
+  const totalParts = [];
+  if (t.gelUnits) totalParts.push(t.gelUnits + " gel" + (t.gelUnits > 1 ? "s" : ""));
+  if (t.drinkUnits) totalParts.push(t.drinkUnits + " boisson" + (t.drinkUnits > 1 ? "s" : ""));
+  return '<ul style="margin:6px 0 6px 18px;padding:0">' + detail.sessions.map(ligne).join("") + "</ul>"
+    + "Total : <b>" + totalParts.join(" + ") + "</b> — <b>~" + t.priceEUR.toFixed(2).replace(".", ",") + " €</b>"
+    + '<br><span style="color:var(--muted)">Prix estimé sur une référence générique (30 g de glucides/gel, 500 ml/boisson) — remplacé par le vrai tarif dès qu’un fournisseur existe pour la catégorie.</span>';
+}
+
 function shopSubscriptionCardHTML(plan, today) {
   const sub = S.answers.shopSubscription || null;
   const view = subscriptionView(sub, today);
@@ -97,11 +118,13 @@ function shopSubscriptionCardHTML(plan, today) {
   if (abonneActif && !shopEditing) {
     const cad = CADENCES[sub.cadence] || CADENCES.hebdo;
     const echeance = nextEcheance(sub.startedAt, cad.days, today);
-    const need = estimatePeriodNeed(plan, wkg, cad.days, today);
-    const summary = needSummary(need);
+    const detail = estimatePeriodDetail(plan, wkg, cad.days, today);
     return '<div class="load-card" id="shopCard"><div class="load-title">🛒 Abonnement ravitaillement</div>'
       + '<div class="load-sub" style="margin-top:6px">' + esc(cad.label) + " · goût <b>" + esc(sub.flavor) + "</b> · format <b>" + esc(sub.format) + "</b>"
-      + (summary ? "<br>Prochain envoi : <b>" + esc(summary) + "</b> — livré avant le début de la période" : "<br>Rien à couvrir sur la période qui vient — le prochain envoi s'ajustera")
+      // Reformulé le 08/08/2026 (audit produit) : jamais une cible à couvrir, une PHOTOGRAPHIE
+      // de ce que chaque séance affiche déjà (nutritionCardHTML), traduite en produits à
+      // prévoir — même principe que la reformulation qui suit dans ce fichier.
+      + "<br>D’après ce que tes séances affichent déjà, prochain envoi (livré avant le début de la période) :" + periodDetailHTML(detail)
       + "<br>Prochaine échéance : <b>" + esc(echeance) + "</b>"
       + (view.status === "cancel_pending"
           ? '<br><span style="color:#8a6d00">Résiliation prévue le ' + esc(view.until) + " — le prochain envoi a lieu, rien après.</span>"
@@ -117,12 +140,12 @@ function shopSubscriptionCardHTML(plan, today) {
 
   // Formulaire : première proposition (aucun abonnement), reprise après résiliation, ou
   // édition d'un abonnement en cours.
-  if (!abonneActif && !estimateTotalNeed(plan, wkg)) return ""; // rien nulle part dans le plan
+  if (!abonneActif && !estimateTotalNeed(plan, wkg, today)) return ""; // rien nulle part dans le plan
   const due = !abonneActif && shopPromptDue(sub, S.answers.plan_start, today);
   const cadenceSel = (sub && sub.cadence) || "hebdo";
   const flavorSel = sub && sub.flavor;
   const formatSel = sub && sub.format;
-  const periodNeed = estimatePeriodNeed(plan, wkg, CADENCES[cadenceSel].days, today);
+  const periodDetail = estimatePeriodDetail(plan, wkg, CADENCES[cadenceSel].days, today);
   const submitLabel = abonneActif ? "Enregistrer les modifications" : (view.status === "cancelled" ? "Reprendre l’abonnement" : "Activer mon abonnement");
   return '<details class="load-card" id="shopCard"' + (due ? " open" : "") + '>'
     + '<summary class="load-title" style="cursor:pointer">🛒 ' + (abonneActif ? "Modifier l’abonnement" : "S’abonner au ravitaillement") + '</summary>'
@@ -131,13 +154,11 @@ function shopSubscriptionCardHTML(plan, today) {
     + Object.keys(CADENCES).map((k) => '<option value="' + k + '"' + (k === cadenceSel ? " selected" : "") + '>' + esc(CADENCES[k].label[0].toUpperCase() + CADENCES[k].label.slice(1)) + "</option>").join("")
     + '</select></div>'
     // Audit 08/08/2026 : « ta préparation demande environ X g » frôlait la cible d'apport que
-    // CLAUDE.md interdit tant qu'aucun diététicien n'a validé le module — un chiffre repris tel
-    // quel des séances (voir l'en-tête du fichier), reformulé en ordonnance d'achat. La carte
-    // reste une PHOTOGRAPHIE de ce que les séances affichent déjà, jamais une cible personnelle.
-    + '<div class="load-sub" style="margin-top:6px">' + (periodNeed
-        ? "Les séances de ta prochaine période représentent environ <b>" + esc(needSummary(periodNeed)) + "</b> — repris de ce que chaque séance affiche déjà."
-        : "Rien à couvrir sur la période qui vient — l’abonnement s’ajustera aux semaines qui en ont besoin.")
-    + "</div>"
+    // CLAUDE.md interdit tant qu'aucun diététicien n'a validé le module. Même principe ici,
+    // appliqué au détail en unités : la carte reste une PHOTOGRAPHIE de ce que chaque séance
+    // affiche déjà (nutritionCardHTML), traduite en produits à prévoir — jamais une cible
+    // personnelle à couvrir.
+    + '<div class="load-sub" style="margin-top:6px">D’après ce que tes séances affichent déjà, ta prochaine période : ' + periodDetailHTML(periodDetail) + "</div>"
     + '<div class="q"><span class="q-label">Goût préféré</span><select id="shopFlavor">'
     + FLAVOR_OPTIONS.map((f) => '<option value="' + esc(f) + '"' + (f === flavorSel ? " selected" : "") + '>' + esc(f) + "</option>").join("")
     + '</select></div>'

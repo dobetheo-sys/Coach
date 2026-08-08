@@ -13,7 +13,7 @@
 // PAS DE SERVEUR POUR L'INSTANT (décision du 04/08/2026, inchangée) : l'abonnement est une
 // INTENTION capturée localement, jamais une commande réelle — submitOrder() reste le seul
 // point d'intégration avec un futur backend.
-import { productCategoryFor, CATALOG, CATEGORY_LABELS } from "./shop-catalog.js";
+import { productCategoryFor, CATALOG } from "./shop-catalog.js";
 
 export const FLAVOR_OPTIONS = ["neutre", "fruits rouges", "citron", "cola", "peu d'importance"];
 export const FORMAT_OPTIONS = ["gel individuel", "flasque à recharger", "poudre à diluer"];
@@ -22,60 +22,76 @@ export const CADENCES = {
   mensuel: { days: 30, label: "chaque mois" },
 };
 
-const r50 = (v) => Math.max(0, Math.round(v / 50) * 50);
+/**
+ * RÉFÉRENCE DE TAILLE/PRIX (décision utilisateur 07/08/2026) — PAS un vrai fournisseur, une
+ * HYPOTHÈSE COHÉRENTE pour rendre le besoin en UNITÉS DE PRODUIT plutôt qu'en grammes bruts :
+ * c'est ainsi qu'un athlète pense son ravitaillement (« 3 gels », pas « 90 g »). Tailles
+ * alignées sur les gels/boissons d'effort du marché (25-40 g de glucides/gel, ~0,5 L par
+ * dose de boisson). `CATALOG` (shop-catalog.js) prend le relais dès qu'un vrai fournisseur
+ * existe pour la catégorie — nom ET prix, un seul endroit à mettre à jour (R11.1).
+ */
+export const REFERENCE_PRODUCTS = {
+  gel: { unitCarbsG: 30, unitPriceEUR: 1.5 },
+  drink: { unitMl: 500, unitPriceEUR: 0.9 },
+};
 
-function scanSessions(plan, weightKg, wantSession) {
+// On peut porter un bidon à vélo — pas en courant, pas en nageant. La boisson ne se propose
+// donc que sur les disciplines qui la rendent réellement transportable pendant l'effort.
+const DISCIPLINES_BOISSON = new Set(["bk", "br"]);
+
+const ceilUnits = (qty, unit) => (unit > 0 ? Math.max(0, Math.ceil(qty / unit)) : 0);
+
+/**
+ * Détail, séance par séance, du ravitaillement de la période [today, today+cadenceDays) —
+ * c'est ce que le prochain envoi doit couvrir, livré AVANT que la période commence. Chaque
+ * séance qui a besoin de glucides pendant l'effort (le moteur a déjà tranché : `carbsGPerH`
+ * non nul) reçoit son compte de gels ; les disciplines qui portent un bidon reçoivent en
+ * plus leur compte de boissons. Fenêtre volontairement large (36500 j) pour estimer sur TOUT
+ * le plan — c'est ce que `estimateTotalNeed` utilise pour savoir s'il y a quoi que ce soit à
+ * proposer.
+ */
+export function estimatePeriodDetail(plan, weightKg, cadenceDays, todayISO) {
   if (!plan || !Array.isArray(plan.weeks) || !globalThis.EBV2 || !globalThis.EBV2.sessionNutrition) return null;
-  const grams = {};
-  let any = false;
+  const from = Date.parse(todayISO + "T00:00:00Z");
+  const to = from + cadenceDays * 86400000;
+  const sessions = [];
   plan.weeks.forEach((w) => w.days.forEach((d) => {
+    if (!d.date) return;
+    const dMs = Date.parse(d.date + "T00:00:00Z");
+    if (dMs < from || dMs >= to) return;
     d.sessions.forEach((s) => {
       if (s.d === "rs" || s.race) return;
-      if (wantSession && !wantSession(d)) return;
       let a;
       try { a = globalThis.EBV2.sessionNutrition(s, { tempC: null, weightKg: weightKg || null }); } catch (e) { return; }
-      if (!a) return;
-      const cat = productCategoryFor(a.during);
-      if (!cat) return;
-      any = true;
-      const g = a.during.carbsGPerH;
-      const gph = (g[0] + g[1]) / 2;
-      grams[cat] = (grams[cat] || 0) + gph * ((s.min || 0) / 60);
+      if (!a || !a.during.carbsGPerH) return;
+      const hours = (s.min || 0) / 60;
+      const [c0, c1] = a.during.carbsGPerH;
+      const gelUnits = ceilUnits(((c0 + c1) / 2) * hours, REFERENCE_PRODUCTS.gel.unitCarbsG);
+      let drinkUnits = 0;
+      if (DISCIPLINES_BOISSON.has(s.d)) {
+        const [d0, d1] = a.during.drinkMlPerH;
+        drinkUnits = ceilUnits(((d0 + d1) / 2) * hours, REFERENCE_PRODUCTS.drink.unitMl);
+      }
+      if (!gelUnits && !drinkUnits) return;
+      const cat = productCategoryFor(a.during); // toujours non-null ici : carbsGPerH l'implique
+      const gelName = CATALOG[cat] ? CATALOG[cat].name : null; // null = référence générique
+      const gelPrice = CATALOG[cat] ? CATALOG[cat].priceEUR : REFERENCE_PRODUCTS.gel.unitPriceEUR;
+      sessions.push({ name: s.name, date: d.date, gelUnits, gelName, gelPrice, drinkUnits });
     });
   }));
-  if (!any) return null;
-  const out = {};
-  for (const k in grams) out[k] = r50(grams[k]);
-  return out;
+  if (!sessions.length) return null;
+  const totals = sessions.reduce((t, s) => ({
+    gelUnits: t.gelUnits + s.gelUnits,
+    drinkUnits: t.drinkUnits + s.drinkUnits,
+    priceEUR: t.priceEUR + s.gelUnits * s.gelPrice + s.drinkUnits * REFERENCE_PRODUCTS.drink.unitPriceEUR,
+  }), { gelUnits: 0, drinkUnits: 0, priceEUR: 0 });
+  totals.priceEUR = Math.round(totals.priceEUR * 100) / 100;
+  return { sessions, totals };
 }
 
 /** Y a-t-il, n'importe où dans le plan, de quoi justifier de proposer l'abonnement ? */
-export function estimateTotalNeed(plan, weightKg) {
-  return scanSessions(plan, weightKg, null);
-}
-
-/**
- * Besoin glucidique de la PROCHAINE période [today, today+cadenceDays), par catégorie, en
- * grammes — c'est ce que le prochain envoi doit couvrir, livré AVANT que la période commence.
- */
-export function estimatePeriodNeed(plan, weightKg, cadenceDays, todayISO) {
-  const from = Date.parse(todayISO + "T00:00:00Z");
-  const to = from + cadenceDays * 86400000;
-  return scanSessions(plan, weightKg, (d) => {
-    if (!d.date) return false;
-    const dMs = Date.parse(d.date + "T00:00:00Z");
-    return dMs >= from && dMs < to;
-  });
-}
-
-/** Résumé lisible d'un besoin { gel_standard: 1200, ... } — porte le nom du produit réel dès
- *  qu'un fournisseur existe dans CATALOG (R11.1 : un seul endroit à mettre à jour). */
-export function needSummary(grams) {
-  if (!grams) return "";
-  return Object.keys(grams).map((k) => {
-    const base = grams[k] + " g · " + CATEGORY_LABELS[k];
-    return CATALOG[k] ? base + " (" + CATALOG[k].name + ")" : base;
-  }).join(" · ");
+export function estimateTotalNeed(plan, weightKg, todayISO) {
+  return estimatePeriodDetail(plan, weightKg, 36500, todayISO);
 }
 
 /**
