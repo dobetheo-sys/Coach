@@ -13,7 +13,12 @@ import { generateAudited } from "../generator/repairLoop.ts";
 import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
-import { predictRace, courseProfileOf, legProfileOf, type Prediction } from "../engine/predictor.ts";
+import {
+  predictRace, courseProfileOf, legProfileOf, type Prediction,
+  SWIM_RACE, TRI_SWIM, TRI_BIKE, TRI_BIKE_KM, TRI_RUN, TRI_TRANSITION, bikeIFShift, riegelSecWith,
+} from "../engine/predictor.ts";
+import { bikeTimeEstimate, assumedSetup } from "../engine/cyclingSpeed.ts";
+import { DUA_RUN1, DUA_BIKE, DUA_RUN2, DUA_BIKE_POWER, DUA_BIKE_PREFATIGUE, DUA_TRANSITION } from "../sports/duathlon/tables.ts";
 import { adherenceWindow, taperIsConform, margeOf } from "../engine/projection.ts";
 import { onSessionIngested } from "../coach/proactiveCoach.ts";
 import { InAppSink } from "../coach/notificationSink.ts";
@@ -29,7 +34,7 @@ import { planTroncature, semainesRequises, PLANCHER_ABSOLU_SEM, type TruncatePla
 import { nutritionForSession } from "../nutrition/nutritionCalculator.ts";
 import { dailyEnergy, energyRefusalNotice, type DailyEnergyEstimate } from "../nutrition/energyEstimator.ts";
 import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
-import { assessFeasibility } from "../engine/feasibility.ts";
+import { assessFeasibility, assessFeasibilityMulti, type FeasibilityLeg } from "../engine/feasibility.ts";
 import { weekDistances } from "../engine/weekDistances.ts";
 
 interface AppAnswers extends Record<string, unknown> {
@@ -785,6 +790,89 @@ function localTodayISO(): string {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 
+/** Références mesurées, lues des réponses — même lecture que `predictV2`/`perfTierV2`
+ *  (E1/E2 : un seul PARSEUR d'allure, `parsePaceSec` — cette lecture answers→refs, elle, est
+ *  un motif répété trois fois dans ce pont, pas encore factorisé ; ce n'est pas cette entrée
+ *  qui doit le faire). */
+function refsFromAnswers(answers: AppAnswers): { ftp: number; thrPace: number; css: number } {
+  return {
+    ftp: answers.ftp_known === "oui" ? parseInt(String(answers.ftp || "")) || 0 : 0,
+    thrPace: answers.pace_known === "oui" ? parsePaceSec(answers.pace, "run") : 0,
+    css: answers.css_known === "oui" ? parsePaceSec(answers.css, "swim") : 0,
+  };
+}
+
+/**
+ * RVm — LES SEGMENTS D'UN FORMAT MULTI-DISCIPLINE, pour `assessFeasibilityMulti`.
+ *
+ * Chaque temps ACTUEL est calculé avec EXACTEMENT les briques que `predictSwim`/`predictTri`/
+ * `predictDuathlon` (`src/sports/<sport>/index.ts`) appellent pour construire la prédiction du jour —
+ * jamais une resaisie du modèle (R11.1). `predictRace` ne les expose pas telles quelles (ses
+ * items ne portent qu'un texte déjà formaté, jamais le nombre de secondes) : reparser une
+ * chaîne comme « 1h23–1h31 » serait fragile, donc ce pont rappelle les mêmes fonctions
+ * EXPORTÉES, au même titre qu'un troisième module de sport le ferait.
+ *
+ * Volontairement SANS le relief/l'environnement (profil de parcours, milieu de nage,
+ * combinaison) : le verdict compare une forme MESURÉE à un objectif, pas une fourchette de
+ * course prête à afficher — la version course à pied (`assessFeasibility`) fait le même choix,
+ * elle n'appelle jamais `runRange`.
+ */
+function legsForFeasibility(sport: string, format: string, answers: AppAnswers)
+  : { legs: FeasibilityLeg[]; fixedSec: number } | null {
+  const refs = refsFromAnswers(answers);
+  const relief = courseProfileOf(answers as never);
+  const bikeRelief = legProfileOf(answers as never, "bike") ?? relief;
+  const athleteKg = readNumber(answers.weight);
+
+  if (sport === "swim") {
+    const sw = SWIM_RACE[format];
+    if (!sw || !(refs.css > 0)) return null;
+    return { legs: [{ key: "swim", label: "Natation " + sw.dist + "m", refType: "css", refValue: refs.css,
+      currentSec: (sw.dist / 100) * refs.css * sw.factor }], fixedSec: 0 };
+  }
+
+  if (sport === "tri") {
+    const sw = TRI_SWIM[format], bk = TRI_BIKE[format], rn = TRI_RUN[format], tr = TRI_TRANSITION[format];
+    if (!sw || !bk || !rn || !tr) return null;
+    const legs: FeasibilityLeg[] = [];
+    if (refs.css > 0) legs.push({ key: "swim", label: "Natation " + sw.dist + "m", refType: "css", refValue: refs.css,
+      currentSec: (sw.dist / 100) * refs.css * sw.factor });
+    if (refs.ftp > 0 && athleteKg) {
+      const shift = bikeIFShift(bikeRelief);
+      const est = bikeTimeEstimate(TRI_BIKE_KM[format], refs.ftp * (bk.lo + shift), refs.ftp * (bk.hi + shift),
+        athleteKg, assumedSetup("tri", format), bikeRelief);
+      if (est) legs.push({ key: "bike", label: "Vélo " + TRI_BIKE_KM[format] + "km", refType: "ftp",
+        refValue: refs.ftp, currentSec: (est.lo + est.hi) / 2 });
+    }
+    if (refs.thrPace > 0) legs.push({ key: "run", label: "CAP " + rn.km + "km", refType: "thrPace",
+      refValue: refs.thrPace, currentSec: riegelSecWith(1.06, refs.thrPace, rn.km) * rn.fatigue });
+    return legs.length ? { legs, fixedSec: tr.t1 + tr.t2 } : null;
+  }
+
+  if (sport === "duathlon") {
+    const r1 = DUA_RUN1[format], bk = DUA_BIKE[format], pw = DUA_BIKE_POWER[format], r2 = DUA_RUN2[format], tr = DUA_TRANSITION[format];
+    if (!r1 || !bk || !pw || !r2 || !tr) return null;
+    const pf = DUA_BIKE_PREFATIGUE[format] ?? 0.97;
+    const legs: FeasibilityLeg[] = [];
+    if (refs.thrPace > 0) {
+      const t1 = riegelSecWith(1.06, refs.thrPace, r1.km);
+      const t2 = riegelSecWith(1.06, refs.thrPace, r2.km) * r2.fatigue;
+      legs.push({ key: "run", label: "Course (R1+R2, " + (r1.km + r2.km).toFixed(1) + "km)", refType: "thrPace",
+        refValue: refs.thrPace, currentSec: t1 + t2 });
+    }
+    if (refs.ftp > 0 && athleteKg) {
+      const shift = bikeIFShift(bikeRelief);
+      const est = bikeTimeEstimate(bk.km, refs.ftp * (pw.lo + shift) * pf, refs.ftp * (pw.hi + shift) * pf,
+        athleteKg, assumedSetup("duathlon", format), bikeRelief);
+      if (est) legs.push({ key: "bike", label: "Vélo " + bk.km + "km", refType: "ftp", refValue: refs.ftp,
+        currentSec: (est.lo + est.hi) / 2 });
+    }
+    return legs.length ? { legs, fixedSec: tr.t1 + tr.t2 } : null;
+  }
+
+  return null;
+}
+
 /**
  * RV — LE DIAGNOSTIC DE FAISABILITÉ, exposé à l'UI.
  *
@@ -795,24 +883,49 @@ function localTodayISO(): string {
  * manifeste qui écrase les quatre premières. `RV-INVARIANT` (`demo:faisabilite`) mesure cette
  * propriété au bit près, et `RV-UI` (E2E) la remesure sur le plan affiché.
  *
- * Course à pied seulement, pour l'instant : le prototype inverse Riegel, qui ne s'applique ni
- * au trail (T-8) ni aux épreuves à enchaînements. Sur les autres sports il rend `null` — pas un
- * verdict prudent, RIEN : une carte absente se comprend, un verdict tiède se croit.
+ * Audit 08/08/2026 — étendu de la course seule à swim/tri/duathlon (`assessFeasibilityMulti`,
+ * `legsForFeasibility`). Le vélo seul et le trail restent hors périmètre et le disent :
+ * · vélo — aucun format ne porte de DISTANCE connue (PW l'a déjà nommé : « le questionnaire ne
+ *   demande pas la distance d'une cyclosportive ») donc aucun chrono actuel à comparer ;
+ * · trail/swimrun — leur modèle de temps n'est pas une combinaison marge/plafond par référence
+ *   mesurée (trail : temps à plat + VAM ; swimrun : quota de minutes par segment) — les
+ *   étendre demande sa propre inversion, pas cette généralisation-ci. Suivi dans
+ *   `BUGS_OUVERTS.md`.
  */
 export function feasibilityV2(sport: string, answers: AppAnswers, plan?: V1Plan & { _v2?: V2PlanMeta }) {
-  if (sport !== "run") return null;
+  if (!["run", "swim", "tri", "duathlon"].includes(sport)) return null;
   const targetSec = parseChronoSec(answers.target_time);
   if (targetSec == null) return null;
   const p = plan ?? generatePlan(toProfile(sport, answers)).plan;
   const today = localTodayISO();
   const horizonWeeks = weeksUntilRace(p, answers, today);
-  return assessFeasibility({
-    format: String(answers.format || ""),
+  const format = String(answers.format || "");
+
+  if (sport === "run") {
+    return assessFeasibility({
+      format,
+      targetSec,
+      thrPaceSecPerKm: answers.pace_known === "oui" ? parsePaceSec(answers.pace, "run") : 0,
+      horizonWeeks: horizonWeeks ?? 0,
+      runHoursPerWeek: readNumber(answers.vol_recent),
+      prescribedMeanH: prescribedMeanHours(p),
+      weightKg: readNumber(answers.weight),
+      sex: typeof answers.sex === "string" ? answers.sex : null,
+      age: readNumber(answers.age),
+      trainingStructure: String(answers.training_structure || "") || null,
+      history: String(answers.history || "") || undefined,
+    });
+  }
+
+  const composed = legsForFeasibility(sport, format, answers);
+  if (!composed) return null;
+  return assessFeasibilityMulti({
     targetSec,
-    thrPaceSecPerKm: answers.pace_known === "oui" ? parsePaceSec(answers.pace, "run") : 0,
+    legs: composed.legs,
+    fixedSec: composed.fixedSec,
     horizonWeeks: horizonWeeks ?? 0,
-    runHoursPerWeek: readNumber(answers.vol_recent),
     prescribedMeanH: prescribedMeanHours(p),
+    volRecentH: readNumber(answers.vol_recent),
     weightKg: readNumber(answers.weight),
     sex: typeof answers.sex === "string" ? answers.sex : null,
     age: readNumber(answers.age),

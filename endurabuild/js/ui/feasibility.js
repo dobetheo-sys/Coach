@@ -22,9 +22,15 @@ const V = {
   indeterminable: { pic: "⚪️", titre: "Pas assez d'éléments" },
 };
 
+// Audit 08/08/2026 — étendu de la course seule à swim/tri/duathlon (le moteur sait désormais
+// composer un chrono actuel multi-segments, `src/app/bridge.ts` « RVm »). Vélo seul et trail
+// restent hors périmètre : aucun format vélo ne porte de distance connue, et le modèle de temps
+// du trail/swimrun n'est pas une composition marge/plafond par référence mesurée.
+const RV_SPORTS = ["run", "swim", "tri", "duathlon"];
+
 /** Le sport et l'état sous lesquels la carte a un sens. Ailleurs : elle n'existe pas. */
 export function feasibilityApplies() {
-  return S.sport === "run" && !!globalThis.EBV2 && typeof globalThis.EBV2.feasibility === "function";
+  return RV_SPORTS.includes(S.sport) && !!globalThis.EBV2 && typeof globalThis.EBV2.feasibility === "function";
 }
 
 export function feasibilityCardHTML(plan) {
@@ -50,7 +56,7 @@ export function feasibilityCardHTML(plan) {
     + '<input type="text" inputmode="numeric" data-input="target_time" id="rvIn" value="' + esc(saisi) + '" placeholder="ex. 3:30:00"></div>';
 
   let res = null;
-  try { if (saisi) res = globalThis.EBV2.feasibility("run", S.answers, plan); } catch (e) { res = null; }
+  try { if (saisi) res = globalThis.EBV2.feasibility(S.sport, S.answers, plan); } catch (e) { res = null; }
   if (saisi && !res) {
     html += '<div class="warn">Ce chrono n’est pas lisible. Écris-le en <b>h:mm:ss</b> (3:30:00) '
       + "ou en <b>mm:ss</b> (46:30).</div>";
