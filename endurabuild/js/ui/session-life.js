@@ -181,6 +181,17 @@ export function momentHTML(plan, todayIso) {
   return "";
 }
 
+/** La date de FIN du plan : la course visée si elle est connue, sinon le dernier jour
+ *  calendaire de la dernière semaine. Point unique (R11.1) — c'était déjà calculé une fois
+ *  dans `planDeadlineHTML` (tab-profile.js) et redevenu nécessaire pour proposer
+ *  l'abonnement ravitaillement en fin de plan (retour utilisateur, 08/08/2026). */
+export function planEndDate(plan, answers) {
+  if (answers && answers.race_date) return answers.race_date;
+  const lastW = plan && plan.weeks && plan.weeks[plan.weeks.length - 1];
+  const lastD = lastW && lastW.days[lastW.days.length - 1];
+  return (lastD && lastD.date) || "";
+}
+
 // R4.5 — bandeau douleur PERMANENT tant que le drapeau n'est pas levé : la qualité est
 // verrouillée par l'ajusteur (rouge forcé), la série est gelée, on recommande médecin/kiné.
 // Levée = action explicite + question de confirmation.

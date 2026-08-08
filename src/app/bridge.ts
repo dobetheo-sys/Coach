@@ -514,6 +514,25 @@ export function avatarTriCreditsOf(d: string | undefined): [AvatarDiscipline, nu
   // Repli pour l'inclassable (renfo…) — décision n°1 : `course` par défaut, jamais perdu.
   return [["course", 10]];
 }
+/** XP → état complet (niveau, XP dans le niveau, XP jusqu'au prochain) — la SEULE dérivation
+ *  du barème, utilisée aussi bien pour un plan que pour un total agrégé (`avatarTriMulti`). */
+function avatarTriFromXp(xp: Record<AvatarDiscipline, number>): AvatarTriState {
+  const etat = (total: number): AvatarDiscState => {
+    const level = avatarTriLevel(total);
+    const cur = level > 0 ? AVATAR_TRI_XP[level - 1] : 0;
+    const next = level < 30 ? AVATAR_TRI_XP[level] : null;
+    const xpInLevel = total - cur;
+    const xpToNext = next !== null ? next - cur : 0;
+    return {
+      xp: total, level, xpInLevel, xpToNext,
+      progressPct: next !== null ? Math.max(0, Math.min(100, Math.round((xpInLevel / xpToNext) * 100))) : 100,
+    };
+  };
+  const natation = etat(xp.natation), velo = etat(xp.velo), course = etat(xp.course);
+  const meneuse: AvatarDiscipline = velo.xp >= natation.xp && velo.xp >= course.xp ? "velo"
+    : natation.xp >= course.xp ? "natation" : "course";
+  return { natation, velo, course, meneuse, legende: natation.level >= 30 && velo.level >= 30 && course.level >= 30 };
+}
 export function avatarTriV2(plan: V1Plan, answers: AppAnswers, todayISO: string): AvatarTriState {
   const doneRec = (answers.done as Record<string, boolean>) || {};
   const xp: Record<AvatarDiscipline, number> = { natation: 0, velo: 0, course: 0 };
@@ -527,21 +546,29 @@ export function avatarTriV2(plan: V1Plan, answers: AppAnswers, todayISO: string)
   const pg = progressV2(plan, answers, todayISO);
   const regularWeeks = pg.weekly.filter((w) => w.complete && w.ok).length;
   const tiers = Math.floor((badges.length * 80 + regularWeeks * 120) / 3);
-  const etat = (total: number): AvatarDiscState => {
-    const level = avatarTriLevel(total);
-    const cur = level > 0 ? AVATAR_TRI_XP[level - 1] : 0;
-    const next = level < 30 ? AVATAR_TRI_XP[level] : null;
-    const xpInLevel = total - cur;
-    const xpToNext = next !== null ? next - cur : 0;
-    return {
-      xp: total, level, xpInLevel, xpToNext,
-      progressPct: next !== null ? Math.max(0, Math.min(100, Math.round((xpInLevel / xpToNext) * 100))) : 100,
-    };
-  };
-  const natation = etat(xp.natation + tiers), velo = etat(xp.velo + tiers), course = etat(xp.course + tiers);
-  const meneuse: AvatarDiscipline = velo.xp >= natation.xp && velo.xp >= course.xp ? "velo"
-    : natation.xp >= course.xp ? "natation" : "course";
-  return { natation, velo, course, meneuse, legende: natation.level >= 30 && velo.level >= 30 && course.level >= 30 };
+  return avatarTriFromXp({ natation: xp.natation + tiers, velo: xp.velo + tiers, course: xp.course + tiers });
+}
+/**
+ * Retour utilisateur (08/08/2026) : « l'XP de l'avatar n'est pas conservé en changeant de
+ * plan ». `avatarTriV2` lit `answers.done`, qui est le journal du plan ACTIF SEULEMENT
+ * (`S.answers`, remplacé par `ebActivate` à chaque bascule) — cohérent avec « chaque plan
+ * garde son propre journal », mais ça contredit la promesse même de l'avatar : « XP
+ * cumulatif, jamais décroissant » (§ décisions fondateur ci-dessus) décrit LA PERSONNE, pas
+ * le plan affiché. Un athlète qui crée un deuxième plan ne doit pas voir son avatar repartir
+ * de zéro. Somme les XP (tiers compris) de CHAQUE plan de l'athlète — `avatarTriV2` sait déjà
+ * calculer un total honnête pour un plan, on ne le recalcule pas une seconde fois — puis
+ * redérive les niveaux depuis ce total via la même fonction que le calcul mono-plan
+ * (`avatarTriFromXp`, jamais un second barème).
+ */
+export function avatarTriMulti(entries: { plan: V1Plan; answers: AppAnswers }[], todayISO: string): AvatarTriState {
+  const total: Record<AvatarDiscipline, number> = { natation: 0, velo: 0, course: 0 };
+  for (const e of entries) {
+    const one = avatarTriV2(e.plan, e.answers, todayISO);
+    total.natation += one.natation.xp;
+    total.velo += one.velo.xp;
+    total.course += one.course.xp;
+  }
+  return avatarTriFromXp(total);
 }
 
 /**
@@ -1008,6 +1035,9 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // R25 — l'avatar composite (3 jauges 0-30). `avatar` (16 niveaux) reste exposé tel quel
   // tant que le rendu composite n'a pas remplacé l'ancien (non-régression de l'étape 3).
   avatarTri: avatarTriV2,
+  // Retour utilisateur (08/08/2026) : l'XP ne doit pas repartir de zéro au changement de
+  // plan — somme les XP (tiers compris) de tous les plans de l'athlète (voir sa définition).
+  avatarTriMulti,
   perfTier: perfTierV2,
   adherence: adherenceV2,
   disciplines: DISCIPLINE_REGISTRY,

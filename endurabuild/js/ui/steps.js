@@ -211,7 +211,18 @@ function buildFreeSteps(){
     steps.push({id:"terrain",title:(S.sport==="bike"||S.sport==="duathlon")?"Le parcours":"Le terrain",eyebrow:"Gratuit — Où ça se joue",
       why:S.sport==="duathlon"?"Le profil du parcours change tout en duathlon : un vélo vallonné ponctionne les jambes avant le R2, un parcours plat récompense la puissance constante."
         :S.sport==="bike"?"Plat ou montagne ne se préparent pas pareil : force, braquets, pacing changent.":"Route, trail ou piste : l'impact, le dénivelé et le type de travail diffèrent.",
-      render(){return '<div class="q"><span class="q-label">Ton terrain principal</span><div class="opts" data-key="terrain">'+cfg.terrains.map(t=>opt(t[0],t[1])).join("")+'</div></div>';},
+      render(){
+        // Retour utilisateur (08/08/2026) : « pas de détail pour vallonné et montagneux » —
+        // l'aide chiffrée existait déjà au Profil (carte « Ta course », `raceCardHTML`) mais
+        // pas ICI, sur la même question posée en premier au questionnaire. Chiffres identiques
+        // à ceux réellement appliqués (RELIEF_BIKE_IF côté vélo, RELIEF côté course à pied).
+        const sub = S.sport==="duathlon"
+          ? "Vallonné réduit la puissance cible à vélo et élargit le temps de course à pied estimé. Montagneux accentue les deux — c'est la même réponse qui joue sur les deux disciplines."
+          : cfg.terrains.some(t=>t[0]==="vallonne")
+            ? "Vallonné recule la puissance cible d'environ 1 point d'intensité par rapport au plat, montagneux d'environ 2,5 points — le relief coûte plus cher en watts qu'en apparence."
+            : "";
+        return '<div class="q"><span class="q-label">Ton terrain principal</span>'+(sub?'<div class="q-sub">'+sub+'</div>':"")+'<div class="opts" data-key="terrain">'+cfg.terrains.map(t=>opt(t[0],t[1])).join("")+'</div></div>';
+      },
       valid(a){return a.terrain;}});
   }
   if(cfg.milieux){
@@ -245,10 +256,10 @@ function buildFreeSteps(){
           + '<div class="q-sub">Le bassin est plus rapide que l\'eau libre (ni navigation, ni houle). Un courant, lui, peut porter autant que freiner — on élargira la fourchette dans les deux sens.</div>'
           + '<div class="opts" data-key="leg_swim_env">'+opt("bassin","Bassin")+opt("lac","Lac / eau libre calme")+opt("mer_calme","Mer calme")+opt("mer_agitee","Mer agitée")+opt("eau_vive","Eau vive (courant)")+'</div></div>';
         if (velo) h += '<div class="q"><span class="q-label">Le parcours vélo ?</span>'
-          + '<div class="q-sub">Sur du relief, le coût suit la puissance NORMALISÉE : viser la bande du plat revient à rouler plus dur qu\'on ne croit, et ça se paie à pied.</div>'
+          + '<div class="q-sub">Sur du relief, le coût suit la puissance NORMALISÉE : viser la bande du plat revient à rouler plus dur qu\'on ne croit, et ça se paie à pied. Vallonné recule la puissance cible d\'environ 1 point d\'intensité, montagneux d\'environ 2,5 points.</div>'
           + '<div class="opts" data-key="leg_bike_prof">'+opt("plat","Plat")+opt("vallonne","Vallonné")+opt("montagne","Montagneux")+'</div></div>';
         h += '<div class="q"><span class="q-label">Le parcours à pied ?</span>'
-          + '<div class="q-sub">Le relief ralentit ET rend le chrono moins prévisible : la fourchette monte et s\'élargit.</div>'
+          + '<div class="q-sub">Le relief ralentit ET rend le chrono moins prévisible : la fourchette monte et s\'élargit. Vallonné coûte environ 3 à 6 % de temps en plus qu\'un parcours plat, montagneux 8 à 15 %.</div>'
           + '<div class="opts" data-key="leg_run_prof">'+opt("plat","Plat")+opt("vallonne","Vallonné")+opt("montagne","Montagneux")+'</div></div>';
         return h;
       },

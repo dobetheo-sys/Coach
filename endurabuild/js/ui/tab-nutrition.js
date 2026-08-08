@@ -8,8 +8,9 @@ import { S, $, esc, ebSave, todayISO } from "../state.js";
 import { fetchWeather } from "./readiness.js";
 import {
   estimateTotalNeed, estimatePeriodDetail, nextEcheance, subscriptionView,
-  shopPromptDue, submitOrder, CADENCES, FLAVOR_OPTIONS, FORMAT_OPTIONS,
+  shopPromptDue, shopEndOfPlanPromptDue, submitOrder, CADENCES, FLAVOR_OPTIONS, FORMAT_OPTIONS,
 } from "../shop-order.js";
+import { planEndDate } from "./session-life.js";
 // R6 — le journal alimentaire (Open Food Facts + CSV) est RETIRÉ sur décision
 // utilisateur : trop de saisie pour trop peu de valeur ; l'onglet reste
 // estimations + ravitaillement. (Les données foodLog éventuelles restent
@@ -154,16 +155,26 @@ function shopSubscriptionCardHTML(plan, today) {
 
   // Formulaire : première proposition (aucun abonnement), reprise après résiliation, ou
   // édition d'un abonnement en cours.
-  if (!abonneActif && !estimateTotalNeed(plan, wkg, today)) return ""; // rien nulle part dans le plan
-  const due = !abonneActif && shopPromptDue(sub, S.answers.plan_start, today);
+  //
+  // Retour utilisateur (08/08/2026) : « suggérer à l'athlète d'être accompagné avec nos
+  // gels dès la fin du plan ». `estimateTotalNeed` ne trouve plus rien à chiffrer une fois
+  // le plan terminé (plus aucune séance future) — c'est exactement le moment où la carte
+  // disparaissait, alors que c'est celui où la question a un sens. `planOver` la maintient
+  // visible (même signal de date que le bandeau d'affûtage/jour J, `planEndDate`, R11.1).
+  const endDate = planEndDate(plan, S.answers);
+  const planOver = !!endDate && today >= endDate;
+  if (!abonneActif && !estimateTotalNeed(plan, wkg, today) && !planOver) return ""; // rien nulle part dans le plan, et le plan n'est pas fini
+  const due = !abonneActif && (shopPromptDue(sub, S.answers.plan_start, today) || shopEndOfPlanPromptDue(sub, endDate, today));
   const cadenceSel = (sub && sub.cadence) || "hebdo";
   const flavorSel = sub && sub.flavor;
   const formatSel = sub && sub.format;
   const periodDetail = estimatePeriodDetail(plan, wkg, CADENCES[cadenceSel].days, today);
   const submitLabel = abonneActif ? "Enregistrer les modifications" : (view.status === "cancelled" ? "Reprendre l’abonnement" : "Activer mon abonnement");
   return '<details class="load-card" id="shopCard"' + (due ? " open" : "") + '>'
-    + '<summary class="load-title" style="cursor:pointer">🛒 ' + (abonneActif ? "Modifier l’abonnement" : "S’abonner au ravitaillement") + '</summary>'
-    + '<div class="load-sub" style="margin-top:6px">Reçois tes gels à l’avance, à la cadence de ton choix — jamais le jour même, jamais en retard sur une séance.</div>'
+    + '<summary class="load-title" style="cursor:pointer">🛒 ' + (abonneActif ? "Modifier l’abonnement" : planOver ? "Rester accompagné(e) avec nos gels" : "S’abonner au ravitaillement") + '</summary>'
+    + '<div class="load-sub" style="margin-top:6px">' + (planOver && !abonneActif
+        ? "Ta préparation touche à sa fin — si tu continues à t’entraîner, tu peux rester accompagné(e), à la cadence de ton choix."
+        : "Reçois tes gels à l’avance, à la cadence de ton choix — jamais le jour même, jamais en retard sur une séance.") + "</div>"
     + '<div class="q"><span class="q-label">Cadence</span><select id="shopCadence">'
     + Object.keys(CADENCES).map((k) => '<option value="' + k + '"' + (k === cadenceSel ? " selected" : "") + '>' + esc(CADENCES[k].label[0].toUpperCase() + CADENCES[k].label.slice(1)) + "</option>").join("")
     + '</select></div>'
@@ -172,7 +183,11 @@ function shopSubscriptionCardHTML(plan, today) {
     // appliqué au détail en unités : la carte reste une PHOTOGRAPHIE de ce que chaque séance
     // affiche déjà (nutritionCardHTML), traduite en produits à prévoir — jamais une cible
     // personnelle à couvrir.
-    + '<div class="load-sub" style="margin-top:6px">D’après ce que tes séances affichent déjà, ta prochaine période : ' + periodDetailHTML(periodDetail) + "</div>"
+    + (periodDetail
+        ? '<div class="load-sub" style="margin-top:6px">D’après ce que tes séances affichent déjà, ta prochaine période : ' + periodDetailHTML(periodDetail) + "</div>"
+        : planOver
+          ? '<div class="load-sub" style="margin-top:6px">Ce plan-ci n’a plus de séance à venir — le premier envoi s’ajustera à ton prochain plan ou à tes sorties libres.</div>'
+          : '<div class="load-sub" style="margin-top:6px">D’après ce que tes séances affichent déjà, ta prochaine période : ' + periodDetailHTML(periodDetail) + "</div>")
     + '<div class="q"><span class="q-label">Goût préféré</span><select id="shopFlavor">'
     + FLAVOR_OPTIONS.map((f) => '<option value="' + esc(f) + '"' + (f === flavorSel ? " selected" : "") + '>' + esc(f) + "</option>").join("")
     + '</select></div>'

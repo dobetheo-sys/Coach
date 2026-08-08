@@ -13,6 +13,7 @@ import { aide } from "./help.js";
 import { stravaConnect, stravaAccessToken, stravaDisconnect, stravaRelayUrl } from "../strava.js";
 import { requestNotifyPermission } from "../notifications.js";
 import { avatarTriDataFor } from "./avatar.js";
+import { planEndDate } from "./session-life.js";
 // R25 étape 4 — le COMPOSITE remplace l'ancien rendu 16 niveaux sur la carte (l'ancien
 // module reste exporté et gardé par smoke-avatar : c'est le moteur de boucles qui prend
 // le relais côté écran, pas une suppression).
@@ -297,12 +298,15 @@ function bindPlansSelector() {
 // pour une idée, c'est la forme que R11.1 interdit.
 const JAUGES = [["natation", "🏊", "Natation"], ["velo", "🚴", "Vélo"], ["course", "🏃", "Course"]];
 function avatarSectionHTML(plan, todayISO) {
-  if (!globalThis.EBV2 || !globalThis.EBV2.avatarTri) return "";
-  let tri;
-  try { tri = globalThis.EBV2.avatarTri(plan, S.answers, todayISO); } catch (e) { return ""; }
+  // Un seul calcul (R11.1) : `avatarTriDataFor` porte déjà l'état complet dans `.tri`
+  // (agrégé sur tous les plans de l'athlète depuis le correctif « XP non conservé au
+  // changement de plan », 08/08/2026) — appeler `EBV2.avatarTri` séparément ici recalculait
+  // la même chose une seconde fois, sur le seul plan actif.
+  const visual = avatarTriDataFor(plan, todayISO);
+  const tri = visual.tri;
+  if (!tri) return "";
   let adh = null;
   try { adh = globalThis.EBV2.adherence(plan, S.answers, todayISO); } catch (e) {}
-  const visual = avatarTriDataFor(plan, todayISO);
   const titre = tri.legende ? "🏆 LÉGENDE du triathlon"
     : (JAUGES.find(([k]) => k === tri.meneuse) || JAUGES[2])[1] + " Meneuse : " + (JAUGES.find(([k]) => k === tri.meneuse) || JAUGES[2])[2].toLowerCase();
   const jauge = ([k, ico, nom]) => {
@@ -394,12 +398,7 @@ function efficiencyHTML() {
 // Échéance du plan : date de fin (course ou dernière semaine) + compte à rebours.
 function planDeadlineHTML(plan) {
   const a = S.answers;
-  let end = a.race_date || "";
-  if (!end) {
-    const lastW = plan.weeks[plan.weeks.length - 1];
-    const lastD = lastW && lastW.days[lastW.days.length - 1];
-    end = (lastD && lastD.date) || "";
-  }
+  const end = planEndDate(plan, a);
   if (!end) return "";
   const days = Math.ceil((new Date(end + "T00:00:00Z").getTime() - Date.now()) / 864e5);
   return '<div class="load-sub" style="margin-top:6px">📆 Plan généré le <b>' + (a.plan_start || "?") + "</b> · échéance " + (a.race_date ? "🏁 course" : "fin de plan") + " le <b>" + end + "</b>" + (days >= 0 ? " — dans <b>" + days + " jour" + (days > 1 ? "s" : "") + "</b>." : " (passée).") + "</div>";
