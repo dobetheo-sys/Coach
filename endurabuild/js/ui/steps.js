@@ -4,6 +4,7 @@ import { CATS, HEROS, PREMIUM_STEPS_DEF, RULE_CAT, SPORTS, VLAB, VLAB_Q } from "
 import { $, S, ebActivate, ebClear, ebSave, todayISO } from "../state.js";
 import { renderPlan } from "../ui/plan-view.js";
 import { hideTabs, invalidatePlan } from "../ui/tabs.js";
+import { stravaFetch } from "../strava.js";
 
 function opt(val,label){return '<button class="opt" data-val="'+val+'" type="button">'+label+'</button>';}
 function branch(id,cond,html){const el=$(id);if(!el)return;el.innerHTML=cond?html:"";if(cond)bindInputs(el);}
@@ -565,10 +566,13 @@ async function stravaImport(oauthTok){
   const st=document.getElementById("pfStravaMsg");
   const setS=h=>{if(st)st.innerHTML=h;};
   if(!tok){setS("Colle d'abord un token d'accès Strava (Réglages → Mon API, scope <b>activity:read</b>) — ou connecte-toi via le relais ci-dessus.");return;}
-  const api=(p)=>fetch("https://www.strava.com/api/v3"+p,{headers:{Authorization:"Bearer "+tok}});
+  // Audit 08/08/2026 : `stravaFetch` (strava.js) borne CHAQUE appel dans le temps — un relais
+  // lent ou une API qui traîne bloquait l'import sans retour utilisateur avant l'échec final.
+  const api=(p)=>stravaFetch("https://www.strava.com/api/v3"+p,{headers:{Authorization:"Bearer "+tok}});
   setS("Lecture de tes activités récentes…");
   try{
     const r=await api("/athlete/activities?per_page=50");
+    if(r.status===429){setS("Strava a limité les requêtes (quota atteint) — réessaie dans quelques minutes.");return;}
     if(!r.ok){setS("Strava a refusé la requête ("+r.status+"). Vérifie le token et le scope activity:read.");return;}
     const acts=await r.json();
     if(!Array.isArray(acts)||!acts.length){setS("Aucune activité récente trouvée.");return;}
@@ -594,10 +598,12 @@ async function stravaImport(oauthTok){
       // On ne télécharge pas cinquante flux : les sorties les plus intenses d'abord, et
       // on s'arrête tôt. Chaque flux est un appel API, donc du quota et de l'attente.
       const cand=rides.sort((x,y)=>(y.weighted_average_watts||y.average_watts||0)-(x.weighted_average_watts||x.average_watts||0)).slice(0,6);
-      let best20=0;
+      let best20=0,quota=false;
       for(const a of cand){
+        if(quota)break; // un 429 sur la première sortie en donnerait cinq de plus : on arrête, pas d'acharnement
         try{
           const rs=await api("/activities/"+a.id+"/streams?keys=watts,time&key_by_type=true");
+          if(rs.status===429){quota=true;continue;}
           if(!rs.ok)continue;
           const js=await rs.json();
           const w=js&&js.watts&&js.watts.data,t=js&&js.time&&js.time.data;
@@ -605,6 +611,7 @@ async function stravaImport(oauthTok){
         }catch(e){ /* une sortie illisible n'arrête pas les autres */ }
       }
       if(best20>0){ftp=Math.round(best20*0.95);ftpSrc="Strava (meilleure moyenne sur 20 min réelles)";}
+      else if(quota)notes.push("FTP non estimée : Strava a limité les requêtes (quota atteint) avant d'avoir lu assez de sorties. Réessaie dans quelques minutes.");
       else if(rides.length)notes.push("FTP non estimée : aucune de tes sorties ne contient 20 minutes continues exploitables. Renseigne-la au Profil, ou fais le test de 20 min.");
       else notes.push("FTP non estimée : pas de capteur de puissance sur tes sorties. Saisis-la, ou fais un test 20min ci-dessus.");
     }
@@ -654,14 +661,17 @@ async function stravaImport(oauthTok){
       const fast=courses.reduce((m,a)=>Math.max(m,a.average_speed||0),0);
       if(fast>0){sk=Math.round(1000/fast);skSrc="Strava (ta course de 10-15 km — protocole du plan)";}
     }
+    let skQuota=false;
     if(!sk){
       // Les sorties les plus rapides d'abord : le meilleur 10 min a le plus de chances d'y
       // être. Bornées à six, comme pour la puissance — chaque flux est un appel API.
       const cand=runs.slice().sort((x,y)=>(y.average_speed||0)-(x.average_speed||0)).slice(0,6);
       let best10=0;
       for(const a of cand){
+        if(skQuota)break; // un 429 sur la première sortie en donnerait cinq de plus : on arrête
         try{
           const rs=await api("/activities/"+a.id+"/streams?keys=velocity_smooth,time&key_by_type=true");
+          if(rs.status===429){skQuota=true;continue;}
           if(!rs.ok)continue;
           const js=await rs.json();
           const v=js&&js.velocity_smooth&&js.velocity_smooth.data,t=js&&js.time&&js.time.data;
@@ -675,7 +685,8 @@ async function stravaImport(oauthTok){
       added.push("allure seuil "+_fk100(sk)+"/km");
     } else if(sk>0){
       notes.push("Allure seuil écartée : "+_fk100(sk)+"/km est hors des bornes physiologiques — c'est l'artefact d'une trace (GPS, véhicule, activité mal étiquetée), pas ton seuil.");
-    } else if(runs.length) notes.push("Allure seuil non estimée : aucune course déclarée entre 10 et 15 km, et aucun bloc de 10 minutes continues exploitable dans tes sorties. La moyenne d'une sortie tranquille ne dit pas ton seuil — corrige-la au Profil, ou fais le test (3 min + 10 min à fond).");
+    } else if(skQuota) notes.push("Allure seuil non estimée : Strava a limité les requêtes (quota atteint) avant d'avoir lu assez de sorties. Réessaie dans quelques minutes.");
+    else if(runs.length) notes.push("Allure seuil non estimée : aucune course déclarée entre 10 et 15 km, et aucun bloc de 10 minutes continues exploitable dans tes sorties. La moyenne d'une sortie tranquille ne dit pas ton seuil — corrige-la au Profil, ou fais le test (3 min + 10 min à fond).");
     else notes.push("Allure seuil non estimée : aucune course à pied dans tes 50 dernières activités.");
 
     // ---- CSS ----------------------------------------------------------------
