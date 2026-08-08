@@ -237,6 +237,11 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 /* §5 (R6) — le POURQUOI d'une séance, visible avant le QUOI (héros) ou en tête du détail. */
 .gd-why{display:block;font-weight:500;font-size:var(--fs-sm);color:var(--text2);margin:2px 0 6px;line-height:1.55;font-style:italic;}
 .gd-det{display:block;font-weight:500;font-size:var(--fs-xs);color:var(--text2);margin:2px 0 5px;line-height:1.55;}
+/* Retour utilisateur (08/08/2026) : la durée dans le résumé de séance — délibérément DISTINCTE
+   de `.gd-det` (le corps technique déplié) : les deux vivant sous le même `<details class=
+   "gd-sess">`, un sélecteur `.gd-det` seul tomberait sur celle qui vient en premier dans le DOM
+   (le `<summary>`), pas sur le contenu qu'il cherche — trouvé par smoke-usage.mjs (U16). */
+.gd-dur{display:inline;font-weight:500;font-size:var(--fs-xs);color:var(--text2);}
 /* U16 — LE DÉROULEMENT DE LA SÉANCE, UNE LIGNE PAR BLOC.
  *
  * Mesuré avant : une VO2max déroulée sortait 296 caractères d'un seul tenant, à interligne
@@ -250,7 +255,10 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 .gd-sess{margin:1px 0;}
 .gd-sess summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:4px;}
 .gd-sess summary::-webkit-details-marker{display:none;}
-.gd-sess summary::before{content:"▸";font-size:.9em;color:var(--text2);transition:transform .15s;flex-shrink:0;}
+/* Retour utilisateur (08/08/2026) : affordance renforcée SANS rouvrir par défaut (U16) — le
+   chevron passe de gris discret à encre pleine, un peu plus grand : plus visible au premier
+   regard que « ceci se déplie », sans ajouter un pixel de hauteur à la ligne repliée. */
+.gd-sess summary::before{content:"▸";font-size:1.05em;font-weight:700;color:var(--ink);transition:transform .15s;flex-shrink:0;}
 .gd-sess[open] summary::before{transform:rotate(90deg);}
 .gd-sess .gd-det{margin-top:2px;}
 /* ===== R4-3 : modal félicitations post-séance ===== */

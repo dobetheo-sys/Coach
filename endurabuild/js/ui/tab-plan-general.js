@@ -311,21 +311,50 @@ export function renderTabPlanGeneral(plan) {
   show.forEach((w) => {
     html += '<div class="gw" id="gw' + w.num + '">' + weekHeaderHTML(w) + weekGridHTML(plan, w, today) + "</div>";
   });
+  // Retour utilisateur (08/08/2026) : « on redonne la semaine du jour ? double emploi ? ».
+  // C'est un doublon ASSUMÉ (R16.9 : « un seul dessin, deux points de vue », weekGridHTML sert
+  // les deux onglets), pas un oubli — retirer la grille d'ici casserait le geste « je coche
+  // depuis Plan sans changer d'onglet », et R16.9 documente déjà pourquoi un DEUXIÈME chemin de
+  // rendu serait pire (deux comportements pour un même clic). Ce que 📅 Semaine ajoute
+  // (navigation semaine par semaine, bilan chiffré) n'existe nulle part ici : un pointeur plutôt
+  // qu'une duplication silencieuse.
+  if (!S.showAllWeeks) html += '<div class="load-sub" style="margin:2px 0 8px">📅 Semaine ajoute la navigation semaine par semaine et le bilan chiffré de celle que tu regardes.</div>';
   if (!S.showAllWeeks && plan.totalWeeks > 1)
     html += '<div class="wk-skip">⋯ ' + (plan.totalWeeks - 1) + " autre" + (plan.totalWeeks > 2 ? "s" : "")
       + " semaine" + (plan.totalWeeks > 2 ? "s" : "") + " — « Voir les " + plan.totalWeeks + " semaines » ci-dessous ⋯</div>";
   // R23.10 — LES CONSEILS PERSONNALISÉS ARRIVENT ICI, venus du Profil : ce sont des conseils sur
   // la PRÉPARATION, pas des données d'identité. Repliés, comme au Profil — on ne les impose pas.
+  //
+  // Retour utilisateur (08/08/2026) : « Conseils personnalisés / Pourquoi ce plan / Décisions du
+  // moteur se répètent beaucoup ». Vérifié : « Pourquoi ce plan » EST le résumé de « Décisions du
+  // moteur » par construction (R23.6, même source `plan._v2.decisions[]`, l'un cite l'autre) —
+  // un sommaire redit forcément une partie du détail, ce n'est pas le doublon visé. « Conseils
+  // personnalisés » est la vraie source SÉPARÉE : `evalRules` relit `S.answers` (le
+  // QUESTIONNAIRE), pas le plan calculé — deux moteurs, un même sujet (ex. plafond de volume),
+  // qui peuvent se répéter en substance sans jamais se contredire (une seule source de vérité au
+  // niveau du CALCUL, R11.1 ; deux niveaux de LECTURE : ce que tu as répondu / ce que le plan en
+  // a fait). Nommer la différence plutôt que fusionner deux moteurs à la logique distincte —
+  // une fusion mal faite risquerait de faire disparaître un garde-fou de sécurité (ferritine,
+  // cycle) que `evalRules` porte seul.
   {
     const rules = evalRules(a, S.tier);
     if (rules.length)
       html += '<details class="load-card"><summary class="load-title" style="cursor:pointer">🧭 Conseils personnalisés ('
-        + rules.length + ")</summary><div style=\"margin-top:8px\">" + rulesGrouped(rules) + "</div></details>";
+        + rules.length + ")</summary><div style=\"margin-top:8px\"><div class=\"load-sub\">Issus de tes réponses au questionnaire — avant génération, ce qu'elles impliquent.</div>" + rulesGrouped(rules) + "</div></details>";
   }
   html += whyPlanCardHTML(plan); // R23.6 — descendue ici, juste avant le détail dont elle est le résumé
   html += decisionsCardHTML(plan); // « Les décisions du moteur » — la transparence, en langage neutre
+  // Retour utilisateur (08/08/2026) : « Modifier / JSON / Changer de sport n'ont pas leur place
+  // ici non plus ». MAIS R23.12b (06/08) les avait explicitement fait QUITTER le Profil pour
+  // ici, avec la raison inverse : les garder aux deux endroits, c'était « deux chemins vers le
+  // même geste, dans deux onglets ». Les remettre au Profil referait exactement ce que R23.12b
+  // vient de corriger. Ils restent donc ICI (seul chemin, R11.1) mais changent de POIDS visuel —
+  // séparés des actions de PLAN (voir tout / imprimer / agenda) dans une rangée secondaire,
+  // atténuée : ce sont des gestes de compte (éditer ses réponses, exporter les données brutes,
+  // tout réinitialiser), pas des actions sur CE plan.
   html += '<div class="warn" style="background:var(--bg2)">Intensités calibrées sur tes données. Les exports fonctionnent depuis cet onglet, quel que soit l’onglet consulté ensuite.</div>'
-    + '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn" id="backBp" type="button">← Modifier</button><button class="btn gold" id="allW" type="button">' + (S.showAllWeeks ? "Revenir à la semaine en cours" : "Voir tout le plan (" + plan.totalWeeks + " semaines)") + '</button><button class="btn" id="prn" type="button">🖨 Version imprimable</button><button class="btn" id="expIcs" type="button">📅 Ajouter à mon agenda</button><button class="btn" id="expJson" type="button">{ } JSON</button><button class="btn" id="restartBtn" type="button">Changer de sport</button></div></div>';
+    + '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn gold" id="allW" type="button">' + (S.showAllWeeks ? "Revenir à la semaine en cours" : "Voir tout le plan (" + plan.totalWeeks + " semaines)") + '</button><button class="btn" id="prn" type="button">🖨 Version imprimable</button><button class="btn" id="expIcs" type="button">📅 Ajouter à mon agenda</button></div>'
+    + '<div class="nav" style="flex-wrap:wrap;gap:8px;margin-top:8px;opacity:.7"><button class="btn" id="backBp" type="button" style="font-size:var(--fs-sm);padding:9px 12px">← Modifier mes réponses</button><button class="btn" id="expJson" type="button" style="font-size:var(--fs-sm);padding:9px 12px">{ } JSON</button><button class="btn" id="restartBtn" type="button" style="font-size:var(--fs-sm);padding:9px 12px">Changer de sport</button></div></div>';
   $("screen").innerHTML = html;
   const rerender = () => renderTabPlanGeneral(plan);
   bindPainBanner(plan, rerender);

@@ -78,6 +78,22 @@ const pick = (arr, g) => (g > 0 ? arr[g - 1] : "");
 const pileUp = (arr, g) => arr.slice(0, g).join("");
 const meneuseDe = (n, v, c) => (v >= n && v >= c ? "velo" : n >= c ? "natation" : "course");
 
+/**
+ * Retour utilisateur (08/08/2026) — le sélecteur manuel « couleur d'accent » ne pilotait QUE
+ * les deux barres du PNG partagé (export.js) : jamais l'avatar affiché à l'écran, qui calcule
+ * déjà sa propre couleur depuis la discipline MENEUSE (ci-dessus, `avatarTriSVG`/`StorySVG`).
+ * Un réglage qui ne change rien à ce qu'on regarde à l'écran, et qui contredit même ce que le
+ * partage dessine, n'est pas un réglage — c'est retiré (tab-profile.js). Cette fonction
+ * remplace le sélecteur : la couleur du partage suit désormais la MÊME règle que le dessin,
+ * un seul calcul au lieu de deux qui pouvaient se contredire (R11.1).
+ */
+export function avatarTriAccent(v) {
+  const nat = Math.max(0, Math.min(30, v.natation | 0));
+  const velo = Math.max(0, Math.min(30, v.velo | 0));
+  const course = Math.max(0, Math.min(30, v.course | 0));
+  return ACC[meneuseDe(nat, velo, course)];
+}
+
 // ───────────────────────── LE COMPOSITE CARRÉ (cartes 96-110 px) ─────────────────────────
 // Même géométrie de silhouette que l'existant (viewBox 0 0 100 110, tête 50/36 r10, torse
 // 46→74, sol y101) : les postures « forme du jour » de avatar.js s'y posent telles quelles.

@@ -359,10 +359,30 @@ function techListHTML(tech){
  * l'athlète ouvre une séance, la première chose qu'il lit est la raison d'être de la séance,
  * pas la liste des blocs. C'est l'ordre dans lequel un entraîneur parle.
  */
+// Retour utilisateur (08/08/2026) : le temps de natation n'apparaît nulle part dans la grille.
+// Cause : AUCUNE discipline n'affichait de durée dans ce résumé — course/vélo la montrent dans
+// le texte du bloc une fois déplié (ex. « 4×5min »), la natation ne montre QUE des mètres
+// (« 6×100m »), jamais de minutes, parce que ses blocs se construisent en distance (`Bd`), pas
+// en durée (`B`). Le moteur calcule pourtant déjà `s.min` pour TOUTE discipline (temps total,
+// conversion CSS pour la nage) — simplement jamais affiché. Une seule ligne le rend visible
+// pour tout le monde, dans le résumé TOUJOURS visible plutôt qu'au fond d'un bloc déplié.
+//
+// `.gd-dur`, PAS `.gd-det` — trouvé par le banc E2E (smoke-usage.mjs, U16) en vérifiant ce
+// lot : `.gd-det` est déjà le nom du bloc technique À L'INTÉRIEUR de la séance dépliée
+// (`techListHTML`). Ma première écriture réutilisait ce nom pour la durée dans le `<summary>` —
+// `<summary>` est le premier enfant de `<details class="gd-sess">`, donc un `querySelector(
+// ".gd-det, .gd-steps")` tombait sur la durée au lieu du contenu technique, sur TOUTE séance.
+const _fmtDur = (min) => !min ? "" : (min >= 60 ? Math.floor(min / 60) + "h" + String(Math.round(min % 60)).padStart(2, "0") : Math.round(min) + "min");
 function sessDetailsHTML(s,style){
-  if(!s.det)return "<b>"+s.name+"</b>";
+  const dur=_fmtDur(s.min);
+  if(!s.det)return "<b>"+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"");
   const why=whyOf(s),tech=techOf(s);
-  return '<details class="gd-sess"'+(style?' style="'+style+'"':"")+'><summary><b>'+s.name+"</b></summary>"
+  // U16 — repli par défaut confirmé (retour utilisateur, 08/08/2026) : rouvrir toutes les
+  // séances d'une semaine referait exactement la densité que ce lot avait mesurée et corrigée.
+  // Seule l'AFFORDANCE change ici : le chevron (`.gd-sess summary::before`, styles.css) passe
+  // de `var(--text2)` (gris discret) à `var(--ink)` en gras — plus visible sans reprendre
+  // d'espace, la densité par défaut reste celle que U16 a établie.
+  return '<details class="gd-sess"'+(style?' style="'+style+'"':"")+'><summary><b>'+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"")+"</summary>"
     +(why?'<span class="gd-why">\u{1F4A1} '+why+"</span>":"")
     +techListHTML(tech)+"</details>";
 }

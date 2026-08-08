@@ -12,12 +12,12 @@ import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
 import { aide } from "./help.js";
 import { stravaConnect, stravaAccessToken, stravaDisconnect, stravaRelayUrl } from "../strava.js";
 import { requestNotifyPermission } from "../notifications.js";
-import { AVATAR_THEMES, avatarDataFor, avatarTriDataFor } from "./avatar.js";
+import { avatarTriDataFor } from "./avatar.js";
 // R25 étape 4 — le COMPOSITE remplace l'ancien rendu 16 niveaux sur la carte (l'ancien
 // module reste exporté et gardé par smoke-avatar : c'est le moteur de boucles qui prend
 // le relais côté écran, pas une suppression).
-import { avatarTriSVG, avatarTriStorySVG, avatarTriUnlock } from "./avatar-tri.js";
-import { shareStory } from "../export.js";
+import { avatarTriSVG, avatarTriStorySVG, avatarTriUnlock, avatarTriAccent } from "./avatar-tri.js";
+import { shareStory, storyBlob, _dl } from "../export.js";
 import { trapModal } from "./modal.js";
 import { evalRules } from "./steps.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
@@ -203,11 +203,17 @@ function recordsHTML(plan, a) {
   return h;
 }
 
+// Retour utilisateur (08/08/2026) : ce résumé (« intention de… » et le reste du groupe) « n'a
+// que peu d'intérêt » — six blocs `.bp-decision` (le style des DÉCISIONS DU MOTEUR, dashed
+// border + surlignage) pour re-dire ce que l'athlète vient de répondre au questionnaire.
+// Compacté en une ligne discrète : la vérification reste possible d'un coup d'œil, elle ne
+// pèse plus comme six décisions à lire.
 function summaryRows(a) {
   // R5.6b — la table PAR QUESTION passe avant la table plate : « partielle » ne veut pas dire la
   // même chose pour la disponibilité et pour une course de nuit.
-  const L = (k, lab) => (a[k] ? '<div class="bp-decision"><div><div class="bp-what">' + lab + '</div><div class="bp-val">' + esc(String(a[k]).split(",").map((x) => (VLAB_Q[k] && VLAB_Q[k][x]) || VLAB[x] || x).join(", ")) + "</div></div></div>" : "");
-  return L("intent", "Intention") + L("format", "Objectif") + L("history", "Historique") + L("level", "Niveau") + L("dispo", "Disponibilité") + L("injury", "Blessures");
+  const L = (k, lab) => (a[k] ? lab + " : " + esc(String(a[k]).split(",").map((x) => (VLAB_Q[k] && VLAB_Q[k][x]) || VLAB[x] || x).join(", ")) : "");
+  const parts = [L("intent", "Intention"), L("format", "Objectif"), L("history", "Historique"), L("level", "Niveau"), L("dispo", "Disponibilité"), L("injury", "Blessures")].filter(Boolean);
+  return parts.length ? '<div class="load-sub" style="margin:2px 0 8px">' + parts.join(" · ") + "</div>" : "";
 }
 
 // R4-4 — sélecteur de plans : plusieurs plans sous un même profil (tri A + 10k d'un ami,
@@ -297,8 +303,6 @@ function avatarSectionHTML(plan, todayISO) {
   let adh = null;
   try { adh = globalThis.EBV2.adherence(plan, S.answers, todayISO); } catch (e) {}
   const visual = avatarTriDataFor(plan, todayISO);
-  const themes = AVATAR_THEMES.map(([k, c]) =>
-    '<button class="doneBtn" data-av-theme="' + k + '" type="button" title="' + (SPORTS[k] ? SPORTS[k].nom : k) + '" style="background:' + c + ";border-color:#16130e" + (S.answers.avatarTheme === k ? ";outline:3px solid #16130e;outline-offset:2px" : "") + '"> </button>').join(" ");
   const titre = tri.legende ? "🏆 LÉGENDE du triathlon"
     : (JAUGES.find(([k]) => k === tri.meneuse) || JAUGES[2])[1] + " Meneuse : " + (JAUGES.find(([k]) => k === tri.meneuse) || JAUGES[2])[2].toLowerCase();
   const jauge = ([k, ico, nom]) => {
@@ -341,9 +345,16 @@ function avatarSectionHTML(plan, todayISO) {
       }
       return '<div style="font-weight:700;font-size:var(--fs-sm);margin-top:8px">' + ico + " " + nom + "</div>" + liste;
     }).join("") + "</div></details>";
-  h += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span style="font-size:var(--fs-sm);font-weight:700">Couleur d’accent :</span>' + themes
-    + '<button class="btn" id="avShare" type="button" style="margin-left:auto">📸 Partager</button></div>'
-    + '<div class="load-sub" style="margin-top:8px">Touche l’avatar pour le voir en grand. Tout est traçable : chaque jauge = tes séances validées de SA discipline (régularité pure, le repos ne compte pas en XP) · numéros portés = tes niveaux · posture = ta forme du jour · l’or = le niveau 30. Jamais un chrono, jamais décroissant.</div></div>';
+  // Retour utilisateur (08/08/2026) : le sélecteur « couleur d'accent » retiré (voir
+  // avatarTriAccent en note dans avatar-tri.js — il ne changeait que le PNG partagé, jamais
+  // l'avatar affiché) ; le paragraphe d'explication raccourci (il détaillait la mécanique de
+  // jauges/niveaux, déjà lisible sur les jauges elles-mêmes) ; « ⬇ Télécharger » ajouté à côté
+  // de « 📸 Partager » — jusqu'ici, sans Web Share API, le téléchargement n'existait qu'en
+  // repli invisible (aucun bouton dédié).
+  h += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">'
+    + '<button class="btn" id="avShare" type="button">📸 Partager</button>'
+    + '<button class="btn" id="avDownload" type="button">⬇ Télécharger</button></div>'
+    + '<div class="load-sub" style="margin-top:8px">Touche l’avatar pour le voir en grand.</div></div>';
   return h;
 }
 function badgesGalleryHTML(badges) {
@@ -478,10 +489,15 @@ function stravaCardHTML(a) {
   const sAuth = a.stravaAuth;
   let h = '<div class="load-card"><div class="load-title">🔗 Strava</div>';
   if (sAuth && sAuth.access_token) {
+    // Retour utilisateur (08/08/2026) : « déconnexion trop grosse, moins essentielle,
+    // l'utilisateur n'a normalement pas besoin de s'en servir ». Le bouton d'IMPORT reste un
+    // `.btn` normal (c'est le geste qu'on répète) ; la déconnexion passe en lien discret.
     h += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">'
       + '<span style="font-size:var(--fs-sm)">✓ Connecté' + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + "</span>"
-      + '<button class="btn" id="pfStravaBtn" type="button">Importer mes activités</button>'
-      + '<button class="btn" id="pfStravaOut" type="button">Se déconnecter</button></div>';
+      + '<button class="btn" id="pfStravaBtn" type="button">Importer mes activités</button></div>'
+      // U4 — même sous-dimensionné visuellement, la zone de TOUCHE reste ≥24×24 (WCAG 2.5.8) :
+      // padding vertical généreux malgré le texte réduit, geste rare mais pas piégeux.
+      + '<button type="button" id="pfStravaOut" style="background:none;border:none;padding:10px 2px;margin-top:2px;font-size:var(--fs-xs);color:var(--muted);text-decoration:underline;cursor:pointer">Se déconnecter</button>';
   } else {
     // R6 — UX guidée : UN bouton. L'URL du relais vit en config (déployée pour tous)
     // ou dans les réglages avancés — l'utilisateur normal n'a rien à coller.
@@ -689,8 +705,13 @@ export function renderTabProfile(plan) {
   // d'entraînement » juste en dessous : c'est un réglage qu'on pose une fois et qu'on vient
   // CHERCHER, pas de la prose qu'on lit à chaque ouverture de l'onglet.
   html += repliable(raceCardHTML(a), false);
-  html += raceInterHTML(a);
-  html += '<div class="bp-cat">' + summaryRows(a) + "</div>";
+  // Retour utilisateur (08/08/2026) : « déroulable, pareil pour course intermédiaire » — même
+  // geste que « Ta course » juste au-dessus, pour la même raison (un réglage qu'on pose une
+  // fois par course et qu'on vient CHERCHER, pas de la prose permanente). Course 2 garde SON
+  // propre repli interne (elle existe si aucune deuxième course n'est encore déclarée) —
+  // repliable() replie la carte ENTIÈRE par-dessus, les deux se combinent sans conflit.
+  html += repliable(raceInterHTML(a), false);
+  html += summaryRows(a);
 
   // — Références physiologiques éditables (celles que le moteur lit : a.ftp / a.pace / a.css)
   //
@@ -704,7 +725,11 @@ export function renderTabProfile(plan) {
   // CHERCHER quand on le veut. Rien n'est retiré ni déplacé, et « Enregistrer → régénérer le
   // plan » reste DANS la carte, donc à un geste de la modification qu'il valide.
   let ref = "";
-  ref += '<div class="load-card"><div class="load-title">⚙ Références d’entraînement</div><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">';
+  // Retour utilisateur (08/08/2026) : cette carte « mérite d'être mise plus en valeur » — c'est
+  // elle qui pilote directement l'intensité de tout le plan (FTP/allure/CSS). U18b l'a repliée
+  // à raison (14-17 lignes de formulaire, 1 081 px) : la distinction se joue donc sur le bandeau
+  // FERMÉ (le titre), pas sur l'espace occupé une fois ouverte.
+  ref += '<div class="load-card"><div class="load-title">⚙ Références d’entraînement <span style="background:var(--acc);color:#fff;font-size:var(--fs-xs);padding:2px 8px;border-radius:9px;font-weight:700;vertical-align:middle">pilote ton plan</span></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">';
   const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
   if (sp === "bike" || sp === "tri") ref += row("pfFtp", "FTP (watts)", a.ftp_known === "oui" ? a.ftp : "", "ex. 220");
   if (sp === "run" || sp === "tri") ref += row("pfPace", "Allure seuil (min:s /km)", a.pace_known === "oui" ? a.pace : "", "ex. 4:30");
@@ -813,22 +838,34 @@ export function renderTabProfile(plan) {
   html += "</div>";
   $("screen").innerHTML = html;
 
-  // Avatar : thème (accents sport) + partage — mêmes mécanismes que l'ancien onglet Suivi.
-  document.querySelectorAll("#screen [data-av-theme]").forEach((b) => {
-    b.onclick = () => { S.answers.avatarTheme = b.dataset.avTheme; ebSave(); renderTabProfile(plan); };
-  });
-  const _avShare = $("avShare");
-  if (_avShare) _avShare.onclick = async () => {
-    _avShare.disabled = true; _avShare.textContent = "Génération…";
+  // Avatar : partage + téléchargement — mêmes options de rendu pour les deux (R11.1), l'accent
+  // suit désormais la discipline meneuse plutôt qu'un thème choisi à la main (avatarTriAccent).
+  const avatarStoryOpts = () => {
     let streak = 0;
     try { streak = globalThis.EBV2.adherence(plan, S.answers, tIso).days || 0; } catch (e) {}
     const v = avatarTriDataFor(plan, tIso);
     const nom = v.legende ? "🏆 LÉGENDE du triathlon" : "🏊 " + v.natation + " · 🚴 " + v.velo + " · 🏃 " + v.course;
-    try {
-      // R25 — le PARTAGE, c'est le TRIPTYQUE : les trois mondes empilés, format story.
-      await shareStory({ sessionName: nom, detail: "", sport: S.sport, streak, badge: null, avatarSVG: avatarTriStorySVG(v, 520), avatarAspect: 1.78, accent: avatarDataFor(plan, tIso).accent });
-    } catch (e) { console.warn(e); }
+    // R25 — le PARTAGE, c'est le TRIPTYQUE : les trois mondes empilés, format story.
+    return { sessionName: nom, detail: "", sport: S.sport, streak, badge: null, avatarSVG: avatarTriStorySVG(v, 520), avatarAspect: 1.78, accent: avatarTriAccent(v) };
+  };
+  const _avShare = $("avShare");
+  if (_avShare) _avShare.onclick = async () => {
+    _avShare.disabled = true; _avShare.textContent = "Génération…";
+    try { await shareStory(avatarStoryOpts()); } catch (e) { console.warn(e); }
     _avShare.disabled = false; _avShare.textContent = "📸 Partager";
+  };
+  // Retour utilisateur (08/08/2026) : « je ne peux pas juste télécharger le rendu » — sans
+  // Web Share API, `shareStory` retombait bien sur un téléchargement, mais en repli SILENCIEUX
+  // (aucun bouton ne le proposait explicitement). `_dl` est le même point de téléchargement que
+  // la sauvegarde JSON du Profil et l'export du plan — un seul mécanisme, trois usages.
+  const _avDownload = $("avDownload");
+  if (_avDownload) _avDownload.onclick = async () => {
+    _avDownload.disabled = true; _avDownload.textContent = "Génération…";
+    try {
+      const blob = await storyBlob(avatarStoryOpts(), "story");
+      if (blob) _dl("endurabuild-avatar.png", "image/png", blob);
+    } catch (e) { console.warn(e); }
+    _avDownload.disabled = false; _avDownload.textContent = "⬇ Télécharger";
   };
   // R25 — toucher l'avatar = le voir EN GRAND (le triptyque plein écran). C'est ce qui rend
   // le détail dessiné visible ailleurs qu'au partage — la réponse à la preuve d'échelle.

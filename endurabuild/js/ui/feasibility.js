@@ -53,7 +53,11 @@ export function feasibilityCardHTML(plan) {
     + "<b>Ta réponse ne change pas ton plan.</b><br>"
     + "L’entraînement se construit sur ce que ton corps peut encaisser, jamais sur ce qu’on aimerait afficher.</div>"
     + '<div class="q"><span class="q-label">Chrono visé (h:mm:ss ou mm:ss)</span>'
-    + '<input type="text" inputmode="numeric" data-input="target_time" id="rvIn" value="' + esc(saisi) + '" placeholder="ex. 3:30:00"></div>';
+    // Retour utilisateur (08/08/2026) — `inputmode="numeric"` affiche le pavé 100% chiffres sur
+    // mobile, SANS la touche « : » que le format demandé (h:mm:ss) exige. Le clavier texte par
+    // défaut donne accès aux deux-points (le pavé symboles d'iOS/Android les porte) ; on perd le
+    // clavier numérique pur, mais un chrono illisible sans lui reste inutilisable avec lui.
+    + '<input type="text" data-input="target_time" id="rvIn" value="' + esc(saisi) + '" placeholder="ex. 3:30:00"></div>';
 
   let res = null;
   try { if (saisi) res = globalThis.EBV2.feasibility(S.sport, S.answers, plan); } catch (e) { res = null; }
