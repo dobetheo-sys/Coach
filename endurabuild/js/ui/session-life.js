@@ -9,8 +9,8 @@
 // demandait l'étape 2 du handoff — un module ne se supprime pas, il se vide d'abord.
 import { S, $, ebSave, esc, fmtDay, todayISO } from "../state.js";
 import { whyOf, techOf, techListHTML } from "./plan-view.js";
-import { avatarTriDataFor, avatarTheme } from "./avatar.js";
-import { avatarTriSVG, avatarTriStorySVG } from "./avatar-tri.js";
+import { avatarTriDataFor } from "./avatar.js";
+import { avatarTriSVG, avatarTriStorySVG, avatarTriAccent } from "./avatar-tri.js";
 import { celebrationMessage } from "./celebrations.js";
 import { trapModal } from "./modal.js";
 import { shareStory, shareText } from "../export.js";
@@ -101,7 +101,7 @@ export function showCongrats(plan, session, newBadge, todayISO) {
   ov.querySelector("#ebCloseCongrats").onclick = closeOv;
   ov.onclick = (e) => { if (e.target === ov) closeOv(); };
   // R6 — plusieurs types de partage : story 9:16, carte 1:1, texte (repli presse-papiers)
-  const shareOpts = { sessionName: session.name, detail: session.det, sport: S.sport, streak, badge: newBadge, avatarSVG: avatarTriStorySVG(av, 520), avatarAspect: 1.78, accent: avatarTheme() };
+  const shareOpts = { sessionName: session.name, detail: session.det, sport: S.sport, streak, badge: newBadge, avatarSVG: avatarTriStorySVG(av, 520), avatarAspect: 1.78, accent: avatarTriAccent(av) };
   const bindShare = (id, label, fn) => {
     const btn = ov.querySelector(id);
     if (btn) btn.onclick = async () => {

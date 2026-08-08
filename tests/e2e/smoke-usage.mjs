@@ -415,18 +415,22 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
     }
     document.getElementById("allW").click();
     document.querySelectorAll("#screen details.gd-sess").forEach((d) => { d.open = true; });
-    const rendu = new Set();
+    const rendu = [];
     let pire = 0, pireTxt = "";
     for (const d of document.querySelectorAll("#screen details.gd-sess")) {
       const corps = d.querySelector(".gd-det, .gd-steps");
       if (!corps) continue;
       const nom = (d.querySelector("summary") || {}).textContent || "";
-      if (corps.querySelectorAll("li").length > 1) rendu.add(nom.trim());
+      if (corps.querySelectorAll("li").length > 1) rendu.push(nom.trim());
       for (const t of (corps.innerText || "").split(/\n+/)) {
         if (t.trim().length > pire) { pire = t.trim().length; pireTxt = t.trim().slice(0, 60); }
       }
     }
-    const manquantes = [...attendu].filter((n) => !rendu.has(n));
+    // 08/08/2026 — le résumé porte désormais aussi la durée après le nom (« Sweetspot vélo
+    // 1h28 ») : une comparaison EXACTE au nom du modèle (`s.name`) casse dès qu'un texte
+    // légitime s'ajoute après. Le nom reste le PRÉFIXE du résumé — `startsWith` plutôt qu'une
+    // égalité, sans rien perdre de ce que le critère vérifie (la présence, en plusieurs lignes).
+    const manquantes = [...attendu].filter((n) => !rendu.some((r) => r.startsWith(n)));
     return { multi: attendu.size, listees: attendu.size - manquantes.length, manquantes: manquantes.slice(0, 3), pire, pireTxt };
   });
   ok(m.multi > 0, "U16 — l'instrument voit des séances à plusieurs blocs (" + m.multi + ")");

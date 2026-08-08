@@ -65,7 +65,21 @@ export function nutritionCardHTML(day, tempC) {
     .map((s) => ({ s, a: globalThis.EBV2.sessionNutrition(s, { tempC: tempC == null ? null : tempC, weightKg: wkg }) }))
     .filter((x) => x.a);
   if (!advs.length) return "";
-  let h = '<div class="load-card" id="nutCard"><div class="load-title">🥤 Ravitaillement d’aujourd’hui' + (tempC != null ? ' <span style="font-weight:400">· ' + Math.round(tempC) + "°C prévus</span>" : "") + "</div>";
+  // Retour utilisateur (08/08/2026) : le résumé visible SANS ouvrir la carte n'affichait que la
+  // météo — l'info qui compte (combien de glucides, combien boire) restait cachée un niveau plus
+  // bas, dans le <summary> de CHAQUE séance. Reprise ici telle quelle (jamais une cible
+  // inventée : même chiffre que ce que chaque séance affiche déjà, juste agrégé), la météo
+  // reste affichée à la suite — elle affine, elle ne remplace pas.
+  const carbSessions = advs.filter((x) => x.a.during.carbsGPerH);
+  const hydrated = advs.filter((x) => x.a.during.drinkMlPerH[0] > 0);
+  const drinkResume = hydrated.length
+    ? Math.min(...hydrated.map((x) => x.a.during.drinkMlPerH[0])) + "–" + Math.max(...hydrated.map((x) => x.a.during.drinkMlPerH[1])) + " ml/h"
+    : "eau à la soif";
+  const resume = carbSessions.length
+    ? Math.min(...carbSessions.map((x) => x.a.during.carbsGPerH[0])) + "–" + Math.max(...carbSessions.map((x) => x.a.during.carbsGPerH[1])) + " g/h de glucides, " + drinkResume
+    : drinkResume;
+  let h = '<div class="load-card" id="nutCard"><div class="load-title">🥤 Ravitaillement d’aujourd’hui'
+    + ' <span style="font-weight:400">· ' + resume + (tempC != null ? " · " + Math.round(tempC) + "°C" : "") + "</span></div>";
   advs.forEach(({ s, a }) => {
     const drinkSummary = a.during.drinkMlPerH[0] === 0
       ? "eau à la soif"

@@ -53,14 +53,14 @@ await page.click("#pfBackup");
 const bk = await dlBackup;
 ok(bk !== null && /endurabuild/.test(bk ? bk.suggestedFilename() : ""), "la sauvegarde télécharge un fichier (" + (bk ? bk.suggestedFilename() : "aucun") + ")");
 
-// ---- 3. Avatar : thèmes cliquables, persistés ----
-ok(await page.locator("[data-av-theme]").count() === 4, "4 thèmes de couleur (accents sport) proposés");
-await page.locator('[data-av-theme="swim"]').click(); await page.waitForTimeout(250);
-const themeSaved = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.answers.avatarTheme; });
-ok(themeSaved === "swim", "choix de thème persisté (avatarTheme=" + themeSaved + ")");
-// R25 — le composite colore chaque zone par SA discipline : le thème ne pilote plus le SVG
-// de la carte, il reste l'accent du PARTAGE (décision n°3). On vérifie donc la persistance,
-// déjà couverte ci-dessus, et que le composite porte bien les couleurs des disciplines.
+// ---- 3. Avatar : plus de sélecteur de thème, partage ET téléchargement ----
+// Retour utilisateur (08/08/2026) : le sélecteur « couleur d'accent » ne pilotait QUE les deux
+// barres du PNG partagé (jamais le composite affiché) — retiré, remplacé par avatarTriAccent()
+// (avatar-tri.js), qui dérive la MÊME couleur que le composite (discipline meneuse). Un seul
+// calcul au lieu de deux qui pouvaient se contredire.
+ok(await page.locator("[data-av-theme]").count() === 0, "le sélecteur de thème a disparu (l'accent suit la discipline meneuse)");
+ok(await page.locator("#avDownload").count() === 1, "un bouton de téléchargement direct existe, à côté du partage");
+// R25 — le composite colore chaque zone par SA discipline (inchangé par ce lot).
 ok(/#00b8d9|#2e6bff|#ff7a1a/.test(await page.locator("#avSvg svg").innerHTML()), "le composite porte les couleurs des disciplines");
 
 // ---- 4. Multi-plans : nouveau plan → questionnaire vierge, retour au 1er sans perte ----
