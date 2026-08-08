@@ -36,6 +36,7 @@ import { dailyEnergy, energyRefusalNotice, type DailyEnergyEstimate } from "../n
 import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
 import { assessFeasibility, assessFeasibilityMulti, type FeasibilityLeg } from "../engine/feasibility.ts";
 import { weekDistances } from "../engine/weekDistances.ts";
+import { EDU_LIBRARY } from "../engine/eduLibrary.ts";
 
 interface AppAnswers extends Record<string, unknown> {
   format?: string;
@@ -1064,5 +1065,8 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // R24.8 — les distances de la semaine par discipline (temps exact, km si les références
   // le permettent — jamais un chiffre inventé). Sert l'en-tête de l'onglet 📅 Semaine.
   weekDistances,
+  // Bibliothèque d'éducatifs par discipline (🧰 Outils, retour utilisateur 08/08/2026) — mêmes
+  // gestes que ceux nommés dans les séances réelles, jamais un contenu écrit à côté.
+  eduLibrary: EDU_LIBRARY,
   version: "v2-sprint9",
 };

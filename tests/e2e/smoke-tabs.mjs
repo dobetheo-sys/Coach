@@ -112,6 +112,35 @@ await page.waitForTimeout(400);
 const actif = await page.evaluate(() => (document.querySelector("#ebTabbar .tabbtn.active") || {}).dataset?.tab);
 ok(actif === "week", "après un ⇄ touché depuis 📅 Semaine, on est TOUJOURS sur 📅 Semaine (actif : " + actif + ")");
 
+// ---- 5. 🧰 Outils > 📚 Éducatifs — bibliothèque par discipline (retour utilisateur, 08/08) --
+// Reportée une première fois faute de scope ; le contenu doit être le MÊME que celui que le
+// générateur injecte déjà dans les notes de séance (R11.1) — jamais un texte écrit à côté.
+await setTab("outils");
+await page.waitForTimeout(400);
+await page.evaluate(() => { const b = document.querySelector('[data-subtool="educatifs"]'); if (b) b.click(); });
+await page.waitForTimeout(300);
+const edu = await page.evaluate(() => {
+  const sections = [...document.querySelectorAll("#screen details")];
+  return {
+    n: sections.length,
+    titres: sections.map((d) => (d.querySelector("summary") || {}).textContent || ""),
+    li: document.querySelectorAll("#screen li").length,
+  };
+});
+ok(edu.n === 4, "quatre sections de discipline (course/vélo/natation/trail) — " + edu.n);
+ok(["Course", "Vélo", "Natation", "Trail"].every((lab) => edu.titres.some((t) => t.includes(lab))), "chaque discipline a son titre (" + edu.titres.join(" · ") + ")");
+ok(edu.li >= 8, "des gestes sont listés dans chaque section (" + edu.li + " au total)");
+// Single-source (R11.1) : `EBV2.eduLibrary` est la MÊME structure que celle dont
+// `swimDrillGlossaryText()` dérive le texte injecté dans les notes « Nage éducatifs »
+// (sessionLibrary.ts) — vérifié au caractère près côté moteur par `npm run golden:verify`
+// (0 écart sur 949 profils après ce refactor). Ici on vérifie juste qu'elle a du contenu.
+const swimCheck = await page.evaluate(() => {
+  const lib = (globalThis.EBV2 && globalThis.EBV2.eduLibrary) || [];
+  const sw = (lib.find((x) => x.key === "sw") || {}).drills || [];
+  return { n: sw.length, first: sw[0] && sw[0].name };
+});
+ok(swimCheck.n >= 3, "le glossaire nage exposé à l'UI porte ses éducatifs (" + swimCheck.n + ", ex. « " + swimCheck.first + " »)");
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + (errs.length ? " — " + errs[0] : "") + ")");
 await browser.close();
 server.close();

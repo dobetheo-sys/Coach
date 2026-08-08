@@ -3967,6 +3967,64 @@ function weekDistances(week        , answers             )                      
   }));
 }
 
+// ===== src/engine/eduLibrary.ts =====
+// R11.1 — la bibliothèque d'éducatifs par discipline (onglet 🧰 Outils, retour utilisateur du
+// 08/08/2026, reportée une première fois faute de scope). Le glossaire nage existait déjà,
+// mais comme une PHRASE collée aux séances « Nage éducatifs » (sessionLibrary.ts) — sans
+// source structurée, l'exposer à l'UI aurait voulu dire l'écrire une seconde fois, avec le
+// risque de divergence que ce principe interdit ailleurs dans le dépôt. Ce module en fait la
+// SOURCE UNIQUE (`swimDrillGlossaryText` reproduit le texte injecté dans les notes, au
+// caractère près — voir sessionLibrary.ts), et l'étend aux autres disciplines avec des gestes
+// du même niveau de généralité.
+//
+// Chaque entrée reprend un geste que le générateur NOMME déjà dans un plan réel — les gammes
+// de course (`G` dans sessionLibrary.ts), « Force basse cadence » / « moulinage » côté vélo
+// (src/sports/bike/index.ts, src/sports/tri/index.ts), la VAM et la descente en contrôle côté
+// trail (trailLibrary.ts, HILL_PROGRESSION) — la bibliothèque explique ce que le plan demande
+// déjà, elle n'invente pas un vocabulaire à côté.
+
+                                                       
+
+// Noms en MINUSCULE et sans ponctuation finale : c'est le format que `swimDrillGlossaryText`
+// recompose en une phrase (« rattrapé (…), poings fermés (…) »). L'UI capitalise à l'affichage,
+// une transformation de PRÉSENTATION, pas une seconde donnée.
+const SWIM_DRILLS             = [
+  { name: "rattrapé", how: "le bras devant reste tendu jusqu'au contact des mains avant de repartir : corrige le timing" },
+  { name: "poings fermés", how: "main fermée : force l'appui par l'avant-bras" },
+  { name: "battements planche", how: "jambes seules, planche tenue devant : isole et muscle le battement" },
+];
+
+const RUN_DRILLS             = [
+  { name: "strides", how: "15 à 20 secondes, on monte en vitesse SANS forcer, relâché jusqu'au bout — travaille la fréquence et le relâchement, pas la puissance" },
+  { name: "gammes — montée de genoux", how: "petits appuis rapides, genou à hauteur de hanche, buste droit — active la chaîne avant sans chercher l'amplitude" },
+  { name: "gammes — talons-fesses", how: "le talon remonte vite vers la fesse, appui sous le bassin — travaille la fréquence de la phase de ramené" },
+  { name: "foulées bondissantes", how: "amplitude et temps de suspension recherchés, poussée complète au sol — pliométrie légère, réservée aux phases spécifique/pic (jamais si l'impact est contre-indiqué)" },
+];
+
+const BIKE_DRILLS             = [
+  { name: "force basse cadence", how: "gros braquet, 50 à 60 rpm, sans forcer sur les genoux : le travail est musculaire, pas cardio-vasculaire" },
+  { name: "moulinage", how: "cadence élevée, braquet léger, appui rond recherché : travaille la coordination du pédalage, pas la puissance" },
+];
+
+const TRAIL_DRILLS             = [
+  { name: "montée en VAM", how: "buste droit, poussée complète à chaque appui : la vitesse ascensionnelle est la référence qui compte en trail, pas l'allure" },
+  { name: "descente en contrôle", how: "elle fait partie du travail : foulées courtes, regard loin devant, on freine avec les appuis, pas les cuisses en butée" },
+  { name: "marche rapide bâtons", how: "poussée des bâtons synchronisée avec le pas opposé : soulage les jambes en montée soutenue sans perdre de vitesse ascensionnelle" },
+];
+
+const EDU_LIBRARY                                        = [
+  { key: "rn", drills: RUN_DRILLS },
+  { key: "bk", drills: BIKE_DRILLS },
+  { key: "sw", drills: SWIM_DRILLS },
+  { key: "trail", drills: TRAIL_DRILLS },
+];
+
+/** Recompose le texte injecté dans les notes de « Nage éducatifs » (sessionLibrary.ts) — la
+ *  SEULE fonction qui écrit cette phrase ; le générateur l'appelle, l'UI la lit. */
+function swimDrillGlossaryText(drills             = SWIM_DRILLS)         {
+  return drills.map((d) => d.name + " (" + d.how + ")").join(", ");
+}
+
 // ===== src/engine/loadModel.ts =====
 /**
  * loadModel — quantification de charge par séance (Sprint 0 : durée prescrite).
@@ -4948,6 +5006,7 @@ function auditPlan(plan        , opts            = {})            {
 
 
 
+
 // Import des modules de sport pour leur EFFET DE BORD (enregistrement dans le registre).
 // Un seul endroit dans le projet connaît la liste des sports : celui-ci.
 
@@ -5006,7 +5065,10 @@ function buildSessions(ctx            , slot      , phase        , prog        ,
   };
   // Glossaire des éducatifs nage — accessible aux branches swim ET tri : nommer un
   // éducatif ne suffit pas, il faut dire comment le faire (manifeste : jamais muette).
-  const swimDrillGlossary = "rattrapé (le bras devant reste tendu jusqu'au contact des mains avant de repartir : corrige le timing), poings fermés (main fermée : force l'appui par l'avant-bras), battements planche (jambes seules, planche tenue devant : isole et muscle le battement)";
+  // R11.1 (08/08/2026) — la phrase elle-même est désormais dérivée de la bibliothèque
+  // structurée (`src/engine/eduLibrary.ts`), qui sert aussi l'onglet 🧰 Outils : une seule
+  // écriture des trois éducatifs, jamais deux qui pourraient diverger.
+  const swimDrillGlossary = swimDrillGlossaryText();
 
   // R10 phase 1 — DISPATCH : les branches par sport ont quitté cette fonction pour
   // `src/sports/<sport>/`. Ce qui reste ici est la boîte à outils COMMUNE (builders de steps,
@@ -15730,6 +15792,7 @@ function dailyEnergy(input             )                             {
 
 
 
+
 /** R21 — exportée : la spec du coach proactif construit ses profils comme le pont, pas autrement. */
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
@@ -16753,6 +16816,9 @@ function coachOnIngestV2(sport        , answers            , ingested           
   // R24.8 — les distances de la semaine par discipline (temps exact, km si les références
   // le permettent — jamais un chiffre inventé). Sert l'en-tête de l'onglet 📅 Semaine.
   weekDistances,
+  // Bibliothèque d'éducatifs par discipline (🧰 Outils, retour utilisateur 08/08/2026) — mêmes
+  // gestes que ceux nommés dans les séances réelles, jamais un contenu écrit à côté.
+  eduLibrary: EDU_LIBRARY,
   version: "v2-sprint9",
 };
 
