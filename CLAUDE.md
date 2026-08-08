@@ -1169,7 +1169,7 @@ poses à son échelle. Ancrages attendus **calculés, pas recopiés du rendu**, 
 deux cassures (pieds épinglés → 4 ✖, cuissard sans genou → 1 ✖). En passant les gates : cinq
 suites E2E attendaient « 5 onglets » (dette R24 jamais rejouée) — mises à 4 ; assertions avatar
 de `smoke-r4` réécrites sur le contrat composite.
-**28 gates verts, E2E 18/18, golden 949 inchangé** — l'avatar ne touche aucune séance.
+**27 gates verts, E2E 18/18, golden 949 inchangé** — l'avatar ne touche aucune séance.
 
 **O-21 (3e correction) — « du bruit de convergence » était un diagnostic paresseux** (voir
 ARCHITECTURE.md « O-21 (3e correction) ») : la 2ᵉ correction laissait un résidu qu'elle

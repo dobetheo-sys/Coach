@@ -21,6 +21,7 @@ import { shareStory } from "../export.js";
 import { trapModal } from "./modal.js";
 import { evalRules } from "./steps.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
+import { DISC } from "./icons.js";
 
 const _fmtSec = (s) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
 const _fmtColon = (s) => Math.floor(s / 60) + ":" + String(Math.round(s % 60)).padStart(2, "0");
@@ -118,7 +119,8 @@ function journalPrev(t) {
 // structure de données). Deux sources : le journal d'évolution S.answers.tests (références
 // physiologiques datées — on garde la MEILLEURE, pas la dernière) et les séances réellement
 // faites (✓ du plan + imports FIT) pour les records empiriques (plus longue séance).
-const DISC_LABEL = { rn: "🏃 Course", bk: "🚴 Vélo", sw: "🏊 Natation", br: "🔁 Brick" };
+// R11.1 — dérivé de DISC (./icons.js), plus une copie parallèle du même libellé.
+const DISC_LABEL = Object.fromEntries(["rn", "bk", "sw", "br"].map((k) => [k, DISC[k].ic + " " + DISC[k].label]));
 /**
  * R16.7 — REPLIER LES BLOCS SECONDAIRES DU PROFIL.
  *
@@ -307,8 +309,16 @@ function avatarSectionHTML(plan, todayISO) {
       + '<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + d.progressPct + '%;background:#00a376"></div></div></div>'
       + (next ? '<div style="font-size:var(--fs-xs);color:var(--muted);margin-left:28px">prochain : <b>' + next.libelle + "</b> (encore " + (d.xpToNext - d.xpInLevel) + " XP)</div>" : "");
   };
+  // Audit 07/08/2026 : le tout premier avatar (les 3 jauges à 0) est une silhouette nue sans
+  // texture ni couleur — rien ne contextualisait ce vide AU NIVEAU DU REGARD (l'explication
+  // vivait plus bas dans le texte, hors du premier coup d'œil). Une ligne courte juste sous le
+  // dessin, visible seulement à ce premier niveau.
+  const vierge = JAUGES.every(([k]) => tri[k].level === 0);
   let h = '<div class="load-card"><div style="display:flex;align-items:center;gap:14px">'
+    + '<div style="text-align:center">'
     + '<button id="avSvg" type="button" aria-label="Voir mon avatar en grand" style="background:none;border:none;padding:0;cursor:pointer">' + avatarTriSVG(visual, 96) + "</button>"
+    + (vierge ? '<div class="load-sub" style="max-width:96px;margin-top:2px">Il évoluera avec ta régularité</div>' : "")
+    + "</div>"
     + '<div style="flex:1"><div style="font-weight:800;font-size:var(--fs-lg)">' + titre + "</div>"
     + JAUGES.map(jauge).join("")
     + "</div></div>"

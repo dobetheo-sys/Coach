@@ -14,6 +14,7 @@ import { avatarTriSVG, avatarTriStorySVG } from "./avatar-tri.js";
 import { celebrationMessage } from "./celebrations.js";
 import { trapModal } from "./modal.js";
 import { shareStory, shareText } from "../export.js";
+import { DISC, VERDICT_ICON } from "./icons.js";
 
 // R4.0 — boucle de base : validation → FEEDBACK ≤10s (RPE 1-10, ressenti, douleur) →
 // célébration → teaser de la prochaine séance (la boucle se ferme sur le teaser, jamais
@@ -217,21 +218,13 @@ export function bindSickToggle(plan, todayIso) {
 
 // Séance du jour (déjà adaptée au verdict de forme) — ou, si repos, la prochaine séance
 // à venir. Rendue en PREMIER dans l'onglet central 🎯 Aujourd'hui.
-const _verdictIc = { verte: "\u{1F7E2}", orange: "\u{1F7E0}", rouge: "\u{1F534}" };
 const _verdictLbl = { keep: "séance maintenue", reduce: "volume réduit", replace: "endurance à la place", rest: "repos conseillé", off: "repos complet" };
 // Retour du fondateur (07/08/2026) : « la séance du jour, plus visuelle. » Le héros du jour
 // était du texte pur (nom en gras, une phrase de pourquoi, un lien replié) — rien ne dit au
 // premier coup d'œil « c'est de la nage » ou « c'est du vélo ». Un badge rond par discipline,
-// couleur + pictogramme : mêmes 5 codes que le moteur émet (`sw/bk/rn/br/rs`, vérifié
-// exhaustivement par `demo:avatartri`), mêmes accents que `SPORTS[*].accent` (config.js) et
-// que le composite de l'avatar (R25) — un athlète qui a vu son avatar en vélo bleu retrouve le
-// même bleu ici, pas une troisième palette.
-const _DISC_BADGE = {
-  sw: { ic: "🏊", ac: "#00b8d9" }, bk: { ic: "🚴", ac: "#2e6bff" }, rn: { ic: "🏃", ac: "#ff7a1a" },
-  br: { ic: "🔁", ac: "#9b72ff" }, rs: { ic: "😌", ac: "#00a376" },
-};
+// couleur + pictogramme : DISC (`./icons.js`, R11.1) est le point unique.
 function discBadgeHTML(d) {
-  const b = _DISC_BADGE[d] || _DISC_BADGE.rn;
+  const b = DISC[d] || DISC.rn;
   // R16.8 — un glyphe décoratif se dimensionne en `em`, jamais en px littéral : ce n'est pas
   // de la typographie, l'échelle --fs-* ne le régit pas (voir styles.css :root).
   return '<div aria-hidden="true" style="flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:' + b.ac
@@ -244,7 +237,7 @@ export function heroSessionHTML(plan, todayIso) {
   let res;
   try { res = globalThis.EBV2.adjustToday(S.sport, S.answers, snap); } catch (e) { console.warn(e); return ""; }
   const v = res.adjustment.verdict;
-  const badge = '<span style="float:right;font-size:var(--fs-xs);font-weight:700;color:#555;margin-top:2px">' + _verdictIc[v.level] + " " + _verdictLbl[res.adjustment.action] + "</span>";
+  const badge = '<span style="float:right;font-size:var(--fs-xs);font-weight:700;color:#555;margin-top:2px">' + VERDICT_ICON[v.level] + " " + _verdictLbl[res.adjustment.action] + "</span>";
   // R4.7 — le plan qui réagit : toute adaptation est ANNONCÉE et expliquée en une phrase
   // (RPE d'hier, douleur, sommeil… — c'est la différence entre un PDF statique et un coach).
   const why = res.adjustment.action !== "keep" && v.drivers.length

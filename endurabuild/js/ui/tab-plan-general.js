@@ -65,8 +65,7 @@ import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./sessio
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 import { feasibilityCardHTML, bindFeasibility } from "./feasibility.js";
-
-const ic = { sw: "\u{1F3CA}", bk: "\u{1F6B4}", rn: "\u{1F3C3}", br: "\u{1F501}", rs: "\u{1F4AA}" };
+import { DISC } from "./icons.js";
 
 // R5 — le bandeau rouge « réserves » est retiré (retour utilisateur : langage de
 // développeur, pas de client). Les limites éventuelles du plan restent lisibles dans
@@ -128,7 +127,7 @@ export function handleSwapClick(plan, wnum, jour, rerender) {
 export function weekGridHTML(plan, w, today) {
   let h = '<div class="gw-grid">';
   w.days.forEach((d) => {
-    const bg = d.sessions.map((s) => "<span>" + ic[s.d] + "</span>").join("");
+    const bg = d.sessions.map((s) => "<span>" + (DISC[s.d] ? DISC[s.d].ic : "") + "</span>").join("");
     const nm = d.sessions.map((s, si) => {
       const k = w.num + "|" + d.jour + "|" + si;
       const dn = S.answers.done && S.answers.done[k];
