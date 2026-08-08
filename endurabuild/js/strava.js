@@ -28,6 +28,24 @@ function stravaAuthFromHash() {
   return true;
 }
 
+// Audit 08/08/2026 : ni le rafraîchissement de jeton ni les appels à l'API Strava (steps.js
+// `stravaImport`) ne portaient de borne de temps — un relais lent ou une API qui traîne
+// bloquait l'import sans retour utilisateur avant l'échec final. Point unique R11.1 :
+// `stravaFetch` est le SEUL point d'appel réseau Strava (relais compris) de tout le dépôt.
+const STRAVA_TIMEOUT_MS = 15000;
+/** fetch() borné dans le temps (AbortController). Un dépassement lève une AbortError,
+ *  déjà traitée comme un échec ordinaire par tous les appelants (`catch` existant) —
+ *  aucun changement de contrat, juste un délai qui ne reste plus jamais ouvert. */
+async function stravaFetch(url, opts, ms = STRAVA_TIMEOUT_MS) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, Object.assign({}, opts, { signal: ctrl.signal }));
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 /** URL du relais : celle de l'app (config, déployée pour tous) d'abord, sinon celle
  *  collée par l'utilisateur (réglages avancés). Clé partagée entre plans. */
 function stravaRelayUrl() {
@@ -51,7 +69,7 @@ async function stravaAccessToken() {
   const relay = stravaRelayUrl();
   if (!relay) return null; // expiré et pas de relais → reconnexion manuelle
   try {
-    const r = await fetch(relay + "/refresh", {
+    const r = await stravaFetch(relay + "/refresh", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: auth.refresh_token }),
@@ -70,4 +88,4 @@ function stravaDisconnect() {
   ebSave();
 }
 
-export { stravaAuthFromHash, stravaConnect, stravaAccessToken, stravaDisconnect, stravaRelayUrl };
+export { stravaAuthFromHash, stravaConnect, stravaAccessToken, stravaDisconnect, stravaRelayUrl, stravaFetch };

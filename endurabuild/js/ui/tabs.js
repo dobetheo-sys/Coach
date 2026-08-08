@@ -241,7 +241,7 @@ function renderActiveTab() {
     throw e;
   }
   const screen = $("screen");
-  if (screen) screen.setAttribute("role", "tabpanel");
+  if (screen) { screen.setAttribute("role", "tabpanel"); screen.dataset.tab = activeTab; } // desktop — cible le CSS par onglet
   const tab = TABS.find((t) => t[0] === activeTab) || TABS[TABS.length - 1];
   tab[3](plan);
   const bar = $("ebTabbar");

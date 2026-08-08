@@ -5,6 +5,7 @@ import { S, todayISO, fmtDay } from "../state.js";
 import { evalRules } from "../ui/steps.js";
 import { renderTabs, invalidatePlan, ensurePlan } from "./tabs.js";
 import { logProjection } from "../projection-log.js"; // A-5 — enregistre, ne reboucle jamais
+import { DISC } from "./icons.js";
 
 const _IFZ={"bk.z2":.65,"bk.ss":.90,"bk.vo2":1.12,"bk.frc":.82,"bk.rp":.84,"bk.thr":1.0,
   "rn.easy":.68,"rn.mara":.84,"rn.thr":.98,"rn.vo2":1.10,"rn.rec":.60,
@@ -120,13 +121,12 @@ function downloadPlan(){
   // second : deux générations pouvaient déjà diverger, et surtout un échec de génération
   // doit remonter comme tel, pas produire un export silencieusement différent.
   const a=S.answers, plan=ensurePlan(), cfg=SPORTS[S.sport];
-  const ic={sw:"🏊",bk:"🚴",rn:"🏃",br:"🔁",rs:"💪"};
   let rows="";
   plan.weeks.forEach(w=>{
     const rt=w.race?" · 🏁 COURSE "+w.race:(w.postRace?" · récup post-course":"");
     rows+='<div class="w"><div class="wh"><b>Semaine '+w.num+'</b> · '+w.phase.nom+rt+' · '+w.vol+'h'+(w.isRecup?" (récup)":"")+'</div><div class="g">';
     w.days.forEach(d=>{
-      const s=d.sessions.map(x=>ic[x.d]+" <b>"+x.name+"</b>"+(x.det?" — "+x.det:"")).join("<br>");
+      const s=d.sessions.map(x=>(DISC[x.d]?DISC[x.d].ic:"")+" <b>"+x.name+"</b>"+(x.det?" — "+x.det:"")).join("<br>");
       rows+='<div class="d '+d.charge+'"><div class="dh">'+d.jour+(plan.use10?" · C"+d.cyc+"J"+d.jc:"")+'</div>'+s+'</div>';
     });
     rows+='</div></div>';

@@ -17,6 +17,7 @@ import { dailyContentHTML, microDefiHTML } from "./daily-content.js";
 import { scheduleDailyNotification, weeklyReviewHTML, missedSessionsCheck } from "../notifications.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan } from "./tabs.js";
+import { VERDICT_ICON } from "./icons.js";
 import { noteRaceResult } from "../projection-log.js"; // A-5
 
 const ROLE_LABEL = { warmup: "Échauffement", body: "Corps de séance", cooldown: "Retour au calme" };
@@ -120,11 +121,10 @@ function raceResultCardHTML(plan) {
 function readinessLogHTML() {
   const rlog = Array.isArray(S.answers.readinessLog) ? S.answers.readinessLog : [];
   if (!rlog.length) return "";
-  const icV = { verte: "🟢", orange: "🟠", rouge: "🔴" };
   const lblV = { keep: "maintenue", reduce: "réduite", replace: "remplacée par endurance", rest: "repos", off: "repos complet" };
   const nAdapt = rlog.filter((x) => x.action !== "keep").length;
   let h = '<details class="load-card"><summary class="load-title">🤖 Adaptations quotidiennes (' + rlog.length + " check-ins · " + nAdapt + " ajustement" + (nAdapt > 1 ? "s" : "") + ")</summary>";
-  rlog.slice(-10).reverse().forEach((x) => { h += '<div style="font-size:var(--fs-sm);margin:4px 0">' + (icV[x.level] || "") + " " + x.date + " — séance " + (lblV[x.action] || x.action) + "</div>"; });
+  rlog.slice(-10).reverse().forEach((x) => { h += '<div style="font-size:var(--fs-sm);margin:4px 0">' + (VERDICT_ICON[x.level] || "") + " " + x.date + " — séance " + (lblV[x.action] || x.action) + "</div>"; });
   h += '<div class="load-sub" style="margin-top:4px">C’est la différence entre un plan PDF et un coach : chaque matin, la séance s’ajuste à ta forme réelle.</div></details>';
   return h;
 }

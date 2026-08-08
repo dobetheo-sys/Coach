@@ -130,8 +130,12 @@ function shopSubscriptionCardHTML(plan, today) {
     + '<div class="q"><span class="q-label">Cadence</span><select id="shopCadence">'
     + Object.keys(CADENCES).map((k) => '<option value="' + k + '"' + (k === cadenceSel ? " selected" : "") + '>' + esc(CADENCES[k].label[0].toUpperCase() + CADENCES[k].label.slice(1)) + "</option>").join("")
     + '</select></div>'
+    // Audit 08/08/2026 : « ta préparation demande environ X g » frôlait la cible d'apport que
+    // CLAUDE.md interdit tant qu'aucun diététicien n'a validé le module — un chiffre repris tel
+    // quel des séances (voir l'en-tête du fichier), reformulé en ordonnance d'achat. La carte
+    // reste une PHOTOGRAPHIE de ce que les séances affichent déjà, jamais une cible personnelle.
     + '<div class="load-sub" style="margin-top:6px">' + (periodNeed
-        ? "Ta prochaine période demande environ <b>" + esc(needSummary(periodNeed)) + "</b>."
+        ? "Les séances de ta prochaine période représentent environ <b>" + esc(needSummary(periodNeed)) + "</b> — repris de ce que chaque séance affiche déjà."
         : "Rien à couvrir sur la période qui vient — l’abonnement s’ajustera aux semaines qui en ont besoin.")
     + "</div>"
     + '<div class="q"><span class="q-label">Goût préféré</span><select id="shopFlavor">'

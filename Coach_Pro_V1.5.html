@@ -7113,10 +7113,22 @@ registerSport({
 
 
 function buildBikeSessions(kit            )              {
-  const { a, fmt, slot, phase, lvl, finisher, noVo2, S2, P, W, C, B } = kit;
+  const { a, fmt, slot, phase, lvl, finisher, noVo2, inj, S2, P, W, C, B } = kit;
   const clm = fmt === "clm", climb = a.terrain === "montagne" || a.terrain === "vallonne";
+  // Audit 08/08/2026 — le vélo était le seul sport sans aucune substitution de séance liée à
+  // une blessure : R6.1/R6.2 (reasoningEngine) réduisent déjà le volume et avertissent si la
+  // discipline principale est en conflit (genou/dos → `bk` interdit, ANX-GEN), mais rien
+  // n'ADAPTAIT la séance elle-même — même geste que run.ts (B2/R6.1 : « genou → seuil
+  // contrôlé, pas de pics de force »). `inj.lumbar` existait déjà dans `InjuryInfo`
+  // (constraintMatrix.ts) et n'était lu NULLE PART dans le dépôt jusqu'ici.
+  const kneeSpares = inj.list.includes("genou");
+  const backSpares = inj.lumbar; // dos — la position agressive + le gros braquet chargent le bas du dos
   if (slot === "dur1") {
     if (phase === "base") S2.push({ d: "bk", name: "Sweetspot", note: "Effort soutenu mais maîtrisé, cadence 85-95 rpm. Tu dois pouvoir finir chaque bloc sans t'effondrer.", det: "", steps: [W(15, "montée progressive"), B(P(2, 3), P(12, 20), "bk.ss", "5min souple"), C(10, "décrassage")] });
+    // Genou fragile : le VO2max (puissance maximale = force maximale sur la pédale à chaque
+    // coup) perd ses pics de force, pas le stimulus aérobie — cadence haute plutôt qu'effort
+    // maximal, comme le seuil contrôlé de run.ts.
+    else if (kneeSpares && (phase === "spec" || phase === "peak" || phase === "dev") && !noVo2) S2.push({ d: "bk", name: "Sweetspot contrôlé (genou épargné)", note: "Genou fragile : on garde le stimulus aérobie fort mais sans les pics de force du sprint — cadence haute (95-100 rpm), effort soutenu plutôt que maximal.", det: "", steps: [W(15, "montée progressive, cadence libre"), B(P(3, 4), P(10, 15), "bk.ss", "4min souple", " cadence 95-100 rpm"), C(10, "décrassage")] });
     else if ((phase === "spec" || phase === "peak" || phase === "dev") && !noVo2) S2.push({ d: "bk", name: "VO2max", note: "Intensité maximale tenable 4min, récup longue. La puissance aérobie se maintient jusqu'à l'affûtage.", det: "", steps: [W(20, "progressif + 3 sprints courts"), B(P(4, 6), 4, "bk.vo2", "4min"), C(10, "souple")] });
     else if (lvl === "debutant" || finisher) S2.push({ d: "bk", name: "Tempo progressif", note: "Effort confortablement soutenu, sans jamais te mettre dans le rouge.", det: "", steps: [W(15, "souple"), B(P(2, 3), P(8, 15), "bk.ss", "4min très souple"), C(10, "décrassage")] });
     else S2.push({ d: "bk", name: "Sweetspot", note: "Effort soutenu mais maîtrisé, cadence 85-95 rpm.", det: "", steps: [W(15, "montée progressive"), B(P(2, 3), P(12, 20), "bk.ss", "5min souple"), C(10, "décrassage")] });
@@ -7129,6 +7141,11 @@ function buildBikeSessions(kit            )              {
     // course. C'est la règle mécanisée du tri (auditeur : « *.frc en taper » = violation dure)
     // qui a révélé que le vélo portait le même accident de branchement.
     else if (phase === "taper") S2.push({ d: "bk", name: "Rappel race-pace", note: "Affûtage : on réveille l'allure course sans générer de fatigue. Court et précis.", det: "", steps: [W(10, "progressif"), Object.assign(B(P(2, 3), P(6, 10), "bk.rp", "3min souple"), { repCap: 4 }), C(5, "décrassage")] });
+    // Genou ET dos fragiles sont contraindiqués par le MÊME geste (gros braquet + cadence
+    // basse = force maximale par coup de pédale sur l'articulation, et position agressive
+    // soutenue = charge lombaire) — un seul remplacement, cadence normale + position relâchée,
+    // le libellé nomme la zone réellement en cause.
+    else if (kneeSpares || backSpares) S2.push({ d: "bk", name: "Seuil position détendue" + (backSpares ? " (dos épargné)" : " (genou épargné)"), note: (backSpares ? "Dos fragile : la position agressive et le gros braquet chargent le bas du dos" : "Genou fragile : le gros braquet à cadence basse charge l'articulation à chaque coup de pédale") + " — remplacé par un effort soutenu à cadence NORMALE (85-95 rpm), position relâchée, mêmes minutes d'effort.", det: "", steps: [W(15, "progressif, position relâchée"), B(P(3, 4), P(8, 15), "bk.thr", "3min souple, redresse-toi"), C(10, "décrassage")] });
     else S2.push({ d: "bk", name: climb ? "Force en côte" : "Force basse cadence", note: "Gros braquet, cadence basse, mais sans forcer sur les genoux : c'est musculaire, pas cardio.", det: "", steps: [W(15, "+ montée en intensité"), B(P(4, 6), 5, "bk.frc", "3min souple ou en redescendant", " à 50-60 rpm" + (climb ? " en côte" : "")), C(10, "moulinage léger")] });
   } else if (slot === "durLong") {
     const durCaps = ({ crit: { lo: 60, hi: 150 }, route: { lo: 90, hi: 180 }, clm: { lo: 75, hi: 165 }, cyclo: { lo: 120, hi: 240 }, gravel: { lo: 150, hi: 360 } }                                              )[fmt] || { lo: 90, hi: 210 };

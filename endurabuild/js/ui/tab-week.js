@@ -25,6 +25,7 @@ import { readinessDoneToday } from "./readiness.js";
 import { pointLabelInline } from "./checkin.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan, setTab } from "./tabs.js";
+import { DISC } from "./icons.js";
 
 /** Semaine affichée. Non persistée : revenir sur l'onglet ramène à la semaine courante —
  *  c'est la semaine EN COURS qui est le sujet, la navigation n'est qu'une consultation. */
@@ -90,13 +91,15 @@ export function renderTabWeek(plan) {
   // km inventé, le temps seul s'affiche. Le « ~ » signale une conversion.
   if (globalThis.EBV2 && globalThis.EBV2.weekDistances) {
     try {
-      const DL = { rn: "🏃", bk: "🚴", sw: "🏊" };
-      const dists = globalThis.EBV2.weekDistances(w, S.answers).filter((x) => DL[x.d] && (x.min > 0 || x.km));
+      // Distance : seules rn/bk/sw en portent une (br/rs n'ont pas d'unité de distance) —
+      // allow-list distincte du pictogramme, lui repris de DISC (R11.1).
+      const DISTANCE_DISC = ["rn", "bk", "sw"];
+      const dists = globalThis.EBV2.weekDistances(w, S.answers).filter((x) => DISTANCE_DISC.includes(x.d) && (x.min > 0 || x.km));
       if (dists.length) {
         const fmtKm = (x) => (x.approx ? "~" : "") + String(x.km).replace(".", ",") + " km";
         const fmtMin = (m) => (m >= 60 ? Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0") : m + " min");
         html += '<div class="load-sub" style="display:flex;gap:14px;flex-wrap:wrap;margin:2px 0 8px;font-size:var(--fs-md)">'
-          + dists.map((x) => "<span><b>" + DL[x.d] + " " + (x.km != null ? fmtKm(x) : fmtMin(x.min)) + "</b>"
+          + dists.map((x) => "<span><b>" + DISC[x.d].ic + " " + (x.km != null ? fmtKm(x) : fmtMin(x.min)) + "</b>"
             + (x.km != null && x.min > 0 ? ' <span style="color:var(--muted)">· ' + fmtMin(x.min) + "</span>" : "") + "</span>").join("")
           + "</div>";
       }

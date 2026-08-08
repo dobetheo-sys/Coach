@@ -1,6 +1,7 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
 import { $, S, ebSave, todayISO, jourEntrainementISO } from "../state.js";
+import { VERDICT_ICON } from "./icons.js";
 
 // U7 — LA MÉTÉO SE CHERCHE PENDANT QUE L'ATHLÈTE RÉPOND, PAS APRÈS.
 //
@@ -39,9 +40,9 @@ function fetchWeather(){return primeWeather();}
 /** Verdict lisible + séances du jour, en HTML — factorisé pour le rendu direct ET le
  *  ré-affichage (retour à l'onglet Semaine sans re-décrocher la météo). */
 function verdictHTML(res,weather){
-  const v=res.adjustment.verdict,ic={verte:"🟢",orange:"🟠",rouge:"🔴"};
+  const v=res.adjustment.verdict;
   const lbl={keep:"séance maintenue",reduce:"volume réduit, structure conservée",replace:"qualité remplacée par de l’endurance",rest:"repos aujourd’hui",off:"repos complet (affûtage)"};
-  let h='<div class="why" style="margin:0">'+(weather?'🌤 '+Math.round(weather.tmaxC)+'°C prévus'+(weather.precipMm>=5?' · pluie':'')+'<br>':'')+ic[v.level]+' <b>Readiness '+v.level+'</b> — '+lbl[res.adjustment.action]+'<br><span style="color:#555;font-size:var(--fs-sm)">'+v.drivers.join(" · ")+'</span></div>';
+  let h='<div class="why" style="margin:0">'+(weather?'🌤 '+Math.round(weather.tmaxC)+'°C prévus'+(weather.precipMm>=5?' · pluie':'')+'<br>':'')+VERDICT_ICON[v.level]+' <b>Readiness '+v.level+'</b> — '+lbl[res.adjustment.action]+'<br><span style="color:#555;font-size:var(--fs-sm)">'+v.drivers.join(" · ")+'</span></div>';
   if(res.sessions.length)res.sessions.forEach(x=>{h+='<div style="font-size:var(--fs-sm);margin-top:6px"><b>'+(res.jour||"Aujourd’hui")+' · '+x.name+'</b><br>'+x.det+'</div>';});
   else h+='<div style="font-size:var(--fs-sm);margin-top:6px">Aucune séance planifiée aujourd’hui.</div>';
   return h;
