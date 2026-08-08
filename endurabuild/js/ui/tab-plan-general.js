@@ -124,7 +124,9 @@ export function handleSwapClick(plan, wnum, jour, rerender) {
 // d'affordances, et la divergence qui va avec (Semaine avait le ⇄ et la coche complète,
 // Plan ni l'un ni l'autre). Il n'en reste qu'un, et il porte partout les mêmes gestes :
 // cocher (✓ → feedback → célébration), échanger (⇄), ouvrir le détail.
-export function weekGridHTML(plan, w, today) {
+// `openDetails` : au choix de l'APPELANT (Plan la laisse repliée, Semaine l'ouvre d'office —
+// voir le commentaire de `sessDetailsHTML` dans plan-view.js).
+export function weekGridHTML(plan, w, today, openDetails) {
   let h = '<div class="gw-grid">';
   w.days.forEach((d) => {
     const bg = d.sessions.map((s) => "<span>" + (DISC[s.d] ? DISC[s.d].ic : "") + "</span>").join("");
@@ -136,7 +138,7 @@ export function weekGridHTML(plan, w, today) {
       const title = s.d === "rs" ? "Récupération respectée" : "Marquer fait";
       const chk = '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" data-rest="' + (s.d === "rs" ? 1 : 0) + '" title="' + title + '" aria-label="' + title + " : " + s.name.replace(/"/g, "") + '">' + (dn ? "✓" : "○") + "</button> ";
       // R5 — séance cliquable partout (détail replié + affordance visuelle via CSS .gd-sess)
-      return chk + sessDetailsHTML(s);
+      return chk + sessDetailsHTML(s, undefined, openDetails);
     }).join("");
     // R7 — chaque jour du plan est annoté de sa VRAIE date calendrier (retour utilisateur)
     const mark = "<i>" + (d.date === today ? "auj. · " : "") + fmtDay(d.date) + (plan.use10 ? " · C" + d.cyc + "J" + d.jc : "") + "</i>";
@@ -344,17 +346,18 @@ export function renderTabPlanGeneral(plan) {
   }
   html += whyPlanCardHTML(plan); // R23.6 — descendue ici, juste avant le détail dont elle est le résumé
   html += decisionsCardHTML(plan); // « Les décisions du moteur » — la transparence, en langage neutre
-  // Retour utilisateur (08/08/2026) : « Modifier / JSON / Changer de sport n'ont pas leur place
-  // ici non plus ». MAIS R23.12b (06/08) les avait explicitement fait QUITTER le Profil pour
-  // ici, avec la raison inverse : les garder aux deux endroits, c'était « deux chemins vers le
-  // même geste, dans deux onglets ». Les remettre au Profil referait exactement ce que R23.12b
-  // vient de corriger. Ils restent donc ICI (seul chemin, R11.1) mais changent de POIDS visuel —
-  // séparés des actions de PLAN (voir tout / imprimer / agenda) dans une rangée secondaire,
-  // atténuée : ce sont des gestes de compte (éditer ses réponses, exporter les données brutes,
-  // tout réinitialiser), pas des actions sur CE plan.
+  // Retour utilisateur (08/08/2026, 2e passage) : « n'ont toujours pas leur place ici, à
+  // effacer ». MAIS R23.12b (06/08) les avait explicitement fait QUITTER le Profil pour ici,
+  // avec la raison inverse : les garder aux deux endroits, c'était « deux chemins vers le même
+  // geste, dans deux onglets ». Les remettre au Profil referait exactement ce que R23.12b vient
+  // de corriger — et les supprimer purement et simplement retirerait le SEUL chemin pour éditer
+  // ses réponses ou changer de sport. Ils restent donc ICI (seul chemin, R11.1), mais derrière
+  // un repli fermé par défaut au lieu d'une rangée atténuée toujours visible : ce sont des
+  // gestes de compte (éditer ses réponses, exporter les données brutes, tout réinitialiser),
+  // pas des actions sur CE plan — on les CHERCHE, on ne les subit pas à chaque ouverture.
   html += '<div class="warn" style="background:var(--bg2)">Intensités calibrées sur tes données. Les exports fonctionnent depuis cet onglet, quel que soit l’onglet consulté ensuite.</div>'
     + '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn gold" id="allW" type="button">' + (S.showAllWeeks ? "Revenir à la semaine en cours" : "Voir tout le plan (" + plan.totalWeeks + " semaines)") + '</button><button class="btn" id="prn" type="button">🖨 Version imprimable</button><button class="btn" id="expIcs" type="button">📅 Ajouter à mon agenda</button></div>'
-    + '<div class="nav" style="flex-wrap:wrap;gap:8px;margin-top:8px;opacity:.7"><button class="btn" id="backBp" type="button" style="font-size:var(--fs-sm);padding:9px 12px">← Modifier mes réponses</button><button class="btn" id="expJson" type="button" style="font-size:var(--fs-sm);padding:9px 12px">{ } JSON</button><button class="btn" id="restartBtn" type="button" style="font-size:var(--fs-sm);padding:9px 12px">Changer de sport</button></div></div>';
+    + '<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer">⚙ Réglages avancés (réponses, export brut, changer de sport)</summary><div class="nav" style="flex-wrap:wrap;gap:8px;margin-top:8px"><button class="btn" id="backBp" type="button" style="font-size:var(--fs-sm);padding:9px 12px">← Modifier mes réponses</button><button class="btn" id="expJson" type="button" style="font-size:var(--fs-sm);padding:9px 12px">{ } JSON</button><button class="btn" id="restartBtn" type="button" style="font-size:var(--fs-sm);padding:9px 12px">Changer de sport</button></div></details></div>';
   $("screen").innerHTML = html;
   const rerender = () => renderTabPlanGeneral(plan);
   bindPainBanner(plan, rerender);

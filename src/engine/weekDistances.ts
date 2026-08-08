@@ -71,7 +71,18 @@ export function weekDistances(week: V1Week, answers: AnswersLike): DisciplineDis
       const reps = st.reps || 1;
       const d = discOf(st, s.d);
       if (d !== "rn" && d !== "bk" && d !== "sw") continue;
-      if (st.distanceM != null) { add(d, 0, (reps * st.distanceM) / 1000, false); continue; }
+      if (st.distanceM != null) {
+        const km = (reps * st.distanceM) / 1000;
+        // La nage se prescrit en MÈTRES (sessionLibrary.ts, `Bd`/`Wm`/`Cm`) : c'est le seul
+        // chemin qui passe ici en génération normale, et il ne portait AUCUNE estimation de
+        // temps — « toujours pas de temps en récap pour la natation » (retour utilisateur,
+        // 08/08/2026, 2e passage). Le temps se déduit de la même RÉFÉRENCE MESURÉE (CSS) que
+        // l'inverse (durée → km) trois lignes plus bas — même honnêteté : sans CSS, pas de
+        // minutes inventées, seule la distance (exacte, prescrite en mètres) s'affiche.
+        const min = d === "sw" && css ? (km * 10 * css / 60) / (SWIM_SPEED_RATIO[st.zone || ""] ?? SWIM_SPEED_RATIO["sw.easy"]) : 0;
+        add(d, min, km, false);
+        continue;
+      }
       const min = reps * (st.durationMin || 0);
       if (!min) continue;
       if (st.role !== "body") { add(d, min, 0, false); continue; } // échauffement/retour au calme : temps compté, km non prétendus

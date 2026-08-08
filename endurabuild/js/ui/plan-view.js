@@ -373,24 +373,35 @@ function techListHTML(tech){
 // `<summary>` est le premier enfant de `<details class="gd-sess">`, donc un `querySelector(
 // ".gd-det, .gd-steps")` tombait sur la durée au lieu du contenu technique, sur TOUTE séance.
 const _fmtDur = (min) => !min ? "" : (min >= 60 ? Math.floor(min / 60) + "h" + String(Math.round(min % 60)).padStart(2, "0") : Math.round(min) + "min");
-function sessDetailsHTML(s,style){
+function sessDetailsHTML(s,style,open){
   const dur=_fmtDur(s.min);
   if(!s.det)return "<b>"+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"");
   const why=whyOf(s),tech=techOf(s);
-  // U16 — repli par défaut confirmé (retour utilisateur, 08/08/2026) : rouvrir toutes les
-  // séances d'une semaine referait exactement la densité que ce lot avait mesurée et corrigée.
-  // Seule l'AFFORDANCE change ici : le chevron (`.gd-sess summary::before`, styles.css) passe
-  // de `var(--text2)` (gris discret) à `var(--ink)` en gras — plus visible sans reprendre
-  // d'espace, la densité par défaut reste celle que U16 a établie.
-  return '<details class="gd-sess"'+(style?' style="'+style+'"':"")+'><summary><b>'+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"")+"</summary>"
+  // U16 — repli par défaut confirmé (retour utilisateur, 08/08/2026) pour l'onglet Plan (une
+  // semaine qui peut en afficher plusieurs à la fois, densité mesurée et corrigée alors).
+  //
+  // Retour utilisateur (08/08/2026, 2e passage) : « Afficher d'office le détail des séances »,
+  // redemandé spécifiquement dans l'onglet 📅 Semaine — qui n'affiche jamais qu'UNE semaine à
+  // la fois (contrairement à Plan, qui peut en déplier N). `open` est donc au choix de
+  // l'APPELANT (`weekGridHTML(..., openDetails)`), pas un changement global de la fonction
+  // partagée — Plan garde son repli, Semaine l'ouvre.
+  // Le chevron (`.gd-sess summary::before`, styles.css) reste en `var(--ink)` gras — plus
+  // visible sans reprendre d'espace — quel que soit l'état par défaut.
+  return '<details class="gd-sess"'+(open?' open':"")+(style?' style="'+style+'"':"")+'><summary><b>'+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"")+"</summary>"
     +(why?'<span class="gd-why">\u{1F4A1} '+why+"</span>":"")
     +techListHTML(tech)+"</details>";
 }
 
 /**
- * « Pourquoi ce plan » — EN TÊTE de l'onglet Plan, dépliée, en langage d'athlète.
+ * « Pourquoi ce plan » — résumé en langage d'athlète, EN TÊTE de l'onglet Plan.
  * Les chiffres viennent des `decisions[]` du moteur : aucune phrase n'est inventée ici, chacune
  * cite la décision qui la produit. Le détail complet reste dans la carte du bas.
+ *
+ * Retour utilisateur (08/08/2026, 2e passage) : la carte pesait encore, dépliée par défaut
+ * pendant que « Conseils personnalisés » et « Décisions du moteur » sont repliées — trois blocs
+ * empilés dont un seul ouvert n'allège rien. Elle se replie à son tour ; seul le bandeau de
+ * préparation tronquée (R22, une condition de sécurité et non une option de confort) reste
+ * toujours visible, hors du repli.
  */
 function whyPlanCardHTML(plan){
   const v2=plan&&plan._v2;
@@ -430,11 +441,11 @@ function whyPlanCardHTML(plan){
       +'retirées, parce que ta date de course est proche. <b>Cela suppose une base d’entraînement '
       +'déjà acquise.</b> La progression est plus dense dès la première semaine : sois '
       +'attentif aux signaux de fatigue, et n’hésite pas à alléger au moindre doute.</div></div>';
-  h+='<div class="load-card"><div class="load-title">\u{1F9ED} Pourquoi ce plan</div>'
+  h+='<details class="load-card"><summary class="load-title" style="cursor:pointer">\u{1F9ED} Pourquoi ce plan</summary><div style="margin-top:8px">'
     +'<ul class="exp-list exp-plain">'+li.join("")+"</ul>";
   if(v2.warnings&&v2.warnings.length)
     h+='<div class="load-sub" style="margin-top:8px">\u26A0 Ce que le moteur n\u2019a pas pu faire sous tes contraintes : '+v2.warnings[0]+(v2.warnings.length>1?' <a href="#motorDecisions" style="color:inherit">et '+(v2.warnings.length-1)+' autre'+(v2.warnings.length>2?"s":"")+"\u2026</a>":"")+"</div>";
-  h+='<div class="load-sub" style="margin-top:6px"><a href="#motorDecisions" style="color:inherit">\u2193 Les '+v2.decisions.length+' décisions du moteur, en détail</a></div></div>';
+  h+='<div class="load-sub" style="margin-top:6px"><a href="#motorDecisions" style="color:inherit">\u2193 Les '+v2.decisions.length+' décisions du moteur, en détail</a></div></div></details>';
   return h;
 }
 

@@ -530,7 +530,9 @@ function raceCardHTML(a) {
     + '<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">';
   // R6 — profil du parcours visé : affine la PRÉDICTION (temps course à pied) sans toucher au plan.
   const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
-  h += '<label style="display:block;font-size:var(--fs-md)"><span>Profil du parcours</span><select id="pfCourseProfile" style="display:block;width:100%;margin-top:4px">'
+  h += '<label style="display:block;font-size:var(--fs-md)"><span>Profil du parcours</span>'
+    + aide('Plat : sans relief notable, c’est la référence. Vallonné : quelques côtes, tu relances régulièrement — ça ajoute environ 3 à 6 % de temps par rapport à un parcours plat. Montagneux : dénivelé marqué, des portions soutenues en montée — ça en ajoute 8 à 15 %. Dans le doute entre deux, choisis le plus dur : la prédiction reste honnête, jamais optimiste.', { label: 'plat, vallonné, montagneux' })
+    + '<select id="pfCourseProfile" style="display:block;width:100%;margin-top:4px">'
     + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
   // R18.2 — DISCIPLINE PAR DISCIPLINE pour les épreuves multisport : un triathlon n'est
   // jamais homogène. « Comme au-dessus » retombe sur la réponse globale, puis sur le
