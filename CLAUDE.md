@@ -35,7 +35,7 @@ régularité est priorité 3, pas priorité 7.
 | `Coach_Pro_V1.5.html` | **Le produit** — application autonome (~1600 lignes), tout le moteur |
 | `src/sports/registry.ts` + `src/sports/<sport>/` | **Le registre de sports** (R10) : un sport = un module qui DÉCLARE ses séances, sa prédiction, ses tests et ses `guards` (garde-fous). Un sport inconnu lève. |
 | `src/engine/trailModel.ts` + `src/generator/trailLibrary.ts` | **Le module trail** (R7) : catégorie déduite, charge à 3 axes (temps/D+/D−), 14 séances |
-| `endurabuild/` | **La PWA** — même produit en modules ES, mobile-first, installable/offline, vue plan en 4 onglets (voir ses RAPPORT-MIGRATION-PWA.md, RAPPORT-ONGLETS.md et RAPPORT-R4.md) ; UI = source de vérité désormais |
+| `endurabuild/` | **La PWA** — même produit en modules ES, mobile-first, installable/offline, 5 onglets (Profil/Plan/Aujourd'hui/Semaine/Outils, voir ses RAPPORT-MIGRATION-PWA.md, RAPPORT-ONGLETS.md et RAPPORT-R4.md) ; UI = source de vérité désormais |
 | `ARCHITECTURE.md` | Choix techniques : pipeline du moteur, registre des règles R3.x/Cn, auditeur, conventions |
 | `src/` + `npm run audit:v1` | L'auditeur de cohérence — la spec exécutable (486 combinaisons) |
 | `ROADMAP-V2.md` | La cible V2 (raisonner → générer → auditer → adapter) |
@@ -287,7 +287,8 @@ au Profil, refresh auto, repli jeton manuel conservé). Reste HUMAIN : créer l'
 Strava + déployer le worker (15 min, README).
 **Refonte R5 livrée** (premier retour du fondateur, 28/07/2026) : navigation en 5 onglets
 📋 Profil · 🗓 Plan · 🎯 Aujourd'hui (CENTRAL, mis en valeur) · 📅 Semaine · 🥗 Nutrition
-(📅 Semaine fondue dans 🗓 Plan en R16.9 — quatre onglets aujourd'hui).
+(📅 Semaine fondue dans 🗓 Plan en R16.9 — quatre onglets à l'époque ; 🧰 Outils est arrivé
+depuis avec la Nutrition en sous-onglet, cinq onglets aujourd'hui — voir `tabs.js`).
 Check-in en diaporama coach (`js/ui/checkin.js`), Aujourd'hui = séance du jour → prédiction
 → charge → avancement → intensités (`tab-today.js`), Profil = avatar/XP/teaser + niveaux
 par discipline (tri) + échéance + historique + retest suggéré + records, Plan = phases

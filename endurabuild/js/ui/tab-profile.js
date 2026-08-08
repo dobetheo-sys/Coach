@@ -493,12 +493,18 @@ function stravaCardHTML(a) {
 }
 
 function raceCardHTML(a) {
-  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:4px"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
+  // Retour du fondateur (08/08/2026) : ces selects (et le champ eau) partageaient leur ligne
+  // avec un label à largeur fixe de 150px — sur 390px de large, il ne restait qu'une centaine
+  // de px pour l'option choisie ; « Je ne sais pas encore » s'affichait « Je ne sais pas e… ».
+  // Même correctif que « Courses intermédiaires » (R26) : le label passe sur sa propre ligne,
+  // le champ prend toute la largeur en dessous — ici le label N'EST PAS une légende redondante
+  // (rien d'autre ne dit « Profil du parcours »), il reste donc affiché, juste plus haut.
+  const row = (id, lab, val, ph) => '<label style="display:block;font-size:var(--fs-md);margin-top:8px"><span>' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="display:block;width:100%;margin-top:4px"></label>';
   let h = '<div class="load-card"><div class="load-title">🏁 Ta course' + aide('Ces réglages décrivent l’ÉPREUVE (relief, eau, milieu) — ils affinent la prédiction et le pacing du jour J. Tes références physiologiques, elles, vivent dans « ⚙ Références d’entraînement ».', { label: 'les paramètres de la course' }) + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">';
   // R6 — profil du parcours visé : affine la PRÉDICTION (temps course à pied) sans toucher au plan.
   const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
-  h += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Profil du parcours</span><select id="pfCourseProfile" style="flex:1;min-width:0">'
+  h += '<label style="display:block;font-size:var(--fs-md)"><span>Profil du parcours</span><select id="pfCourseProfile" style="display:block;width:100%;margin-top:4px">'
     + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
   // R18.2 — DISCIPLINE PAR DISCIPLINE pour les épreuves multisport : un triathlon n'est
   // jamais homogène. « Comme au-dessus » retombe sur la réponse globale, puis sur le
@@ -506,7 +512,7 @@ function raceCardHTML(a) {
   if (S.sport === "tri" || S.sport === "duathlon" || S.sport === "swimrun") {
     const legSel = (id, cle, lab, opts) => {
       const cur = String(a[cle] || "");
-      return '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:4px"><span style="width:150px">' + lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
+      return '<label style="display:block;font-size:var(--fs-md);margin-top:8px"><span>' + lab + '</span><select id="' + id + '" style="display:block;width:100%;margin-top:4px">'
         + opts.map(([v, l]) => '<option value="' + v + '"' + (cur === v ? " selected" : "") + ">" + l + "</option>").join("")
         + "</select></label>";
     };
@@ -667,7 +673,12 @@ export function renderTabProfile(plan) {
   html += planDeadlineHTML(plan);
   if (sp === "trail") html += trailProfileHTML(a);
   // R24.3 — les paramètres de l'épreuve, dans la carte dédiée à la course.
-  html += raceCardHTML(a);
+  // Repliée par défaut (08/08/2026) : le correctif de lisibilité qui donne à chaque select sa
+  // propre ligne (au lieu de tronquer son texte, voir plus haut) a fait passer le Profil d'un
+  // triathlète de 4,0 à 4,1 écrans — le plafond posé par U18b. Même geste que « Références
+  // d'entraînement » juste en dessous : c'est un réglage qu'on pose une fois et qu'on vient
+  // CHERCHER, pas de la prose qu'on lit à chaque ouverture de l'onglet.
+  html += repliable(raceCardHTML(a), false);
   html += raceInterHTML(a);
   html += '<div class="bp-cat">' + summaryRows(a) + "</div>";
 
