@@ -11,9 +11,13 @@
 // de sports (R10) : en ajouter un n'exige de toucher qu'une ligne ici, jamais la navigation.
 import { S, $ } from "../state.js";
 import { renderTabNutrition } from "./tab-nutrition.js";
+import { renderTabEducatifs } from "./tab-eduglossaire.js";
 
 const SUBTOOLS = [
   ["nutrition", "\u{1F957}", "Nutrition", renderTabNutrition],
+  // Retour utilisateur (08/08/2026) : bibliothèque d'éducatifs par discipline, reportée une
+  // première fois faute de scope. Même principe d'ajout que Nutrition : une ligne ici.
+  ["educatifs", "\u{1F4DA}", "Éducatifs", renderTabEducatifs],
 ];
 
 function subtabsHTML(active) {

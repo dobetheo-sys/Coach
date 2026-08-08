@@ -7,6 +7,7 @@
 import type { ReasonedPlan, V1Session, V1Step } from "../engine/types.ts";
 import { intOf, recoveryMinutes } from "./renderer.ts";
 import { medicalZone } from "../engine/medicalHold.ts";
+import { swimDrillGlossaryText } from "../engine/eduLibrary.ts";
 import { sportModule, type Rec, type SessionKit } from "../sports/registry.ts";
 // Import des modules de sport pour leur EFFET DE BORD (enregistrement dans le registre).
 // Un seul endroit dans le projet connaît la liste des sports : celui-ci.
@@ -73,7 +74,10 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
   };
   // Glossaire des éducatifs nage — accessible aux branches swim ET tri : nommer un
   // éducatif ne suffit pas, il faut dire comment le faire (manifeste : jamais muette).
-  const swimDrillGlossary = "rattrapé (le bras devant reste tendu jusqu'au contact des mains avant de repartir : corrige le timing), poings fermés (main fermée : force l'appui par l'avant-bras), battements planche (jambes seules, planche tenue devant : isole et muscle le battement)";
+  // R11.1 (08/08/2026) — la phrase elle-même est désormais dérivée de la bibliothèque
+  // structurée (`src/engine/eduLibrary.ts`), qui sert aussi l'onglet 🧰 Outils : une seule
+  // écriture des trois éducatifs, jamais deux qui pourraient diverger.
+  const swimDrillGlossary = swimDrillGlossaryText();
 
   // R10 phase 1 — DISPATCH : les branches par sport ont quitté cette fonction pour
   // `src/sports/<sport>/`. Ce qui reste ici est la boîte à outils COMMUNE (builders de steps,

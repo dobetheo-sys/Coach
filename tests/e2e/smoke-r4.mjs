@@ -193,6 +193,32 @@ if (download) ok(/endurabuild-seance\.png/.test(download.suggestedFilename()), "
 await page.click("#ebCloseCongrats");
 ok(await page.locator(".eb-overlay").count() === 0, "la modal se ferme");
 
+// ---- 8. Retour utilisateur (08/08/2026) : « Course intermédiaire n'affiche que du
+// triathlon ». Piste trouvée en creusant : `SPORTS[S.sport].nom` (tab-profile.js) n'était pas
+// gardé — un `S.sport` corrompu (migration/restauration partielle : `onPlan` vrai, `sport`
+// resté `null`) levait une exception NON rattrapée, qui laissait l'écran figé sur le
+// PRÉCÉDENT plan affiché (ses anciens sélecteurs, dont celui de « Courses intermédiaires »).
+// Le sélecteur de plans se protège déjà (`if (S.onPlan && S.sport) renderPlan()`) — le trou
+// était ailleurs : `renderTabProfile` appelée directement (renommer/supprimer un plan) sans
+// repasser par cette garde. Reproduit en corrompant `S.sport` puis en appelant la fonction
+// telle qu'un renommage/suppression le ferait ; le repli attendu est le même que pour tout
+// plan sans sport : le questionnaire, jamais un écran gelé.
+{
+  const before = await page.evaluate(() => document.querySelector("#screen").innerHTML.length);
+  const guard = await page.evaluate(async () => {
+    const { S } = await import("./js/state.js");
+    const { renderTabProfile } = await import("./js/ui/tab-profile.js");
+    const { ensurePlan } = await import("./js/ui/tabs.js");
+    S.sport = null; // corruption simulée (migration/restauration partielle)
+    let threw = null;
+    try { renderTabProfile(ensurePlan()); } catch (e) { threw = String(e); }
+    return { threw, screenAfter: document.querySelector("#screen").innerHTML.length };
+  });
+  ok(guard.threw === null, "renderTabProfile ne lève plus sur un S.sport corrompu (" + guard.threw + ")");
+  ok(guard.screenAfter !== before, "l'écran n'est PAS resté figé sur l'ancien plan — repli affiché");
+  ok(/Quel plan veux-tu construire/.test(await page.locator("#screen").textContent()), "le repli est le questionnaire, comme pour tout plan sans sport");
+}
+
 ok(consoleErrs.length === 0, "aucune erreur console (" + consoleErrs.length + ")");
 if (consoleErrs.length) info("erreurs: " + consoleErrs.slice(0, 5).join(" | "));
 

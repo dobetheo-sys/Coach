@@ -46,6 +46,9 @@ const ORDER = [
   // et les modules de sport, qui l'appellent tous les trois (tri, vélo, duathlon).
   "src/engine/cyclingSpeed.ts",
   "src/engine/weekDistances.ts", // R24.8 — distances de la semaine par discipline
+  // Bibliothèque d'éducatifs (🧰 Outils) — avant sessionLibrary.ts, qui en dérive le texte
+  // injecté dans les notes de « Nage éducatifs » (une seule écriture, R11.1).
+  "src/engine/eduLibrary.ts",
   "src/engine/loadModel.ts",
   "src/audit/coherenceScorer.ts",
   "src/generator/sessionLibrary.ts",

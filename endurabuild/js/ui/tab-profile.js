@@ -685,6 +685,16 @@ function measuredCardHTML() {
 
 export function renderTabProfile(plan) {
   const a = S.answers, sp = S.sport;
+  // Retour utilisateur (08/08/2026) : le sélecteur de format de « Courses intermédiaires »
+  // restait bloqué sur un ancien sport. Piste trouvée en creusant : `SPORTS[sp].nom` n'était
+  // pas gardé — un `S.sport` faux (entrée `S.plans` corrompue par une migration/restauration
+  // partielle : `onPlan` vrai mais `sport` resté `null`) levait une exception NON rattrapée
+  // ICI, qui interrompait le rendu et laissait l'écran figé sur le PRÉCÉDENT plan affiché —
+  // ses anciens sélecteurs, ses anciennes options. Non reproduit sur le parcours normal
+  // (le sélecteur de plans se protège déjà, `bindPlansSelector`), mais renommer/supprimer un
+  // plan rappelle cette fonction sans passer par cette garde — un chemin de moins à corrompre.
+  // Le repli est celui déjà utilisé ailleurs pour un plan sans sport : le questionnaire.
+  if (!sp || !SPORTS[sp]) { renderStep(); return; }
   const tIso = todayISO();
   let html = '<div class="card"><div class="eyebrow">Profil — ' + SPORTS[sp].nom + "</div><h2>Toi, ton niveau, tes réglages</h2>";
   // R5 — l'identité d'abord : avatar, niveau, XP, teaser du niveau suivant
