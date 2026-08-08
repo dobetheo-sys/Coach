@@ -253,3 +253,186 @@ export function assessFeasibility(input: FeasibilityInput): FeasibilityResult {
         + "ton horizon rend " + fmtTime(reachableSec) + " accessible.",
   };
 }
+
+/**
+ * feasibilityMulti — LE MÊME RAISONNEMENT, SUR PLUSIEURS SEGMENTS (audit 08/08/2026).
+ *
+ * `assessFeasibility` n'inverse qu'une seule discipline (Riegel, course à pied). Un triathlon,
+ * un duathlon ou une natation seule ont besoin du même verdict, mais l'écart à combler porte
+ * sur un TOTAL, pas sur une seule distance — et le gain que le corps peut produire n'est pas le
+ * même d'un segment à l'autre (l'économie de nage progresse plus vite que l'économie de course,
+ * B2/R6.1 / Barnes & Kilding 2015 / G_PLAFOND).
+ *
+ * AUCUN MODÈLE NOUVEAU, même règle qu'en tête de ce fichier : `margeOf`/`structureFactor`/
+ * `volumeFactor`/`regimeDebutant`/`G_PLAFOND` sont exactement ceux que RV3 utilise pour la
+ * course, appelés UNE FOIS PAR SEGMENT avec sa propre référence. Ce qui est nouveau ici, c'est
+ * l'AGRÉGATION : le gain nécessaire se lit sur le TOTAL (le rapport chrono visé / chrono actuel
+ * — aucune inversion physique à faire, `predictRace` connaît déjà le temps de chaque segment) ;
+ * le gain plafond agrège les plafonds par segment au PRORATA DU TEMPS que chacun pèse dans le
+ * total — le segment qui pèse 55 % du chrono (le vélo sur un 70.3) pèse aussi 55 % de ce qu'on
+ * peut espérer gagner, pas un septième comme les trois legs pris à parts égales.
+ *
+ * CE QUE ÇA NE FAIT PAS DE PLUS QUE LA VERSION COURSE À PIED : toujours aucun plan touché,
+ * toujours refuser plutôt qu'inventer — un segment sans référence mesurée fait refuser TOUT le
+ * verdict (RVm1), parce qu'un agrégat qui ignore silencieusement 55 % du chrono mentirait sur
+ * ce qu'il couvre.
+ */
+export interface FeasibilityLeg {
+  /** Identifiant interne, pour le journal de décisions uniquement. */
+  key: string;
+  /** Nom affiché à l'athlète : « Natation 1500m », « Vélo 90km »… */
+  label: string;
+  refType: "ftp" | "thrPace" | "css";
+  /** La référence MESURÉE aujourd'hui pour ce segment (0 = inconnue). */
+  refValue: number;
+  /** Le temps que ce segment prend AUJOURD'HUI, à cette référence (secondes, 0 = non estimé). */
+  currentSec: number;
+}
+
+export interface MultiFeasibilityInput {
+  targetSec: number;
+  legs: FeasibilityLeg[];
+  /** Transitions et autre temps fixe qui ne répond à aucun entraînement (secondes). */
+  fixedSec?: number;
+  horizonWeeks: number;
+  weightKg?: number | null;
+  sex?: string | null;
+  age?: number | null;
+  trainingStructure?: string | null;
+  history?: string;
+  /** Volume hebdomadaire moyen que le plan prescrirait (P10), toutes disciplines confondues. */
+  prescribedMeanH?: number | null;
+  /** Volume récent déclaré (pilote le régime débutant P11 et le facteur volume P10). */
+  volRecentH?: number | null;
+}
+
+const FEAS_LABEL_REF: Record<string, string> = { ftp: "ta FTP", thrPace: "ton allure seuil", css: "ton CSS" };
+
+export function assessFeasibilityMulti(input: MultiFeasibilityInput): FeasibilityResult {
+  const decisions: Decision[] = [];
+  const D = (id: string, what: string, val: string, why: string) => decisions.push({ id, what, val, why });
+  const vide = (human: string): FeasibilityResult => ({
+    verdict: "indeterminable", requiredPaceSecPerKm: null, gainNeeded: null, gainAvailable: null,
+    gainCeiling: null, weeksNeeded: null, reachableSec: null, decisions, human,
+  });
+
+  if (!(input.targetSec > 0)) return vide("Aucun chrono visé.");
+  if (!input.legs.length) return vide("Aucun segment estimable pour ce format — pas de verdict.");
+  for (const leg of input.legs) {
+    if (!(leg.currentSec > 0) || !(leg.refValue > 0))
+      return vide("Sans " + FEAS_LABEL_REF[leg.refType] + " mesurée, impossible de dire ce que ton objectif exige "
+        + "sur le segment « " + leg.label + " » — et un total qui ignorerait ce segment mentirait sur ce qu'il couvre.");
+  }
+
+  // ---- RVm1 : le temps actuel, tous segments confondus — `predictRace` le connaît déjà pour
+  // chaque segment ; on ne le redérive pas, l'appelant le passe tel quel dans `currentSec`.
+  const fixedSec = input.fixedSec ?? 0;
+  const mobileSec = input.legs.reduce((s, l) => s + l.currentSec, 0);
+  const currentTotalSec = mobileSec + fixedSec;
+  D("RVm1", "Temps actuel estimé", fmtTime(currentTotalSec),
+    input.legs.map((l) => l.label + " " + fmtTime(l.currentSec)).join(" + ")
+    + (fixedSec > 0 ? " + transitions " + fmtTime(fixedSec) : "") + " — ta forme mesurée aujourd'hui.");
+
+  // ---- RVm2 : l'écart avec ce que tu es aujourd'hui, sur le TOTAL ----
+  const gainNeeded = 1 - input.targetSec / currentTotalSec;
+  D("RVm2", "Écart à combler", (gainNeeded * 100).toFixed(1) + " %",
+    "Ta forme actuelle donne " + fmtTime(currentTotalSec) + " ; l'objectif demande " + fmtTime(input.targetSec) + ".");
+
+  if (gainNeeded <= 0) {
+    D("RVm6", "Verdict", "déjà atteint", "Ta forme actuelle tient déjà ce chrono.");
+    return {
+      verdict: "atteignable", requiredPaceSecPerKm: null, gainNeeded, gainAvailable: null,
+      gainCeiling: null, weeksNeeded: 0, reachableSec: currentTotalSec, decisions,
+      human: "Ta forme d'aujourd'hui tient déjà cet objectif (elle donne " + fmtTime(currentTotalSec) + "). "
+        + "Le plan sert alors à consolider et à arriver frais, pas à combler un écart.",
+    };
+  }
+
+  // ---- RVm3 : le gain plafond de CHAQUE segment (mêmes règles que RV3), agrégé au prorata du
+  // temps qu'il pèse dans le total MOBILE (les transitions ne répondent à aucun entraînement,
+  // elles sont exclues du poids).
+  const { k } = structureFactor(input.trainingStructure, input.history);
+  const fVol = volumeFactor(input.prescribedMeanH, input.volRecentH) ?? 1;
+  const rg = regimeDebutant(input.volRecentH);
+  let gInfTot = 0, tauTot = 0, capTot = 0;
+  const detail: string[] = [];
+  for (const leg of input.legs) {
+    const legRefs = { ftp: 0, thrPace: 0, css: 0 };
+    legRefs[leg.refType] = leg.refValue;
+    const marge = margeOf(leg.refType, legRefs, input.weightKg, input.sex, input.age);
+    if (marge == null) return vide("Marge non calculable sur le segment « " + leg.label + " » — pas de verdict inventé.");
+    const plafondDisc = G_PLAFOND[leg.refType] + rg * (G_PLAFOND_DEBUTANT[leg.refType] - G_PLAFOND[leg.refType]);
+    const capAbsolu = GAIN_MAX_ABSOLU + rg * (RG_GAIN_MAX_DEBUTANT - GAIN_MAX_ABSOLU);
+    const tau = TAU_WEEKS + rg * (RG_TAU_DEBUTANT - TAU_WEEKS);
+    const gInf = Math.min(capAbsolu, plafondDisc * marge * k * fVol);
+    const poids = mobileSec > 0 ? leg.currentSec / mobileSec : 0;
+    gInfTot += poids * gInf; tauTot += poids * tau; capTot += poids * capAbsolu;
+    detail.push(leg.label + " " + (gInf * 100).toFixed(1) + " % (poids " + Math.round(poids * 100) + " %)");
+  }
+  D("RVm3", "Gain maximal agrégé", (gInfTot * 100).toFixed(1) + " %",
+    "Moyenne pondérée par segment, au prorata du temps qu'il pèse dans ton total : " + detail.join(" · ") + ". "
+    + "Mêmes règles que la course seule (marge mesurée × plafond de discipline × structure × volume) — "
+    + "une fois par segment, jamais un second modèle."
+    + (rg > 0.05 ? " Ton volume récent te place " + (rg >= 0.95 ? "dans" : "près du") + " régime débutant "
+      + "(τ = " + tauTot.toFixed(0) + " semaines agrégées) : les premiers mois construisent une base, "
+      + "ils ne raffinent pas un geste déjà acquis." : "")
+    + " C'est une ASYMPTOTE : aucun horizon ne la dépasse.");
+
+  // ---- RVm4 : au-delà de ce qu'un cycle de préparation sait chiffrer (même refus que RV4) ----
+  const gainAvecAffutage = (g: number): number => Math.min(capTot, g + TAPER_GAIN);
+  if (gainNeeded > gainAvecAffutage(gInfTot)) {
+    const surCycle = currentTotalSec * (1 - gainAvecAffutage(gInfTot));
+    D("RVm6", "Verdict", "hors de portée du modèle",
+      "L'écart dépasse ce qu'un CYCLE de préparation sait produire, tous segments confondus.");
+    return {
+      verdict: "hors-modele", requiredPaceSecPerKm: null, gainNeeded, gainAvailable: gainAvecAffutage(gInfTot),
+      gainCeiling: gInfTot, weeksNeeded: null, reachableSec: surCycle, decisions,
+      human: "Cet objectif demande " + (gainNeeded * 100).toFixed(1) + " % de gain, quand **un cycle de "
+        + "préparation** en produit au plus " + (gainAvecAffutage(gInfTot) * 100).toFixed(1) + " % pour ton profil, "
+        + "tous segments pondérés. Ça ne veut pas dire que c'est hors d'atteinte — ça veut dire que ça se joue "
+        + "sur **plusieurs saisons**, et que ce modèle ne sait pas chiffrer ça honnêtement. Sur cette "
+        + "préparation-ci, ce qui est défendable : **" + fmtTime(surCycle) + "**.",
+    };
+  }
+
+  // ---- RVm5 : combien de semaines il aurait fallu (même inversion que RV5, sur l'agrégat) ----
+  const cible = Math.max(0, gainNeeded - TAPER_GAIN);
+  const ratio = cible / gInfTot;
+  const weeksNeeded = ratio >= 1 ? null : Math.ceil(-tauTot * Math.log(1 - ratio));
+  const w = Math.max(0, input.horizonWeeks);
+  const gainAvailable = gainAvecAffutage(gInfTot * (1 - Math.exp(-w / tauTot)));
+  const reachableSec = currentTotalSec * (1 - gainAvailable);
+  D("RVm5", "Semaines nécessaires", weeksNeeded == null ? "aucun horizon ne suffit" : weeksNeeded + " semaines",
+    "Inversion de la courbe de saturation (constante de temps agrégée " + tauTot.toFixed(0) + " semaines).");
+  D("RVm4", "Ce que ton horizon rend accessible", fmtTime(reachableSec) + " (" + (gainAvailable * 100).toFixed(1) + " % de gain)",
+    "Sur " + w + " semaines, affûtage conforme compris (+" + (TAPER_GAIN * 100).toFixed(1) + " %, Bosquet 2007).");
+
+  if (weeksNeeded != null && weeksNeeded > w) {
+    D("RVm6", "Verdict", "hors horizon", "Atteignable, mais pas d'ici là.");
+    return {
+      verdict: "hors-horizon", requiredPaceSecPerKm: null, gainNeeded, gainAvailable, gainCeiling: gInfTot,
+      weeksNeeded, reachableSec, decisions,
+      human: "Cet objectif est atteignable pour ton profil — mais il demande environ **" + weeksNeeded
+        + " semaines** et il t'en reste **" + w + "**. D'ici la course, ce qui est honnête, c'est **"
+        + fmtTime(reachableSec) + "**. Deux issues : viser ce chrono-là maintenant, ou garder l'objectif "
+        + "pour une course dans " + (weeksNeeded - w) + " semaines de plus.",
+    };
+  }
+
+  const margeRel = (gainAvailable - gainNeeded) / Math.max(1e-9, gainNeeded);
+  const juste = margeRel < 0.15;
+  D("RVm6", "Verdict", juste ? "juste" : "atteignable",
+    juste ? "L'objectif tient, mais sans marge : tout doit se passer bien." : "L'horizon couvre l'écart avec de la marge.");
+  return {
+    verdict: juste ? "juste" : "atteignable",
+    requiredPaceSecPerKm: null, gainNeeded, gainAvailable, gainCeiling: gInfTot,
+    weeksNeeded: weeksNeeded ?? 0, reachableSec, decisions,
+    human: juste
+      ? "Cet objectif tient sur " + w + " semaines, **mais sans marge** : il demande "
+        + (gainNeeded * 100).toFixed(1) + " % et l'horizon en donne " + (gainAvailable * 100).toFixed(1)
+        + " %. Il faudra que la préparation se déroule bien — une blessure ou trois semaines creuses le mettent hors de portée."
+      : "Cet objectif est **atteignable** : il demande " + (gainNeeded * 100).toFixed(1) + " % de gain, et "
+        + w + " semaines t'en donnent " + (gainAvailable * 100).toFixed(1) + " %. Il te reste même de la marge — "
+        + "ton horizon rend " + fmtTime(reachableSec) + " accessible.",
+  };
+}

@@ -152,14 +152,41 @@ await page.waitForTimeout(900);
 const autre = await empreinte(page);
 ok(autre !== avant && autre.length > 200, "RV-UI-B — l'empreinte SAIT voir un changement de plan (volume 6 h → 3 h)");
 
-// ── Hors course à pied, la carte n'existe pas (un verdict tiède se croit, une absence se comprend)
-const horsRun = await page.evaluate(() => {
+// ── Audit 08/08/2026 : étendu de la course seule à swim/tri/duathlon (`assessFeasibilityMulti`,
+// « RVm » dans le pont). Vélo seul et trail restent HORS périmètre — aucun format vélo ne porte
+// de distance connue (PW), et le modèle de temps du trail n'est pas une composition
+// marge/plafond par référence mesurée. Les deux moitiés se gardent donc désormais :
+// ce qui reste hors périmètre le reste, et ce qui vient d'entrer répond vraiment.
+const horsPerimetre = await page.evaluate(() => {
   const st = JSON.parse(localStorage.getItem("eb_state_v2") || "null");
   const a = st && (st.answers || (st.plans && st.plans[st.cur || 0] && st.plans[st.cur || 0].answers));
-  try { return globalThis.EBV2.feasibility("swim", Object.assign({}, a, { target_time: "3:30:00" }), null); }
-  catch (e) { return "EXCEPTION"; }
+  try {
+    return {
+      bike: globalThis.EBV2.feasibility("bike", Object.assign({}, a, { format: "gravel", target_time: "3:30:00" }), null),
+      trail: globalThis.EBV2.feasibility("trail", Object.assign({}, a, { format: "court", target_time: "3:30:00" }), null),
+    };
+  } catch (e) { return "EXCEPTION"; }
 });
-ok(horsRun === null, "RV-UI — hors course à pied, aucun verdict n'est produit");
+ok(horsPerimetre !== "EXCEPTION" && horsPerimetre.bike === null && horsPerimetre.trail === null,
+  "RV-UI — hors périmètre (vélo seul, trail), aucun verdict n'est produit");
+
+// ── swim/tri/duathlon RÉPONDENT désormais — même garantie, sur un chrono multi-segments.
+const multiSport = await page.evaluate(() => {
+  const base = { weight: "72", sex: "H", age: "35", vol_max: "8", vol_recent: "4", history: "confirme",
+    ftp_known: "oui", ftp: "220", pace_known: "oui", pace: "4:30", css_known: "oui", css: "1:35" };
+  try {
+    return {
+      swim: globalThis.EBV2.feasibility("swim", Object.assign({}, base, { format: "fond", target_time: "20:00" }), null),
+      tri: globalThis.EBV2.feasibility("tri", Object.assign({}, base, { format: "M", target_time: "2:30:00" }), null),
+      duathlon: globalThis.EBV2.feasibility("duathlon", Object.assign({}, base, { format: "M", target_time: "2:00:00" }), null),
+    };
+  } catch (e) { return "EXCEPTION"; }
+});
+ok(multiSport !== "EXCEPTION"
+  && multiSport.swim && multiSport.swim.verdict && multiSport.swim.decisions.length > 0
+  && multiSport.tri && multiSport.tri.verdict && multiSport.tri.decisions.length > 0
+  && multiSport.duathlon && multiSport.duathlon.verdict && multiSport.duathlon.decisions.length > 0,
+  "RV-UI — swim/tri/duathlon rendent désormais un verdict motivé (chrono multi-segments)");
 
 await ctx.close();
 await browser.close();
