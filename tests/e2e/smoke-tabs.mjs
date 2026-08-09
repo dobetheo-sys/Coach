@@ -112,24 +112,25 @@ await page.waitForTimeout(400);
 const actif = await page.evaluate(() => (document.querySelector("#ebTabbar .tabbtn.active") || {}).dataset?.tab);
 ok(actif === "week", "après un ⇄ touché depuis 📅 Semaine, on est TOUJOURS sur 📅 Semaine (actif : " + actif + ")");
 
-// ---- 5. 🧰 Outils > 📚 Éducatifs — bibliothèque par discipline (retour utilisateur, 08/08) --
-// Reportée une première fois faute de scope ; le contenu doit être le MÊME que celui que le
-// générateur injecte déjà dans les notes de séance (R11.1) — jamais un texte écrit à côté.
+// ---- 5. 🧰 Outils > 📚 Éducatifs — module riche à six disciplines (R16). Ce que cette suite
+// vérifie, c'est la NAVIGATION (sous-onglet atteint depuis la barre) — le contenu à six
+// disciplines (schéma unifié, badges, verrouillage, sources) a sa propre suite dédiée,
+// `smoke-educatifs.mjs`, qui le couvre en profondeur (A1-A13 du brief). Le profil de ce test
+// est un coureur seul (`runnerStateV1`) : une seule discipline s'affiche (§4 du brief), donc
+// on vérifie CETTE forme-là plutôt que d'importer l'hypothèse à quatre disciplines de l'ancien
+// glossaire qu'il remplace.
 await setTab("outils");
 await page.waitForTimeout(400);
 await page.evaluate(() => { const b = document.querySelector('[data-subtool="educatifs"]'); if (b) b.click(); });
 await page.waitForTimeout(300);
-const edu = await page.evaluate(() => {
-  const sections = [...document.querySelectorAll("#screen details")];
-  return {
-    n: sections.length,
-    titres: sections.map((d) => (d.querySelector("summary") || {}).textContent || ""),
-    li: document.querySelectorAll("#screen li").length,
-  };
-});
-ok(edu.n === 4, "quatre sections de discipline (course/vélo/natation/trail) — " + edu.n);
-ok(["Course", "Vélo", "Natation", "Trail"].every((lab) => edu.titres.some((t) => t.includes(lab))), "chaque discipline a son titre (" + edu.titres.join(" · ") + ")");
-ok(edu.li >= 8, "des gestes sont listés dans chaque section (" + edu.li + " au total)");
+const edu = await page.evaluate(() => ({
+  discs: [...document.querySelectorAll(".edu-disc")].map((b) => b.textContent.trim()),
+  sections: document.querySelectorAll(".edu-section").length,
+  sources: document.querySelectorAll(".edu-sources-box").length,
+}));
+ok(JSON.stringify(edu.discs) === JSON.stringify(["Course"]), "profil course seule → une discipline (" + edu.discs.join(" · ") + ")");
+ok(edu.sections >= 4, "la discipline Course rend ses sections (" + edu.sections + ")");
+ok(edu.sources === 1, "le bloc de sources est présent");
 // Single-source (R11.1) : `EBV2.eduLibrary` est la MÊME structure que celle dont
 // `swimDrillGlossaryText()` dérive le texte injecté dans les notes « Nage éducatifs »
 // (sessionLibrary.ts) — vérifié au caractère près côté moteur par `npm run golden:verify`

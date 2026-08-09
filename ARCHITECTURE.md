@@ -4797,3 +4797,121 @@ attendaient « 5 onglets »** (dette de la fusion R24, jamais rejouée sur trail
 swimrun / nofallback / questionnaires) — mises à 4 ; les assertions avatar de `smoke-r4`
 réécrites sur le contrat composite (l'ancien SVG teinté au thème n'existe plus : le composite
 porte les couleurs des trois disciplines).
+
+## R26 (Éducatifs) — six disciplines, un schéma unique, et une collision résolue avant d'écrire
+
+**Le fichier source s'appelle lui-même R16.** `BRIEF_CLAUDE_CODE_R16.md` + son audit croisé
+`AUDIT_CROISE_EDUCATIFS.md` demandent d'implémenter 🧰 Outils › 📚 Éducatifs pour six disciplines
+(natation, vélo, course, trail, enchaînements, swimrun) à partir de six maquettes HTML fournies +
+deux dossiers de sourcing, avec une règle absolue : `engine.js` n'est **jamais** modifié, le
+module est purement additif côté UI. Mais « R16 » est déjà pris — c'est le lot design visuel du
+01/08/2026 (R16.4 à R16.10, l'échelle typographique, la fusion Semaine→Plan, le retour de
+swimrun), encore cité huit fois dans `styles.css` pour des raisons qui n'ont rien à voir avec ce
+lot. Documenter ce travail sous le même nom aurait rendu deux lots indiscernables au premier
+grep ; il est donc numéroté **R26** dans `CLAUDE.md`, ARCHITECTURE.md et le code — les
+commentaires qui citent le brief lui-même gardent son vrai nom de fichier.
+
+**Une collision plus sérieuse a été trouvée en explorant `main` avant d'écrire une ligne** :
+une session concurrente avait déjà posé, après l'écriture du brief, un onglet 🧰 Outils
+(`tabs.js`, Nutrition devenue sous-onglet) et dedans un sous-onglet « 📚 Éducatifs »
+(`tab-outils.js` → `SUBTOOLS`) rendu par `tab-eduglossaire.js`, dont le contenu vient de
+`src/engine/eduLibrary.ts` — un petit glossaire `{name, how}` par discipline qui reprend le
+vocabulaire que le générateur imprime déjà dans les notes de séance. `swimDrillGlossaryText()`
+de ce fichier est appelée par `sessionLibrary.ts` (le MOTEUR) pour composer le texte de la note
+« Nage éducatifs » — ce fichier est donc un import ENGINE et ne doit pas être touché, exactement
+la règle absolue du brief. Question posée explicitement au fondateur ; réponse : **remplacer**,
+`eduLibrary.ts` restant intact. Vérifié contenu par contenu avant de trancher : vélo/trail/
+natation absorbent déjà presque mot pour mot les gestes de `BIKE_DRILLS`/`TRAIL_DRILLS`/
+`SWIM_DRILLS` (le palier 3 de natation a déjà « Poing fermé », le bloc cadence vélo a déjà
+« Force à basse cadence » et « Vélocité »). Seul `RUN_DRILLS` (strides, gammes montée de
+genoux/talons-fesses, foulées bondissantes) n'a aucun équivalent dans le nouveau contenu course
+(cadence/métriques/volume/renfo) — une section supplémentaire « Vocabulaire de séance » a donc
+été ajoutée au module course, lisant `EBV2.eduLibrary` **en direct** au moment du rendu (R11.1 :
+jamais une resaisie du texte, une seconde source qui pourrait diverger de celle que le moteur
+imprime réellement dans les notes).
+
+### Schéma unifié (B1), un seul composant de rendu (A1)
+
+`endurabuild/js/data/educatifs/{natation,velo,course,trail,enchainements,swimrun}.js` — un objet
+par discipline, forme exacte du brief §2 (`discipline, libelle, couleur, formats?, intro,
+sections[]`), `sections[]` avec `id/numero/titre/accroche/icone/prerequis?/horsSequence?/
+preuve?/contenu[]/sources[]`. Contenu repris **intégralement, sans reformulation**, des six
+maquettes fournies — chaque phrase y était pré-vérifiée contre son sourcing, la reformuler
+l'aurait rendue non vérifiée. `endurabuild/js/ui/tab-educatifs.js` remplace
+`tab-eduglossaire.js` (seul importeur, vérifié avant suppression) : un dispatcher unique par
+type de contenu (`texte|test|seuils|table|schema|drill|debat|warn|secu|renvoi`), toutes les
+disciplines passent par le même code, zéro branche `if (discipline === …)` hors couleur/icône.
+
+Câblage §4 du brief (`registry.js`, `disciplinesForSport(S.sport)`) :
+`tri→[natation,velo,course,enchainements]`, `duathlon→[velo,course,enchainements]`,
+`swimrun→[natation,trail,swimrun]`, `trail→[course,trail]`, `run→[course]`, `bike→[velo]`,
+`swim→[natation]` — clé lue sur **`S.sport`** (la discipline pratiquée), pas sur `format` (la
+distance de course, « 10k »/« Full »/etc.) : les deux axes sont distincts dans ce dépôt depuis
+l'origine, et le brief lui-même dit « format » de façon ambiguë. Le bloc « duathlon » du module
+Enchaînements est une donnée pure dans `enchainements.js` (toujours présente) ; son affichage
+conditionnel (`S.sport === "duathlon"` seulement) est filtré dans `registry.js`, jamais dans la
+donnée elle-même.
+
+### Verrouillage, cascade, et un flag livré pour arbitrage plutôt qu'activé
+
+Section verrouillée si son `prerequis` n'est pas dans `valides`. `LOCKED_PREVIEW = true` (const
+locale, valeur livrée) : le contenu verrouillé reste **intégralement affiché**, seul le bouton de
+validation est `disabled` — c'est le comportement par défaut exigé par A5, et il est cohérent
+avec O-17 (« informer plutôt que bloquer, sauf réelle mise en danger ») : rater un palier de
+natation n'est pas une mise en danger, cacher le palier 3 à qui n'a pas validé le palier 2 ne
+protégerait personne. `LOCKED_PREVIEW = false` est livré et jamais activé — seuls titre/accroche
+rendent alors, le corps disparaît ; lecture la plus cohérente de « livrer les deux comportements
+pour arbitrage ultérieur » puisque le paramètre n'a de sens que s'il change réellement quelque
+chose. Dévalider une section invalide **en cascade** tous ses descendants directs et indirects
+(parcours du graphe `prerequis`, même algorithme que la maquette natation faisait déjà en JS,
+porté au composant générique).
+
+### État par PERSONNE, pas par plan
+
+`educatifs` rejoint `SHARED_KEYS` dans `endurabuild/js/state.js` (aux côtés de
+`readiness/painFlag/sickDates/weight/height/…`) : la progression technique (savoir nager,
+connaître sa cadence) décrit l'ATHLÈTE, pas un plan d'entraînement particulier, contrairement au
+XP/badges/streak qui restent per-plan aujourd'hui — mais ce précédent n'a jamais eu de raison
+documentée, juste un effet de bord de `ebActivate()` qui échange `S.answers` en bloc ; ça n'en
+fait pas la référence à suivre ici, et c'est dit dans le code.
+
+### SVG : zéro collision d'identifiant (A3), zéro couleur en dur (A2)
+
+`svgRegistry.js` porte les douze schémas inline des six maquettes, deux transformations
+MÉCANIQUES seulement : les identifiants de `<marker>` (globaux au document — plusieurs schémas
+montés sur la même page se casseraient mutuellement) préfixés par discipline (`nat-m1`…`nat-m7`,
+`nat-b1`/`nat-b2`, `velo-v1`, `trail-t1` — onze marqueurs, aucun schéma course/enchaînements/
+swimrun n'en utilise), et les classes CSS de dessin préfixées `edu-`. La couleur d'accent par
+discipline est injectée en variable CSS inline `--sa` (même mécanisme que `.sport-card`/`.drv`
+déjà dans l'app), lue depuis `SPORTS[key].accent` — jamais une couleur en dur dans le template ;
+Enchaînements (transverse, aucun sport associé) utilise une constante locale
+`ENCHAINEMENTS_ACCENT`. Les teintes illustratives DANS les schémas (bleu de l'eau, rouge
+d'avertissement…) restent en hex littéral : ce sont des couleurs de CONTENU, pas de chrome —
+documenté en commentaire pour ne pas être confondu avec une violation d'A2 par un lecteur pressé.
+
+### Ce qui a été trouvé en le construisant
+
+Un import mort dans `natation.js` (`import { SVG_P1, … } from "./svgRegistry.js"` — seul
+`SVG_REGISTRY` est exporté, les noms individuels n'existaient pas) attrapé par une
+`SyntaxError` au premier chargement navigateur plutôt que découvert plus tard. Deux tailles en
+px littéral (`10,5px`/`9,5px` sur les étiquettes de schéma) auraient fait rougir `smoke-typo`
+(R16.8 : aucun `font-size:Npx` littéral nulle part dans `styles.css`, sans exception pour le
+texte SVG) — attrapées en relisant l'assertion avant de lancer la suite plutôt qu'en attendant
+le rouge, corrigées vers `var(--fs-xs)`/`var(--fs-micro)`. Et une vraie régression dans
+`smoke-tabs.mjs` : deux assertions codaient en dur la forme de l'ANCIEN module (quatre
+`<details>` Course/Vélo/Natation/Trail toujours affichés) — remplacer le module les a cassées à
+juste titre, réécrites sur le comportement réel du nouveau (profil coureur seul → une seule
+discipline affichée, conforme au §4).
+
+Garde `tests/e2e/smoke-educatifs.mjs` (**20e suite E2E**) : A1 (rendu générique sur sept profils
+de sport), A2 (accent piloté par `--sa`), A3 (zéro identifiant SVG dupliqué), A4 (cascade de
+validation/dévalidation), A5 (verrouillé = contenu intégral + bouton `disabled`), A6 (le
+défilement cale sur l'en-tête de section, jamais sur la fin), A7 (persistance au rechargement),
+A8 (triathlon → 4 disciplines, course → 1), A9 (fonctionne réseau coupé), A10 (le bloc sécurité
+eau libre est visible sans clic de plus), A11 (les trois libellés de badge fixes, aucune
+variante), A12 (chaque section porte au moins une source) — plus la table complète du §4 sur les
+sept sports et la visibilité conditionnelle du bloc duathlon. A14 (`engine.js`/
+`Coach_Pro_V1.5.html`/`src/` byte-identiques) vérifié par `git diff origin/main -- src/
+Coach_Pro_V1.5.html endurabuild/js/engine.js` → vide : le module vit entièrement sous
+`endurabuild/js/`, jamais sous `src/`.
+**27 gates verts, E2E 20/20, golden 949 inchangé — aucune génération de plan n'est touchée.**

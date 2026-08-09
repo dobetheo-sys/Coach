@@ -10,7 +10,12 @@ const S = { sport:null, answers:{}, rules:[], step:0, tier:"free", started:false
 // et les réglages de notification appartiennent au corps/à l'appareil — ils suivent
 // l'utilisateur d'un plan à l'autre (fini le re-check-in après un changement de plan).
 // Mécanique : recopiés answers → shared à chaque ebSave, shared → answers à ebActivate.
-const SHARED_KEYS=["readiness","painFlag","sickDates","weight","height","notifyTime","notifyDismissed","lastDailyNotif","lastWeeklyNotif","relanceSent","stravaRelay","stravaAuth","hrRestLog"];
+// R26 — "educatifs" (progression Éducatifs par discipline) rejoint ce groupe : savoir nager,
+// connaître sa cadence, décrire l'ATHLÈTE, pas un plan d'entraînement particulier. Ça diffère
+// du précédent XP/badges/streak (resté per-plan, `answers.done`) — mais ce précédent n'a
+// jamais eu de raison documentée, juste un effet de bord de `ebActivate()` qui échange
+// `S.answers` en bloc ; ça n'en fait pas la référence à suivre ici.
+const SHARED_KEYS=["readiness","painFlag","sickDates","weight","height","notifyTime","notifyDismissed","lastDailyNotif","lastWeeklyNotif","relanceSent","stravaRelay","stravaAuth","hrRestLog","educatifs"];
 function liftShared(){for(const k of SHARED_KEYS)if(S.answers[k]!==undefined)S.shared[k]=S.answers[k];}
 function overlayShared(){for(const k of SHARED_KEYS)if(S.shared[k]!==undefined)S.answers[k]=S.shared[k];}
 // Échappement HTML pour toute valeur saisie réinjectée via innerHTML (anti-XSS, avant tout partage).
