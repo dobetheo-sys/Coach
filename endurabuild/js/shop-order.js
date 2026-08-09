@@ -136,6 +136,25 @@ export function shopPromptDue(sub, planStart, todayISO) {
 }
 
 /**
+ * Retour utilisateur (08/08/2026) : « suggérer à l'athlète d'être accompagné avec nos gels
+ * dès la fin du plan ». Le plan qui se termine est exactement le moment où `shopPromptDue`
+ * devient muet — `estimateTotalNeed` ne trouve plus AUCUNE séance future à chiffrer, donc la
+ * carte entière disparaît (elle ne se propose que sur un besoin CALCULÉ). C'est pourtant le
+ * moment où la question a un sens : « tu continues à t'entraîner, veux-tu qu'on continue à
+ * t'accompagner ? ». Même cadence anti-spam que `shopPromptDue` (28 jours), même ancre
+ * `sub.lastPromptAt` — un seul et même compteur, pas un second qui pourrait déclencher les
+ * deux prompts côte à côte.
+ */
+export function shopEndOfPlanPromptDue(sub, planEndedAt, todayISO) {
+  const v = subscriptionView(sub, todayISO);
+  if (v.status === "active" || v.status === "cancel_pending") return false;
+  if (!planEndedAt || !todayISO || todayISO < planEndedAt) return false;
+  const anchor = (sub && sub.lastPromptAt) || planEndedAt;
+  const days = Math.floor((Date.parse(todayISO + "T00:00:00Z") - Date.parse(anchor + "T00:00:00Z")) / 86400000);
+  return days >= 28;
+}
+
+/**
  * SEUL point à remplacer par un vrai appel serveur (facturation récurrente, expédition).
  * Aujourd'hui : aucune requête réseau, aucune promesse de livraison — l'intention reste
  * locale (persistée par l'appelant via `S.answers.shopSubscription` + `ebSave()`).

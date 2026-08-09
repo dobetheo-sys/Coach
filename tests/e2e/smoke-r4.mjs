@@ -219,6 +219,42 @@ ok(await page.locator(".eb-overlay").count() === 0, "la modal se ferme");
   ok(/Quel plan veux-tu construire/.test(await page.locator("#screen").textContent()), "le repli est le questionnaire, comme pour tout plan sans sport");
 }
 
+// ---- 9. Retour utilisateur (08/08/2026) : « l'XP de l'avatar n'est pas conservé en
+// changeant de plan ». Cause : `avatarTriV2` lit `answers.done`, le journal du seul plan
+// ACTIF — cohérent avec « chaque plan garde son journal », mais contraire à la promesse
+// même de l'avatar (« XP cumulatif, jamais décroissant » = LA PERSONNE, pas le plan affiché).
+// Deux plans « course à pied », 5 séances validées sur le PREMIER (50 XP course), le SECOND
+// actif et vierge : l'avatar doit refléter les 50 XP même en regardant le plan vierge.
+{
+  const answersA = runnerStateV1({ format: "10k" }).answers;
+  answersA.done = { "1|Mar|0": true, "2|Mar|0": true, "3|Mar|0": true, "4|Mar|0": true, "5|Mar|0": true };
+  const answersB = runnerStateV1({ format: "10k" }).answers;
+  answersB.done = {};
+  const st2 = {
+    sport: "run", answers: JSON.parse(JSON.stringify(answersB)), tier: "free", step: 10, started: true, onPlan: true,
+    showAllWeeks: false, currentPlan: null,
+    plans: [
+      { id: "pA", label: "Mon premier 10k", sport: "run", answers: answersA, tier: "free", step: 10, started: true, onPlan: true },
+      { id: "pB", label: "Mon nouveau 10k", sport: "run", answers: answersB, tier: "free", step: 10, started: true, onPlan: true },
+    ],
+    activePlanId: "pB",
+    shared: {},
+  };
+  await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v2", JSON.stringify(s)); }, st2);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  const xp = await page.evaluate(async () => {
+    const { S } = await import("./js/state.js");
+    const { ensurePlan } = await import("./js/ui/tabs.js");
+    const { avatarTriDataFor } = await import("./js/ui/avatar.js");
+    const v = avatarTriDataFor(ensurePlan(), "2026-08-09");
+    return { activePlanId: S.activePlanId, courseXp: v.tri && v.tri.course.xp, courseLevel: v.course };
+  });
+  ok(xp.activePlanId === "pB", "le plan actif est bien le second (vierge)");
+  ok(xp.courseXp === 50, "l'XP course agrège les DEUX plans (50 attendu, " + xp.courseXp + " obtenu)");
+  ok(xp.courseLevel > 0, "le niveau reflète cet XP même plan vierge affiché (niveau " + xp.courseLevel + ")");
+}
+
 ok(consoleErrs.length === 0, "aucune erreur console (" + consoleErrs.length + ")");
 if (consoleErrs.length) info("erreurs: " + consoleErrs.slice(0, 5).join(" | "));
 

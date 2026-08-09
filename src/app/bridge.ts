@@ -514,6 +514,25 @@ export function avatarTriCreditsOf(d: string | undefined): [AvatarDiscipline, nu
   // Repli pour l'inclassable (renfo…) — décision n°1 : `course` par défaut, jamais perdu.
   return [["course", 10]];
 }
+/** XP → état complet (niveau, XP dans le niveau, XP jusqu'au prochain) — la SEULE dérivation
+ *  du barème, utilisée aussi bien pour un plan que pour un total agrégé (`avatarTriMulti`). */
+function avatarTriFromXp(xp: Record<AvatarDiscipline, number>): AvatarTriState {
+  const etat = (total: number): AvatarDiscState => {
+    const level = avatarTriLevel(total);
+    const cur = level > 0 ? AVATAR_TRI_XP[level - 1] : 0;
+    const next = level < 30 ? AVATAR_TRI_XP[level] : null;
+    const xpInLevel = total - cur;
+    const xpToNext = next !== null ? next - cur : 0;
+    return {
+      xp: total, level, xpInLevel, xpToNext,
+      progressPct: next !== null ? Math.max(0, Math.min(100, Math.round((xpInLevel / xpToNext) * 100))) : 100,
+    };
+  };
+  const natation = etat(xp.natation), velo = etat(xp.velo), course = etat(xp.course);
+  const meneuse: AvatarDiscipline = velo.xp >= natation.xp && velo.xp >= course.xp ? "velo"
+    : natation.xp >= course.xp ? "natation" : "course";
+  return { natation, velo, course, meneuse, legende: natation.level >= 30 && velo.level >= 30 && course.level >= 30 };
+}
 export function avatarTriV2(plan: V1Plan, answers: AppAnswers, todayISO: string): AvatarTriState {
   const doneRec = (answers.done as Record<string, boolean>) || {};
   const xp: Record<AvatarDiscipline, number> = { natation: 0, velo: 0, course: 0 };
@@ -527,21 +546,29 @@ export function avatarTriV2(plan: V1Plan, answers: AppAnswers, todayISO: string)
   const pg = progressV2(plan, answers, todayISO);
   const regularWeeks = pg.weekly.filter((w) => w.complete && w.ok).length;
   const tiers = Math.floor((badges.length * 80 + regularWeeks * 120) / 3);
-  const etat = (total: number): AvatarDiscState => {
-    const level = avatarTriLevel(total);
-    const cur = level > 0 ? AVATAR_TRI_XP[level - 1] : 0;
-    const next = level < 30 ? AVATAR_TRI_XP[level] : null;
-    const xpInLevel = total - cur;
-    const xpToNext = next !== null ? next - cur : 0;
-    return {
-      xp: total, level, xpInLevel, xpToNext,
-      progressPct: next !== null ? Math.max(0, Math.min(100, Math.round((xpInLevel / xpToNext) * 100))) : 100,
-    };
-  };
-  const natation = etat(xp.natation + tiers), velo = etat(xp.velo + tiers), course = etat(xp.course + tiers);
-  const meneuse: AvatarDiscipline = velo.xp >= natation.xp && velo.xp >= course.xp ? "velo"
-    : natation.xp >= course.xp ? "natation" : "course";
-  return { natation, velo, course, meneuse, legende: natation.level >= 30 && velo.level >= 30 && course.level >= 30 };
+  return avatarTriFromXp({ natation: xp.natation + tiers, velo: xp.velo + tiers, course: xp.course + tiers });
+}
+/**
+ * Retour utilisateur (08/08/2026) : « l'XP de l'avatar n'est pas conservé en changeant de
+ * plan ». `avatarTriV2` lit `answers.done`, qui est le journal du plan ACTIF SEULEMENT
+ * (`S.answers`, remplacé par `ebActivate` à chaque bascule) — cohérent avec « chaque plan
+ * garde son propre journal », mais ça contredit la promesse même de l'avatar : « XP
+ * cumulatif, jamais décroissant » (§ décisions fondateur ci-dessus) décrit LA PERSONNE, pas
+ * le plan affiché. Un athlète qui crée un deuxième plan ne doit pas voir son avatar repartir
+ * de zéro. Somme les XP (tiers compris) de CHAQUE plan de l'athlète — `avatarTriV2` sait déjà
+ * calculer un total honnête pour un plan, on ne le recalcule pas une seconde fois — puis
+ * redérive les niveaux depuis ce total via la même fonction que le calcul mono-plan
+ * (`avatarTriFromXp`, jamais un second barème).
+ */
+export function avatarTriMulti(entries: { plan: V1Plan; answers: AppAnswers }[], todayISO: string): AvatarTriState {
+  const total: Record<AvatarDiscipline, number> = { natation: 0, velo: 0, course: 0 };
+  for (const e of entries) {
+    const one = avatarTriV2(e.plan, e.answers, todayISO);
+    total.natation += one.natation.xp;
+    total.velo += one.velo.xp;
+    total.course += one.course.xp;
+  }
+  return avatarTriFromXp(total);
 }
 
 /**
@@ -895,7 +922,7 @@ function legsForFeasibility(sport: string, format: string, answers: AppAnswers)
  */
 export function feasibilityV2(sport: string, answers: AppAnswers, plan?: V1Plan & { _v2?: V2PlanMeta }) {
   if (!["run", "swim", "tri", "duathlon"].includes(sport)) return null;
-  const targetSec = parseChronoSec(answers.target_time);
+  const targetSec = parseChronoSec(answers.target_time, sport);
   if (targetSec == null) return null;
   const p = plan ?? generatePlan(toProfile(sport, answers)).plan;
   const today = localTodayISO();
@@ -944,7 +971,7 @@ export function feasibilityV2(sport: string, answers: AppAnswers, plan?: V1Plan 
  * « durée », et lui en inventer un pour un champ qui ne pilote aucune séance serait payer le
  * prix d'une clé de schéma (validation dure, refus d'entrée typé) pour un affichage.
  */
-export function parseChronoSec(v: unknown): number | null {
+export function parseChronoSec(v: unknown, sport?: string): number | null {
   const s = String(v ?? "").trim().replace(/'/g, ":").replace(/\s/g, "");
   if (!s) return null;
   const m = s.match(/^(\d{1,2}):([0-5]?\d)(?::([0-5]?\d))?$/);
@@ -957,6 +984,17 @@ export function parseChronoSec(v: unknown): number | null {
   // pas : on écarte la lecture qui est hors domaine. Aucun format de course à pied du moteur
   // n'est courable en moins de 10 minutes, donc une lecture mm:ss sous ce plancher n'est pas un
   // chrono — c'est la lecture h:mm qui est la bonne. Une seule des deux tient debout à la fois.
+  //
+  // Retour utilisateur (08/08/2026) : ce plancher casse sur un temps TOTAL tri/duathlon dont
+  // l'heure s'écrit sur deux chiffres (Ironman : 9 à 12 h) — « 10:30 » se lisait 10 min 30 au
+  // lieu de 10 h 30, d'où un écart de gain absurde (98,6 %) et un « défendable » sans rapport
+  // avec la saisie. Borné à m[1] ∈ [10,12] : c'est la SEULE zone où l'ancienne heuristique
+  // choisissait à tort mm:ss (elle est déjà correcte pour m[1] ≤ 9, où mmss < 600 quel que soit
+  // le sport) — l'élargir à tout m[1] casserait un Sprint tapé « 55:00 » pour 55 MINUTES.
+  if ((sport === "tri" || sport === "duathlon") && +m[1] >= 10 && +m[1] <= 12) {
+    const sec = (+m[1]) * 3600 + (+m[2]) * 60;
+    return sec <= 43200 ? sec : null;
+  }
   const mmss = (+m[1]) * 60 + (+m[2]);
   const sec = mmss >= 600 ? mmss : (+m[1]) * 3600 + (+m[2]) * 60;
   // Au-delà de 12 h on sort du domaine de Riegel et des formats déclarés.
@@ -1008,6 +1046,9 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // R25 — l'avatar composite (3 jauges 0-30). `avatar` (16 niveaux) reste exposé tel quel
   // tant que le rendu composite n'a pas remplacé l'ancien (non-régression de l'étape 3).
   avatarTri: avatarTriV2,
+  // Retour utilisateur (08/08/2026) : l'XP ne doit pas repartir de zéro au changement de
+  // plan — somme les XP (tiers compris) de tous les plans de l'athlète (voir sa définition).
+  avatarTriMulti,
   perfTier: perfTierV2,
   adherence: adherenceV2,
   disciplines: DISCIPLINE_REGISTRY,

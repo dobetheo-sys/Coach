@@ -16,7 +16,10 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   "smoke-usage.mjs", "smoke-projlog.mjs", "smoke-refus.mjs", "smoke-securite.mjs",
   // RV — le chrono visé : la carte existe ET le plan ne bouge pas. La seconde moitié est la
   // raison d'être de la suite.
-  "smoke-feasibility.mjs"];
+  "smoke-feasibility.mjs",
+  // Le canal de vente (abonnement ravitaillement) n'avait aucune garde depuis sa livraison —
+  // couvre le mécanisme existant et son extension « fin de plan » (08/08/2026).
+  "smoke-shop.mjs"];
 let failed = 0;
 for (const s of SUITES) {
   console.log("\n━━━ " + s + " ━━━");

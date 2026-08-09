@@ -100,18 +100,37 @@ export function avatarDataFor(plan, todayISO) {
   return out;
 }
 
+// Retour utilisateur (08/08/2026) : « l'XP de l'avatar n'est pas conservé en changeant de
+// plan ». `EBV2.avatarTri` lit le journal (`answers.done`) du seul plan ACTIF — l'avatar
+// représente pourtant LA PERSONNE, pas le plan affiché (« XP cumulatif, jamais décroissant »).
+// Pour les plans INACTIFS on n'a que leurs réponses (`p.answers`), jamais leur structure de
+// séances générée : on la reconstruit ICI, UNE fois, via le moteur direct — `app.js#buildPlan`
+// ne convient pas, il lit `S.sport` (le plan ACTIF) quel que soit l'argument reçu, ce qui
+// générerait le plan inactif avec le MAUVAIS sport. Un plan qui échoue à se reconstruire
+// (questionnaire jamais terminé, sport corrompu) est ignoré plutôt que de bloquer l'avatar —
+// même principe de repli que le reste de ce fichier.
+function avatarTriEntries(plan, todayISO) {
+  const entries = [{ plan, answers: S.answers }];
+  if (!globalThis.EBV2 || typeof globalThis.EBV2.buildPlan !== "function") return entries;
+  for (const p of S.plans || []) {
+    if (p.id === S.activePlanId || !p.sport) continue;
+    try { entries.push({ plan: globalThis.EBV2.buildPlan(p.sport, p.answers || {}), answers: p.answers || {} }); }
+    catch (e) { /* plan inactif inexploitable (questionnaire inachevé, réponses corrompues) : ignoré */ }
+  }
+  return entries;
+}
 /** R25 étape 4 — l'état du COMPOSITE (3 jauges) depuis les données réelles, même contrat de
- *  traçabilité qu'`avatarDataFor` : niveaux = XP par discipline (EBV2.avatarTri, régularité
- *  pure), mood = check-in du matin, perf = canal 3 (R17.2). Repli sûr 0/0/0 : l'avatar ne
- *  bloque jamais l'écran qui le porte. */
+ *  traçabilité qu'`avatarDataFor` : niveaux = XP par discipline (EBV2.avatarTriMulti, régularité
+ *  pure, SOMMÉE sur tous les plans de l'athlète), mood = check-in du matin, perf = canal 3
+ *  (R17.2). Repli sûr 0/0/0 : l'avatar ne bloque jamais l'écran qui le porte. */
 export function avatarTriDataFor(plan, todayISO) {
   const out = {
     natation: 0, velo: 0, course: 0, meneuse: "course", legende: false,
     mood: moodOf(S.answers.readiness, S.answers.painFlag, todayISO), perf: null, tri: null,
   };
-  if (!globalThis.EBV2 || !globalThis.EBV2.avatarTri) return out;
+  if (!globalThis.EBV2 || !globalThis.EBV2.avatarTriMulti) return out;
   try {
-    const t = globalThis.EBV2.avatarTri(plan, S.answers, todayISO);
+    const t = globalThis.EBV2.avatarTriMulti(avatarTriEntries(plan, todayISO), todayISO);
     out.natation = t.natation.level; out.velo = t.velo.level; out.course = t.course.level;
     out.meneuse = t.meneuse; out.legende = t.legende; out.tri = t;
     out.perf = globalThis.EBV2.perfTier ? globalThis.EBV2.perfTier(S.sport, S.answers) : null;
