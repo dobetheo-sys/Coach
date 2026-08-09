@@ -506,7 +506,7 @@ export function predictRace(
       + "le même marathon à 4 h et à 14 h de course par semaine — Vickers & Vertosick (2016, N=2303) "
       + "montrent que le kilométrage hebdomadaire est un prédicteur majeur.");
 
-  const render = (args: RenderArgs): { items: PredictionItem[]; advice: string[]; decisions: Decision[]; mid: Map<number, number> } => {
+  const render = (args: RenderArgs): { items: PredictionItem[]; advice: string[]; decisions: Decision[]; mid: Map<number, number>; bounds: Map<number, [number, number]> } => {
     const items: PredictionItem[] = [];
     const advice: string[] = [];
     const dec: Decision[] = [];
@@ -517,8 +517,17 @@ export function predictRace(
     // La fourchette projetée se construit à partir du milieu de la fourchette ACTUELLE ; le
     // relire dans la chaîne formatée serait fragile. `range`/`runRange` sont appelés juste
     // avant le `items.push()` de leur item, donc `items.length` EST son futur index.
+    //
+    // Retour utilisateur (08/08/2026) : la borne BASSE projetée était parfois plus LENTE que
+    // la borne basse d'aujourd'hui, et la fourchette projetée anormalement plus ÉTROITE que
+    // celle d'aujourd'hui — un horizon plus incertain donnant une prédiction plus SERRÉE. Cause
+    // : la fourchette projetée ne partait que du MILIEU d'aujourd'hui (`mid`), en perdant
+    // l'incertitude de mesure (`spread`, relief, milieu de nage) qui avait construit la largeur
+    // affichée pour aujourd'hui. `bounds` capte aussi les bornes RÉELLES de chaque item, pour
+    // que la projection les COMPOSE au lieu de les remplacer (voir plus bas).
     const mid = new Map<number, number>();
-    const note = (lo: number, hi: number) => { mid.set(items.length, (lo + hi) / 2); };
+    const bounds = new Map<number, [number, number]>();
+    const note = (lo: number, hi: number) => { const i = items.length; mid.set(i, (lo + hi) / 2); bounds.set(i, [lo, hi]); };
     const range = (sec: number) => {
       const lo = sec * (1 + shift - spread), hi = sec * (1 + shift + spread);
       note(lo, hi);
@@ -600,7 +609,7 @@ export function predictRace(
     advice.push("Répartition conseillée : premier tiers à " + one(kmEffH * 0.92) + " km-effort/h (volontairement en dessous — tu dois te sentir « trop tranquille »), deuxième tiers à " + one(kmEffH) + ", dernier tiers selon ce qu'il reste. Partir 5 % trop vite coûte 20 % sur la fin.");
     if (obj.cutoffH && obj.raceMinHi > obj.cutoffH * 60) advice.unshift("⏱ Barrière horaire à " + obj.cutoffH + "h : notre estimation haute (" + fmtHM(obj.raceMinHi) + ") la dépasse. Vise le bas de la fourchette, contrôle ton départ et limite le temps passé aux ravitaillements.");
     Dloc("PRED-trail", "Méthode trail", "temps à plat + temps vertical (VAM)", "Riegel ne s'applique pas au trail : on additionne le temps horizontal et le temps d'ascension, puis on pénalise selon la technicité (" + tech.label + ") et la nuit");
-    return { items, advice, decisions: dec, mid };
+    return { items, advice, decisions: dec, mid, bounds };
   }
 
   // R10 phase 1 — DISPATCH : chaque sport porte SA méthode de prédiction dans son module
@@ -620,7 +629,7 @@ export function predictRace(
     advice.push("La prédiction de temps n'est pas encore disponible pour ce sport : nous préférons ne rien afficher plutôt qu'un chiffre que nous ne pourrions pas défendre.");
   }
 
-    return { items, advice, decisions: dec, mid };
+    return { items, advice, decisions: dec, mid, bounds };
   };
 
   // ---- FORME ACTUELLE — la vérité mesurée, l'ancre. Elle ne bouge pas (R14, non-régression).
@@ -687,14 +696,24 @@ function buildProjection(
   fut.items.forEach((it, i) => {
     const ref = itemsNow[i] && itemsNow[i].leg === it.leg ? itemsNow[i] : itemsNow.find((x) => x.leg === it.leg);
     const mNow = now.mid.get(i), mFut = fut.mid.get(i);
+    const nowBounds = now.bounds.get(i);
 
     // ---- Item de TEMPS : fourchette ASYMÉTRIQUE autour de la forme d'aujourd'hui (R14.1 §2)
-    if (mNow != null && mFut != null && mNow > 0) {
+    if (mNow != null && mFut != null && mNow > 0 && nowBounds) {
       // Le gain en TEMPS, tel que le prédicteur du sport le produit réellement (Riegel, facteur
       // CSS, fatigue post-vélo…) : on ne le re-dérive pas d'une seconde formule.
       const gTime = Math.max(0, 1 - mFut / mNow);
-      const loT = mNow * (1 - Math.min(0.95, GAIN_BAND_HI * gTime)); // le plus rapide plausible
-      const hiT = mNow * (1 - GAIN_BAND_LO * gTime);                 // « presque rien gagné »
+      const loT0 = mNow * (1 - Math.min(0.95, GAIN_BAND_HI * gTime)); // le plus rapide plausible
+      const hiT = mNow * (1 - GAIN_BAND_LO * gTime);                  // « presque rien gagné »
+      // Retour utilisateur (08/08/2026) : à horizon court (gain encore faible), `loT0` — ancrée
+      // sur le MILIEU d'aujourd'hui (`mNow`) — pouvait dépasser la borne BASSE d'aujourd'hui
+      // (`loNow`, celle affichée à l'écran) : l'athlète lisait un « meilleur cas » projeté plus
+      // LENT que son meilleur cas actuel. Le milieu n'est jamais montré, seule la fourchette
+      // l'est — la comparaison qui compte pour l'athlète est donc borne à borne, pas borne à
+      // milieu. `loT` ne peut donc jamais être pire que ce que l'écran affiche déjà pour
+      // aujourd'hui ; `hiT` reste inchangée (R14.1-D : le pire cas reste ancré au milieu).
+      const [loNow] = nowBounds;
+      const loT = Math.min(loT0, loNow);
       items.push({ leg: it.leg, value: fmtT(loT) + "–" + fmtT(hiT),
         why: it.why + " · au pire, ta forme d'aujourd'hui : un plan suivi ne rend pas plus lent, il "
           + "peut seulement rapporter moins que prévu (sur 483 sujets au même programme, 7 % n'ont "

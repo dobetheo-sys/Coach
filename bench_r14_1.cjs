@@ -80,6 +80,19 @@ check("R14.1-D", "la borne HAUTE projetée ≈ la forme d'aujourd'hui (jamais pl
   const r = hi / mNow;
   return { ok: r >= 0.95 && r <= 1.0, info: `borne haute projetée ${(r * 100).toFixed(1)} % du temps actuel (attendu 95–100 %)` };
 });
+check("R14.1-D2", "la borne BASSE projetée n'est jamais plus lente que la borne BASSE d'aujourd'hui", () => {
+  // Retour utilisateur (08/08/2026) : à horizon COURT (gain encore faible), la borne basse
+  // projetée dépassait la borne basse d'aujourd'hui — un « meilleur cas » projeté plus lent que
+  // le meilleur cas actuel affiché à l'écran. `loT` était ancrée sur le MILIEU d'aujourd'hui
+  // (jamais montré), pas sur sa borne basse (celle que l'athlète lit). Horizon court délibéré :
+  // c'est la zone où le gain de temps est le plus petit, donc où le défaut mordait le plus.
+  const { now, pj } = both(ans({ format: "S", race_date: courseDans(9) }));
+  if (!pj) return { ok: false, info: "pas de projection" };
+  const a = leg(now, /CAP|course/i), b = leg(pj.items, /CAP|course/i);
+  if (!a || !b) return { ok: false, info: "leg course absent" };
+  const loNow = sec(a.value), loProj = sec(b.value);
+  return { ok: loProj <= loNow, info: `aujourd'hui ${a.value} vs projeté ${b.value}` };
+});
 check("R14.1-E", "`gainBand` remplace `spreadPct` et encadre bien `gainPct`", () => {
   const pj = proj(ans({}));
   if (!pj) return { ok: false, info: "pas de projection" };
