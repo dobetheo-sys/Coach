@@ -16752,6 +16752,58 @@ function parseChronoSec(v         , sport         )                {
   return sec >= 600 && sec <= 43200 ? sec : null;
 }
 
+/**
+ * Retour utilisateur (08/08/2026) : « toujours pas de référence D+ dans Profil / Ta course ».
+ * Le moteur n'a AUCUN chemin numérique pour le D+ hors trail — `RELIEF`/`RELIEF_BIKE_IF`
+ * (predictor.ts) ne lisent QUE la catégorie qualitative plat/vallonné/montagneux, résolue par
+ * `courseProfileOf`/`legProfileOf`, le chemin unique (R14.3-a). Lui ajouter un second chemin
+ * numérique dans le moteur créerait deux sources de vérité. Ces deux fonctions sont donc des
+ * CALCULATRICES côté UI, hors ANSWER_SCHEMA (même statut que `target_time`/`pace`/`css`) : elles
+ * convertissent un D+ saisi vers la MÊME catégorie déjà lue partout, elles n'inventent rien de
+ * nouveau que le moteur devrait apprendre.
+ *
+ * `raceDistanceKm` réutilise les tables de distance DÉJÀ calibrées par sport/format (RUN_KM,
+ * TRI_BIKE_KM/TRI_RUN, DUA_BIKE/DUA_RUN1+2) — une seule écriture de ces chiffres (R11.1).
+ */
+function raceDistanceKm(sport        , format        , leg         )                {
+  if (sport === "run") return RUN_KM[format] ?? null;
+  if (sport === "tri") {
+    if (leg === "bike") return TRI_BIKE_KM[format] ?? null;
+    if (leg === "run") return TRI_RUN[format] ? TRI_RUN[format].km : null;
+    return null;
+  }
+  if (sport === "duathlon") {
+    if (leg === "bike") return DUA_BIKE[format] ? DUA_BIKE[format].km : null;
+    if (leg === "run") {
+      const r1 = DUA_RUN1[format], r2 = DUA_RUN2[format];
+      return r1 && r2 ? r1.km + r2.km : null;
+    }
+    return null;
+  }
+  return null;
+}
+/**
+ * Catégorie suggérée pour un D+ VÉLO (m) sur une distance (km) — ancrée sur `RELIEF_PROFILE`
+ * (fiches d'épreuves réelles : Barcelone/Hambourg, Aix/Vichy, Nice/Alpe d'Huez), jamais un seuil
+ * inventé pour l'occasion. Les bornes sont le MILIEU entre deux catégories publiées : ni l'une
+ * ni l'autre n'a de raison objective d'être « la » frontière, mais les deux valent mieux qu'une
+ * absence de repère. `null` si la distance est inconnue — aucune conversion honnête possible.
+ *
+ * Course à pied délibérément SANS équivalent : aucune calibration D+/km ↔ catégorie n'existe
+ * dans ce dépôt pour la course (contrairement au vélo, source ci-dessus) — en inventer une
+ * serait répéter l'erreur que ce fichier corrige deux fois de suite pour le relief vélo
+ * (commentaire de RELIEF_PROFILE : deux pentes inventées avant la bonne écriture).
+ */
+function bikeReliefFromDplus(dplusM        , km        )                                          {
+  if (!(km > 0) || !(dplusM >= 0)) return null;
+  const per100 = (dplusM / km) * 100;
+  const seuilPlatVallonne = (RELIEF_PROFILE.plat.dplusPer100km + RELIEF_PROFILE.vallonne.dplusPer100km) / 2;
+  const seuilVallonneMontagne = (RELIEF_PROFILE.vallonne.dplusPer100km + RELIEF_PROFILE.montagne.dplusPer100km) / 2;
+  if (per100 < seuilPlatVallonne) return "plat";
+  if (per100 < seuilVallonneMontagne) return "vallonne";
+  return "montagne";
+}
+
                                                                        
 /**
  * R21 — LE COACH PROACTIF, côté application.
@@ -16849,6 +16901,10 @@ function coachOnIngestV2(sport        , answers            , ingested           
   // chrono saisi. Il ne touche jamais le plan : c'est un VERDICT, pas une entrée.
   feasibility: feasibilityV2,
   parseChronoSec,
+  // Retour utilisateur (08/08/2026) : la référence D+ au Profil — calculatrices, pas une
+  // nouvelle donnée pilotée (voir leur définition).
+  raceDistanceKm,
+  bikeReliefFromDplus,
   // R23.1 — LE POINT UNIQUE « cette mesure est-elle humaine ? », exposé à l'UI. Les quatre
   // écritures du journal de tests (FIT, Strava, retest, saisie manuelle) passent par lui : la
   // règle E3 ne vivait que dans le moteur, et les trois écritures côté UI ne la voyaient pas.

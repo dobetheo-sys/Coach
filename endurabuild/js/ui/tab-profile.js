@@ -517,6 +517,29 @@ function stravaCardHTML(a) {
   return h;
 }
 
+// Retour utilisateur (08/08/2026) : « toujours pas de référence D+ dans Ta course ». Le trail a
+// déjà son D+ précis (`trailProfileHTML`) ; les autres sports n'avaient qu'un choix qualitatif
+// plat/vallonné/montagneux. Un D+ (m) saisi ici est une CALCULATRICE (hors ANSWER_SCHEMA, comme
+// `target_time`) : elle affiche un repère m/km et, côté VÉLO seulement, suggère la catégorie via
+// `EBV2.bikeReliefFromDplus` (ancré sur des fiches d'épreuves réelles) — jamais côté course à
+// pied, où aucune calibration équivalente n'existe dans ce dépôt (voir sa définition, bridge.ts).
+// La catégorie qualitative reste le SEUL champ que le moteur lit (R14.3-a) : le D+ aide à la
+// choisir, il ne la remplace pas.
+function dplusHintFor(leg, dplusM) {
+  if (!globalThis.EBV2 || !globalThis.EBV2.raceDistanceKm || dplusM == null || isNaN(dplusM) || dplusM <= 0) return "";
+  const km = globalThis.EBV2.raceDistanceKm(S.sport, S.answers.format, leg);
+  if (km == null) return "Distance de l’épreuve inconnue pour ce format — repère-toi à l’œil.";
+  const per100 = (dplusM / km) * 100;
+  let txt = "≈ " + (Math.round(per100 / 10) / 10) + " m/km sur " + km + " km";
+  if (leg === "bike" && globalThis.EBV2.bikeReliefFromDplus) {
+    const cat = globalThis.EBV2.bikeReliefFromDplus(dplusM, km);
+    const lab = { plat: "Plat", vallonne: "Vallonné", montagne: "Montagneux" }[cat];
+    if (lab) txt += " → suggère « " + lab + " » ci-dessus";
+  } else {
+    txt += " — repère informatif : aucun seuil fiable en course à pied, le choix reste le tien";
+  }
+  return txt;
+}
 function raceCardHTML(a) {
   // Retour du fondateur (08/08/2026) : ces selects (et le champ eau) partageaient leur ligne
   // avec un label à largeur fixe de 150px — sur 390px de large, il ne restait qu'une centaine
@@ -525,6 +548,9 @@ function raceCardHTML(a) {
   // le champ prend toute la largeur en dessous — ici le label N'EST PAS une légende redondante
   // (rien d'autre ne dit « Profil du parcours »), il reste donc affiché, juste plus haut.
   const row = (id, lab, val, ph) => '<label style="display:block;font-size:var(--fs-md);margin-top:8px"><span>' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="display:block;width:100%;margin-top:4px"></label>';
+  const dplusRow = (id, hintId, lab, val, leg) => '<label style="display:block;font-size:var(--fs-md);margin-top:6px"><span>' + lab + '</span>'
+    + '<input type="number" id="' + id + '" min="0" max="20000" value="' + esc(val || "") + '" placeholder="ex. 450" style="display:block;width:100%;margin-top:4px"></label>'
+    + '<div class="load-sub" id="' + hintId + '" style="margin-top:2px">' + esc(dplusHintFor(leg, val ? parseFloat(val) : null)) + "</div>";
   let h = '<div class="load-card"><div class="load-title">🏁 Ta course' + aide('Ces réglages décrivent l’ÉPREUVE (relief, eau, milieu) — ils affinent la prédiction et le pacing du jour J. Tes références physiologiques, elles, vivent dans « ⚙ Références d’entraînement ».', { label: 'les paramètres de la course' }) + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">';
   // R6 — profil du parcours visé : affine la PRÉDICTION (temps course à pied) sans toucher au plan.
@@ -533,6 +559,8 @@ function raceCardHTML(a) {
     + aide('Plat : sans relief notable, c’est la référence. Vallonné : quelques côtes, tu relances régulièrement — ça ajoute environ 3 à 6 % de temps par rapport à un parcours plat. Montagneux : dénivelé marqué, des portions soutenues en montée — ça en ajoute 8 à 15 %. Dans le doute entre deux, choisis le plus dur : la prédiction reste honnête, jamais optimiste.', { label: 'plat, vallonné, montagneux' })
     + '<select id="pfCourseProfile" style="display:block;width:100%;margin-top:4px">'
     + cpSel("", "Je ne sais pas encore") + cpSel("plat", "Plat") + cpSel("vallonne", "Vallonné") + cpSel("montagneux", "Montagneux") + "</select></label>";
+  // Le trail a déjà son D+ précis (carte dédiée, D+/D− et technicité) : pas de doublon ici.
+  if (S.sport !== "trail") h += dplusRow("pfCourseDplus", "pfCourseDplusHint", "D+ de la course (m, optionnel)", a.road_dplus_m, S.sport === "bike" ? "bike" : null);
   // R18.2 — DISCIPLINE PAR DISCIPLINE pour les épreuves multisport : un triathlon n'est
   // jamais homogène. « Comme au-dessus » retombe sur la réponse globale, puis sur le
   // terrain : un seul chemin (`legProfileOf`), trois niveaux de précision.
@@ -548,14 +576,39 @@ function raceCardHTML(a) {
     if (S.sport === "tri") h += row("pfWaterTemp", "🌡 Eau de la course (°C)", a.water_temp_c, "combinaison : interdite au-dessus de 24,5 °C");
     if (S.sport === "tri" || S.sport === "swimrun")
       h += legSel("pfLegSwim", "leg_swim_env", "🏊 Milieu de nage", [["", "Comme au-dessus"], ["bassin", "Bassin"], ["lac", "Lac / eau libre calme"], ["mer_calme", "Mer calme"], ["mer_agitee", "Mer agitée"], ["eau_vive", "Eau vive (courant)"]]);
-    if (S.sport === "tri" || S.sport === "duathlon")
+    if (S.sport === "tri" || S.sport === "duathlon") {
       h += legSel("pfLegBike", "leg_bike_prof", "🚴 Parcours vélo", RELIEF_OPTS);
+      h += dplusRow("pfLegBikeDplus", "pfLegBikeDplusHint", "D+ du segment vélo (m, optionnel)", a.leg_bike_dplus_m, "bike");
+    }
     h += legSel("pfLegRun", "leg_run_prof", "🏃 Parcours à pied", RELIEF_OPTS);
+    h += dplusRow("pfLegRunDplus", "pfLegRunDplusHint", "D+ du segment course (m, optionnel)", a.leg_run_dplus_m, "run");
     h += '<div class="load-sub" style="margin:2px 0 0;color:var(--muted)">Ton épreuve n’est pas d’un seul bloc : on peut nager en eau vive, rouler en montagne et courir à plat. « Comme au-dessus » est un choix parfaitement valable.</div>';
   }
   h += '</div><div class="nav" style="margin-top:10px"><button class="btn" id="pfSaveRace" type="button">Enregistrer</button></div>'
     + '<div id="pfMsgRace" class="load-sub" style="margin-top:6px"></div></div>';
   return h;
+}
+/** Écoute les 3 champs D+ : met à jour leur repère au fil de la saisie, et suggère la
+ *  catégorie vélo (seule calibrée, voir `dplusHintFor`) sans jamais l'imposer — l'athlète
+ *  garde la main sur le select juste au-dessus. */
+function bindRaceDplus() {
+  const wire = (id, hintId, leg, targetSelectId) => {
+    const el = $(id);
+    if (!el) return;
+    el.oninput = () => {
+      const dplusM = el.value ? parseFloat(el.value) : null;
+      const hint = $(hintId);
+      if (hint) hint.textContent = dplusHintFor(leg, dplusM);
+      if (leg !== "bike" || dplusM == null || isNaN(dplusM) || !globalThis.EBV2 || !globalThis.EBV2.raceDistanceKm || !globalThis.EBV2.bikeReliefFromDplus) return;
+      const km = globalThis.EBV2.raceDistanceKm(S.sport, S.answers.format, "bike");
+      const cat = km != null ? globalThis.EBV2.bikeReliefFromDplus(dplusM, km) : null;
+      const target = $(targetSelectId);
+      if (cat && target) target.value = cat;
+    };
+  };
+  wire("pfCourseDplus", "pfCourseDplusHint", S.sport === "bike" ? "bike" : null, "pfCourseProfile");
+  wire("pfLegBikeDplus", "pfLegBikeDplusHint", "bike", "pfLegBike");
+  wire("pfLegRunDplus", "pfLegRunDplusHint", "run", "pfLegRun");
 }
 
 // R10 — courses intermédiaires RÉELLES (dates + priorité), pour TOUS les profils :
@@ -926,6 +979,7 @@ export function renderTabProfile(plan) {
   // gestionnaires partent avec eux. Les laisser aurait levé sur un élément absent — un `null` à
   // chaque rendu de l'onglet, c'est-à-dire une erreur console à chaque visite.
   bindRaceInter();
+  bindRaceDplus();
   bindTrailProfile();
   // R6 §3 — l'athlète arbitre : il voit la mesure, il décide de la brancher ou de la retirer.
   // Aucun écrasement silencieux d'une donnée qu'il a saisie.
@@ -1107,6 +1161,14 @@ export function renderTabProfile(plan) {
     const cp = ($("pfCourseProfile") || {}).value;
     if (cp !== undefined && cp !== String(a.course_profile || "")) {
       S.answers.course_profile = cp; changed++; // n'affecte que la prédiction, pas le plan
+    }
+    // D+ (retour utilisateur, 08/08/2026) — hors ANSWER_SCHEMA (calculatrice, voir sa
+    // définition) : mémorisé pour ne pas le resaisir, sans jamais toucher le plan.
+    for (const [id, cle] of [["pfCourseDplus", "road_dplus_m"], ["pfLegBikeDplus", "leg_bike_dplus_m"], ["pfLegRunDplus", "leg_run_dplus_m"]]) {
+      const el = $(id);
+      if (!el) continue;
+      const v = el.value;
+      if (v !== String(a[cle] || "")) { S.answers[cle] = v; changed++; }
     }
     // R18.2 — les trois profils par discipline. Ils touchent la prédiction ET le pacing du
     // jour J (le jour J est une séance du plan), d'où `changed++` : le plan est régénéré.

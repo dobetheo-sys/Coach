@@ -255,6 +255,50 @@ ok(await page.locator(".eb-overlay").count() === 0, "la modal se ferme");
   ok(xp.courseLevel > 0, "le niveau reflète cet XP même plan vierge affiché (niveau " + xp.courseLevel + ")");
 }
 
+// ---- 10. Retour utilisateur (08/08/2026) : « toujours pas de référence D+ dans Ta course ».
+// Le moteur n'a aucun chemin numérique pour le D+ hors trail — le D+ saisi ici est une
+// calculatrice (hors ANSWER_SCHEMA) qui affiche un repère m/km et suggère la catégorie VÉLO
+// (seule calibrée, `RELIEF_PROFILE`) sans jamais l'imposer ; la course à pied reste sans
+// seuil (aucune calibration équivalente dans ce dépôt).
+{
+  const st10 = runnerStateV1({ format: "Full" });
+  st10.sport = "tri";
+  await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v1", JSON.stringify(s)); }, st10);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  await page.click('#ebTabbar .tabbtn[data-tab="profile"]');
+  await page.waitForTimeout(400);
+  const raceDetails = page.locator("details:has-text('Ta course')").first();
+  if ((await raceDetails.getAttribute("open")) === null) await raceDetails.locator("summary").first().click();
+  await page.waitForTimeout(200);
+  ok(await page.locator("#pfLegBikeDplus").count() === 1, "le champ D+ du segment vélo existe (tri)");
+  ok(await page.locator("#pfLegRunDplus").count() === 1, "le champ D+ du segment course existe (tri)");
+  await page.evaluate(() => {
+    const el = document.getElementById("pfLegBikeDplus");
+    el.value = "1800"; el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(200);
+  const bikeSuggest = await page.locator("#pfLegBike").inputValue();
+  ok(bikeSuggest === "vallonne", "D+ 1800 m sur 180 km (Full) suggère « vallonné » (obtenu : " + bikeSuggest + ")");
+  ok(/suggère/.test(await page.locator("#pfLegBikeDplusHint").textContent()), "le repère vélo nomme la suggestion");
+  await page.evaluate(() => {
+    const el = document.getElementById("pfLegRunDplus");
+    el.value = "300"; el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(200);
+  const runSelectUnchanged = await page.locator("#pfLegRun").inputValue();
+  ok(runSelectUnchanged === "", "le D+ course NE force PAS le select (aucun seuil calibré) — reste « " + (runSelectUnchanged || "Comme au-dessus") + " »");
+  ok(!/suggère/.test(await page.locator("#pfLegRunDplusHint").textContent()), "le repère course reste informatif, sans suggestion");
+  // Enregistrer : les valeurs D+ sont mémorisées (retrouvées au prochain rendu), sans régénérer le plan.
+  await page.click("#pfSaveRace");
+  await page.waitForTimeout(400);
+  const persisted = await page.evaluate(async () => {
+    const { S } = await import("./js/state.js");
+    return { bike: S.answers.leg_bike_dplus_m, run: S.answers.leg_run_dplus_m };
+  });
+  ok(persisted.bike === "1800" && persisted.run === "300", "les D+ saisis sont mémorisés dans le journal (" + JSON.stringify(persisted) + ")");
+}
+
 ok(consoleErrs.length === 0, "aucune erreur console (" + consoleErrs.length + ")");
 if (consoleErrs.length) info("erreurs: " + consoleErrs.slice(0, 5).join(" | "));
 
