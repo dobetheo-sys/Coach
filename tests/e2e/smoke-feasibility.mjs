@@ -188,6 +188,42 @@ ok(multiSport !== "EXCEPTION"
   && multiSport.duathlon && multiSport.duathlon.verdict && multiSport.duathlon.decisions.length > 0,
   "RV-UI — swim/tri/duathlon rendent désormais un verdict motivé (chrono multi-segments)");
 
+// ── Retour utilisateur (08/08/2026) : incohérence entre un verdict qui REFUSE de chiffrer
+// (« ce modèle ne sait pas chiffrer ça honnêtement ») et un chrono « défendable » affiché juste
+// après dans la même phrase. Cause réelle : `parseChronoSec` lisait « 10:30 » comme 10 min 30
+// (mm:ss) au lieu de 10 h 30 (h:mm) sur un temps TOTAL Ironman — un plancher pensé pour la
+// course à pied seule (« aucun format ne se court en moins de 10 min ») qui ne vaut pas pour un
+// temps tri/duathlon (jamais sous une heure). D'où un écart de gain absurde (98,6 %) et un
+// chiffre « défendable » sans rapport avec la saisie, qui ne l'était pourtant pas — seule
+// l'heure de lecture l'était. Borné à m[1] ∈ [10,12] : ça ne doit RIEN changer à un Sprint tapé
+// en mm:ss (« 55:00 » pour 55 minutes doit rester 55 minutes, pas 55 heures).
+const chronoParse = await page.evaluate(() => {
+  const p = globalThis.EBV2.parseChronoSec;
+  return {
+    tri_10h30: p("10:30", "tri"), // le cas signalé, Ironman visé 10h30
+    duathlon_11h45: p("11:45", "duathlon"),
+    tri_sprint_55min: p("55:00", "tri"), // ne doit PAS devenir 55 heures
+    tri_5h30: p("5:30", "tri"), // déjà correct avant ce lot (m[1] < 10) — non régressé
+    run_10min30: p("10:30", "run"), // run inchangé : c'est bien 10 min 30 pour une course
+  };
+});
+ok(chronoParse.tri_10h30 === 37800, "un chrono tri « 10:30 » se lit 10 h 30, pas 10 min 30 (" + chronoParse.tri_10h30 + "s)");
+ok(chronoParse.duathlon_11h45 === 42300, "même correction en duathlon (« 11:45 » → 11 h 45, " + chronoParse.duathlon_11h45 + "s)");
+ok(chronoParse.tri_sprint_55min === 3300, "un Sprint tapé « 55:00 » reste 55 MINUTES, pas 55 heures (" + chronoParse.tri_sprint_55min + "s)");
+ok(chronoParse.tri_5h30 === 19800, "un chrono déjà sans ambiguïté (« 5:30 » < 10 h) n'a pas bougé (" + chronoParse.tri_5h30 + "s)");
+ok(chronoParse.run_10min30 === 630, "run reste inchangé : « 10:30 » y vaut bien 10 min 30 (" + chronoParse.run_10min30 + "s)");
+
+// ── Le verdict bout en bout, sur un Ironman réaliste visé en 10 h 30 : plus d'écart de gain
+// à 98,6 %, un pourcentage plausible pour ce profil.
+const ironmanVerdict = await page.evaluate(() => {
+  const a = { weight: "78", sex: "H", age: "35", vol_max: "8", vol_recent: "5", history: "confirme",
+    ftp_known: "oui", ftp: "220", pace_known: "oui", pace: "5:30", css_known: "oui", css: "1:45" };
+  try { return globalThis.EBV2.feasibility("tri", Object.assign({}, a, { format: "Full", target_time: "10:30" }), null); }
+  catch (e) { return "EXCEPTION"; }
+});
+ok(ironmanVerdict !== "EXCEPTION" && ironmanVerdict && ironmanVerdict.verdict, "le verdict Ironman 10 h 30 se rend sans exception");
+ok(!/98\.6|9h57/.test(JSON.stringify(ironmanVerdict || {})), "plus d'écart de gain à 98,6 % ni de « défendable » à 9h57 (l'artefact du mauvais parsing)");
+
 await ctx.close();
 await browser.close();
 server.close();

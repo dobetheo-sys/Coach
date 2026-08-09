@@ -922,7 +922,7 @@ function legsForFeasibility(sport: string, format: string, answers: AppAnswers)
  */
 export function feasibilityV2(sport: string, answers: AppAnswers, plan?: V1Plan & { _v2?: V2PlanMeta }) {
   if (!["run", "swim", "tri", "duathlon"].includes(sport)) return null;
-  const targetSec = parseChronoSec(answers.target_time);
+  const targetSec = parseChronoSec(answers.target_time, sport);
   if (targetSec == null) return null;
   const p = plan ?? generatePlan(toProfile(sport, answers)).plan;
   const today = localTodayISO();
@@ -971,7 +971,7 @@ export function feasibilityV2(sport: string, answers: AppAnswers, plan?: V1Plan 
  * « durée », et lui en inventer un pour un champ qui ne pilote aucune séance serait payer le
  * prix d'une clé de schéma (validation dure, refus d'entrée typé) pour un affichage.
  */
-export function parseChronoSec(v: unknown): number | null {
+export function parseChronoSec(v: unknown, sport?: string): number | null {
   const s = String(v ?? "").trim().replace(/'/g, ":").replace(/\s/g, "");
   if (!s) return null;
   const m = s.match(/^(\d{1,2}):([0-5]?\d)(?::([0-5]?\d))?$/);
@@ -984,6 +984,17 @@ export function parseChronoSec(v: unknown): number | null {
   // pas : on écarte la lecture qui est hors domaine. Aucun format de course à pied du moteur
   // n'est courable en moins de 10 minutes, donc une lecture mm:ss sous ce plancher n'est pas un
   // chrono — c'est la lecture h:mm qui est la bonne. Une seule des deux tient debout à la fois.
+  //
+  // Retour utilisateur (08/08/2026) : ce plancher casse sur un temps TOTAL tri/duathlon dont
+  // l'heure s'écrit sur deux chiffres (Ironman : 9 à 12 h) — « 10:30 » se lisait 10 min 30 au
+  // lieu de 10 h 30, d'où un écart de gain absurde (98,6 %) et un « défendable » sans rapport
+  // avec la saisie. Borné à m[1] ∈ [10,12] : c'est la SEULE zone où l'ancienne heuristique
+  // choisissait à tort mm:ss (elle est déjà correcte pour m[1] ≤ 9, où mmss < 600 quel que soit
+  // le sport) — l'élargir à tout m[1] casserait un Sprint tapé « 55:00 » pour 55 MINUTES.
+  if ((sport === "tri" || sport === "duathlon") && +m[1] >= 10 && +m[1] <= 12) {
+    const sec = (+m[1]) * 3600 + (+m[2]) * 60;
+    return sec <= 43200 ? sec : null;
+  }
   const mmss = (+m[1]) * 60 + (+m[2]);
   const sec = mmss >= 600 ? mmss : (+m[1]) * 3600 + (+m[2]) * 60;
   // Au-delà de 12 h on sort du domaine de Riegel et des formats déclarés.
