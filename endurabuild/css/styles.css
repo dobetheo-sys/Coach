@@ -193,6 +193,37 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
 .card::before,.load-card::before,.gw::before{content:"";position:absolute;top:0;left:14px;right:14px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);pointer-events:none;}
 .load-card,.gw{position:relative;}
 .card .eyebrow{font-family:var(--font-mono);font-weight:700;font-size:var(--fs-micro);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:inline-block;margin-bottom:12px;}
+/* R25.8 — L'EN-TÊTE DE CARTE A UNE FENTE À DROITE (`.card-title` de la maquette).
+   Toutes ses cartes portent le même en-tête : `<span>TITRE</span><span>ÉTAT</span>`, le second
+   donnant l'état d'un coup d'œil sans ouvrir la carte — « CONNECTÉ » sur Strava, « 6H30 ·
+   ACTIF » sur le rappel, « 1 BARRE = 1 SEM » sur le volume, « MODIFIER » sur l'identité.
+   L'app n'avait qu'un `.eyebrow` aligné à gauche : l'information de droite n'existait nulle
+   part, ou vivait plus bas en légende.
+   Le déclencheur est la présence explicite d'un `.eb-r`, pas « un deuxième enfant » : le
+   titre des références porte déjà un badge « pilote ton plan » en second enfant, qui doit
+   rester collé au libellé et non partir à l'autre bout de la ligne. */
+.card .eyebrow:has(> .eb-r),.load-title:has(> .eb-r){display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.eb-r{font-family:var(--font-mono);font-size:var(--fs-micro);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;white-space:nowrap;flex-shrink:0;}
+.eb-r.on{color:var(--cyan);}
+.eb-r.act{color:var(--acc);}
+/* Variante ACTION de la fente droite (« modifier »). Elle reste visuellement une étiquette
+   de 9 px, mais c'est un bouton : padding vertical généreux pour tenir le minimum de zone
+   tactile (WCAG 2.5.8, la règle appliquée depuis U4), et un soulignement qui dit qu'on peut
+   la toucher — une étiquette et une action ne doivent pas se ressembler. */
+.eb-link{background:none;border:0;cursor:pointer;color:var(--acc);text-decoration:underline;text-underline-offset:3px;padding:6px 4px;margin:-6px -4px;font-family:inherit;
+  /* Mesuré au rendu : 23 px de haut avec le seul padding — UN pixel sous le minimum. Une
+     hauteur minimale plutôt qu'une arithmétique de padding, parce que la taille du texte
+     dépend de l'échelle `--fs-*`, que R16.8 peut faire bouger (même correctif qu'U17). */
+  min-height:24px;min-width:24px;display:inline-flex;align-items:center;justify-content:flex-end;}
+/* R25.8 — L'AVATAR RESPIRE (spec Profil, motion : « zenna-pulse léger au repos, tap →
+   ease-spring »). Le halo est un pseudo-élément DERRIÈRE le dessin : il n'ajoute aucun nœud,
+   ne prend aucun clic (`pointer-events:none`) et réutilise `eb-pulse`, le keyframe déjà écrit
+   pour le halo du décompte — deux respirations différentes pour la même intention seraient
+   deux vérités (R11.1). L'avatar est un BOUTON depuis R25 (« voir en grand ») : le retour au
+   doigt lui manquait, alors que `.card`/`.btn`/`.opt` l'ont depuis R25.2b. */
+#avSvg{position:relative;transition:transform var(--dur-tap) var(--ease-spring);}
+#avSvg::before{content:"";position:absolute;inset:-14%;border-radius:50%;pointer-events:none;z-index:-1;background:radial-gradient(circle,var(--orange-glow),transparent 68%);opacity:.34;animation:eb-pulse calc(var(--beat)*22) var(--ease) infinite;}
+#avSvg:active{transform:scale(.93);}
 .card h2{font-family:var(--font-display);font-size:clamp(22px,3.4vw,30px);line-height:1.02;text-transform:uppercase;margin-bottom:10px;}
 /* La « voix du coach » : la maquette la porte en corps 500-600 + accents de couleur, jamais
    en écriture manuscrite — la chaleur passe par la graisse et l'accent, pas par la police.
@@ -318,7 +349,7 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:var(--su
 .ph-seg em{font-family:var(--font-mono);font-style:normal;font-weight:700;font-size:var(--fs-micro);color:var(--text2);}
 .vol-bars{display:flex;align-items:flex-end;gap:2px;height:58px;margin-top:8px;padding:0 2px;border-bottom:1px solid var(--border);}
 .vb{flex:1;border:none;border-radius:3px 3px 0 0;min-width:3px;}
-.vol-cap{font-family:var(--font-mono);font-size:var(--fs-micro);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:7px 0 20px;}
+.vol-cap{font-family:var(--font-mono);font-size:var(--fs-micro);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:7px 0 0;}
 /* R25.2 — même traitement que .card/.load-card : `.gw` (grille de semaine) est le troisième
    conteneur "carte" du dépôt (R25.1 lui donne déjà le même liseré) — le laisser en bordure
    épaisse/ombre décalée aurait rendu un mélange papier/Zenna dans la même vue. */
@@ -396,6 +427,16 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 /* R25.2 — même surface Zenna que .card (voir son commentaire) : bordure fine, rayon uniforme
    18px, plus d'ombre décalée. `<details class="load-card">` (R16.7) hérite du même style. */
 .load-card{border:1px solid var(--border);border-radius:18px;background:var(--bg3);padding:12px 12px 10px;margin:6px 0 20px;}
+/* R25.8 — UN BLOC DE PREMIER NIVEAU EST UNE CARTE, ET RESPIRE COMME UNE CARTE.
+   Depuis que Profil / Plan / Outils ferment leur carte de page après l'intro, ces blocs ne
+   sont plus « une carte dans une carte » (qui empruntait la respiration de son hôte) mais la
+   carte elle-même. `.card` tient 30 px de côté ; 12 px au même niveau se lisait comme un
+   encart oublié. 18 px : la valeur de la maquette pour ses cartes.
+   `.load-sub` et `.nav` de premier niveau reçoivent la même gouttière latérale, sinon une
+   légende passait à ras du bord de l'écran pendant que les cartes voisines s'en écartaient. */
+#screen[data-tab] > .load-card{padding:18px 18px 16px;}
+#screen[data-tab] > .load-sub{margin:-12px 4px 16px;}
+#screen[data-tab] > .why{margin-left:4px;margin-right:4px;}
 .load-title{font-family:var(--font-mono);font-weight:700;font-size:var(--fs-md);letter-spacing:.02em;margin-bottom:2px;}
 .load-leg{font-size:var(--fs-xs);font-weight:700;text-align:center;margin:2px 0 4px;}
 .load-sub{font-size:var(--fs-sm);color:var(--text2);line-height:1.5;}
@@ -943,18 +984,39 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
    `.load-card`/`.count-hero` qu'elle contient. Un seul de ces deux groupes est peuplé par
    onglet, donc les deux échelles de délai ne se marchent jamais dessus. Sélecteurs de
    CLASSES, aucun changement de DOM (invariant §1.2 du brief). */
+/* R25.8 — L'ÉCHELLE A HUIT RANGS, ET ELLE COMPTE CE QU'ELLE ANIME.
+   Deux défauts mesurés dans l'écriture ci-dessus, la même cause.
+   · Elle saturait au 4e rang (`:nth-child(n+5)` → un délai unique) : sur Profil, 17 blocs
+     partageaient DEUX délais distincts, sur Plan 21 blocs en partageaient deux aussi. La
+     spec par onglet demande r1..r8 (Plan va jusqu'à r9) : l'échelle les a maintenant.
+   · L'échelle interne `> .card > :nth-child(N)` comptait TOUS les enfants de la carte de
+     page, y compris `.eyebrow`, `h2` et `.why` qui ne portent aucune animation — trois rangs
+     consommés avant le premier bloc animé. Ce chemin disparaît : depuis R25.8, Profil, Plan
+     et Outils ferment leur carte de page après le bloc d'intro, donc `#screen > *` EST
+     l'ensemble animé et `nth-child` EST le `rN` de la spec, sans décalage.
+   Il reste pour 📚 Éducatifs, seule vue encore enveloppée (sa carte porte la bordure de
+   couleur de la discipline, R26) — et Semaine n'en a jamais eu besoin : la spec la décrit
+   comme UN bloc `[r1]`, sans sous-échelonnement. */
 @keyframes eb-rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 #screen[data-tab]:not(:has(#ckSlide)) > *,
 #screen[data-tab]:not(:has(#ckSlide)) > .card > .load-card,
 #screen[data-tab]:not(:has(#ckSlide)) > .card > .count-hero{animation:eb-rise calc(var(--beat)*2.2) var(--ease-enter) backwards;}
 #screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(2),
-#screen[data-tab]:not(:has(#ckSlide)) > .card > :nth-child(2){animation-delay:calc(var(--stagger)*.35);}
+#screen[data-tab]:not(:has(#ckSlide)) > .card > .load-card:nth-child(2){animation-delay:calc(var(--stagger)*.35);}
 #screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(3),
-#screen[data-tab]:not(:has(#ckSlide)) > .card > :nth-child(3){animation-delay:calc(var(--stagger)*.7);}
+#screen[data-tab]:not(:has(#ckSlide)) > .card > .load-card:nth-child(3){animation-delay:calc(var(--stagger)*.7);}
 #screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(4),
-#screen[data-tab]:not(:has(#ckSlide)) > .card > :nth-child(4){animation-delay:calc(var(--stagger)*.95);}
-#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(n+5),
-#screen[data-tab]:not(:has(#ckSlide)) > .card > :nth-child(n+5){animation-delay:calc(var(--stagger)*1.15);}
+#screen[data-tab]:not(:has(#ckSlide)) > .card > .load-card:nth-child(4){animation-delay:calc(var(--stagger)*.95);}
+#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(5),
+#screen[data-tab]:not(:has(#ckSlide)) > .card > .load-card:nth-child(5){animation-delay:calc(var(--stagger)*1.15);}
+#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(6),
+#screen[data-tab]:not(:has(#ckSlide)) > .card > .load-card:nth-child(6){animation-delay:calc(var(--stagger)*1.32);}
+#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(7),
+#screen[data-tab]:not(:has(#ckSlide)) > .card > .load-card:nth-child(7){animation-delay:calc(var(--stagger)*1.47);}
+#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(8),
+#screen[data-tab]:not(:has(#ckSlide)) > .card > .load-card:nth-child(8){animation-delay:calc(var(--stagger)*1.60);}
+#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(n+9),
+#screen[data-tab]:not(:has(#ckSlide)) > .card > .load-card:nth-child(n+9){animation-delay:calc(var(--stagger)*1.71);}
 
 /* R25.6 — LE DIAPORAMA DU CHECK-IN RESTE SANS ANIMATION, ET C'EST MESURÉ.
    La maquette lui donne `ckIn` (entrée par la droite) et je l'ai portée — puis retirée.
@@ -973,6 +1035,27 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
    `transform` seul (jamais `width`) : c'est ce qui reste sur le compositeur et ne relayoute
    pas la page à chaque image. L'origine diffère par nature : une barre pousse de la GAUCHE,
    une colonne de volume pousse du BAS. */
+/* R25.8 — LES JAUGES DE DISCIPLINE (bloc 1 du Profil, `.jauge` de la maquette).
+   Le remplissage porte sur `scaleX`, jamais sur `width` : la largeur reste le pourcentage
+   RÉEL, donc lisible tel quel si l'animation ne joue pas (réduction de mouvement, capture,
+   impression). `grow-x` est la classe générique de la maquette ; elle sert ici et pourra
+   servir ailleurs sans se redéfinir (R11.1). */
+.jauge{display:flex;align-items:center;gap:8px;margin-top:6px;}
+.jauge .ji{width:18px;flex-shrink:0;font-size:var(--fs-sm);}
+.jauge .jn{font-family:var(--font-mono);font-size:var(--fs-micro);color:var(--text2);width:58px;flex-shrink:0;text-transform:uppercase;}
+.jauge .jl{font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:700;width:54px;flex-shrink:0;}
+.jauge .jt{flex:1;height:8px;border-radius:100px;background:var(--bg2);border:1px solid var(--border);overflow:hidden;}
+.jauge .jf{height:100%;border-radius:100px;}
+/* Mesuré au rendu : l'indentation de 84 px de la maquette suppose sa colonne (avatar 74 px) ;
+   la nôtre porte l'avatar composite à 96 px, il ne restait que ~110 px et la ligne passait sur
+   trois lignes. Alignée sous le NOM de la discipline (26 px), elle tient sur une à deux. */
+.jauge-next{font-family:var(--font-mono);font-size:var(--fs-micro);color:var(--muted);margin:3px 0 0 26px;line-height:1.35;}
+/* `.grow-x` / `.grow-y` sont les deux classes génériques de la maquette. Un bloc qui vit dans
+   un `<details>` fermé n'est pas rendu : son animation ne démarre qu'à l'OUVERTURE du repli,
+   sans règle supplémentaire — c'est le comportement que la spec demande pour la barre
+   d'intensités (« se joue à l'ouverture du repliable, pas seulement à l'entrée de l'onglet »). */
+#screen[data-tab] .grow-x{transform:scaleX(0);transform-origin:left;animation:eb-grow-x calc(var(--beat)*4) var(--ease-enter) forwards;}
+#screen[data-tab] .grow-y{transform:scaleY(0);transform-origin:bottom;animation:eb-grow-y calc(var(--beat)*4) var(--ease-enter) forwards;}
 @keyframes eb-grow-x{to{transform:scaleX(1);}}
 @keyframes eb-grow-y{to{transform:scaleY(1);}}
 #screen[data-tab] .prog-fill{transform:scaleX(0);transform-origin:left;animation:eb-grow-x calc(var(--beat)*4) var(--ease-enter) forwards;}
@@ -1047,8 +1130,13 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
      (règle non négociable §4 de l'audit) : les barres qui poussent gardent leur valeur
      finale (`transform:none` sur un scaleX(0) initial = échelle 1), le halo disparaît. */
   .hero-orb{display:none!important;}
+  /* R25.8 — `.grow-x` (jauges de discipline du Profil) : `transform:none` ramène le scaleX(0)
+     initial à l'échelle 1, donc la barre s'affiche à sa largeur réelle — la valeur reste
+     lisible, seule la mise en mouvement disparaît. */
   .sticky-cta,.today-dot,.ph-seg.now,.dring .dr-ring-fg,
+  #screen[data-tab] .grow-x,#screen[data-tab] .grow-y,#avSvg,
   #screen[data-tab] .prog-fill,#screen[data-tab] .vol-bars .vb{animation:none!important;transition:none!important;transform:none!important;}
+  #avSvg::before{display:none!important;}
   .count-hero::after{display:none!important;}
   .check-draw{stroke-dashoffset:0;}
   .sticky-cta{transform:none;}

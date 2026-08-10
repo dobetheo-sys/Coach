@@ -71,7 +71,7 @@ function avancementPlanHTML(plan, today) {
 }
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
-import { bindHeroParallax } from "./motion.js";
+import { bindCountUp, bindHeroParallax } from "./motion.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 import { feasibilityCardHTML, bindFeasibility } from "./feasibility.js";
 import { DISC } from "./icons.js";
@@ -303,7 +303,12 @@ export function renderTabPlanGeneral(plan) {
   const today = todayISO();
   let html = momentHTML(plan, today) + painBannerHTML() + retestBannerHTML(today);
   html += '<div class="card"><div class="eyebrow">Plan général — ' + SPORTS[S.sport].nom + "</div><h2>Ta saison en un coup d’œil</h2>"
-    + '<div class="why">' + plan.totalWeeks + " semaines en " + (plan.use10 ? "cycles de 10 jours (qui glissent)" : "semaines de 7 jours") + ", volume " + plan.volBase + "h → " + plan.volPeak + "h.</div>";
+    + '<div class="why">' + plan.totalWeeks + " semaines en " + (plan.use10 ? "cycles de 10 jours (qui glissent)" : "semaines de 7 jours") + ", volume " + plan.volBase + "h → " + plan.volPeak + "h.</div>"
+    // R25.8 — la carte de page se ferme ici (voir tab-profile.js pour la mesure) : les blocs
+    // qui suivent redeviennent des cartes de premier niveau, comme la spec par onglet les
+    // décrit un par un. L'ordre affiché ne bouge pas ; ce qui disparaît, c'est le cadre qui
+    // les entourait tous et l'écrasement de l'échelle de délais.
+    + "</div>";
   html += driverBand(a);
   // R23.5 / R23.12 — CE QU'ON VIENT VOIR EN PREMIER : ou j'en suis, et dans combien de jours.
   //
@@ -350,7 +355,10 @@ export function renderTabPlanGeneral(plan) {
   // est le même helper que le reste du fichier consomme déjà pour "où en est-on", pas un
   // second calcul : une phase active désaccordée du reste de l'écran serait pire que muette.
   const nomPhaseActuelle = currentWeek(plan).phase.nom;
-  plan.phases.forEach((p) => { html += '<button type="button" class="ph-seg' + (p.nom === nomPhaseActuelle ? " now" : "") + '" data-phseg="' + p.nom + '" title="' + p.nom + '" aria-label="' + p.nom + ", " + p.weeks + ' semaines" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span class="ph-full">' + p.nom + '</span><span class="ph-abbr">' + (ABBR[p.nom] || p.nom) + "</span><em>" + p.weeks + "sem</em></button>"; });
+    // R25.8 — chaque segment se déploie depuis sa gauche (spec Plan, motion bloc 3), décalé de
+  // 70 ms : on lit une frise qui se construit dans l'ordre des phases, pas cinq pastilles qui
+  // apparaissent ensemble. Les rayures de `.ph-seg.now` (effet permanent) ne sont pas touchées.
+  plan.phases.forEach((p, iPh) => { html += '<button type="button" class="ph-seg grow-x' + (p.nom === nomPhaseActuelle ? " now" : "") + '" data-phseg="' + p.nom + '" title="' + p.nom + '" aria-label="' + p.nom + ", " + p.weeks + ' semaines" style="animation-delay:' + (iPh * 70) + "ms;flex:" + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span class="ph-full">' + p.nom + '</span><span class="ph-abbr">' + (ABBR[p.nom] || p.nom) + "</span><em>" + p.weeks + "sem</em></button>"; });
   html += "</div>";
   // R23.7 / R23.9 — LA PREDICTION ET LA REPARTITION DES INTENSITES APPARTIENNENT AU PLAN.
   //
@@ -366,9 +374,15 @@ export function renderTabPlanGeneral(plan) {
   html += replier(predictionCardHTML(plan), "🎯 Prédiction de course");
   html += replier(intensityCardHTML(plan), "⚡ Répartition des intensités");
   html += phaseObjectivesHTML(plan);
+  // R25.8 — L'HISTOGRAMME DEVIENT UNE CARTE, ET LA VAGUE PART DE LA GAUCHE (spec Plan, bloc 6 :
+  // « Carte volume. Titre "VOLUME · N SEMAINES" / "1 BARRE = 1 SEM" à droite »).
+  // Il flottait nu entre deux cartes, sans titre, avec sa légende dessous — donc sans dire ce
+  // qu'il montrait tant qu'on n'avait pas lu la ligne d'après. Le décalage de 14 ms par barre
+  // est la valeur de la maquette : à 21 semaines la vague dure 0,3 s, à 59 elle reste sous 0,9.
+  html += '<div class="load-card"><div class="load-title">Volume · ' + plan.totalWeeks + ' semaines<span class="eb-r">1 barre = 1 sem</span></div>';
   html += '<div class="vol-bars">';
-  plan.weeks.forEach((w) => { const h = Math.max(8, Math.round((w.vol / plan.volPeak) * 52)); html += '<div class="vb" style="height:' + h + "px;background:" + (w.isRecup ? "#9b72ff" : w.phase.c) + '" title="S' + w.num + " " + w.vol + 'h"></div>'; });
-  html += '</div><div class="vol-cap">1 barre = 1 semaine · violet = récup</div>';
+  plan.weeks.forEach((w, i) => { const h = Math.max(8, Math.round((w.vol / plan.volPeak) * 52)); html += '<div class="vb" style="height:' + h + "px;background:" + (w.isRecup ? "#9b72ff" : w.phase.c) + ";animation-delay:" + (i * 14) + 'ms" title="S' + w.num + " " + w.vol + 'h"></div>'; });
+  html += '</div><div class="vol-cap">violet = récup · la hauteur suit le volume de la semaine</div></div>';
   // U15 — L'ONGLET S'OUVRE SUR LA SEMAINE EN COURS, PAS SUR QUATRE SEMAINES.
   //
   // Mesuré sur un marathon à 390 px : l'onglet faisait 5 164 px (6,1 écrans de défilement) et
@@ -428,7 +442,7 @@ export function renderTabPlanGeneral(plan) {
   // pas des actions sur CE plan — on les CHERCHE, on ne les subit pas à chaque ouverture.
   html += '<div class="warn" style="background:var(--bg2)">Intensités calibrées sur tes données. Les exports fonctionnent depuis cet onglet, quel que soit l’onglet consulté ensuite.</div>'
     + '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn gold" id="allW" type="button">' + (S.showAllWeeks ? "Revenir à la semaine en cours" : "Voir tout le plan (" + plan.totalWeeks + " semaines)") + '</button><button class="btn" id="prn" type="button">🖨 Version imprimable</button><button class="btn" id="expIcs" type="button">📅 Ajouter à mon agenda</button></div>'
-    + '<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer">⚙ Réglages avancés (réponses, export brut, changer de sport)</summary><div class="nav" style="flex-wrap:wrap;gap:8px;margin-top:8px"><button class="btn" id="backBp" type="button" style="font-size:var(--fs-sm);padding:9px 12px">← Modifier mes réponses</button><button class="btn" id="expJson" type="button" style="font-size:var(--fs-sm);padding:9px 12px">{ } JSON</button><button class="btn" id="restartBtn" type="button" style="font-size:var(--fs-sm);padding:9px 12px">Changer de sport</button></div></details></div>';
+    + '<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer">⚙ Réglages avancés (réponses, export brut, changer de sport)</summary><div class="nav" style="flex-wrap:wrap;gap:8px;margin-top:8px"><button class="btn" id="backBp" type="button" style="font-size:var(--fs-sm);padding:9px 12px">← Modifier mes réponses</button><button class="btn" id="expJson" type="button" style="font-size:var(--fs-sm);padding:9px 12px">{ } JSON</button><button class="btn" id="restartBtn" type="button" style="font-size:var(--fs-sm);padding:9px 12px">Changer de sport</button></div></details>';
   $("screen").innerHTML = html;
   const rerender = () => renderTabPlanGeneral(plan);
   bindPainBanner(plan, rerender);
@@ -436,6 +450,7 @@ export function renderTabPlanGeneral(plan) {
   bindFeasibility(rerender);
   bindRetestBanner(today, () => renderTabPlanGeneral(ensurePlan())); // le retest a pu régénérer le plan
   bindHeroParallax(); // R25.6 — le décompte recule au scroll (catalogue motion §4)
+  bindCountUp("#screen .jminus"); // R25.8 — le décompte se compte à l'écran (spec Plan, bloc 2)
   // R6 — la frise de phases est cliquable : ouvre le programme de la phase et y descend.
   {
     const g = document.getElementById("goCurWk");

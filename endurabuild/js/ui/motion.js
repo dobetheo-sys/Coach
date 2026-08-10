@@ -148,3 +148,46 @@ export function bindHeroParallax() {
   window.addEventListener("scroll", onScroll, { passive: true });
   apply();
 }
+
+/**
+ * R25.8 — LE COMPTEUR QUI MONTE (`count-up` de la maquette : J−N, et la métrique du héros).
+ *
+ * Il n'invente rien : le nombre FINAL est celui déjà écrit dans le DOM par le moteur, lu tel
+ * quel, puis réaffiché à la fin — l'élément revient au caractère près à ce qu'il portait.
+ * C'est la garde qui compte ici : un compteur qui reconstruirait le texte (« J−" + n »)
+ * deviendrait une seconde source pour un chiffre que le moteur produit déjà, et la première
+ * fois qu'un libellé changerait (« DEMAIN », « 🏁 JOUR J »), il l'écraserait par un nombre.
+ * D'où la règle : on n'anime QUE si le texte contient un nombre, et on rend le texte
+ * d'origine à l'arrivée.
+ *
+ * Trois refus délibérés :
+ *   · rien sous `prefers-reduced-motion` — le chiffre est là, tout de suite ;
+ *   · rien au-delà de `MAX` (un décompte d'Ironman à 400 jours défilerait comme un compteur
+ *     kilométrique : illisible, et le chiffre est l'information) ;
+ *   · une seule passe par élément (`data-cu`), sinon chaque re-rendu partiel de l'onglet
+ *     relancerait le décompte sous le doigt de l'athlète.
+ */
+const COUNTUP_MAX = 999;
+export function bindCountUp(sel) {
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  document.querySelectorAll(sel).forEach((el) => {
+    if (el.dataset.cu) return;
+    const brut = el.textContent;
+    const m = brut.match(/-?\d[\d   ]*/);
+    if (!m) return;
+    const cible = parseInt(m[0].replace(/[^\d-]/g, ""), 10);
+    if (!isFinite(cible) || cible <= 0 || cible > COUNTUP_MAX) return;
+    el.dataset.cu = "1";
+    const t0 = performance.now(), duree = 640;
+    const pas = (t) => {
+      const p = Math.min(1, (t - t0) / duree);
+      // Même profil de sortie que `--ease-enter` (cubic-out) : le compteur ralentit en
+      // arrivant, il ne s'arrête pas net.
+      const v = Math.round(cible * (1 - Math.pow(1 - p, 3)));
+      el.textContent = brut.replace(m[0], String(v));
+      if (p < 1) requestAnimationFrame(pas);
+      else el.textContent = brut; // le texte du moteur, restitué intact
+    };
+    requestAnimationFrame(pas);
+  });
+}

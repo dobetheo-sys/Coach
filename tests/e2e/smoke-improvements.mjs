@@ -384,7 +384,14 @@ const authOk = await page.evaluate(async () => {
 ok(authOk.got && authOk.stored && authOk.hashClean, "retour OAuth : tokens stockés depuis le fragment, hash nettoyé");
 await t6[0].click(); await page.waitForTimeout(300);
 const connTxt = await page.locator("#screen").textContent();
-ok(/Connecté \(Théo\)/.test(connTxt), "état connecté affiché (prénom Strava)");
+// R25.8 — l'ÉTAT a déménagé dans la fente droite de l'en-tête (« 🔗 STRAVA / CONNECTÉ », le
+// motif `.card-title` de la maquette) ; le PRÉNOM reste dans le corps, parce qu'il dit quel
+// compte est lié — ce que l'en-tête ne dit pas. Les deux informations sont toujours là, à
+// deux endroits au lieu d'un : le critère porte donc sur les DEUX, séparément, plutôt que
+// sur la chaîne unique d'avant. Ce n'est pas un assouplissement — c'est une assertion de
+// plus (l'ancienne pouvait passer sans que l'état soit visible hors du corps de la carte).
+ok(/connecté/i.test(connTxt) && !/non connecté/i.test(connTxt), "état connecté affiché (en-tête de la carte Strava)");
+ok(/Théo/.test(connTxt), "…et le compte lié est nommé (prénom Strava)");
 ok(await page.locator("#pfStravaBtn").count() === 1 && (await page.locator("#pfStravaOut").count()) === 1, "boutons « Importer mes activités » et « Se déconnecter » présents");
 // R16.7 — une fois CONNECTÉ, le bloc « Journal / imports / Strava » est replié (règle du
 // handoff : ouvert tant que c'est un CTA, replié quand c'est fait). Les contrôles existent

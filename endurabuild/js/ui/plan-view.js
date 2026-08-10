@@ -300,9 +300,13 @@ function intensityCardHTML(plan){
     h+='<div class="load-card"><div class="load-title">\ud83c\udfaf R\u00e9partition des intensit\u00e9s \u2014 '+it.easyPct+'% facile \u00b7 '+it.modPct+'% mod\u00e9r\u00e9 \u00b7 '+it.hardPct+'% dur</div>';
     const mx=Math.max(1,...it.weekly.map(w=>w.e+w.m+w.h));
     h+='<div style="display:flex;align-items:flex-end;gap:3px;height:56px;margin:8px 0 4px">';
-    it.weekly.forEach(w=>{const t=w.e+w.m+w.h,H=Math.max(4,Math.round(t/mx*52));
+    // R25.8 — chaque colonne pousse depuis le bas (`grow-y`), en vague de gauche à droite
+    // (14 ms par semaine, la valeur de l'histogramme de volume : deux graphiques du même
+    // onglet ne doivent pas avoir deux cadences). Le repli étant fermé par défaut, son
+    // contenu n'est pas rendu : la vague se joue À L'OUVERTURE, ce que la spec demande.
+    it.weekly.forEach((w,iW)=>{const t=w.e+w.m+w.h,H=Math.max(4,Math.round(t/mx*52));
       const eh=Math.round(H*w.e/Math.max(1,t)),mh=Math.round(H*w.m/Math.max(1,t)),hh=Math.max(0,H-eh-mh);
-      h+='<div title="S'+w.num+' \u00b7 facile '+w.e+'min \u00b7 mod\u00e9r\u00e9 '+w.m+'min \u00b7 dur '+w.h+'min" style="flex:1;display:flex;flex-direction:column-reverse;height:'+H+'px">'
+      h+='<div class="grow-y" title="S'+w.num+' \u00b7 facile '+w.e+'min \u00b7 mod\u00e9r\u00e9 '+w.m+'min \u00b7 dur '+w.h+'min" style="animation-delay:'+(iW*14)+'ms;flex:1;display:flex;flex-direction:column-reverse;height:'+H+'px">'
         +'<div style="height:'+eh+'px;background:var(--z2)"></div><div style="height:'+mh+'px;background:var(--gold)"></div><div style="height:'+hh+'px;background:var(--z4)"></div></div>';});
     h+='</div><div class="load-sub"><span style="color:var(--z2)">\u25ac facile</span> \u00b7 <span style="color:var(--gold)">\u25ac mod\u00e9r\u00e9</span> \u00b7 <span style="color:var(--z4)">\u25ac dur</span> \u2014 objectif manifeste : \u226570% de temps facile en semaines de charge (mesur\u00e9 : '+it.easyPct+'%).</div></div>';
   }

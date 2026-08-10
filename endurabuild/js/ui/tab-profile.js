@@ -296,7 +296,12 @@ function bindPlansSelector() {
 // « niveaux intermédiaires tri » (Découverte→Machine) sont REMPLACÉS par les jauges : ils
 // comptaient la même chose (les ✓ par discipline) avec une deuxième échelle — deux échelles
 // pour une idée, c'est la forme que R11.1 interdit.
-const JAUGES = [["natation", "🏊", "Natation"], ["velo", "🚴", "Vélo"], ["course", "🏃", "Course"]];
+// R25.8 — chaque jauge porte SA couleur de discipline (maquette : natation `--swim`, vélo
+// `--orange`, course `--run`/or). Les trois barres étaient peintes en `--z2`, la même teinte
+// pour les trois : la couleur ne portait aucune information alors que le reste de l'app
+// code déjà les disciplines par la couleur (anneaux de Semaine, ligne de distances).
+// Les jetons sont ceux du thème, identiques à ceux de la maquette (styles.css:45).
+const JAUGES = [["natation", "🏊", "Natation", "var(--swim)"], ["velo", "🚴", "Vélo", "var(--bike)"], ["course", "🏃", "Course", "var(--run)"]];
 function avatarSectionHTML(plan, todayISO) {
   // Un seul calcul (R11.1) : `avatarTriDataFor` porte déjà l'état complet dans `.tri`
   // (agrégé sur tous les plans de l'athlète depuis le correctif « XP non conservé au
@@ -309,20 +314,29 @@ function avatarSectionHTML(plan, todayISO) {
   try { adh = globalThis.EBV2.adherence(plan, S.answers, todayISO); } catch (e) {}
   const titre = tri.legende ? "🏆 LÉGENDE du triathlon"
     : (JAUGES.find(([k]) => k === tri.meneuse) || JAUGES[2])[1] + " Meneuse : " + (JAUGES.find(([k]) => k === tri.meneuse) || JAUGES[2])[2].toLowerCase();
-  const jauge = ([k, ico, nom]) => {
+  // R25.8 — `jf` porte `grow-x` : la barre se remplit de 0 à sa largeur, décalée de 80 ms
+  // d'une discipline à l'autre (valeur de la maquette, `animation-delay:80ms/160ms`) pour
+  // qu'on lise trois jauges et non un bloc qui apparaît. Le remplissage est une TRANSFORMÉE
+  // (`scaleX`), pas la largeur : la largeur reste le chiffre réel, lisible sans animation
+  // et intacte sous `prefers-reduced-motion`.
+  const jauge = ([k, ico, nom, col], i) => {
     const d = tri[k];
     const next = d.level < 30 ? avatarTriUnlock(k, d.level + 1) : null;
-    return '<div style="display:flex;align-items:center;gap:8px;margin-top:5px;font-size:var(--fs-sm)">'
-      + '<span style="width:20px">' + ico + '</span><span style="width:70px">' + nom + '</span><b style="width:56px">niv ' + d.level + "/30</b>"
-      + '<div style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + d.progressPct + '%;background:var(--z2)"></div></div></div>'
-      + (next ? '<div style="font-size:var(--fs-xs);color:var(--muted);margin-left:28px">prochain : <b>' + next.libelle + "</b> (encore " + (d.xpToNext - d.xpInLevel) + " XP)</div>" : "");
+    return '<div class="jauge">'
+      + '<span class="ji">' + ico + '</span><span class="jn">' + nom + '</span>'
+      + '<b class="jl" style="color:' + col + '">niv ' + d.level + "/30</b>"
+      + '<div class="jt"><div class="jf grow-x" style="width:' + d.progressPct + "%;background:" + col + ";animation-delay:" + (i * 80) + 'ms"></div></div></div>'
+      + (next ? '<div class="jauge-next">prochain : <b>' + next.libelle + "</b> (encore " + (d.xpToNext - d.xpInLevel) + " XP)</div>" : "");
   };
   // Audit 07/08/2026 : le tout premier avatar (les 3 jauges à 0) est une silhouette nue sans
   // texture ni couleur — rien ne contextualisait ce vide AU NIVEAU DU REGARD (l'explication
   // vivait plus bas dans le texte, hors du premier coup d'œil). Une ligne courte juste sous le
   // dessin, visible seulement à ce premier niveau.
   const vierge = JAUGES.every(([k]) => tri[k].level === 0);
-  let h = '<div class="load-card"><div style="display:flex;align-items:center;gap:14px">'
+  // R25.8 — plus de `.load-card` ici : ce bloc est DANS la carte d'identité (bloc 1 de la
+  // spec), et `.card`/`.load-card` portent le même fond, la même bordure et le même rayon —
+  // les imbriquer dessinait deux cadres concentriques que la maquette n'a nulle part.
+  let h = '<div class="av-block"><div style="display:flex;align-items:center;gap:14px">'
     + '<div style="text-align:center">'
     + '<button id="avSvg" type="button" aria-label="Voir mon avatar en grand" style="background:none;border:none;padding:0;cursor:pointer">' + avatarTriSVG(visual, 96) + "</button>"
     + (vierge ? '<div class="load-sub" style="max-width:96px;margin-top:2px">Il évoluera avec ta régularité</div>' : "")
@@ -486,13 +500,19 @@ function bindTrailProfile() {
 // import. Pas connecté : le CTA à un bouton de R6, enfin visible sans dérouler quoi que ce soit.
 function stravaCardHTML(a) {
   const sAuth = a.stravaAuth;
-  let h = '<div class="load-card"><div class="load-title">🔗 Strava</div>';
+  // R25.8 — l'état passe à DROITE du titre (`.card-title` de la maquette : « 🔗 STRAVA /
+  // CONNECTÉ »). Avant, « ✓ Connecté » vivait dans le corps, sur la même ligne que le bouton
+  // d'import : il fallait lire la carte pour savoir si le compte était lié.
+  let h = '<div class="load-card"><div class="load-title">🔗 Strava'
+    + '<span class="eb-r' + (sAuth && sAuth.access_token ? " on" : "") + '">' + (sAuth && sAuth.access_token ? "connecté" : "non connecté") + "</span></div>";
   if (sAuth && sAuth.access_token) {
     // Retour utilisateur (08/08/2026) : « déconnexion trop grosse, moins essentielle,
     // l'utilisateur n'a normalement pas besoin de s'en servir ». Le bouton d'IMPORT reste un
     // `.btn` normal (c'est le geste qu'on répète) ; la déconnexion passe en lien discret.
     h += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">'
-      + '<span style="font-size:var(--fs-sm)">✓ Connecté' + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + "</span>"
+      // R25.8 — plus de « ✓ Connecté » ici : l'état est dans l'en-tête. Le prénom reste, lui,
+      // parce qu'il dit QUEL compte est lié — ce que l'en-tête ne dit pas.
+      + (sAuth.athlete && sAuth.athlete.firstname ? '<span style="font-size:var(--fs-sm)">' + esc(sAuth.athlete.firstname) + "</span>" : "")
       + '<button class="btn" id="pfStravaBtn" type="button">Importer mes activités</button></div>'
       // U4 — même sous-dimensionné visuellement, la zone de TOUCHE reste ≥24×24 (WCAG 2.5.8) :
       // padding vertical généreux malgré le texte réduit, geste rare mais pas piégeux.
@@ -748,10 +768,40 @@ export function renderTabProfile(plan) {
   // Le repli est celui déjà utilisé ailleurs pour un plan sans sport : le questionnaire.
   if (!sp || !SPORTS[sp]) { renderStep(); return; }
   const tIso = todayISO();
+  // R25.8 — LA SPEC DEMANDE UN LIEN « MODIFIER » ICI, ET IL N'Y EST PAS. C'EST DÉLIBÉRÉ.
+  //
+  // Le bloc 1 de la spec par onglet décrit « PROFIL — TRIATHLON / MODIFIER » dans la fente
+  // droite de l'en-tête. Je l'ai posé, et la garde `smoke-usage` est passée ROUGE sur son
+  // critère R23.12b — à raison : le fondateur a explicitement demandé (08/08/2026, second
+  // passage) que « modifier mes réponses » et « changer de sport » quittent le Profil, parce
+  // que les garder ici en plus de 🗓 Plan faisait « deux chemins vers le même geste, dans
+  // deux onglets ». Un lien « modifier » dans cet en-tête EST ce second chemin, quel que
+  // soit son habillage.
+  // La maquette ne connaît pas cet arbitrage : elle décrit une mise en page, pas l'histoire
+  // des décisions produit. Entre une étiquette de maquette et une décision datée et motivée,
+  // c'est la décision qui gagne — et elle est écrite ici plutôt que tue, pour que le point
+  // revienne au fondateur s'il veut le rouvrir. La MÉCANIQUE de la fente droite reste, elle
+  // (`.eb-r`) : elle sert Strava, le rappel, le volume, la semaine, la nutrition, la charge.
   let html = '<div class="card"><div class="eyebrow">Profil — ' + SPORTS[sp].nom + "</div><h2>Toi, ton niveau, tes réglages</h2>";
   // R5 — l'identité d'abord : avatar, niveau, XP, teaser du niveau suivant
   html += avatarSectionHTML(plan, tIso);
   html += '<div class="why">Modifie une valeur : le plan est régénéré et le changement est consigné dans ton journal d’évolution.</div>';
+  // R25.8 — FIN DE LA CARTE D'IDENTITÉ, ET FIN DE LA CARTE DE PAGE.
+  //
+  // Mesuré sur le DOM rendu avant ce lot : `#screen` n'avait **UN SEUL enfant direct** sur
+  // Profil (17 blocs à l'intérieur), Plan (21) et Semaine (7). Deux conséquences, l'une
+  // visuelle et l'autre motion, la même cause.
+  //   · `.card` et `.load-card` portent le MÊME fond, la MÊME bordure et le MÊME rayon
+  //     (styles.css:183 et :398) : les emboîter dessine deux cadres concentriques. La
+  //     maquette n'a qu'un niveau de carte — la spec par onglet décrit d'ailleurs Profil
+  //     comme HUIT blocs (« carte identité », « carte Strava », « repliable … »), pas comme
+  //     une carte qui en contient huit.
+  //   · L'échelle de délais du stagger compte les enfants, animés ou non : `.eyebrow`, `h2`
+  //     et `.why` consommaient trois rangs, et l'échelle saturait au 4e — les 13 blocs qui
+  //     suivaient l'avatar partageaient tous le MÊME délai. 17 blocs, 2 délais distincts.
+  // Les blocs redeviennent donc des frères de premier niveau : l'ordre affiché ne change pas
+  // d'une ligne, `#screen > *` devient l'ensemble animé, et `nth-child` EST le `rN` de la spec.
+  html += "</div>";
   // R24.2 — STRAVA EN PREMIER ÉCRAN (retour fondateur, 06/08 : « onglet de connexion Strava en
   // fin de page, je le veux dans le premier écran »). Le bloc de connexion vivait replié au
   // fond du Profil, dans le journal — un CTA qu'on ne voit qu'en cherchant. Il monte ici, en
@@ -837,7 +887,8 @@ export function renderTabProfile(plan) {
   // ni une mesure ni un paramètre de course, c'est un réglage de l'app. Et depuis U18b la carte
   // des références est REPLIÉE : y laisser le rappel l'aurait rendu invisible pour qui ne
   // l'ouvre pas. Une carte à part, courte, avec son propre bouton d'enregistrement.
-  html += '<div class="load-card"><div class="load-title">🔔 Rappel quotidien</div>'
+  html += '<div class="load-card"><div class="load-title">🔔 Rappel quotidien'
+    + '<span class="eb-r' + (a.notifyTime ? " on" : "") + '">' + (a.notifyTime ? esc(a.notifyTime) + " · actif" : "aucun") + "</span></div>"
     + '<div class="load-sub" style="margin-top:6px">Une notification à l\'heure que tu choisis, tant que l\'app est ouverte ou en arrière-plan. Vide = aucun rappel.</div>'
     + '<label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:var(--fs-md)"><span style="width:150px">Heure</span>'
     + '<input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label></div>';
@@ -899,9 +950,8 @@ export function renderTabProfile(plan) {
   // « changer de sport » (« n'a pas sa place ici »). Ils ne disparaissent pas du produit —
   // 🗓 Plan porte déjà « ← Modifier » et « Changer de sport », au même endroit que les exports.
   // Les garder ici, c'était deux chemins vers le même geste, dans deux onglets.
-  html += "</div>";
+  // R25.8 — la carte de page est fermée juste après le bloc d'identité : plus rien à fermer ici.
   $("screen").innerHTML = html;
-
   // Avatar : partage + téléchargement — mêmes options de rendu pour les deux (R11.1), l'accent
   // suit désormais la discipline meneuse plutôt qu'un thème choisi à la main (avatarTriAccent).
   const avatarStoryOpts = () => {

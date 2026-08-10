@@ -18,7 +18,7 @@
 // adaptations) reste dans 🎯 Aujourd'hui : cet onglet ne le duplique pas non plus. Il apporte
 // ce que ni Plan ni Aujourd'hui ne donnent — la NAVIGATION de semaine en semaine, avec le
 // bilan de celle qu'on regarde.
-import { $, S, ebSave, fmtDay, todayISO } from "../state.js";
+import { $, S, ebSave, esc, fmtDay, todayISO } from "../state.js";
 import { weekListHTML, weekHeaderHTML, currentWeek, handleSwapClick } from "./tab-plan-general.js";
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
 import { readinessDoneToday } from "./readiness.js";
@@ -107,9 +107,14 @@ function navHTML(plan, w) {
   const prev = plan.weeks[i - 1], next = plan.weeks[i + 1];
   const cur = currentWeek(plan);
   return '<div class="nav" style="gap:8px;margin-top:12px;flex-wrap:wrap">'
-    + '<button class="btn" type="button" id="wkPrev"' + (prev ? "" : " disabled") + ">← Semaine " + (prev ? prev.num : "—") + "</button>"
-    + (w.num !== cur.num ? '<button class="btn gold" type="button" id="wkNow">⌖ Revenir à cette semaine</button>' : "")
-    + '<button class="btn" type="button" id="wkNext"' + (next ? "" : " disabled") + ">Semaine " + (next ? next.num : "—") + " →</button></div>";
+    // R25.8 — mesuré en semaine 1 : le bouton précédent affichait « ← Semaine — », un libellé
+    // qui nomme une semaine qui n'existe pas. Désactivé, il n'a pas à porter de numéro.
+    // Et « ⌖ cette semaine » n'apparaissait QUE hors de la semaine courante : la spec le veut
+    // toujours présent, désactivé quand on y est déjà — trois positions stables valent mieux
+    // qu'une rangée dont le milieu apparaît et disparaît selon où l'on se trouve.
+    + '<button class="btn" type="button" id="wkPrev"' + (prev ? "" : " disabled") + ">← " + (prev ? "S" + prev.num : "début") + "</button>"
+    + '<button class="btn gold" type="button" id="wkNow"' + (w.num === cur.num ? " disabled" : "") + ">⌖ cette semaine</button>"
+    + '<button class="btn" type="button" id="wkNext"' + (next ? "" : " disabled") + ">" + (next ? "S" + next.num : "fin") + " →</button></div>";
 }
 
 export function renderTabWeek(plan) {
@@ -131,7 +136,12 @@ export function renderTabWeek(plan) {
 
   // `card-flush` : marge intérieure réduite pour cette carte-ci — la liste par jour a besoin
   // de la largeur, et 30 px de chaque côté sur un écran de 390 en mangent 15 % (mesuré).
-  html += '<div class="card card-flush"><div class="eyebrow">📅 Ta semaine</div>';
+  // R25.8 — l'en-tête porte le NUMÉRO et la fente de droite (spec Semaine : « 📅 TA SEMAINE ·
+  // S[N] » + plage de dates et phase à droite). Ces trois informations existaient déjà, mais
+  // à l'intérieur de la grille : la carte s'annonçait « Ta semaine » sans dire LAQUELLE, ce
+  // qui compte dès qu'on navigue avec ← / → entre 21 semaines.
+  html += '<div class="card card-flush"><div class="eyebrow">📅 Ta semaine · S' + w.num
+    + '<span class="eb-r">' + esc(w.phase.nom) + "</span></div>";
   html += discRingsHTML(w); // R25.5 — fait/prévu par discipline, en tête (maquette #tab-week)
   // R24.8 (retour fondateur, 06/08) — « un résumé de chaque distance en km par discipline en
   // haut de la page ». Le calcul vit dans le MOTEUR (EBV2.weekDistances) : mètres prescrits

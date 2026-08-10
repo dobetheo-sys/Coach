@@ -189,7 +189,10 @@ function nutritionReduiteHTML(plan, today) {
   // `.loading` met `color:transparent`, donc même un contenu présent restait INVISIBLE tant
   // que la météo n'était pas là). L'état vide s'affiche tout de suite, en clair.
   const corps = rav ? '<div id="nutRedu" class="loading">' + rav + "</div>" : '<div id="nutRedu">' + ravitoVideHTML(day) + "</div>";
-  return '<div class="card"><div class="eyebrow">🥗 Nutrition du jour</div>' + corps + energie + "</div>";
+  // R25.8 — fente de droite (spec Aujourd'hui, bloc 5 : « 🥗 NUTRITION DU JOUR / VERSION
+  // RÉDUITE »). Elle dit que ce n'est PAS toute la nutrition, et où trouver le reste : sans
+  // elle, la carte se lisait comme la vue complète et l'onglet Outils passait inaperçu.
+  return '<div class="card"><div class="eyebrow">🥗 Nutrition du jour<span class="eb-r">version réduite</span></div>' + corps + energie + "</div>";
 }
 
 export function renderTabToday(plan) {
@@ -239,7 +242,7 @@ export function renderTabToday(plan) {
   // « Régularité d'avancement » est supprimée (« peu visuelle et importante pour l'utilisation »),
   // et « suivre ma séance en direct » aussi (« personne ne fait ça »). Ce qui reste ici est ce
   // qui se décide aujourd'hui : la séance, sa validation, et le résultat d'une course du jour.
-  html += '<div class="card"><div class="eyebrow">Ta préparation</div>';
+  html += '<div class="card"><div class="eyebrow">Ta préparation<span class="eb-r">charge estimée</span></div>';
   html += raceResultCardHTML(plan);
   html += '<div class="load-card"><div class="load-title">Charge estimée — fitness · fatigue · forme</div>' + loadChartSVG(plan)
     + '<div class="load-leg"><span style="color:var(--swim)">▬ Fitness (CTL)</span> · <span style="color:var(--orange-2)">▬ Fatigue (ATL)</span> · <span style="color:var(--z2)">▬ Forme (TSB)</span></div>'

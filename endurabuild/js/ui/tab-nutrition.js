@@ -359,11 +359,14 @@ export function renderTabNutrition(plan) {
   plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date === today) todayDay = d; }));
 
   let html = '<div class="card"><div class="eyebrow">Nutrition</div><h2>Ton carburant, expliqué</h2>'
-    + '<div class="why">Des estimations et des repères issus des consensus publiés — jamais un régime, jamais une cible d’apport. Ce qui compte : manger assez pour t’entraîner.</div>';
+    + '<div class="why">Des estimations et des repères issus des consensus publiés — jamais un régime, jamais une cible d’apport. Ce qui compte : manger assez pour t’entraîner.</div>'
+    // R25.8 — la carte d'intro se ferme ici ; les trois blocs qui suivent sont des cartes de
+    // premier niveau (spec Outils › Nutrition, r1 intro / r2 dépense / r3 ravitaillement /
+    // r4 canal de vente), plus des cartes dans une carte.
+    + "</div>";
   html += energyCardHTML(todayDay, true); // dépense théorique + macros indicatives, ouvert
   html += nutritionCardHTML(todayDay, null); // ravitaillement par séance (météo en différé)
   html += shopSubscriptionCardHTML(plan, today); // abonnement récurrent, anticipé
-  html += "</div>";
   $("screen").innerHTML = html;
   bindShopSubscription(plan, today, () => renderTabNutrition(plan));
 
