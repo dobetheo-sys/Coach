@@ -5,7 +5,7 @@ import { branch, opt } from "./ui/steps.js";
 
 const SPORTS = {
   tri: {
-    nom:"Triathlon", ico:"🔺", accent:"#ff3b30",
+    nom:"Triathlon", ico:"🔺", accent:"#FF3D00",
     pitch:"Trois disciplines, un chrono. Le plan le plus complexe à équilibrer.",
     formats:[["S","Sprint (750m/20k/5k)"],["M","Olympique (1.5/40/10)"],["70.3","Half (1.9/90/21)"],["Full","Ironman (3.8/180/42)"]],
     minWeeks:{S:8,M:12,"70.3":20,Full:36},
