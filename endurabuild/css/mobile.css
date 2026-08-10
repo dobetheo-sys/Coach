@@ -151,22 +151,29 @@ body.has-tabs .hero, body.has-tabs .progress { display: none; }
    reste sombre quel que soit le thème (`var(--bg)`, le token le plus sombre dans les deux
    sens), et son texte sur fond gold reste littéralement sombre (`#0a0a0a`, convention Zenna
    des surfaces vives — voir `.btn.gold`) plutôt que `var(--ink)`, qui vient de s'inverser. */
+/* R25.2b — la pastille tenait déjà le rôle de `.nav-item.central .nav-icon-wrap` de la
+   maquette (icône surélevée, fond distinct) : pas de classe redondante `.central` (R11.1),
+   on porte son traitement sur le sélecteur qui joue déjà ce rôle. Cercle → tuile coupée
+   (--cut-tile), élévation accentuée (-18px, plus proche des -22px de la maquette pour une
+   tuile plus petite), fond distinct par un gradient à l'activation comme le logo-mark. */
 .tabbtn.tab-central .tabico {
   font-size: 26px;
-  background: var(--bg);
+  background: var(--surface-2, var(--bg));
   color: #fff;
-  border-radius: 50%;
+  clip-path: var(--cut-tile, none);
   width: 40px;
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: -14px;
-  border: 2px solid var(--bg);
-  box-shadow: 0 2px 0 rgba(0,0,0,.35);
+  margin-top: -18px;
+  border: 1px solid var(--border, var(--bg));
+  box-shadow: 0 4px 14px rgba(0,0,0,.35);
+  transition: transform var(--dur-tap, .12s) var(--ease-spring, ease), background .15s;
 }
-.tabbtn.tab-central.active .tabico { background: #f0b429; color: #0a0a0a; }
+.tabbtn.tab-central.active .tabico { background: linear-gradient(145deg,var(--acc),var(--orange-2)); color: #0a0a0a; border-color: transparent; box-shadow: 0 4px 16px var(--orange-glow, rgba(0,0,0,.35)); }
 .tabbtn.tab-central.active { box-shadow: none; }
+.tabbtn.tab-central:active .tabico { transform: scale(.92); }
 /* Bouton de validation : esthétique retravaillée — cercle fin, coche animée */
 .doneBtn {
   border-width: 1.5px;

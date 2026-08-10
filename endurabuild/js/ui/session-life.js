@@ -260,8 +260,10 @@ function discBadgeHTML(d) {
   const b = DISC[d] || DISC.rn;
   // R16.8 — un glyphe décoratif se dimensionne en `em`, jamais en px littéral : ce n'est pas
   // de la typographie, l'échelle --fs-* ne le régit pas (voir styles.css :root).
-  return '<div aria-hidden="true" style="flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:' + b.ac
-    + ';border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;font-size:1.2em;line-height:1">' + b.ic + "</div>";
+  // R25.2b — tuile à coupe angulaire (--cut-tile), comme .sport-icon/.day-disc dans la
+  // maquette : ces tuiles n'ont ni bordure ni coin arrondi, seul le clip-path les dessine.
+  return '<div aria-hidden="true" style="flex:0 0 auto;width:38px;height:38px;clip-path:var(--cut-tile);background:' + b.ac
+    + ';display:flex;align-items:center;justify-content:center;font-size:1.2em;line-height:1">' + b.ic + "</div>";
 }
 
 export function heroSessionHTML(plan, todayIso) {

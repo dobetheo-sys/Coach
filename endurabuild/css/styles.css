@@ -44,6 +44,17 @@
   --swim:#3B9EFF; --bike:#FF3D00; --run:#FFD23D; --rest:#3A3F46;
   --paper-shadow:7px 7px 0 var(--ink);
   --cut:255px 18px 225px 14px/16px 225px 16px 255px;
+  /* R25.2b (2e passage) — LA coupe angulaire de Zenna, absente de R25.1-R25.3 jusqu'ici :
+     valeurs identiques à la maquette (design/zenna-maquette-v4-audit-experts.html), pas
+     réinventées. --cut (ci-dessus) reste pour .trail/.locked/.gate, non repris ce lot.
+     --cut-hero n'est PAS encore posé : dans la maquette elle coupe `.hero`, une carte à
+     contenu FIXE (titre + métrique + une ligne "pourquoi"). Notre carte séance du jour
+     équivalente (session-life.js) porte un `<details open>` de hauteur VARIABLE en bas —
+     y appliquer la coupe risquerait de rogner du texte de séance réel, pas un décor.
+     Portée nommée plutôt que forcée (même principe que R20.3/O-15/PW) : le token est prêt,
+     son application attend soit un accent dédié à hauteur fixe, soit un arbitrage produit. */
+  --cut-tile:polygon(0 0,100% 0,100% 78%,78% 100%,0 100%);
+  --cut-hero:polygon(0 0,100% 0,100% 82%,55% 96%,0 100%);
   /* Polices déclarées, non encore appliquées aux composants (R25.2) */
   --font-display:'Bebas Neue',sans-serif; --font-mono:'IBM Plex Mono',monospace;
   --font-body:'Space Grotesk',-apple-system,sans-serif;
@@ -130,10 +141,19 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
 /* ===== HERO ===== */
 .main{min-height:480px;position:relative;}
 .hero{padding:6px 0 20px;position:relative;}
+/* R25.2b (2e passage) — le "logo-mark" de la maquette : une tuile carrée, un caractère,
+   coupe angulaire. L'app n'en avait aucune (juste le mot-titre) — ajoutée, pas réinterprétée
+   sur un élément existant : le mot "BUILD" en surbrillance (.hero h1 em, plusieurs
+   caractères, proportions larges) n'aurait rendu la coupe ni lisible ni fidèle. */
+.brand-row{display:flex;align-items:center;gap:10px;}
+/* R16.8 — glyphe décoratif (une lettre dans une tuile), pas de la typographie régie par
+   l'échelle --fs-* : dimensionné en `em`, comme discBadgeHTML/.bp-cat-h .ic. */
+.logo-mark{width:30px;height:30px;flex-shrink:0;background:linear-gradient(145deg,var(--acc),var(--orange-2));clip-path:var(--cut-tile);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:1.2em;color:#0a0a0a;}
 .hero h1{font-family:var(--font-display);font-size:clamp(40px,6.5vw,62px);line-height:.92;letter-spacing:-.01em;text-transform:uppercase;}
 .hero h1 em{font-style:normal;color:var(--bg2);background:var(--acc);padding:0 10px 2px;display:inline-block;transform:rotate(-1.6deg);box-shadow:4px 4px 0 var(--ink);transition:background .4s;}
 .hero p{color:var(--text2);font-size:var(--fs-lg);margin-top:14px;max-width:540px;line-height:1.6;font-weight:500;}
-.tier-badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-weight:700;font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase;padding:6px 14px;margin-top:16px;border:1px solid var(--border);border-radius:100px;}
+/* R25.2b — pas de pastille pilule : coupe angulaire --cut-tile, comme les tuiles Zenna. */
+.tier-badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-weight:700;font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase;padding:6px 16px 6px 14px;margin-top:16px;border:1px solid var(--border);clip-path:var(--cut-tile);}
 .tier-badge.free{background:rgba(191,232,200,.16);color:var(--ink);}
 .tier-badge.premium{background:var(--gold);color:#0a0a0a;}
 
@@ -154,7 +174,11 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
    incohérent avec le liseré 1px droit posé en R25.1 (une découpe irrégulière sous une ligne
    parfaitement horizontale). DOM et padding inchangés (invariant §1.2) : seules la forme et
    la profondeur de trait bougent. */
-.card{background:var(--bg3);border:1px solid var(--border);border-radius:18px;padding:30px 30px 26px;animation:dropIn .4s cubic-bezier(.2,.9,.3,1.15);position:relative;}
+.card{background:var(--bg3);border:1px solid var(--border);border-radius:18px;padding:30px 30px 26px;animation:dropIn .4s cubic-bezier(.2,.9,.3,1.15);position:relative;transition:transform var(--dur-tap,.12s) var(--ease-spring,ease);}
+/* R25.2b — même rebond que .btn/.opt au tap, pour les .card qui servent aussi de bouton
+   (ex. la carte séance ouvrable) ; une .card purement statique n'a pas de :active à
+   déclencher, donc cette règle est sans effet sur elle. */
+.card:active{transform:scale(.985);}
 @keyframes dropIn{from{opacity:0;transform:translateY(16px) rotate(.6deg);}to{opacity:1;transform:none;}}
 @media(prefers-reduced-motion:reduce){.card,.trail-rule.new,.pstep.cur{animation:none;}}
 /* R25.1 — liseré 1px dégradé en haut des cartes (matière Zenna). Pseudo-élément : ne touche
@@ -178,7 +202,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
    la forme des chips Zenna — .choice/.seg-opt), rotations retirées (la maquette Zenna est
    plate partout, aucune n'y survit) ; .opt.sel garde son fond accent + texte sombre. */
 .opts{display:flex;flex-wrap:wrap;gap:10px;}
-.opt{background:var(--bg3);border:1px solid var(--border);border-radius:100px;padding:10px 16px;font-family:var(--font-mono);font-size:var(--fs-md);font-weight:600;color:var(--ink);cursor:pointer;transition:transform .12s,background .12s,border-color .12s;user-select:none;}
+.opt{background:var(--bg3);border:1px solid var(--border);border-radius:100px;padding:10px 16px;font-family:var(--font-mono);font-size:var(--fs-md);font-weight:600;color:var(--ink);cursor:pointer;transition:transform var(--dur-tap,.12s) var(--ease-spring,ease),background .12s,border-color .12s;user-select:none;}
 .opt:hover{border-color:var(--acc);}
 .opt:active{transform:scale(.95);}
 .opt.sel{background:var(--acc);color:#0a0a0a;border-color:transparent;}
@@ -199,7 +223,7 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255
    Reprioritisé devant les décors statiques : .btn est le contrôle touché à CHAQUE écran.
    Bordure fine (var(--border)), rayon uniforme 13px (maquette), pression = scale (pas de
    translate qui donnait l'illusion d'un bouton qui se soulève de sa propre ombre). */
-.btn{font-family:var(--font-mono);font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:13px 26px;border:1px solid var(--border);border-radius:13px;background:var(--bg3);color:var(--ink);cursor:pointer;transition:transform .12s,background .12s;}
+.btn{font-family:var(--font-mono);font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:13px 26px;border:1px solid var(--border);border-radius:13px;background:var(--bg3);color:var(--ink);cursor:pointer;transition:transform var(--dur-tap,.12s) var(--ease-spring,ease),background .12s;}
 .btn:hover{background:var(--surface-3);}
 .btn:active{transform:scale(.95);}
 /* R25.1 — mesuré : #fff échoue l'AA sur les deux teintes d'accent (défaut 3.55:1, override
@@ -221,7 +245,9 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255
 .bp-hero .bh-val{font-family:var(--font-mono);font-size:var(--fs-hand);line-height:1.08;margin-top:7px;text-transform:uppercase;}
 .bp-cat{margin-bottom:8px;}
 .bp-cat-h{display:flex;align-items:center;gap:9px;font-family:var(--font-mono);font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:16px 0 8px;border-bottom:3px solid var(--ink);margin-bottom:4px;}
-.bp-cat-h .ic{width:26px;height:26px;border:2.5px solid var(--ink);border-radius:40% 55% 45% 50%;display:flex;align-items:center;justify-content:center;font-size:1em;background:var(--gold);color:#0a0a0a;transform:rotate(-4deg);}
+/* R25.2b — plus de blob organique ni de rotation : coupe angulaire --cut-tile, comme
+   .defi-ico/.sport-icon dans la maquette (aucune tuile Zenna n'y est pivotée). */
+.bp-cat-h .ic{width:26px;height:26px;clip-path:var(--cut-tile);display:flex;align-items:center;justify-content:center;font-size:1em;background:var(--gold);color:#0a0a0a;}
 .bp-decision{display:grid;grid-template-columns:175px 1fr;gap:12px;padding:12px 0;border-bottom:2px dashed rgba(22,19,14,.25);font-size:var(--fs-md);}
 .bp-decision:last-child{border-bottom:none;}
 .bp-what{font-weight:700;}
