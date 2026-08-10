@@ -291,7 +291,13 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255
    recevait 23 px de large au prorata — même « AFF. » (25 px) n'y tenait pas. La frise reste
    proportionnelle au-dessus de ce plancher ; en dessous, la lisibilité passe avant l'exactitude
    de la proportion, parce qu'un segment illisible n'informe de rien. */
-.ph-seg{padding:10px 8px 8px;text-align:center;min-width:48px;border:2.5px solid var(--ink);border-radius:4px 9px 5px 8px;box-shadow:3px 3px 0 var(--ink);}
+/* R25.2 (retour utilisateur) — même correctif que .card/.btn/.warn : bordure fine, rayon
+   uniforme, plus d'ombre décalée. Pas de clip-path ici : vérifié dans la maquette (.ph-seg y
+   est une tuile PLATE, border:1px solid var(--border), comme .chip — la coupe angulaire n'est
+   réservée qu'aux tuiles/badges qui la portent réellement, R25.2b). L'état actif gagne une
+   bordure à l'accent (maquette : .ph-seg.now{border-color:var(--orange)}), la rayure diagonale
+   (R25.3) restant le seul signal ambiant. */
+.ph-seg{padding:10px 8px 8px;text-align:center;min-width:48px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);}
 .ph-seg span{display:block;font-family:var(--font-mono);font-size:var(--fs-xs);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* R16.4 — le libellé s'abrège quand la place manque, la frise reste proportionnelle.
    Le nom complet reste dans title/aria-label : on raccourcit l'affichage, pas l'info.
@@ -487,10 +493,17 @@ body[data-sport="tri"]{--acc:#ff3b30;}
 
 
 /* ===== BANDEAU "CE QUI PILOTE TON PLAN" ===== */
-.drv-band{margin:4px 0 22px;padding:16px;background:var(--bg2);border:3px solid var(--ink);border-radius:5px 16px 6px 14px;box-shadow:4px 4px 0 var(--ink);}
+/* R25.2 (retour utilisateur) — même correctif que .ph-seg ci-dessus, sur la carte « Ce qui
+   pilote ton plan » (drv-band/drv, plan-view.js). Note de vérification : la demande citait
+   `.w-chip`, mais cette classe est MORTE dans endurabuild/ (`rg -n "w-chip" js/` → 0) — elle
+   ne vit que dans un écran de bienvenue jamais branché ici. Les chips réellement rendues sous
+   cet onglet portent la classe `.drv` (plan-view.js:107), corrigées ici à sa place. La bordure
+   colorée à gauche (`--dc`, posée par sport/discipline) reste — ce n'est pas un artefact
+   papier, c'est le code couleur de la puce, aligné sur `.card .why` (accent 4px). */
+.drv-band{margin:4px 0 22px;padding:16px;background:var(--bg2);border:1px solid var(--border);border-radius:18px;}
 .drv-title{font-family:var(--font-mono);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.06em;margin-bottom:11px;color:var(--ink);}
 .drv-wrap{display:flex;flex-wrap:wrap;gap:8px;}
-.drv{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:700;color:var(--ink);background:var(--bg3);border:2px solid var(--ink);border-left:6px solid var(--dc,#888);border-radius:4px 10px 5px 9px;padding:6px 11px;box-shadow:2px 2px 0 var(--ink);}
+.drv{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:700;color:var(--ink);background:var(--bg3);border:1px solid var(--border);border-left:4px solid var(--dc,#888);border-radius:10px;padding:6px 11px;}
 .drv b{font-weight:400;font-size:1.15em;}
 @media(max-width:600px){.drv{font-size:var(--fs-xs);padding:5px 9px;}}
 
@@ -856,7 +869,7 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
 @keyframes eb-today-pulse{0%,100%{opacity:.55;transform:scale(1);}50%{opacity:1;transform:scale(1.5);}}
 .today-dot{animation:eb-today-pulse 2.6s var(--ease) infinite;transform-origin:center;transform-box:fill-box;}
 @keyframes eb-phase-stripe{from{background-position:0 0;}to{background-position:28px 0;}}
-.ph-seg.now{background-image:repeating-linear-gradient(-45deg,rgba(255,61,0,.14) 0 7px,transparent 7px 14px);background-size:200% 100%;animation:eb-phase-stripe 6s linear infinite;}
+.ph-seg.now{border-color:var(--acc);background-image:repeating-linear-gradient(-45deg,rgba(255,61,0,.14) 0 7px,transparent 7px 14px);background-size:200% 100%;animation:eb-phase-stripe 6s linear infinite;}
 
 /* --- Reduced-motion : neutralise TOUTES les animations R25.3 (AC — brief §R25.3). Le CTA
    collant et le contenu restent accessibles SANS transition (apparition instantanée par
