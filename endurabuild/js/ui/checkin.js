@@ -94,7 +94,7 @@ const SLIDES = [
 
 function dotsHTML(step) {
   return '<div style="display:flex;gap:6px;justify-content:center;margin-top:14px">'
-    + slidesActives().map((_, i) => '<span style="width:8px;height:8px;border-radius:50%;border:1.5px solid #16130e;background:' + (i < step ? "#16130e" : i === step ? "#f0b429" : "transparent") + '"></span>').join("")
+    + slidesActives().map((_, i) => '<span style="width:8px;height:8px;border-radius:50%;border:1.5px solid var(--ink);background:' + (i < step ? "var(--ink)" : i === step ? "#f0b429" : "transparent") + '"></span>').join("")
     + "</div>";
 }
 

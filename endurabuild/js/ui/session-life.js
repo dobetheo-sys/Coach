@@ -239,7 +239,7 @@ function discBadgeHTML(d) {
   // R16.8 — un glyphe décoratif se dimensionne en `em`, jamais en px littéral : ce n'est pas
   // de la typographie, l'échelle --fs-* ne le régit pas (voir styles.css :root).
   return '<div aria-hidden="true" style="flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:' + b.ac
-    + ';border:2px solid #16130e;display:flex;align-items:center;justify-content:center;font-size:1.2em;line-height:1">' + b.ic + "</div>";
+    + ';border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;font-size:1.2em;line-height:1">' + b.ic + "</div>";
 }
 
 export function heroSessionHTML(plan, todayIso) {
@@ -248,7 +248,7 @@ export function heroSessionHTML(plan, todayIso) {
   let res;
   try { res = globalThis.EBV2.adjustToday(S.sport, S.answers, snap); } catch (e) { console.warn(e); return ""; }
   const v = res.adjustment.verdict;
-  const badge = '<span style="float:right;font-size:var(--fs-xs);font-weight:700;color:#555;margin-top:2px">' + VERDICT_ICON[v.level] + " " + _verdictLbl[res.adjustment.action] + "</span>";
+  const badge = '<span style="float:right;font-size:var(--fs-xs);font-weight:700;color:var(--muted);margin-top:2px">' + VERDICT_ICON[v.level] + " " + _verdictLbl[res.adjustment.action] + "</span>";
   // R4.7 — le plan qui réagit : toute adaptation est ANNONCÉE et expliquée en une phrase
   // (RPE d'hier, douleur, sommeil… — c'est la différence entre un PDF statique et un coach).
   const why = res.adjustment.action !== "keep" && v.drivers.length

@@ -74,6 +74,9 @@ const EN_DUR = [
   "./assets/fonts/archivo-black-400.woff2",
   "./assets/fonts/space-grotesk-500-700.woff2",
   "./assets/fonts/caveat-600-700.woff2",
+  "./assets/fonts/bebas-neue-400.woff2",
+  "./assets/fonts/ibm-plex-mono-400.woff2",
+  "./assets/fonts/ibm-plex-mono-700.woff2",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
 ];

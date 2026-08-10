@@ -2,19 +2,50 @@
 @font-face{font-family:'Archivo Black';font-style:normal;font-weight:400;font-display:swap;src:url("../assets/fonts/archivo-black-400.woff2") format("woff2")}
 @font-face{font-family:'Space Grotesk';font-style:normal;font-weight:500 700;font-display:swap;src:url("../assets/fonts/space-grotesk-500-700.woff2") format("woff2")}
 @font-face{font-family:'Caveat';font-style:normal;font-weight:600 700;font-display:swap;src:url("../assets/fonts/caveat-600-700.woff2") format("woff2")}
+/* R25.1 — Zenna : deux polices ajoutées, MÊME convention D19 (fichier `../assets/fonts/`,
+   `build:standalone` les convertit en base64 automatiquement, aucune requête réseau ajoutée).
+   Un seul graisse de Bebas Neue (la maquette n'en utilise qu'une) ; IBM Plex Mono en 400+700
+   pour tout le libellé "mono" de l'habillage. Space Grotesk reste le corps — on n'ajoute pas
+   Inter (écart maquette assumé, voir BRIEF_CLAUDE_CODE_R25 §R25.1). Ces polices sont
+   déclarées ici (fondations) ; leur application aux composants est un geste de R25.2. */
+@font-face{font-family:'Bebas Neue';font-style:normal;font-weight:400;font-display:swap;src:url("../assets/fonts/bebas-neue-400.woff2") format("woff2")}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400 700;font-display:swap;src:url("../assets/fonts/ibm-plex-mono-400.woff2") format("woff2")}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:700;font-display:swap;src:url("../assets/fonts/ibm-plex-mono-700.woff2") format("woff2")}
 
 
 /* ============================================================
-   TRIBUILDER × STYLE COLLAGE — papier, encre, découpes, attitude
+   R25.1 — ZENNA : fondations sombres (tokens, polices, grain, liseré).
+   Les NOMS de tokens existants sont conservés (--bg/--ink/--acc/--gold…) : tout le CSS et
+   les ~300 `style=` inline qui les consomment n'ont donc rien à changer, seule la VALEUR
+   sous le nom change — c'est la définition même d'un token. Les nouveaux tokens Zenna
+   (--surface-3, --border, --z1..z5, --swim/--bike/--run…) sont posés pour R25.2-R25.4,
+   pas encore consommés ici. Les FORMES (cut-shapes, box-shadow "papier", rotations) et les
+   polices display/mono restent celles d'aujourd'hui : c'est le périmètre de R25.2
+   (composants), pas de R25.1 (fondations) — voir BRIEF_CLAUDE_CODE_R25.
    ============================================================ */
 :root{
-  color-scheme:light;
-  --bg:#f1eadb; --bg2:#faf6ec; --bg3:#ffffff;
-  --ink:#16130e; --line:#16130e;
-  --text:#16130e; --text2:#4d463a; --muted:#635b4a;
-  --acc:#ff3b30; --gold:#e8a200; --run:#00a376; --swim:#2e6bff; --purple:#8e5cff;
+  color-scheme:dark;
+  /* --- surfaces : plus sombre → plus élevé, même relation de clarté que l'ancienne palette --- */
+  --bg:#000; --bg2:#111318; --bg3:#181c22;
+  --surface:var(--bg2); --surface-2:var(--bg3); --surface-3:#20252c;
+  --border:#26292f;
+  /* --- encre/texte : CLAIRE en thème sombre (le rôle ne change pas — contraste avec --bg) --- */
+  --ink:#F5F1EA; --line:#F5F1EA;
+  --text:#F5F1EA; --text2:#B4B9C0; --muted:#9AA0A8;
+  --text-dim:var(--text2); --text-faint:var(--muted);
+  /* --- accent (identité de marque, proche de l'ancien rouge-orangé --acc) --- */
+  --acc:#FF3D00; --orange:var(--acc); --orange-2:#FF7A3D; --orange-tint:#FFB199;
+  --orange-glow:rgba(255,61,0,.4);
+  /* --- système : verdict/positif, défi/récompense, récupération --- */
+  --gold:#FFD23D; --cyan:#00E0C6; --violet:#9b72ff; --purple:var(--violet);
+  /* --- zones d'intensité (HR/puissance), non consommées avant R25.2+ --- */
+  --z1:#3A3F46; --z2:#1FB8A6; --z3:#FFB199; --z4:#FF4B12; --z5:#FF1F4A;
+  /* --- disciplines (repère visuel constant natation/vélo/course/repos) --- */
+  --swim:#3B9EFF; --bike:#FF3D00; --run:#FFD23D; --rest:#3A3F46;
   --paper-shadow:7px 7px 0 var(--ink);
   --cut:255px 18px 225px 14px/16px 225px 16px 255px;
+  /* Polices déclarées, non encore appliquées aux composants (R25.2) */
+  --font-display:'Bebas Neue',sans-serif; --font-mono:'IBM Plex Mono',monospace;
   /* R16.8 — ÉCHELLE TYPOGRAPHIQUE. Le fichier portait 21 tailles distinctes, dont quatre
      sous le pixel (7,5 / 8,5 / 11,5 / 12,5) : une accumulation, pas une échelle. Sept
      paliers déclarés ici, un par RÔLE — remapper un rôle se fait donc à un seul endroit.
@@ -44,11 +75,16 @@ body{
   font-family:'Space Grotesk',-apple-system,sans-serif;
   min-height:100vh;
   overflow-x:hidden;
+  /* R25.1 — toute valeur chiffrée s'aligne en colonnes (compteurs, chronos, W/kg…) plutôt
+     que de faire onduler la largeur des chiffres proportionnels. Portée globale : moins
+     coûteux et moins fragile que d'énumérer les classes numériques une par une avant que
+     R25.2 n'ait fini de poser les composants qui les portent. */
+  font-variant-numeric:tabular-nums;
 }
-/* grain papier */
-body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;opacity:.5;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .04 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");}
-::selection{background:var(--gold);color:var(--ink);}
+/* grain papier → grain sombre, discret (R25.1 : opacité globale ≤ .05, contre .5 en clair) */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;opacity:.045;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");}
+::selection{background:var(--acc);color:#0a0a0a;}
 
 .wrap{max-width:760px;margin:0 auto;padding:28px 18px 60px;position:relative;}
 
@@ -59,9 +95,15 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
 @media(max-width:840px){
   .trail{position:fixed;inset:auto 12px 12px 12px;top:auto;max-height:55vh;overflow-y:auto;z-index:50;transform:translateY(calc(100% + 30px)) rotate(0);transition:transform .3s cubic-bezier(.2,.9,.3,1.2);}
   .trail.open{transform:translateY(0) rotate(0);}
-  .trail-toggle{display:flex;align-items:center;gap:8px;position:fixed;bottom:14px;right:14px;z-index:60;background:var(--gold);color:var(--ink);border:3px solid var(--ink);border-radius:30px;padding:11px 18px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:var(--fs-sm);letter-spacing:.02em;cursor:pointer;box-shadow:4px 4px 0 var(--ink);transform:rotate(-2deg);}
+  /* R25.1 — `.trail-toggle` est une surface ACCENT pleine (gold), pas un panneau texte : son
+     texte reste littéralement sombre (#0a0a0a), comme les CTA de la maquette Zenna
+     (`.btn.primary`/`.shop-cta`) — c'est cette famille-là de composants, pas `var(--ink)`,
+     qui décrit "assez clair pour porter du texte sombre dessus". `.cnt` est un badge de
+     compte à l'intérieur : il reste un chip SOMBRE quel que soit le thème (texte gold sur
+     fond encre), donc littéral plutôt que `var(--ink)` qui vient de s'inverser. */
+  .trail-toggle{display:flex;align-items:center;gap:8px;position:fixed;bottom:14px;right:14px;z-index:60;background:var(--gold);color:#0a0a0a;border:3px solid var(--ink);border-radius:30px;padding:11px 18px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:var(--fs-sm);letter-spacing:.02em;cursor:pointer;box-shadow:4px 4px 0 var(--ink);transform:rotate(-2deg);}
   .trail-toggle:active{transform:rotate(-2deg) translate(3px,3px);box-shadow:1px 1px 0 var(--ink);}
-  .trail-toggle .cnt{background:var(--ink);color:var(--gold);border-radius:10px;padding:1px 8px;font-size:var(--fs-xs);}
+  .trail-toggle .cnt{background:#0a0a0a;color:var(--gold);border-radius:10px;padding:1px 8px;font-size:var(--fs-xs);}
 }
 .trail-h{font-family:'Archivo Black',sans-serif;font-size:var(--fs-md);text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px;display:inline-block;background:var(--ink);color:var(--bg2);padding:4px 10px;transform:rotate(-1.2deg);}
 .trail-empty{font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--text2);line-height:1.4;}
@@ -83,8 +125,8 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
 .hero h1 em{font-style:normal;color:var(--bg2);background:var(--acc);padding:0 10px 2px;display:inline-block;transform:rotate(-1.6deg);box-shadow:4px 4px 0 var(--ink);transition:background .4s;}
 .hero p{color:var(--text2);font-size:var(--fs-lg);margin-top:14px;max-width:540px;line-height:1.6;font-weight:500;}
 .tier-badge{display:inline-flex;align-items:center;gap:7px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase;padding:6px 14px;margin-top:16px;border:3px solid var(--ink);transform:rotate(1deg);box-shadow:3px 3px 0 var(--ink);}
-.tier-badge.free{background:#bfe8c8;color:var(--ink);}
-.tier-badge.premium{background:var(--gold);color:var(--ink);}
+.tier-badge.free{background:rgba(191,232,200,.16);color:var(--ink);}
+.tier-badge.premium{background:var(--gold);color:#0a0a0a;}
 
 /* ===== PROGRESSION : tickets déchirés ===== */
 .progress{display:flex;gap:5px;margin:18px 0 26px;align-items:center;}
@@ -92,7 +134,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
 .pstep.done{background:var(--acc);}
 .pstep.cur{background:var(--gold);animation:curBlink 1.2s ease infinite alternate;}
 @keyframes curBlink{from{transform:scaleY(1);}to{transform:scaleY(1.25);}}
-.pstep.prem{background:repeating-linear-gradient(45deg,var(--bg3) 0 4px,#f1e3bd 4px 8px);}
+.pstep.prem{background:repeating-linear-gradient(45deg,var(--bg3) 0 4px,rgba(241,227,189,.18) 4px 8px);}
 .pstep.prem.done,.pstep.prem.cur{background:var(--gold);}
 .psep{width:24px;flex:none;text-align:center;font-size:.9em;transform:rotate(-8deg);}
 
@@ -100,6 +142,11 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
 .card{background:var(--bg3);border:3px solid var(--ink);border-radius:var(--cut);box-shadow:var(--paper-shadow);padding:30px 30px 26px;animation:dropIn .4s cubic-bezier(.2,.9,.3,1.15);position:relative;}
 @keyframes dropIn{from{opacity:0;transform:translateY(16px) rotate(.6deg);}to{opacity:1;transform:none;}}
 @media(prefers-reduced-motion:reduce){.card,.trail-rule.new,.pstep.cur{animation:none;}}
+/* R25.1 — liseré 1px dégradé en haut des cartes (matière Zenna). Pseudo-élément : ne touche
+   ni le DOM ni son ordre (invariant §1.2). `.gw` (grille de semaine) et `.load-card`
+   (`<div>` ou `<details>`, R16.7) sont les deux autres conteneurs "carte" du dépôt. */
+.card::before,.load-card::before,.gw::before{content:"";position:absolute;top:0;left:14px;right:14px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);pointer-events:none;}
+.load-card,.gw{position:relative;}
 .card .eyebrow{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:var(--fs-micro);letter-spacing:.14em;text-transform:uppercase;color:var(--bg2);background:var(--ink);display:inline-block;padding:4px 10px;transform:rotate(-1deg);margin-bottom:12px;}
 .card h2{font-family:'Archivo Black',sans-serif;font-size:clamp(22px,3.4vw,30px);line-height:1.02;text-transform:uppercase;margin-bottom:10px;}
 .card .why{font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--text2);line-height:1.3;margin-bottom:22px;border-left:4px solid var(--gold);padding-left:13px;transform:rotate(-.3deg);}
@@ -107,7 +154,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
 .q{margin-bottom:26px;}
 .q-label{font-size:var(--fs-lg);font-weight:700;margin-bottom:11px;display:block;}
 .q-sub{font-size:var(--fs-sm);color:var(--muted);margin-top:-6px;margin-bottom:11px;line-height:1.55;font-weight:500;}
-.q-def{font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--ink);background:#dcecff;border:2.5px solid var(--ink);border-radius:14px 4px 16px 5px;padding:8px 13px;margin:-4px 0 12px;line-height:1.25;transform:rotate(-.4deg);box-shadow:3px 3px 0 var(--ink);}
+.q-def{font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--ink);background:rgba(220,236,255,.14);border:2.5px solid var(--ink);border-radius:14px 4px 16px 5px;padding:8px 13px;margin:-4px 0 12px;line-height:1.25;transform:rotate(-.4deg);box-shadow:3px 3px 0 var(--ink);}
 .q-def::before{content:"💡 ";}
 
 /* options : étiquettes découpées */
@@ -117,45 +164,48 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
 .opts .opt:nth-child(even){transform:rotate(.6deg);}
 .opt:hover{transform:translate(-2px,-2px) rotate(0);box-shadow:5px 5px 0 var(--ink);}
 .opt:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
-.opt.sel{background:var(--acc);color:#fff;transform:rotate(-1.3deg) scale(1.03);box-shadow:4px 4px 0 var(--ink);}
+.opt.sel{background:var(--acc);color:#0a0a0a;transform:rotate(-1.3deg) scale(1.03);box-shadow:4px 4px 0 var(--ink);}
 .opt.sel:hover{transform:rotate(-1.3deg) scale(1.03);}
 .opt:focus-visible{outline:3px dashed var(--acc);outline-offset:3px;}
 input[type=text],input[type=number],input[type=date]{background:var(--bg3);border:2.5px solid var(--ink);border-radius:4px 10px 5px 9px;padding:10px 14px;font-size:var(--fs-lg);font-weight:600;color:var(--ink);width:200px;font-family:'Space Grotesk',sans-serif;box-shadow:3px 3px 0 var(--ink);}
-input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:#fffbe8;}
+input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255,251,232,.14);}
 .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;}
 .row .q{margin-bottom:0;flex:1;min-width:150px;}
 
 /* branche débloquée : post-it */
-.branch{background:#fff4c2;border:2.5px solid var(--ink);border-radius:3px 14px 4px 12px;padding:16px 18px;margin-top:18px;transform:rotate(.5deg);box-shadow:4px 4px 0 var(--ink);animation:dropIn .3s ease;}
+.branch{background:rgba(255,244,194,.14);border:2.5px solid var(--ink);border-radius:3px 14px 4px 12px;padding:16px 18px;margin-top:18px;transform:rotate(.5deg);box-shadow:4px 4px 0 var(--ink);animation:dropIn .3s ease;}
 .branch .branch-tag{font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--ink);margin-bottom:8px;font-weight:700;}
 
 .nav{display:flex;justify-content:space-between;margin-top:28px;gap:10px;}
 .btn{font-family:'Archivo Black',sans-serif;font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:13px 26px;border:3px solid var(--ink);border-radius:6px 14px 7px 13px;background:var(--bg3);color:var(--ink);cursor:pointer;box-shadow:4px 4px 0 var(--ink);transition:transform .12s,box-shadow .12s;}
 .btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink);}
 .btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink);}
-.btn.primary{background:var(--acc);color:#fff;}
+/* R25.1 — mesuré : #fff échoue l'AA sur les deux teintes d'accent (défaut 3.55:1, override
+   sport `run` #ff7a1a 2.61:1). #0a0a0a passe les deux (5.58:1 / 7.59:1) — c'est aussi la
+   convention Zenna pour tout CTA sur surface vive (`.btn.primary`/`.shop-cta`). */
+.btn.primary{background:var(--acc);color:#0a0a0a;}
 .btn.primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:4px 4px 0 var(--ink);}
-.btn.gold{background:var(--gold);color:var(--ink);}
+.btn.gold{background:var(--gold);color:#0a0a0a;}
 .btn:focus-visible{outline:3px dashed var(--acc);outline-offset:3px;}
 
 /* ===== BLUEPRINT ===== */
 .bp-heros{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:28px;}
 .bp-hero{background:var(--bg2);border:3px solid var(--ink);border-radius:4px 16px 5px 14px;padding:16px 15px;box-shadow:5px 5px 0 var(--ink);}
-.bp-heros .bp-hero:nth-child(1){transform:rotate(-1.2deg);background:#ffe3e0;}
-.bp-heros .bp-hero:nth-child(2){transform:rotate(.8deg);background:#fff4c2;}
-.bp-heros .bp-hero:nth-child(3){transform:rotate(-.6deg);background:#dcecff;}
-.bp-heros .bp-hero:nth-child(4){transform:rotate(1deg);background:#d9f3e1;}
+.bp-heros .bp-hero:nth-child(1){transform:rotate(-1.2deg);background:rgba(255,227,224,.14);}
+.bp-heros .bp-hero:nth-child(2){transform:rotate(.8deg);background:rgba(255,244,194,.14);}
+.bp-heros .bp-hero:nth-child(3){transform:rotate(-.6deg);background:rgba(220,236,255,.14);}
+.bp-heros .bp-hero:nth-child(4){transform:rotate(1deg);background:rgba(217,243,225,.14);}
 .bp-hero .bh-cat{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:var(--fs-micro);color:var(--text2);letter-spacing:.1em;text-transform:uppercase;}
 .bp-hero .bh-val{font-family:'Archivo Black',sans-serif;font-size:var(--fs-hand);line-height:1.08;margin-top:7px;text-transform:uppercase;}
 .bp-cat{margin-bottom:8px;}
 .bp-cat-h{display:flex;align-items:center;gap:9px;font-family:'Archivo Black',sans-serif;font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:16px 0 8px;border-bottom:3px solid var(--ink);margin-bottom:4px;}
-.bp-cat-h .ic{width:26px;height:26px;border:2.5px solid var(--ink);border-radius:40% 55% 45% 50%;display:flex;align-items:center;justify-content:center;font-size:1em;background:var(--gold);transform:rotate(-4deg);}
+.bp-cat-h .ic{width:26px;height:26px;border:2.5px solid var(--ink);border-radius:40% 55% 45% 50%;display:flex;align-items:center;justify-content:center;font-size:1em;background:var(--gold);color:#0a0a0a;transform:rotate(-4deg);}
 .bp-decision{display:grid;grid-template-columns:175px 1fr;gap:12px;padding:12px 0;border-bottom:2px dashed rgba(22,19,14,.25);font-size:var(--fs-md);}
 .bp-decision:last-child{border-bottom:none;}
 .bp-what{font-weight:700;}
 .bp-why{color:var(--text2);font-size:var(--fs-sm);line-height:1.55;font-weight:500;}
 .bp-val{color:var(--ink);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:var(--fs-sm);background:linear-gradient(transparent 55%,rgba(232,162,0,.4) 55%,rgba(232,162,0,.4) 92%,transparent 92%);display:inline;}
-.warn{background:#ffe3e0;border:3px solid var(--ink);border-radius:4px 12px 5px 11px;padding:14px 16px;font-size:var(--fs-md);color:var(--ink);line-height:1.6;margin-top:18px;font-weight:500;box-shadow:4px 4px 0 var(--ink);transform:rotate(-.3deg);}
+.warn{background:rgba(255,227,224,.14);border:3px solid var(--ink);border-radius:4px 12px 5px 11px;padding:14px 16px;font-size:var(--fs-md);color:var(--ink);line-height:1.6;margin-top:18px;font-weight:500;box-shadow:4px 4px 0 var(--ink);transform:rotate(-.3deg);}
 .warn strong{color:var(--text);}
 .locked{background:var(--bg2);border:3px dashed var(--ink);border-radius:var(--cut);padding:18px;margin-top:16px;}
 .locked-h{font-family:'Archivo Black',sans-serif;font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px;}
@@ -176,8 +226,8 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:#fffbe8;
 .welcome .w-meta{display:flex;gap:14px;justify-content:center;margin:26px 0;flex-wrap:wrap;}
 .w-chip{display:flex;align-items:center;gap:7px;font-size:var(--fs-sm);font-weight:700;border:2.5px solid var(--ink);padding:7px 13px;border-radius:4px 11px 5px 10px;background:var(--bg2);box-shadow:3px 3px 0 var(--ink);}
 .w-chip:nth-child(1){transform:rotate(-1.5deg);}
-.w-chip:nth-child(2){transform:rotate(1deg);background:#fff4c2;}
-.w-chip:nth-child(3){transform:rotate(-.8deg);background:#ffe3e0;}
+.w-chip:nth-child(2){transform:rotate(1deg);background:rgba(255,244,194,.14);}
+.w-chip:nth-child(3){transform:rotate(-.8deg);background:rgba(255,227,224,.14);}
 .w-chip b{color:var(--ink);}
 .welcome .btn{margin-top:10px;font-size:var(--fs-lg);padding:16px 40px;}
 
@@ -212,10 +262,14 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:#fffbe8;
 .gw-h em{font-family:'Space Grotesk',sans-serif;font-style:normal;font-weight:700;font-size:var(--fs-xs);color:var(--text2);margin-left:auto;}
 .gw-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
 .gd{background:var(--bg3);border:2.5px solid var(--ink);border-radius:3px 8px 4px 7px;padding:7px 6px;min-height:88px;position:relative;box-shadow:2.5px 2.5px 0 var(--ink);}
-.gd.dur{background:#ffe3e0;}
-.gd.facile{background:#d9f3e1;}
-.gd.recup{background:#e9defc;}
-.gd.off{background:var(--bg2);opacity:.75;}
+.gd.dur{background:rgba(255,227,224,.14);}
+.gd.facile{background:rgba(217,243,225,.14);}
+.gd.recup{background:rgba(233,222,252,.14);}
+/* R25.1 — l'opacité réduite (.75) rendait un jour "off" en clair (texte sombre vers page
+   claire, perte de lisibilité tolérable) ; en sombre elle affaiblit un texte déjà CLAIR
+   vers un fond noir et fait chuter le contraste sous AA (mesuré : 1.51:1). Le fond
+   `--bg2` porte seul la distinction visuelle désormais — lisible d'abord (priorité 1). */
+.gd.off{background:var(--bg2);}
 .gd-top{display:flex;justify-content:space-between;align-items:baseline;}
 .gd-top b{font-size:var(--fs-sm);font-weight:800;}
 .gd-top i{font-family:'Space Grotesk',sans-serif;font-style:normal;font-weight:700;font-size:var(--fs-micro);color:var(--text2);}
@@ -224,12 +278,16 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:#fffbe8;
 .wk-skip{text-align:center;font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--muted);padding:8px 0 14px;}
 @media(max-width:680px){.gw-grid{grid-template-columns:repeat(2,1fr);}.gd{min-height:auto;}}
 
-/* ===== DA DYNAMIQUE PAR INTENTION ===== */
+/* ===== DA DYNAMIQUE PAR INTENTION =====
+   R25.1 — les fonds teintés par intention (`#f3e9dd`/`#f4ecdc`/`#e9eee2`) étaient calibrés
+   pour la page claire d'origine : sur `--bg:#000`, ils redevenaient des taches claires que
+   rien dans la maquette Zenna ne prévoit. Retirés ; l'accent par intention (bouton, étape
+   validée) reste — c'est un signal utile, pas un fond de page. */
 body{transition:background .5s ease;}
-body[data-intent="competition"]{--acc:#ff3b30;background:#f3e9dd;}
-body[data-intent="finir"]{--acc:#ff7a1a;background:#f4ecdc;}
+body[data-intent="competition"]{--acc:#ff3b30;}
+body[data-intent="finir"]{--acc:#ff7a1a;}
 body[data-intent="finir"] .pstep.done{background:#ff7a1a;}
-body[data-intent="plaisir"]{--acc:#2e6bff;background:#e9eee2;}
+body[data-intent="plaisir"]{--acc:#2e6bff;}
 body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 
 
@@ -263,17 +321,29 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 .gd-sess .gd-det{margin-top:2px;}
 /* ===== R4-3 : modal félicitations post-séance ===== */
 .eb-overlay{position:fixed;inset:0;background:rgba(22,19,14,.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;}
-.eb-modal{background:#f6efe0;border:3px solid var(--ink);border-radius:16px;box-shadow:6px 6px 0 var(--ink);padding:20px 18px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;}
-.doneBtn{border:2px solid var(--ink);background:#fff;border-radius:999px;font-size:var(--fs-xs);font-weight:800;line-height:1;padding:0;cursor:pointer;color:var(--muted);vertical-align:middle;}
+.eb-modal{background:var(--bg3);border:3px solid var(--ink);border-radius:16px;box-shadow:6px 6px 0 var(--ink);padding:20px 18px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;}
+.doneBtn{border:2px solid var(--ink);background:var(--bg3);border-radius:999px;font-size:var(--fs-xs);font-weight:800;line-height:1;padding:0;cursor:pointer;color:var(--muted);vertical-align:middle;}
 .doneBtn.done{background:#00a376;color:#fff;border-color:#00734f;}
-.load-card{border:3px solid var(--ink);border-radius:14px;background:#fff;padding:12px 12px 10px;margin:6px 0 20px;box-shadow:4px 4px 0 var(--ink);}
+.load-card{border:3px solid var(--ink);border-radius:14px;background:var(--bg3);padding:12px 12px 10px;margin:6px 0 20px;box-shadow:4px 4px 0 var(--ink);}
 .load-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:var(--fs-md);letter-spacing:.02em;margin-bottom:2px;}
 .load-leg{font-size:var(--fs-xs);font-weight:700;text-align:center;margin:2px 0 4px;}
 .load-sub{font-size:var(--fs-sm);color:var(--text2);line-height:1.5;}
 .gd{min-height:96px;}
 
 /* ===== IMPRESSION / EXPORT PDF ===== */
+/* R25.1 — un plan sombre ne s'imprime pas (brief §R25.1) : le thème clair d'origine est
+   restauré pour la feuille imprimée, sans dupliquer la palette ailleurs — ce sont les MÊMES
+   tokens, redéfinis dans ce seul bloc. `color-scheme` repasse aussi en clair : sans ça les
+   contrôles de formulaire natifs restent rendus sombres par le navigateur au moment de
+   l'impression. */
 @media print{
+  :root{
+    color-scheme:light;
+    --bg:#f1eadb; --bg2:#faf6ec; --bg3:#ffffff;
+    --ink:#16130e; --line:#16130e;
+    --text:#16130e; --text2:#4d463a; --muted:#635b4a;
+    --acc:#ff3b30; --gold:#e8a200;
+  }
   body{background:#fff !important;}
   body::before{display:none;}
   .trail,.trail-toggle,.progress,.nav,.tier-badge,.hero p{display:none !important;}
@@ -311,7 +381,7 @@ body[data-sport="tri"]{--acc:#ff3b30;}
 .drv-band{margin:4px 0 22px;padding:16px;background:var(--bg2);border:3px solid var(--ink);border-radius:5px 16px 6px 14px;box-shadow:4px 4px 0 var(--ink);}
 .drv-title{font-family:'Archivo Black',sans-serif;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.06em;margin-bottom:11px;color:var(--ink);}
 .drv-wrap{display:flex;flex-wrap:wrap;gap:8px;}
-.drv{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:700;color:var(--ink);background:#fff;border:2px solid var(--ink);border-left:6px solid var(--dc,#888);border-radius:4px 10px 5px 9px;padding:6px 11px;box-shadow:2px 2px 0 var(--ink);}
+.drv{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:700;color:var(--ink);background:var(--bg3);border:2px solid var(--ink);border-left:6px solid var(--dc,#888);border-radius:4px 10px 5px 9px;padding:6px 11px;box-shadow:2px 2px 0 var(--ink);}
 .drv b{font-weight:400;font-size:1.15em;}
 @media(max-width:600px){.drv{font-size:var(--fs-xs);padding:5px 9px;}}
 
@@ -372,7 +442,7 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
  * premier plan (c'est ce qu'on vient chercher), la justification descend en gris plus aéré. On
  * ne retire pas un mot — R11.2 et l'explicabilité restent entières. */
 .exp-list{list-style:none;margin:10px 0 0;padding:0;}
-.exp-row{padding:9px 0;border-top:1px solid var(--bg2,#e8e0cf);}
+.exp-row{padding:9px 0;border-top:1px solid var(--bg2);}
 .exp-row:first-child{border-top:none;padding-top:2px;}
 .exp-lbl{font-size:var(--fs-micro);text-transform:uppercase;letter-spacing:.06em;color:var(--text2);}
 .exp-val{font-size:var(--fs-md);font-weight:700;line-height:1.35;margin-top:1px;}
@@ -403,7 +473,7 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
   position:relative;
 }
 .aide-btn::after{content:"";position:absolute;top:50%;left:50%;width:44px;height:44px;transform:translate(-50%,-50%);}
-.aide-btn.on{background:var(--accent2,#dcecff);box-shadow:inset 1.5px 1.5px 0 var(--ink);}
+.aide-btn.on{background:rgba(220,236,255,.18);box-shadow:inset 1.5px 1.5px 0 var(--ink);}
 .aide-btn:focus-visible{outline:3px solid var(--ink);outline-offset:2px;}
 .aide-txt{margin-top:6px;}
 .aide-txt[hidden]{display:none;}
@@ -493,7 +563,7 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
   color:var(--ink);cursor:pointer;box-shadow:3px 3px 0 var(--ink);touch-action:manipulation;
   border-top:4px solid var(--sa,var(--acc));
 }
-.edu-disc[aria-current="true"]{background:var(--sa,var(--acc));color:#fff;}
+.edu-disc[aria-current="true"]{background:var(--sa,var(--acc));color:#0a0a0a;}
 
 /* --- Section (une par « geste »/thème), verrouillage, badge de preuve --- */
 .edu-section{border-left:8px solid var(--sa,var(--acc));}
@@ -504,17 +574,17 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
   font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;
   border:2px solid var(--ink);border-radius:20px;margin-bottom:12px;
 }
-.edu-badge[data-n="forte"]{background:#d9eafb;}
-.edu-badge[data-n="terrain"]{background:#e2f0dc;}
-.edu-badge[data-n="consensus"]{background:#fbeeda;}
+.edu-badge[data-n="forte"]{background:rgba(217,234,251,.16);}
+.edu-badge[data-n="terrain"]{background:rgba(226,240,220,.16);}
+.edu-badge[data-n="consensus"]{background:rgba(251,238,218,.16);}
 
 /* --- Progression natation (barre à billes) : rendue seulement si la discipline déclare
        des `prerequis` — un mécanisme générique, pas un cas spécial natation dans le JS. --- */
 .edu-progress{display:flex;align-items:center;gap:0;margin:0 0 18px;padding:12px 10px;border:2.5px solid var(--ink);border-radius:14px;background:var(--bg3);}
 .edu-pstep{display:flex;align-items:center;flex:1;}
 .edu-pstep:last-child{flex:0 0 auto;}
-.edu-bead{width:30px;height:30px;flex:0 0 auto;border:2.5px solid var(--ink);border-radius:50%;display:grid;place-items:center;font-size:var(--fs-xs);font-weight:900;background:#fff;}
-.edu-bead[data-state="done"]{background:var(--sa,var(--acc));color:#fff;}
+.edu-bead{width:30px;height:30px;flex:0 0 auto;border:2.5px solid var(--ink);border-radius:50%;display:grid;place-items:center;font-size:var(--fs-xs);font-weight:900;background:var(--bg3);}
+.edu-bead[data-state="done"]{background:var(--sa,var(--acc));color:#0a0a0a;}
 .edu-bead[data-state="active"]{background:var(--gold);}
 .edu-bead[data-state="locked"]{background:var(--bg);color:var(--muted);}
 .edu-pbar{flex:1;height:4px;background:var(--line);margin:0 6px;border-radius:2px;opacity:.25;}
@@ -527,17 +597,17 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
 .edu-table{width:100%;border-collapse:collapse;font-size:var(--fs-sm);}
 .edu-table td{border:2px solid var(--ink);padding:8px 9px;line-height:1.45;vertical-align:top;}
 .edu-table td:first-child{width:34%;font-weight:800;}
-.edu-table tr[data-niveau="r"] td:first-child{background:#f9dcd7;}
+.edu-table tr[data-niveau="r"] td:first-child{background:rgba(249,220,215,.16);}
 .edu-table tr[data-niveau="o"] td:first-child,
-.edu-table tr[data-niveau="mid"] td:first-child{background:#fbeeda;}
+.edu-table tr[data-niveau="mid"] td:first-child{background:rgba(251,238,218,.16);}
 .edu-table tr[data-niveau="g"] td:first-child,
-.edu-table tr[data-niveau="ok"] td:first-child{background:#d6eff8;}
-.edu-table tr[data-niveau="no"] td:first-child{background:#f9dcd7;}
+.edu-table tr[data-niveau="ok"] td:first-child{background:rgba(214,239,248,.16);}
+.edu-table tr[data-niveau="no"] td:first-child{background:rgba(249,220,215,.16);}
 .edu-drill{border:2px solid var(--ink);border-radius:10px;padding:10px 11px;margin-bottom:8px;background:var(--bg3);}
 .edu-drill strong{display:block;font-size:var(--fs-md);font-weight:900;margin-bottom:3px;}
 .edu-drill span{display:block;font-size:var(--fs-sm);line-height:1.5;color:var(--text2);}
 .edu-drill-fig{margin:10px 0 0;}
-.edu-debat{border:2.5px solid var(--gold);border-radius:10px;background:#fdf6e9;padding:12px;}
+.edu-debat{border:2.5px solid var(--gold);border-radius:10px;background:rgba(253,246,233,.14);padding:12px;}
 .edu-debat strong{display:block;font-size:var(--fs-md);font-weight:900;margin-bottom:6px;}
 .edu-debat span{display:block;font-size:var(--fs-sm);line-height:1.55;color:var(--text2);}
 /* `.warn` existe déjà (contenu `type:"warn"`) — repliage interdit pour `secu`, comme les
@@ -558,9 +628,9 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
        le second, pas le premier). */
 .edu-panel{border:2.5px solid var(--ink);border-radius:10px;overflow:hidden;margin-bottom:10px;background:var(--bg3);}
 .edu-panel-h{display:flex;align-items:center;gap:7px;padding:7px 10px;border-bottom:2.5px solid var(--ink);font-size:var(--fs-xs);font-weight:800;letter-spacing:.04em;text-transform:uppercase;}
-.edu-panel-h.edu-bad,.edu-panel-h.edu-a{background:#f9dcd7;}
-.edu-panel-h.edu-good,.edu-panel-h.edu-b{background:#d6eff8;}
-.edu-panel-h.edu-n{background:#ede9e1;}
+.edu-panel-h.edu-bad,.edu-panel-h.edu-a{background:rgba(249,220,215,.16);}
+.edu-panel-h.edu-good,.edu-panel-h.edu-b{background:rgba(214,239,248,.16);}
+.edu-panel-h.edu-n{background:rgba(237,233,225,.16);}
 .edu-pip{width:9px;height:9px;border-radius:50%;border:2px solid var(--ink);}
 .edu-pip.edu-bad,.edu-pip.edu-a{background:#e8543f;}
 .edu-pip.edu-good,.edu-pip.edu-b{background:#4fc3e8;}

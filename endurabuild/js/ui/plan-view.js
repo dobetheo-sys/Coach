@@ -42,9 +42,9 @@ function loadChartSVG(plan){
   const yB=v=>PT+ih/2-(v/tsbMax)*(ih/2);      // TSB (centré sur 0)
   const line=(sel,col,w)=>"<polyline fill=\"none\" stroke=\""+col+"\" stroke-width=\""+w+"\" points=\""+S2.map((o,i)=>x(i).toFixed(1)+","+sel(o).toFixed(1)).join(" ")+"\"/>";
   let g="<svg viewBox=\"0 0 "+W+" "+H+"\" width=\""+W+"\" height=\""+H+"\" style=\"display:block\" role=\"img\" aria-label=\"Courbe de charge CTL ATL TSB\">";
-  g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"#0002\" stroke-dasharray=\"3 3\"/>";
-  g+=line(o=>yB(o.tsb),"#00a376",2)+line(o=>yL(o.ctl),"#2e6bff",2.5)+line(o=>yL(o.atl),"#ff7a1a",1.8);
-  g+="<text x=\"2\" y=\""+(PT+8)+"\" font-size=\"9\" fill=\"#635b4a\">charge</text>";
+  g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"#fff2\" stroke-dasharray=\"3 3\"/>";
+  g+=line(o=>yB(o.tsb),"#00a376",2)+line(o=>yL(o.ctl),"#3B9EFF",2.5)+line(o=>yL(o.atl),"#ff7a1a",1.8);
+  g+="<text x=\"2\" y=\""+(PT+8)+"\" font-size=\"9\" fill=\"#9AA0A8\">charge</text>";
   // R24.6 (retour fondateur, 06/08) — « montre visuellement là où on en est » : un trait
   // vertical à la semaine COURANTE, ancré sur les dates réelles du plan (R7), avec un point
   // sur la courbe de fitness. Pas de marqueur hors plan (avant le départ ou après la course).
@@ -55,10 +55,10 @@ function loadChartSVG(plan){
     const iNow=wkNow!=null?S2.findIndex(o=>o.week===wkNow):-1;
     if(iNow>=0){
       const xn=x(iNow);xNow=xn;
-      g+="<line x1=\""+xn.toFixed(1)+"\" y1=\""+PT+"\" x2=\""+xn.toFixed(1)+"\" y2=\""+(PT+ih)+"\" stroke=\"#16130e\" stroke-width=\"1.5\" stroke-dasharray=\"2 3\"/>";
-      g+="<circle cx=\""+xn.toFixed(1)+"\" cy=\""+yL(S2[iNow].ctl).toFixed(1)+"\" r=\"3.5\" fill=\"#2e6bff\" stroke=\"#16130e\" stroke-width=\"1\"/>";
+      g+="<line x1=\""+xn.toFixed(1)+"\" y1=\""+PT+"\" x2=\""+xn.toFixed(1)+"\" y2=\""+(PT+ih)+"\" stroke=\"#F5F1EA\" stroke-width=\"1.5\" stroke-dasharray=\"2 3\"/>";
+      g+="<circle cx=\""+xn.toFixed(1)+"\" cy=\""+yL(S2[iNow].ctl).toFixed(1)+"\" r=\"3.5\" fill=\"#3B9EFF\" stroke=\"#F5F1EA\" stroke-width=\"1\"/>";
       const gauche=xn>W-70;
-      g+="<text x=\""+(gauche?xn-5:xn+5).toFixed(1)+"\" y=\""+(PT+ih-4)+"\" font-size=\"9\" font-weight=\"bold\" fill=\"#16130e\""+(gauche?" text-anchor=\"end\"":"")+">tu es ici</text>";
+      g+="<text x=\""+(gauche?xn-5:xn+5).toFixed(1)+"\" y=\""+(PT+ih-4)+"\" font-size=\"9\" font-weight=\"bold\" fill=\"#F5F1EA\""+(gauche?" text-anchor=\"end\"":"")+">tu es ici</text>";
     }
   }
   g+="</svg>";
@@ -132,7 +132,7 @@ function downloadPlan(){
     rows+='</div></div>';
   });
   const rules=evalRules(a,S.tier);
-  const blue=rules.map(r=>'<li><b>'+r.what+' :</b> '+r.val+'<br><span style="color:#555">'+r.why+'</span></li>').join("");
+  const blue=rules.map(r=>'<li><b>'+r.what+' :</b> '+r.val+'<br><span style="color:var(--muted)">'+r.why+'</span></li>').join("");
   // R16.8 — le DOCUMENT EXPORTÉ est autonome : il ne charge ni styles.css ni ses variables.
   // Ses tailles restent donc LITTÉRALES. Les ramener sur `var(--fs-*)` les rendrait toutes
   // à la taille par défaut du navigateur — même piège que les couleurs en R16.2.
@@ -193,12 +193,12 @@ function progressBarCardHTML(plan){
       +(pg.streakWeeks>0?'<b>'+pg.streakWeeks+' semaine'+(pg.streakWeeks>1?'s':'')+' de r\u00e9gularit\u00e9 d\u2019affil\u00e9e</b> (\u226580% des s\u00e9ances faites) \u2014 la r\u00e9gularit\u00e9 est ta priorit\u00e9 n\u00b03, continue !'
         :'Coche tes s\u00e9ances (\u25cb \u2192 \u2713) : la r\u00e9gularit\u00e9 se construit semaine apr\u00e8s semaine, une s\u00e9ance loup\u00e9e est pardonn\u00e9e.')
       +'</div>'
-      +'<div style="background:var(--bg2,#e8e0cf);border:1.5px solid #16130e;border-radius:6px;height:14px;overflow:hidden"><div style="height:100%;width:'+pg.pctLoad+'%;background:#00a376"></div></div>'
+      +'<div style="background:var(--bg2);border:1.5px solid var(--ink);border-radius:6px;height:14px;overflow:hidden"><div style="height:100%;width:'+pg.pctLoad+'%;background:#00a376"></div></div>'
       +'<div class="load-sub" style="margin-top:4px">Semaine '+pg.weekNow+'/'+pg.totalWeeks+' \u00b7 <b>'+pg.pctLoad+'%</b> de la charge du plan accomplie ('+(Math.round(pg.doneMin/6)/10)+'h / '+(Math.round(pg.totalMin/6)/10)+'h)</div>';
     if(globalThis.EBV2.badges){
       const bd=globalThis.EBV2.badges(plan,S.answers,todayISO());
       if(bd.length){h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">';
-        bd.forEach(b=>{h+='<span title="'+b.why.replace(/"/g,"&quot;")+'" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:#fff">'+b.icon+' '+b.label+'</span>';});
+        bd.forEach(b=>{h+='<span title="'+b.why.replace(/"/g,"&quot;")+'" style="border:1.5px solid var(--ink);border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:var(--bg3)">'+b.icon+' '+b.label+'</span>';});
         h+='</div>';}
     }
     h+='</div>';
@@ -243,19 +243,19 @@ function predictionCardHTML(plan){
           h+='<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer;font-weight:600">Le d\u00e9tail, segment par segment</summary>';
         }
         h+='<div class="load-sub" style="margin:8px 0 2px;font-weight:600">Aujourd\u2019hui \u2014 ta forme mesur\u00e9e</div>';
-        pr.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
+        pr.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:var(--muted)">'+x.why+'</span></div>';});
         if(pj&&pj.applicable&&pj.items.length){
           const d=pj.raceDate?(fmtDay(pj.raceDate)+"/"+pj.raceDate.slice(0,4)):"le jour J";
           h+='<div class="load-sub" style="margin:12px 0 2px;font-weight:600">Projet\u00e9 au '+d
             +' <span style="font-weight:400;color:var(--muted)">\u00b7 confiance '+pj.confidence+'</span></div>';
-          pj.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
+          pj.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:var(--muted)">'+x.why+'</span></div>';});
           h+='<div class="load-sub" style="color:var(--muted);margin-top:4px">Si tu suis ce plan. La fourchette est volontairement ASYM\u00c9TRIQUE : au pire, ta forme d\u2019aujourd\u2019hui \u2014 un plan suivi ne rend pas plus lent, il peut seulement rapporter moins que pr\u00e9vu.</div>';
           // R14.1 \u00a75 \u2014 le levier poids ne s'affiche QUE si l'athl\u00e8te l'a demand\u00e9 et a saisi sa
           // cible. Une sensibilit\u00e9, jamais un objectif ; aucun rythme, aucune consigne alimentaire.
           if(pj.weightLever){
             const wl=pj.weightLever;
             h+='<div class="load-sub" style="margin:10px 0 0;padding-top:8px;border-top:1px dashed #0002"><b>Sensibilit\u00e9 au poids (tu as demand\u00e9 ce levier)</b><br>'
-              +'<span style="color:#555">'+wl.why+'</span></div>';
+              +'<span style="color:var(--muted)">'+wl.why+'</span></div>';
           }
         }
         pr.advice.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0;color:#8a6d00">\u26a0 '+x+'</div>';});
@@ -284,7 +284,7 @@ function historyCardHTML(plan){
         h+='<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:var(--fs-sm)">'
           +'<span style="width:34px"><b>S'+w.num+'</b></span>'
           +'<span style="width:20px">'+(w.ok?"\u2705":"\u25cb")+'</span>'
-          +'<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:10px;overflow:hidden"><div style="height:100%;width:'+pc+'%;background:'+(w.ok?"#00a376":"#f0b429")+'"></div></div>'
+          +'<div style="flex:1;background:var(--bg2);border:1px solid var(--ink);border-radius:4px;height:10px;overflow:hidden"><div style="height:100%;width:'+pc+'%;background:'+(w.ok?"#00a376":"#f0b429")+'"></div></div>'
           +'<span style="width:130px;text-align:right">'+w.done+'/'+w.total+' s\u00e9ances \u00b7 '+(Math.round(w.minDone/6)/10)+'/'+(Math.round(w.minTotal/6)/10)+'h</span></div>';
       });
       h+='<div class="load-sub" style="margin-top:4px">\u2705 = semaine r\u00e9guli\u00e8re (\u226580% des s\u00e9ances). Le r\u00e9el nourrit l\u2019ajusteur du matin \u2014 pas de rattrapage, jamais.</div></div>';
@@ -303,8 +303,8 @@ function intensityCardHTML(plan){
     it.weekly.forEach(w=>{const t=w.e+w.m+w.h,H=Math.max(4,Math.round(t/mx*52));
       const eh=Math.round(H*w.e/Math.max(1,t)),mh=Math.round(H*w.m/Math.max(1,t)),hh=Math.max(0,H-eh-mh);
       h+='<div title="S'+w.num+' \u00b7 facile '+w.e+'min \u00b7 mod\u00e9r\u00e9 '+w.m+'min \u00b7 dur '+w.h+'min" style="flex:1;display:flex;flex-direction:column-reverse;height:'+H+'px">'
-        +'<div style="height:'+eh+'px;background:#00a376"></div><div style="height:'+mh+'px;background:#f0b429"></div><div style="height:'+hh+'px;background:#e63946"></div></div>';});
-    h+='</div><div class="load-sub"><span style="color:#00a376">\u25ac facile</span> \u00b7 <span style="color:#f0b429">\u25ac mod\u00e9r\u00e9</span> \u00b7 <span style="color:#e63946">\u25ac dur</span> \u2014 objectif manifeste : \u226570% de temps facile en semaines de charge (mesur\u00e9 : '+it.easyPct+'%).</div></div>';
+        +'<div style="height:'+eh+'px;background:#00a376"></div><div style="height:'+mh+'px;background:#f0b429"></div><div style="height:'+hh+'px;background:var(--z4)"></div></div>';});
+    h+='</div><div class="load-sub"><span style="color:#00a376">\u25ac facile</span> \u00b7 <span style="color:#f0b429">\u25ac mod\u00e9r\u00e9</span> \u00b7 <span style="color:var(--z4)">\u25ac dur</span> \u2014 objectif manifeste : \u226570% de temps facile en semaines de charge (mesur\u00e9 : '+it.easyPct+'%).</div></div>';
   }
   return h;
 }
@@ -472,14 +472,14 @@ function decisionsCardHTML(plan){
     // on ne les jette plus à l'affichage. Langage neutre (pas de bandeau rouge — décision
     // R5 du fondateur), mais EN TÊTE de liste, pas cachées.
     if(v2.hardViolations&&v2.hardViolations.length){
-      h+='<li class="exp-row" style="color:#a33"><b>Règles non satisfaites malgré réparation ('+v2.hardViolations.length+') :</b><br>'+v2.hardViolations.map(x=>'· '+x).join('<br>')+'<br><span style="color:#555">Le moteur a rendu le meilleur plan possible sous tes contraintes — ces points expliquent le score.</span></li>';
+      h+='<li class="exp-row" style="color:var(--z5)"><b>Règles non satisfaites malgré réparation ('+v2.hardViolations.length+') :</b><br>'+v2.hardViolations.map(x=>'· '+x).join('<br>')+'<br><span style="color:var(--muted)">Le moteur a rendu le meilleur plan possible sous tes contraintes — ces points expliquent le score.</span></li>';
     }
     // U16 — trois niveaux : l'intitulé s'efface, la VALEUR est ce qu'on vient chercher, la
     // justification descend en gris aéré. Aucun mot retiré.
     v2.decisions.forEach(d=>{h+='<li class="exp-row"><div class="exp-lbl">'+d.what+'</div><div class="exp-val">'+d.val+'</div><div class="exp-why">'+d.why+'</div></li>';});
     if(v2.warnings.length)h+='<li class="exp-row"><div class="exp-lbl">Limites connues de ce plan</div><div class="exp-why">'+v2.warnings.join(" ")+'</div></li>';
     if(v2.repairs&&v2.repairs.length){
-      h+='<li class="exp-row"><details style="cursor:pointer"><summary>Réparations tentées par le moteur ('+v2.repairs.length+')</summary><div style="color:#555;margin-top:4px">'+v2.repairs.map(x=>'· '+x).join('<br>')+'</div></details></li>';
+      h+='<li class="exp-row"><details style="cursor:pointer"><summary>Réparations tentées par le moteur ('+v2.repairs.length+')</summary><div style="color:var(--muted);margin-top:4px">'+v2.repairs.map(x=>'· '+x).join('<br>')+'</div></details></li>';
     }
     h+='</ul></details>';
   }

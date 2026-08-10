@@ -157,7 +157,7 @@ export function weekHeaderHTML(w) {
     ? ' <span style="background:#ff3b30;color:#fff;border-radius:5px;padding:1px 7px;font-size:var(--fs-micro);font-weight:700">\u{1F3C1} COURSE ' + w.race + "</span>"
     : w.postRace ? ' <span style="color:#9b72ff;font-size:var(--fs-micro)">↳ récup post-course</span>' : "";
   const wRange = w.days.length ? ' <span style="font-size:var(--fs-micro);color:var(--muted);font-weight:400">du ' + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) + "</span>" : "";
-  return '<div class="gw-h"><b>Semaine ' + w.num + "</b>" + wRange + '<span style="color:' + (w.phase.c || "#555") + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + "</em></div>";
+  return '<div class="gw-h"><b>Semaine ' + w.num + "</b>" + wRange + '<span style="color:' + (w.phase.c || "var(--muted)") + '">' + w.phase.nom + "</span>" + raceTag + "<em>" + w.vol + "h" + (w.isRecup ? " récup" : "") + "</em></div>";
 }
 
 export function currentWeek(plan) {
@@ -208,7 +208,7 @@ function phaseObjectivesHTML(plan) {
     const state = st.validated ? "✅ Phase validée" : st.done > 0 ? st.done + "/" + st.total + " séances ✓" : "à venir";
     const open = S._phOpen === p.nom;
     h += '<details class="ph-obj" data-ph="' + p.nom + '"' + (open ? " open" : "") + ' style="margin-top:8px;border-left:4px solid ' + p.c + ';padding-left:10px"><summary style="cursor:pointer;font-size:var(--fs-md)"><b>' + p.nom + "</b> · " + st.wks.length + " sem — <i>" + state + "</i>"
-      + '<div style="background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden;margin-top:4px"><div style="height:100%;width:' + pct + "%;background:" + p.c + '"></div></div></summary>'
+      + '<div style="background:var(--bg2);border:1px solid var(--ink);border-radius:4px;height:8px;overflow:hidden;margin-top:4px"><div style="height:100%;width:' + pct + "%;background:" + p.c + '"></div></div></summary>'
       + '<div class="load-sub" style="margin-top:6px">' + (PHASE_GOALS[(p.id || "").toLowerCase()] || PHASE_GOALS[p.nom ? p.nom.toLowerCase().slice(0, 4) : ""] || "Une étape du plan, au service de la suivante.") + "</div>";
     // LE PROGRAMME : chaque semaine de la phase, jour par jour, coches comprises
     st.wks.forEach((w) => {
@@ -221,7 +221,7 @@ function phaseObjectivesHTML(plan) {
           const chk = s.d !== "rs" ? '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" title="Marquer fait">' + (dn ? "✓" : "○") + "</button> " : "";
           return chk + s.name;
         }).join(" · ");
-        h += '<div style="font-size:var(--fs-sm);margin:3px 0 0 4px;color:#3f3a30"><b style="display:inline-block;width:34px">' + d.jour + '</b><span style="display:inline-block;width:44px;color:#999">' + fmtDay(d.date) + "</span> " + items + "</div>";
+        h += '<div style="font-size:var(--fs-sm);margin:3px 0 0 4px;color:var(--text2)"><b style="display:inline-block;width:34px">' + d.jour + '</b><span style="display:inline-block;width:44px;color:var(--muted)">' + fmtDay(d.date) + "</span> " + items + "</div>";
       });
     });
     if (st.validated) h += '<div style="margin-top:8px;font-size:var(--fs-md);font-weight:700;color:#00734f">✅ Phase validée — tout est fait. La suivante s’appuie sur ce travail.</div>';

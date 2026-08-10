@@ -314,7 +314,7 @@ function avatarSectionHTML(plan, todayISO) {
     const next = d.level < 30 ? avatarTriUnlock(k, d.level + 1) : null;
     return '<div style="display:flex;align-items:center;gap:8px;margin-top:5px;font-size:var(--fs-sm)">'
       + '<span style="width:20px">' + ico + '</span><span style="width:70px">' + nom + '</span><b style="width:56px">niv ' + d.level + "/30</b>"
-      + '<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + d.progressPct + '%;background:#00a376"></div></div></div>'
+      + '<div style="flex:1;background:var(--bg2);border:1px solid var(--ink);border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + d.progressPct + '%;background:#00a376"></div></div></div>'
       + (next ? '<div style="font-size:var(--fs-xs);color:var(--muted);margin-left:28px">prochain : <b>' + next.libelle + "</b> (encore " + (d.xpToNext - d.xpInLevel) + " XP)</div>" : "");
   };
   // Audit 07/08/2026 : le tout premier avatar (les 3 jauges à 0) est une silhouette nue sans
@@ -363,7 +363,7 @@ function avatarSectionHTML(plan, todayISO) {
 }
 function badgesGalleryHTML(badges) {
   if (!badges.length) return "";
-  const chips = badges.map((b) => '<span title="' + b.why.replace(/"/g, "&quot;") + '" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:#fff">' + b.icon + " " + b.label + "</span>").join(" ");
+  const chips = badges.map((b) => '<span title="' + b.why.replace(/"/g, "&quot;") + '" style="border:1.5px solid var(--ink);border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:var(--bg3)">' + b.icon + " " + b.label + "</span>").join(" ");
   return '<div class="load-card"><div class="load-title">🏅 Badges gagnés (' + badges.length + ')</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' + chips + "</div></div>";
 }
 // R4.8 — efficience : uniquement les progrès à charge égale (imports FIT), jamais le volume.
@@ -393,7 +393,7 @@ function efficiencyHTML() {
   if (!found.length) return "";
   return '<div class="load-card"><div class="load-title">📉 Efficience — les progrès qui comptent</div>'
     + found.map((f) => '<div class="load-sub" style="margin-top:6px">' + f + "</div>").join("")
-    + '<div class="load-sub" style="margin-top:6px;color:#999">Comparé à charge égale uniquement (imports FIT) — jamais de récompense au volume.</div></div>';
+    + '<div class="load-sub" style="margin-top:6px;color:var(--muted)">Comparé à charge égale uniquement (imports FIT) — jamais de récompense au volume.</div></div>';
 }
 // Échéance du plan : date de fin (course ou dernière semaine) + compte à rebours.
 function planDeadlineHTML(plan) {
@@ -717,7 +717,7 @@ function measuredCardHTML() {
     ? globalThis.EBV2.arbitrateVolRecent(a.vol_recent, snap) : null;
   const h = measuredHours(snap);
   const applied = !!a.measured;
-  let out = '<div style="margin-top:12px;padding:10px;border:1px solid #16130e;border-radius:8px;background:var(--bg2,#efe8d8)">'
+  let out = '<div style="margin-top:12px;padding:10px;border:1px solid var(--ink);border-radius:8px;background:var(--bg2)">'
     + '<div style="font-weight:700;font-size:var(--fs-sm)">\u{1F4E5} Ce que tu as réellement fait</div>'
     + '<div class="load-sub" style="margin-top:4px">Sur tes <b>' + snap.window_days + ' derniers jours</b> : '
     + '<b>' + Math.round(snap.vol_min / 60) + 'h</b> en <b>' + snap.sessions + '</b> séance' + (snap.sessions > 1 ? 's' : '')
@@ -793,7 +793,7 @@ export function renderTabProfile(plan) {
   // elle qui pilote directement l'intensité de tout le plan (FTP/allure/CSS). U18b l'a repliée
   // à raison (14-17 lignes de formulaire, 1 081 px) : la distinction se joue donc sur le bandeau
   // FERMÉ (le titre), pas sur l'espace occupé une fois ouverte.
-  ref += '<div class="load-card"><div class="load-title">⚙ Références d’entraînement <span style="background:var(--acc);color:#fff;font-size:var(--fs-xs);padding:2px 8px;border-radius:9px;font-weight:700;vertical-align:middle">pilote ton plan</span></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">';
+  ref += '<div class="load-card"><div class="load-title">⚙ Références d’entraînement <span style="background:var(--acc);color:#0a0a0a;font-size:var(--fs-xs);padding:2px 8px;border-radius:9px;font-weight:700;vertical-align:middle">pilote ton plan</span></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">';
   const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
   if (sp === "bike" || sp === "tri") ref += row("pfFtp", "FTP (watts)", a.ftp_known === "oui" ? a.ftp : "", "ex. 220");
   if (sp === "run" || sp === "tri") ref += row("pfPace", "Allure seuil (min:s /km)", a.pace_known === "oui" ? a.pace : "", "ex. 4:30");
