@@ -10,6 +10,7 @@ import { renderTabToday } from "./tab-today.js";
 import { renderTabOutils } from "./tab-outils.js";
 import { renderTabWeek } from "./tab-week.js";
 import { brancherAide } from "./help.js";
+import { NAV_ICONS } from "./icons.js";
 
 // Refonte R5 (retour utilisateur) : l'onglet CENTRAL 🎯 Aujourd'hui est l'écran du
 // quotidien (check-in diaporama → séance du jour → prédiction → charge → avancement),
@@ -114,10 +115,12 @@ export function invalidatePlan() {
 }
 
 function tabbarHTML() {
+  // R25.2 — icônes SVG trait (NAV_ICONS, icons.js) plutôt que l'emoji encore porté par
+  // `TABS` : seule la CONSOMMATION change ici, `TABS` reste la source du libellé/rendu.
   return TABS.map(
     ([id, ico, label]) =>
       '<button type="button" role="tab" class="tabbtn' + (id === activeTab ? " active" : "") + (id === "today" ? " tab-central" : "") + '" data-tab="' + id + '" aria-selected="' + (id === activeTab) + '" aria-label="' + label + '">' +
-      '<span class="tabico" aria-hidden="true">' + ico + '</span><span class="tablbl">' + label + "</span></button>"
+      '<span class="tabico" aria-hidden="true">' + (NAV_ICONS[id] || ico) + '</span><span class="tablbl">' + label + "</span></button>"
   ).join("");
 }
 

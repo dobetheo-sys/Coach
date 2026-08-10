@@ -115,6 +115,10 @@ body {
   touch-action: manipulation;
 }
 .tabbtn .tabico { font-size: 20px; line-height: 1; }
+/* R25.2 — icônes SVG trait (NAV_ICONS) : la couleur suit `currentColor`, donc le même
+   `.tabbtn`/`.tabbtn.active` qui pilotait l'emoji pilote maintenant le tracé. */
+.tabbtn .tabico svg { width: 20px; height: 20px; display: block; }
+.tabbtn.tab-central .tabico svg { width: 22px; height: 22px; }
 .tabbtn.active { color: var(--ink); font-weight: 700; box-shadow: inset 0 3px 0 var(--ink); }
 /* Le contenu ne doit jamais finir caché sous la barre */
 body.has-tabs { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }

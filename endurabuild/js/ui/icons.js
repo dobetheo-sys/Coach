@@ -23,3 +23,15 @@ export const DISC = {
 
 // Verdict readiness (verte/orange/rouge, `src/readiness/`) → pastille.
 export const VERDICT_ICON = { verte: "🟢", orange: "🟠", rouge: "🔴" };
+
+// R25.2 — icônes SVG trait de la barre d'onglets (maquette Zenna), remplaçant les emojis.
+// Point unique (R11.1) : clés alignées sur les identifiants de `TABS` (tabs.js), tracé
+// copié de la maquette. `currentColor` — la couleur suit `.tabbtn`/`.tabbtn.active` en CSS,
+// jamais une couleur figée ici.
+export const NAV_ICONS = {
+  profile: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="6.5" r="3.2"/><path d="M4 17a6 6 0 0 1 12 0"/></svg>',
+  general: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="13" rx="2"/><line x1="3" y1="8" x2="17" y2="8"/><line x1="7" y1="2" x2="7" y2="5.5"/><line x1="13" y1="2" x2="13" y2="5.5"/></svg>',
+  today: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10" cy="10" r="7.2"/><circle cx="10" cy="10" r="3.6"/><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/></svg>',
+  week: '<svg viewBox="0 0 20 20" fill="currentColor"><rect x="3" y="11" width="3" height="7" rx="1"/><rect x="8.5" y="7" width="3" height="11" rx="1"/><rect x="14" y="3" width="3" height="15" rx="1"/></svg>',
+  outils: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/><rect x="3" y="11" width="6" height="6" rx="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5"/></svg>',
+};
