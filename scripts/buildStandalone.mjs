@@ -19,6 +19,7 @@
  */
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname, resolve, relative } from "node:path";
+import { randomBytes } from "node:crypto";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const PWA = join(ROOT, "endurabuild");
@@ -66,11 +67,33 @@ if (/font-family:-apple-system,Arial/.test(css) || /\n\s*\+'/.test(css)) {
 }
 
 // ---- 3. Réassemblage de la page ----
+// CSP DU FICHIER AUTONOME — dérivée de celle d'index.html, PAS identique.
+//
+// La CSP servie (`font-src 'self'`, `script-src 'self'`) est juste pour la PWA : elle vit sous
+// un vrai serveur, fichiers séparés, aucun script ni police inline. Le fichier autonome N'A
+// PAS ce luxe — tout est recousu dans LA MÊME page (R25.1 a ajouté deux polices en `data:`,
+// aucune n'avait jamais été ouverte hors du serveur de dev avant de le découvrir, donc jamais
+// vue bloquée). Deux ajouts MINIMAUX, jamais dans `index.html` source (S-4, la CSP servie ne
+// bouge pas) :
+//  - `font-src` gagne `data:` — les polices embarquées le sont, par construction, en `data:`.
+//  - `script-src` gagne un NONCE, généré à CHAQUE build (`randomBytes`, jamais réutilisé,
+//    jamais commité). PAS un hash : `loader()` crée deux AUTRES scripts inline À L'EXÉCUTION
+//    (l'importmap, l'entrée `import "eb:/js/app.js"`) dont le contenu dépend d'URL de Blob
+//    générées à la volée — un hash figé au build ne pourrait jamais les couvrir. PAS
+//    `'unsafe-inline'` non plus : ça autoriserait N'IMPORTE QUEL script inline, glissé par
+//    n'importe qui d'autre qui ouvrirait ce fichier — le nonce n'autorise que les TROIS
+//    scripts que CE build a lui-même posés, avec ce nonce précis dessus (`.nonce =`, jamais
+//    `setAttribute("nonce", …)` — la spec ne vérifie que la propriété IDL, pour empêcher un
+//    nonce lu dans le HTML de servir à en injecter un autre).
+const NONCE = randomBytes(18).toString("base64");
+
 let html = read("index.html");
 html = html
   .replace(/\s*<link rel="manifest"[^>]*>/, "")
   .replace(/\s*<link rel="apple-touch-icon"[^>]*>/, "")
   .replace(/\s*<link rel="stylesheet"[^>]*>/g, "")
+  .replace(/font-src 'self';/, "font-src 'self' data:;")
+  .replace(/script-src 'self';/, "script-src 'self' 'nonce-" + NONCE + "';")
   .replace("</head>", "<style>\n" + css + "\n</style>\n</head>")
   // pas de service worker dans un fichier unique : l'offline est déjà acquis (tout est inline)
   .replace('<script type="module" src="js/app.js"></script>', () => loader());
@@ -79,10 +102,11 @@ function loader() {
   const srcMap = {};
   for (const [rel, src] of MODULES) srcMap["eb:/" + rel] = Buffer.from(src, "utf8").toString("base64");
   return [
-    '<script type="application/json" id="ebModules">',
+    '<script type="application/json" id="ebModules" nonce="' + NONCE + '">',
     JSON.stringify(srcMap).replace(/<\//g, "<\\/"),
     "</script>",
-    "<script>",
+    '<script nonce="' + NONCE + '">',
+    "",
     "// R11 §8 — le fichier autonome DÉCLARE ce qu'il est. Sans ce drapeau, le code de l'app",
     "// tentait d'enregistrer un service worker qui n'a aucun sens ici (fichier unique, rien à",
     "// mettre en cache) et de charger une icône absente : deux échecs avalés en silence. Un",
@@ -90,6 +114,8 @@ function loader() {
     'window.EB_STANDALONE = true;',
     "// Chaque module ES devient un Blob ; un importmap fait pointer les specifiers nus vers",
     "// ces Blobs. Une instance par module (état partagé) + imports circulaires préservés.",
+    "// Les DEUX scripts créés ici sont inline : ils reçoivent le MÊME nonce que celui posé sur",
+    "// ce bloc-ci (`.nonce =`, propriété IDL — voir le commentaire CSP plus haut).",
     '(function () {',
     '  var raw = JSON.parse(document.getElementById("ebModules").textContent);',
     '  var dec = new TextDecoder("utf-8"), map = { imports: {} };',
@@ -98,12 +124,13 @@ function loader() {
     '    map.imports[k] = URL.createObjectURL(new Blob([dec.decode(bytes)], { type: "text/javascript" }));',
     "  }",
     '  var im = document.createElement("script");',
-    '  im.type = "importmap"; im.textContent = JSON.stringify(map);',
+    '  im.type = "importmap"; im.nonce = "' + NONCE + '"; im.textContent = JSON.stringify(map);',
     "  document.head.appendChild(im);",
     '  var entry = document.createElement("script");',
-    '  entry.type = "module"; entry.textContent = \'import "eb:/js/app.js";\';',
+    '  entry.type = "module"; entry.nonce = "' + NONCE + '"; entry.textContent = \'import "eb:/js/app.js";\';',
     "  document.body.appendChild(entry);",
     "})();",
+    "",
     "</script>",
   ].join("\n");
 }
