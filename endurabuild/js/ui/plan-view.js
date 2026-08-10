@@ -56,7 +56,7 @@ function loadChartSVG(plan){
     if(iNow>=0){
       const xn=x(iNow);xNow=xn;
       g+="<line x1=\""+xn.toFixed(1)+"\" y1=\""+PT+"\" x2=\""+xn.toFixed(1)+"\" y2=\""+(PT+ih)+"\" stroke=\"#F5F1EA\" stroke-width=\"1.5\" stroke-dasharray=\"2 3\"/>";
-      g+="<circle cx=\""+xn.toFixed(1)+"\" cy=\""+yL(S2[iNow].ctl).toFixed(1)+"\" r=\"3.5\" fill=\"#3B9EFF\" stroke=\"#F5F1EA\" stroke-width=\"1\"/>";
+      g+="<circle class=\"today-dot\" cx=\""+xn.toFixed(1)+"\" cy=\""+yL(S2[iNow].ctl).toFixed(1)+"\" r=\"3.5\" fill=\"#3B9EFF\" stroke=\"#F5F1EA\" stroke-width=\"1\"/>";
       const gauche=xn>W-70;
       g+="<text x=\""+(gauche?xn-5:xn+5).toFixed(1)+"\" y=\""+(PT+ih-4)+"\" font-size=\"9\" font-weight=\"bold\" fill=\"#F5F1EA\""+(gauche?" text-anchor=\"end\"":"")+">tu es ici</text>";
     }

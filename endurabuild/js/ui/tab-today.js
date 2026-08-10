@@ -19,6 +19,7 @@ import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan } from "./tabs.js";
 import { VERDICT_ICON } from "./icons.js";
 import { noteRaceResult } from "../projection-log.js"; // A-5
+import { bindFormRing, drawCheckOnButton, floatXP, xpSnapshot, xpDelta, bindStickyValidate, revealWeather } from "./motion.js"; // R25.3
 
 const ROLE_LABEL = { warmup: "Échauffement", body: "Corps de séance", cooldown: "Retour au calme" };
 function stepGroupsFor(session) {
@@ -70,6 +71,18 @@ function todayValidateHTML(plan, todayISO) {
   });
   return h ? '<div class="card"><div class="eyebrow">Valider ma journée · ' + d.jour + " " + fmtDay(d.date) + "</div>" + h + "</div>" : "";
 }
+// R25.3 — coche qui se dessine + "+X XP" flottant, APRÈS le re-rendu qui affiche le bouton
+// dans son état "fait" (jamais sur l'ancien bouton, détruit par le innerHTML= de
+// renderTabToday). Même motif que `badgesBefore/after` juste au-dessus, appliqué à
+// EBV2.avatarTri via motion.js#xpSnapshot plutôt qu'aux badges — deux mesures indépendantes,
+// chacune sur sa propre paire avant/après (mélanger les deux donnerait un delta qui ne
+// correspond à aucune des deux grandeurs).
+function playValidateMotion(plan, todayISO, k, xpBefore) {
+  const btn = document.querySelector('[data-vd="' + CSS.escape(k) + '"]');
+  drawCheckOnButton(k);
+  const xpAfter = xpSnapshot(plan, todayISO);
+  floatXP(btn, xpDelta(xpBefore, xpAfter));
+}
 function bindTodayValidate(plan, todayISO) {
   document.querySelectorAll("#screen [data-vd]").forEach((b) => {
     b.onclick = () => {
@@ -77,6 +90,7 @@ function bindTodayValidate(plan, todayISO) {
       if (S.answers.done && S.answers.done[k]) return;
       let badgesBefore = [];
       try { badgesBefore = globalThis.EBV2.badges(plan, S.answers, todayISO); } catch (e) {}
+      const xpBefore = xpSnapshot(plan, todayISO); // R25.3 — AVANT d'écrire la coche
       if (!S.answers.done) S.answers.done = {};
       S.answers.done[k] = true;
       ebSave();
@@ -84,7 +98,7 @@ function bindTodayValidate(plan, todayISO) {
       const wk = plan.weeks.find((x) => String(x.num) === parts[0]);
       const dy = wk && wk.days.find((x) => x.jour === parts[1]);
       const sess = dy && dy.sessions[+parts[2]];
-      if (!sess) { renderTabToday(plan); return; }
+      if (!sess) { renderTabToday(plan); playValidateMotion(plan, todayISO, k, xpBefore); return; }
       const celebrate = () => {
         let newBadge = null;
         try {
@@ -93,8 +107,8 @@ function bindTodayValidate(plan, todayISO) {
         } catch (e) {}
         showCongrats(plan, sess, newBadge, todayISO);
       };
-      if (sess.d === "rs") { renderTabToday(plan); celebrate(); }
-      else feedbackModal(plan, sess, k, () => { renderTabToday(plan); celebrate(); });
+      if (sess.d === "rs") { renderTabToday(plan); playValidateMotion(plan, todayISO, k, xpBefore); celebrate(); }
+      else feedbackModal(plan, sess, k, () => { renderTabToday(plan); playValidateMotion(plan, todayISO, k, xpBefore); celebrate(); });
     };
   });
 }
@@ -150,7 +164,9 @@ function nutritionReduiteHTML(plan, today) {
   const rav = ravitoReplie(day, null);
   const energie = energyCardHTML(day, false); // repliée : la version réduite demandée
   if (!rav && !energie) return "";
-  return '<div class="card"><div class="eyebrow">🥗 Nutrition du jour</div><div id="nutRedu">' + rav + "</div>" + energie + "</div>";
+  // R25.3 — `loading` : le contenu affiché ici n'a pas encore la météo (tempC=null ci-dessus),
+  // il va se raffiner dès que fetchWeather répond (revealWeather, plus bas). Shimmer CSS pur.
+  return '<div class="card"><div class="eyebrow">🥗 Nutrition du jour</div><div id="nutRedu" class="loading">' + rav + "</div>" + energie + "</div>";
 }
 
 export function renderTabToday(plan) {
@@ -235,8 +251,7 @@ export function renderTabToday(plan) {
     const day = jourDuPlan(plan, today);
     if (zone && day) fetchWeather().then((wx) => {
       if (!wx || wx.tmaxC == null) return;
-      const el = $("nutRedu");
-      if (el) el.innerHTML = ravitoReplie(day, wx.tmaxC);
+      revealWeather($("nutRedu"), ravitoReplie(day, wx.tmaxC));
     });
   }
   scheduleDailyNotification(plan);
@@ -255,6 +270,8 @@ export function renderTabToday(plan) {
   bindTodayValidate(plan, today);
   bindPainBanner(plan, () => renderTabToday(plan));
   bindRetestBanner(today, () => renderTabToday(ensurePlan()));
+  bindFormRing(); // R25.3 — anneau "forme du jour" du héros, s'il vient d'être rendu
+  bindStickyValidate(); // R25.3 — CTA collant, redéclenche le bouton natif (aucun second chemin)
   document.querySelectorAll("#screen [data-ck]").forEach((cb) => {
     cb.onchange = () => {
       const state = checklistStore(today);

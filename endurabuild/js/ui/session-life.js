@@ -234,6 +234,28 @@ const _verdictLbl = { keep: "séance maintenue", reduce: "volume réduit", repla
 // était du texte pur (nom en gras, une phrase de pourquoi, un lien replié) — rien ne dit au
 // premier coup d'œil « c'est de la nage » ou « c'est du vélo ». Un badge rond par discipline,
 // couleur + pictogramme : DISC (`./icons.js`, R11.1) est le point unique.
+// R25.3 — l'anneau "forme du jour" : alimenté par `S.answers.readiness.energy`, la valeur
+// RÉELLEMENT posée par la diapo "tu te sens comment ?" (85/65/40/15 — checkin.js) — jamais
+// un pourcentage inventé. À défaut de snap (verdict recalculé sans passer par la diapo), un
+// mapping DISCRET du verdict avec un LIBELLÉ, pas de chiffre (brief §R25.3 : la précision
+// affichée ne doit jamais dépasser celle de la donnée qui la porte).
+const _ringVerdictColor = { verte: "#00a376", orange: "#f0b429", rouge: "var(--z5)" };
+const _ringVerdictFallbackPct = { verte: 80, orange: 50, rouge: 20 };
+function formRingHTML(v, snapEnergy) {
+  const hasEnergy = typeof snapEnergy === "number" && snapEnergy >= 0 && snapEnergy <= 100;
+  const pct = hasEnergy ? snapEnergy : (_ringVerdictFallbackPct[v.level] ?? 50);
+  const r = 19, C = 2 * Math.PI * r;
+  const offset = (C * (1 - pct / 100)).toFixed(1);
+  const color = _ringVerdictColor[v.level] || "var(--acc)";
+  const label = hasEnergy ? Math.round(pct) + "%" : v.level.toUpperCase();
+  return '<div class="form-ring" title="Forme du jour — verdict du check-in" style="position:relative;width:44px;height:44px;flex:0 0 auto">'
+    + '<svg width="44" height="44" viewBox="0 0 44 44" style="transform:rotate(-90deg)"><circle cx="22" cy="22" r="' + r + '" stroke="var(--border)" stroke-width="4" fill="none"/>'
+    + '<circle class="form-ring-fg" data-offset="' + offset + '" cx="22" cy="22" r="' + r + '" stroke="' + color + '" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + C.toFixed(1) + '"/></svg>'
+    // R16.8 — un pourcentage ou un mot de verdict est du TEXTE, pas un glyphe décoratif :
+    // l'échelle --fs-* le régit, jamais un px littéral (même plancher que le reste : 9px).
+    + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-weight:700;font-size:var(--fs-micro);letter-spacing:' + (hasEnergy ? "0" : "-.03em") + ';color:var(--ink);text-align:center;line-height:1">' + label + "</div></div>";
+}
+
 function discBadgeHTML(d) {
   const b = DISC[d] || DISC.rn;
   // R16.8 — un glyphe décoratif se dimensionne en `em`, jamais en px littéral : ce n'est pas
@@ -301,5 +323,17 @@ export function heroSessionHTML(plan, todayIso) {
   // « la séance du jour » de « ta charge » ou de « ta prédiction ». Bordure et ombre à
   // l'accent du sport (déjà utilisé par le bouton primaire et le badge de discipline) pour
   // que l'œil s'y pose en premier, sans dupliquer une nouvelle classe CSS pour un seul rôle.
-  return '<div class="card" style="border-color:var(--acc);box-shadow:6px 6px 0 var(--acc)">' + badge + '<div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayIso) + "</div>" + why + body + "</div>";
+  // R25.2c — ce héros gardait une ombre décalée à l'accent (box-shadow) sous le liseré droit
+  // posé par .card en R25.2a : le même défaut que .btn/.opt/.warn, glissé dans un style
+  // inline donc invisible au grep CSS qui a traité les autres. Bordure à l'accent seule
+  // (distinction visuelle conservée), pas d'ombre.
+  // R25.3 — anneau "forme du jour" à côté du badge de verdict (hero-verdict-row, maquette) ;
+  // `badge` porte encore `float:right` (sans effet en contexte flex — laissé tel quel, le
+  // retirer n'aurait rien changé au rendu et aurait élargi le diff pour rien).
+  const ring = formRingHTML(v, S.answers.readiness && S.answers.readiness.energy);
+  return '<div class="card" style="border-color:var(--acc)">'
+    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'
+    + '<div class="eyebrow" style="margin-bottom:0">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayIso) + "</div>"
+    + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">' + badge + ring + "</div></div>"
+    + why + body + "</div>";
 }

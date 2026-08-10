@@ -279,7 +279,11 @@ export function renderTabPlanGeneral(plan) {
   // émises, le CSS bascule ; `title` + `aria-label` portent toujours le nom complet, donc rien
   // n'est perdu ni pour la souris ni pour un lecteur d'écran.
   const ABBR = { "Développement": "DÉV.", "Spécifique": "SPÉ.", "Affûtage": "AFF.", "Peak": "PIC", "Base": "BASE" };
-  plan.phases.forEach((p) => { html += '<button type="button" class="ph-seg" data-phseg="' + p.nom + '" title="' + p.nom + '" aria-label="' + p.nom + ", " + p.weeks + ' semaines" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span class="ph-full">' + p.nom + '</span><span class="ph-abbr">' + (ABBR[p.nom] || p.nom) + "</span><em>" + p.weeks + "sem</em></button>"; });
+  // R25.3 — la phase EN COURS respire (rayures ambiantes, .ph-seg.now — CSS pur). `currentWeek`
+  // est le même helper que le reste du fichier consomme déjà pour "où en est-on", pas un
+  // second calcul : une phase active désaccordée du reste de l'écran serait pire que muette.
+  const nomPhaseActuelle = currentWeek(plan).phase.nom;
+  plan.phases.forEach((p) => { html += '<button type="button" class="ph-seg' + (p.nom === nomPhaseActuelle ? " now" : "") + '" data-phseg="' + p.nom + '" title="' + p.nom + '" aria-label="' + p.nom + ", " + p.weeks + ' semaines" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span class="ph-full">' + p.nom + '</span><span class="ph-abbr">' + (ABBR[p.nom] || p.nom) + "</span><em>" + p.weeks + "sem</em></button>"; });
   html += "</div>";
   // R23.7 / R23.9 — LA PREDICTION ET LA REPARTITION DES INTENSITES APPARTIENNENT AU PLAN.
   //
