@@ -174,7 +174,12 @@ ok(/Dépense estimée du jour/.test(nutTxt) && /Ravitaillement/i.test(nutTxt), "
 // (c'était la coche de Semaine ; celle de Plan basculait un booléen en silence.)
 const t5 = await page.locator("#ebTabbar .tabbtn").all();
 await t5[1].click(); await page.waitForTimeout(300);
-const dbtn = page.locator('.doneBtn[data-rest="0"]:not(.done)').first();
+// R25.5 — SCOPÉ À LA GRILLE (`.gw`), et il fallait le faire. Le programme de phase émet lui
+// aussi des coches ; il n'avait pas `data-rest` (troisième émetteur divergent, unifié en
+// R25.5), donc ce sélecteur ne trouvait que la grille par ACCIDENT. Depuis l'unification il
+// remonte 43 boutons dont 38 dans un `<details>` REPLIÉ, et `.first()` tombait sur un bouton
+// invisible. Le critère porte sur la coche de la GRILLE : il le dit maintenant.
+const dbtn = page.locator('.gw .doneBtn[data-rest="0"]:not(.done)').first();
 ok((await dbtn.count()) === 1, "coche de séance (non-repos) disponible dans Plan");
 await dbtn.click(); await page.waitForTimeout(300);
 ok(await page.locator(".eb-modal:has-text('Comment c’était')").count() === 1, "feedback RPE affiché avant la célébration");

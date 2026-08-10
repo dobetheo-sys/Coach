@@ -19,7 +19,7 @@
 // ce que ni Plan ni Aujourd'hui ne donnent — la NAVIGATION de semaine en semaine, avec le
 // bilan de celle qu'on regarde.
 import { $, S, ebSave, fmtDay, todayISO } from "../state.js";
-import { weekGridHTML, weekHeaderHTML, currentWeek, handleSwapClick } from "./tab-plan-general.js";
+import { weekListHTML, weekHeaderHTML, currentWeek, handleSwapClick } from "./tab-plan-general.js";
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
 import { readinessDoneToday } from "./readiness.js";
 import { pointLabelInline } from "./checkin.js";
@@ -57,6 +57,51 @@ function bilanHTML(plan, w) {
     + '<div style="height:100%;width:' + pct + '%;background:' + (w.phase.c || "var(--z2)") + '"></div></div></div>';
 }
 
+/**
+ * R25.5 — ANNEAUX DE COMPLÉTION PAR DISCIPLINE (maquette #tab-week, .disc-rings).
+ *
+ * « Combien de nages ai-je faites cette semaine, sur combien de prévues » — la grille le
+ * contient, mais il fallait la lire jour par jour. Compté sur le PLAN et sur `answers.done`
+ * (la même source que `bilanHTML` juste en dessous, pas une seconde comptabilité), jamais
+ * sur le DOM : la vue n'est pas la source de vérité.
+ *
+ * Honnêteté des chiffres (§10 de l'audit) : une discipline ABSENTE de la semaine ne reçoit
+ * pas d'anneau à 0/0 — on n'affiche pas une jauge vide pour faire joli. Le repos n'en a pas
+ * non plus : il se valide (R4.2) mais ce n'est pas une discipline à doser.
+ */
+function discRingsHTML(w) {
+  const ORDRE = ["sw", "bk", "rn", "br"];
+  const compte = {};
+  w.days.forEach((d) => d.sessions.forEach((s, si) => {
+    if (!ORDRE.includes(s.d)) return;
+    const c = compte[s.d] || (compte[s.d] = { done: 0, tot: 0 });
+    c.tot++;
+    if (S.answers.done && S.answers.done[w.num + "|" + d.jour + "|" + si]) c.done++;
+  }));
+  const discs = ORDRE.filter((k) => compte[k]);
+  if (!discs.length) return "";
+  const C = 2 * Math.PI * 11;
+  return '<div class="disc-rings">' + discs.map((k, i) => {
+    const c = compte[k], col = DISC[k].ac;
+    const off = (C * (1 - c.done / c.tot)).toFixed(1);
+    // L'anneau part VIDE et se remplit au rendu (transition CSS, neutralisée en
+    // prefers-reduced-motion) — même mécanique que l'anneau « forme du jour » (R25.3).
+    return '<div class="dring"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">'
+      + '<circle class="dr-ring-bg" cx="15" cy="15" r="11" stroke-width="4" fill="none"/>'
+      + '<circle class="dr-ring-fg" cx="15" cy="15" r="11" stroke="' + col + '" stroke-width="4" fill="none" stroke-linecap="round"'
+      + ' stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + C.toFixed(1) + '" data-off="' + off + '" style="transition-delay:' + (i * 90) + 'ms"/></svg>'
+      + '<div class="dr-txt"><div class="dr-n" style="color:' + col + '">' + c.done + "/" + c.tot + '</div><div class="dr-l">' + DISC[k].label + "</div></div></div>";
+  }).join("") + "</div>";
+}
+/** Déclenche le remplissage des anneaux (double rAF : sans ça la transition ne part pas). */
+function bindDiscRings() {
+  const arcs = document.querySelectorAll("#screen .dr-ring-fg[data-off]");
+  if (!arcs.length) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    arcs.forEach((a) => { a.style.strokeDashoffset = a.dataset.off; });
+  }));
+}
+
 function navHTML(plan, w) {
   const i = plan.weeks.indexOf(w);
   const prev = plan.weeks[i - 1], next = plan.weeks[i + 1];
@@ -84,7 +129,10 @@ export function renderTabWeek(plan) {
       + '<div class="nav" style="margin-top:10px"><button class="btn primary" id="wkGoCheckin" type="button">→ Faire mon ' + pointLabelInline() + '</button></div></div>';
   }
 
-  html += '<div class="card"><div class="eyebrow">📅 Ta semaine</div>';
+  // `card-flush` : marge intérieure réduite pour cette carte-ci — la liste par jour a besoin
+  // de la largeur, et 30 px de chaque côté sur un écran de 390 en mangent 15 % (mesuré).
+  html += '<div class="card card-flush"><div class="eyebrow">📅 Ta semaine</div>';
+  html += discRingsHTML(w); // R25.5 — fait/prévu par discipline, en tête (maquette #tab-week)
   // R24.8 (retour fondateur, 06/08) — « un résumé de chaque distance en km par discipline en
   // haut de la page ». Le calcul vit dans le MOTEUR (EBV2.weekDistances) : mètres prescrits
   // comptés exacts, minutes converties par les références MESURÉES — sans référence, pas de
@@ -98,17 +146,20 @@ export function renderTabWeek(plan) {
       if (dists.length) {
         const fmtKm = (x) => (x.approx ? "~" : "") + String(x.km).replace(".", ",") + " km";
         const fmtMin = (m) => (m >= 60 ? Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0") : m + " min");
-        html += '<div class="load-sub" style="display:flex;gap:14px;flex-wrap:wrap;margin:2px 0 8px;font-size:var(--fs-md)">'
-          + dists.map((x) => "<span><b>" + DISC[x.d].ic + " " + (x.km != null ? fmtKm(x) : fmtMin(x.min)) + "</b>"
-            + (x.km != null && x.min > 0 ? ' <span style="color:var(--muted)">· ' + fmtMin(x.min) + "</span>" : "") + "</span>").join("")
+        // R25.5 — passe en `.dist-line` (maquette) : mono, couleur de discipline sur la
+        // valeur, temps en atténué. Mêmes CHIFFRES, même source moteur — c'est la forme qui
+        // change, pas la mesure.
+        html += '<div class="dist-line">'
+          + dists.map((x) => '<span><b style="color:' + DISC[x.d].ac + '">' + DISC[x.d].ic + " " + (x.km != null ? fmtKm(x) : fmtMin(x.min)) + "</b>"
+            + (x.km != null && x.min > 0 ? ' <span class="sub">· ' + fmtMin(x.min) + "</span>" : "") + "</span>").join("")
           + "</div>";
       }
     } catch (e) {}
   }
-  // Retour utilisateur (08/08/2026, 2e passage) : « Afficher d'office le détail des séances » —
-  // Semaine n'affiche jamais qu'UNE semaine (contrairement à Plan, qui peut en déplier N), donc
-  // le repli par défaut de U16 n'a pas la même justification ici. `openDetails=true`.
-  html += '<div class="gw">' + weekHeaderHTML(w) + weekGridHTML(plan, w, today, true) + "</div>";
+  // R25.5 — liste compacte par jour au lieu de la grille en cartes teintées (voir
+  // `weekListHTML` pour l'arbitrage sur le détail replié, et pourquoi les deux mises en page
+  // partagent les mêmes émetteurs de coche et de ⇄).
+  html += '<div class="gw">' + weekHeaderHTML(w) + weekListHTML(plan, w, today) + "</div>";
   if (S._swapPending && S._swapPending.w === w.num)
     html += '<div class="load-sub" style="margin-top:6px">⇄ <b>' + S._swapPending.jour + "</b> sélectionné — touche le jour avec lequel l’échanger (ou re-touche ⇄ pour annuler).</div>";
   else
@@ -118,6 +169,7 @@ export function renderTabWeek(plan) {
   html += "</div>";
 
   $("screen").innerHTML = html;
+  bindDiscRings();
   bindPainBanner(plan, rerender);
   bindRetestBanner(today, () => renderTabWeek(ensurePlan()));
   {

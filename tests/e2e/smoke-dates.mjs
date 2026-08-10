@@ -58,10 +58,15 @@ ok(!vTxt || vTxt.includes(local.dm), "carte « Valider ma journée » datée du 
 await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("week"); });
 await page.waitForTimeout(400);
 const semaine = page.locator("#screen .card").filter({ hasText: "Ta semaine" }).first();
-const cells = await semaine.locator(".gd .gd-top i").allTextContents();
+// R25.5 — 📅 Semaine est passée de la grille en cartes (.gd) à la LISTE compacte par jour
+// (.day-row), sur demande du fondateur. Le critère ne change pas de nature — il vérifie
+// toujours que CHAQUE jour porte sa vraie date calendrier (R7) et que le jour courant est
+// reconnaissable ; il regarde où cette information vit désormais. La garder pointée sur
+// l'ancienne grille aurait été conserver la trace d'une mise en page abandonnée.
+const cells = await semaine.locator(".day-row .day-num").allTextContents();
 ok(cells.length === 7 && cells.every((c) => /\d{2}\/\d{2}/.test(c)), "les 7 jours de la semaine sont annotés de leur date (dd/mm)");
-const todayCell = await page.locator("#screen .gd.today").first().textContent().catch(() => null);
-ok(!!todayCell && todayCell.includes("auj.") && todayCell.includes(local.dm), "la case « aujourd'hui » de la grille porte la date locale (" + local.dm + ")");
+const todayCell = await page.locator("#screen .day-row.today").first().textContent().catch(() => null);
+ok(!!todayCell && todayCell.includes("auj.") && todayCell.includes(local.dm), "la ligne « aujourd'hui » porte la date locale (" + local.dm + ")");
 // cohérence plan ↔ calendrier : la date affichée correspond au jour étiqueté
 const dayCheck = await page.evaluate(async (iso) => {
   const { S } = await import("./js/state.js");

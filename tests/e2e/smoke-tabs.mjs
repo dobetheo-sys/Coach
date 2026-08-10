@@ -61,7 +61,9 @@ ok(barre.includes("outils"), "🧰 Outils occupe le cinquième onglet");
 // ---- 2. Le contenu : Semaine apporte ce que Plan ne portait pas -------------------------
 await setTab("week");
 await page.waitForTimeout(500);
-ok(await page.locator("#screen .gd").count() >= 5, "la grille de la semaine est rendue");
+// R25.5 — la semaine se rend ici en LISTE compacte par jour (.day-row) et non plus en grille
+// de cartes (.gd, qui reste le rendu de 🗓 Plan) : le critère suit la mise en page voulue.
+ok(await page.locator("#screen .day-row").count() >= 5, "la liste de la semaine est rendue");
 const nav1 = await page.locator("#screen .gw-h b").first().textContent();
 await page.click("#wkNext");
 await page.waitForTimeout(350);

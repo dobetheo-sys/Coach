@@ -44,21 +44,29 @@ function avancementPlanHTML(plan, today) {
     const fmts = (SPORTS[S.sport] && SPORTS[S.sport].formats) || [];
     const fmtEntry = fmts.find((f) => f[0] === S.answers.format);
     const fmtLabel = fmtEntry ? fmtEntry[1].split(" (")[0] : (S.answers.format || "ta course");
-    tete = j > 1 ? '<div style="font-size:var(--fs-xl);font-weight:900;line-height:1">J−' + j + "</div>"
-        + '<div class="load-sub">avant ' + esc(fmtLabel) + "</div>"
-      : j === 1 ? '<div style="font-size:var(--fs-lg);font-weight:900">Demain, jour J</div>'
-      : j === 0 ? '<div style="font-size:var(--fs-lg);font-weight:900">🏁 C’est aujourd’hui</div>'
+    // R25.5 — le décompte au traitement de la maquette (.jminus : Bebas, ~52px, orange-tint).
+    // Il existait depuis R23.5 mais en `--fs-xl` (22px) dans la police du CORPS : le chiffre
+    // le plus motivant du produit était rendu comme un titre de carte. Seule la FORME change.
+    tete = j > 1 ? '<div class="jminus">J−' + j + "</div>"
+        + '<div class="jminus-sub">avant ' + esc(fmtLabel) + "</div>"
+      : j === 1 ? '<div class="jminus">DEMAIN</div><div class="jminus-sub">jour J</div>'
+      : j === 0 ? '<div class="jminus">🏁 JOUR J</div><div class="jminus-sub">c’est aujourd’hui</div>'
       : '<div class="load-sub">Course passée le ' + esc(rd) + "</div>";
   }
   let barre = "";
   try {
     const pg = globalThis.EBV2.progress(plan, S.answers, today);
-    barre = '<div style="margin-top:10px;font-size:var(--fs-md)"><b>Semaine ' + pg.weekNow + " / " + pg.totalWeeks + "</b>"
-      + ' · <span style="color:var(--muted)">' + pg.pctLoad + "% de la charge accomplie</span></div>"
-      + '<div style="margin-top:6px;height:12px;border-radius:6px;background:#0000001a;overflow:hidden">'
-      + '<div style="height:100%;width:' + Math.max(0, Math.min(100, pg.pctLoad)) + '%;background:var(--accent)"></div></div>';
+    // DEUX DÉFAUTS CORRIGÉS ICI, trouvés en mesurant le rendu (R25.5) :
+    // 1. le remplissage lisait `var(--accent)` — un token qui N'EXISTE PAS (c'est `--acc`) :
+    //    mesuré `rgba(0,0,0,0)`, la barre était donc INVISIBLE à n'importe quel pourcentage ;
+    // 2. le rail était en `#0000001a` — un noir à 10 % conçu pour le thème CLAIR : sur le fond
+    //    sombre il rendait la bande noire qu'on voit sur les captures.
+    // Les deux passent aux classes `.prog-track`/`.prog-fill` (motif de la maquette).
+    barre = '<div class="prog-line"><b>Semaine ' + pg.weekNow + " / " + pg.totalWeeks + "</b>"
+      + " · " + pg.pctLoad + "% de la charge accomplie</div>"
+      + '<div class="prog-track"><div class="prog-fill" style="width:' + Math.max(0, Math.min(100, pg.pctLoad)) + '%"></div></div>';
   } catch (e) {}
-  return '<div class="load-card" style="margin-top:10px">' + tete + barre
+  return '<div class="count-hero">' + tete + barre
     + '<div class="nav" style="margin-top:12px"><button class="btn" id="expPng" type="button">📤 Partage</button></div></div>';
 }
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
@@ -126,6 +134,35 @@ export function handleSwapClick(plan, wnum, jour, rerender) {
 // cocher (✓ → feedback → célébration), échanger (⇄), ouvrir le détail.
 // `openDetails` : au choix de l'APPELANT (Plan la laisse repliée, Semaine l'ouvre d'office —
 // voir le commentaire de `sessDetailsHTML` dans plan-view.js).
+/**
+ * LES DEUX GESTES DE LA SEMAINE, ÉMIS À UN SEUL ENDROIT.
+ *
+ * R16.9 avait trouvé que la coche existait en DEUX versions selon l'onglet, avec des
+ * comportements différents — et la conséquence n'était pas cosmétique (aucun `completion`,
+ * donc aucun RPE, donc l'ajusteur sous-estimait la fatigue). R25.5 ajoute une seconde MISE
+ * EN PAGE de la même semaine (liste compacte pour 📅 Semaine, grille pour 🗓 Plan) : c'est
+ * exactement la situation où la divergence se réintroduit. Les deux rendus appellent donc
+ * ces deux fonctions-ci, et personne d'autre n'écrit un `.doneBtn` ni un `[data-swap]`.
+ *
+ * Les classes portent aussi les cibles tactiles : `.doneBtn`/`.swapBtn` ont leur `::after`
+ * qui les porte à ~44 px au doigt (U4/U17) — les réécrire à la main, c'est les perdre.
+ */
+export function doneBtnHTML(k, s, dn) {
+  // R4.2 — le REPOS se valide aussi (« récupération respectée ✓ », 1 tap) : un jour
+  // de repos validé compte STRICTEMENT autant qu'un jour de séance dans la streak.
+  const title = s.d === "rs" ? "Récupération respectée" : "Marquer fait";
+  return '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" data-rest="' + (s.d === "rs" ? 1 : 0) + '" title="' + title + '" aria-label="' + title + " : " + s.name.replace(/"/g, "") + '">' + (dn ? "✓" : "○") + "</button>";
+}
+export function swapBtnHTML(wnum, jour, pend) {
+  // §8 — déplacement de séance : ⇄ sur chaque jour, deux taps = échange persistant.
+  return '<button class="swapBtn" type="button" data-swap="' + wnum + "|" + jour + '" title="Échanger ce jour avec un autre" aria-label="Échanger ' + jour + ' avec un autre jour" style="border:none;background:' + (pend ? "var(--gold)" : "transparent") + ";color:" + (pend ? "#0a0a0a" : "var(--muted)") + ';border-radius:5px;font-size:var(--fs-sm);cursor:pointer;padding:2px 6px">⇄</button>';
+}
+/** Le rappel « ⇄ sélectionné » — partagé par les deux mises en page. */
+function swapPendingNoteHTML(w) {
+  if (!(S._swapPending && S._swapPending.w === w.num)) return "";
+  return '<div class="load-sub" style="margin-top:6px">⇄ <b>' + S._swapPending.jour + "</b> sélectionné — touche le jour avec lequel l’échanger (ou re-touche ⇄ pour annuler).</div>";
+}
+
 export function weekGridHTML(plan, w, today, openDetails) {
   let h = '<div class="gw-grid">';
   w.days.forEach((d) => {
@@ -133,24 +170,48 @@ export function weekGridHTML(plan, w, today, openDetails) {
     const nm = d.sessions.map((s, si) => {
       const k = w.num + "|" + d.jour + "|" + si;
       const dn = S.answers.done && S.answers.done[k];
-      // R4.2 — le REPOS se valide aussi (« récupération respectée ✓ », 1 tap) : un jour
-      // de repos validé compte STRICTEMENT autant qu'un jour de séance dans la streak.
-      const title = s.d === "rs" ? "Récupération respectée" : "Marquer fait";
-      const chk = '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" data-rest="' + (s.d === "rs" ? 1 : 0) + '" title="' + title + '" aria-label="' + title + " : " + s.name.replace(/"/g, "") + '">' + (dn ? "✓" : "○") + "</button> ";
       // R5 — séance cliquable partout (détail replié + affordance visuelle via CSS .gd-sess)
-      return chk + sessDetailsHTML(s, undefined, openDetails);
+      return doneBtnHTML(k, s, dn) + " " + sessDetailsHTML(s, undefined, openDetails);
     }).join("");
     // R7 — chaque jour du plan est annoté de sa VRAIE date calendrier (retour utilisateur)
     const mark = "<i>" + (d.date === today ? "auj. · " : "") + fmtDay(d.date) + (plan.use10 ? " · C" + d.cyc + "J" + d.jc : "") + "</i>";
-    // §8 — déplacement de séance : ⇄ sur chaque jour, deux taps = échange persistant.
     const pend = S._swapPending && S._swapPending.w === w.num && S._swapPending.jour === d.jour;
-    const swapBtn = '<button class="swapBtn" type="button" data-swap="' + w.num + "|" + d.jour + '" title="Échanger ce jour avec un autre" aria-label="Échanger ' + d.jour + ' avec un autre jour" style="border:none;background:' + (pend ? "var(--gold)" : "transparent") + ";color:" + (pend ? "#0a0a0a" : "var(--muted)") + ';border-radius:5px;font-size:var(--fs-sm);cursor:pointer;padding:2px 6px">⇄</button>';
-    h += '<div class="gd ' + d.charge + (d.date === today ? " today" : "") + (pend ? " swap-pend" : "") + '"' + (pend ? ' style="outline:2px dashed var(--gold)"' : "") + '><div class="gd-top"><b>' + d.jour + "</b>" + mark + swapBtn + '</div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
+    h += '<div class="gd ' + d.charge + (d.date === today ? " today" : "") + (pend ? " swap-pend" : "") + '"' + (pend ? ' style="outline:2px dashed var(--gold)"' : "") + '><div class="gd-top"><b>' + d.jour + "</b>" + mark + swapBtnHTML(w.num, d.jour, pend) + '</div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
   });
   h += "</div>";
-  if (S._swapPending && S._swapPending.w === w.num)
-    h += '<div class="load-sub" style="margin-top:6px">⇄ <b>' + S._swapPending.jour + "</b> sélectionné — touche le jour avec lequel l’échanger (ou re-touche ⇄ pour annuler).</div>";
-  return h;
+  return h + swapPendingNoteHTML(w);
+}
+
+/**
+ * R25.5 — LA MÊME SEMAINE, EN LISTE COMPACTE (retour du fondateur : « liste compacte par
+ * jour, pas des cartes pleine largeur teintées »). Une ligne par JOUR ; à l'intérieur, une
+ * ligne par SÉANCE, parce que la coche est par séance (`data-dk` = semaine|jour|index) et
+ * que la fusionner en une coche par jour effacerait la validation d'un jour à deux séances.
+ * Le ⇄, lui, est par JOUR : c'est un échange de jours, pas de séances.
+ *
+ * ÉCART ASSUMÉ, À ARBITRER : le 08/08 tu avais demandé le détail des séances OUVERT d'office
+ * ici (`openDetails=true`). Une liste compacte et un détail déplié sont contradictoires — la
+ * demande la plus récente et la plus précise gagne, le détail reste à UN tap (`.gd-sess`),
+ * et la durée reste visible sans rien ouvrir. Dis-moi si tu préfères l'inverse.
+ */
+export function weekListHTML(plan, w, today) {
+  let h = '<div class="day-list">';
+  w.days.forEach((d) => {
+    const pend = S._swapPending && S._swapPending.w === w.num && S._swapPending.jour === d.jour;
+    const sess = d.sessions.map((s, si) => {
+      const k = w.num + "|" + d.jour + "|" + si;
+      const dn = S.answers.done && S.answers.done[k];
+      const disc = DISC[s.d] || DISC.rn;
+      return '<div class="day-sess"><div class="day-disc" aria-hidden="true" style="background:' + disc.ac + '">' + disc.ic + "</div>"
+        + sessDetailsHTML(s, undefined, false) + doneBtnHTML(k, s, dn) + "</div>";
+    }).join("");
+    h += '<div class="day-row' + (d.date === today ? " today" : "") + (pend ? " swap-pend" : "") + '">'
+      + '<div class="day-badge"><div class="day-name">' + (d.date === today ? "auj." : d.jour) + '</div><div class="day-num">' + fmtDay(d.date) + "</div></div>"
+      + '<div class="day-info">' + sess + "</div>"
+      + swapBtnHTML(w.num, d.jour, pend) + "</div>";
+  });
+  h += "</div>";
+  return h + swapPendingNoteHTML(w);
 }
 export function weekHeaderHTML(w) {
   const raceTag = w.race
@@ -218,8 +279,13 @@ function phaseObjectivesHTML(plan) {
         const items = d.sessions.map((s, si) => {
           const k = w.num + "|" + d.jour + "|" + si;
           const dn = S.answers.done && S.answers.done[k];
-          const chk = s.d !== "rs" ? '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" title="Marquer fait">' + (dn ? "✓" : "○") + "</button> " : "";
-          return chk + s.name;
+          // R25.5 — TROISIÈME émetteur de coche trouvé en factorisant les deux autres, et il
+          // divergeait : `s.d !== "rs"` CACHAIT la coche les jours de repos, alors que R4.2
+          // pose qu'un repos se valide (1 tap) et compte STRICTEMENT autant dans la série.
+          // Depuis le programme de phase, un jour de repos était donc invalidable — et la
+          // phase ne pouvait se déclarer « validée » que si l'athlète allait cocher ailleurs.
+          // Il passe au point unique comme les deux autres.
+          return doneBtnHTML(k, s, dn) + " " + s.name;
         }).join(" · ");
         h += '<div style="font-size:var(--fs-sm);margin:3px 0 0 4px;color:var(--text2)"><b style="display:inline-block;width:34px">' + d.jour + '</b><span style="display:inline-block;width:44px;color:var(--muted)">' + fmtDay(d.date) + "</span> " + items + "</div>";
       });

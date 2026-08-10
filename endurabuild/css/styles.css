@@ -152,8 +152,11 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
 /* R16.8 — glyphe décoratif (une lettre dans une tuile), pas de la typographie régie par
    l'échelle --fs-* : dimensionné en `em`, comme discBadgeHTML/.bp-cat-h .ic. */
 .logo-mark{width:30px;height:30px;flex-shrink:0;background:linear-gradient(145deg,var(--acc),var(--orange-2));clip-path:var(--cut-tile);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:1.2em;color:#0a0a0a;}
-.hero h1{font-family:var(--font-display);font-size:clamp(40px,6.5vw,62px);line-height:.92;letter-spacing:-.01em;text-transform:uppercase;}
-.hero h1 em{font-style:normal;color:#0a0a0a;background:var(--acc);padding:0 10px 2px;display:inline-block;transform:skewX(var(--signature-skew));transition:background .4s;}
+.hero h1{font-family:var(--font-display);font-size:clamp(40px,6.5vw,62px);line-height:.92;letter-spacing:.06em;text-transform:uppercase;}
+/* Le skew signature, en classe utilitaire comme la maquette (`.skew` sur le mot-marque et
+   les titres héros COURTS — jamais une phrase, jamais un label mono, jamais du cliquable :
+   ça déplacerait la zone de clic perçue). `.hero h1 em` a disparu avec « BUILD ». */
+.skew{transform:skewX(var(--signature-skew));display:inline-block;}
 .hero p{color:var(--text2);font-size:var(--fs-lg);margin-top:14px;max-width:540px;line-height:1.6;font-weight:500;}
 /* R25.2b — pas de pastille pilule : coupe angulaire --cut-tile, comme les tuiles Zenna. */
 .tier-badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-weight:700;font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase;padding:6px 16px 6px 14px;margin-top:16px;border:1px solid var(--border);clip-path:var(--cut-tile);}
@@ -397,6 +400,74 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 .load-leg{font-size:var(--fs-xs);font-weight:700;text-align:center;margin:2px 0 4px;}
 .load-sub{font-size:var(--fs-sm);color:var(--text2);line-height:1.5;}
 .gd{min-height:96px;}
+
+/* ===== R25.5 — 📅 SEMAINE : LISTE COMPACTE PAR JOUR (retour du fondateur).
+   La grille en cartes pleine largeur teintées (.gw-grid/.gd) reste le rendu de 🗓 PLAN, qui
+   peut afficher N semaines ; 📅 Semaine n'en montre QU'UNE et se lit au pouce — la maquette
+   y met une ligne par jour (#tab-week : .day-row). Les deux rendus partagent les MÊMES
+   émetteurs de geste (coche, ⇄) : voir `doneBtnHTML`/`swapBtnHTML`, point unique R11.1 —
+   c'est la leçon R16.9 (« la coche existait en deux versions »), et elle vaut aussi quand
+   c'est la MISE EN PAGE qui se dédouble, pas seulement l'onglet. ===== */
+/* MESURÉ avant de fixer ces valeurs : à 390 px, trois anneaux à `flex:1 1 90px` passaient sur
+   DEUX lignes (largeur mini réelle 148 px chacun, pour 308 px utiles). `flex:1 1 0` + les
+   `min-width:0` les fait partager la place à égalité, et c'est le LIBELLÉ qui cède (ellipse)
+   plutôt que la ligne qui se casse — le chiffre fait/prévu, lui, ne se tronque jamais. */
+.disc-rings{display:flex;gap:7px;margin:2px 0 10px;}
+.dring{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:7px 8px;}
+.dring svg{transform:rotate(-90deg);flex-shrink:0;}
+.dring .dr-ring-bg{stroke:var(--surface-3);}
+.dring .dr-ring-fg{transition:stroke-dashoffset var(--dur-rise,.72s) var(--ease-enter,ease);}
+.dring .dr-txt{min-width:0;}
+.dring .dr-n{font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:700;line-height:1.1;}
+.dring .dr-l{font-family:var(--font-mono);font-size:var(--fs-micro);color:var(--muted);letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dist-line{display:flex;gap:14px;flex-wrap:wrap;margin:2px 0 10px;font-family:var(--font-mono);font-size:var(--fs-sm);}
+.dist-line .sub{color:var(--muted);}
+/* MESURÉ : dans une `.card` (30 px de marge intérieure de chaque côté), le titre de séance ne
+   recevait que 124 px — il passait sur TROIS lignes et les lignes de jour faisaient 96 à
+   117 px de haut. Une « liste compacte » plus haute que la grille qu'elle remplace n'est pas
+   une liste compacte. `.card-flush` rend ces 32 px à la liste, sur CETTE carte seulement :
+   toucher `.card` globalement changerait tous les écrans pour un problème local. */
+.card.card-flush{padding-left:14px;padding-right:14px;}
+.day-row{display:flex;align-items:flex-start;gap:8px;padding:2px 0;border-bottom:1px solid var(--border);}
+.day-row:last-child{border-bottom:none;}
+.day-badge{width:38px;flex-shrink:0;text-align:center;padding-top:2px;}
+.day-name{font-family:var(--font-mono);font-size:var(--fs-micro);color:var(--muted);letter-spacing:.06em;text-transform:uppercase;}
+.day-num{font-family:var(--font-display);font-size:var(--fs-lg);line-height:1.15;font-variant-numeric:tabular-nums;}
+.day-row.today .day-num{color:var(--acc);}
+.day-row.today .day-name{color:var(--orange-tint);}
+.day-info{flex:1;min-width:0;}
+.day-sess{display:flex;align-items:flex-start;gap:8px;}
+.day-sess+.day-sess{margin-top:7px;}
+.day-sess .gd-sess{flex:1;min-width:0;}
+/* Le résumé de séance passe en DEUX lignes (titre / durée), comme .day-title + .day-spec de
+   la maquette — au lieu de tout mettre sur une ligne de 164 px, où le titre se cassait en
+   trois. Le titre garde sa ligne entière et s'ellipse ; la durée descend en mono atténué.
+   U17 EST PRÉSERVÉ, et vérifié : la cible du titre passe de 45 à ~57 px (deux lignes + les
+   29 px de marge intérieure), donc au-dessus du plancher de 44 — on l'agrandit, jamais on
+   ne le réduit. Le mot « détail » et le trait tireté sortent ici : le chevron ▸ porte déjà
+   l'affordance, et la ligne de jour porte déjà son séparateur. */
+/* `min-height` plutôt qu'une marge calculée : U17 est une propriété (44 px au doigt), et une
+   marge la tient par arithmétique — mesuré 43 px sur un jour de repos (titre d'UNE ligne,
+   pas de durée), la garde est sortie rouge. Le plancher est désormais écrit, pas déduit. */
+.day-sess .gd-sess>summary{flex-wrap:wrap;row-gap:0;border-bottom:none;padding:10px 0 9px;min-height:44px;box-sizing:border-box;align-content:center;}
+.day-sess .gd-sess>summary>b{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.day-sess .gd-sess>summary .gd-dur{flex-basis:100%;margin-left:16px;font-family:var(--font-mono);font-size:var(--fs-micro);color:var(--muted);}
+.day-sess .gd-sess>summary::after{content:none;}
+.day-disc{width:26px;height:26px;flex-shrink:0;clip-path:var(--cut-tile);display:flex;align-items:center;justify-content:center;font-size:.95em;line-height:1;}
+.day-row.swap-pend{outline:2px dashed var(--gold);outline-offset:3px;border-radius:8px;}
+
+/* ===== R25.5 — LE DÉCOMPTE, AU TRAITEMENT DE LA MAQUETTE (.count-hero + .jminus).
+   Il EXISTAIT (R23.5) mais en 22px Space Grotesk : le chiffre le plus motivant du produit
+   était rendu comme un titre de carte. Bebas, grand, orange-tint — et toujours RIEN quand
+   aucune date de course n'est déclarée (R23.5 : « inventer un J−? serait pire que se taire »). */
+.count-hero{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:16px;margin-top:10px;position:relative;}
+.jminus{font-family:var(--font-display);font-size:clamp(40px,13vw,52px);line-height:1;color:var(--orange-tint);font-variant-numeric:tabular-nums;}
+.jminus-sub{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text2);letter-spacing:.06em;margin-top:3px;text-transform:uppercase;}
+.prog-line{font-family:var(--font-mono);font-size:var(--fs-sm);margin-top:13px;color:var(--text2);}
+.prog-line b{color:var(--ink);}
+.prog-track{height:11px;border-radius:100px;background:var(--surface-3);overflow:hidden;margin-top:7px;}
+.prog-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--acc),var(--orange-2));position:relative;}
+.prog-fill::after{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(-45deg,rgba(255,255,255,.14) 0 6px,transparent 6px 12px);}
 
 /* ===== R25.4 — canal abonnement (habillage + micro-UX), périmètre strict :
    shopSubscriptionCardHTML + bindShopSubscription (tab-nutrition.js). ===== */
@@ -884,7 +955,7 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
   #screen[data-tab] > *{animation:none;opacity:1;transform:none;}
   .verdict-stamp-in,.check-draw,.xp-float,.form-ring-fg,.wx-slot.loading::after,.wx-slot.ready,
   #nutRedu.loading::after,#nutRedu.ready,
-  .sticky-cta,.today-dot,.ph-seg.now{animation:none!important;transition:none!important;}
+  .sticky-cta,.today-dot,.ph-seg.now,.dring .dr-ring-fg{animation:none!important;transition:none!important;}
   .check-draw{stroke-dashoffset:0;}
   .sticky-cta{transform:none;}
 }
