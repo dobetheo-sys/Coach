@@ -111,3 +111,40 @@ export function revealWeather(el, html) {
   el.innerHTML = html;
   el.classList.add("ready");
 }
+
+// Parallax du héros — même discipline que le CTA collant : UN listener, retiré et reposé à
+// chaque appel, jamais accumulé au fil des re-rendus.
+let _heroScrollHandler = null;
+/**
+ * R25.6 — LE HÉROS RECULE AU SCROLL (dernier effet du catalogue §4, « non confirmé dans
+ * l'app » jusqu'ici).
+ *
+ * ADAPTÉ, PAS COPIÉ : la maquette écoute le scroll de son propre conteneur
+ * (`#content{overflow-y:auto}` dans un cadre de téléphone simulé) ; l'app fait défiler la
+ * FENÊTRE. Recopier `this.scrollTop` n'aurait rien animé du tout — c'est la grandeur qui
+ * change, pas l'intention. Courbes reprises telles quelles (scale ≥ .93 sur 1300 px,
+ * opacité ≥ .7 sur 450 px).
+ *
+ * `transform`/`opacity` seuls : les deux propriétés que le compositeur traite sans
+ * relayouter, donc pas de jank au pouce. Lu dans un rAF (le scroll peut tirer plusieurs
+ * événements par image) et coupé net en `prefers-reduced-motion`.
+ */
+export function bindHeroParallax() {
+  if (_heroScrollHandler) { window.removeEventListener("scroll", _heroScrollHandler); _heroScrollHandler = null; }
+  const hero = document.querySelector("#screen .count-hero");
+  if (!hero) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  hero.style.transformOrigin = "top center";
+  hero.style.willChange = "transform,opacity";
+  let tick = false;
+  const apply = () => {
+    tick = false;
+    const y = Math.max(0, window.pageYOffset);
+    hero.style.transform = "scale(" + Math.max(0.93, 1 - y / 1300).toFixed(4) + ")";
+    hero.style.opacity = Math.max(0.7, 1 - y / 450).toFixed(3);
+  };
+  const onScroll = () => { if (!tick) { tick = true; requestAnimationFrame(apply); } };
+  _heroScrollHandler = onScroll;
+  window.addEventListener("scroll", onScroll, { passive: true });
+  apply();
+}

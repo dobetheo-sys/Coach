@@ -71,6 +71,7 @@ function avancementPlanHTML(plan, today) {
 }
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
+import { bindHeroParallax } from "./motion.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 import { feasibilityCardHTML, bindFeasibility } from "./feasibility.js";
 import { DISC } from "./icons.js";
@@ -434,6 +435,7 @@ export function renderTabPlanGeneral(plan) {
   bindFeasibility(rerender);
   bindFeasibility(rerender);
   bindRetestBanner(today, () => renderTabPlanGeneral(ensurePlan())); // le retest a pu régénérer le plan
+  bindHeroParallax(); // R25.6 — le décompte recule au scroll (catalogue motion §4)
   // R6 — la frise de phases est cliquable : ouvre le programme de la phase et y descend.
   {
     const g = document.getElementById("goCurWk");

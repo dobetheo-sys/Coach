@@ -180,7 +180,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
    incohérent avec le liseré 1px droit posé en R25.1 (une découpe irrégulière sous une ligne
    parfaitement horizontale). DOM et padding inchangés (invariant §1.2) : seules la forme et
    la profondeur de trait bougent. */
-.card{background:var(--bg3);border:1px solid var(--border);border-radius:18px;padding:30px 30px 26px;animation:dropIn .4s cubic-bezier(.2,.9,.3,1.15);position:relative;transition:transform var(--dur-tap,.12s) var(--ease-spring,ease);}
+.card{background:var(--bg3);border:1px solid var(--border);border-radius:18px;padding:30px 30px 26px;animation:dropIn calc(var(--beat)*3.5) cubic-bezier(.2,.9,.3,1.15);position:relative;transition:transform var(--dur-tap) var(--ease-spring);}
 /* R25.2b — même rebond que .btn/.opt au tap, pour les .card qui servent aussi de bouton
    (ex. la carte séance ouvrable) ; une .card purement statique n'a pas de :active à
    déclencher, donc cette règle est sans effet sur elle. */
@@ -211,7 +211,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
    la forme des chips Zenna — .choice/.seg-opt), rotations retirées (la maquette Zenna est
    plate partout, aucune n'y survit) ; .opt.sel garde son fond accent + texte sombre. */
 .opts{display:flex;flex-wrap:wrap;gap:10px;}
-.opt{background:var(--bg3);border:1px solid var(--border);border-radius:100px;padding:10px 16px;font-family:var(--font-mono);font-size:var(--fs-md);font-weight:600;color:var(--ink);cursor:pointer;transition:transform var(--dur-tap,.12s) var(--ease-spring,ease),background .12s,border-color .12s;user-select:none;}
+.opt{background:var(--bg3);border:1px solid var(--border);border-radius:100px;padding:10px 16px;font-family:var(--font-mono);font-size:var(--fs-md);font-weight:600;color:var(--ink);cursor:pointer;transition:transform var(--dur-tap) var(--ease-spring),background var(--dur-trans) var(--ease),border-color var(--dur-trans) var(--ease);user-select:none;}
 .opt:hover{border-color:var(--acc);}
 .opt:active{transform:scale(.95);}
 .opt.sel{background:var(--acc);color:#0a0a0a;border-color:transparent;}
@@ -232,7 +232,7 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:var(--su
    Reprioritisé devant les décors statiques : .btn est le contrôle touché à CHAQUE écran.
    Bordure fine (var(--border)), rayon uniforme 13px (maquette), pression = scale (pas de
    translate qui donnait l'illusion d'un bouton qui se soulève de sa propre ombre). */
-.btn{font-family:var(--font-mono);font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:13px 26px;border:1px solid var(--border);border-radius:13px;background:var(--bg3);color:var(--ink);cursor:pointer;transition:transform var(--dur-tap,.12s) var(--ease-spring,ease),background .12s;}
+.btn{font-family:var(--font-mono);font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:13px 26px;border:1px solid var(--border);border-radius:13px;background:var(--bg3);color:var(--ink);cursor:pointer;transition:transform var(--dur-tap) var(--ease-spring),background var(--dur-trans) var(--ease);}
 .btn:hover{background:var(--surface-3);}
 .btn:active{transform:scale(.95);}
 /* R25.1 — mesuré : #fff échoue l'AA sur les deux teintes d'accent (défaut 3.55:1, override
@@ -416,7 +416,7 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 .dring{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:7px 8px;}
 .dring svg{transform:rotate(-90deg);flex-shrink:0;}
 .dring .dr-ring-bg{stroke:var(--surface-3);}
-.dring .dr-ring-fg{transition:stroke-dashoffset var(--dur-rise,.72s) var(--ease-enter,ease);}
+.dring .dr-ring-fg{transition:stroke-dashoffset calc(var(--beat)*6) var(--ease-enter);}
 .dring .dr-txt{min-width:0;}
 .dring .dr-n{font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:700;line-height:1.1;}
 .dring .dr-l{font-family:var(--font-mono);font-size:var(--fs-micro);color:var(--muted);letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -485,7 +485,7 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
    texte-produit inventé — le sous-libellé est la date réelle du prochain envoi pour CETTE
    cadence (nextEcheance), pas « envoi le samedi » comme dans la maquette. */
 .seg{position:relative;display:flex;background:var(--surface-3, var(--bg2));border-radius:13px;padding:3px;margin:12px 0;z-index:2;}
-.seg-pill{position:absolute;top:3px;bottom:3px;width:calc(50% - 3px);border-radius:10px;background:var(--orange-tint);transition:left var(--dur-trans,.3s) var(--ease-spring,ease);}
+.seg-pill{position:absolute;top:3px;bottom:3px;width:calc(50% - 3px);border-radius:10px;background:var(--orange-tint);transition:left calc(var(--beat)*3) var(--ease-spring);}
 .seg-opt{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:46px;border-radius:10px;cursor:pointer;z-index:2;font-family:var(--font-mono);color:var(--text2);background:none;border:none;transition:color var(--dur-trans,.2s) ease;}
 .seg-opt .so-l{font-size:var(--fs-xs);font-weight:700;letter-spacing:.04em;}
 .seg-opt .so-s{font-size:var(--fs-micro);margin-top:1px;opacity:.75;}
@@ -505,7 +505,7 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 .choice{padding:8px 12px;border-radius:100px;background:var(--bg2);border:1px solid var(--border);font-family:var(--font-mono);font-size:var(--fs-micro);font-weight:600;color:var(--text2);cursor:pointer;transition:transform var(--dur-tap,.12s) var(--ease-spring,ease),background .15s,color .15s,border-color .15s;}
 .choice:active{transform:scale(.93);}
 .choice[aria-pressed="true"]{background:rgba(0,224,198,.12);border-color:var(--cyan);color:var(--cyan);}
-.shop-cta{width:100%;min-height:52px;border-radius:15px;background:var(--orange-tint);color:#0a0a0a;font-family:var(--font-mono);font-size:var(--fs-sm);font-weight:700;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-top:14px;border:none;transition:transform var(--dur-tap,.12s) var(--ease-spring,ease);}
+.shop-cta{width:100%;min-height:52px;border-radius:15px;background:var(--orange-tint);color:#0a0a0a;font-family:var(--font-mono);font-size:var(--fs-sm);font-weight:700;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-top:14px;border:none;transition:transform var(--dur-tap) var(--ease-spring);}
 .shop-cta:active{transform:scale(.97);}
 .shop-fine{font-family:var(--font-mono);font-size:var(--fs-micro);color:var(--muted);line-height:1.6;margin-top:10px;letter-spacing:.02em;}
 .sub-active-head{display:flex;align-items:center;gap:11px;margin:8px 0 4px;position:relative;z-index:2;}
@@ -891,16 +891,62 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
    1822→2037 ms sur un test dont le seuil est 2000 ms, donc rouge). Le diaporama porte déjà
    sa propre animation d'écran (`.ck-slide-anim`) : l'entrée d'onglet générique n'a rien à
    ajouter là, et `#ckSlide` est le seul repère stable de cette phase. */
+/* R25.6 — LE STAGGER PORTE SUR LES CARTES, PAS SUR LES ENFANTS DE #screen.
+   Mesuré sur les cinq onglets : `#screen` a UN SEUL enfant direct sur Profil, Plan et
+   Semaine, et deux sur Outils — l'échelonnement écrit en R25.3 ne s'appliquait donc qu'à
+   🎯 Aujourd'hui (7 enfants), soit UN onglet sur cinq. Ailleurs il faisait un simple fondu
+   d'un bloc, en se donnant le nom de stagger.
+   La maquette échelonne les CARTES (`.card.rise.r1..r8`). Ici, les cartes perçues sont soit
+   les enfants directs, soit — quand la vue est enveloppée dans une carte de page — les
+   `.load-card`/`.count-hero` qu'elle contient. Un seul de ces deux groupes est peuplé par
+   onglet, donc les deux échelles de délai ne se marchent jamais dessus. Sélecteurs de
+   CLASSES, aucun changement de DOM (invariant §1.2 du brief). */
 @keyframes eb-rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-#screen[data-tab]:not(:has(#ckSlide)) > *{animation:eb-rise .26s var(--ease-enter) backwards;}
-#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(2){animation-delay:35ms;}
-#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(3){animation-delay:70ms;}
-#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(n+4){animation-delay:105ms;}
+#screen[data-tab]:not(:has(#ckSlide)) > *,
+#screen[data-tab]:not(:has(#ckSlide)) > .card > .load-card,
+#screen[data-tab]:not(:has(#ckSlide)) > .card > .count-hero{animation:eb-rise calc(var(--beat)*2.2) var(--ease-enter) backwards;}
+#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(2),
+#screen[data-tab]:not(:has(#ckSlide)) > .card > :nth-child(2){animation-delay:calc(var(--stagger)*.35);}
+#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(3),
+#screen[data-tab]:not(:has(#ckSlide)) > .card > :nth-child(3){animation-delay:calc(var(--stagger)*.7);}
+#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(4),
+#screen[data-tab]:not(:has(#ckSlide)) > .card > :nth-child(4){animation-delay:calc(var(--stagger)*.95);}
+#screen[data-tab]:not(:has(#ckSlide)) > *:nth-child(n+5),
+#screen[data-tab]:not(:has(#ckSlide)) > .card > :nth-child(n+5){animation-delay:calc(var(--stagger)*1.15);}
+
+/* R25.6 — LE DIAPORAMA DU CHECK-IN RESTE SANS ANIMATION, ET C'EST MESURÉ.
+   La maquette lui donne `ckIn` (entrée par la droite) et je l'ai portée — puis retirée.
+   A/B sur le critère U7, tout le reste égal : SANS 1602 ms, AVEC 1916 ms. **314 ms** pour
+   trois fondus, sur un budget de 2 000 et sur le chemin le plus emprunté du produit (le
+   point du matin, tous les jours). La cause n'est pas le coût de peinture : une carte qui
+   entre n'est pas « stable », donc chaque tap attend la fin de son animation — l'athlète
+   aussi. C'est exactement le défaut que R25.3 avait corrigé en excluant `#ckSlide` du
+   stagger, et que j'ai recréé en croyant qu'un seul élément ne coûterait rien.
+   Au passage : le commentaire de R25.3 ci-dessus justifiait cette exclusion en citant une
+   classe `.ck-slide-anim` qui n'a JAMAIS existé dans ce dépôt. La raison était bonne, la
+   preuve était fausse — elle est maintenant chiffrée. */
+
+/* R25.6 — LES BARRES POUSSENT AU LIEU D'APPARAÎTRE (.grow-x / .grow-y de la maquette).
+   Une jauge qui surgit à sa valeur finale ne dit pas « voilà où tu en es » ; elle y va.
+   `transform` seul (jamais `width`) : c'est ce qui reste sur le compositeur et ne relayoute
+   pas la page à chaque image. L'origine diffère par nature : une barre pousse de la GAUCHE,
+   une colonne de volume pousse du BAS. */
+@keyframes eb-grow-x{to{transform:scaleX(1);}}
+@keyframes eb-grow-y{to{transform:scaleY(1);}}
+#screen[data-tab] .prog-fill{transform:scaleX(0);transform-origin:left;animation:eb-grow-x calc(var(--beat)*4) var(--ease-enter) forwards;}
+#screen[data-tab] .vol-bars .vb{transform:scaleY(0);transform-origin:bottom;animation:eb-grow-y calc(var(--beat)*4) var(--ease-enter) forwards;}
+
+/* R25.6 — LE HALO QUI RESPIRE (.zenna-pulse / zp de la maquette), sur la carte du décompte :
+   la seule surface « héros » du produit. Décor pur — `pointer-events:none`, aucune donnée
+   n'en dépend, et il disparaît entièrement en reduced-motion. */
+@keyframes eb-pulse{0%{opacity:.5;transform:scale(1);}18%{opacity:1;transform:scale(1.11);}46%{opacity:.62;transform:scale(1.02);}100%{opacity:.5;transform:scale(1);}}
+.count-hero{overflow:hidden;}
+.count-hero::after{content:"";position:absolute;top:-58%;right:-22%;width:190px;height:190px;pointer-events:none;background:radial-gradient(circle,var(--orange-glow),transparent 70%);opacity:.5;animation:eb-pulse calc(var(--beat)*20) var(--ease) infinite;}
 
 /* --- Verdict du check-in : reprend l'esprit de `ruleStamp` (même courbe, même famille de
    mouvement — un tampon qui claque puis se stabilise), appliqué par `verdictHTML()` (point
    unique, lu par le diaporama ET le panneau « Modifier ma forme du jour »). */
-.verdict-stamp-in{animation:ruleStamp .45s cubic-bezier(.2,.9,.3,1.3);}
+.verdict-stamp-in{animation:ruleStamp calc(var(--beat)*4.5) cubic-bezier(.2,.9,.3,1.3);}
 
 /* --- Validation de séance : la coche SVG se dessine (trait qui se trace), posée par
    js/ui/motion.js sur le bouton qui vient de passer à l'état "fait". */
@@ -910,12 +956,12 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
 /* --- "+X XP" flottant : UNIQUEMENT posé par motion.js quand un delta réel a été mesuré
    (voir js/ui/motion.js floatXP — jamais un nombre inventé ici). */
 @keyframes eb-xp-float{0%{opacity:0;transform:translate(-50%,4px) scale(.9);}20%{opacity:1;transform:translate(-50%,-6px) scale(1.05);}80%{opacity:1;transform:translate(-50%,-22px) scale(1);}100%{opacity:0;transform:translate(-50%,-34px) scale(1);}}
-.xp-float{position:fixed;left:0;top:0;font-family:var(--font-mono);font-size:var(--fs-md);font-weight:700;color:var(--gold);pointer-events:none;z-index:200;text-shadow:0 2px 8px rgba(0,0,0,.6);animation:eb-xp-float 1.1s var(--ease-enter) forwards;}
+.xp-float{position:fixed;left:0;top:0;font-family:var(--font-mono);font-size:var(--fs-md);font-weight:700;color:var(--gold);pointer-events:none;z-index:200;text-shadow:0 2px 8px rgba(0,0,0,.6);animation:eb-xp-float calc(var(--beat)*9) var(--ease-enter) forwards;}
 
 /* --- Anneau "forme du jour" : le cercle de progression, posé par heroSessionHTML (rendu
    déjà à son offset final au premier paint — le JS anime le passage 0 → cible juste après
    l'insertion via bindFormRing, voir motion.js). */
-.form-ring-fg{transition:stroke-dashoffset 1.1s var(--ease-enter) .15s;}
+.form-ring-fg{transition:stroke-dashoffset calc(var(--beat)*9) var(--ease-enter) calc(var(--beat)*1.25);}
 
 /* --- Météo en différé : le résumé "shimmer" tant que `tmaxC` n'est pas arrivé (fetchWeather
    inchangé), fade-in à l'arrivée — même idiome que le chargement `.wx-slot` de la maquette.
@@ -925,9 +971,9 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
 .wx-slot{display:inline-block;min-width:2.2em;border-radius:5px;}
 .wx-slot.loading,#nutRedu.loading{color:transparent;background:var(--surface-3, var(--bg2));position:relative;overflow:hidden;border-radius:8px;}
 @keyframes eb-wx-shimmer{100%{transform:translateX(100%);}}
-.wx-slot.loading::after,#nutRedu.loading::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);animation:eb-wx-shimmer 1.1s linear infinite;}
+.wx-slot.loading::after,#nutRedu.loading::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);animation:eb-wx-shimmer calc(var(--beat)*10) linear infinite;}
 @keyframes eb-wx-in{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:translateY(0);}}
-.wx-slot.ready,#nutRedu.ready{animation:eb-wx-in .3s var(--ease-enter);}
+.wx-slot.ready,#nutRedu.ready{animation:eb-wx-in calc(var(--beat)*3) var(--ease-enter);}
 #nutRedu.loading{min-height:2.4em;}
 
 /* --- CTA collant "Valider" en zone pouce (🎯 Aujourd'hui) : apparaît au scroll, disparaît
@@ -944,9 +990,9 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
    reste de l'écran, pas un second calcul) posent la classe ; l'animation elle-même reste
    CSS pur, aucun minuteur JS. */
 @keyframes eb-today-pulse{0%,100%{opacity:.55;transform:scale(1);}50%{opacity:1;transform:scale(1.5);}}
-.today-dot{animation:eb-today-pulse 2.6s var(--ease) infinite;transform-origin:center;transform-box:fill-box;}
+.today-dot{animation:eb-today-pulse calc(var(--beat)*16) var(--ease) infinite;transform-origin:center;transform-box:fill-box;}
 @keyframes eb-phase-stripe{from{background-position:0 0;}to{background-position:28px 0;}}
-.ph-seg.now{border-color:var(--acc);background-image:repeating-linear-gradient(-45deg,rgba(255,61,0,.14) 0 7px,transparent 7px 14px);background-size:200% 100%;animation:eb-phase-stripe 6s linear infinite;}
+.ph-seg.now{border-color:var(--acc);background-image:repeating-linear-gradient(-45deg,rgba(255,61,0,.14) 0 7px,transparent 7px 14px);background-size:200% 100%;animation:eb-phase-stripe calc(var(--beat)*30) linear infinite;}
 
 /* --- Reduced-motion : neutralise TOUTES les animations R25.3 (AC — brief §R25.3). Le CTA
    collant et le contenu restent accessibles SANS transition (apparition instantanée par
@@ -955,7 +1001,12 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
   #screen[data-tab] > *{animation:none;opacity:1;transform:none;}
   .verdict-stamp-in,.check-draw,.xp-float,.form-ring-fg,.wx-slot.loading::after,.wx-slot.ready,
   #nutRedu.loading::after,#nutRedu.ready,
-  .sticky-cta,.today-dot,.ph-seg.now,.dring .dr-ring-fg{animation:none!important;transition:none!important;}
+  /* R25.6 — chaque effet ajouté est nommé ici, jamais couvert par un neutralisant générique
+     (règle non négociable §4 de l'audit) : les barres qui poussent gardent leur valeur
+     finale (`transform:none` sur un scaleX(0) initial = échelle 1), le halo disparaît. */
+  .sticky-cta,.today-dot,.ph-seg.now,.dring .dr-ring-fg,
+  #screen[data-tab] .prog-fill,#screen[data-tab] .vol-bars .vb{animation:none!important;transition:none!important;transform:none!important;}
+  .count-hero::after{display:none!important;}
   .check-draw{stroke-dashoffset:0;}
   .sticky-cta{transform:none;}
 }
