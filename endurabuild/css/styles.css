@@ -165,16 +165,17 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
 .q-def::before{content:"💡 ";}
 
 /* options : étiquettes découpées */
+/* R25.2b — même correctif que .btn (voir son commentaire) : .opt est l'autre contrôle
+   touché à chaque écran du questionnaire. Bordure fine, pastille (border-radius:100px,
+   la forme des chips Zenna — .choice/.seg-opt), rotations retirées (la maquette Zenna est
+   plate partout, aucune n'y survit) ; .opt.sel garde son fond accent + texte sombre. */
 .opts{display:flex;flex-wrap:wrap;gap:10px;}
-.opt{background:var(--bg3);border:2.5px solid var(--ink);border-radius:5px 12px 6px 11px;padding:10px 16px;font-size:var(--fs-md);font-weight:600;color:var(--ink);cursor:pointer;box-shadow:3px 3px 0 var(--ink);transition:transform .12s,box-shadow .12s,background .15s;user-select:none;}
-.opts .opt:nth-child(odd){transform:rotate(-.7deg);}
-.opts .opt:nth-child(even){transform:rotate(.6deg);}
-.opt:hover{transform:translate(-2px,-2px) rotate(0);box-shadow:5px 5px 0 var(--ink);}
-.opt:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
-.opt.sel{background:var(--acc);color:#0a0a0a;transform:rotate(-1.3deg) scale(1.03);box-shadow:4px 4px 0 var(--ink);}
-.opt.sel:hover{transform:rotate(-1.3deg) scale(1.03);}
+.opt{background:var(--bg3);border:1px solid var(--border);border-radius:100px;padding:10px 16px;font-family:var(--font-mono);font-size:var(--fs-md);font-weight:600;color:var(--ink);cursor:pointer;transition:transform .12s,background .12s,border-color .12s;user-select:none;}
+.opt:hover{border-color:var(--acc);}
+.opt:active{transform:scale(.95);}
+.opt.sel{background:var(--acc);color:#0a0a0a;border-color:transparent;}
 .opt:focus-visible{outline:3px dashed var(--acc);outline-offset:3px;}
-input[type=text],input[type=number],input[type=date]{background:var(--bg3);border:2.5px solid var(--ink);border-radius:4px 10px 5px 9px;padding:10px 14px;font-size:var(--fs-lg);font-weight:600;color:var(--ink);width:200px;font-family:var(--font-body);box-shadow:3px 3px 0 var(--ink);}
+input[type=text],input[type=number],input[type=date]{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:var(--fs-lg);font-weight:600;color:var(--ink);width:200px;font-family:var(--font-body);}
 input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255,251,232,.14);}
 .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;}
 .row .q{margin-bottom:0;flex:1;min-width:150px;}
@@ -184,15 +185,21 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255
 .branch .branch-tag{font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--ink);margin-bottom:8px;font-weight:700;}
 
 .nav{display:flex;justify-content:space-between;margin-top:28px;gap:10px;}
-.btn{font-family:var(--font-mono);font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:13px 26px;border:3px solid var(--ink);border-radius:6px 14px 7px 13px;background:var(--bg3);color:var(--ink);cursor:pointer;box-shadow:4px 4px 0 var(--ink);transition:transform .12s,box-shadow .12s;}
-.btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink);}
-.btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink);}
+/* R25.2b — retour du fondateur : sur fond noir, la bordure encre 3px + l'ombre décalée
+   solide (var(--paper-shadow), dessinée dans la même couleur que la bordure) ne lit plus
+   comme un contour + une profondeur — c'est un bloc clair qui flotte à côté du bouton.
+   Reprioritisé devant les décors statiques : .btn est le contrôle touché à CHAQUE écran.
+   Bordure fine (var(--border)), rayon uniforme 13px (maquette), pression = scale (pas de
+   translate qui donnait l'illusion d'un bouton qui se soulève de sa propre ombre). */
+.btn{font-family:var(--font-mono);font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:13px 26px;border:1px solid var(--border);border-radius:13px;background:var(--bg3);color:var(--ink);cursor:pointer;transition:transform .12s,background .12s;}
+.btn:hover{background:var(--surface-3);}
+.btn:active{transform:scale(.95);}
 /* R25.1 — mesuré : #fff échoue l'AA sur les deux teintes d'accent (défaut 3.55:1, override
    sport `run` #ff7a1a 2.61:1). #0a0a0a passe les deux (5.58:1 / 7.59:1) — c'est aussi la
    convention Zenna pour tout CTA sur surface vive (`.btn.primary`/`.shop-cta`). */
-.btn.primary{background:var(--acc);color:#0a0a0a;}
-.btn.primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:4px 4px 0 var(--ink);}
-.btn.gold{background:var(--gold);color:#0a0a0a;}
+.btn.primary{background:var(--acc);border-color:transparent;color:#0a0a0a;}
+.btn.primary:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.btn.gold{background:var(--gold);border-color:transparent;color:#0a0a0a;}
 .btn:focus-visible{outline:3px dashed var(--acc);outline-offset:3px;}
 
 /* ===== BLUEPRINT ===== */
