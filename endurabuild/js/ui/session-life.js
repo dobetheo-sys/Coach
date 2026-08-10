@@ -8,7 +8,7 @@
 // n'a rien à voir avec un onglet. Elles sont donc EXTRAITES avant suppression, comme le
 // demandait l'étape 2 du handoff — un module ne se supprime pas, il se vide d'abord.
 import { S, $, ebSave, esc, fmtDay, todayISO } from "../state.js";
-import { whyOf, techOf, techListHTML } from "./plan-view.js";
+import { whyOf, techOf, techListHTML, _blkMin } from "./plan-view.js";
 import { avatarTriDataFor } from "./avatar.js";
 import { avatarTriSVG, avatarTriStorySVG, avatarTriAccent } from "./avatar-tri.js";
 import { celebrationMessage } from "./celebrations.js";
@@ -251,7 +251,7 @@ function formRingHTML(v, snapEnergy) {
   const color = _ringVerdictColor[v.level] || "var(--acc)";
   const label = hasEnergy ? Math.round(pct) + "%" : v.level.toUpperCase();
   return '<div class="form-ring" title="Forme du jour — verdict du check-in" style="position:relative;width:44px;height:44px;flex:0 0 auto">'
-    + '<svg width="44" height="44" viewBox="0 0 44 44" style="transform:rotate(-90deg)"><circle cx="22" cy="22" r="' + r + '" style="stroke:var(--border)" stroke-width="4" fill="none"/>'
+    + '<svg width="44" height="44" viewBox="0 0 44 44" style="transform:rotate(-90deg)"><circle class="form-ring-bg" cx="22" cy="22" r="' + r + '" style="stroke:var(--border)" stroke-width="4" fill="none"/>'
     + '<circle class="form-ring-fg" data-offset="' + offset + '" cx="22" cy="22" r="' + r + '" stroke="' + color + '" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + C.toFixed(1) + '"/></svg>'
     // R16.8 — un pourcentage ou un mot de verdict est du TEXTE, pas un glyphe décoratif :
     // l'échelle --fs-* le régit, jamais un px littéral (même plancher que le reste : 9px).
@@ -274,7 +274,11 @@ export function heroSessionHTML(plan, todayIso) {
   let res;
   try { res = globalThis.EBV2.adjustToday(S.sport, S.answers, snap); } catch (e) { console.warn(e); return ""; }
   const v = res.adjustment.verdict;
-  const badge = '<span style="float:right;font-size:var(--fs-xs);font-weight:700;color:var(--muted);margin-top:2px">' + VERDICT_ICON[v.level] + " " + _verdictLbl[res.adjustment.action] + "</span>";
+  // R25.7 — le badge vit désormais sur la surface VIVE du héros. Son `var(--muted)` (gris
+  // calibré pour un fond sombre) y donnait un contraste de **1,35** — illisible, mesuré. Encre
+  // sombre comme tout le texte du héros (5,58 sur l'orange, 5,89 sur le violet). `float:right`
+  // retiré : sans effet en contexte flex depuis R25.3, il ne masquait qu'une intention morte.
+  const badge = '<span style="font-size:var(--fs-xs);font-weight:700;color:#0a0a0a;white-space:nowrap">' + VERDICT_ICON[v.level] + " " + _verdictLbl[res.adjustment.action] + "</span>";
   // R4.7 — le plan qui réagit : toute adaptation est ANNONCÉE et expliquée en une phrase
   // (RPE d'hier, douleur, sommeil… — c'est la différence entre un PDF statique et un coach).
   const why = res.adjustment.action !== "keep" && v.drivers.length
@@ -305,8 +309,11 @@ export function heroSessionHTML(plan, todayIso) {
     // par défaut — le même geste que Plan/Semaine (U16), pertinent là où plusieurs séances
     // se lisent d'un coup, mais Aujourd'hui n'en montre QU'UNE (ou deux, brick) : c'est la
     // raison d'être de l'onglet, elle s'ouvre d'office ici. `open` uniquement dans ce héros.
-    body = res.sessions.map((x) => {
-      const w = whyOf(x);
+    // R25.7 — le POURQUOI de la première séance est porté par le héros (`.hero-why`), pas
+    // répété ici : sur un jour à une seule séance, il s'affichait DEUX FOIS à 200 px d'écart.
+    // Les séances suivantes (brick) gardent le leur — le héros n'en montre qu'un.
+    body = res.sessions.map((x, i) => {
+      const w = i === 0 ? "" : whyOf(x);
       return '<div style="display:flex;gap:10px;align-items:flex-start;margin-top:10px">' + discBadgeHTML(x.d)
         + '<div style="flex:1;min-width:0"><b>' + x.name + "</b>"
         + (w ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + w + "</div>" : "")
@@ -335,9 +342,55 @@ export function heroSessionHTML(plan, todayIso) {
   // `badge` porte encore `float:right` (sans effet en contexte flex — laissé tel quel, le
   // retirer n'aurait rien changé au rendu et aurait élargi le diff pour rien).
   const ring = formRingHTML(v, S.answers.readiness && S.answers.readiness.energy);
-  return '<div class="card" style="border-color:var(--acc)">'
-    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'
-    + '<div class="eyebrow" style="margin-bottom:0">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayIso) + "</div>"
-    + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">' + badge + ring + "</div></div>"
-    + why + body + "</div>";
+  // R25.7 — LE HÉROS, ENFIN AU TRAITEMENT DE LA MAQUETTE (`.hero`, ici `.hero-day` : dans
+  // cette app `.hero` est déjà l'en-tête du questionnaire). Le contenu du héros est FIXE —
+  // titre, métrique, pourquoi — ce qui permet enfin la coupe `--cut-hero` posée en token
+  // depuis R25.2b et jamais appliquée : le `<details>` de hauteur variable descend dans sa
+  // propre carte, exactement comme la maquette le fait (`.hero` puis `.card` « LE DÉTAIL »).
+  const vraiesSess = res.sessions.filter((x) => x.d !== "rs");
+  // Les séances que rend `adjustToday` ne portent AUCUN champ de durée (mesuré : name,
+  // det, d, steps — et rien d'autre) : `s.min` y est toujours undefined. Prendre la durée
+  // de la séance PLANIFIÉE serait faux le jour où l'ajusteur a réduit le volume — soit
+  // exactement les jours où l'athlète regarde ce chiffre. On la dérive donc des `steps` de
+  // la séance ajustée, avec `_blkMin` — l'estimateur que le reste de l'app utilise déjà
+  // (R5.6a : récup inter-blocs comprise, écart médian 0,0 min avec la durée annoncée).
+  const dureeDe = (x) => (x.steps || []).reduce((t, st) => t + _blkMin(st), 0);
+  const minutes = Math.round(vraiesSess.reduce((t, x) => t + dureeDe(x), 0));
+  let titre, metrique, sousTitre;
+  if (vraiesSess.length) {
+    titre = vraiesSess[0].name;
+    // Pas de « 0 MIN » : une métrique ne s'affiche que si elle veut dire quelque chose (§10).
+    metrique = minutes > 0
+      ? '<div class="hero-metric"><span class="hero-num">' + minutes + '</span><span class="hero-unit">MIN</span></div>' : "";
+    sousTitre = vraiesSess.map((x) => (DISC[x.d] ? DISC[x.d].ic + " " + DISC[x.d].label : x.name)).join(" · ")
+      + (vraiesSess.length > 1 ? " · " + vraiesSess.slice(1).map((x) => x.name).join(", ") : "");
+  } else {
+    // JOUR DE REPOS : même silhouette, autre couleur (var(--violet), réservé au repos par la
+    // grille de l'audit). Il y a bien un titre à afficher — « REPOS » — et pas de métrique :
+    // « 0 MIN » serait un chiffre qui ne dit rien. La place de la métrique va à ce qui est
+    // réellement utile ce jour-là : quand tombe la prochaine séance.
+    const upcoming = [];
+    plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date > todayIso && d.sessions.some((s) => s.d !== "rs")) upcoming.push(d); }));
+    upcoming.sort((a, b) => a.date.localeCompare(b.date));
+    const nxt = upcoming[0];
+    // U8 — la formulation « Repos aujourd'hui » est une décision du fondateur (le lot qui a
+    // remplacé le « OFF » sec). Le héros la reprend MOT POUR MOT : c'est le libellé établi,
+    // pas une phrase à réécrire au passage d'un lot de design.
+    titre = "Repos aujourd’hui";
+    metrique = "";
+    sousTitre = nxt
+      ? "Prochaine séance : " + nxt.jour + " " + fmtDay(nxt.date) + " · " + nxt.sessions.filter((s) => s.d !== "rs").map((s) => s.name).join(", ")
+      : "Plus de séance à venir sur ce plan.";
+  }
+  const heroWhy = vraiesSess.length && whyOf(vraiesSess[0]) ? '<div class="hero-why">\u{1F4A1} ' + whyOf(vraiesSess[0]) + "</div>" : "";
+  const hero = '<div class="hero-day' + (vraiesSess.length ? "" : " rest") + '">'
+    + '<div class="hero-orb" aria-hidden="true"></div>'
+    + '<div class="hero-top"><div class="eyebrow" style="margin-bottom:0">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayIso) + "</div>"
+    + '<div class="hero-verdict-row">' + badge + ring + "</div></div>"
+    + '<div class="hero-title skew">' + titre + "</div>"
+    + metrique
+    + '<div class="hero-sub">' + sousTitre + "</div>"
+    + heroWhy + why + "</div>";
+  // Le détail reste HORS de la zone coupée — c'est ce qui rend la coupe possible.
+  return hero + (vraiesSess.length ? '<div class="card">' + body + "</div>" : "");
 }

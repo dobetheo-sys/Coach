@@ -43,7 +43,10 @@ await page.evaluate(async (iso) => {
 await page.waitForTimeout(400);
 
 // 1. Aujourd'hui : l'en-tête de la séance du jour porte la date locale réelle
-const heroTxt = await page.locator("#screen .card").first().textContent();
+// R25.7 — la séance du jour n'est plus une `.card` générique : c'est le héros `.hero-day`
+// (dégradé + coupe angulaire, traitement de la maquette). La propriété testée est la même —
+// l'en-tête du jour porte la vraie date locale — elle vit juste dans un autre porteur.
+const heroTxt = await page.locator("#screen .hero-day, #screen .card").first().textContent();
 ok(heroTxt.includes(local.dm), "héros « Aujourd'hui » annoté de la date locale réelle (" + local.dm + ")");
 ok(await page.evaluate(async () => { const { todayISO } = await import("./js/state.js"); return todayISO(); }) === local.iso, "todayISO() de l'app = date locale (jamais UTC)");
 

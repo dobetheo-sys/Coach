@@ -183,7 +183,11 @@ ok(declenche.length === 0, "U1 — un plan créé à l'instant n'annonce aucune 
   await passeCheckin(page);
   await page.waitForTimeout(400);
   const t = await page.evaluate(() => document.body.innerText || "");
-  ok(/Repos aujourd’hui/.test(t), "U8 — le jour de repos se lit « Repos aujourd'hui », pas « OFF »");
+  // R25.7 — insensible à la CASSE, et seulement à elle. Le libellé d'U8 est intact dans le DOM
+  // (`textContent` = « Repos aujourd'hui ») ; c'est le héros qui le rend en capitales, comme
+  // tous les titres display du système Zenna. `innerText` reflète `text-transform`, d'où
+  // l'échec sur une expression sensible à la casse. La PHRASE reste garde ; sa casse, non.
+  ok(/Repos aujourd’hui/i.test(t), "U8 — le jour de repos se lit « Repos aujourd'hui », pas « OFF »");
   ok(/Prochaine séance/.test(t), "U8 — et il annonce la prochaine séance (le message existait, il était mort)");
   await ctx.close();
 }

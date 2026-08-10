@@ -401,6 +401,48 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 .load-sub{font-size:var(--fs-sm);color:var(--text2);line-height:1.5;}
 .gd{min-height:96px;}
 
+/* ===== R25.7 — LE HÉROS DE LA SÉANCE DU JOUR (le `.hero` de la maquette).
+   ATTENTION AU NOM : dans CETTE app, `.hero` est l'en-tête du QUESTIONNAIRE (logo + intro,
+   index.html) — pas du tout le même composant. Le `.hero` de la maquette est la carte
+   « séance du jour » de l'onglet Aujourd'hui. Coller le dégradé orange sur `.hero` aurait
+   posé un bloc orange derrière le logo ZENNA et le texte d'accueil. D'où `.hero-day`.
+
+   La coupe `--cut-hero` était posée en token depuis R25.2b mais JAMAIS appliquée, avec cette
+   réserve écrite : « la carte séance porte un <details> de hauteur VARIABLE, la coupe
+   risquerait de rogner du texte de séance ». La maquette lève l'objection elle-même — elle
+   SÉPARE le héros (contenu fixe : titre, métrique, pourquoi) du détail, qui vit dans une
+   carte à part juste en dessous. On fait pareil : rien de variable n'entre dans la zone
+   coupée. ===== */
+.hero-day{position:relative;overflow:hidden;border-radius:22px;padding:18px 20px 30px;margin-bottom:14px;
+  background:linear-gradient(120deg,var(--acc),var(--orange-2));clip-path:var(--cut-hero);}
+/* Jour de repos : MÊME silhouette (on reconnaît le même objet du premier coup d'œil), autre
+   couleur — `--violet` est le token que la grille de l'audit réserve à « récupération/repos
+   uniquement ». Un dégradé orange dirait « attaque » un jour où il n'y a rien à attaquer. */
+.hero-day.rest{background:linear-gradient(120deg,var(--violet),#B79BFF);}
+/* Sur ces deux fonds vifs, TOUT le texte passe en encre sombre — même convention que
+   `.btn.primary`/`.gate` (R25.1) : c'est la famille « surface vive », pas `var(--ink)` qui
+   suit le thème. Contraste mesuré au rendu, pas déduit (voir le rapport R25.7). */
+.hero-day,.hero-day .eyebrow,.hero-day .load-sub{color:#0a0a0a;}
+/* Opacités RELEVÉES par rapport à la maquette (.7/.72/.75) : mesurées sur le point le plus
+   sombre du dégradé, elles rendaient 4,04 et 4,25 pour un seuil AA de 4,5 sur du petit texte.
+   La maquette ne tient pas cette barre, ce dépôt si — .88 donne 5,08 (orange) / 5,24 (violet). */
+.hero-day .eyebrow{opacity:.88;}
+.hero-orb{position:absolute;top:-40%;right:-20%;width:220px;height:220px;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,255,255,.28),transparent 70%);
+  animation:eb-pulse calc(var(--beat)*20) var(--ease) infinite;}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;position:relative;z-index:2;}
+.hero-verdict-row{display:flex;align-items:center;gap:9px;flex-shrink:0;}
+.hero-title{font-family:var(--font-display);font-size:clamp(26px,8vw,32px);color:#0a0a0a;margin-top:8px;line-height:1;position:relative;z-index:2;text-transform:uppercase;}
+.hero-metric{display:flex;align-items:baseline;gap:6px;margin-top:8px;position:relative;z-index:2;}
+.hero-num{font-family:var(--font-display);font-size:clamp(40px,13vw,50px);color:#0a0a0a;line-height:1;font-variant-numeric:tabular-nums;}
+.hero-unit{font-family:var(--font-display);font-size:var(--fs-lg);color:rgba(10,10,10,.85);}
+.hero-sub{font-family:var(--font-mono);font-size:var(--fs-xs);color:rgba(10,10,10,.88);margin-top:4px;position:relative;z-index:2;letter-spacing:.03em;}
+.hero-why{font-size:var(--fs-sm);color:rgba(10,10,10,.88);margin-top:9px;position:relative;z-index:2;line-height:1.45;font-weight:500;}
+/* L'anneau « forme du jour » vit ici sur fond vif : son rail et son libellé passent en sombre
+   (ils sont posés en `var(--border)`/`var(--ink)`, calibrés pour une surface sombre). */
+.hero-day .form-ring-bg{stroke:rgba(10,10,10,.22);}
+.hero-day .form-ring>div{color:#0a0a0a !important;}
+
 /* ===== R25.5 — 📅 SEMAINE : LISTE COMPACTE PAR JOUR (retour du fondateur).
    La grille en cartes pleine largeur teintées (.gw-grid/.gd) reste le rendu de 🗓 PLAN, qui
    peut afficher N semaines ; 📅 Semaine n'en montre QU'UNE et se lit au pouce — la maquette
@@ -1004,6 +1046,7 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
   /* R25.6 — chaque effet ajouté est nommé ici, jamais couvert par un neutralisant générique
      (règle non négociable §4 de l'audit) : les barres qui poussent gardent leur valeur
      finale (`transform:none` sur un scaleX(0) initial = échelle 1), le halo disparaît. */
+  .hero-orb{display:none!important;}
   .sticky-cta,.today-dot,.ph-seg.now,.dring .dr-ring-fg,
   #screen[data-tab] .prog-fill,#screen[data-tab] .vol-bars .vb{animation:none!important;transition:none!important;transform:none!important;}
   .count-hero::after{display:none!important;}

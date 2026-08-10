@@ -159,6 +159,23 @@ function ravitoReplie(day, tempC) {
         .replace("</div>", "</summary>").replace(/<\/div>$/, "</details>")
     : "";
 }
+/**
+ * R25.7 — POURQUOI IL N'Y A RIEN À RAVITAILLER, PLUTÔT QU'UNE BOÎTE QUI SCINTILLE.
+ *
+ * Le motif est nommé, pas générique : renvoyer « renseigne ton poids » quand la vraie raison
+ * est un jour de repos, c'est envoyer l'athlète corriger une donnée qui n'est pas en cause —
+ * le défaut exact qu'O-16 a fermé sur la carte 🔥 (`energyRefusalNotice`). Mesuré sur l'état
+ * signalé : le ravito était vide parce que la journée est un REPOS, pas faute de poids (0
+ * conseil rendu avec 72 kg comme sans). Le poids, lui, ne bloque que l'ESTIMATION
+ * ÉNERGÉTIQUE — et cette carte-là porte déjà son propre motif depuis O-16.
+ */
+function ravitoVideHTML(day) {
+  const repos = !day || !day.sessions.length || day.sessions.every((s) => s.d === "rs");
+  return '<div class="load-sub">' + (repos
+    ? "Jour de repos — rien à prévoir pendant l’effort. L’assiette du jour reste celle d’une journée normale."
+    : "Rien à prévoir pendant l’effort aujourd’hui : la séance est trop courte pour demander un apport.")
+    + "</div>";
+}
 function nutritionReduiteHTML(plan, today) {
   const day = jourDuPlan(plan, today);
   const rav = ravitoReplie(day, null);
@@ -166,7 +183,13 @@ function nutritionReduiteHTML(plan, today) {
   if (!rav && !energie) return "";
   // R25.3 — `loading` : le contenu affiché ici n'a pas encore la météo (tempC=null ci-dessus),
   // il va se raffiner dès que fetchWeather répond (revealWeather, plus bas). Shimmer CSS pur.
-  return '<div class="card"><div class="eyebrow">🥗 Nutrition du jour</div><div id="nutRedu" class="loading">' + rav + "</div>" + energie + "</div>";
+  //
+  // R25.7 — LE SHIMMER NE SE POSE QUE S'IL Y A QUELQUE CHOSE À RAFFINER. Sans ravito, il
+  // n'annonçait aucune arrivée : c'était une boîte grise vide qui scintillait pour rien (et
+  // `.loading` met `color:transparent`, donc même un contenu présent restait INVISIBLE tant
+  // que la météo n'était pas là). L'état vide s'affiche tout de suite, en clair.
+  const corps = rav ? '<div id="nutRedu" class="loading">' + rav + "</div>" : '<div id="nutRedu">' + ravitoVideHTML(day) + "</div>";
+  return '<div class="card"><div class="eyebrow">🥗 Nutrition du jour</div>' + corps + energie + "</div>";
 }
 
 export function renderTabToday(plan) {
@@ -249,9 +272,20 @@ export function renderTabToday(plan) {
   {
     const zone = $("nutRedu");
     const day = jourDuPlan(plan, today);
+    // R25.7 — LE SHIMMER SE TERMINE TOUJOURS, MÊME QUAND LA MÉTÉO N'ARRIVE PAS.
+    // `if (!wx) return;` laissait `.loading` posé À VIE — donc, avec `color:transparent`,
+    // le ravito RESTAIT INVISIBLE dès que la géolocalisation était refusée, hors ligne ou
+    // en timeout (mesuré : encore en shimmer à 5 s, pour un timeout de 3,5 s). Un état
+    // d'attente doit avoir une sortie sur CHAQUE branche, y compris celle de l'échec :
+    // sans météo on affiche simplement le contenu non affiné, qui est déjà juste.
     if (zone && day) fetchWeather().then((wx) => {
-      if (!wx || wx.tmaxC == null) return;
-      revealWeather($("nutRedu"), ravitoReplie(day, wx.tmaxC));
+      const el = $("nutRedu");
+      if (!el || !el.classList.contains("loading")) return; // l'onglet a été re-rendu entre-temps
+      const chaud = wx && wx.tmaxC != null;
+      revealWeather(el, ravitoReplie(day, chaud ? wx.tmaxC : null) || ravitoVideHTML(day));
+    }).catch(() => {
+      const el = $("nutRedu");
+      if (el) revealWeather(el, ravitoReplie(day, null) || ravitoVideHTML(day));
     });
   }
   scheduleDailyNotification(plan);

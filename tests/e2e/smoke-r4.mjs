@@ -154,7 +154,10 @@ await page.waitForTimeout(600);
 // repos est là (U8), et le critère de la séance ne s'applique pas.
 const heroWhy = await page.evaluate(() => {
   const c = document.querySelector("#screen");
-  return { visibleWhy: !!c.querySelector(".gd-why"), hidden: !!c.querySelector("details.gd-sess"),
+  // R25.7 — le POURQUOI de la séance du jour est passé dans le héros (`.hero-why`, traitement
+  // de la maquette) et n'est plus répété dans la carte de détail pour la première séance. La
+  // propriété testée ne change pas — « visible SANS rien ouvrir » — seul son porteur change.
+  return { visibleWhy: !!c.querySelector(".hero-why, .gd-why"), hidden: !!c.querySelector("details.gd-sess"),
     repos: /Repos aujourd/i.test(c.innerText || "") };
 });
 ok(heroWhy.visibleWhy || heroWhy.repos, "dans Aujourd'hui, le « pourquoi » de la séance est visible SANS rien ouvrir (§5)"
