@@ -58,7 +58,7 @@ const SLIDES = [
     // diapo VFC, qui devient optionnelle. La laisser là l'aurait fait disparaître pour tous
     // ceux qui ne suivent pas leur VFC — un signal OBJECTIF perdu au passage d'un lot qui
     // ne le visait pas. Sa place est de toute façon ici : c'est la même mesure du réveil.
-    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:#635b4a">'
+    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:var(--muted)">'
       + '<span>FC au réveil (optionnel)</span><input type="number" id="ckHr" inputmode="numeric" min="30" max="120" value="' + (d.restingHr || "") + '" placeholder="ex. 52" style="width:88px">'
       + "<span>bpm</span></label>",
   },
@@ -74,7 +74,7 @@ const SLIDES = [
       { val: "skip", ico: "🤷", label: "Pas de mesure aujourd'hui", react: "Pas grave, on fait sans." },
     ],
     set: () => { /* la valeur est lue dans `extraHTML` ci-dessous, comme la FC au réveil */ },
-    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:#635b4a">'
+    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:var(--muted)">'
       + '<span>VFC (rMSSD)</span><input type="number" id="ckHrv" inputmode="numeric" min="5" max="250" value="' + (d.hrvValue || "") + '" placeholder="ex. 62" style="width:88px">'
       + "<span>ms</span></label>"
       + '<div class="q-sub" style="margin-top:4px">Comparée à TA base des 7 derniers matins. Sous 7 mesures, elle est notée sans rien piloter — et on te le dit.</div>',
@@ -94,7 +94,7 @@ const SLIDES = [
 
 function dotsHTML(step) {
   return '<div style="display:flex;gap:6px;justify-content:center;margin-top:14px">'
-    + slidesActives().map((_, i) => '<span style="width:8px;height:8px;border-radius:50%;border:1.5px solid var(--ink);background:' + (i < step ? "var(--ink)" : i === step ? "#f0b429" : "transparent") + '"></span>').join("")
+    + slidesActives().map((_, i) => '<span style="width:8px;height:8px;border-radius:50%;border:1.5px solid var(--border);background:' + (i < step ? "var(--muted)" : i === step ? "var(--acc)" : "transparent") + '"></span>').join("")
     + "</div>";
 }
 
@@ -109,7 +109,7 @@ export function checkinSlideshowHTML() {
   // 3,2 s devant « ta séance arrive… ».
   primeWeather();
   let h = '<div class="card" id="ckSlide"><div class="eyebrow">' + pointLabel() + ' · ' + (ck.step + 1) + "/" + slidesActives().length + "</div>";
-  h += '<h2 style="font-size:var(--fs-hand);line-height:1.4">' + esc(slide.coach(ck)) + "</h2>";
+  h += '<h2 style="font-family:var(--font-body);font-size:var(--fs-lg);font-weight:600;text-transform:none;letter-spacing:0;line-height:1.5">' + esc(slide.coach(ck)) + "</h2>";
   h += '<div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">';
   slide.options.forEach((o) => {
     h += '<button type="button" class="btn ck-opt" data-ck-opt="' + o.val + '" style="display:flex;align-items:center;gap:12px;justify-content:flex-start;font-size:var(--fs-lg);padding:14px 16px;width:100%"><span style="font-size:var(--fs-xl)">' + o.ico + "</span>" + o.label + "</button>";
@@ -151,7 +151,7 @@ export function bindCheckinSlideshow(rerender, onDone) {
       if (ck.step < slidesActives().length) { rerender(); return; }
       // Fin du diaporama → verdict (la météo peut prendre ~3.5 s : écran d'attente coach)
       const sc = $("ckSlide");
-      if (sc) sc.innerHTML = '<div class="eyebrow">' + pointLabel() + '</div><h2 style="font-size:var(--fs-hand)">C’est noté 👍</h2><div class="load-sub" style="margin-top:8px">Je regarde ta forme, ta fatigue des derniers jours et la météo — ta séance arrive…</div>';
+      if (sc) sc.innerHTML = '<div class="eyebrow">' + pointLabel() + '</div><h2 style="font-family:var(--font-body);font-size:var(--fs-lg);font-weight:600;text-transform:none;letter-spacing:0">C’est noté 👍</h2><div class="load-sub" style="margin-top:8px">Je regarde ta forme, ta fatigue des derniers jours et la météo — ta séance arrive…</div>';
       const out = await applyReadinessSnap(ck);
       S._ck = null;
       onDone(out);

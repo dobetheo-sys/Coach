@@ -48,7 +48,7 @@ function exportICS(){try{
 // peut-être l'esthétique »*. Trois choses, et la première n'était pas dans la demande.
 //
 // (1) LE CANVAS DESSINAIT SANS JAMAIS ATTENDRE LES POLICES. `fillText` utilise ce qui est chargé
-// À CET INSTANT ; si « Archivo Black » et « Space Grotesk » ne le sont pas encore, le navigateur
+// À CET INSTANT ; si « Bebas Neue » et « Space Grotesk » ne le sont pas encore, le navigateur
 // retombe sur sa police système, dont les métriques sont différentes. `document.fonts.ready` est
 // désormais attendu, avec un délai de garde — une police qui ne vient pas ne doit pas empêcher
 // de partager.
@@ -96,7 +96,7 @@ async function exportPNG(){try{
   const W=1080,H=1350,c=document.createElement("canvas");c.width=W;c.height=H;
   const x=c.getContext("2d");
   // FOND TRANSPARENT : aucun `fillRect` de fond. Le PNG conserve l'alpha.
-  _ebTxt(x,"ENDURABUILD",60,140,{size:92,weight:900,family:"Archivo Black"});
+  _ebTxt(x,"ENDURABUILD",60,140,{size:92,weight:900,family:"Bebas Neue"});
   _ebTxt(x,(SPORTS[S.sport]?SPORTS[S.sport].nom:S.sport)+" · "+(a.format||""),60,220,{size:44,weight:700,color:"#ff5c68"});
   _ebTxt(x,plan.totalWeeks+" semaines · "+plan.volBase+"h → "+plan.volPeak+"h",60,290,{size:36});
   let y=360;
@@ -148,7 +148,7 @@ async function storyBlob(o,format){
   // FOND TRANSPARENT : aucun fillRect plein cadre. Les deux barres d'accent restent (saturées,
   // lisibles sur clair comme sur sombre) — ce sont elles qui « tiennent » la composition.
   x.fillStyle=acc;x.fillRect(0,0,W,18);x.fillRect(0,H-18,W,18);
-  _ebTxt(x,o.title||"SÉANCE FAITE ✔",70,sq?140:190,{size:sq?66:88,weight:900,family:"Archivo Black",max:W-140});
+  _ebTxt(x,o.title||"SÉANCE FAITE ✔",70,sq?140:190,{size:sq?66:88,weight:900,family:"Bebas Neue",max:W-140});
   _ebTxt(x,(SPORTS[o.sport]?SPORTS[o.sport].ico+" "+SPORTS[o.sport].nom:o.sport||""),70,sq?210:290,{size:sq?42:52,weight:700,color:acc,max:W-140});
   // avatar au centre (SVG → Image via blob URL, même origine), sur sa plaque claire
   if(o.avatarSVG){

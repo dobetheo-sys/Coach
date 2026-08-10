@@ -43,7 +43,7 @@ export function energyCardHTML(day, open) {
     // suspecte ; affiché, il explique au passage ce qu'est un MET.
     + (e.restOverlap > 0 ? '<br><span style="color:var(--muted)">− ' + e.restOverlap + " kcal : le repos de ces heures-là est déjà compté dans ta journée (un MET, c'est le repos)</span>" : "")
     + "<br><b>Total :</b> ~" + f(e.total) + " kcal"
-    + (e.approximate ? '<br><span style="color:#8a6d00">Fourchette large : complète taille/âge au 📋 Profil pour l’affiner.</span>' : "")
+    + (e.approximate ? '<br><span style="color:var(--gold)">Fourchette large : complète taille/âge au 📋 Profil pour l’affiner.</span>' : "")
     + "</div>"
     // R16.6 — une ligne par macro plutôt qu'un paragraphe de six lignes enchaînées.
     + '<div style="font-size:var(--fs-sm);margin-top:8px;color:var(--text2)">'

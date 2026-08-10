@@ -138,6 +138,12 @@ await finDuDiaporama();
 ok(await page.locator("#ckSlide").count() === 0, "le diaporama disparaît après la dernière réponse");
 const screenTxt = await page.locator("#screen").textContent();
 ok(/Aujourd’hui/.test(screenTxt), "carte « Aujourd'hui » (séance du jour) affichée en premier");
+// Audit R25.2 (§7) — CONTENU RÉEL des libellés dynamiques, pas seulement « zéro erreur JS » :
+// un `undefined`/`[object Object]` concaténé dans le badge de verdict est déjà arrivé une fois
+// (lookup de dictionnaire raté) et ne lève aucune exception — seul le texte rendu le montre.
+ok(!/undefined|\[object/.test(screenTxt), "aucun libellé dynamique cassé (undefined/[object) sur l'écran du jour");
+ok(/séance maintenue|volume réduit|endurance à la place|repos conseillé|repos complet|Repos aujourd’hui/.test(screenTxt),
+  "le verdict du jour porte un libellé de la table _verdictLbl (contenu réel, pas un code)");
 ok(/Prédiction de course|prédiction/i.test(screenTxt) || true, "prédiction présente sous la séance");
 ok(/Charge estimée/.test(screenTxt), "courbe charge/fatigue/forme présente");
 // R23.7 / R23.9 — L'AVANCEMENT ET LES INTENSITÉS ONT DÉMÉNAGÉ DANS 🗓 PLAN (décision du

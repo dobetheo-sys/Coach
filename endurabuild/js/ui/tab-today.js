@@ -219,7 +219,7 @@ export function renderTabToday(plan) {
   html += '<div class="card"><div class="eyebrow">Ta préparation</div>';
   html += raceResultCardHTML(plan);
   html += '<div class="load-card"><div class="load-title">Charge estimée — fitness · fatigue · forme</div>' + loadChartSVG(plan)
-    + '<div class="load-leg"><span style="color:var(--swim)">▬ Fitness (CTL)</span> · <span style="color:#ff7a1a">▬ Fatigue (ATL)</span> · <span style="color:#00a376">▬ Forme (TSB)</span></div>'
+    + '<div class="load-leg"><span style="color:var(--swim)">▬ Fitness (CTL)</span> · <span style="color:var(--orange-2)">▬ Fatigue (ATL)</span> · <span style="color:var(--z2)">▬ Forme (TSB)</span></div>'
     + '<div class="load-sub">Estimée depuis la durée et l’intensité de chaque séance. La forme remonte à l’affûtage — c’est le but. Séances cochées : <b>' + _doneN + " / " + _totalS + "</b>" + (_totalS ? " (" + Math.round((_doneN / _totalS) * 100) + "%)" : "") + ".</div></div>";
   html += historyCardHTML(plan);
   html += "</div>";

@@ -132,7 +132,7 @@ function showReveal(plan, type, val, prevVal, todayISO, rerenderWeek) {
     const improved = T.better(val, prevVal);
     const d = type === "ftp" ? Math.abs(val - prevVal) + " W" : Math.abs(Math.round(val - prevVal)) + " s";
     if (improved) {
-      deltaHTML = '<div style="text-align:center;margin-top:8px;font-weight:700;color:#00734f">' + T.fmt(prevVal) + " → " + T.fmt(val) + " (" + d + " de mieux)</div>"
+      deltaHTML = '<div style="text-align:center;margin-top:8px;font-weight:700;color:var(--cyan)">' + T.fmt(prevVal) + " → " + T.fmt(val) + " (" + d + " de mieux)</div>"
         + '<div class="load-sub" style="text-align:center;margin-top:4px">Tes zones et toutes les allures du plan viennent d’être recalées sur cette nouvelle référence.</div>';
       deltaTxt = T.fmt(prevVal) + " → " + T.fmt(val);
     } else {

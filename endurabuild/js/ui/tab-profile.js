@@ -314,7 +314,7 @@ function avatarSectionHTML(plan, todayISO) {
     const next = d.level < 30 ? avatarTriUnlock(k, d.level + 1) : null;
     return '<div style="display:flex;align-items:center;gap:8px;margin-top:5px;font-size:var(--fs-sm)">'
       + '<span style="width:20px">' + ico + '</span><span style="width:70px">' + nom + '</span><b style="width:56px">niv ' + d.level + "/30</b>"
-      + '<div style="flex:1;background:var(--bg2);border:1px solid var(--ink);border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + d.progressPct + '%;background:#00a376"></div></div></div>'
+      + '<div style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;width:' + d.progressPct + '%;background:var(--z2)"></div></div></div>'
       + (next ? '<div style="font-size:var(--fs-xs);color:var(--muted);margin-left:28px">prochain : <b>' + next.libelle + "</b> (encore " + (d.xpToNext - d.xpInLevel) + " XP)</div>" : "");
   };
   // Audit 07/08/2026 : le tout premier avatar (les 3 jauges à 0) est une silhouette nue sans
@@ -363,7 +363,7 @@ function avatarSectionHTML(plan, todayISO) {
 }
 function badgesGalleryHTML(badges) {
   if (!badges.length) return "";
-  const chips = badges.map((b) => '<span title="' + b.why.replace(/"/g, "&quot;") + '" style="border:1.5px solid var(--ink);border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:var(--bg3)">' + b.icon + " " + b.label + "</span>").join(" ");
+  const chips = badges.map((b) => '<span title="' + b.why.replace(/"/g, "&quot;") + '" style="border:1px solid var(--border);border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:var(--bg3)">' + b.icon + " " + b.label + "</span>").join(" ");
   return '<div class="load-card"><div class="load-title">🏅 Badges gagnés (' + badges.length + ')</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' + chips + "</div></div>";
 }
 // R4.8 — efficience : uniquement les progrès à charge égale (imports FIT), jamais le volume.
@@ -717,7 +717,7 @@ function measuredCardHTML() {
     ? globalThis.EBV2.arbitrateVolRecent(a.vol_recent, snap) : null;
   const h = measuredHours(snap);
   const applied = !!a.measured;
-  let out = '<div style="margin-top:12px;padding:10px;border:1px solid var(--ink);border-radius:8px;background:var(--bg2)">'
+  let out = '<div style="margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">'
     + '<div style="font-weight:700;font-size:var(--fs-sm)">\u{1F4E5} Ce que tu as réellement fait</div>'
     + '<div class="load-sub" style="margin-top:4px">Sur tes <b>' + snap.window_days + ' derniers jours</b> : '
     + '<b>' + Math.round(snap.vol_min / 60) + 'h</b> en <b>' + snap.sessions + '</b> séance' + (snap.sessions > 1 ? 's' : '')
@@ -869,7 +869,7 @@ export function renderTabProfile(plan) {
   html += '<details class="load-card"><summary class="load-title" style="cursor:pointer">📒 Journal d’évolution et imports</summary>';
   if (tests.length) {
     tests.forEach((t) => {
-      html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:var(--fs-sm);align-items:baseline"><span style="width:78px;color:#635b4a">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:var(--muted)">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
+      html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:var(--fs-sm);align-items:baseline"><span style="width:78px;color:var(--muted)">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:var(--muted)">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
     });
   } else {
     html += '<div class="load-sub">Encore vide — il se remplira à chaque test (FTP, allure, CSS), import Strava/FIT, ou modification de profil ci-dessus.</div>';
@@ -1046,8 +1046,8 @@ export function renderTabProfile(plan) {
     ebSave();
     if (nRef) { invalidatePlan(); renderTabProfile(ensurePlan()); } // référence(s) mise(s) à jour → régénération (une fois)
     msg((nS || nT ? "✓ " + nS + " séance" + (nS > 1 ? "s" : "") + " importée" + (nS > 1 ? "s" : "") + " (nourrit la fatigue de « Forme du jour »)" + (nA ? " · " + nA + " séance" + (nA > 1 ? "s" : "") + " du plan validée" + (nA > 1 ? "s" : "") + " automatiquement ✓" : "") + (nT ? " · " + nT + " référence" + (nT > 1 ? "s" : "") + " ajoutée" + (nT > 1 ? "s" : "") + " au journal" : "") + (nRef ? " · plan régénéré avec la référence la plus récente" : "") + "." : "Aucune donnée exploitable.")
-      + (notes.length ? '<br><span style="color:#8a6d00">⚠ ' + notes.map(esc).join(" ") + "</span>" : "")
-      + (errs.length ? '<br><span style="color:#c0392b">' + errs.join("<br>") + "</span>" : ""));
+      + (notes.length ? '<br><span style="color:var(--gold)">⚠ ' + notes.map(esc).join(" ") + "</span>" : "")
+      + (errs.length ? '<br><span style="color:var(--z5)">' + errs.join("<br>") + "</span>" : ""));
   };
   // — Import Strava : même post-traitement (pont vers les références vivantes) que le
   // token vienne de l'OAuth (relais) ou du champ manuel.
@@ -1064,7 +1064,7 @@ export function renderTabProfile(plan) {
     if (nRef) invalidatePlan(); // référence(s) à jour → régénération (une fois)
     renderTabProfile(ensurePlan());
     const m = $("pfStravaMsg");
-    if (m) m.innerHTML = statusHTML + (nRef ? '<br><span style="color:#00734f">✓ plan régénéré avec la référence la plus récente.</span>' : "");
+    if (m) m.innerHTML = statusHTML + (nRef ? '<br><span style="color:var(--cyan)">✓ plan régénéré avec la référence la plus récente.</span>' : "");
   };
   const stravaConnBtn = $("pfStravaConnect");
   if (stravaConnBtn) stravaConnBtn.onclick = () => {

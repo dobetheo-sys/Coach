@@ -43,7 +43,7 @@ function loadChartSVG(plan){
   const line=(sel,col,w)=>"<polyline fill=\"none\" stroke=\""+col+"\" stroke-width=\""+w+"\" points=\""+S2.map((o,i)=>x(i).toFixed(1)+","+sel(o).toFixed(1)).join(" ")+"\"/>";
   let g="<svg viewBox=\"0 0 "+W+" "+H+"\" width=\""+W+"\" height=\""+H+"\" style=\"display:block\" role=\"img\" aria-label=\"Courbe de charge CTL ATL TSB\">";
   g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"#fff2\" stroke-dasharray=\"3 3\"/>";
-  g+=line(o=>yB(o.tsb),"#00a376",2)+line(o=>yL(o.ctl),"#3B9EFF",2.5)+line(o=>yL(o.atl),"#ff7a1a",1.8);
+  g+=line(o=>yB(o.tsb),"#1FB8A6",2)+line(o=>yL(o.ctl),"#3B9EFF",2.5)+line(o=>yL(o.atl),"#FF7A3D",1.8);
   g+="<text x=\"2\" y=\""+(PT+8)+"\" font-size=\"9\" fill=\"#9AA0A8\">charge</text>";
   // R24.6 (retour fondateur, 06/08) — « montre visuellement là où on en est » : un trait
   // vertical à la semaine COURANTE, ancré sur les dates réelles du plan (R7), avec un point
@@ -91,14 +91,14 @@ function driverBand(a){
   if(a.dispo==="quotidienne"&&a.shift_ok==="oui"&&nOff<2)C("🔄","Cycles 10j","#9b72ff");
   else C("📅","Semaine 7j","#9b72ff");
   // données / zones
-  if(sp==="bike"||sp==="tri"){ if(a.ftp_known==="oui")C("⚡","FTP "+a.ftp+"W","#f0b429"); else C("❤️","Zones FC","#f0b429"); }
-  if(sp==="run"||sp==="tri"){ if(a.pace_known==="oui")C("⏱","Seuil "+a.pace,"#00a376"); else C("❤️","Zones FC","#00a376"); }
+  if(sp==="bike"||sp==="tri"){ if(a.ftp_known==="oui")C("⚡","FTP "+a.ftp+"W","var(--gold)"); else C("❤️","Zones FC","var(--gold)"); }
+  if(sp==="run"||sp==="tri"){ if(a.pace_known==="oui")C("⏱","Seuil "+a.pace,"var(--z2)"); else C("❤️","Zones FC","var(--z2)"); }
   if(sp==="swim"){ if(a.css_known==="oui")C("⏱","CSS "+a.css,"#00b8d9"); else C("🌊","Technique","#00b8d9"); }
   // blessure
   const inj=(a.injury||"").split(",").filter(x=>x&&x!=="aucune");
   if(inj.length)C("🩹",inj.length>1?"Prudence blessures":"Adapté blessure","#e63946");
   // santé / garde-fou
-  if(a.hrv==="oui")C("📈","Garde-fou HRV","#00a376");
+  if(a.hrv==="oui")C("📈","Garde-fou HRV","var(--z2)");
   if(a.history==="reprise")C("🌱","Reprise — progressif","#00b8d9");
   // renfo (toujours)
   if(sp==="run")C("💪","Renfo + plio graduée","#9b72ff");
@@ -193,12 +193,12 @@ function progressBarCardHTML(plan){
       +(pg.streakWeeks>0?'<b>'+pg.streakWeeks+' semaine'+(pg.streakWeeks>1?'s':'')+' de r\u00e9gularit\u00e9 d\u2019affil\u00e9e</b> (\u226580% des s\u00e9ances faites) \u2014 la r\u00e9gularit\u00e9 est ta priorit\u00e9 n\u00b03, continue !'
         :'Coche tes s\u00e9ances (\u25cb \u2192 \u2713) : la r\u00e9gularit\u00e9 se construit semaine apr\u00e8s semaine, une s\u00e9ance loup\u00e9e est pardonn\u00e9e.')
       +'</div>'
-      +'<div style="background:var(--bg2);border:1.5px solid var(--ink);border-radius:6px;height:14px;overflow:hidden"><div style="height:100%;width:'+pg.pctLoad+'%;background:#00a376"></div></div>'
+      +'<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;height:14px;overflow:hidden"><div style="height:100%;width:'+pg.pctLoad+'%;background:var(--z2)"></div></div>'
       +'<div class="load-sub" style="margin-top:4px">Semaine '+pg.weekNow+'/'+pg.totalWeeks+' \u00b7 <b>'+pg.pctLoad+'%</b> de la charge du plan accomplie ('+(Math.round(pg.doneMin/6)/10)+'h / '+(Math.round(pg.totalMin/6)/10)+'h)</div>';
     if(globalThis.EBV2.badges){
       const bd=globalThis.EBV2.badges(plan,S.answers,todayISO());
       if(bd.length){h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">';
-        bd.forEach(b=>{h+='<span title="'+b.why.replace(/"/g,"&quot;")+'" style="border:1.5px solid var(--ink);border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:var(--bg3)">'+b.icon+' '+b.label+'</span>';});
+        bd.forEach(b=>{h+='<span title="'+b.why.replace(/"/g,"&quot;")+'" style="border:1px solid var(--border);border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:var(--bg3)">'+b.icon+' '+b.label+'</span>';});
         h+='</div>';}
     }
     h+='</div>';
@@ -258,7 +258,7 @@ function predictionCardHTML(plan){
               +'<span style="color:var(--muted)">'+wl.why+'</span></div>';
           }
         }
-        pr.advice.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0;color:#8a6d00">\u26a0 '+x+'</div>';});
+        pr.advice.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0;color:var(--gold)">\u26a0 '+x+'</div>';});
         // Le MOTIF d'un refus de projeter vaut autant que la projection : \u00ab trop t\u00f4t pour
         // projeter \u00bb est une information, le silence n'en est pas une.
         if(pj&&!pj.applicable){
@@ -284,7 +284,7 @@ function historyCardHTML(plan){
         h+='<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:var(--fs-sm)">'
           +'<span style="width:34px"><b>S'+w.num+'</b></span>'
           +'<span style="width:20px">'+(w.ok?"\u2705":"\u25cb")+'</span>'
-          +'<div style="flex:1;background:var(--bg2);border:1px solid var(--ink);border-radius:4px;height:10px;overflow:hidden"><div style="height:100%;width:'+pc+'%;background:'+(w.ok?"#00a376":"#f0b429")+'"></div></div>'
+          +'<div style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:4px;height:10px;overflow:hidden"><div style="height:100%;width:'+pc+'%;background:'+(w.ok?"var(--z2)":"var(--gold)")+'"></div></div>'
           +'<span style="width:130px;text-align:right">'+w.done+'/'+w.total+' s\u00e9ances \u00b7 '+(Math.round(w.minDone/6)/10)+'/'+(Math.round(w.minTotal/6)/10)+'h</span></div>';
       });
       h+='<div class="load-sub" style="margin-top:4px">\u2705 = semaine r\u00e9guli\u00e8re (\u226580% des s\u00e9ances). Le r\u00e9el nourrit l\u2019ajusteur du matin \u2014 pas de rattrapage, jamais.</div></div>';
@@ -303,8 +303,8 @@ function intensityCardHTML(plan){
     it.weekly.forEach(w=>{const t=w.e+w.m+w.h,H=Math.max(4,Math.round(t/mx*52));
       const eh=Math.round(H*w.e/Math.max(1,t)),mh=Math.round(H*w.m/Math.max(1,t)),hh=Math.max(0,H-eh-mh);
       h+='<div title="S'+w.num+' \u00b7 facile '+w.e+'min \u00b7 mod\u00e9r\u00e9 '+w.m+'min \u00b7 dur '+w.h+'min" style="flex:1;display:flex;flex-direction:column-reverse;height:'+H+'px">'
-        +'<div style="height:'+eh+'px;background:#00a376"></div><div style="height:'+mh+'px;background:#f0b429"></div><div style="height:'+hh+'px;background:var(--z4)"></div></div>';});
-    h+='</div><div class="load-sub"><span style="color:#00a376">\u25ac facile</span> \u00b7 <span style="color:#f0b429">\u25ac mod\u00e9r\u00e9</span> \u00b7 <span style="color:var(--z4)">\u25ac dur</span> \u2014 objectif manifeste : \u226570% de temps facile en semaines de charge (mesur\u00e9 : '+it.easyPct+'%).</div></div>';
+        +'<div style="height:'+eh+'px;background:var(--z2)"></div><div style="height:'+mh+'px;background:var(--gold)"></div><div style="height:'+hh+'px;background:var(--z4)"></div></div>';});
+    h+='</div><div class="load-sub"><span style="color:var(--z2)">\u25ac facile</span> \u00b7 <span style="color:var(--gold)">\u25ac mod\u00e9r\u00e9</span> \u00b7 <span style="color:var(--z4)">\u25ac dur</span> \u2014 objectif manifeste : \u226570% de temps facile en semaines de charge (mesur\u00e9 : '+it.easyPct+'%).</div></div>';
   }
   return h;
 }

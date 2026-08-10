@@ -52,7 +52,7 @@ summary, .ph-seg, .tabbtn, [role="button"] { touch-action: manipulation; }
 
 /* --- Accessibilité clavier/lecteur --- */
 :focus-visible {
-  outline: 3px solid #2e6bff;
+  outline: 3px solid var(--acc);
   outline-offset: 2px;
 }
 
@@ -95,7 +95,7 @@ body {
   z-index: 60;
   display: flex;
   background: var(--bg);
-  border-top: 2px solid var(--ink);
+  border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom);
 }
 .tabbtn {
@@ -119,7 +119,8 @@ body {
    `.tabbtn`/`.tabbtn.active` qui pilotait l'emoji pilote maintenant le tracé. */
 .tabbtn .tabico svg { width: 20px; height: 20px; display: block; }
 .tabbtn.tab-central .tabico svg { width: 22px; height: 22px; }
-.tabbtn.active { color: var(--ink); font-weight: 700; box-shadow: inset 0 3px 0 var(--ink); }
+/* R25.2 — actif = couleur orange-tint (maquette .nav-item.active), plus de barre inset. */
+.tabbtn.active { color: var(--orange-tint); font-weight: 700; }
 /* Le contenu ne doit jamais finir caché sous la barre */
 body.has-tabs { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 /* Dans la vue à onglets, la barre d'onglets prend le bas : la .nav redevient statique,
@@ -129,13 +130,14 @@ body.has-tabs .hero, body.has-tabs .progress { display: none; }
 
 /* --- 🧰 Outils : sous-onglets internes (nutrition, et ce qui viendra ensuite) --- */
 .subtabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-.subtab.active { background: var(--acc); color: #fff; }
+.subtab.active { background: var(--acc); color: #0a0a0a; }
 
-/* --- Onglet Semaine : la case du jour saute aux yeux (style papier/collage) --- */
+/* --- Onglet Semaine : la case du jour saute aux yeux. R25.2 : « aujourd'hui » est un signal
+   de MARQUE (orange), pas un danger — halo doux (motif .ph-seg.now), plus d'ombre décalée. --- */
 .gd.today {
-  outline: 3px solid var(--z5);
+  outline: 2px solid var(--acc);
   outline-offset: 1px;
-  box-shadow: 3.5px 3.5px 0 var(--z5);
+  box-shadow: 0 0 0 4px var(--orange-glow);
 }
 /* R25.1 — mesuré : `var(--z5)` (rouge alerte) passe l'AA sur `--bg3` isolé (4.52:1) mais pas
    composité sur les fonds teintés translucides des cellules `.gd.dur/.facile/.recup` où ce
@@ -187,9 +189,9 @@ body.has-tabs .hero, body.has-tabs .progress { display: none; }
 }
 .doneBtn:active { transform: scale(.85); }
 .doneBtn.done {
-  background: #00a376;
-  color: #fff;
-  border-color: #00734f;
+  background: rgba(0,224,198,.14);
+  color: var(--cyan);
+  border-color: var(--cyan);
   animation: ck-pop .25s ease;
 }
 @keyframes ck-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }

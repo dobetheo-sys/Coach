@@ -69,7 +69,7 @@ function nextSessionTeaser(plan, todayISO) {
   const when = nxt.date === tomorrow ? "Demain" : nxt.jour;
   const s = nxt.sessions.find((x) => x.d !== "rs");
   const obj = s.det ? String(s.det).split("—")[0].split("·")[0].trim().slice(0, 50) : "";
-  return '<div style="margin-top:12px;padding-top:10px;border-top:2px dashed #0003;font-size:var(--fs-md)"><b>' + when + " : " + s.name + "</b>" + (obj ? '<br><span style="color:#635b4a">Objectif : ' + obj + "</span>" : "") + "</div>";
+  return '<div style="margin-top:12px;padding-top:10px;border-top:2px dashed #0003;font-size:var(--fs-md)"><b>' + when + " : " + s.name + "</b>" + (obj ? '<br><span style="color:var(--muted)">Objectif : ' + obj + "</span>" : "") + "</div>";
 }
 
 // Célébration (modal courte, partage story natif — repli téléchargement PNG).
@@ -82,11 +82,11 @@ export function showCongrats(plan, session, newBadge, todayISO) {
   ov.className = "eb-overlay";
   ov.innerHTML = '<div class="eb-modal" role="dialog" aria-label="Séance validée">'
     + '<div style="display:flex;justify-content:center">' + avatarTriSVG(av, 110) + "</div>"
-    + '<h2 style="text-align:center;margin:8px 0 2px;font-size:var(--fs-hand);line-height:1.35">' + celebrationMessage(session) + "</h2>"
+    + '<h2 style="text-align:center;margin:8px 0 2px;font-family:var(--font-body);font-size:var(--fs-lg);font-weight:600;text-transform:none;letter-spacing:0;line-height:1.5">' + celebrationMessage(session) + "</h2>"
     + '<div style="text-align:center;font-weight:700;margin-top:6px">' + session.name + "</div>"
-    + (session.det ? '<div style="text-align:center;font-size:var(--fs-sm);color:#635b4a;margin-top:2px">' + String(session.det).split("—")[0].slice(0, 60) + "</div>" : "")
+    + (session.det ? '<div style="text-align:center;font-size:var(--fs-sm);color:var(--muted);margin-top:2px">' + String(session.det).split("—")[0].slice(0, 60) + "</div>" : "")
     + (streak > 1 ? '<div style="text-align:center;margin-top:8px">🔥 <b>' + streak + " jours d’affilée</b> — le repos validé compte aussi</div>" : "")
-    + (newBadge ? '<div style="text-align:center;margin-top:6px;color:#8a6d00;font-weight:700">' + newBadge.icon + " Badge débloqué : " + newBadge.label + "</div>" : "")
+    + (newBadge ? '<div style="text-align:center;margin-top:6px;color:var(--gold);font-weight:700">' + newBadge.icon + " Badge débloqué : " + newBadge.label + "</div>" : "")
     + '<div class="nav" style="justify-content:center;margin-top:14px;gap:8px;flex-wrap:wrap">'
     + '<button class="btn gold" id="ebShareStory" type="button">📸 Story</button>'
     + '<button class="btn gold" id="ebShareSquare" type="button">🖼 Carte</button>'
@@ -239,7 +239,9 @@ const _verdictLbl = { keep: "séance maintenue", reduce: "volume réduit", repla
 // un pourcentage inventé. À défaut de snap (verdict recalculé sans passer par la diapo), un
 // mapping DISCRET du verdict avec un LIBELLÉ, pas de chiffre (brief §R25.3 : la précision
 // affichée ne doit jamais dépasser celle de la donnée qui la porte).
-const _ringVerdictColor = { verte: "#00a376", orange: "#f0b429", rouge: "var(--z5)" };
+// Littéraux OBLIGÉS : posés en attribut SVG où var() ne se résout pas — le rouge var(--z5)
+// rendait l'arc invisible (bug trouvé par l'inventaire R25.2). Valeurs = tokens --z2/--gold/--z5.
+const _ringVerdictColor = { verte: "#1FB8A6", orange: "#FFD23D", rouge: "#FF1F4A" };
 const _ringVerdictFallbackPct = { verte: 80, orange: 50, rouge: 20 };
 function formRingHTML(v, snapEnergy) {
   const hasEnergy = typeof snapEnergy === "number" && snapEnergy >= 0 && snapEnergy <= 100;
@@ -249,7 +251,7 @@ function formRingHTML(v, snapEnergy) {
   const color = _ringVerdictColor[v.level] || "var(--acc)";
   const label = hasEnergy ? Math.round(pct) + "%" : v.level.toUpperCase();
   return '<div class="form-ring" title="Forme du jour — verdict du check-in" style="position:relative;width:44px;height:44px;flex:0 0 auto">'
-    + '<svg width="44" height="44" viewBox="0 0 44 44" style="transform:rotate(-90deg)"><circle cx="22" cy="22" r="' + r + '" stroke="var(--border)" stroke-width="4" fill="none"/>'
+    + '<svg width="44" height="44" viewBox="0 0 44 44" style="transform:rotate(-90deg)"><circle cx="22" cy="22" r="' + r + '" style="stroke:var(--border)" stroke-width="4" fill="none"/>'
     + '<circle class="form-ring-fg" data-offset="' + offset + '" cx="22" cy="22" r="' + r + '" stroke="' + color + '" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + C.toFixed(1) + '"/></svg>'
     // R16.8 — un pourcentage ou un mot de verdict est du TEXTE, pas un glyphe décoratif :
     // l'échelle --fs-* le régit, jamais un px littéral (même plancher que le reste : 9px).

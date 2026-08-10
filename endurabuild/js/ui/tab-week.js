@@ -53,8 +53,8 @@ function bilanHTML(plan, w) {
   return '<div class="load-sub" style="margin-top:8px">'
     + "<b>" + faites + "/" + total + " séances</b> validées · " + Math.round(minutes / 6) / 10 + " h au programme"
     + (pctFacile ? " · " + pctFacile + " % en facile" : "")
-    + '<div style="background:var(--bg2);border:1px solid var(--ink);border-radius:4px;height:8px;overflow:hidden;margin-top:5px">'
-    + '<div style="height:100%;width:' + pct + '%;background:' + (w.phase.c || "#00a376") + '"></div></div></div>';
+    + '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;height:8px;overflow:hidden;margin-top:5px">'
+    + '<div style="height:100%;width:' + pct + '%;background:' + (w.phase.c || "var(--z2)") + '"></div></div></div>';
 }
 
 function navHTML(plan, w) {

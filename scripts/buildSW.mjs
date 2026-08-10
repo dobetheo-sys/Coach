@@ -66,20 +66,26 @@ const FIN_ASSETS = "// __/SW_ASSETS__";
 const DEB_VER = "// __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)";
 const FIN_VER = "// __/SW_VERSION__";
 
-/** Les fichiers non listables par extension : ils ne changent qu'à la main. */
+/** Les fichiers non listables par extension : ils ne changent qu'à la main.
+ *  R25.2 — les POLICES n'y sont plus : elles se dérivent du disque comme les modules
+ *  (fonts() ci-dessous). La liste manuelle vient de casser le build en retirant Caveat et
+ *  Archivo Black — un oubli de la même famille qu'O-24 (« quelqu'un doit s'en souvenir ») ;
+ *  la réponse est la même : dériver, pas mémoriser. */
 const EN_DUR = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./assets/fonts/archivo-black-400.woff2",
-  "./assets/fonts/space-grotesk-500-700.woff2",
-  "./assets/fonts/caveat-600-700.woff2",
-  "./assets/fonts/bebas-neue-400.woff2",
-  "./assets/fonts/ibm-plex-mono-400.woff2",
-  "./assets/fonts/ibm-plex-mono-700.woff2",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
 ];
+
+/** Les polices réellement présentes sur le disque — retirer un .woff2 retire son entrée. */
+function fonts() {
+  return readdirSync(join(APP, "assets", "fonts"))
+    .filter((e) => e.endsWith(".woff2"))
+    .sort()
+    .map((e) => "./assets/fonts/" + e);
+}
 
 /** Tous les `.js` et `.css` de l'app, récursivement — la source de vérité est le DISQUE. */
 function modules(dir) {
@@ -96,7 +102,7 @@ function modules(dir) {
 // dédié, et s'y mettre reviendrait à se rendre immortel.
 const listeJs = modules(join(APP, "js")).filter((p) => p !== "./sw.js");
 const listeCss = modules(join(APP, "css"));
-const ASSETS = [...EN_DUR.slice(0, 3), ...listeCss.sort(), ...listeJs.sort(), ...EN_DUR.slice(3)];
+const ASSETS = [...EN_DUR.slice(0, 3), ...listeCss.sort(), ...listeJs.sort(), ...fonts(), ...EN_DUR.slice(3)];
 
 // ---- L'EMPREINTE : le nom du fichier ET son contenu ----------------------------
 // Le NOM compte autant que le contenu : retirer un module du cache change ce que

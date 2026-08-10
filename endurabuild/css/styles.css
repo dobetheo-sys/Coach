@@ -1,7 +1,5 @@
 /* D19 — polices auto-hébergées (base64), aucune requête externe : conforme RGPD, fichier autonome */
-@font-face{font-family:'Archivo Black';font-style:normal;font-weight:400;font-display:swap;src:url("../assets/fonts/archivo-black-400.woff2") format("woff2")}
 @font-face{font-family:'Space Grotesk';font-style:normal;font-weight:500 700;font-display:swap;src:url("../assets/fonts/space-grotesk-500-700.woff2") format("woff2")}
-@font-face{font-family:'Caveat';font-style:normal;font-weight:600 700;font-display:swap;src:url("../assets/fonts/caveat-600-700.woff2") format("woff2")}
 /* R25.1 — Zenna : deux polices ajoutées, MÊME convention D19 (fichier `../assets/fonts/`,
    `build:standalone` les convertit en base64 automatiquement, aucune requête réseau ajoutée).
    Un seul graisse de Bebas Neue (la maquette n'en utilise qu'une) ; IBM Plex Mono en 400+700
@@ -40,13 +38,15 @@
   --gold:#FFD23D; --cyan:#00E0C6; --violet:#9b72ff; --purple:var(--violet);
   /* --- zones d'intensité (HR/puissance), non consommées avant R25.2+ --- */
   --z1:#3A3F46; --z2:#1FB8A6; --z3:#FFB199; --z4:#FF4B12; --z5:#FF1F4A;
+  /* --z5 pur mesuré à 4,28:1 sur sa propre teinte (rgba(255,31,74,.08) compositée sur bg3) —
+     sous l'AA. Le TEXTE danger sur fond teinté z5 passe par ce ton éclairci (5,47:1 mesuré). */
+  --z5-text:#FF5C7A;
   /* --- disciplines (repère visuel constant natation/vélo/course/repos) --- */
   --swim:#3B9EFF; --bike:#FF3D00; --run:#FFD23D; --rest:#3A3F46;
-  --paper-shadow:7px 7px 0 var(--ink);
-  --cut:255px 18px 225px 14px/16px 225px 16px 255px;
   /* R25.2b (2e passage) — LA coupe angulaire de Zenna, absente de R25.1-R25.3 jusqu'ici :
      valeurs identiques à la maquette (design/zenna-maquette-v4-audit-experts.html), pas
-     réinventées. --cut (ci-dessus) reste pour .trail/.locked/.gate, non repris ce lot.
+     réinventées. --cut et --paper-shadow (la signature papier) sont RETIRÉS : plus aucun
+     consommateur dans css/ ni js/ (mesuré) — un token mort est une invitation à régresser.
      --cut-hero n'est PAS encore posé : dans la maquette elle coupe `.hero`, une carte à
      contenu FIXE (titre + métrique + une ligne "pourquoi"). Notre carte séance du jour
      équivalente (session-life.js) porte un `<details open>` de hauteur VARIABLE en bas —
@@ -55,6 +55,10 @@
      son application attend soit un accent dédié à hauteur fixe, soit un arbitrage produit. */
   --cut-tile:polygon(0 0,100% 0,100% 78%,78% 100%,0 100%);
   --cut-hero:polygon(0 0,100% 0,100% 82%,55% 96%,0 100%);
+  /* Le skew signature (§12.1 de l'audit) — le SEUL transform décoratif statique autorisé :
+     la maquette n'a AUCUN rotate() statique, uniquement ce skewX sur le mot-marque. */
+  --signature-skew:-4deg;
+  --stagger:calc(var(--beat)*0.95);
   /* Polices déclarées, non encore appliquées aux composants (R25.2) */
   --font-display:'Bebas Neue',sans-serif; --font-mono:'IBM Plex Mono',monospace;
   --font-body:'Space Grotesk',-apple-system,sans-serif;
@@ -78,7 +82,6 @@
   --fs-sm:12px;    /* corps d'interface — le palier de travail */
   --fs-md:13px;    /* corps mis en avant : titre de carte, option, avertissement */
   --fs-lg:15px;    /* saisie, libellé de question, en-tête de semaine, paragraphe d'intro */
-  --fs-hand:18px;  /* Caveat (manuscrit) + grandes valeurs — la cursive a une petite hauteur d'x */
   --fs-xl:22px;    /* titre de section */
   --fs-field:16px; /* saisie sur écran TACTILE — plancher iOS, voir R18.1 en fin de feuille */
 }
@@ -125,14 +128,14 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
   .trail-toggle:active{transform:scale(.95);}
   .trail-toggle .cnt{background:#0a0a0a;color:var(--gold);border-radius:10px;padding:1px 8px;font-size:var(--fs-xs);}
 }
-.trail-h{font-family:var(--font-mono);font-size:var(--fs-md);text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px;display:inline-block;background:var(--ink);color:var(--bg2);padding:4px 10px;}
-.trail-empty{font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--text2);line-height:1.4;}
+.trail-h{font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px;display:inline-block;color:var(--muted);}
+.trail-empty{font-size:var(--fs-md);color:var(--text2);line-height:1.5;font-weight:500;}
 .trail-item{position:relative;padding:0 0 14px 18px;border-left:1px solid var(--border);margin-left:5px;}
 .trail-item:last-child{padding-bottom:2px;}
-.trail-item::before{content:"";position:absolute;left:-8px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--bg2);border:2px solid var(--ink);}
+.trail-item::before{content:"";position:absolute;left:-8px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--bg2);border:1.5px solid var(--border);}
 .trail-q{font-family:var(--font-mono);font-size:var(--fs-micro);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}
 .trail-a{font-size:var(--fs-md);font-weight:700;margin-top:2px;}
-.trail-rule{font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--ink);margin-top:4px;line-height:1.25;background:linear-gradient(transparent 55%,rgba(232,162,0,.45) 55%,rgba(232,162,0,.45) 92%,transparent 92%);display:inline-block;padding:0 3px;}
+.trail-rule{font-size:var(--fs-md);font-weight:600;color:var(--ink);margin-top:4px;line-height:1.45;display:inline-block;}
 .trail-rule strong{color:var(--ink) !important;font-weight:700;}
 @keyframes ruleStamp{0%{transform:scale(1.25) rotate(-3deg);opacity:0;}60%{transform:scale(.97) rotate(.5deg);opacity:1;}100%{transform:scale(1) rotate(0);}}
 .trail-rule.new{animation:ruleStamp .45s cubic-bezier(.2,.9,.3,1.3);}
@@ -150,22 +153,22 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
    l'échelle --fs-* : dimensionné en `em`, comme discBadgeHTML/.bp-cat-h .ic. */
 .logo-mark{width:30px;height:30px;flex-shrink:0;background:linear-gradient(145deg,var(--acc),var(--orange-2));clip-path:var(--cut-tile);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:1.2em;color:#0a0a0a;}
 .hero h1{font-family:var(--font-display);font-size:clamp(40px,6.5vw,62px);line-height:.92;letter-spacing:-.01em;text-transform:uppercase;}
-.hero h1 em{font-style:normal;color:var(--bg2);background:var(--acc);padding:0 10px 2px;display:inline-block;transform:rotate(-1.6deg);box-shadow:4px 4px 0 var(--ink);transition:background .4s;}
+.hero h1 em{font-style:normal;color:#0a0a0a;background:var(--acc);padding:0 10px 2px;display:inline-block;transform:skewX(var(--signature-skew));transition:background .4s;}
 .hero p{color:var(--text2);font-size:var(--fs-lg);margin-top:14px;max-width:540px;line-height:1.6;font-weight:500;}
 /* R25.2b — pas de pastille pilule : coupe angulaire --cut-tile, comme les tuiles Zenna. */
 .tier-badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-weight:700;font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase;padding:6px 16px 6px 14px;margin-top:16px;border:1px solid var(--border);clip-path:var(--cut-tile);}
-.tier-badge.free{background:rgba(191,232,200,.16);color:var(--ink);}
+.tier-badge.free{background:rgba(0,224,198,.12);color:var(--cyan);}
 .tier-badge.premium{background:var(--gold);color:#0a0a0a;}
 
 /* ===== PROGRESSION : tickets déchirés ===== */
 .progress{display:flex;gap:5px;margin:18px 0 26px;align-items:center;}
-.pstep{height:14px;flex:1;background:var(--bg3);border:2.5px solid var(--ink);border-radius:3px 7px 4px 6px;transition:background .25s;}
+.pstep{height:14px;flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:4px;transition:background .25s;}
 .pstep.done{background:var(--acc);}
 .pstep.cur{background:var(--gold);animation:curBlink 1.2s ease infinite alternate;}
 @keyframes curBlink{from{transform:scaleY(1);}to{transform:scaleY(1.25);}}
-.pstep.prem{background:repeating-linear-gradient(45deg,var(--bg3) 0 4px,rgba(241,227,189,.18) 4px 8px);}
+.pstep.prem{background:repeating-linear-gradient(45deg,var(--bg3) 0 4px,rgba(255,210,61,.10) 4px 8px);}
 .pstep.prem.done,.pstep.prem.cur{background:var(--gold);}
-.psep{width:24px;flex:none;text-align:center;font-size:.9em;transform:rotate(-8deg);}
+.psep{width:24px;flex:none;text-align:center;font-size:.9em;}
 
 /* ===== CARTE PRINCIPALE : feuille découpée ===== */
 /* R25.2 — surface Zenna : bordure fine + rayon uniforme, plus de bordure épaisse ni d'ombre
@@ -179,21 +182,24 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
    (ex. la carte séance ouvrable) ; une .card purement statique n'a pas de :active à
    déclencher, donc cette règle est sans effet sur elle. */
 .card:active{transform:scale(.985);}
-@keyframes dropIn{from{opacity:0;transform:translateY(16px) rotate(.6deg);}to{opacity:1;transform:none;}}
+@keyframes dropIn{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
 @media(prefers-reduced-motion:reduce){.card,.trail-rule.new,.pstep.cur{animation:none;}}
 /* R25.1 — liseré 1px dégradé en haut des cartes (matière Zenna). Pseudo-élément : ne touche
    ni le DOM ni son ordre (invariant §1.2). `.gw` (grille de semaine) et `.load-card`
    (`<div>` ou `<details>`, R16.7) sont les deux autres conteneurs "carte" du dépôt. */
 .card::before,.load-card::before,.gw::before{content:"";position:absolute;top:0;left:14px;right:14px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);pointer-events:none;}
 .load-card,.gw{position:relative;}
-.card .eyebrow{font-family:var(--font-mono);font-weight:700;font-size:var(--fs-micro);letter-spacing:.14em;text-transform:uppercase;color:var(--bg2);background:var(--ink);display:inline-block;padding:4px 10px;transform:rotate(-1deg);margin-bottom:12px;}
+.card .eyebrow{font-family:var(--font-mono);font-weight:700;font-size:var(--fs-micro);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:inline-block;margin-bottom:12px;}
 .card h2{font-family:var(--font-display);font-size:clamp(22px,3.4vw,30px);line-height:1.02;text-transform:uppercase;margin-bottom:10px;}
-.card .why{font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--text2);line-height:1.3;margin-bottom:22px;border-left:4px solid var(--gold);padding-left:13px;transform:rotate(-.3deg);}
+/* La « voix du coach » : la maquette la porte en corps 500-600 + accents de couleur, jamais
+   en écriture manuscrite — la chaleur passe par la graisse et l'accent, pas par la police.
+   Le liseré or reste : c'est le marqueur fonctionnel « le coach parle » (famille .drv --dc). */
+.card .why{font-size:var(--fs-lg);font-weight:500;color:var(--text2);line-height:1.55;margin-bottom:22px;border-left:4px solid var(--gold);padding-left:13px;}
 
 .q{margin-bottom:26px;}
 .q-label{font-size:var(--fs-lg);font-weight:700;margin-bottom:11px;display:block;}
 .q-sub{font-size:var(--fs-sm);color:var(--muted);margin-top:-6px;margin-bottom:11px;line-height:1.55;font-weight:500;}
-.q-def{font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--ink);background:rgba(220,236,255,.14);border:2.5px solid var(--ink);border-radius:14px 4px 16px 5px;padding:8px 13px;margin:-4px 0 12px;line-height:1.25;transform:rotate(-.4deg);box-shadow:3px 3px 0 var(--ink);}
+.q-def{font-size:var(--fs-md);color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px 13px;margin:-4px 0 12px;line-height:1.5;}
 .q-def::before{content:"💡 ";}
 
 /* options : étiquettes découpées */
@@ -208,13 +214,13 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
 .opt.sel{background:var(--acc);color:#0a0a0a;border-color:transparent;}
 .opt:focus-visible{outline:3px dashed var(--acc);outline-offset:3px;}
 input[type=text],input[type=number],input[type=date]{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:var(--fs-lg);font-weight:600;color:var(--ink);width:200px;font-family:var(--font-body);}
-input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255,251,232,.14);}
+input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:var(--surface-3);}
 .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;}
 .row .q{margin-bottom:0;flex:1;min-width:150px;}
 
 /* branche débloquée : post-it */
-.branch{background:rgba(255,244,194,.14);border:2.5px solid var(--ink);border-radius:3px 14px 4px 12px;padding:16px 18px;margin-top:18px;transform:rotate(.5deg);box-shadow:4px 4px 0 var(--ink);animation:dropIn .3s ease;}
-.branch .branch-tag{font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--ink);margin-bottom:8px;font-weight:700;}
+.branch{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-top:18px;animation:dropIn .3s ease;}
+.branch .branch-tag{font-size:var(--fs-lg);color:var(--orange-tint);margin-bottom:8px;font-weight:600;}
 
 .nav{display:flex;justify-content:space-between;margin-top:28px;gap:10px;}
 /* R25.2b — retour du fondateur : sur fond noir, la bordure encre 3px + l'ombre décalée
@@ -236,26 +242,24 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255
 
 /* ===== BLUEPRINT ===== */
 .bp-heros{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:28px;}
-.bp-hero{background:var(--bg2);border:3px solid var(--ink);border-radius:4px 16px 5px 14px;padding:16px 15px;box-shadow:5px 5px 0 var(--ink);}
-.bp-heros .bp-hero:nth-child(1){transform:rotate(-1.2deg);background:rgba(255,227,224,.14);}
-.bp-heros .bp-hero:nth-child(2){transform:rotate(.8deg);background:rgba(255,244,194,.14);}
-.bp-heros .bp-hero:nth-child(3){transform:rotate(-.6deg);background:rgba(220,236,255,.14);}
-.bp-heros .bp-hero:nth-child(4){transform:rotate(1deg);background:rgba(217,243,225,.14);}
+.bp-hero{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 15px;}
+/* Plus de tilts ni de teintes post-it par position : les chips de la maquette sont uniformes
+   (surface + bordure fine), la valeur porte seule la différenciation. */
 .bp-hero .bh-cat{font-family:var(--font-mono);font-weight:700;font-size:var(--fs-micro);color:var(--text2);letter-spacing:.1em;text-transform:uppercase;}
-.bp-hero .bh-val{font-family:var(--font-mono);font-size:var(--fs-hand);line-height:1.08;margin-top:7px;text-transform:uppercase;}
+.bp-hero .bh-val{font-family:var(--font-mono);font-size:var(--fs-lg);font-weight:700;line-height:1.08;margin-top:7px;text-transform:uppercase;}
 .bp-cat{margin-bottom:8px;}
-.bp-cat-h{display:flex;align-items:center;gap:9px;font-family:var(--font-mono);font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:16px 0 8px;border-bottom:3px solid var(--ink);margin-bottom:4px;}
+.bp-cat-h{display:flex;align-items:center;gap:9px;font-family:var(--font-mono);font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:16px 0 8px;border-bottom:1px solid var(--border);margin-bottom:4px;}
 /* R25.2b — plus de blob organique ni de rotation : coupe angulaire --cut-tile, comme
    .defi-ico/.sport-icon dans la maquette (aucune tuile Zenna n'y est pivotée). */
 .bp-cat-h .ic{width:26px;height:26px;clip-path:var(--cut-tile);display:flex;align-items:center;justify-content:center;font-size:1em;background:var(--gold);color:#0a0a0a;}
-.bp-decision{display:grid;grid-template-columns:175px 1fr;gap:12px;padding:12px 0;border-bottom:2px dashed rgba(22,19,14,.25);font-size:var(--fs-md);}
+.bp-decision{display:grid;grid-template-columns:175px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);font-size:var(--fs-md);}
 .bp-decision:last-child{border-bottom:none;}
 .bp-what{font-weight:700;}
 .bp-why{color:var(--text2);font-size:var(--fs-sm);line-height:1.55;font-weight:500;}
-.bp-val{color:var(--ink);font-family:var(--font-mono);font-weight:700;font-size:var(--fs-sm);background:linear-gradient(transparent 55%,rgba(232,162,0,.4) 55%,rgba(232,162,0,.4) 92%,transparent 92%);display:inline;}
+.bp-val{color:var(--orange-tint);font-family:var(--font-mono);font-weight:700;font-size:var(--fs-sm);display:inline;}
 /* R25.2c — même correctif que .btn/.opt (R25.2b) : bordure fine, rayon uniforme,
    ombre décalée et rotation retirées. */
-.warn{background:rgba(255,227,224,.14);border:1px solid var(--border);border-radius:14px;padding:14px 16px;font-size:var(--fs-md);color:var(--ink);line-height:1.6;margin-top:18px;font-weight:500;}
+.warn{background:rgba(255,210,61,.08);border:1px solid var(--border);border-radius:14px;padding:14px 16px;font-size:var(--fs-md);color:var(--ink);line-height:1.6;margin-top:18px;font-weight:500;}
 .warn strong{color:var(--text);}
 .locked{background:var(--bg2);border:1.5px dashed var(--border);border-radius:18px;padding:18px;margin-top:16px;}
 .locked-h{font-family:var(--font-mono);font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px;}
@@ -272,17 +276,14 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255
 
 /* ===== WELCOME ===== */
 .welcome{text-align:center;padding:46px 28px;}
-.welcome .w-tri{font-size:3.6em;line-height:1;margin-bottom:16px;display:inline-block;transform:rotate(-6deg);animation:triWiggle 3s ease-in-out infinite;}
-@keyframes triWiggle{0%,100%{transform:rotate(-6deg);}50%{transform:rotate(4deg) translateY(-4px);}}
+.welcome .w-tri{font-size:3.6em;line-height:1;margin-bottom:16px;display:inline-block;animation:triWiggle 3s ease-in-out infinite;}
+@keyframes triWiggle{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
 @media(prefers-reduced-motion:reduce){.welcome .w-tri{animation:none;}}
 .welcome h2{font-family:var(--font-display);font-size:clamp(24px,4vw,34px);line-height:1.05;text-transform:uppercase;margin-bottom:14px;}
 .welcome p{color:var(--text2);font-size:var(--fs-lg);line-height:1.65;max-width:480px;margin:0 auto 8px;font-weight:500;}
 .welcome .w-meta{display:flex;gap:14px;justify-content:center;margin:26px 0;flex-wrap:wrap;}
-.w-chip{display:flex;align-items:center;gap:7px;font-size:var(--fs-sm);font-weight:700;border:2.5px solid var(--ink);padding:7px 13px;border-radius:4px 11px 5px 10px;background:var(--bg2);box-shadow:3px 3px 0 var(--ink);}
-.w-chip:nth-child(1){transform:rotate(-1.5deg);}
-.w-chip:nth-child(2){transform:rotate(1deg);background:rgba(255,244,194,.14);}
-.w-chip:nth-child(3){transform:rotate(-.8deg);background:rgba(255,227,224,.14);}
-.w-chip b{color:var(--ink);}
+/* .w-chip : règles MORTES supprimées (aucun module n'émet cette classe — l'écran welcome ne
+   rend que .w-tri + h2, vérifié par grep sur js/). Le monolithe gelé garde les siennes. */
 .welcome .btn{margin-top:10px;font-size:var(--fs-lg);padding:16px 40px;}
 
 /* ===== PLAN GÉNÉRÉ ===== */
@@ -312,9 +313,9 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255
 @media(max-width:560px){.ph-seg .ph-full{display:none;}.ph-seg .ph-abbr{display:block;}}
 @container (max-width:120px){.ph-seg .ph-full{display:none;}.ph-seg .ph-abbr{display:block;}}
 .ph-seg em{font-family:var(--font-mono);font-style:normal;font-weight:700;font-size:var(--fs-micro);color:var(--text2);}
-.vol-bars{display:flex;align-items:flex-end;gap:2px;height:58px;margin-top:8px;padding:0 2px;border-bottom:3px solid var(--ink);}
-.vb{flex:1;border:1.5px solid var(--ink);border-bottom:none;border-radius:3px 3px 0 0;min-width:3px;}
-.vol-cap{font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--text2);margin:7px 0 20px;}
+.vol-bars{display:flex;align-items:flex-end;gap:2px;height:58px;margin-top:8px;padding:0 2px;border-bottom:1px solid var(--border);}
+.vb{flex:1;border:none;border-radius:3px 3px 0 0;min-width:3px;}
+.vol-cap{font-family:var(--font-mono);font-size:var(--fs-micro);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:7px 0 20px;}
 /* R25.2 — même traitement que .card/.load-card : `.gw` (grille de semaine) est le troisième
    conteneur "carte" du dépôt (R25.1 lui donne déjà le même liseré) — le laisser en bordure
    épaisse/ombre décalée aurait rendu un mélange papier/Zenna dans la même vue. */
@@ -324,10 +325,10 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255
 .gw-h span{font-weight:800;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.06em;}
 .gw-h em{font-family:var(--font-mono);font-style:normal;font-weight:700;font-size:var(--fs-xs);color:var(--text2);margin-left:auto;}
 .gw-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
-.gd{background:var(--bg3);border:2.5px solid var(--ink);border-radius:3px 8px 4px 7px;padding:7px 6px;min-height:88px;position:relative;box-shadow:2.5px 2.5px 0 var(--ink);}
-.gd.dur{background:rgba(255,227,224,.14);}
-.gd.facile{background:rgba(217,243,225,.14);}
-.gd.recup{background:rgba(233,222,252,.14);}
+.gd{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:7px 6px;min-height:88px;position:relative;}
+.gd.dur{background:rgba(255,75,18,.10);}
+.gd.facile{background:rgba(31,184,166,.10);}
+.gd.recup{background:rgba(155,114,255,.12);}
 /* R25.1 — l'opacité réduite (.75) rendait un jour "off" en clair (texte sombre vers page
    claire, perte de lisibilité tolérable) ; en sombre elle affaiblit un texte déjà CLAIR
    vers un fond noir et fait chuter le contraste sous AA (mesuré : 1.51:1). Le fond
@@ -338,7 +339,7 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255
 .gd-top i{font-family:var(--font-mono);font-style:normal;font-weight:700;font-size:var(--fs-micro);color:var(--text2);}
 .gd-badges{font-size:var(--fs-sm);margin:3px 0 2px;}
 .gd-n{font-size:var(--fs-xs);color:var(--text2);line-height:1.4;font-weight:600;}
-.wk-skip{text-align:center;font-family:'Caveat',cursive;font-size:var(--fs-hand);color:var(--muted);padding:8px 0 14px;}
+.wk-skip{text-align:center;font-family:var(--font-mono);font-size:var(--fs-sm);color:var(--muted);padding:8px 0 14px;}
 @media(max-width:680px){.gw-grid{grid-template-columns:repeat(2,1fr);}.gd{min-height:auto;}}
 
 /* ===== DA DYNAMIQUE PAR INTENTION =====
@@ -347,7 +348,7 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:rgba(255
    rien dans la maquette Zenna ne prévoit. Retirés ; l'accent par intention (bouton, étape
    validée) reste — c'est un signal utile, pas un fond de page. */
 body{transition:background .5s ease;}
-body[data-intent="competition"]{--acc:#ff3b30;}
+body[data-intent="competition"]{--acc:#FF3D00;}
 body[data-intent="finir"]{--acc:#ff7a1a;}
 body[data-intent="finir"] .pstep.done{background:#ff7a1a;}
 body[data-intent="plaisir"]{--acc:#2e6bff;}
@@ -383,10 +384,12 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 .gd-sess[open] summary::before{transform:rotate(90deg);}
 .gd-sess .gd-det{margin-top:2px;}
 /* ===== R4-3 : modal félicitations post-séance ===== */
-.eb-overlay{position:fixed;inset:0;background:rgba(22,19,14,.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;}
-.eb-modal{background:var(--bg3);border:3px solid var(--ink);border-radius:16px;box-shadow:6px 6px 0 var(--ink);padding:20px 18px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;}
-.doneBtn{border:2px solid var(--ink);background:var(--bg3);border-radius:999px;font-size:var(--fs-xs);font-weight:800;line-height:1;padding:0;cursor:pointer;color:var(--muted);vertical-align:middle;}
-.doneBtn.done{background:#00a376;color:#fff;border-color:#00734f;}
+.eb-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;}
+/* Élévation Zenna : la seule référence flottante de la maquette (.toast) = surface élevée +
+   ombre DOUCE portée, jamais une ombre décalée dure. */
+.eb-modal{background:var(--surface-3);border:1px solid var(--border);border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.5);padding:20px 18px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;}
+.doneBtn{border:1.5px solid var(--border);background:var(--bg3);border-radius:999px;font-size:var(--fs-xs);font-weight:800;line-height:1;padding:0;cursor:pointer;color:var(--muted);vertical-align:middle;}
+.doneBtn.done{background:rgba(0,224,198,.14);color:var(--cyan);border-color:var(--cyan);}
 /* R25.2 — même surface Zenna que .card (voir son commentaire) : bordure fine, rayon uniforme
    18px, plus d'ombre décalée. `<details class="load-card">` (R16.7) hérite du même style. */
 .load-card{border:1px solid var(--border);border-radius:18px;background:var(--bg3);padding:12px 12px 10px;margin:6px 0 20px;}
@@ -442,7 +445,7 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 .product-tile .pt-body{width:20px;height:24px;border-radius:5px 5px 8px 8px;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.12);}
 .cancel-note{background:rgba(255,210,61,.08);border:1px solid rgba(255,210,61,.3);border-radius:12px;padding:10px 12px;font-family:var(--font-mono);font-size:var(--fs-micro);color:var(--gold);line-height:1.5;margin-top:10px;}
 .confirm-strip{display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(255,31,74,.08);border:1px solid rgba(255,31,74,.35);border-radius:13px;padding:10px 12px;margin-top:12px;}
-.confirm-strip span{font-family:var(--font-mono);font-size:var(--fs-micro);font-weight:700;color:var(--z5);letter-spacing:.03em;}
+.confirm-strip span{font-family:var(--font-mono);font-size:var(--fs-micro);font-weight:700;color:var(--z5-text);letter-spacing:.03em;}
 .confirm-strip .btn{min-height:36px;padding:0 12px;font-size:var(--fs-micro);}
 
 /* ===== IMPRESSION / EXPORT PDF ===== */
@@ -477,11 +480,12 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 /* ===== CHOIX DU SPORT ===== */
 .sport-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:24px;}
 @media(max-width:520px){.sport-grid{grid-template-columns:1fr;}}
-.sport-card{background:var(--bg3);border:3px solid var(--ink);border-radius:5px 16px 6px 14px;padding:22px 18px;cursor:pointer;box-shadow:5px 5px 0 var(--ink);transition:transform .12s,box-shadow .12s;text-align:left;display:flex;flex-direction:column;gap:6px;border-top:5px solid var(--sa);}
-.sport-card:nth-child(odd){transform:rotate(-.8deg);}
-.sport-card:nth-child(even){transform:rotate(.7deg);}
-.sport-card:hover{transform:translate(-3px,-3px) rotate(0);box-shadow:8px 8px 0 var(--ink);}
-.sport-card:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink);}
+/* Le tout premier écran d'un nouvel utilisateur — motif .ck-opt de la maquette (surface,
+   bordure fine, rebond spring au tap). Le liseré haut couleur sport (--sa) reste : c'est le
+   code couleur fonctionnel de la discipline (§9), pas un artefact papier. */
+.sport-card{background:var(--bg2);border:1px solid var(--border);border-radius:15px;padding:22px 18px;cursor:pointer;transition:transform var(--dur-tap,.12s) var(--ease-spring,ease),border-color .2s;text-align:left;display:flex;flex-direction:column;gap:6px;border-top:3px solid var(--sa);}
+.sport-card:hover{border-color:var(--sa);}
+.sport-card:active{transform:scale(.97);}
 .sc-ico{font-size:2.4em;line-height:1;}
 .sc-nom{font-family:var(--font-display);font-size:var(--fs-xl);text-transform:uppercase;}
 .sc-pitch{font-size:var(--fs-sm);color:var(--text2);font-weight:500;line-height:1.4;}
@@ -489,7 +493,7 @@ body[data-intent="plaisir"] .pstep.done{background:#2e6bff;}
 body[data-sport="run"]{--acc:#ff7a1a;}
 body[data-sport="bike"]{--acc:#2e6bff;}
 body[data-sport="swim"]{--acc:#00b8d9;}
-body[data-sport="tri"]{--acc:#ff3b30;}
+body[data-sport="tri"]{--acc:#FF3D00;}
 
 
 /* ===== BANDEAU "CE QUI PILOTE TON PLAN" ===== */
@@ -587,15 +591,15 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
   display:inline-flex;align-items:center;justify-content:center;
   width:22px;height:22px;margin-left:7px;padding:0;vertical-align:middle;
   font-family:inherit;font-size:var(--fs-xs);font-weight:800;line-height:1;
-  color:var(--ink);background:var(--bg2);border:2px solid var(--ink);border-radius:50%;
-  box-shadow:1.5px 1.5px 0 var(--ink);cursor:pointer;flex:0 0 auto;
+  color:var(--ink);background:var(--bg2);border:1px solid var(--border);border-radius:50%;
+  cursor:pointer;flex:0 0 auto;
   /* La CIBLE tactile fait 44px (U4/U17) sans que le rond en fasse autant : c'est la zone
      invisible autour du bouton qui reçoit le doigt. Un rond de 44px dans un titre serait
      énorme ; une cible de 22px serait irratrapable au pouce. */
   position:relative;
 }
 .aide-btn::after{content:"";position:absolute;top:50%;left:50%;width:44px;height:44px;transform:translate(-50%,-50%);}
-.aide-btn.on{background:rgba(220,236,255,.18);box-shadow:inset 1.5px 1.5px 0 var(--ink);}
+.aide-btn.on{background:rgba(0,224,198,.12);border-color:var(--cyan);color:var(--cyan);}
 .aide-btn:focus-visible{outline:3px solid var(--ink);outline-offset:2px;}
 .aide-txt{margin-top:6px;}
 .aide-txt[hidden]{display:none;}
@@ -680,9 +684,9 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
 }
 .edu-nav::-webkit-scrollbar{display:none;}
 .edu-disc{
-  flex:0 0 auto;background:var(--bg3);border:2.5px solid var(--ink);border-radius:5px 12px 6px 11px;
+  flex:0 0 auto;background:var(--bg3);border:1px solid var(--border);border-radius:12px;
   padding:9px 14px;font-family:var(--font-mono);font-size:var(--fs-sm);font-weight:700;
-  color:var(--ink);cursor:pointer;box-shadow:3px 3px 0 var(--ink);touch-action:manipulation;
+  color:var(--ink);cursor:pointer;touch-action:manipulation;
   border-top:4px solid var(--sa,var(--acc));
 }
 .edu-disc[aria-current="true"]{background:var(--sa,var(--acc));color:#0a0a0a;}
@@ -694,18 +698,18 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
 .edu-badge{
   display:inline-flex;align-items:center;font-family:var(--font-mono);font-weight:700;
   font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;
-  border:2px solid var(--ink);border-radius:20px;margin-bottom:12px;
+  border:1px solid var(--border);border-radius:20px;margin-bottom:12px;
 }
-.edu-badge[data-n="forte"]{background:rgba(217,234,251,.16);}
-.edu-badge[data-n="terrain"]{background:rgba(226,240,220,.16);}
-.edu-badge[data-n="consensus"]{background:rgba(251,238,218,.16);}
+.edu-badge[data-n="forte"]{background:rgba(59,158,255,.12);}
+.edu-badge[data-n="terrain"]{background:rgba(31,184,166,.12);}
+.edu-badge[data-n="consensus"]{background:rgba(255,210,61,.10);}
 
 /* --- Progression natation (barre à billes) : rendue seulement si la discipline déclare
        des `prerequis` — un mécanisme générique, pas un cas spécial natation dans le JS. --- */
-.edu-progress{display:flex;align-items:center;gap:0;margin:0 0 18px;padding:12px 10px;border:2.5px solid var(--ink);border-radius:14px;background:var(--bg3);}
+.edu-progress{display:flex;align-items:center;gap:0;margin:0 0 18px;padding:12px 10px;border:1px solid var(--border);border-radius:14px;background:var(--bg3);}
 .edu-pstep{display:flex;align-items:center;flex:1;}
 .edu-pstep:last-child{flex:0 0 auto;}
-.edu-bead{width:30px;height:30px;flex:0 0 auto;border:2.5px solid var(--ink);border-radius:50%;display:grid;place-items:center;font-size:var(--fs-xs);font-weight:900;background:var(--bg3);}
+.edu-bead{width:30px;height:30px;flex:0 0 auto;border:1.5px solid var(--border);border-radius:50%;display:grid;place-items:center;font-size:var(--fs-xs);font-weight:900;background:var(--bg3);}
 .edu-bead[data-state="done"]{background:var(--sa,var(--acc));color:#0a0a0a;}
 .edu-bead[data-state="active"]{background:var(--gold);}
 .edu-bead[data-state="locked"]{background:var(--bg);color:var(--muted);}
@@ -715,29 +719,31 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
 /* --- Contenus (dispatcher unique, B1) --- */
 .edu-block{margin-bottom:18px;}
 .edu-block:last-child{margin-bottom:0;}
-.edu-block-h{display:inline-block;background:var(--ink);color:var(--bg2);font-size:var(--fs-xs);font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;margin-bottom:8px;}
+.edu-block-h{display:inline-block;color:var(--muted);font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 0;margin-bottom:8px;}
 .edu-table{width:100%;border-collapse:collapse;font-size:var(--fs-sm);}
-.edu-table td{border:2px solid var(--ink);padding:8px 9px;line-height:1.45;vertical-align:top;}
+.edu-table td{border:1px solid var(--border);padding:8px 9px;line-height:1.45;vertical-align:top;}
 .edu-table td:first-child{width:34%;font-weight:800;}
-.edu-table tr[data-niveau="r"] td:first-child{background:rgba(249,220,215,.16);}
+.edu-table tr[data-niveau="r"] td:first-child{background:rgba(255,31,74,.10);}
 .edu-table tr[data-niveau="o"] td:first-child,
-.edu-table tr[data-niveau="mid"] td:first-child{background:rgba(251,238,218,.16);}
+.edu-table tr[data-niveau="mid"] td:first-child{background:rgba(255,210,61,.10);}
 .edu-table tr[data-niveau="g"] td:first-child,
-.edu-table tr[data-niveau="ok"] td:first-child{background:rgba(214,239,248,.16);}
-.edu-table tr[data-niveau="no"] td:first-child{background:rgba(249,220,215,.16);}
-.edu-drill{border:2px solid var(--ink);border-radius:10px;padding:10px 11px;margin-bottom:8px;background:var(--bg3);}
+.edu-table tr[data-niveau="ok"] td:first-child{background:rgba(31,184,166,.12);}
+.edu-table tr[data-niveau="no"] td:first-child{background:rgba(255,31,74,.10);}
+.edu-drill{border:1px solid var(--border);border-radius:10px;padding:10px 11px;margin-bottom:8px;background:var(--bg3);}
 .edu-drill strong{display:block;font-size:var(--fs-md);font-weight:900;margin-bottom:3px;}
 .edu-drill span{display:block;font-size:var(--fs-sm);line-height:1.5;color:var(--text2);}
 .edu-drill-fig{margin:10px 0 0;}
-.edu-debat{border:2.5px solid var(--gold);border-radius:10px;background:rgba(253,246,233,.14);padding:12px;}
+.edu-debat{border:1px solid rgba(255,210,61,.35);border-radius:10px;background:rgba(255,210,61,.07);padding:12px;}
 .edu-debat strong{display:block;font-size:var(--fs-md);font-weight:900;margin-bottom:6px;}
 .edu-debat span{display:block;font-size:var(--fs-sm);line-height:1.55;color:var(--text2);}
 /* `.warn` existe déjà (contenu `type:"warn"`) — repliage interdit pour `secu`, comme les
    avertissements-santé ailleurs dans l'app (règle posée par help.js). */
-.edu-secu{border:3px solid var(--ink);border-left:8px solid #c0392b;border-radius:10px;background:#fdf0ed;padding:12px;}
-.edu-secu strong{display:block;font-size:var(--fs-md);font-weight:900;color:#8f3020;margin-bottom:6px;}
-.edu-secu span{display:block;font-size:var(--fs-sm);line-height:1.55;color:#6d2a1c;}
-.edu-renvoi{border:3px solid var(--ink);border-radius:10px;background:var(--bg2);padding:12px;}
+/* Le bloc sécurité vivait encore en THÈME CLAIR (fond #fdf0ed) au milieu de l'app sombre —
+   motif danger Zenna (.confirm-strip) : teinte --z5, texte sur tokens sombres. */
+.edu-secu{border:1px solid rgba(255,31,74,.35);border-left:4px solid var(--z5);border-radius:10px;background:rgba(255,31,74,.08);padding:12px;}
+.edu-secu strong{display:block;font-size:var(--fs-md);font-weight:900;color:var(--z5-text);margin-bottom:6px;}
+.edu-secu span{display:block;font-size:var(--fs-sm);line-height:1.55;color:var(--text2);}
+.edu-renvoi{border:1px solid var(--border);border-radius:10px;background:var(--bg2);padding:12px;}
 .edu-renvoi strong{display:block;font-size:var(--fs-md);font-weight:900;margin-bottom:6px;}
 .edu-renvoi span{display:block;font-size:var(--fs-sm);line-height:1.55;color:var(--text2);}
 
@@ -748,12 +754,12 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
        trail…) restent celles des maquettes — ce sont des couleurs de CONTENU (comparaison
        bon/mauvais geste), pas des couleurs de CHROME pilotées par le design system (A2 vise
        le second, pas le premier). */
-.edu-panel{border:2.5px solid var(--ink);border-radius:10px;overflow:hidden;margin-bottom:10px;background:var(--bg3);}
-.edu-panel-h{display:flex;align-items:center;gap:7px;padding:7px 10px;border-bottom:2.5px solid var(--ink);font-size:var(--fs-xs);font-weight:800;letter-spacing:.04em;text-transform:uppercase;}
-.edu-panel-h.edu-bad,.edu-panel-h.edu-a{background:rgba(249,220,215,.16);}
-.edu-panel-h.edu-good,.edu-panel-h.edu-b{background:rgba(214,239,248,.16);}
-.edu-panel-h.edu-n{background:rgba(237,233,225,.16);}
-.edu-pip{width:9px;height:9px;border-radius:50%;border:2px solid var(--ink);}
+.edu-panel{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px;background:var(--bg3);}
+.edu-panel-h{display:flex;align-items:center;gap:7px;padding:7px 10px;border-bottom:1px solid var(--border);font-size:var(--fs-xs);font-weight:800;letter-spacing:.04em;text-transform:uppercase;}
+.edu-panel-h.edu-bad,.edu-panel-h.edu-a{background:rgba(255,31,74,.10);}
+.edu-panel-h.edu-good,.edu-panel-h.edu-b{background:rgba(31,184,166,.12);}
+.edu-panel-h.edu-n{background:rgba(255,255,255,.04);}
+.edu-pip{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--border);}
 .edu-pip.edu-bad,.edu-pip.edu-a{background:#e8543f;}
 .edu-pip.edu-good,.edu-pip.edu-b{background:#4fc3e8;}
 .edu-pip.edu-n{background:var(--muted);}
@@ -778,12 +784,12 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
 .edu-lm{font-size:var(--fs-micro);font-weight:700;fill:#8a8378;}
 
 /* --- Sources : `<details>` natif en bas de section, groupé, note vs référence distinguées --- */
-.edu-sources-box{border:3px solid var(--ink);border-radius:14px;background:var(--bg3);margin-top:20px;}
+.edu-sources-box{border:1px solid var(--border);border-radius:14px;background:var(--bg3);margin-top:20px;}
 .edu-sources-box summary{list-style:none;cursor:pointer;padding:13px 14px;font-size:var(--fs-sm);font-weight:900;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;justify-content:space-between;touch-action:manipulation;}
 .edu-sources-box summary::-webkit-details-marker{display:none;}
-.edu-sources-box[open] summary{border-bottom:2.5px solid var(--ink);}
+.edu-sources-box[open] summary{border-bottom:1px solid var(--border);}
 .edu-src-group{padding:12px 14px 2px;}
-.edu-src-group+.edu-src-group{border-top:2px dashed var(--line);}
+.edu-src-group+.edu-src-group{border-top:1px dashed var(--border);}
 .edu-src-group h3{font-size:var(--fs-xs);font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;}
 .edu-src-group ul{margin:0;padding-left:18px;}
 .edu-src-group li{font-size:var(--fs-xs);line-height:1.55;color:var(--text2);margin-bottom:8px;}

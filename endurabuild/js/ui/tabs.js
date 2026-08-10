@@ -139,7 +139,7 @@ function renderGenerationFailure(err) {
   // infiniment mieux qu'un plan bâti sur une valeur fausse.
   if (err && err.code === "ENTREE_INVALIDE" && cause) {
     screen.innerHTML =
-      '<div class="card" role="alert" style="border-color:#c0392b">'
+      '<div class="card" role="alert" style="border-color:var(--z5)">'
       + '<h2 style="margin-top:0">Le plan n’a pas été généré</h2>'
       + "<p>" + String(cause.human || cause.message) + "</p>"
       + "<p><b>Ton profil est conservé</b> — rien n’a été perdu.</p>"
@@ -220,7 +220,7 @@ function renderGenerationFailure(err) {
     return;
   }
   screen.innerHTML =
-    '<div class="card" role="alert" style="border-color:#c0392b">'
+    '<div class="card" role="alert" style="border-color:var(--z5)">'
     + '<h2 style="margin-top:0">La génération du plan a échoué</h2>'
     + "<p>Rien n’a été enregistré — <b>ton profil est conservé</b>. Réessaie ; si le problème "
     + "persiste, signale-le.</p>"

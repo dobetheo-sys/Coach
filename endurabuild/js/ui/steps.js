@@ -187,7 +187,7 @@ function buildFreeSteps(){
      branch("teamB",a.team_mode!=="solo",'<div class="branch"><div class="q"><span class="q-label">Écart de niveau à la nage avec ton binôme (s/100m, optionnel)</span><div class="q-def">0 = même niveau. Sert à calculer l\'effet de longe : attachée, l\'équipe se rapproche de la vitesse du plus rapide.</div><input type="number" min="0" max="60" data-input="team_swim_gap_sec" placeholder="0"></div></div>');
      // S10 — prérequis d'entrée : on REFUSE de générer un format long en dessous, et on dit pourquoi.
      const block = (globalThis.EBV2 && EBV2.swimrunPrereq) ? EBV2.swimrunPrereq(a) : null;
-     branch("prereqB", !!block, '<div class="branch" style="border-color:#c0392b"><div class="branch-tag" style="color:#c0392b">↳ Prérequis non atteints</div><div class="q-sub">'+(block||"")+'</div></div>');
+     branch("prereqB", !!block, '<div class="branch" style="border-color:var(--z5)"><div class="branch-tag" style="color:var(--z5)">↳ Prérequis non atteints</div><div class="q-sub">'+(block||"")+'</div></div>');
    },
    valid(a){
      if(S.sport==="trail")return a.intent&&a.race_distance_km&&a.race_dplus_m&&a.race_technicity&&a.race_night;

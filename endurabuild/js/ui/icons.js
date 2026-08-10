@@ -10,15 +10,20 @@
 // Codes que le moteur émet (sw/bk/rn/br/rs), vérifiés exhaustivement par `demo:avatartri`.
 // Accents repris de SPORTS[*].accent (config.js) là où un sport correspond en direct
 // (rn/bk/sw) — un athlète qui a vu son avatar en vélo bleu retrouve le même bleu ici, pas une
-// troisième palette ; br/rs n'ont pas d'équivalent sport et gardent leur propre couleur.
+// troisième palette ; br n'a pas d'équivalent sport et garde sa propre couleur.
 // `rs` (repos) vaut 😌 — le glyphe le plus récent et le plus juste sémantiquement pour un jour
 // de repos, retenu comme référence plutôt que 💪 (qui vivait dans les copies plus anciennes).
+// R25.2 — `rs` est aligné sur le token Zenna `--rest` (#3A3F46, styles.css) : l'ancien vert
+// disait « positif », pas « repos ». Les trois disciplines sw/bk/rn gardent les valeurs
+// partagées avec l'avatar composite (validé sur maquettes par le fondateur, R25) — les
+// aligner sur --swim/--bike/--run toucherait un système validé séparément : arbitrage nommé
+// dans le rapport R25.2, pas tranché en marge d'une passe de résidus.
 export const DISC = {
   sw: { ic: "🏊", ac: "#00b8d9", label: "Natation" },
   bk: { ic: "🚴", ac: "#2e6bff", label: "Vélo" },
   rn: { ic: "🏃", ac: "#ff7a1a", label: "Course" },
   br: { ic: "🔁", ac: "#9b72ff", label: "Brick" },
-  rs: { ic: "😌", ac: "#00a376", label: "Repos" },
+  rs: { ic: "😌", ac: "#3A3F46", label: "Repos" },
 };
 
 // Verdict readiness (verte/orange/rouge, `src/readiness/`) → pastille.
