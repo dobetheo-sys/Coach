@@ -19,7 +19,10 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   "smoke-feasibility.mjs",
   // Le canal de vente (abonnement ravitaillement) n'avait aucune garde depuis sa livraison —
   // couvre le mécanisme existant et son extension « fin de plan » (08/08/2026).
-  "smoke-shop.mjs"];
+  "smoke-shop.mjs",
+  // R26 — Éducatifs (six disciplines) : A1-A13 du brief, le mécanisme de verrouillage/
+  // cascade, l'affichage conditionnel par sport et l'absence de doublon d'identifiant SVG.
+  "smoke-educatifs.mjs"];
 let failed = 0;
 for (const s of SUITES) {
   console.log("\n━━━ " + s + " ━━━");

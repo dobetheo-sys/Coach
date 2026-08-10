@@ -469,3 +469,135 @@ details.load-card[open]>summary::after{transform:rotate(180deg);}
     max-width:calc(50% - 14px); /* deux cartes par ligne, gap compris */
   }
 }
+
+/* ===== R26 — Éducatifs (Outils › Éducatifs) =====
+   Réutilise l'existant plutôt que de dupliquer les six feuilles de style des maquettes
+   (M1 de l'audit croisé) : `.card`/`.load-card`/`details.load-card>summary` pour les
+   sections, `.warn` déjà posé pour le contenu d'avertissement. Ce qui suit est UNIQUEMENT
+   ce qui n'existait pas encore. Toute taille est sur l'échelle `--fs-*` (R16.8) — aucun px
+   littéral. */
+
+/* --- Barre de disciplines (B3) : un seul composant, alimenté par le sport du profil --- */
+.edu-nav{
+  display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;margin-bottom:14px;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  /* Indicateur de débordement : un dégradé qui mange le bord droit quand il reste du
+     contenu à faire défiler. Pas de JS de position de défilement à maintenir. */
+  mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent 100%);
+  -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent 100%);
+}
+.edu-nav::-webkit-scrollbar{display:none;}
+.edu-disc{
+  flex:0 0 auto;background:var(--bg3);border:2.5px solid var(--ink);border-radius:5px 12px 6px 11px;
+  padding:9px 14px;font-family:'Space Grotesk',sans-serif;font-size:var(--fs-sm);font-weight:700;
+  color:var(--ink);cursor:pointer;box-shadow:3px 3px 0 var(--ink);touch-action:manipulation;
+  border-top:4px solid var(--sa,var(--acc));
+}
+.edu-disc[aria-current="true"]{background:var(--sa,var(--acc));color:#fff;}
+
+/* --- Section (une par « geste »/thème), verrouillage, badge de preuve --- */
+.edu-section{border-left:8px solid var(--sa,var(--acc));}
+.edu-section[data-locked="true"]{border-left-color:var(--line);opacity:.92;}
+.edu-locked-msg{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;margin-bottom:12px;}
+.edu-badge{
+  display:inline-flex;align-items:center;font-family:'Space Grotesk',sans-serif;font-weight:700;
+  font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;
+  border:2px solid var(--ink);border-radius:20px;margin-bottom:12px;
+}
+.edu-badge[data-n="forte"]{background:#d9eafb;}
+.edu-badge[data-n="terrain"]{background:#e2f0dc;}
+.edu-badge[data-n="consensus"]{background:#fbeeda;}
+
+/* --- Progression natation (barre à billes) : rendue seulement si la discipline déclare
+       des `prerequis` — un mécanisme générique, pas un cas spécial natation dans le JS. --- */
+.edu-progress{display:flex;align-items:center;gap:0;margin:0 0 18px;padding:12px 10px;border:2.5px solid var(--ink);border-radius:14px;background:var(--bg3);}
+.edu-pstep{display:flex;align-items:center;flex:1;}
+.edu-pstep:last-child{flex:0 0 auto;}
+.edu-bead{width:30px;height:30px;flex:0 0 auto;border:2.5px solid var(--ink);border-radius:50%;display:grid;place-items:center;font-size:var(--fs-xs);font-weight:900;background:#fff;}
+.edu-bead[data-state="done"]{background:var(--sa,var(--acc));color:#fff;}
+.edu-bead[data-state="active"]{background:var(--gold);}
+.edu-bead[data-state="locked"]{background:var(--bg);color:var(--muted);}
+.edu-pbar{flex:1;height:4px;background:var(--line);margin:0 6px;border-radius:2px;opacity:.25;}
+.edu-pbar[data-state="done"]{background:var(--sa,var(--acc));opacity:1;}
+
+/* --- Contenus (dispatcher unique, B1) --- */
+.edu-block{margin-bottom:18px;}
+.edu-block:last-child{margin-bottom:0;}
+.edu-block-h{display:inline-block;background:var(--ink);color:var(--bg2);font-size:var(--fs-xs);font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;margin-bottom:8px;}
+.edu-table{width:100%;border-collapse:collapse;font-size:var(--fs-sm);}
+.edu-table td{border:2px solid var(--ink);padding:8px 9px;line-height:1.45;vertical-align:top;}
+.edu-table td:first-child{width:34%;font-weight:800;}
+.edu-table tr[data-niveau="r"] td:first-child{background:#f9dcd7;}
+.edu-table tr[data-niveau="o"] td:first-child,
+.edu-table tr[data-niveau="mid"] td:first-child{background:#fbeeda;}
+.edu-table tr[data-niveau="g"] td:first-child,
+.edu-table tr[data-niveau="ok"] td:first-child{background:#d6eff8;}
+.edu-table tr[data-niveau="no"] td:first-child{background:#f9dcd7;}
+.edu-drill{border:2px solid var(--ink);border-radius:10px;padding:10px 11px;margin-bottom:8px;background:var(--bg3);}
+.edu-drill strong{display:block;font-size:var(--fs-md);font-weight:900;margin-bottom:3px;}
+.edu-drill span{display:block;font-size:var(--fs-sm);line-height:1.5;color:var(--text2);}
+.edu-drill-fig{margin:10px 0 0;}
+.edu-debat{border:2.5px solid var(--gold);border-radius:10px;background:#fdf6e9;padding:12px;}
+.edu-debat strong{display:block;font-size:var(--fs-md);font-weight:900;margin-bottom:6px;}
+.edu-debat span{display:block;font-size:var(--fs-sm);line-height:1.55;color:var(--text2);}
+/* `.warn` existe déjà (contenu `type:"warn"`) — repliage interdit pour `secu`, comme les
+   avertissements-santé ailleurs dans l'app (règle posée par help.js). */
+.edu-secu{border:3px solid var(--ink);border-left:8px solid #c0392b;border-radius:10px;background:#fdf0ed;padding:12px;}
+.edu-secu strong{display:block;font-size:var(--fs-md);font-weight:900;color:#8f3020;margin-bottom:6px;}
+.edu-secu span{display:block;font-size:var(--fs-sm);line-height:1.55;color:#6d2a1c;}
+.edu-renvoi{border:3px solid var(--ink);border-radius:10px;background:var(--bg2);padding:12px;}
+.edu-renvoi strong{display:block;font-size:var(--fs-md);font-weight:900;margin-bottom:6px;}
+.edu-renvoi span{display:block;font-size:var(--fs-sm);line-height:1.55;color:var(--text2);}
+
+/* --- Figures SVG (schémas comparatifs) : classes scopées `edu-` — aucune de ces classes
+       n'existait avant ce lot (vérifié), préfixer les rend scopées PAR CONSTRUCTION plutôt
+       que par chance. Les traits noirs reprennent `var(--ink)` (teinte quasi identique à
+       celle des maquettes) ; les couleurs d'accent du DESSIN (bleu nage, rouge défaut, vert
+       trail…) restent celles des maquettes — ce sont des couleurs de CONTENU (comparaison
+       bon/mauvais geste), pas des couleurs de CHROME pilotées par le design system (A2 vise
+       le second, pas le premier). */
+.edu-panel{border:2.5px solid var(--ink);border-radius:10px;overflow:hidden;margin-bottom:10px;background:var(--bg3);}
+.edu-panel-h{display:flex;align-items:center;gap:7px;padding:7px 10px;border-bottom:2.5px solid var(--ink);font-size:var(--fs-xs);font-weight:800;letter-spacing:.04em;text-transform:uppercase;}
+.edu-panel-h.edu-bad,.edu-panel-h.edu-a{background:#f9dcd7;}
+.edu-panel-h.edu-good,.edu-panel-h.edu-b{background:#d6eff8;}
+.edu-panel-h.edu-n{background:#ede9e1;}
+.edu-pip{width:9px;height:9px;border-radius:50%;border:2px solid var(--ink);}
+.edu-pip.edu-bad,.edu-pip.edu-a{background:#e8543f;}
+.edu-pip.edu-good,.edu-pip.edu-b{background:#4fc3e8;}
+.edu-pip.edu-n{background:var(--muted);}
+.edu-panel svg{display:block;width:100%;height:auto;}
+.edu-panel figcaption{font-size:var(--fs-sm);line-height:1.5;color:var(--text2);}
+.edu-body-line,.edu-torso,.edu-rider{fill:none;stroke:var(--ink);stroke-width:7;stroke-linecap:round;stroke-linejoin:round;}
+.edu-limb,.edu-limb2{fill:none;stroke:var(--ink);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;}
+.edu-headfig,.edu-headc{fill:#fff;stroke:var(--ink);stroke-width:4;}
+.edu-water{stroke:#4fc3e8;stroke-width:3.5;fill:none;}
+.edu-wfill{fill:#4fc3e8;opacity:.12;}
+.edu-wheel{fill:none;stroke:var(--ink);stroke-width:4;}
+.edu-ground,.edu-slope{stroke:var(--ink);stroke-width:3;}
+.edu-ref{stroke:var(--muted);stroke-width:2;stroke-dasharray:6 5;fill:none;}
+.edu-ar{stroke:#e8543f;stroke-width:3;fill:none;stroke-linecap:round;}
+.edu-ak{stroke:#4fc3e8;stroke-width:3;fill:none;stroke-linecap:round;}
+.edu-flow{stroke:#3d6ff0;stroke-width:3;fill:none;stroke-linecap:round;opacity:.85;}
+/* R16.8 — aucune taille littérale dans styles.css, y compris en unités SVG : la garde
+   `smoke-typo` ne fait pas d'exception pour un `<text>` de schéma. `--fs-xs`/`--fs-micro`
+   fonctionnent comme `font-size` SVG au même titre qu'en HTML. */
+.edu-lb{font-size:var(--fs-xs);font-weight:800;fill:#e8543f;}
+.edu-lk{font-size:var(--fs-xs);font-weight:800;fill:#1b87a8;}
+.edu-lm{font-size:var(--fs-micro);font-weight:700;fill:#8a8378;}
+
+/* --- Sources : `<details>` natif en bas de section, groupé, note vs référence distinguées --- */
+.edu-sources-box{border:3px solid var(--ink);border-radius:14px;background:var(--bg3);margin-top:20px;}
+.edu-sources-box summary{list-style:none;cursor:pointer;padding:13px 14px;font-size:var(--fs-sm);font-weight:900;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;justify-content:space-between;touch-action:manipulation;}
+.edu-sources-box summary::-webkit-details-marker{display:none;}
+.edu-sources-box[open] summary{border-bottom:2.5px solid var(--ink);}
+.edu-src-group{padding:12px 14px 2px;}
+.edu-src-group+.edu-src-group{border-top:2px dashed var(--line);}
+.edu-src-group h3{font-size:var(--fs-xs);font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;}
+.edu-src-group ul{margin:0;padding-left:18px;}
+.edu-src-group li{font-size:var(--fs-xs);line-height:1.55;color:var(--text2);margin-bottom:8px;}
+.edu-src-group li[data-type="note"]{font-style:italic;color:var(--muted);}
+.edu-src-group a{color:var(--acc);font-weight:700;}
+
+@media(max-width:600px){
+  .edu-disc{font-size:var(--fs-xs);padding:8px 12px;}
+}

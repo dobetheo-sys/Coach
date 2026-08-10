@@ -11,12 +11,13 @@
 // de sports (R10) : en ajouter un n'exige de toucher qu'une ligne ici, jamais la navigation.
 import { S, $ } from "../state.js";
 import { renderTabNutrition } from "./tab-nutrition.js";
-import { renderTabEducatifs } from "./tab-eduglossaire.js";
+import { renderTabEducatifs } from "./tab-educatifs.js";
 
 const SUBTOOLS = [
   ["nutrition", "\u{1F957}", "Nutrition", renderTabNutrition],
-  // Retour utilisateur (08/08/2026) : bibliothèque d'éducatifs par discipline, reportée une
-  // première fois faute de scope. Même principe d'ajout que Nutrition : une ligne ici.
+  // R26 — module riche à six disciplines (paliers/blocs sourcés, badges de preuve), même
+  // slot et même libellé que le glossaire de gestes qu'il remplace (le brief reporte le
+  // choix du libellé définitif). Même principe d'ajout que Nutrition : une ligne ici.
   ["educatifs", "\u{1F4DA}", "Éducatifs", renderTabEducatifs],
 ];
 

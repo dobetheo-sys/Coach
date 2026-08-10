@@ -182,6 +182,40 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**R26 livré — le module Éducatifs, six disciplines, un seul schéma** (brief
+`BRIEF_CLAUDE_CODE_R16.md` + `AUDIT_CROISE_EDUCATIFS.md` — le fichier source s'appelle lui-même
+« R16 », mais ce numéro est déjà pris par le lot design visuel du 01/08/2026 (R16.4-R16.10, encore
+cité 8 fois dans `styles.css`) ; documenté ici sous **R26** pour ne pas créer deux lots identiques
+sous le même nom, voir ARCHITECTURE.md « R26 (Éducatifs) », suite `npm run test:e2e` →
+`smoke-educatifs.mjs`, **20e suite E2E**) : 🧰 Outils › 📚 Éducatifs
+rend désormais le contenu pédagogique complet des six disciplines (natation, vélo, course, trail,
+enchaînements, swimrun) à partir d'un schéma unique et d'UN SEUL composant de rendu — aucune
+branche par discipline hors couleur/icône (A1). Contenu repris **intégralement, sans
+reformulation**, des six maquettes fournies, chaque phrase étant pré-vérifiée contre son
+sourcing. Verrouillage par prérequis avec cascade de dévalidation (parcours du graphe, comme la
+maquette natation le faisait déjà en JS, généralisé au composant), `LOCKED_PREVIEW=true` par
+défaut (le contenu verrouillé reste intégralement lisible, seul le bouton de validation est
+désactivé — informer plutôt que bloquer, O-17), trois badges de preuve fixes (« Preuves
+solides » / « Mesures de terrain » / « Consensus d'enseignement », B2), barre de disciplines
+générique pilotée par `S.sport` (§4 du brief : triathlon → 4 disciplines, course seule → 1),
+progression et verrouillage par personne et non par plan (`educatifs` ajouté à `SHARED_KEYS` —
+savoir nager décrit l'athlète, pas un plan particulier).
+**Une collision a été trouvée en explorant `main` avant d'écrire une ligne** : une session
+concurrente avait déjà posé un sous-onglet « Éducatifs » plus simple au même endroit
+(`tab-eduglossaire.js`, un glossaire `{name,how}` par discipline dérivé de
+`src/engine/eduLibrary.ts` — un import ENGINE, puisque `swimDrillGlossaryText()` compose le
+texte des notes de séance « Nage éducatifs »). Décision du fondateur (question posée
+explicitement) : **remplacer**, `eduLibrary.ts` restant intact. Vérifié contenu par contenu
+avant de trancher : vélo/trail/natation absorbent déjà presque mot pour mot les gestes de
+`BIKE_DRILLS`/`TRAIL_DRILLS`/`SWIM_DRILLS` ; seul `RUN_DRILLS` (strides, gammes, foulées
+bondissantes) n'a aucun équivalent dans le nouveau contenu course — une section « Vocabulaire de
+séance » a donc été ajoutée, lisant `EBV2.eduLibrary` EN DIRECT (R11.1, jamais une resaisie du
+texte). SVG des six maquettes portés verbatim, identifiants `<marker>` et classes de dessin
+préfixés par discipline pour garantir zéro collision (A3, 11 identifiants renommés, vérifié à 0
+doublon). `engine.js`/`Coach_Pro_V1.5.html`/`src/` garantis byte-identiques (A14) : le module vit
+entièrement sous `endurabuild/js/`, jamais sous `src/` — vérifié par diff vide.
+**27 gates verts, E2E 20/20, golden 949 inchangé.**
+
 Audit **100% vert** : 486/486 combinaisons, 0 violation dure, 0 semaine hors bande [0.5, 1.4],
 0 alerte, **répartition des intensités mécanisée** (~80/20 : part facile ≥70%, médiane 83% —
 repCap V2.2 + brick Z2 + C18b). Couverture structurée 100%, promesses calibrées (C20/C22),
