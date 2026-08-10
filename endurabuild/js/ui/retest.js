@@ -78,7 +78,7 @@ export function retestBannerHTML(todayISO) {
   const days = Math.round((new Date(r.date + "T00:00:00Z") - new Date(todayISO + "T00:00:00Z")) / 864e5);
   const T = TYPES[r.type];
   if (days > 7 || days < 0) return "";
-  if (days > 1) return '<div class="warn" style="background:#e9defc;font-weight:600">🥊 <b>Retest ' + T.label + " dans " + days + ' jours.</b> D’ici là : rien de nouveau, des jambes fraîches. Le protocole t’attendra le jour J.</div>';
+  if (days > 1) return '<div class="warn" style="background:rgba(155,114,255,.14);font-weight:600">🥊 <b>Retest ' + T.label + " dans " + days + ' jours.</b> D’ici là : rien de nouveau, des jambes fraîches. Le protocole t’attendra le jour J.</div>';
   if (days === 1) return '<div class="warn" style="background:#fff3d6;font-weight:600">🥊 <b>Retest demain.</b> Aujourd’hui : facile ou repos, hydratation, sommeil. Le test se gagne la veille.</div>';
   // Jour J — écran scénarisé
   const steps = protocolFor(r.type).split(/(?<=\.)\s+/).map((s, i) => '<div style="margin:4px 0"><b>' + (i + 1) + ".</b> " + s + "</div>").join("");

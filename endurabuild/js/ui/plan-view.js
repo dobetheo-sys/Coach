@@ -435,7 +435,7 @@ function whyPlanCardHTML(plan){
   const m=plan&&plan.meta;
   let h="";
   if(m&&m.truncated)
-    h+='<div class="load-card" role="note" style="border-color:#c47f00;background:#fff8e6">'
+    h+='<div class="load-card" role="note" style="border-color:rgba(255,210,61,.35);background:rgba(255,210,61,.07)">'
       +'<div class="load-title">⚠️ Prépa raccourcie à '+m.delivered_weeks+' semaines</div>'
       +'<div class="load-sub">Les '+m.truncated_weeks+' premières semaines de mise en route ont été '
       +'retirées, parce que ta date de course est proche. <b>Cela suppose une base d’entraînement '

@@ -171,13 +171,13 @@ export function momentHTML(plan, todayIso) {
   if (S.answers && S.answers.race_date) raceDates.push(S.answers.race_date);
   const B = (bg, txt) => '<div class="warn" style="background:' + bg + ';font-weight:600">' + txt + "</div>";
   if (raceDates.includes(today))
-    return B("#ffe3e0", "\u{1F3C1} <b>Jour de course.</b> Tout le travail est fait — départ prudent, finis fort. Bonne course !");
+    return B("rgba(255,61,0,.12)", "\u{1F3C1} <b>Jour de course.</b> Tout le travail est fait — départ prudent, finis fort. Bonne course !");
   if (raceDates.includes(tomorrow))
     return B("#fff3d6", "\u{1F389} <b>Veille de course.</b> Objectif du jour : des jambes fraîches. Repos, hydratation, matériel préparé — demain tu récoltes.");
   let taperStart = null;
   plan.weeks.forEach((w) => w.days.forEach((d) => { if (!taperStart && (d.phaseId === "taper" || (w.phase && w.phase.id === "taper"))) taperStart = d.date; }));
   if (taperStart && taperStart === today)
-    return B("#e9defc", "✂️ <b>L’affûtage commence.</b> Le volume descend, la forme monte — le plus dur est derrière toi. Ne rajoute rien.");
+    return B("rgba(155,114,255,.14)", "✂️ <b>L’affûtage commence.</b> Le volume descend, la forme monte — le plus dur est derrière toi. Ne rajoute rien.");
   return "";
 }
 
@@ -198,7 +198,7 @@ export function planEndDate(plan, answers) {
 export function painBannerHTML() {
   const pf = S.answers.painFlag;
   if (!pf || !pf.active) return "";
-  return '<div class="warn" style="background:#ffe3e0;font-weight:600">🩹 <b>Douleur signalée' + (pf.location ? " (" + esc(pf.location) + ")" : "") + ".</b> "
+  return '<div class="warn" style="background:rgba(255,31,74,.10);font-weight:600">🩹 <b>Douleur signalée' + (pf.location ? " (" + esc(pf.location) + ")" : "") + ".</b> "
     + 'Les séances de qualité sont remplacées par de la récupération tant que le drapeau est actif — ta série est gelée, rien n’est perdu. Si la douleur persiste, consulte un médecin ou un kiné.'
     + '<div class="nav" style="margin-top:8px"><button class="btn" id="ebLiftPain" type="button">Je n’ai plus mal → lever le drapeau</button></div></div>';
 }
@@ -314,8 +314,12 @@ export function heroSessionHTML(plan, todayIso) {
     // Les séances suivantes (brick) gardent le leur — le héros n'en montre qu'un.
     body = res.sessions.map((x, i) => {
       const w = i === 0 ? "" : whyOf(x);
+      // R25.7-b — le NOM de la première séance EST déjà `.hero-title`, en Bebas géant juste
+      // au-dessus : le réafficher en gras ici le disait deux fois à 200 px d'écart, comme le
+      // « pourquoi » l'était. Les séances SUIVANTES (brick) le gardent — le héros n'en montre
+      // qu'une, elles n'ont pas d'autre titre.
       return '<div style="display:flex;gap:10px;align-items:flex-start;margin-top:10px">' + discBadgeHTML(x.d)
-        + '<div style="flex:1;min-width:0"><b>' + x.name + "</b>"
+        + '<div style="flex:1;min-width:0">' + (i === 0 ? "" : "<b>" + x.name + "</b>")
         + (w ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + w + "</div>" : "")
         + (x.det ? '<details class="gd-sess" open style="margin-top:4px"><summary>Le détail de la séance</summary>' + techListHTML(techOf(x)) + "</details>" : "")
         + "</div></div>";

@@ -216,7 +216,7 @@ export function microDefiHTML(plan, todayISO) {
   const { isRest, hardTomorrow } = dayContext(plan, todayISO);
   if (isRest || hardTomorrow) return "";
   const body = CHALLENGES[hashDate(todayISO + "c", CHALLENGES.length)];
-  return '<div class="load-card" style="border-color:var(--gold);border-width:3px;background:#fff8e6">'
+  return '<div class="load-card" style="border-color:rgba(255,210,61,.35);background:rgba(255,210,61,.07)">'
     + '<div class="load-title" style="color:var(--gold)">🎯 Micro-défi du jour <span style="font-weight:400;color:var(--muted);font-size:var(--fs-xs)">— zéro volume en plus</span></div>'
     + '<div style="margin-top:6px;font-size:var(--fs-md);line-height:1.55">' + body + "</div></div>";
 }

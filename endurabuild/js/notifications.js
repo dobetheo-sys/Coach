@@ -138,7 +138,7 @@ export function missedSessionsCheck(plan) {
   S.answers.relanceSent = key;
   ebSave();
   notify("On reprend en douceur ?", "3 séances sont passées — aucune importance. Une reprise facile en Z2 et la machine repart.");
-  return '<div class="warn" style="background:#e9defc">🌿 <b>La vie a pris le dessus — ça arrive.</b> '
+  return '<div class="warn" style="background:rgba(155,114,255,.14)">🌿 <b>La vie a pris le dessus — ça arrive.</b> '
     + 'Trois séances sont passées, et ce n’est ni grave ni un échec : le plan encaisse. '
     + 'Reprends par la prochaine séance FACILE telle quelle, sans rien rattraper — la régularité sur toute la préparation compte plus qu’une semaine parfaite.</div>';
 }
