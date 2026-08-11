@@ -356,6 +356,13 @@ body.theme-zenna #screen details.fold > summary {
   list-style: none; cursor: pointer; padding: 14px 0; min-height: 44px;
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   font-family: var(--zn-mono); font-size: var(--fs-md); letter-spacing: .06em; color: var(--zn-text);
+  /* Les capitales de la maquette. Elles sont posées ICI et non sur `.load-title` en général :
+     `text-transform` change `innerText` (Chrome le rend transformé), et R-ZENNA v2 avait dû
+     retirer cet effet du titre de carte parce qu'il cassait U3, qui lit « décisions du moteur
+     (N) ». `details.fold` n'est émis que par `foldHTML` (onglet Outils), et les quatre gardes
+     qui lisent ces titres — smoke-r4, smoke-improvements, smoke-usage, smoke-shop — passent
+     toutes par `textContent`, que `text-transform` ne touche pas. Vérifié une par une. */
+  text-transform: uppercase;
 }
 body.theme-zenna #screen details.fold > summary::-webkit-details-marker { display: none; }
 body.theme-zenna #screen details.fold > summary::after { content: none; }
