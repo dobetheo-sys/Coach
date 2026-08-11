@@ -58,6 +58,28 @@ for (const nom of ["zenna-today.css", "zenna-tabs.css"]) {
     + (bas.length ? " — reste : " + bas.join(", ") + "px" : ""));
 }
 
+// ---- 1ter. AUCUN `*/` ORPHELIN — la règle avalée en silence -----------------------------
+// `zenna-tabs.css` a porté pendant tout R-ZENNA v3 un commentaire d'en-tête listant les jetons
+// du thème clair : « (--text/--text2/--muted/--ink/--bg*/--acc/…) ». La séquence `*/` de
+// `--bg*/` FERME le commentaire dès cette ligne. Tout le reste de l'en-tête est alors lu comme
+// du CSS invalide, et la récupération d'erreur du parseur avale jusqu'à la première `}` — donc
+// la PREMIÈRE RÈGLE du fichier. Mesuré : `.gw` (la grille de semaine, partagée par les onglets
+// Plan et Semaine) rendait un liseré de 3 px BLANC CASSÉ et une ombre portée BLANCHE de 5 px au
+// lieu de sa surface sombre — précisément le « mode de panne » que ce commentaire décrit, causé
+// par une faute DANS ce commentaire. Rien ne l'a vu : le fichier reste valide, la feuille se
+// charge, une seule règle disparaît.
+//
+// Le détecteur est exact pour cette classe de défaut : on retire les commentaires BIEN FORMÉS
+// (même sémantique non gourmande que le parseur CSS) ; s'il subsiste un `*/`, c'est qu'un `*/`
+// prématuré a décalé toute la structure. Vaut pour les quatre feuilles.
+for (const nom of ["styles.css", "mobile.css", "zenna-today.css", "zenna-tabs.css"]) {
+  const brut = readFileSync(new URL("../../endurabuild/css/" + nom, import.meta.url), "utf8");
+  const reste = sansCommentaires(brut);
+  const i = reste.indexOf("*/");
+  ok(i === -1, "css/" + nom + " — aucun `*/` orphelin (un `*/` prématuré avale la règle suivante)"
+    + (i === -1 ? "" : " — vers : « " + reste.slice(Math.max(0, i - 60), i + 2).replace(/\s+/g, " ").trim() + " »"));
+}
+
 // Les modules UI : littéral toléré UNIQUEMENT dans le document exporté (plan-view.js), qui
 // est autonome et ne charge pas styles.css.
 const jsRoot = new URL("../../endurabuild/js/", import.meta.url);

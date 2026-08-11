@@ -11,6 +11,7 @@ import { renderTabOutils } from "./tab-outils.js";
 import { renderTabWeek } from "./tab-week.js";
 import { brancherAide } from "./help.js";
 import { znApplyNavDot, znClearStickyCta, znClearParallax } from "./zenna-motion.js"; // R-ZENNA
+import { appHeaderHTML } from "./app-header.js";
 
 // Refonte R5 (retour utilisateur) : l'onglet CENTRAL 🎯 Aujourd'hui est l'écran du
 // quotidien (check-in diaporama → séance du jour → prédiction → charge → avancement),
@@ -264,6 +265,20 @@ function renderActiveTab() {
   // Les deux éléments FLOTTANTS du reskin vivent hors de `#screen` : ils survivraient donc à un
   // changement d'onglet, qui ne remplace que `#screen`. L'onglet Aujourd'hui les repose lui-même.
   if (activeTab !== "today") { znClearStickyCta(); znClearParallax(); }
+  // R-ZENNA v5 — l'en-tête partagé. Il vit HORS de `#screen` (comme la barre d'onglets) parce
+  // que `#screen` est remplacé à chaque changement d'onglet ; mais il est re-rendu à chaque
+  // fois, car son contenu dépend du JOUR (décompte, date, semaine) ET de l'onglet actif (la
+  // puce ne pointe pas vers l'onglet où l'on se trouve déjà).
+  const entete = $("ebAppHeader");
+  if (entete) {
+    entete.innerHTML = appHeaderHTML(plan, todayISO(), activeTab);
+    const puce = entete.querySelector("[data-goto]");
+    if (puce) {
+      const aller = () => setTab(puce.dataset.goto);
+      puce.onclick = aller;
+      puce.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); aller(); } };
+    }
+  }
   const tab = TABS.find((t) => t[0] === activeTab) || TABS[TABS.length - 1];
   tab[3](plan);
   const bar = $("ebTabbar");
@@ -298,6 +313,13 @@ export function renderTabs() {
   // U11 — l'arrivée sur le plan le jour de sa création.
   if (jourDeCreation() && activeTab === "today") activeTab = "general";
   document.body.classList.add("has-tabs");
+  let entete = $("ebAppHeader");
+  if (!entete) {
+    entete = document.createElement("header");
+    entete.id = "ebAppHeader";
+    const ecran = $("screen");
+    ecran.parentNode.insertBefore(entete, ecran);
+  }
   let bar = $("ebTabbar");
   if (!bar) {
     bar = document.createElement("nav");
@@ -315,4 +337,6 @@ export function hideTabs() {
   document.body.classList.remove("theme-zenna");
   const bar = $("ebTabbar");
   if (bar) bar.remove();
+  const entete = $("ebAppHeader");
+  if (entete) entete.remove();
 }

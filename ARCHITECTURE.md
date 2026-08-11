@@ -5278,3 +5278,67 @@ présente et jamais recopiée (`mobile.css` peut la changer). Garde `S-CACHE-b` 
 
 Défaut **pré-existant** — ce lot ne l'a pas créé, il l'a rendu visible en reconstruisant le
 service worker plusieurs fois pendant une exécution de tests.
+
+## R-ZENNA (v5) — l'en-tête partagé, et la règle CSS morte depuis v3
+
+Parti d'un état des lieux externe (`ZENNA_MIGRATION_ETAT_ET_PLAN.md`) dont les constats ont
+d'abord été **re-mesurés un par un** — trois se sont révélés faux ou périmés, un s'est révélé
+juste et a mené au défaut le plus profond du reskin.
+
+### L'en-tête partagé (`#ebAppHeader`)
+
+Le rapport le nomme correctement : c'est le **seul élément structurel commun aux cinq écrans de
+la maquette qui n'avait aucun équivalent**. `body.has-tabs .hero { display: none }` masque le
+titre du questionnaire dès qu'on entre dans la vue à onglets, et **rien ne le remplaçait** — on
+arrivait sur le contenu sans savoir de quelle course on parle ni à combien de jours elle est.
+
+`endurabuild/js/ui/app-header.js` : marque à gauche, puce de course + salut daté à droite. Il vit
+HORS de `#screen` (comme la barre d'onglets), parce que `#screen` est remplacé à chaque
+changement d'onglet ; mais il est **re-rendu à chaque fois**, son contenu dépendant du jour
+(décompte, date, semaine) et de l'onglet actif.
+
+**Il ne calcule rien qui existe déjà (R11.1)** : le décompte et le libellé de format vivaient
+dans `avancementPlanHTML` (onglet Plan) et en sont **extraits** — cet onglet les importe
+désormais, plutôt que d'en garder une seconde écriture qui dériverait. Le salut vient de
+`greeting()`, la semaine de `EBV2.progress`.
+
+**Trois écarts avec la maquette, chacun motivé.** Elle écrit « ZENNA » : c'est le nom de la
+maquette, pas du produit — le reprendre renommerait l'app, donc **ENDURABUILD**, et un critère
+interdit le mot. Elle écrit « Salut Théo » : le questionnaire ne collecte **aucun prénom**
+(vérifié), et inventer « Salut champion » serait une familiarité que personne n'a demandée — le
+salut reste sans nom. Elle dessine la puce à 30 px : **44 px** ici (U4). Sans date de course
+déclarée, la puce n'existe pas — R23.5 l'avait déjà tranché pour l'onglet Plan, « inventer un
+J−? serait pire que se taire ».
+
+### Le défaut trouvé en construisant — une règle morte depuis R-ZENNA v3
+
+L'en-tête ne se mettait pas en ligne : ses deux blocs sortaient en pleine largeur, empilés.
+`getComputedStyle` donnait `display: block` alors que la règle demande `flex`, et la règle
+**était absente du CSSOM** tout en étant présente dans le fichier.
+
+Cause : l'en-tête de commentaire de `zenna-tabs.css` listait les jetons du thème clair —
+`(--text/--text2/--muted/--ink/--bg*/--acc/…)`. La séquence `*/` de **`--bg*/` ferme le
+commentaire dès cette ligne**. Tout le reste de l'en-tête est alors lu comme du CSS invalide, et
+la récupération d'erreur du parseur avale jusqu'à la première `}` — c'est-à-dire **la première
+règle du fichier**. Mesuré : exactement une règle perdue (196 → 195).
+
+Avant ce lot, cette première règle était `.gw, .drv-band, .locked, .bp-hero`. Conséquence
+mesurée sur l'onglet Semaine : `.gw` rendait un **liseré de 3 px blanc cassé et une ombre portée
+BLANCHE de 5 px** au lieu de sa surface sombre à 1 px — c'est-à-dire **précisément le « MODE DE
+PANNE À CONNAÎTRE » que ce commentaire décrit**, provoqué par une faute de frappe *dans ce
+commentaire*. Depuis v3, sur les deux onglets qui partagent cette grille.
+
+Rien ne pouvait le voir : le fichier reste valide, la feuille se charge, une seule règle
+disparaît en silence. Garde ajoutée à `smoke-typo`, exacte pour cette classe de défaut : on
+retire les commentaires bien formés (même sémantique non gourmande que le parseur) et **s'il
+subsiste un `*/`, c'est qu'un `*/` prématuré a décalé la structure**. Les quatre feuilles sont
+couvertes ; **vérifiée rouge** en remettant la faute.
+
+### Ce que le rapport disait, et ce que la mesure a répondu
+
+| Constat du rapport | Vérifié |
+|---|---|
+| §3 — dette de perf de recalcul de style, « à traiter avant d'étendre le reskin » | **Non fondée.** Surcoût des deux feuilles, mesuré par onglet contre les mêmes écrans sans elles : **0 à 9 ms**, une valeur négative — sous le bruit de mesure. Le blocage annoncé n'existe pas. |
+| §3 — U7 devenu douteux | **Vivant.** U7 rapporte 5 ms contre un plafond de 2 000, et **rougit à 3 332 ms** dès qu'on retire l'amorçage précoce de la météo (cassure vérifiée). |
+| §7 — « ligne *Après* manquante au ravitaillement, module commerce à étoffer (cadence, prix, goût, format) » | **Périmé.** Tout cela a été livré en v4 ; le rapport a été écrit sur un fichier antérieur (il compte 174 règles pour une feuille qui en a 223). |
+| §4.3 — en-tête partagé absent des cinq écrans | **Juste**, et c'est le seul de la liste — livré ici. |

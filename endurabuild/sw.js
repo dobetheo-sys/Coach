@@ -13,7 +13,7 @@
    `npm run check:sw`, comme `check:app` pour le bundle du monolithe). */
 
 // __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
-const VERSION = "eb-pwa-74171eb1d98f";
+const VERSION = "eb-pwa-e727a832a87c";
 // __/SW_VERSION__
 
 // __SW_ASSETS__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
@@ -44,6 +44,7 @@ const ASSETS = [
   "./js/shop-order.js",
   "./js/state.js",
   "./js/strava.js",
+  "./js/ui/app-header.js",
   "./js/ui/avatar-tri.js",
   "./js/ui/avatar.js",
   "./js/ui/celebrations.js",

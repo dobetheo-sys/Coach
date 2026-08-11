@@ -38,12 +38,12 @@ function avancementPlanHTML(plan, today) {
   const rd = S.answers.race_date;
   let tete = "";
   if (rd) {
-    const j = Math.round((new Date(rd + "T00:00:00").getTime() - new Date(today + "T00:00:00").getTime()) / 864e5);
-    // Le format était affiché en CODE BRUT ("avant S" au lieu de "avant Sprint") : le libellé
-    // vient de SPORTS[sport].formats, seule source (R11.1) — jamais une seconde table de noms.
-    const fmts = (SPORTS[S.sport] && SPORTS[S.sport].formats) || [];
-    const fmtEntry = fmts.find((f) => f[0] === S.answers.format);
-    const fmtLabel = fmtEntry ? fmtEntry[1].split(" (")[0] : (S.answers.format || "ta course");
+    // R-ZENNA v5 — le décompte et le libellé de format sont EXTRAITS dans `app-header.js` :
+    // l'en-tête partagé affiche le même « J−281 · 70.3 » en haut de chaque onglet, et deux
+    // écritures du même calcul divergeraient (R11.1). Le rendu ci-dessous ne bouge pas.
+    const c = raceCountdown(S.answers, today);
+    const j = c.jours;
+    const fmtLabel = c.format || "ta course";
     tete = j > 1 ? '<div style="font-size:var(--fs-xl);font-weight:900;line-height:1">J−' + j + "</div>"
         + '<div class="load-sub">avant ' + esc(fmtLabel) + "</div>"
       : j === 1 ? '<div style="font-size:var(--fs-lg);font-weight:900">Demain, jour J</div>'
@@ -66,6 +66,7 @@ import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 import { feasibilityCardHTML, bindFeasibility } from "./feasibility.js";
 import { DISC } from "./icons.js";
+import { raceCountdown } from "./app-header.js";
 
 // R5 — le bandeau rouge « réserves » est retiré (retour utilisateur : langage de
 // développeur, pas de client). Les limites éventuelles du plan restent lisibles dans

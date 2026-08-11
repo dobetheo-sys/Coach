@@ -273,6 +273,45 @@ async function boot(reducedMotion) {
     ok(st.invisibles === 0, "onglet " + t + " : aucun contenu resté invisible (" + st.invisibles + ")");
     ok(st.txt > 200, "onglet " + t + " : le contenu est bien rendu (" + st.txt + " car.)");
   }
+
+  // ── R-ZENNA v5 — L'EN-TÊTE PARTAGÉ, sur les CINQ onglets ────────────────────────────────
+  // C'était le seul élément structurel commun aux cinq écrans de la maquette sans équivalent
+  // dans l'app : `body.has-tabs .hero { display: none }` masque le titre du questionnaire et
+  // rien ne le remplaçait — on arrivait sur le contenu sans savoir de quelle course on parle.
+  {
+    const vus = [];
+    for (const t of ["today", "profile", "general", "week", "outils"]) {
+      await page.click('#ebTabbar .tabbtn[data-tab="' + t + '"]');
+      await page.waitForTimeout(450);
+      vus.push(await page.evaluate((tab) => {
+        const h = document.getElementById("ebAppHeader");
+        if (!h) return { tab, absent: true };
+        const p = h.querySelector(".zn-race-chip");
+        const r = h.getBoundingClientRect();
+        return { tab, absent: false, marque: /ENDURABUILD/.test(h.innerText),
+          zenna: /ZENNA/i.test(h.innerText), lignes: Math.round(r.height),
+          puce: !!p, puceH: p ? Math.round(p.getBoundingClientRect().height) : 0,
+          cliquable: p ? p.getAttribute("role") === "button" : null,
+          dansEcran: !!document.querySelector("#screen #ebAppHeader") };
+      }, t));
+    }
+    ok(vus.every((v) => !v.absent), "l'en-tête partagé est présent sur les CINQ onglets"
+      + (vus.some((v) => v.absent) ? " — absent de : " + vus.filter((v) => v.absent).map((v) => v.tab).join(", ") : ""));
+    ok(vus.every((v) => v.marque), "…il porte la marque du PRODUIT (ENDURABUILD)");
+    // La maquette s'appelle « Zenna » : la reprendre au pied de la lettre renommerait l'app.
+    ok(vus.every((v) => !v.zenna), "…et jamais « Zenna », qui est le nom de la maquette");
+    ok(vus.every((v) => !v.dansEcran), "…il vit HORS de #screen, sinon chaque changement d'onglet l'effacerait");
+    // Il doit tenir sur UNE ligne : à deux lignes il mange l'écran qu'il est censé cadrer.
+    const hauts = vus.filter((v) => v.lignes > 70);
+    ok(hauts.length === 0, "…et tient sur une seule ligne"
+      + (hauts.length ? " — trop haut sur : " + hauts.map((v) => v.tab + " (" + v.lignes + "px)").join(", ") : ""));
+    ok(vus.every((v) => v.puce), "la puce de course est là quand une date est déclarée");
+    ok(vus.every((v) => v.puceH >= 44), "…au gabarit tactile de U4 (44 px), et pas aux 30 px de la maquette");
+    // Sur l'onglet Plan elle mènerait là où l'on est déjà : elle s'y tait comme bouton.
+    const surPlan = vus.find((v) => v.tab === "general");
+    ok(surPlan && surPlan.cliquable === false, "…mais elle n'est pas cliquable sur l'onglet Plan (elle y mènerait sur place)");
+    ok(vus.filter((v) => v.tab !== "general").every((v) => v.cliquable === true), "…et cliquable partout ailleurs");
+  }
   // Le CONTRASTE tient sur les cinq onglets, pas seulement sur celui qu'on a dessiné en
   // premier : c'est là que se cachent les fonds pastel du thème clair devenus quasi blancs.
   for (const t of ["profile", "general", "week", "outils"]) {

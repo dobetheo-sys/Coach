@@ -2,7 +2,7 @@
    R-ZENNA — EXTENSION DU THÈME AUX QUATRE AUTRES ONGLETS
    ============================================================
    `zenna-today.css` porte le SOCLE : palette `--zn-*`, redéfinition des jetons du thème clair
-   (--text/--text2/--muted/--ink/--bg*/--acc/--gold/--line), cadence de motion, et les classes
+   (--text, --text2, --muted, --ink, --bg et ses variantes, --acc, --gold, --line), la cadence
    génériques (.card, .load-card, .load-title, .load-sub, .btn, .eyebrow, .warn, champs,
    .gd-why/.gd-det/.gd-steps, .doneBtn, .eb-modal, #ebTabbar). Ce socle vaut désormais pour
    TOUS les onglets — `tabs.js` pose `theme-zenna` en permanence.
@@ -23,6 +23,61 @@
    qui se retourne : partout où le thème clair dessinait à l'encre, il faut soit repasser en
    `--zn-border`, soit retirer l'ombre. C'est la source principale des règles ci-dessous.
    ============================================================ */
+
+/* ============================================================
+   R-ZENNA v5 — L'EN-TÊTE PARTAGÉ (#ebAppHeader)
+   ============================================================
+   Le seul élément structurel commun aux cinq écrans de la maquette qui n'existait nulle part.
+   Il vit hors de `#screen`, donc ces règles ne sont PAS scopées sous `#screen`. */
+body.theme-zenna #ebAppHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 6px 0 14px;
+}
+body.theme-zenna #ebAppHeader .zn-brand { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
+body.theme-zenna #ebAppHeader .zn-logo-mark {
+  width: 30px; height: 30px; flex: 0 0 auto; clip-path: var(--cut-tile);
+  background: linear-gradient(145deg, var(--zn-orange), var(--zn-orange-2));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--zn-display); font-size: var(--fs-xl); color: #000;
+  box-shadow: 0 4px 16px var(--zn-orange-glow);
+}
+body.theme-zenna #ebAppHeader .zn-brand-word {
+  font-family: var(--zn-display); font-size: var(--fs-lg); letter-spacing: .06em;
+  color: var(--zn-text); transform: skewX(var(--zn-skew)); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+body.theme-zenna #ebAppHeader .zn-header-right-wrap {
+  display: flex; align-items: center; gap: 9px; flex: 0 0 auto;
+}
+body.theme-zenna #ebAppHeader .zn-header-right { text-align: right; min-width: 0; }
+body.theme-zenna #ebAppHeader .zn-greet { font-size: 12px; font-weight: 600; color: var(--zn-text); white-space: nowrap; }
+body.theme-zenna #ebAppHeader .zn-date-mono {
+  font-family: var(--zn-mono); font-size: 10px; color: var(--zn-muted-2);
+  letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+}
+/* La puce de course. Cliquable, donc 44 px de haut (U4) — la maquette la dessine à 30. */
+body.theme-zenna #ebAppHeader .zn-race-chip {
+  display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 5px 12px;
+  background: var(--zn-surface-2); border: 1px solid var(--zn-border); border-radius: 100px;
+  transition: transform var(--dur-tap) var(--ease-spring), border-color var(--dur-trans) var(--ease);
+}
+body.theme-zenna #ebAppHeader .zn-race-chip[role="button"] { cursor: pointer; }
+body.theme-zenna #ebAppHeader .zn-race-chip[role="button"]:active { transform: scale(.93); }
+body.theme-zenna #ebAppHeader .zn-race-chip[role="button"]:focus-visible {
+  outline: 2px solid var(--zn-orange); outline-offset: 2px;
+}
+body.theme-zenna #ebAppHeader .rc-j {
+  font-family: var(--zn-display); font-size: 14px; color: var(--zn-orange-tint); line-height: 1;
+}
+body.theme-zenna #ebAppHeader .rc-l {
+  font-family: var(--zn-mono); font-size: 9px; color: var(--zn-muted-2); letter-spacing: .05em;
+  text-transform: uppercase; white-space: nowrap;
+}
+/* Sur un écran étroit, la marque cède avant la puce : « J−281 · 70.3 » est l'information,
+   « ENDURABUILD » est le décor — on sait sur quelle app on est. */
+@media (max-width: 359px) {
+  body.theme-zenna #ebAppHeader .zn-brand-word { display: none; }
+}
 
 /* ============================================================
    COMMUN — surfaces, séparateurs, ombres portées
