@@ -20,7 +20,53 @@
 //    CSS remet `opacity:1` quand il coupe l'animation d'entrée — une cascade désactivée sans
 //    repli laisserait la page blanche. Ici, `znReduce()` court-circuite les effets purement
 //    décoratifs (confettis, XP) et rend les compteurs instantanés.
-const BEAT = 120; // le battement de la maquette : tout en est un multiple
+const BEAT = 160; // cadence révisée — voir la note de `--beat` dans css/zenna-today.css
+
+/* ============================================================
+   LE PORTILLON DE MOUVEMENT — pourquoi il existe
+   ============================================================
+   Retour du fondateur : « l'animation est beaucoup trop rapide ». Chronométré image par image
+   après la dernière réponse du check-in, le relevé disait autre chose :
+
+     t=1487ms  rideau OPAQUE   9 cartes déjà arrivées   compteur fini   anneau fini
+     t=1856ms  rideau PARTI    plus rien ne bouge, et plus rien ne bougera
+
+   Tout le système de motion se jouait DERRIÈRE la couche de verdict. Quand elle se levait,
+   l'écran était déjà figé : l'athlète ne voyait aucune animation. Ce n'était pas « trop
+   rapide », c'était « déjà fini » — et aucun réglage de durée n'aurait corrigé ça.
+
+   La cause est mon propre correctif : pour ne pas retarder l'affichage de la séance (budget
+   U7), j'avais rendu le tampon non bloquant — il ne retarde plus rien, mais il RECOUVRE le
+   moment où tout se joue. La séquence de la maquette (tampon, PUIS révélation) avait disparu
+   dans l'opération.
+
+   Ce portillon la restaure sans réintroduire le délai : le contenu est rendu tout de suite
+   (donc présent, mesurable, atteignable), seules les ANIMATIONS attendent que le rideau
+   commence à se lever. `.rise` est posée immédiatement — les cartes sont donc à opacité 0
+   derrière une couche opaque, ce qui ne se voit pas — et `zn-play` n'arrive qu'à l'ouverture.
+
+   LE CHIEN DE GARDE N'EST PAS DÉCORATIF : si `znRelease` n'était jamais appelée (exception
+   dans le rendu, couche retirée autrement), l'onglet resterait VIDE pour toujours. Le mode de
+   panne d'un portillon d'opacité est l'écran blanc ; il doit donc s'ouvrir tout seul. */
+let _hold = false;
+let _pending = [];
+let _watchdog = null;
+export function znHold() {
+  _hold = true;
+  clearTimeout(_watchdog);
+  _watchdog = setTimeout(znRelease, 4000);
+}
+export function znRelease() {
+  clearTimeout(_watchdog);
+  _watchdog = null;
+  if (!_hold && !_pending.length) return;
+  _hold = false;
+  const q = _pending;
+  _pending = [];
+  for (const f of q) { try { f(); } catch (e) { console.warn(e); } }
+}
+/** Exécute maintenant, ou à l'ouverture du portillon. */
+function _quand(fn) { if (_hold) _pending.push(fn); else fn(); } // le battement de la maquette : tout en est un multiple
 
 /** Le thème sombre est-il actif ? (posé par tabs.js sur l'onglet Aujourd'hui uniquement) */
 export function znOn() {
@@ -48,7 +94,7 @@ export function znToast(msg) {
   void _toastEl.offsetWidth;
   _toastEl.classList.add("on");
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => { if (_toastEl) _toastEl.classList.remove("on"); }, BEAT * 30);
+  _toastTimer = setTimeout(() => { if (_toastEl) _toastEl.classList.remove("on"); }, BEAT * 25); // ≈4 s, convention snackbar
 }
 
 /* ============================================================
@@ -73,7 +119,7 @@ export function znConfetti(originEl) {
     const anim = c.animate([
       { transform: "translate(0,0) rotate(0deg) scale(1)", opacity: 1 },
       { transform: "translate(" + dx + "px," + dy + "px) rotate(" + (180 + Math.random() * 360) + "deg) scale(.4)", opacity: 0 },
-    ], { duration: BEAT * (5 + Math.random() * 3), easing: "cubic-bezier(.2,.8,.4,1)" });
+    ], { duration: BEAT * (5 + Math.random() * 3), easing: "cubic-bezier(.2,.8,.4,1)" }); // 800-1280 ms : sous 600 ms la particule disparaissait avant d'avoir décrit son arc
     anim.onfinish = () => c.remove();
   }
 }
@@ -93,7 +139,7 @@ export function znXpFloat(originEl, label) {
     { transform: "translateY(0)", opacity: 0 },
     { transform: "translateY(-14px)", opacity: 1, offset: .3 },
     { transform: "translateY(-42px)", opacity: 0 },
-  ], { duration: BEAT * 10, easing: "cubic-bezier(.25,.46,.45,.94)" });
+  ], { duration: BEAT * 10, easing: "cubic-bezier(.34,.06,.20,1)" }); // 1600 ms : le texte doit être LU pendant qu'il monte, pas seulement aperçu
   anim.onfinish = () => el.remove();
 }
 
@@ -126,11 +172,24 @@ export function znPlay(root) {
   kids.forEach((n, i) => {
     n.classList.add("rise", "r" + Math.min(8, i + 1));
   });
-  // Retirer/reposer `zn-play` avec un reflow entre les deux REJOUE la cascade : sans ça,
-  // revenir sur l'onglet réafficherait des cartes déjà animées, donc figées.
+  // `zn-play` est retirée TOUT DE SUITE, avant même de savoir si le portillon retient.
+  //
+  // Sans cette ligne, le portillon ne retient rien : `#screen` conserve la classe du rendu
+  // PRÉCÉDENT (celui du portillon de check-in, qui appelle déjà znPlay), donc les enfants
+  // fraîchement créés matchent `.zn-play .rise` dès qu'on leur pose `rise` et s'animent
+  // immédiatement. Mesuré : la cascade se jouait UNE FOIS derrière le rideau (0→7 cartes
+  // pendant qu'il était opaque) puis se REJOUAIT à l'ouverture — deux fois, dont une invisible.
   host.classList.remove("zn-play");
-  void host.offsetWidth;
-  host.classList.add("zn-play");
+  // Les classes `rise` sont posées TOUT DE SUITE (le contenu passe à opacité 0), mais le
+  // déclenchement passe par le portillon : derrière une couche de verdict opaque, l'invisible
+  // ne se voit pas, et la cascade se joue au moment où on la regarde.
+  _quand(() => {
+    // Retirer/reposer `zn-play` avec un reflow entre les deux REJOUE la cascade : sans ça,
+    // revenir sur l'onglet réafficherait des cartes déjà animées, donc figées.
+    host.classList.remove("zn-play");
+    void host.offsetWidth;
+    host.classList.add("zn-play");
+  });
 }
 
 /* ============================================================
@@ -141,7 +200,7 @@ export function znDrawChart() {
   const lines = document.querySelectorAll("#screen .zn-chart-line");
   if (!lines.length) return;
   const reduce = znReduce();
-  lines.forEach((p, i) => {
+  _quand(() => lines.forEach((p, i) => {
     let len = 0;
     try { len = p.getTotalLength(); } catch (e) { return; }
     if (!len) return;
@@ -150,9 +209,11 @@ export function znDrawChart() {
     p.style.transition = "none";
     p.style.strokeDashoffset = String(len);
     void p.getBoundingClientRect();
-    p.style.transition = "stroke-dashoffset " + (BEAT * 9) + "ms cubic-bezier(.25,.46,.45,.94) " + (BEAT * (4 + i * 2)) + "ms";
+    // beat×8 pour le tracé (le plus LONG parcours de l'écran : la durée s'indexe sur la
+    // distance couverte), départs échelonnés beat×4 / ×6 / ×8.
+    p.style.transition = "stroke-dashoffset " + (BEAT * 8) + "ms cubic-bezier(.34,.06,.20,1) " + (BEAT * (4 + i * 2)) + "ms";
     p.style.strokeDashoffset = "0";
-  });
+  }));
 }
 
 /** L'anneau de forme se remplit, et son chiffre monte avec lui. */
@@ -178,6 +239,7 @@ export function znDrawFormRing() {
   // pour que le navigateur enregistre cet état de départ, puis on transitionne vers la cible.
   const plein = parseFloat(ring.getAttribute("stroke-dasharray"));
   if (val && isFinite(n)) val.textContent = "0";
+  _quand(() => {
   if (isFinite(plein)) {
     ring.style.transition = "none";
     ring.style.strokeDashoffset = String(plein);
@@ -186,7 +248,10 @@ export function znDrawFormRing() {
   }
   requestAnimationFrame(() => {
     if (isFinite(target)) ring.style.strokeDashoffset = String(target);
-    if (val && isFinite(n)) setTimeout(() => znCountUp(val, n, BEAT * 9), BEAT * 3);
+    // L'anneau et son chiffre partagent durée ET délai : une jauge et le nombre qu'elle porte
+    // sont un seul objet, deux cadences les rendraient concurrents.
+    if (val && isFinite(n)) setTimeout(() => znCountUp(val, n, BEAT * 7), BEAT * 2.5);
+  });
   });
 }
 
@@ -199,7 +264,9 @@ export function znCountHero() {
   if (!isFinite(n)) return;
   if (znReduce()) { el.textContent = String(Math.round(n)); return; }
   el.textContent = "0";
-  setTimeout(() => znCountUp(el, n, BEAT * 7), BEAT * 3);
+  // Fin à beat×9,5 ≈ 1520 ms, donc APRÈS l'atterrissage de la carte héros (960 ms) : le
+  // chiffre se stabilise une fois son support posé, jamais pendant.
+  _quand(() => setTimeout(() => znCountUp(el, n, BEAT * 7), BEAT * 2.5));
 }
 
 /* ============================================================
@@ -239,11 +306,18 @@ export function znVerdictStamp(html, opts) {
   document.body.appendChild(ov);
   const badge = ov.querySelector(".zn-verdict-badge");
   if (o.celebrate && badge) znConfetti(badge);
+  // LE RIDEAU SE LÈVE ET LE MOUVEMENT PART EN MÊME TEMPS. `znRelease` est appelée au DÉBUT du
+  // fondu, pas à sa fin : la cascade démarre pendant que le voile s'efface, donc l'athlète voit
+  // le premier mouvement arriver au travers plutôt que de fixer un écran figé une demi-seconde.
+  let parti = false;
   const partir = () => {
+    if (parti) return;
+    parti = true;
     ov.style.opacity = "0";
-    setTimeout(() => ov.remove(), 300);
+    znRelease();
+    setTimeout(() => ov.remove(), BEAT * 2.5);
   };
-  setTimeout(partir, znReduce() ? 600 : BEAT * 13);
+  setTimeout(partir, znReduce() ? 600 : BEAT * 10);
   ov.addEventListener("click", partir); // on peut toujours passer devant
 }
 

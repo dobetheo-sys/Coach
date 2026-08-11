@@ -98,15 +98,32 @@ body.theme-zenna {
   --cut-tile: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
   --cut-hero: polygon(0 0, 100% 0, 100% 82%, 55% 96%, 0 100%);
 
-  /* ---- cadence (tout dérive du battement) ---- */
-  --beat: 120ms;
-  --dur-tap: calc(var(--beat) * 1.5);
-  --dur-trans: calc(var(--beat) * 3.5);
+  /* ---- CADENCE (tout dérive du battement) — RÉVISÉE APRÈS RETOUR « BEAUCOUP TROP RAPIDE »
+     Quatre relectures de motion design menées séparément (Material 3, Apple HIG, IBM Carbon,
+     psychophysique de la perception) ont convergé sur la MÊME cause, avec le même chiffre :
+     ce n'est pas la durée qui était courte, c'est la COURBE qui la dépensait avant qu'on la
+     voie. `cubic-bezier(.25,.46,.45,.94)` est un easeOutQuad : sa pente à l'origine vaut
+     y1/x1 = 1,84, donc la carte APPARAISSAIT DÉJÀ LANCÉE à 1,84× sa vitesse moyenne, franchissait
+     90 % de ses 22 px en ~490 ms, puis dérivait 230 ms sous le seuil de perception. On déclarait
+     720 ms, l'œil en voyait 450 — et un objet sans élan de départ se lit comme une chiquenaude,
+     jamais comme une masse qui se déplace.
+     Trois corrections, dans l'ordre d'importance :
+       1. LA COURBE part du REPOS (pente à l'origine 0,18 au lieu de 1,84) ;
+       2. LA DISTANCE passe de 22 à 40 px — 22 px sur une carte pleine largeur est un sursaut,
+          pas une trajectoire : l'œil n'a rien à suivre et enregistre « apparu », donc instantané ;
+       3. l'OPACITÉ est DÉCOUPLÉE du déplacement (pleine à 42 % de la durée) — le contenu devient
+          lisible tôt, pendant que le mouvement, lui, continue d'être visible.
+     Le tap ne suit PAS ce ralentissement : la manipulation directe doit rester immédiate
+     (3 lentilles sur 4 le disent), il DESCEND même de 180 à 120 ms. ---- */
+  --beat: 160ms;
+  --dur-tap: calc(var(--beat) * 0.75);
+  --dur-trans: calc(var(--beat) * 2.5);
   --dur-rise: calc(var(--beat) * 6);
-  --stagger: calc(var(--beat) * 0.95);
-  --ease-enter: cubic-bezier(.25, .46, .45, .94);
-  --ease: cubic-bezier(.4, 0, .2, 1);
-  --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
+  --stagger: calc(var(--beat) * 1.1);
+  --zn-travel: 40px;
+  --ease-enter: cubic-bezier(.34, .06, .20, 1);
+  --ease: cubic-bezier(.2, 0, 0, 1);
+  --ease-spring: cubic-bezier(.34, 1.18, .64, 1);
 
   /* ---- LES JETONS DU THÈME CLAIR SONT REDÉFINIS ICI, ET C'EST INDISPENSABLE ----
      Les modules de rendu portent des styles INLINE qui référencent les jetons sémantiques du
@@ -146,9 +163,19 @@ body.theme-zenna .wrap { padding-left: 14px; padding-right: 14px; }
 /* ============================================================
    MOTION — apparition en cascade
    ============================================================ */
-body.theme-zenna .rise { opacity: 0; transform: translateY(22px); }
+body.theme-zenna .rise { opacity: 0; transform: translateY(var(--zn-travel)); }
 body.theme-zenna .zn-play .rise { animation: zn-rise var(--dur-rise) var(--ease-enter) forwards; }
-@keyframes zn-rise { to { opacity: 1; transform: translateY(0); } }
+/* L'OPACITÉ EST DÉCOUPLÉE DU DÉPLACEMENT : pleine à 42 % de la durée (≈400 ms) pendant que la
+   carte finit de se poser sur les 58 % restants. Le contenu devient donc lisible PLUS TÔT
+   qu'avant (~400 ms contre ~490), ce qui rend de la marge au budget d'affichage, tout en
+   laissant au mouvement le temps d'être vu. Une entrée où opacité et position finissent
+   ensemble oblige à choisir entre lisible-tôt et visible-longtemps ; les découpler ne l'oblige
+   plus. */
+@keyframes zn-rise {
+  0%   { opacity: 0; transform: translateY(var(--zn-travel)); }
+  42%  { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0); }
+}
 body.theme-zenna .zn-play .r1 { animation-delay: 0ms; }
 body.theme-zenna .zn-play .r2 { animation-delay: var(--stagger); }
 body.theme-zenna .zn-play .r3 { animation-delay: calc(var(--stagger) * 2); }

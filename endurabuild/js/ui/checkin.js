@@ -6,7 +6,7 @@
 import { S, $, esc } from "../state.js";
 import { applyReadinessSnap, verdictHTML, primeWeather } from "./readiness.js";
 import { VERDICT_ICON } from "./icons.js";
-import { znVerdictStamp } from "./zenna-motion.js";
+import { znVerdictStamp, znHold, znRelease } from "./zenna-motion.js";
 
 function greeting() {
   const h = new Date().getHours();
@@ -204,8 +204,15 @@ export function bindCheckinSlideshow(rerender, onDone) {
       // zéro milliseconde ajoutée au chemin critique. Les confettis ne partent que si le
       // moteur MAINTIENT la séance — fêter un « repos conseillé » serait absurde.
       const stamp = out && out.res ? verdictStampHTML(out.res) : "";
+      // On RETIENT le mouvement avant de rendre : `onDone` construit l'écran et poserait ses
+      // animations tout de suite, or elles se joueraient derrière le rideau du tampon et
+      // seraient terminées quand il se lève (mesuré : tout fini à 1487 ms, rideau parti à
+      // 1856 ms, plus rien ne bougeait ensuite). Le contenu est rendu immédiatement ; seules
+      // les animations attendent l'ouverture. Sans tampon, rien n'est retenu.
+      if (stamp) znHold();
       onDone(out);
       if (stamp) znVerdictStamp(stamp, { celebrate: out.res.adjustment.action === "keep" });
+      else znRelease();
     };
   });
 }
