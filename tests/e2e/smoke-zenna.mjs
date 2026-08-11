@@ -280,8 +280,18 @@ async function boot(reducedMotion) {
     await page.waitForTimeout(450);
     const sous = await page.evaluate(`(() => {${WCAG}
       const out = [];
+      // Un nœud qui ne porte QUE des pictogrammes est hors sujet : un emoji couleur est peint
+      // par la police, pas par la propriété color, donc mesurer son « contraste de texte »
+      // mesure une grandeur voisine de celle qu'on nomme. Le seuil « plus de 2 caractères »
+      // le faisait déjà, mais par accident (« 🛒 » vaut 2 en UTF-16) — et il jetait au passage
+      // des textes de deux lettres bien réels. Le filtre dit désormais ce qu'il exclut.
+      // (Pas de backtick dans ce commentaire : il vit dans un template literal.)
+      const QUE_PICTO = /^[\\p{Extended_Pictographic}\\p{Emoji_Component}\\s]+$/u;
       for (const el of [...document.querySelectorAll("#screen *")]) {
-        if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim().length > 2)) continue;
+        if (![...el.childNodes].some(n => {
+          const s = n.nodeType === 3 ? n.textContent.trim() : "";
+          return s.length > 1 && !QUE_PICTO.test(s);
+        })) continue;
         const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
         const cs = getComputedStyle(el); if (cs.visibility === "hidden" || cs.opacity === "0") continue;
         const size = parseFloat(cs.fontSize), w = parseInt(cs.fontWeight) || 400;

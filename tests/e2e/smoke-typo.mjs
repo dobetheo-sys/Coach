@@ -43,6 +43,21 @@ const sousPlancher = [...mob.matchAll(/font-size:\s*([0-9.]+)px/g)].map((m) => +
 ok(sousPlancher.length === 0, "css/mobile.css — aucune taille sous le plancher de 9 px"
   + (sousPlancher.length ? " — reste : " + sousPlancher.join(", ") + "px" : ""));
 
+// R-ZENNA — MÊME TROU QUE R18.1-a, sur les feuilles arrivées après lui. `zenna-today.css` et
+// `zenna-tabs.css` portent le nouveau système visuel ; elles n'étaient lues par AUCUNE garde,
+// exactement comme `mobile.css` avant R18.1-a — qui y avait trouvé un texte à 8 px sous un
+// plancher que la documentation affirmait tenir. La maquette d'origine descend à 8,5 px
+// (`.soc-proof`) : sans cette lecture, ce chiffre serait recopié un jour sans que rien ne le
+// voie. Même règle que la couche mobile : on n'exige pas zéro littéral (ces feuilles portent
+// un système de couleurs et de tailles qui leur est propre), on exige le PLANCHER — c'est la
+// propriété qui protège quelqu'un.
+for (const nom of ["zenna-today.css", "zenna-tabs.css"]) {
+  const zn = sansCommentaires(readFileSync(new URL("../../endurabuild/css/" + nom, import.meta.url), "utf8"));
+  const bas = [...zn.matchAll(/font-size:\s*([0-9.]+)px/g)].map((m) => +m[1]).filter((v) => v < 9);
+  ok(bas.length === 0, "css/" + nom + " — aucune taille sous le plancher de 9 px"
+    + (bas.length ? " — reste : " + bas.join(", ") + "px" : ""));
+}
+
 // Les modules UI : littéral toléré UNIQUEMENT dans le document exporté (plan-view.js), qui
 // est autonome et ne charge pas styles.css.
 const jsRoot = new URL("../../endurabuild/js/", import.meta.url);

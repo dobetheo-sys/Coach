@@ -255,7 +255,12 @@ ok(/Base \+ vie quotidienne/.test(eTxt) && /Entraînement du jour/.test(eTxt) &&
 // R16.6 — les macros passent d'un paragraphe continu à UNE LIGNE PAR MACRO : chaque libellé
 // commence donc par une majuscule. L'assertion devient insensible à la casse — son intention
 // (les fourchettes chiffrées sont affichées) est inchangée, c'est la mise en forme qui a bougé.
-ok(/protéines ~\d+/i.test(eTxt) && /lipides ~\d+/i.test(eTxt) && /glucides ~\d+/i.test(eTxt), "macros indicatives affichées (fourchettes chiffrées)");
+// R-ZENNA v4 — le nom de la macro et sa fourchette vivent désormais dans DEUX cellules d'une
+// ligne `.kv` (intitulé à gauche, valeur à droite). `textContent` les concatène SANS séparateur,
+// donc le rendu lu ici est « Protéines~85–120 g/j » : l'espace littéral ne matche plus. On passe
+// à `\s*` — l'intention est inchangée et reste STRICTE (le nom doit être immédiatement suivi de
+// SA fourchette, pas « protéines quelque part et un nombre ailleurs »).
+ok(/protéines\s*~\d+/i.test(eTxt) && /lipides\s*~\d+/i.test(eTxt) && /glucides\s*~\d+/i.test(eTxt), "macros indicatives affichées (fourchettes chiffrées)");
 ok(/pas un menu/i.test(eTxt) && /pas une consigne/i.test(eTxt), "garde-fous affichés : photographie, pas un menu ni une consigne");
 ok(!/déficit|maigrir|perte de poids|restriction/i.test(eTxt), "aucun vocabulaire de restriction dans la nutrition du jour");
 ok(!/Journal alimentaire/.test(eTxt), "journal alimentaire retiré (décision R6)");

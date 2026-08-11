@@ -88,7 +88,15 @@ if (globalThis.EB_STANDALONE) {
           const b = document.createElement("div");
           b.id = "ebUpdBar";
           b.setAttribute("role", "status");
-          b.style.cssText = "position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));"
+          // Il se pose AU-DESSUS de la barre d'onglets, pas par-dessus. Mesuré : à
+          // `bottom: 12px` le bandeau occupe 768→832 px et la barre 789→844 — ils se recouvrent,
+          // et `elementFromPoint` au centre de la barre rend `ebUpdBar` : les cinq onglets sont
+          // INJOIGNABLES tant qu'on n'a pas remarqué le « Plus tard ». Une notification qui
+          // coupe la navigation coûte plus cher que le retard qu'elle évite. La hauteur est
+          // MESURÉE sur la barre présente, jamais recopiée : `mobile.css` peut la changer.
+          const barre = document.getElementById("ebTabbar");
+          const hBarre = barre ? Math.round(barre.getBoundingClientRect().height) : 0;
+          b.style.cssText = "position:fixed;left:12px;right:12px;bottom:calc(12px + " + hBarre + "px + env(safe-area-inset-bottom));"
             + "z-index:9999;background:#0c1016;color:#fff;border-radius:12px;padding:12px 14px;"
             + "display:flex;gap:12px;align-items:center;justify-content:space-between;"
             + "box-shadow:0 6px 24px rgba(0,0,0,.25);font-size:var(--fs-lg)"; // R16.8 — l'échelle déclarée, jamais un littéral

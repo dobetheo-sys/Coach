@@ -5170,3 +5170,111 @@ il asserte désormais que sur CHACUN des cinq, le thème est posé, le fond est 
 resté invisible, aucun flottant d'Aujourd'hui ne traîne, et **aucun texte ne passe sous le seuil
 AA**. Le réécrire était la seule option honnête — le supprimer aurait laissé quatre onglets sans
 garde.
+
+## R-ZENNA (v4) — 🧰 Outils › Nutrition : la composition de la maquette, et ce qu'elle a failli emporter
+
+Retour du fondateur : *« reprend la maquette et travail sur l'onglet outil notamment nutrition,
+on est trop loin de la maquette, je veux exactement la même composition »*. Le v3 avait posé le
+thème (couleurs, motion, contraste) sur les cinq onglets ; Outils gardait sa **composition**
+d'origine — des `<details class="load-card">` remplis de phrases enchaînées, là où la maquette
+compose avec trois primitives.
+
+### Les trois primitives, et pourquoi elles ne sont pas décoratives
+
+| Primitive | Ce qu'elle fait |
+|---|---|
+| `details.fold` | un repli dont le **sommaire porte déjà la valeur** (« · ~2 600 kcal ») : on lit l'essentiel sans ouvrir |
+| `.kv` | une ligne intitulé → valeur, intitulé en petites capitales mono à gauche, valeur alignée à droite — ce qui rend une carte de chiffres lisible **en diagonale** |
+| `.shop-card` | en-tête produit · preuves · segmenté de cadence · devis séance par séance · choix · bouton |
+
+`energyCardHTML` et `nutritionCardHTML` passent de phrases enchaînées à `foldHTML` + `kvHTML` ;
+`shopSubscriptionCardHTML` reprend la composition complète de la maquette, **élément pour élément
+et dans le même ordre**, sur ses deux états (proposition et abonnement en cours). Le sélecteur de
+cadence devient un **segmenté** à pastille glissante et non une liste déroulante : deux choix
+mutuellement exclusifs qu'on compare se montrent côte à côte.
+
+### Ce que la composition a failli emporter — la restriction anti-spam
+
+`shopPromptDue` énonce depuis son écriture : *« le tunnel se propose une fois puis se tait
+4 semaines si personne ne s'est abonné — jamais un rappel permanent »*. Cette restriction n'était
+tenue par **rien d'autre que l'attribut `open` du `<details>`**. La maquette ne dessine la carte
+de vente que dépliée : la porter telle quelle transformait une proposition qui se tait en une
+**carte de vente dépliée en permanence** dans l'onglet, sans qu'aucune garde ne s'en aperçoive —
+le critère existant lisait `open`, un attribut qui n'existe plus.
+
+D'où `shop-card-min` : la **même carte**, réduite à son en-tête et à un bouton qui la rouvre.
+Rien n'est caché, consulter reste gratuit, et déplier **repose l'ancre des 28 jours** — c'est le
+signal honnête d'une proposition consultée, exactement ce que l'ouverture du `<details>` posait.
+
+### Trois écarts délibérés avec la maquette, chacun pour une raison
+
+1. **La preuve sociale n'est pas reproduite.** La maquette affiche « 127 INTENTIONS DÉJÀ
+   ENREGISTRÉES » avec trois avatars. Ce chiffre **n'existe pas** : l'abonnement vit dans le
+   `localStorage` de chaque appareil, il n'y a aucun serveur pour en compter un seul. Sur un
+   produit dont le contre-positionnement est « chaque décision est traçable », fabriquer une
+   preuve sociale est la ligne qu'on ne franchit pas. Le créneau `.soc-proof` est **gardé**, il
+   dit ce qui est vrai. *Ma première rédaction de ce remplacement promettait « …et te vaudra
+   d'être prévenu·e à l'ouverture » — une promesse que le produit ne peut pas tenir : ni compte,
+   ni serveur, ni canal de notification. Remplacer un chiffre inventé par une promesse
+   invérifiable, c'est refaire le défaut qu'on vient de corriger.*
+2. **Les puces de choix font 44 px et non 40** — mesuré à 40 au rendu ; U4 a tranché ce seuil
+   pour ce dépôt (WCAG 2.5.8), et un standard d'accessibilité passe devant un pixel de maquette.
+3. **Le tag lit « Ravitaillement · abonnement »** et non « CANAL DE VENTE · SUITE COMMERCIALE » —
+   du jargon interne de démo, jamais une étiquette destinée à l'athlète.
+
+### Deux défauts trouvés en composant
+
+**Les dates étaient en ISO brut.** `Prochaine échéance : 2026-08-15`, `Résiliation prévue le
+2026-09-10` — les seules dates du produit qui ne parlaient pas français, R7 ayant posé `fmtDay`
+comme formateur unique partout ailleurs. Défaut pré-existant, corrigé en réécrivant les lignes
+qui le portaient.
+
+**Le ramené « par séance » répétait le total.** À une seule séance couverte, la carte affichait
+« 6,30 € » puis « ≈ 6,30 € / séance couverte » — un chiffre qui se répète se lit comme un second
+argument. Il n'apparaît plus qu'à partir de deux séances.
+
+### Gardes, et trois fautes d'instrument dans mes propres critères
+
+`smoke-shop` passe de 12 à 20 assertions. Le critère qui lisait `card.getAttribute("open")` est
+**réécrit sur son intention** (« pas de 4e clic pour la trouver » → le bouton d'activation et le
+sélecteur de cadence sont à l'écran sans avoir rien touché) plutôt que supprimé ; celui qui lisait
+le libellé « Abonnement ravitaillement » est réécrit sur les **actions** de gestion, un critère
+calé sur un libellé se contentant de photographier ce qu'on vient d'écrire.
+
+Contre-preuve : **cinq cassures, cinq rouges** — mais seulement après trois corrections, toutes
+de la même famille (*un instrument qui nomme une grandeur et en mesure une voisine*) :
+
+- ma vérification de contre-preuve **comptait les lignes `FAIL`** ; casser la restriction faisait
+  mourir la suite sur un `TimeoutError` avant `report()` — code de sortie 1, mais pas une ligne de
+  verdict, donc « vert » pour mon comptage. Le défaut de R22b/H-1b, refait. Recomptée sur le
+  **code de sortie**, et le clic de la garde rendu **conditionnel** : une garde doit RAPPORTER,
+  pas mourir ;
+- mon critère « aucune date ISO » était posé sur la carte de **proposition**, où une seule date
+  s'affiche. Casser `fmtDay` sur l'échéance le laissait vert : il nommait « les dates affichées »
+  et en mesurait une, dans l'état où les autres n'existent pas. Déplacé sur l'état **abonné** ;
+- et il portait un `\b` : `textContent` concatène sans séparateur, donc la carte rend
+  « Prochaine échéance2026-08-15 » — **aucune frontière de mot entre le « e » et le « 2 »**, et le
+  critère restait vert sur la date brute qu'il existe pour trouver.
+
+**Deux gardes voisines resserrées au passage.** `smoke-typo` ne lisait **ni `zenna-today.css` ni
+`zenna-tabs.css`** — le trou exact que R18.1-a avait bouché pour `mobile.css`, jamais rejoué sur
+les feuilles arrivées après lui, et la maquette d'origine descend à 8,5 px (`.soc-proof`). Même
+règle que la couche mobile : pas « zéro littéral », le **plancher de 9 px**. Et le filtre de
+contraste de `smoke-zenna` excluait les emoji **par accident** (« 🛒 » vaut 2 en UTF-16, sous son
+seuil de longueur) ; il dit désormais ce qu'il exclut — un emoji couleur est peint par la police,
+pas par `color` — et n'écarte plus au passage les textes de deux lettres bien réels.
+
+### S-CACHE-b — le bandeau de mise à jour couvrait la barre d'onglets
+
+Trouvé **par un vrai signal**, pas par une relecture : une suite E2E est morte sur
+`<div id="ebUpdBar" role="status"> intercepts pointer events`. Le bandeau « ✨ Nouvelle version
+prête » de S-CACHE se pose en `position: fixed; bottom: 12px` — mesuré, il occupe **768→832 px
+quand la barre d'onglets occupe 789→844**, et `document.elementFromPoint` au centre de la barre
+rendait `ebUpdBar` : **les cinq onglets étaient injoignables** tant qu'on n'avait pas remarqué le
+« Plus tard ». Une notification qui coupe la navigation coûte plus cher que le retard qu'elle
+évite. Il se pose désormais **au-dessus** de la barre, sur une hauteur **mesurée** sur la barre
+présente et jamais recopiée (`mobile.css` peut la changer). Garde `S-CACHE-b` dans
+`smoke-securite`, **vérifiée rouge**.
+
+Défaut **pré-existant** — ce lot ne l'a pas créé, il l'a rendu visible en reconstruisant le
+service worker plusieurs fois pendant une exécution de tests.

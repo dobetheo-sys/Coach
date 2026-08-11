@@ -72,6 +72,13 @@ ok(/visibilitychange[\s\S]{0,200}reg\.update\(\)/.test(app),
   "…et revérifie au retour dans l'app (une PWA gelée ne renavigue pas)");
 ok(/navigator\.serviceWorker\.controller/.test(app),
   "le bandeau ne s'affiche PAS à la première installation (rien à remplacer)");
+// S-CACHE-b — LE BANDEAU COUVRAIT LA BARRE D'ONGLETS. Trouvé par un vrai signal : une suite
+// E2E est morte sur « <div id="ebUpdBar"> intercepts pointer events ». Mesuré : bandeau
+// 768→832 px, barre 789→844, et `elementFromPoint` au centre de la barre rendait `ebUpdBar` —
+// les CINQ onglets injoignables tant qu'on n'avait pas remarqué le « Plus tard ». Une
+// notification qui coupe la navigation coûte plus cher que le retard qu'elle évite.
+ok(/getElementById\("ebTabbar"\)[\s\S]{0,200}bottom:calc\(12px \+ " \+ hBarre/.test(app),
+  "le bandeau se pose AU-DESSUS de la barre d'onglets, sur une hauteur MESURÉE (jamais recopiée)");
 
 // ================================================================================
 // S-8 — la borne de taille, et le libellé du bouton FIT

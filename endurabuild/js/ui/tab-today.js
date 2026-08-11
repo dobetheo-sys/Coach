@@ -165,11 +165,13 @@ function jourDuPlan(plan, today) {
  *  de cette carte ne contient pas de div imbriqué (leçon repliable/R24.1 vérifiée), donc le
  *  premier </div> ferme bien le titre. */
 function ravitoReplie(day, tempC) {
-  const ravito = nutritionCardHTML(day, tempC);
-  return ravito
-    ? ravito.replace('<div class="load-card" id="nutCard"><div class="load-title">', '<details class="load-card" id="nutCard"><summary class="load-title" style="cursor:pointer">')
-        .replace("</div>", "</summary>").replace(/<\/div>$/, "</details>")
-    : "";
+  // Cette fonction TRANSFORMAIT une chaîne : elle remplaçait le `<div class="load-card">` de
+  // `nutritionCardHTML` par un `<details>` pour obtenir la version repliée. Depuis que la carte
+  // est composée à la maquette, elle EST un `<details class="fold">` — il n'y a plus rien à
+  // réécrire, on demande simplement à ne pas l'ouvrir. Une transformation de chaîne sur du HTML
+  // produit ailleurs est de toute façon la forme la plus fragile de couplage : elle casse
+  // silencieusement au premier changement de balise, et c'est exactement ce qui serait arrivé.
+  return nutritionCardHTML(day, tempC, false);
 }
 function nutritionReduiteHTML(plan, today) {
   const day = jourDuPlan(plan, today);
