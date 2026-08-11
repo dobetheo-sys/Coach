@@ -44,22 +44,27 @@ function avancementPlanHTML(plan, today) {
     const c = raceCountdown(S.answers, today);
     const j = c.jours;
     const fmtLabel = c.format || "ta course";
-    tete = j > 1 ? '<div style="font-size:var(--fs-xl);font-weight:900;line-height:1">J−' + j + "</div>"
-        + '<div class="load-sub">avant ' + esc(fmtLabel) + "</div>"
-      : j === 1 ? '<div style="font-size:var(--fs-lg);font-weight:900">Demain, jour J</div>'
-      : j === 0 ? '<div style="font-size:var(--fs-lg);font-weight:900">🏁 C’est aujourd’hui</div>'
-      : '<div class="load-sub">Course passée le ' + esc(rd) + "</div>";
+    // R-ZENNA v7 — LE DÉCOMPTE EN HÉROS (décision du fondateur : suivre la maquette).
+    // Il était en `--fs-xl` au milieu d'une carte parmi d'autres ; la maquette en fait la
+    // première chose qu'on lit sur cet onglet, parce que c'est la seule qui ne change pas de
+    // sens : « dans combien de jours ». Le sous-titre nomme la course, pas seulement le format.
+    const dateJ = rd ? " · " + fmtDay(rd) + "/" + rd.slice(0, 4) : "";
+    tete = j > 1 ? '<div class="zn-jminus">J−' + j + "</div>"
+        + '<div class="zn-jminus-sub">avant ' + esc(fmtLabel) + esc(dateJ) + "</div>"
+      : j === 1 ? '<div class="zn-jminus petit">Demain, jour J</div>'
+      : j === 0 ? '<div class="zn-jminus petit">🏁 C’est aujourd’hui</div>'
+      : '<div class="load-sub">Course passée le ' + esc(fmtDay(rd)) + "</div>";
   }
   let barre = "";
   try {
     const pg = globalThis.EBV2.progress(plan, S.answers, today);
-    barre = '<div style="margin-top:10px;font-size:var(--fs-md)"><b>Semaine ' + pg.weekNow + " / " + pg.totalWeeks + "</b>"
-      + ' · <span style="color:var(--muted)">' + pg.pctLoad + "% de la charge accomplie</span></div>"
-      + '<div style="margin-top:6px;height:12px;border-radius:6px;background:#0000001a;overflow:hidden">'
-      + '<div style="height:100%;width:' + Math.max(0, Math.min(100, pg.pctLoad)) + '%;background:var(--accent)"></div></div>';
+    const pct = Math.max(0, Math.min(100, pg.pctLoad));
+    barre = '<div class="zn-prog-line"><b>Semaine ' + pg.weekNow + " / " + pg.totalWeeks + "</b>"
+      + ' · <span>' + pg.pctLoad + " % de la charge accomplie</span></div>"
+      + '<div class="zn-prog-track"><div class="zn-prog-fill" style="width:' + pct + '%"></div></div>';
   } catch (e) {}
-  return '<div class="load-card" style="margin-top:10px">' + tete + barre
-    + '<div class="nav" style="margin-top:12px"><button class="btn" id="expPng" type="button">📤 Partage</button></div></div>';
+  return '<div class="load-card zn-count-hero">' + tete + barre
+    + '<div class="nav" style="margin-top:13px"><button class="btn" id="expPng" type="button">📤 Partage</button></div></div>';
 }
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";

@@ -5396,3 +5396,76 @@ casserait sans s'en apercevoir : un repeint qui déborde noircit une carte de pa
 Vérifiée rouge sur trois cassures, dont exactement cette fuite.
 
 **21 suites E2E vertes, `demo:avatartri` vert, `audit:v1` vert.**
+
+## R-ZENNA (v7) — la marque n'a plus qu'un endroit, et les derniers gestes « papier » tombent
+
+Retour du fondateur : *« j'ai vu d'ancien logo et de l'ancienne DA par endroits »*. Balayage des
+six écrans en mesurant les signatures du « collage » (ombre portée dure, contour ≥ 2,5 px,
+rotation, aplat clair) : **le collage avait bien disparu des onglets**. Ce qui restait était
+ailleurs.
+
+### La marque existait en QUATRE versions
+
+| Surface | Traitement |
+|---|---|
+| Questionnaire | `ENDURA` + `BUILD` dans un bloc orange — l'ancien mot-marque, seulement recoloré |
+| En-tête des onglets | tuile « E » + mot incliné — **que j'avais inventé** en portant la maquette |
+| Favicon · icône PWA · apple-touch-icon | triangle rouge sur fond **crème** — jamais touchée |
+| Cartes de partage | `ENDURABUILD` en Archivo Black + deux barres d'accent |
+
+L'icône est le cas le plus coûteux : c'est **la seule surface où l'ancienne DA était encore
+INSTALLÉE** chez les gens (écran d'accueil du téléphone, onglet du navigateur).
+
+`endurabuild/js/ui/brand.js` est le point unique. Le fichier dit où poser le vrai logo quand il
+arrivera (décision du fondateur : *« tu me fournis le logo »*), et les quatre surfaces suivent.
+
+**Le symbole y est un POLYGONE, pas un chemin SVG** — délibérément : l'app le dessine en SVG,
+`makeIcons.mjs` le peint **pixel par pixel** (générateur PNG zéro dépendance, sans rastériseur).
+Un chemin pour l'un et une géométrie pour l'autre feraient deux définitions du même symbole, qui
+divergeraient au premier ajustement. Le chemin SVG et les pixels en dérivent tous les deux.
+
+### La navigation passe des emoji aux SVG au trait
+
+Les emoji système gardent **leurs propres couleurs** (le calendrier rouge, la mallette rouge) :
+ils ne suivaient ni le thème ni l'état actif, et l'app n'avait pas le même visage sur iOS et sur
+Android, chaque système ayant sa police d'emoji. Les cinq icônes de la maquette, en
+`currentColor`. Les emoji **restent** dans les titres de cartes : là ils repèrent un contenu, ils
+ne portent pas l'identité.
+
+### Deux défauts à moi, trouvés en construisant
+
+**Le piège de spécificité, une troisième fois.** Ma règle de couleur pour l'onglet central
+portait `#ebTabbar` : (0,1,3,1) contre (0,0,4,1) pour les règles qui géraient déjà ce cas — elle
+gagnait donc AUSSI à l'état inactif, où la tuile est sombre : **icône sombre sur fond sombre**.
+C'est exactement le mécanisme de l'écran noir de v2 et de la règle morte de v5.
+
+**Un `[^>]*` sur une donnée qui contenait `>`.** Ma réécriture du favicon utilisait
+`/<link rel="icon"[^>]*>/`, or l'ancienne URI portait du SVG **brut** (`<svg …><polygon …/></svg>`) :
+la classe s'est arrêtée au premier `>` interne et a laissé une queue de balise dans le `<head>`.
+Le parseur a refermé la tête plus tôt, **l'ordre des feuilles s'est inversé**, et
+`body[data-intent="competition"] { background: #f3e9dd }` (même spécificité, source plus tardive)
+a repeint **quatre onglets sur cinq en crème** — alors que `theme-zenna` était bien posé sur
+`<body>`, ce qui rendait le symptôme incompréhensible. Garde `§0bis` : les feuilles du thème se
+chargent après `styles/mobile`, et le `<head>` ne porte aucun texte parasite. Vérifiée rouge.
+
+### Les trois écarts de composition restants (tous demandés)
+
+**Les derniers gestes « fait main »** — le socle avait repris fonds, contours et ombres ; il
+restait les **rotations**, invisibles dans une revue de couleurs et sorties par un balayage de
+`transform` : options du questionnaire penchées, séparateurs d'étape à −8°, drapeau d'accueil en
+boucle infinie (`triWiggle`, 3 s). Sur du papier une pastille penchée fait « posée à la main » ;
+sur du noir, avec des bords nets, elle fait « mal alignée ».
+
+**Le héros du décompte** (🗓 Plan) : `J−278` en 52 px, la barre de progression hachurée de la
+maquette. C'est la seule information de cet onglet qui ne change jamais de sens.
+
+**Les anneaux par discipline** (📅 Semaine) : part de séances validées, accent de la discipline
+conservé. Le brick compte pour ses deux disciplines (R25, « +5/+5 »).
+*J'avais aussi écrit une ligne de distances — et elle **contredisait celle qui existe déjà** :
+🚴 1h18 en haut de l'onglet contre 1h30 dans la mienne, sur la même semaine. `EBV2.weekDistances`
+(R24.8, demande du fondateur) fait autorité : elle compte les mètres prescrits exacts et ne
+convertit les minutes qu'avec les références mesurées, en marquant la conversion d'un « ~ ».
+La mienne est retirée, et **l'ordre des anneaux suit celui que le moteur renvoie** plutôt que
+d'introduire une troisième convention.*
+
+**21 suites E2E vertes, `audit:v1` vert.**

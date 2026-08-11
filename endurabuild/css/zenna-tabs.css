@@ -114,6 +114,24 @@ body.theme-zenna .tier-badge {
   box-shadow: none; transform: none;
 }
 body.theme-zenna .tier-badge.premium { color: var(--zn-gold); border-color: rgba(255, 210, 61, .35); }
+/* R-ZENNA v7 — LES DERNIERS GESTES « FAIT MAIN » (décision du fondateur : les traiter).
+   Le socle avait déjà repris le FOND, le CONTOUR et l'OMBRE des options et des champs ; il
+   restait les ROTATIONS, qui n'étaient visibles nulle part dans une revue de couleurs et que
+   seul un balayage de `transform` a fait sortir. Sur du papier une pastille penchée fait
+   « posée à la main » ; sur du noir, avec des bords nets et des ombres douces, elle fait
+   « mal alignée ». C'est le même arbitrage que pour les cartes de sport. */
+body.theme-zenna .opts .opt:nth-child(odd),
+body.theme-zenna .opts .opt:nth-child(even) { transform: none; }
+body.theme-zenna #screen .opt:hover { transform: none; box-shadow: none; border-color: var(--zn-orange); }
+body.theme-zenna #screen .opt:active { transform: scale(.97); box-shadow: none; }
+body.theme-zenna #screen .opt:focus-visible { outline: 2px solid var(--zn-orange); outline-offset: 2px; }
+/* Le séparateur d'étape : penché de 8°, il pointait vers nulle part une fois la piste redressée. */
+body.theme-zenna .psep { transform: none; color: var(--zn-muted-2); }
+/* Le drapeau d'accueil gigotait en boucle (`triWiggle`, 3 s, infinie). Une animation permanente
+   sur l'écran d'ARRIVÉE tire l'œil en continu vers un élément décoratif — et elle est le
+   dernier reste d'un vocabulaire de mouvement que la cadence `--beat` a remplacé partout
+   ailleurs. On garde le glyphe, on retire la boucle. */
+body.theme-zenna .welcome .w-tri { transform: none; animation: none; }
 /* La barre de progression du questionnaire. */
 body.theme-zenna .progress i { background: var(--zn-surface-3); }
 body.theme-zenna .progress i.on { background: var(--zn-orange); }
@@ -176,6 +194,64 @@ body.theme-zenna #screen .branch {
 body.theme-zenna #screen .q-def {
   background: var(--zn-surface-3); border: 1px solid var(--zn-border);
   border-radius: 12px; box-shadow: none; transform: none; color: var(--zn-text);
+}
+
+/* R-ZENNA v7 — LA SEMAINE PAR DISCIPLINE (onglet 📅 Semaine). Les anneaux portent l'accent de
+   leur discipline : c'est une couleur de SENS, elle ne devient pas grise. */
+body.theme-zenna #screen .zn-disc-rings {
+  display: flex; gap: 14px; justify-content: center; margin: 12px 0 4px; flex-wrap: wrap;
+}
+body.theme-zenna #screen .zn-ring { position: relative; width: 48px; text-align: center; }
+body.theme-zenna #screen .zn-ring svg { width: 48px; height: 48px; display: block; }
+body.theme-zenna #screen .zn-ring svg circle:last-child {
+  transition: stroke-dashoffset var(--dur-rise) var(--ease-enter);
+}
+body.theme-zenna #screen .zn-ring-ico {
+  position: absolute; top: 13px; left: 0; right: 0; font-size: 15px; line-height: 1;
+}
+body.theme-zenna #screen .zn-ring-lab {
+  display: block; font-family: var(--zn-mono); font-size: 9px; color: var(--zn-muted-2);
+  margin-top: 2px; font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-dist-line {
+  display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  font-family: var(--zn-mono); font-size: 10.5px; color: var(--zn-muted);
+  margin: 2px 0 10px; font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-dist-line .sub { color: var(--zn-muted-2); }
+body.theme-zenna #screen .zn-prog-fill.vert {
+  background: linear-gradient(90deg, var(--zn-cyan), #5ff2de);
+}
+
+/* R-ZENNA v7 — LE HÉROS DU DÉCOMPTE (onglet 🗓 Plan). La maquette en fait la première chose
+   qu'on lit : c'est la seule information de cet onglet qui ne change jamais de sens. */
+body.theme-zenna #screen .zn-count-hero { margin-top: 10px; }
+body.theme-zenna #screen .zn-jminus {
+  font-family: var(--zn-display); font-size: 52px; line-height: 1;
+  color: var(--zn-orange-tint); font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-jminus.petit { font-size: 26px; color: var(--zn-text); }
+body.theme-zenna #screen .zn-jminus-sub {
+  font-family: var(--zn-mono); font-size: 10.5px; color: var(--zn-muted-2);
+  letter-spacing: .06em; margin-top: 3px; text-transform: uppercase;
+}
+body.theme-zenna #screen .zn-prog-line {
+  font-family: var(--zn-mono); font-size: 11px; margin-top: 13px; color: var(--zn-muted);
+  font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-prog-line b { color: var(--zn-text); }
+body.theme-zenna #screen .zn-prog-track {
+  height: 11px; border-radius: 100px; background: var(--zn-surface-3);
+  overflow: hidden; margin-top: 7px;
+}
+body.theme-zenna #screen .zn-prog-fill {
+  height: 100%; border-radius: 100px; position: relative;
+  background: linear-gradient(90deg, var(--zn-orange), var(--zn-orange-2));
+}
+/* Les hachures de la maquette : elles donnent une texture à la barre sans ajouter de couleur. */
+body.theme-zenna #screen .zn-prog-fill::after {
+  content: ""; position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .14) 0 6px, transparent 6px 12px);
 }
 
 /* R-ZENNA v6 — la carte « semaine en cours » qui remplace la grille dans la vue par défaut
