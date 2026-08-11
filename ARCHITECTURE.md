@@ -4995,3 +4995,91 @@ attentes sont calées SUR la cadence déclarée, pas au jugé.
 
 **Moteur intact** : `audit:v1` 459/459 à 0 violation, `check:app` et `check:sw` verts — aucune
 génération de plan n'est touchée.
+
+## Audit R-ZENNA — quatre défauts mesurés, dont deux pré-existants et deux dans l'instrument
+
+Audit demandé après livraison. Ce qui suit n'est pas une relecture : chaque point est MESURÉ,
+et deux des mesures ont dû être corrigées avant de valoir quelque chose.
+
+### Ce qui tient
+
+Fuites : **198 nœuds avant, 198 après dix allers-retours** entre onglets, un seul CTA collant,
+une seule pastille, aucune couche de verdict oubliée. Les six sports rendent leur héros sans
+carte invisible. Cas limites (blessure, drapeau médical, reprise) : aucun écran vide. Desktop
+1280 px : pas de débordement horizontal. Chargement 670-770 ms.
+
+### CONTRASTE — deux défauts réels
+
+**`var(--muted)` inline, 11 occurrences.** Les modules portent des styles inline qui
+référencent les jetons du thème CLAIR. Non redéfinis dans le thème sombre, ils peignaient du
+brun `#635b4a` sur carte `#111318` : **2,77:1**, sous le seuil AA de 4,5. Corrigé à la RACINE —
+`--text/--text2/--muted/--ink/--bg*/--acc/--gold/--line` sont redéfinis dans `body.theme-zenna`.
+Chasser ces cas classe par classe serait sans fin et raterait le prochain ; redéfinir le jeton
+corrige aussi ceux qu'un module ajoutera demain, et répare au passage `.aide-btn` (le « ? » de
+U18), qui n'a pas de règle dédiée et serait resté encre-sur-encre.
+
+**Le héros.** Texte semi-transparent sombre sur l'orange : **3,56 à 4,45:1** selon le rôle.
+Alphas relevés à 0,82-0,95. Et la puce discipline change de sens : son voile SOMBRE
+(`rgba(10,10,10,.16)` de la maquette) plafonnait le contraste à **4,17:1 même avec de l'encre
+opaque** — le fond était le facteur limitant, pas le texte ; un voile CLAIR la fait passer à
+6,86. Toutes les valeurs sont calculées sur l'arrêt le plus SOMBRE du dégradé (#ff3d00), le
+pire cas.
+
+### ZONES — le même trou dans deux tables, dont une depuis R7
+
+`ZONE_LEVEL` (barre de zones du reskin) oubliait `sw.vo2` **et les sept zones de trail**. Repli
+silencieux en Z2 : un plan trail affichait des barres uniformément « facile », y compris sur
+`tr.vam`, que le moteur décrit lui-même « RPE 9/10 — montée à fond ».
+
+**`_IFZ` (courbe fitness/fatigue/forme) avait exactement le même trou, et depuis bien plus
+longtemps** — R7 pour le trail, R5.4 pour `sw.vo2`. Son repli est `0.70` et la charge varie en
+IF². Mesuré sur un ultra : **6 891 minutes de corps** tombaient sur des zones inconnues, soit la
+quasi-totalité du volume. Le seuil en montée était compté **×0,51**, la montée souple **×1,36** :
+le contraste dur/facile de toute la courbe du sport trail était aplati — le dur sous-évalué, le
+facile sur-évalué. Total −9 %, mais c'est la FORME de la courbe qui était fausse, pas son
+échelle.
+
+Les valeurs ne sont pas inventées : chaque zone reprend l'IF de la zone de COURSE qui partage
+son ancrage FC déclaré dans `renderer.ts` (`hr: z1 | z2 | tempo | seuil | null`). Deux n'ont
+même pas besoin d'analogie — `tr.flat` et `tr.flatthr` ont des `ref` et des multiplicateurs
+IDENTIQUES à `rn.easy` et `rn.thr`. Dette signalée non résolue : `_IFZ` est DUPLIQUÉ dans
+`Coach_Pro_V1.5.html` et `scripts/splitPwa.py` (R11.1) ; seule la copie servie est corrigée.
+
+### CIBLE TACTILE — la case « malade » se faisait comprimer
+
+Déclarée 20 px, **mesurée 13×20** : elle est un item flex du label et se laissait écraser par le
+texte à côté (`flex-shrink` par défaut). Sous le minimum absolu de WCAG 2.5.8 (24×24), sur la
+commande qui gèle la série en cas de maladie — la rater d'un doigt cochait « malade » ou non
+selon la chance. `flex:0 0 auto` + 24 px, re-mesuré à 24×24. Pré-existant, présent dans les
+deux thèmes, corrigé à la source.
+
+### DEUX DE MES MESURES ÉTAIENT FAUSSES, ET C'EST LE RÉSULTAT LE PLUS UTILE
+
+Le premier passage de contraste a rendu **neuf « échecs » à ~1,04:1 dans le héros** — pour du
+texte parfaitement lisible. Cause : `bgOf()` cherchait une `background-color` opaque en
+remontant les ancêtres, or le héros est peint par un **dégradé**, donc sa `background-color` est
+transparente : l'instrument mesurait le texte contre le NOIR du body. Corrigé pour lire les
+arrêts du dégradé — et le second passage a rendu **exactement les mêmes 1,04**, parce que sa
+regex `\(` avait perdu son antislash dans l'échappement du template literal.
+
+C'est la neuvième occurrence dans ce dépôt d'une mesure qui nomme une grandeur et en mesure une
+voisine — cette fois deux fois de suite, dans l'outil d'audit lui-même. D'où le TÉMOIN posé dans
+la garde : le titre du héros doit mesurer **5,58**, valeur calculée à la main pour #0a0a0a sur
+#ff3d00. Sans lui, un instrument cassé rend « aucun défaut » et le critère est satisfait par sa
+propre panne.
+
+### Gardes ajoutées (`smoke-zenna`, 33 → 38 assertions, vérifiées rouges)
+
+**§0** — couverture des zones **DÉRIVÉE** de `renderer.ts` : aucune liste à maintenir, une zone
+ajoutée au moteur fait rougir le test le jour même. C'est le motif d'`audit:sensibilite`
+(dérivé du schéma) appliqué aux zones. **§4** — contraste calculé sur le rendu réel, avec son
+témoin de validité.
+
+### Écarts à la maquette restant, assumés
+
+Trois tailles de texte remontées au plancher de 9 px (R16.8) : 5,5 px sur le libellé de
+l'anneau, 8,5 px sur le tag du micro-défi, 8 px sur les libellés d'onglets. Trois `<summary>`
+sont à 30-31 px, au-dessus du minimum WCAG (24) mais sous le standard de 44 px que U4 a posé
+pour ce dépôt — pré-existant, non traité ici. Enfin, la chip discipline du trail affiche
+« 🏃 Course » parce que le moteur code ses séances `d: "rn"` : correct techniquement, discutable
+pour un trailer.

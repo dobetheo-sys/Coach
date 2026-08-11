@@ -217,7 +217,15 @@ export function bindPainBanner(plan, rerender) {
 // R4.2 — maladie déclarée : gèle la série (le jour ne compte ni ne casse), jamais de culpabilisation.
 export function sickToggleHTML(todayIso) {
   const sick = (S.answers.sickDates || []).includes(todayIso);
-  return '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:var(--fs-md)"><input type="checkbox" id="rdSick"' + (sick ? " checked" : "") + ' style="width:20px;height:20px"><span>🤒 Malade aujourd’hui — la série est gelée, la reprise attendra que ça aille mieux</span></label>';
+  // `flex:0 0 auto` — SANS lui, la case est un ITEM FLEX du label et se laisse comprimer par le
+  // texte à côté : déclarée à 20 px, elle était MESURÉE à 13×20 (audit R-ZENNA), sous le minimum
+  // absolu de WCAG 2.5.8 (24×24). C'est la commande qui gèle la série en cas de maladie ; la
+  // rater d'un doigt fait cocher « malade » ou non selon la chance. 24 px, et elle ne rétrécit
+  // plus. Défaut PRÉ-EXISTANT au reskin, présent dans les deux thèmes — corrigé à la source.
+  const caseStyle = "width:24px;height:24px;flex:0 0 auto";
+  return '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:var(--fs-md)">'
+    + '<input type="checkbox" id="rdSick"' + (sick ? " checked" : "") + ' style="' + caseStyle + '">'
+    + "<span>🤒 Malade aujourd’hui — la série est gelée, la reprise attendra que ça aille mieux</span></label>";
 }
 export function bindSickToggle(plan, todayIso) {
   const cb = $("rdSick");
