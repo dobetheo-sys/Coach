@@ -15,7 +15,12 @@ import { stravaAuthFromHash } from "./strava.js";
 // courant » — à traiter avant d'étendre ce reskin aux autres onglets). Le script-injection
 // reste la bonne pratique dans tous les cas : zéro raison de bloquer le parsing initial pour
 // une feuille scopée à un seul onglet.
-{
+//
+// PAS dans le fichier autonome (`EB_STANDALONE`) : il n'y a pas de serveur pour aller chercher
+// "css/zenna-today.css" — un lien mort échouerait en silence (et contredirait la promesse
+// « zéro requête réseau » du build). `buildStandalone.mjs` inline déjà cette feuille dans le
+// <style> de tête, au même titre que styles.css/mobile.css.
+if (!globalThis.EB_STANDALONE) {
   const l = document.createElement("link");
   l.rel = "stylesheet";
   l.href = "css/zenna-today.css";
