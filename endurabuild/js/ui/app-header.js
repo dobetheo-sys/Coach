@@ -22,6 +22,7 @@
 // produit ; le reprendre renommerait l'app par accident.
 import { S, esc, fmtDay } from "../state.js";
 import { SPORTS } from "../config.js";
+import { brandHTML } from "./brand.js";
 
 /** Le salut suit l'heure — cinq versions, déjà écrites pour le check-in (R11.1). */
 export function greeting() {
@@ -79,8 +80,9 @@ export function appHeaderHTML(plan, today, onglet) {
     puce = '<div class="zn-race-chip"' + (versPlan ? ' role="button" tabindex="0" data-goto="general" title="Voir le plan"' : "")
       + '><div><div class="rc-j">' + esc(j) + '</div><div class="rc-l">' + esc(sous) + "</div></div></div>";
   }
-  return '<div class="zn-brand"><div class="zn-logo-mark" aria-hidden="true">E</div>'
-    + '<div class="zn-brand-word">ENDURABUILD</div></div>'
+  // R-ZENNA v7 — la marque vient de `brand.js`, point unique. Cet en-tête la DESSINAIT (une
+  // tuile « E » écrite ici), ce qui en faisait la deuxième des quatre versions coexistantes.
+  return brandHTML("petit")
     + '<div class="zn-header-right-wrap">' + puce
     + '<div class="zn-header-right"><div class="zn-greet">' + esc(greeting()) + "</div>"
     + '<div class="zn-date-mono">' + esc(ligneDate(plan, today)) + "</div></div></div>";

@@ -39,7 +39,8 @@
     "demo:proactif": "node src/audit/proactiveDemo.ts",
     "demo:troncature": "node src/audit/truncateDemo.ts",
     "demo:hrv": "node src/audit/hrvDemo.ts",
-    "demo:avatartri": "node src/audit/avatarTriDemo.ts"
+    "demo:avatartri": "node src/audit/avatarTriDemo.ts",
+    "make:icons": "node scripts/makeIcons.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

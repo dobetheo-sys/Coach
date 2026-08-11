@@ -663,6 +663,17 @@ body.theme-zenna #screen .zn-today-dot { animation: zn-tdp calc(var(--beat) * 16
    BARRE D'ONGLETS — reskin tant qu'Aujourd'hui est actif
    ============================================================ */
 body.theme-zenna #ebTabbar { background: rgba(8, 9, 10, .98); border-top: 1px solid var(--zn-border); }
+/* R-ZENNA v7 — les icônes de nav sont des SVG au trait : elles prennent la couleur de l'état
+   (muet au repos, accent quand l'onglet est actif) au lieu des couleurs propres d'un emoji. */
+body.theme-zenna #ebTabbar .tabico svg { width: 21px; height: 21px; display: block; }
+body.theme-zenna #ebTabbar .tabbtn .tabico { color: var(--zn-muted-2); }
+body.theme-zenna #ebTabbar .tabbtn.active .tabico { color: var(--zn-orange-tint); }
+/* PAS de règle de couleur pour l'onglet CENTRAL ici. J'en avais écrit une (`color: #0a0a0a`) :
+   avec `#ebTabbar` elle pesait (0,1,3,1) contre (0,0,4,1) pour les règles qui gèrent déjà ce
+   cas plus bas — donc elle gagnait AUSSI à l'état inactif, où la tuile est sombre : icône
+   sombre sur fond sombre, invisible. C'est le piège de spécificité exact qui avait produit
+   l'écran noir de R-ZENNA v2. Les deux règles `.tabbtn.tab-central[.active] .tabico` du bas de
+   ce fichier font le travail : sombre sur la tuile orange active, clair sur la tuile au repos. */
 body.theme-zenna .tabbtn { color: var(--zn-muted-2); font-family: var(--zn-mono); font-size: 9px; letter-spacing: .02em; position: relative; }
 body.theme-zenna .tabbtn .tabico { transition: transform var(--dur-trans) var(--ease-spring); }
 body.theme-zenna .tabbtn:active .tabico { transform: scale(.84); }

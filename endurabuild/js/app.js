@@ -24,6 +24,14 @@ import { stravaAuthFromHash } from "./strava.js";
 // 11/08/2026). Il l'était seulement dans la vue à onglets ; le questionnaire restait le dernier
 // écran en thème « papier », et c'est le PREMIER que voit quelqu'un qui découvre le produit.
 document.body.classList.add("theme-zenna");
+// R-ZENNA v7 — LE MOT-MARQUE DE L'ACCUEIL VIENT DU MÊME ENDROIT QUE CELUI DES ONGLETS.
+// Il était écrit en dur dans `index.html` (« ENDURA<em>BUILD</em> », le bloc orange de l'ancienne
+// DA) : c'était la première des quatre versions coexistantes. Quand le vrai logo arrivera, il se
+// posera dans `brand.js` et les deux écrans suivront ensemble.
+import("./ui/brand.js").then(({ brandHTML }) => {
+  const h = document.getElementById("ebBrand");
+  if (h) h.innerHTML = brandHTML("grand");
+});
 if (!globalThis.EB_STANDALONE) {
   for (const f of ["css/zenna-today.css", "css/zenna-tabs.css"]) {
     const l = document.createElement("link");

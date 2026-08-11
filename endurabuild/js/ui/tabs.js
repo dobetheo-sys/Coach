@@ -40,12 +40,34 @@ import { appHeaderHTML } from "./app-header.js";
 // `tab-outils.js` porte sa propre navigation en SOUS-onglets (Nutrition en premier
 // arrivant), extensible sans toucher cette barre-ci. Le compte revient à CINQ (Outils prend
 // la place de Nutrition) : la position centrale d'Aujourd'hui ne bouge pas.
+// R-ZENNA v7 — LES ICÔNES DE NAVIGATION SONT DES SVG AU TRAIT, reprises de la maquette
+// (décision du fondateur, 11/08/2026). C'étaient des EMOJI SYSTÈME : ils gardent leurs propres
+// couleurs (le calendrier rouge, la mallette rouge), donc ils ne suivaient ni le thème ni
+// l'état actif — et l'app n'avait pas le même visage sur iOS et sur Android, chaque système
+// ayant sa police d'emoji. Un SVG en `currentColor` suit l'accent quand l'onglet s'active.
+//
+// Les emoji RESTENT dans les titres de cartes (🔥 Dépense, 🥤 Ravitaillement) : là, ils
+// repèrent un CONTENU, ils ne portent pas l'identité de l'app.
+const SVG_NAV = (d) => '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" '
+  + 'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + "</svg>";
+const ICO = {
+  profil: SVG_NAV('<circle cx="10" cy="6.5" r="3.2"/><path d="M4 17a6 6 0 0 1 12 0"/>'),
+  plan: SVG_NAV('<rect x="3" y="4" width="14" height="13" rx="2"/><line x1="3" y1="8" x2="17" y2="8"/>'
+    + '<line x1="7" y1="2" x2="7" y2="5.5"/><line x1="13" y1="2" x2="13" y2="5.5"/>'),
+  aujourdhui: SVG_NAV('<circle cx="10" cy="10" r="7.2"/><circle cx="10" cy="10" r="3.6"/>'
+    + '<circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/>'),
+  semaine: SVG_NAV('<rect x="3" y="11" width="3" height="7" rx="1" fill="currentColor" stroke="none"/>'
+    + '<rect x="8.5" y="7" width="3" height="11" rx="1" fill="currentColor" stroke="none"/>'
+    + '<rect x="14" y="3" width="3" height="15" rx="1" fill="currentColor" stroke="none"/>'),
+  outils: SVG_NAV('<rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/>'
+    + '<rect x="3" y="11" width="6" height="6" rx="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5"/>'),
+};
 const TABS = [
-  ["profile", "\u{1F4CB}", "Profil", renderTabProfile],
-  ["general", "\u{1F5D3}", "Plan", renderTabPlanGeneral],
-  ["today", "\u{1F3AF}", "Aujourd’hui", renderTabToday],
-  ["week", "\u{1F4C5}", "Semaine", renderTabWeek],
-  ["outils", "\u{1F9F0}", "Outils", renderTabOutils],
+  ["profile", ICO.profil, "Profil", renderTabProfile],
+  ["general", ICO.plan, "Plan", renderTabPlanGeneral],
+  ["today", ICO.aujourdhui, "Aujourd’hui", renderTabToday],
+  ["week", ICO.semaine, "Semaine", renderTabWeek],
+  ["outils", ICO.outils, "Outils", renderTabOutils],
 ];
 
 let activeTab = "today"; // défaut : l'onglet central — le point du matin d'abord

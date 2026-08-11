@@ -33,18 +33,27 @@ body.theme-zenna #ebAppHeader {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px; padding: 6px 0 14px;
 }
-body.theme-zenna #ebAppHeader .zn-brand { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
-body.theme-zenna #ebAppHeader .zn-logo-mark {
-  width: 30px; height: 30px; flex: 0 0 auto; clip-path: var(--cut-tile);
+/* R-ZENNA v7 — LA MARQUE EST DESSINÉE PAR `brand.js`, ces règles ne font que l'habiller.
+   Elles ne sont PAS scopées à l'en-tête : la même marque sert aussi le titre de l'accueil,
+   en grand. Une seule identité, deux tailles. */
+body.theme-zenna .zn-brand { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
+body.theme-zenna .zn-logo-mark {
+  flex: 0 0 auto; clip-path: var(--cut-tile);
   background: linear-gradient(145deg, var(--zn-orange), var(--zn-orange-2));
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--zn-display); font-size: var(--fs-xl); color: #000;
+  color: #0a0a0a;                     /* le symbole est en `currentColor` */
   box-shadow: 0 4px 16px var(--zn-orange-glow);
 }
-body.theme-zenna #ebAppHeader .zn-brand-word {
+body.theme-zenna .zn-brand-word {
   font-family: var(--zn-display); font-size: var(--fs-lg); letter-spacing: .06em;
   color: var(--zn-text); transform: skewX(var(--zn-skew)); white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
+}
+/* L'accueil : la MÊME marque, en grand. Le bloc orange sur « BUILD » de l'ancienne DA
+   disparaît — c'était la première des quatre versions qui coexistaient. */
+body.theme-zenna .hero .zn-brand { gap: 14px; }
+body.theme-zenna .zn-brand-word.grand {
+  font-size: clamp(30px, 8vw, 46px); letter-spacing: .04em;
 }
 body.theme-zenna #ebAppHeader .zn-header-right-wrap {
   display: flex; align-items: center; gap: 9px; flex: 0 0 auto;

@@ -69,6 +69,38 @@ const { ok, report } = makeReporter();
 const browser = await launchBrowser();
 
 // ══════════════════════════════════════════════════════════════════════
+// §0bis — LES FEUILLES DU THÈME SE CHARGENT EN DERNIER, ET LE <head> EST SAIN.
+// ══════════════════════════════════════════════════════════════════════
+// `styles.css` porte des règles de MÊME spécificité que le thème — par exemple
+// `body[data-intent="competition"] { background: #f3e9dd }`, un fond CRÈME appliqué dès qu'un
+// plan de compétition existe. À spécificité égale, c'est l'ordre de source qui tranche : les
+// feuilles du thème doivent donc venir APRÈS. C'est un invariant tacite du reskin depuis son
+// origine, et rien ne le tenait.
+//
+// Il a cassé en silence : ma réécriture du favicon utilisait `/<link rel="icon"[^>]*>/`, or
+// l'ancienne URI contenait du SVG BRUT (`<svg …><polygon …/></svg>`) — la classe `[^>]*` s'est
+// arrêtée au premier `>` INTERNE et a laissé une queue de balise dans le `<head>`. Le parseur
+// a refermé la tête plus tôt, l'ordre des feuilles s'est inversé, et QUATRE onglets sur cinq
+// sont repassés au fond crème alors que `theme-zenna` était bien posé sur `<body>`.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR" });
+  const page = await ctx.newPage();
+  await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  const d = await page.evaluate(() => ({
+    ordre: [...document.querySelectorAll('link[rel="stylesheet"]')].map((l) => (l.getAttribute("href") || "").split("/").pop()),
+    // un `<head>` sain ne porte aucun nœud texte non vide : une balise mal fermée en produit un
+    tetePolluee: [...document.head.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim()).map((n) => n.textContent.trim().slice(0, 40)),
+  }));
+  const iBase = Math.max(d.ordre.indexOf("styles.css"), d.ordre.indexOf("mobile.css"));
+  const iTheme = Math.min(...["zenna-today.css", "zenna-tabs.css"].map((f) => d.ordre.indexOf(f)).filter((i) => i >= 0));
+  ok(iTheme > iBase, "§0bis — les feuilles du thème se chargent APRÈS styles/mobile (" + d.ordre.join(" → ") + ")");
+  ok(d.tetePolluee.length === 0, "§0bis — le <head> ne porte aucun texte parasite (balise mal fermée)"
+    + (d.tetePolluee.length ? " — trouvé : « " + d.tetePolluee.join(" | ") + " »" : ""));
+  await ctx.close();
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // §4 — CONTRASTE DU TEXTE (WCAG 1.4.3 AA), calculé sur le rendu réel.
 // ══════════════════════════════════════════════════════════════════════
 // Un thème sombre déplace TOUS les rapports de contraste d'un coup ; c'est le mode de
