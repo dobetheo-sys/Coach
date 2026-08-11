@@ -168,7 +168,22 @@ export function znDrawFormRing() {
     if (val && isFinite(n)) val.textContent = String(Math.round(n));
     return;
   }
+  // L'ANNEAU DOIT PARTIR DE VIDE, SINON IL N'ANIME RIEN.
+  //
+  // Défaut mesuré : le SVG est émis avec `stroke-dashoffset` DÉJÀ à sa valeur finale (pour
+  // rester juste sans JS, ce qui est la bonne décision), et cette fonction posait la MÊME
+  // valeur en style inline. Une transition entre une valeur et elle-même ne produit aucun
+  // mouvement — l'anneau était figé du premier au dernier échantillon (relevé : 46 constant
+  // sur 3 secondes). On le vide d'abord (offset = circonférence entière), on force un reflow
+  // pour que le navigateur enregistre cet état de départ, puis on transitionne vers la cible.
+  const plein = parseFloat(ring.getAttribute("stroke-dasharray"));
   if (val && isFinite(n)) val.textContent = "0";
+  if (isFinite(plein)) {
+    ring.style.transition = "none";
+    ring.style.strokeDashoffset = String(plein);
+    void ring.getBoundingClientRect();
+    ring.style.transition = "";
+  }
   requestAnimationFrame(() => {
     if (isFinite(target)) ring.style.strokeDashoffset = String(target);
     if (val && isFinite(n)) setTimeout(() => znCountUp(val, n, BEAT * 9), BEAT * 3);
