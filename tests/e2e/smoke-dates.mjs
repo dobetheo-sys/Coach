@@ -110,7 +110,11 @@ const inPlan2 = await page2.evaluate(async (iso) => {
   S.answers.readiness = { date: jourEntrainementISO(), sleepQuality: "bon", hrvStatus: "normale", energy: 80, feel: "frais" };
   ebSave();
   const { setTab } = await import("./js/ui/tabs.js");
-  setTab("general");
+  // R-ZENNA v6 — la grille a quitté la vue par défaut de 🗓 Plan pour 📅 Semaine (décision du
+  // fondateur, 11/08/2026). Ce critère porte sur la case « aujourd'hui » DE LA GRILLE, pas sur
+  // un onglet : on va la chercher là où elle vit. Le premier passage (UTC+14, plus haut)
+  // regardait déjà l'onglet Semaine — c'est le second qui était resté sur Plan.
+  setTab("week");
   return !!document.querySelector("#screen .gd.today");
 }, local2.iso);
 ok(inPlan2, "UTC−11 : la case « aujourd'hui » tombe sur le bon jour calendaire local");

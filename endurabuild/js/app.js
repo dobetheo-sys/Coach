@@ -20,6 +20,10 @@ import { stravaAuthFromHash } from "./strava.js";
 // "css/zenna-today.css" — un lien mort échouerait en silence (et contredirait la promesse
 // « zéro requête réseau » du build). `buildStandalone.mjs` inline déjà cette feuille dans le
 // <style> de tête, au même titre que styles.css/mobile.css.
+// R-ZENNA v6 — le thème est posé DÈS LE DÉPART, questionnaire compris (décision du fondateur,
+// 11/08/2026). Il l'était seulement dans la vue à onglets ; le questionnaire restait le dernier
+// écran en thème « papier », et c'est le PREMIER que voit quelqu'un qui découvre le produit.
+document.body.classList.add("theme-zenna");
 if (!globalThis.EB_STANDALONE) {
   for (const f of ["css/zenna-today.css", "css/zenna-tabs.css"]) {
     const l = document.createElement("link");

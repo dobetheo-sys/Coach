@@ -334,7 +334,11 @@ export function renderTabs() {
 /** Sortie de la vue plan (retour questionnaire / reset) : la barre disparaît. */
 export function hideTabs() {
   document.body.classList.remove("has-tabs");
-  document.body.classList.remove("theme-zenna");
+  // R-ZENNA v6 — LE THÈME NE SE RETIRE PLUS AU RETOUR AU QUESTIONNAIRE (décision du fondateur,
+  // 11/08/2026 : « toute l'app, questionnaire compris »). Il était retiré tant que le reskin
+  // s'arrêtait aux onglets ; le garder évite le clignotement clair→sombre en revenant sur le
+  // plan, et surtout : le questionnaire est le PREMIER contact, il ne peut pas être le seul
+  // écran d'une autre époque visuelle.
   const bar = $("ebTabbar");
   if (bar) bar.remove();
   const entete = $("ebAppHeader");

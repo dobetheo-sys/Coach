@@ -5342,3 +5342,57 @@ couvertes ; **vérifiée rouge** en remettant la faute.
 | §3 — U7 devenu douteux | **Vivant.** U7 rapporte 5 ms contre un plafond de 2 000, et **rougit à 3 332 ms** dès qu'on retire l'amorçage précoce de la météo (cassure vérifiée). |
 | §7 — « ligne *Après* manquante au ravitaillement, module commerce à étoffer (cadence, prix, goût, format) » | **Périmé.** Tout cela a été livré en v4 ; le rapport a été écrit sur un fichier antérieur (il compte 174 règles pour une feuille qui en a 223). |
 | §4.3 — en-tête partagé absent des cinq écrans | **Juste**, et c'est le seul de la liste — livré ici. |
+
+## R-ZENNA (v6) — les quatre arbitrages du fondateur
+
+Quatre décisions prises le 11/08/2026 sur la base de l'état des lieux externe. Deux d'entre
+elles **renversent une décision antérieure du dépôt**, et c'est écrit comme tel.
+
+### 1. La grille de semaine quitte la vue par défaut de 🗓 Plan (renverse R16.9)
+
+Plan garde un RÉSUMÉ (numéro, dates, phase, volume) et un bouton « 📅 Ouvrir la semaine ».
+**Ça ne crée aucun second chemin de rendu** — et c'est ce qui rend la décision peu coûteuse.
+R16.9 avait trouvé un vrai défaut (la coche existait en deux versions, celle de Plan basculant
+un booléen en silence, donc sans RPE, donc l'ajusteur sous-estimait la fatigue) ; ici on RETIRE
+un consommateur de `weekGridHTML`, on n'en ajoute pas. La maquette écrit d'ailleurs elle-même
+dans cette carte « même dessin, même geste, jamais deux comportements ».
+Perdu et assumé : cocher depuis Plan sans changer d'onglet. **3,7 → 2,7 écrans.**
+
+### 2. Les cinq couleurs de phase restent
+
+Conforme au principe « on transpose, on n'uniformise pas ». Aucun code changé.
+
+### 3. L'avatar est repeint (renverse l'idiome de la plaque claire)
+
+Le commentaire en place disait que repeindre demanderait de reprendre chaque calque avec le
+risque de casser le contrat vérifié par `demo:avatartri` (59 582 SVG). C'est vrai d'un
+threading de palette à travers une quarantaine de fonctions ; ce ne l'est pas de l'idiome que
+R-ZENNA emploie partout ailleurs — **`var(--x, <valeur d'origine>)`**. 73 littéraux routés.
+Trois propriétés en découlent, et ce sont celles qu'on veut : sans feuille de thème le rendu
+est identique ; `demo:avatartri` tourne en node sans CSS donc voit les replis ; et **la carte
+de partage reste claire sans qu'on ait rien à faire** — `export.js` charge le SVG comme `Image`
+dans un document indépendant, où les variables de la page ne descendent pas.
+Non repeints : accents de discipline, or, rouge, vert du podium — ils portent du sens.
+
+### 4. Le thème couvre le questionnaire
+
+Il était posé dans la vue à onglets seulement, et `hideTabs()` le retirait : le questionnaire
+restait le dernier écran d'une autre époque visuelle, alors que c'est le **premier contact**.
+La maquette ne couvre aucun écran d'onboarding — ces écrans sont donc TRANSPOSÉS depuis ses
+composants, jamais copiés d'une référence qui n'existe pas. Les sept accents de discipline
+(`--sa`, posé en inline) restent le liseré de chaque carte de sport. Traversé sur les 9 écrans
+du triathlon : aucune surface claire résiduelle, aucune erreur JS.
+
+### Six gardes réécrites sur les nouvelles décisions, jamais supprimées
+
+`U15` (comptait une grille → zéro grille + le chemin + la carte, sans quoi le critère serait
+satisfait en supprimant tout) · `smoke-checkin` (portait le critère d'acceptation de R16.9 —
+réécrit sur ce qu'il protégeait vraiment : la coche et le ⇄ sont à un geste) · `smoke-r4` §7
+et §5b (la chaîne coche → RPE → célébration, et les séances de la grille : sans correction §5b
+ne mesurait plus rien et rendait `undefined`) · `smoke-dates` (la case « aujourd'hui », restée
+sur Plan alors que son jumeau UTC+14 regardait déjà Semaine) · `smoke-avatar` (nouvelle garde
+sur les deux moitiés du repeint, la seconde — encre d'origine hors du thème — étant celle qu'on
+casserait sans s'en apercevoir : un repeint qui déborde noircit une carte de partage claire).
+Vérifiée rouge sur trois cassures, dont exactement cette fuite.
+
+**21 suites E2E vertes, `demo:avatartri` vert, `audit:v1` vert.**

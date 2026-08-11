@@ -80,6 +80,55 @@ body.theme-zenna #ebAppHeader .rc-l {
 }
 
 /* ============================================================
+   R-ZENNA v6 — LE QUESTIONNAIRE (décision du fondateur : toute l'app)
+   ============================================================
+   Le questionnaire est le PREMIER contact, et il restait le dernier écran en thème « papier ».
+   La maquette ne le couvre pas : ces écrans sont donc TRANSPOSÉS depuis ses composants (cartes
+   sombres à coin coupé, titre display incliné, accent orange), jamais copiés d'une référence
+   qui n'existe pas.
+
+   Le socle (`zenna-today.css`) couvre déjà `.card`, `.btn`, les champs et `.eyebrow`. Ici : ce
+   qui est propre à l'accueil et au choix du sport. Comme partout, les couleurs PORTEUSES DE
+   SENS restent — les sept accents de discipline (`--sa`, posé en inline) sont l'identité de
+   chaque sport, ils ne deviennent pas gris. */
+body.theme-zenna .hero h1 { color: var(--zn-text); }
+/* Le « BUILD » surligné : le fond accent reste, l'ombre portée à l'encre devient une lueur —
+   `box-shadow: 4px 4px 0 var(--ink)` était une ombre BLANCHE une fois `--ink` éclairci. */
+body.theme-zenna .hero h1 em {
+  background: var(--zn-orange); color: #0a0a0a;
+  box-shadow: 0 4px 18px var(--zn-orange-glow); transform: skewX(var(--zn-skew));
+}
+body.theme-zenna .hero p { color: var(--zn-muted); }
+body.theme-zenna .tier-badge {
+  background: var(--zn-surface-2); color: var(--zn-cyan);
+  border: 1px solid rgba(0, 224, 198, .32); border-radius: 100px;
+  box-shadow: none; transform: none;
+}
+body.theme-zenna .tier-badge.premium { color: var(--zn-gold); border-color: rgba(255, 210, 61, .35); }
+/* La barre de progression du questionnaire. */
+body.theme-zenna .progress i { background: var(--zn-surface-3); }
+body.theme-zenna .progress i.on { background: var(--zn-orange); }
+/* L'écran d'accueil et sa grille de sports. */
+body.theme-zenna .welcome h2 { color: var(--zn-text); }
+body.theme-zenna .welcome p { color: var(--zn-muted); }
+/* Les cartes de sport : le liseré du haut EST l'accent de la discipline (`--sa`), il reste.
+   Ce qui tombe, c'est le contour à l'encre (devenu blanc épais) et l'ombre portée « collage »,
+   plus la rotation — sur fond noir, un empilement penché fait sale plutôt que fait main. */
+body.theme-zenna .sport-card {
+  background: var(--zn-surface-2);
+  border: 1px solid var(--zn-border);
+  border-top: 3px solid var(--sa, var(--zn-orange));
+  border-radius: 16px; box-shadow: none; transform: none;
+  transition: transform var(--dur-tap) var(--ease-spring), border-color var(--dur-trans) var(--ease);
+}
+body.theme-zenna .sport-card:nth-child(odd),
+body.theme-zenna .sport-card:nth-child(even) { transform: none; }
+body.theme-zenna .sport-card:hover { transform: none; box-shadow: none; border-color: var(--sa, var(--zn-orange)); }
+body.theme-zenna .sport-card:active { transform: scale(.97); box-shadow: none; }
+body.theme-zenna .sc-nom { color: var(--zn-text); font-family: var(--zn-display); letter-spacing: .02em; }
+body.theme-zenna .sc-pitch { color: var(--zn-muted); }
+
+/* ============================================================
    COMMUN — surfaces, séparateurs, ombres portées
    ============================================================ */
 body.theme-zenna #screen .gw,
