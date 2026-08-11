@@ -107,6 +107,12 @@ await t2[1].click(); await page.waitForTimeout(250);
 const whyTxt = await page.locator("#screen").textContent();
 ok(/Pourquoi ce plan/.test(whyTxt), "carte « Pourquoi ce plan » en tête de l'onglet Plan (§5)");
 ok(/Ta préparation fait \d+ semaines/.test(whyTxt), "la durée est expliquée en langage d'athlète, pas en identifiant de décision");
+// R-ZENNA v6 — la grille a quitté la vue par défaut de 🗓 Plan pour 📅 Semaine. Ce qui est
+// mesuré ci-dessous porte sur les SÉANCES DE LA GRILLE, pas sur l'onglet Plan : on va donc les
+// chercher là où elles vivent maintenant. Sans ça la garde ne mesurait plus rien et rendait
+// `undefined` — verte pour la mauvaise raison, ou rouge pour la mauvaise raison.
+await page.click("#openWk");
+await page.waitForTimeout(500);
 const whyBeforeWhat = await page.evaluate(() => {
   // Les jours de REPOS n'ont pas de justification (« marche, étirements ») : on regarde une
   // séance d'entraînement, celles que l'auditeur refuse muettes.
@@ -170,12 +176,18 @@ const nutTxt = await page.locator("#screen").textContent();
 ok(await page.locator("#njCard").count() === 0 && !/Journal alimentaire/.test(nutTxt), "journal alimentaire retiré de Outils > Nutrition");
 ok(/Dépense estimée du jour/.test(nutTxt) && /Ravitaillement/i.test(nutTxt), "Outils > Nutrition garde dépense estimée + ravitaillement");
 
-// ---- 7. R16.9 : la coche ✓ → feedback RPE → félicitations vit désormais dans Plan ----
-// (c'était la coche de Semaine ; celle de Plan basculait un booléen en silence.)
+// ---- 7. La coche ✓ → feedback RPE → félicitations ----
+// R16.9 avait déplacé ce geste dans 🗓 Plan, après avoir trouvé que la coche existait en DEUX
+// versions (celle de Plan basculait un booléen en silence, donc aucun RPE, donc l'ajusteur du
+// lendemain sous-estimait la fatigue). R-ZENNA v6 (fondateur, 11/08/2026) sort la grille de la
+// vue par défaut de Plan : le geste vit maintenant dans 📅 Semaine. Ce qui est vérifié ici ne
+// change pas d'un iota — c'est la CHAÎNE coche → RPE → célébration qui compte, pas l'onglet où
+// elle se déclenche ; on l'atteint par le chemin que le produit propose désormais.
 const t5 = await page.locator("#ebTabbar .tabbtn").all();
 await t5[1].click(); await page.waitForTimeout(300);
+await page.click("#openWk"); await page.waitForTimeout(500);
 const dbtn = page.locator('.doneBtn[data-rest="0"]:not(.done)').first();
-ok((await dbtn.count()) === 1, "coche de séance (non-repos) disponible dans Plan");
+ok((await dbtn.count()) === 1, "coche de séance (non-repos) disponible à un geste de Plan");
 await dbtn.click(); await page.waitForTimeout(300);
 ok(await page.locator(".eb-modal:has-text('Comment c’était')").count() === 1, "feedback RPE affiché avant la célébration");
 await page.locator("[data-rpe='6']").click();

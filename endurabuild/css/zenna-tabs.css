@@ -120,6 +120,22 @@ body.theme-zenna #screen .q-def {
   border-radius: 12px; box-shadow: none; transform: none; color: var(--zn-text);
 }
 
+/* R-ZENNA v6 — la carte « semaine en cours » qui remplace la grille dans la vue par défaut
+   de 🗓 Plan. La grille et la coche vivent dans 📅 Semaine ; ici on situe, on n'agit pas. */
+body.theme-zenna #screen .zn-wk-card { margin-top: 10px; }
+body.theme-zenna #screen .zn-wk-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  flex-wrap: wrap; margin-bottom: 6px;
+}
+body.theme-zenna #screen .zn-wk-title {
+  font-family: var(--zn-display); font-size: var(--fs-lg); color: var(--zn-text);
+  text-transform: uppercase; transform: skewX(var(--zn-skew)); transform-origin: left;
+}
+body.theme-zenna #screen .zn-wk-range {
+  font-family: var(--zn-mono); font-size: 9.5px; letter-spacing: .06em;
+  color: var(--zn-muted-2); text-transform: uppercase;
+}
+
 /* ============================================================
    🗓 PLAN — frise de phases, barres de volume, listes de décisions
    ============================================================ */

@@ -63,7 +63,7 @@ function avancementPlanHTML(plan, today) {
 }
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
-import { ensurePlan, invalidatePlan } from "./tabs.js";
+import { ensurePlan, invalidatePlan, setTab } from "./tabs.js";
 import { feasibilityCardHTML, bindFeasibility } from "./feasibility.js";
 import { DISC } from "./icons.js";
 import { raceCountdown } from "./app-header.js";
@@ -310,10 +310,34 @@ export function renderTabPlanGeneral(plan) {
   // vient voir. Le bouton « Voir les N semaines » n'a pas bougé — on change le défaut, pas la
   // possibilité.
   const courante = plan.weeks.find((w) => w.days.some((d) => d.date === today)) || plan.weeks[0];
-  const show = S.showAllWeeks ? plan.weeks : [courante];
-  show.forEach((w) => {
-    html += '<div class="gw" id="gw' + w.num + '">' + weekHeaderHTML(w) + weekGridHTML(plan, w, today) + "</div>";
-  });
+  // R-ZENNA v6 — LA GRILLE QUITTE LA VUE PAR DÉFAUT DE 🗓 PLAN (décision du fondateur,
+  // 11/08/2026 : « suivre la maquette »). Elle y résumait la semaine en cours ; la maquette
+  // met à sa place une CARTE de résumé et un bouton qui ouvre 📅 Semaine.
+  //
+  // CE QUE ÇA NE FAIT PAS, et c'est ce qui rend la décision peu coûteuse : ça ne crée AUCUN
+  // second chemin de rendu. R16.9 avait trouvé un vrai défaut — la coche existait en deux
+  // versions, celle de Plan basculant un booléen en silence sans produire de `completion`, donc
+  // sans RPE, donc l'ajusteur du lendemain sous-estimait la fatigue. On RETIRE un consommateur
+  // de `weekGridHTML`, on n'en ajoute pas : le danger que R16.9 nommait ne peut pas revenir.
+  // La maquette dit d'ailleurs elle-même, dans cette carte, « même dessin, même geste, jamais
+  // deux comportements » — c'est le principe de R16.9, appliqué à une seule vue.
+  //
+  // Ce qu'on PERD est réel et assumé : le geste « je coche depuis Plan sans changer d'onglet ».
+  // La vue complète (« Voir les N semaines ») garde les grilles — rien ne devient inatteignable.
+  if (S.showAllWeeks) {
+    plan.weeks.forEach((w) => {
+      html += '<div class="gw" id="gw' + w.num + '">' + weekHeaderHTML(w) + weekGridHTML(plan, w, today) + "</div>";
+    });
+  } else {
+    const d0 = courante.days[0], dN = courante.days[courante.days.length - 1];
+    html += '<div class="load-card zn-wk-card">'
+      + '<div class="zn-wk-head"><div class="zn-wk-title">Semaine en cours · S' + courante.num + "</div>"
+      + '<div class="zn-wk-range">' + (d0 ? fmtDay(d0.date) + " – " + fmtDay(dN.date) : "")
+      + " · " + esc(courante.phase.nom) + (courante.isRecup ? " · récup" : "") + "</div></div>"
+      + '<div class="load-sub">' + courante.vol + " h au programme. La grille complète et la coche vivent dans 📅 Semaine — un seul dessin, un seul geste.</div>"
+      + '<div class="nav" style="margin-top:12px"><button class="btn" id="openWk" type="button">📅 Ouvrir la semaine</button></div>'
+      + "</div>";
+  }
   // Retour utilisateur (08/08/2026) : « on redonne la semaine du jour ? double emploi ? ».
   // C'est un doublon ASSUMÉ (R16.9 : « un seul dessin, deux points de vue », weekGridHTML sert
   // les deux onglets), pas un oubli — retirer la grille d'ici casserait le geste « je coche
@@ -321,7 +345,6 @@ export function renderTabPlanGeneral(plan) {
   // rendu serait pire (deux comportements pour un même clic). Ce que 📅 Semaine ajoute
   // (navigation semaine par semaine, bilan chiffré) n'existe nulle part ici : un pointeur plutôt
   // qu'une duplication silencieuse.
-  if (!S.showAllWeeks) html += '<div class="load-sub" style="margin:2px 0 8px">📅 Semaine ajoute la navigation semaine par semaine et le bilan chiffré de celle que tu regardes.</div>';
   if (!S.showAllWeeks && plan.totalWeeks > 1)
     html += '<div class="wk-skip">⋯ ' + (plan.totalWeeks - 1) + " autre" + (plan.totalWeeks > 2 ? "s" : "")
       + " semaine" + (plan.totalWeeks > 2 ? "s" : "") + " — « Voir les " + plan.totalWeeks + " semaines » ci-dessous ⋯</div>";
@@ -388,6 +411,9 @@ export function renderTabPlanGeneral(plan) {
   });
   $("backBp").onclick = () => { S.step = curSteps().length - 1; renderStep(); };
   $("allW").onclick = () => { S.showAllWeeks = !S.showAllWeeks; renderTabPlanGeneral(plan); window.scrollTo(0, 0); }; // re-rend la VUE — pas de buildPlan
+  // R-ZENNA v6 — la carte de résumé emmène vers 📅 Semaine, où vivent la grille et la coche.
+  const ouvrirSem = $("openWk");
+  if (ouvrirSem) ouvrirSem.onclick = () => setTab("week");
   $("prn").onclick = () => downloadPlan();
   $("expIcs").onclick = () => exportICS();
   $("expJson").onclick = () => exportJSON();

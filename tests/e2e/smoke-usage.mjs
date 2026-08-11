@@ -371,8 +371,17 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
     grilles: document.querySelectorAll("#screen .gw-grid").length,
     hauteur: document.body.scrollHeight,
     bouton: !!document.getElementById("allW"),
+    versSemaine: !!document.getElementById("openWk"),
+    resume: !!document.querySelector("#screen .zn-wk-card"),
   }));
-  ok(defaut.grilles === 1, "U15 — l'onglet Plan ouvre sur UNE semaine (" + defaut.grilles + ")");
+  // R-ZENNA v6 — ce critère comptait UNE grille dans la vue par défaut. La grille en a été
+  // RETIRÉE (décision du fondateur, 11/08/2026 : suivre la maquette) et remplacée par une carte
+  // de résumé + un bouton vers 📅 Semaine. L'INTENTION d'U15 est inchangée — « la vue par défaut
+  // est courte » — et elle est mieux servie ; on mesure donc zéro grille ET la présence du
+  // chemin vers la semaine, sans quoi ce critère serait satisfait en supprimant simplement tout.
+  ok(defaut.grilles === 0, "U15 — l'onglet Plan n'affiche plus de grille par défaut (" + defaut.grilles + ")");
+  ok(defaut.versSemaine, "U15 — …mais il emmène vers 📅 Semaine, où la grille et la coche vivent");
+  ok(defaut.resume, "U15 — …et il SITUE la semaine en cours (carte de résumé)");
   ok(defaut.hauteur < 844 * 5, "U15 — moins de 5 écrans de défilement (" + (defaut.hauteur / 844).toFixed(1) + ")");
   ok(defaut.bouton, "U15 — le bouton « Voir les N semaines » est là");
   const complet = await page.evaluate(() => {
