@@ -4915,3 +4915,83 @@ sept sports et la visibilité conditionnelle du bloc duathlon. A14 (`engine.js`/
 Coach_Pro_V1.5.html endurabuild/js/engine.js` → vide : le module vit entièrement sous
 `endurabuild/js/`, jamais sous `src/`.
 **27 gates verts, E2E 20/20, golden 949 inchangé — aucune génération de plan n'est touchée.**
+
+## R-ZENNA (v2) — la maquette en entier : le système visuel ET le système de MOTION
+
+Première passe (10/08) : couleurs et cartes, **statique**. Décision du fondateur (11/08) :
+*« utilise les animations présentes sur la maquette […] le but est vraiment d'avoir le même
+rendu, plus moderne, dark tech, et surtout VIVANT »*, barrières levées (rien ne part en
+production sans sa validation). Ce lot porte donc la moitié qui manquait.
+
+**La cadence, d'abord.** La maquette ne pose pas des durées au hasard : tout dérive d'un
+`--beat` de 120 ms (tap ×1.5, transition ×3.5, apparition ×6, cascade ×0.95) avec trois
+courbes nommées. C'est ce qui fait qu'une interface « bouge ensemble » au lieu d'avoir dix
+animations qui se disputent l'attention — la cadence est reprise telle quelle.
+
+**Trois familles, une frontière.** APPARITION (`.rise` + `r1..r8`, `.grow-x/y`) · ÉTAT
+(`zenna-pulse` du halo, point « tu es ici » qui pulse, shimmer météo) · RÉCOMPENSE (coche qui
+se DESSINE, confettis, XP flottant, tampon de verdict). La frontière est écrite dans
+`js/ui/zenna-motion.js` §2 : **ce module met en scène des chiffres déjà calculés, il n'en
+produit aucun**. Le grand chiffre du héros vient de `adjustment.adjustedMinutes`, l'anneau de
+`readiness.energy`, la barre de zones des `steps` du moteur via `_blkMin` — la même fonction
+que la courbe de charge (R11.1). Une animation qui calculerait sa propre valeur serait une
+seconde vérité.
+
+**La barre de zones n'est pas un décor.** La maquette dessine des segments illustratifs ; ici
+chaque segment EST un bloc de la séance, large comme sa durée, coloré par sa zone
+(`ZONE_LEVEL`, table ordonnée dérivée de `_IFZ`, zone inconnue → Z2, jamais du rouge par
+défaut).
+
+**Le tampon de verdict attend le VRAI verdict.** La maquette affiche « SÉANCE MAINTENUE » en
+dur. Ici le tampon ne part qu'après `applyReadinessSnap`, avec le niveau réel, et les confettis
+ne partent QUE si l'action est `keep` — fêter un « repos conseillé » serait absurde.
+
+### Le défaut que ce lot a produit, puis corrigé : la cascade annulée par sa propre feuille
+
+Mesuré, écran NOIR : les huit cartes de l'onglet à `opacity: 0`, définitivement.
+`body.theme-zenna #screen .card` (0,1,2,1 — un ID) portait `animation: none` pour neutraliser
+le `dropIn` du thème clair, et battait `body.theme-zenna .zn-play .rise` (0,0,3,1). `.rise`
+posant `opacity: 0` en attendant son animation, la cascade ne partait jamais et **rien ne
+s'affichait**. Troisième occurrence dans ce dépôt de « un correctif que la cascade annule est
+un correctif qu'on croit avoir » (R18.1, U16) — cette fois c'est le correctif qui annulait la
+fonctionnalité. Corrigé par un sélecteur **disjoint** (`:not(.rise)`) plutôt qu'une surenchère
+de spécificité : aucune spécificité à arbitrer, donc rien à re-perdre demain.
+
+### Deux défauts PRÉ-EXISTANTS trouvés en regardant l'écran
+
+**N-1 — le héros affichait la séance d'HIER entre minuit et 4 h.** Mesuré à 01 h 30 : en-tête
+« LUN · 11/08 » et « Repos » dans le héros, pendant que la carte de validation, qui lit le plan
+directement, proposait « MAR 11/08 · Sweetspot vélo » — deux écrans de la même app, deux
+réponses à « qu'est-ce que je fais aujourd'hui ? » (la forme que R11.1 interdit). Cause :
+`Object.assign({ date: todayIso }, S.answers.readiness)` — `readiness.date` vaut la JOURNÉE
+D'ENTRAÎNEMENT (`jourEntrainementISO`, qui recule avant 4 h, R23.2) et écrasait la date
+calendaire. R23.2 énonce pourtant la règle mot pour mot : *« `snap.date`, lui, reste la date
+CALENDAIRE — l'ajusteur s'en sert pour choisir la séance du jour, et la décaler ferait adapter
+la séance d'hier. »* L'intention était juste, l'écriture la contredisait. Corrigé aux deux
+sites (`session-life.js`, `tab-today.js`) en passant la date calendaire EN DERNIER.
+Famille R20.7 : un défaut que seule l'heure d'exécution révèle.
+
+**N-2 — `build:standalone` était cassé par sa propre CSP.** Le fichier autonome recopiait la
+CSP d'`index.html`, qui bloque son bootstrap inline, ses modules en `blob:` et ses polices en
+`data:`. Silencieux depuis l'ajout de la CSP, parce que ce fichier est git-ignoré et testé par
+aucun gate. Corrigé dans le générateur uniquement — `index.html` garde sa CSP stricte.
+
+### Ce qui a été ajouté au dépôt
+
+`css/zenna-today.css` (réécrit), `js/ui/zenna-motion.js` (nouveau), quatre polices
+auto-hébergées (`bebas-neue-400`, `inter-400-800`, `ibm-plex-mono-400/700`). **Les polices ne
+viennent PAS de Google Fonts en ligne** : D19 impose zéro requête externe, et la première
+écriture le violait. Sous-ensemble LATIN, vérifié glyphe par glyphe (é à ç œ) — le premier bloc
+que sert l'API Google est le CYRILLIQUE, et le prendre aurait donné une police sans un seul
+accent français.
+
+**Garde : `tests/e2e/smoke-zenna.mjs` (21ᵉ suite), 33 assertions, vérifiée ROUGE** (cascade
+cassée → 3 échecs, cartes à 0/0/0…). Ses trois volets gardent trois moitiés différentes : le
+mouvement FAIT son travail · `prefers-reduced-motion` NEUTRALISE tout SANS rien cacher (le
+piège symétrique : couper l'animation sans repli laisse `opacity: 0`) · les quatre autres
+onglets ne sont pas contaminés. Note d'instrument gardée écrite : une première mesure à
+1500 ms lisait `0.999796` et rapportait un échec — la cascade se termine à ~1520 ms, les
+attentes sont calées SUR la cadence déclarée, pas au jugé.
+
+**Moteur intact** : `audit:v1` 459/459 à 0 violation, `check:app` et `check:sw` verts — aucune
+génération de plan n'est touchée.

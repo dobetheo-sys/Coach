@@ -40,7 +40,10 @@ function loadChartSVG(plan){
   const x=i=>PL+(S2.length<2?iw/2:i/(S2.length-1)*iw);
   const yL=v=>PT+ih-(v/maxL)*ih;              // CTL/ATL (0..max)
   const yB=v=>PT+ih/2-(v/tsbMax)*(ih/2);      // TSB (centré sur 0)
-  const line=(sel,col,w)=>"<polyline fill=\"none\" stroke=\""+col+"\" stroke-width=\""+w+"\" points=\""+S2.map((o,i)=>x(i).toFixed(1)+","+sel(o).toFixed(1)).join(" ")+"\"/>";
+  // R-ZENNA — `zn-chart-line` permet à `znDrawChart()` de TRACER les trois courbes au lieu de
+  // les faire apparaître (stroke-dashoffset animé). Purement décoratif : la classe ne change
+  // ni la géométrie ni les couleurs, et hors thème rien ne la lit.
+  const line=(sel,col,w)=>"<polyline class=\"zn-chart-line\" fill=\"none\" stroke=\""+col+"\" stroke-width=\""+w+"\" points=\""+S2.map((o,i)=>x(i).toFixed(1)+","+sel(o).toFixed(1)).join(" ")+"\"/>";
   let g="<svg viewBox=\"0 0 "+W+" "+H+"\" width=\""+W+"\" height=\""+H+"\" style=\"display:block\" role=\"img\" aria-label=\"Courbe de charge CTL ATL TSB\">";
   g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"var(--zn-sep-line,#0002)\" stroke-dasharray=\"3 3\"/>";
   g+=line(o=>yB(o.tsb),"var(--zn-form,#00a376)",2)+line(o=>yL(o.ctl),"var(--zn-swim,#2e6bff)",2.5)+line(o=>yL(o.atl),"var(--zn-fatigue,#ff7a1a)",1.8);
@@ -56,7 +59,7 @@ function loadChartSVG(plan){
     if(iNow>=0){
       const xn=x(iNow);xNow=xn;
       g+="<line x1=\""+xn.toFixed(1)+"\" y1=\""+PT+"\" x2=\""+xn.toFixed(1)+"\" y2=\""+(PT+ih)+"\" stroke=\"var(--zn-ink,#16130e)\" stroke-width=\"1.5\" stroke-dasharray=\"2 3\"/>";
-      g+="<circle cx=\""+xn.toFixed(1)+"\" cy=\""+yL(S2[iNow].ctl).toFixed(1)+"\" r=\"3.5\" fill=\"var(--zn-swim,#2e6bff)\" stroke=\"var(--zn-ink,#16130e)\" stroke-width=\"1\"/>";
+      g+="<circle class=\"zn-today-dot\" cx=\""+xn.toFixed(1)+"\" cy=\""+yL(S2[iNow].ctl).toFixed(1)+"\" r=\"3.5\" fill=\"var(--zn-swim,#2e6bff)\" stroke=\"var(--zn-ink,#16130e)\" stroke-width=\"1\"/>";
       const gauche=xn>W-70;
       g+="<text x=\""+(gauche?xn-5:xn+5).toFixed(1)+"\" y=\""+(PT+ih-4)+"\" font-size=\"9\" font-weight=\"bold\" fill=\"var(--zn-ink,#16130e)\""+(gauche?" text-anchor=\"end\"":"")+">tu es ici</text>";
     }

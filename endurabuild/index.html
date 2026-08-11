@@ -37,12 +37,13 @@
 
   R-ZENNA (10/08/2026) — le reskin de l'onglet Aujourd'hui n'ajoute AUCUN hôte à cette CSP :
   la première écriture chargeait Bebas Neue/Inter/IBM Plex Mono depuis fonts.googleapis.com,
-  ce qui contredit D19 (styles.css, en tête) — les polices du produit sont auto-hébergées en
-  base64, précisément pour zéro requête externe (RGPD, hors ligne). Mesuré par
-  `smoke-checkin.mjs` dans ce sandbox (réseau bridé) : la requête externe produit
-  `ERR_CONNECTION_RESET`, qui remonte en erreur console — le critère « aucune erreur JS » que
-  TOUTES les suites E2E assertent. Le reskin réutilise donc les polices DÉJÀ embarquées
-  (Archivo Black, Space Grotesk) plutôt que d'en ajouter une source.
+  ce qui contredit D19 (styles.css, en tête) — les polices du produit sont auto-hébergées,
+  précisément pour zéro requête externe (RGPD, hors ligne). Mesuré par `smoke-checkin.mjs`
+  dans ce sandbox (réseau bridé) : la requête externe produit `ERR_CONNECTION_RESET`, qui
+  remonte en erreur console — le critère « aucune erreur JS » que TOUTES les suites E2E
+  assertent. Les trois polices de la maquette ont donc rejoint `assets/fonts/` (sous-ensemble
+  latin, glyphes accentués vérifiés) et sont déclarées dans `css/zenna-today.css` :
+  `font-src 'self'` suffit, et le fichier autonome les embarque comme les autres.
 
   Et `css/zenna-today.css` lui-même n'a PAS de `<link>` ici : un `<link rel="stylesheet">` de
   plus dans `<head>` est bloquant pour le premier rendu, mesuré (smoke-usage.mjs, U7) à faire

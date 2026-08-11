@@ -19,6 +19,10 @@ import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan } from "./tabs.js";
 import { VERDICT_ICON } from "./icons.js";
 import { noteRaceResult } from "../projection-log.js"; // A-5
+import {
+  znOn, znPlay, znDrawChart, znDrawFormRing, znCountHero, znConfetti, znXpFloat, znToast,
+  znStickyCta, znClearStickyCta, znNavDot, znHeroParallax, znClearParallax, znWeatherReady,
+} from "./zenna-motion.js"; // R-ZENNA
 
 const ROLE_LABEL = { warmup: "Échauffement", body: "Corps de séance", cooldown: "Retour au calme" };
 function stepGroupsFor(session) {
@@ -65,10 +69,20 @@ function todayValidateHTML(plan, todayISO) {
     const k = w.num + "|" + d.jour + "|" + si;
     const dn = S.answers.done && S.answers.done[k];
     const label = s.d === "rs" ? "Récupération respectée" : "Valider : " + s.name;
-    h += '<button type="button" class="btn ' + (dn ? "" : "primary") + '" data-vd="' + k + '" data-vrest="' + (s.d === "rs" ? 1 : 0) + '" style="width:100%;margin-top:8px;font-size:var(--fs-lg);padding:13px 16px"' + (dn ? " disabled" : "") + ">"
-      + (dn ? "✓ " + (s.d === "rs" ? "Repos validé" : "Séance validée — bravo") : "✓ " + label) + "</button>";
+    // R-ZENNA — LA COCHE SE DESSINE. Le `<path class="check-draw">` est tracé par CSS
+    // (stroke-dashoffset) quand `.go` est posée au clic : c'est la récompense la plus
+    // discrète du système, et la seule qui accompagne le geste au lieu de le commenter.
+    // Le libellé reste dans un `<span>` pour que le SVG ne soit pas balayé quand on le change.
+    h += '<button type="button" class="btn ' + (dn ? "zn-done" : "primary") + '" data-vd="' + k + '" data-vrest="' + (s.d === "rs" ? 1 : 0) + '" style="width:100%;margin-top:8px;font-size:var(--fs-lg);padding:13px 16px"' + (dn ? " disabled" : "") + ">"
+      + '<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true" style="flex:0 0 auto"><path class="check-draw' + (dn ? " go" : "") + '" d="M4 10.5l4 4 8-9"/></svg>'
+      + "<span>" + (dn ? (s.d === "rs" ? "Repos validé" : "Séance validée — bravo") : label) + "</span></button>";
   });
-  return h ? '<div class="card"><div class="eyebrow">Valider ma journée · ' + d.jour + " " + fmtDay(d.date) + "</div>" + h + "</div>" : "";
+  if (!h) return "";
+  // La série en cours, affichée seulement quand elle existe (R4.2 : le repos validé compte).
+  let streak = 0;
+  try { streak = globalThis.EBV2.adherence(plan, S.answers, todayISO).days || 0; } catch (e) {}
+  const chip = streak > 1 ? '<div class="zn-streak-chip">🔥 Série : ' + streak + " jours d’affilée</div>" : "";
+  return '<div class="card"><div class="eyebrow">Valider ma journée · ' + d.jour + " " + fmtDay(d.date) + "</div>" + h + chip + "</div>";
 }
 function bindTodayValidate(plan, todayISO) {
   document.querySelectorAll("#screen [data-vd]").forEach((b) => {
@@ -77,6 +91,18 @@ function bindTodayValidate(plan, todayISO) {
       if (S.answers.done && S.answers.done[k]) return;
       let badgesBefore = [];
       try { badgesBefore = globalThis.EBV2.badges(plan, S.answers, todayISO); } catch (e) {}
+      // R-ZENNA — LA RÉCOMPENSE PART AVANT LE RE-RENDU, sur le bouton qu'on vient de toucher :
+      // après `renderTabToday`, ce nœud n'existe plus et les confettis n'auraient plus d'origine.
+      // Le « +10 XP » n'est pas un chiffre décoratif : c'est le barème du moteur
+      // (`avatarTriCreditsOf` — repos 0, séance 10, brick 5+5), donc 10 pour toute séance
+      // validée qui n'est pas du repos. Un repos ne reçoit rien, et n'annonce rien.
+      const repos = b.dataset.vrest === "1";
+      const chk = b.querySelector(".check-draw");
+      if (chk) requestAnimationFrame(() => chk.classList.add("go"));
+      znConfetti(b);
+      if (!repos) znXpFloat(b, "+10 XP");
+      znToast(repos ? "Repos validé — la série continue" : "Séance validée — elle nourrit l’ajusteur de demain");
+      znClearStickyCta();
       if (!S.answers.done) S.answers.done = {};
       S.answers.done[k] = true;
       ebSave();
@@ -159,17 +185,22 @@ export function renderTabToday(plan) {
 
   // 1. Le diaporama d'accueil — AUCUNE séance visible avant d'avoir répondu (1×/jour)
   if (!readinessDoneToday()) {
+    znClearStickyCta(); znClearParallax(); // le portillon n'a ni séance à valider ni héros
     $("screen").innerHTML = moment + painBannerHTML() + checkinSlideshowHTML() + '<div class="card">' + sickToggleHTML(today) + "</div>";
     bindCheckinSlideshow(() => renderTabToday(plan), () => renderTabToday(plan));
     bindPainBanner(plan, () => renderTabToday(plan));
     bindSickToggle(plan, today);
+    znPlay();
     return;
   }
 
   // 2..6 — séance du jour, prédiction, charge, avancement, intensités
   let resSessions = [];
   try {
-    const res = globalThis.EBV2.adjustToday(S.sport, S.answers, Object.assign({ date: today }, S.answers.readiness || {}));
+    // Même correction qu'en tête de `heroSessionHTML` (voir son commentaire) : la date
+    // CALENDAIRE passe en dernier, sinon la journée d'entraînement (`readiness.date`, qui
+    // recule avant 4 h) l'écrase et l'ajusteur travaille sur la séance d'HIER.
+    const res = globalThis.EBV2.adjustToday(S.sport, S.answers, Object.assign({}, S.answers.readiness || {}, { date: today }));
     resSessions = res.sessions || [];
   } catch (e) {}
 
@@ -230,13 +261,23 @@ export function renderTabToday(plan) {
   bindLoadChart();
   bindSickToggle(plan, today);
   // R24.9 — la météo affine le ravito en différé, sans re-rendre l'onglet ni défaire le repli.
+  // R-ZENNA — et ce différé se VOIT : quand la température arrive, le bloc se rejoue en fondu
+  // (`zn-wx-in`) au lieu de changer sous les yeux sans prévenir — un chiffre qui se remplace
+  // tout seul, sans transition, se lit comme un bug.
+  //
+  // Le shimmer de la maquette (`wx-slot.loading`) n'est PAS posé ici, et c'est délibéré : il
+  // met le texte en `transparent`, or `#nutRedu` porte toute la carte ravitaillement, pas une
+  // pastille de température. Masquer une carte entière en attendant une donnée d'appoint,
+  // c'est le défaut qu'U7 a corrigé — la séance ne doit jamais attendre la météo.
   {
     const zone = $("nutRedu");
     const day = jourDuPlan(plan, today);
     if (zone && day) fetchWeather().then((wx) => {
       if (!wx || wx.tmaxC == null) return;
       const el = $("nutRedu");
-      if (el) el.innerHTML = ravitoReplie(day, wx.tmaxC);
+      if (!el) return;
+      el.innerHTML = ravitoReplie(day, wx.tmaxC);
+      znWeatherReady(el);
     });
   }
   scheduleDailyNotification(plan);
@@ -269,6 +310,7 @@ export function renderTabToday(plan) {
     if (!/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) { alert("Format attendu : mm:ss ou h:mm:ss"); return; }
     let predicted = "";
     try { const pr = globalThis.EBV2.predict(S.sport, S.answers, plan); if (pr.items.length) predicted = pr.items.map((i) => i.leg + " " + i.value).join(" · "); } catch (e) {}
+    znConfetti(rsBtn);
     S.answers.raceResult = { date: S.answers.race_date, time: t, predicted };
     // A-5 — ON REFERME LA BOUCLE. `predicted` ci-dessus est la prédiction RECALCULÉE
     // aujourd'hui, le jour de la course : elle ne dit rien de ce que le moteur annonçait il y
@@ -279,4 +321,40 @@ export function renderTabToday(plan) {
     ebSave();
     renderTabToday(plan);
   };
+
+  // ============================================================
+  // R-ZENNA — LA MISE EN MOUVEMENT, une fois le DOM en place.
+  // ============================================================
+  // L'ordre compte, et il suit celui de la maquette : la cascade d'abord (les cartes entrent),
+  // puis les tracés qui vivent DANS ces cartes. Tout est no-op hors du thème sombre.
+  znPlay();
+  znCountHero();
+  znDrawFormRing();
+  znDrawChart();
+  znHeroParallax();
+
+  // Le CTA collant et la pastille d'onglet parlent de la MÊME chose : une séance est planifiée
+  // aujourd'hui et n'est pas encore validée. Un seul calcul pour les deux (R11.1) — sinon
+  // l'un des deux finirait par dire l'inverse de l'autre.
+  const boutons = [...document.querySelectorAll("#screen [data-vd]")];
+  const aValider = boutons.filter((b) => !b.disabled && b.dataset.vrest !== "1");
+  znNavDot(aValider.length > 0);
+  if (aValider.length) {
+    const cible = aValider[0];
+    // Le libellé reprend le NOM de la séance, pas un « valider » générique : c'est ce qui
+    // distingue un rappel utile d'un bouton qui traîne en bas d'écran.
+    const nom = (cible.querySelector("span") || {}).textContent || "Valider ma séance";
+    znStickyCta({
+      label: "✓ " + nom,
+      onClick: () => {
+        // On délègue au VRAI bouton (même chemin, même feedback, même célébration) plutôt que
+        // de dupliquer la validation : deux chemins vers la même coche, c'est exactement ce
+        // que R16.9 a retiré du produit.
+        cible.scrollIntoView({ behavior: "smooth", block: "center" });
+        cible.click();
+      },
+    });
+  } else {
+    znClearStickyCta();
+  }
 }

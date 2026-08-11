@@ -10,6 +10,7 @@ import { renderTabToday } from "./tab-today.js";
 import { renderTabOutils } from "./tab-outils.js";
 import { renderTabWeek } from "./tab-week.js";
 import { brancherAide } from "./help.js";
+import { znApplyNavDot, znClearStickyCta, znClearParallax } from "./zenna-motion.js"; // R-ZENNA
 
 // Refonte R5 (retour utilisateur) : l'onglet CENTRAL 🎯 Aujourd'hui est l'écran du
 // quotidien (check-in diaporama → séance du jour → prédiction → charge → avancement),
@@ -247,11 +248,19 @@ function renderActiveTab() {
   // feuille de style le lit. Retirée dès qu'on quitte l'onglet — les quatre autres gardent
   // l'habillage papier/collage au caractère près.
   document.body.classList.toggle("theme-zenna", activeTab === "today");
+  // Les deux éléments FLOTTANTS du reskin (CTA collant, parallax du héros) vivent hors de
+  // `#screen` : ils survivraient donc à un changement d'onglet, qui ne remplace que `#screen`.
+  // On les retire à chaque rendu ; l'onglet Aujourd'hui les repose lui-même s'il les veut.
+  if (activeTab !== "today") { znClearStickyCta(); znClearParallax(); }
   const tab = TABS.find((t) => t[0] === activeTab) || TABS[TABS.length - 1];
   tab[3](plan);
   const bar = $("ebTabbar");
   if (bar) bar.innerHTML = tabbarHTML();
   bindTabbar();
+  // R-ZENNA — la pastille « une séance t'attend » se repose APRÈS la reconstruction de la
+  // barre : posée pendant le rendu de l'onglet, la ligne du dessus l'effacerait aussitôt.
+  // Son état vit dans `zenna-motion.js`, pas dans le DOM, précisément pour survivre à ça.
+  znApplyNavDot();
   window.scrollTo(0, 0);
 }
 

@@ -8,7 +8,8 @@
 // n'a rien à voir avec un onglet. Elles sont donc EXTRAITES avant suppression, comme le
 // demandait l'étape 2 du handoff — un module ne se supprime pas, il se vide d'abord.
 import { S, $, ebSave, esc, fmtDay, todayISO } from "../state.js";
-import { whyOf, techOf, techListHTML } from "./plan-view.js";
+import { whyOf, techOf, techListHTML, _blkMin } from "./plan-view.js";
+import { znZoneBar, znConfetti, znXpFloat, znToast } from "./zenna-motion.js";
 import { avatarTriDataFor } from "./avatar.js";
 import { avatarTriSVG, avatarTriStorySVG, avatarTriAccent } from "./avatar-tri.js";
 import { celebrationMessage } from "./celebrations.js";
@@ -96,6 +97,8 @@ export function showCongrats(plan, session, newBadge, todayISO) {
     + nextSessionTeaser(plan, todayISO)
     + "</div>";
   document.body.appendChild(ov);
+  // R-ZENNA — la célébration part de l'avatar, le centre visuel de la modale.
+  znConfetti(ov.querySelector("svg") || ov.querySelector(".eb-modal"));
   const untrap = trapModal(ov, () => ov.remove());
   const closeOv = () => { untrap(); ov.remove(); };
   ov.querySelector("#ebCloseCongrats").onclick = closeOv;
@@ -242,23 +245,57 @@ function discBadgeHTML(d) {
     + ';border:2px solid var(--zn-ink,#16130e);display:flex;align-items:center;justify-content:center;font-size:1.2em;line-height:1">' + b.ic + "</div>";
 }
 
-// R-ZENNA — anneau « forme du jour » (reskin visuel de l'onglet Aujourd'hui). Le nombre
-// affiché est l'énergie déclarée au check-in (`S.answers.readiness.energy`, 0-100, le MÊME
-// signal que lit le moteur pour le verdict) — jamais une valeur inventée pour l'occasion
-// (R11.1). `null` si aucun check-in n'a encore renseigné d'énergie.
+// R-ZENNA — ANNEAU « FORME DU JOUR ».
+//
+// Le nombre affiché est l'énergie déclarée au check-in (`S.answers.readiness.energy`, 0-100,
+// le MÊME signal que lit le moteur pour rendre son verdict) — jamais une valeur fabriquée
+// pour l'occasion (R11.1). `null` si aucun check-in n'a encore renseigné d'énergie : un
+// anneau vide vaut mieux qu'un anneau qui invente un chiffre.
+//
+// Le remplissage est posé à sa valeur FINALE dans l'attribut, et `data-off` porte la même
+// valeur pour l'animation : `znDrawFormRing` part de plein et transitionne vers `data-off`.
+// Sans JS (ou en `prefers-reduced-motion`), l'anneau est déjà juste — l'animation n'est
+// jamais ce qui rend la donnée correcte.
 function formRingSVG(val) {
   if (val == null || !isFinite(val)) return "";
-  const r = 21, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, val)) / 100);
+  const v = Math.max(0, Math.min(100, val));
+  const r = 21, c = 2 * Math.PI * r, off = c * (1 - v / 100);
   return '<div class="zn-form-ring" aria-hidden="true"><svg width="52" height="52" viewBox="0 0 52 52">'
-    + '<circle cx="26" cy="26" r="' + r + '" stroke="rgba(255,255,255,.18)" stroke-width="5" fill="none"/>'
-    + '<circle cx="26" cy="26" r="' + r + '" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"'
-    + ' stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '" transform="rotate(-90 26 26)"/></svg>'
-    + '<div class="zn-form-val"><span>' + Math.round(val) + '</span><em>forme</em></div></div>';
+    + '<circle cx="26" cy="26" r="' + r + '" stroke="rgba(10,10,10,.2)" stroke-width="5" fill="none"/>'
+    + '<circle class="zn-ring-fg" cx="26" cy="26" r="' + r + '" stroke="#0a0a0a" stroke-width="5" fill="none" stroke-linecap="round"'
+    + ' stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '" data-off="' + off.toFixed(1) + '"'
+    + ' transform="rotate(-90 26 26)"/></svg>'
+    + '<div class="zn-form-val"><span data-val="' + Math.round(v) + '">' + Math.round(v) + "</span><em>forme</em></div></div>";
+}
+
+/** Le grand chiffre du héros : minutes en dessous d'1 h 30, heures au-delà — au-delà, « 300 MIN »
+ *  se lit moins bien que « 5 H00 », et c'est l'écran qu'on regarde à moitié réveillé. Le nombre
+ *  reste un ENTIER dans les deux cas, pour que le compteur puisse l'animer. */
+function heroMetric(min) {
+  const m = Math.round(min || 0);
+  if (!m) return null;
+  if (m < 90) return { val: m, unit: "MIN" };
+  return { val: Math.floor(m / 60), unit: "H" + String(m % 60).padStart(2, "0") };
 }
 
 export function heroSessionHTML(plan, todayIso) {
   if (!globalThis.EBV2 || !globalThis.EBV2.adjustToday) return "";
-  const snap = Object.assign({ date: todayIso }, S.answers.readiness || {});
+  // ⚠ L'ORDRE DES ARGUMENTS EST LA CORRECTION, PAS UN DÉTAIL DE STYLE.
+  //
+  // `S.answers.readiness.date` vaut la JOURNÉE D'ENTRAÎNEMENT (`jourEntrainementISO`, qui
+  // recule d'un jour avant 4 h du matin — R23.2). En la passant en second, `Object.assign`
+  // la laissait ÉCRASER `date: todayIso` : entre minuit et 4 h, l'ajusteur recevait la date
+  // d'HIER et le héros affichait la séance d'hier. Mesuré à 01 h 30 : en-tête « LUN · 11/08 »
+  // et « Repos » dans le héros, pendant que la carte de validation, elle, lit le plan
+  // directement et proposait « MAR 11/08 · Sweetspot vélo ». Deux écrans de la même app, deux
+  // réponses à « qu'est-ce que je fais aujourd'hui ? » — la forme exacte que R11.1 interdit.
+  //
+  // R23.2 énonce pourtant la règle mot pour mot : « `snap.date`, lui, reste la date CALENDAIRE
+  // — l'ajusteur s'en sert pour choisir la séance du jour, et la décaler ferait adapter la
+  // séance d'hier. » L'intention était juste, l'écriture la contredisait. La date calendaire
+  // passe donc EN DERNIER, donc elle gagne ; le reste du snapshot (sommeil, énergie, VFC) vient
+  // bien du check-in.
+  const snap = Object.assign({}, S.answers.readiness || {}, { date: todayIso });
   let res;
   try { res = globalThis.EBV2.adjustToday(S.sport, S.answers, snap); } catch (e) { console.warn(e); return ""; }
   const v = res.adjustment.verdict;
@@ -269,7 +306,7 @@ export function heroSessionHTML(plan, todayIso) {
   // R4.7 — le plan qui réagit : toute adaptation est ANNONCÉE et expliquée en une phrase
   // (RPE d'hier, douleur, sommeil… — c'est la différence entre un PDF statique et un coach).
   const why = res.adjustment.action !== "keep" && v.drivers.length
-    ? '<div class="load-sub" style="margin:4px 0 0">↳ ' + v.drivers.join(" · ") + "</div>" : "";
+    ? '<div class="zn-hero-sub" style="margin-top:6px">↳ ' + v.drivers.join(" · ") + "</div>" : "";
   // U8 — UN JOUR DE REPOS N'EST PAS UNE SÉANCE QUI S'APPELLE « OFF ».
   //
   // Le moteur matérialise le repos par une séance `{d:"rs", name:"OFF", min:0}` — c'est le bon
@@ -286,46 +323,81 @@ export function heroSessionHTML(plan, todayIso) {
   // lundi de repos : quelqu'un qui crée son plan un lundi, après avoir répondu à 37 questions,
   // recevait « OFF » comme tout premier écran.
   const queDuRepos = res.sessions.every((x) => x.d === "rs");
-  let body;
-  if (res.sessions.length && !queDuRepos) {
+  const actives = res.sessions.filter((x) => x.d !== "rs");
+
+  // ── L'EN-TÊTE COMMUNE : date, verdict, anneau de forme ──
+  const entete = '<div class="zn-hero-orb zenna-pulse" aria-hidden="true"></div>'
+    + '<div class="zn-hero-top"><div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayIso) + "</div>"
+    + '<div class="zn-hero-verdict-row">' + verdictChip + ring + "</div></div>";
+
+  let corps = "", detail = "";
+  if (actives.length) {
     // §5 (R6) — dans le HÉROS d'Aujourd'hui, le POURQUOI est VISIBLE sans rien ouvrir : c'est
     // l'écran que l'athlète regarde tous les matins, et « pourquoi cette séance » y a plus de
-    // valeur que la liste des blocs, qui reste à un clic.
-    // Retour utilisateur (08/08/2026, 2e passage) : « mettre plus en valeur le corps de
-    // séance, c'est le point d'intérêt de l'onglet ». Le détail technique restait replié
-    // par défaut — le même geste que Plan/Semaine (U16), pertinent là où plusieurs séances
-    // se lisent d'un coup, mais Aujourd'hui n'en montre QU'UNE (ou deux, brick) : c'est la
-    // raison d'être de l'onglet, elle s'ouvre d'office ici. `open` uniquement dans ce héros.
-    body = res.sessions.map((x) => {
-      const w = whyOf(x);
-      return '<div style="display:flex;gap:10px;align-items:flex-start;margin-top:10px">' + discBadgeHTML(x.d)
-        + '<div style="flex:1;min-width:0"><b>' + x.name + "</b>"
-        + (w ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + w + "</div>" : "")
-        + (x.det ? '<details class="gd-sess" open style="margin-top:4px"><summary>Le détail de la séance</summary>' + techListHTML(techOf(x)) + "</details>" : "")
-        + "</div></div>";
-    }).join("");
+    // valeur que la liste des blocs, qui vit dans la carte de détail juste en dessous.
+    //
+    // R-ZENNA — LE HÉROS DÉCRIT LA JOURNÉE, PAS UNE SÉANCE ISOLÉE. Le titre est la séance qui
+    // ouvre la journée (l'ordre du moteur est chronologique), le grand chiffre est le TOTAL du
+    // jour : sur un brick, annoncer 45 min quand la journée en fait 105 serait faux au moment
+    // où l'athlète décide de son créneau. Les séances suivantes sont nommées juste en dessous.
+    const primary = actives[0];
+    // LA DURÉE VIENT DU MOTEUR, PAS D'UNE SOMME REFAITE ICI.
+    //
+    // `adjustToday` ne recopie PAS `min` sur les séances qu'il rend (mesuré : ses objets
+    // portent `name, det, d, steps` et rien d'autre) — sommer `x.min` donnait donc 0, et le
+    // grand chiffre du héros disparaissait. Il expose en revanche `adjustment.adjustedMinutes`,
+    // qui est le total du jour APRÈS adaptation : c'est la seule valeur juste quand le verdict
+    // a réduit la séance, et la recalculer depuis les steps en produirait une seconde,
+    // forcément divergente le jour où l'ajusteur changera de règle (R11.1).
+    const totalMin = res.adjustment.adjustedMinutes;
+    const metric = heroMetric(totalMin);
+    const w = whyOf(primary);
+    const tech = techOf(primary);
+    const suite = actives.slice(1).map((x) => x.name).join(" · ");
+    corps = '<div class="zn-hero-title">' + primary.name + "</div>"
+      + (metric ? '<div class="zn-hero-metric"><span class="zn-hero-num" data-val="' + metric.val + '">' + metric.val + '</span><span class="zn-hero-unit">' + metric.unit + "</span></div>" : "")
+      + (suite ? '<div class="zn-hero-sub">puis ' + suite + "</div>" : (tech ? '<div class="zn-hero-sub">' + tech + "</div>" : ""))
+      + (w ? '<div class="zn-hero-why">\u{1F4A1} ' + w + "</div>" : "")
+      + '<div class="zn-disc-chip"><span>' + (DISC[primary.d] || DISC.rn).ic + " " + (DISC[primary.d] || DISC.rn).label + "</span></div>";
+
+    // ── LA CARTE DE DÉTAIL — la barre de zones est CONSTRUITE depuis les steps du moteur ──
+    // Pas un décor : chaque segment est un bloc réel, large comme sa durée, coloré par sa zone
+    // (`znZoneBar`, qui lit `_blkMin` — la même fonction que la courbe de charge, R11.1).
+    detail = '<div class="card"><div class="eyebrow">Le détail de la séance</div>'
+      + actives.map((x) => {
+        const wx = whyOf(x);
+        return '<div style="display:flex;gap:10px;align-items:flex-start;margin-top:12px">' + discBadgeHTML(x.d)
+          + '<div style="flex:1;min-width:0"><b>' + x.name + "</b>"
+          + (actives.length > 1 && wx ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + wx + "</div>" : "")
+          + znZoneBar(x, _blkMin)
+          + techListHTML(techOf(x))
+          + "</div></div>";
+      }).join("")
+      + "</div>";
   } else {
+    // U8 — UN JOUR DE REPOS N'EST PAS UNE SÉANCE QUI S'APPELLE « OFF ».
+    //
+    // Le moteur matérialise le repos par une séance `{d:"rs", name:"OFF", min:0}` — c'est le bon
+    // choix côté plan (la grille a une case pour chaque jour, et le repos se VALIDE comme le
+    // reste). Mais le héros du jour testait `res.sessions.length`, qui vaut donc 1 : l'athlète
+    // lisait un **« OFF »** sec, avec un « Le détail de la séance » qui n'ouvre rien.
+    //
+    // Mesuré : **153 jours sur 441** en semaine 1 (7 sports × niveaux × densités) sont des jours
+    // de repos, soit un tiers des ouvertures de l'app. Et **63 profils sur 63** démarrent par un
+    // lundi de repos : quelqu'un qui crée son plan un lundi, après avoir répondu à 37 questions,
+    // recevait « OFF » comme tout premier écran.
     const upcoming = [];
     plan.weeks.forEach((w) => w.days.forEach((d) => { if (d.date > todayIso && d.sessions.some((s) => s.d !== "rs")) upcoming.push(d); }));
     upcoming.sort((a, b) => a.date.localeCompare(b.date));
     const nxt = upcoming[0];
-    body = '<div style="margin-top:6px">\u{1F60C} Repos aujourd’hui.'
-      + (nxt ? " Prochaine séance : <b>" + nxt.jour + " " + fmtDay(nxt.date) + "</b> · " + nxt.sessions.filter((s) => s.d !== "rs").map((s) => s.name).join(", ") : "")
-      + "</div>";
+    corps = '<div class="zn-hero-title">Repos</div>'
+      + '<div class="zn-hero-rest">\u{1F60C} Rien à faire aujourd’hui — c’est là que le travail des jours passés devient de la forme.</div>'
+      + (nxt ? '<div class="zn-hero-sub">Prochaine séance : ' + nxt.jour + " " + fmtDay(nxt.date) + " · "
+        + nxt.sessions.filter((s) => s.d !== "rs").map((s) => s.name).join(", ") + "</div>" : "")
+      + '<div class="zn-disc-chip"><span>' + DISC.rs.ic + " " + DISC.rs.label + "</span></div>";
   }
-  // Mesuré : la carte "Charge" (SVG) plus bas dans l'onglet pèse davantage en pixels que le
-  // héros, qui utilisait le même style `.card` générique que le reste — rien ne distinguait
-  // « la séance du jour » de « ta charge » ou de « ta prédiction ». Bordure et ombre à
-  // l'accent du sport (déjà utilisé par le bouton primaire et le badge de discipline) pour
-  // que l'œil s'y pose en premier, sans dupliquer une nouvelle classe CSS pour un seul rôle.
-  //
-  // `zn-hero`/`zn-hero-top`/`zn-hero-verdict-row`/`zn-disc-chip` sont des classes ADDITIVES
-  // (reskin R-ZENNA, css/zenna-today.css, scopées à `body.theme-zenna`) : sans cette feuille
-  // de style elles ne font rien, le rendu `.card` d'origine reste intact (repli identique).
-  const firstDisc = queDuRepos ? null : (res.sessions.find((x) => x.d !== "rs") || res.sessions[0]);
-  const discChip = firstDisc ? '<div class="zn-disc-chip"><span>' + (DISC[firstDisc.d] || DISC.rn).ic + " " + (DISC[firstDisc.d] || DISC.rn).label + "</span></div>" : "";
-  return '<div class="card zn-hero" style="border-color:var(--acc);box-shadow:6px 6px 0 var(--acc)">'
-    + '<div class="zn-hero-top"><div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayIso) + '</div>'
-    + '<div class="zn-hero-verdict-row">' + verdictChip + ring + "</div></div>"
-    + why + body + discChip + "</div>";
+  // `zn-hero*` sont des classes ADDITIVES (reskin R-ZENNA, css/zenna-today.css, scopé à
+  // `body.theme-zenna`) : sans cette feuille, elles ne font rien et le contenu reste lisible
+  // dans la carte générique — le repli est l'absence d'effet, jamais un écran vide.
+  return '<div class="card zn-hero">' + entete + why + corps + "</div>" + detail;
 }

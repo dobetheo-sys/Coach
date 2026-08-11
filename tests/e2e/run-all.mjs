@@ -22,7 +22,10 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   "smoke-shop.mjs",
   // R26 — Éducatifs (six disciplines) : A1-A13 du brief, le mécanisme de verrouillage/
   // cascade, l'affichage conditionnel par sport et l'absence de doublon d'identifiant SVG.
-  "smoke-educatifs.mjs"];
+  "smoke-educatifs.mjs",
+  // R-ZENNA — le reskin animé de 🎯 Aujourd'hui : le mouvement porte l'opacité, donc son
+  // absence VIDE l'onglet sans qu'aucune assertion de contenu ne s'en aperçoive.
+  "smoke-zenna.mjs"];
 let failed = 0;
 for (const s of SUITES) {
   console.log("\n━━━ " + s + " ━━━");
