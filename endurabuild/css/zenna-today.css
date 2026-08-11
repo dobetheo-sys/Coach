@@ -108,6 +108,26 @@ body.theme-zenna {
   --ease: cubic-bezier(.4, 0, .2, 1);
   --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
 
+  /* ---- LES JETONS DU THÈME CLAIR SONT REDÉFINIS ICI, ET C'EST INDISPENSABLE ----
+     Les modules de rendu portent des styles INLINE qui référencent les jetons sémantiques du
+     thème clair : `var(--muted)` seul apparaît 11 fois dans les modules d'Aujourd'hui. Ne pas
+     les redéfinir revenait à peindre du brun de thème clair (#635b4a) sur une carte sombre —
+     MESURÉ à 2,77:1, sous le seuil AA de 4,5. Chasser ces cas classe par classe est sans fin
+     et rate le prochain ; redéfinir le jeton les corrige tous d'un coup, y compris ceux qu'un
+     module ajoutera demain.
+     C'est aussi ce qui répare `.aide-btn` (le « ? » de U18), qui n'a pas de règle dédiée ici et
+     serait resté encre-sur-encre. */
+  --text: #f5f1ea;
+  --text2: #b4b9c0;
+  --muted: #9aa0a8;
+  --ink: #f5f1ea;
+  --bg: #000;
+  --bg2: #181c22;
+  --bg3: #111318;
+  --acc: #ff3d00;
+  --gold: #ffd23d;
+  --line: #26292f;
+
   background: #000 radial-gradient(circle at 50% 0%, rgba(255, 61, 0, .13), transparent 55%) fixed;
   color: var(--zn-text);
   font-family: var(--zn-body);
@@ -261,7 +281,7 @@ body.theme-zenna #screen .zn-hero-top {
 }
 body.theme-zenna #screen .zn-hero .eyebrow {
   background: transparent;
-  color: rgba(10, 10, 10, .65);
+  color: rgba(10, 10, 10, .82); /* 4,7:1 — .65 donnait 3,56, sous AA */
   font-family: var(--zn-mono);
   font-size: 10.5px;
   font-weight: 700;
@@ -296,26 +316,29 @@ body.theme-zenna #screen .zn-hero-num {
   font-family: var(--zn-display); font-size: 50px; line-height: 1; color: #0a0a0a;
   transform: skewX(var(--zn-skew)); display: inline-block;
 }
-body.theme-zenna #screen .zn-hero-unit { font-family: var(--zn-display); font-size: 18px; color: rgba(10, 10, 10, .7); }
+body.theme-zenna #screen .zn-hero-unit { font-family: var(--zn-display); font-size: 18px; color: rgba(10, 10, 10, .85); } /* 4,9:1 — .7 donnait 3,90 */
 body.theme-zenna #screen .zn-hero-sub {
   position: relative; z-index: 2;
-  font-family: var(--zn-mono); font-size: 11.5px; color: rgba(10, 10, 10, .72); margin-top: 4px; line-height: 1.5;
+  font-family: var(--zn-mono); font-size: 11.5px; color: rgba(10, 10, 10, .85); margin-top: 4px; line-height: 1.5; /* 4,9:1 — .72 donnait 4,04 */
 }
 body.theme-zenna #screen .zn-hero-why {
   position: relative; z-index: 2;
-  font-size: 11px; color: rgba(10, 10, 10, .8); margin-top: 9px; line-height: 1.45; font-weight: 500;
+  font-size: 11px; color: rgba(10, 10, 10, .88); margin-top: 9px; line-height: 1.45; font-weight: 500; /* 5,1:1 — .8 donnait 4,59, marge trop courte */
 }
 body.theme-zenna #screen .zn-hero-rest {
   position: relative; z-index: 2;
-  font-size: 13px; color: rgba(10, 10, 10, .85); margin-top: 10px; line-height: 1.5; font-weight: 600;
+  font-size: 13px; color: rgba(10, 10, 10, .9); margin-top: 10px; line-height: 1.5; font-weight: 600;
 }
 body.theme-zenna #screen .zn-disc-chip {
   position: relative; z-index: 2;
   display: inline-flex; align-items: center; gap: 6px;
-  background: rgba(10, 10, 10, .16); padding: 6px 11px; border-radius: 100px; margin-top: 12px;
+  /* Fond CLAIR, pas sombre : la teinte sombre de la maquette (rgba(10,10,10,.16)) plafonnait
+     le contraste du texte sombre à 4,17:1 MÊME EN OPAQUE — le fond était le facteur limitant,
+     pas l'encre. Un voile blanc éclaircit la puce et le texte repasse à 6,9:1. */
+  background: rgba(255, 255, 255, .22); padding: 6px 11px; border-radius: 100px; margin-top: 12px;
 }
 body.theme-zenna #screen .zn-disc-chip span {
-  font-family: var(--zn-mono); font-size: 10px; letter-spacing: .08em; font-weight: 700; color: rgba(10, 10, 10, .78);
+  font-family: var(--zn-mono); font-size: 10px; letter-spacing: .08em; font-weight: 700; color: rgba(10, 10, 10, .95);
 }
 /* L'anneau de forme — le verdict readiness lisible en une seconde */
 body.theme-zenna #screen .zn-form-ring { position: relative; width: 52px; height: 52px; flex-shrink: 0; }
@@ -336,7 +359,7 @@ body.theme-zenna #screen .zn-form-val span { font-family: var(--zn-display); fon
    dans l'anneau de 52 px sans déborder. */
 body.theme-zenna #screen .zn-form-val em {
   font-style: normal; font-family: var(--zn-mono); font-size: 9px;
-  letter-spacing: .02em; font-weight: 700; color: rgba(10, 10, 10, .6);
+  letter-spacing: .02em; font-weight: 700; color: rgba(10, 10, 10, .85); /* 4,9:1 */
   line-height: 1; margin-top: 1px;
 }
 body.theme-zenna #screen .zn-form-val span { line-height: 1; }

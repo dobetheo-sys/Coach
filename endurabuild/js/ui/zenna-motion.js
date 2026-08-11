@@ -319,12 +319,27 @@ export function znClearParallax() {
    La table ci-dessous traduit les zones du moteur (`_IFZ` dans plan-view.js) en niveaux 1-5.
    Elle est ordonnée par intensité croissante et n'invente rien : chaque entrée existe dans
    `_IFZ`. Une zone inconnue retombe en Z2 — le choix prudent, jamais du rouge par défaut. */
+// AUCUNE ZONE DU MOTEUR NE DOIT MANQUER ICI, et ça s'est vérifié : ma première écriture
+// oubliait `sw.vo2` ET LES SEPT ZONES DE TRAIL. Le repli (Z2) est silencieux — un plan trail
+// entier affichait donc des barres uniformément « facile », y compris sur `tr.vam`, que le
+// moteur décrit lui-même « RPE 9/10 — montée à fond ». Un repli prudent sur une grandeur
+// qu'on affiche n'est pas prudent : il est faux sans le dire.
+//
+// Le niveau n'est PAS choisi au jugé : il se lit sur l'ancrage FC que `renderer.ts` déclare
+// pour chaque zone (`hr: "z1" | "z2" | "tempo" | "seuil" | null`). Deux zones de trail sont
+// même IDENTIQUES à leur équivalent course (mêmes ref et multiplicateurs) : `tr.flat` = `rn.easy`,
+// `tr.flatthr` = `rn.thr`.
 const ZONE_LEVEL = {
-  "rn.rec": 1, "sw.easy": 1,
-  "bk.z2": 2, "rn.easy": 2, "sw.aero": 2,
-  "bk.ss": 3, "rn.mara": 3, "bk.rp": 3, "bk.frc": 3,
-  "bk.thr": 4, "rn.thr": 4, "sw.css": 4,
-  "bk.vo2": 5, "rn.vo2": 5, "sw.speed": 5,
+  // Z1 — récupération / très souple (hr z1)
+  "rn.rec": 1, "sw.easy": 1, "tr.easyup": 1,
+  // Z2 — endurance fondamentale (hr z2)
+  "bk.z2": 2, "rn.easy": 2, "sw.aero": 2, "tr.flat": 2, "tr.hike": 2,
+  // Z3 — tempo / allure soutenue (hr tempo)
+  "bk.ss": 3, "rn.mara": 3, "bk.rp": 3, "bk.frc": 3, "tr.climb": 3,
+  // Z4 — seuil (hr seuil)
+  "bk.thr": 4, "rn.thr": 4, "sw.css": 4, "tr.asc": 4, "tr.flatthr": 4,
+  // Z5 — VO2max / vitesse (hr null, RPE 9-10)
+  "bk.vo2": 5, "rn.vo2": 5, "sw.speed": 5, "sw.vo2": 5, "tr.vam": 5,
 };
 export function znZoneBar(session, blkMin) {
   if (!session || !Array.isArray(session.steps) || !session.steps.length) return "";

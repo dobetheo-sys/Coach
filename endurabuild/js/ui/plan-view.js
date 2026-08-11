@@ -7,9 +7,30 @@ import { renderTabs, invalidatePlan, ensurePlan } from "./tabs.js";
 import { logProjection } from "../projection-log.js"; // A-5 — enregistre, ne reboucle jamais
 import { DISC } from "./icons.js";
 
+// LES ZONES DE TRAIL ET `sw.vo2` MANQUAIENT ICI DEPUIS LEUR CRÉATION (R7 pour le trail,
+// R5.4 pour la nage VO2max) — trouvé en auditant le reskin R-ZENNA, qui a besoin de la même
+// table pour colorer sa barre de zones.
+//
+// Conséquence, et elle n'est pas cosmétique : `estimateTSS` retombe sur `0.70` pour toute zone
+// inconnue, et la charge varie en IF². Un bloc `tr.vam` (« RPE 9/10 — montée à fond ») était
+// donc compté à (0.70/1.10)² = **40 % de sa valeur**, un `tr.asc` (seuil) à 51 %, pendant que
+// `tr.easyup` était SUR-compté de 36 %. La courbe fitness/fatigue/forme de TOUT le sport trail
+// était donc aplatie : le dur sous-évalué, le facile sur-évalué. Le trail est un sport de
+// premier rang depuis R7 (14 séances dédiées) ; sa charge était estimée sur une seule valeur.
+//
+// Les valeurs ne sont pas inventées : chaque zone reprend l'IF de la zone de COURSE qui partage
+// son ancrage FC déclaré dans `src/generator/renderer.ts` (`hr: z1 | z2 | tempo | seuil | null`).
+// Deux d'entre elles n'ont même pas besoin d'analogie — `tr.flat` et `tr.flatthr` ont des `ref`
+// et des multiplicateurs IDENTIQUES à `rn.easy` et `rn.thr`. `sw.vo2` (0.90 × CSS, plus rapide
+// que `sw.speed` à 0.94) s'aligne sur les autres VO2max (1.10).
+//
+// ⚠ `_IFZ` est DUPLIQUÉ dans `Coach_Pro_V1.5.html` (monolithe gelé) et `scripts/splitPwa.py`.
+// Seule cette copie-ci est servie à l'utilisateur ; la dette de duplication est signalée, pas
+// résolue ici (elle demande de décider du sort du monolithe).
 const _IFZ={"bk.z2":.65,"bk.ss":.90,"bk.vo2":1.12,"bk.frc":.82,"bk.rp":.84,"bk.thr":1.0,
   "rn.easy":.68,"rn.mara":.84,"rn.thr":.98,"rn.vo2":1.10,"rn.rec":.60,
-  "sw.easy":.65,"sw.aero":.75,"sw.css":.95,"sw.speed":1.08};
+  "sw.easy":.65,"sw.aero":.75,"sw.css":.95,"sw.speed":1.08,"sw.vo2":1.10,
+  "tr.easyup":.60,"tr.flat":.68,"tr.hike":.68,"tr.climb":.84,"tr.asc":.98,"tr.flatthr":.98,"tr.vam":1.10};
 function _blkMin(st){const r=st.reps||1;if(st.durationMin!=null)return r*st.durationMin;if(st.distanceM!=null)return st.d==="sw"?r*st.distanceM/100*2:r*st.distanceM/1000*5;return 0;}
 function estimateTSS(s){if(!s||!s.steps||!s.steps.length)return 0;let t=0;s.steps.forEach(st=>{const mn=_blkMin(st);const IF=st.role==="body"?(_IFZ[st.zone]||0.70):0.5;t+=(mn/60)*IF*IF*100;});return Math.round(t);}
 function loadSeries(plan){
