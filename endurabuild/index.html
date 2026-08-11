@@ -34,6 +34,20 @@
   produisait une erreur de console à chaque chargement (attrapée par les suites E2E, qui
   assertent « aucune erreur JS »). L'anti-cadrage demande donc un en-tête que GitHub Pages
   ne permet pas de poser : c'est une limite de l'hébergement, nommée plutôt que simulée.
+
+  R-ZENNA (10/08/2026) — le reskin de l'onglet Aujourd'hui n'ajoute AUCUN hôte à cette CSP :
+  la première écriture chargeait Bebas Neue/Inter/IBM Plex Mono depuis fonts.googleapis.com,
+  ce qui contredit D19 (styles.css, en tête) — les polices du produit sont auto-hébergées en
+  base64, précisément pour zéro requête externe (RGPD, hors ligne). Mesuré par
+  `smoke-checkin.mjs` dans ce sandbox (réseau bridé) : la requête externe produit
+  `ERR_CONNECTION_RESET`, qui remonte en erreur console — le critère « aucune erreur JS » que
+  TOUTES les suites E2E assertent. Le reskin réutilise donc les polices DÉJÀ embarquées
+  (Archivo Black, Space Grotesk) plutôt que d'en ajouter une source.
+
+  Et `css/zenna-today.css` lui-même n'a PAS de `<link>` ici : un `<link rel="stylesheet">` de
+  plus dans `<head>` est bloquant pour le premier rendu, mesuré (smoke-usage.mjs, U7) à faire
+  passer « la séance apparaît sans attendre la météo » de 1720 ms à ~2000 ms, juste sous le
+  plafond que U7 existe pour garder. `js/app.js` l'injecte en script après coup — voir sa note.
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.open-meteo.com https://www.strava.com https://*.workers.dev; form-action 'none'; base-uri 'self'; object-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">

@@ -42,9 +42,9 @@ function loadChartSVG(plan){
   const yB=v=>PT+ih/2-(v/tsbMax)*(ih/2);      // TSB (centré sur 0)
   const line=(sel,col,w)=>"<polyline fill=\"none\" stroke=\""+col+"\" stroke-width=\""+w+"\" points=\""+S2.map((o,i)=>x(i).toFixed(1)+","+sel(o).toFixed(1)).join(" ")+"\"/>";
   let g="<svg viewBox=\"0 0 "+W+" "+H+"\" width=\""+W+"\" height=\""+H+"\" style=\"display:block\" role=\"img\" aria-label=\"Courbe de charge CTL ATL TSB\">";
-  g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"#0002\" stroke-dasharray=\"3 3\"/>";
-  g+=line(o=>yB(o.tsb),"#00a376",2)+line(o=>yL(o.ctl),"#2e6bff",2.5)+line(o=>yL(o.atl),"#ff7a1a",1.8);
-  g+="<text x=\"2\" y=\""+(PT+8)+"\" font-size=\"9\" fill=\"#635b4a\">charge</text>";
+  g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"var(--zn-sep-line,#0002)\" stroke-dasharray=\"3 3\"/>";
+  g+=line(o=>yB(o.tsb),"var(--zn-form,#00a376)",2)+line(o=>yL(o.ctl),"var(--zn-swim,#2e6bff)",2.5)+line(o=>yL(o.atl),"var(--zn-fatigue,#ff7a1a)",1.8);
+  g+="<text x=\"2\" y=\""+(PT+8)+"\" font-size=\"9\" fill=\"var(--zn-muted,#635b4a)\">charge</text>";
   // R24.6 (retour fondateur, 06/08) — « montre visuellement là où on en est » : un trait
   // vertical à la semaine COURANTE, ancré sur les dates réelles du plan (R7), avec un point
   // sur la courbe de fitness. Pas de marqueur hors plan (avant le départ ou après la course).
@@ -55,10 +55,10 @@ function loadChartSVG(plan){
     const iNow=wkNow!=null?S2.findIndex(o=>o.week===wkNow):-1;
     if(iNow>=0){
       const xn=x(iNow);xNow=xn;
-      g+="<line x1=\""+xn.toFixed(1)+"\" y1=\""+PT+"\" x2=\""+xn.toFixed(1)+"\" y2=\""+(PT+ih)+"\" stroke=\"#16130e\" stroke-width=\"1.5\" stroke-dasharray=\"2 3\"/>";
-      g+="<circle cx=\""+xn.toFixed(1)+"\" cy=\""+yL(S2[iNow].ctl).toFixed(1)+"\" r=\"3.5\" fill=\"#2e6bff\" stroke=\"#16130e\" stroke-width=\"1\"/>";
+      g+="<line x1=\""+xn.toFixed(1)+"\" y1=\""+PT+"\" x2=\""+xn.toFixed(1)+"\" y2=\""+(PT+ih)+"\" stroke=\"var(--zn-ink,#16130e)\" stroke-width=\"1.5\" stroke-dasharray=\"2 3\"/>";
+      g+="<circle cx=\""+xn.toFixed(1)+"\" cy=\""+yL(S2[iNow].ctl).toFixed(1)+"\" r=\"3.5\" fill=\"var(--zn-swim,#2e6bff)\" stroke=\"var(--zn-ink,#16130e)\" stroke-width=\"1\"/>";
       const gauche=xn>W-70;
-      g+="<text x=\""+(gauche?xn-5:xn+5).toFixed(1)+"\" y=\""+(PT+ih-4)+"\" font-size=\"9\" font-weight=\"bold\" fill=\"#16130e\""+(gauche?" text-anchor=\"end\"":"")+">tu es ici</text>";
+      g+="<text x=\""+(gauche?xn-5:xn+5).toFixed(1)+"\" y=\""+(PT+ih-4)+"\" font-size=\"9\" font-weight=\"bold\" fill=\"var(--zn-ink,#16130e)\""+(gauche?" text-anchor=\"end\"":"")+">tu es ici</text>";
     }
   }
   g+="</svg>";
@@ -284,7 +284,7 @@ function historyCardHTML(plan){
         h+='<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:var(--fs-sm)">'
           +'<span style="width:34px"><b>S'+w.num+'</b></span>'
           +'<span style="width:20px">'+(w.ok?"\u2705":"\u25cb")+'</span>'
-          +'<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:10px;overflow:hidden"><div style="height:100%;width:'+pc+'%;background:'+(w.ok?"#00a376":"#f0b429")+'"></div></div>'
+          +'<div style="flex:1;background:var(--zn-track-bg,var(--bg2,#e8e0cf));border:1px solid var(--zn-ink,#16130e);border-radius:4px;height:10px;overflow:hidden"><div style="height:100%;width:'+pc+'%;background:'+(w.ok?"var(--zn-good,#00a376)":"var(--zn-gold-dot,#f0b429)")+'"></div></div>'
           +'<span style="width:130px;text-align:right">'+w.done+'/'+w.total+' s\u00e9ances \u00b7 '+(Math.round(w.minDone/6)/10)+'/'+(Math.round(w.minTotal/6)/10)+'h</span></div>';
       });
       h+='<div class="load-sub" style="margin-top:4px">\u2705 = semaine r\u00e9guli\u00e8re (\u226580% des s\u00e9ances). Le r\u00e9el nourrit l\u2019ajusteur du matin \u2014 pas de rattrapage, jamais.</div></div>';

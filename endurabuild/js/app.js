@@ -7,6 +7,21 @@ import { renderStep } from "./ui/steps.js";
 import { renderPlan } from "./ui/plan-view.js";
 import { stravaAuthFromHash } from "./strava.js";
 
+// R-ZENNA — la feuille de reskin de l'onglet Aujourd'hui (css/zenna-today.css) s'injecte ICI,
+// en script, plutôt que comme un <link> statique dans <head> : un <link> de plus dans <head>
+// est BLOQUANT pour le premier rendu, mesuré (smoke-usage.mjs, U7) à lui seul pour une part du
+// coût. Ça ne suffit PAS à ramener la marge à ce qu'elle était : le reste vient du RECALCUL DE
+// STYLE de la feuille elle-même une fois appliquée (dette déclarée dans CLAUDE.md, « État
+// courant » — à traiter avant d'étendre ce reskin aux autres onglets). Le script-injection
+// reste la bonne pratique dans tous les cas : zéro raison de bloquer le parsing initial pour
+// une feuille scopée à un seul onglet.
+{
+  const l = document.createElement("link");
+  l.rel = "stylesheet";
+  l.href = "css/zenna-today.css";
+  document.head.appendChild(l);
+}
+
 /**
  * Échec de génération — une exception PORTEUSE, pour que l'UI puisse le DIRE.
  * (spec R10 § R10.0.2 : un plan faux est plus dangereux que pas de plan.)

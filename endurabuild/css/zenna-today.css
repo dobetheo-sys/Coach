@@ -1,0 +1,276 @@
+/* ============================================================
+   R-ZENNA — reskin visuel de l'onglet 🎯 Aujourd'hui (POC).
+   ============================================================
+   Nouvelle direction design (maquette Zenna, fondateur, 10/08/2026) : fond sombre, accent
+   orange. La maquette d'origine appelle Bebas Neue / IBM Plex Mono / Inter depuis Google
+   Fonts — CETTE feuille ne le fait PAS : `styles.css` documente en tête (D19) que les polices
+   du produit sont auto-hébergées en base64, sans aucune requête externe (RGPD, hors ligne).
+   Mesuré : charger Bebas Neue via fonts.googleapis.com produit `ERR_CONNECTION_RESET` en
+   réseau bridé, qui remonte en erreur console — le critère qu'AUCUNE des suites E2E ne
+   tolère. Le reskin réutilise donc les DEUX polices déjà embarquées : 'Archivo Black' (titres
+   display, remplace Bebas Neue) et 'Space Grotesk' (le corps du produit, remplace Inter) ;
+   les libellés « mono » (eyebrow, chips, dots) prennent la pile système monospace, elle aussi
+   zéro-fetch. Ce fichier ne touche AUCUN autre onglet — tout est scopé sous `body.theme-zenna`, une classe posée par `tabs.js` UNIQUEMENT
+   quand l'onglet actif est "today" (`renderActiveTab`). Quitter l'onglet retire la classe :
+   Profil/Plan/Semaine/Outils gardent l'habillage papier/collage existant au caractère près.
+
+   Technique : les modules JS qui composent Aujourd'hui (session-life.js, checkin.js,
+   plan-view.js, daily-content.js, retest.js, tab-nutrition.js, readiness.js) ont reçu des
+   couleurs `var(--zn-x, #hex-d-origine)` à la place de leurs littéraux — sans cette feuille,
+   le fallback restitue EXACTEMENT le rendu d'avant (repli identique, R11.1). Cette feuille se
+   contente de définir les jetons `--zn-*` et de reskin les classes génériques déjà posées par
+   ces modules (`.card`, `.load-card`, `.btn`, `.warn`, `.eyebrow`…) — aucune classe n'est
+   renommée, aucun `id`/`data-*` fonctionnel n'est touché (les sélecteurs utilisés par les
+   suites E2E — `#ckSlide`, `.ck-opt`, `#ckHr`, `#ckHrv`, `#ckBack`, `[data-vd]`… — sont
+   intacts).
+
+   Un seul risque accepté : ce fichier est chargé APRÈS styles.css/mobile.css (voir
+   index.html), donc à spécificité égale ses règles gagnent. Elles ne s'activent que sous
+   `body.theme-zenna`, qui n'existe nulle part ailleurs dans le dépôt.
+   ============================================================ */
+
+body.theme-zenna {
+  --zn-bg: #000;
+  --zn-surface: #111318;
+  --zn-surface-2: #181c22;
+  --zn-surface-3: #20252c;
+  --zn-border: #26292f;
+  --zn-orange: #ff3d00;
+  --zn-orange-2: #ff7a3d;
+  --zn-orange-tint: #ffb199;
+  --zn-orange-glow: rgba(255, 61, 0, .4);
+  --zn-cyan: #00e0c6;
+  --zn-gold: #ffd23d;
+  --zn-gold-dot: #ffd23d;
+  --zn-violet: #9b72ff;
+  --zn-text: #f5f1ea;
+  --zn-muted: #b4b9c0;
+  --zn-muted-2: #9aa0a8;
+  --zn-ink: #f5f1ea;      /* « encre » du thème clair devient le texte clair ici */
+  --zn-ink-2: #d7d2c6;
+  --zn-good: #1fb8a6;
+  --zn-good-dark: #0f8f81;
+  --zn-track-bg: #20252c;
+  --zn-sep: rgba(255, 255, 255, .18);
+  --zn-sep-line: rgba(255, 255, 255, .14);
+  --zn-swim: #3b9eff;
+  --zn-fatigue: #ff7a3d;
+  --zn-form: #1fb8a6;
+  --zn-bg-race: rgba(255, 61, 0, .14);
+  --zn-bg-eve: rgba(255, 210, 61, .10);
+  --zn-bg-taper: rgba(155, 114, 255, .14);
+  --zn-gold-text: #ffd23d;
+
+  font-family: 'Space Grotesk', -apple-system, sans-serif;
+}
+
+/* Fond de la page pendant l'onglet Aujourd'hui — le grain papier de styles.css est masqué,
+   remplacé par le halo radial de la maquette. */
+body.theme-zenna {
+  background: #000 radial-gradient(circle at 50% 0%, rgba(255, 61, 0, .10), transparent 55%);
+  color: var(--zn-text);
+}
+body.theme-zenna::before { display: none; } /* grain papier du thème clair */
+
+/* ===== Barre d'onglets — reskin uniquement pendant qu'Aujourd'hui est actif ===== */
+body.theme-zenna #ebTabbar {
+  background: rgba(8, 9, 10, .98);
+  border-top: 1px solid var(--zn-border);
+}
+body.theme-zenna .tabbtn { color: var(--zn-muted-2); }
+body.theme-zenna .tabbtn.active { color: var(--zn-orange-tint); box-shadow: none; font-weight: 700; }
+body.theme-zenna .tabbtn.tab-central .tabico {
+  background: var(--zn-surface-2);
+  color: var(--zn-text);
+  border: 1px solid var(--zn-border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .5);
+}
+body.theme-zenna .tabbtn.tab-central.active .tabico {
+  background: linear-gradient(145deg, var(--zn-orange), var(--zn-orange-2));
+  color: #000;
+  box-shadow: 0 6px 24px var(--zn-orange-glow);
+}
+body.theme-zenna.has-tabs { background-color: #000; }
+
+/* ===== Cartes génériques ===== */
+body.theme-zenna #screen[data-tab="today"] .card,
+body.theme-zenna #screen[data-tab="today"] .load-card,
+body.theme-zenna #screen[data-tab="today"] details.load-card {
+  background: var(--zn-surface);
+  border: 1px solid var(--zn-border);
+  border-radius: 18px;
+  box-shadow: none;
+  color: var(--zn-text);
+  animation: none;
+}
+body.theme-zenna #screen[data-tab="today"] .card .eyebrow {
+  background: var(--zn-surface-3);
+  color: var(--zn-muted-2);
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Courier New', monospace;
+  letter-spacing: .12em;
+  transform: none;
+  border-radius: 100px;
+}
+body.theme-zenna #screen[data-tab="today"] .load-title { color: var(--zn-text); font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Courier New', monospace; }
+body.theme-zenna #screen[data-tab="today"] .load-sub,
+body.theme-zenna #screen[data-tab="today"] .load-leg,
+body.theme-zenna #screen[data-tab="today"] .q-sub,
+body.theme-zenna #screen[data-tab="today"] .card-note,
+body.theme-zenna #screen[data-tab="today"] .muted { color: var(--zn-muted); }
+body.theme-zenna #screen[data-tab="today"] details.load-card > summary::after { color: var(--zn-muted); }
+body.theme-zenna #screen[data-tab="today"] h2 { color: var(--zn-text); font-family: 'Archivo Black', sans-serif; }
+
+/* ===== Boutons ===== */
+body.theme-zenna #screen[data-tab="today"] .btn,
+body.theme-zenna .eb-overlay .btn {
+  background: var(--zn-surface-2);
+  border: 1px solid var(--zn-border);
+  color: var(--zn-text);
+  box-shadow: none;
+  border-radius: 13px;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Courier New', monospace;
+}
+body.theme-zenna #screen[data-tab="today"] .btn:hover,
+body.theme-zenna .eb-overlay .btn:hover { box-shadow: none; }
+body.theme-zenna #screen[data-tab="today"] .btn.primary,
+body.theme-zenna .eb-overlay .btn.primary {
+  background: var(--zn-orange-tint);
+  color: #0a0a0a;
+  font-weight: 700;
+}
+body.theme-zenna #screen[data-tab="today"] .btn.gold,
+body.theme-zenna .eb-overlay .btn.gold { background: var(--zn-gold); color: #0a0a0a; }
+body.theme-zenna #screen[data-tab="today"] .btn.primary:disabled { opacity: .35; }
+
+/* ===== Champs / options (readiness, retest) ===== */
+body.theme-zenna #screen[data-tab="today"] .opt,
+body.theme-zenna #screen[data-tab="today"] select.opt,
+body.theme-zenna #screen[data-tab="today"] input[type=text],
+body.theme-zenna #screen[data-tab="today"] input[type=number],
+body.theme-zenna #screen[data-tab="today"] input[type=date] {
+  background: var(--zn-surface-2);
+  border: 1px solid var(--zn-border);
+  color: var(--zn-text);
+  box-shadow: none;
+}
+
+/* ===== Détail de séance (gd-why / gd-sess / gd-steps / gd-dur) ===== */
+body.theme-zenna #screen[data-tab="today"] .gd-why,
+body.theme-zenna #screen[data-tab="today"] .gd-det,
+body.theme-zenna #screen[data-tab="today"] .gd-steps,
+body.theme-zenna #screen[data-tab="today"] .gd-dur { color: var(--zn-muted); }
+body.theme-zenna #screen[data-tab="today"] .gd-sess summary::before { color: var(--zn-orange-tint); }
+body.theme-zenna #screen[data-tab="today"] .gd-sess summary::after { color: var(--zn-muted-2); }
+body.theme-zenna #screen[data-tab="today"] .gd-sess summary { border-bottom-color: var(--zn-border); }
+
+/* ===== Alerte / warn (douleur, moment de course, affûtage) ===== */
+body.theme-zenna #screen[data-tab="today"] .warn {
+  border: 1px solid var(--zn-orange-glow);
+  border-radius: 14px;
+  color: var(--zn-text);
+  box-shadow: none;
+  transform: none;
+}
+body.theme-zenna #screen[data-tab="today"] .warn strong { color: var(--zn-orange-tint); }
+
+/* ===== HÉROS — séance du jour (session-life.js: heroSessionHTML) ===== */
+body.theme-zenna #screen[data-tab="today"] .zn-hero {
+  background: linear-gradient(145deg, var(--zn-surface), var(--zn-surface-2));
+  border: 1px solid var(--zn-orange-glow) !important;
+  box-shadow: none !important;
+  padding-top: 16px;
+}
+body.theme-zenna #screen[data-tab="today"] .zn-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+body.theme-zenna #screen[data-tab="today"] .zn-hero-verdict-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+body.theme-zenna #screen[data-tab="today"] .zn-verdict-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--zn-surface-3);
+  border: 1px solid var(--zn-border);
+  color: var(--zn-cyan);
+  padding: 5px 11px;
+  border-radius: 100px;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Courier New', monospace;
+  font-size: var(--fs-xs);
+  letter-spacing: .04em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+body.theme-zenna #screen[data-tab="today"] .zn-verdict-rouge { color: var(--zn-orange); }
+body.theme-zenna #screen[data-tab="today"] .zn-verdict-orange { color: var(--zn-gold); }
+body.theme-zenna #screen[data-tab="today"] .zn-form-ring {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  color: var(--zn-orange-tint);
+}
+body.theme-zenna #screen[data-tab="today"] .zn-form-ring svg { width: 44px; height: 44px; }
+body.theme-zenna #screen[data-tab="today"] .zn-form-val {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+body.theme-zenna #screen[data-tab="today"] .zn-form-val span { font-family: 'Archivo Black', sans-serif; font-size: var(--fs-lg); color: var(--zn-text); }
+body.theme-zenna #screen[data-tab="today"] .zn-form-val em { font-style: normal; font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Courier New', monospace; font-size: var(--fs-micro); letter-spacing: .04em; color: var(--zn-muted-2); }
+body.theme-zenna #screen[data-tab="today"] .zn-disc-chip {
+  display: inline-flex;
+  margin-top: 12px;
+}
+body.theme-zenna #screen[data-tab="today"] .zn-disc-chip span {
+  background: var(--zn-surface-3);
+  border: 1px solid var(--zn-border);
+  border-radius: 100px;
+  padding: 6px 12px;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Courier New', monospace;
+  font-size: var(--fs-xs);
+  letter-spacing: .06em;
+  font-weight: 700;
+  color: var(--zn-orange-tint);
+}
+
+/* ===== Check-in en diaporama (checkin.js) ===== */
+body.theme-zenna #screen[data-tab="today"] .ck-opt {
+  background: var(--zn-surface-2);
+  border: 1px solid var(--zn-border);
+}
+body.theme-zenna #screen[data-tab="today"] .ck-opt:active { background: var(--zn-surface-3); }
+body.theme-zenna #screen[data-tab="today"] .zn-ck-dot.past,
+body.theme-zenna #screen[data-tab="today"] .zn-ck-dot.now { border-color: transparent; }
+
+/* ===== Modales (feedback / célébration / retest) — actives uniquement si ouvertes
+   pendant que theme-zenna est posé, donc uniquement depuis l'onglet Aujourd'hui. ===== */
+body.theme-zenna .eb-overlay { background: rgba(0, 0, 0, .7); }
+body.theme-zenna .eb-modal {
+  background: var(--zn-surface);
+  border: 1px solid var(--zn-border);
+  color: var(--zn-text);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+}
+body.theme-zenna .eb-modal .load-sub { color: var(--zn-muted); }
+body.theme-zenna .eb-close { color: var(--zn-muted); }
+body.theme-zenna .eb-close:hover, body.theme-zenna .eb-close:focus-visible { background: rgba(255,255,255,.08); color: var(--zn-text); }
+
+/* ===== Doné/coche, sur la carte de validation ===== */
+body.theme-zenna #screen[data-tab="today"] .doneBtn { border-color: var(--zn-border); color: var(--zn-muted-2); }
+body.theme-zenna #screen[data-tab="today"] .doneBtn.done { background: var(--zn-good); border-color: var(--zn-good-dark); color: #04211d; }
+
+/* Le libellé de séance dans le héros reste en <b> (pas un <h*>, pas 'Archivo Black') : on ne
+   le retouche pas ici pour ne pas dupliquer une police display sur un élément non prévu pour
+   elle — les emplacements « titre display » de cet onglet sont `.card h2` (inutilisé côté
+   Aujourd'hui aujourd'hui) et `.zn-form-val span`, tous deux couverts plus haut. */

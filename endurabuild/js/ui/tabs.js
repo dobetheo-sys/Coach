@@ -242,6 +242,11 @@ function renderActiveTab() {
   }
   const screen = $("screen");
   if (screen) { screen.setAttribute("role", "tabpanel"); screen.dataset.tab = activeTab; } // desktop — cible le CSS par onglet
+  // R-ZENNA — reskin visuel scopé à l'onglet Aujourd'hui (voir css/zenna-today.css). Purement
+  // cosmétique : aucune classe/aucun id fonctionnel ne dépend de `theme-zenna`, seule la
+  // feuille de style le lit. Retirée dès qu'on quitte l'onglet — les quatre autres gardent
+  // l'habillage papier/collage au caractère près.
+  document.body.classList.toggle("theme-zenna", activeTab === "today");
   const tab = TABS.find((t) => t[0] === activeTab) || TABS[TABS.length - 1];
   tab[3](plan);
   const bar = $("ebTabbar");
@@ -286,6 +291,7 @@ export function renderTabs() {
 /** Sortie de la vue plan (retour questionnaire / reset) : la barre disparaît. */
 export function hideTabs() {
   document.body.classList.remove("has-tabs");
+  document.body.classList.remove("theme-zenna");
   const bar = $("ebTabbar");
   if (bar) bar.remove();
 }

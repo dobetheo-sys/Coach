@@ -78,11 +78,11 @@ export function retestBannerHTML(todayISO) {
   const days = Math.round((new Date(r.date + "T00:00:00Z") - new Date(todayISO + "T00:00:00Z")) / 864e5);
   const T = TYPES[r.type];
   if (days > 7 || days < 0) return "";
-  if (days > 1) return '<div class="warn" style="background:#e9defc;font-weight:600">🥊 <b>Retest ' + T.label + " dans " + days + ' jours.</b> D’ici là : rien de nouveau, des jambes fraîches. Le protocole t’attendra le jour J.</div>';
-  if (days === 1) return '<div class="warn" style="background:#fff3d6;font-weight:600">🥊 <b>Retest demain.</b> Aujourd’hui : facile ou repos, hydratation, sommeil. Le test se gagne la veille.</div>';
+  if (days > 1) return '<div class="warn" style="background:var(--zn-bg-taper,#e9defc);font-weight:600">🥊 <b>Retest ' + T.label + " dans " + days + ' jours.</b> D’ici là : rien de nouveau, des jambes fraîches. Le protocole t’attendra le jour J.</div>';
+  if (days === 1) return '<div class="warn" style="background:var(--zn-bg-eve,#fff3d6);font-weight:600">🥊 <b>Retest demain.</b> Aujourd’hui : facile ou repos, hydratation, sommeil. Le test se gagne la veille.</div>';
   // Jour J — écran scénarisé
   const steps = protocolFor(r.type).split(/(?<=\.)\s+/).map((s, i) => '<div style="margin:4px 0"><b>' + (i + 1) + ".</b> " + s + "</div>").join("");
-  return '<div class="card" style="border-color:#9b72ff"><div class="eyebrow" style="background:#9b72ff">🥊 Jour de retest — ' + T.label + "</div>"
+  return '<div class="card" style="border-color:var(--zn-violet,#9b72ff)"><div class="eyebrow" style="background:var(--zn-violet,#9b72ff)">🥊 Jour de retest — ' + T.label + "</div>"
     + '<div class="why">Un test n’est ni réussi ni raté : il MESURE. Échauffe-toi sérieusement, exécute, note le résultat.</div>'
     + '<div style="font-size:var(--fs-md);margin-top:6px">' + steps + "</div>"
     + '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">'
@@ -132,7 +132,7 @@ function showReveal(plan, type, val, prevVal, todayISO, rerenderWeek) {
     const improved = T.better(val, prevVal);
     const d = type === "ftp" ? Math.abs(val - prevVal) + " W" : Math.abs(Math.round(val - prevVal)) + " s";
     if (improved) {
-      deltaHTML = '<div style="text-align:center;margin-top:8px;font-weight:700;color:#00734f">' + T.fmt(prevVal) + " → " + T.fmt(val) + " (" + d + " de mieux)</div>"
+      deltaHTML = '<div style="text-align:center;margin-top:8px;font-weight:700;color:var(--zn-good-dark,#00734f)">' + T.fmt(prevVal) + " → " + T.fmt(val) + " (" + d + " de mieux)</div>"
         + '<div class="load-sub" style="text-align:center;margin-top:4px">Tes zones et toutes les allures du plan viennent d’être recalées sur cette nouvelle référence.</div>';
       deltaTxt = T.fmt(prevVal) + " → " + T.fmt(val);
     } else {

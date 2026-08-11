@@ -69,7 +69,7 @@ function nextSessionTeaser(plan, todayISO) {
   const when = nxt.date === tomorrow ? "Demain" : nxt.jour;
   const s = nxt.sessions.find((x) => x.d !== "rs");
   const obj = s.det ? String(s.det).split("—")[0].split("·")[0].trim().slice(0, 50) : "";
-  return '<div style="margin-top:12px;padding-top:10px;border-top:2px dashed #0003;font-size:var(--fs-md)"><b>' + when + " : " + s.name + "</b>" + (obj ? '<br><span style="color:#635b4a">Objectif : ' + obj + "</span>" : "") + "</div>";
+  return '<div style="margin-top:12px;padding-top:10px;border-top:2px dashed var(--zn-sep,#0003);font-size:var(--fs-md)"><b>' + when + " : " + s.name + "</b>" + (obj ? '<br><span style="color:var(--zn-muted,#635b4a)">Objectif : ' + obj + "</span>" : "") + "</div>";
 }
 
 // Célébration (modal courte, partage story natif — repli téléchargement PNG).
@@ -84,9 +84,9 @@ export function showCongrats(plan, session, newBadge, todayISO) {
     + '<div style="display:flex;justify-content:center">' + avatarTriSVG(av, 110) + "</div>"
     + '<h2 style="text-align:center;margin:8px 0 2px;font-size:var(--fs-hand);line-height:1.35">' + celebrationMessage(session) + "</h2>"
     + '<div style="text-align:center;font-weight:700;margin-top:6px">' + session.name + "</div>"
-    + (session.det ? '<div style="text-align:center;font-size:var(--fs-sm);color:#635b4a;margin-top:2px">' + String(session.det).split("—")[0].slice(0, 60) + "</div>" : "")
+    + (session.det ? '<div style="text-align:center;font-size:var(--fs-sm);color:var(--zn-muted,#635b4a);margin-top:2px">' + String(session.det).split("—")[0].slice(0, 60) + "</div>" : "")
     + (streak > 1 ? '<div style="text-align:center;margin-top:8px">🔥 <b>' + streak + " jours d’affilée</b> — le repos validé compte aussi</div>" : "")
-    + (newBadge ? '<div style="text-align:center;margin-top:6px;color:#8a6d00;font-weight:700">' + newBadge.icon + " Badge débloqué : " + newBadge.label + "</div>" : "")
+    + (newBadge ? '<div style="text-align:center;margin-top:6px;color:var(--zn-gold-text,#8a6d00);font-weight:700">' + newBadge.icon + " Badge débloqué : " + newBadge.label + "</div>" : "")
     + '<div class="nav" style="justify-content:center;margin-top:14px;gap:8px;flex-wrap:wrap">'
     + '<button class="btn gold" id="ebShareStory" type="button">📸 Story</button>'
     + '<button class="btn gold" id="ebShareSquare" type="button">🖼 Carte</button>'
@@ -171,13 +171,13 @@ export function momentHTML(plan, todayIso) {
   if (S.answers && S.answers.race_date) raceDates.push(S.answers.race_date);
   const B = (bg, txt) => '<div class="warn" style="background:' + bg + ';font-weight:600">' + txt + "</div>";
   if (raceDates.includes(today))
-    return B("#ffe3e0", "\u{1F3C1} <b>Jour de course.</b> Tout le travail est fait — départ prudent, finis fort. Bonne course !");
+    return B("var(--zn-bg-race,#ffe3e0)", "\u{1F3C1} <b>Jour de course.</b> Tout le travail est fait — départ prudent, finis fort. Bonne course !");
   if (raceDates.includes(tomorrow))
-    return B("#fff3d6", "\u{1F389} <b>Veille de course.</b> Objectif du jour : des jambes fraîches. Repos, hydratation, matériel préparé — demain tu récoltes.");
+    return B("var(--zn-bg-eve,#fff3d6)", "\u{1F389} <b>Veille de course.</b> Objectif du jour : des jambes fraîches. Repos, hydratation, matériel préparé — demain tu récoltes.");
   let taperStart = null;
   plan.weeks.forEach((w) => w.days.forEach((d) => { if (!taperStart && (d.phaseId === "taper" || (w.phase && w.phase.id === "taper"))) taperStart = d.date; }));
   if (taperStart && taperStart === today)
-    return B("#e9defc", "✂️ <b>L’affûtage commence.</b> Le volume descend, la forme monte — le plus dur est derrière toi. Ne rajoute rien.");
+    return B("var(--zn-bg-taper,#e9defc)", "✂️ <b>L’affûtage commence.</b> Le volume descend, la forme monte — le plus dur est derrière toi. Ne rajoute rien.");
   return "";
 }
 
@@ -198,7 +198,7 @@ export function planEndDate(plan, answers) {
 export function painBannerHTML() {
   const pf = S.answers.painFlag;
   if (!pf || !pf.active) return "";
-  return '<div class="warn" style="background:#ffe3e0;font-weight:600">🩹 <b>Douleur signalée' + (pf.location ? " (" + esc(pf.location) + ")" : "") + ".</b> "
+  return '<div class="warn" style="background:var(--zn-bg-race,#ffe3e0);font-weight:600">🩹 <b>Douleur signalée' + (pf.location ? " (" + esc(pf.location) + ")" : "") + ".</b> "
     + 'Les séances de qualité sont remplacées par de la récupération tant que le drapeau est actif — ta série est gelée, rien n’est perdu. Si la douleur persiste, consulte un médecin ou un kiné.'
     + '<div class="nav" style="margin-top:8px"><button class="btn" id="ebLiftPain" type="button">Je n’ai plus mal → lever le drapeau</button></div></div>';
 }
@@ -239,7 +239,21 @@ function discBadgeHTML(d) {
   // R16.8 — un glyphe décoratif se dimensionne en `em`, jamais en px littéral : ce n'est pas
   // de la typographie, l'échelle --fs-* ne le régit pas (voir styles.css :root).
   return '<div aria-hidden="true" style="flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:' + b.ac
-    + ';border:2px solid #16130e;display:flex;align-items:center;justify-content:center;font-size:1.2em;line-height:1">' + b.ic + "</div>";
+    + ';border:2px solid var(--zn-ink,#16130e);display:flex;align-items:center;justify-content:center;font-size:1.2em;line-height:1">' + b.ic + "</div>";
+}
+
+// R-ZENNA — anneau « forme du jour » (reskin visuel de l'onglet Aujourd'hui). Le nombre
+// affiché est l'énergie déclarée au check-in (`S.answers.readiness.energy`, 0-100, le MÊME
+// signal que lit le moteur pour le verdict) — jamais une valeur inventée pour l'occasion
+// (R11.1). `null` si aucun check-in n'a encore renseigné d'énergie.
+function formRingSVG(val) {
+  if (val == null || !isFinite(val)) return "";
+  const r = 21, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, val)) / 100);
+  return '<div class="zn-form-ring" aria-hidden="true"><svg width="52" height="52" viewBox="0 0 52 52">'
+    + '<circle cx="26" cy="26" r="' + r + '" stroke="rgba(255,255,255,.18)" stroke-width="5" fill="none"/>'
+    + '<circle cx="26" cy="26" r="' + r + '" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"'
+    + ' stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '" transform="rotate(-90 26 26)"/></svg>'
+    + '<div class="zn-form-val"><span>' + Math.round(val) + '</span><em>forme</em></div></div>';
 }
 
 export function heroSessionHTML(plan, todayIso) {
@@ -248,7 +262,10 @@ export function heroSessionHTML(plan, todayIso) {
   let res;
   try { res = globalThis.EBV2.adjustToday(S.sport, S.answers, snap); } catch (e) { console.warn(e); return ""; }
   const v = res.adjustment.verdict;
-  const badge = '<span style="float:right;font-size:var(--fs-xs);font-weight:700;color:#555;margin-top:2px">' + VERDICT_ICON[v.level] + " " + _verdictLbl[res.adjustment.action] + "</span>";
+  // R-ZENNA — la puce de verdict et l'anneau de forme REMPLACENT le badge texte flottant à
+  // droite de l'eyebrow (même donnée, `v`/`res.adjustment` — aucun second calcul, R11.1).
+  const verdictChip = '<span class="zn-verdict-chip zn-verdict-' + v.level + '">' + VERDICT_ICON[v.level] + " " + _verdictLbl[res.adjustment.action] + "</span>";
+  const ring = formRingSVG(S.answers.readiness && S.answers.readiness.energy);
   // R4.7 — le plan qui réagit : toute adaptation est ANNONCÉE et expliquée en une phrase
   // (RPE d'hier, douleur, sommeil… — c'est la différence entre un PDF statique et un coach).
   const why = res.adjustment.action !== "keep" && v.drivers.length
@@ -301,5 +318,14 @@ export function heroSessionHTML(plan, todayIso) {
   // « la séance du jour » de « ta charge » ou de « ta prédiction ». Bordure et ombre à
   // l'accent du sport (déjà utilisé par le bouton primaire et le badge de discipline) pour
   // que l'œil s'y pose en premier, sans dupliquer une nouvelle classe CSS pour un seul rôle.
-  return '<div class="card" style="border-color:var(--acc);box-shadow:6px 6px 0 var(--acc)">' + badge + '<div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayIso) + "</div>" + why + body + "</div>";
+  //
+  // `zn-hero`/`zn-hero-top`/`zn-hero-verdict-row`/`zn-disc-chip` sont des classes ADDITIVES
+  // (reskin R-ZENNA, css/zenna-today.css, scopées à `body.theme-zenna`) : sans cette feuille
+  // de style elles ne font rien, le rendu `.card` d'origine reste intact (repli identique).
+  const firstDisc = queDuRepos ? null : (res.sessions.find((x) => x.d !== "rs") || res.sessions[0]);
+  const discChip = firstDisc ? '<div class="zn-disc-chip"><span>' + (DISC[firstDisc.d] || DISC.rn).ic + " " + (DISC[firstDisc.d] || DISC.rn).label + "</span></div>" : "";
+  return '<div class="card zn-hero" style="border-color:var(--acc);box-shadow:6px 6px 0 var(--acc)">'
+    + '<div class="zn-hero-top"><div class="eyebrow">Aujourd’hui' + (res.jour ? " · " + res.jour : "") + " · " + fmtDay(todayIso) + '</div>'
+    + '<div class="zn-hero-verdict-row">' + verdictChip + ring + "</div></div>"
+    + why + body + discChip + "</div>";
 }

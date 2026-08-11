@@ -58,7 +58,7 @@ const SLIDES = [
     // diapo VFC, qui devient optionnelle. La laisser là l'aurait fait disparaître pour tous
     // ceux qui ne suivent pas leur VFC — un signal OBJECTIF perdu au passage d'un lot qui
     // ne le visait pas. Sa place est de toute façon ici : c'est la même mesure du réveil.
-    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:#635b4a">'
+    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:var(--zn-muted,#635b4a)">'
       + '<span>FC au réveil (optionnel)</span><input type="number" id="ckHr" inputmode="numeric" min="30" max="120" value="' + (d.restingHr || "") + '" placeholder="ex. 52" style="width:88px">'
       + "<span>bpm</span></label>",
   },
@@ -74,7 +74,7 @@ const SLIDES = [
       { val: "skip", ico: "🤷", label: "Pas de mesure aujourd'hui", react: "Pas grave, on fait sans." },
     ],
     set: () => { /* la valeur est lue dans `extraHTML` ci-dessous, comme la FC au réveil */ },
-    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:#635b4a">'
+    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:var(--zn-muted,#635b4a)">'
       + '<span>VFC (rMSSD)</span><input type="number" id="ckHrv" inputmode="numeric" min="5" max="250" value="' + (d.hrvValue || "") + '" placeholder="ex. 62" style="width:88px">'
       + "<span>ms</span></label>"
       + '<div class="q-sub" style="margin-top:4px">Comparée à TA base des 7 derniers matins. Sous 7 mesures, elle est notée sans rien piloter — et on te le dit.</div>',
@@ -93,8 +93,8 @@ const SLIDES = [
 ];
 
 function dotsHTML(step) {
-  return '<div style="display:flex;gap:6px;justify-content:center;margin-top:14px">'
-    + slidesActives().map((_, i) => '<span style="width:8px;height:8px;border-radius:50%;border:1.5px solid #16130e;background:' + (i < step ? "#16130e" : i === step ? "#f0b429" : "transparent") + '"></span>').join("")
+  return '<div class="zn-ck-dots" style="display:flex;gap:6px;justify-content:center;margin-top:14px">'
+    + slidesActives().map((_, i) => '<span class="zn-ck-dot' + (i < step ? " past" : i === step ? " now" : "") + '" style="width:8px;height:8px;border-radius:50%;border:1.5px solid var(--zn-ink,#16130e);background:' + (i < step ? "var(--zn-ink,#16130e)" : i === step ? "var(--zn-gold-dot,#f0b429)" : "transparent") + '"></span>').join("")
     + "</div>";
 }
 

@@ -13,7 +13,7 @@
    `npm run check:sw`, comme `check:app` pour le bundle du monolithe). */
 
 // __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
-const VERSION = "eb-pwa-4d58892859ec";
+const VERSION = "eb-pwa-905fe175a490";
 // __/SW_VERSION__
 
 // __SW_ASSETS__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
@@ -23,6 +23,7 @@ const ASSETS = [
   "./manifest.json",
   "./css/mobile.css",
   "./css/styles.css",
+  "./css/zenna-today.css",
   "./js/app.js",
   "./js/config.js",
   "./js/data/educatifs/course.js",

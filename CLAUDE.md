@@ -166,7 +166,11 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   (`eb_state_v2`, multi-plans ; migration automatique depuis `eb_state_v1`) — toute
   évolution du format doit dégrader proprement.
 - **Design responsive** : tester mobile/tablette/desktop pour toute retouche UI (grilles CSS,
-  variables, esthétique « papier/collage » à préserver).
+  variables). L'esthétique « papier/collage » (`styles.css`/`mobile.css`) reste la référence des
+  onglets Profil/Plan/Semaine/Outils ; 🎯 Aujourd'hui porte depuis R-ZENNA le nouveau système
+  sombre du fondateur (`css/zenna-today.css`, scopé à `body.theme-zenna`) — la direction retenue
+  pour la suite du produit, migration des quatre autres onglets non commencée (voir « État
+  courant »).
 
 ## Modifier le moteur — les deux gestes courants
 
@@ -181,6 +185,37 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
+
+**R-ZENNA (POC) livré — nouvelle direction visuelle, un onglet** (maquette du fondateur,
+10-11/08/2026) : le style « papier/collage » que ce fichier disait à préserver cède la place à
+un nouveau système visuel sombre (fond noir, accent orange, cartes `--zn-*`) — **décision du
+fondateur : c'est la nouvelle direction**, à étendre aux quatre autres onglets ensuite. Démarré
+sur le SEUL onglet 🎯 Aujourd'hui, comme preuve de concept scopée pour limiter le risque sur un
+dépôt à 27 gates CI et 20 suites E2E. Technique : tout est scopé sous `body.theme-zenna` (posée
+par `tabs.js` uniquement quand l'onglet actif est « today », retirée ailleurs) ; les modules qui
+composent l'onglet (session-life.js, checkin.js, plan-view.js, daily-content.js, retest.js,
+tab-nutrition.js, readiness.js) portent leurs couleurs en `var(--zn-x, #hex-d-origine)` — sans
+`css/zenna-today.css`, le rendu redevient EXACTEMENT celui d'avant (repli identique, R11.1).
+Aucune classe/id fonctionnel touché, aucun autre onglet modifié, moteur intact (`audit:v1`
+inchangé). **19/20 suites E2E vertes** (voir dette ci-dessous pour la 20e).
+Deux défauts trouvés et corrigés EN CONSTRUISANT, gardés écrits : la première écriture chargeait
+Bebas Neue/Inter/IBM Plex Mono depuis Google Fonts — contredit D19 (polices auto-hébergées,
+`styles.css`, zéro requête externe) et produisait des erreurs console mesurées par
+`smoke-checkin.mjs` en réseau bridé ; corrigé en réutilisant les polices déjà embarquées
+(Archivo Black, Space Grotesk) et une pile monospace système. Et la feuille se charge en SCRIPT
+(`js/app.js`), jamais en `<link>` statique dans `<head>` : un `<link>` de plus y est bloquant
+pour le premier rendu (mesuré : `smoke-usage.mjs` U7 passait de 1720 ms à ~2000 ms rien qu'avec
+le `<link>` en tête de page).
+**Dette déclarée** : `smoke-usage.mjs` (U7, « la séance apparaît sans attendre la météo ») mesure
+~1990-2020 ms dans ce sandbox de développement contre un plafond de 2000 ms — flaky, tantôt vert
+tantôt rouge. Isolé fichier par fichier : le JS seul (sans `zenna-today.css`) reste à
+~1720-1845 ms, donc le surcoût vient du RECALCUL DE STYLE de la feuille ajoutée (une cinquantaine
+de règles ciblant des éléments réellement présents dans l'onglet), pas d'une attente réseau
+réintroduite — le PRINCIPE qu'U7 garde reste intact (vérifié dans le code : aucun nouvel `await`
+ne bloque le rendu). La marge d'origine (280 ms) est devenue quasi nulle ; probablement plus
+large sur un CI non bridé, non vérifié faute d'accès. À traiter avant d'étendre le reskin aux
+quatre autres onglets : alléger `zenna-today.css` (moins de sélecteurs ciblant des éléments
+réels) ou réviser la marge du seuil — décision du fondateur, pas tranchée ici.
 
 **R26 livré — le module Éducatifs, six disciplines, un seul schéma** (brief
 `BRIEF_CLAUDE_CODE_R16.md` + `AUDIT_CROISE_EDUCATIFS.md` — le fichier source s'appelle lui-même
