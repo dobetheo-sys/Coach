@@ -14,7 +14,7 @@
 // Ce sont les deux premiers qui portent la valeur : sans eux, « deux canaux séparés » est
 // une intention, pas une propriété. Avant R17.1 la posture venait des séances des 7 derniers
 // jours — un signal corrélé au palier — donc AV1-B était structurellement faux.
-import { startServer, launchBrowser, makeReporter } from "./harness.mjs";
+import { startServer, launchBrowser, makeReporter, runnerStateV1 } from "./harness.mjs";
 
 const PORT = 8592;
 const server = await startServer(PORT);
@@ -132,6 +132,54 @@ ok(ancrages[0] === meta.ancrage.cx + "," + meta.ancrage.cy + "," + meta.ancrage.
 // ---- Accessibilité : l'état est dit, pas seulement dessiné -------------------------------
 const aria = /aria-label="([^"]*)"/.exec(await rendu({ level: 9, accent: "#ff7a1a", streak: 4, mood: "vide" }));
 ok(!!aria && /vid/i.test(aria[1]), "l'état de forme est annoncé aux lecteurs d'écran (" + (aria ? aria[1] : "—") + ")");
+
+// ---- R-ZENNA v6 — LE REPEINT SOMBRE, ET SON REPLI ---------------------------------------
+// Décision du fondateur (11/08/2026) : repeindre l'avatar plutôt que le poser sur une plaque
+// claire. `avatar-tri.js` exprime son encre et ses aplats papier en `var(--av-*, <origine>)`.
+// Les DEUX moitiés comptent, et la seconde est celle qu'on casserait sans s'en apercevoir :
+//   · dans l'app, l'encre doit être CLAIRE — sinon le dessin disparaît sur le noir ;
+//   · sans feuille de thème, elle doit reprendre sa valeur D'ORIGINE — c'est ce qui garde
+//     `demo:avatartri` (node, sans CSS) et surtout la CARTE DE PARTAGE d'`export.js`, qui
+//     charge le SVG comme `Image` dans un document indépendant où les variables de la page ne
+//     descendent pas. Un repeint qui déborderait là-bas noircirait une carte au fond clair.
+{
+  const lum = (c) => { const m = /(\d+),\s*(\d+),\s*(\d+)/.exec(c); if (!m) return null;
+    return (0.2126 * +m[1] + 0.7152 * +m[2] + 0.0722 * +m[3]) / 255; };
+  // Cette suite teste le MODULE en isolation ; ce critère-ci porte sur le rendu DANS l'app,
+  // il faut donc y entrer — c'est là que `body.theme-zenna` existe.
+  const etat = runnerStateV1({ format: "70.3" });
+  etat.sport = "tri";
+  await page.evaluate((v) => { localStorage.clear(); localStorage.setItem("eb_state_v1", JSON.stringify(v)); }, etat);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  await page.click('#ebTabbar .tabbtn[data-tab="profile"]');
+  await page.waitForTimeout(900);
+  const mesure = await page.evaluate(() => {
+    const svg = document.querySelector('#screen svg[aria-label^="Avatar"]');
+    if (!svg) return { absent: true };
+    const trait = svg.querySelector("[stroke]");
+    const cs = getComputedStyle(svg);
+    // le MÊME dessin, sorti du document thémé : c'est le contexte d'export.js
+    const hors = document.createElement("div");
+    hors.style.cssText = "position:fixed;left:-9999px";
+    hors.innerHTML = svg.outerHTML;
+    document.documentElement.appendChild(hors); // hors de body.theme-zenna
+    const traitHors = hors.querySelector("[stroke]");
+    const inkHors = traitHors ? getComputedStyle(traitHors).stroke : null;
+    const r = { ink: trait ? getComputedStyle(trait).stroke : null, inkHors,
+      plaque: cs.backgroundColor, aVar: /var\(--av-/.test(svg.outerHTML) };
+    hors.remove();
+    return r;
+  });
+  ok(!mesure.absent, "R-ZENNA v6 — l'avatar est rendu au Profil");
+  ok(mesure.aVar, "R-ZENNA v6 — sa palette passe par des variables CSS (pas des hex figés)");
+  const lIn = lum(mesure.ink || ""), lOut = lum(mesure.inkHors || "");
+  ok(lIn !== null && lIn > 0.5, "R-ZENNA v6 — dans l'app, l'encre est CLAIRE (" + mesure.ink + ") : le trait existe sur le noir");
+  ok(lOut !== null && lOut < 0.25, "R-ZENNA v6 — hors du thème, elle reprend sa valeur d'ORIGINE (" + mesure.inkHors
+    + ") : la carte de partage et `demo:avatartri` ne bougent pas");
+  ok(/rgba\(0, 0, 0, 0\)|transparent/.test(mesure.plaque || ""),
+    "R-ZENNA v6 — et la plaque claire a disparu (" + mesure.plaque + ") : il porte son propre contraste");
+}
 
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + (errs.length ? " — " + errs[0] : "") + ")");
 await browser.close();

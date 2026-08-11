@@ -210,11 +210,32 @@ body.theme-zenna #screen [style*="border:1px solid #16130e"] { border-color: var
    contrat de calques que `smoke-avatar` vérifie. On lui pose donc une PLAQUE CLAIRE — c'est
    exactement ce que fait déjà `export.js` pour les cartes de partage, donc un idiome du
    produit, pas un contournement. */
+/* R-ZENNA v6 — L'AVATAR EST REPEINT, il n'est plus posé sur une plaque claire (décision du
+   fondateur, 11/08/2026). `avatar-tri.js` exprime désormais son encre et ses aplats papier en
+   `var(--av-*, <valeur d'origine>)` : il suffit de redéfinir ces variables ici. Sans cette
+   feuille, le dessin reprend EXACTEMENT ses couleurs d'origine (les replis), ce qui garde
+   `demo:avatartri` (node, sans CSS) et la carte de partage d'`export.js` (SVG chargé comme
+   Image, document indépendant : les variables de la page n'y descendent pas) inchangés.
+
+   On ne repeint QUE ce qui casse sur fond noir — encre, aplats papier, bleu nuit. Les accents
+   de discipline, l'or, le rouge et le vert du podium portent du SENS et ne bougent pas : même
+   principe que les cinq couleurs de phase. */
+body.theme-zenna {
+  --av-ink: #d8d4cc;      /* l'encre : claire, pour que le trait existe sur du noir */
+  --av-creme: #232830;    /* l'aplat de base (peau, fonds) */
+  --av-blanc: #2b313a;    /* les blancs de dossard et de cartons */
+  --av-carton: #333a44;
+  --av-cuir: #4a515c;
+  --av-papier: #2f353e;
+  --av-verre: #1d5f75;    /* le verre des lunettes : la teinte reste, la valeur descend */
+  --av-nuit: #7f8ec4;     /* le bleu nuit devient un TROU sur du noir : on le remonte */
+}
+/* Le dessin n'a plus besoin de plaque : il porte son propre contraste. On garde le rayon pour
+   la cible de focus, rien d'autre. */
 body.theme-zenna #screen svg[aria-label^="Avatar"],
 body.theme-zenna .eb-modal svg[aria-label^="Avatar"] {
-  background: #f2ece0;
+  background: transparent;
   border-radius: 16px;
-  padding: 4px;
 }
 body.theme-zenna #screen #avSvg { border-radius: 18px; }
 body.theme-zenna #screen #avSvg:focus-visible { outline: 3px solid var(--zn-orange); outline-offset: 2px; }
