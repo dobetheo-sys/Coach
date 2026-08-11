@@ -906,7 +906,17 @@ function renderStep(){
 function rulesGrouped(rules){let h="";const hs=HEROS.map(id=>rules.find(r=>r.id===id)).filter(Boolean);
   if(hs.length){h+='<div class="bp-heros">';hs.forEach(r=>h+='<div class="bp-hero"><div class="bh-cat">'+r.what+'</div><div class="bh-val">'+r.val+'</div></div>');h+='</div>';}
   CATS.forEach(([c,ic,l])=>{const inc=rules.filter(r=>(RULE_CAT[r.id]||"struct")===c&&!HEROS.includes(r.id)),hic=rules.filter(r=>(RULE_CAT[r.id]||"struct")===c&&HEROS.includes(r.id));if(!inc.length&&!hic.length)return;
-    h+='<div class="bp-cat"><div class="bp-cat-h"><span class="ic">'+ic+'</span>'+l+'</div>';hic.concat(inc).forEach(r=>h+='<div class="bp-decision"><div><div class="bp-what">'+r.what+'</div><div class="bp-val">'+r.val+'</div></div><div class="bp-why">'+r.why+'</div></div>');h+='</div>';});
+    // AUDIT UX 11/08/2026 — LES RÈGLES « HÉROS » ÉTAIENT ÉCRITES DEUX FOIS.
+    // Elles s'affichent dans le bandeau du haut (`.bp-heros`, ce qui pilote le plan) PUIS à
+    // nouveau dans leur catégorie : mesuré, « Performance — chrono cible » et « Marges
+    // resserrées — assumées » apparaissaient chacun 2× sur le même écran, à l'identique.
+    // On garde la ligne dans sa catégorie — c'est elle qui porte le POURQUOI, la seule chose
+    // que le bandeau ne dit pas — mais sa VALEUR n'est plus répétée : elle est juste au-dessus.
+    h+='<div class="bp-cat"><div class="bp-cat-h"><span class="ic">'+ic+'</span>'+l+'</div>';
+    hic.concat(inc).forEach(r=>{const dejaEnHaut=HEROS.includes(r.id);
+      h+='<div class="bp-decision"><div><div class="bp-what">'+r.what+'</div>'
+        +(dejaEnHaut?'':'<div class="bp-val">'+r.val+'</div>')+'</div><div class="bp-why">'+r.why+'</div></div>';});
+    h+='</div>';});
   return h;}
 function renderBlueprint(){
   // Plus de mur de règles : transition visuelle directe vers le plan.

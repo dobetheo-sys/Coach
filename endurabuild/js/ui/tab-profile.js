@@ -213,8 +213,18 @@ function summaryRows(a) {
   // R5.6b — la table PAR QUESTION passe avant la table plate : « partielle » ne veut pas dire la
   // même chose pour la disponibilité et pour une course de nuit.
   const L = (k, lab) => (a[k] ? lab + " : " + esc(String(a[k]).split(",").map((x) => (VLAB_Q[k] && VLAB_Q[k][x]) || VLAB[x] || x).join(", ")) : "");
-  const parts = [L("intent", "Intention"), L("format", "Objectif"), L("history", "Historique"), L("level", "Niveau"), L("dispo", "Disponibilité"), L("injury", "Blessures")].filter(Boolean);
-  return parts.length ? '<div class="load-sub" style="margin:2px 0 8px">' + parts.join(" · ") + "</div>" : "";
+  // AUDIT UX 11/08/2026 — C'ÉTAIT LA LIGNE LA PLUS DENSE DE L'APP : 2,96 caractères par pixel
+  // de hauteur rendue, six couples intitulé/valeur enchaînés en une phrase. R16.9 avait eu
+  // raison de compacter les six blocs `.bp-decision` d'origine ; la prose n'était que l'autre
+  // extrême. La primitive `.kv` (composition Zenna, onglet Outils) fait exactement ce qu'il
+  // faut ici : intitulé à gauche, valeur à droite, lisible EN DIAGONALE — on cherche une
+  // réponse précise dans cette carte, on ne la lit pas comme un texte.
+  const V = (k) => (a[k] ? esc(String(a[k]).split(",").map((x) => (VLAB_Q[k] && VLAB_Q[k][x]) || VLAB[x] || x).join(", ")) : "");
+  const lignes = [["intent", "Intention"], ["format", "Objectif"], ["history", "Historique"],
+    ["level", "Niveau"], ["dispo", "Disponibilité"], ["injury", "Blessures"]]
+    .filter(([k]) => a[k])
+    .map(([k, lab]) => '<div class="kv"><div class="kv-k">' + lab + '</div><div class="kv-v">' + V(k) + "</div></div>");
+  return lignes.length ? '<div style="margin:2px 0 8px">' + lignes.join("") + "</div>" : "";
 }
 
 // R4-4 — sélecteur de plans : plusieurs plans sous un même profil (tri A + 10k d'un ami,
@@ -233,11 +243,15 @@ function plansSelectorHTML() {
     const active = p.id === S.activePlanId;
     h += '<div style="display:flex;align-items:center;gap:8px;margin:6px 0">'
       + '<button class="btn' + (active ? " primary" : "") + '" data-plan="' + p.id + '" type="button" style="flex:1;text-align:left">' + planLabel(p) + (active ? " ✓" : "") + "</button>"
-      + '<button class="btn" data-plan-ren="' + p.id + '" type="button" title="Renommer" style="padding:6px 10px">✏️</button>'
-      + (!active && plans.length > 1 ? '<button class="btn" data-plan-del="' + p.id + '" type="button" title="Supprimer" style="padding:6px 10px">🗑</button>' : "")
+      + '<button class="btn" data-plan-ren="' + p.id + '" type="button" title="Renommer" style="padding:6px 10px;min-width:44px">✏️</button>'
+      + (!active && plans.length > 1 ? '<button class="btn" data-plan-del="' + p.id + '" type="button" title="Supprimer" style="padding:6px 10px;min-width:44px">🗑</button>' : "")
       + "</div>";
   });
-  h += '<div class="nav" style="margin-top:8px"><button class="btn gold" id="pfNewPlan" type="button">＋ Nouveau plan</button></div>'
+  // AUDIT UX 11/08/2026 — « Nouveau plan » était le contrôle le PLUS VOYANT de l'onglet : or
+  // pleine largeur, juste sous le sélecteur. Sur un écran où l'on vient consulter ses réglages,
+  // l'action visuellement dominante était celle qui fait QUITTER le plan en cours pour un
+  // brouillon. L'or reste pour ce qui est rare et voulu ; ceci devient un bouton secondaire.
+  h += '<div class="nav" style="margin-top:8px"><button class="btn" id="pfNewPlan" type="button">＋ Nouveau plan</button></div>'
     + '<div class="load-sub" style="margin-top:4px">Chaque plan a son questionnaire, son journal et ses records — passe de l’un à l’autre sans rien perdre.</div></div>';
   return h;
 }
@@ -334,7 +348,10 @@ function avatarSectionHTML(plan, todayISO) {
   if (adh) {
     if (adh.frozenToday) h += '<div class="load-sub" style="margin-top:8px">❄️ Série <b>gelée</b> (douleur ou maladie) : ' + adh.days + " jour" + (adh.days > 1 ? "s" : "") + " au compteur, rien n’est perdu.</div>";
     else if (adh.days > 1) h += '<div style="margin-top:8px;font-size:var(--fs-md)">🔥 <b>Série : ' + adh.days + " jours</b> — repos validé compris.</div>";
-    else h += '<div class="load-sub" style="margin-top:8px">Nouvelle série — la régularité sur toute la préparation compte plus qu’une série parfaite.</div>';
+    // AUDIT UX 11/08/2026 — au tout premier niveau, cette phrase et « Il évoluera avec ta
+    // régularité » (sous l'avatar, quelques pixels plus haut) disent la même chose. On garde
+    // celle qui est ANCRÉE au dessin ; celle-ci ne s'affiche que si l'avatar n'est plus vierge.
+    else if (!vierge) h += '<div class="load-sub" style="margin-top:8px">Nouvelle série — la régularité sur toute la préparation compte plus qu’une série parfaite.</div>';
   }
   // Les 30 niveaux de chaque discipline, DÉRIVÉS du roulement (jamais une seconde table).
   // UN seul <details> pour les trois : le Profil doit tenir sous 4 écrans (U18b).

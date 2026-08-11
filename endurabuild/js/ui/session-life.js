@@ -382,7 +382,15 @@ export function heroSessionHTML(plan, todayIso) {
           + '<div style="flex:1;min-width:0"><b>' + x.name + "</b>"
           + (actives.length > 1 && wx ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + wx + "</div>" : "")
           + znZoneBar(x, _blkMin)
-          + techListHTML(techOf(x))
+          // AUDIT UX 11/08/2026 — LE DÉROULÉ N'EST PAS RÉPÉTÉ ICI (décision du fondateur).
+          // Le héros, un écran plus haut, l'affiche déjà : mesuré, les TROIS blocs sur trois
+          // étaient communs mot pour mot (« Échauffement 10min montée progressive · 18min @
+          // 147-160 bpm · Retour au calme 4min »). Ce que cette carte apporte et que le héros
+          // n'a pas, c'est la BARRE DE ZONES et le pictogramme de discipline — c'est donc la
+          // répétition qu'on retire, pas la carte.
+          // Sur une journée à PLUSIEURS séances, le héros ne détaille que la première : les
+          // suivantes gardent leur déroulé ici, sinon l'information n'existerait nulle part.
+          + (actives.length > 1 && x !== actives[0] ? techListHTML(techOf(x)) : "")
           + "</div></div>";
       }).join("")
       + "</div>";

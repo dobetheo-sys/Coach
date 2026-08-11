@@ -156,6 +156,37 @@ body.theme-zenna .sc-nom { color: var(--zn-text); font-family: var(--zn-display)
 body.theme-zenna .sc-pitch { color: var(--zn-muted); }
 
 /* ============================================================
+   R-ZENNA v8 — LE SEUIL TACTILE VAUT POUR TOUS LES REPLIS
+   ============================================================
+   U17 avait mesuré et corrigé le titre de SÉANCE (254 × 17 px) en concluant : « ce n'était pas
+   une décision de design mais un standard à appliquer », U4 ayant tranché 44 px pour ce dépôt.
+   La conclusion n'avait jamais été rejouée sur les AUTRES replis.
+
+   Mesuré à l'audit du 11/08/2026 : **24 sommaires sur 36 sous 44 px**, entre 17 et 22 px de
+   haut. La répartition dit tout — 📅 Semaine 0/7 et 🧰 Outils 0/2 (les deux onglets
+   retravaillés) contre 📋 Profil 10/10, 🗓 Plan 12/13, 🎯 Aujourd'hui 2/4. Ce ne sont pas des
+   cibles rares : « Prédiction de course », « Pourquoi ce plan », « Records personnels »,
+   « Ta course », « Modifier ma forme du jour » sont des gestes du quotidien.
+
+   Le padding est posé sur le SUMMARY, pas sur un pseudo-élément : U17 explique pourquoi — un
+   `::after` absolu agrandit la zone de toucher mais laisse la ligne serrée à l'œil, alors que
+   l'espace manque aussi visuellement. `display: flex` + `align-items: center` pour que le
+   padding ne décale pas le chevron.
+   `.fold` (Outils) et `.gd-sess` (séances) sont déjà conformes : la règle ne les dégrade pas,
+   elle les rejoint. */
+body.theme-zenna #screen summary {
+  min-height: 44px;
+  padding-top: 11px;
+  padding-bottom: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Les replis d'Outils déclarent déjà leur gabarit (padding 14px, min-height 44) : on ne le
+   double pas, sinon le sommaire grossit de 22 px pour rien. */
+body.theme-zenna #screen details.fold > summary { padding-top: 14px; padding-bottom: 14px; }
+
+/* ============================================================
    COMMUN — surfaces, séparateurs, ombres portées
    ============================================================ */
 body.theme-zenna #screen .gw,

@@ -82,6 +82,13 @@ ok(dayCheck.found, "le jour calendaire local existe bien dans le plan (pas de d�
 ok(/du \d{2}\/\d{2} au \d{2}\/\d{2}/.test(await semaine.textContent()), "l'en-tête de semaine affiche ses bornes calendaires");
 await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("general"); });
 await page.waitForTimeout(400);
+// AUDIT UX 11/08/2026 — ce critère lisait les en-têtes de semaine du PROGRAMME DE PHASE, qui
+// était construit d'avance pour les 40 semaines et replié : un contenu que personne ne voit
+// sans ouvrir une phase (c'est ce qui faisait 201 coches dans le DOM, désormais construites à
+// l'ouverture). Il porte sur « les semaines de la SAISON » : on le mesure donc sur la vue qui
+// les montre, « Voir tout le plan », plutôt que sur du DOM invisible.
+await page.click("#allW");
+await page.waitForTimeout(600);
 ok(/du \d{2}\/\d{2} au \d{2}\/\d{2}/.test(await page.locator("#screen").textContent()), "les semaines de la saison portent aussi leurs bornes calendaires (onglet 🗓 Plan)");
 
 // 5. Second fuseau (UTC−11) : à TOUTE heure réelle, au moins un des deux fuseaux a une

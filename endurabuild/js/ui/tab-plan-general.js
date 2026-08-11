@@ -216,8 +216,31 @@ function phaseObjectivesHTML(plan) {
     h += '<details class="ph-obj" data-ph="' + p.nom + '"' + (open ? " open" : "") + ' style="margin-top:8px;border-left:4px solid ' + p.c + ';padding-left:10px"><summary style="cursor:pointer;font-size:var(--fs-md)"><b>' + p.nom + "</b> · " + st.wks.length + " sem — <i>" + state + "</i>"
       + '<div style="background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden;margin-top:4px"><div style="height:100%;width:' + pct + "%;background:" + p.c + '"></div></div></summary>'
       + '<div class="load-sub" style="margin-top:6px">' + (PHASE_GOALS[(p.id || "").toLowerCase()] || PHASE_GOALS[p.nom ? p.nom.toLowerCase().slice(0, 4) : ""] || "Une étape du plan, au service de la suivante.") + "</div>";
-    // LE PROGRAMME : chaque semaine de la phase, jour par jour, coches comprises
-    st.wks.forEach((w) => {
+    // LE PROGRAMME n'est construit QUE si la phase est ouverte (voir `programmePhaseHTML`).
+    h += '<div class="ph-prog">' + (open ? programmePhaseHTML(st) : "") + "</div>";
+    if (st.validated) h += '<div style="margin-top:8px;font-size:var(--fs-md);font-weight:700;color:#00734f">✅ Phase validée — tout est fait. La suivante s’appuie sur ce travail.</div>';
+    h += "</details>";
+  });
+  h += "</div>";
+  return h;
+}
+
+/**
+ * AUDIT UX 11/08/2026 — LE PROGRAMME D'UNE PHASE SE CONSTRUIT À SON OUVERTURE.
+ *
+ * Mesuré : **201 des 227 éléments cliquables** de l'onglet 🗓 Plan étaient des coches. Les cinq
+ * sous-objectifs montaient la grille des 40 SEMAINES dans le DOM — repliée, donc invisible et
+ * correctement ignorée par les lecteurs d'écran (le contenu d'un `<details>` fermé n'est pas
+ * rendu), mais bel et bien créée : 201 boutons construits et 201 gestionnaires de clic liés
+ * À CHAQUE RENDU de l'onglet, pour un contenu qu'on n'ouvre qu'une phase à la fois.
+ *
+ * `S._phOpen` garantit déjà qu'une seule phase est ouverte : on ne construit donc que
+ * celle-là, et le `toggle` remplit la suivante. Les coches sont liées par `bindDoneButtons`
+ * après remplissage, exactement comme au rendu.
+ */
+function programmePhaseHTML(st) {
+  let h = "";
+  st.wks.forEach((w) => {
       const pr = w.days.length ? " · du " + fmtDay(w.days[0].date) + " au " + fmtDay(w.days[w.days.length - 1].date) : "";
       h += '<div style="font-size:var(--fs-sm);margin-top:8px;font-weight:700">Semaine ' + w.num + " · " + w.vol + "h" + (w.isRecup ? " (récup)" : "") + pr + "</div>";
       w.days.forEach((d) => {
@@ -228,12 +251,8 @@ function phaseObjectivesHTML(plan) {
           return chk + s.name;
         }).join(" · ");
         h += '<div style="font-size:var(--fs-sm);margin:3px 0 0 4px;color:#3f3a30"><b style="display:inline-block;width:34px">' + d.jour + '</b><span style="display:inline-block;width:44px;color:#999">' + fmtDay(d.date) + "</span> " + items + "</div>";
-      });
     });
-    if (st.validated) h += '<div style="margin-top:8px;font-size:var(--fs-md);font-weight:700;color:#00734f">✅ Phase validée — tout est fait. La suivante s’appuie sur ce travail.</div>';
-    h += "</details>";
   });
-  h += "</div>";
   return h;
 }
 
@@ -302,8 +321,22 @@ export function renderTabPlanGeneral(plan) {
   html += replier(intensityCardHTML(plan), "⚡ Répartition des intensités");
   html += phaseObjectivesHTML(plan);
   html += '<div class="vol-bars">';
-  plan.weeks.forEach((w) => { const h = Math.max(8, Math.round((w.vol / plan.volPeak) * 52)); html += '<div class="vb" style="height:' + h + "px;background:" + (w.isRecup ? "#9b72ff" : w.phase.c) + '" title="S' + w.num + " " + w.vol + 'h"></div>'; });
-  html += '</div><div class="vol-cap">1 barre = 1 semaine · violet = récup</div>';
+  // AUDIT UX 11/08/2026 — DEUX TEINTES, PAS CINQ (décision du fondateur).
+  // Le graphique portait la couleur de PHASE : 40 barres en 5 teintes, pour une légende qui
+  // n'en expliquait qu'une (« violet = récup »). La couleur de phase porte du sens — mais elle
+  // le porte déjà sur la FRISE, juste au-dessus, où cinq segments larges se lisent. Répétée
+  // sur 40 barres de 3 px, elle sature au lieu d'informer. Ici on garde les deux seules
+  // distinctions qui aident à lire une COURBE DE CHARGE : ce qui est une décharge, et où j'en
+  // suis. C'est le parti de la maquette.
+  const semCourante = plan.weeks.find((w) => w.days.some((d) => d.date === today));
+  plan.weeks.forEach((w) => {
+    const h = Math.max(8, Math.round((w.vol / plan.volPeak) * 52));
+    const ici = semCourante && w.num === semCourante.num;
+    const c = ici ? "var(--zn-orange, #ff3d00)" : w.isRecup ? "#9b72ff" : "var(--zn-surface-3, #20252c)";
+    html += '<div class="vb" style="height:' + h + "px;background:" + c + '" title="S' + w.num + " " + w.vol + "h · " + esc(w.phase.nom) + '"></div>';
+  });
+  html += '</div><div class="vol-cap">1 barre = 1 semaine · violet = récup'
+    + (semCourante ? " · orange = où tu en es" : "") + "</div>";
   // U15 — L'ONGLET S'OUVRE SUR LA SEMAINE EN COURS, PAS SUR QUATRE SEMAINES.
   //
   // Mesuré sur un marathon à 390 px : l'onglet faisait 5 164 px (6,1 écrans de défilement) et
@@ -412,7 +445,21 @@ export function renderTabPlanGeneral(plan) {
     };
   });
   document.querySelectorAll("#screen .ph-obj").forEach((dt) => {
-    dt.addEventListener("toggle", () => { if (dt.open) S._phOpen = dt.dataset.ph; else if (S._phOpen === dt.dataset.ph) S._phOpen = null; });
+    dt.addEventListener("toggle", () => {
+      if (dt.open) S._phOpen = dt.dataset.ph; else if (S._phOpen === dt.dataset.ph) S._phOpen = null;
+      // AUDIT UX — le programme se construit MAINTENANT, pas au rendu de l'onglet (voir
+      // `programmePhaseHTML`). Ses coches doivent être liées comme celles du rendu : on
+      // n'attache que sur les boutons NEUFS, sinon on relierait tout l'onglet à chaque
+      // ouverture — l'inverse de ce que ce correctif cherche.
+      const hote = dt.querySelector(".ph-prog");
+      if (!dt.open || !hote || hote.innerHTML.trim()) return;
+      const ph = plan.phases.find((x) => x.nom === dt.dataset.ph);
+      if (!ph) return;
+      hote.innerHTML = programmePhaseHTML(phaseStats(plan, ph));
+      hote.querySelectorAll(".doneBtn").forEach((b) => {
+        b.onclick = () => toggleDone(plan, b.dataset.dk, today, rerender);
+      });
+    });
   });
   $("backBp").onclick = () => { S.step = curSteps().length - 1; renderStep(); };
   $("allW").onclick = () => { S.showAllWeeks = !S.showAllWeeks; renderTabPlanGeneral(plan); window.scrollTo(0, 0); }; // re-rend la VUE — pas de buildPlan
