@@ -1,0 +1,335 @@
+/* ============================================================
+   R-ZENNA — EXTENSION DU THÈME AUX QUATRE AUTRES ONGLETS
+   ============================================================
+   `zenna-today.css` porte le SOCLE : palette `--zn-*`, redéfinition des jetons du thème clair
+   (--text/--text2/--muted/--ink/--bg*/--acc/--gold/--line), cadence de motion, et les classes
+   génériques (.card, .load-card, .load-title, .load-sub, .btn, .eyebrow, .warn, champs,
+   .gd-why/.gd-det/.gd-steps, .doneBtn, .eb-modal, #ebTabbar). Ce socle vaut désormais pour
+   TOUS les onglets — `tabs.js` pose `theme-zenna` en permanence.
+
+   Ce fichier-ci ne contient QUE ce que le socle ne couvre pas : les structures propres à
+   Profil, Plan, Semaine et Outils.
+
+   LE PRINCIPE QUI GOUVERNE TOUT CE QUI SUIT — ON TRANSPOSE, ON N'UNIFORMISE PAS.
+   Le thème clair encode du SENS dans ses couleurs : les quatre états d'une journée
+   (dur/facile/récup/off), les cinq identités de phase, les accents de discipline, les trois
+   badges de preuve des éducatifs, le rouge d'un bloc sécurité. Les repeindre toutes en gris
+   sombre ferait un thème cohérent et un produit muet. Chaque teinte porteuse de sens garde
+   donc sa FAMILLE, transposée en version sombre — jamais remplacée.
+
+   LE MODE DE PANNE À CONNAÎTRE. Le socle redéfinit `--ink` (encre) en CLAIR. Toute règle du
+   thème papier écrite `border: 3px solid var(--ink)` devient donc un liseré blanc épais, et
+   `box-shadow: 5px 5px 0 var(--ink)` une ombre portée BLANCHE. C'est la signature « collage »
+   qui se retourne : partout où le thème clair dessinait à l'encre, il faut soit repasser en
+   `--zn-border`, soit retirer l'ombre. C'est la source principale des règles ci-dessous.
+   ============================================================ */
+
+/* ============================================================
+   COMMUN — surfaces, séparateurs, ombres portées
+   ============================================================ */
+body.theme-zenna #screen .gw,
+body.theme-zenna #screen .drv-band,
+body.theme-zenna #screen .locked,
+body.theme-zenna #screen .bp-hero {
+  background: var(--zn-surface-2);
+  border: 1px solid var(--zn-border);
+  border-radius: 16px;
+  box-shadow: none;
+  transform: none;
+}
+body.theme-zenna #screen .gate {
+  background: var(--zn-surface-2); border: 1px solid var(--zn-orange-glow);
+  border-radius: 18px; box-shadow: none; transform: none;
+}
+/* Le séparateur des listes d'explication : `var(--bg2)` vaut #181c22 en thème sombre, soit
+   presque la couleur de la carte — la ligne disparaissait. */
+body.theme-zenna #screen .exp-row { border-top-color: var(--zn-border); }
+body.theme-zenna #screen .drv-title { color: var(--zn-text); }
+body.theme-zenna #screen .drv {
+  background: var(--zn-surface-3); border: 1px solid var(--zn-border);
+  border-left: 4px solid var(--dc, var(--zn-orange)); box-shadow: none; border-radius: 10px;
+  color: var(--zn-text);
+}
+/* La cursive « papier » (.why, .vol-cap, .wk-skip, .branch) : on garde la police — c'est le
+   dernier reste manuscrit et il donne sa chaleur au produit — mais plus la rotation ni les
+   fonds crème, qui n'ont aucun sens sur du noir. */
+body.theme-zenna #screen .why,
+body.theme-zenna #screen .vol-cap,
+body.theme-zenna #screen .wk-skip { color: var(--zn-muted); transform: none; }
+body.theme-zenna #screen .branch {
+  background: rgba(255, 210, 61, .07); border: 1px solid rgba(255, 210, 61, .35);
+  border-radius: 14px; box-shadow: none; transform: none; color: var(--zn-text);
+}
+body.theme-zenna #screen .q-def {
+  background: var(--zn-surface-3); border: 1px solid var(--zn-border);
+  border-radius: 12px; box-shadow: none; transform: none; color: var(--zn-text);
+}
+
+/* ============================================================
+   🗓 PLAN — frise de phases, barres de volume, listes de décisions
+   ============================================================ */
+/* La frise garde les CINQ identités de phase (fond teinté + bordure posés en inline par le
+   moteur : base, dev, spé, affûtage, récup). On ne touche qu'à l'ombre portée et au texte. */
+body.theme-zenna #screen .ph-seg {
+  border-width: 1px; box-shadow: none; border-radius: 10px;
+}
+body.theme-zenna #screen .ph-seg span { color: var(--zn-text); }
+body.theme-zenna #screen .ph-seg em { color: var(--zn-muted-2); }
+/* Les barres de volume font 3 px de large : un liseré de 1,5 px devenu BLANC les noyait
+   complètement (le contour représentait la moitié de la barre). On le retire. */
+body.theme-zenna #screen .vol-bars { border-bottom: 1px solid var(--zn-border); }
+body.theme-zenna #screen .vb { border: none; border-radius: 3px 3px 0 0; }
+/* Les sous-objectifs de phase : piste et coches, invisibles sinon (encre sur encre). */
+body.theme-zenna #screen .ph-obj { border-color: var(--zn-border); background: var(--zn-surface-2); }
+body.theme-zenna #screen .ph-obj summary { color: var(--zn-text); }
+/* Le bandeau « prépa raccourcie » (R22) pose son fond crème en INLINE : un rectangle blanc
+   plein écran sur fond noir. Il doit rester ALARMANT — c'est une condition de sécurité — donc
+   on transpose en ambre sombre plutôt que de le neutraliser. `!important` est ici la seule
+   écriture possible face à un style inline, et il est borné à ce bandeau. */
+body.theme-zenna #screen .load-card[role="note"] {
+  background: rgba(255, 210, 61, .09) !important;
+  border-color: rgba(255, 210, 61, .45) !important;
+}
+body.theme-zenna #screen .load-card[role="note"] .load-title { color: var(--zn-gold); }
+
+/* ============================================================
+   📅 SEMAINE (et la grille partagée avec 🗓 Plan)
+   ============================================================
+   `weekGridHTML` vit dans tab-plan-general.js et est consommée par les DEUX onglets : ces
+   règles servent donc aux deux, et c'est voulu — une seule grille, un seul habillage. */
+body.theme-zenna #screen .gw-h b { color: var(--zn-text); font-family: var(--zn-display); letter-spacing: .02em; }
+body.theme-zenna #screen .gw-h em { color: var(--zn-muted); font-family: var(--zn-mono); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .gw-grid { gap: 6px; }
+body.theme-zenna #screen .gd {
+  background: var(--zn-surface-3);
+  border: 1px solid var(--zn-border);
+  border-radius: 12px;
+  box-shadow: none;
+}
+/* LES QUATRE ÉTATS DE JOURNÉE — transposés, pas uniformisés. Même famille de teinte que le
+   thème papier (rouge = dur, vert = facile, violet = récup, neutre = repos), en version
+   sombre : l'athlète qui a appris à lire sa semaine d'un coup d'œil ne réapprend rien. */
+body.theme-zenna #screen .gd.dur    { background: rgba(255, 61, 0, .14);   border-color: rgba(255, 61, 0, .34); }
+body.theme-zenna #screen .gd.facile { background: rgba(31, 184, 166, .12); border-color: rgba(31, 184, 166, .30); }
+body.theme-zenna #screen .gd.recup  { background: rgba(155, 114, 255, .14); border-color: rgba(155, 114, 255, .32); }
+body.theme-zenna #screen .gd.off    { background: var(--zn-surface-2); opacity: .75; }
+/* La case du jour : l'ombre portée dure est la signature papier, elle tombe. L'orange du thème
+   EST déjà son vocabulaire d'attention — on n'invente pas une seconde couleur d'accent. */
+body.theme-zenna #screen .gd.today {
+  outline: 2px solid var(--zn-orange); outline-offset: 1px; box-shadow: none;
+}
+body.theme-zenna #screen .gd.today .gd-top i { color: var(--zn-orange-tint); }
+body.theme-zenna #screen .gd-top b { color: var(--zn-text); }
+body.theme-zenna #screen .gd-top i,
+body.theme-zenna #screen .gd-n { color: var(--zn-muted); }
+/* Le ⇄ pose ses couleurs en inline quand il est armé : `!important` est la seule écriture qui
+   passe devant un style inline, et il reste borné à ce bouton. */
+body.theme-zenna #screen .swapBtn { color: var(--zn-muted-2); border-color: var(--zn-border); }
+body.theme-zenna #screen .gd.swap-pend { outline: 2px dashed var(--zn-gold); outline-offset: 1px; }
+/* La barre de bilan portait un liseré LITTÉRAL `1px solid #16130e` : un trait noir sur fond
+   sombre, donc une piste sans contour visible. */
+body.theme-zenna #screen .prog-track,
+body.theme-zenna #screen [style*="border:1px solid #16130e"] { border-color: var(--zn-border) !important; }
+
+/* ============================================================
+   📋 PROFIL — avatar, jauges, badges, mesures
+   ============================================================
+   L'AVATAR EST DESSINÉ POUR UN FOND CLAIR (traits sombres, aplats crème). Le repeindre
+   demanderait de reprendre chaque calque de `avatar-tri.js`, avec le risque de casser le
+   contrat de calques que `smoke-avatar` vérifie. On lui pose donc une PLAQUE CLAIRE — c'est
+   exactement ce que fait déjà `export.js` pour les cartes de partage, donc un idiome du
+   produit, pas un contournement. */
+body.theme-zenna #screen svg[aria-label^="Avatar"],
+body.theme-zenna .eb-modal svg[aria-label^="Avatar"] {
+  background: #f2ece0;
+  border-radius: 16px;
+  padding: 4px;
+}
+body.theme-zenna #screen #avSvg { border-radius: 18px; }
+body.theme-zenna #screen #avSvg:focus-visible { outline: 3px solid var(--zn-orange); outline-offset: 2px; }
+/* Jauges par discipline : la piste et le remplissage sont posés en inline avec les accents de
+   DISCIPLINE (natation/vélo/course) — ce sont des couleurs de sens, on n'y touche pas. Seule
+   la piste, en gris clair, doit s'assombrir. */
+body.theme-zenna #screen [style*="background:var(--bg2"],
+body.theme-zenna #screen [style*="background:#e8e0cf"] { background: var(--zn-track-bg) !important; }
+/* Badges gagnés : fond blanc + bordure encre → blanc sur blanc une fois `--ink` éclairci.
+   C'est le pire contraste de l'onglet (1,13:1) tant qu'il n'est pas repris. */
+body.theme-zenna #screen [style*="border:1.5px solid #16130e"],
+body.theme-zenna #screen [style*="border:1.5px solid var(--ink)"] {
+  background: var(--zn-surface-3) !important;
+  border-color: var(--zn-border) !important;
+  color: var(--zn-text);
+}
+body.theme-zenna #screen input[type=time],
+body.theme-zenna #screen select {
+  background: var(--zn-surface-3); border: 1px solid var(--zn-border); color: var(--zn-text);
+  border-radius: 10px; min-height: 44px; box-shadow: none;
+}
+/* `--accent2` n'est défini NULLE PART dans le produit : `.aide-btn.on` retombait sur son repli
+   `#dcecff` (bleu très clair), donc un rond quasi blanc en plein thème sombre. */
+body.theme-zenna .aide-btn { background: var(--zn-surface-3); border-color: var(--zn-border); color: var(--zn-text); box-shadow: none; }
+body.theme-zenna .aide-btn.on { background: var(--zn-orange-tint); color: #0a0a0a; box-shadow: none; }
+
+/* ============================================================
+   🧰 OUTILS — sous-onglets, nutrition, éducatifs
+   ============================================================ */
+body.theme-zenna #screen .subtab {
+  background: var(--zn-surface-2); border: 1px solid var(--zn-border); color: var(--zn-muted);
+  border-radius: 13px; box-shadow: none; font-family: var(--zn-mono);
+}
+body.theme-zenna #screen .subtab.active { background: var(--zn-orange-tint); border-color: transparent; color: #0a0a0a; font-weight: 700; }
+
+/* --- Éducatifs. Le module a été écrit pour le thème papier : ses fonds pastel deviennent des
+       rectangles quasi blancs, et son texte, qui hérite de `--text` (désormais clair), devient
+       blanc SUR ce pastel — c'est la cassure la plus large du lot. Chaque bloc garde sa
+       famille de teinte (bleu = preuve solide, vert = terrain, ambre = consensus, rouge =
+       sécurité) : ce sont des repères de LECTURE, pas de la décoration. --- */
+body.theme-zenna #screen .edu-disc {
+  background: var(--zn-surface-2); border: 1px solid var(--zn-border); color: var(--zn-text);
+  box-shadow: none; border-radius: 12px; border-top: 3px solid var(--sa, var(--zn-orange));
+}
+body.theme-zenna #screen .edu-disc[aria-current="true"] { background: var(--sa, var(--zn-orange)); color: #0a0a0a; }
+body.theme-zenna #screen .edu-section { border-left: 6px solid var(--sa, var(--zn-orange)); }
+body.theme-zenna #screen .edu-section[data-locked="true"] { border-left-color: var(--zn-border); }
+body.theme-zenna #screen .edu-badge { border: 1px solid var(--zn-border); color: var(--zn-text); }
+body.theme-zenna #screen .edu-badge[data-n="forte"]     { background: rgba(59, 158, 255, .16); border-color: rgba(59, 158, 255, .38); }
+body.theme-zenna #screen .edu-badge[data-n="terrain"]   { background: rgba(31, 184, 166, .16); border-color: rgba(31, 184, 166, .38); }
+body.theme-zenna #screen .edu-badge[data-n="consensus"] { background: rgba(255, 210, 61, .14); border-color: rgba(255, 210, 61, .38); }
+body.theme-zenna #screen .edu-progress { background: var(--zn-surface-2); border: 1px solid var(--zn-border); }
+body.theme-zenna #screen .edu-bead { background: var(--zn-surface-3); border: 1px solid var(--zn-border); color: var(--zn-text); }
+body.theme-zenna #screen .edu-bead[data-state="done"] { background: var(--sa, var(--zn-orange)); color: #0a0a0a; }
+body.theme-zenna #screen .edu-bead[data-state="active"] { background: var(--zn-gold); color: #0a0a0a; }
+body.theme-zenna #screen .edu-bead[data-state="locked"] { background: var(--zn-surface); color: var(--zn-muted-2); }
+body.theme-zenna #screen .edu-pbar { background: var(--zn-border); }
+body.theme-zenna #screen .edu-block-h { background: var(--zn-surface-3); color: var(--zn-muted); border-radius: 6px; }
+body.theme-zenna #screen .edu-table td { border: 1px solid var(--zn-border); color: var(--zn-text); }
+body.theme-zenna #screen .edu-table tr[data-niveau="r"] td:first-child,
+body.theme-zenna #screen .edu-table tr[data-niveau="no"] td:first-child { background: rgba(255, 61, 0, .14); }
+body.theme-zenna #screen .edu-table tr[data-niveau="o"] td:first-child,
+body.theme-zenna #screen .edu-table tr[data-niveau="mid"] td:first-child { background: rgba(255, 210, 61, .12); }
+body.theme-zenna #screen .edu-table tr[data-niveau="g"] td:first-child,
+body.theme-zenna #screen .edu-table tr[data-niveau="ok"] td:first-child { background: rgba(59, 158, 255, .14); }
+body.theme-zenna #screen .edu-drill { background: var(--zn-surface-2); border: 1px solid var(--zn-border); }
+body.theme-zenna #screen .edu-drill strong { color: var(--zn-text); }
+body.theme-zenna #screen .edu-drill span { color: var(--zn-muted); }
+body.theme-zenna #screen .edu-debat { background: rgba(255, 210, 61, .07); border: 1px solid rgba(255, 210, 61, .35); }
+body.theme-zenna #screen .edu-debat strong { color: var(--zn-gold); }
+body.theme-zenna #screen .edu-debat span { color: var(--zn-muted); }
+/* Le bloc SÉCURITÉ garde son rouge : c'est le seul bloc du module qu'on ne doit pas pouvoir
+   confondre avec du contenu ordinaire, et le manifeste met la santé avant l'esthétique. */
+body.theme-zenna #screen .edu-secu {
+  background: rgba(255, 61, 0, .10); border: 1px solid rgba(255, 61, 0, .45); border-left: 6px solid var(--zn-orange);
+}
+body.theme-zenna #screen .edu-secu strong { color: #ff9d8d; }
+body.theme-zenna #screen .edu-secu span { color: var(--zn-ink-2); }
+body.theme-zenna #screen .edu-renvoi { background: var(--zn-surface-2); border: 1px solid var(--zn-border); }
+body.theme-zenna #screen .edu-renvoi strong { color: var(--zn-orange-tint); }
+body.theme-zenna #screen .edu-renvoi span { color: var(--zn-muted); }
+body.theme-zenna #screen .edu-sources-box { background: var(--zn-surface-2); border: 1px solid var(--zn-border); }
+body.theme-zenna #screen .edu-sources-box[open] summary { border-bottom: 1px solid var(--zn-border); }
+body.theme-zenna #screen .edu-src-group + .edu-src-group { border-top: 1px dashed var(--zn-border); }
+body.theme-zenna #screen .edu-src-group h3 { color: var(--zn-muted-2); }
+body.theme-zenna #screen .edu-src-group li { color: var(--zn-muted); }
+body.theme-zenna #screen .edu-src-group a { color: var(--zn-orange-tint); }
+/* --- Les FIGURES SVG des éducatifs. Les traits d'encre suivent `--ink` et s'éclaircissent
+       tout seuls ; ce sont les REMPLISSAGES blancs et les couleurs d'accent qui cassent (une
+       tête blanche pleine sur fond clair devient une boule blanche illisible, et les accents
+       choisis pour un fond crème perdent leur contraste sur du noir). --- */
+body.theme-zenna #screen .edu-panel { background: var(--zn-surface-2); border: 1px solid var(--zn-border); }
+body.theme-zenna #screen .edu-panel-h { border-bottom: 1px solid var(--zn-border); color: var(--zn-text); }
+body.theme-zenna #screen .edu-panel-h.edu-bad, body.theme-zenna #screen .edu-panel-h.edu-a { background: rgba(255, 61, 0, .16); }
+body.theme-zenna #screen .edu-panel-h.edu-good, body.theme-zenna #screen .edu-panel-h.edu-b { background: rgba(59, 158, 255, .16); }
+body.theme-zenna #screen .edu-panel-h.edu-n { background: var(--zn-surface-3); }
+body.theme-zenna #screen .edu-headfig,
+body.theme-zenna #screen .edu-headc { fill: var(--zn-surface-2); }
+body.theme-zenna #screen .edu-ar { stroke: #ff9d8d; }
+body.theme-zenna #screen .edu-ak { stroke: #7fd4f0; }
+body.theme-zenna #screen .edu-flow { stroke: #7ea6ff; }
+body.theme-zenna #screen .edu-water { stroke: #7fd4f0; }
+body.theme-zenna #screen .edu-lb { fill: #ff9d8d; }
+body.theme-zenna #screen .edu-lk { fill: #7fd4f0; }
+body.theme-zenna #screen .edu-lm { fill: var(--zn-muted-2); }
+body.theme-zenna #screen .edu-panel figcaption { color: var(--zn-muted); }
+
+/* ============================================================
+   ONGLET NON CENTRAL — pas de motion d'entrée hors Aujourd'hui.
+   ============================================================
+   La cascade est le geste d'ARRIVÉE du produit : elle a du sens sur l'écran qu'on ouvre chaque
+   matin, elle en a beaucoup moins sur un onglet de consultation qu'on parcourt en aller-retour.
+   Et elle a un coût réel : `.rise` met le contenu à opacité 0 en attendant son animation, donc
+   chaque aller-retour rejoue une attente. Les quatre autres onglets prennent la PALETTE sans la
+   cascade — c'est `tabs.js` qui décide, en n'appelant `znPlay` que sur Aujourd'hui. Rien à
+   écrire ici : c'est noté pour qu'on ne s'étonne pas de l'absence. */
+
+/* ============================================================
+   LE BALAYAGE DES PASTELS DU THÈME PAPIER
+   ============================================================
+   Trouvé par la garde de contraste étendue aux cinq onglets, et c'est sa raison d'être : des
+   fonds pastel restaient posés soit par des règles nominatives de `styles.css`
+   (`.bp-heros .bp-hero:nth-child(n)`), soit en STYLE INLINE par les modules. Le texte, lui,
+   hérite désormais de `--text` (clair) : blanc sur rose pâle, mesuré à **1,02:1** — invisible.
+
+   On ne peut pas corriger ça carte par carte : ces teintes sont dispersées dans six modules et
+   la prochaine arrivera sans prévenir. On balaie donc par la COULEUR, qui est le seul point
+   commun stable — chaque pastel du thème papier est transposé vers son équivalent sombre de la
+   MÊME famille (rose→orange, jaune→ambre, bleu→bleu, vert→turquoise, violet→violet), pour que
+   ce que la teinte signalait continue de se lire. */
+body.theme-zenna #screen .bp-heros .bp-hero:nth-child(1),
+body.theme-zenna #screen [style*="#ffe3e0"],
+body.theme-zenna #screen [style*="#f9dcd7"],
+body.theme-zenna #screen [style*="#fdf0ed"] { background: rgba(255, 61, 0, .13) !important; border-color: rgba(255, 61, 0, .34) !important; }
+body.theme-zenna #screen .bp-heros .bp-hero:nth-child(2),
+body.theme-zenna #screen [style*="#fff4c2"],
+body.theme-zenna #screen [style*="#fff8e6"],
+body.theme-zenna #screen [style*="#fff3d6"],
+body.theme-zenna #screen [style*="#fdf6e9"],
+body.theme-zenna #screen [style*="#fbeeda"] { background: rgba(255, 210, 61, .10) !important; border-color: rgba(255, 210, 61, .34) !important; }
+body.theme-zenna #screen .bp-heros .bp-hero:nth-child(3),
+body.theme-zenna #screen [style*="#dcecff"],
+body.theme-zenna #screen [style*="#d6eff8"],
+body.theme-zenna #screen [style*="#d9eafb"] { background: rgba(59, 158, 255, .13) !important; border-color: rgba(59, 158, 255, .32) !important; }
+body.theme-zenna #screen .bp-heros .bp-hero:nth-child(4),
+body.theme-zenna #screen [style*="#d9f3e1"],
+body.theme-zenna #screen [style*="#e2f0dc"] { background: rgba(31, 184, 166, .12) !important; border-color: rgba(31, 184, 166, .30) !important; }
+body.theme-zenna #screen [style*="#e9defc"] { background: rgba(155, 114, 255, .14) !important; border-color: rgba(155, 114, 255, .32) !important; }
+body.theme-zenna #screen [style*="#efe8d8"],
+body.theme-zenna #screen [style*="#ede9e1"],
+body.theme-zenna #screen [style*="#f6efe0"] { background: var(--zn-surface-2) !important; }
+body.theme-zenna #screen .bp-hero { transform: none; box-shadow: none; }
+body.theme-zenna #screen .bp-hero .bh-cat { color: var(--zn-muted); }
+body.theme-zenna #screen .bp-hero .bh-val { color: var(--zn-text); }
+/* Les tuiles de journée reçoivent leurs pastels par CLASSE (traité plus haut) mais leur texte
+   direct n'a pas toujours de classe porteuse : on force la couleur au niveau de la tuile. */
+body.theme-zenna #screen .gd,
+body.theme-zenna #screen .gd.dur,
+body.theme-zenna #screen .gd.facile,
+body.theme-zenna #screen .gd.recup,
+body.theme-zenna #screen .gd.off { color: var(--zn-text); }
+
+/* ---- Et le symétrique : les ENCRES du thème papier posées en style inline. Même mécanisme
+       que les pastels ci-dessus, dans l'autre sens — `color:#3f3a30` (brun d'encre) sur carte
+       sombre mesure 1,51:1. Balayage par la couleur, seul point commun stable entre six
+       modules ; chaque encre part vers le gris clair de son rôle (corps ou secondaire). ---- */
+body.theme-zenna #screen [style*="color:#3f3a30"],
+body.theme-zenna #screen [style*="color:#16130e"],
+body.theme-zenna #screen [style*="color:#4d463a"] { color: var(--zn-text) !important; }
+body.theme-zenna #screen [style*="color:#635b4a"],
+body.theme-zenna #screen [style*="color:#555"],
+body.theme-zenna #screen [style*="color:#999"],
+body.theme-zenna #screen [style*="color:#b3ab9b"] { color: var(--zn-muted) !important; }
+/* Les encres qui portent un ÉTAT gardent leur famille : ambre = avertissement, rouge = alerte,
+   vert = réussite. On les éclaircit juste assez pour repasser le seuil sur fond sombre. */
+body.theme-zenna #screen [style*="color:#8a6d00"],
+body.theme-zenna #screen [style*="color:#c47f00"] { color: var(--zn-gold) !important; }
+body.theme-zenna #screen [style*="color:#a33"],
+body.theme-zenna #screen [style*="color:#c0392b"] { color: #ff9d8d !important; }
+body.theme-zenna #screen [style*="color:#00734f"],
+body.theme-zenna #screen [style*="color:#00a376"] { color: var(--zn-good) !important; }
+/* Une pastille pleine à l'accent porte du BLANC dans le thème papier (accent rouge sombre,
+   #ff3b30) — mais l'accent du thème sombre est un orange plus lumineux (#ff3d00), sur lequel
+   le blanc ne mesure que 3,55:1. C'est l'encre sombre qui y est lisible (5,58:1), exactement
+   comme dans le héros. On inverse donc le texte, on ne change pas la couleur de la pastille. */
+body.theme-zenna #screen [style*="background:var(--acc)"] { color: #0a0a0a !important; }
+/* Le rouge « dur » de la légende des intensités : 4,46:1, à 0,04 du seuil. Il reste rouge —
+   c'est le repère de la zone la plus intense — simplement éclairci (7,61:1). */
+body.theme-zenna #screen [style*="color:#e63946"] { color: #ff7d92 !important; }

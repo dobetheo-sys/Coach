@@ -5083,3 +5083,90 @@ sont à 30-31 px, au-dessus du minimum WCAG (24) mais sous le standard de 44 px 
 pour ce dépôt — pré-existant, non traité ici. Enfin, la chip discipline du trail affiche
 « 🏃 Course » parce que le moteur code ses séances `d: "rn"` : correct techniquement, discutable
 pour un trailer.
+
+## R-ZENNA (v3) — le motion re-cadencé, et le thème étendu aux cinq onglets
+
+### « Beaucoup trop rapide » n'était pas une question de vitesse
+
+Retour du fondateur. Chronométré image par image après la dernière réponse du check-in :
+
+```
+t=1487 ms   rideau OPAQUE   9 cartes déjà arrivées   compteur fini   anneau fini
+t=1856 ms   rideau PARTI    plus rien ne bouge, et plus rien ne bougera
+```
+
+**Tout le système de motion se jouait derrière la couche de verdict.** Quand elle se levait,
+l'écran était déjà figé : aucune animation n'était visible. Ce n'était pas « trop rapide »,
+c'était « déjà fini » — et aucun réglage de durée ne l'aurait corrigé. La cause est mon propre
+correctif : pour ne pas retarder l'affichage (budget U7), j'avais rendu le tampon non bloquant.
+Il ne retarde plus rien, mais il RECOUVRE le moment où tout se joue ; la séquence de la maquette
+(tampon, PUIS révélation) avait disparu dans l'opération.
+
+**Portillon de mouvement** : le contenu est rendu tout de suite, seules les ANIMATIONS attendent
+que le rideau se lève. Chien de garde à 4 s, parce que le mode de panne d'un portillon d'opacité
+est l'écran vide — il doit s'ouvrir tout seul. Un piège trouvé en mesurant : sans retirer
+`zn-play` dès la retenue, `#screen` gardait la classe du rendu précédent et la cascade se jouait
+**deux fois**, dont une invisible. Mesuré après : rien ne bouge sous le rideau, puis 1,6 s
+d'animation visible.
+
+### Le barème, revu par quatre lentilles indépendantes
+
+Material 3, Apple HIG, IBM Carbon et psychophysique de la perception, consultées séparément sur
+le même inventaire. **Elles ont convergé sur la même cause avec le même chiffre** :
+`cubic-bezier(.25,.46,.45,.94)` a une pente à l'origine de **1,84** — la carte apparaissait déjà
+lancée à 1,84× sa vitesse moyenne, franchissait 90 % de ses 22 px en ~490 ms, puis dérivait
+230 ms sous le seuil de perception. On déclarait 720 ms, l'œil en voyait 450.
+
+Trois corrections, dans cet ordre : **la courbe part du repos** (pente 0,18) ; **la distance
+passe à 40 px** (22 px sur une carte pleine largeur est un sursaut, pas une trajectoire — l'œil
+n'a rien à suivre et enregistre « apparu », donc instantané) ; **l'opacité est découplée du
+déplacement** (pleine à 42 %, donc lisible PLUS TÔT qu'avant, ce qui rend de la marge au budget
+d'affichage au lieu d'en prendre). `--beat` 120 → 160 ms. Le tap ne suit pas et **descend** à
+120 ms : la manipulation directe doit rester immédiate (3 lentilles sur 4). Une rectification du
+panel au passage : `znPlay` plafonne à `r8`, donc la dernière carte porte 7 pas de décalage et
+non 8 — mon inventaire était décalé d'un cran.
+
+### L'extension aux quatre autres onglets
+
+`theme-zenna` devient permanent. **Ce qui reste propre à Aujourd'hui, délibérément** : la
+cascade, le CTA collant, le parallax. La cascade est le geste d'ARRIVÉE — pertinent sur l'écran
+qu'on ouvre chaque matin, coûteux sur un onglet de consultation qu'on parcourt en aller-retour,
+puisque `.rise` met le contenu à opacité 0 en attendant son animation.
+
+**Le principe : on TRANSPOSE, on n'uniformise pas.** Le thème clair encode du sens dans ses
+couleurs (quatre états de journée, cinq identités de phase, accents de discipline, trois badges
+de preuve, rouge de sécurité). Les repeindre en gris ferait un thème cohérent et un produit
+muet : chaque teinte porteuse de sens garde sa FAMILLE, transposée.
+
+**Le mode de panne à connaître** : le socle redéfinit `--ink` en CLAIR, donc toute règle du thème
+papier écrite `border: 3px solid var(--ink)` devient un liseré blanc épais et
+`box-shadow: 5px 5px 0 var(--ink)` une ombre portée BLANCHE. C'est la source principale des
+règles de `css/zenna-tabs.css`.
+
+**Deux balayages plutôt que du cas par cas.** La garde de contraste étendue aux cinq onglets a
+trouvé des fonds pastel à **1,02:1** (texte devenu clair sur rose pâle) et des encres inline à
+**1,51:1** (`color:#3f3a30` sur carte sombre). Ces teintes sont dispersées dans six modules et la
+prochaine arrivera sans prévenir : on balaie donc par la COULEUR — seul point commun stable —
+chaque pastel et chaque encre partant vers son équivalent sombre de la même famille.
+
+### Deux régressions attrapées par les gardes existantes, et ce qu'elles apprennent
+
+**`smoke-usage` U3 est passé rouge sans qu'une ligne de contenu ait bougé.** Cause :
+`text-transform: uppercase` sur `.load-title` **change ce que rend `innerText`** — la recherche
+de texte dans la page, le copier-coller et les tests cessent de trouver la casse d'origine. Les
+libellés de la maquette sont en capitales et c'est juste POUR DES LIBELLÉS ; `.load-title` porte
+ici de vraies phrases françaises. Une décision de style ne doit pas modifier le texte que la page
+EXPOSE.
+
+**`smoke-typo` a vu la hiérarchie s'inverser** : à 10,5 px le titre de carte passait SOUS son
+propre sous-texte (12 px). Ce banc vérifie des RELATIONS d'ordre entre rôles, pas des valeurs —
+c'est précisément ce qui lui permet d'attraper une inversion qu'aucun seuil absolu n'aurait vue.
+
+### Garde
+
+`smoke-zenna` passe de 38 à 46 assertions. Son §3 **change de sens et c'est écrit** : il
+assertait « le thème est RETIRÉ sur les quatre autres onglets » tant que le reskin était scopé ;
+il asserte désormais que sur CHACUN des cinq, le thème est posé, le fond est sombre, rien n'est
+resté invisible, aucun flottant d'Aujourd'hui ne traîne, et **aucun texte ne passe sous le seuil
+AA**. Le réécrire était la seule option honnête — le supprimer aurait laissé quatre onglets sans
+garde.

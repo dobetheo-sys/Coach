@@ -21,10 +21,12 @@ import { stravaAuthFromHash } from "./strava.js";
 // « zéro requête réseau » du build). `buildStandalone.mjs` inline déjà cette feuille dans le
 // <style> de tête, au même titre que styles.css/mobile.css.
 if (!globalThis.EB_STANDALONE) {
-  const l = document.createElement("link");
-  l.rel = "stylesheet";
-  l.href = "css/zenna-today.css";
-  document.head.appendChild(l);
+  for (const f of ["css/zenna-today.css", "css/zenna-tabs.css"]) {
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = f;
+    document.head.appendChild(l);
+  }
 }
 
 /**

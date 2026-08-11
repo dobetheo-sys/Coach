@@ -237,33 +237,71 @@ async function boot(reducedMotion) {
   await ctx.close();
 }
 
-// ─────────── 3. Les quatre autres onglets ne sont pas contaminés ───────────
+// ─────────── 3. Le thème vaut pour LES CINQ onglets, et chacun reste lisible ───────────
+//
+// CE CRITÈRE A CHANGÉ DE SENS, ET C'EST VOULU. Tant que le reskin était une preuve de concept
+// scopée à un seul onglet, il assertait l'inverse : « le thème sombre est RETIRÉ » sur les
+// quatre autres. Le thème étant maintenant permanent, cette formulation serait fausse par
+// construction — la réécrire est la seule option honnête ; la supprimer laisserait les quatre
+// onglets sans aucune garde.
+//
+// Ce qu'il garde désormais est plus utile que ce qu'il gardait : sur CHAQUE onglet, le thème
+// est posé, le fond est sombre, le contenu est rendu, RIEN n'est resté invisible, et aucun
+// élément flottant d'Aujourd'hui (CTA collant, couche de verdict) ne traîne.
+//
+// « Rien n'est resté invisible » est le critère qui compte : `.rise` met le contenu à
+// opacité 0 en attendant une animation qui n'est PAS jouée hors d'Aujourd'hui. Si quelqu'un
+// posait un jour `rise` sans `znPlay` sur un de ces onglets, il serait entièrement vide — et
+// aucune assertion de contenu ne le verrait, puisque le texte est bien dans le DOM.
 {
   const { ctx, page, errors } = await boot("no-preference");
   for (const t of ["profile", "general", "week", "outils"]) {
     await page.click('#ebTabbar .tabbtn[data-tab="' + t + '"]');
-    await page.waitForTimeout(450);
+    await page.waitForTimeout(500);
     const st = await page.evaluate(() => ({
       theme: document.body.classList.contains("theme-zenna"),
       bg: getComputedStyle(document.body).backgroundColor,
       sticky: !!document.querySelector(".zn-sticky-cta"),
-      invisible: [...document.querySelectorAll("#screen *")].filter((n) => getComputedStyle(n).opacity === "0").length,
+      stamp: !!document.querySelector(".zn-stamp-layer"),
+      invisibles: [...document.querySelectorAll("#screen *")]
+        .filter((n) => getComputedStyle(n).opacity === "0" && (n.textContent || "").trim().length > 3).length,
       txt: (document.getElementById("screen").innerText || "").length,
     }));
-    ok(!st.theme, "onglet " + t + " : le thème sombre est RETIRÉ");
-    ok(st.bg !== "rgb(0, 0, 0)", "onglet " + t + " : fond papier conservé (" + st.bg + ")");
-    ok(!st.sticky, "onglet " + t + " : pas de CTA collant qui traîne");
+    ok(st.theme, "onglet " + t + " : le thème est posé");
+    ok(st.bg === "rgb(0, 0, 0)", "onglet " + t + " : fond sombre (" + st.bg + ")");
+    ok(!st.sticky && !st.stamp, "onglet " + t + " : aucun élément flottant d'Aujourd'hui ne traîne");
+    ok(st.invisibles === 0, "onglet " + t + " : aucun contenu resté invisible (" + st.invisibles + ")");
     ok(st.txt > 200, "onglet " + t + " : le contenu est bien rendu (" + st.txt + " car.)");
   }
-  // retour sur Aujourd'hui : la cascade se REJOUE
+  // Le CONTRASTE tient sur les cinq onglets, pas seulement sur celui qu'on a dessiné en
+  // premier : c'est là que se cachent les fonds pastel du thème clair devenus quasi blancs.
+  for (const t of ["profile", "general", "week", "outils"]) {
+    await page.click('#ebTabbar .tabbtn[data-tab="' + t + '"]');
+    await page.waitForTimeout(450);
+    const sous = await page.evaluate(`(() => {${WCAG}
+      const out = [];
+      for (const el of [...document.querySelectorAll("#screen *")]) {
+        if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim().length > 2)) continue;
+        const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+        const cs = getComputedStyle(el); if (cs.visibility === "hidden" || cs.opacity === "0") continue;
+        const size = parseFloat(cs.fontSize), w = parseInt(cs.fontWeight) || 400;
+        const seuil = (size >= 18.66 || (size >= 14 && w >= 700)) ? 3.0 : 4.5;
+        const rt = ratio(el);
+        if (rt < seuil) out.push({ t: el.textContent.trim().slice(0, 30), rt: Math.round(rt*100)/100, cls: (el.className||"").toString().slice(0,24) });
+      }
+      return out.sort((a,b)=>a.rt-b.rt).slice(0, 6);
+    })()`);
+    ok(sous.length === 0, "onglet " + t + " : aucun texte sous le seuil AA"
+      + (sous.length ? " — " + sous.map(x => x.rt + " «" + x.t + "» ." + x.cls).join(" · ") : ""));
+  }
+  // retour sur Aujourd'hui : la cascade se REJOUE (elle reste propre à cet onglet)
   await page.click('#ebTabbar .tabbtn[data-tab="today"]');
-  await page.waitForTimeout(1500);
-  await page.waitForTimeout(1500); // la cascade dure jusqu'à ~1520 ms (7 × 114 ms + 720 ms)
+  await page.waitForTimeout(2600); // cascade révisée : 7 × 176 ms + 960 ms ≈ 2190 ms
   const back = await page.evaluate(() => ({
     theme: document.body.classList.contains("theme-zenna"),
     op: [...document.querySelectorAll("#screen .rise")].map((n) => getComputedStyle(n).opacity),
   }));
-  ok(back.theme, "retour sur Aujourd'hui : le thème revient");
+  ok(back.theme, "retour sur Aujourd'hui : le thème est toujours là");
   ok(back.op.length > 0 && back.op.every((o) => o === "1"), "…et les cartes sont visibles (cascade rejouée)");
   ok(errors.length === 0, "aucune erreur console sur la traversée" + (errors.length ? " — " + errors[0] : ""));
   await ctx.close();

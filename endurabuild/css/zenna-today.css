@@ -257,12 +257,26 @@ body.theme-zenna #screen .card .eyebrow {
   border-radius: 100px;
   padding: 5px 11px;
 }
+/* DEUX CHOSES QUE LA MAQUETTE FAIT ET QU'ON NE REPREND PAS ICI, chacune pour une raison
+   mesurée — c'est le seul endroit du thème où l'on s'écarte volontairement de son style.
+
+   1. PAS `text-transform: uppercase`. Les libellés de la maquette sont en capitales, et c'est
+      juste POUR DES LIBELLÉS. Ici `.load-title` porte de vraies phrases françaises avec des
+      emoji (« 🧠 Les décisions du moteur (19) »), et la capitalisation CSS change ce que rend
+      `innerText` : la recherche de texte dans la page, le copier-coller et les tests cessent de
+      trouver la casse d'origine. Mesuré : `smoke-usage` U3 est passé rouge sur
+      `/décisions du moteur \(\d+\)/` sans qu'une ligne de contenu ait bougé. Une décision de
+      style ne doit pas modifier le texte que la page EXPOSE.
+
+   2. PAS 10,5 px. À cette taille le titre passait SOUS son propre sous-texte (`.load-sub`,
+      12 px) : la carte annonçait sa hiérarchie à l'envers, et `smoke-typo` — qui vérifie des
+      RELATIONS d'ordre entre rôles, pas des valeurs — l'a vu. On garde le mono et
+      l'interlettrage large (c'est ça, la signature Zenna), à la taille du rôle. */
 body.theme-zenna #screen .load-title {
   color: var(--zn-text);
   font-family: var(--zn-mono);
-  font-size: 10.5px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
+  font-size: var(--fs-md);
+  letter-spacing: .08em;
 }
 body.theme-zenna #screen .load-sub,
 body.theme-zenna #screen .load-leg,

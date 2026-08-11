@@ -247,10 +247,22 @@ function renderActiveTab() {
   // cosmétique : aucune classe/aucun id fonctionnel ne dépend de `theme-zenna`, seule la
   // feuille de style le lit. Retirée dès qu'on quitte l'onglet — les quatre autres gardent
   // l'habillage papier/collage au caractère près.
-  document.body.classList.toggle("theme-zenna", activeTab === "today");
-  // Les deux éléments FLOTTANTS du reskin (CTA collant, parallax du héros) vivent hors de
-  // `#screen` : ils survivraient donc à un changement d'onglet, qui ne remplace que `#screen`.
-  // On les retire à chaque rendu ; l'onglet Aujourd'hui les repose lui-même s'il les veut.
+  // R-ZENNA (extension) — LE THÈME VAUT MAINTENANT POUR TOUS LES ONGLETS.
+  //
+  // Il n'était posé que sur « Aujourd'hui » tant que le reskin était une preuve de concept
+  // scopée. Le produit n'a pas à changer d'identité visuelle en changeant d'onglet : la classe
+  // est désormais permanente tant qu'on est dans la vue à onglets, et `hideTabs()` la retire
+  // au retour au questionnaire.
+  //
+  // CE QUI RESTE PROPRE À AUJOURD'HUI, et c'est délibéré : la CASCADE d'entrée (`znPlay`), le
+  // CTA collant et le parallax du héros. La cascade est le geste d'ARRIVÉE — pertinent sur
+  // l'écran qu'on ouvre chaque matin, coûteux sur un onglet de consultation qu'on parcourt en
+  // aller-retour (`.rise` met le contenu à opacité 0 en attendant son animation, donc chaque
+  // retour rejouerait une attente). Les quatre autres onglets prennent la PALETTE, pas le
+  // mouvement d'entrée.
+  document.body.classList.add("theme-zenna");
+  // Les deux éléments FLOTTANTS du reskin vivent hors de `#screen` : ils survivraient donc à un
+  // changement d'onglet, qui ne remplace que `#screen`. L'onglet Aujourd'hui les repose lui-même.
   if (activeTab !== "today") { znClearStickyCta(); znClearParallax(); }
   const tab = TABS.find((t) => t[0] === activeTab) || TABS[TABS.length - 1];
   tab[3](plan);

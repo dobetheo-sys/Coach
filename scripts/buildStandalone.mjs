@@ -50,7 +50,7 @@ function collect(rel) {
 collect("js/app.js");
 
 // ---- 2. CSS + polices en data: (aucune requête réseau, donc offline par construction) ----
-let css = ["css/styles.css", "css/mobile.css", "css/zenna-today.css"].map(read).join("\n");
+let css = ["css/styles.css", "css/mobile.css", "css/zenna-today.css", "css/zenna-tabs.css"].map(read).join("\n");
 css = css.replace(/url\("\.\.\/assets\/fonts\/([^"]+)"\)/g,
   (_m, f) => 'url("data:font/woff2;base64,' + b64("assets/fonts/" + f) + '")');
 
