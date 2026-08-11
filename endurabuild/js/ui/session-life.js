@@ -357,7 +357,11 @@ export function heroSessionHTML(plan, todayIso) {
     corps = '<div class="zn-hero-title">' + primary.name + "</div>"
       + (metric ? '<div class="zn-hero-metric"><span class="zn-hero-num" data-val="' + metric.val + '">' + metric.val + '</span><span class="zn-hero-unit">' + metric.unit + "</span></div>" : "")
       + (suite ? '<div class="zn-hero-sub">puis ' + suite + "</div>" : (tech ? '<div class="zn-hero-sub">' + tech + "</div>" : ""))
-      + (w ? '<div class="zn-hero-why">\u{1F4A1} ' + w + "</div>" : "")
+      // `gd-why` EST conservée à côté de la classe du héros : c'est la classe sémantique du
+      // « pourquoi » d'une séance dans tout le produit, et `smoke-r4` §5 la cherche pour
+      // vérifier que la justification est visible SANS rien déplier. La renommer aurait rendu
+      // muette une garde qui protège l'explicabilité — le contre-positionnement du produit.
+      + (w ? '<div class="gd-why zn-hero-why">\u{1F4A1} ' + w + "</div>" : "")
       + '<div class="zn-disc-chip"><span>' + (DISC[primary.d] || DISC.rn).ic + " " + (DISC[primary.d] || DISC.rn).label + "</span></div>";
 
     // ── LA CARTE DE DÉTAIL — la barre de zones est CONSTRUITE depuis les steps du moteur ──
@@ -391,7 +395,11 @@ export function heroSessionHTML(plan, todayIso) {
     upcoming.sort((a, b) => a.date.localeCompare(b.date));
     const nxt = upcoming[0];
     corps = '<div class="zn-hero-title">Repos</div>'
-      + '<div class="zn-hero-rest">\u{1F60C} Rien à faire aujourd’hui — c’est là que le travail des jours passés devient de la forme.</div>'
+      // La phrase « Repos aujourd’hui » est GARDÉE MOT POUR MOT (U8, smoke-usage) : ce message
+      // avait vécu mort pendant des mois derrière un « OFF » sec, et sa garde le vérifie au
+      // caractère près. Ma première réécriture disait « Rien à faire aujourd’hui » — même sens,
+      // mais elle faisait rougir le critère qui protège précisément ce message.
+      + '<div class="zn-hero-rest">\u{1F60C} Repos aujourd’hui — c’est là que le travail des jours passés devient de la forme.</div>'
       + (nxt ? '<div class="zn-hero-sub">Prochaine séance : ' + nxt.jour + " " + fmtDay(nxt.date) + " · "
         + nxt.sessions.filter((s) => s.d !== "rs").map((s) => s.name).join(", ") + "</div>" : "")
       + '<div class="zn-disc-chip"><span>' + DISC.rs.ic + " " + DISC.rs.label + "</span></div>";

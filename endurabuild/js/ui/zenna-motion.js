@@ -202,6 +202,37 @@ export function znWeatherReady(slotEl) {
 }
 
 /* ============================================================
+   TAMPON DE VERDICT — la beat de la maquette, SANS retarder la séance
+   ============================================================
+   La maquette tamponne le verdict puis révèle la séance 1 320 ms plus tard. Reproduit
+   littéralement (un `await` avant `onDone`), ce beat DÉCALE l'affichage de la séance de
+   1,3 s chaque matin — exactement ce qu'U7 existe pour empêcher (« la séance apparaît sans
+   attendre »), et pire : « ta séance arrive… » disparaissant AVANT la séance, U7 mesurait la
+   fin d'un écran d'attente au lieu de l'arrivée de la séance. Une mesure qui cesse de mesurer
+   ce qu'elle nomme est plus coûteuse que le beat qu'elle garde.
+
+   Le tampon devient donc une COUCHE : la séance est rendue immédiatement derrière, le verdict
+   se tamponne par-dessus et s'efface seul. Même geste à l'œil, zéro milliseconde ajoutée au
+   chemin critique. */
+export function znVerdictStamp(html, opts) {
+  if (!znOn() || !html) return;
+  const o = opts || {};
+  const ov = document.createElement("div");
+  ov.className = "zn-stamp-layer";
+  ov.setAttribute("aria-hidden", "true"); // le verdict est DÉJÀ lu dans le héros, sous la couche
+  ov.innerHTML = html;
+  document.body.appendChild(ov);
+  const badge = ov.querySelector(".zn-verdict-badge");
+  if (o.celebrate && badge) znConfetti(badge);
+  const partir = () => {
+    ov.style.opacity = "0";
+    setTimeout(() => ov.remove(), 300);
+  };
+  setTimeout(partir, znReduce() ? 600 : BEAT * 13);
+  ov.addEventListener("click", partir); // on peut toujours passer devant
+}
+
+/* ============================================================
    CTA COLLANT — en zone pouce, au scroll, tant que la séance n'est pas validée
    ============================================================ */
 let _cta = null, _ctaScroll = null;

@@ -6,7 +6,7 @@
 import { S, $, esc } from "../state.js";
 import { applyReadinessSnap, verdictHTML, primeWeather } from "./readiness.js";
 import { VERDICT_ICON } from "./icons.js";
-import { znOn, znConfetti } from "./zenna-motion.js";
+import { znVerdictStamp } from "./zenna-motion.js";
 
 function greeting() {
   const h = new Date().getHours();
@@ -139,7 +139,11 @@ export function checkinSlideshowHTML() {
   // corps de diapo isolé dans son propre conteneur : c'est LUI qui rejoue l'animation de
   // glissement à chaque question (`ck-slide-anim`), pendant que l'en-tête et les points restent
   // en place — sinon toute la carte sauterait à chaque tap, et le repère visuel disparaîtrait.
-  let h = '<div class="card" id="ckSlide"><div class="zn-ck-head"><span>' + pointLabel() + "</span><span>" + (ck.step + 1) + " / " + slidesActives().length + "</span></div>";
+  // Le compteur reste écrit « 1/2 » SANS espaces : `smoke-checkin` l'assertе au caractère près
+  // (H-1b, cinq critères) pour vérifier que le diaporama fait bien deux diapos sans opt-in VFC
+  // et trois avec. La maquette l'espace (« 1 / 2 ») ; l'espacement typographique ne vaut pas
+  // de rendre muette une garde qui compte les écrans du check-in.
+  let h = '<div class="card" id="ckSlide"><div class="zn-ck-head"><span>' + pointLabel() + "</span><span>" + (ck.step + 1) + "/" + slidesActives().length + "</span></div>";
   h += '<div class="zn-ck-body ck-slide-anim">';
   h += '<h2 class="zn-ck-coach" style="font-size:var(--fs-hand);line-height:1.4">' + esc(slide.coach(ck)) + "</h2>";
   h += '<div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">';
@@ -187,20 +191,21 @@ export function bindCheckinSlideshow(rerender, onDone) {
       if (sc) sc.innerHTML = '<div class="zn-ck-head"><span>' + pointLabel() + '</span><span>Analyse</span></div><h2 class="zn-ck-coach" style="font-size:var(--fs-hand)">C’est noté 👍</h2><div class="load-sub" style="margin-top:8px">Je regarde ta forme, ta fatigue des derniers jours et la météo — ta séance arrive…</div>';
       const out = await applyReadinessSnap(ck);
       S._ck = null;
-      // R-ZENNA — LE TAMPON, puis la séance. Le verdict RÉEL s'affiche d'abord (confettis
-      // seulement si le moteur maintient : fêter un « repos conseillé » serait absurde), on
-      // laisse une seconde et demie pour le lire, et l'onglet se re-rend derrière.
+      // R-ZENNA — LE TAMPON DE VERDICT, EN COUCHE PAR-DESSUS LA SÉANCE.
       //
-      // Hors thème, ou si le moteur n'a rien rendu, on enchaîne immédiatement comme avant :
-      // le délai est une mise en scène, il ne doit jamais être le chemin critique.
+      // Ma première écriture reproduisait la maquette littéralement : tampon, `await` de
+      // 1 320 ms, PUIS la séance. Mesuré : quatre suites E2E rouges, et surtout U7 qui cessait
+      // de mesurer ce qu'il nomme — « ta séance arrive… » disparaissait à l'apparition du
+      // tampon, donc le chrono s'arrêtait 1,3 s avant que la séance existe. Retarder la séance
+      // de 1,3 s chaque matin, c'est précisément ce qu'U7 a été écrit pour empêcher.
+      //
+      // Le beat est conservé, sa mise en œuvre change : `onDone` rend la séance TOUT DE SUITE,
+      // le tampon se pose au-dessus et s'efface seul (`znVerdictStamp`). Même geste à l'œil,
+      // zéro milliseconde ajoutée au chemin critique. Les confettis ne partent que si le
+      // moteur MAINTIENT la séance — fêter un « repos conseillé » serait absurde.
       const stamp = out && out.res ? verdictStampHTML(out.res) : "";
-      if (sc && stamp && znOn()) {
-        sc.innerHTML = '<div class="zn-ck-head"><span>' + pointLabel() + "</span><span>Verdict</span></div>" + stamp;
-        const badge = sc.querySelector(".zn-verdict-badge");
-        if (badge && out.res.adjustment.action === "keep") znConfetti(badge);
-        await new Promise((r) => setTimeout(r, 1320)); // BEAT × 11, la cadence de la maquette
-      }
       onDone(out);
+      if (stamp) znVerdictStamp(stamp, { celebrate: out.res.adjustment.action === "keep" });
     };
   });
 }

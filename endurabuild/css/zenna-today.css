@@ -328,10 +328,18 @@ body.theme-zenna #screen .zn-form-val {
   display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
 }
 body.theme-zenna #screen .zn-form-val span { font-family: var(--zn-display); font-size: 15px; color: #0a0a0a; }
+/* 9 px, PAS les 5,5 px de la maquette. R16.8 a mesuré et tranché un plancher de lisibilité de
+   9 px pour ce produit, et `smoke-typo` le vérifie sur le texte RENDU — il a trouvé ce libellé
+   à 5,5 px, c'est-à-dire illisible par construction, pas par accident de rendu. La maquette a
+   raison sur l'intention (une micro-étiquette discrète sous le chiffre) et tort sur la taille :
+   on garde l'intention, on applique le plancher du dépôt. Vérifié : « forme » en 9 px tient
+   dans l'anneau de 52 px sans déborder. */
 body.theme-zenna #screen .zn-form-val em {
-  font-style: normal; font-family: var(--zn-mono); font-size: 5.5px;
-  letter-spacing: .08em; font-weight: 700; color: rgba(10, 10, 10, .65);
+  font-style: normal; font-family: var(--zn-mono); font-size: 9px;
+  letter-spacing: .02em; font-weight: 700; color: rgba(10, 10, 10, .6);
+  line-height: 1; margin-top: 1px;
 }
+body.theme-zenna #screen .zn-form-val span { line-height: 1; }
 
 /* ============================================================
    BARRE DE ZONES — construite depuis les steps réels du moteur
@@ -423,6 +431,35 @@ body.theme-zenna #screen .zn-ck-dot {
 body.theme-zenna #screen .zn-ck-dot.past { background: var(--zn-muted); border-color: var(--zn-muted); }
 body.theme-zenna #screen .zn-ck-dot.now { background: var(--zn-orange); border-color: var(--zn-orange); }
 
+/* Le verdict, tamponné — en COUCHE au-dessus de la séance déjà rendue (voir znVerdictStamp).
+   `pointer-events: auto` sur la couche : un tap la fait partir tout de suite. */
+.zn-stamp-layer {
+  position: fixed; inset: 0; z-index: 9997;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: rgba(0, 0, 0, .55); backdrop-filter: blur(2px);
+  opacity: 1; transition: opacity 300ms cubic-bezier(.4, 0, .2, 1);
+}
+.zn-stamp-layer .zn-verdict-stamp {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.zn-stamp-layer .zn-verdict-badge {
+  display: inline-flex; align-items: center; gap: 9px;
+  background: rgba(0, 224, 198, .12); border: 2px solid #00e0c6; border-radius: 16px;
+  padding: 13px 20px; font-family: 'Bebas Neue', sans-serif; font-size: 21px;
+  letter-spacing: .05em; color: #00e0c6; text-align: center;
+  animation: zn-stamp 540ms cubic-bezier(.2, .9, .3, 1.3);
+}
+.zn-stamp-layer .zn-verdict-badge.zn-v-orange { border-color: #ffd23d; color: #ffd23d; background: rgba(255, 210, 61, .12); }
+.zn-stamp-layer .zn-verdict-badge.zn-v-rouge { border-color: #ff4b6e; color: #ff7d92; background: rgba(255, 75, 110, .12); }
+.zn-stamp-layer .zn-verdict-why {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #b4b9c0; text-align: center;
+  letter-spacing: .04em; line-height: 1.6; text-transform: uppercase; max-width: 300px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .zn-stamp-layer { transition: none; }
+  .zn-stamp-layer .zn-verdict-badge { animation: none; }
+}
+
 /* Le verdict, tamponné */
 body.theme-zenna #screen .zn-verdict-stamp {
   display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 26px 0 10px;
@@ -455,7 +492,10 @@ body.theme-zenna #screen .zn-defi-ico {
   display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0;
 }
 body.theme-zenna #screen .zn-defi-tag {
-  font-family: var(--zn-mono); font-size: 8.5px; letter-spacing: .12em; color: var(--zn-gold);
+  /* 9 px : plancher de lisibilité R16.8, mesuré sur le texte RENDU par `smoke-typo`.
+     La maquette pose 8,5 px ici et 8 px sur les libellés d'onglets — sous le seuil que ce
+     dépôt s'est fixé après mesure. On garde le rôle (micro-étiquette), pas la taille. */
+  font-family: var(--zn-mono); font-size: 9px; letter-spacing: .1em; color: var(--zn-gold);
   font-weight: 700; margin-bottom: 2px; text-transform: uppercase;
 }
 body.theme-zenna #screen .zn-defi-txt { font-size: 11.5px; font-weight: 600; line-height: 1.45; color: var(--zn-text); }
@@ -477,7 +517,13 @@ body.theme-zenna #screen label { color: var(--zn-muted); }
 /* ============================================================
    DÉTAIL DE SÉANCE
    ============================================================ */
-body.theme-zenna #screen .gd-why,
+/* `:not(.zn-hero-why)` — le « pourquoi » du HÉROS porte les deux classes (voir session-life.js :
+   `gd-why` est la classe sémantique que `smoke-r4` cherche). Sans cette exclusion, la règle
+   grise de détail écraserait la couleur sombre du héros, illisible sur fond orange : les deux
+   sélecteurs sont à spécificité ÉGALE, donc l'ordre source déciderait — exactement le genre
+   d'arbitrage implicite qui a déjà coûté une cascade entière dans ce fichier. Disjoint plutôt
+   qu'arbitré. */
+body.theme-zenna #screen .gd-why:not(.zn-hero-why),
 body.theme-zenna #screen .gd-det,
 body.theme-zenna #screen .gd-steps,
 body.theme-zenna #screen .gd-dur { color: var(--zn-muted); }
@@ -553,7 +599,7 @@ body.theme-zenna #screen .zn-today-dot { animation: zn-tdp calc(var(--beat) * 16
    BARRE D'ONGLETS — reskin tant qu'Aujourd'hui est actif
    ============================================================ */
 body.theme-zenna #ebTabbar { background: rgba(8, 9, 10, .98); border-top: 1px solid var(--zn-border); }
-body.theme-zenna .tabbtn { color: var(--zn-muted-2); font-family: var(--zn-mono); font-size: 8px; letter-spacing: .03em; position: relative; }
+body.theme-zenna .tabbtn { color: var(--zn-muted-2); font-family: var(--zn-mono); font-size: 9px; letter-spacing: .02em; position: relative; }
 body.theme-zenna .tabbtn .tabico { transition: transform var(--dur-trans) var(--ease-spring); }
 body.theme-zenna .tabbtn:active .tabico { transform: scale(.84); }
 body.theme-zenna .tabbtn.active { color: var(--zn-orange-tint); box-shadow: none; font-weight: 700; }
