@@ -22,6 +22,9 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   "smoke-shop.mjs",
   "smoke-carte-seance.mjs",
   "smoke-charge.mjs",
+  // R27 — le badge-anneau : l'anneau extérieur suit la discipline MENEUSE (pas un ordre fixe)
+  // et l'état légendaire n'est QUE 30/30/30 — les deux propriétés balayées exhaustivement.
+  "smoke-ring.mjs",
   // R26 — Éducatifs (six disciplines) : A1-A13 du brief, le mécanisme de verrouillage/
   // cascade, l'affichage conditionnel par sport et l'absence de doublon d'identifiant SVG.
   "smoke-educatifs.mjs",

@@ -261,15 +261,20 @@ REGULAR qu'on n'embarque même pas (700 et 800 seulement), donc un repli silenci
 Black. Le poids devient une variable, **`--zn-display-weight: 800`** — le régler est le changement
 d'un chiffre.
 **Mesuré avant/après, fonts chargées** : Poppins rend **405 px** là où Bebas rendait **246** pour
-le même texte à 40 px, soit **+65 % de largeur**. Conséquence sur les cinq onglets : **6 → 8
+le même texte à 40 px, soit **+65 % de largeur**. Conséquence sur les cinq onglets : **7 → 8
 éléments sur deux lignes**, un seul élément concerné (`.shop-title`, « S'abonner au
-ravitaillement », qui apparaît sur 📋 Profil et 🧰 Outils).
-**Ma sonde a sur-rapporté deux fois, et c'est écrit.** Elle annonçait « 2 qui débordent » : mesuré
-au caractère, `scrollWidth == clientWidth == 258` — **aucun débordement de contenu**, les 2 px
-d'excédent sont le cisaillement du `skewX(-4deg)`, qui croît avec la HAUTEUR et n'apparaît donc
-qu'une fois le titre passé à deux lignes. Et sa première exécution rendait « déclarée 474 »
+ravitaillement », sur 🧰 Outils).
+**Ma sonde a sur-rapporté trois fois, et c'est écrit.** (1) Elle annonçait « 2 qui débordent » :
+mesuré au caractère, `scrollWidth == clientWidth == 258` — **aucun débordement de contenu**, les
+2 px d'excédent sont le cisaillement du `skewX(-4deg)`, qui croît avec la HAUTEUR et n'apparaît
+donc qu'une fois le titre passé à deux lignes. (2) Sa première exécution rendait « déclarée 474 »
 (= Archivo Black) sur le PREMIER onglet et 405 sur les quatre suivants : une course de chargement
-(`font-display: swap`), pas un état du produit — corrigée par `document.fonts.ready`.
+(`font-display: swap`), pas un état du produit — corrigée par `document.fonts.ready`. (3) Et elle
+**n'a jamais regardé 📋 Profil** : elle appelait `setTab("profil")`, or l'identifiant est
+`"profile"` — `setTab` retombe alors sur le DERNIER onglet, donc elle mesurait 🧰 Outils DEUX
+fois. Les deux écrans rendaient un contenu identique et je ne l'ai pas questionné. Chiffres
+d'abord publiés « 6 → 8 », corrigés en **7 → 8** après re-mesure des deux états. Trouvé en
+écrivant la garde du lot suivant, qui échouait pour la même raison.
 **Le skew (point 2 du brief) n'est PAS tranché ici** : il reste posé, il rend correctement, mais
 « a-t-il du sens sur une géométrique arrondie » est un choix de direction artistique, pas une
 mesure. Capture fournie pour arbitrer.
