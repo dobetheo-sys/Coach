@@ -21,5 +21,32 @@ export const DISC = {
   rs: { ic: "😌", ac: "#00a376", label: "Repos" },
 };
 
+/**
+ * L'AXE DE CHARGE — dur / facile / récup / repos, la lecture « d'un coup d'œil » de la semaine.
+ *
+ * Il était écrit EN DUR à chaque endroit qui l'affiche, sur deux surfaces qui ne se recouvrent
+ * pas : des pastels sur le papier (`#ffe3e0` rose pour le dur) et des accents saturés sur le
+ * sombre (`rgba(255,61,0,…)` orange). Deux jeux de couleurs pour une même idée, sans rien pour
+ * les tenir ensemble — c'est R11.1 appliqué à une couleur sémantique.
+ *
+ * POURQUOI DEUX VALEURS PAR CHARGE, ET NON UNE : ce ne sont pas deux thèmes au choix, ce sont
+ * deux SURFACES. L'app est sombre ; le document exporté est un papier crème (`#f1eadb`) qu'on
+ * imprime. Un pastel rose sur du noir est invisible, un orange saturé sur du crème hurle. Les
+ * unifier en une seule valeur casserait l'une des deux — l'unification porte sur le POINT DE
+ * DÉCLARATION, pas sur la valeur.
+ *
+ * `rgb` est un TRIPLET et non une couleur finie, parce que le sombre l'emploie à plusieurs
+ * opacités (bordure à .34, fond à .14 avant que V3 ne le retire) : une couleur figée obligerait
+ * à en déclarer une par opacité.
+ *
+ * Le jumeau CSS vit dans `css/zenna-today.css` (`--zn-charge-*`). Les deux ne peuvent pas
+ * diverger : `smoke-charge.mjs` compare cette table aux tokens rendus, et rougit sinon.
+ */
+export const CHARGE = {
+  dur:    { rgb: "255 61 0",    papier: "#ffe3e0", label: "Dur" },
+  facile: { rgb: "31 184 166",  papier: "#d9f3e1", label: "Facile" },
+  recup:  { rgb: "155 114 255", papier: "#e9defc", label: "Récup" },
+};
+
 // Verdict readiness (verte/orange/rouge, `src/readiness/`) → pastille.
 export const VERDICT_ICON = { verte: "🟢", orange: "🟠", rouge: "🔴" };
