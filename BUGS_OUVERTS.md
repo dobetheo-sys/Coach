@@ -1910,6 +1910,36 @@ attendu: /marque #ff3d00 · charge dure 255 61 0 · velo #ff3d00 → COLLISION 3
 cmd: node -e "import('./endurabuild/js/ui/icons.js').then(m=>{const fs=require('node:fs');const css=fs.readFileSync('endurabuild/css/zenna-today.css','utf8');const o=(css.match(/--zn-orange:\s*(#[0-9a-f]{6})/i)||[])[1];const d=m.CHARGE.dur.rgb,v=m.DISC.bk.ac;const t=d.split(/\s+/).map(Number);const coll=(o.toLowerCase()===v.toLowerCase())+(t[0]===255&&t[1]===61&&t[2]===0?1:0)+1;console.log('marque '+o+' · charge dure '+d+' · velo '+v+' → COLLISION '+coll+' sens');})"
 ```
 
+### O-32 · Les quatre polices de R-ZENNA n'ont jamais été précachées · ✅ **FERMÉ (12/08/2026)**
+
+Trouvé en ajoutant Poppins : `npm run build:sw` annonçait **57 assets** avant comme après l'ajout
+de deux fichiers `.woff2`. La cause est le SECOND trou d'O-24, dans sa forme exacte. O-24 a rendu
+la `VERSION` du service worker dérivée du contenu et la liste `ASSETS` dérivée du DISQUE — mais
+seulement pour le `.js` et le `.css`. Les polices restaient écrites **à la main** dans `EN_DUR`,
+sous un commentaire qui les déclarait « non listables par extension » : c'est faux, `.woff2` est
+une extension comme une autre, et c'est cette justification erronée qui a fait passer la liste
+pour intentionnelle.
+
+La liste était restée à **trois** polices (Archivo Black, Space Grotesk, Caveat) — celles d'avant
+R-ZENNA. Les **quatre** de R-ZENNA (`bebas-neue-400`, `inter-400-800`, `ibm-plex-mono-400`,
+`ibm-plex-mono-700`) n'ont jamais été mises en cache depuis leur arrivée. **Le défaut est
+invisible en ligne et net hors ligne** : l'app tient sa promesse « ça marche sans réseau », mais
+pas avec sa typographie — tout le thème sombre retombait sur Archivo Black et une pile monospace
+système. C'est la même famille que les trois modules vivants qu'O-24 avait trouvés dans cette
+même liste, et la démonstration que le correctif d'alors était incomplet.
+
+Correctif : les polices se lisent sur le disque comme le reste (`modules(dir, /\.woff2$/)`).
+**57 → 63 assets** (les 4 oubliées + les 2 de Poppins). Au passage, `ASSETS` composait ses groupes
+par `EN_DUR.slice(0, 3)` / `EN_DUR.slice(3)` — des indices qui devenaient faux dès qu'on ajoutait
+une ligne à `EN_DUR`, ce que ce lot faisait justement ; les trois groupes sont NOMMÉS.
+
+```verify
+id: O-32
+quoi: toutes les polices du disque sont précachées par le service worker
+attendu: /disque 9 · precachees 9 · manquantes 0/
+cmd: node -e "const fs=require('node:fs');const d=fs.readdirSync('endurabuild/assets/fonts').filter(f=>f.endsWith('.woff2'));const sw=fs.readFileSync('endurabuild/sw.js','utf8');const m=d.filter(f=>!sw.includes('assets/fonts/'+f));console.log('disque '+d.length+' · precachees '+(d.length-m.length)+' · manquantes '+m.length+(m.length?' ('+m.join(', ')+')':''))"
+```
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas

@@ -243,6 +243,74 @@ les cinq accents sont deux à deux distincts (critère dérivé de la table, auc
 **28 gates verts, E2E 23/23, `audit:v1` 459 et golden 949 inchangés — `src/`, `engine.js` et le
 monolithe byte-identiques.**
 
+**V7 livré — Poppins remplace Bebas Neue, et quatre polices n'étaient pas dans le cache**
+(brief du fondateur + graphiste, 12/08/2026 : palette INCHANGÉE, seule la police d'affichage
+change) : `--zn-display` passe de `'Bebas Neue'` à `'Poppins'`, sur les cinq onglets, partout où
+la variable est consommée (15 règles).
+**Deux prémisses du brief ne tenaient pas, et les corriger EST le lot.** (1) « ajouter Poppins au
+lien Google Fonts existant » — **il n'y a pas de lien Google Fonts**, et il ne doit pas y en avoir :
+c'est D19, et R-ZENNA a déjà payé cette faute une fois (deux hôtes tiers dans la CSP, une requête
+bloquante au premier rendu, le fichier autonome cassé). Poppins est donc **auto-hébergée** comme
+les six autres, sous-ensemble LATIN pris explicitement dans le bloc annoté « latin » — le premier
+bloc servi par l'API pour Poppins est le DEVANAGARI, et le prendre aurait donné une police sans un
+seul accent français. (2) Le brief soupçonnait Poppins Bold « probablement trop léger » : mesuré,
+c'est pire que ça — **la plupart des règles display rendaient en poids 400** (« Sweetspot vélo »
+30px/400, le grand chiffre du héros 50px/400), parce que Bebas n'a QU'UNE graisse et que personne
+n'avait jamais eu à déclarer un `font-weight`. Basculer sans y toucher aurait demandé un Poppins
+REGULAR qu'on n'embarque même pas (700 et 800 seulement), donc un repli silencieux sur Archivo
+Black. Le poids devient une variable, **`--zn-display-weight: 800`** — le régler est le changement
+d'un chiffre.
+**Mesuré avant/après, fonts chargées** : Poppins rend **405 px** là où Bebas rendait **246** pour
+le même texte à 40 px, soit **+65 % de largeur**. Conséquence sur les cinq onglets : **6 → 8
+éléments sur deux lignes**, un seul élément concerné (`.shop-title`, « S'abonner au
+ravitaillement », qui apparaît sur 📋 Profil et 🧰 Outils).
+**Ma sonde a sur-rapporté deux fois, et c'est écrit.** Elle annonçait « 2 qui débordent » : mesuré
+au caractère, `scrollWidth == clientWidth == 258` — **aucun débordement de contenu**, les 2 px
+d'excédent sont le cisaillement du `skewX(-4deg)`, qui croît avec la HAUTEUR et n'apparaît donc
+qu'une fois le titre passé à deux lignes. Et sa première exécution rendait « déclarée 474 »
+(= Archivo Black) sur le PREMIER onglet et 405 sur les quatre suivants : une course de chargement
+(`font-display: swap`), pas un état du produit — corrigée par `document.fonts.ready`.
+**Le skew (point 2 du brief) n'est PAS tranché ici** : il reste posé, il rend correctement, mais
+« a-t-il du sens sur une géométrique arrondie » est un choix de direction artistique, pas une
+mesure. Capture fournie pour arbitrer.
+**Et le lot a débusqué O-32, un défaut ANTÉRIEUR** : `build:sw` annonçait **57 assets avant comme
+après** l'ajout de deux `.woff2`. Les polices étaient écrites À LA MAIN dans `EN_DUR`, sous un
+commentaire qui les disait « non listables par extension » — c'est faux —, et la liste était
+restée aux **trois** polices d'avant R-ZENNA : `bebas-neue`, `inter` et les deux `ibm-plex-mono`
+**n'ont jamais été précachées depuis leur arrivée**. Invisible en ligne, net hors ligne : l'app
+tenait « ça marche sans réseau » mais pas avec sa typographie. C'est le SECOND trou d'O-24 dans sa
+forme exacte, resté ouvert parce qu'O-24 n'avait dérivé du disque que le `.js` et le `.css`.
+**57 → 63 assets.** `ASSETS` composait aussi ses groupes par `EN_DUR.slice(0, 3)`/`slice(3)`, des
+indices qui devenaient faux dès qu'on ajoutait une ligne — les trois groupes sont NOMMÉS.
+**28 gates verts, E2E 23/23, `audit:v1` 459 et golden 949 inchangés, spec régénérée, `src/`,
+`engine.js` et le monolithe byte-identiques.**
+
+**V6 livré — le badge de discipline dupliqué quitte 🎯 Aujourd'hui** (brief du fondateur,
+12/08/2026, suite à O-31) : la carte « Le détail de la séance » portait une TUILE de discipline
+pleine de 38 px, en plus de la pile `.zn-disc-chip` du héros — deux fois la même information à
+**79 px d'écart**, et depuis V5 la tuile porte **exactement** la couleur du héros, où elle se noie
+au lieu de signaler. **Vérifié à la source** : la maquette (`zenna-maquette-v4-audit-experts.html`,
+`.hero`) ne porte qu'un seul indicateur, la pile sur fond neutre `rgba(10,10,10,.16)`, et sa carte
+de détail ne contient que la barre de zones. La tuile était un ajout du 07/08, pas un manque.
+**Aucun gate ne la référençait** (`smoke-carte-seance` ne regarde que `.gd-ic`, sur Plan et
+Semaine) — vérifié avant de retirer, comme le brief le demandait.
+**La mesure a failli me faire écrire un faux** : sur le profil par défaut, **0 jour sur 350** porte
+plusieurs séances, ce qui rendait la tuile toujours redondante… mais `runnerStateV1` déclare
+`doubles: "non"`, et c'est cette dimension qui décide. Avec `doubles: "oui"`, **27,8 % des jours
+d'un 70.3** portent deux séances (`sw+bk` ×24, `sw+rn` ×8), et là le héros ne nomme que la
+PREMIÈRE. Le cas a donc été capturé et regardé : les deux séances restent nommées en toutes
+lettres, chacune avec son pourquoi et sa barre de zones, et le héros annonce « puis Sweetspot
+vélo » — **la discipline est portée par le NOM**, ce qui est déjà l'argument qui rend le badge
+`aria-hidden` partout ailleurs. Rien n'est perdu, y compris pour un lecteur d'écran.
+`discBadgeHTML` est **retirée** et non laissée inutilisée : une fonction morte qui rend un badge
+est une invitation à la rebrancher.
+Garde : `smoke-zenna` **§1bis**, 64 → **67 assertions**, portant sur la PROPRIÉTÉ (« un seul
+indicateur ») et non sur l'absence d'une classe — **vérifiée rouge** en réintroduisant la tuile
+sous un balisage DIFFÉRENT (inline, sans `discBadgeHTML`, sans classe), ce qu'un critère nommant
+la classe aurait laissé passer. Le premier volet garde l'autre moitié : retirer la tuile ne doit
+pas emporter la pile.
+**28 gates verts, E2E 23/23, golden 949 inchangé, moteur byte-identique.**
+
 **V3 livré — la carte de séance : repliée par défaut, la couleur dans le badge** (brief du
 fondateur, 12/08/2026, maquette « structure interne réelle » — voir ARCHITECTURE.md « V3 ») :
 la carte exposait titre + conseil + blocs détaillés d'office, sur un fond pleine largeur teinté
