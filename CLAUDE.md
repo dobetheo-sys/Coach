@@ -195,6 +195,54 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**V5 livré — les accents de discipline passent à la maquette, et l'orange porte désormais TROIS
+sens** (brief du fondateur, 12/08/2026, conditionné à une mesure : *« SI TOUT PASSE 3:1 »*) : les
+trois accents (`DISC[*].ac`) sont alignés sur la maquette — natation `#00b8d9 → #3b9eff`, vélo
+`#2e6bff → #ff3d00`, course `#ff7a1a → #ffd23d`. **La condition a été mesurée AVANT d'écrire une
+ligne**, en tuile pleine sur `--zn-surface-3` comme V3 l'a décidé : **5,52 · 4,34 · 10,67** contre
+les 3:1 de WCAG 1.4.11 — les trois passent, marges +2,52 / +1,34 / +7,67, donc les trois sont
+adoptés et la branche « ne remplace pas ce qui échoue » n'a pas d'objet.
+**L'avertissement du fondateur était fondé, et la collision est plus large que ce qu'il visait** :
+`#ff3d00` ne porte pas deux sens mais **trois** sur la même grille — l'orange de MARQUE (anneau
+« aujourd'hui », héros 🎯, onglet actif, CTA), la charge DURE (`CHARGE.dur.rgb` vaut `255 61 0`,
+à 34 % d'opacité) et maintenant la discipline VÉLO, à pleine saturation comme le premier. Mesuré
+plutôt qu'estimé : sur 🗓 Plan, **2 éléments** portent l'orange au sens « attention » contre
+**24 badges vélo** de la teinte identique ; sur 📅 Semaine, **2 jours sur 7** (mardi, jeudi) voient
+l'anneau du jour entourer une carte dont le badge est exactement de sa couleur ; sur 🎯 Aujourd'hui
+un jour de vélo — le cas que le fondateur avait lui-même nommé —, le héros part de `#ff3d00` et le
+badge vélo est **79 px sous lui**, à la même valeur. **Non corrigé délibérément** : les trois
+issues touchent au VOCABULAIRE de la marque, pas à un défaut (`zenna-tabs.css` écrit que l'orange
+EST le vocabulaire d'attention et qu'on n'en invente pas un second ; `--zn-gold` veut déjà dire
+« échange en attente » ; décaler le vélo inventerait une couleur absente de la maquette).
+Enregistré en **O-31** avec ses chiffres et son bloc `verify`.
+**Deux de mes sondes mesuraient un écran qui ne montrait pas la chose.** La première rendait
+« 0 collision » — le 12/08 tombe sur une séance de COURSE ; balayée sur les sept jours, la
+collision existe 2 jours sur 7 (famille R20.7, une dimension que la mesure ne contrôle pas et qui
+décide de son verdict). La seconde rendait « 0 badge, 0 orange » sur 🎯 Aujourd'hui pour DEUX
+raisons cumulées : elle cherchait `.gd-ic`, classe que le badge du héros ne porte pas (c'est un
+`<div>` inline de `session-life.js` — **un second peintre de badge que j'avais manqué**), et elle
+mesurait un écran GATÉ par le portillon du check-in. C'est en la corrigeant que le cas nommé par
+le fondateur est apparu.
+**Deux commentaires devenus FAUX sont réécrits plutôt que laissés** : `icons.js` affirmait que les
+accents étaient « repris de `SPORTS[*].accent`, pas une troisième palette » et `plan-view.js` que
+le badge venait « du même endroit que l'avatar et les cartes de sport ». `config.js` garde les
+anciennes valeurs — c'est un AUTRE axe (le sport préparé, pas la discipline d'une séance) que le
+fondateur n'a pas arbitré. Mesuré : les deux axes ne se rencontrent sur **aucun** écran.
+**Et `--acc` ne porte plus aucune couleur de sport dans l'app** : mesuré sur les trois sports,
+`body[data-sport="bike"]{--acc:#2e6bff}` rend `#ff3d00`, parce que `zenna-today.css` redéfinit
+`--acc` sous `body.theme-zenna`, qui est toujours posée. Ces règles de `styles.css` sont mortes en
+app et ne survivent que pour le thème papier — la cascade mesurée, pas déduite (leçon R18.1).
+`avatar-tri.js` garde sa copie littérale **par contrainte de CI** : le module est PUR (zéro
+import) pour que `demo:avatartri` exécute sa passe exhaustive en node.
+**`check:sw` a fait son travail** : les nouvelles couleurs n'auraient atteint aucun navigateur
+ayant déjà ouvert l'app (O-24) — `sw.js` reconstruit, VERSION `eb-pwa-36dbde7c4996`.
+Garde : `smoke-carte-seance` **§6**, 19 → **23 assertions** — l'accent DESCEND de la table
+(témoin : changer `DISC.bk.ac` à chaud repeint la tuile, sinon la peinture vient d'ailleurs) et
+les cinq accents sont deux à deux distincts (critère dérivé de la table, aucune liste à tenir).
+**Deux cassures, deux rouges.**
+**28 gates verts, E2E 23/23, `audit:v1` 459 et golden 949 inchangés — `src/`, `engine.js` et le
+monolithe byte-identiques.**
+
 **V3 livré — la carte de séance : repliée par défaut, la couleur dans le badge** (brief du
 fondateur, 12/08/2026, maquette « structure interne réelle » — voir ARCHITECTURE.md « V3 ») :
 la carte exposait titre + conseil + blocs détaillés d'office, sur un fond pleine largeur teinté
