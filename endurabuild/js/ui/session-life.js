@@ -241,17 +241,14 @@ export function bindSickToggle(plan, todayIso) {
 // Séance du jour (déjà adaptée au verdict de forme) — ou, si repos, la prochaine séance
 // à venir. Rendue en PREMIER dans l'onglet central 🎯 Aujourd'hui.
 const _verdictLbl = { keep: "séance maintenue", reduce: "volume réduit", replace: "endurance à la place", rest: "repos conseillé", off: "repos complet" };
-// Retour du fondateur (07/08/2026) : « la séance du jour, plus visuelle. » Le héros du jour
-// était du texte pur (nom en gras, une phrase de pourquoi, un lien replié) — rien ne dit au
-// premier coup d'œil « c'est de la nage » ou « c'est du vélo ». Un badge rond par discipline,
-// couleur + pictogramme : DISC (`./icons.js`, R11.1) est le point unique.
-function discBadgeHTML(d) {
-  const b = DISC[d] || DISC.rn;
-  // R16.8 — un glyphe décoratif se dimensionne en `em`, jamais en px littéral : ce n'est pas
-  // de la typographie, l'échelle --fs-* ne le régit pas (voir styles.css :root).
-  return '<div aria-hidden="true" style="flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:' + b.ac
-    + ';border:2px solid var(--zn-ink,#16130e);display:flex;align-items:center;justify-content:center;font-size:1.2em;line-height:1">' + b.ic + "</div>";
-}
+// `discBadgeHTML` VIVAIT ICI et a été RETIRÉE le 12/08/2026 (fondateur, brief « badge dupliqué »).
+// Elle rendait la tuile pleine de 38 px posée dans la carte « Le détail de la séance ». Elle
+// répondait au retour du 07/08 (« la séance du jour, plus visuelle ») — mais ce besoin est déjà
+// couvert par la pile `.zn-disc-chip` du héros, qui nomme la discipline en toutes lettres ; la
+// tuile n'en était que la répétition, 79 px plus bas.
+// Retirée plutôt que laissée en place inutilisée : une fonction morte qui rend un badge est une
+// invitation à la rebrancher. Ce que la carte de détail apporte et que le héros n'a pas, c'est la
+// BARRE DE ZONES — elle, elle reste.
 
 // R-ZENNA — ANNEAU « FORME DU JOUR ».
 //
@@ -378,20 +375,31 @@ export function heroSessionHTML(plan, todayIso) {
     detail = '<div class="card"><div class="eyebrow">Le détail de la séance</div>'
       + actives.map((x) => {
         const wx = whyOf(x);
-        return '<div style="display:flex;gap:10px;align-items:flex-start;margin-top:12px">' + discBadgeHTML(x.d)
-          + '<div style="flex:1;min-width:0"><b>' + x.name + "</b>"
+        // PLUS DE TUILE DE DISCIPLINE ICI (fondateur, 12/08/2026, brief « badge dupliqué »).
+        // Elle y a vécu du 07/08 au 12/08 ; ce commentaire disait alors que la carte apportait
+        // « la barre de zones ET le pictogramme de discipline ». Le second était un DOUBLON du
+        // héros, mesuré : sur un jour de vélo, la pile « 🚴 Vélo » du héros et la tuile pleine
+        // 38 px de cette carte disent la même chose à 79 px d'écart — et depuis que l'accent
+        // vélo vaut `#ff3d00` (V5), la tuile porte EXACTEMENT la couleur du héros, où elle se
+        // noie au lieu de signaler. La maquette d'origine ne l'a jamais prévue : son héros
+        // porte un seul indicateur, la pile `.disc-chip` sur fond neutre, et sa carte de détail
+        // ne contient que la barre de zones.
+        // CE QUI PORTE ENCORE LA DISCIPLINE ICI : le NOM de la séance, qui la nomme en toutes
+        // lettres (« Sweetspot vélo », « Nage seuil ») — c'est déjà l'argument qui rend le badge
+        // `aria-hidden` partout ailleurs (plan-view.js). Rien n'est donc perdu pour un lecteur
+        // d'écran ni pour un voyant, y compris sur une journée à DEUX séances, où le héros ne
+        // nomme que la première (mesuré : 27,8 % des jours d'un 70.3 avec doubles).
+        return '<div style="margin-top:12px"><b>' + x.name + "</b>"
           + (actives.length > 1 && wx ? '<div class="gd-why" style="margin:3px 0 0">\u{1F4A1} ' + wx + "</div>" : "")
           + znZoneBar(x, _blkMin)
           // AUDIT UX 11/08/2026 — LE DÉROULÉ N'EST PAS RÉPÉTÉ ICI (décision du fondateur).
           // Le héros, un écran plus haut, l'affiche déjà : mesuré, les TROIS blocs sur trois
           // étaient communs mot pour mot (« Échauffement 10min montée progressive · 18min @
-          // 147-160 bpm · Retour au calme 4min »). Ce que cette carte apporte et que le héros
-          // n'a pas, c'est la BARRE DE ZONES et le pictogramme de discipline — c'est donc la
-          // répétition qu'on retire, pas la carte.
+          // 147-160 bpm · Retour au calme 4min »).
           // Sur une journée à PLUSIEURS séances, le héros ne détaille que la première : les
           // suivantes gardent leur déroulé ici, sinon l'information n'existerait nulle part.
           + (actives.length > 1 && x !== actives[0] ? techListHTML(techOf(x)) : "")
-          + "</div></div>";
+          + "</div>";
       }).join("")
       + "</div>";
   } else {
