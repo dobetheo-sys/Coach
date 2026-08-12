@@ -151,9 +151,9 @@ badge de la carte de séance, anneaux de la semaine.
 
 | Code | Champs |
 |---|---|
-| `sw` | `ic: "🏊", ac: "#00b8d9", label: "Natation"` |
-| `bk` | `ic: "🚴", ac: "#2e6bff", label: "Vélo"` |
-| `rn` | `ic: "🏃", ac: "#ff7a1a", label: "Course"` |
+| `sw` | `ic: "🏊", ac: "#3b9eff", label: "Natation"` |
+| `bk` | `ic: "🚴", ac: "#ff3d00", label: "Vélo"` |
+| `rn` | `ic: "🏃", ac: "#ffd23d", label: "Course"` |
 | `br` | `ic: "🔁", ac: "#9b72ff", label: "Brick"` |
 | `rs` | `ic: "😌", ac: "#00a376", label: "Repos"` |
 

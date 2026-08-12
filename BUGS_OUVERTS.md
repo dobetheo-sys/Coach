@@ -1852,6 +1852,64 @@ attendu: /10->1 · 3500->15 · 119999->29 · 120000->30 · monotone OUI/
 cmd: node -e "import('./src/app/bridge.ts').then(m=>{const L=m.avatarTriLevel;let mono=true;for(let x=0,p=0;x<=130000;x+=250){const l=L(x);if(l<p)mono=false;p=l;}console.log('10->'+L(10)+' · 3500->'+L(3500)+' · 119999->'+L(119999)+' · 120000->'+L(120000)+' · monotone '+(mono?'OUI':'non'));})"
 ```
 
+### O-31 · `#ff3d00` porte TROIS sens sur le même écran · ⏳ **OUVERT — arbitrage de vocabulaire, décision fondateur**
+
+Les trois accents de discipline ont été alignés sur la maquette (fondateur, 12/08/2026) après
+mesure de leur contraste — natation 5,52 · vélo 4,34 · course 10,67, les trois au-dessus des 3:1
+que WCAG 1.4.11 demande à un composant porteur d'information. La condition posée était donc
+remplie, et les trois valeurs sont adoptées. Le fondateur avait joint un avertissement : *« #FF3D00
+est déjà utilisé comme --zn-orange (couleur de marque/CTA) ; vérifie qu'aucune confusion visuelle
+n'apparaît »*. **Elle apparaît, et elle est plus large que prévu** — ce n'est pas une collision à
+deux termes mais à trois.
+
+`#ff3d00` signifie désormais, sur la MÊME grille de semaine :
+
+| sens | où | rendu |
+|---|---|---|
+| **attention / marque** | anneau de la carte du jour, héros 🎯, onglet actif, CTA | `#ff3d00` plein |
+| **charge DURE** | bordure de carte d'un jour dur (`CHARGE.dur.rgb`) | `rgb(255 61 0 / .34)` |
+| **discipline VÉLO** | tuile de badge (`DISC.bk.ac`) | `#ff3d00` plein |
+
+Les deux premiers coexistaient déjà (la charge dure emploie ce triplet depuis avant V4, à 34 %
+d'opacité — donc distinguable) ; **c'est le troisième qui est nouveau, et il est à pleine
+saturation, comme le premier.**
+
+**Mesuré, plutôt qu'estimé.** Sur 🗓 Plan : **2 éléments** portent l'orange au sens « attention »
+contre **24 badges vélo** de la teinte identique — la couleur d'attention de la marque devient
+12 fois plus fréquente comme *décoration* que comme *signal*. Sur 📅 Semaine, le balayage des sept
+jours donne **2 jours sur 7** (mardi, jeudi) où l'anneau « aujourd'hui » entoure une carte dont le
+badge est exactement de sa couleur — le seul cas mesuré où deux sens se superposent sur un même
+objet. Et sur 🎯 Aujourd'hui un jour de vélo, le cas que le fondateur avait lui-même nommé
+(« carte de séance avec CTA à proximité ») : le héros est peint du dégradé de marque partant de
+`#ff3d00`, et le badge vélo est **79 px sous lui**, à la même valeur.
+
+**Ce que ça coûte, dit franchement** : rien n'induit en erreur au sens fort — le badge est une
+tuile de 26 px avec un pictogramme, l'anneau est un trait de 2 px sur un bord, le héros fait
+362×348. La forme et la position les séparent. Ce qui se perd est plus discret : la couleur
+CESSE de porter le signal à elle seule. Un athlète qui a appris « l'orange, c'est ce qui
+m'appelle » doit désormais lire la forme pour trancher, et sur un jour de vélo l'écran 🎯 devient
+quasi monochrome au moment précis où le badge devrait dire « c'est du vélo ».
+
+**Pourquoi ce n'est pas corrigé ici** : les trois issues touchent au VOCABULAIRE de la marque, pas
+à un défaut. (1) Ne rien changer — la maquette a été validée telle quelle, et la forme suffit
+peut-être. (2) Sortir le marqueur « aujourd'hui » de l'orange — mais `zenna-tabs.css` écrit
+explicitement « l'orange du thème EST déjà son vocabulaire d'attention, on n'invente pas une
+seconde couleur d'accent », et le seul autre marqueur existant (`--zn-gold`) veut déjà dire
+« échange en attente ». (3) Décaler le vélo hors de l'orange de marque — mais ce serait inventer
+une couleur que la maquette ne porte pas, ce que ce lot s'est interdit. Aucune n'est un correctif
+évident, les trois sont des décisions de design.
+
+**Ce qui est verrouillé en attendant** : les cinq accents sont deux à deux distincts et chacun
+tient ses 3:1 (`smoke-carte-seance` §3 et §6, vérifiés rouges) — donc la lisibilité est gardée
+même si le vocabulaire ne l'est pas.
+
+```verify
+id: O-31
+quoi: les trois sens partagent-ils toujours le triplet 255 61 0 ?
+attendu: /marque #ff3d00 · charge dure 255 61 0 · velo #ff3d00 → COLLISION 3 sens/
+cmd: node -e "import('./endurabuild/js/ui/icons.js').then(m=>{const fs=require('node:fs');const css=fs.readFileSync('endurabuild/css/zenna-today.css','utf8');const o=(css.match(/--zn-orange:\s*(#[0-9a-f]{6})/i)||[])[1];const d=m.CHARGE.dur.rgb,v=m.DISC.bk.ac;const t=d.split(/\s+/).map(Number);const coll=(o.toLowerCase()===v.toLowerCase())+(t[0]===255&&t[1]===61&&t[2]===0?1:0)+1;console.log('marque '+o+' · charge dure '+d+' · velo '+v+' → COLLISION '+coll+' sens');})"
+```
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas
