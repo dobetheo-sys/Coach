@@ -17,7 +17,7 @@ import { planEndDate } from "./session-life.js";
 // R25 étape 4 — le COMPOSITE remplace l'ancien rendu 16 niveaux sur la carte (l'ancien
 // module reste exporté et gardé par smoke-avatar : c'est le moteur de boucles qui prend
 // le relais côté écran, pas une suppression).
-import { avatarTriSVG, avatarTriStorySVG, avatarTriUnlock, avatarTriAccent } from "./avatar-tri.js";
+import { avatarTriSVG, avatarTriStorySVG, avatarTriUnlock, avatarTriAccent, avatarRingSVG } from "./avatar-tri.js";
 import { shareStory, storyBlob, _dl } from "../export.js";
 import { trapModal } from "./modal.js";
 import { evalRules } from "./steps.js";
@@ -338,7 +338,13 @@ function avatarSectionHTML(plan, todayISO) {
   const vierge = JAUGES.every(([k]) => tri[k].level === 0);
   let h = '<div class="load-card"><div style="display:flex;align-items:center;gap:14px">'
     + '<div style="text-align:center">'
-    + '<button id="avSvg" type="button" aria-label="Voir mon avatar en grand" style="background:none;border:none;padding:0;cursor:pointer">' + avatarTriSVG(visual, 96) + "</button>"
+    // R27 — LE BADGE-ANNEAU remplace le rendu personnage ici (décision du fondateur, 12/08/2026).
+    // Les couleurs sont PASSÉES depuis `DISC` : `avatar-tri.js` est un module PUR (zéro import,
+    // c'est ce qui permet à `demo:avatartri` de tourner en node), il ne peut donc pas lire la
+    // table lui-même — et lui en laisser une copie serait la divergence silencieuse que V5 a
+    // justement mesurée. La table reste la source unique (R11.1), l'appelant fait le pont.
+    + '<button id="avSvg" type="button" aria-label="Voir mon avatar en grand" style="background:none;border:none;padding:0;cursor:pointer">'
+    + avatarRingSVG(visual, 96, { couleurs: { natation: DISC.sw.ac, velo: DISC.bk.ac, course: DISC.rn.ac } }) + "</button>"
     + (vierge ? '<div class="load-sub" style="max-width:96px;margin-top:2px">Il évoluera avec ta régularité</div>' : "")
     + "</div>"
     + '<div style="flex:1"><div style="font-weight:800;font-size:var(--fs-lg)">' + titre + "</div>"
