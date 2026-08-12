@@ -353,9 +353,12 @@ body.theme-zenna #screen .gd {
    athlète « ne réapprend rien ». Une bordure de 1 px n'est pas un fond pleine largeur : la
    maquette est respectée, la lecture d'un coup d'œil aussi. Si elle doit disparaître
    complètement, c'est ces quatre lignes qu'il faut retirer — rien d'autre n'en dépend. */
-body.theme-zenna #screen .gd.dur    { border-color: rgba(255, 61, 0, .34); }
-body.theme-zenna #screen .gd.facile { border-color: rgba(31, 184, 166, .30); }
-body.theme-zenna #screen .gd.recup  { border-color: rgba(155, 114, 255, .32); }
+/* Les trois bordures lisent le token, plus un littéral. Les opacités RESTENT distinctes
+   (.34 / .30 / .32) : elles compensaient déjà la luminosité inégale des trois teintes, et les
+   aligner d'autorité changerait le rendu sans que personne l'ait demandé. */
+body.theme-zenna #screen .gd.dur    { border-color: rgb(var(--zn-charge-dur-rgb) / .34); }
+body.theme-zenna #screen .gd.facile { border-color: rgb(var(--zn-charge-facile-rgb) / .30); }
+body.theme-zenna #screen .gd.recup  { border-color: rgb(var(--zn-charge-recup-rgb) / .32); }
 body.theme-zenna #screen .gd.off    { opacity: .75; }
 
 /* Le badge de discipline : la seule couleur de la ligne. Carré arrondi, accent en fond très

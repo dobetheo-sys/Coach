@@ -77,6 +77,18 @@ body.theme-zenna {
   --zn-swim: #3b9eff;
   --zn-fatigue: #ff7a3d;
   --zn-form: #1fb8a6;
+  /* ---- l'axe de CHARGE (dur / facile / récup) ----
+     Jumeau CSS de la table `CHARGE` de `js/ui/icons.js`, qui en est la source. Les deux ne
+     peuvent pas diverger : `smoke-charge.mjs` compare l'une à l'autre sur le rendu réel.
+     Les triplets servent les DEUX opacités du sombre (bordure .34, et tout fond futur) ;
+     les `-papier` servent la surface crème du document exporté, qui ne charge aucune variable
+     et reçoit donc ces valeurs par interpolation depuis la table JS (R16.8). */
+  --zn-charge-dur-rgb: 255 61 0;
+  --zn-charge-facile-rgb: 31 184 166;
+  --zn-charge-recup-rgb: 155 114 255;
+  --zn-charge-dur-papier: #ffe3e0;
+  --zn-charge-facile-papier: #d9f3e1;
+  --zn-charge-recup-papier: #e9defc;
   --zn-bg-race: rgba(255, 61, 0, .14);
   --zn-bg-eve: rgba(255, 210, 61, .10);
   --zn-bg-taper: rgba(155, 114, 255, .14);

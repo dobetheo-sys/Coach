@@ -219,9 +219,14 @@ input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:#fffbe8;
 .gw-h em{font-family:'Space Grotesk',sans-serif;font-style:normal;font-weight:700;font-size:var(--fs-xs);color:var(--text2);margin-left:auto;}
 .gw-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
 .gd{background:var(--bg3);border:2.5px solid var(--ink);border-radius:3px 8px 4px 7px;padding:7px 6px;min-height:88px;position:relative;box-shadow:2.5px 2.5px 0 var(--ink);}
-.gd.dur{background:#ffe3e0;}
-.gd.facile{background:#d9f3e1;}
-.gd.recup{background:#e9defc;}
+/* MESURÉ MORT DANS L'APP : `body.theme-zenna #screen .gd` (0,1,2,1) l'emporte sur `.gd.dur`
+   (0,0,2,0), et le thème n'est JAMAIS retiré (`app.js` et `tabs.js` ne font que l'ajouter).
+   Ces trois règles ne peignent donc plus rien depuis V3 — vérifié au rendu. On les garde
+   plutôt que de les supprimer : elles sont la valeur de repli si le thème venait à ne pas se
+   poser, et le token les tient désormais alignées sur la table `CHARGE`. */
+.gd.dur{background:var(--zn-charge-dur-papier,#ffe3e0);}
+.gd.facile{background:var(--zn-charge-facile-papier,#d9f3e1);}
+.gd.recup{background:var(--zn-charge-recup-papier,#e9defc);}
 .gd.off{background:var(--bg2);opacity:.75;}
 .gd-top{display:flex;justify-content:space-between;align-items:baseline;}
 .gd-top b{font-size:var(--fs-sm);font-weight:800;}
