@@ -269,6 +269,55 @@ async function ouvrirNutrition(state) {
       + adulte.autres.length + " carte(s) identiques : " + adulte.autres.join(" | ") + ")");
 }
 
+// ---- 10. Le produit se montre — et son dessin reste une ILLUSTRATION ------------------------
+// Les maquettes du 12/08/2026 fixent le sachet ; la carte le rend depuis `GEL_ZENNA`. Deux
+// propriétés se tiennent ensemble : les quatre saveurs dessinables sont là, et chaque sachet est
+// `aria-hidden`. La seconde n'est pas cosmétique — c'est elle qui autorise `smoke-typo` à
+// exempter les mentions du sachet de son plancher de 9 px. Si un sachet cessait d'être
+// `aria-hidden`, l'exemption deviendrait un trou : ce critère la referme.
+{
+  // Plan EN COURS (pas de `plan_start` ancien) : sans séances à venir il n'y a aucune ligne de
+  // devis, et le critère sur le nom du produit n'aurait rien à mesurer.
+  const st = runnerStateV1({ format: "70.3", weight: "72" });
+  st.sport = "tri";
+  await ouvrirNutrition(st);
+  if (await page.locator("#shopExpand").count()) { await page.click("#shopExpand"); await page.waitForTimeout(500); }
+  // Cadence MENSUELLE pour mesurer le devis : la fenêtre de 7 jours peut légitimement ne
+  // contenir aucune séance à ravitailler selon le jour où l'on exécute la suite, et le critère
+  // « chaque gel porte le nom du produit » n'aurait alors rien à lire — il passerait à vide.
+  // Famille R20.7 : on retire la dépendance au calendrier plutôt que de vivre avec.
+  if (await page.locator('#shopCard [data-cadence="mensuel"]').count()) {
+    await page.click('#shopCard [data-cadence="mensuel"]');
+    await page.waitForTimeout(500);
+  }
+  const s = await page.evaluate(() => {
+    const c = document.getElementById("shopCard");
+    const sach = [...c.querySelectorAll(".zn-sachet")];
+    return {
+      n: sach.length,
+      caches: sach.filter((x) => x.getAttribute("aria-hidden") === "true").length,
+      // « peu d'importance » est une non-préférence : elle ne doit PAS inventer un sachet.
+      boutonsSansSachet: [...c.querySelectorAll("[data-flavor]")].filter((b) => !b.querySelector(".zn-sachet"))
+        .map((b) => b.dataset.flavor),
+      // Le nom du produit doit apparaître DANS LES LIGNES DU DEVIS. Ma première écriture
+      // cherchait « Zenna gel glucide » OU « 30 g de glucides » n'importe où dans la carte :
+      // la seconde branche est satisfaite par le bandeau de faits produit (« 1 SACHET · 30 g de
+      // glucides »), donc retirer le nom du devis laissait le critère VERT — vérifié.
+      // Neuvième occurrence dans ce dépôt d'un critère qui nomme une grandeur et en mesure une
+      // voisine. On lit donc les lignes du devis, et elles seules.
+      lignesDevis: [...c.querySelectorAll(".period-line .pl-q")].map((n) => n.textContent),
+    };
+  });
+  ok(s.n >= 4, "les quatre saveurs dessinables se montrent (" + s.n + " sachets)");
+  ok(s.n > 0 && s.caches === s.n, "…chaque sachet est une illustration (aria-hidden : " + s.caches + "/" + s.n + ")");
+  ok(JSON.stringify(s.boutonsSansSachet) === JSON.stringify(["peu d'importance"]),
+    "…et « peu d'importance » n'invente aucun sachet (" + JSON.stringify(s.boutonsSansSachet) + ")");
+  ok(s.lignesDevis.length > 0, "le devis a des lignes à nommer (" + s.lignesDevis.length + ")");
+  ok(s.lignesDevis.filter((l) => /gel/i.test(l)).every((l) => /Zenna gel glucide/i.test(l)),
+    "…et chaque gel y porte le nom du produit, pas « gel » tout court ("
+      + (s.lignesDevis.find((l) => /gel/i.test(l)) || "—") + ")");
+}
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + (errs.length ? " — " + errs[0] : "") + ")");
 await browser.close();
 server.close();

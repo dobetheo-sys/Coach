@@ -15,7 +15,10 @@
 // point d'intégration avec un futur backend.
 import { productCategoryFor, CATALOG } from "./shop-catalog.js";
 
-export const FLAVOR_OPTIONS = ["neutre", "fruits rouges", "citron", "cola", "peu d'importance"];
+// L'ORDRE EST CELUI DE LA GAMME, pas un ordre d'écriture : les maquettes présentent le citron
+// en « référence héro », puis cola, fruits rouges, neutre. Le premier de cette liste est aussi
+// le DÉFAUT proposé (`FLAVOR_OPTIONS[0]`) — l'ordre n'est donc pas décoratif.
+export const FLAVOR_OPTIONS = ["citron", "cola", "fruits rouges", "neutre", "peu d'importance"];
 export const FORMAT_OPTIONS = ["gel individuel", "flasque à recharger", "poudre à diluer"];
 export const CADENCES = {
   hebdo: { days: 7, label: "chaque semaine" },

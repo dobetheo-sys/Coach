@@ -11,6 +11,8 @@ import {
   shopPromptDue, shopEndOfPlanPromptDue, submitOrder, CADENCES, FLAVOR_OPTIONS, FORMAT_OPTIONS, venteAutorisee,
 } from "../shop-order.js";
 import { planEndDate } from "./session-life.js";
+import { sachetHTML, ATOUTS_GEL } from "./sachet.js";
+import { GEL_ZENNA } from "../shop-catalog.js";
 // R6 — le journal alimentaire (Open Food Facts + CSV) est RETIRÉ sur décision
 // utilisateur : trop de saisie pour trop peu de valeur ; l'onglet reste
 // estimations + ravitaillement. (Les données foodLog éventuelles restent
@@ -43,15 +45,22 @@ function foldHTML(titre, valeur, corps, open, id) {
     + '</span><span class="chev" aria-hidden="true">›</span></summary>'
     + '<div class="fold-body">' + corps + "</div></details>";
 }
-/** Le flacon du produit — sa capsule prend la couleur du goût choisi. Décoratif, mais il
- *  donne un objet à regarder : une page de vente sans produit vend une abstraction. */
-const FLAVOR_CAP = {
-  "neutre": "#B4B9C0", "fruits rouges": "#FF4B6E", "citron": "#FFD23D",
-  "cola": "#8B5A2B", "peu d'importance": "#FF7A3D",
-};
+/**
+ * LE PRODUIT SE MONTRE — le sachet des maquettes, à la saveur choisie.
+ *
+ * Ce créneau portait un « flacon » générique : un rectangle arrondi surmonté d'une pastille de
+ * couleur, dessiné ici faute de produit à montrer. Les maquettes du fondateur (12/08/2026)
+ * fixent le sachet réel ; `sachetHTML` le rend depuis `GEL_ZENNA`, donc la vignette, la rangée
+ * de choix et le devis parlent tous du même objet (R11.1) — et la table des couleurs de capsule
+ * qui vivait ici disparaît avec lui.
+ *
+ * « peu d'importance » ne rend AUCUN sachet : c'est une non-préférence valide, et lui inventer
+ * un visuel ferait croire à une cinquième saveur. Le créneau reste alors vide plutôt que rempli
+ * par défaut avec le sachet neutre, qui, lui, EXISTE.
+ */
 function productTileHTML(flavor) {
-  return '<div class="product-tile" aria-hidden="true"><div class="pt-cap" id="ptCap" style="background:'
-    + (FLAVOR_CAP[flavor] || FLAVOR_CAP.neutre) + '"></div><div class="pt-body"></div></div>';
+  const s = sachetHTML(flavor, "grand", 58);
+  return s ? '<div class="product-tile">' + s + "</div>" : "";
 }
 /** Les trois promesses tenables — reprises de la maquette, formulées sur ce que le service
  *  fait RÉELLEMENT (livré avant la période, résiliable à l'échéance, calé sur le plan). */
@@ -70,7 +79,9 @@ function periodLinesHTML(detail) {
   if (!detail || !detail.sessions.length) return "";
   return detail.sessions.map((x, i) => {
     const parts = [];
-    if (x.gelUnits) parts.push(x.gelUnits + " × " + esc(x.gelName || "gel") + (x.gelName ? "" : " (30 g)"));
+    // Le nom du produit vient de `GEL_ZENNA` tant qu'aucun fournisseur n'a de référence
+    // propre — `x.gelName` (issu de `CATALOG`) reprend la main dès qu'il en existe une.
+    if (x.gelUnits) parts.push(x.gelUnits + " × " + esc(x.gelName || GEL_ZENNA.nom) + " (" + GEL_ZENNA.glucidesG + " g)");
     if (x.drinkUnits) parts.push(x.drinkUnits + " × boisson (500 ml)");
     const eau = !parts.length;
     return '<div class="period-line' + (eau ? " water" : "") + '" style="animation-delay:' + (i * 90) + 'ms">'
@@ -194,12 +205,19 @@ let shopConfirmCancel = false; // bandeau « Résilier à l’échéance ? » �
 let shopExpanded = false;
 
 /** Un groupe de choix mutuellement exclusifs — libellé RELIÉ au groupe, sélection ANNONCÉE. */
-function choixHTML(libelle, attr, options, choisi) {
+function choixHTML(libelle, attr, options, choisi, vignette) {
   const id = "choix-" + attr;
   return '<div class="choice-lab" id="' + id + '">' + esc(libelle) + "</div>"
-    + '<div class="choice-row" role="radiogroup" aria-labelledby="' + id + '">'
-    + options.map((f) => '<button type="button" role="radio" class="choice' + (f === choisi ? " sel" : "")
-        + '" aria-checked="' + (f === choisi) + '" data-' + attr + '="' + esc(f) + '">' + esc(f) + "</button>").join("")
+    + '<div class="choice-row' + (vignette ? " avec-sachet" : "") + '" role="radiogroup" aria-labelledby="' + id + '">'
+    + options.map((f) => {
+      // L'illustration est DÉCORATIVE (`aria-hidden` dans `sachetHTML`) et le libellé reste dans
+      // le bouton : un lecteur d'écran entend « Citron », pas « image, Citron ». Une saveur sans
+      // sachet (« peu d'importance ») garde exactement le même bouton, sans trou dans la rangée.
+      const ill = vignette ? vignette(f) : "";
+      return '<button type="button" role="radio" class="choice' + (f === choisi ? " sel" : "")
+        + (ill ? " a-sachet" : "") + '" aria-checked="' + (f === choisi) + '" data-' + attr + '="' + esc(f) + '">'
+        + ill + "<span>" + esc(f) + "</span></button>";
+    }).join("")
     + "</div>";
 }
 
@@ -274,6 +292,11 @@ function shopSubscriptionCardHTML(plan, today) {
   const due = shopPromptDue(sub, S.answers.plan_start, today) || shopEndOfPlanPromptDue(sub, endDate, today);
   const deplie = abonneActif || shopEditing || shopExpanded || due;
 
+  // Les arguments du produit, tels que les maquettes les portent — vérifiables sur le sachet
+  // (une composition, un poids, une origine) et jamais un effet promis à l'athlète.
+  const atouts = '<div class="gel-facts">' + ATOUTS_GEL
+    .map((a) => '<div class="gel-fact"><b>' + esc(a.t) + "</b><span>" + esc(a.d) + "</span></div>").join("")
+    + "</div>";
   const enTete = '<div class="shop-head-row"><div style="flex:1;min-width:0">'
     + '<div class="shop-tag">Ravitaillement · abonnement</div>'
     + '<div class="shop-title">' + titre + "</div>"
@@ -290,6 +313,7 @@ function shopSubscriptionCardHTML(plan, today) {
 
   return '<div class="shop-card" id="shopCard">'
     + enTete
+    + atouts
     + TRUST_ROW
     // Le sélecteur de cadence est un SEGMENTÉ, pas une liste déroulante : deux choix
     // mutuellement exclusifs qu'on compare se montrent côte à côte. La pastille glisse d'un
@@ -322,7 +346,7 @@ function shopSubscriptionCardHTML(plan, today) {
     // dire lequel est actif, et le libellé du groupe (« Goût préféré ») n'était relié à rien.
     // `radiogroup` + `aria-checked` + `aria-labelledby` disent les trois choses qui manquaient :
     // que les choix s'excluent, lequel est pris, et de quoi le groupe parle.
-    + choixHTML("Goût préféré", "flavor", FLAVOR_OPTIONS, flavorSel)
+    + choixHTML("Goût préféré", "flavor", FLAVOR_OPTIONS, flavorSel, (f) => sachetHTML(f, "vignette", 24))
     + choixHTML("Format préféré", "format", FORMAT_OPTIONS, formatSel)
     // LA RÉSERVE QUI COMPTE PASSE AVANT LE BOUTON, PAS APRÈS.
     //

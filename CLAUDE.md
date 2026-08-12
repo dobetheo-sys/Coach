@@ -186,6 +186,36 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**V2 livré — le produit se montre : le sachet Zenna dans la carte de vente** (maquettes produit
+du fondateur, 12/08/2026 : « travail maintenant l'interface graphique de vente » — voir
+ARCHITECTURE.md « V2 ») : la carte vendait une abstraction — le créneau produit portait un
+« flacon » générique dessiné faute de produit à montrer, et le devis parlait de « gel (30 g) ».
+L'identité (4 saveurs, 30 g de glucides, 40 g net, sans colorant, fabriqué en France) se pose
+dans **`shop-catalog.js`**, qui se déclare depuis son écriture « le SEUL endroit où un produit
+réel existe » ; le dessin, les puces, le devis et les arguments la lisent tous (R11.1).
+**`CATALOG` reste à `null`** : on décrit un produit DESSINÉ, pas DISPONIBLE — ni fournisseur, ni
+prix ferme, ni expédition, et la carte continue de le dire. **Deux encres par saveur** parce que
+l'olive du citron rend **3,08:1** sur le crème, sous le seuil AA : `bloc` pour le pan de couleur,
+`texte` assombri pour écrire dessus. Le sachet est dessiné en SVG (`js/ui/sachet.js`) et **le Z
+vient de `brand.js`** — la leçon de v8, où la géométrie du logo avait fini par exister en trois
+endroits. Deux niveaux de détail par LISIBILITÉ : à 24 px, « ZENNA / GEL GLUCIDE / 30 G » se rend
+en traits de moins d'un pixel. La rangée des goûts montre les sachets (`aria-hidden` : on entend
+« Citron », pas « image, Citron »), « peu d'importance » n'en invente aucun, l'ordre suit la gamme
+(citron d'abord — c'est aussi le défaut proposé), et les faits produit passent en **bandeau d'une
+ligne** : six encadrés empilés faisaient 210 px de promesses avant le premier chiffre.
+**Deux défauts de ma première écriture** : le chiffre « 30 G » était posé DANS le pan de couleur
+et s'y noyait (c'est le rendu qui l'a montré, pas la relecture) ; et `var(--zn-mono)` dans un
+attribut de présentation SVG ne résout rien — un attribut SVG est parsé comme du XML, la police
+retombait en silence. **`smoke-typo` a rougi à 4,4 px** : l'exemption est bornée à
+`svg[aria-hidden]` et **reste conditionnelle** — `smoke-shop` vérifie que chaque sachet l'est ;
+vérifié en retirant l'attribut, **les DEUX gardes rougissent**.
+**Et un `git checkout` a effacé une heure de travail** : restaurer une cassure de contre-preuve
+avec `git checkout` sur un fichier NON COMMITÉ a emporté tout le câblage du sachet — ce sont les
+gardes qui l'ont dit (« 0 sachets »), pas moi. Plus un critère satisfait par un voisin (« le
+produit est nommé » cherchait deux motifs, dont un que le bandeau de faits satisfait : retirer le
+nom du devis le laissait VERT). `smoke-shop` 37 → **42 assertions**, trois cassures trois rouges.
+**28 gates verts, E2E 21/21, `audit:v1` et golden 949 inchangés.**
+
 **V1 livré — le canal de vente : le tunnel était infranchissable** (retour du fondateur,
 12/08/2026 : « travail l'ux du canal de vente » — voir ARCHITECTURE.md « V1 ») : la carte
 d'abonnement au ravitaillement (🧰 Outils › Nutrition) n'avait jamais été TRAVERSÉE comme un

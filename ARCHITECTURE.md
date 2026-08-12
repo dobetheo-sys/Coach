@@ -5752,3 +5752,104 @@ dépasser son conteneur. Après : 31→187 et 203→359, zéro débordement.
 
 **28 gates verts, E2E 21/21, `audit:v1` et golden inchangés** — le canal de vente ne touche
 aucune séance.
+
+---
+
+## V2 — le produit se montre : le sachet Zenna dans la carte de vente
+
+Maquettes produit du fondateur (12/08/2026) : quatre saveurs — citron (référence héro), cola,
+fruits rouges, neutre —, 30 g de glucides, 40 g net, sans colorant ni conservateur, fabriqué en
+France. *« travail maintenant l'interface graphique de vente »*.
+
+La carte vendait jusqu'ici une abstraction : le créneau produit portait un « flacon » générique
+(un rectangle arrondi surmonté d'une pastille de couleur) dessiné faute de produit à montrer, et
+le devis parlait de « gel (30 g) ».
+
+### L'identité vit dans `shop-catalog.js`, et nulle part ailleurs
+
+Ce fichier se déclare depuis son écriture « le SEUL endroit où un produit réel existe » : c'est
+donc là que `GEL_ZENNA` se pose. Le dessin du sachet, les puces de choix, le devis et les
+arguments de la carte lisent tous cette table — une saveur ajoutée demain se dessine, se choisit
+et se chiffre sans qu'aucun autre fichier ne bouge.
+
+**Deux encres par saveur, et ce n'est pas de la coquetterie.** `bloc` est la couleur vive de la
+maquette (le pan diagonal, la pastille) ; `texte` est sa version assombrie pour écrire SUR le
+crème. Mesuré : l'olive du citron (`#b4c223`) rend **3,08:1** sur le crème, sous le seuil AA de
+4,5. Une seule couleur obligeait à choisir entre la maquette et la lisibilité ; les séparer tient
+les deux.
+
+**`CATALOG` reste à `null`.** On décrit un produit DESSINÉ, pas un produit DISPONIBLE : ni
+fournisseur, ni prix ferme, ni expédition, et `submitOrder` ne fait toujours aucune requête. La
+carte continue de le dire, au même endroit et dans les mêmes termes.
+
+### Le sachet est dessiné, et le Z ne l'est pas deux fois
+
+`endurabuild/js/ui/sachet.js` construit le sachet en SVG depuis `GEL_ZENNA`. Pas de raster (D19,
+zéro requête externe), et surtout **le Z vient de `brand.js`** : `symbolePath()` est la source, on
+ne fait que la placer et la mettre à l'échelle. C'est la leçon que R-ZENNA v8 a payée — la
+géométrie du logo avait fini par exister en trois endroits.
+
+**Deux niveaux de détail, par lisibilité et non par optimisation** : à 24 px de large, « ZENNA /
+GEL GLUCIDE / 30 G GLUCIDES » se rend en traits de moins d'un pixel — du bruit qui salit la forme.
+La vignette ne porte que ce qui reste lisible à cette taille : la silhouette, le Z, le pan de
+couleur.
+
+**Ma première géométrie posait le chiffre DANS le pan de couleur** (« 30 G » à y=102 pour un pan
+qui commence à 86) : il s'y noyait. C'est le rendu qui l'a montré, pas la relecture du code — le
+chiffre est le seul argument du sachet qu'on lit à un mètre, il reste sur le crème.
+
+**Et `var(--zn-mono)` dans un attribut de présentation SVG ne résout rien** : un attribut SVG est
+parsé comme du XML, la police retombait en silence sur celle du navigateur. Elle vient désormais
+du CSS (`.zn-sachet text`), qui sait lire une variable — et évite d'écrire une seconde fois la
+pile de polices du thème.
+
+### Ce que la maquette a changé dans la carte
+
+- **La rangée des goûts montre les sachets** : on choisit un produit qu'on VOIT. Le bouton reste
+  un bouton — libellé compris, `radiogroup`/`aria-checked` conservés, cible de 44 px tenue. Les
+  sachets sont `aria-hidden` : un lecteur d'écran entend « Citron », pas « image, Citron ».
+- **« peu d'importance » ne rend AUCUN sachet.** C'est une non-préférence valide ; lui inventer
+  un visuel ferait croire à une cinquième saveur.
+- **L'ordre des saveurs est celui de la gamme** (citron d'abord). Ce n'est pas décoratif :
+  `FLAVOR_OPTIONS[0]` est aussi le défaut proposé.
+- **Le devis nomme le produit** — « 3 × Zenna gel glucide (30 g) » et non « 3 × gel ».
+- **Les faits produit sont un BANDEAU d'une ligne**, pas trois encadrés : la carte portait déjà
+  trois pavés de service, et six boîtes empilées faisaient 210 px de promesses avant le premier
+  chiffre. C'est exactement ce que fait le pied des maquettes.
+
+### Le plancher typographique, et pourquoi l'exemption n'est pas un trou
+
+`smoke-typo` est passé rouge : **4,4 px** sur les mentions du sachet, pour un plancher de 9. La
+règle R16.8 dit elle-même ce qu'elle gouverne — *« l'échelle gouverne le TEXTE ; un glyphe
+décoratif se dimensionne relativement à son porteur »*. Le sachet est un DESSIN de produit : « NET
+40 G » est un trait sur un emballage, pas une phrase adressée à quelqu'un.
+
+L'exemption est donc bornée à `svg[aria-hidden="true"]` — et elle **reste honnête parce qu'elle
+est conditionnelle** : `smoke-shop` vérifie séparément que chaque sachet est bien `aria-hidden`.
+Vérifié en retirant l'attribut : **les DEUX gardes rougissent**, `smoke-shop` sur l'illustration
+et `smoke-typo` qui recommence à voir les 4,4 px. Sans cette paire, il suffirait de cacher du vrai
+texte dans un SVG pour échapper au plancher.
+
+*Au passage, la garde ne nommait pas son coupable : `className` d'un élément SVG est un
+`SVGAnimatedString`, elle affichait « [object Object] ».*
+
+### Deux erreurs à moi, gardées écrites
+
+**Un `git checkout` a effacé une heure de travail.** En restaurant une cassure de contre-preuve
+j'ai fait `git checkout endurabuild/js/ui/tab-nutrition.js` sur un fichier aux modifications NON
+COMMITÉES : tout le câblage du sachet a disparu d'un coup. Ce sont les gardes qui l'ont dit
+(« 0 sachets », « le devis a 0 ligne »), pas moi. Les cassures se restaurent depuis une copie
+prise avant, jamais depuis git tant que le travail n'est pas commité.
+
+**Et un critère satisfait par un voisin.** « le produit est nommé » cherchait
+`/Zenna gel glucide|30 g de glucides/` n'importe où dans la carte — or la seconde branche est
+satisfaite par le bandeau de faits produit. Retirer le nom du devis laissait le critère VERT,
+vérifié. Neuvième occurrence dans ce dépôt d'un critère qui nomme une grandeur et en mesure une
+voisine ; il lit désormais les lignes du devis, et elles seules. Il a fallu aussi l'ancrer sur la
+cadence MENSUELLE : la fenêtre de 7 jours peut légitimement ne contenir aucune séance à
+ravitailler selon le jour d'exécution, et le critère serait passé à vide (famille R20.7).
+
+`smoke-shop` : 37 → **42 assertions**. Contre-preuves K7/K8/K9bis, trois rouges.
+
+**28 gates verts, E2E 21/21, `audit:v1` et golden 949 inchangés** — le produit ne touche aucune
+séance.

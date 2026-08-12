@@ -686,17 +686,33 @@ body.theme-zenna #screen .shop-title {
 body.theme-zenna #screen .shop-lead { font-size: 11px; color: var(--zn-muted); line-height: 1.5; margin-bottom: 14px; }
 /* Le flacon : sa capsule prend la couleur du goût, c'est le seul retour immédiat possible
    sur un produit qu'on ne peut pas encore montrer. */
-body.theme-zenna #screen .product-tile {
-  width: 56px; height: 64px; clip-path: var(--cut-tile); flex-shrink: 0;
-  background: linear-gradient(160deg, var(--zn-surface-3), var(--zn-surface-2));
-  border: 1px solid var(--zn-border);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+/* Le sachet réel remplace le flacon générique (maquettes du 12/08/2026). Plus de tuile ni de
+   cadre autour : sur le noir de la maquette, le produit est POSÉ, il n'est pas encadré. */
+body.theme-zenna #screen .product-tile { flex-shrink: 0; display: flex; align-items: flex-start; }
+body.theme-zenna #screen .zn-sachet text { font-family: var(--zn-mono), ui-monospace, monospace; }
+body.theme-zenna #screen .zn-sachet {
+  display: block;
+  /* L'ombre portée fait poser le sachet sur le fond au lieu de le laisser flotter — c'est le
+     seul effet de la maquette produit qui survit à cette taille. */
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .55));
 }
-body.theme-zenna #screen .product-tile .pt-cap { width: 14px; height: 14px; border-radius: 4px; transition: background var(--dur-trans) var(--ease); }
-body.theme-zenna #screen .product-tile .pt-body {
-  width: 22px; height: 26px; border-radius: 5px 5px 8px 8px;
-  background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.03));
-  border: 1px solid rgba(255,255,255,.14);
+/* Les arguments produit : trois faits vérifiables sur le sachet, pas des promesses d'effet. */
+/* Un BANDEAU d'une ligne et non trois encadrés : la carte portait déjà trois pavés de service
+   (« livré avant la période »…) et six boîtes empilées faisaient 210 px de promesses avant le
+   premier chiffre. Le pied des maquettes fait exactement ça — une ligne de faits, séparés. */
+body.theme-zenna #screen .gel-facts {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 10px 0 2px;
+  padding: 9px 11px; background: var(--zn-surface-2); border: 1px solid var(--zn-border); border-radius: 12px;
+}
+body.theme-zenna #screen .gel-fact {
+  display: flex; align-items: baseline; gap: 5px;
+}
+body.theme-zenna #screen .gel-fact b {
+  font-family: var(--zn-mono); font-size: 9.5px; font-weight: 700; color: var(--zn-orange-tint);
+  letter-spacing: .03em; text-transform: uppercase;
+}
+body.theme-zenna #screen .gel-fact span {
+  font-family: var(--zn-mono); font-size: 9px; color: var(--zn-muted-2); line-height: 1.3;
 }
 /* Les trois promesses */
 body.theme-zenna #screen .trust-row { display: flex; gap: 7px; margin: 2px 0 14px; }
@@ -752,6 +768,15 @@ body.theme-zenna #screen .choice-lab {
   margin: 13px 0 7px; text-transform: uppercase;
 }
 body.theme-zenna #screen .choice-row { display: flex; gap: 7px; flex-wrap: wrap; }
+/* La rangée des goûts montre les sachets : on choisit un produit qu'on VOIT, pas un mot. Le
+   bouton reste un bouton — libellé compris, cible de 44 px conservée (U4). */
+body.theme-zenna #screen .choice-row.avec-sachet { gap: 8px; }
+body.theme-zenna #screen .choice.a-sachet {
+  flex-direction: column; align-items: center; gap: 5px;
+  padding: 9px 10px 10px; border-radius: 15px; min-height: 44px;
+}
+body.theme-zenna #screen .choice.a-sachet .zn-sachet { filter: drop-shadow(0 3px 7px rgba(0, 0, 0, .5)); }
+body.theme-zenna #screen .choice.a-sachet.sel .zn-sachet { filter: drop-shadow(0 3px 10px rgba(0, 224, 198, .35)); }
 /* 44 px et non les 40 de la maquette : U4 a tranché ce seuil pour ce dépôt (WCAG 2.5.8), et
    un standard d'accessibilité passe devant un pixel de maquette. Mesuré à 40 au rendu. */
 body.theme-zenna #screen .choice {

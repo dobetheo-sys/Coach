@@ -193,8 +193,19 @@ for (const t of ["profile", "general", "today", "week", "outils"]) {
       // seulement les nœuds qui portent du texte PROPRE (sinon on mesure des conteneurs)
       const propre = [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
       if (!propre) return;
+      // UNE ILLUSTRATION N'EST PAS DU TEXTE. Le plancher de R16.8 gouverne ce qu'on LIT ; la
+      // règle le dit elle-même (« l'échelle gouverne le TEXTE ; un glyphe décoratif se
+      // dimensionne relativement à son porteur »). Le sachet Zenna est un DESSIN de produit :
+      // ses mentions (« NET 40 G ») sont des traits sur un emballage, pas une phrase adressée
+      // à quelqu'un — elles sont dans un `<svg aria-hidden>`, donc invisibles aux lecteurs
+      // d'écran, et personne n'est censé les déchiffrer. L'exemption est bornée à ce cas et
+      // reste HONNÊTE parce que `smoke-shop` vérifie séparément que ces illustrations sont
+      // bien `aria-hidden` : sans quoi il suffirait de cacher du vrai texte dans un SVG.
+      if (e.closest('svg[aria-hidden="true"]')) return;
       const f = parseFloat(getComputedStyle(e).fontSize);
-      if (f < m) { m = f; quoi = e.className || e.tagName; }
+      // `className` d'un élément SVG est un SVGAnimatedString, pas une chaîne : il s'affichait
+      // « [object Object] » et la garde ne nommait donc pas son coupable.
+      if (f < m) { m = f; quoi = (typeof e.className === "string" && e.className) || e.getAttribute("class") || e.tagName; }
     });
     return { m, quoi };
   });
