@@ -18,7 +18,7 @@
 import { SPORTS } from "../config.js";
 import { $, S, ebSave, esc, fmtDay, todayISO } from "../state.js";
 import { curSteps, renderStep, reset, evalRules, rulesGrouped} from "./steps.js";
-import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, predictionCardHTML, intensityCardHTML } from "./plan-view.js";
+import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, predictionCardHTML, predictionViewHTML, intensityCardHTML } from "./plan-view.js";
 import { exportICS, exportJSON, exportPNG } from "../export.js";
 
 // R23.5 — L'AVANCEMENT ET LE DECOMPTE, EN TETE DE L'ONGLET PLAN.
@@ -262,11 +262,143 @@ function programmePhaseHTML(st) {
   return h;
 }
 
+
+// R28 — LA FRISE DE PHASES, extraite pour pouvoir être émise en 2e position (elle vivait au
+// milieu du rendu). Le contenu est INCHANGÉ, seule sa place bouge.
+function phaseFriseHTML(plan) {
+  let html = "";
+  html += '<div class="ph-line">';
+  // R16.4 — LES PASTILLES DE PHASE TRONQUAIENT SUR MOBILE (« SPÉCIFIQ… », « P… » à 390 px).
+  // La frise est PROPORTIONNELLE à la longueur des phases (`flex: p.weeks`), ce qui est une
+  // information en soi : on la garde, et c'est le LIBELLÉ qui s'abrège. Les deux versions sont
+  // émises, le CSS bascule ; `title` + `aria-label` portent toujours le nom complet, donc rien
+  // n'est perdu ni pour la souris ni pour un lecteur d'écran.
+  const ABBR = { "Développement": "DÉV.", "Spécifique": "SPÉ.", "Affûtage": "AFF.", "Peak": "PIC", "Base": "BASE" };
+  plan.phases.forEach((p) => { html += '<button type="button" class="ph-seg" data-phseg="' + p.nom + '" title="' + p.nom + '" aria-label="' + p.nom + ", " + p.weeks + ' semaines" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span class="ph-full">' + p.nom + '</span><span class="ph-abbr">' + (ABBR[p.nom] || p.nom) + "</span><em>" + p.weeks + "sem</em></button>"; });
+  html += "</div>";
+  return '<div class="rise r2">' + html + "</div>";
+}
+
+
+// ═══════════════ R28 — LES DEUX CHORÉGRAPHIES ═══════════════
+// Reprises des démos animées fournies par le fondateur (`zenna-plan-motion-demo.html`,
+// `zenna-prediction-motion-demo.html`), qui sont la référence : ce sont des fichiers
+// FONCTIONNELS, pas des maquettes, et le brief dit de s'y référer plutôt qu'à sa propre prose
+// en cas de doute sur un timing.
+//
+// `prefers-reduced-motion` saute à l'état final — et ce n'est pas une politesse : la séquence
+// part de valeurs à ZÉRO et de barres vides. Sans repli, un mouvement désactivé n'afficherait
+// pas « la même chose sans animation », il afficherait un écran FAUX (J−0, 0 %). C'est le
+// piège symétrique déjà documenté en tête de `zenna-today.css`.
+const _BEAT = 120;
+const _reduit = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const _wait = (ms) => new Promise((r) => setTimeout(r, ms));
+function _compte(el, de, a, dur, fmt) {
+  if (_reduit()) { el.textContent = fmt(a); return Promise.resolve(); }
+  return new Promise((res) => {
+    const t0 = performance.now();
+    (function f(t) {
+      const p = Math.min((t - t0) / dur, 1);
+      el.textContent = fmt(de + (a - de) * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(f); else { el.textContent = fmt(a); res(); }
+    })(t0);
+  });
+}
+const _fmtM = (m) => { const t = Math.round(m); return t < 60 ? t + "'" : Math.floor(t / 60) + "h" + String(t % 60).padStart(2, "0"); };
+
+/** Vue d'ensemble : J− compte → la frise grandit → la barre se remplit → les rayures partent. */
+async function znPlanSequence() {
+  const num = document.querySelector(".zn-count-hero .zn-jminus");
+  const segs = [...document.querySelectorAll(".ph-line .ph-seg")];
+  const fill = document.querySelector(".zn-prog-fill");
+  if (_reduit()) { segs.forEach((s) => s.classList.add("vu")); if (fill) fill.classList.add("vu"); return; }
+  const cible = num && /J−(\d+)/.exec(num.textContent);
+  if (fill) { fill.dataset.w = fill.style.width; fill.style.width = "0%"; }
+  segs.forEach((s) => s.classList.remove("vu"));
+  await _wait(80);
+  if (cible) await _compte(num, 0, +cible[1], _BEAT * 11, (v) => "J−" + Math.round(v));
+  segs.forEach((s, i) => setTimeout(() => s.classList.add("vu"), i * 114));
+  await _wait(114 * Math.max(0, segs.length - 1) + _BEAT * 4);
+  if (fill) { fill.style.transition = "width " + (_BEAT * 10) + "ms cubic-bezier(.25,.46,.45,.94)"; fill.style.width = fill.dataset.w || "0%"; }
+  await _wait(_BEAT * 10);
+  document.querySelectorAll(".ph-line .ph-seg.now, .ph-line .ph-seg[data-phseg].en-cours").forEach((s) => s.classList.add("striping"));
+}
+
+/** Prédiction : le hero compte → les colonnes → le delta → chaque discipline compte À REBOURS.
+ *  ARBITRAGE DU FONDATEUR (12/08/2026) : le compteur monte jusqu'à la borne BASSE, puis la
+ *  borne haute se pose à côté — l'état final porte donc la fourchette entière, jamais un
+ *  chiffre nu. J'avais signalé que la borne basse seule, le temps de l'animation, se lit comme
+ *  une promesse optimiste ; c'est su et assumé. */
+async function znPredSequence() {
+  const hero = document.querySelector(".zn-pred-num");
+  const cols = [...document.querySelectorAll(".zn-pred-col")];
+  const delta = document.querySelector(".zn-pred-delta");
+  const rows = [...document.querySelectorAll(".zn-pd-v")];
+  const hi = (el) => el.querySelector(".zn-pred-hi");
+  if (_reduit()) {
+    cols.forEach((c) => c.classList.add("on")); if (delta) delta.classList.add("on");
+    [hero, ...rows].forEach((e) => { if (e && hi(e)) hi(e).classList.add("on"); });
+    return;
+  }
+  cols.forEach((c) => c.classList.remove("on"));
+  if (delta) delta.classList.remove("on");
+  [hero, ...rows].forEach((e) => { if (e && hi(e)) hi(e).classList.remove("on"); });
+  await _wait(100);
+  if (hero) {
+    const lo = parseFloat(hero.dataset.lo);
+    const garde = hi(hero) ? hi(hero).outerHTML : "";
+    await _compte(hero, 0, lo, _BEAT * 9, (v) => _fmtM(v));
+    hero.innerHTML = _fmtM(lo) + garde;
+    if (hi(hero)) hi(hero).classList.add("on");
+  }
+  cols.forEach((c, i) => setTimeout(() => c.classList.add("on"), i * 100));
+  await _wait(320);
+  if (delta) delta.classList.add("on");
+  await _wait(360);
+  rows.forEach((el, i) => setTimeout(async () => {
+    const de = parseFloat(el.dataset.from), a = parseFloat(el.dataset.lo);
+    const garde = hi(el) ? hi(el).outerHTML : "";
+    el.classList.add("compte");
+    await _compte(el, de, a, _BEAT * 6, (v) => _fmtM(v));
+    el.innerHTML = _fmtM(a) + garde;
+    el.classList.remove("compte");
+    if (hi(el)) hi(el).classList.add("on");
+  }, i * 150));
+}
+
+/** La bascule est un état LOCAL : on re-rend l'onglet, la séquence de la vue visée rejoue. */
+function bindPlanSubtabs(plan) {
+  document.querySelectorAll("[data-plansub]").forEach((b) => {
+    b.onclick = () => { S._planSub = b.dataset.plansub; renderTabPlanGeneral(plan); };
+  });
+}
+
 export function renderTabPlanGeneral(plan) {
   const a = S.answers;
   const today = todayISO();
   let html = momentHTML(plan, today) + painBannerHTML() + retestBannerHTML(today);
-  html += '<div class="card"><div class="eyebrow">Plan général — ' + SPORTS[S.sport].nom + "</div><h2>Ta saison en un coup d’œil</h2>"
+  // R28 — PLAN GAGNE DEUX SOUS-ONGLETS (décision du fondateur, 12/08/2026). Le composant est
+  // repris À L'IDENTIQUE de celui d'Outils (`.subtabs`/`.subtab`) — même classes, même
+  // comportement : on n'invente pas une seconde forme de bascule pour la même idée.
+  const sub = S._planSub === "pred" ? "pred" : "overview";
+  html += '<div class="subtabs" role="tablist">'
+    + '<button type="button" class="subtab' + (sub === "overview" ? " active" : "") + '" data-plansub="overview"'
+    + ' role="tab" aria-selected="' + (sub === "overview") + '">📊 Vue d’ensemble</button>'
+    + '<button type="button" class="subtab' + (sub === "pred" ? " active" : "") + '" data-plansub="pred"'
+    + ' role="tab" aria-selected="' + (sub === "pred") + '">🎯 Prédiction</button></div>';
+  if (sub === "pred") {
+    html += '<div class="zn-fadeview" id="planPred">' + predictionViewHTML(plan) + "</div>";
+    $("screen").innerHTML = html;
+    bindPlanSubtabs(plan);
+    znPredSequence();
+    return;
+  }
+  // R28 — L'ORDRE DES BLOCS : le DÉCOMPTE ouvre la vue, la frise suit, l'intro recule en 3e.
+  // Ce qu'on vient chercher en premier est « dans combien de jours, et où j'en suis » — pas la
+  // description du plan, qui ne change jamais.
+  html += avancementPlanHTML(plan, today);
+  html += phaseFriseHTML(plan);
+  html += '<div class="card rise r3"><div class="eyebrow">Plan général — ' + SPORTS[S.sport].nom + "</div><h2>Ta saison en un coup d’œil</h2>"
     + '<div class="why">' + plan.totalWeeks + " semaines en " + (plan.use10 ? "cycles de 10 jours (qui glissent)" : "semaines de 7 jours") + ", volume " + plan.volBase + "h → " + plan.volPeak + "h.</div>";
   html += driverBand(a);
   // R23.5 / R23.12 — CE QU'ON VIENT VOIR EN PREMIER : ou j'en suis, et dans combien de jours.
@@ -275,7 +407,7 @@ export function renderTabPlanGeneral(plan) {
   // plan avec le decompte des jours avant la course », et « l'export PNG est interessant dans
   // l'idee mais mal nomme et devrait peut-etre etre sous l'avancement du plan sous le nom
   // Partage ». Les deux vont ensemble : on partage ce qu'on vient de regarder.
-  html += avancementPlanHTML(plan, today);
+  // (`avancementPlanHTML` est désormais émis EN TÊTE — R28.)
   // R23.6 — « POURQUOI CE PLAN » DESCEND, ET C'EST UNE DECISION QUI EN REVISE UNE AUTRE.
   //
   // R6 l'avait mise EN TETE, dépliée, au motif que « l'explicabilité est le contre-positionnement
@@ -303,15 +435,7 @@ export function renderTabPlanGeneral(plan) {
   // s'abrégeaient tous, y compris sur grand écran. Défaut introduit par R16.5, visible sur
   // la capture de contrôle de R16.8 — deux corrections successives d'un même symptôme (les
   // libellés tronqués) dont aucune ne regardait la vraie cause : la largeur disponible.
-  html += '<div class="ph-line">';
-  // R16.4 — LES PASTILLES DE PHASE TRONQUAIENT SUR MOBILE (« SPÉCIFIQ… », « P… » à 390 px).
-  // La frise est PROPORTIONNELLE à la longueur des phases (`flex: p.weeks`), ce qui est une
-  // information en soi : on la garde, et c'est le LIBELLÉ qui s'abrège. Les deux versions sont
-  // émises, le CSS bascule ; `title` + `aria-label` portent toujours le nom complet, donc rien
-  // n'est perdu ni pour la souris ni pour un lecteur d'écran.
-  const ABBR = { "Développement": "DÉV.", "Spécifique": "SPÉ.", "Affûtage": "AFF.", "Peak": "PIC", "Base": "BASE" };
-  plan.phases.forEach((p) => { html += '<button type="button" class="ph-seg" data-phseg="' + p.nom + '" title="' + p.nom + '" aria-label="' + p.nom + ", " + p.weeks + ' semaines" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span class="ph-full">' + p.nom + '</span><span class="ph-abbr">' + (ABBR[p.nom] || p.nom) + "</span><em>" + p.weeks + "sem</em></button>"; });
-  html += "</div>";
+  // (la frise est émise EN TÊTE — R28, `phaseFriseHTML`.)
   // R23.7 / R23.9 — LA PREDICTION ET LA REPARTITION DES INTENSITES APPARTIENNENT AU PLAN.
   //
   // « L'onglet prediction et charge devrait apparaitre dans plan juste sous l'etat d'avancement
@@ -323,7 +447,7 @@ export function renderTabPlanGeneral(plan) {
   // Mesure a l'appui : deployees, l'onglet passait de 3,8 a 5,2 ecrans — la garde U15 (« le Plan
   // tient sous 5 ecrans ») est passee ROUGE, ce qui est exactement son role. On ne relache pas la
   // garde, on tient la demande : `<details>` ferme, un geste pour tout voir.
-  html += replier(predictionCardHTML(plan), "🎯 Prédiction de course");
+  // R28 — la prédiction a quitté cette vue : elle est le sous-onglet « 🎯 Prédiction ».
   html += replier(intensityCardHTML(plan), "⚡ Répartition des intensités");
   html += phaseObjectivesHTML(plan);
   html += '<div class="vol-bars">';
@@ -427,6 +551,8 @@ export function renderTabPlanGeneral(plan) {
     + '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn gold" id="allW" type="button">' + (S.showAllWeeks ? "Revenir à la semaine en cours" : "Voir tout le plan (" + plan.totalWeeks + " semaines)") + '</button><button class="btn" id="prn" type="button">🖨 Version imprimable</button><button class="btn" id="expIcs" type="button">📅 Ajouter à mon agenda</button></div>'
     + '<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer">⚙ Réglages avancés (réponses, export brut, changer de sport)</summary><div class="nav" style="flex-wrap:wrap;gap:8px;margin-top:8px"><button class="btn" id="backBp" type="button" style="font-size:var(--fs-sm);padding:9px 12px">← Modifier mes réponses</button><button class="btn" id="expJson" type="button" style="font-size:var(--fs-sm);padding:9px 12px">{ } JSON</button><button class="btn" id="restartBtn" type="button" style="font-size:var(--fs-sm);padding:9px 12px">Changer de sport</button></div></details></div>';
   $("screen").innerHTML = html;
+  bindPlanSubtabs(plan);
+  znPlanSequence();
   const rerender = () => renderTabPlanGeneral(plan);
   bindPainBanner(plan, rerender);
   bindFeasibility(rerender);

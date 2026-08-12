@@ -1,7 +1,7 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
 import { SPORTS } from "../config.js";
-import { S, todayISO, fmtDay } from "../state.js";
+import { S, todayISO, fmtDay, esc } from "../state.js";
 import { evalRules } from "../ui/steps.js";
 import { renderTabs, invalidatePlan, ensurePlan } from "./tabs.js";
 import { logProjection } from "../projection-log.js"; // A-5 — enregistre, ne reboucle jamais
@@ -554,4 +554,136 @@ function decisionsCardHTML(plan){
 // Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
 // pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
 
-export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, bindLoadChart, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
+export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, bindLoadChart, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, predictionViewHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
+
+// ═══════════════ LE SOUS-ONGLET « PRÉDICTION » (R28) ═══════════════
+// Décision du fondateur (12/08/2026) : la prédiction quitte le repliable de la vue d'ensemble
+// et devient une vue dédiée, en 4 blocs. Le brief posait une question BLOQUANTE — « le moteur
+// calcule-t-il une progression discipline par discipline, ou seulement un total ? Ne pas
+// trancher soi-même ». MESURÉ sur un 70.3 : il la calcule, et plus finement que le brief
+// n'espérait — `gainPct`/`gainBand` sont PAR RÉFÉRENCE (ftp · thrPace · css · vam),
+// `projected.refs` rend les trois valeurs projetées, et `items`/`projected.items` rendent les
+// temps SEGMENT PAR SEGMENT. Rien n'est inventé ici : chaque chiffre vient du prédicteur.
+//
+// LES VALEURS SONT DES FOURCHETTES, JAMAIS UN CHIFFRE NU — c'est la propriété du prédicteur
+// (P7/P8 : il refuse d'estimer plutôt que de faire semblant). Les démos animées affichaient un
+// nombre unique ; arbitrage du fondateur : le compteur monte jusqu'à la borne BASSE, puis la
+// borne haute se pose à côté. L'état final porte donc la fourchette entière.
+
+/** "32'38–34'57" | "2h33–2h41" → {lo, hi} en minutes. `null` si ce n'est pas un temps. */
+function _rangeMin(v) {
+  const s = String(v || "");
+  if (/(W|km\/h|m\/h|%|km-effort)/.test(s)) return null; // puissance/vitesse : pas un chrono
+  const un = (t) => {
+    const h = /(\d+)\s*h\s*(\d*)/i.exec(t);
+    if (h) return +h[1] * 60 + (h[2] ? +h[2] : 0);
+    const m = /(\d+)\s*['’]\s*(\d*)/.exec(t);
+    if (m) return +m[1] + (m[2] ? +m[2] / 60 : 0);
+    return null;
+  };
+  const p = s.split(/[–—-]/).map((x) => un(x.trim())).filter((x) => x != null);
+  if (!p.length) return null;
+  return { lo: p[0], hi: p.length > 1 ? p[1] : p[0] };
+}
+const _fmtMin = (m) => {
+  const t = Math.round(m);
+  return t < 60 ? t + "'" : Math.floor(t / 60) + "h" + String(t % 60).padStart(2, "0");
+};
+/** Range les items du prédicteur par discipline. Les lignes d'INTENSITÉ (watts) sont écartées :
+ *  P6 interdit de projeter le pacing, elles ne sont pas des chronos et n'ont rien à faire ici. */
+function _parDiscipline(items) {
+  const out = { sw: null, bk: null, rn: null };
+  (items || []).forEach((x) => {
+    const leg = String(x.leg || "");
+    if (/intensit/i.test(leg) || /Total/i.test(leg)) return;
+    const r = _rangeMin(x.value);
+    if (!r) return;
+    if (/Natation|Nage/i.test(leg)) out.sw = out.sw || { leg, r };
+    else if (/V[ée]lo/i.test(leg)) out.bk = out.bk || { leg, r };
+    else if (/CAP|Course|Marathon|Semi|km/i.test(leg)) out.rn = out.rn || { leg, r };
+  });
+  return out;
+}
+
+/**
+ * LA VUE PRÉDICTION — 4 blocs. Elle est le SEUL point qui journalise (A-5) : `logProjection`
+ * enregistre la prédiction TELLE QU'AFFICHÉE, une fois par semaine ISO. La prédiction ne vivant
+ * plus qu'ici, l'appel déménage avec elle — deux points d'appel écriraient deux fois.
+ */
+function predictionViewHTML(plan) {
+  if (!globalThis.EBV2 || !globalThis.EBV2.predict) return "";
+  let pr;
+  try { pr = globalThis.EBV2.predict(S.sport, S.answers, plan); } catch (e) { return ""; }
+  if (!pr || (!pr.items.length && !pr.advice.length)) return "";
+  logProjection(S.sport, S.answers, pr);
+
+  const pj = pr.projected && pr.projected.applicable ? pr.projected : null;
+  const tNow = tempsTotalItem(pr.items), tProj = pj ? tempsTotalItem(pj.items) : null;
+  const rNow = tNow ? _rangeMin(tNow.value) : null, rProj = tProj ? _rangeMin(tProj.value) : null;
+  const cible = rProj || rNow;
+  const dRef = pj && pj.raceDate ? fmtDay(pj.raceDate) : "la fin du plan";
+  let h = '<div class="zn-pred">';
+
+  // ── Bloc 1 — hero du temps total ──
+  if (cible) {
+    h += '<div class="load-card zn-pred-hero"><div class="eyebrow">'
+      + (rProj ? "Temps total projeté" : "Temps total estimé") + "</div>"
+      + '<div class="zn-pred-num" data-lo="' + cible.lo.toFixed(2) + '" data-hi="' + cible.hi.toFixed(2) + '">'
+      + esc(_fmtMin(cible.lo)) + '<span class="zn-pred-hi"> – ' + esc(_fmtMin(cible.hi)) + "</span></div>"
+      + '<div class="load-sub">fourchette du modèle — la marge tient au parcours, à la météo et au jour</div></div>';
+  }
+
+  // ── Bloc 2 — deux colonnes + delta ──
+  if (rNow && rProj) {
+    const gagne = Math.round((rNow.lo + rNow.hi) / 2 - (rProj.lo + rProj.hi) / 2);
+    h += '<div class="zn-pred-cols">'
+      + '<div class="zn-pred-col"><div class="zn-pc-lab">Si la course était aujourd’hui</div>'
+      + '<div class="zn-pc-date">forme actuelle, mesurée</div><div class="zn-pc-t">' + esc(tNow.value) + "</div></div>"
+      + '<div class="zn-pred-col proj"><div class="zn-pc-lab">Projeté au jour J</div>'
+      + '<div class="zn-pc-date">' + esc(dRef) + "</div><div class=\"zn-pc-t\">" + esc(tProj.value) + "</div></div></div>";
+    // Le delta se lit sur les MILIEUX des deux fourchettes, et le dit — comparer deux bornes
+    // basses donnerait un gain flatteur qu'aucune des deux estimations ne promet.
+    if (gagne > 0) h += '<div class="zn-pred-delta">↓ ' + gagne + " min gagnées d’ici la course si le plan tient"
+      + ' <span class="zn-pred-fine">(milieu de fourchette à milieu de fourchette)</span></div>';
+    else h += '<div class="zn-pred-delta neutre">La projection ne promet pas de gain à cet horizon — confiance ' + esc(pj.confidence) + "</div>";
+  } else if (rNow && !rProj) {
+    h += '<div class="load-sub zn-pred-nomotif">Pas de projection à cet horizon : ' + esc((pr.projected && pr.projected.motif) || "trop tôt pour estimer un gain") + "</div>";
+  }
+
+  // ── Bloc 3 — détail par discipline ──
+  const dn = _parDiscipline(pr.items), dp = pj ? _parDiscipline(pj.items) : { sw: null, bk: null, rn: null };
+  const lignes = [["sw", "🏊"], ["bk", "🚴"], ["rn", "🏃"]].filter(([k]) => dn[k]);
+  if (lignes.length) {
+    h += '<div class="load-card zn-pred-disc"><div class="eyebrow">Par discipline</div>';
+    lignes.forEach(([k, ic]) => {
+      const a = dn[k], b = dp[k];
+      h += '<div class="zn-pd-row"><span class="zn-pd-ic" aria-hidden="true">' + ic + "</span>"
+        + '<span class="zn-pd-n">' + esc(a.leg) + "</span>"
+        + '<span class="zn-pd-v" data-lo="' + (b ? b.r.lo : a.r.lo).toFixed(2) + '" data-hi="' + (b ? b.r.hi : a.r.hi).toFixed(2) + '"'
+        + ' data-from="' + a.r.lo.toFixed(2) + '">' + esc(_fmtMin((b ? b.r : a.r).lo))
+        + '<span class="zn-pred-hi"> – ' + esc(_fmtMin((b ? b.r : a.r).hi)) + "</span></span></div>";
+    });
+    h += "</div>";
+  }
+
+  // ── Bloc 4 — repliable « pourquoi cette projection » : les références, dans l'ordre de course ──
+  if (pj && pj.refs) {
+    const a = S.answers;
+    const R = [
+      ["CSS natation", a.css, pj.refs.css != null ? _fmtMin(pj.refs.css / 60) + "/100m" : null, "css"],
+      ["FTP cible", a.ftp ? a.ftp + " W" : null, pj.refs.ftp != null ? Math.round(pj.refs.ftp) + " W" : null, "ftp"],
+      ["Allure seuil", a.pace, pj.refs.thrPace != null ? _fmtMin(pj.refs.thrPace / 60) + "/km" : null, "thrPace"],
+    ].filter((x) => x[1] || x[2]);
+    if (R.length) {
+      h += '<details class="load-card zn-pred-why"><summary>💡 Pourquoi cette projection</summary><div>';
+      R.forEach(([lab, av, ap]) => {
+        h += '<div class="kv"><span class="kv-k">' + lab + '</span><span class="kv-v">'
+          + esc(av || "—") + (ap ? " → <b>" + esc(ap) + "</b>" : "") + "</span></div>";
+      });
+      h += '<div class="load-sub" style="margin-top:8px">Calculée sur la progression attendue de tes références '
+        + "si le volume du plan est tenu — pas une promesse, une trajectoire. Confiance " + esc(pj.confidence) + ".</div>";
+      h += "</div></details>";
+    }
+  }
+  return h + "</div>";
+}

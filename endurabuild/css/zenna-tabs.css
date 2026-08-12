@@ -855,3 +855,71 @@ body.theme-zenna #screen .confirm-strip span { font-family: var(--zn-mono); font
 body.theme-zenna #screen .confirm-strip .btn { min-height: 40px; padding: 0 12px; font-size: 9.5px; }
 body.theme-zenna #screen .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 body.theme-zenna #screen .btn-row .btn { flex: 1; }
+
+/* ═══════════ R28 — SOUS-ONGLET PRÉDICTION + CHORÉGRAPHIES DU PLAN ═══════════
+   La bascule Vue d'ensemble ↔ Prédiction est un FONDU, jamais un glissement horizontal :
+   c'est déjà la règle de la bascule Nutrition/Éducatifs, et on n'invente pas une seconde
+   grammaire de transition pour le même geste. */
+body.theme-zenna #screen .zn-fadeview { animation: znFade 420ms var(--ease, cubic-bezier(.4,0,.2,1)); }
+@keyframes znFade { from { opacity: 0; } to { opacity: 1; } }
+
+body.theme-zenna #screen .zn-pred-hero { text-align: center; }
+body.theme-zenna #screen .zn-pred-num {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 46px;
+  line-height: 1; color: var(--zn-orange-tint); margin: 4px 0; font-variant-numeric: tabular-nums;
+}
+/* La borne HAUTE arrive après le compteur — elle ne doit pas réserver sa place avant, sinon
+   le hero se décale au moment où elle apparaît. */
+body.theme-zenna #screen .zn-pred-hi { opacity: 0; transition: opacity 320ms var(--ease, ease); }
+body.theme-zenna #screen .zn-pred-hi.on { opacity: 1; }
+body.theme-zenna #screen .zn-pred-num .zn-pred-hi { font-size: 26px; color: var(--zn-muted); }
+
+body.theme-zenna #screen .zn-pred-cols { display: flex; gap: 8px; margin: 12px 0; }
+body.theme-zenna #screen .zn-pred-col {
+  flex: 1; background: var(--zn-surface); border: 1px solid var(--zn-border); border-radius: 16px;
+  padding: 13px; opacity: 0; transform: translateY(10px);
+  transition: opacity 420ms var(--ease-enter, ease), transform 420ms var(--ease-enter, ease);
+}
+body.theme-zenna #screen .zn-pred-col.on { opacity: 1; transform: translateY(0); }
+body.theme-zenna #screen .zn-pred-col.proj { border-color: rgba(0, 224, 198, .35); background: rgba(0, 224, 198, .04); }
+body.theme-zenna #screen .zn-pc-lab { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted-2); letter-spacing: .05em; }
+body.theme-zenna #screen .zn-pred-col.proj .zn-pc-lab { color: var(--zn-cyan); }
+body.theme-zenna #screen .zn-pc-date { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted-2); margin-bottom: 6px; }
+body.theme-zenna #screen .zn-pc-t { font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 22px; line-height: 1; }
+body.theme-zenna #screen .zn-pred-col.proj .zn-pc-t { color: var(--zn-cyan); }
+
+body.theme-zenna #screen .zn-pred-delta {
+  text-align: center; font-family: var(--zn-mono); font-size: var(--fs-sm); color: var(--zn-cyan);
+  font-weight: 700; margin: 0 0 12px; opacity: 0; transform: scale(.9);
+  transition: opacity 360ms var(--ease-spring, ease), transform 360ms var(--ease-spring, ease);
+}
+body.theme-zenna #screen .zn-pred-delta.on { opacity: 1; transform: scale(1); }
+body.theme-zenna #screen .zn-pred-delta.neutre { color: var(--zn-muted); }
+body.theme-zenna #screen .zn-pred-fine { display: block; font-weight: 400; color: var(--zn-muted-2); font-size: var(--fs-xs); }
+
+body.theme-zenna #screen .zn-pd-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--zn-border); }
+body.theme-zenna #screen .zn-pd-row:last-child { border-bottom: none; }
+body.theme-zenna #screen .zn-pd-ic { width: 24px; text-align: center; font-size: 1.05em; }
+body.theme-zenna #screen .zn-pd-n { flex: 1; min-width: 0; font-family: var(--zn-mono); font-size: var(--fs-sm); color: var(--zn-muted); }
+body.theme-zenna #screen .zn-pd-v { font-family: var(--zn-mono); font-size: var(--fs-md); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-pd-v.compte { color: var(--zn-cyan); }
+body.theme-zenna #screen .zn-pd-v .zn-pred-hi { font-weight: 400; color: var(--zn-muted-2); }
+
+/* Vue d'ensemble — la frise grandit segment par segment, puis la phase active respire. */
+body.theme-zenna #screen .ph-line .ph-seg { transform: scaleX(0); transform-origin: left; opacity: 0;
+  transition: transform 480ms var(--ease-enter, ease), opacity 480ms var(--ease-enter, ease); }
+body.theme-zenna #screen .ph-line .ph-seg.vu { transform: scaleX(1); opacity: 1; }
+body.theme-zenna #screen .ph-line .ph-seg.striping {
+  background-image: repeating-linear-gradient(-45deg, rgba(255,61,0,.16) 0 8px, rgba(255,61,0,.05) 8px 16px);
+  background-size: 200% 100%; animation: znPhMove calc(var(--beat, 120ms) * 30) linear infinite;
+}
+@keyframes znPhMove { from { background-position: 0 0; } to { background-position: 44px 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  body.theme-zenna #screen .zn-fadeview,
+  body.theme-zenna #screen .ph-line .ph-seg.striping { animation: none; }
+  body.theme-zenna #screen .ph-line .ph-seg { transform: none; opacity: 1; transition: none; }
+  body.theme-zenna #screen .zn-pred-col { opacity: 1; transform: none; transition: none; }
+  body.theme-zenna #screen .zn-pred-delta { opacity: 1; transform: none; transition: none; }
+  body.theme-zenna #screen .zn-pred-hi { opacity: 1; transition: none; }
+}
