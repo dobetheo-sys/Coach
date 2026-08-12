@@ -32,6 +32,7 @@ régularité est priorité 3, pas priorité 7.
 | Fichier | Rôle |
 |---|---|
 | `note.md` | Manifeste : vision, priorités, règles interdites, principes d'or |
+| `ZENNA_SPEC_COMPLETE.md` | **Les tokens de design** — palette, charge, disciplines, échelle typographique. GÉNÉRÉ (`npm run build:spec`) et gardé à jour par `npm run check:spec` : on le LIT pour comprendre, on modifie les valeurs dans les fichiers qu'il cite. |
 | `Coach_Pro_V1.5.html` | **Le produit** — application autonome (~1600 lignes), tout le moteur |
 | `src/sports/registry.ts` + `src/sports/<sport>/` | **Le registre de sports** (R10) : un sport = un module qui DÉCLARE ses séances, sa prédiction, ses tests et ses `guards` (garde-fous). Un sport inconnu lève. |
 | `src/engine/trailModel.ts` + `src/generator/trailLibrary.ts` | **Le module trail** (R7) : catégorie déduite, charge à 3 axes (temps/D+/D−), 14 séances |
@@ -202,8 +203,9 @@ carte, **2 009 px d'onglet**, 4 fonds distincts. Après : 0 dépliée, 97 px, **
 1 seul fond. **Le renversement est assumé et écrit** — l'ouverture d'office venait d'une demande
 du 08/08 qui visait précisément cet onglet ; l'ancienne raison (Semaine n'affiche qu'UNE semaine)
 reste vraie, elle ne suffisait pas à justifier sept blocs techniques ouverts.
-**`ZENNA_SPEC_COMPLETE.md` n'existe pas dans le dépôt** : faute de fichier, les valeurs viennent
-des `--zn-*` existants et des accents `DISC[*].ac` — aucune couleur inventée.
+**`ZENNA_SPEC_COMPLETE.md` n'existait pas dans le dépôt AU MOMENT DE V3** : faute de fichier, les
+valeurs venaient des `--zn-*` existants et des accents `DISC[*].ac` — aucune couleur inventée.
+(Il a été reconstruit depuis, voir « V4 » : généré depuis les sources, gardé par `check:spec`.)
 **La teinte de charge survit dans la BORDURE** : elle porte du SENS (dur/facile/récup) et une
 bordure de 1 px n'est pas un fond pleine largeur — arbitrage à connaître, 4 lignes de CSS à
 retirer si elle doit disparaître aussi.

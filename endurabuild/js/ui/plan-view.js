@@ -170,8 +170,14 @@ function downloadPlan(){
     // aucune variable CSS (voir la note R16.8 ci-dessus), donc elles s'interpolent ici en dur.
     // C'est le seul endroit où une valeur de charge est écrite littéralement dans du CSS, et
     // elle l'est depuis la source, pas depuis une copie.
-    +'.d.dur{background:'+CHARGE.dur.papier+'}.d.facile{background:'+CHARGE.facile.papier
-    +'}.d.recup{background:'+CHARGE.recup.papier+'}.d.off{background:#eee}'
+    // UNE RÈGLE PAR LIGNE, et ce n'est pas cosmétique : la garde sélectionne les lignes qui
+    // portent un sélecteur de charge puis y cherche un littéral. Sur une ligne qui empile
+    // quatre règles, le `#eee` du repos (`.d.off`, hors table) tombait dans la même ligne que
+    // `.d.recup` et faisait rougir une ligne correcte.
+    +'.d.dur{background:'+CHARGE.dur.papier+'}'
+    +'.d.facile{background:'+CHARGE.facile.papier+'}'
+    +'.d.recup{background:'+CHARGE.recup.papier+'}'
+    +'.d.off{background:#eee}'
     +'.dh{font-weight:700;font-size:9px;margin-bottom:3px}ul{font-size:12px;line-height:1.5}'
     +'@media print{body{background:#fff}}</style></head><body>'
     +'<h1>'+cfg.ico+' Mon plan '+cfg.nom+'</h1>'
