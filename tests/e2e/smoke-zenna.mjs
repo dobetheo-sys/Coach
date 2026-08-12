@@ -255,6 +255,45 @@ async function boot(reducedMotion, jour = JOUR_SEANCE) {
   await ctx.close();
 }
 
+// ─────────── 1bis. UN SEUL indicateur de discipline sur cet écran ───────────
+// Fondateur, 12/08/2026 (brief « badge dupliqué ») : la carte « Le détail de la séance » portait
+// une TUILE de discipline pleine, en plus de la pile du héros — deux fois la même information à
+// 79 px d'écart. Depuis que l'accent vélo vaut `#ff3d00` (V5), cette tuile portait EXACTEMENT la
+// couleur du héros, où elle se noyait au lieu de signaler. La maquette d'origine n'a jamais prévu
+// ce second badge : son héros porte la seule pile `.disc-chip`, sa carte de détail la seule barre
+// de zones.
+//
+// Le critère porte sur la PROPRIÉTÉ (« un seul indicateur »), pas sur l'absence d'une classe : on
+// compte les tuiles COLORÉES sous le héros. Sans ça, réintroduire le badge sous un autre nom
+// passerait. Et le premier volet garde l'autre moitié — retirer la tuile ne doit pas emporter la
+// pile, sinon l'écran ne dirait plus du tout la discipline.
+{
+  const { ctx, page, errors } = await boot("no-preference", JOUR_SEANCE);
+  const m = await page.evaluate(() => {
+    const px = (s) => { const x = String(s).match(/rgba?\(([^)]+)\)/); if (!x) return null;
+      const p = x[1].split(",").map((v) => parseFloat(v)); return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }; };
+    const chip = document.querySelector("#screen .zn-disc-chip");
+    const heros = document.querySelector("#screen .zn-hero-title");
+    const yHeros = heros ? heros.getBoundingClientRect().bottom : 0;
+    // toute tuile carrée OPAQUE sous le héros : c'est la forme qu'avait le badge retiré, et
+    // celle qu'aurait n'importe quelle réintroduction.
+    const tuiles = [...document.querySelectorAll("#screen div, #screen span")].filter((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.top < yHeros || r.width < 20 || r.width > 60) return false;
+      if (Math.abs(r.width - r.height) > 4) return false;
+      const c = px(getComputedStyle(el).backgroundColor);
+      return c && c.a > 0.5;
+    }).map((el) => el.textContent.trim() + " " + getComputedStyle(el).backgroundColor);
+    return { chip: chip ? chip.textContent.trim() : null, tuiles };
+  });
+  ok(m.chip && m.chip.length > 1,
+    "1bis — le héros porte la pile de discipline, seul indicateur de l'écran : « " + m.chip + " »");
+  ok(m.tuiles.length === 0,
+    "…et AUCUNE tuile de discipline ne la double sous le héros (" + (m.tuiles.join(" | ") || "0") + ")");
+  ok(errors.length === 0, "aucune erreur console" + (errors.length ? " — " + errors[0] : ""));
+  await ctx.close();
+}
+
 // ─────────── 1ter. Mouvement actif, UN JOUR DE REPOS ───────────
 // La branche que la suite n'exerçait jamais — et sur laquelle elle mourait quatre jours sur
 // sept. Elle ne se contente pas d'exister : elle porte la décision R25 (« le repos se valide,
