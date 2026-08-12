@@ -345,6 +345,11 @@ function avatarSectionHTML(plan, todayISO) {
     // justement mesurée. La table reste la source unique (R11.1), l'appelant fait le pont.
     + '<button id="avSvg" type="button" aria-label="Voir mon avatar en grand" style="background:none;border:none;padding:0;cursor:pointer">'
     + avatarRingSVG(visual, 96, { couleurs: { natation: DISC.sw.ac, velo: DISC.bk.ac, course: DISC.rn.ac } }) + "</button>"
+    // « LÉGENDE ZENNA » est du texte HTML et non du texte SVG : dans le SVG il rendait à 4,8 px
+    // (viewBox 0..100 mis à l'échelle de 0,96), sous le plancher de 9 px de R16.8. Ici l'échelle
+    // typographique le gouverne.
+    + (visual.legende ? '<div style="font-family:var(--zn-mono);font-size:var(--fs-xs);letter-spacing:.12em;'
+        + 'color:var(--zn-gold-text,#8a6d00);font-weight:700;margin-top:4px">LÉGENDE ZENNA</div>' : "")
     + (vierge ? '<div class="load-sub" style="max-width:96px;margin-top:2px">Il évoluera avec ta régularité</div>' : "")
     + "</div>"
     + '<div style="flex:1"><div style="font-weight:800;font-size:var(--fs-lg)">' + titre + "</div>"

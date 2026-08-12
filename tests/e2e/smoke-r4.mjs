@@ -60,8 +60,22 @@ ok(bk !== null && /endurabuild/.test(bk ? bk.suggestedFilename() : ""), "la sauv
 // calcul au lieu de deux qui pouvaient se contredire.
 ok(await page.locator("[data-av-theme]").count() === 0, "le sélecteur de thème a disparu (l'accent suit la discipline meneuse)");
 ok(await page.locator("#avDownload").count() === 1, "un bouton de téléchargement direct existe, à côté du partage");
-// R25 — le composite colore chaque zone par SA discipline (inchangé par ce lot).
-ok(/#00b8d9|#2e6bff|#ff7a1a/.test(await page.locator("#avSvg svg").innerHTML()), "le composite porte les couleurs des disciplines");
+// R27 — le badge du Profil porte les couleurs des disciplines, DÉRIVÉES de la table.
+// Ce critère listait les trois hex EN DUR (`#00b8d9|#2e6bff|#ff7a1a`). Il était déjà PÉRIMÉ
+// depuis V5, qui a aligné `DISC[*].ac` sur la maquette — il ne passait plus que parce que le
+// rendu personnage lisait la copie locale du module, restée aux anciennes valeurs. Il lit
+// désormais la table : il ne peut plus se désynchroniser d'elle.
+{
+  const m = await page.evaluate(async () => {
+    const { DISC } = await import("./js/ui/icons.js");
+    const el = document.querySelector("#avSvg svg");
+    const html = el ? el.outerHTML : "";
+    const table = [DISC.sw.ac, DISC.bk.ac, DISC.rn.ac];
+    return { vues: table.filter((c) => html.includes(c)), table };
+  });
+  ok(m.vues.length >= 1, "le badge du Profil porte les couleurs de la table DISC ("
+    + (m.vues.join(" · ") || "aucune sur " + m.table.join(" · ")) + ")");
+}
 
 // ---- 4. Multi-plans : nouveau plan → questionnaire vierge, retour au 1er sans perte ----
 await page.click("#pfNewPlan"); await page.waitForTimeout(300);

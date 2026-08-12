@@ -732,11 +732,20 @@ export function avatarRingSVG(v, size, opts) {
     + ' font-family="var(--zn-display, \'Poppins\', sans-serif)"'
     + ' font-weight="var(--zn-display-weight, 800)"'
     + ' font-size="' + tailleGrand + '" fill="' + (legende ? OR : "var(--zn-text, #f5f1ea)") + '">' + grand + "</text>";
+  // R16.8 — LE PLANCHER DE LISIBILITÉ VAUT AUSSI DANS UN SVG, et il a mordu ici.
+  // Un `<text>` d'un viewBox 0..100 rendu à 96 px est mis à l'échelle par 0,96 : ma première
+  // écriture posait l'icône à 8 (→ 7,7 px rendus) et un libellé « LÉGENDE » à 5 (→ 4,8 px),
+  // sous le plancher de 9 px que `smoke-typo` garde. Le badge n'est PAS exempté : l'exemption
+  // posée en V2 vaut pour `svg[aria-hidden]` — un dessin décoratif —, or celui-ci porte le score
+  // dans son `aria-label` et doit se lire.
+  // L'icône passe donc à 10 (9,6 px rendus à 96). Le libellé « LÉGENDE », lui, NE PEUT PAS
+  // tenir : à 10 il ferait ~45 unités de large pour 27 disponibles à cette hauteur dans
+  // l'anneau. Il quitte le SVG et devient du texte HTML sous le badge, où l'échelle `--fs-*`
+  // le gouverne pour de bon — l'information n'est pas perdue, elle est mieux placée.
   if (!compact) {
     s += legende
-      ? '<text x="50" y="61" text-anchor="middle" font-family="var(--zn-mono, monospace)" font-size="5"'
-        + ' letter-spacing="0.3" fill="' + OR + '">LÉGENDE</text>'
-      : '<text x="50" y="66" text-anchor="middle" font-size="8">' + ICONE[meneuse] + "</text>";
+      ? ""
+      : '<text x="50" y="67" text-anchor="middle" font-size="10">' + ICONE[meneuse] + "</text>";
   }
 
   // ── le mouvement ──

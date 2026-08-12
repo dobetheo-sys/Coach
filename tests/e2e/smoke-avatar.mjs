@@ -154,8 +154,18 @@ ok(!!aria && /vid/i.test(aria[1]), "l'état de forme est annoncé aux lecteurs d
   await page.waitForTimeout(700);
   await page.click('#ebTabbar .tabbtn[data-tab="profile"]');
   await page.waitForTimeout(900);
-  const mesure = await page.evaluate(() => {
-    const svg = document.querySelector('#screen svg[aria-label^="Avatar"]');
+  const mesure = await page.evaluate(async () => {
+    // R27 — LE PERSONNAGE N'EST PLUS SUR LE PROFIL (le badge-anneau l'y remplace), mais la
+    // propriété gardée ici, elle, est INTACTE : la carte de partage d'`export.js` sérialise
+    // toujours `avatarTriStorySVG` dans un document indépendant. Ce critère cherchait le dessin
+    // par sa PLACE (`#screen svg[aria-label^="Avatar"]`) ; il le fabrique désormais et l'injecte
+    // dans le document thémé — on mesure la palette, pas un emplacement que le produit a le
+    // droit de changer. Sans ça, un lot de mise en page faisait rougir une garde de COULEUR.
+    const mod = await import("./js/ui/avatar-tri.js");
+    const hote = document.createElement("div");
+    hote.innerHTML = mod.avatarTriSVG({ natation: 12, velo: 18, course: 9 }, 96);
+    document.getElementById("screen").appendChild(hote); // DANS body.theme-zenna
+    const svg = hote.querySelector("svg");
     if (!svg) return { absent: true };
     const trait = svg.querySelector("[stroke]");
     const cs = getComputedStyle(svg);
@@ -169,9 +179,10 @@ ok(!!aria && /vid/i.test(aria[1]), "l'état de forme est annoncé aux lecteurs d
     const r = { ink: trait ? getComputedStyle(trait).stroke : null, inkHors,
       plaque: cs.backgroundColor, aVar: /var\(--av-/.test(svg.outerHTML) };
     hors.remove();
+    hote.remove(); // on ne laisse pas le témoin dans l'écran
     return r;
   });
-  ok(!mesure.absent, "R-ZENNA v6 — l'avatar est rendu au Profil");
+  ok(!mesure.absent, "R-ZENNA v6 — le rendu personnage se construit (il vit désormais dans la carte de partage, plus au Profil)");
   ok(mesure.aVar, "R-ZENNA v6 — sa palette passe par des variables CSS (pas des hex figés)");
   const lIn = lum(mesure.ink || ""), lOut = lum(mesure.inkHors || "");
   ok(lIn !== null && lIn > 0.5, "R-ZENNA v6 — dans l'app, l'encre est CLAIRE (" + mesure.ink + ") : le trait existe sur le noir");
