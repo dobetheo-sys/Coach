@@ -183,6 +183,51 @@ await ouvrirOnglet("general");
   ok(m.badges > 0, "…et les badges de discipline y sont (" + m.badges + ")");
 }
 
+// ─────────── §6 · L'accent DESCEND de la table, et les cinq se distinguent ───────────
+// Les trois accents de discipline ont été alignés sur la maquette (fondateur, 12/08/2026). Le §3
+// mesure qu'ils se voient sur le fond ; il ne dit RIEN de leur provenance — il resterait vert si
+// `badgeDisciplineHTML` portait trois littéraux au lieu de lire `DISC`. C'est la faute que
+// `smoke-charge` §2 existe pour empêcher sur l'axe de charge : une garde qui compare deux
+// déclarations sans regarder ce qui est PEINT ne garde rien.
+//
+// LE TÉMOIN : on change la table à chaud, la tuile doit suivre. `DISC` est un objet exporté, donc
+// le module importé ici est CELUI que les rendus consomment — si la peinture ne bouge pas, c'est
+// qu'elle vient d'ailleurs.
+await ouvrirOnglet("week");
+{
+  const m = await page.evaluate(async () => {
+    const { DISC } = await import("./js/ui/icons.js");
+    const { setTab } = await import("./js/ui/tabs.js");
+    const lire = () => {
+      const el = [...document.querySelectorAll("#screen .gd-ic")].find((e) => e.textContent === DISC.bk.ic);
+      return el ? getComputedStyle(el).backgroundColor : null;
+    };
+    const avant = lire();
+    const vrai = DISC.bk.ac;
+    DISC.bk.ac = "#00ff00";
+    setTab("week");
+    await new Promise((r) => setTimeout(r, 400));
+    const apres = lire();
+    DISC.bk.ac = vrai;
+    setTab("week");
+    await new Promise((r) => setTimeout(r, 400));
+    return { avant, apres, remis: lire(), table: Object.fromEntries(Object.entries(DISC).map(([k, v]) => [k, v.ac])) };
+  });
+  ok(m.avant, "le badge vélo est présent dans la semaine (" + m.avant + ")");
+  ok(m.apres && /0, 255, 0/.test(m.apres),
+    "…et sa couleur SUIT la table : changer `DISC.bk.ac` repeint la tuile (" + m.avant + " → " + m.apres + ")");
+  ok(m.remis === m.avant, "…l'état est rendu tel quel après le témoin (" + m.remis + ")");
+
+  // Un badge de discipline sert à DISTINGUER les disciplines : deux accents identiques le
+  // rendraient muet, et le §3 ne le verrait pas (il mesure chaque badge contre le FOND, jamais
+  // les badges entre eux). Critère dérivé de la table — aucune liste à tenir à la main.
+  const vals = Object.values(m.table);
+  const doublons = vals.filter((v, i) => vals.indexOf(v) !== i);
+  ok(doublons.length === 0,
+    "…et les cinq accents sont deux à deux distincts (" + vals.join(" · ")
+      + (doublons.length ? " — doublon : " + doublons.join(", ") : "") + ")");
+}
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + (errs.length ? " — " + errs[0] : "") + ")");
 await browser.close();
 server.close();

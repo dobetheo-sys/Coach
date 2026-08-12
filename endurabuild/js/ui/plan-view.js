@@ -415,9 +415,11 @@ const _fmtDur = (min) => !min ? "" : (min >= 60 ? Math.floor(min / 60) + "h" + S
  * récup). Décision du fondateur (12/08/2026, maquette « structure interne réelle ») : le fond
  * redevient sombre et uniforme, et c'est l'icône qui porte la couleur — celle de la DISCIPLINE.
  *
- * L'accent vient de `DISC[*].ac` (icons.js), donc du même endroit que l'avatar et les cartes de
- * sport : un athlète qui a vu son vélo en bleu le retrouve bleu ici. Aucune couleur n'est
- * inventée pour ce lot.
+ * L'accent vient de `DISC[*].ac` (icons.js) — point unique, aucune couleur inventée ici. Ce
+ * commentaire disait jusqu'au 12/08/2026 « donc du même endroit que l'avatar et les cartes de
+ * sport » : ce n'est plus vrai depuis que les trois accents sont alignés sur la maquette
+ * (`icons.js` porte le détail et la mesure). L'avatar et les cartes de sport lisent un AUTRE
+ * axe — le sport préparé, pas la discipline d'une séance — resté sur les anciennes valeurs.
  *
  * Le badge est `aria-hidden` : la discipline est déjà dans le NOM de la séance juste à côté
  * (« Footing », « Sweet spot vélo »), et faire lire un pictogramme par-dessus n'apprend rien.
