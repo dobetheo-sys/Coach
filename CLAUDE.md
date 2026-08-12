@@ -243,6 +243,59 @@ les cinq accents sont deux à deux distincts (critère dérivé de la table, auc
 **28 gates verts, E2E 23/23, `audit:v1` 459 et golden 949 inchangés — `src/`, `engine.js` et le
 monolithe byte-identiques.**
 
+**R27 livré — le badge-anneau, et la décision de l'adopter avait été prise sur un rendu CASSÉ**
+(brief du fondateur, 12/08/2026 — garde `smoke-ring.mjs`, **24ᵉ suite E2E**) : `avatarRingSVG` +
+`avatarGlobalScore` remplacent le rendu PERSONNAGE sur 📋 Profil. Trois anneaux concentriques (un
+par discipline), l'extérieur **toujours** celui de la discipline meneuse — décidée par
+`meneuseDe()`, la fonction que `avatarTriAccent` emploie déjà (R11.1), jamais un ordre fixe —,
+plus un anneau fin de score global. **Le moteur de données n'a pas bougé d'une ligne** et
+`demo:avatartri` passe sans modification, comme le brief l'exigeait.
+**La prémisse du brief était vraie, et pire que ce qu'elle disait** : `avatar-tri.js` émettait
+**44** attributs `stroke=BLANC` / `fill=VERRE` — la variable non concaténée, donc le TEXTE
+« BLANC » posé comme valeur de couleur. Mesuré au rendu : `fill=BLANC` rend **NOIR** (valeur
+initiale de `fill`) et `stroke=BLANC` rend **`none`** — le trait DISPARAÎT ; **6,4 attributs
+invalides par avatar**. Corrigé (le brief le demandait dès lors que la carte de partage en dépend
+— vérifié : `avatarTriStorySVG` est encore consommée par `session-life.js`, `retest.js` et
+`tab-profile.js`). **Le personnage réparé est visiblement plus riche que celui qui a été jugé**
+« stick-figure trop simple » : bandeau DÉPART lisible, dossards, lunettes, chaussures réapparus.
+La décision reste au fondateur, mais elle se prend maintenant sur les deux rendus réels.
+**Le barème est motivé, pas posé** : moyenne des `(niveau/30)^0,65`. `k < 1` relève le début de
+parcours (l'exemple du brief, 9/4/6, passe de **21 en somme brute à 36**) sans écraser le milieu
+(15/15/15 reste à 64). **Vérifié exhaustivement sur les 29 791 triplets** : 0/0/0 rend 0,
+30/30/30 rend 100, et **le meilleur score non légendaire est 99** — « 100 » ne peut donc pas
+mentir, sans garde-fou artificiel.
+**Deux écarts avec le brief, mesurés puis assumés.** (1) Il fixait l'or légendaire à `#ffd23d` —
+c'est **exactement `DISC.rn.ac` depuis V5**, donc un badge légendaire porterait la couleur de la
+discipline COURSE ; l'or du module (`OR`, `#f0b429`) est utilisé à la place, aucune couleur
+nouvelle. (2) Les couleurs arrivent **par paramètre** et non par import : le module est PUR (zéro
+import, c'est ce qui fait tourner `demo:avatartri` en node), donc l'UI passe `DISC[*].ac` — plutôt
+qu'une copie locale qui divergerait en silence, le défaut que V5 a justement mesuré.
+**Trois défauts de ma propre écriture, trouvés au rendu.** (a) La rotation légendaire portait un
+`transform` CSS sur le cercle, ce qui **écrase le `transform` ATTRIBUT** de SVG : l'anneau partait
+du mauvais angle et pivotait autour du mauvais point — elle porte désormais sur un `<g>`.
+(b) Le « 100 » or se posait sur un anneau intérieur PLEIN et or : illisible, d'où un disque sombre
+sous le chiffre, dans tous les états. (c) **R16.8 a mordu** : l'icône à 8 et le libellé à 5 unités
+rendaient **7,7 px et 4,8 px** une fois le viewBox mis à l'échelle — sous le plancher de 9 px, et
+le badge n'est pas exempté (l'exemption de V2 vise `svg[aria-hidden]`, or celui-ci porte le score
+dans son `aria-label`). L'icône passe à 10 ; « LÉGENDE ZENNA » **quitte le SVG** pour du HTML, où
+l'échelle typographique le gouverne — il ne pouvait tenir à aucune taille utilisable.
+**Et ma sonde de typo m'avait fait publier un faux chiffre** : elle appelait `setTab("profil")`
+quand l'identifiant est `"profile"` — `setTab` retombe sur le DERNIER onglet, donc elle mesurait
+🧰 Outils deux fois et **n'a jamais regardé 📋 Profil**. Trouvé en écrivant `smoke-ring`, qui
+échouait pour la même raison. Chiffres de V7 corrigés de « 6 → 8 » à **7 → 8**.
+**Deux gardes RÉÉCRITES, pas supprimées** : `smoke-r4` cherchait les trois hex de discipline EN
+DUR — **périmé depuis V5**, et vert seulement parce que le personnage lisait la copie locale du
+module ; il dérive maintenant de la table. `smoke-avatar` cherchait le personnage par sa PLACE
+(`#screen svg[aria-label^="Avatar"]`) : il le FABRIQUE et l'injecte désormais, parce que la
+propriété gardée est sa PALETTE (le repli hors thème qui protège la carte de partage), pas son
+emplacement — un lot de mise en page faisait rougir une garde de couleur.
+**Non fait, délibérément** : la variante compacte 36 px n'est branchée nulle part — le brief
+demande de trancher avec le fondateur, et mesuré, **36 px ne permet pas un chiffre lisible**
+(il faudrait ≥ 53 px pour tenir le plancher de 9 px). `avatarTriSVG`/`avatarTriStorySVG` restent
+en place et servent toujours la carte de partage.
+**28 gates verts, E2E 24/24, `audit:v1` 459 et golden 949 inchangés, `src/`, `engine.js` et le
+monolithe byte-identiques.**
+
 **V7 livré — Poppins remplace Bebas Neue, et quatre polices n'étaient pas dans le cache**
 (brief du fondateur + graphiste, 12/08/2026 : palette INCHANGÉE, seule la police d'affichage
 change) : `--zn-display` passe de `'Bebas Neue'` à `'Poppins'`, sur les cinq onglets, partout où
