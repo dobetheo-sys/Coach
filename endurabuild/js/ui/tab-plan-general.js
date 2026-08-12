@@ -135,7 +135,9 @@ export function handleSwapClick(plan, wnum, jour, rerender) {
 export function weekGridHTML(plan, w, today, openDetails) {
   let h = '<div class="gw-grid">';
   w.days.forEach((d) => {
-    const bg = d.sessions.map((s) => "<span>" + (DISC[s.d] ? DISC[s.d].ic : "") + "</span>").join("");
+    // La rangée `.gd-badges` répétait les pictogrammes des séances du jour, JUSTE au-dessus des
+    // séances qui les portent désormais elles-mêmes (`badgeDisciplineHTML`). Deux fois la même
+    // information à deux lignes d'intervalle : elle tombe.
     const nm = d.sessions.map((s, si) => {
       const k = w.num + "|" + d.jour + "|" + si;
       const dn = S.answers.done && S.answers.done[k];
@@ -144,14 +146,18 @@ export function weekGridHTML(plan, w, today, openDetails) {
       const title = s.d === "rs" ? "Récupération respectée" : "Marquer fait";
       const chk = '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" data-rest="' + (s.d === "rs" ? 1 : 0) + '" title="' + title + '" aria-label="' + title + " : " + s.name.replace(/"/g, "") + '">' + (dn ? "✓" : "○") + "</button> ";
       // R5 — séance cliquable partout (détail replié + affordance visuelle via CSS .gd-sess)
-      return chk + sessDetailsHTML(s, undefined, openDetails);
+      // UNE LIGNE PAR SÉANCE : badge · titre · métrique · coche, la coche à DROITE comme sur la
+      // maquette. Elle occupait sa propre ligne au-dessus de la séance — un tiers de la hauteur
+      // de la carte pour un rond de 26 px. L'ordre du DOM garde la séance AVANT la coche : on
+      // lit ce qu'on valide avant le bouton qui le valide.
+      return '<div class="gd-row">' + sessDetailsHTML(s, undefined, openDetails) + chk + "</div>";
     }).join("");
     // R7 — chaque jour du plan est annoté de sa VRAIE date calendrier (retour utilisateur)
     const mark = "<i>" + (d.date === today ? "auj. · " : "") + fmtDay(d.date) + (plan.use10 ? " · C" + d.cyc + "J" + d.jc : "") + "</i>";
     // §8 — déplacement de séance : ⇄ sur chaque jour, deux taps = échange persistant.
     const pend = S._swapPending && S._swapPending.w === w.num && S._swapPending.jour === d.jour;
     const swapBtn = '<button class="swapBtn" type="button" data-swap="' + w.num + "|" + d.jour + '" title="Échanger ce jour avec un autre" aria-label="Échanger ' + d.jour + ' avec un autre jour" style="border:none;background:' + (pend ? "#2e6bff" : "transparent") + ";color:" + (pend ? "#fff" : "#b3ab9b") + ';border-radius:5px;font-size:var(--fs-sm);cursor:pointer;padding:2px 6px">⇄</button>';
-    h += '<div class="gd ' + d.charge + (d.date === today ? " today" : "") + (pend ? " swap-pend" : "") + '"' + (pend ? ' style="outline:2px dashed #2e6bff"' : "") + '><div class="gd-top"><b>' + d.jour + "</b>" + mark + swapBtn + '</div><div class="gd-badges">' + bg + '</div><div class="gd-n">' + nm + "</div></div>";
+    h += '<div class="gd ' + d.charge + (d.date === today ? " today" : "") + (pend ? " swap-pend" : "") + '"' + (pend ? ' style="outline:2px dashed #2e6bff"' : "") + '><div class="gd-top"><b>' + d.jour + "</b>" + mark + swapBtn + '</div><div class="gd-n">' + nm + "</div></div>";
   });
   h += "</div>";
   if (S._swapPending && S._swapPending.w === w.num)

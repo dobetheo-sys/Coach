@@ -5853,3 +5853,95 @@ ravitailler selon le jour d'exécution, et le critère serait passé à vide (fa
 
 **28 gates verts, E2E 21/21, `audit:v1` et golden 949 inchangés** — le produit ne touche aucune
 séance.
+
+---
+
+## V3 — la carte de séance : repliée par défaut, la couleur dans le badge
+
+Brief du fondateur (12/08/2026, maquette « structure interne réelle ») : la carte de séance
+expose trop par défaut. État cible — badge-icône coloré par discipline, titre court, UNE
+métrique, bouton d'échange, cercle de validation ; tout le reste au tap.
+
+**`ZENNA_SPEC_COMPLETE.md` n'existe pas dans le dépôt.** Le brief demande d'en reprendre les
+tokens ; faute de fichier, les valeurs viennent de ce qui existe déjà — les variables `--zn-*`
+de `zenna-today.css` et les accents `DISC[*].ac` d'`icons.js`. Aucune couleur n'est inventée
+pour ce lot ; si la spec arrive, c'est elle qui devra trancher.
+
+### Mesuré avant
+
+| | avant | après |
+|---|---|---|
+| séances dépliées d'office (Semaine) | **7 / 7** | 0 / 7 |
+| hauteur d'une carte de jour | 161 px | **97 px** |
+| hauteur de l'onglet Semaine | 2 009 px | **1 127 px** (−44 %) |
+| fonds de carte distincts | 4 (teintés par charge) | **1** |
+
+### Le renversement est ASSUMÉ, et il est écrit
+
+L'ouverture d'office venait d'une demande du **08/08/2026** (« afficher d'office le détail des
+séances »), qui visait précisément cet onglet — le code le documentait. La demande d'aujourd'hui
+la renverse. L'ancienne raison reste vraie (Semaine n'affiche qu'UNE semaine, contrairement à
+Plan, qui peut en déplier N) — elle ne suffisait simplement pas à justifier sept blocs techniques
+ouverts à la fois.
+
+### La teinte de charge survit dans la BORDURE
+
+Le fond était teinté par la charge du jour (`rgba(255,61,0,.14)` sur un jour dur,
+`rgba(31,184,166,.12)` sur un jour facile), et le commentaire qui portait ces règles disait
+pourquoi : la couleur est du SENS, « l'athlète qui a appris à lire sa semaine d'un coup d'œil ne
+réapprend rien ». Le brief demande un fond sombre uniforme — il l'est. Mais une bordure de 1 px
+n'est pas un fond pleine largeur : la teinte de charge y reste, ce qui respecte la maquette sans
+détruire la lecture d'un coup d'œil. **Arbitrage à connaître** : si elle doit disparaître aussi,
+ce sont quatre lignes de CSS à retirer, et rien d'autre n'en dépend.
+
+### Le badge : une mesure a changé la décision
+
+L'accent vient de `DISC[*].ac` — le même endroit que l'avatar et les cartes de sport, donc un
+athlète qui a vu son vélo en bleu le retrouve bleu. Le badge est `aria-hidden` : la discipline
+est déjà dans le nom de la séance juste à côté.
+
+Ma première écriture posait l'accent **dilué** (22 % en fond, 45 % en bordure), ce qui est le
+réflexe sur un thème sombre. Mesuré contre la carte : **1,26 à 1,48:1** pour la tuile, **1,68 à
+2,39:1** pour la bordure. WCAG 1.4.11 demande **3:1** pour un composant d'interface qui porte de
+l'information — et c'est exactement le rôle de ce badge, seule couleur de la ligne et seul
+indice de discipline. Aucune dilution n'y arrive sur ce fond : le bleu du vélo plafonne à
+**3,33:1 même en plein**. La tuile est donc pleine, comme sur la maquette — **3,42 · 4,77 ·
+5,91 · 6,50**, le vélo restant le cas le plus serré.
+
+*`trail` et `swimrun` n'ont pas de code de discipline propre : le moteur les émet en `rn`/`sw`,
+ils héritent donc de ces badges. Les mesurer séparément mesurerait deux fois la même chose.*
+
+### Le composant vit dans DEUX onglets, pas cinq
+
+Le brief demande une capture « sur les 5 tabs concernés ». Mesuré : `.gd-sess` rend **140
+cartes** dans 🗓 Plan (une fois la grille dépliée, U15) et **7** dans 📅 Semaine ; **zéro** dans
+Profil, Aujourd'hui et Outils. 🎯 Aujourd'hui porte un héros de séance, qui est un autre
+composant (`session-life.js`) et n'a pas été touché.
+
+### Garde
+
+`tests/e2e/smoke-carte-seance.mjs` (**22ᵉ suite**, 19 assertions) : la carte de séance n'avait
+aucune garde de son ÉTAT PAR DÉFAUT — elle vivait sous les gardes d'autres sujets (`smoke-typo`
+pour la hiérarchie de tailles, `smoke-usage` pour la densité de son contenu **déplié**). Cinq
+volets : repli, fond uniforme, badge visible ≥ 3:1, bascule LOCALE (la coche survit à
+l'ouverture, le nœud du `<details>` est le même — « pas un re-fetch », brief), et Plan qui porte
+la même carte. **Quatre cassures, quatre rouges.**
+
+**Deux fautes d'instrument dans cette suite, corrigées et écrites** : mon critère « aucun conseil
+n'occupe l'écran » sommait la hauteur des `.gd-why` en supposant qu'un `<details>` fermé ne rend
+rien — mesuré, Chromium leur donne **37 à 56 px** (le contenu est *sauté* par
+`content-visibility`, ses boîtes ne sont pas remises à zéro) : le critère rougissait sur un repli
+qui marche. Il mesure désormais la hauteur de la séance elle-même. Et son témoin visait la
+PREMIÈRE séance — « Récup active », la plus courte de la semaine (49 → 73 px) : il mesure
+maintenant la plus forte croissance, parce qu'une récup a légitimement peu à dire.
+
+### Et une garde voisine a cassé pour la bonne raison
+
+`smoke-usage` U16 est passé rouge : il retrouve les séances par `resume.startsWith(nom)`, or le
+résumé commence désormais par le badge (« 🚴 Sweetspot vélo 32min »). Le commentaire juste
+au-dessus raconte déjà ce glissement — le critère était passé de l'égalité à `startsWith` quand
+la durée s'est ajoutée **après** le nom. Il vient de casser parce que quelque chose s'ajoute
+**avant**. Il lit désormais le `<b>` qui porte le nom : immunisé des deux côtés.
+
+**28 gates verts, E2E 22/22, `audit:v1` et golden 949 inchangés — `src/`, `engine.js` et le
+monolithe byte-identiques (contrainte de gel du brief).**

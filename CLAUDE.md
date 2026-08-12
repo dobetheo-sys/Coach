@@ -186,6 +186,37 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**V3 livré — la carte de séance : repliée par défaut, la couleur dans le badge** (brief du
+fondateur, 12/08/2026, maquette « structure interne réelle » — voir ARCHITECTURE.md « V3 ») :
+la carte exposait titre + conseil + blocs détaillés d'office, sur un fond pleine largeur teinté
+par la charge du jour. Mesuré avant : **7 séances sur 7 dépliées** en 📅 Semaine, 161 px par
+carte, **2 009 px d'onglet**, 4 fonds distincts. Après : 0 dépliée, 97 px, **1 127 px (−44 %)**,
+1 seul fond. **Le renversement est assumé et écrit** — l'ouverture d'office venait d'une demande
+du 08/08 qui visait précisément cet onglet ; l'ancienne raison (Semaine n'affiche qu'UNE semaine)
+reste vraie, elle ne suffisait pas à justifier sept blocs techniques ouverts.
+**`ZENNA_SPEC_COMPLETE.md` n'existe pas dans le dépôt** : faute de fichier, les valeurs viennent
+des `--zn-*` existants et des accents `DISC[*].ac` — aucune couleur inventée.
+**La teinte de charge survit dans la BORDURE** : elle porte du SENS (dur/facile/récup) et une
+bordure de 1 px n'est pas un fond pleine largeur — arbitrage à connaître, 4 lignes de CSS à
+retirer si elle doit disparaître aussi.
+**Une mesure a changé ma décision sur le badge** : je l'avais posé en teinte DILUÉE (22 %), le
+réflexe sur fond sombre — mesuré **1,26 à 1,48:1** contre la carte, quand WCAG 1.4.11 demande
+**3:1** pour un composant qui porte de l'information. Aucune dilution n'y arrive (le bleu du vélo
+plafonne à 3,33:1 **même en plein**) : tuile pleine, comme la maquette — 3,42 · 4,77 · 5,91 ·
+6,50. `trail` et `swimrun` n'ont pas de code propre (le moteur les émet en `rn`/`sw`) et héritent
+de ces badges.
+**Le composant vit dans DEUX onglets, pas cinq** (le brief en demandait cinq) : 140 cartes en
+🗓 Plan, 7 en 📅 Semaine, zéro ailleurs — 🎯 Aujourd'hui porte un héros, autre composant, non
+touché. Garde `smoke-carte-seance.mjs`, **22ᵉ suite**, 19 assertions, quatre cassures quatre
+rouges. **Deux fautes d'instrument à moi** : « aucun conseil n'occupe l'écran » sommait des
+`.gd-why` en supposant qu'un `<details>` fermé ne rend rien — Chromium leur donne 37 à 56 px
+(`content-visibility` saute le contenu sans annuler les boîtes), le critère rougissait sur un
+repli qui marche ; et son témoin visait la séance la plus COURTE de la semaine. Et `smoke-usage`
+U16 a cassé pour la bonne raison — il retrouvait les séances par `startsWith(nom)`, or le résumé
+commence désormais par le badge ; il lit maintenant le `<b>` qui porte le nom.
+**28 gates verts, E2E 22/22, `audit:v1` et golden 949 inchangés — `src/`, `engine.js` et le
+monolithe byte-identiques (contrainte de gel du brief).**
+
 **V2 livré — le produit se montre : le sachet Zenna dans la carte de vente** (maquettes produit
 du fondateur, 12/08/2026 : « travail maintenant l'interface graphique de vente » — voir
 ARCHITECTURE.md « V2 ») : la carte vendait une abstraction — le créneau produit portait un

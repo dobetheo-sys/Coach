@@ -397,9 +397,38 @@ function techListHTML(tech){
 // `<summary>` est le premier enfant de `<details class="gd-sess">`, donc un `querySelector(
 // ".gd-det, .gd-steps")` tombait sur la durée au lieu du contenu technique, sur TOUTE séance.
 const _fmtDur = (min) => !min ? "" : (min >= 60 ? Math.floor(min / 60) + "h" + String(Math.round(min % 60)).padStart(2, "0") : Math.round(min) + "min");
+/**
+ * LE BADGE DE DISCIPLINE — la SEULE couleur de la ligne de séance.
+ *
+ * La carte de jour portait jusqu'ici un fond pleine largeur teinté par la CHARGE (dur/facile/
+ * récup). Décision du fondateur (12/08/2026, maquette « structure interne réelle ») : le fond
+ * redevient sombre et uniforme, et c'est l'icône qui porte la couleur — celle de la DISCIPLINE.
+ *
+ * L'accent vient de `DISC[*].ac` (icons.js), donc du même endroit que l'avatar et les cartes de
+ * sport : un athlète qui a vu son vélo en bleu le retrouve bleu ici. Aucune couleur n'est
+ * inventée pour ce lot.
+ *
+ * Le badge est `aria-hidden` : la discipline est déjà dans le NOM de la séance juste à côté
+ * (« Footing », « Sweet spot vélo »), et faire lire un pictogramme par-dessus n'apprend rien.
+ * `trail` et `swimrun` n'ont pas de code propre — le moteur les émet en `rn`/`sw` —, ils
+ * héritent donc de l'accent de leur discipline réelle, ce qui est le comportement voulu.
+ */
+function badgeDisciplineHTML(s) {
+  const d = DISC[s.d];
+  if (!d) return "";
+  // TUILE PLEINE, PAS UNE TEINTE DILUÉE — et c'est une mesure qui l'a décidé, pas un goût.
+  // Ma première écriture posait l'accent à 22 % d'opacité (fond) et 45 % (bordure) : mesuré
+  // contre la carte, ça donne 1,26 à 1,48:1 pour la tuile et 1,68 à 2,39:1 pour la bordure.
+  // WCAG 1.4.11 demande 3:1 pour un élément d'interface qui PORTE de l'information — et c'est
+  // exactement le rôle de ce badge : distinguer les disciplines. Aucune dilution n'y arrive sur
+  // ce fond (le bleu du vélo plafonne à 3,33:1 même en PLEIN), donc la tuile est pleine, comme
+  // sur la maquette. Le pictogramme est multicolore et reste lisible dessus.
+  return '<span class="gd-ic" aria-hidden="true" style="background:' + d.ac + '">' + d.ic + "</span>";
+}
+
 function sessDetailsHTML(s,style,open){
   const dur=_fmtDur(s.min);
-  if(!s.det)return "<b>"+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"");
+  if(!s.det)return badgeDisciplineHTML(s)+"<b>"+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"");
   const why=whyOf(s),tech=techOf(s);
   // U16 — repli par défaut confirmé (retour utilisateur, 08/08/2026) pour l'onglet Plan (une
   // semaine qui peut en afficher plusieurs à la fois, densité mesurée et corrigée alors).
@@ -411,7 +440,7 @@ function sessDetailsHTML(s,style,open){
   // partagée — Plan garde son repli, Semaine l'ouvre.
   // Le chevron (`.gd-sess summary::before`, styles.css) reste en `var(--ink)` gras — plus
   // visible sans reprendre d'espace — quel que soit l'état par défaut.
-  return '<details class="gd-sess"'+(open?' open':"")+(style?' style="'+style+'"':"")+'><summary><b>'+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"")+"</summary>"
+  return '<details class="gd-sess"'+(open?' open':"")+(style?' style="'+style+'"':"")+'><summary>'+badgeDisciplineHTML(s)+'<b>'+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"")+"</summary>"
     +(why?'<span class="gd-why">\u{1F4A1} '+why+"</span>":"")
     +techListHTML(tech)+"</details>";
 }

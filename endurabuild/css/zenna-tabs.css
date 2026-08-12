@@ -342,13 +342,38 @@ body.theme-zenna #screen .gd {
   border-radius: 12px;
   box-shadow: none;
 }
-/* LES QUATRE ÉTATS DE JOURNÉE — transposés, pas uniformisés. Même famille de teinte que le
-   thème papier (rouge = dur, vert = facile, violet = récup, neutre = repos), en version
-   sombre : l'athlète qui a appris à lire sa semaine d'un coup d'œil ne réapprend rien. */
-body.theme-zenna #screen .gd.dur    { background: rgba(255, 61, 0, .14);   border-color: rgba(255, 61, 0, .34); }
-body.theme-zenna #screen .gd.facile { background: rgba(31, 184, 166, .12); border-color: rgba(31, 184, 166, .30); }
-body.theme-zenna #screen .gd.recup  { background: rgba(155, 114, 255, .14); border-color: rgba(155, 114, 255, .32); }
-body.theme-zenna #screen .gd.off    { background: var(--zn-surface-2); opacity: .75; }
+/* LE FOND REDEVIENT SOMBRE ET UNIFORME — décision du fondateur (12/08/2026, maquette
+   « structure interne réelle ») : « PAS de fond pleine largeur coloré, seule l'icône porte la
+   couleur ». Mesuré avant : `rgba(255,61,0,.14)` sur un jour dur, `rgba(31,184,166,.12)` sur un
+   jour facile — sept cartes de sept teintes, sur lesquelles venaient se poser sept blocs
+   techniques dépliés.
+
+   LA TEINTE DE CHARGE SURVIT DANS LA BORDURE, et c'est un arbitrage à connaître : elle portait
+   du SENS (dur / facile / récup / repos), et le commentaire qu'elle remplace disait qu'un
+   athlète « ne réapprend rien ». Une bordure de 1 px n'est pas un fond pleine largeur : la
+   maquette est respectée, la lecture d'un coup d'œil aussi. Si elle doit disparaître
+   complètement, c'est ces quatre lignes qu'il faut retirer — rien d'autre n'en dépend. */
+body.theme-zenna #screen .gd.dur    { border-color: rgba(255, 61, 0, .34); }
+body.theme-zenna #screen .gd.facile { border-color: rgba(31, 184, 166, .30); }
+body.theme-zenna #screen .gd.recup  { border-color: rgba(155, 114, 255, .32); }
+body.theme-zenna #screen .gd.off    { opacity: .75; }
+
+/* Le badge de discipline : la seule couleur de la ligne. Carré arrondi, accent en fond très
+   dilué + le pictogramme, pour que la couleur se lise sans écraser le titre juste à côté. */
+body.theme-zenna #screen .gd-ic {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 8px; margin-right: 8px; flex-shrink: 0;
+  font-size: 14px; line-height: 1;
+  /* le fond plein est posé en ligne, depuis DISC[*].ac — voir badgeDisciplineHTML */
+}
+body.theme-zenna #screen .gd-sess summary { display: flex; align-items: center; gap: 0; }
+/* La séance et sa coche sur la MÊME ligne. `align-items: flex-start` et non `center` : une fois
+   le détail déplié, la coche doit rester en haut, en face du titre, pas se recentrer sur un
+   bloc de dix lignes. */
+body.theme-zenna #screen .gd-row { display: flex; align-items: flex-start; gap: 10px; }
+body.theme-zenna #screen .gd-row > details { flex: 1; min-width: 0; }
+body.theme-zenna #screen .gd-row + .gd-row { margin-top: 8px; border-top: 1px solid var(--zn-border); padding-top: 8px; }
+body.theme-zenna #screen .gd-sess summary b { flex: 1; min-width: 0; }
 /* La case du jour : l'ombre portée dure est la signature papier, elle tombe. L'orange du thème
    EST déjà son vocabulaire d'attention — on n'invente pas une seconde couleur d'accent. */
 body.theme-zenna #screen .gd.today {

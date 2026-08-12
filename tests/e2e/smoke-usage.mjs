@@ -429,7 +429,13 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
     for (const d of document.querySelectorAll("#screen details.gd-sess")) {
       const corps = d.querySelector(".gd-det, .gd-steps");
       if (!corps) continue;
-      const nom = (d.querySelector("summary") || {}).textContent || "";
+      // Le NOM se lit dans le `<b>` du résumé, pas dans le texte du résumé entier. Ce critère a
+      // déjà glissé une fois (égalité → `startsWith`) quand la durée s'est ajoutée APRÈS le nom ;
+      // il vient de casser une seconde fois parce que le badge de discipline s'ajoute AVANT
+      // (« 🚴 Sweetspot vélo 32min »). Viser l'élément qui porte le nom, plutôt que sa position
+      // dans une chaîne, l'immunise des deux côtés — c'est la même leçon que R16.8 applique aux
+      // tailles : on vérifie une relation structurelle, jamais une mise en forme.
+      const nom = ((d.querySelector("summary b") || d.querySelector("summary") || {}).textContent) || "";
       if (corps.querySelectorAll("li").length > 1) rendu.push(nom.trim());
       for (const t of (corps.innerText || "").split(/\n+/)) {
         if (t.trim().length > pire) { pire = t.trim().length; pireTxt = t.trim().slice(0, 60); }
@@ -439,7 +445,7 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
     // 1h28 ») : une comparaison EXACTE au nom du modèle (`s.name`) casse dès qu'un texte
     // légitime s'ajoute après. Le nom reste le PRÉFIXE du résumé — `startsWith` plutôt qu'une
     // égalité, sans rien perdre de ce que le critère vérifie (la présence, en plusieurs lignes).
-    const manquantes = [...attendu].filter((n) => !rendu.some((r) => r.startsWith(n)));
+    const manquantes = [...attendu].filter((n) => !rendu.some((r) => r === n));
     return { multi: attendu.size, listees: attendu.size - manquantes.length, manquantes: manquantes.slice(0, 3), pire, pireTxt };
   });
   ok(m.multi > 0, "U16 — l'instrument voit des séances à plusieurs blocs (" + m.multi + ")");

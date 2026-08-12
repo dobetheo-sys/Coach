@@ -166,7 +166,15 @@ export function renderTabWeek(plan) {
   // R-ZENNA v7 — les anneaux et les distances se posent AVANT la grille, comme dans la
   // maquette : on situe la semaine (où j'en suis par discipline, combien ça représente), puis
   // on entre dans le détail jour par jour.
-  html += '<div class="gw">' + weekHeaderHTML(w) + weekGridHTML(plan, w, today, true) + "</div>";
+  // REPLIÉ PAR DÉFAUT — renversement ASSUMÉ de la demande du 08/08/2026 (« afficher d'office le
+  // détail des séances », qui visait précisément cet onglet). Nouvelle demande du fondateur,
+  // 12/08/2026, maquette « structure interne réelle » à l'appui : la carte de séance expose par
+  // défaut un résumé d'une ligne, et le détail (conseil, blocs, échauffement) n'apparaît qu'au
+  // tap. Mesuré avant le lot : 7 séances sur 7 dépliées d'office, 161 px par jour, 2 009 px
+  // d'onglet. L'ancienne raison reste vraie (Semaine n'affiche qu'UNE semaine, contrairement à
+  // Plan) — elle ne suffisait simplement pas à justifier d'ouvrir sept blocs techniques à la
+  // fois. La bascule reste un état LOCAL du `<details>` : aucun rendu ni recalcul au tap.
+  html += '<div class="gw">' + weekHeaderHTML(w) + weekGridHTML(plan, w, today) + "</div>";
   if (S._swapPending && S._swapPending.w === w.num)
     html += '<div class="load-sub" style="margin-top:6px">⇄ <b>' + S._swapPending.jour + "</b> sélectionné — touche le jour avec lequel l’échanger (ou re-touche ⇄ pour annuler).</div>";
   else
