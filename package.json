@@ -40,7 +40,9 @@
     "demo:troncature": "node src/audit/truncateDemo.ts",
     "demo:hrv": "node src/audit/hrvDemo.ts",
     "demo:avatartri": "node src/audit/avatarTriDemo.ts",
-    "make:icons": "node scripts/makeIcons.mjs"
+    "make:icons": "node scripts/makeIcons.mjs",
+    "build:spec": "node scripts/buildSpec.mjs",
+    "check:spec": "node scripts/buildSpec.mjs --check"
   },
   "devDependencies": {
     "playwright": "^1.49.0"
