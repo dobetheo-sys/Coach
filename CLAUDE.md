@@ -147,6 +147,14 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 
 ## Comment travailler dans ce dépôt
 
+- **Les propriétés visuelles LIÉES se mesurent ENSEMBLE, en un seul cycle** (consigne du
+  fondateur, 12/08/2026). Couleur de badge, fond de carte et contraste dépendent du même token
+  de discipline : les traiter séparément fait payer trois cycles mesure → correction → re-mesure
+  là où un seul suffit, et c'est exactement ce que la refonte de la carte de séance a coûté (le
+  badge posé en teinte diluée, puis re-mesuré contre un fond qui venait de changer, puis repris
+  en tuile pleine). **Avant de toucher une propriété visuelle, lister celles qui partagent son
+  token ou son fond, et les mesurer d'un bloc** — la sonde coûte le même prix pour une ou pour
+  cinq grandeurs.
 - **Le moteur réfléchit avant de générer, se vérifie, se corrige** — jamais l'inverse. Toute
   nouvelle contrainte de génération suit le cycle : mesurer d'abord (l'auditeur dit qui viole
   quoi), corriger dans le générateur, re-mesurer, garder le vert.
