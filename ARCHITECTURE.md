@@ -5945,3 +5945,117 @@ la durée s'est ajoutée **après** le nom. Il vient de casser parce que quelque
 
 **28 gates verts, E2E 22/22, `audit:v1` et golden 949 inchangés — `src/`, `engine.js` et le
 monolithe byte-identiques (contrainte de gel du brief).**
+
+---
+
+## V4 — la spec des tokens, et l'axe de charge tokenisé
+
+Deux chantiers ouverts par le cycle visuel du 12/08.
+
+### Chantier 1 — `ZENNA_SPEC_COMPLETE.md` : introuvable, donc reconstruit
+
+Cherché partout avant d'écrire quoi que ce soit : `git log --all --diff-filter=A`, tous les
+objets git (dangling compris), les stash, les worktrees, les branches, et le disque hors dépôt.
+**Aucune trace** — le fichier n'a jamais existé dans ce dépôt.
+
+**Il est donc GÉNÉRÉ, pas écrit à la main.** Un document qui RECOPIE des valeurs devient faux à
+la première retouche de CSS, et il est alors pire que rien parce qu'on le croit : c'est
+exactement O-9, où une documentation disait vert pendant qu'un banc portait quatre familles
+d'échecs. `scripts/buildSpec.mjs` le produit depuis le code ; `npm run check:spec` refuse un
+fichier périmé — même motif que `check:app` et `check:sw`.
+
+**Ce que la génération a appris, et qu'aucune lecture à la main n'aurait donné** : le bloc
+`body.theme-zenna` porte **66 variables et non 35** (mon comptage précédent, `grep '^  --zn'`,
+ratait des lignes — et ce chiffre est dans le compte rendu du cycle précédent, il est corrigé
+ici). Elles se rangent en trois familles, et la troisième explique le système :
+
+| Famille | Nombre | Ce qu'elle fait |
+|---|---|---|
+| Palette Zenna (`--zn-*`) | 41 | les couleurs du thème |
+| **Reliage du thème papier** | **10** | `--ink`, `--bg2`, `--acc`… REDÉFINIES pour le sombre |
+| Mouvement | 9 | cadence, durées, courbes |
+| Formes et plans | 6 | `--cut-*`, `--z1`…`--z5` |
+
+Le reliage est **le mécanisme qui a rendu la migration possible** : le thème sombre ne réécrit
+pas le CSS historique, il redéfinit les variables que ce CSS consomme déjà. Une règle écrite
+avec `var(--ink)` rend juste sur les deux surfaces sans avoir été touchée.
+
+*Le document dit aussi ce qui N'EXISTE PAS — aucun token d'espacement ni de rayon — pour éviter
+qu'on le cherche.*
+
+**Écart avec le brief, signalé** : il demande de commiter « à la racine du worktree
+`design/zenna` ». Ce worktree n'existe pas (`git worktree list` n'en montre qu'un) ; le fichier
+est donc commité sur la branche désignée, la seule où j'ai autorisation de pousser.
+
+### Chantier 2 — l'axe de charge
+
+**La liste des « 26 occurrences » était fausse, et c'est la première chose que la lecture a
+montrée.** Ce chiffre comptait des VALEURS DE COULEUR, pas l'axe de charge : sur les 26, la
+plupart emploient le même pastel pour tout autre chose — `.warn` (un avertissement),
+`.bp-hero` (un bloc de héros), `.w-chip` (une puce), les badges des Éducatifs, et trois usages
+qui passaient DÉJÀ par un token (`var(--zn-bg-race, …)`, `var(--zn-bg-taper, …)`).
+
+La charge réelle, c'est **7 sites** : 3 règles papier (`styles.css`), 3 bordures sombres
+(`zenna-tabs.css`), 1 ligne dans le CSS du document exporté (`plan-view.js`).
+
+**Deux surfaces, pas deux thèmes au choix.** L'app est sombre ; le document exporté est un
+papier crème qu'on imprime. Un pastel rose sur du noir est invisible, un orange saturé sur du
+crème hurle. L'unification porte donc sur le POINT DE DÉCLARATION, jamais sur la valeur.
+
+`CHARGE` (`js/ui/icons.js`) est la source : par charge, un TRIPLET pour le sombre (le sombre
+l'emploie à plusieurs opacités — une couleur figée obligerait à en déclarer une par opacité) et
+une teinte papier. Le jumeau CSS `--zn-charge-*` vit dans `zenna-today.css`, et le document
+exporté — qui ne charge aucune variable (R16.8) — interpole depuis la table.
+
+**Trouvé en mesurant : `.gd.dur/.facile/.recup` de `styles.css` est MORT dans l'app.**
+`body.theme-zenna #screen .gd` (0,1,2,1) l'emporte sur `.gd.dur` (0,0,2,0), et le thème n'est
+jamais retiré. Ces règles ne peignent plus rien depuis V3 — gardées comme repli, mais le savoir
+change la lecture du diff.
+
+### Ce que la mesure groupée a trouvé, et qu'un cycle séparé aurait raté
+
+Consigne du fondateur appliquée pour la première fois : les propriétés liées mesurées **d'un
+bloc**, sur les deux surfaces à la fois.
+
+| Charge | Sombre (bordure vs carte) | Papier (teinte vs crème) |
+|---|---|---|
+| dur | 1,49 | **1,01** |
+| facile | 1,73 | **1,02** |
+| récup | 1,60 | **1,07** |
+
+**La teinte papier est à 1,01–1,07 : invisible.** Le commentaire qu'elle porte affirme qu'elle
+permet de « lire sa semaine d'un coup d'œil » — sur la surface IMPRIMÉE, là où ce repère devait
+servir le plus, elle ne se voit pas ; en impression noir et blanc elle disparaît tout à fait.
+Ce n'est pas une violation de WCAG 1.4.11 (le nom et la durée de la séance disent déjà tout, la
+teinte est redondante), mais c'est une promesse que le rendu ne tient pas.
+
+**Non corrigé délibérément** : remonter ces teintes est une décision de design, pas un défaut à
+réparer en silence. Le chantier est ouvert avec ses chiffres.
+
+### Garde
+
+`tests/e2e/smoke-charge.mjs` (**23ᵉ suite**, 11 assertions), quatre maillons : la table ≡ les
+tokens (sur le rendu, pas sur le source), les bordures DESCENDENT du token (témoin : bouger le
+token bouge la bordure — sans lui on ne comparerait que deux déclarations pendant que la grille
+peindrait autre chose), le document exporté porte les teintes papier, et aucune règle de charge
+ne porte de littéral. **Quatre cassures, quatre rouges.**
+
+**Deux défauts de ma propre garde, trouvés par les contre-preuves** : mon §4 cherchait les
+COULEURS n'importe où et rougissait sur `.warn` et `.bp-hero` — il nomme « une valeur de charge
+en dur » et mesurait « cette couleur apparaît quelque part » ; recentré sur les sélecteurs de
+charge. Et son exemption s'appliquait à la LIGNE : remplacer `CHARGE.dur.papier` par un littéral
+restait VERT parce que la même ligne contenait encore `CHARGE.facile.papier`. Les exemptions
+retirent désormais leur construction du texte, pas la ligne.
+
+### Et j'ai récidivé sur le `git checkout`
+
+La consigne du brief le demandait explicitement. Un `git checkout` destiné à annuler une cassure
+de contre-preuve a emporté la séparation des règles de l'export, faite et vérifiée quelques
+minutes plus tôt mais **pas encore commitée** — le WIP précédent datait d'avant. C'est la garde
+qui l'a signalé pendant l'E2E complet, sur la ligne exacte, pas moi.
+
+**La règle qui en sort** : une cassure se restaure depuis une copie prise AVANT, jamais avec
+`git checkout` tant que le travail légitime du même fichier n'est pas commité.
+
+**29 gates verts, E2E 23/23, `audit:v1` et golden 949 inchangés — `src/`, `engine.js` et le
+monolithe intacts.**
