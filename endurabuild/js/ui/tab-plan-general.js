@@ -312,11 +312,23 @@ async function znPlanSequence() {
   const segs = [...document.querySelectorAll(".ph-line .ph-seg")];
   const fill = document.querySelector(".zn-prog-fill");
   if (_reduit()) { segs.forEach((s) => s.classList.add("vu")); if (fill) fill.classList.add("vu"); return; }
-  const cible = num && /J−(\d+)/.exec(num.textContent);
+  // LE COMPTEUR J− NE MUTE PLUS LE TEXTE, ET C'EST UNE CORRECTION, PAS UN RENONCEMENT.
+  // Ma première écriture faisait défiler `textContent` de 0 à J−281 sur 1,3 s. Conséquence
+  // mesurée : `RV-UI-B` (smoke-feasibility) compare DEUX EMPREINTES DU DOM pour garantir que le
+  // chrono visé ne déplace pas le plan — et l'empreinte prise pendant l'animation ne vaut pas
+  // celle prise après. La garde s'est mise à mesurer mon mouvement au lieu du plan, et quatre
+  // autres suites avec elle. C'est la famille R20.7 : une dimension que la mesure ne contrôle
+  // pas — ici le TEMPS — décide de son verdict.
+  // La règle qui en sort : une animation d'entrée ne doit jamais être la source de vérité d'un
+  // texte affiché. Le J− porte donc sa valeur finale dès le premier octet rendu, et son entrée
+  // se joue sur l'OPACITÉ et l'ÉCHELLE (des propriétés CSS, invisibles à une empreinte de
+  // texte). La frise et la barre, elles, animaient déjà `transform`/`width` — elles ne posaient
+  // pas ce problème et gardent leur chorégraphie exacte.
+  if (num) { num.classList.remove("zn-jm-in"); void num.offsetWidth; num.classList.add("zn-jm-in"); }
   if (fill) { fill.dataset.w = fill.style.width; fill.style.width = "0%"; }
   segs.forEach((s) => s.classList.remove("vu"));
   await _wait(80);
-  if (cible) await _compte(num, 0, +cible[1], _BEAT * 11, (v) => "J−" + Math.round(v));
+  await _wait(_BEAT * 11); // le J− prend sa place, puis la frise démarre — cadence inchangée
   segs.forEach((s, i) => setTimeout(() => s.classList.add("vu"), i * 114));
   await _wait(114 * Math.max(0, segs.length - 1) + _BEAT * 4);
   if (fill) { fill.style.transition = "width " + (_BEAT * 10) + "ms cubic-bezier(.25,.46,.45,.94)"; fill.style.width = fill.dataset.w || "0%"; }
