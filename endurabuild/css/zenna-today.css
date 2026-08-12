@@ -44,6 +44,19 @@
    forme exacte compte, c'est elle que sa regex reconnaît, et elle balaie AUSSI les
    commentaires : écrire un chemin d'exemple ici ferait échouer le build sur un fichier
    inexistant (constaté en écrivant cette note). */
+/* POPPINS remplace Bebas Neue sur la police d'affichage (fondateur + graphiste, 12/08/2026).
+   Le brief demandait « ajouter Poppins au lien Google Fonts existant » : IL N'Y EN A PAS, et il
+   ne doit pas y en avoir — c'est exactement la faute que le paragraphe D19 ci-dessus raconte,
+   payée une fois en R-ZENNA (deux hôtes tiers dans la CSP, une requête bloquante au premier
+   rendu, et le fichier autonome cassé). Poppins est donc AUTO-HÉBERGÉE comme les six autres,
+   sous-ensemble LATIN pris explicitement dans le bloc annoté « latin » par l'API — le premier
+   bloc servi pour Poppins est le DEVANAGARI (le cyrillique pour les polices ci-dessous), et le
+   prendre aurait donné une police sans un seul accent français.
+   Poppins est sous licence OFL (Indian Type Foundry), redistribuable avec le produit.
+   BEBAS NEUE RESTE CHARGÉE ET DÉCLARÉE ici, à la demande du brief : le retour arrière est le
+   remplacement d'UN mot dans `--zn-display`, sans re-télécharger quoi que ce soit. */
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 700; font-display: swap; src: url("../assets/fonts/poppins-700.woff2") format("woff2"); }
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 800; font-display: swap; src: url("../assets/fonts/poppins-800.woff2") format("woff2"); }
 @font-face { font-family: 'Bebas Neue'; font-style: normal; font-weight: 400; font-display: swap; src: url("../assets/fonts/bebas-neue-400.woff2") format("woff2"); }
 @font-face { font-family: 'Inter'; font-style: normal; font-weight: 400 800; font-display: swap; src: url("../assets/fonts/inter-400-800.woff2") format("woff2"); }
 @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url("../assets/fonts/ibm-plex-mono-400.woff2") format("woff2"); }
@@ -101,7 +114,17 @@ body.theme-zenna {
   --z5: #ff1f4a;
 
   /* ---- typographie ---- */
-  --zn-display: 'Bebas Neue', 'Archivo Black', sans-serif;
+  /* LE POIDS DEVIENT UNE VARIABLE, ET C'EST LE CŒUR DE CETTE BASCULE. Bebas Neue n'a QU'UNE
+     graisse : aucune des 15 règles qui consomment `--zn-display` n'avait donc besoin de déclarer
+     un `font-weight`, et mesuré, la plupart rendaient en 400 — « Sweetspot vélo » à 30px/400,
+     le grand chiffre du héros à 50px/400. Passer à Poppins sans toucher au poids aurait rendu
+     ces titres en Poppins REGULAR, une police de texte à taille d'affiche : plus léger encore
+     que ce que le brief redoutait, et sur un fichier qu'on n'a même pas téléchargé (on n'embarque
+     que 700 et 800), donc un repli silencieux sur Archivo Black.
+     800 plutôt que 700 parce que Bebas est une display CONDENSÉE et DENSE : à taille égale,
+     Poppins Bold rend visiblement plus clair. Le régler est le changement d'UN chiffre ici. */
+  --zn-display: 'Poppins', 'Archivo Black', sans-serif;
+  --zn-display-weight: 800;
   --zn-body: 'Inter', 'Space Grotesk', -apple-system, sans-serif;
   --zn-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
@@ -355,7 +378,7 @@ body.theme-zenna #screen .zn-verdict-chip.zn-verdict-orange { color: var(--zn-go
 body.theme-zenna #screen .zn-verdict-chip.zn-verdict-rouge { color: #ff7d92; }
 body.theme-zenna #screen .zn-hero-title {
   position: relative; z-index: 2;
-  font-family: var(--zn-display);
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
   font-size: 30px; line-height: 1; color: #0a0a0a;
   margin-top: 10px;
   transform: skewX(var(--zn-skew)); transform-origin: left;
@@ -366,10 +389,10 @@ body.theme-zenna #screen .zn-hero-metric {
   display: flex; align-items: baseline; gap: 6px; margin-top: 10px;
 }
 body.theme-zenna #screen .zn-hero-num {
-  font-family: var(--zn-display); font-size: 50px; line-height: 1; color: #0a0a0a;
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 50px; line-height: 1; color: #0a0a0a;
   transform: skewX(var(--zn-skew)); display: inline-block;
 }
-body.theme-zenna #screen .zn-hero-unit { font-family: var(--zn-display); font-size: 18px; color: rgba(10, 10, 10, .85); } /* 4,9:1 — .7 donnait 3,90 */
+body.theme-zenna #screen .zn-hero-unit { font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 18px; color: rgba(10, 10, 10, .85); } /* 4,9:1 — .7 donnait 3,90 */
 body.theme-zenna #screen .zn-hero-sub {
   position: relative; z-index: 2;
   font-family: var(--zn-mono); font-size: 11.5px; color: rgba(10, 10, 10, .85); margin-top: 4px; line-height: 1.5; /* 4,9:1 — .72 donnait 4,04 */
@@ -403,7 +426,7 @@ body.theme-zenna #screen .zn-form-val {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
 }
-body.theme-zenna #screen .zn-form-val span { font-family: var(--zn-display); font-size: 15px; color: #0a0a0a; }
+body.theme-zenna #screen .zn-form-val span { font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 15px; color: #0a0a0a; }
 /* 9 px, PAS les 5,5 px de la maquette. R16.8 a mesuré et tranché un plancher de lisibilité de
    9 px pour ce produit, et `smoke-typo` le vérifie sur le texte RENDU — il a trouvé ce libellé
    à 5,5 px, c'est-à-dire illisible par construction, pas par accident de rendu. La maquette a
@@ -543,7 +566,7 @@ body.theme-zenna #screen .zn-verdict-stamp {
 body.theme-zenna #screen .zn-verdict-badge {
   display: inline-flex; align-items: center; gap: 9px;
   background: rgba(0, 224, 198, .1); border: 2px solid var(--zn-cyan); border-radius: 16px;
-  padding: 13px 20px; font-family: var(--zn-display); font-size: 21px; letter-spacing: .05em;
+  padding: 13px 20px; font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 21px; letter-spacing: .05em;
   color: var(--zn-cyan); text-align: center;
 }
 body.theme-zenna #screen .zn-verdict-badge.zn-v-orange { border-color: var(--zn-gold); color: var(--zn-gold); background: rgba(255, 210, 61, .1); }
@@ -722,7 +745,7 @@ body.theme-zenna .eb-modal {
   background: var(--zn-surface); border: 1px solid var(--zn-border); border-radius: 20px;
   color: var(--zn-text); box-shadow: 0 24px 70px rgba(0, 0, 0, .7);
 }
-body.theme-zenna .eb-modal h2 { font-family: var(--zn-display); letter-spacing: .02em; }
+body.theme-zenna .eb-modal h2 { font-family: var(--zn-display); font-weight: var(--zn-display-weight); letter-spacing: .02em; }
 body.theme-zenna .eb-modal .load-sub { color: var(--zn-muted); }
 body.theme-zenna .eb-close { color: var(--zn-muted); }
 body.theme-zenna .eb-close:hover, body.theme-zenna .eb-close:focus-visible { background: rgba(255, 255, 255, .08); color: var(--zn-text); }
