@@ -120,7 +120,14 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
 .opt.sel{background:var(--acc);color:#fff;transform:rotate(-1.3deg) scale(1.03);box-shadow:4px 4px 0 var(--ink);}
 .opt.sel:hover{transform:rotate(-1.3deg) scale(1.03);}
 .opt:focus-visible{outline:3px dashed var(--acc);outline-offset:3px;}
-input[type=text],input[type=number],input[type=date]{background:var(--bg3);border:2.5px solid var(--ink);border-radius:4px 10px 5px 9px;padding:10px 14px;font-size:var(--fs-lg);font-weight:600;color:var(--ink);width:200px;font-family:'Space Grotesk',sans-serif;box-shadow:3px 3px 0 var(--ink);}
+/* `max-width:100%` — LE CHAMP DÉBORDAIT DE L'ÉCRAN DANS LE QUESTIONNAIRE.
+   `.row` est un flex à deux colonnes (`gap:16px`, `.row .q{flex:1;min-width:150px}`) : sur un
+   viewport de 390 px, chaque `.q` se réduit à 156 px, mais l'`input` porte une largeur FIXE de
+   200 px, qui ne se réduit pas. Mesuré sur l'étape « Profil physique » du triathlon : le champ
+   Âge occupe 31→231 dans une colonne qui s'arrête à 187, le champ Poids 203→403 — les deux se
+   CHEVAUCHENT de 28 px et le second sort de l'écran de 12 px. La largeur fixe reste (elle donne
+   sa taille au champ quand la place existe) ; on l'empêche seulement de dépasser son conteneur. */
+input[type=text],input[type=number],input[type=date]{background:var(--bg3);border:2.5px solid var(--ink);border-radius:4px 10px 5px 9px;padding:10px 14px;font-size:var(--fs-lg);font-weight:600;color:var(--ink);width:200px;max-width:100%;font-family:'Space Grotesk',sans-serif;box-shadow:3px 3px 0 var(--ink);}
 input:focus{outline:3px dashed var(--acc);outline-offset:3px;background:#fffbe8;}
 .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;}
 .row .q{margin-bottom:0;flex:1;min-width:150px;}

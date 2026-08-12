@@ -186,6 +186,44 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**V1 livré — le canal de vente : le tunnel était infranchissable** (retour du fondateur,
+12/08/2026 : « travail l'ux du canal de vente » — voir ARCHITECTURE.md « V1 ») : la carte
+d'abonnement au ravitaillement (🧰 Outils › Nutrition) n'avait jamais été TRAVERSÉE comme un
+athlète le fait, seulement composée puis gardée par des critères d'état. Mesuré geste par geste :
+on arrive sur la carte dépliée (811 px, devis et bouton présents), **on clique une cadence et
+elle se REFERME** (190 px, plus de devis, plus de bouton) — les gestes suivants sont sans effet.
+**Il était donc impossible de s'abonner** par le chemin où le produit propose lui-même l'offre.
+Les trois gestes écrivaient `lastPromptAt`, ce qui est juste (« une proposition qu'on manipule
+est une proposition vue »), mais c'est le MÊME champ que lit `shopPromptDue` pour ouvrir la
+carte ; `shopExpanded` n'était posé que par le bouton manuel. Point unique `noterGesteCarte()`.
+**Trois autres promesses fausses ou muettes** : « envoi le samedi » / « envoi le 1er » (balayé sur
+les 7 jours — l'échéance tombe le jour de l'abonnement, « samedi » vrai **1 fois sur 7**, et le
+mensuel valant 30 jours FIXES les quantièmes sont 31, 30, 30) ; le devis **jetait toute
+l'hydratation** hors vélo (1 540 ml sur une sortie longue de 2 h 34) et vendait **2 gels pour une
+nage de 70 min en bassin** ; le bouton annonçait « 1er ENVOI le 19/08 » quand aucun fournisseur
+n'existe. Arbitrages du fondateur : boisson en « trail + sorties > 90 min », garde d'âge à 16 ans
+alignée sur O-16 (le ravitaillement N1-N7 reste servi à tout âge — c'est la VENTE qui se retire).
+Pour les gels en nage, le premier réflexe — lire `milieu` — était le **mauvais signal** (chez un
+triathlète il décrit la course, pas l'entraînement) : on reprend le seuil de 90 min plutôt que
+d'en inventer un second. **A11y** : `role="tablist"` sans aucun `tabpanel`, 8 puces sans
+`aria-checked` (la sélection n'existait que par la couleur), focus perdu sur `<body>` à chaque
+choix. **Densité** `.shop-fine` 3,63 → 3,18 car./px (le pire de l'app ; l'audit par onglet
+plafonnait à 3,00), la réserve qui décide passant AVANT le bouton.
+**Quatre de mes instruments étaient faux** et restent écrits : le contraste rendu à 1,28 puis
+1,01 sur un texte qui vaut **11,3** (la remontée par ancêtres ne voit pas un frère peint dessous ;
+`elementsFromPoint` rend une liste vide hors écran) ; une sonde qui portait sa PROPRE copie de la
+règle et affichait « boisson jetée » après correction ; une contre-preuve dont le `perl` ne
+remplaçait rien et sortait verte ; un critère « rien d'autre ne disparaît pour le mineur » qui
+mesurait en fait le CALENDRIER. Et un critère **vacueux** démontré tel : « aucun rôle d'onglet »
+lisait l'état ABONNÉ, où le segmenté n'existe pas — il restait vert avec `role="tablist"`
+réintroduit. `smoke-shop` 20 → **37 assertions**, cinq cassures cinq rouges, K1 rendant 7 lignes
+de verdict là où elle faisait MOURIR la suite avant `report()`.
+**Trouvé en chemin, sans rapport** : dans le questionnaire, `.row` est un flex à deux colonnes
+mais l'`input` porte une largeur FIXE de 200 px — sur 390 px de large les champs Âge et Poids se
+**chevauchent de 28 px** et le second sort de l'écran de 12. `max-width:100%`.
+**28 gates verts, E2E 21/21, `audit:v1` et golden 949 inchangés** — le canal de vente ne touche
+aucune séance.
+
 **R-ZENNA v8 livré — le logo, le renommage en Zenna, et deux gates qui dépendaient du calendrier**
 (logo fourni par le fondateur, 12/08/2026 : « le logo, remplace tout les endurabuild par Zenna » —
 voir ARCHITECTURE.md « R-ZENNA (v8) ») : la marque fournie (coureur stylisé formant un « Z »)

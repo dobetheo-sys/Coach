@@ -5611,3 +5611,144 @@ plutôt que de la retirer comme il retire `apple-touch-icon` : la promesse « z�
 est tenue, vérifiée sur le fichier produit.
 
 **28 gates verts, E2E 21/21 (64 assertions pour `smoke-zenna`), golden 949 recapturé (7).**
+
+---
+
+## V1 — le canal de vente : le tunnel était infranchissable
+
+Retour du fondateur : *« travail l'ux du canal de vente »*. Le canal (abonnement de
+ravitaillement, 🧰 Outils › Nutrition) n'avait jamais été traversé **comme un athlète le fait**,
+seulement composé puis gardé par des critères d'état. Sept constats, tous mesurés au rendu.
+
+### Le défaut principal : il était IMPOSSIBLE de s'abonner
+
+Mesuré geste par geste, sur un plan en cours dont l'ancre des 28 jours est échue :
+
+| geste | état | hauteur | devis | bouton d'activation |
+|---|---|---|---|---|
+| j'ouvre Outils › Nutrition | dépliée | 811 px | oui | oui |
+| je clique « chaque mois » | **REPLIÉE** | 190 px | **non** | **non** |
+| je clique « citron » | repliée | 190 px | non | non (sans effet) |
+| je clique « Activer » | repliée | 190 px | non | non (sans effet) |
+
+Les trois gestes de la carte écrivaient `lastPromptAt: today` — ce qui est JUSTE, le commentaire
+le dit bien (« une proposition qu'on manipule est une proposition vue »). Mais c'est le MÊME
+champ que lit `shopPromptDue` pour décider si la carte s'ouvre d'elle-même : au rendu suivant,
+`due` retombait à faux, et `shopExpanded` — la seule autre raison de rester ouverte — n'était
+posé QUE par le bouton « Voir ce que ça donne ». La carte se refermait donc sur l'athlète au
+premier choix, **exactement dans l'état où le produit propose lui-même l'offre**.
+
+Un geste qui détruit la raison pour laquelle la carte est ouverte doit poser l'autre raison :
+on ne peut manipuler que ce qui est ouvert. Point unique `noterGesteCarte()` — écrit une fois
+plutôt que dans chacun des quatre gestionnaires (R11.1), l'oubli dans l'un d'eux étant
+précisément ce qui a produit le défaut.
+
+### « envoi le samedi » et « envoi le 1er » étaient faux
+
+Le sous-titre du segmenté annonçait un jour fixe. `nextEcheance` compte des MULTIPLES de la
+cadence depuis `startedAt` : l'envoi tombe le jour où l'on s'abonne. Balayé sur les sept jours —
+abonné un lundi → échéance un lundi, un mardi → un mardi. « samedi » n'est vrai que pour qui
+s'abonne un samedi, **1 cas sur 7**. Et le mensuel valant 30 jours FIXES et non un mois, les
+échéances d'un abonnement pris le 01/08 tombent les **31, 30, 30** — « le 1er » n'arrive jamais.
+Le sous-titre annonce désormais la période (« tous les 7 jours »), que le calcul tient.
+
+### Le devis jetait l'hydratation, et vendait des gels pour un bassin
+
+`DISCIPLINES_BOISSON` ne gardait que `bk`/`br`. Sur un plan marathon, le moteur prescrit
+400-800 ml/h et le canal proposait **zéro boisson** : 1 540 ml jetés sur la sortie longue de
+2 h 34, 1 370 sur l'allure spécifique — un devis d'apparence complète sur un plan où toute
+l'hydratation manquait. **Décision du fondateur** : « trail + sorties > 90 min », par-dessus le
+vélo et le brick. La nage reste dehors, seul cas où l'impossibilité est physique.
+
+Symétriquement, le devis proposait **2 gels pour une nage de 70 min en bassin**. Le premier
+réflexe était de lire `milieu` (bassin / eau libre) — **mauvais signal** : chez un triathlète
+`milieu` décrit la COURSE, alors que l'entraînement se fait en bassin quoi qu'il arrive. On
+aurait branché une règle sur une réponse qui parle d'autre chose. Ce qui décide réellement est
+la durée : à partir de ~90 min se ravitailler devient nécessaire ET praticable (au mur comme sur
+une traversée). On reprend donc **le seuil que le fondateur venait de retenir pour la boisson**
+plutôt que d'en inventer un second, et on le limite à la nage.
+
+### Ce qu'un lecteur d'écran ne savait pas
+
+`role="tablist"` promettait des `tabpanel` (mesuré : **0**) et un parcours aux flèches que rien
+n'implémentait. Les 8 puces de goût et de format portaient **0 `aria-pressed`, 0 `role="radio"`**
+— la sélection n'existait que par la COULEUR, et l'intitulé du groupe n'était relié à rien.
+Trois `radiogroup` nommés, `aria-checked` sur chaque option.
+
+Et le focus était **perdu à chaque choix** : `renderTabNutrition` réécrit `#screen.innerHTML`,
+donc le bouton activé est détruit et le focus retombe sur `<body>` (mesuré). À la souris on ne
+le voit pas ; au clavier on est renvoyé en haut de l'onglet à chaque geste, c'est-à-dire qu'on
+ne peut pas enchaîner cadence → goût → format. Le focus se repose sur le même contrôle, jamais
+au premier rendu.
+
+*Aucun `aria-live` n'a été ajouté : `#screen` en porte déjà un. Une seconde région imbriquée
+aurait été redondante — vérifié avant d'écrire, pas supposé.*
+
+### La réserve qui compte passe avant le bouton
+
+`.shop-fine` était le bloc le plus DENSE de toute l'app : **3,63 car./px** de hauteur rendue,
+313 caractères — le pire relevé de l'audit par onglet était 3,00. Et le fait décisif y était dit
+DEUX FOIS, dans deux paragraphes voisins de style identique (9 px, même gris, même interligne) :
+« rien n'est envoyé nulle part » / « aucune expédition », « reste sur cet appareil » / « intention
+enregistrée sur cet appareil ». Le bouton, lui, annonçait en capitales « **1er ENVOI le 19/08** »
+— une expédition qui n'aura pas lieu, aucun fournisseur n'existant et `submitOrder` ne faisant
+aucune requête.
+
+Le service n'existe pas encore : ce fait décide, il se lit donc AVANT qu'on s'engage. Le bouton
+dit ce que la date désigne réellement (la première PÉRIODE couverte, que le calcul tient).
+Densité **3,63 → 3,18**, hauteur 811 → 797 px.
+
+### Un mineur ne se voit plus rien proposer
+
+Mesuré : un profil de **14 ans** recevait la carte complète, devis et bouton compris. O-16 refuse
+déjà l'estimation énergétique sous 16 ans ; une carte COMMERCIALE est de la catégorie 7 du
+manifeste, celle qui ne passe jamais devant les quatre premières. Seuil repris d'O-16 plutôt
+qu'un second inventé, sur un âge **connu** seulement. Le drapeau médical ne masque pas
+(arbitrage du fondateur : être suivi n'interdit ni de manger ni de boire).
+**Ce qui n'est pas touché est le point** : le ravitaillement d'effort (N1-N7) reste servi à tout
+âge — c'est la VENTE qui se retire, jamais l'information.
+
+### Trois de mes instruments étaient faux, et un quatrième était vacueux
+
+- **Le contraste.** Ma sonde a rendu **1,28** sur le libellé de la cadence active, puis **1,01**
+  après « correction ». Les deux étaient faux : la remontée par `parentElement` ne voit pas un
+  FRÈRE peint dessous (la pastille `#ffb199` est exactement sous ce texte), et
+  `elementsFromPoint` travaille en coordonnées de FENÊTRE — sans défilement préalable il rend une
+  liste vide pour un élément à y=1161 sur un viewport de 844, et le fond retombe sur du noir.
+  Le vrai rapport est **11,3**. *`smoke-zenna` porte la même limite d'instrument ; elle ne produit
+  aucun faux échec aujourd'hui parce que le segmenté n'existe pas dans l'état qu'elle inspecte.*
+- **La mesure « la boisson est jetée ».** Ma sonde portait sa PROPRE copie de la règle
+  (`["bk","br"].includes(s.d)`) : après correction du code elle affichait toujours « JETÉE ».
+  Elle mesurait mon instrument, pas le produit. Remesuré sur la sortie réelle.
+- **La contre-preuve K3.** Sortie VERTE : le `perl` n'avait rien remplacé. Une cassure qui ne
+  s'applique pas ne prouve rien — les cassures vérifient désormais que le motif existe.
+- **Le critère « rien d'autre ne disparaît pour le mineur ».** Écrit sur `#nutCard`, il est sorti
+  rouge — et la cause n'était pas la garde d'âge : cette carte ne se rend que si le jour COURANT
+  porte une séance, et elle valait 0 pour l'adulte aussi. Il nommait « l'information ne se
+  retire pas » et mesurait une propriété du CALENDRIER. Réécrit en DIFFÉRENTIEL (même profil à
+  14 et 16 ans), il ne peut plus passer sur un onglet vide.
+- **Le critère « aucun rôle d'onglet ».** Il lisait la carte laissée par le bloc précédent,
+  c'est-à-dire l'état ABONNÉ, où le segmenté n'existe pas : compter zéro `role="tab"` y était
+  vrai quoi qu'il arrive. **Démontré vacueux** en réintroduisant `role="tablist"` — il restait
+  vert. Il reboote désormais sur l'état où les contrôles existent.
+
+### Garde
+
+`smoke-shop` passe de 20 à **37 assertions** : le tunnel traversé de bout en bout, les rôles, le
+focus, les sous-titres de cadence, la garde d'âge sur ses deux moitiés. **Cinq cassures, cinq
+rouges** — et K1 rend désormais **7 lignes de verdict** là où elle faisait MOURIR la suite sur un
+`TimeoutError` avant `report()` (code de sortie 1, aucune ligne : le défaut d'instrument de
+R22b/H-1b, refait puis corrigé — les clics sont conditionnels).
+
+### Trouvé en chemin — le champ du questionnaire sortait de l'écran
+
+Sans rapport avec le canal de vente, relevé en traversant l'app. `.row` est un flex à deux
+colonnes (`gap:16px`, `.row .q{flex:1;min-width:150px}`) : sur un viewport de 390 px chaque `.q`
+se réduit à 156 px, mais l'`input` porte une largeur FIXE de 200 px qui ne se réduit pas. Mesuré
+sur l'étape « Profil physique » du triathlon : le champ Âge occupe 31→231 dans une colonne qui
+s'arrête à 187, le champ Poids 203→403 — ils se **CHEVAUCHENT de 28 px** et le second sort de
+l'écran de **12 px**. `max-width:100%` : la largeur fixe reste, on l'empêche seulement de
+dépasser son conteneur. Après : 31→187 et 203→359, zéro débordement.
+
+**28 gates verts, E2E 21/21, `audit:v1` et golden inchangés** — le canal de vente ne touche
+aucune séance.

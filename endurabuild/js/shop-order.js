@@ -35,9 +35,54 @@ export const REFERENCE_PRODUCTS = {
   drink: { unitMl: 500, unitPriceEUR: 0.9 },
 };
 
-// On peut porter un bidon à vélo — pas en courant, pas en nageant. La boisson ne se propose
-// donc que sur les disciplines qui la rendent réellement transportable pendant l'effort.
-const DISCIPLINES_BOISSON = new Set(["bk", "br"]);
+// LA BOISSON ÉTAIT JETÉE DÈS QU'ON N'ÉTAIT PAS À VÉLO — décision du fondateur, 12/08/2026.
+//
+// La règle disait « on peut porter un bidon à vélo, pas en courant » et ne gardait que `bk`/`br`.
+// Mesuré sur un plan marathon : le moteur prescrit 400-800 ml/h, et le canal de vente proposait
+// ZÉRO boisson — 1 540 ml jetés sur la sortie longue de 2 h 34, 1 370 sur l'allure spécifique.
+// Le moteur calculait un besoin d'hydratation que le canal effaçait en silence, ce qui donnait
+// un devis d'apparence complète sur un plan où toute l'hydratation manquait.
+//
+// La prémisse était fausse pour deux populations : en TRAIL le sac ou la ceinture font partie
+// du matériel de base, et au-delà de ~90 MINUTES d'effort on emporte de quoi boire quelle que
+// soit la discipline (flasque, ceinture, ravitaillement posé). Arbitrage retenu : « trail +
+// sorties > 90 min », par-dessus le vélo et le brick qui ne changent pas.
+//
+// LA NAGE RESTE DEHORS, et c'est le seul cas où l'impossibilité est physique : on ne boit pas
+// en nageant. Cette exclusion-là n'est pas une hypothèse sur l'équipement.
+const DISCIPLINES_BIDON = new Set(["bk", "br"]); // le bidon est sur le cadre : toujours dispo
+const SANS_BOISSON = new Set(["sw"]);            // on ne boit pas en nageant — pas une question d'équipement
+const DUREE_PORTE_BOISSON_MIN = 90;
+
+function proposeBoisson(disciplineCode, dureeMin, sport) {
+  if (SANS_BOISSON.has(disciplineCode)) return false;
+  if (DISCIPLINES_BIDON.has(disciplineCode)) return true;
+  if (sport === "trail") return true;
+  return (dureeMin || 0) > DUREE_PORTE_BOISSON_MIN;
+}
+
+/**
+ * LE GEL EN NAGE : une question de DURÉE, pas de bassin.
+ *
+ * Le devis proposait 2 gels pour une nage de 70 min en bassin — le moteur calcule bien
+ * 30-60 g/h (l'effort les justifie, consensus « au-delà de 60-75 min »), mais on ne mange pas
+ * de gel au milieu d'un 70 min en bassin : on mange avant et après.
+ *
+ * Le premier réflexe était de lire `milieu` (bassin / eau libre) — c'est le MAUVAIS signal :
+ * chez un triathlète, `milieu` décrit la course, alors que l'entraînement se fait en bassin
+ * quoi qu'il arrive. On aurait branché une règle sur une réponse qui parle d'autre chose.
+ * Ce qui décide réellement, c'est la durée : à partir de ~90 min, se ravitailler pendant la
+ * séance devient nécessaire ET praticable (au mur comme sur une traversée). On reprend donc le
+ * seuil que le fondateur vient de retenir pour la boisson, plutôt que d'en inventer un second.
+ *
+ * Volontairement limité à la NAGE : appliquer ce seuil au vélo et à la course changerait des
+ * devis que personne n'a mis en cause, et le consensus (ACSM/ISSN/Jeukendrup) prescrit bien des
+ * glucides dès 60-75 min là où on peut manger en bougeant.
+ */
+function proposeGel(disciplineCode, dureeMin) {
+  if (disciplineCode !== "sw") return true;
+  return (dureeMin || 0) >= DUREE_PORTE_BOISSON_MIN;
+}
 
 const ceilUnits = (qty, unit) => (unit > 0 ? Math.max(0, Math.ceil(qty / unit)) : 0);
 
@@ -50,7 +95,7 @@ const ceilUnits = (qty, unit) => (unit > 0 ? Math.max(0, Math.ceil(qty / unit)) 
  * le plan — c'est ce que `estimateTotalNeed` utilise pour savoir s'il y a quoi que ce soit à
  * proposer.
  */
-export function estimatePeriodDetail(plan, weightKg, cadenceDays, todayISO) {
+export function estimatePeriodDetail(plan, weightKg, cadenceDays, todayISO, sport) {
   if (!plan || !Array.isArray(plan.weeks) || !globalThis.EBV2 || !globalThis.EBV2.sessionNutrition) return null;
   const from = Date.parse(todayISO + "T00:00:00Z");
   const to = from + cadenceDays * 86400000;
@@ -66,9 +111,11 @@ export function estimatePeriodDetail(plan, weightKg, cadenceDays, todayISO) {
       if (!a || !a.during.carbsGPerH) return;
       const hours = (s.min || 0) / 60;
       const [c0, c1] = a.during.carbsGPerH;
-      const gelUnits = ceilUnits(((c0 + c1) / 2) * hours, REFERENCE_PRODUCTS.gel.unitCarbsG);
+      const gelUnits = proposeGel(s.d, s.min)
+        ? ceilUnits(((c0 + c1) / 2) * hours, REFERENCE_PRODUCTS.gel.unitCarbsG)
+        : 0;
       let drinkUnits = 0;
-      if (DISCIPLINES_BOISSON.has(s.d)) {
+      if (proposeBoisson(s.d, s.min, sport)) {
         const [d0, d1] = a.during.drinkMlPerH;
         drinkUnits = ceilUnits(((d0 + d1) / 2) * hours, REFERENCE_PRODUCTS.drink.unitMl);
       }
@@ -90,8 +137,8 @@ export function estimatePeriodDetail(plan, weightKg, cadenceDays, todayISO) {
 }
 
 /** Y a-t-il, n'importe où dans le plan, de quoi justifier de proposer l'abonnement ? */
-export function estimateTotalNeed(plan, weightKg, todayISO) {
-  return estimatePeriodDetail(plan, weightKg, 36500, todayISO);
+export function estimateTotalNeed(plan, weightKg, todayISO, sport) {
+  return estimatePeriodDetail(plan, weightKg, 36500, todayISO, sport);
 }
 
 /**
@@ -152,6 +199,34 @@ export function shopEndOfPlanPromptDue(sub, planEndedAt, todayISO) {
   const anchor = (sub && sub.lastPromptAt) || planEndedAt;
   const days = Math.floor((Date.parse(todayISO + "T00:00:00Z") - Date.parse(anchor + "T00:00:00Z")) / 86400000);
   return days >= 28;
+}
+
+/**
+ * ÂGE MINIMUM POUR VOIR LA CARTE DE VENTE — décision du fondateur, 12/08/2026.
+ *
+ * Mesuré : un profil de 14 ans recevait la carte d'abonnement complète, devis et bouton
+ * d'activation compris. Or ce produit refuse déjà l'estimation énergétique sous 16 ans (O-16,
+ * Mifflin-St Jeor hors de son domaine de validation) — et une carte COMMERCIALE est de la
+ * catégorie 7 du manifeste, celle qui ne doit jamais passer devant les quatre premières.
+ * Solliciter un mineur pour un produit de nutrition sportive n'est pas défendable ; le seuil
+ * reprend celui d'O-16 plutôt que d'en inventer un second.
+ *
+ * CE QUI N'EST PAS TOUCHÉ, et c'est le point : le RAVITAILLEMENT d'effort (N1-N7) reste servi à
+ * tout âge, dans la carte de la séance. Un adolescent qui roule trois heures doit savoir quoi
+ * boire ; c'est la VENTE qui se retire, jamais l'information. Exactement la frontière qu'O-16
+ * a tracée entre l'estimation journalière (refusée) et le ravitaillement (gardé).
+ *
+ * Un âge ABSENT n'est pas une preuve de minorité (même raisonnement qu'O-16) : on ne masque
+ * que sur un âge connu et inférieur au seuil.
+ *
+ * Le drapeau médical, lui, ne masque PAS (arbitrage du fondateur) : être suivi médicalement
+ * n'interdit ni de manger ni de boire, et le plan est déjà ramené à l'endurance par ailleurs.
+ */
+export const AGE_MIN_VENTE = 16;
+
+export function venteAutorisee(answers) {
+  const age = parseInt((answers && answers.age) || "", 10);
+  return !(Number.isFinite(age) && age < AGE_MIN_VENTE);
 }
 
 /**

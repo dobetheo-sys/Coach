@@ -26,7 +26,15 @@ ok(!/legacy-fallback/.test(appSrc), "app.js ne l'importe plus (dépendance circu
 ok(/EBGenerationError/.test(appSrc), "app.js expose EBGenerationError (échec porteur)");
 
 // ---- 2. Chemin normal : le plan sort du moteur V2 ----
-await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "domcontentloaded" });
+// `load` et non `domcontentloaded` : on RECHARGE juste après, et un `reload` déclenché avant la
+// fin du chargement annule les requêtes encore en vol. Depuis que la favicone est un fichier
+// (`assets/icon-192.png`, 1,2 Ko) au lieu d'un data-URI de 21,6 Ko, il y a une requête à annuler
+// — et le critère « aucune requête en échec » la comptait comme un échec de l'app
+// (`icon-192.png net::ERR_ABORTED`). Ce n'en est pas un : c'est CETTE suite qui l'interrompt.
+// Vérifié en isolant les deux cas — sans rechargement immédiat, zéro requête en échec.
+// On laisse donc le premier chargement finir, plutôt que d'exempter un motif d'erreur : la
+// garde reste stricte et continue de voir un vrai échec s'il s'en produit un.
+await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" });
 await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v1", JSON.stringify(s)); }, runnerStateV1({}));
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);

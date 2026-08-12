@@ -8,7 +8,7 @@ import { S, $, esc, ebSave, todayISO, fmtDay } from "../state.js";
 import { fetchWeather } from "./readiness.js";
 import {
   estimateTotalNeed, estimatePeriodDetail, nextEcheance, subscriptionView,
-  shopPromptDue, shopEndOfPlanPromptDue, submitOrder, CADENCES, FLAVOR_OPTIONS, FORMAT_OPTIONS,
+  shopPromptDue, shopEndOfPlanPromptDue, submitOrder, CADENCES, FLAVOR_OPTIONS, FORMAT_OPTIONS, venteAutorisee,
 } from "../shop-order.js";
 import { planEndDate } from "./session-life.js";
 // R6 — le journal alimentaire (Open Food Facts + CSV) est RETIRÉ sur décision
@@ -193,7 +193,22 @@ let shopConfirmCancel = false; // bandeau « Résilier à l’échéance ? » �
 // et un bouton la rouvre (consulter reste gratuit).
 let shopExpanded = false;
 
+/** Un groupe de choix mutuellement exclusifs — libellé RELIÉ au groupe, sélection ANNONCÉE. */
+function choixHTML(libelle, attr, options, choisi) {
+  const id = "choix-" + attr;
+  return '<div class="choice-lab" id="' + id + '">' + esc(libelle) + "</div>"
+    + '<div class="choice-row" role="radiogroup" aria-labelledby="' + id + '">'
+    + options.map((f) => '<button type="button" role="radio" class="choice' + (f === choisi ? " sel" : "")
+        + '" aria-checked="' + (f === choisi) + '" data-' + attr + '="' + esc(f) + '">' + esc(f) + "</button>").join("")
+    + "</div>";
+}
+
 function shopSubscriptionCardHTML(plan, today) {
+  // Un mineur ne se voit rien proposer à la vente (voir `venteAutorisee`). Le test passe AVANT
+  // tout le reste : rien de la carte n'est construit, donc rien ne peut fuiter par un état
+  // particulier (abonnement déjà pris, fin de plan…). Le ravitaillement de la séance, lui,
+  // reste intégralement affiché ailleurs dans l'onglet — c'est la VENTE qui se retire.
+  if (!venteAutorisee(S.answers)) return "";
   const sub = S.answers.shopSubscription || null;
   const view = subscriptionView(sub, today);
   const wkg = parseFloat(S.answers.weight) > 0 ? parseFloat(S.answers.weight) : null;
@@ -203,7 +218,7 @@ function shopSubscriptionCardHTML(plan, today) {
   if (abonneActif && !shopEditing) {
     const cad = CADENCES[sub.cadence] || CADENCES.hebdo;
     const echeance = nextEcheance(sub.startedAt, cad.days, today);
-    const detail = estimatePeriodDetail(plan, wkg, cad.days, today);
+    const detail = estimatePeriodDetail(plan, wkg, cad.days, today, S.sport);
     return '<div class="shop-card" id="shopCard">'
       + '<div class="sub-active-head">'
       + '<div class="sub-badge" aria-hidden="true">🛒</div>'
@@ -238,17 +253,22 @@ function shopSubscriptionCardHTML(plan, today) {
   // ── PROPOSITION / ÉDITION ──────────────────────────────────────────────────
   const endDate = planEndDate(plan, S.answers);
   const planOver = !!endDate && today >= endDate;
-  if (!abonneActif && !estimateTotalNeed(plan, wkg, today) && !planOver) return "";
+  if (!abonneActif && !estimateTotalNeed(plan, wkg, today, S.sport) && !planOver) return "";
   const cadenceSel = (sub && sub.cadence) || "hebdo";
   const flavorSel = (sub && sub.flavor) || FLAVOR_OPTIONS[0];
   const formatSel = (sub && sub.format) || FORMAT_OPTIONS[0];
-  const detail = estimatePeriodDetail(plan, wkg, CADENCES[cadenceSel].days, today);
+  const detail = estimatePeriodDetail(plan, wkg, CADENCES[cadenceSel].days, today, S.sport);
   const echeance = nextEcheance(sub && sub.startedAt ? sub.startedAt : today, CADENCES[cadenceSel].days, today);
   const cles = Object.keys(CADENCES);
   const iSel = Math.max(0, cles.indexOf(cadenceSel));
   const titre = abonneActif ? "Modifier l’abonnement" : planOver ? "Rester accompagné(e)" : "S’abonner au ravitaillement";
+  // « 1er ENVOI le 19/08 » ANNONÇAIT UNE EXPÉDITION QUI N'AURA PAS LIEU. Aucun fournisseur
+  // n'existe (`CATALOG` est vide) et `submitOrder` ne fait aucune requête : le bouton portait
+  // donc, en capitales, la promesse que la mention légale dessous venait démentir. Ce que cette
+  // date désigne réellement, c'est le début de la première PÉRIODE couverte — un fait vrai, que
+  // le calcul tient. Le bouton le dit ; l'envoi reviendra dans ce libellé le jour où il existe.
   const cta = abonneActif ? "Enregistrer les modifications"
-    : (view.status === "cancelled" ? "Reprendre l’abonnement" : "Activer — 1er envoi le " + esc(fmtDay(echeance)));
+    : (view.status === "cancelled" ? "Reprendre l’abonnement" : "Activer — 1re période le " + esc(fmtDay(echeance)));
 
   // La cadence anti-spam est celle du moteur de vente, pas une seconde règle écrite ici (R11.1).
   const due = shopPromptDue(sub, S.answers.plan_start, today) || shopEndOfPlanPromptDue(sub, endDate, today);
@@ -274,41 +294,111 @@ function shopSubscriptionCardHTML(plan, today) {
     // Le sélecteur de cadence est un SEGMENTÉ, pas une liste déroulante : deux choix
     // mutuellement exclusifs qu'on compare se montrent côte à côte. La pastille glisse d'un
     // côté à l'autre — c'est ce mouvement qui dit « tu changes de régime », pas un menu.
-    + '<div class="seg" id="cadSeg" role="tablist" aria-label="Cadence d’envoi">'
+    // `role="tablist"` PROMETTAIT DES ONGLETS QUI N'EXISTENT PAS. Un tablist annonce à son
+    // lecteur qu'il pilote des `tabpanel` et qu'il se parcourt aux FLÈCHES ; mesuré, la carte
+    // n'en contient aucun (0 `role="tabpanel"`) et rien n'écoute les flèches. Deux choix
+    // mutuellement exclusifs qui ne révèlent pas de panneau, c'est un groupe de BOUTONS RADIO —
+    // et ce rôle-là porte l'information qui manquait vraiment : lequel est choisi (`aria-checked`).
+    + '<div class="seg" id="cadSeg" role="radiogroup" aria-label="Cadence d’envoi">'
     + '<div class="seg-pill" style="left:calc(' + (iSel * 50) + '% + 3px)"></div>'
-    + cles.map((k, i) => '<button type="button" role="tab" class="seg-opt' + (i === iSel ? " active" : "") + '" data-cadence="' + k + '" aria-selected="' + (i === iSel) + '">'
-        + '<span class="so-l">' + esc(CADENCES[k].label) + '</span><span class="so-s">' + (CADENCES[k].days > 7 ? "envoi le 1er" : "envoi le samedi") + "</span></button>").join("")
+    // LE SOUS-TITRE DISAIT UN JOUR FIXE, ET C'ÉTAIT FAUX. Il annonçait « envoi le samedi » et
+    // « envoi le 1er » — deux promesses qu'aucun calcul ne tient : `nextEcheance` compte des
+    // MULTIPLES DE LA CADENCE depuis `startedAt`, donc l'envoi tombe le jour où l'on s'est
+    // abonné. Mesuré sur les sept jours : abonné un lundi → échéance un lundi, un mardi → un
+    // mardi… « samedi » n'est vrai que pour qui s'abonne un samedi, soit 1 cas sur 7. Et le
+    // mensuel vaut 30 JOURS FIXES, pas un mois : abonné le 01/08, les échéances tombent les
+    // 31, 30, 30 — « le 1er » n'arrive jamais. Le sous-titre dit désormais ce que le code fait,
+    // ce qui a le mérite d'expliquer aussi pourquoi « chaque mois » n'est pas un quantième.
+    + cles.map((k, i) => '<button type="button" role="radio" class="seg-opt' + (i === iSel ? " active" : "") + '" data-cadence="' + k + '" aria-checked="' + (i === iSel) + '">'
+        + '<span class="so-l">' + esc(CADENCES[k].label) + '</span><span class="so-s">tous les ' + CADENCES[k].days + " jours</span></button>").join("")
     + "</div>"
     + '<div class="period-lab">D’après ce que tes séances affichent déjà, ta prochaine période :</div>'
     + (detail && detail.sessions.length
         ? periodLinesHTML(detail) + periodTotalHTML(detail)
         : '<div class="load-sub">Ce plan-ci n’a plus de séance à venir — le premier envoi s’ajustera à ton prochain plan ou à tes sorties libres.</div>')
-    + '<div class="choice-lab">Goût préféré</div><div class="choice-row">'
-    + FLAVOR_OPTIONS.map((f) => '<button type="button" class="choice' + (f === flavorSel ? " sel" : "") + '" data-flavor="' + esc(f) + '">' + esc(f) + "</button>").join("")
-    + "</div>"
-    + '<div class="choice-lab">Format préféré</div><div class="choice-row">'
-    + FORMAT_OPTIONS.map((f) => '<button type="button" class="choice' + (f === formatSel ? " sel" : "") + '" data-format="' + esc(f) + '">' + esc(f) + "</button>").join("")
-    + "</div>"
+    // GOÛT ET FORMAT : le choix se voyait, mais ne s'ENTENDAIT pas. Mesuré : 8 boutons, 0
+    // `aria-pressed`, 0 `role="radio"` — la sélection n'était portée que par la classe `.sel`,
+    // c'est-à-dire par de la couleur. Un lecteur d'écran annonçait huit boutons identiques sans
+    // dire lequel est actif, et le libellé du groupe (« Goût préféré ») n'était relié à rien.
+    // `radiogroup` + `aria-checked` + `aria-labelledby` disent les trois choses qui manquaient :
+    // que les choix s'excluent, lequel est pris, et de quoi le groupe parle.
+    + choixHTML("Goût préféré", "flavor", FLAVOR_OPTIONS, flavorSel)
+    + choixHTML("Format préféré", "format", FORMAT_OPTIONS, formatSel)
+    // LA RÉSERVE QUI COMPTE PASSE AVANT LE BOUTON, PAS APRÈS.
+    //
+    // Elle vivait sous le bouton, diluée dans 313 caractères de mention légale — le bloc le
+    // plus DENSE de toute l'app (3,63 car./px de hauteur rendue ; le pire relevé de l'audit
+    // par onglet était 3,00). Et elle était dite DEUX FOIS, dans deux paragraphes voisins de
+    // style identique (9 px, même gris, même interligne) : « rien n'est envoyé nulle part » /
+    // « aucune expédition », « reste sur cet appareil » / « intention enregistrée sur cet
+    // appareil ». Un fait répété dans deux blocs indistinguables se lit moins bien qu'une fois
+    // au bon endroit.
+    //
+    // Ce fait-là — le service n'existe pas encore — est celui qui décide. Il se lit donc AVANT
+    // qu'on s'engage, pas en petits caractères après. C'est la même règle que la carte applique
+    // déjà à la preuve sociale : on ne remplace pas un chiffre inventé par une promesse
+    // invérifiable, et une promesse qu'on ne peut pas tenir ne se met pas sous le bouton.
+    // Le créneau `.soc-proof` de la maquette est CONSERVÉ (il porte la décision « ce qui est
+    // vrai à la place d'une preuve fabriquée ») ; il change seulement de place.
+    + '<div class="soc-proof">Le service de commande n’est pas encore actif : <b>aucun paiement, aucune expédition</b>. Tu enregistres une intention, sur cet appareil.</div>'
     + '<button type="button" class="shop-cta" id="shopOk">' + cta + "</button>"
     + (abonneActif ? '<div class="btn-row" style="margin-top:9px"><button class="btn" id="shopEditCancel" type="button">Annuler</button></div>' : "")
-    // LA MAQUETTE AFFICHE ICI « 127 INTENTIONS DÉJÀ ENREGISTRÉES » AVEC TROIS AVATARS.
-    // Ce chiffre n'existe pas : l'abonnement est stocké dans le `localStorage` de CHAQUE
-    // appareil, il n'y a aucun serveur pour en compter un seul. Afficher une preuve sociale
-    // fabriquée serait un mensonge commercial — et sur un produit dont le contre-positionnement
-    // est « chaque décision est traçable », c'est la ligne qu'on ne franchit pas. Le créneau de
-    // la maquette est gardé ; il dit ce qui est vrai.
-    // Ma première écriture disait « …et te vaudra d'être prévenu·e à l'ouverture ». C'est une
-    // promesse que le produit ne peut pas tenir : il n'y a ni compte, ni serveur, ni canal de
-    // notification (CLAUDE.md : « pas de push app fermée sans backend »). Remplacer un chiffre
-    // inventé par une promesse invérifiable, c'est refaire le défaut qu'on venait de corriger.
-    + '<div class="soc-proof">Service en préparation — ton choix reste sur cet appareil, rien n’est envoyé nulle part.</div>'
-    // Le prix est ESTIMÉ sur une référence générique. Le taire ferait lire les « 22,80 € »
-    // comme un tarif ferme — c'est la phrase que l'ancienne carte portait, et l'omettre en
-    // reprenant la composition aurait renforcé une promesse au lieu de la porter.
-    + '<div class="shop-fine">Prix estimé sur une référence générique (30 g de glucides par gel, 500 ml par boisson) — remplacé par le vrai tarif dès qu’un fournisseur existe. '
-    + "Aucun paiement, aucune expédition pour l’instant : le service de commande n’est pas encore actif. "
-    + "Intention enregistrée sur cet appareil, résiliable à chaque échéance.</div>"
+    // (La maquette affiche ici « 127 INTENTIONS DÉJÀ ENREGISTRÉES » avec trois avatars. Ce
+    // chiffre n'existe pas : l'abonnement vit dans le `localStorage` de CHAQUE appareil, aucun
+    // serveur n'en compte un seul. Fabriquer une preuve sociale est la ligne qu'on ne franchit
+    // pas sur un produit dont le contre-positionnement est « chaque décision est traçable ».)
+    //
+    // Ce qui reste ici est la SEULE réserve qui n'a pas besoin d'être lue avant de cliquer :
+    // le prix est un ordre de grandeur, et l'engagement est réversible. Le taire ferait lire
+    // les « 68,10 € » comme un tarif ferme.
+    + '<div class="shop-fine">Prix estimé sur une référence générique (gel de 30 g, boisson de 500 ml), remplacé par le vrai tarif dès qu’un fournisseur existe. Résiliable à chaque échéance, jamais engagé au-delà.</div>'
     + "</div>";
+}
+
+/**
+ * UN GESTE SUR LA CARTE : on note le choix, ET on note que la carte est OUVERTE.
+ *
+ * LE DÉFAUT QUE CE POINT UNIQUE FERME — le tunnel était INFRANCHISSABLE. Mesuré, geste par
+ * geste, sur un plan en cours dont l'ancre des 28 jours est échue :
+ *
+ *   1. j'ouvre Outils › Nutrition   → dépliée, 811 px, devis + bouton d'activation présents
+ *   2. je clique « chaque mois »    → REPLIÉE, 190 px, plus de devis, plus de bouton
+ *   3. je clique « citron »         → sans effet (le bouton n'existe plus)
+ *   4. je clique « Activer »        → sans effet (le bouton n'existe plus)
+ *
+ * Il était donc IMPOSSIBLE de s'abonner par le chemin où le produit propose lui-même l'offre.
+ * Les trois gestes écrivaient `lastPromptAt: today` — ce qui est juste, « une proposition qu'on
+ * manipule est une proposition vue » — mais c'est le MÊME champ que lit `shopPromptDue` pour
+ * décider si la carte s'ouvre d'elle-même. Au rendu suivant, `due` retombait à faux ; et
+ * `shopExpanded`, la seule autre raison de rester ouverte, n'était posé QUE par le bouton
+ * `#shopExpand`. La carte se refermait donc sur l'athlète au premier choix.
+ *
+ * Un geste qui détruit la raison pour laquelle la carte est ouverte doit poser l'autre raison :
+ * on ne peut manipuler que ce qui est ouvert. Écrit UNE fois ici plutôt que dans chacun des
+ * quatre gestionnaires (R11.1) — c'est l'oubli dans l'un d'eux qui a produit le défaut.
+ */
+function noterGesteCarte(patch, today, focus) {
+  shopExpanded = true;
+  shopFocus = focus || null;
+  S.answers.shopSubscription = Object.assign({}, S.answers.shopSubscription || {}, patch, { lastPromptAt: today });
+  ebSave();
+}
+
+/**
+ * LE FOCUS SE PERDAIT À CHAQUE CHOIX. `renderTabNutrition` réécrit `#screen.innerHTML` en
+ * entier : le bouton qu'on vient d'activer est DÉTRUIT, et le focus retombe sur `<body>`
+ * (mesuré : `document.activeElement` = BODY après un clic sur la cadence). À la souris ça ne
+ * se voit pas ; au clavier, on est renvoyé en haut du document à chaque choix, c'est-à-dire
+ * qu'on ne peut pas enchaîner cadence → goût → format sans re-parcourir tout l'onglet.
+ * On repose donc le focus sur le MÊME contrôle après reconstruction — jamais au premier rendu
+ * (`shopFocus` est nul), pour ne pas voler le focus à quelqu'un qui arrive sur l'onglet.
+ */
+let shopFocus = null;
+function rendreFocusCarte() {
+  if (!shopFocus) return;
+  const el = document.querySelector(shopFocus);
+  shopFocus = null;
+  if (el) el.focus({ preventScroll: true });
 }
 
 function bindShopSubscription(plan, today, rerender) {
@@ -316,19 +406,12 @@ function bindShopSubscription(plan, today, rerender) {
   // C'est le même signal que l'ancien `<details>` posait à l'ouverture — la carte se propose
   // d'elle-même, puis se tait, et c'est l'athlète qui la rouvre s'il veut.
   const exp = $("shopExpand");
-  if (exp) exp.onclick = () => {
-    shopExpanded = true;
-    S.answers.shopSubscription = Object.assign({}, S.answers.shopSubscription || {}, { lastPromptAt: today });
-    ebSave();
-    rerender();
-  };
+  if (exp) exp.onclick = () => { noterGesteCarte({}, today); rerender(); };
   // Le segmenté remplace la liste déroulante : même effet (changer la cadence recalcule le
-  // devis), même persistance. `lastPromptAt` est reposé à chaque geste sur la carte — une
-  // proposition qu'on manipule est une proposition vue.
+  // devis), même persistance.
   document.querySelectorAll("#shopCard [data-cadence]").forEach((b) => {
     b.onclick = () => {
-      S.answers.shopSubscription = Object.assign({}, S.answers.shopSubscription || {}, { cadence: b.dataset.cadence, lastPromptAt: today });
-      ebSave();
+      noterGesteCarte({ cadence: b.dataset.cadence }, today, '#shopCard [data-cadence="' + b.dataset.cadence + '"]');
       rerender();
     };
   });
@@ -338,8 +421,7 @@ function bindShopSubscription(plan, today, rerender) {
   for (const [attr, cle] of [["flavor", "flavor"], ["format", "format"]]) {
     document.querySelectorAll("#shopCard [data-" + attr + "]").forEach((b) => {
       b.onclick = () => {
-        S.answers.shopSubscription = Object.assign({}, S.answers.shopSubscription || {}, { [cle]: b.dataset[attr], lastPromptAt: today });
-        ebSave();
+        noterGesteCarte({ [cle]: b.dataset[attr] }, today, '#shopCard [data-' + attr + '="' + b.dataset[attr].replace(/"/g, '\\"') + '"]');
         rerender();
       };
     });
@@ -406,6 +488,7 @@ export function renderTabNutrition(plan) {
   html += shopSubscriptionCardHTML(plan, today); // abonnement récurrent, anticipé
   $("screen").innerHTML = html;
   bindShopSubscription(plan, today, () => renderTabNutrition(plan));
+  rendreFocusCarte();
 
   if (todayDay) fetchWeather().then((wx) => {
     const el = $("nutCard");
