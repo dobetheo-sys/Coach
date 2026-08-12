@@ -5,7 +5,7 @@ import { S, todayISO, fmtDay } from "../state.js";
 import { evalRules } from "../ui/steps.js";
 import { renderTabs, invalidatePlan, ensurePlan } from "./tabs.js";
 import { logProjection } from "../projection-log.js"; // A-5 — enregistre, ne reboucle jamais
-import { DISC } from "./icons.js";
+import { DISC, CHARGE } from "./icons.js";
 
 // LES ZONES DE TRAIL ET `sw.vo2` MANQUAIENT ICI DEPUIS LEUR CRÉATION (R7 pour le trail,
 // R5.4 pour la nage VO2max) — trouvé en auditant le reskin R-ZENNA, qui a besoin de la même
@@ -166,7 +166,12 @@ function downloadPlan(){
     +'.w{margin:14px 0;page-break-inside:avoid}.wh{font-size:14px;margin-bottom:6px}'
     +'.g{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}@media(max-width:680px){.g{grid-template-columns:repeat(2,1fr)}}'
     +'.d{border:1.5px solid #16130e;border-radius:6px;padding:6px;font-size:10px;min-height:70px}'
-    +'.d.dur{background:#ffe3e0}.d.facile{background:#d9f3e1}.d.recup{background:#e9defc}.d.off{background:#eee}'
+    // Les trois teintes de charge viennent de la table `CHARGE` — le document exporté ne charge
+    // aucune variable CSS (voir la note R16.8 ci-dessus), donc elles s'interpolent ici en dur.
+    // C'est le seul endroit où une valeur de charge est écrite littéralement dans du CSS, et
+    // elle l'est depuis la source, pas depuis une copie.
+    +'.d.dur{background:'+CHARGE.dur.papier+'}.d.facile{background:'+CHARGE.facile.papier
+    +'}.d.recup{background:'+CHARGE.recup.papier+'}.d.off{background:#eee}'
     +'.dh{font-weight:700;font-size:9px;margin-bottom:3px}ul{font-size:12px;line-height:1.5}'
     +'@media print{body{background:#fff}}</style></head><body>'
     +'<h1>'+cfg.ico+' Mon plan '+cfg.nom+'</h1>'
