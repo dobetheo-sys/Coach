@@ -18,7 +18,7 @@
 // CE QUE L'EN-TÊTE NE DIT PAS. La maquette écrit « Salut Théo » et « ZENNA ». Le produit ne
 // collecte AUCUN prénom (vérifié : aucune clé de ce genre dans le questionnaire), donc le
 // salut reste sans nom — inventer « Salut champion » serait une familiarité que personne n'a
-// demandée. Et la marque est ENDURABUILD : « Zenna » est le nom de la maquette, pas du
+// demandée. Et la marque est ZENNA : « Zenna » est le nom de la maquette, pas du
 // produit ; le reprendre renommerait l'app par accident.
 import { S, esc, fmtDay } from "../state.js";
 import { SPORTS } from "../config.js";

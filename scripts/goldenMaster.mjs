@@ -134,7 +134,20 @@ function* profiles() {
     // profils, rien n'empêcherait leur effet de disparaître à nouveau en silence.
     ["dispo-weekend", { dispo: "weekend" }],
     ["dispo-partielle", { dispo: "partielle" }],
-    ["cycle", { sex: "F", cycle_sync: "oui", cycle_start: "2026-07-27", cycle_len: "28" }],
+    // `plan_start` est OBLIGATOIRE ici, et c'est le seul profil de cette passe dans ce cas :
+    // c'est le seul dont le CONTENU dépend de dates calendaires absolues (`phaseOf` lit le jour
+    // du cycle sur la date de chaque jour du plan). Sans ancre, `weekBuilder` retombe sur
+    // `Date.now()` (ligne 278) et l'alignement des phases glisse avec l'ancre. MESURÉ, et pas
+    // au jugé : les empreintes des 10, 11 et 12/08 sont IDENTIQUES, celle du 17/08 diffère —
+    // la grille se cale sur le LUNDI de la semaine d'ancrage, donc les sept empreintes
+    // `*/cycle` changent une fois PAR SEMAINE, pas chaque nuit. `golden:verify` — un gate de
+    // CI — sortait donc rouge tous les lundis sans qu'aucun code n'ait bougé, ce qui est plus
+    // pernicieux qu'un rouge quotidien : ça ressemble à une régression du lot en cours.
+    // Huitième occurrence de la famille R20.7.
+    // La valeur est le lundi de `cycle_start` : jour 1 du plan = jour 1 du cycle, et A-6 a
+    // tranché que les dates du golden restent ABSOLUES (un golden doit être reproductible,
+    // pas suivre le calendrier).
+    ["cycle", { sex: "F", cycle_sync: "oui", cycle_start: "2026-07-27", cycle_len: "28", plan_start: "2026-07-27" }],
     ["poids-levier", { weight_lever: "oui", weight: "82" }],
   ];
   for (const [sport, fmts] of Object.entries(FORMATS)) {

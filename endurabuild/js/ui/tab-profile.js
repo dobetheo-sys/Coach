@@ -986,7 +986,7 @@ export function renderTabProfile(plan) {
     const m = $("pfBackupMsg");
     try {
       const data = JSON.parse(await f.text());
-      if (!data || !Array.isArray(data.plans) || !data.plans.length) { if (m) m.textContent = "⚠ Fichier invalide (pas une sauvegarde EnduraBuild)."; return; }
+      if (!data || !Array.isArray(data.plans) || !data.plans.length) { if (m) m.textContent = "⚠ Fichier invalide (pas une sauvegarde Zenna)."; return; }
       if (!confirm("Remplacer TOUTES les données actuelles (" + Math.max(1, S.plans.length) + " plan(s)) par cette sauvegarde (" + data.plans.length + " plan(s)) ?")) return;
       localStorage.setItem("eb_state_v2", JSON.stringify(data));
       location.reload();

@@ -173,7 +173,7 @@ function downloadPlan(){
     +'<p>'+plan.totalWeeks+' semaines · '+(plan.use10?"cycles de 10 jours":"semaines de 7 jours")+' · volume '+plan.volBase+'h → '+plan.volPeak+'h · objectif '+(a.format||"")+'</p>'
     +'<h2>Les décisions de ton plan</h2><ul>'+blue+'</ul>'
     +'<h2>Calendrier complet</h2>'+rows
-    +'<p style="margin-top:30px;font-size:11px;color:#635b4a">Généré par EnduraBuild · à valider avec un professionnel de santé. Astuce : ouvre ce fichier et fais Imprimer → Enregistrer en PDF.</p>'
+    +'<p style="margin-top:30px;font-size:11px;color:#635b4a">Généré par Zenna · à valider avec un professionnel de santé. Astuce : ouvre ce fichier et fais Imprimer → Enregistrer en PDF.</p>'
     +'</body></html>';
   const blob=new Blob([doc],{type:"text/html"});
   const url=URL.createObjectURL(blob);

@@ -5469,3 +5469,145 @@ La mienne est retirée, et **l'ordre des anneaux suit celui que le moteur renvoi
 d'introduire une troisième convention.*
 
 **21 suites E2E vertes, `audit:v1` vert.**
+
+---
+
+## R-ZENNA (v8) — le logo, le renommage en Zenna, et une garde qui dépendait du jour
+
+**Le logo est fourni, et il devient la source unique.** Le fondateur a livré la marque (coureur
+stylisé formant un « Z », orange sur noir). Elle vit dans `endurabuild/js/ui/brand.js`, qui était
+déjà le point unique posé par v7 pour le MOT ; il porte désormais aussi le SYMBOLE.
+
+`MARQUE.contours` est une **paire de contours en coordonnées 0-100**, pas un chemin SVG, parce que
+**deux moteurs de rendu doivent les lire** : le SVG de l'app (`symbolePath()`, qui les lisse en
+courbes quadratiques par milieux de segments) et le générateur d'icônes PNG
+(`scripts/makeIcons.mjs`, qui teste pixel par pixel avec `dansSymbole()` — pair-impair appliqué
+**par contour puis OU logique**, les deux formes étant disjointes et non un trou dans l'autre).
+Un chemin `d="…"` obligerait le second à parser du SVG ; les contours servent les deux sans
+qu'aucun ne recopie l'autre (R11.1).
+
+**Ce que le logo EST, écrit dans l'en-tête du fichier** : un TRACÉ (marching squares +
+Douglas-Peucker, seuil sur le JPEG fourni), pas le vecteur d'origine. Le seuil mord dans le bord
+adouci du JPEG, donc le tracé est légèrement plus gras que l'original. Remplacer
+`MARQUE.contours` par la source vectorielle réelle est strictement meilleur, et c'est écrit là où
+quelqu'un le lira.
+
+`#f04808` est **échantillonné** sur le logo fourni (teinte dominante), pas choisi à l'œil. La
+tuile de fond a disparu : le symbole se pose à même le noir, comme sur la maquette.
+
+### Le renommage — et les deux endroits qui gardent leur ancien nom
+
+`EnduraBuild` → `Zenna` partout où c'est **visible** : titre de page, `manifest.json`
+(`name`/`short_name`), mot-marque de l'accueil et des onglets, `PRODID` iCalendar, pied de page
+des exports, messages console, icônes régénérées, favicon. Le monolithe gelé
+`Coach_Pro_V1.5.html` est renommé lui aussi — le geler concerne son moteur et son UI, pas le nom
+du produit, et laisser un fichier annoncer l'ancienne marque recréerait exactement le problème
+des « quatre versions coexistantes » que v7 venait de fermer.
+
+**Deux identifiants ne bougent PAS, et c'est délibéré :**
+
+| Ce qui garde son nom | Pourquoi |
+|---|---|
+| `eb_state_v1` / `eb_state_v2` (localStorage) | Renommer la clé, c'est perdre le plan de **chaque utilisateur existant**. Aucune garde ne le verrait : l'app démarrerait proprement, sur un état vide. |
+| `UID:…@endurabuild` (iCalendar) | Un UID est une IDENTITÉ. Le changer fait de chaque séance déjà importée un événement NEUF au ré-import — la préparation en double dans l'agenda de l'athlète. |
+
+Le **répertoire** `endurabuild/` garde son nom aussi : chemins du service worker, `ASSETS`
+dérivés du disque, workflows CI, `scripts/*.mjs`. Le renommer serait un déplacement de fichiers
+sans bénéfice visible, avec une surface d'erreur large. Les occurrences restantes de
+« endurabuild-3 » désignent un **fichier historique supprimé**, pas le produit.
+
+### La garde de la marque avait fini par affirmer le contraire de ce qu'elle voulait
+
+`smoke-zenna` assertait « …et jamais « Zenna », qui est le nom de la maquette » — écrit quand
+Zenna désignait le fichier de maquette et EnduraBuild le produit. Le critère est réécrit sur ce
+qui est vrai, et **gagne une moitié qui manquait** : le SYMBOLE est rendu, pas seulement le mot.
+Une garde qui ne regarde que le texte laisserait passer un logo disparu.
+
+### Le défaut trouvé en passant les gates — SEPTIÈME occurrence de la famille R20.7
+
+`smoke-zenna` est sortie rouge sur trois assertions (« XP flottant : «  » », « toast : « Repos
+validé » », « le grand chiffre est posé d'emblée (undefined) »). **Le réflexe aurait été de les
+attribuer au renommage — c'est faux, et c'est mesuré** : la même suite, exécutée sur le `HEAD`
+d'avant le lot, rend exactement les trois mêmes échecs.
+
+La suite ne pinçait **aucune date**, et le plan démarre au lundi de la semaine en cours (R8/R9) :
+le jour affiché par 🎯 Aujourd'hui dépendait donc du jour où on lance la commande. Balayé sur les
+sept jours à moteur inchangé, pour son profil (tri/70.3/inter/quotidienne) :
+
+| Jour ancré | Héros | Effet sur la suite |
+|---|---|---|
+| **Lun · Mer · Ven · Dim** | « Repos » | 3 échecs — pas d'XP, pas de grand chiffre |
+| Mar · Jeu · Sam | Sweetspot vélo · Nage vitesse · Sortie longue | verte |
+
+**Quatre jours sur sept.** La suite passait sur la bonne volonté du calendrier depuis son
+écriture ; elle est devenue rouge le 12/08 parce que c'est un mercredi. Même mécanisme que le
+banc R14 (R20.7), `audit:invariants` (C29b/C29c), la mesure de fréquence d'O-19, `smoke-r4`, et
+l'entrée O-19 elle-même.
+
+**Correctif** : `page.clock.setFixedTime` dans `boot()` — `setFixedTime` et non `install`, parce
+qu'`install` gèle aussi les MINUTERIES, c'est-à-dire la cascade d'entrée et le nettoyage des
+particules, soit précisément ce que cette suite mesure. Les dates sont **absolues**, pour la
+raison qu'A-6 a retenue en refusant de rendre le golden relatif : une garde de RENDU doit être
+reproductible, pas suivre le calendrier — rien ici ne dépend de la fraîcheur de la date, seulement
+du jour de semaine sur lequel elle tombe.
+
+**Et on ancre sur DEUX jours, pas un.** N'ancrer que le mardi rendrait la suite verte en couvrant
+« le jour où le code a été écrit » (R20.1) : la branche REPOS — celle-là même qui venait de faire
+rougir la suite — ne serait jamais exercée. Le **§1ter** la garde désormais, avec la décision que
+R25 a prise pour elle : un repos validé se fête (confettis, coche dessinée, toast qui le nomme)
+et **ne donne PAS d'XP**. Un témoin précède chaque moitié (« le jour ancré porte bien une
+séance » / « …de repos en est bien un ») pour qu'un changement de périodisation désigne sa vraie
+cause au lieu d'accuser le mouvement.
+
+**Contre-preuves, deux rouges** : XP recâblé sur le repos → `1 ÉCHEC` sur le critère R25 ;
+ancrage retiré → `4 ÉCHECS`, le témoin en tête.
+
+**64 assertions (57 avant), `audit:v1` vert, `check:app` et `check:sw` verts.**
+
+### Et le golden portait le MÊME défaut, en plus pernicieux — huitième occurrence
+
+`golden:verify` est sorti rouge sur **7 profils sur 949, tous en `*/cycle`**. Même réflexe, même
+vérification : la suite exécutée sur le `HEAD` d'avant le lot rend **les sept mêmes écarts** —
+rien à voir avec le renommage.
+
+Le profil `cycle` du golden (`sex: F`, `cycle_sync: oui`, `cycle_start: 2026-07-27`) est **le
+seul de sa passe dont le contenu dépend de dates calendaires absolues** : `phaseOf()` lit le jour
+du cycle sur la date de chaque jour du plan. Or ce profil ne déclarait pas `plan_start`, et
+`weekBuilder.ts:278` retombe alors sur `Date.now()`.
+
+**Le témoin corrige le diagnostic que j'allais écrire.** J'avais noté « ça glisse d'un jour par
+jour » ; mesuré en rejouant le profil avec `Date.now()` stubbé sur quatre dates :
+
+```
+SANS plan_start   b9561b28 b9561b28 b9561b28 a716ccea   → GLISSE (10, 11, 12 août · 17 août)
+AVEC plan_start   db3f9988 db3f9988 db3f9988 db3f9988   → STABLE
+```
+
+La grille se cale sur le **lundi** de la semaine d'ancrage : les sept empreintes changent une
+fois **par semaine**, pas chaque nuit. C'est plus pernicieux qu'un rouge quotidien — un gate qui
+devient rouge tous les lundis ressemble à une régression du lot en cours, et c'est exactement la
+conclusion que j'ai failli tirer.
+
+`plan_start: "2026-07-27"` (le lundi de `cycle_start` — jour 1 du plan = jour 1 du cycle) ancre
+le profil. Dates absolues, conformément à A-6. Recapture explicite : **7 empreintes changent sur
+949**, celles-là et aucune autre.
+
+*Vérifié au passage que les profils `measured-*` ne portent PAS le même défaut : leur
+`updated_at` n'est comparé à aucune date courante dans le moteur.*
+
+### La favicone pesait 81 % du HTML servi
+
+Le tracé du logo compte ~750 points ; posé en `data:` dans `<link rel="icon">`, il faisait
+**21,6 Ko sur les 26,7 Ko** du document — c'est-à-dire que quatre cinquièmes du HTML sur le
+chemin critique du premier rendu étaient une image de 16 px. Sur l'onglet dont U7 mesure le
+budget à 2 000 ms, avec une marge déjà déclarée comme quasi nulle, c'est cher pour une icône
+d'onglet. Et c'était un **SECOND encodage de la géométrie du logo**, exactement ce que
+`brand.js` existe pour empêcher (R11.1).
+
+`assets/icon-192.png` — déjà généré depuis `brand.js`, et qui pèse **1,2 Ko** — le remplace :
+requête séparée, cachée par le service worker (elle était déjà dans `ASSETS`), hors du chemin
+critique. **HTML servi : 26,7 Ko → 5,1 Ko.** Le fichier autonome l'**embarque en base64** (1,6 Ko)
+plutôt que de la retirer comme il retire `apple-touch-icon` : la promesse « zéro requête réseau »
+est tenue, vérifiée sur le fichier produit.
+
+**28 gates verts, E2E 21/21 (64 assertions pour `smoke-zenna`), golden 949 recapturé (7).**

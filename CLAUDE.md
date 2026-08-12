@@ -186,6 +186,51 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**R-ZENNA v8 livré — le logo, le renommage en Zenna, et deux gates qui dépendaient du calendrier**
+(logo fourni par le fondateur, 12/08/2026 : « le logo, remplace tout les endurabuild par Zenna » —
+voir ARCHITECTURE.md « R-ZENNA (v8) ») : la marque fournie (coureur stylisé formant un « Z »)
+devient la source unique dans `endurabuild/js/ui/brand.js`, qui portait déjà le MOT depuis v7 et
+porte désormais aussi le SYMBOLE. `MARQUE.contours` est une paire de **contours** (0-100) et non un
+chemin SVG, parce que DEUX rendus doivent les lire — le SVG de l'app et le générateur d'icônes PNG,
+qui teste pixel par pixel (pair-impair **par contour puis OU logique**, les deux formes étant
+disjointes). `#f04808` est ÉCHANTILLONNÉ sur le logo, pas choisi à l'œil. L'en-tête du fichier dit
+ce que le logo EST : un TRACÉ (marching squares + Douglas-Peucker) légèrement plus gras que
+l'original, le seuil mordant dans le bord adouci du JPEG — remplacer les contours par la source
+vectorielle est strictement meilleur, et c'est écrit là où quelqu'un le lira.
+**Deux identifiants gardent leur ancien nom, délibérément** : `eb_state_v1`/`eb_state_v2`
+(renommer la clé perd le plan de chaque utilisateur existant — l'app démarrerait proprement, sur
+un état vide, et aucune garde ne le verrait) et `UID:…@endurabuild` de l'export iCalendar (un UID
+est une IDENTITÉ : le changer met la préparation en DOUBLE dans l'agenda au ré-import). Le
+répertoire `endurabuild/` non plus. Tout ce qui est VISIBLE est renommé, monolithe gelé compris —
+le geler concerne son moteur et son UI, pas le nom du produit.
+**Deux gates rouges, aucun causé par le lot, tous deux de la famille R20.7** — et dans les deux cas
+la vérification a été la même : rejouer la garde sur le `HEAD` d'AVANT, qui rend exactement les
+mêmes échecs. **(1) `smoke-zenna`** ne pinçait aucune date et le plan démarre au lundi de la
+semaine en cours : balayé sur les sept jours, **quatre sur sept** (Lun/Mer/Ven/Dim) tombent sur un
+« Repos » — pas d'XP, pas de grand chiffre, 3 échecs. La suite passait sur la bonne volonté du
+calendrier depuis son écriture. Ancrage par `page.clock.setFixedTime` (et non `install`, qui
+gèlerait les MINUTERIES, c'est-à-dire la cascade et le nettoyage des particules que cette suite
+mesure), sur **DEUX jours et pas un** : n'ancrer que le mardi couvrirait « le jour où le code a été
+écrit » (R20.1) et la branche REPOS — celle qui venait de faire rougir la suite — ne serait jamais
+exercée. Le **§1ter** la garde avec la décision R25 : un repos validé se fête et ne donne PAS d'XP.
+Un témoin précède chaque moitié, pour qu'un changement de périodisation désigne sa cause au lieu
+d'accuser le mouvement. **(2) `golden:verify`**, 7 profils sur 949, tous `*/cycle` : le seul profil
+dont le CONTENU dépend de dates absolues (`phaseOf` lit le jour du cycle sur chaque date du plan),
+et le seul sans `plan_start` — `weekBuilder` retombe alors sur `Date.now()`. **Le témoin a corrigé
+le diagnostic que j'allais écrire** : ce n'est pas « un jour par jour » mais **une fois par
+semaine** (empreintes des 10, 11 et 12/08 identiques, celle du 17/08 différente — la grille se cale
+sur le lundi d'ancrage), ce qui est plus pernicieux : un gate rouge tous les lundis ressemble à une
+régression du lot en cours. Contre-preuves : XP recâblé sur le repos → 1 rouge ; ancrage retiré →
+4 rouges, témoin en tête.
+**Et la favicone pesait 81 % du HTML servi** : le tracé fait ~750 points, posé en `data:` il
+occupait **21,6 Ko des 26,7 Ko** du document — quatre cinquièmes du chemin critique du premier
+rendu pour une icône de 16 px, sur l'onglet dont U7 mesure le budget à 2 000 ms avec une marge
+déjà déclarée quasi nulle ; et c'était un SECOND encodage de la géométrie, ce que `brand.js`
+existe pour empêcher. `assets/icon-192.png` (déjà généré depuis `brand.js`, **1,2 Ko**) le
+remplace — **HTML 26,7 → 5,1 Ko** ; le fichier autonome l'EMBARQUE en base64 plutôt que de la
+retirer, la promesse « zéro requête réseau » restant vérifiée sur le fichier produit.
+**28 gates verts, E2E 21/21 (`smoke-zenna` 57 → 64 assertions), golden 949 recapturé (7 empreintes).**
+
 **R-ZENNA (POC) livré — nouvelle direction visuelle, un onglet** (maquette du fondateur,
 10-11/08/2026) : le style « papier/collage » que ce fichier disait à préserver cède la place à
 un nouveau système visuel sombre (fond noir, accent orange, cartes `--zn-*`) — **décision du

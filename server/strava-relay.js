@@ -1,5 +1,5 @@
 /**
- * Relais OAuth Strava pour EnduraBuild — Cloudflare Worker, zéro dépendance.
+ * Relais OAuth Strava pour Zenna — Cloudflare Worker, zéro dépendance.
  *
  * POURQUOI CE SERVEUR : l'app est 100 % côté client ; le protocole OAuth de Strava exige
  * un `client_secret` qui ne doit JAMAIS être visible dans le code de l'app. Ce worker est
@@ -126,6 +126,6 @@ export default {
       return new Response(JSON.stringify(slimTokens(j)), { headers: corsHeaders(origin) });
     }
 
-    return new Response("Relais OAuth Strava EnduraBuild — endpoints : /auth, /callback, /refresh", { status: 404 });
+    return new Response("Relais OAuth Strava Zenna — endpoints : /auth, /callback, /refresh", { status: 404 });
   },
 };

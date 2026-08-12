@@ -1,4 +1,4 @@
-/* Service worker EnduraBuild — app shell en cache pour l'offline (PWA).
+/* Service worker Zenna — app shell en cache pour l'offline (PWA).
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
    une météo périmée est pire qu'une absence de météo).
@@ -13,7 +13,7 @@
    `npm run check:sw`, comme `check:app` pour le bundle du monolithe). */
 
 // __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
-const VERSION = "eb-pwa-7af4c5ea8505";
+const VERSION = "eb-pwa-46b6f7b030bd";
 // __/SW_VERSION__
 
 // __SW_ASSETS__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)

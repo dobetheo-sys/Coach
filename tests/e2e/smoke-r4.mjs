@@ -201,7 +201,7 @@ const dl = page.waitForEvent("download", { timeout: 8000 }).catch(() => null);
 await page.click("#ebShareStory"); // headless : navigator.share indisponible → repli téléchargement
 const download = await dl;
 ok(download !== null, "partage story : repli téléchargement PNG déclenché");
-if (download) ok(/endurabuild-seance\.png/.test(download.suggestedFilename()), "nom de fichier story correct (" + download.suggestedFilename() + ")");
+if (download) ok(/zenna-seance\.png/.test(download.suggestedFilename()), "nom de fichier story correct (" + download.suggestedFilename() + ")");
 await page.click("#ebCloseCongrats");
 ok(await page.locator(".eb-overlay").count() === 0, "la modal se ferme");
 

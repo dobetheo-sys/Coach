@@ -25,7 +25,7 @@ import { join, dirname, resolve, relative } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const PWA = join(ROOT, "endurabuild");
-const OUT = process.argv[2] ? resolve(process.argv[2]) : join(ROOT, "EnduraBuild-standalone.html");
+const OUT = process.argv[2] ? resolve(process.argv[2]) : join(ROOT, "Zenna-standalone.html");
 
 const read = (p) => readFileSync(join(PWA, p), "utf8");
 const b64 = (p) => readFileSync(join(PWA, p)).toString("base64");
@@ -83,6 +83,14 @@ let html = read("index.html");
 html = html
   .replace(/\s*<link rel="manifest"[^>]*>/, "")
   .replace(/\s*<link rel="apple-touch-icon"[^>]*>/, "")
+  // R-ZENNA v8 — la favicone est EMBARQUÉE, pas retirée. Elle pointe désormais sur
+  // `assets/icon-192.png` (1,2 Ko, généré depuis `brand.js`) au lieu d'un data-URI SVG qui
+  // pesait 21,6 Ko des 26,7 Ko du HTML servi — c'est-à-dire 81 % d'un document qui est sur le
+  // chemin critique du premier rendu, sur l'onglet dont U7 mesure le budget à 2 000 ms. C'était
+  // aussi un SECOND encodage de la géométrie du logo, exactement ce que `brand.js` existe pour
+  // empêcher (R11.1). Ici, pas de serveur : on l'inline en base64.
+  .replace(/<link rel="icon" href="assets\/([^"]+)">/,
+    (_m, f) => '<link rel="icon" href="data:image/png;base64,' + b64("assets/" + f) + '">')
   .replace(/\s*<link rel="stylesheet"[^>]*>/g, "")
   .replace(
     /<meta http-equiv="Content-Security-Policy" content="[^"]*">/,

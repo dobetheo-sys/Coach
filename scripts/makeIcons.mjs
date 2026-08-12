@@ -58,21 +58,23 @@ function png(size, pixelFn) {
 
 const { MARQUE, dansSymbole } = await import("../endurabuild/js/ui/brand.js");
 const rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-const FOND = rgb(MARQUE.fondIcone), TUILE = rgb(MARQUE.fond), ENCRE = rgb(MARQUE.encre);
+const FOND = rgb(MARQUE.fondIcone), ENCRE = rgb(MARQUE.encre);
 
-// La TUILE à coin coupé de la marque, à l'échelle de l'icône : un carré dont le coin bas-droit
-// est biseauté (même geste que `--cut-tile` dans le thème). Marge « maskable » conservée : les
-// lanceurs Android rognent jusqu'à 10 % de chaque bord.
-const M = 14, T0 = M, T1 = 100 - M, COUPE = 22;
-const dansTuile = (x, y) =>
-  x >= T0 && x <= T1 && y >= T0 && y <= T1 && (T1 - x) + (T1 - y) > COUPE;
-
+// R-ZENNA v9 — PLUS DE TUILE : le logo est une SILHOUETTE orange sur fond sombre, exactement
+// comme le fichier fourni par le fondateur. On garde une marge (les lanceurs Android rognent
+// jusqu'à 10 % de chaque bord sur une icône « maskable ») et on échantillonne le symbole en
+// 2×2 par pixel : les bords du tracé sont courbes, et sans ce lissage l'icône crénèle à 192 px.
+const M = 16, S0 = M, S1 = 100 - M;
 const pixel = (u, v) => {
   const x = u * 100, y = v * 100;
-  if (!dansTuile(x, y)) return FOND;
-  // le symbole occupe le repère 0-100 : on le ramène dans la tuile
-  const sx = ((x - T0) / (T1 - T0)) * 100, sy = ((y - T0) / (T1 - T0)) * 100;
-  return dansSymbole(sx, sy) ? ENCRE : TUILE;
+  let n = 0;
+  for (const [dx, dy] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) {
+    const sx = ((x + dx - S0) / (S1 - S0)) * 100, sy = ((y + dy - S0) / (S1 - S0)) * 100;
+    if (sx >= 0 && sx <= 100 && sy >= 0 && sy <= 100 && dansSymbole(sx, sy)) n++;
+  }
+  if (!n) return FOND;
+  const a = n / 4;
+  return [0, 1, 2].map((i) => Math.round(ENCRE[i] * a + FOND[i] * (1 - a)));
 };
 
 mkdirSync(join(root, "endurabuild", "assets"), { recursive: true });

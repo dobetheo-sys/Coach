@@ -137,12 +137,43 @@ const WCAG = `
 const REP = { intent: "competition", level: "inter", history: "confirme", injury: "aucune", dispo: "quotidienne", doubles: "parfois", off_days: "non", shift_ok: "non", sleep: "moyen", life_load: "normale", activity: "actif", sex: "H", med_pain: "non", med_dizzy: "non", med_treat: "non", weight_lever: "non", terrain: "plat", milieu: "bassin", swim_limit: "technique", ftp_known: "oui", pace_known: "oui", css_known: "oui", leg_swim_env: "lac", leg_bike_prof: "plat", leg_run_prof: "plat" };
 const SAI = { age: "35", weight: "78", height: "180", vol_max: "10", vol_recent: "7", sessions_max: "6", ftp: "230", pace: "4:50", css: "2:00", water_temp_c: "19" };
 
-async function boot(reducedMotion) {
+// ══════════════════════════════════════════════════════════════════════
+// LA DATE EST ANCRÉE — SEPTIÈME OCCURRENCE DE LA FAMILLE R20.7.
+// ══════════════════════════════════════════════════════════════════════
+// Cette suite ne pinçait aucune date, et le plan démarre au LUNDI DE LA SEMAINE EN COURS
+// (R8/R9) : le jour que 🎯 Aujourd'hui affiche dépendait donc du jour où on lance la commande.
+// Balayé sur les sept jours à moteur inchangé, pour le profil ci-dessous :
+//
+//   Lun · Mer · Ven · Dim → « Repos »        (pas d'XP, pas de grand chiffre)
+//   Mar · Jeu · Sam       → une vraie séance (Sweetspot vélo · Nage vitesse · Sortie longue)
+//
+// Soit QUATRE JOURS SUR SEPT où trois assertions du §1/§2 échouent — non pas parce que le
+// produit est cassé, mais parce qu'elles supposent que le jour porte une séance. La suite
+// passait sur la bonne volonté du calendrier ; elle est rouge depuis le 12/08 (un mercredi).
+//
+// On ancre donc, comme `bench-dates.cjs` l'a fait pour cinq bancs .cjs. Les dates sont
+// ABSOLUES et non relatives, pour la raison qu'A-6 a retenue pour le golden : une garde de
+// RENDU doit être reproductible, pas suivre le calendrier — ici rien ne dépend de la fraîcheur
+// de la date, seulement du jour de la semaine sur lequel elle tombe.
+//
+// Et on ancre sur DEUX jours, pas un. Ancrer sur le seul mardi rendrait la suite verte en
+// couvrant « le jour où le code a été écrit » (R20.1) : la branche REPOS — celle-là même qui
+// vient de faire rougir la suite — ne serait jamais exercée. Le §1ter la garde désormais, avec
+// ce que R25 a décidé pour elle : le repos se valide, il compte dans la série, il ne donne
+// PAS d'XP.
+const JOUR_SEANCE = "2026-08-11"; // mardi — Sweetspot vélo, 24 min
+const JOUR_REPOS  = "2026-08-12"; // mercredi — Repos
+
+async function boot(reducedMotion, jour = JOUR_SEANCE) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR", isMobile: true, hasTouch: true, reducedMotion });
   const page = await ctx.newPage();
   const errors = [];
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   page.on("pageerror", (e) => errors.push("pageerror: " + e.message));
+  // `setFixedTime` et non `install` : on fige `Date.now()`/`new Date()` en LAISSANT TOURNER les
+  // minuteries. Geler les minuteries arrêterait la cascade d'entrée et le nettoyage des
+  // particules, c'est-à-dire exactement ce que cette suite mesure.
+  await page.clock.setFixedTime(new Date(jour + "T09:00:00"));
   await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: "networkidle" });
@@ -194,6 +225,12 @@ async function boot(reducedMotion) {
   ok(before.cards.every((o) => o === "1"), "toutes les cartes sont VISIBLES après la cascade (" + before.cards.join("/") + ")");
   ok(before.anim.every((a) => a === "zn-rise"), "…et c'est bien `zn-rise` qui les a amenées");
 
+  // LE TÉMOIN AVANT LE CRITÈRE : les quatre assertions qui suivent supposent que le jour ancré
+  // porte une SÉANCE. Sans ce témoin, un changement de périodisation qui ferait tomber le mardi
+  // sur un repos les rendrait rouges en désignant le mouvement, qui n'y serait pour rien.
+  const heros = await page.evaluate(() => (document.querySelector(".zn-hero-title") || {}).textContent || "");
+  ok(heros.trim() !== "" && !/repos/i.test(heros), "le jour ancré porte bien une séance : « " + heros + " »");
+
   // validation : coche dessinée + confettis + XP + toast
   const btn = page.locator("#screen [data-vd]:not([disabled])").first();
   const nAvant = await page.evaluate(() => document.querySelectorAll(".zn-confetti,.zn-xp-float").length);
@@ -211,6 +248,36 @@ async function boot(reducedMotion) {
   ok(mid.xp === 1 && /\+10 XP/.test(mid.xpTxt), "XP flottant, au barème du moteur : « " + mid.xpTxt + " »");
   ok(mid.go, "la coche se DESSINE (`check-draw.go` posée)");
   ok(mid.toast && /séance validée/i.test(mid.toastTxt), "toast affiché : « " + mid.toastTxt + " »");
+  await page.waitForTimeout(2600);
+  const after = await page.evaluate(() => document.querySelectorAll(".zn-confetti,.zn-xp-float").length);
+  ok(after === 0, "…et les particules se nettoient toutes seules (reste " + after + ")");
+  ok(errors.length === 0, "aucune erreur console" + (errors.length ? " — " + errors[0] : ""));
+  await ctx.close();
+}
+
+// ─────────── 1ter. Mouvement actif, UN JOUR DE REPOS ───────────
+// La branche que la suite n'exerçait jamais — et sur laquelle elle mourait quatre jours sur
+// sept. Elle ne se contente pas d'exister : elle porte la décision R25 (« le repos se valide,
+// il compte dans la série, il ne donne PAS d'XP »). Sans le second volet, le jour où quelqu'un
+// recâblerait l'XP sur tous les jours validés, rien ne le verrait.
+{
+  const { ctx, page, errors } = await boot("no-preference", JOUR_REPOS);
+  const heros = await page.evaluate(() => (document.querySelector(".zn-hero-title") || {}).textContent || "");
+  ok(/repos/i.test(heros), "le jour ancré de repos en est bien un : « " + heros + " »");
+
+  const btn = page.locator("#screen [data-vd]:not([disabled])").first();
+  await btn.click();
+  await page.waitForTimeout(120);
+  const mid = await page.evaluate(() => ({
+    confetti: document.querySelectorAll(".zn-confetti").length,
+    xp: document.querySelectorAll(".zn-xp-float").length,
+    toast: !!document.querySelector(".zn-toast.on"),
+    toastTxt: (document.querySelector(".zn-toast") || {}).textContent || "",
+    go: !!document.querySelector(".check-draw.go"),
+  }));
+  ok(mid.confetti > 0 && mid.go, "un repos validé se FÊTE aussi (confettis " + mid.confetti + ", coche dessinée)");
+  ok(mid.toast && /repos validé/i.test(mid.toastTxt), "…et le toast le nomme : « " + mid.toastTxt + " »");
+  ok(mid.xp === 0, "…mais AUCUN XP ne s'envole (R25 : le repos ne donne pas d'XP) — vu " + mid.xp);
   await page.waitForTimeout(2600);
   const after = await page.evaluate(() => document.querySelectorAll(".zn-confetti,.zn-xp-float").length);
   ok(after === 0, "…et les particules se nettoient toutes seules (reste " + after + ")");
@@ -320,8 +387,8 @@ async function boot(reducedMotion) {
         if (!h) return { tab, absent: true };
         const p = h.querySelector(".zn-race-chip");
         const r = h.getBoundingClientRect();
-        return { tab, absent: false, marque: /ENDURABUILD/.test(h.innerText),
-          zenna: /ZENNA/i.test(h.innerText), lignes: Math.round(r.height),
+        return { tab, absent: false, marque: /ZENNA/.test(h.innerText),
+          logo: !!h.querySelector(".zn-logo-mark svg path"), lignes: Math.round(r.height),
           puce: !!p, puceH: p ? Math.round(p.getBoundingClientRect().height) : 0,
           cliquable: p ? p.getAttribute("role") === "button" : null,
           dansEcran: !!document.querySelector("#screen #ebAppHeader") };
@@ -329,9 +396,14 @@ async function boot(reducedMotion) {
     }
     ok(vus.every((v) => !v.absent), "l'en-tête partagé est présent sur les CINQ onglets"
       + (vus.some((v) => v.absent) ? " — absent de : " + vus.filter((v) => v.absent).map((v) => v.tab).join(", ") : ""));
-    ok(vus.every((v) => v.marque), "…il porte la marque du PRODUIT (ENDURABUILD)");
-    // La maquette s'appelle « Zenna » : la reprendre au pied de la lettre renommerait l'app.
-    ok(vus.every((v) => !v.zenna), "…et jamais « Zenna », qui est le nom de la maquette");
+    ok(vus.every((v) => v.marque), "…il porte le mot-marque du produit (ZENNA)");
+    // R-ZENNA v9 — CE CRITÈRE S'EST RETOURNÉ, et c'est écrit. Il assertait « jamais Zenna »,
+    // parce que « Zenna » était alors le nom de la MAQUETTE et que le reprendre aurait renommé
+    // l'app par accident. Le fondateur a tranché l'inverse : le produit S'APPELLE Zenna
+    // (12/08/2026). Le critère devient son propre miroir — et il gagne une moitié qu'il n'avait
+    // pas : le SYMBOLE est là, pas seulement le mot. Un logo qui disparaîtrait en laissant le
+    // texte resterait invisible pour une assertion de texte.
+    ok(vus.every((v) => v.logo), "…et le symbole du logo est rendu (pas seulement le mot)");
     ok(vus.every((v) => !v.dansEcran), "…il vit HORS de #screen, sinon chaque changement d'onglet l'effacerait");
     // Il doit tenir sur UNE ligne : à deux lignes il mange l'écran qu'il est censé cadrer.
     const hauts = vus.filter((v) => v.lignes > 70);

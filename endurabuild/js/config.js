@@ -64,7 +64,7 @@ const SPORTS = {
 };
 
 /* ============================================================
-   ENDURABUILD — Générateur de plans multisport
+   ZENNA — Générateur de plans multisport
    Cœur commun + modules par sport (tri / run / bike / swim)
    ============================================================ */
 const PREMIUM_STEPS_DEF=[
@@ -144,7 +144,14 @@ export { CATS, HEROS, PREMIUM_STEPS_DEF, QLABELS, RULE_CAT, SPORTS, VLAB, VLAB_Q
 // de moins dans le code d'une app 100 % côté client est un identifiant de moins à faire suivre
 // le jour où il change.
 //
-// Vérifié après déploiement : la racine du worker répond
+// Vérifié après déploiement (03/08/2026) : la racine du worker répond
 // « Relais OAuth Strava EnduraBuild — endpoints : /auth, /callback, /refresh ».
+//
+// R-ZENNA v8 — cette phrase garde l'ANCIEN nom À DESSEIN : elle décrit ce que l'instance
+// DÉPLOYÉE renvoie aujourd'hui, pas ce que dit la source. `server/strava-relay.js` est renommé
+// dans le dépôt, mais un worker Cloudflare ne se met à jour qu'au redéploiement, qui est un
+// geste HUMAIN. Renommer la phrase ici ferait passer une intention pour une vérification —
+// exactement ce qu'O-19 a coûté. Elle sera mise à jour quand le worker sera redéployé.
+// Rien ne dépend de cette chaîne : c'est la réponse 404 de la racine, jamais lue par l'app.
 const STRAVA_RELAY_DEFAULT = "https://fragrant-truth-668f.dobetheo.workers.dev";
 export { STRAVA_RELAY_DEFAULT };

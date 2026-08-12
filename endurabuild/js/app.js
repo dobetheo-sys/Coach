@@ -83,7 +83,7 @@ export function buildPlan(a) {
 // on ne le tente pas, et on dit pourquoi plutôt que d'avaler l'échec. Un `catch(() => {})` qui
 // masque une cause légitime rend le prochain diagnostic plus difficile, pour zéro bénéfice.
 if (globalThis.EB_STANDALONE) {
-  console.info("EnduraBuild : fichier autonome — pas de service worker (tout est déjà embarqué).");
+  console.info("Zenna : fichier autonome — pas de service worker (tout est déjà embarqué).");
 } else if ("serviceWorker" in navigator) {
   addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js")
@@ -147,7 +147,7 @@ if (globalThis.EB_STANDALONE) {
           if (document.visibilityState === "visible") reg.update().catch(() => {});
         });
       })
-      .catch((e) => console.warn("EnduraBuild : service worker non enregistré —", e && e.message));
+      .catch((e) => console.warn("Zenna : service worker non enregistré —", e && e.message));
   });
 }
 
