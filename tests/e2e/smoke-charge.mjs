@@ -146,13 +146,18 @@ await page.waitForTimeout(700);
     const src = readFileSync(RACINE + f, "utf8");
     src.split("\n").forEach((ligne, i) => {
       const nu = ligne.replace(/\/\*.*?\*\//g, "").replace(/^\s*(\/\/|\*).*/, ""); // hors commentaires
-      if (!SELECTEURS.test(nu) || !LITTERAL.test(nu)) return;
-      // EXEMPTION NOMMÉE, et la seule : le repli `var(--token, #hex)` DOIT porter le hex —
-      // c'est lui qui rend le repli possible quand le thème n'est pas posé. Le §1 garantit
-      // par ailleurs que ce hex égale la table.
-      if (/var\(--zn-charge-[a-z]+-papier\s*,/.test(nu)) return;
-      // …et l'interpolation depuis la table dans le document exporté.
-      if (/CHARGE\.[a-z]+\.papier/.test(nu)) return;
+      if (!SELECTEURS.test(nu)) return;
+      // LES EXEMPTIONS RETIRENT LEUR CONSTRUCTION DU TEXTE, elles n'exemptent pas la LIGNE.
+      // Vérifié : en exemptant la ligne, remplacer `CHARGE.dur.papier` par `#ffe3e0` restait
+      // VERT — la ligne contenait encore `CHARGE.facile.papier`, donc l'exemption couvrait le
+      // littéral voisin. Une exemption à la ligne est une porte ouverte sur ses voisins.
+      const reste = nu
+        // le repli `var(--token, #hex)` DOIT porter le hex : c'est lui qui rend le repli
+        // possible quand le thème n'est pas posé, et le §1 garantit qu'il égale la table.
+        .replace(/var\(--zn-charge-[a-z]+-papier\s*,\s*#[0-9a-fA-F]{3,8}\s*\)/g, "")
+        // l'interpolation depuis la table, dans le document exporté (R16.8 : pas de variable)
+        .replace(/CHARGE\.[a-z]+\.papier/g, "");
+      if (!LITTERAL.test(reste)) return;
       restes.push(f + ":" + (i + 1) + " → " + nu.trim().slice(0, 60));
     });
   }
