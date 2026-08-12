@@ -21,6 +21,7 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   // couvre le mécanisme existant et son extension « fin de plan » (08/08/2026).
   "smoke-shop.mjs",
   "smoke-carte-seance.mjs",
+  "smoke-charge.mjs",
   // R26 — Éducatifs (six disciplines) : A1-A13 du brief, le mécanisme de verrouillage/
   // cascade, l'affichage conditionnel par sport et l'absence de doublon d'identifiant SVG.
   "smoke-educatifs.mjs",
