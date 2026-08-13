@@ -103,3 +103,90 @@ sports** est la seule écriture acceptable (R11.1).
 | Golden master | **Figé** pendant tout le lot ; chaque ticket B produit son `diffs/B-XX.md` ; une seule recapture en fin de lot |
 | B-16 (T3) | **Réduit** à la mesure du cas de bord de semaine — la règle est appliquée (V-01) |
 | `capacityProbe` | **Retirer** le flag (V-02 : mort, et le câbler désactiverait la sonde pour 5 sports) |
+
+---
+
+# Arbitrages de l'addendum 01 (13/08/2026)
+
+Quatre décisions prises après les vérifications V-07 → V-11, chacune sur une mesure et non sur
+l'intention du ticket. **Trois des quatre tickets ont vu leur prémisse réfutée par la mesure** ;
+c'est ce que les décisions ci-dessous prennent en compte.
+
+## B-21 — Exposant de Riegel en tri/duathlon · **découpler ET recalibrer** (branche B)
+
+**Mesuré** : les 294 profils tri/duathlon du golden courent **2,03 h/semaine** (médiane ;
+étendue 0,58 → 4,72), ce qui appelle l'exposant **1,12**. Le moteur applique **1,06**, celui d'un
+coureur à 10 h/semaine — **zéro profil sur 294** n'en approche.
+
+**V-07 a établi que `TRI_RUN` est `a_priori`**, donc la branche A (découpler sans toucher la
+table) était applicable sans risque de double compte. **Décision du fondateur : branche B.**
+
+Le motif retenu est la prudence sur l'existant : la recalibration par construction
+`TRI_RUN_new[f] = TRI_RUN_old[f] × Riegel(ref, d_f, 1,06) / Riegel(ref, d_f, expo(h_ref))`
+garantit que le **triathlète médian conserve exactement son chrono actuel**, et fait enfin diverger
+les atypiques — celui qui court 4,7 h devient plus rapide, celui qui court 0,6 h plus lent. Aucune
+des deux tables n'étant validée par une donnée, on ne perd aucune validité en ajustant l'une contre
+l'autre ; on gagne une différenciation que le modèle actuel est incapable de produire.
+
+`h_ref` = **2,03 h/semaine** (médiane mesurée, V-09).
+
+⚠ **La branche A aurait été inerte telle qu'écrite** : `bridge.ts:665` passe `undefined` hors
+course sèche, et `riegelExponent(undefined)` rend 1,06 par repli. Aucune réponse du questionnaire
+ne donne les heures de course d'un triathlète — **la grandeur doit être mesurée sur le plan livré**.
+C'est un ticket de plomberie distinct, préalable au recalibrage.
+
+## B-22 — Allure marathon · **point unique, la bande DÉRIVE du prédicteur**
+
+**Mesuré** : `rn.mara` est un multiplicateur **constant** (1,08–1,13 × seuil) ; l'exposant de
+Riegel **varie avec le volume** (1,04 → 1,12). Deux grandeurs dont l'une ignore une variable dont
+l'autre dépend ne coïncident qu'en un point — mesuré vers **6,5–8 h/semaine**. En dessous, la
+prédiction est plus lente que l'entraînement ; au-dessus, plus rapide (12 h/sem : entraîné à
+4'35–4'48, course prédite à 4'26).
+
+**Décision : une seule écriture de « l'allure marathon »**, la bande d'entraînement dérivant du
+prédicteur. C'est R11.1, et c'est le geste que le dépôt a déjà fait deux fois sur exactement cette
+forme — **O-11 / R20.5** (deux définitions de « l'allure course » à vélo, fermées par
+`raceBikeBand()`). Reculer `rn.mara` d'un cran n'aurait fait que déplacer le point d'accord.
+
+**Rayon d'action à mesurer avant d'écrire** : les séances d'allure spécifique du marathon, et le
+trail (qui lit `rn.mara` lui aussi). `rn.thr` — prescrit aux 5 km / 10 km / semi — **n'est pas
+concerné** : c'est une séance au seuil, pas une prescription d'allure de course.
+
+## B-02 — Plafond de temps dur · **arbitrage du 13/08 confirmé**
+
+`clamp(0,12 × minutes_hebdo, 25, 60)`, **disciplines d'impact** (`run`, `trail`, `duathlon`),
+lues depuis les guards existants (`runImpactCap`) et jamais depuis une seconde liste de sports.
+
+**Confirmé après V-08 et V-09**, qui ont retiré au ticket sa justification de repli :
+la concentration nage **n'était pas** un artefact de classification (`sw.css` est correctement
+classé `hard`, comme `bk.thr` et `rn.thr`) mais le reflet de la distribution réelle — la natation
+**est** la queue basse du catalogue (médiane 1,9 h/sem, 129 des 186 profils sous 3 h). Tout
+plafond proportionnel au volume la visera, quel que soit son calibrage.
+
+**Conséquence sur les critères de recevabilité de l'addendum** : le critère 2 (« ≥ 70 % des
+profils touchés sous 5 h/semaine ») est satisfait **par construction** dès qu'un plafond est
+proportionnel, et ne discrimine donc pas. Seul le critère 3 (« zéro profil touché uniquement à
+cause de la nage ») mord — et l'option retenue est la seule mesurée à le satisfaire (0/258).
+
+La variante « pondérer les minutes dures par discipline (×1,00 / 0,75 / 0,50) » est **écartée pour
+ce lot**, pas réfutée : elle garde C26 discipline-aveugle avec un chiffre unique, ce qui a de la
+valeur, mais c'est un changement plus profond que le calibrage d'un scalaire. À rouvrir si la
+notion de discipline d'impact s'avère mal porter ailleurs dans la matrice.
+
+## B-02a — `sw.aero` · **aligner, et arbitrer C26d dans le même ticket**
+
+**La prémisse du ticket est inversée** : `sw.css` n'est pas mal classé. La divergence est sur la
+ligne **tempo** — `sw.aero` est rangé `easy` quand `rn.mara` et `bk.ss` sont `mod`, pour un effort
+à **94,3 % de la vitesse seuil**, soit au moins aussi exigeant que `bk.ss` (88–94 % FTP).
+
+**Portée mesurée avant décision** : 382 profils du golden portent des minutes `sw.aero` (40,4 % —
+swim 136, swimrun 136, tri 110), et **106 (11,2 %)** verraient une semaine de charge franchir le
+plafond de modéré **C26d** (40 %) après réalignement.
+
+**Décision : aligner, et traiter les 106 franchissements dans le même ticket** plutôt que de les
+laisser à la boucle de réparation, qui déclasserait des séances de nage — un effet que le ticket
+ne vise pas. Deux issues à mesurer : relever C26d pour la nage (avec sa justification :
+une minute de modéré en bassin ne coûte pas ce que coûte une minute de modéré en course, c'est
+l'argument même qui a fondé B-02), ou accepter le déclassement en le chiffrant.
+
+Rapport de diff obligatoire sur les 945.
