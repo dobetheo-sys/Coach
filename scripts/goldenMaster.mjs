@@ -29,6 +29,7 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import "../src/app/bridge.ts"; // définit globalThis.EBV2 — le MÊME chemin que l'app
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -36,7 +37,19 @@ const HASHES = join(ROOT, "golden", "hashes.json"); // versionné
 const FULL = join(ROOT, "golden", "plans.full.json"); // local, ignoré par git
 const sha = (s) => createHash("sha256").update(s).digest("hex").slice(0, 16);
 const mode = process.argv.includes("--capture") ? "capture" : process.argv.includes("--verify") ? "verify" : null;
-if (!mode) {
+/**
+ * ADDENDUM 01 — LA POPULATION DU GOLDEN EST DÉSORMAIS IMPORTABLE.
+ *
+ * `T-19` doit se mesurer « sur le golden 945 », et l'addendum interdit explicitement de créer
+ * une seconde population à côté (§9). Deux issues étaient possibles : recopier l'espace de
+ * profils dans le banc — deux définitions du catalogue, donc deux vérités le jour où l'une
+ * bouge, c'est R11.1 —, ou rendre celle-ci importable. La seconde, évidemment.
+ *
+ * Ce fichier reste un EXÉCUTABLE : la garde d'usage ne s'applique donc qu'au lancement direct.
+ * Importé, il n'exporte que `profiles()` et ne prend aucune décision.
+ */
+const LANCE_DIRECTEMENT = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (!mode && LANCE_DIRECTEMENT) {
   console.error("usage : node scripts/goldenMaster.mjs --capture | --verify");
   process.exit(2);
 }
@@ -332,6 +345,10 @@ function snapshot() {
   return { snap, n, errors, refus };
 }
 
+export { profiles };
+
+if (!LANCE_DIRECTEMENT) { /* importé pour ses profils : on s'arrête ici */ } else {
+
 const { snap, n, errors, refus } = snapshot();
 if (refus.length) {
   console.log("· " + refus.length + " refus d'entrée typé(s) — comportement attendu, photographié :");
@@ -408,3 +425,5 @@ if (diffs.length > 12) console.error("   … et " + (diffs.length - 12) + " autr
 console.error("\nUn écart = l'extraction est fausse. Si le changement est VOULU, recapturer");
 console.error("explicitement (`--capture`) pour qu'il apparaisse dans le diff git.");
 process.exit(1);
+
+}

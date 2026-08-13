@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * BANC DU LOT `fix/moteur-physio` — les 14 assertions T-01 à T-14 du handoff.
+ * BANC DU LOT `fix/moteur-physio` — les assertions T-01 à T-19.
+ * T-01 à T-14 viennent du handoff maître ; T-15 à T-19 de l'ADDENDUM 01.
  *
  *   node scripts/lotPhysio.mjs          # verdict complet
  *   node scripts/lotPhysio.mjs --strict # exit 1 aussi sur les rouges attendus (fin de lot)
@@ -27,6 +28,10 @@ import { ZDEF } from "../src/generator/renderer.ts";
 import { zoneClass, intensitySplit } from "../src/engine/loadModel.ts";
 import { sessionIntensity } from "../src/readiness/dailyAdjuster.ts";
 import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor } from "../src/engine/constraintMatrix.ts";
+import { TrainingReasoningEngine } from "../src/engine/reasoningEngine.ts";
+import { toProfile } from "../src/app/bridge.ts";
+import { riegelExponent, riegelSecWith, RUN_KM } from "../src/engine/predictor.ts";
+import { profiles as goldenProfiles } from "./goldenMaster.mjs";
 import { estCharge } from "./lib/planMetrics.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -248,6 +253,155 @@ T("T-14", "rouge", "toute séance >60 min porte une cible glucidique horaire", (
         if (/\d+\s*(?:–|-|à)?\s*\d*\s*g\/h|glucide/i.test(String(s.note ?? "") + String(s.det ?? ""))) avec++;
       }
   return { ok: total > 0 && avec === total, detail: `${avec}/${total} séances >60 min portent une cible glucidique` };
+});
+
+
+// ---- T-15 · cohérence interne du classificateur, domaine par domaine ------
+// DISTINCT DE T-01 : T-01 compare deux fonctions entre elles et resterait vert si `sw.aero`
+// était mal classé PARTOUT de la même façon. T-15 teste la cohérence INTERNE d'une seule.
+// V-08 a réfuté la prémisse du ticket : la ligne SEUIL est homogène (sw.css, bk.thr et rn.thr
+// sont tous trois `hard`). La divergence est sur la ligne TEMPO — `sw.aero` est `easy` quand
+// ses homologues sont `mod`, alors qu'à 1/1,06 il vaut 94,3 % de la vitesse seuil, soit au
+// moins aussi exigeant que `bk.ss` (88-94 % FTP) et `rn.mara` (88-93 % de la vitesse seuil).
+const DOMAINES = [
+  ["facile / Z2", ["rn.easy", "bk.z2", "sw.easy"]],
+  ["tempo / sweetspot", ["rn.mara", "bk.ss", "sw.aero"]],
+  ["seuil", ["rn.thr", "bk.thr", "sw.css"]],
+  ["VO2max", ["rn.vo2", "bk.vo2", "sw.vo2"]],
+];
+T("T-15", "rouge", "un domaine physiologique reçoit la même classe dans les trois disciplines", () => {
+  const ecarts = [];
+  for (const [nom, zones] of DOMAINES) {
+    const cls = zones.map((z) => `${z}=${zoneClass(z)}`);
+    if (new Set(zones.map((z) => zoneClass(z))).size > 1) ecarts.push(`${nom} : ${cls.join(" ")}`);
+  }
+  return { ok: !ecarts.length, detail: `${ecarts.length}/${DOMAINES.length} domaine(s) non homogène(s) — ` + ecarts.join(" · ") };
+});
+
+// ---- T-16 · le chrono prédit et l'allure prescrite parlent du même effort -
+// La bande DÉPEND DU FORMAT et se lit dans le module de sport, pas dans une table du test :
+// `src/sports/run/index.ts` prescrit `rn.mara` au seul marathon et `rn.thr` aux autres.
+//
+// ⚠ CE QUE CE TEST MESURE N'EST PAS ÉQUIVALENT SUR LES TROIS DISTANCES, et le detail le dit :
+// sur 10 km, courir SA COURSE plus vite que l'allure d'une séance au seuil est de la
+// physiologie normale, pas une incohérence. Le cas qui se voit à l'écran est le MARATHON —
+// un plan qui fait s'entraîner à 4'35-4'48 « allure marathon » et prédit la course à 4'26.
+const BANDE_FMT = { "10k": "rn.thr", semi: "rn.thr", marathon: "rn.mara" };
+T("T-16", "rouge", "le ratio chrono prédit / allure seuil tombe dans la bande prescrite pour ce format", () => {
+  const thr = 255; // 4'15/km — l'athlète témoin du retest
+  const hors = [];
+  for (const [fmt, km] of Object.entries(RUN_KM)) {
+    if (!BANDE_FMT[fmt]) continue;
+    const b = ZDEF[BANDE_FMT[fmt]];
+    for (const h of [3, 6.5, 10, 12]) {
+      const r = riegelSecWith(riegelExponent(h), thr, km) / km / thr;
+      if (r < b.lo - 1e-9 || r > b.hi + 1e-9)
+        hors.push(`${fmt}@${h}h ${r.toFixed(3)} hors [${b.lo}, ${b.hi}] (${BANDE_FMT[fmt]})`);
+    }
+  }
+  const mara = hors.filter((x) => x.startsWith("marathon")).length;
+  return { ok: !hors.length, detail: `${hors.length} combinaison(s) hors bande, dont ${mara} sur MARATHON (le cas visible à l'écran) — ` + hors.join(" · ") };
+});
+
+// ---- T-17 · toute décomposition affichée porte une fourchette -------------
+// Et la somme des sous-segments égale le total sur CHAQUE borne : une décomposition dont les
+// parties ne se recomposent pas ressemble à un bug même quand chaque nombre est juste.
+const SEC = (t) => {
+  let m;
+  if ((m = String(t).match(/^(\d+)h(\d+)$/))) return +m[1] * 3600 + +m[2] * 60;
+  if ((m = String(t).match(/^(\d+)'(\d+)$/))) return +m[1] * 60 + +m[2];
+  if ((m = String(t).match(/^(\d+)min$/))) return +m[1] * 60;
+  return null;
+};
+const EST_CHRONO = (v) => String(v).split("–").every((x) => SEC(x.trim()) != null);
+T("T-17", "rouge", "tout sous-segment chronométré porte une fourchette", () => {
+  let vus = 0; const sans = [];
+  for (const { id, sport, a, plan } of plans) {
+    let pr; try { pr = globalThis.EBV2.predict(sport, a, plan); } catch { continue; }
+    for (const it of pr?.items ?? []) {
+      const v = String(it.value ?? "");
+      if (!EST_CHRONO(v)) continue;          // ni cible d'allure, ni watts : P6 les exclut
+      vus++;
+      if (!v.includes("–")) sans.push(`${id} « ${it.leg} » = ${v}`);
+    }
+  }
+  return { ok: vus > 0 && !sans.length, detail: `${sans.length}/${vus} chronos sans fourchette — ` + sans.slice(0, 8).join(" · ") };
+});
+
+// ---- T-18 · un FAIT PHYSIQUE estimé porte une bande -----------------------
+// P6 interdit de projeter le PACING (« vitesse cible »). Il ne dit rien d'une estimation de
+// fait — la part de marche d'un ultra, l'effet de longe d'un binôme swimrun. Ces deux-là sont
+// la source dominante d'incertitude de leur segment et sont affichés au chiffre près.
+const FAIT_PHYSIQUE = /part de marche|effet de (?:binôme|longe)|passages|segments/i;
+const CIBLE_PACING = /vitesse cible|allure cible|puissance/i;
+T("T-18", "rouge", "toute estimation d'un fait physique porte une bande (le pacing en est exclu, P6)", () => {
+  let vus = 0; const sans = [];
+  for (const { id, sport, a, plan } of plans) {
+    let pr; try { pr = globalThis.EBV2.predict(sport, a, plan); } catch { continue; }
+    for (const it of pr?.items ?? []) {
+      const leg = String(it.leg ?? ""), v = String(it.value ?? "");
+      if (CIBLE_PACING.test(leg) || !FAIT_PHYSIQUE.test(leg + " " + v)) continue;
+      vus++;
+      if (!/[–±]/.test(v)) sans.push(`${id} « ${leg} » = ${v}`);
+    }
+  }
+  return { ok: vus > 0 && !sans.length, detail: `${sans.length}/${vus} estimations de fait sans bande — ` + sans.slice(0, 8).join(" · ") };
+});
+
+// ---- T-19 · le message de volume nomme ce qui mord, et cite le bon chiffre -
+// DEUX MOITIÉS, et V-11 les a mesurées séparément parce qu'elles ne sont pas dans le même état.
+//   (a) la contrainte NOMMÉE est l'argmin des plafonds — mesuré VERT (0 désaccord sur 247
+//       messages du golden qui nomment un plafond). C'est un garde-fou de non-régression.
+//   (b) le NOMBRE CITÉ est la valeur MODULÉE et non la valeur de table — mesuré ROUGE,
+//       161/247 (65,2 %) sur le golden. Pire cas : la phrase annonce « 4 h/sem » quand le
+//       plafond modulé vaut 1,44 h et que le plan livre 0,7 h. C'est la faute d'unité que
+//       R20.7 a corrigée sur le RETRAIT et jamais sur la PHRASE.
+const _moteur = new TrainingReasoningEngine();
+const _hSem = (s) => { const m = String(s).match(/([\d,]+) h\/sem/); return m ? parseFloat(m[1].replace(",", ".")) : null; };
+/**
+ * MA PREMIÈRE ÉCRITURE DE T-19 A EXAMINÉ ZÉRO PROFIL ET S'EST AFFICHÉE ROUGE.
+ * Elle tournait sur `profils30` — or les 20 décisions R20.2 qu'ils portent nomment TOUTES
+ * « le nombre de séances », qui n'est pas un plafond : les deux compteurs restaient à 0 et le
+ * `ok` tombait par la garde de non-vacuité, pas par un défaut. Un rouge obtenu ainsi est pire
+ * qu'un vert vacueux — il a l'air d'avoir trouvé quelque chose. C'est la faute de T-12,
+ * refaite dans le même lot. Le test lit donc la population que l'addendum lui assigne, le
+ * golden, et un examen vide est déclaré CASSÉ et non rouge.
+ */
+const CAPS_R202 = (L) => [["ton volume demandé", L.declared], ["ton historique", L.caps], ["le volume utile du format", L.util]];
+T("T-19", "rouge", "le message de volume nomme l'argmin des plafonds ET cite la valeur modulée", () => {
+  let nomme = 0, desaccord = 0, cite = 0, brut = 0, vus = 0; const ex = [];
+  for (const { key, sport, a } of goldenProfiles()) {
+    let plan, r;
+    try { plan = globalThis.EBV2.buildPlan(sport, a); r = _moteur.analyze(toProfile(sport, a)); } catch { continue; }
+    const dec = (plan?._v2?.decisions ?? []).find((d) => d.id === "R20.2");
+    if (!dec) continue;
+    vus++;
+    const L = r.volLimits;
+    const quoi = String(dec.val).replace(/^.*ce qui borne, c'est /, "").replace(/ \(−.*$/, "");
+    const trois = CAPS_R202(L);
+    // (a) — n'a de sens que si le moteur nomme un PLAFOND. Nommer un facteur multiplicatif,
+    //       la rampe ou la structure de la semaine met la notion d'argmin hors sujet, et
+    //       compter ces cas comme des accords gonflerait le test d'un vert gratuit.
+    if (trois.some(([q]) => q === quoi)) {
+      nomme++;
+      if (trois.reduce((x, y) => (y[1] < x[1] ? y : x))[0] !== quoi) desaccord++;
+    }
+    // (b) — le chiffre écrit dans la phrase contre la valeur modulée du plafond nommé.
+    const table = quoi === "ton historique" ? L.caps : quoi === "le volume utile du format" ? L.util : null;
+    const dit = _hSem(dec.why);
+    if (table == null || dit == null) continue;
+    cite++;
+    const queue = L.marg * L.recup * L.swimTime * L.med * (r.loadFactor < 1 ? r.loadFactor : 1);
+    if (Math.abs(dit - table * queue) > 0.05) {
+      brut++;
+      if (ex.length < 4) ex.push(`${key} dit ${dit} h, modulé ${(table * queue).toFixed(2)} h, ${String(dec.val).replace(/ —.*/, "")}`);
+    }
+  }
+  if (!nomme || !cite) return { ok: false, detail: `banc cassé : examiné ${vus} message(s), dont ${nomme} nommant un plafond et ${cite} citant un chiffre — un test qui ne regarde rien ne peut être ni vert ni rouge` };
+  return {
+    ok: !desaccord && !brut,
+    detail: `(a) argmin : ${desaccord}/${nomme} désaccord · (b) valeur de TABLE au lieu de MODULÉE : **${brut}/${cite}** (${(brut / cite * 100).toFixed(1)} %)` + (ex.length ? " — " + ex.join(" · ") : ""),
+  };
 });
 
 // ---- verdict --------------------------------------------------------------

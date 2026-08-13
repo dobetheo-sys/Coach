@@ -498,3 +498,143 @@ Deux autres remarques sur ce paramètre, trouvées en le suivant :
 | branche A = changer la ligne 501 | **inerte** — le paramètre est `undefined` en amont | corriger le pont, mesurer sur le plan |
 | prédicteur marathon à 1,032 × seuil | **1,068** (1,032 était la borne basse) | écart 4× plus petit |
 | « l'un des deux chiffres est faux » | **aucun des deux** — l'un est volume-aware, l'autre non | point unique (R11.1), forme O-11/R20.5 |
+
+---
+
+## V-11 — Le calcul de volume retourne-t-il QUELLE contrainte a mordu ?
+
+> ### Réponse : **ni l'un ni l'autre**. Le message ne devine pas — il **recalcule**.
+
+**Il n'existe pas de fonction `volumeMax()`.** Le calcul est réparti sur deux fichiers :
+`reasoningEngine.ts:188` produit le nombre — `volPeak = min(volMax, caps, util) × marg ×
+recupFactor`, puis `× SWIM_TIME_FACTOR`, `× medFactor` — et `planGenerator.ts:2949-3040`
+reconstruit la chaîne **maillon par maillon** pour l'expliquer. Ce que la première transmet à la
+seconde, c'est `volLimits` : les **entrées** (`declared`, `caps`, `util`, `marg`, `recup`,
+`swimTime`, `med`, `sessionsMax`, `budget`), jamais le verdict.
+
+C'est déjà la moitié de ce que B-24 demande, posé par **R20.2** pour la raison exacte du ticket
+(« nommer celui qui a réellement retiré le plus — et pas simplement le premier qui mord »).
+Ce qui manque, c'est le **retour du verdict** : l'argmin est recalculé dans le générateur de
+message, il n'est pas rendu par le calcul.
+
+### (a) La contrainte nommée est-elle l'argmin ? — **oui, 0 désaccord sur 247**
+
+| mesure sur les 945 profils du golden | |
+|---|---|
+| plans portant une décision `R20.2` | **583 (61,7 %)** |
+| dont le moteur nomme l'un des trois plafonds | **247** |
+| **désaccords entre le nommé et l'argmin de `min(declared, caps, util)`** | **0** |
+| cas où la question est sans objet (le moteur nomme un facteur ×, la rampe, ou la structure) | **336 (57,6 %)** |
+
+**T-19 première moitié est donc VERTE, pas rouge.** Elle entre au banc comme garde-fou de
+non-régression — la propriété est vraie, il s'agit de ne pas la perdre.
+
+**Mais elle ne couvre que 42 % des messages.** Dans 336 cas, ce qui borne n'est pas un plafond
+mais un facteur multiplicatif (`swimTime` 118 fois, `marg` 36), la rampe de départ (7), l'âge ou
+une zone fragile (16), ou la structure de la semaine (159). Pour ceux-là « l'argmin des plafonds »
+n'est pas défini : un facteur s'applique à *tous* les plafonds, il ne peut pas être l'argmin d'un
+`min()`. **T-19 tel que spécifié est muet sur la majorité des messages** — à savoir avant de le
+considérer comme une garantie complète.
+
+Répartition de ce que le moteur nomme :
+
+| ce qui borne | messages |
+|---|---|
+| ton historique | 247 |
+| le nombre de séances (structure) | 159 |
+| le temps réellement passé dans l'eau | 118 |
+| la marge de sécurité hors compétition | 36 |
+| tes zones fragiles / ton âge | 16 |
+| ton point de départ (rampe R10) | 7 |
+
+### (b) Le nombre affiché est-il la valeur modulée ? — **non, dans 161 cas sur 247 (65,2 %)**
+
+**C'est le défaut, et il est réel.** La phrase d'explication cite `h(L.caps)` et `h(L.util)`,
+c'est-à-dire la **valeur de table brute**, avant `marg × recup × swimTime × med × loadFactor`.
+
+Vérifié : sur les 161 cas rouges, le chiffre cité vaut **exactement** la valeur de table
+(161/161, 100 %), et la valeur modulée satisferait le critère dans 161 cas sur 161. Le test
+mesure donc précisément la grandeur qu'il nomme.
+
+Pire écart mesuré — `swim/demifond/reprise/debutant/finir` :
+
+| ce que l'athlète lit | valeur |
+|---|---|
+| la phrase | « l'historique « reprise » permet d'encaisser **4 h/sem** » |
+| le plafond réellement appliqué (× 0,360) | **1,44 h/sem** |
+| le pic que son plan livre | **0,7 h/sem** |
+
+**Les « 4 h » n'existent dans aucune unité que l'athlète puisse rapprocher de son plan.** C'est
+mot pour mot la faute que **R20.7** a diagnostiquée et corrigée — sur le RETRAIT
+(`p.retire × queue`), jamais sur la PHRASE. Le mécanisme `queue` est déjà écrit, à quinze lignes
+de là ; il n'a simplement pas été appliqué aux deux littéraux du texte. **Quatrième occurrence
+de cette faute d'unité** dans ce chantier, après O-13, le plancher de temps facile de R20.5, et
+la chaîne de R20.7 elle-même.
+
+### Ce que B-24 doit devenir
+
+La spécification décrit `volumeMax() → { valeur, bindingConstraint, capBrut, capModule }`. Deux
+écarts avec le code réel, à trancher :
+
+1. **La fonction n'existe pas** et le calcul traverse deux modules. Soit on la crée (extraction
+   depuis `reasoningEngine.ts:188`), soit `volLimits` gagne les trois champs manquants
+   (`binding`, `capBrut`, `capModule`) et le générateur cesse de recalculer l'argmin. La seconde
+   est plus petite et va dans le sens de R20.2, qui a déjà choisi de faire transiter les maillons.
+2. **`bindingConstraint` doit couvrir les six familles**, pas seulement les trois plafonds —
+   sinon 58 % des messages ne recevront pas de verdict et le générateur gardera sa chaîne en
+   parallèle, c'est-à-dire deux calculs pour une réponse (R11.1).
+
+**Le correctif minimal qui ferme la moitié rouge de T-19 est indépendant de tout ça** : appliquer
+`queue` aux deux littéraux du texte. Une ligne chacun, aucun nombre du plan ne bouge, aucune
+séance n'est touchée. Il peut partir avant B-24 sans rien préempter.
+
+> **Deux fautes d'instrument à moi, dans cette seule vérification.**
+> (1) Ma première mesure du pire cas affichait « pic réellement livré 2,2 h » — elle lisait le
+> **retrait** (« −2,2 h/sem ») et non le pic (0,7 h), les deux étant écrits dans la même phrase
+> au même format. (2) Ma contre-preuve de T-15 est sortie « ROUGE (facile) » sur un moteur où les
+> quatre lignes étaient homogènes : elle écrivait `z.map(zoneClass)`, et `Array.map` passe
+> l'**index** en deuxième argument — que `zoneClass(zone, runLegNoZone)` lit comme un drapeau,
+> donc tout élément d'indice ≥ 1 était forcé en `mod`. Le banc, lui, enveloppe correctement
+> (`z => zoneClass(z)`). Deux instruments faux en une heure, tous deux du même genre que ce que
+> ce dépôt documente depuis R20.1.
+
+### `scripts/goldenMaster.mjs` devient importable
+
+T-19 doit se mesurer « sur le golden 945 » et l'addendum interdit de créer une seconde population
+(§9). Le générateur de profils est donc **exporté** ; la garde d'usage du script ne s'applique
+plus qu'au lancement direct. `golden:verify` reste vert, 949 profils, 0 écart.
+
+**Ma première écriture de T-19 tournait sur `profils30` et s'est affichée ROUGE en examinant
+ZÉRO profil** : les 20 décisions `R20.2` que ces trente portent nomment toutes « le nombre de
+séances », qui n'est pas un plafond. Un rouge obtenu ainsi est pire qu'un vert vacueux — il a
+l'air d'avoir trouvé quelque chose. Le test déclare désormais **« banc cassé »** plutôt que
+« rouge » quand il n'examine rien.
+
+---
+
+## Banc après l'addendum : T-15 → T-19
+
+| test | état | mesure |
+|---|---|---|
+| **T-15** classe homogène par domaine | 🔴 | 1 domaine sur 4 — `sw.aero=easy` contre `rn.mara=mod` / `bk.ss=mod`. Contre-preuve : ✓ vert en rangeant `sw.aero` en `mod` |
+| **T-16** chrono prédit dans la bande prescrite | 🔴 | 7 combinaisons hors bande, **dont 3 sur marathon** — le seul cas visible à l'écran |
+| **T-17** tout sous-segment chronométré porte une fourchette | 🔴 | 3 / 52 (les « Dont course » swimrun) |
+| **T-18** un fait physique estimé porte une bande | 🔴 | 9 / 9 — part de marche ×4, transitions ×3, effet de binôme |
+| **T-19** message de volume | 🔴 | (a) **0 / 247 désaccord** ✓ · (b) **161 / 247 (65,2 %)** citent la table |
+
+**19 tests · 1 vert · 18 rouges attendus · 0 régression.**
+
+### Une réserve sur T-16, à lever avant de le traiter comme une dette
+
+Les 4 échecs `10k` ne sont **pas** un défaut. Le module de course prescrit `rn.mara` au **seul
+marathon** ; pour 5 km, 10 km et semi, la séance d'allure spécifique est prescrite à `rn.thr`
+(1,00–1,05 × seuil) — c'est une séance **au seuil**, pas une prescription d'allure de course.
+Courir son 10 km plus vite que son allure seuil est de la physiologie normale. Le critère
+littéral de l'addendum compare donc, sur ces distances, deux grandeurs qui n'ont pas à coïncider.
+
+Le semi, lui, tombe **dans la bande à tous les volumes** (1,016–1,049).
+
+**Le seul cas qui se voit à l'écran est le marathon**, et il est bien réel : un athlète entraîné
+à 4'35–4'48 « allure marathon » se voit prédire sa course à 4'26 (12 h/sem) ou 4'32 (10 h/sem).
+Recommandation : **restreindre T-16 au marathon** avec sa raison écrite, plutôt que de figer
+quatre rouges structurels — c'est ce que R20.6 a fait des invariants I6/I8/I12.
