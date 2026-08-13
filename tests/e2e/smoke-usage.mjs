@@ -649,13 +649,17 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   const { ctx, page } = await session(Date.UTC(2026, 7, 5, 9, 0));
   await page.click('#ebTabbar .tabbtn[data-tab="general"]').catch(() => {});
   await page.waitForTimeout(800);
+  // R28 (12/08/2026) — la prédiction a quitté la vue d'ensemble pour son propre sous-onglet
+  // « 🎯 Prédiction » ; l'ancien titre « Prédiction de course » n'existe donc plus DANS
+  // la vue d'ensemble. Les intensités, elles, n'ont pas bougé.
   const plan = await page.evaluate(() => {
     const t = document.querySelector("#screen").textContent || "";
     const pos = (re) => { const m = t.match(re); return m ? m.index : -1; };
     return { t, decompte: /J−\d+/.test(t), avancement: /Semaine \d+ \/ \d+/.test(t),
       partage: !!document.getElementById("expPng"),
       posAvancement: pos(/Semaine \d+ \/ \d+/), posPourquoi: pos(/Pourquoi ce plan/),
-      pred: /Prédiction de course/.test(t), intens: /Répartition des intensités/.test(t),
+      sousOnglets: [...document.querySelectorAll("[data-plansub]")].map((b) => b.dataset.plansub),
+      intens: /Répartition des intensités/.test(t),
       libelles: /Version imprimable/.test(t) && /Ajouter à mon agenda/.test(t) && !/🖼 PNG/.test(t) };
   });
   ok(plan.decompte, "R23.5 — le décompte des jours avant la course est en tête de 🗓 Plan");
@@ -663,27 +667,36 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(plan.partage, "R23.12 — et le bouton « 📤 Partage » est sous l'avancement");
   ok(plan.posAvancement >= 0 && plan.posPourquoi > plan.posAvancement,
     "R23.6 — « Pourquoi ce plan » vient APRÈS l'avancement, plus avant (l'info d'abord)");
-  ok(plan.pred && plan.intens, "R23.7 / R23.9 — la prédiction et les intensités vivent dans 🗓 Plan");
+  ok(plan.sousOnglets.includes("overview") && plan.sousOnglets.includes("pred") && plan.intens,
+    "R23.7 / R23.9 / R28 — la prédiction a son sous-onglet dans 🗓 Plan, les intensités restent dans la vue d'ensemble");
   ok(plan.libelles, "R23.12c — les exports portent des noms lisibles (imprimable · agenda), plus « PNG »");
 
-  // R24.5 / R24.6 (retour fondateur, 06/08 soir) — la Prédiction ouvre sur le TEMPS TOTAL
-  // (aujourd'hui + fin de plan), le détail par segment est un dépliable ; et la courbe de
-  // charge porte le marqueur « tu es ici » à la semaine courante.
+  // R24.5 / R24.6 (retour fondateur, 06/08 soir) puis R28 (12/08/2026) — la Prédiction ouvre
+  // sur le TEMPS TOTAL (aujourd'hui + jour J), le détail par DISCIPLINE est visible d'office
+  // (le brief du 12/08 le demande directement, sans détour par un dépliable — c'est le
+  // dépliable « pourquoi cette projection », lui, qui reste fermé par défaut).
+  await page.evaluate(() => document.querySelector('[data-plansub="pred"]').click());
+  await page.waitForTimeout(600);
   const pred24 = await page.evaluate(() => {
-    [...document.querySelectorAll("#screen details")].forEach((d) => { d.open = true; });
     const t = document.querySelector("#screen").textContent || "";
-    const nid = [...document.querySelectorAll("#screen details summary")]
-      .find((x) => /Le détail, segment par segment/.test(x.textContent || ""));
+    const why = document.querySelector(".zn-pred-why");
     return {
-      auj: /Courue aujourd’hui : /.test(t.replace(/\s+/g, " ")),
-      proj: /plan suivi : /.test(t.replace(/\s+/g, " ")),
-      detailRepliable: !!nid,
-      detailContenu: nid ? /ta forme mesurée/.test(nid.parentElement.textContent || "") : false,
+      auj: /Si la course était aujourd.hui/.test(t),
+      proj: /Projeté au jour J/.test(t),
+      discVisible: document.querySelectorAll(".zn-pd-row").length > 0
+        && [...document.querySelectorAll(".zn-pd-row")].every((r) => getComputedStyle(r).display !== "none"),
+      pourquoiEstUnDetails: !!why && why.tagName === "DETAILS" && !why.open,
     };
   });
-  ok(pred24.auj && pred24.proj, "R24.5 — la Prédiction ouvre sur le temps total : courue aujourd'hui ET à la fin du plan");
-  ok(pred24.detailRepliable && pred24.detailContenu,
-    "R24.5 — le détail segment par segment vit dans un dépliable, et il contient bien la forme mesurée");
+  ok(pred24.auj && pred24.proj, "R24.5 — la Prédiction ouvre sur le temps total : courue aujourd'hui ET au jour J");
+  ok(pred24.discVisible,
+    "R28 — le détail PAR DISCIPLINE est visible d'office, sans dépliable (demande explicite du brief du 12/08)");
+  ok(pred24.pourquoiEstUnDetails,
+    "R28 — seul « pourquoi cette projection » reste un dépliable, fermé par défaut");
+  // TÉMOIN — `S._planSub` est un état GLOBAL qui survit au clic ci-dessus : cette suite revient
+  // sur 🗓 Plan plus loin (« Conseils personnalisés », onglet Vue d'ensemble) dans la MÊME
+  // session ; sans ce reset, elle retomberait sur le sous-onglet Prédiction.
+  await page.evaluate(async () => { const { S } = await import("./js/state.js"); S._planSub = "overview"; });
 
   await page.click('#ebTabbar .tabbtn[data-tab="today"]').catch(() => {});
   await page.waitForTimeout(800);

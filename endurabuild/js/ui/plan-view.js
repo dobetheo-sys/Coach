@@ -250,63 +250,11 @@ function tempsTotalItem(items){
     ||items.find(x=>/\d(h|')\d/.test(String(x.value))&&!/(W|km\/h|km-effort|m\/h|%)/.test(String(x.value)))
     ||null;
 }
-function predictionCardHTML(plan){
-  let h="";
-  if(globalThis.EBV2&&globalThis.EBV2.predict){
-    try{
-      const pr=globalThis.EBV2.predict(S.sport,S.answers,plan);
-      // A-5 — LE JOURNAL DE PROJECTION. On journalise la prédiction TELLE QU'AFFICHÉE (une par
-      // semaine ISO), jamais un second calcul : un journal qui divergerait de l'écran serait le
-      // défaut de R19.5 transposé. Il n'est relu par AUCUNE partie du moteur — voir l'en-tête
-      // de `projection-log.js` pour pourquoi ce reflux est interdit.
-      logProjection(S.sport,S.answers,pr);
-      if(pr.items.length||pr.advice.length){
-        h+='<div class="load-card"><div class="load-title">\ud83d\udd2e Pr\u00e9diction de course</div>';
-        // R14 \u2014 DEUX PR\u00c9DICTIONS, TOUJOURS \u00c9TIQUET\u00c9ES. La forme ACTUELLE reste l'ancre (c'est
-        // la v\u00e9rit\u00e9 mesur\u00e9e) ; la forme PROJET\u00c9E dit o\u00f9 l'entra\u00eenement m\u00e8ne, avec sa date de
-        // r\u00e9f\u00e9rence et sa confiance. Jamais l'une sans l'autre, jamais un chiffre nu.
-        const pj=pr.projected;
-        // R24.5 (retour fondateur, 06/08) — LE TEMPS TOTAL D'ABORD : « si elle était courue
-        // aujourd'hui » et « à la fin du plan ». Les deux chiffres viennent des items DÉJÀ émis
-        // par le prédicteur ; le détail segment par segment passe en dépliable.
-        const tNow=tempsTotalItem(pr.items);
-        const tProj=(pj&&pj.applicable)?tempsTotalItem(pj.items):null;
-        const dRef=(pj&&pj.raceDate)?(fmtDay(pj.raceDate)+"/"+pj.raceDate.slice(0,4)):"la fin du plan";
-        if(tNow){
-          h+='<div style="margin:10px 0 2px;font-size:var(--fs-lg)">Courue <b>aujourd\u2019hui</b> : <b>'+tNow.value+'</b></div>';
-          if(tProj)h+='<div style="margin:2px 0 2px;font-size:var(--fs-lg)">\u00c0 <b>'+dRef+'</b>, plan suivi : <b>'+tProj.value+'</b> <span style="font-size:var(--fs-xs);color:var(--muted)">confiance '+pj.confidence+'</span></div>';
-          h+='<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer;font-weight:600">Le d\u00e9tail, segment par segment</summary>';
-        }
-        h+='<div class="load-sub" style="margin:8px 0 2px;font-weight:600">Aujourd\u2019hui \u2014 ta forme mesur\u00e9e</div>';
-        pr.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
-        if(pj&&pj.applicable&&pj.items.length){
-          const d=pj.raceDate?(fmtDay(pj.raceDate)+"/"+pj.raceDate.slice(0,4)):"le jour J";
-          h+='<div class="load-sub" style="margin:12px 0 2px;font-weight:600">Projet\u00e9 au '+d
-            +' <span style="font-weight:400;color:var(--muted)">\u00b7 confiance '+pj.confidence+'</span></div>';
-          pj.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
-          h+='<div class="load-sub" style="color:var(--muted);margin-top:4px">Si tu suis ce plan. La fourchette est volontairement ASYM\u00c9TRIQUE : au pire, ta forme d\u2019aujourd\u2019hui \u2014 un plan suivi ne rend pas plus lent, il peut seulement rapporter moins que pr\u00e9vu.</div>';
-          // R14.1 \u00a75 \u2014 le levier poids ne s'affiche QUE si l'athl\u00e8te l'a demand\u00e9 et a saisi sa
-          // cible. Une sensibilit\u00e9, jamais un objectif ; aucun rythme, aucune consigne alimentaire.
-          if(pj.weightLever){
-            const wl=pj.weightLever;
-            h+='<div class="load-sub" style="margin:10px 0 0;padding-top:8px;border-top:1px dashed #0002"><b>Sensibilit\u00e9 au poids (tu as demand\u00e9 ce levier)</b><br>'
-              +'<span style="color:#555">'+wl.why+'</span></div>';
-          }
-        }
-        pr.advice.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0;color:#8a6d00">\u26a0 '+x+'</div>';});
-        // Le MOTIF d'un refus de projeter vaut autant que la projection : \u00ab trop t\u00f4t pour
-        // projeter \u00bb est une information, le silence n'en est pas une.
-        if(pj&&!pj.applicable){
-          const why=(pj.decisions||[]).filter(x=>/^P7-refus$|^P8$|^P6-sans-chrono$/.test(x.id))[0];
-          if(why) h+='<div class="load-sub" style="margin:10px 0 0;color:var(--muted)"><b>Pas de chrono projet\u00e9</b> \u2014 '+why.why+'</div>';
-        }
-        if(tNow)h+='</details>';
-        h+='<div class="load-sub" style="color:var(--muted)">Fourchette, pas promesse \u2014 elle se resserre quand le plan est bien suivi (streak + charge accomplie).</div></div>';
-      }
-    }catch(e){console.warn(e);}
-  }
-  return h;
-}
+// `predictionCardHTML` a été RETIRÉE d'ici (R28, correction du 12/08/2026). Elle vivait dans
+// la vue d'ensemble de Plan et n'a plus aucun appelant depuis que la prédiction a son propre
+// sous-onglet (`predictionViewHTML`, ci-dessous) — une fonction morte qui gardait encore son
+// propre appel à `logProjection` était une invitation à croire que le journal s'écrivait ici.
+// `tempsTotalItem`, qu'elle partageait avec `predictionViewHTML`, reste en place.
 function historyCardHTML(plan){
   let h="";
   if(globalThis.EBV2&&globalThis.EBV2.progress){
@@ -554,7 +502,7 @@ function decisionsCardHTML(plan){
 // Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
 // pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
 
-export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, bindLoadChart, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, predictionViewHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
+export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, bindLoadChart, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionViewHTML, journaliserProjection, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
 
 // ═══════════════ LE SOUS-ONGLET « PRÉDICTION » (R28) ═══════════════
 // Décision du fondateur (12/08/2026) : la prédiction quitte le repliable de la vue d'ensemble
@@ -606,22 +554,51 @@ function _parDiscipline(items) {
 }
 
 /**
- * LA VUE PRÉDICTION — 4 blocs. Elle est le SEUL point qui journalise (A-5) : `logProjection`
- * enregistre la prédiction TELLE QU'AFFICHÉE, une fois par semaine ISO. La prédiction ne vivant
- * plus qu'ici, l'appel déménage avec elle — deux points d'appel écriraient deux fois.
+ * CALCULE ET JOURNALISE LA PROJECTION (A-5) — LE POINT UNIQUE. Appelée à CHAQUE rendu de
+ * l'onglet Plan, quel que soit le sous-onglet actif : c'est la garantie qu'A-5 réclame — une
+ * entrée par semaine ISO, jamais un trou parce que personne n'a ouvert « 🎯 Prédiction ».
+ *
+ * CORRIGE UNE RÉGRESSION DE R28 : tant que la prédiction vivait dans la vue d'ensemble, elle se
+ * recalculait (et se journalisait) à chaque rendu de Plan. Le jour où elle a déménagé dans son
+ * propre sous-onglet, `predictionViewHTML` a emporté le calcul ET le journal avec elle — sans
+ * que personne ne décide de restreindre A-5 à « seulement si l'athlète clique sur Prédiction ».
+ * Mesuré : `smoke-projlog.mjs` passait de 4/11 à 11/11 une fois cet appel remonté ici. `logProjection`
+ * est idempotente par semaine ISO (« une par semaine, la première suffit ») : l'appeler à chaque
+ * rendu ne coûte qu'un test de présence, jamais une seconde écriture.
  */
-function predictionViewHTML(plan) {
-  if (!globalThis.EBV2 || !globalThis.EBV2.predict) return "";
+function journaliserProjection(plan) {
+  if (!globalThis.EBV2 || !globalThis.EBV2.predict) return null;
   let pr;
-  try { pr = globalThis.EBV2.predict(S.sport, S.answers, plan); } catch (e) { return ""; }
-  if (!pr || (!pr.items.length && !pr.advice.length)) return "";
+  try { pr = globalThis.EBV2.predict(S.sport, S.answers, plan); } catch (e) { return null; }
+  if (!pr || (!pr.items.length && !pr.advice.length)) return null;
   logProjection(S.sport, S.answers, pr);
+  return pr;
+}
 
-  const pj = pr.projected && pr.projected.applicable ? pr.projected : null;
+/**
+ * LA VUE PRÉDICTION — 4 blocs. `pr` est normalement PRÉ-CALCULÉ par `journaliserProjection`
+ * (appelée une fois par `renderTabPlanGeneral`, quel que soit le sous-onglet) ; le paramètre
+ * reste optionnel pour qu'un appelant isolé (test, autre écran) reste possible sans dupliquer
+ * l'appel à `predict()`.
+ */
+function predictionViewHTML(plan, prPrecalcule) {
+  const pr = prPrecalcule !== undefined ? prPrecalcule : journaliserProjection(plan);
+  if (!pr) return "";
+
+  // `pjRaw` garde le retour BRUT de `projected`, applicable ou non : c'est lui qui porte le
+  // MOTIF d'un refus de projeter (`pjRaw.decisions`, ids P7-refus/P8/P6-sans-chrono). `pj` ne
+  // sert qu'aux blocs qui exigent une projection APPLICABLE — les nuller ensemble aurait perdu
+  // le motif exactement quand on en a besoin (le cas « pas de projection »).
+  const pjRaw = pr.projected;
+  const pj = pjRaw && pjRaw.applicable ? pjRaw : null;
   const tNow = tempsTotalItem(pr.items), tProj = pj ? tempsTotalItem(pj.items) : null;
   const rNow = tNow ? _rangeMin(tNow.value) : null, rProj = tProj ? _rangeMin(tProj.value) : null;
   const cible = rProj || rNow;
-  const dRef = pj && pj.raceDate ? fmtDay(pj.raceDate) : "la fin du plan";
+  // `fmtDay` seul ne rend que JJ/MM — l'ANCIENNE carte ajoutait l'année, et ce n'était pas un
+  // détail : sur une préparation longue (le 70.3 à 40 semaines de cette vue), l'horizon peut
+  // franchir le 1er janvier, et « 17/05 » devient ambigu sur quelle année. Retrouvé en écrivant
+  // la garde de ce lot — ma première version de cette vue avait perdu l'année au passage.
+  const dRef = pj && pj.raceDate ? fmtDay(pj.raceDate) + "/" + pj.raceDate.slice(0, 4) : "la fin du plan";
   let h = '<div class="zn-pred">';
 
   // ── Bloc 1 — hero du temps total ──
@@ -647,7 +624,14 @@ function predictionViewHTML(plan) {
       + ' <span class="zn-pred-fine">(milieu de fourchette à milieu de fourchette)</span></div>';
     else h += '<div class="zn-pred-delta neutre">La projection ne promet pas de gain à cet horizon — confiance ' + esc(pj.confidence) + "</div>";
   } else if (rNow && !rProj) {
-    h += '<div class="load-sub zn-pred-nomotif">Pas de projection à cet horizon : ' + esc((pr.projected && pr.projected.motif) || "trop tôt pour estimer un gain") + "</div>";
+    // LE MOTIF D'UN REFUS DE PROJETER VAUT AUTANT QUE LA PROJECTION (P7/P8) : le silence n'est
+    // pas une information. `pr.projected.motif` N'EXISTE PAS — vérifié sur le moteur réel : le
+    // refus se lit dans `pjRaw.decisions`, un tableau de `{id, what, val, why}`, exactement ce
+    // que lisait l'ancienne carte (`predictionCardHTML`, retirée par ce lot). Ma première
+    // écriture de cette vue inventait un champ `.motif` qui rendait toujours le même texte
+    // générique — jamais la vraie raison du moteur.
+    const refus = pjRaw ? (pjRaw.decisions || []).find((x) => /^P7-refus$|^P8$|^P6-sans-chrono$/.test(x.id)) : null;
+    h += '<div class="load-sub zn-pred-nomotif">Pas de projection à cet horizon' + (refus ? " : " + esc(refus.why) : "") + "</div>";
   }
 
   // ── Bloc 3 — détail par discipline ──

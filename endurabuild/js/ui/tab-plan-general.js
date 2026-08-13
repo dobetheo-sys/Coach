@@ -14,11 +14,12 @@
 // déclaration de maladie, journal des adaptations, « modifier ma forme du jour ») a suivi
 // l'autre chemin : 🎯 Aujourd'hui, qui est l'onglet du quotidien.
 //
-// La prédiction de course N'EST PAS ici (brief onglets) — elle vit dans 🎯 Aujourd'hui.
+// La prédiction de course vit dans son propre sous-onglet (« 🎯 Prédiction », R28,
+// 12/08/2026) — plus dans 🎯 Aujourd'hui, ni dans un repliable de la vue d'ensemble.
 import { SPORTS } from "../config.js";
 import { $, S, ebSave, esc, fmtDay, todayISO } from "../state.js";
 import { curSteps, renderStep, reset, evalRules, rulesGrouped} from "./steps.js";
-import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, predictionCardHTML, predictionViewHTML, intensityCardHTML } from "./plan-view.js";
+import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, predictionViewHTML, journaliserProjection, intensityCardHTML } from "./plan-view.js";
 import { exportICS, exportJSON, exportPNG } from "../export.js";
 
 // R23.5 — L'AVANCEMENT ET LE DECOMPTE, EN TETE DE L'ONGLET PLAN.
@@ -393,13 +394,22 @@ export function renderTabPlanGeneral(plan) {
   // repris À L'IDENTIQUE de celui d'Outils (`.subtabs`/`.subtab`) — même classes, même
   // comportement : on n'invente pas une seconde forme de bascule pour la même idée.
   const sub = S._planSub === "pred" ? "pred" : "overview";
+  // CORRECTION D'UNE RÉGRESSION (12/08/2026) — le journal A-5 s'appelait UNIQUEMENT depuis
+  // `predictionViewHTML`, donc UNIQUEMENT quand l'athlète clique sur le sous-onglet Prédiction.
+  // Avant R28, la prédiction se recalculait (et se journalisait) à chaque rendu de Plan ;
+  // A-5 existe précisément pour qu'aucune semaine ne manque à l'appel, et un athlète qui ne
+  // visite jamais ce sous-onglet une semaine donnée en aurait laissé le journal troué. On
+  // journalise donc ICI, une fois par rendu de l'onglet, QUEL QUE SOIT le sous-onglet affiché
+  // — et on passe le résultat à `predictionViewHTML` pour ne pas appeler `predict()` deux fois
+  // quand `sub === "pred"`.
+  const prJournal = journaliserProjection(plan);
   html += '<div class="subtabs" role="tablist">'
     + '<button type="button" class="subtab' + (sub === "overview" ? " active" : "") + '" data-plansub="overview"'
     + ' role="tab" aria-selected="' + (sub === "overview") + '">📊 Vue d’ensemble</button>'
     + '<button type="button" class="subtab' + (sub === "pred" ? " active" : "") + '" data-plansub="pred"'
     + ' role="tab" aria-selected="' + (sub === "pred") + '">🎯 Prédiction</button></div>';
   if (sub === "pred") {
-    html += '<div class="zn-fadeview" id="planPred">' + predictionViewHTML(plan) + "</div>";
+    html += '<div class="zn-fadeview" id="planPred">' + predictionViewHTML(plan, prJournal) + "</div>";
     $("screen").innerHTML = html;
     bindPlanSubtabs(plan);
     znPredSequence();
