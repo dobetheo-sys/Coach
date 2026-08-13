@@ -368,7 +368,7 @@ const _hSem = (s) => { const m = String(s).match(/([\d,]+) h\/sem/); return m ? 
  * golden, et un examen vide est déclaré CASSÉ et non rouge.
  */
 const CAPS_R202 = (L) => [["ton volume demandé", L.declared], ["ton historique", L.caps], ["le volume utile du format", L.util]];
-T("T-19", "rouge", "le message de volume nomme l'argmin des plafonds ET cite la valeur modulée", () => {
+T("T-19", "vert", "le message de volume nomme l'argmin des plafonds ET cite la valeur modulée", () => {
   let nomme = 0, desaccord = 0, cite = 0, brut = 0, vus = 0; const ex = [];
   for (const { key, sport, a } of goldenProfiles()) {
     let plan, r;

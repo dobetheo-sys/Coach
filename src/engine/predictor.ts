@@ -348,6 +348,26 @@ export const TRI_TRANSITION: Record<string, { t1: number; t2: number }> = {
   Full: { t1: 480, t2: 360 },
 };
 
+/**
+ * V-07 (13/08/2026) — FACTEURS `a_priori`, ET IL FAUT QUE ÇA SE LISE ICI.
+ *
+ * `fatigue` dit « courir après avoir roulé coûte plus cher ». Les quatre valeurs sont
+ * **heuristiques, non sourcées** : aucun commentaire d'origine, aucune entrée `PROVENANCE`,
+ * jamais modifiées depuis leur écriture, et **aucun jeu de chronos réels n'a jamais existé
+ * dans ce dépôt** — un ajustement empirique était matériellement impossible. `1,13` reprend
+ * l'énoncé littéraire courant « le marathon d'un Ironman coûte ~13 % de plus qu'un marathon
+ * sec » ; rien ne distingue formellement 1,11 de 1,15.
+ *
+ * C'est important parce que le commentaire de `riegelExponent` ci-dessous a longtemps affirmé
+ * qu'elles avaient été « calibrées CONTRE cet exposant » — justification rétrospective : la
+ * table existait, avec ces valeurs exactes, avant que la fonction ne soit écrite. Il n'y avait
+ * donc **aucun double compte** à craindre en découplant l'exposant, ce qui était le seul motif
+ * invoqué pour le figer à 1,06 hors course sèche.
+ *
+ * Ses deux voisines immédiates portent leur provenance (`TRI_BIKE_KM` : distances officielles ;
+ * `TRI_TRANSITION` : médianes d'âge-groupe lues sur les classements publics). Celle-ci était la
+ * seule des trois à être nue, ce qui la faisait ressembler à une constante validée.
+ */
 export const TRI_RUN: Record<string, { km: number; fatigue: number }> = {
   S: { km: 5, fatigue: 1.03 },
   M: { km: 10, fatigue: 1.05 },

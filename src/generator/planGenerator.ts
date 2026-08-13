@@ -2979,16 +2979,30 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         if (apres < v - 0.05) maillons.push({ retire: (v - apres) * queue, quoi, pourquoi });
         v = Math.min(v, apres);
       };
+      /**
+       * V-11 — LE RETRAIT ÉTAIT DANS LA BONNE UNITÉ, LA PHRASE NON.
+       *
+       * R20.7 a corrigé le RETRAIT (`(v - apres) * queue`) et laissé les deux littéraux du
+       * TEXTE citer la valeur de table brute. Mesuré sur le golden : **161 des 247 messages
+       * qui nomment un plafond (65,2 %)** annonçaient un chiffre que l'athlète ne peut
+       * rapprocher de rien — pire cas, « l'historique permet d'encaisser 4 h/sem » pour un
+       * plafond réellement appliqué à 1,44 h et un plan qui en livre 0,7.
+       *
+       * `queue` porte ici le produit COMPLET (aucun `facteur()` ne l'a encore consommé, les
+       * deux `etape()` de plafond passant avant) : `L.caps * queue` est donc bien ce que ce
+       * plafond vaut dans l'unité du pic affiché. Quatrième occurrence de cette faute d'unité
+       * dans ce chantier, après O-13, le plancher de temps facile de R20.5, et R20.7 elle-même.
+       */
       /** Un maillon MULTIPLICATIF : il consomme sa part de `queue` en s'appliquant. */
       const facteur = (f: number, quoi: string, pourquoi: string) => {
         if (f > 0 && f < 1) queue /= f;
         etape(v * f, quoi, pourquoi);
       };
       etape(L.caps, "ton historique",
-        "Sur ce format, l'historique « " + String(r.profile.history ?? "") + " » permet d'encaisser " + h(L.caps)
+        "Sur ce format, l'historique « " + String(r.profile.history ?? "") + " » permet d'encaisser " + h(L.caps * queue)
         + "/sem : au-delà, la charge s'accumule plus vite qu'elle ne s'assimile. Ce plafond monte tout seul, en tenant les semaines — pas en les forçant.");
       etape(L.util, "le volume utile du format",
-        "Chaque format a un volume au-delà duquel les heures ne servent plus l'objectif : ici " + h(L.util)
+        "Chaque format a un volume au-delà duquel les heures ne servent plus l'objectif : ici " + h(L.util * queue)
         + "/sem. Les heures supplémentaires coûteraient de la fraîcheur sans rien ajouter au jour J — si tu veux vraiment t'entraîner plus, c'est le format qu'il faut changer, pas le curseur.");
       facteur(L.marg, "la marge de sécurité hors compétition",
         "Tu ne prépares pas une compétition : 10 % de marge sont retirés de tous les plafonds. La santé passe avant le chiffre.");

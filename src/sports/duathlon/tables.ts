@@ -29,8 +29,15 @@ export const DUA_BIKE: Record<string, { km: number; lo: number; hi: number }> = 
 
 /**
  * Segment R2 : distance, bornes de brick, et facteur de fatigue post-vélo.
- * Le facteur reprend l'échelle validée du tri (`TRI_RUN.fatigue`) : plus le vélo est long,
- * plus le R2 est dégradé. Un R2 de duathlon est proportionnellement plus court et plus intense
+ * Le facteur reprend l'échelle du tri (`TRI_RUN.fatigue`) : plus le vélo est long,
+ * plus le R2 est dégradé. V-07 (13/08/2026) — CETTE ÉCHELLE N'EST PAS VALIDÉE, et ce
+ * commentaire a longtemps dit le contraire : `TRI_RUN` est `a_priori` (aucun commentaire
+ * d'origine, aucune entrée PROVENANCE, valeurs jamais modifiées depuis leur écriture, et
+ * aucun jeu de chronos réels n'a jamais existé dans le dépôt — l'ajustement était
+ * matériellement impossible). Ces facteurs-ci sont donc `a_priori` eux aussi, dérivés
+ * d'un `a_priori`. Une revendication de validation qui se propage de table en table est
+ * pire qu'une absence de source : elle décourage la vérification.
+ * Un R2 de duathlon est proportionnellement plus court et plus intense
  * que la CAP d'un triathlon de durée comparable — d'où des facteurs légèrement plus cléments
  * sur les formats courts (on lutte 2,5 km, on ne gère pas 21 km).
  */

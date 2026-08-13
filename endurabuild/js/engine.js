@@ -5964,8 +5964,15 @@ const DUA_BIKE                                                         = {
 
 /**
  * Segment R2 : distance, bornes de brick, et facteur de fatigue post-vélo.
- * Le facteur reprend l'échelle validée du tri (`TRI_RUN.fatigue`) : plus le vélo est long,
- * plus le R2 est dégradé. Un R2 de duathlon est proportionnellement plus court et plus intense
+ * Le facteur reprend l'échelle du tri (`TRI_RUN.fatigue`) : plus le vélo est long,
+ * plus le R2 est dégradé. V-07 (13/08/2026) — CETTE ÉCHELLE N'EST PAS VALIDÉE, et ce
+ * commentaire a longtemps dit le contraire : `TRI_RUN` est `a_priori` (aucun commentaire
+ * d'origine, aucune entrée PROVENANCE, valeurs jamais modifiées depuis leur écriture, et
+ * aucun jeu de chronos réels n'a jamais existé dans le dépôt — l'ajustement était
+ * matériellement impossible). Ces facteurs-ci sont donc `a_priori` eux aussi, dérivés
+ * d'un `a_priori`. Une revendication de validation qui se propage de table en table est
+ * pire qu'une absence de source : elle décourage la vérification.
+ * Un R2 de duathlon est proportionnellement plus court et plus intense
  * que la CAP d'un triathlon de durée comparable — d'où des facteurs légèrement plus cléments
  * sur les formats courts (on lutte 2,5 km, on ne gère pas 21 km).
  */
@@ -11066,16 +11073,30 @@ function generatePlan(profile                , opts                             
         if (apres < v - 0.05) maillons.push({ retire: (v - apres) * queue, quoi, pourquoi });
         v = Math.min(v, apres);
       };
+      /**
+       * V-11 — LE RETRAIT ÉTAIT DANS LA BONNE UNITÉ, LA PHRASE NON.
+       *
+       * R20.7 a corrigé le RETRAIT (`(v - apres) * queue`) et laissé les deux littéraux du
+       * TEXTE citer la valeur de table brute. Mesuré sur le golden : **161 des 247 messages
+       * qui nomment un plafond (65,2 %)** annonçaient un chiffre que l'athlète ne peut
+       * rapprocher de rien — pire cas, « l'historique permet d'encaisser 4 h/sem » pour un
+       * plafond réellement appliqué à 1,44 h et un plan qui en livre 0,7.
+       *
+       * `queue` porte ici le produit COMPLET (aucun `facteur()` ne l'a encore consommé, les
+       * deux `etape()` de plafond passant avant) : `L.caps * queue` est donc bien ce que ce
+       * plafond vaut dans l'unité du pic affiché. Quatrième occurrence de cette faute d'unité
+       * dans ce chantier, après O-13, le plancher de temps facile de R20.5, et R20.7 elle-même.
+       */
       /** Un maillon MULTIPLICATIF : il consomme sa part de `queue` en s'appliquant. */
       const facteur = (f        , quoi        , pourquoi        ) => {
         if (f > 0 && f < 1) queue /= f;
         etape(v * f, quoi, pourquoi);
       };
       etape(L.caps, "ton historique",
-        "Sur ce format, l'historique « " + String(r.profile.history ?? "") + " » permet d'encaisser " + h(L.caps)
+        "Sur ce format, l'historique « " + String(r.profile.history ?? "") + " » permet d'encaisser " + h(L.caps * queue)
         + "/sem : au-delà, la charge s'accumule plus vite qu'elle ne s'assimile. Ce plafond monte tout seul, en tenant les semaines — pas en les forçant.");
       etape(L.util, "le volume utile du format",
-        "Chaque format a un volume au-delà duquel les heures ne servent plus l'objectif : ici " + h(L.util)
+        "Chaque format a un volume au-delà duquel les heures ne servent plus l'objectif : ici " + h(L.util * queue)
         + "/sem. Les heures supplémentaires coûteraient de la fraîcheur sans rien ajouter au jour J — si tu veux vraiment t'entraîner plus, c'est le format qu'il faut changer, pas le curseur.");
       facteur(L.marg, "la marge de sécurité hors compétition",
         "Tu ne prépares pas une compétition : 10 % de marge sont retirés de tous les plafonds. La santé passe avant le chiffre.");
@@ -12920,6 +12941,26 @@ const TRI_TRANSITION                                             = {
   Full: { t1: 480, t2: 360 },
 };
 
+/**
+ * V-07 (13/08/2026) — FACTEURS `a_priori`, ET IL FAUT QUE ÇA SE LISE ICI.
+ *
+ * `fatigue` dit « courir après avoir roulé coûte plus cher ». Les quatre valeurs sont
+ * **heuristiques, non sourcées** : aucun commentaire d'origine, aucune entrée `PROVENANCE`,
+ * jamais modifiées depuis leur écriture, et **aucun jeu de chronos réels n'a jamais existé
+ * dans ce dépôt** — un ajustement empirique était matériellement impossible. `1,13` reprend
+ * l'énoncé littéraire courant « le marathon d'un Ironman coûte ~13 % de plus qu'un marathon
+ * sec » ; rien ne distingue formellement 1,11 de 1,15.
+ *
+ * C'est important parce que le commentaire de `riegelExponent` ci-dessous a longtemps affirmé
+ * qu'elles avaient été « calibrées CONTRE cet exposant » — justification rétrospective : la
+ * table existait, avec ces valeurs exactes, avant que la fonction ne soit écrite. Il n'y avait
+ * donc **aucun double compte** à craindre en découplant l'exposant, ce qui était le seul motif
+ * invoqué pour le figer à 1,06 hors course sèche.
+ *
+ * Ses deux voisines immédiates portent leur provenance (`TRI_BIKE_KM` : distances officielles ;
+ * `TRI_TRANSITION` : médianes d'âge-groupe lues sur les classements publics). Celle-ci était la
+ * seule des trois à être nue, ce qui la faisait ressembler à une constante validée.
+ */
 const TRI_RUN                                                  = {
   S: { km: 5, fatigue: 1.03 },
   M: { km: 10, fatigue: 1.05 },
