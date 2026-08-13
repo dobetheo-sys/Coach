@@ -30,7 +30,7 @@ import { sessionIntensity } from "../src/readiness/dailyAdjuster.ts";
 import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor } from "../src/engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../src/engine/reasoningEngine.ts";
 import { toProfile } from "../src/app/bridge.ts";
-import { riegelExponent, riegelSecWith, RUN_KM } from "../src/engine/predictor.ts";
+import { riegelExponent, riegelSecWith, RUN_KM, marathonPaceBand } from "../src/engine/predictor.ts";
 import { profiles as goldenProfiles } from "./goldenMaster.mjs";
 import { estCharge } from "./lib/planMetrics.mjs";
 
@@ -279,28 +279,45 @@ T("T-15", "rouge", "un domaine physiologique reçoit la même classe dans les tr
 });
 
 // ---- T-16 · le chrono prédit et l'allure prescrite parlent du même effort -
-// La bande DÉPEND DU FORMAT et se lit dans le module de sport, pas dans une table du test :
-// `src/sports/run/index.ts` prescrit `rn.mara` au seul marathon et `rn.thr` aux autres.
+// RESTREINT AU MARATHON, et la raison est écrite plutôt que tue. L'addendum listait trois
+// distances ; mesuré, `src/sports/run/index.ts` ne prescrit `rn.mara` qu'au marathon — 5 km,
+// 10 km et semi reçoivent `rn.thr`, qui est une séance AU SEUIL et non une prescription
+// d'allure de course. Courir son 10 km plus vite que son allure seuil est de la physiologie
+// normale : le critère littéral y comparait deux grandeurs qui n'ont pas à coïncider, et les
+// 4 rouges qu'il produisait étaient structurels. Le semi, lui, tombait dans la bande à tous les
+// volumes. Retirer un critère mal posé plutôt que de le figer rouge, c'est ce que R20.6 a fait
+// des invariants I6/I8/I12.
 //
-// ⚠ CE QUE CE TEST MESURE N'EST PAS ÉQUIVALENT SUR LES TROIS DISTANCES, et le detail le dit :
-// sur 10 km, courir SA COURSE plus vite que l'allure d'une séance au seuil est de la
-// physiologie normale, pas une incohérence. Le cas qui se voit à l'écran est le MARATHON —
-// un plan qui fait s'entraîner à 4'35-4'48 « allure marathon » et prédit la course à 4'26.
-const BANDE_FMT = { "10k": "rn.thr", semi: "rn.thr", marathon: "rn.mara" };
-T("T-16", "rouge", "le ratio chrono prédit / allure seuil tombe dans la bande prescrite pour ce format", () => {
-  const thr = 255; // 4'15/km — l'athlète témoin du retest
+// Ce que le test garde : la bande prescrite est celle que le générateur POSE RÉELLEMENT
+// (`marathonPaceBand`, B-22), jamais la table statique — sans quoi il mesurerait l'état d'avant
+// le correctif et resterait rouge à jamais.
+T("T-16", "vert", "le chrono marathon prédit tombe dans la bande d'allure marathon prescrite", () => {
   const hors = [];
-  for (const [fmt, km] of Object.entries(RUN_KM)) {
-    if (!BANDE_FMT[fmt]) continue;
-    const b = ZDEF[BANDE_FMT[fmt]];
-    for (const h of [3, 6.5, 10, 12]) {
-      const r = riegelSecWith(riegelExponent(h), thr, km) / km / thr;
-      if (r < b.lo - 1e-9 || r > b.hi + 1e-9)
-        hors.push(`${fmt}@${h}h ${r.toFixed(3)} hors [${b.lo}, ${b.hi}] (${BANDE_FMT[fmt]})`);
+  for (const thr of [225, 255, 300, 330, 390]) {   // 3'45 à 6'30/km
+    for (const h of [3, 4, 6.5, 8, 10, 12, 14]) {
+      const b = marathonPaceBand(thr, h);
+      if (!b) { hors.push(`seuil ${thr} : aucune bande`); continue; }
+      const r = riegelSecWith(riegelExponent(h), thr, RUN_KM.marathon) / RUN_KM.marathon / thr;
+      if (r < b.lo - 1e-9 || r > b.hi + 1e-9) hors.push(`${thr}s/km @${h}h : ${r.toFixed(4)} hors [${b.lo.toFixed(4)}, ${b.hi.toFixed(4)}]`);
     }
   }
-  const mara = hors.filter((x) => x.startsWith("marathon")).length;
-  return { ok: !hors.length, detail: `${hors.length} combinaison(s) hors bande, dont ${mara} sur MARATHON (le cas visible à l'écran) — ` + hors.join(" · ") };
+  return { ok: !hors.length, detail: `${hors.length} combinaison(s) hors bande — ` + hors.slice(0, 6).join(" · ") };
+});
+
+// ---- T-16b · et la bande N'EST PLUS une constante ------------------------
+// Sans ce second volet, T-16 serait satisfait par une bande RECENTRÉE une fois pour toutes :
+// il compare la prédiction à elle-même. Ce qui doit être gardé, c'est que la bande SUIVE les
+// deux variables dont elle dépend — le volume de course et l'allure seuil de l'athlète.
+T("T-16b", "vert", "la bande d'allure marathon suit le volume ET l'allure seuil", () => {
+  const b3 = marathonPaceBand(255, 3), b12 = marathonPaceBand(255, 12);
+  const lent = marathonPaceBand(390, 8), rapide = marathonPaceBand(225, 8);
+  const ecarts = [];
+  if (!(b3.lo > b12.lo + 1e-6)) ecarts.push("le volume ne déplace pas la bande");
+  if (!(lent.lo > rapide.lo + 1e-6)) ecarts.push("l'allure seuil ne déplace pas la bande");
+  // La LARGEUR relative, elle, ne bouge pas : on a déplacé le centre, pas redéfini la zone.
+  const larg = (b) => (b.hi - b.lo) / ((b.hi + b.lo) / 2);
+  if (Math.abs(larg(b3) - larg(b12)) > 1e-6) ecarts.push("la largeur relative de la zone a changé");
+  return { ok: !ecarts.length, detail: ecarts.join(" · ") };
 });
 
 // ---- T-17 · toute décomposition affichée porte une fourchette -------------

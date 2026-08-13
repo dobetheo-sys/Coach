@@ -23,6 +23,8 @@ export interface Refs {
    * point unique ; absente, `bk.rp` retombe sur la valeur historique de `ZDEF`.
    */
   bikeRp?: { lo: number; hi: number };
+  /** B-22 — bande d'allure marathon dérivée du prédicteur (jamais une seconde table). */
+  runMara?: { lo: number; hi: number };
 }
 export type HrZones = Record<string, string> & { fcMax?: number };
 
@@ -84,6 +86,8 @@ const fk = (s: number) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).
 function zoneOf(key: string | null | undefined, refs: Refs): ZoneDef | undefined {
   const d = key ? ZDEF[key] : undefined;
   if (d && key === "bk.rp" && refs.bikeRp) return { ...d, lo: refs.bikeRp.lo, hi: refs.bikeRp.hi };
+  // B-22 — même mécanique, même raison : la bande vient du prédicteur, pas de la table.
+  if (d && key === "rn.mara" && refs.runMara) return { ...d, lo: refs.runMara.lo, hi: refs.runMara.hi };
   return d;
 }
 

@@ -23,7 +23,7 @@ import { sessionLoad, intensitySplit, zoneClass, type AthleteRefs } from "../eng
 import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS, syncReturnRecovery } from "../engine/trailModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
 import { buildSessions } from "./sessionLibrary.ts";
-import { predictRace, courseProfileOf, legProfileOf, raceBikeBand, bikeIFShift } from "../engine/predictor.ts";
+import { predictRace, courseProfileOf, legProfileOf, raceBikeBand, bikeIFShift, marathonPaceBand } from "../engine/predictor.ts";
 import { swimrunObjective } from "../sports/swimrun/objective.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { arbitrateVolRecent } from "../engine/measured.ts";
@@ -1655,7 +1655,15 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   // préparation d'une épreuve de montagne, c'est apprendre le mauvais chiffre — le défaut que
   // R15.2 a corrigé côté prédiction, à un mois d'intervalle, sur l'autre versant du même
   // chemin.
-  const refs: Refs = { ...r.baseRefs, bikeRp: shiftedBikeRp(String(a.sport), fmt, a) };
+  // B-22 — la bande d'allure marathon DÉRIVE du prédicteur (`marathonPaceBand`), au même
+  // endroit et pour la même raison que `bikeRp` ci-dessus. Bornée au MARATHON de la course
+  // sèche : le format `trail` hérité lit `rn.mara` lui aussi, mais une extrapolation de Riegel
+  // sur l'allure au sol n'y veut rien dire (R7 §7) — il garde donc la bande de table, et le
+  // dire vaut mieux que de l'étendre par inadvertance.
+  const _runMara = a.sport === "run" && fmt === "marathon"
+    ? marathonPaceBand(r.baseRefs.thrPace, parseFloat(String(a.vol_max ?? "")) || undefined)
+    : null;
+  const refs: Refs = { ...r.baseRefs, bikeRp: shiftedBikeRp(String(a.sport), fmt, a), runMara: _runMara ?? undefined };
   const days = buildDays(r, refs, r.hz);
 
   // ---- C31 — LA SORTIE LONGUE TROP LONGUE SE COUPE EN DEUX JOURS D'AFFILÉE (marathon) ----

@@ -112,15 +112,26 @@ quand elle s'allonge », et **cela dépend du volume de course**, pas du fait qu
 
 Conséquence mesurée, à références identiques :
 
-| exposant | marathon prédit | correspond à |
+| exposant | marathon prédit (point) | correspond à |
 |---|---|---|
-| 1,06 *(appliqué à tout triathlète)* | **185 min** | un coureur à **10 h/semaine** |
-| 1,09 | 193 min | 6,5 h/semaine |
-| 1,12 | **198 min** | **4 h/semaine** |
+| 1,06 *(appliqué à tout triathlète)* | **191,5 min** | un coureur à **10 h/semaine** |
+| 1,09 | 198 min | 6,5 h/semaine |
+| 1,12 | **205 min** | **≤ 4 h/semaine** |
 
-Un triathlète à 10 h **au total** court typiquement 3 à 4 h/semaine. Le moteur lui applique
-pourtant l'exposant d'un coureur qui en fait 10. **Écart : ~13 min sur le marathon**, et ~15 min
-sur le total d'un Ironman après application du facteur ×1,13 — dans le sens optimiste.
+> **⚠ Rectification (V-10, 13/08/2026).** Cette table annonçait d'abord « 185 min » à
+> l'exposant 1,06. **185 min est la BORNE BASSE de la fourchette** (−3,5 %), pas l'estimation
+> ponctuelle, qui vaut **191,5 min**. Le ratio à l'allure seuil est donc **1,068** et non 1,032 —
+> l'écart avec la bande `rn.mara` prescrite (1,08–1,13) est **quatre fois plus petit** que ce que
+> le chiffre laissait croire. L'observation de fond tient (1,068 reste sous la bande) ; sa
+> magnitude non. Un chiffre repris d'une fourchette comme s'il était un point est la même faute
+> d'unité que celles que ce dépôt documente depuis O-13.
+
+Un triathlète à 10 h **au total** court typiquement 3 à 4 h/semaine. **Mesuré sur les 294 profils
+tri/duathlon du golden (V-09) : la médiane est à 2,03 h de course/semaine, l'étendue va de 0,58 à
+4,72 h, et ZÉRO profil n'approche les 10 h que l'exposant suppose.** Tous, sans exception, tombent
+au plancher de la table d'ancrages. Le moteur applique pourtant à tous l'exposant d'un coureur à
+10 h. **Écart : ~13,5 min sur le marathon brut**, et ~15 min sur le total d'un Ironman après
+application du facteur ×1,13 — dans le sens optimiste.
 
 C'est la forme exacte du défaut que **P5 a corrigé pour la course sèche** en R14 (« Riegel figé à
 1,06 donnait le même marathon à 4 h et à 14 h de course par semaine »), conservé volontairement

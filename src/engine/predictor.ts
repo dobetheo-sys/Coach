@@ -424,6 +424,43 @@ export function riegelSecWith(exp: number, thrPaceSecPerKm: number, distKm: numb
   return 3600 * Math.pow(distKm / d1h, exp);
 }
 
+/**
+ * B-22 — « L'ALLURE MARATHON » N'EST PLUS ÉCRITE DEUX FOIS.
+ *
+ * `ZDEF["rn.mara"]` valait 1,08–1,13 × l'allure seuil POUR TOUT LE MONDE, pendant que le
+ * prédicteur extrapolait le marathon avec un exposant de Riegel qui, lui, dépend du volume
+ * (P5, R14). Deux grandeurs dont l'une ignore une variable dont l'autre dépend ne peuvent
+ * coïncider qu'en un point — mesuré (V-10) vers 6,5-8 h de course/semaine. En dessous, le plan
+ * prédisait une course PLUS LENTE que l'allure à laquelle il faisait s'entraîner ; au-dessus,
+ * l'inverse : à 12 h/sem, entraînement à 4'35-4'48 et course annoncée à 4'26, les deux chiffres
+ * affichés au même athlète.
+ *
+ * C'est la forme exacte d'O-11 — deux définitions de « l'allure course » à vélo —, fermée par
+ * R20.5 avec `raceBikeBand()`. Même geste ici, et même mécanique de substitution
+ * (`refs.runMara` lu par `zoneOf`) : reculer `rn.mara` d'un cran n'aurait fait que déplacer le
+ * point d'accord sans supprimer la divergence.
+ *
+ * LA FORME CLOSE. Avec t = 3600 × (D/d₁ₕ)^e et d₁ₕ = 3600/seuil, le rapport de l'allure de
+ * course à l'allure seuil vaut exactement **(D/d₁ₕ)^(e−1)**. Il ne dépend donc pas que du
+ * volume : il dépend AUSSI de l'allure seuil de l'athlète — un coureur plus lent couvre moins
+ * de distance en une heure, son marathon est proportionnellement plus long, et il se dégrade
+ * davantage. C'est physiologiquement juste, et c'est ce que la bande constante niait.
+ *
+ * LA LARGEUR DE LA ZONE NE CHANGE PAS. On ne déplace que ce sur quoi elle est CENTRÉE.
+ * L'ancienne bande 1,08-1,13 a pour centre 1,105 et pour demi-largeur relative ±2,26 % ; cette
+ * demi-largeur est conservée telle quelle. Décider de la largeur d'une zone d'entraînement est
+ * une autre question, qui n'a pas à être tranchée par un correctif de cohérence.
+ */
+export const RN_MARA_DEMI_LARGEUR = 0.0226;
+export function marathonPaceBand(thrPaceSecPerKm: number, runHoursPerWeek?: number): { lo: number; hi: number } | null {
+  if (!(thrPaceSecPerKm > 0)) return null;
+  const km = RUN_KM.marathon;
+  // Une SEULE écriture de Riegel dans tout le moteur (R11.1) : on appelle celle du prédicteur,
+  // on ne réécrit pas la forme close ci-dessus — elle est là pour expliquer, pas pour calculer.
+  const ratio = riegelSecWith(riegelExponent(runHoursPerWeek), thrPaceSecPerKm, km) / km / thrPaceSecPerKm;
+  return { lo: ratio * (1 - RN_MARA_DEMI_LARGEUR), hi: ratio * (1 + RN_MARA_DEMI_LARGEUR) };
+}
+
 /** Minutes → « 9h20 » : une durée de trail se lit en heures, pas en minutes. */
 function fmtHM(min: number): string {
   const h = Math.floor(min / 60), m = Math.round(min % 60);
