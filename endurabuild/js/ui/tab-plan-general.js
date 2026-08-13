@@ -379,6 +379,11 @@ async function znPredSequence() {
   }, i * 150));
 }
 
+// R29 — exportés pour que la chorégraphie du Bilan (onglet Semaine) réutilise EXACTEMENT le
+// même battement et le même compteur que Prédiction, plutôt que d'en écrire une seconde copie
+// (R11.1) : même `_BEAT`, même easing de count-up, même repli `prefers-reduced-motion`.
+export { _BEAT, _wait, _compte, _reduit, _fmtM };
+
 /** La bascule est un état LOCAL : on re-rend l'onglet, la séquence de la vue visée rejoue. */
 function bindPlanSubtabs(plan) {
   document.querySelectorAll("[data-plansub]").forEach((b) => {

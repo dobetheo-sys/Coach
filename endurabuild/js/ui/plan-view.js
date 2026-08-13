@@ -33,13 +33,49 @@ const _IFZ={"bk.z2":.65,"bk.ss":.90,"bk.vo2":1.12,"bk.frc":.82,"bk.rp":.84,"bk.t
   "tr.easyup":.60,"tr.flat":.68,"tr.hike":.68,"tr.climb":.84,"tr.asc":.98,"tr.flatthr":.98,"tr.vam":1.10};
 function _blkMin(st){const r=st.reps||1;if(st.durationMin!=null)return r*st.durationMin;if(st.distanceM!=null)return st.d==="sw"?r*st.distanceM/100*2:r*st.distanceM/1000*5;return 0;}
 function estimateTSS(s){if(!s||!s.steps||!s.steps.length)return 0;let t=0;s.steps.forEach(st=>{const mn=_blkMin(st);const IF=st.role==="body"?(_IFZ[st.zone]||0.70):0.5;t+=(mn/60)*IF*IF*100;});return Math.round(t);}
-function loadSeries(plan){
-  const days=[];plan.weeks.forEach(w=>w.days.forEach(d=>{let tss=0;d.sessions.forEach(s=>{if(s.d!=="rs")tss+=estimateTSS(s);});days.push({week:w.num,jour:d.jour,tss:tss,recup:w.isRecup});}));
+// R29 (Bilan, sous-onglet Semaine) — le graphique JOUR PAR JOUR d'une semaine a besoin des
+// MÊMES points que celui-ci calcule déjà avant de les réduire à un par semaine (`byWeek`) :
+// `out` en contient un par JOUR RÉEL. On extrait donc le calcul commun dans `_loadSeriesDaily`
+// plutôt que de le réécrire — une seconde marche CTL/ATL divergerait de celle-ci au premier
+// paramètre touché (R11.1). `loadSeries` garde exactement son ancien comportement (un point par
+// semaine) pour ses appelants existants ; `weekLoadSeries` lit la même série au grain du jour.
+function _loadSeriesDaily(plan){
+  const days=[];plan.weeks.forEach(w=>w.days.forEach(d=>{let tss=0;d.sessions.forEach(s=>{if(s.d!=="rs")tss+=estimateTSS(s);});days.push({week:w.num,jour:d.jour,date:d.date,tss:tss,recup:w.isRecup});}));
   const seed=days.slice(0,7).reduce((a,d)=>a+d.tss,0)/7||0;let ctl=seed,atl=seed;const out=[];
-  days.forEach(d=>{const tsb=ctl-atl;ctl+=(d.tss-ctl)/42;atl+=(d.tss-atl)/7;out.push({week:d.week,ctl:ctl,atl:atl,tsb:tsb});});
+  days.forEach(d=>{const tsb=ctl-atl;ctl+=(d.tss-ctl)/42;atl+=(d.tss-atl)/7;out.push({week:d.week,jour:d.jour,date:d.date,ctl:ctl,atl:atl,tsb:tsb});});
+  return out;
+}
+function loadSeries(plan){
+  const out=_loadSeriesDaily(plan);
   // échantillon hebdo = dernière valeur de chaque semaine
   const byWeek={};out.forEach(o=>byWeek[o.week]=o);
   return Object.keys(byWeek).map(k=>byWeek[k]);
+}
+/** La même marche CTL/ATL/TSB, filtrée aux jours RÉELS d'UNE semaine — pour le graphique
+ *  fenêtré du Bilan (R29). La marche reste calculée sur tout l'historique qui précède (l'ATL/CTL
+ *  d'un jour dépend de ce qui vient avant) ; seul l'AFFICHAGE se recadre sur 7 jours. */
+function weekLoadSeries(plan, wNum){
+  return _loadSeriesDaily(plan).filter(o=>o.week===wNum);
+}
+/** Petit graphique NATUREL (pas de défilement : 7 points tiennent toujours) pour une semaine.
+ *  Mêmes classes que `loadChartSVG` (`zn-chart-line`, `zn-today-dot`) — `znDrawChart()` les
+ *  trace de la même façon, aucun second mécanisme d'animation. */
+function weekLoadChartSVG(series){
+  if(!series.length)return"";
+  const W=320,H=70,PL=4,PR=4,PT=8,PB=8,iw=W-PL-PR,ih=H-PT-PB;
+  const maxL=Math.max(1,...series.map(o=>Math.max(o.ctl,o.atl)));
+  const tsbMax=Math.max(10,...series.map(o=>Math.abs(o.tsb)));
+  const x=i=>PL+(series.length<2?iw/2:i/(series.length-1)*iw);
+  const yL=v=>PT+ih-(v/maxL)*ih;
+  const yB=v=>PT+ih/2-(v/tsbMax)*(ih/2);
+  const line=(sel,col)=>"<polyline class=\"zn-chart-line\" fill=\"none\" stroke=\""+col+"\" stroke-width=\"2\" points=\""+series.map((o,i)=>x(i).toFixed(1)+","+sel(o).toFixed(1)).join(" ")+"\"/>";
+  let g="<svg viewBox=\"0 0 "+W+" "+H+"\" width=\"100%\" height=\""+H+"\" style=\"display:block\" role=\"img\" aria-label=\"Ce que cette semaine a changé — fitness, fatigue, forme\">";
+  g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"var(--zn-sep-line,#0002)\" stroke-dasharray=\"3 3\"/>";
+  g+=line(o=>yB(o.tsb),"var(--zn-form,#00a376)")+line(o=>yL(o.ctl),"var(--zn-swim,#2e6bff)")+line(o=>yL(o.atl),"var(--zn-fatigue,#ff7a1a)");
+  const last=series[series.length-1];
+  g+="<circle class=\"zn-today-dot\" cx=\""+x(series.length-1).toFixed(1)+"\" cy=\""+yB(last.tsb).toFixed(1)+"\" r=\"3\" fill=\"var(--zn-form,#00a376)\" stroke=\"var(--zn-ink,#16130e)\" stroke-width=\"1\"/>";
+  g+="</svg>";
+  return g;
 }
 // Retour du fondateur (07/08/2026) : « le graphique de charge, on a enfin notre position, mais
 // c'est illisible sur téléphone. » Cause mesurée : `width="100%"` avec un `viewBox` dont la
@@ -502,7 +538,7 @@ function decisionsCardHTML(plan){
 // Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
 // pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
 
-export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, bindLoadChart, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionViewHTML, journaliserProjection, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
+export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, bindLoadChart, loadSeries, weekLoadSeries, weekLoadChartSVG, renderPlan, readinessCardHTML, progressBarCardHTML, predictionViewHTML, journaliserProjection, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
 
 // ═══════════════ LE SOUS-ONGLET « PRÉDICTION » (R28) ═══════════════
 // Décision du fondateur (12/08/2026) : la prédiction quitte le repliable de la vue d'ensemble
