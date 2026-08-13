@@ -1940,6 +1940,25 @@ attendu: /disque 9 · precachees 9 · manquantes 0/
 cmd: node -e "const fs=require('node:fs');const d=fs.readdirSync('endurabuild/assets/fonts').filter(f=>f.endsWith('.woff2'));const sw=fs.readFileSync('endurabuild/sw.js','utf8');const m=d.filter(f=>!sw.includes('assets/fonts/'+f));console.log('disque '+d.length+' · precachees '+(d.length-m.length)+' · manquantes '+m.length+(m.length?' ('+m.join(', ')+')':''))"
 ```
 
+### O-33 · La traçabilité sourcé/heuristique de `projection.ts` n'est fiable qu'au niveau du chapeau
+
+Trouvé en expliquant P2/P2bis (retour du fondateur, 13/08/2026, sur un chrono projeté) : le
+chapeau du fichier classe correctement `G_PLAFOND`, `k_structure`, `τ=20 semaines` et les bandes
+de marge course/nage comme « heuristique convergente, pas d'étude princeps » — mais AU MOINS un
+commentaire attaché à une constante individuelle contredisait cette classification. Le
+commentaire sur `G_PLAFOND.ftp = 0.25` citait une plage « 20-30 %/an chez le NON-entraîné »,
+alors que `G_PLAFOND` sert le régime ENTRAÎNÉ (`G_PLAFOND_DEBUTANT` est la table séparée pour le
+non-entraîné) — corrigé le jour même (commentaire seul, aucun chiffre changé).
+
+**Ce qui reste ouvert, et n'a pas été traité ici (décision du fondateur : pas urgent, pas cette
+session)** : rien ne garantit que ce soit la SEULE incohérence du genre dans le module. Une
+relecture complète voudrait vérifier, constante par constante (`K_STRUCTURE`, `ANCRES_VOLUME`,
+`ANCRES_WKG`/`ANCRES_PACE`/`ANCRES_CSS`, `GAIN_BAND_LO/HI`, `ADHERENCE_FLOOR`…), que le
+commentaire attaché dit correctement (a) sourcé vs heuristique et (b) à QUEL régime/discipline il
+s'applique — le même type de confusion qu'O-33 a trouvé pour `ftp`, potentiellement ailleurs.
+Aucune commande de vérification mécanisable : c'est une relecture humaine (ou par un futur agent)
+de la cohérence prose ↔ usage réel, pas une propriété qu'un script peut trancher seul.
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas
