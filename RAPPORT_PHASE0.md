@@ -257,3 +257,244 @@ c'est le retour sur investissement de la phase.
 3. **Golden master.** 949 profils figés servent aujourd'hui de garde anti-régression. Le lot B va
    les faire bouger massivement et légitimement. Faut-il recapturer après chaque ticket B (traçable
    mais bruyant) ou une seule fois en fin de lot (lisible mais moins précis) ?
+
+---
+---
+
+# Addendum 01 — vérifications V-07 → V-10
+
+**Ajoutées par** `HANDOFF_ADDENDUM_01.md` (13/08/2026). Lecture seule, aucun fichier de `src/`
+modifié. Chaque section rend la sortie exigée par l'addendum, puis dit ce que la mesure
+**contredit** dans la prémisse du ticket — c'est la partie qui a le plus de valeur.
+
+---
+
+## V-07 — Provenance de `TRI_RUN`
+
+> ### `TRI_RUN = a_priori`
+
+**Cinq preuves, aucune contraire.**
+
+1. **La table ne porte aucun commentaire.** `src/engine/predictor.ts:351`. Ses deux voisines
+   immédiates en portent un, et il est explicite sur leur provenance : `TRI_BIKE_KM` (« distances
+   officielles World Triathlon / Ironman ») et `TRI_TRANSITION` (« MÉDIANES d'âge-groupe lues sur
+   les classements publics, pas des optima »). `TRI_RUN` est la seule des trois à être nue.
+2. **Aucune entrée `PROVENANCE`.** `grep "PROVENANCE\|rule("` sur `predictor.ts` : zéro résultat.
+   Le fichier n'utilise pas le mécanisme de traçabilité du dépôt.
+3. **Les valeurs n'ont jamais bougé.** Balayage de toutes les révisions du fichier : **un seul
+   jeu de valeurs** dans toute l'histoire, `1.03 / 1.05 / 1.08 / 1.13`. Un ajustement empirique
+   laisse des itérations ; il n'y en a aucune.
+4. **Aucun jeu de chronos réels n'existe, ni maintenant ni dans aucun commit.** `tests/fixtures/`
+   ne contient que `profils30.json` et la référence du lot ; `audit-results/` est régénéré par les
+   commandes. **L'ajustement était matériellement impossible.**
+5. **Les chiffres sont ronds et `1,13` reprend mot pour mot l'énoncé littéraire** « le marathon
+   d'un Ironman coûte ~13 % de plus qu'un marathon sec ».
+
+**Le commentaire de `riegelExponent` (ligne 379) est donc une justification rétrospective.** Il
+affirme que les facteurs « ont été calibrés CONTRE cet exposant » — mais `riegelExponent` est une
+fonction introduite par **R14**, alors que la table existait déjà avec ces valeurs exactes. Ce qui
+est vrai : elles ont été **choisies pendant que l'exposant valait la constante 1,06**. Ce qui est
+faux : qu'un ajustement ait eu lieu. **Il n'y a donc pas de double compte à craindre — la branche A
+de B-21 s'applique.**
+
+**Et la revendication s'est propagée** : `src/sports/duathlon/tables.ts:32` fonde `DUA_RUN2.fatigue`
+sur « l'échelle **validée** du tri ». Aucune des deux tables n'a jamais été validée contre une
+donnée. À corriger dans le même lot que B-21, sinon B-21 corrige la source et laisse la copie.
+
+---
+
+## V-08 — Classification par domaine physiologique × discipline
+
+**La prémisse du ticket est fausse : la ligne SEUIL est homogène.** `sw.css` est classé `hard`,
+et `bk.thr` / `rn.thr` le sont **aussi** — `.thr` figure dans `HARD_SUFFIX` au même titre que
+`.css`. Le ticket supposait `sw.css → hard` contre `bk.thr / rn.thr → mod` ; les trois sont `hard`.
+
+| domaine | course | vélo | nage | homogène ? |
+| --- | --- | --- | --- | --- |
+| facile / Z2 | `rn.easy` → **easy** | `bk.z2` → **easy** | `sw.easy` → **easy** | ✓ |
+| tempo / sweetspot | `rn.mara` → **mod** | `bk.ss` → **mod** | `sw.aero` → **easy** | ✖ **NON** |
+| **seuil** | `rn.thr` → **hard** | `bk.thr` → **hard** | **`sw.css` → hard** | ✓ |
+| VO2max | `rn.vo2` → **hard** | `bk.vo2` → **hard** | `sw.vo2` → **hard** | ✓ |
+
+**Une divergence existe, mais ailleurs, et dans l'autre sens** : `sw.aero` est rangé **facile**
+quand ses homologues sont **modérés**. Ce n'est pas un détail de nommage — en vitesse relative au
+seuil, `sw.aero` vaut 1/1,06 = **94,3 % de la vitesse CSS**, soit au moins aussi exigeant que
+`bk.ss` (88–94 % de la FTP) et que `rn.mara` (88–93 % de la vitesse seuil). Il est donc classé une
+classe trop bas, ce qui **sous-compte** le modéré.
+
+### Conséquence sur B-02 : le raccourci du ticket ne tient pas
+
+L'addendum pose que « les 165 profils nage/swimrun de la première mesure sont probablement un
+artefact de V-08 ». **Ils ne le sont pas** : `sw.css` est bien classé, c'est bien du seuil, et ces
+minutes comptent légitimement comme dures. La vraie cause est ailleurs et V-09 la donne.
+
+### Portée de la divergence `sw.aero`, mesurée avant toute écriture (règle 7)
+
+| grandeur | valeur |
+|---|---|
+| profils du golden portant des minutes `sw.aero` | **382 / 945 (40,4 %)** — swim 136, swimrun 136, tri 110 |
+| profils dont une semaine de charge franchirait **C26d** (modéré > 40 %) après réalignement | **106 (11,2 %)** |
+| plan le plus chargé | 62,1 % de son volume (`G/swim/ow/vol-min`) |
+
+**B-02a n'est donc pas un correctif gratuit** : réaligner `sw.aero` mettrait 11,2 % du catalogue en
+violation de C26d — au-dessus du seuil de recevabilité de 10 % que l'addendum se donne lui-même.
+Il doit être traité comme un ticket de calibrage à part entière, avec son propre arbitrage sur
+C26d, et **non** comme un préalable technique à B-02.
+
+> **Faute d'instrument, à moi, gardée écrite.** Ma première mesure de portée rendait
+> « `sw.aero` n'existe qu'en swimrun, 136 profils ». Elle comptait les minutes par
+> `st.durationMin` — or **les steps de nage sont exprimés en `distanceM`**, donc tri et swim
+> pesaient zéro. Une contre-vérification qui comptait les *occurrences* de zone a montré que le
+> **tri en est le premier consommateur** (1 170 occurrences contre 753 en swimrun). Le minutage
+> reprend désormais la formule de `intensitySplit` elle-même. Portée réelle : 382 profils, pas 136.
+> Encore une mesure qui nommait une grandeur et en mesurait une voisine.
+
+---
+
+## V-09 — Distribution du golden par volume hebdomadaire
+
+**945 plans construits · 4 refus typés · 0 sans semaine de charge.** Grandeur retenue : la
+**médiane des semaines de charge** du plan livré, et non `vol_max` — C26 se mesure par semaine sur
+ce qui est produit, pas sur ce qui est demandé.
+
+| tranche (h/sem) | profils | part | sports |
+|---|---|---|---|
+| **< 3 h** | 186 | 19,7 % | **swim 129**, run 37, swimrun 10, duathlon 7, bike 1, tri 1, trail 1 |
+| **3–5 h** | 228 | 24,1 % | swimrun 60, tri 53, run 51, duathlon 30, bike 25, swim 7, trail 2 |
+| **5–8 h** | 414 | 43,8 % | bike 129, duathlon 78, tri 69, swimrun 66, run 53, trail 19 |
+| **8–12 h** | 115 | 12,2 % | trail 31, duathlon 31, tri 24, bike 17, run 12 |
+| **> 12 h** | 2 | 0,2 % | trail 1, duathlon 1 |
+
+| sport | n | médiane | min | max |
+|---|---|---|---|---|
+| bike | 172 | 6,7 h | 2,2 | 11,6 |
+| duathlon | 147 | 6,7 h | 2,6 | 12,7 |
+| run | 153 | 4,4 h | 2,0 | 8,3 |
+| **swim** | 136 | **1,9 h** | 0,6 | 3,2 |
+| swimrun | 136 | 4,9 h | 2,4 | 7,2 |
+| trail | 54 | 8,0 h | 2,3 | 12,3 |
+| tri | 147 | 6,0 h | 2,5 | 9,0 |
+
+### C'est cette table qui explique la concentration nage de B-02, pas une erreur de classe
+
+**La population nage est structurellement la plus basse en volume** : médiane 1,9 h/semaine, max
+3,2 h, et **129 des 186 profils sous 3 h sont des nageurs**. Un plafond proportionnel au volume
+(`0,10 × minutes`) leur donne mécaniquement le plafond le plus serré du catalogue — 11 min de dur
+par semaine à 1,9 h. Le ticket ciblait « la queue basse en volume » : en population réelle, **la
+queue basse EST la natation**. Ce n'était pas un effet de bord, c'était la cible.
+
+**Conséquence directe sur le critère 2 de recevabilité de l'addendum** (« ≥ 70 % des profils
+touchés concentrés sous 5 h/semaine ») : il est **presque automatiquement satisfait par
+construction** dès qu'un plafond est proportionnel au volume, et il sélectionnera la natation à
+chaque fois. Le critère ne discrimine donc pas — il faudra le lire ensemble avec le critère 3
+(« zéro profil touché uniquement à cause de la nage »), qui est le seul des trois à mordre, et qui
+est **en tension avec le critère 2** puisque la population sous 5 h est majoritairement nageuse.
+À arbitrer avant B-02.
+
+### Ce que B-21 branche B demandait : le volume de course des profils tri
+
+| sport | n | vol TOTAL médian | vol **COURSE** médian | part course | exposant que ce volume appelle | exposant appliqué |
+|---|---|---|---|---|---|---|
+| tri | 147 | 6,00 h | **2,03 h** | 34 % | **1,1200** | 1,0600 |
+| duathlon | 147 | 6,68 h | **2,17 h** | 32 % | **1,1200** | 1,0600 |
+
+Étendues mesurées : tri 0,62 → 4,72 h de course/semaine · duathlon 0,58 → 4,15 h.
+**Zéro profil sur 294 n'approche les 10 h/semaine que l'exposant appliqué suppose.** Tous, sans
+exception, tombent au **plancher** de la table d'ancrages (≤ 4 h → 1,12). L'intuition de
+l'addendum (« un triathlète à 10 h au total court typiquement 3-4 h ») est confirmée et même
+dépassée : la médiane est à **2,0 h**.
+
+---
+
+## V-10 — Ancrage du prédicteur course
+
+### La chaîne complète, pour l'athlète témoin (seuil 4'15/km = 255 s/km)
+
+| étape | code | valeur |
+|---|---|---|
+| 1. ancrage | `answers.pace` → `thrPace` | 255 s/km |
+| 2. distance-heure | `d1h = 3600 / thrPace` | **14,118 km** — « l'allure seuil est tenable **exactement** 1 h » |
+| 3. exposant | `riegelExponent(runHoursPerWeek)` | 1,12 (≤ 4 h) … 1,04 (≥ 12 h) |
+| 4. Riegel | `3600 × (D / d1h)^exp` | voir table |
+| 5. fourchette | `range()` autour du point | ±≈3,5 % |
+
+**Le prédicteur ancre bien sur `thrPace`**, et sur rien d'autre : ni résultat récent déclaré, ni
+VMA. Aucun résultat de course n'entre dans `predict()` pour la course sèche.
+
+### Le ratio prédit / seuil, mesuré (chiffres bruts, avant fourchette)
+
+| volume course | exposant | 10 km | semi | **marathon** | dans `rn.mara` (1,08–1,13) ? |
+|---|---|---|---|---|---|
+| 3–4 h/sem | 1,1200 | 4'05 (0,960) | 4'28 (1,049) | **4'51 (1,1404)** | ✖ trop lent |
+| 6,5 h/sem | 1,0900 | 4'07 (0,969) | 4'24 (1,037) | **4'41 (1,1036)** | ✓ |
+| 10 h/sem | 1,0600 | 4'10 (0,980) | 4'21 (1,024) | **4'32 (1,0679)** | ✖ trop rapide |
+| 12 h/sem | 1,0400 | 4'12 (0,986) | 4'19 (1,016) | **4'26 (1,0448)** | ✖ trop rapide |
+
+### Et ce que l'écran affiche réellement, fourchette comprise
+
+| format | volume déclaré | chrono affiché | ratio bas | ratio haut | bande `rn.mara` |
+|---|---|---|---|---|---|
+| marathon | 4 h | 3h18–3h30 | 1,104 | 1,171 | 1,08–1,13 |
+| marathon | 8 h | 3h09–3h20 | 1,054 | 1,115 | 1,08–1,13 |
+| marathon | 12 h | 3h01–3h12 | 1,009 | 1,071 | 1,08–1,13 |
+
+### Le diagnostic, et il n'est aucun des trois que l'addendum propose
+
+> **L'incohérence n'est pas un chiffre faux. C'est qu'une des deux grandeurs connaît le volume
+> et l'autre pas.**
+
+`rn.mara` est un multiplicateur **constant** du seuil (1,08–1,13). L'exposant de Riegel **varie
+avec le volume** (1,04 → 1,12). Deux grandeurs dont l'une dépend d'une variable que l'autre ignore
+ne peuvent coïncider qu'en un point — mesuré, ce point est autour de **6,5–8 h/semaine**, et c'est
+exactement là que l'accord est bon. En dessous, la prédiction est plus lente que l'entraînement ;
+au-dessus, plus rapide. **Le désaccord est structurel, pas numérique** : reculer `rn.mara` d'un
+cran déplacerait simplement le point d'accord sans supprimer la divergence.
+
+C'est **la forme exacte d'O-11** (deux définitions de « l'allure course » à vélo, l'une dans la
+zone d'entraînement, l'autre dans la prescription du jour J), que **R20.5** a fermée en créant un
+point unique `raceBikeBand()`. Ici, « l'allure marathon » est écrite deux fois : une fois dans
+`ZDEF["rn.mara"]`, une fois dans le prédicteur. La correction dans l'esprit du dépôt (R11.1) est
+donc de **dériver la bande d'entraînement du prédicteur**, pas de re-calibrer l'une contre l'autre.
+
+### Rectification d'un chiffre du retest, à moi
+
+`RETEST_PREDICTION.md` §7 annonce « marathon prédit **185 min** » à l'exposant 1,06, d'où le ratio
+1,032 que l'addendum reprend. **185 min est la borne BASSE de la fourchette** (−3,5 %), pas
+l'estimation ponctuelle. Le point vaut **191,5 min**, ratio **1,068**. Le fond de l'observation de
+l'addendum tient (1,068 reste sous la bande 1,08–1,13), mais l'écart réel est de **0,012, pas de
+0,048** — quatre fois moins que ce que le chiffre laissait croire. Le retest sera corrigé.
+
+### Corollaire pour B-21 : la branche A serait INERTE telle qu'elle est écrite
+
+`src/app/bridge.ts:665` :
+
+```ts
+runHoursPerWeek: sport === "run" ? parseFloat(String(answers.vol_max || "")) || undefined : undefined,
+```
+
+Hors course sèche, le paramètre vaut **`undefined`** dès le pont — et `riegelExponent(undefined)`
+rend `1.06` par repli documenté. Remplacer la ligne 501 par `riegelExponent(opts.runHoursPerWeek)`
+ne changerait donc **pas un seul chrono** : le correctif serait mort. La correction doit remonter
+au pont, et il n'y a **aucune réponse du questionnaire** qui donne les heures de course d'un
+triathlète — la grandeur doit être **mesurée sur le plan livré** (V-09 le fait déjà : médiane
+2,03 h). Deux tickets, pas un.
+
+Deux autres remarques sur ce paramètre, trouvées en le suivant :
+- il lit **`vol_max`** (le plafond demandé) à la ligne 665 et **`vol_recent`** (le volume réel) à
+  la ligne 938. Deux sources pour un paramètre qui a un seul sens ;
+- il lit un **volume déclaré toutes disciplines confondues** même en course sèche, où un plan de
+  10 h/semaine ne fait pas 10 h de course non plus (renfo, vélo croisé).
+
+---
+
+## Ce que l'addendum doit corriger, en une table
+
+| affirmation de l'addendum | mesure | suite |
+|---|---|---|
+| `sw.css` classé `hard` alors que `bk.thr`/`rn.thr` sont `mod` | **faux** — les trois sont `hard` | B-02a perd son objet tel qu'écrit |
+| les 165 profils nage de B-02 sont « un artefact de V-08 » | **faux** — c'est la distribution des volumes (V-09) | B-02 se décide sur la distribution, pas après B-02a |
+| B-02a est un préalable technique à B-02 | **non** — 106 profils (11,2 %) franchiraient C26d | ticket de calibrage autonome |
+| `TRI_RUN` peut-être `fitted` | **`a_priori`**, cinq preuves | branche A de B-21 |
+| branche A = changer la ligne 501 | **inerte** — le paramètre est `undefined` en amont | corriger le pont, mesurer sur le plan |
+| prédicteur marathon à 1,032 × seuil | **1,068** (1,032 était la borne basse) | écart 4× plus petit |
+| « l'un des deux chiffres est faux » | **aucun des deux** — l'un est volume-aware, l'autre non | point unique (R11.1), forme O-11/R20.5 |
