@@ -1,0 +1,191 @@
+{
+  "_doc": {
+    "role": "Jeu de profils de référence du lot fix/moteur-physio (Phase 1.1 du handoff).",
+    "usage": "node scripts/baseline.mjs --capture puis --diff ; chaque ticket du lot B joint son rapport de diff.",
+    "chemin": "Le handoff écrivait `test/fixtures/` ; le dépôt utilise `tests/` depuis les suites E2E — on suit la convention du dépôt, pas celle du document.",
+    "dates": "AUCUN profil ne porte de race_date. Un plan daté ferait dériver la photo avec le calendrier (leçon R20.7 / A-6) ; la longueur se déduit alors de MIN_WEEKS et du volume. Les profils dont le ticket EXIGE une date la déclarent avec un ancrage fixe, comme la passe « course datée » du golden.",
+    "champ_why": "Chaque profil dit à quel ticket il sert. Un profil de référence dont personne ne sait ce qu'il garde est un profil qu'on supprimera par erreur au premier nettoyage."
+  },
+  "profils": [
+    {
+      "id": "P01-run-2h-confirme",
+      "why": "B-02 — LE pire cas mesuré en Phase 0, et il n'était pas dans le handoff : un CONFIRMÉ à 2h/sem tolère 66 min de dur, soit 55% de sa semaine. Le débutant, lui, est protégé par son propre plancher (25 min).",
+      "sport": "run",
+      "a": { "format": "10k", "history": "confirme", "level": "inter", "intent": "competition", "terrain": "route", "vol_max": "2", "vol_recent": "2", "sessions_max": "3", "dispo": "partielle", "age": "35", "sex": "H", "weight": "72", "pace_known": "oui", "pace": "4:45", "injury": "" }
+    },
+    {
+      "id": "P02-run-2h30-debutant",
+      "why": "B-02 — le cas critique nommé par le handoff. Sert de témoin face à P01 : le plancher débutant (25 min) doit rendre ce profil MOINS exposé que le confirmé.",
+      "sport": "run",
+      "a": { "format": "10k", "history": "reprise", "level": "debutant", "intent": "finir", "terrain": "route", "vol_max": "2.5", "vol_recent": "1", "sessions_max": "3", "dispo": "partielle", "age": "42", "sex": "F", "weight": "64", "pace_known": "oui", "pace": "6:30", "injury": "" }
+    },
+    {
+      "id": "P03-run-marathon-reprise",
+      "why": "Exigé par le handoff. B-13 (Riegel à faible volume) et B-01 (sortie longue) se lisent ici : un marathonien en reprise est la population où l'exposant 1.06 surestime le plus.",
+      "sport": "run",
+      "a": { "format": "marathon", "history": "reprise", "level": "debutant", "intent": "finir", "terrain": "route", "vol_max": "5", "vol_recent": "3", "sessions_max": "4", "dispo": "partielle", "age": "38", "sex": "H", "weight": "84", "pace_known": "oui", "pace": "6:00", "injury": "" }
+    },
+    {
+      "id": "P04-run-marathon-ancien",
+      "why": "B-01 / B-04 — marathonien entraîné : la borne haute de rn.mara (1.08-1.13) est calibrée pour LUI. Témoin qui ne doit PAS bouger quand B-04 indexe la bande sur l'historique.",
+      "sport": "run",
+      "a": { "format": "marathon", "history": "ancien", "level": "avance", "intent": "competition", "terrain": "route", "vol_max": "12", "vol_recent": "10", "sessions_max": "6", "dispo": "quotidienne", "age": "34", "sex": "H", "weight": "66", "pace_known": "oui", "pace": "3:35", "injury": "" }
+    },
+    {
+      "id": "P05-run-semi-genou",
+      "why": "B-18 — le drapeau genou pilote aujourd'hui le CHOIX des séances mais pas la CHARGE. Ce profil mesure l'écart avant/après l'ajout du facteur 0.85.",
+      "sport": "run",
+      "a": { "format": "semi", "history": "confirme", "level": "inter", "intent": "finir", "terrain": "route", "vol_max": "6", "vol_recent": "5", "sessions_max": "4", "dispo": "partielle", "age": "45", "sex": "F", "weight": "61", "pace_known": "oui", "pace": "5:10", "injury": "genou" }
+    },
+    {
+      "id": "P06-run-5k-avance",
+      "why": "B-05 — rn.vo2 resserrée (0.92-0.97 → 0.90-0.95). Le 5k est le format où la VO2max pèse le plus dans la semaine : l'effet du resserrement s'y voit en premier.",
+      "sport": "run",
+      "a": { "format": "5k", "history": "ancien", "level": "avance", "intent": "competition", "terrain": "piste", "vol_max": "8", "vol_recent": "7", "sessions_max": "5", "dispo": "quotidienne", "age": "28", "sex": "H", "weight": "62", "pace_known": "oui", "pace": "3:20", "injury": "" }
+    },
+    {
+      "id": "P07-bike-route-confirme",
+      "why": "B-10 — bk.frc n'est plus le cas général. Ce profil passe par le `else` fourre-tout du dur2 : c'est lui qui bascule vers sweetspot/tempo long.",
+      "sport": "bike",
+      "a": { "format": "route", "history": "confirme", "level": "inter", "intent": "competition", "vol_max": "10", "vol_recent": "8", "sessions_max": "5", "dispo": "partielle", "age": "36", "sex": "H", "weight": "75", "ftp_known": "oui", "ftp": "250", "injury": "" }
+    },
+    {
+      "id": "P08-bike-gravel-ancien",
+      "why": "B-11 (Crr/CdA) et B-12 (DESCENT_CAP_MS) — le gravel porte le Crr le plus élevé et les plus longues sorties : le chrono prédit y est le plus sensible aux hypothèses matériel.",
+      "sport": "bike",
+      "a": { "format": "gravel", "history": "ancien", "level": "avance", "intent": "finir", "vol_max": "14", "vol_recent": "12", "sessions_max": "5", "dispo": "quotidienne", "age": "41", "sex": "H", "weight": "78", "ftp_known": "oui", "ftp": "285", "injury": "" }
+    },
+    {
+      "id": "P09-bike-clm-position",
+      "why": "B-11 — le CLM est le seul format qui assume la position aéro : c'est le profil où le défaut CdA (optimiste vs prudent) change le plus le chrono annoncé.",
+      "sport": "bike",
+      "a": { "format": "clm", "history": "confirme", "level": "inter", "intent": "competition", "vol_max": "8", "vol_recent": "7", "sessions_max": "4", "dispo": "partielle", "age": "39", "sex": "H", "weight": "71", "ftp_known": "oui", "ftp": "265", "injury": "" }
+    },
+    {
+      "id": "P10-bike-crit-reprise-genou",
+      "why": "B-10 + B-18 — genou déclaré en vélo : la substitution existe déjà (sweetspot contrôlé), elle doit survivre au retrait de bk.frc du cas général.",
+      "sport": "bike",
+      "a": { "format": "crit", "history": "reprise", "level": "debutant", "intent": "plaisir", "vol_max": "5", "vol_recent": "3", "sessions_max": "3", "dispo": "partielle", "age": "50", "sex": "H", "weight": "88", "ftp_known": "non", "injury": "genou" }
+    },
+    {
+      "id": "P11-swim-fond-debutant",
+      "why": "B-08 (zones nage en bandes) et B-09 (SWIM_TIME_FACTOR indexé). Un débutant en fond cumule C15 (850m), C24b (600m) et le plafond de pic à 4h : c'est le profil le plus contraint du moteur.",
+      "sport": "swim",
+      "a": { "format": "fond", "history": "reprise", "level": "debutant", "intent": "finir", "vol_max": "4", "vol_recent": "1", "sessions_max": "3", "dispo": "partielle", "age": "33", "sex": "F", "weight": "58", "css_known": "non", "swim_limit": "respiration", "injury": "" }
+    },
+    {
+      "id": "P12-swim-ow-confirme",
+      "why": "B-07 — facteurs eau libre. Le format `ow` est le seul du sport nage à porter la pénalité de navigation : c'est là que la table plate actuelle (1.05) est remplacée par la structure niveau × conditions.",
+      "sport": "swim",
+      "a": { "format": "ow", "history": "confirme", "level": "inter", "intent": "finir", "vol_max": "7", "vol_recent": "6", "sessions_max": "4", "dispo": "partielle", "age": "37", "sex": "H", "weight": "74", "css_known": "oui", "css": "1:48", "injury": "" }
+    },
+    {
+      "id": "P13-swim-sprint-epaule",
+      "why": "B-09 + garde épaule — l'épaule est le drapeau qui déclenche les substitutions nage (jambes/planche) ; il doit survivre à l'indexation de SWIM_TIME_FACTOR.",
+      "sport": "swim",
+      "a": { "format": "sprint", "history": "ancien", "level": "avance", "intent": "competition", "vol_max": "9", "vol_recent": "8", "sessions_max": "5", "dispo": "quotidienne", "age": "26", "sex": "F", "weight": "60", "css_known": "oui", "css": "1:22", "injury": "epaule" }
+    },
+    {
+      "id": "P14-tri-70.3-debutant",
+      "why": "B-17 — CAS CRITIQUE, exigé par le handoff. C'est le profil dont le contre-audit dit qu'il porte un risque VITAL et non de performance : C15 garantit aujourd'hui qu'il ne nagera jamais 1900 m d'affilée avant le jour J.",
+      "sport": "tri",
+      "a": { "format": "70.3", "history": "reprise", "level": "debutant", "intent": "finir", "vol_max": "8", "vol_recent": "4", "sessions_max": "5", "dispo": "partielle", "age": "40", "sex": "H", "weight": "86", "css_known": "non", "ftp_known": "non", "pace_known": "non", "injury": "" }
+    },
+    {
+      "id": "P15-tri-Full-nage6h",
+      "why": "B-09 — CAS CRITIQUE, exigé par le handoff : vol_recent nage déclaré à 6h. C'est le profil qui mesure le biais déclaratif que SWIM_TIME_FACTOR corrige, et l'effet de son activation en tri.",
+      "sport": "tri",
+      "a": { "format": "Full", "history": "confirme", "level": "inter", "intent": "finir", "vol_max": "15", "vol_recent": "6", "sessions_max": "7", "dispo": "quotidienne", "doubles": "oui", "age": "38", "sex": "H", "weight": "79", "css_known": "oui", "css": "1:52", "ftp_known": "oui", "ftp": "240", "pace_known": "oui", "pace": "4:55", "injury": "" }
+    },
+    {
+      "id": "P16-tri-S-sprint",
+      "why": "Brick sans tiers allure course (TRI_BIKE.S.hi = 0.93 ≥ 0.85). Témoin de B-06 et de A-06 : le sprint est le seul format où le tiers race-pace n'existe pas, et il doit le rester.",
+      "sport": "tri",
+      "a": { "format": "S", "history": "confirme", "level": "inter", "intent": "competition", "vol_max": "7", "vol_recent": "6", "sessions_max": "5", "dispo": "partielle", "age": "31", "sex": "F", "weight": "59", "css_known": "oui", "css": "1:40", "ftp_known": "oui", "ftp": "215", "pace_known": "oui", "pace": "4:20", "injury": "" }
+    },
+    {
+      "id": "P17-tri-M-ancien",
+      "why": "B-06 (fatigue course-après-vélo indexée) — l'olympique chez un ancien porte la valeur ACTUELLE (1.05) : témoin qui ne doit pas bouger.",
+      "sport": "tri",
+      "a": { "format": "M", "history": "ancien", "level": "avance", "intent": "competition", "vol_max": "13", "vol_recent": "12", "sessions_max": "7", "dispo": "quotidienne", "age": "29", "sex": "H", "weight": "70", "css_known": "oui", "css": "1:30", "ftp_known": "oui", "ftp": "300", "pace_known": "oui", "pace": "3:45", "injury": "" }
+    },
+    {
+      "id": "P18-tri-Full-reprise",
+      "why": "B-06 — l'Ironman en reprise porte le plus gros écart proposé (1.13 → 1.25 de fatigue post-vélo). B-19 (step d'affûtage manquant) s'y lit aussi, l'affûtage y durant 3 semaines.",
+      "sport": "tri",
+      "a": { "format": "Full", "history": "reprise", "level": "debutant", "intent": "finir", "vol_max": "12", "vol_recent": "5", "sessions_max": "6", "dispo": "partielle", "age": "44", "sex": "H", "weight": "90", "css_known": "oui", "css": "2:10", "ftp_known": "oui", "ftp": "195", "pace_known": "oui", "pace": "5:50", "injury": "" }
+    },
+    {
+      "id": "P19-tri-70.3-medical",
+      "why": "Garde-fou dur : sous drapeau médical, stripLongOnMedHold retire le brick (« le brick EST de l'intensité »). Aucun ticket du lot ne doit rouvrir ce chemin.",
+      "sport": "tri",
+      "a": { "format": "70.3", "history": "confirme", "level": "inter", "intent": "finir", "vol_max": "9", "vol_recent": "7", "sessions_max": "5", "dispo": "partielle", "age": "47", "sex": "F", "weight": "63", "css_known": "oui", "css": "1:58", "ftp_known": "oui", "ftp": "210", "pace_known": "oui", "pace": "5:15", "med_treat": "oui", "injury": "" }
+    },
+    {
+      "id": "P20-duathlon-PM",
+      "why": "Exigé par le handoff. B-14 (brick asymétrique 1/3-2/3) : le PM est le format où la seconde course décide le plus, donc où l'alternance 50/50 actuelle coûte le plus cher.",
+      "sport": "duathlon",
+      "a": { "format": "PM", "history": "confirme", "level": "inter", "intent": "finir", "vol_max": "12", "vol_recent": "9", "sessions_max": "6", "dispo": "quotidienne", "age": "36", "sex": "H", "weight": "73", "ftp_known": "oui", "ftp": "255", "pace_known": "oui", "pace": "4:25", "injury": "" }
+    },
+    {
+      "id": "P21-duathlon-S-reprise",
+      "why": "B-14 + runImpactCap — le duathlon est « le format le plus chargé en IMPACT COURSE du catalogue » (spec R10.2.3) : le plafond de jours d'appui s'y mesure en premier.",
+      "sport": "duathlon",
+      "a": { "format": "S", "history": "reprise", "level": "debutant", "intent": "plaisir", "vol_max": "5", "vol_recent": "3", "sessions_max": "4", "dispo": "partielle", "age": "48", "sex": "F", "weight": "68", "ftp_known": "non", "pace_known": "oui", "pace": "6:10", "injury": "" }
+    },
+    {
+      "id": "P22-duathlon-L-tibia",
+      "why": "B-18 + B-02 — le tibia (périostite) renforce le plafond de jours de course d'un jour ET déclenche C26b_INJURY_FACTOR (×0.6 sur le temps dur).",
+      "sport": "duathlon",
+      "a": { "format": "L", "history": "confirme", "level": "inter", "intent": "finir", "vol_max": "9", "vol_recent": "7", "sessions_max": "5", "dispo": "partielle", "age": "35", "sex": "H", "weight": "77", "ftp_known": "oui", "ftp": "230", "pace_known": "oui", "pace": "4:50", "injury": "tibia" }
+    },
+    {
+      "id": "P23-duathlon-M-ancien",
+      "why": "Témoin duathlon à volume moyen : A-02 (suppression des tables mortes DUA_*) ne doit déplacer AUCUN de ces profils — c'est la garde du ticket.",
+      "sport": "duathlon",
+      "a": { "format": "M", "history": "ancien", "level": "avance", "intent": "competition", "vol_max": "11", "vol_recent": "10", "sessions_max": "6", "dispo": "quotidienne", "age": "32", "sex": "H", "weight": "69", "ftp_known": "oui", "ftp": "290", "pace_known": "oui", "pace": "3:50", "injury": "" }
+    },
+    {
+      "id": "P24-trail-ultra-D3200",
+      "why": "CAS CRITIQUE exigé par le handoff (D− > 3000 m) : A-01 (classificateur trail dans dailyAdjuster) et B-15 (surcoût de la première exposition excentrique) s'y lisent tous les deux. Sert aussi de garde à B-16 réduit (cas de bord de semaine sur T3).",
+      "sport": "trail",
+      "a": { "format": "", "history": "confirme", "level": "inter", "intent": "finir", "vol_max": "12", "vol_recent": "9", "sessions_max": "6", "dispo": "quotidienne", "age": "39", "sex": "H", "weight": "72", "pace_known": "oui", "pace": "5:00", "vam_known": "oui", "vam": "900", "race_distance_km": "78", "race_dplus_m": "4200", "race_dmoins_m": "4200", "race_technicity": "technique", "race_night": "partielle", "train_dplus_access": "montagne", "treadmill": "non", "poles": "oui", "injury": "" }
+    },
+    {
+      "id": "P25-trail-court-plat",
+      "why": "Substitution terrain plat (escaliers/tapis) + B-01 dérogation ultra : ce profil n'est PAS un ultra, il ne doit donc pas bénéficier du plafond à 45%.",
+      "sport": "trail",
+      "a": { "format": "", "history": "reprise", "level": "debutant", "intent": "finir", "vol_max": "5", "vol_recent": "3", "sessions_max": "4", "dispo": "partielle", "age": "43", "sex": "F", "weight": "66", "pace_known": "oui", "pace": "6:20", "vam_known": "non", "race_distance_km": "21", "race_dplus_m": "700", "race_dmoins_m": "700", "race_technicity": "roulant", "race_night": "non", "train_dplus_access": "plat", "treadmill": "oui", "poles": "non", "injury": "" }
+    },
+    {
+      "id": "P26-trail-kv",
+      "why": "Catégorie déduite par la GÉOMÉTRIE (≥140 m/km, ≤12 km) et non par le temps — le seul chemin de déduction qui ne passe pas par la convergence itérative. Témoin de A-08 (TRAIL_ACCESS passé par trule).",
+      "sport": "trail",
+      "a": { "format": "", "history": "ancien", "level": "avance", "intent": "competition", "vol_max": "9", "vol_recent": "8", "sessions_max": "5", "dispo": "quotidienne", "age": "30", "sex": "H", "weight": "64", "pace_known": "oui", "pace": "3:55", "vam_known": "oui", "vam": "1450", "race_distance_km": "5", "race_dplus_m": "1000", "race_dmoins_m": "0", "race_technicity": "mixte", "race_night": "non", "train_dplus_access": "montagne", "treadmill": "non", "poles": "oui", "injury": "" }
+    },
+    {
+      "id": "P27-trail-ultralong-quadriceps",
+      "why": "B-15 — la blessure quadriceps coupe le D− (downFactor ×0.4). Croisé avec un ultra_long, c'est le profil où la progression excentrique est la plus contrainte.",
+      "sport": "trail",
+      "a": { "format": "", "history": "ancien", "level": "avance", "intent": "finir", "vol_max": "14", "vol_recent": "12", "sessions_max": "6", "dispo": "quotidienne", "age": "42", "sex": "H", "weight": "70", "pace_known": "oui", "pace": "4:40", "vam_known": "oui", "vam": "1050", "race_distance_km": "110", "race_dplus_m": "6200", "race_dmoins_m": "6200", "race_technicity": "alpin", "race_night": "majoritaire", "train_dplus_access": "montagne", "treadmill": "non", "poles": "oui", "injury": "quadriceps" }
+    },
+    {
+      "id": "P28-swimrun-championship",
+      "why": "Exigé par le handoff. S13 (bascule du créneau facile), S14 (bornes du footing) et le froid S7bis s'y croisent — c'est le format le plus long du sport.",
+      "sport": "swimrun",
+      "a": { "format": "championship", "history": "confirme", "level": "inter", "intent": "finir", "vol_max": "13", "vol_recent": "10", "sessions_max": "6", "dispo": "quotidienne", "age": "37", "sex": "H", "weight": "76", "css_known": "oui", "css": "1:45", "pace_known": "oui", "pace": "4:35", "gear_test": "oui", "swimrun_swim_pace": "2:05", "swimrun_run_pace": "5:40", "swim_continuous": "oui", "run_continuous": "oui", "swim_total_m": "10000", "run_total_km": "45", "race_dplus_m": "1600", "segments_n": "24", "longest_swim_m": "1700", "water_temp_c": "15", "team_mode": "binome", "openwater_access": "saisonnier", "injury": "" }
+    },
+    {
+      "id": "P29-swimrun-sprint-froid",
+      "why": "S7bis / R20.8 — eau à 12 °C sur un format court : la fenêtre d'acclimatation (8 semaines) couvre alors TOUTE la prépa, cas limite documenté comme voulu.",
+      "sport": "swimrun",
+      "a": { "format": "sprint", "history": "reprise", "level": "debutant", "intent": "finir", "vol_max": "6", "vol_recent": "4", "sessions_max": "4", "dispo": "partielle", "age": "34", "sex": "F", "weight": "62", "css_known": "oui", "css": "2:05", "pace_known": "oui", "pace": "5:45", "gear_test": "non", "swim_continuous": "oui", "run_continuous": "oui", "swim_total_m": "2000", "run_total_km": "12", "race_dplus_m": "300", "segments_n": "8", "longest_swim_m": "400", "water_temp_c": "12", "team_mode": "solo", "openwater_access": "aucun", "injury": "" }
+    },
+    {
+      "id": "P30-swimrun-series-course-dominante",
+      "why": "S13 — part de course > 78 % : c'est le profil qui fait basculer le second créneau facile de la nage vers le footing. Sans lui, la règle n'est jamais exercée.",
+      "sport": "swimrun",
+      "a": { "format": "series", "history": "confirme", "level": "inter", "intent": "competition", "vol_max": "10", "vol_recent": "8", "sessions_max": "5", "dispo": "partielle", "age": "33", "sex": "H", "weight": "71", "css_known": "oui", "css": "1:38", "pace_known": "oui", "pace": "4:10", "gear_test": "oui", "swimrun_swim_pace": "1:55", "swimrun_run_pace": "5:05", "swim_continuous": "oui", "run_continuous": "oui", "swim_total_m": "2500", "run_total_km": "38", "race_dplus_m": "800", "segments_n": "10", "longest_swim_m": "600", "water_temp_c": "20", "team_mode": "binome", "openwater_access": "toute_annee", "injury": "" }
+    }
+  ]
+}

@@ -2,3 +2,4 @@ node_modules/
 package-lock.json
 Zenna-standalone.html
 golden/plans.full.json
+tests/fixtures/baseline/plans.full.json
