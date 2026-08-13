@@ -662,7 +662,12 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
     swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,
     // R14 P5 — le volume de COURSE hebdomadaire pilote l'exposant de Riegel.
-    runHoursPerWeek: sport === "run" ? parseFloat(String(answers.vol_max || "")) || undefined : undefined,
+    // B-21 — la course sèche garde `vol_max` (la réponse de l'athlète, qui EST son volume de
+    // course) ; partout ailleurs la grandeur n'existe dans aucune réponse et se MESURE sur le
+    // plan livré. Sans cette seconde branche, décloisonner l'exposant ne changerait rien.
+    runHoursPerWeek: sport === "run"
+      ? parseFloat(String(answers.vol_max || "")) || undefined
+      : runHoursPerWeekOf(p as V1Plan) ?? undefined,
     projection: horizonWeeks == null ? undefined : {
       horizonWeeks,
       level: String(answers.level || "") || undefined,
@@ -742,6 +747,39 @@ function prescribedMeanHours(plan: V1Plan): number | null {
     for (const d of wk.days)
       for (const s of d.sessions) if (s.d !== "rs" && !s.race) min += s.min || 0;
   return min > 0 ? min / 60 / w.length : null;
+}
+
+/**
+ * B-21 — LES HEURES DE COURSE PAR SEMAINE, MESURÉES SUR LE PLAN LIVRÉ.
+ *
+ * `riegelExponent` a besoin du volume de COURSE. En course sèche on le lisait dans `vol_max`,
+ * la réponse de l'athlète ; en tri et en duathlon **aucune réponse du questionnaire ne le
+ * donne** — on demande un volume total, pas sa répartition. Le pont passait donc `undefined`,
+ * et `riegelExponent(undefined)` rend 1,06 par repli : décloisonner l'exposant sans ce
+ * mesureur aurait été un correctif INERTE (le défaut que V-10 a nommé sur la branche A du
+ * ticket, et que ce dépôt a déjà payé deux fois — C23b, ma première écriture de C30b).
+ *
+ * On mesure donc sur ce que le plan PRODUIT, à la médiane des semaines de charge — le pic
+ * décrit un instant, la médiane décrit ce que l'athlète vit. Les minutes de course d'un brick
+ * sont comptées : elles sont dans ses steps, et un enchaînement fait courir.
+ */
+function runHoursPerWeekOf(plan: V1Plan): number | null {
+  const w = plan.weeks.filter((x) => !x.isRecup && ["dev", "spec", "peak"].includes(String(x.phase && x.phase.id)));
+  if (!w.length) return null;
+  const parSemaine: number[] = [];
+  for (const wk of w) {
+    let min = 0;
+    for (const d of wk.days) for (const s of d.sessions) {
+      if (s.d === "rs" || s.race) continue;
+      if (s.d === "rn") { min += s.min || 0; continue; }
+      for (const st of (s.steps ?? []) as { d?: string; reps?: number; durationMin?: number }[])
+        if ((st.d || s.d) === "rn" && st.durationMin) min += (st.reps || 1) * st.durationMin;
+    }
+    parSemaine.push(min);
+  }
+  parSemaine.sort((a, b) => a - b);
+  const med = parSemaine[Math.floor(parSemaine.length / 2)] / 60;
+  return med > 0 ? med : null;
 }
 
 /** Secondes/km → « 4:50 » : le parseur d'allure est unique (E1/E2), son inverse doit l'être aussi. */

@@ -281,10 +281,24 @@ check("ANX-ADH", "l'adhérence est une fenêtre glissante des semaines écoulée
   if (!pj) return { ok: false, info: "pas de projection" };
   return { ok: pj.adherence >= 0.9, info: "adhérence=" + (pj.adherence * 100).toFixed(0) + "% (6 dernières semaines toutes cochées sur un plan de 59)" };
 });
-check("ANX-NR", "non-régression : la prédiction FORME ACTUELLE est inchangée", () => {
+// B-21 (13/08/2026) — LE TÉMOIN DU LEG COURSE EST RÉ-ANCRÉ, ET L'ANCIENNE VALEUR RESTE ÉCRITE.
+// Il attendait `4h0X–4h1X` ; il rend désormais **4h16–4h32**. Ce n'est pas une dérive : c'est
+// précisément ce que B-21 corrige — l'exposant de Riegel cessait d'être figé à 1,06 pour les legs
+// course du tri, alors que les 294 profils tri/duathlon du golden courent 2,03 h/semaine en
+// médiane (V-09), ce qui appelle ~1,13. Effet médian mesuré sur le leg course : **+19,0 min en
+// Full**, −1,8 min en S, −1,0 en M, +4,0 en 70.3 — le signe s'inverse avec la distance, ce qui
+// EST le comportement d'un exposant : un coureur à faible volume est relativement meilleur sur
+// 5 km et relativement moins bon sur marathon.
+//
+// Ré-ancrer un témoin parce qu'on l'a soi-même déplacé est dangereux (I14b, O-21 : « dette
+// déclarée plutôt que témoin réécrit »). La différence ici est que le déplacement est l'OBJET du
+// ticket, pas son effet de bord — et les deux autres legs, que B-21 ne touche pas, gardent leurs
+// bornes d'origine au caractère près. C'est ce qui rend le ré-ancrage vérifiable : si la nage ou
+// le vélo bougeaient, ce critère le dirait encore.
+check("ANX-NR", "non-régression : la prédiction FORME ACTUELLE est inchangée (leg course ré-ancré par B-21)", () => {
   const p = pred(ans({}));
   const sw = leg(p.items, /Natation/i), bk = leg(p.items, /Vélo/i), rn = leg(p.items, /CAP/i);
-  return { ok: !!(sw && bk && rn) && /1h1\d–1h2\d/.test(sw.value) && /\d{3}–\d{3}W/.test(bk.value) && /^4h0\d–4h1\d$/.test(rn.value), info: [sw, bk, rn].filter(Boolean).map((x) => x.value).join(" · ") };
+  return { ok: !!(sw && bk && rn) && /1h1\d–1h2\d/.test(sw.value) && /\d{3}–\d{3}W/.test(bk.value) && /^4h[123]\d–4h[234]\d$/.test(rn.value), info: [sw, bk, rn].filter(Boolean).map((x) => x.value).join(" · ") + "  (avant B-21 : 4h0X–4h1X)" };
 });
 
 /* ---------------- rapport ---------------- */

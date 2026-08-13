@@ -400,7 +400,26 @@ const fmtT = (sec: number): string => {
  * calibrés CONTRE cet exposant, et bouger l'exposant sous eux recalibrerait silencieusement
  * une table validée — on compterait deux fois la même difficulté.
  */
-const RIEGEL_ANCRES: [number, number][] = [[4, 1.12], [6.5, 1.09], [10, 1.06], [12, 1.04]];
+/**
+ * B-21 — LA TABLE EST PROLONGÉE SOUS 4 h, ET C'EST UNE AFFIRMATION DE MODÈLE NOUVELLE.
+ *
+ * Elle est écrite ici parce qu'elle doit se lire : les quatre ancrages d'origine sont déjà
+ * déclarés heuristiques (« calibration empirique de calculateurs, pas une étude princeps »), et
+ * l'ancrage `[1.5, 1.15]` en est un cinquième du MÊME statut — a_priori, non sourcé.
+ *
+ * Ce qui le rend malgré tout meilleur que le plancher qu'il remplace : le plancher AUSSI était
+ * une affirmation, et une plus forte. S'arrêter à 4 h revenait à dire « quelqu'un qui court
+ * 0,6 h/semaine ne se dégrade pas davantage sur la distance que quelqu'un qui en court 4 »,
+ * alors que toute la table dit l'inverse sur son domaine. Mesuré (V-09) : **89,1 % des profils
+ * tri et 99,3 % des duathlon** vivent SOUS ce plancher — la table était donc plate exactement
+ * là où se trouve presque toute la population qu'elle sert.
+ *
+ * La valeur n'est pas choisie, elle est PROLONGÉE : la pente du segment le plus bas de la table
+ * (4 → 6,5 h) vaut −0,0120/h, et `[1.5, 1.15]` est ce que cette pente donne à 1,5 h. On ne va
+ * pas plus bas : au-delà, l'extrapolation quitterait le domaine où quiconque a mesuré quoi que
+ * ce soit, et un exposant sans borne produirait des chronos absurdes près du volume nul.
+ */
+const RIEGEL_ANCRES: [number, number][] = [[1.5, 1.15], [4, 1.12], [6.5, 1.09], [10, 1.06], [12, 1.04]];
 export function riegelExponent(runHoursPerWeek?: number): number {
   const h = Number(runHoursPerWeek);
   if (!Number.isFinite(h) || h <= 0) return 1.06; // pas de volume connu → comportement historique
@@ -553,9 +572,20 @@ export function predictRace(
     D("R15.2", "Relief du parcours vélo", (reliefOf(legs.bike ?? opts.courseProfile) || { label: "accidenté" }).label + " → IF " + (ifShift * 100).toFixed(1) + " pt",
       "Le chrono vélo n'est pas prédit (il dépend du parcours), mais la CIBLE D'INTENSITÉ, elle, doit "
       + "descendre : à puissance moyenne égale, un parcours vallonné coûte plus cher qu'un parcours plat.");
-  // R14 P5 — l'exposant de Riegel suit le volume, et SEULEMENT pour une course sèche :
-  // les legs course du tri/duathlon portent déjà leurs facteurs de fatigue calibrés à 1,06.
-  const expo = sport === "run" ? riegelExponent(opts.runHoursPerWeek) : 1.06;
+  // B-21 — L'EXPOSANT SUIT LE VOLUME PARTOUT, Y COMPRIS EN TRI ET EN DUATHLON.
+  //
+  // Il était figé à 1,06 hors course sèche, au motif que les facteurs `TRI_RUN.fatigue`
+  // « avaient été calibrés CONTRE cet exposant » et qu'en bouger un compterait deux fois la
+  // même difficulté. **V-07 a établi que ce motif est faux** : `TRI_RUN` est `a_priori` (aucune
+  // source, aucune entrée PROVENANCE, valeurs jamais modifiées, et aucun jeu de chronos réels
+  // n'a jamais existé dans ce dépôt), et la table PRÉCÈDE la fonction — il n'y a jamais eu de
+  // calibration à préserver. Les deux grandeurs modélisent d'ailleurs des phénomènes distincts :
+  // `fatigue` dit « courir après avoir roulé coûte plus cher » (multiplicateur par format),
+  // l'exposant dit « à quel point tu tiens quand la distance s'allonge » (fonction du VOLUME
+  // DE COURSE). Mesuré (V-09) : les 294 profils tri/duathlon du golden courent **2,03 h/semaine**
+  // en médiane, étendue 0,58 → 4,72 — et le moteur leur appliquait à tous l'exposant d'un
+  // coureur à 10 h.
+  const expo = riegelExponent(opts.runHoursPerWeek);
   if (sport === "run" && expo !== 1.06)
     D("P5", "Tenue de la distance", "exposant de Riegel " + expo.toFixed(3),
       "L'extrapolation entre distances dépend du VOLUME, pas seulement de l'allure : à volume élevé "
