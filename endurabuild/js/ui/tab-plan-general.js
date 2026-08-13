@@ -276,7 +276,7 @@ function phaseFriseHTML(plan) {
   const ABBR = { "Développement": "DÉV.", "Spécifique": "SPÉ.", "Affûtage": "AFF.", "Peak": "PIC", "Base": "BASE" };
   plan.phases.forEach((p) => { html += '<button type="button" class="ph-seg" data-phseg="' + p.nom + '" title="' + p.nom + '" aria-label="' + p.nom + ", " + p.weeks + ' semaines" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span class="ph-full">' + p.nom + '</span><span class="ph-abbr">' + (ABBR[p.nom] || p.nom) + "</span><em>" + p.weeks + "sem</em></button>"; });
   html += "</div>";
-  return '<div class="rise r2">' + html + "</div>";
+  return '<div class="zn-plan-frise">' + html + "</div>";
 }
 
 
@@ -410,7 +410,7 @@ export function renderTabPlanGeneral(plan) {
   // description du plan, qui ne change jamais.
   html += avancementPlanHTML(plan, today);
   html += phaseFriseHTML(plan);
-  html += '<div class="card rise r3"><div class="eyebrow">Plan général — ' + SPORTS[S.sport].nom + "</div><h2>Ta saison en un coup d’œil</h2>"
+  html += '<div class="card"><div class="eyebrow">Plan général — ' + SPORTS[S.sport].nom + "</div><h2>Ta saison en un coup d’œil</h2>"
     + '<div class="why">' + plan.totalWeeks + " semaines en " + (plan.use10 ? "cycles de 10 jours (qui glissent)" : "semaines de 7 jours") + ", volume " + plan.volBase + "h → " + plan.volPeak + "h.</div>";
   html += driverBand(a);
   // R23.5 / R23.12 — CE QU'ON VIENT VOIR EN PREMIER : ou j'en suis, et dans combien de jours.
