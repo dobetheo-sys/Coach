@@ -573,6 +573,15 @@ const _fmtMin = (m) => {
   const t = Math.round(m);
   return t < 60 ? t + "'" : Math.floor(t / 60) + "h" + String(t % 60).padStart(2, "0");
 };
+/** Allure/CSS EN SECONDES → "M'SS" (jamais `_fmtMin`, qui arrondit à la minute ENTIÈRE et
+ *  efface les secondes — juste pour une DURÉE de séance, faux pour une ALLURE : 269,8 s/km
+ *  rendait "4'/km" ou "5'/km" selon le côté où l'arrondi tombait, jamais "4'30". Sur un
+ *  athlète déjà proche de 4'42/km, ce faux zéro de précision a fait lire une RÉGRESSION
+ *  (« 4.42 → 5'/km ») là où le moteur calculait une progression de 12 s/km (269,8 < 282).
+ *  Même formule que `fmtPace` (engine.js), `fmtSec` (retest.js), `_fmtSec` (tab-profile.js) —
+ *  reprise ici plutôt qu'importée : c'est déjà l'idiome de ce dépôt pour cette ligne (R11.1
+ *  s'applique au CALCUL, pas à la duplication d'un formateur d'une ligne entre modules UI). */
+const _fmtPace = (s) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
 /** Range les items du prédicteur par discipline. Les lignes d'INTENSITÉ (watts) sont écartées :
  *  P6 interdit de projeter le pacing, elles ne sont pas des chronos et n'ont rien à faire ici. */
 function _parDiscipline(items) {
@@ -690,9 +699,9 @@ function predictionViewHTML(plan, prPrecalcule) {
   if (pj && pj.refs) {
     const a = S.answers;
     const R = [
-      ["CSS natation", a.css, pj.refs.css != null ? _fmtMin(pj.refs.css / 60) + "/100m" : null, "css"],
+      ["CSS natation", a.css, pj.refs.css != null ? _fmtPace(pj.refs.css) + "/100m" : null, "css"],
       ["FTP cible", a.ftp ? a.ftp + " W" : null, pj.refs.ftp != null ? Math.round(pj.refs.ftp) + " W" : null, "ftp"],
-      ["Allure seuil", a.pace, pj.refs.thrPace != null ? _fmtMin(pj.refs.thrPace / 60) + "/km" : null, "thrPace"],
+      ["Allure seuil", a.pace, pj.refs.thrPace != null ? _fmtPace(pj.refs.thrPace) + "/km" : null, "thrPace"],
     ].filter((x) => x[1] || x[2]);
     if (R.length) {
       h += '<details class="load-card zn-pred-why"><summary>💡 Pourquoi cette projection</summary><div>';

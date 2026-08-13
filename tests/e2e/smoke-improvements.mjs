@@ -476,6 +476,54 @@ if (proj.applicable) {
     "quand on refuse de projeter, le MOTIF RÉEL du moteur est affiché — le silence n'est pas une information, ni un texte générique");
 }
 
+// ---- R30 (280j) — la pace projetée ne se lit jamais comme une régression : les SECONDES
+// comptent, une minute entière ne suffit pas. ----
+//
+// Trouvé sur un écran réel (retour du fondateur, 13/08/2026, écran 70.3 à J-283) : le panneau
+// « Pourquoi cette projection » affichait « 4.42 → 5'/km », lu comme une régression (5:00/km
+// est plus LENT que 4:42/km) — alors que le moteur projetait une allure RÉELLEMENT plus rapide
+// (269,8 s/km, soit 4'30). Vérifié directement contre `predict()`, hors UI, avec le même
+// horizon (280 jours, FTP/pace/CSS déclarés) : le moteur rend un thrPace/css/ftp
+// systématiquement MEILLEUR que le déclaré — le défaut vivait entièrement dans `_fmtMin`
+// (plan-view.js), réutilisée pour une ALLURE alors qu'elle est conçue pour une DURÉE (elle
+// arrondit à la minute ENTIÈRE et efface les secondes). Remplacée par `_fmtPace`, qui rend
+// les secondes comme `fmtPace`/`fmtSec`/`_fmtSec` le font déjà ailleurs dans ce dépôt (R11.1 :
+// même idiome, pas une seconde définition).
+const paceRegr = await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  const { setTab } = await import("./js/ui/tabs.js");
+  const d = new Date(Date.now() + 280 * 864e5).toISOString().slice(0, 10); // 280 jours, comme l'écran remonté
+  S.answers.race_date = d;
+  delete S.answers.raceResult;
+  ebSave();
+  setTab("general");
+  document.querySelector('[data-plansub="pred"]').click();
+  await new Promise((r) => setTimeout(r, 500));
+  const why = document.querySelector(".zn-pred-why");
+  if (why) { why.open = true; await new Promise((r) => setTimeout(r, 100)); }
+  const row = why ? [...why.querySelectorAll(".kv")].find((el) => /Allure seuil/.test(el.textContent)) : null;
+  const txt = row ? row.textContent : "";
+  // TÉMOIN — reset pour ne pas polluer les blocs suivants (même piège que le bloc R14 ci-dessus).
+  S._planSub = "overview";
+  setTab("general");
+  return { hasWhy: !!why, txt, declared: S.answers.pace };
+});
+if (paceRegr.hasWhy && /→/.test(paceRegr.txt)) {
+  const ap = (paceRegr.txt.split("→")[1] || "").trim();
+  const declSec = (() => {
+    const m = String(paceRegr.declared).match(/^(\d{1,2})[:.'′](\d{1,2})/);
+    return m ? +m[1] * 60 + +m[2] : null;
+  })();
+  const projMatch = ap.match(/(\d+)'(\d{2})/);
+  ok(!!projMatch, "R30 — la pace projetée porte ses SECONDES (rendu : " + JSON.stringify(ap) + "), jamais un chiffre rond arrondi à la minute");
+  if (projMatch && declSec != null) {
+    const projSec = +projMatch[1] * 60 + +projMatch[2];
+    ok(projSec <= declSec, "R30 — la pace projetée n'est jamais plus LENTE que la pace déclarée (" + projSec + "s projetés ≤ " + declSec + "s déclarés)");
+  }
+} else {
+  info("R30 — pas de projection applicable à cet horizon pour ce profil (rien à vérifier ici)");
+}
+
 // ---- R14.1. La question de structure existe, et le levier poids reste FERMÉ par défaut ----
 // P9 est la frontière la plus sensible du module : le champ « poids cible » ne doit pas
 // exister tant que l'athlète n'a pas ouvert cette porte lui-même.
