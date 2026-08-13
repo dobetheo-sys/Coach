@@ -42,7 +42,7 @@ function modMin(s) {
  * Trois s'y ajoutent parce que les tickets du lot B les déplacent explicitement :
  * part de la sortie longue dans sa semaine (B-01), part de modéré (B-03), jours actifs (B-20).
  */
-export function metrics(plan) {
+export function metrics(plan, sport, answers) {
   const weeks = plan?.weeks ?? [];
   const charge = weeks.filter(estCharge);
 
@@ -98,16 +98,29 @@ export function metrics(plan) {
     longueMaxMin: Math.round(longueMax),
     longuePartMax: pct(longuePartMax * 100, 100),
     joursActifsMoy: r1(joursActifsMoy / nC),
-    tempsPredit: tempsPreditDe(plan),
+    tempsPredit: tempsPreditDe(plan, sport, answers),
   };
 }
 
-/** Le chrono annoncé, quand il existe — c'est ce que l'athlète lit, donc ce qu'un diff doit voir. */
-function tempsPreditDe(plan) {
-  const items = plan?._v2?.prediction?.items ?? plan?.prediction?.items ?? null;
-  if (!Array.isArray(items)) return null;
-  const total = items.find((i) => /Total estim|Temps estim/i.test(String(i?.leg ?? "")));
-  return total?.value ?? null;
+/**
+ * Le chrono annoncé, quand il existe — c'est ce que l'athlète lit, donc ce qu'un diff doit voir.
+ *
+ * MA PREMIÈRE ÉCRITURE LISAIT `plan._v2.prediction.items` ET RENDAIT TOUJOURS `null` :
+ * la prédiction n'est PAS dans le plan (`_v2` ne porte que decisions/warnings/repairs/score/
+ * hardViolations/intensity), elle vient d'un appel SÉPARÉ `predict(sport, answers, plan)`.
+ * La métrique était donc morte, et le test T-12 qui lisait le même chemin passait vert en
+ * n'examinant aucun item — un test satisfait par sa propre panne. Trouvé en comptant ce que
+ * l'instrument regarde au lieu de croire son verdict.
+ */
+function tempsPreditDe(plan, sport, answers) {
+  if (!sport || !answers || !globalThis.EBV2?.predict) return null;
+  try {
+    const pr = globalThis.EBV2.predict(sport, answers, plan);
+    const total = (pr?.items ?? []).find((i) => /Total estim|Temps estim/i.test(String(i?.leg ?? "")));
+    return total?.value ?? null;
+  } catch {
+    return null;
+  }
 }
 
 const r1 = (v) => Math.round(v * 10) / 10;

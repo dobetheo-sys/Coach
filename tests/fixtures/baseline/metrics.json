@@ -355,7 +355,7 @@
    "longueMaxMin": 370,
    "longuePartMax": 49.1,
    "joursActifsMoy": 6,
-   "tempsPredit": null
+   "tempsPredit": "10h50–11h43"
   },
   "hash": "29b35a15030f0217"
  },
@@ -379,7 +379,7 @@
    "longueMaxMin": 110,
    "longuePartMax": 40.5,
    "joursActifsMoy": 5,
-   "tempsPredit": null
+   "tempsPredit": "1h11–1h16"
   },
   "hash": "402bb79e457b59cb"
  },
@@ -403,7 +403,7 @@
    "longueMaxMin": 144,
    "longuePartMax": 42.3,
    "joursActifsMoy": 5.8,
-   "tempsPredit": null
+   "tempsPredit": "2h07–2h16"
   },
   "hash": "8f9ad9f13e521ac3"
  },
@@ -427,7 +427,7 @@
    "longueMaxMin": 296,
    "longuePartMax": 56.4,
    "joursActifsMoy": 5,
-   "tempsPredit": null
+   "tempsPredit": "12h31–13h31"
   },
   "hash": "79881e9d05419032"
  },
@@ -451,7 +451,7 @@
    "longueMaxMin": 0,
    "longuePartMax": 0,
    "joursActifsMoy": 5,
-   "tempsPredit": null
+   "tempsPredit": "5h24–5h51"
   },
   "hash": "e2109564f3a5bbbc"
  },
@@ -475,7 +475,7 @@
    "longueMaxMin": 317,
    "longuePartMax": 53.5,
    "joursActifsMoy": 6,
-   "tempsPredit": null
+   "tempsPredit": "7h34–8h16"
   },
   "hash": "e5a18b426fb622c5"
  },
@@ -523,7 +523,7 @@
    "longueMaxMin": 193,
    "longuePartMax": 55.8,
    "joursActifsMoy": 5,
-   "tempsPredit": null
+   "tempsPredit": "3h26–3h42"
   },
   "hash": "cf8e8ce8c27d2daf"
  },
@@ -547,7 +547,7 @@
    "longueMaxMin": 147,
    "longuePartMax": 35.9,
    "joursActifsMoy": 6,
-   "tempsPredit": null
+   "tempsPredit": "2h01–2h10"
   },
   "hash": "0a9224f7081339de"
  },
@@ -571,7 +571,7 @@
    "longueMaxMin": 303,
    "longuePartMax": 50.6,
    "joursActifsMoy": 5,
-   "tempsPredit": null
+   "tempsPredit": "14h03–21h04"
   },
   "hash": "3f6781b858a911c4"
  },
@@ -595,7 +595,7 @@
    "longueMaxMin": 127,
    "longuePartMax": 59.8,
    "joursActifsMoy": 3.9,
-   "tempsPredit": null
+   "tempsPredit": "3h47–5h01"
   },
   "hash": "677333835be7b5d1"
  },
@@ -619,7 +619,7 @@
    "longueMaxMin": 84,
    "longuePartMax": 33.9,
    "joursActifsMoy": 4.9,
-   "tempsPredit": null
+   "tempsPredit": "1h00–1h14"
   },
   "hash": "d39824cf5cf030e5"
  },
@@ -643,7 +643,7 @@
    "longueMaxMin": 454,
    "longuePartMax": 73.2,
    "joursActifsMoy": 5,
-   "tempsPredit": null
+   "tempsPredit": "23h22–35h03"
   },
   "hash": "e1756408c388f246"
  },
@@ -667,7 +667,7 @@
    "longueMaxMin": 180,
    "longuePartMax": 40.5,
    "joursActifsMoy": 5,
-   "tempsPredit": null
+   "tempsPredit": "9h35–13h14"
   },
   "hash": "957a0643bc85644c"
  },
@@ -691,7 +691,7 @@
    "longueMaxMin": 42,
    "longuePartMax": 24.6,
    "joursActifsMoy": 4,
-   "tempsPredit": null
+   "tempsPredit": "2h56–3h57"
   },
   "hash": "335b2467719e184b"
  },
@@ -715,7 +715,7 @@
    "longueMaxMin": 191,
    "longuePartMax": 44.8,
    "joursActifsMoy": 5,
-   "tempsPredit": null
+   "tempsPredit": "4h47–6h36"
   },
   "hash": "66178f664a6cd61e"
  }

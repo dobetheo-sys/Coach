@@ -71,7 +71,7 @@ function construire() {
     try {
       const plan = globalThis.EBV2.buildPlan(p.sport, { ...p.a });
       const c = canon(plan);
-      out.push({ id: p.id, why: p.why, sport: p.sport, ok: true, m: metrics(plan),
+      out.push({ id: p.id, why: p.why, sport: p.sport, ok: true, m: metrics(plan, p.sport, p.a),
         hash: createHash("sha256").update(JSON.stringify(c)).digest("hex").slice(0, 16), _plan: c });
     } catch (e) {
       const typed = e && e.code === "ENTREE_INVALIDE";
