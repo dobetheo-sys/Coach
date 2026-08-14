@@ -52,7 +52,20 @@ for (const sport of SPORTS) {
   page.on("pageerror", (e) => errs.push(String(e)));
   page.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
   await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
-  await page.evaluate(() => localStorage.clear());
+  // Le `evaluate` qui suit court contre le BOOT de l'app : `networkidle` ne garantit pas que
+  // plus aucune navigation ne partira (le service worker peut en déclencher une). Vu en CI le
+  // 14/08/2026 : « Execution context was destroyed » — exception NON RATTRAPÉE, donc la suite
+  // MEURT sans imprimer une ligne et le lanceur compte une suite rouge sans dire laquelle.
+  // C'est la forme exacte que R22b a corrigée ailleurs : un test qui meurt ne rapporte rien.
+  // On réessaie sur le nouveau contexte au lieu de tomber ; trois tentatives, puis on lève
+  // POUR DE BON (une garde qui avale l'erreur indéfiniment ne mesure plus rien).
+  for (let essai = 1; ; essai++) {
+    try { await page.evaluate(() => localStorage.clear()); break; }
+    catch (e) {
+      if (essai >= 3) throw e;
+      await page.waitForLoadState("networkidle");
+    }
+  }
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(400);
   await page.click('.sport-card[data-sport="' + sport + '"]');
