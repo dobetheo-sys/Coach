@@ -40,8 +40,10 @@ Mesurée sur les plans ÉMIS (seuil 4'15/km partout, allures relevées dans le `
 > conclusion (§10). Deux constats en le regardant en face : (1) le R1 du duathlon porte la
 > même question que le tri — quelle allure vaut pour un R1 de 10 km couru FRAIS ? — mais avec
 > DEUX legs de sens différents (R1 frais, R2 pré-fatigué), c'est le chantier symétrique de
-> B-25, pas couvert par lui ; (2) le step porte `intensity=[object Object]` — `intOf("rn.mara")`
-> rend un objet casté en string, défaut antérieur, enregistré pour la table de traçabilité 2.1.
+> B-25, pas couvert par lui ; (2) ~~le step porte `intensity=[object Object]`~~ — **rectifié
+> (§4/T-20)** : le « [object Object] » était un artefact de MA sonde (template-littéralisation),
+> le champ est un objet bande par CONSTRUCTION et son unique consommateur (export JSON) le
+> sérialise proprement. Pas un défaut du moteur — retiré de la famille.
 
 ### Verdict sur la question P0
 
@@ -110,7 +112,14 @@ la population tri — **rattaché au dossier V-08/B-02a comme demandé, non corr
 
 **Duathlon** : voir la rectification sous la table 2.0 — le R1 émet bien `rn.mara` (« allure
 cible », sans chiffre), c'est le chantier symétrique de B-25 (deux legs, deux sens), pas couvert
-par lui ; et son step porte `intensity=[object Object]`, défaut antérieur consigné pour 2.1.
+par lui. (Le « intensity=[object Object] » d'abord consigné ici était un artefact de ma sonde —
+voir §4, retiré de la famille.)
+
+**État de la famille intensité, avec les commits** : membre n°2 (`rn.mara` compté « modéré » au
+seuil) **FERMÉ par `d846352`** (classement par bande, §3 ci-dessous) ; membre n°3
+(`[object Object]`) **rectifié comme artefact d'instrument** (§4, aucun commit moteur — c'est ma
+sonde qui a été corrigée) ; reste OUVERT le membre n°1 (`sw.aero` hors domaine, V-08/B-02a,
+106 profils) et le versant duathlon (B-26, 416 séances).
 
 ---
 

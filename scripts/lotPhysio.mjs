@@ -58,12 +58,23 @@ const durSem = (w) => seances(w).reduce((t, s) => { try { return t + (intensityS
 const modSem = (w) => seances(w).reduce((t, s) => { try { return t + (intensitySplit(s).modMin || 0); } catch { return t; } }, 0);
 
 // ---- T-01 · les deux classificateurs disent la même chose ------------------
-T("T-01", "rouge", "zoneClass() et sessionIntensity() classent identiquement toute zone de ZDEF", () => {
+// §5 (DOC_UNIQUE après B1) — TROISIÈME FONCTION SOUS LE MÊME GARDE : `EBV2.sessionSplit`
+// est né pour alimenter le graphe B1, le contexte exact qui a produit `_IFZ` et la doctrine
+// CTL/ATL parallèle. Vérifié à la source : c'est un WRAPPER de refs autour d'`intensitySplit`
+// (bridge.ts, `sessionSplitForUI` → `return intensitySplit(...)`) — il importe, il ne
+// réimplémente pas. Le garde empêche que ça change : les trois classent identiquement.
+T("T-01", "rouge", "zoneClass(), sessionIntensity() et EBV2.sessionSplit() classent identiquement toute zone de ZDEF", () => {
   const MAP = { hard: "difficile", mod: "moderee", easy: "facile" };
   const ecarts = [];
   for (const zone of Object.keys(ZDEF)) {
     const attendu = MAP[zoneClass(zone)];
     const obtenu = sessionIntensity({ d: "rn", min: 60, steps: [{ role: "body", zone, durationMin: 60 }] });
+    // la 3e voix : sessionSplit doit ranger les 60 min dans la classe que zoneClass nomme
+    try {
+      const sp = globalThis.EBV2.sessionSplit({ d: "rn", min: 60, steps: [{ role: "body", zone, durationMin: 60 }] }, {});
+      const cls3 = sp.hardMin >= 59 ? "hard" : sp.modMin >= 59 ? "mod" : sp.easyMin >= 59 ? "easy" : "?";
+      if (cls3 !== zoneClass(zone)) ecarts.push(`${zone} : zoneClass=${zoneClass(zone)} mais sessionSplit=${cls3}`);
+    } catch (e) { ecarts.push(`${zone} : sessionSplit a levé (${String(e?.message).slice(0, 40)})`); }
     if (attendu !== obtenu) ecarts.push(`${zone} : loadModel=${attendu} · dailyAdjuster=${obtenu}`);
   }
   return { ok: !ecarts.length, detail: `${ecarts.length} zone(s) divergente(s) — ` + ecarts.join(" · ") };
