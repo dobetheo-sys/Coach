@@ -253,7 +253,7 @@ une énumération encore périmée ; la cause restante est nommée (ce que le po
 déclaré par aucun maillon). `sessionScale` porte sa condition de sortie, T-23 est rectifié (34 %
 est le taux honnête, 10 % était le mensonge), et `smoke-questionnaires` cesse de MOURIR sur une
 course de navigation.
-**28 gates verts, `audit:v1` 459, invariants 22×54, v6 73 verts, golden 949 recapturé.**
+**28 gates verts, E2E 25/25, `audit:v1` 459, invariants 22×54, v6 73 verts, golden 949 recapturé.**
 
 **R20.2 (2ᵉ correction) + O-35 livrés — « ce qui borne » devient l'argmin d'un min(), et deux
 fautes d'unité se compensaient en natation** (DOC_UNIQUE + arbitrage `sw.aero`, 14/08/2026, voir
