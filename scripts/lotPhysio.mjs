@@ -271,23 +271,49 @@ T("T-14", "rouge", "toute séance >60 min porte une cible glucidique horaire", (
 // ---- T-15 · cohérence interne du classificateur, domaine par domaine ------
 // DISTINCT DE T-01 : T-01 compare deux fonctions entre elles et resterait vert si `sw.aero`
 // était mal classé PARTOUT de la même façon. T-15 teste la cohérence INTERNE d'une seule.
-// V-08 a réfuté la prémisse du ticket : la ligne SEUIL est homogène (sw.css, bk.thr et rn.thr
-// sont tous trois `hard`). La divergence est sur la ligne TEMPO — `sw.aero` est `easy` quand
-// ses homologues sont `mod`, alors qu'à 1/1,06 il vaut 94,3 % de la vitesse seuil, soit au
-// moins aussi exigeant que `bk.ss` (88-94 % FTP) et `rn.mara` (88-93 % de la vitesse seuil).
+//
+// LA PRÉMISSE DE LA PREMIÈRE ÉCRITURE ÉTAIT UNE FAUTE D'UNITÉ, MESURÉE LE 14/08/2026 —
+// ARBITRAGE « ALIGNER » ROUVERT AUPRÈS DU FONDATEUR SUR CES CHIFFRES. Elle comparait des
+// ratios de VITESSE (natation : 1/1,06 = 94,3 % de la vitesse CSS) à des ratios de PUISSANCE
+// (bk.ss : 88-94 % FTP). Dans l'eau, la traînée fait puissance ∝ v³ : sw.aero vaut
+// (1/1,06)³ = **84 % de l'effort seuil** — SOUS le plancher de la ligne tempo (88 %) et sous
+// le propre plafond de rn.easy (86 %, classée easy). Le classement actuel (`easy`) RESPECTE
+// donc l'ordre des efforts ; « aligner » sw.aero sur `mod` aurait encodé la confusion
+// vitesse/puissance, et son coût était mesuré : 411 semaines du golden passaient au-dessus
+// de la borne C26d des 40 % de modéré (0 aujourd'hui) — des plans entiers déclassés pour un
+// changement d'étiquette. L'arbitrage C26d demandé « dans le même ticket » est donc SANS
+// OBJET sous la lentille corrigée. La ligne tempo n'a PAS d'homologue natation : les zones
+// de nage sautent de 84 % (aero) à 100 % (css).
+//
+// L'invariant qui reste — et qui garde — : les classes RESPECTENT L'ORDRE DES EFFORTS entre
+// disciplines. Aucune zone classée plus bas ne demande plus d'effort qu'une zone classée
+// plus haut. C'est lui que le test asserte, fractions publiées.
 const DOMAINES = [
   ["facile / Z2", ["rn.easy", "bk.z2", "sw.easy"]],
   ["tempo / sweetspot", ["rn.mara", "bk.ss", "sw.aero"]],
   ["seuil", ["rn.thr", "bk.thr", "sw.css"]],
   ["VO2max", ["rn.vo2", "bk.vo2", "sw.vo2"]],
 ];
-T("T-15", "rouge", "un domaine physiologique reçoit la même classe dans les trois disciplines", () => {
+T("T-15", "vert", "les classes d'intensité respectent l'ordre des EFFORTS entre disciplines (P ∝ v³ en natation)", () => {
+  const RANG = { easy: 0, mod: 1, hard: 2 };
+  const effort = (z) => {
+    const d = ZDEF[z];
+    if (!d || !Number.isFinite(d.lo) || !Number.isFinite(d.hi)) return null;
+    if (z.startsWith("bk.")) return [d.lo, d.hi];               // %FTP : déjà de la puissance
+    if (z.startsWith("rn.")) return [1 / d.hi, 1 / d.lo];       // allure → vitesse ≈ effort (linéaire)
+    if (z.startsWith("sw.")) return [(1 / d.hi) ** 3, (1 / d.lo) ** 3]; // vitesse au CUBE (traînée)
+    return null;
+  };
+  const zones = DOMAINES.flatMap(([, zs]) => zs).map((z) => ({ z, cls: zoneClass(z), eff: effort(z) })).filter((x) => x.eff);
   const ecarts = [];
-  for (const [nom, zones] of DOMAINES) {
-    const cls = zones.map((z) => `${z}=${zoneClass(z)}`);
-    if (new Set(zones.map((z) => zoneClass(z))).size > 1) ecarts.push(`${nom} : ${cls.join(" ")}`);
-  }
-  return { ok: !ecarts.length, detail: `${ecarts.length}/${DOMAINES.length} domaine(s) non homogène(s) — ` + ecarts.join(" · ") };
+  for (const a of zones) for (const b of zones)
+    // une zone de classe STRICTEMENT inférieure ne peut pas demander plus d'effort que le
+    // BAS de la fourchette d'une zone de classe supérieure (tolérance 2 pts : les bandes
+    // publiées sont des arrondis de table)
+    if (RANG[a.cls] < RANG[b.cls] && a.eff[1] > b.eff[0] + 0.02)
+      ecarts.push(`${a.z} (${a.cls}, ${Math.round(a.eff[1] * 100)} %) dépasse ${b.z} (${b.cls}, plancher ${Math.round(b.eff[0] * 100)} %)`);
+  const table = DOMAINES.map(([nom, zs]) => nom + " : " + zs.map((z) => { const e = effort(z); return e ? `${z} ${Math.round(e[0] * 100)}-${Math.round(e[1] * 100)} %` : z; }).join(" · ")).join(" — ");
+  return { ok: !ecarts.length, detail: (ecarts.length ? ecarts.slice(0, 4).join(" · ") + " — " : "") + table };
 });
 
 // ---- T-16 · le chrono prédit et l'allure prescrite parlent du même effort -
@@ -672,6 +698,60 @@ T("T-23", "rouge", "V2.1 et R20.2 affichées ensemble ne nomment pas deux contra
     detail: `${incoherents}/${paires} écran(s) où R20.2 nomme un plafond que le pic n'approche pas pendant que V2.1 nomme les plafonds de séance` + (ex.length ? " — " + ex.join(" · ") : "") };
 });
 
+// ---- T-21 · aucun littéral numérique dans les gabarits de message ----------
+// ARBITRAGES_STOP_PHASE2 §6 : « le défaut n'est pas dans les ~30 messages, il est dans le
+// MÉCANISME — un template qui ré-écrit une valeur peut toujours diverger de celle qui a été
+// utilisée ». Un message interpolé depuis le record NE PEUT PAS contredire le calcul (le
+// patron B-24/V-11, appliqué au volume par R20.2). Ce test compte les chaînes de message des
+// deux fichiers émetteurs qui portent un nombre-avec-unité ÉCRIT EN DUR (« +10 % par
+// semaine », « ≈ 25min », « 40-60 % ») : chacun peut mentir dès que la constante bouge.
+// R20.2 n'est PAS à refondre à ce titre (DOC_UNIQUE §0 : son record est correct) — le rouge
+// mesure le reste de la classe.
+T("T-21", "rouge", "aucun gabarit de message ne porte de littéral numérique — tout nombre vient d'un record", () => {
+  const UNITES = /\d+(?:[.,]\d+)?\s*(?:%|h\b|min\b|sem|semaines?|kcal|W\b|°C|km\b|j\b)/;
+  const trouve = [];
+  for (const f of ["generator/planGenerator.ts", "engine/reasoningEngine.ts"]) {
+    const lignes = src(f).split("\n");
+    lignes.forEach((l, i) => {
+      const sansComment = l.replace(/^\s*(\/\/|\*|\/\*).*$/, "");
+      for (const m of sansComment.matchAll(/"([^"]{6,})"/g))
+        if (UNITES.test(m[1]) && !/^[A-Z]?\d|^R\d|^C\d|^T\d/.test(m[1])) trouve.push(`${f}:${i + 1} « ${m[1].slice(0, 50)} »`);
+    });
+  }
+  return { ok: trouve.length === 0, detail: `${trouve.length} littéral(aux) à unité dans des chaînes émises — ` + trouve.slice(0, 4).join(" · ") };
+});
+
+// ---- T-22 · un step qui promet une allure porte une zone -------------------
+// ARBITRAGES_STOP_PHASE2 §7 : « Tout step dont le det ou la prose nomme une allure porte une
+// zone. L'absence de zone n'est acceptable que là où la classe de repli est démontrée
+// correcte (récupération). » L'exception est OBLIGATOIRE (sans elle : 11 034 faux rouges,
+// les « Récup active » dont le repli easy est la bonne classe par conception). L'offenseur
+// mesuré : le R2 du brick duathlon — det « 51min CAP @ allure cible », step {d:"rn"} SANS
+// zone, compté « mod » par repli (416 séances, périmètre B-26).
+T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps zonés (exception récup)", () => {
+  const plansPlus = [...plans];
+  try {
+    const dua = globalThis.EBV2.buildPlan("duathlon", { intent: "competition", format: "PM",
+      med_pain: "non", med_dizzy: "non", med_treat: "non", sex: "H", age: "35", sessions_max: "6",
+      vol_max: "12", vol_recent: "10", dispo: "quotidienne", doubles: "non", level: "avance",
+      history: "confirme", injury: "aucune", ftp_known: "oui", ftp: "220", pace_known: "oui", pace: "4:30", weight: "72" });
+    plansPlus.push({ id: "duathlon-PM-T22", plan: dua });
+  } catch {}
+  const nus = new Map();
+  let examinees = 0;
+  for (const { id, plan } of plansPlus)
+    for (const w of plan.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? []) {
+      const prose = String(s.det ?? "") + " " + String(s.note ?? "") + " " + String(s.name ?? "");
+      if (!/allure/i.test(prose)) continue;
+      if (/récup|souple/i.test(prose)) continue; // l'exception démontrée correcte (repli easy)
+      examinees++;
+      for (const st of s.steps ?? [])
+        if (st.role === "body" && st.zone == null) nus.set(`${id} « ${s.name} » step ${st.d ?? "?"} sans zone`, true);
+    }
+  const l = [...nus.keys()];
+  return { ok: examinees > 0 && l.length === 0, detail: `${l.length} step(s) de corps sans zone dans une séance qui nomme une allure (${examinees} séances examinées) — ` + l.slice(0, 4).join(" · ") };
+});
+
 // ---- verdict --------------------------------------------------------------
 /**
  * §6.3 (DOC_UNIQUE, 14/08/2026) — LES ROUGES ATTENDUS SONT UNE LISTE NOMMÉE, PAS UN NOMBRE.
@@ -695,11 +775,12 @@ const ROUGES_ATTENDUS = {
   "T-12": "B-23 étendu — fourchettes d'incertitude hors swimrun",
   "T-13": "N-01 — renforcement musculaire tous sports (Lauersen 2014)",
   "T-14": "N-02 — cible glucidique horaire par séance longue",
-  "T-15": "B-02a — alignement des familles physiologiques entre disciplines (V-08)",
   "T-17": "B-23 — fourchettes des sous-segments swimrun",
   "T-18": "B-23 — bandes des estimations de fait swimrun",
   "T-25": "O-35 — unités de la chaîne natation/trail + rendu discret (les « 18 min » du DOC_UNIQUE §0)",
   "T-23": "O-35 — mêmes causes que T-25, vues de l'écran (BUGS_OUVERTS.md)",
+  "T-21": "généralisation du patron B-24/V-11 : records de décision partout (ARBITRAGES_STOP_PHASE2 §6)",
+  "T-22": "B-26 — les bricks reçoivent leurs steps zonés (416 séances duathlon chiffrées ; T-22 en a trouvé AUSSI en tri : « Brick vélo+CAP », périmètre B-26 à élargir)",
 };
 
 const res = TESTS.map((t) => {

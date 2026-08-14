@@ -32,8 +32,13 @@ import { DISC, CHARGE } from "./icons.js";
 /** Minutes d'un step (durée directe, ou distance convertie grossièrement). SURVIT à B1 :
  *  ce n'est pas le modèle TSS, c'est l'estimateur de LARGEUR de la barre de zones
  *  (session-life/znZoneBar) — proportionnel, donc tolérant à sa propre grossièreté.
- *  Sa conversion distance→minutes est une approximation UI (2 min/100 m nage, 5 min/km
- *  course) distincte des refs du moteur : dette de traçabilité MINEURE, notée en 2.1. */
+ *  DETTE « À BRANCHER » (§6.2 du DOC_UNIQUE, tranché par MESURE le 14/08/2026) : le moteur
+ *  ÉMET la durée des blocs à distance — chaque step porte `_min` (R5.6a : récup inter-blocs
+ *  comprise ; sondé sur swim/demifond, 71 steps à distance, 71 `_min`). La conversion UI
+ *  (2 min/100 m nage, 5 min/km course) ré-estime donc une sortie que le moteur possède —
+ *  occurrence suivante de la RÈGLE 12, portée par l'UI et non par le moteur. Le branchement
+ *  (`st._min` d'abord) attend sa propre mesure : la sémantique reps × `_min` doit être
+ *  vérifiée avant de changer une proportion rendue. */
 function _blkMin(st){const r=st.reps||1;if(st.durationMin!=null)return r*st.durationMin;if(st.distanceM!=null)return st.d==="sw"?r*st.distanceM/100*2:r*st.distanceM/1000*5;return 0;}
 
 const CHARGE_CLASSES = [

@@ -118,8 +118,14 @@ voir §4, retiré de la famille.)
 **État de la famille intensité, avec les commits** : membre n°2 (`rn.mara` compté « modéré » au
 seuil) **FERMÉ par `d846352`** (classement par bande, §3 ci-dessous) ; membre n°3
 (`[object Object]`) **rectifié comme artefact d'instrument** (§4, aucun commit moteur — c'est ma
-sonde qui a été corrigée) ; reste OUVERT le membre n°1 (`sw.aero` hors domaine, V-08/B-02a,
-106 profils) et le versant duathlon (B-26, 416 séances).
+sonde qui a été corrigée) ; membre n°1 (`sw.aero`) : **prémisse RÉFUTÉE par la mesure, arbitrage
+« aligner » ROUVERT** (14/08) — la comparaison mêlait des ratios de VITESSE (nage) à des ratios
+de PUISSANCE (vélo) ; avec P ∝ v³ dans l'eau, `sw.aero` vaut **84 % de l'effort seuil**, sous le
+plancher de la ligne tempo (88 %) et sous le plafond de `rn.easy` (86 %, classée easy) — le
+classement actuel respecte l'ordre des efforts, et « aligner » aurait fait passer 411 semaines
+du golden au-dessus de la borne C26d (0 aujourd'hui) pour un changement d'étiquette. T-15
+réécrit sur l'invariant d'ordre des efforts (fractions publiées), contre-prouvé rouge à 1,01.
+Reste OUVERT le versant duathlon (B-26, 416 séances + bricks TRI trouvés par T-22).
 
 ---
 
