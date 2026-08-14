@@ -184,13 +184,42 @@ export class TrainingReasoningEngine {
     const loadFactor = injFactor * ageFactor;
 
     const volMax = parseInt(a.vol_max || "10");
+    // O-35 — `SWIM_TIME_FACTOR` CONVERTIT LA DÉCLARATION DE L'ATHLÈTE, PAS LES TABLES DU MOTEUR.
+    //
+    // Il code « 60 % du temps déclaré en BASSIN n'est pas de la nage » (consignes, départs,
+    // temps d'arrêt) : c'est une conversion d'UNITÉ sur la seule grandeur exprimée en temps de
+    // piscine — `vol_max`, que l'athlète saisit. `HISTORY_CAPS` et `UTIL` sont du VOLUME
+    // D'ENTRAÎNEMENT, au même titre que les lignes course et vélo qui ne subissent aucune
+    // conversion ; les convertir pénalisait le nageur une seconde fois. R20.7 avait déjà posé
+    // ce principe sur la rampe (elle convertit `vol_recent`, jamais une table) — on l'applique
+    // ici au même endroit pour toute la chaîne.
+    //
+    // Le correctif était appliqué au RÉSULTAT (`volPeak × SWIM_TIME_FACTOR`, ligne suivante
+    // avant O-35) : dès que `caps` ou `util` était le terme mordant, la table y passait aussi.
+    // Mesuré : `swim/demifond` non-débutant recevait `peakH` = 6,00 h pour un `volPeak` de
+    // 2,40 — rapport 2,50 = 1/0,4 au chiffre près, quand le témoin course rend 1,00. La courbe
+    // de charge étant pilotée par `peakH` (jamais converti), LE PLAN traitait les tables comme
+    // des heures d'eau depuis toujours : seule la PROMESSE mentait. Convertir `peakH` à son
+    // tour (la correction symétrique, mesurée puis REFUSÉE) faisait tomber 92 profils du
+    // golden jusqu'à −55 % — 3 séances de 15 min. On aligne donc la promesse sur le plan.
+    const _volMaxEau = guard(sp as string, "swimTimeFactor") ? volMax * SWIM_TIME_FACTOR : volMax;
+    // `sessionScale` GARDE `volMax` NON CONVERTI, ET C'EST MESURÉ, PAS OUBLIÉ.
+    //
+    // Le ratio compare bien deux unités différentes quand `volMax` borde (déclaration en temps
+    // de piscine ÷ table en heures d'entraînement), et P11 exige de corriger un piège d'unité
+    // sur TOUT le chemin — la conversion a donc été écrite, puis RÉFUTÉE par la mesure :
+    // `audit:v1` remonte alors une violation DURE du manifeste sur `swim/sprint/ancien/
+    // debutant` — « 1 saut >+25 % de volume réel entre semaines de charge ». Diviser l'échelle
+    // des séances par 2,5 les envoie toutes sur leurs planchers (C24/C24b, 750 m et 600 m), et
+    // une semaine dont le contenu est épinglé au plancher ne suit plus la courbe : la
+    // progression devient un escalier. Priorité 2 du manifeste contre cohérence d'unité — la
+    // sécurité gagne, l'écart est nommé (O-35) plutôt que corrigé au prix d'un saut de charge.
     const sessionScale = Math.min(1, (Math.min(volMax, caps, util) * marg) / util) * recupFactor;
-    let volPeak = Math.round(Math.min(volMax, caps, util) * marg * recupFactor * 10) / 10;
+    let volPeak = Math.round(Math.min(_volMaxEau, caps, util) * marg * recupFactor * 10) / 10;
     if (guard(sp as string, "swimTimeFactor") && beginner) {
       volPeak = Math.min(volPeak, BEGINNER_SWIM_VOLPEAK_CAP_H);
       D("C15", "Nageur débutant", "pic ≤" + BEGINNER_SWIM_VOLPEAK_CAP_H + "h", "La technique borne le volume, pas l'historique (risque épaule)");
     }
-    if (guard(sp as string, "swimTimeFactor")) volPeak = Math.round(volPeak * SWIM_TIME_FACTOR * 10) / 10;
 
     // ---- 3. Comprendre les contraintes : médical, jours, budget ----
     const medHold = a.med_pain === "oui" || a.med_dizzy === "oui" || a.med_treat === "oui";
@@ -294,9 +323,16 @@ export class TrainingReasoningEngine {
     D("courbe", "Courbe de charge", "base " + BANDS.base[0] + "→peak 1.0→affûtage " + BANDS.taper[1], "Bandes normalisées × pic, récup ×" + RECUP_WEEK_FACTOR + ", lissage C22 ≤+" + Math.round((C22_MAX_WEEKLY_GROWTH - 1) * 100) + "%/sem");
 
     const medFactor = medHold ? 0.4 : 1;
-    const theoPeak = Math.min(volMax, caps, util) * marg * recupFactor;
-    let peakH = Math.min(theoPeak, volMax) * medFactor;
-    // C20 — nage débutant : la promesse suit la capacité réelle C15
+    const theoPeak = Math.min(_volMaxEau, caps, util) * marg * recupFactor;
+    let peakH = Math.min(theoPeak, _volMaxEau) * medFactor;
+    // O-35 — `peakH` ET `volPeak` PARTENT DÉSORMAIS DE LA MÊME GRANDEUR (`_volMaxEau`), donc
+    // de la même unité : des heures d'ENTRAÎNEMENT. C'est ce qui rend lisible la sonde V2.1
+    // ci-dessous, qui mesure `weekMin` — des minutes réellement prescrites, la même unité.
+    // Avant, elle comparait ces minutes à un `peakH` 2,5 fois trop grand : elle mordait donc
+    // TOUJOURS en natation et servait de convertisseur d'unité par accident. Un garde-fou de
+    // sécurité qui convertit des unités est un garde-fou qu'on ne peut plus lire.
+    // C20 — nage débutant : la promesse suit la capacité réelle C15 (son plafond, 25 min par
+    // séance, est déjà en heures d'entraînement : la comparaison est enfin homogène)
     let c20Cap = 0; // R20.2 (DOC_UNIQUE §2) — transmis comme plafond STRUCTUREL (nSess × durée max)
     if (guard(sp as string, "swimTimeFactor") && beginner) {
       const cap20 = (parseInt(a.sessions_max || "6") || 6) * C20_BEGINNER_SWIM_H_PER_SESSION;

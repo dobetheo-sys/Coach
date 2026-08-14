@@ -27,7 +27,7 @@ import "../src/app/bridge.ts";
 import { ZDEF } from "../src/generator/renderer.ts";
 import { zoneClass, intensitySplit } from "../src/engine/loadModel.ts";
 import { sessionIntensity } from "../src/readiness/dailyAdjuster.ts";
-import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor } from "../src/engine/constraintMatrix.ts";
+import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor, SWIM_TIME_FACTOR } from "../src/engine/constraintMatrix.ts";
 import { RN_THR_FRONTIERE_LENTE } from "../src/engine/loadModel.ts";
 import { TrainingReasoningEngine } from "../src/engine/reasoningEngine.ts";
 import { toProfile } from "../src/app/bridge.ts";
@@ -470,7 +470,7 @@ const _hSem = (s) => { const m = String(s).match(/([\d,]+) h\/sem/); return m ? 
  * refaite dans le même lot. Le test lit donc la population que l'addendum lui assigne, le
  * golden, et un examen vide est déclaré CASSÉ et non rouge.
  */
-const CAPS_R202 = (L) => [["ton volume demandé", L.declared], ["ton historique", L.caps], ["le volume utile du format", L.util]];
+const CAPS_R202 = (L) => [["ton volume demandé", L.declared * L.swimTime], ["ton historique", L.caps], ["le volume utile du format", L.util]];
 T("T-19", "vert", "le message de volume nomme l'argmin des plafonds ET cite la valeur modulée", () => {
   let nomme = 0, desaccord = 0, cite = 0, brut = 0, vus = 0; const ex = [];
   for (const { key, sport, a } of goldenProfiles()) {
@@ -490,7 +490,7 @@ T("T-19", "vert", "le message de volume nomme l'argmin des plafonds ET cite la v
     //       le test applique la même clause, sur les mêmes valeurs, sans copier l'ordre.
     if (trois.some(([q]) => q === quoi)) {
       nomme++;
-      const queueA = L.marg * L.recup * L.swimTime * L.med * (r.loadFactor < 1 ? r.loadFactor : 1);
+      const queueA = L.marg * L.recup * L.med * (r.loadFactor < 1 ? r.loadFactor : 1); // O-35
       const picA = parseFloat(String(dec.val).match(/pic à ([\d,.]+)/)?.[1]?.replace(",", ".") ?? "NaN");
       const candA = trois.filter(([, x]) => !Number.isFinite(picA) || x * queueA >= picA - 0.1);
       const baseA = candA.length ? candA : trois;
@@ -501,7 +501,10 @@ T("T-19", "vert", "le message de volume nomme l'argmin des plafonds ET cite la v
     const dit = _hSem(dec.why);
     if (table == null || dit == null) continue;
     cite++;
-    const queue = L.marg * L.recup * L.swimTime * L.med * (r.loadFactor < 1 ? r.loadFactor : 1);
+    // O-35 — `swimTime` n'est plus un facteur de la chaîne : c'est la conversion d'unité de la
+    // SEULE grandeur déclarée en temps de piscine (`declared`). Les tables (caps/util) sont du
+    // volume d'entraînement et ne la subissent pas.
+    const queue = L.marg * L.recup * L.med * (r.loadFactor < 1 ? r.loadFactor : 1);
     if (Math.abs(dit - table * queue) > 0.05) {
       brut++;
       if (ex.length < 4) ex.push(`${key} dit ${dit} h, modulé ${(table * queue).toFixed(2)} h, ${String(dec.val).replace(/ —.*/, "")}`);
@@ -616,9 +619,17 @@ T("T-25", "rouge", "record R20.2 : min(plafonds livrés) === volPeak à ±0,1 h,
     if (Math.abs(minLivre - volPeak) > 0.1) { casses++; if (ex.length < 5) ex.push(`${key} min=${minLivre.toFixed(2)} h ≠ pic=${volPeak} h`); }
     // l'identité AU SENS STRICT : pour tout plafond déclaré en unité athlète, livré = brut ×
     // ∏(facteurs) — le record ne peut pas mentir sur la conversion (la faute d'unité de V-11).
+    // O-35 : `declared` porte EN PLUS la conversion piscine → eau (elle ne s'applique qu'à la
+    // grandeur que l'athlète déclare, jamais aux tables) — le test l'admet pour ce seul id.
     const Q = (rec.facteurs ?? []).reduce((q, f) => q * (Number(f.f) || 1), 1);
-    for (const p of actifs) if (p.unite === "athlete" && Math.abs(p.livre - p.brut * Q) > 0.01) {
-      conversions++; if (ex.length < 5) ex.push(`${key} ${p.id} : livré ${p.livre} ≠ brut ${p.brut} × Q ${Q.toFixed(3)}`); break;
+    for (const p of actifs) {
+      if (p.unite !== "athlete") continue;
+      // le facteur de conversion vient de la CONSTANTE du moteur, jamais d'un littéral recopié
+      // ici (ce serait la deuxième écriture que R11.1 interdit, dans le test qui la garde)
+      const attendu = p.id === "declared" ? [p.brut * Q, p.brut * Q * SWIM_TIME_FACTOR] : [p.brut * Q];
+      if (attendu.every((x) => Math.abs(p.livre - x) > 0.01)) {
+        conversions++; if (ex.length < 5) ex.push(`${key} ${p.id} : livré ${p.livre} ≠ brut ${p.brut} × Q ${Q.toFixed(3)}`); break;
+      }
     }
   }
   if (!vus) return { ok: false, detail: "banc cassé : aucun profil examiné" };
@@ -687,7 +698,7 @@ T("T-23", "rouge", "V2.1 et R20.2 affichées ensemble ne nomment pas deux contra
     let livre = null;
     if (rec) livre = (rec.plafonds ?? []).find((p) => p.quoi === quoi)?.livre ?? null;
     else {
-      const queue = L.marg * L.recup * L.swimTime * L.med * (lf < 1 ? lf : 1);
+      const queue = L.marg * L.recup * L.med * (lf < 1 ? lf : 1); // O-35 : swimTime hors chaîne
       livre = quoi === "ton historique" ? L.caps * queue : quoi === "le volume utile du format" ? L.util * queue : quoi === "ton volume demandé" ? L.declared * queue : null;
     }
     if (livre == null || !Number.isFinite(pic)) continue; // nommé = facteur ou structure : pas un plafond chiffrable ici

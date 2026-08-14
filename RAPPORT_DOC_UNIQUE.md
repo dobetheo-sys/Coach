@@ -113,14 +113,95 @@ faute que ton §0 corrige chez toi-même. Si tu maintiens « aligner » en conna
 chiffres, c'est un sed d'une ligne (`.aero` dans `MOD_SUFFIX`) + l'arbitrage C26d à
 reprendre — mais la physique et le coût plaident pour l'état actuel.
 
-## Ce qui reste (ordre §8)
+---
 
-1. **O-35** — mettre la chaîne natation dans UNE unité, sonde V2.1 mesurant le RENDU
-   (ferme T-25/T-23).
+# Suite — ARBITRAGE_SW_AERO (§7), même journée
+
+## §4 — `sw.css` / `bk.thr` / `rn.thr` côte à côte : B-02a se FERME sur sa propre mesure
+
+| zone | ZDEF | classe |
+|---|---|---|
+| `sw.css` | lo 1,00 · hi 1,00 (ref css) | **hard** |
+| `bk.thr` | lo 0,95 · hi 1,05 (ref ftp) | **hard** |
+| `rn.thr` | lo 1,00 · hi 1,05 (ref thrPace) | **hard** |
+
+Homogène — et la conversion y est bien neutre (1,00³ = 1,00), donc le résultat ne doit rien à
+l'argument `sw.aero`, comme ton §4 l'exigeait. **Vérifié aussi en PRATIQUE** (leçon R19.1 : une
+déclaration qui n'agit pas) : sur `swim/demifond`, **8 séances sur 8** portant un step `sw.css`
+comptent effectivement des minutes DURES (87 min cumulées). B-02a est clos par la mesure.
+
+## §5 — O-35 : le test décisif, et il désignait `peakH`
+
+**`capacityH` est en heures d'EAU** (il compte des minutes réellement prescrites). C'est
+**`peakH`** qui était générique : mesuré, `peakH` = 6,00 h pour un `volPeak` de 2,40 —
+**rapport 2,50 = 1/0,4 au chiffre près**, quand le témoin course rend 1,00. Et l'unité changeait
+avec le NIVEAU (C20 rabote `peakH` avec 25 min/séance, donc le débutant avait déjà l'unité
+d'arrivée). D'où le mécanisme complet : **la sonde V2.1 mordait toujours en natation et servait
+de convertisseur d'unité par accident**.
+
+**Trois modèles mesurés avant d'en adopter un** — ta note de méthode du §2, appliquée :
+
+| | modèle | rayon sur les 949 | verdict |
+|---|---|---|---|
+| A | l'état d'avant | — | la promesse ment de 1,6× |
+| B | convertir `peakH` comme `volPeak` | 123 profils, **92 baisses jusqu'à −55 %** | **REFUSÉ** — 3 séances de 15 min |
+| **C** | **convertir la seule DÉCLARATION** | **88 profils · 47 au plan INTACT · 41 à ±6 %** | **ADOPTÉ** |
+
+**C est structurel, pas calibré** : `SWIM_TIME_FACTOR` code « 60 % du temps déclaré en BASSIN
+n'est pas de la nage » — une conversion de ce que l'ATHLÈTE déclare, jamais des tables du
+moteur. `HISTORY_CAPS`/`UTIL` sont du volume d'entraînement, comme les lignes course et vélo qui
+ne subissent aucune conversion. R20.7 avait déjà posé le principe sur la rampe. **Et l'argument
+décisif : sous C le plan livré ne bouge pratiquement pas** — la courbe est pilotée par `peakH`,
+jamais converti, donc le moteur traite les tables comme des heures d'eau depuis toujours. C
+aligne la PROMESSE sur le plan déjà livré (`swim/sprint/reprise/inter` : 700 min avant, 700 min
+après ; promesse 1,1 → 2,0 h pour un pic réel de 1,78).
+
+`swimTime` a quitté la liste des FACTEURS : rien n'est retiré par une conversion, et annoncer
+« ce qui réduit le plus, c'est le temps passé dans l'eau » était faux. L'explication vit
+désormais sur le plafond `declared` (« 10 h de piscine, soit 4 h réellement dans l'eau »).
+
+**Septième faute d'unité du chantier, dans mon propre correctif** : le retrait annoncé restait
+calculé sur `L.declared × Q` sans la conversion — « −7 h/sem » pour une demande convertie qui
+ne vaut que 4 h. Trouvée en relisant le message RENDU, pas le code.
+
+**T-25 : 439 → 368.** **T-23 EMPIRE en taux — 10 % → 34 % (22/218 → 61/177) — et je le publie
+tel quel** : le correctif retire une compensation qui MASQUAIT l'autre moitié du défaut. Les
+plafonds n'étant plus déflatés par 0,4, l'écart entre ce que la sonde V2.1 annonce et ce que la
+semaine LIVRE devient visible (nage débutant : 1,6 h/sem annoncées pour 0,7 livrées ; la sonde
+sature un clone continu quand le plan rend des séances discrètes). Deux erreurs se compensaient ;
+en corriger une seule expose la seconde. Même ticket — c'est la moitié restante d'O-35, avec sa
+condition de sortie écrite : **faire mesurer à la sonde ce que la semaine RENDUE livre**.
+
+**Sur B-09** : la sur-pénalisation que tu redoutais venait de l'application aux TABLES, pas de
+la valeur 0,4. B-09 perd son urgence ; sa valeur reste une constante nouvelle, donc un
+arbitrage — je ne l'ai pas touchée.
+
+**Un site reste NON converti, et c'est une mesure, pas un oubli.** `sessionScale` compare bien
+`volMax` (piscine) à `util` (table) quand la déclaration borde, et P11 exige de corriger un
+piège d'unité sur TOUT le chemin — j'ai donc écrit la conversion, et **`audit:v1` l'a réfutée** :
+violation DURE du manifeste sur `swim/sprint/ancien/debutant`, « 1 saut > +25 % de volume réel
+entre semaines de charge ». Diviser l'échelle des séances par 2,5 les envoie toutes sur leurs
+planchers C24/C24b, et une semaine épinglée au plancher ne suit plus la courbe : la progression
+devient un escalier. Priorité 2 du manifeste contre cohérence d'unité — la sécurité gagne,
+l'écart est NOMMÉ dans O-35. Il ne mord que sur les profils déclarant peu de piscine, que le
+golden ne contient pas (famille A-2, sixième occurrence).
+
+## §7.3 — Règle 14 et la note de méthode
+
+Écrites dans `CLAUDE.md` : l'exposant appartient à la discipline (vélo natif · course ≈ 1 ·
+nage ≈ 3), et la règle 7 vaut aussi pour les tickets d'ALIGNEMENT — deuxième fois qu'un
+correctif de cohérence aurait fait des dégâts réels sans mesure.
+
+## Ce qui reste
+
+1. **O-35, moitié restante** — la sonde V2.1 doit mesurer ce que la semaine RENDUE livre
+   (planchers, quantification) ; ferme T-25/T-23.
 2. Phase 3 (critique DA, cadre des trois espaces — la collision brick/récup `#9b72ff` y
    entre).
 3. Enrichissement du golden (additif, stratifié sur le volume DE COURSE) → B-26 (périmètre
-   élargi au tri) → révision de l'ancrage [1,5 h → 1,15].
+   élargi au tri par T-22) → révision de l'ancrage [1,5 h → 1,15].
 
-**État CI : 28 gates verts · E2E 25/25 · `audit:v1` 459 · invariants 22×54 · v6 73 verts
-0 régression · banc du lot : 8 verts · 19 rouges attendus (tous listés) · 0 régression.**
+**État CI (mesuré sur l'état livré) : 28 gates verts · `audit:v1` 459 · invariants 22×54 ·
+v6 73 verts 0 régression · golden 949 · banc du lot : 8 verts · 19 rouges attendus (tous listés)
+· 0 régression.** La suite E2E tournait encore au moment du commit — son verdict est rapporté
+séparément (le run précédent, 25/25, portait sur l'état d'AVANT O-35 : il ne vaut pas ici).

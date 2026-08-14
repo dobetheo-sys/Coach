@@ -162,6 +162,20 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   mesurée en un jour : le « seul classificateur » de nutritionCalculator, l'alignement déclaré
   d'`_IFZ`, « rn.mara n'est prescrit qu'au marathon », et la frontière seuil recopiée — cette
   dernière est la forme correcte, gardée par T-20. (Arbitrage du STOP de Phase 2, 14/08/2026.)
+- **Règle 14 — deux grandeurs ne se comparent qu'après conversion dans une monnaie commune,
+  et l'exposant appartient à la DISCIPLINE** (arbitrage `sw.aero`, 14/08/2026) : vélo natif en
+  puissance (aucune conversion) · course allure → effort avec un exposant ≈ 1 (le coût est
+  quasi linéaire en vitesse, ~1 kcal/kg/km) · natation exposant **≈ 3** (traînée
+  hydrodynamique). Comparer un rapport d'ALLURE à un rapport de PUISSANCE est une faute
+  d'unité — la même « pénalité » de 12-16 % vaut 86 % d'effort en course et 71 % en nage.
+  Sept occurrences mesurées dans ce chantier (O-13, le plancher de temps facile de R20.5,
+  R20.7, V-11, la table de T-15, `peakH` en O-35, et le retrait de mon propre correctif O-35).
+- **La règle 7 (« mesurer avant d'écrire la règle ») vaut aussi pour les tickets
+  d'ALIGNEMENT, pas seulement pour les seuils** (même arbitrage). Deuxième fois qu'un correctif
+  de cohérence aurait fait des dégâts réels s'il avait été appliqué sans mesure : après B-02
+  (45 % de profils touchés), `sw.aero` — le reclasser aurait fait déborder 411 semaines sur
+  C26d, donc retiré du volume aérobie de nage, exactement ce dont les nageurs manquent le plus.
+  Un ticket d'alignement se mesure avant d'être adopté, sa prémisse comprise.
 
 - **Les propriétés visuelles LIÉES se mesurent ENSEMBLE, en un seul cycle** (consigne du
   fondateur, 12/08/2026). Couleur de badge, fond de carte et contraste dépendent du même token
@@ -209,6 +223,46 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
+
+**R20.2 (2ᵉ correction) + O-35 livrés — « ce qui borne » devient l'argmin d'un min(), et deux
+fautes d'unité se compensaient en natation** (DOC_UNIQUE + arbitrage `sw.aero`, 14/08/2026, voir
+`RAPPORT_DOC_UNIQUE.md`, banc `scripts/lotPhysio.mjs`) : le message de volume prenait **la plus
+grosse baisse** sous un texte qui promet « ce qui borne » — la contrainte FINALE —, et
+l'attribution dépendait de l'**ordre des appels** (permuter caps/util changeait le coupable sur
+le même plan). Cause racine : des plafonds **parallèles** traités en chaîne séquentielle. Ils
+deviennent un `min()` dont l'argmin parle, les autres contribuant zéro ; les facteurs restent un
+produit ; le message gagne la ligne levier (« Si tu levais cette contrainte, X te plafonnerait à
+Y ») et le plan émet le record `_r202`. **T-25/T-26/T-23 écrits ROUGES d'abord** (945 · 583 ·
+22/218) ; T-26 fermé le jour même. **T-25 a trouvé deux maillons absents de l'énumération** — la
+COURBE déclarée (run/5k : Lw 0,67 au pic, « ton historique » 4 h annoncé pour un pic à 2,6) et la
+croissance D3/D4 sur le livré, mesurée à l'écrêtage.
+**O-35** : `peakH` (qui pilote la courbe) n'était **jamais** converti en heures d'eau quand
+`volPeak` (la promesse) l'était — rapport **2,50 = 1/0,4 au chiffre près**, et l'unité changeait
+avec le NIVEAU (C20 rabote `peakH` avec 25 min/séance). La sonde V2.1 rattrapait tout **par
+accident** : elle mordait donc toujours en nage et servait de convertisseur d'unité. **Trois
+modèles mesurés avant d'en adopter un** — convertir `peakH` (la correction symétrique) fait
+tomber **92 profils jusqu'à −55 %**, soit 3 séances de 15 min : REFUSÉ ; convertir la seule
+DÉCLARATION (`SWIM_TIME_FACTOR` code « 60 % du temps de BASSIN n'est pas de la nage », les tables
+sont du volume d'entraînement comme les lignes course et vélo) laisse **47 profils au plan
+intact sur 88** et aligne la promesse sur le plan livré depuis toujours : ADOPTÉ. `swimTime`
+quitte les FACTEURS de la chaîne — une conversion ne retire rien. **`sessionScale` reste NON
+converti, réfuté par `audit:v1`** : la conversion y produit un saut > +25 % de volume entre
+semaines de charge (violation dure du manifeste — les séances tombent toutes sur leurs planchers
+C24/C24b et la progression devient un escalier). Priorité 2 contre cohérence d'unité, la sécurité
+gagne, l'écart est nommé. **T-25 439 → 368 ; T-23 EMPIRE en taux (10 % → 34 %) et c'est publié** :
+le correctif retire une compensation qui masquait la seconde moitié du défaut — la sonde mesure
+un clone SATURÉ quand le plan rend des séances discrètes (O-35, reste ouvert).
+Au passage : **B-02a fermé sur sa propre mesure** (`sw.css`/`bk.thr`/`rn.thr` tous `hard`, et
+8 séances sur 8 comptent du dur en pratique) ; **V-08 réfuté** — comparer un rapport d'ALLURE à un
+rapport de PUISSANCE est une faute d'unité, `sw.aero` vaut **84 %** de l'effort seuil (P ∝ v³) et
+le reclasser aurait fait déborder 411 semaines sur C26d ; **règle 14** écrite. **T-21** (28
+littéraux à unité dans les gabarits) et **T-22** (14 steps sans zone dans une séance qui nomme une
+allure — le périmètre B-26 s'élargit aux bricks TRI) écrits rouges. **§6.3** : les rouges attendus
+sont une liste nommée en cliquet. **Z-11 étendu aux trois espaces de noms** — il a trouvé une
+troisième collision en naissant (`#9b72ff` : brick = charge récup = violet) ; `--zn-fatigue`/
+`--zn-form` retirés (morts depuis B1).
+**28 gates verts, `audit:v1` 459, invariants 22×54, golden 949 recapturé — 88 profils,
+tous en natation.**
 
 **V5 livré — les accents de discipline passent à la maquette, et l'orange porte désormais TROIS
 sens** (brief du fondateur, 12/08/2026, conditionné à une mesure : *« SI TOUT PASSE 3:1 »*) : les

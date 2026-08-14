@@ -3045,10 +3045,15 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
           pourquoi: "Tu ne prépares pas une compétition : 10 % de marge sont retirés de tous les plafonds. La santé passe avant le chiffre." },
         { id: "recup", f: L.recup, quoi: "ta récupération", retire: 0,
           pourquoi: "Sommeil court et/ou charge de vie lourde : le moteur ne fait pas semblant de l'ignorer, il baisse réellement le contenu (règle 1B). Ce maillon-là remonte tout seul dès que le sommeil revient." },
-        { id: "swimTime", f: L.swimTime, quoi: "le temps réellement passé dans l'eau", retire: 0,
-          pourquoi: "En natation, le volume promis se compte en temps DANS l'eau — les longueurs de récupération, les départs et les consignes ne sont pas du volume d'entraînement. C'est la même séance, comptée honnêtement." },
         { id: "med", f: L.med, quoi: "le drapeau médical", retire: 0,
           pourquoi: "Tu as signalé un symptôme à l'effort : ce plan est un plan de MAINTIEN, volontairement allégé. Le volume n'est pas le sujet tant que l'avis médical n'est pas donné." },
+        // O-35 — `swimTime` A QUITTÉ CETTE LISTE : ce n'est pas un facteur de RÉDUCTION, c'est
+        // une CONVERSION D'UNITÉ, et elle ne porte que sur la seule grandeur exprimée en temps
+        // de PISCINE — celle que l'athlète déclare. Les tables (`caps`, `util`) sont déjà du
+        // volume d'entraînement : les convertir les pénalisait une seconde fois. Le message ne
+        // peut plus annoncer « ce qui réduit le plus, c'est le temps passé dans l'eau » — rien
+        // n'est retiré par une conversion, c'est la même séance comptée honnêtement, et le dire
+        // comme une perte était faux. L'explication vit désormais sur le plafond `declared`.
         { id: "load", f: lf, quoi: r.inj.count > 0 ? "tes zones fragiles" : "ton âge", retire: 0,
           pourquoi: (r.inj.count > 0 ? "Ta ou tes zones fragiles (" + r.inj.list.join(", ") + ")" : "Ton âge")
             + " abaissent volontairement le plafond de charge (R6.2/R6.3). Ce n'est pas un réglage à contourner : la marge que tu perds ici est celle qui te garde entier." },
@@ -3061,8 +3066,12 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // facteurs qui les concernent.
       type Plafond = { id: string; quoi: string; brut: number; unite: "athlete" | "livre"; livre: number; retire: number; pourquoi: string };
       const plafonds: Plafond[] = [
-        { id: "declared", quoi: "ton volume demandé", brut: L.declared, unite: "athlete", livre: L.declared * Q, retire: 0,
-          pourquoi: "C'est le volume que tu as toi-même demandé : aucun plafond physiologique n'en retire — le chiffre livré en découle par les conversions et protections listées à côté." },
+        // O-35 — SEULE grandeur exprimée en temps de PISCINE : elle porte la conversion.
+        { id: "declared", quoi: "ton volume demandé", brut: L.declared, unite: "athlete", livre: L.declared * L.swimTime * Q, retire: 0,
+          pourquoi: "C'est le volume que tu as toi-même demandé"
+            + (L.swimTime < 1
+              ? " : " + h(L.declared) + "/sem de piscine, soit " + h(L.declared * L.swimTime) + " réellement DANS l'eau — les longueurs de récupération, les départs et les consignes ne sont pas du volume d'entraînement. Rien ne t'est retiré : c'est la même séance, comptée honnêtement."
+              : " : aucun plafond physiologique n'en retire") + " — le chiffre livré en découle par les protections listées à côté." },
         { id: "caps", quoi: "ton historique", brut: L.caps, unite: "athlete", livre: L.caps * Q, retire: 0,
           pourquoi: "Sur ce format, l'historique « " + String(r.profile.history ?? "") + " » permet d'encaisser " + h(L.caps * Q)
             + "/sem : au-delà, la charge s'accumule plus vite qu'elle ne s'assimile. Ce plafond monte tout seul, en tenant les semaines — pas en les forçant." },
@@ -3128,7 +3137,13 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         .reduce((x: Plafond | null, y) => (!x || y.livre < x.livre ? y : x), null);
       // L'argmin porte TOUT le retrait du côté plafonds ; les autres, zéro (§2 : « une
       // contribution nulle, pas une contribution d'ordre »).
-      minP.retire = Math.max(0, L.declared * Q - minP.livre);
+      // O-35 — LE HAUT DE LA CHAÎNE EST LE PLAFOND `declared` DANS SON UNITÉ LIVRÉE, pas
+      // `L.declared × Q` : en natation, le second oublie la conversion piscine → eau et
+      // annonçait « −7 h/sem » pour un athlète dont la demande convertie ne vaut que 4 h.
+      // Septième occurrence de cette faute dans ce chantier — cette fois dans mon propre
+      // correctif, trouvée en relisant le message rendu plutôt que le code.
+      const _haut = plafonds.find((p) => p.id === "declared")?.livre ?? L.declared * Q;
+      minP.retire = Math.max(0, _haut - minP.livre);
       const struct = plafonds.find((p) => p.id === "structurel");
       if (struct) {
         const autres = actifs.filter((p) => p !== struct).map((p) => p.livre);
@@ -3150,7 +3165,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // Le retrait de chaque facteur, dans l'unité du pic livré — la sémantique de R20.7
       // conservée : chaque baisse multipliée par le produit des facteurs qui la suivent.
       {
-        let v = Math.min(L.declared, L.caps, L.util);
+        let v = Math.min(L.declared * L.swimTime, L.caps, L.util); // O-35 : la déclaration est convertie, les tables non
         let queue = Q;
         for (const x of facteurs) {
           if (x.id === "load") {

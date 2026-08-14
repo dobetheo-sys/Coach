@@ -2243,19 +2243,84 @@ et non un maillon manquant simple (cinquième occurrence de la famille V-11/O-13
   (le débutant), elle inversait l'identité sur 148 profils — calibrer sur un cas est
   exactement ce que P11/HERITAGE interdit.
 
-**Mitigation en place (pas une fermeture)** : la GARDE D'OBSERVATION du sélecteur — un plafond
-que le pic livré dépasse n'a pas borné le plan et sort des candidats au message. Le record
-`plan._r202` expose l'énumération complète, écarts compris.
+**Mitigation en place** : la GARDE D'OBSERVATION du sélecteur — un plafond que le pic livré
+dépasse n'a pas borné le plan et sort des candidats au message. Le record `plan._r202` expose
+l'énumération complète, écarts compris.
 
-**Condition de sortie** : mettre la chaîne natation dans UNE unité (celle du pic affiché),
-mesurée aux deux bouts (débutant ET inter), et faire mesurer à la sonde V2.1 ce que la semaine
-RENDUE livre réellement (planchers et quantification compris) — puis passer `T-25` et `T-23`
-à `attendu: "vert"` dans le même commit. Le résidu « rendu discret » (158 cas à 0,1–0,2 h,
-la question des « 18 minutes » du DOC_UNIQUE §0) se traite avec, ou se borne explicitement.
+---
+
+### ✅ MOITIÉ FERMÉE le 14/08/2026 — la conversion portait sur les TABLES, pas seulement sur la
+### déclaration (§5 de l'arbitrage `sw.aero`)
+
+**Le test décisif exigé** (« `capacityH` est-il en heures génériques ou en heures d'eau ? ») a
+une réponse mesurée : `capacityH` est en heures d'EAU (il compte des minutes réellement
+prescrites). **C'est `peakH` qui était générique** — mesuré sur `swim/demifond` non-débutant :
+`peakH` = 6,00 h pour un `volPeak` de 2,40, **rapport 2,50 = 1/0,4 au chiffre près**, quand le
+témoin course rend 1,00. Et l'unité changeait avec le NIVEAU : C20 rabote `peakH` avec une
+grandeur en heures d'eau (25 min/séance), donc le débutant avait déjà l'unité d'arrivée.
+Conséquence : **la sonde V2.1 mordait TOUJOURS en natation** et servait de convertisseur
+d'unité par accident — un garde-fou de sécurité qu'on ne pouvait plus lire.
+
+**Trois modèles ont été mesurés avant d'en adopter un** (règle 7 étendue aux alignements) :
+
+| | modèle | rayon sur les 949 | verdict |
+|---|---|---|---|
+| A | l'état d'avant (`peakH` générique) | — | la promesse ment de 1,6× |
+| B | convertir `peakH` comme `volPeak` | 123 profils, **92 baisses jusqu'à −55 %** | **REFUSÉ** — le plan tombe à 3 séances de 15 min |
+| **C** | **convertir la seule DÉCLARATION** | **88 profils, 47 au plan intact, 41 à ±6 %** | **ADOPTÉ** |
+
+**Pourquoi C** : `SWIM_TIME_FACTOR` code « 60 % du temps déclaré en BASSIN n'est pas de la
+nage » — c'est une conversion de la grandeur que l'ATHLÈTE déclare, pas des tables du moteur.
+`HISTORY_CAPS`/`UTIL` sont du volume d'entraînement, au même titre que les lignes course et
+vélo qui ne subissent aucune conversion ; les convertir pénalisait une seconde fois. R20.7
+avait déjà posé ce principe sur la rampe (elle convertit `vol_recent`, jamais une table) —
+C ne fait que l'appliquer partout. Et l'argument décisif : **sous C, le plan livré ne bouge
+pratiquement pas**, parce que la courbe est pilotée par `peakH`, qui n'a jamais été converti :
+le moteur traite les tables comme des heures d'eau **depuis toujours**. C ne change pas le
+plan, il aligne la PROMESSE sur le plan déjà livré (`swim/sprint/reprise/inter` : 700 min
+avant, 700 min après ; promesse 1,1 h → 2,0 h, pic réel 1,78 h).
+
+**Conséquence sur B-09** : la sur-pénalisation redoutée (« 0,4 trop bas pour un nageur en
+club ») venait de l'application aux TABLES, pas de la valeur. B-09 (facteur indexé sur
+l'historique + activé en tri) n'est pas fermé, mais il perd son urgence — et sa valeur reste
+une constante nouvelle, donc un arbitrage.
+
+`swimTime` a QUITTÉ la liste des facteurs de la chaîne R20.2 : ce n'est pas une réduction,
+c'est une conversion, et annoncer « ce qui réduit le plus, c'est le temps passé dans l'eau »
+était faux — rien n'est retiré. L'explication vit sur le plafond `declared`.
+
+**T-25 : 439 → 368.** **T-23, lui, EMPIRE en taux — 22/218 (10 %) → 61/177 (34 %), et c'est
+publié tel quel** : le correctif retire une compensation qui MASQUAIT l'autre moitié du défaut.
+Les plafonds n'étant plus déflatés par 0,4, l'écart entre ce que la sonde annonce et ce que la
+semaine livre devient visible (nage débutant : « la durée de ta préparation, 1,6 h/sem » pour un
+pic livré à 0,7). Deux erreurs se compensaient ; en corriger une seule expose la seconde. Elles
+ont le même ticket — la suite d'O-35 ci-dessous.
+
+**Un site NON converti, et c'est une mesure, pas un oubli** : `sessionScale` compare bien
+`volMax` (piscine) à `util` (table) quand la déclaration borde. P11 exige de corriger un piège
+d'unité sur TOUT le chemin, la conversion a donc été écrite — puis **RÉFUTÉE** : `audit:v1`
+remonte alors une violation DURE du manifeste (`swim/sprint/ancien/debutant`, « 1 saut > +25 %
+de volume réel entre semaines de charge »). Diviser l'échelle des séances par 2,5 les envoie
+toutes sur leurs planchers C24/C24b, et une semaine épinglée au plancher ne suit plus la
+courbe : la progression devient un escalier. Priorité 2 du manifeste contre cohérence d'unité —
+la sécurité gagne, l'écart est nommé ici. Il ne mord que sur les profils déclarant PEU de
+piscine, que le golden ne contient pas (tous à `vol_max: 10`, famille A-2).
+
+### Ce qui RESTE ouvert — la sonde V2.1 mesure un clone SATURÉ, pas la semaine RENDUE
+
+Le **rendu discret** : la sonde pousse un clone de semaine vers une cible inatteignable et lit
+sa saturation ; le plan, lui, rend des séances discrètes (planchers C15/C24b, quantification des
+répétitions, passes post-boucle, budget de séances). Mesuré : sonde 1,5 h contre 0,7 h livrées
+chez un nageur débutant. 160 cas à 0,1–0,2 h côté course. C'est la question des « 18 minutes »
+du DOC_UNIQUE §0, et c'est ce qui garde `T-25` ET `T-23` rouges. Le trail (38 profils livrant
+au-dessus de leur plafond annoncé) relève de la charge à 3 axes, non traitée.
+
+**Condition de sortie** : faire mesurer à la sonde V2.1 ce que la semaine RENDUE livre
+réellement, puis passer `T-25` et `T-23` à `attendu: "vert"` dans le même commit.
 
 ```verify
 id: O-35
-quoi: l'identite T-25 est encore rouge, avec le compte attendu, et la garde d'observation existe
-attendu: T-25 rouge avec ~439 identites cassees, garde "GARDE D'OBSERVATION" presente dans le generateur
-cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep -A1 "T-25" | grep -q "identité(s) cassée(s)" && grep -q "GARDE D'OBSERVATION" src/generator/planGenerator.ts
+quoi: la conversion ne porte que sur la declaration, et le residu « rendu discret » garde T-25 rouge
+attendu: swimTime hors des facteurs de la chaine, garde d'observation presente, T-25 encore rouge
+cmd: grep -q "swimTime` A QUITTÉ CETTE LISTE" src/generator/planGenerator.ts && grep -q "GARDE D'OBSERVATION" src/generator/planGenerator.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -A1 "T-25" | grep -q "identité(s) cassée(s)"
 ```
