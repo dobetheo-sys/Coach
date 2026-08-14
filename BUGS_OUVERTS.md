@@ -2289,8 +2289,12 @@ une constante nouvelle, donc un arbitrage.
 c'est une conversion, et annoncer « ce qui réduit le plus, c'est le temps passé dans l'eau »
 était faux — rien n'est retiré. L'explication vit sur le plafond `declared`.
 
-**T-25 : 439 → 368.** **T-23, lui, EMPIRE en taux — 22/218 (10 %) → 61/177 (34 %), et c'est
-publié tel quel** : le correctif retire une compensation qui MASQUAIT l'autre moitié du défaut.
+**T-25 : 439 → 368.** **T-23 passe de 22/218 (10 %) à 61/177 (34 %) — et 34 % est le taux
+HONNÊTE, 10 % était le mensonge** (rectification du fondateur, 14/08) : le correctif retire une
+compensation qui MASQUAIT l'autre moitié du défaut. Deux erreurs qui se compensent ne font pas
+un modèle juste, elles font un modèle dont on ne peut plus mesurer l'erreur — la forme de
+`ρ = 1,225` compensant `Crr = 0,004`. Un taux qui monte quand on corrige est le signe que la
+mesure devient exploitable, pas une aggravation.
 Les plafonds n'étant plus déflatés par 0,4, l'écart entre ce que la sonde annonce et ce que la
 semaine livre devient visible (nage débutant : « la durée de ta préparation, 1,6 h/sem » pour un
 pic livré à 0,7). Deux erreurs se compensaient ; en corriger une seule expose la seconde. Elles
@@ -2303,17 +2307,63 @@ remonte alors une violation DURE du manifeste (`swim/sprint/ancien/debutant`, «
 de volume réel entre semaines de charge »). Diviser l'échelle des séances par 2,5 les envoie
 toutes sur leurs planchers C24/C24b, et une semaine épinglée au plancher ne suit plus la
 courbe : la progression devient un escalier. Priorité 2 du manifeste contre cohérence d'unité —
-la sécurité gagne, l'écart est nommé ici. Il ne mord que sur les profils déclarant PEU de
-piscine, que le golden ne contient pas (tous à `vol_max: 10`, famille A-2).
+la sécurité gagne. Il ne mord que sur les profils déclarant PEU de piscine, que le golden ne
+contient pas (tous à `vol_max: 10`, famille A-2).
 
-### Ce qui RESTE ouvert — la sonde V2.1 mesure un clone SATURÉ, pas la semaine RENDUE
+**Cette dette a un BLOQUEUR qui est une autre garde, donc elle ne se paiera jamais toute
+seule** (exigence du fondateur, 14/08/2026) — elle porte sa condition de sortie, comme le
+plancher 1,05 (O-34) et l'ancrage `[1,5 h → 1,15]` :
 
-Le **rendu discret** : la sonde pousse un clone de semaine vers une cible inatteignable et lit
-sa saturation ; le plan, lui, rend des séances discrètes (planchers C15/C24b, quantification des
-répétitions, passes post-boucle, budget de séances). Mesuré : sonde 1,5 h contre 0,7 h livrées
-chez un nageur débutant. 160 cas à 0,1–0,2 h côté course. C'est la question des « 18 minutes »
-du DOC_UNIQUE §0, et c'est ce qui garde `T-25` ET `T-23` rouges. Le trail (38 profils livrant
-au-dessus de leur plafond annoncé) relève de la charge à 3 axes, non traitée.
+```
+sessionScale — unité non convertie
+  cause du blocage : la conversion produit un saut > +25 % entre semaines de charge
+                     (audit:v1, swim/sprint/ancien/debutant) parce que les séances tombent
+                     toutes sur leurs planchers C24/C24b et cessent de suivre la courbe
+  hypothèse de sortie : convertir ET re-dériver la rampe R10 depuis la base convertie, pour
+                        que la progression soit RECALCULÉE au lieu de sauter
+  condition de sortie : le saut inter-semaines reste sous le plafond C22 après re-dérivation,
+                        mesuré sur les 949 — et `audit:v1` reste à 0 violation dure
+  si l'hypothèse est fausse : la dette devient une DÉCISION permanente et se requalifie comme
+                        telle (« sessionScale reste en unité déclarée, par arbitrage »), elle
+                        ne reste pas en attente
+```
+
+### 2ᵉ MOITIÉ (14/08, même jour) — la sonde n'était pas la cause principale : LE DIAGNOSTIC
+### ENTIER VIVAIT AU MILIEU DU PIPELINE
+
+La re-sonde demandée est écrite (clone SATURÉ de la semaine LIVRÉE — mesurer les minutes
+livrées rendrait l'identité vraie par construction, donc vide ; une passe, jamais de point fixe,
+résolution B-25). Elle corrige ce qu'elle devait corriger — plafond structurel 2,03 h → **0,85 h**
+chez le nageur débutant. Mais T-25 est MONTÉ (368 → 432), et l'instrumentation a désigné plus
+gros : **`reconcileDeclaredVolume` — le point fixe — tourne à la ligne 3322, le bloc « C6 +
+R20.2 » était à 2998.** Le pic annoncé et toute la chaîne d'explication décrivaient donc
+l'avant-dernier état du plan, avant I14, C26c/d, le rattrapage d'I14b, C30b, les planchers et la
+fréquence. Onze fois ce dépôt a payé cette leçon sur des GARANTIES ; ici c'était le DIAGNOSTIC.
+
+**Déplacé après le point fixe**, `volPeak` recompté sur les séances livrées (`w.vol` est un
+instantané figé à la construction de la semaine). Ce que ça découvre :
+
+| | |
+|---|---|
+| profils dont le pic ANNONCÉ change | **350 / 945 (37 %)** |
+| sens | **350 baisses, 0 hausse** |
+| écart médian · pire cas | **7,1 %** · `run/10k/ancien/debutant` **4,9 h annoncées → 3,4 (−30,6 %)** |
+
+Le moteur promettait plus qu'il ne livre sur 37 % des profils, toujours vers le haut, sur le
+seul chiffre que l'athlète lit comme « son pic » — la doctrine V2.1 dit « promettre davantage
+serait mentir ».
+
+### Ce qui RESTE ouvert — CE QUE LE POINT FIXE RETIRE n'est porté par aucun maillon
+
+T-25 monte à **608** avec le `volPeak` honnête, et c'est le taux exploitable : rendre un membre
+de l'identité exact élargit l'écart avec l'autre, qui décrit toujours un état d'avant le point
+fixe. La cause n'est plus « le rendu discret » en général — elle est nommée : **I14, C26c/d, les
+planchers et la fréquence retirent des minutes qu'aucun plafond de la chaîne ne déclare.**
+
+**Condition de sortie** : instrumenter `reconcileDeclaredVolume` pour qu'il DÉCLARE ce qu'il
+retire et pourquoi (un maillon par garantie, dans l'unité du pic), puis passer `T-25` et `T-23`
+à `attendu: "vert"` dans le même commit. Le trail (38 profils livrant au-dessus de leur plafond
+annoncé) relève de la charge à 3 axes, non traitée.
 
 **Condition de sortie** : faire mesurer à la sonde V2.1 ce que la semaine RENDUE livre
 réellement, puis passer `T-25` et `T-23` à `attendu: "vert"` dans le même commit.

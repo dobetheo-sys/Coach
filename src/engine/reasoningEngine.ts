@@ -11,7 +11,7 @@ import {
   MIN_WEEKS, HISTORY_CAPS, UTIL, MARGIN, RECUP_FACTORS, PHASE_PCTS,
   BANDS, C22_MAX_WEEKLY_GROWTH, RECUP_WEEK_FACTOR, RECUP_EVERY,
   TAPER_WEEKS_BY_FORMAT, TAPER_WEEKS_BY_TRAIL_CAT,
-  BEGINNER_SWIM_VOLPEAK_CAP_H, SWIM_TIME_FACTOR, C20_BEGINNER_SWIM_H_PER_SESSION,
+  BEGINNER_SWIM_VOLPEAK_CAP_H, swimTimeFactorOf, C20_BEGINNER_SWIM_H_PER_SESSION,
   MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, R6_AGE_LOAD, R6_PAIN_CONTRAINDICATION, readInjuries, boundedOrZero,
   parsePaceSec,
 } from "./constraintMatrix.ts";
@@ -202,7 +202,8 @@ export class TrainingReasoningEngine {
     // des heures d'eau depuis toujours : seule la PROMESSE mentait. Convertir `peakH` à son
     // tour (la correction symétrique, mesurée puis REFUSÉE) faisait tomber 92 profils du
     // golden jusqu'à −55 % — 3 séances de 15 min. On aligne donc la promesse sur le plan.
-    const _volMaxEau = guard(sp as string, "swimTimeFactor") ? volMax * SWIM_TIME_FACTOR : volMax;
+    const _swimTime = guard(sp as string, "swimTimeFactor") ? swimTimeFactorOf(history) : 1; // B-09 : indexé sur l'historique
+    const _volMaxEau = volMax * _swimTime;
     // `sessionScale` GARDE `volMax` NON CONVERTI, ET C'EST MESURÉ, PAS OUBLIÉ.
     //
     // Le ratio compare bien deux unités différentes quand `volMax` borde (déclaration en temps
@@ -477,7 +478,7 @@ export class TrainingReasoningEngine {
       // sonde de capacité, et le générateur le lit dans `loadFactor`.
       volLimits: {
         declared: volMax, caps, util, marg, recup: recupFactor,
-        swimTime: guard(sp as string, "swimTimeFactor") ? SWIM_TIME_FACTOR : 1,
+        swimTime: _swimTime,
         med: medFactor, c20: c20Cap,
         sessionsMax: parseInt(a.sessions_max || "7") || 7, budget: budgetPerWeek,
       },

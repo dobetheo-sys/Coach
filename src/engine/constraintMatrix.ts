@@ -129,7 +129,28 @@ export const RECUP_EVERY: Record<History, number> = { reprise: 3, confirme: 4, a
 export const C15_BEGINNER_SWIM_SESSION_CAP_M = rule("C15", "nage débutant ≤850m/séance, tous blocs confondus (technique avant volume, risque épaule)", 850);
 export const C20_BEGINNER_SWIM_H_PER_SESSION = rule("C20", "la promesse déclarée d'un nageur débutant suit sa capacité C15 (~25min/séance)", 0.42);
 export const BEGINNER_SWIM_VOLPEAK_CAP_H = 4;
-export const SWIM_TIME_FACTOR = 0.4; // heures « génériques » → heures réelles de nage
+/**
+ * B-09 — LE BIAIS DÉCLARATIF DE LA PISCINE DÉPEND DE QUI NAGE, PAS SEULEMENT DU BASSIN.
+ *
+ * Le facteur convertit le temps que l'athlète DÉCLARE passer en bassin en temps réellement
+ * nagé (O-35 : il ne touche que la déclaration, jamais les tables du moteur). `0,4` — 60 % du
+ * créneau qui ne serait pas de la nage — décrit un créneau public partagé : on attend une
+ * ligne, on écoute une consigne, on repart. Un nageur en club sur un plan écrit ne perd pas
+ * autant : le ratio observé y est de 0,6-0,75. Une valeur unique appliquée en un seul point
+ * met à l'échelle le plan de TOUT LE MONDE — un 0,4 faux est une erreur de 2,5×.
+ *
+ * Valeurs arbitrées par le fondateur (14/08/2026, ticket B-09) ; l'axe est l'historique, la
+ * seule réponse du questionnaire qui dise à quel point la pratique est structurée.
+ */
+export const SWIM_TIME_FACTOR_BY_HISTORY: Record<History, number> = rule(
+  "B-09",
+  "le temps réellement nagé dans un créneau déclaré dépend de la structure de la pratique (créneau public ~0,45 · club ~0,60-0,70)",
+  { reprise: 0.45, confirme: 0.60, ancien: 0.70 },
+);
+/** Repli quand l'historique n'est pas connu — la valeur la plus PRUDENTE de la table. */
+export const SWIM_TIME_FACTOR = SWIM_TIME_FACTOR_BY_HISTORY.reprise;
+export const swimTimeFactorOf = (history?: string): number =>
+  SWIM_TIME_FACTOR_BY_HISTORY[(history as History)] ?? SWIM_TIME_FACTOR;
 
 /** Course : plafonds. */
 export const C23_BEGINNER_LONG_RUN_CAP_MIN = rule("C23", "jamais de sortie longue CAP >3h pour un débutant (manifeste)", 180);

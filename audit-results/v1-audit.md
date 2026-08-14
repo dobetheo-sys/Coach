@@ -22,7 +22,7 @@ Seuils : sur-prescrit > 1.4, sous-prescrit < 0.5, alerte séance longue > 55% de
 
 ## Règles du manifeste (note.md)
 
-- Saut >+10% de la courbe déclarée entre semaines de charge : **41** combinaisons en échec
+- Saut >+10% de la courbe déclarée entre semaines de charge : **37** combinaisons en échec
 - Saut >+25% de volume réel (métrique audit) : **0** en échec (sauts +15–25% tolérés comme bruit de métrique : 18 combos concernés)
 - Deux longues CAP consécutives : **0** en échec
 - Sortie longue CAP >3h pour un débutant : **0** en échec

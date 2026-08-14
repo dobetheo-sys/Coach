@@ -27,7 +27,7 @@ import "../src/app/bridge.ts";
 import { ZDEF } from "../src/generator/renderer.ts";
 import { zoneClass, intensitySplit } from "../src/engine/loadModel.ts";
 import { sessionIntensity } from "../src/readiness/dailyAdjuster.ts";
-import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor, SWIM_TIME_FACTOR } from "../src/engine/constraintMatrix.ts";
+import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor, swimTimeFactorOf } from "../src/engine/constraintMatrix.ts";
 import { RN_THR_FRONTIERE_LENTE } from "../src/engine/loadModel.ts";
 import { TrainingReasoningEngine } from "../src/engine/reasoningEngine.ts";
 import { toProfile } from "../src/app/bridge.ts";
@@ -626,7 +626,9 @@ T("T-25", "rouge", "record R20.2 : min(plafonds livrés) === volPeak à ±0,1 h,
       if (p.unite !== "athlete") continue;
       // le facteur de conversion vient de la CONSTANTE du moteur, jamais d'un littéral recopié
       // ici (ce serait la deuxième écriture que R11.1 interdit, dans le test qui la garde)
-      const attendu = p.id === "declared" ? [p.brut * Q, p.brut * Q * SWIM_TIME_FACTOR] : [p.brut * Q];
+      const attendu = p.id === "declared"
+        ? [p.brut * Q, ...["reprise", "confirme", "ancien"].map((h) => p.brut * Q * swimTimeFactorOf(h))] // B-09 : le facteur dépend de l'historique
+        : [p.brut * Q];
       if (attendu.every((x) => Math.abs(p.livre - x) > 0.01)) {
         conversions++; if (ex.length < 5) ex.push(`${key} ${p.id} : livré ${p.livre} ≠ brut ${p.brut} × Q ${Q.toFixed(3)}`); break;
       }

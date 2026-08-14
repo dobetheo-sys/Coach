@@ -165,8 +165,9 @@ désormais sur le plafond `declared` (« 10 h de piscine, soit 4 h réellement d
 calculé sur `L.declared × Q` sans la conversion — « −7 h/sem » pour une demande convertie qui
 ne vaut que 4 h. Trouvée en relisant le message RENDU, pas le code.
 
-**T-25 : 439 → 368.** **T-23 EMPIRE en taux — 10 % → 34 % (22/218 → 61/177) — et je le publie
-tel quel** : le correctif retire une compensation qui MASQUAIT l'autre moitié du défaut. Les
+**T-25 : 439 → 368.** **T-23 passe de 10 % à 34 % (22/218 → 61/177), et 34 % est le taux
+HONNÊTE — 10 % était le mensonge** : le correctif retire une compensation qui MASQUAIT l'autre
+moitié du défaut. Je l'avais d'abord présenté comme une aggravation ; c'en est l'inverse. Les
 plafonds n'étant plus déflatés par 0,4, l'écart entre ce que la sonde V2.1 annonce et ce que la
 semaine LIVRE devient visible (nage débutant : 1,6 h/sem annoncées pour 0,7 livrées ; la sonde
 sature un clone continu quand le plan rend des séances discrètes). Deux erreurs se compensaient ;

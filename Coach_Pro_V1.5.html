@@ -3420,7 +3420,28 @@ const RECUP_EVERY                          = { reprise: 3, confirme: 4, ancien: 
 const C15_BEGINNER_SWIM_SESSION_CAP_M = rule("C15", "nage débutant ≤850m/séance, tous blocs confondus (technique avant volume, risque épaule)", 850);
 const C20_BEGINNER_SWIM_H_PER_SESSION = rule("C20", "la promesse déclarée d'un nageur débutant suit sa capacité C15 (~25min/séance)", 0.42);
 const BEGINNER_SWIM_VOLPEAK_CAP_H = 4;
-const SWIM_TIME_FACTOR = 0.4; // heures « génériques » → heures réelles de nage
+/**
+ * B-09 — LE BIAIS DÉCLARATIF DE LA PISCINE DÉPEND DE QUI NAGE, PAS SEULEMENT DU BASSIN.
+ *
+ * Le facteur convertit le temps que l'athlète DÉCLARE passer en bassin en temps réellement
+ * nagé (O-35 : il ne touche que la déclaration, jamais les tables du moteur). `0,4` — 60 % du
+ * créneau qui ne serait pas de la nage — décrit un créneau public partagé : on attend une
+ * ligne, on écoute une consigne, on repart. Un nageur en club sur un plan écrit ne perd pas
+ * autant : le ratio observé y est de 0,6-0,75. Une valeur unique appliquée en un seul point
+ * met à l'échelle le plan de TOUT LE MONDE — un 0,4 faux est une erreur de 2,5×.
+ *
+ * Valeurs arbitrées par le fondateur (14/08/2026, ticket B-09) ; l'axe est l'historique, la
+ * seule réponse du questionnaire qui dise à quel point la pratique est structurée.
+ */
+const SWIM_TIME_FACTOR_BY_HISTORY                          = rule(
+  "B-09",
+  "le temps réellement nagé dans un créneau déclaré dépend de la structure de la pratique (créneau public ~0,45 · club ~0,60-0,70)",
+  { reprise: 0.45, confirme: 0.60, ancien: 0.70 },
+);
+/** Repli quand l'historique n'est pas connu — la valeur la plus PRUDENTE de la table. */
+const SWIM_TIME_FACTOR = SWIM_TIME_FACTOR_BY_HISTORY.reprise;
+const swimTimeFactorOf = (history         )         =>
+  SWIM_TIME_FACTOR_BY_HISTORY[(history           )] ?? SWIM_TIME_FACTOR;
 
 /** Course : plafonds. */
 const C23_BEGINNER_LONG_RUN_CAP_MIN = rule("C23", "jamais de sortie longue CAP >3h pour un débutant (manifeste)", 180);
@@ -4607,7 +4628,8 @@ class TrainingReasoningEngine {
     // des heures d'eau depuis toujours : seule la PROMESSE mentait. Convertir `peakH` à son
     // tour (la correction symétrique, mesurée puis REFUSÉE) faisait tomber 92 profils du
     // golden jusqu'à −55 % — 3 séances de 15 min. On aligne donc la promesse sur le plan.
-    const _volMaxEau = guard(sp          , "swimTimeFactor") ? volMax * SWIM_TIME_FACTOR : volMax;
+    const _swimTime = guard(sp          , "swimTimeFactor") ? swimTimeFactorOf(history) : 1; // B-09 : indexé sur l'historique
+    const _volMaxEau = volMax * _swimTime;
     // `sessionScale` GARDE `volMax` NON CONVERTI, ET C'EST MESURÉ, PAS OUBLIÉ.
     //
     // Le ratio compare bien deux unités différentes quand `volMax` borde (déclaration en temps
@@ -4882,7 +4904,7 @@ class TrainingReasoningEngine {
       // sonde de capacité, et le générateur le lit dans `loadFactor`.
       volLimits: {
         declared: volMax, caps, util, marg, recup: recupFactor,
-        swimTime: guard(sp          , "swimTimeFactor") ? SWIM_TIME_FACTOR : 1,
+        swimTime: _swimTime,
         med: medFactor, c20: c20Cap,
         sessionsMax: parseInt(a.sessions_max || "7") || 7, budget: budgetPerWeek,
       },
@@ -12908,234 +12930,17 @@ function generatePlan(profile                , opts                             
   // R20.2 (DOC_UNIQUE §2) — le record de décision : l'énumération complète plafonds/facteurs,
   // émise sur le plan pour que T-25/T-26/T-23 la vérifient de dehors.
   let _r202rec                  = undefined;
-  // C6 — volPeak affiché = pic réel des semaines de charge
-  let volPeak = r.volPeak;
-  {
-    const chargeW = wl.filter((w) => !w.isRecup);
-    if (chargeW.length) volPeak = Math.max(...chargeW.map((w) => w.vol));
-  }
+  // C6 / R20.2 — LE DIAGNOSTIC DE VOLUME A DÉMÉNAGÉ EN FIN DE FONCTION (O-35, 2ᵉ moitié).
+  //
+  // Il vivait ICI, c'est-à-dire AVANT `reconcileDeclaredVolume` — le point fixe, qui applique
+  // encore I14, C26c/d, le rattrapage d'I14b, C30b et les planchers. Le pic annoncé et la
+  // chaîne d'explication décrivaient donc l'AVANT-DERNIER état du plan : `w.vol`, figé à la
+  // construction de la semaine, annonçait 0,7 h là où les séances livrées somment 0,62.
+  // Douzième fois que ce dépôt paie la même leçon — cette fois c'est le DIAGNOSTIC, pas une
+  // garantie, qui était au milieu du pipeline. `volPeak` est donc calculé, et le bloc R20.2
+  // exécuté, une fois que plus rien ne bouge.
+  let volPeak = r.volPeak; // valeur provisoire : le plan n'est pas encore stabilisé
   const volBase = Math.round(volPeak * 0.58 * 10) / 10;
-
-  // ---- R20.2 — LE VOLUME MAX DIT CE QUI LE BLOQUE, ET CE QUI LE DÉBLOQUERAIT ----
-  //
-  // Constat de test du fondateur : « volume max à 12 h au lieu de 14 ». La mesure (O-10) a
-  // montré plus large que le constat — sur un 70.3, `vol_max` ne changeait plus RIEN au-delà
-  // de 10 h : 10, 12, 14, 16 h donnaient le même plan à 0,1 h près. La question continuait
-  // d'être posée comme si elle décidait, et le moteur livrait un pic bas sans un mot.
-  //
-  // Ce bloc ne change AUCUN chiffre du plan. Il rend le chiffre explicable, et c'est
-  // volontairement le seul geste : forcer le volume vers le plafond demandé reviendrait à
-  // gonfler des séances au-delà de ce que leurs bornes autorisent — soit exactement le défaut
-  // que la sonde de capacité V2.1 existe pour empêcher. « Un mauvais plan vaut mieux qu'un
-  // plan dangereux » ; un plan honnête sur sa limite vaut mieux qu'un plan muet.
-  //
-  // DEUX NATURES, DEUX TRAITEMENTS (DOC_UNIQUE §1-§2, 14/08/2026). Ma deuxième écriture
-  // traitait tous les maillons en CHAÎNE et nommait « la plus grosse baisse » sous un texte
-  // qui promettait « ce qui borne » — sur le profil de la capture, « ton historique » (13 h)
-  // annoncé comme la borne d'un pic à 7,5 h, trois centimètres sous la sonde V2.1 qui venait
-  // de nommer les plafonds de séance à 7,8 h. Et l'attribution dépendait de l'ORDRE des
-  // appels : permuter caps/util changeait le coupable sur le même plan (§1.3). Cause racine :
-  // les PLAFONDS sont PARALLÈLES — un min(), dont l'argmin est CE QUI BORNE et dont les
-  // autres membres contribuent zéro, pas une contribution d'ordre. Les FACTEURS, eux,
-  // composent réellement (produit, commutatif — aucun artefact d'ordre possible) et gardent
-  // leur traitement. Le tout est ÉMIS (`plan._r202`) pour que T-25 (identité
-  // min(plafonds) × ∏(facteurs) === volPeak), T-26 (invariance par permutation) et T-23
-  // (cohérence d'écran avec la sonde) le vérifient de dehors.
-  //
-  // R20.7/V-11 — TOUTES LES GRANDEURS SONT EXPRIMÉES DANS L'UNITÉ DU PIC LIVRÉ (`livre`),
-  // retraits ET phrases : quatrième faute d'unité de ce chantier, payée deux fois avant.
-  //
-  // Le diagnostic est honnête quel que soit le maillon ; c'est la PROPOSITION qui est gardée :
-  // aucun levier n'est jamais suggéré à quelqu'un dont le plan a été réduit pour le protéger
-  // (drapeau médical, blessure, âge) — hiérarchie du manifeste, santé d'abord.
-  {
-    const L = r.volLimits;
-    if (L.declared > 0) {
-      const h = (x        ) => (Math.round(x * 10) / 10).toString().replace(".", ",") + " h";
-      const nSess = Math.max(0, ...wl.filter((w) => !w.isRecup)
-        .map((w) => (w.days            ).reduce((t, d) => t + d.sessions.filter((s) => s.d !== "rs").length, 0)));
-      const peutDoubler = guard(a.sport          , "doublesAddVolume") && !r.dbl;
-      const dblRepondu = String(a.doubles ?? "");
-      const sante = r.medHold || r.loadFactor < 1;
-      const lf = r.loadFactor < 1 ? r.loadFactor : 1;
-
-      // LES FACTEURS — séquentiels, ils composent réellement. Leur retrait se calcule comme la
-      // chaîne l'a toujours fait (ce que le facteur coûte sur le chiffre final, R20.7), la
-      // multiplication étant commutative il n'y a pas d'artefact d'ordre à corriger ici.
-      const facteurs = [
-        { id: "marg", f: L.marg, quoi: "la marge de sécurité hors compétition", retire: 0,
-          pourquoi: "Tu ne prépares pas une compétition : 10 % de marge sont retirés de tous les plafonds. La santé passe avant le chiffre." },
-        { id: "recup", f: L.recup, quoi: "ta récupération", retire: 0,
-          pourquoi: "Sommeil court et/ou charge de vie lourde : le moteur ne fait pas semblant de l'ignorer, il baisse réellement le contenu (règle 1B). Ce maillon-là remonte tout seul dès que le sommeil revient." },
-        { id: "med", f: L.med, quoi: "le drapeau médical", retire: 0,
-          pourquoi: "Tu as signalé un symptôme à l'effort : ce plan est un plan de MAINTIEN, volontairement allégé. Le volume n'est pas le sujet tant que l'avis médical n'est pas donné." },
-        // O-35 — `swimTime` A QUITTÉ CETTE LISTE : ce n'est pas un facteur de RÉDUCTION, c'est
-        // une CONVERSION D'UNITÉ, et elle ne porte que sur la seule grandeur exprimée en temps
-        // de PISCINE — celle que l'athlète déclare. Les tables (`caps`, `util`) sont déjà du
-        // volume d'entraînement : les convertir les pénalisait une seconde fois. Le message ne
-        // peut plus annoncer « ce qui réduit le plus, c'est le temps passé dans l'eau » — rien
-        // n'est retiré par une conversion, c'est la même séance comptée honnêtement, et le dire
-        // comme une perte était faux. L'explication vit désormais sur le plafond `declared`.
-        { id: "load", f: lf, quoi: r.inj.count > 0 ? "tes zones fragiles" : "ton âge", retire: 0,
-          pourquoi: (r.inj.count > 0 ? "Ta ou tes zones fragiles (" + r.inj.list.join(", ") + ")" : "Ton âge")
-            + " abaissent volontairement le plafond de charge (R6.2/R6.3). Ce n'est pas un réglage à contourner : la marge que tu perds ici est celle qui te garde entier." },
-      ];
-      const Q = facteurs.reduce((q, x) => q * x.f, 1);
-
-      // LES PLAFONDS — parallèles, un min(). `livre` = la valeur du plafond dans l'unité du
-      // pic affiché ; `unite: "athlete"` marque ceux déclarés dans l'unité de l'athlète
-      // (livre = brut × Q, l'identité que T-25 vérifie), les autres sont MESURÉS en aval des
-      // facteurs qui les concernent.
-                                                                                                                                             
-      const plafonds            = [
-        // O-35 — SEULE grandeur exprimée en temps de PISCINE : elle porte la conversion.
-        { id: "declared", quoi: "ton volume demandé", brut: L.declared, unite: "athlete", livre: L.declared * L.swimTime * Q, retire: 0,
-          pourquoi: "C'est le volume que tu as toi-même demandé"
-            + (L.swimTime < 1
-              ? " : " + h(L.declared) + "/sem de piscine, soit " + h(L.declared * L.swimTime) + " réellement DANS l'eau — les longueurs de récupération, les départs et les consignes ne sont pas du volume d'entraînement. Rien ne t'est retiré : c'est la même séance, comptée honnêtement."
-              : " : aucun plafond physiologique n'en retire") + " — le chiffre livré en découle par les protections listées à côté." },
-        { id: "caps", quoi: "ton historique", brut: L.caps, unite: "athlete", livre: L.caps * Q, retire: 0,
-          pourquoi: "Sur ce format, l'historique « " + String(r.profile.history ?? "") + " » permet d'encaisser " + h(L.caps * Q)
-            + "/sem : au-delà, la charge s'accumule plus vite qu'elle ne s'assimile. Ce plafond monte tout seul, en tenant les semaines — pas en les forçant." },
-        { id: "util", quoi: "le volume utile du format", brut: L.util, unite: "athlete", livre: L.util * Q, retire: 0,
-          pourquoi: "Chaque format a un volume au-delà duquel les heures ne servent plus l'objectif : ici " + h(L.util * Q)
-            + "/sem. Les heures supplémentaires coûteraient de la fraîcheur sans rien ajouter au jour J — si tu veux vraiment t'entraîner plus, c'est le format qu'il faut changer, pas le curseur." },
-      ];
-      // R20.7 — LA RAMPE DE DÉPART EST UN PLAFOND, ELLE AUSSI (O-13 : un pic à 1,6 h pendant
-      // que la chaîne nommait un plafond que le plan n'approchait pas). Mais seulement si elle
-      // a réellement borné le PIC : quand elle s'est effacée en route (`_rampCap` repassé à
-      // Infinity), elle a formé les premières semaines, pas la plus haute — l'inscrire au
-      // min() accuserait le départ pour un pic qu'il n'a pas limité.
-      if (_rampCeilH > 0 && Number.isFinite(_rampCap))
-        plafonds.push({ id: "ramp", quoi: "ton point de départ", brut: _rampCeilH, unite: "livre", livre: _rampCeilH, retire: 0,
-          pourquoi: "Tu repars de " + h(isFinite(volRecent) ? volRecent : 0) + "/sem : la montée est bornée à +10 % par semaine, et sur "
-            + r.weeks + " semaines elle n'a pas le temps de rejoindre ce que tes plafonds autorisent. Ce n'est pas une limite technique, c'est la marche la plus souvent trop haute — celle du début. Avec plus de semaines devant toi, le même profil monterait plus haut." },
-        );
-      // LA COURBE DÉCLARÉE — même famille que la rampe, autre origine : la bande de base
-      // (0,5 × pic) montée à ≤ +10 %/semaine (C22) n'atteint pas 1,0 sur une prépa courte.
-      // Trouvé en écrivant T-25 : 659 identités cassées, la première tracée (run/5k, 6
-      // semaines) montrait Lw = 0,67 au pic — la chaîne nommait « ton historique » (4 h) pour
-      // un pic à 2,6 h que seule la montée expliquait. (Une conversion × swimTime a été
-      // essayée ici puis RETIRÉE : ajustée sur UN cas — swim débutant —, elle inversait
-      // l'identité sur les swim inter, 148 profils livrés AU-DESSUS du « min ». La mécanique
-      // réelle du débutant est les plafonds de séance, pas une unité — voir O-35.)
-      const _courbeLivre = _maxLwChargeH;
-      if (_maxLwChargeH > 0 && _maxLwChargeH < peakH - 0.05)
-        plafonds.push({ id: "courbe", quoi: "la durée de ta préparation", brut: _maxLwChargeH, unite: "livre", livre: _courbeLivre, retire: 0,
-          pourquoi: "Sur " + r.weeks + " semaines, la charge monte progressivement (≤ +10 % par semaine depuis la mise en route) et atteint "
-            + h(_courbeLivre) + "/sem au pic — pas encore ce que tes capacités autorisent. Ce n'est pas une limite de ton corps, c'est le calendrier : avec plus de semaines devant toi, le même profil monterait plus haut." });
-      // LA CIBLE DE BOUCLE LA PLUS HAUTE, avec sa cause MESURÉE au moment de l'écrêtage
-      // (jamais reconstruite) : la croissance sur le LIVRÉ (D3/D4) prolonge la rampe et la
-      // courbe au-delà de leur propre valeur — c'est elle qui bornait run/5k/reprise/inter à
-      // 2,40 h quand la courbe déclarée disait 2,66.
-      if (_cibleMax && _cibleMax.h < peakH - 0.05 && (_cibleMax.src === "growth" || _cibleMax.src === "ramp" || _cibleMax.src === "ref"))
-        plafonds.push({
-          id: "boucle-" + _cibleMax.src,
-          quoi: _cibleMax.src === "growth" ? "la durée de ta préparation" : _cibleMax.src === "ramp" ? "ton point de départ" : (r.inj.count > 0 ? "tes zones fragiles" : "ton âge"),
-          brut: _cibleMax.h, unite: "livre", livre: _cibleMax.h, retire: 0,
-          pourquoi: _cibleMax.src === "ramp"
-            ? "Tu repars de " + h(isFinite(volRecent) ? volRecent : 0) + "/sem : la montée est bornée à +10 % par semaine, et sur " + r.weeks + " semaines elle n'a pas le temps de rejoindre ce que tes plafonds autorisent. Avec plus de semaines devant toi, le même profil monterait plus haut."
-            : _cibleMax.src === "ref"
-              ? (r.inj.count > 0 ? "Ta ou tes zones fragiles (" + r.inj.list.join(", ") + ")" : "Ton âge") + " abaissent volontairement le plafond de charge (R6.2/R6.3), semaine par semaine. La marge que tu perds ici est celle qui te garde entier."
-              : "Sur " + r.weeks + " semaines, la charge monte progressivement (≤ +10 % par semaine sur ce qui a réellement été livré) et atteint " + h(_cibleMax.h) + "/sem au pic — pas encore ce que tes capacités autorisent. Avec plus de semaines devant toi, le même profil monterait plus haut.",
-        });
-      // LE STRUCTUREL — nombre de séances × durée maximale de chacune. Deux mesures du même
-      // plafond : la sonde V2.1 (mesurée sur la semaine de pic rendue) et C20 (l'estimation
-      // a priori de la nage débutante). C'est le cas d'O-10, et le seul où un levier existe.
-      const structBrut = Math.min(_sondeCapH > 0 ? _sondeCapH : Infinity, L.c20 > 0 ? L.c20 : Infinity);
-      if (Number.isFinite(structBrut))
-        plafonds.push({ id: "structurel", quoi: "le nombre de séances", brut: structBrut, unite: "livre", livre: structBrut * lf, retire: 0, pourquoi: "" });
-
-      const actifs = plafonds.filter((p) => Number.isFinite(p.livre) && p.livre > 0);
-      // GARDE D'OBSERVATION : un plafond que le plan DÉPASSE n'a pas borné le plan — le nommer
-      // « ce qui borne » serait réfuté par le chiffre affiché juste à côté. Mesuré en écrivant
-      // T-25 : 81 profils natation + 38 trail livrent AU-DESSUS d'un maillon de la chaîne
-      // (faute d'unité préexistante de la chaîne swim, cinquième occurrence de la famille
-      // V-11 — enregistrée O-35). En attendant O-35, l'argmin se choisit parmi les plafonds
-      // que l'observation ne réfute pas ; le record garde l'énumération COMPLÈTE.
-      const candidats = actifs.filter((p) => p.livre >= volPeak - 0.1);
-      const minP = (candidats.length ? candidats : actifs).reduce((x, y) => (y.livre < x.livre ? y : x));
-      const suivant = (candidats.length ? candidats : actifs).filter((p) => p !== minP)
-        .reduce((x                , y) => (!x || y.livre < x.livre ? y : x), null);
-      // L'argmin porte TOUT le retrait du côté plafonds ; les autres, zéro (§2 : « une
-      // contribution nulle, pas une contribution d'ordre »).
-      // O-35 — LE HAUT DE LA CHAÎNE EST LE PLAFOND `declared` DANS SON UNITÉ LIVRÉE, pas
-      // `L.declared × Q` : en natation, le second oublie la conversion piscine → eau et
-      // annonçait « −7 h/sem » pour un athlète dont la demande convertie ne vaut que 4 h.
-      // Septième occurrence de cette faute dans ce chantier — cette fois dans mon propre
-      // correctif, trouvée en relisant le message rendu plutôt que le code.
-      const _haut = plafonds.find((p) => p.id === "declared")?.livre ?? L.declared * Q;
-      minP.retire = Math.max(0, _haut - minP.livre);
-      const struct = plafonds.find((p) => p.id === "structurel");
-      if (struct) {
-        const autres = actifs.filter((p) => p !== struct).map((p) => p.livre);
-        struct.pourquoi = "Tes plafonds de charge autorisent " + h(autres.length ? Math.min(...autres) : struct.livre)
-          + "/sem, mais une semaine ne contient que " + nSess
-          + " séances et aucune ne peut s'allonger indéfiniment sans devenir autre chose."
-          + (sante
-            ? " Ton plan est déjà allégé pour te protéger : ce n'est pas le moment d'en ajouter."
-            : peutDoubler
-              ? " Pour aller plus haut, il faudrait faire deux séances certains jours"
-                + (dblRepondu === "parfois"
-                  ? " — tu as répondu « parfois » aux doubles, et le moteur n'en place que si tu réponds « oui »."
-                  : " : passe « journées à 2 séances » sur « oui » au Profil.")
-                + " À toi de juger si ton quotidien le permet : deux séances mal récupérées valent moins qu'une bien faite."
-              : r.dbl
-                ? " Tu doubles déjà : au-delà, ce sont les durées maximales de séance qui bornent, et les allonger encore les transformerait en autre chose que ce qu'elles visent."
-                : " Sur ce sport, doubler ne changerait rien : les séances sont uniques par jour et bornées par leur objectif.");
-      }
-      // Le retrait de chaque facteur, dans l'unité du pic livré — la sémantique de R20.7
-      // conservée : chaque baisse multipliée par le produit des facteurs qui la suivent.
-      {
-        let v = Math.min(L.declared * L.swimTime, L.caps, L.util); // O-35 : la déclaration est convertie, les tables non
-        let queue = Q;
-        for (const x of facteurs) {
-          if (x.id === "load") {
-            const rampP = plafonds.find((p) => p.id === "ramp");
-            if (rampP) v = Math.min(v, rampP.livre / (lf || 1)); // la rampe borne avant blessure/âge dans la chaîne réelle
-          }
-          if (x.f > 0 && x.f < 1) { queue /= x.f; x.retire = v * (1 - x.f) * queue; v *= x.f; }
-        }
-      }
-
-      // LE RECORD — émis sur TOUT plan (pas seulement quand le message part) : c'est lui que
-      // T-25/T-26 lisent, et une énumération qui n'existerait que sur les profils expliqués
-      // laisserait les autres hors de portée de l'identité.
-      _r202rec = {
-        declared: L.declared, volPeak,
-        plafonds: actifs.map((p) => ({ id: p.id, quoi: p.quoi, brut: p.brut, unite: p.unite, livre: p.livre, retire: p.retire })),
-        facteurs: facteurs.map((x) => ({ id: x.id, quoi: x.quoi, f: x.f, retire: x.retire })),
-        argmin: minP.id, suivant: suivant ? suivant.id : null,
-      };
-
-      if (volPeak < L.declared * 0.85) {
-        // LA SÉLECTION : « ce qui borne » est l'argmin des plafonds — jamais « la plus grosse
-        // baisse » (§1.2). Un facteur ne borne pas, il convertit ou protège ; il ne prend la
-        // parole que s'il coûte davantage que tout le côté plafonds (le drapeau médical qui
-        // divise le volume par deux : la seule phrase honnête est celle de la protection), et
-        // son texte dit alors « réduit », pas « borne ».
-        const domF = facteurs.filter((x) => x.retire > 0.05)
-          .reduce((x                                  , y) => (!x || y.retire > x.retire ? y : x), null);
-        let val        , why        ;
-        if (domF && domF.retire > minP.retire) {
-          val = "pic à " + h(volPeak) + " — ce qui le réduit le plus, c'est " + domF.quoi + " (−" + h(domF.retire) + "/sem)";
-          why = domF.pourquoi;
-        } else {
-          val = "pic à " + h(volPeak) + " — ce qui borne, c'est " + minP.quoi + " (−" + h(minP.retire) + "/sem)";
-          why = minP.pourquoi;
-          // La seconde ligne du §2 : l'information de levier sur sa VRAIE question — le
-          // plafond SUIVANT, pas la plus grosse baisse. Invariante par ordre, actionnable.
-          // Jamais sous protection santé (la garde existante ne bouge pas).
-          if (suivant && !sante) why += " Si tu levais cette contrainte, " + suivant.quoi + " te plafonnerait à " + h(suivant.livre) + ".";
-        }
-        r.decisions.push({
-          id: "R20.2",
-          what: "Ton volume max demandé (" + h(L.declared) + ") n'est pas atteint",
-          val, why,
-        });
-      }
-    }
-  }
 
   // Courses intermédiaires : mini-affûtage semaine B/A, récup la semaine suivante
   const races                                                     = [];
@@ -13483,6 +13288,283 @@ function generatePlan(profile                , opts                             
       r.decisions = r.decisions.filter((dc) => !(dc.id === "C31" && dc.what.includes("(sem. " + wk.num + ")")));
     }
   }
+  // C6 — volPeak affiché = pic réel des semaines de charge
+  //
+  // O-35 (2ᵉ moitié) — IL LISAIT UN INSTANTANÉ PÉRIMÉ. `w.vol` est écrit au moment où la
+  // semaine est poussée dans la liste (`volReal`), donc AVANT les passes du point fixe —
+  // I14, C26c/d, le rattrapage d'I14b, C30b… — qui modifient encore les séances. Mesuré :
+  // `w.vol` annonçait 0,7 h là où les séances livrées somment 0,62 (nage débutante), soit
+  // 13 % de trop sur le seul chiffre que l'athlète lit comme « son pic ». Douzième fois que
+  // ce dépôt paie la même leçon : une grandeur figée au milieu du pipeline ne décrit que
+  // l'avant-dernier état. On recompte sur les séances TELLES QU'ELLES SONT LIVRÉES.
+  {
+    const chargeW = wl.filter((w) => !w.isRecup);
+    const livre = (w        ) => (w.days            ).reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0) / 60;
+    if (chargeW.length) volPeak = Math.round(Math.max(...chargeW.map(livre)) * 10) / 10;
+    plan.volPeak = volPeak;
+    plan.volBase = Math.round(volPeak * 0.58 * 10) / 10;
+  }
+
+  // ---- R20.2 — LE VOLUME MAX DIT CE QUI LE BLOQUE, ET CE QUI LE DÉBLOQUERAIT ----
+  //
+  // Constat de test du fondateur : « volume max à 12 h au lieu de 14 ». La mesure (O-10) a
+  // montré plus large que le constat — sur un 70.3, `vol_max` ne changeait plus RIEN au-delà
+  // de 10 h : 10, 12, 14, 16 h donnaient le même plan à 0,1 h près. La question continuait
+  // d'être posée comme si elle décidait, et le moteur livrait un pic bas sans un mot.
+  //
+  // Ce bloc ne change AUCUN chiffre du plan. Il rend le chiffre explicable, et c'est
+  // volontairement le seul geste : forcer le volume vers le plafond demandé reviendrait à
+  // gonfler des séances au-delà de ce que leurs bornes autorisent — soit exactement le défaut
+  // que la sonde de capacité V2.1 existe pour empêcher. « Un mauvais plan vaut mieux qu'un
+  // plan dangereux » ; un plan honnête sur sa limite vaut mieux qu'un plan muet.
+  //
+  // DEUX NATURES, DEUX TRAITEMENTS (DOC_UNIQUE §1-§2, 14/08/2026). Ma deuxième écriture
+  // traitait tous les maillons en CHAÎNE et nommait « la plus grosse baisse » sous un texte
+  // qui promettait « ce qui borne » — sur le profil de la capture, « ton historique » (13 h)
+  // annoncé comme la borne d'un pic à 7,5 h, trois centimètres sous la sonde V2.1 qui venait
+  // de nommer les plafonds de séance à 7,8 h. Et l'attribution dépendait de l'ORDRE des
+  // appels : permuter caps/util changeait le coupable sur le même plan (§1.3). Cause racine :
+  // les PLAFONDS sont PARALLÈLES — un min(), dont l'argmin est CE QUI BORNE et dont les
+  // autres membres contribuent zéro, pas une contribution d'ordre. Les FACTEURS, eux,
+  // composent réellement (produit, commutatif — aucun artefact d'ordre possible) et gardent
+  // leur traitement. Le tout est ÉMIS (`plan._r202`) pour que T-25 (identité
+  // min(plafonds) × ∏(facteurs) === volPeak), T-26 (invariance par permutation) et T-23
+  // (cohérence d'écran avec la sonde) le vérifient de dehors.
+  //
+  // R20.7/V-11 — TOUTES LES GRANDEURS SONT EXPRIMÉES DANS L'UNITÉ DU PIC LIVRÉ (`livre`),
+  // retraits ET phrases : quatrième faute d'unité de ce chantier, payée deux fois avant.
+  //
+  // Le diagnostic est honnête quel que soit le maillon ; c'est la PROPOSITION qui est gardée :
+  // aucun levier n'est jamais suggéré à quelqu'un dont le plan a été réduit pour le protéger
+  // (drapeau médical, blessure, âge) — hiérarchie du manifeste, santé d'abord.
+  {
+    const L = r.volLimits;
+    if (L.declared > 0) {
+      const h = (x        ) => (Math.round(x * 10) / 10).toString().replace(".", ",") + " h";
+      const nSess = Math.max(0, ...wl.filter((w) => !w.isRecup)
+        .map((w) => (w.days            ).reduce((t, d) => t + d.sessions.filter((s) => s.d !== "rs").length, 0)));
+      const peutDoubler = guard(a.sport          , "doublesAddVolume") && !r.dbl;
+      const dblRepondu = String(a.doubles ?? "");
+      const sante = r.medHold || r.loadFactor < 1;
+      const lf = r.loadFactor < 1 ? r.loadFactor : 1;
+
+      // LES FACTEURS — séquentiels, ils composent réellement. Leur retrait se calcule comme la
+      // chaîne l'a toujours fait (ce que le facteur coûte sur le chiffre final, R20.7), la
+      // multiplication étant commutative il n'y a pas d'artefact d'ordre à corriger ici.
+      const facteurs = [
+        { id: "marg", f: L.marg, quoi: "la marge de sécurité hors compétition", retire: 0,
+          pourquoi: "Tu ne prépares pas une compétition : 10 % de marge sont retirés de tous les plafonds. La santé passe avant le chiffre." },
+        { id: "recup", f: L.recup, quoi: "ta récupération", retire: 0,
+          pourquoi: "Sommeil court et/ou charge de vie lourde : le moteur ne fait pas semblant de l'ignorer, il baisse réellement le contenu (règle 1B). Ce maillon-là remonte tout seul dès que le sommeil revient." },
+        { id: "med", f: L.med, quoi: "le drapeau médical", retire: 0,
+          pourquoi: "Tu as signalé un symptôme à l'effort : ce plan est un plan de MAINTIEN, volontairement allégé. Le volume n'est pas le sujet tant que l'avis médical n'est pas donné." },
+        // O-35 — `swimTime` A QUITTÉ CETTE LISTE : ce n'est pas un facteur de RÉDUCTION, c'est
+        // une CONVERSION D'UNITÉ, et elle ne porte que sur la seule grandeur exprimée en temps
+        // de PISCINE — celle que l'athlète déclare. Les tables (`caps`, `util`) sont déjà du
+        // volume d'entraînement : les convertir les pénalisait une seconde fois. Le message ne
+        // peut plus annoncer « ce qui réduit le plus, c'est le temps passé dans l'eau » — rien
+        // n'est retiré par une conversion, c'est la même séance comptée honnêtement, et le dire
+        // comme une perte était faux. L'explication vit désormais sur le plafond `declared`.
+        { id: "load", f: lf, quoi: r.inj.count > 0 ? "tes zones fragiles" : "ton âge", retire: 0,
+          pourquoi: (r.inj.count > 0 ? "Ta ou tes zones fragiles (" + r.inj.list.join(", ") + ")" : "Ton âge")
+            + " abaissent volontairement le plafond de charge (R6.2/R6.3). Ce n'est pas un réglage à contourner : la marge que tu perds ici est celle qui te garde entier." },
+      ];
+      const Q = facteurs.reduce((q, x) => q * x.f, 1);
+
+      // LES PLAFONDS — parallèles, un min(). `livre` = la valeur du plafond dans l'unité du
+      // pic affiché ; `unite: "athlete"` marque ceux déclarés dans l'unité de l'athlète
+      // (livre = brut × Q, l'identité que T-25 vérifie), les autres sont MESURÉS en aval des
+      // facteurs qui les concernent.
+                                                                                                                                             
+      const plafonds            = [
+        // O-35 — SEULE grandeur exprimée en temps de PISCINE : elle porte la conversion.
+        { id: "declared", quoi: "ton volume demandé", brut: L.declared, unite: "athlete", livre: L.declared * L.swimTime * Q, retire: 0,
+          pourquoi: "C'est le volume que tu as toi-même demandé"
+            + (L.swimTime < 1
+              ? " : " + h(L.declared) + "/sem de piscine, soit " + h(L.declared * L.swimTime) + " réellement DANS l'eau — les longueurs de récupération, les départs et les consignes ne sont pas du volume d'entraînement. Rien ne t'est retiré : c'est la même séance, comptée honnêtement."
+              : " : aucun plafond physiologique n'en retire") + " — le chiffre livré en découle par les protections listées à côté." },
+        { id: "caps", quoi: "ton historique", brut: L.caps, unite: "athlete", livre: L.caps * Q, retire: 0,
+          pourquoi: "Sur ce format, l'historique « " + String(r.profile.history ?? "") + " » permet d'encaisser " + h(L.caps * Q)
+            + "/sem : au-delà, la charge s'accumule plus vite qu'elle ne s'assimile. Ce plafond monte tout seul, en tenant les semaines — pas en les forçant." },
+        { id: "util", quoi: "le volume utile du format", brut: L.util, unite: "athlete", livre: L.util * Q, retire: 0,
+          pourquoi: "Chaque format a un volume au-delà duquel les heures ne servent plus l'objectif : ici " + h(L.util * Q)
+            + "/sem. Les heures supplémentaires coûteraient de la fraîcheur sans rien ajouter au jour J — si tu veux vraiment t'entraîner plus, c'est le format qu'il faut changer, pas le curseur." },
+      ];
+      // R20.7 — LA RAMPE DE DÉPART EST UN PLAFOND, ELLE AUSSI (O-13 : un pic à 1,6 h pendant
+      // que la chaîne nommait un plafond que le plan n'approchait pas). Mais seulement si elle
+      // a réellement borné le PIC : quand elle s'est effacée en route (`_rampCap` repassé à
+      // Infinity), elle a formé les premières semaines, pas la plus haute — l'inscrire au
+      // min() accuserait le départ pour un pic qu'il n'a pas limité.
+      if (_rampCeilH > 0 && Number.isFinite(_rampCap))
+        plafonds.push({ id: "ramp", quoi: "ton point de départ", brut: _rampCeilH, unite: "livre", livre: _rampCeilH, retire: 0,
+          pourquoi: "Tu repars de " + h(isFinite(volRecent) ? volRecent : 0) + "/sem : la montée est bornée à +10 % par semaine, et sur "
+            + r.weeks + " semaines elle n'a pas le temps de rejoindre ce que tes plafonds autorisent. Ce n'est pas une limite technique, c'est la marche la plus souvent trop haute — celle du début. Avec plus de semaines devant toi, le même profil monterait plus haut." },
+        );
+      // LA COURBE DÉCLARÉE — même famille que la rampe, autre origine : la bande de base
+      // (0,5 × pic) montée à ≤ +10 %/semaine (C22) n'atteint pas 1,0 sur une prépa courte.
+      // Trouvé en écrivant T-25 : 659 identités cassées, la première tracée (run/5k, 6
+      // semaines) montrait Lw = 0,67 au pic — la chaîne nommait « ton historique » (4 h) pour
+      // un pic à 2,6 h que seule la montée expliquait. (Une conversion × swimTime a été
+      // essayée ici puis RETIRÉE : ajustée sur UN cas — swim débutant —, elle inversait
+      // l'identité sur les swim inter, 148 profils livrés AU-DESSUS du « min ». La mécanique
+      // réelle du débutant est les plafonds de séance, pas une unité — voir O-35.)
+      const _courbeLivre = _maxLwChargeH;
+      if (_maxLwChargeH > 0 && _maxLwChargeH < peakH - 0.05)
+        plafonds.push({ id: "courbe", quoi: "la durée de ta préparation", brut: _maxLwChargeH, unite: "livre", livre: _courbeLivre, retire: 0,
+          pourquoi: "Sur " + r.weeks + " semaines, la charge monte progressivement (≤ +10 % par semaine depuis la mise en route) et atteint "
+            + h(_courbeLivre) + "/sem au pic — pas encore ce que tes capacités autorisent. Ce n'est pas une limite de ton corps, c'est le calendrier : avec plus de semaines devant toi, le même profil monterait plus haut." });
+      // LA CIBLE DE BOUCLE LA PLUS HAUTE, avec sa cause MESURÉE au moment de l'écrêtage
+      // (jamais reconstruite) : la croissance sur le LIVRÉ (D3/D4) prolonge la rampe et la
+      // courbe au-delà de leur propre valeur — c'est elle qui bornait run/5k/reprise/inter à
+      // 2,40 h quand la courbe déclarée disait 2,66.
+      if (_cibleMax && _cibleMax.h < peakH - 0.05 && (_cibleMax.src === "growth" || _cibleMax.src === "ramp" || _cibleMax.src === "ref"))
+        plafonds.push({
+          id: "boucle-" + _cibleMax.src,
+          quoi: _cibleMax.src === "growth" ? "la durée de ta préparation" : _cibleMax.src === "ramp" ? "ton point de départ" : (r.inj.count > 0 ? "tes zones fragiles" : "ton âge"),
+          brut: _cibleMax.h, unite: "livre", livre: _cibleMax.h, retire: 0,
+          pourquoi: _cibleMax.src === "ramp"
+            ? "Tu repars de " + h(isFinite(volRecent) ? volRecent : 0) + "/sem : la montée est bornée à +10 % par semaine, et sur " + r.weeks + " semaines elle n'a pas le temps de rejoindre ce que tes plafonds autorisent. Avec plus de semaines devant toi, le même profil monterait plus haut."
+            : _cibleMax.src === "ref"
+              ? (r.inj.count > 0 ? "Ta ou tes zones fragiles (" + r.inj.list.join(", ") + ")" : "Ton âge") + " abaissent volontairement le plafond de charge (R6.2/R6.3), semaine par semaine. La marge que tu perds ici est celle qui te garde entier."
+              : "Sur " + r.weeks + " semaines, la charge monte progressivement (≤ +10 % par semaine sur ce qui a réellement été livré) et atteint " + h(_cibleMax.h) + "/sem au pic — pas encore ce que tes capacités autorisent. Avec plus de semaines devant toi, le même profil monterait plus haut.",
+        });
+      // LE STRUCTUREL — nombre de séances × durée maximale de chacune. C'est le cas d'O-10, et
+      // le seul où un levier existe.
+      //
+      // O-35 (2ᵉ moitié) — LA SONDE MESURAIT UN CLONE SATURÉ, PAS LA SEMAINE QUE L'ATHLÈTE
+      // REÇOIT. V2.1 tourne AVANT la boucle de volume : elle sonde la semaine de pic telle que
+      // les builders l'ont posée, alors que le plan livré a depuis subi la boucle R3.3, les
+      // clamps, I14, C26c/d, les passes de rattrapage — qui changent le nombre de séances comme
+      // leur taille. Mesuré : sonde 1,5 h contre 0,7 h livrées chez un nageur débutant, et la
+      // chaîne annonçait « ta préparation te plafonne à 1,6 h » sous un pic affiché à 0,7.
+      //
+      // On RE-SONDE UNE FOIS, sur la semaine LIVRÉE, et on s'arrête là — la résolution de B-25,
+      // déjà sanctionnée : sonder, construire, mesurer le rendu, re-sonder une fois. Jamais de
+      // point fixe. La mesure porte sur un CLONE saturé de la semaine livrée : ce que cette
+      // semaine POURRAIT porter si chaque séance allait à son plafond — une capacité, pas le
+      // résultat. Mesurer les minutes livrées elles-mêmes rendrait l'identité vraie par
+      // construction, donc vide.
+      //
+      // Et elle ne touche QUE le diagnostic : `peakH` a déjà piloté la construction, la
+      // structure du plan ne bouge pas d'une séance (vérifié : golden inchangé hors décisions).
+      let structBrut = Math.min(_sondeCapH > 0 ? _sondeCapH : Infinity, L.c20 > 0 ? L.c20 : Infinity);
+      {
+        const wPic = wl.filter((w) => !w.isRecup)
+          .reduce((x               , y) => (!x || (y.days            ).reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0)
+            > (x.days            ).reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0) ? y : x), null);
+        if (wPic) {
+          const clone = structuredClone(wPic.days            );
+          const avant = weekMin(clone);
+          for (let it = 0; it < 4; it++) {
+            renderWeek(clone);
+            const cur = weekMin(clone) / 60;
+            if (cur <= 0) break;
+            scaleWeekBody(clone, (Math.max(peakH, cur) * 2) / cur); // cible inatteignable → saturation aux plafonds
+          }
+          clampWeekBody(clone);
+          renderWeek(clone);
+          const rendu = weekMin(clone) / 60;
+          // la re-sonde ne peut que DESCENDRE le plafond structurel : si la semaine livrée porte
+          // plus que ce que la première sonde annonçait, c'est la première qui sous-estimait, et
+          // l'écart relève du même ticket — on ne remonte pas un plafond avec une mesure aval.
+          if (rendu > 0 && avant > 0 && rendu < structBrut) structBrut = rendu;
+        }
+      }
+      if (Number.isFinite(structBrut))
+        plafonds.push({ id: "structurel", quoi: "le nombre de séances", brut: structBrut, unite: "livre", livre: structBrut * lf, retire: 0, pourquoi: "" });
+
+      const actifs = plafonds.filter((p) => Number.isFinite(p.livre) && p.livre > 0);
+      // GARDE D'OBSERVATION : un plafond que le plan DÉPASSE n'a pas borné le plan — le nommer
+      // « ce qui borne » serait réfuté par le chiffre affiché juste à côté. Mesuré en écrivant
+      // T-25 : 81 profils natation + 38 trail livrent AU-DESSUS d'un maillon de la chaîne
+      // (faute d'unité préexistante de la chaîne swim, cinquième occurrence de la famille
+      // V-11 — enregistrée O-35). En attendant O-35, l'argmin se choisit parmi les plafonds
+      // que l'observation ne réfute pas ; le record garde l'énumération COMPLÈTE.
+      const candidats = actifs.filter((p) => p.livre >= volPeak - 0.1);
+      const minP = (candidats.length ? candidats : actifs).reduce((x, y) => (y.livre < x.livre ? y : x));
+      const suivant = (candidats.length ? candidats : actifs).filter((p) => p !== minP)
+        .reduce((x                , y) => (!x || y.livre < x.livre ? y : x), null);
+      // L'argmin porte TOUT le retrait du côté plafonds ; les autres, zéro (§2 : « une
+      // contribution nulle, pas une contribution d'ordre »).
+      // O-35 — LE HAUT DE LA CHAÎNE EST LE PLAFOND `declared` DANS SON UNITÉ LIVRÉE, pas
+      // `L.declared × Q` : en natation, le second oublie la conversion piscine → eau et
+      // annonçait « −7 h/sem » pour un athlète dont la demande convertie ne vaut que 4 h.
+      // Septième occurrence de cette faute dans ce chantier — cette fois dans mon propre
+      // correctif, trouvée en relisant le message rendu plutôt que le code.
+      const _haut = plafonds.find((p) => p.id === "declared")?.livre ?? L.declared * Q;
+      minP.retire = Math.max(0, _haut - minP.livre);
+      const struct = plafonds.find((p) => p.id === "structurel");
+      if (struct) {
+        const autres = actifs.filter((p) => p !== struct).map((p) => p.livre);
+        struct.pourquoi = "Tes plafonds de charge autorisent " + h(autres.length ? Math.min(...autres) : struct.livre)
+          + "/sem, mais une semaine ne contient que " + nSess
+          + " séances et aucune ne peut s'allonger indéfiniment sans devenir autre chose."
+          + (sante
+            ? " Ton plan est déjà allégé pour te protéger : ce n'est pas le moment d'en ajouter."
+            : peutDoubler
+              ? " Pour aller plus haut, il faudrait faire deux séances certains jours"
+                + (dblRepondu === "parfois"
+                  ? " — tu as répondu « parfois » aux doubles, et le moteur n'en place que si tu réponds « oui »."
+                  : " : passe « journées à 2 séances » sur « oui » au Profil.")
+                + " À toi de juger si ton quotidien le permet : deux séances mal récupérées valent moins qu'une bien faite."
+              : r.dbl
+                ? " Tu doubles déjà : au-delà, ce sont les durées maximales de séance qui bornent, et les allonger encore les transformerait en autre chose que ce qu'elles visent."
+                : " Sur ce sport, doubler ne changerait rien : les séances sont uniques par jour et bornées par leur objectif.");
+      }
+      // Le retrait de chaque facteur, dans l'unité du pic livré — la sémantique de R20.7
+      // conservée : chaque baisse multipliée par le produit des facteurs qui la suivent.
+      {
+        let v = Math.min(L.declared * L.swimTime, L.caps, L.util); // O-35 : la déclaration est convertie, les tables non
+        let queue = Q;
+        for (const x of facteurs) {
+          if (x.id === "load") {
+            const rampP = plafonds.find((p) => p.id === "ramp");
+            if (rampP) v = Math.min(v, rampP.livre / (lf || 1)); // la rampe borne avant blessure/âge dans la chaîne réelle
+          }
+          if (x.f > 0 && x.f < 1) { queue /= x.f; x.retire = v * (1 - x.f) * queue; v *= x.f; }
+        }
+      }
+
+      // LE RECORD — émis sur TOUT plan (pas seulement quand le message part) : c'est lui que
+      // T-25/T-26 lisent, et une énumération qui n'existerait que sur les profils expliqués
+      // laisserait les autres hors de portée de l'identité.
+      plan._r202 = _r202rec = {
+        declared: L.declared, volPeak,
+        plafonds: actifs.map((p) => ({ id: p.id, quoi: p.quoi, brut: p.brut, unite: p.unite, livre: p.livre, retire: p.retire })),
+        facteurs: facteurs.map((x) => ({ id: x.id, quoi: x.quoi, f: x.f, retire: x.retire })),
+        argmin: minP.id, suivant: suivant ? suivant.id : null,
+      };
+
+      if (volPeak < L.declared * 0.85) {
+        // LA SÉLECTION : « ce qui borne » est l'argmin des plafonds — jamais « la plus grosse
+        // baisse » (§1.2). Un facteur ne borne pas, il convertit ou protège ; il ne prend la
+        // parole que s'il coûte davantage que tout le côté plafonds (le drapeau médical qui
+        // divise le volume par deux : la seule phrase honnête est celle de la protection), et
+        // son texte dit alors « réduit », pas « borne ».
+        const domF = facteurs.filter((x) => x.retire > 0.05)
+          .reduce((x                                  , y) => (!x || y.retire > x.retire ? y : x), null);
+        let val        , why        ;
+        if (domF && domF.retire > minP.retire) {
+          val = "pic à " + h(volPeak) + " — ce qui le réduit le plus, c'est " + domF.quoi + " (−" + h(domF.retire) + "/sem)";
+          why = domF.pourquoi;
+        } else {
+          val = "pic à " + h(volPeak) + " — ce qui borne, c'est " + minP.quoi + " (−" + h(minP.retire) + "/sem)";
+          why = minP.pourquoi;
+          // La seconde ligne du §2 : l'information de levier sur sa VRAIE question — le
+          // plafond SUIVANT, pas la plus grosse baisse. Invariante par ordre, actionnable.
+          // Jamais sous protection santé (la garde existante ne bouge pas).
+          if (suivant && !sante) why += " Si tu levais cette contrainte, " + suivant.quoi + " te plafonnerait à " + h(suivant.livre) + ".";
+        }
+        r.decisions.push({
+          id: "R20.2",
+          what: "Ton volume max demandé (" + h(L.declared) + ") n'est pas atteint",
+          val, why,
+        });
+      }
+    }
+  }
+
+
   return { plan, reasoned: r };
 }
 
