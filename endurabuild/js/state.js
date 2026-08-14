@@ -106,14 +106,29 @@ function purgePastRace(state){
   return state;
 }
 
+/** LA BOUCLE DU 13/08 — un plan qu'on SUIT a forcément été DÉMARRÉ.
+ *
+ * Le boot exige `started && sport && onPlan` pour afficher le plan, mais `started` n'était posé
+ * QUE par le clic sur une carte sport. Un état migré depuis `eb_state_v1` (l'app est déployée :
+ * ces états existent) arrive avec `started:false` et un sport déjà choisi — la carte n'est
+ * jamais recliquée, `started` reste faux À VIE. Vécu : on complète le questionnaire, on génère,
+ * on voit son plan… et CHAQUE réouverture retombe sur « Ton plan est prêt 🎯 ». Reproduit pas à
+ * pas au Playwright sur trois rechargements. `onPlan:true` + `started:false` est une
+ * contradiction (être SUR un plan jamais démarré) : on la répare À LA LECTURE, parce que les
+ * états cassés sont déjà dans des navigateurs — un correctif qui ne toucherait que la
+ * génération laisserait chaque appareil atteint boucler pour toujours. */
+function healContradictoryFlags(state){
+  for(const p of state.plans||[])if(p.onPlan&&!p.started)p.started=true;
+  return state;
+}
 function ebLoad(){
   try{
     const v2=JSON.parse(localStorage.getItem("eb_state_v2")||"null");
-    if(v2&&Array.isArray(v2.plans)&&v2.plans.length)return purgePastRace(migrateTrailPlans(v2));
+    if(v2&&Array.isArray(v2.plans)&&v2.plans.length)return healContradictoryFlags(purgePastRace(migrateTrailPlans(v2)));
     const v1=JSON.parse(localStorage.getItem("eb_state_v1")||"null");
     if(v1){
       const e=Object.assign(ebNewPlanEntry(""),{sport:v1.sport||null,answers:v1.answers||{},tier:v1.tier||"free",step:v1.step||0,started:!!v1.started,onPlan:!!v1.onPlan});
-      return purgePastRace(migrateTrailPlans({plans:[e],activePlanId:e.id,shared:{}}));
+      return healContradictoryFlags(purgePastRace(migrateTrailPlans({plans:[e],activePlanId:e.id,shared:{}})));
     }
     return null;
   }catch(e){

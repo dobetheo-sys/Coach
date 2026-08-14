@@ -163,7 +163,11 @@ if (globalThis.EB_STANDALONE) {
       stravaAuthFromHash(); // retour OAuth Strava (#strava_auth=…) — APRÈS la restauration d'état
       if(S.sport)document.body.dataset.sport=S.sport;
       if(S.answers.intent)document.body.dataset.intent=S.answers.intent;
-      if(S.started&&S.sport&&S.onPlan){renderPlan();return;}
+      // Boucle du 13/08 — `started` retiré du prédicat : être SUR un plan (`onPlan`) avec un
+      // sport suffit, et il n'existe aucun état légitime où `onPlan` est vrai et où il faudrait
+      // pourtant montrer le questionnaire (les deux sorties vers le questionnaire posent
+      // `onPlan=false`). Exiger en plus `started` a enfermé les états migrés dans une boucle.
+      if(S.sport&&S.onPlan){renderPlan();return;}
     }catch(e){}
   }
   stravaAuthFromHash(); // même retour OAuth quand aucun plan n'est encore enregistré

@@ -331,6 +331,10 @@ export function renderTabs() {
   brancherAide();
 
   S.onPlan = true;
+  // Boucle du 13/08 — générer un plan PROUVE que le questionnaire a été traversé : `started`
+  // est impliqué, on ne le laisse plus dépendre du seul clic sur une carte sport (le chemin
+  // migré depuis eb_state_v1 ne repasse jamais par cette carte).
+  S.started = true;
   ebSave();
   // U11 — l'arrivée sur le plan le jour de sa création.
   if (jourDeCreation() && activeTab === "today") activeTab = "general";

@@ -11,6 +11,9 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   "smoke-tabs.mjs",
   // R20.1 — les SEPT questionnaires se traversent : aucune suite ne passait par le triathlon.
   "smoke-questionnaires.mjs",
+  // La boucle du 13/08 — un état migré v1 (started:false) enfermait l'athlète dans le
+  // questionnaire à chaque ouverture. Trois couches gardées : migration, guérison, chemin propre.
+  "smoke-boucle.mjs",
   // U1-U7 — le PREMIER CONTACT : ce que la personne lit, et ce qu'elle attend. Aucune autre
   // suite ne regarde ça — elles vérifient toutes ce que le moteur produit.
   "smoke-usage.mjs", "smoke-projlog.mjs", "smoke-refus.mjs", "smoke-securite.mjs",

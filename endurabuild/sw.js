@@ -13,7 +13,7 @@
    `npm run check:sw`, comme `check:app` pour le bundle du monolithe). */
 
 // __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
-const VERSION = "eb-pwa-8c0796fc8597";
+const VERSION = "eb-pwa-93fa1c4fce92";
 // __/SW_VERSION__
 
 // __SW_ASSETS__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
