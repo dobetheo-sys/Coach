@@ -29,9 +29,9 @@ de l'axe de charge ci-dessous, et c'est le seul motif qui traverse les deux.
 
 ## 1 · Tokens du thème sombre — `endurabuild/css/zenna-today.css`
 
-Tout est déclaré sur `body.theme-zenna` : **67 variables**, en trois familles.
+Tout est déclaré sur `body.theme-zenna` : **70 variables**, en trois familles.
 
-### 1a · Palette Zenna — 42 tokens
+### 1a · Palette Zenna — 43 tokens
 
 | Token | Valeur |
 |---|---|
@@ -76,6 +76,7 @@ Tout est déclaré sur `body.theme-zenna` : **67 variables**, en trois familles.
 | `--zn-body` | `'Inter', 'Space Grotesk', -apple-system, sans-serif` |
 | `--zn-mono` | `'IBM Plex Mono', ui-monospace, monospace` |
 | `--zn-skew` | `-4deg` |
+| `--zn-on-accent` | `#0a0a0a` |
 | `--zn-travel` | `40px` |
 
 ### 1b · Reliage du thème papier — 10 tokens
@@ -97,10 +98,11 @@ historique : il REDÉFINIT les variables que ce CSS consomme déjà. Une règle 
 | `--gold` | `#ffd23d` |
 | `--line` | `#26292f` |
 
-### 1c · Mouvement — 8 tokens
+### 1c · Mouvement — 9 tokens
 
 | Token | Valeur |
 |---|---|
+| `--beat-35` | `calc(var(--beat) * 3.5)` |
 | `--beat` | `160ms` |
 | `--dur-tap` | `calc(var(--beat) * 0.75)` |
 | `--dur-trans` | `calc(var(--beat) * 2.5)` |
@@ -110,7 +112,7 @@ historique : il REDÉFINIT les variables que ce CSS consomme déjà. Une règle 
 | `--ease` | `cubic-bezier(.2, 0, 0, 1)` |
 | `--ease-spring` | `cubic-bezier(.34, 1.18, .64, 1)` |
 
-### 1d · Formes et plans — 7 tokens
+### 1d · Formes et plans — 8 tokens
 
 | Token | Valeur |
 |---|---|
@@ -121,6 +123,7 @@ historique : il REDÉFINIT les variables que ce CSS consomme déjà. Une règle 
 | `--z5` | `#ff1f4a` |
 | `--cut-tile` | `polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%)` |
 | `--cut-hero` | `polygon(0 0, 100% 0, 100% 82%, 55% 96%, 0 100%)` |
+| `--cut-bevel` | `polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%)` |
 
 ---
 

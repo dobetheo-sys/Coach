@@ -118,7 +118,14 @@ function purgePastRace(state){
  * états cassés sont déjà dans des navigateurs — un correctif qui ne toucherait que la
  * génération laisserait chaque appareil atteint boucler pour toujours. */
 function healContradictoryFlags(state){
-  for(const p of state.plans||[])if(p.onPlan&&!p.started)p.started=true;
+  // §3.3 de la réponse au STOP de Phase 1 — LA RÉPARATION EST COMPTÉE, PAS SILENCIEUSE.
+  // Une guérison muette et permanente devient un silencieux définitif pour toute une classe
+  // de corruption : si quelque chose PRODUIT encore des états contradictoires, seul ce
+  // compteur le verra (même famille que la note EB_STANDALONE sur les échecs avalés).
+  // `shared` est la seule zone hors plans qu'`ebSave` persiste — le compteur y vit.
+  let n=0;
+  for(const p of state.plans||[])if(p.onPlan&&!p.started){p.started=true;n++;}
+  if(n){state.shared=state.shared||{};state.shared.migRepairs=(state.shared.migRepairs||0)+n;state.shared.migRepairsLast=new Date().toISOString().slice(0,10);}
   return state;
 }
 function ebLoad(){

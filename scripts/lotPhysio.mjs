@@ -30,7 +30,7 @@ import { sessionIntensity } from "../src/readiness/dailyAdjuster.ts";
 import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor } from "../src/engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../src/engine/reasoningEngine.ts";
 import { toProfile } from "../src/app/bridge.ts";
-import { riegelExponent, riegelSecWith, RUN_KM, marathonPaceBand } from "../src/engine/predictor.ts";
+import { riegelExponent, riegelSecWith, RUN_KM, marathonPaceBand, RN_MARA_RATIO_PLANCHER } from "../src/engine/predictor.ts";
 import { profiles as goldenProfiles } from "./goldenMaster.mjs";
 import { estCharge } from "./lib/planMetrics.mjs";
 
@@ -298,7 +298,11 @@ T("T-16", "vert", "le chrono marathon prédit tombe dans la bande d'allure marat
       const b = marathonPaceBand(thr, h);
       if (!b) { hors.push(`seuil ${thr} : aucune bande`); continue; }
       const r = riegelSecWith(riegelExponent(h), thr, RUN_KM.marathon) / RUN_KM.marathon / thr;
-      if (r < b.lo - 1e-9 || r > b.hi + 1e-9) hors.push(`${thr}s/km @${h}h : ${r.toFixed(4)} hors [${b.lo.toFixed(4)}, ${b.hi.toFixed(4)}]`);
+      // Réponse au STOP de Phase 1 (§1) — le PLANCHER 1,05 découple volontairement la
+      // prescription de la prédiction à haut volume : une bande posée AU plancher avec une
+      // prédiction plus rapide que lui est l'état voulu, pas une incohérence.
+      const auPlancher = Math.abs(b.lo - RN_MARA_RATIO_PLANCHER) < 1e-9 && r < b.lo;
+      if (!auPlancher && (r < b.lo - 1e-9 || r > b.hi + 1e-9)) hors.push(`${thr}s/km @${h}h : ${r.toFixed(4)} hors [${b.lo.toFixed(4)}, ${b.hi.toFixed(4)}]`);
     }
   }
   return { ok: !hors.length, detail: `${hors.length} combinaison(s) hors bande — ` + hors.slice(0, 6).join(" · ") };
@@ -316,7 +320,10 @@ T("T-16b", "vert", "la bande d'allure marathon suit le volume ET l'allure seuil"
   if (!(lent.lo > rapide.lo + 1e-6)) ecarts.push("l'allure seuil ne déplace pas la bande");
   // La LARGEUR relative, elle, ne bouge pas : on a déplacé le centre, pas redéfini la zone.
   const larg = (b) => (b.hi - b.lo) / ((b.hi + b.lo) / 2);
-  if (Math.abs(larg(b3) - larg(b12)) > 1e-6) ecarts.push("la largeur relative de la zone a changé");
+  // La largeur relative ne se compare qu'entre bandes NON écrêtées : le plancher 1,05 la
+  // réduit légitimement à haut volume (réponse au STOP de Phase 1, §1) — et il est gardé.
+  if (b12.lo > RN_MARA_RATIO_PLANCHER + 1e-9 && Math.abs(larg(b3) - larg(b12)) > 1e-6) ecarts.push("la largeur relative de la zone a changé");
+  if (marathonPaceBand(255, 14).lo < RN_MARA_RATIO_PLANCHER - 1e-9) ecarts.push("le plancher élite 1,05 ne tient pas à 14 h/sem");
   return { ok: !ecarts.length, detail: ecarts.join(" · ") };
 });
 

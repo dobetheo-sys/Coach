@@ -13,7 +13,7 @@
    `npm run check:sw`, comme `check:app` pour le bundle du monolithe). */
 
 // __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
-const VERSION = "eb-pwa-536f2c5b62f6";
+const VERSION = "eb-pwa-b201ced9a6ea";
 // __/SW_VERSION__
 
 // __SW_ASSETS__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
@@ -72,7 +72,6 @@ const ASSETS = [
   "./js/ui/tabs.js",
   "./js/ui/zenna-motion.js",
   "./assets/fonts/archivo-black-400.woff2",
-  "./assets/fonts/bebas-neue-400.woff2",
   "./assets/fonts/caveat-600-700.woff2",
   "./assets/fonts/ibm-plex-mono-400.woff2",
   "./assets/fonts/ibm-plex-mono-700.woff2",

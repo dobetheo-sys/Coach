@@ -401,14 +401,29 @@ async function boot(reducedMotion, jour = JOUR_SEANCE) {
       bg: getComputedStyle(document.body).backgroundColor,
       sticky: !!document.querySelector(".zn-sticky-cta"),
       stamp: !!document.querySelector(".zn-stamp-layer"),
-      invisibles: [...document.querySelectorAll("#screen *")]
-        .filter((n) => getComputedStyle(n).opacity === "0" && (n.textContent || "").trim().length > 3).length,
       txt: (document.getElementById("screen").innerText || "").length,
     }));
     ok(st.theme, "onglet " + t + " : le thème est posé");
     ok(st.bg === "rgb(0, 0, 0)", "onglet " + t + " : fond sombre (" + st.bg + ")");
     ok(!st.sticky && !st.stamp, "onglet " + t + " : aucun élément flottant d'Aujourd'hui ne traîne");
-    ok(st.invisibles === 0, "onglet " + t + " : aucun contenu resté invisible (" + st.invisibles + ")");
+    // RÉPONSE AU STOP DE PHASE 1 (§2) — L'ASSERTION ÉTAIT FAUSSE SUR SON ÉCHANTILLONNAGE,
+    // PAS SUR SON INTENTION. Elle comptait les opacités nulles à +500 ms — or la chorégraphie
+    // R28 de la frise (znPlanSequence) ne révèle son PREMIER segment qu'à ~1,4 s (80 ms +
+    // BEAT×11, puis 114 ms/segment) : elle mesurait PENDANT une entrée voulue, et rougissait
+    // sur 5 segments en route vers leur révélation. Famille R20.7 — une dimension que la
+    // mesure ne contrôle pas (le TEMPS) décidait de son verdict ; la même leçon que le J−,
+    // deux écrans plus haut. Le critère qui compte : rien ne RESTE invisible une fois
+    // l'entrée jouée — le piège `rise` sans `znPlay` qu'il garde depuis l'origine laisserait
+    // le compte à son maximum pour toujours, et rougit encore (vérifié en posant la classe).
+    let restants = -1;
+    for (let i = 0; i < 24; i++) {
+      restants = await page.evaluate(() =>
+        [...document.querySelectorAll("#screen *")]
+          .filter((n) => getComputedStyle(n).opacity === "0" && (n.textContent || "").trim().length > 3).length);
+      if (restants === 0) break;
+      await page.waitForTimeout(250);
+    }
+    ok(restants === 0, "onglet " + t + " : aucun contenu RESTÉ invisible après l'entrée (" + restants + ")");
     ok(st.txt > 200, "onglet " + t + " : le contenu est bien rendu (" + st.txt + " car.)");
   }
 

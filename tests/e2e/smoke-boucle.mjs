@@ -8,7 +8,17 @@
 // on complète le questionnaire, on génère, on voit son plan… et CHAQUE réouverture retombe
 // sur « Ton plan est prêt 🎯 ». Un questionnaire en boucle.
 //
-// Trois couches gardées ici, parce que chacune peut casser seule :
+// §3.2 DE LA RÉPONSE AU STOP DE PHASE 1 — LES 4 ASSERTIONS VERTES CONTRE L'ANCIEN CODE,
+// nommées et classées (une assertion verte avant ET après ne garde rien si elle est mal née) :
+//   · §1 « le questionnaire repris se termine et génère » et « le plan est rendu après
+//     génération » — PRÉCONDITIONS du bug : la traversée marchait aussi AVANT le correctif
+//     (la boucle ne vivait qu'au RECHARGEMENT). Elles établissent l'état de départ ; sans
+//     elles, un rouge de rechargement pourrait venir d'une génération cassée.
+//   · §3 (les deux) — le TÉMOIN de non-régression du chemin propre : vert avant, vert après,
+//     c'est sa définition. Il désigne la cause si un futur lot casse le rechargement pour
+//     tout le monde plutôt que pour les seuls états migrés.
+//
+// Quatre couches gardées ici, parce que chacune peut casser seule :
 //   §1 le chemin migré v1 : compléter → générer → RECHARGER → le plan revient (deux fois) ;
 //   §2 la GUÉRISON à la lecture : un état v2 DÉJÀ contradictoire (`onPlan:true` +
 //      `started:false` — celui que le bug a écrit dans les navigateurs atteints) affiche le
@@ -16,7 +26,7 @@
 //   §3 le chemin propre ne régresse pas : questionnaire neuf → générer → recharger → plan.
 import { startServer, launchBrowser, makeReporter } from "./harness.mjs";
 
-const PORT = 8611;
+const PORT = 8631;
 const server = await startServer(PORT);
 const { ok, report } = makeReporter();
 const browser = await launchBrowser();
@@ -120,6 +130,73 @@ const surLePlan = (page) => page.evaluate(() =>
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(900);
   ok(await surLePlan(page), "§3 chemin propre : le plan revient au rechargement");
+  await ctx.close();
+}
+
+// ---- §4 · LA DIMENSION « ÉTAT HÉRITÉ » (§3.1 de la réponse au STOP) -------
+// L'app est déployée : tout utilisateur réel arrive avec un état hérité — l'état propre est
+// le cas RARE, et les 28 traversées de l'audit partaient toutes d'un état propre : elles ne
+// pouvaient structurellement pas trouver cette classe de défaut.
+{
+  // 4a — questionnaire à moitié rempli (état partiel) : reprise puis persistance du plan.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR", timezoneId: "Europe/Paris" });
+  const page = await ctx.newPage();
+  await page.addInitScript((answers) => {
+    if (sessionStorage.getItem("_seme")) return;
+    sessionStorage.setItem("_seme", "1");
+    localStorage.clear();
+    const partiel = { intent: answers.intent, format: answers.format, med_pain: "non", med_dizzy: "non", med_treat: "non" };
+    localStorage.setItem("eb_state_v2", JSON.stringify({
+      activePlanId: "pP", shared: {},
+      plans: [{ id: "pP", label: "", sport: "run", tier: "free", step: 2, started: true, onPlan: false, answers: partiel }],
+    }));
+  }, REPONSES_COMPLETES);
+  await page.goto(URL, { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  ok(await traverserEtGenerer(page), "§4a état partiel : le questionnaire repris au milieu se termine et génère");
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  ok(await surLePlan(page), "§4a état partiel : le plan revient au rechargement");
+  // 4c — et le COMPTEUR : cet état n'était PAS contradictoire, la réparation doit rester à 0.
+  ok(await page.evaluate(() => (JSON.parse(localStorage.getItem("eb_state_v2")).shared?.migRepairs ?? 0) === 0),
+    "§4c fixture SAINE : le compteur de réparation reste à zéro (sinon quelque chose fabrique encore des états contradictoires)");
+  await ctx.close();
+}
+{
+  // 4b — sport RETIRÉ du catalogue : « run/trail » (le trail est un sport depuis R7).
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR", timezoneId: "Europe/Paris" });
+  const page = await ctx.newPage();
+  const err = [];
+  page.on("pageerror", (e) => err.push(String(e).slice(0, 120)));
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("_seme")) return;
+    sessionStorage.setItem("_seme", "1");
+    localStorage.clear();
+    localStorage.setItem("eb_state_v1", JSON.stringify({ sport: "run", answers: { format: "trail", intent: "finir" } }));
+  });
+  await page.goto(URL, { waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  ok(err.length === 0, "§4b run/trail migré : aucune erreur JS au chargement (" + err.join(" · ") + ")");
+  ok(await page.evaluate(() => document.body.textContent.length > 200), "§4b run/trail migré : un écran se rend (questionnaire ou plan, jamais le vide)");
+  await ctx.close();
+}
+{
+  // 4d — le compteur COMPTE : l'état contradictoire du §2 doit l'incrémenter à exactement 1.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR", timezoneId: "Europe/Paris" });
+  const page = await ctx.newPage();
+  await page.addInitScript((answers) => {
+    if (sessionStorage.getItem("_seme")) return;
+    sessionStorage.setItem("_seme", "1");
+    localStorage.clear();
+    localStorage.setItem("eb_state_v2", JSON.stringify({
+      activePlanId: "pX", shared: {},
+      plans: [{ id: "pX", label: "", sport: "run", tier: "free", step: 8, started: false, onPlan: true, answers }],
+    }));
+  }, REPONSES_COMPLETES);
+  await page.goto(URL, { waitUntil: "networkidle" });
+  await page.waitForTimeout(1100);
+  ok(await page.evaluate(() => JSON.parse(localStorage.getItem("eb_state_v2")).shared?.migRepairs === 1),
+    "§4d fixture CONTRADICTOIRE : le compteur passe à 1 — la réparation est comptée, pas silencieuse");
   await ctx.close();
 }
 

@@ -50,6 +50,8 @@ jobs:
       # 14 modules servis avaient passé sans qu'elle bouge. Elle est maintenant le
       # hachage du contenu, et ce gate refuse un sw.js désynchronisé.
       - run: npm run check:sw
+      # Z-01 (cliquet) — la dette de littéraux Zenna ne remonte plus (réponse au STOP de Phase 1, §6)
+      - run: npm run check:tokens
       # Banc de régression externe (audit v6, 29/07/2026) : sort en 1 à la moindre
       # RÉGRESSION (test attendu vert qui échoue). La dette connue ne casse pas la CI —
       # c'est le but : elle documente l'écart sans bloquer le travail.

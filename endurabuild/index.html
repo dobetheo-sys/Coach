@@ -52,7 +52,10 @@
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.open-meteo.com https://www.strava.com https://*.workers.dev; form-action 'none'; base-uri 'self'; object-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#f1eadb">
+<!-- Réponse au STOP de Phase 1 (§5) — la barre système suit enfin l'app : theme-zenna est posée
+     dès app.js:26, il n'existe AUCUN écran clair. #f1eadb datait du thème papier (résidu n°1
+     de l'inventaire). La valeur est celle de --zn-bg. -->
+<meta name="theme-color" content="#000000">
 <title>Zenna — Ton plan d'endurance raisonné</title>
 <meta name="description" content="Coach d'endurance raisonné : plan multisport justifié, adaptation quotidienne, prédiction de course.">
 <link rel="manifest" href="manifest.json">

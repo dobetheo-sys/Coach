@@ -14842,13 +14842,28 @@ function riegelSecWith(exp        , thrPaceSecPerKm        , distKm        )    
  * une autre question, qui n'a pas à être tranchée par un correctif de cohérence.
  */
 const RN_MARA_DEMI_LARGEUR = 0.0226;
+/**
+ * PLANCHER DE SÉCURITÉ SUR LA PRESCRIPTION (réponse au STOP de Phase 1, §1, 14/08/2026).
+ *
+ * La bande dérivée suit l'exposant de Riegel, et les ancrages de cet exposant sont une
+ * heuristique DÉCLARÉE telle (RIEGEL_ANCRES : « calibration empirique de calculateurs »).
+ * Tant qu'une PRÉDICTION optimiste ne fait que décevoir le jour J, une PRESCRIPTION trop
+ * rapide casse l'entraînement toutes les semaines — le bord bas de la bande mesurait 1,044 ×
+ * seuil à 10 h/sem et 1,021 à 12 h, plus rapide que ce que l'élite mondiale TIENT sur
+ * marathon (~1,05-1,08 × seuil — borne fournie par le fondateur, REPONSE_STOP_PHASE1 §1).
+ * La bande ne descend donc jamais sous 1,05 : la dépendance au volume reste (c'est l'objet
+ * de B-22), son extrémité inatteignable est coupée. Recalibrer RIEGEL_ANCRES est la vraie
+ * suite — c'est le chantier B-21/B-04, pas un clamp.
+ */
+const RN_MARA_RATIO_PLANCHER = 1.05;
 function marathonPaceBand(thrPaceSecPerKm        , runHoursPerWeek         )                                    {
   if (!(thrPaceSecPerKm > 0)) return null;
   const km = RUN_KM.marathon;
   // Une SEULE écriture de Riegel dans tout le moteur (R11.1) : on appelle celle du prédicteur,
   // on ne réécrit pas la forme close ci-dessus — elle est là pour expliquer, pas pour calculer.
   const ratio = riegelSecWith(riegelExponent(runHoursPerWeek), thrPaceSecPerKm, km) / km / thrPaceSecPerKm;
-  return { lo: ratio * (1 - RN_MARA_DEMI_LARGEUR), hi: ratio * (1 + RN_MARA_DEMI_LARGEUR) };
+  const lo = Math.max(ratio * (1 - RN_MARA_DEMI_LARGEUR), RN_MARA_RATIO_PLANCHER);
+  return { lo, hi: Math.max(ratio * (1 + RN_MARA_DEMI_LARGEUR), lo + 1e-9) };
 }
 
 /** Minutes → « 9h20 » : une durée de trail se lit en heures, pas en minutes. */

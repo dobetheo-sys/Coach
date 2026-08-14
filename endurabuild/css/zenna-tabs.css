@@ -453,7 +453,7 @@ body.theme-zenna #screen select {
 /* `--accent2` n'est défini NULLE PART dans le produit : `.aide-btn.on` retombait sur son repli
    `#dcecff` (bleu très clair), donc un rond quasi blanc en plein thème sombre. */
 body.theme-zenna .aide-btn { background: var(--zn-surface-3); border-color: var(--zn-border); color: var(--zn-text); box-shadow: none; }
-body.theme-zenna .aide-btn.on { background: var(--zn-orange-tint); color: #0a0a0a; box-shadow: none; }
+body.theme-zenna .aide-btn.on { background: var(--zn-orange-tint); color: var(--zn-on-accent); box-shadow: none; }
 
 /* ============================================================
    🧰 OUTILS — sous-onglets, nutrition, éducatifs
@@ -462,7 +462,7 @@ body.theme-zenna #screen .subtab {
   background: var(--zn-surface-2); border: 1px solid var(--zn-border); color: var(--zn-muted);
   border-radius: 13px; box-shadow: none; font-family: var(--zn-mono);
 }
-body.theme-zenna #screen .subtab.active { background: var(--zn-orange-tint); border-color: transparent; color: #0a0a0a; font-weight: 700; }
+body.theme-zenna #screen .subtab.active { background: var(--zn-orange-tint); border-color: transparent; color: var(--zn-on-accent); font-weight: 700; }
 
 /* --- Éducatifs. Le module a été écrit pour le thème papier : ses fonds pastel deviennent des
        rectangles quasi blancs, et son texte, qui hérite de `--text` (désormais clair), devient
@@ -473,7 +473,7 @@ body.theme-zenna #screen .edu-disc {
   background: var(--zn-surface-2); border: 1px solid var(--zn-border); color: var(--zn-text);
   box-shadow: none; border-radius: 12px; border-top: 3px solid var(--sa, var(--zn-orange));
 }
-body.theme-zenna #screen .edu-disc[aria-current="true"] { background: var(--sa, var(--zn-orange)); color: #0a0a0a; }
+body.theme-zenna #screen .edu-disc[aria-current="true"] { background: var(--sa, var(--zn-orange)); color: var(--zn-on-accent); }
 body.theme-zenna #screen .edu-section { border-left: 6px solid var(--sa, var(--zn-orange)); }
 body.theme-zenna #screen .edu-section[data-locked="true"] { border-left-color: var(--zn-border); }
 body.theme-zenna #screen .edu-badge { border: 1px solid var(--zn-border); color: var(--zn-text); }
@@ -482,8 +482,8 @@ body.theme-zenna #screen .edu-badge[data-n="terrain"]   { background: rgba(31, 1
 body.theme-zenna #screen .edu-badge[data-n="consensus"] { background: rgba(255, 210, 61, .14); border-color: rgba(255, 210, 61, .38); }
 body.theme-zenna #screen .edu-progress { background: var(--zn-surface-2); border: 1px solid var(--zn-border); }
 body.theme-zenna #screen .edu-bead { background: var(--zn-surface-3); border: 1px solid var(--zn-border); color: var(--zn-text); }
-body.theme-zenna #screen .edu-bead[data-state="done"] { background: var(--sa, var(--zn-orange)); color: #0a0a0a; }
-body.theme-zenna #screen .edu-bead[data-state="active"] { background: var(--zn-gold); color: #0a0a0a; }
+body.theme-zenna #screen .edu-bead[data-state="done"] { background: var(--sa, var(--zn-orange)); color: var(--zn-on-accent); }
+body.theme-zenna #screen .edu-bead[data-state="active"] { background: var(--zn-gold); color: var(--zn-on-accent); }
 body.theme-zenna #screen .edu-bead[data-state="locked"] { background: var(--zn-surface); color: var(--zn-muted-2); }
 body.theme-zenna #screen .edu-pbar { background: var(--zn-border); }
 body.theme-zenna #screen .edu-block-h { background: var(--zn-surface-3); color: var(--zn-muted); border-radius: 6px; }
@@ -614,7 +614,7 @@ body.theme-zenna #screen [style*="color:#00a376"] { color: var(--zn-good) !impor
    #ff3b30) — mais l'accent du thème sombre est un orange plus lumineux (#ff3d00), sur lequel
    le blanc ne mesure que 3,55:1. C'est l'encre sombre qui y est lisible (5,58:1), exactement
    comme dans le héros. On inverse donc le texte, on ne change pas la couleur de la pastille. */
-body.theme-zenna #screen [style*="background:var(--acc)"] { color: #0a0a0a !important; }
+body.theme-zenna #screen [style*="background:var(--acc)"] { color: var(--zn-on-accent) !important; }
 /* Le rouge « dur » de la légende des intensités : 4,46:1, à 0,04 du seuil. Il reste rouge —
    c'est le repère de la zone la plus intense — simplement éclairci (7,61:1). */
 body.theme-zenna #screen [style*="color:#e63946"] { color: #ff7d92 !important; }
@@ -771,7 +771,7 @@ body.theme-zenna #screen .seg-opt {
 }
 body.theme-zenna #screen .seg-opt .so-l { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 body.theme-zenna #screen .seg-opt .so-s { font-size: 9px; margin-top: 1px; opacity: .75; }
-body.theme-zenna #screen .seg-opt.active { color: #0a0a0a; }
+body.theme-zenna #screen .seg-opt.active { color: var(--zn-on-accent); }
 /* Le devis : une ligne par séance, puis le total — on montre D'OÙ vient le prix. */
 body.theme-zenna #screen .period-lab {
   font-family: var(--zn-mono); font-size: 9px; letter-spacing: .1em; color: var(--zn-muted-2);
@@ -817,7 +817,7 @@ body.theme-zenna #screen .choice:active { transform: scale(.93); }
 body.theme-zenna #screen .choice.sel { background: rgba(0, 224, 198, .12); border-color: var(--zn-cyan); color: var(--zn-cyan); }
 body.theme-zenna #screen .shop-cta {
   width: 100%; min-height: 52px; border-radius: 15px; border: none;
-  background: var(--zn-orange-tint); color: #0a0a0a;
+  background: var(--zn-orange-tint); color: var(--zn-on-accent);
   font-family: var(--zn-mono); font-size: 12px; font-weight: 700; letter-spacing: .06em;
   text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 8px;
   cursor: pointer; margin-top: 16px;
@@ -860,7 +860,7 @@ body.theme-zenna #screen .btn-row .btn { flex: 1; }
    La bascule Vue d'ensemble ↔ Prédiction est un FONDU, jamais un glissement horizontal :
    c'est déjà la règle de la bascule Nutrition/Éducatifs, et on n'invente pas une seconde
    grammaire de transition pour le même geste. */
-body.theme-zenna #screen .zn-fadeview { animation: znFade 420ms var(--ease, cubic-bezier(.4,0,.2,1)); }
+body.theme-zenna #screen .zn-fadeview { animation: znFade var(--beat-35) var(--ease, cubic-bezier(.4,0,.2,1)); }
 @keyframes znFade { from { opacity: 0; } to { opacity: 1; } }
 
 body.theme-zenna #screen .zn-pred-hero { text-align: center; }
@@ -878,7 +878,7 @@ body.theme-zenna #screen .zn-pred-cols { display: flex; gap: 8px; margin: 12px 0
 body.theme-zenna #screen .zn-pred-col {
   flex: 1; background: var(--zn-surface); border: 1px solid var(--zn-border); border-radius: 16px;
   padding: 13px; opacity: 0; transform: translateY(10px);
-  transition: opacity 420ms var(--ease-enter, ease), transform 420ms var(--ease-enter, ease);
+  transition: opacity var(--beat-35) var(--ease-enter, ease), transform var(--beat-35) var(--ease-enter, ease);
 }
 body.theme-zenna #screen .zn-pred-col.on { opacity: 1; transform: translateY(0); }
 body.theme-zenna #screen .zn-pred-col.proj { border-color: rgba(0, 224, 198, .35); background: rgba(0, 224, 198, .04); }
@@ -937,7 +937,7 @@ body.theme-zenna #screen .ph-line .ph-seg.striping {
    Le chip de série RÉUTILISE `.zn-streak-chip` (celui d'Aujourd'hui, à l'échelle du jour) —
    `.zn-in` est un modificateur ADDITIF qui ne change rien à son usage existant, non choré. */
 body.theme-zenna #screen .zn-streak-chip.zn-in { opacity: 0; transform: translateY(-6px);
-  transition: opacity 420ms var(--ease-enter, ease), transform 420ms var(--ease-enter, ease); }
+  transition: opacity var(--beat-35) var(--ease-enter, ease), transform var(--beat-35) var(--ease-enter, ease); }
 body.theme-zenna #screen .zn-streak-chip.zn-in.on { opacity: 1; transform: translateY(0); }
 
 body.theme-zenna #screen .zn-bilan-hero { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -973,11 +973,11 @@ body.theme-zenna #screen .zn-bilan-disc-vals .arrow { color: var(--zn-muted-2); 
 body.theme-zenna #screen .zn-bilan-disc-vals .reel { color: var(--zn-cyan); font-weight: 700; }
 
 body.theme-zenna #screen .zn-bilan-delta { opacity: 0; transform: translateY(10px); font-family: var(--zn-mono); font-size: var(--fs-sm); color: var(--zn-muted);
-  transition: opacity 420ms var(--ease-enter, ease), transform 420ms var(--ease-enter, ease); margin: 4px 0 14px; }
+  transition: opacity var(--beat-35) var(--ease-enter, ease), transform var(--beat-35) var(--ease-enter, ease); margin: 4px 0 14px; }
 body.theme-zenna #screen .zn-bilan-delta.on { opacity: 1; transform: translateY(0); }
 
 body.theme-zenna #screen .zn-badge-earned { display: flex; align-items: center; gap: 12px; background: rgba(255, 210, 61, .08); border: 1px solid rgba(255, 210, 61, .35); border-radius: 16px; padding: 13px;
-  opacity: 0; transform: scale(.9); transition: opacity 420ms var(--ease-spring, ease), transform 420ms var(--ease-spring, ease); }
+  opacity: 0; transform: scale(.9); transition: opacity var(--beat-35) var(--ease-spring, ease), transform var(--beat-35) var(--ease-spring, ease); }
 body.theme-zenna #screen .zn-badge-earned.on { opacity: 1; transform: scale(1); }
 body.theme-zenna #screen .zn-badge-earned-ico { width: 40px; height: 40px; clip-path: var(--cut-tile); background: linear-gradient(145deg, var(--zn-gold), #FFE27A); display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
 body.theme-zenna #screen .zn-badge-earned-tag { font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .1em; color: var(--zn-gold); font-weight: 700; margin-bottom: 2px; }
