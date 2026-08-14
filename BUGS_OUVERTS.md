@@ -2195,3 +2195,30 @@ devient un résultat automatique au lieu d'un heureux accident.
 **Rappel de méthode, qui vaut pour toute reprise de cette liste :** mesurer d'abord, corriger
 ensuite, re-mesurer, garder le vert. Un défaut dont on ne sait pas dire le chiffre AVANT n'est pas
 prêt à être corrigé — c'est ce qui a fait tomber les vraies causes en R13, R14 et R14.1.
+
+---
+
+## O-34 — `RN_MARA_RATIO_PLANCHER` est un PANSEMENT, sa condition de sortie est écrite
+
+**Ouvert le 14/08/2026** (arbitrage B-22, `ARBITRAGE_B22_PHASE2.md` §1).
+
+Le plancher `1,05` sur la bande d'allure marathon dérivée (B-22) coupe l'extrémité
+inatteignable de la prescription à haut volume (bord bas mesuré : 1,044 à 10 h/sem, 1,021 à
+12 h). **Sa valeur est `inherited`** — un souvenir de littérature du fondateur, requalifié par
+lui-même comme n'étant pas une source — et il **masque** le vrai défaut : l'extrémité rapide de
+`RIEGEL_ANCRES` (10 h → 1,06 ; 12 h → 1,04) est une heuristique jamais calibrée, dont B-22 a
+élevé l'enjeu en la faisant passer de la prédiction à la prescription.
+
+**Condition de sortie** : la recalibration de `RIEGEL_ANCRES` (chantier B-21/B-04). Le jour où
+elle est faite, ce plancher se RETIRE — le laisser deviendrait un deuxième modèle du même
+phénomène. Préalable mesuré (§3.1 du même arbitrage) : le golden ne peut pas mesurer ces
+chantiers — **96,7 % de ses profils portent `vol_max: 10`**, le défaut du profil de base
+(famille A-2). Le premier livrable de B-21 est donc l'enrichissement du golden en volumes de
+course variés, pas un correctif.
+
+```verify
+id: O-34
+quoi: le plancher existe, est étiqueté inherited/PANSEMENT, et T-16b le garde
+attendu: RN_MARA_RATIO_PLANCHER present, provenance inherited ecrite, T-16b vert
+cmd: grep -q "inherited" src/engine/predictor.ts && grep -q "RN_MARA_RATIO_PLANCHER" src/engine/predictor.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "T-16b \[vert"
+```

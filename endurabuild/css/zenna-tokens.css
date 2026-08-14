@@ -11,6 +11,13 @@
    Contenu : les 42 tokens EXISTANTS (valeurs relevées au caractère près), plus
    les tokens MANQUANTS que la mesure a désignés — chaque ajout porte la dette
    qu'il résorbe. Les doublons de valeur assumés (rôle ≠ teinte) sont annotés.
+   RÈGLE (arbitrage du 14/08/2026, ARBITRAGE_B22_PHASE2 §5.2) :
+   ▸ UNE COULEUR DE DISCIPLINE NE PORTE QUE LE SENS DE SA DISCIPLINE.
+     Aucun rôle décoratif, d'état ou d'accent ne réutilise --zn-swim ni les accents
+     DISC[*].ac (vélo, course). Gardée par Z-11 (scripts/checkDisciplineColors.mjs) —
+     écrite ROUGE le jour de la règle : la courbe Fitness du graphe de charge est
+     colorée var(--zn-swim), et l'or #ffd23d cumule accent + pastille d'échange +
+     DISC.rn.ac (le dossier O-31/R27).
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {

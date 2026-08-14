@@ -43,7 +43,10 @@
     "make:icons": "node scripts/makeIcons.mjs",
     "build:spec": "node scripts/buildSpec.mjs",
     "check:spec": "node scripts/buildSpec.mjs --check",
-    "check:tokens": "node scripts/checkZennaTokens.mjs"
+    "check:tokens": "node scripts/checkZennaTokens.mjs",
+    "check:disc": "node scripts/checkDisciplineColors.mjs",
+    "check:dup": "node scripts/checkEngineDup.mjs",
+    "check:hosts": "node scripts/checkExternalHosts.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

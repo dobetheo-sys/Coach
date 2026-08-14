@@ -13075,17 +13075,22 @@ function riegelSecWith(exp        , thrPaceSecPerKm        , distKm        )    
  */
 const RN_MARA_DEMI_LARGEUR = 0.0226;
 /**
- * PLANCHER DE SÉCURITÉ SUR LA PRESCRIPTION (réponse au STOP de Phase 1, §1, 14/08/2026).
+ * PLANCHER DE SÉCURITÉ SUR LA PRESCRIPTION (STOP de Phase 1 §1, arbitré le 14/08/2026 :
+ * conservé, pas de revert du côté rapide).
  *
- * La bande dérivée suit l'exposant de Riegel, et les ancrages de cet exposant sont une
- * heuristique DÉCLARÉE telle (RIEGEL_ANCRES : « calibration empirique de calculateurs »).
- * Tant qu'une PRÉDICTION optimiste ne fait que décevoir le jour J, une PRESCRIPTION trop
- * rapide casse l'entraînement toutes les semaines — le bord bas de la bande mesurait 1,044 ×
- * seuil à 10 h/sem et 1,021 à 12 h, plus rapide que ce que l'élite mondiale TIENT sur
- * marathon (~1,05-1,08 × seuil — borne fournie par le fondateur, REPONSE_STOP_PHASE1 §1).
- * La bande ne descend donc jamais sous 1,05 : la dépendance au volume reste (c'est l'objet
- * de B-22), son extrémité inatteignable est coupée. Recalibrer RIEGEL_ANCRES est la vraie
- * suite — c'est le chantier B-21/B-04, pas un clamp.
+ * provenance : **inherited** — le « ~1,05-1,08 » vient du fondateur, DE MÉMOIRE, non vérifié
+ *              contre une publication ni contre une donnée du dépôt (il l'a lui-même requalifié
+ *              ainsi : « ce n'est pas une source », ARBITRAGE_B22_PHASE2 §1). Pas `source`.
+ * statut     : **PANSEMENT** — il masque un défaut de calibration de `RIEGEL_ANCRES`
+ *              (heuristique déclarée telle), il ne le corrige pas.
+ * sortie     : À RETIRER quand `RIEGEL_ANCRES` aura été recalibrée (chantier B-21/B-04).
+ *              Suivi en dette : BUGS_OUVERTS.md « O-34 ». Un pansement sans condition de
+ *              sortie devient un acquis — c'est précisément ce que cette entrée empêche.
+ *
+ * Pourquoi il existe : une PRÉDICTION optimiste déçoit le jour J ; une PRESCRIPTION trop
+ * rapide casse l'entraînement toutes les semaines. Le bord bas mesurait 1,044 × seuil à
+ * 10 h/sem et 1,021 à 12 h. La dépendance au volume reste (l'objet de B-22), l'extrémité
+ * inatteignable est coupée.
  */
 const RN_MARA_RATIO_PLANCHER = 1.05;
 function marathonPaceBand(thrPaceSecPerKm        , runHoursPerWeek         )                                    {
