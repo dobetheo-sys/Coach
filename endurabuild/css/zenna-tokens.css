@@ -54,8 +54,9 @@
   /* ---- États ---- */
   --zn-good: #1fb8a6;
   --zn-good-dark: #0f8f81;
-  --zn-form: var(--zn-good);          /* rôle ≠ teinte : assumé, dérivé */
-  --zn-fatigue: var(--zn-orange-2);   /* idem */
+  /* --zn-form / --zn-fatigue : RETIRÉS avec B1 (leur seul consommateur, le graphe CTL/ATL
+     côté UI, n'existe plus) — la collision n°5 (fatigue = orange-2) se ferme par suppression
+     du consommateur, pas par une nuance nouvelle. Gardé par Z-11 étendu. */
 
   /* ---- Charge (rgb nus : l'opacité appartient au consommateur) ---- */
   --zn-charge-dur-rgb: 255 61 0;

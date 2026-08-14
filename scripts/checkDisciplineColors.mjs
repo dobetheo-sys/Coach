@@ -39,6 +39,53 @@ let usages = 0;
 for (const f of FICHIERS) usages += (lire(f).match(/--zn-swim/g) || []).length;
 const PLAFOND_USAGES = 2; // re-mesuré après B1 (14/08/2026) : la définition (zenna-today.css) + 1 commentaire historique (plan-view.js) — descendu de 12 avec la résolution des 2 dettes
 if (usages > PLAFOND_USAGES) { echecs++; console.log(`✖ ${usages} usages de --zn-swim (plafond ${PLAFOND_USAGES}) — un NOUVEL usage est entré, vérifier qu'il est disciplinaire et monter le plafond avec sa justification`); }
-console.log(`\n${vivantes} dette(s) vivante(s) · ${resolues} résolue(s) · usages --zn-swim : ${usages}/${PLAFOND_USAGES}`);
-console.log(echecs ? "✖ Z-11 : aggravation" : vivantes ? "· Z-11 : dette connue stable (rouge attendu — la règle est née aujourd'hui)" : "✓ Z-11 : aucune couleur de discipline hors discipline");
+
+/* ---- Z-11 ÉTENDU (ARBITRAGES_STOP_PHASE2 §5) — LES TROIS ESPACES DE NOMS ----------------
+ * MARQUE (accents identitaires) · DISCIPLINE (--zn-swim + DISC[*].ac) · ÉTAT (bon/attente/
+ * charge). Règle : « aucune valeur n'est partagée entre deux espaces coprésents à l'écran »
+ * — cliquet, plafond initial = l'état MESURÉ. Les valeurs sont LUES dans les fichiers
+ * (leçon Z-05 : une liste blanche recopiée dérive), seule l'APPARTENANCE est déclarée ici.
+ * État mesuré au 14/08/2026 : 3 valeurs partagées, chacune documentée —
+ *   #ff3d00  MARQUE ∩ DISCIPLINE(vélo) ∩ ÉTAT(charge dure)  → O-31, arbitré « non corrigé »
+ *   #ffd23d  MARQUE(or) ∩ DISCIPLINE(course) ∩ ÉTAT(pastille d'attente)  → doublon n°3
+ *   #9b72ff  DISCIPLINE(brick) ∩ ÉTAT(charge récup) + --zn-violet  → trouvé PAR CE CLIQUET
+ * (le n°5, fatigue = orange-2, est RÉSOLU : B1 a tué son seul consommateur, les tokens morts
+ * --zn-fatigue/--zn-form sont retirés dans le même commit que cette extension.) */
+const cssToday = lire("css/zenna-today.css");
+const icons = lire("js/ui/icons.js");
+const tok = (nom) => (cssToday.match(new RegExp("\\" + nom + ":\\s*(#[0-9a-fA-F]{3,8})")) || [])[1]?.toLowerCase() ?? null;
+const rgbToHex = (rgb) => "#" + rgb.trim().split(/\s+/).map((n) => (+n).toString(16).padStart(2, "0")).join("");
+const disc = {}; for (const m of icons.matchAll(/(\w+):\s*\{\s*ic:[^}]*?ac:\s*"(#[0-9a-fA-F]{3,8})"/g)) disc[m[1]] = m[2].toLowerCase();
+const charge = {}; for (const m of icons.matchAll(/(dur|facile|recup):\s*\{\s*rgb:\s*"([\d ]+)"/g)) charge[m[1]] = rgbToHex(m[2]);
+const ESPACES = {
+  MARQUE: { "--zn-orange": tok("--zn-orange"), "--zn-orange-2": tok("--zn-orange-2"), "--zn-cyan": tok("--zn-cyan"), "--zn-gold": tok("--zn-gold"), "--zn-violet": tok("--zn-violet") },
+  DISCIPLINE: { "--zn-swim": tok("--zn-swim"), "DISC.sw": disc.sw, "DISC.bk": disc.bk, "DISC.rn": disc.rn, "DISC.br": disc.br },
+  ETAT: { "--zn-good": tok("--zn-good"), "--zn-good-dark": tok("--zn-good-dark"), "--zn-gold-dot": tok("--zn-gold-dot"), "DISC.rs": disc.rs, "CHARGE.dur": charge.dur, "CHARGE.facile": charge.facile, "CHARGE.recup": charge.recup },
+};
+const morts = ["--zn-fatigue", "--zn-form"].filter((t) => cssToday.includes(t + ":"));
+if (morts.length) { echecs++; console.log(`✖ token(s) mort(s) réintroduit(s) : ${morts.join(", ")} — B1 a tué leur seul consommateur, un token mort est une invitation à le recâbler`); }
+const parValeur = new Map();
+for (const [esp, tokens] of Object.entries(ESPACES))
+  for (const [nom, val] of Object.entries(tokens)) {
+    if (!val) { echecs++; console.log(`✖ valeur illisible pour ${nom} (${esp}) — le fichier a changé de forme, adapter la lecture`); continue; }
+    if (!parValeur.has(val)) parValeur.set(val, []);
+    parValeur.get(val).push({ esp, nom });
+  }
+const partages = [...parValeur.entries()].filter(([, l]) => new Set(l.map((x) => x.esp)).size > 1);
+const PLAFOND_PARTAGES = 3; // l'état mesuré du 14/08/2026 (O-31 · n°3 · brick/récup) — ne peut que descendre
+for (const [val, l] of partages) console.log(`· valeur partagée entre espaces : ${val} — ${l.map((x) => x.esp + ":" + x.nom).join(" · ")}`);
+if (partages.length > PLAFOND_PARTAGES) { echecs++; console.log(`✖ ${partages.length} valeurs partagées entre espaces (plafond ${PLAFOND_PARTAGES}) — une NOUVELLE collision d'espaces est née`); }
+
+/* ---- §6.1 (DOC_UNIQUE) — prévu/validé n'est JAMAIS encodé par la seule opacité ----------
+ * Le graphe B1 encode le validé par une barre IMBRIQUÉE plus étroite (x + 22 %, largeur
+ * 56 %) EN PLUS de l'opacité (.26 vs pleine) : la distinction survit au plein soleil et à la
+ * basse vision. Ce check épingle la propriété : les deux rectangles existent et leurs
+ * largeurs DIFFÈRENT — retirer l'imbrication en gardant l'opacité le fait rougir. */
+const pv = lire("js/ui/plan-view.js");
+const aOpacite = /opacity="\.26"/.test(pv);
+const aImbrication = /wB\s*\*\s*0\.56/.test(pv) && /wB\s*\*\s*0\.22/.test(pv);
+if (!aOpacite || !aImbrication) { echecs++; console.log(`✖ §6.1 : le graphe de charge n'encode plus prévu/validé par opacité ET imbrication (opacité=${aOpacite}, imbrication=${aImbrication}) — la seule opacité tombe en plein soleil/basse vision`); }
+
+console.log(`\n${vivantes} dette(s) vivante(s) · ${resolues} résolue(s) · usages --zn-swim : ${usages}/${PLAFOND_USAGES} · valeurs partagées entre espaces : ${partages.length}/${PLAFOND_PARTAGES}`);
+console.log(echecs ? "✖ Z-11 : aggravation" : vivantes ? "· Z-11 : dette connue stable (rouge attendu — la règle est née aujourd'hui)" : "✓ Z-11 : aucune couleur de discipline hors discipline, aucun espace de noms nouveau partagé");
 process.exit(echecs ? 1 : 0);

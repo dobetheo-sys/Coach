@@ -87,8 +87,10 @@ body.theme-zenna {
   --zn-sep: rgba(255, 255, 255, .18);
   --zn-sep-line: rgba(255, 255, 255, .14);
   --zn-swim: #3b9eff;
-  --zn-fatigue: #ff7a3d;
-  --zn-form: #1fb8a6;
+  /* --zn-fatigue / --zn-form : RETIRÉS (14/08/2026). Leur seul consommateur était le graphe
+     CTL/ATL/TSB côté UI, tué par B1 — un token mort est une invitation à le recâbler (la
+     leçon discBadgeHTML de V6). La collision n°5 (fatigue = orange-2 décoratif) se ferme
+     avec eux ; gardé par Z-11 étendu (tokens morts + espaces de noms). */
   /* ---- l'axe de CHARGE (dur / facile / récup) ----
      Jumeau CSS de la table `CHARGE` de `js/ui/icons.js`, qui en est la source. Les deux ne
      peuvent pas diverger : `smoke-charge.mjs` compare l'une à l'autre sur le rendu réel.
