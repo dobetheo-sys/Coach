@@ -224,6 +224,37 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-35 (2ᵉ moitié) + B-09 + la mesure de B-02 livrés — le DIAGNOSTIC de volume vivait avant le
+point fixe, et 350 profils annonçaient un pic qu'ils ne livrent pas** (arbitrages `sw.aero` et
+`B02_DEBLOQUE_APRES_B02A`, 14/08/2026 — voir `RAPPORT_O35B_B09.md` et
+`RAPPORT_B02_PONDERATION.md`) : la re-sonde demandée est écrite (clone SATURÉ de la semaine
+LIVRÉE — mesurer les minutes livrées rendrait l'identité vraie par construction ; une passe,
+résolution B-25) et corrige ce qu'elle visait (plafond structurel 2,03 → **0,85 h** chez le
+nageur débutant), mais T-25 est MONTÉ et l'instrumentation a désigné plus gros :
+**`reconcileDeclaredVolume` tourne à la ligne 3322, le bloc « C6 + R20.2 » était à 2998** — le
+pic annoncé et toute la chaîne décrivaient l'avant-dernier état, avant I14, C26c/d, I14b, C30b,
+planchers et fréquence. Onze fois ce dépôt a payé cette leçon sur des GARANTIES ; ici c'était le
+DIAGNOSTIC. Déplacé après le point fixe, `volPeak` recompté sur les séances livrées : **350
+profils sur 945 (37 %) annonçaient plus qu'ils ne livrent — 350 baisses, 0 hausse, médiane
+7,1 %, pire cas 4,9 h annoncées pour 3,4 (−30,6 %)**, toujours vers le haut, sur le chiffre que
+l'athlète lit comme « son pic » quand V2.1 déclare que promettre davantage serait mentir.
+**B-09** : facteur indexé sur l'historique (`swimTimeFactorOf`, reprise 0,45 · confirme 0,60 ·
+ancien 0,70, repli sur la valeur la plus prudente) — presque inerte sur le golden (42 profils,
+±6 %, famille A-2 : tous à `vol_max: 10`), **+42 % de pic entre reprise et ancien** là où la
+déclaration mord (3 h/sem). **L'activation pour `tri` est REFUSÉE, chiffrée** : `vol_max` y
+couvre les TROIS disciplines, le guard amputerait un Ironman de **17 266 à 7 881 min (−54 %)**,
+vélo et course compris. **B-02** : la pondération ×1/×0,75/×0,5 **échoue les deux critères
+maintenus** (118/945 = 12,5 % contre < 10 % · 69,5 % contre ≥ 70 %) — rien écrit ; le seul jeu
+recevable (×0,4/×0,25) est celui qui ressemble le plus au drapeau binaire qu'il devait remplacer,
+et les deux variantes touchent des populations DIFFÉRENTES (le drapeau punit 34 duathlons pour
+leur intensité vélo, la pondération n'en touche aucun et prend 22-38 triathlons). **T-25 monte à
+608 et c'est le taux exploitable** — rendre un membre de l'identité exact élargit l'écart avec
+une énumération encore périmée ; la cause restante est nommée (ce que le point fixe RETIRE n'est
+déclaré par aucun maillon). `sessionScale` porte sa condition de sortie, T-23 est rectifié (34 %
+est le taux honnête, 10 % était le mensonge), et `smoke-questionnaires` cesse de MOURIR sur une
+course de navigation.
+**28 gates verts, `audit:v1` 459, invariants 22×54, v6 73 verts, golden 949 recapturé.**
+
 **R20.2 (2ᵉ correction) + O-35 livrés — « ce qui borne » devient l'argmin d'un min(), et deux
 fautes d'unité se compensaient en natation** (DOC_UNIQUE + arbitrage `sw.aero`, 14/08/2026, voir
 `RAPPORT_DOC_UNIQUE.md`, banc `scripts/lotPhysio.mjs`) : le message de volume prenait **la plus
