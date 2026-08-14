@@ -419,6 +419,22 @@ const fmtT = (sec: number): string => {
  * pas plus bas : au-delà, l'extrapolation quitterait le domaine où quiconque a mesuré quoi que
  * ce soit, et un exposant sans borne produirait des chronos absurdes près du volume nul.
  */
+/**
+ * L'ANCRAGE BAS [1,5 h → 1,15] — ARBITRÉ LE 14/08/2026 (ARBITRAGE_ANCRAGE_B21) : CONSERVÉ.
+ *
+ * provenance : **assertion de modèle, non validée externement** — prolongée à la pente du
+ *              segment le plus bas (−0,0120/h), pas choisie ; origine commit f2ccd7d.
+ * arbitrage  : fondateur, 14/08/2026 — conservé parce que la direction est PRUDENTE (un
+ *              exposant plus haut à bas volume rend des temps longue distance plus lents,
+ *              le mode d'échec coûteux étant la prédiction optimiste) et la valeur plausible.
+ * statut     : **PANSEMENT** — gaté sur l'enrichissement du golden en volumes de course
+ *              stratifiés ; le « 89-99 % au plancher » qui l'a motivé a été mesuré sur la
+ *              population dont on SAIT qu'elle ne peut pas mesurer les effets volume-
+ *              dépendants (96,7 % de vol_max:10) — probablement vrai quand même, à refaire.
+ * vérifié    : sous 1,5 h l'exposant est CLAMPÉ à 1,15 (0,5 h → 1,15, pas d'extrapolation) ;
+ *              l'ancrage est ACTIF sur le golden (19 profils au clamp, 211 sur le segment
+ *              [1,5 → 4], mesure §2.3b) — pas du code mort en test.
+ */
 const RIEGEL_ANCRES: [number, number][] = [[1.5, 1.15], [4, 1.12], [6.5, 1.09], [10, 1.06], [12, 1.04]];
 export function riegelExponent(runHoursPerWeek?: number): number {
   const h = Number(runHoursPerWeek);

@@ -193,3 +193,74 @@ CSP rougit, retiré il verdit.
 **Suite immédiate (ordre de l'arbitrage)** : 2.1 table de traçabilité (cas modèle `_IFZ`
 acquis) · 2.2 no-op moteur avec SHA gelé · 2.3 cohérence affichage/calcul sur les 949 —
 puis STOP de Phase 2.
+
+---
+---
+
+# Réponse à ARBITRAGE_ANCRAGE_B21 (14/08/2026)
+
+## §2.3 — Les trois vérifications de l'ancrage
+
+**a) Sous 1,5 h : CLAMPÉ.** `riegelExponent` rend 1,15 plat pour tout h ≤ 1,5 (mesuré :
+0,3 h → 1,15 · 0,5 → 1,15 · 1,5 → 1,15). Le plancher explicite exigé existe déjà — première
+branche de la fonction, pas d'extrapolation folle possible.
+
+**b) L'ancrage est ACTIF sur le golden.** Mesuré sur la grandeur réellement passée
+(médiane des heures de course des semaines de charge, la sémantique de `runHoursPerWeekOf`) :
+sur 294 plans tri/duathlon, **19 au clamp** (h ≤ 1,5 — ex. `tri/S/reprise/debutant` à 1,12 h),
+**211 sur le segment [1,5 → 4]**, 64 au-dessus. Pas du code non testé en service.
+
+**c) Le « 89-99 % au plancher » : à refaire sur l'ensemble stratifié.** Le constat a bien été
+mesuré sur la population dont on sait qu'elle ne peut pas mesurer les effets volume-dépendants.
+Consigné dans la requalification du code — le statut PANSEMENT est gaté dessus.
+
+**§2.2 appliqué** : `RIEGEL_ANCRES` porte sa provenance complète dans le code (assertion de
+modèle non validée · origine f2ccd7d · arbitrage fondateur 14/08 · PANSEMENT gaté sur
+l'enrichissement · les vérifications a/b consignées).
+
+## §3 — La mesure exigée : NON NÉGLIGEABLE, corrigé séance tenante
+
+**61 profils tri S/M sur 61** portaient des minutes `rn.mara` au seuil ou plus vite comptées
+« modéré » : S ~203 min/plan (~35 min/semaine concernée), M ~248 (~37) — 13 783 minutes mal
+comptées sur le sous-ensemble. Ton critère de STOP déclenché → corrigé avant la Phase 2.3 :
+
+**`zoneClass` classe `rn.mara` PAR SA BANDE** — le patron `bk.rp`/R20.4, même geste : la bande
+définitive s'attache aux steps dans la 2ᵉ passe B-25 (`st.maraBand`, le seul endroit où elle
+existe), la frontière est la borne lente de `rn.thr` (**1,05 — déjà déclarée dans ZDEF**, zéro
+constante nouvelle ; recopiée dans loadModel parce que l'engine n'importe pas le renderer, et
+**T-20 garde l'égalité des deux écritures**). En allure, plus petit = plus rapide : bande dure
+si son bord rapide passe la frontière.
+
+**Effet prouvé** : tri M, 5/5 séances `rn.mara` portent leur bande et comptent du dur. **Rayon
+d'action sur les 949** : 145 profils (les mêmes que B-25), et les champs déplacés sont
+UNIQUEMENT la comptabilité (`_v2.intensity.*`, repairs) — **aucune séance déclassée, aucune
+minute de plan déplacée** : les plafonds C26 absorbent les minutes désormais comptées.
+`audit:v1` vert · invariants 22×54 verts · v6 73 verts, 0 régression.
+
+## §4 — T-20, et il a mordu trois fois en naissant
+
+**La question directe (« que fait le classificateur d'un [object Object] ? ») a une réponse
+MESURÉE : la question n'avait pas d'objet.** La classification passe par `st.zone`, jamais par
+`intensity` — et le « [object Object] » n'existe pas dans l'app : c'était **ma sonde** qui
+template-littéralisait le champ. Le contrat réel, relevé sur 2 589 steps : `intensity` est un
+OBJET bande `{ref,lo,hi}` posé par `intOf()` (le cast `as unknown as string` ment sur le TYPE,
+pas sur la valeur), ou une string (`"easy"` au déclassement C26c, `"aero"` au swimrun), ou
+absent ; son unique consommateur est l'export JSON, où l'objet se sérialise proprement.
+**Le membre n°3 de la famille était un artefact de mon instrument** — rectifié dans la table 2.0.
+
+Trois morsures de T-20 en une naissance : (1) ma première écriture assertait « string » —
+**265 rouges qui étaient 265 fautes de MON contrat** ; (2) reformulé, il a trouvé la string
+`"aero"` du swimrun, troisième forme que personne n'avait relevée ; (3) il porte le garde
+anti-dérive de la frontière 1,05 (loadModel vs ZDEF). Vert sur le contrat réel, `attendu: vert`.
+
+## §7 — Confirmation
+
+**Oui : `52db1e5` EST le commit B-25** — le SHA gelé l'inclut par identité. La baseline du
+no-op portera aussi les correctifs postérieurs de ce jour (famille intensité) : le SHA de
+référence effectif sera celui du commit de CE lot, noté au moment de la capture 2.2.
+
+## §6 — La technique forensique, enregistrée
+
+« Le format qui ne bouge pas est celui pour lequel la constante a été calibrée » — ajoutée
+comme méthode au dossier des constantes `inherited` (elle a identifié 70.3 pour la bande
+statique sans archéologie de commits).

@@ -294,7 +294,9 @@ const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
  * précisément le défaut O-11 (deux définitions de « l'allure course » à vélo), et il n'y a
  * aucune raison de le refaire en le voyant venir.
  */
-export function zoneClass(zone: unknown, runLegNoZone = false, rpBand?: { lo: number; hi: number }): "easy" | "mod" | "hard" {
+/** La borne lente de rn.thr, telle que ZDEF la déclare — T-20 garde l'égalité des deux écritures. */
+export const RN_THR_FRONTIERE_LENTE = 1.05;
+export function zoneClass(zone: unknown, runLegNoZone = false, rpBand?: { lo: number; hi: number }, maraBand?: { lo: number; hi: number }): "easy" | "mod" | "hard" {
   const z = typeof zone === "string" ? zone : "";
   // R20.5 — `bk.rp` A CESSÉ D'ÊTRE UNE INTENSITÉ FIXE, DONC SA CLASSE AUSSI.
   //
@@ -307,6 +309,18 @@ export function zoneClass(zone: unknown, runLegNoZone = false, rpBand?: { lo: nu
   // Seuil à 0,85 × FTP : c'est le bas de la zone sweetspot/seuil de Coggan. Au-dessus, l'effort
   // se paie en récupération et doit compter dans le plafond de temps DUR (C26c).
   if (z === "bk.rp" && rpBand) return rpBand.hi >= 0.85 ? "hard" : "mod";
+  // §3 DE L'ARBITRAGE ANCRAGE/B-21 (14/08/2026) — `rn.mara` A CESSÉ D'ÊTRE UNE INTENSITÉ
+  // FIXE (B-25), DONC SA CLASSE AUSSI. La bande dérivée va de ~0,87 × seuil (leg 5 km d'un
+  // tri S — du travail au seuil et plus vite) à ~1,30 (marathon d'Ironman — de l'endurance) :
+  // la ranger « modérée » par suffixe refaisait à la classification l'erreur que B-25 venait
+  // de corriger au nombre — la forme exacte de bk.rp/R20.4, résolue par le même geste.
+  // Mesuré avant d'écrire : 61/61 profils tri S/M du golden portaient ~35-37 min/semaine de
+  // seuil comptées « modéré », un budget C26 faux dans le sens qui AJOUTE de l'intensité.
+  // La frontière est la borne LENTE de rn.thr (1,05) : elle est DÉCLARÉE dans ZDEF, recopiée
+  // ici parce que l'engine n'importe pas le renderer — l'égalité des deux écritures est
+  // GARDÉE par T-20 (elle rougit si l'une bouge sans l'autre). En allure, PLUS PETIT = PLUS
+  // RAPIDE : la bande atteint le seuil si son bord rapide (lo) passe sous cette frontière.
+  if (z === "rn.mara" && maraBand) return maraBand.lo <= RN_THR_FRONTIERE_LENTE ? "hard" : "mod";
   if (TRAIL_HARD.includes(z) || HARD_SUFFIX.some((s) => z.endsWith(s))) return "hard";
   if (TRAIL_MOD.includes(z) || MOD_SUFFIX.some((s) => z.endsWith(s)) || runLegNoZone) return "mod";
   return "easy";
@@ -349,7 +363,7 @@ export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS):
     // comptés modérés et la répartition d'intensité tomberait à 61 % de facile (mesuré) sur un
     // plan qui est en réalité polarisé. La zone déclarée est toujours plus précise que l'indice.
     const runLegNoZone = st.leg === "run" && !zone;
-    const cls = zoneClass(zone, runLegNoZone, (st as { rpBand?: { lo: number; hi: number } }).rpBand);
+    const cls = zoneClass(zone, runLegNoZone, (st as { rpBand?: { lo: number; hi: number } }).rpBand, (st as { maraBand?: { lo: number; hi: number } }).maraBand);
     if (cls === "hard") out.hardMin += stMin;
     else if (cls === "mod") out.modMin += stMin;
     else out.easyMin += stMin;

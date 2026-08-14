@@ -28,6 +28,7 @@ import { ZDEF } from "../src/generator/renderer.ts";
 import { zoneClass, intensitySplit } from "../src/engine/loadModel.ts";
 import { sessionIntensity } from "../src/readiness/dailyAdjuster.ts";
 import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor } from "../src/engine/constraintMatrix.ts";
+import { RN_THR_FRONTIERE_LENTE } from "../src/engine/loadModel.ts";
 import { TrainingReasoningEngine } from "../src/engine/reasoningEngine.ts";
 import { toProfile } from "../src/app/bridge.ts";
 import { riegelExponent, riegelSecWith, RUN_KM, marathonPaceBand, RN_MARA_RATIO_PLANCHER } from "../src/engine/predictor.ts";
@@ -467,6 +468,53 @@ T("T-19", "vert", "le message de volume nomme l'argmin des plafonds ET cite la v
     ok: !desaccord && !brut,
     detail: `(a) argmin : ${desaccord}/${nomme} désaccord · (b) valeur de TABLE au lieu de MODULÉE : **${brut}/${cite}** (${(brut / cite * 100).toFixed(1)} %)` + (ex.length ? " — " + ex.join(" · ") : ""),
   };
+});
+
+// ---- T-20 · toute intensité de step RÉSOUT — jamais un défaut silencieux --
+// Famille « comptabilité d'intensité » (ARBITRAGE_ANCRAGE_B21 §4). Réponse MESURÉE à la
+// question du fondateur (« que fait le classificateur d'un [object Object] ? ») : la
+// classification passe par `st.zone`, jamais par `intensity` — et le « [object Object] »
+// N'EXISTE PAS DANS L'APP : c'était MA SONDE qui template-littéralisait le champ. Le contrat
+// réel, relevé sur 2 589 steps : `intensity` est un OBJET bande {ref,lo,hi} posé par
+// `intOf()` (typé `as unknown as string` — le TYPE ment, pas la valeur), ou la string "easy"
+// posée au déclassement C26c, ou absent. Son unique consommateur est l'export JSON, où un
+// objet se sérialise proprement. Ma première écriture de T-20 assertait « string » — 265
+// rouges qui étaient 265 fautes de MON contrat, pas du moteur (règle 11 : la contre-preuve
+// a mordu l'instrument). Ce que T-20 garde vraiment : (a) toute zone posée résout dans ZDEF
+// — sans quoi zoneClass tombe en « easy » SILENCIEUX, le vrai danger ; (b) toute intensité
+// présente est une bande finie ou "easy" — jamais du bruit ; (c) la frontière seuil que la
+// classification par bande utilise (loadModel) reste ÉGALE à celle que ZDEF déclare — le
+// garde anti-dérive des deux écritures.
+T("T-20", "vert", "tout step : zone résoluble dans ZDEF, intensité = bande finie ou « easy »", () => {
+  const problemes = [];
+  let steps = 0;
+  const plansPlus = [...plans];
+  try {
+    const dua = globalThis.EBV2.buildPlan("duathlon", { intent: "competition", format: "PM",
+      med_pain: "non", med_dizzy: "non", med_treat: "non", sex: "H", age: "35", sessions_max: "6",
+      vol_max: "12", vol_recent: "10", dispo: "quotidienne", doubles: "non", level: "avance",
+      history: "confirme", injury: "aucune", ftp_known: "oui", ftp: "220", pace_known: "oui", pace: "4:30", weight: "72" });
+    plansPlus.push({ id: "duathlon-PM-T20", plan: dua });
+  } catch {}
+  for (const { id, plan } of plansPlus)
+    for (const w of plan.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
+      for (const st of s.steps ?? []) {
+        if (st.role !== "body") continue;
+        steps++;
+        if (st.zone != null && !ZDEF[st.zone]) problemes.push(`${id} « ${s.name} » : zone inconnue ${st.zone}`);
+        const it = st.intensity;
+        // Le contrat RELEVÉ (2 589 steps) a trois formes, pas deux — T-20 a trouvé la
+        // troisième en naissant : le swimrun pose la string "aero" (littéral du module).
+        // Une string non vide se sérialise et s'affiche ; le danger que T-20 garde est le
+        // BRUIT — bande non finie, objet vide, zone inconnue — jamais un mot lisible.
+        const bandeOk = it && typeof it === "object" && Number.isFinite(it.lo) && Number.isFinite(it.hi);
+        const stringOk = typeof it === "string" && it.length > 0 && it.length < 60;
+        if (it != null && !bandeOk && !stringOk) problemes.push(`${id} « ${s.name} » : intensité irrésoluble (${JSON.stringify(it).slice(0, 40)})`);
+      }
+  const uniques = [...new Set(problemes)];
+  if (Math.abs(RN_THR_FRONTIERE_LENTE - ZDEF["rn.thr"].hi) > 1e-9)
+    uniques.push(`la frontière seuil de loadModel (${RN_THR_FRONTIERE_LENTE}) a dérivé de ZDEF rn.thr.hi (${ZDEF["rn.thr"].hi})`);
+  return { ok: steps > 0 && !uniques.length, detail: `${uniques.length} défaut(s) sur ${steps} steps — ` + uniques.slice(0, 5).join(" · ") };
 });
 
 // ---- verdict --------------------------------------------------------------

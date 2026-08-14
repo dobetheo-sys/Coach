@@ -1574,7 +1574,7 @@ function enforceHardTimeCap(
       // le bloc que l'auditeur compte — deux définitions du mot « dur » dans le même moteur,
       // le défaut O-11 reproduit à l'intérieur d'un seul lot.
       const durs = (cible.steps || []).filter((b) => b.role === "body"
-        && zoneClass(b.zone, false, (b as { rpBand?: { lo: number; hi: number } }).rpBand) === "hard");
+        && zoneClass(b.zone, false, (b as { rpBand?: { lo: number; hi: number } }).rpBand, (b as { maraBand?: { lo: number; hi: number } }).maraBand) === "hard");
       if (!durs.length) break;
       // Le plus gros bloc dur de la séance : c'est lui qui porte le dosage.
       const b = durs.reduce((x, y) => ((y.reps || 1) * (y.durationMin || 0) > (x.reps || 1) * (x.durationMin || 0) ? y : x));
@@ -1694,6 +1694,11 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       r.decisions.length = _decAvant;
       r.warnings.length = _warnAvant;
       days = buildDays(r, refs, r.hz);
+      // §3 — la bande ACCOMPAGNE chaque step rn.mara (le patron rpBand) : c'est elle que la
+      // classification lit, jamais le suffixe. Attachée ici, au seul endroit où la valeur
+      // définitive existe — l'attacher dans le module de sport en ferait une seconde dérivation.
+      for (const d of days) for (const sx of d.sessions) for (const st of (sx.steps ?? []) as { zone?: string; maraBand?: { lo: number; hi: number } }[])
+        if (st.zone === "rn.mara") st.maraBand = bande;
     }
   }
 

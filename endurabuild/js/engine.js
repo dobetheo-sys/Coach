@@ -4324,7 +4324,9 @@ const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
  * précisément le défaut O-11 (deux définitions de « l'allure course » à vélo), et il n'y a
  * aucune raison de le refaire en le voyant venir.
  */
-function zoneClass(zone         , runLegNoZone = false, rpBand                             )                          {
+/** La borne lente de rn.thr, telle que ZDEF la déclare — T-20 garde l'égalité des deux écritures. */
+const RN_THR_FRONTIERE_LENTE = 1.05;
+function zoneClass(zone         , runLegNoZone = false, rpBand                             , maraBand                             )                          {
   const z = typeof zone === "string" ? zone : "";
   // R20.5 — `bk.rp` A CESSÉ D'ÊTRE UNE INTENSITÉ FIXE, DONC SA CLASSE AUSSI.
   //
@@ -4337,6 +4339,18 @@ function zoneClass(zone         , runLegNoZone = false, rpBand                  
   // Seuil à 0,85 × FTP : c'est le bas de la zone sweetspot/seuil de Coggan. Au-dessus, l'effort
   // se paie en récupération et doit compter dans le plafond de temps DUR (C26c).
   if (z === "bk.rp" && rpBand) return rpBand.hi >= 0.85 ? "hard" : "mod";
+  // §3 DE L'ARBITRAGE ANCRAGE/B-21 (14/08/2026) — `rn.mara` A CESSÉ D'ÊTRE UNE INTENSITÉ
+  // FIXE (B-25), DONC SA CLASSE AUSSI. La bande dérivée va de ~0,87 × seuil (leg 5 km d'un
+  // tri S — du travail au seuil et plus vite) à ~1,30 (marathon d'Ironman — de l'endurance) :
+  // la ranger « modérée » par suffixe refaisait à la classification l'erreur que B-25 venait
+  // de corriger au nombre — la forme exacte de bk.rp/R20.4, résolue par le même geste.
+  // Mesuré avant d'écrire : 61/61 profils tri S/M du golden portaient ~35-37 min/semaine de
+  // seuil comptées « modéré », un budget C26 faux dans le sens qui AJOUTE de l'intensité.
+  // La frontière est la borne LENTE de rn.thr (1,05) : elle est DÉCLARÉE dans ZDEF, recopiée
+  // ici parce que l'engine n'importe pas le renderer — l'égalité des deux écritures est
+  // GARDÉE par T-20 (elle rougit si l'une bouge sans l'autre). En allure, PLUS PETIT = PLUS
+  // RAPIDE : la bande atteint le seuil si son bord rapide (lo) passe sous cette frontière.
+  if (z === "rn.mara" && maraBand) return maraBand.lo <= RN_THR_FRONTIERE_LENTE ? "hard" : "mod";
   if (TRAIL_HARD.includes(z) || HARD_SUFFIX.some((s) => z.endsWith(s))) return "hard";
   if (TRAIL_MOD.includes(z) || MOD_SUFFIX.some((s) => z.endsWith(s)) || runLegNoZone) return "mod";
   return "easy";
@@ -4379,7 +4393,7 @@ function intensitySplit(s            , refs              = DEFAULT_REFS)        
     // comptés modérés et la répartition d'intensité tomberait à 61 % de facile (mesuré) sur un
     // plan qui est en réalité polarisé. La zone déclarée est toujours plus précise que l'indice.
     const runLegNoZone = st.leg === "run" && !zone;
-    const cls = zoneClass(zone, runLegNoZone, (st                                           ).rpBand);
+    const cls = zoneClass(zone, runLegNoZone, (st                                           ).rpBand, (st                                             ).maraBand);
     if (cls === "hard") out.hardMin += stMin;
     else if (cls === "mod") out.modMin += stMin;
     else out.easyMin += stMin;
@@ -9670,7 +9684,7 @@ function enforceHardTimeCap(
       // le bloc que l'auditeur compte — deux définitions du mot « dur » dans le même moteur,
       // le défaut O-11 reproduit à l'intérieur d'un seul lot.
       const durs = (cible.steps || []).filter((b) => b.role === "body"
-        && zoneClass(b.zone, false, (b                                           ).rpBand) === "hard");
+        && zoneClass(b.zone, false, (b                                           ).rpBand, (b                                             ).maraBand) === "hard");
       if (!durs.length) break;
       // Le plus gros bloc dur de la séance : c'est lui qui porte le dosage.
       const b = durs.reduce((x, y) => ((y.reps || 1) * (y.durationMin || 0) > (x.reps || 1) * (x.durationMin || 0) ? y : x));
@@ -9790,6 +9804,11 @@ function generatePlan(profile                , opts                             
       r.decisions.length = _decAvant;
       r.warnings.length = _warnAvant;
       days = buildDays(r, refs, r.hz);
+      // §3 — la bande ACCOMPAGNE chaque step rn.mara (le patron rpBand) : c'est elle que la
+      // classification lit, jamais le suffixe. Attachée ici, au seul endroit où la valeur
+      // définitive existe — l'attacher dans le module de sport en ferait une seconde dérivation.
+      for (const d of days) for (const sx of d.sessions) for (const st of (sx.steps ?? [])                                                              )
+        if (st.zone === "rn.mara") st.maraBand = bande;
     }
   }
 
@@ -13052,6 +13071,22 @@ const fmtT = (sec        )         => {
  * (4 → 6,5 h) vaut −0,0120/h, et `[1.5, 1.15]` est ce que cette pente donne à 1,5 h. On ne va
  * pas plus bas : au-delà, l'extrapolation quitterait le domaine où quiconque a mesuré quoi que
  * ce soit, et un exposant sans borne produirait des chronos absurdes près du volume nul.
+ */
+/**
+ * L'ANCRAGE BAS [1,5 h → 1,15] — ARBITRÉ LE 14/08/2026 (ARBITRAGE_ANCRAGE_B21) : CONSERVÉ.
+ *
+ * provenance : **assertion de modèle, non validée externement** — prolongée à la pente du
+ *              segment le plus bas (−0,0120/h), pas choisie ; origine commit f2ccd7d.
+ * arbitrage  : fondateur, 14/08/2026 — conservé parce que la direction est PRUDENTE (un
+ *              exposant plus haut à bas volume rend des temps longue distance plus lents,
+ *              le mode d'échec coûteux étant la prédiction optimiste) et la valeur plausible.
+ * statut     : **PANSEMENT** — gaté sur l'enrichissement du golden en volumes de course
+ *              stratifiés ; le « 89-99 % au plancher » qui l'a motivé a été mesuré sur la
+ *              population dont on SAIT qu'elle ne peut pas mesurer les effets volume-
+ *              dépendants (96,7 % de vol_max:10) — probablement vrai quand même, à refaire.
+ * vérifié    : sous 1,5 h l'exposant est CLAMPÉ à 1,15 (0,5 h → 1,15, pas d'extrapolation) ;
+ *              l'ancrage est ACTIF sur le golden (19 profils au clamp, 211 sur le segment
+ *              [1,5 → 4], mesure §2.3b) — pas du code mort en test.
  */
 const RIEGEL_ANCRES                     = [[1.5, 1.15], [4, 1.12], [6.5, 1.09], [10, 1.06], [12, 1.04]];
 function riegelExponent(runHoursPerWeek         )         {
