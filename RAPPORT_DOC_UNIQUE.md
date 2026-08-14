@@ -47,10 +47,11 @@ garde d'observation, même règle publiée que le moteur).
 4. **Le rendu discret** : 158 cas à 0,1-0,2 h — tes « 18 minutes » du §0, mesurées à
    l'échelle. La sonde sature un clone continu, le plan rend des séances discrètes.
 
-**Résidu final : 439/945**, deux causes, deux tickets (O-35 + rendu discret), T-25 reste
-ROUGE ATTENDU — un vert obtenu en élargissant la tolérance serait le test qui s'ajuste au
-défaut. T-23 : 37/218 (le périmètre de l'instrument s'est élargi avec le record — les 22
-d'avant ne sont pas comparables, c'est écrit dans le test).
+**Résidu à ce stade — 439/945** (avant le correctif O-35, livré plus bas dans ce rapport, qui
+l'amène à **368**) : deux causes, deux tickets, T-25 reste ROUGE ATTENDU — un vert obtenu en
+élargissant la tolérance serait le test qui s'ajuste au défaut. T-23 à ce stade : 37/218 (le
+périmètre de l'instrument s'est élargi avec le record — les 22 d'avant ne sont pas comparables,
+c'est écrit dans le test).
 
 **Golden 949 recapturé : 945 profils changent, champs `_r202` + `decisions` UNIQUEMENT** —
 vérifié en les retirant de la comparaison : 0 écart. Pas une séance, pas une minute.
