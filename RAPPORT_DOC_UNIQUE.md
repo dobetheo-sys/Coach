@@ -201,7 +201,6 @@ correctif de cohérence aurait fait des dégâts réels sans mesure.
 3. Enrichissement du golden (additif, stratifié sur le volume DE COURSE) → B-26 (périmètre
    élargi au tri par T-22) → révision de l'ancrage [1,5 h → 1,15].
 
-**État CI (mesuré sur l'état livré) : 28 gates verts · `audit:v1` 459 · invariants 22×54 ·
-v6 73 verts 0 régression · golden 949 · banc du lot : 8 verts · 19 rouges attendus (tous listés)
-· 0 régression.** La suite E2E tournait encore au moment du commit — son verdict est rapporté
-séparément (le run précédent, 25/25, portait sur l'état d'AVANT O-35 : il ne vaut pas ici).
+**État CI (mesuré sur l'état livré) : 28 gates verts · E2E 25/25 · `audit:v1` 459 ·
+invariants 22×54 · v6 73 verts 0 régression · golden 949 · banc du lot : 8 verts · 19 rouges
+attendus (tous listés) · 0 régression.**

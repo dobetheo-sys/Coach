@@ -261,7 +261,7 @@ allure — le périmètre B-26 s'élargit aux bricks TRI) écrits rouges. **§6.
 sont une liste nommée en cliquet. **Z-11 étendu aux trois espaces de noms** — il a trouvé une
 troisième collision en naissant (`#9b72ff` : brick = charge récup = violet) ; `--zn-fatigue`/
 `--zn-form` retirés (morts depuis B1).
-**28 gates verts, `audit:v1` 459, invariants 22×54, golden 949 recapturé — 88 profils,
+**28 gates verts, E2E 25/25, `audit:v1` 459, invariants 22×54, golden 949 recapturé — 88 profils,
 tous en natation.**
 
 **V5 livré — les accents de discipline passent à la maquette, et l'orange porte désormais TROIS
