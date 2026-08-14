@@ -500,6 +500,29 @@ export function marathonPaceBand(thrPaceSecPerKm: number, runHoursPerWeek?: numb
   return { lo, hi: Math.max(ratio * (1 + RN_MARA_DEMI_LARGEUR), lo + 1e-9) };
 }
 
+/**
+ * B-25 — LE LEG COURSE DU TRI CONSOMME LA BANDE DU PRÉDICTEUR (troisième versant d'O-11).
+ *
+ * `sports/tri/index.ts` prescrit `rn.mara` sous le nom « l'allure de course du jour J » —
+ * avec la bande STATIQUE de ZDEF (1,08-1,13 × seuil), aveugle au FORMAT. Mesuré de bout en
+ * bout (T-16c) : sur S et M la bande est trop LENTE de ~50 s/km (le leg y court plus vite que
+ * l'allure marathon d'un coureur), sur Full elle est trop RAPIDE de 46-53 s/km — une allure
+ * que le même moteur déclare intenable après 180 km de vélo. Seul 70.3, le format sur lequel
+ * la bande a manifestement été calibrée, recouvrait. R20.5 avait fermé ce défaut côté VÉLO
+ * (`raceBikeBand`), B-22 côté course sèche — voici le versant course du tri, par la MÊME
+ * mécanique de substitution (`refs.runMara`), et AUCUNE constante nouvelle : le centre est ce
+ * que `predict()` émet déjà (Riegel × `TRI_RUN.fatigue`, exposant B-21 compris), la largeur
+ * est `RN_MARA_DEMI_LARGEUR` (B-22). Si un jour ce calcul réclame un chiffre à arbitrer,
+ * c'est qu'il déborde sur B-04 — s'arrêter et le dire (contrat du ticket).
+ */
+export function raceRunBand(sport: string, format: string, thrPaceSecPerKm: number, runHoursPerWeek?: number): { lo: number; hi: number } | null {
+  if (!(thrPaceSecPerKm > 0) || sport !== "tri") return null;
+  const leg = TRI_RUN[format];
+  if (!leg) return null;
+  const ratio = (riegelSecWith(riegelExponent(runHoursPerWeek), thrPaceSecPerKm, leg.km) / leg.km / thrPaceSecPerKm) * leg.fatigue;
+  return { lo: ratio * (1 - RN_MARA_DEMI_LARGEUR), hi: ratio * (1 + RN_MARA_DEMI_LARGEUR) };
+}
+
 /** Minutes → « 9h20 » : une durée de trail se lit en heures, pas en minutes. */
 function fmtHM(min: number): string {
   const h = Math.floor(min / 60), m = Math.round(min % 60);

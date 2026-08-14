@@ -148,6 +148,16 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 
 ## Comment travailler dans ce dépôt
 
+- **Une garde se prouve dans les deux sens avant d'être crue** : rouge contre un état connu
+  mauvais, verte contre un état connu bon. Un gate non contre-prouvé ne mesure que lui-même.
+  (Règle issue de l'arbitrage B-25 §9, 14/08/2026 — démontrée le jour même par deux faux
+  positifs d'instrument : une CSP lue dans un commentaire, 62 citations bibliographiques
+  prises pour des requêtes.)
+- **Une entrée déclarée ne remplace pas une sortie calculée que le moteur possède déjà.**
+  Vérifié trois fois : tables MET contre puissance mesurée (N-02), `vol_max` contre le volume
+  de course du plan livré (B-21, `runHoursPerWeekOf`), bande statique contre bande du
+  prédicteur (B-25). (Même arbitrage.)
+
 - **Les propriétés visuelles LIÉES se mesurent ENSEMBLE, en un seul cycle** (consigne du
   fondateur, 12/08/2026). Couleur de badge, fond de carte et contraste dépendent du même token
   de discipline : les traiter séparément fait payer trois cycles mesure → correction → re-mesure

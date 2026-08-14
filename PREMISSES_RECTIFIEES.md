@@ -3,6 +3,23 @@
 **Réponse au §0 du retour de Phase 1** (14/08/2026). Règle appliquée : une prémisse non
 vérifiée ne sert de base à aucun correctif. Verdicts : `confirmée` / `rectifiée` / `inexistante`.
 
+> **⚠ RECTIFICATIF (14/08/2026, après relecture de l'historique).** Ce rapport affirmait
+> « B-21 toujours gelé » et « hors course sèche le pont passe `undefined` ». **Les deux étaient
+> faux au moment de l'écriture** : le commit `f2ccd7d feat(B-21)` (13/08, 23:49 — AVANT
+> l'arrivée du gel, sous la décision alors en vigueur « découpler et recalibrer ») a décloisonné
+> l'exposant, câblé `runHoursPerWeekOf(plan)` dans le pont (le volume de course MESURÉ sur le
+> plan livré, la résolution que §7 recommandera plus tard), et — écart avec la décision de
+> l'époque — **abandonné la recalibration de `TRI_RUN` après l'avoir mesurée quasi inerte**
+> (89,1 % des tri et 99,3 % des duathlon vivent au plancher de la table d'ancrages) au profit
+> d'un **ancrage nouveau `[1,5 h → 1,15]`**, prolongé à la pente du segment le plus bas.
+> Cet ancrage est une affirmation de modèle posée SANS arbitrage du fondateur — signalée ici
+> pour décision : la conserver (avec sa justification mesurée) ou la retirer. Les mesures de ce
+> rapport (bandes, legs prédits) ont toutes été prises SUR l'état réel du code, B-21 compris :
+> les chiffres tiennent, c'est leur CADRE qui était faux. Cause de la faute : le travail du
+> tour interrompu n'était plus dans mon contexte résumé — j'ai décrit ma mémoire au lieu de
+> relire le dépôt, la faute exacte que §0 m'a fait traquer chez les autres.
+
+
 ## Les prémisses du prompt de merge et du retour de Phase 1
 
 | affirmation | verdict | mesure |

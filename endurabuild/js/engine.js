@@ -9760,7 +9760,38 @@ function generatePlan(profile                , opts                             
     ? marathonPaceBand(r.baseRefs.thrPace, parseFloat(String(a.vol_max ?? "")) || undefined)
     : null;
   const refs       = { ...r.baseRefs, bikeRp: shiftedBikeRp(String(a.sport), fmt, a), runMara: _runMara ?? undefined };
-  const days = buildDays(r, refs, r.hz);
+  // B-25 — l'état d'AVANT toute passe : c'est à LUI que la troncature ramène. Ma première
+  // écriture capturait ces longueurs APRÈS la première passe — troncature no-op, et la seconde
+  // passe DUPLIQUAIT chaque décision de buildDays (mesuré : 11 → 12 sur tri/Full/dispo-weekend,
+  // +1 warning). Le déterminisme ne protège que si l'on repart du bon état.
+  const _decAvant = r.decisions.length, _warnAvant = r.warnings.length;
+  let days = buildDays(r, refs, r.hz);
+  // B-25 — LE TRI REÇOIT SA BANDE D'ALLURE COURSE PAR FORMAT, depuis le prédicteur.
+  //
+  // L'exposant (B-21) se lit sur les heures de course MESURÉES — une grandeur qui n'existe
+  // qu'une fois les jours construits : c'est la circularité que l'arbitrage B-25 §7 nomme, et
+  // sa résolution sanctionnée est UNE SEULE ITÉRATION, jamais un point fixe. On construit, on
+  // mesure, on reconstruit UNE fois avec la bande — `refs` ne pilote que du TEXTE (fmtInt/
+  // intOf), la structure des deux passes est identique. `buildDays` pousse des décisions dans
+  // `r` : elles sont tronquées à leur état d'avant la première passe, la seconde repousse les
+  // mêmes (déterminisme) — sans quoi chaque décision existerait en double.
+  if (a.sport === "tri" && (r.baseRefs.thrPace ?? 0) > 0) {
+    let runMin = 0;
+    for (const d of days) for (const s of d.sessions) {
+      if (s.d === "rs" || (s                      ).race) continue;
+      if (s.d === "rn") { runMin += (s                    ).min || 0; continue; }
+      for (const st of ((s                                                                     ).steps ?? []))
+        if ((st.d || s.d) === "rn" && st.durationMin) runMin += (st.reps || 1) * st.durationMin;
+    }
+    const nSem = Math.max(1, Math.round(days.length / (r.use10 ? 10 : 7)));
+    const bande = raceRunBand("tri", fmt, r.baseRefs.thrPace, runMin / nSem / 60 || undefined);
+    if (bande) {
+      refs.runMara = bande;
+      r.decisions.length = _decAvant;
+      r.warnings.length = _warnAvant;
+      days = buildDays(r, refs, r.hz);
+    }
+  }
 
   // ---- C31 — LA SORTIE LONGUE TROP LONGUE SE COUPE EN DEUX JOURS D'AFFILÉE (marathon) ----
   //
@@ -13101,6 +13132,29 @@ function marathonPaceBand(thrPaceSecPerKm        , runHoursPerWeek         )    
   const ratio = riegelSecWith(riegelExponent(runHoursPerWeek), thrPaceSecPerKm, km) / km / thrPaceSecPerKm;
   const lo = Math.max(ratio * (1 - RN_MARA_DEMI_LARGEUR), RN_MARA_RATIO_PLANCHER);
   return { lo, hi: Math.max(ratio * (1 + RN_MARA_DEMI_LARGEUR), lo + 1e-9) };
+}
+
+/**
+ * B-25 — LE LEG COURSE DU TRI CONSOMME LA BANDE DU PRÉDICTEUR (troisième versant d'O-11).
+ *
+ * `sports/tri/index.ts` prescrit `rn.mara` sous le nom « l'allure de course du jour J » —
+ * avec la bande STATIQUE de ZDEF (1,08-1,13 × seuil), aveugle au FORMAT. Mesuré de bout en
+ * bout (T-16c) : sur S et M la bande est trop LENTE de ~50 s/km (le leg y court plus vite que
+ * l'allure marathon d'un coureur), sur Full elle est trop RAPIDE de 46-53 s/km — une allure
+ * que le même moteur déclare intenable après 180 km de vélo. Seul 70.3, le format sur lequel
+ * la bande a manifestement été calibrée, recouvrait. R20.5 avait fermé ce défaut côté VÉLO
+ * (`raceBikeBand`), B-22 côté course sèche — voici le versant course du tri, par la MÊME
+ * mécanique de substitution (`refs.runMara`), et AUCUNE constante nouvelle : le centre est ce
+ * que `predict()` émet déjà (Riegel × `TRI_RUN.fatigue`, exposant B-21 compris), la largeur
+ * est `RN_MARA_DEMI_LARGEUR` (B-22). Si un jour ce calcul réclame un chiffre à arbitrer,
+ * c'est qu'il déborde sur B-04 — s'arrêter et le dire (contrat du ticket).
+ */
+function raceRunBand(sport        , format        , thrPaceSecPerKm        , runHoursPerWeek         )                                    {
+  if (!(thrPaceSecPerKm > 0) || sport !== "tri") return null;
+  const leg = TRI_RUN[format];
+  if (!leg) return null;
+  const ratio = (riegelSecWith(riegelExponent(runHoursPerWeek), thrPaceSecPerKm, leg.km) / leg.km / thrPaceSecPerKm) * leg.fatigue;
+  return { lo: ratio * (1 - RN_MARA_DEMI_LARGEUR), hi: ratio * (1 + RN_MARA_DEMI_LARGEUR) };
 }
 
 /** Minutes → « 9h20 » : une durée de trail se lit en heures, pas en minutes. */

@@ -327,6 +327,47 @@ T("T-16b", "vert", "la bande d'allure marathon suit le volume ET l'allure seuil"
   return { ok: !ecarts.length, detail: ecarts.join(" · ") };
 });
 
+// ---- T-16c · la promesse « allure du jour J » tient PAR (sport × format) --
+// B-25 (le doc du fondateur) — T-16 itérait sur des DISTANCES, pas sur des couples
+// (sport, format) : appliqué au seul module course, il ne pouvait pas voir que le TRI
+// prescrit `rn.mara` sous le nom « l'allure de course du jour J » avec une bande STATIQUE,
+// aveugle au format. Mesuré de bout en bout : le plan est CONSTRUIT, la bande est lue dans
+// le `det` de la séance émise, la prédiction du leg vient de `predict()` du même profil —
+// jamais une comparaison de la fonction à elle-même (le piège que T-16b nomme).
+// Critère : la bande prescrite RECOUVRE la bande prédite (les deux portent leur largeur).
+const _B25_BASE = { intent: "competition", med_pain: "non", med_dizzy: "non", med_treat: "non",
+  sex: "H", age: "35", sessions_max: "6", dispo: "quotidienne", doubles: "non", level: "avance",
+  history: "confirme", injury: "aucune", css_known: "oui", css: "1:40", ftp_known: "oui",
+  ftp: "250", pace_known: "oui", pace: "4:15", weight: "75", vol_max: "12", vol_recent: "10" };
+const _p2s = (t) => { const m = String(t).match(/(\d+)[:'](\d{2})/); return m ? +m[1] * 60 + +m[2] : null; };
+const _hm2s = (t) => { const m = String(t).match(/(\d+)h(\d+)|(\d+)'(\d{2})/); return m ? (m[1] ? +m[1] * 3600 + +m[2] * 60 : +m[3] * 60 + +m[4]) : null; };
+T("T-16c", "vert", "tri : la bande « allure du jour J » émise recouvre le leg prédit, aux 4 formats", () => {
+  const KM = { S: 5, M: 10, "70.3": 21.0975, Full: 42.195 };
+  const hors = [];
+  for (const fmt of ["S", "M", "70.3", "Full"]) {
+    let plan, pr;
+    try {
+      plan = globalThis.EBV2.buildPlan("tri", { ..._B25_BASE, format: fmt });
+      pr = globalThis.EBV2.predict("tri", { ..._B25_BASE, format: fmt }, plan);
+    } catch (e) { hors.push(`${fmt} : ${String(e?.message).slice(0, 40)}`); continue; }
+    // la bande PRESCRITE, lue dans le det des séances rn.mara du plan émis
+    let bande = null;
+    for (const w of plan.weeks ?? []) for (const d of w.days ?? []) for (const sx of d.sessions ?? [])
+      for (const st of sx.steps ?? []) if (st.zone === "rn.mara") {
+        const m = String(sx.det ?? "").match(/(\d[:']\d{2})-(\d[:']\d{2})\/km/);
+        if (m) bande = [_p2s(m[1]), _p2s(m[2])];
+      }
+    // le leg PRÉDIT du même profil
+    const leg = (pr?.items ?? []).find((i) => /CAP|Course/i.test(String(i.leg)));
+    const t = String(leg?.value ?? "").split("–").map(_hm2s);
+    if (!bande || t.length !== 2 || t.some((x) => x == null)) { hors.push(`${fmt} : bande ou leg illisible`); continue; }
+    const pred = [t[0] / KM[fmt], t[1] / KM[fmt]];
+    const recouvre = bande[0] <= pred[1] && pred[0] <= bande[1];
+    if (!recouvre) hors.push(`${fmt} : prescrit ${bande.map((x) => Math.round(x)).join("-")} s/km, prédit ${pred.map((x) => Math.round(x)).join("-")} s/km — disjoints`);
+  }
+  return { ok: !hors.length, detail: hors.length + " format(s) où la promesse du libellé est fausse — " + hors.join(" · ") };
+});
+
 // ---- T-17 · toute décomposition affichée porte une fourchette -------------
 // Et la somme des sous-segments égale le total sur CHAQUE borne : une décomposition dont les
 // parties ne se recomposent pas ressemble à un bug même quand chaque nombre est juste.

@@ -2,6 +2,23 @@
 
 **Date** : 14/08/2026 · Répond à `ARBITRAGE_B22_PHASE2.md` §1-§3, §5, §6.
 
+> **⚠ RECTIFICATIF (14/08/2026, après relecture de l'historique).** Ce rapport affirmait
+> « B-21 toujours gelé » et « hors course sèche le pont passe `undefined` ». **Les deux étaient
+> faux au moment de l'écriture** : le commit `f2ccd7d feat(B-21)` (13/08, 23:49 — AVANT
+> l'arrivée du gel, sous la décision alors en vigueur « découpler et recalibrer ») a décloisonné
+> l'exposant, câblé `runHoursPerWeekOf(plan)` dans le pont (le volume de course MESURÉ sur le
+> plan livré, la résolution que §7 recommandera plus tard), et — écart avec la décision de
+> l'époque — **abandonné la recalibration de `TRI_RUN` après l'avoir mesurée quasi inerte**
+> (89,1 % des tri et 99,3 % des duathlon vivent au plancher de la table d'ancrages) au profit
+> d'un **ancrage nouveau `[1,5 h → 1,15]`**, prolongé à la pente du segment le plus bas.
+> Cet ancrage est une affirmation de modèle posée SANS arbitrage du fondateur — signalée ici
+> pour décision : la conserver (avec sa justification mesurée) ou la retirer. Les mesures de ce
+> rapport (bandes, legs prédits) ont toutes été prises SUR l'état réel du code, B-21 compris :
+> les chiffres tiennent, c'est leur CADRE qui était faux. Cause de la faute : le travail du
+> tour interrompu n'était plus dans mon contexte résumé — j'ai décrit ma mémoire au lieu de
+> relire le dépôt, la faute exacte que §0 m'a fait traquer chez les autres.
+
+
 ---
 
 ## 2.0 — La table exigée : bande `rn.mara` des triathlètes vs témoin course
@@ -12,8 +29,19 @@ Mesurée sur les plans ÉMIS (seuil 4'15/km partout, allures relevées dans le `
 |---|---|---|---|
 | tri 70.3 · 10 h total | **4'35–4'48/km** | 1,078–1,129 | non |
 | tri Full · 15 h total | **4'35–4'48/km** | 1,078–1,129 | non |
-| duathlon PM | *(aucune séance `rn.mara` émise — le R2 s'entraîne sur d'autres zones)* | — | — |
+| duathlon PM | ⚠ ligne RECTIFIÉE — voir sous la table | — | — |
 | coureur marathon · 10 h *(témoin)* | **4'28–4'38/km** | 1,051–1,090 | **OUI** |
+
+> **⚠ Rectification de la ligne duathlon (14/08, en exécutant B-25).** Ma sonde confondait
+> « aucune séance » avec « aucune allure parsée » : le brick **« R1 → vélo (pré-fatigue) »**
+> émet BIEN un step `rn.mara` (« cours le R1 à l'allure de course ») — son `det` rend
+> « 18min CAP @ **allure cible** », sans chiffre, donc ma regex d'allure ne matchait pas et
+> j'ai publié « aucune séance émise ». Le fondateur avait raison de l'interdire comme
+> conclusion (§10). Deux constats en le regardant en face : (1) le R1 du duathlon porte la
+> même question que le tri — quelle allure vaut pour un R1 de 10 km couru FRAIS ? — mais avec
+> DEUX legs de sens différents (R1 frais, R2 pré-fatigué), c'est le chantier symétrique de
+> B-25, pas couvert par lui ; (2) le step porte `intensity=[object Object]` — `intOf("rn.mara")`
+> rend un objet casté en string, défaut antérieur, enregistré pour la table de traçabilité 2.1.
 
 ### Verdict sur la question P0
 
@@ -43,6 +71,46 @@ jusqu'aux réponses §3 (données) et interdit de conclure depuis des profils co
 ci-dessus est faite sur des profils TRI. Le correctif a son patron tout tracé
 (`refs.runMara` par format depuis le prédicteur du tri, la mécanique `bikeRp`), et il devra
 être traité AVEC B-21 (même lot, ordre de l'addendum).
+
+---
+
+## B-25 — livré, avec la vérification §5 et deux écarts à ta prévision
+
+**Le correctif** : `raceRunBand()` dans le prédicteur (centre = ce que `predict()` émet — Riegel
+× `TRI_RUN.fatigue`, exposant B-21 compris ; largeur = `RN_MARA_DEMI_LARGEUR` de B-22 — **zéro
+constante nouvelle**, le contrat du ticket tient) ; substitution par `refs.runMara`, la mécanique
+`bikeRp` reprise telle quelle. La circularité que ton §7 nommait est réelle (les heures de course
+se mesurent sur le plan) : résolue par **une seule itération**, ta résolution sanctionnée — on
+construit, on mesure, on reconstruit UNE fois ; `refs` ne pilote que du texte, la structure des
+deux passes est identique.
+
+**T-16c** (produit sport × format, de bout en bout : bande lue dans le `det` ÉMIS, leg lu dans
+`predict()` du même profil) : **rouge avant sur 3 formats sur 4**, vert après, `attendu`
+basculé dans le même commit.
+
+**Écart n°1 avec ta prévision** (« essentiel sur Full, marginal 70.3, nul S/M ») : les QUATRE
+formats bougent — 145 profils (Full 54, M 31, S 30, 70.3 30), un seul champ feuille
+(`sessions[].det` ×1476). La bande statique était fausse dans **les deux sens** : trop RAPIDE
+pour Full (l'écart que tu visais), mais trop LENTE de ~50 s/km pour S et M — un leg de 5-10 km
+se court plus vite que « l'allure marathon » d'un coureur. Seul 70.3, le format sur lequel la
+bande avait manifestement été calibrée, recouvrait déjà.
+
+**Écart n°2 — un défaut dans ma propre passe, attrapé par le diff avant recapture** : ma
+première écriture capturait l'état de troncature APRÈS la première `buildDays` — troncature
+no-op, et la seconde passe DUPLIQUAIT les décisions (mesuré : 11 → 12 sur
+`tri/Full/dispo-weekend`, +1 warning). Corrigé (capture AVANT toute passe), re-mesuré : plus
+aucun écart de décisions ni de warnings.
+
+**Vérification §5 (classe d'intensité)** : `zoneClass("rn.mara")` classe par SUFFIXE — aveugle
+à la bande, comme tu le soupçonnais. Conséquence post-B-25 : sur **M**, la bande dérivée
+(0,97–1,03 × seuil) est un effort AU SEUIL compté « modéré », quand `rn.thr` (1,00–1,05) compte
+« dur ». Le précédent existe : `bk.rp` est classé PAR SA BANDE depuis R20.4 (`rpBand` passé à
+`zoneClass`). Le fix symétrique (passer `runMara` à la classification) change le budget C26 de
+la population tri — **rattaché au dossier V-08/B-02a comme demandé, non corrigé en silence**.
+
+**Duathlon** : voir la rectification sous la table 2.0 — le R1 émet bien `rn.mara` (« allure
+cible », sans chiffre), c'est le chantier symétrique de B-25 (deux legs, deux sens), pas couvert
+par lui ; et son step porte `intensity=[object Object]`, défaut antérieur consigné pour 2.1.
 
 ---
 
