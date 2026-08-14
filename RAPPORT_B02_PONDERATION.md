@@ -75,3 +75,65 @@ chiffres publiés à la première exécution étaient donc légèrement faux : p
 concentration 80,3 %, contre **118 (12,5 %) et 69,5 %** une fois le classificateur du moteur
 importé au lieu d'être réécrit. Le verdict du critère 2 en dépendait entièrement — 80,3 % le
 donnait pour acquis, la mesure fidèle le refuse. R11.1 vaut aussi pour l'instrument qui juge.
+
+---
+
+# Suite (14/08, après l'arbitrage `ARBITRAGES_B02_ET_SCEAU`)
+
+## Critère 1' — mesuré PROPRE
+
+`node scripts/mesureB02fp.mjs`, sur les **38 profils tri** que la pondération ajoute et que le
+drapeau exemptait. D'où viennent leurs minutes dures pondérées :
+
+| zone | part |
+|---|---|
+| `rn.mara` (allure course, classée dure PAR SA BANDE depuis `d846352`) | **56,3 %** |
+| `bk.vo2` | 30,9 % |
+| `rn.vo2` | 8,6 % |
+| `sw.css` | 4,2 % |
+
+**Zéro artefact** : aucune zone de repli, aucun leg de brick sans zone, aucune classe obtenue
+par défaut. Les parts dures vont de **13,8 à 21,9 %** du volume hebdomadaire pour un plafond à
+13,2 % (12 % × tolérance) — la morsure est réelle, pas marginale. Seuls 10 profils sur 38 ont un
+excès ≤ 5 min (le bruit de quantification d'une répétition). **Le critère 1' est satisfait.**
+
+## ⚠ ÉCRITE, MESURÉE, PUIS RETIRÉE — elle coûte deux garanties arbitrées
+
+La pondération a été écrite en entier (plafond `clamp(12 %, 25, 60)` composé en `min()` avec
+C26b pour ne jamais desserrer la protection tissu conjonctif ; minutes pondérées par la
+discipline du STEP, ventilation produite **une seule fois** par le classificateur ; coupe et
+mesure alignées, refs de l'athlète threadées jusqu'au cutter). **`audit:v1` 459 vert,
+`audit:v2` 594 vert, `audit:v7` vert, invariants 22×54 verts.**
+
+**Mais le banc v6 passe de 73 verts / 0 régression à 71 / 2 :**
+
+| test | ce qu'il garde | mesuré avec B-02 |
+|---|---|---|
+| **C30-A** | la sortie longue des coureurs, valeurs épinglées | `10k/inter/4:30` **59 → 54** · `5k/inter/8:30` **69 → 55** · `semi/inter/4:30` **120 → 98** |
+| **O-21b** | « aucune allure ne perd une séance ni ne gagne un plan » | fréquence des semaines de récup **dépendante de l'allure** : 4:30 → 3, les trois autres → 2 |
+
+**Vérifié que ce n'est PAS mon ordonnancement** : l'ordre séquentiel (plafond avant le point
+fixe) et la convergence conjointe (les deux dans la même boucle bornée) donnent **exactement les
+mêmes deux régressions**. Elles viennent de la règle elle-même — un plafond proportionnel plus
+serré retire de la qualité, la semaine rétrécit, et la chaîne I14b → C30b rend moins à la sortie
+longue. O-21b est plus gênant encore : c'est la famille O-21 que ce chantier ferme depuis trois
+lots, et B-02 la rouvre par un autre chemin.
+
+**Je n'ai donc pas livré.** `src/` est revenu à l'état vert (73 verts, 0 régression) ; la mesure,
+elle, reste — `scripts/mesureB02.mjs` et `scripts/mesureB02fp.mjs`. Trois issues, à ton
+arbitrage :
+
+- **(a) Accepter et ré-épingler** C30-A et O-21b sur leurs nouvelles valeurs. C'est défendable —
+  un plafond plus juste change ce que les témoins photographient — mais C30-A porte TA décision
+  sur les coureurs lents, et O-21b porte l'invariant d'indépendance à l'allure. Ré-épingler
+  efface ce qu'ils gardaient.
+- **(b) Tenir B-02 jusqu'à ce que la chaîne encaisse** : rendre C30b et la fréquence de récup
+  insensibles au retrait de qualité, puis réécrire la pondération. C'est le chantier honnête,
+  et il est plus gros que B-02.
+- **(c) Renoncer au plafond proportionnel et garder la pondération SEULE** sur le plafond absolu
+  actuel (C26/C26b) : la pondération corrige les 34 faux positifs duathlon sans resserrer le
+  plafond, donc sans retirer de qualité. **Non mesuré** — c'est la variante que je mesurerais en
+  premier si tu veux une quatrième voie.
+
+**Le reste de ton ordre est intact** : T-27 (le sceau) reste à écrire avant la Phase 3, et
+l'instrumentation de `reconcileDeclaredVolume` reste la condition de sortie d'O-35.
