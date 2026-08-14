@@ -12,6 +12,20 @@
  * la source de ces signaux, comme documenté dans readinessSource.ts.
  */
 import type { CompletedSession } from "./readinessSource.ts";
+/**
+ * B2 (arbitrage du STOP de Phase 2) — LA RÈGLE « FTP ≈ 95 % DES 20 MIN », ÉCRITE UNE FOIS.
+ *
+ * Elle vivait en DEUX sites : ici (import FIT) et `ui/steps.js` (import Strava) — la ligne
+ * de traçabilité à deux définitions que ZENNA_EXACTITUDE a bloquée. C'est une ESTIMATION,
+ * pas une conversion : le rapport réel varie individuellement (~92-97 % selon la capacité
+ * anaérobie) — 0,95 est le milieu d'usage des calculateurs publics (protocole Coggan 20 min).
+ * L'UI la consomme via `EBV2.ftpFromBest20` ; en changer la valeur ne se fait qu'ICI.
+ */
+export const FTP_BEST20_FACTOR = 0.95;
+export function ftpFromBest20(bestWatts: number): number {
+  return Math.round(bestWatts * FTP_BEST20_FACTOR);
+}
+
 import { assertImportSize } from "./importLimits.ts";
 import { testDansBornes } from "../engine/constraintMatrix.ts";
 
@@ -153,7 +167,7 @@ export function fitToImport(sessions: FitSession[]): FitImport {
     if (s.sport === "bk" && s.minutes >= 20) {
       const p = s.normPowerW || s.avgPowerW;
       // R23.1 — une mesure hors bornes physiologiques n'entre pas dans le journal, et le DIT.
-      const ftpV = p && p > 0 ? testDansBornes("ftp", Math.round(p * 0.95)) : null;
+      const ftpV = p && p > 0 ? testDansBornes("ftp", ftpFromBest20(p)) : null;
       if (ftpV != null) tests.push({ type: "ftp", value: ftpV, date: s.date, source: "FIT (sortie " + s.minutes + "min)" });
       else if (p && p > 0) notes.push("Sortie vélo du " + s.date + " : puissance hors bornes physiologiques (" + Math.round(p) + " W) — FTP non retenue.");
       else notes.push("Sortie vélo du " + s.date + " sans puissance : FTP non estimée (capteur requis).");

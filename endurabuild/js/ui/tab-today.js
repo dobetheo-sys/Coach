@@ -9,7 +9,7 @@
 // arrivent après le bloc « Ta préparation », donc après le check-in dont ils dépendent.
 import { S, $, ebSave, fmtDay, todayISO } from "../state.js";
 import { checkinSlideshowHTML, bindCheckinSlideshow, pointLabelInline } from "./checkin.js";
-import { loadChartSVG, bindLoadChart, historyCardHTML, readinessCardHTML } from "./plan-view.js";
+import { chargeChartSVG, chargeChartLegend, historyCardHTML, readinessCardHTML } from "./plan-view.js";
 import { nutritionCardHTML, energyCardHTML } from "./tab-nutrition.js";
 import { momentHTML, painBannerHTML, bindPainBanner, sickToggleHTML, bindSickToggle, heroSessionHTML, feedbackModal, showCongrats } from "./session-life.js";
 import { readinessDoneToday, applyReadiness, fetchWeather } from "./readiness.js";
@@ -235,9 +235,9 @@ export function renderTabToday(plan) {
   // qui se décide aujourd'hui : la séance, sa validation, et le résultat d'une course du jour.
   html += '<div class="card"><div class="eyebrow">Ta préparation</div>';
   html += raceResultCardHTML(plan);
-  html += '<div class="load-card"><div class="load-title">Charge estimée — fitness · fatigue · forme</div>' + loadChartSVG(plan)
-    + '<div class="load-leg"><span style="color:var(--zn-swim,#2e6bff)">▬ Fitness (CTL)</span> · <span style="color:var(--zn-fatigue,#ff7a1a)">▬ Fatigue (ATL)</span> · <span style="color:var(--zn-form,#00a376)">▬ Forme (TSB)</span></div>'
-    + '<div class="load-sub">Estimée depuis la durée et l’intensité de chaque séance. La forme remonte à l’affûtage — c’est le but. Séances cochées : <b>' + _doneN + " / " + _totalS + "</b>" + (_totalS ? " (" + Math.round((_doneN / _totalS) * 100) + "%)" : "") + ".</div></div>";
+  html += '<div class="load-card"><div class="load-title">Charge par intensité — prévu · validé</div>' + chargeChartSVG(plan)
+    + chargeChartLegend()
+    + '<div class="load-sub">Séances cochées : <b>' + _doneN + " / " + _totalS + "</b>" + (_totalS ? " (" + Math.round((_doneN / _totalS) * 100) + "%)" : "") + ".</div></div>";
   html += historyCardHTML(plan);
   html += "</div>";
   // R6 — le check-in du matin doit rester accessible : celui qui a déjà répondu (ou dont
@@ -260,7 +260,6 @@ export function renderTabToday(plan) {
   html += "</div>";
   html += '<div style="text-align:center;margin:4px 0 10px"><button class="btn" id="tdRedoCheckin" type="button" style="font-size:var(--fs-sm);padding:8px 14px;min-height:44px">↻ Refaire mon ' + pointLabelInline() + '</button></div>';
   $("screen").innerHTML = html;
-  bindLoadChart();
   bindSickToggle(plan, today);
   // R24.9 — la météo affine le ravito en différé, sans re-rendre l'onglet ni défaire le repli.
   // R-ZENNA — et ce différé se VOIT : quand la température arrive, le bloc se rejoue en fondu

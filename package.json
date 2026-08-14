@@ -46,7 +46,8 @@
     "check:tokens": "node scripts/checkZennaTokens.mjs",
     "check:disc": "node scripts/checkDisciplineColors.mjs",
     "check:dup": "node scripts/checkEngineDup.mjs",
-    "check:hosts": "node scripts/checkExternalHosts.mjs"
+    "check:hosts": "node scripts/checkExternalHosts.mjs",
+    "check:noop": "node scripts/checkEngineIsolation.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

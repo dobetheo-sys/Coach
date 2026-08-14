@@ -7,133 +7,129 @@ import { renderTabs, invalidatePlan, ensurePlan } from "./tabs.js";
 import { logProjection } from "../projection-log.js"; // A-5 — enregistre, ne reboucle jamais
 import { DISC, CHARGE } from "./icons.js";
 
-// LES ZONES DE TRAIL ET `sw.vo2` MANQUAIENT ICI DEPUIS LEUR CRÉATION (R7 pour le trail,
-// R5.4 pour la nage VO2max) — trouvé en auditant le reskin R-ZENNA, qui a besoin de la même
-// table pour colorer sa barre de zones.
+// B1 (arbitrage du STOP de Phase 2, 14/08/2026) — LE GRAPHE DE CHARGE VIENT DU MOTEUR.
 //
-// Conséquence, et elle n'est pas cosmétique : `estimateTSS` retombe sur `0.70` pour toute zone
-// inconnue, et la charge varie en IF². Un bloc `tr.vam` (« RPE 9/10 — montée à fond ») était
-// donc compté à (0.70/1.10)² = **40 % de sa valeur**, un `tr.asc` (seuil) à 51 %, pendant que
-// `tr.easyup` était SUR-compté de 36 %. La courbe fitness/fatigue/forme de TOUT le sport trail
-// était donc aplatie : le dur sous-évalué, le facile sur-évalué. Le trail est un sport de
-// premier rang depuis R7 (14 séances dédiées) ; sa charge était estimée sur une seule valeur.
+// L'ancien graphe était un MODÈLE ENTIER côté affichage : un TSS estimé par une table `_IFZ`
+// (dupliquée ×3 dans le dépôt), une convolution CTL 42 j / ATL 7 j, et une courbe « Forme » —
+// pendant que R14 REJETTE explicitement CTL/ATL dans le moteur, avec la raison écrite (unité
+// de stress non commensurable entre nage/vélo/course, constantes de population 42/7 à variance
+// individuelle énorme, modèle rétrospectif sur un produit prospectif). Une visualisation sur
+// laquelle l'athlète AGIT est un modèle, quel que soit son nom : celle-ci pouvait contredire
+// le verdict quotidien du `dailyAdjuster` SUR LE MÊME ÉCRAN, sans que l'athlète sache lequel
+// croire. Décision du fondateur : ni brancher (ajouter CTL/ATL au moteur renverserait R14),
+// ni assumer (« doctrine propre » = seconde doctrine non validée) — REDESSINER depuis la seule
+// comptabilité que le moteur possède : `_v2.intensity.weekly`, les minutes facile/modéré/dur
+// par semaine, LE classificateur de C26. Prévu contre validé, un seul classificateur.
 //
-// Les valeurs ne sont pas inventées : chaque zone reprend l'IF de la zone de COURSE qui partage
-// son ancrage FC déclaré dans `src/generator/renderer.ts` (`hr: z1 | z2 | tempo | seuil | null`).
-// Deux d'entre elles n'ont même pas besoin d'analogie — `tr.flat` et `tr.flatthr` ont des `ref`
-// et des multiplicateurs IDENTIQUES à `rn.easy` et `rn.thr`. `sw.vo2` (0.90 × CSS, plus rapide
-// que `sw.speed` à 0.94) s'aligne sur les autres VO2max (1.10).
-//
-// ⚠ `_IFZ` est DUPLIQUÉ dans `Coach_Pro_V1.5.html` (monolithe gelé) et `scripts/splitPwa.py`.
-// Seule cette copie-ci est servie à l'utilisateur ; la dette de duplication est signalée, pas
-// résolue ici (elle demande de décider du sort du monolithe).
-const _IFZ={"bk.z2":.65,"bk.ss":.90,"bk.vo2":1.12,"bk.frc":.82,"bk.rp":.84,"bk.thr":1.0,
-  "rn.easy":.68,"rn.mara":.84,"rn.thr":.98,"rn.vo2":1.10,"rn.rec":.60,
-  "sw.easy":.65,"sw.aero":.75,"sw.css":.95,"sw.speed":1.08,"sw.vo2":1.10,
-  "tr.easyup":.60,"tr.flat":.68,"tr.hike":.68,"tr.climb":.84,"tr.asc":.98,"tr.flatthr":.98,"tr.vam":1.10};
+// Meurent ici : `estimateTSS`, `_IFZ` (la copie UI — le cliquet Z-03 descend de 3 à 2),
+// `loadSeries`/`weekLoadSeries` (la marche CTL/ATL), la courbe « Forme » — et avec eux la
+// collision `--zn-swim` sur la courbe Fitness (dossier O-31/Z-11) et le bloqueur B1 de
+// ZENNA_EXACTITUDE. Ce qu'on PERD est dit à l'athlète sous le graphe, plutôt que compensé
+// par un autre nombre inventé (interdit explicite de l'arbitrage).
+
+// Le MÊME vocabulaire que la carte « Répartition des intensités », quelques lignes plus bas —
+// une écriture de plus de ces trois hex serait la dette que Z-01 traque ; ici on les partage.
+/** Minutes d'un step (durée directe, ou distance convertie grossièrement). SURVIT à B1 :
+ *  ce n'est pas le modèle TSS, c'est l'estimateur de LARGEUR de la barre de zones
+ *  (session-life/znZoneBar) — proportionnel, donc tolérant à sa propre grossièreté.
+ *  Sa conversion distance→minutes est une approximation UI (2 min/100 m nage, 5 min/km
+ *  course) distincte des refs du moteur : dette de traçabilité MINEURE, notée en 2.1. */
 function _blkMin(st){const r=st.reps||1;if(st.durationMin!=null)return r*st.durationMin;if(st.distanceM!=null)return st.d==="sw"?r*st.distanceM/100*2:r*st.distanceM/1000*5;return 0;}
-function estimateTSS(s){if(!s||!s.steps||!s.steps.length)return 0;let t=0;s.steps.forEach(st=>{const mn=_blkMin(st);const IF=st.role==="body"?(_IFZ[st.zone]||0.70):0.5;t+=(mn/60)*IF*IF*100;});return Math.round(t);}
-// R29 (Bilan, sous-onglet Semaine) — le graphique JOUR PAR JOUR d'une semaine a besoin des
-// MÊMES points que celui-ci calcule déjà avant de les réduire à un par semaine (`byWeek`) :
-// `out` en contient un par JOUR RÉEL. On extrait donc le calcul commun dans `_loadSeriesDaily`
-// plutôt que de le réécrire — une seconde marche CTL/ATL divergerait de celle-ci au premier
-// paramètre touché (R11.1). `loadSeries` garde exactement son ancien comportement (un point par
-// semaine) pour ses appelants existants ; `weekLoadSeries` lit la même série au grain du jour.
-function _loadSeriesDaily(plan){
-  const days=[];plan.weeks.forEach(w=>w.days.forEach(d=>{let tss=0;d.sessions.forEach(s=>{if(s.d!=="rs")tss+=estimateTSS(s);});days.push({week:w.num,jour:d.jour,date:d.date,tss:tss,recup:w.isRecup});}));
-  const seed=days.slice(0,7).reduce((a,d)=>a+d.tss,0)/7||0;let ctl=seed,atl=seed;const out=[];
-  days.forEach(d=>{const tsb=ctl-atl;ctl+=(d.tss-ctl)/42;atl+=(d.tss-atl)/7;out.push({week:d.week,jour:d.jour,date:d.date,ctl:ctl,atl:atl,tsb:tsb});});
-  return out;
+
+const CHARGE_CLASSES = [
+  { k: "e", label: "facile", col: "#00a376" },
+  { k: "m", label: "modéré", col: "#f0b429" },
+  { k: "h", label: "dur", col: "#e63946" },
+];
+
+/** Prévu (le moteur l'émet) et VALIDÉ (les ✓) par classe et par semaine. Le validé passe par
+ *  `EBV2.sessionSplit` — le classificateur du MOTEUR, jamais une table locale. La clé ✓ est
+ *  celle de session-life : `w.num|jour|si`. */
+function chargeSeries(plan){
+  const weekly=(plan&&plan._v2&&plan._v2.intensity&&plan._v2.intensity.weekly)||[];
+  const done=(S.answers&&S.answers.done)||{};
+  const fait={};
+  (plan.weeks||[]).forEach(w=>w.days.forEach(d=>d.sessions.forEach((s,si)=>{
+    if(s.d==="rs"||!done[w.num+"|"+d.jour+"|"+si])return;
+    let sp=null;
+    try{sp=(globalThis.EBV2&&EBV2.sessionSplit)?EBV2.sessionSplit(s,S.answers):null;}catch(e){}
+    const f=fait[w.num]||(fait[w.num]={e:0,m:0,h:0});
+    if(sp){f.e+=sp.easyMin||0;f.m+=sp.modMin||0;f.h+=sp.hardMin||0;}
+    else f.e+=s.min||0; // moteur indisponible : les minutes comptent quand même, en facile
+  })));
+  return weekly.map(w=>({num:w.num,prevu:{e:w.e,m:w.m,h:w.h},fait:fait[w.num]||{e:0,m:0,h:0}}));
 }
-function loadSeries(plan){
-  const out=_loadSeriesDaily(plan);
-  // échantillon hebdo = dernière valeur de chaque semaine
-  const byWeek={};out.forEach(o=>byWeek[o.week]=o);
-  return Object.keys(byWeek).map(k=>byWeek[k]);
+
+/** Barres hebdomadaires : la silhouette PRÉVUE en teinte atténuée, les minutes VALIDÉES en
+ *  pleine couleur par-dessus — même échelle, mêmes classes, aucun second modèle. Le trait
+ *  vertical marque la semaine courante (R24.6, conservé de l'ancien graphe). */
+function chargeChartSVG(plan){
+  const serie=chargeSeries(plan);
+  if(!serie.length)return "";
+  const W=Math.max(320,serie.length*10),H=86,PT=10,PB=14,ih=H-PT-PB;
+  const mx=Math.max(30,...serie.map(o=>o.prevu.e+o.prevu.m+o.prevu.h));
+  const bw=W/serie.length;
+  const tIso=todayISO();let wkNow=null;
+  plan.weeks.forEach(w=>w.days.forEach(d=>{if(d.date===tIso)wkNow=w.num;}));
+  let g='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" style="display:block;max-width:100%" role="img" aria-label="Charge par semaine : minutes prévues et validées, par intensité">';
+  serie.forEach((o,i)=>{
+    const x=i*bw+1,wB=Math.max(3,bw-2);
+    let y=PT+ih;
+    CHARGE_CLASSES.forEach(c=>{const hPix=(o.prevu[c.k]/mx)*ih;y-=hPix;
+      if(hPix>0.4)g+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+wB.toFixed(1)+'" height="'+hPix.toFixed(1)+'" fill="'+c.col+'" opacity=".26"/>';});
+    let y2=PT+ih;
+    CHARGE_CLASSES.forEach(c=>{const hPix=(Math.min(o.fait[c.k],o.prevu[c.k]*1.5)/mx)*ih;y2-=hPix;
+      if(hPix>0.4)g+='<rect x="'+(x+wB*0.22).toFixed(1)+'" y="'+y2.toFixed(1)+'" width="'+(wB*0.56).toFixed(1)+'" height="'+hPix.toFixed(1)+'" fill="'+c.col+'"/>';});
+    g+='<title>S'+o.num+' · prévu '+(o.prevu.e+o.prevu.m+o.prevu.h)+"min · validé "+(o.fait.e+o.fait.m+o.fait.h)+"min</title>";
+    // R24.6 (décision fondateur, 06/08) SURVIT au redessin B1 : le marqueur « tu es ici »
+    // reste, ancré sur les dates réelles — seule la courbe sous lui a changé de modèle.
+    if(o.num===wkNow)g+='<line x1="'+(x+wB/2).toFixed(1)+'" y1="'+PT+'" x2="'+(x+wB/2).toFixed(1)+'" y2="'+(PT+ih+4)+'" stroke="var(--zn-ink,#16130e)" stroke-width="1.5" stroke-dasharray="2 3"/>'
+      +'<text x="'+Math.min(W-64,Math.max(2,x+wB/2+4)).toFixed(1)+'" y="'+(PT+8)+'" font-size="9" fill="var(--zn-muted,#635b4a)">tu es ici</text>';
+  });
+  g+="</svg>";
+  return '<div style="overflow-x:auto">'+g+"</div>";
 }
-/** La même marche CTL/ATL/TSB, filtrée aux jours RÉELS d'UNE semaine — pour le graphique
- *  fenêtré du Bilan (R29). La marche reste calculée sur tout l'historique qui précède (l'ATL/CTL
- *  d'un jour dépend de ce qui vient avant) ; seul l'AFFICHAGE se recadre sur 7 jours. */
-function weekLoadSeries(plan, wNum){
-  return _loadSeriesDaily(plan).filter(o=>o.week===wNum);
-}
-/** Petit graphique NATUREL (pas de défilement : 7 points tiennent toujours) pour une semaine.
- *  Mêmes classes que `loadChartSVG` (`zn-chart-line`, `zn-today-dot`) — `znDrawChart()` les
- *  trace de la même façon, aucun second mécanisme d'animation. */
-function weekLoadChartSVG(series){
-  if(!series.length)return"";
-  const W=320,H=70,PL=4,PR=4,PT=8,PB=8,iw=W-PL-PR,ih=H-PT-PB;
-  const maxL=Math.max(1,...series.map(o=>Math.max(o.ctl,o.atl)));
-  const tsbMax=Math.max(10,...series.map(o=>Math.abs(o.tsb)));
-  const x=i=>PL+(series.length<2?iw/2:i/(series.length-1)*iw);
-  const yL=v=>PT+ih-(v/maxL)*ih;
-  const yB=v=>PT+ih/2-(v/tsbMax)*(ih/2);
-  const line=(sel,col)=>"<polyline class=\"zn-chart-line\" fill=\"none\" stroke=\""+col+"\" stroke-width=\"2\" points=\""+series.map((o,i)=>x(i).toFixed(1)+","+sel(o).toFixed(1)).join(" ")+"\"/>";
-  let g="<svg viewBox=\"0 0 "+W+" "+H+"\" width=\"100%\" height=\""+H+"\" style=\"display:block\" role=\"img\" aria-label=\"Ce que cette semaine a changé — fitness, fatigue, forme\">";
-  g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"var(--zn-sep-line,#0002)\" stroke-dasharray=\"3 3\"/>";
-  g+=line(o=>yB(o.tsb),"var(--zn-form,#00a376)")+line(o=>yL(o.ctl),"var(--zn-swim,#2e6bff)")+line(o=>yL(o.atl),"var(--zn-fatigue,#ff7a1a)");
-  const last=series[series.length-1];
-  g+="<circle class=\"zn-today-dot\" cx=\""+x(series.length-1).toFixed(1)+"\" cy=\""+yB(last.tsb).toFixed(1)+"\" r=\"3\" fill=\"var(--zn-form,#00a376)\" stroke=\"var(--zn-ink,#16130e)\" stroke-width=\"1\"/>";
+
+/** La même lecture, au grain du JOUR, pour le Bilan de la semaine (R29) : chaque jour porte
+ *  ses minutes prévues par classe (le classificateur du moteur, séance par séance) et la
+ *  part validée en pleine couleur. */
+function weekChargeChartSVG(plan, wNum){
+  const w=(plan.weeks||[]).find(x=>x.num===wNum);
+  if(!w)return "";
+  const done=(S.answers&&S.answers.done)||{};
+  const jours=w.days.map(d=>{
+    const prevu={e:0,m:0,h:0},fait={e:0,m:0,h:0};
+    d.sessions.forEach((s,si)=>{
+      if(s.d==="rs")return;
+      let sp=null;
+      try{sp=(globalThis.EBV2&&EBV2.sessionSplit)?EBV2.sessionSplit(s,S.answers):null;}catch(e){}
+      const add=(cible)=>{if(sp){cible.e+=sp.easyMin||0;cible.m+=sp.modMin||0;cible.h+=sp.hardMin||0;}else cible.e+=s.min||0;};
+      add(prevu);
+      if(done[w.num+"|"+d.jour+"|"+si])add(fait);
+    });
+    return {jour:d.jour,prevu,fait};
+  });
+  const W=320,H=70,PT=8,PB=10,ih=H-PT-PB,bw=W/jours.length;
+  const mx=Math.max(30,...jours.map(j=>j.prevu.e+j.prevu.m+j.prevu.h));
+  let g='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" style="display:block;max-width:100%" role="img" aria-label="Charge de la semaine, jour par jour, par intensité">';
+  jours.forEach((j,i)=>{
+    const x=i*bw+3,wB=Math.max(4,bw-6);
+    let y=PT+ih;
+    CHARGE_CLASSES.forEach(c=>{const hPix=(j.prevu[c.k]/mx)*ih;y-=hPix;
+      if(hPix>0.4)g+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+wB.toFixed(1)+'" height="'+hPix.toFixed(1)+'" fill="'+c.col+'" opacity=".26"/>';});
+    let y2=PT+ih;
+    CHARGE_CLASSES.forEach(c=>{const hPix=(j.fait[c.k]/mx)*ih;y2-=hPix;
+      if(hPix>0.4)g+='<rect x="'+(x+wB*0.22).toFixed(1)+'" y="'+y2.toFixed(1)+'" width="'+(wB*0.56).toFixed(1)+'" height="'+hPix.toFixed(1)+'" fill="'+c.col+'"/>';});
+  });
   g+="</svg>";
   return g;
 }
-// Retour du fondateur (07/08/2026) : « le graphique de charge, on a enfin notre position, mais
-// c'est illisible sur téléphone. » Cause mesurée : `width="100%"` avec un `viewBox` dont la
-// largeur suit le nombre de SEMAINES (22 px/semaine) — sur un plan court ça tient dans l'écran,
-// mais sur une préparation longue (un 70.3 à 43 semaines fait W=946) le conteneur mobile
-// (~350 px) FORCE le SVG à se comprimer à 37 % de sa taille dessinée. Tout rétrécit avec —
-// traits, ET texte : le "9" px du plancher typographique (R16.8) devenait ~3 px, illisible par
-// construction, pas par accident de rendu.
-// Le SVG n'est donc plus mis à l'échelle : il se dessine à sa taille NATURELLE (1 unité = 1 px,
-// donc le plancher de 9 px reste 9 px), dans un conteneur qui DÉFILE horizontalement plutôt que
-// de compresser (le même principe que les tableaux/grilles larges du produit). `bindLoadChart`
-// centre le défilement sur « tu es ici » au premier rendu — sur un plan de 43 semaines, personne
-// ne doit chercher sa position en faisant défiler dix écrans.
-function loadChartSVG(plan){
-  const S2=loadSeries(plan);if(!S2.length)return"";
-  const W=Math.max(320,S2.length*22),H=150,PL=34,PR=10,PT=12,PB=22,iw=W-PL-PR,ih=H-PT-PB;
-  const maxL=Math.max(1,...S2.map(o=>Math.max(o.ctl,o.atl)));
-  const tsbMax=Math.max(10,...S2.map(o=>Math.abs(o.tsb)));
-  const x=i=>PL+(S2.length<2?iw/2:i/(S2.length-1)*iw);
-  const yL=v=>PT+ih-(v/maxL)*ih;              // CTL/ATL (0..max)
-  const yB=v=>PT+ih/2-(v/tsbMax)*(ih/2);      // TSB (centré sur 0)
-  // R-ZENNA — `zn-chart-line` permet à `znDrawChart()` de TRACER les trois courbes au lieu de
-  // les faire apparaître (stroke-dashoffset animé). Purement décoratif : la classe ne change
-  // ni la géométrie ni les couleurs, et hors thème rien ne la lit.
-  const line=(sel,col,w)=>"<polyline class=\"zn-chart-line\" fill=\"none\" stroke=\""+col+"\" stroke-width=\""+w+"\" points=\""+S2.map((o,i)=>x(i).toFixed(1)+","+sel(o).toFixed(1)).join(" ")+"\"/>";
-  let g="<svg viewBox=\"0 0 "+W+" "+H+"\" width=\""+W+"\" height=\""+H+"\" style=\"display:block\" role=\"img\" aria-label=\"Courbe de charge CTL ATL TSB\">";
-  g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"var(--zn-sep-line,#0002)\" stroke-dasharray=\"3 3\"/>";
-  g+=line(o=>yB(o.tsb),"var(--zn-form,#00a376)",2)+line(o=>yL(o.ctl),"var(--zn-swim,#2e6bff)",2.5)+line(o=>yL(o.atl),"var(--zn-fatigue,#ff7a1a)",1.8);
-  g+="<text x=\"2\" y=\""+(PT+8)+"\" font-size=\"9\" fill=\"var(--zn-muted,#635b4a)\">charge</text>";
-  // R24.6 (retour fondateur, 06/08) — « montre visuellement là où on en est » : un trait
-  // vertical à la semaine COURANTE, ancré sur les dates réelles du plan (R7), avec un point
-  // sur la courbe de fitness. Pas de marqueur hors plan (avant le départ ou après la course).
-  let xNow=null;
-  {
-    const tIso=todayISO();let wkNow=null;
-    plan.weeks.forEach(w=>w.days.forEach(d=>{if(d.date===tIso)wkNow=w.num;}));
-    const iNow=wkNow!=null?S2.findIndex(o=>o.week===wkNow):-1;
-    if(iNow>=0){
-      const xn=x(iNow);xNow=xn;
-      g+="<line x1=\""+xn.toFixed(1)+"\" y1=\""+PT+"\" x2=\""+xn.toFixed(1)+"\" y2=\""+(PT+ih)+"\" stroke=\"var(--zn-ink,#16130e)\" stroke-width=\"1.5\" stroke-dasharray=\"2 3\"/>";
-      g+="<circle class=\"zn-today-dot\" cx=\""+xn.toFixed(1)+"\" cy=\""+yL(S2[iNow].ctl).toFixed(1)+"\" r=\"3.5\" fill=\"var(--zn-swim,#2e6bff)\" stroke=\"var(--zn-ink,#16130e)\" stroke-width=\"1\"/>";
-      const gauche=xn>W-70;
-      g+="<text x=\""+(gauche?xn-5:xn+5).toFixed(1)+"\" y=\""+(PT+ih-4)+"\" font-size=\"9\" font-weight=\"bold\" fill=\"var(--zn-ink,#16130e)\""+(gauche?" text-anchor=\"end\"":"")+">tu es ici</text>";
-    }
-  }
-  g+="</svg>";
-  return "<div id=\"loadChartWrap\" style=\"overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px auto\""
-    +(xNow!=null?" data-now-x=\""+xNow.toFixed(1)+"\"":"")+">"+g+"</div>";
-}
-/** Centre le défilement horizontal sur « tu es ici » — sans ça, une prépa longue oblige à
- *  chercher sa position à tâtons. Sans effet (et sans erreur) si le graphique est absent ou
- *  tient déjà tout entier dans son conteneur. À appeler après insertion dans le DOM. */
-function bindLoadChart(){
-  const el=document.getElementById("loadChartWrap");
-  if(!el)return;
-  const xn=parseFloat(el.dataset.nowX);
-  if(!isFinite(xn))return;
-  el.scrollLeft=Math.max(0,xn-el.clientWidth/2);
+
+/** La légende partagée des deux graphes — et la phrase qui DIT ce qui a disparu (arbitrage :
+ *  « une courbe de charge honnête vaut mieux qu'un TSB inventé »). */
+function chargeChartLegend(){
+  return '<div class="load-sub">'+CHARGE_CLASSES.map(c=>'<span style="color:'+c.col+'">▬ '+c.label+"</span>").join(" · ")
+    +' — teinte pâle = prévu, pleine = validé ✓. La courbe « Forme » a été retirée : elle sortait d’un modèle (TSS/CTL/ATL) que le moteur n’utilise pas — ce graphe montre la même comptabilité d’intensité que ton plan.</div>';
 }
 
 /* ============================================================
@@ -538,7 +534,7 @@ function decisionsCardHTML(plan){
 // Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
 // pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
 
-export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, bindLoadChart, loadSeries, weekLoadSeries, weekLoadChartSVG, renderPlan, readinessCardHTML, progressBarCardHTML, predictionViewHTML, journaliserProjection, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
+export { _blkMin, downloadPlan, driverBand, chargeChartSVG, weekChargeChartSVG, chargeChartLegend, renderPlan, readinessCardHTML, progressBarCardHTML, predictionViewHTML, journaliserProjection, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
 
 // ═══════════════ LE SOUS-ONGLET « PRÉDICTION » (R28) ═══════════════
 // Décision du fondateur (12/08/2026) : la prédiction quitte le repliable de la vue d'ensemble

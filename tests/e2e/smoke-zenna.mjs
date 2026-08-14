@@ -54,9 +54,14 @@ const { ok, report } = makeReporter();
   const zonesMoteur = [...new Set((lire("src/generator/renderer.ts").match(/^\s+"[a-z]{2}\.[a-z0-9]+":/gm) || [])
     .map((s) => s.trim().replace(/[":]/g, "")))];
   ok(zonesMoteur.length >= 20, "§0 — les zones du moteur sont lues depuis renderer.ts (" + zonesMoteur.length + ")");
+  // B1 (arbitrage du STOP de Phase 2, 14/08/2026) — la ligne `_IFZ` QUITTE cette boucle
+  // parce que la table est MORTE : le graphe de charge lit désormais `_v2.intensity.weekly`
+  // et `EBV2.sessionSplit`, le classificateur du moteur. La propriété que cette ligne gardait
+  // (« aucune zone du moteur ne tombe dans un repli silencieux ») est tenue PAR CONSTRUCTION
+  // côté graphe — et T-20 la garde côté classification. ZONE_LEVEL reste : c'est la dernière
+  // table UI de zones (la barre de séance), et elle peut encore trouer.
   for (const [nom, fichier, motif] of [
     ["ZONE_LEVEL (barre de zones)", "endurabuild/js/ui/zenna-motion.js", /const ZONE_LEVEL = \{[\s\S]*?\n\};/],
-    ["_IFZ (courbe de charge)", "endurabuild/js/ui/plan-view.js", /const _IFZ=\{[\s\S]*?\};/],
   ]) {
     const bloc = (motif.exec(lire(fichier)) || [""])[0];
     const connues = new Set((bloc.match(/"[a-z]{2}\.[a-z0-9]+"/g) || []).map((s) => s.replace(/"/g, "")));

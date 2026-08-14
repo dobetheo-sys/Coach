@@ -25,7 +25,7 @@ import { InAppSink } from "../coach/notificationSink.ts";
 import type { IngestedSession } from "../coach/deviationDetector.ts";
 import { parseActivityText } from "../readiness/gpxTcxParser.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
-import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
+import { importFitBytes, FIT_DERIVED_TESTS, ftpFromBest20 } from "../readiness/fitParser.ts";
 import { MAX_IMPORT_BYTES, assertImportSize, EBImportTooLarge } from "../readiness/importLimits.ts";
 import { hrvBaseline, classerHrv, hrvValide, type HrvMesure } from "../readiness/hrvBaseline.ts";
 import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
@@ -763,6 +763,27 @@ function prescribedMeanHours(plan: V1Plan): number | null {
  * décrit un instant, la médiane décrit ce que l'athlète vit. Les minutes de course d'un brick
  * sont comptées : elles sont dans ses steps, et un enchaînement fait courir.
  */
+/**
+ * B1 (arbitrage du STOP de Phase 2) — LE CLASSIFICATEUR DU MOTEUR, EXPOSÉ À L'AFFICHAGE.
+ *
+ * Le graphe de charge de l'UI comptait ses minutes avec sa propre table (`_IFZ`) et sa propre
+ * convolution : un modèle entier côté affichage, que R14 rejette côté moteur. Il consomme
+ * désormais `intensitySplit` — LE classificateur de C26 — pour les séances validées ; les
+ * minutes PRÉVUES viennent déjà de `_v2.intensity.weekly`. Les refs suivent les réponses
+ * courantes (mêmes parseurs que le plan) ; sans référence, les défauts d'`intensitySplit`
+ * s'appliquent (le comportement du moteur, jamais un second choix ici).
+ */
+function sessionSplitForUI(s: unknown, answers?: AppAnswers): { easyMin: number; modMin: number; hardMin: number } {
+  const a = answers ?? ({} as AppAnswers);
+  const css = a.css ? parsePaceSec(String(a.css), "swim") : 0;
+  const pace = a.pace ? parsePaceSec(String(a.pace), "run") : 0;
+  const refs = {
+    cssSecPer100m: css > 0 ? css : 130,
+    thrPaceSecPerKm: pace > 0 ? pace : 330,
+  };
+  return intensitySplit(s as never, refs as never);
+}
+
 function runHoursPerWeekOf(plan: V1Plan): number | null {
   const w = plan.weeks.filter((x) => !x.isRecup && ["dev", "spec", "peak"].includes(String(x.phase && x.phase.id)));
   if (!w.length) return null;
@@ -1119,6 +1140,10 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
 
 (globalThis as Record<string, unknown>).EBV2 = {
   buildPlan: buildPlanV2,
+  // B1 — le classificateur d'intensité du moteur, pour le graphe de charge (jamais une table UI)
+  sessionSplit: sessionSplitForUI,
+  // B2 — la règle « FTP ≈ 95 % des 20 min » : UNE écriture (fitParser), deux consommateurs
+  ftpFromBest20,
   adjustToday: adjustTodayV2,
   coachOnIngest: coachOnIngestV2,
   // S-8 — l'UI contrôle la taille AVANT de lire le fichier : la borne est celle du moteur,

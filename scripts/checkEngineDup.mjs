@@ -17,7 +17,7 @@ const compte = (fichiers, motif) => fichiers.reduce((n, f) => {
 }, 0);
 
 const DOUBLONS = [
-  { quoi: "_IFZ (table de zones d'intensité recopiée dans l'UI)", plafond: 3,
+  { quoi: "_IFZ (table de zones d'intensité recopiée dans l'UI)", plafond: 1, // B1 : copie UI morte ; reste le monolithe GELÉ (sa propre UI legacy) — descendu 3 → 1
     fichiers: ["endurabuild/js/ui/plan-view.js", "Coach_Pro_V1.5.html", "scripts/splitPwa.py"],
     motif: /_IFZ\s*=\s*\{/ },
 ];

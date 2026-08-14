@@ -16763,6 +16763,27 @@ function prescribedMeanHours(plan        )                {
  * décrit un instant, la médiane décrit ce que l'athlète vit. Les minutes de course d'un brick
  * sont comptées : elles sont dans ses steps, et un enchaînement fait courir.
  */
+/**
+ * B1 (arbitrage du STOP de Phase 2) — LE CLASSIFICATEUR DU MOTEUR, EXPOSÉ À L'AFFICHAGE.
+ *
+ * Le graphe de charge de l'UI comptait ses minutes avec sa propre table (`_IFZ`) et sa propre
+ * convolution : un modèle entier côté affichage, que R14 rejette côté moteur. Il consomme
+ * désormais `intensitySplit` — LE classificateur de C26 — pour les séances validées ; les
+ * minutes PRÉVUES viennent déjà de `_v2.intensity.weekly`. Les refs suivent les réponses
+ * courantes (mêmes parseurs que le plan) ; sans référence, les défauts d'`intensitySplit`
+ * s'appliquent (le comportement du moteur, jamais un second choix ici).
+ */
+function sessionSplitForUI(s         , answers             )                                                       {
+  const a = answers ?? ({}              );
+  const css = a.css ? parsePaceSec(String(a.css), "swim") : 0;
+  const pace = a.pace ? parsePaceSec(String(a.pace), "run") : 0;
+  const refs = {
+    cssSecPer100m: css > 0 ? css : 130,
+    thrPaceSecPerKm: pace > 0 ? pace : 330,
+  };
+  return intensitySplit(s         , refs         );
+}
+
 function runHoursPerWeekOf(plan        )                {
   const w = plan.weeks.filter((x) => !x.isRecup && ["dev", "spec", "peak"].includes(String(x.phase && x.phase.id)));
   if (!w.length) return null;
@@ -17119,6 +17140,8 @@ function coachOnIngestV2(sport        , answers            , ingested           
 
 (globalThis                           ).EBV2 = {
   buildPlan: buildPlanV2,
+  // B1 — le classificateur d'intensité du moteur, pour le graphe de charge (jamais une table UI)
+  sessionSplit: sessionSplitForUI,
   adjustToday: adjustTodayV2,
   coachOnIngest: coachOnIngestV2,
   // S-8 — l'UI contrôle la taille AVANT de lire le fichier : la borne est celle du moteur,

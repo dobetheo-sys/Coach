@@ -157,6 +157,11 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   Vérifié trois fois : tables MET contre puissance mesurée (N-02), `vol_max` contre le volume
   de course du plan livré (B-21, `runHoursPerWeekOf`), bande statique contre bande du
   prédicteur (B-25). (Même arbitrage.)
+- **Un commentaire qui affirme un invariant est accompagné d'un test, ou il est supprimé.**
+  Un invariant non gardé n'est pas un invariant : c'est un souhait. Quatrième occurrence
+  mesurée en un jour : le « seul classificateur » de nutritionCalculator, l'alignement déclaré
+  d'`_IFZ`, « rn.mara n'est prescrit qu'au marathon », et la frontière seuil recopiée — cette
+  dernière est la forme correcte, gardée par T-20. (Arbitrage du STOP de Phase 2, 14/08/2026.)
 
 - **Les propriétés visuelles LIÉES se mesurent ENSEMBLE, en un seul cycle** (consigne du
   fondateur, 12/08/2026). Couleur de badge, fond de carte et contraste dépendent du même token

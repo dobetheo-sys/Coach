@@ -139,7 +139,10 @@ ok(await page.locator("#ckSlide").count() === 0, "le diaporama disparaît après
 const screenTxt = await page.locator("#screen").textContent();
 ok(/Aujourd’hui/.test(screenTxt), "carte « Aujourd'hui » (séance du jour) affichée en premier");
 ok(/Prédiction de course|prédiction/i.test(screenTxt) || true, "prédiction présente sous la séance");
-ok(/Charge estimée/.test(screenTxt), "courbe charge/fatigue/forme présente");
+// B1 — le graphe vient du moteur désormais : le titre a changé AVEC le modèle, et
+// l'assertion vérifie aussi que l'ancien vocabulaire (Fitness/CTL) a bien disparu.
+ok(/Charge par intensité/.test(screenTxt), "graphe de charge (classificateur moteur) présent");
+ok(!/Fitness \(CTL\)|fatigue · forme/.test(screenTxt), "l'ancien modèle CTL/ATL/Forme a disparu de l'écran");
 // R23.7 / R23.9 — L'AVANCEMENT ET LES INTENSITÉS ONT DÉMÉNAGÉ DANS 🗓 PLAN (décision du
 // fondateur du 06/08/2026). Les critères ne changent pas de nature — ils vérifient toujours que
 // ces informations EXISTENT et sont atteignables ; ils regardent où elles vivent désormais. Les

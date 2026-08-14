@@ -405,9 +405,12 @@ export function znClearParallax() {
    utilise — R11.1), sa couleur est sa zone. Un échauffement/retour au calme est en Z1 par
    son rôle ; le corps prend sa zone déclarée.
 
-   La table ci-dessous traduit les zones du moteur (`_IFZ` dans plan-view.js) en niveaux 1-5.
-   Elle est ordonnée par intensité croissante et n'invente rien : chaque entrée existe dans
-   `_IFZ`. Une zone inconnue retombe en Z2 — le choix prudent, jamais du rouge par défaut. */
+   La table ci-dessous traduit les zones du moteur en niveaux 1-5. Elle est ordonnée par
+   intensité croissante et n'invente rien : chaque entrée est une zone de `ZDEF` et son niveau
+   se lit sur l'ancrage FC que `renderer.ts` déclare (voir le commentaire suivant). Une zone
+   inconnue retombe en Z2 — le choix prudent, jamais du rouge par défaut.
+   (Cette prose citait `_IFZ` : la table UI du TSS, morte avec B1 — référence retirée, la
+   règle 13 dit qu'un commentaire périmé se corrige ou se supprime.) */
 // AUCUNE ZONE DU MOTEUR NE DOIT MANQUER ICI, et ça s'est vérifié : ma première écriture
 // oubliait `sw.vo2` ET LES SEPT ZONES DE TRAIL. Le repli (Z2) est silencieux — un plan trail
 // entier affichait donc des barres uniformément « facile », y compris sur `tr.vam`, que le

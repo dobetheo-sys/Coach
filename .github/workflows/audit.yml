@@ -56,6 +56,8 @@ jobs:
       - run: npm run check:dup
       - run: npm run check:hosts
       - run: npm run check:disc
+      # Z-04 (révisé) — l'isolation moteur/graphique est une propriété permanente, gardée statiquement
+      - run: npm run check:noop
       # Banc de régression externe (audit v6, 29/07/2026) : sort en 1 à la moindre
       # RÉGRESSION (test attendu vert qui échoue). La dette connue ne casse pas la CI —
       # c'est le but : elle documente l'écart sans bloquer le travail.

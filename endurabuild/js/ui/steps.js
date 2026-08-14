@@ -621,7 +621,7 @@ async function stravaImport(oauthTok){
           best20=Math.max(best20,bestRollingMean(w,t,1200));
         }catch(e){ /* une sortie illisible n'arrête pas les autres */ }
       }
-      if(best20>0){ftp=Math.round(best20*0.95);ftpSrc="Strava (meilleure moyenne sur 20 min réelles)";}
+      if(best20>0){ftp=(globalThis.EBV2&&EBV2.ftpFromBest20)?EBV2.ftpFromBest20(best20):Math.round(best20*0.95);ftpSrc="Strava (meilleure moyenne sur 20 min réelles)";} // B2 — la règle vit dans le moteur (fitParser.FTP_BEST20_FACTOR) ; le littéral local n'est que le repli hors moteur
       else if(quota)notes.push("FTP non estimée : Strava a limité les requêtes (quota atteint) avant d'avoir lu assez de sorties. Réessaie dans quelques minutes.");
       else if(rides.length)notes.push("FTP non estimée : aucune de tes sorties ne contient 20 minutes continues exploitables. Renseigne-la au Profil, ou fais le test de 20 min.");
       else notes.push("FTP non estimée : pas de capteur de puissance sur tes sorties. Saisis-la, ou fais un test 20min ci-dessus.");

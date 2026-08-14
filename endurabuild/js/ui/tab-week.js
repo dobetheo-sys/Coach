@@ -20,7 +20,7 @@
 // bilan de celle qu'on regarde.
 import { $, S, ebSave, esc, fmtDay, todayISO } from "../state.js";
 import { weekGridHTML, weekHeaderHTML, currentWeek, handleSwapClick, _BEAT, _wait, _compte, _reduit, _fmtM } from "./tab-plan-general.js";
-import { weekLoadSeries, weekLoadChartSVG } from "./plan-view.js";
+import { weekChargeChartSVG } from "./plan-view.js";
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
 import { readinessDoneToday } from "./readiness.js";
 import { pointLabelInline } from "./checkin.js";
@@ -185,22 +185,30 @@ function bilanViewHTML(plan, w) {
     + '<div class="zn-bilan-bar-val" id="bilValReel" style="color:var(--zn-cyan)">' + bil.pctFacileFait + "%</div></div>"
     + '<div class="load-sub" style="margin-top:8px">part de temps facile — cible = toute la semaine prescrite, réalisé = les séances validées seulement</div></div>';
 
-  // Bloc 4 — mini courbe de charge fenêtrée sur les 7 jours de LA semaine regardée (pas tout
-  // l'historique, contrairement à la carte d'Aujourd'hui) — même marche CTL/ATL/TSB
-  // (`weekLoadSeries`), mêmes classes `zn-chart-line`/`zn-today-dot`, tracées par
-  // `znDrawChart()` : aucun second mécanisme d'animation de courbe.
-  const serie = weekLoadSeries(plan, w.num);
-  if (serie.length >= 2) {
-    const delta = Math.round(serie[serie.length - 1].tsb - serie[0].tsb);
-    const sens = delta > 0 ? "gagné" : delta < 0 ? "perdu" : "gardé";
-    const pourquoi = delta > 0
-      ? "le volume validé pèse plus que la fatigue qu'il a coûté"
-      : delta < 0 ? "la charge de la semaine dépasse ce qui a été récupéré"
-      : "charge et récupération se sont équilibrées";
-    h += '<div class="load-card"><div class="load-title" style="display:flex;align-items:center">Ce que cette semaine a changé'
-      + '<span class="zn-new-tag">NOUVEAU</span></div>' + weekLoadChartSVG(serie)
-      + '<div class="load-sub" style="margin-top:8px">Ta forme a ' + sens + " " + Math.abs(delta) + " point" + (Math.abs(delta) > 1 ? "s" : "")
-      + " cette semaine — " + pourquoi + ".</div></div>";
+  // Bloc 4 — B1 (arbitrage du STOP de Phase 2) : la mini-courbe CTL/ATL/TSB et sa phrase
+  // « ta forme a gagné N points » MEURENT ici. Le « point de forme » était un nombre issu d'un
+  // modèle que le moteur rejette (R14) — le compenser par un autre indicateur est interdit par
+  // l'arbitrage. À la place : la MÊME comptabilité que le plan (minutes par intensité, jour
+  // par jour, prévu contre validé) — et une phrase qui dit ce que la semaine a réellement
+  // porté, en minutes, jamais en points.
+  {
+    const dj = weekChargeChartSVG(plan, w.num);
+    if (dj) {
+      const min = (o) => o.e + o.m + o.h;
+      let prevu = 0, fait = 0, faitDur = 0;
+      const done = (S.answers && S.answers.done) || {};
+      w.days.forEach((d) => d.sessions.forEach((s, si) => {
+        if (s.d === "rs") return;
+        prevu += s.min || 0;
+        if (done[w.num + "|" + d.jour + "|" + si]) fait += s.min || 0;
+      }));
+      void min; void faitDur;
+      h += '<div class="load-card"><div class="load-title" style="display:flex;align-items:center">Ce que cette semaine a porté'
+        + '<span class="zn-new-tag">NOUVEAU</span></div>' + dj
+        + '<div class="load-sub" style="margin-top:8px">' + fait + " min validées sur " + prevu
+        + " prévues — teinte pâle = prévu, pleine = validé, par intensité (le même classificateur que ton plan). "
+        + "La « forme » en points a été retirée : elle sortait d’un modèle que le moteur n’utilise pas.</div></div>";
+    }
   }
 
   // Bloc 5 — détail par discipline, prévu → réalisé (en minutes PRESCRITES des séances
