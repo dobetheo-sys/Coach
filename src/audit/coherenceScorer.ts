@@ -12,7 +12,7 @@
  */
 import type { V1Plan, V1Week } from "../harness/v1Harness.ts";
 import { sessionLoad, intensitySplit, DEFAULT_REFS, type AthleteRefs, type SessionLoad } from "../engine/loadModel.ts";
-import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, easyShareFloor, hardTimeCapMin, C26c_HARD_TIME_TOLERANCE, C26d_MOD_SHARE_MAX } from "../engine/constraintMatrix.ts";
+import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, easyShareFloor, hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, C26d_MOD_SHARE_MAX } from "../engine/constraintMatrix.ts";
 
 // Les bornes brick vélo (audit 2, « jamais dépassées, même de peu ») vivent désormais dans la
 // matrice de contraintes : l'auditeur et le générateur lisent LE MÊME tableau. La copie locale
@@ -392,17 +392,18 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   // C26c/C26d (R20.4) — les deux grandeurs se mesurent aussi PAR SEMAINE : un plafond de temps
   // dur hebdomadaire ne se vérifie pas sur une moyenne de plan. Deux semaines à 20 et 100 min
   // ont la même moyenne qu'un plan sage à 60, et ce n'est pas le même plan.
-  const perWeekHard: { num: number; hard: number; mod: number; tot: number }[] = [];
+  const perWeekHard: { num: number; hard: number; hardPond: number; mod: number; tot: number }[] = [];
   for (const w of plan.weeks) {
     if (w.isRecup || w.phase.id === "taper") continue;
-    let wh = 0, wm = 0, we = 0;
+    let wh = 0, whp = 0, wm = 0, we = 0;
     for (const d of w.days)
       for (const s of d.sessions) {
         const sp = intensitySplit(s, refs);
         we += sp.easyMin; wm += sp.modMin; wh += sp.hardMin;
+        whp += weightedHardMin(sp.hardByDisc); // B-02 : la ventilation vient du classificateur
       }
     easyTot += we; modTot += wm; hardTot += wh;
-    perWeekHard.push({ num: w.num, hard: wh, mod: wm, tot: we + wm + wh });
+    perWeekHard.push({ num: w.num, hard: wh, hardPond: whp, mod: wm, tot: we + wm + wh });
   }
   const easyShare = easyTot + modTot + hardTot > 0 ? easyTot / (easyTot + modTot + hardTot) : 1;
   // C26 — le plancher suit le VOLUME : 80/20 est la conséquence d'un plafond de temps dur
@@ -442,11 +443,13 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   // que C26 déclare**, jusqu'à 112 min de dur chez un DÉBUTANT dont le plafond est 25 ; et le
   // modéré, seul puni par l'ancienne formulation, ne débordait que 2 fois sur 7 356.
   const capHard = hardTimeCapMin({ history: opts.history, level: opts.level, injured: !!opts.injured });
-  const overHard = perWeekHard.filter((w) => w.hard > capHard * C26c_HARD_TIME_TOLERANCE);
+  // B-02 — la mesure est PONDÉRÉE par discipline (le plafond, lui, ne bouge pas : le
+  // proportionnel est B-02c). La coupe du générateur lit exactement la même grandeur.
+  const overHard = perWeekHard.filter((w) => w.hardPond > capHard * C26c_HARD_TIME_TOLERANCE);
   if (overHard.length) {
-    const pire = overHard.reduce((x, y) => (y.hard > x.hard ? y : x));
+    const pire = overHard.reduce((x, y) => (y.hardPond > x.hardPond ? y : x));
     hard.push("C26c : " + overHard.length + " semaine(s) au-dessus du plafond de temps DUR ("
-      + capHard + " min/sem pour ce profil) — pire : S" + pire.num + " à " + Math.round(pire.hard) + " min");
+      + capHard + " min/sem pour ce profil) — pire : S" + pire.num + " à " + Math.round(pire.hardPond) + " min pondérées");
   }
   const overMod = perWeekHard.filter((w) => w.tot > 0 && w.mod / w.tot > C26d_MOD_SHARE_MAX);
   if (overMod.length) {

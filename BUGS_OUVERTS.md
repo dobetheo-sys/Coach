@@ -2374,3 +2374,41 @@ quoi: la conversion ne porte que sur la declaration, et le residu « rendu discr
 attendu: swimTime hors des facteurs de la chaine, garde d'observation presente, T-25 encore rouge
 cmd: grep -q "swimTime` A QUITTÉ CETTE LISTE" src/generator/planGenerator.ts && grep -q "GARDE D'OBSERVATION" src/generator/planGenerator.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -A1 "T-25" | grep -q "identité(s) cassée(s)"
 ```
+
+## O-36 — la coupe et l'auditeur ne comptent PAS dans la même unité, et les aligner casse O-21
+
+**Ouvert le 14/08/2026** (trouvé en isolant les régressions de B-02).
+
+`enforceHardTimeCap` (la coupe) mesure les minutes dures avec `intensitySplit(s)` — donc les
+**refs de repli** (130 s/100 m, 330 s/km). L'auditeur, lui, mesure avec les **refs de
+l'athlète** (`reasoned.baseRefs`). Deux définitions du mot « minute dure » dans le même moteur,
+sur un bloc exprimé en DISTANCE : `5×1000 m` compte 27,5 min pour la coupe quelle que soit
+l'allure, 22,5 min à 4:30/km et 42,5 min à 8:30/km pour l'auditeur.
+
+C'est exactement la faute que R20.5 a fermée sur la CLASSE (`bk.rp` dur ou modéré selon la
+bande) — ici elle porte sur l'UNITÉ, et elle a survécu.
+
+**Et la corriger casse une autre garantie, mesuré** : threader les refs de l'athlète jusqu'à la
+coupe rend le plan SENSIBLE À L'ALLURE, ce que la famille O-21 interdit. Banc v6 avec
+l'alignement : `O-21b` rouge (« la fréquence des semaines de récup dépend de l'allure :
+4:30 → 3, les trois autres → 2 ») et `C30-A` rouge (`semi/inter/4:30` 120 → 128). Sans
+l'alignement : **73 verts, 0 régression**.
+
+Autrement dit : **l'incohérence d'unité est ce qui rend aujourd'hui le plan indépendant de
+l'allure déclarée.** Le repli aveugle de la coupe fait office de neutralisation.
+
+**Ce que ça demande** : trancher lequel des deux invariants prime, et l'écrire.
+- soit la coupe est aveugle à l'allure PAR CONCEPTION (et le commentaire doit le dire, avec
+  O-21 comme raison — aujourd'hui c'est un accident) ;
+- soit les deux unités s'alignent et O-21 se rediscute pour les blocs en distance, dont la
+  durée dépend RÉELLEMENT de l'allure — un 5×1000 m ne coûte pas le même temps à 4:30 et à
+  8:30, et prétendre le contraire est aussi une fiction.
+
+Non tranché ici : c'est un arbitrage d'entraînement, pas un correctif.
+
+```verify
+id: O-36
+quoi: la coupe mesure sans les refs de l'athlete, et c'est ce qui garde O-21b vert
+attendu: enforceHardTimeCap appelle intensitySplit SANS refs, et audit:v6 est a 0 regression
+cmd: grep -q "intensitySplit(s as never).hardByDisc" src/generator/planGenerator.ts && npm run audit:v6 2>/dev/null | grep -q "0 régression"
+```

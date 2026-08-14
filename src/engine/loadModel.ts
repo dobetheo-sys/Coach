@@ -282,6 +282,13 @@ export interface IntensitySplit {
   easyMin: number;
   modMin: number;
   hardMin: number;
+  /**
+   * B-02 — les minutes DURES, ventilées par la discipline du STEP (jamais de la séance : un
+   * brick en porte deux, et les attribuer en bloc fausse exactement les profils que la règle
+   * doit départager). Produite ICI, par le classificateur qui décide déjà de la classe, pour
+   * qu'aucun consommateur n'ait à refaire le parcours (R11.1).
+   */
+  hardByDisc: Record<string, number>;
 }
 const HARD_SUFFIX = [".vo2", ".thr", ".speed", ".css"];
 const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
@@ -339,7 +346,7 @@ export function zoneClass(zone: unknown, runLegNoZone = false, rpBand?: { lo: nu
 const TRAIL_HARD = ["tr.vam", "tr.asc", "tr.flatthr"];
 const TRAIL_MOD = ["tr.climb"];
 export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS): IntensitySplit {
-  const out: IntensitySplit = { easyMin: 0, modMin: 0, hardMin: 0 };
+  const out: IntensitySplit = { easyMin: 0, modMin: 0, hardMin: 0, hardByDisc: {} };
   if (!s.steps || !s.steps.length || s.d === "rs") {
     out.easyMin = sessionLoad(s, refs).minutes; // texte/repos : compté facile (prudence)
     return out;
@@ -364,7 +371,11 @@ export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS):
     // plan qui est en réalité polarisé. La zone déclarée est toujours plus précise que l'indice.
     const runLegNoZone = st.leg === "run" && !zone;
     const cls = zoneClass(zone, runLegNoZone, (st as { rpBand?: { lo: number; hi: number } }).rpBand, (st as { maraBand?: { lo: number; hi: number } }).maraBand);
-    if (cls === "hard") out.hardMin += stMin;
+    if (cls === "hard") {
+      out.hardMin += stMin;
+      const disc = String((st as { d?: string }).d || s.d || "");
+      out.hardByDisc[disc] = (out.hardByDisc[disc] ?? 0) + stMin;
+    }
     else if (cls === "mod") out.modMin += stMin;
     else out.easyMin += stMin;
     if (reps > 1) out.easyMin += (st.recoveryMin ?? recoveryMinFromText(st.recoveryText)) * (reps - 1); // la récup est facile

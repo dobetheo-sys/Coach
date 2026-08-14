@@ -3711,6 +3711,36 @@ const C26d_MOD_SHARE_MAX = rule(
                  
                     
  
+/**
+ * B-02 — UNE MINUTE DURE NE COÛTE PAS LA MÊME CHOSE SELON LA DISCIPLINE.
+ *
+ * Le plafond de temps dur reste ce qu'il est (C26/C26b, absolu) : le PLAFOND PROPORTIONNEL est
+ * un autre ticket (B-02c), séparé le 14/08/2026 après mesure — il rouvrait C30-A et O-21b.
+ * Ce qui change ici est la MESURE, pas la borne.
+ *
+ * Le drapeau « disciplines d'impact » (arbitrage du 13/08, REMPLACÉ) classait le SPORT : il
+ * disait que la nage ne compte PAS. Elle compte MOINS. Mesuré : il punissait 34 profils de
+ * duathlon pour leur intensité VÉLO — des faux positifs de mécanisme, puisqu'un intervalle dur
+ * à vélo coûte la même chose qu'on soit duathlète ou cycliste. La pondération classe la SÉANCE.
+ *
+ * ⚠ PROVENANCE — CES COEFFICIENTS SONT UN PANSEMENT, ET LE FONDATEUR L'ÉCRIT LUI-MÊME :
+ *   provenance : assistant, non vérifié, 14/08/2026 (même statut que le plancher 1,05 d'O-34)
+ *   nature     : le `0,50` de la nage TRANCHE SANS LE DIRE entre deux coûts qui n'ont pas la
+ *                même réponse — orthopédiquement une minute au seuil dans l'eau coûte très peu,
+ *                métaboliquement elle coûte à peu près autant qu'une minute au seuil en courant
+ *   statut     : à revoir avec l'enrichissement du golden
+ *   sens       : ils DESSERRENT (aucun poids > 1), donc ils ne peuvent retirer aucune qualité —
+ *                c'est ce qui rend leur livraison sûre sans le plafond proportionnel
+ */
+const HARD_DISC_WEIGHT                         = rule(
+  "B-02",
+  "le domaine physiologique est le même dans les trois disciplines, le COÛT non : récupération et contrainte orthopédique diffèrent (PANSEMENT — coefficients non vérifiés)",
+  { rn: 1.0, bk: 0.75, sw: 0.5 },
+);
+/** Minutes dures PONDÉRÉES d'une ventilation par discipline (le classificateur la produit). */
+const weightedHardMin = (hardByDisc                                    )         =>
+  Object.entries(hardByDisc ?? {}).reduce((t, [d, m]) => t + m * (HARD_DISC_WEIGHT[d] ?? 1), 0);
+
 /** Plafond de temps DUR hebdomadaire pour ce profil (C26 + C26b). */
 function hardTimeCapMin(ctx               )         {
   let cap = C26b_HARD_TIME_BY_HISTORY[ctx?.history || "confirme"] ?? C26_HARD_TIME_CAP_MIN;
@@ -6146,6 +6176,13 @@ function sessionLoad(s            , refs              = DEFAULT_REFS)           
                   
                  
                   
+     
+                                                                                            
+                                                                                             
+                                                                                             
+                                                               
+     
+                                     
  
 const HARD_SUFFIX = [".vo2", ".thr", ".speed", ".css"];
 const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
@@ -6203,7 +6240,7 @@ function zoneClass(zone         , runLegNoZone = false, rpBand                  
 const TRAIL_HARD = ["tr.vam", "tr.asc", "tr.flatthr"];
 const TRAIL_MOD = ["tr.climb"];
 function intensitySplit(s            , refs              = DEFAULT_REFS)                 {
-  const out                 = { easyMin: 0, modMin: 0, hardMin: 0 };
+  const out                 = { easyMin: 0, modMin: 0, hardMin: 0, hardByDisc: {} };
   if (!s.steps || !s.steps.length || s.d === "rs") {
     out.easyMin = sessionLoad(s, refs).minutes; // texte/repos : compté facile (prudence)
     return out;
@@ -6228,7 +6265,11 @@ function intensitySplit(s            , refs              = DEFAULT_REFS)        
     // plan qui est en réalité polarisé. La zone déclarée est toujours plus précise que l'indice.
     const runLegNoZone = st.leg === "run" && !zone;
     const cls = zoneClass(zone, runLegNoZone, (st                                           ).rpBand, (st                                             ).maraBand);
-    if (cls === "hard") out.hardMin += stMin;
+    if (cls === "hard") {
+      out.hardMin += stMin;
+      const disc = String((st                  ).d || s.d || "");
+      out.hardByDisc[disc] = (out.hardByDisc[disc] ?? 0) + stMin;
+    }
     else if (cls === "mod") out.modMin += stMin;
     else out.easyMin += stMin;
     if (reps > 1) out.easyMin += (st.recoveryMin ?? recoveryMinFromText(st.recoveryText)) * (reps - 1); // la récup est facile
@@ -6681,17 +6722,18 @@ function auditPlan(plan        , opts            = {})            {
   // C26c/C26d (R20.4) — les deux grandeurs se mesurent aussi PAR SEMAINE : un plafond de temps
   // dur hebdomadaire ne se vérifie pas sur une moyenne de plan. Deux semaines à 20 et 100 min
   // ont la même moyenne qu'un plan sage à 60, et ce n'est pas le même plan.
-  const perWeekHard                                                            = [];
+  const perWeekHard                                                                              = [];
   for (const w of plan.weeks) {
     if (w.isRecup || w.phase.id === "taper") continue;
-    let wh = 0, wm = 0, we = 0;
+    let wh = 0, whp = 0, wm = 0, we = 0;
     for (const d of w.days)
       for (const s of d.sessions) {
         const sp = intensitySplit(s, refs);
         we += sp.easyMin; wm += sp.modMin; wh += sp.hardMin;
+        whp += weightedHardMin(sp.hardByDisc); // B-02 : la ventilation vient du classificateur
       }
     easyTot += we; modTot += wm; hardTot += wh;
-    perWeekHard.push({ num: w.num, hard: wh, mod: wm, tot: we + wm + wh });
+    perWeekHard.push({ num: w.num, hard: wh, hardPond: whp, mod: wm, tot: we + wm + wh });
   }
   const easyShare = easyTot + modTot + hardTot > 0 ? easyTot / (easyTot + modTot + hardTot) : 1;
   // C26 — le plancher suit le VOLUME : 80/20 est la conséquence d'un plafond de temps dur
@@ -6731,11 +6773,13 @@ function auditPlan(plan        , opts            = {})            {
   // que C26 déclare**, jusqu'à 112 min de dur chez un DÉBUTANT dont le plafond est 25 ; et le
   // modéré, seul puni par l'ancienne formulation, ne débordait que 2 fois sur 7 356.
   const capHard = hardTimeCapMin({ history: opts.history, level: opts.level, injured: !!opts.injured });
-  const overHard = perWeekHard.filter((w) => w.hard > capHard * C26c_HARD_TIME_TOLERANCE);
+  // B-02 — la mesure est PONDÉRÉE par discipline (le plafond, lui, ne bouge pas : le
+  // proportionnel est B-02c). La coupe du générateur lit exactement la même grandeur.
+  const overHard = perWeekHard.filter((w) => w.hardPond > capHard * C26c_HARD_TIME_TOLERANCE);
   if (overHard.length) {
-    const pire = overHard.reduce((x, y) => (y.hard > x.hard ? y : x));
+    const pire = overHard.reduce((x, y) => (y.hardPond > x.hardPond ? y : x));
     hard.push("C26c : " + overHard.length + " semaine(s) au-dessus du plafond de temps DUR ("
-      + capHard + " min/sem pour ce profil) — pire : S" + pire.num + " à " + Math.round(pire.hard) + " min");
+      + capHard + " min/sem pour ce profil) — pire : S" + pire.num + " à " + Math.round(pire.hardPond) + " min pondérées");
   }
   const overMod = perWeekHard.filter((w) => w.tot > 0 && w.mod / w.tot > C26d_MOD_SHARE_MAX);
   if (overMod.length) {
@@ -10042,6 +10086,8 @@ function reconcileDeclaredVolume(
                                                                                                 
                                                                                       
                                                         
+                                                                                              
+                                                              
                                                                                            
                                                                                               
                                                                    
@@ -11487,7 +11533,7 @@ function shiftedBikeRp(sport        , format                    , a             
 const C26C_PLANCHER_CONTINU_MIN = 8;
 function enforceHardTimeCap(
   plan        ,
-  ctx                                                                                         ,
+  ctx                                                                                                                                                    ,
   render                         ,
 )       {
   const cap = hardTimeCapMin({
@@ -11498,7 +11544,11 @@ function enforceHardTimeCap(
 
   for (const w of plan.weeks) {
     if (w.isRecup || w.phase.id === "taper") continue;
-    const hardOf = (s           ) => intensitySplit(s         ).hardMin;
+    // B-02 — LA COUPE MESURE EXACTEMENT CE QUE L'AUDITEUR MESURE : minutes dures PONDÉRÉES
+    // (ventilation du classificateur, jamais un second parcours) et refs de l'ATHLÈTE — sans
+    // elles, la coupe convertit les blocs en distance avec les allures de repli pendant que
+    // l'auditeur les convertit avec les vraies. R20.5 a déjà coûté ce défaut une fois.
+    const hardOf = (s           ) => weightedHardMin(intensitySplit(s         ).hardByDisc); // TEST : sans refs
     const weekHard = () => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + hardOf(s), 0), 0);
     // Borne d'itération : chaque tour retire au moins une répétition ou déclasse un bloc, donc
     // le nombre de blocs durs du plan majore le nombre de tours. La borne existe pour qu'un
@@ -13263,7 +13313,7 @@ function generatePlan(profile                , opts                             
   const _spec30 = String(a.sport) === "run"
     ? longRunSpecificityFloor(fmt, r.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(a.vol_max ?? "")) || undefined)
     : null;
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport          , "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport          , "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport          ).mainDiscipline, disciplines: sportModule(a.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0 });
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport          , "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport          , "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport          ).mainDiscipline, disciplines: sportModule(a.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 } });
 
   for (const d of _c30b) r.decisions.push(d);
 
@@ -13901,7 +13951,7 @@ function generateAudited(profile                , auditOpts                     
   const _spec30f = String(reasoned.profile.sport) === "run"
     ? longRunSpecificityFloor(String(reasoned.profile.format ?? ""), reasoned.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(reasoned.profile.vol_max ?? "")) || undefined)
     : null;
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { longSpecTargetMin: _spec30f ? _spec30f.target : undefined, swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport          , "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport          ).mainDiscipline, disciplines: sportModule(reasoned.profile.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0 });
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { longSpecTargetMin: _spec30f ? _spec30f.target : undefined, swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport          , "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport          ).mainDiscipline, disciplines: sportModule(reasoned.profile.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0, refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 } });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.

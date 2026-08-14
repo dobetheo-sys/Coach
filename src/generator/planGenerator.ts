@@ -15,7 +15,7 @@ import {
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
   BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_BIKE, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
   C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN, RACE_EVE_CAP_MIN,
-  hardTimeCapMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS,
+  hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, type Refs } from "./renderer.ts";
@@ -98,6 +98,8 @@ export function reconcileDeclaredVolume(
      *  (récupération centrale chez l'entraîné, tissu conjonctif en reprise ou chez un débutant,
      *  blessure déclarée au présent). Mêmes clés que celles passées à `auditPlan`. */
     history?: string; level?: string; injured?: boolean;
+    /** B-02 — les refs de l'ATHLÈTE, pour que la coupe et l'auditeur convertissent pareil. */
+    refs?: { cssSecPer100m: number; thrPaceSecPerKm: number };
     /** C30b (O-26) — la cible de spécificité de la sortie longue, en minutes, calculée par
      *  `longRunSpecificityFloor` dans `generatePlan` (qui seul connaît le sport, le format et
      *  les références). Absente = la règle n'a pas d'objet ici. */
@@ -1543,7 +1545,7 @@ export function shiftedBikeRp(sport: string, format: string | undefined, a: Athl
 const C26C_PLANCHER_CONTINU_MIN = 8;
 function enforceHardTimeCap(
   plan: V1Plan,
-  ctx: { history?: string; level?: string; injured?: boolean; beginner?: boolean } | undefined,
+  ctx: { history?: string; level?: string; injured?: boolean; beginner?: boolean; refs?: { cssSecPer100m: number; thrPaceSecPerKm: number } } | undefined,
   render?: (s: V1Session) => void,
 ): void {
   const cap = hardTimeCapMin({
@@ -1554,7 +1556,11 @@ function enforceHardTimeCap(
 
   for (const w of plan.weeks) {
     if (w.isRecup || w.phase.id === "taper") continue;
-    const hardOf = (s: V1Session) => intensitySplit(s as never).hardMin;
+    // B-02 — LA COUPE MESURE EXACTEMENT CE QUE L'AUDITEUR MESURE : minutes dures PONDÉRÉES
+    // (ventilation du classificateur, jamais un second parcours) et refs de l'ATHLÈTE — sans
+    // elles, la coupe convertit les blocs en distance avec les allures de repli pendant que
+    // l'auditeur les convertit avec les vraies. R20.5 a déjà coûté ce défaut une fois.
+    const hardOf = (s: V1Session) => weightedHardMin(intensitySplit(s as never).hardByDisc); // TEST : sans refs
     const weekHard = () => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + hardOf(s), 0), 0);
     // Borne d'itération : chaque tour retire au moins une répétition ou déclasse un bloc, donc
     // le nombre de blocs durs du plan majore le nombre de tours. La borne existe pour qu'un
@@ -3319,7 +3325,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   const _spec30 = String(a.sport) === "run"
     ? longRunSpecificityFloor(fmt, r.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(a.vol_max ?? "")) || undefined)
     : null;
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport as string, "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0 });
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport as string, "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 } });
 
   for (const d of _c30b) r.decisions.push(d);
 

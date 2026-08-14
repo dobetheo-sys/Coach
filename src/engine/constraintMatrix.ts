@@ -420,6 +420,36 @@ export interface EasyFloorCtx {
   level?: string;
   injured?: boolean;
 }
+/**
+ * B-02 — UNE MINUTE DURE NE COÛTE PAS LA MÊME CHOSE SELON LA DISCIPLINE.
+ *
+ * Le plafond de temps dur reste ce qu'il est (C26/C26b, absolu) : le PLAFOND PROPORTIONNEL est
+ * un autre ticket (B-02c), séparé le 14/08/2026 après mesure — il rouvrait C30-A et O-21b.
+ * Ce qui change ici est la MESURE, pas la borne.
+ *
+ * Le drapeau « disciplines d'impact » (arbitrage du 13/08, REMPLACÉ) classait le SPORT : il
+ * disait que la nage ne compte PAS. Elle compte MOINS. Mesuré : il punissait 34 profils de
+ * duathlon pour leur intensité VÉLO — des faux positifs de mécanisme, puisqu'un intervalle dur
+ * à vélo coûte la même chose qu'on soit duathlète ou cycliste. La pondération classe la SÉANCE.
+ *
+ * ⚠ PROVENANCE — CES COEFFICIENTS SONT UN PANSEMENT, ET LE FONDATEUR L'ÉCRIT LUI-MÊME :
+ *   provenance : assistant, non vérifié, 14/08/2026 (même statut que le plancher 1,05 d'O-34)
+ *   nature     : le `0,50` de la nage TRANCHE SANS LE DIRE entre deux coûts qui n'ont pas la
+ *                même réponse — orthopédiquement une minute au seuil dans l'eau coûte très peu,
+ *                métaboliquement elle coûte à peu près autant qu'une minute au seuil en courant
+ *   statut     : à revoir avec l'enrichissement du golden
+ *   sens       : ils DESSERRENT (aucun poids > 1), donc ils ne peuvent retirer aucune qualité —
+ *                c'est ce qui rend leur livraison sûre sans le plafond proportionnel
+ */
+export const HARD_DISC_WEIGHT: Record<string, number> = rule(
+  "B-02",
+  "le domaine physiologique est le même dans les trois disciplines, le COÛT non : récupération et contrainte orthopédique diffèrent (PANSEMENT — coefficients non vérifiés)",
+  { rn: 1.0, bk: 0.75, sw: 0.5 },
+);
+/** Minutes dures PONDÉRÉES d'une ventilation par discipline (le classificateur la produit). */
+export const weightedHardMin = (hardByDisc: Record<string, number> | undefined): number =>
+  Object.entries(hardByDisc ?? {}).reduce((t, [d, m]) => t + m * (HARD_DISC_WEIGHT[d] ?? 1), 0);
+
 /** Plafond de temps DUR hebdomadaire pour ce profil (C26 + C26b). */
 export function hardTimeCapMin(ctx?: EasyFloorCtx): number {
   let cap = C26b_HARD_TIME_BY_HISTORY[ctx?.history || "confirme"] ?? C26_HARD_TIME_CAP_MIN;
