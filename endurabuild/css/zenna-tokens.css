@@ -1,0 +1,92 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ZENNA-TOKENS — la cible « source unique » de la Phase 1 du merge (14/08/2026).
+
+   ⚠ CE FICHIER N'EST PAS ENCORE CHARGÉ PAR L'APP, ET C'EST DÉLIBÉRÉ.
+   L'autorité actuelle reste le bloc :root de `zenna-today.css`. Charger les deux
+   en même temps ferait DEUX sources de vérité — précisément le défaut que
+   l'inventaire (ZENNA_INVENTAIRE.md §2) est chargé de traquer. Le branchement
+   est un commit de Phase 4 : déplacer le bloc, pas le dupliquer, puis faire
+   passer Z-01 (aucun littéral hors de ce fichier).
+
+   Contenu : les 42 tokens EXISTANTS (valeurs relevées au caractère près), plus
+   les tokens MANQUANTS que la mesure a désignés — chaque ajout porte la dette
+   qu'il résorbe. Les doublons de valeur assumés (rôle ≠ teinte) sont annotés.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ---- Fonds ---- */
+  --zn-bg: #000;
+  --zn-surface: #111318;
+  --zn-surface-2: #181c22;
+  --zn-surface-3: #20252c;
+  --zn-track-bg: var(--zn-surface-3); /* était un littéral dupliqué — dérivé désormais */
+
+  /* ---- Encres ---- */
+  --zn-ink: #f5f1ea;
+  --zn-text: var(--zn-ink);           /* doublon de valeur historique — dérivé, un seul hex */
+  --zn-ink-2: #d7d2c6;
+  --zn-muted: #b4b9c0;
+  --zn-muted-2: #9aa0a8;
+  /* MANQUANT, dette n°1 (mesuré ×17 en littéral) : l'encre posée SUR un accent. */
+  --zn-on-accent: #0a0a0a;
+
+  /* ---- Accents ---- */
+  --zn-orange: #ff3d00;               /* triple rôle documenté O-31 : marque · charge dure · vélo */
+  --zn-orange-2: #ff7a3d;
+  --zn-orange-tint: #ffb199;
+  --zn-orange-glow: rgba(255, 61, 0, .4);
+  --zn-cyan: #00e0c6;
+  --zn-gold: #ffd23d;
+  --zn-gold-dot: var(--zn-gold);      /* trois tokens or, une valeur — dérivés */
+  --zn-gold-text: var(--zn-gold);
+  --zn-violet: #9b72ff;
+
+  /* ---- Disciplines (V5 : alignées maquette ; vélo/course vivent AUSSI dans DISC[*].ac) ---- */
+  --zn-swim: #3b9eff;
+
+  /* ---- États ---- */
+  --zn-good: #1fb8a6;
+  --zn-good-dark: #0f8f81;
+  --zn-form: var(--zn-good);          /* rôle ≠ teinte : assumé, dérivé */
+  --zn-fatigue: var(--zn-orange-2);   /* idem */
+
+  /* ---- Charge (rgb nus : l'opacité appartient au consommateur) ---- */
+  --zn-charge-dur-rgb: 255 61 0;
+  --zn-charge-facile-rgb: 31 184 166;
+  --zn-charge-recup-rgb: 155 114 255;
+  --zn-charge-dur-papier: #ffe3e0;
+  --zn-charge-facile-papier: #d9f3e1;
+  --zn-charge-recup-papier: #e9defc;
+  --zn-bg-race: rgba(255, 61, 0, .14);
+  --zn-bg-taper: rgba(155, 114, 255, .14);
+  --zn-bg-eve: rgba(255, 210, 61, .10);
+
+  /* ---- Séparations ---- */
+  --zn-border: #26292f;
+  --zn-sep: rgba(255, 255, 255, .18);
+  --zn-sep-line: rgba(255, 255, 255, .14);
+
+  /* ---- Typographie (V7) ---- */
+  --zn-display: 'Poppins', 'Archivo Black', sans-serif;
+  --zn-display-weight: 800;
+  --zn-body: 'Inter', 'Space Grotesk', -apple-system, sans-serif;
+  --zn-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* ---- Formes ---- */
+  --cut-tile: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
+  --cut-hero: polygon(0 0, 100% 0, 100% 82%, 55% 96%, 0 100%);
+  /* MANQUANT (accident mesuré : 1 polygone littéral dans zenna-today.css) : le biseau fin. */
+  --cut-bevel: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  --zn-skew: -4deg;
+  /* MANQUANT, dette (×12 en littéral) : la pilule. */
+  --r-pill: 100px;
+
+  /* ---- Mouvement ---- */
+  --beat: 120ms;
+  --zn-travel: 40px;
+  /* MANQUANT, dette n°2 (420ms ×13, 360 ×4, 480 ×2 en littéral) : les durées de la
+     chorégraphie R28/R29, dérivées du tempo au lieu d'être posées à côté de lui. */
+  --beat-3: calc(var(--beat) * 3);    /* 360ms — entrées de cartes */
+  --beat-35: calc(var(--beat) * 3.5); /* 420ms — fondu de sous-vue (.zn-fadeview) */
+  --beat-4: calc(var(--beat) * 4);    /* 480ms — jauges du Bilan */
+}
