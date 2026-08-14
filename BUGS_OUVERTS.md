@@ -2222,3 +2222,40 @@ quoi: le plancher existe, est étiqueté inherited/PANSEMENT, et T-16b le garde
 attendu: RN_MARA_RATIO_PLANCHER present, provenance inherited ecrite, T-16b vert
 cmd: grep -q "inherited" src/engine/predictor.ts && grep -q "RN_MARA_RATIO_PLANCHER" src/engine/predictor.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "T-16b \[vert"
 ```
+
+## O-35 — la chaîne de volume R20.2 ne se ferme pas en unité sur la natation (et le trail)
+
+**Ouvert le 14/08/2026** (en écrivant T-25, le test d'identité `min(plafonds) × ∏(facteurs)
+=== volPeak` du DOC_UNIQUE §3).
+
+L'identité a mordu **dans les deux sens sur le même sport**, ce qui prouve une faute d'UNITÉ
+et non un maillon manquant simple (cinquième occurrence de la famille V-11/O-13) :
+
+- **natation débutant** : la chaîne annonce un « min » de plafonds à **1,44–2,03 h** pour des
+  pics livrés à **0,7–0,9 h** (pire : `swim/fond/reprise/debutant`, 61 % d'écart). La sonde
+  V2.1 elle-même y mesure **2,0 h** de capacité structurelle pour des semaines qui livrent
+  0,5–0,7 h — son clone saturé en continu ne voit pas les plafonds C15/C24b du rendu discret.
+- **natation inter/avancé** : les mêmes formules donnent des « plafonds » à **2,16 h** pour
+  des pics livrés à **3,7 h** — le plan dépasse son propre plafond annoncé, donc le facteur
+  `swimTime` est appliqué à une grandeur qui ne le porte pas (81 profils, + 38 en trail où la
+  charge 3 axes fait la même chose).
+- Une conversion `× swimTime` de la courbe a été **essayée puis retirée** : ajustée sur UN cas
+  (le débutant), elle inversait l'identité sur 148 profils — calibrer sur un cas est
+  exactement ce que P11/HERITAGE interdit.
+
+**Mitigation en place (pas une fermeture)** : la GARDE D'OBSERVATION du sélecteur — un plafond
+que le pic livré dépasse n'a pas borné le plan et sort des candidats au message. Le record
+`plan._r202` expose l'énumération complète, écarts compris.
+
+**Condition de sortie** : mettre la chaîne natation dans UNE unité (celle du pic affiché),
+mesurée aux deux bouts (débutant ET inter), et faire mesurer à la sonde V2.1 ce que la semaine
+RENDUE livre réellement (planchers et quantification compris) — puis passer `T-25` et `T-23`
+à `attendu: "vert"` dans le même commit. Le résidu « rendu discret » (158 cas à 0,1–0,2 h,
+la question des « 18 minutes » du DOC_UNIQUE §0) se traite avec, ou se borne explicitement.
+
+```verify
+id: O-35
+quoi: l'identite T-25 est encore rouge, avec le compte attendu, et la garde d'observation existe
+attendu: T-25 rouge avec ~439 identites cassees, garde "GARDE D'OBSERVATION" presente dans le generateur
+cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep -A1 "T-25" | grep -q "identité(s) cassée(s)" && grep -q "GARDE D'OBSERVATION" src/generator/planGenerator.ts
+```

@@ -297,10 +297,12 @@ export class TrainingReasoningEngine {
     const theoPeak = Math.min(volMax, caps, util) * marg * recupFactor;
     let peakH = Math.min(theoPeak, volMax) * medFactor;
     // C20 — nage débutant : la promesse suit la capacité réelle C15
+    let c20Cap = 0; // R20.2 (DOC_UNIQUE §2) — transmis comme plafond STRUCTUREL (nSess × durée max)
     if (guard(sp as string, "swimTimeFactor") && beginner) {
       const cap20 = (parseInt(a.sessions_max || "6") || 6) * C20_BEGINNER_SWIM_H_PER_SESSION;
       if (peakH > cap20) {
         peakH = cap20;
+        c20Cap = cap20;
         D("C20", "Promesse calibrée", peakH.toFixed(1) + "h max", "Une séance C15 ≈ 25min : promettre plus serait mentir");
       }
     }
@@ -440,7 +442,7 @@ export class TrainingReasoningEngine {
       volLimits: {
         declared: volMax, caps, util, marg, recup: recupFactor,
         swimTime: guard(sp as string, "swimTimeFactor") ? SWIM_TIME_FACTOR : 1,
-        med: medFactor,
+        med: medFactor, c20: c20Cap,
         sessionsMax: parseInt(a.sessions_max || "7") || 7, budget: budgetPerWeek,
       },
     };

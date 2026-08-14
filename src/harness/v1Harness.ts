@@ -98,6 +98,18 @@ export interface V1Plan {
   totalWeeks: number;
   phases?: { id: string; nom: string; pct: number; c: string; start: number; end: number; weeks: number }[];
   races?: { date: string; prio: string }[];
+  /** R20.2 (DOC_UNIQUE §2) — le record de la décision de volume : plafonds PARALLÈLES (min(),
+   *  l'argmin borne) et facteurs SÉQUENTIELS (produit), chacun avec sa valeur dans l'unité du
+   *  pic livré. Vérifié de dehors par T-25 (identité min × ∏ === volPeak), T-26 (invariance
+   *  par permutation) et T-23 (cohérence avec la sonde V2.1). */
+  _r202?: {
+    declared: number;
+    volPeak: number;
+    plafonds: { id: string; quoi: string; brut: number; unite: "athlete" | "livre"; livre: number; retire: number }[];
+    facteurs: { id: string; quoi: string; f: number; retire: number }[];
+    argmin: string;
+    suivant: string | null;
+  };
 }
 export interface V1Engine {
   buildPlan: (a: Record<string, string>) => V1Plan;

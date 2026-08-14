@@ -459,9 +459,16 @@ T("T-19", "vert", "le message de volume nomme l'argmin des plafonds ET cite la v
     // (a) — n'a de sens que si le moteur nomme un PLAFOND. Nommer un facteur multiplicatif,
     //       la rampe ou la structure de la semaine met la notion d'argmin hors sujet, et
     //       compter ces cas comme des accords gonflerait le test d'un vert gratuit.
+    //       Depuis le correctif §2, la règle publiée porte la GARDE D'OBSERVATION (O-35) :
+    //       un plafond que le pic livré dépasse n'a pas borné le plan et sort des candidats —
+    //       le test applique la même clause, sur les mêmes valeurs, sans copier l'ordre.
     if (trois.some(([q]) => q === quoi)) {
       nomme++;
-      if (trois.reduce((x, y) => (y[1] < x[1] ? y : x))[0] !== quoi) desaccord++;
+      const queueA = L.marg * L.recup * L.swimTime * L.med * (r.loadFactor < 1 ? r.loadFactor : 1);
+      const picA = parseFloat(String(dec.val).match(/pic à ([\d,.]+)/)?.[1]?.replace(",", ".") ?? "NaN");
+      const candA = trois.filter(([, x]) => !Number.isFinite(picA) || x * queueA >= picA - 0.1);
+      const baseA = candA.length ? candA : trois;
+      if (!baseA.filter(([q]) => q === quoi).some(([, x]) => x <= Math.min(...baseA.map(([, y]) => y)) + 0.001)) desaccord++;
     }
     // (b) — le chiffre écrit dans la phrase contre la valeur modulée du plafond nommé.
     const table = quoi === "ton historique" ? L.caps : quoi === "le volume utile du format" ? L.util : null;
@@ -528,7 +535,173 @@ T("T-20", "vert", "tout step : zone résoluble dans ZDEF, intensité = bande fin
   return { ok: steps > 0 && !uniques.length, detail: `${uniques.length} défaut(s) sur ${steps} steps — ` + uniques.slice(0, 5).join(" · ") };
 });
 
+// ---- T-23 / T-25 / T-26 · R20.2 : plafonds parallèles, facteurs séquentiels ----
+// DOC_UNIQUE §1-§3 (14/08/2026). Le défaut est double : le sélecteur prend LA PLUS GROSSE
+// BAISSE quand le texte promet « ce qui borne » (la contrainte FINALE, l'argmin des plafonds) ;
+// et l'attribution des plafonds dépend de l'ORDRE des appels `etape()` — permuter caps/util
+// change le coupable sur le même plan (§1.3). Cause racine : des plafonds PARALLÈLES (un
+// min()) traités comme une chaîne séquentielle. Les facteurs, eux, composent réellement et
+// restent un produit. Le correctif attendu émet un RECORD (`plan._r202`) qui expose
+// l'énumération complète — plafonds avec leur valeur livrée, facteurs avec leur coefficient —
+// pour que ces trois tests la vérifient DE DEHORS, sans copie de la règle.
+const _goldenCache = { fait: false, rows: [] };
+function goldenAvecMoteur() {
+  if (_goldenCache.fait) return _goldenCache.rows;
+  for (const { key, sport, a } of goldenProfiles()) {
+    try {
+      const plan = globalThis.EBV2.buildPlan(sport, a);
+      const r = _moteur.analyze(toProfile(sport, a));
+      _goldenCache.rows.push({ key, plan, L: r.volLimits, lf: r.loadFactor });
+    } catch { /* refus typés : hors population, comme au golden */ }
+  }
+  _goldenCache.fait = true;
+  return _goldenCache.rows;
+}
+
+// T-25 — l'identité du fondateur : min(plafonds) × ∏(facteurs) === volPeak à ±0,1 h.
+// « Si l'identité ne tient pas, un maillon manque à l'énumération » — c'est ce qui aurait
+// attrapé O-13 sans attendre qu'un profil de natation le révèle. Vérifiable sur les 949.
+//
+// JOURNAL DE FERMETURE (14/08/2026) — le test a mordu quatre fois en naissant :
+//   945 sans record → 659 (record émis) → 643 (la COURBE déclarée entre au min() : run/5k,
+//   Lw = 0,67 au pic, la chaîne nommait « ton historique » 4 h pour un pic à 2,6 h)
+//   → 457 (la cible de boucle MESURÉE avec sa cause : la croissance D3/D4 sur le livré)
+//   → 439. Le résidu a DEUX causes mesurées, chacune avec son ticket :
+//   (1) O-35 — la chaîne natation est incohérente en UNITÉ dans les deux sens (débutant
+//       livré ≪ min : pire 1,80 h de « min » pour un pic à 0,7 ; inter livré ≫ min : 3,7 h
+//       livrées au-dessus d'un « plafond » à 2,16) + trail (charge 3 axes). Une conversion
+//       × swimTime a été essayée puis RETIRÉE : ajustée sur UN cas, elle inversait l'identité
+//       sur 148 profils.
+//   (2) le RENDU DISCRET — 158 cas à 0,1-0,2 h d'écart : la question des « 18 minutes » du
+//       DOC_UNIQUE §0, mesurée à l'échelle. La sonde sature un clone continu, le plan rend
+//       des séances discrètes (planchers, quantification, passes post-boucle).
+// Reste ROUGE tant que ces deux tickets ne sont pas fermés — un vert obtenu en élargissant
+// la tolérance serait le test qui s'ajuste au défaut.
+T("T-25", "rouge", "record R20.2 : min(plafonds livrés) === volPeak à ±0,1 h, sur tout le golden", () => {
+  let vus = 0, sansRecord = 0, casses = 0, conversions = 0; const ex = [];
+  for (const { key, plan } of goldenAvecMoteur()) {
+    vus++;
+    const rec = plan?._r202;
+    if (!rec) { sansRecord++; continue; }
+    const actifs = (rec.plafonds ?? []).filter((p) => Number.isFinite(p.livre));
+    if (!actifs.length) { casses++; if (ex.length < 5) ex.push(`${key} : record sans plafond actif`); continue; }
+    const minLivre = Math.min(...actifs.map((p) => p.livre));
+    const volPeak = Number(rec.volPeak ?? plan.volPeak);
+    if (Math.abs(minLivre - volPeak) > 0.1) { casses++; if (ex.length < 5) ex.push(`${key} min=${minLivre.toFixed(2)} h ≠ pic=${volPeak} h`); }
+    // l'identité AU SENS STRICT : pour tout plafond déclaré en unité athlète, livré = brut ×
+    // ∏(facteurs) — le record ne peut pas mentir sur la conversion (la faute d'unité de V-11).
+    const Q = (rec.facteurs ?? []).reduce((q, f) => q * (Number(f.f) || 1), 1);
+    for (const p of actifs) if (p.unite === "athlete" && Math.abs(p.livre - p.brut * Q) > 0.01) {
+      conversions++; if (ex.length < 5) ex.push(`${key} ${p.id} : livré ${p.livre} ≠ brut ${p.brut} × Q ${Q.toFixed(3)}`); break;
+    }
+  }
+  if (!vus) return { ok: false, detail: "banc cassé : aucun profil examiné" };
+  return { ok: !sansRecord && !casses && !conversions,
+    detail: `${sansRecord}/${vus} sans record · ${casses} identité(s) cassée(s) · ${conversions} conversion(s) incohérente(s)` + (ex.length ? " — " + ex.join(" · ") : "") };
+});
+
+// T-26 — la non-régression du §1.3 : l'attribution est invariante par permutation. Le test ne
+// simule PAS la chaîne (ce serait une copie de la règle) : il recalcule l'argmin depuis les
+// VALEURS du record — une opération sans ordre — et exige que le plafond NOMMÉ soit un
+// minimiseur ; et qu'aucun plafond non-argmin ne porte de retrait (l'artefact d'ordre).
+// FERMÉ LE JOUR DE SA NAISSANCE par le correctif §2 (plafonds en min() parallèle, argmin
+// nommé, retrait nul sur les non-argmin) — vérifié rouge d'abord : 583/583 sans record.
+T("T-26", "vert", "l'attribution des plafonds est invariante par permutation : le nommé EST l'argmin du record", () => {
+  let vus = 0, sansRecord = 0, desaccords = 0, fantomes = 0; const ex = [];
+  for (const { key, plan } of goldenAvecMoteur()) {
+    const dec = (plan?._v2?.decisions ?? []).find((d) => d.id === "R20.2");
+    if (!dec) continue;
+    vus++;
+    const rec = plan?._r202;
+    if (!rec) { sansRecord++; continue; }
+    const quoi = String(dec.val).replace(/^.*ce qui borne, c'est /, "").replace(/ \(−.*$/, "");
+    const plafs = (rec.plafonds ?? []).filter((p) => Number.isFinite(p.livre));
+    if (!plafs.length) { desaccords++; continue; }
+    // même règle publiée que le moteur, recalculée sans ordre : l'argmin se prend parmi les
+    // plafonds que l'observation ne réfute pas (livré ≥ pic − 0,1 : un plafond que le plan
+    // dépasse n'a pas borné le plan — O-35), repli sur tous si aucun.
+    const cand = plafs.filter((p) => p.livre >= Number(rec.volPeak) - 0.1);
+    const base = cand.length ? cand : plafs;
+    const minVal = Math.min(...base.map((p) => p.livre));
+    // deux maillons peuvent partager le même nom d'athlète (courbe déclarée / croissance sur
+    // le livré) : le nommé est conforme si AU MOINS UN plafond portant ce nom est minimiseur.
+    const nommes = base.filter((p) => p.quoi === quoi);
+    // un facteur nommé (drapeau médical…) n'est pas une revendication de plafond : hors sujet ici
+    if (nommes.length && !nommes.some((p) => p.livre <= minVal + 0.001)) { desaccords++; if (ex.length < 4) ex.push(`${key} nomme « ${quoi} » (${Math.min(...nommes.map((p) => p.livre)).toFixed(1)} h), min = ${minVal.toFixed(1)} h`); }
+    for (const p of plafs) if (p.livre > minVal + 0.001 && (Number(p.retire) || 0) > 0.001) fantomes++;
+  }
+  if (!vus) return { ok: false, detail: "banc cassé : aucune décision R20.2 examinée" };
+  return { ok: !sansRecord && !desaccords && !fantomes,
+    detail: `${sansRecord}/${vus} sans record · ${desaccords} nommé ≠ argmin · ${fantomes} plafond(s) non-argmin portant un retrait (l'artefact d'ordre du §1.3)` };
+});
+
+// T-23 — la cohérence d'ÉCRAN : quand la sonde V2.1 (« les plafonds de séance ne permettent
+// pas plus ») et R20.2 sont affichées ensemble, R20.2 ne peut pas nommer un plafond que le pic
+// n'approche même pas — c'est le profil de la capture : « ce qui borne, c'est ton historique »
+// (13 h) trois centimètres sous une sonde qui vient de calibrer 7,8 h.
+//
+// LES COMPTES AVANT/APRÈS NE SONT PAS COMPARABLES, et c'est écrit : avant le correctif,
+// l'instrument ne savait évaluer que les plafonds declared/caps/util (via volLimits) — 22/218.
+// Avec le record, il évalue TOUTE contrainte nommée (courbe comprise) — 37/218, sur un
+// périmètre plus large. Le résidu partage les causes de T-25 : O-35 (natation — aucun plafond
+// énuméré n'approche le pic parce que la sonde y mesure 2 h pour des semaines qui livrent
+// 0,5-0,7) et le rendu discret (tri : courbe 5,2 h nommée pour un pic livré à 4,5).
+T("T-23", "rouge", "V2.1 et R20.2 affichées ensemble ne nomment pas deux contraintes mordantes différentes", () => {
+  let paires = 0, incoherents = 0; const ex = [];
+  for (const { key, plan, L, lf } of goldenAvecMoteur()) {
+    const decs = plan?._v2?.decisions ?? [];
+    const r202 = decs.find((d) => d.id === "R20.2");
+    if (!r202 || !decs.some((d) => d.id === "V2.1")) continue;
+    paires++;
+    const quoi = String(r202.val).replace(/^.*ce qui borne, c'est /, "").replace(/ \(−.*$/, "");
+    const pic = parseFloat(String(r202.val).match(/pic à ([\d,.]+)/)?.[1]?.replace(",", ".") ?? "NaN");
+    // la valeur du plafond nommé, dans l'unité du pic : depuis le record s'il existe, sinon
+    // depuis volLimits × queue (la conversion que T-19(b) a validée).
+    const rec = plan?._r202;
+    let livre = null;
+    if (rec) livre = (rec.plafonds ?? []).find((p) => p.quoi === quoi)?.livre ?? null;
+    else {
+      const queue = L.marg * L.recup * L.swimTime * L.med * (lf < 1 ? lf : 1);
+      livre = quoi === "ton historique" ? L.caps * queue : quoi === "le volume utile du format" ? L.util * queue : quoi === "ton volume demandé" ? L.declared * queue : null;
+    }
+    if (livre == null || !Number.isFinite(pic)) continue; // nommé = facteur ou structure : pas un plafond chiffrable ici
+    if (livre > pic + 0.5) { incoherents++; if (ex.length < 4) ex.push(`${key} nomme « ${quoi} » à ${livre.toFixed(1)} h pour un pic à ${pic} h`); }
+  }
+  if (!paires) return { ok: false, detail: "banc cassé : aucune paire V2.1 + R20.2 examinée" };
+  return { ok: !incoherents,
+    detail: `${incoherents}/${paires} écran(s) où R20.2 nomme un plafond que le pic n'approche pas pendant que V2.1 nomme les plafonds de séance` + (ex.length ? " — " + ex.join(" · ") : "") };
+});
+
 // ---- verdict --------------------------------------------------------------
+/**
+ * §6.3 (DOC_UNIQUE, 14/08/2026) — LES ROUGES ATTENDUS SONT UNE LISTE NOMMÉE, PAS UN NOMBRE.
+ * « Seize, c'est une foule : le dix-septième y entre sans qu'on le voie. » Chaque entrée nomme
+ * le ticket qui la fermera. Le CLIQUET : un rouge hors liste échoue le banc (il n'entre pas
+ * dans la foule en silence) ; une entrée dont le test est devenu VERT échoue aussi — passer
+ * son `attendu` à "vert" ET retirer l'entrée DANS LE MÊME COMMIT, comme `audit:v6` et Z-11.
+ * Tickets : A-xx/B-xx/N-xx = handoff maître + addendum · O-35 = BUGS_OUVERTS.md.
+ */
+const ROUGES_ATTENDUS = {
+  "T-01": "A-01 — sessionIntensity() importe zoneClass() au lieu de sa copie (+ V-08 pour sw.aero)",
+  "T-02": "A-01 — la zone fantôme vit dans la copie de dailyAdjuster",
+  "T-03": "B-01 — plafond de la sortie longue (arbitrage 13/08 : indexé volume, jamais devant C30)",
+  "T-04": "B-02 — plafond de temps dur proportionnel (arbitrage 13/08 : 12 %, bornes 25-60, impact)",
+  "T-05": "B-03 — interlock modéré/plancher de facile (C26d arbitré avec B-02a)",
+  "T-06": "B-17 — prérequis de nage continue en triathlon",
+  "T-08": "N-02 — refonte nutrition (séances de répétition nutritionnelle en spécifique)",
+  "T-09": "A-02 — tables DUA_* mortes de duathlon/tables.ts",
+  "T-10": "A-04 — champ sensitivity sur chaque entrée de PROVENANCE",
+  "T-11": "A-05/A-06 — bornes inline remplacées par les tables sourcées",
+  "T-12": "B-23 étendu — fourchettes d'incertitude hors swimrun",
+  "T-13": "N-01 — renforcement musculaire tous sports (Lauersen 2014)",
+  "T-14": "N-02 — cible glucidique horaire par séance longue",
+  "T-15": "B-02a — alignement des familles physiologiques entre disciplines (V-08)",
+  "T-17": "B-23 — fourchettes des sous-segments swimrun",
+  "T-18": "B-23 — bandes des estimations de fait swimrun",
+  "T-25": "O-35 — unités de la chaîne natation/trail + rendu discret (les « 18 min » du DOC_UNIQUE §0)",
+  "T-23": "O-35 — mêmes causes que T-25, vues de l'écran (BUGS_OUVERTS.md)",
+};
+
 const res = TESTS.map((t) => {
   let r;
   try { r = t.fn(); } catch (e) { r = { ok: false, detail: "banc cassé : " + String(e?.message ?? e) }; }
@@ -536,7 +709,7 @@ const res = TESTS.map((t) => {
 });
 
 console.log(`BANC DU LOT fix/moteur-physio — ${plans.length} profils de référence\n`);
-let regressions = 0, dette = 0, verts = 0;
+let regressions = 0, dette = 0, verts = 0, cliquet = 0;
 for (const r of res) {
   const etat = r.ok ? "vert " : "ROUGE";
   const conforme = (r.ok && r.attendu === "vert") || (!r.ok && r.attendu === "rouge");
@@ -545,8 +718,19 @@ for (const r of res) {
   const marque = r.ok ? "✓" : r.attendu === "rouge" ? "·" : "✖";
   console.log(`${marque} ${r.id} [${etat}] ${r.quoi}`);
   if (!r.ok) console.log(`      ${r.detail}`);
+  if (!r.ok && r.attendu === "rouge") {
+    if (ROUGES_ATTENDUS[r.id]) console.log(`      ↳ fermé par : ${ROUGES_ATTENDUS[r.id]}`);
+    else { cliquet++; console.log(`      ✖ CLIQUET §6.3 : rouge attendu HORS LISTE — l'inscrire dans ROUGES_ATTENDUS avec son ticket de fermeture`); }
+  }
   if (r.ok && r.attendu === "rouge") console.log(`      ⚠ attendu ROUGE et il est VERT — passer son \`attendu\` à "vert" (il devient un garde-fou)`);
+  if (r.ok && ROUGES_ATTENDUS[r.id]) { cliquet++; console.log(`      ✖ CLIQUET §6.3 : ce test est VERT — retirer son entrée de ROUGES_ATTENDUS et passer \`attendu\` à "vert" dans ce commit`); }
 }
-console.log(`\n${verts} vert(s) · ${dette} rouge(s) attendu(s) — la dette que le lot corrige · ${regressions} régression(s)`);
+// une entrée de la liste qui ne correspond plus à aucun test déclaré rouge est périmée
+for (const id of Object.keys(ROUGES_ATTENDUS)) {
+  const t = res.find((x) => x.id === id);
+  if (!t || t.attendu !== "rouge") { cliquet++; console.log(`✖ CLIQUET §6.3 : entrée périmée « ${id} » dans ROUGES_ATTENDUS (test absent ou déjà attendu vert)`); }
+}
+console.log(`\n${verts} vert(s) · ${dette} rouge(s) attendu(s) — chacun listé avec son ticket (§6.3) · ${regressions} régression(s)` + (cliquet ? ` · ${cliquet} accroc(s) au cliquet` : ""));
 if (regressions) console.log("✖ RÉGRESSION : un test qui passait échoue.");
-process.exit(regressions || (strict && dette) ? 1 : 0);
+if (cliquet) console.log("✖ CLIQUET §6.3 : la liste des rouges attendus ne colle plus à l'état du banc.");
+process.exit(regressions || cliquet || (strict && dette) ? 1 : 0);
