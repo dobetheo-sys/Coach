@@ -188,6 +188,13 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   raisonnement juste** — c'est le mode de défaillance le plus coûteux du dépôt, parce qu'il
   survit à la relecture.
 
+- **Test de dépistage de la règle 15, à trois secondes : un taux SATURÉ accuse l'instrument.**
+  Toute mesure qui rend 0 % ou 100 % est suspecte d'erreur de sonde jusqu'à preuve du contraire —
+  et la preuve est de faire VARIER une entrée et de vérifier que le taux bouge. Quatre des
+  quatorze occurrences de la règle 15 auraient été attrapées par là : « 1 924 divergents sur
+  1 924 » a démasqué un CSS de repli, « 0 collision » mesurait un jour sans vélo, « 0 badge »
+  cherchait une classe absente, « 12/12 » photographiait un artefact de date.
+
 - **Les propriétés visuelles LIÉES se mesurent ENSEMBLE, en un seul cycle** (consigne du
   fondateur, 12/08/2026). Couleur de badge, fond de carte et contraste dépendent du même token
   de discipline : les traiter séparément fait payer trois cycles mesure → correction → re-mesure

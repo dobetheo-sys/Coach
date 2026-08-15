@@ -3028,3 +3028,55 @@ quoi: les deux mesures coincident, et le perimetre reel est de 12 blocs sur 4 pr
 attendu: 0 divergent
 cmd: node scripts/mesureO40.mjs 2>/dev/null | grep -o "divergents (> 0,05 min) : 0" | head -1 | sed "s/.*: /0 divergent/"
 ```
+
+---
+
+## O-41 (a) — LE REPLI TIRE, ET IL TIRE SUR UN ATHLÈTE QUI A FOURNI SA DONNÉE
+
+`stepMin` retombe sur **130 s/100 m** quand `baseRefs.css` n'est pas peuplé. Ce n'est pas un
+contrôle sauté — c'est une **donnée fabriquée** : le plan est calculé pour un nageur qui n'est pas
+l'athlète, et rien à l'écran ne le distingue d'un plan juste.
+
+La sonde n'interroge pas `baseRefs` (règle 15) : elle **inverse `stepMin`** sur les blocs de nage
+prescrits en mètres, ce qui rend la vitesse RÉELLEMENT employée.
+
+| déclaration | profils | repli | css employée |
+|---|---|---|---|
+| `css` + `css_known: "oui"` | 324 | **0 %** | 110 |
+| **`css` saisie SANS `css_known`** | 324 | **100 %** | **130** |
+| aucune `css` | 324 | 100 % | 130 |
+
+**⚠ ET LA VÉRIFICATION SUIVANTE CORRIGE MON PROPRE CADRAGE.** J'allais écrire « l'athlète a
+fourni sa donnée et le moteur la remplace ». C'est faux tel quel : la lecture est **gatée sur
+`css_known === "oui"`** en QUATRE endroits (`bridge` ×3, `weekDistances`, `reasoningEngine`), et le
+questionnaire pose le drapeau avant la valeur. L'état « `css` saisie sans `css_known` » est donc
+un état que **mon balayage a fabriqué**, pas un état du produit — quinzième occurrence de la
+règle 15, et cette fois dans la conclusion, pas dans la mesure.
+
+**Ce qui reste vrai et ce qui reste à vérifier :**
+
+- la ligne 3 (aucune CSS déclarée) est **légitime** — il faut bien une valeur — et c'est la
+  branche **(b)** : `130` est alors une constante non sourcée de plus, qui mérite sa provenance
+  écrite et probablement une indexation sur le niveau ;
+- **le chemin qui reste soupçonné est l'IMPORT.** O-22/O-25 écrivent des références MESURÉES
+  (Strava, FIT) dans le journal. Si un import peuple `css` **sans** poser `css_known`, la valeur
+  mesurée est ignorée et le repli tire sur un athlète qui a bel et bien fourni sa donnée — le
+  scénario que je décrivais, au bon endroit cette fois. **Non mesuré**, et c'est ce qui décide de
+  la priorité.
+
+**Les trois lignes DIFFÈRENT, donc la sonde discrimine** : la saturation à 100 % est réelle, pas
+un artefact — c'est précisément le test de dépistage que ce lot ajoute à `CLAUDE.md`.
+
+**Priorité, révisée par la vérification ci-dessus** : ce n'est PAS un P1 sur le questionnaire.
+Le ticket se réduit à (b) — provenance de `130` — plus la vérification du chemin d'import, qui
+est le seul endroit où le scénario « donnée fournie, donnée remplacée » peut encore vivre.
+
+Le sens de l'erreur, pour (b) : 130 s/100 m est **plus rapide** qu'un vrai débutant, donc ses
+durées de bloc sont **sous-estimées** — sa séance déborde dans la vraie vie.
+
+```verify
+id: O-41
+quoi: le repli css tire a 100 % des que css_known manque, et a 0 % quand il est pose
+attendu: repli    0 (  0 %)
+cmd: node scripts/mesureO41.mjs 2>/dev/null | grep "CSS DÉCLARÉE" | grep -o "repli    0 (  0 %)"
+```
