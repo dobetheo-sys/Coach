@@ -3080,3 +3080,51 @@ quoi: le repli css tire a 100 % des que css_known manque, et a 0 % quand il est 
 attendu: repli    0 (  0 %)
 cmd: node scripts/mesureO41.mjs 2>/dev/null | grep "CSS DÉCLARÉE" | grep -o "repli    0 (  0 %)"
 ```
+
+
+---
+
+## O-41 §2 — LES DRAPEAUX FRÈRES : AUCUN CHEMIN N'ÉCRIT LA VALEUR SANS LE DRAPEAU · **PAS DE P0**
+
+La question qui décidait de la sévérité — *« un chemin d'écriture de la VALEUR existe-t-il sans
+écriture du DRAPEAU ? »*, en particulier pour la FTP — est tranchée par balayage des écritures.
+
+**Les drapeaux frères existent** : `ftp_known`, `pace_known`, `css_known`, `vam_known`.
+
+**Écrivains recensés de `answers.{ftp,css,pace}`** — il n'y en a que deux, et les deux posent le
+drapeau **dans la même instruction** :
+
+```js
+// questionnaire (steps.js) — la branche ne s'ouvre que si le drapeau vaut "oui"
+branch("cssB", a.css_known === "oui", '<input data-input="css">')
+
+// édition du Profil (tab-profile.js:83-87 et 1145-1154, saisie manuelle ET retest)
+S.answers.css = v; S.answers.css_known = "oui";
+```
+
+**Et les modules d'import n'écrivent PAS `answers.ftp/css/pace` du tout** : `measured.js`,
+`strava.js` et `retest.js` alimentent le **journal** (`answers.tests`), qui est un autre canal.
+
+→ **Le scénario « l'import peuple la valeur sans poser le drapeau » n'existe pas**, ni pour la
+FTP ni pour les autres. **Pas de P0**, et l'ordre du §5 est inchangé : le lot 1 peut passer.
+
+### Ce qui reste à vérifier, et c'est un cran plus loin que ma question
+
+Puisque l'import écrit dans le JOURNAL et non dans `answers`, la question devient : **la promotion
+journal → `answers` pose-t-elle le drapeau ?** R20.1 a déjà corrigé une fois « l'import qui
+n'atteignait jamais le plan généré, le moteur ne lisant que `a.ftp/pace/css` » — donc un mécanisme
+de promotion existe, et c'est LUI qu'il faut regarder. **Non mesuré ici** (fin de budget), et c'est
+la première chose à faire à la reprise d'O-41.
+
+La distinction de fond que tu poses reste la bonne et n'est pas tranchée : **`css_known` veut-il
+dire « on a une valeur » ou « l'athlète l'a déclarée » ?** Aujourd'hui les deux coïncident parce
+que seul l'athlète écrit. Le jour où la promotion écrit aussi, il faudra choisir — et la bonne
+forme est celle que tu décris : le moteur UTILISE la valeur quelle que soit son origine, et trace
+l'origine à part, comme `source`/`inherited` dans `PROVENANCE`.
+
+```verify
+id: O-41-freres
+quoi: aucun chemin n'ecrit la valeur de reference sans poser son drapeau
+attendu: O41-FRERES-OK
+cmd: test $(grep -rnE "S\.answers\.(ftp|css|pace) *=" endurabuild/js/ 2>/dev/null | grep -v engine.js | grep -cv "_known *= *\"oui\"") -eq 0 && echo "O41-FRERES-OK"
+```
