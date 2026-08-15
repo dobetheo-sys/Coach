@@ -1479,7 +1479,26 @@ export function reconcileDeclaredVolume(
         if (sx.d !== "sw" || !sx.steps || !sx.steps.length) continue;
         const metersOf = () => sx.steps!.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
         const tot = metersOf();
-        if (tot <= 0 || tot >= floorM) continue;
+        // T-29 (sémantique) — « ZÉRO MÈTRE » RECOUVRAIT DEUX ÉTATS TRÈS DIFFÉRENTS SOUS UN SEUL
+        // `continue` SILENCIEUX, ET C'EST UN FAIL-OPEN SUR UNE PASSE DE SÉCURITÉ.
+        //
+        // C24/C24b est un plancher en MÈTRES. `tot <= 0` peut vouloir dire :
+        //   1. la séance est prescrite en TEMPS — le plancher n'a alors pas d'objet, et passer
+        //      son tour est la bonne réponse. Mesuré : **67 séances sur 11 568**, toutes des
+        //      « Entretien (affûtage) » de 10-14 min, toutes en semaine de décharge, où C29b
+        //      décide déjà qu'une nage courte se GARDE. Comportement correct, et il est nommé ;
+        //   2. les mètres sont INTROUVABLES alors que la séance en déclare — donnée absente sur
+        //      un garde-fou de sécurité. Mesuré à **0 aujourd'hui**, et c'est exactement la
+        //      raison de l'écrire : une donnée absente doit lever ou compter, jamais passer son
+        //      tour. Le sceau l'asserte (S7, rang DUR), donc le jour où un chemin d'import, un
+        //      nouveau type de bloc ou une discipline ajoutée fait rendre 0 à `metersOf`, on
+        //      l'apprend à la seconde plutôt que par un gate deux lots plus tard.
+        //
+        // Quatrième instance de la famille, après `st.bnd ? cap : Infinity`, la classe par
+        // défaut du brick et la divergence générateur/auditeur — et la première dont la syntaxe
+        // n'est pas un ternaire, ce qui est précisément ce que le balayage T-29 avait raté.
+        if (tot <= 0) continue; // prescription en TEMPS : le plancher en mètres n'a pas d'objet
+        if (tot >= floorM) continue;
         // C29b — EN AFFÛTAGE, UNE NAGE COURTE SE GARDE : ni supprimée, ni remontée.
         //
         // Décision du fondateur (03/08/2026) : l'affûtage réduit le VOLUME, pas la FRÉQUENCE —

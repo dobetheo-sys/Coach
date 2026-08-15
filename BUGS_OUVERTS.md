@@ -2691,3 +2691,85 @@ quoi: les trois premisses du §5 sont mesurees et publiees
 attendu: O36-AMONT-MESURE
 cmd: npm run mesure:o36 2>/dev/null | grep -q "sw 10982 · rn 1296" && echo "O36-AMONT-MESURE"
 ```
+
+---
+
+## O-36 (re-cadré) — les trois mesures du §5, et deux trouvailles qui ne sont pas O-36
+
+Le ticket a changé d'énoncé (arbitrage du 15/08) : **ce n'est pas une conversion d'unité, c'est
+un mécanisme d'adaptation SOUS-CALIBRÉ.** Le moteur adapte déjà le NOMBRE de répétitions
+(3,84 → 3,01 entre 4:30 et 8:30) mais pas leur LONGUEUR (~1 672 m partout). Décision : rendre la
+distance par répétition dépendante de l'allure. **Rien n'est écrit** — voici les mesures.
+
+### (a) l'équivalent course de `metersOf` : deux consommateurs, un seul qui compte
+
+Hors générateur, la distance de bloc en course n'est lue que par **`weekDistances`** (le récap
+hebdomadaire affiché) — et c'est correct qu'il bouge : un coureur lent couvrira réellement moins
+de kilomètres de qualité. **C30 ne lit PAS la distance prescrite** mais `RUN_KM[fmt]`, la
+distance de la COURSE : la distance adaptative ne l'atteint pas.
+
+**Le consommateur à surveiller est `runHoursPerWeekOf`** : il alimente `riegelExponent`
+(P5/B-21). Réduire la distance des répétitions réduit les heures de course hebdomadaires, donc
+déplace l'exposant de Riegel, donc la PRÉDICTION. Boucle de retour réelle, à mesurer dans le lot.
+
+### (b) plage des distances résultantes — le plancher ne mordrait pas, mais il doit exister
+
+| allure | dose moyenne | facteur d'égalisation | distance médiane visée |
+|---|---|---|---|
+| 4:30 | 37,4 min | ×1,000 | 2 000 m |
+| 5:45 | 40,4 | ×0,926 | 1 851 m |
+| 7:00 | 44,6 | ×0,839 | 1 678 m |
+| 8:30 | 49,3 | **×0,759** | **1 519 m** |
+
+Distances actuelles : 1 000 et 2 000 m. **La plus courte que l'égalisation produirait est 759 m**
+— très au-dessus du seuil de bon sens de ~400 m évoqué. Le plancher reste nécessaire (il devra
+être un MAILLON DÉCLARÉ quand il mord) mais il ne mordrait sur aucun profil actuel.
+
+### (c) C25 / dose — pourquoi le plafond n'a pas mordu, et ce qu'il ne couvre pas
+
+`DOSE_CAP_MIN` déclare **`thr` 40 min · `vo2` 25 min**, par BLOC et par ZONE — la dose de 43,3 min
+du profil lent est une MOYENNE sur toutes les zones de qualité, pas 43 min de seuil d'un bloc.
+
+| allure | `rn.thr` | `rn.mara` |
+|---|---|---|
+| 4:30 | 25,7 min/bloc (plafond 40, respecté) | **61,0 min/bloc — aucun plafond déclaré** |
+| 8:30 | **37,1** min/bloc (plafond 40, respecté **à 3 min près**) | **73,7 min/bloc — aucun plafond** |
+
+**Deux trouvailles qui ne sont pas O-36 :**
+
+1. **`rn.mara` n'a aucun plafond de dose** et porte la plus grosse dose de qualité du moteur
+   (61-74 min/bloc). C'est peut-être délibéré — 16 km à allure marathon est une séance
+   marathon légitime — mais ce n'est **écrit nulle part**, donc c'est une absence non arbitrée.
+   Suivi en **O-39**.
+2. **Le plafond `thr` est à 3 minutes de mordre** chez le coureur lent. Il mordra au premier lot
+   qui allonge un peu les séances de seuil — et l'égalisation d'O-36 va justement dans l'autre
+   sens, ce qui est un argument de plus en sa faveur.
+
+```verify
+id: O-36-cible
+quoi: les trois mesures (a)(b)(c) du recadrage sont publiees
+attendu: O36-CIBLE-MESURE
+cmd: node scripts/mesureO36cible.mjs 2>/dev/null | grep -q "759 m" && node scripts/mesureO36cible.mjs 2>/dev/null | grep -q "aucun plafond déclaré pour cette zone" && echo "O36-CIBLE-MESURE"
+```
+
+---
+
+## O-39 — `rn.mara` porte la plus grosse dose de qualité du moteur, sans aucun plafond déclaré
+
+Trouvé en mesurant (c) ci-dessus. `DOSE_CAP_MIN` plafonne `thr` à 40 min et `vo2` à 25 ; **`mara`
+n'y figure pas**, et les blocs `rn.mara` livrent **61,0 min à 4:30 et 73,7 min à 8:30** par bloc.
+
+Le commentaire de `DOSE_CAP_MIN` justifie ses deux entrées (« une dose de seuil au-delà de ~40 min
+ou de VO2 au-delà de ~25 min n'est pas un entraînement, c'est une course ») sans dire pourquoi
+l'allure marathon en est exempte. **L'exemption est probablement juste** — courir 16 km à allure
+marathon est le cœur d'une préparation marathon — mais une exemption non écrite est
+indistinguable d'un oubli, et `IS_QUALITY_ZONE` classe pourtant `.mara` en qualité.
+
+**Ce que ça demande** : soit un plafond, soit une ligne qui dit pourquoi il n'y en a pas.
+
+```verify
+id: O-39
+quoi: rn.mara n'a pas d'entree dans DOSE_CAP_MIN alors qu'il est classe qualite
+attendu: O39-REPRODUIT
+cmd: grep -q "QUALITY_SUFFIX" src/generator/planGenerator.ts && node -e "import('./src/engine/constraintMatrix.ts').then(m=>process.exit(m.DOSE_CAP_MIN.mara===undefined?0:1))" && echo "O39-REPRODUIT"
+```

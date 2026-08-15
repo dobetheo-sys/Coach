@@ -194,6 +194,31 @@ function s6PicPrecedeDeCharge(plan: V1Plan): string[] {
 }
 
 /**
+ * S7 (T-29 sémantique) — UNE SÉANCE DE NAGE QUI DÉCLARE DES MÈTRES EN DÉCLARE PLUS DE ZÉRO.
+ *
+ * Le plancher C24/C24b s'écrivait `if (tot <= 0) continue` : un `continue` silencieux sur une
+ * passe de SÉCURITÉ, qui confondait « prescrite en temps » (le plancher n'a pas d'objet) et
+ * « mètres introuvables » (donnée absente). Le second est un fail-open — n'importe quel chemin
+ * futur qui fait rendre 0 à `metersOf` désactiverait le plancher pour cette séance sans un mot.
+ *
+ * L'assertion porte donc sur l'état AMBIGU et sur lui seul : une séance dont au moins un bloc de
+ * corps DÉCLARE une distance, et dont le total est nul. Une séance intégralement prescrite en
+ * temps n'est pas concernée — c'est un état légitime, mesuré sur 67 séances d'affûtage.
+ */
+function s7NageMetresCoherents(plan: V1Plan): string[] {
+  const bad: string[] = [];
+  for (const { w, s } of sessions(plan)) {
+    if (s.d !== "sw" || !s.steps || !s.steps.length) continue;
+    const declarent = s.steps.filter((st: V1Step) => st.role === "body" && st.distanceM != null);
+    if (!declarent.length) continue; // prescrite en TEMPS : légitime
+    const tot = s.steps.reduce((t: number, st: V1Step) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+    if (tot <= 0)
+      bad.push("S" + w.num + " « " + s.name + " » : " + declarent.length + " bloc(s) déclarent une distance, total = " + tot + " m");
+  }
+  return bad;
+}
+
+/**
  * Scelle le plan : batterie d'invariants, puis `_sealed`. LÈVE sur toute violation de rang
  * `dur` — bruyamment, avec le détail : un sceau qui rendrait un verdict silencieux serait la
  * treizième occurrence sous un autre nom.
@@ -209,6 +234,7 @@ export function sealPlan(plan: V1Plan, opts?: { format?: string; strict?: boolea
     { id: "S4", quoi: "la sortie longue est la plus longue de sa discipline dans sa semaine (I14)", rang: "declare", ticket: "O-37", violations: s4LongueEstLaPlusLongue(plan) },
     { id: "S5", quoi: "min(plafonds) du record R20.2 vaut le pic livré (T-25)", rang: "declare", ticket: "O-35 / O-36", violations: s5IdentiteR202(plan) },
     { id: "S6", quoi: "toute semaine de pic a une semaine de charge devant elle (condition du clamp C22, T-29)", rang: "dur", violations: s6PicPrecedeDeCharge(plan) },
+    { id: "S7", quoi: "une nage qui déclare des mètres en déclare plus de zéro (fail-open C24/C24b, T-29)", rang: "dur", violations: s7NageMetresCoherents(plan) },
   ];
   const report: SealReport = {
     verdicts,

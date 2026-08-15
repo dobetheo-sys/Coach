@@ -867,56 +867,39 @@ T("T-28", "vert", "toute borne auditée est lue par le générateur à la MÊME 
 });
 
 /**
- * T-29 — TOUT SITE QUI TRAITE UNE VALEUR ABSENTE COMME PERMISSIVE NOMME LA BORNE QUI LE DOMINE.
+ * T-29 (SÉMANTIQUE) — UNE DONNÉE ABSENTE NE FAIT SAUTER AUCUNE VÉRIFICATION DE SÉCURITÉ.
  *
- * `st.bnd ? st.bnd.cap : Infinity` : l'absence d'information devient une permission. Le tail
- * O-21 n'avait RIEN au-dessus de lui — c'était le trou de B-02. La boucle des receveuses porte
- * le même code et est dominée par `plafondFacile` (R20.3) — c'est ce qui la rend sûre. **La
- * différence n'est pas dans le code, elle est dans ce qui l'entoure**, et elle n'était écrite
- * nulle part.
+ * ⚠ MA PREMIÈRE ÉCRITURE ÉTAIT SYNTAXIQUE ET A RATÉ LE SITE QUI COMPTAIT. Elle cherchait la
+ * forme `x ? cap : Infinity` et recensait 14 sites ; le fail-open de C24/C24b s'écrit
+ * `if (tot <= 0) continue` — même sémantique, autre syntaxe. Onzième occurrence de « un critère
+ * qui nomme une chose et en mesure une voisine », dans le balayage lui-même.
  *
- * Et la généralisation naïve est RÉFUTÉE par la mesure : « inconnu ⇒ refuser » appliqué à la
- * boucle des receveuses supprimerait la restitution d'I14b en entier (66 des 66 steps remplis
- * n'ont pas de `bnd`). La règle n'est donc pas « refuser », c'est « NOMMER le dominant ».
- *
- * LE PARTAGE EST DÉLIBÉRÉ : la complétude est MÉCANIQUE (le banc échoue si un site apparaît
- * hors inventaire), le dominant est JUGÉ (une fois, par site, écrit ici). Automatiser le second
- * demanderait de décider ce que « dominer » veut dire — c'est de la lecture, pas du grep.
+ * La famille est : tout flot de contrôle (`continue`, `return` anticipé, court-circuit, défaut
+ * permissif, `catch` vide) où une donnée manquante fait SAUTER une vérification de sécurité. Et
+ * la distinction qui décide n'est pas syntaxique : un `continue` sur donnée absente est un
+ * FILTRE quand l'absence veut dire « la règle ne s'applique pas », un GARDE-FOU SAUTÉ quand elle
+ * veut dire « je ne peux pas l'évaluer ». Sur 69 sites de la famille syntaxique, ~60 sont des
+ * filtres — les recenser tous n'aurait gardé personne. Le balayage porte donc sur les PASSES DE
+ * SÉCURITÉ (`npm run audit:t29`), et ce critère garde ses deux moitiés.
  */
-const T29_INVENTAIRE = {
-  "planGenerator:capSeance": "C30b — dominé : `Math.min(cibleSpec, capSeance, semaine × C30_PART_SEMAINE_PIC)`, deux autres bornes dans le même min",
-  "planGenerator:capBloc": "I14b receveuses — dominé par `plafondFacile` (0,80 × longue, R20.3), au niveau de la SÉANCE",
-  "planGenerator:_rampCap": "R10 — la rampe est une contrainte EN PLUS : absente, la courbe déclarée et `capH` gouvernent",
-  "planGenerator:C22-croissance": "C22 — pas de prédécesseur = pas de contrainte de croissance ; dominé par `capH` et la courbe (4 sites)",
-  "planGenerator:refillCap": "I14b — dominé : `Math.min(delivCapMin, targetH × 60)`",
-  "planGenerator:C22-pic": "⚠ AUCUN DOMINANT — `Math.max(maxWeek, … : Infinity)` : un pic sans semaine de charge avant lui n'aurait PAS de plafond. Mesuré INATTEIGNABLE : 0 sur 1 332 semaines de pic, préparations tronquées R22 comprises. Défense en profondeur, comme le filet C31 — et c'est dit plutôt que corrigé à l'aveugle",
-  "planGenerator:raiseCap": "C22 — dominé : `Math.min(…, capH × 60)`",
-  "planGenerator:structBrut": "R20.2 — DIAGNOSTIC seul : au pire la chaîne ne nomme aucun plafond, elle n'en invente pas",
-  "repairLoop:swimCapM": "C15 — fenêtre débutant ; le non-débutant est borné par `CAP_SWIM[fmt]` dans blockBounds",
-  "repairLoop:capPrev": "C22 — dominé : `Math.min(wMinOf(prevW) × 1,1, …)`",
-};
-T("T-29", "vert", "tout site « absence = permission » nomme la borne qui le domine (inventaire complet)", () => {
-  // MOTIF MULTI-LIGNE, et ma première écriture ne l'était pas : elle cherchait ligne à ligne et
-  // MANQUAIT `_rampCap`, dont le ternaire tient sur trois lignes. Un inventaire qui ne voit pas
-  // un site n'inventorie rien — les retours à la ligne sont donc écrasés avant de chercher.
-  const MOTIF = /\?[^?;]{0,200}?:\s*(Infinity|Number\.MAX_SAFE_INTEGER)\b/g;
+T("T-29", "vert", "aucune donnée absente ne fait sauter une vérification de sécurité (balayage sémantique)", () => {
+  const pb = [];
   const sansCom = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-  let trouves = 0;
-  for (const f of ["src/generator/planGenerator.ts", "src/generator/repairLoop.ts"])
-    trouves += (sansCom(readFileSync(resolve(ROOT, f), "utf8")).replace(/\s*\n\s*/g, " ").match(MOTIF) || []).length;
-  // 14 sites, regroupés en 10 entrées : les 4 sites C22-croissance en portent une seule (même
-  // mécanisme, même dominant) et `structBrut` en compte 2 (les deux membres de son `min`).
-  const attendus = 14;
-  const manquants = Object.entries(T29_INVENTAIRE).filter(([, v]) => !v || v.length < 20).map(([k]) => k);
-  const sansDominant = Object.entries(T29_INVENTAIRE).filter(([, v]) => v.startsWith("⚠")).map(([k]) => k);
-  const ok = trouves === attendus && manquants.length === 0;
-  return {
-    ok,
-    detail: trouves === attendus
-      ? `${trouves} sites « absence = permission », ${Object.keys(T29_INVENTAIRE).length} entrées d'inventaire, dominant nommé partout `
-        + `(dont ${sansDominant.length} SANS dominant, mesuré inatteignable : ${sansDominant.join(", ")})`
-      : `✖ INVENTAIRE PÉRIMÉ : ${trouves} sites trouvés pour ${attendus} recensés — documenter le nouveau site et son dominant`,
-  };
+  // (a) le fail-open nommé : les deux états de « zéro mètre » sont SCINDÉS, pas confondus
+  const pg = sansCom(readFileSync(resolve(ROOT, "src/generator/planGenerator.ts"), "utf8"));
+  if (/if \(tot <= 0 \|\| tot >= floorM\) continue/.test(pg))
+    pb.push("C24/C24b : `tot <= 0` et `tot >= floorM` encore confondus dans un seul `continue`");
+  // (b) la forme la plus dangereuse de la famille reste absente du moteur
+  let catches = 0;
+  for (const f of ["src/generator/planGenerator.ts", "src/generator/repairLoop.ts", "src/engine/reasoningEngine.ts"])
+    catches += (sansCom(readFileSync(resolve(ROOT, f), "utf8")).match(/catch\s*(?:\([^)]*\))?\s*\{\s*\}/g) || []).length;
+  if (catches) pb.push(catches + " catch silencieux — une exception avalée est la pire forme de la famille");
+  // (c) les deux gardes que le sceau porte pour cette famille existent et sont DURES
+  const seal = readFileSync(resolve(ROOT, "src/generator/seal.ts"), "utf8");
+  for (const id of ["S6", "S7"])
+    if (!new RegExp('id: "' + id + '"[^}]*rang: "dur"').test(seal))
+      pb.push(id + " absent du sceau ou pas de rang DUR");
+  return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `fail-open C24/C24b scindé · 0 catch silencieux · S6 et S7 durs au sceau` };
 });
 
 // ---- verdict --------------------------------------------------------------
