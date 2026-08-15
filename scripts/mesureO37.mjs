@@ -71,8 +71,21 @@ ecarts.sort((a, b) => b.d - a.d);
 // n'a aucun sens et que j'ai failli publier. Onzième occurrence de la famille « une mesure qui
 // nomme une grandeur et en rend une voisine », cette fois dans le sens du tri.
 const q = (p) => ecarts.length ? ecarts[Math.min(ecarts.length - 1, Math.floor((1 - p) * ecarts.length))].d : 0;
+
+/**
+ * §6 — UN QUANTILE ASSERTE SES PROPRES INVARIANTS. Trois lignes, et cette classe ne revient pas.
+ * `min ≤ p50 ≤ p90 ≤ max` est vrai de toute distribution : un p90 sous la médiane est une valeur
+ * IMPOSSIBLE, pas une valeur surprenante. La garde coûte le prix d'un `if` et aurait attrapé mon
+ * erreur d'index avant que je la publie.
+ */
+function assertQuantiles(qf, min, max) {
+  const [p10, p50, p90] = [qf(0.1), qf(0.5), qf(0.9)];
+  if (!(min <= p10 && p10 <= p50 && p50 <= p90 && p90 <= max))
+    throw new Error(`quantiles incohérents — min ${min} · p10 ${p10} · p50 ${p50} · p90 ${p90} · max ${max}`);
+}
 const seuil = (n) => ecarts.filter((e) => e.d >= n).length;
 
+if (ecarts.length) assertQuantiles(q, ecarts[ecarts.length - 1].d, ecarts[0].d);
 console.log(`§5 — O-37 : LE DOMMAGE RÉEL, sur ${profils} profils\n`);
 console.log(`  semaines en violation : ${semaines} · dépassements comptés : ${ecarts.length}`);
 console.log(`  ampleur du dépassement (minutes au-dessus de la sortie longue) :`);

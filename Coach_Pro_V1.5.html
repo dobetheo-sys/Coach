@@ -13881,6 +13881,33 @@ function s5IdentiteR202(plan        )           {
 }
 
 /**
+ * S6 (T-29 §4) — TOUTE SEMAINE DE PIC EN CHARGE A UNE SEMAINE DE CHARGE DEVANT ELLE.
+ *
+ * C'est la condition d'existence du plafond C22 du pic : le clamp s'écrit
+ * `Math.max(maxWeek, prevCharge > 0 ? prevCharge × … : Infinity)`, donc un pic SANS semaine de
+ * charge antérieure n'aurait **aucun plafond**. C'est le seul site de l'inventaire T-29 sans
+ * borne dominante, et il est mesuré INATTEIGNABLE — 0 sur 1 332 semaines de pic, préparations
+ * tronquées R22 comprises.
+ *
+ * Mais « inatteignable » est une propriété du code d'AUJOURD'HUI, c'est-à-dire exactement la
+ * forme « protégé par le chemin, pas par la borne » qui a coûté deux jours sur B-02. La
+ * convertir en assertion est gratuit : si elle devient atteignable, le sceau le dit à la
+ * seconde où ça arrive, au lieu qu'un gate le découvre deux lots plus tard.
+ */
+function s6PicPrecedeDeCharge(plan        )           {
+  const bad           = [];
+  const semaines = plan.weeks ?? [];
+  for (let i = 0; i < semaines.length; i++) {
+    const w = semaines[i];
+    if (w.phase?.id !== "peak" || w.isRecup) continue;
+    const aCharge = semaines.slice(0, i).some((x) => !x.isRecup && x.phase?.id !== "taper"
+      && (x.days ?? []).some((d) => (d.sessions ?? []).some((s) => (s.min || 0) > 0)));
+    if (!aCharge) bad.push("S" + w.num + " : semaine de PIC sans aucune semaine de charge avant elle — le clamp C22 y serait sans plafond");
+  }
+  return bad;
+}
+
+/**
  * Scelle le plan : batterie d'invariants, puis `_sealed`. LÈVE sur toute violation de rang
  * `dur` — bruyamment, avec le détail : un sceau qui rendrait un verdict silencieux serait la
  * treizième occurrence sous un autre nom.
@@ -13895,6 +13922,7 @@ function sealPlan(plan        , opts                                        )   
     { id: "S3", quoi: "`min` est un nombre fini sur toute séance (R4.8a)", rang: "dur", violations: s3ContratMin(plan) },
     { id: "S4", quoi: "la sortie longue est la plus longue de sa discipline dans sa semaine (I14)", rang: "declare", ticket: "O-37", violations: s4LongueEstLaPlusLongue(plan) },
     { id: "S5", quoi: "min(plafonds) du record R20.2 vaut le pic livré (T-25)", rang: "declare", ticket: "O-35 / O-36", violations: s5IdentiteR202(plan) },
+    { id: "S6", quoi: "toute semaine de pic a une semaine de charge devant elle (condition du clamp C22, T-29)", rang: "dur", violations: s6PicPrecedeDeCharge(plan) },
   ];
   const report             = {
     verdicts,

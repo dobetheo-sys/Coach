@@ -2595,3 +2595,99 @@ quoi: une borne, une source — CAP_BRICK_BIKE supprimee, T-28 vert
 attendu: O38-FERME
 cmd: ! grep -q "export const CAP_BRICK_BIKE" src/engine/constraintMatrix.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "✓ T-28" && echo "O38-FERME"
 ```
+
+---
+
+## O-37b — les 12 dépassements ≥ 15 min sont TOUS en trail : ce n'est pas O-37
+
+Séparé d'O-37 sur consigne du fondateur (15/08) : *« un défaut qui se concentre entièrement dans
+une discipline n'est presque jamais un bug général — c'est une lacune de modélisation propre à
+cette discipline »*. Ranger les 12 avec les 441 les enterrerait.
+
+| | |
+|---|---|
+| cas ≥ 15 min | **12, tous en trail** |
+| le pire | « Descente en charge » **78 min** > « Longue trail + ravito réel » **60** (+30 %) |
+| profils | `trail/confirme/{debutant,inter,avance}/{finir,plaisir}` S16 |
+
+Le trail a sa propre arithmétique de dose (km-effort, D+, part de marche) et `enforceLabelVsDose`
+réduit un bloc en pente par ses RÉPÉTITIONS avec un plancher à 2 (I14, 2ᵉ passe) — en dessous,
+« une séance de descente avec une seule descente n'est plus une séance de descente ». Le résidu
+de 18 min est donc probablement CE plancher, atteint sur une longue trail elle-même courte
+(60 min). À vérifier avant d'écrire quoi que ce soit : c'est une hypothèse, pas un diagnostic.
+
+Petit, borné, et il a une cause nommable — contrairement aux 441, qui sont de la dette à 2 min.
+
+```verify
+id: O-37b
+quoi: les 12 depassements >= 15 min sont tous en trail
+attendu: O37B-REPRODUIT
+cmd: npm run mesure:o37 2>/dev/null | grep -q "≥ 15 min : 12" && npm run mesure:o37 2>/dev/null | grep -A2 "les 6 pires" | grep -q trail && echo "O37B-REPRODUIT"
+```
+
+---
+
+## O-36 — ⚠ TROIS PRÉMISSES VÉRIFIÉES AVANT D'ÉCRIRE, ET LA POPULATION N'EST PAS CELLE QU'ON CROYAIT
+
+Le fondateur a exigé (15/08, §5) que trois points soient tranchés avant toute ligne d'O-36. Ils
+le sont, et deux d'entre eux changent le périmètre du ticket. **Rien n'est écrit** : l'arbitrage
+lui revient.
+
+### §5.1 et §5.2 — le scénario redouté n'existe pas
+
+Le risque énoncé était : « O-36 ramène la séance du coureur lent de 42,5 à 20 min →
+`enforceLabelVsDose` la juge sous-dosée → il l'étend → la dose double revient ».
+
+**`enforceLabelVsDose` n'a AUCUNE cible de dose.** Ses deux seules cibles sont des PLAFONDS :
+`C25_RECOVERY_SESSION_CAP_MIN` (absolu) et `lg.min` (relatif à la sortie longue livrée). Et ses
+**cinq mutations de dose sont toutes gardées par `if (next < courant)`** — vérifié
+mécaniquement, pas à la lecture : elle ne peut que RÉDUIRE. Le scénario n'a pas de mécanisme.
+
+### §5.3 — le balayage, et il déplace le périmètre
+
+| blocs de corps | |
+|---|---|
+| prescrits en DISTANCE | **12 278** |
+| prescrits en TEMPS | 66 112 |
+| répartition de la distance | **nage 10 982 (89 %)** · course 1 296 (11 %) |
+
+**O-36 vise 1 296 blocs, pas 12 278.** Les 89 % restants sont de la NAGE, où le mètre est l'unité
+juste (un bassin se mesure en mètres) — et deux choses y pendent :
+
+- **3 696 blocs de nage portent un `bnd` en MÈTRES** (planchers 150-400, plafonds 315-850) :
+  les convertir sans convertir leurs bornes serait une faute d'unité au sens de la règle 14 ;
+- **C24/C24b se mesurent en mètres SUR LA SÉANCE** (`metersOf(sx)`), sur 10 593 séances de nage.
+  Si les blocs passaient au temps, `metersOf` rendrait 0 et la passe sortirait par son
+  `if (tot <= 0) continue` : **un plancher de SÉCURITÉ cesserait de s'appliquer en silence.**
+
+Les **1 296 blocs de course** que le ticket vise, eux, ne portent **aucun `bnd`** : ils tombent
+sur le repli `{ floor: 3 }` en minutes. Rien ne les rallongerait.
+
+### §2.5 — la thèse tient en DIRECTION, pas en magnitude
+
+| allure seuil | blocs | temps de TRAVAIL | door-to-door | km de qualité | reps |
+|---|---|---|---|---|---|
+| 4:30 | 108 | 28,9 min | 37,4 | 6,43 | 3,84 |
+| 5:45 | 108 | 33,1 | 40,4 | 5,76 | 3,44 |
+| 7:00 | 108 | 38,0 | 44,6 | 5,43 | 3,21 |
+| 8:30 | 108 | **43,3** | 49,3 | 5,09 | 3,01 |
+| **rapport lent/rapide** | | **×1,50** | ×1,32 | **×0,79** | ×0,78 |
+
+**Monotone et concentré sur les allures lentes : l'argument du fondateur n'est pas faux.** Mais
+sa magnitude illustrative (42,5 → 20 min, soit ×2,1) n'est pas ce que le moteur livre — parce
+qu'une **compensation partielle existe déjà** : le nombre de répétitions tombe de 3,84 à 3,01
+(−22 %) à distance par répétition constante (~1 672 m).
+
+Le coureur lent reçoit donc **+50 % de temps de travail et −21 % de kilomètres de qualité**. Le
+résidu à corriger vaut 50 %, pas 110 %.
+
+**Ce que ça change pour l'arbitrage** : un résidu de 50 % sur 1 296 blocs de course est un
+dossier plus mince qu'un doublement sur « toutes les prescriptions à intervalles », et la partie
+nage — 89 % du volume concerné — est celle qu'il ne faut PAS convertir. Décision au fondateur.
+
+```verify
+id: O-36-amont
+quoi: les trois premisses du §5 sont mesurees et publiees
+attendu: O36-AMONT-MESURE
+cmd: npm run mesure:o36 2>/dev/null | grep -q "sw 10982 · rn 1296" && echo "O36-AMONT-MESURE"
+```
