@@ -188,6 +188,25 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   raisonnement juste** — c'est le mode de défaillance le plus coûteux du dépôt, parce qu'il
   survit à la relecture.
 
+- **Règle 16 — la question « qu'est-ce qui produit ceci ? » se pose RÉCURSIVEMENT, jusqu'à un
+  point d'entrée produit.** S'arrêter à un niveau rend un fait vrai sur un FICHIER et faux sur le
+  PRODUIT. Mesuré : le balayage a répondu « `steps.js` écrit le journal sans promouvoir » — exact
+  — et personne n'a demandé qui appelle sa fonction d'import ; son unique appelant promeut dans la
+  ligne suivante, et O-41 était réfuté. Test d'arrêt : on s'arrête quand le producteur est une
+  ACTION DE L'ATHLÈTE ou un point d'entrée du système, **jamais quand c'est une autre fonction**.
+  La technique paie quand elle va au bout — comparer deux mesures au lieu d'en remplacer une,
+  balayer les ÉCRIVAINS et non les lecteurs, OBSERVER `blockBounds` au lieu de le modéliser — et
+  elle ment quand elle s'arrête à mi-chemin. Corollaire opérationnel : une fixture qui n'est pas
+  atteignable par un chemin produit rend un constat sur la fixture (T-33).
+
+- **Règle 17 — après tout déplacement de code, tous les blocs `verify` sont rejoués, et toute
+  entrée qui bascule en « ne reproduit plus » est confirmée À LA MAIN avant d'être crue.** Le mode
+  de défaillance est silencieux et il a déjà été mesuré deux fois : un `grep` qui ne trouve plus
+  son motif **se lit comme un défaut réparé**. Le pas A d'O-41 a déplacé `syncRefsFromTests` et
+  invalidé le bloc d'O-23 du même coup ; un refactor est un producteur de MASSE de ce défaut — il
+  peut retirer dix entrées du registre en une fois sans que rien ne le signale. (Six blocs à `cmd`
+  muet avaient déjà été rangés à tort en « ne reproduit plus » alors qu'ils reproduisaient.)
+
 - **Test de dépistage de la règle 15, à trois secondes : un taux SATURÉ accuse l'instrument.**
   Toute mesure qui rend 0 % ou 100 % est suspecte d'erreur de sonde jusqu'à preuve du contraire —
   et la preuve est de faire VARIER une entrée et de vérifier que le taux bouge. Quatre des
