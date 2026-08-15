@@ -207,6 +207,26 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   peut retirer dix entrées du registre en une fois sans que rien ne le signale. (Six blocs à `cmd`
   muet avaient déjà été rangés à tort en « ne reproduit plus » alors qu'ils reproduisaient.)
 
+- **Règle 18 — une différence E2E n'est attribuée à un lot qu'après ≥ 3 exécutions de la suite
+  concernée DE CHAQUE CÔTÉ du changement.** Une exécution unique de part et d'autre n'est pas une
+  comparaison : c'est deux tirages. Une suite E2E est stochastique par nature (réseau, temporisation,
+  charge machine), et le coût du faux positif est élevé dans les deux sens — soit on révoque un bon
+  lot, soit on cherche des heures une cause qui n'existe pas. Mesuré le 15/08/2026 :
+  `smoke-nofallback` (`icon-192.png net::ERR_ABORTED`) rouge après O-42, verte sur le commit
+  précédent, **une exécution de chaque côté** — j'allais l'écrire comme régression du lot. Rejouée
+  trois fois sur `HEAD` : trois fois verte, puis verte dans la passe complète. C'est le pendant
+  TEMPOREL de la règle 15 : celle-ci dit « mesure ce qui s'exécute, pas ce qui est écrit », celle-là
+  dit « mesure-le assez de fois pour que le résultat soit du signal ».
+
+- **Corollaire de la règle 14, à cinq secondes : un verdict rendu en POURCENTAGE sur une grandeur
+  dont le pas est ABSOLU est faux sur les petites valeurs.** Trois occurrences en une journée
+  (15/08/2026) : la tolérance de la ventilation O-42 (205 faux « inexpliqués », tous le même
+  arrondi), le classement du dépassement C22 (`swim/demifond` à **+17,6 %** vaut **34 → 40 min**,
+  soit 1,6 min au-dessus d'un clamp qui en accorde 1), et le seuil de bande de la même mesure.
+  Le test : *dans quelle unité la RÈGLE agit-elle ?* Un clamp qui retire des minutes se juge en
+  minutes ; un plancher de séance se compte en minutes ; un pourcentage sur une semaine de 34 min
+  amplifie le quantum d'un facteur dix.
+
 - **Test de dépistage de la règle 15, à trois secondes : un taux SATURÉ accuse l'instrument.**
   Toute mesure qui rend 0 % ou 100 % est suspecte d'erreur de sonde jusqu'à preuve du contraire —
   et la preuve est de faire VARIER une entrée et de vérifier que le taux bouge. Quatre des

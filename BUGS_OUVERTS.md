@@ -3659,3 +3659,105 @@ quoi: le clamp C22 final sait reduire un bloc prescrit en metres
 attendu: O42-C22M
 cmd: grep -q "CE CLAMP NE SAVAIT PAS RÉDUIRE DES MÈTRES" src/generator/planGenerator.ts && echo "O42-C22M"
 ```
+
+
+---
+
+## O-43 · Le plafond STRUCTUREL se nourrit de la conversion — recompter le même travail en plus de minutes **augmente** ce que le moteur prescrit · 🔴 **OUVERT — trouvé en répondant au §1/§3, non arbitré**
+
+**Trouvé en cherchant la cause des +4 de S5** (que le fondateur demandait de regarder « maintenant
+plutôt que mélangés au reste dans O-35 »). Sa prémisse était juste et le résultat est plus gros
+que 4 profils.
+
+### 1. Le fait
+
+Le pic **LIVRÉ**, sur les 945 profils du golden, avant et après O-42 :
+
+```
+352 hausses · 51 baisses · 33 profils (3,5 %) au-delà de ±25 %
+tous en NATATION (29) ou en TRIATHLON (4)
+
+swim/fond/reprise/debutant        40 → 104 min  (+160 %)  séances max 3 → 6
+swim/sprint/reprise/debutant      39 →  91 min  (+133 %)  séances max 3 → 6
+swim/demifond/reprise/debutant    39 →  83 min  (+113 %)  séances max 3 → 5
+swim/fond/ancien/debutant         55 → 101 min  ( +84 %)  séances max 4 → 6
+```
+
+**Ce n'est pas une re-tarification** : le nombre de SÉANCES double. Un débutant en **reprise** —
+la population que le manifeste protège en premier, celle de C24b, C23 et de la rampe R10 — passe
+de 3 séances de nage par semaine à 6.
+
+### 2. La rampe R10 ne le tient pas
+
+Vérifié en déclarant `vol_recent` explicitement, ce que le golden ne fait pas :
+
+```
+vol_recent │ pic AVANT → APRÈS │ séances max
+   absent  │   40 → 104 min (+160 %) │ 3 → 6
+        0  │   52 →  89 min ( +71 %) │ 4 → 6      ← la réponse la PLUS protectrice
+        2  │   40 →  88 min (+120 %) │ 3 → 6
+        5  │   40 → 104 min (+160 %) │ 3 → 6
+```
+
+Même à `vol_recent: 0` — « je ne m'entraîne pas du tout » — le pic monte de 71 % et la fréquence
+passe de 4 à 6. La garde qui existe précisément pour empêcher ça ne mord pas.
+
+### 3. Le mécanisme, lu sur la chaîne R20.2
+
+`swim/fond/reprise/debutant/finir`, `vol_recent: 0` :
+
+| maillon | avant | après |
+|---|---|---|
+| `structurel` | **1,42 h** | **2,08 h** (+47 %) |
+| `boucle-growth` | 1,01 h | 1,52 h |
+| `courbe` | 1,98 h | 2,11 h |
+| `declared` · `caps` · `util` · `ramp` | inchangés | inchangés |
+
+Le maillon qui bouge est **`structurel`** — ce que la structure de la semaine peut contenir. Il se
+calcule sur des plafonds de séance exprimés en MINUTES. O-42 fait coûter plus de minutes au même
+travail en mètres ; la sonde lit cette hausse comme **une capacité plus grande** ; la courbe monte ;
+le point fixe ajoute des séances pour l'atteindre.
+
+**La boucle est circulaire, et son sens est le mauvais** : recompter honnêtement le même travail
+devrait RÉDUIRE ce qui tient dans une semaine, pas augmenter le plafond. Le plafond est une
+propriété de l'ATHLÈTE (temps disponible, tolérance tissulaire), jamais de la façon dont le moteur
+compte. C'est la règle 12 sous une forme nouvelle : ici ce n'est pas une entrée déclarée qui
+remplace une sortie calculée, c'est **une sortie calculée qui se relit elle-même comme une entrée**.
+
+### 4. Ce que ma ventilation d'O-42 a manqué, et pourquoi
+
+`ventile:o42` déclare le diff « entièrement expliqué ». Il l'était **selon son critère**, et le
+critère était incomplet : il vérifie que le LIVRÉ ne s'éloigne pas de sa cible DÉCLARÉE. Ici les
+deux montent ensemble — donc le critère est satisfait pendant que le plan double. J'ai vérifié la
+cohérence entre la promesse et la livraison ; je n'ai jamais demandé **si la promesse avait le
+droit de monter**. Le §6-4 du fondateur (« aucun mouvement inexpliqué ») visait exactement ça, et
+je l'ai lu trop étroitement.
+
+### 5. Ce qui n'est PAS établi
+
+- Que le plan livré soit dangereux : 6 séances de 17 min chez un nageur, ce n'est pas 6 séances
+  de course à pied. C'est un arbitrage d'entraînement, pas une mesure.
+- Que la borne juste soit l'ancienne : le pic d'AVANT était calculé sur une conversion fausse.
+  On ne peut pas conclure « il faut revenir à 40 min » — 40 min était aussi un chiffre dérivé
+  d'une erreur.
+
+Ce qui est établi : **le plafond structurel dépend de l'unité de comptage, et il ne devrait pas.**
+
+### 6. Décision demandée
+
+Rien n'est fusionné. Trois issues, à chiffrer avant d'en choisir une :
+
+1. **Borner `structurel` sur une grandeur invariante par la conversion** (mètres, ou nombre de
+   séances × plafond de séance en mètres pour la nage) — la correction de fond.
+2. **Geler `structurel` sur sa valeur d'avant O-42 pour la nage** — un correctif de transition,
+   qui fige un chiffre issu d'une conversion fausse.
+3. **Assumer la hausse** — elle est peut-être la bonne réponse pour un nageur qui pouvait déjà
+   faire ces séances ; alors il faut le dire dans le plan et le mesurer sur la population
+   `débutant × reprise` en particulier.
+
+```verify
+id: O-43
+quoi: le plafond structurel monte quand la conversion fait couter plus de minutes au meme travail
+attendu: O43-REPRODUIT
+cmd: node scripts/mesureO43.mjs 2>/dev/null | grep -q "O43-REPRODUIT" && echo "O43-REPRODUIT"
+```
