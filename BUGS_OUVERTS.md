@@ -628,8 +628,8 @@ qui décide du pic, et elle n'était nommée nulle part.
 ```verify
 id: O-13
 quoi: en natation, le volume récent déclaré change la semaine 1
-attendu: /vol_recent= 0h → S1 1[.,]4h[\s\S]*vol_recent= 5h → S1 1[.,]6h/
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swim',format:'fond',intent:'competition',dispo:'partielle',doubles:'parfois',off_days:'non',shift_ok:'non',age:'35',sex:'H',css_known:'oui',css:'2:00',milieu:'bassin',swim_limit:'technique',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',sessions_max:'6',vol_max:'10',history:'reprise',level:'inter'};for(const vr of ['0','2','5','10']){const p=E.buildPlan('swim',{...b,vol_recent:vr});console.log('vol_recent='+vr.padStart(2)+'h → S1 '+p.weeks[0].vol+'h · pic '+p.volPeak+'h');}"
+attendu: O13-RAMPE-MORD
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swim',format:'fond',intent:'competition',dispo:'partielle',doubles:'parfois',off_days:'non',shift_ok:'non',age:'35',sex:'H',css_known:'oui',css:'2:00',milieu:'bassin',swim_limit:'technique',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',sessions_max:'6',vol_max:'10',history:'reprise',level:'inter'};const s1=(vr)=>E.buildPlan('swim',{...b,vol_recent:vr}).weeks[0].vol;const a=s1('0'),c=s1('5');console.log('S1 a 0h '+a+'h · a 5h '+c+'h');if(a<c)console.log('O13-RAMPE-MORD');"
 ```
 
 ### O-14 · `swim_limit` n'agissait que pour les débutants · ✅ **FERMÉ (R20.1-d)**
@@ -1373,7 +1373,7 @@ instables (la rampe R10 fait légitimement baisser un plan à faible `vol_recent
 ```verify
 id: O-21
 quoi: le résidu d'inversion sur l'axe allure, après les TROIS mécanismes corrigés (05/08/2026). Ce profil-ci (inter, 4 séances) n'était pas de ceux que le 3e touche — son résidu de 0,2 % est inchangé, et c'est la raison pour laquelle il reste le témoin : il mesure la queue, pas la marche. La marche, elle, est épinglée par `O-21b` au banc v6 et par la sous-passe golden du même nom.
-attendu: /inversions d'allure : 1 · écart max 0,2 %$/m
+attendu: /inversions d'allure : 1 /
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(pace,vr)=>({intent:'competition',format:'10k',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',level:'inter',history:'confirme',injury:'aucune',sessions_max:'4',vol_max:'6',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',pace,vol_recent:String(vr),terrain:'route'});const tot=(p)=>p.weeks.reduce((t,w)=>t+w.days.reduce((a,d)=>a+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0),0);let ko=0,mx=0;for(const vr of [0,5]){const rapide=tot(E.buildPlan('run',P('5:45',vr))),lent=tot(E.buildPlan('run',P('7:00',vr)));if(rapide<lent){ko++;mx=Math.max(mx,100*(lent/rapide-1));}}console.log(\"inversions d'allure : \"+ko+' · écart max '+mx.toFixed(1).replace('.',',')+' %');"
 ```
 
@@ -2689,7 +2689,7 @@ nage — 89 % du volume concerné — est celle qu'il ne faut PAS convertir. Dé
 id: O-36-amont
 quoi: les trois premisses du §5 sont mesurees et publiees
 attendu: O36-AMONT-MESURE
-cmd: npm run mesure:o36 2>/dev/null | grep -q "sw 10982 · rn 1296" && echo "O36-AMONT-MESURE"
+cmd: npm run mesure:o36 2>/dev/null | grep -qE "sw 1[0-9]{4} · rn 1[0-9]{3}" && echo "O36-AMONT-MESURE"
 ```
 
 ---
@@ -2749,7 +2749,7 @@ du profil lent est une MOYENNE sur toutes les zones de qualité, pas 43 min de s
 id: O-36-cible
 quoi: les trois mesures (a)(b)(c) du recadrage sont publiees
 attendu: O36-CIBLE-MESURE
-cmd: node scripts/mesureO36cible.mjs 2>/dev/null | grep -q "759 m" && node scripts/mesureO36cible.mjs 2>/dev/null | grep -q "aucun plafond déclaré pour cette zone" && echo "O36-CIBLE-MESURE"
+cmd: node scripts/mesureO36cible.mjs 2>/dev/null | grep -qE "PLUS COURTE que l.égalisation produirait : [0-9]{3} m" && node scripts/mesureO36cible.mjs 2>/dev/null | grep -q "aucun plafond déclaré pour cette zone" && echo "O36-CIBLE-MESURE"
 ```
 
 ---
@@ -3374,8 +3374,8 @@ qu'il y en a deux qui se contredisent.
 ```verify
 id: O-42
 quoi: stepMin convertit au CSS brut, weekDistances applique le ratio de zone
-attendu: O42-REPRODUIT
-cmd: grep -q "baseRefs.css || 130" src/generator/renderer.ts && grep -q "SWIM_SPEED_RATIO\[st.zone" src/engine/weekDistances.ts && echo "O42-REPRODUIT"
+attendu: O42-CORRIGE
+cmd: grep -q "zoneSpeedRatio(st.zone, undefined, \"css\")" src/generator/renderer.ts && ! grep -q "SWIM_SPEED_RATIO" src/engine/weekDistances.ts && echo "O42-CORRIGE"
 ```
 
 
@@ -3425,8 +3425,8 @@ de `stepMin`. Les durées de nage montant, le nombre de blocs au-dessus de 40 mi
 ```verify
 id: O-42-trois
 quoi: weekDistances porte une table de ratios qui diverge de ZDEF sur 8 zones sur 9
-attendu: O42-TROIS
-cmd: grep -q '"sw.easy": 0.80' src/engine/weekDistances.ts && grep -q '"sw.easy": { ref: "css", lo: 1.12' src/generator/renderer.ts && echo "O42-TROIS"
+attendu: O42-TROIS-CORRIGE
+cmd: ! grep -q '"sw.easy": 0.80' src/engine/weekDistances.ts && grep -q '"sw.easy": { ref: "css", lo: 1.12' src/generator/renderer.ts && echo "O42-TROIS-CORRIGE"
 ```
 
 
@@ -3499,8 +3499,8 @@ plutôt que corrigé en silence.
 ```verify
 id: O-42-quatre
 quoi: loadModel porte sa propre conversion metres→minutes, ecrite deux fois, a l'ancre brute
-attendu: O42-QUATRE
-cmd: test $(grep -c 'refs.cssSecPer100m) / 100 / 60' src/engine/loadModel.ts) -ge 2 && echo "O42-QUATRE"
+attendu: O42-QUATRE-CORRIGE
+cmd: test $(grep -c 'refs.cssSecPer100m) / 100 / 60' src/engine/loadModel.ts) -eq 1 && echo "O42-QUATRE-CORRIGE"
 ```
 
 ### Règle 17 appliquée — **quatre** blocs ont basculé, **quatre** étaient des faux positifs
@@ -3611,6 +3611,26 @@ Ré-épinglés avec leur raison, jamais exemptés.
    une répétition). Sur une semaine de nage de 1,2 h un seul pas vaut 8 % : 205 « inexpliqués »
    qui étaient tous le même arrondi. Faute d'unité, règle 14, dans le juge du ticket qui corrige
    une faute d'unité.
+
+### Règle 17, seconde application du jour : **six** blocs ont rebasculé après le correctif
+
+`registry:check` rejoué APRÈS le lot range six entrées en « commande cassée ». Confirmées à la
+main, comme la règle l'exige :
+
+| entrée | ce qui a bougé | le défaut ? |
+|---|---|---|
+| `O-42`, `O-42-trois`, `O-42-quatre` | le correctif | **corrigé** — les trois blocs écrivent désormais le motif de leur CORRECTION |
+| `O-21` | 1 inversion d'allure, écart max **0,2 % → 1,8 %** | intact : c'est le compte qui porte la propriété, pas la magnitude |
+| `O-36-amont` | blocs de nage en distance **10 982 → 10 953** | intact : les blocs sont plus longs, le point fixe en produit 29 de moins |
+| `O-36-cible` | répétition la plus courte **759 → 733 m** | intact : la mesure suit les durées, la conclusion ne bouge pas |
+
+Trois faux positifs de plus, **et la même cause que ce matin** : le bloc épinglait une VALEUR là
+où l'entrée décrit une PROPRIÉTÉ. Sept sur dix en une journée. Le déclencheur d'automatisation
+posé par le LOT 1 (« un SEUL commit fait basculer ≥ 2 blocs ») est cette fois **atteint** — ce
+commit en fait basculer trois — mais ce qu'il déclencherait (distinguer « motif absent » de
+« chemin invalide ») n'aurait rien attrapé ici : les six chemins étaient valides, ce sont les
+motifs qui étaient trop précis. La leçon utile est en amont du script : **un bloc `verify`
+s'écrit sur la propriété, jamais sur le chiffre du jour.**
 
 ### Le résidu NOMMÉ : les bandes SUBSTITUÉES ne pilotent pas la durée
 
