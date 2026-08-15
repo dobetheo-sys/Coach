@@ -25,72 +25,23 @@ import { ensurePlan, invalidatePlan } from "./tabs.js";
 import { DISC } from "./icons.js";
 
 const _fmtSec = (s) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
-const _fmtColon = (s) => Math.floor(s / 60) + ":" + String(Math.round(s % 60)).padStart(2, "0");
 
-// Le moteur V2 ne lit QUE les valeurs courantes (a.ftp/a.pace/a.css + *_known) — jamais
-// le journal daté S.answers.tests. Sans ce pont, un import (FIT/Strava) écrirait le
-// journal mais le plan généré ne changerait JAMAIS (bug corrigé : « chaque paramètre
-// doit influencer le plan »). Applique le test le PLUS RÉCENT de chaque type ; renvoie
-// le nombre de références effectivement mises à jour.
-export function syncRefsFromTests() {
-  const tests = Array.isArray(S.answers.tests) ? S.answers.tests : [];
-  // O-23 — « LATEST » RENDAIT LE PLUS ANCIEN QUAND DEUX TESTS PARTAGENT UNE DATE.
-  //
-  // Le tri ne portait que sur la DATE, et `Array.prototype.sort` est STABLE depuis ES2019 :
-  // à date égale, l'ordre d'insertion est conservé, donc `[0]` est le PREMIER inséré —
-  // c'est-à-dire le plus VIEUX. Une fonction nommée `latest` qui rend le plus ancien.
-  //
-  // Ce n'est pas un cas de bord : plusieurs tests le même jour, c'est la normale. Le
-  // fondateur a lancé trois imports Strava d'affilée en branchant son compte ; mesuré sur
-  // son journal, un quatrième import corrigé (FTP 230 W) n'aurait RIEN changé — `latest`
-  // aurait continué de rendre le 188 W du premier. Le correctif d'O-22 serait resté
-  // invisible, et on aurait cherché le défaut dans l'import.
-  //
-  // Le moteur, lui, était juste : `measuredRate` (projection.ts) trie en ordre CROISSANT et
-  // prend le dernier élément, donc à date égale il obtient bien le plus récent. Les deux
-  // chemins disaient déjà deux choses différentes du même journal.
-  //
-  // À date égale, on départage par POSITION : le journal est append-only, l'ordre du tableau
-  // est donc l'ordre chronologique à l'intérieur d'une journée.
-  //
-  // O-25 — SAUF QUE LA POSITION SEULE DÉFAISAIT LA CORRECTION DE L'ATHLÈTE.
-  //
-  // Le message de l'import promet depuis son écriture : « la saisie manuelle prime TOUJOURS sur
-  // l'import ». Elle ne primait pas. La saisie et l'import atterrissent dans le MÊME journal, à
-  // la MÊME date, et le départage par position fait gagner le dernier inséré — c'est-à-dire
-  // l'import, puisque l'ordre naturel est de corriger d'abord et de réimporter ensuite. Mesuré
-  // sur le compte du fondateur : allure seuil corrigée à 4'42, réimport, retour à 5'37, sans
-  // qu'aucun message ne le signale.
-  //
-  // La règle devient celle que le produit promettait déjà : **une valeur SAISIE bat tout import
-  // du même jour**. Au-delà, la date reprend la main — un import postérieur dit quelque chose de
-  // neuf (une course courue trois semaines plus tard), et geler la valeur à vie serait le défaut
-  // symétrique de celui qu'on corrige.
-  //
-  // Le retest guidé compte comme une saisie : c'est un protocole exécuté volontairement, pas une
-  // déduction faite à la place de l'athlète.
-  const DELIBERE = (t) => /^(profil|retest)/.test(String(t.source || ""));
-  const latest = (type) => {
-    const c = tests.map((t, i) => ({ t, i })).filter(({ t }) => t.type === type && isFinite(t.value));
-    c.sort((x, y) =>
-      String(y.t.date || "").localeCompare(String(x.t.date || ""))
-      || (DELIBERE(y.t) ? 1 : 0) - (DELIBERE(x.t) ? 1 : 0)
-      || (y.i - x.i));
-    return c.length ? c[0].t : undefined;
-  };
-  let n = 0;
-  const ftp = latest("ftp");
-  if (ftp) { const v = String(Math.round(ftp.value)); if (S.answers.ftp_known !== "oui" || S.answers.ftp !== v) { S.answers.ftp = v; S.answers.ftp_known = "oui"; n++; } }
-  const pace = latest("thrPace");
-  if (pace) { const v = _fmtColon(pace.value); if (S.answers.pace_known !== "oui" || S.answers.pace !== v) { S.answers.pace = v; S.answers.pace_known = "oui"; n++; } }
-  const css = latest("css");
-  if (css) { const v = _fmtColon(css.value); if (S.answers.css_known !== "oui" || S.answers.css !== v) { S.answers.css = v; S.answers.css_known = "oui"; n++; } }
-  // R12.2/R12.3 — la VAM suit le même pont que les trois autres références : sans lui, un test
-  // ou un import écrirait le journal sans que le plan change JAMAIS (bug déjà corrigé une fois).
-  const vam = latest("vam");
-  if (vam) { const v = String(Math.round(vam.value)); if (S.answers.vam_known !== "oui" || S.answers.vam !== v) { S.answers.vam = v; S.answers.vam_known = "oui"; n++; } }
-  return n;
-}
+// O-41 (pas A) — `syncRefsFromTests` A DÉMÉNAGÉ DANS `state.js`, ET CE N'EST PAS DU RANGEMENT.
+//
+// Elle ne touchait aucun DOM, aucun état de vue, aucun rafraîchissement : c'était de l'ÉTAT PUR
+// dans un module d'interface. Et cette adresse avait un coût mesuré — `steps.js`, le chemin
+// d'import du questionnaire, ne pouvait pas l'appeler sans créer un cycle d'import, donc il
+// écrivait le journal sans jamais promouvoir (O-41 §1bis : la FTP et l'allure seuil importées
+// n'atteignaient pas le plan).
+//
+// La couture de fond est là : O-22 et O-25 ont travaillé dans `steps.js` MÊME sans relier
+// l'écriture à la promotion, **parce qu'elles vivaient dans deux fichiers différents**. Les
+// réunir avec l'écriture du journal est ce qui empêche la sixième occurrence, plus encore que
+// le crochet lui-même (pas B).
+//
+// Ré-exportée ici : `retest.js` l'importe de cette adresse, et un renommage d'import n'apporte
+// rien à personne.
+export { syncRefsFromTests } from "../state.js";
 
 // Libellé lisible d'une entrée du journal (types tests existants + types « profil: »).
 function journalLabel(t) {
