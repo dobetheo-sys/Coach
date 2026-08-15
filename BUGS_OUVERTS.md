@@ -3228,3 +3228,52 @@ quoi: steps.js ecrit dans le journal des references sans jamais appeler la promo
 attendu: O41-TROU
 cmd: grep -q "tests.push({type:\"ftp\"" endurabuild/js/ui/steps.js && ! grep -q "syncRefsFromTests" endurabuild/js/ui/steps.js && echo "O41-TROU"
 ```
+
+
+---
+
+## O-41 §1bis — E2E : LES DEUX VARIANTES ÉCHOUENT · **TROU FRANC**, avec une réserve d'instrument
+
+Suite `tests/e2e/smoke-import-ref.mjs`, écrite avec le piège du §1 en tête : ouvrir le Profil
+déclenche la promotion, donc un test qui y passe FABRIQUE le résultat qu'il mesure.
+
+L'état posé est **exactement** ce que fait le chemin d'import de `steps.js` — les deux entrées de
+journal (`ftp: 250` source Strava, `thrPace: 260` source Strava) et **rien d'autre** : ni `ftp`,
+ni `ftp_known`.
+
+| variante | `answers.ftp` | `ftp_known` | verdict |
+|---|---|---|---|
+| **(a)** génération directe, sans ouvrir le Profil | `null` | `non` | ✖ non promue |
+| **(b)** après être passé par le Profil | `null` | `non` | ✖ non promue |
+
+Selon la table de l'arbitrage, c'est **`(a) ✗ et (b) ✗` → trou franc, aucun masquage**.
+
+Et la lecture du code le confirme : `syncRefsFromTests()` n'est appelée qu'aux lignes 1073 et 1090
+de `tab-profile.js` — dans les **handlers** de restauration de sauvegarde et d'enregistrement
+manuel — plus `retest.js:116`. **Elle ne tourne pas au rendu de l'onglet.** Visiter le Profil ne
+suffit donc pas ; il faut y enregistrer quelque chose.
+
+### ⚠ La réserve, et elle suit la règle du taux saturé
+
+**Deux variantes sur deux qui échouent est le genre de résultat qui accuse l'instrument.** Ma
+lecture se fait dans `localStorage`, qui n'est écrit que par `ebSave` : si la variante (b) avait
+promu **en mémoire** sans persister, je lirais quand même `null`. Le verdict « trou franc » est
+donc solide sur (a) — c'est là que le dommage vit — et **à confirmer sur (b)** par une lecture
+en mémoire plutôt qu'en storage.
+
+Ça ne change pas le correctif, seulement l'étiquette de (b) : trou franc, ou trou masqué par une
+navigation qui inclut un enregistrement.
+
+### Le correctif reste celui du §2, dans les trois cas
+
+Accrocher la promotion à la fonction d'**ajout au journal**, pas un quatrième appel. Et la raison
+de fond est mesurée : **O-22 et O-25 ont travaillé dans `steps.js` même**, et ni l'un ni l'autre
+n'a relié l'écriture du journal à la promotion — parce que `syncRefsFromTests` vient de R20.1,
+ailleurs et plus tard. Une couture de ce type ne se referme que par la structure.
+
+```verify
+id: O-41-e2e
+quoi: la FTP importee n'atteint pas answers.ftp sans passer par un enregistrement
+attendu: NON PROMUE
+cmd: node tests/e2e/smoke-import-ref.mjs 2>/dev/null | grep -o "NON PROMUE" | head -1
+```
