@@ -5117,6 +5117,51 @@ function fmtIntHr(key                           , refs      , hz         )      
   return fmtInt(key, refs, hz);
 }
 
+/**
+ * O-42 — LA VITESSE D'UNE ZONE SE DÉRIVE DE SA DÉFINITION. POINT UNIQUE (R11.1).
+ *
+ * Quatre fonctions convertissaient des mètres en minutes (ou l'inverse), avec TROIS
+ * comportements distincts pour une seule grandeur :
+ *   · `stepMin` (générateur)                — ancre BRUTE, ratio 1,00 : un bloc facile compté
+ *                                              comme s'il était nagé au CSS ;
+ *   · `loadModel` (auditeur, deux écritures) — la même, recopiée ;
+ *   · `weekDistances` (km de la semaine)     — sa propre table `*_SPEED_RATIO`, divergente de
+ *                                              `ZDEF` sur 8 zones sur 9 (jusqu'à 10,4 %).
+ *
+ * L'autorité n'est aucune des deux tables : c'est `ZDEF`, celle qui produit les allures que
+ * l'athlète LIT. Un plan qui affiche une allure et en compte une autre est le défaut que ce
+ * chantier corrige depuis le premier jour, appliqué à la conversion plutôt qu'au message.
+ *
+ * `ZDEF` est en multiplicateurs d'ALLURE (s/100 m, s/km) ; la vitesse en est l'inverse, et
+ * l'inversion se fait ICI, une seule fois — deux écritures de `1/mult` invitent l'erreur de
+ * signe que ce ticket existe pour supprimer.
+ *
+ * LE CHOIX DE BANDE, MESURÉ AVANT D'ÊTRE FAIT (`npm run mesure:o42`) — en NAGE `lo === hi`, la
+ * vitesse est exacte ; en course les bandes ont une largeur. Sur 4 259 blocs prescrits en
+ * mètres, 108 (2,5 %) portent une bande, et l'écart entre la borne rapide et la borne lente vaut
+ * **0,2 % du total contre 7,9 % pour la correction elle-même**. On prend le CENTRE :
+ * `longRunSpecificity` prend `lo` parce qu'elle calcule un PLANCHER (« l'hypothèse la moins
+ * gourmande »), et cette fonction ne produit ni plancher ni plafond mais une COMPTABILITÉ —
+ * une comptabilité prend la valeur attendue. La borne lente (la plus prudente au sens du
+ * manifeste) coûterait +0,1 % : chiffrée pour que la décision reste révocable sans re-mesure.
+ *
+ * Rend `null` là où une vitesse ne se dérive PAS d'un multiplicateur d'allure :
+ *   · `ftp`  — la vitesse ne suit pas la puissance linéairement (modèle de Martin, PW) ;
+ *   · `vam`  — une vitesse ASCENSIONNELLE n'est pas une vitesse au sol (R7 TRAIL §7).
+ * `expectRef` refuse une zone dont l'ancre n'est pas celle de la discipline appelante : appliquer
+ * un ratio de course à une ancre CSS serait une faute d'unité (règle 14).
+ */
+function zoneSpeedRatio(
+  key                           ,
+  refs       ,
+  expectRef                    ,
+)                {
+  const d = refs ? zoneOf(key, refs) : key ? ZDEF[key] : undefined;
+  if (!d || (d.ref !== "css" && d.ref !== "thrPace")) return null;
+  if (expectRef && d.ref !== expectRef) return null;
+  return 2 / (d.lo + d.hi); // 1 ÷ multiplicateur d'allure moyen
+}
+
 const intOf = (key               , refs       )                                                 => {
   const d = refs ? zoneOf(key, refs) : key ? ZDEF[key] : undefined;
   return d ? { ref: d.ref, lo: d.lo, hi: d.hi } : null;
@@ -5146,8 +5191,11 @@ function stepMin(st        , disc        , baseRefs      )         {
   if (st.durationMin) return reps * st.durationMin + rec;
   if (st.distanceM) {
     const d = st.d || disc;
-    if (d === "sw") return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60) + rec;
-    return ((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60) + rec;
+    // O-42 — la durée découle de l'allure de la ZONE, pas de l'ancre brute : un bloc facile
+    // n'est pas nagé au CSS. `zoneSpeedRatio` est la seule dérivation (R11.1) ; une zone
+    // inconnue (ou d'une autre discipline) retombe sur 1, le comportement historique.
+    if (d === "sw") return (((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60)) / (zoneSpeedRatio(st.zone, undefined, "css") ?? 1) + rec;
+    return (((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60)) / (zoneSpeedRatio(st.zone, undefined, "thrPace") ?? 1) + rec;
   }
   return 0;
 }
@@ -5760,22 +5808,23 @@ function assumedSetup(sport        , format                    )         {
 // chiffre inventé, et le drapeau `approx` dit qu'une conversion a eu lieu (l'UI affiche « ~ »).
 //
 // LES VITESSES, et d'où elles viennent :
-//  · course — la vitesse d'une zone est le RAPPORT à la vitesse seuil. C'est la définition
-//    même de l'IF de course (rTSS, Skiba : IF = allure normalisée / allure seuil), donc les
-//    rapports ci-dessous sont des rapports de VITESSE, pas des parts d'effort : l'endurance
-//    fondamentale se court 20-25 % plus lentement que le seuil (0,78), le travail marathon
-//    à ~92 %, la VO2max un peu au-dessus du seuil sur ces durées courtes (1,05).
-//  · natation — même logique sur le CSS : l'aisance se nage à ~80 % de la vitesse CSS
-//    (heuristique assumée, écrite comme telle), l'aérobie à ~88 %, le CSS à 100 %.
+//  · course et natation — la vitesse d'une zone est le RAPPORT à la vitesse seuil (CSS en nage).
+//    C'est la définition même de l'IF de course (rTSS, Skiba : IF = allure normalisée / allure
+//    seuil). O-42 — CE FICHIER NE PORTE PLUS SA TABLE : elle valait `sw.easy` 0,80 quand `ZDEF`
+//    définit cette zone à ×1,12 sur l'allure CSS, soit 0,893 en vitesse — 10,4 % d'écart, et
+//    8 zones sur 9 divergeaient. Il y avait TROIS conversions pour une grandeur (celle-ci, celle
+//    de `stepMin`, celle de `loadModel`), toutes différentes, et aucune n'était celle qui produit
+//    les allures que l'athlète LIT. L'autorité est `ZDEF`, via `zoneSpeedRatio` (R11.1).
 //  · vélo — la vitesse NE SUIT PAS la puissance linéairement : on résout le modèle de
 //    Martin (cyclingSpeed.ts, PW) à la puissance de zone. Il exige le poids : sans poids
-//    ou sans FTP, pas de km vélo — le temps reste affiché.
+//    ou sans FTP, pas de km vélo — le temps reste affiché. `BIKE_POWER_RATIO` reste ici : c'est
+//    un rapport de PUISSANCE, pas de vitesse — il entre DANS le modèle au lieu de s'y substituer.
 
-// Rapport de vitesse par zone (course = fraction de la vitesse seuil ; nage = fraction de
-// la vitesse CSS). Une zone inconnue retombe sur l'endurance : c'est la zone la plus
-// fréquente, et l'erreur est alors dans le sens qui SOUS-compte les km.
-const RUN_SPEED_RATIO                         = { "rn.easy": 0.78, "rn.rec": 0.70, "rn.mara": 0.92, "rn.thr": 1.0, "rn.vo2": 1.05 };
-const SWIM_SPEED_RATIO                         = { "sw.easy": 0.80, "sw.aero": 0.88, "sw.css": 1.0, "sw.speed": 1.02 };
+
+/** O-42 — le ratio de la zone, dérivé de `ZDEF`. Une zone inconnue retombe sur l'endurance :
+ *  c'est la zone la plus fréquente, et l'erreur est alors dans le sens qui SOUS-compte les km. */
+const ratioZone = (zone                    , ref                   )         =>
+  zoneSpeedRatio(zone, undefined, ref) ?? zoneSpeedRatio(ref === "css" ? "sw.easy" : "rn.easy", undefined, ref) ;
 // Puissance de zone vélo = fraction de FTP (centre des bandes du moteur — mêmes valeurs que
 // la table d'intensité du monolithe, où elles sont un IF de PUISSANCE, ce qui est correct ici).
 const BIKE_POWER_RATIO                         = { "bk.z2": 0.65, "bk.ss": 0.90, "bk.vo2": 1.12, "bk.frc": 0.82, "bk.rp": 0.84, "bk.thr": 1.0 };
@@ -5830,7 +5879,7 @@ function weekDistances(week        , answers             )                      
         // 08/08/2026, 2e passage). Le temps se déduit de la même RÉFÉRENCE MESURÉE (CSS) que
         // l'inverse (durée → km) trois lignes plus bas — même honnêteté : sans CSS, pas de
         // minutes inventées, seule la distance (exacte, prescrite en mètres) s'affiche.
-        const min = d === "sw" && css ? (km * 10 * css / 60) / (SWIM_SPEED_RATIO[st.zone || ""] ?? SWIM_SPEED_RATIO["sw.easy"]) : 0;
+        const min = d === "sw" && css ? (km * 10 * css / 60) / ratioZone(st.zone, "css") : 0;
         add(d, min, km, false);
         continue;
       }
@@ -5838,8 +5887,8 @@ function weekDistances(week        , answers             )                      
       if (!min) continue;
       if (st.role !== "body") { add(d, min, 0, false); continue; } // échauffement/retour au calme : temps compté, km non prétendus
       let km                = null;
-      if (d === "rn" && thr) km = (min * 60 / thr) * (RUN_SPEED_RATIO[st.zone || ""] ?? RUN_SPEED_RATIO["rn.easy"]);
-      else if (d === "sw" && css) km = (min * 60 / css / 10) * (SWIM_SPEED_RATIO[st.zone || ""] ?? SWIM_SPEED_RATIO["sw.easy"]);
+      if (d === "rn" && thr) km = (min * 60 / thr) * ratioZone(st.zone, "thrPace");
+      else if (d === "sw" && css) km = (min * 60 / css / 10) * ratioZone(st.zone, "css");
       else if (d === "bk" && ftp && kg) {
         const w = ftp * (BIKE_POWER_RATIO[st.zone || ""] ?? BIKE_POWER_RATIO["bk.z2"]);
         km = (solveSpeedMs(w, kg + bikeSetup.bikeKg, bikeCda, bikeSetup.crr, 0) * min * 60) / 1000;
@@ -5924,49 +5973,14 @@ function swimDrillGlossaryText(drills             = SWIM_DRILLS)         {
  * N×M min + minutes isolées + échauffement/retour au calme + récup entre blocs —
  * jamais le max isolé, qui sous-estime massivement les séances structurées.
  * Natation : sommer les mètres et convertir via l'allure X'YY/100m du texte.
+ *
+ * O-42 — LA CONVERSION MÈTRES → MINUTES N'APPARTIENT PLUS À CE FICHIER. Elle y vivait DEUX
+ * fois (`stepMinutes` et la refente d'intensité), à l'ancre BRUTE, indépendamment de la zone :
+ * un 400 m facile y coûtait le temps d'un 400 m au CSS. Le générateur portait la même erreur et
+ * `weekDistances` une troisième table ; les quatre sites lisent désormais `zoneSpeedRatio`, la
+ * seule dérivation, tirée de la définition de zone qui produit les allures affichées (R11.1).
+ * L'auditeur DOIT compter comme le générateur budgétise, sinon l'écart T-25 se rouvre ici.
  */
-
-                          
-                                       
-                       
-                     
-                
-                       
-                        
-                                                                                               
-                                                                                                 
-                                                  
-                       
-                       
-             
-                                                                                         
-                                                                                     
-                                                
-                  
-                   
-                                     
- 
-
-                             
-                                      
-               
-              
-                                                                            
-                                                                          
- 
-
-                                                                 
-
-                              
-                  
-                                               
-                                                                                 
-                                                                                   
-                                                                                                     
-                         
-                  
-                                                                                  
- 
 
 /** Références athlète pour convertir les distances en temps (mêmes entrées que stepMin V1.5, arithmétique à nous). */
                               
@@ -6099,18 +6113,29 @@ function recoveryMinFromText(txt                    )         {
 function stepMinutes(st         , sessionD        , refs             )         {
   const reps = st.reps || 1;
   if (st.durationMin) return reps * st.durationMin;
-  if (st.distanceM) {
-    const d = st.d || sessionD;
-    if (d === "sw") return (reps * st.distanceM * refs.cssSecPer100m) / 100 / 60;
-    return (reps * st.distanceM * refs.thrPaceSecPerKm) / 1000 / 60;
-  }
+  if (st.distanceM) return metresEnMinutes(st.distanceM * reps, st.d || sessionD, st.zone, refs);
   return 0;
 }
 
 /**
+ * O-42 — LE POINT UNIQUE DE CE FICHIER. Il ne calcule rien : il choisit l'ancre selon la
+ * discipline et divise par le ratio de vitesse que `zoneSpeedRatio` dérive de `ZDEF`. Écrit une
+ * fois parce qu'il était écrit deux fois — et que les deux écritures étaient identiques au
+ * caractère près, à quinze lignes d'écart.
+ */
+function metresEnMinutes(metres        , d        , zone                           , refs             )         {
+  const sw = d === "sw";
+  const brut = sw ? (metres * refs.cssSecPer100m) / 100 / 60 : (metres * refs.thrPaceSecPerKm) / 1000 / 60;
+  return brut / (zoneSpeedRatio(zone, undefined, sw ? "css" : "thrPace") ?? 1);
+}
+
+/**
  * Chemin structuré V1.5 : somme des steps + récup inter-blocs.
- * Différence méthodologique ASSUMÉE avec le stepMin du générateur : nous comptons
- * la récup entre répétitions (N-1 × récup), lui non — l'écart est un constat, pas un bug.
+ * O-42 (règle 13) — CE COMMENTAIRE AFFIRMAIT UNE DIVERGENCE QUI N'EXISTE PLUS : « nous comptons
+ * la récup entre répétitions (N-1 × récup), lui non — l'écart est un constat, pas un bug ».
+ * `stepMin` la compte depuis **R5.6a**, la plus vieille dette du dépôt, fermée il y a des mois.
+ * Un commentaire périmé qui décrit un écart invite à en tolérer un ; les deux lectures doivent
+ * rendre le même nombre, et c'est ce que T-25 surveille.
  * Échauffement chiffré : même clamp que renderSess (≤25min, ≤ corps) pour comparer à périmètre égal.
  */
 function sessionLoadFromSteps(s            , refs             )              {
@@ -6271,7 +6296,7 @@ function intensitySplit(s            , refs              = DEFAULT_REFS)        
     const stMin = st.durationMin
       ? reps * st.durationMin
       : st.distanceM
-        ? ((st.d || s.d) === "sw" ? (reps * st.distanceM * refs.cssSecPer100m) / 100 / 60 : (reps * st.distanceM * refs.thrPaceSecPerKm) / 1000 / 60)
+        ? metresEnMinutes(reps * st.distanceM, st.d || s.d, st.zone, refs) // O-42 — la copie retirée
         : 0;
     if (st.role !== "body") {
       out.easyMin += stMin;
@@ -10207,6 +10232,11 @@ function reconcileDeclaredVolume(
     }
   }
 
+  /** Les mètres de nage d'une séance — le plancher C24/C24b se lit dessus. */
+  const swMetres = (sx           ) =>
+    (sx.steps || []).reduce((t, st) => t + ((st.d || sx.d) === "sw" && st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+  const swPlancher = ctx?.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : C24_MIN_SWIM_SESSION_M;
+
   // C22 — GARANTIE FINALE DE PROGRESSION (D3, banc v6). La borne « +10 % d'une semaine de
   // charge à la suivante » existait DANS la boucle de volume, mais des passes ultérieures
   // (montée du pic, remontée aux planchers, harmonisation) pouvaient regonfler une semaine
@@ -10245,6 +10275,8 @@ function reconcileDeclaredVolume(
           const f = Math.max(0, prevCharge * C22_MAX_WEEKLY_GROWTH - 3) / before;
           for (const d of wk.days) for (const sx of d.sessions) {
             if (sx.d === "rs" || !sx.steps) continue;
+            const swAvant = swMetres(sx);
+            const avant = sx.steps.map((st) => ({ st, reps: st.reps, durationMin: st.durationMin, distanceM: st.distanceM }));
             let touched = false;
             for (const st of sx.steps) {
               if (st.role !== "body" || st.leg) continue; // les legs de brick ont leurs bornes de format
@@ -10255,7 +10287,29 @@ function reconcileDeclaredVolume(
               } else if (st.durationMin) {
                 const next = Math.max(floor ?? 5, Math.round(st.durationMin * f));
                 if (next < st.durationMin) { st.durationMin = next; touched = true; }
+              } else if (st.distanceM) {
+                // O-42 — CE CLAMP NE SAVAIT PAS RÉDUIRE DES MÈTRES, ET C'EST LA MOITIÉ DE SON
+                // OBJET QUI LUI MANQUAIT : la nage se prescrit en mètres (89 % de ses blocs), et
+                // un bloc en mètres à `reps === 1` ne tombait dans AUCUNE de ses deux branches.
+                // La boucle sortait alors par « les planchers bloquent : rien de plus à prendre »
+                // — un fail-open, la forme exacte de C24/C24b (T-29). Invisible tant que le
+                // dépassement restait sous la tolérance ; O-42 rend les blocs de nage 6 à 12 %
+                // plus longs et le Full de référence passe de +10,4 % à +10,6 %, au-dessus d'un
+                // plafond que le manifeste fixe à +10 %.
+                //
+                // Le plancher est en MÈTRES, écrit tel quel : `bnd.floor` est en MINUTES (c'est
+                // ce que rend `blockBounds`), et l'employer ici serait la faute d'unité de la
+                // règle 14 — elle existe déjà quinze lignes plus bas, elle n'est pas recopiée.
+                const next = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+                if (next < st.distanceM) { st.distanceM = next; touched = true; }
               }
+            }
+            // C24/C24b — la réduction ne casse pas le plancher de séance piscine : on la DÉFAIT
+            // intégralement plutôt que de livrer une nage qui ne vaut pas le déplacement. Même
+            // geste, même raison qu'à la boucle R3.3 (ligne ~391).
+            if (touched && swAvant > 0 && swMetres(sx) < swPlancher && !(wk.isRecup || wk.phase.id === "taper")) {
+              for (const b of avant) { b.st.reps = b.reps; b.st.durationMin = b.durationMin; b.st.distanceM = b.distanceM; }
+              touched = false;
             }
             if (touched && render) render(sx);
             if (touched && traceEnabled()) traceRecord({ pass: "C22-final", weekNum: wk.num, sessionName: sx.name, discipline: sx.d, field: "minutes", before: Math.round(before), after: Math.round(weekMinOf(wk)), reason: "C22 (progression ≤ +10 %)", envelope: Math.round(prevCharge) + "→" + Math.round(weekMinOf(wk)) + "min" });
@@ -16979,8 +17033,16 @@ function enduranceReplacement(disc        , minutes        , refs      , hz     
   // A3 (audit v6) — un remplacement de récupération n'est PAS une séance de plan : le
   // plancher C24 (750m) ne s'y applique pas. La distance est DÉRIVÉE des minutes allouées
   // (arrondi à 25m vers le bas) pour ne jamais dépasser la séance qu'elle remplace.
+  //
+  // O-42 — CINQUIÈME SITE DE CONVERSION, et c'est la garde A3 qui l'a trouvé. La distance se
+  // dérivait de l'ancre CSS BRUTE pendant que `stepMin` compte désormais à l'allure de la ZONE :
+  // `sw.easy` étant nagé à ×1,12 du CSS, la séance de remplacement durait 12 % de plus que les
+  // minutes qu'on lui allouait — 23 min demandées, 25 livrées, sur un jour ROUGE, c'est-à-dire
+  // exactement là où l'invariant « jamais plus de minutes qu'avant ajustement » protège
+  // l'athlète. La vitesse vient donc de la même dérivation que partout ailleurs (R11.1).
+  const vSw = zoneSpeedRatio("sw.easy", undefined, "css") ?? 1;
   const s            = d === "sw"
-    ? { d, name: "Endurance souple (adaptée)", note: why, det: "", steps: [{ role: "body", distanceM: Math.max(200, Math.floor(((minutes * 60) / (baseRefs.css || 130)) * 100 / 25) * 25), zone, d: "sw" }] }
+    ? { d, name: "Endurance souple (adaptée)", note: why, det: "", steps: [{ role: "body", distanceM: Math.max(200, Math.floor(((minutes * 60 * vSw) / (baseRefs.css || 130)) * 100 / 25) * 25), zone, d: "sw" }] }
     : { d, name: "Endurance facile (adaptée)", note: why, det: "", steps: [{ role: "body", durationMin: minutes, zone }] };
   renderSess(s, refs, hz, baseRefs);
   return s;

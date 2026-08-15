@@ -9,7 +9,15 @@
  * N×M min + minutes isolées + échauffement/retour au calme + récup entre blocs —
  * jamais le max isolé, qui sous-estime massivement les séances structurées.
  * Natation : sommer les mètres et convertir via l'allure X'YY/100m du texte.
+ *
+ * O-42 — LA CONVERSION MÈTRES → MINUTES N'APPARTIENT PLUS À CE FICHIER. Elle y vivait DEUX
+ * fois (`stepMinutes` et la refente d'intensité), à l'ancre BRUTE, indépendamment de la zone :
+ * un 400 m facile y coûtait le temps d'un 400 m au CSS. Le générateur portait la même erreur et
+ * `weekDistances` une troisième table ; les quatre sites lisent désormais `zoneSpeedRatio`, la
+ * seule dérivation, tirée de la définition de zone qui produit les allures affichées (R11.1).
+ * L'auditeur DOIT compter comme le générateur budgétise, sinon l'écart T-25 se rouvre ici.
  */
+import { zoneSpeedRatio } from "../generator/renderer.ts";
 
 export interface RawStep {
   role: "warmup" | "body" | "cooldown";
@@ -184,18 +192,29 @@ function recoveryMinFromText(txt: string | undefined): number {
 function stepMinutes(st: RawStep, sessionD: string, refs: AthleteRefs): number {
   const reps = st.reps || 1;
   if (st.durationMin) return reps * st.durationMin;
-  if (st.distanceM) {
-    const d = st.d || sessionD;
-    if (d === "sw") return (reps * st.distanceM * refs.cssSecPer100m) / 100 / 60;
-    return (reps * st.distanceM * refs.thrPaceSecPerKm) / 1000 / 60;
-  }
+  if (st.distanceM) return metresEnMinutes(st.distanceM * reps, st.d || sessionD, st.zone, refs);
   return 0;
 }
 
 /**
+ * O-42 — LE POINT UNIQUE DE CE FICHIER. Il ne calcule rien : il choisit l'ancre selon la
+ * discipline et divise par le ratio de vitesse que `zoneSpeedRatio` dérive de `ZDEF`. Écrit une
+ * fois parce qu'il était écrit deux fois — et que les deux écritures étaient identiques au
+ * caractère près, à quinze lignes d'écart.
+ */
+function metresEnMinutes(metres: number, d: string, zone: string | null | undefined, refs: AthleteRefs): number {
+  const sw = d === "sw";
+  const brut = sw ? (metres * refs.cssSecPer100m) / 100 / 60 : (metres * refs.thrPaceSecPerKm) / 1000 / 60;
+  return brut / (zoneSpeedRatio(zone, undefined, sw ? "css" : "thrPace") ?? 1);
+}
+
+/**
  * Chemin structuré V1.5 : somme des steps + récup inter-blocs.
- * Différence méthodologique ASSUMÉE avec le stepMin du générateur : nous comptons
- * la récup entre répétitions (N-1 × récup), lui non — l'écart est un constat, pas un bug.
+ * O-42 (règle 13) — CE COMMENTAIRE AFFIRMAIT UNE DIVERGENCE QUI N'EXISTE PLUS : « nous comptons
+ * la récup entre répétitions (N-1 × récup), lui non — l'écart est un constat, pas un bug ».
+ * `stepMin` la compte depuis **R5.6a**, la plus vieille dette du dépôt, fermée il y a des mois.
+ * Un commentaire périmé qui décrit un écart invite à en tolérer un ; les deux lectures doivent
+ * rendre le même nombre, et c'est ce que T-25 surveille.
  * Échauffement chiffré : même clamp que renderSess (≤25min, ≤ corps) pour comparer à périmètre égal.
  */
 export function sessionLoadFromSteps(s: RawSession, refs: AthleteRefs): SessionLoad {
@@ -356,7 +375,7 @@ export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS):
     const stMin = st.durationMin
       ? reps * st.durationMin
       : st.distanceM
-        ? ((st.d || s.d) === "sw" ? (reps * st.distanceM * refs.cssSecPer100m) / 100 / 60 : (reps * st.distanceM * refs.thrPaceSecPerKm) / 1000 / 60)
+        ? metresEnMinutes(reps * st.distanceM, st.d || s.d, st.zone, refs) // O-42 — la copie retirée
         : 0;
     if (st.role !== "body") {
       out.easyMin += stMin;

@@ -785,7 +785,18 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // §2 (la restitution ne s'applique plus en affûtage) — deux violations d'I14 en moins, obtenues
 // sans les viser. Le cliquet a exigé que le chiffre descende DANS LE MÊME COMMIT : c'est ce
 // qu'il est fait pour faire, et c'est une baisse, pas une régression.
-const SCEAU_ATTENDU = { S1: 4, S4: 439, S5: 509 };
+// O-42 (15/08/2026) — la conversion unique déplace les deux compteurs, dans les DEUX sens, et
+// le cliquet a exigé les deux chiffres dans le même commit.
+//   S4 (I14, « la longue est la plus longue de sa discipline dans sa semaine ») : 439 → **353**,
+//     86 violations en moins. Un bloc de nage prescrit en mètres coûte désormais les minutes de
+//     sa zone : les séances de qualité cessent de paraître plus courtes qu'elles ne sont, donc
+//     cessent de dépasser la longue sans que rien ne le voie. Baisse obtenue sans la viser.
+//   S5 (T-25, « min(plafonds) du record R20.2 vaut le pic livré ») : 509 → **513**, quatre de
+//     plus. C'est une HAUSSE et elle est publiée comme telle : la chaîne de plafonds est en
+//     heures et le pic livré bouge de quelques minutes, donc quatre profils traversent la
+//     tolérance de 0,1 h. Elle appartient à la famille encore ouverte (O-35/O-36 : ce que le
+//     point fixe RETIRE n'est déclaré par aucun maillon) et ne se ferme pas ici.
+const SCEAU_ATTENDU = { S1: 4, S4: 353, S5: 513 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;

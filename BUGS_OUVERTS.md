@@ -455,7 +455,7 @@ d'historique « ton volume déclaré » depuis l'origine — corrigé.
 ```verify
 id: O-10
 quoi: au-delà de 10h le pic ne bouge plus, mais le moteur NOMME le limiteur et son levier
-attendu: /nombre de séances[\s\S]*deux séances certains jours/
+attendu: /vol_max=16h[^\n]*ce qui borne[\s\S]*Si tu levais cette contrainte/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const a={sport:'tri',format:'70.3',level:'avance',history:'ancien',intent:'competition',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',ftp:'230',ftp_known:'oui',css:'2:00',css_known:'oui',vol_recent:'10',injury:'aucune',off_days:'non',shift_ok:'non',doubles:'parfois',race_date:'2027-01-24'};for(const v of ['10','16']){const p=E.buildPlan('tri',{...a,vol_max:v});const d=(p._v2.decisions||[]).find(x=>x.id==='R20.2');console.log('vol_max='+v+'h → pic livré '+p.volPeak+' h'+(d?' · '+d.val+' · '+d.why:' · (rien à expliquer)'));}"
 ```
 
@@ -628,7 +628,7 @@ qui décide du pic, et elle n'était nommée nulle part.
 ```verify
 id: O-13
 quoi: en natation, le volume récent déclaré change la semaine 1
-attendu: /vol_recent= 0h → S1 1[.,]3h[\s\S]*vol_recent= 5h → S1 1[.,]6h/
+attendu: /vol_recent= 0h → S1 1[.,]4h[\s\S]*vol_recent= 5h → S1 1[.,]6h/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swim',format:'fond',intent:'competition',dispo:'partielle',doubles:'parfois',off_days:'non',shift_ok:'non',age:'35',sex:'H',css_known:'oui',css:'2:00',milieu:'bassin',swim_limit:'technique',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',sessions_max:'6',vol_max:'10',history:'reprise',level:'inter'};for(const vr of ['0','2','5','10']){const p=E.buildPlan('swim',{...b,vol_recent:vr});console.log('vol_recent='+vr.padStart(2)+'h → S1 '+p.weeks[0].vol+'h · pic '+p.volPeak+'h');}"
 ```
 
@@ -1936,7 +1936,7 @@ une ligne à `EN_DUR`, ce que ce lot faisait justement ; les trois groupes sont 
 ```verify
 id: O-32
 quoi: toutes les polices du disque sont précachées par le service worker
-attendu: /disque 9 · precachees 9 · manquantes 0/
+attendu: /manquantes 0$/m
 cmd: node -e "const fs=require('node:fs');const d=fs.readdirSync('endurabuild/assets/fonts').filter(f=>f.endsWith('.woff2'));const sw=fs.readFileSync('endurabuild/sw.js','utf8');const m=d.filter(f=>!sw.includes('assets/fonts/'+f));console.log('disque '+d.length+' · precachees '+(d.length-m.length)+' · manquantes '+m.length+(m.length?' ('+m.join(', ')+')':''))"
 ```
 
@@ -3185,7 +3185,7 @@ reste sur ce ticket.
 id: O-41-promotion
 quoi: le pont promeut les QUATRE references et pose le drapeau a chaque fois
 attendu: 4
-cmd: grep -c "_known = \"oui\"; n++" endurabuild/js/ui/tab-profile.js
+cmd: grep -c "_known = \"oui\"; n++" endurabuild/js/state.js
 ```
 
 
@@ -3427,4 +3427,215 @@ id: O-42-trois
 quoi: weekDistances porte une table de ratios qui diverge de ZDEF sur 8 zones sur 9
 attendu: O42-TROIS
 cmd: grep -q '"sw.easy": 0.80' src/engine/weekDistances.ts && grep -q '"sw.easy": { ref: "css", lo: 1.12' src/generator/renderer.ts && echo "O42-TROIS"
+```
+
+
+---
+
+## O-42 §3 — IL Y EN A **QUATRE**, PAS TROIS : L'AUDITEUR PORTE LA SIENNE, ÉCRITE DEUX FOIS
+
+Trouvé en cherchant qui d'autre convertit des mètres en minutes (règle 16 : la question du
+producteur se pose récursivement). Le compte n'est pas de trois :
+
+| lieu | conversion mètres → durée | forme |
+|---|---|---|
+| `stepMin` (générateur) | ancre BRUTE, ratio 1,00 | implicite |
+| `loadModel.stepMinutes` (auditeur) | ancre BRUTE, ratio 1,00 | implicite |
+| `loadModel` ligne 358 (auditeur, refente d'intensité) | ancre BRUTE, ratio 1,00 | **recopiée** de la précédente |
+| `weekDistances` (UI, km de la semaine) | sa table `*_SPEED_RATIO` | explicite |
+| `ZDEF` | ce que l'athlète LIT | l'autorité |
+
+Quatre sites, trois comportements distincts, une seule grandeur. Et deux des quatre sont une
+**copie littérale** l'une de l'autre à quinze lignes d'écart, dans le même fichier.
+
+**Conséquence pour le correctif** : corriger `stepMin` sans corriger `loadModel` ferait diverger
+le volume que le générateur BUDGÉTISE de celui que l'auditeur MESURE — c'est-à-dire rouvrir
+exactement la famille que T-25 suit. Les quatre bougent ensemble ou aucun ne bouge.
+
+**Et un commentaire de `loadModel` est FAUX** (règle 13) : *« Différence méthodologique ASSUMÉE
+avec le `stepMin` du générateur : nous comptons la récup entre répétitions (N-1 × récup), lui
+non »*. `stepMin` la compte depuis **R5.6a** — c'est même la dette la plus ancienne du dépôt,
+fermée il y a des mois. Le commentaire décrit un état du moteur qui n'existe plus et invite à
+tolérer un écart qui n'a plus de cause.
+
+### Ce que le choix de bande coûte, mesuré (`npm run mesure:o42`)
+
+`ZDEF` porte `lo === hi` en NAGE (vitesse implicite exacte) et des BANDES en course. Une durée
+dérivée d'une distance doit choisir un point dans la bande — c'est le seul choix que la lecture
+ne donne pas. Mesuré sur 171 plans, 4 259 blocs de corps prescrits en mètres :
+
+```
+blocs dont la zone porte une bande : 108 / 4 259  (2,5 %)
+borne RAPIDE (lo)  : +7,8 %  de minutes vs aujourd'hui
+CENTRE      (mid)  : +7,9 %
+borne LENTE (hi)   : +8,0 %
+→ l'écart lo↔hi vaut 0,2 % du total, contre 7,9 % pour la correction elle-même.
+```
+
+**Le choix est donc quarante fois plus petit que la correction.** Il se tranche sur un principe
+plutôt que sur un arbitrage : `longRunSpecificity` a déjà posé la règle — *« un plancher se
+calcule sur l'hypothèse la moins gourmande »*, donc il prend `lo`. `stepMin` ne produit ni
+plancher ni plafond mais une **comptabilité** : une comptabilité prend la valeur attendue, donc
+le CENTRE. La borne LENTE (`hi`, la plus prudente au sens du manifeste) coûte **+0,1 %** de plus :
+elle est chiffrée ici pour que la décision reste révocable sans re-mesure.
+
+### L'ampleur par zone, telle que le §6 la demande vérifiable
+
+```
+sw.easy   2 130 blocs   44 357 → 49 680 min   +12,0 %   (1/1,12 − 1)
+sw.aero     975 blocs   20 814 → 22 063 min    +6,0 %   (1/1,06 − 1)
+sw.css      797 blocs   14 177 → 14 177 min     0,0 %   ancrage, inchangé
+sw.speed    249 blocs    1 772 →  1 666 min    −6,0 %   (1/0,94 − 1)
+rn.thr       72 blocs    1 530 →  1 568 min    +2,5 %
+rn.mara      36 blocs    1 860 →  2 055 min   +10,5 %
+TOTAL      4 259 blocs   84 510 → 91 209 min    +7,9 %
+```
+
+**`sw.speed` BAISSE, et c'est attendu** : c'est la seule zone prescrite en mètres qui se nage
+plus VITE que le CSS. Le critère du §6 (« les durées montent, jamais ne baissent, hors `sw.css` »)
+doit donc s'entendre « suit le ratio de la zone » — ce que sa deuxième ligne dit déjà. Signalé
+plutôt que corrigé en silence.
+
+```verify
+id: O-42-quatre
+quoi: loadModel porte sa propre conversion metres→minutes, ecrite deux fois, a l'ancre brute
+attendu: O42-QUATRE
+cmd: test $(grep -c 'refs.cssSecPer100m) / 100 / 60' src/engine/loadModel.ts) -ge 2 && echo "O42-QUATRE"
+```
+
+### Règle 17 appliquée — **quatre** blocs ont basculé, **quatre** étaient des faux positifs
+
+`registry:check` a rangé quatre entrées en « ne reproduit plus » dans la même exécution. Confirmées
+À LA MAIN, comme la règle 17 l'exige : **aucune n'est un défaut corrigé.**
+
+| entrée | ce que le bloc cherchait | ce qui a bougé | le défaut ? |
+|---|---|---|---|
+| `O-41-promotion` | le motif dans `tab-profile.js` | le **pas A** a déplacé `syncRefsFromTests` vers `state.js` | intact (4 occurrences, dans l'autre fichier) |
+| `O-32` | `disque 9 · precachees 9` | `bebas-neue-400.woff2` **supprimée** (Z-01, police morte) | intact — `manquantes 0` tient, 8 sur 8 |
+| `O-13` | `S1 1,3h` à `vol_recent = 0` | O-35 convertit la DÉCLARATION de nage → 1,4 h | intact — la rampe mord toujours (1,4 < 1,6) |
+| `O-10` | « deux séances certains jours » | R20.2 (2ᵉ correction) : l'argmin nomme un AUTRE maillon | intact — 10 h → 8,8 · 16 h → 8,7, toujours inerte |
+
+**Les quatre blocs épinglaient une VALEUR ou un CHEMIN là où l'entrée décrit une PROPRIÉTÉ** —
+c'est la même faute que la règle 15 nomme côté mesure, appliquée au registre lui-même. Réécrits
+sur la propriété : `manquantes 0` sans compte, « ce qui borne … Si tu levais cette contrainte »
+sans nommer le maillon, le motif de promotion cherché là où il vit.
+
+**Condition d'automatisation de `registryCheck` (LOT 1 §3)** : le déclencheur posé est « un SEUL
+commit fait basculer ≥ 2 blocs ». Il n'est pas atteint — les quatre viennent de quatre lots
+différents étalés sur la session, et le processus les a tous rattrapés. Le seuil reste posé tel
+quel ; ce qui est mesuré ici, c'est qu'une exécution rend **4 faux positifs pour 0 vrai**, donc
+que le coût du processus est entièrement dans la confirmation manuelle, pas dans la détection.
+
+
+---
+
+## O-42 §4 — LIVRÉ : une conversion, cinq sites, et deux gardes qui ont trouvé le reste
+
+`zoneSpeedRatio(zone, refs?, expectRef?)` vit dans `renderer.ts`, aux côtés de `ZDEF` dont elle
+dérive : `2 / (lo + hi)`, l'inversion allure → vitesse faite **une seule fois**. Les cinq sites
+qui convertissaient la lisent :
+
+| site | avant | après |
+|---|---|---|
+| `stepMin` (générateur) | ancre brute | `÷ zoneSpeedRatio` |
+| `loadModel.stepMinutes` (auditeur) | ancre brute | `metresEnMinutes`, point unique du fichier |
+| `loadModel` ligne 358 (copie) | ancre brute | la copie est **retirée** |
+| `weekDistances` | table `*_SPEED_RATIO` | la table est **retirée** |
+| `dailyAdjuster.enduranceReplacement` | ancre brute | `× zoneSpeedRatio` |
+
+Le cinquième n'était pas dans l'inventaire : **c'est la garde `A3` du banc v6 qui l'a trouvé**
+(« jour rouge : jamais plus de minutes qu'avant ajustement » — 23 min demandées, **25 livrées**).
+La séance de remplacement dérivait ses mètres du CSS brut ; `sw.easy` se nageant à ×1,12, elle
+durait 12 % de plus que le budget qu'on lui donnait — sur un jour ROUGE, c'est-à-dire là où
+l'invariant existe. Une garde de sécurité écrite il y a des mois a payé son écriture ici.
+
+### Ce que la ventilation dit (`npm run ventile:o42`, les quatre critères du §6)
+
+```
+[1][2] zone       blocs   ancre brute → livré    écart    attendu (mult−1)
+       sw.easy     2122     42356 → 47439       +12,0 %      +12,0 %   ✓
+       sw.aero      974     20681 → 21922        +6,0 %       +6,0 %   ✓
+       sw.css       795     14087 → 14087         0,0 %        0,0 %   ✓
+       sw.speed     249      1788 →  1681        −6,0 %       −6,0 %   ✓
+       rn.thr        72      1430 →  1466        +2,5 %       +2,5 %   ✓
+       rn.mara       36      1720 →  1901       +10,5 %      +10,5 %   ✓
+       identité durée = distance × allure de ZONE : 4 248 / 4 248 blocs
+
+[3][4] 189 profils · 96 montent · 22 baissent · 71 inchangés · 0 changement de structure
+       2 682 semaines · 54 (2,0 %) s'éloignent de plus de 6 min de leur cible
+         · 50 parce que la cible DÉCLARÉE monte plus vite que le livré (famille T-25/O-35 :
+           la sonde de capacité lit un clone SATURÉ, le livré reste tenu par ses plafonds)
+         · 4 parce qu'un plafond qui SE NOMME apparaît (« OFF (lissage) », « OFF (équilibre
+           du bloc) ») — le moteur écrit sa raison dans le nom de la séance qu'il retire
+```
+
+`sw.speed` BAISSE : c'est la seule zone prescrite en mètres qui se nage plus VITE que le CSS.
+Le §6 dit « les durées montent, jamais ne baissent » ; sa seconde ligne — « l'ampleur suit le
+ratio de la zone » — est la formulation exacte, et c'est elle qui est gardée.
+
+**Contre-preuve** : la ventilation rejouée contre le moteur d'AVANT (copié sur le disque) rend
+« RÉSIDU » et les six zones en ✖.
+
+### Le second défaut, trouvé par `ANX-C22` : un clamp qui ne savait pas réduire des mètres
+
+Le Full de référence passait de **+10,4 % à +10,6 %** d'une semaine de charge à la suivante,
+pour un plafond que le manifeste fixe à +10 %. Instrumenté : `enforceC22Final` n'avait que deux
+branches, `reps > 1` et `durationMin`. **Un bloc en mètres à `reps === 1` ne tombait dans
+aucune** — la boucle sortait par « les planchers bloquent : rien de plus à prendre », un
+fail-open de la forme exacte de C24/C24b (T-29). La nage prescrivant 89 % de ses blocs en mètres,
+c'est la moitié de l'objet du clamp qui lui manquait ; O-42 l'a seulement rendu visible.
+Branche `distanceM` ajoutée, plancher C24/C24b respecté par annulation intégrale de la réduction.
+**Effet mesuré au-delà du symptôme : `audit:v1` passe de 22 à 18 combinaisons au-dessus de +10 %.**
+Le plancher est écrit en MÈTRES et non repris de `bnd.floor`, qui est en MINUTES — la faute
+d'unité de la règle 14 existe déjà quinze lignes plus bas, elle n'est pas recopiée.
+
+### `C30-A` : cinquième état, deux témoins ré-épinglés
+
+`10k/avance/5:45/8h` **59 → 61** et `semi/inter/4:30/8h` **119 → 120**. Les deux sont des
+coureurs dont la cible de spécificité est déjà atteinte : ils ne doivent rien à C30, ils suivent
+la recomposition de leur semaine (`rn.thr`/`rn.mara` coûtent plus de minutes DURES, donc
+`enforceHardTimeCap` en rend plus en facile, et le tail O-21 les fait remonter à la longue).
+Ré-épinglés avec leur raison, jamais exemptés.
+
+### Quatre fautes d'instrument, dans le script qui devait juger le lot
+
+1. `mult()` lisait `APRES.intOf(z)` « pour interroger ce qui s'exécute » — `intOf` n'est pas
+   exposée sur `EBV2`. Table par zone **vide**, et le verdict s'affichait « VENTILÉ » quand même,
+   parce qu'il testait `c2ko === 0` : un critère satisfait par l'absence de mesure. Taux saturé
+   0/0. Garde de population ajoutée.
+2. La colonne « ampleur par zone » sommait `_min` **récup comprise** contre une ancre brute récup
+   comprise — la récup ne suit pas le ratio d'une zone. Quatre ✖ affichés qui étaient ma somme.
+3. La classification des baisses nommait « un plafond mord » et mesurait « le pic a baissé » —
+   un plafond mord sur n'importe quelle semaine. 9 « inexpliqués » qui perdaient 1 à 5 minutes.
+4. La tolérance était un POURCENTAGE de la cible quand le pas du point fixe est ABSOLU (25 m,
+   une répétition). Sur une semaine de nage de 1,2 h un seul pas vaut 8 % : 205 « inexpliqués »
+   qui étaient tous le même arrondi. Faute d'unité, règle 14, dans le juge du ticket qui corrige
+   une faute d'unité.
+
+### Le résidu NOMMÉ : les bandes SUBSTITUÉES ne pilotent pas la durée
+
+`zoneOf` substitue deux bandes à l'affichage — `bk.rp` par `raceBikeBand` (R20.5) et `rn.mara`
+par le prédicteur (B-22/B-25). La conversion, elle, lit `ZDEF` **statique** : `zoneSpeedRatio`
+est appelée sans `refs` sur les cinq sites.
+
+C'est un CHOIX, pas un oubli. `bk.rp` est ancrée sur la FTP, donc `zoneSpeedRatio` rend `null`
+de toute façon (la vitesse ne suit pas la puissance linéairement — c'est le modèle de Martin qui
+répond). Reste `rn.mara` : **36 blocs sur 4 259 (0,85 %)** du balayage, tous en marathon et en
+tri. Leur passer la bande substituée demanderait que les CINQ sites la reçoivent — or `baseRefs`
+(`{ftp, thrPace, css}`) ne la porte pas et l'auditeur n'en a aucune notion. La donner au seul
+générateur rouvrirait l'écart générateur ↔ auditeur que T-25 surveille : c'est précisément le
+défaut que ce ticket ferme. Résidu nommé, chiffré, non traité ici.
+
+```verify
+id: O-42-unique
+quoi: une seule derivation allure→vitesse, et les tables ont disparu
+attendu: O42-UNIQUE
+cmd: test $(grep -c "SWIM_SPEED_RATIO\|RUN_SPEED_RATIO" src/engine/weekDistances.ts) -eq 0 && test $(grep -c "zoneSpeedRatio" src/generator/renderer.ts src/engine/weekDistances.ts src/engine/loadModel.ts src/readiness/dailyAdjuster.ts | grep -c ":0") -eq 0 && echo "O42-UNIQUE"
+```
+
+```verify
+id: O-42-c22-metres
+quoi: le clamp C22 final sait reduire un bloc prescrit en metres
+attendu: O42-C22M
+cmd: grep -q "CE CLAMP NE SAVAIT PAS RÉDUIRE DES MÈTRES" src/generator/planGenerator.ts && echo "O42-C22M"
 ```

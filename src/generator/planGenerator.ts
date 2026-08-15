@@ -13,6 +13,7 @@ import { scaleStepDose } from "../engine/stepScale.ts";
 import {
   BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH,
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
+  C24_MIN_SWIM_SESSION_M,
   BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
   C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN, RACE_EVE_CAP_MIN,
   hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS,
@@ -198,6 +199,11 @@ export function reconcileDeclaredVolume(
     }
   }
 
+  /** Les mètres de nage d'une séance — le plancher C24/C24b se lit dessus. */
+  const swMetres = (sx: V1Session) =>
+    (sx.steps || []).reduce((t, st) => t + ((st.d || sx.d) === "sw" && st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+  const swPlancher = ctx?.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : C24_MIN_SWIM_SESSION_M;
+
   // C22 — GARANTIE FINALE DE PROGRESSION (D3, banc v6). La borne « +10 % d'une semaine de
   // charge à la suivante » existait DANS la boucle de volume, mais des passes ultérieures
   // (montée du pic, remontée aux planchers, harmonisation) pouvaient regonfler une semaine
@@ -236,6 +242,8 @@ export function reconcileDeclaredVolume(
           const f = Math.max(0, prevCharge * C22_MAX_WEEKLY_GROWTH - 3) / before;
           for (const d of wk.days) for (const sx of d.sessions) {
             if (sx.d === "rs" || !sx.steps) continue;
+            const swAvant = swMetres(sx);
+            const avant = sx.steps.map((st) => ({ st, reps: st.reps, durationMin: st.durationMin, distanceM: st.distanceM }));
             let touched = false;
             for (const st of sx.steps) {
               if (st.role !== "body" || st.leg) continue; // les legs de brick ont leurs bornes de format
@@ -246,7 +254,29 @@ export function reconcileDeclaredVolume(
               } else if (st.durationMin) {
                 const next = Math.max(floor ?? 5, Math.round(st.durationMin * f));
                 if (next < st.durationMin) { st.durationMin = next; touched = true; }
+              } else if (st.distanceM) {
+                // O-42 — CE CLAMP NE SAVAIT PAS RÉDUIRE DES MÈTRES, ET C'EST LA MOITIÉ DE SON
+                // OBJET QUI LUI MANQUAIT : la nage se prescrit en mètres (89 % de ses blocs), et
+                // un bloc en mètres à `reps === 1` ne tombait dans AUCUNE de ses deux branches.
+                // La boucle sortait alors par « les planchers bloquent : rien de plus à prendre »
+                // — un fail-open, la forme exacte de C24/C24b (T-29). Invisible tant que le
+                // dépassement restait sous la tolérance ; O-42 rend les blocs de nage 6 à 12 %
+                // plus longs et le Full de référence passe de +10,4 % à +10,6 %, au-dessus d'un
+                // plafond que le manifeste fixe à +10 %.
+                //
+                // Le plancher est en MÈTRES, écrit tel quel : `bnd.floor` est en MINUTES (c'est
+                // ce que rend `blockBounds`), et l'employer ici serait la faute d'unité de la
+                // règle 14 — elle existe déjà quinze lignes plus bas, elle n'est pas recopiée.
+                const next = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+                if (next < st.distanceM) { st.distanceM = next; touched = true; }
               }
+            }
+            // C24/C24b — la réduction ne casse pas le plancher de séance piscine : on la DÉFAIT
+            // intégralement plutôt que de livrer une nage qui ne vaut pas le déplacement. Même
+            // geste, même raison qu'à la boucle R3.3 (ligne ~391).
+            if (touched && swAvant > 0 && swMetres(sx) < swPlancher && !(wk.isRecup || wk.phase.id === "taper")) {
+              for (const b of avant) { b.st.reps = b.reps; b.st.durationMin = b.durationMin; b.st.distanceM = b.distanceM; }
+              touched = false;
             }
             if (touched && render) render(sx);
             if (touched && traceEnabled()) traceRecord({ pass: "C22-final", weekNum: wk.num, sessionName: sx.name, discipline: sx.d, field: "minutes", before: Math.round(before), after: Math.round(weekMinOf(wk)), reason: "C22 (progression ≤ +10 %)", envelope: Math.round(prevCharge) + "→" + Math.round(weekMinOf(wk)) + "min" });

@@ -116,6 +116,51 @@ export function fmtIntHr(key: string | null | undefined, refs: Refs, hz: HrZones
   return fmtInt(key, refs, hz);
 }
 
+/**
+ * O-42 — LA VITESSE D'UNE ZONE SE DÉRIVE DE SA DÉFINITION. POINT UNIQUE (R11.1).
+ *
+ * Quatre fonctions convertissaient des mètres en minutes (ou l'inverse), avec TROIS
+ * comportements distincts pour une seule grandeur :
+ *   · `stepMin` (générateur)                — ancre BRUTE, ratio 1,00 : un bloc facile compté
+ *                                              comme s'il était nagé au CSS ;
+ *   · `loadModel` (auditeur, deux écritures) — la même, recopiée ;
+ *   · `weekDistances` (km de la semaine)     — sa propre table `*_SPEED_RATIO`, divergente de
+ *                                              `ZDEF` sur 8 zones sur 9 (jusqu'à 10,4 %).
+ *
+ * L'autorité n'est aucune des deux tables : c'est `ZDEF`, celle qui produit les allures que
+ * l'athlète LIT. Un plan qui affiche une allure et en compte une autre est le défaut que ce
+ * chantier corrige depuis le premier jour, appliqué à la conversion plutôt qu'au message.
+ *
+ * `ZDEF` est en multiplicateurs d'ALLURE (s/100 m, s/km) ; la vitesse en est l'inverse, et
+ * l'inversion se fait ICI, une seule fois — deux écritures de `1/mult` invitent l'erreur de
+ * signe que ce ticket existe pour supprimer.
+ *
+ * LE CHOIX DE BANDE, MESURÉ AVANT D'ÊTRE FAIT (`npm run mesure:o42`) — en NAGE `lo === hi`, la
+ * vitesse est exacte ; en course les bandes ont une largeur. Sur 4 259 blocs prescrits en
+ * mètres, 108 (2,5 %) portent une bande, et l'écart entre la borne rapide et la borne lente vaut
+ * **0,2 % du total contre 7,9 % pour la correction elle-même**. On prend le CENTRE :
+ * `longRunSpecificity` prend `lo` parce qu'elle calcule un PLANCHER (« l'hypothèse la moins
+ * gourmande »), et cette fonction ne produit ni plancher ni plafond mais une COMPTABILITÉ —
+ * une comptabilité prend la valeur attendue. La borne lente (la plus prudente au sens du
+ * manifeste) coûterait +0,1 % : chiffrée pour que la décision reste révocable sans re-mesure.
+ *
+ * Rend `null` là où une vitesse ne se dérive PAS d'un multiplicateur d'allure :
+ *   · `ftp`  — la vitesse ne suit pas la puissance linéairement (modèle de Martin, PW) ;
+ *   · `vam`  — une vitesse ASCENSIONNELLE n'est pas une vitesse au sol (R7 TRAIL §7).
+ * `expectRef` refuse une zone dont l'ancre n'est pas celle de la discipline appelante : appliquer
+ * un ratio de course à une ancre CSS serait une faute d'unité (règle 14).
+ */
+export function zoneSpeedRatio(
+  key: string | null | undefined,
+  refs?: Refs,
+  expectRef?: "css" | "thrPace",
+): number | null {
+  const d = refs ? zoneOf(key, refs) : key ? ZDEF[key] : undefined;
+  if (!d || (d.ref !== "css" && d.ref !== "thrPace")) return null;
+  if (expectRef && d.ref !== expectRef) return null;
+  return 2 / (d.lo + d.hi); // 1 ÷ multiplicateur d'allure moyen
+}
+
 export const intOf = (key: string | null, refs?: Refs): { ref: string; lo: number; hi: number } | null => {
   const d = refs ? zoneOf(key, refs) : key ? ZDEF[key] : undefined;
   return d ? { ref: d.ref, lo: d.lo, hi: d.hi } : null;
@@ -145,8 +190,11 @@ export function stepMin(st: V1Step, disc: string, baseRefs: Refs): number {
   if (st.durationMin) return reps * st.durationMin + rec;
   if (st.distanceM) {
     const d = st.d || disc;
-    if (d === "sw") return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60) + rec;
-    return ((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60) + rec;
+    // O-42 — la durée découle de l'allure de la ZONE, pas de l'ancre brute : un bloc facile
+    // n'est pas nagé au CSS. `zoneSpeedRatio` est la seule dérivation (R11.1) ; une zone
+    // inconnue (ou d'une autre discipline) retombe sur 1, le comportement historique.
+    if (d === "sw") return (((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60)) / (zoneSpeedRatio(st.zone, undefined, "css") ?? 1) + rec;
+    return (((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60)) / (zoneSpeedRatio(st.zone, undefined, "thrPace") ?? 1) + rec;
   }
   return 0;
 }

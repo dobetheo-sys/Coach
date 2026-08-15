@@ -261,6 +261,47 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-42 livré — il y avait QUATRE conversions mètres ↔ minutes pour une seule grandeur, et aucune
+n'était celle que l'athlète lit** (arbitrage `O42_AUTORITE_DEFINITION_ZONE`, 15/08/2026 — voir
+`BUGS_OUVERTS.md` « O-42 », mesures `npm run mesure:o42` et `npm run ventile:o42`) : `stepMin`
+comptait chaque mètre de nage comme nagé au CSS — un bloc facile n'est pas nagé au CSS, c'est un
+fait, pas une convention. Le contrôle que le fondateur a demandé de passer EN PREMIER a confirmé
+sa suspicion et l'a élargie : `weekDistances` portait sa propre table, divergente de `ZDEF` sur
+**8 zones sur 9** (`sw.easy` 0,80 contre 0,893 — 10,4 %), et la recherche récursive du producteur
+(règle 16) en a trouvé une quatrième, dans l'AUDITEUR, **écrite deux fois à quinze lignes
+d'écart**. L'autorité n'est aucune table : c'est la définition de zone, celle qui produit les
+allures affichées. `zoneSpeedRatio` est la seule dérivation (R11.1) ; les deux tables
+disparaissent. **Le choix de bande a été mesuré avant d'être fait** — la nage porte `lo === hi`
+(exact), la course des bandes ; sur 4 259 blocs prescrits en mètres, 108 (2,5 %) sont concernés et
+l'écart borne rapide ↔ borne lente vaut **0,2 % du total contre 7,9 % pour la correction** : on
+prend le CENTRE (`longRunSpecificity` prend `lo` parce qu'elle calcule un PLANCHER ; ceci est une
+COMPTABILITÉ, qui prend la valeur attendue), la borne prudente coûtant +0,1 %, chiffrée pour que
+la décision reste révocable sans re-mesure.
+**Deux gardes existantes ont trouvé ce que l'inventaire n'avait pas.** `A3` (banc v6, « jour
+rouge : jamais plus de minutes qu'avant ajustement ») a débusqué un **cinquième site** —
+`enduranceReplacement` dérivait ses mètres du CSS brut, donc la séance de remplacement durait
+**25 min pour 23 allouées**, sur le jour ROUGE, là où l'invariant existe. `ANX-C22` (banc R13) a
+débusqué un défaut ANTÉRIEUR et plus large : `enforceC22Final` n'avait que deux branches, `reps`
+et `durationMin` — **un bloc en mètres à `reps === 1` ne tombait dans aucune**, et la boucle
+sortait par « les planchers bloquent », un fail-open de la forme exacte de C24/C24b. La nage
+prescrivant 89 % de ses blocs en mètres, c'est la moitié de l'objet du clamp qui lui manquait ;
+`audit:v1` passe de **22 à 18** combinaisons au-dessus de +10 %.
+**L'acceptation n'est PAS « 0 écart » et ne pouvait pas l'être** : identité durée = distance ×
+allure de zone **4 248 / 4 248 blocs**, ampleur par zone égale au ratio de la zone au dixième de
+point près (`sw.easy` +12,0 %, `sw.speed` **−6,0 %** — la seule zone en mètres plus rapide que le
+CSS), 0 changement de structure, et **54 semaines sur 2 682 (2,0 %)** qui s'éloignent de plus de
+6 min de leur cible — 50 parce que la cible DÉCLARÉE monte plus vite que le livré (famille
+T-25/O-35), 4 parce qu'un plafond **qui se nomme** apparaît dans le plan. **Quatre fautes
+d'instrument dans le script qui devait juger le lot, toutes publiées** : un verdict « VENTILÉ »
+rendu sur une table VIDE (`intOf` n'est pas exposée sur `EBV2` — taux saturé 0/0), une colonne
+« ampleur » qui sommait la récup, une classification qui nommait « un plafond mord » et mesurait
+« le pic a baissé », et une tolérance en POURCENTAGE quand le pas du point fixe est ABSOLU —
+faute d'unité (règle 14) dans le juge du ticket qui corrige une faute d'unité.
+Et la règle 17 a servi : `registry:check` a fait basculer **quatre** blocs en « ne reproduit
+plus », **quatre faux positifs** (un refactor, une police supprimée, deux valeurs devenues
+périmées) — réécrits sur la PROPRIÉTÉ au lieu d'une valeur ou d'un chemin.
+**28 gates verts, golden 949 recapturé (560 profils), `audit:v1` 459 à 0 violation dure.**
+
 **O-35 (2ᵉ moitié) + B-09 + la mesure de B-02 livrés — le DIAGNOSTIC de volume vivait avant le
 point fixe, et 350 profils annonçaient un pic qu'ils ne livrent pas** (arbitrages `sw.aero` et
 `B02_DEBLOQUE_APRES_B02A`, 14/08/2026 — voir `RAPPORT_O35B_B09.md` et

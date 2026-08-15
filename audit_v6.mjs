@@ -859,6 +859,15 @@ test("C30-A", "C30 + C30b allongent la sortie longue des coureurs LENTS — les 
   // dur devient du facile. Une baisse d'une minute sur un témoin qui ne dépend pas de la règle
   // est le comportement attendu d'une redistribution, pas une régression — l'épingler à 119
   // plutôt que l'exempter garde la propriété mesurable dans les deux sens.
+  //
+  // CINQUIÈME ÉTAT — O-42, la conversion unique (15/08/2026). Un bloc prescrit en MÈTRES coûte
+  // désormais les minutes de l'allure de sa ZONE et non celles de l'ancre brute : `rn.thr` +2,5 %,
+  // `rn.mara` +10,5 %. Ces minutes-là sont du DUR, donc `enforceHardTimeCap` en rend davantage en
+  // facile, et le tail O-21 les fait remonter à la sortie longue — le mécanisme exact du
+  // quatrième état, réactivé par une cause nouvelle. **Deux témoins bougent, les deux vers le
+  // haut** : `10k/avance/5:45/8h` **59 → 61** et `semi/inter/4:30/8h` **119 → 120**. Les deux
+  // sont des coureurs dont la cible de spécificité est déjà atteinte : ils ne doivent rien à C30,
+  // ils suivent la recomposition de leur semaine. Ré-épinglés avec leur raison, jamais exemptés.
   const attendu = [
     // les 7 profils que C30 déplaçait déjà
     ["10k", "debutant", "8:30", "6", 81], ["10k", "debutant", "8:30", "8", 81],
@@ -867,7 +876,7 @@ test("C30-A", "C30 + C30b allongent la sortie longue des coureurs LENTS — les 
     ["semi", "avance", "8:30", "8", 130],
     // ceux que C30b ajoute — la moitié du gain de ce chapitre est là
     ["10k", "debutant", "7:00", "6", 81], ["10k", "inter", "7:00", "8", 64],
-    ["10k", "inter", "8:30", "8", 79], ["10k", "avance", "5:45", "8", 59],
+    ["10k", "inter", "8:30", "8", 79], ["10k", "avance", "5:45", "8", 61],
     ["semi", "debutant", "7:00", "6", 130], ["semi", "debutant", "8:30", "6", 130],
     // …et LE COUREUR RAPIDE, qui n'est plus un témoin immobile — O-21 l'a bougé, pas C30b.
     // Ces trois-là ne doivent RIEN à la spécificité (leur cible est déjà atteinte) : ils
@@ -875,7 +884,7 @@ test("C30-A", "C30 + C30b allongent la sortie longue des coureurs LENTS — les 
     // le plafond de libellé lui avait prises. Gardés ici, avec cette raison, plutôt que
     // retirés — c'est la seule façon de voir qu'un même chiffre a DEUX causes possibles.
     ["10k", "inter", "4:30", "8", 59], ["5k", "inter", "8:30", "8", 69],
-    ["semi", "inter", "4:30", "8", 119], ["marathon", "inter", "4:30", "8", 180],
+    ["semi", "inter", "4:30", "8", 120], ["marathon", "inter", "4:30", "8", 180],
   ];
   const bad = [];
   for (const [format, level, pace, vol_max, min] of attendu) {

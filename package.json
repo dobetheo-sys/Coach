@@ -43,6 +43,8 @@
     "mesure:o36b": "node scripts/mesureO36boucle.mjs",
     "mesure:o40": "node scripts/mesureO40.mjs",
     "mesure:o41": "node scripts/mesureO41.mjs",
+    "mesure:o42": "node scripts/mesureO42.mjs",
+    "ventile:o42": "node scripts/ventilationO42.mjs",
     "registry:check": "node scripts/registryCheck.mjs",
     "demo:faisabilite": "node src/audit/feasibilityDemo.ts",
     "demo:proactif": "node src/audit/proactiveDemo.ts",

@@ -6059,3 +6059,56 @@ qui l'a signalé pendant l'E2E complet, sur la ligne exacte, pas moi.
 
 **29 gates verts, E2E 23/23, `audit:v1` et golden 949 inchangés — `src/`, `engine.js` et le
 monolithe intacts.**
+
+## O-42 — l'autorité de la conversion allure ↔ vitesse est la définition de zone
+
+**Le problème.** Quatre fonctions convertissaient des mètres en minutes (ou l'inverse), avec
+**trois** comportements distincts pour une seule grandeur physique :
+
+| lieu | conversion | forme |
+|---|---|---|
+| `stepMin` (`src/generator/renderer.ts`) | ancre BRUTE, ratio 1,00 | implicite |
+| `loadModel.stepMinutes` (`src/engine/loadModel.ts`) | ancre BRUTE, ratio 1,00 | implicite |
+| `loadModel` ligne 358 (refente d'intensité) | ancre BRUTE, ratio 1,00 | **copie littérale** |
+| `weekDistances` (`src/engine/weekDistances.ts`) | table `RUN_/SWIM_SPEED_RATIO` | explicite |
+| `dailyAdjuster.enduranceReplacement` | ancre BRUTE | implicite (trouvé par `A3`) |
+
+Aucune n'était la définition que l'athlète LIT. `ZDEF` déclare `sw.easy` à **×1,12 sur l'allure
+CSS** ; `stepMin` comptait ce bloc comme nagé AU CSS (−12 % de durée), `weekDistances` lui donnait
+un ratio de vitesse de 0,80 (−10,4 % contre `ZDEF`). Le plan affichait une allure et en comptait
+une autre.
+
+**Le correctif.** `zoneSpeedRatio(zone, refs?, expectRef?)` dans `renderer.ts`, aux côtés de
+`ZDEF` :
+
+```ts
+const d = refs ? zoneOf(key, refs) : ZDEF[key];
+if (!d || (d.ref !== "css" && d.ref !== "thrPace")) return null;  // ftp : Martin · vam : vertical
+if (expectRef && d.ref !== expectRef) return null;                // règle 14 : pas d'unité croisée
+return 2 / (d.lo + d.hi);                                         // 1 ÷ multiplicateur d'allure moyen
+```
+
+L'inversion allure → vitesse est faite **une seule fois** : deux écritures de `1/mult` invitent
+l'erreur de signe que ce ticket existe pour supprimer. `BIKE_POWER_RATIO` reste dans
+`weekDistances` — c'est un rapport de PUISSANCE, il entre DANS le modèle de Martin au lieu de s'y
+substituer.
+
+**Le choix de bande.** `ZDEF` porte `lo === hi` en nage (vitesse exacte) et des bandes en course.
+Mesuré (`npm run mesure:o42`) : 108 blocs sur 4 259 (2,5 %) concernés, écart lo↔hi = **0,2 % du
+total contre 7,9 % pour la correction**. On prend le CENTRE. `longRunSpecificity` prend `lo` parce
+qu'elle calcule un PLANCHER (« l'hypothèse la moins gourmande ») ; `stepMin` ne produit ni
+plancher ni plafond mais une COMPTABILITÉ, et une comptabilité prend la valeur attendue. La borne
+LENTE (la plus prudente au sens du manifeste) coûte +0,1 % — chiffrée pour que la décision reste
+révocable sans re-mesure.
+
+**Effet de bord réparé : `enforceC22Final` savait réduire des répétitions et des minutes, jamais
+des mètres.** Un bloc en mètres à `reps === 1` ne tombait dans aucune branche, et la boucle
+sortait par « les planchers bloquent : rien de plus à prendre » — fail-open de la forme de
+C24/C24b (T-29). Branche `distanceM` ajoutée, plancher C24/C24b tenu par annulation intégrale de
+la réduction. `audit:v1` : sauts > +10 % de **22 à 18** combinaisons.
+
+**Vérification** — `npm run ventile:o42`, les quatre critères du §6 de l'arbitrage : identité par
+bloc 4 248/4 248, ampleur par zone égale au ratio au dixième de point, 0 changement de structure,
+54 semaines sur 2 682 (2,0 %) qui s'éloignent de leur cible, toutes attribuées (50 à la sonde de
+capacité qui lit un clone saturé — famille T-25/O-35 —, 4 à un plafond qui se nomme dans le plan).
+Contre-preuve : rejoué contre le moteur d'avant, le rapport rend « RÉSIDU » et six zones en ✖.

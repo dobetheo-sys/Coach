@@ -7,24 +7,25 @@
 // chiffre inventé, et le drapeau `approx` dit qu'une conversion a eu lieu (l'UI affiche « ~ »).
 //
 // LES VITESSES, et d'où elles viennent :
-//  · course — la vitesse d'une zone est le RAPPORT à la vitesse seuil. C'est la définition
-//    même de l'IF de course (rTSS, Skiba : IF = allure normalisée / allure seuil), donc les
-//    rapports ci-dessous sont des rapports de VITESSE, pas des parts d'effort : l'endurance
-//    fondamentale se court 20-25 % plus lentement que le seuil (0,78), le travail marathon
-//    à ~92 %, la VO2max un peu au-dessus du seuil sur ces durées courtes (1,05).
-//  · natation — même logique sur le CSS : l'aisance se nage à ~80 % de la vitesse CSS
-//    (heuristique assumée, écrite comme telle), l'aérobie à ~88 %, le CSS à 100 %.
+//  · course et natation — la vitesse d'une zone est le RAPPORT à la vitesse seuil (CSS en nage).
+//    C'est la définition même de l'IF de course (rTSS, Skiba : IF = allure normalisée / allure
+//    seuil). O-42 — CE FICHIER NE PORTE PLUS SA TABLE : elle valait `sw.easy` 0,80 quand `ZDEF`
+//    définit cette zone à ×1,12 sur l'allure CSS, soit 0,893 en vitesse — 10,4 % d'écart, et
+//    8 zones sur 9 divergeaient. Il y avait TROIS conversions pour une grandeur (celle-ci, celle
+//    de `stepMin`, celle de `loadModel`), toutes différentes, et aucune n'était celle qui produit
+//    les allures que l'athlète LIT. L'autorité est `ZDEF`, via `zoneSpeedRatio` (R11.1).
 //  · vélo — la vitesse NE SUIT PAS la puissance linéairement : on résout le modèle de
 //    Martin (cyclingSpeed.ts, PW) à la puissance de zone. Il exige le poids : sans poids
-//    ou sans FTP, pas de km vélo — le temps reste affiché.
+//    ou sans FTP, pas de km vélo — le temps reste affiché. `BIKE_POWER_RATIO` reste ici : c'est
+//    un rapport de PUISSANCE, pas de vitesse — il entre DANS le modèle au lieu de s'y substituer.
 import { solveSpeedMs, BIKE_SETUP } from "./cyclingSpeed.ts";
+import { zoneSpeedRatio } from "../generator/renderer.ts";
 import type { V1Week } from "../harness/v1Harness.ts";
 
-// Rapport de vitesse par zone (course = fraction de la vitesse seuil ; nage = fraction de
-// la vitesse CSS). Une zone inconnue retombe sur l'endurance : c'est la zone la plus
-// fréquente, et l'erreur est alors dans le sens qui SOUS-compte les km.
-const RUN_SPEED_RATIO: Record<string, number> = { "rn.easy": 0.78, "rn.rec": 0.70, "rn.mara": 0.92, "rn.thr": 1.0, "rn.vo2": 1.05 };
-const SWIM_SPEED_RATIO: Record<string, number> = { "sw.easy": 0.80, "sw.aero": 0.88, "sw.css": 1.0, "sw.speed": 1.02 };
+/** O-42 — le ratio de la zone, dérivé de `ZDEF`. Une zone inconnue retombe sur l'endurance :
+ *  c'est la zone la plus fréquente, et l'erreur est alors dans le sens qui SOUS-compte les km. */
+const ratioZone = (zone: string | undefined, ref: "css" | "thrPace"): number =>
+  zoneSpeedRatio(zone, undefined, ref) ?? zoneSpeedRatio(ref === "css" ? "sw.easy" : "rn.easy", undefined, ref)!;
 // Puissance de zone vélo = fraction de FTP (centre des bandes du moteur — mêmes valeurs que
 // la table d'intensité du monolithe, où elles sont un IF de PUISSANCE, ce qui est correct ici).
 const BIKE_POWER_RATIO: Record<string, number> = { "bk.z2": 0.65, "bk.ss": 0.90, "bk.vo2": 1.12, "bk.frc": 0.82, "bk.rp": 0.84, "bk.thr": 1.0 };
@@ -79,7 +80,7 @@ export function weekDistances(week: V1Week, answers: AnswersLike): DisciplineDis
         // 08/08/2026, 2e passage). Le temps se déduit de la même RÉFÉRENCE MESURÉE (CSS) que
         // l'inverse (durée → km) trois lignes plus bas — même honnêteté : sans CSS, pas de
         // minutes inventées, seule la distance (exacte, prescrite en mètres) s'affiche.
-        const min = d === "sw" && css ? (km * 10 * css / 60) / (SWIM_SPEED_RATIO[st.zone || ""] ?? SWIM_SPEED_RATIO["sw.easy"]) : 0;
+        const min = d === "sw" && css ? (km * 10 * css / 60) / ratioZone(st.zone, "css") : 0;
         add(d, min, km, false);
         continue;
       }
@@ -87,8 +88,8 @@ export function weekDistances(week: V1Week, answers: AnswersLike): DisciplineDis
       if (!min) continue;
       if (st.role !== "body") { add(d, min, 0, false); continue; } // échauffement/retour au calme : temps compté, km non prétendus
       let km: number | null = null;
-      if (d === "rn" && thr) km = (min * 60 / thr) * (RUN_SPEED_RATIO[st.zone || ""] ?? RUN_SPEED_RATIO["rn.easy"]);
-      else if (d === "sw" && css) km = (min * 60 / css / 10) * (SWIM_SPEED_RATIO[st.zone || ""] ?? SWIM_SPEED_RATIO["sw.easy"]);
+      if (d === "rn" && thr) km = (min * 60 / thr) * ratioZone(st.zone, "thrPace");
+      else if (d === "sw" && css) km = (min * 60 / css / 10) * ratioZone(st.zone, "css");
       else if (d === "bk" && ftp && kg) {
         const w = ftp * (BIKE_POWER_RATIO[st.zone || ""] ?? BIKE_POWER_RATIO["bk.z2"]);
         km = (solveSpeedMs(w, kg + bikeSetup.bikeKg, bikeCda, bikeSetup.crr, 0) * min * 60) / 1000;
