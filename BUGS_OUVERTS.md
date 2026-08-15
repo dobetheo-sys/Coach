@@ -2818,3 +2818,58 @@ quoi: les deux verrous du §1 sont mesures et passent
 attendu: BRUIT DE CALCUL
 cmd: node scripts/mesureO36boucle.mjs 2>/dev/null | grep -o "BRUIT DE CALCUL"
 ```
+
+
+---
+
+## O-39 (élargi) — ⚠ `rn.mara` N'EST PAS LA SEULE : `rp` ET `css` AUSSI
+
+Ta vérification §3.1 était la bonne question, et la réponse est non. La garde `O-39`, écrite sur
+la PROPRIÉTÉ (« toute zone de qualité émise est plafonnée ou exemptée »), balaie les zones
+réellement ÉMISES sur les 949 :
+
+```
+5 suffixes de qualité émis : css · mara · rp · thr · vo2
+  · thr  40 min   (DOSE_CAP_MIN)
+  · vo2  25 min   (DOSE_CAP_MIN)
+  · mara EXEMPTÉ  (DOSE_EXEMPT — écrit ce jour, raison physiologique)
+  · rp   ⚠ ni plafond ni exemption
+  · css  ⚠ ni plafond ni exemption
+```
+
+`rp` est l'allure course VÉLO (R20.5 : 0,70-0,88 × FTP selon le format) et `css` le seuil NAGE.
+Les deux sont classés qualité par `IS_QUALITY_ZONE` et aucun ne porte de borne de dose.
+
+**Je n'invente pas leur exemption.** `mara` avait une raison physiologique claire et mesurée ;
+`rp` et `css` demandent un arbitrage — un bloc de 60 min à allure course d'Ironman est normal,
+un bloc de 60 min de CSS ne l'est probablement pas, et la règle 14 dit que ces deux disciplines
+ne se comparent pas dans la même monnaie. Décision au fondateur.
+
+Statut : `O-39` est un rouge ATTENDU du banc, avec son ticket — il ne peut plus passer inaperçu,
+et il redeviendra vert le jour où les deux zones sont tranchées.
+
+---
+
+## T-30 — écrit ROUGE, et le rapport n'est pas ×1,50 mais ×1,09
+
+La propriété que l'item 3 d'O-36 doit rendre vraie : *à profil et format égaux, le temps de
+travail d'un bloc de qualité est invariant par variation de `thrPace`*.
+
+**Deux chiffres cohabitent et il faut dire lequel est lequel** :
+
+| population mesurée | rapport lent/rapide |
+|---|---|
+| blocs de qualité prescrits en DISTANCE (§2.5) | **×1,50** |
+| TOUS les blocs de qualité course (T-30) | **×1,09** |
+
+Ils ne se contredisent pas : les blocs prescrits en TEMPS ne varient pas avec l'allure, et ils
+diluent le résidu. **×1,50 est l'ampleur du défaut là où il vit ; ×1,09 est ce que l'athlète subit
+en moyenne sur sa qualité.** T-30 mesure le second parce que c'est la propriété finale ; le
+premier reste le bon chiffre pour dimensionner le correctif.
+
+```verify
+id: T-30
+quoi: la propriete est ecrite ROUGE avant le correctif
+attendu: T30-ROUGE
+cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep -q "· T-30 \[ROUGE\]" && echo "T30-ROUGE"
+```

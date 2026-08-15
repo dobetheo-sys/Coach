@@ -1780,6 +1780,28 @@ const DOSE_CAP_MIN = rule(
   { thr: 40, vo2: 25 },
 );
 
+/**
+ * O-39 — UNE EXEMPTION ABSENTE ET UNE EXEMPTION DÉCIDÉE SONT INDISCERNABLES.
+ *
+ * `DOSE_CAP_MIN` plafonne `thr` et `vo2`. `mara` n'y figurait pas, et les blocs `rn.mara` portent
+ * la PLUS GROSSE dose de qualité du moteur : **61,0 min/bloc à 4:30 et 73,7 min à 8:30** (mesuré,
+ * `npm run mesure:o36c`), alors qu'`IS_QUALITY_ZONE` les classe bien en qualité.
+ *
+ * L'exemption est physiologiquement JUSTE — l'allure marathon est nettement sous le seuil, et un
+ * bloc de 60-75 min à cette allure est la séance spécifique attendue d'une préparation longue
+ * distance, pas un dépassement ; y appliquer le plafond de 40 min du seuil serait une erreur.
+ * Mais rien ne le disait, et c'est exactement ce que ce chantier corrige depuis le premier jour :
+ * une clé absente ressemble à un oubli.
+ *
+ * Elle est donc DÉCLARÉE. La garde qui va avec (T-30/O-39) vérifie que toute zone classée qualité
+ * est soit plafonnée, soit exemptée ici — jamais simplement absente.
+ */
+const DOSE_EXEMPT                         = rule(
+  "C25-exempt",
+  "l'allure marathon est nettement sous le seuil : un bloc de 60-75 min y est la séance spécifique attendue, pas un dépassement — le plafond du seuil n'a pas d'objet",
+  { mara: "allure de course longue distance, sous le seuil — le plafond `thr` ne s'y applique pas" },
+);
+
 const C21_REPRISE_BRICK_FACTOR = rule("C21", "en reprise, le brick ne mange pas la semaine (61% du volume hebdo observé sans ce facteur)", 0.8);
 
 /** Plafonds de séance longue / nage par format (R3.4b), et budget implicite du volume. */

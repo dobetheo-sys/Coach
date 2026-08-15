@@ -28,7 +28,7 @@ import { ZDEF } from "../src/generator/renderer.ts";
 import { zoneClass, intensitySplit } from "../src/engine/loadModel.ts";
 import { sessionIntensity } from "../src/readiness/dailyAdjuster.ts";
 import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor, swimTimeFactorOf,
-  BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS } from "../src/engine/constraintMatrix.ts";
+  BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, DOSE_CAP_MIN, DOSE_EXEMPT } from "../src/engine/constraintMatrix.ts";
 import { RN_THR_FRONTIERE_LENTE } from "../src/engine/loadModel.ts";
 import { TrainingReasoningEngine } from "../src/engine/reasoningEngine.ts";
 import { toProfile } from "../src/app/bridge.ts";
@@ -902,6 +902,74 @@ T("T-29", "vert", "aucune donnée absente ne fait sauter une vérification de s�
   return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `fail-open C24/C24b scindé · 0 catch silencieux · S6 et S7 durs au sceau` };
 });
 
+/**
+ * T-30 — À PROFIL ET FORMAT ÉGAUX, LE TEMPS DE TRAVAIL D'UN BLOC DE QUALITÉ EST INVARIANT PAR
+ * VARIATION DE `thrPace`.
+ *
+ * Écrit ROUGE avant le correctif, comme le veut la méthode : c'est la PROPRIÉTÉ que l'item 3
+ * d'O-36 doit rendre vraie, pas le chemin qu'il prendra. Aujourd'hui le moteur adapte le NOMBRE
+ * de répétitions (3,84 → 3,01 entre 4:30 et 8:30) mais pas leur LONGUEUR (~1 672 m partout), donc
+ * le coureur lent reçoit **×1,50 de temps de travail** pour la même prescription.
+ *
+ * La correction retenue (arbitrage du 15/08) : la DURÉE de répétition devient la source, la
+ * distance devient un affichage dérivé — le contrat que B-25 fait déjà tourner en production sur
+ * le leg course du tri. Quand elle sera écrite, ce critère passera au vert sans être retouché :
+ * il ne nomme aucun mécanisme.
+ */
+T("T-30", "rouge", "le temps de travail d'un bloc de qualité course ne dépend pas de l'allure déclarée", () => {
+  const ZQ = /\.(thr|vo2|mara|sprint)/;
+  const dose = (pace) => {
+    let n = 0, min = 0;
+    for (const format of ["5k", "10k", "semi", "marathon"]) for (const level of ["debutant", "inter", "avance"]) {
+      let plan;
+      try {
+        plan = globalThis.EBV2.buildPlan("run", {
+          sport: "run", format, history: "confirme", level, intent: "competition", pace,
+          med_pain: "non", med_dizzy: "non", med_treat: "non", injury: "aucune", sessions_max: "5",
+          dispo: "quotidienne", doubles: "non", pace_known: "oui", terrain: "route", sex: "H",
+          age: "35", vol_max: "8", vol_recent: "3", weight: "75",
+        });
+      } catch { continue; }
+      for (const w of plan.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
+        for (const st of s.steps ?? []) {
+          if (st.role !== "body" || !ZQ.test(String(st.zone || ""))) continue;
+          n++; min += st._min ?? 0;
+        }
+    }
+    return n ? min / n : 0;
+  };
+  const rapide = dose("4:30"), lent = dose("8:30");
+  const r = rapide > 0 ? lent / rapide : 1;
+  // 5 % de tolérance : la quantification en répétitions entières ne peut pas rendre l'égalité exacte.
+  return {
+    ok: rapide > 0 && Math.abs(r - 1) <= 0.05,
+    detail: `dose moyenne d'un bloc de qualité : ${rapide.toFixed(1)} min à 4:30 · ${lent.toFixed(1)} min à 8:30 — rapport ×${r.toFixed(2)} (cible 1,00 ± 5 %)`,
+  };
+});
+
+/**
+ * O-39 — TOUTE ZONE CLASSÉE QUALITÉ EST SOIT PLAFONNÉE, SOIT EXEMPTÉE. Jamais simplement absente.
+ * `mara` portait la plus grosse dose du moteur sans entrée nulle part ; l'exemption est juste,
+ * elle est désormais ÉCRITE (`DOSE_EXEMPT`), et ce critère empêche la prochaine zone d'entrer
+ * sans décision.
+ */
+T("O-39", "rouge", "toute zone de qualité émise est plafonnée (DOSE_CAP_MIN) ou exemptée (DOSE_EXEMPT)", () => {
+  const vues = new Set();
+  for (const { plan } of goldenAvecMoteur())
+    for (const w of plan.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
+      for (const st of s.steps ?? []) {
+        const z = String(st.zone || "");
+        if (st.role !== "body" || !z) continue;
+        if (/\.(thr|vo2|mara|sprint|css|rp)$/.test(z)) vues.add(z.split(".").pop());
+      }
+  const orphelines = [...vues].filter((suf) => DOSE_CAP_MIN[suf] === undefined && DOSE_EXEMPT[suf] === undefined);
+  return {
+    ok: vues.size > 0 && orphelines.length === 0,
+    detail: `${vues.size} suffixe(s) de qualité émis (${[...vues].sort().join(", ")}) · ${orphelines.length} sans plafond NI exemption`
+      + (orphelines.length ? ` — ${orphelines.join(", ")}` : ""),
+  };
+});
+
 // ---- verdict --------------------------------------------------------------
 /**
  * §6.3 (DOC_UNIQUE, 14/08/2026) — LES ROUGES ATTENDUS SONT UNE LISTE NOMMÉE, PAS UN NOMBRE.
@@ -931,6 +999,8 @@ const ROUGES_ATTENDUS = {
   "T-23": "O-35 — mêmes causes que T-25, vues de l'écran (BUGS_OUVERTS.md)",
   "T-21": "généralisation du patron B-24/V-11 : records de décision partout (ARBITRAGES_STOP_PHASE2 §6)",
 
+  "O-39": "O-39 — `rp` (allure course vélo) et `css` (seuil nage) sont sans plafond NI exemption : arbitrage fondateur",
+  "T-30": "O-36 item 3 — durée de répétition comme source, distance dérivée (contrat B-25 étendu)",
   "T-22": "B-26 — les bricks reçoivent leurs steps zonés (416 séances duathlon chiffrées ; T-22 en a trouvé AUSSI en tri : « Brick vélo+CAP », périmètre B-26 à élargir)",
 };
 
