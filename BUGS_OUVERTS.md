@@ -1516,7 +1516,7 @@ trois tests dont deux le même jour, `syncRefsFromTests()`, la référence doit 
 id: O-23
 quoi: à date égale, `latest` départage par position et rend le DERNIER test inscrit
 attendu: /y\.i - x\.i/
-cmd: grep -n "y.i - x.i" endurabuild/js/ui/tab-profile.js
+cmd: grep -n "y.i - x.i" endurabuild/js/state.js
 ```
 
 ---
@@ -3222,11 +3222,8 @@ correctif — sinon c'est un constat sur le fichier, pas sur le produit (T-33).
 promotion à la fonction d'AJOUT au journal elle-même. Un seul point, impossible à oublier, et les
 futurs chemins d'import en héritent — la géométrie du sceau, appliquée au journal.
 
-```verify
-id: O-41-ecrivains
-quoi: steps.js ecrit dans le journal des references sans jamais appeler la promotion
-attendu: O41-TROU
-cmd: grep -q "tests.push({type:\"ftp\"" endurabuild/js/ui/steps.js && ! grep -q "syncRefsFromTests" endurabuild/js/ui/steps.js && echo "O41-TROU"
+```
+(bloc `verify` RETIRÉ — le constat est réfuté, voir « O-41 RÉFUTÉ » plus bas)
 ```
 
 
@@ -3271,9 +3268,59 @@ de fond est mesurée : **O-22 et O-25 ont travaillé dans `steps.js` même**, et
 n'a relié l'écriture du journal à la promotion — parce que `syncRefsFromTests` vient de R20.1,
 ailleurs et plus tard. Une couture de ce type ne se referme que par la structure.
 
-```verify
-id: O-41-e2e
-quoi: la FTP importee n'atteint pas answers.ftp sans passer par un enregistrement
-attendu: NON PROMUE
-cmd: node tests/e2e/smoke-import-ref.mjs 2>/dev/null | grep -o "NON PROMUE" | head -1
 ```
+(bloc `verify` RETIRÉ — le constat est réfuté, voir « O-41 RÉFUTÉ » plus bas)
+```
+
+
+---
+
+## O-41 — ⚠ **RÉFUTÉ. LE TROU N'EXISTE PAS DANS LE PRODUIT** · ✅ FERMÉ (16/08/2026)
+
+La mesure du §3 (« le journal est-il écrit avant ou après la pose du drapeau ? ») a renversé ma
+propre conclusion, et la réponse est plus simple que les deux branches prévues.
+
+**`stravaImport` n'a qu'UN SEUL appelant**, `runStravaImport` (`tab-profile.js:1033`), et il
+promeut immédiatement :
+
+```js
+await stravaImport(tok);            // écrit S.answers.tests
+if (!added) return;                 // rien de neuf → rien à promouvoir
+const nRef = syncRefsFromTests();   // ← la promotion, juste après
+ebSave();
+if (nRef) invalidatePlan();         // et le plan est RÉGÉNÉRÉ sur la nouvelle référence
+```
+
+Le balayage statique disait vrai **du fichier** — `steps.js` n'appelle jamais la promotion — et
+faux **du produit** : sa seule voie d'entrée le fait pour lui. La fonction vit dans `steps.js`
+pour des raisons d'historique, elle n'y est pas invoquée.
+
+### Ma « confirmation E2E » était une fixture synthétique — c'est T-33, mot pour mot
+
+J'ai injecté des entrées de journal **directement dans `localStorage`**, un état qu'aucun chemin
+produit ne fabrique : le seul qui écrit ces entrées promeut dans la foulée. La suite mesurait donc
+la fixture, pas le produit — exactement la règle que ce chantier venait d'écrire :
+
+> **T-33** — *toute fixture de mesure est atteignable par un chemin produit, ou explicitement
+> étiquetée état synthétique. Une fixture inatteignable rend un constat sur la fixture, jamais
+> sur le produit.*
+
+Je l'ai écrite au tour précédent et enfreinte au suivant. C'est la seizième occurrence de la
+famille, et la première où la règle violée était déjà nommée dans le dépôt.
+
+**Ce qui aurait dû m'alerter, et c'est écrit dans `CLAUDE.md` depuis ce lot** : les DEUX variantes
+échouaient. Un résultat saturé accuse l'instrument — j'ai appliqué la première moitié de
+l'heuristique (« l'instrument discrimine-t-il ? ») et sauté la seconde (« quel état PRODUIT ce
+résultat décrit-il ? »).
+
+### Conséquences
+
+- **Les pas B et C sont RETIRÉS.** Pas de crochet à poser : la promotion suit déjà l'écriture sur
+  le seul chemin qui existe. Pas de réconciliation au chargement : sans trou, il n'y a pas de
+  dommage passé à rattraper, donc pas de compteur à poser.
+- **`tests/e2e/smoke-import-ref.mjs` est SUPPRIMÉE.** Une suite qui mesure un état inatteignable
+  ne garde rien ; la laisser en « rouge attendu » figerait un faux défaut dans le cliquet.
+- **Le pas A reste, et sa justification tient sans le trou** : les trois mécanismes qui touchent
+  aux références de l'athlète cohabitent désormais, ce qui est la cause de fond de la couture
+  O-22/O-25. Le regroupement empêche qu'un futur chemin d'import oublie la promotion — c'est
+  maintenant de la prévention, plus une réparation.
