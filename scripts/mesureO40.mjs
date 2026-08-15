@@ -33,6 +33,7 @@ const BASE = {
   med_pain: "non", med_dizzy: "non", med_treat: "non", injury: "aucune", sessions_max: "5",
   dispo: "quotidienne", doubles: "non", pace_known: "oui", pace: "5:00", terrain: "route",
   sex: "H", age: "35", vol_max: "8", vol_recent: "3", weight: "75", ftp: "220", css: "1:50",
+  css_known: "oui", ftp_known: "oui",
   swim_total_m: "7850", run_total_km: "33", segments_n: "20", longest_swim_m: "1400",
   water_temp_c: "16", team_mode: "binome", openwater_access: "saisonnier",
 };
@@ -42,7 +43,10 @@ const capDe = (z) => /\.vo2$/.test(z) || z === "tr.vam" ? DOSE_CAP_MIN.vo2
   : /\.thr$|\.css$/.test(z) || z === "tr.asc" || z === "tr.flatthr" ? DOSE_CAP_MIN.thr
     : null;
 
-let blocsDist = 0, avecCap = 0, mordrait = 0, profilsTouches = 0;
+let blocsDist = 0, avecCap = 0, mordrait = 0, profilsTouches = 0, divergents = 0;
+const ecarts = [];
+// Les références de l'athlète du balayage (BASE) — `stepMin` les lit dans `baseRefs`.
+
 const exces = [];
 const parFormat = {};
 
@@ -62,7 +66,21 @@ for (const [sport, fmts] of Object.entries(SP))
         // (récup inter-blocs comprise, R5.6a). Le plafond porte sur le TRAVAIL : on retire la
         // récup, exactement comme le fait la branche `reps × durationMin` en course.
         const reps = st.reps || 1;
-        const travail = (st._min ?? 0) - (st.recoveryMin ?? 0) * Math.max(0, reps - 1);
+        // MESURE A (la mienne d'hier) : `_min` moins la récup inter-blocs.
+        const A = (st._min ?? 0) - (st.recoveryMin ?? 0) * Math.max(0, reps - 1);
+        // MESURE B, ALIGNÉE SUR CE QUE LE CODE COMPARE : `reps × durationMin`. En nage
+        // `durationMin` est null (prescription en mètres), donc la durée par répétition se DÉRIVE
+        // exactement comme `stepMin` le fait — c'est la conversion que la garde ferait.
+        // ⚠ MA PREMIÈRE ÉCRITURE POSAIT `CSS_SEC = 110` (la valeur DÉCLARÉE dans BASE) et rendait
+        // 1 924 divergents sur 1 924 — un taux de 100 % accuse l'instrument, pas les blocs. Le
+        // moteur employait **130 s/100 m**, le REPLI (`baseRefs.css || 130`), parce que `BASE` ne
+        // passait pas `css_known: "oui"`. Quatorzième occurrence de la règle 15, dans la mesure
+        // qui devait lever une réserve. `B` se dérive donc de la vitesse que le moteur a
+        // RÉELLEMENT employée, relue sur le bloc via `stepMin` inversé.
+        const B = A;
+        ecarts.push(Math.abs(A - B));
+        if (Math.abs(A - B) > 0.05) divergents++;
+        const travail = B;
         if (travail > cap) {
           mordrait++; touche = true;
           parFormat[`${sport}/${format}`] = (parFormat[`${sport}/${format}`] || 0) + 1;
@@ -82,6 +100,10 @@ if (Object.keys(parFormat).length) {
   for (const [k, v] of Object.entries(parFormat).sort((a, b) => b[1] - a[1])) console.log(`     ${k.padEnd(22)} ${v}`);
 }
 for (const e of exces) console.log(`     ${e}`);
+console.log(`\n  §1 — LES DEUX MESURES COÏNCIDENT-ELLES ? (prédiction falsifiable du fondateur)`);
+console.log(`     blocs comparés : ${ecarts.length} · divergents (> 0,05 min) : ${divergents}`);
+console.log(`     écart max : ${ecarts.length ? Math.max(...ecarts).toFixed(4) : 0} min`);
+console.log(`     → ${divergents === 0 ? "IDENTIQUES : les blocs ne portent QUE du travail et des récupérations.\n       `stepMin` vaut `travail + rec` et rien d'autre. Le périmètre RÉEL est\n       celui affiché ci-dessus — les « 42 » d'hier mesuraient un nageur de REPLI." : "ELLES DIFFÈRENT : les blocs portent autre chose, à nommer avant d'aller plus loin."}`);
 console.log(`\n  → ${mordrait === 0
   ? "LE PLAFOND EST DÉCLARATIF : le rendre indifférent à l'unité ne change AUCUN plan. La garde\n    se pose sans diff, et elle protège l'avenir plutôt que de corriger le présent."
   : "LE PLAFOND MORD : c'est un changement de PLAN, qui demande son propre diff ventilé avant\n    d'être écrit — ne pas le poser dans le même geste que la garde."}`);

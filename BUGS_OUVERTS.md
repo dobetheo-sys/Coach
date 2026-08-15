@@ -2973,3 +2973,58 @@ quoi: les deux gardes abandonnent selon l'unite, et le plafond nage mordrait sur
 attendu: LE PLAFOND MORD
 cmd: node scripts/mesureO40.mjs 2>/dev/null | grep -o "LE PLAFOND MORD"
 ```
+
+---
+
+## O-40 §1 — LES DEUX MESURES COÏNCIDENT, ET LE PÉRIMÈTRE TOMBE DE 42 À 12 : MON BALAYAGE MESURAIT UN NAGEUR DE REPLI
+
+Ta prédiction falsifiable est tranchée, et la vérification a trouvé plus gros que la question.
+
+### La prédiction : IDENTIQUES
+
+`stepMin` est la source unique et vaut **`travail + rec`, rien d'autre** :
+
+```ts
+const rec = st.role === "body" && reps > 1 ? (reps - 1) * (st.recoveryMin || 0) : 0;
+if (st.durationMin) return reps * st.durationMin + rec;
+if (st.distanceM)   return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60) + rec;
+```
+
+Mesuré sur les **1 922 blocs** à zone plafonnée : **0 divergent, écart max 0,0000 min**. Les blocs
+ne portent que du travail et des récupérations — rien à nommer, comme ta branche « identiques » le
+prévoyait.
+
+### ⚠ Mais la vérification a démasqué ma propre mesure — et le périmètre change
+
+Ma première écriture posait `CSS_SEC = 110` (la valeur DÉCLARÉE dans le balayage) et rendait
+**1 924 divergents sur 1 924**. Un taux de 100 % accuse l'instrument, pas les blocs : le moteur
+employait **130 s/100 m**, le REPLI de `stepMin` (`baseRefs.css || 130`), parce que mon `BASE` ne
+passait pas `css_known: "oui"` — la CSS déclarée était ignorée.
+
+**Le balayage mesurait donc un nageur 18 % plus lent que celui qu'il croyait décrire**, ce qui
+gonfle mécaniquement le temps de travail. Même famille que le harnais E2E qui fabriquait un
+athlète de 138 kg (U14).
+
+| | hier (nageur de repli, css 130) | corrigé (css déclarée, 110) |
+|---|---|---|
+| blocs que le plafond mordrait | **42** | **12** |
+| profils touchés | **12** | **4** |
+
+**Quatorzième occurrence de la règle 15**, et elle est survenue dans la mesure écrite pour lever
+une réserve sur une autre mesure. La réserve était fondée ; sa cause n'était pas celle que je
+soupçonnais.
+
+### Ce que ça ne change pas, et ce que ça change
+
+- **La scission tient** : le plafond mord encore (12 blocs, 4 profils), donc c'est toujours un
+  changement de plan qui demande son propre diff, et il ne va pas dans le même geste que la garde.
+- **Le lot 2 est quatre fois plus petit** que ce que le chiffre d'hier laissait croire, et il reste
+  entièrement en `tri/70.3` et `tri/Full` sur « Nage seuil (+dist) ».
+- **Le lot 1 (la garde) est inchangé** : son test d'acceptation reste golden 0 écart.
+
+```verify
+id: O-40-perimetre
+quoi: les deux mesures coincident, et le perimetre reel est de 12 blocs sur 4 profils
+attendu: 0 divergent
+cmd: node scripts/mesureO40.mjs 2>/dev/null | grep -o "divergents (> 0,05 min) : 0" | head -1 | sed "s/.*: /0 divergent/"
+```
