@@ -9508,7 +9508,8 @@ function reconcileDeclaredVolume(
     }
   }
 
-  function refillEasyAfterLabelCap()       {
+  function refillEasyAfterLabelCap(cuts                      , ciblesForcees                      )       {
+    const _cuts = cuts ?? _labelCut;
     // « DEV ≤ PIC » EST UNE RÈGLE DE PÉRIODISATION, ET ELLE VAUT AUSSI POUR CE QU'ON REND.
     //
     // Mesuré, et c'est ma propre passe qui l'a créé : sur un 10 km de six semaines dont la
@@ -9528,13 +9529,21 @@ function reconcileDeclaredVolume(
       .filter((wk) => wk.phase.id === "peak" && !wk.isRecup)
       .map((wk) => weekMinOf(wk)));
     for (const wk of plan.weeks) {
-      const cut = _labelCut.get(wk.num) || 0;
+      const cut = _cuts.get(wk.num) || 0;
       if (cut <= 0) continue;
       const cur = weekMinOf(wk);
-      let cible = Math.round((wk.vol || 0) * 60);
+      // B-02 (réallocation) — LA CIBLE PEUT ÊTRE UNE ÉGALITÉ, PAS LA COURBE.
+      //
+      // Pour I14b, la borne est la courbe déclarée : la semaine n'a jamais valu davantage, la
+      // faire monter au-delà serait inventer du volume. Pour la réallocation du plafond de
+      // temps dur, c'est faux — la semaine EXISTAIT à ce volume une milliseconde plus tôt, on
+      // ne fait que remplacer la monnaie (du dur devient du facile). La cible est donc le
+      // total d'AVANT la coupe, transmis par l'appelant.
+      const forcee = ciblesForcees?.get(wk.num);
+      let cible = forcee != null ? forcee : Math.round((wk.vol || 0) * 60);
       // Une semaine hors pic ne remonte jamais au-dessus du pic LIVRÉ (5 % de tolérance : la
       // borne de l'auditeur, pas une seconde définition).
-      if (picLivre > 0 && wk.phase.id !== "peak" && wk.phase.id !== "taper")
+      if (forcee == null && picLivre > 0 && wk.phase.id !== "peak" && wk.phase.id !== "taper")
         cible = Math.min(cible, Math.round(picLivre * 1.05));
       // Le manque est borné par les DEUX : ce que le plafond a pris, et ce qui reste sous la
       // courbe. La semaine ne remonte jamais au-dessus de ce qu'elle annonce.
@@ -9570,6 +9579,11 @@ function reconcileDeclaredVolume(
             if (IS_QUALITY_ZONE(String(st.zone || ""))) continue;
             // Le plafond de bloc DÉCLARÉ garde le dernier mot : c'est lui qui borne un footing
             // (R20.3, O-8), et une passe de remplissage n'a pas à le contourner.
+            // Un bloc sans `bnd` déclaré n'est pas borné ICI, et c'est tenable : la boucle est
+            // dominée par `plafondFacile` (R20.3, au niveau de la SÉANCE). Mesuré : 66 des 66
+            // receveuses remplies aujourd'hui n'ont pas de `bnd` — leur refuser le remplissage
+            // supprimerait la restitution d'I14b en entier. Le tail O-21 ci-dessous, lui, n'a
+            // aucun plafond de séance au-dessus de lui : c'est là que l'absence de borne mord.
             const capBloc = st.bnd ? st.bnd.cap : Infinity;
             const suiv = Math.min(capBloc, Math.round(st.durationMin * f));
             if (suiv > st.durationMin) { st.durationMin = suiv; touche = true; }
@@ -9601,12 +9615,39 @@ function reconcileDeclaredVolume(
       // les rendre là est le seul endroit qui ne rouvre rien — une longue plus longue RELÈVE le
       // plafond d'I14 au lieu de le violer. Bornes : le plafond de bloc déclaré (C23, blessures)
       // et la cible de la semaine, déjà calculée plus haut.
+      // B-02 — ET LE BRICK N'EST PAS UNE SORTIE LONGUE COMME UNE AUTRE.
+      //
+      // `receveuses` l'exclut depuis I14b (`!sx.brick`) ; ce tail-ci ne l'excluait pas, et en
+      // duathlon le brick EST la sortie longue de la semaine. Mesuré sur 378 combinaisons :
+      // le tail se déclenche 242 fois aujourd'hui, **jamais sur un brick** — donc le trou est
+      // resté latent jusqu'à ce que la réallocation lui donne assez de minutes à placer ; avec
+      // elle, 10 des 346 déclenchements tombent sur un brick et le leg vélo passe de 81 à
+      // 144 min pour une borne auditée C21b à 90. Un brick n'est pas un réservoir de volume :
+      // c'est une séance structurée dont les DEUX legs portent des bornes de format.
+      //
+      // Et la seconde borne est plus générale que le brick : un bloc qui ne DÉCLARE pas de
+      // plafond n'en a pas ici — `st.bnd ? cap : Infinity` traitait « borne inconnue » comme
+      // « borne absente », alors que le résolveur du générateur (`blockBounds`) en connaît une.
+      // Il n'est pas atteignable depuis ce point de convergence (autre fermeture) ; à défaut,
+      // une passe qui REMPLIT n'invente pas de plafond, elle s'abstient. Mesuré : les 242
+      // déclenchements d'aujourd'hui portent tous un `bnd`, donc l'abstention ne retire rien à
+      // l'existant — elle ferme la classe. (Cause racine suivie en T-28 : générateur et
+      // auditeur doivent lire la MÊME source pour une borne.)
+      //
+      // LES DEUX BORNES SONT INDÉPENDAMMENT SUFFISANTES, ET C'EST DIT. Contre-preuve faite dans
+      // les trois combinaisons : retirer `!sx.brick` seul → `audit:v2` VERT (l'exigence de `bnd`
+      // suffit) ; restaurer le repli `Infinity` seul → VERT (l'exclusion du brick suffit) ;
+      // retirer les deux → **3 combinaisons duathlon/S rouges**, « brick vélo hors bornes ».
+      // C'est donc de la défense en profondeur, pas deux moitiés d'un correctif — le dire évite
+      // qu'on retire « la redondante » dans six mois en croyant simplifier. Elles ne gardent pas
+      // la même chose : l'une dit ce qu'un brick EST, l'autre ce qu'une passe de remplissage a
+      // le droit de supposer.
       if (manque > 1) {
-        const lg = all.find((sx) => sx.long && !sx.race);
+        const lg = all.find((sx) => sx.long && !sx.race && !sx.brick);
         const corps = (lg?.steps || []).filter((st) => st.role === "body" && !EN_PENTE(st)
           && st.distanceM == null && st.durationMin != null && !IS_QUALITY_ZONE(String(st.zone || "")));
-        if (lg && corps.length === 1) {
-          const capBloc = corps[0].bnd ? corps[0].bnd.cap : Infinity;
+        if (lg && corps.length === 1 && corps[0].bnd) {
+          const capBloc = corps[0].bnd.cap;
           const place = Math.min(manque, capBloc - (corps[0].durationMin || 0));
           if (place > 1) {
             corps[0].durationMin = (corps[0].durationMin || 0) + place;
@@ -9694,7 +9735,25 @@ function reconcileDeclaredVolume(
   //   · la dernière répétition d'un bloc ne disparaît jamais en silence — la séance perd son
   //     statut de séance de qualité (elle passe en endurance) plutôt que de garder son nom sur
   //     un contenu qui ne le porte plus. Même arbitrage que C13d.
-  enforceHardTimeCap(plan, ctx, render);
+  {
+    // B-02 (réallocation) — CE QUE LE PLAFOND RETIRE EN DUR, LA SEMAINE LE REPREND EN FACILE.
+    //
+    // Mesuré (RAPPORT_REALLOCATION.md) : le plafond retirait 11 min de qualité et la semaine en
+    // perdait 21 — la coupe emportait du facile avec elle, ratio médian 1,27 sur les 44 profils
+    // touchés. Physiologiquement c'est à l'envers : un entraîneur qui retire une séance de
+    // qualité la remplace par de l'endurance de durée au moins égale.
+    //
+    // Aucun second mécanisme : c'est le patron d'I14b (`refillEasyAfterLabelCap`), avec sa cible
+    // paramétrée en ÉGALITÉ — la semaine a existé à ce volume, on remplace la monnaie.
+    const avant = new Map                ();
+    for (const w of plan.weeks) avant.set(w.num, w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0));
+    const coupe = enforceHardTimeCap(plan, ctx, render);
+    if (coupe.size) {
+      const cibles = new Map                ();
+      for (const [num] of coupe) cibles.set(num, avant.get(num) || 0);
+      refillEasyAfterLabelCap(coupe, cibles);
+    }
+  }
   // …et une dernière fois APRÈS toutes les passes de ce point de convergence : elles peuvent
   // recomposer une séance (déclassement C13d, remplacement de course, greffe).
   enforceMedicalHold(plan, !!ctx?.medHold);
@@ -9767,15 +9826,19 @@ function enforceHardTimeCap(
   plan        ,
   ctx                                                                                                                                                    ,
   render                         ,
-)       {
+)                      {
+  /** B-02 (réallocation) — ce que la coupe a retiré, PAR SEMAINE, en minutes livrées. */
+  const coupe = new Map                ();
   const cap = hardTimeCapMin({
     history: ctx?.history,
     level: ctx?.level ?? (ctx?.beginner ? "debutant" : undefined),
     injured: !!ctx?.injured,
   }) * C26c_HARD_TIME_TOLERANCE;
 
+  const totalOf = (w        ) => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0);
   for (const w of plan.weeks) {
     if (w.isRecup || w.phase.id === "taper") continue;
+    const avantSemaine = totalOf(w);
     // B-02 — LA COUPE MESURE EXACTEMENT CE QUE L'AUDITEUR MESURE : minutes dures PONDÉRÉES
     // (ventilation du classificateur, jamais un second parcours) et refs de l'ATHLÈTE — sans
     // elles, la coupe convertit les blocs en distance avec les allures de repli pendant que
@@ -9825,7 +9888,10 @@ function enforceHardTimeCap(
       }
       if (render) render(cible);
     }
+    const perdu = avantSemaine - totalOf(w);
+    if (perdu > 1) coupe.set(w.num, perdu);
   }
+  return coupe;
 }
 
 /**
