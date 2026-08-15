@@ -3187,3 +3187,44 @@ quoi: le pont promeut les QUATRE references et pose le drapeau a chaque fois
 attendu: 4
 cmd: grep -c "_known = \"oui\"; n++" endurabuild/js/ui/tab-profile.js
 ```
+
+
+---
+
+## O-41 §1bis — LE BALAYAGE DES ÉCRIVAINS TROUVE UN TROU : `steps.js` REMPLIT LE JOURNAL SANS PROMOUVOIR
+
+Le §1 du dernier arbitrage demandait de lister les ÉCRIVAINS du journal, pas les lecteurs. Fait :
+
+| écrivain | ce qu'il pousse | promotion qui suit |
+|---|---|---|
+| `tab-profile.js:1040` (restauration/import de sauvegarde) | tests importés | ✅ `syncRefsFromTests()` l.1073 |
+| `tab-profile.js:1139` (saisie manuelle du Profil) | `ftp`/`thrPace`/`css` | ✅ l.1090 + écriture directe de la valeur |
+| `tab-profile.js:725` | `profil:race_inter` | — sans objet (pas une référence) |
+| `retest.js:114` (retest guidé) | `r.type` | ✅ `syncRefsFromTests()` l.116 |
+| **`steps.js:640` et `695`** | **`ftp` et `thrPace`** | **❌ AUCUNE — le fichier n'appelle jamais la promotion** |
+
+**`steps.js` est le chemin d'IMPORT dans le questionnaire** : ses sources le disent en toutes
+lettres (`"Strava (ton meilleur 10 min continu)"`), et c'est là que vivent O-22 et O-25 — la FTP
+déclarée puis la meilleure moyenne 20 min, l'allure seuil depuis une course déclarée ou le
+meilleur 10 min. Il pousse les valeurs MESURÉES dans le journal, **et n'écrit ni la valeur
+courante ni le drapeau**.
+
+C'est le scénario que le §1 de `O41_PROMOTION_JOURNAL` classait « la plus probable et la plus
+discrète » : *rien ne casse, l'athlète importe, le journal se remplit, et le plan ne bouge pas.*
+
+**⚠ TROUVÉ, PAS CONFIRMÉ DE BOUT EN BOUT.** Le balayage est statique : il montre qu'aucun appel
+à la promotion n'existe dans ce fichier et qu'aucune écriture de `S.answers.ftp` n'y figure. Il ne
+prouve pas que le flux d'interface ne repasse pas par `tab-profile` après coup (un retour au
+Profil déclencherait la promotion). **À confirmer par un parcours E2E** avant d'écrire le
+correctif — sinon c'est un constat sur le fichier, pas sur le produit (T-33).
+
+**Le correctif, s'il est confirmé, est celui du §2 et pas un quatrième appel** : accrocher la
+promotion à la fonction d'AJOUT au journal elle-même. Un seul point, impossible à oublier, et les
+futurs chemins d'import en héritent — la géométrie du sceau, appliquée au journal.
+
+```verify
+id: O-41-ecrivains
+quoi: steps.js ecrit dans le journal des references sans jamais appeler la promotion
+attendu: O41-TROU
+cmd: grep -q "tests.push({type:\"ftp\"" endurabuild/js/ui/steps.js && ! grep -q "syncRefsFromTests" endurabuild/js/ui/steps.js && echo "O41-TROU"
+```
