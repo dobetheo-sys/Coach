@@ -3377,3 +3377,54 @@ quoi: stepMin convertit au CSS brut, weekDistances applique le ratio de zone
 attendu: O42-REPRODUIT
 cmd: grep -q "baseRefs.css || 130" src/generator/renderer.ts && grep -q "SWIM_SPEED_RATIO\[st.zone" src/engine/weekDistances.ts && echo "O42-REPRODUIT"
 ```
+
+
+---
+
+## O-42 §2 — CONFIRMÉ : IL Y A BIEN **TROIS** VALEURS, ET `weekDistances` EST FAUSSE AUSSI
+
+Ta suspicion était fondée. `ZDEF` définit les zones en multiplicateurs d'**ALLURE** (secondes au
+100 m / au km), donc la vitesse implicite est **1 ÷ ce multiplicateur**. Comparée aux tables de
+`weekDistances`, zone par zone :
+
+| zone | `ZDEF` (allure ×) | vitesse implicite | `*_SPEED_RATIO` | écart |
+|---|---|---|---|---|
+| `sw.easy` | 1,12 | **0,893** | **0,80** | −10,4 % |
+| `sw.aero` | 1,06 | **0,943** | **0,88** | −6,7 % |
+| `sw.css` | 1,00 | 1,000 | 1,00 | ✓ |
+| `sw.speed` | 0,94 | **1,064** | **1,02** | −4,1 % |
+| `rn.easy` | 1,16–1,26 (méd. 1,21) | **0,826** | **0,78** | −5,6 % |
+| `rn.rec` | 1,28–1,40 (méd. 1,34) | **0,746** | **0,70** | −6,2 % |
+| `rn.mara` | 1,08–1,13 (méd. 1,105) | **0,905** | **0,92** | +1,7 % |
+| `rn.thr` | 1,00–1,05 (méd. 1,025) | **0,976** | **1,00** | +2,5 % |
+| `rn.vo2` | 0,92–0,97 (méd. 0,945) | **1,058** | **1,05** | −0,8 % |
+
+**Trois conversions pour une grandeur** — `stepMin` (ratio 1,00 partout), `weekDistances` (sa
+table), `ZDEF` (les allures que l'athlète LIT). Et `weekDistances` diverge de `ZDEF` sur **8 zones
+sur 9**, jusqu'à 10,4 % en nage facile. Elle est moins fausse que `stepMin`, mais fausse.
+
+**Donc ta §3 est la seule issue** : l'autorité n'est ni l'une ni l'autre, c'est la définition de
+zone. Aucune fonction ne porte sa propre table ; les deux dérivent depuis `ZDEF` — celle qui
+produit les allures affichées. Le plan cesse alors d'afficher une allure et d'en compter une
+autre, ce qui est le défaut que ce chantier corrige depuis le premier jour, appliqué à la
+conversion plutôt qu'au message.
+
+*(Note de méthode : pour la nage, `ZDEF` porte `lo === hi`, la vitesse implicite est donc exacte.
+Pour la course, les bandes ont une largeur et j'ai pris la MÉDIANE — c'est un choix, pas une
+lecture, et il devra être tranché avec le correctif : médiane, borne lente, ou bande conservée.)*
+
+**Le sens du biais, troisième instance** — à noter comme famille : quand ce moteur se trompe sur
+le volume, il se trompe **vers le haut de la charge**. Les 350 profils annonçant un pic
+supérieur au livré · le repli `css || 130`, plus rapide qu'un vrai débutant · `stepMin`, qui
+compte un bloc facile comme nagé au seuil. Trois mécanismes indépendants, une seule direction.
+
+**Et le périmètre du lot 2 est périmé** : les 12 blocs / 4 profils ont été comptés sur les durées
+de `stepMin`. Les durées de nage montant, le nombre de blocs au-dessus de 40 min augmentera —
+à re-mesurer après O-42, jamais à réutiliser.
+
+```verify
+id: O-42-trois
+quoi: weekDistances porte une table de ratios qui diverge de ZDEF sur 8 zones sur 9
+attendu: O42-TROIS
+cmd: grep -q '"sw.easy": 0.80' src/engine/weekDistances.ts && grep -q '"sw.easy": { ref: "css", lo: 1.12' src/generator/renderer.ts && echo "O42-TROIS"
+```
