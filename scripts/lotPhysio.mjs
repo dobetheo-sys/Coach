@@ -28,7 +28,7 @@ import { ZDEF } from "../src/generator/renderer.ts";
 import { zoneClass, intensitySplit } from "../src/engine/loadModel.ts";
 import { sessionIntensity } from "../src/readiness/dailyAdjuster.ts";
 import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor, swimTimeFactorOf,
-  BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, CAP_BRICK_BIKE, C21_REPRISE_BRICK_FACTOR } from "../src/engine/constraintMatrix.ts";
+  BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS } from "../src/engine/constraintMatrix.ts";
 import { RN_THR_FRONTIERE_LENTE } from "../src/engine/loadModel.ts";
 import { TrainingReasoningEngine } from "../src/engine/reasoningEngine.ts";
 import { toProfile } from "../src/app/bridge.ts";
@@ -781,7 +781,11 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
  * Le sceau est posé par `generateAudited` : le vérifier ici, c'est le vérifier sur le plan que
  * l'athlète reçoit, pas sur un plan reconstruit pour le test.
  */
-const SCEAU_ATTENDU = { S1: 4, S4: 441, S5: 509 }; // mesuré sur le golden — `npm run mesure:sceau`
+// Mesuré sur le golden — `npm run mesure:sceau`. S4 : 441 → **439** avec la garde de phase du
+// §2 (la restitution ne s'applique plus en affûtage) — deux violations d'I14 en moins, obtenues
+// sans les viser. Le cliquet a exigé que le chiffre descende DANS LE MÊME COMMIT : c'est ce
+// qu'il est fait pour faire, et c'est une baisse, pas une régression.
+const SCEAU_ATTENDU = { S1: 4, S4: 439, S5: 509 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -812,32 +816,107 @@ T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à z�
 /**
  * T-28 — POUR TOUTE BORNE AUDITÉE, LE GÉNÉRATEUR LIT LA MÊME SOURCE QUE L'AUDITEUR.
  *
- * Rouge aujourd'hui, et le balayage dit que c'est une CLASSE et non un accident : `blockBounds`
- * n'a **aucune conscience de la phase** pour un brick — il plafonne par `CAP_BRICK_BIKE` en
- * affûtage comme en charge, quand l'auditeur y applique `BRICK_TAPER_BIKE_BOUNDS` (C21c), dont
- * le plafond est le PLANCHER de la bande de charge. Les 12 couples permissifs sont exactement
- * les 12 lignes d'affûtage (6 formats × 2 historiques) : sur un Full, le générateur se déclare
- * autorisé jusqu'à 300 min là où l'auditeur refuse au-delà de 150.
+ * ⚠ MA PREMIÈRE ÉCRITURE DE CE CRITÈRE ÉTAIT FAUSSE DANS SA CONCLUSION, et elle est corrigée
+ * ici plutôt que discrètement remplacée. Elle MODÉLISAIT `blockBounds` au lieu de l'observer et
+ * annonçait « 12 couples permissifs, tous en AFFÛTAGE ». Mesuré sur les plans livrés (216
+ * profils tri + duathlon) : les 135 legs vélo de brick d'affûtage portent TOUS un `bnd` posé
+ * par R18.4 depuis `BRICK_TAPER_BIKE_BOUNDS` — ils n'atteignent JAMAIS la branche `s.brick` que
+ * je modélisais. La branche réellement empruntée est celle de la CHARGE (1 476 legs).
  *
- * Qu'aucun plan ne les viole aujourd'hui tient au CHEMIN (R18.4 construit le brick d'affûtage
- * ailleurs), pas à la borne — c'est-à-dire à la chance du pipeline. Voir `npm run audit:t28`.
+ * Le défaut réel était donc plus discret, et réel quand même : le plancher lisait
+ * `BRICK_BIKE_BOUNDS` (la table de l'auditeur) et le plafond `CAP_BRICK_BIKE`, une SECONDE
+ * table portant les mêmes six valeurs. Zéro permissivité vivante, mais deux vérités pour une
+ * borne, libres de diverger. `CAP_BRICK_BIKE` est SUPPRIMÉE (unique consommateur) et le plafond
+ * lit la table auditée : golden **0 écart supplémentaire**, le correctif ne change aucun plan.
+ *
+ * Le critère porte sur la PROPRIÉTÉ (« une borne, une source »), pas sur le nombre de tables :
+ * il reste vrai si quelqu'un ajoute un format.
  */
-const T28_PERMISSIFS_ATTENDUS = 12;
-T("T-28", "rouge", "toute borne auditée est lue par le générateur à la MÊME source que par l'auditeur", () => {
-  const gen = (fmt, rf) => [BRICK_BIKE_BOUNDS[fmt][0], Math.round((CAP_BRICK_BIKE[fmt] || 300) * rf)];
-  const perm = [];
-  for (const fmt of ["S", "M", "70.3", "Full", "L", "PM"])
-    for (const [phase, aud] of [["charge", BRICK_BIKE_BOUNDS[fmt]], ["affûtage", BRICK_TAPER_BIKE_BOUNDS[fmt]]])
-      for (const [hist, rf] of [["ancien", 1], ["reprise", C21_REPRISE_BRICK_FACTOR]]) {
-        const g = gen(fmt, rf);
-        if (!(g[0] >= aud[0] && g[1] <= aud[1])) perm.push(`${fmt}/${phase}/${hist} : gén [${g}] ⊄ audit [${aud}]`);
-      }
-  // Le cliquet joue dans les DEUX sens : une hausse est une régression, une baisse veut dire
-  // qu'un couple a été aligné et que le chiffre descend DANS LE MÊME COMMIT.
-  const ok = perm.length === 0;
-  const derive = perm.length !== T28_PERMISSIFS_ATTENDUS
-    ? ` ✖ CLIQUET : ${perm.length} au lieu des ${T28_PERMISSIFS_ATTENDUS} épinglés` : "";
-  return { ok, detail: `${perm.length} couple(s) où le générateur est PLUS PERMISSIF que l'auditeur${derive} — ` + perm.slice(0, 3).join(" · ") };
+T("T-28", "vert", "toute borne auditée est lue par le générateur à la MÊME source que par l'auditeur", () => {
+  const pb = [];
+  // Le plafond et le plancher du leg vélo de brick doivent venir de la MÊME table que
+  // l'auditeur. On le vérifie par le COMPORTEMENT : la borne que `blockBounds` déclare pour un
+  // brick de charge doit valoir exactement celle de C21b, à `brickRF`/`share` près.
+  // Les COMMENTAIRES sont retirés avant de chercher : ce critère a rougi en naissant sur le
+  // commentaire qui explique la suppression de `CAP_BRICK_BIKE`. C'est la famille de faux
+  // positifs déjà mesurée deux fois dans ce chantier (une CSP lue dans un commentaire, 62
+  // citations bibliographiques prises pour des requêtes) — un instrument qui lit du code doit
+  // lire du CODE.
+  const sansCommentaires = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const src = sansCommentaires(readFileSync(resolve(ROOT, "src/generator/planGenerator.ts"), "utf8"));
+  if (/CAP_BRICK_BIKE/.test(src)) pb.push("planGenerator lit encore CAP_BRICK_BIKE (2e table pour la borne C21b)");
+  const cm = sansCommentaires(readFileSync(resolve(ROOT, "src/engine/constraintMatrix.ts"), "utf8"));
+  if (/export const CAP_BRICK_BIKE/.test(cm)) pb.push("CAP_BRICK_BIKE est encore exportée — une table morte se réutilise");
+  // …et le leg d'affûtage doit tenir la bande C21c, quelle que soit la branche empruntée.
+  let legs = 0, hors = 0;
+  for (const { plan, key } of goldenAvecMoteur()) {
+    const fmt = plan?._v2?.profile?.format ?? plan?.format;
+    for (const w of plan.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? []) {
+      if (!s.brick || !s.steps) continue;
+      const aud = (w.phase?.id === "taper" ? BRICK_TAPER_BIKE_BOUNDS : BRICK_BIKE_BOUNDS)[fmt];
+      const bl = s.steps.filter((st) => st.leg === "bike" && st.durationMin != null);
+      if (!aud || !bl.length) continue;
+      legs++;
+      const m = bl.reduce((t, st) => t + (st.reps || 1) * (st.durationMin || 0), 0);
+      if (m > aud[1] || m < aud[0]) hors++;
+    }
+  }
+  // Les legs hors bornes résiduels sont O-37a, épinglés par S1 au cliquet du sceau : ce critère
+  // garde la SOURCE, pas le résidu — sinon deux gardes mesureraient la même chose.
+  return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `une borne, une source — ${legs} legs vélo de brick vérifiés (${hors} hors bornes, suivis en O-37a/S1)` };
+});
+
+/**
+ * T-29 — TOUT SITE QUI TRAITE UNE VALEUR ABSENTE COMME PERMISSIVE NOMME LA BORNE QUI LE DOMINE.
+ *
+ * `st.bnd ? st.bnd.cap : Infinity` : l'absence d'information devient une permission. Le tail
+ * O-21 n'avait RIEN au-dessus de lui — c'était le trou de B-02. La boucle des receveuses porte
+ * le même code et est dominée par `plafondFacile` (R20.3) — c'est ce qui la rend sûre. **La
+ * différence n'est pas dans le code, elle est dans ce qui l'entoure**, et elle n'était écrite
+ * nulle part.
+ *
+ * Et la généralisation naïve est RÉFUTÉE par la mesure : « inconnu ⇒ refuser » appliqué à la
+ * boucle des receveuses supprimerait la restitution d'I14b en entier (66 des 66 steps remplis
+ * n'ont pas de `bnd`). La règle n'est donc pas « refuser », c'est « NOMMER le dominant ».
+ *
+ * LE PARTAGE EST DÉLIBÉRÉ : la complétude est MÉCANIQUE (le banc échoue si un site apparaît
+ * hors inventaire), le dominant est JUGÉ (une fois, par site, écrit ici). Automatiser le second
+ * demanderait de décider ce que « dominer » veut dire — c'est de la lecture, pas du grep.
+ */
+const T29_INVENTAIRE = {
+  "planGenerator:capSeance": "C30b — dominé : `Math.min(cibleSpec, capSeance, semaine × C30_PART_SEMAINE_PIC)`, deux autres bornes dans le même min",
+  "planGenerator:capBloc": "I14b receveuses — dominé par `plafondFacile` (0,80 × longue, R20.3), au niveau de la SÉANCE",
+  "planGenerator:_rampCap": "R10 — la rampe est une contrainte EN PLUS : absente, la courbe déclarée et `capH` gouvernent",
+  "planGenerator:C22-croissance": "C22 — pas de prédécesseur = pas de contrainte de croissance ; dominé par `capH` et la courbe (4 sites)",
+  "planGenerator:refillCap": "I14b — dominé : `Math.min(delivCapMin, targetH × 60)`",
+  "planGenerator:C22-pic": "⚠ AUCUN DOMINANT — `Math.max(maxWeek, … : Infinity)` : un pic sans semaine de charge avant lui n'aurait PAS de plafond. Mesuré INATTEIGNABLE : 0 sur 1 332 semaines de pic, préparations tronquées R22 comprises. Défense en profondeur, comme le filet C31 — et c'est dit plutôt que corrigé à l'aveugle",
+  "planGenerator:raiseCap": "C22 — dominé : `Math.min(…, capH × 60)`",
+  "planGenerator:structBrut": "R20.2 — DIAGNOSTIC seul : au pire la chaîne ne nomme aucun plafond, elle n'en invente pas",
+  "repairLoop:swimCapM": "C15 — fenêtre débutant ; le non-débutant est borné par `CAP_SWIM[fmt]` dans blockBounds",
+  "repairLoop:capPrev": "C22 — dominé : `Math.min(wMinOf(prevW) × 1,1, …)`",
+};
+T("T-29", "vert", "tout site « absence = permission » nomme la borne qui le domine (inventaire complet)", () => {
+  // MOTIF MULTI-LIGNE, et ma première écriture ne l'était pas : elle cherchait ligne à ligne et
+  // MANQUAIT `_rampCap`, dont le ternaire tient sur trois lignes. Un inventaire qui ne voit pas
+  // un site n'inventorie rien — les retours à la ligne sont donc écrasés avant de chercher.
+  const MOTIF = /\?[^?;]{0,200}?:\s*(Infinity|Number\.MAX_SAFE_INTEGER)\b/g;
+  const sansCom = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  let trouves = 0;
+  for (const f of ["src/generator/planGenerator.ts", "src/generator/repairLoop.ts"])
+    trouves += (sansCom(readFileSync(resolve(ROOT, f), "utf8")).replace(/\s*\n\s*/g, " ").match(MOTIF) || []).length;
+  // 14 sites, regroupés en 10 entrées : les 4 sites C22-croissance en portent une seule (même
+  // mécanisme, même dominant) et `structBrut` en compte 2 (les deux membres de son `min`).
+  const attendus = 14;
+  const manquants = Object.entries(T29_INVENTAIRE).filter(([, v]) => !v || v.length < 20).map(([k]) => k);
+  const sansDominant = Object.entries(T29_INVENTAIRE).filter(([, v]) => v.startsWith("⚠")).map(([k]) => k);
+  const ok = trouves === attendus && manquants.length === 0;
+  return {
+    ok,
+    detail: trouves === attendus
+      ? `${trouves} sites « absence = permission », ${Object.keys(T29_INVENTAIRE).length} entrées d'inventaire, dominant nommé partout `
+        + `(dont ${sansDominant.length} SANS dominant, mesuré inatteignable : ${sansDominant.join(", ")})`
+      : `✖ INVENTAIRE PÉRIMÉ : ${trouves} sites trouvés pour ${attendus} recensés — documenter le nouveau site et son dominant`,
+  };
 });
 
 // ---- verdict --------------------------------------------------------------
@@ -868,7 +947,6 @@ const ROUGES_ATTENDUS = {
   "T-25": "O-35 — unités de la chaîne natation/trail + rendu discret (les « 18 min » du DOC_UNIQUE §0)",
   "T-23": "O-35 — mêmes causes que T-25, vues de l'écran (BUGS_OUVERTS.md)",
   "T-21": "généralisation du patron B-24/V-11 : records de décision partout (ARBITRAGES_STOP_PHASE2 §6)",
-  "T-28": "O-38 — blockBounds prend la PHASE pour un brick (12 couples permissifs, tous en affûtage)",
 
   "T-22": "B-26 — les bricks reçoivent leurs steps zonés (416 séances duathlon chiffrées ; T-22 en a trouvé AUSSI en tri : « Brick vélo+CAP », périmètre B-26 à élargir)",
 };

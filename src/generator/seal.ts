@@ -43,6 +43,22 @@ import { ZDEF } from "./renderer.ts";
 export type SealVerdict = { id: string; quoi: string; rang: "dur" | "declare"; ticket?: string; violations: string[] };
 export type SealReport = { verdicts: SealVerdict[]; dur: number; declare: number };
 
+/**
+ * §4 — EN PRODUCTION, NE PAS LEVER NE VEUT PAS DIRE NE RIEN FAIRE.
+ *
+ * Le sceau lève en CI et rend le plan en production (voir `sealPlan`). Mais un invariant qui se
+ * violerait chez un utilisateur, sur un profil que le golden ne contient pas, est l'information
+ * la plus précieuse que ce moteur puisse recevoir — et elle est perdue si le sceau se contente
+ * de se taire hors CI. Même condition que le clamp de sortie : **compté et visible, jamais
+ * silencieux.**
+ *
+ * Le compteur est cumulatif par session et lisible depuis l'app (`EBV2.sealCounters`). Il reste
+ * à ZÉRO sur les 949 pour les invariants de rang DUR — c'est ce que le banc T-27 vérifie.
+ */
+export const SEAL_COUNTERS: { plans: number; dur: number; declare: number; parInvariant: Record<string, number> } = {
+  plans: 0, dur: 0, declare: 0, parInvariant: {},
+};
+
 /** Le plan scellé — `_sealed` marque « plus aucune mutation après ce point ». */
 export type SealedPlan = V1Plan & { _sealed?: true; _seal?: SealReport };
 
@@ -171,6 +187,14 @@ export function sealPlan(plan: V1Plan, opts?: { format?: string; strict?: boolea
     dur: verdicts.filter((v) => v.rang === "dur").reduce((t, v) => t + v.violations.length, 0),
     declare: verdicts.filter((v) => v.rang === "declare").reduce((t, v) => t + v.violations.length, 0),
   };
+  // §4 — le compteur, en production comme en CI. Il tourne AVANT la levée éventuelle : un plan
+  // qui fait lever le sceau doit être compté, sinon le seul cas qui compte vraiment manquerait.
+  SEAL_COUNTERS.plans++;
+  SEAL_COUNTERS.dur += report.dur;
+  SEAL_COUNTERS.declare += report.declare;
+  for (const v of verdicts)
+    if (v.violations.length) SEAL_COUNTERS.parInvariant[v.id] = (SEAL_COUNTERS.parInvariant[v.id] || 0) + v.violations.length;
+
   // NON ÉNUMÉRABLES, ET C'EST UNE DÉCISION. Le rapport est intégralement DÉRIVÉ du plan : le
   // photographier dans le golden n'ajoute aucun pouvoir de détection (un plan identique rend un
   // rapport identique) et ferait churner 945 empreintes à chaque ajout d'invariant à la

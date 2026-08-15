@@ -3454,7 +3454,6 @@ const C24_MIN_SWIM_SESSION_M = rule("C24", "piscine ≥750m par séance pour un 
 const C24B_MIN_SWIM_SESSION_BEGINNER_M = rule("C24b", "une séance piscine débutant <600m ne vaut pas le déplacement — C20 promet ~25min/séance, le contenu doit suivre", 600);
 
 /** Brick tri : bornes par format ; ×0.8 pour l'historique « reprise » (C21). */
-const CAP_BRICK_BIKE                         = { S: 90, M: 120, "70.3": 180, Full: 300, L: 150, PM: 300 };
 const CAP_BRICK_RUN                         = { S: 20, M: 24, "70.3": 32, Full: 70, L: 30, PM: 70 };
 /**
  * Bornes du leg VÉLO d'un brick, par format — « jamais dépassées, même de peu » (spec audit 2).
@@ -11299,6 +11298,29 @@ function reconcileDeclaredVolume(
     for (const wk of plan.weeks) {
       const cut = _cuts.get(wk.num) || 0;
       if (cut <= 0) continue;
+      // §2 — LA RESTITUTION NE S'APPLIQUE PAS EN AFFÛTAGE. LES DEUX RÈGLES VISENT L'INVERSE.
+      //
+      // Cette passe existe parce qu'un plafond d'INTENSITÉ ne doit pas réduire le VOLUME : ce
+      // que la coupe retire en dur, la semaine le reprend en facile. En affûtage, réduire le
+      // volume n'est pas un effet de bord à réparer — c'est L'OBJECTIF. Bosquet 2007, cité dans
+      // ce moteur pour le +1,96 %, dit exactement cela : on retire le VOLUME, on maintient
+      // l'intensité et la fréquence. Rendre du facile pendant l'affûtage contredirait la seule
+      // source externe solide de ce chantier. Les deux règles poursuivent des buts opposés et
+      // ne doivent jamais se rencontrer.
+      //
+      // Le chemin B-02 (`enforceHardTimeCap`) était déjà propre : il saute `taper` et `isRecup`,
+      // donc sa carte ne contient aucune semaine d'affûtage. Le chemin I14b ne l'était PAS —
+      // `enforceLabelVsDose` n'a aucune garde de phase — et il agissait bel et bien là :
+      // **53 déclenchements en semaine d'affûtage, 1 381 minutes placées** sur 702 profils.
+      //
+      // MESURÉ AVANT D'ÉCRIRE, et le dommage est plus petit que le principe : sur les
+      // **32 semaines d'affûtage réellement modifiées**, le total net est de **−80 min**
+      // (direction MIXTE, pas une inflation silencieuse) et le rapport affûtage/pic passe de
+      // **50,4 % à 50,6 %** pour un plafond R3.13 à 60 %. L'affûtage n'était donc pas défait.
+      // Cette garde est structurelle : elle empêche la rencontre, elle ne répare pas un sinistre
+      // — et elle compte surtout pour la suite, T-28 allant précisément RESSERRER les blocs
+      // d'affûtage. C'est écrit ici pour que personne ne la prenne pour un correctif d'urgence.
+      if (wk.phase.id === "taper") continue;
       const cur = weekMinOf(wk);
       // B-02 (réallocation) — LA CIBLE PEUT ÊTRE UNE ÉGALITÉ, PAS LA COURBE.
       //
@@ -11897,7 +11919,16 @@ function generatePlan(profile                , opts                             
         // Les bornes du format portent sur le TOTAL vélo : chaque bloc en reçoit sa part, sinon
         // un brick coupé en deux hériterait de deux fois le plancher et doublerait mécaniquement.
         const sh = (b                      ).share ?? 1;
-        return { floor: Math.round((bb ? bb[0] : 32) * sh), cap: Math.round((CAP_BRICK_BIKE[fmt] || 300) * brickRF * sh) };
+        // T-28 — LE PLAFOND LIT LA MÊME SOURCE QUE LE PLANCHER, ET QUE L'AUDITEUR.
+        //
+        // Le plancher lisait déjà `BRICK_BIKE_BOUNDS[0]` (C21b, la table de l'auditeur) ; le
+        // plafond lisait `CAP_BRICK_BIKE`, une SECONDE table. Les deux portaient les mêmes six
+        // valeurs, donc aucun plan n'en souffrait — mais deux tables pour une borne, c'est
+        // `_IFZ` sous une autre forme : elles sont libres de diverger, et le jour où elles
+        // divergent le générateur produit ce que l'auditeur refuse, loin de la cause.
+        // `CAP_BRICK_BIKE` est SUPPRIMÉE (elle n'avait que cet unique consommateur) plutôt que
+        // dérivée : une table dérivée reste une table qu'on peut réécrire.
+        return { floor: Math.round((bb ? bb[0] : 32) * sh), cap: Math.round((bb ? bb[1] : 300) * brickRF * sh) };
       }
       return { floor: 8, cap: Math.round((CAP_BRICK_RUN[fmt] || 70) * brickRF) };
     }
@@ -13726,6 +13757,22 @@ function generatePlan(profile                , opts                             
                                                                       
 
 
+/**
+ * §4 — EN PRODUCTION, NE PAS LEVER NE VEUT PAS DIRE NE RIEN FAIRE.
+ *
+ * Le sceau lève en CI et rend le plan en production (voir `sealPlan`). Mais un invariant qui se
+ * violerait chez un utilisateur, sur un profil que le golden ne contient pas, est l'information
+ * la plus précieuse que ce moteur puisse recevoir — et elle est perdue si le sceau se contente
+ * de se taire hors CI. Même condition que le clamp de sortie : **compté et visible, jamais
+ * silencieux.**
+ *
+ * Le compteur est cumulatif par session et lisible depuis l'app (`EBV2.sealCounters`). Il reste
+ * à ZÉRO sur les 949 pour les invariants de rang DUR — c'est ce que le banc T-27 vérifie.
+ */
+const SEAL_COUNTERS                                                                                        = {
+  plans: 0, dur: 0, declare: 0, parInvariant: {},
+};
+
 /** Le plan scellé — `_sealed` marque « plus aucune mutation après ce point ». */
                                                                          
 
@@ -13854,6 +13901,14 @@ function sealPlan(plan        , opts                                        )   
     dur: verdicts.filter((v) => v.rang === "dur").reduce((t, v) => t + v.violations.length, 0),
     declare: verdicts.filter((v) => v.rang === "declare").reduce((t, v) => t + v.violations.length, 0),
   };
+  // §4 — le compteur, en production comme en CI. Il tourne AVANT la levée éventuelle : un plan
+  // qui fait lever le sceau doit être compté, sinon le seul cas qui compte vraiment manquerait.
+  SEAL_COUNTERS.plans++;
+  SEAL_COUNTERS.dur += report.dur;
+  SEAL_COUNTERS.declare += report.declare;
+  for (const v of verdicts)
+    if (v.violations.length) SEAL_COUNTERS.parInvariant[v.id] = (SEAL_COUNTERS.parInvariant[v.id] || 0) + v.violations.length;
+
   // NON ÉNUMÉRABLES, ET C'EST UNE DÉCISION. Le rapport est intégralement DÉRIVÉ du plan : le
   // photographier dans le golden n'ajoute aucun pouvoir de détection (un plan identique rend un
   // rapport identique) et ferait churner 945 empreintes à chaque ajout d'invariant à la
@@ -18390,6 +18445,7 @@ function dailyEnergy(input             )                             {
 
 
 
+
 /** R21 — exportée : la spec du coach proactif construit ses profils comme le pont, pas autrement. */
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
@@ -19513,6 +19569,10 @@ function coachOnIngestV2(sport        , answers            , ingested           
   // plan — somme les XP (tiers compris) de tous les plans de l'athlète (voir sa définition).
   avatarTriMulti,
   perfTier: perfTierV2,
+  // T-27 §4 — le sceau COMPTE en production au lieu de se taire. Un invariant qui se viole chez
+  // un utilisateur, sur un profil que le golden ne contient pas, est l'information la plus
+  // précieuse que ce moteur puisse recevoir ; l'exposer est la seule façon qu'elle remonte.
+  sealCounters: SEAL_COUNTERS,
   adherence: adherenceV2,
   disciplines: DISCIPLINE_REGISTRY,
   // R7 — l'UI a besoin de la catégorie d'effort déduite et des plafonds trail pour

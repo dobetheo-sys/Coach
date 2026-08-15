@@ -2448,6 +2448,35 @@ figerait la dette au lieu de la traiter — c'est la leçon de R20.6, et l'ordre
 « mesurer, trier, PUIS bloquer ». Le compte est épinglé au cliquet de T-27 : il ne peut plus
 monter en silence.
 
+### Le DOMMAGE, mesuré (§5 de l'arbitrage du 15/08) — et il déclasse le ticket
+
+« I14 rouvert » décrit un état du CODE, pas un dommage. R20.6 avait appris à trier avant de
+bloquer ; la règle s'étend : **trier aussi avant de prioriser** (`npm run mesure:o37`).
+
+| ampleur du dépassement, sur 494 cas | |
+|---|---|
+| médiane | **2,0 min** |
+| p90 | 5,0 min |
+| maximum | **18,0 min** |
+| ≥ 5 min | 52 · **≥ 15 min : 12** · ≥ 30 min : **0** |
+| séance qui dépasse = séance de QUALITÉ | 282 (57 %) |
+| discipline de la longue | nage 306 · course 158 · vélo 30 |
+
+**Verdict : c'est de la DETTE, pas un ticket.** L'écart médian est de deux minutes — invisible
+pour l'athlète, et le plan reste cohérent. Les 12 cas au-dessus d'un quart d'heure sont tous en
+trail (« Descente en charge » 78 min contre « Longue trail + ravito réel » 60), c'est-à-dire le
+résidu que le commentaire d'`enforceLabelVsDose` assume déjà explicitement : les planchers de
+`shrinkTo` (`Math.max(5, …)`, `if (!touched) break`) laissent un reste plutôt que de dénaturer
+une séance.
+
+**Ce qui mériterait un ticket, si on y revient, est la population TRAIL** — pas les 441. Le reste
+attend derrière tout ce qui déplace de vraies minutes.
+
+*(Note d'instrument : ma première écriture de la mesure rendait « médiane 2,0 · p90 1,0 » — un p90
+SOUS la médiane. Le tableau est trié DÉCROISSANT et j'indexais le quantile à `p` au lieu de
+`1 − p`. Corrigé avant publication ; onzième occurrence de la famille « une mesure qui nomme une
+grandeur et en rend une voisine ».)*
+
 ```verify
 id: O-37
 quoi: I14 est rouvert apres son application, compte epingle au cliquet T-27
@@ -2499,58 +2528,70 @@ cmd: grep -q "sealPlan(best.plan" src/generator/repairLoop.ts && node scripts/lo
 
 ---
 
-## O-38 — `blockBounds` ignore la PHASE pour un brick : 12 couples où le générateur est plus permissif que l'auditeur
+## O-38 — ⚠ MA MESURE ÉTAIT FAUSSE : il n'y avait pas 12 bornes permissives, il y avait DEUX TABLES · ✅ **FERMÉ (15/08/2026)**
 
-**Le balayage T-28** (`npm run audit:t28`), écrit après B-02 parce que le fondateur a eu raison
-d'en faire un balayage plutôt qu'un correctif ponctuel : *« si ce couple diverge, d'autres
-divergent probablement, et ils attendent tous un profil pour se révéler ».*
+**L'entrée d'origine annonçait « 12 couples permissifs, tous en AFFÛTAGE ». C'est faux, et la
+correction est plus instructive que le constat.**
 
-Un générateur et un auditeur qui lisent deux sources pour la même borne, c'est `_IFZ` sous une
-autre forme — deux vérités pour une grandeur — et le mode de défaillance est le pire qui soit :
-le plan sort PROPRE de la génération et ROUGE au gate, donc le défaut apparaît loin de sa cause.
+### Ce que le balayage prétendait, et pourquoi il se trompait
 
-### La divergence est systématique, pas accidentelle
+Ma première écriture de `balayageT28.mjs` **MODÉLISAIT** `blockBounds` au lieu de l'observer :
+elle recalculait ses deux bornes à partir des tables et concluait que l'affûtage était ouvert
+d'un facteur deux (Full : générateur 300, auditeur 150).
 
-`blockBounds` (branche `s.brick`, leg vélo) lit :
+Or `blockBounds` a **deux branches** — `b.bnd` quand le step DÉCLARE ses bornes, `s.brick`
+sinon — et je n'avais modélisé que la seconde. Mesuré sur les plans LIVRÉS (216 profils
+tri + duathlon) :
+
+| | legs vélo de brick | branche empruntée |
+|---|---|---|
+| affûtage | **135** | **toutes** `b.bnd` — R18.4 pose déjà le `bnd` audité C21c |
+| charge | **1 476** | **toutes** `s.brick` |
+
+**Les lignes que je signalais n'atteignent jamais la branche que je mesurais.** Dixième
+occurrence dans ce dépôt d'un critère qui nomme une grandeur et en mesure une voisine — cette
+fois dans le balayage écrit précisément pour fermer cette classe, ce qui est le pire endroit
+possible, et la conclusion publiée était INVERSÉE (le problème était en charge, pas en affûtage).
+
+### Le défaut réel, plus discret et réel quand même
+
+Sur la branche effectivement empruntée, le **plancher** lisait `BRICK_BIKE_BOUNDS` (la table de
+l'auditeur, C21b) et le **plafond** lisait `CAP_BRICK_BIKE`, une SECONDE table :
 
 ```
-floor = BRICK_BIKE_BOUNDS[fmt][0] × share      ← C21b : MÊME source que l'auditeur ✓
-cap   = CAP_BRICK_BIKE[fmt] × brickRF × share  ← une AUTRE table, et SANS phase ✗
+S: 90 · M: 120 · 70.3: 180 · Full: 300 · L: 150 · PM: 300   ← CAP_BRICK_BIKE
+S: 90 · M: 120 · 70.3: 180 · Full: 300 · L: 150 · PM: 300   ← BRICK_BIKE_BOUNDS[1]
 ```
 
-L'auditeur, lui, applique `BRICK_TAPER_BIKE_BOUNDS` (C21c) dès que la semaine est en affûtage —
-sa bande y est bien plus serrée, son plafond étant le PLANCHER de la bande de charge (R18.4).
+Six valeurs identiques, donc **zéro permissivité vivante** — et deux vérités pour une borne,
+libres de diverger au premier format ajouté. C'est `_IFZ` sous une autre forme, exactement la
+classe que T-28 existe pour traquer, simplement pas au stade où je l'avais annoncée.
 
-| | |
-|---|---|
-| couples balayés | 24 (6 formats × 2 phases × 2 historiques) |
-| **⚠ permissifs** | **12 — exactement les 12 lignes d'AFFÛTAGE** |
-| stricts (générateur plus serré : sain) | 6 (toutes les lignes `reprise`, via `brickRF`) |
-| identiques | 6 |
-| non audités (le générateur borne, l'auditeur non) | 6 — leg COURSE du brick, `CAP_BRICK_RUN` |
+### Correctif
 
-Exemples : `Full/affûtage` — le générateur se déclare autorisé jusqu'à **300 min** là où
-l'auditeur refuse au-delà de **150**. `S/affûtage` — **90** contre **45**.
+`CAP_BRICK_BIKE` est **supprimée** (elle n'avait que cet unique consommateur) plutôt que dérivée
+— une table dérivée reste une table qu'on peut réécrire. Le plafond lit `BRICK_BIKE_BOUNDS[1]`,
+comme le plancher et comme l'auditeur.
 
-### Pourquoi aucun plan ne le viole aujourd'hui, et pourquoi ça ne rassure pas
+**Golden : 0 écart supplémentaire.** Le correctif ne change aucun plan, ce qui était prévisible
+puisque les valeurs coïncidaient — et le vérifier est ce qui distingue « prévisible » de « vrai ».
 
-Le brick d'affûtage est construit par un autre chemin (R18.4), qui livre des valeurs dans la
-bande auditée. Autrement dit : **ce qui protège le plan est le CHEMIN, pas la BORNE** — la chance
-du pipeline, exactement ce que B-02 a payé une journée à démêler. Et O-37a montre que le chemin
-est déjà pris en défaut d'une minute sur 4 profils.
+`T-28` passe **rouge → vert** et garde la PROPRIÉTÉ (« une borne, une source »), pas le nombre de
+tables : il reste vrai si quelqu'un ajoute un format. Son critère a d'ailleurs rougi en naissant
+sur le **commentaire** qui explique la suppression — troisième faux positif de cette famille dans
+ce chantier, corrigé en retirant les commentaires avant de chercher.
 
-### Non corrigé, et pourquoi
+### Ce qui reste, nommé
 
-Rendre `blockBounds` conscient de la phase demande de lui passer la semaine (il ne reçoit
-aujourd'hui que `(b, s)`), donc du plomberie sur un point chaud du générateur, et ça CHANGE des
-plans — à mesurer avant, pas après. C'est un ticket à part entière, pas un ajout à celui-ci.
-
-Le compte est épinglé au cliquet de `T-28` (banc `lotPhysio`) : il ne peut ni monter ni baisser
-en silence.
+Les **4 legs hors bornes** que le balayage corrigé signale encore sont `tri/Full/affûtage` à
+39 min pour `[40, 150]` — c'est **O-37a**, suivi par `S1` au cliquet du sceau, pas par T-28
+(deux gardes qui mesurent la même chose, c'est une garde de trop). Et le **leg COURSE** du brick
+reste borné par le générateur (`CAP_BRICK_RUN`) sans être vérifié par l'auditeur : dette nommée,
+pas une divergence.
 
 ```verify
 id: O-38
-quoi: 12 couples ou le generateur est plus permissif que l'auditeur, epingles au cliquet T-28
-attendu: O38-REPRODUIT
-cmd: npm run audit:t28 2>/dev/null | grep -q "⚠ 12 permissif" && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "0 régression" && echo "O38-REPRODUIT"
+quoi: une borne, une source — CAP_BRICK_BIKE supprimee, T-28 vert
+attendu: O38-FERME
+cmd: ! grep -q "export const CAP_BRICK_BIKE" src/engine/constraintMatrix.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "✓ T-28" && echo "O38-FERME"
 ```

@@ -10,6 +10,7 @@ import { trailObjective, TRAIL_HISTORY_CAPS, TRAIL_UTIL } from "../engine/trailM
 import { swimrunObjective } from "../sports/swimrun/objective.ts";
 import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
+import { SEAL_COUNTERS } from "../generator/seal.ts";
 import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
@@ -1165,6 +1166,10 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // plan — somme les XP (tiers compris) de tous les plans de l'athlète (voir sa définition).
   avatarTriMulti,
   perfTier: perfTierV2,
+  // T-27 §4 — le sceau COMPTE en production au lieu de se taire. Un invariant qui se viole chez
+  // un utilisateur, sur un profil que le golden ne contient pas, est l'information la plus
+  // précieuse que ce moteur puisse recevoir ; l'exposer est la seule façon qu'elle remonte.
+  sealCounters: SEAL_COUNTERS,
   adherence: adherenceV2,
   disciplines: DISCIPLINE_REGISTRY,
   // R7 — l'UI a besoin de la catégorie d'effort déduite et des plafonds trail pour

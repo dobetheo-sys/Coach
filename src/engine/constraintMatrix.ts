@@ -163,7 +163,6 @@ export const C24_MIN_SWIM_SESSION_M = rule("C24", "piscine ≥750m par séance p
 export const C24B_MIN_SWIM_SESSION_BEGINNER_M = rule("C24b", "une séance piscine débutant <600m ne vaut pas le déplacement — C20 promet ~25min/séance, le contenu doit suivre", 600);
 
 /** Brick tri : bornes par format ; ×0.8 pour l'historique « reprise » (C21). */
-export const CAP_BRICK_BIKE: Record<string, number> = { S: 90, M: 120, "70.3": 180, Full: 300, L: 150, PM: 300 };
 export const CAP_BRICK_RUN: Record<string, number> = { S: 20, M: 24, "70.3": 32, Full: 70, L: 30, PM: 70 };
 /**
  * Bornes du leg VÉLO d'un brick, par format — « jamais dépassées, même de peu » (spec audit 2).

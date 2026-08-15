@@ -13,7 +13,7 @@ import { scaleStepDose } from "../engine/stepScale.ts";
 import {
   BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH,
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
-  BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_BIKE, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
+  BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
   C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN, RACE_EVE_CAP_MIN,
   hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS,
 } from "../engine/constraintMatrix.ts";
@@ -1311,6 +1311,29 @@ export function reconcileDeclaredVolume(
     for (const wk of plan.weeks) {
       const cut = _cuts.get(wk.num) || 0;
       if (cut <= 0) continue;
+      // §2 — LA RESTITUTION NE S'APPLIQUE PAS EN AFFÛTAGE. LES DEUX RÈGLES VISENT L'INVERSE.
+      //
+      // Cette passe existe parce qu'un plafond d'INTENSITÉ ne doit pas réduire le VOLUME : ce
+      // que la coupe retire en dur, la semaine le reprend en facile. En affûtage, réduire le
+      // volume n'est pas un effet de bord à réparer — c'est L'OBJECTIF. Bosquet 2007, cité dans
+      // ce moteur pour le +1,96 %, dit exactement cela : on retire le VOLUME, on maintient
+      // l'intensité et la fréquence. Rendre du facile pendant l'affûtage contredirait la seule
+      // source externe solide de ce chantier. Les deux règles poursuivent des buts opposés et
+      // ne doivent jamais se rencontrer.
+      //
+      // Le chemin B-02 (`enforceHardTimeCap`) était déjà propre : il saute `taper` et `isRecup`,
+      // donc sa carte ne contient aucune semaine d'affûtage. Le chemin I14b ne l'était PAS —
+      // `enforceLabelVsDose` n'a aucune garde de phase — et il agissait bel et bien là :
+      // **53 déclenchements en semaine d'affûtage, 1 381 minutes placées** sur 702 profils.
+      //
+      // MESURÉ AVANT D'ÉCRIRE, et le dommage est plus petit que le principe : sur les
+      // **32 semaines d'affûtage réellement modifiées**, le total net est de **−80 min**
+      // (direction MIXTE, pas une inflation silencieuse) et le rapport affûtage/pic passe de
+      // **50,4 % à 50,6 %** pour un plafond R3.13 à 60 %. L'affûtage n'était donc pas défait.
+      // Cette garde est structurelle : elle empêche la rencontre, elle ne répare pas un sinistre
+      // — et elle compte surtout pour la suite, T-28 allant précisément RESSERRER les blocs
+      // d'affûtage. C'est écrit ici pour que personne ne la prenne pour un correctif d'urgence.
+      if (wk.phase.id === "taper") continue;
       const cur = weekMinOf(wk);
       // B-02 (réallocation) — LA CIBLE PEUT ÊTRE UNE ÉGALITÉ, PAS LA COURBE.
       //
@@ -1909,7 +1932,16 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         // Les bornes du format portent sur le TOTAL vélo : chaque bloc en reçoit sa part, sinon
         // un brick coupé en deux hériterait de deux fois le plancher et doublerait mécaniquement.
         const sh = (b as { share?: number }).share ?? 1;
-        return { floor: Math.round((bb ? bb[0] : 32) * sh), cap: Math.round((CAP_BRICK_BIKE[fmt] || 300) * brickRF * sh) };
+        // T-28 — LE PLAFOND LIT LA MÊME SOURCE QUE LE PLANCHER, ET QUE L'AUDITEUR.
+        //
+        // Le plancher lisait déjà `BRICK_BIKE_BOUNDS[0]` (C21b, la table de l'auditeur) ; le
+        // plafond lisait `CAP_BRICK_BIKE`, une SECONDE table. Les deux portaient les mêmes six
+        // valeurs, donc aucun plan n'en souffrait — mais deux tables pour une borne, c'est
+        // `_IFZ` sous une autre forme : elles sont libres de diverger, et le jour où elles
+        // divergent le générateur produit ce que l'auditeur refuse, loin de la cause.
+        // `CAP_BRICK_BIKE` est SUPPRIMÉE (elle n'avait que cet unique consommateur) plutôt que
+        // dérivée : une table dérivée reste une table qu'on peut réécrire.
+        return { floor: Math.round((bb ? bb[0] : 32) * sh), cap: Math.round((bb ? bb[1] : 300) * brickRF * sh) };
       }
       return { floor: 8, cap: Math.round((CAP_BRICK_RUN[fmt] || 70) * brickRF) };
     }

@@ -4,7 +4,7 @@ Généré par `npm run audit:v2`. 594 combinaisons via le moteur V2, scorées pa
 
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| run | 108 | 0.98 | 0.94–0.99 | 0 | 0 | 0 | 0.48 | 0 | 84% | 0 | 100 |
+| run | 108 | 0.98 | 0.94–0.99 | 0 | 0 | 0 | 0.47 | 0 | 84% | 0 | 100 |
 | bike | 135 | 0.99 | 0.97–1.00 | 0 | 0 | 0 | 0.44 | 0 | 91% | 0 | 99 |
 | swim | 108 | 0.97 | 0.90–0.99 | 0 | 0 | 0 | 0.47 | 0 | 85% | 0 | 97 |
 | tri | 108 | 0.97 | 0.91–1.00 | 0 | 0 | 0 | 0.40 | 4 | 76% | 18 | 94 |
