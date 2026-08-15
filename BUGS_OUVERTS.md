@@ -2916,3 +2916,60 @@ quoi: DOSE_CAP_MIN compte le TRAVAIL et ne voit pas les blocs en distance ; css 
 attendu: O39D-REPRODUIT
 cmd: grep -q "reps \* b.durationMin > doseCap" src/generator/planGenerator.ts && grep -q "css" src/generator/planGenerator.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "1 sans plafond NI exemption" && echo "O39D-REPRODUIT"
 ```
+
+---
+
+## O-40 — les deux gardes qui abandonnent quand l'unité ne leur convient pas · MESURE FAITE, ÉCRITURE À SCINDER
+
+| garde | condition d'abandon | population muette |
+|---|---|---|
+| C24/C24b (plancher) | `if (tot <= 0) continue` | blocs prescrits en **temps** |
+| `DOSE_CAP_MIN` (plafond) | `if (b.durationMin != null)` | blocs prescrits en **mètres** |
+
+Les deux unités perdent une garde, **en sens opposés** : ce n'est pas un problème de choix
+d'unité, c'est que chaque garde RENONCE au lieu de dériver la grandeur qui lui manque — alors que
+le moteur connaît les vitesses (CSS, allure seuil) et convertit déjà dans les deux sens
+(`weekDistances` le fait).
+
+### La mesure préalable (`npm run mesure:o40`) : le plafond MORD, étroitement
+
+| | |
+|---|---|
+| blocs de corps prescrits en mètres | 11 890 |
+| … portant une zone à plafond | 1 924 |
+| … que le plafond mordrait | **42** |
+| profils touchés | **12** |
+
+**Tous en `tri/70.3` et `tri/Full`, tous sur « Nage seuil (+dist) » en `sw.css`**, entre 40 et
+46 min de travail pour un plafond de 40. Le dépassement est de 0 à 6 minutes.
+
+### Ce que ça impose à l'écriture — et c'est ta propre consigne
+
+Le plafond mord, donc **c'est un changement de PLAN** : il demande son propre diff ventilé, et il
+ne doit **pas** être posé dans le même geste que la garde. Le lot se scinde en deux :
+
+1. **la garde**, indifférente à l'unité, sans effet de plan là où elle ne mord pas (C24/C24b
+   étendu aux blocs en temps — à mesurer de la même façon avant d'écrire) ;
+2. **le plafond nage effectif**, avec son diff sur les 12 profils.
+
+**Réserve d'instrument, à lever avant d'écrire (2)** : mon temps de travail vaut
+`_min − recoveryMin × (reps − 1)`. Le dépassement étant de 0 à 6 min et trois blocs tombant
+*exactement* à 40, le verdict « 42 blocs » est SENSIBLE à cette définition. La branche course
+compare `reps × durationMin` ; la mesure nage doit être alignée sur elle à la source avant de
+décider — sinon c'est une quatorzième occurrence de la règle 15, dans la mesure qui sert à
+trancher O-40.
+
+```
+T-31   Aucune garde ne traite comme absente une grandeur PRÉSENTE dans une autre
+       unité et convertible avec ce que le moteur connaît déjà.
+       T-29 : « donnée manquante ⇒ contrôle sauté ».
+       T-31 : « donnée dans l'AUTRE UNITÉ ⇒ contrôle sauté ».
+       🔴 rouge aujourd'hui sur les deux gardes ci-dessus.
+```
+
+```verify
+id: O-40
+quoi: les deux gardes abandonnent selon l'unite, et le plafond nage mordrait sur 12 profils
+attendu: LE PLAFOND MORD
+cmd: node scripts/mesureO40.mjs 2>/dev/null | grep -o "LE PLAFOND MORD"
+```

@@ -177,6 +177,17 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   C26d, donc retiré du volume aérobie de nage, exactement ce dont les nageurs manquent le plus.
   Un ticket d'alignement se mesure avant d'être adopté, sa prémisse comprise.
 
+- **Règle 15 — une garde qui porte sur le COMPORTEMENT du moteur observe la SORTIE LIVRÉE ; elle
+  ne lit jamais une table** (arbitrage du 15/08/2026, treize occurrences mesurées). Modéliser
+  `blockBounds` au lieu de l'observer a produit un balayage T-28 dont la conclusion était
+  INVERSÉE (12 « couples permissifs en affûtage » qui n'atteignaient jamais la branche modélisée).
+  Balayer un motif SYNTAXIQUE là où la famille est SÉMANTIQUE a fait rater le fail-open de
+  C24/C24b (`if (tot <= 0) continue`). Lire `DOSE_CAP_MIN[suffixe]` quand le code fait une
+  résolution par regex a fait déclarer `css` orphelin alors qu'il est plafonné à 40 depuis
+  toujours. **Mesurer ce qui est ÉCRIT au lieu de ce qui s'EXÉCUTE donne un rapport faux avec un
+  raisonnement juste** — c'est le mode de défaillance le plus coûteux du dépôt, parce qu'il
+  survit à la relecture.
+
 - **Les propriétés visuelles LIÉES se mesurent ENSEMBLE, en un seul cycle** (consigne du
   fondateur, 12/08/2026). Couleur de badge, fond de carte et contraste dépendent du même token
   de discipline : les traiter séparément fait payer trois cycles mesure → correction → re-mesure
