@@ -40,6 +40,7 @@
     "mesure:o37": "node scripts/mesureO37.mjs",
     "mesure:o36": "node scripts/mesureO36amont.mjs",
     "mesure:o36c": "node scripts/mesureO36cible.mjs",
+    "mesure:o36b": "node scripts/mesureO36boucle.mjs",
     "registry:check": "node scripts/registryCheck.mjs",
     "demo:faisabilite": "node src/audit/feasibilityDemo.ts",
     "demo:proactif": "node src/audit/proactiveDemo.ts",

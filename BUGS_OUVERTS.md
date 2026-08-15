@@ -2773,3 +2773,48 @@ quoi: rn.mara n'a pas d'entree dans DOSE_CAP_MIN alors qu'il est classe qualite
 attendu: O39-REPRODUIT
 cmd: grep -q "QUALITY_SUFFIX" src/generator/planGenerator.ts && node -e "import('./src/engine/constraintMatrix.ts').then(m=>process.exit(m.DOSE_CAP_MIN.mara===undefined?0:1))" && echo "O39-REPRODUIT"
 ```
+
+---
+
+## O-36 §1 — LES DEUX MESURES BLOQUANTES PASSENT, ET LA SECONDE PAR UNE RAISON STRUCTURELLE
+
+`npm run mesure:o36b`. Les deux verrous du feu vert conditionnel (15/08) sont levés.
+
+### §1.1 — la boucle `runHoursPerWeekOf → riegelExponent` : Δ maximal **+0,48 %**
+
+| profil marathon | h/sem avant → après | exposant | chrono | Δ |
+|---|---|---|---|---|
+| 8:30 / inter | 5,55 → 5,32 | 1,1014 → 1,1041 | 6h46 → 6h48 | **+0,48 %** |
+| 7:00 / inter | 5,50 → 5,37 | 1,1020 → 1,1035 | 5h28 → 5h29 | +0,24 % |
+| 5:45 / inter | 5,50 → 5,45 | 1,1020 → 1,1026 | 4h24 → 4h24 | +0,08 % |
+
+**Sous le seuil de 1 % : bruit de calcul.** L'effet pervers redouté — « prédire une course plus
+lente parce qu'on a cessé de sur-prescrire » — existe, va bien dans le sens annoncé, et vaut
+deux minutes sur un marathon de 6h46.
+
+### §1.2 — la circularité B-25 : **O-36 n'entre pas dans la boucle**
+
+Déplacement d'exposant sur 8 profils tri : **+0,0000, exactement**. La raison est structurelle et
+elle a été VÉRIFIÉE plutôt que déduite d'un zéro (un zéro peut aussi vouloir dire que la sonde ne
+trouve rien) :
+
+```
+tri/Full      : 19 blocs de qualité COURSE, dont 0 prescrits en DISTANCE
+run/marathon  : 26 blocs de qualité COURSE, dont 4 prescrits en DISTANCE
+```
+
+Le leg course du tri ne porte **aucun** bloc de qualité en distance — la bande B-25 les prescrit
+en temps. O-36 n'ajoute donc aucun terme à la boucle fermée `plan → heures → exposant →
+prédiction → bande → plan`, et la résolution à une itération est intacte. Ce n'est pas « l'effet
+est petit », c'est « il n'y a pas d'effet ».
+
+**Feu vert : les deux verrous du §1 sont levés.** Reste à écrire (item 3) : la distance de
+répétition dépendante de l'allure, son plancher déclaré comme maillon, le diff sur les 949
+ventilé par tranche d'allure, et la mesure §4 (profils à moins de 5 min de `DOSE_CAP_MIN`).
+
+```verify
+id: O-36-boucle
+quoi: les deux verrous du §1 sont mesures et passent
+attendu: BRUIT DE CALCUL
+cmd: node scripts/mesureO36boucle.mjs 2>/dev/null | grep -o "BRUIT DE CALCUL"
+```
