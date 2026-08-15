@@ -3128,3 +3128,62 @@ quoi: aucun chemin n'ecrit la valeur de reference sans poser son drapeau
 attendu: O41-FRERES-OK
 cmd: test $(grep -rnE "S\.answers\.(ftp|css|pace) *=" endurabuild/js/ 2>/dev/null | grep -v engine.js | grep -cv "_known *= *\"oui\"") -eq 0 && echo "O41-FRERES-OK"
 ```
+
+
+---
+
+## O-41 §1 — LA PROMOTION EXISTE, COUVRE LES QUATRE RÉFÉRENCES, ET POSE LE DRAPEAU · ✅ **FERMÉ**
+
+Le pont est `syncRefsFromTests()` (`tab-profile.js`), et son en-tête énonce exactement le défaut
+qu'il ferme : *« le moteur V2 ne lit QUE les valeurs courantes — jamais le journal daté. Sans ce
+pont, un import écrirait le journal mais le plan généré ne changerait JAMAIS. »*
+
+| référence | promotion | pose le drapeau |
+|---|---|---|
+| `ftp` | ✅ | ✅ `ftp_known = "oui"` |
+| `thrPace` → `pace` | ✅ | ✅ `pace_known = "oui"` |
+| `css` | ✅ | ✅ `css_known = "oui"` |
+| `vam` | ✅ (R12.2/R12.3) | ✅ `vam_known = "oui"` |
+
+**Les quatre, dans la même instruction que la valeur.** C'est ta première issue — *« la promotion
+existe et pose le drapeau → le ticket se ferme »*. Aucune référence n'est laissée derrière : la
+VAM porte même un commentaire disant que c'est « le bug déjà corrigé une fois » qu'on ne refait pas.
+
+**Et la sémantique ne se pose donc pas encore** : `*_known` reste cohérent parce que la promotion
+le pose comme le ferait l'athlète. La distinction présence/provenance que tu proposes
+(`css_origin: "declared" | "measured" | "retest"`) reste la bonne forme pour le jour où l'on
+voudra afficher la confiance ou la fraîcheur — **elle n'est pas requise par un défaut**, et
+l'ajouter maintenant serait du travail sans mesure derrière.
+
+### §3 — la politique de sélection est EXPLICITE, contrairement à l'attente
+
+Tu écrivais : *« il y a forcément une réponse dans le code, et il y a peu de chances qu'elle soit
+écrite quelque part comme une décision. »* Elle l'est, et longuement — c'est le produit d'O-23
+puis d'O-25 :
+
+```js
+c.sort((x, y) =>
+  String(y.t.date).localeCompare(String(x.t.date))          // 1. le plus RÉCENT
+  || (DELIBERE(y.t) ? 1 : 0) - (DELIBERE(x.t) ? 1 : 0)      // 2. à date égale, la saisie
+                                                            //    DÉLIBÉRÉE (profil/retest)
+                                                            //    prime sur l'import — O-25
+  || (y.i - x.i));                                          // 3. sinon la POSITION, le journal
+                                                            //    étant append-only — O-23
+```
+
+Ce n'est **ni** « le meilleur » **ni** « une moyenne sur une fenêtre » : c'est **le plus récent, la
+saisie délibérée primant à date égale**. Ton arbitrage physiologique (le meilleur test surestime,
+le plus récent est sensible à un mauvais jour, une fenêtre lisse mais retarde) reste ouvert comme
+QUESTION — mais la décision actuelle est écrite, sourcée par deux tickets, et défendable.
+
+**Réserve honnête** : `syncRefsFromTests` vit dans l'UI et n'est appelée que depuis trois points
+(deux dans `tab-profile`, un dans `retest`). Un chemin d'import qui écrirait le journal **sans**
+passer par l'un d'eux laisserait la promotion muette — non balayé ici, et c'est le seul angle qui
+reste sur ce ticket.
+
+```verify
+id: O-41-promotion
+quoi: le pont promeut les QUATRE references et pose le drapeau a chaque fois
+attendu: 4
+cmd: grep -c "_known = \"oui\"; n++" endurabuild/js/ui/tab-profile.js
+```
