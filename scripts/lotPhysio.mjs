@@ -940,10 +940,14 @@ T("T-30", "rouge", "le temps de travail d'un bloc de qualité course ne dépend 
   };
   const rapide = dose("4:30"), lent = dose("8:30");
   const r = rapide > 0 ? lent / rapide : 1;
-  // 5 % de tolérance : la quantification en répétitions entières ne peut pas rendre l'égalité exacte.
+  // TOLÉRANCE ±2 % (arbitrage du 15/08) : ×1,09 est un rapport DILUÉ (les blocs prescrits en
+  // temps ne varient pas avec l'allure). Une conversion à moitié faite le ramènerait vers 1,045
+  // — encore rouge à ±2 %, potentiellement vert à ±5 %. Serrer la tolérance est ce qui empêche
+  // la dilution de masquer un correctif incomplet, et dispense de garder la sous-population
+  // comme second test.
   return {
-    ok: rapide > 0 && Math.abs(r - 1) <= 0.05,
-    detail: `dose moyenne d'un bloc de qualité : ${rapide.toFixed(1)} min à 4:30 · ${lent.toFixed(1)} min à 8:30 — rapport ×${r.toFixed(2)} (cible 1,00 ± 5 %)`,
+    ok: rapide > 0 && Math.abs(r - 1) <= 0.02,
+    detail: `dose moyenne d'un bloc de qualité : ${rapide.toFixed(1)} min à 4:30 · ${lent.toFixed(1)} min à 8:30 — rapport ×${r.toFixed(2)} (cible 1,00 ± 2 %)`,
   };
 });
 
@@ -962,7 +966,13 @@ T("O-39", "rouge", "toute zone de qualité émise est plafonnée (DOSE_CAP_MIN) 
         if (st.role !== "body" || !z) continue;
         if (/\.(thr|vo2|mara|sprint|css|rp)$/.test(z)) vues.add(z.split(".").pop());
       }
-  const orphelines = [...vues].filter((suf) => DOSE_CAP_MIN[suf] === undefined && DOSE_EXEMPT[suf] === undefined);
+  // ⚠ MA PREMIÈRE ÉCRITURE MESURAIT LA TABLE, PAS LE CODE. Elle annonçait « rp et css sans
+  // plafond » ; or `planGenerator` mappe `/\.thr$|\.css$/` sur `DOSE_CAP_MIN.thr` — `css` EST
+  // plafonné à 40, il n'a simplement pas de clé propre. Treizième occurrence de « un critère qui
+  // nomme une chose et en mesure une voisine ». Le prédicat lit désormais la RÉSOLUTION du code.
+  const resolu = (suf) => /^(thr|css)$/.test(suf) ? DOSE_CAP_MIN.thr
+    : suf === "vo2" ? DOSE_CAP_MIN.vo2 : DOSE_CAP_MIN[suf];
+  const orphelines = [...vues].filter((suf) => resolu(suf) === undefined && DOSE_EXEMPT[suf] === undefined);
   return {
     ok: vues.size > 0 && orphelines.length === 0,
     detail: `${vues.size} suffixe(s) de qualité émis (${[...vues].sort().join(", ")}) · ${orphelines.length} sans plafond NI exemption`
@@ -999,7 +1009,7 @@ const ROUGES_ATTENDUS = {
   "T-23": "O-35 — mêmes causes que T-25, vues de l'écran (BUGS_OUVERTS.md)",
   "T-21": "généralisation du patron B-24/V-11 : records de décision partout (ARBITRAGES_STOP_PHASE2 §6)",
 
-  "O-39": "O-39 — `rp` (allure course vélo) et `css` (seuil nage) sont sans plafond NI exemption : arbitrage fondateur",
+  "O-39": "O-39 — `rp` seul reste sans plafond ni exemption (css EST plafonné via la branche thr) : règle structurelle §2 à écrire",
   "T-30": "O-36 item 3 — durée de répétition comme source, distance dérivée (contrat B-25 étendu)",
   "T-22": "B-26 — les bricks reçoivent leurs steps zonés (416 séances duathlon chiffrées ; T-22 en a trouvé AUSSI en tri : « Brick vélo+CAP », périmètre B-26 à élargir)",
 };

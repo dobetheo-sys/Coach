@@ -2873,3 +2873,46 @@ quoi: la propriete est ecrite ROUGE avant le correctif
 attendu: T30-ROUGE
 cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep -q "· T-30 \[ROUGE\]" && echo "T30-ROUGE"
 ```
+
+---
+
+## O-39 §4(d) — ⚠ MA GARDE MESURAIT LA TABLE, PAS LE CODE : `css` EST DÉJÀ PLAFONNÉ
+
+La mesure (d) — « `DOSE_CAP_MIN` compte-t-il le temps de TRAVAIL ou le temps TOTAL ? » — répond,
+et elle corrige au passage mon propre périmètre d'O-39.
+
+### (d) : c'est le temps de TRAVAIL, et le plafond ne voit pas les blocs en distance
+
+```ts
+if (b.durationMin != null) {                      // ← les blocs en DISTANCE n'entrent jamais ici
+  const doseCap = /\.vo2$/…  : /\.thr$|\.css$/…   // ← `css` est mappé sur DOSE_CAP_MIN.thr
+  if (reps * b.durationMin > doseCap) …           // ← reps × durée = TRAVAIL, récup exclue
+}
+```
+
+**Trois conséquences, dans l'ordre d'importance :**
+
+1. **`css` N'EST PAS orphelin** : il est plafonné à 40 min via la branche `thr`. Il n'a pas de
+   CLÉ propre, et ma garde lisait `DOSE_CAP_MIN[suffixe]` — **elle mesurait la TABLE quand le
+   code fait une RÉSOLUTION**. Treizième occurrence de « un critère qui nomme une chose et en
+   mesure une voisine », dans la garde écrite pour trancher O-39. Corrigée : le prédicat lit
+   désormais la résolution. **Périmètre réel d'O-39 : `rp` SEUL.**
+2. Le plafond compte **`reps × durationMin`**, donc le travail, récupérations exclues. Les 40 min
+   veulent bien dire la même grandeur en course et en nage — pas de treizième faute d'unité.
+3. **Mais il est structurellement inatteignable en nage** : les blocs `sw.css` sont prescrits en
+   MÈTRES, donc `b.durationMin` est `null` et la branche n'est jamais prise. Le plafond de 40 min
+   pour `css` existe, il est correct, et il est **dormant par construction** — pas par calibrage.
+   C'est une décision écrite, ce qui est l'objet d'O-39 ; mais qu'elle soit inatteignable mérite
+   d'être su, et c'est la deuxième fois que la prescription en distance rend une règle muette
+   (après C24/C24b et son `metersOf`).
+
+**Ton arbitrage sur `css` est donc sans objet** : la décision existait déjà dans le code, elle
+valait 40, et elle correspond à ce que tu aurais tranché. Reste `rp`, et la règle structurelle du
+§2 (« le plafond suit la bande à laquelle `rp` se résout ») est à écrire — non fait ici.
+
+```verify
+id: O-39-d
+quoi: DOSE_CAP_MIN compte le TRAVAIL et ne voit pas les blocs en distance ; css est resolu sur thr
+attendu: O39D-REPRODUIT
+cmd: grep -q "reps \* b.durationMin > doseCap" src/generator/planGenerator.ts && grep -q "css" src/generator/planGenerator.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "1 sans plafond NI exemption" && echo "O39D-REPRODUIT"
+```
