@@ -13,6 +13,7 @@ import { R313_TAPER_MAX_VS_PEAK } from "../engine/constraintMatrix.ts";
 import { longRunSpecificityFloor } from "../engine/longRunSpecificity.ts";
 import { generatePlan, normalizeRestMinutes, reconcileDeclaredVolume, syncDerivedLabels, shiftedBikeRp, _c30b } from "./planGenerator.ts";
 import { renderSess, type Refs } from "./renderer.ts";
+import { sealPlan } from "./seal.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 
 
@@ -410,5 +411,10 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
     warnings.push("Plan rendu avec réserves (contraintes insatisfaisables après " + MAX_ITERATIONS + " réparations) :");
     warnings.push(...finalAudit.hardViolations.map((v) => "· " + v));
   }
+  // T-27 — LE SCEAU, EN TOUT DERNIER. Voir `seal.ts` : c'est le seul point du pipeline où
+  // « après » n'existe pas, donc le seul endroit où un invariant vérifié l'est du plan LIVRÉ.
+  // Non strict ici (le plan est rendu quoi qu'il arrive) ; c'est la CI qui lève, via
+  // `npm run mesure:sceau` et le critère T-27 du banc.
+  sealPlan(best.plan, { format: profile.format });
   return { plan: best.plan, audit: finalAudit, warnings, repairs, decisions: reasoned.decisions };
 }

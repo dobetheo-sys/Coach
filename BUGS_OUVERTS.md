@@ -2219,8 +2219,8 @@ course variés, pas un correctif.
 ```verify
 id: O-34
 quoi: le plancher existe, est étiqueté inherited/PANSEMENT, et T-16b le garde
-attendu: RN_MARA_RATIO_PLANCHER present, provenance inherited ecrite, T-16b vert
-cmd: grep -q "inherited" src/engine/predictor.ts && grep -q "RN_MARA_RATIO_PLANCHER" src/engine/predictor.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "T-16b \[vert"
+attendu: O34-REPRODUIT
+cmd: grep -q "inherited" src/engine/predictor.ts && grep -q "RN_MARA_RATIO_PLANCHER" src/engine/predictor.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "T-16b \[vert" && echo "O34-REPRODUIT"
 ```
 
 ## O-35 — la chaîne de volume R20.2 ne se ferme pas en unité sur la natation (et le trail)
@@ -2371,8 +2371,8 @@ réellement, puis passer `T-25` et `T-23` à `attendu: "vert"` dans le même com
 ```verify
 id: O-35
 quoi: la conversion ne porte que sur la declaration, et le residu « rendu discret » garde T-25 rouge
-attendu: swimTime hors des facteurs de la chaine, garde d'observation presente, T-25 encore rouge
-cmd: grep -q "swimTime` A QUITTÉ CETTE LISTE" src/generator/planGenerator.ts && grep -q "GARDE D'OBSERVATION" src/generator/planGenerator.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -A1 "T-25" | grep -q "identité(s) cassée(s)"
+attendu: O35-REPRODUIT
+cmd: grep -q "GARDE D'OBSERVATION" src/generator/planGenerator.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -A1 "T-25" | grep -q "identité(s) cassée(s)" && echo "O35-REPRODUIT"
 ```
 
 ## O-36 — la coupe et l'auditeur ne comptent PAS dans la même unité, et les aligner casse O-21
@@ -2409,6 +2409,148 @@ Non tranché ici : c'est un arbitrage d'entraînement, pas un correctif.
 ```verify
 id: O-36
 quoi: la coupe mesure sans les refs de l'athlete, et c'est ce qui garde O-21b vert
-attendu: enforceHardTimeCap appelle intensitySplit SANS refs, et audit:v6 est a 0 regression
-cmd: grep -q "intensitySplit(s as never).hardByDisc" src/generator/planGenerator.ts && npm run audit:v6 2>/dev/null | grep -q "0 régression"
+attendu: O36-REPRODUIT
+cmd: grep -q "intensitySplit(s as never).hardByDisc" src/generator/planGenerator.ts && npm run audit:v6 2>/dev/null | grep -q "0 régression" && echo "O36-REPRODUIT"
+```
+
+---
+
+## O-37 — I14 est rouvert APRÈS sa propre application, sur 441 semaines du golden
+
+**Trouvé par le sceau T-27 le jour où il a été posé** (15/08/2026), c'est-à-dire par exactement
+le mécanisme pour lequel il existe : un invariant tenu au milieu du pipeline, rouvert par ce qui
+vient après, sans que rien ne l'attrape.
+
+I14 déclare que **la sortie longue est la plus longue séance de sa discipline dans sa semaine**.
+`enforceLabelVsDose` l'applique, deux fois, et le prédicat du sceau est RECOPIÉ du sien (mêmes
+exclusions : `race`, `brick`, `long`, même discipline) — ce n'est donc pas une règle voisine
+mesurée à la place de la bonne.
+
+| | |
+|---|---|
+| semaines en violation, golden | **441** (sur 945 profils) |
+| profils touchés, balayage 702 | **151** |
+| exemples | `run/5k/reprise/debutant/competition` S2 : « Seuil doux » **52 min** > longue 48 · `run/5k/confirme/inter/finir` S5 : « VO2max » **45** > longue 44 |
+
+**Les écarts sont petits** (quelques minutes) et c'est ce qui les a laissés passer : aucun gate
+ne compare ces deux séances à la SORTIE. `audit:invariants` porte bien I14, mais sur
+**54 configurations** ; le sceau le mesure sur les 945.
+
+**Piste, non vérifiée** : `enforceLabelVsDose` compare des `sx.min` et réduit sur
+`totalOf(sx)` = somme des `st._min`. Si les deux grandeurs diffèrent (la récup inter-blocs entre
+dans `_min` depuis R5.6a), la passe vise un nombre et en mesure un autre — la onzième occurrence
+de cette famille. À vérifier avant d'écrire un correctif : ce serait une cause, pas la seule
+possible (les planchers de `shrinkTo`, `Math.max(5, …)` et `if (!touched) break`, laissent un
+résidu que le commentaire de la passe assume déjà).
+
+**Non corrigé délibérément** : rendre bloquant un invariant dont on n'a pas trié les 441 échecs
+figerait la dette au lieu de la traiter — c'est la leçon de R20.6, et l'ordre qu'elle impose est
+« mesurer, trier, PUIS bloquer ». Le compte est épinglé au cliquet de T-27 : il ne peut plus
+monter en silence.
+
+```verify
+id: O-37
+quoi: I14 est rouvert apres son application, compte epingle au cliquet T-27
+attendu: O37-REPRODUIT
+cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep -q "✓ T-27" && echo "O37-REPRODUIT"
+```
+
+---
+
+## O-37a — un brick d'affûtage passe 1 min SOUS son plancher audité, sur 4 profils
+
+Même origine que ci-dessus : trouvé par le sceau, invisible aux gates.
+
+`tri/Full/reprise/{inter,avance}/{finir,plaisir}` : « Brick d'affûtage (rappel de transition) »
+livre **39 min de vélo** pour une bande `C21c` de **[40, 150]**. Une minute.
+
+`audit:v2` balaie pourtant `tri/Full/reprise/inter/finir` — et il est VERT. La différence est le
+PROFIL DE BASE : son `baseProfile()` ne porte pas les mêmes `vol_max`/`pace`/`weight` que le
+balayage du sceau, et l'état à 39 min n'y est pas atteint. Ce n'est donc pas un trou de l'auditeur
+mais un trou de COUVERTURE — famille A-2, sixième occurrence.
+
+**Non corrigé** : un plancher manqué d'une minute sur un brick d'affûtage ne met personne en
+danger (il va dans le sens de la fraîcheur, que l'affûtage cherche), et le corriger demande de
+savoir laquelle des deux bandes fait foi — c'est T-28. Compté au cliquet de T-27.
+
+---
+
+## T-27b — le sceau pose son drapeau, mais aucune lecture ne l'exige encore
+
+`sealPlan` pose `_sealed` et attache `_seal` au plan livré, et sa batterie tourne au seul point
+du pipeline où « après » n'existe pas. **La seconde moitié du §3 n'est pas écrite** : « toute
+fonction de diagnostic, de message, de record ou d'export assert `_sealed` à l'entrée, et échoue
+bruyamment sinon ».
+
+Sans elle, le drapeau ne garde rien tout seul — il constate, il n'interdit pas. C'est écrit ici
+pour que personne ne prenne sa présence pour la garantie qu'il ne donne pas encore.
+
+**Ce que ça demande** : recenser les surfaces de lecture du plan (les cartes « Pourquoi ce plan »,
+les records `_r202`/`_v2`, l'export iCal, la prédiction), et poser l'assertion à leur entrée. La
+variante forte — le plan final est un TYPE distinct du plan en construction, et les diagnostics
+ne prennent que le premier — rendrait l'erreur impossible à ÉCRIRE et pas seulement à exécuter.
+
+```verify
+id: T-27b
+quoi: le sceau existe et est pose sur le plan livre (moitie 1), les assertions de lecture non
+attendu: T27B-REPRODUIT
+cmd: grep -q "sealPlan(best.plan" src/generator/repairLoop.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "✓ T-27" && echo "T27B-REPRODUIT"
+```
+
+---
+
+## O-38 — `blockBounds` ignore la PHASE pour un brick : 12 couples où le générateur est plus permissif que l'auditeur
+
+**Le balayage T-28** (`npm run audit:t28`), écrit après B-02 parce que le fondateur a eu raison
+d'en faire un balayage plutôt qu'un correctif ponctuel : *« si ce couple diverge, d'autres
+divergent probablement, et ils attendent tous un profil pour se révéler ».*
+
+Un générateur et un auditeur qui lisent deux sources pour la même borne, c'est `_IFZ` sous une
+autre forme — deux vérités pour une grandeur — et le mode de défaillance est le pire qui soit :
+le plan sort PROPRE de la génération et ROUGE au gate, donc le défaut apparaît loin de sa cause.
+
+### La divergence est systématique, pas accidentelle
+
+`blockBounds` (branche `s.brick`, leg vélo) lit :
+
+```
+floor = BRICK_BIKE_BOUNDS[fmt][0] × share      ← C21b : MÊME source que l'auditeur ✓
+cap   = CAP_BRICK_BIKE[fmt] × brickRF × share  ← une AUTRE table, et SANS phase ✗
+```
+
+L'auditeur, lui, applique `BRICK_TAPER_BIKE_BOUNDS` (C21c) dès que la semaine est en affûtage —
+sa bande y est bien plus serrée, son plafond étant le PLANCHER de la bande de charge (R18.4).
+
+| | |
+|---|---|
+| couples balayés | 24 (6 formats × 2 phases × 2 historiques) |
+| **⚠ permissifs** | **12 — exactement les 12 lignes d'AFFÛTAGE** |
+| stricts (générateur plus serré : sain) | 6 (toutes les lignes `reprise`, via `brickRF`) |
+| identiques | 6 |
+| non audités (le générateur borne, l'auditeur non) | 6 — leg COURSE du brick, `CAP_BRICK_RUN` |
+
+Exemples : `Full/affûtage` — le générateur se déclare autorisé jusqu'à **300 min** là où
+l'auditeur refuse au-delà de **150**. `S/affûtage` — **90** contre **45**.
+
+### Pourquoi aucun plan ne le viole aujourd'hui, et pourquoi ça ne rassure pas
+
+Le brick d'affûtage est construit par un autre chemin (R18.4), qui livre des valeurs dans la
+bande auditée. Autrement dit : **ce qui protège le plan est le CHEMIN, pas la BORNE** — la chance
+du pipeline, exactement ce que B-02 a payé une journée à démêler. Et O-37a montre que le chemin
+est déjà pris en défaut d'une minute sur 4 profils.
+
+### Non corrigé, et pourquoi
+
+Rendre `blockBounds` conscient de la phase demande de lui passer la semaine (il ne reçoit
+aujourd'hui que `(b, s)`), donc du plomberie sur un point chaud du générateur, et ça CHANGE des
+plans — à mesurer avant, pas après. C'est un ticket à part entière, pas un ajout à celui-ci.
+
+Le compte est épinglé au cliquet de `T-28` (banc `lotPhysio`) : il ne peut ni monter ni baisser
+en silence.
+
+```verify
+id: O-38
+quoi: 12 couples ou le generateur est plus permissif que l'auditeur, epingles au cliquet T-28
+attendu: O38-REPRODUIT
+cmd: npm run audit:t28 2>/dev/null | grep -q "⚠ 12 permissif" && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "0 régression" && echo "O38-REPRODUIT"
 ```

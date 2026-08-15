@@ -34,6 +34,8 @@
     "audit:r15": "node bench_r15.cjs endurabuild/js/engine.js",
     "audit:r18": "node bench_r18.cjs endurabuild/js/engine.js",
     "measure:fallback": "node scripts/measureFallback.mjs",
+    "mesure:sceau": "node scripts/mesureSceau.mjs",
+    "audit:t28": "node scripts/balayageT28.mjs",
     "registry:check": "node scripts/registryCheck.mjs",
     "demo:faisabilite": "node src/audit/feasibilityDemo.ts",
     "demo:proactif": "node src/audit/proactiveDemo.ts",

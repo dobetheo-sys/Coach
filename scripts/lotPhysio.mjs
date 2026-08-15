@@ -27,7 +27,8 @@ import "../src/app/bridge.ts";
 import { ZDEF } from "../src/generator/renderer.ts";
 import { zoneClass, intensitySplit } from "../src/engine/loadModel.ts";
 import { sessionIntensity } from "../src/readiness/dailyAdjuster.ts";
-import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor, swimTimeFactorOf } from "../src/engine/constraintMatrix.ts";
+import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor, swimTimeFactorOf,
+  BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, CAP_BRICK_BIKE, C21_REPRISE_BRICK_FACTOR } from "../src/engine/constraintMatrix.ts";
 import { RN_THR_FRONTIERE_LENTE } from "../src/engine/loadModel.ts";
 import { TrainingReasoningEngine } from "../src/engine/reasoningEngine.ts";
 import { toProfile } from "../src/app/bridge.ts";
@@ -765,6 +766,80 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
   return { ok: examinees > 0 && l.length === 0, detail: `${l.length} step(s) de corps sans zone dans une séance qui nomme une allure (${examinees} séances examinées) — ` + l.slice(0, 4).join(" · ") };
 });
 
+/**
+ * T-27 — LE SCEAU EXISTE, IL EST LE DERNIER, ET SES COMPTES SONT UN CLIQUET.
+ *
+ * Deux moitiés, parce que le sceau peut échouer de deux façons opposées :
+ *   · ses invariants de rang DUR sont à zéro sur le golden — ils lèvent en CI, donc la
+ *     treizième occurrence de « une garantie vérifiée au milieu ne vérifie que l'avant-dernier
+ *     état » est attrapée à la sortie au lieu d'être trouvée deux lots plus tard ;
+ *   · ses invariants DÉCLARÉS ne dépassent pas le compte épinglé. Rendre bloquant un invariant
+ *     dont on n'a pas trié les échecs FIGE la dette au lieu de la traiter (R20.6) — on épingle
+ *     donc le chiffre mesuré, et c'est sa HAUSSE qui échoue. Une BAISSE échoue aussi : elle
+ *     veut dire qu'un ticket s'est fermé et que le chiffre doit descendre dans le même commit.
+ *
+ * Le sceau est posé par `generateAudited` : le vérifier ici, c'est le vérifier sur le plan que
+ * l'athlète reçoit, pas sur un plan reconstruit pour le test.
+ */
+const SCEAU_ATTENDU = { S1: 4, S4: 441, S5: 509 }; // mesuré sur le golden — `npm run mesure:sceau`
+T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
+  const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
+  let scelles = 0, nus = 0, dur = 0;
+  const ex = [];
+  for (const { key, plan } of goldenAvecMoteur()) {
+    if (!plan?._sealed || !plan?._seal) { nus++; if (ex.length < 3) ex.push(`${key} : plan NON SCELLÉ`); continue; }
+    scelles++;
+    for (const v of plan._seal.verdicts ?? []) {
+      compte[v.id] = (compte[v.id] ?? 0) + v.violations.length;
+      if (v.rang === "dur" && v.violations.length) {
+        dur += v.violations.length;
+        if (ex.length < 3) ex.push(`${key} : ${v.id} DUR — ${v.violations[0]}`);
+      }
+    }
+  }
+  const derives = Object.entries(SCEAU_ATTENDU)
+    .filter(([id, n]) => compte[id] !== n)
+    .map(([id, n]) => `${id} ${compte[id]} au lieu de ${n}`);
+  const ok = scelles > 0 && nus === 0 && dur === 0 && derives.length === 0;
+  return {
+    ok,
+    detail: `${scelles} plan(s) scellé(s), ${nus} nu(s) · ${dur} violation(s) DURE(s) · `
+      + (derives.length ? `cliquet : ${derives.join(" ; ")}` : "déclarés au compte épinglé")
+      + (ex.length ? " — " + ex.join(" · ") : ""),
+  };
+});
+
+/**
+ * T-28 — POUR TOUTE BORNE AUDITÉE, LE GÉNÉRATEUR LIT LA MÊME SOURCE QUE L'AUDITEUR.
+ *
+ * Rouge aujourd'hui, et le balayage dit que c'est une CLASSE et non un accident : `blockBounds`
+ * n'a **aucune conscience de la phase** pour un brick — il plafonne par `CAP_BRICK_BIKE` en
+ * affûtage comme en charge, quand l'auditeur y applique `BRICK_TAPER_BIKE_BOUNDS` (C21c), dont
+ * le plafond est le PLANCHER de la bande de charge. Les 12 couples permissifs sont exactement
+ * les 12 lignes d'affûtage (6 formats × 2 historiques) : sur un Full, le générateur se déclare
+ * autorisé jusqu'à 300 min là où l'auditeur refuse au-delà de 150.
+ *
+ * Qu'aucun plan ne les viole aujourd'hui tient au CHEMIN (R18.4 construit le brick d'affûtage
+ * ailleurs), pas à la borne — c'est-à-dire à la chance du pipeline. Voir `npm run audit:t28`.
+ */
+const T28_PERMISSIFS_ATTENDUS = 12;
+T("T-28", "rouge", "toute borne auditée est lue par le générateur à la MÊME source que par l'auditeur", () => {
+  const gen = (fmt, rf) => [BRICK_BIKE_BOUNDS[fmt][0], Math.round((CAP_BRICK_BIKE[fmt] || 300) * rf)];
+  const perm = [];
+  for (const fmt of ["S", "M", "70.3", "Full", "L", "PM"])
+    for (const [phase, aud] of [["charge", BRICK_BIKE_BOUNDS[fmt]], ["affûtage", BRICK_TAPER_BIKE_BOUNDS[fmt]]])
+      for (const [hist, rf] of [["ancien", 1], ["reprise", C21_REPRISE_BRICK_FACTOR]]) {
+        const g = gen(fmt, rf);
+        if (!(g[0] >= aud[0] && g[1] <= aud[1])) perm.push(`${fmt}/${phase}/${hist} : gén [${g}] ⊄ audit [${aud}]`);
+      }
+  // Le cliquet joue dans les DEUX sens : une hausse est une régression, une baisse veut dire
+  // qu'un couple a été aligné et que le chiffre descend DANS LE MÊME COMMIT.
+  const ok = perm.length === 0;
+  const derive = perm.length !== T28_PERMISSIFS_ATTENDUS
+    ? ` ✖ CLIQUET : ${perm.length} au lieu des ${T28_PERMISSIFS_ATTENDUS} épinglés` : "";
+  return { ok, detail: `${perm.length} couple(s) où le générateur est PLUS PERMISSIF que l'auditeur${derive} — ` + perm.slice(0, 3).join(" · ") };
+});
+
 // ---- verdict --------------------------------------------------------------
 /**
  * §6.3 (DOC_UNIQUE, 14/08/2026) — LES ROUGES ATTENDUS SONT UNE LISTE NOMMÉE, PAS UN NOMBRE.
@@ -793,6 +868,8 @@ const ROUGES_ATTENDUS = {
   "T-25": "O-35 — unités de la chaîne natation/trail + rendu discret (les « 18 min » du DOC_UNIQUE §0)",
   "T-23": "O-35 — mêmes causes que T-25, vues de l'écran (BUGS_OUVERTS.md)",
   "T-21": "généralisation du patron B-24/V-11 : records de décision partout (ARBITRAGES_STOP_PHASE2 §6)",
+  "T-28": "O-38 — blockBounds prend la PHASE pour un brick (12 couples permissifs, tous en affûtage)",
+
   "T-22": "B-26 — les bricks reçoivent leurs steps zonés (416 séances duathlon chiffrées ; T-22 en a trouvé AUSSI en tri : « Brick vélo+CAP », périmètre B-26 à élargir)",
 };
 

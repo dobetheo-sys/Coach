@@ -74,6 +74,9 @@ const ORDER = [
   "src/sports/swimrun/index.ts",
   "src/generator/weekBuilder.ts",
   "src/generator/planGenerator.ts",
+  // T-27 — le sceau. Après `renderer` (il lit `ZDEF`) et avant `repairLoop`, qui l'appelle au
+  // point de sortie unique de `generateAudited`.
+  "src/generator/seal.ts",
   "src/generator/repairLoop.ts",
   "src/engine/projection.ts",
   "src/engine/predictor.ts",
