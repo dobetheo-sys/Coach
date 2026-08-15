@@ -3324,3 +3324,56 @@ résultat décrit-il ? »).
   aux références de l'athlète cohabitent désormais, ce qui est la cause de fond de la couture
   O-22/O-25. Le regroupement empêche qu'un futur chemin d'import oublie la promotion — c'est
   maintenant de la prévention, plus une réparation.
+
+
+---
+
+## O-42 — ⚠ `stepMin` ET `weekDistances` CONVERTISSENT DÉJÀ LA MÊME GRANDEUR, ET PAS PAREIL
+
+**Trouvé en vérifiant la prémisse du §2 du lot 1** — *« `stepMin` fait déjà cette résolution
+puisqu'elle produit les durées d'aujourd'hui »*. Elle est FAUSSE, et c'est bloquant pour le lot 1.
+
+```ts
+// stepMin (renderer.ts) — la durée qui pilote TOUT le plan
+if (d === "sw") return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60) + rec;
+//                                                      ↑ le CSS BRUT, quelle que soit la zone
+
+// weekDistances (engine) — le récap hebdomadaire affiché
+const min = (km * 10 * css / 60) / (SWIM_SPEED_RATIO[st.zone] ?? SWIM_SPEED_RATIO["sw.easy"]);
+//                                  ↑ le ratio DE LA ZONE
+```
+
+**`stepMin` traite chaque mètre de nage comme nagé au CSS.** `weekDistances` applique
+`SWIM_SPEED_RATIO` = {`sw.easy` 0,80 · `sw.aero` 0,88 · `sw.css` 1,00 · `sw.speed` 1,02} et
+`RUN_SPEED_RATIO` en course.
+
+Conséquence arithmétique : pour un bloc `sw.easy`, `weekDistances` rend **1 ÷ 0,80 = +25 %** de
+durée par rapport à `stepMin`. Deux vérités pour une même conversion, et l'écart change de signe
+selon la zone — c'est `_IFZ` sous une troisième forme, **déjà en place**, indépendamment d'O-40.
+
+### Pourquoi ça bloque le lot 1
+
+La forme proposée — « une garde ne convertit pas, elle demande à `stepMin` » — est la bonne
+géométrie, mais elle ferait hériter le plafond de dose d'une conversion qui **contredit déjà**
+l'autre. On fermerait une divergence d'unité en propageant une divergence de vitesse.
+
+Et le sens compte : `stepMin` SOUS-ESTIME la durée des blocs de nage faciles (il les compte au
+CSS alors qu'ils se nagent plus lentement), donc il sous-estime le volume de nage du plan — sur
+la discipline où 89 % des blocs sont prescrits en mètres.
+
+### Ce que ça demande, et je ne le tranche pas
+
+Laquelle des deux conversions fait foi ? `weekDistances` est physiologiquement plus juste (un
+bloc facile ne se nage pas au CSS) ; `stepMin` est celle qui pilote le plan depuis toujours, donc
+l'aligner CHANGE le volume livré de toutes les séances de nage. C'est un arbitrage d'entraînement
+avec un rayon large, à mesurer avant d'écrire — pas un correctif à glisser dans le lot 1.
+
+**Le lot 1 attend cette décision** : il n'y a pas de « source unique » à laquelle demander tant
+qu'il y en a deux qui se contredisent.
+
+```verify
+id: O-42
+quoi: stepMin convertit au CSS brut, weekDistances applique le ratio de zone
+attendu: O42-REPRODUIT
+cmd: grep -q "baseRefs.css || 130" src/generator/renderer.ts && grep -q "SWIM_SPEED_RATIO\[st.zone" src/engine/weekDistances.ts && echo "O42-REPRODUIT"
+```
