@@ -207,6 +207,22 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   peut retirer dix entrées du registre en une fois sans que rien ne le signale. (Six blocs à `cmd`
   muet avaient déjà été rangés à tort en « ne reproduit plus » alors qu'ils reproduisaient.)
 
+- **Règle 12, forme nouvelle (arbitrage O-43, 16/08/2026) — une sortie calculée ne se relit jamais
+  comme une entrée.** Si une contrainte se dérive du contenu GÉNÉRÉ, elle mesure le générateur et
+  non l'athlète. Mesuré : la sonde de capacité lit un clone SATURÉ de la semaine livrée, donc
+  recompter le même travail en plus de minutes (O-42) lui fait conclure à une capacité plus grande,
+  la courbe monte, et le point fixe **ajoute des séances**. Le plafond est une propriété de
+  l'athlète — temps disponible, tolérance tissulaire —, jamais de la façon dont le moteur compte.
+  Gardé par **T-34** (`lotPhysio`) : faire varier la conversion d'une discipline ne doit rien
+  changer à ce qui est prescrit.
+
+- **Corollaire de la règle 14 — un écart s'exprime dans l'unité de sa CONSÉQUENCE, et un
+  pourcentage seul est ininterprétable sans sa base.** Donner l'absolu d'abord, le pourcentage
+  ensuite si utile. `swim/demifond` à **+17,6 %** vaut 1,6 min au-dessus d'un clamp qui en accorde
+  1 : le pourcentage disait « queue épaisse », la minute disait « bruit de quantification ». Le
+  Full à **+21,7 %** vaut `286 → 348 min`, une heure de plus : là les deux disent la même chose, et
+  c'est ce qui prouve que la queue était réellement épaisse — jamais le pourcentage seul.
+
 - **Règle 18 — une différence E2E n'est attribuée à un lot qu'après ≥ 3 exécutions de la suite
   concernée DE CHAQUE CÔTÉ du changement.** Une exécution unique de part et d'autre n'est pas une
   comparaison : c'est deux tirages. Une suite E2E est stochastique par nature (réseau, temporisation,

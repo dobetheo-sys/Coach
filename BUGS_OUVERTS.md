@@ -3761,3 +3761,88 @@ quoi: le plafond structurel monte quand la conversion fait couter plus de minute
 attendu: O43-REPRODUIT
 cmd: node scripts/mesureO43.mjs 2>/dev/null | grep -q "O43-REPRODUIT" && echo "O43-REPRODUIT"
 ```
+
+
+---
+
+## O-43 §2 — MON DIAGNOSTIC ÉTAIT FAUX, ET C'EST LE FILTRE DU FONDATEUR QUI L'A RÉFUTÉ
+
+**T-34 écrit tel que je l'avais compris est sorti VERT.** Le §3 de mon entrée O-43 désignait le
+maillon `structurel` comme la cause ; l'expérience contrôlée — faire varier la CONVERSION et rien
+d'autre, `sw.easy` de ×1,12 à ×1,30 — dit le contraire :
+
+```
+structurel     1,733 → 1,750 h   (+1,0 %)   ← le maillon que j'avais accusé
+courbe         2,21  → 2,46  h   (+11 %)
+boucle-growth  1,23  → 1,67  h   (+36 %)
+PIC LIVRÉ      1,1   → 1,2   h   (+9,1 %)   ← la violation, elle est bien réelle
+```
+
+`structurel` somme des plafonds de séance **en MINUTES**, atteints à saturation quelle que soit la
+conversion : il est presque invariant, ce qui est le comportement correct. J'avais lu
+« structurel 1,42 → 2,08 » sur un diff qui contenait **tout O-42** et j'en avais tiré une causalité
+que l'expérience ne soutient pas — ce maillon monte parce que la semaine gagne des séances, il
+n'est pas la cause. **Quinzième occurrence de la règle 15 :** j'ai attribué une causalité à partir
+d'une corrélation entre deux états qui différaient par plus d'une chose.
+
+L'invariant du fondateur, lui, est violé — sur **ce qui est prescrit**, pas sur le maillon que
+j'avais nommé. T-34 porte donc sur le pic livré ET sur la fréquence.
+
+## O-43 §3 — LA FRÉQUENCE : l'hypothèse du fondateur tient, et elle est ANTÉRIEURE à O-42
+
+**`MAX_SWIM_DAYS` n'existe pas.** `MAX_RUN_DAYS` existe (`{reprise: 4, confirme: 5, ancien: 6}`,
+`constraintMatrix.ts:157`), appliqué par le garde `runImpactCap` que déclarent `run`, `trail`,
+`duathlon` et `swimrun` — et son commentaire dit ce qu'il est : « plafond de jours d'**impact** ».
+Orthopédique, donc physiologique, donc modélisé. La borne de nage serait **logistique** — accès au
+bassin — donc invisible pour un moteur qui modélise la physiologie. Le fondateur avait identifié la
+raison exacte.
+
+**Mesuré sur les 136 profils de natation du golden**, jours de nage de la semaine la plus chargée :
+
+```
+AVANT O-42 :  3j×8   4j×10   5j×15   6j×103
+APRÈS      :  3j×4   4j×2    5j×8    6j×122
+25 montées · 104 stables · 7 baisses
+
+  reprise/debutant   3,8 → 5,7 jours   ← la population que le fondateur nomme
+  reprise/inter      6,0 → 6,0
+  ancien/inter       6,0 → 6,0
+```
+
+**103 profils sur 136 étaient DÉJÀ à 6 jours de nage par semaine avant O-42.** La fréquence non
+bornée n'est pas une conséquence d'O-42 : c'est un défaut antérieur, que le plafond trop bas
+protégeait accidentellement chez les débutants. O-42 a retiré cette protection accidentelle.
+
+**O-43 se scinde donc, comme le fondateur l'avait prévu** — et l'un des deux morceaux est plus
+gros que ce ticket :
+
+| | portée | statut |
+|---|---|---|
+| **fréquence de nage non bornée** (→ **O-44**) | 103 profils AVANT O-42, 122 après | antérieur, indépendant |
+| **invariance de ce qui est prescrit** (T-34) | pic +9,1 % à conversion mutée | dans O-43 |
+
+## O-43 §4 — LES TROIS ISSUES AU FILTRE, AVEC LA QUATRIÈME COLONNE
+
+| issue | T-34 (§1) | chemin justifiable (§2) | nombre de séances |
+|---|---|---|---|
+| 1 · borner la sonde sur une grandeur **invariante par la conversion** (mètres pour la nage) | **passe** par construction | oui — la borne décrit l'athlète | à mesurer avec l'écriture |
+| 2 · **geler** la sonde sur sa valeur d'avant O-42 | passe **par épinglage** | **non** — le chiffre ne se justifie que par « on comptait comme ça avant », ce que le §2 refuse | inchangé, par construction |
+| 3 · **assumer** la hausse | **échoue** | sans objet | 3 → 6 |
+
+**Une seule survit : l'issue 1.** Précision d'honnêteté : ce n'est pas T-34 seul qui élimine
+l'issue 2 — une constante gelée est trivialement invariante et passerait le test. C'est le **§2**
+qui la tue : *« même si 2,08 h était la bonne capacité, y arriver par un saut causé par un
+changement de comptabilité n'est pas un chemin justifiable »*, et une valeur figée n'est
+justifiable que par l'ancienne comptabilité.
+
+La quatrième colonne de l'issue 1 ne peut pas être remplie avant de l'écrire : la borne en mètres
+n'existe nulle part aujourd'hui. Elle sera mesurée AVANT d'être adoptée (règle 7), et O-44 la
+recoupera — si la fréquence est bornée, la question « que devient le nombre de séances » change de
+réponse.
+
+```verify
+id: O-43-frequence
+quoi: il n'existe aucun plafond de jours de NAGE, quand la course en a un
+attendu: O43-SANS-BORNE-NAGE
+cmd: grep -q "MAX_RUN_DAYS" src/engine/constraintMatrix.ts && ! grep -q "MAX_SWIM_DAYS" src/engine/constraintMatrix.ts && echo "O43-SANS-BORNE-NAGE"
+```

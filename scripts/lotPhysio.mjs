@@ -1000,7 +1000,88 @@ T("O-39", "rouge", "toute zone de qualité émise est plafonnée (DOSE_CAP_MIN) 
  * son `attendu` à "vert" ET retirer l'entrée DANS LE MÊME COMMIT, comme `audit:v6` et Z-11.
  * Tickets : A-xx/B-xx/N-xx = handoff maître + addendum · O-35 = BUGS_OUVERTS.md.
  */
+
+/**
+ * T-34 (O-43 §1) — LE PLAFOND EST UNE PROPRIÉTÉ DE L'ATHLÈTE, PAS DE LA FAÇON DONT ON COMPTE.
+ *
+ * Le critère du fondateur, qui remplace un arbitrage par un FILTRE : toute issue d'O-43 qui laisse
+ * ce test rouge est disqualifiée quels que soient ses chiffres.
+ *
+ * Le test fait varier la CONVERSION et rien d'autre — `sw.easy` de ×1,12 à ×1,30 sur `ZDEF`, le
+ * point unique depuis O-42, donc la mutation atteint les cinq sites. Rien chez l'athlète n'a
+ * bougé : ni son historique, ni sa déclaration, ni sa disponibilité. Ce qu'on lui prescrit ne
+ * doit pas bouger non plus.
+ *
+ * ⚠ MA PREMIÈRE ÉCRITURE TESTAIT LE SEUL MAILLON `structurel` ET SORTAIT **VERTE** — elle a
+ * réfuté ma propre analyse d'O-43 §3. Mesuré : la mutation laisse `structurel` à +1,0 %
+ * (1,733 → 1,750 h) parce qu'il somme des plafonds de séance EN MINUTES, atteints à saturation
+ * quelle que soit la conversion. Ce qui bouge, c'est `courbe` (+11 %), `boucle-growth` (+36 %) et
+ * le PIC LIVRÉ (1,1 → 1,2 h). J'avais lu « structurel 1,42 → 2,08 » sur un diff qui contenait TOUT
+ * O-42, et j'en avais conclu une causalité que l'expérience contrôlée ne soutient pas : ce maillon
+ * monte parce que la semaine gagne des séances, il n'est pas la cause. Le test porte donc sur ce
+ * que le fondateur a écrit — CE QUI EST PRESCRIT —, pas sur le maillon que j'avais désigné.
+ */
+T("T-34", "rouge", "ce qui est prescrit est invariant par changement de conversion (O-43)", () => {
+  const a = { sport: "swim", format: "fond", history: "reprise", level: "debutant", intent: "finir",
+    sessions_max: "6", dispo: "quotidienne", doubles: "non", age: "35", sex: "H",
+    css: "2:00", css_known: "oui", vol_max: "10", vol_recent: "0", injury: "aucune",
+    med_pain: "non", med_dizzy: "non", med_treat: "non", milieu: "bassin", swim_limit: "technique" };
+  const lire = () => {
+    const p = globalThis.EBV2.buildPlan("swim", { ...a });
+    const ch = {};
+    for (const x of p._r202?.plafonds ?? []) ch[String(x.id ?? x.nom)] = x.livre;
+    const jours = Math.max(...(p.weeks ?? []).map((w) => (w.days ?? []).filter((d) => (d.sessions ?? []).some((sx) => sx.d === "sw" && sx.min > 0)).length));
+    return { pic: p.volPeak, jours, ch };
+  };
+  const avant = lire();
+  const memo = { ...ZDEF["sw.easy"] };
+  ZDEF["sw.easy"].lo = 1.30; ZDEF["sw.easy"].hi = 1.30;   // +16 % d'allure, rien d'autre ne bouge
+  const apres = lire();
+  ZDEF["sw.easy"].lo = memo.lo; ZDEF["sw.easy"].hi = memo.hi;
+  const dPic = avant.pic > 0 ? Math.abs(apres.pic - avant.pic) / avant.pic : 0;
+  const maillons = Object.keys(avant.ch)
+    .filter((k) => avant.ch[k] > 0 && Math.abs(apres.ch[k] - avant.ch[k]) / avant.ch[k] > 0.01)
+    .map((k) => `${k} ${avant.ch[k].toFixed(2)}→${apres.ch[k].toFixed(2)}`);
+  return {
+    ok: dPic < 0.01 && avant.jours === apres.jours,
+    detail: `pic livré ${avant.pic} → ${apres.pic} h (${(dPic * 100).toFixed(1)} %) · jours de nage ${avant.jours} → ${apres.jours} · maillons qui bougent : ${maillons.join(" · ") || "aucun"}`,
+  };
+});
+
+/**
+ * T-35 (O-43 §7) — CE QUI EST PRESCRIT EST ÉPINGLÉ : une hausse est DÉCLARÉE dans son commit.
+ *
+ * « Une garde de cohérence interne ne voit rien quand la promesse et la livraison bougent
+ * ensemble » — c'est exactement ce qui a laissé passer O-43 sous une ventilation qui se disait
+ * complète. T-25 compare la chaîne au pic d'un même profil ; celle-ci compare le plan À LUI-MÊME
+ * d'une VERSION à l'autre. Le cliquet n'interdit pas une hausse : il interdit qu'elle soit
+ * silencieuse. Les deux grandeurs sont épinglées parce que le dommage d'O-43 vit dans la
+ * FRÉQUENCE autant que dans le volume (§3 du fondateur).
+ */
+// Épinglés sur la MESURE, pas sur un souvenir : `npm run mesure:o43` les rend, et le cliquet
+// force à les recopier ici dans le commit qui les fait bouger.
+const PRESCRIT_ATTENDU = {
+  "fond/reprise/debutant": { pic: 1.1, jours: 5 },
+  "sprint/reprise/debutant": { pic: 1.1, jours: 5 },
+};
+T("T-35", "vert", "le pic livré et la fréquence de nage sont épinglés — une hausse ne peut pas être silencieuse", () => {
+  const base = { sessions_max: "6", dispo: "quotidienne", doubles: "non", age: "35", sex: "H",
+    css: "2:00", css_known: "oui", vol_max: "10", vol_recent: "0", injury: "aucune", intent: "finir",
+    med_pain: "non", med_dizzy: "non", med_treat: "non", milieu: "bassin", swim_limit: "technique" };
+  const bad = [], vus = [];
+  for (const [cle, att] of Object.entries(PRESCRIT_ATTENDU)) {
+    const [format, history, level] = cle.split("/");
+    const p = globalThis.EBV2.buildPlan("swim", { ...base, sport: "swim", format, history, level });
+    const jours = Math.max(...(p.weeks ?? []).map((w) => (w.days ?? []).filter((d) => (d.sessions ?? []).some((sx) => sx.d === "sw" && sx.min > 0)).length));
+    vus.push(`${cle} ${p.volPeak}h/${jours}j`);
+    if (Math.abs((p.volPeak ?? 0) - att.pic) > 0.05 || jours !== att.jours)
+      bad.push(`${cle} : ${p.volPeak} h / ${jours} j au lieu de ${att.pic} h / ${att.jours} j`);
+  }
+  return { ok: bad.length === 0, detail: bad.length ? bad.join(" · ") : vus.join(" · ") };
+});
+
 const ROUGES_ATTENDUS = {
+  "T-34": "O-43 — la conversion déplace ce qui est prescrit (pic +9 %, fréquence) : filtre du fondateur, une seule issue le passe",
   "T-01": "A-01 — sessionIntensity() importe zoneClass() au lieu de sa copie (+ V-08 pour sw.aero)",
   "T-02": "A-01 — la zone fantôme vit dans la copie de dailyAdjuster",
   "T-03": "B-01 — plafond de la sortie longue (arbitrage 13/08 : indexé volume, jamais devant C30)",
