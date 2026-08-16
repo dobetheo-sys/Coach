@@ -4969,3 +4969,39 @@ et non d'un double passage. Le correctif n'est pas dans le calcul de la cible ma
 de la séance à transformer : au plus une par semaine.
 
 **Aucun ajout au périmètre.** Ces deux corrections, puis gates · golden · E2E vus jusqu'au bout.
+
+### B-17 §14 — LES DEUX CORRECTIFS, PRÉCISÉS AVANT D'ÊTRE ÉCRITS
+
+**D1 — « au plus une par semaine » exige un DÉPARTAGE EXPLICITE.** Si deux séances peuvent occuper
+`facile2`, la règle suppose de savoir *laquelle*. Un choix reposant sur l'ordre d'itération serait
+déterministe **par accident** — la famille exacte que ce chantier ferme depuis des semaines : une
+réorganisation de liste, un tri ajouté ailleurs, et la transformation change de séance sans que rien
+ne le signale ; le golden devient instable et D1 revient en flake. Le critère sera écrit, quel qu'il
+soit (séance de plus gros volume, ou index stable dans la semaine) — *ce qui ne convient pas, c'est
+de ne pas en avoir*.
+
+**Consigné sans être investigué** : que `facile2` soit invoqué **deux fois pour une même semaine**
+est peut-être normal (si le créneau est une CATÉGORIE et non une POSITION) ou peut-être pas. Hors
+périmètre de B-17 : mesuré, noté, non traité.
+
+**D2 — l'exclusion doit couvrir DEUX choses, pas une.** Retirer le bloc de la population
+redistribuée ne suffira pas si `blockBounds` réécrit son plancher juste avant (c'est le mécanisme
+O-26, et il agit EN AMONT des passes de volume). À vérifier séparément :
+
+```
+· le bloc est exclu des passes de redistribution   (patron I14b)
+· ET blockBounds ne réécrit pas son plancher        (cas O-26)
+```
+
+**Le critère d'acceptation est EXACT, pas approché** :
+
+```
+Pour un profil Full, les quatre paliers livrés valent EXACTEMENT leurs cibles.
+Toute différence, même d'un mètre, signifie qu'une passe non identifiée touche encore le bloc.
+```
+
+Un bloc dont la distance porte un sens ne tolère pas de tolérance — et c'est le test le moins cher
+possible : quatre égalités sur un profil. *(À noter : c'est l'inverse de la posture adoptée partout
+ailleurs aujourd'hui, où j'ai dû ajouter des tolérances parce que le pas de quantification est
+absolu. Ici le bloc n'est PAS quantifié par les passes, puisqu'il en est retiré : l'égalité exacte
+est donc la bonne forme, et une tolérance masquerait précisément le défaut qu'on corrige.)*
