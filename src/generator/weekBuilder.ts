@@ -282,12 +282,25 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     ? mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - (r.weeks - 1) * 7 * MS
     : mondayOf(isFinite(anchorT) ? anchorT : Date.now());
   const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
+  // B-17 — LE RANG DU JOUR DANS SON CRÉNEAU, calculé ici parce que c'est le seul endroit où la
+  // semaine ENTIÈRE est visible en ordre calendaire. `days` est daté par son propre index, donc
+  // ce rang ne dépend d'aucun tri intermédiaire : c'est l'index STABLE que le départage demande.
+  const rangDansCreneau = new Map<GenDay, number>();
+  {
+    const vus = new Map<string, number>();
+    for (const d of days) {
+      const cle = d.week + "|" + d.slot;
+      const n = vus.get(cle) || 0;
+      rangDansCreneau.set(d, n);
+      vus.set(cle, n + 1);
+    }
+  }
   days.forEach((d, i) => {
     const ph = d.phase!;
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
     d.date = iso(start + i * MS);
-    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week);
+    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0);
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
       else if (s.min == null) s.min = 0;

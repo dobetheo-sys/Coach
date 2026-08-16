@@ -5005,3 +5005,149 @@ possible : quatre égalités sur un profil. *(À noter : c'est l'inverse de la p
 ailleurs aujourd'hui, où j'ai dû ajouter des tolérances parce que le pas de quantification est
 absolu. Ici le bloc n'est PAS quantifié par les passes, puisqu'il en est retiré : l'égalité exacte
 est donc la bonne forme, et une tolérance masquerait précisément le défaut qu'on corrige.)*
+
+### B-17 §15 — D1 ET D2 SONT FERMÉS ET MESURÉS. UN TROISIÈME DÉFAUT, D3, LES DOMINE TOUS LES DEUX.
+
+**D2 — fermé, et le §14 attendait DEUX correctifs là où il n'en fallait qu'un.** Le fondateur
+demandait de vérifier les deux moitiés (« exclu des passes de redistribution » ET « `blockBounds`
+ne réécrit pas son plancher »). Mesuré : **la seconde suffit, et elle explique la première.** Le
+bloc portait déjà `floor = cap = cible` ; `blockBounds` le rendait inerte en le traversant par
+`const fl = s.long ? 800 : Math.min(b.bnd.floor, r.beginner ? 600 : 750)` — le plancher déclaré de
+3 800 m ressortait à **750**. Une fois `blockBounds` rendant le plancher tel quel, l'intervalle est
+dégénéré et **aucune passe aval ne peut plus le déplacer** : l'exclusion est obtenue PAR la borne,
+il n'y a pas de seconde liste à tenir.
+
+Le marqueur est `bnd.pinned`, pendant côté PLANCHER de ce que `bnd.hard` fait au plafond — et il
+fallait les deux, parce que la décision d'audit v6 (D3-D7/D10, « les planchers de séance ne gagnent
+plus contre la courbe ») est JUSTE tant que le plancher n'est qu'un minimum de dignité, et fausse
+quand la dimension EST le stimulus. Pas de test `floor === cap` : ce serait un critère syntaxique
+qui capterait par accident tout bloc dont les deux bornes coïncident.
+
+**D1 — fermé, avec le départage écrit, et l'observation du §14 est tranchée : `facile2` est une
+CATÉGORIE.** Mesuré sur le plan livré, pas déduit du gabarit : **29 semaines sur 308** portent DEUX
+jours `facile2` (`weekBuilder` le déclare deux fois dans le gabarit « quotidienne »). Le départage
+est `slotIdx === 0` — le **premier jour du créneau en ordre calendaire** —, un index stable calculé
+là où la semaine entière est visible ; jamais l'ordre d'itération d'une liste.
+
+**L'expérience est contrôlée, un facteur à la fois** (corollaire de la règle 15) :
+
+```
+état                      D1 (semaines à doublon)   D2 (paliers hors cible)
+858c0c5 (partiel)                    7                    19 / 31
++ pinned seul                        7                     0 / 31     ← D2 fermé, et lui seul
++ pinned + slotIdx                   0                     0 / 24     ← les deux fermés
+```
+
+Full/36, Full/42, Full/50 livrent **1 900 → 2 650 → 3 400 → 3 800 m**, strictement croissants, le
+dernier palier étant la distance de course au mètre près. Critère du fondateur tenu : *livré ==
+cible sur les quatre*.
+
+`T-06` passe de **rouge à vert** dans le même commit (cliquet) — et il est RÉÉCRIT, pas basculé :
+ses deux écritures précédentes étaient SYNTAXIQUES, et la seconde serait restée rouge après B-17
+livré, la règle ne portant aucun des mots qu'elle cherchait (`prereq`, `nage_continue`). Un test qui
+exige un VOCABULAIRE au lieu d'un COMPORTEMENT échoue dans les deux sens. Il observe désormais le
+plan livré : le gate mord, le gate laisse passer, une par semaine, montée strictement croissante,
+livré == cible.
+
+#### D3 — LE GATE LIT UNE RÉPONSE QUE LE PRODUIT NE COLLECTE JAMAIS
+
+Trouvé en vérifiant, pas en relisant. **`longest_swim_m` et `milieu` ont été étendus au triathlon
+dans le SCHÉMA (858c0c5) ; aucune des deux questions n'est POSÉE à un triathlète.**
+
+```
+endurabuild/js/ui/steps.js — l'étape « objectif » a trois branches :
+   trail    → distance, D+, technicité, nuit, barrière
+   swimrun  → …, « La plus longue nage (m) », …          ← la seule qui la pose
+   AUTRES   → « Quel objectif ? » + date                 ← le triathlon est ici
+endurabuild/js/config.js — `milieux` n'est déclaré que sur `swim` : l'étape « milieu »
+   n'existe pas pour un triathlète.
+```
+
+Or le module décide — délibérément, arbitré, écrit — que **« je ne sais pas » ne satisfait pas le
+gate**. La conséquence n'avait jamais été mesurée :
+
+```
+profils tri du golden : 148 · RABATTUS : 117 (79,1 %)
+   Full → S   56        M → S   31        70.3 → S   30
+aucun ne déclare `longest_swim_m` — la question est NOUVELLE et, pour un tri, INEXISTANTE.
+```
+
+Ce n'est pas un artefact de fixture : **un triathlète réel ne peut pas répondre**, donc *tout*
+inscrit à un Ironman recevrait un plan de sprint. Et `poolOnlyNotice`, dont le §12 a arbitré la
+restriction aux formats M+, exige `milieu === "bassin"` : jamais renseigné en tri, **le message est
+du code mort dans le produit**.
+
+**Les trois gates rouges du lot sont D3, et lui seul** — isolé par expérience contrôlée (le
+rabattement neutralisé, tout le reste en place) :
+
+```
+gate                cf392af (avant B-17)   858c0c5   aujourd'hui   sans le rabattement
+audit:v1                   VERT             ROUGE      ROUGE            VERT
+audit:v2                   VERT             ROUGE      ROUGE            VERT
+audit:r13                  VERT             ROUGE      ROUGE            VERT
+audit:sensibilite          VERT             ROUGE      ROUGE            ROUGE (tri/milieu)
+```
+
+Les signatures le disent aussi : `audit:v1` tombe sur C26d chez `tri/Full/*/debutant` et `audit:r13`
+sur `R13.6-P1 — Full 59 sem : taper=1 peak=5`, c'est-à-dire des plans de SPRINT audités contre des
+attentes de FULL. `audit:sensibilite` est la seule à porter la seconde moitié : `tri/milieu` inerte,
+parce qu'en tri cette clé ne pilote plus qu'un avertissement — la famille R20.1, dans sa forme
+MIROIR (« une clé consommée doit être collectable »).
+
+**Le golden n'est PAS recapturé** : **147 écarts sur 949**, dominés par un rabattement gouverné par
+une réponse que le produit ne peut pas recevoir. Photographier cet état l'enregistrerait comme la
+référence. `858c0c5` garde son avertissement.
+
+**Trois issues, aucune choisie ici — c'est un arbitrage, pas une mécanique** :
+
+```
+(a) POSER les deux questions dans le questionnaire tri, et décider si elles sont
+    OBLIGATOIRES (le swimrun l'exige : `valid()` réclame `swim_continuous`)
+(b) ne rabattre que sur une continuité DÉCLARÉE insuffisante, l'absence n'étant plus
+    un refus — ce qui renverse la décision écrite au §8/§10, arbitrée sur O-17
+(c) rabattre, mais d'un seul cran plutôt que jusqu'au sprint
+```
+
+##### Ma sonde a rendu « LES DEUX CRITÈRES SONT TENUS » sur un plan qui n'était pas celui qu'elle nommait
+
+`scripts/sondeB17.mjs`, première écriture : elle déclarait `longest_swim_m: "800"` pour les quatre
+formats. À 1'50/100 m cela vaut 14,7 min, ce qui satisfait le sprint **et aucun autre** : les douze
+lignes du balayage mesuraient toutes un `tri/S` à 750 m, D1 et D2 sortaient verts, et Full — le
+format que le critère d'acceptation du fondateur nomme — affichait **zéro palier**. C'est la
+SECONDE fois dans ce seul ticket (`mesureB17.mjs` balayait des horizons où le Full était refusé),
+et c'est le test de dépistage de la règle 15 : **un résultat saturé accuse l'instrument** — ici
+« 750 m » sur toutes les lignes. La sonde asserte désormais sa prémisse et écarte toute ligne dont
+le format a été rabattu. *Sans cette correction, j'aurais rendu D1 et D2 fermés sans les avoir
+regardés, et D3 serait resté invisible.*
+
+##### …et elle est ensuite sortie VERTE sur ZÉRO palier — règle 19, sur mon propre instrument
+
+Contre-preuve n° 3 (décaler le rang de départage d'un cran) : la prescription tombe à **zéro
+palier**, et la sonde rendait `D1 = 0 · D2 = 0 / 0` sous un verdict « LES DEUX CRITÈRES SONT
+TENUS ». Deux compteurs d'ANOMALIES sont trivialement satisfaits par l'absence de la chose
+comptée. C'est la règle 19 posée ce matin même — *quel est le correctif le moins coûteux qui ferait
+passer ce test ?* Ici : **effacer la fonctionnalité**. Un critère de NON-VACUITÉ est ajouté (le Full
+porte ses quatre paliers, les autres au moins un), et le verdict distingue désormais « tenu » de
+« vide ». `T-06`, lui, portait déjà `if (!paliers.length)` et sortait rouge sur les trois cassures :
+c'est la sonde d'exploration qui manquait le garde-fou, pas la garde permanente.
+
+```
+cassure                                   sonde            T-06
+`pinned` neutralisé                       D2 16/24  ✖      ROUGE
+départage `slotIdx` retiré                D1 7      ✖      ROUGE
+départage décalé d'un cran                VACUEUX   ✖      ROUGE
+```
+
+```verify
+id: B-17-D1-D2
+quoi: la nage continue est prescrite une fois par semaine, livrée EXACTEMENT à sa cible
+attendu: les deux critères tenus (D1 = 0 doublon, D2 = 0 écart)
+cmd: node scripts/sondeB17.mjs | grep -q "LES DEUX CRITÈRES SONT TENUS" && echo "B17-D1-D2-TENUS"
+```
+
+```verify
+id: B-17-D3
+quoi: aucune question ne collecte `longest_swim_m` ni `milieu` pour un triathlète
+attendu: D3-REPRODUIT
+cmd: node scripts/sondeB17rabat.mjs | grep -q "RABATTUS" ; grep -c 'data-input="longest_swim_m"' endurabuild/js/ui/steps.js | grep -q '^1$' && echo "D3-REPRODUIT"
+```

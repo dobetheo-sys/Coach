@@ -104,6 +104,11 @@ export interface SessionKit {
   prog: number;
   /** Numéro de semaine — le trail en a besoin (progression des côtes, répétitions ravito). */
   weekNum: number;
+  /** Rang du jour parmi ceux de sa semaine qui portent le MÊME créneau (0 = le premier, en
+   *  ordre calendaire). Un créneau est une CATÉGORIE : mesuré, 29 semaines sur 308 portent deux
+   *  jours `facile2`. Une règle « une fois par semaine » se départage par ce rang, jamais par
+   *  l'ordre d'itération d'une liste. Voir `buildSessions`. */
+  slotIdx: number;
   lvl: string;
   finisher: boolean;
   beginner: boolean;

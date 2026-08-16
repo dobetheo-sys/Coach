@@ -143,15 +143,73 @@ T("T-05", "rouge", "part de modéré ≤ 1 − plancher de facile − 0,05 (inte
   return { ok: !viol.length, detail: `${viol.length} semaine(s) — ` + viol.slice(0, 6).join(" · ") };
 });
 
-// ---- T-06 · prérequis de nage continue en triathlon ------------------------
-// MA PREMIÈRE ÉCRITURE CHERCHAIT `swim_continuous` DANS tri/index.ts **+ answerSchema.ts** et
-// rendait VERT : ce champ existe bien dans le schéma… parce que c'est celui du SWIMRUN, qui le
-// partage. Le test matchait le gate d'un autre sport et concluait que celui du tri existait.
-// Il est donc scopé au module tri seul — le seul endroit où un gate tri peut vivre.
-T("T-06", "rouge", "un format tri ≥ M exige une nage continue déclarée (gate type S10)", () => {
-  const s = src("sports/tri/index.ts");
-  const existe = /swim_continuous|nage_continue|Prereq|prereq/.test(s);
-  return { ok: existe, detail: "aucun prérequis de nage continue dans sports/tri/index.ts — le gate S10 existe pour le swimrun, pas pour le tri" };
+// ---- T-06 · prérequis de nage continue en triathlon (B-17) -----------------
+// DEUX ÉCRITURES SYNTAXIQUES AVANT CELLE-CI, LES DEUX FAUSSES, ET ELLES RESTENT ÉCRITES.
+//   (1) la première cherchait `swim_continuous` dans tri/index.ts **+ answerSchema.ts** et rendait
+//       VERT : ce champ existe bien dans le schéma… parce que c'est celui du SWIMRUN, qui le
+//       partage. Le test matchait le gate d'un AUTRE sport et concluait que celui du tri existait ;
+//   (2) la seconde, scopée au module tri, cherchait `/prereq|nage_continue/` — B-17 livré, elle
+//       serait restée ROUGE, la règle ne portant aucun de ces mots. Un test qui exige un
+//       VOCABULAIRE au lieu d'un COMPORTEMENT échoue dans les deux sens.
+// C'est la règle 15 : on mesure ce qui s'EXÉCUTE. Le test observe désormais le plan LIVRÉ, sur les
+// quatre propriétés que B-17 promet — et il porte les deux défauts §14 (D1 : une seule par
+// semaine ; D2 : livré == cible au mètre près, critère EXACT, « un bloc dont la distance porte un
+// sens ne tolère pas de tolérance »).
+T("T-06", "vert", "B-17 — nage continue prescrite en tri : gate, une par semaine, montée monotone, livré == cible", () => {
+  // 1 650 m à 1'50/100 m = 30,25 min : au-dessus du plancher S10 de 30 min, donc le gate est
+  // satisfait pour les quatre formats et AUCUN n'est rabattu. La prémisse est assertée plus bas :
+  // sans elle, un profil rabattu au sprint rendrait le test vert sur un format qu'il ne nomme pas
+  // (c'est exactement ce que ma première sonde a fait, cf. `scripts/sondeB17.mjs`).
+  const base = { sport: "tri", intent: "competition", level: "inter", history: "confirme",
+    dispo: "quotidienne", doubles: "non", sessions_max: "6", age: "35", sex: "H", weight: "75",
+    vol_max: "12", vol_recent: "6", injury: "aucune", med_pain: "non", med_dizzy: "non",
+    med_treat: "non", pace_known: "oui", pace: "5:00", ftp_known: "oui", ftp: "220",
+    css_known: "oui", css: "1:50", terrain: "route", milieu: "bassin" };
+  const lundi = () => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; };
+  const dans = (n) => { const d = lundi(); d.setDate(d.getDate() + n * 7 - 1); return d.toISOString().slice(0, 10); };
+  const CONT = /^Nage continue/;
+  const bad = [], vus = [];
+
+  // (a) LE GATE MORD — une continuité déclarée trop courte pour le format rabat le format.
+  //     800 m = 14,7 min : satisfait le sprint, aucun autre.
+  {
+    const p = globalThis.EBV2.buildPlan("tri", { ...base, format: "Full", longest_swim_m: "800", race_date: dans(36) });
+    const d = (p._v2?.decisions ?? []).find((x) => x.id === "B17-continuite");
+    if (!d || !/rabattu/i.test(String(d.what ?? ""))) bad.push("gate : Full à 800 m de continuité déclarée n'est pas rabattu");
+    else vus.push("gate ✓ " + d.val);
+  }
+  // (b) LE GATE LAISSE PASSER ce qu'il doit laisser passer, et la prescription tient.
+  for (const [format, h] of [["M", 18], ["70.3", 26], ["Full", 36], ["Full", 42]]) {
+    const p = globalThis.EBV2.buildPlan("tri", { ...base, format, longest_swim_m: "1650", race_date: dans(h) });
+    const id = `${format}/${h}`;
+    if ((p._v2?.decisions ?? []).some((x) => x.id === "B17-continuite" && /rabattu/i.test(String(x.what ?? "")))) {
+      bad.push(`${id} : PRÉMISSE ROMPUE — le format est rabattu, la ligne mesurerait un autre format`);
+      continue;
+    }
+    const paliers = [];
+    for (const w of p.weeks ?? []) {
+      const conts = (w.days ?? []).flatMap((d) => (d.sessions ?? []).filter((s) => s.d === "sw" && CONT.test(String(s.name ?? ""))));
+      // D1 — le créneau `facile2` est une CATÉGORIE (29 semaines sur 308 en portent deux jours) :
+      // sans départage explicite, les deux jours recevaient la même nage continue.
+      if (conts.length > 1) bad.push(`${id} S${w.num} : ${conts.length} nages continues dans la MÊME semaine`);
+      for (const s of conts) {
+        const cible = +(String(s.name).match(/(\d+)\s*m d'affilée/)?.[1] ?? 0);
+        const livre = (s.steps ?? []).filter((st) => st.role === "body")
+          .reduce((t, st) => t + (st.distanceM || 0) * (st.reps || 1), 0);
+        // D2 — EXACT, pas approché : une différence d'un mètre signifie qu'une passe non
+        // identifiée touche encore le bloc (cas O-26, `blockBounds` réécrivait le plancher).
+        if (livre !== cible) bad.push(`${id} S${w.num} : livré ${livre} m ≠ cible ${cible} m`);
+        paliers.push(cible);
+      }
+    }
+    if (!paliers.length) bad.push(`${id} : aucune nage continue prescrite`);
+    // La MONTÉE est l'objet de la règle : un test unique à la fin ne laisse pas le temps de
+    // corriger ce qu'on y apprend. Strictement croissante, et le dernier palier EST la distance.
+    for (let i = 1; i < paliers.length; i++) if (paliers[i] <= paliers[i - 1]) bad.push(`${id} : palier ${i + 1} (${paliers[i]} m) ≤ le précédent (${paliers[i - 1]} m)`);
+    if (paliers.length && paliers[paliers.length - 1] !== TRI_SWIM[format].dist) bad.push(`${id} : dernier palier ${paliers[paliers.length - 1]} m ≠ distance de course ${TRI_SWIM[format].dist} m`);
+    vus.push(`${id} ${paliers.join("→")}`);
+  }
+  return { ok: !bad.length, detail: bad.length ? bad.slice(0, 6).join(" · ") : vus.join(" · ") };
 });
 
 // ---- T-07 · délai excentrique de 48 h, FRONTIÈRES DE SEMAINE comprises -----
@@ -797,6 +855,13 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 //     heures et le pic livré bouge de quelques minutes, donc quatre profils traversent la
 //     tolérance de 0,1 h. Elle appartient à la famille encore ouverte (O-35/O-36 : ce que le
 //     point fixe RETIRE n'est déclaré par aucun maillon) et ne se ferme pas ici.
+// ⚠ VOLONTAIREMENT NON RE-ÉPINGLÉ (B-17 §15, 16/08/2026). Le cliquet dérive depuis `858c0c5` —
+// mesuré S1 3 · S4 341 · S5 520 — et la cause est **D3**, pas un correctif : le gate B-17 rabat
+// le format de **117 profils tri sur 148** parce qu'aucune question ne collecte `longest_swim_m`
+// pour un triathlète. Re-épingler photographierait cet état comme la référence, exactement ce
+// qu'on refuse de faire au golden pour la même raison. Ces trois valeurs sont celles de `cf392af`
+// (avant B-17) : T-27 redeviendra vert de lui-même quand D3 sera arbitré, et reste d'ici là le
+// détecteur le moins cher de sa présence.
 const SCEAU_ATTENDU = { S1: 4, S4: 353, S5: 513 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
@@ -1145,7 +1210,6 @@ const ROUGES_ATTENDUS = {
   "T-03": "B-01 — plafond de la sortie longue (arbitrage 13/08 : indexé volume, jamais devant C30)",
   "T-04": "B-02 — plafond de temps dur proportionnel (arbitrage 13/08 : 12 %, bornes 25-60, impact)",
   "T-05": "B-03 — interlock modéré/plancher de facile (C26d arbitré avec B-02a)",
-  "T-06": "B-17 — prérequis de nage continue en triathlon",
   "T-08": "N-02 — refonte nutrition (séances de répétition nutritionnelle en spécifique)",
   "T-09": "A-02 — tables DUA_* mortes de duathlon/tables.ts",
   "T-10": "A-04 — champ sensitivity sur chaque entrée de PROVENANCE",

@@ -11,7 +11,7 @@ import { TRI_SWIM, TRI_BIKE, TRI_RUN, TRI_BIKE_KM, TRI_TRANSITION } from "../../
 import { continuityGate, palierCount, palierFraction } from "../../engine/swimContinuity.ts";
 
 export function buildTriSessions(kit: SessionKit): V1Session[] {
-  const { r, a, fmt, slot, phase, prog, weekNum, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
+  const { r, a, fmt, slot, phase, prog, weekNum, slotIdx, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
   const runInj = inj.list.includes("course");
   const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] } as Record<string, [number, number]>)[phase] || [0.5, 0.8];
   const PT = (lo: number, hi: number) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
@@ -58,15 +58,21 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
   // accepte une preuve en BASSIN pour une capacité en EAU LIBRE). Découvrir trois semaines avant
   // l'épreuve que l'eau libre est bien plus dure laisse le temps de s'inquiéter, pas celui de
   // s'adapter — elle tombe donc TÔT, indépendamment du palier de distance atteint.
-  // UNE SEULE PAR SEMAINE, ET LA MONTÉE EST MONOTONE. Deux corrections trouvées au rendu :
-  //   · `swMain` est poussée depuis DEUX créneaux (`dur1` en doubles, `facile2` sinon) — un 70.3
-  //     recevait donc DEUX nages continues la même semaine. La transformation est bornée au
-  //     créneau `facile2`, celui qui porte la nage principale hors doubles ;
-  //   · les distances livrées n'étaient pas croissantes (Full : 1 763 → 3 295 → **2 090**) parce
-  //     que les passes de volume rabotent après coup. Le bloc est épinglé `floor = cap = cible`,
-  //     et le PLANCHER est ce qui compte : sans lui, la dernière continue était la plus COURTE,
-  //     c'est-à-dire l'inverse d'une progression.
-  if (phase === "spec" && slot === "facile2" && !inj.shoulder && !medHold) {
+  // UNE SEULE PAR SEMAINE, ET LA MONTÉE EST MONOTONE. Deux défauts mesurés au rendu, chacun avec
+  // sa cause propre — et la première hypothèse (« la transformation n'a pas d'ordinal ») était
+  // FAUSSE : `k` dérive de `weekNum` et de `spec.start`, il est parfaitement ordonné.
+  //   · D1 — le créneau `facile2` est une CATÉGORIE, pas une position : mesuré, **29 semaines
+  //     sur 308** portent DEUX jours `facile2` (le gabarit de `weekBuilder` le déclare deux
+  //     fois). Les deux jours recevaient donc la même nage continue, avec le même `bnd`. Le
+  //     départage est EXPLICITE et écrit — `slotIdx === 0`, le premier jour du créneau en ordre
+  //     calendaire —, jamais l'ordre d'itération d'une liste, qui serait déterministe par
+  //     ACCIDENT et ferait revenir D1 sous forme de flake au premier tri ajouté ailleurs ;
+  //   · D2 — les distances livrées n'étaient pas croissantes (Full : 1 763 → 3 295 → **2 090**),
+  //     et **19 paliers sur 31** tombaient sous leur cible, jusqu'à −1 710 m. Le bloc était déjà
+  //     `floor = cap = cible`, mais `blockBounds` REMPLACE le plancher déclaré d'un bloc en
+  //     distance par le sien (`Math.min(bnd.floor, 750)`, cas O-26) : l'épinglage était inerte.
+  //     Il porte désormais `pinned: true`, que `blockBounds` rend tel quel.
+  if (phase === "spec" && slot === "facile2" && slotIdx === 0 && !inj.shoulder && !medHold) {
     const g = continuityGate(a as Record<string, unknown>);
     const spec = (r.phases || []).find((ph) => ph.id === "spec");
     if (g && spec) {
@@ -90,7 +96,7 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
           // stimulus, exactement comme la durée d'une répétition l'est dans un intervalle (I14).
           // La réduire ne rend pas la séance plus facile, elle lui retire son objet.
           steps: [Wm(200, "souple, montée progressive"),
-            Object.assign(Bd(1, cible, "sw.aero", "", ", SANS ARRÊT", false, "sw"), { bnd: { floor: cible, cap: cible } }),
+            Object.assign(Bd(1, cible, "sw.aero", "", ", SANS ARRÊT", false, "sw"), { bnd: { floor: cible, cap: cible, pinned: true } }),
             Cm(150, "relâché")],
         };
       }

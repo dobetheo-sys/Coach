@@ -50,6 +50,8 @@
     "mesure:o44b": "node scripts/mesureO44b.mjs",
     "mesure:o46": "node scripts/mesureO46.mjs",
     "mesure:b17": "node scripts/mesureB17.mjs",
+    "sonde:b17": "node scripts/sondeB17.mjs",
+    "sonde:b17rabat": "node scripts/sondeB17rabat.mjs",
     "mesure:c22": "node scripts/mesureC22.mjs",
     "ventile:o42": "node scripts/ventilationO42.mjs",
     "registry:check": "node scripts/registryCheck.mjs",

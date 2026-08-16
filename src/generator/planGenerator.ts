@@ -1949,6 +1949,16 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   const brickRF = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1; // C21
   function blockBounds(b: V1Step, s: BoundedSession): { floor: number; cap: number } {
     if (b.bnd) {
+      // ÉPINGLÉ (B-17) — LE PLANCHER DÉCLARÉ EST RENDU TEL QUEL, ET C'EST LE CAS O-26.
+      // Toutes les branches ci-dessous remplacent le plancher du bloc par un « plancher
+      // digne » de leur cru (750 m en distance, 30 min en durée) : c'est la décision de
+      // l'audit v6 (D3-D7/D10, « les planchers de séance ne gagnent plus contre la courbe »),
+      // juste tant que le plancher n'est qu'un minimum de dignité. Il ne l'est pas quand la
+      // DIMENSION EST LE STIMULUS — une nage continue de 3 800 m ramenée à 1 870 n'est pas
+      // une séance plus facile, c'est une autre séance. Même raisonnement qu'I14 sur la durée
+      // d'une répétition d'intervalle. Mesuré sans cette branche : 19 paliers sur 31 livrés
+      // en dessous de leur cible, jusqu'à −1 710 m.
+      if (b.bnd.pinned) return { floor: b.bnd.floor, cap: b.bnd.cap };
       // Un plafond marqué `hard` est une règle du manifeste (C23…) : la sonde de capacité peut
       // élargir les plafonds ordinaires pour tenir la promesse de volume, jamais celui-là.
       // Sans cette distinction, l'excédent de volume refusé par les blocs de qualité (R4.1)

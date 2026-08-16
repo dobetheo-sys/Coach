@@ -32,8 +32,15 @@ export interface V1Step {
   leg?: "bike" | "run"; // brick
   d?: string; // discipline du step (nage dans tri, CAP du brick…)
   /** Bornes du bloc. `hard: true` = plafond du MANIFESTE, jamais mis à l'échelle par la sonde
-   *  de capacité (C23 : 3 h de sortie longue pour un débutant, par exemple). */
-  bnd?: { floor: number; cap: number; hard?: boolean };
+   *  de capacité (C23 : 3 h de sortie longue pour un débutant, par exemple).
+   *
+   *  `pinned: true` = LA DIMENSION DU BLOC **EST** LE STIMULUS, elle ne se négocie ni par le
+   *  haut ni par le bas. C'est le pendant, côté PLANCHER, de ce que `hard` fait au plafond —
+   *  et il fallait les deux : `blockBounds` écrase le plancher déclaré d'un bloc en distance
+   *  par son « plancher digne » (`Math.min(b.bnd.floor, 750)`, O-26), ce qui rendait
+   *  `floor = cap = 3 800 m` inopérant sans que rien ne le signale. Un bloc épinglé traverse
+   *  les passes de volume tel qu'il a été construit ; le reste de la semaine absorbe. */
+  bnd?: { floor: number; cap: number; hard?: boolean; pinned?: boolean };
   repCap?: number; // V2.2 — plafond de répétitions d'un bloc de qualité (le scaling ne le dépasse jamais)
   // ---- R7 TRAIL : un bloc de trail ne se décrit pas comme un bloc de route ----
   /** Pente du bloc — PILOTE LE RENDU DE L'INTENSITÉ (spec R7 §7, le verrou du module) :

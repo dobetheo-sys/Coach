@@ -3190,6 +3190,11 @@ class UnknownSportError extends Error {
                
                                                                                               
                   
+                                                                                           
+                                                                                                
+                                                                                              
+                                                               
+                  
               
                     
                     
@@ -7011,7 +7016,21 @@ function auditPlan(plan        , opts            = {})            {
 
 
 
-function buildSessions(ctx            , slot      , phase        , prog        , weekNum = 1)              {
+/**
+ * `slotIdx` — RANG DU JOUR PARMI LES JOURS DE SA SEMAINE QUI PORTENT LE MÊME CRÉNEAU.
+ *
+ * Mesuré (B-17 §14) : `facile2` est une CATÉGORIE, pas une position — **29 semaines sur 308**
+ * portent DEUX jours `facile2`, le gabarit de `weekBuilder` le déclarant deux fois. Une règle
+ * qui prescrit « une séance par semaine » n'a donc pas de sujet tant qu'on ne sait pas LAQUELLE
+ * des deux, et se rabattre sur l'ordre d'itération serait déterministe par ACCIDENT : un tri
+ * ajouté ailleurs déplacerait la séance sans que rien ne le signale.
+ *
+ * Le critère de départage est donc posé et écrit : **le premier jour du créneau dans l'ordre
+ * calendaire de la semaine** (`slotIdx === 0`). C'est un index STABLE — les jours sont datés par
+ * construction (`d.date = start + i × 1 j`), l'ordre ne dépend d'aucune liste intermédiaire. Il
+ * vaut 0 par défaut, ce qui laisse les chemins de reconstruction se comporter comme avant.
+ */
+function buildSessions(ctx            , slot      , phase        , prog        , weekNum = 1, slotIdx = 0)              {
   const r = ctx.r;
   const a = r.profile;
   const sp = a.sport, fmt = a.format;
@@ -7071,7 +7090,7 @@ function buildSessions(ctx            , slot      , phase        , prog        ,
   // d'être dupliquée par sport. Un sport inconnu lève (`UnknownSportError`) au lieu de
   // retourner un tableau vide, qui produisait des jours muets sans que personne le voie.
   const kit             = {
-    r, a, sp: sp          , fmt, slot, phase, prog, weekNum,
+    r, a, sp: sp          , fmt, slot, phase, prog, weekNum, slotIdx,
     lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, G, swimDrillGlossary,
     S2, P, W, Wm, C, Cm, B, Bd,
   };
@@ -7609,7 +7628,7 @@ registerSport({
 
 
 function buildTriSessions(kit            )              {
-  const { r, a, fmt, slot, phase, prog, weekNum, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
+  const { r, a, fmt, slot, phase, prog, weekNum, slotIdx, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
   const runInj = inj.list.includes("course");
   const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] }                                    )[phase] || [0.5, 0.8];
   const PT = (lo        , hi        ) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
@@ -7656,15 +7675,21 @@ function buildTriSessions(kit            )              {
   // accepte une preuve en BASSIN pour une capacité en EAU LIBRE). Découvrir trois semaines avant
   // l'épreuve que l'eau libre est bien plus dure laisse le temps de s'inquiéter, pas celui de
   // s'adapter — elle tombe donc TÔT, indépendamment du palier de distance atteint.
-  // UNE SEULE PAR SEMAINE, ET LA MONTÉE EST MONOTONE. Deux corrections trouvées au rendu :
-  //   · `swMain` est poussée depuis DEUX créneaux (`dur1` en doubles, `facile2` sinon) — un 70.3
-  //     recevait donc DEUX nages continues la même semaine. La transformation est bornée au
-  //     créneau `facile2`, celui qui porte la nage principale hors doubles ;
-  //   · les distances livrées n'étaient pas croissantes (Full : 1 763 → 3 295 → **2 090**) parce
-  //     que les passes de volume rabotent après coup. Le bloc est épinglé `floor = cap = cible`,
-  //     et le PLANCHER est ce qui compte : sans lui, la dernière continue était la plus COURTE,
-  //     c'est-à-dire l'inverse d'une progression.
-  if (phase === "spec" && slot === "facile2" && !inj.shoulder && !medHold) {
+  // UNE SEULE PAR SEMAINE, ET LA MONTÉE EST MONOTONE. Deux défauts mesurés au rendu, chacun avec
+  // sa cause propre — et la première hypothèse (« la transformation n'a pas d'ordinal ») était
+  // FAUSSE : `k` dérive de `weekNum` et de `spec.start`, il est parfaitement ordonné.
+  //   · D1 — le créneau `facile2` est une CATÉGORIE, pas une position : mesuré, **29 semaines
+  //     sur 308** portent DEUX jours `facile2` (le gabarit de `weekBuilder` le déclare deux
+  //     fois). Les deux jours recevaient donc la même nage continue, avec le même `bnd`. Le
+  //     départage est EXPLICITE et écrit — `slotIdx === 0`, le premier jour du créneau en ordre
+  //     calendaire —, jamais l'ordre d'itération d'une liste, qui serait déterministe par
+  //     ACCIDENT et ferait revenir D1 sous forme de flake au premier tri ajouté ailleurs ;
+  //   · D2 — les distances livrées n'étaient pas croissantes (Full : 1 763 → 3 295 → **2 090**),
+  //     et **19 paliers sur 31** tombaient sous leur cible, jusqu'à −1 710 m. Le bloc était déjà
+  //     `floor = cap = cible`, mais `blockBounds` REMPLACE le plancher déclaré d'un bloc en
+  //     distance par le sien (`Math.min(bnd.floor, 750)`, cas O-26) : l'épinglage était inerte.
+  //     Il porte désormais `pinned: true`, que `blockBounds` rend tel quel.
+  if (phase === "spec" && slot === "facile2" && slotIdx === 0 && !inj.shoulder && !medHold) {
     const g = continuityGate(a                           );
     const spec = (r.phases || []).find((ph) => ph.id === "spec");
     if (g && spec) {
@@ -7688,7 +7713,7 @@ function buildTriSessions(kit            )              {
           // stimulus, exactement comme la durée d'une répétition l'est dans un intervalle (I14).
           // La réduire ne rend pas la séance plus facile, elle lui retire son objet.
           steps: [Wm(200, "souple, montée progressive"),
-            Object.assign(Bd(1, cible, "sw.aero", "", ", SANS ARRÊT", false, "sw"), { bnd: { floor: cible, cap: cible } }),
+            Object.assign(Bd(1, cible, "sw.aero", "", ", SANS ARRÊT", false, "sw"), { bnd: { floor: cible, cap: cible, pinned: true } }),
             Cm(150, "relâché")],
         };
       }
@@ -9399,12 +9424,25 @@ function buildDays(r              , refs      , hz         )           {
     ? mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - (r.weeks - 1) * 7 * MS
     : mondayOf(isFinite(anchorT) ? anchorT : Date.now());
   const iso = (t        ) => new Date(t).toISOString().slice(0, 10);
+  // B-17 — LE RANG DU JOUR DANS SON CRÉNEAU, calculé ici parce que c'est le seul endroit où la
+  // semaine ENTIÈRE est visible en ordre calendaire. `days` est daté par son propre index, donc
+  // ce rang ne dépend d'aucun tri intermédiaire : c'est l'index STABLE que le départage demande.
+  const rangDansCreneau = new Map                ();
+  {
+    const vus = new Map                ();
+    for (const d of days) {
+      const cle = d.week + "|" + d.slot;
+      const n = vus.get(cle) || 0;
+      rangDansCreneau.set(d, n);
+      vus.set(cle, n + 1);
+    }
+  }
   days.forEach((d, i) => {
     const ph = d.phase ;
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
     d.date = iso(start + i * MS);
-    d.sessions = buildSessions(ctx, d.slot                                       , d.phaseId, d.prog, d.week);
+    d.sessions = buildSessions(ctx, d.slot                                       , d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0);
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
       else if (s.min == null) s.min = 0;
@@ -12096,6 +12134,16 @@ function generatePlan(profile                , opts                             
   const brickRF = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1; // C21
   function blockBounds(b        , s                )                                 {
     if (b.bnd) {
+      // ÉPINGLÉ (B-17) — LE PLANCHER DÉCLARÉ EST RENDU TEL QUEL, ET C'EST LE CAS O-26.
+      // Toutes les branches ci-dessous remplacent le plancher du bloc par un « plancher
+      // digne » de leur cru (750 m en distance, 30 min en durée) : c'est la décision de
+      // l'audit v6 (D3-D7/D10, « les planchers de séance ne gagnent plus contre la courbe »),
+      // juste tant que le plancher n'est qu'un minimum de dignité. Il ne l'est pas quand la
+      // DIMENSION EST LE STIMULUS — une nage continue de 3 800 m ramenée à 1 870 n'est pas
+      // une séance plus facile, c'est une autre séance. Même raisonnement qu'I14 sur la durée
+      // d'une répétition d'intervalle. Mesuré sans cette branche : 19 paliers sur 31 livrés
+      // en dessous de leur cible, jusqu'à −1 710 m.
+      if (b.bnd.pinned) return { floor: b.bnd.floor, cap: b.bnd.cap };
       // Un plafond marqué `hard` est une règle du manifeste (C23…) : la sonde de capacité peut
       // élargir les plafonds ordinaires pour tenir la promesse de volume, jamais celui-là.
       // Sans cette distinction, l'excédent de volume refusé par les blocs de qualité (R4.1)
