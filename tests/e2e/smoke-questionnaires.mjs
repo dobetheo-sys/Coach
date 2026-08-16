@@ -164,7 +164,21 @@ for (const sport of SPORTS) {
     "U19 — une question FACULTATIVE n'est jamais réclamée (« Date (si connue) » reste dehors)");
   ok(entame.live === "polite", "U19 — le message est annoncé aux lecteurs d'écran (aria-live)");
 
-  await page.evaluate(() => { const g = document.querySelector('.opts[data-key="format"]'); if (g) g.querySelector(".opt").click(); });
+  // D3 — LE REQUIS DU TRI A CHANGÉ PAR DÉCISION, et ce critère l'encode : le format ne suffit
+  // plus, la continuité de nage et le milieu sont exigés (arbitrage D3 §1 — sans eux le gate
+  // B-17 lit une réponse que le produit ne collecte pas). On répond donc à TOUT le requis, ce
+  // que ce critère a toujours voulu dire ; c'est la liste qui s'est allongée, pas la propriété.
+  await page.evaluate(() => {
+    for (const k of ["format", "longest_swim_known", "milieu"]) {
+      const g = document.querySelector('.opts[data-key="' + k + '"]');
+      if (g) g.querySelector(".opt").click();
+    }
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    const i = document.querySelector('[data-input="longest_swim_m"]');
+    if (i) { i.value = "1200"; i.dispatchEvent(new Event("input", { bubbles: true })); i.dispatchEvent(new Event("change", { bubbles: true })); }
+  });
   await page.waitForTimeout(200);
   const complet = await lire();
   ok(!complet.bloque && !complet.visible,

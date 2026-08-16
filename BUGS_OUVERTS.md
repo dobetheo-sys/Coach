@@ -5315,6 +5315,26 @@ plafond par la place retiré                       ✓         ✖          ✓
 Trois cassures, trois rouges — mais seulement APRÈS avoir ajouté le cliquet, et la première ne
 l'était pas avant.
 
+#### 5ter · Une clé exigée par `valid()` doit être ATTEIGNABLE dans le même écran
+
+`smoke-questionnaires` a rougi sur **U19**, et pas pour la raison attendue. Ma première écriture
+mettait le nombre de mètres dans une BRANCHE (`branch("lswB", longest_swim_known === "oui", …)`) :
+il n'existe alors dans le DOM qu'APRÈS le choix. Or la dérivation d'U19 énumère les clés
+**présentes**, les remplit d'une valeur plausible, puis retire une clé à la fois — et
+`valeurPlausible` coche la première option, donc « Je la connais », sans jamais pouvoir remplir le
+nombre. `valid(plein)` restait faux, la sonde tombait sur son repli « nommer tout ce qui est vide »,
+et **elle réclamait « Date (si connue) » — une question FACULTATIVE**, ce qu'U19 interdit
+explicitement depuis son écriture.
+
+Le correctif suit d'ailleurs mieux l'arbitrage : *« Ta plus longue nage sans t'arrêter → mètres, ou
+je ne sais pas »* décrit **une seule question**, pas deux imbriquées. Les deux champs vivent dans le
+même `.q`, et le message se **déduplique par LIBELLÉ** — sans quoi il nommait deux fois « Ta plus
+longue nage », ce qui a l'air cassé : on nomme des QUESTIONS à l'athlète, pas des clés.
+
+Le dernier critère d'U19 (« tout le requis donné → le bouton s'active ») est mis à jour, pas
+contourné : c'est la LISTE du requis qui s'est allongée par décision, la propriété gardée est
+inchangée.
+
 #### 6 · Et j'ai effacé une heure de travail avec `git checkout`, pour la SECONDE fois du dépôt
 
 Pour restaurer une cassure de contre-preuve, j'ai fait `git checkout -- src/engine/reasoningEngine.ts`

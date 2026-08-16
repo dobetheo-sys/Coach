@@ -186,18 +186,19 @@ function buildFreeSteps(){
        // ne détecte pas (il vérifie qu'une clé AGIT, pas qu'on puisse y répondre). Conséquence
        // mesurée avant correction : 117 profils tri sur 148 rabattus, dont 56 Full → Sprint.
        ? '<div class="q"><span class="q-label">Quel objectif ?</span><div class="opts" data-key="format">'+fmtOpts+'</div></div>'
-         +'<div class="q"><span class="q-label">Ta plus longue nage sans t\'arr\u00eater</span><div class="q-def">En eau libre le risque ne se voit pas avant d\'arriver : pas de mur, pas de fond. C\'est la continuit\u00e9, pas le volume, qui d\u00e9cide le jour J.</div><div class="opts" data-key="longest_swim_known">'+opt("oui","Je la connais")+opt("non","Je ne sais pas")+'</div><div id="lswB"></div></div>'
+         // D3 — UNE SEULE QUESTION, DEUX CHAMPS DANS LE MÊME `.q`, ET L'INPUT N'EST PAS DANS UNE
+         // BRANCHE. Ma première écriture mettait le nombre dans `branch("lswB", …)` : il n'existe
+         // alors dans le DOM qu'APRÈS le choix « Je la connais », donc la sonde d'U19 — qui
+         // énumère les clés PRÉSENTES, les remplit d'une valeur plausible et retire une clé à la
+         // fois — ne pouvait jamais satisfaire `valid()`. Elle tombait sur son repli « nommer tout
+         // ce qui est vide » et **réclamait « Date (si connue) », une question FACULTATIVE**.
+         // Une clé exigée par `valid()` doit être ATTEIGNABLE dans le même écran, sans quoi la
+         // dérivation d'U19 dégénère — c'est le contrat que R11.1 pose entre les deux.
+         +'<div class="q"><span class="q-label">Ta plus longue nage sans t\'arr\u00eater</span><div class="q-def">En eau libre le risque ne se voit pas avant d\'arriver : pas de mur, pas de fond. C\'est la continuit\u00e9, pas le volume, qui d\u00e9cide le jour J. Bassin accept\u00e9 : le plan tient compte de l\'\u00e9cart avec l\'eau libre.</div><div class="opts" data-key="longest_swim_known">'+opt("oui","Je la connais")+opt("non","Je ne sais pas")+'</div><input type="number" min="50" max="10000" data-input="longest_swim_m" placeholder="800 (m\u00e8tres)"></div>'
          +'<div class="q"><span class="q-label">O\u00f9 nages-tu ?</span><div class="opts" data-key="milieu">'+opt("bassin","Bassin")+opt("ow","Eau libre")+opt("mixte","Les deux")+'</div></div>'
        : '<div class="q"><span class="q-label">Quel objectif ?</span><div class="opts" data-key="format">'+fmtOpts+'</div></div>')
      +'<div class="q"><span class="q-label">Date (si connue)</span><input type="date" data-input="race_date"></div>';},
    branches(a){
-     if(S.sport==="tri"){
-       // Le nombre n'est demandé QUE si l'athlète dit le connaître — sinon « je ne sais pas » se
-       // confondrait avec un champ qu'on a oublié de remplir, et c'est justement la distinction
-       // que D3 §1 exige.
-       branch("lswB", a.longest_swim_known==="oui", '<div class="branch"><div class="q"><span class="q-label">Combien de m\u00e8tres, d\'affil\u00e9e et sans t\'arr\u00eater ?</span><div class="q-def">Bassin accept\u00e9 : le plan tient compte de l\'\u00e9cart avec l\'eau libre.</div><input type="number" min="50" max="10000" data-input="longest_swim_m" placeholder="800"></div></div>');
-       return;
-     }
      if(S.sport!=="swimrun")return;
      branch("teamB",a.team_mode!=="solo",'<div class="branch"><div class="q"><span class="q-label">Écart de niveau à la nage avec ton binôme (s/100m, optionnel)</span><div class="q-def">0 = même niveau. Sert à calculer l\'effet de longe : attachée, l\'équipe se rapproche de la vitesse du plus rapide.</div><input type="number" min="0" max="60" data-input="team_swim_gap_sec" placeholder="0"></div></div>');
      // S10 — prérequis d'entrée : on REFUSE de générer un format long en dessous, et on dit pourquoi.
@@ -835,7 +836,11 @@ function refreshNav(){
     const entame=[...root.querySelectorAll(".opts[data-key]")].some(e=>e.querySelector(".opt.sel"))
       ||[...root.querySelectorAll("[data-input]")].some(e=>e.value);
     if(manque.length&&entame){
-      z.textContent="Il manque encore "+(manque.length>1?"— ":"")+manque.map(k=>"« "+libelleDe(k,root)+" »").join(", ");
+      // D3 — DÉDUPLIQUÉ PAR LIBELLÉ : deux clés peuvent vivre dans la MÊME question (« ta plus
+      // longue nage » porte le choix ET le nombre), et la lister deux fois donnerait un message
+      // qui a l'air cassé. On nomme des QUESTIONS à l'athlète, pas des clés.
+      const libs=[...new Set(manque.map(k=>libelleDe(k,root)))];
+      z.textContent="Il manque encore "+(libs.length>1?"— ":"")+libs.map(l=>"« "+l+" »").join(", ");
       z.style.display="";
     } else z.style.display="none";
   }
