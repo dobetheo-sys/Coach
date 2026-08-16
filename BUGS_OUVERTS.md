@@ -4092,3 +4092,73 @@ quoi: le plancher generique de la rampe rend vol_recent 0 et 1 identiques
 attendu: O45-REPRODUIT
 cmd: node scripts/mesureO43b.mjs 2>/dev/null | grep -qE "^ +0 .*68 min" && node scripts/mesureO43b.mjs 2>/dev/null | grep -qE "^ +1 .*68 min" && echo "O45-REPRODUIT"
 ```
+
+### O-44 §6 — DEUX RECTIFICATIONS À MA §2, ET LA DÉRIVATION SE MORD LA QUEUE
+
+#### (a) Les séances de 3 minutes sont en AFFÛTAGE et en RÉCUPÉRATION, où le plancher est exempté
+
+J'ai écrit « la pathologie est la norme » sur une distribution qui mélangeait les semaines de
+charge et celles où une séance courte est **correcte par conception**. Séparées :
+
+```
+SEMAINES DE CHARGE   8 309 séances · p10 16 · médiane 20 · p90 40 · min 12 · 7,1 % sous 15 min
+AFFÛTAGE + RÉCUP     2 582 séances · p10 13 · médiane 16 · p90 24 · min  3 · 11,4 % sous 15 min
+```
+
+La séance de **3 minutes** est en affûtage. Celle de **12 minutes** est le vrai minimum des
+semaines de charge. Le tableau que j'ai publié plus haut reste vrai globalement et **induit en
+erreur** : dixième occurrence de « nommer une grandeur et en mesurer une voisine », et la deuxième
+de la journée dans une phrase de rapport.
+
+#### (b) C24/C24b ne sont PAS violés — mesuré à 0 sur 8 309
+
+```
+séances de nage en mètres, hors affûtage et hors récup : 8 309
+sous le plancher C24 (750 m) / C24b (600 m débutant)   : 0  (0,0 %)
+```
+
+Le plancher de DISTANCE tient parfaitement. Ce n'est donc pas une garde à réparer : c'est bien
+une grandeur qui manque.
+
+#### (c) ⚠ MAIS LA DÉRIVATION PROPOSÉE SE MORD LA QUEUE
+
+Le plancher de durée **dérivé d'une borne de distance vaut `distance ÷ vitesse`** — il est donc
+**inversement proportionnel à la vitesse de l'athlète** :
+
+```
+750 m (plancher C24) en sw.easy →  12,6 min à CSS 1:30
+                                   15,4 min à CSS 1:50
+                                   16,8 min à CSS 2:00
+                                   21,0 min à CSS 2:30
+```
+
+**Les 12 minutes observées SONT déjà ce plancher, appliqué à un nageur rapide.** Le plancher dérivé
+existe donc de fait, et il produit exactement la séance que le §2 juge absurde.
+
+Et la raison est structurelle : *« personne ne se déplace jusqu'à une piscine pour dix-sept minutes
+d'eau »* est une contrainte **LOGISTIQUE** — le trajet, le vestiaire, les 45 minutes autour coûtent
+la même chose quelle que soit la vitesse. Une dérivation depuis une distance est **PHYSIOLOGIQUE**
+et suit la vitesse. Les deux ne mesurent pas la même chose, et la dérivation donne le plancher le
+plus BAS à celui qui nage le plus vite — l'inverse de ce que l'argument du déplacement demande.
+
+**Ce que la mesure laisse ouvert, et qui est un vrai arbitrage** :
+
+1. **assumer la nature logistique** — un plancher ABSOLU en minutes (une constante nouvelle, ce que
+   le §2 voulait éviter), borné par `min(plancher, durée que le plafond de distance autorise)` pour
+   qu'aucune collision ne soit possible. La collision C15 disparaît par la borne, pas par la
+   dérivation.
+2. **dériver quand même**, en acceptant que le nageur rapide garde des séances de 12-13 min : la
+   règle est alors physiologique et cohérente, mais elle ne traite pas le cas qui a motivé le
+   ticket.
+3. **ne rien poser** et considérer que 12 min de nage à haute intensité pour un nageur rapide est
+   une séance légitime — auquel cas O-44 se ferme sur la mesure et O-45 reste seul.
+
+**Je ne tranche pas** : c'est un arbitrage entre une contrainte de vie non déclarée et une règle
+physiologique, exactement le type de décision que le manifeste réserve au fondateur.
+
+```verify
+id: O-44-derivation
+quoi: le plancher derive d'une distance suit la vitesse — 750 m valent 12,6 min a CSS 1:30
+attendu: O44-DERIVE-SUIT-VITESSE
+cmd: node -e "const css=90,mult=1.12;const min=(750/100)*(css*mult)/60;process.stdout.write(min<13?'O44-DERIVE-SUIT-VITESSE':'')"
+```
