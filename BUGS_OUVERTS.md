@@ -3944,3 +3944,36 @@ quoi: 8 % des seances de nage durent moins de 15 min, et aucun plancher de duree
 attendu: O44-REPRODUIT
 cmd: node scripts/mesureO44.mjs 2>/dev/null | grep -q "0–15 min" && ! grep -q "SWIM_SESSION_MIN_MIN" src/engine/constraintMatrix.ts && echo "O44-REPRODUIT"
 ```
+
+### O-43 §5 — LE SITE EXACT, MESURÉ : c'est la sonde V2.1, et elle CESSE DE MORDRE
+
+Instrumenté par la même expérience contrôlée que T-34 (`sw.easy` ×1,12 → ×1,30, rien d'autre) :
+
+```
+AVANT   volPeak 1.1   V2.1 : « 2,3h (au lieu de 2,5h) »        ← la sonde MORD
+APRÈS   volPeak 1.2   V2.1 : (pas émise — la sonde ne borne plus)
+```
+
+Le mécanisme est nommé et il n'a plus rien d'hypothétique. La sonde compare
+`capacityH < peakH × 0,95` :
+
+- `capacityH` est le clone SATURÉ mesuré **en minutes** → il MONTE avec la conversion ;
+- `peakH` (2,5 h) vient des plafonds déclarés → il est indifférent à la conversion.
+
+Avant : 2,3 < 2,375 → la sonde mord, `peakH := 2,3`. Après : la capacité passe au-dessus du seuil
+→ **la sonde ne mord plus**, `peakH` reste 2,5, et `courbe = Lw × peakH` monte de 11 %.
+
+**Recompter le même travail en plus de minutes DÉSARME le garde-fou qui limitait l'athlète.** C'est
+la règle 12, forme nouvelle, dans sa version la plus nette : la sonde mesure le contenu généré, et
+cette mesure est l'entrée du plafond.
+
+**Ceci rectifie mon §2** : `structurel` (la re-sonde, presque invariante à +1,0 %) n'est pas le
+site ; la PREMIÈRE sonde l'est, et c'est elle qui décide de `peakH`. Les deux portent le même
+chiffre à des instants différents du pipeline — famille des onze « une garantie vérifiée au milieu
+du pipeline ne vérifie que l'avant-dernier état », ici appliquée à une MESURE et non à une garantie.
+
+**Ce que l'issue 1 doit donc borner** : la grandeur que la sonde compare à `peakH`. Elle est
+aujourd'hui en minutes dérivées de la conversion ; il lui faut une expression invariante — en nage,
+les MÈTRES que la structure de la semaine peut porter, convertis une seule fois par une référence
+qui décrit l'athlète et non la zone. À écrire et à mesurer (règle 7) ; O-44 la recoupe, puisque
+borner la fréquence change ce que le clone saturé contient.
