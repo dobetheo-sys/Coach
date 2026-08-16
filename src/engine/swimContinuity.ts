@@ -23,17 +23,30 @@
  */
 import { TRI_SWIM } from "./predictor.ts";
 import { S10_PREREQ } from "../sports/swimrun/tables.ts";
+import { C22_MAX_WEEKLY_GROWTH, PHASE_PCTS } from "./constraintMatrix.ts";
 
 /** Vitesse de repli — la MÊME que `stepMin` (`baseRefs.css || 130`). Voir la note d'unité ci-dessous. */
 export const B17_CSS_FALLBACK_SEC = 130;
 
 /**
- * B-17 — LES PALIERS. Fractions croissantes de la distance de course, dérivées d'elle : aucune
- * constante de distance n'est posée ici. La FORME compte plus que les valeurs (arbitrage du
- * fondateur) : une MONTÉE, pas un test unique à la fin — un athlète qui découvre la distance
- * trois semaines avant l'épreuve n'a plus le temps de corriger ce qu'il y apprend.
+ * B-17 — LE NOMBRE MAXIMAL DE PALIERS. Les VALEURS ne sont plus tabulées : elles s'interpolent
+ * depuis le point de départ de l'ATHLÈTE (arbitrage D3 §3 du fondateur, 16/08/2026). L'ancienne
+ * table `[0.5, 0.7, 0.9, 1.0]` était une fraction de la distance de COURSE — « partir de 50 % de
+ * la distance de course ne sert pas quelqu'un à 200 m ; la progression doit partir de l'athlète ».
+ * Ce qui survit de la table est sa FORME : une MONTÉE, pas un test unique à la fin.
  */
-export const B17_PALIERS = [0.5, 0.7, 0.9, 1.0] as const;
+export const B17_PALIERS_MAX = 4;
+
+/**
+ * LA PART DU PLAN QUI PRÉCÈDE LA FIN DE LA PHASE SPÉCIFIQUE — dérivée de `PHASE_PCTS`, jamais
+ * réécrite. Le dernier palier tombe à la fin de `spec` : c'est cette travée, et non la course
+ * entière, que la progression a pour construire la continuité.
+ */
+export const B17_SPAN_PCT = PHASE_PCTS.filter((p) => ["base", "dev", "spec"].includes(p.id))
+  .reduce((t, p) => t + p.pct, 0);
+
+/** Le plus petit départ que la progression accepte, en mètres — deux longueurs de bassin. */
+const B17_DEPART_PLANCHER_M = 200;
 
 export interface ContinuityGate {
   /** Le seuil, en minutes : `min(30, durée de nage estimée en course)`. */
@@ -45,6 +58,20 @@ export interface ContinuityGate {
   satisfait: boolean;
   /** Ce qui manque, en minutes (0 si satisfait). */
   manqueMin: number;
+  /** D3 — d'où vient l'information, et les trois cas ne se valent pas. */
+  source: "mesure" | "inconnue-assumee" | "absente";
+  /** Le point de départ de la progression, en MÈTRES. Jamais une fraction de la course. */
+  departM: number;
+  /** La distance de course, en mètres. */
+  courseM: number;
+  /**
+   * D3 §3 — LA PROGRESSION PEUT-ELLE ATTEINDRE LA DISTANCE DE COURSE DEPUIS `departM` ?
+   * `null` quand la question n'a pas de sujet (continuité non mesurable) : on ne peut pas
+   * affirmer qu'une progression ne peut PAS partir d'un point qu'on ne connaît pas.
+   */
+  franchissable: boolean | null;
+  /** Ce que la rampe atteint au mieux depuis `departM`, en mètres — le chiffre du refus. */
+  atteignableM: number;
 }
 
 const secOf = (v: unknown): number | null => {
@@ -90,8 +117,9 @@ const secOf = (v: unknown): number | null => {
  * moteur estime déjà partout ailleurs, pas une inconnue irréductible.
  */
 export function continuityGate(a: {
-  format?: unknown; css?: unknown; css_known?: unknown; longest_swim_m?: unknown; milieu?: unknown;
-}): ContinuityGate | null {
+  format?: unknown; css?: unknown; css_known?: unknown; longest_swim_m?: unknown;
+  longest_swim_known?: unknown; milieu?: unknown;
+}, weeks?: number): ContinuityGate | null {
   const leg = TRI_SWIM[String(a.format ?? "")];
   if (!leg) return null; // format inconnu : pas de distance de course, pas de gate
   const css = (a.css_known === "oui" ? secOf(a.css) : null) ?? B17_CSS_FALLBACK_SEC;
@@ -101,9 +129,39 @@ export function continuityGate(a: {
   const courseMin = ((leg.dist / 100) * css * leg.factor) / 60;
   const seuilMin = Math.min(S10_PREREQ.minSwimContinuousMin, ((leg.dist / 100) * css * facteur) / 60);
   const m = parseFloat(String(a.longest_swim_m ?? ""));
-  const declareMin = isFinite(m) && m > 0 ? ((m / 100) * css) / 60 : null;
+  const mesuree = a.longest_swim_known !== "non" && isFinite(m) && m > 0;
+  // D3 §1 — « JE NE SAIS PAS » EST UN CHOIX, PAS UN CHAMP VIDE. Une absence par OUBLI et une
+  // absence ASSUMÉE ne sont pas la même information, et le moteur les confondait. Elles ne
+  // changent pas la conséquence (aucune ne satisfait le gate) mais elles changent ce qu'on DIT —
+  // et c'est le message, pas la structure du plan, qui est le levier du moteur sur le jour J.
+  const source: ContinuityGate["source"] = mesuree ? "mesure"
+    : a.longest_swim_known === "non" ? "inconnue-assumee" : "absente";
+  const declareMin = mesuree ? ((m / 100) * css) / 60 : null;
   const satisfait = declareMin != null && declareMin >= seuilMin - 0.05;
-  return { seuilMin, declareMin, courseMin, satisfait, manqueMin: satisfait ? 0 : Math.max(0, seuilMin - (declareMin ?? 0)) };
+
+  // ---- D3 §3 — LA FRANCHISSABILITÉ, mesurée avec ce qui existe déjà ----
+  // La continuité est une DISTANCE qui grandit d'une occurrence à la suivante ; la borner plus
+  // vite que la croissance hebdomadaire que le moteur s'impose partout ailleurs (C22, +10 %)
+  // serait produire ce que l'auditeur refuse. La travée utile n'est pas la course entière mais la
+  // fin de la phase SPÉCIFIQUE (`B17_SPAN_PCT`, dérivé de `PHASE_PCTS`) : c'est là que tombe le
+  // dernier palier, et une continuité découverte pendant l'affûtage n'a plus de valeur.
+  const courseM = leg.dist;
+  const spanSem = Math.max(1, Math.round(B17_SPAN_PCT * Math.max(1, weeks ?? 0)));
+  const rampe = Math.pow(C22_MAX_WEEKLY_GROWTH, spanSem);
+  const departMesure = mesuree ? Math.max(B17_DEPART_PLANCHER_M, m) : 0;
+  // Continuité NON MESURABLE : on ne peut pas affirmer qu'une progression ne peut pas partir d'un
+  // point qu'on ne connaît pas. Le départ est alors la rampe la plus DOUCE qui arrive quand même,
+  // et le premier palier DEVIENT la mesure que l'athlète n'a pas su donner.
+  const departM = mesuree ? departMesure
+    : Math.max(B17_DEPART_PLANCHER_M, Math.min(courseM, Math.round(courseM / rampe)));
+  const atteignableM = Math.round(departM * rampe);
+  const franchissable = weeks == null ? null : mesuree ? atteignableM >= courseM : null;
+
+  return {
+    seuilMin, declareMin, courseMin, satisfait,
+    manqueMin: satisfait ? 0 : Math.max(0, seuilMin - (declareMin ?? 0)),
+    source, departM, courseM, franchissable, atteignableM,
+  };
 }
 
 /**
@@ -119,17 +177,43 @@ export function continuityGate(a: {
  */
 export function palierCount(g: ContinuityGate): number {
   if (!g) return 0;
-  const reste = Math.max(0, g.courseMin - (g.declareMin ?? 0));
-  if (reste <= 0.05) return 1;                 // rien à construire : une confirmation
-  const ratio = reste / Math.max(1, g.courseMin);
-  return ratio < 0.25 ? 2 : ratio < 0.5 ? 3 : B17_PALIERS.length;
+  // D3 §3b — L'ÉCART SE MESURE EN MÈTRES, DEPUIS L'ATHLÈTE. Il se mesurait en minutes contre
+  // `declareMin`, qui vaut `null` dès que la continuité n'est pas mesurable : l'écart valait alors
+  // la course entière, quel que soit le départ réellement retenu.
+  const reste = Math.max(0, g.courseM - g.departM);
+  if (reste <= 0) return 1;                    // rien à construire : une confirmation
+  const ratio = reste / Math.max(1, g.courseM);
+  return ratio < 0.25 ? 2 : ratio < 0.5 ? 3 : B17_PALIERS_MAX;
 }
 
-/** La fraction de distance de course du palier `i` sur `n` — dérivée, jamais tabulée. */
-export function palierFraction(i: number, n: number): number {
-  if (n <= 1) return B17_PALIERS[B17_PALIERS.length - 1];
-  const step = (B17_PALIERS.length - 1) / (n - 1);
-  return B17_PALIERS[Math.min(B17_PALIERS.length - 1, Math.round(i * step))];
+/**
+ * LE NOMBRE DE PALIERS RÉELLEMENT POSABLES — l'écart ET la place disponible.
+ *
+ * D3 — `palierCount` seul rendait un nombre que la phase spécifique ne pouvait pas porter : sur un
+ * `tri/M` de 12 semaines, `spec` fait DEUX semaines et la progression en demandait quatre. Les
+ * paliers se collapsaient sur les mêmes semaines, `positions.indexOf(idx)` ne rendait que le
+ * PREMIER de chaque groupe, et **le dernier palier — celui qui vaut la distance de course —
+ * n'était jamais posé** : la montée s'arrêtait à 1 200 m pour une épreuve de 1 500. Le nombre est
+ * donc BORNÉ par la place, et les deux lecteurs (la décision affichée et la séance prescrite)
+ * appellent CETTE fonction — R11.1, une seule dérivation.
+ */
+export function palierPosables(g: ContinuityGate, specWeeks: number): number {
+  return Math.max(1, Math.min(palierCount(g), Math.max(1, specWeeks)));
+}
+
+/**
+ * LA DISTANCE DU PALIER `i` SUR `n`, EN MÈTRES — interpolée entre le départ de l'athlète et la
+ * distance de course, jamais lue dans une table.
+ *
+ * L'interpolation est GÉOMÉTRIQUE parce que la contrainte qui la borne l'est (C22 est un RAPPORT,
+ * +10 % d'une semaine à la suivante) : une interpolation linéaire ferait des premiers pas énormes
+ * en relatif pour un athlète qui part bas — exactement la population que ce correctif sert. Le
+ * dernier palier vaut EXACTEMENT `courseM` par construction, ce que D2 vérifie au mètre près.
+ */
+export function palierDistanceM(g: ContinuityGate, i: number, n: number): number {
+  if (n <= 1 || i >= n - 1) return g.courseM;
+  const r = g.courseM / Math.max(1, g.departM);
+  return Math.max(g.departM, Math.min(g.courseM, Math.round(g.departM * Math.pow(r, (i + 1) / n))));
 }
 
 /**

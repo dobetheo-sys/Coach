@@ -32,6 +32,12 @@ console.log(`  profils tri : ${tri} · rabattus : ${rabat} (${(100 * rabat / (tr
 for (const [k, n] of Object.entries(parCible).sort((x, y) => y[1] - x[1])) console.log(`     ${k.padEnd(16)} ${n}`);
 console.log(`  exemples :`);
 for (const e of ex) console.log(`     ${e}`);
+// D3 — LA SONDE DIT DÉSORMAIS CE QU'ELLE MESURE. Avant le correctif, un rabattement massif
+// signait le défaut ; APRÈS, c'est un taux à DEUX BORNES qui compte : 0 % signifierait que la
+// branche de sécurité a disparu, 100 % qu'elle avale tout le monde. Un taux saturé accuse
+// l'instrument ou le modèle mental de ce qu'il observe (dépistage de la règle 15).
 console.log(`\n  → ${rabat === 0
-  ? "aucun rabattement : la réponse est présente partout."
-  : `AUCUN de ces profils ne déclare \`longest_swim_m\` — la question est NOUVELLE. Le rabattement\n    est donc gouverné par une réponse ABSENTE, pas par une capacité mesurée. C'est un ARBITRAGE\n    à porter devant le fondateur, pas un chiffre à re-épingler.`}`);
+  ? "AUCUN rabattement — SUSPECT : la branche de sécurité de B-17 ne mord nulle part. Vérifier\n    que la sous-passe B17 du golden porte des horizons où elle PEUT mordre (un taux saturé\n    accuse l'instrument, pas le moteur)."
+  : rabat === tri
+  ? "TOUS les profils sont rabattus — c'est le défaut D3 lui-même : le gate gouverne sur une\n    réponse que le produit ne collecte pas."
+  : rabat + " rabattement(s) sur " + tri + ", tous sur une continuité déclarée BASSE et un horizon\n    trop court pour la construire — la branche de sécurité mord là où elle doit, et nulle part\n    ailleurs. Les profils dont l'écart se referme gardent leur format."}`);

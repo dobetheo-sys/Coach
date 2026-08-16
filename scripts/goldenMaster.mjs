@@ -80,6 +80,13 @@ const swimrunExtras = () => ({
   swim_total_m: "7850", run_total_km: "33", race_dplus_m: "900", segments_n: "20",
   longest_swim_m: "1400", water_temp_c: "16", team_mode: "binome", openwater_access: "saisonnier",
 });
+// D3 §1 — LES DEUX CLÉS QUE LE GATE B-17 CONSOMME. Sans elles, les 148 profils tri échouaient
+// TOUS au gate quelle que soit la qualité du correctif, et le golden aurait dit éternellement que
+// le gate bloque tout — une photo de l'instrument, pas du produit. 2 000 m à 1'55/100 m valent
+// 38 min de continuité : le gate est satisfait sur les QUATRE formats, donc la passe principale
+// photographie des plans NORMAUX. Les trois branches de la conséquence graduée ont leur propre
+// sous-passe (« B17 » plus bas) — sans quoi le golden ne verrait qu'une branche sur trois.
+const triExtras = () => ({ longest_swim_known: "oui", longest_swim_m: "2000", milieu: "bassin" });
 const trailExtras = () => ({
   race_distance_km: "62", race_dplus_m: "3200", race_technicity: "technique", race_night: "partielle",
   train_dplus_access: "collines", treadmill: "non", poles: "a_decider", vam_known: "oui", vam: "850",
@@ -110,7 +117,7 @@ function* profiles() {
       for (const history of HISTORIES) {
         for (const level of LEVELS) {
           for (const intent of INTENTS) {
-            const a = { ...base(), format, history, level, intent, ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : {}) };
+            const a = { ...base(), format, history, level, intent, ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : sport === "tri" ? triExtras() : {}) };
             yield { key: [sport, format || "-", history, level, intent].join("/"), sport, a };
           }
         }
@@ -170,7 +177,7 @@ function* profiles() {
       const sub = fmtOver && fmtOver[sport];
       const a = { ...base(), format: typeof sub === "string" ? sub : format,
         history: "confirme", level: "inter", intent: "competition",
-        ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : {}), ...over,
+        ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : sport === "tri" ? triExtras() : {}), ...over,
         ...(sub && typeof sub === "object" ? sub : {}) };
       yield { key: ["G", sport, format || "-", label].join("/"), sport, a };
     }
@@ -188,7 +195,7 @@ function* profiles() {
     const format = fmts[fmts.length - 1];
     for (let k = 0; k < RACE_PASS_DATES.length; k++) {
       const a = { ...base(), format, history: "confirme", level: "inter", intent: "competition",
-        ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : {}),
+        ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : sport === "tri" ? triExtras() : {}),
         plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[k] };
       yield { key: ["J", sport, format || "-", JOURS[k]].join("/"), sport, a };
     }
@@ -252,6 +259,38 @@ function* profiles() {
           plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[6] };
         yield { key: ["PW", sport, format, terrain].join("/"), sport, a };
       }
+    }
+  }
+
+  // ---- Sous-passe « continuité de nage » (B-17 / D3) -----------------------
+  // LA PASSE PRINCIPALE NE VOIT QU'UNE BRANCHE SUR TROIS. `triExtras()` satisfait le gate sur les
+  // quatre formats — c'est voulu (les plans normaux doivent être photographiés) —, mais la
+  // conséquence graduée de D3 en a DEUX autres, et ce sont elles qui décident du format livré :
+  //   · déclaration basse, écart NON franchissable → rabattement, avec sa raison chiffrée ;
+  //   · déclaration basse, écart FRANCHISSABLE     → format DEMANDÉ conservé + progression ;
+  //   · « je ne sais pas » explicite               → ni satisfait, ni rabattu.
+  // Sans cette sous-passe, le golden laisserait passer une régression qui ferait rabattre TOUT le
+  // monde (le défaut D3 lui-même) ou plus PERSONNE — cinquième occurrence de l'angle mort d'A-2,
+  // et la première où on le referme dans le même commit que la règle qu'il doit surveiller.
+  // ⚠ LA DATE DE COURSE EST NÉCESSAIRE, ET MA PREMIÈRE ÉCRITURE A PRIS LA MAUVAISE. Elle
+  // reprenait `RACE_PASS_DATES[6]` — 75 semaines après l'ancre —, et sur une travée pareille la
+  // rampe C22 atteint 40 000 m : AUCUN profil n'était non-franchissable, la sous-passe rendait
+  // **0 rabattement sur 20**, et je venais d'écrire dans le commentaire ci-dessus qu'elle refermait
+  // l'angle mort d'A-2. Un taux SATURÉ (0 %) accuse l'instrument — le test de dépistage de la
+  // règle 15, sur la fixture censée fermer le trou. La date est donc l'HORIZON MINIMAL de chaque
+  // format (`MIN_WEEKS.tri`), le seul endroit où la franchissabilité discrimine.
+  const B17_DATES = { S: "2026-03-01", M: "2026-03-29", "70.3": "2026-05-24", Full: "2026-09-13" };
+  for (const format of ["S", "M", "70.3", "Full"]) {
+    for (const [label, over] of [
+      ["basse-100m", { longest_swim_known: "oui", longest_swim_m: "100" }],
+      ["basse-400m", { longest_swim_known: "oui", longest_swim_m: "400" }],
+      ["inconnue", { longest_swim_known: "non" }],
+      ["absente", {}],
+      ["eau-libre", { longest_swim_known: "oui", longest_swim_m: "2000", milieu: "ow" }],
+    ]) {
+      const a = { ...base(), format, history: "confirme", level: "inter", intent: "competition",
+        milieu: "bassin", plan_start: RACE_PASS_START, race_date: B17_DATES[format], ...over };
+      yield { key: ["B17", "tri", format, label].join("/"), sport: "tri", a };
     }
   }
 

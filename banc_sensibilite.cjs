@@ -151,6 +151,11 @@ const EXEMPT = {
   race_cutoff_h: true, // avertissement de barrière horaire dans la PRÉDICTION
   hr_max: true, // repli quand la référence principale manque : avec FTP/allure connues, elle ne sert pas
   gear_test: true, // ne vaut que si des allures EN TENUE ont été saisies — paire testée plus bas
+  // D3 — B-17 : `longest_swim_known: "oui"` sans le NOMBRE ne dit rien, et `milieu` ne pèse que
+  // sur la conversion du gate de continuité (surcharge eau libre) : seul, il ne mord que si la
+  // déclaration est à la frontière. Les DEUX paires sont testées plus bas — et c'est le seul
+  // traitement honnête, parce que `milieu` en tri n'a jamais été une clé qui pilote le volume.
+  longest_swim_known: true, milieu: true,
 };
 
 /**
@@ -244,6 +249,12 @@ const PAIRES = [
   ["trail", "tapis quand le terrain est PLAT", { train_dplus_access: "plat", treadmill: "oui" }],
   ["swimrun", "écart de nage en binôme", { team_mode: "binome", team_swim_gap_sec: "20" }],
   ["swimrun", "test en tenue NON fait, allures saisies", { swimrun_swim_pace: "2:30", swimrun_run_pace: "6:30", gear_test: "non" }],
+  // D3 — la continuité DÉCLARÉE change le plan (paliers prescrits, et le format si l'écart ne se
+  // referme pas dans le temps disponible).
+  ["tri", "continuité de nage déclarée (B-17)", { longest_swim_known: "oui", longest_swim_m: "300" }],
+  // …et le MILIEU change la conversion du gate : une continuité prouvée en EAU LIBRE n'a pas à
+  // payer la surcharge du facteur `TRI_SWIM`. Mesuré à la frontière, là où la surcharge décide.
+  ["tri", "milieu de la preuve de continuité (B-17)", { longest_swim_known: "oui", longest_swim_m: "1450", milieu: "ow" }],
 ];
 const pairesKo = [];
 for (const [sp, lbl, mut] of PAIRES) {

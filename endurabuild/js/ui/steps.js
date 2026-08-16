@@ -180,9 +180,24 @@ function buildFreeSteps(){
          +'<div class="q"><span class="q-label">Accès à l\'eau libre à l\'entraînement ?</span><div class="opts" data-key="openwater_access">'+opt("toute_annee","Toute l\'année")+opt("saisonnier","En saison seulement")+opt("aucun","Aucun")+'</div></div>'
          +'<div class="q"><span class="q-label">Tu nages 30min (~1200m) sans t\'arrêter ?</span><div class="opts" data-key="swim_continuous">'+opt("oui","Oui")+opt("non","Pas encore")+'</div></div>'
          +'<div class="q"><span class="q-label">Tu cours 30min en continu ?</span><div class="opts" data-key="run_continuous">'+opt("oui","Oui")+opt("non","Pas encore")+'</div></div><div id="prereqB"></div>'
+       : S.sport==="tri"
+       // D3 §1 — LES DEUX QUESTIONS QUE LE GATE B-17 CONSOMME. Elles étaient déclarées au schéma
+       // et POSÉES NULLE PART : la clé était consommée et inrenseignable, ce qu'`audit:sensibilite`
+       // ne détecte pas (il vérifie qu'une clé AGIT, pas qu'on puisse y répondre). Conséquence
+       // mesurée avant correction : 117 profils tri sur 148 rabattus, dont 56 Full → Sprint.
+       ? '<div class="q"><span class="q-label">Quel objectif ?</span><div class="opts" data-key="format">'+fmtOpts+'</div></div>'
+         +'<div class="q"><span class="q-label">Ta plus longue nage sans t\'arr\u00eater</span><div class="q-def">En eau libre le risque ne se voit pas avant d\'arriver : pas de mur, pas de fond. C\'est la continuit\u00e9, pas le volume, qui d\u00e9cide le jour J.</div><div class="opts" data-key="longest_swim_known">'+opt("oui","Je la connais")+opt("non","Je ne sais pas")+'</div><div id="lswB"></div></div>'
+         +'<div class="q"><span class="q-label">O\u00f9 nages-tu ?</span><div class="opts" data-key="milieu">'+opt("bassin","Bassin")+opt("ow","Eau libre")+opt("mixte","Les deux")+'</div></div>'
        : '<div class="q"><span class="q-label">Quel objectif ?</span><div class="opts" data-key="format">'+fmtOpts+'</div></div>')
      +'<div class="q"><span class="q-label">Date (si connue)</span><input type="date" data-input="race_date"></div>';},
    branches(a){
+     if(S.sport==="tri"){
+       // Le nombre n'est demandé QUE si l'athlète dit le connaître — sinon « je ne sais pas » se
+       // confondrait avec un champ qu'on a oublié de remplir, et c'est justement la distinction
+       // que D3 §1 exige.
+       branch("lswB", a.longest_swim_known==="oui", '<div class="branch"><div class="q"><span class="q-label">Combien de m\u00e8tres, d\'affil\u00e9e et sans t\'arr\u00eater ?</span><div class="q-def">Bassin accept\u00e9 : le plan tient compte de l\'\u00e9cart avec l\'eau libre.</div><input type="number" min="50" max="10000" data-input="longest_swim_m" placeholder="800"></div></div>');
+       return;
+     }
      if(S.sport!=="swimrun")return;
      branch("teamB",a.team_mode!=="solo",'<div class="branch"><div class="q"><span class="q-label">Écart de niveau à la nage avec ton binôme (s/100m, optionnel)</span><div class="q-def">0 = même niveau. Sert à calculer l\'effet de longe : attachée, l\'équipe se rapproche de la vitesse du plus rapide.</div><input type="number" min="0" max="60" data-input="team_swim_gap_sec" placeholder="0"></div></div>');
      // S10 — prérequis d'entrée : on REFUSE de générer un format long en dessous, et on dit pourquoi.
@@ -191,6 +206,8 @@ function buildFreeSteps(){
    },
    valid(a){
      if(S.sport==="trail")return a.intent&&a.race_distance_km&&a.race_dplus_m&&a.race_technicity&&a.race_night;
+     // D3 §1 — obligatoires. « Je ne sais pas » est une réponse VALIDE ; l'absence n'en est pas une.
+     if(S.sport==="tri")return !!(a.intent&&a.format&&a.milieu&&(a.longest_swim_known==="non"||(a.longest_swim_known==="oui"&&a.longest_swim_m)));
      if(S.sport==="swimrun"){
        const block=(globalThis.EBV2&&EBV2.swimrunPrereq)?EBV2.swimrunPrereq(a):null;
        return !!(a.intent&&a.format&&a.team_mode&&a.openwater_access&&a.swim_continuous&&a.run_continuous&&!block);

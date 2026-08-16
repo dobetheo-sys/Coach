@@ -251,6 +251,11 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   // et R20.1 exige qu'une clé déclarée AGISSE dans chaque sport où elle est déclarée : elle est
   // arrivée dans le commit qui câble le gate, jamais avant.
   longest_swim_m: { ...numF("ta plus longue nage", 50, 10000, "m", ["swimrun", "tri"]), nature: "vecue" },
+  // D3 §1 — « JE NE SAIS PAS » EST UN CHOIX EXPLICITE, PAS UN CHAMP LAISSÉ VIDE. Le gate B-17
+  // décide que ne pas savoir ne satisfait pas le prérequis ; cette décision suppose que l'athlète
+  // l'ait DIT. Une absence par OUBLI et une absence ASSUMÉE ne sont pas la même information, et le
+  // moteur les confondait. Même patron que `css_known`/`pace_known`/`ftp_known`.
+  longest_swim_known: { ...enumF("« connais-tu ta plus longue nage en continu »", OUI_NON, ["tri"]), nature: "vecue" },
   segments_n: { ...numF("le nombre de segments", 2, 60, "", ["swimrun"]), nature: "vecue" },
   // R19.2 — le triathlon aussi. La combinaison vaut 4 à 7 % de temps de nage et sa légalité
   // est un SEUIL RÉGLEMENTAIRE (24,5 °C) : c'est la variable dominante du leg natation, et

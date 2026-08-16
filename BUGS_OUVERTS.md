@@ -5195,3 +5195,134 @@ quoi: aucune question ne collecte `longest_swim_m` ni `milieu` pour un triathlè
 attendu: D3-REPRODUIT
 cmd: node scripts/sondeB17rabat.mjs | grep -q "RABATTUS" ; grep -c 'data-input="longest_swim_m"' endurabuild/js/ui/steps.js | grep -q '^1$' && echo "D3-REPRODUIT"
 ```
+
+
+### B-17 §16 — D3 FERMÉ. Les deux questions existent, et la conséquence n'est plus « rabattre »
+
+**Le fondateur invoque l'exception au gel de périmètre** (16/08/2026) : *« 56 profils Full rendus
+en plans Sprint est une sortie incorrecte, pas une amélioration possible. »* Trois changements, et
+rien d'autre.
+
+#### 1 · Les deux questions, obligatoires, avec « je ne sais pas » explicite
+
+`longest_swim_m` et `milieu` étaient déclarées au schéma et **posées nulle part** pour un
+triathlète — la clé était consommée et *inrenseignable*. Elles entrent dans la branche `tri` de
+l'étape objectif, et `valid()` les exige. **`longest_swim_known` (oui/non) est une clé nouvelle**,
+sur le patron de `css_known`/`pace_known` : *« la décision “je ne sais pas bloque” suppose que
+l'athlète l'ait dit »* — une absence par OUBLI et une absence ASSUMÉE ne sont plus la même
+information, et le nombre n'est demandé que si l'athlète dit le connaître.
+
+**`audit:sensibilite` ne pouvait pas voir ce défaut** : il vérifie qu'une clé AGIT, pas qu'on
+puisse y répondre. C'est la famille R20.1 dans sa forme MIROIR, et le banc gagne les deux paires
+qui la couvrent (`continuité déclarée`, `milieu de la preuve`), sur le patron `vam_known`/`vam`.
+
+#### 2 · La conséquence est graduée — le rabattement ne survit que là où il a un sens
+
+*« S10 rabat parce que le swimrun n'offre aucun remède. Le plan de triathlon contient le sien. »*
+J'avais repris le patron S10 sans l'examiner. **Rabattre le format supprime exactement le mécanisme
+qui corrigerait le problème** — on retirait le remède au motif que la maladie existe —, et le
+dommage était disproportionné : une déclaration de NAGE transformait un plan de TROIS disciplines.
+**O-17 n'exige pas ça** : l'événement irréversible est LA COURSE, pas la construction du plan ; le
+levier du moteur sur le jour J est le MESSAGE.
+
+```
+gate satisfait                      → plan normal
+non satisfait, écart FRANCHISSABLE  → format DEMANDÉ conservé, progression incluse,
+                                      message proéminent — AUCUN rabattement
+écart NON franchissable             → rabattement, patron S10, avec sa raison chiffrée
+```
+
+**« Franchissable » se mesure avec ce qui existe déjà, zéro constante nouvelle** : la rampe part de
+la continuité DÉCLARÉE et croît au plus de **C22 (+10 %/semaine)** jusqu'à la fin de la phase
+spécifique (`B17_SPAN_PCT`, dérivé de `PHASE_PCTS`). Si elle n'atteint pas la distance de course,
+la progression ne peut pas partir d'où l'athlète est.
+
+```
+format │ déclaration          │ verdict        │ décision              │ paliers livrés
+Full   │ 400 m                │ format gardé   │ 400 m → 3800 m        │ 700→1250→2150→3800
+Full   │ 100 m                │ RABATTU        │ 70.3 (au lieu de Full)│ 350→600→1100→1900
+70.3   │ 400 m                │ RABATTU        │ M (au lieu de 70.3)   │ 550→800→1100→1500
+M      │ 2000 m               │ gate satisfait │ —                     │ 1500
+```
+
+#### 3 · La progression part de l'ATHLÈTE
+
+*« Partir de 50 % de la distance de course ne sert pas quelqu'un à 200 m. »* La table
+`B17_PALIERS = [0.5, 0.7, 0.9, 1.0]` — des fractions de la distance de COURSE — disparaît. Les
+distances s'**interpolent géométriquement** du départ de l'athlète à la distance de course ;
+géométriquement parce que la contrainte qui les borne l'est (C22 est un RAPPORT), et une
+interpolation linéaire ferait des premiers pas énormes en relatif pour qui part bas — exactement
+la population que ce correctif sert.
+
+#### 4 · Trois défauts trouvés en construisant, aucun visible en relecture
+
+**(a) `fmt` était un `const`, et c'était un défaut latent depuis R4.5.** Capté une fois sur
+`a.format`, il ne suivait NI le rabattement swimrun NI celui du tri, alors que c'est lui que lit
+`MIN_WEEKS[sp]?.[fmt]`. Un Full rabattu au sprint recevait la durée de préparation d'un Full —
+c'est la signature exacte que `audit:r13` remontait (`R13.6-P1 — Full 59 sem : taper=1 peak=5`).
+
+**(b) Le véhicule n'était pas celui que je transformais — 79 % des promesses non tenues.** Mesuré
+sur 351 plans qui ANNONÇAIENT la construction : **277 ne la contenaient pas**. La ventilation donne
+la cause — `finir` 117, `plaisir` 117, `debutant` 117 contre `competition` 43 : le créneau `facile2`
+route ces profils vers `swTech` (« Nage vitesse »), donc je mutais un objet qu'ils ne reçoivent
+jamais ; et sous DOUBLES `swMain` part sur `dur1`. **La population la plus concernée était celle qui
+a le plus besoin de la continuité** : un débutant qui vise un finish en eau libre. Le placement ne
+bouge pas (§4 de l'arbitrage) — c'est le créneau porteur de la nage PRINCIPALE qui est lu.
+**21,1 % → 98,9 %**, puis **100 %** une fois (c) corrigé — et un taux saturé se vérifie au lieu de
+se célébrer (dépistage de la règle 15). Le cas résiduel était un `tri/S` de 8 semaines dont la
+PREMIÈRE semaine de `spec` ne porte aucun jour `facile2` ; le plafonnement du nombre de paliers par
+la place disponible fait tomber l'unique palier sur la SECONDE, qui en porte un. Vérifié à la main
+sur ce profil exact — S6 livre « Nage continue — 750 m d'affilée ». Le placement n'a pas bougé.
+
+**(c) Le dernier palier n'était jamais posé quand la place manquait.** Sur un `tri/M` de 12
+semaines, `spec` fait DEUX semaines et la progression en demandait quatre : les paliers se
+collapsaient, `positions.indexOf` ne rendait que le premier de chaque groupe, et la montée
+s'arrêtait à **1 200 m pour une épreuve de 1 500**. `palierPosables()` borne le nombre par la
+place, et la décision affichée comme la séance prescrite l'appellent — R11.1. La décision
+`B17-paliers` se déplace donc APRÈS la construction des phases : émise avant, elle annonçait un
+nombre que le plan ne pouvait pas porter.
+
+#### 5 · Ce qui reste ouvert, chiffré, et qui est un ARBITRAGE
+
+**L'honnêteté est punie dans une fenêtre étroite.** Le §3 réserve le rabattement à l'écart NON
+franchissable ; « je ne sais pas » n'a pas d'écart mesurable, donc il ne rabat pas. Conséquence
+arithmétique : **5 inversions mesurées** — déclarer 400 m sur un 70.3 fait rabattre, répondre « je
+ne sais pas » ne fait pas rabattre. La fenêtre est `[200 m, distance_course / 1,1^travée)`.
+
+Les deux lectures de l'arbitrage divergent ici et je n'ai pas tranché seul : le §1 conserve *« je ne
+sais pas bloque »*, le §3 réserve le rabattement au non-franchissable. J'ai suivi le §3 (le § qui
+définit la conséquence) et **mesuré le prix de ce choix** plutôt que de le taire. La correction
+symétrique — traiter « je ne sais pas » comme le plancher de 200 m — rabattrait au Sprint tout
+triathlète qui ne connaît pas sa plus longue nage, c'est-à-dire exactement le dommage
+disproportionné que le §2 dénonce.
+
+#### 6 · Et j'ai effacé une heure de travail avec `git checkout`, pour la SECONDE fois du dépôt
+
+Pour restaurer une cassure de contre-preuve, j'ai fait `git checkout -- src/engine/reasoningEngine.ts`
+sur un fichier **non commité**. Les trois modules de D3 sont revenus à `HEAD`, qui ne contenait rien
+de ce lot : `swimContinuity.ts`, `reasoningEngine.ts` et `tri/index.ts` ont été perdus d'un coup, et
+le bundle reconstruit par-dessus a effacé la dernière copie exécutable.
+
+**C'est exactement l'incident consigné en V2** (« un `git checkout` a effacé une heure de travail —
+restaurer une cassure de contre-preuve avec `git checkout` sur un fichier NON COMMITÉ a emporté tout
+le câblage du sachet »). Et j'avais employé la bonne méthode plus tôt dans la même session — `cp`
+vers `/tmp`, puis restauration — avant de l'abandonner pour la commande courte.
+
+**La règle est donc opératoire, pas morale : on ne pose pas de cassure de contre-preuve sur un
+travail non commité.** Committer d'abord, ou copier le fichier de côté. Le code a été réécrit à
+l'identique depuis le contexte et re-vérifié bit à bit — mêmes sorties de sonde, mêmes gates, golden
+à 0 écart — mais rien ne garantissait qu'il soit récupérable.
+
+```verify
+id: D3-graduee
+quoi: le rabattement est réservé à l'écart NON franchissable, et les trois branches existent
+attendu: LA CONSÉQUENCE EST GRADUÉE
+cmd: node scripts/sondeD3.mjs | grep -o "LA CONSÉQUENCE EST GRADUÉE"
+```
+
+```verify
+id: D3-couverture
+quoi: un plan qui ANNONCE la progression la contient
+attendu: PROMESSES NON TENUES : 0
+cmd: node scripts/sondeD3couv.mjs | grep "PROMESSES NON TENUES"
+```

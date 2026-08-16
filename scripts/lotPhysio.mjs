@@ -170,17 +170,32 @@ T("T-06", "vert", "B-17 — nage continue prescrite en tri : gate, une par semai
   const CONT = /^Nage continue/;
   const bad = [], vus = [];
 
-  // (a) LE GATE MORD — une continuité déclarée trop courte pour le format rabat le format.
-  //     800 m = 14,7 min : satisfait le sprint, aucun autre.
+  // (a) LE GATE MORD, ET SA CONSÉQUENCE EST GRADUÉE (D3 §3). Ce critère demandait qu'un Full à
+  //     800 m soit RABATTU : il encodait la décision que D3 a RENVERSÉE. Réécrit sur la décision
+  //     en vigueur plutôt que supprimé — 800 m sur 36 semaines se referment à +10 %/semaine, donc
+  //     le format est GARDÉ ; 100 m ne se referment pas, donc il rabat. Les deux moitiés sont
+  //     assertées : un correctif qui ne rabattrait PLUS JAMAIS serait aussi faux que celui qui
+  //     rabat tout le monde, et c'est ce second défaut qui a coûté 117 profils sur 148.
   {
-    const p = globalThis.EBV2.buildPlan("tri", { ...base, format: "Full", longest_swim_m: "800", race_date: dans(36) });
-    const d = (p._v2?.decisions ?? []).find((x) => x.id === "B17-continuite");
-    if (!d || !/rabattu/i.test(String(d.what ?? ""))) bad.push("gate : Full à 800 m de continuité déclarée n'est pas rabattu");
-    else vus.push("gate ✓ " + d.val);
+    const gard = globalThis.EBV2.buildPlan("tri", { ...base, format: "Full", longest_swim_known: "oui", longest_swim_m: "800", race_date: dans(36) });
+    const dg = (gard._v2?.decisions ?? []).find((x) => x.id === "B17-continuite");
+    if (!dg) bad.push("gate : Full à 800 m ne dit RIEN — l'écart doit être nommé même quand le format est gardé");
+    else if (/rabattu/i.test(String(dg.what ?? ""))) bad.push("gate : Full à 800 m est RABATTU alors que l'écart se referme (D3 §3)");
+    else vus.push("gardé ✓ " + dg.val);
+
+    const rab = globalThis.EBV2.buildPlan("tri", { ...base, format: "Full", longest_swim_known: "oui", longest_swim_m: "100", race_date: dans(36) });
+    const dr = (rab._v2?.decisions ?? []).find((x) => x.id === "B17-continuite");
+    if (!dr || !/rabattu/i.test(String(dr.what ?? ""))) bad.push("gate : Full à 100 m n'est PAS rabattu — la branche de sécurité a disparu");
+    else vus.push("rabattu ✓ " + dr.val);
+
+    // « je ne sais pas » ne satisfait pas le gate, et le DIT — sans quoi la question posée au §1
+    // de l'arbitrage n'aurait aucun effet observable.
+    const inc = globalThis.EBV2.buildPlan("tri", { ...base, format: "70.3", longest_swim_known: "non", race_date: dans(20) });
+    if (!(inc._v2?.decisions ?? []).some((x) => x.id === "B17-continuite")) bad.push("« je ne sais pas » ne produit aucune décision de continuité");
   }
   // (b) LE GATE LAISSE PASSER ce qu'il doit laisser passer, et la prescription tient.
   for (const [format, h] of [["M", 18], ["70.3", 26], ["Full", 36], ["Full", 42]]) {
-    const p = globalThis.EBV2.buildPlan("tri", { ...base, format, longest_swim_m: "1650", race_date: dans(h) });
+    const p = globalThis.EBV2.buildPlan("tri", { ...base, format, longest_swim_known: "oui", longest_swim_m: "1650", race_date: dans(h) });
     const id = `${format}/${h}`;
     if ((p._v2?.decisions ?? []).some((x) => x.id === "B17-continuite" && /rabattu/i.test(String(x.what ?? "")))) {
       bad.push(`${id} : PRÉMISSE ROMPUE — le format est rabattu, la ligne mesurerait un autre format`);
@@ -855,14 +870,18 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 //     heures et le pic livré bouge de quelques minutes, donc quatre profils traversent la
 //     tolérance de 0,1 h. Elle appartient à la famille encore ouverte (O-35/O-36 : ce que le
 //     point fixe RETIRE n'est déclaré par aucun maillon) et ne se ferme pas ici.
-// ⚠ VOLONTAIREMENT NON RE-ÉPINGLÉ (B-17 §15, 16/08/2026). Le cliquet dérive depuis `858c0c5` —
-// mesuré S1 3 · S4 341 · S5 520 — et la cause est **D3**, pas un correctif : le gate B-17 rabat
-// le format de **117 profils tri sur 148** parce qu'aucune question ne collecte `longest_swim_m`
-// pour un triathlète. Re-épingler photographierait cet état comme la référence, exactement ce
-// qu'on refuse de faire au golden pour la même raison. Ces trois valeurs sont celles de `cf392af`
-// (avant B-17) : T-27 redeviendra vert de lui-même quand D3 sera arbitré, et reste d'ici là le
-// détecteur le moins cher de sa présence.
-const SCEAU_ATTENDU = { S1: 4, S4: 353, S5: 513 };
+// RE-ÉPINGLÉ APRÈS D3 (16/08/2026), et la dérive est VÉRIFIÉE avant d'être photographiée.
+// Le lot précédent l'avait laissé dériver exprès : le cliquet bougeait parce que le gate B-17
+// rabattait 117 profils tri sur 148 sur une réponse que le produit ne collectait pas, et
+// re-épingler aurait enregistré ce défaut comme la référence. D3 le corrige, et les nouvelles
+// valeurs sont mesurées, pas subies :
+//   · S1 4 → 5 — MÊMES trois profils qu'à `cf392af` (`tri/Full/injury-multi`, `tri/Full/vol-min`,
+//     `duathlon/PM/vol-min`), une violation de plus sur l'un d'eux : ces plans tri sont désormais
+//     de VRAIS Full (ils étaient rabattus au sprint et audités contre des bornes de Full) ;
+//   · S4 353 → 351 et S5 513 → 500, dont **+9 apportés par la sous-passe `B17`** qui n'existait
+//     pas — le corpus passe de 949 à 969 profils.
+// Aucune violation DURE, sur aucun des 969.
+const SCEAU_ATTENDU = { S1: 5, S4: 351, S5: 500 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;

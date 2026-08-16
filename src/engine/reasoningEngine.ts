@@ -17,7 +17,7 @@ import {
 } from "./constraintMatrix.ts";
 import { guard, knownSports, sportModule } from "../sports/registry.ts";
 import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
-import { continuityGate, palierCount, poolOnlyNotice } from "./swimContinuity.ts";
+import { continuityGate, palierPosables, poolOnlyNotice } from "./swimContinuity.ts";
 import { T1_DPLUS_CAPS, T4_LONG_RUN_VS_RACE, T6_MIN_WEEKS, TRAIL_HISTORY_CAPS, TRAIL_UTIL, trailObjective, trailWeeklyVertical } from "./trailModel.ts";
 
 /** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
@@ -49,7 +49,14 @@ export class TrainingReasoningEngine {
     const decisions: Decision[] = [];
     const warnings: string[] = [];
     const D = (id: string, what: string, val: string | number, why: string) => decisions.push({ id, what, val, why });
-    const sp = a.sport, fmt = a.format;
+    // D3 — `fmt` EST UN `let`, ET C'ÉTAIT UN DÉFAUT LATENT DEPUIS R4.5. Il était capté une fois
+    // sur `a.format` ; les deux rabattements (swimrun R4.5, tri B-17) réassignent `a` mais `fmt`
+    // gardait l'ANCIEN format, et c'est lui que lit `MIN_WEEKS[sp]?.[fmt]`. Un Full rabattu au
+    // sprint recevait donc une durée de préparation de Full — mesuré, c'est la signature exacte
+    // que `audit:r13` remontait (`R13.6-P1 — Full 59 sem : taper=1 peak=5`, un plan de SPRINT sur
+    // l'horizon d'un FULL). Il suit désormais chaque rabattement.
+    const sp = a.sport;
+    let fmt = a.format;
     const history = a.history || "confirme";
     const level = a.level || "inter";
     const beginner = level === "debutant";
@@ -73,6 +80,25 @@ export class TrainingReasoningEngine {
       if (tObj.altitudeMaxM && tObj.altitudeMaxM > 2500) warnings.push("Ta course monte à " + tObj.altitudeMaxM + " m : au-dessus de 2 500 m, la performance baisse et l'acclimatation compte. Un protocole d'acclimatation dépend de contraintes logistiques que l'outil ne connaît pas — si tu peux dormir en altitude quelques nuits avant, fais-le.");
     }
 
+    // D3 — LA DURÉE DE PRÉPARATION, EXTRAITE POUR ÊTRE CALCULABLE AVANT LE CHOIX DU FORMAT.
+    // Le gate B-17 doit savoir combien de semaines la progression a devant elle AVANT de décider
+    // s'il rabat : c'est ce qui distingue un écart franchissable d'un écart qui ne l'est pas. Les
+    // deux fonctions sont PURES (aucun avertissement, aucune décision) — la section 1 garde
+    // l'émission, elle seule connaît le format final.
+    const minWeeksDe = (f?: string): number =>
+      tObj ? T6_MIN_WEEKS[tObj.category] : (MIN_WEEKS[sp]?.[f ?? ""] || 12);
+    const semainesDe = (f?: string): number => {
+      const mw = minWeeksDe(f);
+      if (!a.race_date) return mw;
+      const MS = 864e5;
+      const mondayOf = (t: number): number => t - ((new Date(t).getUTCDay() + 6) % 7) * MS;
+      const anchorT = a.plan_start ? new Date(a.plan_start + "T00:00:00Z").getTime() : Date.now();
+      const span = Math.round((mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - mondayOf(anchorT)) / (7 * MS)) + 1;
+      if (span < Math.ceil(mw * 0.75)) return Math.max(1, span);
+      if (span > 80) return 80;
+      return span;
+    };
+
     // R4.5 (audit v7) — PRÉREQUIS D'ENTRÉE DANS LE MOTEUR. La porte ne vivait que dans le
     // questionnaire (`valid()` du step intention) : toute autre voie — édition d'une réponse
     // depuis le Profil, état restauré, import — générait le plan long quand même. La priorité
@@ -88,49 +114,79 @@ export class TrainingReasoningEngine {
         warnings.push(block + " Ton plan a donc été construit sur le format Sprint : il te prépare aux bases, et tu passeras au format long quand elles seront acquises.");
         D("prereq-swimrun", "Format rabattu", "sprint (au lieu de " + (a.format || "?") + ")", "Les prérequis de sécurité du format long ne sont pas atteints — construire les bases d'abord n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend");
         a = { ...a, format: "sprint" };
+        fmt = "sprint"; // D3 — sans quoi la durée de préparation reste celle du format demandé
       }
     }
 
-    // B-17 — PRÉREQUIS DE NAGE CONTINUE EN TRIATHLON, sur le patron de S10.
+    // B-17 — PRÉREQUIS DE NAGE CONTINUE EN TRIATHLON, ET SA CONSÉQUENCE EST GRADUÉE (D3 §3).
     //
-    // Le mécanisme est celui du swimrun et il ne REFUSE pas : il RABAT le format et le DIT
-    // (« on ne refuse pas de produire un plan, l'athlète resterait sans rien »). C'est la même
-    // lecture d'O-17 — informer quelqu'un qui peut agir plutôt que bloquer quelqu'un qui ne peut
-    // pas —, et c'est ce que le code fait déjà pour la même classe de risque.
+    // ⚠ MA PREMIÈRE ÉCRITURE REPRENAIT LE PATRON S10 — « rabattre le format et le dire » — SANS
+    // L'EXAMINER. Il est juste en swimrun et FAUX en triathlon, pour une raison que le fondateur a
+    // nommée : **S10 rabat parce que le swimrun n'offre aucun remède ; le plan de triathlon
+    // contient le sien.** En swimrun, l'épreuve EST la nage : sous 30 min de continu, le format
+    // long est hors de portée et il n'y a rien à construire dans l'intervalle. En triathlon, le
+    // plan porte dix mois d'entraînement, dont la progression de continuité que B-17 vient
+    // d'ajouter — rabattre le format SUPPRIME EXACTEMENT LE MÉCANISME QUI CORRIGERAIT LE PROBLÈME.
+    // On retirait le remède au motif que la maladie existe. Et le dommage était disproportionné :
+    // une déclaration de NAGE transformait un plan de TROIS disciplines — quelqu'un qui roule
+    // 180 km sans difficulté recevait un plan Sprint pour n'avoir jamais nagé 1 385 m d'affilée.
+    // Mesuré avant correction : **117 profils tri du golden sur 148 rabattus, dont 56 Full → S.**
     //
-    // ⚠ CE QUI SURVIT AU RABATTEMENT : le gate se recalcule sur le format RABATTU. Un athlète
-    // dont la continuité ne suffit à AUCUN format garde le plus court avec l'avertissement — comme
-    // S10, qui rabat à `sprint` même quand `sprint` n'est pas atteint non plus. Le plan existe
-    // toujours, et il dit ce qui manque.
+    // O-17 N'EXIGE PAS ÇA. Il demande de bloquer quand l'erreur est IRRÉVERSIBLE — et l'événement
+    // irréversible est LA COURSE, pas la construction du plan. Bâtir un plan ne met personne à
+    // l'eau ; il met en place dix mois destinés précisément à fermer l'écart. Le levier du moteur
+    // sur le jour J est le MESSAGE, pas la structure du plan.
+    //
+    //   gate satisfait                         → plan normal
+    //   non satisfait, écart FRANCHISSABLE     → plan du format DEMANDÉ, progression incluse,
+    //                                            message proéminent, AUCUN rabattement
+    //   écart NON franchissable                → rabattement, patron S10, avec sa raison chiffrée
+    //
+    // « Franchissable » se mesure avec ce qui existe déjà (`continuityGate`) : la rampe part de la
+    // continuité DÉCLARÉE et croît au plus de C22 (+10 %/semaine) jusqu'à la fin de la phase
+    // spécifique. Si elle n'atteint pas la distance de course, la progression ne peut pas partir
+    // d'où l'athlète est, et le rabattement redevient la bonne réponse.
     if (sp === "tri") {
       const ordre = ["Full", "70.3", "M", "S"];
-      const g0 = continuityGate(a as Record<string, unknown>);
+      const g0 = continuityGate(a as Record<string, unknown>, semainesDe(fmt));
       if (g0 && !g0.satisfait) {
-        // On descend jusqu'au plus long format que la continuité déclarée autorise.
-        let cible = "S";
-        for (const f of ordre) {
-          const g = continuityGate({ ...(a as Record<string, unknown>), format: f });
-          if (g?.satisfait) { cible = f; break; }
-        }
-        const manque = g0.declareMin == null
-          ? "tu n'as pas indiqué ta plus longue nage en continu — et ne pas le savoir, c'est déjà ne pas pouvoir évaluer ce que l'épreuve demande"
-          : "tu déclares " + Math.round(g0.declareMin) + " min de nage en continu pour un seuil de " + Math.round(g0.seuilMin) + " min";
-        if (cible !== a.format) {
-          warnings.push("En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, " + manque
-            + ". Ton plan a donc été construit sur le format " + cible + " — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend, et ta progression de nage continue te mènera au format suivant.");
-          D("B17-continuite", "Format rabattu", cible + " (au lieu de " + (a.format || "?") + ")",
-            "Le prérequis de nage CONTINUE n'est pas atteint : le volume et la continuité sont deux adaptations différentes, et c'est la seconde qui décide en eau libre");
-          a = { ...a, format: cible };
+        const manque = g0.source === "mesure"
+          ? "tu déclares " + Math.round(g0.declareMin!) + " min de nage en continu (" + g0.departM + " m) pour un seuil de " + Math.round(g0.seuilMin) + " min"
+          : g0.source === "inconnue-assumee"
+            ? "tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu"
+            : "ta plus longue nage en continu n'est pas renseignée";
+        if (g0.franchissable === false) {
+          // NON FRANCHISSABLE — et seulement là. On descend au plus long format que la rampe atteint.
+          let cible = "S";
+          for (const f of ordre) {
+            const g = continuityGate({ ...(a as Record<string, unknown>), format: f }, semainesDe(f));
+            if (g && (g.satisfait || g.franchissable === true)) { cible = f; break; }
+          }
+          if (cible !== a.format) {
+            warnings.push("En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, " + manque
+              + ", et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais " + g0.atteignableM + " m d'affilée avant l'épreuve, pour " + g0.courseM
+              + " m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format " + cible
+              + " — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend.");
+            D("B17-continuite", "Format rabattu", cible + " (au lieu de " + (a.format || "?") + ")",
+              "La progression de continuité ne peut pas partir d'où tu es : " + g0.departM + " m → " + g0.atteignableM + " m au mieux, pour " + g0.courseM + " m à nager");
+            a = { ...a, format: cible };
+            fmt = cible;
+          } else {
+            warnings.push("En eau libre, le risque ne se voit pas avant d'arriver. Ici, " + manque
+              + " : le format le plus court est déjà le tien, ton plan construit cette continuité semaine après semaine, et une nage continue à la distance de course avant le jour J n'est pas une option.");
+            D("B17-continuite", "Continuité de nage à construire", Math.round(g0.seuilMin) + " min visées",
+              "Le format le plus court est déjà celui-ci : on ne rabat plus, on construit — et on le dit");
+          }
         } else {
-          warnings.push("En eau libre, le risque ne se voit pas avant d'arriver. Ici, " + manque
-            + " : ton plan construit cette continuité semaine après semaine, et une nage continue à la distance de course avant le jour J n'est pas une option.");
-          D("B17-continuite", "Continuité de nage à construire", Math.round(g0.seuilMin) + " min visées",
-            "Le format le plus court est déjà celui-ci : on ne rabat plus, on construit — et on le dit");
+          // FRANCHISSABLE, ou non mesurable : LE PLAN GARDE LE FORMAT DEMANDÉ. C'est le cœur de D3.
+          warnings.push("En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, " + manque
+            + ", pour " + g0.courseM + " m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — "
+            + (g0.source === "mesure" ? "il part de " + g0.departM + " m" : "il part de " + g0.departM + " m, et la première de ces séances te dira où tu en es vraiment")
+            + " et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue.");
+          D("B17-continuite", "Continuité de nage à construire", g0.departM + " m → " + g0.courseM + " m",
+            "Le format n'est PAS rabattu : l'écart se referme dans le temps disponible, et rabattre supprimerait justement la progression qui le referme. L'événement irréversible est la course, pas le plan (O-17)");
         }
       }
-      const gf = continuityGate(a as Record<string, unknown>);
-      if (gf) D("B17-paliers", "Nages continues prescrites", palierCount(gf) + " palier(s) en phase spécifique",
-        "La continuité se construit par une MONTÉE, jamais par un test unique à la fin : découvrir la distance trois semaines avant l'épreuve laisse le temps de s'inquiéter, pas celui de s'adapter");
       const pool = poolOnlyNotice(a as Record<string, unknown>);
       if (pool) {
         warnings.push(pool);
@@ -140,7 +196,7 @@ export class TrainingReasoningEngine {
     }
 
     // ---- 1. Comprendre l'objectif : durée de préparation ----
-    const minW = tObj ? T6_MIN_WEEKS[tObj.category] : (MIN_WEEKS[sp]?.[fmt] || 12);
+    const minW = minWeeksDe(fmt);
     let weeks = minW;
     let raceBeyondPlan = false; // C3 — course au-delà de l'horizon planifiable : ancrer sur MAINTENANT
     if (a.race_date) {
@@ -369,6 +425,16 @@ export class TrainingReasoningEngine {
         D("R13.6", "Phases plafonnées en absolu", "affûtage " + tap.weeks + " sem · peak " + pk.weeks + " sem (excédent → spécifique)",
           "Les pourcentages explosent sur les plans longs : 6 semaines d'affûtage désentraînent (optimal 8-14 jours, ~3 semaines max — Bosquet 2007), un « pic » de 9 semaines est un plateau que personne n'encaisse");
       }
+    }
+    // B-17 — LA DÉCISION DES PALIERS EST ÉMISE ICI, PAS DANS LE BLOC DU GATE : elle a besoin de la
+    // phase SPÉCIFIQUE, qui vient d'être construite. Émise plus haut, elle annonçait un nombre que
+    // le plan ne pouvait pas porter (D3 : 4 paliers annoncés, 2 semaines de spec, dernier palier
+    // jamais posé). Le générateur lit la même fonction sur le même objet `phases` — R11.1.
+    if (sp === "tri") {
+      const gp = continuityGate(a as Record<string, unknown>, weeks);
+      const spc = phases.find((ph) => ph.id === "spec");
+      if (gp && spc) D("B17-paliers", "Nages continues prescrites", palierPosables(gp, spc.weeks) + " palier(s) en phase spécifique",
+        "La continuité se construit par une MONTÉE, jamais par un test unique à la fin : découvrir la distance trois semaines avant l'épreuve laisse le temps de s'inquiéter, pas celui de s'adapter — et le nombre est borné par la place réellement disponible");
     }
     D("courbe", "Courbe de charge", "base " + BANDS.base[0] + "→peak 1.0→affûtage " + BANDS.taper[1], "Bandes normalisées × pic, récup ×" + RECUP_WEEK_FACTOR + ", lissage C22 ≤+" + Math.round((C22_MAX_WEEKLY_GROWTH - 1) * 100) + "%/sem");
 
