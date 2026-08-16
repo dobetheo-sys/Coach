@@ -4935,3 +4935,37 @@ quoi: TRI_SWIM applique le facteur eau libre au format sprint aussi
 attendu: O47-REPRODUIT
 cmd: grep -q 'S: { dist: 750, factor: 1.04 }' src/engine/predictor.ts && echo "O47-REPRODUIT"
 ```
+
+### B-17 §13 — LES DEUX DÉFAUTS SONT RACINÉS (sonde, pas relecture)
+
+**§3 du brief écarté** : la transformation **reçoit bien un ordinal** — `k = positions.indexOf(idx)`
+avec `idx = weekNum - 1 - spec.start`. Elle n'est pas sans état, sa cible dérive du calendrier. Les
+deux défauts ont donc des causes DISTINCTES, et la sonde les sépare :
+
+```
+=== Full  spec {start:20, end:28, weeks:8}
+  S21 x1 : livré 1763 m   bnd={floor:1900, cap:1900}
+  S25 x1 : livré 3295 m   bnd={floor:3400, cap:3400}
+  S28 x1 : livré 2090 m   bnd={floor:3800, cap:3800}
+=== 70.3  spec {start:11, end:15, weeks:4}
+  S12 x1 : livré  842 m   bnd={floor:950,  cap:950}
+  S15 x2 : livré 1900 m  ||  1900 m   (bnd IDENTIQUES)
+```
+
+**D2 — la cible est POSÉE et le livré est EN DESSOUS DU PLANCHER.** `bnd.floor` vaut 1 900 / 3 400 /
+3 800 et le plan livre 1 763 / 3 295 / 2 090. Le mécanisme est **connu et déjà documenté (O-26)** :
+*« `blockBounds` jette le plancher déclaré par le bloc et le remplace par un plancher digne »*. Mon
+épinglage n'a donc jamais existé pour les passes aval — la borne dégénérée est lue par personne.
+Le diagnostic du fondateur est exact et son correctif aussi : **exclusion, pas borne.** Un bloc dont
+la distance PORTE UN SENS ne se protège pas par un intervalle, il se retire de la population que les
+passes redistribuent — comme le brick est exclu des receveuses depuis I14b, précédent à réutiliser.
+*(Quatrième occurrence de la famille : leg vélo de brick, `sessionScale`, `enforceC22Final`, celle-ci.)*
+
+**D1 — le prédicat est trop large, ce n'est PAS un double passage de rang.** Les deux séances de
+S15 portent des `bnd` **identiques**, donc le même `k` : le créneau `facile2` est invoqué **deux
+fois** pour cette semaine et la transformation, sans état, matche à chaque invocation. Le
+discriminateur du §2 tranche donc en faveur de « deux séances différentes, prédicat trop large » —
+et non d'un double passage. Le correctif n'est pas dans le calcul de la cible mais dans la SÉLECTION
+de la séance à transformer : au plus une par semaine.
+
+**Aucun ajout au périmètre.** Ces deux corrections, puis gates · golden · E2E vus jusqu'au bout.
