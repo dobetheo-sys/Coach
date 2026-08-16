@@ -4766,3 +4766,68 @@ CSS absent                          →  repli, le gate reste calculable
 
 **Le gate ne devient jamais incalculable. La seule absence qui bloque est celle qui décrit
 l'athlète face au risque, pas celle qui décrit sa vitesse.** — spec CLOSE, plus aucune inconnue.
+
+### B-17 §10 — LE GATE ACCEPTE UNE PREUVE EN BASSIN, ET C'EST LA SÉANCE EN EAU LIBRE QUI VALIDE L'HYPOTHÈSE
+
+Ton observation sur le `750 → 16,9 → 780` est exacte, vérifiée :
+
+```
+750 m au repli 130 s/100 m, SANS facteur eau libre : 16,25 min
+750 m au repli, AVEC le facteur ×1,04              : 16,90 min
+reconverti en mètres au rythme BASSIN              :   780 m  =  750 × 1,04
+```
+
+Le seuil est **dérivé d'une nage en eau libre** (facteur `TRI_SWIM[fmt].factor`) et la continuité
+déclarée, elle, sera presque toujours une nage **en bassin** — mur tous les 25 m, ligne d'eau, fond
+visible, arrêt possible à chaque longueur. Le gate demande donc **780 m de bassin pour couvrir
+750 m d'eau libre** : une surcharge de 4 % qui est le facteur du milieu, pas une correction de
+prudence.
+
+**Le gate est donc sciemment permissif : il accepte une preuve en bassin pour une capacité en eau
+libre.** C'est assumé, et ce qui le rend acceptable est l'exigence « ≥ 1 continue en conditions
+réelles » — elle n'est pas un supplément de confort, **c'est ce qui valide l'hypothèse que le gate
+a faite au moment de construire le plan**.
+
+**D'où une précision de PLACEMENT qui manquait à la spec :**
+
+```
+La séance en eau libre tombe TÔT dans la phase spécifique, indépendamment du
+palier de distance atteint — jamais en fin de progression.
+
+Motif : elle vérifie une hypothèse posée à la CONSTRUCTION du plan. Découvrir
+trois semaines avant l'épreuve que l'eau libre est bien plus dure que le bassin
+laisse le temps de s'inquiéter, pas celui de s'adapter.
+
+Les deux progressions sont INDÉPENDANTES : une continue en eau libre à 50 % de la
+distance de course, TÔT, vaut mieux qu'une à 100 %, TARD.
+```
+
+**Note d'implémentation** : `milieu` (`["bassin", "ow", "mixte"]`) est déclaré **`["swim"]`
+uniquement**. Comme `longest_swim_m`, la clé existe mais pas pour le triathlon. Deux clés à étendre
+à `tri`, donc — et la même contrainte R20.1 s'applique : elles agissent dans le commit qui les
+déclare, ou elles n'y sont pas.
+
+---
+
+**SPEC B-17 CLOSE.** Plus aucune inconnue, plus aucun arbitrage en attente :
+
+```
+gate         min(30 min, durée de nage estimée en course)
+             vitesse = baseRefs.css, sinon repli 130 s/100 m (le biais du repli
+             joue EN FAVEUR de l'athlète ici — à écrire dans le code)
+             « je ne sais pas » sur la continuité → NON satisfait
+             CSS absent → repli, le gate reste calculable
+             accepte une preuve en BASSIN — assumé, validé par la séance eau libre
+progression  paliers proportionnés à (durée de course − continuité déclarée)
+             dérivés de TRI_SWIM[fmt].dist · blocs CONTINUS (reps === 1)
+             écart faible → 1-2 confirmations · écart grand → 4 paliers
+             dernière à 3-4 semaines · jamais en affûtage
+eau libre    ≥ 1 continue en conditions réelles, combinaison comprise
+             placée TÔT dans la phase spécifique, indépendamment du palier
+mécanisme    transformation de « Nage seuil (+dist) », JAMAIS marquage s.long
+schéma       longest_swim_m ET milieu étendus à tri — même commit que le gate
+critère      O-17, membre « ne peut pas évaluer le risque »
+placement    dans la boucle du point fixe · avant le sceau
+résiduel     « écart grand ET phase trop étroite » : mesurer inatteignable et
+             asserter au sceau, pas implémenter
+```
