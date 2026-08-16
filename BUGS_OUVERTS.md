@@ -5138,6 +5138,27 @@ départage `slotIdx` retiré                D1 7      ✖      ROUGE
 départage décalé d'un cran                VACUEUX   ✖      ROUGE
 ```
 
+#### L'état de vérification du lot, en une table
+
+```
+gates            24 VERTS · 4 ROUGES  — audit:v1 · audit:v2 · audit:r13 · audit:sensibilite
+                 les trois premiers redeviennent VERTS quand le seul rabattement est
+                 neutralisé, tout le reste en place. Les quatre sont D3.
+E2E              25 suites · 24 vertes d'un bloc · smoke-usage 3/3 verte (80 assertions),
+                 rejouée séparément — règle 18
+golden           147 écarts / 949 · NON recapturé (D3)
+sceau T-27       S1 3 · S4 341 · S5 520 contre {4, 353, 513} · NON re-épinglé (D3)
+registry:check   61 reproduisent · 2 flips · 3 commandes cassées — tous confirmés à la main,
+                 aucun n'étant un défaut réparé
+```
+
+**`smoke-usage` : trois exécutions, trois vertes, 80 assertions.** Son unique échec de la passe
+complète était en deux temps, tous deux de MON fait : un `EADDRINUSE` sur le port 8596, tenu par un
+serveur orphelin de la passe que j'avais tuée après avoir reconstruit le bundle en pleine
+exécution ; puis, en la rejouant seule, un `element is not stable` sur le carrousel du check-in
+**coupé par mon propre délai de shell de 2 min** — le message « Target page has been closed » EST
+la trace de cette coupure. Règle 18 appliquée : rien n'a été attribué avant trois tirages.
+
 **O-6 a basculé en « ne reproduit plus », et c'est un FAUX POSITIF — le second de la journée.**
 Confirmé à la main (règle 17) : son bloc cherchait le littéral `0 écart` dans la sortie de
 `golden:verify`, or le golden porte **147 écarts** parce que D3 n'est pas arbitré et qu'on refuse
