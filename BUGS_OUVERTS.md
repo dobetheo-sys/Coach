@@ -4621,3 +4621,40 @@ critère     O-17, membre « ne peut pas évaluer le risque » — parce qu'en e
 - **`audit:sensibilite` exige que toute clé déclarée AGISSE dans chaque sport où elle est
   déclarée** (R20.1). Étendre `longest_swim_m` à `tri` sans câbler le gate dans le même commit
   rendrait ce gate rouge — les deux landent ensemble ou aucun.
+
+### B-17 §7 — LA MESURE DU CAS « MOINS DE 4 » : il existe, et pas là où la question le cherchait
+
+`npm run mesure:b17`, chaque format balayé **depuis son `MIN_WEEKS` réel** :
+
+| format | `MIN_WEEKS` | horizon | semaines `spec` | « Nage seuil » dans `spec` | ≥ 4 ? |
+|---|---|---|---|---|---|
+| **tri/S** | 8 | 8 · 10 · 14 · 22 | 2 · 2 · 3 · 6 | **1 · 1 · 2 · 3** | **NON, à tous** |
+| tri/M | 12 | 12 · 14 | 2 · 3 | 2 · 3 | NON |
+| tri/M | 12 | 18 · 26 | 5 · 8 | 5 · 8 | oui |
+| tri/70.3 | 20 | 20 → 34 | 4 → 8 | 4 → 8 | oui |
+| **tri/Full** | **36** | 36 → 50 | 8 → 14 | **8 → 14** | **oui, toujours** |
+
+**Le cas existe — mais l'inverse de ce que la question supposait.** `Full`, le format que la
+question visait (« compte tenu de `MIN_WEEKS` 36 semaines »), porte **8 à 14** occurrences dès son
+horizon minimal : il ne peut jamais manquer de paliers. Ce sont **`tri/S` et `tri/M` courts** qui
+en manquent — et `tri/S` **n'atteint jamais 4, même à 22 semaines**, parce que la nage seuil n'y est
+pas hebdomadaire (3 occurrences pour 6 semaines de spécifique).
+
+**Conséquence sur la spec** : la branche « la progression ne tient pas → condition du même gate »
+doit être câblée, et son domaine réel est le format le plus COURT, pas le plus long. Ce qui la rend
+d'ailleurs plus facile à défendre : refuser un `tri/S` de 8 semaines à quelqu'un qui ne tient pas
+30 min de nage continue est proportionné ; le même refus sur un Full de 36 semaines aurait été un
+faux positif que cette mesure écarte.
+
+*(Faute d'instrument, publiée : ma première écriture appelait `EBV2.minWeeks("tri", format)` — c'est
+un OBJET, pas une fonction. Les horizons étaient donc arbitraires (20 à 34), et **`Full` était refusé
+aux quatre**, donc jamais mesuré : le verdict « le cas existe » ne reposait que sur `tri/S`. La
+conclusion s'est trouvée juste, la mesure qui la fondait ne l'était pas — et elle manquait
+exactement le format sur lequel la question portait.)*
+
+```verify
+id: B-17-paliers
+quoi: tri/S ne porte jamais 4 « Nage seuil » en phase specifique, meme a 22 semaines
+attendu: LE CAS EXISTE
+cmd: node scripts/mesureB17.mjs 2>/dev/null | grep -o "LE CAS EXISTE" | head -1
+```
