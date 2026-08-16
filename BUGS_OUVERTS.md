@@ -242,9 +242,9 @@ sortie de la commande, pas celui de son enrobage.**
 
 ```verify
 id: O-6
-quoi: golden:verify sort en 0 et annonce 0 écart
-attendu: /0 écart/
-cmd: npm run golden:verify
+quoi: le refus TYPÉ est distingué de l'erreur de génération — la propriété, pas un golden propre
+attendu: O6-FIX-TIENT
+cmd: npm run golden:verify 2>&1 | grep -q "refus d'entrée typé(s) — comportement attendu" && echo "O6-FIX-TIENT"
 ```
 
 
@@ -2969,9 +2969,9 @@ T-31   Aucune garde ne traite comme absente une grandeur PRÉSENTE dans une autr
 
 ```verify
 id: O-40
-quoi: les deux gardes abandonnent selon l'unite, et le plafond nage mordrait sur 12 profils
-attendu: LE PLAFOND MORD
-cmd: node scripts/mesureO40.mjs 2>/dev/null | grep -o "LE PLAFOND MORD"
+quoi: les deux gardes abandonnent selon l'unite ; le plafond nage est DECLARATIF (mesure corrigee en a93d5c7)
+attendu: LE PLAFOND EST DÉCLARATIF
+cmd: node scripts/mesureO40.mjs 2>/dev/null | grep -o "LE PLAFOND EST DÉCLARATIF"
 ```
 
 ---
@@ -5138,12 +5138,35 @@ départage `slotIdx` retiré                D1 7      ✖      ROUGE
 départage décalé d'un cran                VACUEUX   ✖      ROUGE
 ```
 
-```verify
-id: B-17-D1-D2
-quoi: la nage continue est prescrite une fois par semaine, livrée EXACTEMENT à sa cible
-attendu: les deux critères tenus (D1 = 0 doublon, D2 = 0 écart)
-cmd: node scripts/sondeB17.mjs | grep -q "LES DEUX CRITÈRES SONT TENUS" && echo "B17-D1-D2-TENUS"
-```
+**O-6 a basculé en « ne reproduit plus », et c'est un FAUX POSITIF — le second de la journée.**
+Confirmé à la main (règle 17) : son bloc cherchait le littéral `0 écart` dans la sortie de
+`golden:verify`, or le golden porte **147 écarts** parce que D3 n'est pas arbitré et qu'on refuse
+délibérément de le recapturer. Le correctif d'O-6 tient parfaitement — la ligne « 4 refus d'entrée
+typé(s) — comportement attendu, photographié » est là, les refus ne sont pas comptés comme des
+erreurs. Le bloc mesurait une grandeur VOISINE de celle qu'il nomme : la propreté du golden, pas la
+distinction refus/erreur. Réécrit sur la propriété, comme la règle 17 le demande.
+
+**O-40 : commande cassée, et elle l'était AVANT ce lot.** Son bloc attend `LE PLAFOND MORD`, jeton
+écrit en `c1a595e` ; `a93d5c7` a ensuite CORRIGÉ la mesure (« mon balayage d'hier mesurait un nageur
+de REPLI ») et le verdict est devenu `LE PLAFOND EST DÉCLARATIF` — sans que le bloc suive. C'est la
+règle 17 dans son autre forme : une mesure corrigée laisse derrière elle un bloc périmé, qui se lit
+comme un registre pointant dans le vide. Jeton aligné sur le verdict actuel.
+
+**O-37 et T-27b : cassées par une décision, pas par une dérive.** Les deux dépendent de `✓ T-27`
+dans la sortie de `lotPhysio`, et T-27 est ROUGE parce que `SCEAU_ATTENDU` n'est délibérément pas
+re-épinglé (§15 ci-dessus). Elles redeviendront exécutables quand D3 sera arbitré. Laissées telles
+quelles : les « réparer » en retirant leur dépendance à T-27 masquerait ce que T-27 signale.
+
+**Pas de bloc `verify` pour D1/D2, et le retirer est le correctif.** J'en avais écrit un ; il
+était faux DEUX fois. Son `attendu` portait de la prose là où la convention veut le JETON que la
+`cmd` écho (`O47-REPRODUIT`…), donc `registry:check` l'a rangé en « ne reproduit plus » — un flip
+qui se lit comme un défaut réparé, la forme exacte que la règle 17 dit de confirmer à la main.
+Vérifié à la main : la commande rend bien `B17-D1-D2-TENUS`. Mais la seconde erreur est plus
+profonde et ne se corrige pas en changeant le jeton : **ce registre recense des défauts OUVERTS**,
+où « reproduit » signifie *le défaut est toujours là*. Un bloc dont l'attendu est « le correctif
+tient » inverse cette sémantique, et un jour où il rougirait il annoncerait une bonne nouvelle.
+Ce que D1/D2 méritent est une GARDE, pas une entrée de registre — c'est `T-06`, écrit dans le même
+commit et vérifié rouge sur les trois cassures.
 
 ```verify
 id: B-17-D3
