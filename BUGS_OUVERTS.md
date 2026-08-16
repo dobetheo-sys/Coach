@@ -5296,6 +5296,25 @@ symétrique — traiter « je ne sais pas » comme le plancher de 200 m — raba
 triathlète qui ne connaît pas sa plus longue nage, c'est-à-dire exactement le dommage
 disproportionné que le §2 dénonce.
 
+#### 5bis · Ma sonde était satisfaite par le défaut qu'elle surveille — règle 19, troisième fois
+
+Contre-preuve n° 1 : rétablir le rabattement d'origine (la cible ne cherche que `satisfait`) fait
+passer les rabattements de **5 à 12** sur le balayage et de **5 à 21** sur le golden — et la sonde
+restait **VERTE**, parce que « au moins un format gardé » suffisait à sa non-vacuité. Le correctif
+le moins coûteux qui fait passer ce test ne résout pas le problème : c'est exactement ce que la
+règle 19 dit de demander AVANT d'écrire. Le verdict de chacun des **20 cas est désormais ÉPINGLÉ**
+— un cliquet, pas un seuil.
+
+```
+cassure                                        cliquet   montée   non-vacuité
+rabattement d'origine (le défaut D3)              ✖         ✓          ✓
+paliers repartant de 50 % de la course            ✓         ✓          ✖
+plafond par la place retiré                       ✓         ✖          ✓
+```
+
+Trois cassures, trois rouges — mais seulement APRÈS avoir ajouté le cliquet, et la première ne
+l'était pas avant.
+
 #### 6 · Et j'ai effacé une heure de travail avec `git checkout`, pour la SECONDE fois du dépôt
 
 Pour restaurer une cassure de contre-preuve, j'ai fait `git checkout -- src/engine/reasoningEngine.ts`

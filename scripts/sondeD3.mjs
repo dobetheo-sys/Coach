@@ -82,6 +82,26 @@ for (const c of gardes.concat(ok)) {
   for (let i = 1; i < pl.length; i++) if (pl[i] <= pl[i - 1]) montees.push(`${c.format}/${c.nom} : ${pl[i]} ≤ ${pl[i - 1]}`);
   if (pl.length && pl[pl.length - 1] !== TRI_SWIM[c.format].dist) montees.push(`${c.format}/${c.nom} : dernier ${pl[pl.length - 1]} ≠ ${TRI_SWIM[c.format].dist}`);
 }
+// ⚠ CE CRITÈRE MANQUAIT, ET SANS LUI LA SONDE EST SATISFAITE PAR LE DÉFAUT QU'ELLE SURVEILLE.
+// Contre-preuve : en rétablissant le rabattement d'origine (la cible ne cherche que `satisfait`),
+// les rabattements passent de 5 à 12 sur ce balayage et de 5 à 21 sur le golden — et la sonde
+// restait VERTE, parce que « au moins un format gardé » suffisait à la contenter. C'est la
+// règle 19 : le correctif le moins coûteux qui fait passer ce test ne résout pas le problème.
+// Le verdict de CHAQUE cas est donc ÉPINGLÉ. Un cliquet, pas un seuil.
+const ATTENDU = {
+  "S/continuité suffisante": "gate satisfait", "S/100 m déclarés": "format gardé",
+  "S/400 m déclarés": "format gardé", "S/« je ne sais pas »": "format gardé", "S/réponse ABSENTE": "format gardé",
+  "M/continuité suffisante": "gate satisfait", "M/100 m déclarés": "RABATTU",
+  "M/400 m déclarés": "RABATTU", "M/« je ne sais pas »": "format gardé", "M/réponse ABSENTE": "format gardé",
+  "70.3/continuité suffisante": "gate satisfait", "70.3/100 m déclarés": "RABATTU",
+  "70.3/400 m déclarés": "RABATTU", "70.3/« je ne sais pas »": "format gardé", "70.3/réponse ABSENTE": "format gardé",
+  "Full/continuité suffisante": "gate satisfait", "Full/100 m déclarés": "RABATTU",
+  "Full/400 m déclarés": "format gardé", "Full/« je ne sais pas »": "format gardé", "Full/réponse ABSENTE": "format gardé",
+};
+const derives = cas.filter((c) => ATTENDU[c.format + "/" + c.nom] && ATTENDU[c.format + "/" + c.nom] !== c.verdict)
+  .map((c) => `${c.format}/${c.nom} : ${c.verdict} au lieu de ${ATTENDU[c.format + "/" + c.nom]}`);
+console.log(`  cliquet      : ${derives.length ? "✖ " + derives.slice(0, 4).join(" · ") : "✓ les 20 verdicts sont ceux épinglés"}`);
+
 // D3 §3b — LA PROGRESSION PART-ELLE DE L'ATHLÈTE ? Sans ce critère, la sonde reste VERTE quand
 // les paliers repartent de 50 % de la distance de course (vérifié : la cassure passe inaperçue).
 // C'est la règle 19 — quel est le correctif le moins coûteux qui ferait passer ce test ? Ici :
@@ -114,6 +134,6 @@ for (const c of cas) {
 console.log(`  honnêteté    : ${inversions.length ? "⚠ " + inversions.length + " inversion(s) — " + inversions.slice(0, 3).join(" · ") : "✓ aucune déclaration n'est punie par rapport à « je ne sais pas »"}`);
 
 console.log(`\n  → ${!manquantes.length && !montees.length
-  && !departs.length
+  && !departs.length && !derives.length
   ? "LA CONSÉQUENCE EST GRADUÉE : le rabattement est réservé à l'écart NON franchissable."
   : "AU MOINS UN CRITÈRE EST ROMPU."}`);
