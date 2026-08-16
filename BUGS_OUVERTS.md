@@ -4267,3 +4267,67 @@ qui elle tient pleinement. C'est bien le sort de ces 33 que le chiffre 20 arbitr
 **Reste à écrire** : le plancher, sa borne `min(20, durée du plafond APPLICABLE)`, la ligne
 d'explication, la garde, et la mesure avant/après aux quatre critères du §4 — dont le troisième,
 « aucun profil ne perd de volume : le plancher regroupe, il ne retire pas », qui est le vrai test.
+
+### O-44 §9 — RECTIFICATION : les 27 « sprint » sont des `swim/sprint`, pas des `tri/S`
+
+La mesure du §7 ne balayait que `sport === "swim"` : ses 27 profils « sprint » sont donc des
+**`swim/sprint`, plafond `CAP_SWIM.sprint` = 1 400 m**, soit **23,5 min à CSS 1:30** et 31,4 à
+CSS 2:00. Le plancher de 20 min **tient pour eux**. `tri/S` (750 m) n'apparaît nulle part dans
+cette sous-population — c'est un autre sport, jamais balayé par cette mesure.
+
+**L'inférence « `CAP_SWIM[tri/S]` laisse 27 profils sur 69 hors du plancher » est donc réfutée**, et
+le cinquième critère d'acceptation qu'elle motivait n'a pas d'objet. Ma table du §8 mêlait des
+formats de nage pure et des formats de triathlon sans le dire : c'est elle qui a induit l'erreur.
+
+**Le plancher couvre bien la sous-population mesurée** : 36 débutants (bornés à 14-19 min par C15,
+effet partiel et assumé) + 33 non-débutants chez qui `min(20, …)` ne clampe pas.
+
+---
+
+## O-46 · `CAP_SWIM` mêle deux logiques : plafond d'ENTRAÎNEMENT en nage pure, distance de COURSE en triathlon · 🔴 **OUVERT**
+
+Scindé d'O-44 §9. La suspicion du fondateur est **confirmée, et pire que sa formulation** :
+
+| format | plafond de séance | distance de nage de la course | rapport |
+|---|---|---|---|
+| `swim/sprint` | 1 400 m | — (nage pure) | plafond d'entraînement |
+| `swim/fond` | 3 000 m | — | plafond d'entraînement |
+| **`tri/S`** | **750 m** | **750 m** | **×1,00** |
+| **`tri/M`** | **1 500 m** | **1 500 m** | **×1,00** |
+| **`tri/70.3`** | **1 900 m** | **1 900 m** | **×1,00** |
+| **`tri/Full`** | **3 000 m** | **3 800 m** | **×0,79** |
+
+Trois formats sur quatre valent **exactement** la distance de course. Le quatrième vaut **79 %** de
+la sienne : **un triathlète longue distance ne peut jamais nager sa distance de course en une
+séance.** Ce n'est pas un plafond d'entraînement, c'est une distance de course recopiée dans un
+champ de plafond — et le `Full` montre que la recopie elle-même est incomplète.
+
+En natation, le volume d'entraînement dépasse couramment la distance de course d'un facteur 3 à 5 :
+la nage est limitée par la technique et la capacité aérobie, et n'a quasi aucun coût orthopédique.
+Les formats de nage pure de cette même table le reflètent ; les formats de triathlon non.
+
+**Ce que la mesure dit de la portée, et qui modère l'urgence** — nage en triathlon, semaines de
+charge :
+
+```
+tri/S     n=  344 · médiane 26 min · p90 49 · part < 20 min 12 %
+tri/M     n=  511 · médiane 42 min · p90 69 · part < 20 min 11 %
+tri/70.3  n=  653 · médiane 52 min · p90 81 · part < 20 min 17 %
+tri/Full  n=2 236 · médiane 38 min · p90 67 · part < 20 min 11 %
+```
+
+Les séances de nage du triathlon sont majoritairement LONGUES : le plafond borne la séance longue,
+il ne fabrique pas les séances courtes. **O-44 et O-46 sont donc bien deux tickets distincts**, et
+O-44 n'attend pas O-46.
+
+**Non tranché** : les quatre valeurs sont-elles une décision d'entraînement (« la séance la plus
+longue d'un triathlète n'a pas besoin de dépasser sa distance de course, le temps de nage servant
+mieux ailleurs ») ou une recopie ? Le `Full` à ×0,79 penche pour la recopie, mais un seul point ne
+tranche pas. À demander à la source, ou à arbitrer.
+
+```verify
+id: O-46
+quoi: CAP_SWIM des formats tri vaut la distance de course, et Full est SOUS la sienne
+attendu: O46-REPRODUIT
+cmd: node -e "const m=require('fs').readFileSync('src/engine/constraintMatrix.ts','utf8');const ok=/S: 750/.test(m)&&/M: 1500/.test(m)&&/\"70\.3\": 1900/.test(m)&&/Full: 3000/.test(m);process.stdout.write(ok?'O46-REPRODUIT':'')"
+```
