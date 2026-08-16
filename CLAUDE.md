@@ -235,6 +235,13 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   la pire des solutions. La propriété réelle est « invariant à ce qui ne le concerne pas, **sensible
   à ce qui le concerne** » — T-34 avec T-36. À appliquer à tout test d'invariance du dépôt.
 
+- **Une table qui croise deux populations porte son AXE dans son en-tête** (arbitrage O-46, §5) :
+  transmise, elle est plus dangereuse que commise — celui qui la commet peut encore se souvenir de
+  ce qu'il a mélangé, celui qui la reçoit ne le peut pas. Deux occurrences en une journée : une
+  table qui mêlait semaines de charge et d'affûtage (O-44 §6a), une qui mêlait formats de nage pure
+  et de triathlon sous le seul mot « sprint » (O-44 §9) — la seconde a fait conclure au fondateur
+  que 27 profils échappaient à un correctif qui les couvre. L'axe coûte trois mots.
+
 - **Règle 18 — une différence E2E n'est attribuée à un lot qu'après ≥ 3 exécutions de la suite
   concernée DE CHAQUE CÔTÉ du changement.** Une exécution unique de part et d'autre n'est pas une
   comparaison : c'est deux tirages. Une suite E2E est stochastique par nature (réseau, temporisation,

@@ -4331,3 +4331,24 @@ quoi: CAP_SWIM des formats tri vaut la distance de course, et Full est SOUS la s
 attendu: O46-REPRODUIT
 cmd: node -e "const m=require('fs').readFileSync('src/engine/constraintMatrix.ts','utf8');const ok=/S: 750/.test(m)&&/M: 1500/.test(m)&&/\"70\.3\": 1900/.test(m)&&/Full: 3000/.test(m);process.stdout.write(ok?'O46-REPRODUIT':'')"
 ```
+
+### O-46 §2 — T-38 écrit ROUGE, et l'asymétrie tient en une ligne de rapport
+
+```
+✖ T-38  aucun plafond de séance de nage n'est sous la distance de course du format
+        tri/Full : plafond 3000 m < course 3800 m (×0.79)
+        tous : tri/S ×1.00 · tri/M ×1.00 · tri/70.3 ×1.00 · tri/Full ×0.79
+             · nage/sprint ×14.00 · nage/demifond ×5.00 · nage/fond ×2.00 · nage/ow ×3.00
+```
+
+Les deux côtés sont **dérivés** (R11.1) : `CAP_SWIM` d'un côté, `TRI_SWIM`/`SWIM_RACE` — les tables
+que le prédicteur emploie déjà — de l'autre. Aucune distance n'est recopiée dans la garde ; une
+garde qui porterait sa propre table mesurerait sa table.
+
+Les formats de nage pure restent **dans** le balayage bien qu'ils passent largement : c'est ce qui
+met l'asymétrie sous les yeux dans le rapport du test, sur une seule ligne, sans commentaire.
+
+**Ce que T-38 ne ferme pas, et qui porte le risque** : relever le plafond rend la séance à distance
+de course POSSIBLE, il ne la rend pas PRESCRITE. Le prérequis de continuité — au moins une nage
+continue à la distance de course avant le jour J — reste **B-17**, rouvert avec O-46 pour cause
+identifiée. La correction du plafond est nécessaire et non suffisante.

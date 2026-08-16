@@ -27,12 +27,13 @@ import "../src/app/bridge.ts";
 import { ZDEF } from "../src/generator/renderer.ts";
 import { zoneClass, intensitySplit } from "../src/engine/loadModel.ts";
 import { sessionIntensity } from "../src/readiness/dailyAdjuster.ts";
+import { CAP_SWIM } from "../src/engine/constraintMatrix.ts";
 import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor, swimTimeFactorOf,
   BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, DOSE_CAP_MIN, DOSE_EXEMPT } from "../src/engine/constraintMatrix.ts";
 import { RN_THR_FRONTIERE_LENTE } from "../src/engine/loadModel.ts";
 import { TrainingReasoningEngine } from "../src/engine/reasoningEngine.ts";
 import { toProfile } from "../src/app/bridge.ts";
-import { riegelExponent, riegelSecWith, RUN_KM, marathonPaceBand, RN_MARA_RATIO_PLANCHER } from "../src/engine/predictor.ts";
+import { riegelExponent, riegelSecWith, RUN_KM, marathonPaceBand, RN_MARA_RATIO_PLANCHER, TRI_SWIM, SWIM_RACE } from "../src/engine/predictor.ts";
 import { profiles as goldenProfiles } from "./goldenMaster.mjs";
 import { estCharge } from "./lib/planMetrics.mjs";
 
@@ -1130,7 +1131,43 @@ T("T-35", "vert", "le pic livré et la fréquence de nage sont épinglés — un
   return { ok: bad.length === 0, detail: bad.length ? bad.join(" · ") : vus.join(" · ") };
 });
 
+/**
+ * T-38 (O-46) — AUCUN PLAFOND DE SÉANCE DE NAGE N'EST INFÉRIEUR À LA DISTANCE DE COURSE.
+ *
+ * C'est une PROPRIÉTÉ, pas un calibrage : la marge à autoriser AU-DESSUS demande sa propre mesure,
+ * mais un plafond SOUS la distance de l'épreuve n'a aucune lecture défendable. Il signifie que
+ * l'athlète ne peut jamais nager sa distance de course à l'entraînement — donc qu'il arrive à un
+ * départ en masse, en eau libre, en combinaison, sur une distance qu'il n'a jamais couverte en
+ * conditions favorables (bassin calme, ligne d'eau, mur tous les 25 m, arrêt possible à chaque
+ * longueur). C'est le seul mode de défaillance de ce moteur qui puisse coûter autre chose qu'une
+ * performance, et c'est la cause mécanique de **B-17** (« aucun prérequis de nage continue en
+ * triathlon »), jamais ouvert.
+ *
+ * ROUGE aujourd'hui sur `tri/Full` : plafond 3 000 m pour une épreuve de 3 800.
+ *
+ * Les deux côtés sont DÉRIVÉS (R11.1) — `CAP_SWIM` d'un côté, `TRI_SWIM`/`SWIM_RACE` de l'autre,
+ * les tables que le prédicteur emploie déjà. Aucune distance n'est recopiée ici : une garde qui
+ * porterait sa propre table mesurerait sa table.
+ *
+ * Les formats de NAGE PURE sont dans le balayage et passent largement (leur plafond vaut 14 à 20
+ * fois leur distance de course, ce qui est la pratique normale en natation) : les laisser dedans
+ * est ce qui rend l'asymétrie avec les formats de triathlon visible dans le rapport du test.
+ */
+T("T-38", "rouge", "aucun plafond de séance de nage n'est sous la distance de course du format (O-46)", () => {
+  const bad = [], vus = [];
+  for (const [table, nom] of [[TRI_SWIM, "tri"], [SWIM_RACE, "nage"]])
+    for (const [fmt, o] of Object.entries(table)) {
+      const cap = CAP_SWIM[fmt];
+      if (cap == null) continue;
+      const r = cap / o.dist;
+      vus.push(`${nom}/${fmt} ×${r.toFixed(2)}`);
+      if (cap < o.dist) bad.push(`${nom}/${fmt} : plafond ${cap} m < course ${o.dist} m (×${r.toFixed(2)})`);
+    }
+  return { ok: bad.length === 0, detail: bad.length ? bad.join(" · ") + "  —  tous : " + vus.join(" · ") : vus.join(" · ") };
+});
+
 const ROUGES_ATTENDUS = {
+  "T-38": "O-46 — CAP_SWIM des formats tri vaut la distance de course (Full : 3 000 < 3 800) ; relèvement + B-17 rouvert",
   "T-34": "O-43 — la conversion déplace ce qui est prescrit (pic +9 %, fréquence) : filtre du fondateur, une seule issue le passe",
   "T-01": "A-01 — sessionIntensity() importe zoneClass() au lieu de sa copie (+ V-08 pour sw.aero)",
   "T-02": "A-01 — la zone fantôme vit dans la copie de dailyAdjuster",
