@@ -1132,42 +1132,57 @@ T("T-35", "vert", "le pic livré et la fréquence de nage sont épinglés — un
 });
 
 /**
- * T-38 (O-46) — AUCUN PLAFOND DE SÉANCE DE NAGE N'EST INFÉRIEUR À LA DISTANCE DE COURSE.
+ * T-38 (O-46, révisé) — LE PLAFOND PERMET UNE SÉANCE DONT LE CORPS VAUT LA DISTANCE DE COURSE.
  *
- * C'est une PROPRIÉTÉ, pas un calibrage : la marge à autoriser AU-DESSUS demande sa propre mesure,
- * mais un plafond SOUS la distance de l'épreuve n'a aucune lecture défendable. Il signifie que
- * l'athlète ne peut jamais nager sa distance de course à l'entraînement — donc qu'il arrive à un
- * départ en masse, en eau libre, en combinaison, sur une distance qu'il n'a jamais couverte en
- * conditions favorables (bassin calme, ligne d'eau, mur tous les 25 m, arrêt possible à chaque
- * longueur). C'est le seul mode de défaillance de ce moteur qui puisse coûter autre chose qu'une
- * performance, et c'est la cause mécanique de **B-17** (« aucun prérequis de nage continue en
- * triathlon »), jamais ouvert.
+ * ⚠ MA PREMIÈRE ÉCRITURE ÉTAIT SATISFIABLE PAR UN CORRECTIF QUI NE CORRIGE RIEN. Elle posait
+ * `CAP_SWIM[format] ≥ distance de course` — une INÉGALITÉ, donc `tri/Full : 3 000 → 3 800` la
+ * passait au vert en laissant le défaut entier : le plafond vaudrait alors exactement la distance
+ * de course, comme les trois autres formats, et aucun travail sur-distance ne serait toujours
+ * possible. C'est exactement la faille que j'avais nommée sur l'issue 2 d'O-43 — **une valeur
+ * épinglée sur la borne satisfait trivialement un test de borne** — et je l'ai reproduite dans la
+ * garde écrite une heure plus tard.
  *
- * ROUGE aujourd'hui sur `tri/Full` : plafond 3 000 m pour une épreuve de 3 800.
+ * La propriété juste est structurelle : une séance de nage porte un échauffement, un corps et un
+ * retour au calme. Pour que le CORPS puisse valoir la distance de course, il faut
+ * `plafond ≥ distance + (échauffement + retour au calme)`. Un plafond posé exactement sur la
+ * distance de course rend cette séance IMPOSSIBLE — il ne reste rien pour le reste.
  *
- * Les deux côtés sont DÉRIVÉS (R11.1) — `CAP_SWIM` d'un côté, `TRI_SWIM`/`SWIM_RACE` de l'autre,
- * les tables que le prédicteur emploie déjà. Aucune distance n'est recopiée ici : une garde qui
- * porterait sa propre table mesurerait sa table.
+ * AUCUNE CONSTANTE NOUVELLE : les trois grandeurs sont lues là où elles vivent — `CAP_SWIM`,
+ * `TRI_SWIM`/`SWIM_RACE`, et l'allocation échauffement/retour au calme OBSERVÉE sur les plans
+ * LIVRÉS (règle 15 : on mesure ce que le moteur prescrit, pas ce qu'une table déclare). La
+ * médiane est retenue comme séance représentative ; la distribution complète est publiée dans le
+ * détail du test pour que ce choix reste révocable sans re-mesure.
  *
- * Les formats de NAGE PURE sont dans le balayage et passent largement (leur plafond vaut 14 à 20
- * fois leur distance de course, ce qui est la pratique normale en natation) : les laisser dedans
- * est ce qui rend l'asymétrie avec les formats de triathlon visible dans le rapport du test.
+ * ROUGE aujourd'hui sur les QUATRE formats de triathlon, et pas seulement `Full` : les trois à
+ * ×1,00 sont aussi défaillants, simplement de façon moins visible.
  */
-T("T-38", "rouge", "aucun plafond de séance de nage n'est sous la distance de course du format (O-46)", () => {
+T("T-38", "rouge", "le plafond de nage permet une séance dont le CORPS vaut la distance de course (O-46)", () => {
+  // L'aux (échauffement + retour au calme) mesuré sur la sortie livrée, par format.
+  const aux = {};
+  for (const { key, plan } of goldenAvecMoteur()) {
+    const fmt = key.split("/").find((x) => CAP_SWIM[x] != null);
+    if (!fmt) continue;
+    for (const w of plan.weeks ?? []) for (const d of w.days ?? []) for (const sx of d.sessions ?? []) {
+      if (sx.d !== "sw" || !sx.steps) continue;
+      const a = sx.steps.filter((st) => st.role !== "body").reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+      if (a > 0) (aux[fmt] ||= []).push(a);
+    }
+  }
+  const med = (xs) => { const t = [...xs].sort((x, y) => x - y); return t[Math.floor(t.length / 2)]; };
   const bad = [], vus = [];
   for (const [table, nom] of [[TRI_SWIM, "tri"], [SWIM_RACE, "nage"]])
     for (const [fmt, o] of Object.entries(table)) {
       const cap = CAP_SWIM[fmt];
-      if (cap == null) continue;
-      const r = cap / o.dist;
-      vus.push(`${nom}/${fmt} ×${r.toFixed(2)}`);
-      if (cap < o.dist) bad.push(`${nom}/${fmt} : plafond ${cap} m < course ${o.dist} m (×${r.toFixed(2)})`);
+      if (cap == null || !aux[fmt]?.length) continue;
+      const a = med(aux[fmt]), besoin = o.dist + a;
+      vus.push(`${nom}/${fmt} ${cap}≥${besoin}? (course ${o.dist} + aux ${a})`);
+      if (cap < besoin) bad.push(`${nom}/${fmt} : plafond ${cap} m < ${besoin} m nécessaires (course ${o.dist} + aux ${a})`);
     }
-  return { ok: bad.length === 0, detail: bad.length ? bad.join(" · ") + "  —  tous : " + vus.join(" · ") : vus.join(" · ") };
+  return { ok: bad.length === 0, detail: (bad.length ? bad.join(" · ") + "  —  " : "") + "tous : " + vus.join(" · ") };
 });
 
 const ROUGES_ATTENDUS = {
-  "T-38": "O-46 — CAP_SWIM des formats tri vaut la distance de course (Full : 3 000 < 3 800) ; relèvement + B-17 rouvert",
+  "T-38": "O-46 — les QUATRE formats tri ont un plafond sous `course + échauffement/retour au calme` ; relèvement + B-17 rouvert",
   "T-34": "O-43 — la conversion déplace ce qui est prescrit (pic +9 %, fréquence) : filtre du fondateur, une seule issue le passe",
   "T-01": "A-01 — sessionIntensity() importe zoneClass() au lieu de sa copie (+ V-08 pour sw.aero)",
   "T-02": "A-01 — la zone fantôme vit dans la copie de dailyAdjuster",

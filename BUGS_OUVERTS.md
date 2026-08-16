@@ -4352,3 +4352,35 @@ met l'asymétrie sous les yeux dans le rapport du test, sur une seule ligne, san
 de course POSSIBLE, il ne la rend pas PRESCRITE. Le prérequis de continuité — au moins une nage
 continue à la distance de course avant le jour J — reste **B-17**, rouvert avec O-46 pour cause
 identifiée. La correction du plafond est nécessaire et non suffisante.
+
+### O-46 §3 — T-38 RÉVISÉ : ma première écriture était satisfiable par un correctif qui ne corrige rien
+
+`CAP_SWIM[format] ≥ distance de course` est une **inégalité**, donc `tri/Full : 3 000 → 3 800` la
+passait au vert en laissant le défaut entier — le plafond vaudrait alors exactement la distance de
+course, comme les trois autres, et aucun travail sur-distance ne serait toujours possible.
+
+**C'est la faille que j'avais moi-même nommée sur l'issue 2 d'O-43** — *« une constante gelée est
+trivialement invariante », « une valeur épinglée sur la borne satisfait trivialement un test de
+borne »* — et je l'ai reproduite dans la garde écrite une heure plus tard. Onzième occurrence de
+la famille, et la première où je répète une leçon dans la même journée.
+
+**La propriété juste est structurelle** : une séance porte un échauffement, un corps et un retour au
+calme. Pour que le CORPS puisse valoir la distance de course, il faut
+`plafond ≥ distance + (échauffement + retour au calme)`. Un plafond posé exactement sur la distance
+de course rend cette séance **impossible** — il ne reste rien pour le reste.
+
+Aucune constante nouvelle : les trois grandeurs sont lues là où elles vivent, et l'aux est
+**observé sur les plans LIVRÉS** (règle 15), pas déclaré. Médiane retenue, distribution publiée.
+
+```
+tri/S     plafond  750 m < 1 100 m nécessaires  (course  750 + aux 350)
+tri/M     plafond 1500 m < 1 850 m nécessaires  (course 1500 + aux 350)
+tri/70.3  plafond 1900 m < 2 250 m nécessaires  (course 1900 + aux 350)
+tri/Full  plafond 3000 m < 4 150 m nécessaires  (course 3800 + aux 350)
+
+nage/sprint   1400 ≥   500 ✓     nage/fond   3000 ≥ 2 000 ✓
+nage/demifond 2000 ≥   850 ✓     nage/ow     4500 ≥ 2 100 ✓
+```
+
+**Les QUATRE formats de triathlon sont rouges, pas seulement `Full`** — les trois à ×1,00 sont
+aussi défaillants, simplement de façon moins visible. C'est ce que la première écriture cachait.
