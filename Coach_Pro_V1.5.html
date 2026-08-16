@@ -2580,7 +2580,10 @@ const ANSWER_SCHEMA                            = {
   leg_swim_env: { ...enumF("le milieu de nage de ta course", ["bassin", "lac", "mer_calme", "mer_agitee", "eau_vive"], ["tri", "swimrun"]), nature: "vecue" },
   leg_bike_prof: { ...enumF("le profil du parcours vélo", ["plat", "vallonne", "montagne"], ["tri", "duathlon"]), nature: "vecue" },
   leg_run_prof: { ...enumF("le profil du parcours à pied", ["plat", "vallonne", "montagne"], ["tri", "duathlon", "swimrun"]), nature: "vecue" },
-  milieu: { ...enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim"]), nature: "vecue" },
+  // B-17 — ÉTENDUE AU TRIATHLON. Deux consommateurs : la surcharge du gate cesse d'être
+  // systématique (`ow` → la preuve est déjà dans le bon milieu) et le message « bassin + eau
+  // libre » n'existe que si l'on sait où l'athlète nage.
+  milieu: { ...enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim", "tri"]), nature: "vecue" },
   swim_limit: { ...enumF("ta limite en natation", ["technique", "respiration", "endurance", "peur"], ["swim"]), nature: "vecue" },
   treadmill: { ...enumF("l'accès au tapis", OUI_NON, ["trail"]), nature: "vecue" },
   // ---- Trail ----
@@ -2599,7 +2602,10 @@ const ANSWER_SCHEMA                            = {
   gear_test: { ...enumF("le test en tenue", OUI_NON, ["swimrun"]), nature: "vecue" },
   swim_total_m: { ...numF("la nage totale de ta course", 100, 30000, "m", ["swimrun"]), nature: "vecue" },
   run_total_km: { ...numF("la course totale de ton épreuve", 1, 200, "km", ["swimrun"]), nature: "vecue" },
-  longest_swim_m: { ...numF("ta plus longue nage", 50, 10000, "m", ["swimrun"]), nature: "vecue" },
+  // B-17 — ÉTENDUE AU TRIATHLON. Le gate de continuité en eau libre la consomme (`continuityGate`),
+  // et R20.1 exige qu'une clé déclarée AGISSE dans chaque sport où elle est déclarée : elle est
+  // arrivée dans le commit qui câble le gate, jamais avant.
+  longest_swim_m: { ...numF("ta plus longue nage", 50, 10000, "m", ["swimrun", "tri"]), nature: "vecue" },
   segments_n: { ...numF("le nombre de segments", 2, 60, "", ["swimrun"]), nature: "vecue" },
   // R19.2 — le triathlon aussi. La combinaison vaut 4 à 7 % de temps de nage et sa légalité
   // est un SEUIL RÉGLEMENTAIRE (24,5 °C) : c'est la variable dominante du leg natation, et
@@ -4496,6 +4502,7 @@ function trailWeeklyVertical(obj                , history        , access       
 
 
 
+
 /** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
 function fmtH(min        )         {
   const h = Math.floor(min / 60), m = Math.round(min % 60);
@@ -4564,6 +4571,54 @@ class TrainingReasoningEngine {
         warnings.push(block + " Ton plan a donc été construit sur le format Sprint : il te prépare aux bases, et tu passeras au format long quand elles seront acquises.");
         D("prereq-swimrun", "Format rabattu", "sprint (au lieu de " + (a.format || "?") + ")", "Les prérequis de sécurité du format long ne sont pas atteints — construire les bases d'abord n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend");
         a = { ...a, format: "sprint" };
+      }
+    }
+
+    // B-17 — PRÉREQUIS DE NAGE CONTINUE EN TRIATHLON, sur le patron de S10.
+    //
+    // Le mécanisme est celui du swimrun et il ne REFUSE pas : il RABAT le format et le DIT
+    // (« on ne refuse pas de produire un plan, l'athlète resterait sans rien »). C'est la même
+    // lecture d'O-17 — informer quelqu'un qui peut agir plutôt que bloquer quelqu'un qui ne peut
+    // pas —, et c'est ce que le code fait déjà pour la même classe de risque.
+    //
+    // ⚠ CE QUI SURVIT AU RABATTEMENT : le gate se recalcule sur le format RABATTU. Un athlète
+    // dont la continuité ne suffit à AUCUN format garde le plus court avec l'avertissement — comme
+    // S10, qui rabat à `sprint` même quand `sprint` n'est pas atteint non plus. Le plan existe
+    // toujours, et il dit ce qui manque.
+    if (sp === "tri") {
+      const ordre = ["Full", "70.3", "M", "S"];
+      const g0 = continuityGate(a                           );
+      if (g0 && !g0.satisfait) {
+        // On descend jusqu'au plus long format que la continuité déclarée autorise.
+        let cible = "S";
+        for (const f of ordre) {
+          const g = continuityGate({ ...(a                           ), format: f });
+          if (g?.satisfait) { cible = f; break; }
+        }
+        const manque = g0.declareMin == null
+          ? "tu n'as pas indiqué ta plus longue nage en continu — et ne pas le savoir, c'est déjà ne pas pouvoir évaluer ce que l'épreuve demande"
+          : "tu déclares " + Math.round(g0.declareMin) + " min de nage en continu pour un seuil de " + Math.round(g0.seuilMin) + " min";
+        if (cible !== a.format) {
+          warnings.push("En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, " + manque
+            + ". Ton plan a donc été construit sur le format " + cible + " — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend, et ta progression de nage continue te mènera au format suivant.");
+          D("B17-continuite", "Format rabattu", cible + " (au lieu de " + (a.format || "?") + ")",
+            "Le prérequis de nage CONTINUE n'est pas atteint : le volume et la continuité sont deux adaptations différentes, et c'est la seconde qui décide en eau libre");
+          a = { ...a, format: cible };
+        } else {
+          warnings.push("En eau libre, le risque ne se voit pas avant d'arriver. Ici, " + manque
+            + " : ton plan construit cette continuité semaine après semaine, et une nage continue à la distance de course avant le jour J n'est pas une option.");
+          D("B17-continuite", "Continuité de nage à construire", Math.round(g0.seuilMin) + " min visées",
+            "Le format le plus court est déjà celui-ci : on ne rabat plus, on construit — et on le dit");
+        }
+      }
+      const gf = continuityGate(a                           );
+      if (gf) D("B17-paliers", "Nages continues prescrites", palierCount(gf) + " palier(s) en phase spécifique",
+        "La continuité se construit par une MONTÉE, jamais par un test unique à la fin : découvrir la distance trois semaines avant l'épreuve laisse le temps de s'inquiéter, pas celui de s'adapter");
+      const pool = poolOnlyNotice(a                           );
+      if (pool) {
+        warnings.push(pool);
+        D("B17-milieu", "Milieu d'entraînement ≠ milieu de course", "bassin → eau libre",
+          "C'est le seul écart que le plan ne peut pas combler : on le nomme au lieu de l'omettre");
       }
     }
 
@@ -7552,8 +7607,9 @@ registerSport({
 
 
 
+
 function buildTriSessions(kit            )              {
-  const { a, fmt, slot, phase, prog, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
+  const { r, a, fmt, slot, phase, prog, weekNum, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
   const runInj = inj.list.includes("course");
   const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] }                                    )[phase] || [0.5, 0.8];
   const PT = (lo        , hi        ) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
@@ -7581,6 +7637,64 @@ function buildTriSessions(kit            )              {
     swMain = { name: "Nage seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute. Arrêt au moindre signal articulaire.", steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(1, shoulderDist, "sw.css", "20-30s", ", fractionné en 100m, amplitude confortable", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: shoulderDist } }), Cm(100, "souple")] };
     swTech = { name: "Jambes + technique (épaule épargnée)", note: "Le travail passe par les jambes (battements planche) et la technique : la charge articulaire de l'épaule reste minimale.", steps: [Object.assign(Bd(1, swTechDist, null, "", " séries battements planche + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: swTechDist } })] };
   }
+  // B-17 — LA NAGE CONTINUE À LA DISTANCE DE COURSE, sur les paliers de la phase SPÉCIFIQUE.
+  //
+  // Elle TRANSFORME « Nage seuil (+dist) », elle n'ajoute pas de séance et surtout **elle ne marque
+  // rien en `long`** : `blockBounds` rend `if (s.long) { if (s.d === "sw") … cap: CAP_SWIM[fmt] }`,
+  // et `CAP_SWIM.Full` vaut 3 000 — marquer la séance écrêterait à 3 000 m exactement la continuité
+  // de 3 800 que cette règle existe pour prescrire. Le marquage importerait en outre les
+  // sémantiques d'impact de `s.long` (C30, exclusions de réallocation, tail O-21), écrites pour des
+  // longues de COURSE, dans une discipline qui n'en a pas.
+  //
+  // PAS À CHAQUE SEMAINE : « Nage seuil (+dist) » est le principal véhicule du travail au seuil en
+  // nage (885 occurrences mesurées) ; la transformer partout retirerait l'essentiel du seuil sur
+  // toute la phase. Le nombre de paliers est proportionné à l'ÉCART (`palierCount`) — divergence
+  // VOULUE avec `trailLibrary`, qui transforme dès que `rehearsalNeeded`.
+  //
+  // LE PREMIER PALIER PORTE LA CONSIGNE EAU LIBRE, et c'est un placement, pas une décoration : la
+  // séance en conditions réelles VALIDE l'hypothèse que le gate a faite à la construction (il
+  // accepte une preuve en BASSIN pour une capacité en EAU LIBRE). Découvrir trois semaines avant
+  // l'épreuve que l'eau libre est bien plus dure laisse le temps de s'inquiéter, pas celui de
+  // s'adapter — elle tombe donc TÔT, indépendamment du palier de distance atteint.
+  // UNE SEULE PAR SEMAINE, ET LA MONTÉE EST MONOTONE. Deux corrections trouvées au rendu :
+  //   · `swMain` est poussée depuis DEUX créneaux (`dur1` en doubles, `facile2` sinon) — un 70.3
+  //     recevait donc DEUX nages continues la même semaine. La transformation est bornée au
+  //     créneau `facile2`, celui qui porte la nage principale hors doubles ;
+  //   · les distances livrées n'étaient pas croissantes (Full : 1 763 → 3 295 → **2 090**) parce
+  //     que les passes de volume rabotent après coup. Le bloc est épinglé `floor = cap = cible`,
+  //     et le PLANCHER est ce qui compte : sans lui, la dernière continue était la plus COURTE,
+  //     c'est-à-dire l'inverse d'une progression.
+  if (phase === "spec" && slot === "facile2" && !inj.shoulder && !medHold) {
+    const g = continuityGate(a                           );
+    const spec = (r.phases || []).find((ph) => ph.id === "spec");
+    if (g && spec) {
+      const n = palierCount(g);
+      const len = Math.max(1, spec.end - spec.start);
+      const idx = Math.max(0, Math.min(len - 1, weekNum - 1 - spec.start));
+      const positions = Array.from({ length: n }, (_, i) => (n <= 1 ? 0 : Math.round((i * (len - 1)) / (n - 1))));
+      const k = positions.indexOf(idx);
+      if (k >= 0) {
+        const cible = Math.max(200, Math.round((TRI_SWIM[fmt || ""].dist * palierFraction(k, n)) / 50) * 50);
+        const ow = k === 0;
+        swMain = {
+          name: "Nage continue" + (ow ? " en eau libre" : "") + " — " + cible + " m d'affilée",
+          note: (ow
+            ? "En conditions RÉELLES si tu le peux : eau libre, et en combinaison si ta course l'est. "
+            : "")
+            + "Sans arrêt, sans mur, allure régulière que tu tiendrais une heure. Ce n'est pas une séance de volume : "
+            + "c'est la continuité qu'on construit, et elle ne s'obtient pas en additionnant des séries. "
+            + "Lève la tête tous les 6 à 10 cycles pour te repérer — ça casse la position, ça s'apprend en le faisant.",
+          // Le bloc est ÉPINGLÉ (floor = cap) : dans une nage continue, la distance EST le
+          // stimulus, exactement comme la durée d'une répétition l'est dans un intervalle (I14).
+          // La réduire ne rend pas la séance plus facile, elle lui retire son objet.
+          steps: [Wm(200, "souple, montée progressive"),
+            Object.assign(Bd(1, cible, "sw.aero", "", ", SANS ARRÊT", false, "sw"), { bnd: { floor: cible, cap: cible } }),
+            Cm(150, "relâché")],
+        };
+      }
+    }
+  }
+
   const swShort = { recovery: true, name: "Nage récup", note: "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.", steps: [Bd(1, swShortDist, "sw.easy", "", " souple, en blocs de 50m, respiration 3 temps · relâchement total", false, "sw")] };
   if (slot === "dur1") {
     if (dbl) S2.push({ d: "sw", name: swMain.name + " (matin)", note: swMain.note, det: "", steps: swMain.steps });
@@ -16101,6 +16215,168 @@ function buildProjection(
     gainBand: p.gainBand, gainSource: p.gainSource, confidence: p.confidence, weightLever: p.weightLever,
     raceDate: input.raceDate, refs: projRefs, items, decisions: p.decisions,
   };
+}
+
+// ===== src/engine/swimContinuity.ts =====
+/**
+ * B-17 — LA NAGE CONTINUE À LA DISTANCE DE COURSE, EN TRIATHLON.
+ *
+ * MESURÉ AVANT D'ÊTRE ÉCRIT (registre `BUGS_OUVERTS.md` « B-17 ») : sur `tri/Full`, **4 profils
+ * sur 56** reçoivent une nage continue (`reps === 1`) à la distance de course — par accident de
+ * composition, aucune règle ne la visant. Le VOLUME est là (jusqu'à 7 125 m en une séance), la
+ * CONTINUITÉ n'y est pas : ce sont deux adaptations différentes, et c'est la seconde qui décide
+ * du jour J.
+ *
+ * POURQUOI C'EST UNE RÈGLE DE SÉCURITÉ ET PAS DE PERFORMANCE — critère O-17, membre « l'athlète
+ * ne peut pas évaluer le risque » : en eau libre, **le risque n'est pas observable avant d'être
+ * réalisé**. En course à pied on ralentit, on marche, on s'arrête — le signal arrive
+ * progressivement et des options restent à chaque étape. En eau libre, le choc thermique, la
+ * désorganisation du geste et la panique surviennent vite, et loin du bord. Le milieu ne rend
+ * aucune information utilisable en temps voulu.
+ *
+ * Le précédent interne est **S10** (swimrun) : il exige 30 min de nage continue pour un format
+ * long, avec sa justification écrite — « on est parfois à 700 m du rivage ». Elle vaut mot pour
+ * mot pour un 70.3 en lac ou un Full en mer ; le triathlon n'avait pas d'équivalent.
+ *
+ * ZÉRO CONSTANTE NOUVELLE : le plancher de 30 min vient de `S10_PREREQ`, les distances de
+ * `TRI_SWIM`, les paliers s'en dérivent, la vitesse de repli est le `130` déjà en place.
+ */
+
+
+/** Vitesse de repli — la MÊME que `stepMin` (`baseRefs.css || 130`). Voir la note d'unité ci-dessous. */
+const B17_CSS_FALLBACK_SEC = 130;
+
+/**
+ * B-17 — LES PALIERS. Fractions croissantes de la distance de course, dérivées d'elle : aucune
+ * constante de distance n'est posée ici. La FORME compte plus que les valeurs (arbitrage du
+ * fondateur) : une MONTÉE, pas un test unique à la fin — un athlète qui découvre la distance
+ * trois semaines avant l'épreuve n'a plus le temps de corriger ce qu'il y apprend.
+ */
+const B17_PALIERS = [0.5, 0.7, 0.9, 1.0]         ;
+
+                                 
+                                                                           
+                   
+                                                                                            
+                            
+                                                  
+                    
+                     
+                                                    
+                    
+ 
+
+const secOf = (v         )                => {
+  if (typeof v === "number" && isFinite(v) && v > 0) return v;
+  const m = String(v ?? "").trim().match(/^(\d{1,2})[:'](\d{2})$/);
+  return m ? +m[1] * 60 + +m[2] : null;
+};
+
+/**
+ * LE GATE — `min(30 min, durée de nage estimée en course)`.
+ *
+ * POURQUOI PAS UN SEUIL UNIFORME À 30 MIN, ni une indexation par FORMAT : trois mécanismes font
+ * le risque en eau libre et ils ne s'échelonnent pas pareil — le choc thermique (3 premières
+ * minutes, identique pour tous), la désorganisation du geste par refroidissement (10 à 30 min),
+ * la panique par méconnaissance (via l'écart). Pour un sprint de 15-25 min d'eau, seuls le
+ * premier et le troisième pèsent ; pour un Full de 60-90 min, les trois pèsent lourdement.
+ * 30 min uniformes seraient AU-DESSUS de ce que le sprint exige et EN DESSOUS de ce que le Full
+ * mérite. La bonne grandeur n'est ni le format ni la distance : c'est **la durée d'exposition**,
+ * que le prédicteur produit déjà.
+ *   · formats courts — il faut tenir aussi longtemps que la course durera, ni plus ni moins ;
+ *   · formats longs  — exiger la durée de course à l'ENTRÉE serait absurde (c'est l'objectif,
+ *     pas le prérequis) : les 30 min de S10 servent de plancher, la progression construit le reste.
+ *
+ * ⚠ NOTE D'UNITÉ — LE SENS DE L'ERREUR DU REPLI EST LE BON, ET IL NE FAUT PAS LE « CORRIGER ».
+ * Sans CSS déclaré, la conversion emploie `130 s/100 m`, qui est **plus RAPIDE** qu'un vrai
+ * débutant. Le seuil converti en mètres est donc PLUS GRAND que ce que ce débutant couvrirait
+ * réellement en 30 min : le gate lui demande un peu plus que son équivalent-30-minutes. Pour un
+ * garde-fou de sécurité c'est la direction souhaitable — et c'est la SEULE occurrence de ce
+ * dépôt où le biais connu de cette constante joue en faveur de l'athlète. Quelqu'un pourrait la
+ * « corriger » ici en croyant bien faire : ce serait le défaut symétrique de celui qu'O-25 a fermé.
+ *
+ * ⚠ LE GATE ACCEPTE UNE PREUVE EN BASSIN, ET C'EST ASSUMÉ. `longest_swim_m` sera presque toujours
+ * une nage en bassin — mur tous les 25 m, ligne d'eau, fond visible, arrêt possible à chaque
+ * longueur —, alors que le seuil est dérivé d'une nage en EAU LIBRE (facteur `TRI_SWIM`). D'où la
+ * surcharge : 780 m de bassin pour couvrir 750 m d'eau libre, soit le facteur du milieu (×1,04) et
+ * rien d'autre. Elle disparaît quand `milieu === "ow"` : la preuve est alors déjà dans le bon
+ * milieu. Ce que cette permissivité coûte est validé par la séance en conditions réelles.
+ *
+ * « JE NE SAIS PAS » NE SATISFAIT PAS LE GATE. C'est l'INVERSE du réflexe de tout le reste du
+ * moteur, où l'absence a longtemps valu permission (le piège du zéro, R20.1-a). Justifié par O-17
+ * lui-même : qui ne sait pas ce qu'il a nagé de plus long est, par définition, dans le membre
+ * « ne peut pas évaluer le risque ». Le CSS absent, LUI, ne bloque pas — c'est une vitesse que le
+ * moteur estime déjà partout ailleurs, pas une inconnue irréductible.
+ */
+function continuityGate(a   
+                                                                                                   
+ )                        {
+  const leg = TRI_SWIM[String(a.format ?? "")];
+  if (!leg) return null; // format inconnu : pas de distance de course, pas de gate
+  const css = (a.css_known === "oui" ? secOf(a.css) : null) ?? B17_CSS_FALLBACK_SEC;
+  // `milieu === "ow"` : la continuité déclarée est DÉJÀ en eau libre, la surcharge n'a pas lieu.
+  // `mixte` ou absent : origine ambiguë, on prend le conservateur (avec surcharge).
+  const facteur = a.milieu === "ow" ? 1 : leg.factor;
+  const courseMin = ((leg.dist / 100) * css * leg.factor) / 60;
+  const seuilMin = Math.min(S10_PREREQ.minSwimContinuousMin, ((leg.dist / 100) * css * facteur) / 60);
+  const m = parseFloat(String(a.longest_swim_m ?? ""));
+  const declareMin = isFinite(m) && m > 0 ? ((m / 100) * css) / 60 : null;
+  const satisfait = declareMin != null && declareMin >= seuilMin - 0.05;
+  return { seuilMin, declareMin, courseMin, satisfait, manqueMin: satisfait ? 0 : Math.max(0, seuilMin - (declareMin ?? 0)) };
+}
+
+/**
+ * LE NOMBRE DE PALIERS EST PROPORTIONNÉ À L'ÉCART, jamais fixe (arbitrage du fondateur, après la
+ * mesure des occurrences disponibles). Mesuré : `tri/S` ne porte JAMAIS quatre « Nage seuil » en
+ * phase spécifique, même à 22 semaines (1 à 3), alors que `tri/Full` en porte 8 à 14 dès son
+ * horizon minimal. Un nombre fixe aurait donc refusé tous les `tri/S`.
+ *
+ * Le cas se dissout de lui-même parce que les deux grandeurs dérivent de la durée de nage du
+ * format : **là où les paliers sont rares, l'écart est petit** (un sprint dont le gate exige déjà
+ * la durée de course n'a presque rien à construire — 1 à 2 confirmations suffisent) ; **là où
+ * l'écart est grand, les paliers abondent** (un Full entré à 30 min et devant atteindre 75).
+ */
+function palierCount(g                )         {
+  if (!g) return 0;
+  const reste = Math.max(0, g.courseMin - (g.declareMin ?? 0));
+  if (reste <= 0.05) return 1;                 // rien à construire : une confirmation
+  const ratio = reste / Math.max(1, g.courseMin);
+  return ratio < 0.25 ? 2 : ratio < 0.5 ? 3 : B17_PALIERS.length;
+}
+
+/** La fraction de distance de course du palier `i` sur `n` — dérivée, jamais tabulée. */
+function palierFraction(i        , n        )         {
+  if (n <= 1) return B17_PALIERS[B17_PALIERS.length - 1];
+  const step = (B17_PALIERS.length - 1) / (n - 1);
+  return B17_PALIERS[Math.min(B17_PALIERS.length - 1, Math.round(i * step))];
+}
+
+/**
+ * LE MESSAGE « BASSIN + EAU LIBRE » — restreint aux formats M et au-dessus.
+ *
+ * `milieu` décrit où l'athlète S'ENTRAÎNE, jamais où l'épreuve se nage, et **aucune clé ne porte
+ * le second** (suivi en O-47 : `TRI_SWIM` applique déjà son facteur d'eau libre au sprint aussi,
+ * donc un sprint nagé en piscine est prédit 4 % trop lent — une hypothèse silencieuse qui vaut son
+ * ticket). M, 70.3 et Full se nagent en eau libre dans la quasi-totalité des cas : l'affirmation y
+ * est vraie SANS cette clé. Le sprint est le seul format ambigu, et c'est précisément celui où le
+ * message serait faux une fois sur deux — il n'y est donc pas affiché.
+ *
+ * Le conditionnel (« si ta course se nage en eau libre… ») a été écarté : un message qui s'ouvre
+ * sur une réserve se lit comme une clause juridique et se saute. Mieux vaut un message qu'on
+ * n'affiche que quand il est vrai qu'un message qu'on nuance.
+ *
+ * Les TROIS autres pièces (gate, séance en eau libre, surcharge) restent actives sur sprint : ce
+ * sont des défauts CONSERVATEURS, et on peut se tromper par prudence. Le message, lui, AFFIRME —
+ * et on ne peut pas se tromper en affirmant.
+ */
+function poolOnlyNotice(a                                        )                {
+  const fmt = String(a.format ?? "");
+  if (fmt !== "M" && fmt !== "70.3" && fmt !== "Full") return null;
+  if (a.milieu !== "bassin") return null;
+  return "Ta course se nage en eau libre et tu t'entraînes en bassin. Ton plan peut construire la "
+    + "distance, pas le milieu — pas de mur, pas de ligne, pas de fond visible, et il faut lever la "
+    + "tête pour se repérer. Une seule sortie en eau libre avant le jour J change tout, et plus "
+    + "elle est tôt, mieux c'est.";
 }
 
 // ===== src/engine/feasibility.ts =====

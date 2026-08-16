@@ -225,7 +225,10 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   leg_swim_env: { ...enumF("le milieu de nage de ta course", ["bassin", "lac", "mer_calme", "mer_agitee", "eau_vive"], ["tri", "swimrun"]), nature: "vecue" },
   leg_bike_prof: { ...enumF("le profil du parcours vélo", ["plat", "vallonne", "montagne"], ["tri", "duathlon"]), nature: "vecue" },
   leg_run_prof: { ...enumF("le profil du parcours à pied", ["plat", "vallonne", "montagne"], ["tri", "duathlon", "swimrun"]), nature: "vecue" },
-  milieu: { ...enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim"]), nature: "vecue" },
+  // B-17 — ÉTENDUE AU TRIATHLON. Deux consommateurs : la surcharge du gate cesse d'être
+  // systématique (`ow` → la preuve est déjà dans le bon milieu) et le message « bassin + eau
+  // libre » n'existe que si l'on sait où l'athlète nage.
+  milieu: { ...enumF("ton milieu", ["bassin", "ow", "mixte"], ["swim", "tri"]), nature: "vecue" },
   swim_limit: { ...enumF("ta limite en natation", ["technique", "respiration", "endurance", "peur"], ["swim"]), nature: "vecue" },
   treadmill: { ...enumF("l'accès au tapis", OUI_NON, ["trail"]), nature: "vecue" },
   // ---- Trail ----
@@ -244,7 +247,10 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   gear_test: { ...enumF("le test en tenue", OUI_NON, ["swimrun"]), nature: "vecue" },
   swim_total_m: { ...numF("la nage totale de ta course", 100, 30000, "m", ["swimrun"]), nature: "vecue" },
   run_total_km: { ...numF("la course totale de ton épreuve", 1, 200, "km", ["swimrun"]), nature: "vecue" },
-  longest_swim_m: { ...numF("ta plus longue nage", 50, 10000, "m", ["swimrun"]), nature: "vecue" },
+  // B-17 — ÉTENDUE AU TRIATHLON. Le gate de continuité en eau libre la consomme (`continuityGate`),
+  // et R20.1 exige qu'une clé déclarée AGISSE dans chaque sport où elle est déclarée : elle est
+  // arrivée dans le commit qui câble le gate, jamais avant.
+  longest_swim_m: { ...numF("ta plus longue nage", 50, 10000, "m", ["swimrun", "tri"]), nature: "vecue" },
   segments_n: { ...numF("le nombre de segments", 2, 60, "", ["swimrun"]), nature: "vecue" },
   // R19.2 — le triathlon aussi. La combinaison vaut 4 à 7 % de temps de nage et sa légalité
   // est un SEUIL RÉGLEMENTAIRE (24,5 °C) : c'est la variable dominante du leg natation, et

@@ -17,6 +17,7 @@ import {
 } from "./constraintMatrix.ts";
 import { guard, knownSports, sportModule } from "../sports/registry.ts";
 import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
+import { continuityGate, palierCount, poolOnlyNotice } from "./swimContinuity.ts";
 import { T1_DPLUS_CAPS, T4_LONG_RUN_VS_RACE, T6_MIN_WEEKS, TRAIL_HISTORY_CAPS, TRAIL_UTIL, trailObjective, trailWeeklyVertical } from "./trailModel.ts";
 
 /** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
@@ -87,6 +88,54 @@ export class TrainingReasoningEngine {
         warnings.push(block + " Ton plan a donc été construit sur le format Sprint : il te prépare aux bases, et tu passeras au format long quand elles seront acquises.");
         D("prereq-swimrun", "Format rabattu", "sprint (au lieu de " + (a.format || "?") + ")", "Les prérequis de sécurité du format long ne sont pas atteints — construire les bases d'abord n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend");
         a = { ...a, format: "sprint" };
+      }
+    }
+
+    // B-17 — PRÉREQUIS DE NAGE CONTINUE EN TRIATHLON, sur le patron de S10.
+    //
+    // Le mécanisme est celui du swimrun et il ne REFUSE pas : il RABAT le format et le DIT
+    // (« on ne refuse pas de produire un plan, l'athlète resterait sans rien »). C'est la même
+    // lecture d'O-17 — informer quelqu'un qui peut agir plutôt que bloquer quelqu'un qui ne peut
+    // pas —, et c'est ce que le code fait déjà pour la même classe de risque.
+    //
+    // ⚠ CE QUI SURVIT AU RABATTEMENT : le gate se recalcule sur le format RABATTU. Un athlète
+    // dont la continuité ne suffit à AUCUN format garde le plus court avec l'avertissement — comme
+    // S10, qui rabat à `sprint` même quand `sprint` n'est pas atteint non plus. Le plan existe
+    // toujours, et il dit ce qui manque.
+    if (sp === "tri") {
+      const ordre = ["Full", "70.3", "M", "S"];
+      const g0 = continuityGate(a as Record<string, unknown>);
+      if (g0 && !g0.satisfait) {
+        // On descend jusqu'au plus long format que la continuité déclarée autorise.
+        let cible = "S";
+        for (const f of ordre) {
+          const g = continuityGate({ ...(a as Record<string, unknown>), format: f });
+          if (g?.satisfait) { cible = f; break; }
+        }
+        const manque = g0.declareMin == null
+          ? "tu n'as pas indiqué ta plus longue nage en continu — et ne pas le savoir, c'est déjà ne pas pouvoir évaluer ce que l'épreuve demande"
+          : "tu déclares " + Math.round(g0.declareMin) + " min de nage en continu pour un seuil de " + Math.round(g0.seuilMin) + " min";
+        if (cible !== a.format) {
+          warnings.push("En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, " + manque
+            + ". Ton plan a donc été construit sur le format " + cible + " — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend, et ta progression de nage continue te mènera au format suivant.");
+          D("B17-continuite", "Format rabattu", cible + " (au lieu de " + (a.format || "?") + ")",
+            "Le prérequis de nage CONTINUE n'est pas atteint : le volume et la continuité sont deux adaptations différentes, et c'est la seconde qui décide en eau libre");
+          a = { ...a, format: cible };
+        } else {
+          warnings.push("En eau libre, le risque ne se voit pas avant d'arriver. Ici, " + manque
+            + " : ton plan construit cette continuité semaine après semaine, et une nage continue à la distance de course avant le jour J n'est pas une option.");
+          D("B17-continuite", "Continuité de nage à construire", Math.round(g0.seuilMin) + " min visées",
+            "Le format le plus court est déjà celui-ci : on ne rabat plus, on construit — et on le dit");
+        }
+      }
+      const gf = continuityGate(a as Record<string, unknown>);
+      if (gf) D("B17-paliers", "Nages continues prescrites", palierCount(gf) + " palier(s) en phase spécifique",
+        "La continuité se construit par une MONTÉE, jamais par un test unique à la fin : découvrir la distance trois semaines avant l'épreuve laisse le temps de s'inquiéter, pas celui de s'adapter");
+      const pool = poolOnlyNotice(a as Record<string, unknown>);
+      if (pool) {
+        warnings.push(pool);
+        D("B17-milieu", "Milieu d'entraînement ≠ milieu de course", "bassin → eau libre",
+          "C'est le seul écart que le plan ne peut pas combler : on le nomme au lieu de l'omettre");
       }
     }
 

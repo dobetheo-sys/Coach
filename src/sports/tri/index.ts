@@ -8,9 +8,10 @@ import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS } from "../../engine/
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { TRI_SWIM, TRI_BIKE, TRI_RUN, TRI_BIKE_KM, TRI_TRANSITION } from "../../engine/predictor.ts";
+import { continuityGate, palierCount, palierFraction } from "../../engine/swimContinuity.ts";
 
 export function buildTriSessions(kit: SessionKit): V1Session[] {
-  const { a, fmt, slot, phase, prog, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
+  const { r, a, fmt, slot, phase, prog, weekNum, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
   const runInj = inj.list.includes("course");
   const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] } as Record<string, [number, number]>)[phase] || [0.5, 0.8];
   const PT = (lo: number, hi: number) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
@@ -38,6 +39,64 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     swMain = { name: "Nage seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute. Arrêt au moindre signal articulaire.", steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(1, shoulderDist, "sw.css", "20-30s", ", fractionné en 100m, amplitude confortable", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: shoulderDist } }), Cm(100, "souple")] };
     swTech = { name: "Jambes + technique (épaule épargnée)", note: "Le travail passe par les jambes (battements planche) et la technique : la charge articulaire de l'épaule reste minimale.", steps: [Object.assign(Bd(1, swTechDist, null, "", " séries battements planche + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: swTechDist } })] };
   }
+  // B-17 — LA NAGE CONTINUE À LA DISTANCE DE COURSE, sur les paliers de la phase SPÉCIFIQUE.
+  //
+  // Elle TRANSFORME « Nage seuil (+dist) », elle n'ajoute pas de séance et surtout **elle ne marque
+  // rien en `long`** : `blockBounds` rend `if (s.long) { if (s.d === "sw") … cap: CAP_SWIM[fmt] }`,
+  // et `CAP_SWIM.Full` vaut 3 000 — marquer la séance écrêterait à 3 000 m exactement la continuité
+  // de 3 800 que cette règle existe pour prescrire. Le marquage importerait en outre les
+  // sémantiques d'impact de `s.long` (C30, exclusions de réallocation, tail O-21), écrites pour des
+  // longues de COURSE, dans une discipline qui n'en a pas.
+  //
+  // PAS À CHAQUE SEMAINE : « Nage seuil (+dist) » est le principal véhicule du travail au seuil en
+  // nage (885 occurrences mesurées) ; la transformer partout retirerait l'essentiel du seuil sur
+  // toute la phase. Le nombre de paliers est proportionné à l'ÉCART (`palierCount`) — divergence
+  // VOULUE avec `trailLibrary`, qui transforme dès que `rehearsalNeeded`.
+  //
+  // LE PREMIER PALIER PORTE LA CONSIGNE EAU LIBRE, et c'est un placement, pas une décoration : la
+  // séance en conditions réelles VALIDE l'hypothèse que le gate a faite à la construction (il
+  // accepte une preuve en BASSIN pour une capacité en EAU LIBRE). Découvrir trois semaines avant
+  // l'épreuve que l'eau libre est bien plus dure laisse le temps de s'inquiéter, pas celui de
+  // s'adapter — elle tombe donc TÔT, indépendamment du palier de distance atteint.
+  // UNE SEULE PAR SEMAINE, ET LA MONTÉE EST MONOTONE. Deux corrections trouvées au rendu :
+  //   · `swMain` est poussée depuis DEUX créneaux (`dur1` en doubles, `facile2` sinon) — un 70.3
+  //     recevait donc DEUX nages continues la même semaine. La transformation est bornée au
+  //     créneau `facile2`, celui qui porte la nage principale hors doubles ;
+  //   · les distances livrées n'étaient pas croissantes (Full : 1 763 → 3 295 → **2 090**) parce
+  //     que les passes de volume rabotent après coup. Le bloc est épinglé `floor = cap = cible`,
+  //     et le PLANCHER est ce qui compte : sans lui, la dernière continue était la plus COURTE,
+  //     c'est-à-dire l'inverse d'une progression.
+  if (phase === "spec" && slot === "facile2" && !inj.shoulder && !medHold) {
+    const g = continuityGate(a as Record<string, unknown>);
+    const spec = (r.phases || []).find((ph) => ph.id === "spec");
+    if (g && spec) {
+      const n = palierCount(g);
+      const len = Math.max(1, spec.end - spec.start);
+      const idx = Math.max(0, Math.min(len - 1, weekNum - 1 - spec.start));
+      const positions = Array.from({ length: n }, (_, i) => (n <= 1 ? 0 : Math.round((i * (len - 1)) / (n - 1))));
+      const k = positions.indexOf(idx);
+      if (k >= 0) {
+        const cible = Math.max(200, Math.round((TRI_SWIM[fmt || ""].dist * palierFraction(k, n)) / 50) * 50);
+        const ow = k === 0;
+        swMain = {
+          name: "Nage continue" + (ow ? " en eau libre" : "") + " — " + cible + " m d'affilée",
+          note: (ow
+            ? "En conditions RÉELLES si tu le peux : eau libre, et en combinaison si ta course l'est. "
+            : "")
+            + "Sans arrêt, sans mur, allure régulière que tu tiendrais une heure. Ce n'est pas une séance de volume : "
+            + "c'est la continuité qu'on construit, et elle ne s'obtient pas en additionnant des séries. "
+            + "Lève la tête tous les 6 à 10 cycles pour te repérer — ça casse la position, ça s'apprend en le faisant.",
+          // Le bloc est ÉPINGLÉ (floor = cap) : dans une nage continue, la distance EST le
+          // stimulus, exactement comme la durée d'une répétition l'est dans un intervalle (I14).
+          // La réduire ne rend pas la séance plus facile, elle lui retire son objet.
+          steps: [Wm(200, "souple, montée progressive"),
+            Object.assign(Bd(1, cible, "sw.aero", "", ", SANS ARRÊT", false, "sw"), { bnd: { floor: cible, cap: cible } }),
+            Cm(150, "relâché")],
+        };
+      }
+    }
+  }
+
   const swShort = { recovery: true, name: "Nage récup", note: "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.", steps: [Bd(1, swShortDist, "sw.easy", "", " souple, en blocs de 50m, respiration 3 temps · relâchement total", false, "sw")] };
   if (slot === "dur1") {
     if (dbl) S2.push({ d: "sw", name: swMain.name + " (matin)", note: swMain.note, det: "", steps: swMain.steps });
