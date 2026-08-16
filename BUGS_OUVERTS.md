@@ -4234,3 +4234,36 @@ quoi: la distribution par semaine est bimodale et contient tous les debutants
 attendu: ISSUE 1
 cmd: node scripts/mesureO44b.mjs 2>/dev/null | grep -o "ISSUE 1" | head -1
 ```
+
+### O-44 §8 — LES DEUX VÉRIFICATIONS PRÉALABLES : ta correction est juste, et mon « 13 minutes » était un artefact
+
+**§3 — l'unité est bien du temps DANS L'EAU.** `stepMin` calcule `distance ÷ 100 × CSS × mult(zone)` :
+le CSS est une allure de NAGE (s/100 m), donc le produit est du temps passé à nager. Les durées du
+§2, du §6 et du §7 sont toutes de cette unité, et `SWIM_SESSION_FLOOR_MIN = 20` s'y exprime.
+`SWIM_TIME_FACTOR` n'intervient nulle part dans cette chaîne — il convertit la DÉCLARATION de
+l'athlète (O-35), pas le contenu prescrit. Confirmé avant d'écrire : la cinquième faute d'unité de
+la série n'a pas eu lieu.
+
+**§2 — C15 est bien réservé aux débutants, et ma phrase était fausse.** Vérifié à la source :
+`if (r.beginner && s.d === "sw" && b.distanceM != null)`. Hors débutant, le plafond de séance est
+`CAP_SWIM[format]` (`blockBounds`). Durées impliquées en `sw.easy`, minutes d'eau :
+
+| CSS | C15 850 m *(débutant)* | sprint 1400 | demifond 2000 | fond 3000 | tri/S 750 | tri/M 1500 |
+|---|---|---|---|---|---|---|
+| 1:30 | **14,3** | 23,5 | 33,6 | 50,4 | **12,6** | 25,2 |
+| 2:00 | **19,0** | 31,4 | 44,8 | 67,2 | **16,8** | 33,6 |
+| 2:30 | 23,8 | 39,2 | 56,0 | 84,0 | 21,0 | 42,0 |
+
+**Hors débutant, la durée impliquée dépasse 20 min partout** — donc le plancher TIENT pour eux, et
+mon « le nageur rapide gardera ses séances de 13 minutes » était bien l'artefact d'avoir appliqué
+C15 à quelqu'un qu'il ne concerne pas. **Une seule exception, réelle : `tri/S`** (750 m), à 12,6 min
+à CSS 1:30 — et elle est légitime : 750 m EST la distance de nage d'un triathlon sprint, une séance
+à cette distance n'a pas à être allongée.
+
+**Conséquence sur ta §1, qui la renforce** : la constante ne décide rien pour les 36 débutants
+(bornés à 14-19 min par C15), et elle décide pour les 33 non-débutants de la sous-population, chez
+qui elle tient pleinement. C'est bien le sort de ces 33 que le chiffre 20 arbitre.
+
+**Reste à écrire** : le plancher, sa borne `min(20, durée du plafond APPLICABLE)`, la ligne
+d'explication, la garde, et la mesure avant/après aux quatre critères du §4 — dont le troisième,
+« aucun profil ne perd de volume : le plancher regroupe, il ne retire pas », qui est le vrai test.
