@@ -3977,3 +3977,118 @@ aujourd'hui en minutes dérivées de la conversion ; il lui faut une expression 
 les MÈTRES que la structure de la semaine peut porter, convertis une seule fois par une référence
 qui décrit l'athlète et non la zone. À écrire et à mesurer (règle 7) ; O-44 la recoupe, puisque
 borner la fréquence change ce que le clone saturé contient.
+
+### O-43 §6 — LES DEUX MESURES QUI DÉCIDENT : rien n'est franchi, et je me suis trompé sur R10
+
+`npm run mesure:o43b`.
+
+#### §1 — le livré ne dépasse RIEN. La sonde a le droit de ne plus mordre.
+
+`vol_max` est déclaré en heures de BASSIN, le pic livré est en heures d'EAU : on convertit par
+`swimTimeFactorOf` avant de comparer (O-35), sinon la comparaison est une faute d'unité.
+
+```
+136 profils de natation · ratio livré / plafond déclaré :
+   médiane 44 %  ·  p90 67 %  ·  max 100 %
+profils dépassant leur plafond de plus de 2 % : 0 / 136
+profils posés EXACTEMENT à 100 % (comportement correct)  : 1
+```
+
+**Aucun plafond n'est franchi.** Le plan reste très en dessous de ce que l'athlète déclare pouvoir
+faire — médiane à 44 % de sa propre déclaration. La branche du fondateur s'applique : *« livré ≤
+déclaré → la sonde a raison. Le plan honore enfin la déclaration, et l'ancien la trahissait. »*
+
+**Conséquence directe : l'issue 1 annulerait une correction au lieu de réparer un défaut.** Avant
+O-42 le clone saturé contenait un travail MAL COMPTÉ ; la sonde mesurait 2,3 h pour un contenu qui
+en prenait davantage. Elle ne mord plus parce qu'elle mesure enfin juste.
+
+*(Faute d'instrument publiée : mon premier verdict rendait « DES PLAFONDS SONT FRANCHIS » sur UN
+profil — `G/swim/ow/vol-min`, 1,80 h livrées pour 1,80 h autorisées, c'est-à-dire un plan posé
+exactement SUR son plafond. Un verdict binaire sur une égalité flottante, quatrième faute de seuil
+de la journée.)*
+
+#### §2 — **RECTIFICATION : « la rampe R10 ne le tient pas » était FAUX, et c'est moi qui l'ai écrit.**
+
+Mesuré, la rampe couvre la nage et elle DISCRIMINE :
+
+| `vol_recent` | départ de la rampe | S1 livrée | pic livré | plafond `ramp` de la chaîne |
+|---|---|---|---|---|
+| 0 | 0,90 h | 54 min | **68 min** | 1,75 h |
+| 1 | 0,90 h | 54 min | **68 min** | 1,75 h |
+| 2 | 0,99 h | 57 min | 78 min | 1,93 h |
+| 4 | 1,98 h | 70 min | 99 min | (ne borne plus) |
+| 8 | 3,96 h | 70 min | 99 min | (ne borne plus) |
+
+Le pic va de 68 à 99 minutes selon la réponse : **la rampe fait exactement son travail.** Son
+plafond (1,75 h = 105 min) n'est jamais franchi — le plan livré s'arrête à 68 min, bien en dessous.
+
+**Ce que j'avais mesuré n'était pas ce que j'ai écrit.** J'avais observé « le pic monte de 71 %
+entre avant et après O-42, même à `vol_recent: 0` » et j'en ai tiré « la rampe ne tient pas ». Ce
+sont deux énoncés différents : la rampe n'a pas échoué, elle n'était simplement **pas la contrainte
+mordante** — le plan restait sous elle avant comme après. Le fondateur a bâti tout son §2 sur ma
+phrase. C'est la neuvième occurrence de la famille « nommer une grandeur et en mesurer une
+voisine », cette fois dans une PHRASE de rapport et non dans un instrument.
+
+**Ce qui reste, et qui est réel** : `_rampCap = Math.max(2 × unit, vol_recent × unit × 1,1)`. Le
+plancher de 2 h est GÉNÉRIQUE — en nage il vaut `2 × 0,45 = 0,90 h` d'eau. Donc déclarer **0**
+et déclarer **1 h** de bassin donnent le MÊME point de départ, à la minute près (68 min de pic dans
+les deux cas). La réponse la plus protectrice du domaine n'est pas plus protectrice que sa voisine.
+C'est le piège du zéro de R20.1-a sous une forme nouvelle : **le zéro est bien LU, mais un plancher
+générique l'écrase juste après.** Suivi en **O-45**.
+
+#### §3 — Ce que ces deux mesures font au reste du fil
+
+- **O-43 issue 1 : à ne PAS écrire.** Elle annulerait une correction. T-34 reste rouge et c'est
+  assumé : l'invariance de la sonde est une propriété souhaitable, mais la faire tenir en
+  re-bornant la sonde ferait re-sous-livrer le plan. La bonne cible est ailleurs.
+- **O-44 (plancher de durée) devient le ticket principal** : c'est la seule des trois protections
+  manquantes qui vise la pathologie réelle (des séances de 15-19 min, 8 % sous 15 min, une à 3 min).
+- **O-45** (plancher générique de la rampe) est petit, net, et indépendant des deux autres.
+
+```verify
+id: O-43-rien-franchi
+quoi: apres O-42 le pic livre en nage ne depasse aucun plafond declare
+attendu: AUCUN DÉPASSEMENT
+cmd: node scripts/mesureO43b.mjs 2>/dev/null | grep -o "AUCUN DÉPASSEMENT" | head -1
+```
+
+
+---
+
+## O-45 · Le plancher générique de la rampe R10 écrase le zéro · 🔴 **OUVERT — mesuré, petit, indépendant**
+
+Scindé d'O-43 §6. `planGenerator.ts` :
+
+```ts
+let _rampCap = isFinite(volRecent) && volRecent >= 0
+  ? Math.max(2 * _rampUnit, volRecent * _rampUnit * 1.1)
+  : Infinity;
+```
+
+Le `2 * _rampUnit` est un plancher GÉNÉRIQUE : quoi que l'athlète déclare en dessous de ~1,8 h,
+la rampe démarre au même endroit. Mesuré en natation (`_rampUnit = 0,45` en reprise) :
+
+```
+vol_recent 0 → départ 0,90 h → pic livré 68 min
+vol_recent 1 → départ 0,90 h → pic livré 68 min     ← identique à la minute près
+vol_recent 2 → départ 0,99 h → pic livré 78 min
+```
+
+**« Je ne m'entraîne pas du tout » et « je nage 1 h par semaine » produisent le même plan.** C'est
+la réponse la plus protectrice du domaine qui n'est pas honorée — exactement la population que la
+rampe R10 existe pour protéger, et exactement la forme du piège que **R20.1-a** avait fermé côté
+LECTURE (`dec > 0` traitait 0 comme une absence de réponse). Le zéro est bien lu depuis R20.1-a ;
+un plancher générique l'écrase quinze lignes plus loin.
+
+**Ce qui n'est pas tranché** : le plancher a une raison — un plan qui démarre à 0 h ne démarre
+jamais (`0 × 1,1 = 0`). La question est sa FORME : un plancher absolu de 2 h générique, ou un
+départ minimal exprimé dans une grandeur qui décrit l'athlète (une séance, un plancher de séance
+du sport). À mesurer avant d'écrire — et O-44 le recoupe, puisqu'un plancher de durée de séance
+donnerait précisément ce départ minimal sans constante nouvelle.
+
+```verify
+id: O-45
+quoi: le plancher generique de la rampe rend vol_recent 0 et 1 identiques
+attendu: O45-REPRODUIT
+cmd: node scripts/mesureO43b.mjs 2>/dev/null | grep -qE "^ +0 .*68 min" && node scripts/mesureO43b.mjs 2>/dev/null | grep -qE "^ +1 .*68 min" && echo "O45-REPRODUIT"
+```

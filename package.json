@@ -46,6 +46,7 @@
     "mesure:o42": "node scripts/mesureO42.mjs",
     "mesure:o43": "node scripts/mesureO43.mjs",
     "mesure:o44": "node scripts/mesureO44.mjs",
+    "mesure:o43b": "node scripts/mesureO43b.mjs",
     "mesure:c22": "node scripts/mesureC22.mjs",
     "ventile:o42": "node scripts/ventilationO42.mjs",
     "registry:check": "node scripts/registryCheck.mjs",
