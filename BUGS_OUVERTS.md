@@ -4162,3 +4162,75 @@ quoi: le plancher derive d'une distance suit la vitesse — 750 m valent 12,6 mi
 attendu: O44-DERIVE-SUIT-VITESSE
 cmd: node -e "const css=90,mult=1.12;const min=(750/100)*(css*mult)/60;process.stdout.write(min<13?'O44-DERIVE-SUIT-VITESSE':'')"
 ```
+
+### O-44 §7 — LA MESURE PAR SEMAINE : la distribution est BIMODALE, et 36 débutants sur 36 sont dedans
+
+`npm run mesure:o44b` — semaines de CHARGE uniquement (l'affûtage et la récup veulent des séances
+courtes, c'est leur objet), et seulement les semaines portant ≥ 2 nages (sans quoi la « part » n'a
+pas de sens).
+
+```
+136 profils · 1 450 semaines de charge à ≥ 2 nages
+semaines dont la MAJORITÉ des nages sont sous 20 min : 501  (34,6 %)
+
+part moyenne par profil : médiane 57 % · p90 95 % · max 97 %
+     0–20 %  :   0 profils      ← personne
+    20–40 %  :  60 profils (44,1 %)
+    40–60 %  :  15 profils (11,0 %)
+    60–80 %  :   7 profils ( 5,1 %)
+    80–100 % :  54 profils (39,7 %)   ← le second mode
+```
+
+**La distribution est bimodale, sans milieu.** Ce n'est pas « des séances courtes existent, étalées
+sur tous les profils » : il y a deux populations distinctes, et la seconde vit à 80-100 % de nages
+courtes.
+
+**La sous-population, décrite comme le §3 le demande** — 69 profils sur 136 portent en moyenne plus
+de la moitié de leurs nages sous 20 min :
+
+| axe | dans la sous-population | population totale |
+|---|---|---|
+| **débutant** | **36** | **36** ← *tous, sans exception* |
+| inter | 18 | 64 |
+| avancé | 15 | 36 |
+| reprise · confirmé · ancien | 20 · 25 · 24 | 36 · 64 · 36 |
+| format `sprint` | 27 | 34 |
+
+**Les 36 débutants y sont tous.** L'historique ne discrimine pas (20/25/24, proportionnel) : ce
+n'est pas une population « qui reprend », c'est une population **à petit volume hebdomadaire réparti
+sur jusqu'à six séances** — d'où la domination du format `sprint` (27 sur 34).
+
+Cas extrêmes : `swim/sprint/reprise/inter` à **97 % de nages courtes, 6 semaines sur 6
+majoritairement courtes**. `swim/fond/confirme/debutant` à 96 %, 9/9.
+
+**→ Le critère du §3 tranche : ISSUE 1.** Une sous-population existe, elle est identifiable, et
+elle contient l'intégralité des débutants — la population que le manifeste protège en premier.
+L'issue 3 (ne rien poser) est réfutée par la mesure ; l'issue 2 l'était déjà par la démonstration du
+§6(c).
+
+**Ce qui reste à décider avant d'écrire** — je ne le prends pas seul, c'est une constante nouvelle
+qui encode une hypothèse que le moteur ne peut pas connaître :
+
+```
+SWIM_SESSION_FLOOR_MIN = <valeur à arbitrer>
+  provenance : hypothèse LOGISTIQUE (le trajet, le vestiaire), non physiologique
+  nature     : le moteur ignore l'accès au bassin de CET athlète
+  forme      : min(plancher, durée que le plafond de distance autorise) — la borne rend
+               toute collision avec C15 impossible par construction
+  statut     : PANSEMENT — à remplacer par une déclaration le jour où le questionnaire
+               porte une question d'accès au bassin
+  et         : le plan DIT ce qu'il a supposé (la fréquence sert l'apprentissage technique ;
+               l'athlète peut regrouper ses séances si son accès au bassin le contraint)
+```
+
+Ce que la mesure permet de dire sur la valeur, sans la choisir : à **20 min**, 69 profils sont
+concernés et les débutants passent de 6 nages à 4-5 ; le plafond C15 autorise **19,0 min à
+CSS 2:00** et **14,3 min à CSS 1:30**, donc la borne `min(…)` mordra chez les nageurs rapides —
+c'est-à-dire que le plancher NE tiendra pas pour eux, par construction et volontairement.
+
+```verify
+id: O-44-souspop
+quoi: la distribution par semaine est bimodale et contient tous les debutants
+attendu: ISSUE 1
+cmd: node scripts/mesureO44b.mjs 2>/dev/null | grep -o "ISSUE 1" | head -1
+```
