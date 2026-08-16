@@ -223,6 +223,18 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   Full à **+21,7 %** vaut `286 → 348 min`, une heure de plus : là les deux disent la même chose, et
   c'est ce qui prouve que la queue était réellement épaisse — jamais le pourcentage seul.
 
+- **Corollaire de la règle 15 — une causalité ne se lit pas sur un diff de LOT. Elle se mesure par
+  expérience contrôlée : un seul facteur varie.** Mesuré le 16/08/2026 : j'avais lu
+  « `structurel` 1,42 → 2,08 h » sur un diff qui contenait tout O-42 et j'en avais tiré la cause
+  d'O-43. L'expérience contrôlée — faire varier la seule CONVERSION — laisse ce maillon à +1,0 % et
+  déplace `courbe` (+11 %), `boucle-growth` (+36 %) et le pic livré (+9,1 %). Le diagnostic publié
+  était faux et le filtre du fondateur l'a réfuté dans l'heure.
+
+- **Un test d'INVARIANCE a toujours besoin de son jumeau de SENSIBILITÉ** (arbitrage O-44 §4) :
+  une constante gelée est trivialement invariante, donc un test d'invariance seul est satisfait par
+  la pire des solutions. La propriété réelle est « invariant à ce qui ne le concerne pas, **sensible
+  à ce qui le concerne** » — T-34 avec T-36. À appliquer à tout test d'invariance du dépôt.
+
 - **Règle 18 — une différence E2E n'est attribuée à un lot qu'après ≥ 3 exécutions de la suite
   concernée DE CHAQUE CÔTÉ du changement.** Une exécution unique de part et d'autre n'est pas une
   comparaison : c'est deux tirages. Une suite E2E est stochastique par nature (réseau, temporisation,

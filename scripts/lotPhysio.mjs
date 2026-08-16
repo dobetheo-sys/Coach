@@ -1060,6 +1060,56 @@ T("T-34", "rouge", "ce qui est prescrit est invariant par changement de conversi
  */
 // Épinglés sur la MESURE, pas sur un souvenir : `npm run mesure:o43` les rend, et le cliquet
 // force à les recopier ici dans le commit qui les fait bouger.
+/**
+ * T-36 (O-44 §4) — LE JUMEAU DE T-34 : SENSIBLE À CE QUI LE CONCERNE.
+ *
+ * « Une constante gelée est trivialement invariante » — un test d'invariance SEUL est satisfait
+ * par la pire des solutions. T-34 et T-36 ensemble définissent la propriété réelle : **invariant à
+ * ce qui ne le concerne pas, sensible à ce qui le concerne.** Ni l'un ni l'autre ne suffit, et
+ * c'est la forme générale à appliquer à tout test d'invariance du dépôt.
+ *
+ * On fait varier ce qui décrit l'ATHLÈTE — historique, volume déclaré, volume récent, drapeau
+ * médical, blessure, âge — et ce qui est prescrit doit répondre. Un facteur qui ne bouge RIEN est
+ * soit inerte (défaut), soit dominé par un autre plafond sur ce profil : le test le nomme au lieu
+ * de le taire, et n'exige pas que les six répondent — il exige qu'AUCUN ne soit muet sur toute la
+ * ligne, et que le drapeau médical, lui, réponde toujours (c'est une garde dure).
+ */
+T("T-36", "vert", "ce qui est prescrit répond aux contraintes de l'athlète (jumeau de T-34)", () => {
+  const base = { sport: "swim", format: "fond", history: "reprise", level: "debutant", intent: "finir",
+    sessions_max: "6", dispo: "quotidienne", doubles: "non", age: "35", sex: "H",
+    css: "2:00", css_known: "oui", vol_max: "10", vol_recent: "0", injury: "aucune",
+    med_pain: "non", med_dizzy: "non", med_treat: "non", milieu: "bassin", swim_limit: "technique" };
+  const prescrit = (over) => {
+    const p = globalThis.EBV2.buildPlan("swim", { ...base, ...over });
+    const jours = Math.max(...(p.weeks ?? []).map((w) => (w.days ?? []).filter((d) => (d.sessions ?? []).some((sx) => sx.d === "sw" && sx.min > 0)).length));
+    const total = (p.weeks ?? []).reduce((t, w) => t + (w.days ?? []).reduce((u, d) => u + (d.sessions ?? []).reduce((v, sx) => v + (sx.race ? 0 : sx.min || 0), 0), 0), 0);
+    return { pic: p.volPeak ?? 0, jours, total };
+  };
+  const ref = prescrit({});
+  const axes = [
+    ["historique", { history: "ancien" }],
+    ["volume déclaré", { vol_max: "3" }],
+    ["volume récent", { vol_recent: "8" }],
+    ["drapeau médical", { med_pain: "oui" }],
+    ["blessure épaule", { injury: "epaule" }],
+    ["âge", { age: "68" }],
+  ];
+  const muets = [], vus = [];
+  for (const [nom, over] of axes) {
+    let v; try { v = prescrit(over); } catch { vus.push(`${nom} REFUS`); continue; }
+    const bouge = Math.abs(v.pic - ref.pic) > 0.05 || v.jours !== ref.jours || Math.abs(v.total - ref.total) > 5;
+    vus.push(`${nom} ${v.pic}h/${v.jours}j/${v.total}min${bouge ? "" : " ←MUET"}`);
+    if (!bouge) muets.push(nom);
+  }
+  // Le drapeau médical est une garde DURE : s'il ne bouge rien, ce n'est pas une domination,
+  // c'est un garde-fou éteint.
+  const medMuet = muets.includes("drapeau médical");
+  return {
+    ok: muets.length < axes.length && !medMuet,
+    detail: `référence ${ref.pic}h/${ref.jours}j/${ref.total}min · ${vus.join(" · ")}${muets.length ? ` — MUETS : ${muets.join(", ")}` : ""}`,
+  };
+});
+
 const PRESCRIT_ATTENDU = {
   "fond/reprise/debutant": { pic: 1.1, jours: 5 },
   "sprint/reprise/debutant": { pic: 1.1, jours: 5 },

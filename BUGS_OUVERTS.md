@@ -3846,3 +3846,101 @@ quoi: il n'existe aucun plafond de jours de NAGE, quand la course en a un
 attendu: O43-SANS-BORNE-NAGE
 cmd: grep -q "MAX_RUN_DAYS" src/engine/constraintMatrix.ts && ! grep -q "MAX_SWIM_DAYS" src/engine/constraintMatrix.ts && echo "O43-SANS-BORNE-NAGE"
 ```
+
+
+---
+
+## O-44 · La fréquence de nage n'est bornée par rien, et le plancher de durée entre en COLLISION avec C15 · 🔴 **OUVERT — mesuré, non écrit**
+
+Scindé d'O-43 (§3). **Défaut ANTÉRIEUR à O-42** : 103 profils de natation sur 136 étaient déjà à
+six jours de nage par semaine avant le lot. O-42 n'a pas créé la fréquence non bornée — il a
+retiré la protection accidentelle qu'un plafond trop bas offrait aux débutants.
+
+**La forme du correctif est arbitrée** (fondateur, 16/08/2026) : pas de `MAX_SWIM_DAYS`, qui
+inventerait une limite physiologique inexistante — la technique est une compétence, elle s'acquiert
+par la répétition, et six séances courtes valent mieux que trois longues pour l'apprentissage. La
+pathologie n'est pas « six jours », c'est **dix-sept minutes** : personne ne se déplace jusqu'à une
+piscine pour dix-sept minutes d'eau. On borne donc par un **plancher de DURÉE de séance**, qui
+borne la fréquence par `volume ÷ plancher`, s'auto-échelonne, et n'ajoute aucune question.
+
+### §1 — Ce que les plafonds en MÈTRES autorisent, en minutes (après O-42)
+
+| CSS | 850 m (C15) en `sw.easy` | 750 m (C24) en `sw.easy` | 600 m (C24b) en `sw.easy` |
+|---|---|---|---|
+| 1:30/100m | **14,3 min** | 12,6 | 10,1 |
+| 1:50/100m | **17,5 min** | 15,4 | 12,3 |
+| 2:00/100m | **19,0 min** | 16,8 | 13,4 |
+| 2:30/100m | 23,8 min | 21,0 | 16,8 |
+| 3:00/100m | 28,6 min | 25,2 | 20,2 |
+
+### §2 — Les durées livrées : la pathologie est la NORME, pas une queue
+
+10 891 séances de nage sur 136 profils : **p10 16 · médiane 19 · p90 36 · min 3 · max 91 min**.
+
+```
+  0–15 min    881  ( 8,1 %)     ← et le minimum observé est de 3 MINUTES
+ 15–20 min   4800  (44,1 %)     ← le mode
+ 20–25 min   2015  (18,5 %)
+ 25–30 min   1419  (13,0 %)
+ 30–45 min   1117  (10,3 %)
+ 45–… min     659  ( 6,1 %)
+
+médiane par niveau :  débutant 15 min · inter 22 · avancé 18
+```
+
+### §3 — Le plancher qui ramène les débutants à 3-4 séances
+
+| plancher | débutants (jours médians) | tous | profils dont la fréquence baisse |
+|---|---|---|---|
+| 20 min | 4 | 5 | 72 / 136 |
+| 22 min | 4 | 5 | 79 / 136 |
+| **25 min** | **3** | 4 | 95 / 136 |
+| 30 min | 3 | 3 | 127 / 136 |
+
+### ⚠ §4 — LA COLLISION, et c'est le résultat qui compte
+
+**Le plancher qui corrige la fréquence contredit C15 pour les débutants.** Le fondateur avait
+raison de conditionner la valeur à cette vérification, et la mesure la tranche dans le sens
+défavorable :
+
+```
+plancher visé (§3)          : 25 min pour ramener un débutant à 3 séances
+plafond C15 à CSS 2:00      : 19,0 min  ← un débutant ne PEUT PAS atteindre 25 min
+plafond C15 à CSS 1:50      : 17,5 min
+plafond C15 à CSS 1:30      : 14,3 min
+```
+
+Un plancher de 25 min est **inatteignable sous C15** pour tout nageur plus rapide que ~2:30/100 m,
+et C15 est précisément le plafond qui protège le débutant. Les deux règles se contrediraient : la
+séance devrait durer au moins 25 min et ne pas dépasser 850 m.
+
+**Ce n'est pas résoluble en choisissant un nombre.** Trois formes possibles, à arbitrer :
+
+1. **Plancher relatif au plafond** — `plancher = min(plancher_absolu, k × durée que C15 autorise)`.
+   Aucune contradiction possible par construction, mais le plancher devient inopérant là où C15
+   mord, c'est-à-dire chez le débutant… donc chez celui qu'on visait.
+2. **Relever C15 pour les débutants** — le plafond de 850 m date d'avant O-42, quand une séance de
+   850 m était comptée ~15 min ; elle en fait 19 aujourd'hui. Le plafond n'a pas été recalibré
+   après le changement d'unité. C'est la piste que la mesure désigne, et elle demande un arbitrage
+   d'entraînement (850 m est-il un plafond de DISTANCE ou de DURÉE ?).
+3. **Plancher indexé sur le CSS** — un nageur lent atteint 25 min en 850 m, un rapide non ; le
+   plancher suivrait la vitesse. Défendable, mais il invente une règle nouvelle là où la 2 en
+   recalibre une existante.
+
+**Trouvé en passant, non traité** : la séance de nage la plus courte du golden dure **3 minutes**.
+Aucun plancher de durée n'existe aujourd'hui, à aucun niveau — et 8,1 % des séances sont sous 15 min.
+
+### §5 — L'unité, vérifiée avant d'écrire
+
+`SWIM_TIME_FACTOR_BY_HISTORY` vaut `{reprise 0,45 · confirme 0,60 · ancien 0,70}` et s'applique à
+la **DÉCLARATION** de l'athlète (O-35 : c'est une conversion d'unité, pas une réduction). Les durées
+du §2 viennent de `stepMin` : ce sont des minutes **DANS L'EAU**. Un plancher doit donc être posé
+dans cette unité — le poser en temps de BASSIN le rendrait **2,22× trop haut** chez un athlète en
+reprise. Piège d'unité vérifié avant d'écrire, pas après.
+
+```verify
+id: O-44
+quoi: 8 % des seances de nage durent moins de 15 min, et aucun plancher de duree n'existe
+attendu: O44-REPRODUIT
+cmd: node scripts/mesureO44.mjs 2>/dev/null | grep -q "0–15 min" && ! grep -q "SWIM_SESSION_MIN_MIN" src/engine/constraintMatrix.ts && echo "O44-REPRODUIT"
+```
