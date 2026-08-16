@@ -4831,3 +4831,45 @@ placement    dans la boucle du point fixe · avant le sceau
 résiduel     « écart grand ET phase trop étroite » : mesurer inatteignable et
              asserter au sceau, pas implémenter
 ```
+
+### B-17 §11 — `milieu` étendu à tri : le gate cesse de SUPPOSER sur deux points
+
+**(1) La surcharge de 4 % devient conditionnelle.** Le seuil demandait 780 m pour couvrir 750 m
+parce qu'il supposait la continuité déclarée acquise en BASSIN. Avec `milieu` lu, l'hypothèse
+devient une lecture — aucun calcul nouveau, le facteur eau libre déjà appliqué cesse seulement
+d'être systématique :
+
+```
+milieu = ow              → seuil SANS surcharge  (750 m) — la preuve est déjà dans le bon milieu
+milieu = bassin          → seuil AVEC surcharge  (780 m)
+milieu = mixte ou absent → AVEC surcharge        (780 m) — origine ambiguë, on prend le conservateur
+```
+
+**(2) `bassin` + course en eau libre : le seul écart que le plan est structurellement incapable de
+combler.** La spec exige une continue en conditions réelles ; si l'athlète s'entraîne uniquement en
+bassin, cette séance ne peut pas être réalisée — donc l'hypothèse du gate **ne sera jamais validée**.
+
+Ce n'est pas une raison de bloquer (beaucoup de triathlètes s'entraînent en bassin et courent en eau
+libre sans incident, refuser serait disproportionné) : c'est une raison de le **dire**, une fois, à
+la construction. C'est la posture du reste du moteur — nommer ce qu'il ne peut pas faire plutôt que
+l'omettre —, et c'est O-17 sans aller jusqu'au refus : **on informe quelqu'un qui peut agir, plutôt
+que de bloquer quelqu'un qui ne peut pas.**
+
+> « Ta course se nage en eau libre et tu t'entraînes en bassin. Ton plan peut construire la
+> distance, pas le milieu — pas de mur, pas de ligne, pas de fond visible, et il faut lever la tête
+> pour se repérer. Une seule sortie en eau libre avant le jour J change tout, et plus elle est tôt,
+> mieux c'est. »
+
+**⚠ Une hypothèse reste dans ce message et doit être nommée** : *« ta course se nage en eau libre »*.
+Le moteur ne le sait pas — `milieu` décrit où l'athlète S'ENTRAÎNE, pas où l'épreuve se nage, et
+aucune clé ne porte le second. C'est vrai de la quasi-totalité des M/70.3/Full, mais **des triathlons
+sprint se nagent en piscine**. Deux issues, à l'écriture : restreindre le message aux formats dont
+la nage est certainement en eau libre, ou le formuler au conditionnel (« si ta course se nage en eau
+libre… »). Ne pas l'affirmer sans la clé qui le dit — c'est exactement la faute que ce chantier
+corrige depuis le premier jour.
+
+```
+schéma  longest_swim_m  ["swim"] → ["swim", "tri"]   → le gate
+        milieu          ["swim"] → ["swim", "tri"]   → la surcharge conditionnelle + le message
+R20.1   les deux agissent dans le commit qui les déclare, ou elles n'y sont pas.
+```
