@@ -4713,3 +4713,56 @@ placement   dans la boucle du point fixe · avant le sceau
 résiduel    « écart grand ET phase trop étroite » : à MESURER inatteignable et
             asserter au sceau, pas à implémenter
 ```
+
+### B-17 §9 — BRANCHE « CSS INCONNU » TRANCHÉE : issue 2, et mon « identique en pratique » était faux
+
+**Rectification.** J'ai écrit que le repli sur un CSS prudent était *« identique à l'issue 1 en
+pratique, avec un détour »*. C'est faux, et l'écart tombe exactement sur le cas qui motivait la
+question. Vérifié plutôt qu'accepté, au repli `130 s/100 m` :
+
+| format | course | durée de course au repli | gate `min(30, durée)` | **gate en mètres** | issue 1 (30 min à plat) |
+|---|---|---|---|---|---|
+| **tri/S** | 750 m | 16,9 min | **16,9 min** | **780 m** | 1 385 m |
+| tri/M | 1 500 m | 34,1 min | 30,0 min | 1 385 m | 1 385 m |
+| tri/70.3 | 1 900 m | 43,6 min | 30,0 min | 1 385 m | 1 385 m |
+| tri/Full | 3 800 m | 88,9 min | 30,0 min | 1 385 m | 1 385 m |
+
+**Les deux issues ne diffèrent que sur `tri/S` — c'est-à-dire précisément le cas que le `min()`
+venait d'écarter.** Sur les trois autres formats le `min()` retient de toute façon le terme des
+30 minutes et elles coïncident. Mon objection était juste sur trois lignes sur quatre, et fausse
+sur celle qui posait le problème.
+
+*(Note d'unité, qui rend le point plus fort encore : `longest_swim_m` est déclaré en MÈTRES et le
+gate est une DURÉE — la comparaison exige donc une vitesse **des deux côtés**, quelle que soit
+l'issue. L'issue 1 n'évite pas le repli, elle l'applique en abandonnant le second terme du `min()`.)*
+
+**Aucune constante nouvelle** : `baseRefs.css || 130` existe, est mesuré, documenté et porte déjà
+son statut `PANSEMENT`. Inventer un « CSS prudent » propre au gate créerait une seconde vitesse de
+repli à côté de la première — la famille `_IFZ`, une fois de plus.
+
+**⚠ LE SENS DE L'ERREUR EST LE BON, ET IL FAUT L'ÉCRIRE DANS LE CODE.** `130 s/100 m` est **plus
+rapide** qu'un vrai débutant : 30 minutes converties par ce repli donnent une distance **plus
+grande** que celle qu'il couvrirait réellement, donc le gate lui demande un peu plus que son
+équivalent-30-minutes réel. Pour un garde-fou de sécurité c'est la direction souhaitable — et c'est
+**la seule occurrence de ce chantier où le biais connu de cette constante joue en faveur de
+l'athlète**. À écrire noir sur blanc, sinon quelqu'un « corrigera » le repli ici en croyant bien
+faire (le défaut symétrique de celui qu'O-25 a fermé).
+
+**Pourquoi pas l'issue 3** — la symétrie avec « je ne sais pas » n'est qu'apparente, et l'argument
+est bon : *ne pas connaître sa plus longue nage continue*, c'est ignorer sa capacité face au risque,
+et personne ne peut l'évaluer à sa place (O-17 s'applique) ; *ne pas connaître son CSS*, c'est
+ignorer sa vitesse — une donnée que le moteur estime déjà partout ailleurs. Bloquer sur la seconde
+traiterait une estimation possible comme une ignorance, et refuserait un plan tant qu'un test CSS
+n'a pas été fait, dans un sport où le débutant est justement celui qui n'en a jamais fait.
+
+```
+durée_gate   = min( 30 min , durée de nage estimée en course )
+vitesse      = baseRefs.css, ou le repli 130 s/100 m si css_known ≠ "oui"
+comparaison  = continuité déclarée (convertie par la MÊME vitesse) vs durée_gate
+
+« je ne sais pas » sur la continuité →  gate NON satisfait
+CSS absent                          →  repli, le gate reste calculable
+```
+
+**Le gate ne devient jamais incalculable. La seule absence qui bloque est celle qui décrit
+l'athlète face au risque, pas celle qui décrit sa vitesse.** — spec CLOSE, plus aucune inconnue.
