@@ -4568,3 +4568,56 @@ lui rend aucune information utilisable en temps voulu**.
 **Et les 4 accidents prouvent la faisabilité** : le moteur SAIT déjà produire la séance. B-17 ne
 demande aucune capacité de génération nouvelle — seulement une règle qui la vise, et les 4 cas
 servent de référence de forme.
+
+### B-17 §6 — LES TROIS DÉCISIONS, ARRÊTÉES · spec complète, prête à écrire
+
+**1. Mécanisme : transformer `Nage seuil (+dist)`, JAMAIS marquer une nage `long`.**
+Vérifié dans le code plutôt qu'accepté : `blockBounds` rend `if (s.long) { if (s.d === "sw")
+return { floor: 820, cap: CAP_SWIM[fmt] } }`, et `CAP_SWIM["Full"] = 3000`. **Marquer une nage
+`long` activerait donc exactement le plafond qui écrêterait la séance que B-17 existe pour
+prescrire** — un bloc continu de 3 800 m ramené à 3 000. O-46 était faux comme constat général ;
+il deviendrait vrai, et précis, par cette option. Second coût confirmé : `s.long` est lu par C30,
+les exclusions de réallocation et le tail O-21 (`sx.long && !sx.race`), toutes écrites pour des
+longues de COURSE — le marquage importerait des sémantiques d'impact dans une discipline qui n'en
+a pas.
+
+**2. Dosage : 4 occurrences sur la phase spécifique, pas chaque semaine.** `Nage seuil (+dist)`
+apparaît 885 fois : c'est le principal véhicule du travail au seuil en nage, et le transformer à
+chaque occurrence retirerait l'essentiel du seuil sur toute la phase. La progression y répond
+d'elle-même — quatre paliers, donc quatre séances, laissant 4 à 8 séances de seuil intactes sur une
+phase de 8-12 semaines. **Divergence VOULUE avec `trailLibrary`**, qui transforme dès que
+`rehearsalNeeded` : à écrire dans le ticket pour qu'elle ne soit pas subie.
+
+**3. Gate : nage continue déclarée ≥ 30 min, réutilisé de S10, uniforme sur tous les formats en eau
+libre.** Ni le format ni un ratio de distance : **ce qui fait le risque en eau libre est une DURÉE**
+— le refroidissement qui désorganise le geste s'installe en 10 à 30 min, et un nageur rapide couvre
+1 900 m en 30 min quand un lent en met 50. Zéro constante nouvelle : le seuil existe, il est
+justifié, il est déjà appliqué au sport voisin pour le même motif.
+
+**Et « je ne sais pas » BLOQUE.** C'est l'inverse du réflexe de tout le reste du dépôt — où
+l'absence a toujours été traitée comme une permission — et c'est justifié par O-17 lui-même : *si
+l'athlète ne sait pas ce qu'il a nagé de plus long, il est par définition dans le membre « ne peut
+pas évaluer le risque ».* **À écrire explicitement, sinon quelqu'un implémentera le défaut permissif
+par habitude.**
+
+```
+mécanisme   transformation de « Nage seuil (+dist) », PAS de marquage s.long
+dosage      4 occurrences sur la phase spec
+paliers     ~50 / 70 / 90 / 100 % de TRI_SWIM[fmt].dist — zéro constante nouvelle
+            blocs CONTINUS (reps === 1) · la dernière à 3-4 semaines · jamais en affûtage
+gate        nage continue déclarée ≥ 30 min (S10), uniforme · « je ne sais pas » → NON satisfait
+schéma      longest_swim_m étendu à tri
+eau libre   au moins une continue en conditions réelles, combinaison comprise
+critère     O-17, membre « ne peut pas évaluer le risque » — parce qu'en eau libre le risque
+            n'est pas observable avant d'être réalisé
+```
+
+**Deux vérifications à faire À L'ÉCRITURE, pas avant** (elles n'engagent aucune décision) :
+
+- **la phase spécifique porte-t-elle toujours ≥ 4 `Nage seuil (+dist)` ?** Sur une prépa Full
+  courte, la phase `spec` peut être plus étroite que les quatre paliers. Le comportement quand elle
+  ne les porte pas est à définir — comprimer la progression, ou empiéter sur `peak`. Ne pas le
+  décider d'avance : le mesurer sur les profils courts.
+- **`audit:sensibilite` exige que toute clé déclarée AGISSE dans chaque sport où elle est
+  déclarée** (R20.1). Étendre `longest_swim_m` à `tri` sans câbler le gate dans le même commit
+  rendrait ce gate rouge — les deux landent ensemble ou aucun.
