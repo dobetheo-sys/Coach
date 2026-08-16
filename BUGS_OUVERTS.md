@@ -4384,3 +4384,68 @@ nage/demifond 2000 ≥   850 ✓     nage/ow     4500 ≥ 2 100 ✓
 
 **Les QUATRE formats de triathlon sont rouges, pas seulement `Full`** — les trois à ×1,00 sont
 aussi défaillants, simplement de façon moins visible. C'est ce que la première écriture cachait.
+
+---
+
+## O-46 — ⚠ **RÉFUTÉ. `CAP_SWIM` n'est pas un plafond de SÉANCE : c'est le plafond d'un BLOC de la sortie longue.**
+
+Lu à la source, `planGenerator.ts` :
+
+```ts
+if (s.long) {
+  if (s.d === "sw") return { floor: 820, cap: CAP_SWIM[fmt] || 4500 };
+```
+
+`CAP_SWIM` borne **un step**, et seulement dans la branche `s.long`. Il ne borne ni la séance, ni
+les séances qui ne sont pas la sortie longue. Toute la construction d'O-46 — la mienne, et
+l'inférence du fondateur qui s'appuyait dessus — comparait un plafond de BLOC à une exigence de
+SÉANCE. Catégorie contre catégorie : la faute que ce chantier nomme depuis le premier jour, cette
+fois dans la garde que j'avais écrite en la déclarant « dérivée ».
+
+**Mesuré sur les plans livrés (semaines de charge)** — l'axe de la table est le TRIATHLON :
+
+| format | course | plafond `CAP_SWIM` | séance méd / max | plus gros bloc méd / max |
+|---|---|---|---|---|
+| tri/S | 750 | 750 | 1 300 / **3 225** | 850 / 2 875 |
+| tri/M | 1 500 | 1 500 | 2 078 / **4 375** | 1 450 / 4 025 |
+| tri/70.3 | 1 900 | 1 900 | 2 675 / **4 800** | 1 975 / 4 450 |
+| tri/Full | 3 800 | 3 000 | 1 875 / **7 125** | 1 500 / 6 775 |
+
+**Un triathlète longue distance nage jusqu'à 7 125 m en une séance.** L'énoncé « le moteur lui
+interdit de nager sa distance de course » est FAUX, et avec lui l'analyse de risque en eau libre
+qu'il portait. **T-38 est retiré** : son critère n'a pas d'objet sous cette forme.
+
+**Ma propre sonde l'avait signalé et j'ai failli ne pas le lire** : `mesure:o46` rendait des colonnes
+« avec plafond » et « sans plafond » **identiques au mètre près**. Retirer le plafond ne changeait
+rien — un résultat saturé, donc suspect d'erreur d'instrument (test de dépistage de la règle 15).
+Il ne s'agissait pas d'un défaut de la sonde : le plafond ne mordait simplement pas là où je
+croyais qu'il agissait.
+
+### Ce qui SURVIT, et c'est B-17 dans son énoncé d'origine
+
+Relever un plafond rend une séance POSSIBLE ; il ne la rend pas PRESCRITE. La question de B-17 est
+la seconde, et elle se mesure — « une nage CONTINUE (un seul bloc, `reps === 1`) à la distance de
+course est-elle prescrite ? » :
+
+```
+tri/S     course  750 m · plus long bloc continu méd 1 200 · profils l'atteignant : 21/30
+tri/M     course 1500 m · méd 3 200 · 22/31
+tri/70.3  course 1900 m · méd 4 450 · 21/30
+tri/Full  course 3800 m · méd 2 375 · **4/56**
+```
+
+**Sur `tri/Full`, 52 profils sur 56 (93 %) ne reçoivent JAMAIS une nage continue à la distance de
+course.** Les trois autres formats sont à ~70 % de couverture — imparfait, mais d'un autre ordre.
+C'est le constat de B-17, mesuré pour la première fois, **et il tient sans O-46** : la cause n'est
+pas un plafond, c'est qu'aucune règle ne prescrit cette séance.
+
+Et le plafond de 3 000 m sur le BLOC de la sortie longue d'un Full mérite tout de même sa question,
+sous une forme correcte cette fois : il empêche un bloc continu de 3 800 m dans la sortie longue.
+Les 4 profils qui y arrivent passent donc par une autre séance. **Suivi en B-17, pas en O-46.**
+
+```verify
+id: B-17
+quoi: 93 % des profils tri/Full ne recoivent jamais une nage CONTINUE a la distance de course
+attendu: B17-REPRODUIT
+cmd: grep -q "if (s.d === \"sw\") return { floor: 820, cap: CAP_SWIM" src/generator/planGenerator.ts && echo "B17-REPRODUIT"
+```

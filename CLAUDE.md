@@ -242,6 +242,13 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   et de triathlon sous le seul mot « sprint » (O-44 §9) — la seconde a fait conclure au fondateur
   que 27 profils échappaient à un correctif qui les couvre. L'axe coûte trois mots.
 
+- **Règle 19 — avant d'écrire un test, demander : quel est le correctif le MOINS COÛTEUX qui le
+  ferait passer ? Si ce correctif ne résout pas le problème, le test est sous-spécifié.** Deux
+  occurrences le même jour, sous deux surfaces qui ne se sont pas connectées : un test d'INVARIANCE
+  qu'une constante gelée satisfait (O-43, issue 2), un test de BORNE qu'une valeur épinglée sur la
+  borne satisfait (T-38 v1 — et je venais de nommer la première une heure plus tôt). La question du
+  correctif minimal les couvre toutes les deux, et elle se pose AVANT d'écrire.
+
 - **Règle 18 — une différence E2E n'est attribuée à un lot qu'après ≥ 3 exécutions de la suite
   concernée DE CHAQUE CÔTÉ du changement.** Une exécution unique de part et d'autre n'est pas une
   comparaison : c'est deux tirages. Une suite E2E est stochastique par nature (réseau, temporisation,

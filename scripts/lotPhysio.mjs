@@ -1131,58 +1131,14 @@ T("T-35", "vert", "le pic livré et la fréquence de nage sont épinglés — un
   return { ok: bad.length === 0, detail: bad.length ? bad.join(" · ") : vus.join(" · ") };
 });
 
-/**
- * T-38 (O-46, révisé) — LE PLAFOND PERMET UNE SÉANCE DONT LE CORPS VAUT LA DISTANCE DE COURSE.
- *
- * ⚠ MA PREMIÈRE ÉCRITURE ÉTAIT SATISFIABLE PAR UN CORRECTIF QUI NE CORRIGE RIEN. Elle posait
- * `CAP_SWIM[format] ≥ distance de course` — une INÉGALITÉ, donc `tri/Full : 3 000 → 3 800` la
- * passait au vert en laissant le défaut entier : le plafond vaudrait alors exactement la distance
- * de course, comme les trois autres formats, et aucun travail sur-distance ne serait toujours
- * possible. C'est exactement la faille que j'avais nommée sur l'issue 2 d'O-43 — **une valeur
- * épinglée sur la borne satisfait trivialement un test de borne** — et je l'ai reproduite dans la
- * garde écrite une heure plus tard.
- *
- * La propriété juste est structurelle : une séance de nage porte un échauffement, un corps et un
- * retour au calme. Pour que le CORPS puisse valoir la distance de course, il faut
- * `plafond ≥ distance + (échauffement + retour au calme)`. Un plafond posé exactement sur la
- * distance de course rend cette séance IMPOSSIBLE — il ne reste rien pour le reste.
- *
- * AUCUNE CONSTANTE NOUVELLE : les trois grandeurs sont lues là où elles vivent — `CAP_SWIM`,
- * `TRI_SWIM`/`SWIM_RACE`, et l'allocation échauffement/retour au calme OBSERVÉE sur les plans
- * LIVRÉS (règle 15 : on mesure ce que le moteur prescrit, pas ce qu'une table déclare). La
- * médiane est retenue comme séance représentative ; la distribution complète est publiée dans le
- * détail du test pour que ce choix reste révocable sans re-mesure.
- *
- * ROUGE aujourd'hui sur les QUATRE formats de triathlon, et pas seulement `Full` : les trois à
- * ×1,00 sont aussi défaillants, simplement de façon moins visible.
- */
-T("T-38", "rouge", "le plafond de nage permet une séance dont le CORPS vaut la distance de course (O-46)", () => {
-  // L'aux (échauffement + retour au calme) mesuré sur la sortie livrée, par format.
-  const aux = {};
-  for (const { key, plan } of goldenAvecMoteur()) {
-    const fmt = key.split("/").find((x) => CAP_SWIM[x] != null);
-    if (!fmt) continue;
-    for (const w of plan.weeks ?? []) for (const d of w.days ?? []) for (const sx of d.sessions ?? []) {
-      if (sx.d !== "sw" || !sx.steps) continue;
-      const a = sx.steps.filter((st) => st.role !== "body").reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
-      if (a > 0) (aux[fmt] ||= []).push(a);
-    }
-  }
-  const med = (xs) => { const t = [...xs].sort((x, y) => x - y); return t[Math.floor(t.length / 2)]; };
-  const bad = [], vus = [];
-  for (const [table, nom] of [[TRI_SWIM, "tri"], [SWIM_RACE, "nage"]])
-    for (const [fmt, o] of Object.entries(table)) {
-      const cap = CAP_SWIM[fmt];
-      if (cap == null || !aux[fmt]?.length) continue;
-      const a = med(aux[fmt]), besoin = o.dist + a;
-      vus.push(`${nom}/${fmt} ${cap}≥${besoin}? (course ${o.dist} + aux ${a})`);
-      if (cap < besoin) bad.push(`${nom}/${fmt} : plafond ${cap} m < ${besoin} m nécessaires (course ${o.dist} + aux ${a})`);
-    }
-  return { ok: bad.length === 0, detail: (bad.length ? bad.join(" · ") + "  —  " : "") + "tous : " + vus.join(" · ") };
-});
+// T-38 RETIRÉ (O-46 réfuté, 16/08/2026) — il comparait `CAP_SWIM` à une exigence de SÉANCE alors
+// que `CAP_SWIM` borne UN BLOC de la sortie longue (`if (s.long) { if (s.d === "sw") … }`). Un
+// triathlète Full nage jusqu'à 7 125 m en une séance : la prémisse « le moteur lui interdit sa
+// distance de course » était fausse. Le test est retiré plutôt que réécrit — ce qui survit est
+// B-17 (« une nage CONTINUE à la distance de course est-elle PRESCRITE ? », 4 profils sur 56 en
+// Full), qui est un ticket de PRESCRIPTION et non de plafond, et qui aura sa garde avec lui.
 
 const ROUGES_ATTENDUS = {
-  "T-38": "O-46 — les QUATRE formats tri ont un plafond sous `course + échauffement/retour au calme` ; relèvement + B-17 rouvert",
   "T-34": "O-43 — la conversion déplace ce qui est prescrit (pic +9 %, fréquence) : filtre du fondateur, une seule issue le passe",
   "T-01": "A-01 — sessionIntensity() importe zoneClass() au lieu de sa copie (+ V-08 pour sw.aero)",
   "T-02": "A-01 — la zone fantôme vit dans la copie de dailyAdjuster",
