@@ -4873,3 +4873,65 @@ schéma  longest_swim_m  ["swim"] → ["swim", "tri"]   → le gate
         milieu          ["swim"] → ["swim", "tri"]   → la surcharge conditionnelle + le message
 R20.1   les deux agissent dans le commit qui les déclare, ou elles n'y sont pas.
 ```
+
+### B-17 §12 — PÉRIMÈTRE VERROUILLÉ. Le message est restreint à M+, et rien d'autre n'entre.
+
+**Décision : issue 1.** Le message « bassin + eau libre » ne s'affiche que sur **M, 70.3, Full** —
+formats dont la nage se fait en eau libre dans la quasi-totalité des cas, où l'affirmation est donc
+vraie **sans clé**. Le sprint est le seul format ambigu, et c'est précisément celui où le message
+serait faux une fois sur deux. L'issue 2 (le conditionnel) est honnête mais faible : *un message qui
+commence par « si ta course se nage en eau libre » se lit comme une réserve juridique et se saute ;
+un message qu'on n'affiche que quand il est vrai vaut mieux qu'un message qu'on nuance.*
+
+**Le reste de l'appareil reste ACTIF sur sprint** — la distinction est nette et vaut d'être gardée :
+
+| pièce | sur sprint, milieu inconnu | raison |
+|---|---|---|
+| gate (continuité ≥ durée de course) | **conservé** | il mesure la capacité à tenir l'effort, sensée quel que soit le milieu |
+| séance en eau libre | **conservée** | la prescrire pour une course en piscine est un désagrément ; ne pas la prescrire pour une course en lac est le risque |
+| surcharge de 4 % | **conservée** | c'est du bruit, et elle va dans le sens prudent |
+| **message** | **retiré** | c'est la seule pièce qui **AFFIRME** quelque chose |
+
+**On peut se tromper par prudence ; on ne peut pas se tromper en affirmant.** Les trois premières
+sont des défauts conservateurs, la quatrième est une assertion — et seule une assertion a besoin
+d'être vraie.
+
+### ⚠ PÉRIMÈTRE VERROUILLÉ — observation de processus, et elle porte sur moi
+
+**B-17 a été déclaré clos cinq fois et rouvert cinq fois par une trouvaille adjacente** : les
+paliers, la branche CSS, la preuve en bassin, `milieu`, le milieu de l'épreuve. Chacune était juste,
+chacune a repoussé l'écriture d'une session. C'est le mode de défaillance de ce fil : la qualité de
+l'analyse produit sa propre paralysie.
+
+```
+B-17 part avec : la spec close + la restriction du message aux formats M+
+                 RIEN D'AUTRE — aucune clé de schéma nouvelle
+```
+
+Toute trouvaille adjacente à partir d'ici devient **un ticket**, jamais un ajout au périmètre.
+
+---
+
+## O-47 · Le prédicteur suppose que TOUTE nage de triathlon se fait en eau libre · 🔴 **OUVERT**
+
+Scindé de B-17 §12, avec une justification meilleure que celle qui l'a fait apparaître.
+
+`TRI_SWIM` applique son coefficient de milieu à **tous** les formats, sprint compris —
+`S: { dist: 750, factor: 1.04 }` —, et `predictor.ts` documente ce facteur comme calibré
+« peloton, combinaison comprise ». **Pour un triathlon sprint nagé en PISCINE, le temps prédit est
+donc 4 % trop lent**, par une hypothèse silencieuse.
+
+Poser une clé « milieu de l'ÉPREUVE » ne serait donc pas ajouter une dimension : ce serait **rendre
+explicite une hypothèse que le moteur fait déjà**. C'est une justification bien meilleure que « un
+message a besoin de le savoir », et elle vaut son ticket propre.
+
+Consommateurs le jour venu : le facteur `TRI_SWIM` · la prescription de la séance en eau libre · la
+surcharge du gate B-17 · le message B-17 · et probablement la question combinaison, qui n'a aucun
+sens en piscine.
+
+```verify
+id: O-47
+quoi: TRI_SWIM applique le facteur eau libre au format sprint aussi
+attendu: O47-REPRODUIT
+cmd: grep -q 'S: { dist: 750, factor: 1.04 }' src/engine/predictor.ts && echo "O47-REPRODUIT"
+```
