@@ -4449,3 +4449,72 @@ quoi: 93 % des profils tri/Full ne recoivent jamais une nage CONTINUE a la dista
 attendu: B17-REPRODUIT
 cmd: grep -q "if (s.d === \"sw\") return { floor: 820, cap: CAP_SWIM" src/generator/planGenerator.ts && echo "B17-REPRODUIT"
 ```
+
+## B-17 · Aucune nage CONTINUE à la distance de course n'est prescrite en triathlon · 🔴 **OUVERT — mesuré, spec arrêtée, mécanisme identifié**
+
+Rouvert après la réfutation d'O-46 : la cause n'est pas un plafond, **c'est qu'aucune règle ne
+prescrit cette séance**.
+
+### 1. La mesure — et une rectification au passage
+
+```
+                   course │ séance méd │ séance max │ plus long bloc CONTINU (reps=1)
+tri/S      750 m │  1 300 │ 3 225 │ méd 1 200 · 21/30 profils atteignent la distance
+tri/M     1500 m │  2 078 │ 4 375 │ méd 3 200 · 22/31
+tri/70.3  1900 m │  2 675 │ 4 800 │ méd 4 450 · 21/30
+tri/Full  3800 m │  1 875 │ 7 125 │ méd 2 375 · **4/56**
+```
+
+**Rectification : ce n'est pas « aucune, jamais ».** Sur `tri/Full`, **4 profils sur 56** reçoivent
+bien une nage continue à la distance de course — par accident de composition, puisque aucune règle
+ne la vise. 93 % ne la reçoivent jamais ; c'est déjà le constat, et il n'a pas besoin d'être arrondi
+à 100 %.
+
+**Le volume est là, la continuité n'y est pas.** Un athlète peut avoir nagé 7 125 m en une séance
+sans avoir jamais couvert 3 800 m d'affilée — deux adaptations différentes, et c'est la seconde qui
+décide du jour J. La médiane à 1 875 m ajoute que la séance TYPIQUE vaut la moitié de la course.
+
+### 2. Le précédent interne qui fait autorité
+
+**S10 (swimrun) refuse un format long si l'athlète ne tient pas 30 min de nage continue**, avec sa
+justification écrite : on est parfois loin du rivage. Cette justification vaut mot pour mot pour un
+70.3 en lac ou un Full en mer. Le triathlon n'a pas d'équivalent — c'est l'asymétrie du ticket.
+
+### 3. Le mécanisme est déjà là — **T7**, et il se réutilise sans rien inventer
+
+`trailLibrary.ts` : `rehearsalNeeded && (phase === "spec" || phase === "peak")` **transforme la
+sortie LONGUE** en répétition générale (nom, note, contenu). Ce n'est pas un ordonnanceur de séance
+obligatoire, c'est une TRANSFORMATION conditionnelle de la séance pivot — exactement ce dont B-17 a
+besoin : la longue de nage du triathlon, en phase spécifique, devient une nage continue à une
+fraction croissante de la distance de course.
+
+Contrat visé, comme B-25 : **zéro constante nouvelle** — les paliers se dérivent de `TRI_SWIM[fmt].dist`.
+S'il en faut une, c'est le seuil de déclenchement du gate, et elle se posera avec sa provenance.
+
+### 4. La spec, arrêtée
+
+```
+3.1 progression prescrite (phase spécifique)
+    ~50 % → ~70 % → ~90 % → 100 % de la distance de course, en blocs CONTINUS (reps === 1)
+    la dernière à 3-4 semaines de l'épreuve, JAMAIS dans l'affûtage
+    (paliers = hypothèse du fondateur ; ce qui compte est la FORME — une montée,
+     pas un test unique à la fin : découvrir la distance trois semaines avant ne
+     laisse plus le temps de corriger ce qu'on y apprend)
+
+3.2 gate en eau libre — au moins une nage continue en CONDITIONS RÉELLES avant le jour J
+    (eau libre, en combinaison si la course l'est)
+```
+
+**Non tranché, et c'est la question du premier jour** : refus bloquant ou avertissement fort ?
+S10 refuse. Recommandation du fondateur : **refus sur Full, avertissement appuyé sur 70.3 et M**.
+Le manifeste (O-17) donne le critère — bloquer quand « l'athlète ne peut pas évaluer le risque, ou
+l'erreur est irréversible ». La noyade est irréversible ; l'athlète qui n'a jamais nagé 3,8 km ne
+peut pas savoir ce que ça fait. Les deux conditions sont réunies sur Full, ce qui rend la
+recommandation cohérente avec la règle existante plutôt qu'ajoutée à côté.
+
+```verify
+id: B-17-continuite
+quoi: aucune regle ne prescrit une nage continue a la distance de course en triathlon
+attendu: B17-AUCUNE-REGLE
+cmd: grep -rq "T7_REHEARSAL" src/engine/trailModel.ts && ! grep -rq "SWIM_REHEARSAL\|swimRehearsal" src/ && echo "B17-AUCUNE-REGLE"
+```

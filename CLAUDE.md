@@ -269,7 +269,12 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   minutes ; un plancher de séance se compte en minutes ; un pourcentage sur une semaine de 34 min
   amplifie le quantum d'un facteur dix.
 
-- **Test de dépistage de la règle 15, à trois secondes : un taux SATURÉ accuse l'instrument.**
+- **Test de dépistage de la règle 15, à trois secondes : un taux SATURÉ accuse l'instrument — ou
+  le MODÈLE MENTAL de ce que l'instrument observe.** (Élargi le 16/08/2026 : `mesure:o46` rendait
+  « avec plafond » et « sans plafond » identiques au mètre près ; la sonde fonctionnait, elle
+  mesurait une grandeur qui n'agissait pas là où on la croyait — `CAP_SWIM` borne UN BLOC de la
+  sortie longue, pas une séance. Les deux se testent par la même question : *quel état, quelle
+  grandeur, décrit ce résultat ?*)
   Toute mesure qui rend 0 % ou 100 % est suspecte d'erreur de sonde jusqu'à preuve du contraire —
   et la preuve est de faire VARIER une entrée et de vérifier que le taux bouge. Quatre des
   quatorze occurrences de la règle 15 auraient été attrapées par là : « 1 924 divergents sur
