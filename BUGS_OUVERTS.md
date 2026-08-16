@@ -4518,3 +4518,53 @@ quoi: aucune regle ne prescrit une nage continue a la distance de course en tria
 attendu: B17-AUCUNE-REGLE
 cmd: grep -rq "T7_REHEARSAL" src/engine/trailModel.ts && ! grep -rq "SWIM_REHEARSAL\|swimRehearsal" src/ && echo "B17-AUCUNE-REGLE"
 ```
+
+### B-17 §5 — LES DEUX VÉRIFICATIONS AVANT D'ÉCRIRE, ET LA PREMIÈRE CHANGE LE MÉCANISME
+
+**(a) Il n'y a AUCUNE sortie longue de nage en triathlon.** Mesuré sur les phases `spec`/`peak` des
+profils tri du golden : les séances portant `s.long === true` en nage sont **zéro**. Les nages de
+ces semaines sont `Nage vitesse` (×1 108), `Nage seuil (+dist)` (×885), `Nage éducatifs` (×269),
+`Nage endurance` (×39)…
+
+Le patron de `trailLibrary` — *transformer la sortie longue* — **n'a donc rien à transformer**.
+C'est aussi ce qui explique qu'O-46 ne mordait nulle part : la branche `if (s.long) { if (s.d ===
+"sw") … CAP_SWIM … }` de `blockBounds` **n'est jamais atteinte en triathlon**. Le plafond que j'ai
+passé un tour à analyser ne s'applique à aucune séance de tri.
+
+**Conséquence sur le mécanisme** : B-17 ne peut pas être une transformation de la longue. Deux
+formes possibles, à trancher :
+
+1. **marquer** une nage de la phase spécifique comme `long` et la transformer — cohérent avec le
+   reste du moteur (chaque discipline a sa pivot), mais c'est une structure de semaine qui change ;
+2. **transformer la plus grosse nage existante** — `Nage seuil (+dist)`, dont le nom porte déjà
+   l'intention « + distance » —, ce qui ne touche pas la structure et vise la séance qui produit
+   déjà les 4 accidents de continuité.
+
+**Ce que la transformation ferait perdre : RIEN, c'est mesuré.** Aucune zone n'est présente
+uniquement dans une nage donnée sur ces semaines — la réserve du §4 est levée par la mesure.
+
+**(b) Le gate indexé sur l'écart demande une question que le triathlon ne pose pas.** `longest_swim_m`
+(« ta plus longue nage ») existe dans `ANSWER_SCHEMA` mais est déclarée **`["swimrun"]` uniquement**.
+S10 peut interroger une continuité déclarée parce que le swimrun la DEMANDE ; le triathlon ne la
+demande pas. Le gate sur l'écart `continuité déclarée / distance de course` suppose donc d'étendre
+la clé à `tri` — une question de plus au questionnaire, ce que ce dépôt ne fait pas à la légère.
+
+C'est le seul coût nouveau du ticket, et il est petit : la clé, son domaine et son unité existent
+déjà, il s'agit d'ajouter `"tri"` à sa liste de sports. À arbitrer avec le seuil.
+
+**Arbitrage retenu, à écrire tel quel** : le gate est indexé sur **l'écart**, pas sur le format —
+« si le raisonnement tient pour 3 800 m, il tient pour 1 900 : même milieu, même absence de signal ».
+Un Full qui déclare 3 km continus n'a pas besoin d'être bloqué ; un 70.3 qui déclare 400 m en a
+besoin. Le seuil (0,6 proposé) reste une hypothèse à poser avec sa provenance.
+
+**Et le critère O-17 est précisé par le fondateur, mieux que par moi** : ce n'est pas
+« la noyade est irréversible » — le vélo aussi a une queue irréversible et ce motif bloquerait tout.
+C'est le PREMIER membre : **en eau libre, le risque n'est pas observable avant d'être réalisé.**
+En course à pied on ralentit, on marche, on s'arrête — le signal arrive progressivement et des
+options restent. En eau libre le choc thermique, la désorganisation du geste et la panique
+surviennent vite et loin du bord. L'athlète ne peut pas évaluer le risque parce que **le milieu ne
+lui rend aucune information utilisable en temps voulu**.
+
+**Et les 4 accidents prouvent la faisabilité** : le moteur SAIT déjà produire la séance. B-17 ne
+demande aucune capacité de génération nouvelle — seulement une règle qui la vise, et les 4 cas
+servent de référence de forme.
