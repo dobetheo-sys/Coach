@@ -4658,3 +4658,58 @@ quoi: tri/S ne porte jamais 4 « Nage seuil » en phase specifique, meme a 22 se
 attendu: LE CAS EXISTE
 cmd: node scripts/mesureB17.mjs 2>/dev/null | grep -o "LE CAS EXISTE" | head -1
 ```
+
+### B-17 §8 — SPEC FINALE : le gate chiffré, et la branche « CSS inconnu » qu'il faut décider
+
+Le gate `min(30 min, durée de nage estimée en course)`, calculé à sa source
+(`TRI_SWIM[fmt].dist / 100 × CSS × facteur`) — **entre parenthèses, la valeur du gate** :
+
+| format | course | CSS 1:30 | CSS 1:50 | CSS 2:00 | CSS 2:30 | CSS 3:00 |
+|---|---|---|---|---|---|---|
+| tri/S | 750 m | 12 min **(12)** | 14 **(14)** | 16 **(16)** | 20 **(20)** | 23 **(23)** |
+| tri/M | 1 500 m | 24 **(24)** | 29 **(29)** | 32 **(30)** | 39 **(30)** | 47 **(30)** |
+| tri/70.3 | 1 900 m | 30 **(30)** | 37 **(30)** | 40 **(30)** | 50 **(30)** | 60 **(30)** |
+| tri/Full | 3 800 m | 62 **(30)** | 75 **(30)** | 82 **(30)** | 103 **(30)** | 123 **(30)** |
+
+Le `min()` fait exactement ce que l'arbitrage décrit : **le gate vaut la durée de course sur `S`
+partout et sur `M` jusqu'à CSS ~2:00** (l'épreuve est plus courte que le plancher de S10), **et
+vaut 30 min sur `70.3` et `Full` à tous les CSS** (l'épreuve dépasse le plancher, qui devient un
+seuil d'entrée et non un objectif). Un `tri/S` de 8 semaines n'est plus refusé à quelqu'un qui
+tient 20 minutes — c'est le cas que la mesure des paliers avait soulevé.
+
+**⚠ UNE BRANCHE RESTE À DÉCIDER, ET ELLE EST DE LA MÊME FAMILLE QUE « JE NE SAIS PAS ».**
+`css_known` est déclaré `["swim", "tri", "swimrun"]` — donc **optionnel**. Sans CSS, la durée de
+nage en course n'est pas estimable, et le `min()` n'a pas de second terme.
+
+Trois issues, et le choix engage la même logique que l'absence de continuité :
+
+1. **repli sur 30 min** — le plancher de S10 s'applique seul. Cohérent, mais un `tri/S` sans CSS
+   se voit alors demander 30 min quand son épreuve en dure 16 : c'est le faux positif que le
+   `min()` venait précisément d'écarter, réintroduit par l'absence d'une réponse.
+2. **repli sur un CSS prudent** (le plus lent du domaine) — la durée estimée est alors maximale,
+   donc le gate vaut 30 min partout : identique à l'issue 1 en pratique, avec un détour.
+3. **l'absence de CSS est elle-même une condition du gate** — symétrique de « je ne sais pas »
+   sur la continuité : qui ne connaît ni sa vitesse ni sa plus longue nage ne peut pas évaluer
+   son exposition. C'est la lecture la plus fidèle à O-17, et la plus dure.
+
+**Non tranché ici.** L'issue 3 est cohérente avec la décision « je ne sais pas bloque », mais elle
+transforme une question OPTIONNELLE du questionnaire en prérequis de fait pour tout triathlon en
+eau libre — ce qui est une décision de produit, pas une déduction.
+
+**Le reste de la spec est FINAL** et n'attend plus que l'écriture :
+
+```
+gate        min(30 min, durée de nage estimée en course) · « je ne sais pas » → non satisfait
+            [CSS inconnu → À TRANCHER, trois issues ci-dessus]
+progression nombre de paliers proportionné à (durée de course − continuité déclarée)
+            paliers dérivés de TRI_SWIM[fmt].dist · blocs CONTINUS (reps === 1)
+            écart faible → 1-2 confirmations · écart grand → 4 paliers
+mécanisme   transformation de « Nage seuil (+dist) », JAMAIS marquage s.long
+            (le marquage activerait CAP_SWIM et écrêterait 3 800 → 3 000)
+schéma      longest_swim_m étendu à tri — MÊME COMMIT que le gate (R20.1)
+eau libre   ≥ 1 continue en conditions réelles, combinaison comprise
+critère     O-17, membre « ne peut pas évaluer le risque »
+placement   dans la boucle du point fixe · avant le sceau
+résiduel    « écart grand ET phase trop étroite » : à MESURER inatteignable et
+            asserter au sceau, pas à implémenter
+```
