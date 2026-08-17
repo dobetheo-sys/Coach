@@ -425,7 +425,7 @@ function snapshot() {
   return { snap, n, errors, refus };
 }
 
-export { profiles };
+export { profiles, snapshot, canon };
 
 if (!LANCE_DIRECTEMENT) { /* importé pour ses profils : on s'arrête ici */ } else {
 

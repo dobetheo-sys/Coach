@@ -80,7 +80,8 @@
     "mesure:o56": "node scripts/contrepreuveO56.mjs",
     "profil:reel": "node scripts/profilReel.mjs",
     "mesure:contraste": "node scripts/mesureContraste.mjs",
-    "test:rollback": "node scripts/testRollback.mjs"
+    "test:rollback": "node scripts/testRollback.mjs",
+    "golden:bundle": "node scripts/goldenBundle.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

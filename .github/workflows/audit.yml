@@ -114,6 +114,15 @@ jobs:
       # Golden master : 814 plans photographiés, détection d'écart au bit près. Les empreintes
       # sont versionnées ; tout changement de plan doit être VOULU et recapturé explicitement.
       - run: npm run golden:verify
+      # `golden(src) === golden(bundle)` — LA SEULE ASSERTION QUI COUVRE L'ÉTAPE ENTRE CE QU'ON
+      # MESURE ET CE QU'ON LIVRE. `golden:verify` importe `src/app/bridge.ts` : il valide la
+      # SOURCE. Ce qui est déployé est le BUNDLE. `audit:v1` et les E2E lisent bien le bundle,
+      # mais ils vérifient sa VALIDITÉ, pas son IDENTITÉ DE SORTIE avec la source — deux
+      # questions différentes, et seule la seconde est ce que la photo garantit. L'étape n'est
+      # pas neutre : la construction retire les imports et concatène, donc un alias ne survit
+      # pas (mesuré le 17/08 : `audit:v1` à 57 ReferenceError pendant que le golden restait à
+      # 0 écart). Ce qui n'a pas survécu une fois peut ne pas survivre deux.
+      - run: npm run golden:bundle
       # Banc physio (`scripts/lotPhysio.mjs`) — il porte le SCEAU (T-27 : invariants durs à zéro
       # sur le plan livré, déclarés au compte épinglé par cliquet) et les tickets ouverts en
       # rouges ATTENDUS. Il sortait en code 1 sur régression depuis son écriture, mais il n'était

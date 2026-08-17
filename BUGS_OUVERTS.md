@@ -6758,3 +6758,45 @@ quoi: la coupe par sessions_max retire-t-elle encore 98 % de ses séances dans u
 attendu: sw 109 → 51 (−58) contre rn 120 → 120, bk 48 → 47, br 13 → 13 sur 70.3/40 sem/doubles/sessions_max=6
 cmd: grep -n "cand.reduce" src/generator/weekBuilder.ts
 ```
+
+## O-67 · La preuve du merge portait sur `src/`, pas sur l'artefact livré · ✅ **FERMÉ le jour où il a été nommé**
+
+**Origine** : le fondateur, à partir de ma faute d'instrument du 17/08 — `audit:v1` à 57
+`ReferenceError` pendant que `golden:verify` restait à 0 écart, l'un lisant le BUNDLE et l'autre
+`src/`.
+
+Deux instruments, deux verdicts opposés, même commit — et ce n'est pas une contradiction : chacun
+a raison sur ce qu'il regarde. **Mais l'acceptation du merge est `golden:verify` contre la photo,
+et il importe `src/app/bridge.ts`.** La preuve principale du merge ne portait donc pas sur ce qui
+est déployé. `audit:v1` et les E2E lisent bien le bundle — c'est ce qui a attrapé les 57 — mais
+ils en vérifient la **validité**, pas l'**identité de sortie** avec la source. Deux questions
+différentes ; seule la seconde est ce que la photo garantit.
+
+**Et l'étape n'est pas neutre** : `buildApp.mjs` retire les imports et concatène les modules, donc
+un alias ne survit pas à la construction. Ce qui n'a pas survécu une fois peut ne pas survivre
+deux, et rien ne le dirait.
+
+`npm run golden:bundle` : les DEUX moteurs dans le même processus, le même corpus, la même
+canonisation. **989 profils, 0 écart** — la construction n'est pas lossy.
+
+**Le piège qui rendrait ce test vacueux est fermé, et il est traître** : si le bundle ne se charge
+pas, `globalThis.EBV2` reste celui de `src/` et les deux passes comparent la source à elle-même —
+**0 écart, verdict vert, mesure nulle**. C'est le taux saturé de la règle 15 dans sa forme la plus
+difficile à voir, parce que **le résultat attendu EST « 0 écart »**. Trois verrous : la référence
+de `EBV2` doit avoir CHANGÉ entre les deux passes (vérifié, sinon exit 2) ; le bundle est chargé
+depuis le HTML livré ; et `--contrepreuve` perturbe une constante du livré et EXIGE que la
+comparaison rougisse — vérifié, `B17_ECHAUF_M 200 → 225` fait diverger **186 profils sur 989**.
+
+Note d'instrument : la première contre-preuve visait `C22_MAX_WEEKLY_GROWTH`, qui dans le bundle
+vaut `rule("C22", …)` et non un littéral. Elle a rendu « motif introuvable » et **refusé de
+tourner** plutôt que de sortir verte sur une perturbation qui n'avait pas eu lieu — c'est le
+comportement voulu, et c'est ce qui l'a fait remarquer.
+
+**Mis en cliquet** : `golden:bundle` entre en CI à côté de `golden:verify`.
+
+```verify
+id: O-67
+quoi: ce qui est mesuré est-il ce qui est livré ?
+attendu: golden(src) === golden(bundle), 989 profils, 0 écart
+cmd: npm run golden:bundle 2>&1 | tail -2
+```

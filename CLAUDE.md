@@ -301,6 +301,26 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   PASSES (« une garantie vérifiée au milieu du pipeline ne vérifie que l'avant-dernier état »),
   celle-ci sur la POSITION DANS LE PLAN.
 
+- **Un COMPTE se publie avec ce qu'il compte — brut ou net — et à quel POINT DU PIPELINE il est
+  lu** (arbitrage du fondateur, 17/08/2026). C'est le corollaire du dénominateur, un cran plus
+  haut : un ratio a besoin de sa base, un compte a besoin de son MOMENT. Mesuré : « 124 retraits »
+  lus dans la trace (BRUT, au moment de la coupe) et « −58 sur 59 » lus sur le plan livré (NET,
+  après les passes qui réinsèrent) ont été publiés à un jour d'écart sans étiquette, sur le même
+  profil. Le lecteur en tire soit une contradiction, soit que l'un est faux — jamais « ce sont
+  deux questions ».
+
+- **Une garde qui valide `src/` ne valide pas ce qui est LIVRÉ** (arbitrage du 17/08/2026,
+  `npm run golden:bundle`). Le golden importe `src/app/bridge.ts` ; ce qui est déployé est le
+  BUNDLE, et la construction n'est pas neutre — elle RETIRE les imports et concatène, donc un
+  alias (`record as traceRecord`) ne survit pas. Mesuré le jour même : `audit:v1` à **57
+  ReferenceError** pendant que `golden:verify` restait à **0 écart**, parce que l'un lit le
+  bundle et l'autre la source. Vérifier la VALIDITÉ du bundle (ce que font `audit:v1` et les
+  E2E) et son IDENTITÉ DE SORTIE avec la source sont deux questions différentes ; seule la
+  seconde est ce que la photo garantit. Le piège de cette garde-là est qu'un bundle qui ne se
+  charge pas rend **0 écart** — le résultat attendu : la référence de `globalThis.EBV2` doit
+  donc être vérifiée CHANGÉE entre les deux passes, et une contre-preuve perturbe une constante
+  du livré (186 profils divergent sur `B17_ECHAUF_M 200 → 225`).
+
 - **Un ratio se publie avec son dénominateur NOMMÉ, et se lit en le cherchant** (corollaire de la
   règle 14, arbitrage du 17/08/2026). « 231/231 à la borne » comptait *parmi les blocs à la borne,
   combien sont en tri* — pas l'inverse ; il s'est lu comme « le plafond définit la nage seuil du
