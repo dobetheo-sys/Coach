@@ -24,7 +24,7 @@ function exportJSON(){try{const j=planToJSON(S.answers);_dl("plan-"+(S.sport||"e
 function exportICS(){try{
   const j=planToJSON(S.answers);
   const esc2=s=>String(s==null?"":s).replace(/([,;\\])/g,"\\$1").replace(/\r?\n/g,"\\n");
-  const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//EnduraBuild//FR//","CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+  const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Zenna//FR//","CALSCALE:GREGORIAN","METHOD:PUBLISH"];
   // Conformité RFC 5545 (audit v6) — trois défauts corrigés :
   //  1. DTSTAMP était ABSENT (obligatoire ; certains clients rejetaient le fichier entier)
   //  2. UID collisionnable (AAAAMMJJ-index) : deux plans différents à la même date se
@@ -35,6 +35,12 @@ function exportICS(){try{
   const planId=String((S.currentPlan&&S.currentPlan.id)||S.activePlanId||"p").replace(/[^A-Za-z0-9]/g,"");
   const tag=(S.sport||"eb")+"-"+String(S.answers.format||"x").replace(/[^A-Za-z0-9.]/g,"")+"-"+planId;
   const nextDay=iso=>{const t=new Date(iso+"T00:00:00Z").getTime()+864e5;return new Date(t).toISOString().slice(0,10).replace(/-/g,"");};
+  // Le domaine de l'UID reste `@endurabuild` APRÈS le renommage en Zenna, et ce n'est pas un
+  // oubli : un UID iCalendar est une IDENTITÉ, pas un libellé. Le changer ferait de chaque
+  // séance déjà importée un ÉVÉNEMENT NEUF au ré-import — l'agenda de l'athlète se retrouverait
+  // avec sa préparation en double, sans qu'aucune de nos gardes ne le voie. Même raisonnement
+  // que les clés `eb_state_v1`/`eb_state_v2` du localStorage, qui gardent leur nom pour que
+  // personne ne perde son plan. Ce qui est VISIBLE (PRODID, titre, pied de page) est renommé.
   j.weeks.forEach(w=>w.days.forEach(d=>{if(!d.date)return;const dt=d.date.replace(/-/g,"");
     d.sessions.forEach((s,i)=>{L.push("BEGIN:VEVENT","UID:"+dt+"-"+i+"-"+tag+"@endurabuild","DTSTAMP:"+stamp,"SEQUENCE:0","DTSTART;VALUE=DATE:"+dt,"DTEND;VALUE=DATE:"+nextDay(d.date),"SUMMARY:"+esc2(s.name),"DESCRIPTION:"+esc2(s.det||""),"END:VEVENT");});}));
   L.push("END:VCALENDAR");
@@ -96,7 +102,7 @@ async function exportPNG(){try{
   const W=1080,H=1350,c=document.createElement("canvas");c.width=W;c.height=H;
   const x=c.getContext("2d");
   // FOND TRANSPARENT : aucun `fillRect` de fond. Le PNG conserve l'alpha.
-  _ebTxt(x,"ENDURABUILD",60,140,{size:92,weight:900,family:"Archivo Black"});
+  _ebTxt(x,"ZENNA",60,140,{size:92,weight:900,family:"Archivo Black"});
   _ebTxt(x,(SPORTS[S.sport]?SPORTS[S.sport].nom:S.sport)+" · "+(a.format||""),60,220,{size:44,weight:700,color:"#ff5c68"});
   _ebTxt(x,plan.totalWeeks+" semaines · "+plan.volBase+"h → "+plan.volPeak+"h",60,290,{size:36});
   let y=360;
@@ -120,7 +126,7 @@ async function exportPNG(){try{
     // une tache rectangulaire, alors que la barre elle-même reste pleine et lisible
     y+=40;x.fillStyle="rgba(255,255,255,.35)";x.fillRect(60,y,W-120,26);x.fillStyle="#00c98d";x.fillRect(60,y,(W-120)*pg.pctLoad/100,26);
   }catch(e){}}
-  _ebTxt(x,"Généré par EnduraBuild — plan raisonné, chaque décision justifiée",60,H-60,{size:26,color:"rgba(255,255,255,.85)"});
+  _ebTxt(x,"Généré par Zenna — plan raisonné, chaque décision justifiée",60,H-60,{size:26,color:"rgba(255,255,255,.85)"});
   c.toBlob(b=>{const u=URL.createObjectURL(b);const l=document.createElement("a");l.href=u;l.download="enduraBuild-"+(S.sport||"plan")+".png";document.body.appendChild(l);l.click();setTimeout(()=>{document.body.removeChild(l);URL.revokeObjectURL(u);},200);},"image/png");
 }catch(e){console.warn("exportPNG",e);}}
 
@@ -177,7 +183,7 @@ async function storyBlob(o,format){
   if(o.badge){_ebTxt(x,(o.badge.icon+" Badge débloqué : "+o.badge.label).slice(0,40),0,y,{size:sq?40:50,weight:700,color:"#ffd76a",max:W-80,center:W});y+=sq?66:90;}
   const d=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
   _ebTxt(x,d,0,y+20,{size:sq?28:36,color:"rgba(255,255,255,.85)",max:W-80,center:W});
-  _ebTxt(x,"ENDURABUILD",70,H-(sq?66:80),{size:sq?32:40,weight:700,max:W-140});
+  _ebTxt(x,"ZENNA",70,H-(sq?66:80),{size:sq?32:40,weight:700,max:W-140});
   _ebTxt(x,"plan raisonné · chaque décision justifiée",70,H-(sq?34:40),{size:sq?24:30,color:"rgba(255,255,255,.85)",max:W-140});
   return new Promise(res=>c.toBlob(res,"image/png"));
 }
@@ -186,10 +192,10 @@ async function storyBlob(o,format){
 async function shareStory(o,format){
   const blob=await storyBlob(o,format);
   if(!blob)return false;
-  const fname=format==="square"?"endurabuild-carte.png":"endurabuild-seance.png";
+  const fname=format==="square"?"zenna-carte.png":"zenna-seance.png";
   const file=new File([blob],fname,{type:"image/png"});
   if(navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){
-    try{await navigator.share({files:[file],title:"Séance faite — EnduraBuild"});return true;}
+    try{await navigator.share({files:[file],title:"Séance faite — Zenna"});return true;}
     catch(e){if(e&&e.name==="AbortError")return true;/* l'utilisateur a annulé : pas un échec */}
   }
   const u=URL.createObjectURL(blob);const l=document.createElement("a");
@@ -204,7 +210,7 @@ async function shareText(o){
   if(o.sessionName)parts.push(o.sessionName+(o.detail?" — "+String(o.detail).split("—")[0].trim():""));
   if(o.streak>1)parts.push("🔥 "+o.streak+" jours d'affilée");
   if(o.badge)parts.push(o.badge.icon+" Badge débloqué : "+o.badge.label);
-  parts.push("(EnduraBuild — plan raisonné)");
+  parts.push("(Zenna — plan raisonné)");
   const text=parts.join("\n");
   if(navigator.share){
     try{await navigator.share({text});return "share";}

@@ -34,14 +34,32 @@
   produisait une erreur de console à chaque chargement (attrapée par les suites E2E, qui
   assertent « aucune erreur JS »). L'anti-cadrage demande donc un en-tête que GitHub Pages
   ne permet pas de poser : c'est une limite de l'hébergement, nommée plutôt que simulée.
+
+  R-ZENNA (10/08/2026) — le reskin de l'onglet Aujourd'hui n'ajoute AUCUN hôte à cette CSP :
+  la première écriture chargeait Bebas Neue/Inter/IBM Plex Mono depuis fonts.googleapis.com,
+  ce qui contredit D19 (styles.css, en tête) — les polices du produit sont auto-hébergées,
+  précisément pour zéro requête externe (RGPD, hors ligne). Mesuré par `smoke-checkin.mjs`
+  dans ce sandbox (réseau bridé) : la requête externe produit `ERR_CONNECTION_RESET`, qui
+  remonte en erreur console — le critère « aucune erreur JS » que TOUTES les suites E2E
+  assertent. Les trois polices de la maquette ont donc rejoint `assets/fonts/` (sous-ensemble
+  latin, glyphes accentués vérifiés) et sont déclarées dans `css/zenna-today.css` :
+  `font-src 'self'` suffit, et le fichier autonome les embarque comme les autres.
+
+  Et `css/zenna-today.css` lui-même n'a PAS de `<link>` ici : un `<link rel="stylesheet">` de
+  plus dans `<head>` est bloquant pour le premier rendu, mesuré (smoke-usage.mjs, U7) à faire
+  passer « la séance apparaît sans attendre la météo » de 1720 ms à ~2000 ms, juste sous le
+  plafond que U7 existe pour garder. `js/app.js` l'injecte en script après coup — voir sa note.
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.open-meteo.com https://www.strava.com https://*.workers.dev; form-action 'none'; base-uri 'self'; object-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#f1eadb">
-<title>EnduraBuild — Ton plan d'endurance raisonné</title>
+<!-- Réponse au STOP de Phase 1 (§5) — la barre système suit enfin l'app : theme-zenna est posée
+     dès app.js:26, il n'existe AUCUN écran clair. #f1eadb datait du thème papier (résidu n°1
+     de l'inventaire). La valeur est celle de --zn-bg. -->
+<meta name="theme-color" content="#000000">
+<title>Zenna — Ton plan d'endurance raisonné</title>
 <meta name="description" content="Coach d'endurance raisonné : plan multisport justifié, adaptation quotidienne, prédiction de course.">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><polygon points=%2250,12 92,85 8,85%22 fill=%22%23e63946%22/><polygon points=%2250,34 76,78 24,78%22 fill=%22%230c1016%22/></svg>">
+<link rel="icon" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/mobile.css">
@@ -50,16 +68,16 @@
 <div class="wrap">
   <main class="main" role="main">
     <div class="hero">
-      <h1>ENDURA<em>BUILD</em></h1>
+      <h1 id="ebBrand"><!-- R-ZENNA v7 : rempli par brand.js, point unique de la marque --></h1>
       <p>Chaque réponse oriente les questions suivantes et déclenche des règles de construction. À la fin : le squelette de ton plan, avec la justification de chaque choix.</p>
       <span class="tier-badge free" id="tierBadge">● Profilage gratuit</span>
     </div>
     <nav class="progress" id="progress" aria-label="Progression du questionnaire" aria-hidden="true"></nav>
     <div id="screen" role="region" aria-live="polite" aria-label="Contenu principal"></div>
-    <footer style="text-align:center;padding:14px 10px 18px;font-size:10.5px;color:#8a8272">EnduraBuild — © 2026 Théo. Tous droits réservés (voir LICENSE).</footer>
+    <footer style="text-align:center;padding:14px 10px 18px;font-size:10.5px;color:#8a8272">Zenna — © 2026 Théo. Tous droits réservés (voir LICENSE).</footer>
   </main>
 </div>
-<noscript><p style="padding:20px;font-family:sans-serif">EnduraBuild a besoin de JavaScript pour générer ton plan.</p></noscript>
+<noscript><p style="padding:20px;font-family:sans-serif">Zenna a besoin de JavaScript pour générer ton plan.</p></noscript>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

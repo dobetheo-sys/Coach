@@ -1,0 +1,991 @@
+/* ============================================================
+   R-ZENNA — EXTENSION DU THÈME AUX QUATRE AUTRES ONGLETS
+   ============================================================
+   `zenna-today.css` porte le SOCLE : palette `--zn-*`, redéfinition des jetons du thème clair
+   (--text, --text2, --muted, --ink, --bg et ses variantes, --acc, --gold, --line), la cadence
+   génériques (.card, .load-card, .load-title, .load-sub, .btn, .eyebrow, .warn, champs,
+   .gd-why/.gd-det/.gd-steps, .doneBtn, .eb-modal, #ebTabbar). Ce socle vaut désormais pour
+   TOUS les onglets — `tabs.js` pose `theme-zenna` en permanence.
+
+   Ce fichier-ci ne contient QUE ce que le socle ne couvre pas : les structures propres à
+   Profil, Plan, Semaine et Outils.
+
+   LE PRINCIPE QUI GOUVERNE TOUT CE QUI SUIT — ON TRANSPOSE, ON N'UNIFORMISE PAS.
+   Le thème clair encode du SENS dans ses couleurs : les quatre états d'une journée
+   (dur/facile/récup/off), les cinq identités de phase, les accents de discipline, les trois
+   badges de preuve des éducatifs, le rouge d'un bloc sécurité. Les repeindre toutes en gris
+   sombre ferait un thème cohérent et un produit muet. Chaque teinte porteuse de sens garde
+   donc sa FAMILLE, transposée en version sombre — jamais remplacée.
+
+   LE MODE DE PANNE À CONNAÎTRE. Le socle redéfinit `--ink` (encre) en CLAIR. Toute règle du
+   thème papier écrite `border: 3px solid var(--ink)` devient donc un liseré blanc épais, et
+   `box-shadow: 5px 5px 0 var(--ink)` une ombre portée BLANCHE. C'est la signature « collage »
+   qui se retourne : partout où le thème clair dessinait à l'encre, il faut soit repasser en
+   `--zn-border`, soit retirer l'ombre. C'est la source principale des règles ci-dessous.
+   ============================================================ */
+
+/* ============================================================
+   R-ZENNA v5 — L'EN-TÊTE PARTAGÉ (#ebAppHeader)
+   ============================================================
+   Le seul élément structurel commun aux cinq écrans de la maquette qui n'existait nulle part.
+   Il vit hors de `#screen`, donc ces règles ne sont PAS scopées sous `#screen`. */
+body.theme-zenna #ebAppHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 6px 0 14px;
+}
+/* R-ZENNA v7 — LA MARQUE EST DESSINÉE PAR `brand.js`, ces règles ne font que l'habiller.
+   Elles ne sont PAS scopées à l'en-tête : la même marque sert aussi le titre de l'accueil,
+   en grand. Une seule identité, deux tailles. */
+body.theme-zenna .zn-brand { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
+/* R-ZENNA v9 — PLUS DE TUILE. Le placeholder était une lettre enfermée dans un carré orange ;
+   le vrai logo porte déjà sa forme et sa couleur. L'encadrer le contredirait — et une silhouette
+   sombre dans un carré plein perdrait justement ce qui la rend lisible : sa découpe. */
+body.theme-zenna .zn-logo-mark {
+  flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  color: #f04808;   /* l'orange du logo, échantillonné sur le fichier fourni (brand.js) */
+}
+body.theme-zenna .zn-logo-mark svg { display: block; }
+body.theme-zenna .zn-brand-word {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg); letter-spacing: .06em;
+  color: var(--zn-text); transform: skewX(var(--zn-skew)); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+/* L'accueil : la MÊME marque, en grand. Le bloc orange sur « BUILD » de l'ancienne DA
+   disparaît — c'était la première des quatre versions qui coexistaient. */
+body.theme-zenna .hero .zn-brand { gap: 14px; }
+body.theme-zenna .zn-brand-word.grand {
+  font-size: clamp(30px, 8vw, 46px); letter-spacing: .04em;
+}
+body.theme-zenna #ebAppHeader .zn-header-right-wrap {
+  display: flex; align-items: center; gap: 9px; flex: 0 0 auto;
+}
+body.theme-zenna #ebAppHeader .zn-header-right { text-align: right; min-width: 0; }
+body.theme-zenna #ebAppHeader .zn-greet { font-size: 12px; font-weight: 600; color: var(--zn-text); white-space: nowrap; }
+body.theme-zenna #ebAppHeader .zn-date-mono {
+  font-family: var(--zn-mono); font-size: 10px; color: var(--zn-muted-2);
+  letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+}
+/* La puce de course. Cliquable, donc 44 px de haut (U4) — la maquette la dessine à 30. */
+body.theme-zenna #ebAppHeader .zn-race-chip {
+  display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 5px 12px;
+  background: var(--zn-surface-2); border: 1px solid var(--zn-border); border-radius: 100px;
+  transition: transform var(--dur-tap) var(--ease-spring), border-color var(--dur-trans) var(--ease);
+}
+body.theme-zenna #ebAppHeader .zn-race-chip[role="button"] { cursor: pointer; }
+body.theme-zenna #ebAppHeader .zn-race-chip[role="button"]:active { transform: scale(.93); }
+body.theme-zenna #ebAppHeader .zn-race-chip[role="button"]:focus-visible {
+  outline: 2px solid var(--zn-orange); outline-offset: 2px;
+}
+body.theme-zenna #ebAppHeader .rc-j {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 14px; color: var(--zn-orange-tint); line-height: 1;
+}
+body.theme-zenna #ebAppHeader .rc-l {
+  font-family: var(--zn-mono); font-size: 9px; color: var(--zn-muted-2); letter-spacing: .05em;
+  text-transform: uppercase; white-space: nowrap;
+}
+/* Sur un écran étroit, la marque cède avant la puce : « J−281 · 70.3 » est l'information,
+   « ZENNA » est le décor — on sait sur quelle app on est. */
+@media (max-width: 359px) {
+  body.theme-zenna #ebAppHeader .zn-brand-word { display: none; }
+}
+
+/* ============================================================
+   R-ZENNA v6 — LE QUESTIONNAIRE (décision du fondateur : toute l'app)
+   ============================================================
+   Le questionnaire est le PREMIER contact, et il restait le dernier écran en thème « papier ».
+   La maquette ne le couvre pas : ces écrans sont donc TRANSPOSÉS depuis ses composants (cartes
+   sombres à coin coupé, titre display incliné, accent orange), jamais copiés d'une référence
+   qui n'existe pas.
+
+   Le socle (`zenna-today.css`) couvre déjà `.card`, `.btn`, les champs et `.eyebrow`. Ici : ce
+   qui est propre à l'accueil et au choix du sport. Comme partout, les couleurs PORTEUSES DE
+   SENS restent — les sept accents de discipline (`--sa`, posé en inline) sont l'identité de
+   chaque sport, ils ne deviennent pas gris. */
+body.theme-zenna .hero h1 { color: var(--zn-text); }
+/* Le `<em>` surligné servait au mot-marque « ENDURA·BUILD », dont la seconde moitié était
+   détachée. « ZENNA » n'a pas de partie détachée : la règle n'a plus d'objet, mais on la garde
+   neutralisée plutôt que supprimée — `styles.css` la définit encore, et un `<em>` qui
+   ressurgirait ailleurs dans un titre hériterait sinon du bloc orange de l'ancienne DA. */
+body.theme-zenna .hero h1 em { background: none; color: inherit; box-shadow: none; transform: none; }
+body.theme-zenna .hero p { color: var(--zn-muted); }
+body.theme-zenna .tier-badge {
+  background: var(--zn-surface-2); color: var(--zn-cyan);
+  border: 1px solid rgba(0, 224, 198, .32); border-radius: 100px;
+  box-shadow: none; transform: none;
+}
+body.theme-zenna .tier-badge.premium { color: var(--zn-gold); border-color: rgba(255, 210, 61, .35); }
+/* R-ZENNA v7 — LES DERNIERS GESTES « FAIT MAIN » (décision du fondateur : les traiter).
+   Le socle avait déjà repris le FOND, le CONTOUR et l'OMBRE des options et des champs ; il
+   restait les ROTATIONS, qui n'étaient visibles nulle part dans une revue de couleurs et que
+   seul un balayage de `transform` a fait sortir. Sur du papier une pastille penchée fait
+   « posée à la main » ; sur du noir, avec des bords nets et des ombres douces, elle fait
+   « mal alignée ». C'est le même arbitrage que pour les cartes de sport. */
+body.theme-zenna .opts .opt:nth-child(odd),
+body.theme-zenna .opts .opt:nth-child(even) { transform: none; }
+body.theme-zenna #screen .opt:hover { transform: none; box-shadow: none; border-color: var(--zn-orange); }
+body.theme-zenna #screen .opt:active { transform: scale(.97); box-shadow: none; }
+body.theme-zenna #screen .opt:focus-visible { outline: 2px solid var(--zn-orange); outline-offset: 2px; }
+/* Le séparateur d'étape : penché de 8°, il pointait vers nulle part une fois la piste redressée. */
+body.theme-zenna .psep { transform: none; color: var(--zn-muted-2); }
+/* Le drapeau d'accueil gigotait en boucle (`triWiggle`, 3 s, infinie). Une animation permanente
+   sur l'écran d'ARRIVÉE tire l'œil en continu vers un élément décoratif — et elle est le
+   dernier reste d'un vocabulaire de mouvement que la cadence `--beat` a remplacé partout
+   ailleurs. On garde le glyphe, on retire la boucle. */
+body.theme-zenna .welcome .w-tri { transform: none; animation: none; }
+/* La barre de progression du questionnaire. */
+body.theme-zenna .progress i { background: var(--zn-surface-3); }
+body.theme-zenna .progress i.on { background: var(--zn-orange); }
+/* L'écran d'accueil et sa grille de sports. */
+body.theme-zenna .welcome h2 { color: var(--zn-text); }
+body.theme-zenna .welcome p { color: var(--zn-muted); }
+/* Les cartes de sport : le liseré du haut EST l'accent de la discipline (`--sa`), il reste.
+   Ce qui tombe, c'est le contour à l'encre (devenu blanc épais) et l'ombre portée « collage »,
+   plus la rotation — sur fond noir, un empilement penché fait sale plutôt que fait main. */
+body.theme-zenna .sport-card {
+  background: var(--zn-surface-2);
+  border: 1px solid var(--zn-border);
+  border-top: 3px solid var(--sa, var(--zn-orange));
+  border-radius: 16px; box-shadow: none; transform: none;
+  transition: transform var(--dur-tap) var(--ease-spring), border-color var(--dur-trans) var(--ease);
+}
+body.theme-zenna .sport-card:nth-child(odd),
+body.theme-zenna .sport-card:nth-child(even) { transform: none; }
+body.theme-zenna .sport-card:hover { transform: none; box-shadow: none; border-color: var(--sa, var(--zn-orange)); }
+body.theme-zenna .sport-card:active { transform: scale(.97); box-shadow: none; }
+body.theme-zenna .sc-nom { color: var(--zn-text); font-family: var(--zn-display); font-weight: var(--zn-display-weight); letter-spacing: .02em; }
+body.theme-zenna .sc-pitch { color: var(--zn-muted); }
+
+/* ============================================================
+   R-ZENNA v8 — LE SEUIL TACTILE VAUT POUR TOUS LES REPLIS
+   ============================================================
+   U17 avait mesuré et corrigé le titre de SÉANCE (254 × 17 px) en concluant : « ce n'était pas
+   une décision de design mais un standard à appliquer », U4 ayant tranché 44 px pour ce dépôt.
+   La conclusion n'avait jamais été rejouée sur les AUTRES replis.
+
+   Mesuré à l'audit du 11/08/2026 : **24 sommaires sur 36 sous 44 px**, entre 17 et 22 px de
+   haut. La répartition dit tout — 📅 Semaine 0/7 et 🧰 Outils 0/2 (les deux onglets
+   retravaillés) contre 📋 Profil 10/10, 🗓 Plan 12/13, 🎯 Aujourd'hui 2/4. Ce ne sont pas des
+   cibles rares : « Prédiction de course », « Pourquoi ce plan », « Records personnels »,
+   « Ta course », « Modifier ma forme du jour » sont des gestes du quotidien.
+
+   Le padding est posé sur le SUMMARY, pas sur un pseudo-élément : U17 explique pourquoi — un
+   `::after` absolu agrandit la zone de toucher mais laisse la ligne serrée à l'œil, alors que
+   l'espace manque aussi visuellement. `display: flex` + `align-items: center` pour que le
+   padding ne décale pas le chevron.
+   `.fold` (Outils) et `.gd-sess` (séances) sont déjà conformes : la règle ne les dégrade pas,
+   elle les rejoint. */
+body.theme-zenna #screen summary {
+  min-height: 44px;
+  padding-top: 11px;
+  padding-bottom: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Les replis d'Outils déclarent déjà leur gabarit (padding 14px, min-height 44) : on ne le
+   double pas, sinon le sommaire grossit de 22 px pour rien. */
+body.theme-zenna #screen details.fold > summary { padding-top: 14px; padding-bottom: 14px; }
+
+/* ============================================================
+   COMMUN — surfaces, séparateurs, ombres portées
+   ============================================================ */
+body.theme-zenna #screen .gw,
+body.theme-zenna #screen .drv-band,
+body.theme-zenna #screen .locked,
+body.theme-zenna #screen .bp-hero {
+  background: var(--zn-surface-2);
+  border: 1px solid var(--zn-border);
+  border-radius: 16px;
+  box-shadow: none;
+  transform: none;
+}
+body.theme-zenna #screen .gate {
+  background: var(--zn-surface-2); border: 1px solid var(--zn-orange-glow);
+  border-radius: 18px; box-shadow: none; transform: none;
+}
+/* Le séparateur des listes d'explication : `var(--bg2)` vaut #181c22 en thème sombre, soit
+   presque la couleur de la carte — la ligne disparaissait. */
+body.theme-zenna #screen .exp-row { border-top-color: var(--zn-border); }
+body.theme-zenna #screen .drv-title { color: var(--zn-text); }
+body.theme-zenna #screen .drv {
+  background: var(--zn-surface-3); border: 1px solid var(--zn-border);
+  border-left: 4px solid var(--dc, var(--zn-orange)); box-shadow: none; border-radius: 10px;
+  color: var(--zn-text);
+}
+/* La cursive « papier » (.why, .vol-cap, .wk-skip, .branch) : on garde la police — c'est le
+   dernier reste manuscrit et il donne sa chaleur au produit — mais plus la rotation ni les
+   fonds crème, qui n'ont aucun sens sur du noir. */
+body.theme-zenna #screen .why,
+body.theme-zenna #screen .vol-cap,
+body.theme-zenna #screen .wk-skip { color: var(--zn-muted); transform: none; }
+body.theme-zenna #screen .branch {
+  background: rgba(255, 210, 61, .07); border: 1px solid rgba(255, 210, 61, .35);
+  border-radius: 14px; box-shadow: none; transform: none; color: var(--zn-text);
+}
+body.theme-zenna #screen .q-def {
+  background: var(--zn-surface-3); border: 1px solid var(--zn-border);
+  border-radius: 12px; box-shadow: none; transform: none; color: var(--zn-text);
+}
+
+/* R-ZENNA v7 — LA SEMAINE PAR DISCIPLINE (onglet 📅 Semaine). Les anneaux portent l'accent de
+   leur discipline : c'est une couleur de SENS, elle ne devient pas grise. */
+body.theme-zenna #screen .zn-disc-rings {
+  display: flex; gap: 14px; justify-content: center; margin: 12px 0 4px; flex-wrap: wrap;
+}
+body.theme-zenna #screen .zn-ring { position: relative; width: 48px; text-align: center; }
+body.theme-zenna #screen .zn-ring svg { width: 48px; height: 48px; display: block; }
+body.theme-zenna #screen .zn-ring svg circle:last-child {
+  transition: stroke-dashoffset var(--dur-rise) var(--ease-enter);
+}
+body.theme-zenna #screen .zn-ring-ico {
+  position: absolute; top: 13px; left: 0; right: 0; font-size: 15px; line-height: 1;
+}
+body.theme-zenna #screen .zn-ring-lab {
+  display: block; font-family: var(--zn-mono); font-size: 9px; color: var(--zn-muted-2);
+  margin-top: 2px; font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-dist-line {
+  display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  font-family: var(--zn-mono); font-size: 10.5px; color: var(--zn-muted);
+  margin: 2px 0 10px; font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-dist-line .sub { color: var(--zn-muted-2); }
+body.theme-zenna #screen .zn-prog-fill.vert {
+  background: linear-gradient(90deg, var(--zn-cyan), #5ff2de);
+}
+
+/* R-ZENNA v7 — LE HÉROS DU DÉCOMPTE (onglet 🗓 Plan). La maquette en fait la première chose
+   qu'on lit : c'est la seule information de cet onglet qui ne change jamais de sens. */
+body.theme-zenna #screen .zn-count-hero { margin-top: 10px; }
+body.theme-zenna #screen .zn-jminus {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 52px; line-height: 1;
+  color: var(--zn-orange-tint); font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-jminus.petit { font-size: 26px; color: var(--zn-text); }
+body.theme-zenna #screen .zn-jminus-sub {
+  font-family: var(--zn-mono); font-size: 10.5px; color: var(--zn-muted-2);
+  letter-spacing: .06em; margin-top: 3px; text-transform: uppercase;
+}
+body.theme-zenna #screen .zn-prog-line {
+  font-family: var(--zn-mono); font-size: 11px; margin-top: 13px; color: var(--zn-muted);
+  font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-prog-line b { color: var(--zn-text); }
+body.theme-zenna #screen .zn-prog-track {
+  height: 11px; border-radius: 100px; background: var(--zn-surface-3);
+  overflow: hidden; margin-top: 7px;
+}
+body.theme-zenna #screen .zn-prog-fill {
+  height: 100%; border-radius: 100px; position: relative;
+  background: linear-gradient(90deg, var(--zn-orange), var(--zn-orange-2));
+}
+/* Les hachures de la maquette : elles donnent une texture à la barre sans ajouter de couleur. */
+body.theme-zenna #screen .zn-prog-fill::after {
+  content: ""; position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .14) 0 6px, transparent 6px 12px);
+}
+
+/* R-ZENNA v6 — la carte « semaine en cours » qui remplace la grille dans la vue par défaut
+   de 🗓 Plan. La grille et la coche vivent dans 📅 Semaine ; ici on situe, on n'agit pas. */
+body.theme-zenna #screen .zn-wk-card { margin-top: 10px; }
+body.theme-zenna #screen .zn-wk-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  flex-wrap: wrap; margin-bottom: 6px;
+}
+body.theme-zenna #screen .zn-wk-title {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg); color: var(--zn-text);
+  text-transform: uppercase; transform: skewX(var(--zn-skew)); transform-origin: left;
+}
+body.theme-zenna #screen .zn-wk-range {
+  font-family: var(--zn-mono); font-size: 9.5px; letter-spacing: .06em;
+  color: var(--zn-muted-2); text-transform: uppercase;
+}
+
+/* ============================================================
+   🗓 PLAN — frise de phases, barres de volume, listes de décisions
+   ============================================================ */
+/* La frise garde les CINQ identités de phase (fond teinté + bordure posés en inline par le
+   moteur : base, dev, spé, affûtage, récup). On ne touche qu'à l'ombre portée et au texte. */
+body.theme-zenna #screen .ph-seg {
+  border-width: 1px; box-shadow: none; border-radius: 10px;
+}
+body.theme-zenna #screen .ph-seg span { color: var(--zn-text); }
+body.theme-zenna #screen .ph-seg em { color: var(--zn-muted-2); }
+/* Les barres de volume font 3 px de large : un liseré de 1,5 px devenu BLANC les noyait
+   complètement (le contour représentait la moitié de la barre). On le retire. */
+body.theme-zenna #screen .vol-bars { border-bottom: 1px solid var(--zn-border); }
+body.theme-zenna #screen .vb { border: none; border-radius: 3px 3px 0 0; }
+/* Les sous-objectifs de phase : piste et coches, invisibles sinon (encre sur encre). */
+body.theme-zenna #screen .ph-obj { border-color: var(--zn-border); background: var(--zn-surface-2); }
+body.theme-zenna #screen .ph-obj summary { color: var(--zn-text); }
+/* Le bandeau « prépa raccourcie » (R22) pose son fond crème en INLINE : un rectangle blanc
+   plein écran sur fond noir. Il doit rester ALARMANT — c'est une condition de sécurité — donc
+   on transpose en ambre sombre plutôt que de le neutraliser. `!important` est ici la seule
+   écriture possible face à un style inline, et il est borné à ce bandeau. */
+body.theme-zenna #screen .load-card[role="note"] {
+  background: rgba(255, 210, 61, .09) !important;
+  border-color: rgba(255, 210, 61, .45) !important;
+}
+body.theme-zenna #screen .load-card[role="note"] .load-title { color: var(--zn-gold); }
+
+/* ============================================================
+   📅 SEMAINE (et la grille partagée avec 🗓 Plan)
+   ============================================================
+   `weekGridHTML` vit dans tab-plan-general.js et est consommée par les DEUX onglets : ces
+   règles servent donc aux deux, et c'est voulu — une seule grille, un seul habillage. */
+body.theme-zenna #screen .gw-h b { color: var(--zn-text); font-family: var(--zn-display); font-weight: var(--zn-display-weight); letter-spacing: .02em; }
+body.theme-zenna #screen .gw-h em { color: var(--zn-muted); font-family: var(--zn-mono); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .gw-grid { gap: 6px; }
+body.theme-zenna #screen .gd {
+  background: var(--zn-surface-3);
+  border: 1px solid var(--zn-border);
+  border-radius: 12px;
+  box-shadow: none;
+}
+/* LE FOND REDEVIENT SOMBRE ET UNIFORME — décision du fondateur (12/08/2026, maquette
+   « structure interne réelle ») : « PAS de fond pleine largeur coloré, seule l'icône porte la
+   couleur ». Mesuré avant : `rgba(255,61,0,.14)` sur un jour dur, `rgba(31,184,166,.12)` sur un
+   jour facile — sept cartes de sept teintes, sur lesquelles venaient se poser sept blocs
+   techniques dépliés.
+
+   LA TEINTE DE CHARGE SURVIT DANS LA BORDURE, et c'est un arbitrage à connaître : elle portait
+   du SENS (dur / facile / récup / repos), et le commentaire qu'elle remplace disait qu'un
+   athlète « ne réapprend rien ». Une bordure de 1 px n'est pas un fond pleine largeur : la
+   maquette est respectée, la lecture d'un coup d'œil aussi. Si elle doit disparaître
+   complètement, c'est ces quatre lignes qu'il faut retirer — rien d'autre n'en dépend. */
+/* Les trois bordures lisent le token, plus un littéral. Les opacités RESTENT distinctes
+   (.34 / .30 / .32) : elles compensaient déjà la luminosité inégale des trois teintes, et les
+   aligner d'autorité changerait le rendu sans que personne l'ait demandé. */
+body.theme-zenna #screen .gd.dur    { border-color: rgb(var(--zn-charge-dur-rgb) / .34); }
+body.theme-zenna #screen .gd.facile { border-color: rgb(var(--zn-charge-facile-rgb) / .30); }
+body.theme-zenna #screen .gd.recup  { border-color: rgb(var(--zn-charge-recup-rgb) / .32); }
+body.theme-zenna #screen .gd.off    { opacity: .75; }
+
+/* Le badge de discipline : la seule couleur de la ligne. Carré arrondi, accent en fond très
+   dilué + le pictogramme, pour que la couleur se lise sans écraser le titre juste à côté. */
+body.theme-zenna #screen .gd-ic {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 8px; margin-right: 8px; flex-shrink: 0;
+  font-size: 14px; line-height: 1;
+  /* le fond plein est posé en ligne, depuis DISC[*].ac — voir badgeDisciplineHTML */
+}
+body.theme-zenna #screen .gd-sess summary { display: flex; align-items: center; gap: 0; }
+/* La séance et sa coche sur la MÊME ligne. `align-items: flex-start` et non `center` : une fois
+   le détail déplié, la coche doit rester en haut, en face du titre, pas se recentrer sur un
+   bloc de dix lignes. */
+body.theme-zenna #screen .gd-row { display: flex; align-items: flex-start; gap: 10px; }
+body.theme-zenna #screen .gd-row > details { flex: 1; min-width: 0; }
+body.theme-zenna #screen .gd-row + .gd-row { margin-top: 8px; border-top: 1px solid var(--zn-border); padding-top: 8px; }
+body.theme-zenna #screen .gd-sess summary b { flex: 1; min-width: 0; }
+/* La case du jour : l'ombre portée dure est la signature papier, elle tombe. L'orange du thème
+   EST déjà son vocabulaire d'attention — on n'invente pas une seconde couleur d'accent. */
+body.theme-zenna #screen .gd.today {
+  outline: 2px solid var(--zn-orange); outline-offset: 1px; box-shadow: none;
+}
+body.theme-zenna #screen .gd.today .gd-top i { color: var(--zn-orange-tint); }
+body.theme-zenna #screen .gd-top b { color: var(--zn-text); }
+body.theme-zenna #screen .gd-top i,
+body.theme-zenna #screen .gd-n { color: var(--zn-muted); }
+/* Le ⇄ pose ses couleurs en inline quand il est armé : `!important` est la seule écriture qui
+   passe devant un style inline, et il reste borné à ce bouton. */
+body.theme-zenna #screen .swapBtn { color: var(--zn-muted-2); border-color: var(--zn-border); }
+body.theme-zenna #screen .gd.swap-pend { outline: 2px dashed var(--zn-gold); outline-offset: 1px; }
+/* La barre de bilan portait un liseré LITTÉRAL `1px solid #16130e` : un trait noir sur fond
+   sombre, donc une piste sans contour visible. */
+body.theme-zenna #screen .prog-track,
+body.theme-zenna #screen [style*="border:1px solid #16130e"] { border-color: var(--zn-border) !important; }
+
+/* ============================================================
+   📋 PROFIL — avatar, jauges, badges, mesures
+   ============================================================
+   L'AVATAR EST DESSINÉ POUR UN FOND CLAIR (traits sombres, aplats crème). Le repeindre
+   demanderait de reprendre chaque calque de `avatar-tri.js`, avec le risque de casser le
+   contrat de calques que `smoke-avatar` vérifie. On lui pose donc une PLAQUE CLAIRE — c'est
+   exactement ce que fait déjà `export.js` pour les cartes de partage, donc un idiome du
+   produit, pas un contournement. */
+/* R-ZENNA v6 — L'AVATAR EST REPEINT, il n'est plus posé sur une plaque claire (décision du
+   fondateur, 11/08/2026). `avatar-tri.js` exprime désormais son encre et ses aplats papier en
+   `var(--av-*, <valeur d'origine>)` : il suffit de redéfinir ces variables ici. Sans cette
+   feuille, le dessin reprend EXACTEMENT ses couleurs d'origine (les replis), ce qui garde
+   `demo:avatartri` (node, sans CSS) et la carte de partage d'`export.js` (SVG chargé comme
+   Image, document indépendant : les variables de la page n'y descendent pas) inchangés.
+
+   On ne repeint QUE ce qui casse sur fond noir — encre, aplats papier, bleu nuit. Les accents
+   de discipline, l'or, le rouge et le vert du podium portent du SENS et ne bougent pas : même
+   principe que les cinq couleurs de phase. */
+body.theme-zenna {
+  --av-ink: #d8d4cc;      /* l'encre : claire, pour que le trait existe sur du noir */
+  --av-creme: #232830;    /* l'aplat de base (peau, fonds) */
+  --av-blanc: #2b313a;    /* les blancs de dossard et de cartons */
+  --av-carton: #333a44;
+  --av-cuir: #4a515c;
+  --av-papier: #2f353e;
+  --av-verre: #1d5f75;    /* le verre des lunettes : la teinte reste, la valeur descend */
+  --av-nuit: #7f8ec4;     /* le bleu nuit devient un TROU sur du noir : on le remonte */
+}
+/* Le dessin n'a plus besoin de plaque : il porte son propre contraste. On garde le rayon pour
+   la cible de focus, rien d'autre. */
+body.theme-zenna #screen svg[aria-label^="Avatar"],
+body.theme-zenna .eb-modal svg[aria-label^="Avatar"] {
+  background: transparent;
+  border-radius: 16px;
+}
+body.theme-zenna #screen #avSvg { border-radius: 18px; }
+body.theme-zenna #screen #avSvg:focus-visible { outline: 3px solid var(--zn-orange); outline-offset: 2px; }
+/* Jauges par discipline : la piste et le remplissage sont posés en inline avec les accents de
+   DISCIPLINE (natation/vélo/course) — ce sont des couleurs de sens, on n'y touche pas. Seule
+   la piste, en gris clair, doit s'assombrir. */
+body.theme-zenna #screen [style*="background:var(--bg2"],
+body.theme-zenna #screen [style*="background:#e8e0cf"] { background: var(--zn-track-bg) !important; }
+/* Badges gagnés : fond blanc + bordure encre → blanc sur blanc une fois `--ink` éclairci.
+   C'est le pire contraste de l'onglet (1,13:1) tant qu'il n'est pas repris. */
+body.theme-zenna #screen [style*="border:1.5px solid #16130e"],
+body.theme-zenna #screen [style*="border:1.5px solid var(--ink)"] {
+  background: var(--zn-surface-3) !important;
+  border-color: var(--zn-border) !important;
+  color: var(--zn-text);
+}
+body.theme-zenna #screen input[type=time],
+body.theme-zenna #screen select {
+  background: var(--zn-surface-3); border: 1px solid var(--zn-border); color: var(--zn-text);
+  border-radius: 10px; min-height: 44px; box-shadow: none;
+}
+/* `--accent2` n'est défini NULLE PART dans le produit : `.aide-btn.on` retombait sur son repli
+   `#dcecff` (bleu très clair), donc un rond quasi blanc en plein thème sombre. */
+body.theme-zenna .aide-btn { background: var(--zn-surface-3); border-color: var(--zn-border); color: var(--zn-text); box-shadow: none; }
+body.theme-zenna .aide-btn.on { background: var(--zn-orange-tint); color: var(--zn-on-accent); box-shadow: none; }
+
+/* ============================================================
+   🧰 OUTILS — sous-onglets, nutrition, éducatifs
+   ============================================================ */
+body.theme-zenna #screen .subtab {
+  background: var(--zn-surface-2); border: 1px solid var(--zn-border); color: var(--zn-muted);
+  border-radius: 13px; box-shadow: none; font-family: var(--zn-mono);
+}
+body.theme-zenna #screen .subtab.active { background: var(--zn-orange-tint); border-color: transparent; color: var(--zn-on-accent); font-weight: 700; }
+
+/* --- Éducatifs. Le module a été écrit pour le thème papier : ses fonds pastel deviennent des
+       rectangles quasi blancs, et son texte, qui hérite de `--text` (désormais clair), devient
+       blanc SUR ce pastel — c'est la cassure la plus large du lot. Chaque bloc garde sa
+       famille de teinte (bleu = preuve solide, vert = terrain, ambre = consensus, rouge =
+       sécurité) : ce sont des repères de LECTURE, pas de la décoration. --- */
+body.theme-zenna #screen .edu-disc {
+  background: var(--zn-surface-2); border: 1px solid var(--zn-border); color: var(--zn-text);
+  box-shadow: none; border-radius: 12px; border-top: 3px solid var(--sa, var(--zn-orange));
+}
+body.theme-zenna #screen .edu-disc[aria-current="true"] { background: var(--sa, var(--zn-orange)); color: var(--zn-on-accent); }
+body.theme-zenna #screen .edu-section { border-left: 6px solid var(--sa, var(--zn-orange)); }
+body.theme-zenna #screen .edu-section[data-locked="true"] { border-left-color: var(--zn-border); }
+body.theme-zenna #screen .edu-badge { border: 1px solid var(--zn-border); color: var(--zn-text); }
+body.theme-zenna #screen .edu-badge[data-n="forte"]     { background: rgba(59, 158, 255, .16); border-color: rgba(59, 158, 255, .38); }
+body.theme-zenna #screen .edu-badge[data-n="terrain"]   { background: rgba(31, 184, 166, .16); border-color: rgba(31, 184, 166, .38); }
+body.theme-zenna #screen .edu-badge[data-n="consensus"] { background: rgba(255, 210, 61, .14); border-color: rgba(255, 210, 61, .38); }
+body.theme-zenna #screen .edu-progress { background: var(--zn-surface-2); border: 1px solid var(--zn-border); }
+body.theme-zenna #screen .edu-bead { background: var(--zn-surface-3); border: 1px solid var(--zn-border); color: var(--zn-text); }
+body.theme-zenna #screen .edu-bead[data-state="done"] { background: var(--sa, var(--zn-orange)); color: var(--zn-on-accent); }
+body.theme-zenna #screen .edu-bead[data-state="active"] { background: var(--zn-gold); color: var(--zn-on-accent); }
+body.theme-zenna #screen .edu-bead[data-state="locked"] { background: var(--zn-surface); color: var(--zn-muted-2); }
+body.theme-zenna #screen .edu-pbar { background: var(--zn-border); }
+body.theme-zenna #screen .edu-block-h { background: var(--zn-surface-3); color: var(--zn-muted); border-radius: 6px; }
+body.theme-zenna #screen .edu-table td { border: 1px solid var(--zn-border); color: var(--zn-text); }
+body.theme-zenna #screen .edu-table tr[data-niveau="r"] td:first-child,
+body.theme-zenna #screen .edu-table tr[data-niveau="no"] td:first-child { background: rgba(255, 61, 0, .14); }
+body.theme-zenna #screen .edu-table tr[data-niveau="o"] td:first-child,
+body.theme-zenna #screen .edu-table tr[data-niveau="mid"] td:first-child { background: rgba(255, 210, 61, .12); }
+body.theme-zenna #screen .edu-table tr[data-niveau="g"] td:first-child,
+body.theme-zenna #screen .edu-table tr[data-niveau="ok"] td:first-child { background: rgba(59, 158, 255, .14); }
+body.theme-zenna #screen .edu-drill { background: var(--zn-surface-2); border: 1px solid var(--zn-border); }
+body.theme-zenna #screen .edu-drill strong { color: var(--zn-text); }
+body.theme-zenna #screen .edu-drill span { color: var(--zn-muted); }
+body.theme-zenna #screen .edu-debat { background: rgba(255, 210, 61, .07); border: 1px solid rgba(255, 210, 61, .35); }
+body.theme-zenna #screen .edu-debat strong { color: var(--zn-gold); }
+body.theme-zenna #screen .edu-debat span { color: var(--zn-muted); }
+/* Le bloc SÉCURITÉ garde son rouge : c'est le seul bloc du module qu'on ne doit pas pouvoir
+   confondre avec du contenu ordinaire, et le manifeste met la santé avant l'esthétique. */
+body.theme-zenna #screen .edu-secu {
+  background: rgba(255, 61, 0, .10); border: 1px solid rgba(255, 61, 0, .45); border-left: 6px solid var(--zn-orange);
+}
+body.theme-zenna #screen .edu-secu strong { color: #ff9d8d; }
+body.theme-zenna #screen .edu-secu span { color: var(--zn-ink-2); }
+body.theme-zenna #screen .edu-renvoi { background: var(--zn-surface-2); border: 1px solid var(--zn-border); }
+body.theme-zenna #screen .edu-renvoi strong { color: var(--zn-orange-tint); }
+body.theme-zenna #screen .edu-renvoi span { color: var(--zn-muted); }
+body.theme-zenna #screen .edu-sources-box { background: var(--zn-surface-2); border: 1px solid var(--zn-border); }
+body.theme-zenna #screen .edu-sources-box[open] summary { border-bottom: 1px solid var(--zn-border); }
+body.theme-zenna #screen .edu-src-group + .edu-src-group { border-top: 1px dashed var(--zn-border); }
+body.theme-zenna #screen .edu-src-group h3 { color: var(--zn-muted-2); }
+body.theme-zenna #screen .edu-src-group li { color: var(--zn-muted); }
+body.theme-zenna #screen .edu-src-group a { color: var(--zn-orange-tint); }
+/* --- Les FIGURES SVG des éducatifs. Les traits d'encre suivent `--ink` et s'éclaircissent
+       tout seuls ; ce sont les REMPLISSAGES blancs et les couleurs d'accent qui cassent (une
+       tête blanche pleine sur fond clair devient une boule blanche illisible, et les accents
+       choisis pour un fond crème perdent leur contraste sur du noir). --- */
+body.theme-zenna #screen .edu-panel { background: var(--zn-surface-2); border: 1px solid var(--zn-border); }
+body.theme-zenna #screen .edu-panel-h { border-bottom: 1px solid var(--zn-border); color: var(--zn-text); }
+body.theme-zenna #screen .edu-panel-h.edu-bad, body.theme-zenna #screen .edu-panel-h.edu-a { background: rgba(255, 61, 0, .16); }
+body.theme-zenna #screen .edu-panel-h.edu-good, body.theme-zenna #screen .edu-panel-h.edu-b { background: rgba(59, 158, 255, .16); }
+body.theme-zenna #screen .edu-panel-h.edu-n { background: var(--zn-surface-3); }
+body.theme-zenna #screen .edu-headfig,
+body.theme-zenna #screen .edu-headc { fill: var(--zn-surface-2); }
+body.theme-zenna #screen .edu-ar { stroke: #ff9d8d; }
+body.theme-zenna #screen .edu-ak { stroke: #7fd4f0; }
+body.theme-zenna #screen .edu-flow { stroke: #7ea6ff; }
+body.theme-zenna #screen .edu-water { stroke: #7fd4f0; }
+body.theme-zenna #screen .edu-lb { fill: #ff9d8d; }
+body.theme-zenna #screen .edu-lk { fill: #7fd4f0; }
+body.theme-zenna #screen .edu-lm { fill: var(--zn-muted-2); }
+body.theme-zenna #screen .edu-panel figcaption { color: var(--zn-muted); }
+
+/* ============================================================
+   ONGLET NON CENTRAL — pas de motion d'entrée hors Aujourd'hui.
+   ============================================================
+   La cascade est le geste d'ARRIVÉE du produit : elle a du sens sur l'écran qu'on ouvre chaque
+   matin, elle en a beaucoup moins sur un onglet de consultation qu'on parcourt en aller-retour.
+   Et elle a un coût réel : `.rise` met le contenu à opacité 0 en attendant son animation, donc
+   chaque aller-retour rejoue une attente. Les quatre autres onglets prennent la PALETTE sans la
+   cascade — c'est `tabs.js` qui décide, en n'appelant `znPlay` que sur Aujourd'hui. Rien à
+   écrire ici : c'est noté pour qu'on ne s'étonne pas de l'absence. */
+
+/* ============================================================
+   LE BALAYAGE DES PASTELS DU THÈME PAPIER
+   ============================================================
+   Trouvé par la garde de contraste étendue aux cinq onglets, et c'est sa raison d'être : des
+   fonds pastel restaient posés soit par des règles nominatives de `styles.css`
+   (`.bp-heros .bp-hero:nth-child(n)`), soit en STYLE INLINE par les modules. Le texte, lui,
+   hérite désormais de `--text` (clair) : blanc sur rose pâle, mesuré à **1,02:1** — invisible.
+
+   On ne peut pas corriger ça carte par carte : ces teintes sont dispersées dans six modules et
+   la prochaine arrivera sans prévenir. On balaie donc par la COULEUR, qui est le seul point
+   commun stable — chaque pastel du thème papier est transposé vers son équivalent sombre de la
+   MÊME famille (rose→orange, jaune→ambre, bleu→bleu, vert→turquoise, violet→violet), pour que
+   ce que la teinte signalait continue de se lire. */
+body.theme-zenna #screen .bp-heros .bp-hero:nth-child(1),
+body.theme-zenna #screen [style*="#ffe3e0"],
+body.theme-zenna #screen [style*="#f9dcd7"],
+body.theme-zenna #screen [style*="#fdf0ed"] { background: rgba(255, 61, 0, .13) !important; border-color: rgba(255, 61, 0, .34) !important; }
+body.theme-zenna #screen .bp-heros .bp-hero:nth-child(2),
+body.theme-zenna #screen [style*="#fff4c2"],
+body.theme-zenna #screen [style*="#fff8e6"],
+body.theme-zenna #screen [style*="#fff3d6"],
+body.theme-zenna #screen [style*="#fdf6e9"],
+body.theme-zenna #screen [style*="#fbeeda"] { background: rgba(255, 210, 61, .10) !important; border-color: rgba(255, 210, 61, .34) !important; }
+body.theme-zenna #screen .bp-heros .bp-hero:nth-child(3),
+body.theme-zenna #screen [style*="#dcecff"],
+body.theme-zenna #screen [style*="#d6eff8"],
+body.theme-zenna #screen [style*="#d9eafb"] { background: rgba(59, 158, 255, .13) !important; border-color: rgba(59, 158, 255, .32) !important; }
+body.theme-zenna #screen .bp-heros .bp-hero:nth-child(4),
+body.theme-zenna #screen [style*="#d9f3e1"],
+body.theme-zenna #screen [style*="#e2f0dc"] { background: rgba(31, 184, 166, .12) !important; border-color: rgba(31, 184, 166, .30) !important; }
+body.theme-zenna #screen [style*="#e9defc"] { background: rgba(155, 114, 255, .14) !important; border-color: rgba(155, 114, 255, .32) !important; }
+body.theme-zenna #screen [style*="#efe8d8"],
+body.theme-zenna #screen [style*="#ede9e1"],
+body.theme-zenna #screen [style*="#f6efe0"] { background: var(--zn-surface-2) !important; }
+body.theme-zenna #screen .bp-hero { transform: none; box-shadow: none; }
+body.theme-zenna #screen .bp-hero .bh-cat { color: var(--zn-muted); }
+body.theme-zenna #screen .bp-hero .bh-val { color: var(--zn-text); }
+/* Les tuiles de journée reçoivent leurs pastels par CLASSE (traité plus haut) mais leur texte
+   direct n'a pas toujours de classe porteuse : on force la couleur au niveau de la tuile. */
+body.theme-zenna #screen .gd,
+body.theme-zenna #screen .gd.dur,
+body.theme-zenna #screen .gd.facile,
+body.theme-zenna #screen .gd.recup,
+body.theme-zenna #screen .gd.off { color: var(--zn-text); }
+
+/* ---- Et le symétrique : les ENCRES du thème papier posées en style inline. Même mécanisme
+       que les pastels ci-dessus, dans l'autre sens — `color:#3f3a30` (brun d'encre) sur carte
+       sombre mesure 1,51:1. Balayage par la couleur, seul point commun stable entre six
+       modules ; chaque encre part vers le gris clair de son rôle (corps ou secondaire). ---- */
+body.theme-zenna #screen [style*="color:#3f3a30"],
+body.theme-zenna #screen [style*="color:#16130e"],
+body.theme-zenna #screen [style*="color:#4d463a"] { color: var(--zn-text) !important; }
+body.theme-zenna #screen [style*="color:#635b4a"],
+body.theme-zenna #screen [style*="color:#555"],
+body.theme-zenna #screen [style*="color:#999"],
+body.theme-zenna #screen [style*="color:#b3ab9b"] { color: var(--zn-muted) !important; }
+/* Les encres qui portent un ÉTAT gardent leur famille : ambre = avertissement, rouge = alerte,
+   vert = réussite. On les éclaircit juste assez pour repasser le seuil sur fond sombre. */
+body.theme-zenna #screen [style*="color:#8a6d00"],
+body.theme-zenna #screen [style*="color:#c47f00"] { color: var(--zn-gold) !important; }
+body.theme-zenna #screen [style*="color:#a33"],
+body.theme-zenna #screen [style*="color:#c0392b"] { color: #ff9d8d !important; }
+body.theme-zenna #screen [style*="color:#00734f"],
+body.theme-zenna #screen [style*="color:#00a376"] { color: var(--zn-good) !important; }
+/* Une pastille pleine à l'accent porte du BLANC dans le thème papier (accent rouge sombre,
+   #ff3b30) — mais l'accent du thème sombre est un orange plus lumineux (#ff3d00), sur lequel
+   le blanc ne mesure que 3,55:1. C'est l'encre sombre qui y est lisible (5,58:1), exactement
+   comme dans le héros. On inverse donc le texte, on ne change pas la couleur de la pastille. */
+body.theme-zenna #screen [style*="background:var(--acc)"] { color: var(--zn-on-accent) !important; }
+/* Le rouge « dur » de la légende des intensités : 4,46:1, à 0,04 du seuil. Il reste rouge —
+   c'est le repère de la zone la plus intense — simplement éclairci (7,61:1). */
+body.theme-zenna #screen [style*="color:#e63946"] { color: #ff7d92 !important; }
+
+/* ============================================================
+   🧰 OUTILS › NUTRITION — LA COMPOSITION DE LA MAQUETTE, AU PIXEL
+   ============================================================
+   Reprise fidèle : repli dont le sommaire porte la valeur, lignes intitulé/valeur, et la carte
+   de vente complète (en-tête produit, preuve, segmenté, devis, choix, bouton). Les valeurs de
+   taille, d'espacement et de rayon viennent de la maquette ; les couleurs, des jetons du thème.
+   ============================================================ */
+
+/* ---- Titre d'onglet (display, légèrement incliné — la signature Zenna) ---- */
+body.theme-zenna #screen .zn-tab-title {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 22px; line-height: 1.05; color: var(--zn-text);
+  text-transform: uppercase; transform: skewX(var(--zn-skew)); transform-origin: left;
+  margin: 6px 0 6px;
+}
+body.theme-zenna #screen .card-note { font-size: 11px; color: var(--zn-muted); line-height: 1.5; }
+
+/* ---- Repli : le sommaire porte déjà la valeur ---- */
+body.theme-zenna #screen details.fold { padding: 0 16px; overflow: hidden; }
+body.theme-zenna #screen details.fold > summary {
+  list-style: none; cursor: pointer; padding: 14px 0; min-height: 44px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-family: var(--zn-mono); font-size: var(--fs-md); letter-spacing: .06em; color: var(--zn-text);
+  /* Les capitales de la maquette. Elles sont posées ICI et non sur `.load-title` en général :
+     `text-transform` change `innerText` (Chrome le rend transformé), et R-ZENNA v2 avait dû
+     retirer cet effet du titre de carte parce qu'il cassait U3, qui lit « décisions du moteur
+     (N) ». `details.fold` n'est émis que par `foldHTML` (onglet Outils), et les quatre gardes
+     qui lisent ces titres — smoke-r4, smoke-improvements, smoke-usage, smoke-shop — passent
+     toutes par `textContent`, que `text-transform` ne touche pas. Vérifié une par une. */
+  text-transform: uppercase;
+}
+body.theme-zenna #screen details.fold > summary::-webkit-details-marker { display: none; }
+body.theme-zenna #screen details.fold > summary::after { content: none; }
+body.theme-zenna #screen details.fold > summary .chev {
+  transition: transform var(--dur-trans) var(--ease); color: var(--zn-muted-2); flex-shrink: 0;
+}
+body.theme-zenna #screen details.fold[open] > summary .chev { transform: rotate(90deg); }
+body.theme-zenna #screen .fold-sum-val { font-weight: 400; color: var(--zn-muted-2); letter-spacing: .02em; }
+body.theme-zenna #screen .fold-body { padding: 0 0 15px; }
+
+/* ---- Ligne intitulé → valeur ---- */
+body.theme-zenna #screen .kv {
+  display: flex; justify-content: space-between; gap: 10px; padding: 9px 0;
+  border-bottom: 1px solid var(--zn-border);
+}
+body.theme-zenna #screen .kv:last-child { border-bottom: none; }
+body.theme-zenna #screen .kv-k {
+  font-family: var(--zn-mono); font-size: 10px; color: var(--zn-muted-2);
+  letter-spacing: .05em; text-transform: uppercase; flex: 0 0 auto; max-width: 46%;
+}
+body.theme-zenna #screen .kv-v {
+  font-family: var(--zn-mono); font-size: 11.5px; font-weight: 600; text-align: right;
+  color: var(--zn-text); font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .kv-v.accent { color: var(--zn-orange-tint); }
+body.theme-zenna #screen .kv-v.cy { color: var(--zn-cyan); }
+/* La provenance d'un repère, sous sa ligne : elle doit rester LISIBLE (c'est ce qui distingue
+   une photographie de consensus d'une consigne) sans concurrencer le chiffre. */
+body.theme-zenna #screen .kv-src {
+  font-size: 9.5px; line-height: 1.45; color: var(--zn-muted-2);
+  margin: -4px 0 8px; padding-bottom: 8px; border-bottom: 1px solid var(--zn-border);
+}
+body.theme-zenna #screen .kv-src + .kv { border-top: none; }
+body.theme-zenna #screen .zn-sess-lab {
+  font-size: 11.5px; font-weight: 700; color: var(--zn-text); margin: 12px 0 2px;
+}
+
+/* ---- La carte de vente ---- */
+body.theme-zenna #screen .shop-card {
+  position: relative; overflow: hidden;
+  background: var(--zn-surface); border: 1px solid rgba(0, 224, 198, .32);
+  border-radius: 20px; padding: 16px; margin-bottom: 14px;
+}
+body.theme-zenna #screen .shop-card::before {
+  content: ""; position: absolute; top: -60px; right: -60px; width: 160px; height: 160px;
+  background: radial-gradient(circle, rgba(0, 224, 198, .12), transparent 70%); pointer-events: none;
+}
+/* La carte REPLIÉE (`shopPromptDue` a dit « je me tais 4 semaines ») : même carte, réduite à
+   son en-tête et à un bouton qui la rouvre. Une carte de vente ne reste pas dépliée en
+   permanence — la maquette ne dessine que l'état déplié, la restriction vient du moteur. */
+body.theme-zenna #screen .shop-card-min { border-color: var(--zn-border); }
+body.theme-zenna #screen .shop-card-min::before { display: none; }
+body.theme-zenna #screen .shop-card-min .shop-lead { margin-bottom: 12px; }
+body.theme-zenna #screen .shop-card-min .shop-cta { margin-top: 0; }
+body.theme-zenna #screen .shop-head-row { display: flex; gap: 12px; align-items: flex-start; }
+body.theme-zenna #screen .shop-tag {
+  font-family: var(--zn-mono); font-size: 9px; letter-spacing: .14em; color: var(--zn-cyan);
+  font-weight: 700; margin-bottom: 5px; text-transform: uppercase;
+}
+body.theme-zenna #screen .shop-title {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 21px; line-height: 1.05; margin-bottom: 4px;
+  color: var(--zn-text); text-transform: uppercase; transform: skewX(var(--zn-skew)); transform-origin: left;
+}
+body.theme-zenna #screen .shop-lead { font-size: 11px; color: var(--zn-muted); line-height: 1.5; margin-bottom: 14px; }
+/* Le flacon : sa capsule prend la couleur du goût, c'est le seul retour immédiat possible
+   sur un produit qu'on ne peut pas encore montrer. */
+/* Le sachet réel remplace le flacon générique (maquettes du 12/08/2026). Plus de tuile ni de
+   cadre autour : sur le noir de la maquette, le produit est POSÉ, il n'est pas encadré. */
+body.theme-zenna #screen .product-tile { flex-shrink: 0; display: flex; align-items: flex-start; }
+body.theme-zenna #screen .zn-sachet text { font-family: var(--zn-mono), ui-monospace, monospace; }
+body.theme-zenna #screen .zn-sachet {
+  display: block;
+  /* L'ombre portée fait poser le sachet sur le fond au lieu de le laisser flotter — c'est le
+     seul effet de la maquette produit qui survit à cette taille. */
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .55));
+}
+/* Les arguments produit : trois faits vérifiables sur le sachet, pas des promesses d'effet. */
+/* Un BANDEAU d'une ligne et non trois encadrés : la carte portait déjà trois pavés de service
+   (« livré avant la période »…) et six boîtes empilées faisaient 210 px de promesses avant le
+   premier chiffre. Le pied des maquettes fait exactement ça — une ligne de faits, séparés. */
+body.theme-zenna #screen .gel-facts {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 10px 0 2px;
+  padding: 9px 11px; background: var(--zn-surface-2); border: 1px solid var(--zn-border); border-radius: 12px;
+}
+body.theme-zenna #screen .gel-fact {
+  display: flex; align-items: baseline; gap: 5px;
+}
+body.theme-zenna #screen .gel-fact b {
+  font-family: var(--zn-mono); font-size: 9.5px; font-weight: 700; color: var(--zn-orange-tint);
+  letter-spacing: .03em; text-transform: uppercase;
+}
+body.theme-zenna #screen .gel-fact span {
+  font-family: var(--zn-mono); font-size: 9px; color: var(--zn-muted-2); line-height: 1.3;
+}
+/* Les trois promesses */
+body.theme-zenna #screen .trust-row { display: flex; gap: 7px; margin: 2px 0 14px; }
+body.theme-zenna #screen .trust {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  background: var(--zn-surface-2); border: 1px solid var(--zn-border); border-radius: 12px;
+  padding: 9px 6px; text-align: center;
+}
+body.theme-zenna #screen .trust svg { color: var(--zn-cyan); }
+body.theme-zenna #screen .trust span {
+  font-family: var(--zn-mono); font-size: 9px; letter-spacing: .02em; color: var(--zn-muted);
+  line-height: 1.35; font-weight: 600;
+}
+/* Le segmenté : deux régimes qu'on compare se montrent côte à côte, la pastille glisse. */
+body.theme-zenna #screen .seg {
+  position: relative; display: flex; background: var(--zn-surface-3);
+  border-radius: 13px; padding: 3px; margin-bottom: 14px;
+}
+body.theme-zenna #screen .seg-pill {
+  position: absolute; top: 3px; bottom: 3px; width: calc(50% - 3px); border-radius: 10px;
+  background: var(--zn-orange-tint); transition: left calc(var(--beat) * 3) var(--ease-spring);
+}
+body.theme-zenna #screen .seg-opt {
+  position: relative; z-index: 2; flex: 1; min-height: 46px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: none; background: transparent; border-radius: 10px; cursor: pointer;
+  font-family: var(--zn-mono); color: var(--zn-muted); transition: color var(--dur-trans) var(--ease);
+}
+body.theme-zenna #screen .seg-opt .so-l { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+body.theme-zenna #screen .seg-opt .so-s { font-size: 9px; margin-top: 1px; opacity: .75; }
+body.theme-zenna #screen .seg-opt.active { color: var(--zn-on-accent); }
+/* Le devis : une ligne par séance, puis le total — on montre D'OÙ vient le prix. */
+body.theme-zenna #screen .period-lab {
+  font-family: var(--zn-mono); font-size: 9px; letter-spacing: .1em; color: var(--zn-muted-2);
+  margin-bottom: 9px; text-transform: uppercase;
+}
+body.theme-zenna #screen .period-line {
+  display: flex; justify-content: space-between; gap: 10px; padding: 7px 0;
+  border-bottom: 1px dashed var(--zn-border);
+  opacity: 0; transform: translateY(8px); animation: zn-rise calc(var(--beat) * 3) var(--ease-enter) forwards;
+}
+body.theme-zenna #screen .period-line .pl-n { font-size: 11px; font-weight: 600; color: var(--zn-text); }
+body.theme-zenna #screen .period-line .pl-q { font-family: var(--zn-mono); font-size: 9.5px; color: var(--zn-muted); text-align: right; }
+body.theme-zenna #screen .period-line.water .pl-q { color: var(--zn-muted-2); }
+body.theme-zenna #screen .period-total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 11px; gap: 10px; }
+body.theme-zenna #screen .pt-lab { font-family: var(--zn-mono); font-size: 9.5px; color: var(--zn-muted); letter-spacing: .04em; text-transform: uppercase; }
+body.theme-zenna #screen .pt-val { font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 24px; color: var(--zn-orange-tint); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .per-session { display: flex; justify-content: flex-end; font-family: var(--zn-mono); font-size: 9.5px; color: var(--zn-muted-2); margin-top: 3px; }
+body.theme-zenna #screen .per-session b { color: var(--zn-good); margin-left: 4px; }
+/* Les choix : une puce se pose et se voit, elle ne se valide pas deux fois. */
+body.theme-zenna #screen .choice-lab {
+  font-family: var(--zn-mono); font-size: 9px; letter-spacing: .1em; color: var(--zn-muted-2);
+  margin: 13px 0 7px; text-transform: uppercase;
+}
+body.theme-zenna #screen .choice-row { display: flex; gap: 7px; flex-wrap: wrap; }
+/* La rangée des goûts montre les sachets : on choisit un produit qu'on VOIT, pas un mot. Le
+   bouton reste un bouton — libellé compris, cible de 44 px conservée (U4). */
+body.theme-zenna #screen .choice-row.avec-sachet { gap: 8px; }
+body.theme-zenna #screen .choice.a-sachet {
+  flex-direction: column; align-items: center; gap: 5px;
+  padding: 9px 10px 10px; border-radius: 15px; min-height: 44px;
+}
+body.theme-zenna #screen .choice.a-sachet .zn-sachet { filter: drop-shadow(0 3px 7px rgba(0, 0, 0, .5)); }
+body.theme-zenna #screen .choice.a-sachet.sel .zn-sachet { filter: drop-shadow(0 3px 10px rgba(0, 224, 198, .35)); }
+/* 44 px et non les 40 de la maquette : U4 a tranché ce seuil pour ce dépôt (WCAG 2.5.8), et
+   un standard d'accessibilité passe devant un pixel de maquette. Mesuré à 40 au rendu. */
+body.theme-zenna #screen .choice {
+  padding: 10px 13px; min-height: 44px; border-radius: 100px;
+  background: var(--zn-surface-2); border: 1px solid var(--zn-border);
+  font-family: var(--zn-mono); font-size: 9.5px; font-weight: 600; color: var(--zn-muted);
+  cursor: pointer; transition: transform var(--dur-tap) var(--ease-spring), background var(--dur-trans) var(--ease), color var(--dur-trans) var(--ease), border-color var(--dur-trans) var(--ease);
+}
+body.theme-zenna #screen .choice:active { transform: scale(.93); }
+body.theme-zenna #screen .choice.sel { background: rgba(0, 224, 198, .12); border-color: var(--zn-cyan); color: var(--zn-cyan); }
+body.theme-zenna #screen .shop-cta {
+  width: 100%; min-height: 52px; border-radius: 15px; border: none;
+  background: var(--zn-orange-tint); color: var(--zn-on-accent);
+  font-family: var(--zn-mono); font-size: 12px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 8px;
+  cursor: pointer; margin-top: 16px;
+  transition: transform var(--dur-tap) var(--ease-spring), background var(--dur-trans) var(--ease);
+}
+body.theme-zenna #screen .shop-cta:active { transform: scale(.97); }
+body.theme-zenna #screen .soc-proof {
+  font-family: var(--zn-mono); font-size: 9px; color: var(--zn-muted-2); letter-spacing: .02em;
+  line-height: 1.6; margin-top: 12px;
+}
+body.theme-zenna #screen .shop-fine {
+  font-family: var(--zn-mono); font-size: 9px; color: var(--zn-muted-2); line-height: 1.6;
+  margin-top: 11px; letter-spacing: .02em;
+}
+/* Abonnement en cours */
+body.theme-zenna #screen .sub-active-head { display: flex; align-items: center; gap: 11px; margin-bottom: 11px; }
+body.theme-zenna #screen .sub-badge {
+  width: 42px; height: 42px; clip-path: var(--cut-tile); flex-shrink: 0;
+  background: linear-gradient(145deg, var(--zn-cyan), #5ff2de);
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+body.theme-zenna #screen .sub-state { font-family: var(--zn-mono); font-size: 9px; letter-spacing: .1em; color: var(--zn-cyan); font-weight: 700; text-transform: uppercase; }
+body.theme-zenna #screen .sub-params { font-size: 12px; font-weight: 700; margin-top: 2px; color: var(--zn-text); }
+body.theme-zenna #screen .cancel-note {
+  background: rgba(255, 210, 61, .08); border: 1px solid rgba(255, 210, 61, .3); border-radius: 12px;
+  padding: 10px 12px; font-family: var(--zn-mono); font-size: 9.5px; color: var(--zn-gold);
+  line-height: 1.5; margin-top: 11px;
+}
+body.theme-zenna #screen .confirm-strip {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: rgba(255, 31, 74, .08); border: 1px solid rgba(255, 31, 74, .35);
+  border-radius: 13px; padding: 10px 12px; margin-top: 12px; flex-wrap: wrap;
+}
+body.theme-zenna #screen .confirm-strip span { font-family: var(--zn-mono); font-size: 9.5px; font-weight: 700; color: #ff7d92; letter-spacing: .04em; }
+body.theme-zenna #screen .confirm-strip .btn { min-height: 40px; padding: 0 12px; font-size: 9.5px; }
+body.theme-zenna #screen .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+body.theme-zenna #screen .btn-row .btn { flex: 1; }
+
+/* ═══════════ R28 — SOUS-ONGLET PRÉDICTION + CHORÉGRAPHIES DU PLAN ═══════════
+   La bascule Vue d'ensemble ↔ Prédiction est un FONDU, jamais un glissement horizontal :
+   c'est déjà la règle de la bascule Nutrition/Éducatifs, et on n'invente pas une seconde
+   grammaire de transition pour le même geste. */
+body.theme-zenna #screen .zn-fadeview { animation: znFade var(--beat-35) var(--ease, cubic-bezier(.4,0,.2,1)); }
+@keyframes znFade { from { opacity: 0; } to { opacity: 1; } }
+
+body.theme-zenna #screen .zn-pred-hero { text-align: center; }
+body.theme-zenna #screen .zn-pred-num {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 46px;
+  line-height: 1; color: var(--zn-orange-tint); margin: 4px 0; font-variant-numeric: tabular-nums;
+}
+/* La borne HAUTE arrive après le compteur — elle ne doit pas réserver sa place avant, sinon
+   le hero se décale au moment où elle apparaît. */
+body.theme-zenna #screen .zn-pred-hi { opacity: 0; transition: opacity 320ms var(--ease, ease); }
+body.theme-zenna #screen .zn-pred-hi.on { opacity: 1; }
+body.theme-zenna #screen .zn-pred-num .zn-pred-hi { font-size: 26px; color: var(--zn-muted); }
+
+body.theme-zenna #screen .zn-pred-cols { display: flex; gap: 8px; margin: 12px 0; }
+body.theme-zenna #screen .zn-pred-col {
+  flex: 1; background: var(--zn-surface); border: 1px solid var(--zn-border); border-radius: 16px;
+  padding: 13px; opacity: 0; transform: translateY(10px);
+  transition: opacity var(--beat-35) var(--ease-enter, ease), transform var(--beat-35) var(--ease-enter, ease);
+}
+body.theme-zenna #screen .zn-pred-col.on { opacity: 1; transform: translateY(0); }
+body.theme-zenna #screen .zn-pred-col.proj { border-color: rgba(0, 224, 198, .35); background: rgba(0, 224, 198, .04); }
+body.theme-zenna #screen .zn-pc-lab { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted-2); letter-spacing: .05em; }
+body.theme-zenna #screen .zn-pred-col.proj .zn-pc-lab { color: var(--zn-cyan); }
+body.theme-zenna #screen .zn-pc-date { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted-2); margin-bottom: 6px; }
+body.theme-zenna #screen .zn-pc-t { font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 22px; line-height: 1; }
+body.theme-zenna #screen .zn-pred-col.proj .zn-pc-t { color: var(--zn-cyan); }
+
+body.theme-zenna #screen .zn-pred-delta {
+  text-align: center; font-family: var(--zn-mono); font-size: var(--fs-sm); color: var(--zn-cyan);
+  font-weight: 700; margin: 0 0 12px; opacity: 0; transform: scale(.9);
+  transition: opacity 360ms var(--ease-spring, ease), transform 360ms var(--ease-spring, ease);
+}
+body.theme-zenna #screen .zn-pred-delta.on { opacity: 1; transform: scale(1); }
+body.theme-zenna #screen .zn-pred-delta.neutre { color: var(--zn-muted); }
+body.theme-zenna #screen .zn-pred-fine { display: block; font-weight: 400; color: var(--zn-muted-2); font-size: var(--fs-xs); }
+
+body.theme-zenna #screen .zn-pd-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--zn-border); }
+body.theme-zenna #screen .zn-pd-row:last-child { border-bottom: none; }
+body.theme-zenna #screen .zn-pd-ic { width: 24px; text-align: center; font-size: 1.05em; }
+body.theme-zenna #screen .zn-pd-n { flex: 1; min-width: 0; font-family: var(--zn-mono); font-size: var(--fs-sm); color: var(--zn-muted); }
+body.theme-zenna #screen .zn-pd-v { font-family: var(--zn-mono); font-size: var(--fs-md); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-pd-v.compte { color: var(--zn-cyan); }
+body.theme-zenna #screen .zn-pd-v .zn-pred-hi { font-weight: 400; color: var(--zn-muted-2); }
+
+/* Vue d'ensemble — la frise grandit segment par segment, puis la phase active respire. */
+body.theme-zenna #screen .ph-line .ph-seg { transform: scaleX(0); transform-origin: left; opacity: 0;
+  transition: transform 480ms var(--ease-enter, ease), opacity 480ms var(--ease-enter, ease); }
+body.theme-zenna #screen .ph-line .ph-seg.vu { transform: scaleX(1); opacity: 1; }
+body.theme-zenna #screen .ph-line .ph-seg.striping {
+  background-image: repeating-linear-gradient(-45deg, rgba(255,61,0,.16) 0 8px, rgba(255,61,0,.05) 8px 16px);
+  background-size: 200% 100%; animation: znPhMove calc(var(--beat, 120ms) * 30) linear infinite;
+}
+@keyframes znPhMove { from { background-position: 0 0; } to { background-position: 44px 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  body.theme-zenna #screen .zn-fadeview,
+  body.theme-zenna #screen .ph-line .ph-seg.striping { animation: none; }
+  body.theme-zenna #screen .ph-line .ph-seg { transform: none; opacity: 1; transition: none; }
+  body.theme-zenna #screen .zn-pred-col { opacity: 1; transform: none; transition: none; }
+  body.theme-zenna #screen .zn-pred-delta { opacity: 1; transform: none; transition: none; }
+  body.theme-zenna #screen .zn-pred-hi { opacity: 1; transition: none; }
+  body.theme-zenna #screen .zn-streak-chip.zn-in { opacity: 1; transform: none; transition: none; }
+  body.theme-zenna #screen .zn-bilan-bar-fill { transition: none; }
+  body.theme-zenna #screen .zn-bilan-bar-val { opacity: 1; transition: none; }
+  body.theme-zenna #screen .zn-bilan-delta { opacity: 1; transform: none; transition: none; }
+  body.theme-zenna #screen .zn-badge-earned { opacity: 1; transform: none; transition: none; }
+}
+
+/* ═══════════ R29 — SOUS-ONGLET BILAN (Semaine, 12/08/2026) ═══════════
+   Même fondu que Prédiction (`.zn-fadeview`), même grammaire de révélation
+   (opacity/transform + classe `.on`, voir `.zn-pred-col`/`.zn-pred-delta` ci-dessus) — les
+   classes propres à ce sous-onglet ne couvrent que ce que rien n'exposait déjà : les deux
+   barres cible/réalisé, le tableau prévu→réalisé, le delta de semaine précédente, le badge.
+   Le chip de série RÉUTILISE `.zn-streak-chip` (celui d'Aujourd'hui, à l'échelle du jour) —
+   `.zn-in` est un modificateur ADDITIF qui ne change rien à son usage existant, non choré. */
+body.theme-zenna #screen .zn-streak-chip.zn-in { opacity: 0; transform: translateY(-6px);
+  transition: opacity var(--beat-35) var(--ease-enter, ease), transform var(--beat-35) var(--ease-enter, ease); }
+body.theme-zenna #screen .zn-streak-chip.zn-in.on { opacity: 1; transform: translateY(0); }
+
+body.theme-zenna #screen .zn-bilan-hero { display: flex; gap: 8px; margin-bottom: 10px; }
+body.theme-zenna #screen .zn-bilan-num-card { flex: 1; background: var(--zn-surface); border: 1px solid var(--zn-border); border-radius: 16px; padding: 15px 13px; text-align: center; }
+body.theme-zenna #screen .zn-bilan-num { font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 32px; line-height: 1; color: var(--zn-orange-tint); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-bilan-num.cy { color: var(--zn-cyan); }
+body.theme-zenna #screen .zn-bilan-num-lab { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted-2); letter-spacing: .05em; margin-top: 4px; }
+
+body.theme-zenna #screen .zn-bilan-bar-row { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+body.theme-zenna #screen .zn-bilan-bar-row:last-child { margin-bottom: 0; }
+body.theme-zenna #screen .zn-bilan-bar-tag { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted-2); width: 52px; flex-shrink: 0; letter-spacing: .04em; }
+body.theme-zenna #screen .zn-bilan-bar-track { flex: 1; height: 14px; border-radius: 100px; background: var(--zn-surface-3); overflow: hidden; }
+body.theme-zenna #screen .zn-bilan-bar-fill { height: 100%; border-radius: 100px; width: 0%; transition: width calc(var(--beat, 120ms) * 7) var(--ease-enter, ease); }
+body.theme-zenna #screen .zn-bilan-bar-fill.cible { background: repeating-linear-gradient(45deg, var(--zn-border) 0 4px, transparent 4px 8px); }
+body.theme-zenna #screen .zn-bilan-bar-fill.reel { background: linear-gradient(90deg, var(--zn-cyan), #5FF2DE); }
+body.theme-zenna #screen .zn-bilan-bar-val { font-family: var(--zn-mono); font-size: var(--fs-xs); width: 36px; text-align: right; flex-shrink: 0; opacity: 0; transition: opacity 300ms var(--ease, ease); }
+body.theme-zenna #screen .zn-bilan-bar-val.on { opacity: 1; }
+
+/* R16.8 — L'ÉCHELLE GOUVERNE, ET R29 L'AVAIT ENFREINTE. Ces deux étiquettes portaient
+   6,5 px et 8 px en dur, sous le plancher de lisibilité de 9 px que `smoke-typo` tient
+   depuis R16.8 — et le plancher EST `--fs-micro`, donc il n'y avait même pas à choisir une
+   valeur. Un littéral sous le plancher est exactement le défaut que l'échelle existe pour
+   rendre impossible ; le rattrapage se fait sur le padding, pas sur la police. */
+body.theme-zenna #screen .zn-new-tag { display: inline-block; background: var(--zn-cyan); color: #032; font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .06em; padding: 1px 5px; border-radius: 5px; margin-left: 6px; vertical-align: middle; }
+
+body.theme-zenna #screen .zn-bilan-disc-row { display: flex; align-items: center; gap: 11px; padding: 10px 0; border-bottom: 1px solid var(--zn-border); }
+body.theme-zenna #screen .zn-bilan-disc-row:last-child { border-bottom: none; }
+body.theme-zenna #screen .zn-bilan-disc-ico { width: 26px; text-align: center; font-size: 1.05em; flex-shrink: 0; }
+body.theme-zenna #screen .zn-bilan-disc-name { flex: 1; min-width: 0; font-family: var(--zn-mono); font-size: var(--fs-sm); color: var(--zn-muted); }
+body.theme-zenna #screen .zn-bilan-disc-vals { font-family: var(--zn-mono); font-size: var(--fs-sm); text-align: right; font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-bilan-disc-vals .prevu { color: var(--zn-muted-2); }
+body.theme-zenna #screen .zn-bilan-disc-vals .arrow { color: var(--zn-muted-2); margin: 0 3px; }
+body.theme-zenna #screen .zn-bilan-disc-vals .reel { color: var(--zn-cyan); font-weight: 700; }
+
+body.theme-zenna #screen .zn-bilan-delta { opacity: 0; transform: translateY(10px); font-family: var(--zn-mono); font-size: var(--fs-sm); color: var(--zn-muted);
+  transition: opacity var(--beat-35) var(--ease-enter, ease), transform var(--beat-35) var(--ease-enter, ease); margin: 4px 0 14px; }
+body.theme-zenna #screen .zn-bilan-delta.on { opacity: 1; transform: translateY(0); }
+
+body.theme-zenna #screen .zn-badge-earned { display: flex; align-items: center; gap: 12px; background: rgba(255, 210, 61, .08); border: 1px solid rgba(255, 210, 61, .35); border-radius: 16px; padding: 13px;
+  opacity: 0; transform: scale(.9); transition: opacity var(--beat-35) var(--ease-spring, ease), transform var(--beat-35) var(--ease-spring, ease); }
+body.theme-zenna #screen .zn-badge-earned.on { opacity: 1; transform: scale(1); }
+body.theme-zenna #screen .zn-badge-earned-ico { width: 40px; height: 40px; clip-path: var(--cut-tile); background: linear-gradient(145deg, var(--zn-gold), #FFE27A); display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+body.theme-zenna #screen .zn-badge-earned-tag { font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .1em; color: var(--zn-gold); font-weight: 700; margin-bottom: 2px; }
+body.theme-zenna #screen .zn-badge-earned-name { font-size: var(--fs-sm); font-weight: 700; color: var(--zn-text); }
+
+/* R28 — l'entrée du décompte se joue sur l'OPACITÉ et l'ÉCHELLE, jamais sur le texte : une
+   empreinte du DOM prise pendant l'animation doit valoir celle prise après (voir le
+   commentaire de `znPlanSequence`). */
+body.theme-zenna #screen .zn-jminus.zn-jm-in { animation: znJmIn calc(var(--beat, 120ms) * 11) var(--ease-enter, cubic-bezier(.25,.46,.45,.94)) both; }
+@keyframes znJmIn { from { opacity: 0; transform: scale(.82); } to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { body.theme-zenna #screen .zn-jminus.zn-jm-in { animation: none; } }

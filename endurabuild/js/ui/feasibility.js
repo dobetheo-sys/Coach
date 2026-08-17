@@ -44,7 +44,7 @@ export function feasibilityCardHTML(plan) {
   // l'utilisent pas. Ouverte d'office dès qu'un chrono est saisi : à ce moment-là, elle a une
   // réponse à donner, et la replier serait cacher ce qu'on vient de demander.
   let html = '<details class="card" id="rvCard"' + (saisi ? " open" : "") + '>'
-    + '<summary><span class="eyebrow">Ton objectif</span><h2 style="display:inline">🎯 Ton chrono visé</h2></summary>'
+    + '<summary><span class="eyebrow">Faisabilité</span><h2 style="display:inline">🎯 Ton chrono visé</h2></summary>'
     // U16 — MA PROPRE PROSE ÉTAIT LE PLUS LONG PAVÉ DE L'ONGLET : 265 caractères d'un seul
     // tenant, devant tout ce que le moteur produit. Trois idées en une phrase, coupées en trois
     // lignes ; pas un mot retiré, l'engagement « ta réponse ne change pas ton plan » reste entier.

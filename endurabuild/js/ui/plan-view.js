@@ -1,79 +1,140 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
 import { SPORTS } from "../config.js";
-import { S, todayISO, fmtDay } from "../state.js";
+import { S, todayISO, fmtDay, esc } from "../state.js";
 import { evalRules } from "../ui/steps.js";
 import { renderTabs, invalidatePlan, ensurePlan } from "./tabs.js";
 import { logProjection } from "../projection-log.js"; // A-5 — enregistre, ne reboucle jamais
-import { DISC } from "./icons.js";
+import { DISC, CHARGE } from "./icons.js";
 
-const _IFZ={"bk.z2":.65,"bk.ss":.90,"bk.vo2":1.12,"bk.frc":.82,"bk.rp":.84,"bk.thr":1.0,
-  "rn.easy":.68,"rn.mara":.84,"rn.thr":.98,"rn.vo2":1.10,"rn.rec":.60,
-  "sw.easy":.65,"sw.aero":.75,"sw.css":.95,"sw.speed":1.08};
+// B1 (arbitrage du STOP de Phase 2, 14/08/2026) — LE GRAPHE DE CHARGE VIENT DU MOTEUR.
+//
+// L'ancien graphe était un MODÈLE ENTIER côté affichage : un TSS estimé par une table `_IFZ`
+// (dupliquée ×3 dans le dépôt), une convolution CTL 42 j / ATL 7 j, et une courbe « Forme » —
+// pendant que R14 REJETTE explicitement CTL/ATL dans le moteur, avec la raison écrite (unité
+// de stress non commensurable entre nage/vélo/course, constantes de population 42/7 à variance
+// individuelle énorme, modèle rétrospectif sur un produit prospectif). Une visualisation sur
+// laquelle l'athlète AGIT est un modèle, quel que soit son nom : celle-ci pouvait contredire
+// le verdict quotidien du `dailyAdjuster` SUR LE MÊME ÉCRAN, sans que l'athlète sache lequel
+// croire. Décision du fondateur : ni brancher (ajouter CTL/ATL au moteur renverserait R14),
+// ni assumer (« doctrine propre » = seconde doctrine non validée) — REDESSINER depuis la seule
+// comptabilité que le moteur possède : `_v2.intensity.weekly`, les minutes facile/modéré/dur
+// par semaine, LE classificateur de C26. Prévu contre validé, un seul classificateur.
+//
+// Meurent ici : `estimateTSS`, `_IFZ` (la copie UI — le cliquet Z-03 descend de 3 à 2),
+// `loadSeries`/`weekLoadSeries` (la marche CTL/ATL), la courbe « Forme » — et avec eux la
+// collision `--zn-swim` sur la courbe Fitness (dossier O-31/Z-11) et le bloqueur B1 de
+// ZENNA_EXACTITUDE. Ce qu'on PERD est dit à l'athlète sous le graphe, plutôt que compensé
+// par un autre nombre inventé (interdit explicite de l'arbitrage).
+
+// Le MÊME vocabulaire que la carte « Répartition des intensités », quelques lignes plus bas —
+// une écriture de plus de ces trois hex serait la dette que Z-01 traque ; ici on les partage.
+/** Minutes d'un step (durée directe, ou distance convertie grossièrement). SURVIT à B1 :
+ *  ce n'est pas le modèle TSS, c'est l'estimateur de LARGEUR de la barre de zones
+ *  (session-life/znZoneBar) — proportionnel, donc tolérant à sa propre grossièreté.
+ *  DETTE « À BRANCHER » (§6.2 du DOC_UNIQUE, tranché par MESURE le 14/08/2026) : le moteur
+ *  ÉMET la durée des blocs à distance — chaque step porte `_min` (R5.6a : récup inter-blocs
+ *  comprise ; sondé sur swim/demifond, 71 steps à distance, 71 `_min`). La conversion UI
+ *  (2 min/100 m nage, 5 min/km course) ré-estime donc une sortie que le moteur possède —
+ *  occurrence suivante de la RÈGLE 12, portée par l'UI et non par le moteur. Le branchement
+ *  (`st._min` d'abord) attend sa propre mesure : la sémantique reps × `_min` doit être
+ *  vérifiée avant de changer une proportion rendue. */
 function _blkMin(st){const r=st.reps||1;if(st.durationMin!=null)return r*st.durationMin;if(st.distanceM!=null)return st.d==="sw"?r*st.distanceM/100*2:r*st.distanceM/1000*5;return 0;}
-function estimateTSS(s){if(!s||!s.steps||!s.steps.length)return 0;let t=0;s.steps.forEach(st=>{const mn=_blkMin(st);const IF=st.role==="body"?(_IFZ[st.zone]||0.70):0.5;t+=(mn/60)*IF*IF*100;});return Math.round(t);}
-function loadSeries(plan){
-  const days=[];plan.weeks.forEach(w=>w.days.forEach(d=>{let tss=0;d.sessions.forEach(s=>{if(s.d!=="rs")tss+=estimateTSS(s);});days.push({week:w.num,jour:d.jour,tss:tss,recup:w.isRecup});}));
-  const seed=days.slice(0,7).reduce((a,d)=>a+d.tss,0)/7||0;let ctl=seed,atl=seed;const out=[];
-  days.forEach(d=>{const tsb=ctl-atl;ctl+=(d.tss-ctl)/42;atl+=(d.tss-atl)/7;out.push({week:d.week,ctl:ctl,atl:atl,tsb:tsb});});
-  // échantillon hebdo = dernière valeur de chaque semaine
-  const byWeek={};out.forEach(o=>byWeek[o.week]=o);
-  return Object.keys(byWeek).map(k=>byWeek[k]);
+
+const CHARGE_CLASSES = [
+  { k: "e", label: "facile", col: "#00a376" },
+  { k: "m", label: "modéré", col: "#f0b429" },
+  { k: "h", label: "dur", col: "#e63946" },
+];
+
+/** Prévu (le moteur l'émet) et VALIDÉ (les ✓) par classe et par semaine. Le validé passe par
+ *  `EBV2.sessionSplit` — le classificateur du MOTEUR, jamais une table locale. La clé ✓ est
+ *  celle de session-life : `w.num|jour|si`. */
+function chargeSeries(plan){
+  const weekly=(plan&&plan._v2&&plan._v2.intensity&&plan._v2.intensity.weekly)||[];
+  const done=(S.answers&&S.answers.done)||{};
+  const fait={};
+  (plan.weeks||[]).forEach(w=>w.days.forEach(d=>d.sessions.forEach((s,si)=>{
+    if(s.d==="rs"||!done[w.num+"|"+d.jour+"|"+si])return;
+    let sp=null;
+    try{sp=(globalThis.EBV2&&EBV2.sessionSplit)?EBV2.sessionSplit(s,S.answers):null;}catch(e){}
+    const f=fait[w.num]||(fait[w.num]={e:0,m:0,h:0});
+    if(sp){f.e+=sp.easyMin||0;f.m+=sp.modMin||0;f.h+=sp.hardMin||0;}
+    else f.e+=s.min||0; // moteur indisponible : les minutes comptent quand même, en facile
+  })));
+  return weekly.map(w=>({num:w.num,prevu:{e:w.e,m:w.m,h:w.h},fait:fait[w.num]||{e:0,m:0,h:0}}));
 }
-// Retour du fondateur (07/08/2026) : « le graphique de charge, on a enfin notre position, mais
-// c'est illisible sur téléphone. » Cause mesurée : `width="100%"` avec un `viewBox` dont la
-// largeur suit le nombre de SEMAINES (22 px/semaine) — sur un plan court ça tient dans l'écran,
-// mais sur une préparation longue (un 70.3 à 43 semaines fait W=946) le conteneur mobile
-// (~350 px) FORCE le SVG à se comprimer à 37 % de sa taille dessinée. Tout rétrécit avec —
-// traits, ET texte : le "9" px du plancher typographique (R16.8) devenait ~3 px, illisible par
-// construction, pas par accident de rendu.
-// Le SVG n'est donc plus mis à l'échelle : il se dessine à sa taille NATURELLE (1 unité = 1 px,
-// donc le plancher de 9 px reste 9 px), dans un conteneur qui DÉFILE horizontalement plutôt que
-// de compresser (le même principe que les tableaux/grilles larges du produit). `bindLoadChart`
-// centre le défilement sur « tu es ici » au premier rendu — sur un plan de 43 semaines, personne
-// ne doit chercher sa position en faisant défiler dix écrans.
-function loadChartSVG(plan){
-  const S2=loadSeries(plan);if(!S2.length)return"";
-  const W=Math.max(320,S2.length*22),H=150,PL=34,PR=10,PT=12,PB=22,iw=W-PL-PR,ih=H-PT-PB;
-  const maxL=Math.max(1,...S2.map(o=>Math.max(o.ctl,o.atl)));
-  const tsbMax=Math.max(10,...S2.map(o=>Math.abs(o.tsb)));
-  const x=i=>PL+(S2.length<2?iw/2:i/(S2.length-1)*iw);
-  const yL=v=>PT+ih-(v/maxL)*ih;              // CTL/ATL (0..max)
-  const yB=v=>PT+ih/2-(v/tsbMax)*(ih/2);      // TSB (centré sur 0)
-  const line=(sel,col,w)=>"<polyline fill=\"none\" stroke=\""+col+"\" stroke-width=\""+w+"\" points=\""+S2.map((o,i)=>x(i).toFixed(1)+","+sel(o).toFixed(1)).join(" ")+"\"/>";
-  let g="<svg viewBox=\"0 0 "+W+" "+H+"\" width=\""+W+"\" height=\""+H+"\" style=\"display:block\" role=\"img\" aria-label=\"Courbe de charge CTL ATL TSB\">";
-  g+="<line x1=\""+PL+"\" y1=\""+(PT+ih/2)+"\" x2=\""+(W-PR)+"\" y2=\""+(PT+ih/2)+"\" stroke=\"#0002\" stroke-dasharray=\"3 3\"/>";
-  g+=line(o=>yB(o.tsb),"#00a376",2)+line(o=>yL(o.ctl),"#2e6bff",2.5)+line(o=>yL(o.atl),"#ff7a1a",1.8);
-  g+="<text x=\"2\" y=\""+(PT+8)+"\" font-size=\"9\" fill=\"#635b4a\">charge</text>";
-  // R24.6 (retour fondateur, 06/08) — « montre visuellement là où on en est » : un trait
-  // vertical à la semaine COURANTE, ancré sur les dates réelles du plan (R7), avec un point
-  // sur la courbe de fitness. Pas de marqueur hors plan (avant le départ ou après la course).
-  let xNow=null;
-  {
-    const tIso=todayISO();let wkNow=null;
-    plan.weeks.forEach(w=>w.days.forEach(d=>{if(d.date===tIso)wkNow=w.num;}));
-    const iNow=wkNow!=null?S2.findIndex(o=>o.week===wkNow):-1;
-    if(iNow>=0){
-      const xn=x(iNow);xNow=xn;
-      g+="<line x1=\""+xn.toFixed(1)+"\" y1=\""+PT+"\" x2=\""+xn.toFixed(1)+"\" y2=\""+(PT+ih)+"\" stroke=\"#16130e\" stroke-width=\"1.5\" stroke-dasharray=\"2 3\"/>";
-      g+="<circle cx=\""+xn.toFixed(1)+"\" cy=\""+yL(S2[iNow].ctl).toFixed(1)+"\" r=\"3.5\" fill=\"#2e6bff\" stroke=\"#16130e\" stroke-width=\"1\"/>";
-      const gauche=xn>W-70;
-      g+="<text x=\""+(gauche?xn-5:xn+5).toFixed(1)+"\" y=\""+(PT+ih-4)+"\" font-size=\"9\" font-weight=\"bold\" fill=\"#16130e\""+(gauche?" text-anchor=\"end\"":"")+">tu es ici</text>";
-    }
-  }
+
+/** Barres hebdomadaires : la silhouette PRÉVUE en teinte atténuée, les minutes VALIDÉES en
+ *  pleine couleur par-dessus — même échelle, mêmes classes, aucun second modèle. Le trait
+ *  vertical marque la semaine courante (R24.6, conservé de l'ancien graphe). */
+function chargeChartSVG(plan){
+  const serie=chargeSeries(plan);
+  if(!serie.length)return "";
+  const W=Math.max(320,serie.length*10),H=86,PT=10,PB=14,ih=H-PT-PB;
+  const mx=Math.max(30,...serie.map(o=>o.prevu.e+o.prevu.m+o.prevu.h));
+  const bw=W/serie.length;
+  const tIso=todayISO();let wkNow=null;
+  plan.weeks.forEach(w=>w.days.forEach(d=>{if(d.date===tIso)wkNow=w.num;}));
+  let g='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" style="display:block;max-width:100%" role="img" aria-label="Charge par semaine : minutes prévues et validées, par intensité">';
+  serie.forEach((o,i)=>{
+    const x=i*bw+1,wB=Math.max(3,bw-2);
+    let y=PT+ih;
+    CHARGE_CLASSES.forEach(c=>{const hPix=(o.prevu[c.k]/mx)*ih;y-=hPix;
+      if(hPix>0.4)g+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+wB.toFixed(1)+'" height="'+hPix.toFixed(1)+'" fill="'+c.col+'" opacity=".26"/>';});
+    let y2=PT+ih;
+    CHARGE_CLASSES.forEach(c=>{const hPix=(Math.min(o.fait[c.k],o.prevu[c.k]*1.5)/mx)*ih;y2-=hPix;
+      if(hPix>0.4)g+='<rect x="'+(x+wB*0.22).toFixed(1)+'" y="'+y2.toFixed(1)+'" width="'+(wB*0.56).toFixed(1)+'" height="'+hPix.toFixed(1)+'" fill="'+c.col+'"/>';});
+    g+='<title>S'+o.num+' · prévu '+(o.prevu.e+o.prevu.m+o.prevu.h)+"min · validé "+(o.fait.e+o.fait.m+o.fait.h)+"min</title>";
+    // R24.6 (décision fondateur, 06/08) SURVIT au redessin B1 : le marqueur « tu es ici »
+    // reste, ancré sur les dates réelles — seule la courbe sous lui a changé de modèle.
+    if(o.num===wkNow)g+='<line x1="'+(x+wB/2).toFixed(1)+'" y1="'+PT+'" x2="'+(x+wB/2).toFixed(1)+'" y2="'+(PT+ih+4)+'" stroke="var(--zn-ink,#16130e)" stroke-width="1.5" stroke-dasharray="2 3"/>'
+      +'<text x="'+Math.min(W-64,Math.max(2,x+wB/2+4)).toFixed(1)+'" y="'+(PT+8)+'" font-size="9" fill="var(--zn-muted,#635b4a)">tu es ici</text>';
+  });
   g+="</svg>";
-  return "<div id=\"loadChartWrap\" style=\"overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px auto\""
-    +(xNow!=null?" data-now-x=\""+xNow.toFixed(1)+"\"":"")+">"+g+"</div>";
+  return '<div style="overflow-x:auto">'+g+"</div>";
 }
-/** Centre le défilement horizontal sur « tu es ici » — sans ça, une prépa longue oblige à
- *  chercher sa position à tâtons. Sans effet (et sans erreur) si le graphique est absent ou
- *  tient déjà tout entier dans son conteneur. À appeler après insertion dans le DOM. */
-function bindLoadChart(){
-  const el=document.getElementById("loadChartWrap");
-  if(!el)return;
-  const xn=parseFloat(el.dataset.nowX);
-  if(!isFinite(xn))return;
-  el.scrollLeft=Math.max(0,xn-el.clientWidth/2);
+
+/** La même lecture, au grain du JOUR, pour le Bilan de la semaine (R29) : chaque jour porte
+ *  ses minutes prévues par classe (le classificateur du moteur, séance par séance) et la
+ *  part validée en pleine couleur. */
+function weekChargeChartSVG(plan, wNum){
+  const w=(plan.weeks||[]).find(x=>x.num===wNum);
+  if(!w)return "";
+  const done=(S.answers&&S.answers.done)||{};
+  const jours=w.days.map(d=>{
+    const prevu={e:0,m:0,h:0},fait={e:0,m:0,h:0};
+    d.sessions.forEach((s,si)=>{
+      if(s.d==="rs")return;
+      let sp=null;
+      try{sp=(globalThis.EBV2&&EBV2.sessionSplit)?EBV2.sessionSplit(s,S.answers):null;}catch(e){}
+      const add=(cible)=>{if(sp){cible.e+=sp.easyMin||0;cible.m+=sp.modMin||0;cible.h+=sp.hardMin||0;}else cible.e+=s.min||0;};
+      add(prevu);
+      if(done[w.num+"|"+d.jour+"|"+si])add(fait);
+    });
+    return {jour:d.jour,prevu,fait};
+  });
+  const W=320,H=70,PT=8,PB=10,ih=H-PT-PB,bw=W/jours.length;
+  const mx=Math.max(30,...jours.map(j=>j.prevu.e+j.prevu.m+j.prevu.h));
+  let g='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" style="display:block;max-width:100%" role="img" aria-label="Charge de la semaine, jour par jour, par intensité">';
+  jours.forEach((j,i)=>{
+    const x=i*bw+3,wB=Math.max(4,bw-6);
+    let y=PT+ih;
+    CHARGE_CLASSES.forEach(c=>{const hPix=(j.prevu[c.k]/mx)*ih;y-=hPix;
+      if(hPix>0.4)g+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+wB.toFixed(1)+'" height="'+hPix.toFixed(1)+'" fill="'+c.col+'" opacity=".26"/>';});
+    let y2=PT+ih;
+    CHARGE_CLASSES.forEach(c=>{const hPix=(j.fait[c.k]/mx)*ih;y2-=hPix;
+      if(hPix>0.4)g+='<rect x="'+(x+wB*0.22).toFixed(1)+'" y="'+y2.toFixed(1)+'" width="'+(wB*0.56).toFixed(1)+'" height="'+hPix.toFixed(1)+'" fill="'+c.col+'"/>';});
+  });
+  g+="</svg>";
+  return g;
+}
+
+/** La légende partagée des deux graphes — et la phrase qui DIT ce qui a disparu (arbitrage :
+ *  « une courbe de charge honnête vaut mieux qu'un TSB inventé »). */
+function chargeChartLegend(){
+  return '<div class="load-sub">'+CHARGE_CLASSES.map(c=>'<span style="color:'+c.col+'">▬ '+c.label+"</span>").join(" · ")
+    +' — teinte pâle = prévu, pleine = validé ✓. La courbe « Forme » a été retirée : elle sortait d’un modèle (TSS/CTL/ATL) que le moteur n’utilise pas — ce graphe montre la même comptabilité d’intensité que ton plan.</div>';
 }
 
 /* ============================================================
@@ -142,14 +203,25 @@ function downloadPlan(){
     +'.w{margin:14px 0;page-break-inside:avoid}.wh{font-size:14px;margin-bottom:6px}'
     +'.g{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}@media(max-width:680px){.g{grid-template-columns:repeat(2,1fr)}}'
     +'.d{border:1.5px solid #16130e;border-radius:6px;padding:6px;font-size:10px;min-height:70px}'
-    +'.d.dur{background:#ffe3e0}.d.facile{background:#d9f3e1}.d.recup{background:#e9defc}.d.off{background:#eee}'
+    // Les trois teintes de charge viennent de la table `CHARGE` — le document exporté ne charge
+    // aucune variable CSS (voir la note R16.8 ci-dessus), donc elles s'interpolent ici en dur.
+    // C'est le seul endroit où une valeur de charge est écrite littéralement dans du CSS, et
+    // elle l'est depuis la source, pas depuis une copie.
+    // UNE RÈGLE PAR LIGNE, et ce n'est pas cosmétique : la garde sélectionne les lignes qui
+    // portent un sélecteur de charge puis y cherche un littéral. Sur une ligne qui empile
+    // quatre règles, le `#eee` du repos (`.d.off`, hors table) tombait dans la même ligne que
+    // `.d.recup` et faisait rougir une ligne correcte.
+    +'.d.dur{background:'+CHARGE.dur.papier+'}'
+    +'.d.facile{background:'+CHARGE.facile.papier+'}'
+    +'.d.recup{background:'+CHARGE.recup.papier+'}'
+    +'.d.off{background:#eee}'
     +'.dh{font-weight:700;font-size:9px;margin-bottom:3px}ul{font-size:12px;line-height:1.5}'
     +'@media print{body{background:#fff}}</style></head><body>'
     +'<h1>'+cfg.ico+' Mon plan '+cfg.nom+'</h1>'
     +'<p>'+plan.totalWeeks+' semaines · '+(plan.use10?"cycles de 10 jours":"semaines de 7 jours")+' · volume '+plan.volBase+'h → '+plan.volPeak+'h · objectif '+(a.format||"")+'</p>'
     +'<h2>Les décisions de ton plan</h2><ul>'+blue+'</ul>'
     +'<h2>Calendrier complet</h2>'+rows
-    +'<p style="margin-top:30px;font-size:11px;color:#635b4a">Généré par EnduraBuild · à valider avec un professionnel de santé. Astuce : ouvre ce fichier et fais Imprimer → Enregistrer en PDF.</p>'
+    +'<p style="margin-top:30px;font-size:11px;color:#635b4a">Généré par Zenna · à valider avec un professionnel de santé. Astuce : ouvre ce fichier et fais Imprimer → Enregistrer en PDF.</p>'
     +'</body></html>';
   const blob=new Blob([doc],{type:"text/html"});
   const url=URL.createObjectURL(blob);
@@ -215,63 +287,11 @@ function tempsTotalItem(items){
     ||items.find(x=>/\d(h|')\d/.test(String(x.value))&&!/(W|km\/h|km-effort|m\/h|%)/.test(String(x.value)))
     ||null;
 }
-function predictionCardHTML(plan){
-  let h="";
-  if(globalThis.EBV2&&globalThis.EBV2.predict){
-    try{
-      const pr=globalThis.EBV2.predict(S.sport,S.answers,plan);
-      // A-5 — LE JOURNAL DE PROJECTION. On journalise la prédiction TELLE QU'AFFICHÉE (une par
-      // semaine ISO), jamais un second calcul : un journal qui divergerait de l'écran serait le
-      // défaut de R19.5 transposé. Il n'est relu par AUCUNE partie du moteur — voir l'en-tête
-      // de `projection-log.js` pour pourquoi ce reflux est interdit.
-      logProjection(S.sport,S.answers,pr);
-      if(pr.items.length||pr.advice.length){
-        h+='<div class="load-card"><div class="load-title">\ud83d\udd2e Pr\u00e9diction de course</div>';
-        // R14 \u2014 DEUX PR\u00c9DICTIONS, TOUJOURS \u00c9TIQUET\u00c9ES. La forme ACTUELLE reste l'ancre (c'est
-        // la v\u00e9rit\u00e9 mesur\u00e9e) ; la forme PROJET\u00c9E dit o\u00f9 l'entra\u00eenement m\u00e8ne, avec sa date de
-        // r\u00e9f\u00e9rence et sa confiance. Jamais l'une sans l'autre, jamais un chiffre nu.
-        const pj=pr.projected;
-        // R24.5 (retour fondateur, 06/08) — LE TEMPS TOTAL D'ABORD : « si elle était courue
-        // aujourd'hui » et « à la fin du plan ». Les deux chiffres viennent des items DÉJÀ émis
-        // par le prédicteur ; le détail segment par segment passe en dépliable.
-        const tNow=tempsTotalItem(pr.items);
-        const tProj=(pj&&pj.applicable)?tempsTotalItem(pj.items):null;
-        const dRef=(pj&&pj.raceDate)?(fmtDay(pj.raceDate)+"/"+pj.raceDate.slice(0,4)):"la fin du plan";
-        if(tNow){
-          h+='<div style="margin:10px 0 2px;font-size:var(--fs-lg)">Courue <b>aujourd\u2019hui</b> : <b>'+tNow.value+'</b></div>';
-          if(tProj)h+='<div style="margin:2px 0 2px;font-size:var(--fs-lg)">\u00c0 <b>'+dRef+'</b>, plan suivi : <b>'+tProj.value+'</b> <span style="font-size:var(--fs-xs);color:var(--muted)">confiance '+pj.confidence+'</span></div>';
-          h+='<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer;font-weight:600">Le d\u00e9tail, segment par segment</summary>';
-        }
-        h+='<div class="load-sub" style="margin:8px 0 2px;font-weight:600">Aujourd\u2019hui \u2014 ta forme mesur\u00e9e</div>';
-        pr.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
-        if(pj&&pj.applicable&&pj.items.length){
-          const d=pj.raceDate?(fmtDay(pj.raceDate)+"/"+pj.raceDate.slice(0,4)):"le jour J";
-          h+='<div class="load-sub" style="margin:12px 0 2px;font-weight:600">Projet\u00e9 au '+d
-            +' <span style="font-weight:400;color:var(--muted)">\u00b7 confiance '+pj.confidence+'</span></div>';
-          pj.items.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0"><b>'+x.leg+' : '+x.value+'</b><br><span style="color:#555">'+x.why+'</span></div>';});
-          h+='<div class="load-sub" style="color:var(--muted);margin-top:4px">Si tu suis ce plan. La fourchette est volontairement ASYM\u00c9TRIQUE : au pire, ta forme d\u2019aujourd\u2019hui \u2014 un plan suivi ne rend pas plus lent, il peut seulement rapporter moins que pr\u00e9vu.</div>';
-          // R14.1 \u00a75 \u2014 le levier poids ne s'affiche QUE si l'athl\u00e8te l'a demand\u00e9 et a saisi sa
-          // cible. Une sensibilit\u00e9, jamais un objectif ; aucun rythme, aucune consigne alimentaire.
-          if(pj.weightLever){
-            const wl=pj.weightLever;
-            h+='<div class="load-sub" style="margin:10px 0 0;padding-top:8px;border-top:1px dashed #0002"><b>Sensibilit\u00e9 au poids (tu as demand\u00e9 ce levier)</b><br>'
-              +'<span style="color:#555">'+wl.why+'</span></div>';
-          }
-        }
-        pr.advice.forEach(x=>{h+='<div class="load-sub" style="margin:6px 0;color:#8a6d00">\u26a0 '+x+'</div>';});
-        // Le MOTIF d'un refus de projeter vaut autant que la projection : \u00ab trop t\u00f4t pour
-        // projeter \u00bb est une information, le silence n'en est pas une.
-        if(pj&&!pj.applicable){
-          const why=(pj.decisions||[]).filter(x=>/^P7-refus$|^P8$|^P6-sans-chrono$/.test(x.id))[0];
-          if(why) h+='<div class="load-sub" style="margin:10px 0 0;color:var(--muted)"><b>Pas de chrono projet\u00e9</b> \u2014 '+why.why+'</div>';
-        }
-        if(tNow)h+='</details>';
-        h+='<div class="load-sub" style="color:var(--muted)">Fourchette, pas promesse \u2014 elle se resserre quand le plan est bien suivi (streak + charge accomplie).</div></div>';
-      }
-    }catch(e){console.warn(e);}
-  }
-  return h;
-}
+// `predictionCardHTML` a été RETIRÉE d'ici (R28, correction du 12/08/2026). Elle vivait dans
+// la vue d'ensemble de Plan et n'a plus aucun appelant depuis que la prédiction a son propre
+// sous-onglet (`predictionViewHTML`, ci-dessous) — une fonction morte qui gardait encore son
+// propre appel à `logProjection` était une invitation à croire que le journal s'écrivait ici.
+// `tempsTotalItem`, qu'elle partageait avec `predictionViewHTML`, reste en place.
 function historyCardHTML(plan){
   let h="";
   if(globalThis.EBV2&&globalThis.EBV2.progress){
@@ -284,7 +304,7 @@ function historyCardHTML(plan){
         h+='<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:var(--fs-sm)">'
           +'<span style="width:34px"><b>S'+w.num+'</b></span>'
           +'<span style="width:20px">'+(w.ok?"\u2705":"\u25cb")+'</span>'
-          +'<div style="flex:1;background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:10px;overflow:hidden"><div style="height:100%;width:'+pc+'%;background:'+(w.ok?"#00a376":"#f0b429")+'"></div></div>'
+          +'<div style="flex:1;background:var(--zn-track-bg,var(--bg2,#e8e0cf));border:1px solid var(--zn-ink,#16130e);border-radius:4px;height:10px;overflow:hidden"><div style="height:100%;width:'+pc+'%;background:'+(w.ok?"var(--zn-good,#00a376)":"var(--zn-gold-dot,#f0b429)")+'"></div></div>'
           +'<span style="width:130px;text-align:right">'+w.done+'/'+w.total+' s\u00e9ances \u00b7 '+(Math.round(w.minDone/6)/10)+'/'+(Math.round(w.minTotal/6)/10)+'h</span></div>';
       });
       h+='<div class="load-sub" style="margin-top:4px">\u2705 = semaine r\u00e9guli\u00e8re (\u226580% des s\u00e9ances). Le r\u00e9el nourrit l\u2019ajusteur du matin \u2014 pas de rattrapage, jamais.</div></div>';
@@ -373,9 +393,40 @@ function techListHTML(tech){
 // `<summary>` est le premier enfant de `<details class="gd-sess">`, donc un `querySelector(
 // ".gd-det, .gd-steps")` tombait sur la durée au lieu du contenu technique, sur TOUTE séance.
 const _fmtDur = (min) => !min ? "" : (min >= 60 ? Math.floor(min / 60) + "h" + String(Math.round(min % 60)).padStart(2, "0") : Math.round(min) + "min");
+/**
+ * LE BADGE DE DISCIPLINE — la SEULE couleur de la ligne de séance.
+ *
+ * La carte de jour portait jusqu'ici un fond pleine largeur teinté par la CHARGE (dur/facile/
+ * récup). Décision du fondateur (12/08/2026, maquette « structure interne réelle ») : le fond
+ * redevient sombre et uniforme, et c'est l'icône qui porte la couleur — celle de la DISCIPLINE.
+ *
+ * L'accent vient de `DISC[*].ac` (icons.js) — point unique, aucune couleur inventée ici. Ce
+ * commentaire disait jusqu'au 12/08/2026 « donc du même endroit que l'avatar et les cartes de
+ * sport » : ce n'est plus vrai depuis que les trois accents sont alignés sur la maquette
+ * (`icons.js` porte le détail et la mesure). L'avatar et les cartes de sport lisent un AUTRE
+ * axe — le sport préparé, pas la discipline d'une séance — resté sur les anciennes valeurs.
+ *
+ * Le badge est `aria-hidden` : la discipline est déjà dans le NOM de la séance juste à côté
+ * (« Footing », « Sweet spot vélo »), et faire lire un pictogramme par-dessus n'apprend rien.
+ * `trail` et `swimrun` n'ont pas de code propre — le moteur les émet en `rn`/`sw` —, ils
+ * héritent donc de l'accent de leur discipline réelle, ce qui est le comportement voulu.
+ */
+function badgeDisciplineHTML(s) {
+  const d = DISC[s.d];
+  if (!d) return "";
+  // TUILE PLEINE, PAS UNE TEINTE DILUÉE — et c'est une mesure qui l'a décidé, pas un goût.
+  // Ma première écriture posait l'accent à 22 % d'opacité (fond) et 45 % (bordure) : mesuré
+  // contre la carte, ça donne 1,26 à 1,48:1 pour la tuile et 1,68 à 2,39:1 pour la bordure.
+  // WCAG 1.4.11 demande 3:1 pour un élément d'interface qui PORTE de l'information — et c'est
+  // exactement le rôle de ce badge : distinguer les disciplines. Aucune dilution n'y arrive sur
+  // ce fond (le bleu du vélo plafonne à 3,33:1 même en PLEIN), donc la tuile est pleine, comme
+  // sur la maquette. Le pictogramme est multicolore et reste lisible dessus.
+  return '<span class="gd-ic" aria-hidden="true" style="background:' + d.ac + '">' + d.ic + "</span>";
+}
+
 function sessDetailsHTML(s,style,open){
   const dur=_fmtDur(s.min);
-  if(!s.det)return "<b>"+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"");
+  if(!s.det)return badgeDisciplineHTML(s)+"<b>"+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"");
   const why=whyOf(s),tech=techOf(s);
   // U16 — repli par défaut confirmé (retour utilisateur, 08/08/2026) pour l'onglet Plan (une
   // semaine qui peut en afficher plusieurs à la fois, densité mesurée et corrigée alors).
@@ -387,7 +438,7 @@ function sessDetailsHTML(s,style,open){
   // partagée — Plan garde son repli, Semaine l'ouvre.
   // Le chevron (`.gd-sess summary::before`, styles.css) reste en `var(--ink)` gras — plus
   // visible sans reprendre d'espace — quel que soit l'état par défaut.
-  return '<details class="gd-sess"'+(open?' open':"")+(style?' style="'+style+'"':"")+'><summary><b>'+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"")+"</summary>"
+  return '<details class="gd-sess"'+(open?' open':"")+(style?' style="'+style+'"':"")+'><summary>'+badgeDisciplineHTML(s)+'<b>'+s.name+"</b>"+(dur?' <span class="gd-dur">'+dur+"</span>":"")+"</summary>"
     +(why?'<span class="gd-why">\u{1F4A1} '+why+"</span>":"")
     +techListHTML(tech)+"</details>";
 }
@@ -488,4 +539,181 @@ function decisionsCardHTML(plan){
 // Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
 // pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
 
-export { _IFZ, _blkMin, downloadPlan, driverBand, estimateTSS, loadChartSVG, bindLoadChart, loadSeries, renderPlan, readinessCardHTML, progressBarCardHTML, predictionCardHTML, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
+export { _blkMin, downloadPlan, driverBand, chargeChartSVG, weekChargeChartSVG, chargeChartLegend, renderPlan, readinessCardHTML, progressBarCardHTML, predictionViewHTML, journaliserProjection, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
+
+// ═══════════════ LE SOUS-ONGLET « PRÉDICTION » (R28) ═══════════════
+// Décision du fondateur (12/08/2026) : la prédiction quitte le repliable de la vue d'ensemble
+// et devient une vue dédiée, en 4 blocs. Le brief posait une question BLOQUANTE — « le moteur
+// calcule-t-il une progression discipline par discipline, ou seulement un total ? Ne pas
+// trancher soi-même ». MESURÉ sur un 70.3 : il la calcule, et plus finement que le brief
+// n'espérait — `gainPct`/`gainBand` sont PAR RÉFÉRENCE (ftp · thrPace · css · vam),
+// `projected.refs` rend les trois valeurs projetées, et `items`/`projected.items` rendent les
+// temps SEGMENT PAR SEGMENT. Rien n'est inventé ici : chaque chiffre vient du prédicteur.
+//
+// LES VALEURS SONT DES FOURCHETTES, JAMAIS UN CHIFFRE NU — c'est la propriété du prédicteur
+// (P7/P8 : il refuse d'estimer plutôt que de faire semblant). Les démos animées affichaient un
+// nombre unique ; arbitrage du fondateur : le compteur monte jusqu'à la borne BASSE, puis la
+// borne haute se pose à côté. L'état final porte donc la fourchette entière.
+
+/** "32'38–34'57" | "2h33–2h41" → {lo, hi} en minutes. `null` si ce n'est pas un temps. */
+function _rangeMin(v) {
+  const s = String(v || "");
+  if (/(W|km\/h|m\/h|%|km-effort)/.test(s)) return null; // puissance/vitesse : pas un chrono
+  const un = (t) => {
+    const h = /(\d+)\s*h\s*(\d*)/i.exec(t);
+    if (h) return +h[1] * 60 + (h[2] ? +h[2] : 0);
+    const m = /(\d+)\s*['’]\s*(\d*)/.exec(t);
+    if (m) return +m[1] + (m[2] ? +m[2] / 60 : 0);
+    return null;
+  };
+  const p = s.split(/[–—-]/).map((x) => un(x.trim())).filter((x) => x != null);
+  if (!p.length) return null;
+  return { lo: p[0], hi: p.length > 1 ? p[1] : p[0] };
+}
+const _fmtMin = (m) => {
+  const t = Math.round(m);
+  return t < 60 ? t + "'" : Math.floor(t / 60) + "h" + String(t % 60).padStart(2, "0");
+};
+/** Allure/CSS EN SECONDES → "M'SS" (jamais `_fmtMin`, qui arrondit à la minute ENTIÈRE et
+ *  efface les secondes — juste pour une DURÉE de séance, faux pour une ALLURE : 269,8 s/km
+ *  rendait "4'/km" ou "5'/km" selon le côté où l'arrondi tombait, jamais "4'30". Sur un
+ *  athlète déjà proche de 4'42/km, ce faux zéro de précision a fait lire une RÉGRESSION
+ *  (« 4.42 → 5'/km ») là où le moteur calculait une progression de 12 s/km (269,8 < 282).
+ *  Même formule que `fmtPace` (engine.js), `fmtSec` (retest.js), `_fmtSec` (tab-profile.js) —
+ *  reprise ici plutôt qu'importée : c'est déjà l'idiome de ce dépôt pour cette ligne (R11.1
+ *  s'applique au CALCUL, pas à la duplication d'un formateur d'une ligne entre modules UI). */
+const _fmtPace = (s) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
+/** Range les items du prédicteur par discipline. Les lignes d'INTENSITÉ (watts) sont écartées :
+ *  P6 interdit de projeter le pacing, elles ne sont pas des chronos et n'ont rien à faire ici. */
+function _parDiscipline(items) {
+  const out = { sw: null, bk: null, rn: null };
+  (items || []).forEach((x) => {
+    const leg = String(x.leg || "");
+    if (/intensit/i.test(leg) || /Total/i.test(leg)) return;
+    const r = _rangeMin(x.value);
+    if (!r) return;
+    if (/Natation|Nage/i.test(leg)) out.sw = out.sw || { leg, r };
+    else if (/V[ée]lo/i.test(leg)) out.bk = out.bk || { leg, r };
+    else if (/CAP|Course|Marathon|Semi|km/i.test(leg)) out.rn = out.rn || { leg, r };
+  });
+  return out;
+}
+
+/**
+ * CALCULE ET JOURNALISE LA PROJECTION (A-5) — LE POINT UNIQUE. Appelée à CHAQUE rendu de
+ * l'onglet Plan, quel que soit le sous-onglet actif : c'est la garantie qu'A-5 réclame — une
+ * entrée par semaine ISO, jamais un trou parce que personne n'a ouvert « 🎯 Prédiction ».
+ *
+ * CORRIGE UNE RÉGRESSION DE R28 : tant que la prédiction vivait dans la vue d'ensemble, elle se
+ * recalculait (et se journalisait) à chaque rendu de Plan. Le jour où elle a déménagé dans son
+ * propre sous-onglet, `predictionViewHTML` a emporté le calcul ET le journal avec elle — sans
+ * que personne ne décide de restreindre A-5 à « seulement si l'athlète clique sur Prédiction ».
+ * Mesuré : `smoke-projlog.mjs` passait de 4/11 à 11/11 une fois cet appel remonté ici. `logProjection`
+ * est idempotente par semaine ISO (« une par semaine, la première suffit ») : l'appeler à chaque
+ * rendu ne coûte qu'un test de présence, jamais une seconde écriture.
+ */
+function journaliserProjection(plan) {
+  if (!globalThis.EBV2 || !globalThis.EBV2.predict) return null;
+  let pr;
+  try { pr = globalThis.EBV2.predict(S.sport, S.answers, plan); } catch (e) { return null; }
+  if (!pr || (!pr.items.length && !pr.advice.length)) return null;
+  logProjection(S.sport, S.answers, pr);
+  return pr;
+}
+
+/**
+ * LA VUE PRÉDICTION — 4 blocs. `pr` est normalement PRÉ-CALCULÉ par `journaliserProjection`
+ * (appelée une fois par `renderTabPlanGeneral`, quel que soit le sous-onglet) ; le paramètre
+ * reste optionnel pour qu'un appelant isolé (test, autre écran) reste possible sans dupliquer
+ * l'appel à `predict()`.
+ */
+function predictionViewHTML(plan, prPrecalcule) {
+  const pr = prPrecalcule !== undefined ? prPrecalcule : journaliserProjection(plan);
+  if (!pr) return "";
+
+  // `pjRaw` garde le retour BRUT de `projected`, applicable ou non : c'est lui qui porte le
+  // MOTIF d'un refus de projeter (`pjRaw.decisions`, ids P7-refus/P8/P6-sans-chrono). `pj` ne
+  // sert qu'aux blocs qui exigent une projection APPLICABLE — les nuller ensemble aurait perdu
+  // le motif exactement quand on en a besoin (le cas « pas de projection »).
+  const pjRaw = pr.projected;
+  const pj = pjRaw && pjRaw.applicable ? pjRaw : null;
+  const tNow = tempsTotalItem(pr.items), tProj = pj ? tempsTotalItem(pj.items) : null;
+  const rNow = tNow ? _rangeMin(tNow.value) : null, rProj = tProj ? _rangeMin(tProj.value) : null;
+  const cible = rProj || rNow;
+  // `fmtDay` seul ne rend que JJ/MM — l'ANCIENNE carte ajoutait l'année, et ce n'était pas un
+  // détail : sur une préparation longue (le 70.3 à 40 semaines de cette vue), l'horizon peut
+  // franchir le 1er janvier, et « 17/05 » devient ambigu sur quelle année. Retrouvé en écrivant
+  // la garde de ce lot — ma première version de cette vue avait perdu l'année au passage.
+  const dRef = pj && pj.raceDate ? fmtDay(pj.raceDate) + "/" + pj.raceDate.slice(0, 4) : "la fin du plan";
+  let h = '<div class="zn-pred">';
+
+  // ── Bloc 1 — hero du temps total ──
+  if (cible) {
+    h += '<div class="load-card zn-pred-hero"><div class="eyebrow">'
+      + (rProj ? "Temps total projeté" : "Temps total estimé") + "</div>"
+      + '<div class="zn-pred-num" data-lo="' + cible.lo.toFixed(2) + '" data-hi="' + cible.hi.toFixed(2) + '">'
+      + esc(_fmtMin(cible.lo)) + '<span class="zn-pred-hi"> – ' + esc(_fmtMin(cible.hi)) + "</span></div>"
+      + '<div class="load-sub">fourchette du modèle — la marge tient au parcours, à la météo et au jour</div></div>';
+  }
+
+  // ── Bloc 2 — deux colonnes + delta ──
+  if (rNow && rProj) {
+    const gagne = Math.round((rNow.lo + rNow.hi) / 2 - (rProj.lo + rProj.hi) / 2);
+    h += '<div class="zn-pred-cols">'
+      + '<div class="zn-pred-col"><div class="zn-pc-lab">Si la course était aujourd’hui</div>'
+      + '<div class="zn-pc-date">forme actuelle, mesurée</div><div class="zn-pc-t">' + esc(tNow.value) + "</div></div>"
+      + '<div class="zn-pred-col proj"><div class="zn-pc-lab">Projeté au jour J</div>'
+      + '<div class="zn-pc-date">' + esc(dRef) + "</div><div class=\"zn-pc-t\">" + esc(tProj.value) + "</div></div></div>";
+    // Le delta se lit sur les MILIEUX des deux fourchettes, et le dit — comparer deux bornes
+    // basses donnerait un gain flatteur qu'aucune des deux estimations ne promet.
+    if (gagne > 0) h += '<div class="zn-pred-delta">↓ ' + gagne + " min gagnées d’ici la course si le plan tient"
+      + ' <span class="zn-pred-fine">(milieu de fourchette à milieu de fourchette)</span></div>';
+    else h += '<div class="zn-pred-delta neutre">La projection ne promet pas de gain à cet horizon — confiance ' + esc(pj.confidence) + "</div>";
+  } else if (rNow && !rProj) {
+    // LE MOTIF D'UN REFUS DE PROJETER VAUT AUTANT QUE LA PROJECTION (P7/P8) : le silence n'est
+    // pas une information. `pr.projected.motif` N'EXISTE PAS — vérifié sur le moteur réel : le
+    // refus se lit dans `pjRaw.decisions`, un tableau de `{id, what, val, why}`, exactement ce
+    // que lisait l'ancienne carte (`predictionCardHTML`, retirée par ce lot). Ma première
+    // écriture de cette vue inventait un champ `.motif` qui rendait toujours le même texte
+    // générique — jamais la vraie raison du moteur.
+    const refus = pjRaw ? (pjRaw.decisions || []).find((x) => /^P7-refus$|^P8$|^P6-sans-chrono$/.test(x.id)) : null;
+    h += '<div class="load-sub zn-pred-nomotif">Pas de projection à cet horizon' + (refus ? " : " + esc(refus.why) : "") + "</div>";
+  }
+
+  // ── Bloc 3 — détail par discipline ──
+  const dn = _parDiscipline(pr.items), dp = pj ? _parDiscipline(pj.items) : { sw: null, bk: null, rn: null };
+  const lignes = [["sw", "🏊"], ["bk", "🚴"], ["rn", "🏃"]].filter(([k]) => dn[k]);
+  if (lignes.length) {
+    h += '<div class="load-card zn-pred-disc"><div class="eyebrow">Par discipline</div>';
+    lignes.forEach(([k, ic]) => {
+      const a = dn[k], b = dp[k];
+      h += '<div class="zn-pd-row"><span class="zn-pd-ic" aria-hidden="true">' + ic + "</span>"
+        + '<span class="zn-pd-n">' + esc(a.leg) + "</span>"
+        + '<span class="zn-pd-v" data-lo="' + (b ? b.r.lo : a.r.lo).toFixed(2) + '" data-hi="' + (b ? b.r.hi : a.r.hi).toFixed(2) + '"'
+        + ' data-from="' + a.r.lo.toFixed(2) + '">' + esc(_fmtMin((b ? b.r : a.r).lo))
+        + '<span class="zn-pred-hi"> – ' + esc(_fmtMin((b ? b.r : a.r).hi)) + "</span></span></div>";
+    });
+    h += "</div>";
+  }
+
+  // ── Bloc 4 — repliable « pourquoi cette projection » : les références, dans l'ordre de course ──
+  if (pj && pj.refs) {
+    const a = S.answers;
+    const R = [
+      ["CSS natation", a.css, pj.refs.css != null ? _fmtPace(pj.refs.css) + "/100m" : null, "css"],
+      ["FTP cible", a.ftp ? a.ftp + " W" : null, pj.refs.ftp != null ? Math.round(pj.refs.ftp) + " W" : null, "ftp"],
+      ["Allure seuil", a.pace, pj.refs.thrPace != null ? _fmtPace(pj.refs.thrPace) + "/km" : null, "thrPace"],
+    ].filter((x) => x[1] || x[2]);
+    if (R.length) {
+      h += '<details class="load-card zn-pred-why"><summary>💡 Pourquoi cette projection</summary><div>';
+      R.forEach(([lab, av, ap]) => {
+        h += '<div class="kv"><span class="kv-k">' + lab + '</span><span class="kv-v">'
+          + esc(av || "—") + (ap ? " → <b>" + esc(ap) + "</b>" : "") + "</span></div>";
+      });
+      h += '<div class="load-sub" style="margin-top:8px">Calculée sur la progression attendue de tes références '
+        + "si le volume du plan est tenu — pas une promesse, une trajectoire. Confiance " + esc(pj.confidence) + ".</div>";
+      h += "</div></details>";
+    }
+  }
+  return h + "</div>";
+}

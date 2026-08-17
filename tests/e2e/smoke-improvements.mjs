@@ -255,7 +255,12 @@ ok(/Base \+ vie quotidienne/.test(eTxt) && /Entraînement du jour/.test(eTxt) &&
 // R16.6 — les macros passent d'un paragraphe continu à UNE LIGNE PAR MACRO : chaque libellé
 // commence donc par une majuscule. L'assertion devient insensible à la casse — son intention
 // (les fourchettes chiffrées sont affichées) est inchangée, c'est la mise en forme qui a bougé.
-ok(/protéines ~\d+/i.test(eTxt) && /lipides ~\d+/i.test(eTxt) && /glucides ~\d+/i.test(eTxt), "macros indicatives affichées (fourchettes chiffrées)");
+// R-ZENNA v4 — le nom de la macro et sa fourchette vivent désormais dans DEUX cellules d'une
+// ligne `.kv` (intitulé à gauche, valeur à droite). `textContent` les concatène SANS séparateur,
+// donc le rendu lu ici est « Protéines~85–120 g/j » : l'espace littéral ne matche plus. On passe
+// à `\s*` — l'intention est inchangée et reste STRICTE (le nom doit être immédiatement suivi de
+// SA fourchette, pas « protéines quelque part et un nombre ailleurs »).
+ok(/protéines\s*~\d+/i.test(eTxt) && /lipides\s*~\d+/i.test(eTxt) && /glucides\s*~\d+/i.test(eTxt), "macros indicatives affichées (fourchettes chiffrées)");
 ok(/pas un menu/i.test(eTxt) && /pas une consigne/i.test(eTxt), "garde-fous affichés : photographie, pas un menu ni une consigne");
 ok(!/déficit|maigrir|perte de poids|restriction/i.test(eTxt), "aucun vocabulaire de restriction dans la nutrition du jour");
 ok(!/Journal alimentaire/.test(eTxt), "journal alimentaire retiré (décision R6)");
@@ -442,21 +447,81 @@ const proj = await page.evaluate(async () => {
   // R23.7 — la carte Prédiction a DÉMÉNAGÉ dans 🗓 Plan (décision du fondateur du 06/08/2026 :
   // « l'onglet prédiction et charge devrait apparaître dans plan, pas dans aujourd'hui »). Le
   // critère ne change pas de NATURE — il vérifie toujours que l'athlète VOIT les deux
-  // prédictions étiquetées ; il regarde simplement là où elles vivent désormais. Le `textContent`
-  // d'un `<details>` fermé reste lisible : c'est bien la présence qu'on mesure, pas la
-  // visibilité, et c'est ce que ce critère a toujours mesuré.
+  // prédictions étiquetées.
+  // R28 (12/08/2026) — la carte a DÉMÉNAGÉ une seconde fois, dans son propre sous-onglet
+  // « 🎯 Prédiction » de Plan (elle n'apparaît plus dans la vue d'ensemble) : il faut
+  // maintenant CLIQUER pour l'atteindre. Le `textContent` d'un `<details>` fermé À L'INTÉRIEUR
+  // du sous-onglet reste lisible (bloc 4, « pourquoi cette projection ») — c'est toujours la
+  // présence qu'on mesure, pas la visibilité.
   setTab("general");
+  document.querySelector('[data-plansub="pred"]').click();
+  await new Promise((r) => setTimeout(r, 500));
   const txt = document.querySelector("#screen").textContent;
   const p = globalThis.EBV2.predict(S.sport, S.answers, S.currentPlan);
+  // TÉMOIN — `S._planSub` est un état GLOBAL qui survit à ce bloc : sans le remettre à
+  // « overview », les assertions R16 qui suivent (et qui font aussi `setTab("general")`)
+  // retomberaient sur le sous-onglet Prédiction au lieu de la vue d'ensemble qu'elles testent.
+  S._planSub = "overview";
+  setTab("general");
   return { txt, applicable: !!(p.projected && p.projected.applicable), an: d.slice(0, 4),
     conf: p.projected ? p.projected.confidence : "" };
 });
-ok(/Aujourd’hui — ta forme mesurée/.test(proj.txt), "la prédiction « forme actuelle » est étiquetée comme telle");
+ok(/Si la course était aujourd.hui/.test(proj.txt), "la prédiction « forme actuelle » est étiquetée comme telle");
 if (proj.applicable) {
-  ok(/Projeté au \d{2}\/\d{2}\/\d{4}/.test(proj.txt), "la projection porte SA DATE de référence (jamais un chiffre nu)");
-  ok(new RegExp("confiance " + proj.conf).test(proj.txt), "la confiance de la projection est affichée (" + proj.conf + ")");
+  ok(/Projeté au jour J/.test(proj.txt) && new RegExp("\\d{2}/\\d{2}/" + proj.an).test(proj.txt),
+    "la projection porte SA DATE de référence, année comprise (jamais un chiffre nu)");
+  ok(new RegExp("Confiance " + proj.conf).test(proj.txt), "la confiance de la projection est affichée (" + proj.conf + ")");
 } else {
-  ok(/Pas de chrono projeté/.test(proj.txt), "quand on refuse de projeter, le MOTIF est affiché — le silence n'est pas une information");
+  ok(/Pas de projection à cet horizon\s*:\s*\S/.test(proj.txt),
+    "quand on refuse de projeter, le MOTIF RÉEL du moteur est affiché — le silence n'est pas une information, ni un texte générique");
+}
+
+// ---- R30 (280j) — la pace projetée ne se lit jamais comme une régression : les SECONDES
+// comptent, une minute entière ne suffit pas. ----
+//
+// Trouvé sur un écran réel (retour du fondateur, 13/08/2026, écran 70.3 à J-283) : le panneau
+// « Pourquoi cette projection » affichait « 4.42 → 5'/km », lu comme une régression (5:00/km
+// est plus LENT que 4:42/km) — alors que le moteur projetait une allure RÉELLEMENT plus rapide
+// (269,8 s/km, soit 4'30). Vérifié directement contre `predict()`, hors UI, avec le même
+// horizon (280 jours, FTP/pace/CSS déclarés) : le moteur rend un thrPace/css/ftp
+// systématiquement MEILLEUR que le déclaré — le défaut vivait entièrement dans `_fmtMin`
+// (plan-view.js), réutilisée pour une ALLURE alors qu'elle est conçue pour une DURÉE (elle
+// arrondit à la minute ENTIÈRE et efface les secondes). Remplacée par `_fmtPace`, qui rend
+// les secondes comme `fmtPace`/`fmtSec`/`_fmtSec` le font déjà ailleurs dans ce dépôt (R11.1 :
+// même idiome, pas une seconde définition).
+const paceRegr = await page.evaluate(async () => {
+  const { S, ebSave } = await import("./js/state.js");
+  const { setTab } = await import("./js/ui/tabs.js");
+  const d = new Date(Date.now() + 280 * 864e5).toISOString().slice(0, 10); // 280 jours, comme l'écran remonté
+  S.answers.race_date = d;
+  delete S.answers.raceResult;
+  ebSave();
+  setTab("general");
+  document.querySelector('[data-plansub="pred"]').click();
+  await new Promise((r) => setTimeout(r, 500));
+  const why = document.querySelector(".zn-pred-why");
+  if (why) { why.open = true; await new Promise((r) => setTimeout(r, 100)); }
+  const row = why ? [...why.querySelectorAll(".kv")].find((el) => /Allure seuil/.test(el.textContent)) : null;
+  const txt = row ? row.textContent : "";
+  // TÉMOIN — reset pour ne pas polluer les blocs suivants (même piège que le bloc R14 ci-dessus).
+  S._planSub = "overview";
+  setTab("general");
+  return { hasWhy: !!why, txt, declared: S.answers.pace };
+});
+if (paceRegr.hasWhy && /→/.test(paceRegr.txt)) {
+  const ap = (paceRegr.txt.split("→")[1] || "").trim();
+  const declSec = (() => {
+    const m = String(paceRegr.declared).match(/^(\d{1,2})[:.'′](\d{1,2})/);
+    return m ? +m[1] * 60 + +m[2] : null;
+  })();
+  const projMatch = ap.match(/(\d+)'(\d{2})/);
+  ok(!!projMatch, "R30 — la pace projetée porte ses SECONDES (rendu : " + JSON.stringify(ap) + "), jamais un chiffre rond arrondi à la minute");
+  if (projMatch && declSec != null) {
+    const projSec = +projMatch[1] * 60 + +projMatch[2];
+    ok(projSec <= declSec, "R30 — la pace projetée n'est jamais plus LENTE que la pace déclarée (" + projSec + "s projetés ≤ " + declSec + "s déclarés)");
+  }
+} else {
+  info("R30 — pas de projection applicable à cet horizon pour ce profil (rien à vérifier ici)");
 }
 
 // ---- R14.1. La question de structure existe, et le levier poids reste FERMÉ par défaut ----

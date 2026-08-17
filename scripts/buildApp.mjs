@@ -74,9 +74,18 @@ const ORDER = [
   "src/sports/swimrun/index.ts",
   "src/generator/weekBuilder.ts",
   "src/generator/planGenerator.ts",
+  // T-27 — le sceau. Après `renderer` (il lit `ZDEF`) et avant `repairLoop`, qui l'appelle au
+  // point de sortie unique de `generateAudited`.
+  "src/generator/seal.ts",
   "src/generator/repairLoop.ts",
   "src/engine/projection.ts",
   "src/engine/predictor.ts",
+  // B-17 — le prérequis de nage continue. Après `predictor` (il lit `TRI_SWIM`) et après
+  // `sports/swimrun/tables` (il réutilise le seuil de 30 min de `S10_PREREQ`, zéro constante
+  // nouvelle). Ses lecteurs — `reasoningEngine` et `sports/tri` — l'appellent à l'EXÉCUTION,
+  // donc leur rang devant lui n'a pas d'importance : c'est ce que l'ORDER assume déjà pour
+  // `swimrunPrereqBlock`, lu par `reasoningEngine` alors que swimrun vient bien après.
+  "src/engine/swimContinuity.ts",
   // RV — le diagnostic de faisabilité (chrono visé). Après `predictor` : il en importe
   // `riegelExponent`, et après `projection` dont il lit les constantes de régime (P11).
   "src/engine/feasibility.ts",

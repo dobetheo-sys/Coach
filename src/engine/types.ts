@@ -120,6 +120,15 @@ export interface ReasonedPlan {
   maxRunDays: number | null; // run uniquement — plafond de jours d'impact
   medHold: boolean;
   beginner: boolean;
+  /**
+   * O-54 §2 — LE PLAFOND DE SÉANCE DE NAGE, en mètres, DÉRIVÉ DE LA CAPACITÉ DÉMONTRÉE.
+   * `undefined` = pas de plafond de séance (non-débutant). Vaut C15 quand rien n'est déclaré,
+   * et `atteignableM + auxiliaire` dès que `longest_swim_m` est mesurée : C15 cessait de lire la
+   * capacité de NAGE pour lire une auto-évaluation GLOBALE. Voir `swimSessionCapM`.
+   */
+  swimSessionCapM?: number;
+  /** O-56 §1 — le gate de continuité, transmis pour que le plafond de séance SUIVE la semaine. */
+  b17Gate?: import("./swimContinuity.ts").ContinuityGate | null;
   finisher: boolean;
   comp: boolean;
   dbl: boolean;
@@ -149,20 +158,26 @@ export interface ReasonedPlan {
    * POURQUOI, et la question « volume max ? » restait posée comme si elle décidait alors
    * qu'au-delà d'un seuil elle ne décidait plus rien (O-10).
    *
-   * Garder les maillons séparés permet de nommer celui qui a réellement retiré le plus — et
-   * pas simplement le premier qui mord. La différence n'est pas cosmétique : en natation,
-   * `caps` mord en premier (10 h < 14 h demandées) alors que le pic livré est à 3,3 h. Nommer
-   * l'historique là serait faux à 7 h près. Ces valeurs ne changent aucun calcul : elles
-   * rendent le calcul explicable.
+   * Garder les maillons séparés permet au générateur de dire la vérité sur le pic. Les deux
+   * NATURES ne se traitent pas pareil (DOC_UNIQUE §2, 14/08/2026) : les PLAFONDS (declared,
+   * caps, util, c20 — plus la rampe et la sonde structurelle, mesurées côté générateur) sont
+   * PARALLÈLES — un min(), dont l'argmin est CE QUI BORNE, les autres contribuant zéro — et
+   * les FACTEURS (marg, recup, swimTime, med, load) composent réellement, en produit. Ma
+   * première écriture traitait les plafonds en chaîne séquentielle : l'attribution dépendait
+   * de l'ORDRE des appels (permuter caps/util changeait le coupable sur le même plan), et la
+   * « plus grosse baisse » se faisait passer pour « ce qui borne » — un plafond à 13 h annoncé
+   * comme la borne d'un pic à 7,5 h. Ces valeurs ne changent aucun calcul : elles rendent le
+   * calcul explicable, et le record `plan._r202` les expose pour que T-25/T-26 les vérifient.
    */
   volLimits: {
-    declared: number;    // h — `vol_max` tel que l'athlète l'a demandé
+    declared: number;    // h — `vol_max` tel que l'athlète l'a demandé (plafond)
     caps: number;        // h — plafond de l'historique
     util: number;        // h — volume utile du format (au-delà, les heures ne servent plus l'objectif)
     marg: number;        // × — marge de sécurité hors compétition
     recup: number;       // × — 1B : sommeil court / charge de vie lourde
     swimTime: number;    // × — le volume promis se convertit en temps DANS L'EAU
     med: number;         // × — drapeau médical (plan de maintien)
+    c20: number;         // h — plafond STRUCTUREL C20 (nage débutant : nSess × durée C15), 0 si inactif
     sessionsMax: number; // séances/sem déclarées
     budget: number;      // séances/sem retenues (déclaré ∧ implicite du volume)
   };

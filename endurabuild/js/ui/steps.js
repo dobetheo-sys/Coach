@@ -180,6 +180,22 @@ function buildFreeSteps(){
          +'<div class="q"><span class="q-label">Accès à l\'eau libre à l\'entraînement ?</span><div class="opts" data-key="openwater_access">'+opt("toute_annee","Toute l\'année")+opt("saisonnier","En saison seulement")+opt("aucun","Aucun")+'</div></div>'
          +'<div class="q"><span class="q-label">Tu nages 30min (~1200m) sans t\'arrêter ?</span><div class="opts" data-key="swim_continuous">'+opt("oui","Oui")+opt("non","Pas encore")+'</div></div>'
          +'<div class="q"><span class="q-label">Tu cours 30min en continu ?</span><div class="opts" data-key="run_continuous">'+opt("oui","Oui")+opt("non","Pas encore")+'</div></div><div id="prereqB"></div>'
+       : S.sport==="tri"
+       // D3 §1 — LES DEUX QUESTIONS QUE LE GATE B-17 CONSOMME. Elles étaient déclarées au schéma
+       // et POSÉES NULLE PART : la clé était consommée et inrenseignable, ce qu'`audit:sensibilite`
+       // ne détecte pas (il vérifie qu'une clé AGIT, pas qu'on puisse y répondre). Conséquence
+       // mesurée avant correction : 117 profils tri sur 148 rabattus, dont 56 Full → Sprint.
+       ? '<div class="q"><span class="q-label">Quel objectif ?</span><div class="opts" data-key="format">'+fmtOpts+'</div></div>'
+         // D3 — UNE SEULE QUESTION, DEUX CHAMPS DANS LE MÊME `.q`, ET L'INPUT N'EST PAS DANS UNE
+         // BRANCHE. Ma première écriture mettait le nombre dans `branch("lswB", …)` : il n'existe
+         // alors dans le DOM qu'APRÈS le choix « Je la connais », donc la sonde d'U19 — qui
+         // énumère les clés PRÉSENTES, les remplit d'une valeur plausible et retire une clé à la
+         // fois — ne pouvait jamais satisfaire `valid()`. Elle tombait sur son repli « nommer tout
+         // ce qui est vide » et **réclamait « Date (si connue) », une question FACULTATIVE**.
+         // Une clé exigée par `valid()` doit être ATTEIGNABLE dans le même écran, sans quoi la
+         // dérivation d'U19 dégénère — c'est le contrat que R11.1 pose entre les deux.
+         +'<div class="q"><span class="q-label">Ta plus longue nage sans t\'arr\u00eater</span><div class="q-def">En eau libre le risque ne se voit pas avant d\'arriver : pas de mur, pas de fond. C\'est la continuit\u00e9, pas le volume, qui d\u00e9cide le jour J. Bassin accept\u00e9 : le plan tient compte de l\'\u00e9cart avec l\'eau libre.</div><div class="opts" data-key="longest_swim_known">'+opt("oui","Je la connais")+opt("non","Je ne sais pas")+'</div><input type="number" min="50" max="10000" data-input="longest_swim_m" placeholder="800 (m\u00e8tres)"></div>'
+         +'<div class="q"><span class="q-label">O\u00f9 nages-tu ?</span><div class="opts" data-key="milieu">'+opt("bassin","Bassin")+opt("ow","Eau libre")+opt("mixte","Les deux")+'</div></div>'
        : '<div class="q"><span class="q-label">Quel objectif ?</span><div class="opts" data-key="format">'+fmtOpts+'</div></div>')
      +'<div class="q"><span class="q-label">Date (si connue)</span><input type="date" data-input="race_date"></div>';},
    branches(a){
@@ -191,6 +207,8 @@ function buildFreeSteps(){
    },
    valid(a){
      if(S.sport==="trail")return a.intent&&a.race_distance_km&&a.race_dplus_m&&a.race_technicity&&a.race_night;
+     // D3 §1 — obligatoires. « Je ne sais pas » est une réponse VALIDE ; l'absence n'en est pas une.
+     if(S.sport==="tri")return !!(a.intent&&a.format&&a.milieu&&(a.longest_swim_known==="non"||(a.longest_swim_known==="oui"&&a.longest_swim_m)));
      if(S.sport==="swimrun"){
        const block=(globalThis.EBV2&&EBV2.swimrunPrereq)?EBV2.swimrunPrereq(a):null;
        return !!(a.intent&&a.format&&a.team_mode&&a.openwater_access&&a.swim_continuous&&a.run_continuous&&!block);
@@ -621,7 +639,7 @@ async function stravaImport(oauthTok){
           best20=Math.max(best20,bestRollingMean(w,t,1200));
         }catch(e){ /* une sortie illisible n'arrête pas les autres */ }
       }
-      if(best20>0){ftp=Math.round(best20*0.95);ftpSrc="Strava (meilleure moyenne sur 20 min réelles)";}
+      if(best20>0){ftp=(globalThis.EBV2&&EBV2.ftpFromBest20)?EBV2.ftpFromBest20(best20):Math.round(best20*0.95);ftpSrc="Strava (meilleure moyenne sur 20 min réelles)";} // B2 — la règle vit dans le moteur (fitParser.FTP_BEST20_FACTOR) ; le littéral local n'est que le repli hors moteur
       else if(quota)notes.push("FTP non estimée : Strava a limité les requêtes (quota atteint) avant d'avoir lu assez de sorties. Réessaie dans quelques minutes.");
       else if(rides.length)notes.push("FTP non estimée : aucune de tes sorties ne contient 20 minutes continues exploitables. Renseigne-la au Profil, ou fais le test de 20 min.");
       else notes.push("FTP non estimée : pas de capteur de puissance sur tes sorties. Saisis-la, ou fais un test 20min ci-dessus.");
@@ -818,7 +836,11 @@ function refreshNav(){
     const entame=[...root.querySelectorAll(".opts[data-key]")].some(e=>e.querySelector(".opt.sel"))
       ||[...root.querySelectorAll("[data-input]")].some(e=>e.value);
     if(manque.length&&entame){
-      z.textContent="Il manque encore "+(manque.length>1?"— ":"")+manque.map(k=>"« "+libelleDe(k,root)+" »").join(", ");
+      // D3 — DÉDUPLIQUÉ PAR LIBELLÉ : deux clés peuvent vivre dans la MÊME question (« ta plus
+      // longue nage » porte le choix ET le nombre), et la lister deux fois donnerait un message
+      // qui a l'air cassé. On nomme des QUESTIONS à l'athlète, pas des clés.
+      const libs=[...new Set(manque.map(k=>libelleDe(k,root)))];
+      z.textContent="Il manque encore "+(libs.length>1?"— ":"")+libs.map(l=>"« "+l+" »").join(", ");
       z.style.display="";
     } else z.style.display="none";
   }
@@ -906,7 +928,17 @@ function renderStep(){
 function rulesGrouped(rules){let h="";const hs=HEROS.map(id=>rules.find(r=>r.id===id)).filter(Boolean);
   if(hs.length){h+='<div class="bp-heros">';hs.forEach(r=>h+='<div class="bp-hero"><div class="bh-cat">'+r.what+'</div><div class="bh-val">'+r.val+'</div></div>');h+='</div>';}
   CATS.forEach(([c,ic,l])=>{const inc=rules.filter(r=>(RULE_CAT[r.id]||"struct")===c&&!HEROS.includes(r.id)),hic=rules.filter(r=>(RULE_CAT[r.id]||"struct")===c&&HEROS.includes(r.id));if(!inc.length&&!hic.length)return;
-    h+='<div class="bp-cat"><div class="bp-cat-h"><span class="ic">'+ic+'</span>'+l+'</div>';hic.concat(inc).forEach(r=>h+='<div class="bp-decision"><div><div class="bp-what">'+r.what+'</div><div class="bp-val">'+r.val+'</div></div><div class="bp-why">'+r.why+'</div></div>');h+='</div>';});
+    // AUDIT UX 11/08/2026 — LES RÈGLES « HÉROS » ÉTAIENT ÉCRITES DEUX FOIS.
+    // Elles s'affichent dans le bandeau du haut (`.bp-heros`, ce qui pilote le plan) PUIS à
+    // nouveau dans leur catégorie : mesuré, « Performance — chrono cible » et « Marges
+    // resserrées — assumées » apparaissaient chacun 2× sur le même écran, à l'identique.
+    // On garde la ligne dans sa catégorie — c'est elle qui porte le POURQUOI, la seule chose
+    // que le bandeau ne dit pas — mais sa VALEUR n'est plus répétée : elle est juste au-dessus.
+    h+='<div class="bp-cat"><div class="bp-cat-h"><span class="ic">'+ic+'</span>'+l+'</div>';
+    hic.concat(inc).forEach(r=>{const dejaEnHaut=HEROS.includes(r.id);
+      h+='<div class="bp-decision"><div><div class="bp-what">'+r.what+'</div>'
+        +(dejaEnHaut?'':'<div class="bp-val">'+r.val+'</div>')+'</div><div class="bp-why">'+r.why+'</div></div>';});
+    h+='</div>';});
   return h;}
 function renderBlueprint(){
   // Plus de mur de règles : transition visuelle directe vers le plan.

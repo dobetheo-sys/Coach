@@ -16,7 +16,7 @@
 import type { Decision, ReasonedPlan, V1Day, V1Plan, V1Session } from "../engine/types.ts";
 import { scaleStepDose } from "../engine/stepScale.ts";
 import { R6_PAIN_CONTRAINDICATION } from "../engine/constraintMatrix.ts";
-import { renderSess, type Refs } from "../generator/renderer.ts";
+import { renderSess, zoneSpeedRatio, type Refs } from "../generator/renderer.ts";
 import { assessReadiness, type CompletedSession, type ReadinessSnapshot, type ReadinessVerdict, type ReadinessLevel } from "./readinessSource.ts";
 
 export type AdjustAction = "keep" | "reduce" | "replace" | "rest" | "off";
@@ -114,8 +114,16 @@ function enduranceReplacement(disc: string, minutes: number, refs: Refs, hz: Rec
   // A3 (audit v6) — un remplacement de récupération n'est PAS une séance de plan : le
   // plancher C24 (750m) ne s'y applique pas. La distance est DÉRIVÉE des minutes allouées
   // (arrondi à 25m vers le bas) pour ne jamais dépasser la séance qu'elle remplace.
+  //
+  // O-42 — CINQUIÈME SITE DE CONVERSION, et c'est la garde A3 qui l'a trouvé. La distance se
+  // dérivait de l'ancre CSS BRUTE pendant que `stepMin` compte désormais à l'allure de la ZONE :
+  // `sw.easy` étant nagé à ×1,12 du CSS, la séance de remplacement durait 12 % de plus que les
+  // minutes qu'on lui allouait — 23 min demandées, 25 livrées, sur un jour ROUGE, c'est-à-dire
+  // exactement là où l'invariant « jamais plus de minutes qu'avant ajustement » protège
+  // l'athlète. La vitesse vient donc de la même dérivation que partout ailleurs (R11.1).
+  const vSw = zoneSpeedRatio("sw.easy", undefined, "css") ?? 1;
   const s: V1Session = d === "sw"
-    ? { d, name: "Endurance souple (adaptée)", note: why, det: "", steps: [{ role: "body", distanceM: Math.max(200, Math.floor(((minutes * 60) / (baseRefs.css || 130)) * 100 / 25) * 25), zone, d: "sw" }] }
+    ? { d, name: "Endurance souple (adaptée)", note: why, det: "", steps: [{ role: "body", distanceM: Math.max(200, Math.floor(((minutes * 60 * vSw) / (baseRefs.css || 130)) * 100 / 25) * 25), zone, d: "sw" }] }
     : { d, name: "Endurance facile (adaptée)", note: why, det: "", steps: [{ role: "body", durationMin: minutes, zone }] };
   renderSess(s, refs, hz, baseRefs);
   return s;

@@ -844,15 +844,39 @@ test("C30-A", "C30 + C30b allongent la sortie longue des coureurs LENTS — les 
   // 4 allures × 2 enveloppes) — tous en 10 km et en semi, tous chez des coureurs à 5:45 et
   // plus lents. Aucun à 4:30 (le rapide atteignait déjà sa cible), aucun sur marathon (la
   // longue y est au plafond C23 depuis toujours, et c'est C31 qui prend le relais).
+  // QUATRIÈME ÉTAT — B-02, la réallocation du plafond de temps dur (14/08/2026).
+  //
+  // `enforceHardTimeCap` rend désormais en FACILE ce qu'il retire en DUR, et la restitution
+  // remonte jusqu'à la sortie longue par le tail O-21. Quatre profils bougent, trois vers le
+  // haut : `10k/debutant/7:00/6h` **64 → 81**, soit le profil qui gagne le plus de tout ce
+  // chapitre, et c'est exactement la population que C30 existe pour servir (un coureur lent
+  // dont la longue ne préparait pas la durée de sa course). Les deux `10k/debutant/8:30`
+  // passent de 79 à 81 — ils étaient déjà déplacés par C30b, la réallocation ajoute 2 min.
+  //
+  // Le quatrième descend d'une minute (`semi/inter/4:30` **120 → 119**) et il est gardé tel
+  // quel : c'est le COUREUR RAPIDE, celui dont la cible de spécificité est déjà atteinte. Sa
+  // longue ne doit rien à C30 ; elle suit le volume de sa semaine, qui se recompose quand du
+  // dur devient du facile. Une baisse d'une minute sur un témoin qui ne dépend pas de la règle
+  // est le comportement attendu d'une redistribution, pas une régression — l'épingler à 119
+  // plutôt que l'exempter garde la propriété mesurable dans les deux sens.
+  //
+  // CINQUIÈME ÉTAT — O-42, la conversion unique (15/08/2026). Un bloc prescrit en MÈTRES coûte
+  // désormais les minutes de l'allure de sa ZONE et non celles de l'ancre brute : `rn.thr` +2,5 %,
+  // `rn.mara` +10,5 %. Ces minutes-là sont du DUR, donc `enforceHardTimeCap` en rend davantage en
+  // facile, et le tail O-21 les fait remonter à la sortie longue — le mécanisme exact du
+  // quatrième état, réactivé par une cause nouvelle. **Deux témoins bougent, les deux vers le
+  // haut** : `10k/avance/5:45/8h` **59 → 61** et `semi/inter/4:30/8h` **119 → 120**. Les deux
+  // sont des coureurs dont la cible de spécificité est déjà atteinte : ils ne doivent rien à C30,
+  // ils suivent la recomposition de leur semaine. Ré-épinglés avec leur raison, jamais exemptés.
   const attendu = [
     // les 7 profils que C30 déplaçait déjà
-    ["10k", "debutant", "8:30", "6", 79], ["10k", "debutant", "8:30", "8", 79],
+    ["10k", "debutant", "8:30", "6", 81], ["10k", "debutant", "8:30", "8", 81],
     ["semi", "debutant", "8:30", "8", 130], ["semi", "inter", "7:00", "8", 130],
     ["semi", "inter", "8:30", "8", 130], ["semi", "avance", "7:00", "8", 130],
     ["semi", "avance", "8:30", "8", 130],
     // ceux que C30b ajoute — la moitié du gain de ce chapitre est là
-    ["10k", "debutant", "7:00", "6", 64], ["10k", "inter", "7:00", "8", 64],
-    ["10k", "inter", "8:30", "8", 79], ["10k", "avance", "5:45", "8", 59],
+    ["10k", "debutant", "7:00", "6", 81], ["10k", "inter", "7:00", "8", 64],
+    ["10k", "inter", "8:30", "8", 79], ["10k", "avance", "5:45", "8", 61],
     ["semi", "debutant", "7:00", "6", 130], ["semi", "debutant", "8:30", "6", 130],
     // …et LE COUREUR RAPIDE, qui n'est plus un témoin immobile — O-21 l'a bougé, pas C30b.
     // Ces trois-là ne doivent RIEN à la spécificité (leur cible est déjà atteinte) : ils
@@ -860,8 +884,26 @@ test("C30-A", "C30 + C30b allongent la sortie longue des coureurs LENTS — les 
     // le plafond de libellé lui avait prises. Gardés ici, avec cette raison, plutôt que
     // retirés — c'est la seule façon de voir qu'un même chiffre a DEUX causes possibles.
     ["10k", "inter", "4:30", "8", 59], ["5k", "inter", "8:30", "8", 69],
-    ["semi", "inter", "4:30", "8", 120], ["marathon", "inter", "4:30", "8", 180],
+    ["semi", "inter", "4:30", "8", 130], ["marathon", "inter", "4:30", "8", 180],
   ];
+  // SIXIÈME ÉTAT — lot 1, le plafond de dose lit les blocs prescrits en MÈTRES (17/08/2026).
+  // `rn.thr` est prescrit en mètres sur ces profils : le plafond de 40 min y mord désormais, ces
+  // minutes de DUR deviennent du FACILE, et le tail O-21 les fait remonter à la sortie longue.
+  // **Un seul témoin bouge : `semi/inter/4:30/8h`, 120 → 130**, le plafond de format.
+  //
+  // C'est la TROISIÈME fois que ce même témoin bouge — B-02, puis O-42, puis ici — par trois
+  // causes différentes et un mécanisme identique : « une quantité de dur change quelque part ».
+  // Ré-épinglé selon la doctrine du banc (« avec leur raison, jamais exemptés »), et le fondateur
+  // l'a tranché ainsi le 17/08/2026 ; mais il note en même temps ce que trois occurrences
+  // établissent — **un témoin qui bouge à chaque variation de dur n'épingle pas une propriété,
+  // il épingle un état incident**. Rattaché à O-51 comme second candidat à la reformulation sur
+  // la propriété : `C30b-A` teste un déclenchement, celui-ci teste une valeur, et dans les deux
+  // cas la propriété est ailleurs.
+  //
+  // ⚠ CETTE VALEUR SUIT L'ÉTAT DU MOTEUR, PAS UNE DÉCISION INDÉPENDANTE. L'arbitrage Q1 qui
+  // maintient le plafond de dose sur les mètres a été rendu sur des chiffres que j'avais publiés
+  // FAUX (voir RAPPORT_LOT1.md §9) et il est rouvert. S'il est révoqué, ce 130 redevient 120 —
+  // c'est écrit ici pour que personne n'ait à s'en souvenir.
   const bad = [];
   for (const [format, level, pace, vol_max, min] of attendu) {
     const sl = c30Long({ format, level, pace, vol_max });
@@ -870,20 +912,81 @@ test("C30-A", "C30 + C30b allongent la sortie longue des coureurs LENTS — les 
   return { ok: bad.length === 0, detail: bad.join(" ; ") || "les 7 profils déplacés par C30 tiennent leur valeur" };
 });
 
-test("C30b-A", "C30b REDISTRIBUE — la semaine ne grossit pas, et la longue reste sous 70 %", "pass", () => {
+test("C30b-A", "la sortie longue ATTEINT sa cible de spécificité — et C30b, quand elle agit, redistribue", "pass", () => {
   // La permission du fondateur (05/08/2026) est « jusqu'à 70 % du volume de semaine SI
   // NÉCESSAIRE ». Deux moitiés, et la seconde est celle qui compte : c'est une redistribution,
   // pas une charge en plus. Si un jour quelqu'un fait monter la longue sans prendre les minutes
   // ailleurs, ce critère le voit — et il verrait aussi bien l'inverse, une longue qu'on
   // laisserait dépasser la borne.
+  //
+  // O-51 (17/08/2026) — CE CRITÈRE MESURAIT LE DÉCLENCHEMENT D'UNE PASSE, PAS LA PROPRIÉTÉ
+  // QU'ELLE SERT, ET IL EST DEVENU ROUGE POUR LA MEILLEURE DES RAISONS.
+  //
+  // Il exigeait qu'une décision `C30b` soit émise sur ses 4 profils. Le lot 1 (plafond de dose)
+  // a fait qu'un de ces profils atteint sa cible SANS la passe — mesuré, expérience contrôlée,
+  // profil exact du banc, `semi@7:00/6h` :
+  //
+  //        S9 spécifique   S10 pic   S11 pic   décisions C30b
+  //   avant   106 min       129 min   130 min        1
+  //   après   115 min       129 min   130 min        0
+  //
+  // La longue est IDENTIQUE au pic et PLUS LONGUE de 9 min en spécifique. Le critère annonçait
+  // « aucune décision C30b alors que la longue devrait monter » — elle est montée, et davantage.
+  // Il punissait une amélioration.
+  //
+  // La propriété est « la longue atteint sa cible » ; « C30b se déclenche » n'en est qu'un des
+  // chemins. Le critère porte désormais sur la cible, et le mécanisme n'est vérifié que QUAND la
+  // décision existe — les trois moitiés (borne 70 %, chiffre annoncé = chiffre livré, neutralité
+  // en volume) sont inchangées, elles étaient justes.
+  //
+  // ⚠ Le correctif le moins coûteux qui aurait fait passer ce test était d'abaisser `vus < 4` à
+  // `vus < 3` (règle 19). Il ne résout rien : le critère ne mesurerait toujours pas la bonne
+  // grandeur, et il rougirait de nouveau au profil suivant qui s'améliore. La contre-preuve
+  // exigée par l'arbitrage — ROUGE sur un état où la longue N'ATTEINT PAS sa cible — est ce qui
+  // distingue une reformulation d'un moyen de faire disparaître un rouge ; elle se fabrique en
+  // MUTANT la cible, pas en attendant qu'un profil la rate.
+  //   EB_C30B_MUTE=x  multiplie la longue LUE par x — un moteur qui sous-livre. `0.9` doit
+  //                   rendre ce critère ROUGE ; c'est la contre-preuve, elle est reproductible.
+  const mut = Number(process.env.EB_C30B_MUTE || 1) || 1;
   const bad = [];
-  let vus = 0, partMax = 0;
+  let vus = 0, partMax = 0, ciblesVues = 0, ciblesTenues = 0, cibleMord = 0;
   for (const [format, pace, vol_max] of [["10k", "8:30", "8"], ["10k", "7:00", "6"], ["semi", "8:30", "8"], ["semi", "7:00", "6"]]) {
     const p = E.buildPlan("run", { ...profile("run"), intent: "competition", med_pain: "non", med_dizzy: "non",
       med_treat: "non", injury: "aucune", sessions_max: "5", dispo: "quotidienne", doubles: "oui",
       pace_known: "oui", vol_recent: "3", terrain: "route", format, pace, vol_max });
+
+    // ── VOLET 1 — LA PROPRIÉTÉ : la longue livrée atteint sa cible, ou son plafond de séance.
+    //
+    // Les DEUX grandeurs viennent du moteur, jamais d'une seconde écriture dans le banc (R11.1) :
+    //   · la cible, par `EBV2.longRunSpecTarget` (exposée pour ça, O-51) ;
+    //   · le plafond, LU SUR LE PLAN LIVRÉ — c'est le `bnd.cap` du bloc de corps de la longue,
+    //     exactement la valeur que la passe emploie. Le lire plutôt que le déclarer est ce qui
+    //     empêche ce critère de redevenir une liste de valeurs épinglées (règle 15).
+    //
+    // ⚠ MA PREMIÈRE ÉCRITURE UTILISAIT `E.parseChronoSec(pace)` : c'est le parseur de CHRONO, il
+    // lit « 8:30 » comme 8 h 30 et rend 30 600. Les cibles sortaient à **6 466 min** et les quatre
+    // profils étaient rouges — un critère peut échouer parce que le moteur a tort ou parce que
+    // l'instrument a tort, et l'échec a exactement la même tête. `parsePaceSec` est désormais
+    // exposé à côté (O-51) : le banc n'a plus le choix entre deux parseurs dont un est faux ici.
+    const thr = E.parsePaceSec(pace);
+    const spec = E.longRunSpecTarget(format, thr, Number(vol_max));
+    let lg0 = null;
+    p.weeks.forEach((w) => w.days.forEach((d) => d.sessions.forEach((x) => { if (x.long && !x.race && (x.min || 0) > (lg0 ? lg0.min : 0)) lg0 = x; })));
+    const corps0 = lg0 ? (lg0.steps || []).filter((st) => st.role === "body" && st.durationMin != null) : [];
+    const capSeance = corps0.length === 1 && corps0[0].bnd ? corps0[0].bnd.cap : Infinity;
+    if (spec && spec.target > 0 && lg0) {
+      ciblesVues++;
+      if (spec.target <= capSeance) cibleMord++;   // ici la CIBLE décide, pas le plafond
+      const attendu = Math.min(spec.target, capSeance);
+      const livre = Math.round((lg0.min || 0) * mut);
+      // Tolérance de 2 min : les donneuses peuvent être à leur plancher (mesuré, 2 profils sur 96
+      // manquent de 2 min — publié en livrant C30b, ce n'est pas une dérive nouvelle).
+      if (livre + 2 >= attendu) ciblesTenues++;
+      else bad.push(`${format}@${pace}/${vol_max}h : longue ${livre} min pour ${Math.round(attendu)} attendus (cible ${spec.target}, plafond de séance ${capSeance === Infinity ? "—" : capSeance})`);
+    }
+
+    // ── VOLET 2 — LE MÉCANISME, uniquement quand la décision existe.
     const dec = ((p._v2 || {}).decisions || []).filter((d) => d.id === "C30b");
-    if (!dec.length) { bad.push(`${format}@${pace}/${vol_max}h : aucune décision C30b alors que la longue devrait monter`); continue; }
     vus += dec.length;
     for (const d of dec) {
       const num = Number((/sem\. (\d+)/.exec(String(d.what)) || [])[1]);
@@ -909,8 +1012,23 @@ test("C30b-A", "C30b REDISTRIBUE — la semaine ne grossit pas, et la longue res
       if (decl > 0 && tot > 1.05 * decl) bad.push(`${format}@${pace} S${num} : ${Math.round(tot)} min prescrites pour ${Math.round(decl)} annoncées — C30b a AJOUTÉ au lieu de déplacer`);
     }
   }
-  if (vus < 4) bad.push(`seulement ${vus} décision(s) observée(s) — l'échantillon ne prouve rien`);
-  return { ok: bad.length === 0, detail: bad.join(" ; ") || `${vus} décisions, part max ${Math.round(partMax)} % (permission 70 %)` };
+  // NON-VACUITÉ — déplacée sur une propriété de l'ATHLÈTE et non sur le chemin du moteur.
+  // L'ancienne version comptait les DÉCISIONS : elle devenait donc vacue (et rouge) dès que le
+  // moteur atteignait la cible autrement. Ce qu'il faut garantir, c'est que l'échantillon pose
+  // de vraies questions — c'est-à-dire que ces coureurs ONT une cible de spécificité, ce qui ne
+  // dépend que de leur allure et de leur format.
+  if (ciblesVues < 4) bad.push(`seulement ${ciblesVues} cible(s) de spécificité sur 4 profils — l'échantillon ne prouve rien`);
+  // …et il faut qu'au moins deux profils soient décidés par la CIBLE et non par le plafond, sans
+  // quoi le critère ne testerait jamais que `C30-B` sous un autre nom. Mesuré : les deux 10 km
+  // (cible 79 et 64 pour un plafond de 90) contre les deux semis (cible 176 et 145 pour un
+  // plafond de 130). C'est une propriété de l'athlète et du format — elle ne dépend d'aucun
+  // chemin du moteur, donc elle ne peut pas devenir vacue parce que le moteur s'améliore.
+  if (cibleMord < 2) bad.push(`seulement ${cibleMord} profil(s) où la cible mord avant le plafond — le critère ne testerait que C30-B`);
+  return {
+    ok: bad.length === 0,
+    detail: bad.join(" ; ")
+      || `${ciblesTenues}/${ciblesVues} atteintes (dont ${cibleMord} décidées par la cible) · ${vus} décision(s) C30b · part max ${Math.round(partMax)} % (permission 70 %)`,
+  };
 });
 
 test("C30-B", "un plancher de spécificité ne passe JAMAIS devant un plafond de sécurité", "pass", () => {

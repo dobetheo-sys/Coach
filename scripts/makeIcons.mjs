@@ -1,7 +1,13 @@
 /**
  * makeIcons — icônes PNG de la PWA, zéro dépendance (zlib natif + CRC32 maison).
- * Reproduit le logo du favicon SVG : triangle rouge + triangle intérieur sombre
- * sur fond papier. Génère assets/icon-192.png et assets/icon-512.png.
+ *
+ * R-ZENNA v7 — IL NE DESSINE PLUS RIEN LUI-MÊME. Il peignait un triangle rouge sur fond
+ * CRÈME : l'ancienne direction artistique, et la seule surface où elle restait INSTALLÉE chez
+ * les gens (l'icône sur l'écran d'accueil du téléphone, l'onglet du navigateur). Il lit
+ * désormais `endurabuild/js/ui/brand.js` — la même source que l'en-tête, l'accueil et la carte
+ * de partage. Quand le vrai logo y sera posé, `npm run make:icons` suffit.
+ *
+ * Génère assets/icon-192.png et assets/icon-512.png.
  */
 import { writeFileSync, mkdirSync } from "node:fs";
 import { deflateSync } from "node:zlib";
@@ -50,20 +56,25 @@ function png(size, pixelFn) {
   ]);
 }
 
-const inTriangle = (px, py, ax, ay, bx, by, cx, cy) => {
-  const s = (ax - cx) * (py - cy) - (ay - cy) * (px - cx);
-  const t = (bx - ax) * (py - ay) - (by - ay) * (px - ax);
-  const u = (cx - bx) * (py - by) - (cy - by) * (px - bx);
-  return (s >= 0 && t >= 0 && u >= 0) || (s <= 0 && t <= 0 && u <= 0);
-};
-// même géométrie que le favicon SVG (viewBox 0-100) + marge maskable
+const { MARQUE, dansSymbole } = await import("../endurabuild/js/ui/brand.js");
+const rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const FOND = rgb(MARQUE.fondIcone), ENCRE = rgb(MARQUE.encre);
+
+// R-ZENNA v9 — PLUS DE TUILE : le logo est une SILHOUETTE orange sur fond sombre, exactement
+// comme le fichier fourni par le fondateur. On garde une marge (les lanceurs Android rognent
+// jusqu'à 10 % de chaque bord sur une icône « maskable ») et on échantillonne le symbole en
+// 2×2 par pixel : les bords du tracé sont courbes, et sans ce lissage l'icône crénèle à 192 px.
+const M = 16, S0 = M, S1 = 100 - M;
 const pixel = (u, v) => {
   const x = u * 100, y = v * 100;
-  if (inTriangle(x, y, 50, 20, 84, 79, 16, 79)) {
-    if (inTriangle(x, y, 50, 38, 71, 73, 29, 73)) return [12, 16, 22]; // #0c1016
-    return [230, 57, 70]; // #e63946
+  let n = 0;
+  for (const [dx, dy] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) {
+    const sx = ((x + dx - S0) / (S1 - S0)) * 100, sy = ((y + dy - S0) / (S1 - S0)) * 100;
+    if (sx >= 0 && sx <= 100 && sy >= 0 && sy <= 100 && dansSymbole(sx, sy)) n++;
   }
-  return [241, 234, 219]; // #f1eadb papier
+  if (!n) return FOND;
+  const a = n / 4;
+  return [0, 1, 2].map((i) => Math.round(ENCRE[i] * a + FOND[i] * (1 - a)));
 };
 
 mkdirSync(join(root, "endurabuild", "assets"), { recursive: true });

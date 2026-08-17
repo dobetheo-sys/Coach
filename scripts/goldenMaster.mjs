@@ -25,10 +25,38 @@
  * Normalisation : les dates calendaires sont retirées (un plan démarre le lundi courant —
  * sinon la photo périmerait chaque jour), les flottants sont arrondis, les clés triées.
  * Ce qui reste est exactement ce qu'un athlète lit : structure, séances, textes, décisions.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * NOTE DE RECAPTURE — 17/08/2026, lot 1 (plafond de dose sur les blocs prescrits en MÈTRES).
+ *
+ * **CETTE PHOTO ENCODE UN EFFET O-43 DE MAGNITUDE CONNUE.** Elle est conservée en le sachant,
+ * décision du fondateur, plutôt que subie — c'est la forme d'une dette à condition de sortie :
+ * un état connu-faux, quantifié, et réversible parce qu'on sait exactement ce qu'il contient.
+ *
+ *   effet DIRECT du plafond sur le volume ......... NUL
+ *       réallocation vérifiée : aucun plan ne livre au-dessus de sa cible, 62 profils sur 65
+ *       collent à leur courbe aussi bien qu'avant (critère n°3 d'O-44, vert)
+ *   effet INDIRECT, par la boucle O-43 ............ nage −1 420 min sur 38 profils, 0 hausse,
+ *       jusqu'à −7,6 min/semaine · volume total −417 min, entièrement porté par la COURBE
+ *
+ * Le mécanisme, mesuré (`npm run mesure:lot1-ampleur`) : le livré colle à sa courbe dans les
+ * deux états, c'est la courbe qui a baissé. La sonde de capacité V2.1 lit un clone SATURÉ de la
+ * semaine LIVRÉE — moins de dur livré, capacité mesurée plus basse, courbe plus basse.
+ *
+ * **C'est O-43 à l'identique, et dans l'autre sens qu'O-42** : O-42 faisait compter les minutes
+ * de nage plus haut → la sonde lisait plus de capacité → la courbe montait ; lot 1 fait livrer
+ * moins de dur → la sonde lit moins → la courbe baisse. Même boucle, deux directions. La baisse
+ * de nage n'est donc pas une propriété du plafond : c'est une propriété d'un défaut ouvert que
+ * le plafond DÉCLENCHE.
+ *
+ * LE JOUR OÙ O-43 SERA TRAITÉ, LE DIFF ATTENDU EST LE RETOUR DE CES QUANTITÉS. Il est connu
+ * d'avance, donc il ne sera pas à re-diagnostiquer.
+ * ─────────────────────────────────────────────────────────────────────────────────────────
  */
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import "../src/app/bridge.ts"; // définit globalThis.EBV2 — le MÊME chemin que l'app
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -36,7 +64,19 @@ const HASHES = join(ROOT, "golden", "hashes.json"); // versionné
 const FULL = join(ROOT, "golden", "plans.full.json"); // local, ignoré par git
 const sha = (s) => createHash("sha256").update(s).digest("hex").slice(0, 16);
 const mode = process.argv.includes("--capture") ? "capture" : process.argv.includes("--verify") ? "verify" : null;
-if (!mode) {
+/**
+ * ADDENDUM 01 — LA POPULATION DU GOLDEN EST DÉSORMAIS IMPORTABLE.
+ *
+ * `T-19` doit se mesurer « sur le golden 945 », et l'addendum interdit explicitement de créer
+ * une seconde population à côté (§9). Deux issues étaient possibles : recopier l'espace de
+ * profils dans le banc — deux définitions du catalogue, donc deux vérités le jour où l'une
+ * bouge, c'est R11.1 —, ou rendre celle-ci importable. La seconde, évidemment.
+ *
+ * Ce fichier reste un EXÉCUTABLE : la garde d'usage ne s'applique donc qu'au lancement direct.
+ * Importé, il n'exporte que `profiles()` et ne prend aucune décision.
+ */
+const LANCE_DIRECTEMENT = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (!mode && LANCE_DIRECTEMENT) {
   console.error("usage : node scripts/goldenMaster.mjs --capture | --verify");
   process.exit(2);
 }
@@ -67,6 +107,13 @@ const swimrunExtras = () => ({
   swim_total_m: "7850", run_total_km: "33", race_dplus_m: "900", segments_n: "20",
   longest_swim_m: "1400", water_temp_c: "16", team_mode: "binome", openwater_access: "saisonnier",
 });
+// D3 §1 — LES DEUX CLÉS QUE LE GATE B-17 CONSOMME. Sans elles, les 148 profils tri échouaient
+// TOUS au gate quelle que soit la qualité du correctif, et le golden aurait dit éternellement que
+// le gate bloque tout — une photo de l'instrument, pas du produit. 2 000 m à 1'55/100 m valent
+// 38 min de continuité : le gate est satisfait sur les QUATRE formats, donc la passe principale
+// photographie des plans NORMAUX. Les trois branches de la conséquence graduée ont leur propre
+// sous-passe (« B17 » plus bas) — sans quoi le golden ne verrait qu'une branche sur trois.
+const triExtras = () => ({ longest_swim_known: "oui", longest_swim_m: "2000", milieu: "bassin" });
 const trailExtras = () => ({
   race_distance_km: "62", race_dplus_m: "3200", race_technicity: "technique", race_night: "partielle",
   train_dplus_access: "collines", treadmill: "non", poles: "a_decider", vam_known: "oui", vam: "850",
@@ -97,7 +144,7 @@ function* profiles() {
       for (const history of HISTORIES) {
         for (const level of LEVELS) {
           for (const intent of INTENTS) {
-            const a = { ...base(), format, history, level, intent, ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : {}) };
+            const a = { ...base(), format, history, level, intent, ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : sport === "tri" ? triExtras() : {}) };
             yield { key: [sport, format || "-", history, level, intent].join("/"), sport, a };
           }
         }
@@ -134,7 +181,20 @@ function* profiles() {
     // profils, rien n'empêcherait leur effet de disparaître à nouveau en silence.
     ["dispo-weekend", { dispo: "weekend" }],
     ["dispo-partielle", { dispo: "partielle" }],
-    ["cycle", { sex: "F", cycle_sync: "oui", cycle_start: "2026-07-27", cycle_len: "28" }],
+    // `plan_start` est OBLIGATOIRE ici, et c'est le seul profil de cette passe dans ce cas :
+    // c'est le seul dont le CONTENU dépend de dates calendaires absolues (`phaseOf` lit le jour
+    // du cycle sur la date de chaque jour du plan). Sans ancre, `weekBuilder` retombe sur
+    // `Date.now()` (ligne 278) et l'alignement des phases glisse avec l'ancre. MESURÉ, et pas
+    // au jugé : les empreintes des 10, 11 et 12/08 sont IDENTIQUES, celle du 17/08 diffère —
+    // la grille se cale sur le LUNDI de la semaine d'ancrage, donc les sept empreintes
+    // `*/cycle` changent une fois PAR SEMAINE, pas chaque nuit. `golden:verify` — un gate de
+    // CI — sortait donc rouge tous les lundis sans qu'aucun code n'ait bougé, ce qui est plus
+    // pernicieux qu'un rouge quotidien : ça ressemble à une régression du lot en cours.
+    // Huitième occurrence de la famille R20.7.
+    // La valeur est le lundi de `cycle_start` : jour 1 du plan = jour 1 du cycle, et A-6 a
+    // tranché que les dates du golden restent ABSOLUES (un golden doit être reproductible,
+    // pas suivre le calendrier).
+    ["cycle", { sex: "F", cycle_sync: "oui", cycle_start: "2026-07-27", cycle_len: "28", plan_start: "2026-07-27" }],
     ["poids-levier", { weight_lever: "oui", weight: "82" }],
   ];
   for (const [sport, fmts] of Object.entries(FORMATS)) {
@@ -144,7 +204,7 @@ function* profiles() {
       const sub = fmtOver && fmtOver[sport];
       const a = { ...base(), format: typeof sub === "string" ? sub : format,
         history: "confirme", level: "inter", intent: "competition",
-        ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : {}), ...over,
+        ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : sport === "tri" ? triExtras() : {}), ...over,
         ...(sub && typeof sub === "object" ? sub : {}) };
       yield { key: ["G", sport, format || "-", label].join("/"), sport, a };
     }
@@ -162,7 +222,7 @@ function* profiles() {
     const format = fmts[fmts.length - 1];
     for (let k = 0; k < RACE_PASS_DATES.length; k++) {
       const a = { ...base(), format, history: "confirme", level: "inter", intent: "competition",
-        ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : {}),
+        ...(sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : sport === "tri" ? triExtras() : {}),
         plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[k] };
       yield { key: ["J", sport, format || "-", JOURS[k]].join("/"), sport, a };
     }
@@ -226,6 +286,52 @@ function* profiles() {
           plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[6] };
         yield { key: ["PW", sport, format, terrain].join("/"), sport, a };
       }
+    }
+  }
+
+  // ---- Sous-passe « continuité de nage » (B-17 / D3) -----------------------
+  // LA PASSE PRINCIPALE NE VOIT QU'UNE BRANCHE SUR TROIS. `triExtras()` satisfait le gate sur les
+  // quatre formats — c'est voulu (les plans normaux doivent être photographiés) —, mais la
+  // conséquence graduée de D3 en a DEUX autres, et ce sont elles qui décident du format livré :
+  //   · déclaration basse, écart NON franchissable → rabattement, avec sa raison chiffrée ;
+  //   · déclaration basse, écart FRANCHISSABLE     → format DEMANDÉ conservé + progression ;
+  //   · « je ne sais pas » explicite               → ni satisfait, ni rabattu.
+  // Sans cette sous-passe, le golden laisserait passer une régression qui ferait rabattre TOUT le
+  // monde (le défaut D3 lui-même) ou plus PERSONNE — cinquième occurrence de l'angle mort d'A-2,
+  // et la première où on le referme dans le même commit que la règle qu'il doit surveiller.
+  // ⚠ LA DATE DE COURSE EST NÉCESSAIRE, ET MA PREMIÈRE ÉCRITURE A PRIS LA MAUVAISE. Elle
+  // reprenait `RACE_PASS_DATES[6]` — 75 semaines après l'ancre —, et sur une travée pareille la
+  // rampe C22 atteint 40 000 m : AUCUN profil n'était non-franchissable, la sous-passe rendait
+  // **0 rabattement sur 20**, et je venais d'écrire dans le commentaire ci-dessus qu'elle refermait
+  // l'angle mort d'A-2. Un taux SATURÉ (0 %) accuse l'instrument — le test de dépistage de la
+  // règle 15, sur la fixture censée fermer le trou. La date est donc l'HORIZON MINIMAL de chaque
+  // format (`MIN_WEEKS.tri`), le seul endroit où la franchissabilité discrimine.
+  // ⚠ ET ELLE NE CROISAIT PAS LE NIVEAU — sixième occurrence d'A-2, trouvée en livrant O-54 §2.
+  // La sous-passe portait bien les continuités BASSES (100 m, 400 m, « je ne sais pas »), mais
+  // toutes en `level: "inter"`. Or la branche que C15 vient de recevoir se lit sur le CROISEMENT
+  // `débutant × continuité` : les 36 profils `debutant` tri du corpus principal déclarent TOUS
+  // `longest_swim_m: 2000`, donc **aucun vrai débutant nageur n'existait dans le golden** et la
+  // moitié protectrice du correctif n'y était exercée par personne. Une première écriture qui
+  // retirait la protection (séance de 4 150 m à qui déclare 400 m) serait passée verte.
+  //
+  // Le corpus a été construit pour couvrir des FORMATS et des NIVEAUX, pas les BRANCHES des règles
+  // qui les lisent : chaque fois qu'une règle apprend à lire une nouvelle clé, il devient muet sur
+  // son domaine — et il l'est en silence, parce qu'un corpus incomplet rend des résultats verts.
+  // `npm run couverture:golden` mesure ce trou au lieu de compter sur la vigilance.
+  const B17_DATES = { S: "2026-03-01", M: "2026-03-29", "70.3": "2026-05-24", Full: "2026-09-13" };
+  for (const format of ["S", "M", "70.3", "Full"]) {
+    for (const niveau of ["inter", "debutant"]) {
+    for (const [label, over] of [
+      ["basse-100m", { longest_swim_known: "oui", longest_swim_m: "100" }],
+      ["basse-400m", { longest_swim_known: "oui", longest_swim_m: "400" }],
+      ["inconnue", { longest_swim_known: "non" }],
+      ["absente", {}],
+      ["eau-libre", { longest_swim_known: "oui", longest_swim_m: "2000", milieu: "ow" }],
+    ]) {
+      const a = { ...base(), format, history: "confirme", level: niveau, intent: "competition",
+        milieu: "bassin", plan_start: RACE_PASS_START, race_date: B17_DATES[format], ...over };
+      yield { key: ["B17", "tri", format, niveau, label].join("/"), sport: "tri", a };
+    }
     }
   }
 
@@ -295,6 +401,10 @@ function canon(v) {
   return v;
 }
 
+/** La taille du corpus, ÉPINGLÉE. Elle ne se déduit pas de `hashes.json` : une photo tronquée
+ *  et un balayage tronqué se valideraient mutuellement. */
+const POPULATION = 989;
+
 function snapshot() {
   const snap = {};
   let n = 0, errors = [], refus = [];
@@ -318,6 +428,10 @@ function snapshot() {
   }
   return { snap, n, errors, refus };
 }
+
+export { profiles, snapshot, canon };
+
+if (!LANCE_DIRECTEMENT) { /* importé pour ses profils : on s'arrête ici */ } else {
 
 const { snap, n, errors, refus } = snapshot();
 if (refus.length) {
@@ -367,7 +481,32 @@ for (const k of keys) {
     k,
     why: full ? firstDiff(full[k], snap[k], "") ?? "empreinte différente, contenu identique (?)"
       : "empreinte " + ref[k] + " → " + hashes[k] + " (photo locale absente : impossible de localiser)",
+    // O-52 — L'AMPLEUR À CÔTÉ DE LA LOCALISATION. `firstDiff` rend le PREMIER écart, et c'est
+    // le bon choix pour corriger ; mais c'était la SEULE sortie, donc c'est elle qu'on agrège
+    // quand on veut savoir « combien ça bouge » — et on publie alors la médiane de N *premiers*
+    // écarts en croyant tenir celle du mouvement. C'est arrivé, sur le lot 1, et le chiffre faux
+    // a fondé un arbitrage. Un outil qui n'a qu'une réponse la verra reprise pour l'autre
+    // question : il en a deux désormais.
+    ampleur: full ? countDiff(full[k], snap[k]) : null,
   });
+}
+
+/**
+ * O-52 — COMBIEN de champs bougent, et de combien au plus.
+ * Complément strict de `firstDiff` : celle-ci répond « où », celle-ci « combien ». Le plus grand
+ * écart n'est rendu que sur les feuilles NUMÉRIQUES — un changement de chaîne n'a pas d'amplitude,
+ * et lui en inventer une (longueur, distance d'édition) serait une grandeur voisine de plus.
+ */
+function countDiff(a, b, out) {
+  out = out || { n: 0, max: 0, ou: "" };
+  if (JSON.stringify(a) === JSON.stringify(b)) return out;
+  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") {
+    out.n++;
+    if (typeof a === "number" && typeof b === "number" && Math.abs(b - a) > out.max) out.max = Math.abs(b - a);
+    return out;
+  }
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) countDiff(a[k], b[k], out);
+  return out;
 }
 
 /** Chemin du premier écart : « où » compte plus que « combien » pour corriger. */
@@ -386,12 +525,42 @@ function firstDiff(a, b, path) {
 }
 
 if (!diffs.length) {
-  console.log("✓ golden master : " + n + " profils, 0 écart" + (errors.length ? " (mais " + errors.length + " erreur(s) de génération)" : ""));
+  // UN ZÉRO A BESOIN DE SA POPULATION (arbitrage du fondateur, 17/08/2026). « 0 écart » est le
+  // résultat ATTENDU de ce gate : l'heuristique « un taux saturé accuse l'instrument » ne peut
+  // donc pas se déclencher ici — la valeur saturée EST la valeur du succès, et l'échec de la
+  // mesure est indiscernable de sa réussite à la lecture. Si une régression faisait comparer
+  // ZÉRO profil, la sortie serait « 0 profils, 0 écart » : verte, et lue comme verte. On assert
+  // donc que la MESURE A EU LIEU, séparément de son résultat.
+  if (n !== POPULATION) {
+    console.error("✖ golden master : " + n + " profils comparés, " + POPULATION + " attendus.");
+    console.error("   Le corpus a changé de taille — le « 0 écart » ne prouve rien tant que ce compte n'est pas rétabli");
+    console.error("   (ou POPULATION mise à jour DANS LE MÊME COMMIT, avec la raison).");
+    process.exit(1);
+  }
+  console.log("✓ golden master : " + n + "/" + POPULATION + " profils, 0 écart" + (errors.length ? " (mais " + errors.length + " erreur(s) de génération)" : ""));
   process.exit(errors.length ? 1 : 0);
 }
 console.error("✖ golden master : " + diffs.length + " écart(s) sur " + n + " profils");
-for (const d of diffs.slice(0, Number(process.env.GOLDEN_SHOW||12))) console.error("   " + d.k + "\n      " + d.why);
-if (diffs.length > 12) console.error("   … et " + (diffs.length - 12) + " autre(s)");
+const show = Number(process.env.GOLDEN_SHOW || 12);
+for (const d of diffs.slice(0, show)) {
+  const a = d.ampleur;
+  console.error("   " + d.k + (a ? "   [" + a.n + " champ(s) en écart" + (a.max ? ", plus grand écart numérique " + (Math.round(a.max * 1000) / 1000) : "") + "]" : ""));
+  console.error("      " + d.why);
+}
+if (diffs.length > show) console.error("   … et " + (diffs.length - show) + " autre(s)");
+// O-52 — L'AGRÉGAT, pour que « combien ça bouge » ne se lise plus dans la liste des « où ».
+const amp = diffs.map((d) => d.ampleur).filter(Boolean);
+if (amp.length) {
+  const tri = (f) => amp.map(f).sort((x, y) => x - y);
+  const ch = tri((a) => a.n), mx = tri((a) => a.max);
+  const med = (l) => l[Math.floor(l.length / 2)], p90 = (l) => l[Math.min(l.length - 1, Math.floor(l.length * 0.9))];
+  console.error("\nAMPLEUR (et non localisation — les deux ne répondent pas à la même question) :");
+  console.error("   champs en écart par profil : médiane " + med(ch) + " · p90 " + p90(ch) + " · max " + ch[ch.length - 1]
+    + "   (total " + ch.reduce((t, x) => t + x, 0) + ")");
+  console.error("   plus grand écart numérique : médiane " + med(mx) + " · p90 " + p90(mx) + " · max " + mx[mx.length - 1]);
+}
 console.error("\nUn écart = l'extraction est fausse. Si le changement est VOULU, recapturer");
 console.error("explicitement (`--capture`) pour qu'il apparaisse dans le diff git.");
 process.exit(1);
+
+}

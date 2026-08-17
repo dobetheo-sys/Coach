@@ -139,7 +139,10 @@ ok(await page.locator("#ckSlide").count() === 0, "le diaporama disparaît après
 const screenTxt = await page.locator("#screen").textContent();
 ok(/Aujourd’hui/.test(screenTxt), "carte « Aujourd'hui » (séance du jour) affichée en premier");
 ok(/Prédiction de course|prédiction/i.test(screenTxt) || true, "prédiction présente sous la séance");
-ok(/Charge estimée/.test(screenTxt), "courbe charge/fatigue/forme présente");
+// B1 — le graphe vient du moteur désormais : le titre a changé AVEC le modèle, et
+// l'assertion vérifie aussi que l'ancien vocabulaire (Fitness/CTL) a bien disparu.
+ok(/Charge par intensité/.test(screenTxt), "graphe de charge (classificateur moteur) présent");
+ok(!/Fitness \(CTL\)|fatigue · forme/.test(screenTxt), "l'ancien modèle CTL/ATL/Forme a disparu de l'écran");
 // R23.7 / R23.9 — L'AVANCEMENT ET LES INTENSITÉS ONT DÉMÉNAGÉ DANS 🗓 PLAN (décision du
 // fondateur du 06/08/2026). Les critères ne changent pas de nature — ils vérifient toujours que
 // ces informations EXISTENT et sont atteignables ; ils regardent où elles vivent désormais. Les
@@ -172,16 +175,30 @@ ok(await page.locator("details .load-title:has-text('Adaptations quotidiennes')"
 // pouvoir COCHER une séance faite ET voir la vue d'ensemble, sans changer d'onglet.
 const tabs = await page.locator("#ebTabbar .tabbtn").all();
 await tabs[1].click(); await page.waitForTimeout(300);
-// U15 — l'onglet s'ouvre sur la SEMAINE EN COURSE seule (56 % de sa hauteur était fait de
-// semaines dépliées qu'on ne regarde pas). Ce que ce critère mesure ne change pas : depuis
-// 🗓 Plan seul, on doit voir une grille cochable ET la vue d'ensemble de la saison. C'est le
-// NOMBRE de grilles ouvertes d'office qui a changé, pas ce qui est atteignable.
-ok(await page.locator("#screen .gw-grid").count() === 1, "Plan ouvre sur la semaine en cours (1 grille)");
+// R-ZENNA v6 — CE BLOC ENCODAIT LE CRITÈRE D'ACCEPTATION DE R16.9 : « depuis 🗓 Plan seul, on
+// doit pouvoir COCHER une séance ET voir la vue d'ensemble, sans changer d'onglet ». Le
+// fondateur a tranché l'inverse le 11/08/2026 (suivre la maquette) : la grille quitte la vue
+// par défaut de Plan, qui garde un RÉSUMÉ et un bouton vers 📅 Semaine.
+//
+// Les critères sont donc RÉÉCRITS sur la nouvelle décision, pas supprimés — et ce qu'ils
+// protégeaient vraiment est conservé : la coche et le ⇄ n'ont pas DISPARU, ils ont déménagé, et
+// ils restent à un seul geste. C'est cette dernière moitié qui compte : une décision de mise en
+// page ne doit pas rendre un geste inatteignable.
+ok(await page.locator("#screen .gw-grid").count() === 0, "Plan n'affiche plus de grille par défaut (elle vit dans 📅 Semaine)");
 ok(await page.locator("#screen .ph-line").count() === 1 && await page.locator("#screen .vol-bars").count() === 1,
-  "…et la vue d'ensemble de la saison est sur le même écran (frise + courbe)");
-ok(await page.locator("#allW").count() === 1, "…et les autres semaines sont à un bouton");
-ok(await page.locator("#screen .doneBtn").count() > 0, "la coche ✓ d'une séance est atteignable depuis Plan");
-ok(await page.locator("#screen [data-swap]").count() > 0, "l'échange de jours ⇄ a survécu à la fusion");
+  "…et la vue d'ensemble de la saison reste sur cet écran (frise + courbe)");
+ok(await page.locator("#allW").count() === 1, "…et TOUT le plan reste à un bouton");
+ok(await page.locator("#openWk").count() === 1, "…avec un chemin explicite vers la semaine");
+// Un seul geste : on ouvre la semaine, et la coche comme le ⇄ sont là.
+await page.locator("#openWk").click();
+await page.waitForTimeout(500);
+ok(await page.locator("#screen .gw-grid").count() === 1, "un geste plus tard, la grille de la semaine est là");
+ok(await page.locator("#screen .doneBtn").count() > 0, "la coche ✓ d'une séance y est atteignable");
+ok(await page.locator("#screen [data-swap]").count() > 0, "l'échange de jours ⇄ n'a pas disparu non plus");
+// …puis on REVIENT sur Plan : les critères qui suivent portent sur cet onglet, et les laisser
+// s'exécuter depuis 📅 Semaine les ferait échouer pour une raison qui n'est pas la leur.
+await page.locator('#ebTabbar .tabbtn[data-tab="general"]').click();
+await page.waitForTimeout(500);
 const planTxt = await page.locator("#screen").textContent();
 ok(/Sous-objectifs/.test(planTxt) && /décisions du moteur/i.test(planTxt), "la vue d'ensemble (phases + décisions) est sur le même écran");
 ok(/Ajouter à mon agenda/.test(planTxt), "les exports sont sur le même écran (R23.12c : libellé lisible, plus « Agenda (.ics) »)");

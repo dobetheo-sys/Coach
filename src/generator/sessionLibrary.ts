@@ -25,7 +25,21 @@ export interface SessionCtx {
   r: ReasonedPlan;
 }
 
-export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: number, weekNum = 1): V1Session[] {
+/**
+ * `slotIdx` — RANG DU JOUR PARMI LES JOURS DE SA SEMAINE QUI PORTENT LE MÊME CRÉNEAU.
+ *
+ * Mesuré (B-17 §14) : `facile2` est une CATÉGORIE, pas une position — **29 semaines sur 308**
+ * portent DEUX jours `facile2`, le gabarit de `weekBuilder` le déclarant deux fois. Une règle
+ * qui prescrit « une séance par semaine » n'a donc pas de sujet tant qu'on ne sait pas LAQUELLE
+ * des deux, et se rabattre sur l'ordre d'itération serait déterministe par ACCIDENT : un tri
+ * ajouté ailleurs déplacerait la séance sans que rien ne le signale.
+ *
+ * Le critère de départage est donc posé et écrit : **le premier jour du créneau dans l'ordre
+ * calendaire de la semaine** (`slotIdx === 0`). C'est un index STABLE — les jours sont datés par
+ * construction (`d.date = start + i × 1 j`), l'ordre ne dépend d'aucune liste intermédiaire. Il
+ * vaut 0 par défaut, ce qui laisse les chemins de reconstruction se comporter comme avant.
+ */
+export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: number, weekNum = 1, slotIdx = 0): V1Session[] {
   const r = ctx.r;
   const a = r.profile;
   const sp = a.sport, fmt = a.format;
@@ -85,7 +99,7 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
   // d'être dupliquée par sport. Un sport inconnu lève (`UnknownSportError`) au lieu de
   // retourner un tableau vide, qui produisait des jours muets sans que personne le voie.
   const kit: SessionKit = {
-    r, a, sp: sp as string, fmt, slot, phase, prog, weekNum,
+    r, a, sp: sp as string, fmt, slot, phase, prog, weekNum, slotIdx,
     lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, G, swimDrillGlossary,
     S2, P, W, Wm, C, Cm, B, Bd,
   };

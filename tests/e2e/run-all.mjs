@@ -11,6 +11,9 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   "smoke-tabs.mjs",
   // R20.1 — les SEPT questionnaires se traversent : aucune suite ne passait par le triathlon.
   "smoke-questionnaires.mjs",
+  // La boucle du 13/08 — un état migré v1 (started:false) enfermait l'athlète dans le
+  // questionnaire à chaque ouverture. Trois couches gardées : migration, guérison, chemin propre.
+  "smoke-boucle.mjs",
   // U1-U7 — le PREMIER CONTACT : ce que la personne lit, et ce qu'elle attend. Aucune autre
   // suite ne regarde ça — elles vérifient toutes ce que le moteur produit.
   "smoke-usage.mjs", "smoke-projlog.mjs", "smoke-refus.mjs", "smoke-securite.mjs",
@@ -20,9 +23,17 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   // Le canal de vente (abonnement ravitaillement) n'avait aucune garde depuis sa livraison —
   // couvre le mécanisme existant et son extension « fin de plan » (08/08/2026).
   "smoke-shop.mjs",
+  "smoke-carte-seance.mjs",
+  "smoke-charge.mjs",
+  // R27 — le badge-anneau : l'anneau extérieur suit la discipline MENEUSE (pas un ordre fixe)
+  // et l'état légendaire n'est QUE 30/30/30 — les deux propriétés balayées exhaustivement.
+  "smoke-ring.mjs",
   // R26 — Éducatifs (six disciplines) : A1-A13 du brief, le mécanisme de verrouillage/
   // cascade, l'affichage conditionnel par sport et l'absence de doublon d'identifiant SVG.
-  "smoke-educatifs.mjs"];
+  "smoke-educatifs.mjs",
+  // R-ZENNA — le reskin animé de 🎯 Aujourd'hui : le mouvement porte l'opacité, donc son
+  // absence VIDE l'onglet sans qu'aucune assertion de contenu ne s'en aperçoive.
+  "smoke-zenna.mjs"];
 let failed = 0;
 for (const s of SUITES) {
   console.log("\n━━━ " + s + " ━━━");

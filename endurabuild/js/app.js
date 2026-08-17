@@ -7,6 +7,40 @@ import { renderStep } from "./ui/steps.js";
 import { renderPlan } from "./ui/plan-view.js";
 import { stravaAuthFromHash } from "./strava.js";
 
+// R-ZENNA — la feuille de reskin de l'onglet Aujourd'hui (css/zenna-today.css) s'injecte ICI,
+// en script, plutôt que comme un <link> statique dans <head> : un <link> de plus dans <head>
+// est BLOQUANT pour le premier rendu, mesuré (smoke-usage.mjs, U7) à lui seul pour une part du
+// coût. Ça ne suffit PAS à ramener la marge à ce qu'elle était : le reste vient du RECALCUL DE
+// STYLE de la feuille elle-même une fois appliquée (dette déclarée dans CLAUDE.md, « État
+// courant » — à traiter avant d'étendre ce reskin aux autres onglets). Le script-injection
+// reste la bonne pratique dans tous les cas : zéro raison de bloquer le parsing initial pour
+// une feuille scopée à un seul onglet.
+//
+// PAS dans le fichier autonome (`EB_STANDALONE`) : il n'y a pas de serveur pour aller chercher
+// "css/zenna-today.css" — un lien mort échouerait en silence (et contredirait la promesse
+// « zéro requête réseau » du build). `buildStandalone.mjs` inline déjà cette feuille dans le
+// <style> de tête, au même titre que styles.css/mobile.css.
+// R-ZENNA v6 — le thème est posé DÈS LE DÉPART, questionnaire compris (décision du fondateur,
+// 11/08/2026). Il l'était seulement dans la vue à onglets ; le questionnaire restait le dernier
+// écran en thème « papier », et c'est le PREMIER que voit quelqu'un qui découvre le produit.
+document.body.classList.add("theme-zenna");
+// R-ZENNA v7 — LE MOT-MARQUE DE L'ACCUEIL VIENT DU MÊME ENDROIT QUE CELUI DES ONGLETS.
+// Il était écrit en dur dans `index.html` (« ENDURA<em>BUILD</em> », le bloc orange de l'ancienne
+// DA) : c'était la première des quatre versions coexistantes. Quand le vrai logo arrivera, il se
+// posera dans `brand.js` et les deux écrans suivront ensemble.
+import("./ui/brand.js").then(({ brandHTML }) => {
+  const h = document.getElementById("ebBrand");
+  if (h) h.innerHTML = brandHTML("grand");
+});
+if (!globalThis.EB_STANDALONE) {
+  for (const f of ["css/zenna-today.css", "css/zenna-tabs.css"]) {
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = f;
+    document.head.appendChild(l);
+  }
+}
+
 /**
  * Échec de génération — une exception PORTEUSE, pour que l'UI puisse le DIRE.
  * (spec R10 § R10.0.2 : un plan faux est plus dangereux que pas de plan.)
@@ -49,7 +83,7 @@ export function buildPlan(a) {
 // on ne le tente pas, et on dit pourquoi plutôt que d'avaler l'échec. Un `catch(() => {})` qui
 // masque une cause légitime rend le prochain diagnostic plus difficile, pour zéro bénéfice.
 if (globalThis.EB_STANDALONE) {
-  console.info("EnduraBuild : fichier autonome — pas de service worker (tout est déjà embarqué).");
+  console.info("Zenna : fichier autonome — pas de service worker (tout est déjà embarqué).");
 } else if ("serviceWorker" in navigator) {
   addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js")
@@ -66,7 +100,15 @@ if (globalThis.EB_STANDALONE) {
           const b = document.createElement("div");
           b.id = "ebUpdBar";
           b.setAttribute("role", "status");
-          b.style.cssText = "position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));"
+          // Il se pose AU-DESSUS de la barre d'onglets, pas par-dessus. Mesuré : à
+          // `bottom: 12px` le bandeau occupe 768→832 px et la barre 789→844 — ils se recouvrent,
+          // et `elementFromPoint` au centre de la barre rend `ebUpdBar` : les cinq onglets sont
+          // INJOIGNABLES tant qu'on n'a pas remarqué le « Plus tard ». Une notification qui
+          // coupe la navigation coûte plus cher que le retard qu'elle évite. La hauteur est
+          // MESURÉE sur la barre présente, jamais recopiée : `mobile.css` peut la changer.
+          const barre = document.getElementById("ebTabbar");
+          const hBarre = barre ? Math.round(barre.getBoundingClientRect().height) : 0;
+          b.style.cssText = "position:fixed;left:12px;right:12px;bottom:calc(12px + " + hBarre + "px + env(safe-area-inset-bottom));"
             + "z-index:9999;background:#0c1016;color:#fff;border-radius:12px;padding:12px 14px;"
             + "display:flex;gap:12px;align-items:center;justify-content:space-between;"
             + "box-shadow:0 6px 24px rgba(0,0,0,.25);font-size:var(--fs-lg)"; // R16.8 — l'échelle déclarée, jamais un littéral
@@ -105,7 +147,7 @@ if (globalThis.EB_STANDALONE) {
           if (document.visibilityState === "visible") reg.update().catch(() => {});
         });
       })
-      .catch((e) => console.warn("EnduraBuild : service worker non enregistré —", e && e.message));
+      .catch((e) => console.warn("Zenna : service worker non enregistré —", e && e.message));
   });
 }
 
@@ -121,7 +163,11 @@ if (globalThis.EB_STANDALONE) {
       stravaAuthFromHash(); // retour OAuth Strava (#strava_auth=…) — APRÈS la restauration d'état
       if(S.sport)document.body.dataset.sport=S.sport;
       if(S.answers.intent)document.body.dataset.intent=S.answers.intent;
-      if(S.started&&S.sport&&S.onPlan){renderPlan();return;}
+      // Boucle du 13/08 — `started` retiré du prédicat : être SUR un plan (`onPlan`) avec un
+      // sport suffit, et il n'existe aucun état légitime où `onPlan` est vrai et où il faudrait
+      // pourtant montrer le questionnaire (les deux sorties vers le questionnaire posent
+      // `onPlan=false`). Exiger en plus `started` a enfermé les états migrés dans une boucle.
+      if(S.sport&&S.onPlan){renderPlan();return;}
     }catch(e){}
   }
   stravaAuthFromHash(); // même retour OAuth quand aucun plan n'est encore enregistré

@@ -129,7 +129,68 @@ export const RECUP_EVERY: Record<History, number> = { reprise: 3, confirme: 4, a
 export const C15_BEGINNER_SWIM_SESSION_CAP_M = rule("C15", "nage débutant ≤850m/séance, tous blocs confondus (technique avant volume, risque épaule)", 850);
 export const C20_BEGINNER_SWIM_H_PER_SESSION = rule("C20", "la promesse déclarée d'un nageur débutant suit sa capacité C15 (~25min/séance)", 0.42);
 export const BEGINNER_SWIM_VOLPEAK_CAP_H = 4;
-export const SWIM_TIME_FACTOR = 0.4; // heures « génériques » → heures réelles de nage
+
+/**
+ * O-44 — LE PLANCHER DE DURÉE D'UNE SÉANCE DE NAGE, EN MINUTES D'EAU.
+ *
+ * MESURÉ AVANT D'ÊTRE ÉCRIT : sur les semaines de charge, **69 profils de nage sur 136** vivent à
+ * 80-100 % de séances courtes, et les **36 débutants y sont tous, sans exception**. La distribution
+ * est bimodale sans milieu (44 % des profils entre 20 et 40 % de nages courtes, 40 % entre 80 et
+ * 100 %). L'historique ne discrimine pas (20/25/24) : c'est une population à petit volume
+ * hebdomadaire réparti sur jusqu'à six séances. Cas extrême : `swim/sprint/reprise/inter` à 97 %,
+ * six semaines sur six.
+ *
+ * LA PATHOLOGIE N'EST PAS « SIX JOURS », C'EST « DIX-SEPT MINUTES » — personne ne se déplace
+ * jusqu'à une piscine pour dix-sept minutes d'eau. C'est pourquoi le correctif est un plancher de
+ * DURÉE et non un `MAX_SWIM_DAYS` : ce dernier inventerait une physiologie qui n'existe pas.
+ * `MAX_RUN_DAYS` borne des jours d'IMPACT, contrainte orthopédique réelle ; la nage n'a pas
+ * d'équivalent, et la physiologie pousse même dans l'autre sens — la technique est une COMPÉTENCE,
+ * donc six séances courtes valent mieux que trois longues pour l'apprentissage.
+ *
+ * ⚠ NI DÉRIVÉ D'UNE DISTANCE, ET C'EST UN CHOIX. Un plancher en mètres serait inversement
+ * proportionnel à la vitesse : il donnerait le seuil le plus BAS au nageur le plus RAPIDE, soit
+ * l'inverse exact de l'argument du déplacement — le coût du trajet et du vestiaire ne dépend pas
+ * de la vitesse de l'athlète. C24/C24b (600/750 m) reste le plancher de DISTANCE et ne change pas ;
+ * celui-ci se superpose, en minutes.
+ *
+ * POURQUOI 20 ET PAS PLUS : pour un débutant à CSS 2:00, C15 (850 m) n'autorise que **19,0 min**
+ * — toute valeur au-dessus de 19 donne donc le même résultat aux 36 débutants, c'est-à-dire à
+ * TOUTE la population que le ticket vise. La constante ne décide que du sort des 33 non-débutants,
+ * et 20 est la valeur la moins agressive qui produise l'effet mesuré.
+ *
+ * ```
+ * provenance : hypothèse LOGISTIQUE — le coût du déplacement et du vestiaire ne dépend pas
+ *              de la vitesse de l'athlète
+ * nature     : NON physiologique. Le moteur ignore l'accès réel au bassin.
+ * origine    : assistant, non validé externement
+ * statut     : PANSEMENT
+ * sortie     : remplacé par une DÉCLARATION le jour où le questionnaire porte une question
+ *              de disponibilité au bassin
+ * ```
+ */
+export const SWIM_SESSION_FLOOR_MIN = rule("O-44", "plancher de durée d'une séance de nage : sous ~20 min d'eau, le déplacement coûte plus que la séance ne rapporte (hypothèse logistique, PANSEMENT)", 20);
+/**
+ * B-09 — LE BIAIS DÉCLARATIF DE LA PISCINE DÉPEND DE QUI NAGE, PAS SEULEMENT DU BASSIN.
+ *
+ * Le facteur convertit le temps que l'athlète DÉCLARE passer en bassin en temps réellement
+ * nagé (O-35 : il ne touche que la déclaration, jamais les tables du moteur). `0,4` — 60 % du
+ * créneau qui ne serait pas de la nage — décrit un créneau public partagé : on attend une
+ * ligne, on écoute une consigne, on repart. Un nageur en club sur un plan écrit ne perd pas
+ * autant : le ratio observé y est de 0,6-0,75. Une valeur unique appliquée en un seul point
+ * met à l'échelle le plan de TOUT LE MONDE — un 0,4 faux est une erreur de 2,5×.
+ *
+ * Valeurs arbitrées par le fondateur (14/08/2026, ticket B-09) ; l'axe est l'historique, la
+ * seule réponse du questionnaire qui dise à quel point la pratique est structurée.
+ */
+export const SWIM_TIME_FACTOR_BY_HISTORY: Record<History, number> = rule(
+  "B-09",
+  "le temps réellement nagé dans un créneau déclaré dépend de la structure de la pratique (créneau public ~0,45 · club ~0,60-0,70)",
+  { reprise: 0.45, confirme: 0.60, ancien: 0.70 },
+);
+/** Repli quand l'historique n'est pas connu — la valeur la plus PRUDENTE de la table. */
+export const SWIM_TIME_FACTOR = SWIM_TIME_FACTOR_BY_HISTORY.reprise;
+export const swimTimeFactorOf = (history?: string): number =>
+  SWIM_TIME_FACTOR_BY_HISTORY[(history as History)] ?? SWIM_TIME_FACTOR;
 
 /** Course : plafonds. */
 export const C23_BEGINNER_LONG_RUN_CAP_MIN = rule("C23", "jamais de sortie longue CAP >3h pour un débutant (manifeste)", 180);
@@ -142,7 +203,6 @@ export const C24_MIN_SWIM_SESSION_M = rule("C24", "piscine ≥750m par séance p
 export const C24B_MIN_SWIM_SESSION_BEGINNER_M = rule("C24b", "une séance piscine débutant <600m ne vaut pas le déplacement — C20 promet ~25min/séance, le contenu doit suivre", 600);
 
 /** Brick tri : bornes par format ; ×0.8 pour l'historique « reprise » (C21). */
-export const CAP_BRICK_BIKE: Record<string, number> = { S: 90, M: 120, "70.3": 180, Full: 300, L: 150, PM: 300 };
 export const CAP_BRICK_RUN: Record<string, number> = { S: 20, M: 24, "70.3": 32, Full: 70, L: 30, PM: 70 };
 /**
  * Bornes du leg VÉLO d'un brick, par format — « jamais dépassées, même de peu » (spec audit 2).
@@ -230,11 +290,58 @@ export const BRICK_TAPER_BIKE_BOUNDS: Record<string, [number, number]> = rule(
  * Ce n'est pas le nombre de répétitions qui blesse, c'est le temps passé dans la zone : le
  * plafond de reps seul laissait passer `5×14min` au seuil (70 min) parce que la mise à
  * l'échelle avait allongé la DURÉE et non le nombre de blocs.
+ *
+ * ── O-55 (arbitrage du 17/08/2026) — **40 min EST LA DOSE DE PIC, et c'est une décision.** ──
+ *
+ * Depuis le lot 1, ce plafond lit aussi les blocs prescrits en MÈTRES : il mord donc pour la
+ * première fois sur la nage, où 89 % des blocs sont écrits en distance. La question posée était
+ * « aplatit-il la progression ? ». Mesurée avant d'être tranchée (`npm run mesure:dosefull`) :
+ *
+ *     Full (37 profils)   22 % des semaines qui portent du seuil sont à la borne
+ *                         première à la borne : médiane S17, phase `dev` pour 31 profils sur 37
+ *     70.3 (12 profils)   25 %, médiane S15, phase `spec` pour 10 sur 12
+ *
+ * **La progression EXISTE avant la borne** — la dose monte de la base au développement, et c'est
+ * là que le plafond la fige. Ce n'est pas « constante sur neuf mois », c'est « plate sur le
+ * dernier tiers de la montée ». Or c'est ce qu'un plafond de dose DOIT faire : il empêche un
+ * dépassement, il ne permet pas une montée infinie. 40 min au CSS — environ 2 000 m de travail au
+ * seuil — est une grosse séance de nage sérieuse, ni excessive ni timide.
+ *
+ * La décision est donc écrite ici pour que la question ne revienne pas, **et avec le chiffre qui
+ * la rend révocable** : si une mesure montre un jour qu'un athlète coaché en fait
+ * significativement plus au pic, c'est ce 22 % et ce S17 qu'il faudra opposer.
+ *
+ * ⚠ ET SI LA PROGRESSION DOIT CONTINUER AU-DELÀ, C'EST LE NOMBRE DE BLOCS OU LA FRÉQUENCE QUI
+ * MONTE, JAMAIS LA DOSE D'UN BLOC. C'est la doctrine C26c prise dans l'autre sens (« la coupe
+ * retire des RÉPÉTITIONS, jamais la durée d'une répétition ») : dans un intervalle, la durée EST
+ * le stimulus, donc la relever change la nature de la séance au lieu de l'allonger.
  */
 export const DOSE_CAP_MIN = rule(
   "C25",
   "au-delà de ~40 min de seuil ou ~25 min de VO2max dans une séance, ce n'est plus un entraînement dur mais une course : personne ne l'enchaîne semaine après semaine sans casser",
   { thr: 40, vo2: 25 },
+);
+
+/**
+ * O-39 — UNE EXEMPTION ABSENTE ET UNE EXEMPTION DÉCIDÉE SONT INDISCERNABLES.
+ *
+ * `DOSE_CAP_MIN` plafonne `thr` et `vo2`. `mara` n'y figurait pas, et les blocs `rn.mara` portent
+ * la PLUS GROSSE dose de qualité du moteur : **61,0 min/bloc à 4:30 et 73,7 min à 8:30** (mesuré,
+ * `npm run mesure:o36c`), alors qu'`IS_QUALITY_ZONE` les classe bien en qualité.
+ *
+ * L'exemption est physiologiquement JUSTE — l'allure marathon est nettement sous le seuil, et un
+ * bloc de 60-75 min à cette allure est la séance spécifique attendue d'une préparation longue
+ * distance, pas un dépassement ; y appliquer le plafond de 40 min du seuil serait une erreur.
+ * Mais rien ne le disait, et c'est exactement ce que ce chantier corrige depuis le premier jour :
+ * une clé absente ressemble à un oubli.
+ *
+ * Elle est donc DÉCLARÉE. La garde qui va avec (T-30/O-39) vérifie que toute zone classée qualité
+ * est soit plafonnée, soit exemptée ici — jamais simplement absente.
+ */
+export const DOSE_EXEMPT: Record<string, string> = rule(
+  "C25-exempt",
+  "l'allure marathon est nettement sous le seuil : un bloc de 60-75 min y est la séance spécifique attendue, pas un dépassement — le plafond du seuil n'a pas d'objet",
+  { mara: "allure de course longue distance, sous le seuil — le plafond `thr` ne s'y applique pas" },
 );
 
 export const C21_REPRISE_BRICK_FACTOR = rule("C21", "en reprise, le brick ne mange pas la semaine (61% du volume hebdo observé sans ce facteur)", 0.8);
@@ -399,6 +506,36 @@ export interface EasyFloorCtx {
   level?: string;
   injured?: boolean;
 }
+/**
+ * B-02 — UNE MINUTE DURE NE COÛTE PAS LA MÊME CHOSE SELON LA DISCIPLINE.
+ *
+ * Le plafond de temps dur reste ce qu'il est (C26/C26b, absolu) : le PLAFOND PROPORTIONNEL est
+ * un autre ticket (B-02c), séparé le 14/08/2026 après mesure — il rouvrait C30-A et O-21b.
+ * Ce qui change ici est la MESURE, pas la borne.
+ *
+ * Le drapeau « disciplines d'impact » (arbitrage du 13/08, REMPLACÉ) classait le SPORT : il
+ * disait que la nage ne compte PAS. Elle compte MOINS. Mesuré : il punissait 34 profils de
+ * duathlon pour leur intensité VÉLO — des faux positifs de mécanisme, puisqu'un intervalle dur
+ * à vélo coûte la même chose qu'on soit duathlète ou cycliste. La pondération classe la SÉANCE.
+ *
+ * ⚠ PROVENANCE — CES COEFFICIENTS SONT UN PANSEMENT, ET LE FONDATEUR L'ÉCRIT LUI-MÊME :
+ *   provenance : assistant, non vérifié, 14/08/2026 (même statut que le plancher 1,05 d'O-34)
+ *   nature     : le `0,50` de la nage TRANCHE SANS LE DIRE entre deux coûts qui n'ont pas la
+ *                même réponse — orthopédiquement une minute au seuil dans l'eau coûte très peu,
+ *                métaboliquement elle coûte à peu près autant qu'une minute au seuil en courant
+ *   statut     : à revoir avec l'enrichissement du golden
+ *   sens       : ils DESSERRENT (aucun poids > 1), donc ils ne peuvent retirer aucune qualité —
+ *                c'est ce qui rend leur livraison sûre sans le plafond proportionnel
+ */
+export const HARD_DISC_WEIGHT: Record<string, number> = rule(
+  "B-02",
+  "le domaine physiologique est le même dans les trois disciplines, le COÛT non : récupération et contrainte orthopédique diffèrent (PANSEMENT — coefficients non vérifiés)",
+  { rn: 1.0, bk: 0.75, sw: 0.5 },
+);
+/** Minutes dures PONDÉRÉES d'une ventilation par discipline (le classificateur la produit). */
+export const weightedHardMin = (hardByDisc: Record<string, number> | undefined): number =>
+  Object.entries(hardByDisc ?? {}).reduce((t, [d, m]) => t + m * (HARD_DISC_WEIGHT[d] ?? 1), 0);
+
 /** Plafond de temps DUR hebdomadaire pour ce profil (C26 + C26b). */
 export function hardTimeCapMin(ctx?: EasyFloorCtx): number {
   let cap = C26b_HARD_TIME_BY_HISTORY[ctx?.history || "confirme"] ?? C26_HARD_TIME_CAP_MIN;

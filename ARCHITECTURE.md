@@ -4915,3 +4915,1200 @@ sept sports et la visibilité conditionnelle du bloc duathlon. A14 (`engine.js`/
 Coach_Pro_V1.5.html endurabuild/js/engine.js` → vide : le module vit entièrement sous
 `endurabuild/js/`, jamais sous `src/`.
 **27 gates verts, E2E 20/20, golden 949 inchangé — aucune génération de plan n'est touchée.**
+
+## R-ZENNA (v2) — la maquette en entier : le système visuel ET le système de MOTION
+
+Première passe (10/08) : couleurs et cartes, **statique**. Décision du fondateur (11/08) :
+*« utilise les animations présentes sur la maquette […] le but est vraiment d'avoir le même
+rendu, plus moderne, dark tech, et surtout VIVANT »*, barrières levées (rien ne part en
+production sans sa validation). Ce lot porte donc la moitié qui manquait.
+
+**La cadence, d'abord.** La maquette ne pose pas des durées au hasard : tout dérive d'un
+`--beat` de 120 ms (tap ×1.5, transition ×3.5, apparition ×6, cascade ×0.95) avec trois
+courbes nommées. C'est ce qui fait qu'une interface « bouge ensemble » au lieu d'avoir dix
+animations qui se disputent l'attention — la cadence est reprise telle quelle.
+
+**Trois familles, une frontière.** APPARITION (`.rise` + `r1..r8`, `.grow-x/y`) · ÉTAT
+(`zenna-pulse` du halo, point « tu es ici » qui pulse, shimmer météo) · RÉCOMPENSE (coche qui
+se DESSINE, confettis, XP flottant, tampon de verdict). La frontière est écrite dans
+`js/ui/zenna-motion.js` §2 : **ce module met en scène des chiffres déjà calculés, il n'en
+produit aucun**. Le grand chiffre du héros vient de `adjustment.adjustedMinutes`, l'anneau de
+`readiness.energy`, la barre de zones des `steps` du moteur via `_blkMin` — la même fonction
+que la courbe de charge (R11.1). Une animation qui calculerait sa propre valeur serait une
+seconde vérité.
+
+**La barre de zones n'est pas un décor.** La maquette dessine des segments illustratifs ; ici
+chaque segment EST un bloc de la séance, large comme sa durée, coloré par sa zone
+(`ZONE_LEVEL`, table ordonnée dérivée de `_IFZ`, zone inconnue → Z2, jamais du rouge par
+défaut).
+
+**Le tampon de verdict attend le VRAI verdict.** La maquette affiche « SÉANCE MAINTENUE » en
+dur. Ici le tampon ne part qu'après `applyReadinessSnap`, avec le niveau réel, et les confettis
+ne partent QUE si l'action est `keep` — fêter un « repos conseillé » serait absurde.
+
+### Le défaut que ce lot a produit, puis corrigé : la cascade annulée par sa propre feuille
+
+Mesuré, écran NOIR : les huit cartes de l'onglet à `opacity: 0`, définitivement.
+`body.theme-zenna #screen .card` (0,1,2,1 — un ID) portait `animation: none` pour neutraliser
+le `dropIn` du thème clair, et battait `body.theme-zenna .zn-play .rise` (0,0,3,1). `.rise`
+posant `opacity: 0` en attendant son animation, la cascade ne partait jamais et **rien ne
+s'affichait**. Troisième occurrence dans ce dépôt de « un correctif que la cascade annule est
+un correctif qu'on croit avoir » (R18.1, U16) — cette fois c'est le correctif qui annulait la
+fonctionnalité. Corrigé par un sélecteur **disjoint** (`:not(.rise)`) plutôt qu'une surenchère
+de spécificité : aucune spécificité à arbitrer, donc rien à re-perdre demain.
+
+### Deux défauts PRÉ-EXISTANTS trouvés en regardant l'écran
+
+**N-1 — le héros affichait la séance d'HIER entre minuit et 4 h.** Mesuré à 01 h 30 : en-tête
+« LUN · 11/08 » et « Repos » dans le héros, pendant que la carte de validation, qui lit le plan
+directement, proposait « MAR 11/08 · Sweetspot vélo » — deux écrans de la même app, deux
+réponses à « qu'est-ce que je fais aujourd'hui ? » (la forme que R11.1 interdit). Cause :
+`Object.assign({ date: todayIso }, S.answers.readiness)` — `readiness.date` vaut la JOURNÉE
+D'ENTRAÎNEMENT (`jourEntrainementISO`, qui recule avant 4 h, R23.2) et écrasait la date
+calendaire. R23.2 énonce pourtant la règle mot pour mot : *« `snap.date`, lui, reste la date
+CALENDAIRE — l'ajusteur s'en sert pour choisir la séance du jour, et la décaler ferait adapter
+la séance d'hier. »* L'intention était juste, l'écriture la contredisait. Corrigé aux deux
+sites (`session-life.js`, `tab-today.js`) en passant la date calendaire EN DERNIER.
+Famille R20.7 : un défaut que seule l'heure d'exécution révèle.
+
+**N-2 — `build:standalone` était cassé par sa propre CSP.** Le fichier autonome recopiait la
+CSP d'`index.html`, qui bloque son bootstrap inline, ses modules en `blob:` et ses polices en
+`data:`. Silencieux depuis l'ajout de la CSP, parce que ce fichier est git-ignoré et testé par
+aucun gate. Corrigé dans le générateur uniquement — `index.html` garde sa CSP stricte.
+
+### Ce qui a été ajouté au dépôt
+
+`css/zenna-today.css` (réécrit), `js/ui/zenna-motion.js` (nouveau), quatre polices
+auto-hébergées (`bebas-neue-400`, `inter-400-800`, `ibm-plex-mono-400/700`). **Les polices ne
+viennent PAS de Google Fonts en ligne** : D19 impose zéro requête externe, et la première
+écriture le violait. Sous-ensemble LATIN, vérifié glyphe par glyphe (é à ç œ) — le premier bloc
+que sert l'API Google est le CYRILLIQUE, et le prendre aurait donné une police sans un seul
+accent français.
+
+**Garde : `tests/e2e/smoke-zenna.mjs` (21ᵉ suite), 33 assertions, vérifiée ROUGE** (cascade
+cassée → 3 échecs, cartes à 0/0/0…). Ses trois volets gardent trois moitiés différentes : le
+mouvement FAIT son travail · `prefers-reduced-motion` NEUTRALISE tout SANS rien cacher (le
+piège symétrique : couper l'animation sans repli laisse `opacity: 0`) · les quatre autres
+onglets ne sont pas contaminés. Note d'instrument gardée écrite : une première mesure à
+1500 ms lisait `0.999796` et rapportait un échec — la cascade se termine à ~1520 ms, les
+attentes sont calées SUR la cadence déclarée, pas au jugé.
+
+**Moteur intact** : `audit:v1` 459/459 à 0 violation, `check:app` et `check:sw` verts — aucune
+génération de plan n'est touchée.
+
+## Audit R-ZENNA — quatre défauts mesurés, dont deux pré-existants et deux dans l'instrument
+
+Audit demandé après livraison. Ce qui suit n'est pas une relecture : chaque point est MESURÉ,
+et deux des mesures ont dû être corrigées avant de valoir quelque chose.
+
+### Ce qui tient
+
+Fuites : **198 nœuds avant, 198 après dix allers-retours** entre onglets, un seul CTA collant,
+une seule pastille, aucune couche de verdict oubliée. Les six sports rendent leur héros sans
+carte invisible. Cas limites (blessure, drapeau médical, reprise) : aucun écran vide. Desktop
+1280 px : pas de débordement horizontal. Chargement 670-770 ms.
+
+### CONTRASTE — deux défauts réels
+
+**`var(--muted)` inline, 11 occurrences.** Les modules portent des styles inline qui
+référencent les jetons du thème CLAIR. Non redéfinis dans le thème sombre, ils peignaient du
+brun `#635b4a` sur carte `#111318` : **2,77:1**, sous le seuil AA de 4,5. Corrigé à la RACINE —
+`--text/--text2/--muted/--ink/--bg*/--acc/--gold/--line` sont redéfinis dans `body.theme-zenna`.
+Chasser ces cas classe par classe serait sans fin et raterait le prochain ; redéfinir le jeton
+corrige aussi ceux qu'un module ajoutera demain, et répare au passage `.aide-btn` (le « ? » de
+U18), qui n'a pas de règle dédiée et serait resté encre-sur-encre.
+
+**Le héros.** Texte semi-transparent sombre sur l'orange : **3,56 à 4,45:1** selon le rôle.
+Alphas relevés à 0,82-0,95. Et la puce discipline change de sens : son voile SOMBRE
+(`rgba(10,10,10,.16)` de la maquette) plafonnait le contraste à **4,17:1 même avec de l'encre
+opaque** — le fond était le facteur limitant, pas le texte ; un voile CLAIR la fait passer à
+6,86. Toutes les valeurs sont calculées sur l'arrêt le plus SOMBRE du dégradé (#ff3d00), le
+pire cas.
+
+### ZONES — le même trou dans deux tables, dont une depuis R7
+
+`ZONE_LEVEL` (barre de zones du reskin) oubliait `sw.vo2` **et les sept zones de trail**. Repli
+silencieux en Z2 : un plan trail affichait des barres uniformément « facile », y compris sur
+`tr.vam`, que le moteur décrit lui-même « RPE 9/10 — montée à fond ».
+
+**`_IFZ` (courbe fitness/fatigue/forme) avait exactement le même trou, et depuis bien plus
+longtemps** — R7 pour le trail, R5.4 pour `sw.vo2`. Son repli est `0.70` et la charge varie en
+IF². Mesuré sur un ultra : **6 891 minutes de corps** tombaient sur des zones inconnues, soit la
+quasi-totalité du volume. Le seuil en montée était compté **×0,51**, la montée souple **×1,36** :
+le contraste dur/facile de toute la courbe du sport trail était aplati — le dur sous-évalué, le
+facile sur-évalué. Total −9 %, mais c'est la FORME de la courbe qui était fausse, pas son
+échelle.
+
+Les valeurs ne sont pas inventées : chaque zone reprend l'IF de la zone de COURSE qui partage
+son ancrage FC déclaré dans `renderer.ts` (`hr: z1 | z2 | tempo | seuil | null`). Deux n'ont
+même pas besoin d'analogie — `tr.flat` et `tr.flatthr` ont des `ref` et des multiplicateurs
+IDENTIQUES à `rn.easy` et `rn.thr`. Dette signalée non résolue : `_IFZ` est DUPLIQUÉ dans
+`Coach_Pro_V1.5.html` et `scripts/splitPwa.py` (R11.1) ; seule la copie servie est corrigée.
+
+### CIBLE TACTILE — la case « malade » se faisait comprimer
+
+Déclarée 20 px, **mesurée 13×20** : elle est un item flex du label et se laissait écraser par le
+texte à côté (`flex-shrink` par défaut). Sous le minimum absolu de WCAG 2.5.8 (24×24), sur la
+commande qui gèle la série en cas de maladie — la rater d'un doigt cochait « malade » ou non
+selon la chance. `flex:0 0 auto` + 24 px, re-mesuré à 24×24. Pré-existant, présent dans les
+deux thèmes, corrigé à la source.
+
+### DEUX DE MES MESURES ÉTAIENT FAUSSES, ET C'EST LE RÉSULTAT LE PLUS UTILE
+
+Le premier passage de contraste a rendu **neuf « échecs » à ~1,04:1 dans le héros** — pour du
+texte parfaitement lisible. Cause : `bgOf()` cherchait une `background-color` opaque en
+remontant les ancêtres, or le héros est peint par un **dégradé**, donc sa `background-color` est
+transparente : l'instrument mesurait le texte contre le NOIR du body. Corrigé pour lire les
+arrêts du dégradé — et le second passage a rendu **exactement les mêmes 1,04**, parce que sa
+regex `\(` avait perdu son antislash dans l'échappement du template literal.
+
+C'est la neuvième occurrence dans ce dépôt d'une mesure qui nomme une grandeur et en mesure une
+voisine — cette fois deux fois de suite, dans l'outil d'audit lui-même. D'où le TÉMOIN posé dans
+la garde : le titre du héros doit mesurer **5,58**, valeur calculée à la main pour #0a0a0a sur
+#ff3d00. Sans lui, un instrument cassé rend « aucun défaut » et le critère est satisfait par sa
+propre panne.
+
+### Gardes ajoutées (`smoke-zenna`, 33 → 38 assertions, vérifiées rouges)
+
+**§0** — couverture des zones **DÉRIVÉE** de `renderer.ts` : aucune liste à maintenir, une zone
+ajoutée au moteur fait rougir le test le jour même. C'est le motif d'`audit:sensibilite`
+(dérivé du schéma) appliqué aux zones. **§4** — contraste calculé sur le rendu réel, avec son
+témoin de validité.
+
+### Écarts à la maquette restant, assumés
+
+Trois tailles de texte remontées au plancher de 9 px (R16.8) : 5,5 px sur le libellé de
+l'anneau, 8,5 px sur le tag du micro-défi, 8 px sur les libellés d'onglets. Trois `<summary>`
+sont à 30-31 px, au-dessus du minimum WCAG (24) mais sous le standard de 44 px que U4 a posé
+pour ce dépôt — pré-existant, non traité ici. Enfin, la chip discipline du trail affiche
+« 🏃 Course » parce que le moteur code ses séances `d: "rn"` : correct techniquement, discutable
+pour un trailer.
+
+## R-ZENNA (v3) — le motion re-cadencé, et le thème étendu aux cinq onglets
+
+### « Beaucoup trop rapide » n'était pas une question de vitesse
+
+Retour du fondateur. Chronométré image par image après la dernière réponse du check-in :
+
+```
+t=1487 ms   rideau OPAQUE   9 cartes déjà arrivées   compteur fini   anneau fini
+t=1856 ms   rideau PARTI    plus rien ne bouge, et plus rien ne bougera
+```
+
+**Tout le système de motion se jouait derrière la couche de verdict.** Quand elle se levait,
+l'écran était déjà figé : aucune animation n'était visible. Ce n'était pas « trop rapide »,
+c'était « déjà fini » — et aucun réglage de durée ne l'aurait corrigé. La cause est mon propre
+correctif : pour ne pas retarder l'affichage (budget U7), j'avais rendu le tampon non bloquant.
+Il ne retarde plus rien, mais il RECOUVRE le moment où tout se joue ; la séquence de la maquette
+(tampon, PUIS révélation) avait disparu dans l'opération.
+
+**Portillon de mouvement** : le contenu est rendu tout de suite, seules les ANIMATIONS attendent
+que le rideau se lève. Chien de garde à 4 s, parce que le mode de panne d'un portillon d'opacité
+est l'écran vide — il doit s'ouvrir tout seul. Un piège trouvé en mesurant : sans retirer
+`zn-play` dès la retenue, `#screen` gardait la classe du rendu précédent et la cascade se jouait
+**deux fois**, dont une invisible. Mesuré après : rien ne bouge sous le rideau, puis 1,6 s
+d'animation visible.
+
+### Le barème, revu par quatre lentilles indépendantes
+
+Material 3, Apple HIG, IBM Carbon et psychophysique de la perception, consultées séparément sur
+le même inventaire. **Elles ont convergé sur la même cause avec le même chiffre** :
+`cubic-bezier(.25,.46,.45,.94)` a une pente à l'origine de **1,84** — la carte apparaissait déjà
+lancée à 1,84× sa vitesse moyenne, franchissait 90 % de ses 22 px en ~490 ms, puis dérivait
+230 ms sous le seuil de perception. On déclarait 720 ms, l'œil en voyait 450.
+
+Trois corrections, dans cet ordre : **la courbe part du repos** (pente 0,18) ; **la distance
+passe à 40 px** (22 px sur une carte pleine largeur est un sursaut, pas une trajectoire — l'œil
+n'a rien à suivre et enregistre « apparu », donc instantané) ; **l'opacité est découplée du
+déplacement** (pleine à 42 %, donc lisible PLUS TÔT qu'avant, ce qui rend de la marge au budget
+d'affichage au lieu d'en prendre). `--beat` 120 → 160 ms. Le tap ne suit pas et **descend** à
+120 ms : la manipulation directe doit rester immédiate (3 lentilles sur 4). Une rectification du
+panel au passage : `znPlay` plafonne à `r8`, donc la dernière carte porte 7 pas de décalage et
+non 8 — mon inventaire était décalé d'un cran.
+
+### L'extension aux quatre autres onglets
+
+`theme-zenna` devient permanent. **Ce qui reste propre à Aujourd'hui, délibérément** : la
+cascade, le CTA collant, le parallax. La cascade est le geste d'ARRIVÉE — pertinent sur l'écran
+qu'on ouvre chaque matin, coûteux sur un onglet de consultation qu'on parcourt en aller-retour,
+puisque `.rise` met le contenu à opacité 0 en attendant son animation.
+
+**Le principe : on TRANSPOSE, on n'uniformise pas.** Le thème clair encode du sens dans ses
+couleurs (quatre états de journée, cinq identités de phase, accents de discipline, trois badges
+de preuve, rouge de sécurité). Les repeindre en gris ferait un thème cohérent et un produit
+muet : chaque teinte porteuse de sens garde sa FAMILLE, transposée.
+
+**Le mode de panne à connaître** : le socle redéfinit `--ink` en CLAIR, donc toute règle du thème
+papier écrite `border: 3px solid var(--ink)` devient un liseré blanc épais et
+`box-shadow: 5px 5px 0 var(--ink)` une ombre portée BLANCHE. C'est la source principale des
+règles de `css/zenna-tabs.css`.
+
+**Deux balayages plutôt que du cas par cas.** La garde de contraste étendue aux cinq onglets a
+trouvé des fonds pastel à **1,02:1** (texte devenu clair sur rose pâle) et des encres inline à
+**1,51:1** (`color:#3f3a30` sur carte sombre). Ces teintes sont dispersées dans six modules et la
+prochaine arrivera sans prévenir : on balaie donc par la COULEUR — seul point commun stable —
+chaque pastel et chaque encre partant vers son équivalent sombre de la même famille.
+
+### Deux régressions attrapées par les gardes existantes, et ce qu'elles apprennent
+
+**`smoke-usage` U3 est passé rouge sans qu'une ligne de contenu ait bougé.** Cause :
+`text-transform: uppercase` sur `.load-title` **change ce que rend `innerText`** — la recherche
+de texte dans la page, le copier-coller et les tests cessent de trouver la casse d'origine. Les
+libellés de la maquette sont en capitales et c'est juste POUR DES LIBELLÉS ; `.load-title` porte
+ici de vraies phrases françaises. Une décision de style ne doit pas modifier le texte que la page
+EXPOSE.
+
+**`smoke-typo` a vu la hiérarchie s'inverser** : à 10,5 px le titre de carte passait SOUS son
+propre sous-texte (12 px). Ce banc vérifie des RELATIONS d'ordre entre rôles, pas des valeurs —
+c'est précisément ce qui lui permet d'attraper une inversion qu'aucun seuil absolu n'aurait vue.
+
+### Garde
+
+`smoke-zenna` passe de 38 à 46 assertions. Son §3 **change de sens et c'est écrit** : il
+assertait « le thème est RETIRÉ sur les quatre autres onglets » tant que le reskin était scopé ;
+il asserte désormais que sur CHACUN des cinq, le thème est posé, le fond est sombre, rien n'est
+resté invisible, aucun flottant d'Aujourd'hui ne traîne, et **aucun texte ne passe sous le seuil
+AA**. Le réécrire était la seule option honnête — le supprimer aurait laissé quatre onglets sans
+garde.
+
+## R-ZENNA (v4) — 🧰 Outils › Nutrition : la composition de la maquette, et ce qu'elle a failli emporter
+
+Retour du fondateur : *« reprend la maquette et travail sur l'onglet outil notamment nutrition,
+on est trop loin de la maquette, je veux exactement la même composition »*. Le v3 avait posé le
+thème (couleurs, motion, contraste) sur les cinq onglets ; Outils gardait sa **composition**
+d'origine — des `<details class="load-card">` remplis de phrases enchaînées, là où la maquette
+compose avec trois primitives.
+
+### Les trois primitives, et pourquoi elles ne sont pas décoratives
+
+| Primitive | Ce qu'elle fait |
+|---|---|
+| `details.fold` | un repli dont le **sommaire porte déjà la valeur** (« · ~2 600 kcal ») : on lit l'essentiel sans ouvrir |
+| `.kv` | une ligne intitulé → valeur, intitulé en petites capitales mono à gauche, valeur alignée à droite — ce qui rend une carte de chiffres lisible **en diagonale** |
+| `.shop-card` | en-tête produit · preuves · segmenté de cadence · devis séance par séance · choix · bouton |
+
+`energyCardHTML` et `nutritionCardHTML` passent de phrases enchaînées à `foldHTML` + `kvHTML` ;
+`shopSubscriptionCardHTML` reprend la composition complète de la maquette, **élément pour élément
+et dans le même ordre**, sur ses deux états (proposition et abonnement en cours). Le sélecteur de
+cadence devient un **segmenté** à pastille glissante et non une liste déroulante : deux choix
+mutuellement exclusifs qu'on compare se montrent côte à côte.
+
+### Ce que la composition a failli emporter — la restriction anti-spam
+
+`shopPromptDue` énonce depuis son écriture : *« le tunnel se propose une fois puis se tait
+4 semaines si personne ne s'est abonné — jamais un rappel permanent »*. Cette restriction n'était
+tenue par **rien d'autre que l'attribut `open` du `<details>`**. La maquette ne dessine la carte
+de vente que dépliée : la porter telle quelle transformait une proposition qui se tait en une
+**carte de vente dépliée en permanence** dans l'onglet, sans qu'aucune garde ne s'en aperçoive —
+le critère existant lisait `open`, un attribut qui n'existe plus.
+
+D'où `shop-card-min` : la **même carte**, réduite à son en-tête et à un bouton qui la rouvre.
+Rien n'est caché, consulter reste gratuit, et déplier **repose l'ancre des 28 jours** — c'est le
+signal honnête d'une proposition consultée, exactement ce que l'ouverture du `<details>` posait.
+
+### Trois écarts délibérés avec la maquette, chacun pour une raison
+
+1. **La preuve sociale n'est pas reproduite.** La maquette affiche « 127 INTENTIONS DÉJÀ
+   ENREGISTRÉES » avec trois avatars. Ce chiffre **n'existe pas** : l'abonnement vit dans le
+   `localStorage` de chaque appareil, il n'y a aucun serveur pour en compter un seul. Sur un
+   produit dont le contre-positionnement est « chaque décision est traçable », fabriquer une
+   preuve sociale est la ligne qu'on ne franchit pas. Le créneau `.soc-proof` est **gardé**, il
+   dit ce qui est vrai. *Ma première rédaction de ce remplacement promettait « …et te vaudra
+   d'être prévenu·e à l'ouverture » — une promesse que le produit ne peut pas tenir : ni compte,
+   ni serveur, ni canal de notification. Remplacer un chiffre inventé par une promesse
+   invérifiable, c'est refaire le défaut qu'on vient de corriger.*
+2. **Les puces de choix font 44 px et non 40** — mesuré à 40 au rendu ; U4 a tranché ce seuil
+   pour ce dépôt (WCAG 2.5.8), et un standard d'accessibilité passe devant un pixel de maquette.
+3. **Le tag lit « Ravitaillement · abonnement »** et non « CANAL DE VENTE · SUITE COMMERCIALE » —
+   du jargon interne de démo, jamais une étiquette destinée à l'athlète.
+
+### Deux défauts trouvés en composant
+
+**Les dates étaient en ISO brut.** `Prochaine échéance : 2026-08-15`, `Résiliation prévue le
+2026-09-10` — les seules dates du produit qui ne parlaient pas français, R7 ayant posé `fmtDay`
+comme formateur unique partout ailleurs. Défaut pré-existant, corrigé en réécrivant les lignes
+qui le portaient.
+
+**Le ramené « par séance » répétait le total.** À une seule séance couverte, la carte affichait
+« 6,30 € » puis « ≈ 6,30 € / séance couverte » — un chiffre qui se répète se lit comme un second
+argument. Il n'apparaît plus qu'à partir de deux séances.
+
+### Gardes, et trois fautes d'instrument dans mes propres critères
+
+`smoke-shop` passe de 12 à 20 assertions. Le critère qui lisait `card.getAttribute("open")` est
+**réécrit sur son intention** (« pas de 4e clic pour la trouver » → le bouton d'activation et le
+sélecteur de cadence sont à l'écran sans avoir rien touché) plutôt que supprimé ; celui qui lisait
+le libellé « Abonnement ravitaillement » est réécrit sur les **actions** de gestion, un critère
+calé sur un libellé se contentant de photographier ce qu'on vient d'écrire.
+
+Contre-preuve : **cinq cassures, cinq rouges** — mais seulement après trois corrections, toutes
+de la même famille (*un instrument qui nomme une grandeur et en mesure une voisine*) :
+
+- ma vérification de contre-preuve **comptait les lignes `FAIL`** ; casser la restriction faisait
+  mourir la suite sur un `TimeoutError` avant `report()` — code de sortie 1, mais pas une ligne de
+  verdict, donc « vert » pour mon comptage. Le défaut de R22b/H-1b, refait. Recomptée sur le
+  **code de sortie**, et le clic de la garde rendu **conditionnel** : une garde doit RAPPORTER,
+  pas mourir ;
+- mon critère « aucune date ISO » était posé sur la carte de **proposition**, où une seule date
+  s'affiche. Casser `fmtDay` sur l'échéance le laissait vert : il nommait « les dates affichées »
+  et en mesurait une, dans l'état où les autres n'existent pas. Déplacé sur l'état **abonné** ;
+- et il portait un `\b` : `textContent` concatène sans séparateur, donc la carte rend
+  « Prochaine échéance2026-08-15 » — **aucune frontière de mot entre le « e » et le « 2 »**, et le
+  critère restait vert sur la date brute qu'il existe pour trouver.
+
+**Deux gardes voisines resserrées au passage.** `smoke-typo` ne lisait **ni `zenna-today.css` ni
+`zenna-tabs.css`** — le trou exact que R18.1-a avait bouché pour `mobile.css`, jamais rejoué sur
+les feuilles arrivées après lui, et la maquette d'origine descend à 8,5 px (`.soc-proof`). Même
+règle que la couche mobile : pas « zéro littéral », le **plancher de 9 px**. Et le filtre de
+contraste de `smoke-zenna` excluait les emoji **par accident** (« 🛒 » vaut 2 en UTF-16, sous son
+seuil de longueur) ; il dit désormais ce qu'il exclut — un emoji couleur est peint par la police,
+pas par `color` — et n'écarte plus au passage les textes de deux lettres bien réels.
+
+### S-CACHE-b — le bandeau de mise à jour couvrait la barre d'onglets
+
+Trouvé **par un vrai signal**, pas par une relecture : une suite E2E est morte sur
+`<div id="ebUpdBar" role="status"> intercepts pointer events`. Le bandeau « ✨ Nouvelle version
+prête » de S-CACHE se pose en `position: fixed; bottom: 12px` — mesuré, il occupe **768→832 px
+quand la barre d'onglets occupe 789→844**, et `document.elementFromPoint` au centre de la barre
+rendait `ebUpdBar` : **les cinq onglets étaient injoignables** tant qu'on n'avait pas remarqué le
+« Plus tard ». Une notification qui coupe la navigation coûte plus cher que le retard qu'elle
+évite. Il se pose désormais **au-dessus** de la barre, sur une hauteur **mesurée** sur la barre
+présente et jamais recopiée (`mobile.css` peut la changer). Garde `S-CACHE-b` dans
+`smoke-securite`, **vérifiée rouge**.
+
+Défaut **pré-existant** — ce lot ne l'a pas créé, il l'a rendu visible en reconstruisant le
+service worker plusieurs fois pendant une exécution de tests.
+
+## R-ZENNA (v5) — l'en-tête partagé, et la règle CSS morte depuis v3
+
+Parti d'un état des lieux externe (`ZENNA_MIGRATION_ETAT_ET_PLAN.md`) dont les constats ont
+d'abord été **re-mesurés un par un** — trois se sont révélés faux ou périmés, un s'est révélé
+juste et a mené au défaut le plus profond du reskin.
+
+### L'en-tête partagé (`#ebAppHeader`)
+
+Le rapport le nomme correctement : c'est le **seul élément structurel commun aux cinq écrans de
+la maquette qui n'avait aucun équivalent**. `body.has-tabs .hero { display: none }` masque le
+titre du questionnaire dès qu'on entre dans la vue à onglets, et **rien ne le remplaçait** — on
+arrivait sur le contenu sans savoir de quelle course on parle ni à combien de jours elle est.
+
+`endurabuild/js/ui/app-header.js` : marque à gauche, puce de course + salut daté à droite. Il vit
+HORS de `#screen` (comme la barre d'onglets), parce que `#screen` est remplacé à chaque
+changement d'onglet ; mais il est **re-rendu à chaque fois**, son contenu dépendant du jour
+(décompte, date, semaine) et de l'onglet actif.
+
+**Il ne calcule rien qui existe déjà (R11.1)** : le décompte et le libellé de format vivaient
+dans `avancementPlanHTML` (onglet Plan) et en sont **extraits** — cet onglet les importe
+désormais, plutôt que d'en garder une seconde écriture qui dériverait. Le salut vient de
+`greeting()`, la semaine de `EBV2.progress`.
+
+**Trois écarts avec la maquette, chacun motivé.** Elle écrit « ZENNA » : c'est le nom de la
+maquette, pas du produit — le reprendre renommerait l'app, donc **ENDURABUILD**, et un critère
+interdit le mot. Elle écrit « Salut Théo » : le questionnaire ne collecte **aucun prénom**
+(vérifié), et inventer « Salut champion » serait une familiarité que personne n'a demandée — le
+salut reste sans nom. Elle dessine la puce à 30 px : **44 px** ici (U4). Sans date de course
+déclarée, la puce n'existe pas — R23.5 l'avait déjà tranché pour l'onglet Plan, « inventer un
+J−? serait pire que se taire ».
+
+### Le défaut trouvé en construisant — une règle morte depuis R-ZENNA v3
+
+L'en-tête ne se mettait pas en ligne : ses deux blocs sortaient en pleine largeur, empilés.
+`getComputedStyle` donnait `display: block` alors que la règle demande `flex`, et la règle
+**était absente du CSSOM** tout en étant présente dans le fichier.
+
+Cause : l'en-tête de commentaire de `zenna-tabs.css` listait les jetons du thème clair —
+`(--text/--text2/--muted/--ink/--bg*/--acc/…)`. La séquence `*/` de **`--bg*/` ferme le
+commentaire dès cette ligne**. Tout le reste de l'en-tête est alors lu comme du CSS invalide, et
+la récupération d'erreur du parseur avale jusqu'à la première `}` — c'est-à-dire **la première
+règle du fichier**. Mesuré : exactement une règle perdue (196 → 195).
+
+Avant ce lot, cette première règle était `.gw, .drv-band, .locked, .bp-hero`. Conséquence
+mesurée sur l'onglet Semaine : `.gw` rendait un **liseré de 3 px blanc cassé et une ombre portée
+BLANCHE de 5 px** au lieu de sa surface sombre à 1 px — c'est-à-dire **précisément le « MODE DE
+PANNE À CONNAÎTRE » que ce commentaire décrit**, provoqué par une faute de frappe *dans ce
+commentaire*. Depuis v3, sur les deux onglets qui partagent cette grille.
+
+Rien ne pouvait le voir : le fichier reste valide, la feuille se charge, une seule règle
+disparaît en silence. Garde ajoutée à `smoke-typo`, exacte pour cette classe de défaut : on
+retire les commentaires bien formés (même sémantique non gourmande que le parseur) et **s'il
+subsiste un `*/`, c'est qu'un `*/` prématuré a décalé la structure**. Les quatre feuilles sont
+couvertes ; **vérifiée rouge** en remettant la faute.
+
+### Ce que le rapport disait, et ce que la mesure a répondu
+
+| Constat du rapport | Vérifié |
+|---|---|
+| §3 — dette de perf de recalcul de style, « à traiter avant d'étendre le reskin » | **Non fondée.** Surcoût des deux feuilles, mesuré par onglet contre les mêmes écrans sans elles : **0 à 9 ms**, une valeur négative — sous le bruit de mesure. Le blocage annoncé n'existe pas. |
+| §3 — U7 devenu douteux | **Vivant.** U7 rapporte 5 ms contre un plafond de 2 000, et **rougit à 3 332 ms** dès qu'on retire l'amorçage précoce de la météo (cassure vérifiée). |
+| §7 — « ligne *Après* manquante au ravitaillement, module commerce à étoffer (cadence, prix, goût, format) » | **Périmé.** Tout cela a été livré en v4 ; le rapport a été écrit sur un fichier antérieur (il compte 174 règles pour une feuille qui en a 223). |
+| §4.3 — en-tête partagé absent des cinq écrans | **Juste**, et c'est le seul de la liste — livré ici. |
+
+## R-ZENNA (v6) — les quatre arbitrages du fondateur
+
+Quatre décisions prises le 11/08/2026 sur la base de l'état des lieux externe. Deux d'entre
+elles **renversent une décision antérieure du dépôt**, et c'est écrit comme tel.
+
+### 1. La grille de semaine quitte la vue par défaut de 🗓 Plan (renverse R16.9)
+
+Plan garde un RÉSUMÉ (numéro, dates, phase, volume) et un bouton « 📅 Ouvrir la semaine ».
+**Ça ne crée aucun second chemin de rendu** — et c'est ce qui rend la décision peu coûteuse.
+R16.9 avait trouvé un vrai défaut (la coche existait en deux versions, celle de Plan basculant
+un booléen en silence, donc sans RPE, donc l'ajusteur sous-estimait la fatigue) ; ici on RETIRE
+un consommateur de `weekGridHTML`, on n'en ajoute pas. La maquette écrit d'ailleurs elle-même
+dans cette carte « même dessin, même geste, jamais deux comportements ».
+Perdu et assumé : cocher depuis Plan sans changer d'onglet. **3,7 → 2,7 écrans.**
+
+### 2. Les cinq couleurs de phase restent
+
+Conforme au principe « on transpose, on n'uniformise pas ». Aucun code changé.
+
+### 3. L'avatar est repeint (renverse l'idiome de la plaque claire)
+
+Le commentaire en place disait que repeindre demanderait de reprendre chaque calque avec le
+risque de casser le contrat vérifié par `demo:avatartri` (59 582 SVG). C'est vrai d'un
+threading de palette à travers une quarantaine de fonctions ; ce ne l'est pas de l'idiome que
+R-ZENNA emploie partout ailleurs — **`var(--x, <valeur d'origine>)`**. 73 littéraux routés.
+Trois propriétés en découlent, et ce sont celles qu'on veut : sans feuille de thème le rendu
+est identique ; `demo:avatartri` tourne en node sans CSS donc voit les replis ; et **la carte
+de partage reste claire sans qu'on ait rien à faire** — `export.js` charge le SVG comme `Image`
+dans un document indépendant, où les variables de la page ne descendent pas.
+Non repeints : accents de discipline, or, rouge, vert du podium — ils portent du sens.
+
+### 4. Le thème couvre le questionnaire
+
+Il était posé dans la vue à onglets seulement, et `hideTabs()` le retirait : le questionnaire
+restait le dernier écran d'une autre époque visuelle, alors que c'est le **premier contact**.
+La maquette ne couvre aucun écran d'onboarding — ces écrans sont donc TRANSPOSÉS depuis ses
+composants, jamais copiés d'une référence qui n'existe pas. Les sept accents de discipline
+(`--sa`, posé en inline) restent le liseré de chaque carte de sport. Traversé sur les 9 écrans
+du triathlon : aucune surface claire résiduelle, aucune erreur JS.
+
+### Six gardes réécrites sur les nouvelles décisions, jamais supprimées
+
+`U15` (comptait une grille → zéro grille + le chemin + la carte, sans quoi le critère serait
+satisfait en supprimant tout) · `smoke-checkin` (portait le critère d'acceptation de R16.9 —
+réécrit sur ce qu'il protégeait vraiment : la coche et le ⇄ sont à un geste) · `smoke-r4` §7
+et §5b (la chaîne coche → RPE → célébration, et les séances de la grille : sans correction §5b
+ne mesurait plus rien et rendait `undefined`) · `smoke-dates` (la case « aujourd'hui », restée
+sur Plan alors que son jumeau UTC+14 regardait déjà Semaine) · `smoke-avatar` (nouvelle garde
+sur les deux moitiés du repeint, la seconde — encre d'origine hors du thème — étant celle qu'on
+casserait sans s'en apercevoir : un repeint qui déborde noircit une carte de partage claire).
+Vérifiée rouge sur trois cassures, dont exactement cette fuite.
+
+**21 suites E2E vertes, `demo:avatartri` vert, `audit:v1` vert.**
+
+## R-ZENNA (v7) — la marque n'a plus qu'un endroit, et les derniers gestes « papier » tombent
+
+Retour du fondateur : *« j'ai vu d'ancien logo et de l'ancienne DA par endroits »*. Balayage des
+six écrans en mesurant les signatures du « collage » (ombre portée dure, contour ≥ 2,5 px,
+rotation, aplat clair) : **le collage avait bien disparu des onglets**. Ce qui restait était
+ailleurs.
+
+### La marque existait en QUATRE versions
+
+| Surface | Traitement |
+|---|---|
+| Questionnaire | `ENDURA` + `BUILD` dans un bloc orange — l'ancien mot-marque, seulement recoloré |
+| En-tête des onglets | tuile « E » + mot incliné — **que j'avais inventé** en portant la maquette |
+| Favicon · icône PWA · apple-touch-icon | triangle rouge sur fond **crème** — jamais touchée |
+| Cartes de partage | `ENDURABUILD` en Archivo Black + deux barres d'accent |
+
+L'icône est le cas le plus coûteux : c'est **la seule surface où l'ancienne DA était encore
+INSTALLÉE** chez les gens (écran d'accueil du téléphone, onglet du navigateur).
+
+`endurabuild/js/ui/brand.js` est le point unique. Le fichier dit où poser le vrai logo quand il
+arrivera (décision du fondateur : *« tu me fournis le logo »*), et les quatre surfaces suivent.
+
+**Le symbole y est un POLYGONE, pas un chemin SVG** — délibérément : l'app le dessine en SVG,
+`makeIcons.mjs` le peint **pixel par pixel** (générateur PNG zéro dépendance, sans rastériseur).
+Un chemin pour l'un et une géométrie pour l'autre feraient deux définitions du même symbole, qui
+divergeraient au premier ajustement. Le chemin SVG et les pixels en dérivent tous les deux.
+
+### La navigation passe des emoji aux SVG au trait
+
+Les emoji système gardent **leurs propres couleurs** (le calendrier rouge, la mallette rouge) :
+ils ne suivaient ni le thème ni l'état actif, et l'app n'avait pas le même visage sur iOS et sur
+Android, chaque système ayant sa police d'emoji. Les cinq icônes de la maquette, en
+`currentColor`. Les emoji **restent** dans les titres de cartes : là ils repèrent un contenu, ils
+ne portent pas l'identité.
+
+### Deux défauts à moi, trouvés en construisant
+
+**Le piège de spécificité, une troisième fois.** Ma règle de couleur pour l'onglet central
+portait `#ebTabbar` : (0,1,3,1) contre (0,0,4,1) pour les règles qui géraient déjà ce cas — elle
+gagnait donc AUSSI à l'état inactif, où la tuile est sombre : **icône sombre sur fond sombre**.
+C'est exactement le mécanisme de l'écran noir de v2 et de la règle morte de v5.
+
+**Un `[^>]*` sur une donnée qui contenait `>`.** Ma réécriture du favicon utilisait
+`/<link rel="icon"[^>]*>/`, or l'ancienne URI portait du SVG **brut** (`<svg …><polygon …/></svg>`) :
+la classe s'est arrêtée au premier `>` interne et a laissé une queue de balise dans le `<head>`.
+Le parseur a refermé la tête plus tôt, **l'ordre des feuilles s'est inversé**, et
+`body[data-intent="competition"] { background: #f3e9dd }` (même spécificité, source plus tardive)
+a repeint **quatre onglets sur cinq en crème** — alors que `theme-zenna` était bien posé sur
+`<body>`, ce qui rendait le symptôme incompréhensible. Garde `§0bis` : les feuilles du thème se
+chargent après `styles/mobile`, et le `<head>` ne porte aucun texte parasite. Vérifiée rouge.
+
+### Les trois écarts de composition restants (tous demandés)
+
+**Les derniers gestes « fait main »** — le socle avait repris fonds, contours et ombres ; il
+restait les **rotations**, invisibles dans une revue de couleurs et sorties par un balayage de
+`transform` : options du questionnaire penchées, séparateurs d'étape à −8°, drapeau d'accueil en
+boucle infinie (`triWiggle`, 3 s). Sur du papier une pastille penchée fait « posée à la main » ;
+sur du noir, avec des bords nets, elle fait « mal alignée ».
+
+**Le héros du décompte** (🗓 Plan) : `J−278` en 52 px, la barre de progression hachurée de la
+maquette. C'est la seule information de cet onglet qui ne change jamais de sens.
+
+**Les anneaux par discipline** (📅 Semaine) : part de séances validées, accent de la discipline
+conservé. Le brick compte pour ses deux disciplines (R25, « +5/+5 »).
+*J'avais aussi écrit une ligne de distances — et elle **contredisait celle qui existe déjà** :
+🚴 1h18 en haut de l'onglet contre 1h30 dans la mienne, sur la même semaine. `EBV2.weekDistances`
+(R24.8, demande du fondateur) fait autorité : elle compte les mètres prescrits exacts et ne
+convertit les minutes qu'avec les références mesurées, en marquant la conversion d'un « ~ ».
+La mienne est retirée, et **l'ordre des anneaux suit celui que le moteur renvoie** plutôt que
+d'introduire une troisième convention.*
+
+**21 suites E2E vertes, `audit:v1` vert.**
+
+---
+
+## R-ZENNA (v8) — le logo, le renommage en Zenna, et une garde qui dépendait du jour
+
+**Le logo est fourni, et il devient la source unique.** Le fondateur a livré la marque (coureur
+stylisé formant un « Z », orange sur noir). Elle vit dans `endurabuild/js/ui/brand.js`, qui était
+déjà le point unique posé par v7 pour le MOT ; il porte désormais aussi le SYMBOLE.
+
+`MARQUE.contours` est une **paire de contours en coordonnées 0-100**, pas un chemin SVG, parce que
+**deux moteurs de rendu doivent les lire** : le SVG de l'app (`symbolePath()`, qui les lisse en
+courbes quadratiques par milieux de segments) et le générateur d'icônes PNG
+(`scripts/makeIcons.mjs`, qui teste pixel par pixel avec `dansSymbole()` — pair-impair appliqué
+**par contour puis OU logique**, les deux formes étant disjointes et non un trou dans l'autre).
+Un chemin `d="…"` obligerait le second à parser du SVG ; les contours servent les deux sans
+qu'aucun ne recopie l'autre (R11.1).
+
+**Ce que le logo EST, écrit dans l'en-tête du fichier** : un TRACÉ (marching squares +
+Douglas-Peucker, seuil sur le JPEG fourni), pas le vecteur d'origine. Le seuil mord dans le bord
+adouci du JPEG, donc le tracé est légèrement plus gras que l'original. Remplacer
+`MARQUE.contours` par la source vectorielle réelle est strictement meilleur, et c'est écrit là où
+quelqu'un le lira.
+
+`#f04808` est **échantillonné** sur le logo fourni (teinte dominante), pas choisi à l'œil. La
+tuile de fond a disparu : le symbole se pose à même le noir, comme sur la maquette.
+
+### Le renommage — et les deux endroits qui gardent leur ancien nom
+
+`EnduraBuild` → `Zenna` partout où c'est **visible** : titre de page, `manifest.json`
+(`name`/`short_name`), mot-marque de l'accueil et des onglets, `PRODID` iCalendar, pied de page
+des exports, messages console, icônes régénérées, favicon. Le monolithe gelé
+`Coach_Pro_V1.5.html` est renommé lui aussi — le geler concerne son moteur et son UI, pas le nom
+du produit, et laisser un fichier annoncer l'ancienne marque recréerait exactement le problème
+des « quatre versions coexistantes » que v7 venait de fermer.
+
+**Deux identifiants ne bougent PAS, et c'est délibéré :**
+
+| Ce qui garde son nom | Pourquoi |
+|---|---|
+| `eb_state_v1` / `eb_state_v2` (localStorage) | Renommer la clé, c'est perdre le plan de **chaque utilisateur existant**. Aucune garde ne le verrait : l'app démarrerait proprement, sur un état vide. |
+| `UID:…@endurabuild` (iCalendar) | Un UID est une IDENTITÉ. Le changer fait de chaque séance déjà importée un événement NEUF au ré-import — la préparation en double dans l'agenda de l'athlète. |
+
+Le **répertoire** `endurabuild/` garde son nom aussi : chemins du service worker, `ASSETS`
+dérivés du disque, workflows CI, `scripts/*.mjs`. Le renommer serait un déplacement de fichiers
+sans bénéfice visible, avec une surface d'erreur large. Les occurrences restantes de
+« endurabuild-3 » désignent un **fichier historique supprimé**, pas le produit.
+
+### La garde de la marque avait fini par affirmer le contraire de ce qu'elle voulait
+
+`smoke-zenna` assertait « …et jamais « Zenna », qui est le nom de la maquette » — écrit quand
+Zenna désignait le fichier de maquette et EnduraBuild le produit. Le critère est réécrit sur ce
+qui est vrai, et **gagne une moitié qui manquait** : le SYMBOLE est rendu, pas seulement le mot.
+Une garde qui ne regarde que le texte laisserait passer un logo disparu.
+
+### Le défaut trouvé en passant les gates — SEPTIÈME occurrence de la famille R20.7
+
+`smoke-zenna` est sortie rouge sur trois assertions (« XP flottant : «  » », « toast : « Repos
+validé » », « le grand chiffre est posé d'emblée (undefined) »). **Le réflexe aurait été de les
+attribuer au renommage — c'est faux, et c'est mesuré** : la même suite, exécutée sur le `HEAD`
+d'avant le lot, rend exactement les trois mêmes échecs.
+
+La suite ne pinçait **aucune date**, et le plan démarre au lundi de la semaine en cours (R8/R9) :
+le jour affiché par 🎯 Aujourd'hui dépendait donc du jour où on lance la commande. Balayé sur les
+sept jours à moteur inchangé, pour son profil (tri/70.3/inter/quotidienne) :
+
+| Jour ancré | Héros | Effet sur la suite |
+|---|---|---|
+| **Lun · Mer · Ven · Dim** | « Repos » | 3 échecs — pas d'XP, pas de grand chiffre |
+| Mar · Jeu · Sam | Sweetspot vélo · Nage vitesse · Sortie longue | verte |
+
+**Quatre jours sur sept.** La suite passait sur la bonne volonté du calendrier depuis son
+écriture ; elle est devenue rouge le 12/08 parce que c'est un mercredi. Même mécanisme que le
+banc R14 (R20.7), `audit:invariants` (C29b/C29c), la mesure de fréquence d'O-19, `smoke-r4`, et
+l'entrée O-19 elle-même.
+
+**Correctif** : `page.clock.setFixedTime` dans `boot()` — `setFixedTime` et non `install`, parce
+qu'`install` gèle aussi les MINUTERIES, c'est-à-dire la cascade d'entrée et le nettoyage des
+particules, soit précisément ce que cette suite mesure. Les dates sont **absolues**, pour la
+raison qu'A-6 a retenue en refusant de rendre le golden relatif : une garde de RENDU doit être
+reproductible, pas suivre le calendrier — rien ici ne dépend de la fraîcheur de la date, seulement
+du jour de semaine sur lequel elle tombe.
+
+**Et on ancre sur DEUX jours, pas un.** N'ancrer que le mardi rendrait la suite verte en couvrant
+« le jour où le code a été écrit » (R20.1) : la branche REPOS — celle-là même qui venait de faire
+rougir la suite — ne serait jamais exercée. Le **§1ter** la garde désormais, avec la décision que
+R25 a prise pour elle : un repos validé se fête (confettis, coche dessinée, toast qui le nomme)
+et **ne donne PAS d'XP**. Un témoin précède chaque moitié (« le jour ancré porte bien une
+séance » / « …de repos en est bien un ») pour qu'un changement de périodisation désigne sa vraie
+cause au lieu d'accuser le mouvement.
+
+**Contre-preuves, deux rouges** : XP recâblé sur le repos → `1 ÉCHEC` sur le critère R25 ;
+ancrage retiré → `4 ÉCHECS`, le témoin en tête.
+
+**64 assertions (57 avant), `audit:v1` vert, `check:app` et `check:sw` verts.**
+
+### Et le golden portait le MÊME défaut, en plus pernicieux — huitième occurrence
+
+`golden:verify` est sorti rouge sur **7 profils sur 949, tous en `*/cycle`**. Même réflexe, même
+vérification : la suite exécutée sur le `HEAD` d'avant le lot rend **les sept mêmes écarts** —
+rien à voir avec le renommage.
+
+Le profil `cycle` du golden (`sex: F`, `cycle_sync: oui`, `cycle_start: 2026-07-27`) est **le
+seul de sa passe dont le contenu dépend de dates calendaires absolues** : `phaseOf()` lit le jour
+du cycle sur la date de chaque jour du plan. Or ce profil ne déclarait pas `plan_start`, et
+`weekBuilder.ts:278` retombe alors sur `Date.now()`.
+
+**Le témoin corrige le diagnostic que j'allais écrire.** J'avais noté « ça glisse d'un jour par
+jour » ; mesuré en rejouant le profil avec `Date.now()` stubbé sur quatre dates :
+
+```
+SANS plan_start   b9561b28 b9561b28 b9561b28 a716ccea   → GLISSE (10, 11, 12 août · 17 août)
+AVEC plan_start   db3f9988 db3f9988 db3f9988 db3f9988   → STABLE
+```
+
+La grille se cale sur le **lundi** de la semaine d'ancrage : les sept empreintes changent une
+fois **par semaine**, pas chaque nuit. C'est plus pernicieux qu'un rouge quotidien — un gate qui
+devient rouge tous les lundis ressemble à une régression du lot en cours, et c'est exactement la
+conclusion que j'ai failli tirer.
+
+`plan_start: "2026-07-27"` (le lundi de `cycle_start` — jour 1 du plan = jour 1 du cycle) ancre
+le profil. Dates absolues, conformément à A-6. Recapture explicite : **7 empreintes changent sur
+949**, celles-là et aucune autre.
+
+*Vérifié au passage que les profils `measured-*` ne portent PAS le même défaut : leur
+`updated_at` n'est comparé à aucune date courante dans le moteur.*
+
+### La favicone pesait 81 % du HTML servi
+
+Le tracé du logo compte ~750 points ; posé en `data:` dans `<link rel="icon">`, il faisait
+**21,6 Ko sur les 26,7 Ko** du document — c'est-à-dire que quatre cinquièmes du HTML sur le
+chemin critique du premier rendu étaient une image de 16 px. Sur l'onglet dont U7 mesure le
+budget à 2 000 ms, avec une marge déjà déclarée comme quasi nulle, c'est cher pour une icône
+d'onglet. Et c'était un **SECOND encodage de la géométrie du logo**, exactement ce que
+`brand.js` existe pour empêcher (R11.1).
+
+`assets/icon-192.png` — déjà généré depuis `brand.js`, et qui pèse **1,2 Ko** — le remplace :
+requête séparée, cachée par le service worker (elle était déjà dans `ASSETS`), hors du chemin
+critique. **HTML servi : 26,7 Ko → 5,1 Ko.** Le fichier autonome l'**embarque en base64** (1,6 Ko)
+plutôt que de la retirer comme il retire `apple-touch-icon` : la promesse « zéro requête réseau »
+est tenue, vérifiée sur le fichier produit.
+
+**28 gates verts, E2E 21/21 (64 assertions pour `smoke-zenna`), golden 949 recapturé (7).**
+
+---
+
+## V1 — le canal de vente : le tunnel était infranchissable
+
+Retour du fondateur : *« travail l'ux du canal de vente »*. Le canal (abonnement de
+ravitaillement, 🧰 Outils › Nutrition) n'avait jamais été traversé **comme un athlète le fait**,
+seulement composé puis gardé par des critères d'état. Sept constats, tous mesurés au rendu.
+
+### Le défaut principal : il était IMPOSSIBLE de s'abonner
+
+Mesuré geste par geste, sur un plan en cours dont l'ancre des 28 jours est échue :
+
+| geste | état | hauteur | devis | bouton d'activation |
+|---|---|---|---|---|
+| j'ouvre Outils › Nutrition | dépliée | 811 px | oui | oui |
+| je clique « chaque mois » | **REPLIÉE** | 190 px | **non** | **non** |
+| je clique « citron » | repliée | 190 px | non | non (sans effet) |
+| je clique « Activer » | repliée | 190 px | non | non (sans effet) |
+
+Les trois gestes de la carte écrivaient `lastPromptAt: today` — ce qui est JUSTE, le commentaire
+le dit bien (« une proposition qu'on manipule est une proposition vue »). Mais c'est le MÊME
+champ que lit `shopPromptDue` pour décider si la carte s'ouvre d'elle-même : au rendu suivant,
+`due` retombait à faux, et `shopExpanded` — la seule autre raison de rester ouverte — n'était
+posé QUE par le bouton « Voir ce que ça donne ». La carte se refermait donc sur l'athlète au
+premier choix, **exactement dans l'état où le produit propose lui-même l'offre**.
+
+Un geste qui détruit la raison pour laquelle la carte est ouverte doit poser l'autre raison :
+on ne peut manipuler que ce qui est ouvert. Point unique `noterGesteCarte()` — écrit une fois
+plutôt que dans chacun des quatre gestionnaires (R11.1), l'oubli dans l'un d'eux étant
+précisément ce qui a produit le défaut.
+
+### « envoi le samedi » et « envoi le 1er » étaient faux
+
+Le sous-titre du segmenté annonçait un jour fixe. `nextEcheance` compte des MULTIPLES de la
+cadence depuis `startedAt` : l'envoi tombe le jour où l'on s'abonne. Balayé sur les sept jours —
+abonné un lundi → échéance un lundi, un mardi → un mardi. « samedi » n'est vrai que pour qui
+s'abonne un samedi, **1 cas sur 7**. Et le mensuel valant 30 jours FIXES et non un mois, les
+échéances d'un abonnement pris le 01/08 tombent les **31, 30, 30** — « le 1er » n'arrive jamais.
+Le sous-titre annonce désormais la période (« tous les 7 jours »), que le calcul tient.
+
+### Le devis jetait l'hydratation, et vendait des gels pour un bassin
+
+`DISCIPLINES_BOISSON` ne gardait que `bk`/`br`. Sur un plan marathon, le moteur prescrit
+400-800 ml/h et le canal proposait **zéro boisson** : 1 540 ml jetés sur la sortie longue de
+2 h 34, 1 370 sur l'allure spécifique — un devis d'apparence complète sur un plan où toute
+l'hydratation manquait. **Décision du fondateur** : « trail + sorties > 90 min », par-dessus le
+vélo et le brick. La nage reste dehors, seul cas où l'impossibilité est physique.
+
+Symétriquement, le devis proposait **2 gels pour une nage de 70 min en bassin**. Le premier
+réflexe était de lire `milieu` (bassin / eau libre) — **mauvais signal** : chez un triathlète
+`milieu` décrit la COURSE, alors que l'entraînement se fait en bassin quoi qu'il arrive. On
+aurait branché une règle sur une réponse qui parle d'autre chose. Ce qui décide réellement est
+la durée : à partir de ~90 min se ravitailler devient nécessaire ET praticable (au mur comme sur
+une traversée). On reprend donc **le seuil que le fondateur venait de retenir pour la boisson**
+plutôt que d'en inventer un second, et on le limite à la nage.
+
+### Ce qu'un lecteur d'écran ne savait pas
+
+`role="tablist"` promettait des `tabpanel` (mesuré : **0**) et un parcours aux flèches que rien
+n'implémentait. Les 8 puces de goût et de format portaient **0 `aria-pressed`, 0 `role="radio"`**
+— la sélection n'existait que par la COULEUR, et l'intitulé du groupe n'était relié à rien.
+Trois `radiogroup` nommés, `aria-checked` sur chaque option.
+
+Et le focus était **perdu à chaque choix** : `renderTabNutrition` réécrit `#screen.innerHTML`,
+donc le bouton activé est détruit et le focus retombe sur `<body>` (mesuré). À la souris on ne
+le voit pas ; au clavier on est renvoyé en haut de l'onglet à chaque geste, c'est-à-dire qu'on
+ne peut pas enchaîner cadence → goût → format. Le focus se repose sur le même contrôle, jamais
+au premier rendu.
+
+*Aucun `aria-live` n'a été ajouté : `#screen` en porte déjà un. Une seconde région imbriquée
+aurait été redondante — vérifié avant d'écrire, pas supposé.*
+
+### La réserve qui compte passe avant le bouton
+
+`.shop-fine` était le bloc le plus DENSE de toute l'app : **3,63 car./px** de hauteur rendue,
+313 caractères — le pire relevé de l'audit par onglet était 3,00. Et le fait décisif y était dit
+DEUX FOIS, dans deux paragraphes voisins de style identique (9 px, même gris, même interligne) :
+« rien n'est envoyé nulle part » / « aucune expédition », « reste sur cet appareil » / « intention
+enregistrée sur cet appareil ». Le bouton, lui, annonçait en capitales « **1er ENVOI le 19/08** »
+— une expédition qui n'aura pas lieu, aucun fournisseur n'existant et `submitOrder` ne faisant
+aucune requête.
+
+Le service n'existe pas encore : ce fait décide, il se lit donc AVANT qu'on s'engage. Le bouton
+dit ce que la date désigne réellement (la première PÉRIODE couverte, que le calcul tient).
+Densité **3,63 → 3,18**, hauteur 811 → 797 px.
+
+### Un mineur ne se voit plus rien proposer
+
+Mesuré : un profil de **14 ans** recevait la carte complète, devis et bouton compris. O-16 refuse
+déjà l'estimation énergétique sous 16 ans ; une carte COMMERCIALE est de la catégorie 7 du
+manifeste, celle qui ne passe jamais devant les quatre premières. Seuil repris d'O-16 plutôt
+qu'un second inventé, sur un âge **connu** seulement. Le drapeau médical ne masque pas
+(arbitrage du fondateur : être suivi n'interdit ni de manger ni de boire).
+**Ce qui n'est pas touché est le point** : le ravitaillement d'effort (N1-N7) reste servi à tout
+âge — c'est la VENTE qui se retire, jamais l'information.
+
+### Trois de mes instruments étaient faux, et un quatrième était vacueux
+
+- **Le contraste.** Ma sonde a rendu **1,28** sur le libellé de la cadence active, puis **1,01**
+  après « correction ». Les deux étaient faux : la remontée par `parentElement` ne voit pas un
+  FRÈRE peint dessous (la pastille `#ffb199` est exactement sous ce texte), et
+  `elementsFromPoint` travaille en coordonnées de FENÊTRE — sans défilement préalable il rend une
+  liste vide pour un élément à y=1161 sur un viewport de 844, et le fond retombe sur du noir.
+  Le vrai rapport est **11,3**. *`smoke-zenna` porte la même limite d'instrument ; elle ne produit
+  aucun faux échec aujourd'hui parce que le segmenté n'existe pas dans l'état qu'elle inspecte.*
+- **La mesure « la boisson est jetée ».** Ma sonde portait sa PROPRE copie de la règle
+  (`["bk","br"].includes(s.d)`) : après correction du code elle affichait toujours « JETÉE ».
+  Elle mesurait mon instrument, pas le produit. Remesuré sur la sortie réelle.
+- **La contre-preuve K3.** Sortie VERTE : le `perl` n'avait rien remplacé. Une cassure qui ne
+  s'applique pas ne prouve rien — les cassures vérifient désormais que le motif existe.
+- **Le critère « rien d'autre ne disparaît pour le mineur ».** Écrit sur `#nutCard`, il est sorti
+  rouge — et la cause n'était pas la garde d'âge : cette carte ne se rend que si le jour COURANT
+  porte une séance, et elle valait 0 pour l'adulte aussi. Il nommait « l'information ne se
+  retire pas » et mesurait une propriété du CALENDRIER. Réécrit en DIFFÉRENTIEL (même profil à
+  14 et 16 ans), il ne peut plus passer sur un onglet vide.
+- **Le critère « aucun rôle d'onglet ».** Il lisait la carte laissée par le bloc précédent,
+  c'est-à-dire l'état ABONNÉ, où le segmenté n'existe pas : compter zéro `role="tab"` y était
+  vrai quoi qu'il arrive. **Démontré vacueux** en réintroduisant `role="tablist"` — il restait
+  vert. Il reboote désormais sur l'état où les contrôles existent.
+
+### Garde
+
+`smoke-shop` passe de 20 à **37 assertions** : le tunnel traversé de bout en bout, les rôles, le
+focus, les sous-titres de cadence, la garde d'âge sur ses deux moitiés. **Cinq cassures, cinq
+rouges** — et K1 rend désormais **7 lignes de verdict** là où elle faisait MOURIR la suite sur un
+`TimeoutError` avant `report()` (code de sortie 1, aucune ligne : le défaut d'instrument de
+R22b/H-1b, refait puis corrigé — les clics sont conditionnels).
+
+### Trouvé en chemin — le champ du questionnaire sortait de l'écran
+
+Sans rapport avec le canal de vente, relevé en traversant l'app. `.row` est un flex à deux
+colonnes (`gap:16px`, `.row .q{flex:1;min-width:150px}`) : sur un viewport de 390 px chaque `.q`
+se réduit à 156 px, mais l'`input` porte une largeur FIXE de 200 px qui ne se réduit pas. Mesuré
+sur l'étape « Profil physique » du triathlon : le champ Âge occupe 31→231 dans une colonne qui
+s'arrête à 187, le champ Poids 203→403 — ils se **CHEVAUCHENT de 28 px** et le second sort de
+l'écran de **12 px**. `max-width:100%` : la largeur fixe reste, on l'empêche seulement de
+dépasser son conteneur. Après : 31→187 et 203→359, zéro débordement.
+
+**28 gates verts, E2E 21/21, `audit:v1` et golden inchangés** — le canal de vente ne touche
+aucune séance.
+
+---
+
+## V2 — le produit se montre : le sachet Zenna dans la carte de vente
+
+Maquettes produit du fondateur (12/08/2026) : quatre saveurs — citron (référence héro), cola,
+fruits rouges, neutre —, 30 g de glucides, 40 g net, sans colorant ni conservateur, fabriqué en
+France. *« travail maintenant l'interface graphique de vente »*.
+
+La carte vendait jusqu'ici une abstraction : le créneau produit portait un « flacon » générique
+(un rectangle arrondi surmonté d'une pastille de couleur) dessiné faute de produit à montrer, et
+le devis parlait de « gel (30 g) ».
+
+### L'identité vit dans `shop-catalog.js`, et nulle part ailleurs
+
+Ce fichier se déclare depuis son écriture « le SEUL endroit où un produit réel existe » : c'est
+donc là que `GEL_ZENNA` se pose. Le dessin du sachet, les puces de choix, le devis et les
+arguments de la carte lisent tous cette table — une saveur ajoutée demain se dessine, se choisit
+et se chiffre sans qu'aucun autre fichier ne bouge.
+
+**Deux encres par saveur, et ce n'est pas de la coquetterie.** `bloc` est la couleur vive de la
+maquette (le pan diagonal, la pastille) ; `texte` est sa version assombrie pour écrire SUR le
+crème. Mesuré : l'olive du citron (`#b4c223`) rend **3,08:1** sur le crème, sous le seuil AA de
+4,5. Une seule couleur obligeait à choisir entre la maquette et la lisibilité ; les séparer tient
+les deux.
+
+**`CATALOG` reste à `null`.** On décrit un produit DESSINÉ, pas un produit DISPONIBLE : ni
+fournisseur, ni prix ferme, ni expédition, et `submitOrder` ne fait toujours aucune requête. La
+carte continue de le dire, au même endroit et dans les mêmes termes.
+
+### Le sachet est dessiné, et le Z ne l'est pas deux fois
+
+`endurabuild/js/ui/sachet.js` construit le sachet en SVG depuis `GEL_ZENNA`. Pas de raster (D19,
+zéro requête externe), et surtout **le Z vient de `brand.js`** : `symbolePath()` est la source, on
+ne fait que la placer et la mettre à l'échelle. C'est la leçon que R-ZENNA v8 a payée — la
+géométrie du logo avait fini par exister en trois endroits.
+
+**Deux niveaux de détail, par lisibilité et non par optimisation** : à 24 px de large, « ZENNA /
+GEL GLUCIDE / 30 G GLUCIDES » se rend en traits de moins d'un pixel — du bruit qui salit la forme.
+La vignette ne porte que ce qui reste lisible à cette taille : la silhouette, le Z, le pan de
+couleur.
+
+**Ma première géométrie posait le chiffre DANS le pan de couleur** (« 30 G » à y=102 pour un pan
+qui commence à 86) : il s'y noyait. C'est le rendu qui l'a montré, pas la relecture du code — le
+chiffre est le seul argument du sachet qu'on lit à un mètre, il reste sur le crème.
+
+**Et `var(--zn-mono)` dans un attribut de présentation SVG ne résout rien** : un attribut SVG est
+parsé comme du XML, la police retombait en silence sur celle du navigateur. Elle vient désormais
+du CSS (`.zn-sachet text`), qui sait lire une variable — et évite d'écrire une seconde fois la
+pile de polices du thème.
+
+### Ce que la maquette a changé dans la carte
+
+- **La rangée des goûts montre les sachets** : on choisit un produit qu'on VOIT. Le bouton reste
+  un bouton — libellé compris, `radiogroup`/`aria-checked` conservés, cible de 44 px tenue. Les
+  sachets sont `aria-hidden` : un lecteur d'écran entend « Citron », pas « image, Citron ».
+- **« peu d'importance » ne rend AUCUN sachet.** C'est une non-préférence valide ; lui inventer
+  un visuel ferait croire à une cinquième saveur.
+- **L'ordre des saveurs est celui de la gamme** (citron d'abord). Ce n'est pas décoratif :
+  `FLAVOR_OPTIONS[0]` est aussi le défaut proposé.
+- **Le devis nomme le produit** — « 3 × Zenna gel glucide (30 g) » et non « 3 × gel ».
+- **Les faits produit sont un BANDEAU d'une ligne**, pas trois encadrés : la carte portait déjà
+  trois pavés de service, et six boîtes empilées faisaient 210 px de promesses avant le premier
+  chiffre. C'est exactement ce que fait le pied des maquettes.
+
+### Le plancher typographique, et pourquoi l'exemption n'est pas un trou
+
+`smoke-typo` est passé rouge : **4,4 px** sur les mentions du sachet, pour un plancher de 9. La
+règle R16.8 dit elle-même ce qu'elle gouverne — *« l'échelle gouverne le TEXTE ; un glyphe
+décoratif se dimensionne relativement à son porteur »*. Le sachet est un DESSIN de produit : « NET
+40 G » est un trait sur un emballage, pas une phrase adressée à quelqu'un.
+
+L'exemption est donc bornée à `svg[aria-hidden="true"]` — et elle **reste honnête parce qu'elle
+est conditionnelle** : `smoke-shop` vérifie séparément que chaque sachet est bien `aria-hidden`.
+Vérifié en retirant l'attribut : **les DEUX gardes rougissent**, `smoke-shop` sur l'illustration
+et `smoke-typo` qui recommence à voir les 4,4 px. Sans cette paire, il suffirait de cacher du vrai
+texte dans un SVG pour échapper au plancher.
+
+*Au passage, la garde ne nommait pas son coupable : `className` d'un élément SVG est un
+`SVGAnimatedString`, elle affichait « [object Object] ».*
+
+### Deux erreurs à moi, gardées écrites
+
+**Un `git checkout` a effacé une heure de travail.** En restaurant une cassure de contre-preuve
+j'ai fait `git checkout endurabuild/js/ui/tab-nutrition.js` sur un fichier aux modifications NON
+COMMITÉES : tout le câblage du sachet a disparu d'un coup. Ce sont les gardes qui l'ont dit
+(« 0 sachets », « le devis a 0 ligne »), pas moi. Les cassures se restaurent depuis une copie
+prise avant, jamais depuis git tant que le travail n'est pas commité.
+
+**Et un critère satisfait par un voisin.** « le produit est nommé » cherchait
+`/Zenna gel glucide|30 g de glucides/` n'importe où dans la carte — or la seconde branche est
+satisfaite par le bandeau de faits produit. Retirer le nom du devis laissait le critère VERT,
+vérifié. Neuvième occurrence dans ce dépôt d'un critère qui nomme une grandeur et en mesure une
+voisine ; il lit désormais les lignes du devis, et elles seules. Il a fallu aussi l'ancrer sur la
+cadence MENSUELLE : la fenêtre de 7 jours peut légitimement ne contenir aucune séance à
+ravitailler selon le jour d'exécution, et le critère serait passé à vide (famille R20.7).
+
+`smoke-shop` : 37 → **42 assertions**. Contre-preuves K7/K8/K9bis, trois rouges.
+
+**28 gates verts, E2E 21/21, `audit:v1` et golden 949 inchangés** — le produit ne touche aucune
+séance.
+
+---
+
+## V3 — la carte de séance : repliée par défaut, la couleur dans le badge
+
+Brief du fondateur (12/08/2026, maquette « structure interne réelle ») : la carte de séance
+expose trop par défaut. État cible — badge-icône coloré par discipline, titre court, UNE
+métrique, bouton d'échange, cercle de validation ; tout le reste au tap.
+
+**`ZENNA_SPEC_COMPLETE.md` n'existe pas dans le dépôt.** Le brief demande d'en reprendre les
+tokens ; faute de fichier, les valeurs viennent de ce qui existe déjà — les variables `--zn-*`
+de `zenna-today.css` et les accents `DISC[*].ac` d'`icons.js`. Aucune couleur n'est inventée
+pour ce lot ; si la spec arrive, c'est elle qui devra trancher.
+
+### Mesuré avant
+
+| | avant | après |
+|---|---|---|
+| séances dépliées d'office (Semaine) | **7 / 7** | 0 / 7 |
+| hauteur d'une carte de jour | 161 px | **97 px** |
+| hauteur de l'onglet Semaine | 2 009 px | **1 127 px** (−44 %) |
+| fonds de carte distincts | 4 (teintés par charge) | **1** |
+
+### Le renversement est ASSUMÉ, et il est écrit
+
+L'ouverture d'office venait d'une demande du **08/08/2026** (« afficher d'office le détail des
+séances »), qui visait précisément cet onglet — le code le documentait. La demande d'aujourd'hui
+la renverse. L'ancienne raison reste vraie (Semaine n'affiche qu'UNE semaine, contrairement à
+Plan, qui peut en déplier N) — elle ne suffisait simplement pas à justifier sept blocs techniques
+ouverts à la fois.
+
+### La teinte de charge survit dans la BORDURE
+
+Le fond était teinté par la charge du jour (`rgba(255,61,0,.14)` sur un jour dur,
+`rgba(31,184,166,.12)` sur un jour facile), et le commentaire qui portait ces règles disait
+pourquoi : la couleur est du SENS, « l'athlète qui a appris à lire sa semaine d'un coup d'œil ne
+réapprend rien ». Le brief demande un fond sombre uniforme — il l'est. Mais une bordure de 1 px
+n'est pas un fond pleine largeur : la teinte de charge y reste, ce qui respecte la maquette sans
+détruire la lecture d'un coup d'œil. **Arbitrage à connaître** : si elle doit disparaître aussi,
+ce sont quatre lignes de CSS à retirer, et rien d'autre n'en dépend.
+
+### Le badge : une mesure a changé la décision
+
+L'accent vient de `DISC[*].ac` — le même endroit que l'avatar et les cartes de sport, donc un
+athlète qui a vu son vélo en bleu le retrouve bleu. Le badge est `aria-hidden` : la discipline
+est déjà dans le nom de la séance juste à côté.
+
+Ma première écriture posait l'accent **dilué** (22 % en fond, 45 % en bordure), ce qui est le
+réflexe sur un thème sombre. Mesuré contre la carte : **1,26 à 1,48:1** pour la tuile, **1,68 à
+2,39:1** pour la bordure. WCAG 1.4.11 demande **3:1** pour un composant d'interface qui porte de
+l'information — et c'est exactement le rôle de ce badge, seule couleur de la ligne et seul
+indice de discipline. Aucune dilution n'y arrive sur ce fond : le bleu du vélo plafonne à
+**3,33:1 même en plein**. La tuile est donc pleine, comme sur la maquette — **3,42 · 4,77 ·
+5,91 · 6,50**, le vélo restant le cas le plus serré.
+
+*`trail` et `swimrun` n'ont pas de code de discipline propre : le moteur les émet en `rn`/`sw`,
+ils héritent donc de ces badges. Les mesurer séparément mesurerait deux fois la même chose.*
+
+### Le composant vit dans DEUX onglets, pas cinq
+
+Le brief demande une capture « sur les 5 tabs concernés ». Mesuré : `.gd-sess` rend **140
+cartes** dans 🗓 Plan (une fois la grille dépliée, U15) et **7** dans 📅 Semaine ; **zéro** dans
+Profil, Aujourd'hui et Outils. 🎯 Aujourd'hui porte un héros de séance, qui est un autre
+composant (`session-life.js`) et n'a pas été touché.
+
+### Garde
+
+`tests/e2e/smoke-carte-seance.mjs` (**22ᵉ suite**, 19 assertions) : la carte de séance n'avait
+aucune garde de son ÉTAT PAR DÉFAUT — elle vivait sous les gardes d'autres sujets (`smoke-typo`
+pour la hiérarchie de tailles, `smoke-usage` pour la densité de son contenu **déplié**). Cinq
+volets : repli, fond uniforme, badge visible ≥ 3:1, bascule LOCALE (la coche survit à
+l'ouverture, le nœud du `<details>` est le même — « pas un re-fetch », brief), et Plan qui porte
+la même carte. **Quatre cassures, quatre rouges.**
+
+**Deux fautes d'instrument dans cette suite, corrigées et écrites** : mon critère « aucun conseil
+n'occupe l'écran » sommait la hauteur des `.gd-why` en supposant qu'un `<details>` fermé ne rend
+rien — mesuré, Chromium leur donne **37 à 56 px** (le contenu est *sauté* par
+`content-visibility`, ses boîtes ne sont pas remises à zéro) : le critère rougissait sur un repli
+qui marche. Il mesure désormais la hauteur de la séance elle-même. Et son témoin visait la
+PREMIÈRE séance — « Récup active », la plus courte de la semaine (49 → 73 px) : il mesure
+maintenant la plus forte croissance, parce qu'une récup a légitimement peu à dire.
+
+### Et une garde voisine a cassé pour la bonne raison
+
+`smoke-usage` U16 est passé rouge : il retrouve les séances par `resume.startsWith(nom)`, or le
+résumé commence désormais par le badge (« 🚴 Sweetspot vélo 32min »). Le commentaire juste
+au-dessus raconte déjà ce glissement — le critère était passé de l'égalité à `startsWith` quand
+la durée s'est ajoutée **après** le nom. Il vient de casser parce que quelque chose s'ajoute
+**avant**. Il lit désormais le `<b>` qui porte le nom : immunisé des deux côtés.
+
+**28 gates verts, E2E 22/22, `audit:v1` et golden 949 inchangés — `src/`, `engine.js` et le
+monolithe byte-identiques (contrainte de gel du brief).**
+
+---
+
+## V4 — la spec des tokens, et l'axe de charge tokenisé
+
+Deux chantiers ouverts par le cycle visuel du 12/08.
+
+### Chantier 1 — `ZENNA_SPEC_COMPLETE.md` : introuvable, donc reconstruit
+
+Cherché partout avant d'écrire quoi que ce soit : `git log --all --diff-filter=A`, tous les
+objets git (dangling compris), les stash, les worktrees, les branches, et le disque hors dépôt.
+**Aucune trace** — le fichier n'a jamais existé dans ce dépôt.
+
+**Il est donc GÉNÉRÉ, pas écrit à la main.** Un document qui RECOPIE des valeurs devient faux à
+la première retouche de CSS, et il est alors pire que rien parce qu'on le croit : c'est
+exactement O-9, où une documentation disait vert pendant qu'un banc portait quatre familles
+d'échecs. `scripts/buildSpec.mjs` le produit depuis le code ; `npm run check:spec` refuse un
+fichier périmé — même motif que `check:app` et `check:sw`.
+
+**Ce que la génération a appris, et qu'aucune lecture à la main n'aurait donné** : le bloc
+`body.theme-zenna` porte **66 variables et non 35** (mon comptage précédent, `grep '^  --zn'`,
+ratait des lignes — et ce chiffre est dans le compte rendu du cycle précédent, il est corrigé
+ici). Elles se rangent en trois familles, et la troisième explique le système :
+
+| Famille | Nombre | Ce qu'elle fait |
+|---|---|---|
+| Palette Zenna (`--zn-*`) | 41 | les couleurs du thème |
+| **Reliage du thème papier** | **10** | `--ink`, `--bg2`, `--acc`… REDÉFINIES pour le sombre |
+| Mouvement | 9 | cadence, durées, courbes |
+| Formes et plans | 6 | `--cut-*`, `--z1`…`--z5` |
+
+Le reliage est **le mécanisme qui a rendu la migration possible** : le thème sombre ne réécrit
+pas le CSS historique, il redéfinit les variables que ce CSS consomme déjà. Une règle écrite
+avec `var(--ink)` rend juste sur les deux surfaces sans avoir été touchée.
+
+*Le document dit aussi ce qui N'EXISTE PAS — aucun token d'espacement ni de rayon — pour éviter
+qu'on le cherche.*
+
+**Écart avec le brief, signalé** : il demande de commiter « à la racine du worktree
+`design/zenna` ». Ce worktree n'existe pas (`git worktree list` n'en montre qu'un) ; le fichier
+est donc commité sur la branche désignée, la seule où j'ai autorisation de pousser.
+
+### Chantier 2 — l'axe de charge
+
+**La liste des « 26 occurrences » était fausse, et c'est la première chose que la lecture a
+montrée.** Ce chiffre comptait des VALEURS DE COULEUR, pas l'axe de charge : sur les 26, la
+plupart emploient le même pastel pour tout autre chose — `.warn` (un avertissement),
+`.bp-hero` (un bloc de héros), `.w-chip` (une puce), les badges des Éducatifs, et trois usages
+qui passaient DÉJÀ par un token (`var(--zn-bg-race, …)`, `var(--zn-bg-taper, …)`).
+
+La charge réelle, c'est **7 sites** : 3 règles papier (`styles.css`), 3 bordures sombres
+(`zenna-tabs.css`), 1 ligne dans le CSS du document exporté (`plan-view.js`).
+
+**Deux surfaces, pas deux thèmes au choix.** L'app est sombre ; le document exporté est un
+papier crème qu'on imprime. Un pastel rose sur du noir est invisible, un orange saturé sur du
+crème hurle. L'unification porte donc sur le POINT DE DÉCLARATION, jamais sur la valeur.
+
+`CHARGE` (`js/ui/icons.js`) est la source : par charge, un TRIPLET pour le sombre (le sombre
+l'emploie à plusieurs opacités — une couleur figée obligerait à en déclarer une par opacité) et
+une teinte papier. Le jumeau CSS `--zn-charge-*` vit dans `zenna-today.css`, et le document
+exporté — qui ne charge aucune variable (R16.8) — interpole depuis la table.
+
+**Trouvé en mesurant : `.gd.dur/.facile/.recup` de `styles.css` est MORT dans l'app.**
+`body.theme-zenna #screen .gd` (0,1,2,1) l'emporte sur `.gd.dur` (0,0,2,0), et le thème n'est
+jamais retiré. Ces règles ne peignent plus rien depuis V3 — gardées comme repli, mais le savoir
+change la lecture du diff.
+
+### Ce que la mesure groupée a trouvé, et qu'un cycle séparé aurait raté
+
+Consigne du fondateur appliquée pour la première fois : les propriétés liées mesurées **d'un
+bloc**, sur les deux surfaces à la fois.
+
+| Charge | Sombre (bordure vs carte) | Papier (teinte vs crème) |
+|---|---|---|
+| dur | 1,49 | **1,01** |
+| facile | 1,73 | **1,02** |
+| récup | 1,60 | **1,07** |
+
+**La teinte papier est à 1,01–1,07 : invisible.** Le commentaire qu'elle porte affirme qu'elle
+permet de « lire sa semaine d'un coup d'œil » — sur la surface IMPRIMÉE, là où ce repère devait
+servir le plus, elle ne se voit pas ; en impression noir et blanc elle disparaît tout à fait.
+Ce n'est pas une violation de WCAG 1.4.11 (le nom et la durée de la séance disent déjà tout, la
+teinte est redondante), mais c'est une promesse que le rendu ne tient pas.
+
+**Non corrigé délibérément** : remonter ces teintes est une décision de design, pas un défaut à
+réparer en silence. Le chantier est ouvert avec ses chiffres.
+
+### Garde
+
+`tests/e2e/smoke-charge.mjs` (**23ᵉ suite**, 11 assertions), quatre maillons : la table ≡ les
+tokens (sur le rendu, pas sur le source), les bordures DESCENDENT du token (témoin : bouger le
+token bouge la bordure — sans lui on ne comparerait que deux déclarations pendant que la grille
+peindrait autre chose), le document exporté porte les teintes papier, et aucune règle de charge
+ne porte de littéral. **Quatre cassures, quatre rouges.**
+
+**Deux défauts de ma propre garde, trouvés par les contre-preuves** : mon §4 cherchait les
+COULEURS n'importe où et rougissait sur `.warn` et `.bp-hero` — il nomme « une valeur de charge
+en dur » et mesurait « cette couleur apparaît quelque part » ; recentré sur les sélecteurs de
+charge. Et son exemption s'appliquait à la LIGNE : remplacer `CHARGE.dur.papier` par un littéral
+restait VERT parce que la même ligne contenait encore `CHARGE.facile.papier`. Les exemptions
+retirent désormais leur construction du texte, pas la ligne.
+
+### Et j'ai récidivé sur le `git checkout`
+
+La consigne du brief le demandait explicitement. Un `git checkout` destiné à annuler une cassure
+de contre-preuve a emporté la séparation des règles de l'export, faite et vérifiée quelques
+minutes plus tôt mais **pas encore commitée** — le WIP précédent datait d'avant. C'est la garde
+qui l'a signalé pendant l'E2E complet, sur la ligne exacte, pas moi.
+
+**La règle qui en sort** : une cassure se restaure depuis une copie prise AVANT, jamais avec
+`git checkout` tant que le travail légitime du même fichier n'est pas commité.
+
+**29 gates verts, E2E 23/23, `audit:v1` et golden 949 inchangés — `src/`, `engine.js` et le
+monolithe intacts.**
+
+## O-42 — l'autorité de la conversion allure ↔ vitesse est la définition de zone
+
+**Le problème.** Quatre fonctions convertissaient des mètres en minutes (ou l'inverse), avec
+**trois** comportements distincts pour une seule grandeur physique :
+
+| lieu | conversion | forme |
+|---|---|---|
+| `stepMin` (`src/generator/renderer.ts`) | ancre BRUTE, ratio 1,00 | implicite |
+| `loadModel.stepMinutes` (`src/engine/loadModel.ts`) | ancre BRUTE, ratio 1,00 | implicite |
+| `loadModel` ligne 358 (refente d'intensité) | ancre BRUTE, ratio 1,00 | **copie littérale** |
+| `weekDistances` (`src/engine/weekDistances.ts`) | table `RUN_/SWIM_SPEED_RATIO` | explicite |
+| `dailyAdjuster.enduranceReplacement` | ancre BRUTE | implicite (trouvé par `A3`) |
+
+Aucune n'était la définition que l'athlète LIT. `ZDEF` déclare `sw.easy` à **×1,12 sur l'allure
+CSS** ; `stepMin` comptait ce bloc comme nagé AU CSS (−12 % de durée), `weekDistances` lui donnait
+un ratio de vitesse de 0,80 (−10,4 % contre `ZDEF`). Le plan affichait une allure et en comptait
+une autre.
+
+**Le correctif.** `zoneSpeedRatio(zone, refs?, expectRef?)` dans `renderer.ts`, aux côtés de
+`ZDEF` :
+
+```ts
+const d = refs ? zoneOf(key, refs) : ZDEF[key];
+if (!d || (d.ref !== "css" && d.ref !== "thrPace")) return null;  // ftp : Martin · vam : vertical
+if (expectRef && d.ref !== expectRef) return null;                // règle 14 : pas d'unité croisée
+return 2 / (d.lo + d.hi);                                         // 1 ÷ multiplicateur d'allure moyen
+```
+
+L'inversion allure → vitesse est faite **une seule fois** : deux écritures de `1/mult` invitent
+l'erreur de signe que ce ticket existe pour supprimer. `BIKE_POWER_RATIO` reste dans
+`weekDistances` — c'est un rapport de PUISSANCE, il entre DANS le modèle de Martin au lieu de s'y
+substituer.
+
+**Le choix de bande.** `ZDEF` porte `lo === hi` en nage (vitesse exacte) et des bandes en course.
+Mesuré (`npm run mesure:o42`) : 108 blocs sur 4 259 (2,5 %) concernés, écart lo↔hi = **0,2 % du
+total contre 7,9 % pour la correction**. On prend le CENTRE. `longRunSpecificity` prend `lo` parce
+qu'elle calcule un PLANCHER (« l'hypothèse la moins gourmande ») ; `stepMin` ne produit ni
+plancher ni plafond mais une COMPTABILITÉ, et une comptabilité prend la valeur attendue. La borne
+LENTE (la plus prudente au sens du manifeste) coûte +0,1 % — chiffrée pour que la décision reste
+révocable sans re-mesure.
+
+**Effet de bord réparé : `enforceC22Final` savait réduire des répétitions et des minutes, jamais
+des mètres.** Un bloc en mètres à `reps === 1` ne tombait dans aucune branche, et la boucle
+sortait par « les planchers bloquent : rien de plus à prendre » — fail-open de la forme de
+C24/C24b (T-29). Branche `distanceM` ajoutée, plancher C24/C24b tenu par annulation intégrale de
+la réduction. `audit:v1` : sauts > +10 % de **22 à 18** combinaisons.
+
+**Vérification** — `npm run ventile:o42`, les quatre critères du §6 de l'arbitrage : identité par
+bloc 4 248/4 248, ampleur par zone égale au ratio au dixième de point, 0 changement de structure,
+54 semaines sur 2 682 (2,0 %) qui s'éloignent de leur cible, toutes attribuées (50 à la sonde de
+capacité qui lit un clone saturé — famille T-25/O-35 —, 4 à un plafond qui se nomme dans le plan).
+Contre-preuve : rejoué contre le moteur d'avant, le rapport rend « RÉSIDU » et six zones en ✖.

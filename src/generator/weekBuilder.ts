@@ -12,6 +12,18 @@ import { readCycle, weekIsLateLuteal } from "../engine/cycleModel.ts";
 // Import circulaire assumé (planGenerator importe buildDays) : IS_QUALITY_ZONE n'est lu qu'à
 // l'exécution, jamais à l'initialisation du module — même motif que la porte médicale.
 import { IS_QUALITY_ZONE } from "./planGenerator.ts";
+// O-66/T-44 — la coupe DIT ce qu'elle retire. Sans ça, la propriété « la coupe ne retire pas
+// plus d'une discipline que sa part » ne se mesure que par un CONTREFACTUEL (générer deux fois,
+// une passe neutralisée), c'est-à-dire en comparant deux plans qui diffèrent aussi par ailleurs
+// — `budgetPerWeek` alimente d'autres passes. La trace rend le retrait OBSERVABLE là où il a
+// lieu : le prescrit est alors `livré + retiré`, sur UNE seule génération.
+import { record as traceRecord, traceEnabled } from "../engine/trace.ts";
+// ⚠ TOUT APPEL À `traceRecord` EST GARDÉ PAR `traceEnabled()`, ET CE N'EST PAS DÉCORATIF :
+// le bundler (`scripts/buildApp.mjs`) RETIRE les imports et concatène les modules, donc l'alias
+// `record as traceRecord` ne survit pas — le symbole n'existe pas dans `engine.js`. Les appels
+// existants ne cassaient pas parce qu'ils sont TOUS derrière ce garde, jamais évalués hors
+// trace. Le mien ne l'était pas : `audit:v1` est passé à 57 `ReferenceError` pendant que le
+// golden restait à 0 écart — l'un lit le BUNDLE, l'autre lit `src/`.
 
 const J = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
@@ -282,12 +294,25 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     ? mondayOf(new Date(a.race_date + "T00:00:00Z").getTime()) - (r.weeks - 1) * 7 * MS
     : mondayOf(isFinite(anchorT) ? anchorT : Date.now());
   const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
+  // B-17 — LE RANG DU JOUR DANS SON CRÉNEAU, calculé ici parce que c'est le seul endroit où la
+  // semaine ENTIÈRE est visible en ordre calendaire. `days` est daté par son propre index, donc
+  // ce rang ne dépend d'aucun tri intermédiaire : c'est l'index STABLE que le départage demande.
+  const rangDansCreneau = new Map<GenDay, number>();
+  {
+    const vus = new Map<string, number>();
+    for (const d of days) {
+      const cle = d.week + "|" + d.slot;
+      const n = vus.get(cle) || 0;
+      rangDansCreneau.set(d, n);
+      vus.set(cle, n + 1);
+    }
+  }
   days.forEach((d, i) => {
     const ph = d.phase!;
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
     d.date = iso(start + i * MS);
-    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week);
+    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0);
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
       else if (s.min == null) s.min = 0;
@@ -800,6 +825,9 @@ function crossTrainingSession(r: ReasonedPlan, wantsVertical: boolean, wantsInte
  */
 function applySessionBudget(r: ReasonedPlan, days: GenDay[]): void {
   const toOff = (d: GenDay) => {
+    if (traceEnabled()) for (const s of d.sessions) if (s.d !== "rs") traceRecord({ pass: "budget-seances", weekNum: d.week,
+      date: d.date, sessionName: s.name, discipline: s.d, field: "suppression", before: s.min,
+      reason: "C1 : journée entière rendue (charge « " + d.charge + " »), depuis la fin de la semaine (O-66)" });
     d.charge = "off"; d.slot = "off";
     d.sessions = [{ d: "rs", name: "OFF (budget séances)", det: "repos — respect de ta disponibilité déclarée", steps: [] }];
   };
@@ -817,7 +845,25 @@ function applySessionBudget(r: ReasonedPlan, days: GenDay[]): void {
       while (over > 0 && nSess(d) > 1) {
         const cand = d.sessions.map((s, i) => ({ s, i })).filter((x) => x.s.d !== "rs" && !x.s.long && !x.s.brick);
         if (!cand.length) break;
+        // ⚠ O-66 — LE CLASSEMENT MESURE DES MINUTES ALORS QUE LA CONTRAINTE COMPTE DES SÉANCES.
+        // Pour satisfaire « six séances par semaine », la durée d'une séance n'a aucune
+        // pertinence : six de 30 min et six de 90 min satisfont la même contrainte. Le tri
+        // optimise donc une grandeur que la contrainte ne mentionne pas — et la conséquence
+        // n'est pas neutre : mesuré sur 70.3/40 sem/doubles/sessions_max=6, **58 des 59 séances
+        // retirées sont des séances de natation (98 %)**, parce que la nage a structurellement
+        // les séances les plus courtes (50 min, contre 68 à vélo et 203 en brick). Un budget de
+        // temps de vie devient un arbitrage ENTRE DISCIPLINES, toujours au détriment de la plus
+        // courte — et d'autant plus sûrement qu'elle LIMITE l'athlète, puisque le moteur lui en
+        // prescrit alors davantage. La règle prescrit 30 séances de technique de nage, la coupe
+        // en retire 30 : tout le sous-système de ciblage du limitant (`swim_limit`, éducatifs,
+        // priorité de discipline) est annulé par une fonction de tri.
+        // ARBITRAGE DU FONDATEUR (17/08/2026) : à corriger APRÈS le merge, en premier — le
+        // classement doit devenir à DEUX dimensions (rôle, puis départage stable qui ne soit
+        // PAS les minutes). Gardé par T-44, écrit ROUGE avant le correctif.
         const victim = cand.reduce((x, y) => ((y.s.min || 0) < (x.s.min || 0) ? y : x));
+        if (traceEnabled()) traceRecord({ pass: "budget-seances", weekNum: w, date: d.date, sessionName: victim.s.name,
+          discipline: victim.s.d, field: "suppression", before: victim.s.min,
+          reason: "C1 : 2e séance d'une journée double, la plus COURTE en minutes (O-66)" });
         d.sessions.splice(victim.i, 1);
         over--;
       }

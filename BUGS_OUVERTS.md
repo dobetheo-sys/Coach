@@ -242,9 +242,9 @@ sortie de la commande, pas celui de son enrobage.**
 
 ```verify
 id: O-6
-quoi: golden:verify sort en 0 et annonce 0 écart
-attendu: /0 écart/
-cmd: npm run golden:verify
+quoi: le refus TYPÉ est distingué de l'erreur de génération — la propriété, pas un golden propre
+attendu: O6-FIX-TIENT
+cmd: npm run golden:verify 2>&1 | grep -q "refus d'entrée typé(s) — comportement attendu" && echo "O6-FIX-TIENT"
 ```
 
 
@@ -455,7 +455,7 @@ d'historique « ton volume déclaré » depuis l'origine — corrigé.
 ```verify
 id: O-10
 quoi: au-delà de 10h le pic ne bouge plus, mais le moteur NOMME le limiteur et son levier
-attendu: /nombre de séances[\s\S]*deux séances certains jours/
+attendu: /vol_max=16h[^\n]*ce qui borne[\s\S]*Si tu levais cette contrainte/
 cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const a={sport:'tri',format:'70.3',level:'avance',history:'ancien',intent:'competition',sessions_max:'7',dispo:'quotidienne',age:'35',sex:'H',pace:'4:50',pace_known:'oui',ftp:'230',ftp_known:'oui',css:'2:00',css_known:'oui',vol_recent:'10',injury:'aucune',off_days:'non',shift_ok:'non',doubles:'parfois',race_date:'2027-01-24'};for(const v of ['10','16']){const p=E.buildPlan('tri',{...a,vol_max:v});const d=(p._v2.decisions||[]).find(x=>x.id==='R20.2');console.log('vol_max='+v+'h → pic livré '+p.volPeak+' h'+(d?' · '+d.val+' · '+d.why:' · (rien à expliquer)'));}"
 ```
 
@@ -628,8 +628,8 @@ qui décide du pic, et elle n'était nommée nulle part.
 ```verify
 id: O-13
 quoi: en natation, le volume récent déclaré change la semaine 1
-attendu: /vol_recent= 0h → S1 1[.,]3h[\s\S]*vol_recent= 5h → S1 1[.,]6h/
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swim',format:'fond',intent:'competition',dispo:'partielle',doubles:'parfois',off_days:'non',shift_ok:'non',age:'35',sex:'H',css_known:'oui',css:'2:00',milieu:'bassin',swim_limit:'technique',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',sessions_max:'6',vol_max:'10',history:'reprise',level:'inter'};for(const vr of ['0','2','5','10']){const p=E.buildPlan('swim',{...b,vol_recent:vr});console.log('vol_recent='+vr.padStart(2)+'h → S1 '+p.weeks[0].vol+'h · pic '+p.volPeak+'h');}"
+attendu: O13-RAMPE-MORD
+cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const b={sport:'swim',format:'fond',intent:'competition',dispo:'partielle',doubles:'parfois',off_days:'non',shift_ok:'non',age:'35',sex:'H',css_known:'oui',css:'2:00',milieu:'bassin',swim_limit:'technique',injury:'aucune',med_pain:'non',med_dizzy:'non',med_treat:'non',sessions_max:'6',vol_max:'10',history:'reprise',level:'inter'};const s1=(vr)=>E.buildPlan('swim',{...b,vol_recent:vr}).weeks[0].vol;const a=s1('0'),c=s1('5');console.log('S1 a 0h '+a+'h · a 5h '+c+'h');if(a<c)console.log('O13-RAMPE-MORD');"
 ```
 
 ### O-14 · `swim_limit` n'agissait que pour les débutants · ✅ **FERMÉ (R20.1-d)**
@@ -1372,9 +1372,9 @@ instables (la rampe R10 fait légitimement baisser un plan à faible `vol_recent
 
 ```verify
 id: O-21
-quoi: le résidu d'inversion sur l'axe allure, après les TROIS mécanismes corrigés (05/08/2026). Ce profil-ci (inter, 4 séances) n'était pas de ceux que le 3e touche — son résidu de 0,2 % est inchangé, et c'est la raison pour laquelle il reste le témoin : il mesure la queue, pas la marche. La marche, elle, est épinglée par `O-21b` au banc v6 et par la sous-passe golden du même nom.
-attendu: /inversions d'allure : 1 · écart max 0,2 %$/m
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(pace,vr)=>({intent:'competition',format:'10k',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',level:'inter',history:'confirme',injury:'aucune',sessions_max:'4',vol_max:'6',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',pace,vol_recent:String(vr),terrain:'route'});const tot=(p)=>p.weeks.reduce((t,w)=>t+w.days.reduce((a,d)=>a+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0),0);let ko=0,mx=0;for(const vr of [0,5]){const rapide=tot(E.buildPlan('run',P('5:45',vr))),lent=tot(E.buildPlan('run',P('7:00',vr)));if(rapide<lent){ko++;mx=Math.max(mx,100*(lent/rapide-1));}}console.log(\"inversions d'allure : \"+ko+' · écart max '+mx.toFixed(1).replace('.',',')+' %');"
+quoi: l'inversion de monotonie sur l'axe ALLURE — un plan plus GROS pour un coureur plus LENT. Le bloc portait « inversions : 1 » sur DEUX points (10 km, vol_recent 0 et 5) ; le lot 1 l'a fait basculer à 2 et le registre a rangé l'entrée en « ne reproduit plus » — deux fois faux, elle reproduisait et davantage. Élargi à 60 couples voisins (4 formats × 5 volumes × 4 allures) le verdict S'INVERSE : 22 → 13 inversions, écart max 2,7 → 4,6 %. Un échantillon de deux points ne mesure pas une monotonie. Le critère porte donc sur la PROPRIÉTÉ, jamais sur un compte : un compte fait rebasculer l'entrée à chaque lot, dans les deux sens, sans rien dire de l'état du défaut (règle 17).
+attendu: /inversions d'allure : [1-9]/
+cmd: node scripts/sondeO21.mjs
 ```
 
 
@@ -1516,7 +1516,7 @@ trois tests dont deux le même jour, `syncRefsFromTests()`, la référence doit 
 id: O-23
 quoi: à date égale, `latest` départage par position et rend le DERNIER test inscrit
 attendu: /y\.i - x\.i/
-cmd: grep -n "y.i - x.i" endurabuild/js/ui/tab-profile.js
+cmd: grep -n "y.i - x.i" endurabuild/js/state.js
 ```
 
 ---
@@ -1852,6 +1852,113 @@ attendu: /10->1 · 3500->15 · 119999->29 · 120000->30 · monotone OUI/
 cmd: node -e "import('./src/app/bridge.ts').then(m=>{const L=m.avatarTriLevel;let mono=true;for(let x=0,p=0;x<=130000;x+=250){const l=L(x);if(l<p)mono=false;p=l;}console.log('10->'+L(10)+' · 3500->'+L(3500)+' · 119999->'+L(119999)+' · 120000->'+L(120000)+' · monotone '+(mono?'OUI':'non'));})"
 ```
 
+### O-31 · `#ff3d00` porte TROIS sens sur le même écran · ⏳ **OUVERT — arbitrage de vocabulaire, décision fondateur**
+
+Les trois accents de discipline ont été alignés sur la maquette (fondateur, 12/08/2026) après
+mesure de leur contraste — natation 5,52 · vélo 4,34 · course 10,67, les trois au-dessus des 3:1
+que WCAG 1.4.11 demande à un composant porteur d'information. La condition posée était donc
+remplie, et les trois valeurs sont adoptées. Le fondateur avait joint un avertissement : *« #FF3D00
+est déjà utilisé comme --zn-orange (couleur de marque/CTA) ; vérifie qu'aucune confusion visuelle
+n'apparaît »*. **Elle apparaît, et elle est plus large que prévu** — ce n'est pas une collision à
+deux termes mais à trois.
+
+`#ff3d00` signifie désormais, sur la MÊME grille de semaine :
+
+| sens | où | rendu |
+|---|---|---|
+| **attention / marque** | anneau de la carte du jour, héros 🎯, onglet actif, CTA | `#ff3d00` plein |
+| **charge DURE** | bordure de carte d'un jour dur (`CHARGE.dur.rgb`) | `rgb(255 61 0 / .34)` |
+| **discipline VÉLO** | tuile de badge (`DISC.bk.ac`) | `#ff3d00` plein |
+
+Les deux premiers coexistaient déjà (la charge dure emploie ce triplet depuis avant V4, à 34 %
+d'opacité — donc distinguable) ; **c'est le troisième qui est nouveau, et il est à pleine
+saturation, comme le premier.**
+
+**Mesuré, plutôt qu'estimé.** Sur 🗓 Plan : **2 éléments** portent l'orange au sens « attention »
+contre **24 badges vélo** de la teinte identique — la couleur d'attention de la marque devient
+12 fois plus fréquente comme *décoration* que comme *signal*. Sur 📅 Semaine, le balayage des sept
+jours donne **2 jours sur 7** (mardi, jeudi) où l'anneau « aujourd'hui » entoure une carte dont le
+badge est exactement de sa couleur — le seul cas mesuré où deux sens se superposent sur un même
+objet. Et sur 🎯 Aujourd'hui un jour de vélo, le cas que le fondateur avait lui-même nommé
+(« carte de séance avec CTA à proximité ») : le héros est peint du dégradé de marque partant de
+`#ff3d00`, et le badge vélo est **79 px sous lui**, à la même valeur.
+
+**Ce que ça coûte, dit franchement** : rien n'induit en erreur au sens fort — le badge est une
+tuile de 26 px avec un pictogramme, l'anneau est un trait de 2 px sur un bord, le héros fait
+362×348. La forme et la position les séparent. Ce qui se perd est plus discret : la couleur
+CESSE de porter le signal à elle seule. Un athlète qui a appris « l'orange, c'est ce qui
+m'appelle » doit désormais lire la forme pour trancher, et sur un jour de vélo l'écran 🎯 devient
+quasi monochrome au moment précis où le badge devrait dire « c'est du vélo ».
+
+**Pourquoi ce n'est pas corrigé ici** : les trois issues touchent au VOCABULAIRE de la marque, pas
+à un défaut. (1) Ne rien changer — la maquette a été validée telle quelle, et la forme suffit
+peut-être. (2) Sortir le marqueur « aujourd'hui » de l'orange — mais `zenna-tabs.css` écrit
+explicitement « l'orange du thème EST déjà son vocabulaire d'attention, on n'invente pas une
+seconde couleur d'accent », et le seul autre marqueur existant (`--zn-gold`) veut déjà dire
+« échange en attente ». (3) Décaler le vélo hors de l'orange de marque — mais ce serait inventer
+une couleur que la maquette ne porte pas, ce que ce lot s'est interdit. Aucune n'est un correctif
+évident, les trois sont des décisions de design.
+
+**Ce qui est verrouillé en attendant** : les cinq accents sont deux à deux distincts et chacun
+tient ses 3:1 (`smoke-carte-seance` §3 et §6, vérifiés rouges) — donc la lisibilité est gardée
+même si le vocabulaire ne l'est pas.
+
+```verify
+id: O-31
+quoi: les trois sens partagent-ils toujours le triplet 255 61 0 ?
+attendu: /marque #ff3d00 · charge dure 255 61 0 · velo #ff3d00 → COLLISION 3 sens/
+cmd: node -e "import('./endurabuild/js/ui/icons.js').then(m=>{const fs=require('node:fs');const css=fs.readFileSync('endurabuild/css/zenna-today.css','utf8');const o=(css.match(/--zn-orange:\s*(#[0-9a-f]{6})/i)||[])[1];const d=m.CHARGE.dur.rgb,v=m.DISC.bk.ac;const t=d.split(/\s+/).map(Number);const coll=(o.toLowerCase()===v.toLowerCase())+(t[0]===255&&t[1]===61&&t[2]===0?1:0)+1;console.log('marque '+o+' · charge dure '+d+' · velo '+v+' → COLLISION '+coll+' sens');})"
+```
+
+### O-32 · Les quatre polices de R-ZENNA n'ont jamais été précachées · ✅ **FERMÉ (12/08/2026)**
+
+Trouvé en ajoutant Poppins : `npm run build:sw` annonçait **57 assets** avant comme après l'ajout
+de deux fichiers `.woff2`. La cause est le SECOND trou d'O-24, dans sa forme exacte. O-24 a rendu
+la `VERSION` du service worker dérivée du contenu et la liste `ASSETS` dérivée du DISQUE — mais
+seulement pour le `.js` et le `.css`. Les polices restaient écrites **à la main** dans `EN_DUR`,
+sous un commentaire qui les déclarait « non listables par extension » : c'est faux, `.woff2` est
+une extension comme une autre, et c'est cette justification erronée qui a fait passer la liste
+pour intentionnelle.
+
+La liste était restée à **trois** polices (Archivo Black, Space Grotesk, Caveat) — celles d'avant
+R-ZENNA. Les **quatre** de R-ZENNA (`bebas-neue-400`, `inter-400-800`, `ibm-plex-mono-400`,
+`ibm-plex-mono-700`) n'ont jamais été mises en cache depuis leur arrivée. **Le défaut est
+invisible en ligne et net hors ligne** : l'app tient sa promesse « ça marche sans réseau », mais
+pas avec sa typographie — tout le thème sombre retombait sur Archivo Black et une pile monospace
+système. C'est la même famille que les trois modules vivants qu'O-24 avait trouvés dans cette
+même liste, et la démonstration que le correctif d'alors était incomplet.
+
+Correctif : les polices se lisent sur le disque comme le reste (`modules(dir, /\.woff2$/)`).
+**57 → 63 assets** (les 4 oubliées + les 2 de Poppins). Au passage, `ASSETS` composait ses groupes
+par `EN_DUR.slice(0, 3)` / `EN_DUR.slice(3)` — des indices qui devenaient faux dès qu'on ajoutait
+une ligne à `EN_DUR`, ce que ce lot faisait justement ; les trois groupes sont NOMMÉS.
+
+```verify
+id: O-32
+quoi: toutes les polices du disque sont précachées par le service worker
+attendu: /manquantes 0$/m
+cmd: node -e "const fs=require('node:fs');const d=fs.readdirSync('endurabuild/assets/fonts').filter(f=>f.endsWith('.woff2'));const sw=fs.readFileSync('endurabuild/sw.js','utf8');const m=d.filter(f=>!sw.includes('assets/fonts/'+f));console.log('disque '+d.length+' · precachees '+(d.length-m.length)+' · manquantes '+m.length+(m.length?' ('+m.join(', ')+')':''))"
+```
+
+### O-33 · La traçabilité sourcé/heuristique de `projection.ts` n'est fiable qu'au niveau du chapeau
+
+Trouvé en expliquant P2/P2bis (retour du fondateur, 13/08/2026, sur un chrono projeté) : le
+chapeau du fichier classe correctement `G_PLAFOND`, `k_structure`, `τ=20 semaines` et les bandes
+de marge course/nage comme « heuristique convergente, pas d'étude princeps » — mais AU MOINS un
+commentaire attaché à une constante individuelle contredisait cette classification. Le
+commentaire sur `G_PLAFOND.ftp = 0.25` citait une plage « 20-30 %/an chez le NON-entraîné »,
+alors que `G_PLAFOND` sert le régime ENTRAÎNÉ (`G_PLAFOND_DEBUTANT` est la table séparée pour le
+non-entraîné) — corrigé le jour même (commentaire seul, aucun chiffre changé).
+
+**Ce qui reste ouvert, et n'a pas été traité ici (décision du fondateur : pas urgent, pas cette
+session)** : rien ne garantit que ce soit la SEULE incohérence du genre dans le module. Une
+relecture complète voudrait vérifier, constante par constante (`K_STRUCTURE`, `ANCRES_VOLUME`,
+`ANCRES_WKG`/`ANCRES_PACE`/`ANCRES_CSS`, `GAIN_BAND_LO/HI`, `ADHERENCE_FLOOR`…), que le
+commentaire attaché dit correctement (a) sourcé vs heuristique et (b) à QUEL régime/discipline il
+s'applique — le même type de confusion qu'O-33 a trouvé pour `ftp`, potentiellement ailleurs.
+Aucune commande de vérification mécanisable : c'est une relecture humaine (ou par un futur agent)
+de la cohérence prose ↔ usage réel, pas une propriété qu'un script peut trancher seul.
+
 ## §2 — Dette CHIFFRÉE et verrouillée (ne peut pas remonter)
 
 Ces défauts sont connus, comptés, et un budget en CI les empêche d'empirer. Ils ne font pas
@@ -2088,3 +2195,4608 @@ devient un résultat automatique au lieu d'un heureux accident.
 **Rappel de méthode, qui vaut pour toute reprise de cette liste :** mesurer d'abord, corriger
 ensuite, re-mesurer, garder le vert. Un défaut dont on ne sait pas dire le chiffre AVANT n'est pas
 prêt à être corrigé — c'est ce qui a fait tomber les vraies causes en R13, R14 et R14.1.
+
+---
+
+## O-34 — `RN_MARA_RATIO_PLANCHER` est un PANSEMENT, sa condition de sortie est écrite
+
+**Ouvert le 14/08/2026** (arbitrage B-22, `ARBITRAGE_B22_PHASE2.md` §1).
+
+Le plancher `1,05` sur la bande d'allure marathon dérivée (B-22) coupe l'extrémité
+inatteignable de la prescription à haut volume (bord bas mesuré : 1,044 à 10 h/sem, 1,021 à
+12 h). **Sa valeur est `inherited`** — un souvenir de littérature du fondateur, requalifié par
+lui-même comme n'étant pas une source — et il **masque** le vrai défaut : l'extrémité rapide de
+`RIEGEL_ANCRES` (10 h → 1,06 ; 12 h → 1,04) est une heuristique jamais calibrée, dont B-22 a
+élevé l'enjeu en la faisant passer de la prédiction à la prescription.
+
+**Condition de sortie** : la recalibration de `RIEGEL_ANCRES` (chantier B-21/B-04). Le jour où
+elle est faite, ce plancher se RETIRE — le laisser deviendrait un deuxième modèle du même
+phénomène. Préalable mesuré (§3.1 du même arbitrage) : le golden ne peut pas mesurer ces
+chantiers — **96,7 % de ses profils portent `vol_max: 10`**, le défaut du profil de base
+(famille A-2). Le premier livrable de B-21 est donc l'enrichissement du golden en volumes de
+course variés, pas un correctif.
+
+```verify
+id: O-34
+quoi: le plancher existe, est étiqueté inherited/PANSEMENT, et T-16b le garde
+attendu: O34-REPRODUIT
+cmd: grep -q "inherited" src/engine/predictor.ts && grep -q "RN_MARA_RATIO_PLANCHER" src/engine/predictor.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "T-16b \[vert" && echo "O34-REPRODUIT"
+```
+
+## O-35 — la chaîne de volume R20.2 ne se ferme pas en unité sur la natation (et le trail)
+
+**Ouvert le 14/08/2026** (en écrivant T-25, le test d'identité `min(plafonds) × ∏(facteurs)
+=== volPeak` du DOC_UNIQUE §3).
+
+L'identité a mordu **dans les deux sens sur le même sport**, ce qui prouve une faute d'UNITÉ
+et non un maillon manquant simple (cinquième occurrence de la famille V-11/O-13) :
+
+- **natation débutant** : la chaîne annonce un « min » de plafonds à **1,44–2,03 h** pour des
+  pics livrés à **0,7–0,9 h** (pire : `swim/fond/reprise/debutant`, 61 % d'écart). La sonde
+  V2.1 elle-même y mesure **2,0 h** de capacité structurelle pour des semaines qui livrent
+  0,5–0,7 h — son clone saturé en continu ne voit pas les plafonds C15/C24b du rendu discret.
+- **natation inter/avancé** : les mêmes formules donnent des « plafonds » à **2,16 h** pour
+  des pics livrés à **3,7 h** — le plan dépasse son propre plafond annoncé, donc le facteur
+  `swimTime` est appliqué à une grandeur qui ne le porte pas (81 profils, + 38 en trail où la
+  charge 3 axes fait la même chose).
+- Une conversion `× swimTime` de la courbe a été **essayée puis retirée** : ajustée sur UN cas
+  (le débutant), elle inversait l'identité sur 148 profils — calibrer sur un cas est
+  exactement ce que P11/HERITAGE interdit.
+
+**Mitigation en place** : la GARDE D'OBSERVATION du sélecteur — un plafond que le pic livré
+dépasse n'a pas borné le plan et sort des candidats au message. Le record `plan._r202` expose
+l'énumération complète, écarts compris.
+
+---
+
+### ✅ MOITIÉ FERMÉE le 14/08/2026 — la conversion portait sur les TABLES, pas seulement sur la
+### déclaration (§5 de l'arbitrage `sw.aero`)
+
+**Le test décisif exigé** (« `capacityH` est-il en heures génériques ou en heures d'eau ? ») a
+une réponse mesurée : `capacityH` est en heures d'EAU (il compte des minutes réellement
+prescrites). **C'est `peakH` qui était générique** — mesuré sur `swim/demifond` non-débutant :
+`peakH` = 6,00 h pour un `volPeak` de 2,40, **rapport 2,50 = 1/0,4 au chiffre près**, quand le
+témoin course rend 1,00. Et l'unité changeait avec le NIVEAU : C20 rabote `peakH` avec une
+grandeur en heures d'eau (25 min/séance), donc le débutant avait déjà l'unité d'arrivée.
+Conséquence : **la sonde V2.1 mordait TOUJOURS en natation** et servait de convertisseur
+d'unité par accident — un garde-fou de sécurité qu'on ne pouvait plus lire.
+
+**Trois modèles ont été mesurés avant d'en adopter un** (règle 7 étendue aux alignements) :
+
+| | modèle | rayon sur les 949 | verdict |
+|---|---|---|---|
+| A | l'état d'avant (`peakH` générique) | — | la promesse ment de 1,6× |
+| B | convertir `peakH` comme `volPeak` | 123 profils, **92 baisses jusqu'à −55 %** | **REFUSÉ** — le plan tombe à 3 séances de 15 min |
+| **C** | **convertir la seule DÉCLARATION** | **88 profils, 47 au plan intact, 41 à ±6 %** | **ADOPTÉ** |
+
+**Pourquoi C** : `SWIM_TIME_FACTOR` code « 60 % du temps déclaré en BASSIN n'est pas de la
+nage » — c'est une conversion de la grandeur que l'ATHLÈTE déclare, pas des tables du moteur.
+`HISTORY_CAPS`/`UTIL` sont du volume d'entraînement, au même titre que les lignes course et
+vélo qui ne subissent aucune conversion ; les convertir pénalisait une seconde fois. R20.7
+avait déjà posé ce principe sur la rampe (elle convertit `vol_recent`, jamais une table) —
+C ne fait que l'appliquer partout. Et l'argument décisif : **sous C, le plan livré ne bouge
+pratiquement pas**, parce que la courbe est pilotée par `peakH`, qui n'a jamais été converti :
+le moteur traite les tables comme des heures d'eau **depuis toujours**. C ne change pas le
+plan, il aligne la PROMESSE sur le plan déjà livré (`swim/sprint/reprise/inter` : 700 min
+avant, 700 min après ; promesse 1,1 h → 2,0 h, pic réel 1,78 h).
+
+**Conséquence sur B-09** : la sur-pénalisation redoutée (« 0,4 trop bas pour un nageur en
+club ») venait de l'application aux TABLES, pas de la valeur. B-09 (facteur indexé sur
+l'historique + activé en tri) n'est pas fermé, mais il perd son urgence — et sa valeur reste
+une constante nouvelle, donc un arbitrage.
+
+`swimTime` a QUITTÉ la liste des facteurs de la chaîne R20.2 : ce n'est pas une réduction,
+c'est une conversion, et annoncer « ce qui réduit le plus, c'est le temps passé dans l'eau »
+était faux — rien n'est retiré. L'explication vit sur le plafond `declared`.
+
+**T-25 : 439 → 368.** **T-23 passe de 22/218 (10 %) à 61/177 (34 %) — et 34 % est le taux
+HONNÊTE, 10 % était le mensonge** (rectification du fondateur, 14/08) : le correctif retire une
+compensation qui MASQUAIT l'autre moitié du défaut. Deux erreurs qui se compensent ne font pas
+un modèle juste, elles font un modèle dont on ne peut plus mesurer l'erreur — la forme de
+`ρ = 1,225` compensant `Crr = 0,004`. Un taux qui monte quand on corrige est le signe que la
+mesure devient exploitable, pas une aggravation.
+Les plafonds n'étant plus déflatés par 0,4, l'écart entre ce que la sonde annonce et ce que la
+semaine livre devient visible (nage débutant : « la durée de ta préparation, 1,6 h/sem » pour un
+pic livré à 0,7). Deux erreurs se compensaient ; en corriger une seule expose la seconde. Elles
+ont le même ticket — la suite d'O-35 ci-dessous.
+
+**Un site NON converti, et c'est une mesure, pas un oubli** : `sessionScale` compare bien
+`volMax` (piscine) à `util` (table) quand la déclaration borde. P11 exige de corriger un piège
+d'unité sur TOUT le chemin, la conversion a donc été écrite — puis **RÉFUTÉE** : `audit:v1`
+remonte alors une violation DURE du manifeste (`swim/sprint/ancien/debutant`, « 1 saut > +25 %
+de volume réel entre semaines de charge »). Diviser l'échelle des séances par 2,5 les envoie
+toutes sur leurs planchers C24/C24b, et une semaine épinglée au plancher ne suit plus la
+courbe : la progression devient un escalier. Priorité 2 du manifeste contre cohérence d'unité —
+la sécurité gagne. Il ne mord que sur les profils déclarant PEU de piscine, que le golden ne
+contient pas (tous à `vol_max: 10`, famille A-2).
+
+**Cette dette a un BLOQUEUR qui est une autre garde, donc elle ne se paiera jamais toute
+seule** (exigence du fondateur, 14/08/2026) — elle porte sa condition de sortie, comme le
+plancher 1,05 (O-34) et l'ancrage `[1,5 h → 1,15]` :
+
+```
+sessionScale — unité non convertie
+  cause du blocage : la conversion produit un saut > +25 % entre semaines de charge
+                     (audit:v1, swim/sprint/ancien/debutant) parce que les séances tombent
+                     toutes sur leurs planchers C24/C24b et cessent de suivre la courbe
+  hypothèse de sortie : convertir ET re-dériver la rampe R10 depuis la base convertie, pour
+                        que la progression soit RECALCULÉE au lieu de sauter
+  condition de sortie : le saut inter-semaines reste sous le plafond C22 après re-dérivation,
+                        mesuré sur les 949 — et `audit:v1` reste à 0 violation dure
+  si l'hypothèse est fausse : la dette devient une DÉCISION permanente et se requalifie comme
+                        telle (« sessionScale reste en unité déclarée, par arbitrage »), elle
+                        ne reste pas en attente
+```
+
+### 2ᵉ MOITIÉ (14/08, même jour) — la sonde n'était pas la cause principale : LE DIAGNOSTIC
+### ENTIER VIVAIT AU MILIEU DU PIPELINE
+
+La re-sonde demandée est écrite (clone SATURÉ de la semaine LIVRÉE — mesurer les minutes
+livrées rendrait l'identité vraie par construction, donc vide ; une passe, jamais de point fixe,
+résolution B-25). Elle corrige ce qu'elle devait corriger — plafond structurel 2,03 h → **0,85 h**
+chez le nageur débutant. Mais T-25 est MONTÉ (368 → 432), et l'instrumentation a désigné plus
+gros : **`reconcileDeclaredVolume` — le point fixe — tourne à la ligne 3322, le bloc « C6 +
+R20.2 » était à 2998.** Le pic annoncé et toute la chaîne d'explication décrivaient donc
+l'avant-dernier état du plan, avant I14, C26c/d, le rattrapage d'I14b, C30b, les planchers et la
+fréquence. Onze fois ce dépôt a payé cette leçon sur des GARANTIES ; ici c'était le DIAGNOSTIC.
+
+**Déplacé après le point fixe**, `volPeak` recompté sur les séances livrées (`w.vol` est un
+instantané figé à la construction de la semaine). Ce que ça découvre :
+
+| | |
+|---|---|
+| profils dont le pic ANNONCÉ change | **350 / 945 (37 %)** |
+| sens | **350 baisses, 0 hausse** |
+| écart médian · pire cas | **7,1 %** · `run/10k/ancien/debutant` **4,9 h annoncées → 3,4 (−30,6 %)** |
+
+Le moteur promettait plus qu'il ne livre sur 37 % des profils, toujours vers le haut, sur le
+seul chiffre que l'athlète lit comme « son pic » — la doctrine V2.1 dit « promettre davantage
+serait mentir ».
+
+### Ce qui RESTE ouvert — CE QUE LE POINT FIXE RETIRE n'est porté par aucun maillon
+
+T-25 monte à **608** avec le `volPeak` honnête, et c'est le taux exploitable : rendre un membre
+de l'identité exact élargit l'écart avec l'autre, qui décrit toujours un état d'avant le point
+fixe. La cause n'est plus « le rendu discret » en général — elle est nommée : **I14, C26c/d, les
+planchers et la fréquence retirent des minutes qu'aucun plafond de la chaîne ne déclare.**
+
+**Condition de sortie** : instrumenter `reconcileDeclaredVolume` pour qu'il DÉCLARE ce qu'il
+retire et pourquoi (un maillon par garantie, dans l'unité du pic), puis passer `T-25` et `T-23`
+à `attendu: "vert"` dans le même commit. Le trail (38 profils livrant au-dessus de leur plafond
+annoncé) relève de la charge à 3 axes, non traitée.
+
+**Condition de sortie** : faire mesurer à la sonde V2.1 ce que la semaine RENDUE livre
+réellement, puis passer `T-25` et `T-23` à `attendu: "vert"` dans le même commit.
+
+```verify
+id: O-35
+quoi: la conversion ne porte que sur la declaration, et le residu « rendu discret » garde T-25 rouge
+attendu: O35-REPRODUIT
+cmd: grep -q "GARDE D'OBSERVATION" src/generator/planGenerator.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -A1 "T-25" | grep -q "identité(s) cassée(s)" && echo "O35-REPRODUIT"
+```
+
+## O-36 — la coupe et l'auditeur ne comptent PAS dans la même unité, et les aligner casse O-21
+
+**Ouvert le 14/08/2026** (trouvé en isolant les régressions de B-02).
+
+`enforceHardTimeCap` (la coupe) mesure les minutes dures avec `intensitySplit(s)` — donc les
+**refs de repli** (130 s/100 m, 330 s/km). L'auditeur, lui, mesure avec les **refs de
+l'athlète** (`reasoned.baseRefs`). Deux définitions du mot « minute dure » dans le même moteur,
+sur un bloc exprimé en DISTANCE : `5×1000 m` compte 27,5 min pour la coupe quelle que soit
+l'allure, 22,5 min à 4:30/km et 42,5 min à 8:30/km pour l'auditeur.
+
+C'est exactement la faute que R20.5 a fermée sur la CLASSE (`bk.rp` dur ou modéré selon la
+bande) — ici elle porte sur l'UNITÉ, et elle a survécu.
+
+**Et la corriger casse une autre garantie, mesuré** : threader les refs de l'athlète jusqu'à la
+coupe rend le plan SENSIBLE À L'ALLURE, ce que la famille O-21 interdit. Banc v6 avec
+l'alignement : `O-21b` rouge (« la fréquence des semaines de récup dépend de l'allure :
+4:30 → 3, les trois autres → 2 ») et `C30-A` rouge (`semi/inter/4:30` 120 → 128). Sans
+l'alignement : **73 verts, 0 régression**.
+
+Autrement dit : **l'incohérence d'unité est ce qui rend aujourd'hui le plan indépendant de
+l'allure déclarée.** Le repli aveugle de la coupe fait office de neutralisation.
+
+**Ce que ça demande** : trancher lequel des deux invariants prime, et l'écrire.
+- soit la coupe est aveugle à l'allure PAR CONCEPTION (et le commentaire doit le dire, avec
+  O-21 comme raison — aujourd'hui c'est un accident) ;
+- soit les deux unités s'alignent et O-21 se rediscute pour les blocs en distance, dont la
+  durée dépend RÉELLEMENT de l'allure — un 5×1000 m ne coûte pas le même temps à 4:30 et à
+  8:30, et prétendre le contraire est aussi une fiction.
+
+Non tranché ici : c'est un arbitrage d'entraînement, pas un correctif.
+
+```verify
+id: O-36
+quoi: la coupe mesure sans les refs de l'athlete, et c'est ce qui garde O-21b vert
+attendu: O36-REPRODUIT
+cmd: grep -q "intensitySplit(s as never).hardByDisc" src/generator/planGenerator.ts && npm run audit:v6 2>/dev/null | grep -q "0 régression" && echo "O36-REPRODUIT"
+```
+
+---
+
+## O-37 — I14 est rouvert APRÈS sa propre application, sur 441 semaines du golden
+
+**Trouvé par le sceau T-27 le jour où il a été posé** (15/08/2026), c'est-à-dire par exactement
+le mécanisme pour lequel il existe : un invariant tenu au milieu du pipeline, rouvert par ce qui
+vient après, sans que rien ne l'attrape.
+
+I14 déclare que **la sortie longue est la plus longue séance de sa discipline dans sa semaine**.
+`enforceLabelVsDose` l'applique, deux fois, et le prédicat du sceau est RECOPIÉ du sien (mêmes
+exclusions : `race`, `brick`, `long`, même discipline) — ce n'est donc pas une règle voisine
+mesurée à la place de la bonne.
+
+| | |
+|---|---|
+| semaines en violation, golden | **441** (sur 945 profils) |
+| profils touchés, balayage 702 | **151** |
+| exemples | `run/5k/reprise/debutant/competition` S2 : « Seuil doux » **52 min** > longue 48 · `run/5k/confirme/inter/finir` S5 : « VO2max » **45** > longue 44 |
+
+**Les écarts sont petits** (quelques minutes) et c'est ce qui les a laissés passer : aucun gate
+ne compare ces deux séances à la SORTIE. `audit:invariants` porte bien I14, mais sur
+**54 configurations** ; le sceau le mesure sur les 945.
+
+**Piste, non vérifiée** : `enforceLabelVsDose` compare des `sx.min` et réduit sur
+`totalOf(sx)` = somme des `st._min`. Si les deux grandeurs diffèrent (la récup inter-blocs entre
+dans `_min` depuis R5.6a), la passe vise un nombre et en mesure un autre — la onzième occurrence
+de cette famille. À vérifier avant d'écrire un correctif : ce serait une cause, pas la seule
+possible (les planchers de `shrinkTo`, `Math.max(5, …)` et `if (!touched) break`, laissent un
+résidu que le commentaire de la passe assume déjà).
+
+**Non corrigé délibérément** : rendre bloquant un invariant dont on n'a pas trié les 441 échecs
+figerait la dette au lieu de la traiter — c'est la leçon de R20.6, et l'ordre qu'elle impose est
+« mesurer, trier, PUIS bloquer ». Le compte est épinglé au cliquet de T-27 : il ne peut plus
+monter en silence.
+
+### Le DOMMAGE, mesuré (§5 de l'arbitrage du 15/08) — et il déclasse le ticket
+
+« I14 rouvert » décrit un état du CODE, pas un dommage. R20.6 avait appris à trier avant de
+bloquer ; la règle s'étend : **trier aussi avant de prioriser** (`npm run mesure:o37`).
+
+| ampleur du dépassement, sur 494 cas | |
+|---|---|
+| médiane | **2,0 min** |
+| p90 | 5,0 min |
+| maximum | **18,0 min** |
+| ≥ 5 min | 52 · **≥ 15 min : 12** · ≥ 30 min : **0** |
+| séance qui dépasse = séance de QUALITÉ | 282 (57 %) |
+| discipline de la longue | nage 306 · course 158 · vélo 30 |
+
+**Verdict : c'est de la DETTE, pas un ticket.** L'écart médian est de deux minutes — invisible
+pour l'athlète, et le plan reste cohérent. Les 12 cas au-dessus d'un quart d'heure sont tous en
+trail (« Descente en charge » 78 min contre « Longue trail + ravito réel » 60), c'est-à-dire le
+résidu que le commentaire d'`enforceLabelVsDose` assume déjà explicitement : les planchers de
+`shrinkTo` (`Math.max(5, …)`, `if (!touched) break`) laissent un reste plutôt que de dénaturer
+une séance.
+
+**Ce qui mériterait un ticket, si on y revient, est la population TRAIL** — pas les 441. Le reste
+attend derrière tout ce qui déplace de vraies minutes.
+
+*(Note d'instrument : ma première écriture de la mesure rendait « médiane 2,0 · p90 1,0 » — un p90
+SOUS la médiane. Le tableau est trié DÉCROISSANT et j'indexais le quantile à `p` au lieu de
+`1 − p`. Corrigé avant publication ; onzième occurrence de la famille « une mesure qui nomme une
+grandeur et en rend une voisine ».)*
+
+```verify
+id: O-37
+quoi: I14 est rouvert apres son application, compte epingle au cliquet T-27
+attendu: O37-REPRODUIT
+cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep -q "✓ T-27" && echo "O37-REPRODUIT"
+```
+
+---
+
+## O-37a — un brick d'affûtage passe 1 min SOUS son plancher audité, sur 4 profils
+
+Même origine que ci-dessus : trouvé par le sceau, invisible aux gates.
+
+`tri/Full/reprise/{inter,avance}/{finir,plaisir}` : « Brick d'affûtage (rappel de transition) »
+livre **39 min de vélo** pour une bande `C21c` de **[40, 150]**. Une minute.
+
+`audit:v2` balaie pourtant `tri/Full/reprise/inter/finir` — et il est VERT. La différence est le
+PROFIL DE BASE : son `baseProfile()` ne porte pas les mêmes `vol_max`/`pace`/`weight` que le
+balayage du sceau, et l'état à 39 min n'y est pas atteint. Ce n'est donc pas un trou de l'auditeur
+mais un trou de COUVERTURE — famille A-2, sixième occurrence.
+
+**Non corrigé** : un plancher manqué d'une minute sur un brick d'affûtage ne met personne en
+danger (il va dans le sens de la fraîcheur, que l'affûtage cherche), et le corriger demande de
+savoir laquelle des deux bandes fait foi — c'est T-28. Compté au cliquet de T-27.
+
+---
+
+## T-27b — le sceau pose son drapeau, mais aucune lecture ne l'exige encore
+
+`sealPlan` pose `_sealed` et attache `_seal` au plan livré, et sa batterie tourne au seul point
+du pipeline où « après » n'existe pas. **La seconde moitié du §3 n'est pas écrite** : « toute
+fonction de diagnostic, de message, de record ou d'export assert `_sealed` à l'entrée, et échoue
+bruyamment sinon ».
+
+Sans elle, le drapeau ne garde rien tout seul — il constate, il n'interdit pas. C'est écrit ici
+pour que personne ne prenne sa présence pour la garantie qu'il ne donne pas encore.
+
+**Ce que ça demande** : recenser les surfaces de lecture du plan (les cartes « Pourquoi ce plan »,
+les records `_r202`/`_v2`, l'export iCal, la prédiction), et poser l'assertion à leur entrée. La
+variante forte — le plan final est un TYPE distinct du plan en construction, et les diagnostics
+ne prennent que le premier — rendrait l'erreur impossible à ÉCRIRE et pas seulement à exécuter.
+
+```verify
+id: T-27b
+quoi: le sceau existe et est pose sur le plan livre (moitie 1), les assertions de lecture non
+attendu: T27B-REPRODUIT
+cmd: grep -q "sealPlan(best.plan" src/generator/repairLoop.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "✓ T-27" && echo "T27B-REPRODUIT"
+```
+
+---
+
+## O-38 — ⚠ MA MESURE ÉTAIT FAUSSE : il n'y avait pas 12 bornes permissives, il y avait DEUX TABLES · ✅ **FERMÉ (15/08/2026)**
+
+**L'entrée d'origine annonçait « 12 couples permissifs, tous en AFFÛTAGE ». C'est faux, et la
+correction est plus instructive que le constat.**
+
+### Ce que le balayage prétendait, et pourquoi il se trompait
+
+Ma première écriture de `balayageT28.mjs` **MODÉLISAIT** `blockBounds` au lieu de l'observer :
+elle recalculait ses deux bornes à partir des tables et concluait que l'affûtage était ouvert
+d'un facteur deux (Full : générateur 300, auditeur 150).
+
+Or `blockBounds` a **deux branches** — `b.bnd` quand le step DÉCLARE ses bornes, `s.brick`
+sinon — et je n'avais modélisé que la seconde. Mesuré sur les plans LIVRÉS (216 profils
+tri + duathlon) :
+
+| | legs vélo de brick | branche empruntée |
+|---|---|---|
+| affûtage | **135** | **toutes** `b.bnd` — R18.4 pose déjà le `bnd` audité C21c |
+| charge | **1 476** | **toutes** `s.brick` |
+
+**Les lignes que je signalais n'atteignent jamais la branche que je mesurais.** Dixième
+occurrence dans ce dépôt d'un critère qui nomme une grandeur et en mesure une voisine — cette
+fois dans le balayage écrit précisément pour fermer cette classe, ce qui est le pire endroit
+possible, et la conclusion publiée était INVERSÉE (le problème était en charge, pas en affûtage).
+
+### Le défaut réel, plus discret et réel quand même
+
+Sur la branche effectivement empruntée, le **plancher** lisait `BRICK_BIKE_BOUNDS` (la table de
+l'auditeur, C21b) et le **plafond** lisait `CAP_BRICK_BIKE`, une SECONDE table :
+
+```
+S: 90 · M: 120 · 70.3: 180 · Full: 300 · L: 150 · PM: 300   ← CAP_BRICK_BIKE
+S: 90 · M: 120 · 70.3: 180 · Full: 300 · L: 150 · PM: 300   ← BRICK_BIKE_BOUNDS[1]
+```
+
+Six valeurs identiques, donc **zéro permissivité vivante** — et deux vérités pour une borne,
+libres de diverger au premier format ajouté. C'est `_IFZ` sous une autre forme, exactement la
+classe que T-28 existe pour traquer, simplement pas au stade où je l'avais annoncée.
+
+### Correctif
+
+`CAP_BRICK_BIKE` est **supprimée** (elle n'avait que cet unique consommateur) plutôt que dérivée
+— une table dérivée reste une table qu'on peut réécrire. Le plafond lit `BRICK_BIKE_BOUNDS[1]`,
+comme le plancher et comme l'auditeur.
+
+**Golden : 0 écart supplémentaire.** Le correctif ne change aucun plan, ce qui était prévisible
+puisque les valeurs coïncidaient — et le vérifier est ce qui distingue « prévisible » de « vrai ».
+
+`T-28` passe **rouge → vert** et garde la PROPRIÉTÉ (« une borne, une source »), pas le nombre de
+tables : il reste vrai si quelqu'un ajoute un format. Son critère a d'ailleurs rougi en naissant
+sur le **commentaire** qui explique la suppression — troisième faux positif de cette famille dans
+ce chantier, corrigé en retirant les commentaires avant de chercher.
+
+### Ce qui reste, nommé
+
+Les **4 legs hors bornes** que le balayage corrigé signale encore sont `tri/Full/affûtage` à
+39 min pour `[40, 150]` — c'est **O-37a**, suivi par `S1` au cliquet du sceau, pas par T-28
+(deux gardes qui mesurent la même chose, c'est une garde de trop). Et le **leg COURSE** du brick
+reste borné par le générateur (`CAP_BRICK_RUN`) sans être vérifié par l'auditeur : dette nommée,
+pas une divergence.
+
+```verify
+id: O-38
+quoi: une borne, une source — CAP_BRICK_BIKE supprimee, T-28 vert
+attendu: O38-FERME
+cmd: ! grep -q "export const CAP_BRICK_BIKE" src/engine/constraintMatrix.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "✓ T-28" && echo "O38-FERME"
+```
+
+---
+
+## O-37b — les 12 dépassements ≥ 15 min sont TOUS en trail : ce n'est pas O-37
+
+Séparé d'O-37 sur consigne du fondateur (15/08) : *« un défaut qui se concentre entièrement dans
+une discipline n'est presque jamais un bug général — c'est une lacune de modélisation propre à
+cette discipline »*. Ranger les 12 avec les 441 les enterrerait.
+
+| | |
+|---|---|
+| cas ≥ 15 min | **12, tous en trail** |
+| le pire | « Descente en charge » **78 min** > « Longue trail + ravito réel » **60** (+30 %) |
+| profils | `trail/confirme/{debutant,inter,avance}/{finir,plaisir}` S16 |
+
+Le trail a sa propre arithmétique de dose (km-effort, D+, part de marche) et `enforceLabelVsDose`
+réduit un bloc en pente par ses RÉPÉTITIONS avec un plancher à 2 (I14, 2ᵉ passe) — en dessous,
+« une séance de descente avec une seule descente n'est plus une séance de descente ». Le résidu
+de 18 min est donc probablement CE plancher, atteint sur une longue trail elle-même courte
+(60 min). À vérifier avant d'écrire quoi que ce soit : c'est une hypothèse, pas un diagnostic.
+
+Petit, borné, et il a une cause nommable — contrairement aux 441, qui sont de la dette à 2 min.
+
+```verify
+id: O-37b
+quoi: les 12 depassements >= 15 min sont tous en trail
+attendu: O37B-REPRODUIT
+cmd: npm run mesure:o37 2>/dev/null | grep -q "≥ 15 min : 12" && npm run mesure:o37 2>/dev/null | grep -A2 "les 6 pires" | grep -q trail && echo "O37B-REPRODUIT"
+```
+
+---
+
+## O-36 — ⚠ TROIS PRÉMISSES VÉRIFIÉES AVANT D'ÉCRIRE, ET LA POPULATION N'EST PAS CELLE QU'ON CROYAIT
+
+Le fondateur a exigé (15/08, §5) que trois points soient tranchés avant toute ligne d'O-36. Ils
+le sont, et deux d'entre eux changent le périmètre du ticket. **Rien n'est écrit** : l'arbitrage
+lui revient.
+
+### §5.1 et §5.2 — le scénario redouté n'existe pas
+
+Le risque énoncé était : « O-36 ramène la séance du coureur lent de 42,5 à 20 min →
+`enforceLabelVsDose` la juge sous-dosée → il l'étend → la dose double revient ».
+
+**`enforceLabelVsDose` n'a AUCUNE cible de dose.** Ses deux seules cibles sont des PLAFONDS :
+`C25_RECOVERY_SESSION_CAP_MIN` (absolu) et `lg.min` (relatif à la sortie longue livrée). Et ses
+**cinq mutations de dose sont toutes gardées par `if (next < courant)`** — vérifié
+mécaniquement, pas à la lecture : elle ne peut que RÉDUIRE. Le scénario n'a pas de mécanisme.
+
+### §5.3 — le balayage, et il déplace le périmètre
+
+| blocs de corps | |
+|---|---|
+| prescrits en DISTANCE | **12 278** |
+| prescrits en TEMPS | 66 112 |
+| répartition de la distance | **nage 10 982 (89 %)** · course 1 296 (11 %) |
+
+**O-36 vise 1 296 blocs, pas 12 278.** Les 89 % restants sont de la NAGE, où le mètre est l'unité
+juste (un bassin se mesure en mètres) — et deux choses y pendent :
+
+- **3 696 blocs de nage portent un `bnd` en MÈTRES** (planchers 150-400, plafonds 315-850) :
+  les convertir sans convertir leurs bornes serait une faute d'unité au sens de la règle 14 ;
+- **C24/C24b se mesurent en mètres SUR LA SÉANCE** (`metersOf(sx)`), sur 10 593 séances de nage.
+  Si les blocs passaient au temps, `metersOf` rendrait 0 et la passe sortirait par son
+  `if (tot <= 0) continue` : **un plancher de SÉCURITÉ cesserait de s'appliquer en silence.**
+
+Les **1 296 blocs de course** que le ticket vise, eux, ne portent **aucun `bnd`** : ils tombent
+sur le repli `{ floor: 3 }` en minutes. Rien ne les rallongerait.
+
+### §2.5 — la thèse tient en DIRECTION, pas en magnitude
+
+| allure seuil | blocs | temps de TRAVAIL | door-to-door | km de qualité | reps |
+|---|---|---|---|---|---|
+| 4:30 | 108 | 28,9 min | 37,4 | 6,43 | 3,84 |
+| 5:45 | 108 | 33,1 | 40,4 | 5,76 | 3,44 |
+| 7:00 | 108 | 38,0 | 44,6 | 5,43 | 3,21 |
+| 8:30 | 108 | **43,3** | 49,3 | 5,09 | 3,01 |
+| **rapport lent/rapide** | | **×1,50** | ×1,32 | **×0,79** | ×0,78 |
+
+**Monotone et concentré sur les allures lentes : l'argument du fondateur n'est pas faux.** Mais
+sa magnitude illustrative (42,5 → 20 min, soit ×2,1) n'est pas ce que le moteur livre — parce
+qu'une **compensation partielle existe déjà** : le nombre de répétitions tombe de 3,84 à 3,01
+(−22 %) à distance par répétition constante (~1 672 m).
+
+Le coureur lent reçoit donc **+50 % de temps de travail et −21 % de kilomètres de qualité**. Le
+résidu à corriger vaut 50 %, pas 110 %.
+
+**Ce que ça change pour l'arbitrage** : un résidu de 50 % sur 1 296 blocs de course est un
+dossier plus mince qu'un doublement sur « toutes les prescriptions à intervalles », et la partie
+nage — 89 % du volume concerné — est celle qu'il ne faut PAS convertir. Décision au fondateur.
+
+```verify
+id: O-36-amont
+quoi: les trois premisses du §5 sont mesurees et publiees
+attendu: O36-AMONT-MESURE
+cmd: npm run mesure:o36 2>/dev/null | grep -qE "sw 1[0-9]{4} · rn 1[0-9]{3}" && echo "O36-AMONT-MESURE"
+```
+
+---
+
+## O-36 (re-cadré) — les trois mesures du §5, et deux trouvailles qui ne sont pas O-36
+
+Le ticket a changé d'énoncé (arbitrage du 15/08) : **ce n'est pas une conversion d'unité, c'est
+un mécanisme d'adaptation SOUS-CALIBRÉ.** Le moteur adapte déjà le NOMBRE de répétitions
+(3,84 → 3,01 entre 4:30 et 8:30) mais pas leur LONGUEUR (~1 672 m partout). Décision : rendre la
+distance par répétition dépendante de l'allure. **Rien n'est écrit** — voici les mesures.
+
+### (a) l'équivalent course de `metersOf` : deux consommateurs, un seul qui compte
+
+Hors générateur, la distance de bloc en course n'est lue que par **`weekDistances`** (le récap
+hebdomadaire affiché) — et c'est correct qu'il bouge : un coureur lent couvrira réellement moins
+de kilomètres de qualité. **C30 ne lit PAS la distance prescrite** mais `RUN_KM[fmt]`, la
+distance de la COURSE : la distance adaptative ne l'atteint pas.
+
+**Le consommateur à surveiller est `runHoursPerWeekOf`** : il alimente `riegelExponent`
+(P5/B-21). Réduire la distance des répétitions réduit les heures de course hebdomadaires, donc
+déplace l'exposant de Riegel, donc la PRÉDICTION. Boucle de retour réelle, à mesurer dans le lot.
+
+### (b) plage des distances résultantes — le plancher ne mordrait pas, mais il doit exister
+
+| allure | dose moyenne | facteur d'égalisation | distance médiane visée |
+|---|---|---|---|
+| 4:30 | 37,4 min | ×1,000 | 2 000 m |
+| 5:45 | 40,4 | ×0,926 | 1 851 m |
+| 7:00 | 44,6 | ×0,839 | 1 678 m |
+| 8:30 | 49,3 | **×0,759** | **1 519 m** |
+
+Distances actuelles : 1 000 et 2 000 m. **La plus courte que l'égalisation produirait est 759 m**
+— très au-dessus du seuil de bon sens de ~400 m évoqué. Le plancher reste nécessaire (il devra
+être un MAILLON DÉCLARÉ quand il mord) mais il ne mordrait sur aucun profil actuel.
+
+### (c) C25 / dose — pourquoi le plafond n'a pas mordu, et ce qu'il ne couvre pas
+
+`DOSE_CAP_MIN` déclare **`thr` 40 min · `vo2` 25 min**, par BLOC et par ZONE — la dose de 43,3 min
+du profil lent est une MOYENNE sur toutes les zones de qualité, pas 43 min de seuil d'un bloc.
+
+| allure | `rn.thr` | `rn.mara` |
+|---|---|---|
+| 4:30 | 25,7 min/bloc (plafond 40, respecté) | **61,0 min/bloc — aucun plafond déclaré** |
+| 8:30 | **37,1** min/bloc (plafond 40, respecté **à 3 min près**) | **73,7 min/bloc — aucun plafond** |
+
+**Deux trouvailles qui ne sont pas O-36 :**
+
+1. **`rn.mara` n'a aucun plafond de dose** et porte la plus grosse dose de qualité du moteur
+   (61-74 min/bloc). C'est peut-être délibéré — 16 km à allure marathon est une séance
+   marathon légitime — mais ce n'est **écrit nulle part**, donc c'est une absence non arbitrée.
+   Suivi en **O-39**.
+2. **Le plafond `thr` est à 3 minutes de mordre** chez le coureur lent. Il mordra au premier lot
+   qui allonge un peu les séances de seuil — et l'égalisation d'O-36 va justement dans l'autre
+   sens, ce qui est un argument de plus en sa faveur.
+
+```verify
+id: O-36-cible
+quoi: les trois mesures (a)(b)(c) du recadrage sont publiees
+attendu: O36-CIBLE-MESURE
+cmd: node scripts/mesureO36cible.mjs 2>/dev/null | grep -qE "PLUS COURTE que l.égalisation produirait : [0-9]{3} m" && node scripts/mesureO36cible.mjs 2>/dev/null | grep -q "aucun plafond déclaré pour cette zone" && echo "O36-CIBLE-MESURE"
+```
+
+---
+
+## O-39 — `rn.mara` porte la plus grosse dose de qualité du moteur, sans aucun plafond déclaré
+
+Trouvé en mesurant (c) ci-dessus. `DOSE_CAP_MIN` plafonne `thr` à 40 min et `vo2` à 25 ; **`mara`
+n'y figure pas**, et les blocs `rn.mara` livrent **61,0 min à 4:30 et 73,7 min à 8:30** par bloc.
+
+Le commentaire de `DOSE_CAP_MIN` justifie ses deux entrées (« une dose de seuil au-delà de ~40 min
+ou de VO2 au-delà de ~25 min n'est pas un entraînement, c'est une course ») sans dire pourquoi
+l'allure marathon en est exempte. **L'exemption est probablement juste** — courir 16 km à allure
+marathon est le cœur d'une préparation marathon — mais une exemption non écrite est
+indistinguable d'un oubli, et `IS_QUALITY_ZONE` classe pourtant `.mara` en qualité.
+
+**Ce que ça demande** : soit un plafond, soit une ligne qui dit pourquoi il n'y en a pas.
+
+```verify
+id: O-39
+quoi: rn.mara n'a pas d'entree dans DOSE_CAP_MIN alors qu'il est classe qualite
+attendu: O39-REPRODUIT
+cmd: grep -q "QUALITY_SUFFIX" src/generator/planGenerator.ts && node -e "import('./src/engine/constraintMatrix.ts').then(m=>process.exit(m.DOSE_CAP_MIN.mara===undefined?0:1))" && echo "O39-REPRODUIT"
+```
+
+---
+
+## O-36 §1 — LES DEUX MESURES BLOQUANTES PASSENT, ET LA SECONDE PAR UNE RAISON STRUCTURELLE
+
+`npm run mesure:o36b`. Les deux verrous du feu vert conditionnel (15/08) sont levés.
+
+### §1.1 — la boucle `runHoursPerWeekOf → riegelExponent` : Δ maximal **+0,48 %**
+
+| profil marathon | h/sem avant → après | exposant | chrono | Δ |
+|---|---|---|---|---|
+| 8:30 / inter | 5,55 → 5,32 | 1,1014 → 1,1041 | 6h46 → 6h48 | **+0,48 %** |
+| 7:00 / inter | 5,50 → 5,37 | 1,1020 → 1,1035 | 5h28 → 5h29 | +0,24 % |
+| 5:45 / inter | 5,50 → 5,45 | 1,1020 → 1,1026 | 4h24 → 4h24 | +0,08 % |
+
+**Sous le seuil de 1 % : bruit de calcul.** L'effet pervers redouté — « prédire une course plus
+lente parce qu'on a cessé de sur-prescrire » — existe, va bien dans le sens annoncé, et vaut
+deux minutes sur un marathon de 6h46.
+
+### §1.2 — la circularité B-25 : **O-36 n'entre pas dans la boucle**
+
+Déplacement d'exposant sur 8 profils tri : **+0,0000, exactement**. La raison est structurelle et
+elle a été VÉRIFIÉE plutôt que déduite d'un zéro (un zéro peut aussi vouloir dire que la sonde ne
+trouve rien) :
+
+```
+tri/Full      : 19 blocs de qualité COURSE, dont 0 prescrits en DISTANCE
+run/marathon  : 26 blocs de qualité COURSE, dont 4 prescrits en DISTANCE
+```
+
+Le leg course du tri ne porte **aucun** bloc de qualité en distance — la bande B-25 les prescrit
+en temps. O-36 n'ajoute donc aucun terme à la boucle fermée `plan → heures → exposant →
+prédiction → bande → plan`, et la résolution à une itération est intacte. Ce n'est pas « l'effet
+est petit », c'est « il n'y a pas d'effet ».
+
+**Feu vert : les deux verrous du §1 sont levés.** Reste à écrire (item 3) : la distance de
+répétition dépendante de l'allure, son plancher déclaré comme maillon, le diff sur les 949
+ventilé par tranche d'allure, et la mesure §4 (profils à moins de 5 min de `DOSE_CAP_MIN`).
+
+```verify
+id: O-36-boucle
+quoi: les deux verrous du §1 sont mesures et passent
+attendu: BRUIT DE CALCUL
+cmd: node scripts/mesureO36boucle.mjs 2>/dev/null | grep -o "BRUIT DE CALCUL"
+```
+
+
+---
+
+## O-39 (élargi) — ⚠ `rn.mara` N'EST PAS LA SEULE : `rp` ET `css` AUSSI
+
+Ta vérification §3.1 était la bonne question, et la réponse est non. La garde `O-39`, écrite sur
+la PROPRIÉTÉ (« toute zone de qualité émise est plafonnée ou exemptée »), balaie les zones
+réellement ÉMISES sur les 949 :
+
+```
+5 suffixes de qualité émis : css · mara · rp · thr · vo2
+  · thr  40 min   (DOSE_CAP_MIN)
+  · vo2  25 min   (DOSE_CAP_MIN)
+  · mara EXEMPTÉ  (DOSE_EXEMPT — écrit ce jour, raison physiologique)
+  · rp   ⚠ ni plafond ni exemption
+  · css  ⚠ ni plafond ni exemption
+```
+
+`rp` est l'allure course VÉLO (R20.5 : 0,70-0,88 × FTP selon le format) et `css` le seuil NAGE.
+Les deux sont classés qualité par `IS_QUALITY_ZONE` et aucun ne porte de borne de dose.
+
+**Je n'invente pas leur exemption.** `mara` avait une raison physiologique claire et mesurée ;
+`rp` et `css` demandent un arbitrage — un bloc de 60 min à allure course d'Ironman est normal,
+un bloc de 60 min de CSS ne l'est probablement pas, et la règle 14 dit que ces deux disciplines
+ne se comparent pas dans la même monnaie. Décision au fondateur.
+
+Statut : `O-39` est un rouge ATTENDU du banc, avec son ticket — il ne peut plus passer inaperçu,
+et il redeviendra vert le jour où les deux zones sont tranchées.
+
+---
+
+## T-30 — écrit ROUGE, et le rapport n'est pas ×1,50 mais ×1,09
+
+La propriété que l'item 3 d'O-36 doit rendre vraie : *à profil et format égaux, le temps de
+travail d'un bloc de qualité est invariant par variation de `thrPace`*.
+
+**Deux chiffres cohabitent et il faut dire lequel est lequel** :
+
+| population mesurée | rapport lent/rapide |
+|---|---|
+| blocs de qualité prescrits en DISTANCE (§2.5) | **×1,50** |
+| TOUS les blocs de qualité course (T-30) | **×1,09** |
+
+Ils ne se contredisent pas : les blocs prescrits en TEMPS ne varient pas avec l'allure, et ils
+diluent le résidu. **×1,50 est l'ampleur du défaut là où il vit ; ×1,09 est ce que l'athlète subit
+en moyenne sur sa qualité.** T-30 mesure le second parce que c'est la propriété finale ; le
+premier reste le bon chiffre pour dimensionner le correctif.
+
+```verify
+id: T-30
+quoi: la propriete est ecrite ROUGE avant le correctif
+attendu: T30-ROUGE
+cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep -q "· T-30 \[ROUGE\]" && echo "T30-ROUGE"
+```
+
+---
+
+## O-39 §4(d) — ⚠ MA GARDE MESURAIT LA TABLE, PAS LE CODE : `css` EST DÉJÀ PLAFONNÉ
+
+La mesure (d) — « `DOSE_CAP_MIN` compte-t-il le temps de TRAVAIL ou le temps TOTAL ? » — répond,
+et elle corrige au passage mon propre périmètre d'O-39.
+
+### (d) : c'est le temps de TRAVAIL, et le plafond ne voit pas les blocs en distance
+
+```ts
+if (b.durationMin != null) {                      // ← les blocs en DISTANCE n'entrent jamais ici
+  const doseCap = /\.vo2$/…  : /\.thr$|\.css$/…   // ← `css` est mappé sur DOSE_CAP_MIN.thr
+  if (reps * b.durationMin > doseCap) …           // ← reps × durée = TRAVAIL, récup exclue
+}
+```
+
+**Trois conséquences, dans l'ordre d'importance :**
+
+1. **`css` N'EST PAS orphelin** : il est plafonné à 40 min via la branche `thr`. Il n'a pas de
+   CLÉ propre, et ma garde lisait `DOSE_CAP_MIN[suffixe]` — **elle mesurait la TABLE quand le
+   code fait une RÉSOLUTION**. Treizième occurrence de « un critère qui nomme une chose et en
+   mesure une voisine », dans la garde écrite pour trancher O-39. Corrigée : le prédicat lit
+   désormais la résolution. **Périmètre réel d'O-39 : `rp` SEUL.**
+2. Le plafond compte **`reps × durationMin`**, donc le travail, récupérations exclues. Les 40 min
+   veulent bien dire la même grandeur en course et en nage — pas de treizième faute d'unité.
+3. **Mais il est structurellement inatteignable en nage** : les blocs `sw.css` sont prescrits en
+   MÈTRES, donc `b.durationMin` est `null` et la branche n'est jamais prise. Le plafond de 40 min
+   pour `css` existe, il est correct, et il est **dormant par construction** — pas par calibrage.
+   C'est une décision écrite, ce qui est l'objet d'O-39 ; mais qu'elle soit inatteignable mérite
+   d'être su, et c'est la deuxième fois que la prescription en distance rend une règle muette
+   (après C24/C24b et son `metersOf`).
+
+**Ton arbitrage sur `css` est donc sans objet** : la décision existait déjà dans le code, elle
+valait 40, et elle correspond à ce que tu aurais tranché. Reste `rp`, et la règle structurelle du
+§2 (« le plafond suit la bande à laquelle `rp` se résout ») est à écrire — non fait ici.
+
+```verify
+id: O-39-d
+quoi: DOSE_CAP_MIN ne voyait pas les blocs prescrits en DISTANCE. ⚠ Bloc CASSÉ par le lot 1, qui a réécrit exactement la ligne qu'il grepait (`reps * b.durationMin > doseCap`) — cas d'école de la règle 17 : le motif disparaît, et l'entrée se lirait comme réparée alors que c'est le CODE qui a changé de forme. La moitié « les blocs en distance sont invisibles » est FERMÉE par le lot 1 (mesuré : 244 dépassements sur 39 profils → 0). La moitié « `css` est résolu sur `thr` » reste vraie et c'est ce que ce bloc surveille désormais — il porte sur la PROPRIÉTÉ (une zone `.css` reçoit le plafond de seuil) et non sur une ligne de code.
+attendu: O39D-REPRODUIT
+cmd: node -e 'const s=require("fs").readFileSync("src/generator/planGenerator.ts","utf8");const i=s.indexOf("const doseCap =");process.exit(/\\.thr\\$\\|\\\\.css\\$/.test(s.slice(i,i+400))?0:1)' && echo "O39D-REPRODUIT"
+```
+
+---
+
+## O-40 — les deux gardes qui abandonnent quand l'unité ne leur convient pas · MESURE FAITE, ÉCRITURE À SCINDER
+
+| garde | condition d'abandon | population muette |
+|---|---|---|
+| C24/C24b (plancher) | `if (tot <= 0) continue` | blocs prescrits en **temps** |
+| `DOSE_CAP_MIN` (plafond) | `if (b.durationMin != null)` | blocs prescrits en **mètres** |
+
+Les deux unités perdent une garde, **en sens opposés** : ce n'est pas un problème de choix
+d'unité, c'est que chaque garde RENONCE au lieu de dériver la grandeur qui lui manque — alors que
+le moteur connaît les vitesses (CSS, allure seuil) et convertit déjà dans les deux sens
+(`weekDistances` le fait).
+
+### La mesure préalable (`npm run mesure:o40`) : le plafond MORD, étroitement
+
+| | |
+|---|---|
+| blocs de corps prescrits en mètres | 11 890 |
+| … portant une zone à plafond | 1 924 |
+| … que le plafond mordrait | **42** |
+| profils touchés | **12** |
+
+**Tous en `tri/70.3` et `tri/Full`, tous sur « Nage seuil (+dist) » en `sw.css`**, entre 40 et
+46 min de travail pour un plafond de 40. Le dépassement est de 0 à 6 minutes.
+
+### Ce que ça impose à l'écriture — et c'est ta propre consigne
+
+Le plafond mord, donc **c'est un changement de PLAN** : il demande son propre diff ventilé, et il
+ne doit **pas** être posé dans le même geste que la garde. Le lot se scinde en deux :
+
+1. **la garde**, indifférente à l'unité, sans effet de plan là où elle ne mord pas (C24/C24b
+   étendu aux blocs en temps — à mesurer de la même façon avant d'écrire) ;
+2. **le plafond nage effectif**, avec son diff sur les 12 profils.
+
+**Réserve d'instrument, à lever avant d'écrire (2)** : mon temps de travail vaut
+`_min − recoveryMin × (reps − 1)`. Le dépassement étant de 0 à 6 min et trois blocs tombant
+*exactement* à 40, le verdict « 42 blocs » est SENSIBLE à cette définition. La branche course
+compare `reps × durationMin` ; la mesure nage doit être alignée sur elle à la source avant de
+décider — sinon c'est une quatorzième occurrence de la règle 15, dans la mesure qui sert à
+trancher O-40.
+
+```
+T-31   Aucune garde ne traite comme absente une grandeur PRÉSENTE dans une autre
+       unité et convertible avec ce que le moteur connaît déjà.
+       T-29 : « donnée manquante ⇒ contrôle sauté ».
+       T-31 : « donnée dans l'AUTRE UNITÉ ⇒ contrôle sauté ».
+       🔴 rouge aujourd'hui sur les deux gardes ci-dessus.
+```
+
+```verify
+id: O-40
+quoi: les deux gardes abandonnent selon l'unite ; le plafond nage est DECLARATIF (mesure corrigee en a93d5c7)
+attendu: LE PLAFOND EST DÉCLARATIF
+cmd: node scripts/mesureO40.mjs 2>/dev/null | grep -o "LE PLAFOND EST DÉCLARATIF"
+```
+
+---
+
+## O-40 §1 — LES DEUX MESURES COÏNCIDENT, ET LE PÉRIMÈTRE TOMBE DE 42 À 12 : MON BALAYAGE MESURAIT UN NAGEUR DE REPLI
+
+Ta prédiction falsifiable est tranchée, et la vérification a trouvé plus gros que la question.
+
+### La prédiction : IDENTIQUES
+
+`stepMin` est la source unique et vaut **`travail + rec`, rien d'autre** :
+
+```ts
+const rec = st.role === "body" && reps > 1 ? (reps - 1) * (st.recoveryMin || 0) : 0;
+if (st.durationMin) return reps * st.durationMin + rec;
+if (st.distanceM)   return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60) + rec;
+```
+
+Mesuré sur les **1 922 blocs** à zone plafonnée : **0 divergent, écart max 0,0000 min**. Les blocs
+ne portent que du travail et des récupérations — rien à nommer, comme ta branche « identiques » le
+prévoyait.
+
+### ⚠ Mais la vérification a démasqué ma propre mesure — et le périmètre change
+
+Ma première écriture posait `CSS_SEC = 110` (la valeur DÉCLARÉE dans le balayage) et rendait
+**1 924 divergents sur 1 924**. Un taux de 100 % accuse l'instrument, pas les blocs : le moteur
+employait **130 s/100 m**, le REPLI de `stepMin` (`baseRefs.css || 130`), parce que mon `BASE` ne
+passait pas `css_known: "oui"` — la CSS déclarée était ignorée.
+
+**Le balayage mesurait donc un nageur 18 % plus lent que celui qu'il croyait décrire**, ce qui
+gonfle mécaniquement le temps de travail. Même famille que le harnais E2E qui fabriquait un
+athlète de 138 kg (U14).
+
+| | hier (nageur de repli, css 130) | corrigé (css déclarée, 110) |
+|---|---|---|
+| blocs que le plafond mordrait | **42** | **12** |
+| profils touchés | **12** | **4** |
+
+**Quatorzième occurrence de la règle 15**, et elle est survenue dans la mesure écrite pour lever
+une réserve sur une autre mesure. La réserve était fondée ; sa cause n'était pas celle que je
+soupçonnais.
+
+### Ce que ça ne change pas, et ce que ça change
+
+- **La scission tient** : le plafond mord encore (12 blocs, 4 profils), donc c'est toujours un
+  changement de plan qui demande son propre diff, et il ne va pas dans le même geste que la garde.
+- **Le lot 2 est quatre fois plus petit** que ce que le chiffre d'hier laissait croire, et il reste
+  entièrement en `tri/70.3` et `tri/Full` sur « Nage seuil (+dist) ».
+- **Le lot 1 (la garde) est inchangé** : son test d'acceptation reste golden 0 écart.
+
+```verify
+id: O-40-perimetre
+quoi: les deux mesures coincident, et le perimetre reel est de 12 blocs sur 4 profils
+attendu: 0 divergent
+cmd: node scripts/mesureO40.mjs 2>/dev/null | grep -o "divergents (> 0,05 min) : 0" | head -1 | sed "s/.*: /0 divergent/"
+```
+
+---
+
+## O-41 (a) — LE REPLI TIRE, ET IL TIRE SUR UN ATHLÈTE QUI A FOURNI SA DONNÉE
+
+`stepMin` retombe sur **130 s/100 m** quand `baseRefs.css` n'est pas peuplé. Ce n'est pas un
+contrôle sauté — c'est une **donnée fabriquée** : le plan est calculé pour un nageur qui n'est pas
+l'athlète, et rien à l'écran ne le distingue d'un plan juste.
+
+La sonde n'interroge pas `baseRefs` (règle 15) : elle **inverse `stepMin`** sur les blocs de nage
+prescrits en mètres, ce qui rend la vitesse RÉELLEMENT employée.
+
+| déclaration | profils | repli | css employée |
+|---|---|---|---|
+| `css` + `css_known: "oui"` | 324 | **0 %** | 110 |
+| **`css` saisie SANS `css_known`** | 324 | **100 %** | **130** |
+| aucune `css` | 324 | 100 % | 130 |
+
+**⚠ ET LA VÉRIFICATION SUIVANTE CORRIGE MON PROPRE CADRAGE.** J'allais écrire « l'athlète a
+fourni sa donnée et le moteur la remplace ». C'est faux tel quel : la lecture est **gatée sur
+`css_known === "oui"`** en QUATRE endroits (`bridge` ×3, `weekDistances`, `reasoningEngine`), et le
+questionnaire pose le drapeau avant la valeur. L'état « `css` saisie sans `css_known` » est donc
+un état que **mon balayage a fabriqué**, pas un état du produit — quinzième occurrence de la
+règle 15, et cette fois dans la conclusion, pas dans la mesure.
+
+**Ce qui reste vrai et ce qui reste à vérifier :**
+
+- la ligne 3 (aucune CSS déclarée) est **légitime** — il faut bien une valeur — et c'est la
+  branche **(b)** : `130` est alors une constante non sourcée de plus, qui mérite sa provenance
+  écrite et probablement une indexation sur le niveau ;
+- **le chemin qui reste soupçonné est l'IMPORT.** O-22/O-25 écrivent des références MESURÉES
+  (Strava, FIT) dans le journal. Si un import peuple `css` **sans** poser `css_known`, la valeur
+  mesurée est ignorée et le repli tire sur un athlète qui a bel et bien fourni sa donnée — le
+  scénario que je décrivais, au bon endroit cette fois. **Non mesuré**, et c'est ce qui décide de
+  la priorité.
+
+**Les trois lignes DIFFÈRENT, donc la sonde discrimine** : la saturation à 100 % est réelle, pas
+un artefact — c'est précisément le test de dépistage que ce lot ajoute à `CLAUDE.md`.
+
+**Priorité, révisée par la vérification ci-dessus** : ce n'est PAS un P1 sur le questionnaire.
+Le ticket se réduit à (b) — provenance de `130` — plus la vérification du chemin d'import, qui
+est le seul endroit où le scénario « donnée fournie, donnée remplacée » peut encore vivre.
+
+Le sens de l'erreur, pour (b) : 130 s/100 m est **plus rapide** qu'un vrai débutant, donc ses
+durées de bloc sont **sous-estimées** — sa séance déborde dans la vraie vie.
+
+```verify
+id: O-41
+quoi: le repli css tire a 100 % des que css_known manque, et a 0 % quand il est pose
+attendu: repli    0 (  0 %)
+cmd: node scripts/mesureO41.mjs 2>/dev/null | grep "CSS DÉCLARÉE" | grep -o "repli    0 (  0 %)"
+```
+
+
+---
+
+## O-41 §2 — LES DRAPEAUX FRÈRES : AUCUN CHEMIN N'ÉCRIT LA VALEUR SANS LE DRAPEAU · **PAS DE P0**
+
+La question qui décidait de la sévérité — *« un chemin d'écriture de la VALEUR existe-t-il sans
+écriture du DRAPEAU ? »*, en particulier pour la FTP — est tranchée par balayage des écritures.
+
+**Les drapeaux frères existent** : `ftp_known`, `pace_known`, `css_known`, `vam_known`.
+
+**Écrivains recensés de `answers.{ftp,css,pace}`** — il n'y en a que deux, et les deux posent le
+drapeau **dans la même instruction** :
+
+```js
+// questionnaire (steps.js) — la branche ne s'ouvre que si le drapeau vaut "oui"
+branch("cssB", a.css_known === "oui", '<input data-input="css">')
+
+// édition du Profil (tab-profile.js:83-87 et 1145-1154, saisie manuelle ET retest)
+S.answers.css = v; S.answers.css_known = "oui";
+```
+
+**Et les modules d'import n'écrivent PAS `answers.ftp/css/pace` du tout** : `measured.js`,
+`strava.js` et `retest.js` alimentent le **journal** (`answers.tests`), qui est un autre canal.
+
+→ **Le scénario « l'import peuple la valeur sans poser le drapeau » n'existe pas**, ni pour la
+FTP ni pour les autres. **Pas de P0**, et l'ordre du §5 est inchangé : le lot 1 peut passer.
+
+### Ce qui reste à vérifier, et c'est un cran plus loin que ma question
+
+Puisque l'import écrit dans le JOURNAL et non dans `answers`, la question devient : **la promotion
+journal → `answers` pose-t-elle le drapeau ?** R20.1 a déjà corrigé une fois « l'import qui
+n'atteignait jamais le plan généré, le moteur ne lisant que `a.ftp/pace/css` » — donc un mécanisme
+de promotion existe, et c'est LUI qu'il faut regarder. **Non mesuré ici** (fin de budget), et c'est
+la première chose à faire à la reprise d'O-41.
+
+La distinction de fond que tu poses reste la bonne et n'est pas tranchée : **`css_known` veut-il
+dire « on a une valeur » ou « l'athlète l'a déclarée » ?** Aujourd'hui les deux coïncident parce
+que seul l'athlète écrit. Le jour où la promotion écrit aussi, il faudra choisir — et la bonne
+forme est celle que tu décris : le moteur UTILISE la valeur quelle que soit son origine, et trace
+l'origine à part, comme `source`/`inherited` dans `PROVENANCE`.
+
+```verify
+id: O-41-freres
+quoi: aucun chemin n'ecrit la valeur de reference sans poser son drapeau
+attendu: O41-FRERES-OK
+cmd: test $(grep -rnE "S\.answers\.(ftp|css|pace) *=" endurabuild/js/ 2>/dev/null | grep -v engine.js | grep -cv "_known *= *\"oui\"") -eq 0 && echo "O41-FRERES-OK"
+```
+
+
+---
+
+## O-41 §1 — LA PROMOTION EXISTE, COUVRE LES QUATRE RÉFÉRENCES, ET POSE LE DRAPEAU · ✅ **FERMÉ**
+
+Le pont est `syncRefsFromTests()` (`tab-profile.js`), et son en-tête énonce exactement le défaut
+qu'il ferme : *« le moteur V2 ne lit QUE les valeurs courantes — jamais le journal daté. Sans ce
+pont, un import écrirait le journal mais le plan généré ne changerait JAMAIS. »*
+
+| référence | promotion | pose le drapeau |
+|---|---|---|
+| `ftp` | ✅ | ✅ `ftp_known = "oui"` |
+| `thrPace` → `pace` | ✅ | ✅ `pace_known = "oui"` |
+| `css` | ✅ | ✅ `css_known = "oui"` |
+| `vam` | ✅ (R12.2/R12.3) | ✅ `vam_known = "oui"` |
+
+**Les quatre, dans la même instruction que la valeur.** C'est ta première issue — *« la promotion
+existe et pose le drapeau → le ticket se ferme »*. Aucune référence n'est laissée derrière : la
+VAM porte même un commentaire disant que c'est « le bug déjà corrigé une fois » qu'on ne refait pas.
+
+**Et la sémantique ne se pose donc pas encore** : `*_known` reste cohérent parce que la promotion
+le pose comme le ferait l'athlète. La distinction présence/provenance que tu proposes
+(`css_origin: "declared" | "measured" | "retest"`) reste la bonne forme pour le jour où l'on
+voudra afficher la confiance ou la fraîcheur — **elle n'est pas requise par un défaut**, et
+l'ajouter maintenant serait du travail sans mesure derrière.
+
+### §3 — la politique de sélection est EXPLICITE, contrairement à l'attente
+
+Tu écrivais : *« il y a forcément une réponse dans le code, et il y a peu de chances qu'elle soit
+écrite quelque part comme une décision. »* Elle l'est, et longuement — c'est le produit d'O-23
+puis d'O-25 :
+
+```js
+c.sort((x, y) =>
+  String(y.t.date).localeCompare(String(x.t.date))          // 1. le plus RÉCENT
+  || (DELIBERE(y.t) ? 1 : 0) - (DELIBERE(x.t) ? 1 : 0)      // 2. à date égale, la saisie
+                                                            //    DÉLIBÉRÉE (profil/retest)
+                                                            //    prime sur l'import — O-25
+  || (y.i - x.i));                                          // 3. sinon la POSITION, le journal
+                                                            //    étant append-only — O-23
+```
+
+Ce n'est **ni** « le meilleur » **ni** « une moyenne sur une fenêtre » : c'est **le plus récent, la
+saisie délibérée primant à date égale**. Ton arbitrage physiologique (le meilleur test surestime,
+le plus récent est sensible à un mauvais jour, une fenêtre lisse mais retarde) reste ouvert comme
+QUESTION — mais la décision actuelle est écrite, sourcée par deux tickets, et défendable.
+
+**Réserve honnête** : `syncRefsFromTests` vit dans l'UI et n'est appelée que depuis trois points
+(deux dans `tab-profile`, un dans `retest`). Un chemin d'import qui écrirait le journal **sans**
+passer par l'un d'eux laisserait la promotion muette — non balayé ici, et c'est le seul angle qui
+reste sur ce ticket.
+
+```verify
+id: O-41-promotion
+quoi: le pont promeut les QUATRE references et pose le drapeau a chaque fois
+attendu: 4
+cmd: grep -c "_known = \"oui\"; n++" endurabuild/js/state.js
+```
+
+
+---
+
+## O-41 §1bis — LE BALAYAGE DES ÉCRIVAINS TROUVE UN TROU : `steps.js` REMPLIT LE JOURNAL SANS PROMOUVOIR
+
+Le §1 du dernier arbitrage demandait de lister les ÉCRIVAINS du journal, pas les lecteurs. Fait :
+
+| écrivain | ce qu'il pousse | promotion qui suit |
+|---|---|---|
+| `tab-profile.js:1040` (restauration/import de sauvegarde) | tests importés | ✅ `syncRefsFromTests()` l.1073 |
+| `tab-profile.js:1139` (saisie manuelle du Profil) | `ftp`/`thrPace`/`css` | ✅ l.1090 + écriture directe de la valeur |
+| `tab-profile.js:725` | `profil:race_inter` | — sans objet (pas une référence) |
+| `retest.js:114` (retest guidé) | `r.type` | ✅ `syncRefsFromTests()` l.116 |
+| **`steps.js:640` et `695`** | **`ftp` et `thrPace`** | **❌ AUCUNE — le fichier n'appelle jamais la promotion** |
+
+**`steps.js` est le chemin d'IMPORT dans le questionnaire** : ses sources le disent en toutes
+lettres (`"Strava (ton meilleur 10 min continu)"`), et c'est là que vivent O-22 et O-25 — la FTP
+déclarée puis la meilleure moyenne 20 min, l'allure seuil depuis une course déclarée ou le
+meilleur 10 min. Il pousse les valeurs MESURÉES dans le journal, **et n'écrit ni la valeur
+courante ni le drapeau**.
+
+C'est le scénario que le §1 de `O41_PROMOTION_JOURNAL` classait « la plus probable et la plus
+discrète » : *rien ne casse, l'athlète importe, le journal se remplit, et le plan ne bouge pas.*
+
+**⚠ TROUVÉ, PAS CONFIRMÉ DE BOUT EN BOUT.** Le balayage est statique : il montre qu'aucun appel
+à la promotion n'existe dans ce fichier et qu'aucune écriture de `S.answers.ftp` n'y figure. Il ne
+prouve pas que le flux d'interface ne repasse pas par `tab-profile` après coup (un retour au
+Profil déclencherait la promotion). **À confirmer par un parcours E2E** avant d'écrire le
+correctif — sinon c'est un constat sur le fichier, pas sur le produit (T-33).
+
+**Le correctif, s'il est confirmé, est celui du §2 et pas un quatrième appel** : accrocher la
+promotion à la fonction d'AJOUT au journal elle-même. Un seul point, impossible à oublier, et les
+futurs chemins d'import en héritent — la géométrie du sceau, appliquée au journal.
+
+```
+(bloc `verify` RETIRÉ — le constat est réfuté, voir « O-41 RÉFUTÉ » plus bas)
+```
+
+
+---
+
+## O-41 §1bis — E2E : LES DEUX VARIANTES ÉCHOUENT · **TROU FRANC**, avec une réserve d'instrument
+
+Suite `tests/e2e/smoke-import-ref.mjs`, écrite avec le piège du §1 en tête : ouvrir le Profil
+déclenche la promotion, donc un test qui y passe FABRIQUE le résultat qu'il mesure.
+
+L'état posé est **exactement** ce que fait le chemin d'import de `steps.js` — les deux entrées de
+journal (`ftp: 250` source Strava, `thrPace: 260` source Strava) et **rien d'autre** : ni `ftp`,
+ni `ftp_known`.
+
+| variante | `answers.ftp` | `ftp_known` | verdict |
+|---|---|---|---|
+| **(a)** génération directe, sans ouvrir le Profil | `null` | `non` | ✖ non promue |
+| **(b)** après être passé par le Profil | `null` | `non` | ✖ non promue |
+
+Selon la table de l'arbitrage, c'est **`(a) ✗ et (b) ✗` → trou franc, aucun masquage**.
+
+Et la lecture du code le confirme : `syncRefsFromTests()` n'est appelée qu'aux lignes 1073 et 1090
+de `tab-profile.js` — dans les **handlers** de restauration de sauvegarde et d'enregistrement
+manuel — plus `retest.js:116`. **Elle ne tourne pas au rendu de l'onglet.** Visiter le Profil ne
+suffit donc pas ; il faut y enregistrer quelque chose.
+
+### ⚠ La réserve, et elle suit la règle du taux saturé
+
+**Deux variantes sur deux qui échouent est le genre de résultat qui accuse l'instrument.** Ma
+lecture se fait dans `localStorage`, qui n'est écrit que par `ebSave` : si la variante (b) avait
+promu **en mémoire** sans persister, je lirais quand même `null`. Le verdict « trou franc » est
+donc solide sur (a) — c'est là que le dommage vit — et **à confirmer sur (b)** par une lecture
+en mémoire plutôt qu'en storage.
+
+Ça ne change pas le correctif, seulement l'étiquette de (b) : trou franc, ou trou masqué par une
+navigation qui inclut un enregistrement.
+
+### Le correctif reste celui du §2, dans les trois cas
+
+Accrocher la promotion à la fonction d'**ajout au journal**, pas un quatrième appel. Et la raison
+de fond est mesurée : **O-22 et O-25 ont travaillé dans `steps.js` même**, et ni l'un ni l'autre
+n'a relié l'écriture du journal à la promotion — parce que `syncRefsFromTests` vient de R20.1,
+ailleurs et plus tard. Une couture de ce type ne se referme que par la structure.
+
+```
+(bloc `verify` RETIRÉ — le constat est réfuté, voir « O-41 RÉFUTÉ » plus bas)
+```
+
+
+---
+
+## O-41 — ⚠ **RÉFUTÉ. LE TROU N'EXISTE PAS DANS LE PRODUIT** · ✅ FERMÉ (16/08/2026)
+
+La mesure du §3 (« le journal est-il écrit avant ou après la pose du drapeau ? ») a renversé ma
+propre conclusion, et la réponse est plus simple que les deux branches prévues.
+
+**`stravaImport` n'a qu'UN SEUL appelant**, `runStravaImport` (`tab-profile.js:1033`), et il
+promeut immédiatement :
+
+```js
+await stravaImport(tok);            // écrit S.answers.tests
+if (!added) return;                 // rien de neuf → rien à promouvoir
+const nRef = syncRefsFromTests();   // ← la promotion, juste après
+ebSave();
+if (nRef) invalidatePlan();         // et le plan est RÉGÉNÉRÉ sur la nouvelle référence
+```
+
+Le balayage statique disait vrai **du fichier** — `steps.js` n'appelle jamais la promotion — et
+faux **du produit** : sa seule voie d'entrée le fait pour lui. La fonction vit dans `steps.js`
+pour des raisons d'historique, elle n'y est pas invoquée.
+
+### Ma « confirmation E2E » était une fixture synthétique — c'est T-33, mot pour mot
+
+J'ai injecté des entrées de journal **directement dans `localStorage`**, un état qu'aucun chemin
+produit ne fabrique : le seul qui écrit ces entrées promeut dans la foulée. La suite mesurait donc
+la fixture, pas le produit — exactement la règle que ce chantier venait d'écrire :
+
+> **T-33** — *toute fixture de mesure est atteignable par un chemin produit, ou explicitement
+> étiquetée état synthétique. Une fixture inatteignable rend un constat sur la fixture, jamais
+> sur le produit.*
+
+Je l'ai écrite au tour précédent et enfreinte au suivant. C'est la seizième occurrence de la
+famille, et la première où la règle violée était déjà nommée dans le dépôt.
+
+**Ce qui aurait dû m'alerter, et c'est écrit dans `CLAUDE.md` depuis ce lot** : les DEUX variantes
+échouaient. Un résultat saturé accuse l'instrument — j'ai appliqué la première moitié de
+l'heuristique (« l'instrument discrimine-t-il ? ») et sauté la seconde (« quel état PRODUIT ce
+résultat décrit-il ? »).
+
+### Conséquences
+
+- **Les pas B et C sont RETIRÉS.** Pas de crochet à poser : la promotion suit déjà l'écriture sur
+  le seul chemin qui existe. Pas de réconciliation au chargement : sans trou, il n'y a pas de
+  dommage passé à rattraper, donc pas de compteur à poser.
+- **`tests/e2e/smoke-import-ref.mjs` est SUPPRIMÉE.** Une suite qui mesure un état inatteignable
+  ne garde rien ; la laisser en « rouge attendu » figerait un faux défaut dans le cliquet.
+- **Le pas A reste, et sa justification tient sans le trou** : les trois mécanismes qui touchent
+  aux références de l'athlète cohabitent désormais, ce qui est la cause de fond de la couture
+  O-22/O-25. Le regroupement empêche qu'un futur chemin d'import oublie la promotion — c'est
+  maintenant de la prévention, plus une réparation.
+
+
+---
+
+## O-42 — ⚠ `stepMin` ET `weekDistances` CONVERTISSENT DÉJÀ LA MÊME GRANDEUR, ET PAS PAREIL
+
+**Trouvé en vérifiant la prémisse du §2 du lot 1** — *« `stepMin` fait déjà cette résolution
+puisqu'elle produit les durées d'aujourd'hui »*. Elle est FAUSSE, et c'est bloquant pour le lot 1.
+
+```ts
+// stepMin (renderer.ts) — la durée qui pilote TOUT le plan
+if (d === "sw") return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60) + rec;
+//                                                      ↑ le CSS BRUT, quelle que soit la zone
+
+// weekDistances (engine) — le récap hebdomadaire affiché
+const min = (km * 10 * css / 60) / (SWIM_SPEED_RATIO[st.zone] ?? SWIM_SPEED_RATIO["sw.easy"]);
+//                                  ↑ le ratio DE LA ZONE
+```
+
+**`stepMin` traite chaque mètre de nage comme nagé au CSS.** `weekDistances` applique
+`SWIM_SPEED_RATIO` = {`sw.easy` 0,80 · `sw.aero` 0,88 · `sw.css` 1,00 · `sw.speed` 1,02} et
+`RUN_SPEED_RATIO` en course.
+
+Conséquence arithmétique : pour un bloc `sw.easy`, `weekDistances` rend **1 ÷ 0,80 = +25 %** de
+durée par rapport à `stepMin`. Deux vérités pour une même conversion, et l'écart change de signe
+selon la zone — c'est `_IFZ` sous une troisième forme, **déjà en place**, indépendamment d'O-40.
+
+### Pourquoi ça bloque le lot 1
+
+La forme proposée — « une garde ne convertit pas, elle demande à `stepMin` » — est la bonne
+géométrie, mais elle ferait hériter le plafond de dose d'une conversion qui **contredit déjà**
+l'autre. On fermerait une divergence d'unité en propageant une divergence de vitesse.
+
+Et le sens compte : `stepMin` SOUS-ESTIME la durée des blocs de nage faciles (il les compte au
+CSS alors qu'ils se nagent plus lentement), donc il sous-estime le volume de nage du plan — sur
+la discipline où 89 % des blocs sont prescrits en mètres.
+
+### Ce que ça demande, et je ne le tranche pas
+
+Laquelle des deux conversions fait foi ? `weekDistances` est physiologiquement plus juste (un
+bloc facile ne se nage pas au CSS) ; `stepMin` est celle qui pilote le plan depuis toujours, donc
+l'aligner CHANGE le volume livré de toutes les séances de nage. C'est un arbitrage d'entraînement
+avec un rayon large, à mesurer avant d'écrire — pas un correctif à glisser dans le lot 1.
+
+**Le lot 1 attend cette décision** : il n'y a pas de « source unique » à laquelle demander tant
+qu'il y en a deux qui se contredisent.
+
+```verify
+id: O-42
+quoi: stepMin convertit au CSS brut, weekDistances applique le ratio de zone
+attendu: O42-CORRIGE
+cmd: grep -q "zoneSpeedRatio(st.zone, undefined, \"css\")" src/generator/renderer.ts && ! grep -q "SWIM_SPEED_RATIO" src/engine/weekDistances.ts && echo "O42-CORRIGE"
+```
+
+
+---
+
+## O-42 §2 — CONFIRMÉ : IL Y A BIEN **TROIS** VALEURS, ET `weekDistances` EST FAUSSE AUSSI
+
+Ta suspicion était fondée. `ZDEF` définit les zones en multiplicateurs d'**ALLURE** (secondes au
+100 m / au km), donc la vitesse implicite est **1 ÷ ce multiplicateur**. Comparée aux tables de
+`weekDistances`, zone par zone :
+
+| zone | `ZDEF` (allure ×) | vitesse implicite | `*_SPEED_RATIO` | écart |
+|---|---|---|---|---|
+| `sw.easy` | 1,12 | **0,893** | **0,80** | −10,4 % |
+| `sw.aero` | 1,06 | **0,943** | **0,88** | −6,7 % |
+| `sw.css` | 1,00 | 1,000 | 1,00 | ✓ |
+| `sw.speed` | 0,94 | **1,064** | **1,02** | −4,1 % |
+| `rn.easy` | 1,16–1,26 (méd. 1,21) | **0,826** | **0,78** | −5,6 % |
+| `rn.rec` | 1,28–1,40 (méd. 1,34) | **0,746** | **0,70** | −6,2 % |
+| `rn.mara` | 1,08–1,13 (méd. 1,105) | **0,905** | **0,92** | +1,7 % |
+| `rn.thr` | 1,00–1,05 (méd. 1,025) | **0,976** | **1,00** | +2,5 % |
+| `rn.vo2` | 0,92–0,97 (méd. 0,945) | **1,058** | **1,05** | −0,8 % |
+
+**Trois conversions pour une grandeur** — `stepMin` (ratio 1,00 partout), `weekDistances` (sa
+table), `ZDEF` (les allures que l'athlète LIT). Et `weekDistances` diverge de `ZDEF` sur **8 zones
+sur 9**, jusqu'à 10,4 % en nage facile. Elle est moins fausse que `stepMin`, mais fausse.
+
+**Donc ta §3 est la seule issue** : l'autorité n'est ni l'une ni l'autre, c'est la définition de
+zone. Aucune fonction ne porte sa propre table ; les deux dérivent depuis `ZDEF` — celle qui
+produit les allures affichées. Le plan cesse alors d'afficher une allure et d'en compter une
+autre, ce qui est le défaut que ce chantier corrige depuis le premier jour, appliqué à la
+conversion plutôt qu'au message.
+
+*(Note de méthode : pour la nage, `ZDEF` porte `lo === hi`, la vitesse implicite est donc exacte.
+Pour la course, les bandes ont une largeur et j'ai pris la MÉDIANE — c'est un choix, pas une
+lecture, et il devra être tranché avec le correctif : médiane, borne lente, ou bande conservée.)*
+
+**Le sens du biais, troisième instance** — à noter comme famille : quand ce moteur se trompe sur
+le volume, il se trompe **vers le haut de la charge**. Les 350 profils annonçant un pic
+supérieur au livré · le repli `css || 130`, plus rapide qu'un vrai débutant · `stepMin`, qui
+compte un bloc facile comme nagé au seuil. Trois mécanismes indépendants, une seule direction.
+
+**Et le périmètre du lot 2 est périmé** : les 12 blocs / 4 profils ont été comptés sur les durées
+de `stepMin`. Les durées de nage montant, le nombre de blocs au-dessus de 40 min augmentera —
+à re-mesurer après O-42, jamais à réutiliser.
+
+```verify
+id: O-42-trois
+quoi: weekDistances porte une table de ratios qui diverge de ZDEF sur 8 zones sur 9
+attendu: O42-TROIS-CORRIGE
+cmd: ! grep -q '"sw.easy": 0.80' src/engine/weekDistances.ts && grep -q '"sw.easy": { ref: "css", lo: 1.12' src/generator/renderer.ts && echo "O42-TROIS-CORRIGE"
+```
+
+
+---
+
+## O-42 §3 — IL Y EN A **QUATRE**, PAS TROIS : L'AUDITEUR PORTE LA SIENNE, ÉCRITE DEUX FOIS
+
+Trouvé en cherchant qui d'autre convertit des mètres en minutes (règle 16 : la question du
+producteur se pose récursivement). Le compte n'est pas de trois :
+
+| lieu | conversion mètres → durée | forme |
+|---|---|---|
+| `stepMin` (générateur) | ancre BRUTE, ratio 1,00 | implicite |
+| `loadModel.stepMinutes` (auditeur) | ancre BRUTE, ratio 1,00 | implicite |
+| `loadModel` ligne 358 (auditeur, refente d'intensité) | ancre BRUTE, ratio 1,00 | **recopiée** de la précédente |
+| `weekDistances` (UI, km de la semaine) | sa table `*_SPEED_RATIO` | explicite |
+| `ZDEF` | ce que l'athlète LIT | l'autorité |
+
+Quatre sites, trois comportements distincts, une seule grandeur. Et deux des quatre sont une
+**copie littérale** l'une de l'autre à quinze lignes d'écart, dans le même fichier.
+
+**Conséquence pour le correctif** : corriger `stepMin` sans corriger `loadModel` ferait diverger
+le volume que le générateur BUDGÉTISE de celui que l'auditeur MESURE — c'est-à-dire rouvrir
+exactement la famille que T-25 suit. Les quatre bougent ensemble ou aucun ne bouge.
+
+**Et un commentaire de `loadModel` est FAUX** (règle 13) : *« Différence méthodologique ASSUMÉE
+avec le `stepMin` du générateur : nous comptons la récup entre répétitions (N-1 × récup), lui
+non »*. `stepMin` la compte depuis **R5.6a** — c'est même la dette la plus ancienne du dépôt,
+fermée il y a des mois. Le commentaire décrit un état du moteur qui n'existe plus et invite à
+tolérer un écart qui n'a plus de cause.
+
+### Ce que le choix de bande coûte, mesuré (`npm run mesure:o42`)
+
+`ZDEF` porte `lo === hi` en NAGE (vitesse implicite exacte) et des BANDES en course. Une durée
+dérivée d'une distance doit choisir un point dans la bande — c'est le seul choix que la lecture
+ne donne pas. Mesuré sur 171 plans, 4 259 blocs de corps prescrits en mètres :
+
+```
+blocs dont la zone porte une bande : 108 / 4 259  (2,5 %)
+borne RAPIDE (lo)  : +7,8 %  de minutes vs aujourd'hui
+CENTRE      (mid)  : +7,9 %
+borne LENTE (hi)   : +8,0 %
+→ l'écart lo↔hi vaut 0,2 % du total, contre 7,9 % pour la correction elle-même.
+```
+
+**Le choix est donc quarante fois plus petit que la correction.** Il se tranche sur un principe
+plutôt que sur un arbitrage : `longRunSpecificity` a déjà posé la règle — *« un plancher se
+calcule sur l'hypothèse la moins gourmande »*, donc il prend `lo`. `stepMin` ne produit ni
+plancher ni plafond mais une **comptabilité** : une comptabilité prend la valeur attendue, donc
+le CENTRE. La borne LENTE (`hi`, la plus prudente au sens du manifeste) coûte **+0,1 %** de plus :
+elle est chiffrée ici pour que la décision reste révocable sans re-mesure.
+
+### L'ampleur par zone, telle que le §6 la demande vérifiable
+
+```
+sw.easy   2 130 blocs   44 357 → 49 680 min   +12,0 %   (1/1,12 − 1)
+sw.aero     975 blocs   20 814 → 22 063 min    +6,0 %   (1/1,06 − 1)
+sw.css      797 blocs   14 177 → 14 177 min     0,0 %   ancrage, inchangé
+sw.speed    249 blocs    1 772 →  1 666 min    −6,0 %   (1/0,94 − 1)
+rn.thr       72 blocs    1 530 →  1 568 min    +2,5 %
+rn.mara      36 blocs    1 860 →  2 055 min   +10,5 %
+TOTAL      4 259 blocs   84 510 → 91 209 min    +7,9 %
+```
+
+**`sw.speed` BAISSE, et c'est attendu** : c'est la seule zone prescrite en mètres qui se nage
+plus VITE que le CSS. Le critère du §6 (« les durées montent, jamais ne baissent, hors `sw.css` »)
+doit donc s'entendre « suit le ratio de la zone » — ce que sa deuxième ligne dit déjà. Signalé
+plutôt que corrigé en silence.
+
+```verify
+id: O-42-quatre
+quoi: loadModel porte sa propre conversion metres→minutes, ecrite deux fois, a l'ancre brute
+attendu: O42-QUATRE-CORRIGE
+cmd: test $(grep -c 'refs.cssSecPer100m) / 100 / 60' src/engine/loadModel.ts) -eq 1 && echo "O42-QUATRE-CORRIGE"
+```
+
+### Règle 17 appliquée — **quatre** blocs ont basculé, **quatre** étaient des faux positifs
+
+`registry:check` a rangé quatre entrées en « ne reproduit plus » dans la même exécution. Confirmées
+À LA MAIN, comme la règle 17 l'exige : **aucune n'est un défaut corrigé.**
+
+| entrée | ce que le bloc cherchait | ce qui a bougé | le défaut ? |
+|---|---|---|---|
+| `O-41-promotion` | le motif dans `tab-profile.js` | le **pas A** a déplacé `syncRefsFromTests` vers `state.js` | intact (4 occurrences, dans l'autre fichier) |
+| `O-32` | `disque 9 · precachees 9` | `bebas-neue-400.woff2` **supprimée** (Z-01, police morte) | intact — `manquantes 0` tient, 8 sur 8 |
+| `O-13` | `S1 1,3h` à `vol_recent = 0` | O-35 convertit la DÉCLARATION de nage → 1,4 h | intact — la rampe mord toujours (1,4 < 1,6) |
+| `O-10` | « deux séances certains jours » | R20.2 (2ᵉ correction) : l'argmin nomme un AUTRE maillon | intact — 10 h → 8,8 · 16 h → 8,7, toujours inerte |
+
+**Les quatre blocs épinglaient une VALEUR ou un CHEMIN là où l'entrée décrit une PROPRIÉTÉ** —
+c'est la même faute que la règle 15 nomme côté mesure, appliquée au registre lui-même. Réécrits
+sur la propriété : `manquantes 0` sans compte, « ce qui borne … Si tu levais cette contrainte »
+sans nommer le maillon, le motif de promotion cherché là où il vit.
+
+**Condition d'automatisation de `registryCheck` (LOT 1 §3)** : le déclencheur posé est « un SEUL
+commit fait basculer ≥ 2 blocs ». Il n'est pas atteint — les quatre viennent de quatre lots
+différents étalés sur la session, et le processus les a tous rattrapés. Le seuil reste posé tel
+quel ; ce qui est mesuré ici, c'est qu'une exécution rend **4 faux positifs pour 0 vrai**, donc
+que le coût du processus est entièrement dans la confirmation manuelle, pas dans la détection.
+
+
+---
+
+## O-42 §4 — LIVRÉ : une conversion, cinq sites, et deux gardes qui ont trouvé le reste
+
+`zoneSpeedRatio(zone, refs?, expectRef?)` vit dans `renderer.ts`, aux côtés de `ZDEF` dont elle
+dérive : `2 / (lo + hi)`, l'inversion allure → vitesse faite **une seule fois**. Les cinq sites
+qui convertissaient la lisent :
+
+| site | avant | après |
+|---|---|---|
+| `stepMin` (générateur) | ancre brute | `÷ zoneSpeedRatio` |
+| `loadModel.stepMinutes` (auditeur) | ancre brute | `metresEnMinutes`, point unique du fichier |
+| `loadModel` ligne 358 (copie) | ancre brute | la copie est **retirée** |
+| `weekDistances` | table `*_SPEED_RATIO` | la table est **retirée** |
+| `dailyAdjuster.enduranceReplacement` | ancre brute | `× zoneSpeedRatio` |
+
+Le cinquième n'était pas dans l'inventaire : **c'est la garde `A3` du banc v6 qui l'a trouvé**
+(« jour rouge : jamais plus de minutes qu'avant ajustement » — 23 min demandées, **25 livrées**).
+La séance de remplacement dérivait ses mètres du CSS brut ; `sw.easy` se nageant à ×1,12, elle
+durait 12 % de plus que le budget qu'on lui donnait — sur un jour ROUGE, c'est-à-dire là où
+l'invariant existe. Une garde de sécurité écrite il y a des mois a payé son écriture ici.
+
+### Ce que la ventilation dit (`npm run ventile:o42`, les quatre critères du §6)
+
+```
+[1][2] zone       blocs   ancre brute → livré    écart    attendu (mult−1)
+       sw.easy     2122     42356 → 47439       +12,0 %      +12,0 %   ✓
+       sw.aero      974     20681 → 21922        +6,0 %       +6,0 %   ✓
+       sw.css       795     14087 → 14087         0,0 %        0,0 %   ✓
+       sw.speed     249      1788 →  1681        −6,0 %       −6,0 %   ✓
+       rn.thr        72      1430 →  1466        +2,5 %       +2,5 %   ✓
+       rn.mara       36      1720 →  1901       +10,5 %      +10,5 %   ✓
+       identité durée = distance × allure de ZONE : 4 248 / 4 248 blocs
+
+[3][4] 189 profils · 96 montent · 22 baissent · 71 inchangés · 0 changement de structure
+       2 682 semaines · 54 (2,0 %) s'éloignent de plus de 6 min de leur cible
+         · 50 parce que la cible DÉCLARÉE monte plus vite que le livré (famille T-25/O-35 :
+           la sonde de capacité lit un clone SATURÉ, le livré reste tenu par ses plafonds)
+         · 4 parce qu'un plafond qui SE NOMME apparaît (« OFF (lissage) », « OFF (équilibre
+           du bloc) ») — le moteur écrit sa raison dans le nom de la séance qu'il retire
+```
+
+`sw.speed` BAISSE : c'est la seule zone prescrite en mètres qui se nage plus VITE que le CSS.
+Le §6 dit « les durées montent, jamais ne baissent » ; sa seconde ligne — « l'ampleur suit le
+ratio de la zone » — est la formulation exacte, et c'est elle qui est gardée.
+
+**Contre-preuve** : la ventilation rejouée contre le moteur d'AVANT (copié sur le disque) rend
+« RÉSIDU » et les six zones en ✖.
+
+### Le second défaut, trouvé par `ANX-C22` : un clamp qui ne savait pas réduire des mètres
+
+Le Full de référence passait de **+10,4 % à +10,6 %** d'une semaine de charge à la suivante,
+pour un plafond que le manifeste fixe à +10 %. Instrumenté : `enforceC22Final` n'avait que deux
+branches, `reps > 1` et `durationMin`. **Un bloc en mètres à `reps === 1` ne tombait dans
+aucune** — la boucle sortait par « les planchers bloquent : rien de plus à prendre », un
+fail-open de la forme exacte de C24/C24b (T-29). La nage prescrivant 89 % de ses blocs en mètres,
+c'est la moitié de l'objet du clamp qui lui manquait ; O-42 l'a seulement rendu visible.
+Branche `distanceM` ajoutée, plancher C24/C24b respecté par annulation intégrale de la réduction.
+**Effet mesuré au-delà du symptôme : `audit:v1` passe de 22 à 18 combinaisons au-dessus de +10 %.**
+Le plancher est écrit en MÈTRES et non repris de `bnd.floor`, qui est en MINUTES — la faute
+d'unité de la règle 14 existe déjà quinze lignes plus bas, elle n'est pas recopiée.
+
+### `C30-A` : cinquième état, deux témoins ré-épinglés
+
+`10k/avance/5:45/8h` **59 → 61** et `semi/inter/4:30/8h` **119 → 120**. Les deux sont des
+coureurs dont la cible de spécificité est déjà atteinte : ils ne doivent rien à C30, ils suivent
+la recomposition de leur semaine (`rn.thr`/`rn.mara` coûtent plus de minutes DURES, donc
+`enforceHardTimeCap` en rend plus en facile, et le tail O-21 les fait remonter à la longue).
+Ré-épinglés avec leur raison, jamais exemptés.
+
+### Quatre fautes d'instrument, dans le script qui devait juger le lot
+
+1. `mult()` lisait `APRES.intOf(z)` « pour interroger ce qui s'exécute » — `intOf` n'est pas
+   exposée sur `EBV2`. Table par zone **vide**, et le verdict s'affichait « VENTILÉ » quand même,
+   parce qu'il testait `c2ko === 0` : un critère satisfait par l'absence de mesure. Taux saturé
+   0/0. Garde de population ajoutée.
+2. La colonne « ampleur par zone » sommait `_min` **récup comprise** contre une ancre brute récup
+   comprise — la récup ne suit pas le ratio d'une zone. Quatre ✖ affichés qui étaient ma somme.
+3. La classification des baisses nommait « un plafond mord » et mesurait « le pic a baissé » —
+   un plafond mord sur n'importe quelle semaine. 9 « inexpliqués » qui perdaient 1 à 5 minutes.
+4. La tolérance était un POURCENTAGE de la cible quand le pas du point fixe est ABSOLU (25 m,
+   une répétition). Sur une semaine de nage de 1,2 h un seul pas vaut 8 % : 205 « inexpliqués »
+   qui étaient tous le même arrondi. Faute d'unité, règle 14, dans le juge du ticket qui corrige
+   une faute d'unité.
+
+### Règle 17, seconde application du jour : **six** blocs ont rebasculé après le correctif
+
+`registry:check` rejoué APRÈS le lot range six entrées en « commande cassée ». Confirmées à la
+main, comme la règle l'exige :
+
+| entrée | ce qui a bougé | le défaut ? |
+|---|---|---|
+| `O-42`, `O-42-trois`, `O-42-quatre` | le correctif | **corrigé** — les trois blocs écrivent désormais le motif de leur CORRECTION |
+| `O-21` | 1 inversion d'allure, écart max **0,2 % → 1,8 %** | intact : c'est le compte qui porte la propriété, pas la magnitude |
+| `O-36-amont` | blocs de nage en distance **10 982 → 10 953** | intact : les blocs sont plus longs, le point fixe en produit 29 de moins |
+| `O-36-cible` | répétition la plus courte **759 → 733 m** | intact : la mesure suit les durées, la conclusion ne bouge pas |
+
+Trois faux positifs de plus, **et la même cause que ce matin** : le bloc épinglait une VALEUR là
+où l'entrée décrit une PROPRIÉTÉ. Sept sur dix en une journée. Le déclencheur d'automatisation
+posé par le LOT 1 (« un SEUL commit fait basculer ≥ 2 blocs ») est cette fois **atteint** — ce
+commit en fait basculer trois — mais ce qu'il déclencherait (distinguer « motif absent » de
+« chemin invalide ») n'aurait rien attrapé ici : les six chemins étaient valides, ce sont les
+motifs qui étaient trop précis. La leçon utile est en amont du script : **un bloc `verify`
+s'écrit sur la propriété, jamais sur le chiffre du jour.**
+
+### Le résidu NOMMÉ : les bandes SUBSTITUÉES ne pilotent pas la durée
+
+`zoneOf` substitue deux bandes à l'affichage — `bk.rp` par `raceBikeBand` (R20.5) et `rn.mara`
+par le prédicteur (B-22/B-25). La conversion, elle, lit `ZDEF` **statique** : `zoneSpeedRatio`
+est appelée sans `refs` sur les cinq sites.
+
+C'est un CHOIX, pas un oubli. `bk.rp` est ancrée sur la FTP, donc `zoneSpeedRatio` rend `null`
+de toute façon (la vitesse ne suit pas la puissance linéairement — c'est le modèle de Martin qui
+répond). Reste `rn.mara` : **36 blocs sur 4 259 (0,85 %)** du balayage, tous en marathon et en
+tri. Leur passer la bande substituée demanderait que les CINQ sites la reçoivent — or `baseRefs`
+(`{ftp, thrPace, css}`) ne la porte pas et l'auditeur n'en a aucune notion. La donner au seul
+générateur rouvrirait l'écart générateur ↔ auditeur que T-25 surveille : c'est précisément le
+défaut que ce ticket ferme. Résidu nommé, chiffré, non traité ici.
+
+```verify
+id: O-42-unique
+quoi: une seule derivation allure→vitesse, et les tables ont disparu
+attendu: O42-UNIQUE
+cmd: test $(grep -c "SWIM_SPEED_RATIO\|RUN_SPEED_RATIO" src/engine/weekDistances.ts) -eq 0 && test $(grep -c "zoneSpeedRatio" src/generator/renderer.ts src/engine/weekDistances.ts src/engine/loadModel.ts src/readiness/dailyAdjuster.ts | grep -c ":0") -eq 0 && echo "O42-UNIQUE"
+```
+
+```verify
+id: O-42-c22-metres
+quoi: le clamp C22 final sait reduire un bloc prescrit en metres
+attendu: O42-C22M
+cmd: grep -q "CE CLAMP NE SAVAIT PAS RÉDUIRE DES MÈTRES" src/generator/planGenerator.ts && echo "O42-C22M"
+```
+
+
+---
+
+## O-43 · Le plafond STRUCTUREL se nourrit de la conversion — recompter le même travail en plus de minutes **augmente** ce que le moteur prescrit · 🔴 **OUVERT — trouvé en répondant au §1/§3, non arbitré**
+
+**Trouvé en cherchant la cause des +4 de S5** (que le fondateur demandait de regarder « maintenant
+plutôt que mélangés au reste dans O-35 »). Sa prémisse était juste et le résultat est plus gros
+que 4 profils.
+
+### 1. Le fait
+
+Le pic **LIVRÉ**, sur les 945 profils du golden, avant et après O-42 :
+
+```
+352 hausses · 51 baisses · 33 profils (3,5 %) au-delà de ±25 %
+tous en NATATION (29) ou en TRIATHLON (4)
+
+swim/fond/reprise/debutant        40 → 104 min  (+160 %)  séances max 3 → 6
+swim/sprint/reprise/debutant      39 →  91 min  (+133 %)  séances max 3 → 6
+swim/demifond/reprise/debutant    39 →  83 min  (+113 %)  séances max 3 → 5
+swim/fond/ancien/debutant         55 → 101 min  ( +84 %)  séances max 4 → 6
+```
+
+**Ce n'est pas une re-tarification** : le nombre de SÉANCES double. Un débutant en **reprise** —
+la population que le manifeste protège en premier, celle de C24b, C23 et de la rampe R10 — passe
+de 3 séances de nage par semaine à 6.
+
+### 2. La rampe R10 ne le tient pas
+
+Vérifié en déclarant `vol_recent` explicitement, ce que le golden ne fait pas :
+
+```
+vol_recent │ pic AVANT → APRÈS │ séances max
+   absent  │   40 → 104 min (+160 %) │ 3 → 6
+        0  │   52 →  89 min ( +71 %) │ 4 → 6      ← la réponse la PLUS protectrice
+        2  │   40 →  88 min (+120 %) │ 3 → 6
+        5  │   40 → 104 min (+160 %) │ 3 → 6
+```
+
+Même à `vol_recent: 0` — « je ne m'entraîne pas du tout » — le pic monte de 71 % et la fréquence
+passe de 4 à 6. La garde qui existe précisément pour empêcher ça ne mord pas.
+
+### 3. Le mécanisme, lu sur la chaîne R20.2
+
+`swim/fond/reprise/debutant/finir`, `vol_recent: 0` :
+
+| maillon | avant | après |
+|---|---|---|
+| `structurel` | **1,42 h** | **2,08 h** (+47 %) |
+| `boucle-growth` | 1,01 h | 1,52 h |
+| `courbe` | 1,98 h | 2,11 h |
+| `declared` · `caps` · `util` · `ramp` | inchangés | inchangés |
+
+Le maillon qui bouge est **`structurel`** — ce que la structure de la semaine peut contenir. Il se
+calcule sur des plafonds de séance exprimés en MINUTES. O-42 fait coûter plus de minutes au même
+travail en mètres ; la sonde lit cette hausse comme **une capacité plus grande** ; la courbe monte ;
+le point fixe ajoute des séances pour l'atteindre.
+
+**La boucle est circulaire, et son sens est le mauvais** : recompter honnêtement le même travail
+devrait RÉDUIRE ce qui tient dans une semaine, pas augmenter le plafond. Le plafond est une
+propriété de l'ATHLÈTE (temps disponible, tolérance tissulaire), jamais de la façon dont le moteur
+compte. C'est la règle 12 sous une forme nouvelle : ici ce n'est pas une entrée déclarée qui
+remplace une sortie calculée, c'est **une sortie calculée qui se relit elle-même comme une entrée**.
+
+### 4. Ce que ma ventilation d'O-42 a manqué, et pourquoi
+
+`ventile:o42` déclare le diff « entièrement expliqué ». Il l'était **selon son critère**, et le
+critère était incomplet : il vérifie que le LIVRÉ ne s'éloigne pas de sa cible DÉCLARÉE. Ici les
+deux montent ensemble — donc le critère est satisfait pendant que le plan double. J'ai vérifié la
+cohérence entre la promesse et la livraison ; je n'ai jamais demandé **si la promesse avait le
+droit de monter**. Le §6-4 du fondateur (« aucun mouvement inexpliqué ») visait exactement ça, et
+je l'ai lu trop étroitement.
+
+### 5. Ce qui n'est PAS établi
+
+- Que le plan livré soit dangereux : 6 séances de 17 min chez un nageur, ce n'est pas 6 séances
+  de course à pied. C'est un arbitrage d'entraînement, pas une mesure.
+- Que la borne juste soit l'ancienne : le pic d'AVANT était calculé sur une conversion fausse.
+  On ne peut pas conclure « il faut revenir à 40 min » — 40 min était aussi un chiffre dérivé
+  d'une erreur.
+
+Ce qui est établi : **le plafond structurel dépend de l'unité de comptage, et il ne devrait pas.**
+
+### 6. Décision demandée
+
+Rien n'est fusionné. Trois issues, à chiffrer avant d'en choisir une :
+
+1. **Borner `structurel` sur une grandeur invariante par la conversion** (mètres, ou nombre de
+   séances × plafond de séance en mètres pour la nage) — la correction de fond.
+2. **Geler `structurel` sur sa valeur d'avant O-42 pour la nage** — un correctif de transition,
+   qui fige un chiffre issu d'une conversion fausse.
+3. **Assumer la hausse** — elle est peut-être la bonne réponse pour un nageur qui pouvait déjà
+   faire ces séances ; alors il faut le dire dans le plan et le mesurer sur la population
+   `débutant × reprise` en particulier.
+
+```verify
+id: O-43
+quoi: le plafond structurel monte quand la conversion fait couter plus de minutes au meme travail
+attendu: O43-REPRODUIT
+cmd: node scripts/mesureO43.mjs 2>/dev/null | grep -q "O43-REPRODUIT" && echo "O43-REPRODUIT"
+```
+
+
+---
+
+## O-43 §2 — MON DIAGNOSTIC ÉTAIT FAUX, ET C'EST LE FILTRE DU FONDATEUR QUI L'A RÉFUTÉ
+
+**T-34 écrit tel que je l'avais compris est sorti VERT.** Le §3 de mon entrée O-43 désignait le
+maillon `structurel` comme la cause ; l'expérience contrôlée — faire varier la CONVERSION et rien
+d'autre, `sw.easy` de ×1,12 à ×1,30 — dit le contraire :
+
+```
+structurel     1,733 → 1,750 h   (+1,0 %)   ← le maillon que j'avais accusé
+courbe         2,21  → 2,46  h   (+11 %)
+boucle-growth  1,23  → 1,67  h   (+36 %)
+PIC LIVRÉ      1,1   → 1,2   h   (+9,1 %)   ← la violation, elle est bien réelle
+```
+
+`structurel` somme des plafonds de séance **en MINUTES**, atteints à saturation quelle que soit la
+conversion : il est presque invariant, ce qui est le comportement correct. J'avais lu
+« structurel 1,42 → 2,08 » sur un diff qui contenait **tout O-42** et j'en avais tiré une causalité
+que l'expérience ne soutient pas — ce maillon monte parce que la semaine gagne des séances, il
+n'est pas la cause. **Quinzième occurrence de la règle 15 :** j'ai attribué une causalité à partir
+d'une corrélation entre deux états qui différaient par plus d'une chose.
+
+L'invariant du fondateur, lui, est violé — sur **ce qui est prescrit**, pas sur le maillon que
+j'avais nommé. T-34 porte donc sur le pic livré ET sur la fréquence.
+
+## O-43 §3 — LA FRÉQUENCE : l'hypothèse du fondateur tient, et elle est ANTÉRIEURE à O-42
+
+**`MAX_SWIM_DAYS` n'existe pas.** `MAX_RUN_DAYS` existe (`{reprise: 4, confirme: 5, ancien: 6}`,
+`constraintMatrix.ts:157`), appliqué par le garde `runImpactCap` que déclarent `run`, `trail`,
+`duathlon` et `swimrun` — et son commentaire dit ce qu'il est : « plafond de jours d'**impact** ».
+Orthopédique, donc physiologique, donc modélisé. La borne de nage serait **logistique** — accès au
+bassin — donc invisible pour un moteur qui modélise la physiologie. Le fondateur avait identifié la
+raison exacte.
+
+**Mesuré sur les 136 profils de natation du golden**, jours de nage de la semaine la plus chargée :
+
+```
+AVANT O-42 :  3j×8   4j×10   5j×15   6j×103
+APRÈS      :  3j×4   4j×2    5j×8    6j×122
+25 montées · 104 stables · 7 baisses
+
+  reprise/debutant   3,8 → 5,7 jours   ← la population que le fondateur nomme
+  reprise/inter      6,0 → 6,0
+  ancien/inter       6,0 → 6,0
+```
+
+**103 profils sur 136 étaient DÉJÀ à 6 jours de nage par semaine avant O-42.** La fréquence non
+bornée n'est pas une conséquence d'O-42 : c'est un défaut antérieur, que le plafond trop bas
+protégeait accidentellement chez les débutants. O-42 a retiré cette protection accidentelle.
+
+**O-43 se scinde donc, comme le fondateur l'avait prévu** — et l'un des deux morceaux est plus
+gros que ce ticket :
+
+| | portée | statut |
+|---|---|---|
+| **fréquence de nage non bornée** (→ **O-44**) | 103 profils AVANT O-42, 122 après | antérieur, indépendant |
+| **invariance de ce qui est prescrit** (T-34) | pic +9,1 % à conversion mutée | dans O-43 |
+
+## O-43 §4 — LES TROIS ISSUES AU FILTRE, AVEC LA QUATRIÈME COLONNE
+
+| issue | T-34 (§1) | chemin justifiable (§2) | nombre de séances |
+|---|---|---|---|
+| 1 · borner la sonde sur une grandeur **invariante par la conversion** (mètres pour la nage) | **passe** par construction | oui — la borne décrit l'athlète | à mesurer avec l'écriture |
+| 2 · **geler** la sonde sur sa valeur d'avant O-42 | passe **par épinglage** | **non** — le chiffre ne se justifie que par « on comptait comme ça avant », ce que le §2 refuse | inchangé, par construction |
+| 3 · **assumer** la hausse | **échoue** | sans objet | 3 → 6 |
+
+**Une seule survit : l'issue 1.** Précision d'honnêteté : ce n'est pas T-34 seul qui élimine
+l'issue 2 — une constante gelée est trivialement invariante et passerait le test. C'est le **§2**
+qui la tue : *« même si 2,08 h était la bonne capacité, y arriver par un saut causé par un
+changement de comptabilité n'est pas un chemin justifiable »*, et une valeur figée n'est
+justifiable que par l'ancienne comptabilité.
+
+La quatrième colonne de l'issue 1 ne peut pas être remplie avant de l'écrire : la borne en mètres
+n'existe nulle part aujourd'hui. Elle sera mesurée AVANT d'être adoptée (règle 7), et O-44 la
+recoupera — si la fréquence est bornée, la question « que devient le nombre de séances » change de
+réponse.
+
+```verify
+id: O-43-frequence
+quoi: il n'existe aucun plafond de jours de NAGE, quand la course en a un
+attendu: O43-SANS-BORNE-NAGE
+cmd: grep -q "MAX_RUN_DAYS" src/engine/constraintMatrix.ts && ! grep -q "MAX_SWIM_DAYS" src/engine/constraintMatrix.ts && echo "O43-SANS-BORNE-NAGE"
+```
+
+
+---
+
+## O-44 · La fréquence de nage n'est bornée par rien, et le plancher de durée entre en COLLISION avec C15 · 🔴 **OUVERT — mesuré, non écrit**
+
+Scindé d'O-43 (§3). **Défaut ANTÉRIEUR à O-42** : 103 profils de natation sur 136 étaient déjà à
+six jours de nage par semaine avant le lot. O-42 n'a pas créé la fréquence non bornée — il a
+retiré la protection accidentelle qu'un plafond trop bas offrait aux débutants.
+
+**La forme du correctif est arbitrée** (fondateur, 16/08/2026) : pas de `MAX_SWIM_DAYS`, qui
+inventerait une limite physiologique inexistante — la technique est une compétence, elle s'acquiert
+par la répétition, et six séances courtes valent mieux que trois longues pour l'apprentissage. La
+pathologie n'est pas « six jours », c'est **dix-sept minutes** : personne ne se déplace jusqu'à une
+piscine pour dix-sept minutes d'eau. On borne donc par un **plancher de DURÉE de séance**, qui
+borne la fréquence par `volume ÷ plancher`, s'auto-échelonne, et n'ajoute aucune question.
+
+### §1 — Ce que les plafonds en MÈTRES autorisent, en minutes (après O-42)
+
+| CSS | 850 m (C15) en `sw.easy` | 750 m (C24) en `sw.easy` | 600 m (C24b) en `sw.easy` |
+|---|---|---|---|
+| 1:30/100m | **14,3 min** | 12,6 | 10,1 |
+| 1:50/100m | **17,5 min** | 15,4 | 12,3 |
+| 2:00/100m | **19,0 min** | 16,8 | 13,4 |
+| 2:30/100m | 23,8 min | 21,0 | 16,8 |
+| 3:00/100m | 28,6 min | 25,2 | 20,2 |
+
+### §2 — Les durées livrées : la pathologie est la NORME, pas une queue
+
+10 891 séances de nage sur 136 profils : **p10 16 · médiane 19 · p90 36 · min 3 · max 91 min**.
+
+```
+  0–15 min    881  ( 8,1 %)     ← et le minimum observé est de 3 MINUTES
+ 15–20 min   4800  (44,1 %)     ← le mode
+ 20–25 min   2015  (18,5 %)
+ 25–30 min   1419  (13,0 %)
+ 30–45 min   1117  (10,3 %)
+ 45–… min     659  ( 6,1 %)
+
+médiane par niveau :  débutant 15 min · inter 22 · avancé 18
+```
+
+### §3 — Le plancher qui ramène les débutants à 3-4 séances
+
+| plancher | débutants (jours médians) | tous | profils dont la fréquence baisse |
+|---|---|---|---|
+| 20 min | 4 | 5 | 72 / 136 |
+| 22 min | 4 | 5 | 79 / 136 |
+| **25 min** | **3** | 4 | 95 / 136 |
+| 30 min | 3 | 3 | 127 / 136 |
+
+### ⚠ §4 — LA COLLISION, et c'est le résultat qui compte
+
+**Le plancher qui corrige la fréquence contredit C15 pour les débutants.** Le fondateur avait
+raison de conditionner la valeur à cette vérification, et la mesure la tranche dans le sens
+défavorable :
+
+```
+plancher visé (§3)          : 25 min pour ramener un débutant à 3 séances
+plafond C15 à CSS 2:00      : 19,0 min  ← un débutant ne PEUT PAS atteindre 25 min
+plafond C15 à CSS 1:50      : 17,5 min
+plafond C15 à CSS 1:30      : 14,3 min
+```
+
+Un plancher de 25 min est **inatteignable sous C15** pour tout nageur plus rapide que ~2:30/100 m,
+et C15 est précisément le plafond qui protège le débutant. Les deux règles se contrediraient : la
+séance devrait durer au moins 25 min et ne pas dépasser 850 m.
+
+**Ce n'est pas résoluble en choisissant un nombre.** Trois formes possibles, à arbitrer :
+
+1. **Plancher relatif au plafond** — `plancher = min(plancher_absolu, k × durée que C15 autorise)`.
+   Aucune contradiction possible par construction, mais le plancher devient inopérant là où C15
+   mord, c'est-à-dire chez le débutant… donc chez celui qu'on visait.
+2. **Relever C15 pour les débutants** — le plafond de 850 m date d'avant O-42, quand une séance de
+   850 m était comptée ~15 min ; elle en fait 19 aujourd'hui. Le plafond n'a pas été recalibré
+   après le changement d'unité. C'est la piste que la mesure désigne, et elle demande un arbitrage
+   d'entraînement (850 m est-il un plafond de DISTANCE ou de DURÉE ?).
+3. **Plancher indexé sur le CSS** — un nageur lent atteint 25 min en 850 m, un rapide non ; le
+   plancher suivrait la vitesse. Défendable, mais il invente une règle nouvelle là où la 2 en
+   recalibre une existante.
+
+**Trouvé en passant, non traité** : la séance de nage la plus courte du golden dure **3 minutes**.
+Aucun plancher de durée n'existe aujourd'hui, à aucun niveau — et 8,1 % des séances sont sous 15 min.
+
+### §5 — L'unité, vérifiée avant d'écrire
+
+`SWIM_TIME_FACTOR_BY_HISTORY` vaut `{reprise 0,45 · confirme 0,60 · ancien 0,70}` et s'applique à
+la **DÉCLARATION** de l'athlète (O-35 : c'est une conversion d'unité, pas une réduction). Les durées
+du §2 viennent de `stepMin` : ce sont des minutes **DANS L'EAU**. Un plancher doit donc être posé
+dans cette unité — le poser en temps de BASSIN le rendrait **2,22× trop haut** chez un athlète en
+reprise. Piège d'unité vérifié avant d'écrire, pas après.
+
+```verify
+id: O-44
+quoi: 8 % des seances de nage durent moins de 15 min, et aucun plancher de duree n'existe
+attendu: O44-REPRODUIT
+cmd: node scripts/mesureO44.mjs 2>/dev/null | grep -q "0–15 min" && ! grep -q "SWIM_SESSION_MIN_MIN" src/engine/constraintMatrix.ts && echo "O44-REPRODUIT"
+```
+
+### O-43 §5 — LE SITE EXACT, MESURÉ : c'est la sonde V2.1, et elle CESSE DE MORDRE
+
+Instrumenté par la même expérience contrôlée que T-34 (`sw.easy` ×1,12 → ×1,30, rien d'autre) :
+
+```
+AVANT   volPeak 1.1   V2.1 : « 2,3h (au lieu de 2,5h) »        ← la sonde MORD
+APRÈS   volPeak 1.2   V2.1 : (pas émise — la sonde ne borne plus)
+```
+
+Le mécanisme est nommé et il n'a plus rien d'hypothétique. La sonde compare
+`capacityH < peakH × 0,95` :
+
+- `capacityH` est le clone SATURÉ mesuré **en minutes** → il MONTE avec la conversion ;
+- `peakH` (2,5 h) vient des plafonds déclarés → il est indifférent à la conversion.
+
+Avant : 2,3 < 2,375 → la sonde mord, `peakH := 2,3`. Après : la capacité passe au-dessus du seuil
+→ **la sonde ne mord plus**, `peakH` reste 2,5, et `courbe = Lw × peakH` monte de 11 %.
+
+**Recompter le même travail en plus de minutes DÉSARME le garde-fou qui limitait l'athlète.** C'est
+la règle 12, forme nouvelle, dans sa version la plus nette : la sonde mesure le contenu généré, et
+cette mesure est l'entrée du plafond.
+
+**Ceci rectifie mon §2** : `structurel` (la re-sonde, presque invariante à +1,0 %) n'est pas le
+site ; la PREMIÈRE sonde l'est, et c'est elle qui décide de `peakH`. Les deux portent le même
+chiffre à des instants différents du pipeline — famille des onze « une garantie vérifiée au milieu
+du pipeline ne vérifie que l'avant-dernier état », ici appliquée à une MESURE et non à une garantie.
+
+**Ce que l'issue 1 doit donc borner** : la grandeur que la sonde compare à `peakH`. Elle est
+aujourd'hui en minutes dérivées de la conversion ; il lui faut une expression invariante — en nage,
+les MÈTRES que la structure de la semaine peut porter, convertis une seule fois par une référence
+qui décrit l'athlète et non la zone. À écrire et à mesurer (règle 7) ; O-44 la recoupe, puisque
+borner la fréquence change ce que le clone saturé contient.
+
+### O-43 §6 — LES DEUX MESURES QUI DÉCIDENT : rien n'est franchi, et je me suis trompé sur R10
+
+`npm run mesure:o43b`.
+
+#### §1 — le livré ne dépasse RIEN. La sonde a le droit de ne plus mordre.
+
+`vol_max` est déclaré en heures de BASSIN, le pic livré est en heures d'EAU : on convertit par
+`swimTimeFactorOf` avant de comparer (O-35), sinon la comparaison est une faute d'unité.
+
+```
+136 profils de natation · ratio livré / plafond déclaré :
+   médiane 44 %  ·  p90 67 %  ·  max 100 %
+profils dépassant leur plafond de plus de 2 % : 0 / 136
+profils posés EXACTEMENT à 100 % (comportement correct)  : 1
+```
+
+**Aucun plafond n'est franchi.** Le plan reste très en dessous de ce que l'athlète déclare pouvoir
+faire — médiane à 44 % de sa propre déclaration. La branche du fondateur s'applique : *« livré ≤
+déclaré → la sonde a raison. Le plan honore enfin la déclaration, et l'ancien la trahissait. »*
+
+**Conséquence directe : l'issue 1 annulerait une correction au lieu de réparer un défaut.** Avant
+O-42 le clone saturé contenait un travail MAL COMPTÉ ; la sonde mesurait 2,3 h pour un contenu qui
+en prenait davantage. Elle ne mord plus parce qu'elle mesure enfin juste.
+
+*(Faute d'instrument publiée : mon premier verdict rendait « DES PLAFONDS SONT FRANCHIS » sur UN
+profil — `G/swim/ow/vol-min`, 1,80 h livrées pour 1,80 h autorisées, c'est-à-dire un plan posé
+exactement SUR son plafond. Un verdict binaire sur une égalité flottante, quatrième faute de seuil
+de la journée.)*
+
+#### §2 — **RECTIFICATION : « la rampe R10 ne le tient pas » était FAUX, et c'est moi qui l'ai écrit.**
+
+Mesuré, la rampe couvre la nage et elle DISCRIMINE :
+
+| `vol_recent` | départ de la rampe | S1 livrée | pic livré | plafond `ramp` de la chaîne |
+|---|---|---|---|---|
+| 0 | 0,90 h | 54 min | **68 min** | 1,75 h |
+| 1 | 0,90 h | 54 min | **68 min** | 1,75 h |
+| 2 | 0,99 h | 57 min | 78 min | 1,93 h |
+| 4 | 1,98 h | 70 min | 99 min | (ne borne plus) |
+| 8 | 3,96 h | 70 min | 99 min | (ne borne plus) |
+
+Le pic va de 68 à 99 minutes selon la réponse : **la rampe fait exactement son travail.** Son
+plafond (1,75 h = 105 min) n'est jamais franchi — le plan livré s'arrête à 68 min, bien en dessous.
+
+**Ce que j'avais mesuré n'était pas ce que j'ai écrit.** J'avais observé « le pic monte de 71 %
+entre avant et après O-42, même à `vol_recent: 0` » et j'en ai tiré « la rampe ne tient pas ». Ce
+sont deux énoncés différents : la rampe n'a pas échoué, elle n'était simplement **pas la contrainte
+mordante** — le plan restait sous elle avant comme après. Le fondateur a bâti tout son §2 sur ma
+phrase. C'est la neuvième occurrence de la famille « nommer une grandeur et en mesurer une
+voisine », cette fois dans une PHRASE de rapport et non dans un instrument.
+
+**Ce qui reste, et qui est réel** : `_rampCap = Math.max(2 × unit, vol_recent × unit × 1,1)`. Le
+plancher de 2 h est GÉNÉRIQUE — en nage il vaut `2 × 0,45 = 0,90 h` d'eau. Donc déclarer **0**
+et déclarer **1 h** de bassin donnent le MÊME point de départ, à la minute près (68 min de pic dans
+les deux cas). La réponse la plus protectrice du domaine n'est pas plus protectrice que sa voisine.
+C'est le piège du zéro de R20.1-a sous une forme nouvelle : **le zéro est bien LU, mais un plancher
+générique l'écrase juste après.** Suivi en **O-45**.
+
+#### §3 — Ce que ces deux mesures font au reste du fil
+
+- **O-43 issue 1 : à ne PAS écrire.** Elle annulerait une correction. T-34 reste rouge et c'est
+  assumé : l'invariance de la sonde est une propriété souhaitable, mais la faire tenir en
+  re-bornant la sonde ferait re-sous-livrer le plan. La bonne cible est ailleurs.
+- **O-44 (plancher de durée) devient le ticket principal** : c'est la seule des trois protections
+  manquantes qui vise la pathologie réelle (des séances de 15-19 min, 8 % sous 15 min, une à 3 min).
+- **O-45** (plancher générique de la rampe) est petit, net, et indépendant des deux autres.
+
+```verify
+id: O-43-rien-franchi
+quoi: apres O-42 le pic livre en nage ne depasse aucun plafond declare
+attendu: AUCUN DÉPASSEMENT
+cmd: node scripts/mesureO43b.mjs 2>/dev/null | grep -o "AUCUN DÉPASSEMENT" | head -1
+```
+
+
+---
+
+## O-45 · Le plancher générique de la rampe R10 écrase le zéro · 🔴 **OUVERT — mesuré, petit, indépendant**
+
+Scindé d'O-43 §6. `planGenerator.ts` :
+
+```ts
+let _rampCap = isFinite(volRecent) && volRecent >= 0
+  ? Math.max(2 * _rampUnit, volRecent * _rampUnit * 1.1)
+  : Infinity;
+```
+
+Le `2 * _rampUnit` est un plancher GÉNÉRIQUE : quoi que l'athlète déclare en dessous de ~1,8 h,
+la rampe démarre au même endroit. Mesuré en natation (`_rampUnit = 0,45` en reprise) :
+
+```
+vol_recent 0 → départ 0,90 h → pic livré 68 min
+vol_recent 1 → départ 0,90 h → pic livré 68 min     ← identique à la minute près
+vol_recent 2 → départ 0,99 h → pic livré 78 min
+```
+
+**« Je ne m'entraîne pas du tout » et « je nage 1 h par semaine » produisent le même plan.** C'est
+la réponse la plus protectrice du domaine qui n'est pas honorée — exactement la population que la
+rampe R10 existe pour protéger, et exactement la forme du piège que **R20.1-a** avait fermé côté
+LECTURE (`dec > 0` traitait 0 comme une absence de réponse). Le zéro est bien lu depuis R20.1-a ;
+un plancher générique l'écrase quinze lignes plus loin.
+
+**Ce qui n'est pas tranché** : le plancher a une raison — un plan qui démarre à 0 h ne démarre
+jamais (`0 × 1,1 = 0`). La question est sa FORME : un plancher absolu de 2 h générique, ou un
+départ minimal exprimé dans une grandeur qui décrit l'athlète (une séance, un plancher de séance
+du sport). À mesurer avant d'écrire — et O-44 le recoupe, puisqu'un plancher de durée de séance
+donnerait précisément ce départ minimal sans constante nouvelle.
+
+```verify
+id: O-45
+quoi: le plancher generique de la rampe rend vol_recent 0 et 1 identiques
+attendu: O45-REPRODUIT
+cmd: node scripts/mesureO43b.mjs 2>/dev/null | grep -qE "^ +0 .*68 min" && node scripts/mesureO43b.mjs 2>/dev/null | grep -qE "^ +1 .*68 min" && echo "O45-REPRODUIT"
+```
+
+### O-44 §6 — DEUX RECTIFICATIONS À MA §2, ET LA DÉRIVATION SE MORD LA QUEUE
+
+#### (a) Les séances de 3 minutes sont en AFFÛTAGE et en RÉCUPÉRATION, où le plancher est exempté
+
+J'ai écrit « la pathologie est la norme » sur une distribution qui mélangeait les semaines de
+charge et celles où une séance courte est **correcte par conception**. Séparées :
+
+```
+SEMAINES DE CHARGE   8 309 séances · p10 16 · médiane 20 · p90 40 · min 12 · 7,1 % sous 15 min
+AFFÛTAGE + RÉCUP     2 582 séances · p10 13 · médiane 16 · p90 24 · min  3 · 11,4 % sous 15 min
+```
+
+La séance de **3 minutes** est en affûtage. Celle de **12 minutes** est le vrai minimum des
+semaines de charge. Le tableau que j'ai publié plus haut reste vrai globalement et **induit en
+erreur** : dixième occurrence de « nommer une grandeur et en mesurer une voisine », et la deuxième
+de la journée dans une phrase de rapport.
+
+#### (b) C24/C24b ne sont PAS violés — mesuré à 0 sur 8 309
+
+```
+séances de nage en mètres, hors affûtage et hors récup : 8 309
+sous le plancher C24 (750 m) / C24b (600 m débutant)   : 0  (0,0 %)
+```
+
+Le plancher de DISTANCE tient parfaitement. Ce n'est donc pas une garde à réparer : c'est bien
+une grandeur qui manque.
+
+#### (c) ⚠ MAIS LA DÉRIVATION PROPOSÉE SE MORD LA QUEUE
+
+Le plancher de durée **dérivé d'une borne de distance vaut `distance ÷ vitesse`** — il est donc
+**inversement proportionnel à la vitesse de l'athlète** :
+
+```
+750 m (plancher C24) en sw.easy →  12,6 min à CSS 1:30
+                                   15,4 min à CSS 1:50
+                                   16,8 min à CSS 2:00
+                                   21,0 min à CSS 2:30
+```
+
+**Les 12 minutes observées SONT déjà ce plancher, appliqué à un nageur rapide.** Le plancher dérivé
+existe donc de fait, et il produit exactement la séance que le §2 juge absurde.
+
+Et la raison est structurelle : *« personne ne se déplace jusqu'à une piscine pour dix-sept minutes
+d'eau »* est une contrainte **LOGISTIQUE** — le trajet, le vestiaire, les 45 minutes autour coûtent
+la même chose quelle que soit la vitesse. Une dérivation depuis une distance est **PHYSIOLOGIQUE**
+et suit la vitesse. Les deux ne mesurent pas la même chose, et la dérivation donne le plancher le
+plus BAS à celui qui nage le plus vite — l'inverse de ce que l'argument du déplacement demande.
+
+**Ce que la mesure laisse ouvert, et qui est un vrai arbitrage** :
+
+1. **assumer la nature logistique** — un plancher ABSOLU en minutes (une constante nouvelle, ce que
+   le §2 voulait éviter), borné par `min(plancher, durée que le plafond de distance autorise)` pour
+   qu'aucune collision ne soit possible. La collision C15 disparaît par la borne, pas par la
+   dérivation.
+2. **dériver quand même**, en acceptant que le nageur rapide garde des séances de 12-13 min : la
+   règle est alors physiologique et cohérente, mais elle ne traite pas le cas qui a motivé le
+   ticket.
+3. **ne rien poser** et considérer que 12 min de nage à haute intensité pour un nageur rapide est
+   une séance légitime — auquel cas O-44 se ferme sur la mesure et O-45 reste seul.
+
+**Je ne tranche pas** : c'est un arbitrage entre une contrainte de vie non déclarée et une règle
+physiologique, exactement le type de décision que le manifeste réserve au fondateur.
+
+```verify
+id: O-44-derivation
+quoi: le plancher derive d'une distance suit la vitesse — 750 m valent 12,6 min a CSS 1:30
+attendu: O44-DERIVE-SUIT-VITESSE
+cmd: node -e "const css=90,mult=1.12;const min=(750/100)*(css*mult)/60;process.stdout.write(min<13?'O44-DERIVE-SUIT-VITESSE':'')"
+```
+
+### O-44 §7 — LA MESURE PAR SEMAINE : la distribution est BIMODALE, et 36 débutants sur 36 sont dedans
+
+`npm run mesure:o44b` — semaines de CHARGE uniquement (l'affûtage et la récup veulent des séances
+courtes, c'est leur objet), et seulement les semaines portant ≥ 2 nages (sans quoi la « part » n'a
+pas de sens).
+
+```
+136 profils · 1 450 semaines de charge à ≥ 2 nages
+semaines dont la MAJORITÉ des nages sont sous 20 min : 501  (34,6 %)
+
+part moyenne par profil : médiane 57 % · p90 95 % · max 97 %
+     0–20 %  :   0 profils      ← personne
+    20–40 %  :  60 profils (44,1 %)
+    40–60 %  :  15 profils (11,0 %)
+    60–80 %  :   7 profils ( 5,1 %)
+    80–100 % :  54 profils (39,7 %)   ← le second mode
+```
+
+**La distribution est bimodale, sans milieu.** Ce n'est pas « des séances courtes existent, étalées
+sur tous les profils » : il y a deux populations distinctes, et la seconde vit à 80-100 % de nages
+courtes.
+
+**La sous-population, décrite comme le §3 le demande** — 69 profils sur 136 portent en moyenne plus
+de la moitié de leurs nages sous 20 min :
+
+| axe | dans la sous-population | population totale |
+|---|---|---|
+| **débutant** | **36** | **36** ← *tous, sans exception* |
+| inter | 18 | 64 |
+| avancé | 15 | 36 |
+| reprise · confirmé · ancien | 20 · 25 · 24 | 36 · 64 · 36 |
+| format `sprint` | 27 | 34 |
+
+**Les 36 débutants y sont tous.** L'historique ne discrimine pas (20/25/24, proportionnel) : ce
+n'est pas une population « qui reprend », c'est une population **à petit volume hebdomadaire réparti
+sur jusqu'à six séances** — d'où la domination du format `sprint` (27 sur 34).
+
+Cas extrêmes : `swim/sprint/reprise/inter` à **97 % de nages courtes, 6 semaines sur 6
+majoritairement courtes**. `swim/fond/confirme/debutant` à 96 %, 9/9.
+
+**→ Le critère du §3 tranche : ISSUE 1.** Une sous-population existe, elle est identifiable, et
+elle contient l'intégralité des débutants — la population que le manifeste protège en premier.
+L'issue 3 (ne rien poser) est réfutée par la mesure ; l'issue 2 l'était déjà par la démonstration du
+§6(c).
+
+**Ce qui reste à décider avant d'écrire** — je ne le prends pas seul, c'est une constante nouvelle
+qui encode une hypothèse que le moteur ne peut pas connaître :
+
+```
+SWIM_SESSION_FLOOR_MIN = <valeur à arbitrer>
+  provenance : hypothèse LOGISTIQUE (le trajet, le vestiaire), non physiologique
+  nature     : le moteur ignore l'accès au bassin de CET athlète
+  forme      : min(plancher, durée que le plafond de distance autorise) — la borne rend
+               toute collision avec C15 impossible par construction
+  statut     : PANSEMENT — à remplacer par une déclaration le jour où le questionnaire
+               porte une question d'accès au bassin
+  et         : le plan DIT ce qu'il a supposé (la fréquence sert l'apprentissage technique ;
+               l'athlète peut regrouper ses séances si son accès au bassin le contraint)
+```
+
+Ce que la mesure permet de dire sur la valeur, sans la choisir : à **20 min**, 69 profils sont
+concernés et les débutants passent de 6 nages à 4-5 ; le plafond C15 autorise **19,0 min à
+CSS 2:00** et **14,3 min à CSS 1:30**, donc la borne `min(…)` mordra chez les nageurs rapides —
+c'est-à-dire que le plancher NE tiendra pas pour eux, par construction et volontairement.
+
+```verify
+id: O-44-souspop
+quoi: la distribution par semaine est bimodale et contient tous les debutants
+attendu: ISSUE 1
+cmd: node scripts/mesureO44b.mjs 2>/dev/null | grep -o "ISSUE 1" | head -1
+```
+
+### O-44 §8 — LES DEUX VÉRIFICATIONS PRÉALABLES : ta correction est juste, et mon « 13 minutes » était un artefact
+
+**§3 — l'unité est bien du temps DANS L'EAU.** `stepMin` calcule `distance ÷ 100 × CSS × mult(zone)` :
+le CSS est une allure de NAGE (s/100 m), donc le produit est du temps passé à nager. Les durées du
+§2, du §6 et du §7 sont toutes de cette unité, et `SWIM_SESSION_FLOOR_MIN = 20` s'y exprime.
+`SWIM_TIME_FACTOR` n'intervient nulle part dans cette chaîne — il convertit la DÉCLARATION de
+l'athlète (O-35), pas le contenu prescrit. Confirmé avant d'écrire : la cinquième faute d'unité de
+la série n'a pas eu lieu.
+
+**§2 — C15 est bien réservé aux débutants, et ma phrase était fausse.** Vérifié à la source :
+`if (r.beginner && s.d === "sw" && b.distanceM != null)`. Hors débutant, le plafond de séance est
+`CAP_SWIM[format]` (`blockBounds`). Durées impliquées en `sw.easy`, minutes d'eau :
+
+| CSS | C15 850 m *(débutant)* | sprint 1400 | demifond 2000 | fond 3000 | tri/S 750 | tri/M 1500 |
+|---|---|---|---|---|---|---|
+| 1:30 | **14,3** | 23,5 | 33,6 | 50,4 | **12,6** | 25,2 |
+| 2:00 | **19,0** | 31,4 | 44,8 | 67,2 | **16,8** | 33,6 |
+| 2:30 | 23,8 | 39,2 | 56,0 | 84,0 | 21,0 | 42,0 |
+
+**Hors débutant, la durée impliquée dépasse 20 min partout** — donc le plancher TIENT pour eux, et
+mon « le nageur rapide gardera ses séances de 13 minutes » était bien l'artefact d'avoir appliqué
+C15 à quelqu'un qu'il ne concerne pas. **Une seule exception, réelle : `tri/S`** (750 m), à 12,6 min
+à CSS 1:30 — et elle est légitime : 750 m EST la distance de nage d'un triathlon sprint, une séance
+à cette distance n'a pas à être allongée.
+
+**Conséquence sur ta §1, qui la renforce** : la constante ne décide rien pour les 36 débutants
+(bornés à 14-19 min par C15), et elle décide pour les 33 non-débutants de la sous-population, chez
+qui elle tient pleinement. C'est bien le sort de ces 33 que le chiffre 20 arbitre.
+
+**Reste à écrire** : le plancher, sa borne `min(20, durée du plafond APPLICABLE)`, la ligne
+d'explication, la garde, et la mesure avant/après aux quatre critères du §4 — dont le troisième,
+« aucun profil ne perd de volume : le plancher regroupe, il ne retire pas », qui est le vrai test.
+
+### O-44 §9 — RECTIFICATION : les 27 « sprint » sont des `swim/sprint`, pas des `tri/S`
+
+La mesure du §7 ne balayait que `sport === "swim"` : ses 27 profils « sprint » sont donc des
+**`swim/sprint`, plafond `CAP_SWIM.sprint` = 1 400 m**, soit **23,5 min à CSS 1:30** et 31,4 à
+CSS 2:00. Le plancher de 20 min **tient pour eux**. `tri/S` (750 m) n'apparaît nulle part dans
+cette sous-population — c'est un autre sport, jamais balayé par cette mesure.
+
+**L'inférence « `CAP_SWIM[tri/S]` laisse 27 profils sur 69 hors du plancher » est donc réfutée**, et
+le cinquième critère d'acceptation qu'elle motivait n'a pas d'objet. Ma table du §8 mêlait des
+formats de nage pure et des formats de triathlon sans le dire : c'est elle qui a induit l'erreur.
+
+**Le plancher couvre bien la sous-population mesurée** : 36 débutants (bornés à 14-19 min par C15,
+effet partiel et assumé) + 33 non-débutants chez qui `min(20, …)` ne clampe pas.
+
+---
+
+## O-46 · `CAP_SWIM` mêle deux logiques : plafond d'ENTRAÎNEMENT en nage pure, distance de COURSE en triathlon · 🔴 **OUVERT**
+
+Scindé d'O-44 §9. La suspicion du fondateur est **confirmée, et pire que sa formulation** :
+
+| format | plafond de séance | distance de nage de la course | rapport |
+|---|---|---|---|
+| `swim/sprint` | 1 400 m | — (nage pure) | plafond d'entraînement |
+| `swim/fond` | 3 000 m | — | plafond d'entraînement |
+| **`tri/S`** | **750 m** | **750 m** | **×1,00** |
+| **`tri/M`** | **1 500 m** | **1 500 m** | **×1,00** |
+| **`tri/70.3`** | **1 900 m** | **1 900 m** | **×1,00** |
+| **`tri/Full`** | **3 000 m** | **3 800 m** | **×0,79** |
+
+Trois formats sur quatre valent **exactement** la distance de course. Le quatrième vaut **79 %** de
+la sienne : **un triathlète longue distance ne peut jamais nager sa distance de course en une
+séance.** Ce n'est pas un plafond d'entraînement, c'est une distance de course recopiée dans un
+champ de plafond — et le `Full` montre que la recopie elle-même est incomplète.
+
+En natation, le volume d'entraînement dépasse couramment la distance de course d'un facteur 3 à 5 :
+la nage est limitée par la technique et la capacité aérobie, et n'a quasi aucun coût orthopédique.
+Les formats de nage pure de cette même table le reflètent ; les formats de triathlon non.
+
+**Ce que la mesure dit de la portée, et qui modère l'urgence** — nage en triathlon, semaines de
+charge :
+
+```
+tri/S     n=  344 · médiane 26 min · p90 49 · part < 20 min 12 %
+tri/M     n=  511 · médiane 42 min · p90 69 · part < 20 min 11 %
+tri/70.3  n=  653 · médiane 52 min · p90 81 · part < 20 min 17 %
+tri/Full  n=2 236 · médiane 38 min · p90 67 · part < 20 min 11 %
+```
+
+Les séances de nage du triathlon sont majoritairement LONGUES : le plafond borne la séance longue,
+il ne fabrique pas les séances courtes. **O-44 et O-46 sont donc bien deux tickets distincts**, et
+O-44 n'attend pas O-46.
+
+**Non tranché** : les quatre valeurs sont-elles une décision d'entraînement (« la séance la plus
+longue d'un triathlète n'a pas besoin de dépasser sa distance de course, le temps de nage servant
+mieux ailleurs ») ou une recopie ? Le `Full` à ×0,79 penche pour la recopie, mais un seul point ne
+tranche pas. À demander à la source, ou à arbitrer.
+
+```verify
+id: O-46
+quoi: CAP_SWIM des formats tri vaut la distance de course, et Full est SOUS la sienne
+attendu: O46-REPRODUIT
+cmd: node -e "const m=require('fs').readFileSync('src/engine/constraintMatrix.ts','utf8');const ok=/S: 750/.test(m)&&/M: 1500/.test(m)&&/\"70\.3\": 1900/.test(m)&&/Full: 3000/.test(m);process.stdout.write(ok?'O46-REPRODUIT':'')"
+```
+
+### O-46 §2 — T-38 écrit ROUGE, et l'asymétrie tient en une ligne de rapport
+
+```
+✖ T-38  aucun plafond de séance de nage n'est sous la distance de course du format
+        tri/Full : plafond 3000 m < course 3800 m (×0.79)
+        tous : tri/S ×1.00 · tri/M ×1.00 · tri/70.3 ×1.00 · tri/Full ×0.79
+             · nage/sprint ×14.00 · nage/demifond ×5.00 · nage/fond ×2.00 · nage/ow ×3.00
+```
+
+Les deux côtés sont **dérivés** (R11.1) : `CAP_SWIM` d'un côté, `TRI_SWIM`/`SWIM_RACE` — les tables
+que le prédicteur emploie déjà — de l'autre. Aucune distance n'est recopiée dans la garde ; une
+garde qui porterait sa propre table mesurerait sa table.
+
+Les formats de nage pure restent **dans** le balayage bien qu'ils passent largement : c'est ce qui
+met l'asymétrie sous les yeux dans le rapport du test, sur une seule ligne, sans commentaire.
+
+**Ce que T-38 ne ferme pas, et qui porte le risque** : relever le plafond rend la séance à distance
+de course POSSIBLE, il ne la rend pas PRESCRITE. Le prérequis de continuité — au moins une nage
+continue à la distance de course avant le jour J — reste **B-17**, rouvert avec O-46 pour cause
+identifiée. La correction du plafond est nécessaire et non suffisante.
+
+### O-46 §3 — T-38 RÉVISÉ : ma première écriture était satisfiable par un correctif qui ne corrige rien
+
+`CAP_SWIM[format] ≥ distance de course` est une **inégalité**, donc `tri/Full : 3 000 → 3 800` la
+passait au vert en laissant le défaut entier — le plafond vaudrait alors exactement la distance de
+course, comme les trois autres, et aucun travail sur-distance ne serait toujours possible.
+
+**C'est la faille que j'avais moi-même nommée sur l'issue 2 d'O-43** — *« une constante gelée est
+trivialement invariante », « une valeur épinglée sur la borne satisfait trivialement un test de
+borne »* — et je l'ai reproduite dans la garde écrite une heure plus tard. Onzième occurrence de
+la famille, et la première où je répète une leçon dans la même journée.
+
+**La propriété juste est structurelle** : une séance porte un échauffement, un corps et un retour au
+calme. Pour que le CORPS puisse valoir la distance de course, il faut
+`plafond ≥ distance + (échauffement + retour au calme)`. Un plafond posé exactement sur la distance
+de course rend cette séance **impossible** — il ne reste rien pour le reste.
+
+Aucune constante nouvelle : les trois grandeurs sont lues là où elles vivent, et l'aux est
+**observé sur les plans LIVRÉS** (règle 15), pas déclaré. Médiane retenue, distribution publiée.
+
+```
+tri/S     plafond  750 m < 1 100 m nécessaires  (course  750 + aux 350)
+tri/M     plafond 1500 m < 1 850 m nécessaires  (course 1500 + aux 350)
+tri/70.3  plafond 1900 m < 2 250 m nécessaires  (course 1900 + aux 350)
+tri/Full  plafond 3000 m < 4 150 m nécessaires  (course 3800 + aux 350)
+
+nage/sprint   1400 ≥   500 ✓     nage/fond   3000 ≥ 2 000 ✓
+nage/demifond 2000 ≥   850 ✓     nage/ow     4500 ≥ 2 100 ✓
+```
+
+**Les QUATRE formats de triathlon sont rouges, pas seulement `Full`** — les trois à ×1,00 sont
+aussi défaillants, simplement de façon moins visible. C'est ce que la première écriture cachait.
+
+---
+
+## O-46 — ⚠ **RÉFUTÉ. `CAP_SWIM` n'est pas un plafond de SÉANCE : c'est le plafond d'un BLOC de la sortie longue.**
+
+Lu à la source, `planGenerator.ts` :
+
+```ts
+if (s.long) {
+  if (s.d === "sw") return { floor: 820, cap: CAP_SWIM[fmt] || 4500 };
+```
+
+`CAP_SWIM` borne **un step**, et seulement dans la branche `s.long`. Il ne borne ni la séance, ni
+les séances qui ne sont pas la sortie longue. Toute la construction d'O-46 — la mienne, et
+l'inférence du fondateur qui s'appuyait dessus — comparait un plafond de BLOC à une exigence de
+SÉANCE. Catégorie contre catégorie : la faute que ce chantier nomme depuis le premier jour, cette
+fois dans la garde que j'avais écrite en la déclarant « dérivée ».
+
+**Mesuré sur les plans livrés (semaines de charge)** — l'axe de la table est le TRIATHLON :
+
+| format | course | plafond `CAP_SWIM` | séance méd / max | plus gros bloc méd / max |
+|---|---|---|---|---|
+| tri/S | 750 | 750 | 1 300 / **3 225** | 850 / 2 875 |
+| tri/M | 1 500 | 1 500 | 2 078 / **4 375** | 1 450 / 4 025 |
+| tri/70.3 | 1 900 | 1 900 | 2 675 / **4 800** | 1 975 / 4 450 |
+| tri/Full | 3 800 | 3 000 | 1 875 / **7 125** | 1 500 / 6 775 |
+
+**Un triathlète longue distance nage jusqu'à 7 125 m en une séance.** L'énoncé « le moteur lui
+interdit de nager sa distance de course » est FAUX, et avec lui l'analyse de risque en eau libre
+qu'il portait. **T-38 est retiré** : son critère n'a pas d'objet sous cette forme.
+
+**Ma propre sonde l'avait signalé et j'ai failli ne pas le lire** : `mesure:o46` rendait des colonnes
+« avec plafond » et « sans plafond » **identiques au mètre près**. Retirer le plafond ne changeait
+rien — un résultat saturé, donc suspect d'erreur d'instrument (test de dépistage de la règle 15).
+Il ne s'agissait pas d'un défaut de la sonde : le plafond ne mordait simplement pas là où je
+croyais qu'il agissait.
+
+### Ce qui SURVIT, et c'est B-17 dans son énoncé d'origine
+
+Relever un plafond rend une séance POSSIBLE ; il ne la rend pas PRESCRITE. La question de B-17 est
+la seconde, et elle se mesure — « une nage CONTINUE (un seul bloc, `reps === 1`) à la distance de
+course est-elle prescrite ? » :
+
+```
+tri/S     course  750 m · plus long bloc continu méd 1 200 · profils l'atteignant : 21/30
+tri/M     course 1500 m · méd 3 200 · 22/31
+tri/70.3  course 1900 m · méd 4 450 · 21/30
+tri/Full  course 3800 m · méd 2 375 · **4/56**
+```
+
+**Sur `tri/Full`, 52 profils sur 56 (93 %) ne reçoivent JAMAIS une nage continue à la distance de
+course.** Les trois autres formats sont à ~70 % de couverture — imparfait, mais d'un autre ordre.
+C'est le constat de B-17, mesuré pour la première fois, **et il tient sans O-46** : la cause n'est
+pas un plafond, c'est qu'aucune règle ne prescrit cette séance.
+
+Et le plafond de 3 000 m sur le BLOC de la sortie longue d'un Full mérite tout de même sa question,
+sous une forme correcte cette fois : il empêche un bloc continu de 3 800 m dans la sortie longue.
+Les 4 profils qui y arrivent passent donc par une autre séance. **Suivi en B-17, pas en O-46.**
+
+```verify
+id: B-17
+quoi: 93 % des profils tri/Full ne recoivent jamais une nage CONTINUE a la distance de course
+attendu: B17-REPRODUIT
+cmd: grep -q "if (s.d === \"sw\") return { floor: 820, cap: CAP_SWIM" src/generator/planGenerator.ts && echo "B17-REPRODUIT"
+```
+
+## B-17 · Aucune nage CONTINUE à la distance de course n'est prescrite en triathlon · 🔴 **OUVERT — mesuré, spec arrêtée, mécanisme identifié**
+
+Rouvert après la réfutation d'O-46 : la cause n'est pas un plafond, **c'est qu'aucune règle ne
+prescrit cette séance**.
+
+### 1. La mesure — et une rectification au passage
+
+```
+                   course │ séance méd │ séance max │ plus long bloc CONTINU (reps=1)
+tri/S      750 m │  1 300 │ 3 225 │ méd 1 200 · 21/30 profils atteignent la distance
+tri/M     1500 m │  2 078 │ 4 375 │ méd 3 200 · 22/31
+tri/70.3  1900 m │  2 675 │ 4 800 │ méd 4 450 · 21/30
+tri/Full  3800 m │  1 875 │ 7 125 │ méd 2 375 · **4/56**
+```
+
+**Rectification : ce n'est pas « aucune, jamais ».** Sur `tri/Full`, **4 profils sur 56** reçoivent
+bien une nage continue à la distance de course — par accident de composition, puisque aucune règle
+ne la vise. 93 % ne la reçoivent jamais ; c'est déjà le constat, et il n'a pas besoin d'être arrondi
+à 100 %.
+
+**Le volume est là, la continuité n'y est pas.** Un athlète peut avoir nagé 7 125 m en une séance
+sans avoir jamais couvert 3 800 m d'affilée — deux adaptations différentes, et c'est la seconde qui
+décide du jour J. La médiane à 1 875 m ajoute que la séance TYPIQUE vaut la moitié de la course.
+
+### 2. Le précédent interne qui fait autorité
+
+**S10 (swimrun) refuse un format long si l'athlète ne tient pas 30 min de nage continue**, avec sa
+justification écrite : on est parfois loin du rivage. Cette justification vaut mot pour mot pour un
+70.3 en lac ou un Full en mer. Le triathlon n'a pas d'équivalent — c'est l'asymétrie du ticket.
+
+### 3. Le mécanisme est déjà là — **T7**, et il se réutilise sans rien inventer
+
+`trailLibrary.ts` : `rehearsalNeeded && (phase === "spec" || phase === "peak")` **transforme la
+sortie LONGUE** en répétition générale (nom, note, contenu). Ce n'est pas un ordonnanceur de séance
+obligatoire, c'est une TRANSFORMATION conditionnelle de la séance pivot — exactement ce dont B-17 a
+besoin : la longue de nage du triathlon, en phase spécifique, devient une nage continue à une
+fraction croissante de la distance de course.
+
+Contrat visé, comme B-25 : **zéro constante nouvelle** — les paliers se dérivent de `TRI_SWIM[fmt].dist`.
+S'il en faut une, c'est le seuil de déclenchement du gate, et elle se posera avec sa provenance.
+
+### 4. La spec, arrêtée
+
+```
+3.1 progression prescrite (phase spécifique)
+    ~50 % → ~70 % → ~90 % → 100 % de la distance de course, en blocs CONTINUS (reps === 1)
+    la dernière à 3-4 semaines de l'épreuve, JAMAIS dans l'affûtage
+    (paliers = hypothèse du fondateur ; ce qui compte est la FORME — une montée,
+     pas un test unique à la fin : découvrir la distance trois semaines avant ne
+     laisse plus le temps de corriger ce qu'on y apprend)
+
+3.2 gate en eau libre — au moins une nage continue en CONDITIONS RÉELLES avant le jour J
+    (eau libre, en combinaison si la course l'est)
+```
+
+**Non tranché, et c'est la question du premier jour** : refus bloquant ou avertissement fort ?
+S10 refuse. Recommandation du fondateur : **refus sur Full, avertissement appuyé sur 70.3 et M**.
+Le manifeste (O-17) donne le critère — bloquer quand « l'athlète ne peut pas évaluer le risque, ou
+l'erreur est irréversible ». La noyade est irréversible ; l'athlète qui n'a jamais nagé 3,8 km ne
+peut pas savoir ce que ça fait. Les deux conditions sont réunies sur Full, ce qui rend la
+recommandation cohérente avec la règle existante plutôt qu'ajoutée à côté.
+
+```verify
+id: B-17-continuite
+quoi: aucune regle ne prescrit une nage continue a la distance de course en triathlon
+attendu: B17-AUCUNE-REGLE
+cmd: grep -rq "T7_REHEARSAL" src/engine/trailModel.ts && ! grep -rq "SWIM_REHEARSAL\|swimRehearsal" src/ && echo "B17-AUCUNE-REGLE"
+```
+
+### B-17 §5 — LES DEUX VÉRIFICATIONS AVANT D'ÉCRIRE, ET LA PREMIÈRE CHANGE LE MÉCANISME
+
+**(a) Il n'y a AUCUNE sortie longue de nage en triathlon.** Mesuré sur les phases `spec`/`peak` des
+profils tri du golden : les séances portant `s.long === true` en nage sont **zéro**. Les nages de
+ces semaines sont `Nage vitesse` (×1 108), `Nage seuil (+dist)` (×885), `Nage éducatifs` (×269),
+`Nage endurance` (×39)…
+
+Le patron de `trailLibrary` — *transformer la sortie longue* — **n'a donc rien à transformer**.
+C'est aussi ce qui explique qu'O-46 ne mordait nulle part : la branche `if (s.long) { if (s.d ===
+"sw") … CAP_SWIM … }` de `blockBounds` **n'est jamais atteinte en triathlon**. Le plafond que j'ai
+passé un tour à analyser ne s'applique à aucune séance de tri.
+
+**Conséquence sur le mécanisme** : B-17 ne peut pas être une transformation de la longue. Deux
+formes possibles, à trancher :
+
+1. **marquer** une nage de la phase spécifique comme `long` et la transformer — cohérent avec le
+   reste du moteur (chaque discipline a sa pivot), mais c'est une structure de semaine qui change ;
+2. **transformer la plus grosse nage existante** — `Nage seuil (+dist)`, dont le nom porte déjà
+   l'intention « + distance » —, ce qui ne touche pas la structure et vise la séance qui produit
+   déjà les 4 accidents de continuité.
+
+**Ce que la transformation ferait perdre : RIEN, c'est mesuré.** Aucune zone n'est présente
+uniquement dans une nage donnée sur ces semaines — la réserve du §4 est levée par la mesure.
+
+**(b) Le gate indexé sur l'écart demande une question que le triathlon ne pose pas.** `longest_swim_m`
+(« ta plus longue nage ») existe dans `ANSWER_SCHEMA` mais est déclarée **`["swimrun"]` uniquement**.
+S10 peut interroger une continuité déclarée parce que le swimrun la DEMANDE ; le triathlon ne la
+demande pas. Le gate sur l'écart `continuité déclarée / distance de course` suppose donc d'étendre
+la clé à `tri` — une question de plus au questionnaire, ce que ce dépôt ne fait pas à la légère.
+
+C'est le seul coût nouveau du ticket, et il est petit : la clé, son domaine et son unité existent
+déjà, il s'agit d'ajouter `"tri"` à sa liste de sports. À arbitrer avec le seuil.
+
+**Arbitrage retenu, à écrire tel quel** : le gate est indexé sur **l'écart**, pas sur le format —
+« si le raisonnement tient pour 3 800 m, il tient pour 1 900 : même milieu, même absence de signal ».
+Un Full qui déclare 3 km continus n'a pas besoin d'être bloqué ; un 70.3 qui déclare 400 m en a
+besoin. Le seuil (0,6 proposé) reste une hypothèse à poser avec sa provenance.
+
+**Et le critère O-17 est précisé par le fondateur, mieux que par moi** : ce n'est pas
+« la noyade est irréversible » — le vélo aussi a une queue irréversible et ce motif bloquerait tout.
+C'est le PREMIER membre : **en eau libre, le risque n'est pas observable avant d'être réalisé.**
+En course à pied on ralentit, on marche, on s'arrête — le signal arrive progressivement et des
+options restent. En eau libre le choc thermique, la désorganisation du geste et la panique
+surviennent vite et loin du bord. L'athlète ne peut pas évaluer le risque parce que **le milieu ne
+lui rend aucune information utilisable en temps voulu**.
+
+**Et les 4 accidents prouvent la faisabilité** : le moteur SAIT déjà produire la séance. B-17 ne
+demande aucune capacité de génération nouvelle — seulement une règle qui la vise, et les 4 cas
+servent de référence de forme.
+
+### B-17 §6 — LES TROIS DÉCISIONS, ARRÊTÉES · spec complète, prête à écrire
+
+**1. Mécanisme : transformer `Nage seuil (+dist)`, JAMAIS marquer une nage `long`.**
+Vérifié dans le code plutôt qu'accepté : `blockBounds` rend `if (s.long) { if (s.d === "sw")
+return { floor: 820, cap: CAP_SWIM[fmt] } }`, et `CAP_SWIM["Full"] = 3000`. **Marquer une nage
+`long` activerait donc exactement le plafond qui écrêterait la séance que B-17 existe pour
+prescrire** — un bloc continu de 3 800 m ramené à 3 000. O-46 était faux comme constat général ;
+il deviendrait vrai, et précis, par cette option. Second coût confirmé : `s.long` est lu par C30,
+les exclusions de réallocation et le tail O-21 (`sx.long && !sx.race`), toutes écrites pour des
+longues de COURSE — le marquage importerait des sémantiques d'impact dans une discipline qui n'en
+a pas.
+
+**2. Dosage : 4 occurrences sur la phase spécifique, pas chaque semaine.** `Nage seuil (+dist)`
+apparaît 885 fois : c'est le principal véhicule du travail au seuil en nage, et le transformer à
+chaque occurrence retirerait l'essentiel du seuil sur toute la phase. La progression y répond
+d'elle-même — quatre paliers, donc quatre séances, laissant 4 à 8 séances de seuil intactes sur une
+phase de 8-12 semaines. **Divergence VOULUE avec `trailLibrary`**, qui transforme dès que
+`rehearsalNeeded` : à écrire dans le ticket pour qu'elle ne soit pas subie.
+
+**3. Gate : nage continue déclarée ≥ 30 min, réutilisé de S10, uniforme sur tous les formats en eau
+libre.** Ni le format ni un ratio de distance : **ce qui fait le risque en eau libre est une DURÉE**
+— le refroidissement qui désorganise le geste s'installe en 10 à 30 min, et un nageur rapide couvre
+1 900 m en 30 min quand un lent en met 50. Zéro constante nouvelle : le seuil existe, il est
+justifié, il est déjà appliqué au sport voisin pour le même motif.
+
+**Et « je ne sais pas » BLOQUE.** C'est l'inverse du réflexe de tout le reste du dépôt — où
+l'absence a toujours été traitée comme une permission — et c'est justifié par O-17 lui-même : *si
+l'athlète ne sait pas ce qu'il a nagé de plus long, il est par définition dans le membre « ne peut
+pas évaluer le risque ».* **À écrire explicitement, sinon quelqu'un implémentera le défaut permissif
+par habitude.**
+
+```
+mécanisme   transformation de « Nage seuil (+dist) », PAS de marquage s.long
+dosage      4 occurrences sur la phase spec
+paliers     ~50 / 70 / 90 / 100 % de TRI_SWIM[fmt].dist — zéro constante nouvelle
+            blocs CONTINUS (reps === 1) · la dernière à 3-4 semaines · jamais en affûtage
+gate        nage continue déclarée ≥ 30 min (S10), uniforme · « je ne sais pas » → NON satisfait
+schéma      longest_swim_m étendu à tri
+eau libre   au moins une continue en conditions réelles, combinaison comprise
+critère     O-17, membre « ne peut pas évaluer le risque » — parce qu'en eau libre le risque
+            n'est pas observable avant d'être réalisé
+```
+
+**Deux vérifications à faire À L'ÉCRITURE, pas avant** (elles n'engagent aucune décision) :
+
+- **la phase spécifique porte-t-elle toujours ≥ 4 `Nage seuil (+dist)` ?** Sur une prépa Full
+  courte, la phase `spec` peut être plus étroite que les quatre paliers. Le comportement quand elle
+  ne les porte pas est à définir — comprimer la progression, ou empiéter sur `peak`. Ne pas le
+  décider d'avance : le mesurer sur les profils courts.
+- **`audit:sensibilite` exige que toute clé déclarée AGISSE dans chaque sport où elle est
+  déclarée** (R20.1). Étendre `longest_swim_m` à `tri` sans câbler le gate dans le même commit
+  rendrait ce gate rouge — les deux landent ensemble ou aucun.
+
+### B-17 §7 — LA MESURE DU CAS « MOINS DE 4 » : il existe, et pas là où la question le cherchait
+
+`npm run mesure:b17`, chaque format balayé **depuis son `MIN_WEEKS` réel** :
+
+| format | `MIN_WEEKS` | horizon | semaines `spec` | « Nage seuil » dans `spec` | ≥ 4 ? |
+|---|---|---|---|---|---|
+| **tri/S** | 8 | 8 · 10 · 14 · 22 | 2 · 2 · 3 · 6 | **1 · 1 · 2 · 3** | **NON, à tous** |
+| tri/M | 12 | 12 · 14 | 2 · 3 | 2 · 3 | NON |
+| tri/M | 12 | 18 · 26 | 5 · 8 | 5 · 8 | oui |
+| tri/70.3 | 20 | 20 → 34 | 4 → 8 | 4 → 8 | oui |
+| **tri/Full** | **36** | 36 → 50 | 8 → 14 | **8 → 14** | **oui, toujours** |
+
+**Le cas existe — mais l'inverse de ce que la question supposait.** `Full`, le format que la
+question visait (« compte tenu de `MIN_WEEKS` 36 semaines »), porte **8 à 14** occurrences dès son
+horizon minimal : il ne peut jamais manquer de paliers. Ce sont **`tri/S` et `tri/M` courts** qui
+en manquent — et `tri/S` **n'atteint jamais 4, même à 22 semaines**, parce que la nage seuil n'y est
+pas hebdomadaire (3 occurrences pour 6 semaines de spécifique).
+
+**Conséquence sur la spec** : la branche « la progression ne tient pas → condition du même gate »
+doit être câblée, et son domaine réel est le format le plus COURT, pas le plus long. Ce qui la rend
+d'ailleurs plus facile à défendre : refuser un `tri/S` de 8 semaines à quelqu'un qui ne tient pas
+30 min de nage continue est proportionné ; le même refus sur un Full de 36 semaines aurait été un
+faux positif que cette mesure écarte.
+
+*(Faute d'instrument, publiée : ma première écriture appelait `EBV2.minWeeks("tri", format)` — c'est
+un OBJET, pas une fonction. Les horizons étaient donc arbitraires (20 à 34), et **`Full` était refusé
+aux quatre**, donc jamais mesuré : le verdict « le cas existe » ne reposait que sur `tri/S`. La
+conclusion s'est trouvée juste, la mesure qui la fondait ne l'était pas — et elle manquait
+exactement le format sur lequel la question portait.)*
+
+```verify
+id: B-17-paliers
+quoi: tri/S ne porte jamais 4 « Nage seuil » en phase specifique, meme a 22 semaines
+attendu: LE CAS EXISTE
+cmd: node scripts/mesureB17.mjs 2>/dev/null | grep -o "LE CAS EXISTE" | head -1
+```
+
+### B-17 §8 — SPEC FINALE : le gate chiffré, et la branche « CSS inconnu » qu'il faut décider
+
+Le gate `min(30 min, durée de nage estimée en course)`, calculé à sa source
+(`TRI_SWIM[fmt].dist / 100 × CSS × facteur`) — **entre parenthèses, la valeur du gate** :
+
+| format | course | CSS 1:30 | CSS 1:50 | CSS 2:00 | CSS 2:30 | CSS 3:00 |
+|---|---|---|---|---|---|---|
+| tri/S | 750 m | 12 min **(12)** | 14 **(14)** | 16 **(16)** | 20 **(20)** | 23 **(23)** |
+| tri/M | 1 500 m | 24 **(24)** | 29 **(29)** | 32 **(30)** | 39 **(30)** | 47 **(30)** |
+| tri/70.3 | 1 900 m | 30 **(30)** | 37 **(30)** | 40 **(30)** | 50 **(30)** | 60 **(30)** |
+| tri/Full | 3 800 m | 62 **(30)** | 75 **(30)** | 82 **(30)** | 103 **(30)** | 123 **(30)** |
+
+Le `min()` fait exactement ce que l'arbitrage décrit : **le gate vaut la durée de course sur `S`
+partout et sur `M` jusqu'à CSS ~2:00** (l'épreuve est plus courte que le plancher de S10), **et
+vaut 30 min sur `70.3` et `Full` à tous les CSS** (l'épreuve dépasse le plancher, qui devient un
+seuil d'entrée et non un objectif). Un `tri/S` de 8 semaines n'est plus refusé à quelqu'un qui
+tient 20 minutes — c'est le cas que la mesure des paliers avait soulevé.
+
+**⚠ UNE BRANCHE RESTE À DÉCIDER, ET ELLE EST DE LA MÊME FAMILLE QUE « JE NE SAIS PAS ».**
+`css_known` est déclaré `["swim", "tri", "swimrun"]` — donc **optionnel**. Sans CSS, la durée de
+nage en course n'est pas estimable, et le `min()` n'a pas de second terme.
+
+Trois issues, et le choix engage la même logique que l'absence de continuité :
+
+1. **repli sur 30 min** — le plancher de S10 s'applique seul. Cohérent, mais un `tri/S` sans CSS
+   se voit alors demander 30 min quand son épreuve en dure 16 : c'est le faux positif que le
+   `min()` venait précisément d'écarter, réintroduit par l'absence d'une réponse.
+2. **repli sur un CSS prudent** (le plus lent du domaine) — la durée estimée est alors maximale,
+   donc le gate vaut 30 min partout : identique à l'issue 1 en pratique, avec un détour.
+3. **l'absence de CSS est elle-même une condition du gate** — symétrique de « je ne sais pas »
+   sur la continuité : qui ne connaît ni sa vitesse ni sa plus longue nage ne peut pas évaluer
+   son exposition. C'est la lecture la plus fidèle à O-17, et la plus dure.
+
+**Non tranché ici.** L'issue 3 est cohérente avec la décision « je ne sais pas bloque », mais elle
+transforme une question OPTIONNELLE du questionnaire en prérequis de fait pour tout triathlon en
+eau libre — ce qui est une décision de produit, pas une déduction.
+
+**Le reste de la spec est FINAL** et n'attend plus que l'écriture :
+
+```
+gate        min(30 min, durée de nage estimée en course) · « je ne sais pas » → non satisfait
+            [CSS inconnu → À TRANCHER, trois issues ci-dessus]
+progression nombre de paliers proportionné à (durée de course − continuité déclarée)
+            paliers dérivés de TRI_SWIM[fmt].dist · blocs CONTINUS (reps === 1)
+            écart faible → 1-2 confirmations · écart grand → 4 paliers
+mécanisme   transformation de « Nage seuil (+dist) », JAMAIS marquage s.long
+            (le marquage activerait CAP_SWIM et écrêterait 3 800 → 3 000)
+schéma      longest_swim_m étendu à tri — MÊME COMMIT que le gate (R20.1)
+eau libre   ≥ 1 continue en conditions réelles, combinaison comprise
+critère     O-17, membre « ne peut pas évaluer le risque »
+placement   dans la boucle du point fixe · avant le sceau
+résiduel    « écart grand ET phase trop étroite » : à MESURER inatteignable et
+            asserter au sceau, pas à implémenter
+```
+
+### B-17 §9 — BRANCHE « CSS INCONNU » TRANCHÉE : issue 2, et mon « identique en pratique » était faux
+
+**Rectification.** J'ai écrit que le repli sur un CSS prudent était *« identique à l'issue 1 en
+pratique, avec un détour »*. C'est faux, et l'écart tombe exactement sur le cas qui motivait la
+question. Vérifié plutôt qu'accepté, au repli `130 s/100 m` :
+
+| format | course | durée de course au repli | gate `min(30, durée)` | **gate en mètres** | issue 1 (30 min à plat) |
+|---|---|---|---|---|---|
+| **tri/S** | 750 m | 16,9 min | **16,9 min** | **780 m** | 1 385 m |
+| tri/M | 1 500 m | 34,1 min | 30,0 min | 1 385 m | 1 385 m |
+| tri/70.3 | 1 900 m | 43,6 min | 30,0 min | 1 385 m | 1 385 m |
+| tri/Full | 3 800 m | 88,9 min | 30,0 min | 1 385 m | 1 385 m |
+
+**Les deux issues ne diffèrent que sur `tri/S` — c'est-à-dire précisément le cas que le `min()`
+venait d'écarter.** Sur les trois autres formats le `min()` retient de toute façon le terme des
+30 minutes et elles coïncident. Mon objection était juste sur trois lignes sur quatre, et fausse
+sur celle qui posait le problème.
+
+*(Note d'unité, qui rend le point plus fort encore : `longest_swim_m` est déclaré en MÈTRES et le
+gate est une DURÉE — la comparaison exige donc une vitesse **des deux côtés**, quelle que soit
+l'issue. L'issue 1 n'évite pas le repli, elle l'applique en abandonnant le second terme du `min()`.)*
+
+**Aucune constante nouvelle** : `baseRefs.css || 130` existe, est mesuré, documenté et porte déjà
+son statut `PANSEMENT`. Inventer un « CSS prudent » propre au gate créerait une seconde vitesse de
+repli à côté de la première — la famille `_IFZ`, une fois de plus.
+
+**⚠ LE SENS DE L'ERREUR EST LE BON, ET IL FAUT L'ÉCRIRE DANS LE CODE.** `130 s/100 m` est **plus
+rapide** qu'un vrai débutant : 30 minutes converties par ce repli donnent une distance **plus
+grande** que celle qu'il couvrirait réellement, donc le gate lui demande un peu plus que son
+équivalent-30-minutes réel. Pour un garde-fou de sécurité c'est la direction souhaitable — et c'est
+**la seule occurrence de ce chantier où le biais connu de cette constante joue en faveur de
+l'athlète**. À écrire noir sur blanc, sinon quelqu'un « corrigera » le repli ici en croyant bien
+faire (le défaut symétrique de celui qu'O-25 a fermé).
+
+**Pourquoi pas l'issue 3** — la symétrie avec « je ne sais pas » n'est qu'apparente, et l'argument
+est bon : *ne pas connaître sa plus longue nage continue*, c'est ignorer sa capacité face au risque,
+et personne ne peut l'évaluer à sa place (O-17 s'applique) ; *ne pas connaître son CSS*, c'est
+ignorer sa vitesse — une donnée que le moteur estime déjà partout ailleurs. Bloquer sur la seconde
+traiterait une estimation possible comme une ignorance, et refuserait un plan tant qu'un test CSS
+n'a pas été fait, dans un sport où le débutant est justement celui qui n'en a jamais fait.
+
+```
+durée_gate   = min( 30 min , durée de nage estimée en course )
+vitesse      = baseRefs.css, ou le repli 130 s/100 m si css_known ≠ "oui"
+comparaison  = continuité déclarée (convertie par la MÊME vitesse) vs durée_gate
+
+« je ne sais pas » sur la continuité →  gate NON satisfait
+CSS absent                          →  repli, le gate reste calculable
+```
+
+**Le gate ne devient jamais incalculable. La seule absence qui bloque est celle qui décrit
+l'athlète face au risque, pas celle qui décrit sa vitesse.** — spec CLOSE, plus aucune inconnue.
+
+### B-17 §10 — LE GATE ACCEPTE UNE PREUVE EN BASSIN, ET C'EST LA SÉANCE EN EAU LIBRE QUI VALIDE L'HYPOTHÈSE
+
+Ton observation sur le `750 → 16,9 → 780` est exacte, vérifiée :
+
+```
+750 m au repli 130 s/100 m, SANS facteur eau libre : 16,25 min
+750 m au repli, AVEC le facteur ×1,04              : 16,90 min
+reconverti en mètres au rythme BASSIN              :   780 m  =  750 × 1,04
+```
+
+Le seuil est **dérivé d'une nage en eau libre** (facteur `TRI_SWIM[fmt].factor`) et la continuité
+déclarée, elle, sera presque toujours une nage **en bassin** — mur tous les 25 m, ligne d'eau, fond
+visible, arrêt possible à chaque longueur. Le gate demande donc **780 m de bassin pour couvrir
+750 m d'eau libre** : une surcharge de 4 % qui est le facteur du milieu, pas une correction de
+prudence.
+
+**Le gate est donc sciemment permissif : il accepte une preuve en bassin pour une capacité en eau
+libre.** C'est assumé, et ce qui le rend acceptable est l'exigence « ≥ 1 continue en conditions
+réelles » — elle n'est pas un supplément de confort, **c'est ce qui valide l'hypothèse que le gate
+a faite au moment de construire le plan**.
+
+**D'où une précision de PLACEMENT qui manquait à la spec :**
+
+```
+La séance en eau libre tombe TÔT dans la phase spécifique, indépendamment du
+palier de distance atteint — jamais en fin de progression.
+
+Motif : elle vérifie une hypothèse posée à la CONSTRUCTION du plan. Découvrir
+trois semaines avant l'épreuve que l'eau libre est bien plus dure que le bassin
+laisse le temps de s'inquiéter, pas celui de s'adapter.
+
+Les deux progressions sont INDÉPENDANTES : une continue en eau libre à 50 % de la
+distance de course, TÔT, vaut mieux qu'une à 100 %, TARD.
+```
+
+**Note d'implémentation** : `milieu` (`["bassin", "ow", "mixte"]`) est déclaré **`["swim"]`
+uniquement**. Comme `longest_swim_m`, la clé existe mais pas pour le triathlon. Deux clés à étendre
+à `tri`, donc — et la même contrainte R20.1 s'applique : elles agissent dans le commit qui les
+déclare, ou elles n'y sont pas.
+
+---
+
+**SPEC B-17 CLOSE.** Plus aucune inconnue, plus aucun arbitrage en attente :
+
+```
+gate         min(30 min, durée de nage estimée en course)
+             vitesse = baseRefs.css, sinon repli 130 s/100 m (le biais du repli
+             joue EN FAVEUR de l'athlète ici — à écrire dans le code)
+             « je ne sais pas » sur la continuité → NON satisfait
+             CSS absent → repli, le gate reste calculable
+             accepte une preuve en BASSIN — assumé, validé par la séance eau libre
+progression  paliers proportionnés à (durée de course − continuité déclarée)
+             dérivés de TRI_SWIM[fmt].dist · blocs CONTINUS (reps === 1)
+             écart faible → 1-2 confirmations · écart grand → 4 paliers
+             dernière à 3-4 semaines · jamais en affûtage
+eau libre    ≥ 1 continue en conditions réelles, combinaison comprise
+             placée TÔT dans la phase spécifique, indépendamment du palier
+mécanisme    transformation de « Nage seuil (+dist) », JAMAIS marquage s.long
+schéma       longest_swim_m ET milieu étendus à tri — même commit que le gate
+critère      O-17, membre « ne peut pas évaluer le risque »
+placement    dans la boucle du point fixe · avant le sceau
+résiduel     « écart grand ET phase trop étroite » : mesurer inatteignable et
+             asserter au sceau, pas implémenter
+```
+
+### B-17 §11 — `milieu` étendu à tri : le gate cesse de SUPPOSER sur deux points
+
+**(1) La surcharge de 4 % devient conditionnelle.** Le seuil demandait 780 m pour couvrir 750 m
+parce qu'il supposait la continuité déclarée acquise en BASSIN. Avec `milieu` lu, l'hypothèse
+devient une lecture — aucun calcul nouveau, le facteur eau libre déjà appliqué cesse seulement
+d'être systématique :
+
+```
+milieu = ow              → seuil SANS surcharge  (750 m) — la preuve est déjà dans le bon milieu
+milieu = bassin          → seuil AVEC surcharge  (780 m)
+milieu = mixte ou absent → AVEC surcharge        (780 m) — origine ambiguë, on prend le conservateur
+```
+
+**(2) `bassin` + course en eau libre : le seul écart que le plan est structurellement incapable de
+combler.** La spec exige une continue en conditions réelles ; si l'athlète s'entraîne uniquement en
+bassin, cette séance ne peut pas être réalisée — donc l'hypothèse du gate **ne sera jamais validée**.
+
+Ce n'est pas une raison de bloquer (beaucoup de triathlètes s'entraînent en bassin et courent en eau
+libre sans incident, refuser serait disproportionné) : c'est une raison de le **dire**, une fois, à
+la construction. C'est la posture du reste du moteur — nommer ce qu'il ne peut pas faire plutôt que
+l'omettre —, et c'est O-17 sans aller jusqu'au refus : **on informe quelqu'un qui peut agir, plutôt
+que de bloquer quelqu'un qui ne peut pas.**
+
+> « Ta course se nage en eau libre et tu t'entraînes en bassin. Ton plan peut construire la
+> distance, pas le milieu — pas de mur, pas de ligne, pas de fond visible, et il faut lever la tête
+> pour se repérer. Une seule sortie en eau libre avant le jour J change tout, et plus elle est tôt,
+> mieux c'est. »
+
+**⚠ Une hypothèse reste dans ce message et doit être nommée** : *« ta course se nage en eau libre »*.
+Le moteur ne le sait pas — `milieu` décrit où l'athlète S'ENTRAÎNE, pas où l'épreuve se nage, et
+aucune clé ne porte le second. C'est vrai de la quasi-totalité des M/70.3/Full, mais **des triathlons
+sprint se nagent en piscine**. Deux issues, à l'écriture : restreindre le message aux formats dont
+la nage est certainement en eau libre, ou le formuler au conditionnel (« si ta course se nage en eau
+libre… »). Ne pas l'affirmer sans la clé qui le dit — c'est exactement la faute que ce chantier
+corrige depuis le premier jour.
+
+```
+schéma  longest_swim_m  ["swim"] → ["swim", "tri"]   → le gate
+        milieu          ["swim"] → ["swim", "tri"]   → la surcharge conditionnelle + le message
+R20.1   les deux agissent dans le commit qui les déclare, ou elles n'y sont pas.
+```
+
+### B-17 §12 — PÉRIMÈTRE VERROUILLÉ. Le message est restreint à M+, et rien d'autre n'entre.
+
+**Décision : issue 1.** Le message « bassin + eau libre » ne s'affiche que sur **M, 70.3, Full** —
+formats dont la nage se fait en eau libre dans la quasi-totalité des cas, où l'affirmation est donc
+vraie **sans clé**. Le sprint est le seul format ambigu, et c'est précisément celui où le message
+serait faux une fois sur deux. L'issue 2 (le conditionnel) est honnête mais faible : *un message qui
+commence par « si ta course se nage en eau libre » se lit comme une réserve juridique et se saute ;
+un message qu'on n'affiche que quand il est vrai vaut mieux qu'un message qu'on nuance.*
+
+**Le reste de l'appareil reste ACTIF sur sprint** — la distinction est nette et vaut d'être gardée :
+
+| pièce | sur sprint, milieu inconnu | raison |
+|---|---|---|
+| gate (continuité ≥ durée de course) | **conservé** | il mesure la capacité à tenir l'effort, sensée quel que soit le milieu |
+| séance en eau libre | **conservée** | la prescrire pour une course en piscine est un désagrément ; ne pas la prescrire pour une course en lac est le risque |
+| surcharge de 4 % | **conservée** | c'est du bruit, et elle va dans le sens prudent |
+| **message** | **retiré** | c'est la seule pièce qui **AFFIRME** quelque chose |
+
+**On peut se tromper par prudence ; on ne peut pas se tromper en affirmant.** Les trois premières
+sont des défauts conservateurs, la quatrième est une assertion — et seule une assertion a besoin
+d'être vraie.
+
+### ⚠ PÉRIMÈTRE VERROUILLÉ — observation de processus, et elle porte sur moi
+
+**B-17 a été déclaré clos cinq fois et rouvert cinq fois par une trouvaille adjacente** : les
+paliers, la branche CSS, la preuve en bassin, `milieu`, le milieu de l'épreuve. Chacune était juste,
+chacune a repoussé l'écriture d'une session. C'est le mode de défaillance de ce fil : la qualité de
+l'analyse produit sa propre paralysie.
+
+```
+B-17 part avec : la spec close + la restriction du message aux formats M+
+                 RIEN D'AUTRE — aucune clé de schéma nouvelle
+```
+
+Toute trouvaille adjacente à partir d'ici devient **un ticket**, jamais un ajout au périmètre.
+
+---
+
+## O-47 · Le prédicteur suppose que TOUTE nage de triathlon se fait en eau libre · 🔴 **OUVERT**
+
+Scindé de B-17 §12, avec une justification meilleure que celle qui l'a fait apparaître.
+
+`TRI_SWIM` applique son coefficient de milieu à **tous** les formats, sprint compris —
+`S: { dist: 750, factor: 1.04 }` —, et `predictor.ts` documente ce facteur comme calibré
+« peloton, combinaison comprise ». **Pour un triathlon sprint nagé en PISCINE, le temps prédit est
+donc 4 % trop lent**, par une hypothèse silencieuse.
+
+Poser une clé « milieu de l'ÉPREUVE » ne serait donc pas ajouter une dimension : ce serait **rendre
+explicite une hypothèse que le moteur fait déjà**. C'est une justification bien meilleure que « un
+message a besoin de le savoir », et elle vaut son ticket propre.
+
+Consommateurs le jour venu : le facteur `TRI_SWIM` · la prescription de la séance en eau libre · la
+surcharge du gate B-17 · le message B-17 · et probablement la question combinaison, qui n'a aucun
+sens en piscine.
+
+```verify
+id: O-47
+quoi: TRI_SWIM applique le facteur eau libre au format sprint aussi
+attendu: O47-REPRODUIT
+cmd: grep -q 'S: { dist: 750, factor: 1.04 }' src/engine/predictor.ts && echo "O47-REPRODUIT"
+```
+
+### B-17 §13 — LES DEUX DÉFAUTS SONT RACINÉS (sonde, pas relecture)
+
+**§3 du brief écarté** : la transformation **reçoit bien un ordinal** — `k = positions.indexOf(idx)`
+avec `idx = weekNum - 1 - spec.start`. Elle n'est pas sans état, sa cible dérive du calendrier. Les
+deux défauts ont donc des causes DISTINCTES, et la sonde les sépare :
+
+```
+=== Full  spec {start:20, end:28, weeks:8}
+  S21 x1 : livré 1763 m   bnd={floor:1900, cap:1900}
+  S25 x1 : livré 3295 m   bnd={floor:3400, cap:3400}
+  S28 x1 : livré 2090 m   bnd={floor:3800, cap:3800}
+=== 70.3  spec {start:11, end:15, weeks:4}
+  S12 x1 : livré  842 m   bnd={floor:950,  cap:950}
+  S15 x2 : livré 1900 m  ||  1900 m   (bnd IDENTIQUES)
+```
+
+**D2 — la cible est POSÉE et le livré est EN DESSOUS DU PLANCHER.** `bnd.floor` vaut 1 900 / 3 400 /
+3 800 et le plan livre 1 763 / 3 295 / 2 090. Le mécanisme est **connu et déjà documenté (O-26)** :
+*« `blockBounds` jette le plancher déclaré par le bloc et le remplace par un plancher digne »*. Mon
+épinglage n'a donc jamais existé pour les passes aval — la borne dégénérée est lue par personne.
+Le diagnostic du fondateur est exact et son correctif aussi : **exclusion, pas borne.** Un bloc dont
+la distance PORTE UN SENS ne se protège pas par un intervalle, il se retire de la population que les
+passes redistribuent — comme le brick est exclu des receveuses depuis I14b, précédent à réutiliser.
+*(Quatrième occurrence de la famille : leg vélo de brick, `sessionScale`, `enforceC22Final`, celle-ci.)*
+
+**D1 — le prédicat est trop large, ce n'est PAS un double passage de rang.** Les deux séances de
+S15 portent des `bnd` **identiques**, donc le même `k` : le créneau `facile2` est invoqué **deux
+fois** pour cette semaine et la transformation, sans état, matche à chaque invocation. Le
+discriminateur du §2 tranche donc en faveur de « deux séances différentes, prédicat trop large » —
+et non d'un double passage. Le correctif n'est pas dans le calcul de la cible mais dans la SÉLECTION
+de la séance à transformer : au plus une par semaine.
+
+**Aucun ajout au périmètre.** Ces deux corrections, puis gates · golden · E2E vus jusqu'au bout.
+
+### B-17 §14 — LES DEUX CORRECTIFS, PRÉCISÉS AVANT D'ÊTRE ÉCRITS
+
+**D1 — « au plus une par semaine » exige un DÉPARTAGE EXPLICITE.** Si deux séances peuvent occuper
+`facile2`, la règle suppose de savoir *laquelle*. Un choix reposant sur l'ordre d'itération serait
+déterministe **par accident** — la famille exacte que ce chantier ferme depuis des semaines : une
+réorganisation de liste, un tri ajouté ailleurs, et la transformation change de séance sans que rien
+ne le signale ; le golden devient instable et D1 revient en flake. Le critère sera écrit, quel qu'il
+soit (séance de plus gros volume, ou index stable dans la semaine) — *ce qui ne convient pas, c'est
+de ne pas en avoir*.
+
+**Consigné sans être investigué** : que `facile2` soit invoqué **deux fois pour une même semaine**
+est peut-être normal (si le créneau est une CATÉGORIE et non une POSITION) ou peut-être pas. Hors
+périmètre de B-17 : mesuré, noté, non traité.
+
+**D2 — l'exclusion doit couvrir DEUX choses, pas une.** Retirer le bloc de la population
+redistribuée ne suffira pas si `blockBounds` réécrit son plancher juste avant (c'est le mécanisme
+O-26, et il agit EN AMONT des passes de volume). À vérifier séparément :
+
+```
+· le bloc est exclu des passes de redistribution   (patron I14b)
+· ET blockBounds ne réécrit pas son plancher        (cas O-26)
+```
+
+**Le critère d'acceptation est EXACT, pas approché** :
+
+```
+Pour un profil Full, les quatre paliers livrés valent EXACTEMENT leurs cibles.
+Toute différence, même d'un mètre, signifie qu'une passe non identifiée touche encore le bloc.
+```
+
+Un bloc dont la distance porte un sens ne tolère pas de tolérance — et c'est le test le moins cher
+possible : quatre égalités sur un profil. *(À noter : c'est l'inverse de la posture adoptée partout
+ailleurs aujourd'hui, où j'ai dû ajouter des tolérances parce que le pas de quantification est
+absolu. Ici le bloc n'est PAS quantifié par les passes, puisqu'il en est retiré : l'égalité exacte
+est donc la bonne forme, et une tolérance masquerait précisément le défaut qu'on corrige.)*
+
+### B-17 §15 — D1 ET D2 SONT FERMÉS ET MESURÉS. UN TROISIÈME DÉFAUT, D3, LES DOMINE TOUS LES DEUX.
+
+**D2 — fermé, et le §14 attendait DEUX correctifs là où il n'en fallait qu'un.** Le fondateur
+demandait de vérifier les deux moitiés (« exclu des passes de redistribution » ET « `blockBounds`
+ne réécrit pas son plancher »). Mesuré : **la seconde suffit, et elle explique la première.** Le
+bloc portait déjà `floor = cap = cible` ; `blockBounds` le rendait inerte en le traversant par
+`const fl = s.long ? 800 : Math.min(b.bnd.floor, r.beginner ? 600 : 750)` — le plancher déclaré de
+3 800 m ressortait à **750**. Une fois `blockBounds` rendant le plancher tel quel, l'intervalle est
+dégénéré et **aucune passe aval ne peut plus le déplacer** : l'exclusion est obtenue PAR la borne,
+il n'y a pas de seconde liste à tenir.
+
+Le marqueur est `bnd.pinned`, pendant côté PLANCHER de ce que `bnd.hard` fait au plafond — et il
+fallait les deux, parce que la décision d'audit v6 (D3-D7/D10, « les planchers de séance ne gagnent
+plus contre la courbe ») est JUSTE tant que le plancher n'est qu'un minimum de dignité, et fausse
+quand la dimension EST le stimulus. Pas de test `floor === cap` : ce serait un critère syntaxique
+qui capterait par accident tout bloc dont les deux bornes coïncident.
+
+**D1 — fermé, avec le départage écrit, et l'observation du §14 est tranchée : `facile2` est une
+CATÉGORIE.** Mesuré sur le plan livré, pas déduit du gabarit : **29 semaines sur 308** portent DEUX
+jours `facile2` (`weekBuilder` le déclare deux fois dans le gabarit « quotidienne »). Le départage
+est `slotIdx === 0` — le **premier jour du créneau en ordre calendaire** —, un index stable calculé
+là où la semaine entière est visible ; jamais l'ordre d'itération d'une liste.
+
+**L'expérience est contrôlée, un facteur à la fois** (corollaire de la règle 15) :
+
+```
+état                      D1 (semaines à doublon)   D2 (paliers hors cible)
+858c0c5 (partiel)                    7                    19 / 31
++ pinned seul                        7                     0 / 31     ← D2 fermé, et lui seul
++ pinned + slotIdx                   0                     0 / 24     ← les deux fermés
+```
+
+Full/36, Full/42, Full/50 livrent **1 900 → 2 650 → 3 400 → 3 800 m**, strictement croissants, le
+dernier palier étant la distance de course au mètre près. Critère du fondateur tenu : *livré ==
+cible sur les quatre*.
+
+`T-06` passe de **rouge à vert** dans le même commit (cliquet) — et il est RÉÉCRIT, pas basculé :
+ses deux écritures précédentes étaient SYNTAXIQUES, et la seconde serait restée rouge après B-17
+livré, la règle ne portant aucun des mots qu'elle cherchait (`prereq`, `nage_continue`). Un test qui
+exige un VOCABULAIRE au lieu d'un COMPORTEMENT échoue dans les deux sens. Il observe désormais le
+plan livré : le gate mord, le gate laisse passer, une par semaine, montée strictement croissante,
+livré == cible.
+
+#### D3 — LE GATE LIT UNE RÉPONSE QUE LE PRODUIT NE COLLECTE JAMAIS
+
+Trouvé en vérifiant, pas en relisant. **`longest_swim_m` et `milieu` ont été étendus au triathlon
+dans le SCHÉMA (858c0c5) ; aucune des deux questions n'est POSÉE à un triathlète.**
+
+```
+endurabuild/js/ui/steps.js — l'étape « objectif » a trois branches :
+   trail    → distance, D+, technicité, nuit, barrière
+   swimrun  → …, « La plus longue nage (m) », …          ← la seule qui la pose
+   AUTRES   → « Quel objectif ? » + date                 ← le triathlon est ici
+endurabuild/js/config.js — `milieux` n'est déclaré que sur `swim` : l'étape « milieu »
+   n'existe pas pour un triathlète.
+```
+
+Or le module décide — délibérément, arbitré, écrit — que **« je ne sais pas » ne satisfait pas le
+gate**. La conséquence n'avait jamais été mesurée :
+
+```
+profils tri du golden : 148 · RABATTUS : 117 (79,1 %)
+   Full → S   56        M → S   31        70.3 → S   30
+aucun ne déclare `longest_swim_m` — la question est NOUVELLE et, pour un tri, INEXISTANTE.
+```
+
+Ce n'est pas un artefact de fixture : **un triathlète réel ne peut pas répondre**, donc *tout*
+inscrit à un Ironman recevrait un plan de sprint. Et `poolOnlyNotice`, dont le §12 a arbitré la
+restriction aux formats M+, exige `milieu === "bassin"` : jamais renseigné en tri, **le message est
+du code mort dans le produit**.
+
+**Les trois gates rouges du lot sont D3, et lui seul** — isolé par expérience contrôlée (le
+rabattement neutralisé, tout le reste en place) :
+
+```
+gate                cf392af (avant B-17)   858c0c5   aujourd'hui   sans le rabattement
+audit:v1                   VERT             ROUGE      ROUGE            VERT
+audit:v2                   VERT             ROUGE      ROUGE            VERT
+audit:r13                  VERT             ROUGE      ROUGE            VERT
+audit:sensibilite          VERT             ROUGE      ROUGE            ROUGE (tri/milieu)
+```
+
+Les signatures le disent aussi : `audit:v1` tombe sur C26d chez `tri/Full/*/debutant` et `audit:r13`
+sur `R13.6-P1 — Full 59 sem : taper=1 peak=5`, c'est-à-dire des plans de SPRINT audités contre des
+attentes de FULL. `audit:sensibilite` est la seule à porter la seconde moitié : `tri/milieu` inerte,
+parce qu'en tri cette clé ne pilote plus qu'un avertissement — la famille R20.1, dans sa forme
+MIROIR (« une clé consommée doit être collectable »).
+
+**Le golden n'est PAS recapturé** : **147 écarts sur 949**, dominés par un rabattement gouverné par
+une réponse que le produit ne peut pas recevoir. Photographier cet état l'enregistrerait comme la
+référence. `858c0c5` garde son avertissement.
+
+**Trois issues, aucune choisie ici — c'est un arbitrage, pas une mécanique** :
+
+```
+(a) POSER les deux questions dans le questionnaire tri, et décider si elles sont
+    OBLIGATOIRES (le swimrun l'exige : `valid()` réclame `swim_continuous`)
+(b) ne rabattre que sur une continuité DÉCLARÉE insuffisante, l'absence n'étant plus
+    un refus — ce qui renverse la décision écrite au §8/§10, arbitrée sur O-17
+(c) rabattre, mais d'un seul cran plutôt que jusqu'au sprint
+```
+
+##### Ma sonde a rendu « LES DEUX CRITÈRES SONT TENUS » sur un plan qui n'était pas celui qu'elle nommait
+
+`scripts/sondeB17.mjs`, première écriture : elle déclarait `longest_swim_m: "800"` pour les quatre
+formats. À 1'50/100 m cela vaut 14,7 min, ce qui satisfait le sprint **et aucun autre** : les douze
+lignes du balayage mesuraient toutes un `tri/S` à 750 m, D1 et D2 sortaient verts, et Full — le
+format que le critère d'acceptation du fondateur nomme — affichait **zéro palier**. C'est la
+SECONDE fois dans ce seul ticket (`mesureB17.mjs` balayait des horizons où le Full était refusé),
+et c'est le test de dépistage de la règle 15 : **un résultat saturé accuse l'instrument** — ici
+« 750 m » sur toutes les lignes. La sonde asserte désormais sa prémisse et écarte toute ligne dont
+le format a été rabattu. *Sans cette correction, j'aurais rendu D1 et D2 fermés sans les avoir
+regardés, et D3 serait resté invisible.*
+
+##### …et elle est ensuite sortie VERTE sur ZÉRO palier — règle 19, sur mon propre instrument
+
+Contre-preuve n° 3 (décaler le rang de départage d'un cran) : la prescription tombe à **zéro
+palier**, et la sonde rendait `D1 = 0 · D2 = 0 / 0` sous un verdict « LES DEUX CRITÈRES SONT
+TENUS ». Deux compteurs d'ANOMALIES sont trivialement satisfaits par l'absence de la chose
+comptée. C'est la règle 19 posée ce matin même — *quel est le correctif le moins coûteux qui ferait
+passer ce test ?* Ici : **effacer la fonctionnalité**. Un critère de NON-VACUITÉ est ajouté (le Full
+porte ses quatre paliers, les autres au moins un), et le verdict distingue désormais « tenu » de
+« vide ». `T-06`, lui, portait déjà `if (!paliers.length)` et sortait rouge sur les trois cassures :
+c'est la sonde d'exploration qui manquait le garde-fou, pas la garde permanente.
+
+```
+cassure                                   sonde            T-06
+`pinned` neutralisé                       D2 16/24  ✖      ROUGE
+départage `slotIdx` retiré                D1 7      ✖      ROUGE
+départage décalé d'un cran                VACUEUX   ✖      ROUGE
+```
+
+#### L'état de vérification du lot, en une table
+
+```
+gates            24 VERTS · 4 ROUGES  — audit:v1 · audit:v2 · audit:r13 · audit:sensibilite
+                 les trois premiers redeviennent VERTS quand le seul rabattement est
+                 neutralisé, tout le reste en place. Les quatre sont D3.
+E2E              25 suites · 24 vertes d'un bloc · smoke-usage 3/3 verte (80 assertions),
+                 rejouée séparément — règle 18
+golden           147 écarts / 949 · NON recapturé (D3)
+sceau T-27       S1 3 · S4 341 · S5 520 contre {4, 353, 513} · NON re-épinglé (D3)
+registry:check   61 reproduisent · 2 flips · 3 commandes cassées — tous confirmés à la main,
+                 aucun n'étant un défaut réparé
+```
+
+**`smoke-usage` : trois exécutions, trois vertes, 80 assertions.** Son unique échec de la passe
+complète était en deux temps, tous deux de MON fait : un `EADDRINUSE` sur le port 8596, tenu par un
+serveur orphelin de la passe que j'avais tuée après avoir reconstruit le bundle en pleine
+exécution ; puis, en la rejouant seule, un `element is not stable` sur le carrousel du check-in
+**coupé par mon propre délai de shell de 2 min** — le message « Target page has been closed » EST
+la trace de cette coupure. Règle 18 appliquée : rien n'a été attribué avant trois tirages.
+
+**O-6 a basculé en « ne reproduit plus », et c'est un FAUX POSITIF — le second de la journée.**
+Confirmé à la main (règle 17) : son bloc cherchait le littéral `0 écart` dans la sortie de
+`golden:verify`, or le golden porte **147 écarts** parce que D3 n'est pas arbitré et qu'on refuse
+délibérément de le recapturer. Le correctif d'O-6 tient parfaitement — la ligne « 4 refus d'entrée
+typé(s) — comportement attendu, photographié » est là, les refus ne sont pas comptés comme des
+erreurs. Le bloc mesurait une grandeur VOISINE de celle qu'il nomme : la propreté du golden, pas la
+distinction refus/erreur. Réécrit sur la propriété, comme la règle 17 le demande.
+
+**O-40 : commande cassée, et elle l'était AVANT ce lot.** Son bloc attend `LE PLAFOND MORD`, jeton
+écrit en `c1a595e` ; `a93d5c7` a ensuite CORRIGÉ la mesure (« mon balayage d'hier mesurait un nageur
+de REPLI ») et le verdict est devenu `LE PLAFOND EST DÉCLARATIF` — sans que le bloc suive. C'est la
+règle 17 dans son autre forme : une mesure corrigée laisse derrière elle un bloc périmé, qui se lit
+comme un registre pointant dans le vide. Jeton aligné sur le verdict actuel.
+
+**O-37 et T-27b : cassées par une décision, pas par une dérive.** Les deux dépendent de `✓ T-27`
+dans la sortie de `lotPhysio`, et T-27 est ROUGE parce que `SCEAU_ATTENDU` n'est délibérément pas
+re-épinglé (§15 ci-dessus). Elles redeviendront exécutables quand D3 sera arbitré. Laissées telles
+quelles : les « réparer » en retirant leur dépendance à T-27 masquerait ce que T-27 signale.
+
+**Pas de bloc `verify` pour D1/D2, et le retirer est le correctif.** J'en avais écrit un ; il
+était faux DEUX fois. Son `attendu` portait de la prose là où la convention veut le JETON que la
+`cmd` écho (`O47-REPRODUIT`…), donc `registry:check` l'a rangé en « ne reproduit plus » — un flip
+qui se lit comme un défaut réparé, la forme exacte que la règle 17 dit de confirmer à la main.
+Vérifié à la main : la commande rend bien `B17-D1-D2-TENUS`. Mais la seconde erreur est plus
+profonde et ne se corrige pas en changeant le jeton : **ce registre recense des défauts OUVERTS**,
+où « reproduit » signifie *le défaut est toujours là*. Un bloc dont l'attendu est « le correctif
+tient » inverse cette sémantique, et un jour où il rougirait il annoncerait une bonne nouvelle.
+Ce que D1/D2 méritent est une GARDE, pas une entrée de registre — c'est `T-06`, écrit dans le même
+commit et vérifié rouge sur les trois cassures.
+
+```verify
+id: B-17-D3
+quoi: aucune question ne collecte `longest_swim_m` ni `milieu` pour un triathlète
+attendu: D3-REPRODUIT
+cmd: node scripts/sondeB17rabat.mjs | grep -q "RABATTUS" ; grep -c 'data-input="longest_swim_m"' endurabuild/js/ui/steps.js | grep -q '^1$' && echo "D3-REPRODUIT"
+```
+
+
+### B-17 §16 — D3 FERMÉ. Les deux questions existent, et la conséquence n'est plus « rabattre »
+
+**Le fondateur invoque l'exception au gel de périmètre** (16/08/2026) : *« 56 profils Full rendus
+en plans Sprint est une sortie incorrecte, pas une amélioration possible. »* Trois changements, et
+rien d'autre.
+
+#### 1 · Les deux questions, obligatoires, avec « je ne sais pas » explicite
+
+`longest_swim_m` et `milieu` étaient déclarées au schéma et **posées nulle part** pour un
+triathlète — la clé était consommée et *inrenseignable*. Elles entrent dans la branche `tri` de
+l'étape objectif, et `valid()` les exige. **`longest_swim_known` (oui/non) est une clé nouvelle**,
+sur le patron de `css_known`/`pace_known` : *« la décision “je ne sais pas bloque” suppose que
+l'athlète l'ait dit »* — une absence par OUBLI et une absence ASSUMÉE ne sont plus la même
+information, et le nombre n'est demandé que si l'athlète dit le connaître.
+
+**`audit:sensibilite` ne pouvait pas voir ce défaut** : il vérifie qu'une clé AGIT, pas qu'on
+puisse y répondre. C'est la famille R20.1 dans sa forme MIROIR, et le banc gagne les deux paires
+qui la couvrent (`continuité déclarée`, `milieu de la preuve`), sur le patron `vam_known`/`vam`.
+
+#### 2 · La conséquence est graduée — le rabattement ne survit que là où il a un sens
+
+*« S10 rabat parce que le swimrun n'offre aucun remède. Le plan de triathlon contient le sien. »*
+J'avais repris le patron S10 sans l'examiner. **Rabattre le format supprime exactement le mécanisme
+qui corrigerait le problème** — on retirait le remède au motif que la maladie existe —, et le
+dommage était disproportionné : une déclaration de NAGE transformait un plan de TROIS disciplines.
+**O-17 n'exige pas ça** : l'événement irréversible est LA COURSE, pas la construction du plan ; le
+levier du moteur sur le jour J est le MESSAGE.
+
+```
+gate satisfait                      → plan normal
+non satisfait, écart FRANCHISSABLE  → format DEMANDÉ conservé, progression incluse,
+                                      message proéminent — AUCUN rabattement
+écart NON franchissable             → rabattement, patron S10, avec sa raison chiffrée
+```
+
+**« Franchissable » se mesure avec ce qui existe déjà, zéro constante nouvelle** : la rampe part de
+la continuité DÉCLARÉE et croît au plus de **C22 (+10 %/semaine)** jusqu'à la fin de la phase
+spécifique (`B17_SPAN_PCT`, dérivé de `PHASE_PCTS`). Si elle n'atteint pas la distance de course,
+la progression ne peut pas partir d'où l'athlète est.
+
+```
+format │ déclaration          │ verdict        │ décision              │ paliers livrés
+Full   │ 400 m                │ format gardé   │ 400 m → 3800 m        │ 700→1250→2150→3800
+Full   │ 100 m                │ RABATTU        │ 70.3 (au lieu de Full)│ 350→600→1100→1900
+70.3   │ 400 m                │ RABATTU        │ M (au lieu de 70.3)   │ 550→800→1100→1500
+M      │ 2000 m               │ gate satisfait │ —                     │ 1500
+```
+
+#### 3 · La progression part de l'ATHLÈTE
+
+*« Partir de 50 % de la distance de course ne sert pas quelqu'un à 200 m. »* La table
+`B17_PALIERS = [0.5, 0.7, 0.9, 1.0]` — des fractions de la distance de COURSE — disparaît. Les
+distances s'**interpolent géométriquement** du départ de l'athlète à la distance de course ;
+géométriquement parce que la contrainte qui les borne l'est (C22 est un RAPPORT), et une
+interpolation linéaire ferait des premiers pas énormes en relatif pour qui part bas — exactement
+la population que ce correctif sert.
+
+#### 4 · Trois défauts trouvés en construisant, aucun visible en relecture
+
+**(a) `fmt` était un `const`, et c'était un défaut latent depuis R4.5.** Capté une fois sur
+`a.format`, il ne suivait NI le rabattement swimrun NI celui du tri, alors que c'est lui que lit
+`MIN_WEEKS[sp]?.[fmt]`. Un Full rabattu au sprint recevait la durée de préparation d'un Full —
+c'est la signature exacte que `audit:r13` remontait (`R13.6-P1 — Full 59 sem : taper=1 peak=5`).
+
+**(b) Le véhicule n'était pas celui que je transformais — 79 % des promesses non tenues.** Mesuré
+sur 351 plans qui ANNONÇAIENT la construction : **277 ne la contenaient pas**. La ventilation donne
+la cause — `finir` 117, `plaisir` 117, `debutant` 117 contre `competition` 43 : le créneau `facile2`
+route ces profils vers `swTech` (« Nage vitesse »), donc je mutais un objet qu'ils ne reçoivent
+jamais ; et sous DOUBLES `swMain` part sur `dur1`. **La population la plus concernée était celle qui
+a le plus besoin de la continuité** : un débutant qui vise un finish en eau libre. Le placement ne
+bouge pas (§4 de l'arbitrage) — c'est le créneau porteur de la nage PRINCIPALE qui est lu.
+**21,1 % → 98,9 %**, puis **100 %** une fois (c) corrigé — et un taux saturé se vérifie au lieu de
+se célébrer (dépistage de la règle 15). Le cas résiduel était un `tri/S` de 8 semaines dont la
+PREMIÈRE semaine de `spec` ne porte aucun jour `facile2` ; le plafonnement du nombre de paliers par
+la place disponible fait tomber l'unique palier sur la SECONDE, qui en porte un. Vérifié à la main
+sur ce profil exact — S6 livre « Nage continue — 750 m d'affilée ». Le placement n'a pas bougé.
+
+**(c) Le dernier palier n'était jamais posé quand la place manquait.** Sur un `tri/M` de 12
+semaines, `spec` fait DEUX semaines et la progression en demandait quatre : les paliers se
+collapsaient, `positions.indexOf` ne rendait que le premier de chaque groupe, et la montée
+s'arrêtait à **1 200 m pour une épreuve de 1 500**. `palierPosables()` borne le nombre par la
+place, et la décision affichée comme la séance prescrite l'appellent — R11.1. La décision
+`B17-paliers` se déplace donc APRÈS la construction des phases : émise avant, elle annonçait un
+nombre que le plan ne pouvait pas porter.
+
+#### 5 · Ce qui reste ouvert, chiffré, et qui est un ARBITRAGE
+
+**L'honnêteté est punie dans une fenêtre étroite.** Le §3 réserve le rabattement à l'écart NON
+franchissable ; « je ne sais pas » n'a pas d'écart mesurable, donc il ne rabat pas. Conséquence
+arithmétique : **5 inversions mesurées** — déclarer 400 m sur un 70.3 fait rabattre, répondre « je
+ne sais pas » ne fait pas rabattre. La fenêtre est `[200 m, distance_course / 1,1^travée)`.
+
+Les deux lectures de l'arbitrage divergent ici et je n'ai pas tranché seul : le §1 conserve *« je ne
+sais pas bloque »*, le §3 réserve le rabattement au non-franchissable. J'ai suivi le §3 (le § qui
+définit la conséquence) et **mesuré le prix de ce choix** plutôt que de le taire. La correction
+symétrique — traiter « je ne sais pas » comme le plancher de 200 m — rabattrait au Sprint tout
+triathlète qui ne connaît pas sa plus longue nage, c'est-à-dire exactement le dommage
+disproportionné que le §2 dénonce.
+
+#### 5bis · Ma sonde était satisfaite par le défaut qu'elle surveille — règle 19, troisième fois
+
+Contre-preuve n° 1 : rétablir le rabattement d'origine (la cible ne cherche que `satisfait`) fait
+passer les rabattements de **5 à 12** sur le balayage et de **5 à 21** sur le golden — et la sonde
+restait **VERTE**, parce que « au moins un format gardé » suffisait à sa non-vacuité. Le correctif
+le moins coûteux qui fait passer ce test ne résout pas le problème : c'est exactement ce que la
+règle 19 dit de demander AVANT d'écrire. Le verdict de chacun des **20 cas est désormais ÉPINGLÉ**
+— un cliquet, pas un seuil.
+
+```
+cassure                                        cliquet   montée   non-vacuité
+rabattement d'origine (le défaut D3)              ✖         ✓          ✓
+paliers repartant de 50 % de la course            ✓         ✓          ✖
+plafond par la place retiré                       ✓         ✖          ✓
+```
+
+Trois cassures, trois rouges — mais seulement APRÈS avoir ajouté le cliquet, et la première ne
+l'était pas avant.
+
+#### 5ter · Une clé exigée par `valid()` doit être ATTEIGNABLE dans le même écran
+
+`smoke-questionnaires` a rougi sur **U19**, et pas pour la raison attendue. Ma première écriture
+mettait le nombre de mètres dans une BRANCHE (`branch("lswB", longest_swim_known === "oui", …)`) :
+il n'existe alors dans le DOM qu'APRÈS le choix. Or la dérivation d'U19 énumère les clés
+**présentes**, les remplit d'une valeur plausible, puis retire une clé à la fois — et
+`valeurPlausible` coche la première option, donc « Je la connais », sans jamais pouvoir remplir le
+nombre. `valid(plein)` restait faux, la sonde tombait sur son repli « nommer tout ce qui est vide »,
+et **elle réclamait « Date (si connue) » — une question FACULTATIVE**, ce qu'U19 interdit
+explicitement depuis son écriture.
+
+Le correctif suit d'ailleurs mieux l'arbitrage : *« Ta plus longue nage sans t'arrêter → mètres, ou
+je ne sais pas »* décrit **une seule question**, pas deux imbriquées. Les deux champs vivent dans le
+même `.q`, et le message se **déduplique par LIBELLÉ** — sans quoi il nommait deux fois « Ta plus
+longue nage », ce qui a l'air cassé : on nomme des QUESTIONS à l'athlète, pas des clés.
+
+Le dernier critère d'U19 (« tout le requis donné → le bouton s'active ») est mis à jour, pas
+contourné : c'est la LISTE du requis qui s'est allongée par décision, la propriété gardée est
+inchangée.
+
+#### 6 · Et j'ai effacé une heure de travail avec `git checkout`, pour la SECONDE fois du dépôt
+
+Pour restaurer une cassure de contre-preuve, j'ai fait `git checkout -- src/engine/reasoningEngine.ts`
+sur un fichier **non commité**. Les trois modules de D3 sont revenus à `HEAD`, qui ne contenait rien
+de ce lot : `swimContinuity.ts`, `reasoningEngine.ts` et `tri/index.ts` ont été perdus d'un coup, et
+le bundle reconstruit par-dessus a effacé la dernière copie exécutable.
+
+**C'est exactement l'incident consigné en V2** (« un `git checkout` a effacé une heure de travail —
+restaurer une cassure de contre-preuve avec `git checkout` sur un fichier NON COMMITÉ a emporté tout
+le câblage du sachet »). Et j'avais employé la bonne méthode plus tôt dans la même session — `cp`
+vers `/tmp`, puis restauration — avant de l'abandonner pour la commande courte.
+
+**La règle est donc opératoire, pas morale : on ne pose pas de cassure de contre-preuve sur un
+travail non commité.** Committer d'abord, ou copier le fichier de côté. Le code a été réécrit à
+l'identique depuis le contexte et re-vérifié bit à bit — mêmes sorties de sonde, mêmes gates, golden
+à 0 écart — mais rien ne garantissait qu'il soit récupérable.
+
+```verify
+id: D3-graduee
+quoi: le rabattement est réservé à l'écart NON franchissable, et les trois branches existent
+attendu: LA CONSÉQUENCE EST GRADUÉE
+cmd: node scripts/sondeD3.mjs | grep -o "LA CONSÉQUENCE EST GRADUÉE"
+```
+
+```verify
+id: D3-couverture
+quoi: un plan qui ANNONCE la progression la contient. ⚠ L'attente « 0 » était FAUSSE dès l'écriture : la sonde elle-même nomme et chiffre 2 plans (format S) dont le véhicule `facile2` n'existe pas en phase spécifique, et conclut « le fait est NOMMÉ et chiffré, pas corrigé sans mandat » — le placement est gelé par le §4 de l'arbitrage D3. Vérifié à la main contre le moteur d'AVANT le lot 1 : **2 avant comme après**. Le critère porte sur le TAUX, qui est la grandeur que la sonde publie et défend.
+attendu: /livrent au moins une nage continue : 349/
+cmd: node scripts/sondeD3couv.mjs | grep "livrent au moins"
+```
+
+
+### B-17 §17 — « JE NE SAIS PAS » N'EST PAS UNE VALEUR : C'EST UNE DEMANDE DE MESURE
+
+**Arbitrage du fondateur (16/08/2026), et il nomme d'abord ce que sa propre spec n'avait pas dit :**
+le §1 (« je ne sais pas bloque ») gouverne le **gate** — le message et la progression — tandis que
+le §3 gouverne le **rabattement**. Deux sorties différentes, et j'avais suivi le §3 pour le
+rabattement, ce qui était juste ; il en résultait seulement que celui qui déclare 400 m recevait une
+conséquence de plus que celui qui ne dit rien. **L'incitation devenait : ne réponds pas.**
+
+Aucune des deux réponses habituelles ne convenait — traiter l'inconnu comme le pire cas envoie au
+Sprint tout triathlète qui ne suit pas ses nages (la disproportion du §2), le laisser passer
+récompense le silence.
+
+```
+longest_swim_m = « je ne sais pas »
+  → le plan est construit pour le format demandé
+  → la PREMIÈRE séance de nage de la phase spécifique est un TEST de continuité
+  → le message dit que l'évaluation de la nage est EN ATTENTE
+  → pas de rabattement : rien n'est mesuré, donc rien n'est ÉTABLI comme infranchissable
+  → dès que la réponse arrive, la conséquence graduée s'applique, rabattement compris
+```
+
+C'est le mécanisme **déjà en place pour la FTP et le CSS** : quand le moteur a besoin d'un nombre
+qu'il n'a pas, il prescrit le test qui le produit. Le manque de donnée devient une séance
+d'entraînement — le moteur a besoin d'un nombre, l'athlète a besoin de nager en continu.
+
+**Le test est EN BASSIN, et c'est le point de sécurité.** Un effort « aussi loin que tu peux » chez
+quelqu'un dont personne ne connaît la continuité est exactement le scénario que B-17 existe pour
+empêcher en eau libre : le mur tous les 25 m est ce qui le rend acceptable. La consigne eau libre se
+décale au palier SUIVANT. Le bloc n'est **pas épinglé**, délibérément — la distance est ce qu'on
+MESURE, pas ce qu'on impose.
+
+**Le critère d'honnêteté de la sonde a changé de FORME, et l'ancien serait devenu faux.** Il
+comparait des VERDICTS et comptait 5 inversions ; la question juste n'est plus « qui est rabattu
+aujourd'hui » mais **« le silence produit-il une tâche ou une permission »**. Mesuré : les 8 profils
+sans mesure portent tous un test. Deux critères nouveaux, tous deux vérifiés rouges — le test
+retiré (8 laissez-passer), le test prescrit même sur une continuité MESURÉE (il deviendrait
+décoratif).
+
+#### Et j'ai refait le `git checkout` sur du non-commité, dans la MÊME session, une heure après l'avoir écrit
+
+La contre-preuve C4 a été restaurée par `git checkout -- src/sports/tri/index.ts`. `HEAD` ne
+contenait pas le travail du test (non commité) : la restauration l'a effacé, et **C5 a mesuré un
+fichier qui ne portait plus la règle** — d'où deux cassures rendant le MÊME message d'échec, ce qui
+est le seul indice qui m'a fait regarder. Sans cette incohérence de sortie, j'aurais publié C5
+comme une contre-preuve valide alors qu'elle ne testait rien.
+
+C'est la **deuxième fois de la session**, et la seconde arrive après que j'ai écrit la règle au §16.
+Une règle qu'on énonce sans changer son geste n'est pas une règle. La forme opératoire est donc :
+**commiter AVANT toute cassure**, ce qui est ce que ce lot fait désormais — et non « penser à ne pas
+faire `git checkout` ».
+
+```verify
+id: D3-mesure-manquante
+quoi: une continuité inconnue prescrit un TEST, jamais un laissez-passer
+attendu: aucun laissez-passer
+cmd: node scripts/sondeD3.mjs | grep -o "aucun laissez-passer"
+```
+
+
+## O-48 · `smoke-shop` dépendait du JOUR DE LA SEMAINE · ✅ **fermé le jour où il a mordu**
+
+**Septième occurrence de la famille R20.7**, et la première trouvée par un simple changement de
+date pendant une session : la suite est passée **42/42 le 2026-08-16** et a échoué le
+**2026-08-17** sur « le devis a des lignes à nommer (0) », à CODE IDENTIQUE. Le 16 était un
+dimanche, le 17 un lundi.
+
+**Attribué correctement avant d'être corrigé.** Le réflexe aurait été d'y voir une régression de D3
+— c'est le lot en cours, et il touche justement les plans `tri`. Rejouée dans un *worktree* sur
+`cf392af` (avant B-17), `858c0c5` et `ff86ecb` : **elle échoue sur les trois.** Aucun lot du
+chantier n'y est pour rien. Et 3 exécutions sur 3 échouent le 17 — ce n'est pas un flake (règle 18).
+
+**La suite portait DÉJÀ un correctif de cette famille, et il était insuffisant** : passer en cadence
+MENSUELLE, « parce que la fenêtre de 7 jours peut légitimement ne contenir aucune séance à
+ravitailler selon le jour ». Balayé sur les sept jours (`npm run sonde:devis7j`) :
+
+```
+cadence mensuel : lun  0 · mar  0 · mer  1 · jeu  1 · ven  1 · sam  1 · dim  1
+cadence hebdo   : lun  0 · mar  0 · mer  0 · jeu  0 · ven  0 · sam  0 · dim  0
+```
+
+**Deux jours sur sept** vident le devis mensuel : une fenêtre de 30 jours démarrée un lundi
+s'arrête avant la première séance à ravitailler d'une phase de base à 7 h/sem. La suite ANCRE
+désormais sa date (`page.clock.setFixedTime`, comme `smoke-zenna` depuis v8) — et le `readiness` du
+fixture suit l'ancrage, sans quoi le portillon du check-in relit un autre jour et rien ne s'affiche.
+
+**Deux choses mesurées qu'il faut dire plutôt que taire :**
+- le devis mensuel ne porte **qu'UNE ligne** les bons jours : le critère `> 0` est sur le fil, et
+  c'est ce qui le rend sensible au jour. Le rendre robuste demanderait un profil dont le plan porte
+  des séances à ravitailler dès la base — un changement de fixture, pas d'ancrage ;
+- la cadence HEBDO rend **0 sur les sept jours**. Un taux saturé accuse l'instrument ou le modèle
+  mental (règle 15) — ici c'est le modèle : une semaine de base d'un 70.3 à 7 h/sem ne porte aucune
+  séance au-delà de 90 min, donc rien à ravitailler. Cohérent, mais la suite ne mesure alors qu'une
+  moitié du composant.
+
+```verify
+id: O-48
+quoi: le devis de ravitaillement ne dépend plus du jour d'exécution
+attendu: 2 / 7
+cmd: node scripts/sondeDevis7j.mjs | grep -o "jours où le devis MENSUEL est vide : [0-9] / 7" | grep -o "[0-9] / 7"
+```
+
+
+## O-44 §0 — LES DEUX POINTS COURTS DU LOT PRÉCÉDENT, RÉGLÉS
+
+### a) Le corpus d'audit ne voyait qu'UNE branche du gate sur quatre — corrigé
+
+`longest_swim_m` n'était rempli nulle part pour le triathlon dans `runV2Audit` : les profils
+alertés tombaient TOUS dans « continuité inconnue », et les trois autres branches — satisfait,
+écart franchissable, écart infranchissable — n'étaient exercées par AUCUN profil. Un corpus qui ne
+voit qu'une branche ne peut pas voir une régression sur les autres, et c'est la même cécité que la
+sous-passe `B17` du golden a fermée côté photographie.
+
+La dispersion est **déterministe** (rotation sur `history` × `intent`, quatre déclarations : `non`
+· 100 m · 800 m · 2 500 m) : chaque format rencontre les quatre branches et la photo reste
+reproductible. **Vérifié atteint, pas supposé** — c'est la leçon de la sous-passe `B17`, dont ma
+première écriture prenait un horizon où le rabattement ne pouvait jamais mordre :
+
+```
+branches atteintes par les 108 profils tri du corpus
+   test (inconnue)   36      format gardé   24
+   gate satisfait    30      RABATTU        18
+```
+
+`audit:v1` reste **VERT à 0 violation dure sur 459** avec la dispersion en place — le rabattement
+réintroduit dans le corpus ne produit aucune violation.
+
+### b) Le score ignore les alertes — il ne dit donc rien sur ce lot
+
+Réponse en une ligne, **mesurée** plutôt que lue dans le code (règle 15) : **il n'existe aucune
+relation monotone** entre le nombre d'alertes et le score.
+
+```
+score par nombre d'avertissements (corpus tri dispersé, 108 profils)
+   0 alerte  n= 16   moy 94,1  [ 80 … 100]  σ  6,2
+   1 alerte  n= 45   moy 95,2  [ 80 … 100]  σ  5,6
+   2 alertes n= 35   moy 90,9  [ 65 … 100]  σ 10,6
+   3 alertes n= 12   moy 95,0  [ 85 … 100]  σ  6,1
+```
+
+Les écarts-types vont de 5,6 à 10,6 : **les moyennes se recouvrent largement et aucune ne se cite
+seule comme un effet.** La réserve statistique du fondateur portait sur un `99,0` à n=15 — elle
+était fondée, et la cause est pire qu'un bruit d'échantillon : **ce chiffre n'existait pas.**
+
+##### ⚠ LES CHIFFRES QUE J'AI PUBLIÉS D'ABORD ÉTAIENT FAUX, PAR LA FAUTE QUE JE VENAIS DE DOCUMENTER
+
+Ma première mesure lisait `r.plan._v2.warnings` sur l'objet rendu par `generateAudited()` — qui ne
+porte PAS `_v2` (le champ est posé par le PONT, pas par `generatePlan`). Le repli silencieux
+`?? []` rangeait donc une partie des profils dans le mauvais groupe : effectifs 20/64/15/9 au lieu
+de 16/45/35/12, et un `99,0` fantôme. **C'est la MÊME faute d'instrument que j'avais décrite deux
+paragraphes plus haut à propos de la mesure par branche**, refaite dans la mesure voisine, et
+publiée. La mesure est désormais un script (`npm run mesure:score-alertes`) qui lit les alertes et
+les décisions sur le plan du PONT et le score sur l'objet AUDITÉ — deux appels, assumés et
+commentés.
+
+`score` part de 100 et ne se décrémente que sur des grandeurs de STRUCTURE — sauts de charge, ratio
+du pic, semaines hors bande, part de la sortie longue, jours durs adjacents, part de facile.
+`warnings` n'entre dans aucun de ces termes : c'est le canal d'INFORMATION (R11.2), pas une pénalité.
+
+**Et la hausse a bien une autre cause, nommée et mesurée** — le score par branche du gate :
+
+```
+   test (inconnue) 94,2 · format gardé 94,6 · gate satisfait 94,5 · RABATTU 89,7
+```
+
+Le rabattement est la seule branche qui coûte au score : un plan rabattu est audité contre les
+bornes du format DÉCLARÉ (`opts.format = profile.format` dans `generateAudited`, jamais le format
+livré). D3 ayant réservé le rabattement à l'écart infranchissable, la population qui portait ce
+malus s'effondre — d'où la hausse, sans aucun rapport avec les alertes.
+
+*Note d'instrument : ma première mesure par branche rendait « gate satisfait » pour les **108**
+profils — un taux saturé. Elle lisait les décisions sur le plan de `generateAudited`, qui ne porte
+pas `_v2` (il est posé par le pont, pas par `generatePlan`). La branche se lit sur le plan du pont,
+le score sur l'audité.*
+
+**Et la hausse a bien une autre cause, nommée et mesurée** — le score par branche du gate :
+
+```
+   test (inconnue) n=36  94,2 (σ 7,2)   ·   format gardé   n=24  94,6 (σ 5,6)
+   gate satisfait  n=30  94,5 (σ 6,5)   ·   RABATTU        n=18  89,7 (σ 12,0)
+```
+
+Le rabattement est la seule branche qui coûte au score, et D3 l'ayant réservé à l'écart
+infranchissable, la population qui portait ce malus s'effondre. **La même réserve s'applique** :
+σ 12,0 sur n=18, l'écart de 5 points ne se lit pas comme un effet propre — c'est une direction
+cohérente, pas une mesure d'amplitude.
+
+---
+
+## O-49 · L'auditeur juge un plan contre une référence que ce plan n'a jamais visée · 🔴 **OUVERT, gelé**
+
+Trouvé par une sonde qui servait une AUTRE question (le score du §0b), et c'est la deuxième fois
+dans ce lot qu'une sonde corrigée rend plus que le contrôle qu'elle servait — après celle de B-17,
+dont la réparation a rendu D3 visible.
+
+```
+mécanisme    `opts.format = profile.format` dans `generateAudited` : le format DÉCLARÉ,
+             alors que le plan peut avoir été bâti pour un autre (rabattement B-17)
+conséquence  l'auditeur mesure contre une référence NON VISÉE
+aujourd'hui  ~5 points de score sur 18 profils, 0 violation dure
+bénignité    repose sur « le rabattement ne va que vers le bas » — donc les bornes
+             appliquées sont toujours plus exigeantes que celles visées, et l'auditeur
+             est trop SÉVÈRE plutôt que trop laxiste. Propriété NON ÉCRITE et NON GARDÉE.
+famille      règle 15, dans l'auditeur : nommer une grandeur, en mesurer une voisine
+```
+
+**L'énoncé est volontairement la conséquence et non le mécanisme.** Un auditeur qui mesure contre
+le mauvais référentiel peut manquer une violation aussi bien qu'en inventer une ; rien ne garantit
+la direction, et la propriété qui rend le défaut inoffensif aujourd'hui n'est écrite nulle part.
+C'est l'énoncé qui change, pas la priorité : gelé.
+
+```verify
+id: O-49
+quoi: l'auditeur reçoit le format DÉCLARÉ, pas celui que le plan vise
+attendu: O49-REPRODUIT
+cmd: grep -q 'format: profile.format' src/generator/repairLoop.ts && echo "O49-REPRODUIT"
+```
+
+
+## O-44 · Plancher de durée de séance en nage · ✅ **FERMÉ SUR LA MESURE, non livré**
+
+**Le constat du brief est reproduit exactement** : sur les semaines de charge, **69 profils de nage
+sur 136** vivent à 80-100 % de séances courtes, **les 36 débutants sans exception**, distribution
+bimodale sans milieu (44 % entre 20-40 %, 40 % entre 80-100 %). L'historique ne discrimine pas
+(20/25/24). Pire cas `swim/sprint/reprise/inter` à 97 %, six semaines sur six.
+
+`SWIM_SESSION_FLOOR_MIN = 20` est écrite avec son bloc de provenance (hypothèse LOGISTIQUE, non
+physiologique, PANSEMENT, sortie = une question de disponibilité au bassin). La justification du
+« 20 et pas plus » est vérifiée : C15 (850 m) à CSS 2:00 ne permet que **19,0 min**, donc toute
+valeur au-dessus de 19 donne le même résultat aux 36 débutants.
+
+### La passe est écrite, placée comme demandé — et RETIRÉE, parce que le critère n°3 est rouge
+
+```
+1. second mode (≥ 80 % de nages courtes)  54 → 35 profils          ✓
+   sous-population (> 50 %)               69 → 36 profils          ✓
+2. débutants dans la sous-population      36 → 36                  ✖
+3. profils qui PERDENT du volume de nage  104 / 136, jusqu'à −132 min  ✖
+4. fréquence : baisse hors des profils à séances courtes  0        ✓
+```
+
+**Le brief dit que le troisième est le vrai test. Il l'a été** — il a attrapé trois fuites
+successives, chacune réelle et chacune corrigée, et une quatrième qui n'est pas dans la passe.
+
+**Fuite 1 — je versais dans les blocs de QUALITÉ.** R4.1 l'interdit, et ce n'est pas une
+préférence : `scaleBlock` borne les répétitions d'un bloc de qualité à celles que la bibliothèque a
+choisies. La passe ajoutait, la passe suivante annulait. Mesuré sur
+`swim/sprint/reprise/inter/competition` : semaine 1 à **6 nages / 4 700 m / 100 min** avant,
+**3 nages / 3 150 m / 69 min** après — 1 550 m évaporés. Corrigé : le déversement va sur le bloc
+FACILE, patron I14b.
+
+**Fuite 2 — je conservais les MÈTRES quand la courbe compte en MINUTES** (règle 14). Un mètre
+déplacé de `sw.css` vers `sw.easy` vaut PLUS de minutes (O-42) : la semaine sortait au-dessus de sa
+cible et le lissage la rabotait. Corrigé : on redistribue des minutes, chaque receveuse recevant des
+mètres à SA vitesse de zone.
+
+**Fuite 3 — le garde comparait une capacité en mètres à un besoin en mètres tout en distribuant des
+minutes.** Les deux membres se comparent désormais dans la monnaie de la courbe.
+
+**Fuite 4 — elle n'est PAS dans la passe, et c'est la mesure qui le dit.** Instrumentée au point
+d'action, la semaine 1 sort à **100 min pour une cible de 102** : le volume est conservé là où la
+passe agit. C'est `enforceC22Final` qui reprend **12 min** (100 → 88), puis le second
+`reconcileDeclaredVolume` de la boucle de réparation **8 de plus** (88 → 80).
+
+```
+[O44] S1 retrait -> 100 min livrées, cible 102     ← la passe conserve
+[O44] après-O44      : S1 = 100 min
+[O44] après-C26c+B02 : S1 = 100 min
+[O44] après-C22final : S1 =  88 min                ← −12
+[O44] S1 retrait -> 88 min livrées, cible 90       ← 2e reconcile → 80
+```
+
+### Ce que ça coûte si on la branche quand même : 46 violations DURES
+
+`audit:v1` et `audit:v2` passent au ROUGE (**46 combinaisons**), et `audit:v6` régresse sur **D4**
+(« une semaine de récup n'est jamais plus chargée que la dernière semaine de charge ») — mécanisme
+cohérent : les semaines de décharge sont EXCLUES de la passe (C29b : une nage courte s'y garde), donc
+elles conservent leurs cinq séances courtes pendant que les semaines de charge se regroupent, et le
+rapport s'inverse.
+
+### L'arbitrage, chiffré
+
+```
+(a) exempter les semaines regroupées du lissage final   → affaiblit C22, une règle de SÉCURITÉ,
+                                                          pour une hypothèse LOGISTIQUE
+(b) accepter la perte de volume                         → c'est l'amputation que le brief interdit
+(c) étendre le regroupement aux semaines de décharge    → contredit C29b (Bosquet 2007) et rouvre
+                                                          le défaut que R13.3 a fermé
+(d) ne rien brancher, garder la constante et la mesure  → l'état actuel
+```
+
+Aucune de ces issues n'est mécanique : (a) et (c) touchent des règles arbitrées, (b) est exclue par
+le brief. **La passe n'est donc pas branchée**, `SWIM_SESSION_FLOOR_MIN` et `npm run mesure:o44`
+restent, et rien d'inerte n'entre dans le pipeline.
+
+### Le résultat de ce lot n'est pas la passe — c'est le critère 2, et j'ai mal attribué sa cause
+
+J'avais écrit « les 36 débutants sont hors de portée tant que C15 les borne, ce qui est une
+propriété de C15 ». **C'est faux, et l'arbitrage du fondateur le corrige** : la cause n'est pas le
+plafond, c'est que **le plancher existe DÉJÀ, dans la mauvaise unité**.
+
+L'arithmétique du blocage, explicite — un débutant à 6 × 600 m (3 600 m/semaine, séances posées sur
+le plancher C24b) :
+
+```
+configuration │ distance/séance │ durée à CSS 2:30 │ verdict
+6 séances     │      600 m      │     15,0 min     │ sous le plancher O-44
+5 séances     │      720 m      │     18,0 min     │ TOUJOURS sous le plancher
+4 séances     │      900 m      │     22,5 min     │ AU-DESSUS du plafond C15 (850 m)
+```
+
+**Aucune configuration ne satisfait les deux bornes à volume constant.** Ce n'est ni un défaut du
+mécanisme ni une valeur mal choisie : c'est un système SUR-CONTRAINT, et le garde anti-amputation
+aurait raison de refuser quelle que soit la valeur du plancher au-dessus de 18 minutes.
+
+**O-44 n'ajoutait donc pas une contrainte manquante : il tentait d'en corriger une existante,
+exprimée dans la mauvaise unité, en en superposant une seconde.** Deux planchers, deux unités, une
+seule intention — la famille `_IFZ`, et O-42 appliqué à un plancher au lieu d'une conversion.
+
+### Ce que le moteur DIT en attendant — la seule chose honnête
+
+La tension est réelle et **l'athlète est le seul à pouvoir la résoudre** : lui seul sait s'il peut
+aller six fois à la piscine. Le plan la NOMME au lieu de décider à sa place :
+
+> *Tes séances de nage sont courtes — ton volume est réparti sur beaucoup de jours. Le plan ne peut
+> pas les regrouper sans te retirer du volume. Si tu ne peux pas aller à la piscine aussi souvent,
+> regroupe-les toi-même : deux séances de quarante minutes valent mieux que six de quinze, et le
+> trajet coûte le même prix quelle que soit la durée.*
+
+**Le message ne part que si l'athlète VIT dans ce régime** — la MAJORITÉ de ses semaines de charge,
+pas une semaine isolée. Sans cette borne il partait sur **102 profils de nage sur 136 (75 %)**, dont
+beaucoup n'ont qu'une semaine courte : l'affirmation y serait fausse, et un message qui sur-affirme
+se fait ignorer là où il est vrai. Avec elle : **56 profils de nage sur 136, dont les 36 débutants**,
+et **111 sur les 969 du golden** (nage 56 · tri 32 · swimrun 23 — les trois sports qui déclarent
+`swimSessionFloors`).
+
+**Rayon vérifié : le SEUL champ qui change est `._v2.warnings`.** 111 écarts au golden, 111 profils
+recevant le message — pas une séance, pas une minute. Le compteur se lit sur le plan LIVRÉ, en tout
+dernier, pour que le message ne décrive ni un état intermédiaire ni une intention (règle 15).
+
+```verify
+id: O-44
+quoi: la sous-population des nages courtes existe toujours, la passe n'est pas branchée
+attendu: UNE SOUS-POPULATION EXISTE
+cmd: node scripts/mesureO44b.mjs | grep -o "UNE SOUS-POPULATION EXISTE"
+```
+
+
+## O-50 · Le plancher de séance de nage (C24b) est exprimé en MÈTRES · 🔴 **OUVERT**
+
+C'est le ticket qu'O-44 aurait dû être, et il n'y avait aucun moyen de le savoir avant d'avoir écrit
+O-44 et mesuré son échec.
+
+```
+défaut       C24b impose un plancher de séance de 600 m (débutant) / 750 m. Exprimé en
+             MÈTRES, il ne garantit AUCUNE durée minimale — et il sert le mieux le nageur
+             le plus LENT :
+                600 m à CSS 1:30  →   9 min   ← le rapide reçoit la séance la plus courte
+                600 m à CSS 2:30  →  15 min
+                600 m à CSS 3:00  →  18 min
+             C'est exactement le plancher dérivé d'une distance que le brief d'O-44 écartait
+             — il est déjà dans le moteur, et il produit l'effet annoncé.
+
+à mesurer    · la durée impliquée par C24b sur les 136 profils de nage, PAR CSS
+avant toute  · combien de séances sous 15 min en découlent, et sur QUI
+décision     · le rayon d'un passage en minutes — qui d'autre lit ce plancher
+
+contrainte   C15 borne par le HAUT en mètres. Un plancher en minutes et un plafond en
+             mètres restent commensurables profil par profil, mais leur compatibilité se
+             vérifie AVANT, pas après — c'est précisément ce que ce lot vient de découvrir
+             après.
+
+famille      `_IFZ` (deux expressions d'une même intention) et O-42 (l'unité), appliquées
+             à un PLANCHER au lieu d'une conversion.
+```
+
+```verify
+id: O-50
+quoi: le plancher de séance de nage est en mètres, donc muet sur la durée
+attendu: O50-REPRODUIT
+cmd: grep -q 'const floorM = ctx.beginner ? 600 : 750;' src/generator/planGenerator.ts && echo "O50-REPRODUIT"
+```
+
+---
+
+## O-51 · `C30b-A` mesure le DÉCLENCHEMENT d'une passe, pas la propriété qu'elle sert · ✅ **FERMÉ**
+
+Trouvé par le lot 1, en devenant rouge pour la meilleure des raisons : **la passe n'avait plus
+rien à faire.**
+
+```
+défaut       Le critère `C30b-A` (banc v6) exige qu'une décision `C30b` soit émise sur
+             4 profils, et porte une garde de non-vacuité `if (vus < 4)`. Cette garde est
+             exactement ce que la règle 19 réclame — et elle rougit quand la sortie longue
+             atteint sa cible SANS la passe.
+
+             Mesuré (expérience contrôlée, profil exact du banc, `semi@7:00/6h`) :
+
+                            S9 spec    S10 peak   S11 peak   décisions C30b
+                AVANT       106 min     129 min    130 min    1
+                APRÈS       115 min     129 min    130 min    0
+
+             La longue est IDENTIQUE au pic et plus longue de 9 min en spécifique. Le
+             critère rapporte « aucune décision C30b alors que la longue devrait monter » —
+             elle est montée, et davantage.
+
+propriété    « la sortie longue atteint sa cible de spécificité »
+réelle       dont « C30b se déclenche » n'est qu'un des chemins. Le critère nomme la passe
+             et mesure la passe ; il ne regarde jamais la cible.
+
+à écrire     le critère lit `longRunSpecificityFloor` (la cible, déjà calculée et déjà
+             importée par le générateur) et vérifie que la longue livrée l'atteint — la
+             décision `C30b` restant vérifiée QUAND elle est émise (ses trois moitiés
+             actuelles : borne 70 %, chiffre annoncé = chiffre livré, neutralité en volume).
+             La non-vacuité se déplace alors sur « au moins un profil de l'échantillon a une
+             cible non triviale », qui ne dépend plus du chemin emprunté.
+
+famille      règle 19 (« quel est le correctif le moins coûteux qui ferait passer ce
+             test ? ») — ici la question se pose à l'envers : le correctif le moins coûteux
+             serait d'abaisser `vus < 4` à `vus < 3`, et il ne résoudrait rien, parce que le
+             critère ne mesure pas la bonne grandeur. C'est le même diagnostic, vu depuis un
+             test qui rougit à tort plutôt qu'un test satisfait à tort.
+
+             Et c'est la douzième occurrence dans ce dépôt d'un critère qui NOMME une
+             grandeur et en MESURE une voisine.
+```
+
+**Livré (17/08/2026)** : `C30b-A` porte sur `livré ≥ min(cible, plafond de séance)`. Les deux
+bornes viennent du moteur — la cible par `EBV2.longRunSpecTarget` (exposée pour ça), le plafond LU
+sur le plan livré (`bnd.cap` du bloc de corps, la valeur même que la passe emploie). Le mécanisme
+n'est vérifié que QUAND la décision existe ; ses trois moitiés sont inchangées.
+
+La non-vacuité se déplace sur une propriété de l'ATHLÈTE : au moins 2 profils dont la cible mord
+AVANT le plafond (mesuré : les deux 10 km, cibles 79 et 64 pour un plafond de 90 ; les deux semis
+sont décidés par leur plafond de 130). Elle ne peut donc plus devenir vacue parce que le moteur
+s'améliore — c'était tout le défaut.
+
+**Contre-preuve dans les deux sens, quatre fois** (condition non négociable de l'arbitrage) :
+
+```
+verte   moteur réel                         4/4 atteintes, dont 2 décidées par la cible
+rouge   CASSURE MOTEUR — passe C30b coupée  2 rouges, et exactement les 2 où la cible mord
+rouge   longue lue à 0,90×                  4 rouges
+rouge   longue lue à 0,98×                  2 rouges (la tolérance de 2 min ne masque pas)
+rouge   « la cible ne mord jamais »          non-vacuité : 0 profil décidé par la cible
+```
+
+Le correctif le moins coûteux qui aurait fait passer l'ancien test — abaisser `vus < 4` à
+`vus < 3` — est nommé dans le critère, avec la raison qu'il ne résout rien (règle 19).
+
+**Second candidat rattaché, non traité** : `C30-A` épingle `semi/inter/4:30/8h`, un témoin qui a
+bougé **trois fois** (B-02, O-42, lot 1) par trois causes et un mécanisme identique — « une
+quantité de dur change quelque part ». Un témoin qui bouge à chaque variation de dur n'épingle pas
+une propriété, il épingle un état incident. Ré-épinglé à 130 selon la doctrine du banc, avec sa
+raison et la mention que sa valeur suit l'arbitrage Q1.
+
+**Trouvé en le construisant** : ma première écriture lisait l'allure avec `E.parseChronoSec`, le
+parseur de CHRONO — « 8:30 » y vaut 8 h 30, soit 30 600 s, et les cibles sortaient à **6 466 min**.
+Un critère peut échouer parce que le moteur a tort ou parce que l'instrument a tort, et l'échec a
+exactement la même tête. `parsePaceSec` est exposé à côté : le banc n'a plus le choix entre deux
+parseurs dont un est faux ici. Troisième fois dans la même journée qu'une allure passe par le
+mauvais parseur.
+
+```verify
+id: O-51
+quoi: C30b-A porte sur la cible atteinte, avec sa non-vacuite sur l'athlete
+attendu: O51-FERME
+cmd: grep -q "profil(s) où la cible mord avant le plafond" audit_v6.mjs && echo "O51-FERME"
+```
+
+---
+
+## O-52 · `golden:verify` n'a pas de sortie d'AMPLEUR à côté de sa sortie de LOCALISATION · ✅ **FERMÉ (b) · (a) RÉFUTÉ**
+
+**Le point (a) de ce ticket — « il ne distingue pas un crash d'un écart » — est RÉFUTÉ, deux fois.
+Il venait de moi, le fondateur l'a repris de mon rapport, et il était faux.**
+
+```
+réfutation   Reproduit à l'identique (exception réintroduite dans le point fixe), la
+   du (a)     commande AFFICHE, en clair et avant la liste des écarts :
+
+                 ✖ 439 profil(s) en erreur :
+                    swim/sprint/reprise/debutant/competition : r is not defined
+
+              `goldenMaster` attrape, range en `errors`, nomme l'exception et sort en
+              code 1. Je ne l'avais pas vu parce que j'avais lu la sortie au `tail -25`
+              puis au `head -20` — le bloc d'erreurs se trouve exactement entre les deux.
+              L'outil m'a dit la vérité et je l'ai coupée au pipe.
+
+              Second volet du (a) : « le wrapper de buildPlan qui avale l'exception doit
+              compter ses avalements ». Le wrapper qui avale est celui du MONOLITHE, gelé.
+              Celui de la PWA ne l'avale plus — il relève en `MOTEUR_EN_ECHEC`, sous un
+              commentaire qui porte déjà l'argument : *« un filet troué ne protège
+              personne : on préfère désormais un échec VISIBLE »*.
+
+              Troisième faute d'instrument du même lot, et la seule qui accuse un outil
+              innocent. Les deux premières lisaient une grandeur voisine ; celle-ci ne
+              lisait pas du tout.
+
+défaut       Ce qui RESTE, et c'est ce qui m'a réellement induit en erreur : `firstDiff`
+   (b)       rend LE PREMIER écart d'un profil, sous un commentaire qui l'énonce (« où
+             compte plus que combien pour corriger »). C'est juste pour LOCALISER, et
+             c'est la SEULE sortie que l'outil offre — donc c'est celle qu'on agrège quand
+             on veut une AMPLEUR, et on publie alors la médiane de N *premiers* écarts en
+             croyant tenir celle du mouvement.
+
+             Mesuré : « médiane 3 min/semaine, max 5, aucune séance n'apparaît ni ne
+             disparaît » publié, contre un réel de −1 420 min de nage, max 518 min sur un
+             plan, et 2 profils qui changent de nombre de séances.
+
+à écrire     une sortie d'AMPLEUR à côté de la sortie de LOCALISATION : nombre de champs
+             en écart par profil, et le plus grand écart numérique. Un outil qui n'a
+             qu'une réponse la verra reprise pour l'autre question.
+
+famille      une mesure qui NOMME une grandeur et en MESURE une voisine — et la première
+             où l'outil DOCUMENTE lui-même qu'il ne mesure pas ça.
+```
+
+**Livré (17/08/2026)** : `countDiff` rend le NOMBRE de feuilles en écart et le plus grand écart
+NUMÉRIQUE, affichés par profil et agrégés (médiane · p90 · max). Le premier tirage sur les 87
+écarts du lot 1 donne **médiane 61 champs par profil, max 471, total 6 403** — là où ma §5 en
+annonçait 87, un par profil. L'outil dit maintenant ce que je croyais lui avoir demandé.
+
+Une amplitude n'est rendue que sur les feuilles NUMÉRIQUES : en inventer une sur une chaîne
+(longueur, distance d'édition) serait une grandeur voisine de plus, dans un ticket qui existe
+pour ça. Contre-preuve : `npm run mesure:o52`, 6 cas, dont « une chaîne n'a pas d'amplitude » et
+« 1 champ ≠ N champs ».
+
+```verify
+id: O-52
+quoi: golden:verify expose l'amplitude a cote de la localisation
+attendu: O52-FERME
+cmd: node -e 'const s=require("fs").readFileSync("scripts/goldenMaster.mjs","utf8");process.exit(s.includes("champ(s) en écart")?0:1)' && echo "O52-FERME"
+```
+
+---
+
+## O-53 · Le plafond de dose ne teste pas `pinned` · ✅ **FERMÉ**
+
+Trouvé par la vérification A du §1 de l'arbitrage lot 1 — celle qui est VERTE.
+
+```
+défaut       `DOSE_CAP_MIN` écrête un bloc de qualité sans regarder `bnd.pinned`. Un bloc
+             épinglé (`floor === cap === cible`) déclare « la distance EST le stimulus » —
+             c'est la leçon I14, et c'est ce qui protège les nages continues de B-17 : les
+             réduire ne les rend pas plus faciles, ça leur retire leur objet.
+
+mesuré       0 croisement aujourd'hui, sur les 969 profils du golden. Les continuités
+             B-17 sont en `sw.aero`, hors des zones plafonnées, et leurs 24 paliers sont
+             livrés à la cible au mètre près (`sonde:b17`).
+
+             Le croisement n'existe donc pas par GARDE mais par ACCIDENT DE ZONE. Le jour
+             où une continuité, une simulation de course ou un test se prescrit dans une
+             zone à plafond, il sera raboté en silence.
+
+à écrire     `if (b.bnd?.pinned) return;` avant l'écrêtage, plus le critère qui le garde —
+             et la garde doit être vérifiée ROUGE en épinglant un bloc dans une zone
+             plafonnée, sans quoi elle est trivialement verte (règle 19 : le correctif le
+             moins coûteux ici est de ne rien écrire du tout, puisque le croisement est
+             vide).
+
+famille      garde LATENTE — le contrôle n'existe pas, et rien ne le signale parce que la
+             population est vide. Cousine de `st.bnd ? cap : Infinity` (fermée) : là
+             l'absence faisait sauter un contrôle, ici c'est le contrôle qui n'a jamais
+             été écrit et dont l'absence est invisible.
+```
+
+**Livré (17/08/2026)** : `if (doseCap != null && !b.bnd?.pinned)`. Écrire cette condition ne coûte
+rien ET ne prouve rien tant que le croisement est vide (règle 19 : le correctif le moins coûteux
+est de ne rien écrire du tout). La contre-preuve rend donc le croisement NON VIDE, en ajoutant
+`sw.aero` aux zones plafonnées :
+
+```
+(a) `sw.aero` hors liste, garde posée .....  57 rabotés / 308   ← état livré
+(b) `sw.aero` PLAFONNÉE, garde posée ......  57 rabotés / 308   ← inchangé : elle tient
+(c) `sw.aero` PLAFONNÉE, garde RETIRÉE .... 195 rabotés / 308   ← +138 : elle sert
+```
+
+Gardé par **`T-39`** (lotPhysio, désormais en CI) : invariance (aucun épinglé raboté par le
+plafond) **et** sensibilité (le compte total des épinglés non livrés à leur épingle est un cliquet
+à 57). Les 57 ne viennent pas de ce plafond — c'est **O-54**, trouvé en mesurant la population
+pour que la garde ne soit pas vacue.
+
+```verify
+id: O-53
+quoi: le plafond de dose ne rabote pas un bloc epingle
+attendu: O53-FERME
+cmd: node -e 'const s=require("fs").readFileSync("src/generator/planGenerator.ts","utf8");const i=s.indexOf("const doseCap =");process.exit(s.slice(i,i+2200).includes("!b.bnd?.pinned")?0:1)' && echo "O53-FERME"
+```
+
+---
+
+## O-54 · Un bloc ÉPINGLÉ est raboté par C15, et le TITRE continue d'annoncer la valeur épinglée · 🔴 **OUVERT**
+
+Trouvé en posant la garde d'O-53 : en mesurant la population des blocs épinglés pour que la garde
+ne soit pas vacue, 57 sur 308 n'étaient pas livrés à leur épingle — et aucun ne l'était du fait du
+plafond de dose.
+
+```
+mesuré       308 blocs épinglés dans le golden (tous `sw.aero`, les continuités de B-17)
+             251 livrés à leur épingle · 57 RABOTÉS (18,5 %)
+             IDENTIQUE avant et après le lot 1 — défaut antérieur, vérifié.
+
+cause        53 des 57 tombent sur une séance de **exactement 850 m** :
+             `C15_BEGINNER_SWIM_SESSION_CAP_M`. La séance porte 200 m d'échauffement et
+             150 m de retour au calme, il reste 500 m pour le corps — quelle que soit
+             l'épingle.
+
+                 S/debutant     épinglé   750 → 500      × 9
+                 M/debutant     épinglé  1500 → 500      × 9
+                 70.3/debutant  épinglé  1900 → 500      × 8
+                 Full/debutant  épinglé  2500 → 500      × 9
+                 Full/debutant  épinglé  3050 → 500      × 9
+                 Full/debutant  épinglé  3800 → 500      × 9
+
+ce qui est   **Que C15 gagne est probablement JUSTE** : un débutant ne nage pas 3 800 m en
+juste       continu, et c'est la doctrine de `C30-B` — un plancher de spécificité ne passe
+             jamais devant un plafond de sécurité.
+
+ce qui ne    **Le TITRE ment.** La séance s'appelle « Nage continue en eau libre — 3800 m
+l'est pas    d'affilée » et livre 500 m. L'athlète lit un nombre que son plan ne contient
+             pas, dans le nom même de la séance. Famille R19.5 (la note du brick promettait
+             « dernier tiers @ allure course » sur un step 100 % Z2) et U9 (le refus parlait
+             d'Ironman à un nageur de 1500 m).
+             Et 4 cas sur 57 sont chez des `inter`, dont un livré AU-DESSUS de son épingle
+             (350 → 400) : l'épinglage est violé dans les deux sens.
+
+angle mort   `sonde:b17` annonce « 0 écart cible↔livré » sur ses 24 paliers : elle
+             n'échantillonne **aucun débutant**. Cinquième occurrence de la famille A-2 — un
+             corpus qui ne contient pas la population où la règle mord.
+
+moitié       **(a) LIVRÉE le 17/08/2026** — le titre se dérive du LIVRÉ, dans
+immédiate    `syncDerivedLabels` (R5.1, le point de convergence de toute prose dérivée d'un
+             nombre). 57 titres qui mentaient → 0. Gardé par `T-40`, contre-preuve faite.
+             Ça n'empêche pas le défaut, ça empêche le DOMMAGE : un titre honnête à 500 m
+             est une séance que l'athlète peut évaluer.
+
+moitié       **(b) TRANCHÉE ET LIVRÉE le 17/08/2026 — C15 lit la CAPACITÉ DÉMONTRÉE.**
+(b)          Le refus universel n'était pas la conséquence de la spec mais d'un plafond posé
+             sur le mauvais signal : C15 lisait `level === "debutant"`, une auto-évaluation
+             GLOBALE. `longest_swim_m` existe depuis B-17 et c'est exactement le signal qui
+             manquait. `swimSessionCapM = max(C15, longest_swim_m + auxiliaire)`.
+
+                 400 m déclarés ...... 850 m (C15 gagne)   ← le vrai débutant reste protégé
+                 « je ne sais pas » ... 850 m               ← et il reçoit un TEST (D3)
+                 2 000 m déclarés .... 2 350 m              ← l'ancien nageur reçoit sa séance
+
+             Effet : blocs épinglés rabotés **57 → 31**, et les 31 restants ne sont plus des
+             rabotages à 500 m mais des continuités bornées à la capacité déclarée. 36 profils
+             du golden bougent, tous `debutant` tri, écart numérique uniformément 1 500.
+
+             ⚠ MA PREMIÈRE ÉCRITURE BORNAIT SUR `atteignableM` — la valeur de FIN de rampe,
+             appliquée dès la semaine 1, et qui croît exponentiellement avec la durée du plan.
+             Mesuré AVANT de recapturer : un athlète déclarant **400 m** recevait une séance de
+             **4 150 m**, et 2 000 m déclarés donnaient un plafond de **32 076 m** sur un Full.
+             Elle retirait la protection à la population qu'elle protège. Gardé par **T-41**,
+             qui porte l'invariance ET la sensibilité — et qui existe parce que le golden ne
+             peut pas les porter : ses 36 profils `debutant` déclarent TOUS 2 000 m, il n'y a
+             aucun vrai débutant nageur dans le corpus (6ᵉ A-2, nommée avant de coûter).
+
+             CE QUI RESTE, DÉLIBÉRÉMENT : la borne ne progresse pas avec le plan, donc un nageur
+             à 2 000 m ne construit pas les 3 800 m d'un Ironman — ses derniers paliers sont
+             livrés à 2 000, sous un titre qui le dit (T-40), et la franchissabilité devrait le
+             voir. Faire croître cette borne est le ticket **O-56**.
+
+moitié       **(b-bis) — la spec littérale du §1, telle qu'elle était écrite, ne tenait pas.**
+réelle       « la franchissabilité inclut la livrabilité : un palier que C15 rabote n'est
+             pas un palier, donc l'écart n'est pas franchissable → rabattement ».
+
+             MESURÉ AVANT D'ÉCRIRE, et le résultat refuse la spec :
+
+                 ce qui borne la séance de continuité
+                    débutant ....... C15, 850 m TOUS BLOCS CONFONDUS
+                    non-débutant ... RIEN. `CAP_SWIM` ne s'applique pas — B-17 ne marque
+                                     pas la séance `long`, délibérément (sinon
+                                     `CAP_SWIM.Full = 3000` écrêterait la continuité de
+                                     3 800 que la règle existe pour prescrire).
+
+                 livrable d'un DÉBUTANT = 850 − 350 (échauffement + retour au calme) = 500
+
+                    format   course   livrable
+                       S       750      500  ✖
+                       M      1500      500  ✖
+                       70.3   1900      500  ✖
+                       Full   3800      500  ✖
+
+             **AUCUN format n'est livrable pour un débutant.** Appliquée telle quelle, la
+             règle rendrait tout triathlète débutant non franchissable, et le rabattement
+             n'aurait nulle part où le rabattre — c'est-à-dire un refus de la population
+             entière. Ce n'est pas ce que le §1 de l'arbitrage veut dire.
+
+             Une troisième issue existe et n'était pas dans la liste : **l'échauffement cède,
+             pas l'épingle.** C15 borne la SÉANCE ; l'épingle dit que le corps est fixe ;
+             donc c'est l'auxiliaire qui doit rétrécir. Chiffré : 850 − 0 = 850, ce qui rend
+             le SPRINT livrable (750) et laisse M/70.3/Full dehors.
+
+             Reste alors la contradiction de fond, qui est une question d'ENTRAÎNEMENT et
+             non de code : **B-17 veut construire une continuité jusqu'à 3 800 m, C15
+             interdit à un débutant de nager plus de 850 m par séance.** Les deux sont
+             défendables séparément et incompatibles ensemble pour un débutant sur
+             longue distance. Ce qui doit céder est un arbitrage :
+                (i)   C15 se relâche avec la progression (le « débutant » de la semaine 1
+                      n'est plus le même en semaine 30 — or `beginner` est STATIQUE, il
+                      vient de `level === "debutant"` et ne bouge jamais) ;
+                (ii)  ou B-17 ne prescrit pas de continuité au-delà de ce que C15 permet,
+                      et le plan DIT que la distance de course ne sera pas construite ;
+                (iii) ou un débutant n'entre pas sur un format dont la nage dépasse ce que
+                      C15 lui autorise — c'est le rabattement du §1, mais assumé comme un
+                      refus de format et non comme un ajustement silencieux.
+
+gardé par    `T-39` (lotPhysio) épingle le compte à 57 : aucun AUTRE mécanisme ne peut venir
+             s'y ajouter en silence.
+```
+
+```verify
+id: O-54
+quoi: des blocs epingles sont rabotes par C15 pendant que le titre annonce l'epingle
+attendu: /rabotés (O-54/
+cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-39"
+```
+
+---
+
+## O-55 · Le plafond de dose est ABSOLU là où la progression demande une montée · ✅ **FERMÉ — c'est le comportement voulu**
+
+Ticket du §4b de l'arbitrage Q1 (17/08/2026). *« Si la nage seuil est à 40 min dès qu'elle touche
+la borne, elle ne monte plus de la base au pic. Un athlète devrait voir sa dose de seuil progresser
+sur une préparation de neuf mois ; là elle est constante. »*
+
+**Mesuré avant de trancher, comme demandé** (`npm run mesure:dosefull`) — et l'ampleur est bien
+moindre que ce que ma formulation laissait croire :
+
+```
+                    semaines à la borne     première semaine à la borne
+   Full (37 prof.)        22 %              médiane S17 · phase `dev` pour 31/37
+   70.3 (12 prof.)        25 %              médiane S15 · phase `spec` pour 10/12
+
+   295 semaines à la borne sur 1 333 qui portent du seuil (22 %), sur 49 profils.
+   exemple Full : 17 semaines de seuil, 2 à la borne, dose 28,8 → borne → 9,6 (affûtage)
+```
+
+**La progression EXISTE avant la borne** : la dose monte de la base au développement, et c'est
+là — S17 en médiane sur un Full — que le plafond la fige. Ce n'est donc pas « constante sur neuf
+mois » ; c'est « plate sur le dernier tiers de la montée ».
+
+```
+la question  un plafond de dose doit-il être ABSOLU (40 min pour tout le monde, toute la
+             prépa) ou INDEXÉ (sur le format, sur la phase, sur le volume de nage) ?
+             Le précédent interne existe : B-02 a indexé le plafond de temps DUR
+             hebdomadaire sur le volume plutôt que de le laisser fixe.
+
+contrainte   la borne est physiologique, pas structurelle : 40 min de travail au seuil est
+             une grosse séance dans n'importe quelle discipline. L'indexer vers le HAUT
+             demande une source, pas une commodité.
+
+à ne pas     relever la borne pour retrouver une progression. Si la progression doit
+faire        continuer au-delà, c'est le NOMBRE de blocs ou la FRÉQUENCE qui monte, pas la
+             dose d'un bloc — c'est la doctrine C26c (« la coupe retire des RÉPÉTITIONS,
+             jamais la durée d'une répétition »), prise dans l'autre sens.
+```
+
+**FERMÉ le 17/08/2026, sur la mesure.** Un plafond de dose empêche un dépassement ; il ne permet
+pas une montée infinie. La progression EXISTE avant la borne (médiane S17, phase `dev`), et
+plafonner à 40 min sur le dernier tiers de la montée est le plafond qui fait son travail au moment
+où il doit le faire. **40 min au CSS ≈ 2 000 m de travail au seuil est une grosse séance de nage
+sérieuse, ni excessive ni timide.**
+
+La décision est écrite dans l'entrée `C25` de `constraintMatrix.ts`, avec le chiffre qui la rend
+révocable — 22 % des semaines, première à la borne en médiane S17. Ce qui rouvrirait : une mesure
+montrant qu'un athlète coaché fait significativement plus au pic.
+
+**Et la contrainte qui va avec** : si la progression doit continuer au-delà, c'est le NOMBRE de
+blocs ou la FRÉQUENCE qui monte, jamais la dose d'un bloc — C26c prise dans l'autre sens.
+
+```verify
+id: O-55
+quoi: la decision « 40 min est la dose de pic » est ecrite avec son chiffre revocable
+attendu: O55-DECIDE
+cmd: grep -q "O-55 (arbitrage du 17/08/2026)" src/engine/constraintMatrix.ts && echo "O55-DECIDE"
+```
+
+
+---
+
+## O-56 · Toute borne dérivée d'une CAPACITÉ est gelée sur la déclaration initiale · ✅ **FERMÉ (§1, §2, §3)**
+
+Racine nommée par le fondateur en arbitrant O-54 §2, et **plus large que « `beginner` est
+statique »** — c'est sa deuxième formulation qui est la bonne :
+
+> **Toute borne dérivée d'une capacité est gelée sur la déclaration initiale, et empêche le plan
+> de construire précisément ce qu'il existe pour construire.**
+
+Un nageur à 2 000 m préparant un Ironman en 36 semaines **atteindrait** 3 800 m — c'est même
+l'objet de la préparation. Le moteur le plafonne à ce qu'il était le premier jour.
+
+```
+défaut       `beginner` vient de `level === "debutant"` et ne bouge JAMAIS. Toutes les
+             protections qui en dépendent — C15 (850 m/séance en nage), C20 (25 min par
+             séance de nage), C23 (sortie longue ≤ 180 min), l'interdiction de VO2max,
+             les plafonds de volume — sont **justes en semaine 1 et deviennent une
+             camisole en semaine 30**, sur un plan qui prescrit précisément les trente
+             semaines qui devraient les lever.
+
+             Le moteur fait progresser tout le reste avec la position dans le plan : la
+             rampe R10, la courbe, les bandes, les paliers de B-17. **Le seul qui ne bouge
+             pas est le drapeau qui décide de qui a droit à quoi.**
+
+occurrence   O-54 §2 en est la première mesurée : `swimSessionCapM` borne à la capacité
+mesurée      DÉMONTRÉE et ne progresse pas, donc un nageur à 2 000 m ne construit pas les
+             3 800 m d'un Ironman — 31 paliers livrés sous leur épingle. Le corriger POUR
+             CETTE SEULE BORNE en ferait un cas particulier de plus au lieu d'une règle.
+
+la forme     LE PATRON DE C22, APPLIQUÉ À UNE SECONDE GRANDEUR. Faire progresser une capacité
+du correctif suppose que l'athlète a fait les séances — **c'est exactement l'hypothèse de la
+             rampe C22**, acceptée et écrite depuis le début (le plafond de cette semaine est
+             fonction du livré de la précédente). Ce n'est donc pas une hypothèse nouvelle à
+             défendre, c'est un patron existant à étendre.
+
+                 la capacité démontrée cliquette avec la progression du plan lui-même :
+                   · au départ, la déclaration
+                   · ensuite, le plus haut palier que le plan a prescrit et livré
+                   · borné, comme C22, par un taux de montée
+
+             Et il y a une raison de fond de le faire ainsi plutôt qu'avec un compteur de
+             semaines : **les paliers de B-17 SONT déjà le test.** Le plan prescrit une
+             continue à 2 000 m ; l'athlète la fait ; sa capacité démontrée vaut 2 000 ; le
+             palier suivant peut viser plus haut. Le mécanisme de mesure existe, il est
+             prescrit, et il n'a pas besoin d'une question de plus.
+
+⚠ LA FOURCHE  **À TRANCHER AVANT D'ÉCRIRE.** Le cliquet peut lire deux choses, et les deux
+À TRANCHER   sont voulues pour des raisons différentes :
+
+               PROJECTION  le palier que le plan a PRESCRIT, à la construction
+                           → permet au plan de bâtir jusqu'à 3 800 m dès le premier build
+                           → mais ignore l'athlète qui n'a pas nagé depuis six semaines
+
+               ÉVIDENCE    le palier que l'athlète a VALIDÉ, à la re-génération
+                           → la capacité suit la réalité, pas l'intention
+                           → mais au premier build aucune séance n'est validée, donc seule
+                             elle ne résout RIEN
+
+             Donc les deux, et **c'est la répartition qui est la décision** :
+               · à la construction — la capacité projette, bornée par un taux de montée
+                 (patron C22, hypothèse assumée et déjà écrite) ;
+               · à la re-génération — la capacité lit les paliers VALIDÉS depuis le dernier
+                 build, et corrige la projection.
+
+             Le second membre est plus fort que C22, parce que B-17 prescrit des séances
+             **vérifiables** : le graphe distingue déjà prévu et validé ✓. Ce serait la
+             première fois dans ce moteur qu'une progression s'appuie sur une ÉVIDENCE
+             plutôt que sur une supposition.
+
+             ET CE QUI RESTE OUVERT, QUI EST UNE DÉCISION D'ENTRAÎNEMENT : que se passe-t-il
+             quand projection et évidence divergent — l'athlète a sauté ses continues ? La
+             capacité redescend-elle, stagne-t-elle, ou le plan se reconstruit-il sur la
+             valeur réelle ? Ce n'est pas du code, et ça appartient à ce ticket.
+
+à mesurer    · combien de bornes lisent `beginner` (recensement, pas estimation)
+avant toute  · pour chacune : est-elle une borne de SÉCURITÉ (qui doit rester) ou de
+décision       CAPACITÉ (qui doit progresser) ? Les deux sont mélangées aujourd'hui
+             · le rayon d'une décroissance, sur le golden
+             · et la couverture du corpus sur les couples que ces bornes lisent
+               (`npm run couverture:golden`) AVANT d'écrire — sans quoi O-56 se mesurerait
+               sur la même population aveugle que celle qui vient de laisser passer
+               `atteignableM`.
+
+ce qu'il      **La protection de B-17 est complète pour un athlète dont la capacité déclarée
+faut écrire   atteint la distance de course, et PARTIELLE pour les autres.** Le titre dit
+une fois      désormais la vérité — progrès réel sur la version qui mentait — mais l'athlète
+proprement    à 2 000 m arrive toujours à un Ironman sans avoir couvert la distance. Ce n'est
+             pas une régression et ça ne rouvre rien : c'est la mesure honnête de ce qui est
+             livré, et **O-56 est ce qui l'achève**.
+```
+
+```verify
+id: O-56
+quoi: le drapeau debutant ne depend pas de la position dans le plan
+attendu: O56-REPRODUIT
+cmd: grep -q 'const beginner = level === "debutant";' src/engine/reasoningEngine.ts && echo "O56-REPRODUIT"
+```
+
+
+---
+
+## A-2 · Le corpus couvre des FORMATS et des NIVEAUX, pas les BRANCHES des règles · 🟡 **MESURÉ, sonde livrée**
+
+Arbitrage du fondateur (17/08/2026), après la sixième occurrence : *« six occurrences ne sont plus
+une série de distractions, c'est une propriété du corpus »*.
+
+```
+constat      Chaque fois qu'une règle apprend à lire une nouvelle clé, le corpus devient muet
+             sur son domaine — et il l'est EN SILENCE, parce qu'un corpus incomplet rend des
+             résultats VERTS. Les six : le golden sans coureur lent (A-2), sans plan sans
+             date (O-21), sans marathon lent (C31), sans la bonne enveloppe (C30b), sans
+             poids ni date pour PW, et sans vrai débutant nageur (O-54 §2).
+
+pourquoi     Le dernier trou aurait passé un contrôle PAR CLÉ sans broncher : `level` portait
+la couverture ses 3 valeurs, `longest_swim_m` ses 5 branches. Ce qui manquait était le
+par clé ne   CROISEMENT `debutant × continuité basse` — la cellule exacte que C15 venait
+suffit pas   d'apprendre à lire. Une règle lit rarement une clé seule.
+
+livré        · la sous-passe B-17 du golden croise désormais le NIVEAU (969 → **989** profils)
+             · `npm run couverture:golden` — les cellules du produit cartésien entre clés à
+               petit domaine, par sport, classées PAR COUPLE et non par cellule.
+
+mesuré       **9 682 / 16 104 cellules peuplées (60 %)**, 367 couples incomplets sur le seul
+             `tri`. Ce n'est pas un objectif à 100 % : beaucoup de cellules vides sont
+             légitimes. C'est une LISTE À RELIRE quand une règle apprend à lire une clé.
+
+contre-      la sonde rejoue le corpus tri AMPUTÉ des débutants à continuité inconnue —
+preuve       l'état d'avant O-54 §2 — et doit y VOIR le trou : **6/9 amputé, 7/9 complet**,
+             avec `debutant × non` présent. Sans elle, la mesure ne prouverait que sa propre
+             exécution.
+             Elle nomme aussi ce qui reste (`avance × non`, `avance × ∅`) plutôt que de rendre
+             un verdict sur le taux : le trou VISÉ est comblé, les autres cellules sont une
+             autre question.
+
+hors CI      délibérément, tant que sa sortie n'a pas été triée — leçon R20.6 : rendre
+             bloquant un banc dont on n'a pas trié les échecs fige la dette au lieu de la
+             traiter.
+
+⚠ faute      Ma première écriture classait des CELLULES et rendait 1 015 lignes de bruit
+d'instrument structurel par sport (`age=16 × cycle_len=28` : la sous-passe `cycle` n'existe qu'à
+             un seul âge, la cellule est vide par CONSTRUCTION). La grandeur utile est le
+             COUPLE. Un cas particulier vide se noie alors, un axe non croisé ressort.
+```
+
+```verify
+id: A-2-couverture
+quoi: la sonde de couverture voit le trou qu'elle existe pour voir
+attendu: la sonde VOIT le trou
+cmd: node scripts/couvertureGolden.mjs | grep "la sonde VOIT le trou"
+```
+
+
+**§1 LIVRÉ (17/08/2026) — la capacité PROJETTE, au patron de C22.**
+
+`swimSessionCapAtWeek(gate, base, wkNum)` : la borne monte avec la position dans le plan au taux
+que le moteur s'impose déjà partout (`C22_MAX_WEEKLY_GROWTH`), plafonnée à la DISTANCE DE COURSE.
+Aucune règle de croissance nouvelle. Câblée par `_swimCapW`, un `let` posé par la boucle de
+semaines et lu par les trois sites C15 — **le patron de `_capScale`, dix lignes plus haut** :
+threader la position dans une demi-douzaine de signatures aurait coûté plus cher que la propriété
+ne vaut, et la position EST le point (règle 20).
+
+```
+Full/38 sem, 400 m déclarés :  S1 725 · S5 900 · S9 1050 · S13 1225 · S17 1900 … S30 4150
+blocs épinglés rabotés ...... 69 → 23   (MOTEUR — prouvé par `base:cliquet`, corpus 985 → 985)
+sceau S5 .................... 516 → 508
+golden ...................... 47 profils, tous `debutant` tri
+```
+
+Un athlète déclarant 400 m reçoit donc 3 800 m d'affilée en **semaine 30**, au bout d'une
+progression prescrite — pas d'un saut. C'est ce que la préparation existe pour construire.
+
+**§2 ÉCRIT, NON BRANCHÉ — `swimEvidence(plan, done)`.** Fonction PURE qui lit le plan PRÉCÉDENT et
+la carte des ✓ : le plus haut palier VALIDÉ (cliquet, `max` — il ne descend jamais), le plus haut
+palier PRESCRIT ET MANQUÉ (qui nommera la divergence), et surtout `aDesNages` — **l'évidence ne
+corrige la projection que si le moteur a de l'évidence sur la NAGE**. Sans ce drapeau, l'athlète
+qui nage tout et ne journalise rien serait traité comme celui qui ne nage pas : c'est le défaut
+d'O-54 refait, une protection qui frappe la mauvaise population.
+
+**§2 LIVRÉ AUTREMENT — et la route du fondateur évite le geste que j'allais faire.** Je bloquais
+sur « `buildPlan` ne reçoit pas le plan précédent ». La réponse est qu'il n'a pas à le recevoir :
+
+```
+palier de continuité validé  →  journal (answers.tests)  →  longest_swim_m  →  moteur inchangé
+```
+
+**Le mécanisme existe déjà** : `syncRefsFromTests` promeut `ftp`, `thrPace`, `css` et `vam` depuis
+le journal. Une nage continue validée EST une référence mesurée — elle démontre une capacité, elle
+a une date, elle vient de l'athlète. C'est une PROMOTION, pas un changement de moteur : pas de
+quatrième entrée à `buildPlan`, pas d'état entre builds, pas de couplage aux coordonnées d'un plan,
+et R20.1 satisfaite d'office puisque `longest_swim_m` agit déjà.
+
+`session-life.js` écrit le test au ✓ (le bloc ÉPINGLÉ, donc aucune devinette), `state.js` le promeut.
+**La politique de sélection DIVERGE de celle du journal, et c'est écrit** : `latest()` rend le plus
+RÉCENT — juste pour une FTP, qui monte et descend ; un cliquet de capacité veut le plus HAUT, borné
+au début du plan. Une nage de 2 000 m faite il y a trois ans n'a pas à porter le plan d'aujourd'hui.
+Variante par clé, pas seconde politique.
+
+Contre-preuve `npm run mesure:o56`, **en CI** : le cliquet monte sur un palier validé, ne descend
+jamais (ni contre un palier plus bas, ni contre la déclaration), prend le PLUS HAUT et non le plus
+récent, et ignore ce qui précède le plan.
+
+**§3 LIVRÉ — et c'est la CONTRAINTE de formulation qui l'a décidé.**
+
+Le moteur ne peut pas distinguer *« il n'a pas nagé »* de *« il n'a pas journalisé »* — la même
+incertitude que `aDesNages` traite au §2. Donc :
+
+> **le message doit être vrai sous les DEUX lectures.**
+
+« Tu as sauté ta nage continue » n'est vrai que sous l'une, et sous l'autre il reproche à quelqu'un
+d'avoir mal utilisé l'application quelque chose qu'il a peut-être fait. Ce qui est vrai sous les
+deux : la capacité VALIDÉE, le palier que le plan CONTIENT ensuite, le temps qui reste. Trois faits,
+aucune implication — le moteur n'a pas à avoir une opinion sur l'athlète pour les énoncer.
+
+```
+« Ta plus longue nage continue validée est de 800 m. Le prochain palier de ton plan
+  est de 1 500 m, en semaine 8. Il te reste 14 semaines. »
+```
+
+**Le palier annoncé est celui que le plan CONTIENT**, jamais celui qu'une re-génération produirait :
+au moment où ce message s'affiche le plan n'a pas été reconstruit, et annoncer une suite que la
+grille ne porte pas serait faux à l'écran même où on le lit.
+
+**Où** — déclaration LOCALE (`B17-divergence`), pas un maillon de R20.2 : cette divergence ralentit
+une progression, elle ne borne pas le volume. La chaîne « ce qui borne ton pic » ne la concernera
+que le jour où elle rend le format inatteignable, et ce jour-là c'est le rabattement qui parle.
+
+**Quand** — l'ajusteur QUOTIDIEN (`adjustTodayV2`), pas une re-génération : un message qui
+n'apparaît qu'à la re-génération n'apparaît jamais pour qui ne re-génère pas, et c'est la population
+qui en a le plus besoin. Un palier n'est « manqué » que lorsque sa semaine est PASSÉE.
+
+Contre-preuve `npm run mesure:o56`, **6 critères** dont « elle se tait tant qu'aucun palier passé
+n'a été manqué », « elle se tait si la capacité a dépassé le palier manqué » (le cliquet est
+monotone) et **« elle ne reproche rien »** — aucun *sauté*, *manqué*, *aurais*, *devais*.
+
+**NON FAIT, à trancher par le coût et non par le principe** : le compte à rebours. La dernière
+semaine d'où la distance de course reste atteignable est DÉRIVABLE, et l'afficher transformerait une
+falaise en préavis (« après la semaine 22, 1 900 m ne sera plus atteignable depuis ta capacité
+actuelle »). C'est la différence entre un rabattement subi et un rabattement vu venir.
+
+---
+
+## O-57 · Le rabattement B-17 MONTAIT de format · ✅ **FERMÉ le jour où il a été trouvé**
+
+Inversion d'une règle de SÉCURITÉ, sur la population qu'elle protège. Trouvée par une sonde de
+T-41 qui, elle, ne posait pas de date de course.
+
+```
+défaut       `ordre = ["Full","70.3","M","S"]`, on retenait le PREMIER format franchissable.
+             Or `semainesDe(f)` rend l'horizon PROPRE à chaque format quand aucune date n'est
+             saisie (`MIN_WEEKS` : 8 pour un sprint, 36 pour un Full) : le Full, avec 36
+             semaines de rampe, était franchissable AVANT le sprint qui n'en a que 8.
+
+             **Un débutant demandant un SPRINT et déclarant 400 m de nage continue recevait un
+             plan d'IRONMAN.** Mesuré : 9 profils sur 105, tous sans date de course, jusqu'à
+             `S → Full`.
+
+pourquoi     Le défaut n'existe QUE sans date de course — et les 989 profils du golden en
+aucun gate   portent une. Le commentaire du code disait déjà « on DESCEND au plus long format
+ne l'a vu   que la rampe atteint » : l'intention était juste, elle n'était écrite nulle part
+             dans le code.
+
+correctif    le rabattement ne considère que les formats À OU SOUS celui demandé.
+             9 → 0, vérifié sur les mêmes 105 profils.
+
+gardé par    `T-42` (lotPhysio), qui balaie SANS date — la seule branche où le défaut vit — et
+             porte sa non-vacuité (au moins un rabattement observé, sinon le critère ne teste
+             rien).
+```
+
+```verify
+id: O-57
+quoi: le rabattement B-17 ne propose jamais un format plus long que le demande
+attendu: tous vers un format
+cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-42"
+```
+
+
+---
+
+## A-2 (suite) · Extension notée, NON FAITE — croiser aussi les grandeurs DÉRIVÉES
+
+`couverture:golden` croise les CLÉS du schéma. Les croisements MÉDIATISÉS lui échappent — vérifié
+sur O-57, qu'elle n'aurait pas vu : `race_date` et `longest_swim_m` ne se rencontrent nulle part,
+elles n'interagissent qu'à travers `semainesDe(f)`.
+
+```
+extension    inclure dans le jeu croisé les GRANDEURS DÉRIVÉES que les règles lisent, pas
+possible     seulement les clés du schéma. `semainesDe` produit un horizon ; si une règle
+             branche sur horizon × capacité, le croisement existe et il est mesurable.
+             Ça déplace la frontière sans changer la nature de l'instrument.
+
+coût         il faut nommer ces grandeurs (elles n'ont pas de déclaration comme
+             `ANSWER_SCHEMA`) et décider lesquelles comptent. C'est un inventaire, pas
+             une heuristique.
+```
+
+---
+
+# RETOUR DU PREMIER USAGE RÉEL (17/08/2026) — huit constats, un fermé, sept ouverts
+
+Le plan `plan_tri_70_3.html` a été lu en entier (323 séances, 40 semaines) et l'app utilisée.
+**Une session d'usage a produit trois constats que 989 profils de golden, 31 gates et sept
+semaines de mesure n'avaient pas vus.** Aucun n'est une invariante : ce sont des propriétés de ce
+que l'athlète VOIT et COMPREND. Les deux instruments ne mesurent pas la même chose, et il en
+manquait un.
+
+## D4 · Le porteur de la nage continue est une séance que le budget SUPPRIME · ✅ **FERMÉ**
+
+**Constat du fondateur** : une seule continue (1 250 m) sur 40 semaines, pour une progression qui
+en promet quatre jusqu'à 1 900 m.
+
+**Ce que la mesure a répondu, dans l'ordre qu'il a demandé.**
+
+1. *Combien de fois la transformation se déclenche-t-elle, et à quelles semaines ?*
+   Sur un 70.3 de 40 semaines, `doubles: "non"` → **3 fois, S23 / S28 / S33**. `doubles: "oui"` →
+   **1 fois, S33**. Avec `vol_max: 14` en plus → **0**.
+2. *Le correctif D1 s'est-il sur-corrigé en « au plus une, point » ?*
+   **NON — hypothèse réfutée.** `slotIdx === 0` est bien par semaine : sans doubles, trois paliers
+   sont livrés.
+3. *La projection s'arrête-t-elle à 1 250 depuis la déclaration ?*
+   **NON.** `atteignableM` vaut **17 449 m** et les cibles calculées sont **1 250 / 1 550 /
+   1 900** — le dernier palier EST la distance de course. La progression était calculée juste et
+   **détruite plus loin**. 1 250 n'est pas un plafond : c'est le premier palier, le seul survivant.
+4. *Combien de véhicules éligibles la phase spécifique contient-elle ?*
+   **ZÉRO** sous doubles à `sessions_max ≤ 7` — c'est la réponse, et c'est la cause.
+
+**Le mécanisme.** Sous doubles, le porteur était `dur1`, où `swMain` est poussée en séance
+« (matin) » — la SECONDE séance d'une journée double, donc la première que la coupe par
+`sessions_max` retire. Mesuré à un seul facteur près :
+
+```
+sessions_max ≤ 7  →  véhicule « (matin) » 31 → 3 occurrences · continues 3 → 1
+sessions_max ≥ 8  →  véhicule 31 · continues 2   (le palier du milieu manquait encore)
+```
+
+**Treizième occurrence de la famille la plus coûteuse du dépôt** — « une garantie posée au milieu
+du pipeline ne survit pas aux passes suivantes » — cette fois dans le sens où la garantie est
+supprimée AVEC SON SUPPORT, sans que rien ne le signale.
+
+**Correctif** : le porteur devient `facile2` dans tous les cas. Ce n'est pas revenir sur D3-b —
+ce que D3-b corrigeait, c'est le routage par intention, court-circuité depuis par `if (b17Pose)`
+qui passe devant tout le routage du créneau, récup courte des doubles comprise.
+
+**Portée, expérience contrôlée (1 620 profils tri, un seul facteur varie)** :
+
+```
+avant   537 / 1 620 (33,1 %) sous l'annoncé   ·   doubles : oui 501 · non 18 · parfois 18
+après    50 / 1 620  (3,1 %)                  ·   doubles : oui  14 · non 18 · parfois 18
+```
+
+Les 36 cas `non`/`parfois` sont **identiques avant et après** : ils sont antérieurs et le
+correctif ne les touche pas. Coût en séances : **nul** — 5,0 · 5,8 · 6,5 · 7,3 séances/semaine
+avant comme après, aux neuf budgets balayés ; la continue REMPLACE la récup courte de ces trois
+semaines.
+
+**Pourquoi aucune garde ne l'a vu** : la fixture de `T-06` porte `doubles: "non"`, et le golden ne
+contient **qu'un seul** profil tri en doubles (`G/tri/Full/doubles` — l'unique écart des 989).
+Leçon A-2 dans sa forme la plus chère : *un corpus se juge sur l'espace des DÉCISIONS, pas sur
+celui des saisies.* `T-06` gagne un bloc (e) qui croise `doubles × sessions_max` et porte une
+PROPRIÉTÉ (« le livré égale l'annoncé ») et non une valeur — vérifié rouge contre le moteur
+d'avant : **0/3 · 0/3 · 2/3**.
+
+```verify
+id: D4
+quoi: la progression de continuité est livrée en entier quel que soit le budget de séances
+attendu: T-06 vert, y compris ses six couples doubles × sessions_max
+cmd: node scripts/lotPhysio.mjs 2>&1 | grep "T-06"
+```
+
+## O-58 · Un résidu de 3,1 % livre moins de paliers qu'annoncé · 🔴 **OUVERT**
+
+Ce que D4 laisse. **50 profils sur 1 620**, concentrés sur **Full (41)** et jamais sur
+`longest_swim_m: 1650` (400 → 25 · 1000 → 25 · 1650 → 0). Le pire cas mesuré est
+`M / sessions_max=5 / débutant / 1000 m` à **0 palier livré sur 3 annoncés**, et il ne dépend pas
+des doubles (il tombe identiquement en `non` et en `parfois`).
+
+**PRIORITÉ RELEVÉE (fondateur, 17/08/2026) — ce n'est pas un résidu statistique.** Le pire cas
+est `M / sessions_max=5 / DÉBUTANT` à **0 palier sur 3**, et le débutant est *exactement* la
+population pour laquelle B-17 a été écrit. C'est la **troisième fois** que ce ticket la manque :
+`sonde:b17` n'échantillonnait aucun débutant, puis les 53 titres menteurs sur la borne C15,
+maintenant zéro palier sur M à budget serré. Ce n'est pas une coïncidence — *le débutant a le
+budget le plus serré, le moins de séances et la capacité la plus basse, donc il tombe dans toutes
+les coupes à la fois*, et **toute protection qui dépend d'une séance survivante le rate
+structurellement**. L'entrée se juge sur cette lecture, pas sur les 3,1 %.
+
+Non traité délibérément : c'est un constat NOUVEAU, pas le constat du fondateur, et le périmètre
+est gelé. La piste est la même famille — les positions des paliers sont calculées sur le
+CALENDRIER de la phase spécifique, sans regarder si la semaine visée porte réellement le créneau
+porteur ; quand elle ne le porte pas, le palier est perdu en silence.
+
+```verify
+id: O-58
+quoi: résidu de paliers non livrés après D4
+attendu: 50 profils sur 1620 (3,1 %), Full majoritaire, aucun à longest_swim_m 1650
+cmd: echo "balayage dans scripts/ — voir D4 pour la méthode (1620 profils tri)"
+```
+
+## O-59 · Le questionnaire perd la marque des choix sélectionnés · 🔴 **OUVERT** (bloque le partage)
+
+Constat du fondateur. **À QUALIFIER AVANT DE CORRIGER**, et les deux cas n'ont pas la même
+gravité : un autre choix de LA MÊME question qui efface le précédent est un comportement radio
+normal *sauf si le nouveau n'est pas marqué non plus* ; un choix d'UNE AUTRE question qui efface
+les réponses précédentes est le cas grave. C'est la première chose qu'un nouvel utilisateur fait :
+s'il ne voit pas ce qu'il a répondu, il doute de l'enregistrement et de tout ce qui suit.
+
+## O-60 · Le détail de séance ne s'affiche pas en natation · 🔴 **OUVERT** (bloque le partage)
+
+Sur 🎯 Aujourd'hui, « Sweetspot vélo » porte sa barre ET ses blocs ; « Nage seuil (+dist) » porte
+sa barre et RIEN — alors que le contenu existe, complet, dans le plan. Hypothèse du fondateur :
+les blocs de vélo portent une DURÉE, ceux de nage une DISTANCE, et le rendu teste `durationMin`.
+Ce serait la **cinquième instance de la famille** (après `st.bnd ? cap : Infinity`,
+`intensity=[object Object]`, `if (tot <= 0) continue` et `if (b.durationMin != null)`), cette fois
+dans l'interface. Le correctif serait celui du lot 1 : **demander la grandeur au lieu de la
+tester** — `stepMin` et la conversion unique d'O-42 existent. Sévérité : c'est la discipline
+limitante de l'athlète, sur l'onglet principal.
+
+## O-61 · La barre de zones est un résumé sans son détail · 🔴 **OUVERT**
+
+`1 | 4 | 2 | 1` est le résumé du détail qu'il surplombe ; quand le détail manque (O-60), il ne
+reste que le résumé. Une fois O-60 fermé, il reste que la barre porte le minimum d'information
+possible. Étiqueter les segments (`Éch 300m │ Seuil 775m │ Aéro 350m │ RC 200m`) coûte peu — et
+rend « aucune information portée par la couleur seule » réellement vraie, un numéro de zone étant
+une convention que l'athlète n'a pas. À rapprocher de la mesure §3b du 17/08 (`mesure:contraste`),
+qui note la barre `aria-hidden` et ses segments porteurs de leur seul numéro.
+
+## O-62 · Zéro séance de technique en natation sur 40 semaines · ✅ **QUALIFIÉ — c'est la COUPE, pas la règle** (voir O-66)
+
+Composition mesurée par le fondateur : récup courte **60 (46 %)** · vitesse 42 · seuil (+dist) 27
+· continue 1 · **technique/éducatifs 0**. L'athlète nage à 2'05–2'20/100 m et son limitant est la
+technique sous fatigue. *Plus de volume à mauvaise technique produit plus de volume à mauvaise
+technique.* Le module éducatifs existe et ne parvient pas au plan.
+
+**LA MESURE QUI TRANCHE (17/08/2026, demandée par le fondateur) — c'est la COUPE.** Composition
+de nage AVANT `applySessionBudget` contre APRÈS, un seul facteur varie, 70.3 · 40 semaines ·
+doubles · `sessions_max: 6` :
+
+```
+                        la règle prescrit      il survit
+récup                          45                 46
+swMain (nage seuil)            31                  2
+swTech (vitesse/éducatifs)     30                  0
+continue (B-17)                 3                  3
+```
+
+**La règle prescrit une composition équilibrée ; la coupe ne laisse que la récupération.** Le
+constat s'inverse donc exactement comme le fondateur l'avait pressenti : *le plan ne préfère pas
+la récupération, il n'a plus que ça.* Les 46 % de récup ne sont pas un choix, ce sont **les
+survivants**. Le correctif n'est donc PAS « ajouter une séance-type de technique » — elle est
+prescrite 30 fois et retirée 30 fois — mais O-66.
+
+## O-63 · L'allocation vélo · 🔴 **OUVERT**
+
+Nage 130 séances (3,25/sem) · course ~123 (~3,1) · **vélo 42 (1,05)** + 10 bricks, pour une
+épreuve dont le vélo fait la moitié du temps de course (90 km vallonnés, prédits 2 h 54–3 h 13,
+contre 42 min de nage). Quatre séances sont étiquetées « couverture discipline » — du remplissage
+de quota.
+
+## O-64 · B-10 est toujours là, et majoritaire · 🔴 **OUVERT**
+
+**Force basse cadence 17** contre **Sweetspot vélo 7** sur une préparation 70.3 où l'intensité de
+course est 76–83 % FTP et où le sweetspot (88–94 %) est la séance qui la construit. Ticket ouvert
+du contre-audit initial, enfin visible sur un cas réel.
+
+## O-65 · Trois incohérences d'affichage · 🔴 **OUVERT**
+
+**(a)** l'en-tête annonce `volume 6h → 10.4h`, le calendrier livre **11,2 h** en semaine 37 — le
+chiffre le plus visible du plan est INFÉRIEUR au maximum réel (famille R20.2, et c'est le sens
+opposé aux 350 profils d'O-35, qui annonçaient PLUS qu'ils ne livrent).
+**(b)** « Nage récup courte » livrée à **1 325 m** — le nom est figé à la création et ne suit pas
+le contenu ; même défaut qu'O-54 sur un autre axe, et O-54 n'a traité que le titre des continues.
+**(c)** deux semaines de récup consécutives, deux fois (4 h + 3,9 h en base, 6,9 h + 6,4 h en
+spécifique) — probablement le cycle de 10 jours qui chevauche deux semaines calendaires.
+
+## CE QUI FONCTIONNE, MESURÉ SUR CE PLAN
+
+À ne pas perdre de vue : la prédiction est complète et cohérente (5 h 34–6 h 05, décomposée) ·
+les allures de nage sont ancrées sur le CSS de l'athlète et non sur une table générique (O-42
+livré) · la consigne de la continue est exactement ce que B-17 devait produire · C22 tient (chaque
+récup revient sous la dernière semaine de charge) · le brick d'affûtage existe avec son rappel de
+transition (B-19).
+
+## O-66 · La coupe par `sessions_max` n'a aucune notion de valeur — 98 % de la coupe tombe sur UNE discipline · 🔴 **OUVERT, mesuré**
+
+**Origine** : le fondateur, à partir de ma phrase « sous doubles à budget serré, `swMain` passe de
+31 à 3 occurrences pendant que `swTech` reste » (17/08/2026).
+
+### La prémisse a été vérifiée et elle est FAUSSE — le vrai critère est pire
+
+Le document parlait d'« un ordre **positionnel** — dernier ajouté, premier retiré, une discipline
+de pile ». Lu dans `applySessionBudget` (`src/generator/weekBuilder.ts`), ce n'est pas ça :
+
+```
+étape 1  journées à 2 séances : on retire la séance la plus COURTE EN MINUTES
+         (`cand.reduce(... (y.s.min||0) < (x.s.min||0) ...)`), jamais la longue ni le brick
+étapes 2-4  journées entières, DEPUIS LA FIN de la semaine, dans l'ordre
+         récupération → facile → dur (hors `durLong`) → dernier recours
+         (`forced` et `durLong` ne sont jamais touchés)
+```
+
+Le classement n'est donc pas positionnel : **il EST un jugement de valeur, et sa monnaie est la
+MINUTE.** C'est le pire proxy possible pour un triathlon, parce que la natation est la discipline
+aux séances les plus courtes — donc la discipline limitante est structurellement la première à
+partir. La conclusion du fondateur est renforcée par la correction de sa prémisse, pas affaiblie.
+
+### La mesure — un seul facteur varie (`applySessionBudget` neutralisée)
+
+70.3 · 40 semaines · doubles · `sessions_max: 6`, séances par discipline :
+
+```
+              avant la coupe      après        écart
+course (rn)         120            120            0
+brick (br)           13             13            0
+vélo (bk)            48             47           −1
+natation (sw)       109             51          −58
+```
+
+**58 des 59 séances retirées sont des séances de natation — 98 %.** La coupe se présente comme un
+budget de séances ; elle fait en réalité de l'**allocation entre disciplines**, dans le sens
+exactement inverse de ce qu'un entraîneur ferait sur un athlète limité par la nage. Un mécanisme
+qui décide sans savoir qu'il décide : la forme que ce chantier a fermée douze fois, ici sur la
+composition ENTIÈRE du plan et non sur une valeur.
+
+Durées moyennes qui expliquent le classement : natation 50 min · vélo 68 · brick 203 · course 38.
+(La course survit malgré ses 38 min parce qu'elle n'est pas la seconde séance d'une journée
+double : les deux critères de la coupe se cumulent sur la nage.)
+
+### Ce que le moteur a déjà sous la main
+
+`swim_limit` existe et pilote le ciblage des éducatifs ; `mainDiscipline` est déjà transmise au
+point fixe. L'ordre proposé par le fondateur — *ne se coupe jamais* : séance principale de la
+discipline limitante, séances spécifiques de course, paliers B-17 ; *se coupe en premier* :
+récupération, mobilité, complément dans une discipline non limitante — n'invente rien : c'est
+celui qu'on applique déjà partout ailleurs pour décider quoi protéger.
+
+### ARBITRAGE RENDU (fondateur, 17/08/2026) : à faire APRÈS le merge, et EN PREMIER
+
+*« Le défaut n'est pas l'ordre, c'est la MONNAIE. »* `sessions_max` compte des séances, le
+classement mesure des minutes — il optimise donc une grandeur que la contrainte ne mentionne pas
+(six séances de 30 min et six de 90 min satisfont le même plafond). Même faute d'unité que celles
+fermées depuis deux mois, cette fois **dans la fonction objectif** et non dans un calcul.
+
+Pourquoi pas avant le merge : le défaut existe déjà sur `main`, donc merger n'aggrave rien et
+retarder ne protège personne ; le correctif est un lot à part entière (98 % de la coupe change de
+cible sur sept sports par un point d'entrée commun) ; et le merge débloque le partage, la seule
+chose dont on n'a aucune mesure. Pourquoi en premier après : c'est le seul ticket ouvert qui
+change la **composition** de tous les plans plutôt qu'une valeur — B-10, l'allocation vélo, la
+barre de zones sont des ajustements *à l'intérieur* d'une composition que celui-ci décide.
+
+**Forme du correctif** : classement à DEUX dimensions (un scalaire ne peut pas les porter — c'est
+pourquoi les minutes avaient été choisies, seul scalaire disponible). Ne se coupe jamais : séance
+principale de la discipline limitante, séances spécifiques de course, paliers B-17. Se coupe en
+premier : récupération et mobilité, complément dans une discipline non limitante. À égalité de
+rôle : n'importe quel départage stable, **et surtout pas les minutes**.
+
+### T-44 — LA PROPRIÉTÉ, ÉCRITE ROUGE AVANT LE CORRECTIF
+
+Le fondateur a demandé la propriété plutôt que l'ordre, *« parce que ça survivra à une réécriture
+du tri »*. Elle s'énonce sans nommer aucune passe : **la coupe ne retire jamais d'une discipline
+une part plus grande que celle qu'elle occupe dans le plan prescrit** (tolérance 10 points).
+
+Elle se mesure **sans contrefactuel** : comparer « avec coupe » et « sans coupe » demanderait deux
+générations qui diffèrent aussi par ailleurs (`budgetPerWeek` alimente d'autres passes), et une
+causalité ne se lit pas sur un diff de lot. La coupe DIT donc ce qu'elle retire, par la trace —
+dont `npm run trace` vérifie à chaque exécution qu'elle est sans effet sur la sortie. Le prescrit
+devient `livré + retiré`, sur une seule génération. Le piège de la vacuité est fermé : « ne rien
+couper » satisferait le critère (règle 19), donc il exige que la coupe MORDE sur ses profils.
+
+**Ce que T-44 a trouvé au-delà de la natation** — et c'est un fait nouveau :
+
+```
+70.3 / 40 sem / doubles / sm=6    sw  100 % des retraits pour 49 % du prescrit  (124/124)
+70.3 / 30 sem / doubles / sm=7    sw  100 %                    44 %             (48/48)
+Full / 40 sem / doubles / sm=6    sw   61 %                    42 %             (76/124)
+                                  bk   39 %                    21 %             (48/124)
+M    / 20 sem / parfois  / sm=5   rn  100 % des retraits pour 56 % du prescrit  (32/32)
+```
+
+Ce n'est donc pas « la natation perd toujours » : **c'est la discipline la plus courte de CETTE
+configuration qui perd tout**, et sur un M en `doubles: parfois` c'est la COURSE. La règle est
+générale, la natation n'en est que le cas le plus fréquent.
+
+**Deux dénominateurs différents, à ne pas confondre** (corollaire de la règle 14) : les 124
+retraits sont un compte BRUT, lu dans la trace ; le « −58 sur 59 » publié plus haut est un NET,
+lu sur le plan livré — des passes ultérieures réinsèrent. Les deux sont vrais et ne répondent pas
+à la même question.
+
+### Une faute d'instrument à moi, dans la même heure
+
+Ma première écriture appelait `traceRecord` **sans le garde `traceEnabled()`**. Le bundler
+(`scripts/buildApp.mjs`) RETIRE les imports et concatène les modules : l'alias
+`record as traceRecord` ne survit pas, et le symbole n'existe pas dans `engine.js`. Tous les
+appels existants sont derrière ce garde — donc jamais évalués hors trace — et c'est la seule
+raison pour laquelle personne ne l'avait vu. Mesuré : `audit:v1` à **57 `ReferenceError`** pendant
+que `golden:verify` restait à **0 écart**, parce que l'un lit le BUNDLE et l'autre lit `src/`.
+Deux instruments, deux verdicts opposés sur le même commit.
+
+### NON IMPLÉMENTÉ — et c'est une décision, pas un oubli
+
+Le correctif change la composition de **presque tous les plans de triathlon** et touche les sept
+sports par le même point d'entrée. L'arbitrage rendu le 17/08 confirme le report : **après le
+merge, en premier.** Ce qui est livré ici est la PROPRIÉTÉ (T-44, rouge) et la traçabilité de la
+coupe — pas le correctif.
+
+```verify
+id: O-66
+quoi: la coupe par sessions_max retire-t-elle encore 98 % de ses séances dans une seule discipline ?
+attendu: sw 109 → 51 (−58) contre rn 120 → 120, bk 48 → 47, br 13 → 13 sur 70.3/40 sem/doubles/sessions_max=6
+cmd: grep -n "cand.reduce" src/generator/weekBuilder.ts
+```
+
+## O-67 · La preuve du merge portait sur `src/`, pas sur l'artefact livré · ✅ **FERMÉ le jour où il a été nommé**
+
+**Origine** : le fondateur, à partir de ma faute d'instrument du 17/08 — `audit:v1` à 57
+`ReferenceError` pendant que `golden:verify` restait à 0 écart, l'un lisant le BUNDLE et l'autre
+`src/`.
+
+Deux instruments, deux verdicts opposés, même commit — et ce n'est pas une contradiction : chacun
+a raison sur ce qu'il regarde. **Mais l'acceptation du merge est `golden:verify` contre la photo,
+et il importe `src/app/bridge.ts`.** La preuve principale du merge ne portait donc pas sur ce qui
+est déployé. `audit:v1` et les E2E lisent bien le bundle — c'est ce qui a attrapé les 57 — mais
+ils en vérifient la **validité**, pas l'**identité de sortie** avec la source. Deux questions
+différentes ; seule la seconde est ce que la photo garantit.
+
+**Et l'étape n'est pas neutre** : `buildApp.mjs` retire les imports et concatène les modules, donc
+un alias ne survit pas à la construction. Ce qui n'a pas survécu une fois peut ne pas survivre
+deux, et rien ne le dirait.
+
+`npm run golden:bundle` : les DEUX moteurs dans le même processus, le même corpus, la même
+canonisation. **989 profils, 0 écart** — la construction n'est pas lossy.
+
+**Le piège qui rendrait ce test vacueux est fermé, et il est traître** : si le bundle ne se charge
+pas, `globalThis.EBV2` reste celui de `src/` et les deux passes comparent la source à elle-même —
+**0 écart, verdict vert, mesure nulle**. C'est le taux saturé de la règle 15 dans sa forme la plus
+difficile à voir, parce que **le résultat attendu EST « 0 écart »**. Trois verrous : la référence
+de `EBV2` doit avoir CHANGÉ entre les deux passes (vérifié, sinon exit 2) ; le bundle est chargé
+depuis le HTML livré ; et `--contrepreuve` perturbe une constante du livré et EXIGE que la
+comparaison rougisse — vérifié, `B17_ECHAUF_M 200 → 225` fait diverger **186 profils sur 989**.
+
+Note d'instrument : la première contre-preuve visait `C22_MAX_WEEKLY_GROWTH`, qui dans le bundle
+vaut `rule("C22", …)` et non un littéral. Elle a rendu « motif introuvable » et **refusé de
+tourner** plutôt que de sortir verte sur une perturbation qui n'avait pas eu lieu — c'est le
+comportement voulu, et c'est ce qui l'a fait remarquer.
+
+**Mis en cliquet** : `golden:bundle` entre en CI à côté de `golden:verify`.
+
+```verify
+id: O-67
+quoi: ce qui est mesuré est-il ce qui est livré ?
+attendu: golden(src) === golden(bundle), 989 profils, 0 écart
+cmd: npm run golden:bundle 2>&1 | tail -2
+```

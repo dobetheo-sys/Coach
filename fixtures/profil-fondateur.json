@@ -1,0 +1,38 @@
+{
+  "_note": "Fixture du fondateur — INCOMPLET. Les champs marqués \"?\" attendent sa réponse.",
+  "_regle": "Aucune valeur n'est inventée : un champ absent est demandé, jamais rempli.",
+
+  "sport": "tri",
+  "format": "70.3",
+  "intent": "competition",
+  "level": "inter",
+  "history": "confirme",
+
+  "sex": "H",
+  "weight": "85",
+
+  "dispo": "semaine",
+  "_dispo_choisi": "« Tous les jours, contraint » — travail 17h-22h mar→dim laisse les matins et le lundi entier. `quotidienne` (« Tous les jours, LIBRE ») ouvrirait la branche du cycle de 10 jours glissant, qui suppose de pouvoir bouger la séance longue n'importe quel jour.",
+  "off_days": "non",
+
+  "life_load": "lourde",
+  "activity": "actif",
+  "training_structure": "suivi",
+
+  "injury": "tibia",
+  "med_pain": "non",
+  "med_dizzy": "non",
+  "med_treat": "non",
+
+  "plan_start": "2026-08-18",
+
+  "ftp_known": "oui",
+  "ftp": "227",
+  "pace_known": "oui",
+  "pace": "4:50",
+
+  "terrain": "vallonne",
+  "leg_swim_env": "lac",
+  "leg_bike_prof": "vallonne",
+  "leg_run_prof": "vallonne"
+}

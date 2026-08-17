@@ -43,6 +43,43 @@ const sousPlancher = [...mob.matchAll(/font-size:\s*([0-9.]+)px/g)].map((m) => +
 ok(sousPlancher.length === 0, "css/mobile.css — aucune taille sous le plancher de 9 px"
   + (sousPlancher.length ? " — reste : " + sousPlancher.join(", ") + "px" : ""));
 
+// R-ZENNA — MÊME TROU QUE R18.1-a, sur les feuilles arrivées après lui. `zenna-today.css` et
+// `zenna-tabs.css` portent le nouveau système visuel ; elles n'étaient lues par AUCUNE garde,
+// exactement comme `mobile.css` avant R18.1-a — qui y avait trouvé un texte à 8 px sous un
+// plancher que la documentation affirmait tenir. La maquette d'origine descend à 8,5 px
+// (`.soc-proof`) : sans cette lecture, ce chiffre serait recopié un jour sans que rien ne le
+// voie. Même règle que la couche mobile : on n'exige pas zéro littéral (ces feuilles portent
+// un système de couleurs et de tailles qui leur est propre), on exige le PLANCHER — c'est la
+// propriété qui protège quelqu'un.
+for (const nom of ["zenna-today.css", "zenna-tabs.css"]) {
+  const zn = sansCommentaires(readFileSync(new URL("../../endurabuild/css/" + nom, import.meta.url), "utf8"));
+  const bas = [...zn.matchAll(/font-size:\s*([0-9.]+)px/g)].map((m) => +m[1]).filter((v) => v < 9);
+  ok(bas.length === 0, "css/" + nom + " — aucune taille sous le plancher de 9 px"
+    + (bas.length ? " — reste : " + bas.join(", ") + "px" : ""));
+}
+
+// ---- 1ter. AUCUN `*/` ORPHELIN — la règle avalée en silence -----------------------------
+// `zenna-tabs.css` a porté pendant tout R-ZENNA v3 un commentaire d'en-tête listant les jetons
+// du thème clair : « (--text/--text2/--muted/--ink/--bg*/--acc/…) ». La séquence `*/` de
+// `--bg*/` FERME le commentaire dès cette ligne. Tout le reste de l'en-tête est alors lu comme
+// du CSS invalide, et la récupération d'erreur du parseur avale jusqu'à la première `}` — donc
+// la PREMIÈRE RÈGLE du fichier. Mesuré : `.gw` (la grille de semaine, partagée par les onglets
+// Plan et Semaine) rendait un liseré de 3 px BLANC CASSÉ et une ombre portée BLANCHE de 5 px au
+// lieu de sa surface sombre — précisément le « mode de panne » que ce commentaire décrit, causé
+// par une faute DANS ce commentaire. Rien ne l'a vu : le fichier reste valide, la feuille se
+// charge, une seule règle disparaît.
+//
+// Le détecteur est exact pour cette classe de défaut : on retire les commentaires BIEN FORMÉS
+// (même sémantique non gourmande que le parseur CSS) ; s'il subsiste un `*/`, c'est qu'un `*/`
+// prématuré a décalé toute la structure. Vaut pour les quatre feuilles.
+for (const nom of ["styles.css", "mobile.css", "zenna-today.css", "zenna-tabs.css"]) {
+  const brut = readFileSync(new URL("../../endurabuild/css/" + nom, import.meta.url), "utf8");
+  const reste = sansCommentaires(brut);
+  const i = reste.indexOf("*/");
+  ok(i === -1, "css/" + nom + " — aucun `*/` orphelin (un `*/` prématuré avale la règle suivante)"
+    + (i === -1 ? "" : " — vers : « " + reste.slice(Math.max(0, i - 60), i + 2).replace(/\s+/g, " ").trim() + " »"));
+}
+
 // Les modules UI : littéral toléré UNIQUEMENT dans le document exporté (plan-view.js), qui
 // est autonome et ne charge pas styles.css.
 const jsRoot = new URL("../../endurabuild/js/", import.meta.url);
@@ -156,8 +193,19 @@ for (const t of ["profile", "general", "today", "week", "outils"]) {
       // seulement les nœuds qui portent du texte PROPRE (sinon on mesure des conteneurs)
       const propre = [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
       if (!propre) return;
+      // UNE ILLUSTRATION N'EST PAS DU TEXTE. Le plancher de R16.8 gouverne ce qu'on LIT ; la
+      // règle le dit elle-même (« l'échelle gouverne le TEXTE ; un glyphe décoratif se
+      // dimensionne relativement à son porteur »). Le sachet Zenna est un DESSIN de produit :
+      // ses mentions (« NET 40 G ») sont des traits sur un emballage, pas une phrase adressée
+      // à quelqu'un — elles sont dans un `<svg aria-hidden>`, donc invisibles aux lecteurs
+      // d'écran, et personne n'est censé les déchiffrer. L'exemption est bornée à ce cas et
+      // reste HONNÊTE parce que `smoke-shop` vérifie séparément que ces illustrations sont
+      // bien `aria-hidden` : sans quoi il suffirait de cacher du vrai texte dans un SVG.
+      if (e.closest('svg[aria-hidden="true"]')) return;
       const f = parseFloat(getComputedStyle(e).fontSize);
-      if (f < m) { m = f; quoi = e.className || e.tagName; }
+      // `className` d'un élément SVG est un SVGAnimatedString, pas une chaîne : il s'affichait
+      // « [object Object] » et la garde ne nommait donc pas son coupable.
+      if (f < m) { m = f; quoi = (typeof e.className === "string" && e.className) || e.getAttribute("class") || e.tagName; }
     });
     return { m, quoi };
   });

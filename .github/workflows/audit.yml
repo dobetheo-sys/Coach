@@ -50,6 +50,14 @@ jobs:
       # 14 modules servis avaient passé sans qu'elle bouge. Elle est maintenant le
       # hachage du contenu, et ce gate refuse un sw.js désynchronisé.
       - run: npm run check:sw
+      # Z-01 (cliquet) — la dette de littéraux Zenna ne remonte plus (réponse au STOP de Phase 1, §6)
+      - run: npm run check:tokens
+      # Z-03 / Z-05 / Z-11 (cliquets, arbitrage 14/08) — doublons moteur, hôtes externes, couleurs de discipline
+      - run: npm run check:dup
+      - run: npm run check:hosts
+      - run: npm run check:disc
+      # Z-04 (révisé) — l'isolation moteur/graphique est une propriété permanente, gardée statiquement
+      - run: npm run check:noop
       # Banc de régression externe (audit v6, 29/07/2026) : sort en 1 à la moindre
       # RÉGRESSION (test attendu vert qui échoue). La dette connue ne casse pas la CI —
       # c'est le but : elle documente l'écart sans bloquer le travail.
@@ -106,6 +114,37 @@ jobs:
       # Golden master : 814 plans photographiés, détection d'écart au bit près. Les empreintes
       # sont versionnées ; tout changement de plan doit être VOULU et recapturé explicitement.
       - run: npm run golden:verify
+      # `golden(src) === golden(bundle)` — LA SEULE ASSERTION QUI COUVRE L'ÉTAPE ENTRE CE QU'ON
+      # MESURE ET CE QU'ON LIVRE. `golden:verify` importe `src/app/bridge.ts` : il valide la
+      # SOURCE. Ce qui est déployé est le BUNDLE. `audit:v1` et les E2E lisent bien le bundle,
+      # mais ils vérifient sa VALIDITÉ, pas son IDENTITÉ DE SORTIE avec la source — deux
+      # questions différentes, et seule la seconde est ce que la photo garantit. L'étape n'est
+      # pas neutre : la construction retire les imports et concatène, donc un alias ne survit
+      # pas (mesuré le 17/08 : `audit:v1` à 57 ReferenceError pendant que le golden restait à
+      # 0 écart). Ce qui n'a pas survécu une fois peut ne pas survivre deux.
+      - run: npm run golden:bundle
+      # Banc physio (`scripts/lotPhysio.mjs`) — il porte le SCEAU (T-27 : invariants durs à zéro
+      # sur le plan livré, déclarés au compte épinglé par cliquet) et les tickets ouverts en
+      # rouges ATTENDUS. Il sortait en code 1 sur régression depuis son écriture, mais il n'était
+      # pas ici : il dépendait donc de la mémoire de qui lance la passe, et le lot 1 a démontré
+      # que cette mémoire manque — le cliquet du sceau était monté, 27 gates étaient verts, et
+      # personne ne l'aurait su. Même correctif structurel que le crochet du journal après O-41 :
+      # ne pas compter sur la discipline là où un mécanisme suffit.
+      - run: node scripts/lotPhysio.mjs
+      # A-2 — COUVERTURE DE L'ESPACE DES DÉCISIONS. RAPPORT, PAS GATE : elle imprime et ne bloque
+      # pas. R20.6 dit *trier avant de bloquer* ; il ne dit pas *cacher avant de trier*. Une liste
+      # « à relire quand une règle apprend à lire une clé » est une dépendance à la mémoire, et ce
+      # chantier a montré trois fois ce qu'elles valent — `lotPhysio` hors de ce fichier, un
+      # `git checkout` une heure après avoir écrit la règle qui l'interdit, et le crochet du
+      # journal qu'O-22 et O-25 n'ont pas relié. Coût nul, et personne n'a à se souvenir de la
+      # lancer. Elle deviendra un gate quand son tri sera fait.
+      - run: npm run couverture:golden
+      # O-56 §2 — le cliquet de capacité de nage : monte sur un palier validé, ne descend JAMAIS
+      # (une séance sautée n'est pas une capacité perdue), prend le PLUS HAUT et non le plus
+      # récent, et ignore ce qui précède le début du plan.
+      - run: npm run mesure:o56
+      # O-52 — `countDiff` distingue 1 champ de N et n'invente pas d'amplitude sur une chaîne.
+      - run: npm run mesure:o52
 
   # E2E navigateur : les smokes de la PWA (check-in, R4, rétention, améliorations)
   # tournent dans un vrai Chromium — Playwright est une devDependency de TEST

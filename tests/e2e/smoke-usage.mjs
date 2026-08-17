@@ -371,8 +371,17 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
     grilles: document.querySelectorAll("#screen .gw-grid").length,
     hauteur: document.body.scrollHeight,
     bouton: !!document.getElementById("allW"),
+    versSemaine: !!document.getElementById("openWk"),
+    resume: !!document.querySelector("#screen .zn-wk-card"),
   }));
-  ok(defaut.grilles === 1, "U15 — l'onglet Plan ouvre sur UNE semaine (" + defaut.grilles + ")");
+  // R-ZENNA v6 — ce critère comptait UNE grille dans la vue par défaut. La grille en a été
+  // RETIRÉE (décision du fondateur, 11/08/2026 : suivre la maquette) et remplacée par une carte
+  // de résumé + un bouton vers 📅 Semaine. L'INTENTION d'U15 est inchangée — « la vue par défaut
+  // est courte » — et elle est mieux servie ; on mesure donc zéro grille ET la présence du
+  // chemin vers la semaine, sans quoi ce critère serait satisfait en supprimant simplement tout.
+  ok(defaut.grilles === 0, "U15 — l'onglet Plan n'affiche plus de grille par défaut (" + defaut.grilles + ")");
+  ok(defaut.versSemaine, "U15 — …mais il emmène vers 📅 Semaine, où la grille et la coche vivent");
+  ok(defaut.resume, "U15 — …et il SITUE la semaine en cours (carte de résumé)");
   ok(defaut.hauteur < 844 * 5, "U15 — moins de 5 écrans de défilement (" + (defaut.hauteur / 844).toFixed(1) + ")");
   ok(defaut.bouton, "U15 — le bouton « Voir les N semaines » est là");
   const complet = await page.evaluate(() => {
@@ -420,7 +429,13 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
     for (const d of document.querySelectorAll("#screen details.gd-sess")) {
       const corps = d.querySelector(".gd-det, .gd-steps");
       if (!corps) continue;
-      const nom = (d.querySelector("summary") || {}).textContent || "";
+      // Le NOM se lit dans le `<b>` du résumé, pas dans le texte du résumé entier. Ce critère a
+      // déjà glissé une fois (égalité → `startsWith`) quand la durée s'est ajoutée APRÈS le nom ;
+      // il vient de casser une seconde fois parce que le badge de discipline s'ajoute AVANT
+      // (« 🚴 Sweetspot vélo 32min »). Viser l'élément qui porte le nom, plutôt que sa position
+      // dans une chaîne, l'immunise des deux côtés — c'est la même leçon que R16.8 applique aux
+      // tailles : on vérifie une relation structurelle, jamais une mise en forme.
+      const nom = ((d.querySelector("summary b") || d.querySelector("summary") || {}).textContent) || "";
       if (corps.querySelectorAll("li").length > 1) rendu.push(nom.trim());
       for (const t of (corps.innerText || "").split(/\n+/)) {
         if (t.trim().length > pire) { pire = t.trim().length; pireTxt = t.trim().slice(0, 60); }
@@ -430,7 +445,7 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
     // 1h28 ») : une comparaison EXACTE au nom du modèle (`s.name`) casse dès qu'un texte
     // légitime s'ajoute après. Le nom reste le PRÉFIXE du résumé — `startsWith` plutôt qu'une
     // égalité, sans rien perdre de ce que le critère vérifie (la présence, en plusieurs lignes).
-    const manquantes = [...attendu].filter((n) => !rendu.some((r) => r.startsWith(n)));
+    const manquantes = [...attendu].filter((n) => !rendu.some((r) => r === n));
     return { multi: attendu.size, listees: attendu.size - manquantes.length, manquantes: manquantes.slice(0, 3), pire, pireTxt };
   });
   ok(m.multi > 0, "U16 — l'instrument voit des séances à plusieurs blocs (" + m.multi + ")");
@@ -634,13 +649,17 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   const { ctx, page } = await session(Date.UTC(2026, 7, 5, 9, 0));
   await page.click('#ebTabbar .tabbtn[data-tab="general"]').catch(() => {});
   await page.waitForTimeout(800);
+  // R28 (12/08/2026) — la prédiction a quitté la vue d'ensemble pour son propre sous-onglet
+  // « 🎯 Prédiction » ; l'ancien titre « Prédiction de course » n'existe donc plus DANS
+  // la vue d'ensemble. Les intensités, elles, n'ont pas bougé.
   const plan = await page.evaluate(() => {
     const t = document.querySelector("#screen").textContent || "";
     const pos = (re) => { const m = t.match(re); return m ? m.index : -1; };
     return { t, decompte: /J−\d+/.test(t), avancement: /Semaine \d+ \/ \d+/.test(t),
       partage: !!document.getElementById("expPng"),
       posAvancement: pos(/Semaine \d+ \/ \d+/), posPourquoi: pos(/Pourquoi ce plan/),
-      pred: /Prédiction de course/.test(t), intens: /Répartition des intensités/.test(t),
+      sousOnglets: [...document.querySelectorAll("[data-plansub]")].map((b) => b.dataset.plansub),
+      intens: /Répartition des intensités/.test(t),
       libelles: /Version imprimable/.test(t) && /Ajouter à mon agenda/.test(t) && !/🖼 PNG/.test(t) };
   });
   ok(plan.decompte, "R23.5 — le décompte des jours avant la course est en tête de 🗓 Plan");
@@ -648,27 +667,36 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(plan.partage, "R23.12 — et le bouton « 📤 Partage » est sous l'avancement");
   ok(plan.posAvancement >= 0 && plan.posPourquoi > plan.posAvancement,
     "R23.6 — « Pourquoi ce plan » vient APRÈS l'avancement, plus avant (l'info d'abord)");
-  ok(plan.pred && plan.intens, "R23.7 / R23.9 — la prédiction et les intensités vivent dans 🗓 Plan");
+  ok(plan.sousOnglets.includes("overview") && plan.sousOnglets.includes("pred") && plan.intens,
+    "R23.7 / R23.9 / R28 — la prédiction a son sous-onglet dans 🗓 Plan, les intensités restent dans la vue d'ensemble");
   ok(plan.libelles, "R23.12c — les exports portent des noms lisibles (imprimable · agenda), plus « PNG »");
 
-  // R24.5 / R24.6 (retour fondateur, 06/08 soir) — la Prédiction ouvre sur le TEMPS TOTAL
-  // (aujourd'hui + fin de plan), le détail par segment est un dépliable ; et la courbe de
-  // charge porte le marqueur « tu es ici » à la semaine courante.
+  // R24.5 / R24.6 (retour fondateur, 06/08 soir) puis R28 (12/08/2026) — la Prédiction ouvre
+  // sur le TEMPS TOTAL (aujourd'hui + jour J), le détail par DISCIPLINE est visible d'office
+  // (le brief du 12/08 le demande directement, sans détour par un dépliable — c'est le
+  // dépliable « pourquoi cette projection », lui, qui reste fermé par défaut).
+  await page.evaluate(() => document.querySelector('[data-plansub="pred"]').click());
+  await page.waitForTimeout(600);
   const pred24 = await page.evaluate(() => {
-    [...document.querySelectorAll("#screen details")].forEach((d) => { d.open = true; });
     const t = document.querySelector("#screen").textContent || "";
-    const nid = [...document.querySelectorAll("#screen details summary")]
-      .find((x) => /Le détail, segment par segment/.test(x.textContent || ""));
+    const why = document.querySelector(".zn-pred-why");
     return {
-      auj: /Courue aujourd’hui : /.test(t.replace(/\s+/g, " ")),
-      proj: /plan suivi : /.test(t.replace(/\s+/g, " ")),
-      detailRepliable: !!nid,
-      detailContenu: nid ? /ta forme mesurée/.test(nid.parentElement.textContent || "") : false,
+      auj: /Si la course était aujourd.hui/.test(t),
+      proj: /Projeté au jour J/.test(t),
+      discVisible: document.querySelectorAll(".zn-pd-row").length > 0
+        && [...document.querySelectorAll(".zn-pd-row")].every((r) => getComputedStyle(r).display !== "none"),
+      pourquoiEstUnDetails: !!why && why.tagName === "DETAILS" && !why.open,
     };
   });
-  ok(pred24.auj && pred24.proj, "R24.5 — la Prédiction ouvre sur le temps total : courue aujourd'hui ET à la fin du plan");
-  ok(pred24.detailRepliable && pred24.detailContenu,
-    "R24.5 — le détail segment par segment vit dans un dépliable, et il contient bien la forme mesurée");
+  ok(pred24.auj && pred24.proj, "R24.5 — la Prédiction ouvre sur le temps total : courue aujourd'hui ET au jour J");
+  ok(pred24.discVisible,
+    "R28 — le détail PAR DISCIPLINE est visible d'office, sans dépliable (demande explicite du brief du 12/08)");
+  ok(pred24.pourquoiEstUnDetails,
+    "R28 — seul « pourquoi cette projection » reste un dépliable, fermé par défaut");
+  // TÉMOIN — `S._planSub` est un état GLOBAL qui survit au clic ci-dessus : cette suite revient
+  // sur 🗓 Plan plus loin (« Conseils personnalisés », onglet Vue d'ensemble) dans la MÊME
+  // session ; sans ce reset, elle retomberait sur le sous-onglet Prédiction.
+  await page.evaluate(async () => { const { S } = await import("./js/state.js"); S._planSub = "overview"; });
 
   await page.click('#ebTabbar .tabbtn[data-tab="today"]').catch(() => {});
   await page.waitForTimeout(800);

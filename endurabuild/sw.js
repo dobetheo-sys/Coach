@@ -1,4 +1,4 @@
-/* Service worker EnduraBuild — app shell en cache pour l'offline (PWA).
+/* Service worker Zenna — app shell en cache pour l'offline (PWA).
    Stratégie : cache-first pour les assets même-origine (l'app est autonome),
    réseau direct pour tout le reste (Open-Meteo n'est jamais mis en cache —
    une météo périmée est pire qu'une absence de météo).
@@ -13,7 +13,7 @@
    `npm run check:sw`, comme `check:app` pour le bundle du monolithe). */
 
 // __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
-const VERSION = "eb-pwa-4d58892859ec";
+const VERSION = "eb-pwa-3d1d89cd6c49";
 // __/SW_VERSION__
 
 // __SW_ASSETS__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
@@ -23,6 +23,9 @@ const ASSETS = [
   "./manifest.json",
   "./css/mobile.css",
   "./css/styles.css",
+  "./css/zenna-tabs.css",
+  "./css/zenna-today.css",
+  "./css/zenna-tokens.css",
   "./js/app.js",
   "./js/config.js",
   "./js/data/educatifs/course.js",
@@ -42,8 +45,10 @@ const ASSETS = [
   "./js/shop-order.js",
   "./js/state.js",
   "./js/strava.js",
+  "./js/ui/app-header.js",
   "./js/ui/avatar-tri.js",
   "./js/ui/avatar.js",
+  "./js/ui/brand.js",
   "./js/ui/celebrations.js",
   "./js/ui/checkin.js",
   "./js/ui/daily-content.js",
@@ -54,6 +59,7 @@ const ASSETS = [
   "./js/ui/plan-view.js",
   "./js/ui/readiness.js",
   "./js/ui/retest.js",
+  "./js/ui/sachet.js",
   "./js/ui/session-life.js",
   "./js/ui/steps.js",
   "./js/ui/tab-educatifs.js",
@@ -64,9 +70,15 @@ const ASSETS = [
   "./js/ui/tab-today.js",
   "./js/ui/tab-week.js",
   "./js/ui/tabs.js",
+  "./js/ui/zenna-motion.js",
   "./assets/fonts/archivo-black-400.woff2",
-  "./assets/fonts/space-grotesk-500-700.woff2",
   "./assets/fonts/caveat-600-700.woff2",
+  "./assets/fonts/ibm-plex-mono-400.woff2",
+  "./assets/fonts/ibm-plex-mono-700.woff2",
+  "./assets/fonts/inter-400-800.woff2",
+  "./assets/fonts/poppins-700.woff2",
+  "./assets/fonts/poppins-800.woff2",
+  "./assets/fonts/space-grotesk-500-700.woff2",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
 ];

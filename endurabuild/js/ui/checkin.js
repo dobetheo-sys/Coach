@@ -5,6 +5,8 @@
 // moteur). Aucune séance visible avant la fin — la règle produit ne change pas.
 import { S, $, esc } from "../state.js";
 import { applyReadinessSnap, verdictHTML, primeWeather } from "./readiness.js";
+import { VERDICT_ICON } from "./icons.js";
+import { znVerdictStamp, znHold, znRelease } from "./zenna-motion.js";
 
 function greeting() {
   const h = new Date().getHours();
@@ -58,7 +60,7 @@ const SLIDES = [
     // diapo VFC, qui devient optionnelle. La laisser là l'aurait fait disparaître pour tous
     // ceux qui ne suivent pas leur VFC — un signal OBJECTIF perdu au passage d'un lot qui
     // ne le visait pas. Sa place est de toute façon ici : c'est la même mesure du réveil.
-    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:#635b4a">'
+    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:var(--zn-muted,#635b4a)">'
       + '<span>FC au réveil (optionnel)</span><input type="number" id="ckHr" inputmode="numeric" min="30" max="120" value="' + (d.restingHr || "") + '" placeholder="ex. 52" style="width:88px">'
       + "<span>bpm</span></label>",
   },
@@ -74,7 +76,7 @@ const SLIDES = [
       { val: "skip", ico: "🤷", label: "Pas de mesure aujourd'hui", react: "Pas grave, on fait sans." },
     ],
     set: () => { /* la valeur est lue dans `extraHTML` ci-dessous, comme la FC au réveil */ },
-    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:#635b4a">'
+    extraHTML: (d) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:14px;color:var(--zn-muted,#635b4a)">'
       + '<span>VFC (rMSSD)</span><input type="number" id="ckHrv" inputmode="numeric" min="5" max="250" value="' + (d.hrvValue || "") + '" placeholder="ex. 62" style="width:88px">'
       + "<span>ms</span></label>"
       + '<div class="q-sub" style="margin-top:4px">Comparée à TA base des 7 derniers matins. Sous 7 mesures, elle est notée sans rien piloter — et on te le dit.</div>',
@@ -93,8 +95,33 @@ const SLIDES = [
 ];
 
 function dotsHTML(step) {
-  return '<div style="display:flex;gap:6px;justify-content:center;margin-top:14px">'
-    + slidesActives().map((_, i) => '<span style="width:8px;height:8px;border-radius:50%;border:1.5px solid #16130e;background:' + (i < step ? "#16130e" : i === step ? "#f0b429" : "transparent") + '"></span>').join("")
+  return '<div class="zn-ck-dots" style="display:flex;gap:6px;justify-content:center;margin-top:14px">'
+    + slidesActives().map((_, i) => '<span class="zn-ck-dot' + (i < step ? " past" : i === step ? " now" : "") + '" style="width:8px;height:8px;border-radius:50%;border:1.5px solid var(--zn-ink,#16130e);background:' + (i < step ? "var(--zn-ink,#16130e)" : i === step ? "var(--zn-gold-dot,#f0b429)" : "transparent") + '"></span>').join("")
+    + "</div>";
+}
+
+// R-ZENNA — LE VERDICT SE TAMPONNE.
+//
+// La maquette termine le diaporama par un tampon (`.stamp`, l'animation la plus « physique »
+// du système) plutôt que par un simple changement de texte : c'est le moment où le moteur
+// REND SA DÉCISION, et c'est le seul geste de la journée qui mérite une récompense visuelle.
+//
+// Différence avec la maquette, et elle est délibérée : la maquette affiche « SÉANCE MAINTENUE »
+// en dur. Ici on attend le VRAI verdict (`applyReadinessSnap` → `res.adjustment`) avant de
+// tamponner quoi que ce soit. Un tampon qui annoncerait « maintenue » avant que le moteur ait
+// tranché serait une animation qui ment — exactement ce que le §2 de `zenna-motion.js` interdit.
+const _VERDICT_MOT = {
+  keep: "Séance maintenue", reduce: "Volume réduit", replace: "Endurance à la place",
+  rest: "Repos conseillé", off: "Repos complet",
+};
+function verdictStampHTML(res) {
+  const v = res && res.adjustment && res.adjustment.verdict;
+  if (!v) return "";
+  const mot = _VERDICT_MOT[res.adjustment.action] || "C’est noté";
+  const drivers = (v.drivers || []).join(" · ");
+  return '<div class="zn-verdict-stamp">'
+    + '<div class="zn-verdict-badge stamp zn-v-' + v.level + '">' + (VERDICT_ICON[v.level] || "") + " " + mot + "</div>"
+    + (drivers ? '<div class="zn-verdict-why">' + esc(drivers) + "</div>" : "")
     + "</div>";
 }
 
@@ -108,15 +135,25 @@ export function checkinSlideshowHTML() {
   // questions : elle sera prête au moment où le moteur en a besoin, au lieu de faire attendre
   // 3,2 s devant « ta séance arrive… ».
   primeWeather();
-  let h = '<div class="card" id="ckSlide"><div class="eyebrow">' + pointLabel() + ' · ' + (ck.step + 1) + "/" + slidesActives().length + "</div>";
-  h += '<h2 style="font-size:var(--fs-hand);line-height:1.4">' + esc(slide.coach(ck)) + "</h2>";
+  // R-ZENNA — l'en-tête de la maquette (« POINT DU MATIN » à gauche, « 1 / 2 » à droite) et un
+  // corps de diapo isolé dans son propre conteneur : c'est LUI qui rejoue l'animation de
+  // glissement à chaque question (`ck-slide-anim`), pendant que l'en-tête et les points restent
+  // en place — sinon toute la carte sauterait à chaque tap, et le repère visuel disparaîtrait.
+  // Le compteur reste écrit « 1/2 » SANS espaces : `smoke-checkin` l'assertе au caractère près
+  // (H-1b, cinq critères) pour vérifier que le diaporama fait bien deux diapos sans opt-in VFC
+  // et trois avec. La maquette l'espace (« 1 / 2 ») ; l'espacement typographique ne vaut pas
+  // de rendre muette une garde qui compte les écrans du check-in.
+  let h = '<div class="card" id="ckSlide"><div class="zn-ck-head"><span>' + pointLabel() + "</span><span>" + (ck.step + 1) + "/" + slidesActives().length + "</span></div>";
+  h += '<div class="zn-ck-body ck-slide-anim">';
+  h += '<h2 class="zn-ck-coach" style="font-size:var(--fs-hand);line-height:1.4">' + esc(slide.coach(ck)) + "</h2>";
   h += '<div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">';
   slide.options.forEach((o) => {
-    h += '<button type="button" class="btn ck-opt" data-ck-opt="' + o.val + '" style="display:flex;align-items:center;gap:12px;justify-content:flex-start;font-size:var(--fs-lg);padding:14px 16px;width:100%"><span style="font-size:var(--fs-xl)">' + o.ico + "</span>" + o.label + "</button>";
+    h += '<button type="button" class="btn ck-opt" data-ck-opt="' + o.val + '" style="display:flex;align-items:center;gap:12px;justify-content:flex-start;font-size:var(--fs-lg);padding:14px 16px;width:100%"><span class="zn-ico" style="font-size:var(--fs-xl)">' + o.ico + "</span>" + o.label + "</button>";
   });
   h += "</div>";
   if (slide.extraHTML) h += slide.extraHTML(ck);
   if (ck.step > 0) h += '<button type="button" class="btn" id="ckBack" style="margin-top:12px;font-size:var(--fs-sm);padding:6px 12px">← Revenir</button>';
+  h += "</div>";
   h += dotsHTML(ck.step) + "</div>";
   return h;
 }
@@ -151,10 +188,31 @@ export function bindCheckinSlideshow(rerender, onDone) {
       if (ck.step < slidesActives().length) { rerender(); return; }
       // Fin du diaporama → verdict (la météo peut prendre ~3.5 s : écran d'attente coach)
       const sc = $("ckSlide");
-      if (sc) sc.innerHTML = '<div class="eyebrow">' + pointLabel() + '</div><h2 style="font-size:var(--fs-hand)">C’est noté 👍</h2><div class="load-sub" style="margin-top:8px">Je regarde ta forme, ta fatigue des derniers jours et la météo — ta séance arrive…</div>';
+      if (sc) sc.innerHTML = '<div class="zn-ck-head"><span>' + pointLabel() + '</span><span>Analyse</span></div><h2 class="zn-ck-coach" style="font-size:var(--fs-hand)">C’est noté 👍</h2><div class="load-sub" style="margin-top:8px">Je regarde ta forme, ta fatigue des derniers jours et la météo — ta séance arrive…</div>';
       const out = await applyReadinessSnap(ck);
       S._ck = null;
+      // R-ZENNA — LE TAMPON DE VERDICT, EN COUCHE PAR-DESSUS LA SÉANCE.
+      //
+      // Ma première écriture reproduisait la maquette littéralement : tampon, `await` de
+      // 1 320 ms, PUIS la séance. Mesuré : quatre suites E2E rouges, et surtout U7 qui cessait
+      // de mesurer ce qu'il nomme — « ta séance arrive… » disparaissait à l'apparition du
+      // tampon, donc le chrono s'arrêtait 1,3 s avant que la séance existe. Retarder la séance
+      // de 1,3 s chaque matin, c'est précisément ce qu'U7 a été écrit pour empêcher.
+      //
+      // Le beat est conservé, sa mise en œuvre change : `onDone` rend la séance TOUT DE SUITE,
+      // le tampon se pose au-dessus et s'efface seul (`znVerdictStamp`). Même geste à l'œil,
+      // zéro milliseconde ajoutée au chemin critique. Les confettis ne partent que si le
+      // moteur MAINTIENT la séance — fêter un « repos conseillé » serait absurde.
+      const stamp = out && out.res ? verdictStampHTML(out.res) : "";
+      // On RETIENT le mouvement avant de rendre : `onDone` construit l'écran et poserait ses
+      // animations tout de suite, or elles se joueraient derrière le rideau du tampon et
+      // seraient terminées quand il se lève (mesuré : tout fini à 1487 ms, rideau parti à
+      // 1856 ms, plus rien ne bougeait ensuite). Le contenu est rendu immédiatement ; seules
+      // les animations attendent l'ouverture. Sans tampon, rien n'est retenu.
+      if (stamp) znHold();
       onDone(out);
+      if (stamp) znVerdictStamp(stamp, { celebrate: out.res.adjustment.action === "keep" });
+      else znRelease();
     };
   });
 }

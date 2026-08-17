@@ -10,8 +10,11 @@ import { trailObjective, TRAIL_HISTORY_CAPS, TRAIL_UTIL } from "../engine/trailM
 import { swimrunObjective } from "../sports/swimrun/objective.ts";
 import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
 import { generateAudited } from "../generator/repairLoop.ts";
+import { SEAL_COUNTERS } from "../generator/seal.ts";
 import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
+import { longRunSpecificityFloor } from "../engine/longRunSpecificity.ts";
+import { swimDivergence } from "../engine/swimContinuity.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
 import {
   predictRace, courseProfileOf, legProfileOf, type Prediction,
@@ -25,7 +28,7 @@ import { InAppSink } from "../coach/notificationSink.ts";
 import type { IngestedSession } from "../coach/deviationDetector.ts";
 import { parseActivityText } from "../readiness/gpxTcxParser.ts";
 import { assessReadiness, validateSnapshot, type CompletedSession, type ReadinessSnapshot } from "../readiness/readinessSource.ts";
-import { importFitBytes, FIT_DERIVED_TESTS } from "../readiness/fitParser.ts";
+import { importFitBytes, FIT_DERIVED_TESTS, ftpFromBest20 } from "../readiness/fitParser.ts";
 import { MAX_IMPORT_BYTES, assertImportSize, EBImportTooLarge } from "../readiness/importLimits.ts";
 import { hrvBaseline, classerHrv, hrvValide, type HrvMesure } from "../readiness/hrvBaseline.ts";
 import { measuredFromSessions, measuredWeeklyHours, arbitrateVolRecent } from "../engine/measured.ts";
@@ -259,12 +262,37 @@ export function adjustTodayV2(sport: string, answers: AppAnswers, snapshot: Read
   const adjustment = adjustDay(reasoned, plan, snapshot.date, snapshot);
   let sessions: TodayAdjustment["sessions"] = [];
   let jour: string | null = null;
+  let semaineCourante = 0;
   for (const w of plan.weeks)
     for (const d of w.days)
       if ((d as { date?: string }).date === snapshot.date) {
         sessions = d.sessions.map((s) => ({ name: s.name, det: s.det || "", d: s.d, steps: s.steps }));
         jour = d.jour;
+        semaineCourante = w.num;
       }
+
+  // O-56 §3 — LA DIVERGENCE SE NOMME ICI, dans l'ajusteur QUOTIDIEN, et pas à la re-génération.
+  //
+  // Un message qui n'apparaît qu'à la re-génération n'apparaît JAMAIS pour qui ne re-génère pas —
+  // et c'est la population qui en a le plus besoin. Un athlète qui saute ses continues et découvre
+  // en semaine 30 que son Full est rabattu a subi une conséquence juste, arrivée trop tard pour
+  // être corrigée : c'est le mode de défaillance que tout ce chantier ferme.
+  //
+  // Le message énonce TROIS FAITS et aucune implication (voir `swimDivergence`) : le moteur ne peut
+  // pas distinguer « il n'a pas nagé » de « il n'a pas journalisé », donc il ne le suppose pas.
+  //
+  // DÉCLARATION LOCALE, PAS UN MAILLON DE R20.2 : cette divergence RALENTIT une progression, elle
+  // ne borne pas le volume. La chaîne « ce qui borne ton pic » ne la concerne que le jour où elle
+  // rend le format inatteignable — et ce jour-là, c'est le rabattement qui parle.
+  if (semaineCourante > 0) {
+    const dv = swimDivergence(plan, (answers.done || {}) as Record<string, boolean>, semaineCourante);
+    if (dv.message) adjustment.decisions.push({
+      id: "B17-divergence",
+      what: "Ta progression de nage continue",
+      val: dv.valideM > 0 ? dv.valideM + " m validés" : "aucun palier validé",
+      why: dv.message,
+    });
+  }
   return { adjustment, sessions, jour };
 }
 
@@ -662,7 +690,12 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
     trail: sport === "trail" ? trailObjective(toProfile(sport, answers)) : undefined,
     swimrun: sport === "swimrun" && typeof swimrunObjective === "function" ? swimrunObjective(toProfile(sport, answers)) : undefined,
     // R14 P5 — le volume de COURSE hebdomadaire pilote l'exposant de Riegel.
-    runHoursPerWeek: sport === "run" ? parseFloat(String(answers.vol_max || "")) || undefined : undefined,
+    // B-21 — la course sèche garde `vol_max` (la réponse de l'athlète, qui EST son volume de
+    // course) ; partout ailleurs la grandeur n'existe dans aucune réponse et se MESURE sur le
+    // plan livré. Sans cette seconde branche, décloisonner l'exposant ne changerait rien.
+    runHoursPerWeek: sport === "run"
+      ? parseFloat(String(answers.vol_max || "")) || undefined
+      : runHoursPerWeekOf(p as V1Plan) ?? undefined,
     projection: horizonWeeks == null ? undefined : {
       horizonWeeks,
       level: String(answers.level || "") || undefined,
@@ -742,6 +775,60 @@ function prescribedMeanHours(plan: V1Plan): number | null {
     for (const d of wk.days)
       for (const s of d.sessions) if (s.d !== "rs" && !s.race) min += s.min || 0;
   return min > 0 ? min / 60 / w.length : null;
+}
+
+/**
+ * B-21 — LES HEURES DE COURSE PAR SEMAINE, MESURÉES SUR LE PLAN LIVRÉ.
+ *
+ * `riegelExponent` a besoin du volume de COURSE. En course sèche on le lisait dans `vol_max`,
+ * la réponse de l'athlète ; en tri et en duathlon **aucune réponse du questionnaire ne le
+ * donne** — on demande un volume total, pas sa répartition. Le pont passait donc `undefined`,
+ * et `riegelExponent(undefined)` rend 1,06 par repli : décloisonner l'exposant sans ce
+ * mesureur aurait été un correctif INERTE (le défaut que V-10 a nommé sur la branche A du
+ * ticket, et que ce dépôt a déjà payé deux fois — C23b, ma première écriture de C30b).
+ *
+ * On mesure donc sur ce que le plan PRODUIT, à la médiane des semaines de charge — le pic
+ * décrit un instant, la médiane décrit ce que l'athlète vit. Les minutes de course d'un brick
+ * sont comptées : elles sont dans ses steps, et un enchaînement fait courir.
+ */
+/**
+ * B1 (arbitrage du STOP de Phase 2) — LE CLASSIFICATEUR DU MOTEUR, EXPOSÉ À L'AFFICHAGE.
+ *
+ * Le graphe de charge de l'UI comptait ses minutes avec sa propre table (`_IFZ`) et sa propre
+ * convolution : un modèle entier côté affichage, que R14 rejette côté moteur. Il consomme
+ * désormais `intensitySplit` — LE classificateur de C26 — pour les séances validées ; les
+ * minutes PRÉVUES viennent déjà de `_v2.intensity.weekly`. Les refs suivent les réponses
+ * courantes (mêmes parseurs que le plan) ; sans référence, les défauts d'`intensitySplit`
+ * s'appliquent (le comportement du moteur, jamais un second choix ici).
+ */
+function sessionSplitForUI(s: unknown, answers?: AppAnswers): { easyMin: number; modMin: number; hardMin: number } {
+  const a = answers ?? ({} as AppAnswers);
+  const css = a.css ? parsePaceSec(String(a.css), "swim") : 0;
+  const pace = a.pace ? parsePaceSec(String(a.pace), "run") : 0;
+  const refs = {
+    cssSecPer100m: css > 0 ? css : 130,
+    thrPaceSecPerKm: pace > 0 ? pace : 330,
+  };
+  return intensitySplit(s as never, refs as never);
+}
+
+function runHoursPerWeekOf(plan: V1Plan): number | null {
+  const w = plan.weeks.filter((x) => !x.isRecup && ["dev", "spec", "peak"].includes(String(x.phase && x.phase.id)));
+  if (!w.length) return null;
+  const parSemaine: number[] = [];
+  for (const wk of w) {
+    let min = 0;
+    for (const d of wk.days) for (const s of d.sessions) {
+      if (s.d === "rs" || s.race) continue;
+      if (s.d === "rn") { min += s.min || 0; continue; }
+      for (const st of (s.steps ?? []) as { d?: string; reps?: number; durationMin?: number }[])
+        if ((st.d || s.d) === "rn" && st.durationMin) min += (st.reps || 1) * st.durationMin;
+    }
+    parSemaine.push(min);
+  }
+  parSemaine.sort((a, b) => a - b);
+  const med = parSemaine[Math.floor(parSemaine.length / 2)] / 60;
+  return med > 0 ? med : null;
 }
 
 /** Secondes/km → « 4:50 » : le parseur d'allure est unique (E1/E2), son inverse doit l'être aussi. */
@@ -1081,6 +1168,10 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
 
 (globalThis as Record<string, unknown>).EBV2 = {
   buildPlan: buildPlanV2,
+  // B1 — le classificateur d'intensité du moteur, pour le graphe de charge (jamais une table UI)
+  sessionSplit: sessionSplitForUI,
+  // B2 — la règle « FTP ≈ 95 % des 20 min » : UNE écriture (fitParser), deux consommateurs
+  ftpFromBest20,
   adjustToday: adjustTodayV2,
   coachOnIngest: coachOnIngestV2,
   // S-8 — l'UI contrôle la taille AVANT de lire le fichier : la borne est celle du moteur,
@@ -1102,6 +1193,10 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // plan — somme les XP (tiers compris) de tous les plans de l'athlète (voir sa définition).
   avatarTriMulti,
   perfTier: perfTierV2,
+  // T-27 §4 — le sceau COMPTE en production au lieu de se taire. Un invariant qui se viole chez
+  // un utilisateur, sur un profil que le golden ne contient pas, est l'information la plus
+  // précieuse que ce moteur puisse recevoir ; l'exposer est la seule façon qu'elle remonte.
+  sealCounters: SEAL_COUNTERS,
   adherence: adherenceV2,
   disciplines: DISCIPLINE_REGISTRY,
   // R7 — l'UI a besoin de la catégorie d'effort déduite et des plafonds trail pour
@@ -1120,6 +1215,19 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // annonçait 8h/sem là où le moteur en applique 9 (vélo/route/reprise). Les règles
   // pédagogiques expliquent des décisions : elles doivent lire les chiffres qui décident.
   volumeCaps: { history: HISTORY_CAPS, util: UTIL, margin: MARGIN },
+  // O-51 — LA CIBLE DE SPÉCIFICITÉ DE LA SORTIE LONGUE, exposée pour être VÉRIFIÉE.
+  //
+  // Le critère `C30b-A` du banc v6 exigeait qu'une décision `C30b` soit ÉMISE. Il rougissait donc
+  // quand la longue atteignait sa cible SANS la passe — c'est-à-dire quand tout allait mieux. La
+  // propriété est « la longue atteint sa cible », dont « la passe se déclenche » n'est qu'un des
+  // chemins ; pour la vérifier, le banc a besoin de la CIBLE.
+  //
+  // Elle est exposée plutôt que recalculée dans le banc : une seconde écriture de la règle y
+  // divergerait, et c'est exactement ce que R11.1 interdit. Même convention d'appel que le
+  // générateur (`floorMin: 0`, `capMin: ∞`) pour obtenir la cible PURE, avant plafonds — les
+  // plafonds de sécurité sont gardés séparément par `C30-B`.
+  longRunSpecTarget: (fmt: string | undefined, thrPaceSecPerKm: number, runHoursPerWeek?: number) =>
+    longRunSpecificityFloor(fmt, thrPaceSecPerKm, 0, Number.MAX_SAFE_INTEGER, runHoursPerWeek),
   // R10 phase 1 — le REGISTRE DE SPORTS exposé à l'UI : elle n'a plus à savoir quel sport
   // teste quoi (`typesForSport` recopiait la liste). Un sport ajouté au moteur devient
   // automatiquement complet côté interface.
@@ -1150,6 +1258,14 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // chrono saisi. Il ne touche jamais le plan : c'est un VERDICT, pas une entrée.
   feasibility: feasibilityV2,
   parseChronoSec,
+  // O-51 — LE PARSEUR D'ALLURE, exposé à côté de celui de CHRONO, parce qu'ils se confondent.
+  //
+  // `parseChronoSec("8:30")` rend **30 600** : c'est un CHRONO, donc 8 h 30. Une ALLURE de
+  // 8:30/km vaut 510. Écrire le banc contre le seul parseur exposé donnait des cibles de
+  // spécificité de 6 466 min — mesuré, et c'est la troisième fois dans la même journée qu'une
+  // allure passe par le mauvais parseur. L'audit v6 avait déjà tranché « parseur d'allure
+  // UNIQUE » : le respecter suppose qu'il soit ATTEIGNABLE.
+  parsePaceSec,
   // Retour utilisateur (08/08/2026) : la référence D+ au Profil — calculatrices, pas une
   // nouvelle donnée pilotée (voir leur définition).
   raceDistanceKm,

@@ -32,6 +32,7 @@ régularité est priorité 3, pas priorité 7.
 | Fichier | Rôle |
 |---|---|
 | `note.md` | Manifeste : vision, priorités, règles interdites, principes d'or |
+| `ZENNA_SPEC_COMPLETE.md` | **Les tokens de design** — palette, charge, disciplines, échelle typographique. GÉNÉRÉ (`npm run build:spec`) et gardé à jour par `npm run check:spec` : on le LIT pour comprendre, on modifie les valeurs dans les fichiers qu'il cite. |
 | `Coach_Pro_V1.5.html` | **Le produit** — application autonome (~1600 lignes), tout le moteur |
 | `src/sports/registry.ts` + `src/sports/<sport>/` | **Le registre de sports** (R10) : un sport = un module qui DÉCLARE ses séances, sa prédiction, ses tests et ses `guards` (garde-fous). Un sport inconnu lève. |
 | `src/engine/trailModel.ts` + `src/generator/trailLibrary.ts` | **Le module trail** (R7) : catégorie déduite, charge à 3 axes (temps/D+/D−), 14 séances |
@@ -147,6 +148,253 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 
 ## Comment travailler dans ce dépôt
 
+- **Une garde se prouve dans les deux sens avant d'être crue** : rouge contre un état connu
+  mauvais, verte contre un état connu bon. Un gate non contre-prouvé ne mesure que lui-même.
+  (Règle issue de l'arbitrage B-25 §9, 14/08/2026 — démontrée le jour même par deux faux
+  positifs d'instrument : une CSP lue dans un commentaire, 62 citations bibliographiques
+  prises pour des requêtes.)
+- **Une entrée déclarée ne remplace pas une sortie calculée que le moteur possède déjà.**
+  Vérifié trois fois : tables MET contre puissance mesurée (N-02), `vol_max` contre le volume
+  de course du plan livré (B-21, `runHoursPerWeekOf`), bande statique contre bande du
+  prédicteur (B-25). (Même arbitrage.)
+- **Un commentaire qui affirme un invariant est accompagné d'un test, ou il est supprimé.**
+  Un invariant non gardé n'est pas un invariant : c'est un souhait. Quatrième occurrence
+  mesurée en un jour : le « seul classificateur » de nutritionCalculator, l'alignement déclaré
+  d'`_IFZ`, « rn.mara n'est prescrit qu'au marathon », et la frontière seuil recopiée — cette
+  dernière est la forme correcte, gardée par T-20. (Arbitrage du STOP de Phase 2, 14/08/2026.)
+- **Règle 14 — deux grandeurs ne se comparent qu'après conversion dans une monnaie commune,
+  et l'exposant appartient à la DISCIPLINE** (arbitrage `sw.aero`, 14/08/2026) : vélo natif en
+  puissance (aucune conversion) · course allure → effort avec un exposant ≈ 1 (le coût est
+  quasi linéaire en vitesse, ~1 kcal/kg/km) · natation exposant **≈ 3** (traînée
+  hydrodynamique). Comparer un rapport d'ALLURE à un rapport de PUISSANCE est une faute
+  d'unité — la même « pénalité » de 12-16 % vaut 86 % d'effort en course et 71 % en nage.
+  Sept occurrences mesurées dans ce chantier (O-13, le plancher de temps facile de R20.5,
+  R20.7, V-11, la table de T-15, `peakH` en O-35, et le retrait de mon propre correctif O-35).
+- **La règle 7 (« mesurer avant d'écrire la règle ») vaut aussi pour les tickets
+  d'ALIGNEMENT, pas seulement pour les seuils** (même arbitrage). Deuxième fois qu'un correctif
+  de cohérence aurait fait des dégâts réels s'il avait été appliqué sans mesure : après B-02
+  (45 % de profils touchés), `sw.aero` — le reclasser aurait fait déborder 411 semaines sur
+  C26d, donc retiré du volume aérobie de nage, exactement ce dont les nageurs manquent le plus.
+  Un ticket d'alignement se mesure avant d'être adopté, sa prémisse comprise.
+
+- **Règle 15 — une garde qui porte sur le COMPORTEMENT du moteur observe la SORTIE LIVRÉE ; elle
+  ne lit jamais une table** (arbitrage du 15/08/2026, treize occurrences mesurées). Modéliser
+  `blockBounds` au lieu de l'observer a produit un balayage T-28 dont la conclusion était
+  INVERSÉE (12 « couples permissifs en affûtage » qui n'atteignaient jamais la branche modélisée).
+  Balayer un motif SYNTAXIQUE là où la famille est SÉMANTIQUE a fait rater le fail-open de
+  C24/C24b (`if (tot <= 0) continue`). Lire `DOSE_CAP_MIN[suffixe]` quand le code fait une
+  résolution par regex a fait déclarer `css` orphelin alors qu'il est plafonné à 40 depuis
+  toujours. **Mesurer ce qui est ÉCRIT au lieu de ce qui s'EXÉCUTE donne un rapport faux avec un
+  raisonnement juste** — c'est le mode de défaillance le plus coûteux du dépôt, parce qu'il
+  survit à la relecture.
+
+- **Règle 16 — la question « qu'est-ce qui produit ceci ? » se pose RÉCURSIVEMENT, jusqu'à un
+  point d'entrée produit.** S'arrêter à un niveau rend un fait vrai sur un FICHIER et faux sur le
+  PRODUIT. Mesuré : le balayage a répondu « `steps.js` écrit le journal sans promouvoir » — exact
+  — et personne n'a demandé qui appelle sa fonction d'import ; son unique appelant promeut dans la
+  ligne suivante, et O-41 était réfuté. Test d'arrêt : on s'arrête quand le producteur est une
+  ACTION DE L'ATHLÈTE ou un point d'entrée du système, **jamais quand c'est une autre fonction**.
+  La technique paie quand elle va au bout — comparer deux mesures au lieu d'en remplacer une,
+  balayer les ÉCRIVAINS et non les lecteurs, OBSERVER `blockBounds` au lieu de le modéliser — et
+  elle ment quand elle s'arrête à mi-chemin. Corollaire opérationnel : une fixture qui n'est pas
+  atteignable par un chemin produit rend un constat sur la fixture (T-33).
+
+- **Règle 17 — après tout déplacement de code, tous les blocs `verify` sont rejoués, et toute
+  entrée qui bascule en « ne reproduit plus » est confirmée À LA MAIN avant d'être crue.** Le mode
+  de défaillance est silencieux et il a déjà été mesuré deux fois : un `grep` qui ne trouve plus
+  son motif **se lit comme un défaut réparé**. Le pas A d'O-41 a déplacé `syncRefsFromTests` et
+  invalidé le bloc d'O-23 du même coup ; un refactor est un producteur de MASSE de ce défaut — il
+  peut retirer dix entrées du registre en une fois sans que rien ne le signale. (Six blocs à `cmd`
+  muet avaient déjà été rangés à tort en « ne reproduit plus » alors qu'ils reproduisaient.)
+
+- **Règle 12, forme nouvelle (arbitrage O-43, 16/08/2026) — une sortie calculée ne se relit jamais
+  comme une entrée.** Si une contrainte se dérive du contenu GÉNÉRÉ, elle mesure le générateur et
+  non l'athlète. Mesuré : la sonde de capacité lit un clone SATURÉ de la semaine livrée, donc
+  recompter le même travail en plus de minutes (O-42) lui fait conclure à une capacité plus grande,
+  la courbe monte, et le point fixe **ajoute des séances**. Le plafond est une propriété de
+  l'athlète — temps disponible, tolérance tissulaire —, jamais de la façon dont le moteur compte.
+  Gardé par **T-34** (`lotPhysio`) : faire varier la conversion d'une discipline ne doit rien
+  changer à ce qui est prescrit.
+
+- **Corollaire de la règle 14 — un écart s'exprime dans l'unité de sa CONSÉQUENCE, et un
+  pourcentage seul est ininterprétable sans sa base.** Donner l'absolu d'abord, le pourcentage
+  ensuite si utile. `swim/demifond` à **+17,6 %** vaut 1,6 min au-dessus d'un clamp qui en accorde
+  1 : le pourcentage disait « queue épaisse », la minute disait « bruit de quantification ». Le
+  Full à **+21,7 %** vaut `286 → 348 min`, une heure de plus : là les deux disent la même chose, et
+  c'est ce qui prouve que la queue était réellement épaisse — jamais le pourcentage seul.
+
+- **Corollaire de la règle 15 — une causalité ne se lit pas sur un diff de LOT. Elle se mesure par
+  expérience contrôlée : un seul facteur varie.** Mesuré le 16/08/2026 : j'avais lu
+  « `structurel` 1,42 → 2,08 h » sur un diff qui contenait tout O-42 et j'en avais tiré la cause
+  d'O-43. L'expérience contrôlée — faire varier la seule CONVERSION — laisse ce maillon à +1,0 % et
+  déplace `courbe` (+11 %), `boucle-growth` (+36 %) et le pic livré (+9,1 %). Le diagnostic publié
+  était faux et le filtre du fondateur l'a réfuté dans l'heure.
+
+- **Un test d'INVARIANCE a toujours besoin de son jumeau de SENSIBILITÉ** (arbitrage O-44 §4) :
+  une constante gelée est trivialement invariante, donc un test d'invariance seul est satisfait par
+  la pire des solutions. La propriété réelle est « invariant à ce qui ne le concerne pas, **sensible
+  à ce qui le concerne** » — T-34 avec T-36. À appliquer à tout test d'invariance du dépôt.
+
+- **Une table qui croise deux populations porte son AXE dans son en-tête** (arbitrage O-46, §5) :
+  transmise, elle est plus dangereuse que commise — celui qui la commet peut encore se souvenir de
+  ce qu'il a mélangé, celui qui la reçoit ne le peut pas. Deux occurrences en une journée : une
+  table qui mêlait semaines de charge et d'affûtage (O-44 §6a), une qui mêlait formats de nage pure
+  et de triathlon sous le seul mot « sprint » (O-44 §9) — la seconde a fait conclure au fondateur
+  que 27 profils échappaient à un correctif qui les couvre. L'axe coûte trois mots.
+
+- **Règle 19 — avant d'écrire un test, demander : quel est le correctif le MOINS COÛTEUX qui le
+  ferait passer ? Si ce correctif ne résout pas le problème, le test est sous-spécifié.** Deux
+  occurrences le même jour, sous deux surfaces qui ne se sont pas connectées : un test d'INVARIANCE
+  qu'une constante gelée satisfait (O-43, issue 2), un test de BORNE qu'une valeur épinglée sur la
+  borne satisfait (T-38 v1 — et je venais de nommer la première une heure plus tôt). La question du
+  correctif minimal les couvre toutes les deux, et elle se pose AVANT d'écrire.
+
+- **Règle 18 — une différence E2E n'est attribuée à un lot qu'après ≥ 3 exécutions de la suite
+  concernée DE CHAQUE CÔTÉ du changement.** Une exécution unique de part et d'autre n'est pas une
+  comparaison : c'est deux tirages. Une suite E2E est stochastique par nature (réseau, temporisation,
+  charge machine), et le coût du faux positif est élevé dans les deux sens — soit on révoque un bon
+  lot, soit on cherche des heures une cause qui n'existe pas. Mesuré le 15/08/2026 :
+  `smoke-nofallback` (`icon-192.png net::ERR_ABORTED`) rouge après O-42, verte sur le commit
+  précédent, **une exécution de chaque côté** — j'allais l'écrire comme régression du lot. Rejouée
+  trois fois sur `HEAD` : trois fois verte, puis verte dans la passe complète. C'est le pendant
+  TEMPOREL de la règle 15 : celle-ci dit « mesure ce qui s'exécute, pas ce qui est écrit », celle-là
+  dit « mesure-le assez de fois pour que le résultat soit du signal ».
+
+- **Corollaire de la règle 14, à cinq secondes : un verdict rendu en POURCENTAGE sur une grandeur
+  dont le pas est ABSOLU est faux sur les petites valeurs.** Trois occurrences en une journée
+  (15/08/2026) : la tolérance de la ventilation O-42 (205 faux « inexpliqués », tous le même
+  arrondi), le classement du dépassement C22 (`swim/demifond` à **+17,6 %** vaut **34 → 40 min**,
+  soit 1,6 min au-dessus d'un clamp qui en accorde 1), et le seuil de bande de la même mesure.
+  Le test : *dans quelle unité la RÈGLE agit-elle ?* Un clamp qui retire des minutes se juge en
+  minutes ; un plancher de séance se compte en minutes ; un pourcentage sur une semaine de 34 min
+  amplifie le quantum d'un facteur dix.
+
+- **Règle 21 — une sonde sur une propriété qui varie avec la POSITION se rédige PAR POSITION
+  d'abord, et n'agrège qu'après ; jamais agréger puis comparer** (arbitrage du 17/08/2026, après
+  trois récidives de la règle 20 dans la garde écrite pour la tester, une heure après l'avoir
+  posée). La cause n'est pas l'inattention : **la forme naturelle d'une sonde est SANS position**
+  — on écrit `max`, `moyenne`, `compte`, et chacune de ces opérations DÉTRUIT la position avant la
+  comparaison. L'écriture par défaut d'une sonde est donc structurellement incompatible avec une
+  propriété positionnelle. Mesuré : un `max` sur tout le plan pour une propriété par semaine
+  (T-41 aurait rougi sur le comportement voulu), et son corollaire immédiat — `Math.max` sur une
+  tranche vide rendant `-Infinity`, qui n'existe que parce qu'on agrège.
+
+- **La moitié SENSIBILITÉ d'un jumeau porte un DOMAINE : où la sensibilité est-elle attendue ?
+  Hors de ce domaine, l'insensibilité EST la propriété, pas son absence** (arbitrage du
+  17/08/2026, qui corrige la formulation d'O-44 §4). « Invariant à ce qui ne le concerne pas,
+  sensible à ce qui le concerne » était incomplet : **une grandeur qui CONVERGE est insensible à
+  sa limite, et c'est correct**. Mesuré — sur un sprint, une continuité déclarée à 400 m et une à
+  2 000 m arrivent au même plafond à mi-plan parce que la projection converge vers la distance de
+  course ; exiger de la sensibilité là revient à signaler une convergence comme un défaut. À
+  reporter sur tout jumeau invariance/sensibilité du dépôt.
+
+- **Règle 20 — toute grandeur qui varie avec la POSITION DANS LE PLAN déclare à quelle position
+  elle vaut, et tout consommateur la lit à la position où il l'utilise** (arbitrage O-56,
+  17/08/2026). Une valeur de fin de rampe n'est pas une borne de semaine 1 ; une déclaration de
+  semaine 1 n'est pas une capacité de semaine 30. Les deux occurrences sont symétriques et sont
+  arrivées le même jour :
+  `atteignableM` — valeur de FIN, appliquée au DÉBUT : un athlète déclarant 400 m de nage continue
+  recevait une séance de **4 150 m**, et 2 000 m donnaient un plafond de **32 076 m** sur un Full ;
+  `beginner` — valeur du DÉBUT, appliquée à la FIN : le débutant de la semaine 1 l'est encore en
+  semaine 30, sur un plan qui prescrit précisément les trente semaines qui devraient le lever.
+  C'est le pendant TEMPOREL de la famille fermée douze fois : celle-là portait sur l'ORDRE DES
+  PASSES (« une garantie vérifiée au milieu du pipeline ne vérifie que l'avant-dernier état »),
+  celle-ci sur la POSITION DANS LE PLAN.
+
+- **Un ZÉRO a besoin de sa POPULATION** (arbitrage du fondateur, 17/08/2026). L'heuristique
+  « un taux saturé accuse l'instrument » a un ANGLE MORT, et il est large : **elle ne peut pas se
+  déclencher quand la valeur saturée est la valeur DÉSIRÉE.** Zéro écart, zéro violation, zéro
+  erreur, zéro régression — c'est-à-dire la majorité des gates de ce dépôt : l'échec de la mesure
+  et sa réussite y sont indiscernables à la lecture. La parade se généralise : *quand le succès
+  d'un test est indiscernable de sa vacuité, il faut prouver que la MESURE A EU LIEU, séparément
+  de son RÉSULTAT.* Tout gate dont le succès est « zéro » assert donc sa population :
+  `golden:verify` et `golden:bundle` 989 profils, `audit:v1` 459 combinaisons, `audit:invariants`
+  54 configurations × 22 invariants. Le compte est ÉPINGLÉ et ne se déduit pas de la photo — une
+  photo tronquée et un balayage tronqué se valideraient mutuellement (contre-prouvé : 10 contre
+  10, 0 écart réel, et le gate rougit). Avec les deux règles voisines, le triptyque est complet :
+  **un ratio a besoin de sa base, un compte a besoin de son moment, un zéro a besoin de sa
+  population.**
+
+- **Un COMPTE se publie avec ce qu'il compte — brut ou net — et à quel POINT DU PIPELINE il est
+  lu** (arbitrage du fondateur, 17/08/2026). C'est le corollaire du dénominateur, un cran plus
+  haut : un ratio a besoin de sa base, un compte a besoin de son MOMENT. Mesuré : « 124 retraits »
+  lus dans la trace (BRUT, au moment de la coupe) et « −58 sur 59 » lus sur le plan livré (NET,
+  après les passes qui réinsèrent) ont été publiés à un jour d'écart sans étiquette, sur le même
+  profil. Le lecteur en tire soit une contradiction, soit que l'un est faux — jamais « ce sont
+  deux questions ».
+
+- **Une garde qui valide `src/` ne valide pas ce qui est LIVRÉ** (arbitrage du 17/08/2026,
+  `npm run golden:bundle`). Le golden importe `src/app/bridge.ts` ; ce qui est déployé est le
+  BUNDLE, et la construction n'est pas neutre — elle RETIRE les imports et concatène, donc un
+  alias (`record as traceRecord`) ne survit pas. Mesuré le jour même : `audit:v1` à **57
+  ReferenceError** pendant que `golden:verify` restait à **0 écart**, parce que l'un lit le
+  bundle et l'autre la source. Vérifier la VALIDITÉ du bundle (ce que font `audit:v1` et les
+  E2E) et son IDENTITÉ DE SORTIE avec la source sont deux questions différentes ; seule la
+  seconde est ce que la photo garantit. Le piège de cette garde-là est qu'un bundle qui ne se
+  charge pas rend **0 écart** — le résultat attendu : la référence de `globalThis.EBV2` doit
+  donc être vérifiée CHANGÉE entre les deux passes, et une contre-preuve perturbe une constante
+  du livré (186 profils divergent sur `B17_ECHAUF_M 200 → 225`).
+
+- **Un ratio se publie avec son dénominateur NOMMÉ, et se lit en le cherchant** (corollaire de la
+  règle 14, arbitrage du 17/08/2026). « 231/231 à la borne » comptait *parmi les blocs à la borne,
+  combien sont en tri* — pas l'inverse ; il s'est lu comme « le plafond définit la nage seuil du
+  triathlète longue distance » et un arbitrage a été rendu dessus. Le réel était 22 % des semaines.
+  Un ratio est un chiffre à DEUX nombres ; n'en donner qu'un le fait toujours lire dans le sens le
+  plus frappant.
+
+- **Un outil de LOCALISATION et un outil de MESURE ne sont jamais le même outil, et le premier
+  produit toujours un nombre qui a l'air d'être le second** (arbitrage du 17/08/2026). `firstDiff`
+  du golden documente qu'il rend le PREMIER écart — « où compte plus que combien pour corriger » —
+  et c'est en agrégeant ses 87 lignes qu'une ampleur fausse a été publiée puis a fondé une
+  décision. Le vrai mouvement était de 6 403 champs. Fermé par O-52 : l'outil a désormais les deux
+  sorties.
+
+- **Changer ce dont une valeur DÉRIVE redéfinit silencieusement le sens de tous ses consommateurs
+  — y compris les arbitrages rendus dessus.** Aucun test n'attrape ça, puisque rien ne bouge chez
+  le consommateur. Trois occurrences en deux jours : `cibleDuNom` comparant une grandeur à
+  elle-même après que le titre est devenu dérivé du livré (0/24, trivialement vrai) ; un message
+  bâti sur une clé dont la définition avait changé ; et une décision « l'auxiliaire cède jusqu'à
+  son plancher » devenue sans objet parce que la borne inclut désormais l'auxiliaire. La seule
+  parade est de **relister les lecteurs d'une valeur quand on change sa source**.
+
+- **La nouvelle base d'un cliquet se mesure AVANT que le moteur bouge, jamais après**
+  (arbitrage du 17/08/2026, `npm run base:cliquet`). Un cliquet qui monte parce qu'on a ÉLARGI la
+  mesure et un cliquet qui monte parce que le MOTEUR a régressé se ressemblent exactement.
+  Trancher par inférence — « un autre cliquet est resté fixe, donc c'est le corpus » — marche
+  jusqu'au jour où tous montent. La preuve mécanique coûte une passe : rejouer le NOUVEAU corpus
+  contre le moteur INCHANGÉ. Vérifiée sur ses trois branches (corpus +20 → 31→69 rabotés ; corpus
+  inchangé et moteur inchangé → 0 ; corpus inchangé et garde retirée → +138, « RÉGRESSION »).
+
+- **Un corpus se juge sur l'espace des DÉCISIONS, pas sur celui des saisies**
+  (arbitrage A-2, 17/08/2026, `npm run couverture:golden`). Six angles morts du golden en un mois
+  ne sont pas six distractions : le corpus a été construit pour couvrir des FORMATS et des NIVEAUX,
+  pas les BRANCHES des règles qui les lisent — et chaque fois qu'une règle apprend à lire une clé,
+  il devient muet sur son domaine **en silence, parce qu'un corpus incomplet rend des résultats
+  verts**. La couverture par CLÉ ne suffit pas : le dernier trou l'aurait passée (`level` avait ses
+  3 valeurs, `longest_swim_m` ses 5 branches) — ce qui manquait était le CROISEMENT. Ne sont
+  croisés que les couples que le CODE lit ensemble, dérivés par co-occurrence : 238 sur 2 080,
+  88 % de bruit retiré sans arbitrage humain.
+
+- **Test de dépistage de la règle 15, à trois secondes : un taux SATURÉ accuse l'instrument — ou
+  le MODÈLE MENTAL de ce que l'instrument observe.** (Élargi le 16/08/2026 : `mesure:o46` rendait
+  « avec plafond » et « sans plafond » identiques au mètre près ; la sonde fonctionnait, elle
+  mesurait une grandeur qui n'agissait pas là où on la croyait — `CAP_SWIM` borne UN BLOC de la
+  sortie longue, pas une séance. Les deux se testent par la même question : *quel état, quelle
+  grandeur, décrit ce résultat ?*)
+  Toute mesure qui rend 0 % ou 100 % est suspecte d'erreur de sonde jusqu'à preuve du contraire —
+  et la preuve est de faire VARIER une entrée et de vérifier que le taux bouge. Quatre des
+  quatorze occurrences de la règle 15 auraient été attrapées par là : « 1 924 divergents sur
+  1 924 » a démasqué un CSS de repli, « 0 collision » mesurait un jour sans vélo, « 0 badge »
+  cherchait une classe absente, « 12/12 » photographiait un artefact de date.
+
+- **Les propriétés visuelles LIÉES se mesurent ENSEMBLE, en un seul cycle** (consigne du
+  fondateur, 12/08/2026). Couleur de badge, fond de carte et contraste dépendent du même token
+  de discipline : les traiter séparément fait payer trois cycles mesure → correction → re-mesure
+  là où un seul suffit, et c'est exactement ce que la refonte de la carte de séance a coûté (le
+  badge posé en teinte diluée, puis re-mesuré contre un fond qui venait de changer, puis repris
+  en tuile pleine). **Avant de toucher une propriété visuelle, lister celles qui partagent son
+  token ou son fond, et les mesurer d'un bloc** — la sonde coûte le même prix pour une ou pour
+  cinq grandeurs.
 - **Le moteur réfléchit avant de générer, se vérifie, se corrige** — jamais l'inverse. Toute
   nouvelle contrainte de génération suit le cycle : mesurer d'abord (l'auditeur dit qui viole
   quoi), corriger dans le générateur, re-mesurer, garder le vert.
@@ -166,7 +414,11 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   (`eb_state_v2`, multi-plans ; migration automatique depuis `eb_state_v1`) — toute
   évolution du format doit dégrader proprement.
 - **Design responsive** : tester mobile/tablette/desktop pour toute retouche UI (grilles CSS,
-  variables, esthétique « papier/collage » à préserver).
+  variables). L'esthétique « papier/collage » (`styles.css`/`mobile.css`) reste la référence des
+  onglets Profil/Plan/Semaine/Outils ; 🎯 Aujourd'hui porte depuis R-ZENNA le nouveau système
+  sombre du fondateur (`css/zenna-today.css`, scopé à `body.theme-zenna`) — la direction retenue
+  pour la suite du produit, migration des quatre autres onglets non commencée (voir « État
+  courant »).
 
 ## Modifier le moteur — les deux gestes courants
 
@@ -181,6 +433,468 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
+
+**O-42 livré — il y avait QUATRE conversions mètres ↔ minutes pour une seule grandeur, et aucune
+n'était celle que l'athlète lit** (arbitrage `O42_AUTORITE_DEFINITION_ZONE`, 15/08/2026 — voir
+`BUGS_OUVERTS.md` « O-42 », mesures `npm run mesure:o42` et `npm run ventile:o42`) : `stepMin`
+comptait chaque mètre de nage comme nagé au CSS — un bloc facile n'est pas nagé au CSS, c'est un
+fait, pas une convention. Le contrôle que le fondateur a demandé de passer EN PREMIER a confirmé
+sa suspicion et l'a élargie : `weekDistances` portait sa propre table, divergente de `ZDEF` sur
+**8 zones sur 9** (`sw.easy` 0,80 contre 0,893 — 10,4 %), et la recherche récursive du producteur
+(règle 16) en a trouvé une quatrième, dans l'AUDITEUR, **écrite deux fois à quinze lignes
+d'écart**. L'autorité n'est aucune table : c'est la définition de zone, celle qui produit les
+allures affichées. `zoneSpeedRatio` est la seule dérivation (R11.1) ; les deux tables
+disparaissent. **Le choix de bande a été mesuré avant d'être fait** — la nage porte `lo === hi`
+(exact), la course des bandes ; sur 4 259 blocs prescrits en mètres, 108 (2,5 %) sont concernés et
+l'écart borne rapide ↔ borne lente vaut **0,2 % du total contre 7,9 % pour la correction** : on
+prend le CENTRE (`longRunSpecificity` prend `lo` parce qu'elle calcule un PLANCHER ; ceci est une
+COMPTABILITÉ, qui prend la valeur attendue), la borne prudente coûtant +0,1 %, chiffrée pour que
+la décision reste révocable sans re-mesure.
+**Deux gardes existantes ont trouvé ce que l'inventaire n'avait pas.** `A3` (banc v6, « jour
+rouge : jamais plus de minutes qu'avant ajustement ») a débusqué un **cinquième site** —
+`enduranceReplacement` dérivait ses mètres du CSS brut, donc la séance de remplacement durait
+**25 min pour 23 allouées**, sur le jour ROUGE, là où l'invariant existe. `ANX-C22` (banc R13) a
+débusqué un défaut ANTÉRIEUR et plus large : `enforceC22Final` n'avait que deux branches, `reps`
+et `durationMin` — **un bloc en mètres à `reps === 1` ne tombait dans aucune**, et la boucle
+sortait par « les planchers bloquent », un fail-open de la forme exacte de C24/C24b. La nage
+prescrivant 89 % de ses blocs en mètres, c'est la moitié de l'objet du clamp qui lui manquait ;
+`audit:v1` passe de **22 à 18** combinaisons au-dessus de +10 %.
+**L'acceptation n'est PAS « 0 écart » et ne pouvait pas l'être** : identité durée = distance ×
+allure de zone **4 248 / 4 248 blocs**, ampleur par zone égale au ratio de la zone au dixième de
+point près (`sw.easy` +12,0 %, `sw.speed` **−6,0 %** — la seule zone en mètres plus rapide que le
+CSS), 0 changement de structure, et **54 semaines sur 2 682 (2,0 %)** qui s'éloignent de plus de
+6 min de leur cible — 50 parce que la cible DÉCLARÉE monte plus vite que le livré (famille
+T-25/O-35), 4 parce qu'un plafond **qui se nomme** apparaît dans le plan. **Quatre fautes
+d'instrument dans le script qui devait juger le lot, toutes publiées** : un verdict « VENTILÉ »
+rendu sur une table VIDE (`intOf` n'est pas exposée sur `EBV2` — taux saturé 0/0), une colonne
+« ampleur » qui sommait la récup, une classification qui nommait « un plafond mord » et mesurait
+« le pic a baissé », et une tolérance en POURCENTAGE quand le pas du point fixe est ABSOLU —
+faute d'unité (règle 14) dans le juge du ticket qui corrige une faute d'unité.
+Et la règle 17 a servi : `registry:check` a fait basculer **quatre** blocs en « ne reproduit
+plus », **quatre faux positifs** (un refactor, une police supprimée, deux valeurs devenues
+périmées) — réécrits sur la PROPRIÉTÉ au lieu d'une valeur ou d'un chemin.
+**28 gates verts, golden 949 recapturé (560 profils), `audit:v1` 459 à 0 violation dure.**
+
+**O-35 (2ᵉ moitié) + B-09 + la mesure de B-02 livrés — le DIAGNOSTIC de volume vivait avant le
+point fixe, et 350 profils annonçaient un pic qu'ils ne livrent pas** (arbitrages `sw.aero` et
+`B02_DEBLOQUE_APRES_B02A`, 14/08/2026 — voir `RAPPORT_O35B_B09.md` et
+`RAPPORT_B02_PONDERATION.md`) : la re-sonde demandée est écrite (clone SATURÉ de la semaine
+LIVRÉE — mesurer les minutes livrées rendrait l'identité vraie par construction ; une passe,
+résolution B-25) et corrige ce qu'elle visait (plafond structurel 2,03 → **0,85 h** chez le
+nageur débutant), mais T-25 est MONTÉ et l'instrumentation a désigné plus gros :
+**`reconcileDeclaredVolume` tourne à la ligne 3322, le bloc « C6 + R20.2 » était à 2998** — le
+pic annoncé et toute la chaîne décrivaient l'avant-dernier état, avant I14, C26c/d, I14b, C30b,
+planchers et fréquence. Onze fois ce dépôt a payé cette leçon sur des GARANTIES ; ici c'était le
+DIAGNOSTIC. Déplacé après le point fixe, `volPeak` recompté sur les séances livrées : **350
+profils sur 945 (37 %) annonçaient plus qu'ils ne livrent — 350 baisses, 0 hausse, médiane
+7,1 %, pire cas 4,9 h annoncées pour 3,4 (−30,6 %)**, toujours vers le haut, sur le chiffre que
+l'athlète lit comme « son pic » quand V2.1 déclare que promettre davantage serait mentir.
+**B-09** : facteur indexé sur l'historique (`swimTimeFactorOf`, reprise 0,45 · confirme 0,60 ·
+ancien 0,70, repli sur la valeur la plus prudente) — presque inerte sur le golden (42 profils,
+±6 %, famille A-2 : tous à `vol_max: 10`), **+42 % de pic entre reprise et ancien** là où la
+déclaration mord (3 h/sem). **L'activation pour `tri` est REFUSÉE, chiffrée** : `vol_max` y
+couvre les TROIS disciplines, le guard amputerait un Ironman de **17 266 à 7 881 min (−54 %)**,
+vélo et course compris. **B-02** : la pondération ×1/×0,75/×0,5 **échoue les deux critères
+maintenus** (118/945 = 12,5 % contre < 10 % · 69,5 % contre ≥ 70 %) — rien écrit ; le seul jeu
+recevable (×0,4/×0,25) est celui qui ressemble le plus au drapeau binaire qu'il devait remplacer,
+et les deux variantes touchent des populations DIFFÉRENTES (le drapeau punit 34 duathlons pour
+leur intensité vélo, la pondération n'en touche aucun et prend 22-38 triathlons). **T-25 monte à
+608 et c'est le taux exploitable** — rendre un membre de l'identité exact élargit l'écart avec
+une énumération encore périmée ; la cause restante est nommée (ce que le point fixe RETIRE n'est
+déclaré par aucun maillon). `sessionScale` porte sa condition de sortie, T-23 est rectifié (34 %
+est le taux honnête, 10 % était le mensonge), et `smoke-questionnaires` cesse de MOURIR sur une
+course de navigation.
+**28 gates verts, E2E 25/25, `audit:v1` 459, invariants 22×54, v6 73 verts, golden 949 recapturé.**
+
+**R20.2 (2ᵉ correction) + O-35 livrés — « ce qui borne » devient l'argmin d'un min(), et deux
+fautes d'unité se compensaient en natation** (DOC_UNIQUE + arbitrage `sw.aero`, 14/08/2026, voir
+`RAPPORT_DOC_UNIQUE.md`, banc `scripts/lotPhysio.mjs`) : le message de volume prenait **la plus
+grosse baisse** sous un texte qui promet « ce qui borne » — la contrainte FINALE —, et
+l'attribution dépendait de l'**ordre des appels** (permuter caps/util changeait le coupable sur
+le même plan). Cause racine : des plafonds **parallèles** traités en chaîne séquentielle. Ils
+deviennent un `min()` dont l'argmin parle, les autres contribuant zéro ; les facteurs restent un
+produit ; le message gagne la ligne levier (« Si tu levais cette contrainte, X te plafonnerait à
+Y ») et le plan émet le record `_r202`. **T-25/T-26/T-23 écrits ROUGES d'abord** (945 · 583 ·
+22/218) ; T-26 fermé le jour même. **T-25 a trouvé deux maillons absents de l'énumération** — la
+COURBE déclarée (run/5k : Lw 0,67 au pic, « ton historique » 4 h annoncé pour un pic à 2,6) et la
+croissance D3/D4 sur le livré, mesurée à l'écrêtage.
+**O-35** : `peakH` (qui pilote la courbe) n'était **jamais** converti en heures d'eau quand
+`volPeak` (la promesse) l'était — rapport **2,50 = 1/0,4 au chiffre près**, et l'unité changeait
+avec le NIVEAU (C20 rabote `peakH` avec 25 min/séance). La sonde V2.1 rattrapait tout **par
+accident** : elle mordait donc toujours en nage et servait de convertisseur d'unité. **Trois
+modèles mesurés avant d'en adopter un** — convertir `peakH` (la correction symétrique) fait
+tomber **92 profils jusqu'à −55 %**, soit 3 séances de 15 min : REFUSÉ ; convertir la seule
+DÉCLARATION (`SWIM_TIME_FACTOR` code « 60 % du temps de BASSIN n'est pas de la nage », les tables
+sont du volume d'entraînement comme les lignes course et vélo) laisse **47 profils au plan
+intact sur 88** et aligne la promesse sur le plan livré depuis toujours : ADOPTÉ. `swimTime`
+quitte les FACTEURS de la chaîne — une conversion ne retire rien. **`sessionScale` reste NON
+converti, réfuté par `audit:v1`** : la conversion y produit un saut > +25 % de volume entre
+semaines de charge (violation dure du manifeste — les séances tombent toutes sur leurs planchers
+C24/C24b et la progression devient un escalier). Priorité 2 contre cohérence d'unité, la sécurité
+gagne, l'écart est nommé. **T-25 439 → 368 ; T-23 EMPIRE en taux (10 % → 34 %) et c'est publié** :
+le correctif retire une compensation qui masquait la seconde moitié du défaut — la sonde mesure
+un clone SATURÉ quand le plan rend des séances discrètes (O-35, reste ouvert).
+Au passage : **B-02a fermé sur sa propre mesure** (`sw.css`/`bk.thr`/`rn.thr` tous `hard`, et
+8 séances sur 8 comptent du dur en pratique) ; **V-08 réfuté** — comparer un rapport d'ALLURE à un
+rapport de PUISSANCE est une faute d'unité, `sw.aero` vaut **84 %** de l'effort seuil (P ∝ v³) et
+le reclasser aurait fait déborder 411 semaines sur C26d ; **règle 14** écrite. **T-21** (28
+littéraux à unité dans les gabarits) et **T-22** (14 steps sans zone dans une séance qui nomme une
+allure — le périmètre B-26 s'élargit aux bricks TRI) écrits rouges. **§6.3** : les rouges attendus
+sont une liste nommée en cliquet. **Z-11 étendu aux trois espaces de noms** — il a trouvé une
+troisième collision en naissant (`#9b72ff` : brick = charge récup = violet) ; `--zn-fatigue`/
+`--zn-form` retirés (morts depuis B1).
+**28 gates verts, E2E 25/25, `audit:v1` 459, invariants 22×54, golden 949 recapturé — 88 profils,
+tous en natation.**
+
+**V5 livré — les accents de discipline passent à la maquette, et l'orange porte désormais TROIS
+sens** (brief du fondateur, 12/08/2026, conditionné à une mesure : *« SI TOUT PASSE 3:1 »*) : les
+trois accents (`DISC[*].ac`) sont alignés sur la maquette — natation `#00b8d9 → #3b9eff`, vélo
+`#2e6bff → #ff3d00`, course `#ff7a1a → #ffd23d`. **La condition a été mesurée AVANT d'écrire une
+ligne**, en tuile pleine sur `--zn-surface-3` comme V3 l'a décidé : **5,52 · 4,34 · 10,67** contre
+les 3:1 de WCAG 1.4.11 — les trois passent, marges +2,52 / +1,34 / +7,67, donc les trois sont
+adoptés et la branche « ne remplace pas ce qui échoue » n'a pas d'objet.
+**L'avertissement du fondateur était fondé, et la collision est plus large que ce qu'il visait** :
+`#ff3d00` ne porte pas deux sens mais **trois** sur la même grille — l'orange de MARQUE (anneau
+« aujourd'hui », héros 🎯, onglet actif, CTA), la charge DURE (`CHARGE.dur.rgb` vaut `255 61 0`,
+à 34 % d'opacité) et maintenant la discipline VÉLO, à pleine saturation comme le premier. Mesuré
+plutôt qu'estimé : sur 🗓 Plan, **2 éléments** portent l'orange au sens « attention » contre
+**24 badges vélo** de la teinte identique ; sur 📅 Semaine, **2 jours sur 7** (mardi, jeudi) voient
+l'anneau du jour entourer une carte dont le badge est exactement de sa couleur ; sur 🎯 Aujourd'hui
+un jour de vélo — le cas que le fondateur avait lui-même nommé —, le héros part de `#ff3d00` et le
+badge vélo est **79 px sous lui**, à la même valeur. **Non corrigé délibérément** : les trois
+issues touchent au VOCABULAIRE de la marque, pas à un défaut (`zenna-tabs.css` écrit que l'orange
+EST le vocabulaire d'attention et qu'on n'en invente pas un second ; `--zn-gold` veut déjà dire
+« échange en attente » ; décaler le vélo inventerait une couleur absente de la maquette).
+Enregistré en **O-31** avec ses chiffres et son bloc `verify`.
+**Deux de mes sondes mesuraient un écran qui ne montrait pas la chose.** La première rendait
+« 0 collision » — le 12/08 tombe sur une séance de COURSE ; balayée sur les sept jours, la
+collision existe 2 jours sur 7 (famille R20.7, une dimension que la mesure ne contrôle pas et qui
+décide de son verdict). La seconde rendait « 0 badge, 0 orange » sur 🎯 Aujourd'hui pour DEUX
+raisons cumulées : elle cherchait `.gd-ic`, classe que le badge du héros ne porte pas (c'est un
+`<div>` inline de `session-life.js` — **un second peintre de badge que j'avais manqué**), et elle
+mesurait un écran GATÉ par le portillon du check-in. C'est en la corrigeant que le cas nommé par
+le fondateur est apparu.
+**Deux commentaires devenus FAUX sont réécrits plutôt que laissés** : `icons.js` affirmait que les
+accents étaient « repris de `SPORTS[*].accent`, pas une troisième palette » et `plan-view.js` que
+le badge venait « du même endroit que l'avatar et les cartes de sport ». `config.js` garde les
+anciennes valeurs — c'est un AUTRE axe (le sport préparé, pas la discipline d'une séance) que le
+fondateur n'a pas arbitré. Mesuré : les deux axes ne se rencontrent sur **aucun** écran.
+**Et `--acc` ne porte plus aucune couleur de sport dans l'app** : mesuré sur les trois sports,
+`body[data-sport="bike"]{--acc:#2e6bff}` rend `#ff3d00`, parce que `zenna-today.css` redéfinit
+`--acc` sous `body.theme-zenna`, qui est toujours posée. Ces règles de `styles.css` sont mortes en
+app et ne survivent que pour le thème papier — la cascade mesurée, pas déduite (leçon R18.1).
+`avatar-tri.js` garde sa copie littérale **par contrainte de CI** : le module est PUR (zéro
+import) pour que `demo:avatartri` exécute sa passe exhaustive en node.
+**`check:sw` a fait son travail** : les nouvelles couleurs n'auraient atteint aucun navigateur
+ayant déjà ouvert l'app (O-24) — `sw.js` reconstruit, VERSION `eb-pwa-36dbde7c4996`.
+Garde : `smoke-carte-seance` **§6**, 19 → **23 assertions** — l'accent DESCEND de la table
+(témoin : changer `DISC.bk.ac` à chaud repeint la tuile, sinon la peinture vient d'ailleurs) et
+les cinq accents sont deux à deux distincts (critère dérivé de la table, aucune liste à tenir).
+**Deux cassures, deux rouges.**
+**28 gates verts, E2E 23/23, `audit:v1` 459 et golden 949 inchangés — `src/`, `engine.js` et le
+monolithe byte-identiques.**
+
+**R27 livré — le badge-anneau, et la décision de l'adopter avait été prise sur un rendu CASSÉ**
+(brief du fondateur, 12/08/2026 — garde `smoke-ring.mjs`, **24ᵉ suite E2E**) : `avatarRingSVG` +
+`avatarGlobalScore` remplacent le rendu PERSONNAGE sur 📋 Profil. Trois anneaux concentriques (un
+par discipline), l'extérieur **toujours** celui de la discipline meneuse — décidée par
+`meneuseDe()`, la fonction que `avatarTriAccent` emploie déjà (R11.1), jamais un ordre fixe —,
+plus un anneau fin de score global. **Le moteur de données n'a pas bougé d'une ligne** et
+`demo:avatartri` passe sans modification, comme le brief l'exigeait.
+**La prémisse du brief était vraie, et pire que ce qu'elle disait** : `avatar-tri.js` émettait
+**44** attributs `stroke=BLANC` / `fill=VERRE` — la variable non concaténée, donc le TEXTE
+« BLANC » posé comme valeur de couleur. Mesuré au rendu : `fill=BLANC` rend **NOIR** (valeur
+initiale de `fill`) et `stroke=BLANC` rend **`none`** — le trait DISPARAÎT ; **6,4 attributs
+invalides par avatar**. Corrigé (le brief le demandait dès lors que la carte de partage en dépend
+— vérifié : `avatarTriStorySVG` est encore consommée par `session-life.js`, `retest.js` et
+`tab-profile.js`). **Le personnage réparé est visiblement plus riche que celui qui a été jugé**
+« stick-figure trop simple » : bandeau DÉPART lisible, dossards, lunettes, chaussures réapparus.
+La décision reste au fondateur, mais elle se prend maintenant sur les deux rendus réels.
+**Le barème est motivé, pas posé** : moyenne des `(niveau/30)^0,65`. `k < 1` relève le début de
+parcours (l'exemple du brief, 9/4/6, passe de **21 en somme brute à 36**) sans écraser le milieu
+(15/15/15 reste à 64). **Vérifié exhaustivement sur les 29 791 triplets** : 0/0/0 rend 0,
+30/30/30 rend 100, et **le meilleur score non légendaire est 99** — « 100 » ne peut donc pas
+mentir, sans garde-fou artificiel.
+**Deux écarts avec le brief, mesurés puis assumés.** (1) Il fixait l'or légendaire à `#ffd23d` —
+c'est **exactement `DISC.rn.ac` depuis V5**, donc un badge légendaire porterait la couleur de la
+discipline COURSE ; l'or du module (`OR`, `#f0b429`) est utilisé à la place, aucune couleur
+nouvelle. (2) Les couleurs arrivent **par paramètre** et non par import : le module est PUR (zéro
+import, c'est ce qui fait tourner `demo:avatartri` en node), donc l'UI passe `DISC[*].ac` — plutôt
+qu'une copie locale qui divergerait en silence, le défaut que V5 a justement mesuré.
+**Trois défauts de ma propre écriture, trouvés au rendu.** (a) La rotation légendaire portait un
+`transform` CSS sur le cercle, ce qui **écrase le `transform` ATTRIBUT** de SVG : l'anneau partait
+du mauvais angle et pivotait autour du mauvais point — elle porte désormais sur un `<g>`.
+(b) Le « 100 » or se posait sur un anneau intérieur PLEIN et or : illisible, d'où un disque sombre
+sous le chiffre, dans tous les états. (c) **R16.8 a mordu** : l'icône à 8 et le libellé à 5 unités
+rendaient **7,7 px et 4,8 px** une fois le viewBox mis à l'échelle — sous le plancher de 9 px, et
+le badge n'est pas exempté (l'exemption de V2 vise `svg[aria-hidden]`, or celui-ci porte le score
+dans son `aria-label`). L'icône passe à 10 ; « LÉGENDE ZENNA » **quitte le SVG** pour du HTML, où
+l'échelle typographique le gouverne — il ne pouvait tenir à aucune taille utilisable.
+**Et ma sonde de typo m'avait fait publier un faux chiffre** : elle appelait `setTab("profil")`
+quand l'identifiant est `"profile"` — `setTab` retombe sur le DERNIER onglet, donc elle mesurait
+🧰 Outils deux fois et **n'a jamais regardé 📋 Profil**. Trouvé en écrivant `smoke-ring`, qui
+échouait pour la même raison. Chiffres de V7 corrigés de « 6 → 8 » à **7 → 8**.
+**Deux gardes RÉÉCRITES, pas supprimées** : `smoke-r4` cherchait les trois hex de discipline EN
+DUR — **périmé depuis V5**, et vert seulement parce que le personnage lisait la copie locale du
+module ; il dérive maintenant de la table. `smoke-avatar` cherchait le personnage par sa PLACE
+(`#screen svg[aria-label^="Avatar"]`) : il le FABRIQUE et l'injecte désormais, parce que la
+propriété gardée est sa PALETTE (le repli hors thème qui protège la carte de partage), pas son
+emplacement — un lot de mise en page faisait rougir une garde de couleur.
+**Non fait, délibérément** : la variante compacte 36 px n'est branchée nulle part — le brief
+demande de trancher avec le fondateur, et mesuré, **36 px ne permet pas un chiffre lisible**
+(il faudrait ≥ 53 px pour tenir le plancher de 9 px). `avatarTriSVG`/`avatarTriStorySVG` restent
+en place et servent toujours la carte de partage.
+**28 gates verts, E2E 24/24, `audit:v1` 459 et golden 949 inchangés, `src/`, `engine.js` et le
+monolithe byte-identiques.**
+
+**V7 livré — Poppins remplace Bebas Neue, et quatre polices n'étaient pas dans le cache**
+(brief du fondateur + graphiste, 12/08/2026 : palette INCHANGÉE, seule la police d'affichage
+change) : `--zn-display` passe de `'Bebas Neue'` à `'Poppins'`, sur les cinq onglets, partout où
+la variable est consommée (15 règles).
+**Deux prémisses du brief ne tenaient pas, et les corriger EST le lot.** (1) « ajouter Poppins au
+lien Google Fonts existant » — **il n'y a pas de lien Google Fonts**, et il ne doit pas y en avoir :
+c'est D19, et R-ZENNA a déjà payé cette faute une fois (deux hôtes tiers dans la CSP, une requête
+bloquante au premier rendu, le fichier autonome cassé). Poppins est donc **auto-hébergée** comme
+les six autres, sous-ensemble LATIN pris explicitement dans le bloc annoté « latin » — le premier
+bloc servi par l'API pour Poppins est le DEVANAGARI, et le prendre aurait donné une police sans un
+seul accent français. (2) Le brief soupçonnait Poppins Bold « probablement trop léger » : mesuré,
+c'est pire que ça — **la plupart des règles display rendaient en poids 400** (« Sweetspot vélo »
+30px/400, le grand chiffre du héros 50px/400), parce que Bebas n'a QU'UNE graisse et que personne
+n'avait jamais eu à déclarer un `font-weight`. Basculer sans y toucher aurait demandé un Poppins
+REGULAR qu'on n'embarque même pas (700 et 800 seulement), donc un repli silencieux sur Archivo
+Black. Le poids devient une variable, **`--zn-display-weight: 800`** — le régler est le changement
+d'un chiffre.
+**Mesuré avant/après, fonts chargées** : Poppins rend **405 px** là où Bebas rendait **246** pour
+le même texte à 40 px, soit **+65 % de largeur**. Conséquence sur les cinq onglets : **7 → 8
+éléments sur deux lignes**, un seul élément concerné (`.shop-title`, « S'abonner au
+ravitaillement », sur 🧰 Outils).
+**Ma sonde a sur-rapporté trois fois, et c'est écrit.** (1) Elle annonçait « 2 qui débordent » :
+mesuré au caractère, `scrollWidth == clientWidth == 258` — **aucun débordement de contenu**, les
+2 px d'excédent sont le cisaillement du `skewX(-4deg)`, qui croît avec la HAUTEUR et n'apparaît
+donc qu'une fois le titre passé à deux lignes. (2) Sa première exécution rendait « déclarée 474 »
+(= Archivo Black) sur le PREMIER onglet et 405 sur les quatre suivants : une course de chargement
+(`font-display: swap`), pas un état du produit — corrigée par `document.fonts.ready`. (3) Et elle
+**n'a jamais regardé 📋 Profil** : elle appelait `setTab("profil")`, or l'identifiant est
+`"profile"` — `setTab` retombe alors sur le DERNIER onglet, donc elle mesurait 🧰 Outils DEUX
+fois. Les deux écrans rendaient un contenu identique et je ne l'ai pas questionné. Chiffres
+d'abord publiés « 6 → 8 », corrigés en **7 → 8** après re-mesure des deux états. Trouvé en
+écrivant la garde du lot suivant, qui échouait pour la même raison.
+**Le skew (point 2 du brief) n'est PAS tranché ici** : il reste posé, il rend correctement, mais
+« a-t-il du sens sur une géométrique arrondie » est un choix de direction artistique, pas une
+mesure. Capture fournie pour arbitrer.
+**Et le lot a débusqué O-32, un défaut ANTÉRIEUR** : `build:sw` annonçait **57 assets avant comme
+après** l'ajout de deux `.woff2`. Les polices étaient écrites À LA MAIN dans `EN_DUR`, sous un
+commentaire qui les disait « non listables par extension » — c'est faux —, et la liste était
+restée aux **trois** polices d'avant R-ZENNA : `bebas-neue`, `inter` et les deux `ibm-plex-mono`
+**n'ont jamais été précachées depuis leur arrivée**. Invisible en ligne, net hors ligne : l'app
+tenait « ça marche sans réseau » mais pas avec sa typographie. C'est le SECOND trou d'O-24 dans sa
+forme exacte, resté ouvert parce qu'O-24 n'avait dérivé du disque que le `.js` et le `.css`.
+**57 → 63 assets.** `ASSETS` composait aussi ses groupes par `EN_DUR.slice(0, 3)`/`slice(3)`, des
+indices qui devenaient faux dès qu'on ajoutait une ligne — les trois groupes sont NOMMÉS.
+**28 gates verts, E2E 23/23, `audit:v1` 459 et golden 949 inchangés, spec régénérée, `src/`,
+`engine.js` et le monolithe byte-identiques.**
+
+**V6 livré — le badge de discipline dupliqué quitte 🎯 Aujourd'hui** (brief du fondateur,
+12/08/2026, suite à O-31) : la carte « Le détail de la séance » portait une TUILE de discipline
+pleine de 38 px, en plus de la pile `.zn-disc-chip` du héros — deux fois la même information à
+**79 px d'écart**, et depuis V5 la tuile porte **exactement** la couleur du héros, où elle se noie
+au lieu de signaler. **Vérifié à la source** : la maquette (`zenna-maquette-v4-audit-experts.html`,
+`.hero`) ne porte qu'un seul indicateur, la pile sur fond neutre `rgba(10,10,10,.16)`, et sa carte
+de détail ne contient que la barre de zones. La tuile était un ajout du 07/08, pas un manque.
+**Aucun gate ne la référençait** (`smoke-carte-seance` ne regarde que `.gd-ic`, sur Plan et
+Semaine) — vérifié avant de retirer, comme le brief le demandait.
+**La mesure a failli me faire écrire un faux** : sur le profil par défaut, **0 jour sur 350** porte
+plusieurs séances, ce qui rendait la tuile toujours redondante… mais `runnerStateV1` déclare
+`doubles: "non"`, et c'est cette dimension qui décide. Avec `doubles: "oui"`, **27,8 % des jours
+d'un 70.3** portent deux séances (`sw+bk` ×24, `sw+rn` ×8), et là le héros ne nomme que la
+PREMIÈRE. Le cas a donc été capturé et regardé : les deux séances restent nommées en toutes
+lettres, chacune avec son pourquoi et sa barre de zones, et le héros annonce « puis Sweetspot
+vélo » — **la discipline est portée par le NOM**, ce qui est déjà l'argument qui rend le badge
+`aria-hidden` partout ailleurs. Rien n'est perdu, y compris pour un lecteur d'écran.
+`discBadgeHTML` est **retirée** et non laissée inutilisée : une fonction morte qui rend un badge
+est une invitation à la rebrancher.
+Garde : `smoke-zenna` **§1bis**, 64 → **67 assertions**, portant sur la PROPRIÉTÉ (« un seul
+indicateur ») et non sur l'absence d'une classe — **vérifiée rouge** en réintroduisant la tuile
+sous un balisage DIFFÉRENT (inline, sans `discBadgeHTML`, sans classe), ce qu'un critère nommant
+la classe aurait laissé passer. Le premier volet garde l'autre moitié : retirer la tuile ne doit
+pas emporter la pile.
+**28 gates verts, E2E 23/23, golden 949 inchangé, moteur byte-identique.**
+
+**V3 livré — la carte de séance : repliée par défaut, la couleur dans le badge** (brief du
+fondateur, 12/08/2026, maquette « structure interne réelle » — voir ARCHITECTURE.md « V3 ») :
+la carte exposait titre + conseil + blocs détaillés d'office, sur un fond pleine largeur teinté
+par la charge du jour. Mesuré avant : **7 séances sur 7 dépliées** en 📅 Semaine, 161 px par
+carte, **2 009 px d'onglet**, 4 fonds distincts. Après : 0 dépliée, 97 px, **1 127 px (−44 %)**,
+1 seul fond. **Le renversement est assumé et écrit** — l'ouverture d'office venait d'une demande
+du 08/08 qui visait précisément cet onglet ; l'ancienne raison (Semaine n'affiche qu'UNE semaine)
+reste vraie, elle ne suffisait pas à justifier sept blocs techniques ouverts.
+**`ZENNA_SPEC_COMPLETE.md` n'existait pas dans le dépôt AU MOMENT DE V3** : faute de fichier, les
+valeurs venaient des `--zn-*` existants et des accents `DISC[*].ac` — aucune couleur inventée.
+(Il a été reconstruit depuis, voir « V4 » : généré depuis les sources, gardé par `check:spec`.)
+**La teinte de charge survit dans la BORDURE** : elle porte du SENS (dur/facile/récup) et une
+bordure de 1 px n'est pas un fond pleine largeur — arbitrage à connaître, 4 lignes de CSS à
+retirer si elle doit disparaître aussi.
+**Une mesure a changé ma décision sur le badge** : je l'avais posé en teinte DILUÉE (22 %), le
+réflexe sur fond sombre — mesuré **1,26 à 1,48:1** contre la carte, quand WCAG 1.4.11 demande
+**3:1** pour un composant qui porte de l'information. Aucune dilution n'y arrive (le bleu du vélo
+plafonne à 3,33:1 **même en plein**) : tuile pleine, comme la maquette — 3,42 · 4,77 · 5,91 ·
+6,50. `trail` et `swimrun` n'ont pas de code propre (le moteur les émet en `rn`/`sw`) et héritent
+de ces badges.
+**Le composant vit dans DEUX onglets, pas cinq** (le brief en demandait cinq) : 140 cartes en
+🗓 Plan, 7 en 📅 Semaine, zéro ailleurs — 🎯 Aujourd'hui porte un héros, autre composant, non
+touché. Garde `smoke-carte-seance.mjs`, **22ᵉ suite**, 19 assertions, quatre cassures quatre
+rouges. **Deux fautes d'instrument à moi** : « aucun conseil n'occupe l'écran » sommait des
+`.gd-why` en supposant qu'un `<details>` fermé ne rend rien — Chromium leur donne 37 à 56 px
+(`content-visibility` saute le contenu sans annuler les boîtes), le critère rougissait sur un
+repli qui marche ; et son témoin visait la séance la plus COURTE de la semaine. Et `smoke-usage`
+U16 a cassé pour la bonne raison — il retrouvait les séances par `startsWith(nom)`, or le résumé
+commence désormais par le badge ; il lit maintenant le `<b>` qui porte le nom.
+**28 gates verts, E2E 22/22, `audit:v1` et golden 949 inchangés — `src/`, `engine.js` et le
+monolithe byte-identiques (contrainte de gel du brief).**
+
+**V2 livré — le produit se montre : le sachet Zenna dans la carte de vente** (maquettes produit
+du fondateur, 12/08/2026 : « travail maintenant l'interface graphique de vente » — voir
+ARCHITECTURE.md « V2 ») : la carte vendait une abstraction — le créneau produit portait un
+« flacon » générique dessiné faute de produit à montrer, et le devis parlait de « gel (30 g) ».
+L'identité (4 saveurs, 30 g de glucides, 40 g net, sans colorant, fabriqué en France) se pose
+dans **`shop-catalog.js`**, qui se déclare depuis son écriture « le SEUL endroit où un produit
+réel existe » ; le dessin, les puces, le devis et les arguments la lisent tous (R11.1).
+**`CATALOG` reste à `null`** : on décrit un produit DESSINÉ, pas DISPONIBLE — ni fournisseur, ni
+prix ferme, ni expédition, et la carte continue de le dire. **Deux encres par saveur** parce que
+l'olive du citron rend **3,08:1** sur le crème, sous le seuil AA : `bloc` pour le pan de couleur,
+`texte` assombri pour écrire dessus. Le sachet est dessiné en SVG (`js/ui/sachet.js`) et **le Z
+vient de `brand.js`** — la leçon de v8, où la géométrie du logo avait fini par exister en trois
+endroits. Deux niveaux de détail par LISIBILITÉ : à 24 px, « ZENNA / GEL GLUCIDE / 30 G » se rend
+en traits de moins d'un pixel. La rangée des goûts montre les sachets (`aria-hidden` : on entend
+« Citron », pas « image, Citron »), « peu d'importance » n'en invente aucun, l'ordre suit la gamme
+(citron d'abord — c'est aussi le défaut proposé), et les faits produit passent en **bandeau d'une
+ligne** : six encadrés empilés faisaient 210 px de promesses avant le premier chiffre.
+**Deux défauts de ma première écriture** : le chiffre « 30 G » était posé DANS le pan de couleur
+et s'y noyait (c'est le rendu qui l'a montré, pas la relecture) ; et `var(--zn-mono)` dans un
+attribut de présentation SVG ne résout rien — un attribut SVG est parsé comme du XML, la police
+retombait en silence. **`smoke-typo` a rougi à 4,4 px** : l'exemption est bornée à
+`svg[aria-hidden]` et **reste conditionnelle** — `smoke-shop` vérifie que chaque sachet l'est ;
+vérifié en retirant l'attribut, **les DEUX gardes rougissent**.
+**Et un `git checkout` a effacé une heure de travail** : restaurer une cassure de contre-preuve
+avec `git checkout` sur un fichier NON COMMITÉ a emporté tout le câblage du sachet — ce sont les
+gardes qui l'ont dit (« 0 sachets »), pas moi. Plus un critère satisfait par un voisin (« le
+produit est nommé » cherchait deux motifs, dont un que le bandeau de faits satisfait : retirer le
+nom du devis le laissait VERT). `smoke-shop` 37 → **42 assertions**, trois cassures trois rouges.
+**28 gates verts, E2E 21/21, `audit:v1` et golden 949 inchangés.**
+
+**V1 livré — le canal de vente : le tunnel était infranchissable** (retour du fondateur,
+12/08/2026 : « travail l'ux du canal de vente » — voir ARCHITECTURE.md « V1 ») : la carte
+d'abonnement au ravitaillement (🧰 Outils › Nutrition) n'avait jamais été TRAVERSÉE comme un
+athlète le fait, seulement composée puis gardée par des critères d'état. Mesuré geste par geste :
+on arrive sur la carte dépliée (811 px, devis et bouton présents), **on clique une cadence et
+elle se REFERME** (190 px, plus de devis, plus de bouton) — les gestes suivants sont sans effet.
+**Il était donc impossible de s'abonner** par le chemin où le produit propose lui-même l'offre.
+Les trois gestes écrivaient `lastPromptAt`, ce qui est juste (« une proposition qu'on manipule
+est une proposition vue »), mais c'est le MÊME champ que lit `shopPromptDue` pour ouvrir la
+carte ; `shopExpanded` n'était posé que par le bouton manuel. Point unique `noterGesteCarte()`.
+**Trois autres promesses fausses ou muettes** : « envoi le samedi » / « envoi le 1er » (balayé sur
+les 7 jours — l'échéance tombe le jour de l'abonnement, « samedi » vrai **1 fois sur 7**, et le
+mensuel valant 30 jours FIXES les quantièmes sont 31, 30, 30) ; le devis **jetait toute
+l'hydratation** hors vélo (1 540 ml sur une sortie longue de 2 h 34) et vendait **2 gels pour une
+nage de 70 min en bassin** ; le bouton annonçait « 1er ENVOI le 19/08 » quand aucun fournisseur
+n'existe. Arbitrages du fondateur : boisson en « trail + sorties > 90 min », garde d'âge à 16 ans
+alignée sur O-16 (le ravitaillement N1-N7 reste servi à tout âge — c'est la VENTE qui se retire).
+Pour les gels en nage, le premier réflexe — lire `milieu` — était le **mauvais signal** (chez un
+triathlète il décrit la course, pas l'entraînement) : on reprend le seuil de 90 min plutôt que
+d'en inventer un second. **A11y** : `role="tablist"` sans aucun `tabpanel`, 8 puces sans
+`aria-checked` (la sélection n'existait que par la couleur), focus perdu sur `<body>` à chaque
+choix. **Densité** `.shop-fine` 3,63 → 3,18 car./px (le pire de l'app ; l'audit par onglet
+plafonnait à 3,00), la réserve qui décide passant AVANT le bouton.
+**Quatre de mes instruments étaient faux** et restent écrits : le contraste rendu à 1,28 puis
+1,01 sur un texte qui vaut **11,3** (la remontée par ancêtres ne voit pas un frère peint dessous ;
+`elementsFromPoint` rend une liste vide hors écran) ; une sonde qui portait sa PROPRE copie de la
+règle et affichait « boisson jetée » après correction ; une contre-preuve dont le `perl` ne
+remplaçait rien et sortait verte ; un critère « rien d'autre ne disparaît pour le mineur » qui
+mesurait en fait le CALENDRIER. Et un critère **vacueux** démontré tel : « aucun rôle d'onglet »
+lisait l'état ABONNÉ, où le segmenté n'existe pas — il restait vert avec `role="tablist"`
+réintroduit. `smoke-shop` 20 → **37 assertions**, cinq cassures cinq rouges, K1 rendant 7 lignes
+de verdict là où elle faisait MOURIR la suite avant `report()`.
+**Trouvé en chemin, sans rapport** : dans le questionnaire, `.row` est un flex à deux colonnes
+mais l'`input` porte une largeur FIXE de 200 px — sur 390 px de large les champs Âge et Poids se
+**chevauchent de 28 px** et le second sort de l'écran de 12. `max-width:100%`.
+**28 gates verts, E2E 21/21, `audit:v1` et golden 949 inchangés** — le canal de vente ne touche
+aucune séance.
+
+**R-ZENNA v8 livré — le logo, le renommage en Zenna, et deux gates qui dépendaient du calendrier**
+(logo fourni par le fondateur, 12/08/2026 : « le logo, remplace tout les endurabuild par Zenna » —
+voir ARCHITECTURE.md « R-ZENNA (v8) ») : la marque fournie (coureur stylisé formant un « Z »)
+devient la source unique dans `endurabuild/js/ui/brand.js`, qui portait déjà le MOT depuis v7 et
+porte désormais aussi le SYMBOLE. `MARQUE.contours` est une paire de **contours** (0-100) et non un
+chemin SVG, parce que DEUX rendus doivent les lire — le SVG de l'app et le générateur d'icônes PNG,
+qui teste pixel par pixel (pair-impair **par contour puis OU logique**, les deux formes étant
+disjointes). `#f04808` est ÉCHANTILLONNÉ sur le logo, pas choisi à l'œil. L'en-tête du fichier dit
+ce que le logo EST : un TRACÉ (marching squares + Douglas-Peucker) légèrement plus gras que
+l'original, le seuil mordant dans le bord adouci du JPEG — remplacer les contours par la source
+vectorielle est strictement meilleur, et c'est écrit là où quelqu'un le lira.
+**Deux identifiants gardent leur ancien nom, délibérément** : `eb_state_v1`/`eb_state_v2`
+(renommer la clé perd le plan de chaque utilisateur existant — l'app démarrerait proprement, sur
+un état vide, et aucune garde ne le verrait) et `UID:…@endurabuild` de l'export iCalendar (un UID
+est une IDENTITÉ : le changer met la préparation en DOUBLE dans l'agenda au ré-import). Le
+répertoire `endurabuild/` non plus. Tout ce qui est VISIBLE est renommé, monolithe gelé compris —
+le geler concerne son moteur et son UI, pas le nom du produit.
+**Deux gates rouges, aucun causé par le lot, tous deux de la famille R20.7** — et dans les deux cas
+la vérification a été la même : rejouer la garde sur le `HEAD` d'AVANT, qui rend exactement les
+mêmes échecs. **(1) `smoke-zenna`** ne pinçait aucune date et le plan démarre au lundi de la
+semaine en cours : balayé sur les sept jours, **quatre sur sept** (Lun/Mer/Ven/Dim) tombent sur un
+« Repos » — pas d'XP, pas de grand chiffre, 3 échecs. La suite passait sur la bonne volonté du
+calendrier depuis son écriture. Ancrage par `page.clock.setFixedTime` (et non `install`, qui
+gèlerait les MINUTERIES, c'est-à-dire la cascade et le nettoyage des particules que cette suite
+mesure), sur **DEUX jours et pas un** : n'ancrer que le mardi couvrirait « le jour où le code a été
+écrit » (R20.1) et la branche REPOS — celle qui venait de faire rougir la suite — ne serait jamais
+exercée. Le **§1ter** la garde avec la décision R25 : un repos validé se fête et ne donne PAS d'XP.
+Un témoin précède chaque moitié, pour qu'un changement de périodisation désigne sa cause au lieu
+d'accuser le mouvement. **(2) `golden:verify`**, 7 profils sur 949, tous `*/cycle` : le seul profil
+dont le CONTENU dépend de dates absolues (`phaseOf` lit le jour du cycle sur chaque date du plan),
+et le seul sans `plan_start` — `weekBuilder` retombe alors sur `Date.now()`. **Le témoin a corrigé
+le diagnostic que j'allais écrire** : ce n'est pas « un jour par jour » mais **une fois par
+semaine** (empreintes des 10, 11 et 12/08 identiques, celle du 17/08 différente — la grille se cale
+sur le lundi d'ancrage), ce qui est plus pernicieux : un gate rouge tous les lundis ressemble à une
+régression du lot en cours. Contre-preuves : XP recâblé sur le repos → 1 rouge ; ancrage retiré →
+4 rouges, témoin en tête.
+**Et la favicone pesait 81 % du HTML servi** : le tracé fait ~750 points, posé en `data:` il
+occupait **21,6 Ko des 26,7 Ko** du document — quatre cinquièmes du chemin critique du premier
+rendu pour une icône de 16 px, sur l'onglet dont U7 mesure le budget à 2 000 ms avec une marge
+déjà déclarée quasi nulle ; et c'était un SECOND encodage de la géométrie, ce que `brand.js`
+existe pour empêcher. `assets/icon-192.png` (déjà généré depuis `brand.js`, **1,2 Ko**) le
+remplace — **HTML 26,7 → 5,1 Ko** ; le fichier autonome l'EMBARQUE en base64 plutôt que de la
+retirer, la promesse « zéro requête réseau » restant vérifiée sur le fichier produit.
+**28 gates verts, E2E 21/21 (`smoke-zenna` 57 → 64 assertions), golden 949 recapturé (7 empreintes).**
+
+**R-ZENNA (POC) livré — nouvelle direction visuelle, un onglet** (maquette du fondateur,
+10-11/08/2026) : le style « papier/collage » que ce fichier disait à préserver cède la place à
+un nouveau système visuel sombre (fond noir, accent orange, cartes `--zn-*`) — **décision du
+fondateur : c'est la nouvelle direction**, à étendre aux quatre autres onglets ensuite. Démarré
+sur le SEUL onglet 🎯 Aujourd'hui, comme preuve de concept scopée pour limiter le risque sur un
+dépôt à 27 gates CI et 20 suites E2E. Technique : tout est scopé sous `body.theme-zenna` (posée
+par `tabs.js` uniquement quand l'onglet actif est « today », retirée ailleurs) ; les modules qui
+composent l'onglet (session-life.js, checkin.js, plan-view.js, daily-content.js, retest.js,
+tab-nutrition.js, readiness.js) portent leurs couleurs en `var(--zn-x, #hex-d-origine)` — sans
+`css/zenna-today.css`, le rendu redevient EXACTEMENT celui d'avant (repli identique, R11.1).
+Aucune classe/id fonctionnel touché, aucun autre onglet modifié, moteur intact (`audit:v1`
+inchangé). **19/20 suites E2E vertes** (voir dette ci-dessous pour la 20e).
+Deux défauts trouvés et corrigés EN CONSTRUISANT, gardés écrits : la première écriture chargeait
+Bebas Neue/Inter/IBM Plex Mono depuis Google Fonts — contredit D19 (polices auto-hébergées,
+`styles.css`, zéro requête externe) et produisait des erreurs console mesurées par
+`smoke-checkin.mjs` en réseau bridé ; corrigé en réutilisant les polices déjà embarquées
+(Archivo Black, Space Grotesk) et une pile monospace système. Et la feuille se charge en SCRIPT
+(`js/app.js`), jamais en `<link>` statique dans `<head>` : un `<link>` de plus y est bloquant
+pour le premier rendu (mesuré : `smoke-usage.mjs` U7 passait de 1720 ms à ~2000 ms rien qu'avec
+le `<link>` en tête de page).
+**Dette déclarée** : `smoke-usage.mjs` (U7, « la séance apparaît sans attendre la météo ») mesure
+~1990-2020 ms dans ce sandbox de développement contre un plafond de 2000 ms — flaky, tantôt vert
+tantôt rouge. Isolé fichier par fichier : le JS seul (sans `zenna-today.css`) reste à
+~1720-1845 ms, donc le surcoût vient du RECALCUL DE STYLE de la feuille ajoutée (une cinquantaine
+de règles ciblant des éléments réellement présents dans l'onglet), pas d'une attente réseau
+réintroduite — le PRINCIPE qu'U7 garde reste intact (vérifié dans le code : aucun nouvel `await`
+ne bloque le rendu). La marge d'origine (280 ms) est devenue quasi nulle ; probablement plus
+large sur un CI non bridé, non vérifié faute d'accès. À traiter avant d'étendre le reskin aux
+quatre autres onglets : alléger `zenna-today.css` (moins de sélecteurs ciblant des éléments
+réels) ou réviser la marge du seuil — décision du fondateur, pas tranchée ici.
 
 **R26 livré — le module Éducatifs, six disciplines, un seul schéma** (brief
 `BRIEF_CLAUDE_CODE_R16.md` + `AUDIT_CROISE_EDUCATIFS.md` — le fichier source s'appelle lui-même

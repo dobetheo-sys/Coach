@@ -348,6 +348,26 @@ export const TRI_TRANSITION: Record<string, { t1: number; t2: number }> = {
   Full: { t1: 480, t2: 360 },
 };
 
+/**
+ * V-07 (13/08/2026) — FACTEURS `a_priori`, ET IL FAUT QUE ÇA SE LISE ICI.
+ *
+ * `fatigue` dit « courir après avoir roulé coûte plus cher ». Les quatre valeurs sont
+ * **heuristiques, non sourcées** : aucun commentaire d'origine, aucune entrée `PROVENANCE`,
+ * jamais modifiées depuis leur écriture, et **aucun jeu de chronos réels n'a jamais existé
+ * dans ce dépôt** — un ajustement empirique était matériellement impossible. `1,13` reprend
+ * l'énoncé littéraire courant « le marathon d'un Ironman coûte ~13 % de plus qu'un marathon
+ * sec » ; rien ne distingue formellement 1,11 de 1,15.
+ *
+ * C'est important parce que le commentaire de `riegelExponent` ci-dessous a longtemps affirmé
+ * qu'elles avaient été « calibrées CONTRE cet exposant » — justification rétrospective : la
+ * table existait, avec ces valeurs exactes, avant que la fonction ne soit écrite. Il n'y avait
+ * donc **aucun double compte** à craindre en découplant l'exposant, ce qui était le seul motif
+ * invoqué pour le figer à 1,06 hors course sèche.
+ *
+ * Ses deux voisines immédiates portent leur provenance (`TRI_BIKE_KM` : distances officielles ;
+ * `TRI_TRANSITION` : médianes d'âge-groupe lues sur les classements publics). Celle-ci était la
+ * seule des trois à être nue, ce qui la faisait ressembler à une constante validée.
+ */
 export const TRI_RUN: Record<string, { km: number; fatigue: number }> = {
   S: { km: 5, fatigue: 1.03 },
   M: { km: 10, fatigue: 1.05 },
@@ -380,7 +400,42 @@ const fmtT = (sec: number): string => {
  * calibrés CONTRE cet exposant, et bouger l'exposant sous eux recalibrerait silencieusement
  * une table validée — on compterait deux fois la même difficulté.
  */
-const RIEGEL_ANCRES: [number, number][] = [[4, 1.12], [6.5, 1.09], [10, 1.06], [12, 1.04]];
+/**
+ * B-21 — LA TABLE EST PROLONGÉE SOUS 4 h, ET C'EST UNE AFFIRMATION DE MODÈLE NOUVELLE.
+ *
+ * Elle est écrite ici parce qu'elle doit se lire : les quatre ancrages d'origine sont déjà
+ * déclarés heuristiques (« calibration empirique de calculateurs, pas une étude princeps »), et
+ * l'ancrage `[1.5, 1.15]` en est un cinquième du MÊME statut — a_priori, non sourcé.
+ *
+ * Ce qui le rend malgré tout meilleur que le plancher qu'il remplace : le plancher AUSSI était
+ * une affirmation, et une plus forte. S'arrêter à 4 h revenait à dire « quelqu'un qui court
+ * 0,6 h/semaine ne se dégrade pas davantage sur la distance que quelqu'un qui en court 4 »,
+ * alors que toute la table dit l'inverse sur son domaine. Mesuré (V-09) : **89,1 % des profils
+ * tri et 99,3 % des duathlon** vivent SOUS ce plancher — la table était donc plate exactement
+ * là où se trouve presque toute la population qu'elle sert.
+ *
+ * La valeur n'est pas choisie, elle est PROLONGÉE : la pente du segment le plus bas de la table
+ * (4 → 6,5 h) vaut −0,0120/h, et `[1.5, 1.15]` est ce que cette pente donne à 1,5 h. On ne va
+ * pas plus bas : au-delà, l'extrapolation quitterait le domaine où quiconque a mesuré quoi que
+ * ce soit, et un exposant sans borne produirait des chronos absurdes près du volume nul.
+ */
+/**
+ * L'ANCRAGE BAS [1,5 h → 1,15] — ARBITRÉ LE 14/08/2026 (ARBITRAGE_ANCRAGE_B21) : CONSERVÉ.
+ *
+ * provenance : **assertion de modèle, non validée externement** — prolongée à la pente du
+ *              segment le plus bas (−0,0120/h), pas choisie ; origine commit f2ccd7d.
+ * arbitrage  : fondateur, 14/08/2026 — conservé parce que la direction est PRUDENTE (un
+ *              exposant plus haut à bas volume rend des temps longue distance plus lents,
+ *              le mode d'échec coûteux étant la prédiction optimiste) et la valeur plausible.
+ * statut     : **PANSEMENT** — gaté sur l'enrichissement du golden en volumes de course
+ *              stratifiés ; le « 89-99 % au plancher » qui l'a motivé a été mesuré sur la
+ *              population dont on SAIT qu'elle ne peut pas mesurer les effets volume-
+ *              dépendants (96,7 % de vol_max:10) — probablement vrai quand même, à refaire.
+ * vérifié    : sous 1,5 h l'exposant est CLAMPÉ à 1,15 (0,5 h → 1,15, pas d'extrapolation) ;
+ *              l'ancrage est ACTIF sur le golden (19 profils au clamp, 211 sur le segment
+ *              [1,5 → 4], mesure §2.3b) — pas du code mort en test.
+ */
+const RIEGEL_ANCRES: [number, number][] = [[1.5, 1.15], [4, 1.12], [6.5, 1.09], [10, 1.06], [12, 1.04]];
 export function riegelExponent(runHoursPerWeek?: number): number {
   const h = Number(runHoursPerWeek);
   if (!Number.isFinite(h) || h <= 0) return 1.06; // pas de volume connu → comportement historique
@@ -402,6 +457,86 @@ export function riegelExponent(runHoursPerWeek?: number): number {
 export function riegelSecWith(exp: number, thrPaceSecPerKm: number, distKm: number): number {
   const d1h = 3600 / thrPaceSecPerKm;
   return 3600 * Math.pow(distKm / d1h, exp);
+}
+
+/**
+ * B-22 — « L'ALLURE MARATHON » N'EST PLUS ÉCRITE DEUX FOIS.
+ *
+ * `ZDEF["rn.mara"]` valait 1,08–1,13 × l'allure seuil POUR TOUT LE MONDE, pendant que le
+ * prédicteur extrapolait le marathon avec un exposant de Riegel qui, lui, dépend du volume
+ * (P5, R14). Deux grandeurs dont l'une ignore une variable dont l'autre dépend ne peuvent
+ * coïncider qu'en un point — mesuré (V-10) vers 6,5-8 h de course/semaine. En dessous, le plan
+ * prédisait une course PLUS LENTE que l'allure à laquelle il faisait s'entraîner ; au-dessus,
+ * l'inverse : à 12 h/sem, entraînement à 4'35-4'48 et course annoncée à 4'26, les deux chiffres
+ * affichés au même athlète.
+ *
+ * C'est la forme exacte d'O-11 — deux définitions de « l'allure course » à vélo —, fermée par
+ * R20.5 avec `raceBikeBand()`. Même geste ici, et même mécanique de substitution
+ * (`refs.runMara` lu par `zoneOf`) : reculer `rn.mara` d'un cran n'aurait fait que déplacer le
+ * point d'accord sans supprimer la divergence.
+ *
+ * LA FORME CLOSE. Avec t = 3600 × (D/d₁ₕ)^e et d₁ₕ = 3600/seuil, le rapport de l'allure de
+ * course à l'allure seuil vaut exactement **(D/d₁ₕ)^(e−1)**. Il ne dépend donc pas que du
+ * volume : il dépend AUSSI de l'allure seuil de l'athlète — un coureur plus lent couvre moins
+ * de distance en une heure, son marathon est proportionnellement plus long, et il se dégrade
+ * davantage. C'est physiologiquement juste, et c'est ce que la bande constante niait.
+ *
+ * LA LARGEUR DE LA ZONE NE CHANGE PAS. On ne déplace que ce sur quoi elle est CENTRÉE.
+ * L'ancienne bande 1,08-1,13 a pour centre 1,105 et pour demi-largeur relative ±2,26 % ; cette
+ * demi-largeur est conservée telle quelle. Décider de la largeur d'une zone d'entraînement est
+ * une autre question, qui n'a pas à être tranchée par un correctif de cohérence.
+ */
+export const RN_MARA_DEMI_LARGEUR = 0.0226;
+/**
+ * PLANCHER DE SÉCURITÉ SUR LA PRESCRIPTION (STOP de Phase 1 §1, arbitré le 14/08/2026 :
+ * conservé, pas de revert du côté rapide).
+ *
+ * provenance : **inherited** — le « ~1,05-1,08 » vient du fondateur, DE MÉMOIRE, non vérifié
+ *              contre une publication ni contre une donnée du dépôt (il l'a lui-même requalifié
+ *              ainsi : « ce n'est pas une source », ARBITRAGE_B22_PHASE2 §1). Pas `source`.
+ * statut     : **PANSEMENT** — il masque un défaut de calibration de `RIEGEL_ANCRES`
+ *              (heuristique déclarée telle), il ne le corrige pas.
+ * sortie     : À RETIRER quand `RIEGEL_ANCRES` aura été recalibrée (chantier B-21/B-04).
+ *              Suivi en dette : BUGS_OUVERTS.md « O-34 ». Un pansement sans condition de
+ *              sortie devient un acquis — c'est précisément ce que cette entrée empêche.
+ *
+ * Pourquoi il existe : une PRÉDICTION optimiste déçoit le jour J ; une PRESCRIPTION trop
+ * rapide casse l'entraînement toutes les semaines. Le bord bas mesurait 1,044 × seuil à
+ * 10 h/sem et 1,021 à 12 h. La dépendance au volume reste (l'objet de B-22), l'extrémité
+ * inatteignable est coupée.
+ */
+export const RN_MARA_RATIO_PLANCHER = 1.05;
+export function marathonPaceBand(thrPaceSecPerKm: number, runHoursPerWeek?: number): { lo: number; hi: number } | null {
+  if (!(thrPaceSecPerKm > 0)) return null;
+  const km = RUN_KM.marathon;
+  // Une SEULE écriture de Riegel dans tout le moteur (R11.1) : on appelle celle du prédicteur,
+  // on ne réécrit pas la forme close ci-dessus — elle est là pour expliquer, pas pour calculer.
+  const ratio = riegelSecWith(riegelExponent(runHoursPerWeek), thrPaceSecPerKm, km) / km / thrPaceSecPerKm;
+  const lo = Math.max(ratio * (1 - RN_MARA_DEMI_LARGEUR), RN_MARA_RATIO_PLANCHER);
+  return { lo, hi: Math.max(ratio * (1 + RN_MARA_DEMI_LARGEUR), lo + 1e-9) };
+}
+
+/**
+ * B-25 — LE LEG COURSE DU TRI CONSOMME LA BANDE DU PRÉDICTEUR (troisième versant d'O-11).
+ *
+ * `sports/tri/index.ts` prescrit `rn.mara` sous le nom « l'allure de course du jour J » —
+ * avec la bande STATIQUE de ZDEF (1,08-1,13 × seuil), aveugle au FORMAT. Mesuré de bout en
+ * bout (T-16c) : sur S et M la bande est trop LENTE de ~50 s/km (le leg y court plus vite que
+ * l'allure marathon d'un coureur), sur Full elle est trop RAPIDE de 46-53 s/km — une allure
+ * que le même moteur déclare intenable après 180 km de vélo. Seul 70.3, le format sur lequel
+ * la bande a manifestement été calibrée, recouvrait. R20.5 avait fermé ce défaut côté VÉLO
+ * (`raceBikeBand`), B-22 côté course sèche — voici le versant course du tri, par la MÊME
+ * mécanique de substitution (`refs.runMara`), et AUCUNE constante nouvelle : le centre est ce
+ * que `predict()` émet déjà (Riegel × `TRI_RUN.fatigue`, exposant B-21 compris), la largeur
+ * est `RN_MARA_DEMI_LARGEUR` (B-22). Si un jour ce calcul réclame un chiffre à arbitrer,
+ * c'est qu'il déborde sur B-04 — s'arrêter et le dire (contrat du ticket).
+ */
+export function raceRunBand(sport: string, format: string, thrPaceSecPerKm: number, runHoursPerWeek?: number): { lo: number; hi: number } | null {
+  if (!(thrPaceSecPerKm > 0) || sport !== "tri") return null;
+  const leg = TRI_RUN[format];
+  if (!leg) return null;
+  const ratio = (riegelSecWith(riegelExponent(runHoursPerWeek), thrPaceSecPerKm, leg.km) / leg.km / thrPaceSecPerKm) * leg.fatigue;
+  return { lo: ratio * (1 - RN_MARA_DEMI_LARGEUR), hi: ratio * (1 + RN_MARA_DEMI_LARGEUR) };
 }
 
 /** Minutes → « 9h20 » : une durée de trail se lit en heures, pas en minutes. */
@@ -496,9 +631,20 @@ export function predictRace(
     D("R15.2", "Relief du parcours vélo", (reliefOf(legs.bike ?? opts.courseProfile) || { label: "accidenté" }).label + " → IF " + (ifShift * 100).toFixed(1) + " pt",
       "Le chrono vélo n'est pas prédit (il dépend du parcours), mais la CIBLE D'INTENSITÉ, elle, doit "
       + "descendre : à puissance moyenne égale, un parcours vallonné coûte plus cher qu'un parcours plat.");
-  // R14 P5 — l'exposant de Riegel suit le volume, et SEULEMENT pour une course sèche :
-  // les legs course du tri/duathlon portent déjà leurs facteurs de fatigue calibrés à 1,06.
-  const expo = sport === "run" ? riegelExponent(opts.runHoursPerWeek) : 1.06;
+  // B-21 — L'EXPOSANT SUIT LE VOLUME PARTOUT, Y COMPRIS EN TRI ET EN DUATHLON.
+  //
+  // Il était figé à 1,06 hors course sèche, au motif que les facteurs `TRI_RUN.fatigue`
+  // « avaient été calibrés CONTRE cet exposant » et qu'en bouger un compterait deux fois la
+  // même difficulté. **V-07 a établi que ce motif est faux** : `TRI_RUN` est `a_priori` (aucune
+  // source, aucune entrée PROVENANCE, valeurs jamais modifiées, et aucun jeu de chronos réels
+  // n'a jamais existé dans ce dépôt), et la table PRÉCÈDE la fonction — il n'y a jamais eu de
+  // calibration à préserver. Les deux grandeurs modélisent d'ailleurs des phénomènes distincts :
+  // `fatigue` dit « courir après avoir roulé coûte plus cher » (multiplicateur par format),
+  // l'exposant dit « à quel point tu tiens quand la distance s'allonge » (fonction du VOLUME
+  // DE COURSE). Mesuré (V-09) : les 294 profils tri/duathlon du golden courent **2,03 h/semaine**
+  // en médiane, étendue 0,58 → 4,72 — et le moteur leur appliquait à tous l'exposant d'un
+  // coureur à 10 h.
+  const expo = riegelExponent(opts.runHoursPerWeek);
   if (sport === "run" && expo !== 1.06)
     D("P5", "Tenue de la distance", "exposant de Riegel " + expo.toFixed(3),
       "L'extrapolation entre distances dépend du VOLUME, pas seulement de l'allure : à volume élevé "

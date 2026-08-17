@@ -8,9 +8,10 @@ import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS } from "../../engine/
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { TRI_SWIM, TRI_BIKE, TRI_RUN, TRI_BIKE_KM, TRI_TRANSITION } from "../../engine/predictor.ts";
+import { continuityGate, palierPosables, palierDistanceM, B17_ECHAUF_M, B17_RETOUR_M } from "../../engine/swimContinuity.ts";
 
 export function buildTriSessions(kit: SessionKit): V1Session[] {
-  const { a, fmt, slot, phase, prog, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
+  const { r, a, fmt, slot, phase, prog, weekNum, slotIdx, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
   const runInj = inj.list.includes("course");
   const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] } as Record<string, [number, number]>)[phase] || [0.5, 0.8];
   const PT = (lo: number, hi: number) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
@@ -38,6 +39,148 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     swMain = { name: "Nage seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute. Arrêt au moindre signal articulaire.", steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(1, shoulderDist, "sw.css", "20-30s", ", fractionné en 100m, amplitude confortable", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: shoulderDist } }), Cm(100, "souple")] };
     swTech = { name: "Jambes + technique (épaule épargnée)", note: "Le travail passe par les jambes (battements planche) et la technique : la charge articulaire de l'épaule reste minimale.", steps: [Object.assign(Bd(1, swTechDist, null, "", " séries battements planche + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: swTechDist } })] };
   }
+  // B-17 — LA NAGE CONTINUE À LA DISTANCE DE COURSE, sur les paliers de la phase SPÉCIFIQUE.
+  //
+  // Elle TRANSFORME « Nage seuil (+dist) », elle n'ajoute pas de séance et surtout **elle ne marque
+  // rien en `long`** : `blockBounds` rend `if (s.long) { if (s.d === "sw") … cap: CAP_SWIM[fmt] }`,
+  // et `CAP_SWIM.Full` vaut 3 000 — marquer la séance écrêterait à 3 000 m exactement la continuité
+  // de 3 800 que cette règle existe pour prescrire. Le marquage importerait en outre les
+  // sémantiques d'impact de `s.long` (C30, exclusions de réallocation, tail O-21), écrites pour des
+  // longues de COURSE, dans une discipline qui n'en a pas.
+  //
+  // PAS À CHAQUE SEMAINE : « Nage seuil (+dist) » est le principal véhicule du travail au seuil en
+  // nage (885 occurrences mesurées) ; la transformer partout retirerait l'essentiel du seuil sur
+  // toute la phase. Le nombre de paliers est proportionné à l'ÉCART (`palierCount`) — divergence
+  // VOULUE avec `trailLibrary`, qui transforme dès que `rehearsalNeeded`.
+  //
+  // LE PREMIER PALIER PORTE LA CONSIGNE EAU LIBRE, et c'est un placement, pas une décoration : la
+  // séance en conditions réelles VALIDE l'hypothèse que le gate a faite à la construction (il
+  // accepte une preuve en BASSIN pour une capacité en EAU LIBRE). Découvrir trois semaines avant
+  // l'épreuve que l'eau libre est bien plus dure laisse le temps de s'inquiéter, pas celui de
+  // s'adapter — elle tombe donc TÔT, indépendamment du palier de distance atteint.
+  // UNE SEULE PAR SEMAINE, ET LA MONTÉE EST MONOTONE. Deux défauts mesurés au rendu, chacun avec
+  // sa cause propre — et la première hypothèse (« la transformation n'a pas d'ordinal ») était
+  // FAUSSE : `k` dérive de `weekNum` et de `spec.start`, il est parfaitement ordonné.
+  //   · D1 — le créneau `facile2` est une CATÉGORIE, pas une position : mesuré, **29 semaines
+  //     sur 308** portent DEUX jours `facile2` (le gabarit de `weekBuilder` le déclare deux
+  //     fois). Les deux jours recevaient donc la même nage continue, avec le même `bnd`. Le
+  //     départage est EXPLICITE et écrit — `slotIdx === 0`, le premier jour du créneau en ordre
+  //     calendaire —, jamais l'ordre d'itération d'une liste, qui serait déterministe par
+  //     ACCIDENT et ferait revenir D1 sous forme de flake au premier tri ajouté ailleurs ;
+  //   · D2 — les distances livrées n'étaient pas croissantes (Full : 1 763 → 3 295 → **2 090**),
+  //     et **19 paliers sur 31** tombaient sous leur cible, jusqu'à −1 710 m. Le bloc était déjà
+  //     `floor = cap = cible`, mais `blockBounds` REMPLACE le plancher déclaré d'un bloc en
+  //     distance par le sien (`Math.min(bnd.floor, 750)`, cas O-26) : l'épinglage était inerte.
+  //     Il porte désormais `pinned: true`, que `blockBounds` rend tel quel.
+  //   · D3-b — LE VÉHICULE N'ÉTAIT PAS TOUJOURS CELUI QUE JE TRANSFORMAIS. Mesuré sur 351 plans
+  //     qui ANNONÇAIENT la construction : **277 ne la contenaient pas (79 %)**, et la ventilation
+  //     donne la cause — `finir` 117, `plaisir` 117, `debutant` 117 contre `competition` 43. Le
+  //     créneau `facile2` route ces profils vers `swTech` (« Nage vitesse »), pas vers `swMain` :
+  //     je mutais un objet qu'ils ne reçoivent jamais. Et sous DOUBLES, `swMain` part sur `dur1`,
+  //     donc la transformation posée depuis `facile2` était perdue de la même façon. Le placement
+  //     ne bouge pas (§4 de l'arbitrage) : c'est le créneau porteur de la nage PRINCIPALE qui est
+  //     lu — `dur1` en doubles, `facile2` sinon —, et le routage par intention est court-circuité
+  //     pour cette seule séance. La population la plus concernée est justement celle qui a le plus
+  //     besoin de la continuité : un débutant qui vise un finish en eau libre.
+  //   · D4 — LE PORTEUR ÉTAIT UN CRÉNEAU QUE LE BUDGET DE SÉANCES SUPPRIME (retour du premier
+  //     usage réel, 17/08/2026). Sous DOUBLES, `swMain` part sur `dur1` en séance « (matin) »,
+  //     c'est-à-dire la SECONDE séance d'une journée double — exactement ce que la coupe par
+  //     `sessions_max` retire en premier. Mesuré sur un 70.3 de 40 semaines, à un seul facteur
+  //     près (le budget) :
+  //
+  //         sessions_max ≤ 7 → véhicule « (matin) » 31 → 3 occurrences · continues 3 → 1
+  //         sessions_max ≥ 8 → véhicule 31 · continues 2 (le palier du milieu manquait encore)
+  //
+  //     La progression était CALCULÉE juste (départ 1 000 m → 1 250 / 1 550 / 1 900, atteignable
+  //     17 449 m : ni la projection ni le compte de paliers n'étaient en cause) et DÉTRUITE plus
+  //     loin, sans que rien ne le signale. C'est la treizième occurrence de la famille la plus
+  //     coûteuse du dépôt — « une garantie posée au milieu du pipeline ne survit pas aux passes
+  //     suivantes » —, cette fois dans le sens où la garantie est SUPPRIMÉE avec son support.
+  //
+  //     Le porteur devient donc `facile2` DANS TOUS LES CAS. Ce n'est pas revenir sur D3-b : ce
+  //     que D3-b corrigeait, c'est que le routage par intention envoyait le créneau vers
+  //     `swTech` — et il est court-circuité depuis, par le `if (b17Pose)` qui passe DEVANT tout
+  //     le routage du créneau, y compris devant la « Nage récup courte » des doubles. La prémisse
+  //     « sous doubles, `facile2` ne porte pas la nage principale » était vraie du ROUTAGE et
+  //     fausse de la SÉANCE CONTINUE, qui ne passe plus par ce routage.
+  //
+  //     Ça ne coûte AUCUNE séance : mesuré, 5,0 · 5,8 · 6,5 · 7,3 séances/semaine avant comme
+  //     après, aux neuf budgets balayés — la continue REMPLACE la récup courte de ces 3 semaines
+  //     au lieu de s'ajouter. Et les trois paliers sont livrés à TOUS les budgets, y compris les
+  //     plus serrés, là où l'ancien porteur n'en livrait qu'un.
+  const b17Slot = "facile2";
+  let b17Pose = false;
+  if (phase === "spec" && slot === b17Slot && slotIdx === 0 && !inj.shoulder && !medHold) {
+    // D3 §3b — LA PROGRESSION PART DE L'ATHLÈTE. Le gate reçoit la durée RÉELLE du plan (`r.weeks`),
+    // sans quoi son point de départ et sa franchissabilité seraient calculés sur un horizon par
+    // défaut — et la séance prescrite ne correspondrait pas à la décision affichée (R11.1).
+    //
+    // ⚠ MA PREMIÈRE ÉCRITURE LISAIT `r.totalWeeks`, QUI N'EXISTE PAS sur `ReasonedPlan` (le champ
+    // s'appelle `weeks` ; `totalWeeks` est celui du PLAN GÉNÉRÉ). `undefined` traversait sans bruit
+    // jusqu'à `weeks ?? 0`, la travée tombait à 1 semaine, et le Full « je ne sais pas » prescrivait
+    // **3 600 → 3 800 m** au lieu de 551 → 1 048 → 1 993 → 3 800 : une « progression » qui commence
+    // à 95 % de la distance de course, c'est-à-dire l'inverse d'une progression.
+    const g = continuityGate(a as Record<string, unknown>, r.weeks);
+    const spec = (r.phases || []).find((ph) => ph.id === "spec");
+    if (g && spec) {
+      const len = Math.max(1, spec.end - spec.start);
+      // D3 — BORNÉ PAR LA PLACE. Sans cette borne, `positions` collapse plusieurs paliers sur la
+      // même semaine et `indexOf` ne rend que le premier de chaque groupe : le DERNIER palier,
+      // celui qui vaut la distance de course, n'était jamais posé.
+      const n = palierPosables(g, len);
+      const idx = Math.max(0, Math.min(len - 1, weekNum - 1 - spec.start));
+      const positions = Array.from({ length: n }, (_, i) => (n <= 1 ? 0 : Math.round((i * (len - 1)) / (n - 1))));
+      const k = positions.indexOf(idx);
+      if (k >= 0) {
+        const cible = Math.max(200, Math.round(palierDistanceM(g, k, n) / 50) * 50);
+        // D3 (arbitrage « je ne sais pas n'est pas une valeur », 16/08/2026) — QUAND LA CONTINUITÉ
+        // N'EST PAS MESURÉE, LA PREMIÈRE SÉANCE EST UN TEST, PAS UN PALIER.
+        //
+        // « L'inconnu n'est pas une valeur par défaut : c'est une mesure manquante, et le moteur
+        // sait déjà en réclamer une. » C'est le mécanisme qui existe pour la FTP et le CSS —
+        // quand le moteur a besoin d'un nombre qu'il n'a pas, il PRESCRIT LE TEST QUI LE PRODUIT.
+        // Ça referme l'inversion sans punir personne : celui qui déclare 400 m reçoit la même
+        // chose que celui qui ne sait pas, PLUS une évaluation que l'autre attend encore ; et le
+        // silence ne fait plus gagner, il produit une TÂCHE, pas un laissez-passer.
+        //
+        // LE TEST EST EN BASSIN, ET C'EST LE POINT DE SÉCURITÉ. Un effort « aussi loin que tu
+        // peux » chez quelqu'un dont personne ne connaît la continuité est exactement le scénario
+        // que B-17 existe pour empêcher en eau libre — le mur tous les 25 m est ce qui rend ce
+        // test acceptable. La consigne eau libre se décale donc au palier SUIVANT.
+        const test = g.source !== "mesure" && k === 0;
+        const ow = k === (g.source !== "mesure" ? 1 : 0);
+        b17Pose = true;
+        swMain = test ? {
+          name: "Test de continuité — aussi loin que possible, sans t'arrêter",
+          note: "Tu as répondu que tu ne connais pas ta plus longue nage en continu : cette séance est là pour "
+            + "la mesurer, et ton plan de nage s'ajustera dessus. EN BASSIN, où tu peux t'arrêter à chaque mur. "
+            + "Nage sans t'arrêter aussi loin que tu peux, à une allure que tu tiendrais une heure — ce n'est ni "
+            + "un chrono ni une séance de volume. NOTE LA DISTANCE et reporte-la dans ton profil : tant qu'elle "
+            + "manque, l'évaluation de ta natation reste en attente et le plan avance sur une hypothèse.",
+          steps: [Wm(B17_ECHAUF_M, "souple, montée progressive"),
+            // NON ÉPINGLÉ, délibérément : la distance est ce qu'on MESURE, pas ce qu'on impose.
+            // `cible` n'est que le budget que le plan réserve à la séance.
+            Bd(1, cible, "sw.aero", "", ", SANS ARRÊT — va au bout de ce que tu tiens", false, "sw"),
+            Cm(B17_RETOUR_M, "relâché")],
+        } : {
+          name: "Nage continue" + (ow ? " en eau libre" : "") + " — " + cible + " m d'affilée",
+          note: (ow
+            ? "En conditions RÉELLES si tu le peux : eau libre, et en combinaison si ta course l'est. "
+            : "")
+            + "Sans arrêt, sans mur, allure régulière que tu tiendrais une heure. Ce n'est pas une séance de volume : "
+            + "c'est la continuité qu'on construit, et elle ne s'obtient pas en additionnant des séries. "
+            + "Lève la tête tous les 6 à 10 cycles pour te repérer — ça casse la position, ça s'apprend en le faisant.",
+          // Le bloc est ÉPINGLÉ (floor = cap) : dans une nage continue, la distance EST le
+          // stimulus, exactement comme la durée d'une répétition l'est dans un intervalle (I14).
+          // La réduire ne rend pas la séance plus facile, elle lui retire son objet.
+          steps: [Wm(B17_ECHAUF_M, "souple, montée progressive"),
+            Object.assign(Bd(1, cible, "sw.aero", "", ", SANS ARRÊT", false, "sw"), { bnd: { floor: cible, cap: cible, pinned: true } }),
+            Cm(B17_RETOUR_M, "relâché")],
+        };
+      }
+    }
+  }
+
   const swShort = { recovery: true, name: "Nage récup", note: "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.", steps: [Bd(1, swShortDist, "sw.easy", "", " souple, en blocs de 50m, respiration 3 temps · relâchement total", false, "sw")] };
   if (slot === "dur1") {
     if (dbl) S2.push({ d: "sw", name: swMain.name + " (matin)", note: swMain.note, det: "", steps: swMain.steps });
@@ -176,7 +319,10 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     // depuis un mois et demi n'est pas une contre-performance, c'est un risque (eau libre).
     // Le créneau facile2 route donc PAR PHASE quand l'athlète ne double pas ; en doubles, la
     // nage principale et la technique vivent déjà sur dur1/dur2 — la récup courte reste.
-    if (dbl) S2.push({ d: "sw", recovery: true, name: swShort.name + " courte", note: swShort.note, det: "", steps: swShort.steps, ...( { plainBody: true } as object) });
+    // D3-b — la nage continue passe DEVANT le routage par phase et par intention : c'est elle qui
+    // porte le prérequis de sécurité, et le routage l'envoyait sur « Nage vitesse ».
+    if (b17Pose) S2.push({ d: "sw", name: swMain.name, note: swMain.note, det: "", steps: swMain.steps });
+    else if (dbl) S2.push({ d: "sw", recovery: true, name: swShort.name + " courte", note: swShort.note, det: "", steps: swShort.steps, ...( { plainBody: true } as object) });
     else if (phase === "taper") S2.push({ d: "sw", name: "Rappel nage course", note: "Affûtage : on entretient les sensations d'eau sans fatigue — elles se perdent en 10 à 14 jours, et le jour J commence par la natation. Court, précis, à l'allure de course.", det: "", steps: [
       Wm(300, "souple"), Object.assign(Bd(beginner ? 4 : 6, 100, "sw.css", "20-30s", ", à l'allure de course, technique impeccable", false, "sw"), { repCap: 6 }), Cm(100, "souple")] });
     else if (phase === "base") S2.push({ d: "sw", name: swTech.name, note: swTech.note, det: "", steps: swTech.steps });

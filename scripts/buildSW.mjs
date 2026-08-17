@@ -66,34 +66,50 @@ const FIN_ASSETS = "// __/SW_ASSETS__";
 const DEB_VER = "// __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)";
 const FIN_VER = "// __/SW_VERSION__";
 
-/** Les fichiers non listables par extension : ils ne changent qu'à la main. */
+/** Les fichiers réellement non listables par extension : ils ne changent qu'à la main. */
 const EN_DUR = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./assets/fonts/archivo-black-400.woff2",
-  "./assets/fonts/space-grotesk-500-700.woff2",
-  "./assets/fonts/caveat-600-700.woff2",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
 ];
 
-/** Tous les `.js` et `.css` de l'app, récursivement — la source de vérité est le DISQUE. */
-function modules(dir) {
+/** Fichiers d'un répertoire, récursivement, filtrés par extension — la source de vérité est
+ *  le DISQUE. */
+function modules(dir, ext = /\.(js|css)$/) {
   const out = [];
   for (const e of readdirSync(dir)) {
     const p = join(dir, e);
-    if (statSync(p).isDirectory()) { out.push(...modules(p)); continue; }
-    if (/\.(js|css)$/.test(e)) out.push("./" + relative(APP, p).split("\\").join("/"));
+    if (statSync(p).isDirectory()) { out.push(...modules(p, ext)); continue; }
+    if (ext.test(e)) out.push("./" + relative(APP, p).split("\\").join("/"));
   }
   return out;
 }
+
+// LES POLICES SE LISENT SUR LE DISQUE, ELLES AUSSI (12/08/2026).
+// Elles étaient écrites À LA MAIN dans `EN_DUR`, sous un commentaire qui les disait « non
+// listables par extension » — c'est faux, `.woff2` est une extension comme une autre. Et la
+// liste était RESTÉE À TROIS polices : les QUATRE de R-ZENNA (Bebas Neue, Inter, IBM Plex Mono
+// 400 et 700) n'ont jamais été précachées depuis leur arrivée. Conséquence, invisible en ligne
+// et nette hors ligne : tout le thème sombre retombait sur Archivo Black et une pile monospace
+// système — l'app « marche hors ligne », mais pas avec sa typographie.
+// C'est le SECOND trou d'O-24, dans sa forme exacte (« ASSETS, écrite à la main aussi, oubliait
+// trois modules VIVANTS ») : O-24 a dérivé le JS et le CSS du disque et laissé les polices
+// derrière. Un oubli redevient impossible au lieu d'improbable.
+const listePolices = modules(join(APP, "assets", "fonts"), /\.woff2$/);
 
 // `sw.js` ne se met pas lui-même en cache : le navigateur le recharge par un chemin
 // dédié, et s'y mettre reviendrait à se rendre immortel.
 const listeJs = modules(join(APP, "js")).filter((p) => p !== "./sw.js");
 const listeCss = modules(join(APP, "css"));
-const ASSETS = [...EN_DUR.slice(0, 3), ...listeCss.sort(), ...listeJs.sort(), ...EN_DUR.slice(3)];
+// L'ordre est celui du chargement (coquille, styles, modules, puis les binaires). Il était
+// exprimé par `EN_DUR.slice(0, 3)` / `EN_DUR.slice(3)` — des indices qui devenaient faux dès
+// qu'on ajoutait une ligne à `EN_DUR`, ce que ce lot fait justement. Les trois groupes sont
+// désormais NOMMÉS.
+const COQUILLE = ["./", "./index.html", "./manifest.json"];
+const BINAIRES = EN_DUR.filter((p) => !COQUILLE.includes(p));
+const ASSETS = [...COQUILLE, ...listeCss.sort(), ...listeJs.sort(), ...listePolices.sort(), ...BINAIRES];
 
 // ---- L'EMPREINTE : le nom du fichier ET son contenu ----------------------------
 // Le NOM compte autant que le contenu : retirer un module du cache change ce que

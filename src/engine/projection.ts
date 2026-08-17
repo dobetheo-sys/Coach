@@ -146,7 +146,10 @@ export interface ProjectionResult {
  * frontière franche ferait sauter la projection de 50 % pour 1 W d'écart.
  */
 export const G_PLAFOND: Record<string, number> = {
-  // 20-30 %/an chez le non-entraîné (heuristique convergente).
+  // HEURISTIQUE, non sourcée — convergence de coachs, aucune étude princeps. Choisie dans
+  // l'ordre de grandeur "5-10 %/an intermédiaire" cité en tête de fichier (régime ENTRAÎNÉ,
+  // celui-ci — le régime non-entraîné a sa propre table, `G_PLAFOND_DEBUTANT`) : rien ne
+  // distingue formellement 0,22 de 0,28 dans ce nombre.
   ftp: 0.25,
   // Forte composante TECHNIQUE : la marge d'un nageur lent n'est pas aérobie, elle est dans
   // le geste — et c'est précisément ce qui se travaille le plus vite quand on part de loin.

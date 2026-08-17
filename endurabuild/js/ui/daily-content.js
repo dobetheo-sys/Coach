@@ -216,9 +216,14 @@ export function microDefiHTML(plan, todayISO) {
   const { isRest, hardTomorrow } = dayContext(plan, todayISO);
   if (isRest || hardTomorrow) return "";
   const body = CHALLENGES[hashDate(todayISO + "c", CHALLENGES.length)];
-  return '<div class="load-card" style="border-color:var(--gold);border-width:3px;background:#fff8e6">'
-    + '<div class="load-title" style="color:var(--gold)">🎯 Micro-défi du jour <span style="font-weight:400;color:var(--muted);font-size:var(--fs-xs)">— zéro volume en plus</span></div>'
-    + '<div style="margin-top:6px;font-size:var(--fs-md);line-height:1.55">' + body + "</div></div>";
+  // R-ZENNA — la tuile dorée de la maquette (icône en `clip-path`, texte à côté). Les classes
+  // `zn-defi*` sont additives : sans `zenna-today.css` le bloc reste une `load-card` dorée,
+  // exactement comme avant le reskin.
+  return '<div class="load-card zn-defi" style="border-color:var(--zn-gold,var(--gold));border-width:3px;background:var(--zn-bg-eve,#fff8e6)">'
+    + '<div class="zn-defi-ico" aria-hidden="true">⚡</div>'
+    + '<div style="flex:1;min-width:0">'
+    + '<div class="zn-defi-tag load-title" style="color:var(--zn-gold,var(--gold))">Micro-défi du jour <span style="font-weight:400;color:var(--zn-muted,var(--muted));font-size:var(--fs-xs)">— zéro volume en plus</span></div>'
+    + '<div class="zn-defi-txt" style="margin-top:6px;font-size:var(--fs-md);line-height:1.55">' + body + "</div></div></div>";
 }
 
 export function dailyContentHTML(plan, todayISO) {

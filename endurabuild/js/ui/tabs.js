@@ -10,6 +10,8 @@ import { renderTabToday } from "./tab-today.js";
 import { renderTabOutils } from "./tab-outils.js";
 import { renderTabWeek } from "./tab-week.js";
 import { brancherAide } from "./help.js";
+import { znApplyNavDot, znClearStickyCta, znClearParallax } from "./zenna-motion.js"; // R-ZENNA
+import { appHeaderHTML } from "./app-header.js";
 
 // Refonte R5 (retour utilisateur) : l'onglet CENTRAL 🎯 Aujourd'hui est l'écran du
 // quotidien (check-in diaporama → séance du jour → prédiction → charge → avancement),
@@ -38,12 +40,34 @@ import { brancherAide } from "./help.js";
 // `tab-outils.js` porte sa propre navigation en SOUS-onglets (Nutrition en premier
 // arrivant), extensible sans toucher cette barre-ci. Le compte revient à CINQ (Outils prend
 // la place de Nutrition) : la position centrale d'Aujourd'hui ne bouge pas.
+// R-ZENNA v7 — LES ICÔNES DE NAVIGATION SONT DES SVG AU TRAIT, reprises de la maquette
+// (décision du fondateur, 11/08/2026). C'étaient des EMOJI SYSTÈME : ils gardent leurs propres
+// couleurs (le calendrier rouge, la mallette rouge), donc ils ne suivaient ni le thème ni
+// l'état actif — et l'app n'avait pas le même visage sur iOS et sur Android, chaque système
+// ayant sa police d'emoji. Un SVG en `currentColor` suit l'accent quand l'onglet s'active.
+//
+// Les emoji RESTENT dans les titres de cartes (🔥 Dépense, 🥤 Ravitaillement) : là, ils
+// repèrent un CONTENU, ils ne portent pas l'identité de l'app.
+const SVG_NAV = (d) => '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" '
+  + 'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + "</svg>";
+const ICO = {
+  profil: SVG_NAV('<circle cx="10" cy="6.5" r="3.2"/><path d="M4 17a6 6 0 0 1 12 0"/>'),
+  plan: SVG_NAV('<rect x="3" y="4" width="14" height="13" rx="2"/><line x1="3" y1="8" x2="17" y2="8"/>'
+    + '<line x1="7" y1="2" x2="7" y2="5.5"/><line x1="13" y1="2" x2="13" y2="5.5"/>'),
+  aujourdhui: SVG_NAV('<circle cx="10" cy="10" r="7.2"/><circle cx="10" cy="10" r="3.6"/>'
+    + '<circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/>'),
+  semaine: SVG_NAV('<rect x="3" y="11" width="3" height="7" rx="1" fill="currentColor" stroke="none"/>'
+    + '<rect x="8.5" y="7" width="3" height="11" rx="1" fill="currentColor" stroke="none"/>'
+    + '<rect x="14" y="3" width="3" height="15" rx="1" fill="currentColor" stroke="none"/>'),
+  outils: SVG_NAV('<rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/>'
+    + '<rect x="3" y="11" width="6" height="6" rx="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5"/>'),
+};
 const TABS = [
-  ["profile", "\u{1F4CB}", "Profil", renderTabProfile],
-  ["general", "\u{1F5D3}", "Plan", renderTabPlanGeneral],
-  ["today", "\u{1F3AF}", "Aujourd’hui", renderTabToday],
-  ["week", "\u{1F4C5}", "Semaine", renderTabWeek],
-  ["outils", "\u{1F9F0}", "Outils", renderTabOutils],
+  ["profile", ICO.profil, "Profil", renderTabProfile],
+  ["general", ICO.plan, "Plan", renderTabPlanGeneral],
+  ["today", ICO.aujourdhui, "Aujourd’hui", renderTabToday],
+  ["week", ICO.semaine, "Semaine", renderTabWeek],
+  ["outils", ICO.outils, "Outils", renderTabOutils],
 ];
 
 let activeTab = "today"; // défaut : l'onglet central — le point du matin d'abord
@@ -242,11 +266,50 @@ function renderActiveTab() {
   }
   const screen = $("screen");
   if (screen) { screen.setAttribute("role", "tabpanel"); screen.dataset.tab = activeTab; } // desktop — cible le CSS par onglet
+  // R-ZENNA — reskin visuel scopé à l'onglet Aujourd'hui (voir css/zenna-today.css). Purement
+  // cosmétique : aucune classe/aucun id fonctionnel ne dépend de `theme-zenna`, seule la
+  // feuille de style le lit. Retirée dès qu'on quitte l'onglet — les quatre autres gardent
+  // l'habillage papier/collage au caractère près.
+  // R-ZENNA (extension) — LE THÈME VAUT MAINTENANT POUR TOUS LES ONGLETS.
+  //
+  // Il n'était posé que sur « Aujourd'hui » tant que le reskin était une preuve de concept
+  // scopée. Le produit n'a pas à changer d'identité visuelle en changeant d'onglet : la classe
+  // est désormais permanente tant qu'on est dans la vue à onglets, et `hideTabs()` la retire
+  // au retour au questionnaire.
+  //
+  // CE QUI RESTE PROPRE À AUJOURD'HUI, et c'est délibéré : la CASCADE d'entrée (`znPlay`), le
+  // CTA collant et le parallax du héros. La cascade est le geste d'ARRIVÉE — pertinent sur
+  // l'écran qu'on ouvre chaque matin, coûteux sur un onglet de consultation qu'on parcourt en
+  // aller-retour (`.rise` met le contenu à opacité 0 en attendant son animation, donc chaque
+  // retour rejouerait une attente). Les quatre autres onglets prennent la PALETTE, pas le
+  // mouvement d'entrée.
+  document.body.classList.add("theme-zenna");
+  // Les deux éléments FLOTTANTS du reskin vivent hors de `#screen` : ils survivraient donc à un
+  // changement d'onglet, qui ne remplace que `#screen`. L'onglet Aujourd'hui les repose lui-même.
+  if (activeTab !== "today") { znClearStickyCta(); znClearParallax(); }
+  // R-ZENNA v5 — l'en-tête partagé. Il vit HORS de `#screen` (comme la barre d'onglets) parce
+  // que `#screen` est remplacé à chaque changement d'onglet ; mais il est re-rendu à chaque
+  // fois, car son contenu dépend du JOUR (décompte, date, semaine) ET de l'onglet actif (la
+  // puce ne pointe pas vers l'onglet où l'on se trouve déjà).
+  const entete = $("ebAppHeader");
+  if (entete) {
+    entete.innerHTML = appHeaderHTML(plan, todayISO(), activeTab);
+    const puce = entete.querySelector("[data-goto]");
+    if (puce) {
+      const aller = () => setTab(puce.dataset.goto);
+      puce.onclick = aller;
+      puce.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); aller(); } };
+    }
+  }
   const tab = TABS.find((t) => t[0] === activeTab) || TABS[TABS.length - 1];
   tab[3](plan);
   const bar = $("ebTabbar");
   if (bar) bar.innerHTML = tabbarHTML();
   bindTabbar();
+  // R-ZENNA — la pastille « une séance t'attend » se repose APRÈS la reconstruction de la
+  // barre : posée pendant le rendu de l'onglet, la ligne du dessus l'effacerait aussitôt.
+  // Son état vit dans `zenna-motion.js`, pas dans le DOM, précisément pour survivre à ça.
+  znApplyNavDot();
   window.scrollTo(0, 0);
 }
 
@@ -268,10 +331,21 @@ export function renderTabs() {
   brancherAide();
 
   S.onPlan = true;
+  // Boucle du 13/08 — générer un plan PROUVE que le questionnaire a été traversé : `started`
+  // est impliqué, on ne le laisse plus dépendre du seul clic sur une carte sport (le chemin
+  // migré depuis eb_state_v1 ne repasse jamais par cette carte).
+  S.started = true;
   ebSave();
   // U11 — l'arrivée sur le plan le jour de sa création.
   if (jourDeCreation() && activeTab === "today") activeTab = "general";
   document.body.classList.add("has-tabs");
+  let entete = $("ebAppHeader");
+  if (!entete) {
+    entete = document.createElement("header");
+    entete.id = "ebAppHeader";
+    const ecran = $("screen");
+    ecran.parentNode.insertBefore(entete, ecran);
+  }
   let bar = $("ebTabbar");
   if (!bar) {
     bar = document.createElement("nav");
@@ -286,6 +360,13 @@ export function renderTabs() {
 /** Sortie de la vue plan (retour questionnaire / reset) : la barre disparaît. */
 export function hideTabs() {
   document.body.classList.remove("has-tabs");
+  // R-ZENNA v6 — LE THÈME NE SE RETIRE PLUS AU RETOUR AU QUESTIONNAIRE (décision du fondateur,
+  // 11/08/2026 : « toute l'app, questionnaire compris »). Il était retiré tant que le reskin
+  // s'arrêtait aux onglets ; le garder évite le clignotement clair→sombre en revenant sur le
+  // plan, et surtout : le questionnaire est le PREMIER contact, il ne peut pas être le seul
+  // écran d'une autre époque visuelle.
   const bar = $("ebTabbar");
   if (bar) bar.remove();
+  const entete = $("ebAppHeader");
+  if (entete) entete.remove();
 }

@@ -13,6 +13,7 @@ import { R313_TAPER_MAX_VS_PEAK } from "../engine/constraintMatrix.ts";
 import { longRunSpecificityFloor } from "../engine/longRunSpecificity.ts";
 import { generatePlan, normalizeRestMinutes, reconcileDeclaredVolume, syncDerivedLabels, shiftedBikeRp, _c30b } from "./planGenerator.ts";
 import { renderSess, type Refs } from "./renderer.ts";
+import { sealPlan } from "./seal.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 
 
@@ -340,7 +341,7 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
   const _spec30f = String(reasoned.profile.sport) === "run"
     ? longRunSpecificityFloor(String(reasoned.profile.format ?? ""), reasoned.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(reasoned.profile.vol_max ?? "")) || undefined)
     : null;
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { longSpecTargetMin: _spec30f ? _spec30f.target : undefined, swimFloors: guard(reasoned.profile.sport as string, "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport as string, "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport as string).mainDiscipline, disciplines: sportModule(reasoned.profile.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0 });
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { longSpecTargetMin: _spec30f ? _spec30f.target : undefined, swimFloors: guard(reasoned.profile.sport as string, "swimSessionFloors"), format: reasoned.profile.format, beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport as string, "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport as string).mainDiscipline, disciplines: sportModule(reasoned.profile.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0, refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 } });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.
@@ -410,5 +411,10 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
     warnings.push("Plan rendu avec réserves (contraintes insatisfaisables après " + MAX_ITERATIONS + " réparations) :");
     warnings.push(...finalAudit.hardViolations.map((v) => "· " + v));
   }
+  // T-27 — LE SCEAU, EN TOUT DERNIER. Voir `seal.ts` : c'est le seul point du pipeline où
+  // « après » n'existe pas, donc le seul endroit où un invariant vérifié l'est du plan LIVRÉ.
+  // Non strict ici (le plan est rendu quoi qu'il arrive) ; c'est la CI qui lève, via
+  // `npm run mesure:sceau` et le critère T-27 du banc.
+  sealPlan(best.plan, { format: profile.format });
   return { plan: best.plan, audit: finalAudit, warnings, repairs, decisions: reasoned.decisions };
 }

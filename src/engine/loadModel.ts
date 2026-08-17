@@ -9,7 +9,15 @@
  * N×M min + minutes isolées + échauffement/retour au calme + récup entre blocs —
  * jamais le max isolé, qui sous-estime massivement les séances structurées.
  * Natation : sommer les mètres et convertir via l'allure X'YY/100m du texte.
+ *
+ * O-42 — LA CONVERSION MÈTRES → MINUTES N'APPARTIENT PLUS À CE FICHIER. Elle y vivait DEUX
+ * fois (`stepMinutes` et la refente d'intensité), à l'ancre BRUTE, indépendamment de la zone :
+ * un 400 m facile y coûtait le temps d'un 400 m au CSS. Le générateur portait la même erreur et
+ * `weekDistances` une troisième table ; les quatre sites lisent désormais `zoneSpeedRatio`, la
+ * seule dérivation, tirée de la définition de zone qui produit les allures affichées (R11.1).
+ * L'auditeur DOIT compter comme le générateur budgétise, sinon l'écart T-25 se rouvre ici.
  */
+import { zoneSpeedRatio } from "../generator/renderer.ts";
 
 export interface RawStep {
   role: "warmup" | "body" | "cooldown";
@@ -184,18 +192,29 @@ function recoveryMinFromText(txt: string | undefined): number {
 function stepMinutes(st: RawStep, sessionD: string, refs: AthleteRefs): number {
   const reps = st.reps || 1;
   if (st.durationMin) return reps * st.durationMin;
-  if (st.distanceM) {
-    const d = st.d || sessionD;
-    if (d === "sw") return (reps * st.distanceM * refs.cssSecPer100m) / 100 / 60;
-    return (reps * st.distanceM * refs.thrPaceSecPerKm) / 1000 / 60;
-  }
+  if (st.distanceM) return metresEnMinutes(st.distanceM * reps, st.d || sessionD, st.zone, refs);
   return 0;
 }
 
 /**
+ * O-42 — LE POINT UNIQUE DE CE FICHIER. Il ne calcule rien : il choisit l'ancre selon la
+ * discipline et divise par le ratio de vitesse que `zoneSpeedRatio` dérive de `ZDEF`. Écrit une
+ * fois parce qu'il était écrit deux fois — et que les deux écritures étaient identiques au
+ * caractère près, à quinze lignes d'écart.
+ */
+function metresEnMinutes(metres: number, d: string, zone: string | null | undefined, refs: AthleteRefs): number {
+  const sw = d === "sw";
+  const brut = sw ? (metres * refs.cssSecPer100m) / 100 / 60 : (metres * refs.thrPaceSecPerKm) / 1000 / 60;
+  return brut / (zoneSpeedRatio(zone, undefined, sw ? "css" : "thrPace") ?? 1);
+}
+
+/**
  * Chemin structuré V1.5 : somme des steps + récup inter-blocs.
- * Différence méthodologique ASSUMÉE avec le stepMin du générateur : nous comptons
- * la récup entre répétitions (N-1 × récup), lui non — l'écart est un constat, pas un bug.
+ * O-42 (règle 13) — CE COMMENTAIRE AFFIRMAIT UNE DIVERGENCE QUI N'EXISTE PLUS : « nous comptons
+ * la récup entre répétitions (N-1 × récup), lui non — l'écart est un constat, pas un bug ».
+ * `stepMin` la compte depuis **R5.6a**, la plus vieille dette du dépôt, fermée il y a des mois.
+ * Un commentaire périmé qui décrit un écart invite à en tolérer un ; les deux lectures doivent
+ * rendre le même nombre, et c'est ce que T-25 surveille.
  * Échauffement chiffré : même clamp que renderSess (≤25min, ≤ corps) pour comparer à périmètre égal.
  */
 export function sessionLoadFromSteps(s: RawSession, refs: AthleteRefs): SessionLoad {
@@ -282,6 +301,13 @@ export interface IntensitySplit {
   easyMin: number;
   modMin: number;
   hardMin: number;
+  /**
+   * B-02 — les minutes DURES, ventilées par la discipline du STEP (jamais de la séance : un
+   * brick en porte deux, et les attribuer en bloc fausse exactement les profils que la règle
+   * doit départager). Produite ICI, par le classificateur qui décide déjà de la classe, pour
+   * qu'aucun consommateur n'ait à refaire le parcours (R11.1).
+   */
+  hardByDisc: Record<string, number>;
 }
 const HARD_SUFFIX = [".vo2", ".thr", ".speed", ".css"];
 const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
@@ -294,7 +320,9 @@ const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
  * précisément le défaut O-11 (deux définitions de « l'allure course » à vélo), et il n'y a
  * aucune raison de le refaire en le voyant venir.
  */
-export function zoneClass(zone: unknown, runLegNoZone = false, rpBand?: { lo: number; hi: number }): "easy" | "mod" | "hard" {
+/** La borne lente de rn.thr, telle que ZDEF la déclare — T-20 garde l'égalité des deux écritures. */
+export const RN_THR_FRONTIERE_LENTE = 1.05;
+export function zoneClass(zone: unknown, runLegNoZone = false, rpBand?: { lo: number; hi: number }, maraBand?: { lo: number; hi: number }): "easy" | "mod" | "hard" {
   const z = typeof zone === "string" ? zone : "";
   // R20.5 — `bk.rp` A CESSÉ D'ÊTRE UNE INTENSITÉ FIXE, DONC SA CLASSE AUSSI.
   //
@@ -307,6 +335,18 @@ export function zoneClass(zone: unknown, runLegNoZone = false, rpBand?: { lo: nu
   // Seuil à 0,85 × FTP : c'est le bas de la zone sweetspot/seuil de Coggan. Au-dessus, l'effort
   // se paie en récupération et doit compter dans le plafond de temps DUR (C26c).
   if (z === "bk.rp" && rpBand) return rpBand.hi >= 0.85 ? "hard" : "mod";
+  // §3 DE L'ARBITRAGE ANCRAGE/B-21 (14/08/2026) — `rn.mara` A CESSÉ D'ÊTRE UNE INTENSITÉ
+  // FIXE (B-25), DONC SA CLASSE AUSSI. La bande dérivée va de ~0,87 × seuil (leg 5 km d'un
+  // tri S — du travail au seuil et plus vite) à ~1,30 (marathon d'Ironman — de l'endurance) :
+  // la ranger « modérée » par suffixe refaisait à la classification l'erreur que B-25 venait
+  // de corriger au nombre — la forme exacte de bk.rp/R20.4, résolue par le même geste.
+  // Mesuré avant d'écrire : 61/61 profils tri S/M du golden portaient ~35-37 min/semaine de
+  // seuil comptées « modéré », un budget C26 faux dans le sens qui AJOUTE de l'intensité.
+  // La frontière est la borne LENTE de rn.thr (1,05) : elle est DÉCLARÉE dans ZDEF, recopiée
+  // ici parce que l'engine n'importe pas le renderer — l'égalité des deux écritures est
+  // GARDÉE par T-20 (elle rougit si l'une bouge sans l'autre). En allure, PLUS PETIT = PLUS
+  // RAPIDE : la bande atteint le seuil si son bord rapide (lo) passe sous cette frontière.
+  if (z === "rn.mara" && maraBand) return maraBand.lo <= RN_THR_FRONTIERE_LENTE ? "hard" : "mod";
   if (TRAIL_HARD.includes(z) || HARD_SUFFIX.some((s) => z.endsWith(s))) return "hard";
   if (TRAIL_MOD.includes(z) || MOD_SUFFIX.some((s) => z.endsWith(s)) || runLegNoZone) return "mod";
   return "easy";
@@ -325,7 +365,7 @@ export function zoneClass(zone: unknown, runLegNoZone = false, rpBand?: { lo: nu
 const TRAIL_HARD = ["tr.vam", "tr.asc", "tr.flatthr"];
 const TRAIL_MOD = ["tr.climb"];
 export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS): IntensitySplit {
-  const out: IntensitySplit = { easyMin: 0, modMin: 0, hardMin: 0 };
+  const out: IntensitySplit = { easyMin: 0, modMin: 0, hardMin: 0, hardByDisc: {} };
   if (!s.steps || !s.steps.length || s.d === "rs") {
     out.easyMin = sessionLoad(s, refs).minutes; // texte/repos : compté facile (prudence)
     return out;
@@ -335,7 +375,7 @@ export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS):
     const stMin = st.durationMin
       ? reps * st.durationMin
       : st.distanceM
-        ? ((st.d || s.d) === "sw" ? (reps * st.distanceM * refs.cssSecPer100m) / 100 / 60 : (reps * st.distanceM * refs.thrPaceSecPerKm) / 1000 / 60)
+        ? metresEnMinutes(reps * st.distanceM, st.d || s.d, st.zone, refs) // O-42 — la copie retirée
         : 0;
     if (st.role !== "body") {
       out.easyMin += stMin;
@@ -349,8 +389,12 @@ export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS):
     // comptés modérés et la répartition d'intensité tomberait à 61 % de facile (mesuré) sur un
     // plan qui est en réalité polarisé. La zone déclarée est toujours plus précise que l'indice.
     const runLegNoZone = st.leg === "run" && !zone;
-    const cls = zoneClass(zone, runLegNoZone, (st as { rpBand?: { lo: number; hi: number } }).rpBand);
-    if (cls === "hard") out.hardMin += stMin;
+    const cls = zoneClass(zone, runLegNoZone, (st as { rpBand?: { lo: number; hi: number } }).rpBand, (st as { maraBand?: { lo: number; hi: number } }).maraBand);
+    if (cls === "hard") {
+      out.hardMin += stMin;
+      const disc = String((st as { d?: string }).d || s.d || "");
+      out.hardByDisc[disc] = (out.hardByDisc[disc] ?? 0) + stMin;
+    }
     else if (cls === "mod") out.modMin += stMin;
     else out.easyMin += stMin;
     if (reps > 1) out.easyMin += (st.recoveryMin ?? recoveryMinFromText(st.recoveryText)) * (reps - 1); // la récup est facile
