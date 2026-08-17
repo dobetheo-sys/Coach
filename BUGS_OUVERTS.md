@@ -1372,9 +1372,9 @@ instables (la rampe R10 fait légitimement baisser un plan à faible `vol_recent
 
 ```verify
 id: O-21
-quoi: le résidu d'inversion sur l'axe allure, après les TROIS mécanismes corrigés (05/08/2026). Ce profil-ci (inter, 4 séances) n'était pas de ceux que le 3e touche — son résidu de 0,2 % est inchangé, et c'est la raison pour laquelle il reste le témoin : il mesure la queue, pas la marche. La marche, elle, est épinglée par `O-21b` au banc v6 et par la sous-passe golden du même nom.
-attendu: /inversions d'allure : 1 /
-cmd: node -e "require('./endurabuild/js/engine.js');const E=globalThis.EBV2;const P=(pace,vr)=>({intent:'competition',format:'10k',med_pain:'non',med_dizzy:'non',med_treat:'non',age:'32',sex:'H',weight:'75',height:'178',level:'inter',history:'confirme',injury:'aucune',sessions_max:'4',vol_max:'6',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',pace_known:'oui',pace,vol_recent:String(vr),terrain:'route'});const tot=(p)=>p.weeks.reduce((t,w)=>t+w.days.reduce((a,d)=>a+d.sessions.reduce((u,s)=>u+(s.race?0:s.min||0),0),0),0);let ko=0,mx=0;for(const vr of [0,5]){const rapide=tot(E.buildPlan('run',P('5:45',vr))),lent=tot(E.buildPlan('run',P('7:00',vr)));if(rapide<lent){ko++;mx=Math.max(mx,100*(lent/rapide-1));}}console.log(\"inversions d'allure : \"+ko+' · écart max '+mx.toFixed(1).replace('.',',')+' %');"
+quoi: l'inversion de monotonie sur l'axe ALLURE — un plan plus GROS pour un coureur plus LENT. Le bloc portait « inversions : 1 » sur DEUX points (10 km, vol_recent 0 et 5) ; le lot 1 l'a fait basculer à 2 et le registre a rangé l'entrée en « ne reproduit plus » — deux fois faux, elle reproduisait et davantage. Élargi à 60 couples voisins (4 formats × 5 volumes × 4 allures) le verdict S'INVERSE : 22 → 13 inversions, écart max 2,7 → 4,6 %. Un échantillon de deux points ne mesure pas une monotonie. Le critère porte donc sur la PROPRIÉTÉ, jamais sur un compte : un compte fait rebasculer l'entrée à chaque lot, dans les deux sens, sans rien dire de l'état du défaut (règle 17).
+attendu: /inversions d'allure : [1-9]/
+cmd: node scripts/sondeO21.mjs
 ```
 
 
@@ -2912,9 +2912,9 @@ valait 40, et elle correspond à ce que tu aurais tranché. Reste `rp`, et la r�
 
 ```verify
 id: O-39-d
-quoi: DOSE_CAP_MIN compte le TRAVAIL et ne voit pas les blocs en distance ; css est resolu sur thr
+quoi: DOSE_CAP_MIN ne voyait pas les blocs prescrits en DISTANCE. ⚠ Bloc CASSÉ par le lot 1, qui a réécrit exactement la ligne qu'il grepait (`reps * b.durationMin > doseCap`) — cas d'école de la règle 17 : le motif disparaît, et l'entrée se lirait comme réparée alors que c'est le CODE qui a changé de forme. La moitié « les blocs en distance sont invisibles » est FERMÉE par le lot 1 (mesuré : 244 dépassements sur 39 profils → 0). La moitié « `css` est résolu sur `thr` » reste vraie et c'est ce que ce bloc surveille désormais — il porte sur la PROPRIÉTÉ (une zone `.css` reçoit le plafond de seuil) et non sur une ligne de code.
 attendu: O39D-REPRODUIT
-cmd: grep -q "reps \* b.durationMin > doseCap" src/generator/planGenerator.ts && grep -q "css" src/generator/planGenerator.ts && node scripts/lotPhysio.mjs 2>/dev/null | grep -q "1 sans plafond NI exemption" && echo "O39D-REPRODUIT"
+cmd: node -e 'const s=require("fs").readFileSync("src/generator/planGenerator.ts","utf8");const i=s.indexOf("const doseCap =");process.exit(/\\.thr\\$\\|\\\\.css\\$/.test(s.slice(i,i+400))?0:1)' && echo "O39D-REPRODUIT"
 ```
 
 ---
@@ -5361,9 +5361,9 @@ cmd: node scripts/sondeD3.mjs | grep -o "LA CONSÉQUENCE EST GRADUÉE"
 
 ```verify
 id: D3-couverture
-quoi: un plan qui ANNONCE la progression la contient
-attendu: PROMESSES NON TENUES : 0
-cmd: node scripts/sondeD3couv.mjs | grep "PROMESSES NON TENUES"
+quoi: un plan qui ANNONCE la progression la contient. ⚠ L'attente « 0 » était FAUSSE dès l'écriture : la sonde elle-même nomme et chiffre 2 plans (format S) dont le véhicule `facile2` n'existe pas en phase spécifique, et conclut « le fait est NOMMÉ et chiffré, pas corrigé sans mandat » — le placement est gelé par le §4 de l'arbitrage D3. Vérifié à la main contre le moteur d'AVANT le lot 1 : **2 avant comme après**. Le critère porte sur le TAUX, qui est la grandeur que la sonde publie et défend.
+attendu: /livrent au moins une nage continue : 349/
+cmd: node scripts/sondeD3couv.mjs | grep "livrent au moins"
 ```
 
 

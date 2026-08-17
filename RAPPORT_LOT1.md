@@ -357,3 +357,114 @@ Enregistré en **O-53**, pas corrigé — périmètre gelé.
 (231 blocs sur 231 à la borne). La question « 40 est-il la bonne valeur » ne porte donc pas sur des
 cas extrêmes : elle porte sur la dose hebdomadaire de seuil en nage de tout athlète de longue
 distance.
+
+---
+
+## 10. RÈGLE 17 — les blocs `verify` rejoués, et ce qu'ils ont trouvé
+
+*« Après tout déplacement de code, tous les blocs `verify` sont rejoués, et toute entrée qui
+bascule en “ne reproduit plus” est confirmée À LA MAIN avant d'être crue. »* Fait. **Aucune des
+deux bascules n'était une réparation, et l'une des deux dit l'inverse de ce que le registre en a
+conclu.**
+
+### O-21 — le bloc épinglait un COMPTE sur un échantillon de deux points
+
+Le registre a rangé l'entrée en « ne reproduit plus » parce que sa sortie ne contenait plus
+« inversions d'allure : 1 ». À la main : **elle rend 2**. L'entrée ne reproduit pas moins, elle
+reproduit **plus** — le motif absent se lisait comme un défaut réparé, c'est le mode de défaillance
+exact que la règle 17 nomme.
+
+Élargi de 2 à **60 couples voisins** (4 formats × 5 volumes récents × 4 allures), le verdict
+**s'inverse** :
+
+```
+                    inversions      écart max
+avant lot 1         22 / 60           2,7 %
+après lot 1         13 / 60           4,6 %
+```
+
+Moins nombreuses, une pire. Un échantillon de deux points ne mesure pas une monotonie : il tire à
+pile ou face, et il a fait basculer l'entrée dans les deux sens sans rien dire du défaut. Le bloc
+porte désormais sur la **propriété** (« il reste des inversions ») et la sonde est enregistrée
+(`npm run sonde:o21`).
+
+### D3-couverture — l'attente « 0 » était fausse dès son écriture
+
+`PROMESSES NON TENUES : 0` attendu, **2 mesuré**. Vérifié à la main contre le moteur d'avant :
+**2 avant comme après** — le lot n'y est pour rien. La sonde elle-même nomme ces 2 plans (format
+S, le véhicule `facile2` n'existe pas en phase spécifique) et conclut *« le fait est NOMMÉ et
+chiffré, pas corrigé sans mandat »*, le placement étant gelé par le §4 de l'arbitrage D3. Le bloc
+attendait donc un chiffre que la mesure qu'il invoque contredit dans le même écran. Réécrit sur le
+TAUX, la grandeur que la sonde publie et défend.
+
+### Six commandes cassées — une seule vient de ce lot
+
+`O-39-d` grepait `reps * b.durationMin > doseCap`, **la ligne exacte que le lot a réécrite**. Cas
+d'école : le motif disparaît, l'entrée se lirait comme réparée, et c'est le CODE qui a changé de
+forme. Sa moitié « les blocs en distance sont invisibles » est effectivement FERMÉE par le lot
+(244 dépassements → 0) ; sa moitié « `css` est résolu sur `thr` » reste vraie, et le bloc porte
+désormais là-dessus, sur la propriété.
+
+Les cinq autres sont antérieures et diagnostiquées : `O-44` et `B-17-D3` grepent des noms et des
+sorties que les lots précédents de cette session ont renommés ; `O-43-frequence` exige l'absence de
+`MAX_SWIM_DAYS`, qui existe désormais ; `O-37` et `T-27b` attendent `✓ T-27`, qui est rouge — voir
+juste en dessous. Elles ne sont pas réparées ici : le périmètre est gelé et aucune ne concerne le
+lot.
+
+---
+
+## 11. RÉGRESSION — le sceau. Et je ne l'avais pas vue parce que `lotPhysio` n'était pas dans ma boucle
+
+`npm run audit:v6` et les 26 autres gates étaient verts. **`scripts/lotPhysio.mjs` ne l'est pas**,
+et il déclare une régression franche. Il n'est pas dans `.github/workflows/audit.yml` — je l'avais
+donc omis de ma passe, et c'est une omission de ma part, pas une absence de signal.
+
+Expérience contrôlée, un seul facteur :
+
+```
+avant lot 1   ✓ T-27  le sceau est posé sur le plan livré      14 verts · 0 régression
+après lot 1   ✖ T-27  cliquet : S4 352 au lieu de 351          13 verts · 1 RÉGRESSION
+                                S5 508 au lieu de 500
+```
+
+Les invariants DURS restent à **zéro** — ce n'est pas une violation de sécurité. Ce qui monte est
+le cliquet des invariants DÉCLARÉS :
+
+- **S5 (T-25) : 500 → 508**, huit profils de plus où `min(plafonds)` du record R20.2 ne vaut pas le
+  pic livré. C'est **exactement le mécanisme du §9** : la courbe bouge sous la sonde de capacité,
+  la chaîne déclarée et le livré s'écartent. T-25 est une entrée OUVERTE dont la cause est nommée
+  depuis O-35 ; le lot l'élargit de 8.
+- **S4 (I14) : 351 → 352**, une semaine de plus où la sortie longue n'est pas la plus longue de sa
+  discipline. La famille est connue (`mesure:sceau` en montre le type : une VO2max de 45 min contre
+  une longue de 44 sur un 5 km) ; un cas de plus, non nommé — je ne l'ai pas isolé.
+
+Le cliquet est un cliquet : il refuse une hausse, et il a raison de la refuser. **Non modifié** —
+relever un cliquet pour faire passer un lot est précisément ce qu'il existe pour empêcher.
+C'est le troisième élément qui dépend de l'arbitrage Q1 : si le plafond de dose reste, le cliquet
+se réépingle avec ces deux chiffres et leur raison ; s'il est révoqué, il n'y a rien à faire.
+
+---
+
+## 12. État, et ce qui attend une décision
+
+```
+audit:v6            73 verts · 0 régression   (C30-A ré-épinglé, C30b-A reformulé)
+26 autres gates     verts
+golden:verify       87 écarts   ← NON recapturé, § 9
+lotPhysio           1 régression (T-27, cliquet du sceau)   ← NON ré-épinglé, § 11
+```
+
+Trois choses attendent la même décision, et une seule :
+
+```
+Q1 · le plafond de dose sur les blocs en MÈTRES reste-t-il, sachant que :
+     · il corrige 244 blocs réellement sur-dosés, jusqu'à 49,4 min de seuil en un bloc
+     · sur tri/Full il devient le RÉGIME PERMANENT de la nage seuil (231/231 à la borne)
+     · la nage ne fait que baisser (38 profils, 0 hausse, jusqu'à −7,6 min/semaine)
+     · son effet sur le volume passe entièrement par O-43, un défaut ouvert
+     · il élargit T-25 de 8 profils et I14 d'un
+
+   si OUI  → recapturer le golden · réépingler le cliquet S4/S5 avec leur raison
+   si NON  → livrer la moitié C24/C24b seule (0 écart, no-op mesuré exact) et
+             porter le plafond au lot 2 avec la mesure déjà faite
+```
