@@ -157,8 +157,24 @@ export class TrainingReasoningEngine {
             : "ta plus longue nage en continu n'est pas renseignée";
         if (g0.franchissable === false) {
           // NON FRANCHISSABLE — et seulement là. On descend au plus long format que la rampe atteint.
-          let cible = "S";
-          for (const f of ordre) {
+          //
+          // ⚠ O-57 — « ON DESCEND » N'ÉTAIT PAS GARDÉ, ET LA BOUCLE MONTAIT. `ordre` commence par
+          // `Full` et on retient le PREMIER format franchissable ; or `semainesDe(f)` rend
+          // l'horizon PROPRE à chaque format quand aucune date de course n'est saisie
+          // (`MIN_WEEKS` : 8 pour un sprint, 36 pour un Full). Un Full disposant de 36 semaines de
+          // rampe est donc franchissable AVANT un sprint qui n'en a que 8 — et un débutant qui
+          // demande un SPRINT en déclarant 400 m de nage continue recevait **un plan d'Ironman**.
+          // Mesuré : **9 profils sur 105**, tous sans date de course, jusqu'à `S → Full`.
+          // L'inversion exacte d'une règle de sécurité, sur la population qu'elle protège — et
+          // invisible avec une date, ce qui explique qu'aucun gate ne l'ait vue : les 989 profils
+          // du golden en portent une.
+          //
+          // Le rabattement ne considère donc que les formats À OU SOUS celui demandé. C'est ce que
+          // le commentaire disait déjà ; il n'était écrit nulle part dans le code.
+          const rang = ordre.indexOf(String(a.format ?? ""));
+          const candidats = rang >= 0 ? ordre.slice(rang) : ordre;
+          let cible = candidats[candidats.length - 1];
+          for (const f of candidats) {
             const g = continuityGate({ ...(a as Record<string, unknown>), format: f }, semainesDe(f));
             if (g && (g.satisfait || g.franchissable === true)) { cible = f; break; }
           }
@@ -444,12 +460,14 @@ export class TrainingReasoningEngine {
     // le plan ne pouvait pas porter (D3 : 4 paliers annoncés, 2 semaines de spec, dernier palier
     // jamais posé). Le générateur lit la même fonction sur le même objet `phases` — R11.1.
     let _swimCapM: number | undefined;
+    let _b17Gate: ReturnType<typeof continuityGate> | null = null;
     if (sp === "tri") {
       const gp = continuityGate(a as Record<string, unknown>, weeks);
       // O-54 §2 — C15 CESSE DE LIRE UNE AUTO-ÉVALUATION GLOBALE QUAND UNE CAPACITÉ EST DÉMONTRÉE.
       // Calculé ICI parce que c'est le seul endroit qui a À LA FOIS le gate (donc la rampe partant
       // de l'athlète) et le drapeau `beginner`. Transmis par `ReasonedPlan` : les trois sites C15
       // du générateur le lisent, ils n'en refont pas le calcul (R11.1).
+      _b17Gate = gp;
       if (beginner) {
         _swimCapM = swimSessionCapM(gp, C15_BEGINNER_SWIM_SESSION_CAP_M);
         if (_swimCapM > C15_BEGINNER_SWIM_SESSION_CAP_M)
@@ -598,6 +616,7 @@ export class TrainingReasoningEngine {
       medHold,
       beginner,
       swimSessionCapM: _swimCapM,
+      b17Gate: _b17Gate,
       finisher,
       comp,
       dbl: a.doubles === "oui",

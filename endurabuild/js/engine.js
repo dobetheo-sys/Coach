@@ -131,6 +131,8 @@
                                                                                     
      
                            
+                                                                                                  
+                                                                
                     
                 
                
@@ -2954,8 +2956,24 @@ class TrainingReasoningEngine {
             : "ta plus longue nage en continu n'est pas renseignée";
         if (g0.franchissable === false) {
           // NON FRANCHISSABLE — et seulement là. On descend au plus long format que la rampe atteint.
-          let cible = "S";
-          for (const f of ordre) {
+          //
+          // ⚠ O-57 — « ON DESCEND » N'ÉTAIT PAS GARDÉ, ET LA BOUCLE MONTAIT. `ordre` commence par
+          // `Full` et on retient le PREMIER format franchissable ; or `semainesDe(f)` rend
+          // l'horizon PROPRE à chaque format quand aucune date de course n'est saisie
+          // (`MIN_WEEKS` : 8 pour un sprint, 36 pour un Full). Un Full disposant de 36 semaines de
+          // rampe est donc franchissable AVANT un sprint qui n'en a que 8 — et un débutant qui
+          // demande un SPRINT en déclarant 400 m de nage continue recevait **un plan d'Ironman**.
+          // Mesuré : **9 profils sur 105**, tous sans date de course, jusqu'à `S → Full`.
+          // L'inversion exacte d'une règle de sécurité, sur la population qu'elle protège — et
+          // invisible avec une date, ce qui explique qu'aucun gate ne l'ait vue : les 989 profils
+          // du golden en portent une.
+          //
+          // Le rabattement ne considère donc que les formats À OU SOUS celui demandé. C'est ce que
+          // le commentaire disait déjà ; il n'était écrit nulle part dans le code.
+          const rang = ordre.indexOf(String(a.format ?? ""));
+          const candidats = rang >= 0 ? ordre.slice(rang) : ordre;
+          let cible = candidats[candidats.length - 1];
+          for (const f of candidats) {
             const g = continuityGate({ ...(a                           ), format: f }, semainesDe(f));
             if (g && (g.satisfait || g.franchissable === true)) { cible = f; break; }
           }
@@ -3241,12 +3259,14 @@ class TrainingReasoningEngine {
     // le plan ne pouvait pas porter (D3 : 4 paliers annoncés, 2 semaines de spec, dernier palier
     // jamais posé). Le générateur lit la même fonction sur le même objet `phases` — R11.1.
     let _swimCapM                    ;
+    let _b17Gate                                           = null;
     if (sp === "tri") {
       const gp = continuityGate(a                           , weeks);
       // O-54 §2 — C15 CESSE DE LIRE UNE AUTO-ÉVALUATION GLOBALE QUAND UNE CAPACITÉ EST DÉMONTRÉE.
       // Calculé ICI parce que c'est le seul endroit qui a À LA FOIS le gate (donc la rampe partant
       // de l'athlète) et le drapeau `beginner`. Transmis par `ReasonedPlan` : les trois sites C15
       // du générateur le lisent, ils n'en refont pas le calcul (R11.1).
+      _b17Gate = gp;
       if (beginner) {
         _swimCapM = swimSessionCapM(gp, C15_BEGINNER_SWIM_SESSION_CAP_M);
         if (_swimCapM > C15_BEGINNER_SWIM_SESSION_CAP_M)
@@ -3395,6 +3415,7 @@ class TrainingReasoningEngine {
       medHold,
       beginner,
       swimSessionCapM: _swimCapM,
+      b17Gate: _b17Gate,
       finisher,
       comp,
       dbl: a.doubles === "oui",
@@ -8721,6 +8742,7 @@ function applyPolarizationGuard(r              , days          , ctx            
 
 
 
+
 /**
  * Une zone de QUALITÉ — source unique. Le prédicat vivait en local dans `scaleBlock` (V2.2 :
  * un bloc de qualité ne grandit pas tout seul) ; C13d en a besoin aussi, et deux copies d'une
@@ -10741,6 +10763,12 @@ function generatePlan(profile                , opts                             
 
   // ---- Bornes de bloc (R3.4b/R3.11/R3.12) — source unique, mêmes règles que V1.5 ----
   let _capScale = 1;
+  // O-56 §1 — LE PLAFOND DE SÉANCE DE NAGE, À LA SEMAINE COURANTE. Même patron que `_capScale`
+  // juste au-dessus : une valeur posée par la boucle de semaines et lue par les passes, faute de
+  // quoi il faudrait threader la position dans une demi-douzaine de signatures. La position EST
+  // le point (règle 20) : `swimSessionCapM` rendait une borne gelée sur la semaine 1, donc un
+  // nageur à 2 000 m ne construisait jamais les 3 800 m d'un Ironman.
+  let _swimCapW = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M;
   const brickRF = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1; // C21
   function blockBounds(b        , s                )                                 {
     if (b.bnd) {
@@ -10920,7 +10948,7 @@ function generatePlan(profile                , opts                             
     }
     // C15 — protection débutant nage : aucune séance >850m, tous blocs confondus
     if (r.beginner && s.d === "sw" && b.distanceM != null) {
-      const cap = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M, reps = b.reps || 1; // O-54 §2
+      const cap = _swimCapW, reps = b.reps || 1; // O-54 §2 · O-56 §1 (suit la semaine)
       if (reps * b.distanceM > cap) {
         if (reps > 1) b.reps = Math.max(1, Math.floor(cap / b.distanceM));
         else b.distanceM = Math.floor(cap / 25) * 25;
@@ -11180,6 +11208,7 @@ function generatePlan(profile                , opts                             
     // pic quand la courbe en demandait 55, et la décroissance partait d'une falaise (−63 %
     // d'un coup, mesuré sur le Full). La longue de S-3 d'un plan long fait encore 60-70 % de
     // sa taille normale : c'est la réduction 40-60 % de Bosquet, pas un arrêt.
+    _swimCapW = r.beginner ? swimSessionCapAtWeek(r.b17Gate ?? null, C15_BEGINNER_SWIM_SESSION_CAP_M, w + 1) : Number.MAX_SAFE_INTEGER;
     _capScale = ph.id === "taper" ? Math.max(0.3, Math.min(1, Lw + 0.25)) : Math.max(0.4, Math.min(1, (Lw - 0.5) * 1.2 + 0.4));
     let targetH = Lw * peakH;
     // R20.2 (T-25) — la cause de chaque écrêtage est notée AU MOMENT où il se produit.
@@ -11375,7 +11404,7 @@ function generatePlan(profile                , opts                             
         for (const s of d.sessions) {
           if (s.d !== "sw" || !s.steps || !s.steps.length) continue;
           const tot = s.steps.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
-          const capC15 = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M; // O-54 §2
+          const capC15 = _swimCapW; // O-54 §2 · O-56 §1 (suit la semaine)
           if (tot <= capC15) continue;
           const aux = s.steps.filter((st) => st.role !== "body").reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
           const bodyTot = tot - aux;
@@ -11657,7 +11686,7 @@ function generatePlan(profile                , opts                             
             else body.distanceM = Math.ceil((body.distanceM + missing) / 25) * 25;
             changed = true;
           }
-          const capC15b = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M; // O-54 §2
+          const capC15b = _swimCapW; // O-54 §2 · O-56 §1 (suit la semaine)
           if (r.beginner && totOf() > capC15b) {
             const aux = s.steps.filter((st) => st.role !== "body").reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
             const bodyCap = Math.max(100, capC15b - aux);
@@ -15032,6 +15061,99 @@ const B17_AUX_M = B17_ECHAUF_M + B17_RETOUR_M;
 function swimSessionCapM(g                       , base        )         {
   if (!g || g.source !== "mesure") return base;
   return Math.max(base, g.departM + B17_AUX_M);
+}
+
+/**
+ * O-56 §1 — **LA CAPACITÉ PROJETTE, AU PATRON DE C22** (arbitrage du fondateur, 17/08/2026).
+ *
+ * `swimSessionCapM` rend une borne CONSTANTE, gelée sur la déclaration du premier jour : un
+ * nageur à 2 000 m ne construisait donc pas les 3 800 m d'un Ironman, alors que trente-six
+ * semaines de préparation sont précisément ce qui les construit. C'est la règle 20 dans son
+ * second sens — une valeur de DÉBUT appliquée à la FIN.
+ *
+ * La borne monte donc avec la position dans le plan, **au taux que le moteur s'impose déjà
+ * partout** (`C22_MAX_WEEKLY_GROWTH`). Aucune règle de croissance nouvelle : c'est le patron de
+ * C22 appliqué à une seconde grandeur, et l'hypothèse qu'il porte — « l'athlète a fait les
+ * séances » — est celle que la rampe assume depuis toujours, pas une hypothèse à défendre.
+ *
+ *   semaine 1  ..... la capacité déclarée (+ auxiliaire), jamais moins que C15
+ *   semaine k  ..... déclarée × C22^(k−1), plafonnée à la DISTANCE DE COURSE
+ *
+ * Le plafond à `courseM` n'est pas décoratif : au-delà de la distance de l'épreuve, une séance
+ * plus longue ne construit plus la continuité que B-17 vise — elle fait du volume, et le volume
+ * a ses propres bornes.
+ *
+ * CE QUE ÇA NE FAIT PAS : corriger la projection par l'ÉVIDENCE. C'est la seconde moitié d'O-56,
+ * et elle ne peut agir qu'à la RE-génération — au premier build aucune séance n'est validée.
+ * Sans évidence, la projection tient ; avec elle, `swimEvidenceM` relève le point de départ.
+ *
+ * @param wkNum semaine du plan, 1-indexée — LA POSITION EST UN PARAMÈTRE, pas une hypothèse
+ */
+function swimSessionCapAtWeek(g                       , base        , wkNum        )         {
+  if (!g || g.source !== "mesure") return base;
+  const k = Math.max(0, (wkNum || 1) - 1);
+  const projete = Math.min(g.courseM, g.departM * Math.pow(C22_MAX_WEEKLY_GROWTH, k));
+  return Math.max(base, Math.round(projete) + B17_AUX_M);
+}
+
+/**
+ * O-56 §2 — **L'ÉVIDENCE : le plus haut palier de continuité que l'athlète a VALIDÉ.**
+ *
+ * Trois décisions du fondateur sont encodées ici, et chacune ferme un mode de défaillance :
+ *
+ * 1. **LE CLIQUET EST MONOTONE.** Une séance sautée n'est pas une capacité perdue : qui a nagé
+ *    800 m d'affilée en semaine 8 sait toujours les nager en semaine 20, qu'il ait fait ou non
+ *    la continue de 1 400 prévue entre-temps (malade, en déplacement, ou faite sans la
+ *    journaliser). La divergence n'est donc jamais « la capacité redescend » mais « elle ne
+ *    monte pas » — deux situations différentes, et une seule existe.
+ *
+ * 2. **UNE DONNÉE ABSENTE N'EST PAS UNE DONNÉE NÉGATIVE.** Si le cliquet ne montait que sur des
+ *    séances validées, l'athlète qui nage tout et ne journalise rien serait traité comme celui
+ *    qui ne nage pas : capacité gelée, paliers jamais relevés, rabattement au bout — **pour un
+ *    défaut d'usage de l'application, pas d'entraînement**. Ce serait le défaut d'O-54 refait,
+ *    une protection qui frappe la mauvaise population. D'où `aDesNages` : l'évidence ne corrige
+ *    la projection QUE si le moteur a de l'évidence sur la NAGE.
+ *       aucune nage validée ................ aucune évidence, la projection tient
+ *       des nages validées, mais pas le palier → évidence réelle, le cliquet ne monte pas
+ *    La distinction est exacte et ne demande AUCUN seuil : soit l'athlète journalise sa nage,
+ *    soit il ne la journalise pas.
+ *
+ * 3. **LES PALIERS DE B-17 SONT DÉJÀ LE TEST.** Le plan prescrit une continue à 2 000 m, l'athlète
+ *    la fait, sa capacité démontrée vaut 2 000, le palier suivant peut viser plus haut. Le
+ *    mécanisme de mesure existe et n'a besoin d'AUCUNE question de plus — c'est la première fois
+ *    dans ce moteur qu'une progression s'appuie sur une évidence plutôt que sur une supposition.
+ *
+ * Fonction PURE, sur le plan PRÉCÉDENT et la carte des ✓ : elle ne devine rien, elle lit.
+ */
+                               
+                                                                        
+                  
+                                                                                               
+                     
+                                                                                               
+                  
+ 
+function swimEvidence(
+  plan                                                                                                                                                                                                                             ,
+  done                                            ,
+)               {
+  const out               = { valideM: 0, aDesNages: false, manqueM: 0 };
+  if (!plan?.weeks || !done) return out;
+  for (const w of plan.weeks) for (const d of w.days ?? []) {
+    (d.sessions ?? []).forEach((s, si) => {
+      if (s.d !== "sw") return;
+      const fait = !!done[w.num + "|" + d.jour + "|" + si];
+      if (fait) out.aDesNages = true;
+      // Le palier de continuité est le bloc ÉPINGLÉ : `pinned` dit « la distance EST le
+      // stimulus » (I14), donc c'est exactement la grandeur qu'on cherche à créditer.
+      const cont = (s.steps ?? []).find((st) => st.role === "body" && st.bnd?.pinned && st.distanceM != null);
+      if (!cont) return;
+      const m = (cont.reps || 1) * (cont.distanceM || 0);
+      if (fait) out.valideM = Math.max(out.valideM, m);      // cliquet : max, jamais min
+      else out.manqueM = Math.max(out.manqueM, m);
+    });
+  }
+  return out;
 }
 
                                  

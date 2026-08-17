@@ -31,6 +31,7 @@ import { arbitrateVolRecent } from "../engine/measured.ts";
 import { record as traceRecord, traceEnabled } from "../engine/trace.ts";
 import { enforceMedicalHold } from "../engine/medicalHold.ts";
 import { longRunSpecificityFloor, C31_MIN_JOUR2_MIN, C30_PART_SEMAINE_PIC } from "../engine/longRunSpecificity.ts";
+import { swimSessionCapAtWeek } from "../engine/swimContinuity.ts";
 
 interface BoundedSession extends V1Session {
   social?: boolean;
@@ -2056,6 +2057,12 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
 
   // ---- Bornes de bloc (R3.4b/R3.11/R3.12) — source unique, mêmes règles que V1.5 ----
   let _capScale = 1;
+  // O-56 §1 — LE PLAFOND DE SÉANCE DE NAGE, À LA SEMAINE COURANTE. Même patron que `_capScale`
+  // juste au-dessus : une valeur posée par la boucle de semaines et lue par les passes, faute de
+  // quoi il faudrait threader la position dans une demi-douzaine de signatures. La position EST
+  // le point (règle 20) : `swimSessionCapM` rendait une borne gelée sur la semaine 1, donc un
+  // nageur à 2 000 m ne construisait jamais les 3 800 m d'un Ironman.
+  let _swimCapW = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M;
   const brickRF = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1; // C21
   function blockBounds(b: V1Step, s: BoundedSession): { floor: number; cap: number } {
     if (b.bnd) {
@@ -2235,7 +2242,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     }
     // C15 — protection débutant nage : aucune séance >850m, tous blocs confondus
     if (r.beginner && s.d === "sw" && b.distanceM != null) {
-      const cap = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M, reps = b.reps || 1; // O-54 §2
+      const cap = _swimCapW, reps = b.reps || 1; // O-54 §2 · O-56 §1 (suit la semaine)
       if (reps * b.distanceM > cap) {
         if (reps > 1) b.reps = Math.max(1, Math.floor(cap / b.distanceM));
         else b.distanceM = Math.floor(cap / 25) * 25;
@@ -2495,6 +2502,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     // pic quand la courbe en demandait 55, et la décroissance partait d'une falaise (−63 %
     // d'un coup, mesuré sur le Full). La longue de S-3 d'un plan long fait encore 60-70 % de
     // sa taille normale : c'est la réduction 40-60 % de Bosquet, pas un arrêt.
+    _swimCapW = r.beginner ? swimSessionCapAtWeek(r.b17Gate ?? null, C15_BEGINNER_SWIM_SESSION_CAP_M, w + 1) : Number.MAX_SAFE_INTEGER;
     _capScale = ph.id === "taper" ? Math.max(0.3, Math.min(1, Lw + 0.25)) : Math.max(0.4, Math.min(1, (Lw - 0.5) * 1.2 + 0.4));
     let targetH = Lw * peakH;
     // R20.2 (T-25) — la cause de chaque écrêtage est notée AU MOMENT où il se produit.
@@ -2690,7 +2698,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         for (const s of d.sessions) {
           if (s.d !== "sw" || !s.steps || !s.steps.length) continue;
           const tot = s.steps.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
-          const capC15 = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M; // O-54 §2
+          const capC15 = _swimCapW; // O-54 §2 · O-56 §1 (suit la semaine)
           if (tot <= capC15) continue;
           const aux = s.steps.filter((st) => st.role !== "body").reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
           const bodyTot = tot - aux;
@@ -2972,7 +2980,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
             else body.distanceM = Math.ceil((body.distanceM + missing) / 25) * 25;
             changed = true;
           }
-          const capC15b = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M; // O-54 §2
+          const capC15b = _swimCapW; // O-54 §2 · O-56 §1 (suit la semaine)
           if (r.beginner && totOf() > capC15b) {
             const aux = s.steps.filter((st) => st.role !== "body").reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
             const bodyCap = Math.max(100, capC15b - aux);

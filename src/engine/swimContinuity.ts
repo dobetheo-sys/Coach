@@ -115,6 +115,99 @@ export function swimSessionCapM(g: ContinuityGate | null, base: number): number 
   return Math.max(base, g.departM + B17_AUX_M);
 }
 
+/**
+ * O-56 §1 — **LA CAPACITÉ PROJETTE, AU PATRON DE C22** (arbitrage du fondateur, 17/08/2026).
+ *
+ * `swimSessionCapM` rend une borne CONSTANTE, gelée sur la déclaration du premier jour : un
+ * nageur à 2 000 m ne construisait donc pas les 3 800 m d'un Ironman, alors que trente-six
+ * semaines de préparation sont précisément ce qui les construit. C'est la règle 20 dans son
+ * second sens — une valeur de DÉBUT appliquée à la FIN.
+ *
+ * La borne monte donc avec la position dans le plan, **au taux que le moteur s'impose déjà
+ * partout** (`C22_MAX_WEEKLY_GROWTH`). Aucune règle de croissance nouvelle : c'est le patron de
+ * C22 appliqué à une seconde grandeur, et l'hypothèse qu'il porte — « l'athlète a fait les
+ * séances » — est celle que la rampe assume depuis toujours, pas une hypothèse à défendre.
+ *
+ *   semaine 1  ..... la capacité déclarée (+ auxiliaire), jamais moins que C15
+ *   semaine k  ..... déclarée × C22^(k−1), plafonnée à la DISTANCE DE COURSE
+ *
+ * Le plafond à `courseM` n'est pas décoratif : au-delà de la distance de l'épreuve, une séance
+ * plus longue ne construit plus la continuité que B-17 vise — elle fait du volume, et le volume
+ * a ses propres bornes.
+ *
+ * CE QUE ÇA NE FAIT PAS : corriger la projection par l'ÉVIDENCE. C'est la seconde moitié d'O-56,
+ * et elle ne peut agir qu'à la RE-génération — au premier build aucune séance n'est validée.
+ * Sans évidence, la projection tient ; avec elle, `swimEvidenceM` relève le point de départ.
+ *
+ * @param wkNum semaine du plan, 1-indexée — LA POSITION EST UN PARAMÈTRE, pas une hypothèse
+ */
+export function swimSessionCapAtWeek(g: ContinuityGate | null, base: number, wkNum: number): number {
+  if (!g || g.source !== "mesure") return base;
+  const k = Math.max(0, (wkNum || 1) - 1);
+  const projete = Math.min(g.courseM, g.departM * Math.pow(C22_MAX_WEEKLY_GROWTH, k));
+  return Math.max(base, Math.round(projete) + B17_AUX_M);
+}
+
+/**
+ * O-56 §2 — **L'ÉVIDENCE : le plus haut palier de continuité que l'athlète a VALIDÉ.**
+ *
+ * Trois décisions du fondateur sont encodées ici, et chacune ferme un mode de défaillance :
+ *
+ * 1. **LE CLIQUET EST MONOTONE.** Une séance sautée n'est pas une capacité perdue : qui a nagé
+ *    800 m d'affilée en semaine 8 sait toujours les nager en semaine 20, qu'il ait fait ou non
+ *    la continue de 1 400 prévue entre-temps (malade, en déplacement, ou faite sans la
+ *    journaliser). La divergence n'est donc jamais « la capacité redescend » mais « elle ne
+ *    monte pas » — deux situations différentes, et une seule existe.
+ *
+ * 2. **UNE DONNÉE ABSENTE N'EST PAS UNE DONNÉE NÉGATIVE.** Si le cliquet ne montait que sur des
+ *    séances validées, l'athlète qui nage tout et ne journalise rien serait traité comme celui
+ *    qui ne nage pas : capacité gelée, paliers jamais relevés, rabattement au bout — **pour un
+ *    défaut d'usage de l'application, pas d'entraînement**. Ce serait le défaut d'O-54 refait,
+ *    une protection qui frappe la mauvaise population. D'où `aDesNages` : l'évidence ne corrige
+ *    la projection QUE si le moteur a de l'évidence sur la NAGE.
+ *       aucune nage validée ................ aucune évidence, la projection tient
+ *       des nages validées, mais pas le palier → évidence réelle, le cliquet ne monte pas
+ *    La distinction est exacte et ne demande AUCUN seuil : soit l'athlète journalise sa nage,
+ *    soit il ne la journalise pas.
+ *
+ * 3. **LES PALIERS DE B-17 SONT DÉJÀ LE TEST.** Le plan prescrit une continue à 2 000 m, l'athlète
+ *    la fait, sa capacité démontrée vaut 2 000, le palier suivant peut viser plus haut. Le
+ *    mécanisme de mesure existe et n'a besoin d'AUCUNE question de plus — c'est la première fois
+ *    dans ce moteur qu'une progression s'appuie sur une évidence plutôt que sur une supposition.
+ *
+ * Fonction PURE, sur le plan PRÉCÉDENT et la carte des ✓ : elle ne devine rien, elle lit.
+ */
+export interface SwimEvidence {
+  /** Le plus haut palier de continuité VALIDÉ, en mètres. 0 = aucun. */
+  valideM: number;
+  /** Le moteur a-t-il la moindre séance de nage validée ? Sans ça, l'absence n'informe pas. */
+  aDesNages: boolean;
+  /** Le plus haut palier PRESCRIT et NON validé — celui qui nomme la divergence. 0 = aucun. */
+  manqueM: number;
+}
+export function swimEvidence(
+  plan: { weeks?: { num: number; days?: { jour?: string; sessions?: { d?: string; name?: string; steps?: { role?: string; bnd?: { pinned?: boolean }; distanceM?: number | null; reps?: number }[] }[] }[] }[] } | null | undefined,
+  done: Record<string, boolean> | null | undefined,
+): SwimEvidence {
+  const out: SwimEvidence = { valideM: 0, aDesNages: false, manqueM: 0 };
+  if (!plan?.weeks || !done) return out;
+  for (const w of plan.weeks) for (const d of w.days ?? []) {
+    (d.sessions ?? []).forEach((s, si) => {
+      if (s.d !== "sw") return;
+      const fait = !!done[w.num + "|" + d.jour + "|" + si];
+      if (fait) out.aDesNages = true;
+      // Le palier de continuité est le bloc ÉPINGLÉ : `pinned` dit « la distance EST le
+      // stimulus » (I14), donc c'est exactement la grandeur qu'on cherche à créditer.
+      const cont = (s.steps ?? []).find((st) => st.role === "body" && st.bnd?.pinned && st.distanceM != null);
+      if (!cont) return;
+      const m = (cont.reps || 1) * (cont.distanceM || 0);
+      if (fait) out.valideM = Math.max(out.valideM, m);      // cliquet : max, jamais min
+      else out.manqueM = Math.max(out.manqueM, m);
+    });
+  }
+  return out;
+}
+
 export interface ContinuityGate {
   /** Le seuil, en minutes : `min(30, durée de nage estimée en course)`. */
   seuilMin: number;

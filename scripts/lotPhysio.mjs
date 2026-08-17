@@ -908,7 +908,11 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // ce qui est le meilleur signe que la hausse de S5 vient bien du corpus : un élargissement touche
 // les deux compteurs ou aucun selon ce qu'il ajoute, une régression moteur les aurait bougés
 // ensemble sur les MÊMES profils.
-const SCEAU_ATTENDU = { S1: 5, S4: 357, S5: 516 };
+// PUIS S5 516 → **508** (O-56 §1) : le MOTEUR cette fois, prouvé par `npm run base:cliquet`
+// (corpus inchangé, 985 → 985 profils). Le plafond de séance de nage suit la position dans le
+// plan, les continuités sont livrées, et huit profils de plus voient leur chaîne déclarée
+// retrouver leur pic livré. Une BAISSE s'épingle aussi rigoureusement qu'une hausse.
+const SCEAU_ATTENDU = { S1: 5, S4: 357, S5: 508 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1268,7 +1272,12 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   //       `atteignableM` et donnait 4 150 m de séance à qui déclare 400 m. Épingler sur un état
   //       qu'on abandonne ensuite est une erreur de tenue de livre, publiée ici plutôt que
   //       réécrite en silence.
-  //       Puis **31 → 69** : le CORPUS a grandi, pas le moteur. La sous-passe B-17 du golden croise
+  //       Puis **69 → 23** avec O-56 §1 : le MOTEUR, cette fois — `base:cliquet` le prouve
+  //       (corpus inchangé, 985 → 985). Le plafond de séance SUIT désormais la semaine, donc les
+  //       paliers de continuité sont livrés à leur épingle au lieu d'être écrêtés par une borne
+  //       gelée sur la semaine 1. Les 23 restants sont des semaines où le VOLUME, et non C15, ne
+  //       peut pas payer la séance.
+  //       Avant cela **31 → 69** : le CORPUS a grandi, pas le moteur. La sous-passe B-17 du golden croise
   //       désormais le NIVEAU (969 → 989 profils), donc 20 profils `debutant` à continuité basse
   //       entrent dans le compte — chacun avec ses paliers bornés à sa capacité déclarée. Un
   //       cliquet qui monte parce qu'on a ÉLARGI la mesure et un cliquet qui monte parce que le
@@ -1278,7 +1287,7 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   // Contre-preuve, en rendant le croisement NON VIDE (`sw.aero` ajoutée aux zones plafonnées) :
   //     garde posée .... 57 rabotés / 308   ← inchangé, elle tient
   //     garde retirée .. 195 rabotés / 308  ← +138, elle sert
-  const RABOTES_ATTENDUS = 69;
+  const RABOTES_ATTENDUS = 23;
   let n = 0, ko = 0; const zones = {}, ex = [];
   for (const { key, plan } of goldenAvecMoteur()) {
     for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
@@ -1321,43 +1330,106 @@ T("T-40", "vert", "aucun titre de séance n'annonce une distance que la séance 
   return { ok: bad.length === 0, detail: bad.join(" · ") || `${n} titres chiffrés, 0 qui ment` };
 });
 
-T("T-41", "vert", "C15 lit la capacité DÉMONTRÉE, et le vrai débutant nageur reste protégé (O-54 §2)", () => {
-  // LE JUMEAU DE SENSIBILITÉ ET D'INVARIANCE, sur la même mesure :
-  //   · sensibilité — qui déclare 2 000 m de continu reçoit un plafond de séance PLUS GRAND que
-  //     les 850 m de C15. Sans ça, le correctif serait inerte ;
-  //   · invariance  — qui déclare 400 m, et qui répond « je ne sais pas », restent à 850 m.
-  //     C'est la moitié qui compte : ma PREMIÈRE écriture bornait sur `atteignableM` (la valeur
-  //     de FIN de rampe, appliquée dès la semaine 1) et donnait **4 150 m** de séance à
-  //     quelqu'un qui déclare 400 m — elle retirait la protection à la population protégée.
+T("T-41", "vert", "le plafond de séance de nage suit la capacité DÉMONTRÉE et la POSITION dans le plan (O-54 §2, O-56 §1)", () => {
+  // ⚠ CETTE GARDE A ÉTÉ RÉÉCRITE PARCE QU'ELLE MESURAIT UN MAXIMUM SUR TOUT LE PLAN quand la
+  // propriété est PAR SEMAINE — c'est la règle 20 appliquée à la garde elle-même, une heure après
+  // l'avoir écrite pour le moteur. Sa première version aurait rougi sur O-56 §1 alors que la
+  // projection est exactement ce qu'O-56 demande : un 400 m déclaré reçoit 3 800 m en semaine 30,
+  // au bout d'une progression prescrite (725 → 900 → 1 050 → 1 225 → 1 900 …), pas d'un saut.
   //
-  // CE CRITÈRE EXISTE PARCE QUE LE GOLDEN NE PEUT PAS LE PORTER : ses 36 profils `debutant` tri
-  // déclarent TOUS `longest_swim_m: 2000`. Le corpus ne contient donc aucun vrai débutant nageur,
-  // et l'effet du correctif sur la population qu'il doit protéger n'y est pas photographié.
-  // Sixième occurrence de la famille A-2 — et cette fois elle est nommée AVANT de coûter.
+  //   invariance   — en SEMAINE 1, qui déclare 400 m ou « je ne sais pas » reste sous C15.
+  //                  C'est la moitié protectrice : ma première écriture d'O-54 §2 bornait sur
+  //                  `atteignableM` et donnait 4 150 m de séance DÈS LE DÉBUT.
+  //   sensibilité  — À MI-PLAN, qui déclare 2 000 m reçoit plus que qui déclare 400 m. Sans
+  //                  elle, une borne gelée à C15 satisferait l'invariance (règle 19).
+  //
+  // La sensibilité NE SE MESURE PAS en semaine 1 : mesuré, les deux profils y reçoivent 725 m —
+  // c'est le VOLUME qui borne, pas la capacité. Une garde posée là serait vacue en croyant tester.
   const BASE = { sport: "tri", intent: "competition", level: "debutant", history: "reprise",
     dispo: "quotidienne", doubles: "non", sessions_max: "6", age: "35", sex: "H", weight: "75",
     vol_max: "10", vol_recent: "3", injury: "aucune", med_pain: "non", med_dizzy: "non",
     med_treat: "non", pace_known: "oui", pace: "5:30", ftp_known: "oui", ftp: "220",
     css_known: "oui", css: "2:10", terrain: "route", milieu: "bassin" };
-  const capDe = (over) => {
-    const p = globalThis.EBV2.buildPlan("tri", { ...BASE, ...over });
-    let maxM = 0;
-    for (const w of p.weeks) for (const d of w.days) for (const s of d.sessions) if (s.d === "sw")
-      maxM = Math.max(maxM, (s.steps || []).reduce((t, x) => t + (x.distanceM != null ? (x.reps || 1) * x.distanceM : 0), 0));
-    return maxM;
+  // L'HORIZON EST FIXÉ, et c'est nécessaire : sans `race_date` le moteur prend `MIN_WEEKS` du
+  // FORMAT, donc deux profils du même format mais de continuité différente n'ont pas la même
+  // longueur de plan dès qu'un rabattement s'applique — on comparerait deux plans de 8 et 36
+  // semaines. Mesuré en écrivant cette garde : `Math.max` sur une tranche VIDE rendait
+  // `-Infinity` et le critère annonçait « la déclaration ne départage pas » sur un artefact.
+  const lundi = () => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; };
+  const dans = (n) => { const d = lundi(); d.setDate(d.getDate() + n * 7 - 1); return d.toISOString().slice(0, 10); };
+  const HORIZON = { S: 12, "70.3": 24, Full: 38 };
+  const parSemaine = (over) => {
+    const p = globalThis.EBV2.buildPlan("tri", { ...BASE, race_date: dans(HORIZON[over.format]), ...over });
+    return (p.weeks || []).map((w) => {
+      let m = 0;
+      for (const d of w.days) for (const s of d.sessions) if (s.d === "sw")
+        m = Math.max(m, (s.steps || []).reduce((t, x) => t + (x.distanceM != null ? (x.reps || 1) * x.distanceM : 0), 0));
+      return m;
+    });
   };
-  const bad = [];
+  const bad = []; let departage = 0;
   for (const fmt of ["S", "70.3", "Full"]) {
-    const vrai = capDe({ format: fmt, longest_swim_m: "400" });
-    const inconnu = capDe({ format: fmt, longest_swim_known: "non", longest_swim_m: "" });
-    const nageur = capDe({ format: fmt, longest_swim_m: "2000" });
-    // 850 + la tolérance des séances qui échappent à C15 par un AUTRE chemin (la sortie longue
-    // passe par `CAP_SWIM`, pas par C15 — comportement antérieur, hors périmètre).
-    if (vrai > 1100) bad.push(`${fmt} · 400 m déclarés → séance de ${vrai} m : la protection a sauté`);
-    if (inconnu > 1100) bad.push(`${fmt} · « je ne sais pas » → séance de ${inconnu} m : la protection a sauté`);
-    if (nageur <= vrai) bad.push(`${fmt} · 2000 m déclarés → ${nageur} m, pas plus que les 400 m (${vrai}) : le correctif est INERTE`);
+    const vrai = parSemaine({ format: fmt, longest_swim_m: "400" });
+    const inconnu = parSemaine({ format: fmt, longest_swim_known: "non", longest_swim_m: "" });
+    const nageur = parSemaine({ format: fmt, longest_swim_m: "2000" });
+    // (1) INVARIANCE en semaine 1 — 850 (C15) + la marge des séances qui échappent à C15 par un
+    // AUTRE chemin (la sortie longue passe par `CAP_SWIM`) : comportement antérieur, hors périmètre.
+    if (vrai[0] > 1100) bad.push(`${fmt} · 400 m · SEMAINE 1 : séance de ${vrai[0]} m — la protection a sauté`);
+    if (inconnu[0] > 1100) bad.push(`${fmt} · « je ne sais pas » · SEMAINE 1 : ${inconnu[0]} m — la protection a sauté`);
+    // (2) « je ne sais pas » ne projette JAMAIS : sans mesure, il n'y a rien à projeter (D3).
+    const maxInc = Math.max(...inconnu), maxVrai = Math.max(...vrai);
+    if (maxInc > 1100) bad.push(`${fmt} · « je ne sais pas » projette jusqu'à ${maxInc} m — l'inconnu n'est pas une capacité`);
+    // (3) SENSIBILITÉ à mi-plan — la capacité déclarée doit départager.
+    const mi = Math.floor(vrai.length / 2), fin = Math.max(mi + 1, Math.min(vrai.length, mi + Math.ceil(vrai.length / 4)));
+    const pic = (l) => (l.length ? Math.max(...l.slice(mi, fin), 0) : 0);
+    if (!vrai.length || !nageur.length) { bad.push(`${fmt} : un des profils ne rend AUCUNE semaine — le critère ne mesure rien`); continue; }
+    // LA SENSIBILITÉ NE SE MESURE PAS SUR CHAQUE FORMAT, et c'est une propriété du modèle, pas
+    // une faiblesse du critère : la projection converge vers la DISTANCE DE COURSE, donc sur un
+    // sprint (750 m) une déclaration à 400 et une à 2 000 arrivent au même plafond en milieu de
+    // plan — ce qui est juste, 750 m sont atteignables par tout le monde en douze semaines.
+    // Mesuré : S 1 100 contre 1 100, 70.3 2 250 contre 2 250, Full 3 400 contre 2 500.
+    // Elle est donc exigée GLOBALEMENT (au moins un format départage), ce qui reste rouge si la
+    // déclaration cesse d'agir — ma première écriture l'exigeait partout et rougissait sur le
+    // comportement voulu : la position du témoin est aussi une décision (règle 20).
+    if (pic(nageur) > pic(vrai)) departage++;
+    if (maxVrai <= vrai[0]) bad.push(`${fmt} · 400 m : la borne ne PROGRESSE pas (${vrai[0]} → ${maxVrai}) — O-56 §1 inerte`);
   }
-  return { ok: bad.length === 0, detail: bad.join(" · ") || "400 m et « je ne sais pas » restent bornés ; 2000 m reçoit sa séance" };
+  if (!departage) bad.push("aucun format où la capacité déclarée départage à mi-plan — la déclaration n'agit plus");
+  return { ok: bad.length === 0, detail: bad.join(" · ") || "semaine 1 bornée, l'inconnu ne projette pas, la déclaration départage à mi-plan, la borne progresse" };
+});
+
+T("T-42", "vert", "le rabattement B-17 DESCEND toujours — jamais vers un format plus long (O-57)", () => {
+  // `ordre = ["Full","70.3","M","S"]` et on retenait le PREMIER format franchissable. Or
+  // `semainesDe(f)` rend l'horizon PROPRE à chaque format quand aucune date n'est saisie
+  // (`MIN_WEEKS` : 8 pour un sprint, 36 pour un Full) : le Full, avec 36 semaines de rampe, était
+  // franchissable AVANT le sprint qui n'en a que 8. Un débutant demandant un SPRINT et déclarant
+  // 400 m de nage continue recevait **un plan d'Ironman** — l'inversion exacte d'une règle de
+  // sécurité, sur la population qu'elle protège.
+  //
+  // AUCUN GATE NE POUVAIT LA VOIR : elle n'existe que SANS date de course, et les 989 profils du
+  // golden en portent une. Trouvée en écrivant T-41, par une sonde qui n'en posait pas.
+  // Contre-preuve : `ordre` non restreint → 9 profils sur 105 remontent, jusqu'à `S → Full`.
+  const RANG = { S: 0, M: 1, "70.3": 2, Full: 3 };
+  const BASE = { sport: "tri", intent: "competition", history: "reprise", dispo: "quotidienne",
+    doubles: "non", sessions_max: "6", age: "35", sex: "H", weight: "75", vol_max: "10",
+    vol_recent: "3", injury: "aucune", med_pain: "non", med_dizzy: "non", med_treat: "non",
+    pace_known: "oui", pace: "5:30", ftp_known: "oui", ftp: "220", css_known: "oui", css: "2:10",
+    terrain: "route", milieu: "bassin" };
+  const bad = []; let vus = 0, rabats = 0;
+  for (const format of ["S", "M", "70.3", "Full"]) for (const level of ["debutant", "inter", "avance"])
+    for (const longest_swim_m of ["100", "400", "800", "1500", "2000"]) {
+      // SANS date : c'est la seule branche où le défaut vit, et l'omettre rendrait le critère vacu.
+      let p; try { p = globalThis.EBV2.buildPlan("tri", { ...BASE, format, level, longest_swim_m }); } catch { continue; }
+      vus++;
+      const dec = ((p._v2 || {}).decisions || []).find((d) => d.id === "B17-continuite" && /au lieu de/.test(String(d.val)));
+      if (!dec) continue;
+      rabats++;
+      const cible = String(dec.val).split(" ")[0];
+      if (RANG[cible] > RANG[format]) bad.push(`${format}/${level}/${longest_swim_m}m → ${cible} : le rabattement MONTE`);
+    }
+  if (vus < 50) bad.push(`seulement ${vus} profil(s) générés — l'échantillon ne prouve rien`);
+  if (!rabats) bad.push("AUCUN rabattement observé — le critère est vacu, la branche n'est pas exercée");
+  return { ok: bad.length === 0, detail: bad.join(" · ") || `${vus} profils, ${rabats} rabattements, tous vers un format ≤ demandé` };
 });
 
 // T-38 RETIRÉ (O-46 réfuté, 16/08/2026) — il comparait `CAP_SWIM` à une exigence de SÉANCE alors

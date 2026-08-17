@@ -127,6 +127,8 @@ export interface ReasonedPlan {
    * capacité de NAGE pour lire une auto-évaluation GLOBALE. Voir `swimSessionCapM`.
    */
   swimSessionCapM?: number;
+  /** O-56 §1 — le gate de continuité, transmis pour que le plafond de séance SUIVE la semaine. */
+  b17Gate?: import("./swimContinuity.ts").ContinuityGate | null;
   finisher: boolean;
   comp: boolean;
   dbl: boolean;

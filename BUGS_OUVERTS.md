@@ -6150,7 +6150,7 @@ cmd: grep -q "O-55 (arbitrage du 17/08/2026)" src/engine/constraintMatrix.ts && 
 
 ---
 
-## O-56 · Toute borne dérivée d'une CAPACITÉ est gelée sur la déclaration initiale · 🔴 **OUVERT, gros**
+## O-56 · Toute borne dérivée d'une CAPACITÉ est gelée sur la déclaration initiale · 🟡 **§1 LIVRÉ · §2 écrit, non branché**
 
 Racine nommée par le fondateur en arbitrant O-54 §2, et **plus large que « `beginner` est
 statique »** — c'est sa deuxième formulation qui est la bonne :
@@ -6298,4 +6298,77 @@ id: A-2-couverture
 quoi: la sonde de couverture voit le trou qu'elle existe pour voir
 attendu: la sonde VOIT le trou
 cmd: node scripts/couvertureGolden.mjs | grep "la sonde VOIT le trou"
+```
+
+
+**§1 LIVRÉ (17/08/2026) — la capacité PROJETTE, au patron de C22.**
+
+`swimSessionCapAtWeek(gate, base, wkNum)` : la borne monte avec la position dans le plan au taux
+que le moteur s'impose déjà partout (`C22_MAX_WEEKLY_GROWTH`), plafonnée à la DISTANCE DE COURSE.
+Aucune règle de croissance nouvelle. Câblée par `_swimCapW`, un `let` posé par la boucle de
+semaines et lu par les trois sites C15 — **le patron de `_capScale`, dix lignes plus haut** :
+threader la position dans une demi-douzaine de signatures aurait coûté plus cher que la propriété
+ne vaut, et la position EST le point (règle 20).
+
+```
+Full/38 sem, 400 m déclarés :  S1 725 · S5 900 · S9 1050 · S13 1225 · S17 1900 … S30 4150
+blocs épinglés rabotés ...... 69 → 23   (MOTEUR — prouvé par `base:cliquet`, corpus 985 → 985)
+sceau S5 .................... 516 → 508
+golden ...................... 47 profils, tous `debutant` tri
+```
+
+Un athlète déclarant 400 m reçoit donc 3 800 m d'affilée en **semaine 30**, au bout d'une
+progression prescrite — pas d'un saut. C'est ce que la préparation existe pour construire.
+
+**§2 ÉCRIT, NON BRANCHÉ — `swimEvidence(plan, done)`.** Fonction PURE qui lit le plan PRÉCÉDENT et
+la carte des ✓ : le plus haut palier VALIDÉ (cliquet, `max` — il ne descend jamais), le plus haut
+palier PRESCRIT ET MANQUÉ (qui nommera la divergence), et surtout `aDesNages` — **l'évidence ne
+corrige la projection que si le moteur a de l'évidence sur la NAGE**. Sans ce drapeau, l'athlète
+qui nage tout et ne journalise rien serait traité comme celui qui ne nage pas : c'est le défaut
+d'O-54 refait, une protection qui frappe la mauvaise population.
+
+Ce qui manque pour la brancher : `buildPlan(sport, answers)` ne reçoit pas le plan précédent, et
+`answers.done` est indexé par les coordonnées de CE plan (`sem|jour|idx`). Il faut donc soit un
+troisième argument optionnel, soit que la PWA passe le plan courant à la re-génération. C'est un
+geste d'INTERFACE, pas de moteur, et il n'a pas été fait dans ce lot.
+
+**Reste aussi du §3 de l'arbitrage** : la chaîne R20.2 doit NOMMER la divergence au PREMIER palier
+manqué (« ta capacité démontrée est de 800 m, la progression t'attendait à 1 400 ») — pas à la fin,
+sans quoi l'athlète subit une conséquence juste arrivée trop tard pour être corrigée.
+
+---
+
+## O-57 · Le rabattement B-17 MONTAIT de format · ✅ **FERMÉ le jour où il a été trouvé**
+
+Inversion d'une règle de SÉCURITÉ, sur la population qu'elle protège. Trouvée par une sonde de
+T-41 qui, elle, ne posait pas de date de course.
+
+```
+défaut       `ordre = ["Full","70.3","M","S"]`, on retenait le PREMIER format franchissable.
+             Or `semainesDe(f)` rend l'horizon PROPRE à chaque format quand aucune date n'est
+             saisie (`MIN_WEEKS` : 8 pour un sprint, 36 pour un Full) : le Full, avec 36
+             semaines de rampe, était franchissable AVANT le sprint qui n'en a que 8.
+
+             **Un débutant demandant un SPRINT et déclarant 400 m de nage continue recevait un
+             plan d'IRONMAN.** Mesuré : 9 profils sur 105, tous sans date de course, jusqu'à
+             `S → Full`.
+
+pourquoi     Le défaut n'existe QUE sans date de course — et les 989 profils du golden en
+aucun gate   portent une. Le commentaire du code disait déjà « on DESCEND au plus long format
+ne l'a vu   que la rampe atteint » : l'intention était juste, elle n'était écrite nulle part
+             dans le code.
+
+correctif    le rabattement ne considère que les formats À OU SOUS celui demandé.
+             9 → 0, vérifié sur les mêmes 105 profils.
+
+gardé par    `T-42` (lotPhysio), qui balaie SANS date — la seule branche où le défaut vit — et
+             porte sa non-vacuité (au moins un rabattement observé, sinon le critère ne teste
+             rien).
+```
+
+```verify
+id: O-57
+quoi: le rabattement B-17 ne propose jamais un format plus long que le demande
+attendu: tous vers un format
+cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-42"
 ```
