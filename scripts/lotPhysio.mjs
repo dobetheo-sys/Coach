@@ -903,7 +903,12 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // ⚠ ÉPINGLÉ UNE FOIS À 349/505 SUR UN ÉTAT ABANDONNÉ — la première écriture d'O-54 §2 bornait sur
 // `atteignableM` et donnait 4 150 m de séance à qui déclare 400 m. Le cliquet a fait son travail
 // deux fois de suite ; c'est la seconde valeur qui vaut, et la première est dite plutôt qu'effacée.
-const SCEAU_ATTENDU = { S1: 5, S4: 357, S5: 502 };
+// PUIS S5 502 → **516** (17/08/2026, second mouvement du même jour) : le CORPUS a grandi de 20
+// profils (la sous-passe B-17 croise le niveau, 969 → 989), pas le moteur. S4 est INCHANGÉ à 357,
+// ce qui est le meilleur signe que la hausse de S5 vient bien du corpus : un élargissement touche
+// les deux compteurs ou aucun selon ce qu'il ajoute, une régression moteur les aurait bougés
+// ensemble sur les MÊMES profils.
+const SCEAU_ATTENDU = { S1: 5, S4: 357, S5: 516 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1263,11 +1268,17 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   //       `atteignableM` et donnait 4 150 m de séance à qui déclare 400 m. Épingler sur un état
   //       qu'on abandonne ensuite est une erreur de tenue de livre, publiée ici plutôt que
   //       réécrite en silence.
+  //       Puis **31 → 69** : le CORPUS a grandi, pas le moteur. La sous-passe B-17 du golden croise
+  //       désormais le NIVEAU (969 → 989 profils), donc 20 profils `debutant` à continuité basse
+  //       entrent dans le compte — chacun avec ses paliers bornés à sa capacité déclarée. Un
+  //       cliquet qui monte parce qu'on a ÉLARGI la mesure et un cliquet qui monte parce que le
+  //       moteur a régressé se ressemblent exactement : la différence est écrite ici, faute de
+  //       quoi le prochain lecteur devra la redécouvrir.
   //
   // Contre-preuve, en rendant le croisement NON VIDE (`sw.aero` ajoutée aux zones plafonnées) :
   //     garde posée .... 57 rabotés / 308   ← inchangé, elle tient
   //     garde retirée .. 195 rabotés / 308  ← +138, elle sert
-  const RABOTES_ATTENDUS = 31;
+  const RABOTES_ATTENDUS = 69;
   let n = 0, ko = 0; const zones = {}, ex = [];
   for (const { key, plan } of goldenAvecMoteur()) {
     for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])

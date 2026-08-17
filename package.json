@@ -74,7 +74,8 @@
     "mesure:lot1-ampleur": "node scripts/ampleurLot1.mjs",
     "mesure:o52": "node scripts/contrepreuveO52.mjs",
     "sonde:o21": "node scripts/sondeO21.mjs",
-    "mesure:dosefull": "node scripts/mesureDoseFull.mjs"
+    "mesure:dosefull": "node scripts/mesureDoseFull.mjs",
+    "couverture:golden": "node scripts/couvertureGolden.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

@@ -6189,3 +6189,56 @@ quoi: le drapeau debutant ne depend pas de la position dans le plan
 attendu: O56-REPRODUIT
 cmd: grep -q 'const beginner = level === "debutant";' src/engine/reasoningEngine.ts && echo "O56-REPRODUIT"
 ```
+
+
+---
+
+## A-2 · Le corpus couvre des FORMATS et des NIVEAUX, pas les BRANCHES des règles · 🟡 **MESURÉ, sonde livrée**
+
+Arbitrage du fondateur (17/08/2026), après la sixième occurrence : *« six occurrences ne sont plus
+une série de distractions, c'est une propriété du corpus »*.
+
+```
+constat      Chaque fois qu'une règle apprend à lire une nouvelle clé, le corpus devient muet
+             sur son domaine — et il l'est EN SILENCE, parce qu'un corpus incomplet rend des
+             résultats VERTS. Les six : le golden sans coureur lent (A-2), sans plan sans
+             date (O-21), sans marathon lent (C31), sans la bonne enveloppe (C30b), sans
+             poids ni date pour PW, et sans vrai débutant nageur (O-54 §2).
+
+pourquoi     Le dernier trou aurait passé un contrôle PAR CLÉ sans broncher : `level` portait
+la couverture ses 3 valeurs, `longest_swim_m` ses 5 branches. Ce qui manquait était le
+par clé ne   CROISEMENT `debutant × continuité basse` — la cellule exacte que C15 venait
+suffit pas   d'apprendre à lire. Une règle lit rarement une clé seule.
+
+livré        · la sous-passe B-17 du golden croise désormais le NIVEAU (969 → **989** profils)
+             · `npm run couverture:golden` — les cellules du produit cartésien entre clés à
+               petit domaine, par sport, classées PAR COUPLE et non par cellule.
+
+mesuré       **9 682 / 16 104 cellules peuplées (60 %)**, 367 couples incomplets sur le seul
+             `tri`. Ce n'est pas un objectif à 100 % : beaucoup de cellules vides sont
+             légitimes. C'est une LISTE À RELIRE quand une règle apprend à lire une clé.
+
+contre-      la sonde rejoue le corpus tri AMPUTÉ des débutants à continuité inconnue —
+preuve       l'état d'avant O-54 §2 — et doit y VOIR le trou : **6/9 amputé, 7/9 complet**,
+             avec `debutant × non` présent. Sans elle, la mesure ne prouverait que sa propre
+             exécution.
+             Elle nomme aussi ce qui reste (`avance × non`, `avance × ∅`) plutôt que de rendre
+             un verdict sur le taux : le trou VISÉ est comblé, les autres cellules sont une
+             autre question.
+
+hors CI      délibérément, tant que sa sortie n'a pas été triée — leçon R20.6 : rendre
+             bloquant un banc dont on n'a pas trié les échecs fige la dette au lieu de la
+             traiter.
+
+⚠ faute      Ma première écriture classait des CELLULES et rendait 1 015 lignes de bruit
+d'instrument structurel par sport (`age=16 × cycle_len=28` : la sous-passe `cycle` n'existe qu'à
+             un seul âge, la cellule est vide par CONSTRUCTION). La grandeur utile est le
+             COUPLE. Un cas particulier vide se noie alors, un axe non croisé ressort.
+```
+
+```verify
+id: A-2-couverture
+quoi: la sonde de couverture voit le trou qu'elle existe pour voir
+attendu: la sonde VOIT le trou
+cmd: node scripts/couvertureGolden.mjs | grep "la sonde VOIT le trou"
+```

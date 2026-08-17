@@ -306,8 +306,21 @@ function* profiles() {
   // l'angle mort d'A-2. Un taux SATURÉ (0 %) accuse l'instrument — le test de dépistage de la
   // règle 15, sur la fixture censée fermer le trou. La date est donc l'HORIZON MINIMAL de chaque
   // format (`MIN_WEEKS.tri`), le seul endroit où la franchissabilité discrimine.
+  // ⚠ ET ELLE NE CROISAIT PAS LE NIVEAU — sixième occurrence d'A-2, trouvée en livrant O-54 §2.
+  // La sous-passe portait bien les continuités BASSES (100 m, 400 m, « je ne sais pas »), mais
+  // toutes en `level: "inter"`. Or la branche que C15 vient de recevoir se lit sur le CROISEMENT
+  // `débutant × continuité` : les 36 profils `debutant` tri du corpus principal déclarent TOUS
+  // `longest_swim_m: 2000`, donc **aucun vrai débutant nageur n'existait dans le golden** et la
+  // moitié protectrice du correctif n'y était exercée par personne. Une première écriture qui
+  // retirait la protection (séance de 4 150 m à qui déclare 400 m) serait passée verte.
+  //
+  // Le corpus a été construit pour couvrir des FORMATS et des NIVEAUX, pas les BRANCHES des règles
+  // qui les lisent : chaque fois qu'une règle apprend à lire une nouvelle clé, il devient muet sur
+  // son domaine — et il l'est en silence, parce qu'un corpus incomplet rend des résultats verts.
+  // `npm run couverture:golden` mesure ce trou au lieu de compter sur la vigilance.
   const B17_DATES = { S: "2026-03-01", M: "2026-03-29", "70.3": "2026-05-24", Full: "2026-09-13" };
   for (const format of ["S", "M", "70.3", "Full"]) {
+    for (const niveau of ["inter", "debutant"]) {
     for (const [label, over] of [
       ["basse-100m", { longest_swim_known: "oui", longest_swim_m: "100" }],
       ["basse-400m", { longest_swim_known: "oui", longest_swim_m: "400" }],
@@ -315,9 +328,10 @@ function* profiles() {
       ["absente", {}],
       ["eau-libre", { longest_swim_known: "oui", longest_swim_m: "2000", milieu: "ow" }],
     ]) {
-      const a = { ...base(), format, history: "confirme", level: "inter", intent: "competition",
+      const a = { ...base(), format, history: "confirme", level: niveau, intent: "competition",
         milieu: "bassin", plan_start: RACE_PASS_START, race_date: B17_DATES[format], ...over };
-      yield { key: ["B17", "tri", format, label].join("/"), sport: "tri", a };
+      yield { key: ["B17", "tri", format, niveau, label].join("/"), sport: "tri", a };
+    }
     }
   }
 
