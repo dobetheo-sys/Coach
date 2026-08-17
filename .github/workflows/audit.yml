@@ -122,6 +122,14 @@ jobs:
       # personne ne l'aurait su. Même correctif structurel que le crochet du journal après O-41 :
       # ne pas compter sur la discipline là où un mécanisme suffit.
       - run: node scripts/lotPhysio.mjs
+      # A-2 — COUVERTURE DE L'ESPACE DES DÉCISIONS. RAPPORT, PAS GATE : elle imprime et ne bloque
+      # pas. R20.6 dit *trier avant de bloquer* ; il ne dit pas *cacher avant de trier*. Une liste
+      # « à relire quand une règle apprend à lire une clé » est une dépendance à la mémoire, et ce
+      # chantier a montré trois fois ce qu'elles valent — `lotPhysio` hors de ce fichier, un
+      # `git checkout` une heure après avoir écrit la règle qui l'interdit, et le crochet du
+      # journal qu'O-22 et O-25 n'ont pas relié. Coût nul, et personne n'a à se souvenir de la
+      # lancer. Elle deviendra un gate quand son tri sera fait.
+      - run: npm run couverture:golden
 
   # E2E navigateur : les smokes de la PWA (check-in, R4, rétention, améliorations)
   # tournent dans un vrai Chromium — Playwright est une devDependency de TEST
