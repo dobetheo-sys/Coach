@@ -135,7 +135,7 @@ const COLLECTE = () => {
     if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return { refus: "hors cadre après défilement" };
     const f = p.fondAu(x, y, p.el);
     if (!f) return { refus: "occlus — l'élément n'est pas dans la pile de peinture en ce point" };
-    return { x, y, fondModele: f.acc, img: f.img };
+    return { x, y, fondModele: f.acc, img: f.img, opacite: p.opac(p.el) };
   };
   const zones = [document.getElementById("screen"), document.getElementById("ebAppHeader"), document.getElementById("ebTabbar")].filter(Boolean);
 
@@ -179,14 +179,25 @@ const COLLECTE = () => {
 
       const brut = px(cs.color); if (!brut) continue;
       const o = opaciteCumulee(el);
+      // ON NE JUGE PAS UN TEXTE EN COURS D'APPARITION — mais on juge un texte volontairement
+      // ATTÉNUÉ. Mesuré : le balayage du jour J+4 rendait 72 « échecs », la plupart avec une
+      // encre EXACTEMENT égale au fond (1:1) — signature d'un élément à mi-fondu, pas d'un
+      // défaut : `zenna-motion` fait apparaître les cartes en opacité et la page venait d'être
+      // rechargée. MA PREMIÈRE CORRECTION REFUSAIT TOUTE OPACITÉ < 1, et elle était PIRE que le
+      // défaut : 270 textes écartés sur 📋 Profil, dont le téléser du niveau suivant de l'avatar
+      // (0,55) et les jours de repos (0,75) — des atténuations VOULUES, donc précisément les
+      // meilleurs candidats à un contraste faible. Écarter les candidats fait passer le test :
+      // c'est la question du correctif minimal (règle 19), et elle se pose AVANT d'écrire.
+      // Le bon discriminant n'est pas la VALEUR de l'opacité mais sa STABILITÉ dans le temps.
+      // (voir `__ebPoint` : l'opacité est RELUE à la capture et c'est sa STABILITÉ qui décide.)
       const taille = parseFloat(cs.fontSize) || 16;
       const gras = (parseInt(cs.fontWeight, 10) || 400) >= 700;
       // ON N'ENREGISTRE PAS DE COORDONNÉES ICI — voir `window.__ebPts` : les coordonnées sont
       // recalculées juste avant la capture, dans le MÊME état de mise en page.
-      window.__ebPts.push({ el, rg, fondAu, px });
+      window.__ebPts.push({ el, rg, fondAu, px, opac: opaciteCumulee });
       textes.push({
         txt: v.trim().slice(0, 46), sel: etiq, idx: window.__ebPts.length - 1, glyphe,
-        encre: { r: brut.r, g: brut.g, b: brut.b, a: (brut.a ?? 1) * o },
+        encre: { r: brut.r, g: brut.g, b: brut.b, a: (brut.a ?? 1) * o, aBrut: brut.a ?? 1, aOpac: o },
         taille: Math.round(taille * 10) / 10, gras,
         large: taille >= 24 || (taille >= 18.66 && gras),
       });
@@ -219,6 +230,14 @@ async function capturer(textes, nom, refus) {
   for (const t of textes) {
     const pt = await page.evaluate((i) => window.__ebPoint(i), t.idx);
     if (pt.refus) { refus.push({ txt: t.txt, sel: t.sel, pourquoi: pt.refus }); continue; }
+    // L'OPACITÉ EST RELUE ICI, plusieurs secondes après la collecte. Si elle a BOUGÉ, l'élément
+    // était en train d'apparaître et son ratio ne décrit aucun état durable : on refuse. Si elle
+    // est stable — même à 0,55 —, c'est une atténuation VOULUE, et elle se mesure comme le reste.
+    if (Math.abs(pt.opacite - t.encre.aOpac) > 0.01) {
+      refus.push({ txt: t.txt, sel: t.sel, pourquoi: `opacité ${t.encre.aOpac.toFixed(2)} → ${pt.opacite.toFixed(2)} — en cours d'apparition` });
+      continue;
+    }
+    t.encre = { ...t.encre, a: t.encre.aBrut * pt.opacite };
     t.x = pt.x; t.y = pt.y; t.fondModele = pt.fondModele; t.img = pt.img;
     await cacherTexte(true);
     let pix = null;
@@ -252,6 +271,18 @@ async function capturer(textes, nom, refus) {
  *  forme exacte de la faute qu'il devait corriger : mesurer un écran qui ne montre pas la chose.
  *  (La piste « écrire `readiness.date` dans localStorage » a été essayée et abandonnée : l'état
  *  vit sous `eb_state_v2` après migration, écrire dans `eb_state_v1` ne change rien.) */
+/** Attendre que les animations d'apparition soient FINIES. `getAnimations()` est la mesure,
+ *  pas une temporisation devinée : on attend que le document n'en porte plus aucune en cours. */
+async function stabiliser(maxMs = 6000) {
+  const t0 = Date.now();
+  for (;;) {
+    const enCours = await page.evaluate(() =>
+      document.getAnimations().filter((a) => a.playState === "running").length);
+    if (!enCours || Date.now() - t0 > maxMs) return enCours;
+    await page.waitForTimeout(250);
+  }
+}
+
 async function passerCheckin() {
   for (let i = 0; i < 8; i++) {
     const reste = await page.evaluate(() => {
@@ -274,28 +305,46 @@ const composants = [], couleurSeule = [];
 async function composantsEtCouleurSeule(nom) {
   const cibles = await page.evaluate(() => {
     const out = [];
-    const pousse = (el, famille, quoi) => {
+    const pousse = (el, famille, quoi, contre) => {
       const r = el.getBoundingClientRect();
       if (r.width < 2 || r.height < 2) return;
       out.push({ famille, quoi, i: out.length, sel: el.tagName.toLowerCase() + (typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\s+/)[0] : "") });
-      (window.__ebComp = window.__ebComp || []).push(el);
+      (window.__ebComp = window.__ebComp || []).push({ el, contre: contre || null });
     };
     window.__ebComp = [];
+    // CE QUI ENTRE ICI : les composants dont le REMPLISSAGE porte l'information.
+    // Le bouton d'état en est SORTI, et c'est une correction : ma première écriture mesurait le
+    // fond d'un `.doneBtn` contre son voisin et rendait 1:1 — évidemment, ce fond est
+    // transparent. Ce qui porte l'état, c'est le GLYPHE (○ / ✓), qui est peint par `color` et
+    // qui est donc mesuré au §1 comme n'importe quelle encre. Mesurer le fond d'un composant
+    // dont le signal est le trait, c'est nommer une grandeur et en mesurer une voisine.
     for (const e of document.querySelectorAll("#screen .gd-ic")) pousse(e, "discipline", e.textContent.trim());
-    for (const e of document.querySelectorAll("#screen .zbar > *")) pousse(e, "zone", e.getAttribute("title") || e.className || "segment");
-    for (const e of document.querySelectorAll("#screen .doneBtn")) pousse(e, "état", e.classList.contains("done") ? "validé" : "prévu");
+    // Les segments de zone se comparent DEUX À DEUX, et seulement entre NIVEAUX DIFFÉRENTS :
+    // la question que se pose un lecteur qui ne distingue pas les teintes n'est pas « ce segment
+    // ressort-il du fond » mais « puis-je distinguer la Z2 de la Z4 ». Deux segments de MÊME
+    // niveau sont légitimement identiques — les compter serait fabriquer un échec.
+    for (const bar of document.querySelectorAll("#screen .zbar")) {
+      const segs = [...bar.children];
+      for (let i = 0; i + 1 < segs.length; i++) {
+        const a = (segs[i].textContent || "").trim(), b = (segs[i + 1].textContent || "").trim();
+        if (a === b) continue;
+        pousse(segs[i], "zone", `Z${a} contre Z${b}`, segs[i + 1]);
+      }
+    }
     return out;
   });
 
   for (const c of cibles) {
     const pt = await page.evaluate((i) => {
-      const el = window.__ebComp[i];
+      const { el, contre } = window.__ebComp[i];
       el.scrollIntoView({ block: "center", inline: "nearest" });
       const r = el.getBoundingClientRect();
       const dedans = { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
-      // le VOISINAGE : un point juste au-dessus du composant, dans son parent
-      const p = el.parentElement.getBoundingClientRect();
-      const dehors = { x: Math.round(r.left + r.width / 2), y: Math.round(Math.max(p.top + 2, r.top - 3)) };
+      // Le point de COMPARAISON : soit le composant voisin explicitement désigné (segments de
+      // zone), soit un point au-dessus, dans le parent (badges de discipline sur leur carte).
+      let dehors;
+      if (contre) { const q = contre.getBoundingClientRect(); dehors = { x: Math.round(q.left + q.width / 2), y: Math.round(q.top + q.height / 2) }; }
+      else { const p = el.parentElement.getBoundingClientRect(); dehors = { x: Math.round(r.left + r.width / 2), y: Math.round(Math.max(p.top + 2, r.top - 3)) }; }
       const bon = (q) => q.x >= 0 && q.y >= 0 && q.x < innerWidth && q.y < innerHeight;
       if (!bon(dedans) || !bon(dehors)) return { refus: "hors cadre" };
       return { dedans, dehors };
@@ -416,6 +465,8 @@ async function mesurerOnglet(id, nom) {
   if (id === "today") {   // le portillon du check-in : on le franchit pour voir l'écran réel
     await passerCheckin();
   }
+  const restantes = await stabiliser();
+  if (restantes) console.log(`        ⚠ ${restantes} animation(s) encore en cours après 6 s — les textes concernés seront refusés, pas jugés`);
   const theme = await page.evaluate(() => document.body.className);
   // DEUX VUES PAR ONGLET. La première est ce qui s'affiche ; la seconde ouvre tous les
   // `<details>`. Sans elle, la mesure raterait tout le contenu que U15/U16/V3 ont replié par
@@ -557,7 +608,7 @@ else {
   for (const c of compsKO) console.log(`   ${String(c.ratio).padStart(5)}:1  ${c.famille} « ${c.quoi} » ${c.dedans} contre ${c.dehors}  ×${c.n} · ${c.onglet} (${c.sel})`);
   console.log("");
 }
-for (const f of ["discipline", "zone", "état"]) {
+for (const f of ["discipline", "zone"]) {
   const s = comps.filter((c) => c.famille === f);
   if (s.length) console.log(`  ${f.padEnd(11)} ${s.length} distinct(s) · du plus faible : ${s.slice(0, 4).map((c) => c.quoi + " " + c.ratio).join(" · ")}`);
 }
