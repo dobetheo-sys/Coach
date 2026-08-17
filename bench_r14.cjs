@@ -210,23 +210,54 @@ perime("R14.4", "débutant > intermédiaire > avancé, et plafonds littérature 
  *
  * On ancre donc le plan huit semaines en arrière : la fenêtre de six est pleine tous les jours.
  */
-check("R14.5-A", "adhérence 30 % → gain ≤ moitié du gain à 95 %", () => {
-  const a = ans({ race_date: iso(52 * 7), plan_start: iso(-8 * 7), format: "70.3" });
-  const p = plan(a);
+/**
+ * O-68 §3 (arbitrage du fondateur, 17/08/2026) — LES DEUX CRITÈRES ENCODAIENT LA DÉCISION
+ * RENVERSÉE. « Adhérence 30 % → gain ≤ moitié » et « < 50 % → annulé » supposaient l'adhérence
+ * mesurée appliquée À POIDS PLEIN au gain du plan entier — c'est précisément ce qu'O-68 corrige
+ * (règle 20 : l'adhérence des semaines ÉCOULÉES ne prédit rien des semaines restantes en début
+ * de plan). Sur la fixture historique, f = 8/(8+52) = 0,13 : la mesure pèse 13 %, et l'ancienne
+ * barre était devenue insatisfiable PAR LA BONNE DÉCISION. Réécrits sous le contrat O-68, IDs
+ * gardés, comme A4 et R14.4 avant eux :
+ *   A — la sensibilité reste (30 % < 95 %), et la réduction est BORNÉE par la part écoulée :
+ *       on ne peut pas retirer plus que ce que l'évidence couvre. À f élevé (0,8), l'ancienne
+ *       barre « ≤ moitié » redevient exigible — elle est MÉRITÉE par le fondement, plus posée.
+ *   B — le motif reste affiché, l'annulation devient proportionnée : à f = 0,13 le gain ne
+ *       DOIT PAS être annulé (c'est l'anti-précipice), à f = 0,8 il doit être fortement réduit.
+ */
+check("R14.5-A", "adhérence : sensible au taux, et la réduction est bornée par la part ÉCOULÉE (O-68)", () => {
   const today = new Date(Date.now()).toISOString().slice(0, 10);
-  const hi = proj(Object.assign({}, a, { done: markDone(p, today, 6, 0.95) }));
-  const lo = proj(Object.assign({}, a, { done: markDone(p, today, 6, 0.30) }));
-  if (!hi || !lo) return { ok: false, info: "pas de projection" };
-  return { ok: lo.gainPct.ftp <= hi.gainPct.ftp * 0.5, info: `95%→${(hi.gainPct.ftp * 100).toFixed(1)}% · 30%→${(lo.gainPct.ftp * 100).toFixed(1)}%` };
+  // f ≈ 0,13 — début de plan : la mesure pèse peu, la réduction est plafonnée par f
+  const a1 = ans({ race_date: iso(52 * 7), plan_start: iso(-8 * 7), format: "70.3" });
+  const p1 = plan(a1);
+  const hi1 = proj(Object.assign({}, a1, { done: markDone(p1, today, 6, 0.95) }));
+  const lo1 = proj(Object.assign({}, a1, { done: markDone(p1, today, 6, 0.30) }));
+  // f = 0,8 — fin de plan : la mesure domine, l'ancienne barre « ≤ moitié » est exigible
+  const a2 = ans({ race_date: iso(12 * 7), plan_start: iso(-48 * 7), format: "70.3" });
+  const p2 = plan(a2);
+  const hi2 = proj(Object.assign({}, a2, { done: markDone(p2, today, 6, 0.95) }));
+  const lo2 = proj(Object.assign({}, a2, { done: markDone(p2, today, 6, 0.30) }));
+  if (!hi1 || !lo1 || !hi2 || !lo2) return { ok: false, info: "pas de projection" };
+  const f1 = 8 / (8 + 52);
+  const sensible = lo1.gainPct.ftp < hi1.gainPct.ftp && lo2.gainPct.ftp < hi2.gainPct.ftp;
+  const borne = lo1.gainPct.ftp >= hi1.gainPct.ftp * (1 - f1) * 0.9;   // 0,9 : marge de plancher/quantification
+  const merite = lo2.gainPct.ftp <= hi2.gainPct.ftp * 0.5;
+  return { ok: sensible && borne && merite,
+    info: `f=0,13 : 95%→${(hi1.gainPct.ftp * 100).toFixed(1)} · 30%→${(lo1.gainPct.ftp * 100).toFixed(1)} (plancher ${(hi1.gainPct.ftp * (1 - f1) * 0.9 * 100).toFixed(1)}) · f=0,8 : 95%→${(hi2.gainPct.ftp * 100).toFixed(1)} · 30%→${(lo2.gainPct.ftp * 100).toFixed(1)}` };
 });
-check("R14.5-B", "adhérence < 50 % : projection annulée ou avertie explicitement", () => {
-  const a = ans({ race_date: iso(52 * 7), plan_start: iso(-8 * 7), format: "70.3" });
-  const p = plan(a);
+check("R14.5-B", "adhérence < 50 % : motif affiché, annulation PROPORTIONNÉE à la part écoulée (O-68)", () => {
   const today = new Date(Date.now()).toISOString().slice(0, 10);
-  const pj = proj(Object.assign({}, a, { done: markDone(p, today, 6, 0.20) }));
-  if (!pj) return { ok: false, info: "pas de projection" };
-  const dit = (pj.decisions || []).some((d) => /adh/i.test(d.what + d.why)) || pj.applicable === false;
-  return { ok: dit && pj.gainPct.ftp <= 0.02, info: "gain=" + (pj.gainPct.ftp * 100).toFixed(1) + "% · motif affiché:" + dit };
+  const a1 = ans({ race_date: iso(52 * 7), plan_start: iso(-8 * 7), format: "70.3" });
+  const pj1 = proj(Object.assign({}, a1, { done: markDone(plan(a1), today, 6, 0.20) }));
+  const a2 = ans({ race_date: iso(12 * 7), plan_start: iso(-48 * 7), format: "70.3" });
+  const pj2 = proj(Object.assign({}, a2, { done: markDone(plan(a2), today, 6, 0.20) }));
+  if (!pj1 || !pj2) return { ok: false, info: "pas de projection" };
+  const dit = (pj1.decisions || []).some((d) => /adh/i.test(d.what + d.why));
+  // anti-précipice : à f = 0,13, une mauvaise fenêtre NE PEUT PAS annuler le gain du plan entier
+  const pasAnnule = pj1.gainPct.ftp > 0.04;
+  // et à f = 0,8, la conséquence est réelle : le gain est fortement réduit
+  const reduit = pj2.gainPct.ftp <= pj1.gainPct.ftp * 0.6;
+  return { ok: dit && pasAnnule && reduit,
+    info: `motif:${dit} · f=0,13 → ${(pj1.gainPct.ftp * 100).toFixed(1)}% (non annulé) · f=0,8 → ${(pj2.gainPct.ftp * 100).toFixed(1)}%` };
 });
 
 /* ================= R14.6 — incertitude (P7) ================= */

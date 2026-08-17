@@ -13491,6 +13491,13 @@ function generateAudited(profile                , auditOpts                     
                            
                                                                                          
                     
+     
+                                                                                                
+                                                                                              
+                                                                                                
+                                                                               
+     
+                                  
                                                                                                   
                         
                                                                                          
@@ -13789,7 +13796,12 @@ const ADHERENCE_FLOOR = 0.5;
  * (qui promettrait un suivi parfait) ni 0 (qui accuserait quelqu'un qui n'a rien fait de mal) :
  * on projette un suivi NORMAL et on dit que c'est ce qu'on fait.
  */
-const ADHERENCE_UNKNOWN_FACTOR = 0.9;
+// O-68 §2 (arbitrage du fondateur, 17/08/2026) — 1,0 et non 0,9 : l'écran dit « si le plan
+// tient », la projection est donc EXPLICITEMENT conditionnelle à l'adhérence. Un facteur 0,9
+// « suivi normal » escomptait DEUX FOIS la même chose — la phrase portait la réserve, le facteur
+// la portait encore. Sans évidence, la projection répond à la question que l'athlète se pose
+// (« et si je m'y tiens ? ») ; avec évidence, l'adhérence mesurée pèse — par sa position (§3).
+const ADHERENCE_UNKNOWN_FACTOR = 1.0;
 
 /** `k_structure` retenu, et d'où il vient (pour la traçabilité et le plafond de confiance). */
 function structureFactor(trainingStructure                , history         )                                   {
@@ -13925,22 +13937,35 @@ function projectForm(input                 )                   {
     adherence = ADHERENCE_UNKNOWN_FACTOR;
     adhFactor = ADHERENCE_UNKNOWN_FACTOR;
     D("P1", "Adhérence récente", "pas encore mesurable",
-      "Aucune séance cochée pour l'instant : on projette un suivi NORMAL, ni parfait ni absent. "
-      + "Dès que tu coches tes séances, cette projection se cale sur ton adhérence RÉELLE des "
-      + "6 dernières semaines — et elle deviendra plus fiable.");
+      "Aucune séance d'ENTRAÎNEMENT cochée pour l'instant (un repos validé n'apprend rien sur le "
+      + "suivi) : la projection montre ce que vaut le plan TENU — c'est la réserve « si le plan "
+      + "tient » qui porte la condition, pas un rabais silencieux. Dès que tu coches tes séances, "
+      + "elle se cale sur ton adhérence RÉELLE des 6 dernières semaines.");
   } else {
     adherence = input.adherence;
-    // Sous le plancher, le gain tombe à ~0. Ce n'est pas une punition, c'est une conséquence :
-    // un plan à moitié fait ne produit pas l'adaptation qu'il prévoyait, et le dire à l'avance
-    // vaut mieux que de le découvrir sur la ligne de départ.
-    adhFactor = adherence < ADHERENCE_FLOOR ? 0 : Math.min(1, adherence);
+    // Sous le plancher, la part MESURÉE du facteur tombe à 0. Ce n'est pas une punition, c'est
+    // une conséquence : un plan à moitié fait ne produit pas l'adaptation qu'il prévoyait.
+    const mesuree = adherence < ADHERENCE_FLOOR ? 0 : Math.min(1, adherence);
+    // O-68 §3 — LA PONDÉRATION PAR POSITION (règle 20 appliquée à une CONFIANCE). L'adhérence
+    // des semaines écoulées appliquée au gain des quarante semaines entières : à S39 c'est
+    // juste, à S1 c'est une extrapolation depuis rien. `f` = part écoulée du plan ; la mesure
+    // pèse `f`, l'hypothèse « plan tenu » pèse `1 − f`. La correction gagne en force à mesure
+    // qu'elle gagne en fondement — et cette forme ne PEUT pas produire de précipice, puisqu'au
+    // début le poids de la mesure est nul. Elle ne remplace pas le §1 (une mesure fausse doit
+    // être ABSENTE, pas lissée) : elle en est le filet. Aucune constante nouvelle, `f` se
+    // dérive de la position dans le plan.
+    const f = Math.max(0, Math.min(1, input.fractionElapsed ?? 1));
+    adhFactor = 1 * (1 - f) + mesuree * f;
     D("P1", "Adhérence des 6 dernières semaines", Math.round(adherence * 100) + "% des minutes prévues",
-      adherence < ADHERENCE_FLOOR
-        ? "Sur les 6 dernières semaines, moins de la moitié des séances ont été faites — le plan ne "
-          + "peut pas produire le gain qu'il prévoyait, et te projeter un chrono en progrès serait te "
-          + "mentir. Rien n'est perdu : la régularité se reprend, et la projection avec elle."
+      (adherence < ADHERENCE_FLOOR
+        ? "Sur les 6 dernières semaines, moins de la moitié des séances ont été faites — la part "
+          + "déjà courue du plan n'a pas produit l'adaptation qu'elle prévoyait, et la projection "
+          + "en tient compte À HAUTEUR de cette part (" + Math.round(f * 100) + " % du plan est "
+          + "écoulé). Rien n'est perdu : la régularité se reprend, et la projection avec elle."
         : "Mesurée sur les semaines ÉCOULÉES uniquement (les séances à venir ne comptent ni pour "
-          + "ni contre toi) : c'est ce qui a été fait qui produit l'adaptation.");
+          + "ni contre toi) : c'est ce qui a été fait qui produit l'adaptation.")
+      + " Son poids suit ce qu'elle observe : " + Math.round(f * 100) + " % du plan écoulé → elle "
+      + "pèse " + Math.round(f * 100) + " % du facteur, l'hypothèse « plan tenu » porte le reste.");
   }
 
   // ---- P4 : le bénéfice d'affûtage ne s'ajoute que si l'affûtage EXISTE ----
@@ -14064,6 +14089,28 @@ function adherenceWindow(
   weeks = 6
 )                {
   if (!done || Object.keys(done).length === 0) return null;
+  // O-68 §1 (arbitrage du fondateur, 17/08/2026) — LE DÉCLENCHEUR ET LA MESURE PORTENT SUR LA
+  // MÊME POPULATION. Le repos est exclu de la mesure (« le repos ne se rate pas », plus bas) mais
+  // il était INCLUS dans le déclencheur : valider un seul jour de repos rendait `done` non vide,
+  // la fenêtre se calculait sur des séances passées non cochées, l'adhérence tombait à ~0 et le
+  // gain de TOUT le plan était annulé — mesuré au bit près sur l'écran du fondateur, où les trois
+  // références projetées valaient exactement référence × 1,0196 (l'affûtage seul). Cocher un
+  // repos n'apprend RIEN sur l'adhérence à l'entraînement : c'est une présence non pertinente
+  // prise pour de l'évidence — la famille « donnée absente lue comme donnée négative », sous une
+  // forme nouvelle. L'évidence ne se déclare que sur une séance MESURABLE, la parade d'`aDesNages`
+  // (O-56) appliquée ici.
+  let evidence = false;
+  for (const wk of plan.weeks) {
+    for (const d of wk.days) {
+      d.sessions.forEach((sx, si) => {
+        if (sx.d === "rs" || sx.race) return;
+        if (done[wk.num + "|" + d.jour + "|" + si]) evidence = true;
+      });
+      if (evidence) break;
+    }
+    if (evidence) break;
+  }
+  if (!evidence) return null;
   const cut = new Date(Date.parse(todayISO + "T00:00:00Z") - weeks * 7 * 864e5).toISOString().slice(0, 10);
   let prescrit = 0, fait = 0;
   for (const wk of plan.weeks)
@@ -18670,6 +18717,15 @@ function predictV2(sport        , answers            , plan                     
       level: String(answers.level || "") || undefined,
       history: String(answers.history || "") || undefined,
       adherence: adherenceWindow(p         , (answers.done || {})                           , today),
+      // O-68 §3 — la part ÉCOULÉE du plan : c'est elle qui décide du poids de l'adhérence
+      // mesurée (à S1 elle ne prédit rien du restant, à S39 presque tout). Dérivée de
+      // `plan_start`, jamais déclarée ; sans ancre, poids plein (l'ancien comportement).
+      fractionElapsed: (() => {
+        const debut = Date.parse(String(answers.plan_start || "") + "T00:00:00Z");
+        if (!Number.isFinite(debut)) return null;
+        const ecoulees = Math.max(0, (Date.parse(today + "T00:00:00Z") - debut) / (7 * 864e5));
+        return Math.max(0, Math.min(1, ecoulees / Math.max(1, ecoulees + horizonWeeks)));
+      })(),
       tests,
       taperConform: taperIsConform(p         ),
       refAgeWeeks: refAgeWeeks(tests, today),

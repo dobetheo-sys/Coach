@@ -6823,7 +6823,7 @@ attendu: golden(src) === golden(bundle), 989 profils, 0 écart
 cmd: npm run golden:bundle 2>&1 | tail -2
 ```
 
-## O-68 · L'écran de projection montrait l'affûtage SEUL — le gain annulé par un précipice d'adhérence · 🔴 **OUVERT, mécanisme reproduit au bit près**
+## O-68 · L'écran de projection montrait l'affûtage SEUL — le gain annulé par un précipice d'adhérence · ✅ **FERMÉ sur l'arbitrage du 17/08**
 
 **Origine** : retour du fondateur sur son écran (17/08/2026) — « CSS 2:02 → 1'60/100m », ~2 % sur
 les trois disciplines, borne basse figée à 5 h 38, « quarante semaines valent neuf minutes ».
@@ -6881,9 +6881,43 @@ position est appliquée sans sa position. Deux pistes, à trancher :
                              ÉCOULÉE du plan — le gain du RESTANT n'est pas encore joué
 ```
 
-**NON CORRIGÉ, délibérément** : le premier point est mécanique mais le second le contient, et
-le fondateur a classé ce lot « celui qui décide si l'application encourage ou décourage » — il
-se traite entier, sur son arbitrage.
+**ARBITRAGE RENDU ET IMPLÉMENTÉ (17/08/2026)** — trois décisions :
+
+**§1 — le déclencheur et la mesure portent sur la même population.** `adherenceWindow` ne
+déclare de l'évidence que si `done` contient au moins une séance MESURABLE (ni repos, ni
+course) : cocher un repos rend `null`, plus jamais 0. La parade d'`aDesNages` (O-56), appliquée
+ici. Vérifié : repos seul → `null` · séance réelle → la fenêtre calcule.
+
+**§2 — le défaut 0,9 escomptait deux fois la même chose.** L'écran dit « si le plan tient » —
+la projection est explicitement conditionnelle. `ADHERENCE_UNKNOWN_FACTOR` passe à **1,0** :
+la phrase porte la réserve, plus un rabais silencieux.
+
+**§3 — la pondération par position** (règle 20 appliquée à une confiance) : ce qui varie avec
+la position n'est pas l'adhérence, c'est ce qu'on en SAIT. `facteur = 1×(1−f) + mesurée×f`,
+`f = semaines écoulées / totales`, dérivé de `plan_start` dans le pont — aucune constante
+nouvelle. Cette forme ne peut pas produire de précipice (au début, le poids de la mesure est
+nul) ; elle ne remplace pas le §1, elle en est le filet.
+
+**La table du §4, vérifiée ligne à ligne** (profil du fondateur, gain FTP) :
+
+```
+S1, rien de coché       13,8 %   projection complète, « si le plan tient »
+S1, un repos coché      13,8 %   identique — le repos n'est pas de l'évidence
+S8,  80 % faites        12,4 %   baisse un peu, avec sa raison
+S30, 40 % faites         3,3 %   baisse franchement, et c'est mérité
+S39, 40 % faites         2,0 %   ≈ l'affûtage seul — la mesure a tout son poids
+sans position (repli)    2,0 %   f = 1 : l'ancien comportement, conservé pour
+                                 tout appelant qui ne connaît pas sa position
+```
+
+**R14.5-A/B réécrits sous le contrat O-68** (IDs gardés, comme A4 et R14.4) : ils encodaient la
+décision renversée — « 30 % → gain ≤ moitié » supposait le poids plein. Nouveaux critères : la
+sensibilité reste, la réduction est BORNÉE par la part écoulée (on ne retire pas plus que ce que
+l'évidence couvre), et l'ancienne barre « ≤ moitié » redevient exigible à f = 0,8 — méritée par
+le fondement, plus posée. Mesuré : f=0,13 → 12,1/10,6 % (plancher 9,5) · f=0,8 → 5,7/1,2 %.
+
+**§5 — la borne basse : rien à corriger** (décision du fondateur) : `min(loT0, loNow)` se
+comporte comme prévu, elle gèle au gain minuscule et relâche au gain réel.
 
 ### Ce qui EST corrigé : la famille « 1'60 » — treize formateurs
 

@@ -701,6 +701,15 @@ export function predictV2(sport: string, answers: AppAnswers, plan?: V1Plan & { 
       level: String(answers.level || "") || undefined,
       history: String(answers.history || "") || undefined,
       adherence: adherenceWindow(p as never, (answers.done || {}) as Record<string, boolean>, today),
+      // O-68 §3 — la part ÉCOULÉE du plan : c'est elle qui décide du poids de l'adhérence
+      // mesurée (à S1 elle ne prédit rien du restant, à S39 presque tout). Dérivée de
+      // `plan_start`, jamais déclarée ; sans ancre, poids plein (l'ancien comportement).
+      fractionElapsed: (() => {
+        const debut = Date.parse(String(answers.plan_start || "") + "T00:00:00Z");
+        if (!Number.isFinite(debut)) return null;
+        const ecoulees = Math.max(0, (Date.parse(today + "T00:00:00Z") - debut) / (7 * 864e5));
+        return Math.max(0, Math.min(1, ecoulees / Math.max(1, ecoulees + horizonWeeks)));
+      })(),
       tests,
       taperConform: taperIsConform(p as never),
       refAgeWeeks: refAgeWeeks(tests, today),
