@@ -6444,3 +6444,166 @@ coût         il faut nommer ces grandeurs (elles n'ont pas de déclaration comm
              `ANSWER_SCHEMA`) et décider lesquelles comptent. C'est un inventaire, pas
              une heuristique.
 ```
+
+---
+
+# RETOUR DU PREMIER USAGE RÉEL (17/08/2026) — huit constats, un fermé, sept ouverts
+
+Le plan `plan_tri_70_3.html` a été lu en entier (323 séances, 40 semaines) et l'app utilisée.
+**Une session d'usage a produit trois constats que 989 profils de golden, 31 gates et sept
+semaines de mesure n'avaient pas vus.** Aucun n'est une invariante : ce sont des propriétés de ce
+que l'athlète VOIT et COMPREND. Les deux instruments ne mesurent pas la même chose, et il en
+manquait un.
+
+## D4 · Le porteur de la nage continue est une séance que le budget SUPPRIME · ✅ **FERMÉ**
+
+**Constat du fondateur** : une seule continue (1 250 m) sur 40 semaines, pour une progression qui
+en promet quatre jusqu'à 1 900 m.
+
+**Ce que la mesure a répondu, dans l'ordre qu'il a demandé.**
+
+1. *Combien de fois la transformation se déclenche-t-elle, et à quelles semaines ?*
+   Sur un 70.3 de 40 semaines, `doubles: "non"` → **3 fois, S23 / S28 / S33**. `doubles: "oui"` →
+   **1 fois, S33**. Avec `vol_max: 14` en plus → **0**.
+2. *Le correctif D1 s'est-il sur-corrigé en « au plus une, point » ?*
+   **NON — hypothèse réfutée.** `slotIdx === 0` est bien par semaine : sans doubles, trois paliers
+   sont livrés.
+3. *La projection s'arrête-t-elle à 1 250 depuis la déclaration ?*
+   **NON.** `atteignableM` vaut **17 449 m** et les cibles calculées sont **1 250 / 1 550 /
+   1 900** — le dernier palier EST la distance de course. La progression était calculée juste et
+   **détruite plus loin**. 1 250 n'est pas un plafond : c'est le premier palier, le seul survivant.
+4. *Combien de véhicules éligibles la phase spécifique contient-elle ?*
+   **ZÉRO** sous doubles à `sessions_max ≤ 7` — c'est la réponse, et c'est la cause.
+
+**Le mécanisme.** Sous doubles, le porteur était `dur1`, où `swMain` est poussée en séance
+« (matin) » — la SECONDE séance d'une journée double, donc la première que la coupe par
+`sessions_max` retire. Mesuré à un seul facteur près :
+
+```
+sessions_max ≤ 7  →  véhicule « (matin) » 31 → 3 occurrences · continues 3 → 1
+sessions_max ≥ 8  →  véhicule 31 · continues 2   (le palier du milieu manquait encore)
+```
+
+**Treizième occurrence de la famille la plus coûteuse du dépôt** — « une garantie posée au milieu
+du pipeline ne survit pas aux passes suivantes » — cette fois dans le sens où la garantie est
+supprimée AVEC SON SUPPORT, sans que rien ne le signale.
+
+**Correctif** : le porteur devient `facile2` dans tous les cas. Ce n'est pas revenir sur D3-b —
+ce que D3-b corrigeait, c'est le routage par intention, court-circuité depuis par `if (b17Pose)`
+qui passe devant tout le routage du créneau, récup courte des doubles comprise.
+
+**Portée, expérience contrôlée (1 620 profils tri, un seul facteur varie)** :
+
+```
+avant   537 / 1 620 (33,1 %) sous l'annoncé   ·   doubles : oui 501 · non 18 · parfois 18
+après    50 / 1 620  (3,1 %)                  ·   doubles : oui  14 · non 18 · parfois 18
+```
+
+Les 36 cas `non`/`parfois` sont **identiques avant et après** : ils sont antérieurs et le
+correctif ne les touche pas. Coût en séances : **nul** — 5,0 · 5,8 · 6,5 · 7,3 séances/semaine
+avant comme après, aux neuf budgets balayés ; la continue REMPLACE la récup courte de ces trois
+semaines.
+
+**Pourquoi aucune garde ne l'a vu** : la fixture de `T-06` porte `doubles: "non"`, et le golden ne
+contient **qu'un seul** profil tri en doubles (`G/tri/Full/doubles` — l'unique écart des 989).
+Leçon A-2 dans sa forme la plus chère : *un corpus se juge sur l'espace des DÉCISIONS, pas sur
+celui des saisies.* `T-06` gagne un bloc (e) qui croise `doubles × sessions_max` et porte une
+PROPRIÉTÉ (« le livré égale l'annoncé ») et non une valeur — vérifié rouge contre le moteur
+d'avant : **0/3 · 0/3 · 2/3**.
+
+```verify
+id: D4
+quoi: la progression de continuité est livrée en entier quel que soit le budget de séances
+attendu: T-06 vert, y compris ses six couples doubles × sessions_max
+cmd: node scripts/lotPhysio.mjs 2>&1 | grep "T-06"
+```
+
+## O-58 · Un résidu de 3,1 % livre moins de paliers qu'annoncé · 🔴 **OUVERT**
+
+Ce que D4 laisse. **50 profils sur 1 620**, concentrés sur **Full (41)** et jamais sur
+`longest_swim_m: 1650` (400 → 25 · 1000 → 25 · 1650 → 0). Le pire cas mesuré est
+`M / sessions_max=5 / débutant / 1000 m` à **0 palier livré sur 3 annoncés**, et il ne dépend pas
+des doubles (il tombe identiquement en `non` et en `parfois`).
+
+Non traité délibérément : c'est un constat NOUVEAU, pas le constat du fondateur, et le périmètre
+est gelé. La piste est la même famille — les positions des paliers sont calculées sur le
+CALENDRIER de la phase spécifique, sans regarder si la semaine visée porte réellement le créneau
+porteur ; quand elle ne le porte pas, le palier est perdu en silence.
+
+```verify
+id: O-58
+quoi: résidu de paliers non livrés après D4
+attendu: 50 profils sur 1620 (3,1 %), Full majoritaire, aucun à longest_swim_m 1650
+cmd: echo "balayage dans scripts/ — voir D4 pour la méthode (1620 profils tri)"
+```
+
+## O-59 · Le questionnaire perd la marque des choix sélectionnés · 🔴 **OUVERT** (bloque le partage)
+
+Constat du fondateur. **À QUALIFIER AVANT DE CORRIGER**, et les deux cas n'ont pas la même
+gravité : un autre choix de LA MÊME question qui efface le précédent est un comportement radio
+normal *sauf si le nouveau n'est pas marqué non plus* ; un choix d'UNE AUTRE question qui efface
+les réponses précédentes est le cas grave. C'est la première chose qu'un nouvel utilisateur fait :
+s'il ne voit pas ce qu'il a répondu, il doute de l'enregistrement et de tout ce qui suit.
+
+## O-60 · Le détail de séance ne s'affiche pas en natation · 🔴 **OUVERT** (bloque le partage)
+
+Sur 🎯 Aujourd'hui, « Sweetspot vélo » porte sa barre ET ses blocs ; « Nage seuil (+dist) » porte
+sa barre et RIEN — alors que le contenu existe, complet, dans le plan. Hypothèse du fondateur :
+les blocs de vélo portent une DURÉE, ceux de nage une DISTANCE, et le rendu teste `durationMin`.
+Ce serait la **cinquième instance de la famille** (après `st.bnd ? cap : Infinity`,
+`intensity=[object Object]`, `if (tot <= 0) continue` et `if (b.durationMin != null)`), cette fois
+dans l'interface. Le correctif serait celui du lot 1 : **demander la grandeur au lieu de la
+tester** — `stepMin` et la conversion unique d'O-42 existent. Sévérité : c'est la discipline
+limitante de l'athlète, sur l'onglet principal.
+
+## O-61 · La barre de zones est un résumé sans son détail · 🔴 **OUVERT**
+
+`1 | 4 | 2 | 1` est le résumé du détail qu'il surplombe ; quand le détail manque (O-60), il ne
+reste que le résumé. Une fois O-60 fermé, il reste que la barre porte le minimum d'information
+possible. Étiqueter les segments (`Éch 300m │ Seuil 775m │ Aéro 350m │ RC 200m`) coûte peu — et
+rend « aucune information portée par la couleur seule » réellement vraie, un numéro de zone étant
+une convention que l'athlète n'a pas. À rapprocher de la mesure §3b du 17/08 (`mesure:contraste`),
+qui note la barre `aria-hidden` et ses segments porteurs de leur seul numéro.
+
+## O-62 · Zéro séance de technique en natation sur 40 semaines · 🔴 **OUVERT**
+
+Composition mesurée par le fondateur : récup courte **60 (46 %)** · vitesse 42 · seuil (+dist) 27
+· continue 1 · **technique/éducatifs 0**. L'athlète nage à 2'05–2'20/100 m et son limitant est la
+technique sous fatigue. *Plus de volume à mauvaise technique produit plus de volume à mauvaise
+technique.* Le module éducatifs existe et ne parvient pas au plan.
+
+**Lien avec D4, à ne pas perdre** : la même mesure a montré que sous doubles à budget serré, le
+véhicule `swMain` passe de 31 à 3 occurrences et `swTech` reste — c'est-à-dire que la composition
+de nage est décidée par la COUPE et non par la règle. À qualifier : séance-type absente de la
+bibliothèque, ou règle qui ne la prescrit jamais ?
+
+## O-63 · L'allocation vélo · 🔴 **OUVERT**
+
+Nage 130 séances (3,25/sem) · course ~123 (~3,1) · **vélo 42 (1,05)** + 10 bricks, pour une
+épreuve dont le vélo fait la moitié du temps de course (90 km vallonnés, prédits 2 h 54–3 h 13,
+contre 42 min de nage). Quatre séances sont étiquetées « couverture discipline » — du remplissage
+de quota.
+
+## O-64 · B-10 est toujours là, et majoritaire · 🔴 **OUVERT**
+
+**Force basse cadence 17** contre **Sweetspot vélo 7** sur une préparation 70.3 où l'intensité de
+course est 76–83 % FTP et où le sweetspot (88–94 %) est la séance qui la construit. Ticket ouvert
+du contre-audit initial, enfin visible sur un cas réel.
+
+## O-65 · Trois incohérences d'affichage · 🔴 **OUVERT**
+
+**(a)** l'en-tête annonce `volume 6h → 10.4h`, le calendrier livre **11,2 h** en semaine 37 — le
+chiffre le plus visible du plan est INFÉRIEUR au maximum réel (famille R20.2, et c'est le sens
+opposé aux 350 profils d'O-35, qui annonçaient PLUS qu'ils ne livrent).
+**(b)** « Nage récup courte » livrée à **1 325 m** — le nom est figé à la création et ne suit pas
+le contenu ; même défaut qu'O-54 sur un autre axe, et O-54 n'a traité que le titre des continues.
+**(c)** deux semaines de récup consécutives, deux fois (4 h + 3,9 h en base, 6,9 h + 6,4 h en
+spécifique) — probablement le cycle de 10 jours qui chevauche deux semaines calendaires.
+
+## CE QUI FONCTIONNE, MESURÉ SUR CE PLAN
+
+À ne pas perdre de vue : la prédiction est complète et cohérente (5 h 34–6 h 05, décomposée) ·
+les allures de nage sont ancrées sur le CSS de l'athlète et non sur une table générique (O-42
+livré) · la consigne de la continue est exactement ce que B-17 devait produire · C22 tient (chaque
+récup revient sous la dernière semaine de charge) · le brick d'affûtage existe avec son rappel de
+transition (B-19).

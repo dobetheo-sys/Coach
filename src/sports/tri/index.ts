@@ -82,7 +82,33 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
   //     lu — `dur1` en doubles, `facile2` sinon —, et le routage par intention est court-circuité
   //     pour cette seule séance. La population la plus concernée est justement celle qui a le plus
   //     besoin de la continuité : un débutant qui vise un finish en eau libre.
-  const b17Slot = dbl ? "dur1" : "facile2";
+  //   · D4 — LE PORTEUR ÉTAIT UN CRÉNEAU QUE LE BUDGET DE SÉANCES SUPPRIME (retour du premier
+  //     usage réel, 17/08/2026). Sous DOUBLES, `swMain` part sur `dur1` en séance « (matin) »,
+  //     c'est-à-dire la SECONDE séance d'une journée double — exactement ce que la coupe par
+  //     `sessions_max` retire en premier. Mesuré sur un 70.3 de 40 semaines, à un seul facteur
+  //     près (le budget) :
+  //
+  //         sessions_max ≤ 7 → véhicule « (matin) » 31 → 3 occurrences · continues 3 → 1
+  //         sessions_max ≥ 8 → véhicule 31 · continues 2 (le palier du milieu manquait encore)
+  //
+  //     La progression était CALCULÉE juste (départ 1 000 m → 1 250 / 1 550 / 1 900, atteignable
+  //     17 449 m : ni la projection ni le compte de paliers n'étaient en cause) et DÉTRUITE plus
+  //     loin, sans que rien ne le signale. C'est la treizième occurrence de la famille la plus
+  //     coûteuse du dépôt — « une garantie posée au milieu du pipeline ne survit pas aux passes
+  //     suivantes » —, cette fois dans le sens où la garantie est SUPPRIMÉE avec son support.
+  //
+  //     Le porteur devient donc `facile2` DANS TOUS LES CAS. Ce n'est pas revenir sur D3-b : ce
+  //     que D3-b corrigeait, c'est que le routage par intention envoyait le créneau vers
+  //     `swTech` — et il est court-circuité depuis, par le `if (b17Pose)` qui passe DEVANT tout
+  //     le routage du créneau, y compris devant la « Nage récup courte » des doubles. La prémisse
+  //     « sous doubles, `facile2` ne porte pas la nage principale » était vraie du ROUTAGE et
+  //     fausse de la SÉANCE CONTINUE, qui ne passe plus par ce routage.
+  //
+  //     Ça ne coûte AUCUNE séance : mesuré, 5,0 · 5,8 · 6,5 · 7,3 séances/semaine avant comme
+  //     après, aux neuf budgets balayés — la continue REMPLACE la récup courte de ces 3 semaines
+  //     au lieu de s'ajouter. Et les trois paliers sont livrés à TOUS les budgets, y compris les
+  //     plus serrés, là où l'ancien porteur n'en livrait qu'un.
+  const b17Slot = "facile2";
   let b17Pose = false;
   if (phase === "spec" && slot === b17Slot && slotIdx === 0 && !inj.shoulder && !medHold) {
     // D3 §3b — LA PROGRESSION PART DE L'ATHLÈTE. Le gate reçoit la durée RÉELLE du plan (`r.weeks`),

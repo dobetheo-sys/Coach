@@ -224,6 +224,31 @@ T("T-06", "vert", "B-17 — nage continue prescrite en tri : gate, une par semai
     if (paliers.length && paliers[paliers.length - 1] !== TRI_SWIM[format].dist) bad.push(`${id} : dernier palier ${paliers[paliers.length - 1]} m ≠ distance de course ${TRI_SWIM[format].dist} m`);
     vus.push(`${id} ${paliers.join("→")}`);
   }
+  // (e) D4 — LA PROGRESSION NE DÉPEND NI DES DOUBLES NI DU BUDGET DE SÉANCES.
+  //
+  // Ce bloc existe parce que T-06 était VERT pendant que le premier usage réel ne recevait qu'UN
+  // palier sur trois. La cause n'est pas dans ce qu'il vérifiait — c'est que sa fixture porte
+  // `doubles: "non"`, donc il n'a jamais exercé la branche où le porteur de la continue est une
+  // séance « (matin) », c'est-à-dire celle que la coupe par `sessions_max` retire en premier.
+  // C'est la leçon A-2 dans sa forme la plus chère : un corpus se juge sur l'espace des
+  // DÉCISIONS, pas sur celui des saisies — 31 gates et 989 profils de golden ont laissé passer
+  // ça parce qu'aucun ne croisait `doubles` avec la continuité.
+  //
+  // Le critère est une PROPRIÉTÉ et non une valeur : ce que B-17 promet est livré QUEL QUE SOIT
+  // le budget. Une valeur épinglée aurait été satisfaite en gelant un chiffre (règle 19).
+  {
+    const attendu = (p) => (p._v2?.decisions ?? []).find((x) => x.id === "B17-paliers");
+    for (const dbl of ["non", "oui"]) for (const sm of ["6", "7", "10"]) {
+      const p = globalThis.EBV2.buildPlan("tri", { ...base, format: "70.3", doubles: dbl, sessions_max: sm,
+        longest_swim_known: "oui", longest_swim_m: "1000", race_date: dans(40) });
+      const n = +(String(attendu(p)?.val ?? "").match(/(\d+)\s*palier/)?.[1] ?? 0);
+      const livrees = (p.weeks ?? []).flatMap((w) => (w.days ?? []).flatMap((d) => (d.sessions ?? [])))
+        .filter((s) => s.d === "sw" && CONT.test(String(s.name ?? ""))).length;
+      if (!n) { bad.push(`doubles=${dbl}/sessions_max=${sm} : aucune décision B17-paliers à comparer`); continue; }
+      if (livrees !== n) bad.push(`doubles=${dbl}/sessions_max=${sm} : ${livrees} continue(s) livrée(s) pour ${n} annoncée(s)`);
+      else vus.push(`dbl=${dbl}/sm=${sm} ${livrees}/${n} ✓`);
+    }
+  }
   return { ok: !bad.length, detail: bad.length ? bad.slice(0, 6).join(" · ") : vus.join(" · ") };
 });
 
