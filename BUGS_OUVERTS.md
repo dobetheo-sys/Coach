@@ -6150,7 +6150,7 @@ cmd: grep -q "O-55 (arbitrage du 17/08/2026)" src/engine/constraintMatrix.ts && 
 
 ---
 
-## O-56 · Toute borne dérivée d'une CAPACITÉ est gelée sur la déclaration initiale · ✅ **§1 et §2 LIVRÉS · §3 (le message) ouvert**
+## O-56 · Toute borne dérivée d'une CAPACITÉ est gelée sur la déclaration initiale · ✅ **FERMÉ (§1, §2, §3)**
 
 Racine nommée par le fondateur en arbitrant O-54 §2, et **plus large que « `beginner` est
 statique »** — c'est sa deuxième formulation qui est la bonne :
@@ -6350,9 +6350,43 @@ Contre-preuve `npm run mesure:o56`, **en CI** : le cliquet monte sur un palier v
 jamais (ni contre un palier plus bas, ni contre la déclaration), prend le PLUS HAUT et non le plus
 récent, et ignore ce qui précède le plan.
 
-**Reste aussi du §3 de l'arbitrage** : la chaîne R20.2 doit NOMMER la divergence au PREMIER palier
-manqué (« ta capacité démontrée est de 800 m, la progression t'attendait à 1 400 ») — pas à la fin,
-sans quoi l'athlète subit une conséquence juste arrivée trop tard pour être corrigée.
+**§3 LIVRÉ — et c'est la CONTRAINTE de formulation qui l'a décidé.**
+
+Le moteur ne peut pas distinguer *« il n'a pas nagé »* de *« il n'a pas journalisé »* — la même
+incertitude que `aDesNages` traite au §2. Donc :
+
+> **le message doit être vrai sous les DEUX lectures.**
+
+« Tu as sauté ta nage continue » n'est vrai que sous l'une, et sous l'autre il reproche à quelqu'un
+d'avoir mal utilisé l'application quelque chose qu'il a peut-être fait. Ce qui est vrai sous les
+deux : la capacité VALIDÉE, le palier que le plan CONTIENT ensuite, le temps qui reste. Trois faits,
+aucune implication — le moteur n'a pas à avoir une opinion sur l'athlète pour les énoncer.
+
+```
+« Ta plus longue nage continue validée est de 800 m. Le prochain palier de ton plan
+  est de 1 500 m, en semaine 8. Il te reste 14 semaines. »
+```
+
+**Le palier annoncé est celui que le plan CONTIENT**, jamais celui qu'une re-génération produirait :
+au moment où ce message s'affiche le plan n'a pas été reconstruit, et annoncer une suite que la
+grille ne porte pas serait faux à l'écran même où on le lit.
+
+**Où** — déclaration LOCALE (`B17-divergence`), pas un maillon de R20.2 : cette divergence ralentit
+une progression, elle ne borne pas le volume. La chaîne « ce qui borne ton pic » ne la concernera
+que le jour où elle rend le format inatteignable, et ce jour-là c'est le rabattement qui parle.
+
+**Quand** — l'ajusteur QUOTIDIEN (`adjustTodayV2`), pas une re-génération : un message qui
+n'apparaît qu'à la re-génération n'apparaît jamais pour qui ne re-génère pas, et c'est la population
+qui en a le plus besoin. Un palier n'est « manqué » que lorsque sa semaine est PASSÉE.
+
+Contre-preuve `npm run mesure:o56`, **6 critères** dont « elle se tait tant qu'aucun palier passé
+n'a été manqué », « elle se tait si la capacité a dépassé le palier manqué » (le cliquet est
+monotone) et **« elle ne reproche rien »** — aucun *sauté*, *manqué*, *aurais*, *devais*.
+
+**NON FAIT, à trancher par le coût et non par le principe** : le compte à rebours. La dernière
+semaine d'où la distance de course reste atteignable est DÉRIVABLE, et l'afficher transformerait une
+falaise en préavis (« après la semaine 22, 1 900 m ne sera plus atteignable depuis ta capacité
+actuelle »). C'est la différence entre un rabattement subi et un rabattement vu venir.
 
 ---
 
@@ -6389,4 +6423,24 @@ id: O-57
 quoi: le rabattement B-17 ne propose jamais un format plus long que le demande
 attendu: tous vers un format
 cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-42"
+```
+
+
+---
+
+## A-2 (suite) · Extension notée, NON FAITE — croiser aussi les grandeurs DÉRIVÉES
+
+`couverture:golden` croise les CLÉS du schéma. Les croisements MÉDIATISÉS lui échappent — vérifié
+sur O-57, qu'elle n'aurait pas vu : `race_date` et `longest_swim_m` ne se rencontrent nulle part,
+elles n'interagissent qu'à travers `semainesDe(f)`.
+
+```
+extension    inclure dans le jeu croisé les GRANDEURS DÉRIVÉES que les règles lisent, pas
+possible     seulement les clés du schéma. `semainesDe` produit un horizon ; si une règle
+             branche sur horizon × capacité, le croisement existe et il est mesurable.
+             Ça déplace la frontière sans changer la nature de l'instrument.
+
+coût         il faut nommer ces grandeurs (elles n'ont pas de déclaration comme
+             `ANSWER_SCHEMA`) et décider lesquelles comptent. C'est un inventaire, pas
+             une heuristique.
 ```

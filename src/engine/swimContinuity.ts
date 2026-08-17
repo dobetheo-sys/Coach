@@ -403,3 +403,95 @@ export function poolOnlyNotice(a: { format?: unknown; milieu?: unknown }): strin
     + "tête pour se repérer. Une seule sortie en eau libre avant le jour J change tout, et plus "
     + "elle est tôt, mieux c'est.";
 }
+
+/**
+ * O-56 §3 — **LA DIVERGENCE SE NOMME AU PREMIER PALIER MANQUÉ, PAS À LA FIN.**
+ *
+ * Un athlète qui saute ses continues et découvre en semaine 30 que son Full est rabattu a subi le
+ * mode de défaillance qu'on ferme depuis des semaines : une conséquence juste, arrivée trop tard
+ * pour être corrigée.
+ *
+ * ── LA CONTRAINTE QUI DÉCIDE DE LA FORMULATION ─────────────────────────────────────────────
+ *
+ * **Le moteur ne peut pas distinguer « il n'a pas nagé » de « il n'a pas journalisé ».** C'est la
+ * même incertitude que `aDesNages` traite dans `swimEvidence`, et elle a une conséquence directe :
+ *
+ *     LE MESSAGE DOIT ÊTRE VRAI SOUS LES DEUX LECTURES.
+ *
+ * « Tu as sauté ta nage continue » n'est vrai que sous l'une — et sous l'autre, il reproche à
+ * quelqu'un d'avoir mal utilisé l'application quelque chose qu'il a peut-être fait. Ce qui est vrai
+ * sous les deux : **ce que vaut sa capacité validée, ce que le plan prescrit ensuite, et le temps
+ * qui reste.** Trois FAITS, aucune implication — et le moteur n'a pas à avoir une opinion sur
+ * l'athlète pour les énoncer.
+ *
+ * ⚠ ON ANNONCE LE PALIER QUE LE PLAN CONTIENT, jamais celui qu'une re-génération produirait. Au
+ * moment où ce message s'affiche, le plan n'a pas été reconstruit : dire « la progression repart
+ * de 1 000 » alors que la grille porte 1 400 serait faux à l'écran même où on le lit. La
+ * reconstruction, elle, viendra du cliquet (§2) à la prochaine génération.
+ *
+ * ── OÙ ELLE VIT ────────────────────────────────────────────────────────────────────────────
+ *
+ *   la divergence RALENTIT la progression ....... déclaration LOCALE (ici)
+ *   la divergence rend le format INATTEIGNABLE ... maillon de R20.2 — elle borne alors le plan
+ *
+ * Le premier cas n'a rien à faire dans la chaîne « ce qui borne ton pic » : il ne borne pas le
+ * volume, il déplace une progression.
+ *
+ * ── LE MOMENT ──────────────────────────────────────────────────────────────────────────────
+ *
+ * L'AJUSTEUR QUOTIDIEN, pas une re-génération manuelle : un message qui n'apparaît qu'à la
+ * re-génération n'apparaît jamais pour qui ne re-génère pas — et c'est la population qui en a le
+ * plus besoin. Et un palier n'est « manqué » que lorsque sa semaine est PASSÉE : la détermination
+ * porte sur le passé, jamais sur la semaine en cours.
+ *
+ * @param wkNum semaine courante du plan, 1-indexée
+ */
+export interface SwimDivergence {
+  /** Le plus haut palier VALIDÉ, en mètres. */
+  valideM: number;
+  /** Le plus haut palier PRESCRIT dont la semaine est passée, sans ✓. */
+  manqueM: number;
+  /** Le prochain palier que le plan CONTIENT (semaine ≥ courante), 0 s'il n'y en a plus. */
+  prochainM: number;
+  /** La semaine de ce prochain palier, 0 s'il n'y en a plus. */
+  prochaineSem: number;
+  /** Semaines restantes dans le plan. */
+  semainesRestantes: number;
+  /** Le message, ou `null` s'il n'y a rien à dire. */
+  message: string | null;
+}
+export function swimDivergence(
+  plan: { weeks?: { num: number; days?: { jour?: string; sessions?: { d?: string; steps?: { role?: string; bnd?: { pinned?: boolean }; distanceM?: number | null; reps?: number }[] }[] }[] }[] } | null | undefined,
+  done: Record<string, boolean> | null | undefined,
+  wkNum: number,
+): SwimDivergence {
+  const out: SwimDivergence = { valideM: 0, manqueM: 0, prochainM: 0, prochaineSem: 0, semainesRestantes: 0, message: null };
+  if (!plan?.weeks?.length) return out;
+  const total = Math.max(...plan.weeks.map((w) => w.num));
+  out.semainesRestantes = Math.max(0, total - wkNum);
+  const d = done || {};
+  for (const w of plan.weeks) for (const dy of w.days ?? []) {
+    (dy.sessions ?? []).forEach((s, si) => {
+      if (s.d !== "sw") return;
+      const cont = (s.steps ?? []).find((st) => st.role === "body" && st.bnd?.pinned && st.distanceM != null);
+      if (!cont) return;
+      const m = (cont.reps || 1) * (cont.distanceM || 0);
+      const fait = !!d[w.num + "|" + dy.jour + "|" + si];
+      if (fait) { out.valideM = Math.max(out.valideM, m); return; }
+      // PASSÉ seulement : un palier de la semaine en cours n'est pas manqué, il est à venir.
+      if (w.num < wkNum) out.manqueM = Math.max(out.manqueM, m);
+      else if (!out.prochaineSem || w.num < out.prochaineSem) { out.prochaineSem = w.num; out.prochainM = m; }
+    });
+  }
+  // Rien à dire tant qu'aucun palier passé n'est resté sans ✓, ou si la capacité validée a déjà
+  // dépassé ce palier (l'athlète l'a fait une autre semaine — le cliquet est MONOTONE).
+  if (!out.manqueM || out.valideM >= out.manqueM) return out;
+  const faits: string[] = [];
+  faits.push(out.valideM > 0
+    ? "Ta plus longue nage continue validée est de " + out.valideM + " m."
+    : "Aucune nage continue n'est encore validée dans ce plan.");
+  if (out.prochainM) faits.push("Le prochain palier de ton plan est de " + out.prochainM + " m, en semaine " + out.prochaineSem + ".");
+  if (out.semainesRestantes > 0) faits.push("Il te reste " + out.semainesRestantes + " semaine" + (out.semainesRestantes > 1 ? "s" : "") + ".");
+  out.message = faits.join(" ");
+  return out;
+}

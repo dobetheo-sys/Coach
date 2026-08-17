@@ -14,6 +14,7 @@ import { SEAL_COUNTERS } from "../generator/seal.ts";
 import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { longRunSpecificityFloor } from "../engine/longRunSpecificity.ts";
+import { swimDivergence } from "../engine/swimContinuity.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
 import {
   predictRace, courseProfileOf, legProfileOf, type Prediction,
@@ -261,12 +262,37 @@ export function adjustTodayV2(sport: string, answers: AppAnswers, snapshot: Read
   const adjustment = adjustDay(reasoned, plan, snapshot.date, snapshot);
   let sessions: TodayAdjustment["sessions"] = [];
   let jour: string | null = null;
+  let semaineCourante = 0;
   for (const w of plan.weeks)
     for (const d of w.days)
       if ((d as { date?: string }).date === snapshot.date) {
         sessions = d.sessions.map((s) => ({ name: s.name, det: s.det || "", d: s.d, steps: s.steps }));
         jour = d.jour;
+        semaineCourante = w.num;
       }
+
+  // O-56 §3 — LA DIVERGENCE SE NOMME ICI, dans l'ajusteur QUOTIDIEN, et pas à la re-génération.
+  //
+  // Un message qui n'apparaît qu'à la re-génération n'apparaît JAMAIS pour qui ne re-génère pas —
+  // et c'est la population qui en a le plus besoin. Un athlète qui saute ses continues et découvre
+  // en semaine 30 que son Full est rabattu a subi une conséquence juste, arrivée trop tard pour
+  // être corrigée : c'est le mode de défaillance que tout ce chantier ferme.
+  //
+  // Le message énonce TROIS FAITS et aucune implication (voir `swimDivergence`) : le moteur ne peut
+  // pas distinguer « il n'a pas nagé » de « il n'a pas journalisé », donc il ne le suppose pas.
+  //
+  // DÉCLARATION LOCALE, PAS UN MAILLON DE R20.2 : cette divergence RALENTIT une progression, elle
+  // ne borne pas le volume. La chaîne « ce qui borne ton pic » ne la concerne que le jour où elle
+  // rend le format inatteignable — et ce jour-là, c'est le rabattement qui parle.
+  if (semaineCourante > 0) {
+    const dv = swimDivergence(plan, (answers.done || {}) as Record<string, boolean>, semaineCourante);
+    if (dv.message) adjustment.decisions.push({
+      id: "B17-divergence",
+      what: "Ta progression de nage continue",
+      val: dv.valideM > 0 ? dv.valideM + " m validés" : "aucun palier validé",
+      why: dv.message,
+    });
+  }
   return { adjustment, sessions, jour };
 }
 
