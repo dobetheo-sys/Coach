@@ -5495,14 +5495,31 @@ réintroduit dans le corpus ne produit aucune violation.
 
 ### b) Le score ignore les alertes — il ne dit donc rien sur ce lot
 
-Réponse en une ligne, **mesurée** plutôt que lue dans le code (règle 15) : le score moyen ne baisse
-pas quand les alertes montent, il monte.
+Réponse en une ligne, **mesurée** plutôt que lue dans le code (règle 15) : **il n'existe aucune
+relation monotone** entre le nombre d'alertes et le score.
 
 ```
-score MOYEN par nombre d'avertissements (corpus tri dispersé)
-   0 alerte  n= 20  →  92,3        2 alertes n= 15  →  99,0
-   1 alerte  n= 64  →  92,6        3 alertes n=  9  →  95,0
+score par nombre d'avertissements (corpus tri dispersé, 108 profils)
+   0 alerte  n= 16   moy 94,1  [ 80 … 100]  σ  6,2
+   1 alerte  n= 45   moy 95,2  [ 80 … 100]  σ  5,6
+   2 alertes n= 35   moy 90,9  [ 65 … 100]  σ 10,6
+   3 alertes n= 12   moy 95,0  [ 85 … 100]  σ  6,1
 ```
+
+Les écarts-types vont de 5,6 à 10,6 : **les moyennes se recouvrent largement et aucune ne se cite
+seule comme un effet.** La réserve statistique du fondateur portait sur un `99,0` à n=15 — elle
+était fondée, et la cause est pire qu'un bruit d'échantillon : **ce chiffre n'existait pas.**
+
+##### ⚠ LES CHIFFRES QUE J'AI PUBLIÉS D'ABORD ÉTAIENT FAUX, PAR LA FAUTE QUE JE VENAIS DE DOCUMENTER
+
+Ma première mesure lisait `r.plan._v2.warnings` sur l'objet rendu par `generateAudited()` — qui ne
+porte PAS `_v2` (le champ est posé par le PONT, pas par `generatePlan`). Le repli silencieux
+`?? []` rangeait donc une partie des profils dans le mauvais groupe : effectifs 20/64/15/9 au lieu
+de 16/45/35/12, et un `99,0` fantôme. **C'est la MÊME faute d'instrument que j'avais décrite deux
+paragraphes plus haut à propos de la mesure par branche**, refaite dans la mesure voisine, et
+publiée. La mesure est désormais un script (`npm run mesure:score-alertes`) qui lit les alertes et
+les décisions sur le plan du PONT et le score sur l'objet AUDITÉ — deux appels, assumés et
+commentés.
 
 `score` part de 100 et ne se décrémente que sur des grandeurs de STRUCTURE — sauts de charge, ratio
 du pic, semaines hors bande, part de la sortie longue, jours durs adjacents, part de facile.
@@ -5524,7 +5541,45 @@ profils — un taux saturé. Elle lisait les décisions sur le plan de `generate
 pas `_v2` (il est posé par le pont, pas par `generatePlan`). La branche se lit sur le plan du pont,
 le score sur l'audité.*
 
-**Ce qui reste ouvert et n'est PAS traité ici** (périmètre gelé) : `opts.format` est le format
-DÉCLARÉ alors que le plan peut être bâti pour un autre. C'est la forme exacte du défaut `fmt`
-fermé en D3 §4a, un étage plus haut. Aucune violation dure aujourd'hui, un malus de score de
-~5 points sur 18 profils — suivi en **O-49**.
+**Et la hausse a bien une autre cause, nommée et mesurée** — le score par branche du gate :
+
+```
+   test (inconnue) n=36  94,2 (σ 7,2)   ·   format gardé   n=24  94,6 (σ 5,6)
+   gate satisfait  n=30  94,5 (σ 6,5)   ·   RABATTU        n=18  89,7 (σ 12,0)
+```
+
+Le rabattement est la seule branche qui coûte au score, et D3 l'ayant réservé à l'écart
+infranchissable, la population qui portait ce malus s'effondre. **La même réserve s'applique** :
+σ 12,0 sur n=18, l'écart de 5 points ne se lit pas comme un effet propre — c'est une direction
+cohérente, pas une mesure d'amplitude.
+
+---
+
+## O-49 · L'auditeur juge un plan contre une référence que ce plan n'a jamais visée · 🔴 **OUVERT, gelé**
+
+Trouvé par une sonde qui servait une AUTRE question (le score du §0b), et c'est la deuxième fois
+dans ce lot qu'une sonde corrigée rend plus que le contrôle qu'elle servait — après celle de B-17,
+dont la réparation a rendu D3 visible.
+
+```
+mécanisme    `opts.format = profile.format` dans `generateAudited` : le format DÉCLARÉ,
+             alors que le plan peut avoir été bâti pour un autre (rabattement B-17)
+conséquence  l'auditeur mesure contre une référence NON VISÉE
+aujourd'hui  ~5 points de score sur 18 profils, 0 violation dure
+bénignité    repose sur « le rabattement ne va que vers le bas » — donc les bornes
+             appliquées sont toujours plus exigeantes que celles visées, et l'auditeur
+             est trop SÉVÈRE plutôt que trop laxiste. Propriété NON ÉCRITE et NON GARDÉE.
+famille      règle 15, dans l'auditeur : nommer une grandeur, en mesurer une voisine
+```
+
+**L'énoncé est volontairement la conséquence et non le mécanisme.** Un auditeur qui mesure contre
+le mauvais référentiel peut manquer une violation aussi bien qu'en inventer une ; rien ne garantit
+la direction, et la propriété qui rend le défaut inoffensif aujourd'hui n'est écrite nulle part.
+C'est l'énoncé qui change, pas la priorité : gelé.
+
+```verify
+id: O-49
+quoi: l'auditeur reçoit le format DÉCLARÉ, pas celui que le plan vise
+attendu: O49-REPRODUIT
+cmd: grep -q 'format: profile.format' src/generator/repairLoop.ts && echo "O49-REPRODUIT"
+```

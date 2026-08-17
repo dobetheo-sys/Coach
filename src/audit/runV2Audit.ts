@@ -113,7 +113,8 @@ for (const sport of Object.keys(SPORTS) as Sport[]) {
 // ---------- Rapport ----------
 let md = "# Audit V2 (Sprint 1) — moteur de raisonnement + générateur\n\n";
 md += "Généré par `npm run audit:v2`. " + rows.length + " combinaisons via le moteur V2, scorées par l'auditeur inchangé. " + errors + " erreur(s).\n\n";
-md += "| Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score moyen |\n";
+md += "\n⚠ **Le score est STRUCTUREL, et il IGNORE les alertes.** Il part de 100 et ne se décrémente que sur\ndes grandeurs de structure — sauts de charge, ratio du pic, semaines hors bande, part de la sortie\nlongue, jours durs adjacents, part de facile. Le canal `warnings` (R11.2) n'entre dans AUCUN de ces\ntermes. Un lot dont le changement principal est une alerte HONNÊTE ne bouge donc pas ce chiffre, et\nune hausse concomitante a nécessairement une autre cause — sans ce libellé, on relit le rapport six\nmois plus tard en concluant que le lot a amélioré la qualité des plans alors qu'il a ajouté une\nalerte. Mesuré (`npm run mesure:score-alertes`, 108 profils tri) : AUCUNE relation monotone entre\nle nombre d'alertes et le score, écarts-types 5,6 à 10,6 — les moyennes se recouvrent largement,\naucune ne se cite seule comme un effet.\n\n";
+md += "| Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score STRUCTUREL moyen |\n";
 md += "|---|---|---|---|---|---|---|---|---|---|---|---|\n";
 const bySport = new Map<string, Row[]>();
 for (const r of rows) (bySport.get(r.sport) ?? bySport.set(r.sport, []).get(r.sport)!).push(r);
@@ -140,7 +141,7 @@ if (existsSync(v1Path)) {
   interface V1Row { sport: string; peakRatio: number; score: number; taperVsPeak: number | null; peakDeclaredH: number; peakPrescribedH: number }
   const v1 = JSON.parse(readFileSync(v1Path, "utf8")) as V1Row[];
   md += "\n## V1.5 ↔ V2 (même auditeur, mêmes 486 profils)\n\n";
-  md += "| Sport | Ratio pic méd V1.5 → V2 | Pire ratio V1.5 → V2 | Score moyen V1.5 → V2 |\n|---|---|---|---|\n";
+  md += "| Sport | Ratio pic méd V1.5 → V2 | Pire ratio V1.5 → V2 | Score STRUCTUREL moyen V1.5 → V2 |\n|---|---|---|---|\n";
   for (const [sport, rs] of bySport) {
     const v1s = v1.filter((r) => r.sport === sport);
     const worst = (arr: number[]) => arr.reduce((a, b) => (Math.abs(Math.log(b || 0.01)) > Math.abs(Math.log(a || 0.01)) ? b : a), 1);

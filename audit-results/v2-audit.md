@@ -2,7 +2,18 @@
 
 Généré par `npm run audit:v2`. 594 combinaisons via le moteur V2, scorées par l'auditeur inchangé. 0 erreur(s).
 
-| Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score moyen |
+
+⚠ **Le score est STRUCTUREL, et il IGNORE les alertes.** Il part de 100 et ne se décrémente que sur
+des grandeurs de structure — sauts de charge, ratio du pic, semaines hors bande, part de la sortie
+longue, jours durs adjacents, part de facile. Le canal `warnings` (R11.2) n'entre dans AUCUN de ces
+termes. Un lot dont le changement principal est une alerte HONNÊTE ne bouge donc pas ce chiffre, et
+une hausse concomitante a nécessairement une autre cause — sans ce libellé, on relit le rapport six
+mois plus tard en concluant que le lot a amélioré la qualité des plans alors qu'il a ajouté une
+alerte. Mesuré (`npm run mesure:score-alertes`, 108 profils tri) : AUCUNE relation monotone entre
+le nombre d'alertes et le score, écarts-types 5,6 à 10,6 — les moyennes se recouvrent largement,
+aucune ne se cite seule comme un effet.
+
+| Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score STRUCTUREL moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | run | 108 | 0.98 | 0.93–0.99 | 0 | 0 | 0 | 0.47 | 0 | 84% | 0 | 100 |
 | bike | 135 | 0.99 | 0.97–1.00 | 0 | 0 | 0 | 0.44 | 0 | 91% | 0 | 99 |
@@ -13,7 +24,7 @@ Généré par `npm run audit:v2`. 594 combinaisons via le moteur V2, scorées pa
 
 ## V1.5 ↔ V2 (même auditeur, mêmes 486 profils)
 
-| Sport | Ratio pic méd V1.5 → V2 | Pire ratio V1.5 → V2 | Score moyen V1.5 → V2 |
+| Sport | Ratio pic méd V1.5 → V2 | Pire ratio V1.5 → V2 | Score STRUCTUREL moyen V1.5 → V2 |
 |---|---|---|---|
 | run | 0.98 → 0.98 | 0.89 → 0.89 | 100 → 100 |
 | bike | 0.99 → 0.99 | 0.97 → 0.97 | 99 → 99 |

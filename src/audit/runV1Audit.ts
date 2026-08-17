@@ -195,8 +195,9 @@ md +=
   ", alerte séance longue > " +
   pct(THRESHOLDS.longShareAlert) +
   " de la semaine. « Hors bande » = semaines normales (hors récup/affûtage) au ratio hors [0.5, 1.4].\n" +
-  "« Taper vs pic » = minutes prescrites de la dernière semaine d'affûtage / semaine pic (attendu ≪ 1).\n\n";
-md += "| Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Récup+lourde | Longue >55% | Sans volume/plan | Couverture | Score moyen |\n";
+  "« Taper vs pic » = minutes prescrites de la dernière semaine d'affûtage / semaine pic (attendu ≪ 1).\n\n" +
+  "\n⚠ **Le score est STRUCTUREL, et il IGNORE les alertes.** Il part de 100 et ne se décrémente que sur\ndes grandeurs de structure — sauts de charge, ratio du pic, semaines hors bande, part de la sortie\nlongue, jours durs adjacents, part de facile. Le canal `warnings` (R11.2) n'entre dans AUCUN de ces\ntermes. Un lot dont le changement principal est une alerte HONNÊTE ne bouge donc pas ce chiffre, et\nune hausse concomitante a nécessairement une autre cause — sans ce libellé, on relit le rapport six\nmois plus tard en concluant que le lot a amélioré la qualité des plans alors qu'il a ajouté une\nalerte. Mesuré (`npm run mesure:score-alertes`, 108 profils tri) : AUCUNE relation monotone entre\nle nombre d'alertes et le score, écarts-types 5,6 à 10,6 — les moyennes se recouvrent largement,\naucune ne se cite seule comme un effet.\n";
+md += "| Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Récup+lourde | Longue >55% | Sans volume/plan | Couverture | Score STRUCTUREL moyen |\n";
 md += "|---|---|---|---|---|---|---|---|---|---|---|---|---|\n";
 
 for (const [sport, rs] of bySport) {

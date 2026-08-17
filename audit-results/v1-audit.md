@@ -5,7 +5,17 @@ Généré par `npm run audit:v1` (Sprint 0). 459 combinaisons, 0 erreur(s).
 Seuils : sur-prescrit > 1.4, sous-prescrit < 0.5, alerte séance longue > 55% de la semaine. « Hors bande » = semaines normales (hors récup/affûtage) au ratio hors [0.5, 1.4].
 « Taper vs pic » = minutes prescrites de la dernière semaine d'affûtage / semaine pic (attendu ≪ 1).
 
-| Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Récup+lourde | Longue >55% | Sans volume/plan | Couverture | Score moyen |
+
+⚠ **Le score est STRUCTUREL, et il IGNORE les alertes.** Il part de 100 et ne se décrémente que sur
+des grandeurs de structure — sauts de charge, ratio du pic, semaines hors bande, part de la sortie
+longue, jours durs adjacents, part de facile. Le canal `warnings` (R11.2) n'entre dans AUCUN de ces
+termes. Un lot dont le changement principal est une alerte HONNÊTE ne bouge donc pas ce chiffre, et
+une hausse concomitante a nécessairement une autre cause — sans ce libellé, on relit le rapport six
+mois plus tard en concluant que le lot a amélioré la qualité des plans alors qu'il a ajouté une
+alerte. Mesuré (`npm run mesure:score-alertes`, 108 profils tri) : AUCUNE relation monotone entre
+le nombre d'alertes et le score, écarts-types 5,6 à 10,6 — les moyennes se recouvrent largement,
+aucune ne se cite seule comme un effet.
+| Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Récup+lourde | Longue >55% | Sans volume/plan | Couverture | Score STRUCTUREL moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | tri | 108 | 0.97 | 0.90–0.99 | 0 | 0 | 0 | 0.41 | 0 | 6 | 0.0 | 100% | 95 |
 | run | 108 | 0.98 | 0.93–0.99 | 0 | 0 | 0 | 0.47 | 0 | 0 | 0.0 | 100% | 100 |
