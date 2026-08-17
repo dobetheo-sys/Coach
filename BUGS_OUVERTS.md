@@ -6546,13 +6546,42 @@ attendu: 50 profils sur 1620 (3,1 %), Full majoritaire, aucun à longest_swim_m 
 cmd: echo "balayage dans scripts/ — voir D4 pour la méthode (1620 profils tri)"
 ```
 
-## O-59 · Le questionnaire perd la marque des choix sélectionnés · 🔴 **OUVERT** (bloque le partage)
+## O-59 · Le questionnaire perd la marque des choix sélectionnés · 🟡 **QUALIFIÉ — non reproduit en harnais, une anomalie de NAVIGATION trouvée**
 
-Constat du fondateur. **À QUALIFIER AVANT DE CORRIGER**, et les deux cas n'ont pas la même
-gravité : un autre choix de LA MÊME question qui efface le précédent est un comportement radio
-normal *sauf si le nouveau n'est pas marqué non plus* ; un choix d'UNE AUTRE question qui efface
-les réponses précédentes est le cas grave. C'est la première chose qu'un nouvel utilisateur fait :
-s'il ne voit pas ce qu'il a répondu, il doute de l'enregistrement et de tout ce qui suit.
+Constat du fondateur, **qualifié le 17/08/2026 selon son protocole en cinq points**, sur DEUX
+scénarios (mono-plan vierge, et multi-plans : plan existant `dispo=quotidienne` puis
+« ＋ Nouveau plan » puis clic « semaine » — son état réel) :
+
+```
+① la réponse est-elle ENREGISTRÉE ?   OUI dans les deux scénarios — le clic écrit le store
+   (localStorage, plan ACTIF), et la carte des décisions affiche « contraint » (= semaine),
+   jamais « quotidienne ». Store et carte CONCORDENT avec le clic.
+② semaine → quotidienne ?             NON REPRODUIT — y compris en multi-plans, où le clic
+   écrit bien dans le BROUILLON actif, pas dans l'ancien plan.
+③ jamais marqué, ou dé-marqué ?       le clic marque immédiatement (handler lié, .sel posé)
+④ même question / autre question ?    la marque SURVIT aux deux — mesuré
+⑤ rechargement ?                      le store survit ✓
+```
+
+**CE QUI A ÉTÉ TROUVÉ EN QUALIFIANT, et qui peut ÊTRE toute l'expérience rapportée** : après
+« suivant » puis « précédent », **on ne revient pas sur le même écran** — la liste des étapes se
+RECOMPOSE avec les réponses (les étapes sont dynamiques depuis U14), et l'indice `S.step` pointe
+alors une autre page. Les questions qu'on venait de marquer ne sont plus à l'écran : ça se LIT
+comme « mes choix ont disparu », alors que le store les porte. À corriger comme une navigation
+(retrouver l'étape par IDENTITÉ, pas par indice), pas comme un marquage.
+
+**Ce que le harnais ne peut pas exclure** : l'appareil du fondateur servait la build R26
+jusqu'au merge d'hier, et le service worker ne bascule qu'à une fermeture/réouverture complète
+(mesuré au test de rollback). Le contrôle à faire sur SON téléphone, 30 secondes : fermer
+l'app complètement, la rouvrir DEUX fois, refaire un clic — et si la perte persiste, noter
+l'ÉCRAN et la QUESTION exacts.
+
+**Verdict au point 1 : bug d'AFFICHAGE au pire (probablement de navigation) — il ne remonte
+donc PAS devant O-68 ni devant la progression** ; les mesures faites sur son profil restent
+fondées. Deux fautes de MON instrument pendant la qualification, écrites : mon lecteur d'état
+indexait `plans[activePlanId]` alors que `plans` est un TABLEAU (tout rendait `undefined`,
+j'allais conclure « fonctionnel » à tort) ; et mon marcheur ne gérait pas l'écran « Quel plan
+veux-tu construire ? » (14 itérations à cliquer dans le vide, « dispo jamais atteint »).
 
 ## O-60 · Le détail de séance ne s'affiche pas en natation · 🔴 **OUVERT** (bloque le partage)
 
