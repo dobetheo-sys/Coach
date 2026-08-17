@@ -8,22 +8,30 @@
  * régression — c'est une population que la mesure préalable n'a pas vue, et elle vaut plus que le
  * lot. Ne pas corriger, mesurer qui et pourquoi, et remonter. »*
  *
- * Cette sonde ne lit PAS le plan livré : le plafond y a déjà mordu, donc plus rien ne dépasse et
- * la mesure serait saturée par construction (dépistage de la règle 15). Elle rejoue la RÈGLE sur
- * les blocs livrés pour dire lesquels DÉPASSERAIENT si elle ne les lisait pas — c'est-à-dire
- * exactement la population que l'ancienne garde laissait passer.
+ * Il y a eu 87 écarts. Cette sonde dit QUI, et elle est écrite pour répondre DANS LES DEUX ÉTATS
+ * du moteur, sans témoin sur disque :
+ *
+ *   - moteur d'AVANT (plafond muet sur les mètres) : elle compte les blocs qui DÉPASSENT, et leur
+ *     dépassement est la mesure du défaut ;
+ *   - moteur d'APRÈS : les mêmes blocs sont livrés À la borne, et le compte des dépassements
+ *     tombe à zéro.
+ *
+ * Elle ne lit donc jamais « le plan livré dépasse-t-il ? » sur le seul état corrigé — ce serait
+ * saturé par construction (dépistage de la règle 15). Elle rejoue la RÈGLE sur les blocs livrés.
+ *
+ * L'écart est donné en MINUTES d'abord (corollaire de la règle 14 : un pourcentage sur une dose
+ * dont la borne est absolue est ininterprétable — 40 min est un plafond en minutes).
  */
 import "../src/app/bridge.ts";
 import { profiles as goldenProfiles } from "./goldenMaster.mjs";
-import { DOSE_CAP_MIN } from "../src/engine/constraintMatrix.ts";
+import { DOSE_CAP_MIN, parsePaceSec } from "../src/engine/constraintMatrix.ts";
 import { stepWorkMin } from "../src/generator/renderer.ts";
-import { parsePaceSec } from "../src/engine/constraintMatrix.ts";
 
 const capDe = (z) => /\.vo2$/.test(z) || z === "tr.vam" ? DOSE_CAP_MIN.vo2
   : /\.thr$|\.css$/.test(z) || z === "tr.asc" || z === "tr.flatthr" ? DOSE_CAP_MIN.thr : null;
 
-const parSport = {}, parZone = {};
-let blocs = 0, enMetres = 0, auPlafond = 0;
+const parSport = {}, parZone = {}, parNiveau = {}, profils = new Set();
+let blocs = 0, enMetres = 0, auPlafond = 0, dep = 0, depMin = 0, depMax = 0;
 const exemples = [];
 for (const { key, sport, a } of goldenProfiles()) {
   let p; try { p = globalThis.EBV2.buildPlan(sport, a); } catch { continue; }
@@ -47,13 +55,14 @@ for (const { key, sport, a } of goldenProfiles()) {
       if (st.distanceM == null) continue;      // prescrit en TEMPS : l'ancienne garde le voyait
       enMetres++;
       const travail = stepWorkMin(st, st.d || s.d, refs);
-      // « au plafond » : le bloc livré est À la borne — signe que la garde a mordu.
-      if (travail >= cap - 0.6) {
-        auPlafond++;
+      if (travail > cap + 0.6) {               // DÉPASSE : l'ancienne garde le laissait passer
+        dep++; depMin += travail - cap; depMax = Math.max(depMax, travail - cap);
+        profils.add(key);
         parSport[sport] = (parSport[sport] || 0) + 1;
         parZone[String(st.zone)] = (parZone[String(st.zone)] || 0) + 1;
-        if (exemples.length < 6) exemples.push(`${key} · ${s.name.slice(0, 30)} · ${st.zone} · ${(st.reps || 1)}×${st.distanceM} m = ${travail.toFixed(1)} min (plafond ${cap})`);
-      }
+        parNiveau[String(a.level)] = (parNiveau[String(a.level)] || 0) + 1;
+        if (exemples.length < 8) exemples.push(`${key} · ${s.name.slice(0, 28)} · ${st.zone} · ${(st.reps || 1)}×${st.distanceM} m = ${travail.toFixed(1)} min (plafond ${cap}, +${(travail - cap).toFixed(1)})`);
+      } else if (travail >= cap - 0.6) auPlafond++;  // livré À la borne : la garde a mordu
     }
   }
 }
@@ -62,11 +71,18 @@ console.log("LOT 1 — LE PLAFOND DE DOSE SUR LES BLOCS PRESCRITS EN MÈTRES\n")
 console.log(`  blocs de qualité plafonnables : ${blocs}`);
 console.log(`  …dont prescrits en MÈTRES     : ${enMetres} (${(100 * enMetres / (blocs || 1)).toFixed(1)} %) — invisibles pour l'ancienne garde`);
 console.log(`  …dont livrés À la borne       : ${auPlafond}`);
-console.log(`\n  par sport : ${JSON.stringify(parSport)}`);
-console.log(`  par zone  : ${JSON.stringify(parZone)}`);
-for (const e of exemples) console.log(`     ${e}`);
+console.log(`  …dont qui DÉPASSENT encore    : ${dep}${dep ? `  (total +${depMin.toFixed(0)} min · pire +${depMax.toFixed(1)} min)` : ""}`);
+if (dep) {
+  console.log(`\n  profils touchés : ${profils.size}`);
+  console.log(`  par sport  : ${JSON.stringify(parSport)}`);
+  console.log(`  par zone   : ${JSON.stringify(parZone)}`);
+  console.log(`  par niveau : ${JSON.stringify(parNiveau)}`);
+  for (const e of exemples) console.log(`     ${e}`);
+}
 console.log(`\n  → ${enMetres === 0
   ? "AUCUN bloc de qualité en mètres — la sonde ne mesure rien, vérifier l'instrument."
+  : dep > 0
+  ? `${dep} bloc(s) en mètres DÉPASSENT leur plafond sur ${profils.size} profils : c'est la population\n    que l'ancienne garde laissait passer, et elle n'était visible d'aucune mesure préalable.`
   : auPlafond === 0
-  ? "Le plafond ne mord sur AUCUN bloc en mètres : la garde est désormais lisible mais sans objet\n    sur ce corpus — l'écart au golden vient d'ailleurs, à expliquer avant de recapturer."
-  : `${auPlafond} bloc(s) en mètres sont livrés À la borne : c'est la population que l'ancienne\n    garde laissait passer, et elle n'était visible d'aucune mesure préalable.`}`);
+  ? "Ni dépassement ni bloc à la borne : la garde est lisible mais sans objet sur ce corpus."
+  : `0 dépassement et ${auPlafond} bloc(s) livrés À la borne : la garde mord, et la population\n    ci-dessus est passée sous le plafond au lieu de le franchir.`}`);

@@ -5748,3 +5748,54 @@ quoi: le plancher de séance de nage est en mètres, donc muet sur la durée
 attendu: O50-REPRODUIT
 cmd: grep -q 'const floorM = ctx.beginner ? 600 : 750;' src/generator/planGenerator.ts && echo "O50-REPRODUIT"
 ```
+
+---
+
+## O-51 · `C30b-A` mesure le DÉCLENCHEMENT d'une passe, pas la propriété qu'elle sert · 🔴 **OUVERT**
+
+Trouvé par le lot 1, en devenant rouge pour la meilleure des raisons : **la passe n'avait plus
+rien à faire.**
+
+```
+défaut       Le critère `C30b-A` (banc v6) exige qu'une décision `C30b` soit émise sur
+             4 profils, et porte une garde de non-vacuité `if (vus < 4)`. Cette garde est
+             exactement ce que la règle 19 réclame — et elle rougit quand la sortie longue
+             atteint sa cible SANS la passe.
+
+             Mesuré (expérience contrôlée, profil exact du banc, `semi@7:00/6h`) :
+
+                            S9 spec    S10 peak   S11 peak   décisions C30b
+                AVANT       106 min     129 min    130 min    1
+                APRÈS       115 min     129 min    130 min    0
+
+             La longue est IDENTIQUE au pic et plus longue de 9 min en spécifique. Le
+             critère rapporte « aucune décision C30b alors que la longue devrait monter » —
+             elle est montée, et davantage.
+
+propriété    « la sortie longue atteint sa cible de spécificité »
+réelle       dont « C30b se déclenche » n'est qu'un des chemins. Le critère nomme la passe
+             et mesure la passe ; il ne regarde jamais la cible.
+
+à écrire     le critère lit `longRunSpecificityFloor` (la cible, déjà calculée et déjà
+             importée par le générateur) et vérifie que la longue livrée l'atteint — la
+             décision `C30b` restant vérifiée QUAND elle est émise (ses trois moitiés
+             actuelles : borne 70 %, chiffre annoncé = chiffre livré, neutralité en volume).
+             La non-vacuité se déplace alors sur « au moins un profil de l'échantillon a une
+             cible non triviale », qui ne dépend plus du chemin emprunté.
+
+famille      règle 19 (« quel est le correctif le moins coûteux qui ferait passer ce
+             test ? ») — ici la question se pose à l'envers : le correctif le moins coûteux
+             serait d'abaisser `vus < 4` à `vus < 3`, et il ne résoudrait rien, parce que le
+             critère ne mesure pas la bonne grandeur. C'est le même diagnostic, vu depuis un
+             test qui rougit à tort plutôt qu'un test satisfait à tort.
+
+             Et c'est la douzième occurrence dans ce dépôt d'un critère qui NOMME une
+             grandeur et en MESURE une voisine.
+```
+
+```verify
+id: O-51
+quoi: C30b-A exige le déclenchement de la passe au lieu de vérifier la cible atteinte
+attendu: O51-REPRODUIT
+cmd: grep -q "seulement \${vus} décision(s) observée(s)" audit_v6.mjs && echo "O51-REPRODUIT"
+```

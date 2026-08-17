@@ -15,7 +15,7 @@ aucune ne se cite seule comme un effet.
 
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Longue >55% | Facile (méd) | Réparations | Score STRUCTUREL moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| run | 108 | 0.98 | 0.93–0.99 | 0 | 0 | 0 | 0.47 | 0 | 84% | 0 | 100 |
+| run | 108 | 0.98 | 0.94–0.99 | 0 | 0 | 0 | 0.47 | 0 | 84% | 0 | 100 |
 | bike | 135 | 0.99 | 0.97–1.00 | 0 | 0 | 0 | 0.44 | 0 | 91% | 0 | 99 |
 | swim | 108 | 0.97 | 0.91–1.00 | 0 | 0 | 0 | 0.49 | 0 | 86% | 18 | 98 |
 | tri | 108 | 0.97 | 0.92–1.00 | 0 | 0 | 0 | 0.45 | 11 | 76% | 14 | 94 |
