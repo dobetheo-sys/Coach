@@ -6525,6 +6525,15 @@ Ce que D4 laisse. **50 profils sur 1 620**, concentrés sur **Full (41)** et jam
 `M / sessions_max=5 / débutant / 1000 m` à **0 palier livré sur 3 annoncés**, et il ne dépend pas
 des doubles (il tombe identiquement en `non` et en `parfois`).
 
+**PRIORITÉ RELEVÉE (fondateur, 17/08/2026) — ce n'est pas un résidu statistique.** Le pire cas
+est `M / sessions_max=5 / DÉBUTANT` à **0 palier sur 3**, et le débutant est *exactement* la
+population pour laquelle B-17 a été écrit. C'est la **troisième fois** que ce ticket la manque :
+`sonde:b17` n'échantillonnait aucun débutant, puis les 53 titres menteurs sur la borne C15,
+maintenant zéro palier sur M à budget serré. Ce n'est pas une coïncidence — *le débutant a le
+budget le plus serré, le moins de séances et la capacité la plus basse, donc il tombe dans toutes
+les coupes à la fois*, et **toute protection qui dépend d'une séance survivante le rate
+structurellement**. L'entrée se juge sur cette lecture, pas sur les 3,1 %.
+
 Non traité délibérément : c'est un constat NOUVEAU, pas le constat du fondateur, et le périmètre
 est gelé. La piste est la même famille — les positions des paliers sont calculées sur le
 CALENDRIER de la phase spécifique, sans regarder si la semaine visée porte réellement le créneau
@@ -6565,17 +6574,30 @@ rend « aucune information portée par la couleur seule » réellement vraie, un
 une convention que l'athlète n'a pas. À rapprocher de la mesure §3b du 17/08 (`mesure:contraste`),
 qui note la barre `aria-hidden` et ses segments porteurs de leur seul numéro.
 
-## O-62 · Zéro séance de technique en natation sur 40 semaines · 🔴 **OUVERT**
+## O-62 · Zéro séance de technique en natation sur 40 semaines · ✅ **QUALIFIÉ — c'est la COUPE, pas la règle** (voir O-66)
 
 Composition mesurée par le fondateur : récup courte **60 (46 %)** · vitesse 42 · seuil (+dist) 27
 · continue 1 · **technique/éducatifs 0**. L'athlète nage à 2'05–2'20/100 m et son limitant est la
 technique sous fatigue. *Plus de volume à mauvaise technique produit plus de volume à mauvaise
 technique.* Le module éducatifs existe et ne parvient pas au plan.
 
-**Lien avec D4, à ne pas perdre** : la même mesure a montré que sous doubles à budget serré, le
-véhicule `swMain` passe de 31 à 3 occurrences et `swTech` reste — c'est-à-dire que la composition
-de nage est décidée par la COUPE et non par la règle. À qualifier : séance-type absente de la
-bibliothèque, ou règle qui ne la prescrit jamais ?
+**LA MESURE QUI TRANCHE (17/08/2026, demandée par le fondateur) — c'est la COUPE.** Composition
+de nage AVANT `applySessionBudget` contre APRÈS, un seul facteur varie, 70.3 · 40 semaines ·
+doubles · `sessions_max: 6` :
+
+```
+                        la règle prescrit      il survit
+récup                          45                 46
+swMain (nage seuil)            31                  2
+swTech (vitesse/éducatifs)     30                  0
+continue (B-17)                 3                  3
+```
+
+**La règle prescrit une composition équilibrée ; la coupe ne laisse que la récupération.** Le
+constat s'inverse donc exactement comme le fondateur l'avait pressenti : *le plan ne préfère pas
+la récupération, il n'a plus que ça.* Les 46 % de récup ne sont pas un choix, ce sont **les
+survivants**. Le correctif n'est donc PAS « ajouter une séance-type de technique » — elle est
+prescrite 30 fois et retirée 30 fois — mais O-66.
 
 ## O-63 · L'allocation vélo · 🔴 **OUVERT**
 
@@ -6607,3 +6629,71 @@ les allures de nage sont ancrées sur le CSS de l'athlète et non sur une table 
 livré) · la consigne de la continue est exactement ce que B-17 devait produire · C22 tient (chaque
 récup revient sous la dernière semaine de charge) · le brick d'affûtage existe avec son rappel de
 transition (B-19).
+
+## O-66 · La coupe par `sessions_max` n'a aucune notion de valeur — 98 % de la coupe tombe sur UNE discipline · 🔴 **OUVERT, mesuré**
+
+**Origine** : le fondateur, à partir de ma phrase « sous doubles à budget serré, `swMain` passe de
+31 à 3 occurrences pendant que `swTech` reste » (17/08/2026).
+
+### La prémisse a été vérifiée et elle est FAUSSE — le vrai critère est pire
+
+Le document parlait d'« un ordre **positionnel** — dernier ajouté, premier retiré, une discipline
+de pile ». Lu dans `applySessionBudget` (`src/generator/weekBuilder.ts`), ce n'est pas ça :
+
+```
+étape 1  journées à 2 séances : on retire la séance la plus COURTE EN MINUTES
+         (`cand.reduce(... (y.s.min||0) < (x.s.min||0) ...)`), jamais la longue ni le brick
+étapes 2-4  journées entières, DEPUIS LA FIN de la semaine, dans l'ordre
+         récupération → facile → dur (hors `durLong`) → dernier recours
+         (`forced` et `durLong` ne sont jamais touchés)
+```
+
+Le classement n'est donc pas positionnel : **il EST un jugement de valeur, et sa monnaie est la
+MINUTE.** C'est le pire proxy possible pour un triathlon, parce que la natation est la discipline
+aux séances les plus courtes — donc la discipline limitante est structurellement la première à
+partir. La conclusion du fondateur est renforcée par la correction de sa prémisse, pas affaiblie.
+
+### La mesure — un seul facteur varie (`applySessionBudget` neutralisée)
+
+70.3 · 40 semaines · doubles · `sessions_max: 6`, séances par discipline :
+
+```
+              avant la coupe      après        écart
+course (rn)         120            120            0
+brick (br)           13             13            0
+vélo (bk)            48             47           −1
+natation (sw)       109             51          −58
+```
+
+**58 des 59 séances retirées sont des séances de natation — 98 %.** La coupe se présente comme un
+budget de séances ; elle fait en réalité de l'**allocation entre disciplines**, dans le sens
+exactement inverse de ce qu'un entraîneur ferait sur un athlète limité par la nage. Un mécanisme
+qui décide sans savoir qu'il décide : la forme que ce chantier a fermée douze fois, ici sur la
+composition ENTIÈRE du plan et non sur une valeur.
+
+Durées moyennes qui expliquent le classement : natation 50 min · vélo 68 · brick 203 · course 38.
+(La course survit malgré ses 38 min parce qu'elle n'est pas la seconde séance d'une journée
+double : les deux critères de la coupe se cumulent sur la nage.)
+
+### Ce que le moteur a déjà sous la main
+
+`swim_limit` existe et pilote le ciblage des éducatifs ; `mainDiscipline` est déjà transmise au
+point fixe. L'ordre proposé par le fondateur — *ne se coupe jamais* : séance principale de la
+discipline limitante, séances spécifiques de course, paliers B-17 ; *se coupe en premier* :
+récupération, mobilité, complément dans une discipline non limitante — n'invente rien : c'est
+celui qu'on applique déjà partout ailleurs pour décider quoi protéger.
+
+### NON IMPLÉMENTÉ — et c'est une décision, pas un oubli
+
+Le correctif change la composition de **presque tous les plans de triathlon** (98 % de la coupe
+change de cible) et touche les sept sports par le même point d'entrée. Deux raisons de ne pas
+l'écrire dans le même souffle que la mesure : le périmètre est gelé, et la mesure qui fonde
+l'arbitrage a BOUGÉ depuis sa rédaction (la prémisse « pile » est réfutée, l'ampleur est plus
+grande que « swMain 31 → 3 » : c'est toute la natation). Arbitrage à rendre.
+
+```verify
+id: O-66
+quoi: la coupe par sessions_max retire-t-elle encore 98 % de ses séances dans une seule discipline ?
+attendu: sw 109 → 51 (−58) contre rn 120 → 120, bk 48 → 47, br 13 → 13 sur 70.3/40 sem/doubles/sessions_max=6
+cmd: grep -n "cand.reduce" src/generator/weekBuilder.ts
+```
