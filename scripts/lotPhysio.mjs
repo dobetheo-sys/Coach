@@ -1264,6 +1264,30 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   return { ok: bad.length === 0, detail: bad.join(" · ") || `${n} blocs épinglés · ${ko} rabotés (O-54, C15 gagne contre l'épingle) · zones ${JSON.stringify(zones)}` };
 });
 
+T("T-40", "vert", "aucun titre de séance n'annonce une distance que la séance ne contient pas (O-54)", () => {
+  // Le titre « Nage continue en eau libre — 3800 m d'affilée » était livré à 500 m chez un
+  // débutant. Le critère lit le NOMBRE DANS LE TITRE et le compare au contenu du bloc — jamais à
+  // l'épingle, qui est précisément la valeur dont le titre s'était détaché.
+  //
+  // Non-vacuité : il faut que des titres chiffrés EXISTENT dans le corpus, sans quoi « 0 titre
+  // qui ment » est satisfait par un moteur qui n'en produit aucun (règle 19).
+  // Contre-preuve : correctif retiré → 57 titres mentent sur 308.
+  let n = 0, ment = 0; const ex = [];
+  for (const { key, plan } of goldenAvecMoteur()) {
+    for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? []) {
+      const m = /— (\d+) m d'affilée/.exec(String(s.name || "")); if (!m) continue;
+      n++;
+      const corps = (s.steps || []).filter((x) => x.role === "body" && x.distanceM != null);
+      const livre = corps.length === 1 ? (corps[0].reps || 1) * (corps[0].distanceM || 0) : null;
+      if (livre !== +m[1]) { ment++; if (ex.length < 3) ex.push(`${key} · « ${s.name} » livre ${livre}`); }
+    }
+  }
+  const bad = [];
+  if (n < 50) bad.push(`seulement ${n} titre(s) chiffré(s) dans le corpus — le critère ne mesure presque rien`);
+  if (ment) bad.push(`${ment} titre(s) annoncent une distance absente du contenu · ${ex.join(" ; ")}`);
+  return { ok: bad.length === 0, detail: bad.join(" · ") || `${n} titres chiffrés, 0 qui ment` };
+});
+
 // T-38 RETIRÉ (O-46 réfuté, 16/08/2026) — il comparait `CAP_SWIM` à une exigence de SÉANCE alors
 // que `CAP_SWIM` borne UN BLOC de la sortie longue (`if (s.long) { if (s.d === "sw") … }`). Un
 // triathlète Full nage jusqu'à 7 125 m en une séance : la prémisse « le moteur lui interdit sa

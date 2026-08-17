@@ -10489,6 +10489,34 @@ function syncDerivedLabels(plan        )       {
           const swLeg = (sess.steps || []).find((b) => b.role === "body" && b.leg === "swim");
           if (swLeg) sess.name = String(sess.name).replace(/\(\d+ transitions\)/, "(" + 2 * (swLeg.reps || 1) + " transitions)");
         }
+        // O-54 — LE TITRE D'UNE NAGE CONTINUE DIT LA DISTANCE QU'ELLE CONTIENT, JAMAIS SON ÉPINGLE.
+        //
+        // « Nage continue en eau libre — 3800 m d'affilée » était livrée à **500 m** chez un
+        // débutant : C15 borne sa séance de nage à 850 m tous blocs confondus, l'échauffement et
+        // le retour au calme en prennent 350, il reste 500 pour le corps. Mesuré : **57 titres**
+        // sur 308 annonçaient l'épingle et non le contenu.
+        //
+        // Les deux lectures de ce titre sont mauvaises, et la seconde est dangereuse : l'athlète
+        // fait 500 et croit avoir fait la répétition (la protection est nominale), ou il lit le
+        // titre et tente 3 800 — **le scénario exact que B-17 existe pour empêcher, et le plan
+        // l'y invitait**. Un titre honnête à 500 m est une séance qu'il peut évaluer ; un titre
+        // qui ment est une instruction qu'il peut suivre.
+        //
+        // Ceci ne referme PAS O-54 : la séance n'aurait pas dû être prescrite du tout si elle
+        // n'est pas livrable (moitié « la franchissabilité inclut la livrabilité », qui demande un
+        // arbitrage — voir le registre). C'est l'empêchement du dommage en attendant, et il est
+        // souhaitable de toute façon : un titre dérivé de l'épingle plutôt que du livré est une
+        // promesse non gardée par construction.
+        //
+        // Ici et pas à la naissance de la séance, pour la raison de R5.1 qui vaut pour toute prose
+        // dérivée d'un nombre : les passes de réparation modifient encore le bloc APRÈS.
+        if (/— \d+ m d'affilée/.test(sess.name || "")) {
+          const corps = (sess.steps || []).filter((b) => b.role === "body" && b.distanceM != null);
+          if (corps.length === 1) {
+            const livre = (corps[0].reps || 1) * (corps[0].distanceM || 0);
+            sess.name = String(sess.name).replace(/— \d+ m d'affilée/, "— " + livre + " m d'affilée");
+          }
+        }
       }
 }
 
