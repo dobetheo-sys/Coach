@@ -1668,6 +1668,46 @@ const RECUP_EVERY                          = { reprise: 3, confirme: 4, ancien: 
 const C15_BEGINNER_SWIM_SESSION_CAP_M = rule("C15", "nage débutant ≤850m/séance, tous blocs confondus (technique avant volume, risque épaule)", 850);
 const C20_BEGINNER_SWIM_H_PER_SESSION = rule("C20", "la promesse déclarée d'un nageur débutant suit sa capacité C15 (~25min/séance)", 0.42);
 const BEGINNER_SWIM_VOLPEAK_CAP_H = 4;
+
+/**
+ * O-44 — LE PLANCHER DE DURÉE D'UNE SÉANCE DE NAGE, EN MINUTES D'EAU.
+ *
+ * MESURÉ AVANT D'ÊTRE ÉCRIT : sur les semaines de charge, **69 profils de nage sur 136** vivent à
+ * 80-100 % de séances courtes, et les **36 débutants y sont tous, sans exception**. La distribution
+ * est bimodale sans milieu (44 % des profils entre 20 et 40 % de nages courtes, 40 % entre 80 et
+ * 100 %). L'historique ne discrimine pas (20/25/24) : c'est une population à petit volume
+ * hebdomadaire réparti sur jusqu'à six séances. Cas extrême : `swim/sprint/reprise/inter` à 97 %,
+ * six semaines sur six.
+ *
+ * LA PATHOLOGIE N'EST PAS « SIX JOURS », C'EST « DIX-SEPT MINUTES » — personne ne se déplace
+ * jusqu'à une piscine pour dix-sept minutes d'eau. C'est pourquoi le correctif est un plancher de
+ * DURÉE et non un `MAX_SWIM_DAYS` : ce dernier inventerait une physiologie qui n'existe pas.
+ * `MAX_RUN_DAYS` borne des jours d'IMPACT, contrainte orthopédique réelle ; la nage n'a pas
+ * d'équivalent, et la physiologie pousse même dans l'autre sens — la technique est une COMPÉTENCE,
+ * donc six séances courtes valent mieux que trois longues pour l'apprentissage.
+ *
+ * ⚠ NI DÉRIVÉ D'UNE DISTANCE, ET C'EST UN CHOIX. Un plancher en mètres serait inversement
+ * proportionnel à la vitesse : il donnerait le seuil le plus BAS au nageur le plus RAPIDE, soit
+ * l'inverse exact de l'argument du déplacement — le coût du trajet et du vestiaire ne dépend pas
+ * de la vitesse de l'athlète. C24/C24b (600/750 m) reste le plancher de DISTANCE et ne change pas ;
+ * celui-ci se superpose, en minutes.
+ *
+ * POURQUOI 20 ET PAS PLUS : pour un débutant à CSS 2:00, C15 (850 m) n'autorise que **19,0 min**
+ * — toute valeur au-dessus de 19 donne donc le même résultat aux 36 débutants, c'est-à-dire à
+ * TOUTE la population que le ticket vise. La constante ne décide que du sort des 33 non-débutants,
+ * et 20 est la valeur la moins agressive qui produise l'effet mesuré.
+ *
+ * ```
+ * provenance : hypothèse LOGISTIQUE — le coût du déplacement et du vestiaire ne dépend pas
+ *              de la vitesse de l'athlète
+ * nature     : NON physiologique. Le moteur ignore l'accès réel au bassin.
+ * origine    : assistant, non validé externement
+ * statut     : PANSEMENT
+ * sortie     : remplacé par une DÉCLARATION le jour où le questionnaire porte une question
+ *              de disponibilité au bassin
+ * ```
+ */
+const SWIM_SESSION_FLOOR_MIN = rule("O-44", "plancher de durée d'une séance de nage : sous ~20 min d'eau, le déplacement coûte plus que la séance ne rapporte (hypothèse logistique, PANSEMENT)", 20);
 /**
  * B-09 — LE BIAIS DÉCLARATIF DE LA PISCINE DÉPEND DE QUI NAGE, PAS SEULEMENT DU BASSIN.
  *
@@ -8637,6 +8677,8 @@ const IS_QUALITY_ZONE = (zone        )          =>
 /** C30b — les décisions produites par `raiseLongRunToSpecificity`, remontées à l'appelant :
  *  `reconcileDeclaredVolume` ne connaît pas le journal de décisions du plan. */
 const _c30b                                                                       = [];
+/** O-44 — nombre de séances de nage regroupées au dernier passage (0 = le plancher n'a pas mordu). */
+const _o44 = { regroupees: 0 };
 
 function reconcileDeclaredVolume(
   plan        , warnings          ,
@@ -8646,6 +8688,8 @@ function reconcileDeclaredVolume(
    *  `keepTaperSwim` (R13.3) : le sport déclare que l'affûtage garde une nage par semaine —
    *  les coupes de fréquence l'évitent tant qu'une autre victime existe. */
   ctx                                                                                                                                           
+                                                                                          
+                    
                                                                                          
                                                                                         
                                                                                    
@@ -8667,6 +8711,7 @@ function reconcileDeclaredVolume(
   // passe tardive, un module futur, une séance construite à la main. Il est ici pour que le
   // prochain producteur de séances n'ait pas besoin de connaître la règle pour la respecter.
   _c30b.length = 0;
+  _o44.regroupees = 0;
   enforceMedicalHold(plan, !!ctx?.medHold);
   // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
   // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
@@ -10121,6 +10166,17 @@ function reconcileDeclaredVolume(
         if (render) render(sx);
       }
     }
+
+    // ---- O-44 — LE PLANCHER DE DURÉE : ÉCRIT, MESURÉ, **NON BRANCHÉ** ----
+    //
+    // La passe de regroupement a été écrite, placée comme le brief le demande (dans la boucle du
+    // point fixe, avant le sceau) et mesurée. Elle est RETIRÉE parce que son critère d'acceptation
+    // n°3 — « aucun profil ne perd de volume » — est ROUGE, et que le brief dit lui-même que ce
+    // critère est le vrai test. Voir `BUGS_OUVERTS.md` « O-44 » : la mesure, les trois fuites
+    // corrigées, et l'arbitrage qui reste.
+    //
+    // Ce qui survit : `SWIM_SESSION_FLOOR_MIN` (la décision et sa provenance) et
+    // `npm run mesure:o44` (les quatre critères, avec témoin). Rien d'inerte dans le pipeline.
   }
 
   // ---- C26c (R20.4) — LE PLAFOND DE TEMPS DUR, ENFIN APPLIQUÉ ----
@@ -10179,6 +10235,7 @@ function reconcileDeclaredVolume(
   // ni ne gonfle après cette ligne.
   for (let p = 0; p < 3 && enforceC22Final(); p++);
 
+
   // C30b — LA SORTIE LONGUE ATTEINT SA CIBLE DE SPÉCIFICITÉ, ET C'EST ICI QU'ELLE LE PEUT.
   //
   // Douzième paiement de la même leçon, et ma propre passe cette fois. Placée juste après
@@ -10198,6 +10255,13 @@ function reconcileDeclaredVolume(
   //   · elle ne fait que MONTER la sortie longue, ce qui va dans le sens d'I14 au lieu de le
   //     rouvrir.
   raiseLongRunToSpecificity();
+
+
+  // O-44 §4 — LA LIGNE DIT CE QUI EST SUPPOSÉ, PAS CE QUI EST DÉCIDÉ. Elle nomme l'hypothèse
+  // (logistique, pas physiologique), reconnaît que le moteur ignore la situation de l'athlète, et
+  // lui rend la décision — c'est la seule forme honnête pour un PANSEMENT.
+  if (_o44.regroupees > 0)
+    warnings.push("Tes séances de nage sont regroupées pour qu'aucune ne descende sous une vingtaine de minutes dans l'eau — en dessous, le déplacement coûte plus que la séance ne rapporte. Si tu as un bassin accessible, tu peux les fractionner davantage : la fréquence sert la technique.");
 
   if (forcedWeeks > 0)
     warnings.push("Sur " + forcedWeeks + " semaine(s) de charge, la structure minimale de ce plan (une séance digne de ce nom ne descend pas sous 30 min, une sortie longue encore moins) dépasse le volume hebdomadaire que tu as déclaré. Le chiffre annoncé a été aligné sur ce qui t'est réellement prescrit — mieux vaut une courbe honnête qu'une promesse que le plan ne tient pas. Deux remèdes, à toi de choisir : relever le volume dont tu disposes, ou viser un objectif plus court.");
@@ -12038,7 +12102,7 @@ function generatePlan(profile                , opts                             
   const _spec30 = String(a.sport) === "run"
     ? longRunSpecificityFloor(fmt, r.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(a.vol_max ?? "")) || undefined)
     : null;
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport          , "swimSessionFloors"), beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport          , "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport          ).mainDiscipline, disciplines: sportModule(a.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 } });
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport          , "swimSessionFloors"), format: a.format, beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport          , "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport          ).mainDiscipline, disciplines: sportModule(a.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 } });
 
   for (const d of _c30b) r.decisions.push(d);
 
@@ -12954,7 +13018,7 @@ function generateAudited(profile                , auditOpts                     
   const _spec30f = String(reasoned.profile.sport) === "run"
     ? longRunSpecificityFloor(String(reasoned.profile.format ?? ""), reasoned.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(reasoned.profile.vol_max ?? "")) || undefined)
     : null;
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { longSpecTargetMin: _spec30f ? _spec30f.target : undefined, swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport          , "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport          ).mainDiscipline, disciplines: sportModule(reasoned.profile.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0, refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 } });
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { longSpecTargetMin: _spec30f ? _spec30f.target : undefined, swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), format: reasoned.profile.format, beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport          , "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport          ).mainDiscipline, disciplines: sportModule(reasoned.profile.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0, refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 } });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.

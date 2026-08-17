@@ -5583,3 +5583,93 @@ quoi: l'auditeur reçoit le format DÉCLARÉ, pas celui que le plan vise
 attendu: O49-REPRODUIT
 cmd: grep -q 'format: profile.format' src/generator/repairLoop.ts && echo "O49-REPRODUIT"
 ```
+
+
+## O-44 · Plancher de durée de séance en nage · 🟠 **ÉCRIT, MESURÉ, NON BRANCHÉ — arbitrage**
+
+**Le constat du brief est reproduit exactement** : sur les semaines de charge, **69 profils de nage
+sur 136** vivent à 80-100 % de séances courtes, **les 36 débutants sans exception**, distribution
+bimodale sans milieu (44 % entre 20-40 %, 40 % entre 80-100 %). L'historique ne discrimine pas
+(20/25/24). Pire cas `swim/sprint/reprise/inter` à 97 %, six semaines sur six.
+
+`SWIM_SESSION_FLOOR_MIN = 20` est écrite avec son bloc de provenance (hypothèse LOGISTIQUE, non
+physiologique, PANSEMENT, sortie = une question de disponibilité au bassin). La justification du
+« 20 et pas plus » est vérifiée : C15 (850 m) à CSS 2:00 ne permet que **19,0 min**, donc toute
+valeur au-dessus de 19 donne le même résultat aux 36 débutants.
+
+### La passe est écrite, placée comme demandé — et RETIRÉE, parce que le critère n°3 est rouge
+
+```
+1. second mode (≥ 80 % de nages courtes)  54 → 35 profils          ✓
+   sous-population (> 50 %)               69 → 36 profils          ✓
+2. débutants dans la sous-population      36 → 36                  ✖
+3. profils qui PERDENT du volume de nage  104 / 136, jusqu'à −132 min  ✖
+4. fréquence : baisse hors des profils à séances courtes  0        ✓
+```
+
+**Le brief dit que le troisième est le vrai test. Il l'a été** — il a attrapé trois fuites
+successives, chacune réelle et chacune corrigée, et une quatrième qui n'est pas dans la passe.
+
+**Fuite 1 — je versais dans les blocs de QUALITÉ.** R4.1 l'interdit, et ce n'est pas une
+préférence : `scaleBlock` borne les répétitions d'un bloc de qualité à celles que la bibliothèque a
+choisies. La passe ajoutait, la passe suivante annulait. Mesuré sur
+`swim/sprint/reprise/inter/competition` : semaine 1 à **6 nages / 4 700 m / 100 min** avant,
+**3 nages / 3 150 m / 69 min** après — 1 550 m évaporés. Corrigé : le déversement va sur le bloc
+FACILE, patron I14b.
+
+**Fuite 2 — je conservais les MÈTRES quand la courbe compte en MINUTES** (règle 14). Un mètre
+déplacé de `sw.css` vers `sw.easy` vaut PLUS de minutes (O-42) : la semaine sortait au-dessus de sa
+cible et le lissage la rabotait. Corrigé : on redistribue des minutes, chaque receveuse recevant des
+mètres à SA vitesse de zone.
+
+**Fuite 3 — le garde comparait une capacité en mètres à un besoin en mètres tout en distribuant des
+minutes.** Les deux membres se comparent désormais dans la monnaie de la courbe.
+
+**Fuite 4 — elle n'est PAS dans la passe, et c'est la mesure qui le dit.** Instrumentée au point
+d'action, la semaine 1 sort à **100 min pour une cible de 102** : le volume est conservé là où la
+passe agit. C'est `enforceC22Final` qui reprend **12 min** (100 → 88), puis le second
+`reconcileDeclaredVolume` de la boucle de réparation **8 de plus** (88 → 80).
+
+```
+[O44] S1 retrait -> 100 min livrées, cible 102     ← la passe conserve
+[O44] après-O44      : S1 = 100 min
+[O44] après-C26c+B02 : S1 = 100 min
+[O44] après-C22final : S1 =  88 min                ← −12
+[O44] S1 retrait -> 88 min livrées, cible 90       ← 2e reconcile → 80
+```
+
+### Ce que ça coûte si on la branche quand même : 46 violations DURES
+
+`audit:v1` et `audit:v2` passent au ROUGE (**46 combinaisons**), et `audit:v6` régresse sur **D4**
+(« une semaine de récup n'est jamais plus chargée que la dernière semaine de charge ») — mécanisme
+cohérent : les semaines de décharge sont EXCLUES de la passe (C29b : une nage courte s'y garde), donc
+elles conservent leurs cinq séances courtes pendant que les semaines de charge se regroupent, et le
+rapport s'inverse.
+
+### L'arbitrage, chiffré
+
+```
+(a) exempter les semaines regroupées du lissage final   → affaiblit C22, une règle de SÉCURITÉ,
+                                                          pour une hypothèse LOGISTIQUE
+(b) accepter la perte de volume                         → c'est l'amputation que le brief interdit
+(c) étendre le regroupement aux semaines de décharge    → contredit C29b (Bosquet 2007) et rouvre
+                                                          le défaut que R13.3 a fermé
+(d) ne rien brancher, garder la constante et la mesure  → l'état actuel
+```
+
+Aucune de ces issues n'est mécanique : (a) et (c) touchent des règles arbitrées, (b) est exclue par
+le brief. **La passe n'est donc pas branchée**, `SWIM_SESSION_FLOOR_MIN` et `npm run mesure:o44`
+restent, et rien d'inerte n'entre dans le pipeline.
+
+**Et le critère n°2 ne bougera pas par ce mécanisme, quelle que soit l'issue** : sous C15 (850 m),
+un débutant dont les nages sont déjà au plancher C24b de 600 m n'offre que 250 m de marge par
+séance — la capacité d'accueil ne suffit jamais à absorber une séance retirée, et le garde
+anti-amputation refuse le regroupement. Les 36 débutants sont hors de portée d'un regroupement tant
+que C15 les borne, ce qui est une propriété de C15, pas de ce ticket.
+
+```verify
+id: O-44
+quoi: la sous-population des nages courtes existe toujours, la passe n'est pas branchée
+attendu: UNE SOUS-POPULATION EXISTE
+cmd: node scripts/mesureO44b.mjs | grep -o "UNE SOUS-POPULATION EXISTE"
+```

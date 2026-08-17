@@ -129,6 +129,46 @@ export const RECUP_EVERY: Record<History, number> = { reprise: 3, confirme: 4, a
 export const C15_BEGINNER_SWIM_SESSION_CAP_M = rule("C15", "nage débutant ≤850m/séance, tous blocs confondus (technique avant volume, risque épaule)", 850);
 export const C20_BEGINNER_SWIM_H_PER_SESSION = rule("C20", "la promesse déclarée d'un nageur débutant suit sa capacité C15 (~25min/séance)", 0.42);
 export const BEGINNER_SWIM_VOLPEAK_CAP_H = 4;
+
+/**
+ * O-44 — LE PLANCHER DE DURÉE D'UNE SÉANCE DE NAGE, EN MINUTES D'EAU.
+ *
+ * MESURÉ AVANT D'ÊTRE ÉCRIT : sur les semaines de charge, **69 profils de nage sur 136** vivent à
+ * 80-100 % de séances courtes, et les **36 débutants y sont tous, sans exception**. La distribution
+ * est bimodale sans milieu (44 % des profils entre 20 et 40 % de nages courtes, 40 % entre 80 et
+ * 100 %). L'historique ne discrimine pas (20/25/24) : c'est une population à petit volume
+ * hebdomadaire réparti sur jusqu'à six séances. Cas extrême : `swim/sprint/reprise/inter` à 97 %,
+ * six semaines sur six.
+ *
+ * LA PATHOLOGIE N'EST PAS « SIX JOURS », C'EST « DIX-SEPT MINUTES » — personne ne se déplace
+ * jusqu'à une piscine pour dix-sept minutes d'eau. C'est pourquoi le correctif est un plancher de
+ * DURÉE et non un `MAX_SWIM_DAYS` : ce dernier inventerait une physiologie qui n'existe pas.
+ * `MAX_RUN_DAYS` borne des jours d'IMPACT, contrainte orthopédique réelle ; la nage n'a pas
+ * d'équivalent, et la physiologie pousse même dans l'autre sens — la technique est une COMPÉTENCE,
+ * donc six séances courtes valent mieux que trois longues pour l'apprentissage.
+ *
+ * ⚠ NI DÉRIVÉ D'UNE DISTANCE, ET C'EST UN CHOIX. Un plancher en mètres serait inversement
+ * proportionnel à la vitesse : il donnerait le seuil le plus BAS au nageur le plus RAPIDE, soit
+ * l'inverse exact de l'argument du déplacement — le coût du trajet et du vestiaire ne dépend pas
+ * de la vitesse de l'athlète. C24/C24b (600/750 m) reste le plancher de DISTANCE et ne change pas ;
+ * celui-ci se superpose, en minutes.
+ *
+ * POURQUOI 20 ET PAS PLUS : pour un débutant à CSS 2:00, C15 (850 m) n'autorise que **19,0 min**
+ * — toute valeur au-dessus de 19 donne donc le même résultat aux 36 débutants, c'est-à-dire à
+ * TOUTE la population que le ticket vise. La constante ne décide que du sort des 33 non-débutants,
+ * et 20 est la valeur la moins agressive qui produise l'effet mesuré.
+ *
+ * ```
+ * provenance : hypothèse LOGISTIQUE — le coût du déplacement et du vestiaire ne dépend pas
+ *              de la vitesse de l'athlète
+ * nature     : NON physiologique. Le moteur ignore l'accès réel au bassin.
+ * origine    : assistant, non validé externement
+ * statut     : PANSEMENT
+ * sortie     : remplacé par une DÉCLARATION le jour où le questionnaire porte une question
+ *              de disponibilité au bassin
+ * ```
+ */
+export const SWIM_SESSION_FLOOR_MIN = rule("O-44", "plancher de durée d'une séance de nage : sous ~20 min d'eau, le déplacement coûte plus que la séance ne rapporte (hypothèse logistique, PANSEMENT)", 20);
 /**
  * B-09 — LE BIAIS DÉCLARATIF DE LA PISCINE DÉPEND DE QUI NAGE, PAS SEULEMENT DU BASSIN.
  *
