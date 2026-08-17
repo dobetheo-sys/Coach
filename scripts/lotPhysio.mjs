@@ -894,8 +894,16 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 //     VO2max de 45 min contre une longue de 44 sur un 5 km), **cas non isolé** — c'est dit ainsi
 //     plutôt qu'habillé d'une cause plausible. Un cliquet qui monte avec une raison honnête vaut
 //     mieux qu'un cliquet qui monte avec une raison inventée.
-// Aucune violation DURE, sur aucun des 969 — ni avant, ni après.
-const SCEAU_ATTENDU = { S1: 5, S4: 352, S5: 508 };
+// RE-ÉPINGLÉ APRÈS O-54 §2 (17/08/2026), et le mouvement va DANS LES DEUX SENS.
+//   S4 (I14, « la longue est la plus longue de sa discipline ») 352 → **357**, cinq de plus ;
+//   S5 (T-25, « min(plafonds) vaut le pic livré ») 508 → **502**, six de moins.
+// C15 cesse de plafonner à 850 m un débutant en triathlon qui sait nager : ses séances de nage
+// grossissent, donc certaines dépassent sa sortie longue de nage (S4 monte) pendant que la chaîne
+// déclarée retrouve le pic livré sur six profils (S5 descend). Aucune violation DURE.
+// ⚠ ÉPINGLÉ UNE FOIS À 349/505 SUR UN ÉTAT ABANDONNÉ — la première écriture d'O-54 §2 bornait sur
+// `atteignableM` et donnait 4 150 m de séance à qui déclare 400 m. Le cliquet a fait son travail
+// deux fois de suite ; c'est la seconde valeur qui vaut, et la première est dite plutôt qu'effacée.
+const SCEAU_ATTENDU = { S1: 5, S4: 357, S5: 502 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1237,15 +1245,29 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   //
   //   (1) invariance — aucun bloc épinglé n'est livré SOUS son épingle du fait du plafond ;
   //   (2) sensibilité — le compte TOTAL des blocs épinglés non livrés à leur épingle est
-  //       épinglé à 57. Ces 57 ne viennent pas du plafond (mesuré identique avant et après le
-  //       lot 1) : ils viennent de C15, qui borne la séance du débutant à 850 m et gagne contre
-  //       l'épingle. C'est O-54, ouvert. Le cliquet est ici pour qu'aucun autre mécanisme ne
-  //       vienne s'y ajouter en silence.
+  //       épinglé. Ces rabotages ne viennent pas du plafond de dose (mesuré identique avant et
+  //       après le lot 1) : le cliquet est ici pour qu'aucun autre mécanisme ne vienne s'y
+  //       ajouter en silence.
+  //
+  //       57 → **31** avec O-54 §2 (17/08/2026), et la baisse dit exactement ce que le correctif
+  //       fait et ce qu'il ne fait pas. C15 lisait `level === "debutant"`, une auto-évaluation
+  //       GLOBALE, et plafonnait à 850 m un ancien nageur qui se met au triathlon ; il lit
+  //       désormais la capacité DÉMONTRÉE (`longest_swim_m`) quand elle existe.
+  //         · les rabotages à 500 m disparaissent — c'était la moitié dangereuse ;
+  //         · il en reste 31, et ce sont des continuités bornées à la capacité DÉCLARÉE : un
+  //           nageur à 2 000 m ne construit pas les 3 800 m d'un Ironman, ses derniers paliers
+  //           sont livrés à 2 000. C'est VOULU et documenté (`swimSessionCapM`) : faire croître
+  //           cette borne semaine après semaine est le ticket « `beginner` est statique ».
+  //           Le titre, lui, dit la vérité (T-40), et la franchissabilité doit le voir.
+  //       ⚠ CE CHIFFRE A ÉTÉ ÉPINGLÉ UNE FOIS À **4**, sur une première écriture qui bornait sur
+  //       `atteignableM` et donnait 4 150 m de séance à qui déclare 400 m. Épingler sur un état
+  //       qu'on abandonne ensuite est une erreur de tenue de livre, publiée ici plutôt que
+  //       réécrite en silence.
   //
   // Contre-preuve, en rendant le croisement NON VIDE (`sw.aero` ajoutée aux zones plafonnées) :
   //     garde posée .... 57 rabotés / 308   ← inchangé, elle tient
   //     garde retirée .. 195 rabotés / 308  ← +138, elle sert
-  const RABOTES_ATTENDUS = 57;
+  const RABOTES_ATTENDUS = 31;
   let n = 0, ko = 0; const zones = {}, ex = [];
   for (const { key, plan } of goldenAvecMoteur()) {
     for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
@@ -1260,8 +1282,8 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   }
   const bad = [];
   if (!n) bad.push("AUCUN bloc épinglé dans le corpus — le critère ne mesure rien, vérifier l'instrument");
-  if (ko !== RABOTES_ATTENDUS) bad.push(`${ko} bloc(s) épinglé(s) raboté(s) au lieu de ${RABOTES_ATTENDUS} (O-54) · ${ex.join(" ; ")}`);
-  return { ok: bad.length === 0, detail: bad.join(" · ") || `${n} blocs épinglés · ${ko} rabotés (O-54, C15 gagne contre l'épingle) · zones ${JSON.stringify(zones)}` };
+  if (ko !== RABOTES_ATTENDUS) bad.push(`${ko} bloc(s) épinglé(s) raboté(s) au lieu de ${RABOTES_ATTENDUS} (O-54 §2) · ${ex.join(" ; ")}`);
+  return { ok: bad.length === 0, detail: bad.join(" · ") || `${n} blocs épinglés · ${ko} rabotés (O-54 §2 : reste le volume de semaine, plus C15) · zones ${JSON.stringify(zones)}` };
 });
 
 T("T-40", "vert", "aucun titre de séance n'annonce une distance que la séance ne contient pas (O-54)", () => {
@@ -1286,6 +1308,45 @@ T("T-40", "vert", "aucun titre de séance n'annonce une distance que la séance 
   if (n < 50) bad.push(`seulement ${n} titre(s) chiffré(s) dans le corpus — le critère ne mesure presque rien`);
   if (ment) bad.push(`${ment} titre(s) annoncent une distance absente du contenu · ${ex.join(" ; ")}`);
   return { ok: bad.length === 0, detail: bad.join(" · ") || `${n} titres chiffrés, 0 qui ment` };
+});
+
+T("T-41", "vert", "C15 lit la capacité DÉMONTRÉE, et le vrai débutant nageur reste protégé (O-54 §2)", () => {
+  // LE JUMEAU DE SENSIBILITÉ ET D'INVARIANCE, sur la même mesure :
+  //   · sensibilité — qui déclare 2 000 m de continu reçoit un plafond de séance PLUS GRAND que
+  //     les 850 m de C15. Sans ça, le correctif serait inerte ;
+  //   · invariance  — qui déclare 400 m, et qui répond « je ne sais pas », restent à 850 m.
+  //     C'est la moitié qui compte : ma PREMIÈRE écriture bornait sur `atteignableM` (la valeur
+  //     de FIN de rampe, appliquée dès la semaine 1) et donnait **4 150 m** de séance à
+  //     quelqu'un qui déclare 400 m — elle retirait la protection à la population protégée.
+  //
+  // CE CRITÈRE EXISTE PARCE QUE LE GOLDEN NE PEUT PAS LE PORTER : ses 36 profils `debutant` tri
+  // déclarent TOUS `longest_swim_m: 2000`. Le corpus ne contient donc aucun vrai débutant nageur,
+  // et l'effet du correctif sur la population qu'il doit protéger n'y est pas photographié.
+  // Sixième occurrence de la famille A-2 — et cette fois elle est nommée AVANT de coûter.
+  const BASE = { sport: "tri", intent: "competition", level: "debutant", history: "reprise",
+    dispo: "quotidienne", doubles: "non", sessions_max: "6", age: "35", sex: "H", weight: "75",
+    vol_max: "10", vol_recent: "3", injury: "aucune", med_pain: "non", med_dizzy: "non",
+    med_treat: "non", pace_known: "oui", pace: "5:30", ftp_known: "oui", ftp: "220",
+    css_known: "oui", css: "2:10", terrain: "route", milieu: "bassin" };
+  const capDe = (over) => {
+    const p = globalThis.EBV2.buildPlan("tri", { ...BASE, ...over });
+    let maxM = 0;
+    for (const w of p.weeks) for (const d of w.days) for (const s of d.sessions) if (s.d === "sw")
+      maxM = Math.max(maxM, (s.steps || []).reduce((t, x) => t + (x.distanceM != null ? (x.reps || 1) * x.distanceM : 0), 0));
+    return maxM;
+  };
+  const bad = [];
+  for (const fmt of ["S", "70.3", "Full"]) {
+    const vrai = capDe({ format: fmt, longest_swim_m: "400" });
+    const inconnu = capDe({ format: fmt, longest_swim_known: "non", longest_swim_m: "" });
+    const nageur = capDe({ format: fmt, longest_swim_m: "2000" });
+    // 850 + la tolérance des séances qui échappent à C15 par un AUTRE chemin (la sortie longue
+    // passe par `CAP_SWIM`, pas par C15 — comportement antérieur, hors périmètre).
+    if (vrai > 1100) bad.push(`${fmt} · 400 m déclarés → séance de ${vrai} m : la protection a sauté`);
+    if (inconnu > 1100) bad.push(`${fmt} · « je ne sais pas » → séance de ${inconnu} m : la protection a sauté`);
+    if (nageur <= vrai) bad.push(`${fmt} · 2000 m déclarés → ${nageur} m, pas plus que les 400 m (${vrai}) : le correctif est INERTE`);
+  }
+  return { ok: bad.length === 0, detail: bad.join(" · ") || "400 m et « je ne sais pas » restent bornés ; 2000 m reçoit sa séance" };
 });
 
 // T-38 RETIRÉ (O-46 réfuté, 16/08/2026) — il comparait `CAP_SWIM` à une exigence de SÉANCE alors

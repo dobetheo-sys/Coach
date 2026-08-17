@@ -93,7 +93,7 @@ export function reconcileDeclaredVolume(
   /** Contexte des règles de SÉANCE tenues ici : la fenêtre piscine dépend du niveau.
    *  `keepTaperSwim` (R13.3) : le sport déclare que l'affûtage garde une nage par semaine —
    *  les coupes de fréquence l'évitent tant qu'une autre victime existe. */
-  ctx?: { swimFloors?: boolean; beginner?: boolean; medHold?: boolean; keepTaperSwim?: boolean; mainDiscipline?: string; disciplines?: string[];
+  ctx?: { swimFloors?: boolean; beginner?: boolean; swimCapM?: number; medHold?: boolean; keepTaperSwim?: boolean; mainDiscipline?: string; disciplines?: string[];
     /** O-44 — le plafond de distance par séance dépend du FORMAT pour un non-débutant. */
     format?: string;
     /** R15.7-A — budget de séances DÉCLARÉ par l'athlète (`sessions_max`), pas le budget
@@ -1690,7 +1690,7 @@ export function reconcileDeclaredVolume(
     const css44 = ctx.refs?.cssSecPer100m || 130;
     const v44 = zoneSpeedRatio("sw.easy", undefined, "css") ?? 1;
     const plancher44 = Math.min(SWIM_SESSION_FLOOR_MIN,
-      ((ctx.beginner ? C15_BEGINNER_SWIM_SESSION_CAP_M : (CAP_SWIM[String(ctx.format ?? "")] || 3000)) / 100) * css44 / 60 / v44);
+      ((ctx.beginner ? (ctx.swimCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M) : (CAP_SWIM[String(ctx.format ?? "")] || 3000)) / 100) * css44 / 60 / v44);
     for (const wk of plan.weeks) {
       if (wk.isRecup || wk.phase.id === "taper") continue;
       const durees = wk.days.flatMap((d) => d.sessions.filter((x) => x.d === "sw" && (x.min || 0) > 0).map((x) => x.min || 0));
@@ -2235,7 +2235,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     }
     // C15 — protection débutant nage : aucune séance >850m, tous blocs confondus
     if (r.beginner && s.d === "sw" && b.distanceM != null) {
-      const cap = C15_BEGINNER_SWIM_SESSION_CAP_M, reps = b.reps || 1;
+      const cap = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M, reps = b.reps || 1; // O-54 §2
       if (reps * b.distanceM > cap) {
         if (reps > 1) b.reps = Math.max(1, Math.floor(cap / b.distanceM));
         else b.distanceM = Math.floor(cap / 25) * 25;
@@ -2690,10 +2690,11 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         for (const s of d.sessions) {
           if (s.d !== "sw" || !s.steps || !s.steps.length) continue;
           const tot = s.steps.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
-          if (tot <= C15_BEGINNER_SWIM_SESSION_CAP_M) continue;
+          const capC15 = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M; // O-54 §2
+          if (tot <= capC15) continue;
           const aux = s.steps.filter((st) => st.role !== "body").reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
           const bodyTot = tot - aux;
-          const bodyCap = Math.max(100, C15_BEGINNER_SWIM_SESSION_CAP_M - aux);
+          const bodyCap = Math.max(100, capC15 - aux);
           if (bodyTot <= bodyCap) continue;
           const f = bodyCap / bodyTot;
           for (const st of s.steps) {
@@ -2971,9 +2972,10 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
             else body.distanceM = Math.ceil((body.distanceM + missing) / 25) * 25;
             changed = true;
           }
-          if (r.beginner && totOf() > C15_BEGINNER_SWIM_SESSION_CAP_M) {
+          const capC15b = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M; // O-54 §2
+          if (r.beginner && totOf() > capC15b) {
             const aux = s.steps.filter((st) => st.role !== "body").reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
-            const bodyCap = Math.max(100, C15_BEGINNER_SWIM_SESSION_CAP_M - aux);
+            const bodyCap = Math.max(100, capC15b - aux);
             const bodyTot = totOf() - aux;
             if (bodyTot > bodyCap) {
               const f = bodyCap / bodyTot;
@@ -3632,7 +3634,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   const _spec30 = String(a.sport) === "run"
     ? longRunSpecificityFloor(fmt, r.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(a.vol_max ?? "")) || undefined)
     : null;
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport as string, "swimSessionFloors"), format: a.format, beginner: r.beginner, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 } });
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport as string, "swimSessionFloors"), format: a.format, beginner: r.beginner, swimCapM: r.swimSessionCapM, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 } });
 
   for (const d of _c30b) r.decisions.push(d);
 

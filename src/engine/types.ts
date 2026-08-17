@@ -120,6 +120,13 @@ export interface ReasonedPlan {
   maxRunDays: number | null; // run uniquement — plafond de jours d'impact
   medHold: boolean;
   beginner: boolean;
+  /**
+   * O-54 §2 — LE PLAFOND DE SÉANCE DE NAGE, en mètres, DÉRIVÉ DE LA CAPACITÉ DÉMONTRÉE.
+   * `undefined` = pas de plafond de séance (non-débutant). Vaut C15 quand rien n'est déclaré,
+   * et `atteignableM + auxiliaire` dès que `longest_swim_m` est mesurée : C15 cessait de lire la
+   * capacité de NAGE pour lire une auto-évaluation GLOBALE. Voir `swimSessionCapM`.
+   */
+  swimSessionCapM?: number;
   finisher: boolean;
   comp: boolean;
   dbl: boolean;

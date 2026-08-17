@@ -11,13 +11,13 @@ import {
   MIN_WEEKS, HISTORY_CAPS, UTIL, MARGIN, RECUP_FACTORS, PHASE_PCTS,
   BANDS, C22_MAX_WEEKLY_GROWTH, RECUP_WEEK_FACTOR, RECUP_EVERY,
   TAPER_WEEKS_BY_FORMAT, TAPER_WEEKS_BY_TRAIL_CAT,
-  BEGINNER_SWIM_VOLPEAK_CAP_H, swimTimeFactorOf, C20_BEGINNER_SWIM_H_PER_SESSION,
+  BEGINNER_SWIM_VOLPEAK_CAP_H, C15_BEGINNER_SWIM_SESSION_CAP_M, swimTimeFactorOf, C20_BEGINNER_SWIM_H_PER_SESSION,
   MAX_RUN_DAYS, AVG_SESSION_H, R6_INJURY_LOAD_FACTORS, R6_AGE_LOAD, R6_PAIN_CONTRAINDICATION, readInjuries, boundedOrZero,
   parsePaceSec,
 } from "./constraintMatrix.ts";
 import { guard, knownSports, sportModule } from "../sports/registry.ts";
 import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
-import { continuityGate, palierPosables, poolOnlyNotice } from "./swimContinuity.ts";
+import { continuityGate, palierPosables, poolOnlyNotice, swimSessionCapM } from "./swimContinuity.ts";
 import { T1_DPLUS_CAPS, T4_LONG_RUN_VS_RACE, T6_MIN_WEEKS, TRAIL_HISTORY_CAPS, TRAIL_UTIL, trailObjective, trailWeeklyVertical } from "./trailModel.ts";
 
 /** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
@@ -443,8 +443,19 @@ export class TrainingReasoningEngine {
     // phase SPÉCIFIQUE, qui vient d'être construite. Émise plus haut, elle annonçait un nombre que
     // le plan ne pouvait pas porter (D3 : 4 paliers annoncés, 2 semaines de spec, dernier palier
     // jamais posé). Le générateur lit la même fonction sur le même objet `phases` — R11.1.
+    let _swimCapM: number | undefined;
     if (sp === "tri") {
       const gp = continuityGate(a as Record<string, unknown>, weeks);
+      // O-54 §2 — C15 CESSE DE LIRE UNE AUTO-ÉVALUATION GLOBALE QUAND UNE CAPACITÉ EST DÉMONTRÉE.
+      // Calculé ICI parce que c'est le seul endroit qui a À LA FOIS le gate (donc la rampe partant
+      // de l'athlète) et le drapeau `beginner`. Transmis par `ReasonedPlan` : les trois sites C15
+      // du générateur le lisent, ils n'en refont pas le calcul (R11.1).
+      if (beginner) {
+        _swimCapM = swimSessionCapM(gp, C15_BEGINNER_SWIM_SESSION_CAP_M);
+        if (_swimCapM > C15_BEGINNER_SWIM_SESSION_CAP_M)
+          D("C15-capacite", "Plafond de séance en nage", Math.round(_swimCapM) + " m au lieu de " + C15_BEGINNER_SWIM_SESSION_CAP_M,
+            "Tu es débutant en triathlon, pas en natation : tu as déclaré nager " + Math.round(gp!.departM) + " m d'affilée. Le plafond de séance suit ce que tu sais faire et la progression que ton plan peut construire, plus ton échauffement — pas une case cochée au questionnaire");
+      }
       const spc = phases.find((ph) => ph.id === "spec");
       if (gp && spc) D("B17-paliers", "Nages continues prescrites", palierPosables(gp, spc.weeks) + " palier(s) en phase spécifique",
         "La continuité se construit par une MONTÉE, jamais par un test unique à la fin : découvrir la distance trois semaines avant l'épreuve laisse le temps de s'inquiéter, pas celui de s'adapter — et le nombre est borné par la place réellement disponible");
@@ -586,6 +597,7 @@ export class TrainingReasoningEngine {
       maxRunDays,
       medHold,
       beginner,
+      swimSessionCapM: _swimCapM,
       finisher,
       comp,
       dbl: a.doubles === "oui",

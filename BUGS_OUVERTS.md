@@ -6003,7 +6003,35 @@ immédiate    `syncDerivedLabels` (R5.1, le point de convergence de toute prose 
              Ça n'empêche pas le défaut, ça empêche le DOMMAGE : un titre honnête à 500 m
              est une séance que l'athlète peut évaluer.
 
-moitié       **(b) OUVERTE — elle demande un arbitrage, et la spec littérale ne tient pas.**
+moitié       **(b) TRANCHÉE ET LIVRÉE le 17/08/2026 — C15 lit la CAPACITÉ DÉMONTRÉE.**
+(b)          Le refus universel n'était pas la conséquence de la spec mais d'un plafond posé
+             sur le mauvais signal : C15 lisait `level === "debutant"`, une auto-évaluation
+             GLOBALE. `longest_swim_m` existe depuis B-17 et c'est exactement le signal qui
+             manquait. `swimSessionCapM = max(C15, longest_swim_m + auxiliaire)`.
+
+                 400 m déclarés ...... 850 m (C15 gagne)   ← le vrai débutant reste protégé
+                 « je ne sais pas » ... 850 m               ← et il reçoit un TEST (D3)
+                 2 000 m déclarés .... 2 350 m              ← l'ancien nageur reçoit sa séance
+
+             Effet : blocs épinglés rabotés **57 → 31**, et les 31 restants ne sont plus des
+             rabotages à 500 m mais des continuités bornées à la capacité déclarée. 36 profils
+             du golden bougent, tous `debutant` tri, écart numérique uniformément 1 500.
+
+             ⚠ MA PREMIÈRE ÉCRITURE BORNAIT SUR `atteignableM` — la valeur de FIN de rampe,
+             appliquée dès la semaine 1, et qui croît exponentiellement avec la durée du plan.
+             Mesuré AVANT de recapturer : un athlète déclarant **400 m** recevait une séance de
+             **4 150 m**, et 2 000 m déclarés donnaient un plafond de **32 076 m** sur un Full.
+             Elle retirait la protection à la population qu'elle protège. Gardé par **T-41**,
+             qui porte l'invariance ET la sensibilité — et qui existe parce que le golden ne
+             peut pas les porter : ses 36 profils `debutant` déclarent TOUS 2 000 m, il n'y a
+             aucun vrai débutant nageur dans le corpus (6ᵉ A-2, nommée avant de coûter).
+
+             CE QUI RESTE, DÉLIBÉRÉMENT : la borne ne progresse pas avec le plan, donc un nageur
+             à 2 000 m ne construit pas les 3 800 m d'un Ironman — ses derniers paliers sont
+             livrés à 2 000, sous un titre qui le dit (T-40), et la franchissabilité devrait le
+             voir. Faire croître cette borne est le ticket **O-56**.
+
+moitié       **(b-bis) — la spec littérale du §1, telle qu'elle était écrite, ne tenait pas.**
 réelle       « la franchissabilité inclut la livrabilité : un palier que C15 rabote n'est
              pas un palier, donc l'écart n'est pas franchissable → rabattement ».
 
@@ -6117,4 +6145,47 @@ id: O-55
 quoi: la decision « 40 min est la dose de pic » est ecrite avec son chiffre revocable
 attendu: O55-DECIDE
 cmd: grep -q "O-55 (arbitrage du 17/08/2026)" src/engine/constraintMatrix.ts && echo "O55-DECIDE"
+```
+
+
+---
+
+## O-56 · `beginner` est STATIQUE — les protections du débutant deviennent une camisole · 🔴 **OUVERT, gros**
+
+Racine nommée par le fondateur en arbitrant O-54 §2, et elle dépasse ce ticket.
+
+```
+défaut       `beginner` vient de `level === "debutant"` et ne bouge JAMAIS. Toutes les
+             protections qui en dépendent — C15 (850 m/séance en nage), C20 (25 min par
+             séance de nage), C23 (sortie longue ≤ 180 min), l'interdiction de VO2max,
+             les plafonds de volume — sont **justes en semaine 1 et deviennent une
+             camisole en semaine 30**, sur un plan qui prescrit précisément les trente
+             semaines qui devraient les lever.
+
+             Le moteur fait progresser tout le reste avec la position dans le plan : la
+             rampe R10, la courbe, les bandes, les paliers de B-17. **Le seul qui ne bouge
+             pas est le drapeau qui décide de qui a droit à quoi.**
+
+occurrence   O-54 §2 en est la première mesurée : `swimSessionCapM` borne à la capacité
+mesurée      DÉMONTRÉE et ne progresse pas, donc un nageur à 2 000 m ne construit pas les
+             3 800 m d'un Ironman — 31 paliers livrés sous leur épingle. Le corriger POUR
+             CETTE SEULE BORNE en ferait un cas particulier de plus au lieu d'une règle.
+
+le point     décroître `beginner` avec la position dans le plan suppose que l'athlète a FAIT
+délicat      les séances. C'est la même hypothèse que la rampe C22 — donc pas une hypothèse
+             nouvelle, mais elle mérite d'être ÉCRITE plutôt qu'héritée en silence. Et le
+             moteur a de quoi ne pas la supposer : `answers.done` alimente déjà l'adhérence
+             (P1) et la boucle prévu/réel.
+
+à mesurer    · combien de bornes lisent `beginner` (recensement, pas estimation)
+avant toute  · pour chacune : est-elle une borne de SÉCURITÉ (qui doit rester) ou de
+décision       CAPACITÉ (qui doit progresser) ? Les deux sont mélangées aujourd'hui
+             · le rayon d'une décroissance, sur le golden
+```
+
+```verify
+id: O-56
+quoi: le drapeau debutant ne depend pas de la position dans le plan
+attendu: O56-REPRODUIT
+cmd: grep -q 'const beginner = level === "debutant";' src/engine/reasoningEngine.ts && echo "O56-REPRODUIT"
 ```

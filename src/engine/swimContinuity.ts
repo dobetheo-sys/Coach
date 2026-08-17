@@ -48,6 +48,73 @@ export const B17_SPAN_PCT = PHASE_PCTS.filter((p) => ["base", "dev", "spec"].inc
 /** Le plus petit départ que la progression accepte, en mètres — deux longueurs de bassin. */
 const B17_DEPART_PLANCHER_M = 200;
 
+/**
+ * O-54 — L'ÉCHAUFFEMENT ET LE RETOUR AU CALME DE LA SÉANCE DE CONTINUITÉ, EN MÈTRES.
+ *
+ * Ils vivaient en littéral dans `sports/tri/index.ts` (`Wm(200, …)`, `Cm(150, …)`), et le plafond
+ * de séance C15 devait les connaître pour savoir ce qui reste au corps : 850 − 350 = 500, la
+ * valeur exacte à laquelle 53 continuités étaient livrées. Une borne qui dépend d'un chiffre écrit
+ * ailleurs et qu'elle ne lit pas est une borne fausse au premier changement (R11.1).
+ */
+export const B17_ECHAUF_M = 200;
+export const B17_RETOUR_M = 150;
+export const B17_AUX_M = B17_ECHAUF_M + B17_RETOUR_M;
+
+/**
+ * O-54 §2 (arbitrage du 17/08/2026) — **C15 LIT LA CAPACITÉ DÉMONTRÉE LÀ OÙ ELLE EXISTE.**
+ *
+ * Le plafond de séance de nage du débutant (850 m, C15) lisait `level === "debutant"` — une
+ * auto-évaluation **globale**, pas une capacité de nage. Or « débutant en triathlon » et
+ * « incapable de nager 850 m » sont deux choses différentes : un ancien nageur qui se met au
+ * triathlon est `debutant` et peut nager 3 000 m ; le moteur le plafonnait à 850 pendant quarante
+ * semaines, et B-17 lui prescrivait des continuités livrées à 500 m sous un titre qui en annonçait
+ * 3 800.
+ *
+ * `longest_swim_m` existe depuis B-17, obligatoire en tri, avec son « je ne sais pas » explicite.
+ * C'est exactement le signal dont C15 avait besoin et qu'il n'avait pas quand il a été écrit.
+ *
+ * LA BORNE EST LA CAPACITÉ DÉMONTRÉE + L'AUXILIAIRE, ET JAMAIS MOINS QUE C15.
+ *
+ * ⚠ MA PREMIÈRE ÉCRITURE BORNAIT SUR `atteignableM` — ce que la rampe atteint à la FIN de la
+ * progression — et c'est la pire erreur de ce chantier : elle RETIRAIT LA PROTECTION À LA
+ * POPULATION QU'ELLE PROTÈGE. Deux fautes cumulées :
+ *   1. `atteignableM` est une valeur de FIN, appliquée comme plafond constant DÈS LA SEMAINE 1 ;
+ *   2. elle croît exponentiellement avec la durée du plan (rampe C22 sur la travée) — sur un Full
+ *      de 38 semaines, 2 000 m déclarés donnaient un plafond de **32 076 m**.
+ * Mesuré avant de recapturer : un athlète déclarant **400 m** de continu recevait une séance de
+ * **4 150 m**. C'est exactement le profil que C15 existe pour protéger.
+ *
+ * La borne est donc `longest_swim_m + auxiliaire`, plafonnée par le bas à C15 : elle ne descend
+ * jamais sous la protection actuelle, et ne monte qu'à hauteur de ce que l'athlète a DÉJÀ fait.
+ *
+ *   400 m déclarés  → 850 m (C15 gagne)                ← le vrai débutant nageur reste protégé
+ *   « je ne sais pas » → 850 m                          ← et il reçoit un TEST (D3)
+ *   2 000 m déclarés → 2 350 m                          ← l'ancien nageur reçoit sa séance
+ *
+ * CE QUE ÇA NE FAIT PAS, DÉLIBÉRÉMENT : la borne ne PROGRESSE pas avec le plan. Un nageur à
+ * 2 000 m ne pourra donc pas construire les 3 800 m d'un Ironman, et son écart restera
+ * infranchissable — c'est la branche rabattement, et c'est cohérent. Faire croître cette borne
+ * semaine après semaine est la BONNE réponse, et c'est exactement le ticket « `beginner` est
+ * statique » : toutes les protections du débutant sont justes en semaine 1 et deviennent une
+ * camisole en semaine 30. Le résoudre ici, pour cette seule borne, en ferait un cas particulier
+ * de plus au lieu d'une règle.
+ *
+ * ET LE MÉCANISME SE REFERME SUR LUI-MÊME : qui répond « je ne sais pas » reçoit, par la décision
+ * D3, un TEST de continuité en première séance de nage — le test produit précisément la valeur qui
+ * lèverait ce plafond. Le moteur prescrit la mesure qui débloque sa propre contrainte.
+ *
+ * CE QUE ÇA NE RÉSOUT PAS, ET C'EST CORRECT : le vrai débutant nageur, qui déclare 400 m ou ne
+ * sait pas, reste plafonné — l'écart vers 3 800 m lui reste infranchissable et le rabattement est
+ * la bonne réponse pour lui. C'est le cas que B-17 visait au premier jour. La différence est entre
+ * refuser une POPULATION et refuser une SITUATION.
+ *
+ * @param base le plafond que `level` impose (C15), employé quand rien n'est démontré
+ */
+export function swimSessionCapM(g: ContinuityGate | null, base: number): number {
+  if (!g || g.source !== "mesure") return base;
+  return Math.max(base, g.departM + B17_AUX_M);
+}
+
 export interface ContinuityGate {
   /** Le seuil, en minutes : `min(30, durée de nage estimée en course)`. */
   seuilMin: number;

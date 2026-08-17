@@ -8,7 +8,7 @@ import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS } from "../../engine/
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { TRI_SWIM, TRI_BIKE, TRI_RUN, TRI_BIKE_KM, TRI_TRANSITION } from "../../engine/predictor.ts";
-import { continuityGate, palierPosables, palierDistanceM } from "../../engine/swimContinuity.ts";
+import { continuityGate, palierPosables, palierDistanceM, B17_ECHAUF_M, B17_RETOUR_M } from "../../engine/swimContinuity.ts";
 
 export function buildTriSessions(kit: SessionKit): V1Session[] {
   const { r, a, fmt, slot, phase, prog, weekNum, slotIdx, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
@@ -131,11 +131,11 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
             + "Nage sans t'arrêter aussi loin que tu peux, à une allure que tu tiendrais une heure — ce n'est ni "
             + "un chrono ni une séance de volume. NOTE LA DISTANCE et reporte-la dans ton profil : tant qu'elle "
             + "manque, l'évaluation de ta natation reste en attente et le plan avance sur une hypothèse.",
-          steps: [Wm(200, "souple, montée progressive"),
+          steps: [Wm(B17_ECHAUF_M, "souple, montée progressive"),
             // NON ÉPINGLÉ, délibérément : la distance est ce qu'on MESURE, pas ce qu'on impose.
             // `cible` n'est que le budget que le plan réserve à la séance.
             Bd(1, cible, "sw.aero", "", ", SANS ARRÊT — va au bout de ce que tu tiens", false, "sw"),
-            Cm(150, "relâché")],
+            Cm(B17_RETOUR_M, "relâché")],
         } : {
           name: "Nage continue" + (ow ? " en eau libre" : "") + " — " + cible + " m d'affilée",
           note: (ow
@@ -147,9 +147,9 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
           // Le bloc est ÉPINGLÉ (floor = cap) : dans une nage continue, la distance EST le
           // stimulus, exactement comme la durée d'une répétition l'est dans un intervalle (I14).
           // La réduire ne rend pas la séance plus facile, elle lui retire son objet.
-          steps: [Wm(200, "souple, montée progressive"),
+          steps: [Wm(B17_ECHAUF_M, "souple, montée progressive"),
             Object.assign(Bd(1, cible, "sw.aero", "", ", SANS ARRÊT", false, "sw"), { bnd: { floor: cible, cap: cible, pinned: true } }),
-            Cm(150, "relâché")],
+            Cm(B17_RETOUR_M, "relâché")],
         };
       }
     }
