@@ -6150,7 +6150,7 @@ cmd: grep -q "O-55 (arbitrage du 17/08/2026)" src/engine/constraintMatrix.ts && 
 
 ---
 
-## O-56 · Toute borne dérivée d'une CAPACITÉ est gelée sur la déclaration initiale · 🟡 **§1 LIVRÉ · §2 écrit, non branché**
+## O-56 · Toute borne dérivée d'une CAPACITÉ est gelée sur la déclaration initiale · ✅ **§1 et §2 LIVRÉS · §3 (le message) ouvert**
 
 Racine nommée par le fondateur en arbitrant O-54 §2, et **plus large que « `beginner` est
 statique »** — c'est sa deuxième formulation qui est la bonne :
@@ -6327,10 +6327,28 @@ corrige la projection que si le moteur a de l'évidence sur la NAGE**. Sans ce d
 qui nage tout et ne journalise rien serait traité comme celui qui ne nage pas : c'est le défaut
 d'O-54 refait, une protection qui frappe la mauvaise population.
 
-Ce qui manque pour la brancher : `buildPlan(sport, answers)` ne reçoit pas le plan précédent, et
-`answers.done` est indexé par les coordonnées de CE plan (`sem|jour|idx`). Il faut donc soit un
-troisième argument optionnel, soit que la PWA passe le plan courant à la re-génération. C'est un
-geste d'INTERFACE, pas de moteur, et il n'a pas été fait dans ce lot.
+**§2 LIVRÉ AUTREMENT — et la route du fondateur évite le geste que j'allais faire.** Je bloquais
+sur « `buildPlan` ne reçoit pas le plan précédent ». La réponse est qu'il n'a pas à le recevoir :
+
+```
+palier de continuité validé  →  journal (answers.tests)  →  longest_swim_m  →  moteur inchangé
+```
+
+**Le mécanisme existe déjà** : `syncRefsFromTests` promeut `ftp`, `thrPace`, `css` et `vam` depuis
+le journal. Une nage continue validée EST une référence mesurée — elle démontre une capacité, elle
+a une date, elle vient de l'athlète. C'est une PROMOTION, pas un changement de moteur : pas de
+quatrième entrée à `buildPlan`, pas d'état entre builds, pas de couplage aux coordonnées d'un plan,
+et R20.1 satisfaite d'office puisque `longest_swim_m` agit déjà.
+
+`session-life.js` écrit le test au ✓ (le bloc ÉPINGLÉ, donc aucune devinette), `state.js` le promeut.
+**La politique de sélection DIVERGE de celle du journal, et c'est écrit** : `latest()` rend le plus
+RÉCENT — juste pour une FTP, qui monte et descend ; un cliquet de capacité veut le plus HAUT, borné
+au début du plan. Une nage de 2 000 m faite il y a trois ans n'a pas à porter le plan d'aujourd'hui.
+Variante par clé, pas seconde politique.
+
+Contre-preuve `npm run mesure:o56`, **en CI** : le cliquet monte sur un palier validé, ne descend
+jamais (ni contre un palier plus bas, ni contre la déclaration), prend le PLUS HAUT et non le plus
+récent, et ignore ce qui précède le plan.
 
 **Reste aussi du §3 de l'arbitrage** : la chaîne R20.2 doit NOMMER la divergence au PREMIER palier
 manqué (« ta capacité démontrée est de 800 m, la progression t'attendait à 1 400 ») — pas à la fin,

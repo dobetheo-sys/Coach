@@ -148,6 +148,30 @@ export function toggleDone(plan, k, todayIso, rerender) {
   const dy = wk && wk.days.find((x) => x.jour === jour);
   const sess = dy && dy.sessions[+si];
   if (!sess) return;
+  // O-56 §2 — UNE NAGE CONTINUE VALIDÉE EST UNE RÉFÉRENCE MESURÉE : elle entre au journal.
+  //
+  // Le bloc de continuité est le bloc ÉPINGLÉ (`bnd.pinned` : « la distance EST le stimulus »,
+  // leçon I14) — c'est exactement la grandeur qu'on cherche à créditer, et elle est déjà marquée
+  // dans le plan, donc rien à deviner. `syncRefsFromTests` la promeut ensuite vers
+  // `longest_swim_m`, que le moteur lit depuis B-17 : aucune entrée nouvelle, aucun état entre
+  // deux builds, aucun couplage aux coordonnées d'un plan.
+  //
+  // `source: "seance"` la distingue d'une saisie DÉLIBÉRÉE (profil, retest) : la règle d'O-25
+  // — « une valeur saisie bat tout import du même jour » — continue donc de valoir, et une
+  // séance validée ne peut pas écraser une correction que l'athlète vient de faire à la main.
+  //
+  // LES PALIERS DE B-17 SONT DÉJÀ LE TEST : le plan prescrit une continue à 2 000 m, l'athlète
+  // la fait, sa capacité démontrée vaut 2 000, le palier suivant peut viser plus haut. Le
+  // mécanisme de mesure existe et ne demande AUCUNE question de plus.
+  if (checking && sess.d === "sw") {
+    const cont = (sess.steps || []).find((st) => st.role === "body" && st.bnd && st.bnd.pinned && st.distanceM != null);
+    if (cont) {
+      const m = (cont.reps || 1) * cont.distanceM;
+      if (!Array.isArray(S.answers.tests)) S.answers.tests = [];
+      S.answers.tests.push({ type: "swimContinuity", value: m, date: todayISO(), source: "seance" });
+      ebSave();
+    }
+  }
   const celebrate = () => {
     let newBadge = null;
     if (globalThis.EBV2 && globalThis.EBV2.badges) {

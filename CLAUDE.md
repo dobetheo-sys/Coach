@@ -269,6 +269,25 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   minutes ; un plancher de séance se compte en minutes ; un pourcentage sur une semaine de 34 min
   amplifie le quantum d'un facteur dix.
 
+- **Règle 21 — une sonde sur une propriété qui varie avec la POSITION se rédige PAR POSITION
+  d'abord, et n'agrège qu'après ; jamais agréger puis comparer** (arbitrage du 17/08/2026, après
+  trois récidives de la règle 20 dans la garde écrite pour la tester, une heure après l'avoir
+  posée). La cause n'est pas l'inattention : **la forme naturelle d'une sonde est SANS position**
+  — on écrit `max`, `moyenne`, `compte`, et chacune de ces opérations DÉTRUIT la position avant la
+  comparaison. L'écriture par défaut d'une sonde est donc structurellement incompatible avec une
+  propriété positionnelle. Mesuré : un `max` sur tout le plan pour une propriété par semaine
+  (T-41 aurait rougi sur le comportement voulu), et son corollaire immédiat — `Math.max` sur une
+  tranche vide rendant `-Infinity`, qui n'existe que parce qu'on agrège.
+
+- **La moitié SENSIBILITÉ d'un jumeau porte un DOMAINE : où la sensibilité est-elle attendue ?
+  Hors de ce domaine, l'insensibilité EST la propriété, pas son absence** (arbitrage du
+  17/08/2026, qui corrige la formulation d'O-44 §4). « Invariant à ce qui ne le concerne pas,
+  sensible à ce qui le concerne » était incomplet : **une grandeur qui CONVERGE est insensible à
+  sa limite, et c'est correct**. Mesuré — sur un sprint, une continuité déclarée à 400 m et une à
+  2 000 m arrivent au même plafond à mi-plan parce que la projection converge vers la distance de
+  course ; exiger de la sensibilité là revient à signaler une convergence comme un défaut. À
+  reporter sur tout jumeau invariance/sensibilité du dépôt.
+
 - **Règle 20 — toute grandeur qui varie avec la POSITION DANS LE PLAN déclare à quelle position
   elle vaut, et tout consommateur la lit à la position où il l'utilise** (arbitrage O-56,
   17/08/2026). Une valeur de fin de rampe n'est pas une borne de semaine 1 ; une déclaration de

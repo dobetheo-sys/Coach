@@ -1191,6 +1191,15 @@ T("T-34", "rouge", "ce qui est prescrit est invariant par changement de conversi
  * ligne, et que le drapeau médical, lui, réponde toujours (c'est une garde dure).
  */
 T("T-36", "vert", "ce qui est prescrit répond aux contraintes de l'athlète (jumeau de T-34)", () => {
+  // ⚠ LA MOITIÉ SENSIBILITÉ PORTE UN DOMAINE (arbitrage du 17/08/2026, qui corrige la formulation
+  // d'O-44 §4). « Invariant à ce qui ne le concerne pas, sensible à ce qui le concerne » est
+  // incomplet : **une grandeur qui CONVERGE est insensible à sa limite, et c'est correct.**
+  // Relu à cette lumière, ce critère est SAIN — il fait varier `vol_max` et `sessions_max`, deux
+  // contraintes qui ne convergent vers aucune limite dans le domaine balayé : plus d'heures
+  // disponibles donne plus de plan, sans plafond atteint. Le trou n'est donc pas ici.
+  // (Le cas qui a produit la règle est `T-41` : sur un sprint, une continuité déclarée à 400 m et
+  // une à 2 000 m arrivent au même plafond à mi-plan parce que la projection converge vers la
+  // distance de course — exiger de la sensibilité là signalerait une convergence comme un défaut.)
   const base = { sport: "swim", format: "fond", history: "reprise", level: "debutant", intent: "finir",
     sessions_max: "6", dispo: "quotidienne", doubles: "non", age: "35", sex: "H",
     css: "2:00", css_known: "oui", vol_max: "10", vol_recent: "0", injury: "aucune",
@@ -1253,6 +1262,11 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   // « 0 raboté par le plafond » serait satisfait par un moteur sans aucune garde (règle 19).
   //
   //   (1) invariance — aucun bloc épinglé n'est livré SOUS son épingle du fait du plafond ;
+  //       ⚠ ET SON DOMAINE DE SENSIBILITÉ EST NOMMÉ (arbitrage du 17/08/2026) : ce critère ne
+  //       demande PAS que le compte de rabotages varie avec quoi que ce soit — il l'épingle. La
+  //       sensibilité est portée par la contre-preuve (`sw.aero` plafonnée : 57 → 195 sans la
+  //       garde), pas par le critère lui-même, et c'est la bonne place : l'insensibilité du
+  //       compte EST la propriété recherchée en régime normal.
   //   (2) sensibilité — le compte TOTAL des blocs épinglés non livrés à leur épingle est
   //       épinglé. Ces rabotages ne viennent pas du plafond de dose (mesuré identique avant et
   //       après le lot 1) : le cliquet est ici pour qu'aucun autre mécanisme ne vienne s'y
@@ -1396,6 +1410,51 @@ T("T-41", "vert", "le plafond de séance de nage suit la capacité DÉMONTRÉE e
   }
   if (!departage) bad.push("aucun format où la capacité déclarée départage à mi-plan — la déclaration n'agit plus");
   return { ok: bad.length === 0, detail: bad.join(" · ") || "semaine 1 bornée, l'inconnu ne projette pas, la déclaration départage à mi-plan, la borne progresse" };
+});
+
+T("T-43", "vert", "PROPRIÉTÉ — le rabattement B-17 ne rend jamais un format supérieur au demandé (O-57)", () => {
+  // T-42 garde le SYMPTÔME (le balayage sans date, là où le défaut a été trouvé) ; celui-ci garde
+  // la PROPRIÉTÉ, et il tient quelle que soit la façon dont l'horizon se dérive. C'est l'invariant
+  // que la liste `["Full","70.3","M","S"]` était censée porter et ne portait pas : « premier
+  // franchissable » suppose que la franchissabilité DÉCROÎT le long de la liste — vrai à horizon
+  // fixe, faux quand `semainesDe(f)` dérive l'horizon du format lui-même. La liste portait une
+  // hypothèse de monotonie que rien ne vérifiait.
+  //
+  // ⚠ IL EST VRAI PAR CONSTRUCTION DEPUIS LE CORRECTIF, et c'est dit plutôt que tu : la recherche
+  // est bornée (`candidats = ordre.slice(rang)`), donc ce critère CONFIRME au lieu de découvrir.
+  // Il vaut quand même — le jour où quelqu'un rétablit un balayage complet en comparant « dans
+  // l'autre sens », il redevient une garde qui travaille. Sa contre-preuve le montre : retirer la
+  // borne rend 9 rabattements montants sur 105 profils.
+  //
+  // AVEC ET SANS DATE, et les deux comptent : la direction fait la GRAVITÉ. Un rabattement qui se
+  // trompe vers le bas donne un plan trop facile — décevant. Un rabattement qui MONTE donne un
+  // plan d'Ironman à quelqu'un qui déclare 400 m de nage continue.
+  const RANG = { S: 0, M: 1, "70.3": 2, Full: 3 };
+  const BASE = { sport: "tri", intent: "competition", history: "reprise", dispo: "quotidienne",
+    doubles: "non", sessions_max: "6", age: "35", sex: "H", weight: "75", vol_max: "10",
+    vol_recent: "3", injury: "aucune", med_pain: "non", med_dizzy: "non", med_treat: "non",
+    pace_known: "oui", pace: "5:30", ftp_known: "oui", ftp: "220", css_known: "oui", css: "2:10",
+    terrain: "route", milieu: "bassin" };
+  const lundi = () => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; };
+  const dans = (n) => { const d = lundi(); d.setDate(d.getDate() + n * 7 - 1); return d.toISOString().slice(0, 10); };
+  const bad = []; let vus = 0, rabats = 0, sansDate = 0;
+  for (const format of ["S", "M", "70.3", "Full"]) for (const level of ["debutant", "inter", "avance"])
+    for (const longest_swim_m of ["100", "400", "800", "1500", "2000"])
+      for (const sem of [null, 10, 20, 30, 40]) {
+        const a = { ...BASE, format, level, longest_swim_m };
+        if (sem) a.race_date = dans(sem); else sansDate++;
+        let p; try { p = globalThis.EBV2.buildPlan("tri", a); } catch { continue; }
+        vus++;
+        const dec = ((p._v2 || {}).decisions || []).find((d) => d.id === "B17-continuite" && /au lieu de/.test(String(d.val)));
+        if (!dec) continue;
+        rabats++;
+        const cible = String(dec.val).split(" ")[0];
+        if (RANG[cible] > RANG[format]) bad.push(`${format}/${level}/${longest_swim_m}m${sem ? "/" + sem + "sem" : "/sans date"} → ${cible} : le rabattement MONTE`);
+      }
+  if (vus < 200) bad.push(`seulement ${vus} profil(s) générés — l'échantillon ne prouve rien`);
+  if (!rabats) bad.push("AUCUN rabattement observé — le critère est vacu, la branche n'est pas exercée");
+  if (!sansDate) bad.push("aucun profil SANS date — la branche où le défaut vivait n'est pas balayée");
+  return { ok: bad.length === 0, detail: bad.join(" · ") || `${vus} profils (dont ${sansDate} sans date), ${rabats} rabattements, tous vers un format ≤ demandé` };
 });
 
 T("T-42", "vert", "le rabattement B-17 DESCEND toujours — jamais vers un format plus long (O-57)", () => {

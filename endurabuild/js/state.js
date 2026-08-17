@@ -106,6 +106,38 @@ export function syncRefsFromTests() {
   // ou un import écrirait le journal sans que le plan change JAMAIS (bug déjà corrigé une fois).
   const vam = latest("vam");
   if (vam) { const v = String(Math.round(vam.value)); if (S.answers.vam_known !== "oui" || S.answers.vam !== v) { S.answers.vam = v; S.answers.vam_known = "oui"; n++; } }
+
+  // O-56 §2 — LA CONTINUITÉ DE NAGE VALIDÉE REMONTE JUSQU'À `longest_swim_m`, ET LE MOTEUR LA
+  // LIT COMME AVANT.
+  //
+  // C'est la décision du fondateur (17/08/2026) et elle évite le geste que j'allais faire :
+  // passer le plan précédent à `buildPlan` pour qu'il lise les ✓. Ç'aurait été une quatrième
+  // entrée au moteur, de l'état entre deux builds, et un couplage aux coordonnées d'un plan.
+  // **Une nage continue validée EST une référence mesurée** — elle démontre une capacité, elle a
+  // une date, elle vient de l'athlète — donc elle passe par le même pont que la FTP, l'allure
+  // seuil, le CSS et la VAM. Rien de nouveau : une PROMOTION, pas un changement de moteur.
+  // R20.1 est satisfaite d'office, puisque `longest_swim_m` agit déjà sur le plan.
+  //
+  // ⚠ LA POLITIQUE DE SÉLECTION DIVERGE, ET C'EST VOULU. `latest()` rend le PLUS RÉCENT — juste
+  // pour une FTP, qui monte et descend. Un cliquet de capacité veut le PLUS HAUT : une séance
+  // sautée n'est pas une capacité perdue, qui a nagé 800 m d'affilée les sait toujours nager.
+  // La borne « depuis le début du plan » n'invente aucune fenêtre : c'est la durée de la
+  // préparation, elle est connue, et une nage de 2 000 m faite il y a trois ans n'a pas à porter
+  // le plan d'aujourd'hui. Variante de politique PAR CLÉ, écrite ici parce que celle du journal
+  // est explicite et sourcée (O-23, O-25).
+  const debutPlan = String(S.answers.plan_start || "");
+  const conts = tests.filter((t) => t.type === "swimContinuity" && isFinite(t.value)
+    && (!debutPlan || String(t.date || "") >= debutPlan));
+  if (conts.length) {
+    const haut = Math.max(...conts.map((t) => t.value));
+    // MONOTONE aussi contre la DÉCLARATION : le cliquet ne peut que monter, jamais effacer une
+    // capacité que l'athlète avait déclarée plus haute et qu'il n'a simplement pas re-testée.
+    const declare = parseFloat(String(S.answers.longest_swim_m ?? "")) || 0;
+    const v = String(Math.round(Math.max(haut, declare)));
+    if (S.answers.longest_swim_known !== "oui" || S.answers.longest_swim_m !== v) {
+      S.answers.longest_swim_m = v; S.answers.longest_swim_known = "oui"; n++;
+    }
+  }
   return n;
 }
 

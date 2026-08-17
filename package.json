@@ -76,7 +76,8 @@
     "sonde:o21": "node scripts/sondeO21.mjs",
     "mesure:dosefull": "node scripts/mesureDoseFull.mjs",
     "couverture:golden": "node scripts/couvertureGolden.mjs",
-    "base:cliquet": "node scripts/baseCliquet.mjs"
+    "base:cliquet": "node scripts/baseCliquet.mjs",
+    "mesure:o56": "node scripts/contrepreuveO56.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

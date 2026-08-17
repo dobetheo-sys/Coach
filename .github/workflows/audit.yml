@@ -130,6 +130,12 @@ jobs:
       # journal qu'O-22 et O-25 n'ont pas relié. Coût nul, et personne n'a à se souvenir de la
       # lancer. Elle deviendra un gate quand son tri sera fait.
       - run: npm run couverture:golden
+      # O-56 §2 — le cliquet de capacité de nage : monte sur un palier validé, ne descend JAMAIS
+      # (une séance sautée n'est pas une capacité perdue), prend le PLUS HAUT et non le plus
+      # récent, et ignore ce qui précède le début du plan.
+      - run: npm run mesure:o56
+      # O-52 — `countDiff` distingue 1 champ de N et n'invente pas d'amplitude sur une chaîne.
+      - run: npm run mesure:o52
 
   # E2E navigateur : les smokes de la PWA (check-in, R4, rétention, améliorations)
   # tournent dans un vrai Chromium — Playwright est une devDependency de TEST
