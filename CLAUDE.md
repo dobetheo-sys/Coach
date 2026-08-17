@@ -269,6 +269,59 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   minutes ; un plancher de séance se compte en minutes ; un pourcentage sur une semaine de 34 min
   amplifie le quantum d'un facteur dix.
 
+- **Règle 20 — toute grandeur qui varie avec la POSITION DANS LE PLAN déclare à quelle position
+  elle vaut, et tout consommateur la lit à la position où il l'utilise** (arbitrage O-56,
+  17/08/2026). Une valeur de fin de rampe n'est pas une borne de semaine 1 ; une déclaration de
+  semaine 1 n'est pas une capacité de semaine 30. Les deux occurrences sont symétriques et sont
+  arrivées le même jour :
+  `atteignableM` — valeur de FIN, appliquée au DÉBUT : un athlète déclarant 400 m de nage continue
+  recevait une séance de **4 150 m**, et 2 000 m donnaient un plafond de **32 076 m** sur un Full ;
+  `beginner` — valeur du DÉBUT, appliquée à la FIN : le débutant de la semaine 1 l'est encore en
+  semaine 30, sur un plan qui prescrit précisément les trente semaines qui devraient le lever.
+  C'est le pendant TEMPOREL de la famille fermée douze fois : celle-là portait sur l'ORDRE DES
+  PASSES (« une garantie vérifiée au milieu du pipeline ne vérifie que l'avant-dernier état »),
+  celle-ci sur la POSITION DANS LE PLAN.
+
+- **Un ratio se publie avec son dénominateur NOMMÉ, et se lit en le cherchant** (corollaire de la
+  règle 14, arbitrage du 17/08/2026). « 231/231 à la borne » comptait *parmi les blocs à la borne,
+  combien sont en tri* — pas l'inverse ; il s'est lu comme « le plafond définit la nage seuil du
+  triathlète longue distance » et un arbitrage a été rendu dessus. Le réel était 22 % des semaines.
+  Un ratio est un chiffre à DEUX nombres ; n'en donner qu'un le fait toujours lire dans le sens le
+  plus frappant.
+
+- **Un outil de LOCALISATION et un outil de MESURE ne sont jamais le même outil, et le premier
+  produit toujours un nombre qui a l'air d'être le second** (arbitrage du 17/08/2026). `firstDiff`
+  du golden documente qu'il rend le PREMIER écart — « où compte plus que combien pour corriger » —
+  et c'est en agrégeant ses 87 lignes qu'une ampleur fausse a été publiée puis a fondé une
+  décision. Le vrai mouvement était de 6 403 champs. Fermé par O-52 : l'outil a désormais les deux
+  sorties.
+
+- **Changer ce dont une valeur DÉRIVE redéfinit silencieusement le sens de tous ses consommateurs
+  — y compris les arbitrages rendus dessus.** Aucun test n'attrape ça, puisque rien ne bouge chez
+  le consommateur. Trois occurrences en deux jours : `cibleDuNom` comparant une grandeur à
+  elle-même après que le titre est devenu dérivé du livré (0/24, trivialement vrai) ; un message
+  bâti sur une clé dont la définition avait changé ; et une décision « l'auxiliaire cède jusqu'à
+  son plancher » devenue sans objet parce que la borne inclut désormais l'auxiliaire. La seule
+  parade est de **relister les lecteurs d'une valeur quand on change sa source**.
+
+- **La nouvelle base d'un cliquet se mesure AVANT que le moteur bouge, jamais après**
+  (arbitrage du 17/08/2026, `npm run base:cliquet`). Un cliquet qui monte parce qu'on a ÉLARGI la
+  mesure et un cliquet qui monte parce que le MOTEUR a régressé se ressemblent exactement.
+  Trancher par inférence — « un autre cliquet est resté fixe, donc c'est le corpus » — marche
+  jusqu'au jour où tous montent. La preuve mécanique coûte une passe : rejouer le NOUVEAU corpus
+  contre le moteur INCHANGÉ. Vérifiée sur ses trois branches (corpus +20 → 31→69 rabotés ; corpus
+  inchangé et moteur inchangé → 0 ; corpus inchangé et garde retirée → +138, « RÉGRESSION »).
+
+- **Un corpus se juge sur l'espace des DÉCISIONS, pas sur celui des saisies**
+  (arbitrage A-2, 17/08/2026, `npm run couverture:golden`). Six angles morts du golden en un mois
+  ne sont pas six distractions : le corpus a été construit pour couvrir des FORMATS et des NIVEAUX,
+  pas les BRANCHES des règles qui les lisent — et chaque fois qu'une règle apprend à lire une clé,
+  il devient muet sur son domaine **en silence, parce qu'un corpus incomplet rend des résultats
+  verts**. La couverture par CLÉ ne suffit pas : le dernier trou l'aurait passée (`level` avait ses
+  3 valeurs, `longest_swim_m` ses 5 branches) — ce qui manquait était le CROISEMENT. Ne sont
+  croisés que les couples que le CODE lit ensemble, dérivés par co-occurrence : 238 sur 2 080,
+  88 % de bruit retiré sans arbitrage humain.
+
 - **Test de dépistage de la règle 15, à trois secondes : un taux SATURÉ accuse l'instrument — ou
   le MODÈLE MENTAL de ce que l'instrument observe.** (Élargi le 16/08/2026 : `mesure:o46` rendait
   « avec plafond » et « sans plafond » identiques au mètre près ; la sonde fonctionnait, elle

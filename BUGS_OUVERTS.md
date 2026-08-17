@@ -6150,9 +6150,16 @@ cmd: grep -q "O-55 (arbitrage du 17/08/2026)" src/engine/constraintMatrix.ts && 
 
 ---
 
-## O-56 · `beginner` est STATIQUE — les protections du débutant deviennent une camisole · 🔴 **OUVERT, gros**
+## O-56 · Toute borne dérivée d'une CAPACITÉ est gelée sur la déclaration initiale · 🔴 **OUVERT, gros**
 
-Racine nommée par le fondateur en arbitrant O-54 §2, et elle dépasse ce ticket.
+Racine nommée par le fondateur en arbitrant O-54 §2, et **plus large que « `beginner` est
+statique »** — c'est sa deuxième formulation qui est la bonne :
+
+> **Toute borne dérivée d'une capacité est gelée sur la déclaration initiale, et empêche le plan
+> de construire précisément ce qu'il existe pour construire.**
+
+Un nageur à 2 000 m préparant un Ironman en 36 semaines **atteindrait** 3 800 m — c'est même
+l'objet de la préparation. Le moteur le plafonne à ce qu'il était le premier jour.
 
 ```
 défaut       `beginner` vient de `level === "debutant"` et ne bouge JAMAIS. Toutes les
@@ -6171,16 +6178,66 @@ mesurée      DÉMONTRÉE et ne progresse pas, donc un nageur à 2 000 m ne cons
              3 800 m d'un Ironman — 31 paliers livrés sous leur épingle. Le corriger POUR
              CETTE SEULE BORNE en ferait un cas particulier de plus au lieu d'une règle.
 
-le point     décroître `beginner` avec la position dans le plan suppose que l'athlète a FAIT
-délicat      les séances. C'est la même hypothèse que la rampe C22 — donc pas une hypothèse
-             nouvelle, mais elle mérite d'être ÉCRITE plutôt qu'héritée en silence. Et le
-             moteur a de quoi ne pas la supposer : `answers.done` alimente déjà l'adhérence
-             (P1) et la boucle prévu/réel.
+la forme     LE PATRON DE C22, APPLIQUÉ À UNE SECONDE GRANDEUR. Faire progresser une capacité
+du correctif suppose que l'athlète a fait les séances — **c'est exactement l'hypothèse de la
+             rampe C22**, acceptée et écrite depuis le début (le plafond de cette semaine est
+             fonction du livré de la précédente). Ce n'est donc pas une hypothèse nouvelle à
+             défendre, c'est un patron existant à étendre.
+
+                 la capacité démontrée cliquette avec la progression du plan lui-même :
+                   · au départ, la déclaration
+                   · ensuite, le plus haut palier que le plan a prescrit et livré
+                   · borné, comme C22, par un taux de montée
+
+             Et il y a une raison de fond de le faire ainsi plutôt qu'avec un compteur de
+             semaines : **les paliers de B-17 SONT déjà le test.** Le plan prescrit une
+             continue à 2 000 m ; l'athlète la fait ; sa capacité démontrée vaut 2 000 ; le
+             palier suivant peut viser plus haut. Le mécanisme de mesure existe, il est
+             prescrit, et il n'a pas besoin d'une question de plus.
+
+⚠ LA FOURCHE  **À TRANCHER AVANT D'ÉCRIRE.** Le cliquet peut lire deux choses, et les deux
+À TRANCHER   sont voulues pour des raisons différentes :
+
+               PROJECTION  le palier que le plan a PRESCRIT, à la construction
+                           → permet au plan de bâtir jusqu'à 3 800 m dès le premier build
+                           → mais ignore l'athlète qui n'a pas nagé depuis six semaines
+
+               ÉVIDENCE    le palier que l'athlète a VALIDÉ, à la re-génération
+                           → la capacité suit la réalité, pas l'intention
+                           → mais au premier build aucune séance n'est validée, donc seule
+                             elle ne résout RIEN
+
+             Donc les deux, et **c'est la répartition qui est la décision** :
+               · à la construction — la capacité projette, bornée par un taux de montée
+                 (patron C22, hypothèse assumée et déjà écrite) ;
+               · à la re-génération — la capacité lit les paliers VALIDÉS depuis le dernier
+                 build, et corrige la projection.
+
+             Le second membre est plus fort que C22, parce que B-17 prescrit des séances
+             **vérifiables** : le graphe distingue déjà prévu et validé ✓. Ce serait la
+             première fois dans ce moteur qu'une progression s'appuie sur une ÉVIDENCE
+             plutôt que sur une supposition.
+
+             ET CE QUI RESTE OUVERT, QUI EST UNE DÉCISION D'ENTRAÎNEMENT : que se passe-t-il
+             quand projection et évidence divergent — l'athlète a sauté ses continues ? La
+             capacité redescend-elle, stagne-t-elle, ou le plan se reconstruit-il sur la
+             valeur réelle ? Ce n'est pas du code, et ça appartient à ce ticket.
 
 à mesurer    · combien de bornes lisent `beginner` (recensement, pas estimation)
 avant toute  · pour chacune : est-elle une borne de SÉCURITÉ (qui doit rester) ou de
 décision       CAPACITÉ (qui doit progresser) ? Les deux sont mélangées aujourd'hui
              · le rayon d'une décroissance, sur le golden
+             · et la couverture du corpus sur les couples que ces bornes lisent
+               (`npm run couverture:golden`) AVANT d'écrire — sans quoi O-56 se mesurerait
+               sur la même population aveugle que celle qui vient de laisser passer
+               `atteignableM`.
+
+ce qu'il      **La protection de B-17 est complète pour un athlète dont la capacité déclarée
+faut écrire   atteint la distance de course, et PARTIELLE pour les autres.** Le titre dit
+une fois      désormais la vérité — progrès réel sur la version qui mentait — mais l'athlète
+proprement    à 2 000 m arrive toujours à un Ironman sans avoir couvert la distance. Ce n'est
+             pas une régression et ça ne rouvre rien : c'est la mesure honnête de ce qui est
+             livré, et **O-56 est ce qui l'achève**.
 ```
 
 ```verify
