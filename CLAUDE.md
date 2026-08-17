@@ -301,6 +301,15 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   PASSES (« une garantie vérifiée au milieu du pipeline ne vérifie que l'avant-dernier état »),
   celle-ci sur la POSITION DANS LE PLAN.
 
+- **Une règle qui échoue trois fois n'est pas une règle mal écrite — c'est un MÉCANISME
+  manquant** (arbitrage du fondateur, 17/08/2026, après la troisième perte par `git checkout`
+  sur un fichier non commité). La règle « committer avant de casser » est écrite depuis V2 et a
+  échoué trois fois : le défaut n'était pas la cassure mais le « défaire à la main ». Le harnais
+  `npm run casser` possède désormais le cycle de vie de sa mutation (mute · lance · restaure
+  dans un `finally`, Ctrl-C compris) et REFUSE de muter un fichier déjà modifié — l'état exact
+  des trois pertes. Même raisonnement que le crochet du journal, `lotPhysio` en CI et
+  `check:chemins` : ne pas compter sur la discipline là où un mécanisme suffit.
+
 - **Un ZÉRO a besoin de sa POPULATION** (arbitrage du fondateur, 17/08/2026). L'heuristique
   « un taux saturé accuse l'instrument » a un ANGLE MORT, et il est large : **elle ne peut pas se
   déclencher quand la valeur saturée est la valeur DÉSIRÉE.** Zéro écart, zéro violation, zéro

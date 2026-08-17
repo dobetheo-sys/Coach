@@ -22,7 +22,8 @@ import { T1_DPLUS_CAPS, T4_LONG_RUN_VS_RACE, T6_MIN_WEEKS, TRAIL_HISTORY_CAPS, T
 
 /** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
 function fmtH(min: number): string {
-  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  const t = Math.round(min);   // arrondir AVANT de séparer (famille « 1'60 »)
+  const h = Math.floor(t / 60), m = t % 60;
   return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
 }
 

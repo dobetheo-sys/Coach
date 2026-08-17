@@ -329,7 +329,8 @@ export function predictSwimrun(kit: PredictKit): void {
     return;
   }
   const fmtHM = (min: number) => {
-    const h = Math.floor(min / 60), m = Math.round(min % 60);
+    const t = Math.round(min);   // arrondir AVANT de séparer (famille « 1'60 »)
+    const h = Math.floor(t / 60), m = t % 60;
     return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
   };
   const est = obj.paceKnown ? "" : " — ESTIMÉ d'après ton CSS et ton allure route, fais le test en tenue pour l'affiner";

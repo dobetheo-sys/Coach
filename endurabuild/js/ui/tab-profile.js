@@ -24,7 +24,8 @@ import { evalRules } from "./steps.js";
 import { ensurePlan, invalidatePlan } from "./tabs.js";
 import { DISC } from "./icons.js";
 
-const _fmtSec = (s) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
+// arrondir AVANT de séparer (famille « 1'60 », 17/08/2026) : 119,6 s rendait « 1'60 »
+const _fmtSec = (s) => { const t = Math.round(s); return Math.floor(t / 60) + "'" + String(t % 60).padStart(2, "0"); };
 
 // O-41 (pas A) — `syncRefsFromTests` A DÉMÉNAGÉ DANS `state.js`, ET CE N'EST PAS DU RANGEMENT.
 //

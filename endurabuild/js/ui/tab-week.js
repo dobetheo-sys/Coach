@@ -405,7 +405,7 @@ export function renderTabWeek(plan) {
       if (dists.length) {
         ordreDistances = dists.map((x) => x.d);
         const fmtKm = (x) => (x.approx ? "~" : "") + String(x.km).replace(".", ",") + " km";
-        const fmtMin = (m) => (m >= 60 ? Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0") : m + " min");
+        const fmtMin = (m) => { const t = Math.round(m); return t >= 60 ? Math.floor(t / 60) + "h" + String(t % 60).padStart(2, "0") : t + " min"; };
         html += '<div class="load-sub" style="display:flex;gap:14px;flex-wrap:wrap;margin:2px 0 8px;font-size:var(--fs-md)">'
           + dists.map((x) => "<span><b>" + DISC[x.d].ic + " " + (x.km != null ? fmtKm(x) : fmtMin(x.min)) + "</b>"
             + (x.km != null && x.min > 0 ? ' <span style="color:var(--muted)">· ' + fmtMin(x.min) + "</span>" : "") + "</span>").join("")

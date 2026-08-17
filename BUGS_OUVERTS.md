@@ -6683,6 +6683,28 @@ discipline limitante, séances spécifiques de course, paliers B-17 ; *se coupe 
 récupération, mobilité, complément dans une discipline non limitante — n'invente rien : c'est
 celui qu'on applique déjà partout ailleurs pour décider quoi protéger.
 
+### ORDRE CORRIGÉ (fondateur, 17/08/2026, second arbitrage) : la PROGRESSION passe devant
+
+La mesure « aucune borne de séance ne varie avec la semaine » change l'ordre : pour livrer plus,
+le moteur ne peut qu'AJOUTER des séances → `sessions_max` est atteint → la coupe se déclenche.
+**Si le volume montait par la durée, la coupe n'aurait presque rien à trancher.** Corriger O-66
+d'abord reviendrait à calibrer une coupe sur un nombre de séances que le lot suivant fera chuter
+(le piège du lot 2 mesuré avant O-42, et d'O-44 calibré sur une population qui allait bouger).
+Ordre : 1. progression des types figés · 2. allocation vélo · 3. O-66 · 4. N-01 · 5. N-02.
+O-66 ne devient pas inutile — la coupe doit trier par valeur QUAND elle se déclenche ; T-44 se
+re-mesurera sur la population restante.
+
+**Note de conception pour le lot 1 (§4 du fondateur), lue dans B-17 avant d'écrire** : B-17 est
+le seul endroit du moteur qui calcule une cible PAR SEMAINE, et son mécanisme a trois pièces —
+(a) une cible par position, interpolée GÉOMÉTRIQUEMENT du départ de l'athlète à la distance de
+course (`palierDistanceM` : géométrique parce que la contrainte qui la borne est un RAPPORT,
+C22 = +10 %/semaine) ; (b) des positions dérivées de la PHASE, pas du calendrier absolu ;
+(c) le bloc ÉPINGLÉ (`pinned`) pour que les passes de volume ne défassent pas la rampe. La
+généralisation est une extension, pas une écriture : `borne(type, semaine) = f(départ, cible du
+format, position)`, où seule la CIBLE est propre au type (le brick vise la durée de course
+vélo+CAP du format, le footing un plafond qui suit la phase). L'arbitrage rendu ici reste
+inchangé — le classement à deux dimensions et T-44.
+
 ### ARBITRAGE RENDU (fondateur, 17/08/2026) : à faire APRÈS le merge, et EN PREMIER
 
 *« Le défaut n'est pas l'ordre, c'est la MONNAIE. »* `sessions_max` compte des séances, le
@@ -6799,4 +6821,90 @@ id: O-67
 quoi: ce qui est mesuré est-il ce qui est livré ?
 attendu: golden(src) === golden(bundle), 989 profils, 0 écart
 cmd: npm run golden:bundle 2>&1 | tail -2
+```
+
+## O-68 · L'écran de projection montrait l'affûtage SEUL — le gain annulé par un précipice d'adhérence · 🔴 **OUVERT, mécanisme reproduit au bit près**
+
+**Origine** : retour du fondateur sur son écran (17/08/2026) — « CSS 2:02 → 1'60/100m », ~2 % sur
+les trois disciplines, borne basse figée à 5 h 38, « quarante semaines valent neuf minutes ».
+
+### Ce que la mesure a établi, dans l'ordre de ses trois questions
+
+**« Un coefficient unique, ou trois modèles ? » — NI L'UN NI L'AUTRE.** Le modèle porte trois
+plafonds par discipline (`G_PLAFOND` : ftp 0,25 · css 0,22 · thrPace 0,15) multipliés par des
+facteurs partagés. Mesuré sur sa famille de profil (236 W / 85 kg / confirmé / suivi / 40 sem) :
+**FTP +12,6 % · CSS +9,8 % · CAP +6,9 %** — trois gains distincts, DANS les fourchettes qu'il
+cite comme « couramment observées ». Le modèle n'est pas conservateur d'un facteur 2-3 :
+**il était ÉTEINT.** Le ~2 % commun aux trois disciplines est le bonus d'affûtage
+(`TAPER_GAIN = 1,96 %`), seul terme ADDITIF qui survit quand le gain d'entraînement est annulé :
+
+```
+gain = brut × adhFactor + taper        avec adhFactor = 0 si adhérence < 50 %
+     = 0                + 0,0196
+```
+
+**Reproduction au bit près** — les trois valeurs de son écran sont `référence × 1,0196` :
+CSS 122 s / 1,0196 = **119,65 s** → l'ancien formateur rendait exactement **« 1'60 »** ·
+CAP 282 s / 1,0196 = 276,6 s = **4'37** · FTP 236 × 1,0196 = 240,6 = **241 W**. Une cause,
+trois symptômes — y compris le bug d'affichage, dont la valeur d'entrée tombe précisément
+dans la fenêtre fautive.
+
+**« La borne basse : voulu ou clampé ? » — CLAMPÉE, en conséquence du gain annulé.** Le
+prédicteur borne le meilleur cas projeté par le meilleur cas AFFICHÉ aujourd'hui
+(`loT = min(loT0, loNow)`, retour du 08/08). À gain 1,96 %, `mNow × (1 − 1,3 × 0,0196)` reste
+au-dessus de `loNow` : la borne rapide est donc gelée sur celle d'aujourd'hui. Avec le gain réel
+(~10 %), le clamp ne mord plus et les deux bornes bougent. Ce n'est pas un défaut indépendant —
+c'est le §2 vu du côté temps.
+
+### Le précipice, et il est net
+
+`adherenceWindow` rend `null` quand `done` est VIDE → facteur 0,9 (« suivi normal »). Mais
+**valider un seul jour de REPOS rend `done` non vide** → la fenêtre calcule `fait/prescrit` sur
+les séances passées non cochées → ~0 % → gain entièrement annulé. Et le repos est EXCLU de
+`fait` comme de `prescrit` (« le repos ne se rate pas ») : **l'acte qui bascule l'interrupteur
+est exclu de la mesure qu'il déclenche.** Cocher un repos au jour 1 fait passer la projection de
+~90 % du gain à 1,96 % ; ne rien cocher la laisse à 90 %. L'écran du fondateur montrait
+« Repos validé ».
+
+### La question d'arbitrage, et elle est de la famille de la règle 20
+
+L'adhérence des semaines ÉCOULÉES est appliquée multiplicativement au gain des 40 semaines
+ENTIÈRES. À la semaine 39, c'est juste ; à la semaine 1, une mauvaise semaine (ou un simple
+repos coché) efface 39 semaines à venir que rien n'a mesurées. Une grandeur qui varie avec la
+position est appliquée sans sa position. Deux pistes, à trancher :
+
+```
+· le précipice (mécanique)   la bascule null→mesurée ne devrait suivre qu'une entrée
+                             COMPTÉE par la fenêtre (une séance d'entraînement), jamais
+                             un repos ; et fait=0 sur fenêtre quasi vide ≠ adhérence 0
+· la position (arbitrage)    l'annulation devrait peser proportionnellement à la part
+                             ÉCOULÉE du plan — le gain du RESTANT n'est pas encore joué
+```
+
+**NON CORRIGÉ, délibérément** : le premier point est mécanique mais le second le contient, et
+le fondateur a classé ce lot « celui qui décide si l'application encourage ou décourage » — il
+se traite entier, sur son arbitrage.
+
+### Ce qui EST corrigé : la famille « 1'60 » — treize formateurs
+
+Onze sites arrondissaient APRÈS avoir séparé minutes et secondes (`floor(s/60)` puis
+`round(s%60)` → « 1'60 » sur 119,6 s), deux ne s'arrondissaient pas du tout (un flottant aurait
+fui ses décimales). La règle unique : **l'arrondi se fait sur la GRANDEUR, la séparation sur
+l'ENTIER.** Golden re-vérifié à 0 écart sur 989 — le bug ne mordait dans AUCUN plan livré (les
+allures du plan viennent des bandes de zone) : il ne vivait que dans la projection, dont les
+références sont des flottants, exactement où le fondateur l'a vu et exactement ce que le golden
+ne photographie pas.
+
+### Note sur l'identité du profil (§6 du retour)
+
+Les valeurs de l'écran (236 W · 4:42 · 2:02) ne sont pas celles du fixture (227 · 4:50) : l'app
+lit les références VIVANTES, promues par le journal des tests (imports Strava et retests,
+O-22/O-25). La reproduction au bit près règle la question — c'est bien cet état qui a produit
+l'écran, et le raisonnement ne dépendait que des rapports.
+
+```verify
+id: O-68
+quoi: le gain projeté n'est plus annulé par la validation d'un simple repos (précipice d'adhérence)
+attendu: OUVERT — arbitrage à rendre sur la pondération par position ; le précipice est décrit ci-dessus
+cmd: grep -n "Object.keys(done).length === 0" src/engine/projection.ts
 ```

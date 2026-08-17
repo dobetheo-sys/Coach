@@ -541,7 +541,8 @@ export function raceRunBand(sport: string, format: string, thrPaceSecPerKm: numb
 
 /** Minutes → « 9h20 » : une durée de trail se lit en heures, pas en minutes. */
 function fmtHM(min: number): string {
-  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  const t = Math.round(min);   // arrondir AVANT de séparer (famille « 1'60 ») : round(59,6 % 60) rendait 60
+  const h = Math.floor(t / 60), m = t % 60;
   return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
 }
 

@@ -171,7 +171,8 @@ function personalStat(plan, todayISO) {
     if (ts.length >= 2) {
       const first = ts[0], last = ts[ts.length - 1];
       if (+first.value !== +last.value) {
-        const f = (v) => type === "ftp" ? Math.round(v) + "W" : Math.floor(v / 60) + "'" + String(Math.round(v % 60)).padStart(2, "0");
+        // arrondir AVANT de séparer (famille « 1'60 », 17/08/2026)
+        const f = (v) => { if (type === "ftp") return Math.round(v) + "W"; const t = Math.round(v); return Math.floor(t / 60) + "'" + String(t % 60).padStart(2, "0"); };
         return "Ta référence " + (type === "ftp" ? "FTP" : type === "css" ? "CSS" : "allure seuil") + " : " + f(+first.value) + " le " + (first.date || "?") + " → " + f(+last.value) + " aujourd'hui. C'est ça, l'entraînement structuré.";
       }
     }

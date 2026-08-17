@@ -24,7 +24,8 @@ const TYPES = {
   vam: { label: "VAM (trail)", unit: "m/h", disc: "trail", parse: (v) => parseInt(v) || 0, fmt: (v) => Math.round(v) + " m/h", better: (nu, old) => nu > old },
 };
 function parseTime(v) { const m = String(v || "").split(":"); return m.length === 2 ? (+m[0]) * 60 + (+m[1]) : NaN; }
-function fmtSec(s) { return Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0") + " /km"; }
+// arrondir AVANT de séparer (famille « 1'60 », 17/08/2026)
+function fmtSec(s) { const t = Math.round(s); return Math.floor(t / 60) + "'" + String(t % 60).padStart(2, "0") + " /km"; }
 
 export function typesForSport(sport) {
   // R10 phase 1 — la liste vient du REGISTRE DE SPORTS (EBV2.sports) : l'UI ne recopie plus

@@ -2821,7 +2821,8 @@ function trailWeeklyVertical(obj                , history        , access       
 
 /** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
 function fmtH(min        )         {
-  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  const t = Math.round(min);   // arrondir AVANT de séparer (famille « 1'60 »)
+  const h = Math.floor(t / 60), m = t % 60;
   return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
 }
 
@@ -3558,7 +3559,11 @@ const ZDEF                          = {
  *  risque de chute sont maximaux. La consigne est qualitative, et c'est un CHOIX. */
 const TRAIL_DOWN_CUE = "en contrôle : buste relâché, cadence haute, petits pas, regard 4-5m devant (jamais sur ses pieds)";
 
-const fk = (s        ) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
+// ⚠ ARRONDIR AVANT DE SÉPARER, JAMAIS APRÈS. L'ancienne écriture tronquait les minutes puis
+// arrondissait les secondes : 119,6 s rendait « 1'60 » — soixante secondes font une minute.
+// Onze formateurs du produit portaient la même faute (retour du fondateur, 17/08/2026) ; la
+// règle vaut pour tous : l'arrondi se fait sur la GRANDEUR, la séparation sur l'ENTIER.
+const fk = (s        ) => { const t = Math.round(s); return Math.floor(t / 60) + "'" + String(t % 60).padStart(2, "0"); };
 
 /**
  * O-11 / R20.5 — `bk.rp` n'est plus une constante : c'est l'allure course de CETTE épreuve.
@@ -7622,7 +7627,8 @@ function predictSwimrun(kit            )       {
     return;
   }
   const fmtHM = (min        ) => {
-    const h = Math.floor(min / 60), m = Math.round(min % 60);
+    const t = Math.round(min);   // arrondir AVANT de séparer (famille « 1'60 »)
+    const h = Math.floor(t / 60), m = t % 60;
     return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
   };
   const est = obj.paceKnown ? "" : " — ESTIMÉ d'après ton CSS et ton allure route, fais le test en tenue pour l'affiner";
@@ -14635,7 +14641,8 @@ function raceRunBand(sport        , format        , thrPaceSecPerKm        , run
 
 /** Minutes → « 9h20 » : une durée de trail se lit en heures, pas en minutes. */
 function fmtHM(min        )         {
-  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  const t = Math.round(min);   // arrondir AVANT de séparer (famille « 1'60 ») : round(59,6 % 60) rendait 60
+  const h = Math.floor(t / 60), m = t % 60;
   return h > 0 ? h + "h" + String(m).padStart(2, "0") : m + "min";
 }
 
@@ -17163,7 +17170,8 @@ function ecartCible(s           , ing                 , refs      )
   const rapide = base * band.lo; // borne RAPIDE (secondes les plus basses)
   const lent = base * band.hi;   // borne LENTE
   const unite = band.ref === "css" ? "/100m" : "/km";
-  const fk = (x        ) => Math.floor(x / 60) + "'" + String(Math.round(x % 60)).padStart(2, "0");
+  // arrondir AVANT de séparer (famille « 1'60 », 17/08/2026) — voir renderer.ts `fk`
+  const fk = (x        ) => { const t = Math.round(x); return Math.floor(t / 60) + "'" + String(t % 60).padStart(2, "0"); };
   const cible = fk(rapide) + "-" + fk(lent) + unite;
   if (realise < rapide) return { ecart: (rapide - realise) / rapide, direction: "au-dessus", type: "allure", cible };
   if (realise > lent) return { ecart: (realise - lent) / lent, direction: "en-dessous", type: "allure", cible };

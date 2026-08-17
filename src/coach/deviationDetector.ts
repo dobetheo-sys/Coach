@@ -161,7 +161,8 @@ export function ecartCible(s: V1Session, ing: IngestedSession, refs: Refs):
   const rapide = base * band.lo; // borne RAPIDE (secondes les plus basses)
   const lent = base * band.hi;   // borne LENTE
   const unite = band.ref === "css" ? "/100m" : "/km";
-  const fk = (x: number) => Math.floor(x / 60) + "'" + String(Math.round(x % 60)).padStart(2, "0");
+  // arrondir AVANT de séparer (famille « 1'60 », 17/08/2026) — voir renderer.ts `fk`
+  const fk = (x: number) => { const t = Math.round(x); return Math.floor(t / 60) + "'" + String(t % 60).padStart(2, "0"); };
   const cible = fk(rapide) + "-" + fk(lent) + unite;
   if (realise < rapide) return { ecart: (rapide - realise) / rapide, direction: "au-dessus", type: "allure", cible };
   if (realise > lent) return { ecart: (realise - lent) / lent, direction: "en-dessous", type: "allure", cible };

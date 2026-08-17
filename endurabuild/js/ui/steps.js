@@ -527,7 +527,7 @@ function injuryOpts(){
 function ebParseT(v){const m=String(v||"").split(":");return m.length===2?(+m[0])*60+(+m[1]):parseFloat(v);}
 // ===== §10 — LECTURE Strava (OAuth 2.0, jeton personnel) : alimente a.tests (R3.8) =====
 // Formate des secondes en m'ss (allure au km, temps au 100 m).
-const _fk100=s=>Math.floor(s/60)+"'"+String(Math.round(s%60)).padStart(2,"0");
+const _fk100=s=>{const t=Math.round(s);return Math.floor(t/60)+"'"+String(t%60).padStart(2,"0");};   // arrondir AVANT de séparer (famille « 1'60 »)
 /**
  * O-22 — L'IMPORT LIT LA GRANDEUR QUE LE PROTOCOLE NOMME.
  *

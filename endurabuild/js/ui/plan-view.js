@@ -582,7 +582,10 @@ const _fmtMin = (m) => {
  *  Même formule que `fmtPace` (engine.js), `fmtSec` (retest.js), `_fmtSec` (tab-profile.js) —
  *  reprise ici plutôt qu'importée : c'est déjà l'idiome de ce dépôt pour cette ligne (R11.1
  *  s'applique au CALCUL, pas à la duplication d'un formateur d'une ligne entre modules UI). */
-const _fmtPace = (s) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
+// arrondir AVANT de séparer (retour du fondateur, 17/08/2026) : le CSS PROJETÉ est un flottant
+// (119,6 s) et cette ligne tronquait les minutes PUIS arrondissait les secondes — l'écran de
+// projection affichait « 1'60/100m ». Soixante secondes font une minute.
+const _fmtPace = (s) => { const t = Math.round(s); return Math.floor(t / 60) + "'" + String(t % 60).padStart(2, "0"); };
 /** Range les items du prédicteur par discipline. Les lignes d'INTENSITÉ (watts) sont écartées :
  *  P6 interdit de projeter le pacing, elles ne sont pas des chronos et n'ont rien à faire ici. */
 function _parDiscipline(items) {

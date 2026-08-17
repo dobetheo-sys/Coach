@@ -42,7 +42,8 @@ function ebActivate(id){
   return true;
 }
 /** Secondes → « m:ss ». Déplacé avec `syncRefsFromTests` : son seul consommateur. */
-const _fmtColon = (s) => Math.floor(s / 60) + ":" + String(Math.round(s % 60)).padStart(2, "0");
+// arrondir AVANT de séparer (famille « 1'60 », 17/08/2026)
+const _fmtColon = (s) => { const t = Math.round(s); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
 
 // Le moteur V2 ne lit QUE les valeurs courantes (a.ftp/a.pace/a.css + *_known) — jamais
 // le journal daté S.answers.tests. Sans ce pont, un import (FIT/Strava) écrirait le

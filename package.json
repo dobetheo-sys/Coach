@@ -83,7 +83,8 @@
     "test:rollback": "node scripts/testRollback.mjs",
     "golden:bundle": "node scripts/goldenBundle.mjs",
     "mesure:progression": "node scripts/mesureProgression.mjs",
-    "check:chemins": "node scripts/checkChemins.mjs"
+    "check:chemins": "node scripts/checkChemins.mjs",
+    "casser": "node scripts/casser.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

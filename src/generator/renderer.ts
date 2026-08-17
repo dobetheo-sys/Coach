@@ -76,7 +76,11 @@ export const ZDEF: Record<string, ZoneDef> = {
  *  risque de chute sont maximaux. La consigne est qualitative, et c'est un CHOIX. */
 export const TRAIL_DOWN_CUE = "en contrôle : buste relâché, cadence haute, petits pas, regard 4-5m devant (jamais sur ses pieds)";
 
-const fk = (s: number) => Math.floor(s / 60) + "'" + String(Math.round(s % 60)).padStart(2, "0");
+// ⚠ ARRONDIR AVANT DE SÉPARER, JAMAIS APRÈS. L'ancienne écriture tronquait les minutes puis
+// arrondissait les secondes : 119,6 s rendait « 1'60 » — soixante secondes font une minute.
+// Onze formateurs du produit portaient la même faute (retour du fondateur, 17/08/2026) ; la
+// règle vaut pour tous : l'arrondi se fait sur la GRANDEUR, la séparation sur l'ENTIER.
+const fk = (s: number) => { const t = Math.round(s); return Math.floor(t / 60) + "'" + String(t % 60).padStart(2, "0"); };
 
 /**
  * O-11 / R20.5 — `bk.rp` n'est plus une constante : c'est l'allure course de CETTE épreuve.

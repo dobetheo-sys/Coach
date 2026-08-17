@@ -303,8 +303,9 @@ function formRingSVG(val) {
 function heroMetric(min) {
   const m = Math.round(min || 0);
   if (!m) return null;
-  if (m < 90) return { val: m, unit: "MIN" };
-  return { val: Math.floor(m / 60), unit: "H" + String(m % 60).padStart(2, "0") };
+  const t = Math.round(m);   // un flottant fuirait ses décimales dans « H30.5 » (famille « 1'60 »)
+  if (t < 90) return { val: t, unit: "MIN" };
+  return { val: Math.floor(t / 60), unit: "H" + String(t % 60).padStart(2, "0") };
 }
 
 export function heroSessionHTML(plan, todayIso) {
