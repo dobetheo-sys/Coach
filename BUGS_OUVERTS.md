@@ -5997,10 +5997,56 @@ angle mort   `sonde:b17` annonce « 0 écart cible↔livré » sur ses 24 palier
              n'échantillonne **aucun débutant**. Cinquième occurrence de la famille A-2 — un
              corpus qui ne contient pas la population où la règle mord.
 
-à décider    (a) le titre se dérive du LIVRÉ et non de la cible (R11.1 appliquée au nom) ;
-             (b) ou la continuité n'est pas prescrite du tout quand C15 la rendrait
-                 inopérante — mieux vaut ne rien promettre que promettre 3 800 et livrer 500.
-             Les deux sont des décisions de produit, pas des correctifs mécaniques.
+moitié       **(a) LIVRÉE le 17/08/2026** — le titre se dérive du LIVRÉ, dans
+immédiate    `syncDerivedLabels` (R5.1, le point de convergence de toute prose dérivée d'un
+             nombre). 57 titres qui mentaient → 0. Gardé par `T-40`, contre-preuve faite.
+             Ça n'empêche pas le défaut, ça empêche le DOMMAGE : un titre honnête à 500 m
+             est une séance que l'athlète peut évaluer.
+
+moitié       **(b) OUVERTE — elle demande un arbitrage, et la spec littérale ne tient pas.**
+réelle       « la franchissabilité inclut la livrabilité : un palier que C15 rabote n'est
+             pas un palier, donc l'écart n'est pas franchissable → rabattement ».
+
+             MESURÉ AVANT D'ÉCRIRE, et le résultat refuse la spec :
+
+                 ce qui borne la séance de continuité
+                    débutant ....... C15, 850 m TOUS BLOCS CONFONDUS
+                    non-débutant ... RIEN. `CAP_SWIM` ne s'applique pas — B-17 ne marque
+                                     pas la séance `long`, délibérément (sinon
+                                     `CAP_SWIM.Full = 3000` écrêterait la continuité de
+                                     3 800 que la règle existe pour prescrire).
+
+                 livrable d'un DÉBUTANT = 850 − 350 (échauffement + retour au calme) = 500
+
+                    format   course   livrable
+                       S       750      500  ✖
+                       M      1500      500  ✖
+                       70.3   1900      500  ✖
+                       Full   3800      500  ✖
+
+             **AUCUN format n'est livrable pour un débutant.** Appliquée telle quelle, la
+             règle rendrait tout triathlète débutant non franchissable, et le rabattement
+             n'aurait nulle part où le rabattre — c'est-à-dire un refus de la population
+             entière. Ce n'est pas ce que le §1 de l'arbitrage veut dire.
+
+             Une troisième issue existe et n'était pas dans la liste : **l'échauffement cède,
+             pas l'épingle.** C15 borne la SÉANCE ; l'épingle dit que le corps est fixe ;
+             donc c'est l'auxiliaire qui doit rétrécir. Chiffré : 850 − 0 = 850, ce qui rend
+             le SPRINT livrable (750) et laisse M/70.3/Full dehors.
+
+             Reste alors la contradiction de fond, qui est une question d'ENTRAÎNEMENT et
+             non de code : **B-17 veut construire une continuité jusqu'à 3 800 m, C15
+             interdit à un débutant de nager plus de 850 m par séance.** Les deux sont
+             défendables séparément et incompatibles ensemble pour un débutant sur
+             longue distance. Ce qui doit céder est un arbitrage :
+                (i)   C15 se relâche avec la progression (le « débutant » de la semaine 1
+                      n'est plus le même en semaine 30 — or `beginner` est STATIQUE, il
+                      vient de `level === "debutant"` et ne bouge jamais) ;
+                (ii)  ou B-17 ne prescrit pas de continuité au-delà de ce que C15 permet,
+                      et le plan DIT que la distance de course ne sera pas construite ;
+                (iii) ou un débutant n'entre pas sur un format dont la nage dépasse ce que
+                      C15 lui autorise — c'est le rabattement du §1, mais assumé comme un
+                      refus de format et non comme un ajustement silencieux.
 
 gardé par    `T-39` (lotPhysio) épingle le compte à 57 : aucun AUTRE mécanisme ne peut venir
              s'y ajouter en silence.
@@ -6015,7 +6061,7 @@ cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-39"
 
 ---
 
-## O-55 · Le plafond de dose est ABSOLU là où la progression demande une montée · 🔴 **OUVERT**
+## O-55 · Le plafond de dose est ABSOLU là où la progression demande une montée · ✅ **FERMÉ — c'est le comportement voulu**
 
 Ticket du §4b de l'arbitrage Q1 (17/08/2026). *« Si la nage seuil est à 40 min dès qu'elle touche
 la borne, elle ne monte plus de la base au pic. Un athlète devrait voir sa dose de seuil progresser
@@ -6053,9 +6099,22 @@ faire        continuer au-delà, c'est le NOMBRE de blocs ou la FRÉQUENCE qui m
              jamais la durée d'une répétition »), prise dans l'autre sens.
 ```
 
+**FERMÉ le 17/08/2026, sur la mesure.** Un plafond de dose empêche un dépassement ; il ne permet
+pas une montée infinie. La progression EXISTE avant la borne (médiane S17, phase `dev`), et
+plafonner à 40 min sur le dernier tiers de la montée est le plafond qui fait son travail au moment
+où il doit le faire. **40 min au CSS ≈ 2 000 m de travail au seuil est une grosse séance de nage
+sérieuse, ni excessive ni timide.**
+
+La décision est écrite dans l'entrée `C25` de `constraintMatrix.ts`, avec le chiffre qui la rend
+révocable — 22 % des semaines, première à la borne en médiane S17. Ce qui rouvrirait : une mesure
+montrant qu'un athlète coaché fait significativement plus au pic.
+
+**Et la contrainte qui va avec** : si la progression doit continuer au-delà, c'est le NOMBRE de
+blocs ou la FRÉQUENCE qui monte, jamais la dose d'un bloc — C26c prise dans l'autre sens.
+
 ```verify
 id: O-55
-quoi: la dose de seuil en nage est plate a la borne sur une fraction des semaines
-attendu: /semaines à la borne sur/
-cmd: node scripts/mesureDoseFull.mjs 2>/dev/null | grep "semaines à la borne sur"
+quoi: la decision « 40 min est la dose de pic » est ecrite avec son chiffre revocable
+attendu: O55-DECIDE
+cmd: grep -q "O-55 (arbitrage du 17/08/2026)" src/engine/constraintMatrix.ts && echo "O55-DECIDE"
 ```

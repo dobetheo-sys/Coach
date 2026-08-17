@@ -3597,6 +3597,31 @@ const BRICK_TAPER_BIKE_BOUNDS                                   = rule(
  * Ce n'est pas le nombre de répétitions qui blesse, c'est le temps passé dans la zone : le
  * plafond de reps seul laissait passer `5×14min` au seuil (70 min) parce que la mise à
  * l'échelle avait allongé la DURÉE et non le nombre de blocs.
+ *
+ * ── O-55 (arbitrage du 17/08/2026) — **40 min EST LA DOSE DE PIC, et c'est une décision.** ──
+ *
+ * Depuis le lot 1, ce plafond lit aussi les blocs prescrits en MÈTRES : il mord donc pour la
+ * première fois sur la nage, où 89 % des blocs sont écrits en distance. La question posée était
+ * « aplatit-il la progression ? ». Mesurée avant d'être tranchée (`npm run mesure:dosefull`) :
+ *
+ *     Full (37 profils)   22 % des semaines qui portent du seuil sont à la borne
+ *                         première à la borne : médiane S17, phase `dev` pour 31 profils sur 37
+ *     70.3 (12 profils)   25 %, médiane S15, phase `spec` pour 10 sur 12
+ *
+ * **La progression EXISTE avant la borne** — la dose monte de la base au développement, et c'est
+ * là que le plafond la fige. Ce n'est pas « constante sur neuf mois », c'est « plate sur le
+ * dernier tiers de la montée ». Or c'est ce qu'un plafond de dose DOIT faire : il empêche un
+ * dépassement, il ne permet pas une montée infinie. 40 min au CSS — environ 2 000 m de travail au
+ * seuil — est une grosse séance de nage sérieuse, ni excessive ni timide.
+ *
+ * La décision est donc écrite ici pour que la question ne revienne pas, **et avec le chiffre qui
+ * la rend révocable** : si une mesure montre un jour qu'un athlète coaché en fait
+ * significativement plus au pic, c'est ce 22 % et ce S17 qu'il faudra opposer.
+ *
+ * ⚠ ET SI LA PROGRESSION DOIT CONTINUER AU-DELÀ, C'EST LE NOMBRE DE BLOCS OU LA FRÉQUENCE QUI
+ * MONTE, JAMAIS LA DOSE D'UN BLOC. C'est la doctrine C26c prise dans l'autre sens (« la coupe
+ * retire des RÉPÉTITIONS, jamais la durée d'une répétition ») : dans un intervalle, la durée EST
+ * le stimulus, donc la relever change la nature de la séance au lieu de l'allonger.
  */
 const DOSE_CAP_MIN = rule(
   "C25",

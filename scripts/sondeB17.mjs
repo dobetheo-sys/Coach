@@ -48,19 +48,39 @@ const courseDans = (n) => { const d = lundi(); d.setDate(d.getDate() + n * 7 - 1
 const CONTINUE = /^Nage continue/;
 const metres = (s) => (s.steps || []).filter((st) => st.role === "body")
   .reduce((t, st) => t + (st.distanceM || 0) * (st.reps || 1), 0);
-const cibleDuNom = (s) => { const m = String(s.name || "").match(/(\d+)\s*m d'affilée/); return m ? +m[1] : null; };
+// O-54 (17/08/2026) — LA CIBLE SE LIT SUR L'ÉPINGLE, PLUS JAMAIS SUR LE NOM.
+// `cibleDuNom` lisait le nombre écrit dans le titre. Depuis que ce titre est DÉRIVÉ du contenu
+// livré (correctif O-54), comparer le livré au nom compare une grandeur à elle-même : D2 devenait
+// trivialement vraie, et c'est exactement le « correctif le moins coûteux qui fait passer le
+// test » que la règle 19 demande d'anticiper. Vérifié : 0/24 après le correctif, sur un corpus où
+// 57 titres mentaient une heure plus tôt.
+// L'épingle (`bnd.cap` du bloc de corps) est la CIBLE au sens de B-17 : ce que la règle a décidé
+// de prescrire. C'est elle que le livré doit valoir.
+const cibleEpinglee = (s) => {
+  const b = (s.steps || []).find((st) => st.role === "body" && st.bnd?.pinned);
+  return b ? b.bnd.cap : null;
+};
 
 let d1 = 0, d2 = 0, total = 0, lignes = 0, rompues = 0, slot2Multi = 0, slot2Sem = 0;
 const vides = [];
+// O-54 / A-2 (17/08/2026) — LA SONDE ÉCHANTILLONNE LA POPULATION QUE B-17 PROTÈGE.
+// Elle ne balayait que `level: "inter"`. Or le DÉBUTANT est la population entière du défaut O-54
+// (53 des 57 cas) et c'est aussi celle pour qui B-17 a été écrit : le critère d'acceptation d'un
+// ticket de SÉCURITÉ était aveugle exactement là où le risque vit. Cinquième occurrence de la
+// famille A-2, et la plus coûteuse — les quatre premières ont fait perdre du temps, celle-ci a
+// fait déclarer clos un ticket qui ne l'était pas.
+// COROLLAIRE À RETENIR : une sonde qui valide une protection doit échantillonner la population
+// que la protection sert, et le vérifier fait partie de la sonde, pas de sa relecture.
+for (const niveau of ["inter", "debutant"])
 for (const format of ["S", "M", "70.3", "Full"]) {
   const mw = MIN_WEEKS.tri?.[format] ?? 20;
   for (const h of [mw, mw + 6, mw + 14]) {
     let p;
-    try { p = globalThis.EBV2.buildPlan("tri", { ...BASE, sport: "tri", format, race_date: courseDans(h) }); }
-    catch (e) { console.log(`\n  ${format}/${h} sem — REFUS (${String(e.message || e).slice(0, 50)})`); continue; }
+    try { p = globalThis.EBV2.buildPlan("tri", { ...BASE, sport: "tri", level: niveau, format, race_date: courseDans(h) }); }
+    catch (e) { console.log(`\n  ${niveau}/${format}/${h} sem — REFUS (${String(e.message || e).slice(0, 50)})`); continue; }
     // PRÉMISSE : le gate n'a pas rabattu le format. Sinon la ligne mesure un AUTRE format.
     const rabat = (p._v2?.decisions || []).find((x) => x.id === "B17-continuite" && /rabattu/i.test(String(x.what || "")));
-    if (rabat) { rompues++; console.log(`\n  ${format}/${h} sem — ⚠ PRÉMISSE ROMPUE : ${rabat.val} — ligne écartée`); continue; }
+    if (rabat) { rompues++; console.log(`\n  ${niveau}/${format}/${h} sem — ⚠ PRÉMISSE ROMPUE : ${rabat.val} — ligne écartée`); continue; }
     lignes++;
     const det = [];
     let doublons = 0, ecarts = 0;
@@ -76,7 +96,7 @@ for (const format of ["S", "M", "70.3", "Full"]) {
       if (!conts.length) continue;
       if (conts.length > 1) doublons++;
       for (const s of conts) {
-        const cible = cibleDuNom(s), livre = metres(s);
+        const cible = cibleEpinglee(s), livre = metres(s);
         total++;
         if (cible != null && livre !== cible) ecarts++;
         det.push(`      S${String(w.num ?? "?").padStart(2)} · cible ${String(cible).padStart(5)} m · livré ${String(livre).padStart(5)} m${cible != null && livre !== cible ? `  ✖ écart ${livre - cible}` : "  ✓"}${conts.length > 1 ? "  ⚠ DOUBLON dans la semaine" : ""}`);
@@ -90,8 +110,8 @@ for (const format of ["S", "M", "70.3", "Full"]) {
     // *quel est le correctif le moins coûteux qui ferait passer ce test ?* Ici : effacer la
     // fonctionnalité. Le Full doit porter ses QUATRE paliers, les autres formats au moins un.
     const attendus = format === "Full" ? 4 : 1;
-    if (det.length < attendus) vides.push(`${format}/${h} : ${det.length} palier(s) au lieu de ${attendus}`);
-    console.log(`\n  ${format}/${h} sem — ${det.length} nage(s) continue(s) · ${doublons} semaine(s) à doublon · ${ecarts} écart(s) cible↔livré`);
+    if (det.length < attendus) vides.push(`${niveau}/${format}/${h} : ${det.length} palier(s) au lieu de ${attendus}`);
+    console.log(`\n  ${niveau}/${format}/${h} sem — ${det.length} nage(s) continue(s) · ${doublons} semaine(s) à doublon · ${ecarts} écart(s) cible↔livré`);
     for (const l of det) console.log(l);
   }
 }
