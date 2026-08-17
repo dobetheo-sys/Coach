@@ -1,5 +1,5 @@
 // « Ta séance arrive… » — arrive-t-elle ? En combien de temps ? Et hors ligne ?
-import { startServer, launchBrowser } from "/home/user/Coach/tests/e2e/harness.mjs";
+import { startServer, launchBrowser } from "../tests/e2e/harness.mjs";
 const PORT = 8804;
 const OUT = "/tmp/claude-0/-home-user-Coach/073a578c-a7ad-5eea-88e5-b1b8cc7b29f0/scratchpad/t3";
 const server = await startServer(PORT);

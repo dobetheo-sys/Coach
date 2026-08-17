@@ -82,7 +82,8 @@
     "mesure:contraste": "node scripts/mesureContraste.mjs",
     "test:rollback": "node scripts/testRollback.mjs",
     "golden:bundle": "node scripts/goldenBundle.mjs",
-    "mesure:progression": "node scripts/mesureProgression.mjs"
+    "mesure:progression": "node scripts/mesureProgression.mjs",
+    "check:chemins": "node scripts/checkChemins.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

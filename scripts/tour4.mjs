@@ -1,6 +1,6 @@
 // Un plan CRÉÉ AUJOURD'HUI accueille-t-il l'athlète par « trois séances sont passées » ?
 // On fige la date du navigateur avant tout script, et on balaie les sept jours.
-import { startServer, launchBrowser } from "/home/user/Coach/tests/e2e/harness.mjs";
+import { startServer, launchBrowser } from "../tests/e2e/harness.mjs";
 const PORT = 8805;
 const OUT = "/tmp/claude-0/-home-user-Coach/073a578c-a7ad-5eea-88e5-b1b8cc7b29f0/scratchpad/t4";
 const server = await startServer(PORT);

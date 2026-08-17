@@ -1,6 +1,6 @@
 // Traversée de la PWA comme un vrai utilisateur sur téléphone.
 // On ne teste rien : on OBSERVE, on compte, on photographie. Le rapport sort à la fin.
-import { startServer, launchBrowser } from "/home/user/Coach/tests/e2e/harness.mjs";
+import { startServer, launchBrowser } from "../tests/e2e/harness.mjs";
 
 const PORT = 8801;
 const OUT = "/tmp/claude-0/-home-user-Coach/073a578c-a7ad-5eea-88e5-b1b8cc7b29f0/scratchpad/tour";

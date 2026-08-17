@@ -50,6 +50,12 @@ jobs:
       # 14 modules servis avaient passé sans qu'elle bouge. Elle est maintenant le
       # hachage du contenu, et ce gate refuse un sw.js désynchronisé.
       - run: npm run check:sw
+      # AUCUN CHEMIN ABSOLU DE MACHINE. Trouvé au premier passage en CI après le merge du
+      # 17/08 : `mesure:o56` échouait en moins d'une seconde sur un ENOENT vers un chemin du
+      # bac à sable où la contre-preuve avait été écrite. Sept fichiers portaient la faute,
+      # dont deux en CI. Une garde qui ne peut s'exécuter qu'à un seul endroit ne garde rien,
+      # et rien ne le signalait — elle passait en local, donc « elle marche ».
+      - run: npm run check:chemins
       # Z-01 (cliquet) — la dette de littéraux Zenna ne remonte plus (réponse au STOP de Phase 1, §6)
       - run: npm run check:tokens
       # Z-03 / Z-05 / Z-11 (cliquets, arbitrage 14/08) — doublons moteur, hôtes externes, couleurs de discipline

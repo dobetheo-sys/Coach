@@ -20,13 +20,20 @@ import { execSync } from "node:child_process";
 import { writeFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os"; import { join } from "node:path";
 import { createRequire } from "node:module";
-import { profiles as P } from "/home/user/Coach/scripts/goldenMaster.mjs";
-const req = createRequire("file:///home/user/Coach/x.mjs");
+import { profiles as P } from "./goldenMaster.mjs";
+import { join } from "node:path";
+// ⚠ CHEMIN DÉRIVÉ, JAMAIS ABSOLU. Ce fichier portait « /home/user/Coach/… » codé en dur : il
+// tournait dans le bac à sable où il a été écrit et NULLE PART AILLEURS — ni en CI, ni chez le
+// fondateur. Mesuré le 17/08/2026, sur le premier passage en CI après le merge : ENOENT sur
+// `/home/user/Coach/endurabuild/js/state.js`, sur un runner où ce chemin n'existe évidemment
+// pas. Une garde qui ne peut s'exécuter qu'à un seul endroit ne garde rien.
+const RACINE = join(import.meta.dirname, "..");
+const req = createRequire(import.meta.url);
 const dir = mkdtempSync(join(tmpdir(), "r-"));
 const p0 = join(dir, "a.cjs");
-writeFileSync(p0, execSync("git show 93cc6ab:endurabuild/js/engine.js", { cwd: "/home/user/Coach", maxBuffer: 1 << 30 }));
+writeFileSync(p0, execSync("git show 93cc6ab:endurabuild/js/engine.js", { cwd: RACINE, maxBuffer: 1 << 30 }));
 const load = (p) => { const s = globalThis.EBV2; delete globalThis.EBV2; req(p); const m = globalThis.EBV2; globalThis.EBV2 = s; return m; };
-const A = load(p0), B = load(req.resolve("/home/user/Coach/endurabuild/js/engine.js"));
+const A = load(p0), B = load(req.resolve(join(RACINE, "endurabuild/js/engine.js")));
 const wm = (w) => (w.days||[]).reduce((t,d)=>t+(d.sessions||[]).reduce((u,s)=>u+(s.race?0:s.min||0),0),0);
 const pic = (p) => Math.max(...p.weeks.map(wm));
 const ns = (p) => Math.max(...p.weeks.map(w=>(w.days||[]).reduce((t,d)=>t+(d.sessions||[]).filter(s=>s.min>0).length,0)));

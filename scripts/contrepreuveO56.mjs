@@ -3,7 +3,14 @@
 // On rejoue la LOGIQUE de `syncRefsFromTests` telle qu'écrite (lue depuis le fichier), pas une
 // copie : une seconde écriture divergerait, c'est R11.1.
 import { readFileSync } from "node:fs";
-const src = readFileSync("/home/user/Coach/endurabuild/js/state.js", "utf8");
+import { join } from "node:path";
+// ⚠ CHEMIN DÉRIVÉ, JAMAIS ABSOLU. Ce fichier portait « /home/user/Coach/… » codé en dur : il
+// tournait dans le bac à sable où il a été écrit et NULLE PART AILLEURS — ni en CI, ni chez le
+// fondateur. Mesuré le 17/08/2026, sur le premier passage en CI après le merge : ENOENT sur
+// `/home/user/Coach/endurabuild/js/state.js`, sur un runner où ce chemin n'existe évidemment
+// pas. Une garde qui ne peut s'exécuter qu'à un seul endroit ne garde rien.
+const RACINE = join(import.meta.dirname, "..");
+const src = readFileSync(join(RACINE, "endurabuild/js/state.js"), "utf8");
 const bloc = src.slice(src.indexOf("const debutPlan"), src.indexOf("return n;\n}"));
 const cas = [
   ["cliquet MONTE sur un palier validé",        { longest_swim_m: "400", plan_start: "2026-01-01" }, [{type:"swimContinuity",value:800,date:"2026-03-01"}], "800"],
@@ -27,7 +34,7 @@ console.log(bad ? `\n  ✖ ${bad} cas rompu(s)` : "\n  ✓ le cliquet monte, ne 
 // Elle doit être VRAIE SOUS LES DEUX LECTURES (« il n'a pas nagé » / « il n'a pas journalisé »),
 // donc n'énoncer que des faits. Ces critères gardent exactement ça : ce qu'elle dit, quand elle
 // se tait, et ce qu'elle ne dit JAMAIS.
-const { swimDivergence } = await import("/home/user/Coach/src/engine/swimContinuity.ts");
+const { swimDivergence } = await import("../src/engine/swimContinuity.ts");
 const P = (paliers) => ({ weeks: paliers.map(([num, m, fait]) => ({
   num, days: [{ jour: "Lun", sessions: [{ d: "sw", steps: [{ role: "body", bnd: { pinned: true }, distanceM: m, reps: 1 }] }] }], _fait: fait })) });
 const D = (paliers) => Object.fromEntries(paliers.filter(([, , f]) => f).map(([n]) => [n + "|Lun|0", true]));
