@@ -15,7 +15,26 @@ const errs = [];
 page.on("pageerror", (e) => errs.push(String(e)));
 page.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
 
-async function ouvrirNutrition(state) {
+/**
+ * `jour` — ANCRAGE CALENDAIRE OPTIONNEL (famille R20.7).
+ *
+ * Cette suite est passée 42/42 le 2026-08-16 et a échoué le 2026-08-17 sur « le devis a des
+ * lignes à nommer (0) », à CODE IDENTIQUE — vérifié en la rejouant sur `cf392af`, `858c0c5` et
+ * `ff86ecb`, où elle échoue aussi : aucun lot n'y est pour rien, c'est le JOUR qui a changé
+ * (dimanche → lundi). Elle portait déjà un correctif de cette famille — passer en cadence
+ * MENSUELLE parce que « la fenêtre de 7 jours peut légitimement ne contenir aucune séance » —
+ * et il était INSUFFISANT. Balayé sur les sept jours (`npm run sonde:devis7j`) :
+ *
+ *     cadence mensuel : lun  0 · mar  0 · mer  1 · jeu  1 · ven  1 · sam  1 · dim  1
+ *     cadence hebdo   : lun  0 · mar  0 · mer  0 · jeu  0 · ven  0 · sam  0 · dim  0
+ *
+ * Deux jours sur sept vident le devis mensuel : la fenêtre de 30 jours démarrée un lundi
+ * s'arrête avant la première séance à ravitailler d'une phase de base à 7 h/sem. On ANCRE donc
+ * la date au lieu de vivre avec — `setFixedTime` et non `install`, pour figer `Date.now()` en
+ * laissant tourner les minuteries dont l'app a besoin au premier rendu.
+ */
+async function ouvrirNutrition(state, jour) {
+  if (jour) await page.clock.setFixedTime(new Date(jour + "T09:00:00"));
   await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "domcontentloaded" });
   await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v1", JSON.stringify(s)); }, state);
   await page.reload({ waitUntil: "networkidle" });
@@ -280,7 +299,12 @@ async function ouvrirNutrition(state) {
   // devis, et le critère sur le nom du produit n'aurait rien à mesurer.
   const st = runnerStateV1({ format: "70.3", weight: "72" });
   st.sport = "tri";
-  await ouvrirNutrition(st);
+  // Mercredi : un des cinq jours où le devis mensuel porte une ligne (voir `ouvrirNutrition`).
+  // Le `readiness` du fixture doit suivre l'ancrage, sinon le portillon du check-in relit un
+  // autre jour et rien de ce qui suit ne s'affiche.
+  const JOUR = "2026-08-19";
+  st.answers.readiness.date = JOUR;
+  await ouvrirNutrition(st, JOUR);
   if (await page.locator("#shopExpand").count()) { await page.click("#shopExpand"); await page.waitForTimeout(500); }
   // Cadence MENSUELLE pour mesurer le devis : la fenêtre de 7 jours peut légitimement ne
   // contenir aucune séance à ravitailler selon le jour où l'on exécute la suite, et le critère

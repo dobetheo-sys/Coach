@@ -5424,3 +5424,46 @@ quoi: une continuité inconnue prescrit un TEST, jamais un laissez-passer
 attendu: aucun laissez-passer
 cmd: node scripts/sondeD3.mjs | grep -o "aucun laissez-passer"
 ```
+
+
+## O-48 · `smoke-shop` dépendait du JOUR DE LA SEMAINE · ✅ **fermé le jour où il a mordu**
+
+**Septième occurrence de la famille R20.7**, et la première trouvée par un simple changement de
+date pendant une session : la suite est passée **42/42 le 2026-08-16** et a échoué le
+**2026-08-17** sur « le devis a des lignes à nommer (0) », à CODE IDENTIQUE. Le 16 était un
+dimanche, le 17 un lundi.
+
+**Attribué correctement avant d'être corrigé.** Le réflexe aurait été d'y voir une régression de D3
+— c'est le lot en cours, et il touche justement les plans `tri`. Rejouée dans un *worktree* sur
+`cf392af` (avant B-17), `858c0c5` et `ff86ecb` : **elle échoue sur les trois.** Aucun lot du
+chantier n'y est pour rien. Et 3 exécutions sur 3 échouent le 17 — ce n'est pas un flake (règle 18).
+
+**La suite portait DÉJÀ un correctif de cette famille, et il était insuffisant** : passer en cadence
+MENSUELLE, « parce que la fenêtre de 7 jours peut légitimement ne contenir aucune séance à
+ravitailler selon le jour ». Balayé sur les sept jours (`npm run sonde:devis7j`) :
+
+```
+cadence mensuel : lun  0 · mar  0 · mer  1 · jeu  1 · ven  1 · sam  1 · dim  1
+cadence hebdo   : lun  0 · mar  0 · mer  0 · jeu  0 · ven  0 · sam  0 · dim  0
+```
+
+**Deux jours sur sept** vident le devis mensuel : une fenêtre de 30 jours démarrée un lundi
+s'arrête avant la première séance à ravitailler d'une phase de base à 7 h/sem. La suite ANCRE
+désormais sa date (`page.clock.setFixedTime`, comme `smoke-zenna` depuis v8) — et le `readiness` du
+fixture suit l'ancrage, sans quoi le portillon du check-in relit un autre jour et rien ne s'affiche.
+
+**Deux choses mesurées qu'il faut dire plutôt que taire :**
+- le devis mensuel ne porte **qu'UNE ligne** les bons jours : le critère `> 0` est sur le fil, et
+  c'est ce qui le rend sensible au jour. Le rendre robuste demanderait un profil dont le plan porte
+  des séances à ravitailler dès la base — un changement de fixture, pas d'ancrage ;
+- la cadence HEBDO rend **0 sur les sept jours**. Un taux saturé accuse l'instrument ou le modèle
+  mental (règle 15) — ici c'est le modèle : une semaine de base d'un 70.3 à 7 h/sem ne porte aucune
+  séance au-delà de 90 min, donc rien à ravitailler. Cohérent, mais la suite ne mesure alors qu'une
+  moitié du composant.
+
+```verify
+id: O-48
+quoi: le devis de ravitaillement ne dépend plus du jour d'exécution
+attendu: 2 / 7
+cmd: node scripts/sondeDevis7j.mjs | grep -o "jours où le devis MENSUEL est vide : [0-9] / 7" | grep -o "[0-9] / 7"
+```
