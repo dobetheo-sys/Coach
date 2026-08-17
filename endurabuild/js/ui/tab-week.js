@@ -30,8 +30,17 @@ import { DISC } from "./icons.js";
 import { znDrawChart } from "./zenna-motion.js";
 
 /** Semaine affichée. Non persistée : revenir sur l'onglet ramène à la semaine courante —
- *  c'est la semaine EN COURS qui est le sujet, la navigation n'est qu'une consultation. */
+ *  c'est la semaine EN COURS qui est le sujet, la navigation n'est qu'une consultation.
+ *
+ *  ⚠ CETTE PROMESSE N'ÉTAIT TENUE PAR RIEN (retour du fondateur, 17/08/2026 : l'onglet
+ *  affichait S5 un jour de S1). `vue` est au niveau module, posée par les flèches, remise à
+ *  `null` par le seul bouton « semaine courante » — naviguer puis changer d'onglet laissait la
+ *  vue COLLÉE sur la semaine consultée, pour toute la session. Le commentaire affirmait un
+ *  invariant que le code n'implémentait pas ; `resetWeekView()` le rend vrai, appelée par
+ *  `tabs.js` à CHAQUE ENTRÉE dans l'onglet depuis un autre (jamais sur un re-rendu interne :
+ *  les flèches appellent `renderTabWeek` directement, la navigation reste fluide). */
 let vue = null;
+export function resetWeekView() { vue = null; }
 
 function semaineAffichee(plan) {
   const w = plan.weeks.find((x) => x.num === vue);

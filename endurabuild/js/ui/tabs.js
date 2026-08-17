@@ -8,7 +8,7 @@ import { renderTabProfile } from "./tab-profile.js";
 import { renderTabPlanGeneral } from "./tab-plan-general.js";
 import { renderTabToday } from "./tab-today.js";
 import { renderTabOutils } from "./tab-outils.js";
-import { renderTabWeek } from "./tab-week.js";
+import { renderTabWeek, resetWeekView } from "./tab-week.js";
 import { brancherAide } from "./help.js";
 import { znApplyNavDot, znClearStickyCta, znClearParallax } from "./zenna-motion.js"; // R-ZENNA
 import { appHeaderHTML } from "./app-header.js";
@@ -320,6 +320,10 @@ function bindTabbar() {
 }
 
 export function setTab(id) {
+  // O-59 §6 (17/08/2026) — l'onglet Semaine promet de s'ouvrir sur la semaine COURANTE ; sa
+  // vue de navigation ne survit donc pas à un changement d'onglet. Ici et pas dans
+  // `renderTabWeek` : les flèches de navigation re-rendent l'onglet sans repasser par setTab.
+  if (id === "week" && activeTab !== "week") resetWeekView();
   activeTab = id;
   renderActiveTab(); // re-rend la VUE seulement — S.currentPlan est réutilisé tel quel
 }

@@ -23,7 +23,14 @@ const server = await startServer(PORT);
 const { ok, report } = makeReporter();
 const browser = await launchBrowser();
 
-const REP = { intent: "competition", level: "inter", history: "confirme", injury: "aucune", dispo: "partielle", doubles: "parfois", off_days: "non", shift_ok: "non", sleep: "moyen", life_load: "normale", activity: "actif", sex: "H", med_pain: "non", med_dizzy: "non", med_treat: "non", weight_lever: "non", terrain: "plat", milieu: "bassin", swim_limit: "technique", ftp_known: "oui", pace_known: "oui", css_known: "oui", leg_swim_env: "lac", leg_bike_prof: "plat", leg_run_prof: "plat" };
+// O-68 (17/08/2026) — `vol_recent` est un groupe d'OPTIONS, pas un champ libre : le `SAI.vol_recent: "7"`
+// ci-dessous n'a JAMAIS été appliqué, et la première option (« <2h », val "1") était cliquée à sa place.
+// La suite fabriquait donc un athlète en RÉGIME DÉBUTANT sans le savoir — la famille du 138 kg (U14),
+// côté options. Invisible tant que le facteur 0,9 d'adhérence inconnue comprimait la bande de gain ;
+// le facteur 1,0 d'O-68 a rendu la bande honnête de ce profil-là plus large que le seuil de refus P7
+// (26 points > 25) et la projection s'est mise à REFUSER — comportement documenté, fixture fausse.
+// `vol_recent: "7"` est déclaré ICI, où les groupes d'options se déclarent.
+const REP = { intent: "competition", level: "inter", history: "confirme", injury: "aucune", dispo: "partielle", doubles: "parfois", vol_recent: "7", off_days: "non", shift_ok: "non", sleep: "moyen", life_load: "normale", activity: "actif", sex: "H", med_pain: "non", med_dizzy: "non", med_treat: "non", weight_lever: "non", terrain: "plat", milieu: "bassin", swim_limit: "technique", ftp_known: "oui", pace_known: "oui", css_known: "oui", leg_swim_env: "lac", leg_bike_prof: "plat", leg_run_prof: "plat" };
 const SAI = { age: "35", weight: "78", height: "180", vol_max: "10", vol_recent: "7", sessions_max: "6", ftp: "230", pace: "4:50", css: "2:00", water_temp_c: "19" };
 const JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
 

@@ -6945,6 +6945,18 @@ sensibilité reste, la réduction est BORNÉE par la part écoulée (on ne retir
 l'évidence couvre), et l'ancienne barre « ≤ moitié » redevient exigible à f = 0,8 — méritée par
 le fondement, plus posée. Mesuré : f=0,13 → 12,1/10,6 % (plancher 9,5) · f=0,8 → 5,7/1,2 %.
 
+**EFFET DE BORD DU §2, MESURÉ LE JOUR MÊME (via la CI — e2e rouge sur `49e6c3a`)** : le
+facteur 0,9 COMPRIMAIT la bande de gain, et sur un profil à grande marge et long horizon
+(régime débutant, `vol_recent` 1 h, 43 semaines), la bande honnête à facteur 1,0 dépasse le
+seuil de refus P7 — **26 points > 25** — et la projection REFUSE le chrono au lieu de
+l'afficher. C'est le comportement documenté de P7 (« la fourchette honnête n'apprendrait
+rien »), et il est plus honnête que la projection comprimée d'avant ; simplement, 0,9 en
+cachait une frange. Découvert parce que `smoke-usage` fabriquait cet athlète SANS LE SAVOIR :
+`vol_recent` est un groupe d'OPTIONS, son `SAI.vol_recent: "7"` ne s'appliquait jamais et la
+première option (« <2h ») était cliquée — la famille du 138 kg (U14), côté options. Fixture
+corrigée (`vol_recent: "7"` déclaré dans REP), le seuil P7 n'a pas bougé (le desserrer pour
+faire passer un test serait la règle 19 à l'envers).
+
 **§5 — la borne basse : rien à corriger** (décision du fondateur) : `min(loT0, loNow)` se
 comporte comme prévu, elle gèle au gain minuscule et relâche au gain réel.
 
@@ -6971,3 +6983,89 @@ quoi: le gain projeté n'est plus annulé par la validation d'un simple repos (p
 attendu: OUVERT — arbitrage à rendre sur la pondération par position ; le précipice est décrit ci-dessus
 cmd: grep -n "Object.keys(done).length === 0" src/engine/projection.ts
 ```
+
+---
+
+# LES QUATRE ÉCRANS (17/08/2026) — le profil réel du fondateur, mesuré point par point
+
+Profil enfin connu : `vol_max 20 · vol_recent 13 · sessions_max 12 · doubles oui (déduit de la
+composition) · dispo quotidienne (stocké) · FTP 236 · seuil 4:42 · CSS 2:02 · 85 kg · 180 cm`.
+
+## O-69 · La courbe ne lit `vol_recent` que comme PLAFOND — le plan fait DESCENDRE un athlète à 13 h · 🔴 **OUVERT, arbitrage à rendre**
+
+**Son constat** : vol_max 20, vol_recent 13, plan 6,1 → 10,5 h. « Sur quarante semaines, c'est un
+plan qui te fait descendre. » Il a demandé de lire « ce qui borne » — la carte R20.2 répond :
+
+```
+argmin = « la durée de ta préparation » (boucle-growth, −10,4 h/sem)
+declared 0 · caps 0 · util 0 · structurel 0 · facteurs tous ×1
+```
+
+**La carte dit vrai et désigne le mauvais levier.** La boucle +10 %/sem n'atteint pas plus haut
+parce que le DÉPART est bas — et le départ ignore le volume réel. Mesuré à un seul facteur près :
+
+```
+vol_recent =  2 h  →  départ 2,5 h   (le plafond R10 mord — la rampe protège)
+vol_recent =  6 h  →  départ 5,5 h · creux S4 à 3,9 h · pic 8,8 h
+vol_recent = 13 h  →  IDENTIQUE au dixième près
+vol_recent = 18 h  →  IDENTIQUE
+```
+
+**Au-dessus du départ naturel de la courbe, `vol_recent` est INERTE.** R10 promet « le plan part
+du volume RÉEL des 3-6 derniers mois » — il n'en fait que la moitié : plafond pour le déconditionné,
+jamais ANCRE pour celui qui fait déjà plus. Un athlète à 13 h/sem reçoit un départ à 5,5 h (42 %),
+un creux à 3,9 h en S4 (30 % de sa charge actuelle), et un pic sous son volume courant — avec une
+ligne levier qui lui conseille « plus de semaines », le seul levier qui ne lui manque pas.
+
+**NON CORRIGÉ, délibérément** : sa lecture (a) est réelle — 13 h « au feeling » ≠ 13 h
+structurées, redémarrer PLUS BAS se défend ; c'est le TAUX de reprise qui est un jugement
+d'entraîneur (70 % ? 80 % ? plancher absolu ?). L'arbitrage conditionne aussi O-68 §3 (un départ
+juste change ce que « le plan tenu » promet) et le lot progression (un départ ancré plus haut
+change ce que les bornes par semaine doivent permettre).
+
+```verify
+id: O-69
+quoi: vol_recent est-il encore inerte au-dessus du départ naturel de la courbe ?
+attendu: OUVERT — 6/13/18 h rendent le même plan (départ 5,5 · pic 8,8) sur le profil du fondateur
+cmd: grep -n "R10-depart" src/engine/reasoningEngine.ts | head -2
+```
+
+## O-62 · REQUALIFIÉ une seconde fois — DEUX problèmes, comme prévu au §2 des quatre écrans
+
+Sur SON profil (`sessions_max 12`, doubles), la trace est formelle : **la coupe retire ZÉRO
+séance**. Sa composition (41 % récup · 28 % seuil · 28 % vitesse · 3 % continue — la mienne ;
+46/32/21/1 la sienne, même famille) est donc **celle que la RÈGLE prescrit** : le routage doubles
+remplit `facile2` de « Nage récup courte » toutes les semaines. Sa prédiction du §2 est validée :
+*O-62 est un ticket de RÈGLE pour les budgets larges (le routage), O-66 un ticket de COUPE pour
+les budgets serrés.* Deux problèmes, pas un. Et son « zéro renforcement » est corrigé par
+lui-même : le renfo est GREFFÉ sur d'autres séances (« + Renfo général »), son compteur lisait
+les noms — N-01 partiellement livré, fréquence à vérifier (T-13 reste rouge attendu).
+
+## O-70 · La phase PIC porte du VO2max — jusque dans sa semaine de RÉCUP · 🔴 **OUVERT, arbitrage à rendre**
+
+Mesuré sur son profil, phase peak S34-S38 : **chaque semaine de charge porte 2 VO2max**
+(vélo + course) à côté du brick et de l'allure course — et la semaine de RÉCUP du pic (S36,
+3,7 h) porte encore un VO2max course. La moitié VÉLO est une décision ÉCRITE (R13.4 : « VO2max
+vélo maintenue jusqu'au pic — la race-pace vélo est travaillée dans le brick ») ; la moitié
+COURSE en pic, et sa présence dans une semaine de décharge, n'ont pas d'arbitrage. Pour un 70.3
+à cinq semaines de l'objectif, le stimulus attendu est spécifique — sa question, à trancher.
+
+## O-59 · COMPLÉMENT — la build R26 enregistre aussi, y compris son geste exact
+
+Le protocole dispo rejoué sur la build R26 (worktree `ba8722f`, celle que son téléphone servait) :
+clic « quotidienne » PUIS « semaine » → store `semaine`, marque `semaine`, survit au clic sur une
+autre question. **Quatre passes, deux builds, deux scénarios : la chaîne clic → store tient
+partout où le harnais peut aller.** Le `quotidienne` stocké chez lui (prouvé par « Cycles 10j »)
+contre son souvenir d'avoir cliqué « semaine » reste indécidable d'ici — le discriminant est SON
+appareil : refaire le clic sur la build déployée post-merge, regarder la marque, vérifier au
+Profil. S'il échoue là, on a une cible de reproduction (pile tactile réelle, chemin d'écran
+précis) qu'aucun de mes chemins n'exerce.
+
+## §6 · L'onglet Semaine collé sur une semaine consultée · ✅ **FERMÉ**
+
+`vue` est au niveau module, posée par les flèches, remise à `null` par le seul bouton « semaine
+courante » — et le commentaire promettait « revenir sur l'onglet ramène à la semaine courante »,
+ce que rien n'implémentait (la règle du dépôt sur les commentaires-invariants, prise en flagrant
+délit). `resetWeekView()` est appelée par `setTab` à chaque entrée dans l'onglet depuis un autre —
+jamais sur un re-rendu interne, les flèches restent fluides. Vérifié dans les deux sens, et le
+témoin est parlant : **quatre flèches = « Semaine 5 »**, exactement son écran.
