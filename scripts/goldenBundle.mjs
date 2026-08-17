@@ -49,8 +49,13 @@ console.log("GOLDEN — la SOURCE contre le BUNDLE, même corpus, même canonisa
 // ── Passe 1 : la SOURCE ───────────────────────────────────────────────────────────────────
 const refSrc = globalThis.EBV2;
 if (!refSrc) { console.error("✖ EBV2 absent après l'import de bridge.ts"); process.exit(2); }
+const POPULATION = 989;   // un zéro a besoin de sa population — voir goldenMaster.mjs
 const t0 = Date.now();
 const A = snapshot();
+if (A.n !== POPULATION) {
+  console.error(`✖ ${A.n} profils balayés côté source, ${POPULATION} attendus — le « 0 écart » ne prouverait rien.`);
+  process.exit(2);
+}
 console.log(`  source  : ${A.n} profils · ${A.errors.length} erreur(s) · ${A.refus.length} refus typé(s)  [${((Date.now() - t0) / 1000).toFixed(0)}s]`);
 
 // ── Passe 2 : le BUNDLE ───────────────────────────────────────────────────────────────────

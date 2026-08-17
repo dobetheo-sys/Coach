@@ -401,6 +401,10 @@ function canon(v) {
   return v;
 }
 
+/** La taille du corpus, ÉPINGLÉE. Elle ne se déduit pas de `hashes.json` : une photo tronquée
+ *  et un balayage tronqué se valideraient mutuellement. */
+const POPULATION = 989;
+
 function snapshot() {
   const snap = {};
   let n = 0, errors = [], refus = [];
@@ -521,7 +525,19 @@ function firstDiff(a, b, path) {
 }
 
 if (!diffs.length) {
-  console.log("✓ golden master : " + n + " profils, 0 écart" + (errors.length ? " (mais " + errors.length + " erreur(s) de génération)" : ""));
+  // UN ZÉRO A BESOIN DE SA POPULATION (arbitrage du fondateur, 17/08/2026). « 0 écart » est le
+  // résultat ATTENDU de ce gate : l'heuristique « un taux saturé accuse l'instrument » ne peut
+  // donc pas se déclencher ici — la valeur saturée EST la valeur du succès, et l'échec de la
+  // mesure est indiscernable de sa réussite à la lecture. Si une régression faisait comparer
+  // ZÉRO profil, la sortie serait « 0 profils, 0 écart » : verte, et lue comme verte. On assert
+  // donc que la MESURE A EU LIEU, séparément de son résultat.
+  if (n !== POPULATION) {
+    console.error("✖ golden master : " + n + " profils comparés, " + POPULATION + " attendus.");
+    console.error("   Le corpus a changé de taille — le « 0 écart » ne prouve rien tant que ce compte n'est pas rétabli");
+    console.error("   (ou POPULATION mise à jour DANS LE MÊME COMMIT, avec la raison).");
+    process.exit(1);
+  }
+  console.log("✓ golden master : " + n + "/" + POPULATION + " profils, 0 écart" + (errors.length ? " (mais " + errors.length + " erreur(s) de génération)" : ""));
   process.exit(errors.length ? 1 : 0);
 }
 console.error("✖ golden master : " + diffs.length + " écart(s) sur " + n + " profils");

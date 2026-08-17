@@ -301,5 +301,12 @@ if (failing.length > 0 || errors > 0) {
     console.error("  - " + [r.sport, r.format, r.history, r.level, r.intent].join("/") + " : " + r.hardViolations.join(" ; "));
   process.exitCode = 1;
 } else {
-  console.log("✓ Audit vert : 0 violation dure sur " + results.length + " combinaisons.");
+  // UN ZÉRO A BESOIN DE SA POPULATION : « 0 violation dure » est le résultat attendu, donc un
+// balayage vide rendrait le même vert. On assert le compte de combinaisons auditées.
+const POPULATION_V1 = 459;
+if (results.length !== POPULATION_V1) {
+  console.error("✖ audit:v1 : " + results.length + " combinaison(s) auditée(s), " + POPULATION_V1 + " attendues — le « 0 violation » ne prouve rien.");
+  process.exit(1);
+}
+console.log("✓ Audit vert : 0 violation dure sur " + results.length + " combinaisons.");
 }

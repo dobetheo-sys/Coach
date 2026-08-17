@@ -301,6 +301,20 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   PASSES (« une garantie vérifiée au milieu du pipeline ne vérifie que l'avant-dernier état »),
   celle-ci sur la POSITION DANS LE PLAN.
 
+- **Un ZÉRO a besoin de sa POPULATION** (arbitrage du fondateur, 17/08/2026). L'heuristique
+  « un taux saturé accuse l'instrument » a un ANGLE MORT, et il est large : **elle ne peut pas se
+  déclencher quand la valeur saturée est la valeur DÉSIRÉE.** Zéro écart, zéro violation, zéro
+  erreur, zéro régression — c'est-à-dire la majorité des gates de ce dépôt : l'échec de la mesure
+  et sa réussite y sont indiscernables à la lecture. La parade se généralise : *quand le succès
+  d'un test est indiscernable de sa vacuité, il faut prouver que la MESURE A EU LIEU, séparément
+  de son RÉSULTAT.* Tout gate dont le succès est « zéro » assert donc sa population :
+  `golden:verify` et `golden:bundle` 989 profils, `audit:v1` 459 combinaisons, `audit:invariants`
+  54 configurations × 22 invariants. Le compte est ÉPINGLÉ et ne se déduit pas de la photo — une
+  photo tronquée et un balayage tronqué se valideraient mutuellement (contre-prouvé : 10 contre
+  10, 0 écart réel, et le gate rougit). Avec les deux règles voisines, le triptyque est complet :
+  **un ratio a besoin de sa base, un compte a besoin de son moment, un zéro a besoin de sa
+  population.**
+
 - **Un COMPTE se publie avec ce qu'il compte — brut ou net — et à quel POINT DU PIPELINE il est
   lu** (arbitrage du fondateur, 17/08/2026). C'est le corollaire du dénominateur, un cran plus
   haut : un ratio a besoin de sa base, un compte a besoin de son MOMENT. Mesuré : « 124 retraits »

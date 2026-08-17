@@ -81,7 +81,8 @@
     "profil:reel": "node scripts/profilReel.mjs",
     "mesure:contraste": "node scripts/mesureContraste.mjs",
     "test:rollback": "node scripts/testRollback.mjs",
-    "golden:bundle": "node scripts/goldenBundle.mjs"
+    "golden:bundle": "node scripts/goldenBundle.mjs",
+    "mesure:progression": "node scripts/mesureProgression.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

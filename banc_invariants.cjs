@@ -42,6 +42,10 @@ const ENV = [
   { lbl:"grosse",  a:{ sessions_max:"12",vol_max:"16", vol_recent:"10" } },
 ];
 const LEVELS = ["debutant", "inter", "avance"];
+// UN ZÉRO A BESOIN DE SA POPULATION : « 0 échec » est le résultat attendu de ce banc, donc un
+// balayage vide rendrait exactement le même vert. Ce compteur est incrémenté à chaque
+// configuration réellement traversée, et comparé en fin de banc.
+let NB_CFG = 0;
 const QUALITY = /seuil|vo2|intervalle|fractionn|tempo|sweetspot|côte|cote|allure spéc|spécifique|pma/i;
 
 const fails = [];
@@ -76,6 +80,7 @@ function recMin(t) {
 
 for (const [sp, extra] of Object.entries(SPORTS)) {
   for (const env of ENV) for (const lv of LEVELS) {
+    NB_CFG++;   // population réellement balayée (voir l'assertion en fin de banc)
     const ctx = `${sp}/${env.lbl}/${lv}`;
     let p; try { p = E.buildPlan(sp, { ...BASE, ...extra, ...env.a, level: lv }); }
     catch (e) { ko("I0", ctx, "génération impossible : " + e.message); continue; }
@@ -317,7 +322,7 @@ const NAMES = {
 };
 const G = {};
 for (const f of fails) (G[f.id] ||= []).push(f);
-console.log(`54 configurations testées (6 sports × 3 enveloppes × 3 niveaux)\n`);
+console.log(`${NB_CFG} configurations testées (6 sports × 3 enveloppes × 3 niveaux)\n`);
 for (const id of Object.keys(NAMES)) {
   const n = G[id] ? G[id].length : 0;
   console.log(`${n ? "✗" : "✓"} ${id.padEnd(4)} ${NAMES[id].padEnd(34)} ${n ? n + " échecs" : ""}`);
@@ -349,4 +354,11 @@ if (fails.length) {
   console.error("Un invariant est une propriété que le plan tient TOUJOURS. S'il casse, c'est le moteur qu'on corrige — ou l'invariant qu'on démontre périmé, avec sa mesure.");
   process.exit(1);
 }
-console.log("\n✓ les " + Object.keys(NAMES).length + " invariants tiennent sur les 54 configurations.");
+// UN ZÉRO A BESOIN DE SA POPULATION : « 0 échec » est le résultat attendu de ce banc, donc un
+// balayage vide rendrait le même vert. On assert les deux comptes.
+const POPULATION_CFG = 54, POPULATION_INV = 22;
+if (NB_CFG !== POPULATION_CFG || Object.keys(NAMES).length !== POPULATION_INV) {
+  console.error(`\u2716 banc d'invariants : ${NB_CFG} configuration(s) \u00d7 ${Object.keys(NAMES).length} invariant(s), attendu ${POPULATION_CFG} \u00d7 ${POPULATION_INV} \u2014 le \u00ab 0 \u00e9chec \u00bb ne prouve rien.`);
+  process.exit(1);
+}
+console.log("\n✓ les " + Object.keys(NAMES).length + " invariants tiennent sur les " + NB_CFG + " configurations.");
