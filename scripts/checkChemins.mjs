@@ -40,8 +40,13 @@ const marcher = (d) => {
 for (const d of DOSSIERS) marcher(join(RACINE, d));
 
 /** Retire les commentaires — un chemin CITÉ dans une explication n'est pas un chemin utilisé. */
+// ⚠ ON NEUTRALISE LES COMMENTAIRES SANS RETIRER DE LIGNES : un bloc `/* */` est remplacé par
+// autant de retours à la ligne qu'il en contenait. Ma première écriture les SUPPRIMAIT, donc le
+// numéro rapporté était celui de la source amputée — la garde désignait la ligne 3 pour une
+// faute en ligne 17. Un outil qui pointe à côté coûte au lecteur exactement ce qu'il prétend
+// lui faire gagner.
 const sansCommentaires = (src) => src
-  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
   .split("\n").map((l) => l.replace(/(^|[^:])\/\/.*$/, "$1").replace(/^\s*#.*$/, "")).join("\n");
 
 const fautes = [];

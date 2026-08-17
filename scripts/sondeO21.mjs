@@ -14,7 +14,7 @@
  * un compte — un compte fait basculer l'entrée à chaque lot, dans les deux sens, sans rien
  * dire de l'état du défaut (règle 17).
  */
-import "/home/user/Coach/src/app/bridge.ts";
+import "../src/app/bridge.ts";
 const E = globalThis.EBV2;
 const P = (format, pace, vr) => ({ intent:'competition', format, med_pain:'non', med_dizzy:'non', med_treat:'non',
   age:'32', sex:'H', weight:'75', height:'178', level:'inter', history:'confirme', injury:'aucune',
