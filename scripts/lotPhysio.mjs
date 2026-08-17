@@ -32,6 +32,7 @@ import { C26c_HARD_TIME_TOLERANCE, PROVENANCE, easyShareFloor, swimTimeFactorOf,
   BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, DOSE_CAP_MIN, DOSE_EXEMPT } from "../src/engine/constraintMatrix.ts";
 import { RN_THR_FRONTIERE_LENTE } from "../src/engine/loadModel.ts";
 import { TrainingReasoningEngine } from "../src/engine/reasoningEngine.ts";
+import { traceOn, traceDump } from "../src/engine/trace.ts";
 import { toProfile } from "../src/app/bridge.ts";
 import { riegelExponent, riegelSecWith, RUN_KM, marathonPaceBand, RN_MARA_RATIO_PLANCHER, TRI_SWIM, SWIM_RACE } from "../src/engine/predictor.ts";
 import { profiles as goldenProfiles } from "./goldenMaster.mjs";
@@ -1523,7 +1524,84 @@ T("T-42", "vert", "le rabattement B-17 DESCEND toujours — jamais vers un forma
 // B-17 (« une nage CONTINUE à la distance de course est-elle PRESCRITE ? », 4 profils sur 56 en
 // Full), qui est un ticket de PRESCRIPTION et non de plafond, et qui aura sa garde avec lui.
 
+
+// ---- T-44 · la coupe par sessions_max ne discrimine pas une discipline -----
+/**
+ * O-66 — LA CONTRAINTE COMPTE DES SÉANCES, LE CLASSEMENT MESURE DES MINUTES.
+ *
+ * `sessions_max` est un compte de séances ; le tri qui décide laquelle part se fait en MINUTES.
+ * Le classement optimise donc une grandeur que la contrainte ne mentionne pas — six séances de
+ * 30 min et six de 90 min satisfont le même plafond. La conséquence n'est pas neutre : la nage
+ * a structurellement les séances les plus courtes (50 min contre 68 à vélo, 203 en brick), donc
+ * un budget de TEMPS DE VIE devient un arbitrage ENTRE DISCIPLINES, toujours au détriment de la
+ * plus courte — et d'autant plus sûrement qu'elle LIMITE l'athlète, puisque le moteur lui en
+ * prescrit alors davantage.
+ *
+ * ── POURQUOI CE CRITÈRE PORTE LA PROPRIÉTÉ ET NON LE MÉCANISME ────────────────────────────
+ *
+ * Le fondateur a demandé la PROPRIÉTÉ plutôt que l'ordre de priorité, « parce que ça survivra à
+ * une réécriture du tri ». Elle s'énonce sans nommer aucune passe : *la coupe ne retire jamais
+ * d'une discipline une part plus grande que celle qu'elle occupe dans le plan prescrit.*
+ *
+ * ── ET POURQUOI ELLE SE MESURE SANS CONTREFACTUEL ─────────────────────────────────────────
+ *
+ * Comparer « avec coupe » et « sans coupe » demanderait deux générations qui diffèrent aussi
+ * PAR AILLEURS (`budgetPerWeek` alimente d'autres passes) : la causalité ne se lit pas sur un
+ * diff de lot. La coupe DIT donc ce qu'elle retire, via la trace — dont `scripts/trace.mjs`
+ * vérifie à chaque exécution qu'elle est sans effet sur la sortie. Le prescrit devient
+ * `livré + retiré`, sur UNE seule génération.
+ *
+ * ── LE PIÈGE DE LA VACUITÉ, FERMÉ ─────────────────────────────────────────────────────────
+ *
+ * Le correctif le moins coûteux qui ferait passer ce test est « ne rien couper » : sans retrait,
+ * la propriété est trivialement vraie (règle 19, la question se pose AVANT d'écrire). Le critère
+ * exige donc que la coupe MORDE sur ses profils — un profil où elle ne retire rien ne prouve
+ * rien et le dit.
+ */
+T("T-44", "rouge", "PROPRIÉTÉ — la coupe par sessions_max ne retire pas d'une discipline plus que sa part du plan prescrit (O-66)", () => {
+  const base = { intent: "competition", history: "confirme", level: "inter", vol_max: "10",
+    vol_recent: "6", dispo: "semaine", off_days: "non", injury: "aucune", age: "35", sex: "H",
+    weight: "85", med_pain: "non", med_dizzy: "non", med_treat: "non", terrain: "vallonne",
+    leg_swim_env: "lac", milieu: "bassin", longest_swim_m: "1000", longest_swim_known: "oui",
+    pace_known: "oui", pace: "5:00", ftp_known: "oui", ftp: "220", css_known: "oui", css: "1:50" };
+  const lundi = () => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; };
+  const dans = (n) => { const d = lundi(); d.setDate(d.getDate() + n * 7 - 1); return d.toISOString().slice(0, 10); };
+  const TOL = 0.10;   // 10 points de pourcentage : une coupe strictement proportionnelle
+                      // n'existe pas sur des entiers, mais 98 % contre 38 % n'est pas un arrondi.
+  const bad = [], vus = [];
+  let mordu = 0;
+  for (const [format, h, dbl, sm] of [["70.3", 40, "oui", "6"], ["70.3", 30, "oui", "7"], ["Full", 40, "oui", "6"], ["M", 20, "parfois", "5"]]) {
+    const id = `${format}/${h}sem/dbl=${dbl}/sm=${sm}`;
+    traceOn(id);
+    let p;
+    try { p = globalThis.EBV2.buildPlan("tri", { ...base, format, doubles: dbl, sessions_max: sm, race_date: dans(h) }); }
+    catch (e) { traceOn(null); bad.push(`${id} : REFUS ${String(e.message ?? e).slice(0, 40)}`); continue; }
+    const retraits = traceDump().entries.filter((x) => x.pass === "budget-seances");
+    traceOn(null);
+    const livre = {}, retire = {};
+    for (const w of p.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
+      if (s.d !== "rs") livre[s.d] = (livre[s.d] || 0) + 1;
+    for (const x of retraits) retire[x.discipline] = (retire[x.discipline] || 0) + 1;
+    const totRet = Object.values(retire).reduce((a, b) => a + b, 0);
+    if (!totRet) { vus.push(`${id} : la coupe ne mord pas`); continue; }
+    mordu++;
+    const prescrit = {};
+    for (const k of new Set([...Object.keys(livre), ...Object.keys(retire)])) prescrit[k] = (livre[k] || 0) + (retire[k] || 0);
+    const totPre = Object.values(prescrit).reduce((a, b) => a + b, 0);
+    for (const d of Object.keys(prescrit)) {
+      const partRet = (retire[d] || 0) / totRet, partPre = prescrit[d] / totPre;
+      if (partRet > partPre + TOL) bad.push(`${id} : ${d} subit ${(100 * partRet).toFixed(0)} % des retraits pour ${(100 * partPre).toFixed(0)} % du plan prescrit (${retire[d]}/${totRet} retirées, ${prescrit[d]}/${totPre} prescrites)`);
+    }
+    vus.push(`${id} ${totRet} retrait(s) ${Object.entries(retire).map(([k, n]) => k + ":" + n).join(",")}`);
+  }
+  // SANS MORSURE, LE CRITÈRE NE MESURE RIEN — et « ne rien couper » est justement le correctif
+  // le moins coûteux qui le ferait passer.
+  if (!mordu) bad.push("VACUEUX : la coupe ne mord sur aucun profil du jeu — le critère est satisfait par construction");
+  return { ok: !bad.length, detail: bad.length ? bad.slice(0, 5).join(" · ") : vus.join(" · ") };
+});
+
 const ROUGES_ATTENDUS = {
+  "T-44": "O-66 — la coupe classe en MINUTES une contrainte qui compte des SÉANCES : arbitrage rendu le 17/08, à faire APRÈS le merge et en premier",
   "T-34": "O-43 — la conversion déplace ce qui est prescrit (pic +9 %, fréquence) : filtre du fondateur, une seule issue le passe",
   "T-01": "A-01 — sessionIntensity() importe zoneClass() au lieu de sa copie (+ V-08 pour sw.aero)",
   "T-02": "A-01 — la zone fantôme vit dans la copie de dailyAdjuster",

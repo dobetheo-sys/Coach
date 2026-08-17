@@ -6683,13 +6683,74 @@ discipline limitante, séances spécifiques de course, paliers B-17 ; *se coupe 
 récupération, mobilité, complément dans une discipline non limitante — n'invente rien : c'est
 celui qu'on applique déjà partout ailleurs pour décider quoi protéger.
 
+### ARBITRAGE RENDU (fondateur, 17/08/2026) : à faire APRÈS le merge, et EN PREMIER
+
+*« Le défaut n'est pas l'ordre, c'est la MONNAIE. »* `sessions_max` compte des séances, le
+classement mesure des minutes — il optimise donc une grandeur que la contrainte ne mentionne pas
+(six séances de 30 min et six de 90 min satisfont le même plafond). Même faute d'unité que celles
+fermées depuis deux mois, cette fois **dans la fonction objectif** et non dans un calcul.
+
+Pourquoi pas avant le merge : le défaut existe déjà sur `main`, donc merger n'aggrave rien et
+retarder ne protège personne ; le correctif est un lot à part entière (98 % de la coupe change de
+cible sur sept sports par un point d'entrée commun) ; et le merge débloque le partage, la seule
+chose dont on n'a aucune mesure. Pourquoi en premier après : c'est le seul ticket ouvert qui
+change la **composition** de tous les plans plutôt qu'une valeur — B-10, l'allocation vélo, la
+barre de zones sont des ajustements *à l'intérieur* d'une composition que celui-ci décide.
+
+**Forme du correctif** : classement à DEUX dimensions (un scalaire ne peut pas les porter — c'est
+pourquoi les minutes avaient été choisies, seul scalaire disponible). Ne se coupe jamais : séance
+principale de la discipline limitante, séances spécifiques de course, paliers B-17. Se coupe en
+premier : récupération et mobilité, complément dans une discipline non limitante. À égalité de
+rôle : n'importe quel départage stable, **et surtout pas les minutes**.
+
+### T-44 — LA PROPRIÉTÉ, ÉCRITE ROUGE AVANT LE CORRECTIF
+
+Le fondateur a demandé la propriété plutôt que l'ordre, *« parce que ça survivra à une réécriture
+du tri »*. Elle s'énonce sans nommer aucune passe : **la coupe ne retire jamais d'une discipline
+une part plus grande que celle qu'elle occupe dans le plan prescrit** (tolérance 10 points).
+
+Elle se mesure **sans contrefactuel** : comparer « avec coupe » et « sans coupe » demanderait deux
+générations qui diffèrent aussi par ailleurs (`budgetPerWeek` alimente d'autres passes), et une
+causalité ne se lit pas sur un diff de lot. La coupe DIT donc ce qu'elle retire, par la trace —
+dont `npm run trace` vérifie à chaque exécution qu'elle est sans effet sur la sortie. Le prescrit
+devient `livré + retiré`, sur une seule génération. Le piège de la vacuité est fermé : « ne rien
+couper » satisferait le critère (règle 19), donc il exige que la coupe MORDE sur ses profils.
+
+**Ce que T-44 a trouvé au-delà de la natation** — et c'est un fait nouveau :
+
+```
+70.3 / 40 sem / doubles / sm=6    sw  100 % des retraits pour 49 % du prescrit  (124/124)
+70.3 / 30 sem / doubles / sm=7    sw  100 %                    44 %             (48/48)
+Full / 40 sem / doubles / sm=6    sw   61 %                    42 %             (76/124)
+                                  bk   39 %                    21 %             (48/124)
+M    / 20 sem / parfois  / sm=5   rn  100 % des retraits pour 56 % du prescrit  (32/32)
+```
+
+Ce n'est donc pas « la natation perd toujours » : **c'est la discipline la plus courte de CETTE
+configuration qui perd tout**, et sur un M en `doubles: parfois` c'est la COURSE. La règle est
+générale, la natation n'en est que le cas le plus fréquent.
+
+**Deux dénominateurs différents, à ne pas confondre** (corollaire de la règle 14) : les 124
+retraits sont un compte BRUT, lu dans la trace ; le « −58 sur 59 » publié plus haut est un NET,
+lu sur le plan livré — des passes ultérieures réinsèrent. Les deux sont vrais et ne répondent pas
+à la même question.
+
+### Une faute d'instrument à moi, dans la même heure
+
+Ma première écriture appelait `traceRecord` **sans le garde `traceEnabled()`**. Le bundler
+(`scripts/buildApp.mjs`) RETIRE les imports et concatène les modules : l'alias
+`record as traceRecord` ne survit pas, et le symbole n'existe pas dans `engine.js`. Tous les
+appels existants sont derrière ce garde — donc jamais évalués hors trace — et c'est la seule
+raison pour laquelle personne ne l'avait vu. Mesuré : `audit:v1` à **57 `ReferenceError`** pendant
+que `golden:verify` restait à **0 écart**, parce que l'un lit le BUNDLE et l'autre lit `src/`.
+Deux instruments, deux verdicts opposés sur le même commit.
+
 ### NON IMPLÉMENTÉ — et c'est une décision, pas un oubli
 
-Le correctif change la composition de **presque tous les plans de triathlon** (98 % de la coupe
-change de cible) et touche les sept sports par le même point d'entrée. Deux raisons de ne pas
-l'écrire dans le même souffle que la mesure : le périmètre est gelé, et la mesure qui fonde
-l'arbitrage a BOUGÉ depuis sa rédaction (la prémisse « pile » est réfutée, l'ampleur est plus
-grande que « swMain 31 → 3 » : c'est toute la natation). Arbitrage à rendre.
+Le correctif change la composition de **presque tous les plans de triathlon** et touche les sept
+sports par le même point d'entrée. L'arbitrage rendu le 17/08 confirme le report : **après le
+merge, en premier.** Ce qui est livré ici est la PROPRIÉTÉ (T-44, rouge) et la traçabilité de la
+coupe — pas le correctif.
 
 ```verify
 id: O-66
