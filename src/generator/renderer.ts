@@ -184,19 +184,64 @@ export const intOf = (key: string | null, refs?: Refs): { ref: string; lo: numbe
  * se relit plus dans `recoveryText` : c'était le dernier endroit du moteur où de la prose servait
  * de donnée, et il coûtait 1 740 récupérations comptées 0 minute (35 % des séances de trail).
  */
-export function stepMin(st: V1Step, disc: string, baseRefs: Refs): number {
+/**
+ * LOT 1 — LA DURÉE DE **TRAVAIL** D'UN BLOC, quelle que soit son unité de prescription.
+ *
+ * `stepMin` rend la durée PORTE-À-PORTE (travail + récupérations inter-répétitions, R5.6a). Le
+ * plafond de dose, lui, borne le TRAVAIL : `5×14 min` au seuil est refusé pour ses 70 min de
+ * seuil, pas pour ses récups. Les deux grandeurs vivent donc ici, et `stepMin` DÉRIVE de
+ * celle-ci — une seule conversion allure → durée dans le dépôt (R11.1, acquis d'O-42).
+ */
+/**
+ * LOT 1 — LES TROIS FONCTIONS DE VÉRITÉ NE DEMANDENT QUE CE QU'ELLES LISENT.
+ *
+ * Elles prenaient un `Refs` complet, dont la FTP, qu'aucune des trois ne touche. Le point fixe
+ * (`reconcileDeclaredVolume`) est une fonction de MODULE : il reçoit les références de l'athlète
+ * par son `ctx` et n'a pas de FTP sous la main — exiger un `Refs` entier l'aurait obligé à en
+ * FABRIQUER une pour satisfaire un type, c'est-à-dire à inventer une donnée pour appeler une
+ * garde. Le type dit maintenant la vérité, et un `Refs` complet reste accepté tel quel.
+ */
+export type PaceRefs = Pick<Refs, "css" | "thrPace">;
+
+export function stepWorkMin(st: V1Step, disc: string, baseRefs: PaceRefs): number {
   const reps = st.reps || 1;
-  const rec = st.role === "body" && reps > 1 ? (reps - 1) * (st.recoveryMin || 0) : 0;
-  if (st.durationMin) return reps * st.durationMin + rec;
+  if (st.durationMin) return reps * st.durationMin;
   if (st.distanceM) {
     const d = st.d || disc;
     // O-42 — la durée découle de l'allure de la ZONE, pas de l'ancre brute : un bloc facile
     // n'est pas nagé au CSS. `zoneSpeedRatio` est la seule dérivation (R11.1) ; une zone
     // inconnue (ou d'une autre discipline) retombe sur 1, le comportement historique.
-    if (d === "sw") return (((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60)) / (zoneSpeedRatio(st.zone, undefined, "css") ?? 1) + rec;
-    return (((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60)) / (zoneSpeedRatio(st.zone, undefined, "thrPace") ?? 1) + rec;
+    if (d === "sw") return (((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60)) / (zoneSpeedRatio(st.zone, undefined, "css") ?? 1);
+    return (((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60)) / (zoneSpeedRatio(st.zone, undefined, "thrPace") ?? 1);
   }
   return 0;
+}
+
+/**
+ * LOT 1 — LES MÈTRES D'UN BLOC, quelle que soit son unité de prescription.
+ *
+ * L'INVERSE EXACT de `stepWorkMin`, et c'est ce qui la rend légitime : un bloc prescrit en TEMPS
+ * porte une distance, le moteur la connaît, et la garde C24/C24b la traitait comme absente
+ * (`if (tot <= 0) continue`). Une garde ne convertit pas — elle DEMANDE, et la réponse vient
+ * d'ici. Rendre `0` reste possible pour un bloc sans durée ni distance (un step de mobilité) :
+ * c'est alors une absence RÉELLE, pas une unité non lue.
+ */
+export function stepMeters(st: V1Step, disc: string, baseRefs: PaceRefs): number {
+  const reps = st.reps || 1;
+  if (st.distanceM) return reps * st.distanceM;
+  if (st.durationMin) {
+    const d = st.d || disc;
+    const min = reps * st.durationMin;
+    if (d === "sw") return (min * 60 / (baseRefs.css || 130)) * 100 * (zoneSpeedRatio(st.zone, undefined, "css") ?? 1);
+    return (min * 60 / (baseRefs.thrPace || 330)) * 1000 * (zoneSpeedRatio(st.zone, undefined, "thrPace") ?? 1);
+  }
+  return 0;
+}
+
+export function stepMin(st: V1Step, disc: string, baseRefs: PaceRefs): number {
+  const reps = st.reps || 1;
+  const rec = st.role === "body" && reps > 1 ? (reps - 1) * (st.recoveryMin || 0) : 0;
+  return stepWorkMin(st, disc, baseRefs) + rec;
 }
 
 interface RenderableSession extends V1Session {

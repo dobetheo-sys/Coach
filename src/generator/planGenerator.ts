@@ -19,7 +19,7 @@ import {
   hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
-import { renderSess, zoneSpeedRatio, type Refs } from "./renderer.ts";
+import { renderSess, stepMeters, stepWorkMin, zoneSpeedRatio, type PaceRefs, type Refs } from "./renderer.ts";
 import { sessionLoad, intensitySplit, zoneClass, type AthleteRefs } from "../engine/loadModel.ts";
 import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS, syncReturnRecovery } from "../engine/trailModel.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
@@ -1510,11 +1510,26 @@ export function reconcileDeclaredVolume(
   // calme ; en semaine de décharge, A3 s'applique — on retire au lieu de remonter.
   if (ctx?.swimFloors) {
     const floorM = ctx.beginner ? 600 : 750;
+    // LOT 1 — LES RÉFÉRENCES ARRIVENT PAR `ctx`, PAS PAR `r`. Le point fixe est une fonction de
+    // MODULE : le contexte de `generatePlan` (donc `r.baseRefs`) n'y existe pas. Ma première
+    // écriture appelait `stepMeters(st, sx.d, r.baseRefs)` et LEVAIT (`r is not defined`) —
+    // 476 profils du golden en écart, tous avec `_r202 → undefined` : ce n'était pas un plan qui
+    // change, c'était une exception avalée par le wrapper. `ctx.refs` porte déjà exactement les
+    // deux mêmes valeurs, posées par l'unique appelant à côté de celles données à `renderSess`.
+    // Le `|| 130` / `|| 330` du repli est la donnée fabriquée du ticket `130`, ouverte ailleurs :
+    // on n'en ajoute pas une source, on lit celle qui existe.
+    const refsC24: PaceRefs = { css: ctx.refs?.cssSecPer100m || 130, thrPace: ctx.refs?.thrPaceSecPerKm || 330 };
     for (const wk of plan.weeks) {
       const decharge = wk.isRecup || wk.phase.id === "taper";
       for (const d of wk.days) for (const sx of [...d.sessions]) {
         if (sx.d !== "sw" || !sx.steps || !sx.steps.length) continue;
-        const metersOf = () => sx.steps!.reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+        // LOT 1 — `metersOf` DEMANDE au lieu de renoncer. Elle sommait `st.distanceM` et rendait
+        // 0 sur un bloc prescrit en TEMPS : la garde de plancher tombait alors sur son
+        // `continue`, et une séance de nage écrite en minutes n'avait PAS de plancher. La
+        // dérivation vit dans `stepMeters` — la fonction de vérité, inverse exacte de celle qui
+        // donne la durée —, jamais ici : une garde qui convertit pour son propre compte est une
+        // dérivation de plus à côté de celles qui existent (famille `_IFZ`).
+        const metersOf = () => sx.steps!.reduce((t, st) => t + stepMeters(st, sx.d, refsC24), 0);
         const tot = metersOf();
         // T-29 (sémantique) — « ZÉRO MÈTRE » RECOUVRAIT DEUX ÉTATS TRÈS DIFFÉRENTS SOUS UN SEUL
         // `continue` SILENCIEUX, ET C'EST UN FAIL-OPEN SUR UNE PASSE DE SÉCURITÉ.
@@ -1534,7 +1549,14 @@ export function reconcileDeclaredVolume(
         // Quatrième instance de la famille, après `st.bnd ? cap : Infinity`, la classe par
         // défaut du brick et la divergence générateur/auditeur — et la première dont la syntaxe
         // n'est pas un ternaire, ce qui est précisément ce que le balayage T-29 avait raté.
-        if (tot <= 0) continue; // prescription en TEMPS : le plancher en mètres n'a pas d'objet
+        // LOT 1 — CE `continue` EST DÉSORMAIS INATTEIGNABLE POUR LA RAISON QUI LE MOTIVAIT, ET IL
+        // RESTE. Il couvrait deux états sous un seul silence (T-29) : (1) le bloc est prescrit en
+        // TEMPS — `stepMeters` répond maintenant, donc ce cas n'arrive plus ; (2) les mètres sont
+        // INTROUVABLES alors que la séance en déclare — c'était et ça reste une donnée absente sur
+        // un garde-fou de sécurité. On le GARDE plutôt que de le supprimer : si une passe future
+        // reproduit un zéro, on veut qu'il y ait encore quelque chose là. Le sceau l'asserte (S7,
+        // rang DUR) — on l'apprend à la seconde, pas par un gate deux lots plus tard.
+        if (tot <= 0) continue; // plus atteignable par l'unité : une absence ici est RÉELLE
         if (tot >= floorM) continue;
         // C29b — EN AFFÛTAGE, UNE NAGE COURTE SE GARDE : ni supprimée, ni remontée.
         //
@@ -2109,16 +2131,30 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     // le nombre de répétitions. Une dose de seuil au-delà de ~40 min ou de VO2 au-delà de
     // ~25 min n'est pas un entraînement dur, c'est une course — et personne n'enchaîne ça
     // semaine après semaine sans casser.
-    if (b.durationMin != null) {
+    // LOT 1 — LE PLAFOND DE DOSE CESSE D'ÊTRE MUET SUR LES BLOCS PRESCRITS EN MÈTRES.
+    //
+    // Il était gardé par `if (b.durationMin != null)` : un bloc en mètres n'avait pas de durée
+    // LUE, donc pas de dose, donc pas de plafond — et la nage prescrit 89 % de ses blocs en
+    // mètres. Le plafond de 40 min au seuil y était inopérant par construction.
+    //
+    // La garde ne CONVERTIT pas, elle DEMANDE : `stepWorkMin` répond quelle que soit l'unité, et
+    // c'est la même fonction dont `stepMin` dérive (R11.1). Écrire la conversion ici aurait fait
+    // une dérivation de plus à côté de celles qui existent — la famille `_IFZ`.
+    //
+    // C'est la durée de TRAVAIL qui est bornée, pas la porte-à-porte : `5×14 min` au seuil est
+    // refusé pour ses 70 min de seuil, pas pour ses récupérations.
+    {
       const z = String(b.zone || "");
       const doseCap = /\.vo2$/.test(z) || z === "tr.vam" ? DOSE_CAP_MIN.vo2
         : /\.thr$|\.css$/.test(z) || z === "tr.asc" || z === "tr.flatthr" ? DOSE_CAP_MIN.thr
         : null;
       if (doseCap != null) {
         const reps = b.reps || 1;
-        if (reps * b.durationMin > doseCap) {
-          if (reps > 1) b.reps = Math.max(1, Math.floor(doseCap / b.durationMin));
-          else b.durationMin = doseCap;
+        const travail = stepWorkMin(b, s.d, r.baseRefs);
+        if (travail > doseCap) {
+          if (reps > 1) b.reps = Math.max(1, Math.floor(reps * (doseCap / travail)));
+          else if (b.durationMin != null) b.durationMin = doseCap;
+          else if (b.distanceM != null) b.distanceM = Math.max(25, Math.round((b.distanceM * (doseCap / travail)) / 25) * 25);
         }
       }
     }

@@ -5369,19 +5369,64 @@ const intOf = (key               , refs       )                                 
  * se relit plus dans `recoveryText` : c'était le dernier endroit du moteur où de la prose servait
  * de donnée, et il coûtait 1 740 récupérations comptées 0 minute (35 % des séances de trail).
  */
-function stepMin(st        , disc        , baseRefs      )         {
+/**
+ * LOT 1 — LA DURÉE DE **TRAVAIL** D'UN BLOC, quelle que soit son unité de prescription.
+ *
+ * `stepMin` rend la durée PORTE-À-PORTE (travail + récupérations inter-répétitions, R5.6a). Le
+ * plafond de dose, lui, borne le TRAVAIL : `5×14 min` au seuil est refusé pour ses 70 min de
+ * seuil, pas pour ses récups. Les deux grandeurs vivent donc ici, et `stepMin` DÉRIVE de
+ * celle-ci — une seule conversion allure → durée dans le dépôt (R11.1, acquis d'O-42).
+ */
+/**
+ * LOT 1 — LES TROIS FONCTIONS DE VÉRITÉ NE DEMANDENT QUE CE QU'ELLES LISENT.
+ *
+ * Elles prenaient un `Refs` complet, dont la FTP, qu'aucune des trois ne touche. Le point fixe
+ * (`reconcileDeclaredVolume`) est une fonction de MODULE : il reçoit les références de l'athlète
+ * par son `ctx` et n'a pas de FTP sous la main — exiger un `Refs` entier l'aurait obligé à en
+ * FABRIQUER une pour satisfaire un type, c'est-à-dire à inventer une donnée pour appeler une
+ * garde. Le type dit maintenant la vérité, et un `Refs` complet reste accepté tel quel.
+ */
+                                                     
+
+function stepWorkMin(st        , disc        , baseRefs          )         {
   const reps = st.reps || 1;
-  const rec = st.role === "body" && reps > 1 ? (reps - 1) * (st.recoveryMin || 0) : 0;
-  if (st.durationMin) return reps * st.durationMin + rec;
+  if (st.durationMin) return reps * st.durationMin;
   if (st.distanceM) {
     const d = st.d || disc;
     // O-42 — la durée découle de l'allure de la ZONE, pas de l'ancre brute : un bloc facile
     // n'est pas nagé au CSS. `zoneSpeedRatio` est la seule dérivation (R11.1) ; une zone
     // inconnue (ou d'une autre discipline) retombe sur 1, le comportement historique.
-    if (d === "sw") return (((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60)) / (zoneSpeedRatio(st.zone, undefined, "css") ?? 1) + rec;
-    return (((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60)) / (zoneSpeedRatio(st.zone, undefined, "thrPace") ?? 1) + rec;
+    if (d === "sw") return (((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60)) / (zoneSpeedRatio(st.zone, undefined, "css") ?? 1);
+    return (((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60)) / (zoneSpeedRatio(st.zone, undefined, "thrPace") ?? 1);
   }
   return 0;
+}
+
+/**
+ * LOT 1 — LES MÈTRES D'UN BLOC, quelle que soit son unité de prescription.
+ *
+ * L'INVERSE EXACT de `stepWorkMin`, et c'est ce qui la rend légitime : un bloc prescrit en TEMPS
+ * porte une distance, le moteur la connaît, et la garde C24/C24b la traitait comme absente
+ * (`if (tot <= 0) continue`). Une garde ne convertit pas — elle DEMANDE, et la réponse vient
+ * d'ici. Rendre `0` reste possible pour un bloc sans durée ni distance (un step de mobilité) :
+ * c'est alors une absence RÉELLE, pas une unité non lue.
+ */
+function stepMeters(st        , disc        , baseRefs          )         {
+  const reps = st.reps || 1;
+  if (st.distanceM) return reps * st.distanceM;
+  if (st.durationMin) {
+    const d = st.d || disc;
+    const min = reps * st.durationMin;
+    if (d === "sw") return (min * 60 / (baseRefs.css || 130)) * 100 * (zoneSpeedRatio(st.zone, undefined, "css") ?? 1);
+    return (min * 60 / (baseRefs.thrPace || 330)) * 1000 * (zoneSpeedRatio(st.zone, undefined, "thrPace") ?? 1);
+  }
+  return 0;
+}
+
+function stepMin(st        , disc        , baseRefs          )         {
+  const reps = st.reps || 1;
+  const rec = st.role === "body" && reps > 1 ? (reps - 1) * (st.recoveryMin || 0) : 0;
+  return stepWorkMin(st, disc, baseRefs) + rec;
 }
 
                                                
@@ -11874,11 +11919,26 @@ function reconcileDeclaredVolume(
   // calme ; en semaine de décharge, A3 s'applique — on retire au lieu de remonter.
   if (ctx?.swimFloors) {
     const floorM = ctx.beginner ? 600 : 750;
+    // LOT 1 — LES RÉFÉRENCES ARRIVENT PAR `ctx`, PAS PAR `r`. Le point fixe est une fonction de
+    // MODULE : le contexte de `generatePlan` (donc `r.baseRefs`) n'y existe pas. Ma première
+    // écriture appelait `stepMeters(st, sx.d, r.baseRefs)` et LEVAIT (`r is not defined`) —
+    // 476 profils du golden en écart, tous avec `_r202 → undefined` : ce n'était pas un plan qui
+    // change, c'était une exception avalée par le wrapper. `ctx.refs` porte déjà exactement les
+    // deux mêmes valeurs, posées par l'unique appelant à côté de celles données à `renderSess`.
+    // Le `|| 130` / `|| 330` du repli est la donnée fabriquée du ticket `130`, ouverte ailleurs :
+    // on n'en ajoute pas une source, on lit celle qui existe.
+    const refsC24           = { css: ctx.refs?.cssSecPer100m || 130, thrPace: ctx.refs?.thrPaceSecPerKm || 330 };
     for (const wk of plan.weeks) {
       const decharge = wk.isRecup || wk.phase.id === "taper";
       for (const d of wk.days) for (const sx of [...d.sessions]) {
         if (sx.d !== "sw" || !sx.steps || !sx.steps.length) continue;
-        const metersOf = () => sx.steps .reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+        // LOT 1 — `metersOf` DEMANDE au lieu de renoncer. Elle sommait `st.distanceM` et rendait
+        // 0 sur un bloc prescrit en TEMPS : la garde de plancher tombait alors sur son
+        // `continue`, et une séance de nage écrite en minutes n'avait PAS de plancher. La
+        // dérivation vit dans `stepMeters` — la fonction de vérité, inverse exacte de celle qui
+        // donne la durée —, jamais ici : une garde qui convertit pour son propre compte est une
+        // dérivation de plus à côté de celles qui existent (famille `_IFZ`).
+        const metersOf = () => sx.steps .reduce((t, st) => t + stepMeters(st, sx.d, refsC24), 0);
         const tot = metersOf();
         // T-29 (sémantique) — « ZÉRO MÈTRE » RECOUVRAIT DEUX ÉTATS TRÈS DIFFÉRENTS SOUS UN SEUL
         // `continue` SILENCIEUX, ET C'EST UN FAIL-OPEN SUR UNE PASSE DE SÉCURITÉ.
@@ -11898,7 +11958,14 @@ function reconcileDeclaredVolume(
         // Quatrième instance de la famille, après `st.bnd ? cap : Infinity`, la classe par
         // défaut du brick et la divergence générateur/auditeur — et la première dont la syntaxe
         // n'est pas un ternaire, ce qui est précisément ce que le balayage T-29 avait raté.
-        if (tot <= 0) continue; // prescription en TEMPS : le plancher en mètres n'a pas d'objet
+        // LOT 1 — CE `continue` EST DÉSORMAIS INATTEIGNABLE POUR LA RAISON QUI LE MOTIVAIT, ET IL
+        // RESTE. Il couvrait deux états sous un seul silence (T-29) : (1) le bloc est prescrit en
+        // TEMPS — `stepMeters` répond maintenant, donc ce cas n'arrive plus ; (2) les mètres sont
+        // INTROUVABLES alors que la séance en déclare — c'était et ça reste une donnée absente sur
+        // un garde-fou de sécurité. On le GARDE plutôt que de le supprimer : si une passe future
+        // reproduit un zéro, on veut qu'il y ait encore quelque chose là. Le sceau l'asserte (S7,
+        // rang DUR) — on l'apprend à la seconde, pas par un gate deux lots plus tard.
+        if (tot <= 0) continue; // plus atteignable par l'unité : une absence ici est RÉELLE
         if (tot >= floorM) continue;
         // C29b — EN AFFÛTAGE, UNE NAGE COURTE SE GARDE : ni supprimée, ni remontée.
         //
@@ -12473,16 +12540,30 @@ function generatePlan(profile                , opts                             
     // le nombre de répétitions. Une dose de seuil au-delà de ~40 min ou de VO2 au-delà de
     // ~25 min n'est pas un entraînement dur, c'est une course — et personne n'enchaîne ça
     // semaine après semaine sans casser.
-    if (b.durationMin != null) {
+    // LOT 1 — LE PLAFOND DE DOSE CESSE D'ÊTRE MUET SUR LES BLOCS PRESCRITS EN MÈTRES.
+    //
+    // Il était gardé par `if (b.durationMin != null)` : un bloc en mètres n'avait pas de durée
+    // LUE, donc pas de dose, donc pas de plafond — et la nage prescrit 89 % de ses blocs en
+    // mètres. Le plafond de 40 min au seuil y était inopérant par construction.
+    //
+    // La garde ne CONVERTIT pas, elle DEMANDE : `stepWorkMin` répond quelle que soit l'unité, et
+    // c'est la même fonction dont `stepMin` dérive (R11.1). Écrire la conversion ici aurait fait
+    // une dérivation de plus à côté de celles qui existent — la famille `_IFZ`.
+    //
+    // C'est la durée de TRAVAIL qui est bornée, pas la porte-à-porte : `5×14 min` au seuil est
+    // refusé pour ses 70 min de seuil, pas pour ses récupérations.
+    {
       const z = String(b.zone || "");
       const doseCap = /\.vo2$/.test(z) || z === "tr.vam" ? DOSE_CAP_MIN.vo2
         : /\.thr$|\.css$/.test(z) || z === "tr.asc" || z === "tr.flatthr" ? DOSE_CAP_MIN.thr
         : null;
       if (doseCap != null) {
         const reps = b.reps || 1;
-        if (reps * b.durationMin > doseCap) {
-          if (reps > 1) b.reps = Math.max(1, Math.floor(doseCap / b.durationMin));
-          else b.durationMin = doseCap;
+        const travail = stepWorkMin(b, s.d, r.baseRefs);
+        if (travail > doseCap) {
+          if (reps > 1) b.reps = Math.max(1, Math.floor(reps * (doseCap / travail)));
+          else if (b.durationMin != null) b.durationMin = doseCap;
+          else if (b.distanceM != null) b.distanceM = Math.max(25, Math.round((b.distanceM * (doseCap / travail)) / 25) * 25);
         }
       }
     }
