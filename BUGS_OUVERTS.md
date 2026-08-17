@@ -5467,3 +5467,64 @@ quoi: le devis de ravitaillement ne dépend plus du jour d'exécution
 attendu: 2 / 7
 cmd: node scripts/sondeDevis7j.mjs | grep -o "jours où le devis MENSUEL est vide : [0-9] / 7" | grep -o "[0-9] / 7"
 ```
+
+
+## O-44 §0 — LES DEUX POINTS COURTS DU LOT PRÉCÉDENT, RÉGLÉS
+
+### a) Le corpus d'audit ne voyait qu'UNE branche du gate sur quatre — corrigé
+
+`longest_swim_m` n'était rempli nulle part pour le triathlon dans `runV2Audit` : les profils
+alertés tombaient TOUS dans « continuité inconnue », et les trois autres branches — satisfait,
+écart franchissable, écart infranchissable — n'étaient exercées par AUCUN profil. Un corpus qui ne
+voit qu'une branche ne peut pas voir une régression sur les autres, et c'est la même cécité que la
+sous-passe `B17` du golden a fermée côté photographie.
+
+La dispersion est **déterministe** (rotation sur `history` × `intent`, quatre déclarations : `non`
+· 100 m · 800 m · 2 500 m) : chaque format rencontre les quatre branches et la photo reste
+reproductible. **Vérifié atteint, pas supposé** — c'est la leçon de la sous-passe `B17`, dont ma
+première écriture prenait un horizon où le rabattement ne pouvait jamais mordre :
+
+```
+branches atteintes par les 108 profils tri du corpus
+   test (inconnue)   36      format gardé   24
+   gate satisfait    30      RABATTU        18
+```
+
+`audit:v1` reste **VERT à 0 violation dure sur 459** avec la dispersion en place — le rabattement
+réintroduit dans le corpus ne produit aucune violation.
+
+### b) Le score ignore les alertes — il ne dit donc rien sur ce lot
+
+Réponse en une ligne, **mesurée** plutôt que lue dans le code (règle 15) : le score moyen ne baisse
+pas quand les alertes montent, il monte.
+
+```
+score MOYEN par nombre d'avertissements (corpus tri dispersé)
+   0 alerte  n= 20  →  92,3        2 alertes n= 15  →  99,0
+   1 alerte  n= 64  →  92,6        3 alertes n=  9  →  95,0
+```
+
+`score` part de 100 et ne se décrémente que sur des grandeurs de STRUCTURE — sauts de charge, ratio
+du pic, semaines hors bande, part de la sortie longue, jours durs adjacents, part de facile.
+`warnings` n'entre dans aucun de ces termes : c'est le canal d'INFORMATION (R11.2), pas une pénalité.
+
+**Et la hausse a bien une autre cause, nommée et mesurée** — le score par branche du gate :
+
+```
+   test (inconnue) 94,2 · format gardé 94,6 · gate satisfait 94,5 · RABATTU 89,7
+```
+
+Le rabattement est la seule branche qui coûte au score : un plan rabattu est audité contre les
+bornes du format DÉCLARÉ (`opts.format = profile.format` dans `generateAudited`, jamais le format
+livré). D3 ayant réservé le rabattement à l'écart infranchissable, la population qui portait ce
+malus s'effondre — d'où la hausse, sans aucun rapport avec les alertes.
+
+*Note d'instrument : ma première mesure par branche rendait « gate satisfait » pour les **108**
+profils — un taux saturé. Elle lisait les décisions sur le plan de `generateAudited`, qui ne porte
+pas `_v2` (il est posé par le pont, pas par `generatePlan`). La branche se lit sur le plan du pont,
+le score sur l'audité.*
+
+**Ce qui reste ouvert et n'est PAS traité ici** (périmètre gelé) : `opts.format` est le format
+DÉCLARÉ alors que le plan peut être bâti pour un autre. C'est la forme exacte du défaut `fmt`
+fermé en D3 §4a, un étage plus haut. Aucune violation dure aujourd'hui, un malus de score de
+~5 points sur 18 profils — suivi en **O-49**.

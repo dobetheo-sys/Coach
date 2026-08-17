@@ -6854,7 +6854,7 @@
   "easyShare": 0.7682700982952657,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
    "Le volume promis (5.0 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 3.4 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
@@ -6874,10 +6874,10 @@
   "taperVsPeak": 0.47668393782383417,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7697848360993186,
+  "easyShare": 0.769017782669424,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
+   "En eau libre, le risque ne se voit pas avant d'arriver. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 15 min : le format le plus court est déjà le tien, ton plan construit cette continuité semaine après semaine, et une nage continue à la distance de course avant le jour J n'est pas une option.",
    "Le volume promis (5.0 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 3.2 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
@@ -6889,19 +6889,18 @@
   "history": "reprise",
   "level": "debutant",
   "intent": "plaisir",
-  "score": 85,
-  "peakRatio": 0.9210476190476191,
-  "peakDeclaredH": 3.5,
-  "peakPrescribedH": 3.216666666666667,
-  "longShare": 0.336056250646262,
-  "taperVsPeak": 0.47668393782383417,
+  "score": 100,
+  "peakRatio": 0.9339074074074074,
+  "peakDeclaredH": 3,
+  "peakPrescribedH": 2.8,
+  "longShare": 0.2914873787947889,
+  "taperVsPeak": 0.5224719101123596,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7697848360993186,
+  "easyShare": 0.7680928445915574,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
-   "Le volume promis (5.0 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 3.2 h/sem. C'est ce chiffre-là qui compte.",
+   "Le volume promis (5.0 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 3.0 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
@@ -6923,7 +6922,7 @@
   "easyShare": 0.7411792205396168,
   "repairs": 2,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
    "Le volume promis (4.9 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 3.1 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
@@ -6936,17 +6935,18 @@
   "level": "inter",
   "intent": "finir",
   "score": 100,
-  "peakRatio": 0.9591937669376696,
+  "peakRatio": 0.9489989837398376,
   "peakDeclaredH": 4.1,
-  "peakPrescribedH": 3.933333333333333,
-  "longShare": 0.30089633203133276,
-  "taperVsPeak": 0.5296610169491526,
+  "peakPrescribedH": 3.8833333333333333,
+  "longShare": 0.29984525842913207,
+  "taperVsPeak": 0.5364806866952789,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7799108962376851,
+  "easyShare": 0.7788661098545437,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 15 min : le format le plus court est déjà le tien, ton plan construit cette continuité semaine après semaine, et une nage continue à la distance de course avant le jour J n'est pas une option.",
+   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
  },
@@ -6957,17 +6957,16 @@
   "level": "inter",
   "intent": "plaisir",
   "score": 100,
-  "peakRatio": 0.8964109078590787,
+  "peakRatio": 0.8882808265582658,
   "peakDeclaredH": 4.1,
-  "peakPrescribedH": 3.683333333333333,
-  "longShare": 0.3582488885025914,
-  "taperVsPeak": 0.43891402714932126,
+  "peakPrescribedH": 3.65,
+  "longShare": 0.3523751956845479,
+  "taperVsPeak": 0.4383561643835616,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7735799887430806,
+  "easyShare": 0.7748235211332177,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
@@ -6989,7 +6988,7 @@
   "easyShare": 0.7411792205396168,
   "repairs": 2,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
    "Le volume promis (4.9 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 3.1 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
@@ -7002,17 +7001,18 @@
   "level": "avance",
   "intent": "finir",
   "score": 100,
-  "peakRatio": 0.9591937669376696,
+  "peakRatio": 0.9489989837398376,
   "peakDeclaredH": 4.1,
-  "peakPrescribedH": 3.933333333333333,
-  "longShare": 0.30089633203133276,
-  "taperVsPeak": 0.5296610169491526,
+  "peakPrescribedH": 3.8833333333333333,
+  "longShare": 0.29984525842913207,
+  "taperVsPeak": 0.5364806866952789,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7799108962376851,
+  "easyShare": 0.7788661098545437,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 15 min : le format le plus court est déjà le tien, ton plan construit cette continuité semaine après semaine, et une nage continue à la distance de course avant le jour J n'est pas une option.",
+   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
  },
@@ -7023,17 +7023,16 @@
   "level": "avance",
   "intent": "plaisir",
   "score": 100,
-  "peakRatio": 0.8964109078590787,
+  "peakRatio": 0.8882808265582658,
   "peakDeclaredH": 4.1,
-  "peakPrescribedH": 3.683333333333333,
-  "longShare": 0.3582488885025914,
-  "taperVsPeak": 0.43891402714932126,
+  "peakPrescribedH": 3.65,
+  "longShare": 0.3523751956845479,
+  "taperVsPeak": 0.4383561643835616,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7735799887430806,
+  "easyShare": 0.7748235211332177,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
@@ -7045,18 +7044,17 @@
   "level": "debutant",
   "intent": "competition",
   "score": 100,
-  "peakRatio": 0.9297157622739018,
+  "peakRatio": 0.9360206718346253,
   "peakDeclaredH": 4.3,
-  "peakPrescribedH": 4,
-  "longShare": 0.3460255697609783,
-  "taperVsPeak": 0.4900398406374502,
+  "peakPrescribedH": 4.016666666666667,
+  "longShare": 0.3726810954063604,
+  "taperVsPeak": 0.5040983606557377,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8013078718521948,
+  "easyShare": 0.8009625096548036,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
-   "Le volume promis (6.5 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 4.2 h/sem. C'est ce chiffre-là qui compte.",
+   "Le volume promis (6.5 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 4.1 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
@@ -7078,7 +7076,7 @@
   "easyShare": 0.7539556014265046,
   "repairs": 2,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
    "Le volume promis (5.5 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 3.1 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
@@ -7098,10 +7096,10 @@
   "taperVsPeak": 0.5080213903743316,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7539556014265046,
+  "easyShare": 0.7539484213226271,
   "repairs": 2,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
+   "En eau libre, le risque ne se voit pas avant d'arriver. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 15 min : le format le plus court est déjà le tien, ton plan construit cette continuité semaine après semaine, et une nage continue à la distance de course avant le jour J n'est pas une option.",
    "Le volume promis (5.5 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 3.1 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
@@ -7114,17 +7112,17 @@
   "level": "inter",
   "intent": "competition",
   "score": 100,
-  "peakRatio": 0.9923319444444445,
+  "peakRatio": 0.9889986111111112,
   "peakDeclaredH": 5,
-  "peakPrescribedH": 4.966666666666667,
-  "longShare": 0.35270455814656554,
-  "taperVsPeak": 0.47315436241610737,
+  "peakPrescribedH": 4.95,
+  "longShare": 0.3505229054641409,
+  "taperVsPeak": 0.47474747474747475,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7552449676406424,
+  "easyShare": 0.7500308764285346,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
+   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
  },
@@ -7145,7 +7143,7 @@
   "easyShare": 0.754882884900472,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
   ],
   "hardViolations": []
  },
@@ -7163,10 +7161,10 @@
   "taperVsPeak": 0.5291970802919708,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7473962548909662,
+  "easyShare": 0.7467348890842184,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 15 min : le format le plus court est déjà le tien, ton plan construit cette continuité semaine après semaine, et une nage continue à la distance de course avant le jour J n'est pas une option."
   ],
   "hardViolations": []
  },
@@ -7177,17 +7175,17 @@
   "level": "avance",
   "intent": "competition",
   "score": 100,
-  "peakRatio": 0.9923319444444445,
+  "peakRatio": 0.9889986111111112,
   "peakDeclaredH": 5,
-  "peakPrescribedH": 4.966666666666667,
-  "longShare": 0.35270455814656554,
-  "taperVsPeak": 0.47315436241610737,
+  "peakPrescribedH": 4.95,
+  "longShare": 0.3505229054641409,
+  "taperVsPeak": 0.47474747474747475,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7552449676406424,
+  "easyShare": 0.7500308764285346,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
+   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
  },
@@ -7208,7 +7206,7 @@
   "easyShare": 0.754882884900472,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
   ],
   "hardViolations": []
  },
@@ -7226,10 +7224,10 @@
   "taperVsPeak": 0.5291970802919708,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7473962548909662,
+  "easyShare": 0.7467348890842184,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 15 min : le format le plus court est déjà le tien, ton plan construit cette continuité semaine après semaine, et une nage continue à la distance de course avant le jour J n'est pas une option."
   ],
   "hardViolations": []
  },
@@ -7240,17 +7238,16 @@
   "level": "debutant",
   "intent": "competition",
   "score": 100,
-  "peakRatio": 0.9430676328502414,
-  "peakDeclaredH": 4.6,
-  "peakPrescribedH": 4.333333333333333,
-  "longShare": 0.3572983633429809,
-  "taperVsPeak": 0.5151515151515151,
+  "peakRatio": 0.9201388888888888,
+  "peakDeclaredH": 4.8,
+  "peakPrescribedH": 4.416666666666667,
+  "longShare": 0.3283018867924528,
+  "taperVsPeak": 0.43018867924528303,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7882222591028197,
-  "repairs": 2,
+  "easyShare": 0.7909276975652222,
+  "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
    "Le volume promis (6.5 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 4.4 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
@@ -7263,17 +7260,16 @@
   "level": "debutant",
   "intent": "finir",
   "score": 100,
-  "peakRatio": 0.9258397932816538,
-  "peakDeclaredH": 4.3,
-  "peakPrescribedH": 3.9833333333333334,
-  "longShare": 0.3391013117499302,
-  "taperVsPeak": 0.492,
+  "peakRatio": 0.9583333333333334,
+  "peakDeclaredH": 4.4,
+  "peakPrescribedH": 4.216666666666667,
+  "longShare": 0.32806324110671936,
+  "taperVsPeak": 0.484251968503937,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7891575178291362,
+  "easyShare": 0.7924939900648638,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
    "Le volume promis (6.5 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 4.2 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
@@ -7296,7 +7292,7 @@
   "easyShare": 0.7891575178291362,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m.",
    "Le volume promis (6.5 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 4.2 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
@@ -7309,18 +7305,16 @@
   "level": "inter",
   "intent": "competition",
   "score": 100,
-  "peakRatio": 0.9306515325670498,
+  "peakRatio": 0.9262729406130268,
   "peakDeclaredH": 5.8,
-  "peakPrescribedH": 5.4,
-  "longShare": 0.3396458749185107,
-  "taperVsPeak": 0.5277777777777778,
+  "peakPrescribedH": 5.366666666666666,
+  "longShare": 0.34125141755063276,
+  "taperVsPeak": 0.531055900621118,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7418334897775015,
+  "easyShare": 0.7358420255217433,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -7330,18 +7324,16 @@
   "level": "inter",
   "intent": "finir",
   "score": 100,
-  "peakRatio": 0.9813143004115226,
-  "peakDeclaredH": 5.4,
-  "peakPrescribedH": 5.3,
-  "longShare": 0.3050834130551588,
-  "taperVsPeak": 0.5314465408805031,
+  "peakRatio": 0.9727096688034188,
+  "peakDeclaredH": 5.2,
+  "peakPrescribedH": 5.05,
+  "longShare": 0.3525704832055357,
+  "taperVsPeak": 0.44554455445544555,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7725450587024351,
+  "easyShare": 0.7625373113517676,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -7361,7 +7353,7 @@
   "easyShare": 0.7702029265799937,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
   ],
   "hardViolations": []
  },
@@ -7372,18 +7364,16 @@
   "level": "avance",
   "intent": "competition",
   "score": 100,
-  "peakRatio": 0.9306515325670498,
+  "peakRatio": 0.9262729406130268,
   "peakDeclaredH": 5.8,
-  "peakPrescribedH": 5.4,
-  "longShare": 0.3396458749185107,
-  "taperVsPeak": 0.5277777777777778,
+  "peakPrescribedH": 5.366666666666666,
+  "longShare": 0.34125141755063276,
+  "taperVsPeak": 0.531055900621118,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7418334897775015,
+  "easyShare": 0.7358420255217433,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -7393,18 +7383,16 @@
   "level": "avance",
   "intent": "finir",
   "score": 100,
-  "peakRatio": 0.9813143004115226,
-  "peakDeclaredH": 5.4,
-  "peakPrescribedH": 5.3,
-  "longShare": 0.3050834130551588,
-  "taperVsPeak": 0.5314465408805031,
+  "peakRatio": 0.9727096688034188,
+  "peakDeclaredH": 5.2,
+  "peakPrescribedH": 5.05,
+  "longShare": 0.3525704832055357,
+  "taperVsPeak": 0.44554455445544555,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7725450587024351,
+  "easyShare": 0.7625373113517676,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -7424,7 +7412,7 @@
   "easyShare": 0.7702029265799937,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 750 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 423 m."
   ],
   "hardViolations": []
  },
@@ -7445,7 +7433,7 @@
   "easyShare": 0.7907421856272756,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m.",
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m.",
    "Le volume promis (5.6 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 3.8 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
@@ -7458,18 +7446,17 @@
   "level": "debutant",
   "intent": "finir",
   "score": 100,
-  "peakRatio": 0.9955413105413105,
-  "peakDeclaredH": 3.9,
-  "peakPrescribedH": 3.8833333333333333,
-  "longShare": 0.3820453017013179,
-  "taperVsPeak": 0.4334763948497854,
+  "peakRatio": 0.9227962962962962,
+  "peakDeclaredH": 3,
+  "peakPrescribedH": 2.7666666666666666,
+  "longShare": 0.3010174389436295,
+  "taperVsPeak": 0.5340909090909091,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7868768160387587,
+  "easyShare": 0.7703205900690764,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m.",
-   "Le volume promis (5.6 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 3.9 h/sem. C'est ce chiffre-là qui compte.",
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 472 m d'affilée avant l'épreuve, pour 1500 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
@@ -7491,7 +7478,7 @@
   "easyShare": 0.7868768160387587,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m.",
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 1500 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue.",
    "Le volume promis (5.6 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 3.9 h/sem. C'est ce chiffre-là qui compte.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
@@ -7514,7 +7501,7 @@
   "easyShare": 0.7785786611964365,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
   ],
   "hardViolations": []
  },
@@ -7525,17 +7512,18 @@
   "level": "inter",
   "intent": "finir",
   "score": 100,
-  "peakRatio": 0.898193306010929,
-  "peakDeclaredH": 6.1,
-  "peakPrescribedH": 5.483333333333333,
-  "longShare": 0.3498218570217232,
-  "taperVsPeak": 0.46808510638297873,
+  "peakRatio": 0.9105538194444445,
+  "peakDeclaredH": 4,
+  "peakPrescribedH": 3.65,
+  "longShare": 0.3935333921853878,
+  "taperVsPeak": 0.4383561643835616,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8015690908966786,
+  "easyShare": 0.7721380757275459,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 472 m d'affilée avant l'épreuve, pour 1500 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend.",
+   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
  },
@@ -7546,17 +7534,17 @@
   "level": "inter",
   "intent": "plaisir",
   "score": 100,
-  "peakRatio": 0.9573731303418804,
+  "peakRatio": 0.9716185897435897,
   "peakDeclaredH": 5.2,
-  "peakPrescribedH": 4.983333333333333,
-  "longShare": 0.3247400893593218,
+  "peakPrescribedH": 5.05,
+  "longShare": 0.35296640221676095,
   "taperVsPeak": 0.49508196721311476,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8009002418551548,
+  "easyShare": 0.7999206475407685,
   "repairs": 2,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 1500 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -7577,7 +7565,7 @@
   "easyShare": 0.7785786611964365,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
   ],
   "hardViolations": []
  },
@@ -7588,17 +7576,18 @@
   "level": "avance",
   "intent": "finir",
   "score": 100,
-  "peakRatio": 0.898193306010929,
-  "peakDeclaredH": 6.1,
-  "peakPrescribedH": 5.483333333333333,
-  "longShare": 0.3498218570217232,
-  "taperVsPeak": 0.46808510638297873,
+  "peakRatio": 0.9105538194444445,
+  "peakDeclaredH": 4,
+  "peakPrescribedH": 3.65,
+  "longShare": 0.3935333921853878,
+  "taperVsPeak": 0.4383561643835616,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8015690908966786,
+  "easyShare": 0.7721380757275459,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 472 m d'affilée avant l'épreuve, pour 1500 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend.",
+   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
  },
@@ -7609,17 +7598,17 @@
   "level": "avance",
   "intent": "plaisir",
   "score": 100,
-  "peakRatio": 0.9573731303418804,
+  "peakRatio": 0.9716185897435897,
   "peakDeclaredH": 5.2,
-  "peakPrescribedH": 4.983333333333333,
-  "longShare": 0.3247400893593218,
+  "peakPrescribedH": 5.05,
+  "longShare": 0.35296640221676095,
   "taperVsPeak": 0.49508196721311476,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.8009002418551548,
+  "easyShare": 0.7999206475407685,
   "repairs": 2,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 1500 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -7629,125 +7618,122 @@
   "history": "confirme",
   "level": "debutant",
   "intent": "competition",
+  "score": 80,
+  "peakRatio": 0.9975490196078431,
+  "peakDeclaredH": 5.1,
+  "peakPrescribedH": 5.083333333333333,
+  "longShare": 0.46846846846846846,
+  "taperVsPeak": 0.45901639344262296,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7944226092491552,
+  "repairs": 0,
+  "warnings": [],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "M",
+  "history": "confirme",
+  "level": "debutant",
+  "intent": "finir",
   "score": 95,
-  "peakRatio": 0.9956038647342994,
+  "peakRatio": 0.9961111111111111,
+  "peakDeclaredH": 5.2,
+  "peakPrescribedH": 5.183333333333334,
+  "longShare": 0.4633403406409542,
+  "taperVsPeak": 0.4694533762057878,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.8048066913163656,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "M",
+  "history": "confirme",
+  "level": "debutant",
+  "intent": "plaisir",
+  "score": 100,
+  "peakRatio": 0.9250238095238095,
+  "peakDeclaredH": 3.5,
+  "peakPrescribedH": 3.2333333333333334,
+  "longShare": 0.4272734292553602,
+  "taperVsPeak": 0.5023696682464455,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7700973254655529,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 472 m d'affilée avant l'épreuve, pour 1500 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend.",
+   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "M",
+  "history": "confirme",
+  "level": "inter",
+  "intent": "competition",
+  "score": 95,
+  "peakRatio": 0.9048103233830846,
+  "peakDeclaredH": 6.7,
+  "peakPrescribedH": 6.066666666666666,
+  "longShare": 0.3958939746449154,
+  "taperVsPeak": 0.4827586206896552,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7299893482327813,
+  "repairs": 0,
+  "warnings": [
+   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "M",
+  "history": "confirme",
+  "level": "inter",
+  "intent": "finir",
+  "score": 100,
+  "peakRatio": 0.9291782407407406,
+  "peakDeclaredH": 7.2,
+  "peakPrescribedH": 6.683333333333334,
+  "longShare": 0.3587399260098903,
+  "taperVsPeak": 0.513715710723192,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7608119032824892,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "M",
+  "history": "confirme",
+  "level": "inter",
+  "intent": "plaisir",
+  "score": 100,
+  "peakRatio": 0.9926721014492754,
   "peakDeclaredH": 4.6,
-  "peakPrescribedH": 4.583333333333333,
-  "longShare": 0.5167645203551847,
-  "taperVsPeak": 0.516245487364621,
+  "peakPrescribedH": 4.566666666666666,
+  "longShare": 0.3576936062267887,
+  "taperVsPeak": 0.5291970802919708,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7888840083889608,
-  "repairs": 2,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m.",
-   "Le volume promis (6.2 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 4.6 h/sem. C'est ce chiffre-là qui compte."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "M",
-  "history": "confirme",
-  "level": "debutant",
-  "intent": "finir",
-  "score": 95,
-  "peakRatio": 0.9961111111111111,
-  "peakDeclaredH": 5.2,
-  "peakPrescribedH": 5.183333333333334,
-  "longShare": 0.4633403406409542,
-  "taperVsPeak": 0.4694533762057878,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.8048066913163656,
+  "easyShare": 0.7467348890842184,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "M",
-  "history": "confirme",
-  "level": "debutant",
-  "intent": "plaisir",
-  "score": 95,
-  "peakRatio": 0.9961111111111111,
-  "peakDeclaredH": 5.2,
-  "peakPrescribedH": 5.183333333333334,
-  "longShare": 0.4633403406409542,
-  "taperVsPeak": 0.4694533762057878,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.8048066913163656,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "M",
-  "history": "confirme",
-  "level": "inter",
-  "intent": "competition",
-  "score": 100,
-  "peakRatio": 0.9048103233830846,
-  "peakDeclaredH": 6.7,
-  "peakPrescribedH": 6.066666666666666,
-  "longShare": 0.3958939746449154,
-  "taperVsPeak": 0.4827586206896552,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7327362563967845,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m.",
-   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "M",
-  "history": "confirme",
-  "level": "inter",
-  "intent": "finir",
-  "score": 100,
-  "peakRatio": 0.9291782407407406,
-  "peakDeclaredH": 7.2,
-  "peakPrescribedH": 6.683333333333334,
-  "longShare": 0.3587399260098903,
-  "taperVsPeak": 0.513715710723192,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7608119032824892,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "M",
-  "history": "confirme",
-  "level": "inter",
-  "intent": "plaisir",
-  "score": 100,
-  "peakRatio": 0.9000414737654322,
-  "peakDeclaredH": 7.2,
-  "peakPrescribedH": 6.483333333333333,
-  "longShare": 0.3703533037636511,
-  "taperVsPeak": 0.5295629820051414,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7672552064525432,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 472 m d'affilée avant l'épreuve, pour 1500 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend."
   ],
   "hardViolations": []
  },
@@ -7757,7 +7743,7 @@
   "history": "confirme",
   "level": "avance",
   "intent": "competition",
-  "score": 100,
+  "score": 95,
   "peakRatio": 0.9048103233830846,
   "peakDeclaredH": 6.7,
   "peakPrescribedH": 6.066666666666666,
@@ -7765,10 +7751,9 @@
   "taperVsPeak": 0.4827586206896552,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7327362563967845,
+  "easyShare": 0.7299893482327813,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
@@ -7790,7 +7775,7 @@
   "easyShare": 0.7608119032824892,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
   ],
   "hardViolations": []
  },
@@ -7801,61 +7786,58 @@
   "level": "avance",
   "intent": "plaisir",
   "score": 100,
-  "peakRatio": 0.9000414737654322,
-  "peakDeclaredH": 7.2,
-  "peakPrescribedH": 6.483333333333333,
-  "longShare": 0.3703533037636511,
-  "taperVsPeak": 0.5295629820051414,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7672552064525432,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "M",
-  "history": "ancien",
-  "level": "debutant",
-  "intent": "competition",
-  "score": 95,
-  "peakRatio": 0.9956038647342994,
+  "peakRatio": 0.9926721014492754,
   "peakDeclaredH": 4.6,
-  "peakPrescribedH": 4.583333333333333,
-  "longShare": 0.5167645203551847,
-  "taperVsPeak": 0.516245487364621,
+  "peakPrescribedH": 4.566666666666666,
+  "longShare": 0.3576936062267887,
+  "taperVsPeak": 0.5291970802919708,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7888840083889608,
+  "easyShare": 0.7467348890842184,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 472 m d'affilée avant l'épreuve, pour 1500 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "M",
+  "history": "ancien",
+  "level": "debutant",
+  "intent": "competition",
+  "score": 95,
+  "peakRatio": 1.0057111111111112,
+  "peakDeclaredH": 5,
+  "peakPrescribedH": 5.033333333333333,
+  "longShare": 0.47727423382018247,
+  "taperVsPeak": 0.45695364238410596,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7914695426109483,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 1500 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "M",
+  "history": "ancien",
+  "level": "debutant",
+  "intent": "finir",
+  "score": 95,
+  "peakRatio": 0.9957111111111112,
+  "peakDeclaredH": 5,
+  "peakPrescribedH": 4.983333333333333,
+  "longShare": 0.4720244604637668,
+  "taperVsPeak": 0.5117056856187291,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7995008787025883,
   "repairs": 2,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m.",
-   "Le volume promis (6.2 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 4.6 h/sem. C'est ce chiffre-là qui compte."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "M",
-  "history": "ancien",
-  "level": "debutant",
-  "intent": "finir",
-  "score": 95,
-  "peakRatio": 0.9961111111111111,
-  "peakDeclaredH": 5.2,
-  "peakPrescribedH": 5.183333333333334,
-  "longShare": 0.4633403406409542,
-  "taperVsPeak": 0.4694533762057878,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.8048066913163656,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -7875,7 +7857,7 @@
   "easyShare": 0.8048066913163656,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
   ],
   "hardViolations": []
  },
@@ -7896,7 +7878,7 @@
   "easyShare": 0.7327362563967845,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m.",
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 1500 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
@@ -7915,11 +7897,9 @@
   "taperVsPeak": 0.513715710723192,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7608119032824892,
+  "easyShare": 0.7606055409285256,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -7939,7 +7919,7 @@
   "easyShare": 0.7672552064525432,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
   ],
   "hardViolations": []
  },
@@ -7960,7 +7940,7 @@
   "easyShare": 0.7327362563967845,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m.",
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 1500 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue.",
    "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
@@ -7979,11 +7959,9 @@
   "taperVsPeak": 0.513715710723192,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7608119032824892,
+  "easyShare": 0.7606055409285256,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -8003,7 +7981,7 @@
   "easyShare": 0.7672552064525432,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1500 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 636 m."
   ],
   "hardViolations": []
  },
@@ -8024,7 +8002,7 @@
   "easyShare": 0.695770533034765,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
   ],
   "hardViolations": []
  },
@@ -8034,18 +8012,19 @@
   "history": "reprise",
   "level": "debutant",
   "intent": "finir",
-  "score": 90,
-  "peakRatio": 0.9812152777777777,
-  "peakDeclaredH": 6.4,
-  "peakPrescribedH": 6.283333333333333,
-  "longShare": 0.4511836936905057,
-  "taperVsPeak": 0.38726790450928383,
+  "score": 95,
+  "peakRatio": 0.9703603603603604,
+  "peakDeclaredH": 3.7,
+  "peakPrescribedH": 3.5833333333333335,
+  "longShare": 0.46420945130442853,
+  "taperVsPeak": 0.4372093023255814,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7139172890488943,
+  "easyShare": 0.7615010020585274,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 835 m d'affilée avant l'épreuve, pour 1900 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend.",
+   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
  },
@@ -8063,10 +8042,10 @@
   "taperVsPeak": 0.38726790450928383,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7139172890488943,
+  "easyShare": 0.7136056241371019,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 1900 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -8087,7 +8066,7 @@
   "easyShare": 0.6948389354064276,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
   ],
   "hardViolations": []
  },
@@ -8098,17 +8077,18 @@
   "level": "inter",
   "intent": "finir",
   "score": 95,
-  "peakRatio": 0.9195713305898491,
-  "peakDeclaredH": 8.1,
-  "peakPrescribedH": 7.45,
-  "longShare": 0.38038836906622114,
-  "taperVsPeak": 0.3825503355704698,
+  "peakRatio": 0.9912891737891738,
+  "peakDeclaredH": 3.9,
+  "peakPrescribedH": 3.8666666666666667,
+  "longShare": 0.4526610000215553,
+  "taperVsPeak": 0.5387931034482759,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7255805414743732,
+  "easyShare": 0.7724266872714044,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 835 m d'affilée avant l'épreuve, pour 1900 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend.",
+   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
  },
@@ -8126,10 +8106,10 @@
   "taperVsPeak": 0.38084632516703787,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7253409120076613,
+  "easyShare": 0.7248956900590732,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 1900 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -8150,7 +8130,7 @@
   "easyShare": 0.6948389354064276,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
   ],
   "hardViolations": []
  },
@@ -8161,17 +8141,18 @@
   "level": "avance",
   "intent": "finir",
   "score": 95,
-  "peakRatio": 0.9195713305898491,
-  "peakDeclaredH": 8.1,
-  "peakPrescribedH": 7.45,
-  "longShare": 0.38038836906622114,
-  "taperVsPeak": 0.3825503355704698,
+  "peakRatio": 0.9912891737891738,
+  "peakDeclaredH": 3.9,
+  "peakPrescribedH": 3.8666666666666667,
+  "longShare": 0.4526610000215553,
+  "taperVsPeak": 0.5387931034482759,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7255805414743732,
+  "easyShare": 0.7724266872714044,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 835 m d'affilée avant l'épreuve, pour 1900 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend.",
+   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
   "hardViolations": []
  },
@@ -8189,10 +8170,10 @@
   "taperVsPeak": 0.38084632516703787,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7253409120076613,
+  "easyShare": 0.7248956900590732,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 1900 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -8210,11 +8191,9 @@
   "taperVsPeak": 0.35799522673031026,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7015005461758111,
+  "easyShare": 0.700399390658453,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -8234,7 +8213,7 @@
   "easyShare": 0.7000273149860842,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
   ],
   "hardViolations": []
  },
@@ -8242,6 +8221,189 @@
   "sport": "tri",
   "format": "70.3",
   "history": "confirme",
+  "level": "debutant",
+  "intent": "plaisir",
+  "score": 95,
+  "peakRatio": 0.9895121951219514,
+  "peakDeclaredH": 4.1,
+  "peakPrescribedH": 4.05,
+  "longShare": 0.4642182236463725,
+  "taperVsPeak": 0.43621399176954734,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7430640898759094,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 835 m d'affilée avant l'épreuve, pour 1900 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "70.3",
+  "history": "confirme",
+  "level": "inter",
+  "intent": "competition",
+  "score": 85,
+  "peakRatio": 0.9286835424133811,
+  "peakDeclaredH": 9.3,
+  "peakPrescribedH": 8.633333333333333,
+  "longShare": 0.40910417603057986,
+  "taperVsPeak": 0.35714285714285715,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.6627033383078323,
+  "repairs": 0,
+  "warnings": [],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "70.3",
+  "history": "confirme",
+  "level": "inter",
+  "intent": "finir",
+  "score": 95,
+  "peakRatio": 0.921044061302682,
+  "peakDeclaredH": 8.7,
+  "peakPrescribedH": 8.016666666666667,
+  "longShare": 0.44094553698638683,
+  "taperVsPeak": 0.35550935550935553,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7107009381136545,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "70.3",
+  "history": "confirme",
+  "level": "inter",
+  "intent": "plaisir",
+  "score": 95,
+  "peakRatio": 0.9923390151515152,
+  "peakDeclaredH": 4.4,
+  "peakPrescribedH": 4.366666666666666,
+  "longShare": 0.45423748222652705,
+  "taperVsPeak": 0.42366412213740456,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7568627770774793,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 835 m d'affilée avant l'épreuve, pour 1900 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "70.3",
+  "history": "confirme",
+  "level": "avance",
+  "intent": "competition",
+  "score": 85,
+  "peakRatio": 0.9286835424133811,
+  "peakDeclaredH": 9.3,
+  "peakPrescribedH": 8.633333333333333,
+  "longShare": 0.40910417603057986,
+  "taperVsPeak": 0.35714285714285715,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.6627033383078323,
+  "repairs": 0,
+  "warnings": [],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "70.3",
+  "history": "confirme",
+  "level": "avance",
+  "intent": "finir",
+  "score": 95,
+  "peakRatio": 0.921044061302682,
+  "peakDeclaredH": 8.7,
+  "peakPrescribedH": 8.016666666666667,
+  "longShare": 0.44094553698638683,
+  "taperVsPeak": 0.35550935550935553,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7107009381136545,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "70.3",
+  "history": "confirme",
+  "level": "avance",
+  "intent": "plaisir",
+  "score": 95,
+  "peakRatio": 0.9923390151515152,
+  "peakDeclaredH": 4.4,
+  "peakPrescribedH": 4.366666666666666,
+  "longShare": 0.45423748222652705,
+  "taperVsPeak": 0.42366412213740456,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7568627770774793,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 835 m d'affilée avant l'épreuve, pour 1900 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "70.3",
+  "history": "ancien",
+  "level": "debutant",
+  "intent": "competition",
+  "score": 90,
+  "peakRatio": 0.9830672926447573,
+  "peakDeclaredH": 7.1,
+  "peakPrescribedH": 6.983333333333333,
+  "longShare": 0.5062243306058773,
+  "taperVsPeak": 0.35799522673031026,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.70277632357057,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 1900 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "70.3",
+  "history": "ancien",
+  "level": "debutant",
+  "intent": "finir",
+  "score": 80,
+  "peakRatio": 0.9807198748043817,
+  "peakDeclaredH": 7.1,
+  "peakPrescribedH": 6.966666666666667,
+  "longShare": 0.5074360119997448,
+  "taperVsPeak": 0.35799522673031026,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.6947521894481512,
+  "repairs": 0,
+  "warnings": [],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "70.3",
+  "history": "ancien",
   "level": "debutant",
   "intent": "plaisir",
   "score": 90,
@@ -8255,196 +8417,7 @@
   "easyShare": 0.7000273149860842,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "70.3",
-  "history": "confirme",
-  "level": "inter",
-  "intent": "competition",
-  "score": 85,
-  "peakRatio": 0.9332570954106281,
-  "peakDeclaredH": 9.2,
-  "peakPrescribedH": 8.583333333333334,
-  "longShare": 0.4115242979701208,
-  "taperVsPeak": 0.3592233009708738,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.667585284523948,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "70.3",
-  "history": "confirme",
-  "level": "inter",
-  "intent": "finir",
-  "score": 95,
-  "peakRatio": 0.921044061302682,
-  "peakDeclaredH": 8.7,
-  "peakPrescribedH": 8.016666666666667,
-  "longShare": 0.44094553698638683,
-  "taperVsPeak": 0.35550935550935553,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7107009381136545,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "70.3",
-  "history": "confirme",
-  "level": "inter",
-  "intent": "plaisir",
-  "score": 95,
-  "peakRatio": 0.9171114232209738,
-  "peakDeclaredH": 8.9,
-  "peakPrescribedH": 8.166666666666666,
-  "longShare": 0.4328849638837132,
-  "taperVsPeak": 0.3489795918367347,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7061829320627719,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "70.3",
-  "history": "confirme",
-  "level": "avance",
-  "intent": "competition",
-  "score": 85,
-  "peakRatio": 0.9332570954106281,
-  "peakDeclaredH": 9.2,
-  "peakPrescribedH": 8.583333333333334,
-  "longShare": 0.4115242979701208,
-  "taperVsPeak": 0.3592233009708738,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.667585284523948,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "70.3",
-  "history": "confirme",
-  "level": "avance",
-  "intent": "finir",
-  "score": 95,
-  "peakRatio": 0.921044061302682,
-  "peakDeclaredH": 8.7,
-  "peakPrescribedH": 8.016666666666667,
-  "longShare": 0.44094553698638683,
-  "taperVsPeak": 0.35550935550935553,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7107009381136545,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "70.3",
-  "history": "confirme",
-  "level": "avance",
-  "intent": "plaisir",
-  "score": 95,
-  "peakRatio": 0.9171114232209738,
-  "peakDeclaredH": 8.9,
-  "peakPrescribedH": 8.166666666666666,
-  "longShare": 0.4328849638837132,
-  "taperVsPeak": 0.3489795918367347,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7061829320627719,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "70.3",
-  "history": "ancien",
-  "level": "debutant",
-  "intent": "competition",
-  "score": 90,
-  "peakRatio": 0.9830672926447573,
-  "peakDeclaredH": 7.1,
-  "peakPrescribedH": 6.983333333333333,
-  "longShare": 0.5062243306058773,
-  "taperVsPeak": 0.35799522673031026,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7015005461758111,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "70.3",
-  "history": "ancien",
-  "level": "debutant",
-  "intent": "finir",
-  "score": 90,
-  "peakRatio": 0.9830672926447573,
-  "peakDeclaredH": 7.1,
-  "peakPrescribedH": 6.983333333333333,
-  "longShare": 0.5062243306058773,
-  "taperVsPeak": 0.35799522673031026,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7000273149860842,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "70.3",
-  "history": "ancien",
-  "level": "debutant",
-  "intent": "plaisir",
-  "score": 90,
-  "peakRatio": 0.9830672926447573,
-  "peakDeclaredH": 7.1,
-  "peakPrescribedH": 6.983333333333333,
-  "longShare": 0.5062243306058773,
-  "taperVsPeak": 0.35799522673031026,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7000273149860842,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
   ],
   "hardViolations": []
  },
@@ -8462,10 +8435,10 @@
   "taperVsPeak": 0.3592233009708738,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.667585284523948,
+  "easyShare": 0.6687283242852536,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 1900 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -8483,11 +8456,9 @@
   "taperVsPeak": 0.35550935550935553,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7107009381136545,
+  "easyShare": 0.7122631145871215,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -8507,7 +8478,7 @@
   "easyShare": 0.7061829320627719,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
   ],
   "hardViolations": []
  },
@@ -8525,10 +8496,10 @@
   "taperVsPeak": 0.3592233009708738,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.667585284523948,
+  "easyShare": 0.6687283242852536,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 1900 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -8546,11 +8517,9 @@
   "taperVsPeak": 0.35550935550935553,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7107009381136545,
+  "easyShare": 0.7122631145871215,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -8570,7 +8539,7 @@
   "easyShare": 0.7061829320627719,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 1900 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 455 m."
   ],
   "hardViolations": []
  },
@@ -8591,7 +8560,7 @@
   "easyShare": 0.7592663282297246,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
   ],
   "hardViolations": []
  },
@@ -8601,18 +8570,18 @@
   "history": "reprise",
   "level": "debutant",
   "intent": "finir",
-  "score": 95,
-  "peakRatio": 0.9903456790123456,
-  "peakDeclaredH": 9,
-  "peakPrescribedH": 8.916666666666666,
-  "longShare": 0.4581266050013713,
-  "taperVsPeak": 0.308411214953271,
+  "score": 68,
+  "peakRatio": 1.0055038759689923,
+  "peakDeclaredH": 4.3,
+  "peakPrescribedH": 4.316666666666666,
+  "longShare": 0.6090509598334747,
+  "taperVsPeak": 0.5366795366795367,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7702420131254811,
+  "easyShare": 0.8137570360762598,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 2622 m d'affilée avant l'épreuve, pour 3800 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend."
   ],
   "hardViolations": []
  },
@@ -8630,10 +8599,10 @@
   "taperVsPeak": 0.308411214953271,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7702420131254811,
+  "easyShare": 0.7700113252782694,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 3800 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -8654,7 +8623,7 @@
   "easyShare": 0.7429691396203187,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
   ],
   "hardViolations": []
  },
@@ -8664,18 +8633,18 @@
   "history": "reprise",
   "level": "inter",
   "intent": "finir",
-  "score": 100,
-  "peakRatio": 0.9946373456790125,
-  "peakDeclaredH": 9,
-  "peakPrescribedH": 8.95,
-  "longShare": 0.4449788604010705,
-  "taperVsPeak": 0.3091247672253259,
+  "score": 69,
+  "peakRatio": 1.0424257105943153,
+  "peakDeclaredH": 4.3,
+  "peakPrescribedH": 4.483333333333333,
+  "longShare": 0.5874788913504888,
+  "taperVsPeak": 0.5353159851301115,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7865613544201773,
+  "easyShare": 0.8178872379401588,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 2622 m d'affilée avant l'épreuve, pour 3800 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend."
   ],
   "hardViolations": []
  },
@@ -8693,10 +8662,10 @@
   "taperVsPeak": 0.3079777365491651,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7713981726103256,
+  "easyShare": 0.7721870076950931,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 3800 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -8717,7 +8686,7 @@
   "easyShare": 0.7429691396203187,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
   ],
   "hardViolations": []
  },
@@ -8727,18 +8696,18 @@
   "history": "reprise",
   "level": "avance",
   "intent": "finir",
-  "score": 100,
-  "peakRatio": 0.9946373456790125,
-  "peakDeclaredH": 9,
-  "peakPrescribedH": 8.95,
-  "longShare": 0.4449788604010705,
-  "taperVsPeak": 0.3091247672253259,
+  "score": 69,
+  "peakRatio": 1.0424257105943153,
+  "peakDeclaredH": 4.3,
+  "peakPrescribedH": 4.483333333333333,
+  "longShare": 0.5874788913504888,
+  "taperVsPeak": 0.5353159851301115,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7865613544201773,
+  "easyShare": 0.8178872379401588,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 2622 m d'affilée avant l'épreuve, pour 3800 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend."
   ],
   "hardViolations": []
  },
@@ -8756,10 +8725,10 @@
   "taperVsPeak": 0.3079777365491651,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7713981726103256,
+  "easyShare": 0.7721870076950931,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 3800 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -8777,11 +8746,9 @@
   "taperVsPeak": 0.30201342281879195,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7509422785427641,
+  "easyShare": 0.7508988783624441,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -8801,7 +8768,7 @@
   "easyShare": 0.7634264215000096,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
   ],
   "hardViolations": []
  },
@@ -8811,81 +8778,79 @@
   "history": "confirme",
   "level": "debutant",
   "intent": "plaisir",
+  "score": 69,
+  "peakRatio": 0.9667361111111111,
+  "peakDeclaredH": 4.8,
+  "peakPrescribedH": 4.633333333333334,
+  "longShare": 0.5962215358092091,
+  "taperVsPeak": 0.5035971223021583,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.795438585778402,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 2622 m d'affilée avant l'épreuve, pour 3800 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "Full",
+  "history": "confirme",
+  "level": "inter",
+  "intent": "competition",
+  "score": 90,
+  "peakRatio": 0.9933069444444443,
+  "peakDeclaredH": 10,
+  "peakPrescribedH": 9.933333333333334,
+  "longShare": 0.5033690771986392,
+  "taperVsPeak": 0.3038397328881469,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7122565269186358,
+  "repairs": 0,
+  "warnings": [],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "Full",
+  "history": "confirme",
+  "level": "inter",
+  "intent": "finir",
+  "score": 95,
+  "peakRatio": 0.992533950617284,
+  "peakDeclaredH": 9,
+  "peakPrescribedH": 8.933333333333334,
+  "longShare": 0.47390859534611807,
+  "taperVsPeak": 0.3079777365491651,
+  "weeksOver": 0,
+  "weeksUnder": 0,
+  "easyShare": 0.7801487712972112,
+  "repairs": 0,
+  "warnings": [
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+  ],
+  "hardViolations": []
+ },
+ {
+  "sport": "tri",
+  "format": "Full",
+  "history": "confirme",
+  "level": "inter",
+  "intent": "plaisir",
   "score": 85,
-  "peakRatio": 0.9715802469135802,
-  "peakDeclaredH": 9,
-  "peakPrescribedH": 8.75,
-  "longShare": 0.566088083559938,
-  "taperVsPeak": 0.30783582089552236,
+  "peakRatio": 0.9818840579710145,
+  "peakDeclaredH": 4.6,
+  "peakPrescribedH": 4.516666666666667,
+  "longShare": 0.6162361623616236,
+  "taperVsPeak": 0.5350553505535055,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7634264215000096,
+  "easyShare": 0.7919738418171306,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "Full",
-  "history": "confirme",
-  "level": "inter",
-  "intent": "competition",
-  "score": 90,
-  "peakRatio": 0.9933069444444443,
-  "peakDeclaredH": 10,
-  "peakPrescribedH": 9.933333333333334,
-  "longShare": 0.5033690771986392,
-  "taperVsPeak": 0.3038397328881469,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7100821932687825,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "Full",
-  "history": "confirme",
-  "level": "inter",
-  "intent": "finir",
-  "score": 95,
-  "peakRatio": 0.992533950617284,
-  "peakDeclaredH": 9,
-  "peakPrescribedH": 8.933333333333334,
-  "longShare": 0.47390859534611807,
-  "taperVsPeak": 0.3079777365491651,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7801487712972112,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
-  ],
-  "hardViolations": []
- },
- {
-  "sport": "tri",
-  "format": "Full",
-  "history": "confirme",
-  "level": "inter",
-  "intent": "plaisir",
-  "score": 95,
-  "peakRatio": 0.992533950617284,
-  "peakDeclaredH": 9,
-  "peakPrescribedH": 8.933333333333334,
-  "longShare": 0.47390859534611807,
-  "taperVsPeak": 0.3074074074074074,
-  "weeksOver": 0,
-  "weeksUnder": 0,
-  "easyShare": 0.7669317289776564,
-  "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 2622 m d'affilée avant l'épreuve, pour 3800 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend."
   ],
   "hardViolations": []
  },
@@ -8903,11 +8868,9 @@
   "taperVsPeak": 0.3038397328881469,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7100821932687825,
+  "easyShare": 0.7122565269186358,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -8927,7 +8890,7 @@
   "easyShare": 0.7801487712972112,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
   ],
   "hardViolations": []
  },
@@ -8937,18 +8900,18 @@
   "history": "confirme",
   "level": "avance",
   "intent": "plaisir",
-  "score": 95,
-  "peakRatio": 0.992533950617284,
-  "peakDeclaredH": 9,
-  "peakPrescribedH": 8.933333333333334,
-  "longShare": 0.47390859534611807,
-  "taperVsPeak": 0.3074074074074074,
+  "score": 85,
+  "peakRatio": 0.9818840579710145,
+  "peakDeclaredH": 4.6,
+  "peakPrescribedH": 4.516666666666667,
+  "longShare": 0.6162361623616236,
+  "taperVsPeak": 0.5350553505535055,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7669317289776564,
+  "easyShare": 0.7919738418171306,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 2 min de nage en continu (200 m) pour un seuil de 30 min, et même en progressant au rythme maximal que ce plan s'autorise (+10 % par semaine) tu atteindrais 2622 m d'affilée avant l'épreuve, pour 3800 m à nager. L'écart ne se referme pas dans le temps disponible : ton plan a donc été construit sur le format S — ce n'est pas un lot de consolation, c'est l'ordre dans lequel ce sport s'apprend."
   ],
   "hardViolations": []
  },
@@ -8966,10 +8929,10 @@
   "taperVsPeak": 0.30201342281879195,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7509422785427641,
+  "easyShare": 0.7510510789528699,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 3800 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -8987,11 +8950,9 @@
   "taperVsPeak": 0.30783582089552236,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7634264215000096,
+  "easyShare": 0.7632689796797952,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -9011,7 +8972,7 @@
   "easyShare": 0.7634264215000096,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
   ],
   "hardViolations": []
  },
@@ -9029,10 +8990,10 @@
   "taperVsPeak": 0.3038397328881469,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7100821932687825,
+  "easyShare": 0.7106313548548969,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 3800 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -9050,11 +9011,9 @@
   "taperVsPeak": 0.3079777365491651,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7801487712972112,
+  "easyShare": 0.782434899711897,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -9074,7 +9033,7 @@
   "easyShare": 0.7669317289776564,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
   ],
   "hardViolations": []
  },
@@ -9092,10 +9051,10 @@
   "taperVsPeak": 0.3038397328881469,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7100821932687825,
+  "easyShare": 0.7106313548548969,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 15 min de nage en continu (800 m) pour un seuil de 30 min, pour 3800 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 800 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue."
   ],
   "hardViolations": []
  },
@@ -9113,11 +9072,9 @@
   "taperVsPeak": 0.3079777365491651,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.7801487712972112,
+  "easyShare": 0.782434899711897,
   "repairs": 0,
-  "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
-  ],
+  "warnings": [],
   "hardViolations": []
  },
  {
@@ -9137,7 +9094,7 @@
   "easyShare": 0.7669317289776564,
   "repairs": 0,
   "warnings": [
-   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, ta plus longue nage en continu n'est pas renseignée, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
+   "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu as répondu que tu ne sais pas quelle est ta plus longue nage en continu, pour 3800 m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. En attendant, la progression avance sur une hypothèse de 290 m."
   ],
   "hardViolations": []
  },

@@ -67,11 +67,26 @@ for (const sport of Object.keys(SPORTS) as Sport[]) {
             ? { swim_total_m: "7850", run_total_km: "33", race_dplus_m: "900", segments_n: "20",
                 longest_swim_m: "1400", water_temp_c: "16", team_mode: "binome", openwater_access: "saisonnier" }
             : {};
+          // O-44 §0a — LE CORPUS NE VOYAIT QU'UNE BRANCHE DU GATE B-17 SUR QUATRE.
+          // `longest_swim_m` n'était rempli nulle part pour le triathlon : les profils alertés
+          // tombaient TOUS dans « continuité inconnue », et les trois autres branches — satisfait,
+          // écart franchissable, écart infranchissable — n'étaient exercées par aucun profil.
+          // Un corpus qui ne voit qu'une branche ne peut pas voir une régression sur les autres.
+          // La dispersion est DÉTERMINISTE (rotation sur `history` × `intent`) : chaque format
+          // rencontre les quatre branches, et la photo reste reproductible.
+          const triData = sport === "tri"
+            ? [
+                { longest_swim_known: "non" },                                  // inconnue → test prescrit
+                { longest_swim_known: "oui", longest_swim_m: "100" },            // écart INFRANCHISSABLE
+                { longest_swim_known: "oui", longest_swim_m: "800" },            // écart franchissable
+                { longest_swim_known: "oui", longest_swim_m: "2500" },           // gate satisfait
+              ][(HISTORIES.indexOf(history) * INTENTS.length + INTENTS.indexOf(intent)) % 4]
+            : {};
           const trailData = sport === "trail"
             ? { race_distance_km: "62", race_dplus_m: "3200", race_technicity: "technique", race_night: "partielle",
                 train_dplus_access: "collines", treadmill: "non", poles: "a_decider", vam_known: "oui", vam: "850" }
             : {};
-          const profile: AthleteProfile = { ...baseProfile(), sport, format, history, level, intent, ...trailData, ...swimrunData };
+          const profile: AthleteProfile = { ...baseProfile(), sport, format, history, level, intent, ...trailData, ...swimrunData, ...triData };
           try {
             const res = generateAudited(profile);
             const a = res.audit;
