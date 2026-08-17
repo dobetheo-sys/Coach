@@ -5799,3 +5799,87 @@ quoi: C30b-A exige le déclenchement de la passe au lieu de vérifier la cible a
 attendu: O51-REPRODUIT
 cmd: grep -q "seulement \${vus} décision(s) observée(s)" audit_v6.mjs && echo "O51-REPRODUIT"
 ```
+
+---
+
+## O-52 · `golden:verify` ne distingue pas un CRASH d'un écart, ni ne dit l'AMPLEUR · 🔴 **OUVERT**
+
+Deux angles morts du même outil, trouvés le même jour par deux fautes d'instrument distinctes du
+lot 1. Le fondateur a écrit le premier ; le second est apparu en corrigeant le rapport.
+
+```
+défaut (a)   Un profil dont la construction LÈVE est compté comme un écart. Mesuré : une
+             exception dans le point fixe a rendu « 476 écarts sur 969 » — aucun plan
+             n'était construit, tous les champs comparés valaient `undefined`. Les deux
+             se présentent comme un gros rayon, et le second se lit comme le premier —
+             dans le sens le plus dangereux, puisqu'un gros rayon invite à chercher une
+             cause de CONCEPTION là où il y a un CRASH.
+
+à écrire     si TOUS les champs comparés d'un profil valent undefined, c'est un échec de
+             construction : le dire, pas le compter. Et le wrapper de `buildPlan` qui
+             avale l'exception doit compter ses avalements — un échec silencieux n'est pas
+             un problème tant qu'on ne cherche pas la cause d'autre chose.
+
+défaut (b)   `firstDiff` rend LE PREMIER écart d'un profil, sous un commentaire qui
+             l'énonce (« où compte plus que combien pour corriger »). C'est juste pour
+             LOCALISER. Mais c'est la seule sortie que l'outil offre, donc c'est celle
+             qu'on agrège quand on veut une AMPLEUR — et on publie alors la médiane des
+             87 *premiers* écarts en croyant tenir celle du mouvement.
+             Mesuré : « médiane 3 min/semaine, max 5, aucune séance n'apparaît ni ne
+             disparaît » publié, contre un réel de −1 420 min de nage, max 518 min sur un
+             plan, et 2 profils qui changent de nombre de séances.
+
+à écrire     une sortie d'AMPLEUR à côté de la sortie de LOCALISATION — nombre de champs
+             en écart par profil, et l'écart max. Sans elle, l'outil n'a qu'une réponse à
+             donner et elle sera reprise pour l'autre question.
+
+famille      (a) « l'absence fait sauter un contrôle » — un crash indiscernable d'un
+             résultat. (b) une mesure qui NOMME une grandeur et en MESURE une voisine,
+             9e occurrence — et la première où l'outil DOCUMENTE qu'il ne mesure pas ça.
+```
+
+```verify
+id: O-52
+quoi: golden:verify compte un crash comme un écart et n'expose que le premier écart
+attendu: O52-REPRODUIT
+cmd: grep -q "Chemin du premier écart" scripts/goldenMaster.mjs && echo "O52-REPRODUIT"
+```
+
+---
+
+## O-53 · Le plafond de dose ne teste pas `pinned` · 🔴 **OUVERT, latent**
+
+Trouvé par la vérification A du §1 de l'arbitrage lot 1 — celle qui est VERTE.
+
+```
+défaut       `DOSE_CAP_MIN` écrête un bloc de qualité sans regarder `bnd.pinned`. Un bloc
+             épinglé (`floor === cap === cible`) déclare « la distance EST le stimulus » —
+             c'est la leçon I14, et c'est ce qui protège les nages continues de B-17 : les
+             réduire ne les rend pas plus faciles, ça leur retire leur objet.
+
+mesuré       0 croisement aujourd'hui, sur les 969 profils du golden. Les continuités
+             B-17 sont en `sw.aero`, hors des zones plafonnées, et leurs 24 paliers sont
+             livrés à la cible au mètre près (`sonde:b17`).
+
+             Le croisement n'existe donc pas par GARDE mais par ACCIDENT DE ZONE. Le jour
+             où une continuité, une simulation de course ou un test se prescrit dans une
+             zone à plafond, il sera raboté en silence.
+
+à écrire     `if (b.bnd?.pinned) return;` avant l'écrêtage, plus le critère qui le garde —
+             et la garde doit être vérifiée ROUGE en épinglant un bloc dans une zone
+             plafonnée, sans quoi elle est trivialement verte (règle 19 : le correctif le
+             moins coûteux ici est de ne rien écrire du tout, puisque le croisement est
+             vide).
+
+famille      garde LATENTE — le contrôle n'existe pas, et rien ne le signale parce que la
+             population est vide. Cousine de `st.bnd ? cap : Infinity` (fermée) : là
+             l'absence faisait sauter un contrôle, ici c'est le contrôle qui n'a jamais
+             été écrit et dont l'absence est invisible.
+```
+
+```verify
+id: O-53
+quoi: le plafond de dose écrête sans regarder si le bloc est épinglé
+attendu: O53-REPRODUIT
+cmd: node -e 'const s=require("fs").readFileSync("src/generator/planGenerator.ts","utf8");const i=s.indexOf("const doseCap =");process.exit(s.slice(i,i+900).includes("pinned")?1:0)' && echo "O53-REPRODUIT"
+```

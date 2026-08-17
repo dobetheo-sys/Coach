@@ -121,6 +121,11 @@ de construction.
 
 ## 5. Quoi — ce qui bouge dans les 87
 
+> ⚠ **CETTE SECTION ÉTAIT FAUSSE. Voir le §9, qui la remplace.** Elle est conservée telle quelle
+> parce qu'elle est ce sur quoi l'arbitrage Q1 a été rendu, et qu'effacer une mesure erronée
+> effacerait aussi la trace de ce qui a fondé une décision.
+
+
 87 profils, **7 familles de champs**, 87 champs au total :
 
 | champ | n | amplitude |
@@ -223,3 +228,132 @@ les fichiers servis ont changé) · `check:spec`/`tokens`/`disc`/`dup`/`hosts`/`
 3. **`C30b-A`** (O-51) : réécrire le critère sur la propriété plutôt que sur le déclenchement.
 
 Les trois sont indépendantes. La première commande les deux autres.
+
+---
+
+## 9. RECTIFICATION — le §5 mesurait le PREMIER écart de chaque profil, pas l'ampleur
+
+**La faute est à moi, elle a fondé l'arbitrage Q1, et elle est du type que ce dépôt paie le plus
+souvent : une mesure qui NOMME une grandeur et en MESURE une voisine.**
+
+J'ai chiffré l'ampleur du lot en agrégeant les lignes affichées par `golden:verify`, et publié
+« médiane 3 min par semaine, max 5 » et « aucune séance n'apparaît ni ne disparaît ». Le golden dit
+pourtant lui-même ce qu'il fait — `firstDiff` rend **le PREMIER** écart d'un profil, sous un
+commentaire qui l'énonce : *« où compte plus que combien pour corriger »*. C'est un bon choix pour
+LOCALISER et un mauvais chiffre pour MESURER. J'ai agrégé 87 *premiers* écarts et je les ai
+présentés comme le mouvement total.
+
+Neuvième occurrence de cette famille — et la première où l'outil dont je tirais le chiffre
+**documente explicitement** qu'il ne mesure pas ça.
+
+### L'ampleur réelle (`npm run mesure:lot1-ampleur`, témoin sur disque, moteur d'avant)
+
+965 profils générés, **65 bougent** (le golden en compte 87 : il hache plus de champs que le
+volume et la structure).
+
+| grandeur | somme | médiane \|écart\| | p90 | max | sens |
+|---|---|---|---|---|---|
+| volume TOTAL du plan | **−417 min** | 13 min | 64 | **518 min** | 50 ↓ · 13 ↑ · 2 = |
+| dont **NAGE** | **−1 420 min** | 5 min | 44 | **272 min** | **38 ↓ · 0 ↑** · 27 = |
+| **courbe DÉCLARÉE** | +546 min | 6 min | 66 | **942 min** | 32 ↓ · 10 ↑ · 23 = |
+
+Ramené à la semaine — l'unité dans laquelle la règle agit :
+
+```
+G/tri/Full/vol-max      36 sem   total −11 min/sem   nage −7,6 min/sem   (3 483 → 3 211, −7,8 %)
+G/tri/Full/dispo-weekend 36 sem   total −6 min/sem    nage −5,2 min/sem
+C30/run/semi/4:30       75 sem   total +6,9 min/sem  courbe +12,6 min/sem
+```
+
+### Trois énoncés du §5 étaient faux
+
+1. **« Aucune séance n'apparaît ni ne disparaît »** — **2 profils** changent de nombre de séances
+   (`G/tri/Full/vol-max` 205 → 206, `G/tri/Full/dispo-weekend` 144 → 143).
+2. **« max 5 min par semaine »** — le maximum réel est **518 min sur un plan**, soit 6,9 min par
+   semaine sur 75 semaines ; et **−272 min de nage** sur une prépa de Full, soit −7,6 min/semaine.
+3. **« du dur devient du facile »** — vrai en intensité, mais incomplet : **la nage ne fait que
+   BAISSER (38 profils à la baisse, 0 à la hausse)**, systématiquement, et concentrée sur le Full.
+
+### Ce qui, en revanche, tient — et c'est la moitié qui compte
+
+**Aucun plan ne livre au-dessus de sa cible : il n'y a AUCUNE coupe non réallouée.** Le critère
+n°3 d'O-44 — le vrai test — est vert. Le livré suit sa courbe aussi bien qu'avant sur 62 profils
+sur 65.
+
+Les 3 restants ne sont pas des coupes : leur livré MONTE (+518 min) et leur courbe monte
+**davantage** (+942). C'est la cible déclarée qui court devant le livré, famille T-25/O-35.
+*(Mon script rendait d'abord là-dessus un verdict unique — « une coupe n'est pas réallouée » —
+parce qu'il mesurait un écart en valeur ABSOLUE : deuxième faute d'instrument du même après-midi,
+dans le sens alarmant cette fois. Un écart absolu ne peut pas distinguer les deux sens.)*
+
+### Le mécanisme, mesuré et non déduit
+
+Le volume ne bouge pas parce que le plafond ampute. Il bouge parce que **la COURBE bouge** :
+
+```
+G/tri/Full/vol-max   S20  courbe 624 → 606      livré 621 → 608
+                     S29  courbe 768 → 744      livré 766 → 746
+```
+
+Le livré colle à sa courbe dans les deux états ; c'est la courbe qui a baissé. La sonde de
+capacité V2.1 lit un clone SATURÉ de la semaine LIVRÉE : moins de travail dur livré → capacité
+mesurée plus basse → courbe plus basse. **C'est O-43 exactement** — *« une sortie calculée ne se
+relit jamais comme une entrée ; si une contrainte se dérive du contenu GÉNÉRÉ, elle mesure le
+générateur et non l'athlète »* — et c'est un défaut OUVERT.
+
+### Ce que ça change pour l'arbitrage Q1
+
+Ton motif **physiologique** est intact : 50 min de seuil en un bloc est une dose excessive, le CSS
+est le seuil (B-02a), le plafond de 40 lui revient. Rien de ce que je viens de mesurer ne le
+touche.
+
+Ton motif **de mesure** reposait sur mes chiffres, et ils étaient faux. Ce qu'il faut savoir avant
+de recapturer :
+
+```
+· la nage ne baisse QUE : 38 profils, 0 hausse, jusqu'à −7,6 min/semaine sur un Full
+· 2 plans changent de nombre de séances
+· l'effet sur le volume passe ENTIÈREMENT par O-43 — un défaut ouvert. Recapturer le golden
+  gèle la sortie de cette boucle en même temps que celle du plafond, et les deux ne se
+  séparent plus une fois la photo prise.
+```
+
+**Rien n'est recapturé.** La décision te revient à nouveau, sur les bons chiffres.
+
+### La mesure de répartition du §1 — et elle va dans le sens de ton avertissement
+
+```
+295 blocs livrés À la borne, sur 49 profils :
+   tri/Full   231  (78,3 %)
+   tri/70.3    64  (21,7 %)
+   run           0
+   par séance : « Nage seuil » — 295 sur 295, une seule séance
+```
+
+**Concentré, comme tu le craignais.** C'est bien « le plafond mord systématiquement sur un
+format », et sur une seule séance : la nage seuil principale du triathlon longue distance y est
+désormais TOUJOURS à 40 min de travail au seuil.
+
+Nuance mesurée : au POINT D'ACTION la population est plus large (87 profils, `run/semi` 31,
+`run/10k` 6) — la course est écrêtée elle aussi, mais elle est rééchelonnée sous le plafond
+ensuite, donc elle ne finit pas à la borne. Les deux vues sont vraies et ne répondent pas à la
+même question — c'est le §4b, encore.
+
+### Vérification A du §1 — tenue, et elle ouvre un point
+
+Les **24 paliers de continuité B-17 sont livrés à leur cible au mètre près** (`sonde:b17`, garde
+antérieure au lot) : aucune nage continue, aucune simulation de course n'est écrêtée. Elles vivent
+en `sw.aero`, hors de la liste des zones plafonnées.
+
+Mais le croisement n'existe pas **par accident de zone**, pas par garde : `DOSE_CAP_MIN` ne teste
+pas `pinned`. Un bloc épinglé dit « la distance EST le stimulus » (I14) ; s'il apparaissait un jour
+dans une zone plafonnée, il serait raboté en silence. Mesuré aujourd'hui : **0 croisement**.
+Enregistré en **O-53**, pas corrigé — périmètre gelé.
+
+### Vérification B du §1 — la valeur 40 pour un Full
+
+À écrire dans l'entrée `C25` une fois Q1 re-tranché, avec le chiffre qui la rend révocable : sur
+`tri/Full`, ce plafond n'est plus une exception mais **le régime permanent** de la nage seuil
+(231 blocs sur 231 à la borne). La question « 40 est-il la bonne valeur » ne porte donc pas sur des
+cas extrêmes : elle porte sur la dose hebdomadaire de seuil en nage de tout athlète de longue
+distance.

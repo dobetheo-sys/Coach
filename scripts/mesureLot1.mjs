@@ -33,6 +33,9 @@ const capDe = (z) => /\.vo2$/.test(z) || z === "tr.vam" ? DOSE_CAP_MIN.vo2
 const parSport = {}, parZone = {}, parNiveau = {}, profils = new Set();
 let blocs = 0, enMetres = 0, auPlafond = 0, dep = 0, depMin = 0, depMax = 0;
 const exemples = [];
+// §1 de l'arbitrage — les deux vérifications jointes à la recapture, plus la mesure de répartition.
+const bordFormat = {}, bordSeance = {}, bordProfils = new Set();
+const epingles = [];   // un bloc ÉPINGLÉ dans une zone plafonnée : la distance EST le stimulus
 for (const { key, sport, a } of goldenProfiles()) {
   let p; try { p = globalThis.EBV2.buildPlan(sport, a); } catch { continue; }
   // ⚠ DEUX FAUTES D'INSTRUMENT SUCCESSIVES ICI, ET LA SECONDE EST LA PLUS INSTRUCTIVE.
@@ -52,6 +55,12 @@ for (const { key, sport, a } of goldenProfiles()) {
       const cap = capDe(String(st.zone || ""));
       if (cap == null) continue;
       blocs++;
+      // VÉRIFICATION A (§1) — UN BLOC ÉPINGLÉ NE DOIT JAMAIS ÊTRE ÉCRÊTÉ PAR LE PLAFOND DE DOSE.
+      // `pinned` dit « la distance EST le stimulus » (leçon I14, appliquée aux nages continues de
+      // B-17 : réduire une continuité ne la rend pas plus facile, elle lui retire son objet). Le
+      // plafond de dose ne teste PAS `pinned` — s'il croisait un bloc épinglé dans une zone
+      // plafonnée, il le raboterait en silence. On mesure si le croisement existe.
+      if (st.bnd?.pinned) epingles.push(`${key} · ${s.name.slice(0, 34)} · ${st.zone}`);
       if (st.distanceM == null) continue;      // prescrit en TEMPS : l'ancienne garde le voyait
       enMetres++;
       const travail = stepWorkMin(st, st.d || s.d, refs);
@@ -62,7 +71,12 @@ for (const { key, sport, a } of goldenProfiles()) {
         parZone[String(st.zone)] = (parZone[String(st.zone)] || 0) + 1;
         parNiveau[String(a.level)] = (parNiveau[String(a.level)] || 0) + 1;
         if (exemples.length < 8) exemples.push(`${key} · ${s.name.slice(0, 28)} · ${st.zone} · ${(st.reps || 1)}×${st.distanceM} m = ${travail.toFixed(1)} min (plafond ${cap}, +${(travail - cap).toFixed(1)})`);
-      } else if (travail >= cap - 0.6) auPlafond++;  // livré À la borne : la garde a mordu
+      } else if (travail >= cap - 0.6) {             // livré À la borne : la garde a mordu
+        auPlafond++;
+        bordProfils.add(key);
+        bordFormat[`${sport}/${a.format}`] = (bordFormat[`${sport}/${a.format}`] || 0) + 1;
+        bordSeance[s.name.replace(/\s*\(.*$/, "").slice(0, 32)] = (bordSeance[s.name.replace(/\s*\(.*$/, "").slice(0, 32)] || 0) + 1;
+      }
     }
   }
 }
@@ -79,6 +93,20 @@ if (dep) {
   console.log(`  par niveau : ${JSON.stringify(parNiveau)}`);
   for (const e of exemples) console.log(`     ${e}`);
 }
+// ── §1 de l'arbitrage — les deux vérifications et la mesure de répartition ────────────────
+console.log(`\n  ── §1 · VÉRIFICATION A : aucun bloc ÉPINGLÉ n'entre dans une zone plafonnée`);
+console.log(`     blocs épinglés rencontrés dans une zone à plafond de dose : ${epingles.length}${epingles.length ? " ✖" : " ✓"}`);
+for (const e of epingles.slice(0, 5)) console.log(`        ${e}`);
+if (!epingles.length) console.log(`     (les nages continues de B-17 sont en \`sw.aero\`, hors liste — le croisement n'existe`);
+if (!epingles.length) console.log(`      pas AUJOURD'HUI, et le plafond ne teste pas \`pinned\` : c'est une garde LATENTE, pas posée.)`);
+
+console.log(`\n  ── §1 · RÉPARTITION des ${auPlafond} blocs livrés à la borne — concentrés ou étalés ?`);
+console.log(`     profils concernés : ${bordProfils.size}`);
+const trie = (o) => Object.entries(o).sort((x, y) => y[1] - x[1]);
+for (const [k, n] of trie(bordFormat)) console.log(`        ${k.padEnd(14)} ${String(n).padStart(4)}  (${(100 * n / (auPlafond || 1)).toFixed(1)} %)`);
+console.log(`     par séance :`);
+for (const [k, n] of trie(bordSeance).slice(0, 6)) console.log(`        ${k.padEnd(34)} ${String(n).padStart(4)}`);
+
 console.log(`\n  → ${enMetres === 0
   ? "AUCUN bloc de qualité en mètres — la sonde ne mesure rien, vérifier l'instrument."
   : dep > 0
