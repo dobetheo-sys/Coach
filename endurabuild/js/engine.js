@@ -2902,12 +2902,25 @@ class TrainingReasoningEngine {
             D("B17-continuite", "Continuité de nage à construire", Math.round(g0.seuilMin) + " min visées",
               "Le format le plus court est déjà celui-ci : on ne rabat plus, on construit — et on le dit");
           }
-        } else {
-          // FRANCHISSABLE, ou non mesurable : LE PLAN GARDE LE FORMAT DEMANDÉ. C'est le cœur de D3.
+        } else if (g0.source !== "mesure") {
+          // NON MESURÉE — L'ÉVALUATION EST EN ATTENTE, ET LE MOTEUR RÉCLAME LA MESURE.
+          // « L'inconnu n'est pas une valeur par défaut : c'est une mesure manquante, et le moteur
+          // sait déjà en réclamer une » (arbitrage du 16/08/2026). Même patron que la FTP et le
+          // CSS : quand il manque un nombre, on prescrit le test qui le produit. Le rabattement ne
+          // s'applique pas — rien n'est mesuré, donc rien n'est ÉTABLI comme infranchissable —, et
+          // dès que la réponse arrive la conséquence graduée s'applique normalement.
           warnings.push("En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, " + manque
-            + ", pour " + g0.courseM + " m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — "
-            + (g0.source === "mesure" ? "il part de " + g0.departM + " m" : "il part de " + g0.departM + " m, et la première de ces séances te dira où tu en es vraiment")
-            + " et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue.");
+            + ", pour " + g0.courseM + " m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, "
+            + "et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. "
+            + "Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. "
+            + "En attendant, la progression avance sur une hypothèse de " + g0.departM + " m.");
+          D("B17-continuite", "Évaluation de la nage EN ATTENTE", "test prescrit, hypothèse " + g0.departM + " m",
+            "Une continuité inconnue n'est pas une continuité nulle : c'est une mesure manquante. Le moteur prescrit le test qui la produit plutôt que de rabattre sur une valeur que personne n'a donnée — et le silence produit une tâche, jamais un laissez-passer");
+        } else {
+          // FRANCHISSABLE : LE PLAN GARDE LE FORMAT DEMANDÉ. C'est le cœur de D3.
+          warnings.push("En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, " + manque
+            + ", pour " + g0.courseM + " m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de " + g0.departM
+            + " m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue.");
           D("B17-continuite", "Continuité de nage à construire", g0.departM + " m → " + g0.courseM + " m",
             "Le format n'est PAS rabattu : l'écart se referme dans le temps disponible, et rabattre supprimerait justement la progression qui le referme. L'événement irréversible est la course, pas le plan (O-17)");
         }
@@ -6027,9 +6040,36 @@ function buildTriSessions(kit            )              {
       const k = positions.indexOf(idx);
       if (k >= 0) {
         const cible = Math.max(200, Math.round(palierDistanceM(g, k, n) / 50) * 50);
-        const ow = k === 0;
+        // D3 (arbitrage « je ne sais pas n'est pas une valeur », 16/08/2026) — QUAND LA CONTINUITÉ
+        // N'EST PAS MESURÉE, LA PREMIÈRE SÉANCE EST UN TEST, PAS UN PALIER.
+        //
+        // « L'inconnu n'est pas une valeur par défaut : c'est une mesure manquante, et le moteur
+        // sait déjà en réclamer une. » C'est le mécanisme qui existe pour la FTP et le CSS —
+        // quand le moteur a besoin d'un nombre qu'il n'a pas, il PRESCRIT LE TEST QUI LE PRODUIT.
+        // Ça referme l'inversion sans punir personne : celui qui déclare 400 m reçoit la même
+        // chose que celui qui ne sait pas, PLUS une évaluation que l'autre attend encore ; et le
+        // silence ne fait plus gagner, il produit une TÂCHE, pas un laissez-passer.
+        //
+        // LE TEST EST EN BASSIN, ET C'EST LE POINT DE SÉCURITÉ. Un effort « aussi loin que tu
+        // peux » chez quelqu'un dont personne ne connaît la continuité est exactement le scénario
+        // que B-17 existe pour empêcher en eau libre — le mur tous les 25 m est ce qui rend ce
+        // test acceptable. La consigne eau libre se décale donc au palier SUIVANT.
+        const test = g.source !== "mesure" && k === 0;
+        const ow = k === (g.source !== "mesure" ? 1 : 0);
         b17Pose = true;
-        swMain = {
+        swMain = test ? {
+          name: "Test de continuité — aussi loin que possible, sans t'arrêter",
+          note: "Tu as répondu que tu ne connais pas ta plus longue nage en continu : cette séance est là pour "
+            + "la mesurer, et ton plan de nage s'ajustera dessus. EN BASSIN, où tu peux t'arrêter à chaque mur. "
+            + "Nage sans t'arrêter aussi loin que tu peux, à une allure que tu tiendrais une heure — ce n'est ni "
+            + "un chrono ni une séance de volume. NOTE LA DISTANCE et reporte-la dans ton profil : tant qu'elle "
+            + "manque, l'évaluation de ta natation reste en attente et le plan avance sur une hypothèse.",
+          steps: [Wm(200, "souple, montée progressive"),
+            // NON ÉPINGLÉ, délibérément : la distance est ce qu'on MESURE, pas ce qu'on impose.
+            // `cible` n'est que le budget que le plan réserve à la séance.
+            Bd(1, cible, "sw.aero", "", ", SANS ARRÊT — va au bout de ce que tu tiens", false, "sw"),
+            Cm(150, "relâché")],
+        } : {
           name: "Nage continue" + (ow ? " en eau libre" : "") + " — " + cible + " m d'affilée",
           note: (ow
             ? "En conditions RÉELLES si tu le peux : eau libre, et en combinaison si ta course l'est. "

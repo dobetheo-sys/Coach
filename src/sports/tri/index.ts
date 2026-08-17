@@ -107,9 +107,36 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
       const k = positions.indexOf(idx);
       if (k >= 0) {
         const cible = Math.max(200, Math.round(palierDistanceM(g, k, n) / 50) * 50);
-        const ow = k === 0;
+        // D3 (arbitrage « je ne sais pas n'est pas une valeur », 16/08/2026) — QUAND LA CONTINUITÉ
+        // N'EST PAS MESURÉE, LA PREMIÈRE SÉANCE EST UN TEST, PAS UN PALIER.
+        //
+        // « L'inconnu n'est pas une valeur par défaut : c'est une mesure manquante, et le moteur
+        // sait déjà en réclamer une. » C'est le mécanisme qui existe pour la FTP et le CSS —
+        // quand le moteur a besoin d'un nombre qu'il n'a pas, il PRESCRIT LE TEST QUI LE PRODUIT.
+        // Ça referme l'inversion sans punir personne : celui qui déclare 400 m reçoit la même
+        // chose que celui qui ne sait pas, PLUS une évaluation que l'autre attend encore ; et le
+        // silence ne fait plus gagner, il produit une TÂCHE, pas un laissez-passer.
+        //
+        // LE TEST EST EN BASSIN, ET C'EST LE POINT DE SÉCURITÉ. Un effort « aussi loin que tu
+        // peux » chez quelqu'un dont personne ne connaît la continuité est exactement le scénario
+        // que B-17 existe pour empêcher en eau libre — le mur tous les 25 m est ce qui rend ce
+        // test acceptable. La consigne eau libre se décale donc au palier SUIVANT.
+        const test = g.source !== "mesure" && k === 0;
+        const ow = k === (g.source !== "mesure" ? 1 : 0);
         b17Pose = true;
-        swMain = {
+        swMain = test ? {
+          name: "Test de continuité — aussi loin que possible, sans t'arrêter",
+          note: "Tu as répondu que tu ne connais pas ta plus longue nage en continu : cette séance est là pour "
+            + "la mesurer, et ton plan de nage s'ajustera dessus. EN BASSIN, où tu peux t'arrêter à chaque mur. "
+            + "Nage sans t'arrêter aussi loin que tu peux, à une allure que tu tiendrais une heure — ce n'est ni "
+            + "un chrono ni une séance de volume. NOTE LA DISTANCE et reporte-la dans ton profil : tant qu'elle "
+            + "manque, l'évaluation de ta natation reste en attente et le plan avance sur une hypothèse.",
+          steps: [Wm(200, "souple, montée progressive"),
+            // NON ÉPINGLÉ, délibérément : la distance est ce qu'on MESURE, pas ce qu'on impose.
+            // `cible` n'est que le budget que le plan réserve à la séance.
+            Bd(1, cible, "sw.aero", "", ", SANS ARRÊT — va au bout de ce que tu tiens", false, "sw"),
+            Cm(150, "relâché")],
+        } : {
           name: "Nage continue" + (ow ? " en eau libre" : "") + " — " + cible + " m d'affilée",
           note: (ow
             ? "En conditions RÉELLES si tu le peux : eau libre, et en combinaison si ta course l'est. "

@@ -177,12 +177,25 @@ export class TrainingReasoningEngine {
             D("B17-continuite", "Continuité de nage à construire", Math.round(g0.seuilMin) + " min visées",
               "Le format le plus court est déjà celui-ci : on ne rabat plus, on construit — et on le dit");
           }
-        } else {
-          // FRANCHISSABLE, ou non mesurable : LE PLAN GARDE LE FORMAT DEMANDÉ. C'est le cœur de D3.
+        } else if (g0.source !== "mesure") {
+          // NON MESURÉE — L'ÉVALUATION EST EN ATTENTE, ET LE MOTEUR RÉCLAME LA MESURE.
+          // « L'inconnu n'est pas une valeur par défaut : c'est une mesure manquante, et le moteur
+          // sait déjà en réclamer une » (arbitrage du 16/08/2026). Même patron que la FTP et le
+          // CSS : quand il manque un nombre, on prescrit le test qui le produit. Le rabattement ne
+          // s'applique pas — rien n'est mesuré, donc rien n'est ÉTABLI comme infranchissable —, et
+          // dès que la réponse arrive la conséquence graduée s'applique normalement.
           warnings.push("En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, " + manque
-            + ", pour " + g0.courseM + " m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — "
-            + (g0.source === "mesure" ? "il part de " + g0.departM + " m" : "il part de " + g0.departM + " m, et la première de ces séances te dira où tu en es vraiment")
-            + " et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue.");
+            + ", pour " + g0.courseM + " m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, "
+            + "et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. "
+            + "Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. "
+            + "En attendant, la progression avance sur une hypothèse de " + g0.departM + " m.");
+          D("B17-continuite", "Évaluation de la nage EN ATTENTE", "test prescrit, hypothèse " + g0.departM + " m",
+            "Une continuité inconnue n'est pas une continuité nulle : c'est une mesure manquante. Le moteur prescrit le test qui la produit plutôt que de rabattre sur une valeur que personne n'a donnée — et le silence produit une tâche, jamais un laissez-passer");
+        } else {
+          // FRANCHISSABLE : LE PLAN GARDE LE FORMAT DEMANDÉ. C'est le cœur de D3.
+          warnings.push("En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, " + manque
+            + ", pour " + g0.courseM + " m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de " + g0.departM
+            + " m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue.");
           D("B17-continuite", "Continuité de nage à construire", g0.departM + " m → " + g0.courseM + " m",
             "Le format n'est PAS rabattu : l'écart se referme dans le temps disponible, et rabattre supprimerait justement la progression qui le referme. L'événement irréversible est la course, pas le plan (O-17)");
         }

@@ -5365,3 +5365,62 @@ quoi: un plan qui ANNONCE la progression la contient
 attendu: PROMESSES NON TENUES : 0
 cmd: node scripts/sondeD3couv.mjs | grep "PROMESSES NON TENUES"
 ```
+
+
+### B-17 §17 — « JE NE SAIS PAS » N'EST PAS UNE VALEUR : C'EST UNE DEMANDE DE MESURE
+
+**Arbitrage du fondateur (16/08/2026), et il nomme d'abord ce que sa propre spec n'avait pas dit :**
+le §1 (« je ne sais pas bloque ») gouverne le **gate** — le message et la progression — tandis que
+le §3 gouverne le **rabattement**. Deux sorties différentes, et j'avais suivi le §3 pour le
+rabattement, ce qui était juste ; il en résultait seulement que celui qui déclare 400 m recevait une
+conséquence de plus que celui qui ne dit rien. **L'incitation devenait : ne réponds pas.**
+
+Aucune des deux réponses habituelles ne convenait — traiter l'inconnu comme le pire cas envoie au
+Sprint tout triathlète qui ne suit pas ses nages (la disproportion du §2), le laisser passer
+récompense le silence.
+
+```
+longest_swim_m = « je ne sais pas »
+  → le plan est construit pour le format demandé
+  → la PREMIÈRE séance de nage de la phase spécifique est un TEST de continuité
+  → le message dit que l'évaluation de la nage est EN ATTENTE
+  → pas de rabattement : rien n'est mesuré, donc rien n'est ÉTABLI comme infranchissable
+  → dès que la réponse arrive, la conséquence graduée s'applique, rabattement compris
+```
+
+C'est le mécanisme **déjà en place pour la FTP et le CSS** : quand le moteur a besoin d'un nombre
+qu'il n'a pas, il prescrit le test qui le produit. Le manque de donnée devient une séance
+d'entraînement — le moteur a besoin d'un nombre, l'athlète a besoin de nager en continu.
+
+**Le test est EN BASSIN, et c'est le point de sécurité.** Un effort « aussi loin que tu peux » chez
+quelqu'un dont personne ne connaît la continuité est exactement le scénario que B-17 existe pour
+empêcher en eau libre : le mur tous les 25 m est ce qui le rend acceptable. La consigne eau libre se
+décale au palier SUIVANT. Le bloc n'est **pas épinglé**, délibérément — la distance est ce qu'on
+MESURE, pas ce qu'on impose.
+
+**Le critère d'honnêteté de la sonde a changé de FORME, et l'ancien serait devenu faux.** Il
+comparait des VERDICTS et comptait 5 inversions ; la question juste n'est plus « qui est rabattu
+aujourd'hui » mais **« le silence produit-il une tâche ou une permission »**. Mesuré : les 8 profils
+sans mesure portent tous un test. Deux critères nouveaux, tous deux vérifiés rouges — le test
+retiré (8 laissez-passer), le test prescrit même sur une continuité MESURÉE (il deviendrait
+décoratif).
+
+#### Et j'ai refait le `git checkout` sur du non-commité, dans la MÊME session, une heure après l'avoir écrit
+
+La contre-preuve C4 a été restaurée par `git checkout -- src/sports/tri/index.ts`. `HEAD` ne
+contenait pas le travail du test (non commité) : la restauration l'a effacé, et **C5 a mesuré un
+fichier qui ne portait plus la règle** — d'où deux cassures rendant le MÊME message d'échec, ce qui
+est le seul indice qui m'a fait regarder. Sans cette incohérence de sortie, j'aurais publié C5
+comme une contre-preuve valide alors qu'elle ne testait rien.
+
+C'est la **deuxième fois de la session**, et la seconde arrive après que j'ai écrit la règle au §16.
+Une règle qu'on énonce sans changer son geste n'est pas une règle. La forme opératoire est donc :
+**commiter AVANT toute cassure**, ce qui est ce que ce lot fait désormais — et non « penser à ne pas
+faire `git checkout` ».
+
+```verify
+id: D3-mesure-manquante
+quoi: une continuité inconnue prescrit un TEST, jamais un laissez-passer
+attendu: aucun laissez-passer
+cmd: node scripts/sondeD3.mjs | grep -o "aucun laissez-passer"
+```
