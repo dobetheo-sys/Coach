@@ -1,12 +1,9 @@
 # LOT 1 — LES GARDES INTERROGENT AU LIEU DE SAUTER
 
-**Écrit, mesuré, NON accepté.** L'acceptation du brief est « golden 969 à 0 écart » ; il y a
-**87 écarts**. Le brief prévoit ce cas et dit quoi en faire : *« un écart n'est pas une régression
-— c'est une population que la mesure préalable n'a pas vue, et elle vaut plus que le lot. Dans ce
-cas : ne pas corriger, mesurer qui et pourquoi, et remonter. »* C'est ce document.
-
-Rien n'est recapturé, rien n'est ré-épinglé. La branche porte le code, l'arbitrage revient au
-fondateur.
+**Livré.** Q1 a été re-tranchée le 17/08/2026 : le plafond reste, le golden est recapturé avec la
+note d'enchevêtrement O-43. Les §§1 à 8 sont l'état du lot avant cet arbitrage ; le §9 rectifie
+une mesure fausse qui avait fondé la première décision, les §§10-12 ce que la règle 17 et le sceau
+ont trouvé, et le **§13 l'état final**.
 
 ---
 
@@ -468,3 +465,87 @@ Q1 · le plafond de dose sur les blocs en MÈTRES reste-t-il, sachant que :
    si NON  → livrer la moitié C24/C24b seule (0 écart, no-op mesuré exact) et
              porter le plafond au lot 2 avec la mesure déjà faite
 ```
+
+---
+
+## 13. Q1 RE-TRANCHÉE — livré, avec l'enchevêtrement enregistré
+
+Les six premiers items de l'ordre sont faits.
+
+```
+1. golden recapturé, 969 profils, 0 écart — AVEC la note d'enchevêtrement O-43, écrite
+   dans l'en-tête de goldenMaster.mjs, là où quelqu'un la lira en cherchant pourquoi
+   la photo dit ce qu'elle dit
+2. cliquet du sceau ré-épinglé : S4 351 → 352, S5 500 → 508, chacun avec sa cause
+3. C30-A ré-épinglé · C30b-A reformulé avec sa contre-preuve      (faits au tour précédent)
+4. lotPhysio ajouté à .github/workflows/audit.yml                  ← 29ᵉ gate
+5. O-53 fermé : le plafond de dose teste `pinned`, gardé par T-39
+6. O-52 fermé (b) · (a) réfuté                                     (fait au tour précédent)
+```
+
+**S4 est ré-épinglé en disant « un cas de plus, non isolé »** plutôt qu'habillé d'une cause
+plausible — c'est ta formulation, et elle est meilleure que ce que j'aurais écrit.
+
+### O-53 : la garde ne prouvait rien, la contre-preuve a dû rendre le croisement non vide
+
+Une condition sur un croisement vide est satisfaite par un moteur sans aucune garde. `sw.aero` a
+donc été ajoutée aux zones plafonnées pour mesurer :
+
+```
+(a) `sw.aero` hors liste, garde posée .....  57 rabotés / 308   ← état livré
+(b) `sw.aero` PLAFONNÉE, garde posée ......  57 rabotés / 308   ← inchangé : elle tient
+(c) `sw.aero` PLAFONNÉE, garde RETIRÉE .... 195 rabotés / 308   ← +138 : elle sert
+```
+
+### Et cette mesure a trouvé O-54, plus gros que le ticket qu'elle servait
+
+Pour que la garde ne soit pas vacue, il fallait connaître la population des blocs épinglés.
+**57 sur 308 (18,5 %) ne sont pas livrés à leur épingle — avant comme après le lot**, donc défaut
+antérieur. Cause : **53 des 57 tombent sur une séance de exactement 850 m**, la borne C15 du
+débutant. Une nage continue épinglée à **3 800 m est livrée à 500**.
+
+Que C15 gagne est probablement juste — un débutant ne nage pas 3 800 m en continu, et c'est la
+doctrine de `C30-B`. Ce qui ne l'est pas : **le titre dit « Nage continue en eau libre — 3800 m
+d'affilée » et la séance en contient 500.** L'athlète lit un nombre que son plan ne contient pas,
+dans le nom de la séance. Famille R19.5 et U9.
+
+`sonde:b17` annonçait « 0 écart cible↔livré » : elle n'échantillonne **aucun débutant**.
+Cinquième occurrence de la famille A-2.
+
+### §4b mesuré — et ma formulation était encore trop forte
+
+J'avais écrit que le plafond « devient le RÉGIME PERMANENT de la nage seuil sur tri/Full
+(231/231 à la borne) ». **C'est faux, et c'est la même faute que les trois précédentes** : 231/231
+comptait « parmi les blocs À LA BORNE, combien sont en tri » — pas « parmi les blocs de tri,
+combien sont à la borne ». Ton §4 raisonne sur ma phrase.
+
+Mesuré (`npm run mesure:dosefull`) :
+
+```
+                semaines à la borne     première semaine à la borne
+   Full             22 %                médiane S17 · phase `dev` pour 31 profils sur 37
+   70.3             25 %                médiane S15 · phase `spec` pour 10 sur 12
+
+   295 semaines à la borne sur 1 333 qui portent du seuil (22 %), sur 49 profils
+   exemple Full : 17 semaines de seuil, 2 à la borne, dose 28,8 → borne → 9,6 (affûtage)
+```
+
+**La progression existe avant la borne.** La dose monte de la base au développement, et c'est là —
+S17 en médiane — que le plafond la fige. Ce n'est pas « constante sur neuf mois », c'est « plate
+sur le dernier tiers de la montée ». Le ticket reste valable, son ampleur est plus petite que ce
+que ma phrase annonçait : **O-55**, avec la contrainte que si la progression doit continuer, c'est
+le NOMBRE de blocs qui monte et pas la dose d'un bloc — C26c prise dans l'autre sens.
+
+### Quatre fautes d'instrument sur ce lot, et la quatrième est la même que les trois autres
+
+```
+1. `stepMeters(…, r.baseRefs)` dans une fonction de module   → 476 « écarts » qui étaient un crash
+2. l'ampleur lue sur `firstDiff`                              → 87 champs annoncés, 6 403 réels
+3. un écart en valeur ABSOLUE                                 → « coupe non réallouée » à l'envers
+4. « 231/231 à la borne »                                     → dénominateur inversé
+```
+
+Ta formulation du §8 les couvre toutes : *un outil de localisation et un outil de mesure ne sont
+jamais le même outil, et le premier produit toujours un nombre qui a l'air d'être le second.* La
+quatrième ajoute son propre corollaire — **un ratio dont on ne dit pas le dénominateur est un
+nombre sans grandeur**, et il se lit toujours dans le sens le plus frappant.

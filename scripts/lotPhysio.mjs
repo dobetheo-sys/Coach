@@ -880,8 +880,22 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 //     de VRAIS Full (ils étaient rabattus au sprint et audités contre des bornes de Full) ;
 //   · S4 353 → 351 et S5 513 → 500, dont **+9 apportés par la sous-passe `B17`** qui n'existait
 //     pas — le corpus passe de 949 à 969 profils.
-// Aucune violation DURE, sur aucun des 969.
-const SCEAU_ATTENDU = { S1: 5, S4: 351, S5: 500 };
+// RE-ÉPINGLÉ APRÈS LE LOT 1 (17/08/2026) — LA HAUSSE EST ARBITRÉE, PAS SUBIE.
+// Le plafond de dose lit désormais les blocs prescrits en MÈTRES. Le cliquet a fait ce qu'il
+// existe pour faire : il a refusé la hausse, le lot s'est arrêté, et le fondateur a tranché
+// AVANT que le chiffre bouge. Le relever pour faire passer un lot serait l'inverse.
+//   · S5 (T-25) 500 → **508**, huit de plus. Cause identifiée, mesurée, et déjà couverte par la
+//     note de recapture du golden : la sonde de capacité V2.1 lit un clone SATURÉ de la semaine
+//     LIVRÉE, moins de dur livré donne une capacité mesurée plus basse, la COURBE baisse — et la
+//     chaîne déclarée s'écarte du pic livré sur huit profils de plus. C'est **O-43 à l'identique
+//     et dans l'autre sens qu'O-42**, qui avait fait monter la même courbe pour la raison
+//     symétrique. Entrée OUVERTE, cause nommée depuis O-35 ; le lot l'élargit de 8.
+//   · S4 (I14) 351 → **352**, un de plus. Famille connue (`mesure:sceau` en montre le type : une
+//     VO2max de 45 min contre une longue de 44 sur un 5 km), **cas non isolé** — c'est dit ainsi
+//     plutôt qu'habillé d'une cause plausible. Un cliquet qui monte avec une raison honnête vaut
+//     mieux qu'un cliquet qui monte avec une raison inventée.
+// Aucune violation DURE, sur aucun des 969 — ni avant, ni après.
+const SCEAU_ATTENDU = { S1: 5, S4: 352, S5: 508 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1213,6 +1227,41 @@ T("T-35", "vert", "le pic livré et la fréquence de nage sont épinglés — un
       bad.push(`${cle} : ${p.volPeak} h / ${jours} j au lieu de ${att.pic} h / ${att.jours} j`);
   }
   return { ok: bad.length === 0, detail: bad.length ? bad.join(" · ") : vus.join(" · ") };
+});
+
+T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O-53), et le compte des autres rabotages est épinglé", () => {
+  // `bnd.pinned` dit « la distance EST le stimulus » (I14). Deux moitiés, et la seconde existe
+  // parce que la première est LATENTE : `sw.aero` n'est pas une zone plafonnée, donc le
+  // croisement avec le plafond de dose est vide, et un test qui se contenterait de constater
+  // « 0 raboté par le plafond » serait satisfait par un moteur sans aucune garde (règle 19).
+  //
+  //   (1) invariance — aucun bloc épinglé n'est livré SOUS son épingle du fait du plafond ;
+  //   (2) sensibilité — le compte TOTAL des blocs épinglés non livrés à leur épingle est
+  //       épinglé à 57. Ces 57 ne viennent pas du plafond (mesuré identique avant et après le
+  //       lot 1) : ils viennent de C15, qui borne la séance du débutant à 850 m et gagne contre
+  //       l'épingle. C'est O-54, ouvert. Le cliquet est ici pour qu'aucun autre mécanisme ne
+  //       vienne s'y ajouter en silence.
+  //
+  // Contre-preuve, en rendant le croisement NON VIDE (`sw.aero` ajoutée aux zones plafonnées) :
+  //     garde posée .... 57 rabotés / 308   ← inchangé, elle tient
+  //     garde retirée .. 195 rabotés / 308  ← +138, elle sert
+  const RABOTES_ATTENDUS = 57;
+  let n = 0, ko = 0; const zones = {}, ex = [];
+  for (const { key, plan } of goldenAvecMoteur()) {
+    for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
+      for (const st of s.steps ?? []) {
+        if (!st.bnd?.pinned) continue;
+        n++;
+        const livre = st.distanceM != null ? st.distanceM : st.durationMin;
+        if (livre === st.bnd.cap) continue;
+        ko++; zones[String(st.zone)] = (zones[String(st.zone)] || 0) + 1;
+        if (ex.length < 3) ex.push(`${key} · ${String(s.name).slice(0, 28)} · ${st.zone} · ${livre} pour ${st.bnd.cap}`);
+      }
+  }
+  const bad = [];
+  if (!n) bad.push("AUCUN bloc épinglé dans le corpus — le critère ne mesure rien, vérifier l'instrument");
+  if (ko !== RABOTES_ATTENDUS) bad.push(`${ko} bloc(s) épinglé(s) raboté(s) au lieu de ${RABOTES_ATTENDUS} (O-54) · ${ex.join(" ; ")}`);
+  return { ok: bad.length === 0, detail: bad.join(" · ") || `${n} blocs épinglés · ${ko} rabotés (O-54, C15 gagne contre l'épingle) · zones ${JSON.stringify(zones)}` };
 });
 
 // T-38 RETIRÉ (O-46 réfuté, 16/08/2026) — il comparait `CAP_SWIM` à une exigence de SÉANCE alors

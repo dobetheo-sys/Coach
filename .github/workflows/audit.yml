@@ -114,6 +114,14 @@ jobs:
       # Golden master : 814 plans photographiés, détection d'écart au bit près. Les empreintes
       # sont versionnées ; tout changement de plan doit être VOULU et recapturé explicitement.
       - run: npm run golden:verify
+      # Banc physio (`scripts/lotPhysio.mjs`) — il porte le SCEAU (T-27 : invariants durs à zéro
+      # sur le plan livré, déclarés au compte épinglé par cliquet) et les tickets ouverts en
+      # rouges ATTENDUS. Il sortait en code 1 sur régression depuis son écriture, mais il n'était
+      # pas ici : il dépendait donc de la mémoire de qui lance la passe, et le lot 1 a démontré
+      # que cette mémoire manque — le cliquet du sceau était monté, 27 gates étaient verts, et
+      # personne ne l'aurait su. Même correctif structurel que le crochet du journal après O-41 :
+      # ne pas compter sur la discipline là où un mécanisme suffit.
+      - run: node scripts/lotPhysio.mjs
 
   # E2E navigateur : les smokes de la PWA (check-in, R4, rétention, améliorations)
   # tournent dans un vrai Chromium — Playwright est une devDependency de TEST

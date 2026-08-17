@@ -5903,7 +5903,7 @@ cmd: node -e 'const s=require("fs").readFileSync("scripts/goldenMaster.mjs","utf
 
 ---
 
-## O-53 · Le plafond de dose ne teste pas `pinned` · 🔴 **OUVERT, latent**
+## O-53 · Le plafond de dose ne teste pas `pinned` · ✅ **FERMÉ**
 
 Trouvé par la vérification A du §1 de l'arbitrage lot 1 — celle qui est VERTE.
 
@@ -5933,9 +5933,129 @@ famille      garde LATENTE — le contrôle n'existe pas, et rien ne le signale 
              été écrit et dont l'absence est invisible.
 ```
 
+**Livré (17/08/2026)** : `if (doseCap != null && !b.bnd?.pinned)`. Écrire cette condition ne coûte
+rien ET ne prouve rien tant que le croisement est vide (règle 19 : le correctif le moins coûteux
+est de ne rien écrire du tout). La contre-preuve rend donc le croisement NON VIDE, en ajoutant
+`sw.aero` aux zones plafonnées :
+
+```
+(a) `sw.aero` hors liste, garde posée .....  57 rabotés / 308   ← état livré
+(b) `sw.aero` PLAFONNÉE, garde posée ......  57 rabotés / 308   ← inchangé : elle tient
+(c) `sw.aero` PLAFONNÉE, garde RETIRÉE .... 195 rabotés / 308   ← +138 : elle sert
+```
+
+Gardé par **`T-39`** (lotPhysio, désormais en CI) : invariance (aucun épinglé raboté par le
+plafond) **et** sensibilité (le compte total des épinglés non livrés à leur épingle est un cliquet
+à 57). Les 57 ne viennent pas de ce plafond — c'est **O-54**, trouvé en mesurant la population
+pour que la garde ne soit pas vacue.
+
 ```verify
 id: O-53
-quoi: le plafond de dose écrête sans regarder si le bloc est épinglé
-attendu: O53-REPRODUIT
-cmd: node -e 'const s=require("fs").readFileSync("src/generator/planGenerator.ts","utf8");const i=s.indexOf("const doseCap =");process.exit(s.slice(i,i+900).includes("pinned")?1:0)' && echo "O53-REPRODUIT"
+quoi: le plafond de dose ne rabote pas un bloc epingle
+attendu: O53-FERME
+cmd: node -e 'const s=require("fs").readFileSync("src/generator/planGenerator.ts","utf8");const i=s.indexOf("const doseCap =");process.exit(s.slice(i,i+2200).includes("!b.bnd?.pinned")?0:1)' && echo "O53-FERME"
+```
+
+---
+
+## O-54 · Un bloc ÉPINGLÉ est raboté par C15, et le TITRE continue d'annoncer la valeur épinglée · 🔴 **OUVERT**
+
+Trouvé en posant la garde d'O-53 : en mesurant la population des blocs épinglés pour que la garde
+ne soit pas vacue, 57 sur 308 n'étaient pas livrés à leur épingle — et aucun ne l'était du fait du
+plafond de dose.
+
+```
+mesuré       308 blocs épinglés dans le golden (tous `sw.aero`, les continuités de B-17)
+             251 livrés à leur épingle · 57 RABOTÉS (18,5 %)
+             IDENTIQUE avant et après le lot 1 — défaut antérieur, vérifié.
+
+cause        53 des 57 tombent sur une séance de **exactement 850 m** :
+             `C15_BEGINNER_SWIM_SESSION_CAP_M`. La séance porte 200 m d'échauffement et
+             150 m de retour au calme, il reste 500 m pour le corps — quelle que soit
+             l'épingle.
+
+                 S/debutant     épinglé   750 → 500      × 9
+                 M/debutant     épinglé  1500 → 500      × 9
+                 70.3/debutant  épinglé  1900 → 500      × 8
+                 Full/debutant  épinglé  2500 → 500      × 9
+                 Full/debutant  épinglé  3050 → 500      × 9
+                 Full/debutant  épinglé  3800 → 500      × 9
+
+ce qui est   **Que C15 gagne est probablement JUSTE** : un débutant ne nage pas 3 800 m en
+juste       continu, et c'est la doctrine de `C30-B` — un plancher de spécificité ne passe
+             jamais devant un plafond de sécurité.
+
+ce qui ne    **Le TITRE ment.** La séance s'appelle « Nage continue en eau libre — 3800 m
+l'est pas    d'affilée » et livre 500 m. L'athlète lit un nombre que son plan ne contient
+             pas, dans le nom même de la séance. Famille R19.5 (la note du brick promettait
+             « dernier tiers @ allure course » sur un step 100 % Z2) et U9 (le refus parlait
+             d'Ironman à un nageur de 1500 m).
+             Et 4 cas sur 57 sont chez des `inter`, dont un livré AU-DESSUS de son épingle
+             (350 → 400) : l'épinglage est violé dans les deux sens.
+
+angle mort   `sonde:b17` annonce « 0 écart cible↔livré » sur ses 24 paliers : elle
+             n'échantillonne **aucun débutant**. Cinquième occurrence de la famille A-2 — un
+             corpus qui ne contient pas la population où la règle mord.
+
+à décider    (a) le titre se dérive du LIVRÉ et non de la cible (R11.1 appliquée au nom) ;
+             (b) ou la continuité n'est pas prescrite du tout quand C15 la rendrait
+                 inopérante — mieux vaut ne rien promettre que promettre 3 800 et livrer 500.
+             Les deux sont des décisions de produit, pas des correctifs mécaniques.
+
+gardé par    `T-39` (lotPhysio) épingle le compte à 57 : aucun AUTRE mécanisme ne peut venir
+             s'y ajouter en silence.
+```
+
+```verify
+id: O-54
+quoi: des blocs epingles sont rabotes par C15 pendant que le titre annonce l'epingle
+attendu: /rabotés (O-54/
+cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-39"
+```
+
+---
+
+## O-55 · Le plafond de dose est ABSOLU là où la progression demande une montée · 🔴 **OUVERT**
+
+Ticket du §4b de l'arbitrage Q1 (17/08/2026). *« Si la nage seuil est à 40 min dès qu'elle touche
+la borne, elle ne monte plus de la base au pic. Un athlète devrait voir sa dose de seuil progresser
+sur une préparation de neuf mois ; là elle est constante. »*
+
+**Mesuré avant de trancher, comme demandé** (`npm run mesure:dosefull`) — et l'ampleur est bien
+moindre que ce que ma formulation laissait croire :
+
+```
+                    semaines à la borne     première semaine à la borne
+   Full (37 prof.)        22 %              médiane S17 · phase `dev` pour 31/37
+   70.3 (12 prof.)        25 %              médiane S15 · phase `spec` pour 10/12
+
+   295 semaines à la borne sur 1 333 qui portent du seuil (22 %), sur 49 profils.
+   exemple Full : 17 semaines de seuil, 2 à la borne, dose 28,8 → borne → 9,6 (affûtage)
+```
+
+**La progression EXISTE avant la borne** : la dose monte de la base au développement, et c'est
+là — S17 en médiane sur un Full — que le plafond la fige. Ce n'est donc pas « constante sur neuf
+mois » ; c'est « plate sur le dernier tiers de la montée ».
+
+```
+la question  un plafond de dose doit-il être ABSOLU (40 min pour tout le monde, toute la
+             prépa) ou INDEXÉ (sur le format, sur la phase, sur le volume de nage) ?
+             Le précédent interne existe : B-02 a indexé le plafond de temps DUR
+             hebdomadaire sur le volume plutôt que de le laisser fixe.
+
+contrainte   la borne est physiologique, pas structurelle : 40 min de travail au seuil est
+             une grosse séance dans n'importe quelle discipline. L'indexer vers le HAUT
+             demande une source, pas une commodité.
+
+à ne pas     relever la borne pour retrouver une progression. Si la progression doit
+faire        continuer au-delà, c'est le NOMBRE de blocs ou la FRÉQUENCE qui monte, pas la
+             dose d'un bloc — c'est la doctrine C26c (« la coupe retire des RÉPÉTITIONS,
+             jamais la durée d'une répétition »), prise dans l'autre sens.
+```
+
+```verify
+id: O-55
+quoi: la dose de seuil en nage est plate a la borne sur une fraction des semaines
+attendu: /semaines à la borne sur/
+cmd: node scripts/mesureDoseFull.mjs 2>/dev/null | grep "semaines à la borne sur"
 ```

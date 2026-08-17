@@ -10789,7 +10789,33 @@ function generatePlan(profile                , opts                             
       const doseCap = /\.vo2$/.test(z) || z === "tr.vam" ? DOSE_CAP_MIN.vo2
         : /\.thr$|\.css$/.test(z) || z === "tr.asc" || z === "tr.flatthr" ? DOSE_CAP_MIN.thr
         : null;
-      if (doseCap != null) {
+      // O-53 — UN BLOC ÉPINGLÉ N'EST JAMAIS ÉCRÊTÉ PAR CE PLAFOND.
+      //
+      // `bnd.pinned` dit « la distance EST le stimulus » : c'est la leçon I14, et c'est ce qui
+      // protège les nages continues de B-17 — réduire une continuité ne la rend pas plus facile,
+      // elle lui retire son objet. Une continuité de 3 800 m ramenée à 2 000 n'est pas une
+      // continuité plus courte, c'est autre chose.
+      //
+      // La garde est LATENTE aujourd'hui, et c'est écrit ici pour qu'on le sache : les nages
+      // continues vivent en `sw.aero`, qui n'est pas dans la liste ci-dessus, donc le croisement
+      // est VIDE — mesuré, 0 sur les 969 profils du golden. Elles étaient donc protégées **par
+      // le chemin, pas par la borne**, la formule que ce dépôt a déjà payée sur `enforceC22Final`.
+      // Le jour où une continuité, une simulation de course ou un test se prescrit dans une zone
+      // à plafond, il l'aurait raboté en silence.
+      //
+      // ⚠ Écrire cette condition ne coûte rien ET ne prouve rien tant que le croisement est vide
+      // (règle 19 : le correctif le moins coûteux ici est de ne rien écrire du tout). La
+      // contre-preuve rend donc le croisement NON VIDE, en ajoutant `sw.aero` aux zones
+      // plafonnées, et compare les trois états sur les blocs épinglés du golden :
+      //
+      //     (a) `sw.aero` hors liste, garde posée ..........  57 rabotés / 308   ← état livré
+      //     (b) `sw.aero` PLAFONNÉE, garde posée ...........  57 rabotés / 308   ← inchangé
+      //     (c) `sw.aero` PLAFONNÉE, garde RETIRÉE ......... 195 rabotés / 308   ← +138
+      //
+      // (b) prouve que la garde tient, (c) qu'elle sert. Les 57 de l'état d'origine ne viennent
+      // PAS de ce plafond : ils appartiennent à O-54 (C15 borne la séance du débutant à 850 m et
+      // gagne contre l'épingle), mesurés identiques avant et après ce lot.
+      if (doseCap != null && !b.bnd?.pinned) {
         const reps = b.reps || 1;
         const travail = stepWorkMin(b, s.d, r.baseRefs);
         if (travail > doseCap) {

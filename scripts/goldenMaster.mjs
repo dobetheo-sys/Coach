@@ -25,6 +25,33 @@
  * Normalisation : les dates calendaires sont retirées (un plan démarre le lundi courant —
  * sinon la photo périmerait chaque jour), les flottants sont arrondis, les clés triées.
  * Ce qui reste est exactement ce qu'un athlète lit : structure, séances, textes, décisions.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * NOTE DE RECAPTURE — 17/08/2026, lot 1 (plafond de dose sur les blocs prescrits en MÈTRES).
+ *
+ * **CETTE PHOTO ENCODE UN EFFET O-43 DE MAGNITUDE CONNUE.** Elle est conservée en le sachant,
+ * décision du fondateur, plutôt que subie — c'est la forme d'une dette à condition de sortie :
+ * un état connu-faux, quantifié, et réversible parce qu'on sait exactement ce qu'il contient.
+ *
+ *   effet DIRECT du plafond sur le volume ......... NUL
+ *       réallocation vérifiée : aucun plan ne livre au-dessus de sa cible, 62 profils sur 65
+ *       collent à leur courbe aussi bien qu'avant (critère n°3 d'O-44, vert)
+ *   effet INDIRECT, par la boucle O-43 ............ nage −1 420 min sur 38 profils, 0 hausse,
+ *       jusqu'à −7,6 min/semaine · volume total −417 min, entièrement porté par la COURBE
+ *
+ * Le mécanisme, mesuré (`npm run mesure:lot1-ampleur`) : le livré colle à sa courbe dans les
+ * deux états, c'est la courbe qui a baissé. La sonde de capacité V2.1 lit un clone SATURÉ de la
+ * semaine LIVRÉE — moins de dur livré, capacité mesurée plus basse, courbe plus basse.
+ *
+ * **C'est O-43 à l'identique, et dans l'autre sens qu'O-42** : O-42 faisait compter les minutes
+ * de nage plus haut → la sonde lisait plus de capacité → la courbe montait ; lot 1 fait livrer
+ * moins de dur → la sonde lit moins → la courbe baisse. Même boucle, deux directions. La baisse
+ * de nage n'est donc pas une propriété du plafond : c'est une propriété d'un défaut ouvert que
+ * le plafond DÉCLENCHE.
+ *
+ * LE JOUR OÙ O-43 SERA TRAITÉ, LE DIFF ATTENDU EST LE RETOUR DE CES QUANTITÉS. Il est connu
+ * d'avance, donc il ne sera pas à re-diagnostiquer.
+ * ─────────────────────────────────────────────────────────────────────────────────────────
  */
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
