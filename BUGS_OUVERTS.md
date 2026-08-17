@@ -5585,7 +5585,7 @@ cmd: grep -q 'format: profile.format' src/generator/repairLoop.ts && echo "O49-R
 ```
 
 
-## O-44 · Plancher de durée de séance en nage · 🟠 **ÉCRIT, MESURÉ, NON BRANCHÉ — arbitrage**
+## O-44 · Plancher de durée de séance en nage · ✅ **FERMÉ SUR LA MESURE, non livré**
 
 **Le constat du brief est reproduit exactement** : sur les semaines de charge, **69 profils de nage
 sur 136** vivent à 80-100 % de séances courtes, **les 36 débutants sans exception**, distribution
@@ -5661,15 +5661,90 @@ Aucune de ces issues n'est mécanique : (a) et (c) touchent des règles arbitré
 le brief. **La passe n'est donc pas branchée**, `SWIM_SESSION_FLOOR_MIN` et `npm run mesure:o44`
 restent, et rien d'inerte n'entre dans le pipeline.
 
-**Et le critère n°2 ne bougera pas par ce mécanisme, quelle que soit l'issue** : sous C15 (850 m),
-un débutant dont les nages sont déjà au plancher C24b de 600 m n'offre que 250 m de marge par
-séance — la capacité d'accueil ne suffit jamais à absorber une séance retirée, et le garde
-anti-amputation refuse le regroupement. Les 36 débutants sont hors de portée d'un regroupement tant
-que C15 les borne, ce qui est une propriété de C15, pas de ce ticket.
+### Le résultat de ce lot n'est pas la passe — c'est le critère 2, et j'ai mal attribué sa cause
+
+J'avais écrit « les 36 débutants sont hors de portée tant que C15 les borne, ce qui est une
+propriété de C15 ». **C'est faux, et l'arbitrage du fondateur le corrige** : la cause n'est pas le
+plafond, c'est que **le plancher existe DÉJÀ, dans la mauvaise unité**.
+
+L'arithmétique du blocage, explicite — un débutant à 6 × 600 m (3 600 m/semaine, séances posées sur
+le plancher C24b) :
+
+```
+configuration │ distance/séance │ durée à CSS 2:30 │ verdict
+6 séances     │      600 m      │     15,0 min     │ sous le plancher O-44
+5 séances     │      720 m      │     18,0 min     │ TOUJOURS sous le plancher
+4 séances     │      900 m      │     22,5 min     │ AU-DESSUS du plafond C15 (850 m)
+```
+
+**Aucune configuration ne satisfait les deux bornes à volume constant.** Ce n'est ni un défaut du
+mécanisme ni une valeur mal choisie : c'est un système SUR-CONTRAINT, et le garde anti-amputation
+aurait raison de refuser quelle que soit la valeur du plancher au-dessus de 18 minutes.
+
+**O-44 n'ajoutait donc pas une contrainte manquante : il tentait d'en corriger une existante,
+exprimée dans la mauvaise unité, en en superposant une seconde.** Deux planchers, deux unités, une
+seule intention — la famille `_IFZ`, et O-42 appliqué à un plancher au lieu d'une conversion.
+
+### Ce que le moteur DIT en attendant — la seule chose honnête
+
+La tension est réelle et **l'athlète est le seul à pouvoir la résoudre** : lui seul sait s'il peut
+aller six fois à la piscine. Le plan la NOMME au lieu de décider à sa place :
+
+> *Tes séances de nage sont courtes — ton volume est réparti sur beaucoup de jours. Le plan ne peut
+> pas les regrouper sans te retirer du volume. Si tu ne peux pas aller à la piscine aussi souvent,
+> regroupe-les toi-même : deux séances de quarante minutes valent mieux que six de quinze, et le
+> trajet coûte le même prix quelle que soit la durée.*
+
+**Le message ne part que si l'athlète VIT dans ce régime** — la MAJORITÉ de ses semaines de charge,
+pas une semaine isolée. Sans cette borne il partait sur **102 profils de nage sur 136 (75 %)**, dont
+beaucoup n'ont qu'une semaine courte : l'affirmation y serait fausse, et un message qui sur-affirme
+se fait ignorer là où il est vrai. Avec elle : **56 profils de nage sur 136, dont les 36 débutants**,
+et **111 sur les 969 du golden** (nage 56 · tri 32 · swimrun 23 — les trois sports qui déclarent
+`swimSessionFloors`).
+
+**Rayon vérifié : le SEUL champ qui change est `._v2.warnings`.** 111 écarts au golden, 111 profils
+recevant le message — pas une séance, pas une minute. Le compteur se lit sur le plan LIVRÉ, en tout
+dernier, pour que le message ne décrive ni un état intermédiaire ni une intention (règle 15).
 
 ```verify
 id: O-44
 quoi: la sous-population des nages courtes existe toujours, la passe n'est pas branchée
 attendu: UNE SOUS-POPULATION EXISTE
 cmd: node scripts/mesureO44b.mjs | grep -o "UNE SOUS-POPULATION EXISTE"
+```
+
+
+## O-50 · Le plancher de séance de nage (C24b) est exprimé en MÈTRES · 🔴 **OUVERT**
+
+C'est le ticket qu'O-44 aurait dû être, et il n'y avait aucun moyen de le savoir avant d'avoir écrit
+O-44 et mesuré son échec.
+
+```
+défaut       C24b impose un plancher de séance de 600 m (débutant) / 750 m. Exprimé en
+             MÈTRES, il ne garantit AUCUNE durée minimale — et il sert le mieux le nageur
+             le plus LENT :
+                600 m à CSS 1:30  →   9 min   ← le rapide reçoit la séance la plus courte
+                600 m à CSS 2:30  →  15 min
+                600 m à CSS 3:00  →  18 min
+             C'est exactement le plancher dérivé d'une distance que le brief d'O-44 écartait
+             — il est déjà dans le moteur, et il produit l'effet annoncé.
+
+à mesurer    · la durée impliquée par C24b sur les 136 profils de nage, PAR CSS
+avant toute  · combien de séances sous 15 min en découlent, et sur QUI
+décision     · le rayon d'un passage en minutes — qui d'autre lit ce plancher
+
+contrainte   C15 borne par le HAUT en mètres. Un plancher en minutes et un plafond en
+             mètres restent commensurables profil par profil, mais leur compatibilité se
+             vérifie AVANT, pas après — c'est précisément ce que ce lot vient de découvrir
+             après.
+
+famille      `_IFZ` (deux expressions d'une même intention) et O-42 (l'unité), appliquées
+             à un PLANCHER au lieu d'une conversion.
+```
+
+```verify
+id: O-50
+quoi: le plancher de séance de nage est en mètres, donc muet sur la durée
+attendu: O50-REPRODUIT
+cmd: grep -q 'const floorM = ctx.beginner ? 600 : 750;' src/generator/planGenerator.ts && echo "O50-REPRODUIT"
 ```

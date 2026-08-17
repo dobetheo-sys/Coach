@@ -81,8 +81,10 @@ export const IS_QUALITY_ZONE = (zone: string): boolean =>
 /** C30b — les décisions produites par `raiseLongRunToSpecificity`, remontées à l'appelant :
  *  `reconcileDeclaredVolume` ne connaît pas le journal de décisions du plan. */
 export const _c30b: { id: string; what: string; val: string; why: string; wk: number }[] = [];
-/** O-44 — nombre de séances de nage regroupées au dernier passage (0 = le plancher n'a pas mordu). */
-export const _o44 = { regroupees: 0 };
+/** O-44 — nombre de semaines de charge dont la MAJORITÉ des nages tombent sous le plancher de
+ *  durée. La passe de regroupement n'est PAS branchée (voir `BUGS_OUVERTS.md` « O-44 ») : ce
+ *  compteur ne sert qu'à décider si le plan doit NOMMER la tension à l'athlète. */
+export const _o44 = { semainesCourtes: 0, semainesCharge: 0 };
 
 export function reconcileDeclaredVolume(
   plan: V1Plan, warnings: string[],
@@ -115,7 +117,7 @@ export function reconcileDeclaredVolume(
   // passe tardive, un module futur, une séance construite à la main. Il est ici pour que le
   // prochain producteur de séances n'ait pas besoin de connaître la règle pour la respecter.
   _c30b.length = 0;
-  _o44.regroupees = 0;
+  _o44.semainesCourtes = 0; _o44.semainesCharge = 0;
   enforceMedicalHold(plan, !!ctx?.medHold);
   // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
   // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
@@ -1660,12 +1662,46 @@ export function reconcileDeclaredVolume(
   //     rouvrir.
   raiseLongRunToSpecificity();
 
+  // O-44 — LE COMPTEUR SE LIT SUR LE PLAN LIVRÉ, en tout dernier : le message ne doit décrire ni
+  // un état intermédiaire ni une intention, mais ce que l'athlète va réellement voir (règle 15).
+  if (ctx?.swimFloors) {
+    const css44 = ctx.refs?.cssSecPer100m || 130;
+    const v44 = zoneSpeedRatio("sw.easy", undefined, "css") ?? 1;
+    const plancher44 = Math.min(SWIM_SESSION_FLOOR_MIN,
+      ((ctx.beginner ? C15_BEGINNER_SWIM_SESSION_CAP_M : (CAP_SWIM[String(ctx.format ?? "")] || 3000)) / 100) * css44 / 60 / v44);
+    for (const wk of plan.weeks) {
+      if (wk.isRecup || wk.phase.id === "taper") continue;
+      const durees = wk.days.flatMap((d) => d.sessions.filter((x) => x.d === "sw" && (x.min || 0) > 0).map((x) => x.min || 0));
+      if (durees.length < 2) continue;
+      _o44.semainesCharge += 1;
+      if (durees.filter((x) => x < plancher44 - 0.01).length > durees.length / 2) _o44.semainesCourtes += 1;
+    }
+  }
 
-  // O-44 §4 — LA LIGNE DIT CE QUI EST SUPPOSÉ, PAS CE QUI EST DÉCIDÉ. Elle nomme l'hypothèse
-  // (logistique, pas physiologique), reconnaît que le moteur ignore la situation de l'athlète, et
-  // lui rend la décision — c'est la seule forme honnête pour un PANSEMENT.
-  if (_o44.regroupees > 0)
-    warnings.push("Tes séances de nage sont regroupées pour qu'aucune ne descende sous une vingtaine de minutes dans l'eau — en dessous, le déplacement coûte plus que la séance ne rapporte. Si tu as un bassin accessible, tu peux les fractionner davantage : la fréquence sert la technique.");
+
+  // O-44 — LE MOTEUR NOMME LA TENSION AU LIEU DE LA RÉSOUDRE À LA PLACE DE L'ATHLÈTE.
+  //
+  // La passe de regroupement n'est pas branchée, et elle ne peut pas l'être : le système est
+  // SUR-CONTRAINT. Un débutant à 6 × 600 m (le plancher C24b) ne peut satisfaire ni le plancher de
+  // durée ni le plafond C15 à volume constant —
+  //     6 séances → 600 m → 15,0 min   sous le plancher
+  //     5 séances → 720 m → 18,0 min   toujours sous le plancher
+  //     4 séances → 900 m → 22,5 min   AU-DESSUS du plafond C15 (850 m)
+  // — et le garde anti-amputation a raison de refuser, quelle que soit la valeur du plancher
+  // au-dessus de 18 min. Le vrai défaut est ailleurs et porte son ticket : **C24b est un plancher
+  // de séance exprimé en MÈTRES**, donc il ne garantit aucune durée et sert le mieux le nageur le
+  // plus LENT (600 m valent 9 min à CSS 1:30 et 18 min à CSS 3:00) — voir O-50.
+  //
+  // Ce que le moteur peut dire honnêtement en attendant : la tension est réelle, et l'athlète est
+  // le SEUL à pouvoir la résoudre — lui seul sait s'il peut aller six fois à la piscine. On la
+  // nomme, on ne décide pas pour lui. C'est gratuit et c'est vrai ; c'est aussi tout ce qui est
+  // défendable tant qu'O-50 n'est pas tranché.
+  // Le message ne part que si l'athlète VIT dans ce régime — la MAJORITÉ de ses semaines de
+  // charge, pas une semaine isolée. Sans cette borne il partait sur 102 profils sur 136 (75 %),
+  // dont beaucoup n'ont qu'une semaine courte : « tes séances de nage sont courtes » y serait une
+  // affirmation fausse, et un message qui sur-affirme se fait ignorer sur les cas où il est vrai.
+  if (_o44.semainesCharge > 0 && _o44.semainesCourtes > _o44.semainesCharge / 2)
+    warnings.push("Tes séances de nage sont courtes — ton volume est réparti sur beaucoup de jours. Le plan ne peut pas les regrouper sans te retirer du volume. Si tu ne peux pas aller à la piscine aussi souvent, regroupe-les toi-même : deux séances de quarante minutes valent mieux que six de quinze, et le trajet coûte le même prix quelle que soit la durée.");
 
   if (forcedWeeks > 0)
     warnings.push("Sur " + forcedWeeks + " semaine(s) de charge, la structure minimale de ce plan (une séance digne de ce nom ne descend pas sous 30 min, une sortie longue encore moins) dépasse le volume hebdomadaire que tu as déclaré. Le chiffre annoncé a été aligné sur ce qui t'est réellement prescrit — mieux vaut une courbe honnête qu'une promesse que le plan ne tient pas. Deux remèdes, à toi de choisir : relever le volume dont tu disposes, ou viser un objectif plus court.");
