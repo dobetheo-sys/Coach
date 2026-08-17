@@ -17563,6 +17563,7 @@ function dailyEnergy(input             )                             {
 
 
 
+
 /** R21 — exportée : la spec du coach proactif construit ses profils comme le pont, pas autrement. */
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
@@ -18708,6 +18709,19 @@ function coachOnIngestV2(sport        , answers            , ingested           
   // annonçait 8h/sem là où le moteur en applique 9 (vélo/route/reprise). Les règles
   // pédagogiques expliquent des décisions : elles doivent lire les chiffres qui décident.
   volumeCaps: { history: HISTORY_CAPS, util: UTIL, margin: MARGIN },
+  // O-51 — LA CIBLE DE SPÉCIFICITÉ DE LA SORTIE LONGUE, exposée pour être VÉRIFIÉE.
+  //
+  // Le critère `C30b-A` du banc v6 exigeait qu'une décision `C30b` soit ÉMISE. Il rougissait donc
+  // quand la longue atteignait sa cible SANS la passe — c'est-à-dire quand tout allait mieux. La
+  // propriété est « la longue atteint sa cible », dont « la passe se déclenche » n'est qu'un des
+  // chemins ; pour la vérifier, le banc a besoin de la CIBLE.
+  //
+  // Elle est exposée plutôt que recalculée dans le banc : une seconde écriture de la règle y
+  // divergerait, et c'est exactement ce que R11.1 interdit. Même convention d'appel que le
+  // générateur (`floorMin: 0`, `capMin: ∞`) pour obtenir la cible PURE, avant plafonds — les
+  // plafonds de sécurité sont gardés séparément par `C30-B`.
+  longRunSpecTarget: (fmt                    , thrPaceSecPerKm        , runHoursPerWeek         ) =>
+    longRunSpecificityFloor(fmt, thrPaceSecPerKm, 0, Number.MAX_SAFE_INTEGER, runHoursPerWeek),
   // R10 phase 1 — le REGISTRE DE SPORTS exposé à l'UI : elle n'a plus à savoir quel sport
   // teste quoi (`typesForSport` recopiait la liste). Un sport ajouté au moteur devient
   // automatiquement complet côté interface.
@@ -18738,6 +18752,14 @@ function coachOnIngestV2(sport        , answers            , ingested           
   // chrono saisi. Il ne touche jamais le plan : c'est un VERDICT, pas une entrée.
   feasibility: feasibilityV2,
   parseChronoSec,
+  // O-51 — LE PARSEUR D'ALLURE, exposé à côté de celui de CHRONO, parce qu'ils se confondent.
+  //
+  // `parseChronoSec("8:30")` rend **30 600** : c'est un CHRONO, donc 8 h 30. Une ALLURE de
+  // 8:30/km vaut 510. Écrire le banc contre le seul parseur exposé donnait des cibles de
+  // spécificité de 6 466 min — mesuré, et c'est la troisième fois dans la même journée qu'une
+  // allure passe par le mauvais parseur. L'audit v6 avait déjà tranché « parseur d'allure
+  // UNIQUE » : le respecter suppose qu'il soit ATTEIGNABLE.
+  parsePaceSec,
   // Retour utilisateur (08/08/2026) : la référence D+ au Profil — calculatrices, pas une
   // nouvelle donnée pilotée (voir leur définition).
   raceDistanceKm,

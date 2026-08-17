@@ -5751,7 +5751,7 @@ cmd: grep -q 'const floorM = ctx.beginner ? 600 : 750;' src/generator/planGenera
 
 ---
 
-## O-51 · `C30b-A` mesure le DÉCLENCHEMENT d'une passe, pas la propriété qu'elle sert · 🔴 **OUVERT**
+## O-51 · `C30b-A` mesure le DÉCLENCHEMENT d'une passe, pas la propriété qu'elle sert · ✅ **FERMÉ**
 
 Trouvé par le lot 1, en devenant rouge pour la meilleure des raisons : **la passe n'avait plus
 rien à faire.**
@@ -5793,56 +5793,112 @@ famille      règle 19 (« quel est le correctif le moins coûteux qui ferait pa
              grandeur et en MESURE une voisine.
 ```
 
+**Livré (17/08/2026)** : `C30b-A` porte sur `livré ≥ min(cible, plafond de séance)`. Les deux
+bornes viennent du moteur — la cible par `EBV2.longRunSpecTarget` (exposée pour ça), le plafond LU
+sur le plan livré (`bnd.cap` du bloc de corps, la valeur même que la passe emploie). Le mécanisme
+n'est vérifié que QUAND la décision existe ; ses trois moitiés sont inchangées.
+
+La non-vacuité se déplace sur une propriété de l'ATHLÈTE : au moins 2 profils dont la cible mord
+AVANT le plafond (mesuré : les deux 10 km, cibles 79 et 64 pour un plafond de 90 ; les deux semis
+sont décidés par leur plafond de 130). Elle ne peut donc plus devenir vacue parce que le moteur
+s'améliore — c'était tout le défaut.
+
+**Contre-preuve dans les deux sens, quatre fois** (condition non négociable de l'arbitrage) :
+
+```
+verte   moteur réel                         4/4 atteintes, dont 2 décidées par la cible
+rouge   CASSURE MOTEUR — passe C30b coupée  2 rouges, et exactement les 2 où la cible mord
+rouge   longue lue à 0,90×                  4 rouges
+rouge   longue lue à 0,98×                  2 rouges (la tolérance de 2 min ne masque pas)
+rouge   « la cible ne mord jamais »          non-vacuité : 0 profil décidé par la cible
+```
+
+Le correctif le moins coûteux qui aurait fait passer l'ancien test — abaisser `vus < 4` à
+`vus < 3` — est nommé dans le critère, avec la raison qu'il ne résout rien (règle 19).
+
+**Second candidat rattaché, non traité** : `C30-A` épingle `semi/inter/4:30/8h`, un témoin qui a
+bougé **trois fois** (B-02, O-42, lot 1) par trois causes et un mécanisme identique — « une
+quantité de dur change quelque part ». Un témoin qui bouge à chaque variation de dur n'épingle pas
+une propriété, il épingle un état incident. Ré-épinglé à 130 selon la doctrine du banc, avec sa
+raison et la mention que sa valeur suit l'arbitrage Q1.
+
+**Trouvé en le construisant** : ma première écriture lisait l'allure avec `E.parseChronoSec`, le
+parseur de CHRONO — « 8:30 » y vaut 8 h 30, soit 30 600 s, et les cibles sortaient à **6 466 min**.
+Un critère peut échouer parce que le moteur a tort ou parce que l'instrument a tort, et l'échec a
+exactement la même tête. `parsePaceSec` est exposé à côté : le banc n'a plus le choix entre deux
+parseurs dont un est faux ici. Troisième fois dans la même journée qu'une allure passe par le
+mauvais parseur.
+
 ```verify
 id: O-51
-quoi: C30b-A exige le déclenchement de la passe au lieu de vérifier la cible atteinte
-attendu: O51-REPRODUIT
-cmd: grep -q "seulement \${vus} décision(s) observée(s)" audit_v6.mjs && echo "O51-REPRODUIT"
+quoi: C30b-A porte sur la cible atteinte, avec sa non-vacuite sur l'athlete
+attendu: O51-FERME
+cmd: grep -q "profil(s) où la cible mord avant le plafond" audit_v6.mjs && echo "O51-FERME"
 ```
 
 ---
 
-## O-52 · `golden:verify` ne distingue pas un CRASH d'un écart, ni ne dit l'AMPLEUR · 🔴 **OUVERT**
+## O-52 · `golden:verify` n'a pas de sortie d'AMPLEUR à côté de sa sortie de LOCALISATION · ✅ **FERMÉ (b) · (a) RÉFUTÉ**
 
-Deux angles morts du même outil, trouvés le même jour par deux fautes d'instrument distinctes du
-lot 1. Le fondateur a écrit le premier ; le second est apparu en corrigeant le rapport.
+**Le point (a) de ce ticket — « il ne distingue pas un crash d'un écart » — est RÉFUTÉ, deux fois.
+Il venait de moi, le fondateur l'a repris de mon rapport, et il était faux.**
 
 ```
-défaut (a)   Un profil dont la construction LÈVE est compté comme un écart. Mesuré : une
-             exception dans le point fixe a rendu « 476 écarts sur 969 » — aucun plan
-             n'était construit, tous les champs comparés valaient `undefined`. Les deux
-             se présentent comme un gros rayon, et le second se lit comme le premier —
-             dans le sens le plus dangereux, puisqu'un gros rayon invite à chercher une
-             cause de CONCEPTION là où il y a un CRASH.
+réfutation   Reproduit à l'identique (exception réintroduite dans le point fixe), la
+   du (a)     commande AFFICHE, en clair et avant la liste des écarts :
 
-à écrire     si TOUS les champs comparés d'un profil valent undefined, c'est un échec de
-             construction : le dire, pas le compter. Et le wrapper de `buildPlan` qui
-             avale l'exception doit compter ses avalements — un échec silencieux n'est pas
-             un problème tant qu'on ne cherche pas la cause d'autre chose.
+                 ✖ 439 profil(s) en erreur :
+                    swim/sprint/reprise/debutant/competition : r is not defined
 
-défaut (b)   `firstDiff` rend LE PREMIER écart d'un profil, sous un commentaire qui
-             l'énonce (« où compte plus que combien pour corriger »). C'est juste pour
-             LOCALISER. Mais c'est la seule sortie que l'outil offre, donc c'est celle
-             qu'on agrège quand on veut une AMPLEUR — et on publie alors la médiane des
-             87 *premiers* écarts en croyant tenir celle du mouvement.
+              `goldenMaster` attrape, range en `errors`, nomme l'exception et sort en
+              code 1. Je ne l'avais pas vu parce que j'avais lu la sortie au `tail -25`
+              puis au `head -20` — le bloc d'erreurs se trouve exactement entre les deux.
+              L'outil m'a dit la vérité et je l'ai coupée au pipe.
+
+              Second volet du (a) : « le wrapper de buildPlan qui avale l'exception doit
+              compter ses avalements ». Le wrapper qui avale est celui du MONOLITHE, gelé.
+              Celui de la PWA ne l'avale plus — il relève en `MOTEUR_EN_ECHEC`, sous un
+              commentaire qui porte déjà l'argument : *« un filet troué ne protège
+              personne : on préfère désormais un échec VISIBLE »*.
+
+              Troisième faute d'instrument du même lot, et la seule qui accuse un outil
+              innocent. Les deux premières lisaient une grandeur voisine ; celle-ci ne
+              lisait pas du tout.
+
+défaut       Ce qui RESTE, et c'est ce qui m'a réellement induit en erreur : `firstDiff`
+   (b)       rend LE PREMIER écart d'un profil, sous un commentaire qui l'énonce (« où
+             compte plus que combien pour corriger »). C'est juste pour LOCALISER, et
+             c'est la SEULE sortie que l'outil offre — donc c'est celle qu'on agrège quand
+             on veut une AMPLEUR, et on publie alors la médiane de N *premiers* écarts en
+             croyant tenir celle du mouvement.
+
              Mesuré : « médiane 3 min/semaine, max 5, aucune séance n'apparaît ni ne
              disparaît » publié, contre un réel de −1 420 min de nage, max 518 min sur un
              plan, et 2 profils qui changent de nombre de séances.
 
-à écrire     une sortie d'AMPLEUR à côté de la sortie de LOCALISATION — nombre de champs
-             en écart par profil, et l'écart max. Sans elle, l'outil n'a qu'une réponse à
-             donner et elle sera reprise pour l'autre question.
+à écrire     une sortie d'AMPLEUR à côté de la sortie de LOCALISATION : nombre de champs
+             en écart par profil, et le plus grand écart numérique. Un outil qui n'a
+             qu'une réponse la verra reprise pour l'autre question.
 
-famille      (a) « l'absence fait sauter un contrôle » — un crash indiscernable d'un
-             résultat. (b) une mesure qui NOMME une grandeur et en MESURE une voisine,
-             9e occurrence — et la première où l'outil DOCUMENTE qu'il ne mesure pas ça.
+famille      une mesure qui NOMME une grandeur et en MESURE une voisine — et la première
+             où l'outil DOCUMENTE lui-même qu'il ne mesure pas ça.
 ```
+
+**Livré (17/08/2026)** : `countDiff` rend le NOMBRE de feuilles en écart et le plus grand écart
+NUMÉRIQUE, affichés par profil et agrégés (médiane · p90 · max). Le premier tirage sur les 87
+écarts du lot 1 donne **médiane 61 champs par profil, max 471, total 6 403** — là où ma §5 en
+annonçait 87, un par profil. L'outil dit maintenant ce que je croyais lui avoir demandé.
+
+Une amplitude n'est rendue que sur les feuilles NUMÉRIQUES : en inventer une sur une chaîne
+(longueur, distance d'édition) serait une grandeur voisine de plus, dans un ticket qui existe
+pour ça. Contre-preuve : `npm run mesure:o52`, 6 cas, dont « une chaîne n'a pas d'amplitude » et
+« 1 champ ≠ N champs ».
 
 ```verify
 id: O-52
-quoi: golden:verify compte un crash comme un écart et n'expose que le premier écart
-attendu: O52-REPRODUIT
-cmd: grep -q "Chemin du premier écart" scripts/goldenMaster.mjs && echo "O52-REPRODUIT"
+quoi: golden:verify expose l'amplitude a cote de la localisation
+attendu: O52-FERME
+cmd: node -e 'const s=require("fs").readFileSync("scripts/goldenMaster.mjs","utf8");process.exit(s.includes("champ(s) en écart")?0:1)' && echo "O52-FERME"
 ```
 
 ---

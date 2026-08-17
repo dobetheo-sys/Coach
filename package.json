@@ -71,7 +71,8 @@
     "check:hosts": "node scripts/checkExternalHosts.mjs",
     "check:noop": "node scripts/checkEngineIsolation.mjs",
     "mesure:lot1": "node scripts/mesureLot1.mjs",
-    "mesure:lot1-ampleur": "node scripts/ampleurLot1.mjs"
+    "mesure:lot1-ampleur": "node scripts/ampleurLot1.mjs",
+    "mesure:o52": "node scripts/contrepreuveO52.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

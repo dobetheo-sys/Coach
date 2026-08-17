@@ -436,7 +436,32 @@ for (const k of keys) {
     k,
     why: full ? firstDiff(full[k], snap[k], "") ?? "empreinte différente, contenu identique (?)"
       : "empreinte " + ref[k] + " → " + hashes[k] + " (photo locale absente : impossible de localiser)",
+    // O-52 — L'AMPLEUR À CÔTÉ DE LA LOCALISATION. `firstDiff` rend le PREMIER écart, et c'est
+    // le bon choix pour corriger ; mais c'était la SEULE sortie, donc c'est elle qu'on agrège
+    // quand on veut savoir « combien ça bouge » — et on publie alors la médiane de N *premiers*
+    // écarts en croyant tenir celle du mouvement. C'est arrivé, sur le lot 1, et le chiffre faux
+    // a fondé un arbitrage. Un outil qui n'a qu'une réponse la verra reprise pour l'autre
+    // question : il en a deux désormais.
+    ampleur: full ? countDiff(full[k], snap[k]) : null,
   });
+}
+
+/**
+ * O-52 — COMBIEN de champs bougent, et de combien au plus.
+ * Complément strict de `firstDiff` : celle-ci répond « où », celle-ci « combien ». Le plus grand
+ * écart n'est rendu que sur les feuilles NUMÉRIQUES — un changement de chaîne n'a pas d'amplitude,
+ * et lui en inventer une (longueur, distance d'édition) serait une grandeur voisine de plus.
+ */
+function countDiff(a, b, out) {
+  out = out || { n: 0, max: 0, ou: "" };
+  if (JSON.stringify(a) === JSON.stringify(b)) return out;
+  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") {
+    out.n++;
+    if (typeof a === "number" && typeof b === "number" && Math.abs(b - a) > out.max) out.max = Math.abs(b - a);
+    return out;
+  }
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) countDiff(a[k], b[k], out);
+  return out;
 }
 
 /** Chemin du premier écart : « où » compte plus que « combien » pour corriger. */
@@ -459,8 +484,24 @@ if (!diffs.length) {
   process.exit(errors.length ? 1 : 0);
 }
 console.error("✖ golden master : " + diffs.length + " écart(s) sur " + n + " profils");
-for (const d of diffs.slice(0, Number(process.env.GOLDEN_SHOW||12))) console.error("   " + d.k + "\n      " + d.why);
-if (diffs.length > 12) console.error("   … et " + (diffs.length - 12) + " autre(s)");
+const show = Number(process.env.GOLDEN_SHOW || 12);
+for (const d of diffs.slice(0, show)) {
+  const a = d.ampleur;
+  console.error("   " + d.k + (a ? "   [" + a.n + " champ(s) en écart" + (a.max ? ", plus grand écart numérique " + (Math.round(a.max * 1000) / 1000) : "") + "]" : ""));
+  console.error("      " + d.why);
+}
+if (diffs.length > show) console.error("   … et " + (diffs.length - show) + " autre(s)");
+// O-52 — L'AGRÉGAT, pour que « combien ça bouge » ne se lise plus dans la liste des « où ».
+const amp = diffs.map((d) => d.ampleur).filter(Boolean);
+if (amp.length) {
+  const tri = (f) => amp.map(f).sort((x, y) => x - y);
+  const ch = tri((a) => a.n), mx = tri((a) => a.max);
+  const med = (l) => l[Math.floor(l.length / 2)], p90 = (l) => l[Math.min(l.length - 1, Math.floor(l.length * 0.9))];
+  console.error("\nAMPLEUR (et non localisation — les deux ne répondent pas à la même question) :");
+  console.error("   champs en écart par profil : médiane " + med(ch) + " · p90 " + p90(ch) + " · max " + ch[ch.length - 1]
+    + "   (total " + ch.reduce((t, x) => t + x, 0) + ")");
+  console.error("   plus grand écart numérique : médiane " + med(mx) + " · p90 " + p90(mx) + " · max " + mx[mx.length - 1]);
+}
 console.error("\nUn écart = l'extraction est fausse. Si le changement est VOULU, recapturer");
 console.error("explicitement (`--capture`) pour qu'il apparaisse dans le diff git.");
 process.exit(1);
