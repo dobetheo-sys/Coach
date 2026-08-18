@@ -6734,6 +6734,18 @@ format, position)`, où seule la CIBLE est propre au type (le brick vise la dur�
 vélo+CAP du format, le footing un plafond qui suit la phase). L'arbitrage rendu ici reste
 inchangé — le classement à deux dimensions et T-44.
 
+**Périmètre élargi de deux pièces (R134_ET_ALLOCATION, 18/08/2026)** : (§4) les **semaines de
+récup** — même cause exacte, des bornes qui ne varient pas avec l'athlète : 3,5 h de décharge
+pour quelqu'un à 10 h, cinq séances toutes à leur plafond (footing 30', nage récup 60') là où
+6-7 h seraient la décharge d'un athlète à 13 h ; pas de ticket séparé, ça se corrige ici. Et
+(§3) **le mécanisme qui libère le budget est nommé** : le plafond structurel vaut
+`nSess × durée de séance`, et les durées sont précisément les bornes fixes que ce lot rend
+variables — lot progression → les séances s'allongent → le structurel monte → le budget monte →
+**l'allocation statue enfin sur un budget réaliste**. (La prémisse antérieure « O-69 libère le
+budget » était fausse, réfutée par la mesure : après le départ ancré, ce qui borne est
+l'historique 13 h et le structurel 11,45 — le pic va à 10,4, pas à 15. L'ordre tient, par ce
+mécanisme-ci.)
+
 ### ARBITRAGE RENDU (fondateur, 17/08/2026) : à faire APRÈS le merge, et EN PREMIER
 
 *« Le défaut n'est pas l'ordre, c'est la MONNAIE. »* `sessions_max` compte des séances, le
@@ -7028,9 +7040,24 @@ fuzz#93 ; informer, pas bloquer).
 
 **Le creux ne disparaît qu'à moitié, et c'est publié** : S5 4,0 → 6,8 h (la courbe suit), mais
 S11/S17 restent à 3,5 h — leurs 5 séances de récup sont TOUTES à leur plafond (footing 30',
-nage récup 60') : la STRUCTURE de la semaine de récup ne scale pas avec l'athlète. Ticket
-séparé si le fondateur le juge : la semaine de récup d'un athlète à 10 h porte les mêmes
-séances plafonnées que celle d'un athlète à 6 h.
+nage récup 60') : la STRUCTURE de la semaine de récup ne scale pas avec l'athlète. **PAS un
+ticket (arbitrage fondateur, R134_ET_ALLOCATION §4)** : même cause que le lot progression —
+des bornes qui ne varient pas avec l'athlète — et elle se corrige au même endroit ; un ticket
+séparé ferait croire à deux problèmes. Rattaché au périmètre du lot progression.
+
+**§1 du retour (18/08) — le « facteur deux » était une collision d'AXES, la mienne.** Sa table
+lisait « plan livré : départ 5,8 h » — c'est la gauche de MA flèche « 5,8 → 10,3 » (AVANT →
+APRÈS le lot), qui a le même format que l'affichage « volume X → Y » de l'app (BASE → PIC).
+Mesuré sur l'état déployé : **semaine 1 livrée = 10,3 h**, l'affichage dit « 10,3 → 10,3 »,
+aucun plafond ne rabat le plancher. L'écart RÉEL est 11 → 10,3 (−7 %, les bornes de séance et
+leur quantification absorbent la différence entre cible de courbe et rendu) — et son issue (a)
+s'applique quand même : le journal annonçait une ancre sans dire le rendu. **La décision porte
+désormais les deux**, mise à jour au point fixe : « Départ ancré sur ton volume récent :
+11 h/sem (85 % de 13 h) sur 21 semaines — semaine 1 livrée : 10,3 h (les bornes de séance
+absorbent 0,7 h) ». Règle qui en sort, cousine de « une table porte son axe » : **un intervalle
+fléché porte son axe** — « 5,8 → 10,3 » se lit base → pic dans un dépôt dont c'est le format
+d'affichage, avant → après dans un rapport ; les deux lectures étaient disponibles et j'ai
+laissé le lecteur choisir.
 
 **Fermé en chemin, même famille que le seuil brutal d'O-21b** : la borne stricte « récup <
 dernière charge » payait un excédent d'UNE minute (récup 180, charge 180) par la coupe d'un
@@ -7124,14 +7151,18 @@ plancher DÉCLARÉ du bloc quand il existe : le « plancher digne » est une pol
 d'affichage, pas une règle du manifeste), jamais un jour coupé. Pire semaine du profil
 dégénéré : 255 → 242 min (borne v6 : 245).
 
-**La moitié VÉLO attend sa lecture — la décision écrite R13.4, citée verbatim** (le code,
-`src/sports/tri/index.ts`, branche `dur1` spec/peak) : *« VO2max vélo — Puissance aérobie
-maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est
-travaillée dans le brick). »* Son contexte : R13.4 a remplacé un fall-through qui envoyait la
-FORCE basse cadence en plein affûtage ; la note du maintien VO2 vélo dit que la race-pace vélo
-vit déjà dans le brick, donc le créneau dur1 peut porter le maintien aérobie sans doubler le
-spécifique. C'est compatible avec « 1 VO2max maximum (maintien) » — la séance maintenue EST
-celle-là. À toi de trancher si elle reste.
+**La moitié VÉLO : R13.4 CONFIRMÉ (arbitrage du 18/08, R134_ET_ALLOCATION §2), avec une
+CONDITION DE RÉEXAMEN.** La décision citée — *« VO2max vélo — Puissance aérobie maximale,
+maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans
+le brick) »* — tient : le spécifique vélo vivant dans le brick, le créneau dur porte le
+maintien sans doubler. Mais sa prémisse s'appuie sur un type de séance que le lot progression
+va changer : **les bricks sont figés** (10 identiques, forme finale dès la première
+occurrence), donc le spécifique sur lequel R13.4 s'appuie est plus faible qu'il ne le croit.
+**Condition écrite** : après le lot progression, quand le brick portera une charge croissante,
+le maintien VO2max entrera en concurrence avec un spécifique devenu lourd — et l'argument qui
+fera pencher est nommé d'avance : le VO2max ne décline pas en cinq semaines quand on roule
+5-6 h/sem dont un brick de trois heures ; le maintien protégerait alors contre une décroissance
+qui n'aurait pas lieu. Aujourd'hui, bricks figés : R13.4 a raison. Après le lot : à revoir.
 
 ```verify
 id: O-70

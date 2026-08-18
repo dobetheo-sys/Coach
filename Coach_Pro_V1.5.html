@@ -14435,6 +14435,21 @@ function generatePlan(profile                , opts                             
     // 5,8). Même leçon qu'au bloc au-dessus (O-35) : l'annonce se recompte sur les séances
     // TELLES QU'ELLES SONT LIVRÉES — ici, la première semaine de charge.
     plan.volBase = chargeW.length ? Math.round(livre(chargeW[0]) * 10) / 10 : Math.round(volPeak * 0.58 * 10) / 10;
+    // O-69 §1 (retour fondateur, 18/08/2026) — LA DÉCISION PORTE LE LIVRÉ, PAS SEULEMENT
+    // L'ANCRE. « Départ ancré : 11 h/sem » avec une semaine 1 livrée à 10,3 est le défaut que
+    // R20.2 existe pour empêcher : une annonce que le plan ne tient pas, à −7 % près (les
+    // bornes de séance et leur quantification absorbent l'écart entre la cible de courbe et le
+    // rendu). Le journal dit désormais les deux — l'ancre ET ce que la semaine 1 porte — et il
+    // le dit ICI, au point fixe, sur la valeur que l'athlète lira (même leçon qu'O-35 : une
+    // décision écrite au milieu du pipeline décrit l'avant-dernier état).
+    {
+      const dAncre = r.decisions.find((d) => d.id === "O69-ancrage");
+      if (dAncre && plan.volBase > 0) {
+        const ecart = Math.round((_floorLwH - plan.volBase) * 10) / 10;
+        dAncre.val += " — semaine 1 livrée : " + plan.volBase + "h"
+          + (ecart >= 0.3 ? " (les bornes de séance absorbent " + ecart + "h)" : "");
+      }
+    }
   }
 
   // ---- R20.2 — LE VOLUME MAX DIT CE QUI LE BLOQUE, ET CE QUI LE DÉBLOQUERAIT ----
