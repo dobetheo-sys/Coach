@@ -7061,6 +7061,68 @@ appareil : refaire le clic sur la build déployée post-merge, regarder la marqu
 Profil. S'il échoue là, on a une cible de reproduction (pile tactile réelle, chemin d'écran
 précis) qu'aucun de mes chemins n'exerce.
 
+**Le discriminant s'est affûté (balayage O-71)** : « Cycles 10j » exige `shift_ok === "oui"`,
+et cette question — « Un cycle de 10 jours glisse sur le calendrier. OK ? » — n'apparaît QUE
+dans la branche dépliée par un clic sur « quotidienne ». Son store porte donc nécessairement
+DEUX réponses de ce chemin. La question à lui poser : *se souvient-il d'avoir répondu à la
+question du cycle de 10 jours ?* S'il s'en souvient, le mystère est résolu — et le suspect
+devient les LIBELLÉS : « Tous les jours, **libre** » (= `quotidienne`) et « Tous les jours,
+**contraint** » (= `semaine`) commencent par les trois mêmes mots ; quelqu'un qui s'entraîne
+tous les jours clique naturellement le premier. S'il ne s'en souvient pas, la cible de
+reproduction est réelle.
+
+## O-71 · Le journal des ✓ est adressé par ORDINAUX dans un plan RÉGÉNÉRÉ · 🔴 **OUVERT**
+
+Résultat du balayage demandé (ORDINAL_ET_VOLUME §1) : *« tout endroit qui stocke un INDICE dans
+une structure DÉRIVÉE de l'état, plutôt qu'une identité »*. La classe a **quatre membres et une
+exemption**, et le plus gros n'était pas `S.step` :
+
+**`answers.done` = `{"sem|jour|si": true}`** — trois coordonnées POSITIONNELLES dans un plan que
+l'app **régénère depuis les réponses à chaque chargement** (`state.js` pose `S.currentPlan=null`
+au restore). Une clé posée sous le plan A désigne « la séance qui se trouve à cette position »
+sous le plan B — et B diffère de A pour des raisons que le produit ENCOURAGE. Mesuré sur le
+profil du fondateur (344 clés), un facteur à la fois, témoin à l'appui :
+
+```
+course reportée de +7 jours    → 23 clés sur 344 (7 %) désignent une AUTRE séance
+                                 (« Footing facile » ✓ → « OFF » ; nage continue → nage récup)
+blessure « genou » déclarée    → 10 autres séances, dont 5 changent de DISCIPLINE
+  au Profil en cours de plan     (« Nage vitesse » ✓ → « Rappel allure course CAP ») + 1 orpheline
+témoin (mêmes réponses)        → 344/344 identiques — le plan est déterministe, la mesure mesure
+```
+
+Un ✓ qui change de discipline crédite l'XP de la **mauvaise jauge** (R25 recompte depuis
+`answers.done`) ; un OFF devenu footing apparaît **pré-coché** ; et l'adhérence P1 — celle qui
+pèse le gain O-68 — compte ces minutes-là. La correction de fond est connue (les clés portent une
+IDENTITÉ de séance, pas une position) mais elle touche le format d'état `eb_state_v2` : migration
+à concevoir, **pas un correctif d'un soir**. Même famille : **`answers.daySwaps`**
+(`[semaine, jourA, jourB]` — les jours sont des identités, la SEMAINE est un ordinal, même
+exposition au renumérotage) et **O-58** (positions de paliers B-17 calculées sur le calendrier de
+phase sans regarder si la semaine visée porte le créneau — confirmé de la famille).
+
+**`S.step`** : stable à l'EXÉCUTION — la sonde §1b a marché le questionnaire tri de bout en bout
+en togglant une branche à chaque écran : **0 recomposition de la liste** (elle ne dépend que du
+sport et du tier ; `branches()` injecte du DOM DANS une étape, jamais une étape). L'exposition
+résiduelle est le restore À TRAVERS un déploiement qui change la liste (`e.step` est persisté ;
+U14 a réordonné les étapes une fois) — le chemin du refus est déjà réparé par identité
+(`tabs.js`), le restore ne l'est pas. **Exemption** : `answers.tests` stocke bien des positions
+(départage O-23 à date égale) mais la collection est **append-only, donc stable** — c'est
+exactement la condition de l'énoncé (« un ordinal n'est une position que si la collection est
+stable »), l'exemption est nommée pour ne pas être re-balayée.
+
+**Et l'hypothèse §1b (« une question jamais affichée → `quotidienne` par défaut ») est RÉFUTÉE
+pour son cas, par le moteur lui-même** : « Cycles 10j » exige `shift_ok === "oui"` sans repli
+(`reasoningEngine.ts`, `use10`), et `shift_ok` n'existe QUE dans la branche affichée après un
+clic sur « quotidienne ». Le plan qui porte des cycles 10j prouve DEUX réponses volontaires sur
+ce chemin. Voir le complément O-59.
+
+```verify
+id: O-71
+quoi: les clés du journal des ✓ désignent-elles encore une AUTRE séance quand la course est reportée de 7 jours ?
+attendu: reproduit — ~23 clés sur ~344 changent de séance sur le profil fondateur, témoin 0
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const ix=p=>{const m=new Map();for(const w of p.weeks)for(const d of w.days)d.sessions.forEach((s,si)=>m.set(w.num+'|'+d.jour+'|'+si,(s.d||'')+(s.name||'')));return m;};const b=a=>ix(globalThis.EBV2.buildPlan('tri',a));const A=b(B),C=b({...B,race_date:'2027-05-30'}),T=b({...B});let d=0,t=0;for(const[k,v]of A){if(C.has(k)&&C.get(k)!==v)d++;if(T.get(k)!==v)t++;}console.log('autres:'+d+' temoin:'+t);if(!(d>=15&&t===0))process.exit(1);"
+```
+
 ## §6 · L'onglet Semaine collé sur une semaine consultée · ✅ **FERMÉ**
 
 `vue` est au niveau module, posée par les flèches, remise à `null` par le seul bouton « semaine
