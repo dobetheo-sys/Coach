@@ -249,6 +249,25 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
       // pacing. C'est ce qu'un entraîneur ferait, et c'est ce que la mesure dit.
       const rpBand = TRI_BIKE[fmt || ""];
       const tiersRp = !!rpBand && rpBand.hi < 0.85;
+      // LOT PROGRESSION (pièce 1) — LE BRICK A UNE TRAJECTOIRE, PAS UNE TAILLE. Mesuré
+      // (`mesure:progression`, profil fondateur) : dix bricks IDENTIQUES à 212 min de S25 à
+      // S38 — saturés à leurs bornes hautes dès la première occurrence, parce que la boucle de
+      // volume amène chaque semaine au même point fixe et qu'aucune borne ne varie avec la
+      // position. Le gabarit portait une progression de phase (PT/prog) que la boucle
+      // DÉTRUISAIT. La trajectoire vit donc dans les BORNES (note de conception B-17 :
+      // `borne(type, semaine) = f(départ, cible du format, position)`) : le PLAFOND des legs
+      // interpole GÉOMÉTRIQUEMENT (C22 est un rapport) du bas audité du format (C21b — la
+      // taille d'entrée conçue) au haut audité, sur la position dérivée des PHASES spec+peak
+      // (jamais du calendrier absolu). À volume hebdomadaire constant (O-69), la progression
+      // du brick est une RECOMPOSITION : les minutes viennent des séances faciles — « maintien
+      // de volume, changement de contenu », le fond physiologique d'O-69 lui-même.
+      const _phS = r.phases.find((p) => p.id === "spec"), _phP = r.phases.find((p) => p.id === "peak");
+      const _wS = _phS ? _phS.weeks : 0, _wP = _phP ? _phP.weeks : 0;
+      const _tBr = Math.max(0, Math.min(1, phase === "peak"
+        ? (_wS + prog * Math.max(1, _wP)) / Math.max(1, _wS + _wP)
+        : (prog * _wS) / Math.max(1, _wS + _wP)));
+      const _gBike = Math.pow(bb.lo / bb.hi, 1 - _tBr);
+      const _gRun = Math.pow(br.lo / br.hi, 1 - _tBr);
       const bikeTot = PT(bb.lo, Math.round(bb.hi * rf));
       const bikeZ2 = tiersRp ? Math.max(1, Math.round(bikeTot * 2 / 3)) : bikeTot;
       const bikeRp = Math.max(0, bikeTot - bikeZ2);
@@ -257,11 +276,11 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
           ? "DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), "
           : "")
         + "puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.", det: "", steps: [
-        Object.assign({ role: "body", leg: "bike", durationMin: bikeZ2, zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string } as V1Step, { share: tiersRp ? 2 / 3 : 1 }),
+        Object.assign({ role: "body", leg: "bike", durationMin: bikeZ2, zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string, progCap: _gBike } as V1Step, { share: tiersRp ? 2 / 3 : 1 }),
         // `rpBand` accompagne le step : c'est la bande réelle de CETTE épreuve, et c'est elle
         // qui décide si l'effort compte dur ou modéré (R20.5).
-        ...(tiersRp ? [Object.assign({ role: "body", leg: "bike", durationMin: bikeRp, zone: "bk.rp", intensity: intOf("bk.rp") as unknown as string, suffix: " à l'allure de ton jour J" } as V1Step, { share: 1 / 3, rpBand })] : []),
-        { role: "body", leg: "run", durationMin: PT(br.lo, Math.round(br.hi * rf)), d: "rn" } as V1Step,
+        ...(tiersRp ? [Object.assign({ role: "body", leg: "bike", durationMin: bikeRp, zone: "bk.rp", intensity: intOf("bk.rp") as unknown as string, suffix: " à l'allure de ton jour J", progCap: _gBike } as V1Step, { share: 1 / 3, rpBand })] : []),
+        { role: "body", leg: "run", durationMin: PT(br.lo, Math.round(br.hi * rf)), d: "rn", progCap: _gRun } as V1Step,
       ], ...( { runInj } as object) });
     } else if (phase === "taper" && !medHold && kit.weekNum < kit.r.weeks) {
       // R18.4 — L'AFFÛTAGE GARDAIT LE VOLUME BAS ET PERDAIT LA SPÉCIFICITÉ.

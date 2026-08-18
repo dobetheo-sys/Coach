@@ -6734,6 +6734,42 @@ format, position)`, où seule la CIBLE est propre au type (le brick vise la dur�
 vélo+CAP du format, le footing un plafond qui suit la phase). L'arbitrage rendu ici reste
 inchangé — le classement à deux dimensions et T-44.
 
+### PIÈCE 1 LIVRÉE (18/08/2026) — la trajectoire du brick tri, et D3 payée par surprise
+
+Le mécanisme mesuré d'abord : les gabarits du brick PORTENT une progression de phase (PT/prog),
+mais la boucle de volume la détruit — à volume hebdomadaire plat (O-69), chaque semaine converge
+vers le même point fixe, et le brick naissait SATURÉ à ses bornes hautes dès la première
+occurrence (212 min = bike 180 + run 32, les caps C21b du 70.3 ; l'état « libre » de ma sonde
+était un trou d'instrument — les legs ne portent pas de `bnd`, elle ne lisait rien). La
+trajectoire vit donc dans les BORNES, comme la note le prescrit : `progCap` sur les legs, le
+PLAFOND interpole GÉOMÉTRIQUEMENT (C22 est un rapport) du bas audité C21b (la taille d'entrée du
+format) au haut audité, position dérivée des PHASES spec+peak. **Jamais le plancher** — les
+planchers sont souverains et feraient déborder l'enveloppe des petits profils. Mesuré (profil
+fondateur) : **10 bricks, 10 valeurs, 117 → 212 min (+81 %)**. À volume constant, la progression
+est une RECOMPOSITION : les minutes viennent des séances faciles — le fond physiologique d'O-69
+lui-même.
+
+**D3 — la plus vieille dette du banc v6 (audit externe du 29/07) — est PAYÉE par cette pièce** :
+« C22 entre semaines de charge » échouait sur les plans saturés parce que la première semaine de
+spécifique sautait de plus de +10 % (le brick y naissait à ses bornes hautes). Avec une première
+occurrence à la taille d'entrée du format, le saut disparaît. `expect` basculé à `'pass'` dans le
+même commit — garde-fou permanent, comme O17. Deux ré-ancrages annexes, chacun motivé : T-39
+26 → 25 (une continuité de plus payée sur vol-min — le sens attendu), barre R14.1-G 1,15 → 1,10
+(O-69 relève le plan de maintien, l'écart légitime se resserre — même famille que le re-basage
+P7).
+
+**Et le plan plat se DIT (O69-plat)** : quand `volPeak − volBase < 8 %`, une décision l'annonce
+avec sa cause (« ton volume réel est déjà au niveau de ce que tes plafonds autorisent — la
+progression passe par le CONTENU ») — l'option (b) du retour O69_PLAN_PLAT, livrée en même temps
+que l'option (a) puisque la pièce 1 enchaînait. §3 du même retour, mesuré : pic S37 à 10,3 h,
+ex æquo avec S1 ; charges entre 8,2 et 10,3 h.
+
+**Pièces suivantes** : footing (plafond qui suit la phase — `ftCaps` constant, 84 % au plafond),
+sortie longue CAP du tri (97' constant), semaines de récup (bornes qui scalent avec l'athlète),
+pivot swimrun / brick duathlon (mêmes types, autres modules), et la re-mesure des types qui
+DESCENDENT (nage vitesse 91 → 27 : la décroissance du contenu qualité sur un plan plat est la
+question miroir).
+
 **Périmètre élargi de deux pièces (R134_ET_ALLOCATION, 18/08/2026)** : (§4) les **semaines de
 récup** — même cause exacte, des bornes qui ne varient pas avec l'athlète : 3,5 h de décharge
 pour quelqu'un à 10 h, cinq séances toutes à leur plafond (footing 30', nage récup 60') là où

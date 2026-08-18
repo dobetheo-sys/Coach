@@ -48,6 +48,15 @@ export interface V1Step {
    *  qualitative SANS cible chiffrée · `rolling` → FC + D+ cible. Sans ce champ, le
    *  renderer réimprimait « 5'36/km » sur 1 300 m de dénivelé — une allure impossible. */
   gradient?: "up" | "down" | "flat" | "rolling";
+  /** LOT PROGRESSION — facteur (0..1] appliqué au PLAFOND du bloc par `blockBounds`, jamais au
+   *  plancher. C'est la pièce qui rend une borne DÉPENDANTE DE LA POSITION dans le plan
+   *  (`borne(type, semaine) = f(départ, cible du format, position)`, note de conception B-17) :
+   *  sans elle, la boucle de volume amène chaque occurrence d'un type au même point fixe et le
+   *  type est « figé » — mesuré : 10 bricks identiques à 212 min, saturés à leur plafond dès la
+   *  première occurrence. Un plafond qui MONTE avec la position donne la trajectoire ; un
+   *  plancher progressif est délibérément exclu (les planchers sont souverains et feraient
+   *  déborder l'enveloppe des petits profils). Absent = 1 = comportement d'avant. */
+  progCap?: number;
   dplusM?: number; // dénivelé positif du bloc (par répétition)
   dmoinsM?: number; // dénivelé négatif du bloc (par répétition) — axe de charge à part entière
   mode?: "run" | "hike" | "run_hike"; // course, marche rapide, alternance (la marche est une compétence)

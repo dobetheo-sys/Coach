@@ -1345,7 +1345,11 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   // B-17 de plus rejoignent la catégorie documentée ci-dessus : « le VOLUME, et non C15, ne
   // peut pas payer la séance ». Les trois exemples sont apparus AVANT le clamp C3 du même lot
   // (mesuré sur l'état intermédiaire) : c'est le contenu, pas le clamp.
-  const RABOTES_ATTENDUS = 26;
+  // PUIS 26 → **25** (lot progression pièce 1, 18/08/2026) : la trajectoire du brick rend les
+  // bricks de début de spécifique PLUS PETITS (117 min au lieu de 212 en première occurrence),
+  // les semaines saturées de vol-min retrouvent des minutes, et une continuité de plus est
+  // payée. Un raboté de MOINS est le sens attendu du lot — ré-épinglé à la baisse.
+  const RABOTES_ATTENDUS = 25;
   let n = 0, ko = 0; const zones = {}, ex = [];
   for (const { key, plan } of goldenAvecMoteur()) {
     for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])

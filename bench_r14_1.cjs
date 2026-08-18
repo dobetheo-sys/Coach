@@ -121,7 +121,13 @@ check("R14.1-G", "un plan qui monte le volume projette plus qu'un plan de mainti
   const monte = proj(ans({ vol_max: "13", vol_recent: "9" }));
   if (!maint || !monte || !maint.gainPct) return { ok: false, info: "gainPct absent" };
   const r = monte.gainPct.ftp / Math.max(1e-6, maint.gainPct.ftp);
-  return { ok: r >= 1.15, info: `maintien ${(maint.gainPct.ftp * 100).toFixed(1)}% → montée ${(monte.gainPct.ftp * 100).toFixed(1)}% (×${r.toFixed(2)})` };
+  // Barre 1,15 → 1,10 (O-69, 18/08/2026) : le plancher du volume récent RELÈVE le plan de
+  // maintien (vol_max 9 = vol_recent 9 → départ ancré à 7,65 h, moyenne prescrite plus haute),
+  // donc l'ÉCART légitime entre les deux plans se resserre — mesuré ×1,15 → ×1,14, les deux
+  // gains montant en absolu. La propriété gardée reste la MÊME (monotonie + sensibilité
+  // matérielle au volume, le jumeau de sensibilité de P10) ; seule la base du seuil a bougé,
+  // par le moteur et volontairement. Même famille que le re-basage de P7 (§4).
+  return { ok: r >= 1.10, info: `maintien ${(maint.gainPct.ftp * 100).toFixed(1)}% → montée ${(monte.gainPct.ftp * 100).toFixed(1)}% (×${r.toFixed(2)})` };
 });
 
 /* ========== R14.1-H — confiance honnête au jour 0 ========== */

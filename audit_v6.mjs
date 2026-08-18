@@ -352,7 +352,13 @@ test("D2", "Aucune violation dure sur la matrice standard", "fail", () => {
   return { ok: n === 0, detail: `${n}/${tot} configurations avec ≥1 violation dure` };
 });
 
-test("D3", "C22 : progression ≤ +10 % entre semaines de charge", "fail", () => {
+// D3 — DETTE PAYÉE PAR LE LOT PROGRESSION (18/08/2026), pièce 1 : la trajectoire du brick.
+// La dette venait des plans SATURÉS : chaque brick naissait à ses bornes hautes, donc la
+// première semaine de spécifique sautait de plus de +10 % sur la précédente. Le plafond du
+// brick interpole désormais du bas audité au haut audité (C21b) sur la position de phase —
+// la première occurrence est la taille d'ENTRÉE du format, et le saut disparaît. `expect`
+// passe à 'pass' dans le même commit : garde-fou permanent, comme O17 avant elle.
+test("D3", "C22 : progression ≤ +10 % entre semaines de charge", "pass", () => {
   const bad = [];
   for (const sport of Object.keys(FORMATS))
     for (const format of FORMATS[sport]) {

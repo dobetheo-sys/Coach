@@ -2151,9 +2151,12 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         // divergent le générateur produit ce que l'auditeur refuse, loin de la cause.
         // `CAP_BRICK_BIKE` est SUPPRIMÉE (elle n'avait que cet unique consommateur) plutôt que
         // dérivée : une table dérivée reste une table qu'on peut réécrire.
-        return { floor: Math.round((bb ? bb[0] : 32) * sh), cap: Math.round((bb ? bb[1] : 300) * brickRF * sh) };
+        // LOT PROGRESSION — le plafond suit `progCap` (la trajectoire posée par le module),
+        // le plancher audité C21b ne bouge jamais ; `max(floor, …)` garde floor ≤ cap.
+        const flB = Math.round((bb ? bb[0] : 32) * sh);
+        return { floor: flB, cap: Math.max(flB, Math.round((bb ? bb[1] : 300) * brickRF * sh * (b.progCap ?? 1))) };
       }
-      return { floor: 8, cap: Math.round((CAP_BRICK_RUN[fmt] || 70) * brickRF) };
+      return { floor: 8, cap: Math.max(8, Math.round((CAP_BRICK_RUN[fmt] || 70) * brickRF * (b.progCap ?? 1))) };
     }
     if (s.long) {
       if (s.d === "sw") return { floor: 820, cap: CAP_SWIM[fmt] || 4500 };
@@ -3849,6 +3852,23 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         const ecart = Math.round((_floorLwH - plan.volBase) * 10) / 10;
         dAncre.val += " — semaine 1 livrée : " + plan.volBase + "h"
           + (ecart >= 0.3 ? " (les bornes de séance absorbent " + ecart + "h)" : "");
+      }
+      // O69-plat (retour fondateur, 18/08/2026) — UN PLAN PLAT SE DIT, IL NE SE DEVINE PAS.
+      // Quand le départ ancré rejoint un plafond immobile, il ne reste plus d'espace entre les
+      // deux : l'affichage « 10,3 → 10,3 » est exact, mais sans explication l'athlète conclut
+      // que l'app est cassée. Le seuil (< 8 %) est celui d'un plan dont la construction en
+      // volume est imperceptible à l'œil sur le graphique — mesuré sur le profil fondateur :
+      // charges de 8,2 à 10,3 h, pic ex æquo avec la semaine 1.
+      if (dAncre && plan.volBase > 0 && volPeak > 0 && volPeak - plan.volBase < volPeak * 0.08) {
+        r.decisions.push({
+          id: "O69-plat", what: "Ton volume ne montera presque pas — et c'est un choix informé",
+          val: "de " + plan.volBase + "h à " + volPeak + "h sur tout le plan",
+          why: "Ton volume réel est déjà au niveau de ce que tes plafonds autorisent : le plan MAINTIENT "
+            + "ce volume au lieu de le construire, et la progression passe par le CONTENU des séances — "
+            + "spécificité, continuité, intensité dirigée. Ce n'est pas un défaut d'affichage : c'est la "
+            + "conséquence d'un départ honnête sous un plafond que la carte « ce qui borne » te nomme, "
+            + "avec son levier.",
+        });
       }
     }
   }
