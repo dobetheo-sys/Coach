@@ -119,6 +119,21 @@ export const C22_MAX_WEEKLY_GROWTH = rule("C22", "progression lissée : jamais +
 export const C22_AUDIT_HARD_JUMP = rule("C22-dur", "au-delà de +25% livré entre semaines de charge, violation dure quelle que soit la cause (V1.5 gelé compris)", 1.25);
 export const RECUP_WEEK_FACTOR = 0.62;
 
+/** O-69 — le volume récent est un PLANCHER autant qu'un plafond (arbitrage fondateur,
+ * 18/08/2026). Treize heures non structurées et treize heures structurées diffèrent par la
+ * COMPOSITION, pas par la charge : le volume, l'endurance générale et la tolérance tissulaire
+ * sont ACQUIS ; ce qui ne l'est pas, c'est l'intensité dirigée et la récupération entre
+ * séances de qualité. La reprise juste n'est donc pas une coupe de volume mais un maintien
+ * avec changement de contenu — descendre à 47 % pendant douze semaines est un stimulus de
+ * DÉSENTRAÎNEMENT. Le départ vaut vol_recent × ce facteur : la réduction fait place à
+ * l'intensité structurée nouvelle, elle ne réapprend pas un volume déjà acquis.
+ * Fourchette posée par le fondateur : 0,80-0,90, sans mesure derrière — c'est la FORME qui
+ * est arbitrée ; si la mesure montre 0,75 ou 0,95, la mesure gagne (révocable, comme toute
+ * décision fondée sur une mesure qui bouge). Le plancher ne porte que sur la COURBE : tous
+ * les plafonds de sécurité (C3, référence blessure/âge, croissance sur le livré, N2,
+ * affûtage R3.13) restent au-dessus de lui. */
+export const O69_DEPART_PLANCHER = rule("O-69", "le départ du plan vaut au moins vol_recent × 0,85 — on garde le volume acquis, on change le contenu", 0.85);
+
 /** R3.13 — affûtage : si les planchers bloquent, la fréquence cède sous ce ratio du pic réel. */
 export const R313_TAPER_MAX_VS_PEAK = rule("R3.13", "réduction d'affûtage ≥40% garantie même quand les planchers de séance bloquent le scaling", 0.55);
 

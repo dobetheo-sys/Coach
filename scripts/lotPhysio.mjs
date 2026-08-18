@@ -938,7 +938,18 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // (corpus inchangé, 985 → 985 profils). Le plafond de séance de nage suit la position dans le
 // plan, les continuités sont livrées, et huit profils de plus voient leur chaîne déclarée
 // retrouver leur pic livré. Une BAISSE s'épingle aussi rigoureusement qu'une hausse.
-const SCEAU_ATTENDU = { S1: 5, S4: 357, S5: 508 };
+// O-69 (18/08/2026) — LE PLANCHER DU VOLUME RÉCENT NE BOUGE AUCUN COMPTEUR DU SCEAU.
+// Vérifié en le livrant : S4 357 et S5 508 avant comme après, corpus inchangé (985 plans).
+// Une passe intermédiaire du même lot (retrait « 1bis » dans la boucle de volume) les avait
+// déplacés à 352/506 et j'avais RÉ-ÉPINGLÉ en attribuant le mouvement à O-69 — attribution
+// FAUSSE, démontrée en retirant la passe (jamais déclenchée sur le cas qu'elle visait, retirée
+// comme R16.10 l'a fait d'une règle miroir) : les compteurs sont revenus seuls à 357/508.
+// Un cliquet ré-épinglé sur une cause non isolée est un cliquet menti — l'épisode reste écrit.
+// PUIS S5 508 → **503** (O-70, 18/08/2026) : le MOTEUR, volontairement — le pic du tri change de
+// contenu (VO2max course → spécifique, 0 VO2 en décharge, C3 rejoué au point fixe sur
+// l'enveloppe). S4 INCHANGÉ à 357, corpus inchangé (985) : cinq profils de MOINS dont la chaîne
+// déclarée diverge du pic livré — une BAISSE, ré-épinglée avec la même rigueur qu'une hausse.
+const SCEAU_ATTENDU = { S1: 5, S4: 357, S5: 503 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1327,7 +1338,14 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   // Contre-preuve, en rendant le croisement NON VIDE (`sw.aero` ajoutée aux zones plafonnées) :
   //     garde posée .... 57 rabotés / 308   ← inchangé, elle tient
   //     garde retirée .. 195 rabotés / 308  ← +138, elle sert
-  const RABOTES_ATTENDUS = 23;
+  // O-69 (18/08/2026) — le plancher ne change PAS ce compte (23 avant comme après) ; une passe
+  // intermédiaire retirée du lot l'avait déplacé à 22 et l'épingle avait suivi à tort. Rétabli.
+  // PUIS 23 → **26** (O-70, 18/08/2026) : le pic du tri change de contenu et les semaines
+  // SATURÉES de `G/tri/Full/vol-min` (un Full dans 4 h/sem) se recomposent — trois continuités
+  // B-17 de plus rejoignent la catégorie documentée ci-dessus : « le VOLUME, et non C15, ne
+  // peut pas payer la séance ». Les trois exemples sont apparus AVANT le clamp C3 du même lot
+  // (mesuré sur l'état intermédiaire) : c'est le contenu, pas le clamp.
+  const RABOTES_ATTENDUS = 26;
   let n = 0, ko = 0; const zones = {}, ex = [];
   for (const { key, plan } of goldenAvecMoteur()) {
     for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])

@@ -109,6 +109,11 @@ export interface SessionKit {
    *  jours `facile2`. Une règle « une fois par semaine » se départage par ce rang, jamais par
    *  l'ordre d'itération d'une liste. Voir `buildSessions`. */
   slotIdx: number;
+  /** O-70 — le jour appartient-il à une semaine de RÉCUPÉRATION ? Les branches lisaient la
+   *  PHASE et jamais la CHARGE : le créneau `facileR` d'une semaine de décharge du pic
+   *  construisait un « VO2max course » — la séance la plus intense de la semaine posée dans
+   *  la semaine qui existe pour absorber la fatigue. Défaut d'aiguillage, pas une décision. */
+  isRecup: boolean;
   lvl: string;
   finisher: boolean;
   beginner: boolean;

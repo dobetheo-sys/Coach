@@ -14,7 +14,7 @@ import {
   BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH, SWIM_SESSION_FLOOR_MIN,
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
   C24_MIN_SWIM_SESSION_M,
-  BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR,
+  BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR, O69_DEPART_PLANCHER,
   C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN, RACE_EVE_CAP_MIN,
   hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS,
 } from "../engine/constraintMatrix.ts";
@@ -434,6 +434,40 @@ export function reconcileDeclaredVolume(
         }
         if (render) render(sx);
         if (traceEnabled()) traceRecord({ pass: "D4-récup", weekNum: wk.num, sessionName: sx.name, discipline: sx.d, field: "minutes", after: Math.round(weekMinOf(wk)), reason: "D4 (récup < dernière charge)", envelope: "charge " + Math.round(prev) + "min" });
+      }
+      // LE QUANTUM DE L'ÉCHELLE, mesuré au banc O-21b après O-69 : pour un excédent d'UNE
+      // minute (récup 180, charge 180, la borne stricte exige 179), le facteur vaut 0,994 et
+      // `Math.round(80 × 0,994)` rend 80 — aucun bloc « touché », et la coupe ci-dessous
+      // payait cette minute par un JOUR de 50, au seul coureur (4:30/km) dont la
+      // quantification tombait de ce côté. La borne reste STRICTE (tolérance zéro, comme la
+      // règle auditée) ; c'est le PAIEMENT qui devient proportionné : un petit excédent se
+      // soustrait en minutes ENTIÈRES au plus gros bloc facile à passage unique qui a de la
+      // marge au-dessus de son plancher — jamais la longue, jamais un bloc de qualité.
+      {
+        let over = Math.ceil(weekMinOf(wk) - (prev - 1));
+        if (over > 0 && over <= 12) {
+          const marges: { st: V1Step; sx: V1Session; room: number }[] = [];
+          for (const d of wk.days) for (const sx of d.sessions) {
+            if (sx.d === "rs" || sx.long || !sx.steps) continue;
+            for (const st of sx.steps) {
+              if (st.role !== "body" || st.durationMin == null || (st.reps || 1) > 1) continue;
+              if (IS_QUALITY_ZONE(String(st.zone || ""))) continue;
+              const floor = (st as { bnd?: { floor?: number } }).bnd?.floor ?? 5;
+              marges.push({ st, sx, room: Math.max(0, st.durationMin - floor) });
+            }
+          }
+          marges.sort((x, y) => (y.st.durationMin || 0) - (x.st.durationMin || 0));
+          for (const m of marges) {
+            if (over <= 0) break;
+            const take = Math.min(m.room, over);
+            if (take > 0) {
+              m.st.durationMin! -= take;
+              over -= take;
+              if (render) render(m.sx);
+              if (traceEnabled()) traceRecord({ pass: "D4-récup", weekNum: wk.num, sessionName: m.sx.name, discipline: m.sx.d, field: "minutes", after: Math.round(weekMinOf(wk)), reason: "D4 (excédent sous le quantum de l'échelle, retiré en minutes entières)", envelope: "charge " + Math.round(prev) + "min" });
+            }
+          }
+        }
       }
       for (let g = 0; g < 4 && weekMinOf(wk) >= prev; g++) {
         const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
@@ -2388,6 +2422,44 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     ? Math.max(2 * _rampUnit, volRecent * _rampUnit * 1.1)
     : Infinity;
   let _rampWeeks = 0;
+  // O-69 — LE VOLUME RÉCENT EST UN PLANCHER AUTANT QU'UN PLAFOND (arbitrage fondateur,
+  // 18/08/2026). La rampe ci-dessus protège le déconditionné (elle PLAFONNE) ; rien ne
+  // protégeait l'athlète qui fait DÉJÀ plus que la base de la courbe — mesuré : à vol_recent
+  // 6, 13 ou 18 h, le même plan au dixième près, départ 5,8 h pour 13 h déclarées, creux à
+  // 30 % de sa charge courante. Le plancher porte sur la COURBE seulement : chaque plafond de
+  // sécurité (C3, référence blessure/âge, croissance sur le livré, prorata N2) s'applique
+  // APRÈS lui et le bat ; l'affûtage n'est jamais flooré (R3.13). Même unité que la rampe
+  // (heures d'eau en natation, R20.7). Plafonné à 1,0 × pic : la semaine de pic reste la
+  // plus grosse (invariant), et si 0,85 × vol_recent dépasse le pic, la chaîne R20.2 nomme
+  // déjà ce qui borne le pic — c'est là que l'athlète peut agir.
+  // Et le plancher CÈDE devant toute réduction de sécurité : sous blessure, drapeau médical
+  // ou facteur d'âge (r.loadFactor < 1), descendre SOUS le volume acquis est précisément
+  // l'intention — R6.2 « une blessure allège toujours » est priorité 2, le maintien du volume
+  // acquis est priorité 3/4. Mesuré en le construisant : sans cette garde, un nageur épaule
+  // à 9 h de piscine recevait un plan PLAT à son pic réduit (3 h), la périodisation effacée
+  // par un plancher clampé sur un pic que la sécurité venait d'abaisser (R13.5-E1 rouge).
+  //
+  // Deux autres populations sont EXCLUES, chacune mesurée en construisant (banc v7, seedé) :
+  // · vol_max déclaré SOUS vol_recent — l'athlète a lui-même choisi de descendre (fuzz#93 :
+  //   7 h récentes, enveloppe 4 h). Le plancher existe pour empêcher le MOTEUR de faire
+  //   descendre quelqu'un ; quand c'est l'ATHLÈTE qui l'a décidé, le forcer contre son
+  //   enveloppe produit un plan plat au plafond dont les caps de temps dur déclassent la
+  //   qualité (VO2 14 → 5 mesuré). Informer, pas bloquer (O-17) : son choix gagne.
+  // · history = reprise — la population de la rampe R10, la plus protégée du dépôt (caps
+  //   d'historique, récup toutes les 3 semaines, facteur nage 0,45 « le plus prudent »).
+  //   Le fond physiologique de l'arbitrage décrit des tissus ADAPTÉS par des mois de volume ;
+  //   une reprise de moins de 12 mois n'a pas cette consolidation, et le plancher clampé sur
+  //   ses caps de prudence saturait chaque semaine — les caps de temps dur déclassaient alors
+  //   TOUTE la qualité (fuzz#298 : VO2 14 → 0 sur 40 semaines). Révocable si le fondateur
+  //   tranche autrement — l'arbitrage O-69 ne nommait pas l'historique.
+  const _volMaxDecl = parseFloat(String(a.vol_max ?? ""));
+  const _floorLwH = isFinite(volRecent) && volRecent > 0 && peakH > 0
+    && r.loadFactor >= 1 && !r.medHold && r.inj.count === 0
+    && a.history !== "reprise"
+    && (!isFinite(_volMaxDecl) || _volMaxDecl >= volRecent)
+    ? Math.min(volRecent * _rampUnit * O69_DEPART_PLANCHER, peakH)
+    : 0;
+  let _floorWeeks = 0;
   let _rampCeilH = 0; // R20.7 — plus haut plafond réellement imposé par la rampe (0 = jamais mordu)
   let _maxLwChargeH = 0; // R20.2 — le plus haut point que la COURBE déclarée atteint (Lw × pic) : sur une prépa courte, c'est souvent lui qui borne
   // R20.2 (T-25) — LA CIBLE DE BOUCLE LA PLUS HAUTE, AVEC SA CAUSE MESURÉE. Chaque semaine de
@@ -2494,6 +2566,16 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     let Lw = Lval(ph.id, prog);
     // C22 — progression lissée : jamais +10% d'une semaine de charge à la suivante
     if (ph.id !== "taper" && _prevLw > 0) Lw = Math.min(Lw, _prevLw * C22_MAX_WEEKLY_GROWTH);
+    // O-69 — le plancher du volume récent relève la courbe, jamais l'affûtage. Appliqué
+    // APRÈS le lissage C22 : le plancher est constant, donc aucune paire de semaines de
+    // charge consécutives ne peut croître de plus de C22 par lui (flat → flat, puis la
+    // courbe repart du plancher via _prevLw). Les semaines de récup en dérivent d'elles-
+    // mêmes (le facteur RECUP s'applique au targetH flooré) — le creux à 30 % était une
+    // conséquence du départ bas, pas un défaut séparé.
+    if (ph.id !== "taper" && _floorLwH > 0 && Lw * peakH < _floorLwH) {
+      Lw = _floorLwH / peakH;
+      if (!isRW) _floorWeeks++;
+    }
     if (ph.id !== "taper" && !isRW) _prevLw = Lw;
     // R3.12 — le plafond de la longue suit la phase
     // R13.6 — en AFFÛTAGE, le plafond des séances suit la courbe d'affûtage elle-même (Lw
@@ -3278,6 +3360,16 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       why: "Un plan qui démarre au-dessus de ce que le corps fait DÉJÀ multiplie le risque de blessure — on part de ton volume réel des derniers mois et on rejoint la courbe progressivement",
     });
   }
+  // O-69 — le miroir de la décision ci-dessus : quand c'est le PLANCHER qui a agi, l'athlète
+  // doit le voir aussi. Les deux ne s'excluent pas en théorie mais ne mordent jamais ensemble
+  // (la rampe plafonne sous 1,1 × vol_recent, le plancher relève à 0,85 × vol_recent).
+  if (_floorWeeks > 0) {
+    r.decisions.push({
+      id: "O69-ancrage", what: "Départ ancré sur ton volume récent",
+      val: Math.round(_floorLwH * 10) / 10 + "h/sem (" + Math.round(O69_DEPART_PLANCHER * 100) + " % de " + volRecent + "h) sur " + _floorWeeks + " semaine" + (_floorWeeks > 1 ? "s" : ""),
+      why: "Ton corps est déjà adapté à ce volume — le réduire fortement serait un stimulus de désentraînement. On garde le volume acquis et on change le CONTENU : la petite marge retirée fait place à l'intensité structurée nouvelle",
+    });
+  }
   // R6 §3.4 — toute recalibration produit une entrée VISIBLE : l'athlète doit voir le
   // changement ET sa cause. Un chiffre qui bouge sans explication est pire qu'un chiffre faux.
   if (_volArb.why) {
@@ -3667,6 +3759,63 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       r.decisions = r.decisions.filter((dc) => !(dc.id === "C31" && dc.what.includes("(sem. " + wk.num + ")")));
     }
   }
+  // C3 REJOUÉ AU POINT FIXE — treizième paiement de la même leçon, sur l'ENVELOPPE DÉCLARÉE.
+  //
+  // C3 (plafond dur de semaine, vol_max × facteur blessure/âge) tournait dans la boucle de
+  // volume ; les passes du point fixe (I14, le rendu des minutes coupées à la sortie longue,
+  // C26c/d…) regonflaient ENSUITE certaines semaines au-delà — invisible tant que le contenu
+  // restait sous la tolérance, mesuré en livrant O-70 : la semaine de pic d'un Full à
+  // vol_max 4 sortait à 255 min pour 240 demandées (+6 %), au-delà de la tolérance ×1,03 que
+  // le moteur s'accorde lui-même. Le brick avait regagné +8 min APRÈS le dernier passage de
+  // C3. Le plafond se rejoue donc ici, quand plus rien ne bouge : réduction du corps d'abord,
+  // puis l'excédent sous le quantum de l'échelle en minutes entières (même geste que la passe
+  // D4-récup) — jamais de jour coupé : les planchers de séance audités restent souverains, et
+  // s'ils dépassent à eux seuls l'enveloppe, la semaine reste au-dessus et l'auditeur le voit.
+  {
+    const _capMin = capH * 60;
+    for (const wk of wl) {
+      const wd = wk.days as GenDay[];
+      if (wd.some((d) => d.sessions.some((s) => s.race))) continue; // semaine de course (N2, proratisée)
+      for (let g = 0; g < 4 && weekMin(wd) > _capMin * 1.03; g++) {
+        const before = weekMin(wd);
+        scaleWeekBody(wd, Math.max(0.8, _capMin / before));
+        renderWeek(wd);
+        if (before - weekMin(wd) < 0.5) break;
+      }
+      // Le retrait vise `capMin` (la cible du C3 en boucle : `room = capH × 1.0`), pas la
+      // tolérance — et le plancher lu est celui que le bloc DÉCLARE quand il en porte un :
+      // le « plancher digne » de 30 min est une politesse d'affichage, pas une règle du
+      // manifeste, et il ne bat pas le plafond que l'athlète a lui-même déclaré.
+      let _overC3 = weekMin(wd) > _capMin * 1.03 ? Math.ceil(weekMin(wd) - _capMin) : 0;
+      if (_overC3 > 0 && _overC3 <= 15) {
+        // Blocs simples ET répétés : sur un bloc répété, l'échelle multiplicative arrondit le
+        // nombre de répétitions (2 × 0,94 → 2) et la durée de répétition est le quantum réel —
+        // chaque minute qu'on lui retire en rend `reps` à la semaine.
+        // La qualité N'EST PAS exclue — C3 en boucle réduit déjà tout le corps non-longue,
+        // qualité comprise : l'enveloppe déclarée bat le contenu, seuls les planchers sont
+        // souverains. Elle passe simplement en DERNIER (les blocs faciles paient d'abord).
+        const marges: { b: V1Step; s: BoundedSession; q: boolean }[] = [];
+        for (const d of wd) for (const s of d.sessions) {
+          if ((s as BoundedSession).social || s.long || !s.steps || s.race) continue;
+          for (const b of s.steps) {
+            if (b.role !== "body" || b.durationMin == null) continue;
+            marges.push({ b, s: s as BoundedSession, q: IS_QUALITY_ZONE(String(b.zone || "")) });
+          }
+        }
+        marges.sort((x, y) => (x.q === y.q ? ((y.b.durationMin || 0) * (y.b.reps || 1)) - ((x.b.durationMin || 0) * (x.b.reps || 1)) : x.q ? 1 : -1));
+        for (const { b, s } of marges) {
+          if (_overC3 <= 0) break;
+          const reps = b.reps || 1;
+          const fl = Math.max(1, (b as { bnd?: { floor?: number } }).bnd?.floor ?? blockBounds(b, s).floor);
+          while (_overC3 > 0 && (b.durationMin || 0) > fl) { b.durationMin! -= 1; _overC3 -= reps; }
+        }
+        renderWeek(wd);
+      }
+      const vr = Math.round((weekMin(wd) / 60) * 10) / 10;
+      if (vr < wk.vol) { wk.vol = vr; wk.vol_real = vr; }
+    }
+  }
+
   // C6 — volPeak affiché = pic réel des semaines de charge
   //
   // O-35 (2ᵉ moitié) — IL LISAIT UN INSTANTANÉ PÉRIMÉ. `w.vol` est écrit au moment où la
@@ -3681,7 +3830,12 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     const livre = (w: V1Week) => (w.days as GenDay[]).reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0) / 60;
     if (chargeW.length) volPeak = Math.round(Math.max(...chargeW.map(livre)) * 10) / 10;
     plan.volPeak = volPeak;
-    plan.volBase = Math.round(volPeak * 0.58 * 10) / 10;
+    // O-69 — l'annonce « volume X h → Y h » disait 0,58 × pic, une FORMULE, pas le plan.
+    // Avec le départ ancré sur le volume récent, la formule mentait grossièrement (6,6 h
+    // annoncées pour une semaine 1 livrée à 11) ; sans lui, elle mentait un peu (6,0 pour
+    // 5,8). Même leçon qu'au bloc au-dessus (O-35) : l'annonce se recompte sur les séances
+    // TELLES QU'ELLES SONT LIVRÉES — ici, la première semaine de charge.
+    plan.volBase = chargeW.length ? Math.round(livre(chargeW[0]) * 10) / 10 : Math.round(volPeak * 0.58 * 10) / 10;
   }
 
   // ---- R20.2 — LE VOLUME MAX DIT CE QUI LE BLOQUE, ET CE QUI LE DÉBLOQUERAIT ----
@@ -3933,6 +4087,25 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
           // plafond SUIVANT, pas la plus grosse baisse. Invariante par ordre, actionnable.
           // Jamais sous protection santé (la garde existante ne bouge pas).
           if (suivant && !sante) why += " Si tu levais cette contrainte, " + suivant.quoi + " te plafonnerait à " + h(suivant.livre) + ".";
+          // §2 (arbitrage O-69/O-70, 18/08/2026) — QUAND LA CONTRAINTE MORDANTE DÉCOULE D'UN
+          // CHOIX ANTÉRIEUR, LA LIGNE LEVIER NOMME LE CHOIX, PAS LA CONSÉQUENCE. « La durée de
+          // ta préparation » borne mécaniquement quand la montée part d'un départ bas ; mais
+          // « prends plus de semaines » n'est pas une action quand la date de course est fixe.
+          // Le choix qui PRODUIT le départ bas, lui, est actionnable — et depuis O-69 il n'a
+          // que trois états nommables : volume récent absent, reprise, enveloppe sous le
+          // volume récent. Départ ancré et courbe encore mordante → la durée est la vraie
+          // cause, la phrase existante reste seule.
+          if (minP.id === "courbe" || minP.id === "boucle-growth") {
+            const choix = !isFinite(volRecent) || volRecent <= 0
+              ? "Ton plan démarre bas parce que ton volume récent n'est pas renseigné : le moteur part alors du bas de la courbe, par prudence. Le renseigner au Profil est le levier qui change ce plan."
+              : sante ? ""
+                : a.history === "reprise"
+                  ? "Ton plan démarre bas parce que ton historique est déclaré en reprise (moins de 12 mois structurés) : le départ ancré sur le volume récent ne s'applique pas à une reprise, par prudence — c'est ce choix-là qui décide, pas le calendrier."
+                  : isFinite(_volMaxDecl) && _volMaxDecl < volRecent
+                    ? "Ton plan démarre bas parce que ton enveloppe déclarée (" + h(_volMaxDecl) + "/sem) est sous ton volume récent (" + h(volRecent) + "/sem) : le moteur suit ton choix — si cette enveloppe a changé, corrige-la au Profil."
+                    : "";
+            if (choix) why += " " + choix;
+          }
         }
         r.decisions.push({
           id: "R20.2",

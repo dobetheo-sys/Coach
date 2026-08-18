@@ -312,7 +312,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
     d.date = iso(start + i * MS);
-    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0);
+    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0, !!d.isR);
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
       else if (s.min == null) s.min = 0;
@@ -326,6 +326,27 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
       const vo2Days = days.filter((d) => d.week === w && d.sessions.some((x) => x.name === "VO2max course"));
       for (let i = 1; i < vo2Days.length; i++) {
         const d = vo2Days[i];
+        d.sessions = buildSessions(ctx, "facileR", "spec", d.prog || 0);
+        for (const x of d.sessions) if (x.steps && x.steps.length) renderSess(x, refs, hz, r.baseRefs);
+      }
+    }
+  }
+  // O-70(b) — LE RAPPEL SPÉCIFIQUE DU CRÉNEAU C18 NE S'AJOUTE PAS À UNE SEMAINE QUI EN A DÉJÀ.
+  // L'arbitrage O-70 a remplacé le « VO2max course » du pic par un rappel d'allure course —
+  // mais en cycle de 10 jours, `dur2` porte DEUX « Allure course (tri) » par semaine de pic :
+  // un troisième bloc modéré faisait déborder C26d (mesuré : 10 combinaisons tri/Full en
+  // violation DURE, S33 à 43 % de modéré pour une borne à 40). Le créneau C18 existe pour les
+  // budgets SERRÉS, où `dur2` ne survit pas : il ne garde donc son rappel que si la semaine
+  // n'en porte aucun par ailleurs ; sinon il redevient footing — même mécanique que C18b,
+  // juste au-dessus (reconstruction en phase « spec », dont le créneau rend le footing).
+  if (guard(a.sport as string, "singleRunVo2PerWeek")) {
+    for (let w = 1; w <= r.weeks; w++) {
+      const wd = days.filter((d) => d.week === w);
+      const rappelC18 = wd.filter((d) => d.slot === "facileR" && d.sessions.some((x) => x.name === "Allure course (tri)"));
+      if (!rappelC18.length) continue;
+      const autres = wd.filter((d) => d.slot !== "facileR" && d.sessions.some((x) => /Allure course \(tri/.test(x.name)));
+      const excedent = autres.length ? rappelC18 : rappelC18.slice(1);
+      for (const d of excedent) {
         d.sessions = buildSessions(ctx, "facileR", "spec", d.prog || 0);
         for (const x of d.sessions) if (x.steps && x.steps.length) renderSess(x, refs, hz, r.baseRefs);
       }

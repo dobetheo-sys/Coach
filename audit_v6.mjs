@@ -883,9 +883,14 @@ test("C30-A", "C30 + C30b allongent la sortie longue des coureurs LENTS — les 
     // montent parce que le remplissage d'I14b rend enfin à la sortie longue les minutes que
     // le plafond de libellé lui avait prises. Gardés ici, avec cette raison, plutôt que
     // retirés — c'est la seule façon de voir qu'un même chiffre a DEUX causes possibles.
-    ["10k", "inter", "4:30", "8", 59], ["5k", "inter", "8:30", "8", 69],
+    ["10k", "inter", "4:30", "8", 59], ["5k", "inter", "8:30", "8", 70],
     ["semi", "inter", "4:30", "8", 130], ["marathon", "inter", "4:30", "8", 180],
   ];
+  // SEPTIÈME ÉTAT — O-69, le volume récent devient un PLANCHER (18/08/2026). Le départ du
+  // plan est ancré à 0,85 × vol_recent : les premières semaines de `5k/inter/8:30/8h`
+  // montent, et sa longue suit la recomposition de sa semaine — **un seul témoin bouge,
+  // 69 → 70**, une minute. Même doctrine que les états 4 à 6 : ré-épinglé avec sa raison,
+  // jamais exempté, et même rattachement à O-51 (ce témoin suit l'état du moteur).
   // SIXIÈME ÉTAT — lot 1, le plafond de dose lit les blocs prescrits en MÈTRES (17/08/2026).
   // `rn.thr` est prescrit en mètres sur ces profils : le plafond de 40 min y mord désormais, ces
   // minutes de DUR deviennent du FACILE, et le tail O-21 les fait remonter à la sortie longue.

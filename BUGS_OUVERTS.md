@@ -6854,6 +6854,17 @@ cmd: npm run golden:bundle 2>&1 | tail -2
 
 ## O-68 · L'écran de projection montrait l'affûtage SEUL — le gain annulé par un précipice d'adhérence · ✅ **FERMÉ sur l'arbitrage du 17/08**
 
+**Complément §4 (18/08/2026) — P7 re-basé, la mesure a décidé.** Le seuil de refus
+(`GAIN_BAND_MAX_WIDTH`) avait été calibré quand la bande était comprimée par le facteur 0,9 ;
+O-68 a retiré la compression au jour 0 — l'entrée du seuil a bougé, pas le seuil. Mesuré par le
+chemin produit (grille de 70 profils projetables, sports × formats × vol_recent × horizon) :
+**6 profils franchissaient le refus qui ne le franchissaient pas avant O-68** — pas du bruit,
+la FAMILLE que l'arbitrage nomme légitime (débutant × horizon long, régime P11 : swim vr ≤ 1 h
+à 28-40 semaines, 70.3/cyclo vr = 3 à 40 semaines, gains réels 22-24 %). Re-basé 0,25 → 0,28 :
+l'ancienne frontière effective vaut « gain > 24,2 % », la nouvelle « gain > 24,3 % » — la même
+à 0,2 % près, un re-basage et PAS un desserrage (la distinction de l'arbitrage). Contre-mesure
+après re-basage : 10 refus avant ⇔ 10 refus après, 0 franchissement.
+
 **Origine** : retour du fondateur sur son écran (17/08/2026) — « CSS 2:02 → 1'60/100m », ~2 % sur
 les trois disciplines, borne basse figée à 5 h 38, « quarante semaines valent neuf minutes ».
 
@@ -6991,7 +7002,52 @@ cmd: grep -n "Object.keys(done).length === 0" src/engine/projection.ts
 Profil enfin connu : `vol_max 20 · vol_recent 13 · sessions_max 12 · doubles oui (déduit de la
 composition) · dispo quotidienne (stocké) · FTP 236 · seuil 4:42 · CSS 2:02 · 85 kg · 180 cm`.
 
-## O-69 · La courbe ne lit `vol_recent` que comme PLAFOND — le plan fait DESCENDRE un athlète à 13 h · 🔴 **OUVERT, arbitrage à rendre**
+## O-69 · La courbe ne lit `vol_recent` que comme PLAFOND · ✅ **FERMÉ (arbitrage du 18/08/2026)**
+
+**La décision** : `vol_recent` devient un PLANCHER autant qu'un plafond — départ ≈ vol_recent ×
+0,85 (fourchette arbitrée 0,80-0,90, « si la mesure montre 0,75 ou 0,95, la mesure gagne »).
+Le fond : treize heures non structurées et treize heures structurées diffèrent par la
+COMPOSITION, pas par la charge — descendre à 47 % pendant douze semaines est un stimulus de
+désentraînement. **Livré** : plancher sur la COURBE seule (`O69_DEPART_PLANCHER`,
+constraintMatrix), tous les plafonds de sécurité au-dessus de lui (C3, référence blessure/âge,
+croissance sur le livré, N2, jamais l'affûtage), même unité que la rampe (heures d'eau en
+natation). Sur SON profil : **départ 5,8 → 10,3 h · annonce `volBase` alignée sur le livré
+(10,3, plus 0,58 × pic) · pic 10,4 → borné ensuite par `structurel` 11,45 et caps 13** — pas les
+15 h de sa projection §2 d'ALLOCATION : c'est l'historique « confirmé » qui borne après, et la
+chaîne R20.2 le nomme. Décision journalisée : « Départ ancré sur ton volume récent : 11 h/sem
+(85 % de 13 h) sur 21 semaines ».
+
+**Trois exclusions, chacune mesurée en construisant** (bancs r13/v7, un facteur à la fois) :
+sécurité (blessure/médical/âge — R6.2 priorité 2 bat le maintien du volume : sans la garde, un
+nageur épaule à 9 h recevait un plan PLAT à son pic réduit) · **reprise** (la population de la
+rampe, la plus protégée du dépôt — le plancher clampé sur ses caps saturait chaque semaine et
+les plafonds de temps dur déclassaient TOUTE la qualité : VO2 14 → 0 sur 40 semaines, fuzz#298 ;
+révocable, l'arbitrage ne nommait pas l'historique) · **vol_max < vol_recent** (l'athlète a
+lui-même choisi de descendre — le forcer contre son enveloppe produisait un plan plat déclassé,
+fuzz#93 ; informer, pas bloquer).
+
+**Le creux ne disparaît qu'à moitié, et c'est publié** : S5 4,0 → 6,8 h (la courbe suit), mais
+S11/S17 restent à 3,5 h — leurs 5 séances de récup sont TOUTES à leur plafond (footing 30',
+nage récup 60') : la STRUCTURE de la semaine de récup ne scale pas avec l'athlète. Ticket
+séparé si le fondateur le juge : la semaine de récup d'un athlète à 10 h porte les mêmes
+séances plafonnées que celle d'un athlète à 6 h.
+
+**Fermé en chemin, même famille que le seuil brutal d'O-21b** : la borne stricte « récup <
+dernière charge » payait un excédent d'UNE minute (récup 180, charge 180) par la coupe d'un
+JOUR de 50 — l'échelle multiplicative arrondit à zéro sous son quantum (`round(80 × 0,994) =
+80`), le bloc concluait « les planchers bloquent ». L'excédent sous le quantum se retire
+désormais en minutes ENTIÈRES (passe D4-récup). Et une passe « 1bis » écrite pour ce défaut au
+mauvais endroit a été RETIRÉE après mesure (jamais déclenchée sur le cas visé, déplaçait les
+témoins C30-A et les cliquets du sceau — l'épisode est écrit dans `lotPhysio.mjs`).
+
+```verify
+id: O-69
+quoi: le départ est-il ancré sur vol_recent (plancher ×0,85) au-dessus du départ naturel de la courbe ?
+attendu: FERMÉ — sur le profil fondateur, S1 ≥ 9,5 h (avant : 5,8) et vol_recent 6→13 h change le plan
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const s1=(a)=>{const p=globalThis.EBV2.buildPlan('tri',a);return p.weeks[0].days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.d!=='rs'?(s.min||0):0),0),0)/60;};const a13=s1(B),a6=s1({...B,vol_recent:'6'});console.log('S1@13h='+a13.toFixed(1)+' S1@6h='+a6.toFixed(1));if(!(a13>=9.5&&Math.abs(a13-a6)>0.5))process.exit(1);"
+```
+
+## O-69 (archive) · L'entrée d'origine · 🔴 ~~OUVERT, arbitrage à rendre~~
 
 **Son constat** : vol_max 20, vol_recent 13, plan 6,1 → 10,5 h. « Sur quarante semaines, c'est un
 plan qui te fait descendre. » Il a demandé de lire « ce qui borne » — la carte R20.2 répond :
@@ -7023,12 +7079,8 @@ d'entraîneur (70 % ? 80 % ? plancher absolu ?). L'arbitrage conditionne aussi O
 juste change ce que « le plan tenu » promet) et le lot progression (un départ ancré plus haut
 change ce que les bornes par semaine doivent permettre).
 
-```verify
-id: O-69
-quoi: vol_recent est-il encore inerte au-dessus du départ naturel de la courbe ?
-attendu: OUVERT — 6/13/18 h rendent le même plan (départ 5,5 · pic 8,8) sur le profil du fondateur
-cmd: grep -n "R10-depart" src/engine/reasoningEngine.ts | head -2
-```
+(Le bloc `verify` de cette archive a été retiré : l'entrée FERMÉE ci-dessus porte le sien,
+exécutable, sur la propriété nouvelle — deux blocs sous le même id se contrediraient.)
 
 ## O-62 · REQUALIFIÉ une seconde fois — DEUX problèmes, comme prévu au §2 des quatre écrans
 
@@ -7041,14 +7093,52 @@ les budgets serrés.* Deux problèmes, pas un. Et son « zéro renforcement » e
 lui-même : le renfo est GREFFÉ sur d'autres séances (« + Renfo général »), son compteur lisait
 les noms — N-01 partiellement livré, fréquence à vérifier (T-13 reste rouge attendu).
 
-## O-70 · La phase PIC porte du VO2max — jusque dans sa semaine de RÉCUP · 🔴 **OUVERT, arbitrage à rendre**
+## O-70 · La phase PIC porte du VO2max — jusque dans sa semaine de RÉCUP · ✅ **FERMÉ (arbitrage du 18/08/2026, moitié vélo en attente de sa lecture R13.4)**
 
-Mesuré sur son profil, phase peak S34-S38 : **chaque semaine de charge porte 2 VO2max**
-(vélo + course) à côté du brick et de l'allure course — et la semaine de RÉCUP du pic (S36,
-3,7 h) porte encore un VO2max course. La moitié VÉLO est une décision ÉCRITE (R13.4 : « VO2max
-vélo maintenue jusqu'au pic — la race-pace vélo est travaillée dans le brick ») ; la moitié
-COURSE en pic, et sa présence dans une semaine de décharge, n'ont pas d'arbitrage. Pour un 70.3
-à cinq semaines de l'objectif, le stimulus attendu est spécifique — sa question, à trancher.
+**La décision** : pic, semaine de charge → 1 VO2max maximum (maintien) ; pic, semaine de
+décharge → 0. **Livré** : la moitié COURSE (C18) quitte le pic — le créneau libéré revient au
+SPÉCIFIQUE (rappel 2 × 7-10 min d'allure course, la forme du rappel d'affûtage R13.4) — et la
+décharge ne porte plus AUCUN VO2. **La cause de la décharge était un défaut d'AIGUILLAGE, pas
+une décision** : les branches de séance lisent la PHASE, jamais la CHARGE — le créneau
+`facileR` d'une semaine de récup du pic construisait donc « VO2max course » comme une semaine
+de charge. Le kit de construction porte désormais `isRecup`. Sur SON profil : **VO2 total
+19 → 14 · S34 (récup du pic) 1 VO2 → 0 · chaque semaine de charge du pic ≤ 1 VO2 (le vélo
+R13.4)** ; bricks 10 → 11, allure course 14 → 23.
+
+**Deux contraintes du moteur ont corrigé ma première écriture, et c'est mesuré** : (1) un
+troisième bloc modéré par semaine faisait déborder C26d (10 combinaisons tri/Full en violation
+DURE, S33 à 43 % de modéré) — le rappel C18 ne se garde que si la semaine n'en porte aucun par
+ailleurs (`O-70(b)`, weekBuilder, même mécanique que C18b : le créneau existe pour les budgets
+serrés où `dur2` ne survit pas) ; (2) un bloc SIMPLE en durée reçoit le « plancher digne » de
+30 min de `blockBounds` — deux dosages successifs rendaient 30' quoi qu'on déclare, d'où la
+forme répétée + `hard`.
+
+**Et le lot a débusqué un trou ANTÉRIEUR, fermé : C3 n'était jamais rejoué au point fixe.**
+Les passes de fin de pipeline (le rendu des minutes coupées à la sortie longue, I14, C26c/d…)
+regonflaient certaines semaines AU-DELÀ de l'enveloppe déclarée — mesuré : la semaine de pic
+d'un Full à vol_max 4 sortait à 255 min pour 240 demandées, au-delà de la tolérance ×1,03 que
+le moteur s'accorde. Treizième paiement de la leçon « une garantie vérifiée au milieu du
+pipeline ne vérifie que l'avant-dernier état » : C3 se rejoue quand plus rien ne bouge —
+réduction du corps, puis l'excédent sous le quantum en minutes entières (qualité en dernier,
+plancher DÉCLARÉ du bloc quand il existe : le « plancher digne » est une politesse
+d'affichage, pas une règle du manifeste), jamais un jour coupé. Pire semaine du profil
+dégénéré : 255 → 242 min (borne v6 : 245).
+
+**La moitié VÉLO attend sa lecture — la décision écrite R13.4, citée verbatim** (le code,
+`src/sports/tri/index.ts`, branche `dur1` spec/peak) : *« VO2max vélo — Puissance aérobie
+maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est
+travaillée dans le brick). »* Son contexte : R13.4 a remplacé un fall-through qui envoyait la
+FORCE basse cadence en plein affûtage ; la note du maintien VO2 vélo dit que la race-pace vélo
+vit déjà dans le brick, donc le créneau dur1 peut porter le maintien aérobie sans doubler le
+spécifique. C'est compatible avec « 1 VO2max maximum (maintien) » — la séance maintenue EST
+celle-là. À toi de trancher si elle reste.
+
+```verify
+id: O-70
+quoi: la décharge du pic porte-t-elle encore du VO2, et une charge du pic plus d'un ?
+attendu: FERMÉ — 0 VO2 en récup de pic, ≤ 1 par semaine de charge du pic (profil fondateur)
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const p=globalThis.EBV2.buildPlan('tri',B);let bad=0;for(const w of p.weeks){if(w.phase.id!=='peak')continue;const v=w.days.reduce((t,d)=>t+d.sessions.filter(s=>/vo2/i.test(s.name||'')).length,0);if(w.isRecup&&v>0)bad++;if(!w.isRecup&&v>1)bad++;}console.log('semaines de pic en défaut: '+bad);if(bad>0)process.exit(1);"
+```
 
 ## O-59 · COMPLÉMENT — la build R26 enregistre aussi, y compris son geste exact
 

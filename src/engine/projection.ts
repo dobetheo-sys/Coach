@@ -376,8 +376,20 @@ export function volumeFactor(prescribedMeanH?: number | null, volRecentH?: numbe
  */
 export const GAIN_BAND_LO = 0.15;
 export const GAIN_BAND_HI = 1.30;
-/** Au-delà de cette largeur de fourchette, la projection n'apprend plus rien : on refuse. */
-export const GAIN_BAND_MAX_WIDTH = 0.25;
+/** Au-delà de cette largeur de fourchette, la projection n'apprend plus rien : on refuse.
+ *
+ * RE-BASÉ 0,25 → 0,28 (arbitrage O69_O70 §4, 18/08/2026) : le seuil avait été calibré quand la
+ * bande était comprimée par le facteur d'adhérence inconnue (×0,9) ; O-68 a retiré cette
+ * compression au jour 0 (« la phrase “si le plan tient” porte la réserve »), donc l'ENTRÉE du
+ * seuil a bougé sans que le seuil suive. Mesuré par le chemin produit (grille 70 profils
+ * projetables, sports × formats × vol_recent × horizon) : 6 profils franchissaient le refus
+ * APRÈS O-68 qui ne le franchissaient pas avant — pas du bruit, une FAMILLE, celle que
+ * l'arbitrage nomme légitime (débutant × horizon long : un vol_recent < 2 h vers un objectif à
+ * 28-40 semaines gagne réellement beaucoup, régime P11). Le re-basage restaure la frontière
+ * calibrée : ancien refus ⇔ gain > 24,2 % · nouveau seuil 0,28 ⇔ gain > 24,3 % — la même
+ * frontière à 0,2 % près, PAS un desserrage (la distinction est celle de l'arbitrage). Après
+ * re-basage, les 6 redeviennent projetables et les 10 refus d'avant restent refusés. */
+export const GAIN_BAND_MAX_WIDTH = 0.28;
 /** P8 — en dessous, le plan ne peut pas produire le gain qu'il prévoyait. */
 export const ADHERENCE_FLOOR = 0.5;
 /**

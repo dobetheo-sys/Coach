@@ -39,7 +39,7 @@ export interface SessionCtx {
  * construction (`d.date = start + i × 1 j`), l'ordre ne dépend d'aucune liste intermédiaire. Il
  * vaut 0 par défaut, ce qui laisse les chemins de reconstruction se comporter comme avant.
  */
-export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: number, weekNum = 1, slotIdx = 0): V1Session[] {
+export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: number, weekNum = 1, slotIdx = 0, isRecup = false): V1Session[] {
   const r = ctx.r;
   const a = r.profile;
   const sp = a.sport, fmt = a.format;
@@ -99,7 +99,7 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
   // d'être dupliquée par sport. Un sport inconnu lève (`UnknownSportError`) au lieu de
   // retourner un tableau vide, qui produisait des jours muets sans que personne le voie.
   const kit: SessionKit = {
-    r, a, sp: sp as string, fmt, slot, phase, prog, weekNum, slotIdx,
+    r, a, sp: sp as string, fmt, slot, phase, prog, weekNum, slotIdx, isRecup,
     lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, G, swimDrillGlossary,
     S2, P, W, Wm, C, Cm, B, Bd,
   };

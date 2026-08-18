@@ -302,9 +302,27 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     }
   } else if (slot === "facileR") {
     const ftCaps = ({ S: { lo: 25, hi: 45 }, M: { lo: 15, hi: 26 }, "70.3": { lo: 14, hi: 22 }, Full: { lo: 50, hi: 100 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 25, hi: 45 };
-    // C18 — le créneau course de qualité garanti en tri : VO2 court en peak
-    if (phase === "peak" && !runInj && !medHold && !noVo2 && lvl !== "debutant" && !finisher) S2.push({ d: "rn", name: "VO2max course", note: "Rappels de puissance aérobie course, courts et vifs, jambes déjà entamées par le vélo.", det: "", steps: [W(12, "footing progressif + gammes"), Object.assign(B(PT(4, 6), 2, "rn.vo2", "2min trot"), { repCap: 6 }), C(8, "footing très facile")] });
-    else if (phase === "peak" && runInj && !medHold) S2.push({ d: "rn", name: "Allure course (tri, surface souple)", note: "Course blessé : allure cible en contrôle, sur surface souple, jamais dans la douleur.", det: "", steps: [W(12, "footing progressif"), B(1, PT(18, 28), "rn.mara", "", ", sur surface souple"), C(8, "footing très facile")] });
+    // C18 — le créneau course de qualité garanti en tri. Il portait « VO2max course » en peak :
+    // O-70 (arbitrage fondateur, 18/08/2026) l'a retourné. Le VO2max est un stimulus de phase de
+    // DÉVELOPPEMENT ; en phase spécifique, l'adaptation recherchée est la puissance soutenue
+    // sous le seuil, la durabilité à allure de course, le ravitaillement, les transitions. Une
+    // séance de MAINTIEN par semaine suffit à empêcher le plafond aérobie de décliner — c'est le
+    // « VO2max vélo » de R13.4 (dur1), en attente de l'arbitrage fondateur sur sa moitié. Deux
+    // serait une dose de développement, en concurrence avec le spécifique pour la récupération.
+    // Mesuré sur son 70.3 : 19 séances de VO2max contre 10 bricks — rapport inversé pour
+    // l'épreuve visée. Le créneau libéré revient donc au SPÉCIFIQUE (allure course).
+    // Et JAMAIS en semaine de récup (kit.isRecup) : la branche lisait la PHASE, pas la CHARGE —
+    // la semaine de décharge du pic portait la séance la plus intense de sa semaine, annulant
+    // sa raison d'être. En récup, ce créneau retombe sur le footing (0 VO2, décision O-70).
+    // Dose de RAPPEL, pas de développement : 2 × 7-10 min d'allure course, ~40 min porte-à-porte
+    // — la taille du « VO2max course » qu'elle remplace. La forme RÉPÉTÉE + `hard` est celle du
+    // rappel d'affûtage de R13.4 (2×8), et elle est nécessaire : un bloc SIMPLE en durée reçoit
+    // le « plancher digne » de 30 min de `blockBounds` (D3-D7/D10) — mes deux premières doses
+    // (18-28 puis 12-18 min) rendaient 30 quoi qu'il arrive, et la semaine de pic des profils
+    // vol_max 4 débordait à 248 min pour 240 demandées (C4, banc v6). Un bloc répété garde ses
+    // bornes ; `hard` interdit à la sonde de capacité de l'élargir.
+    if (phase === "peak" && !kit.isRecup && !runInj && !medHold && lvl !== "debutant" && !finisher) S2.push({ d: "rn", name: "Allure course (tri)", note: "L'allure du jour J, jambes fraîches cette fois : mémorise la sensation, elle doit devenir automatique.", det: "", steps: [W(10, "footing progressif + gammes"), Object.assign(B(2, PT(7, 10), "rn.mara", "2min trot"), { repCap: 2, bnd: { floor: 6, cap: 10, hard: true } }), C(8, "footing très facile")] });
+    else if (phase === "peak" && !kit.isRecup && runInj && !medHold) S2.push({ d: "rn", name: "Allure course (tri, surface souple)", note: "Course blessé : allure cible en contrôle, sur surface souple, jamais dans la douleur.", det: "", steps: [W(12, "footing progressif"), B(1, PT(18, 28), "rn.mara", "", ", sur surface souple"), C(8, "footing très facile")] });
     // R13 — le footing porte ses BORNES (`ftCaps` existait, jamais posé en bnd) : c'était le
     // seul bloc sans plafond de la semaine, donc le déversoir de toutes les passes de
     // remplissage — mesuré : « Footing facile 213 min » en semaine de peak (D7, banc v6).
