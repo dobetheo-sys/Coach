@@ -71,7 +71,29 @@ export function canauxProteges(
   // la durée EST le stimulus (I14) · une continuité amputée n'est plus une continuité (B-17)
   if (s.long || s.brick || /continu/i.test(s.name || "")) out.push("taille");
   const disc = disciplineLimitante(sport);
-  if (disc && s.d === disc && !s.recovery && !s.race) out.push("occurrence");
+  if (disc && s.d === disc && !s.recovery && !s.race) {
+    // ⚠ LES DEUX AXES, ET C'EST UNE MESURE QUI A CORRIGÉ LA DOCTRINE (fondateur, « UN CORRECTEUR
+    // QUI RÉUSSIT EFFACE SA PROPRE TRACE » §2, 18/08/2026). Sa consigne initiale était « pas de
+    // plancher de TAILLE sur la qualité nage » — tirée du cas `Footing facile`, où un plancher de
+    // taille isolé fait perdre 83 % des occurrences. Elle vaut contre un plancher de taille SEUL,
+    // pas contre la conjonction : mesuré, l'occurrence est protégée et « Nage vitesse » descend
+    // quand même sur **58 plans sur 129 (45 %)**, par la TAILLE.
+    //
+    //     protéger la taille seule     → le type perd ses occurrences   (Footing facile)
+    //     protéger l'occurrence seule  → le type perd sa substance      (Nage vitesse)
+    //
+    // Protéger un seul canal ne protège pas un type : ça choisit seulement de quelle façon il
+    // meurt. La qualité de la discipline limitante déclare donc les DEUX — comme la sortie longue
+    // de la course, le seul type que l'inventaire O-73 a trouvé protégé des deux côtés.
+    //
+    // ⚠ LA DÉCLARATION EST POSÉE, LE PLANCHER DE TAILLE NE L'EST PAS ENCORE, et c'est délibéré :
+    // on ne sait pas encore QUEL mécanisme réduit. Mesuré par neutralisation (`mesure:morsure`) —
+    // C26c, C22 et I14 sont RÉFUTÉS (58/129 dans les trois cas) ; la trajectoire du brick explique
+    // **9 profils sur 58**, les 49 autres PRÉEXISTENT. Poser un plancher sans savoir où le
+    // paiement se fait, ce serait exactement la faute que la règle 7 nomme. Suivi en O-76.
+    out.push("taille");
+    out.push("occurrence");
+  }
   return out;
 }
 

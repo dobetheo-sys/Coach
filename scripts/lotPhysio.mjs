@@ -21,7 +21,7 @@
  * valeurs du handoff ont été mesurées puis écartées ; encoder la proposition plutôt que la
  * décision produirait un banc qui exige ce qu'on a décidé de ne pas faire.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import "../src/app/bridge.ts";
 import { ZDEF } from "../src/generator/renderer.ts";
@@ -1662,6 +1662,57 @@ T("T-44", "rouge", "PROPRIÉTÉ — la coupe par sessions_max ne retire pas d'un
 //     PAS à l'orientation (vérifié inerte dessus, un facteur à la fois) ; la politique ne doit
 //     jamais le faire MONTER. Population épinglée (un zéro/compte a besoin de sa population).
 // Contre-preuve post-commit : `npm run casser` sur le filtre `skipProtege` → (1) rougit.
+/**
+ * T-49 — TOUT NOM DE ZONE RÉFÉRENCÉ DANS LE CODE EXISTE DANS `ZDEF` (contrôle STATIQUE).
+ *
+ * Demandé par le fondateur après `bk.easy` (« CORRECTEUR SANS TRACE » §3) : une zone qui
+ * n'existe pas, écrite dans C26c, **latente depuis son écriture** parce que la cible ne tombait
+ * jamais sur un bloc vélo, exposée des mois plus tard par l'ordre de cession — 64 violations
+ * dures d'un coup. « Protégé par le chemin, pas par la borne », deuxième occurrence du fil.
+ *
+ * `T-20` assertait qu'un STEP LIVRÉ porte une intensité résoluble : c'est une propriété de
+ * SORTIE, donc elle ne voit que les chemins empruntés. Celle-ci lit le CODE et voit donc aussi
+ * ce qui n'a jamais tourné — la seule façon de garder un défaut latent sur tous les corpus.
+ *
+ * Deux moitiés, parce que le défaut avait deux formes possibles :
+ *   (1) un LITTÉRAL de zone inconnu de `ZDEF` ;
+ *   (2) un nom de zone CONSTRUIT par concaténation — la forme exacte du bug (`disc + ".easy"`),
+ *       qu'aucun contrôle de littéral ne peut voir. On l'interdit : un nom de zone est un
+ *       littéral, ou il vient d'une table.
+ */
+T("T-49", "vert", "tout nom de zone du code existe dans ZDEF, et aucun n'est fabriqué par concaténation", () => {
+  const connues = new Set(Object.keys(ZDEF));
+  const pb = [];
+  let litteraux = 0, fichiers = 0;
+  const sansCommentaires = (x) => x
+    .replace(/\/\*[\s\S]*?\*\//g, (b) => b.replace(/[^\n]/g, " "))
+    .replace(/^(\s*)\/\/.*$/gm, "$1");
+  const dossiers = ["src/generator", "src/sports", "src/engine"];
+  const fs = [];
+  const walk = (d) => {
+    for (const e of readdirSync(resolve(ROOT, d), { withFileTypes: true })) {
+      if (e.isDirectory()) walk(d + "/" + e.name);
+      else if (e.name.endsWith(".ts")) fs.push(d + "/" + e.name);
+    }
+  };
+  for (const d of dossiers) walk(d);
+  for (const f of fs) {
+    fichiers++;
+    const src = sansCommentaires(readFileSync(resolve(ROOT, f), "utf8"));
+    // (1) les littéraux « disc.zone »
+    for (const m of src.matchAll(/"((?:sw|bk|rn|tr)\.[a-z0-9]+)"/g)) {
+      litteraux++;
+      if (!connues.has(m[1])) pb.push(`${f} : zone inconnue « ${m[1]} »`);
+    }
+    // (2) la FABRICATION d'un nom de zone : une affectation à `.zone` qui contient un `+`.
+    for (const m of src.matchAll(/\.zone\s*=\s*([^;\n]+)/g)) {
+      if (/\+/.test(m[1]) && /"\./.test(m[1])) pb.push(`${f} : nom de zone FABRIQUÉ par concaténation — ${m[1].trim().slice(0, 60)}`);
+    }
+  }
+  if (litteraux < 100) pb.push(`POPULATION : ${litteraux} littéral(aux) de zone trouvés dans ${fichiers} fichiers — la sonde ne lit plus le code`);
+  return { ok: pb.length === 0, detail: pb.length ? `${pb.length} : ` + pb.slice(0, 3).join(" · ") : `${litteraux} littéraux de zone dans ${fichiers} fichiers, tous dans ZDEF ; aucun nom fabriqué` };
+});
+
 /**
  * T-48 — AU PIC, LE VO2 CÈDE AVANT LA NAGE SEUIL (arbitrage « C26c AU PIC », 18/08/2026).
  *

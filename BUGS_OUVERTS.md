@@ -7652,6 +7652,70 @@ attendu: /✓ T-48 \[vert/
 cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-48"
 ```
 
+## O-76 · « Nage vitesse » perd sa SUBSTANCE — l'occurrence est protégée, la taille non · 🔴 **OUVERT, cause NON identifiée (mesuré)**
+
+Le fondateur, corrigeant sa propre consigne (« UN CORRECTEUR SANS TRACE » §2) : *« protéger un
+seul canal ne protège pas un type — ça choisit seulement de quelle façon il meurt »*. Mesuré :
+`prioriteFinancement` protège l'OCCURRENCE de la qualité nage, et la dose descend quand même sur
+**58 plans sur 129 (45 %)** — par la TAILLE (ex. `tri/M/confirme` 41 → 29 min du premier au
+dernier quart).
+
+`canauxProteges()` déclare désormais les DEUX axes pour la qualité de la discipline limitante.
+**Le plancher de taille n'est PAS posé, et c'est délibéré : on ne sait pas encore quel mécanisme
+réduit.** Mesuré par neutralisation (`npm run mesure:morsure`, méthode du §1) :
+
+```
+sans C26c ......................... 58/129   RÉFUTÉ
+sans C22 .......................... 58/129   RÉFUTÉ
+sans I14 .......................... 58/129   RÉFUTÉ
+sans la trajectoire du brick ...... 49/129   ← 9 profils attribuables à la pièce 1
+```
+
+Donc **49 des 58 PRÉEXISTENT** au lot progression, et les trois correcteurs qu'on soupçonnerait
+d'abord sont écartés. Poser un plancher sans savoir où le paiement se fait serait la faute que la
+règle 7 nomme. La suite est d'identifier le mécanisme (candidats non testés : la boucle de volume
+R3.3, la coupe par `sessions_max` d'O-66, le gabarit `PB`/`PT` par phase).
+
+```verify
+id: O-76
+quoi: la dose de « Nage vitesse » descend-elle encore entre le premier et le dernier quart du plan ?
+attendu: /[1-9][0-9]*\/129/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let t=0,d=0;for(const{key,sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const nv=[];for(const w of p.weeks||[]){if(w.isRecup||w.phase?.id==='taper')continue;for(const x of w.days||[])for(const s of x.sessions||[])if(/Nage vitesse/i.test(s.name||''))nv.push(s.min||0);}if(nv.length<6)continue;t++;const q=Math.max(1,Math.floor(nv.length/4));const a1=nv.slice(0,q).reduce((u,v)=>u+v,0)/q,b1=nv.slice(-q).reduce((u,v)=>u+v,0)/q;if(b1<a1-1)d++;}console.log(d+'/'+t);"
+```
+
+## O-73b · Le balayage des mesures « est-ce que X mord ? » — B-02 sous-comptait d'un facteur 20 · ✅ **RECTIFIÉ**
+
+Demandé par le fondateur (§1) : *« pour chaque mesure de "est-ce que X mord ?" du registre —
+X laisse-t-il une signature (sortie lisible) ou restaure-t-il l'invariant (la mesure
+sous-compte) ? »* Le cas qu'il nomme en premier est le bon : l'arbitrage B-02 déclarait *« le
+plafond actuel est dormant : sur les 945 profils du golden, il ne mord que sur 6 profils
+(0,6 %) »*, et cette conclusion a orienté tout ce qui a suivi.
+
+**Mesuré au déclenchement : 118 profils sur 985 (12 %). Un facteur VINGT.** La conclusion « la
+règle ne protège aujourd'hui presque personne » était fausse. Le refus du recalibrage, lui, tient
+toujours — il s'appuyait sur d'autres critères mesurés (45 % du catalogue touché, 64 % de la
+population nage), pas sur celui-ci.
+
+Le balayage est étendu et outillé — `npm run mesure:morsure` :
+
+```
+C26c — plafond de temps dur ........ 118 / 985  (12 %)
+C22  — lissage ≤ +10 %/sem ......... 168 / 985  (17 %)
+I14  — la longue est la plus longue  344 / 985  (35 %)
+I14b — regarnissage des faciles ..... 300 / 985  (30 %)
+```
+
+Aucun n'était dormant, et aucun de ces chiffres n'était connu. La méthode passe par
+`npm run casser` (jamais un `sed` ad hoc) et le script refuse de conclure sur un 0 % : *une règle
+qu'on désactive sans que rien ne bouge n'a pas été désactivée*.
+
+```verify
+id: O-73b
+quoi: la fréquence de morsure se mesure-t-elle au déclenchement, et les quatre correcteurs mordent-ils ?
+attendu: /C26c — plafond de temps dur\s+1[0-9][0-9] \/ 98[0-9]/
+cmd: npm run --silent mesure:morsure
+```
+
 ## O-74 · Les semaines de CHARGE du pic ne portent aucune nage seuil sur les profils `reprise` · 🔴 **OUVERT, mesuré**
 
 Trouvé en bornant T-47. Sur `tri/70.3/reprise/inter` et `tri/70.3/reprise/avance`, les semaines

@@ -58,6 +58,7 @@
     "ventile:o42": "node scripts/ventilationO42.mjs",
     "inventaire:planchers": "node scripts/inventairePlanchers.mjs",
     "mesure:c26c-pic": "node scripts/mesureC26cPic.mjs",
+    "mesure:morsure": "node scripts/mesureMorsure.mjs",
     "registry:check": "node scripts/registryCheck.mjs",
     "demo:faisabilite": "node src/audit/feasibilityDemo.ts",
     "demo:proactif": "node src/audit/proactiveDemo.ts",

@@ -404,6 +404,29 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   en tuile pleine). **Avant de toucher une propriété visuelle, lister celles qui partagent son
   token ou son fond, et les mesurer d'un bloc** — la sonde coûte le même prix pour une ou pour
   cinq grandeurs.
+- **Un correcteur qui RÉUSSIT efface sa propre trace : sa fréquence se mesure au DÉCLENCHEMENT,
+  jamais sur le livré** (arbitrage du fondateur, 18/08/2026, « UN CORRECTEUR SANS TRACE »).
+  Le critère qui décide : *laisse-t-il une SIGNATURE ?* `DOSE_CAP_MIN` clampe à 40 — un bloc
+  exactement à 40 prouve le clamp, la sortie est lisible. *Ou RESTAURE-t-il un invariant ?*
+  C26c coupe jusqu'à « sous le plafond » — or « sous » est aussi l'état normal, et la sortie ne
+  dit plus rien. Mesuré deux fois : le taux de déclenchement de C26c au pic valait **7 % lu sur
+  le livré contre 18 % mesuré au rayon**, et l'arbitrage B-02 déclarait le plafond de temps dur
+  « dormant, 6 profils (0,6 %) » quand la neutralisation en rend **118 sur 985, 12 %** — un
+  facteur VINGT sur un chiffre qui a fondé une décision. `npm run mesure:morsure` fait la mesure
+  correcte (neutralisation par `npm run casser`, régénération, comptage des plans qui changent) :
+  C26c 12 % · C22 17 % · I14 35 % · I14b 30 % — aucun de ces mécanismes n'était dormant.
+
+- **Protéger un seul CANAL ne protège pas un type : ça choisit seulement de quelle façon il
+  meurt** (même arbitrage, §2 — le fondateur corrigeant sa propre consigne sur mesure).
+  `protéger la taille seule → le type perd ses occurrences` (« Footing facile » : 100 % de sa
+  taille, 17 % de ses occurrences) · `protéger l'occurrence seule → le type perd sa substance`
+  (« Nage vitesse » : occurrence protégée, et la dose descend quand même sur 58 plans sur 129).
+  Un type dont la valeur tient aux deux — la qualité de la discipline limitante, la sortie
+  longue — les déclare tous les deux. Et ça remet la politique de financement à sa place : les
+  planchers (deux axes) disent **ce qui ne peut pas payer**, `prioriteFinancement` oriente **qui
+  paie parmi le reste**, et quand plus personne ne peut payer ce n'est pas un défaut d'arbitrage
+  mais **le plafond structurel qui est trop bas** — un signal différent, à traiter comme tel.
+
 - **Toute protection qui dépend d'une SÉANCE SURVIVANTE rate le profil qui a le moins de
   séances** (arbitrage du fondateur, 18/08/2026, « C26c AU PIC » §5) — cinq occurrences, une
   seule cause : `sonde:b17` sans débutant · 53 titres menteurs sur C15 · zéro palier sur M à
