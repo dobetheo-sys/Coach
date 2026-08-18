@@ -6776,9 +6776,13 @@ verra pas la rampe »), posé sans mesure, révocable dès qu'une mesure le fond
 d'AFFICHAGE uniquement : il ne borne rien, il déclenche une phrase. Le commentaire du code
 (`planGenerator.ts`, décision `O69-plat`) porte la même mention.
 
-**Pièces suivantes** : footing (plafond qui suit la phase — `ftCaps` constant, 84 % au plafond),
-sortie longue CAP du tri (97' constant), semaines de récup (bornes qui scalent avec l'athlète),
-pivot swimrun / brick duathlon (mêmes types, autres modules). Les types qui DESCENDENT (nage
+**Pièces suivantes** : **la NAGE d'abord** (décision fondateur, 18/08/2026 — voir O-72
+constat 2 : « Nage seuil » à 1975 m css = 40,2 min, le plafond de dose au mètre près dès la
+S1 de base, constant sur toute la prépa ; le défaut du brick, sauf que la taille finale est
+un plafond de SÉCURITÉ pris comme cible), puis footing (plafond qui suit la phase — `ftCaps`
+constant, 84 % au plafond), sortie longue CAP du tri (97' constant), semaines de récup
+(bornes qui scalent avec l'athlète), pivot swimrun / brick duathlon (mêmes types, autres
+modules). Les types qui DESCENDENT (nage
 vitesse 91 → 27) ne sont PLUS une pièce de ce lot — correction du fondateur (QUI_PAIE §5) : ils
 ne manquent pas de progression, ils FINANCENT celle des autres ; c'est un mécanisme vivant,
 traité par la politique « qui paie » (voir l'entrée QUI-PAIE ci-dessous).
@@ -7369,6 +7373,64 @@ id: O-71
 quoi: les clés du journal des ✓ désignent-elles encore une AUTRE séance quand la course est reportée de 7 jours ?
 attendu: O71-REPRODUIT
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const ix=p=>{const m=new Map();for(const w of p.weeks)for(const d of w.days)d.sessions.forEach((s,si)=>m.set(w.num+'|'+d.jour+'|'+si,(s.d||'')+(s.name||'')));return m;};const b=a=>ix(globalThis.EBV2.buildPlan('tri',a));const A=b(B),C=b({...B,race_date:'2027-05-30'}),T=b({...B});let d=0,t=0;for(const[k,v]of A){if(C.has(k)&&C.get(k)!==v)d++;if(T.get(k)!==v)t++;}console.log('autres:'+d+' temoin:'+t);if(!(d>=15&&t===0))process.exit(1);" && echo "O71-REPRODUIT"
+```
+
+## O-72 · Le MAXIMUM du plan est en phase de BASE — le plan plat, mesuré en position · 🔴 **OUVERT, mesuré (vérification manuelle du fondateur sur le déployé, 18/08/2026)**
+
+Le fondateur, sur son écran : *« Cinq semaines avant l'objectif, je m'entraîne moins qu'au
+premier jour. Ce n'est pas "le plan est plat" — il décroît, puis remonte à peine au-dessus de
+son point de départ quarante semaines plus tard. […] Si le maximum est en semaine 1, le moteur
+ne produit pas une préparation. »*
+
+**La mesure demandée, faite sur son profil** (courbe hors récup, valeur + position du max) :
+
+```
+S1 9,5 · S2-S4 9,3-9,6 · S7-S12 8,3-9,4 (base)
+S13-S21 8,2-9,5 (dev) · S24-S33 8,4-9,6 (spec)
+S35 8,0 · S36 8,8 · S37 9,6 · S38 8,6 (peak) · S39-S40 5,1/3,0 (taper)
+
+MAX (hors récup) : 9,6 h en S4 — phase de BASE (ex æquo au dixième : S24, S37)
+```
+
+Le maximum n'est pas en semaine 1 mais en **S4, en pleine base** — la substance du verdict est
+identique : la phase de pic ne dépasse JAMAIS la quatrième semaine du plan, et ses deux
+premières semaines de charge (8,0 · 8,8) sont SOUS les semaines de base. La décision `O69-plat`
+dit bien « plan plat » — le dire n'en fait pas une préparation.
+
+**Le mécanisme est la rencontre de deux forces déjà nommées, chacune juste isolément** :
+O-69 ancre le départ sur `vol_recent × 0,85` (S1 → 9,5 h — c'était la demande, le départ ne
+ment plus) ; les plafonds (historique 13 h, structurel ~11,4, sonde de capacité) tiennent le
+pic à ~9,6 livré. Un plancher qui monte S1 et des plafonds qui tiennent le pic donnent un
+plateau — et les creux du pic (8,0/8,8) viennent des coupes/équilibres locaux, pas de la
+courbe déclarée. **La sortie est le lot progression lui-même** (mécanisme déjà écrit au
+registre : les types gagnent des trajectoires → les séances s'allongent → le structurel monte
+→ le pic peut dépasser la base) — cette entrée épingle la GRANDEUR À SURVEILLER : la POSITION
+du maximum, pas seulement l'amplitude pic − base.
+
+### Constat 1 du même écran — le créneau dur unique du pic va au VO2max, pas à un 2ᵉ brick
+
+Mesuré : **aucune semaine de pic ne porte 2 bricks** — S35 br=1 vo2=1 · S36 br=1 vo2=1 ·
+S37 br=1 vo2=0 · S38 br=1 vo2=1. O-70 est bien appliqué (S34 récup à 0 VO2, ≤ 1 en charge) :
+ce n'est pas une régression — c'est l'ALLOCATION du créneau dur unique. Le fondateur : *« Pour
+un 70.3 à cinq semaines, le rapport devrait être inverse — le brick est la seule séance qui
+construit l'enchaînement. »* À trancher avec le lot (même famille que l'arbitrage O-70 :
+la composition du pic).
+
+### Constat 2 — la pièce NAGE manquait à la liste du lot progression, et elle passe en premier
+
+Mesuré sur son profil : la « Nage seuil » livre **1975 m en zone css = 40,2 min — le plafond
+de dose (DOSE_CAP_MIN.thr = 40), au mètre près, dès la SEMAINE 1 de base** — et elle y reste
+sur TOUTE la prépa (S1-S38) ; les seuls mouvements sont vers le BAS (1525-1875 sur les
+semaines où une coupe passe), jamais une montée. C'est le défaut du brick (naître à taille
+finale), sur la nage — sauf qu'ici la taille finale est un **plafond de SÉCURITÉ** utilisé de
+fait comme cible dès le premier jour. Ajoutée à la liste des pièces, EN PREMIER (décision
+fondateur).
+
+```verify
+id: O-72
+quoi: le maximum du plan (hors récup) du profil fondateur est-il encore en phase de base ?
+attendu: O72-REPRODUIT
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const p=globalThis.EBV2.buildPlan('tri',B);let mx={h:-1,num:0,ph:''};for(const w of p.weeks){if(w.isRecup)continue;const h=w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:(s.min||0)),0),0)/60;if(h>mx.h)mx={h,num:w.num,ph:w.phase.id};}console.log('max '+mx.h.toFixed(1)+'h en S'+mx.num+' ('+mx.ph+')');if(mx.ph==='base')console.log('O72-REPRODUIT');"
 ```
 
 ## §6 · L'onglet Semaine collé sur une semaine consultée · ✅ **FERMÉ**
