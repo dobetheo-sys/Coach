@@ -15,6 +15,7 @@ import { generatePlan, normalizeRestMinutes, reconcileDeclaredVolume, syncDerive
 import { renderSess, type Refs } from "./renderer.ts";
 import { sealPlan } from "./seal.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
+import { estIntouchable } from "../engine/prioriteFinancement.ts";
 
 
 export interface AuditedPlan {
@@ -93,7 +94,7 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
       // 2) si les planchers bloquent encore : la fréquence cède (R3.13)
       for (let g = 0; g < 4 && wMinOf(w) > chargeMax * R313_TAPER_MAX_VS_PEAK; g++) {
         // R15.7-B — jamais le jour de la VEILLE (Déverrouillage) : exclusion absolue, comme la course.
-        const cand = w.days.filter((d) => d.charge === "facile" && !d.forced && d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.long || s.brick || /Déverrouillage/i.test(s.name || "")));
+        const cand = w.days.filter((d) => d.charge === "facile" && !d.forced && d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.long || s.brick || estIntouchable(s)));
         if (!cand.length) break;
         const dayMin = (d: (typeof cand)[0]) => d.sessions.reduce((t, s) => t + (s.min || 0), 0);
         const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
@@ -178,7 +179,7 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
           if (d.forced) continue;
           d.sessions.forEach((s, si) => {
             // R13.4 : une course (min=0) n'est jamais une victime de coupe — la VEILLE non plus (R15.7-B).
-            if (s.d === "rs" || s.long || s.brick || s.race || /Déverrouillage/i.test(s.name || "")) return;
+            if (estIntouchable(s) || s.long || s.brick) return;
             const m = s.min || 0;
             if (!victim || m < victim.min) victim = { d, si, min: m };
           });
@@ -227,7 +228,8 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
             for (const d of wk.days) {
               if (d.forced) continue;
               d.sessions.forEach((x, si) => {
-                if (x.d === "rs" || x.long || x.brick) return;
+                // §3 INVENTAIRE DES PLANCHERS — le plancher absolu passe par le point unique.
+                if (estIntouchable(x) || x.long || x.brick) return;
                 const m = x.min || 0;
                 if (!victim || m < victim.min) victim = { d, si, min: m };
               });
@@ -277,7 +279,8 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
         let victim: { d: V1Plan["weeks"][0]["days"][0]; si: number; min: number } | null = null;
         for (const d of w.days)
           d.sessions.forEach((s, si) => {
-            if (s.d === "rs" || s.long || s.brick || s.race) return; // R13.4 : une course (min=0) n'est jamais une victime de coupe
+            // R13.4 + §3 INVENTAIRE DES PLANCHERS : le plancher absolu (repos · course · veille) vit en UN endroit.
+            if (estIntouchable(s) || s.long || s.brick) return;
             const m = s.min || 0;
             if (!victim || m < victim.min) victim = { d, si, min: m };
           });

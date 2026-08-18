@@ -1652,6 +1652,47 @@ T("T-44", "rouge", "PROPRIÉTÉ — la coupe par sessions_max ne retire pas d'un
 //     PAS à l'orientation (vérifié inerte dessus, un facteur à la fois) ; la politique ne doit
 //     jamais le faire MONTER. Population épinglée (un zéro/compte a besoin de sa population).
 // Contre-preuve post-commit : `npm run casser` sur le filtre `skipProtege` → (1) rougit.
+/**
+ * T-46 — AUCUN SITE N'ÉLIT UNE VICTIME SANS PASSER PAR LE POINT UNIQUE.
+ *
+ * Balayage du §3 de « L'INVENTAIRE DES PLANCHERS » (fondateur, 18/08/2026) : *« qu'est-ce qui
+ * protège la semaine de course, l'affûtage et la veille — et est-ce une borne, ou un ordre de
+ * passage ? »* Réponse mesurée : un ORDRE DE PASSAGE. **Dix sites élisent une victime par
+ * minimum de minutes**, et chacun portait sa propre liste d'exclusions ; deux pouvaient encore
+ * supprimer le déverrouillage de la veille — dont un que j'avais annoncé fermé la veille (mon
+ * `replace(…, 1)` n'avait patché que la première de deux chaînes identiques).
+ *
+ * Ce critère est STATIQUE et c'est voulu : il ne porte pas sur le COMPORTEMENT du moteur (que
+ * la règle 15 veut observé sur le livré) mais sur la DUPLICATION d'une règle — la même famille
+ * que T-28 (« une borne, une source »). Mesuré : les deux trous sont LATENTS sur les deux
+ * corpus (golden 989 : 0 écart · banc r15 648 configs : vert avec ou sans) — donc aucune
+ * mesure de sortie ne peut les garder. Ce qui les garde, c'est l'absence de duplication.
+ */
+T("T-46", "vert", "toute élection de victime passe par le point unique (`estIntouchable`/`jourIntouchable`, §3 planchers)", () => {
+  // ⚠ les commentaires sont NEUTRALISÉS EN PLACE, retour à la ligne conservé : ma première
+  // écriture les supprimait, ce qui DÉCALE la numérotation et faisait pointer le critère sur
+  // une ligne innocente (il annonçait « planGenerator:2377 », qui n'élit rien). Un instrument
+  // qui nomme la mauvaise ligne envoie corriger le mauvais endroit.
+  const sansCommentaires = (x) => x
+    .replace(/\/\*[\s\S]*?\*\//g, (b) => b.replace(/[^\n]/g, " "))
+    .replace(/^(\s*)\/\/.*$/gm, "$1");
+  const pb = [];
+  let sites = 0;
+  for (const f of ["src/generator/planGenerator.ts", "src/generator/repairLoop.ts"]) {
+    const lignes = sansCommentaires(readFileSync(resolve(ROOT, f), "utf8")).split("\n");
+    lignes.forEach((l, i) => {
+      // une ÉLECTION : on retient le minimum de minutes parmi des candidats.
+      if (!/dayMin\(y\) < dayMin\(x\)|m < victim\.min/.test(l)) return;
+      sites++;
+      // les exclusions du site vivent dans les ~20 lignes qui précèdent l'élection.
+      const fenetre = lignes.slice(Math.max(0, i - 22), i + 1).join("\n");
+      if (!/estIntouchable|jourIntouchable/.test(fenetre)) pb.push(`${f}:${i + 1} — élit sans passer par estIntouchable`);
+    });
+  }
+  if (sites < 8) pb.push(`POPULATION : ${sites} site(s) trouvé(s), la sonde ne voit plus les élections`);
+  return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `${sites} sites d'élection, tous passent par le point unique` };
+});
+
 T("T-45", "vert", "PROPRIÉTÉ — l'orientation « qui paie » épargne les créneaux protégés quand une autre victime existe (QUI_PAIE §2)", () => {
   const bad = [];
   // (1) témoin : duathlon/S/ancien/avance/finir — golden : weeks[4].days[2] « off » → « facile »

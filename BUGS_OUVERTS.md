@@ -7433,6 +7433,94 @@ attendu: O72-REPRODUIT
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const p=globalThis.EBV2.buildPlan('tri',B);let mx={h:-1,num:0,ph:''};for(const w of p.weeks){if(w.isRecup)continue;const h=w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:(s.min||0)),0),0)/60;if(h>mx.h)mx={h,num:w.num,ph:w.phase.id};}console.log('max '+mx.h.toFixed(1)+'h en S'+mx.num+' ('+mx.ph+')');if(mx.ph==='base')console.log('O72-REPRODUIT');"
 ```
 
+## O-73 · L'inventaire des planchers — l'ordre de compression, mesuré · ✅ **LECTURE FAITE (fondateur, « L'INVENTAIRE DES PLANCHERS *EST* LA POLITIQUE », 18/08/2026)**
+
+*« qui a un plancher ne paie pas · qui n'en a pas paie tout — donc l'ordre de compression n'est
+écrit nulle part, et il est pourtant complet : il se lit dans la liste des planchers. »*
+
+**Ce n'est pas un lot, c'est une lecture** — et elle est désormais exécutable :
+`npm run inventaire:planchers [sport]`. Elle ne lit PAS le code : greper `blockBounds` rendrait
+la liste DÉCLARÉE, pas l'ordre RÉEL (règle 15). Elle mesure par le COMPORTEMENT — même athlète,
+enveloppe qu'on serre (`vol_max` 20 → 4, seul facteur qui bouge, `vol_recent` épinglé bas pour
+qu'O-69 ne s'active jamais) — et regarde ce que le plan livré fait de chaque type.
+
+### Le résultat, et il a DEUX axes (l'enveloppe perd 59 %)
+
+```
+tri/70.3        taille/occurrence      occurrences
+Brick vélo+CAP       87 %                 100 %      ← protégé en occurrences (s.brick)
+Sortie longue CAP    89 %                 100 %      ← protégé en occurrences (s.long)
+Nage continue B-17   73 %                 100 %      ← protégé en occurrences (épinglé)
+Footing facile       98 %                  17 %      ← plancher de MINUTES, aucune protection d'occurrence
+Nage récup courte   100 %                  41 %      ← idem
+Force basse cadence  97 %                  18 %      ← idem
+Nage seuil           56 %                  21 %      ← RIEN
+Nage vitesse         56 %                  21 %      ← RIEN
+Sweetspot vélo       50 %                   0 %      ← RIEN — disparaît entièrement
+run/marathon : « Sortie longue » est le SEUL type protégé sur les deux axes.
+```
+
+**La conclusion est plus dure que la phrase qui l'a demandée** : un plancher de MINUTES ne
+protège pas — il change la MONNAIE du paiement. « Footing facile » garde 100 % de sa taille et
+perd 83 % de ses occurrences : un type qui ne peut plus rétrécir ne peut plus que disparaître.
+Et la protection qui compte (l'occurrence) n'est pas une BORNE : c'est une exclusion nominale
+(`s.long`, `s.brick`, `pinned`) répétée dans chaque passe de coupe — la protection PAR LE CHEMIN.
+
+`Nage seuil` et `Nage vitesse` — le symptôme du fondateur — sont dans la troisième catégorie :
+elles paient sur les DEUX canaux. C'est « qui n'en a pas paie tout », chiffré.
+
+### Deux fautes d'instrument à moi, publiées
+
+(1) Ma première écriture cherchait le plancher dans la CONSTANCE de la plus petite occurrence :
+faux — « Force basse cadence » passe de 31 à 67 min quand on serre, parce que les petites
+occurrences DISPARAISSENT et que la statistique porte sur une population qui rétrécit. Je
+nommais « le plancher » et je mesurais « le minimum des survivants ».
+(2) Ma deuxième cherchait un ENTASSEMENT sur la valeur basse : elle rendait **0 type sur 12**,
+un taux saturé — donc l'instrument (règle 15). Les occurrences d'un type ont des tailles
+différentes selon la phase, agréger 9 pressions × 40 semaines dilue tout empilement. La
+grandeur qui répond à la question posée est l'ÉLASTICITÉ, et c'est la troisième écriture.
+
+### §3 — le balayage des trois dernières semaines : BORNE ou CHEMIN ?
+
+Réponse mesurée : **un CHEMIN. Onze sites élisent une victime par minimum de minutes**, chacun
+avec sa propre liste d'exclusions. Deux (`repairLoop`, passes « saut de charge lissé » et
+« l'affûtage ne remonte jamais ») pouvaient encore supprimer le déverrouillage de la veille —
+**dont un que j'avais annoncé fermé la veille** : mon `replace(…, 1)` n'avait patché que la
+première de deux chaînes IDENTIQUES. J'ai écrit « six sites fermés » ; il y en avait cinq.
+Le plancher absolu (repos · course · veille) vit maintenant en UN point
+(`prioriteFinancement.ts`, deux granularités : `estIntouchable` / `jourIntouchable`), et **T-46**
+refuse toute élection qui ne passe pas par lui — garde STATIQUE assumée, de la famille de T-28
+(« une borne, une source ») : les deux trous sont LATENTS sur les deux corpus (golden 989 :
+0 écart · banc r15 648 configs : vert avec ou sans), donc aucune mesure de SORTIE ne peut les
+garder. Ce qui les garde, c'est l'absence de duplication. T-46 a d'ailleurs trouvé un **onzième**
+site que mon balayage manuel avait manqué.
+
+**Trois erreurs de plus dans ce chantier, toutes publiées** : ma garde T-46 nommait la mauvaise
+ligne (son filtre de commentaires SUPPRIMAIT les blocs `/* */`, décalant la numérotation) ; ma
+première contre-preuve était VACUEUSE (un `sed` avec un `|` non échappé n'a rien muté et
+sortait verte — la faute déjà enregistrée dans ce dépôt, refaite) ; et mon routage a d'abord
+déplacé **28 profils** du golden, dont j'ai attribué la cause à « avant course » puis à
+`repairLoop` — **les deux fois à tort** : c'étaient deux substitutions qui ajoutaient
+silencieusement `rs`/`race` à des filtres de JOUR. Isolées et corrigées : **989/989, 0 écart**.
+
+### §4 — le troisième état du registre, fermé
+
+`registryCheck` distinguait deux états là où il en faut trois. Une commande qui MEURT en
+crachant une trace partait au filtre regex, n'y trouvait pas son motif, et sortait en
+« ne reproduit plus » — c'est-à-dire en VERT, avec le sens « le défaut est réparé ». La règle
+posée est asymétrique parce que la preuve l'est : **un code de sortie ≠ 0 n'autorise qu'un
+verdict POSITIF**, jamais un « ne reproduit plus » (sur un processus mort, l'absence du motif
+ne prouve rien ; sa présence prouve encore quelque chose). `audit:v6`, qui sort en 1 quand il
+trouve une régression, continue de rendre « reproduit ». Contre-prouvé : avant → « NE REPRODUIT
+PLUS (vert) », après → « COMMANDE EN ÉCHEC », exit 1. Registre : **90/90 sous la règle stricte**.
+
+```verify
+id: O-73
+quoi: l'inventaire est-il exécutable, et le point unique tient-il les onze élections ?
+attendu: /✓ T-46 \[vert/
+cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-46"
+```
+
 ## §6 · L'onglet Semaine collé sur une semaine consultée · ✅ **FERMÉ**
 
 `vue` est au niveau module, posée par les flèches, remise à `null` par le seul bouton « semaine

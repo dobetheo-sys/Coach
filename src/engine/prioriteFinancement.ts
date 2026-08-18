@@ -49,3 +49,52 @@ export function estCreneauProtege(
   const disc = disciplineLimitante(sport);
   return !!disc && s.d === disc && !s.recovery && !s.race;
 }
+
+/** CE QUI N'EST JAMAIS UNE VICTIME — le PLANCHER ABSOLU de la politique, en UN endroit.
+ *
+ *  Écrit le 18/08/2026 après le balayage demandé par le fondateur (« INVENTAIRE DES PLANCHERS »
+ *  §3 : *« qu'est-ce qui protège la semaine de course, l'affûtage et la veille — et est-ce une
+ *  borne, ou un ordre de passage ? »*). Réponse mesurée : **DIX sites élisent une victime par
+ *  minimum de minutes, et chacun portait SA PROPRE liste d'exclusions.** Deux d'entre eux
+ *  pouvaient encore supprimer le déverrouillage de la veille (`repairLoop`, passes « saut de
+ *  charge lissé » et « l'affûtage ne remonte jamais ») — dont un que j'avais annoncé fermé la
+ *  veille : mon `replace(…, 1)` n'avait patché que la première de deux chaînes IDENTIQUES.
+ *
+ *  C'est la protection PAR LE CHEMIN que le fondateur nomme : elle tient tant que les dix
+ *  chemins pensent à la même chose, et un lot sans rapport suffit à en désaligner un. Le
+ *  correctif n'est donc pas un onzième patch, c'est de retirer la duplication — même
+ *  raisonnement que `npm run casser` : ne pas compter sur la discipline là où un mécanisme
+ *  suffit.
+ *
+ *  Le prédicat porte le plancher ABSOLU (repos · course · veille), pas les orientations : les
+ *  exclusions `s.long`/`s.brick` restent locales, parce qu'elles ne valent pas partout (une
+ *  passe d'affûtage qui coupe des JOURS n'a pas les mêmes victimes qu'une passe qui coupe des
+ *  SÉANCES). Ajouter ici ce qui n'est pas universel changerait le comportement de sept sites
+ *  corrects pour en réparer deux.
+ *
+ *  Pourquoi ces trois-là et pas d'autres : leur point commun est d'être COURTS PAR CONCEPTION —
+ *  la course vaut `min: 0` (R13.4), la veille ≤ 25 min (R13.4-C2), le repos 0 — donc toute règle
+ *  « retirer la plus petite » les élit en premier. Ce sont aussi les trois dont l'erreur ne se
+ *  rattrape pas : une séance perdue en semaine 5 se rattrape sur trente-cinq semaines, une
+ *  séance perdue la veille du départ, jamais.
+ *
+ *  ⚠ BORNÉ À CE QUE LE DÉFAUT RÉCLAME, et c'est une mesure qui l'a décidé. Ma première
+ *  écriture couvrait aussi « Endurance allégée (avant course) » (la séance de J-2/J-3), par
+ *  symétrie apparente avec la veille. Mesuré : la grandeur qui compte — le nombre de plans
+ *  arrivant au départ après un trou ≥ 3 jours — est **IDENTIQUE avant et après (1 sur 132,
+ *  le même profil)**, tandis que le golden bougeait de **28 profils**. Une règle qu'aucun
+ *  défaut mesuré ne réclame est une règle qui en crée un (leçon R16.10, où la règle miroir a
+ *  été écrite, mesurée, puis RETIRÉE). Le site qui protégeait déjà « avant course » le fait
+ *  toujours, localement — on ne retire rien à personne. */
+export function estIntouchable(s: { d?: string; race?: boolean; name?: string }): boolean {
+  return s.d === "rs" || !!s.race || /Déverrouillage/i.test(s.name || "");
+}
+
+/** La même chose au niveau du JOUR : un jour qui porte la course ou la veille n'est pas une
+ *  victime. Le repos en est volontairement absent — les passes qui coupent des jours filtrent
+ *  déjà les jours vides (`d.sessions.some((s) => s.d !== "rs")`), et l'inclure ici a été
+ *  MESURÉ : il déplaçait 28 profils du golden en excluant des jours mixtes. Deux formes pour un
+ *  seul prédicat, parce que les passes travaillent à deux granularités — pas deux règles. */
+export function jourIntouchable(d: { sessions?: { d?: string; race?: boolean; name?: string }[] }): boolean {
+  return (d.sessions || []).some((s) => s.d !== "rs" && estIntouchable(s));
+}

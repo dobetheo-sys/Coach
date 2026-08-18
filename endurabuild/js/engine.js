@@ -352,6 +352,55 @@ function estCreneauProtege(
   return !!disc && s.d === disc && !s.recovery && !s.race;
 }
 
+/** CE QUI N'EST JAMAIS UNE VICTIME — le PLANCHER ABSOLU de la politique, en UN endroit.
+ *
+ *  Écrit le 18/08/2026 après le balayage demandé par le fondateur (« INVENTAIRE DES PLANCHERS »
+ *  §3 : *« qu'est-ce qui protège la semaine de course, l'affûtage et la veille — et est-ce une
+ *  borne, ou un ordre de passage ? »*). Réponse mesurée : **DIX sites élisent une victime par
+ *  minimum de minutes, et chacun portait SA PROPRE liste d'exclusions.** Deux d'entre eux
+ *  pouvaient encore supprimer le déverrouillage de la veille (`repairLoop`, passes « saut de
+ *  charge lissé » et « l'affûtage ne remonte jamais ») — dont un que j'avais annoncé fermé la
+ *  veille : mon `replace(…, 1)` n'avait patché que la première de deux chaînes IDENTIQUES.
+ *
+ *  C'est la protection PAR LE CHEMIN que le fondateur nomme : elle tient tant que les dix
+ *  chemins pensent à la même chose, et un lot sans rapport suffit à en désaligner un. Le
+ *  correctif n'est donc pas un onzième patch, c'est de retirer la duplication — même
+ *  raisonnement que `npm run casser` : ne pas compter sur la discipline là où un mécanisme
+ *  suffit.
+ *
+ *  Le prédicat porte le plancher ABSOLU (repos · course · veille), pas les orientations : les
+ *  exclusions `s.long`/`s.brick` restent locales, parce qu'elles ne valent pas partout (une
+ *  passe d'affûtage qui coupe des JOURS n'a pas les mêmes victimes qu'une passe qui coupe des
+ *  SÉANCES). Ajouter ici ce qui n'est pas universel changerait le comportement de sept sites
+ *  corrects pour en réparer deux.
+ *
+ *  Pourquoi ces trois-là et pas d'autres : leur point commun est d'être COURTS PAR CONCEPTION —
+ *  la course vaut `min: 0` (R13.4), la veille ≤ 25 min (R13.4-C2), le repos 0 — donc toute règle
+ *  « retirer la plus petite » les élit en premier. Ce sont aussi les trois dont l'erreur ne se
+ *  rattrape pas : une séance perdue en semaine 5 se rattrape sur trente-cinq semaines, une
+ *  séance perdue la veille du départ, jamais.
+ *
+ *  ⚠ BORNÉ À CE QUE LE DÉFAUT RÉCLAME, et c'est une mesure qui l'a décidé. Ma première
+ *  écriture couvrait aussi « Endurance allégée (avant course) » (la séance de J-2/J-3), par
+ *  symétrie apparente avec la veille. Mesuré : la grandeur qui compte — le nombre de plans
+ *  arrivant au départ après un trou ≥ 3 jours — est **IDENTIQUE avant et après (1 sur 132,
+ *  le même profil)**, tandis que le golden bougeait de **28 profils**. Une règle qu'aucun
+ *  défaut mesuré ne réclame est une règle qui en crée un (leçon R16.10, où la règle miroir a
+ *  été écrite, mesurée, puis RETIRÉE). Le site qui protégeait déjà « avant course » le fait
+ *  toujours, localement — on ne retire rien à personne. */
+function estIntouchable(s                                               )          {
+  return s.d === "rs" || !!s.race || /Déverrouillage/i.test(s.name || "");
+}
+
+/** La même chose au niveau du JOUR : un jour qui porte la course ou la veille n'est pas une
+ *  victime. Le repos en est volontairement absent — les passes qui coupent des jours filtrent
+ *  déjà les jours vides (`d.sessions.some((s) => s.d !== "rs")`), et l'inclure ici a été
+ *  MESURÉ : il déplaçait 28 profils du golden en excluant des jours mixtes. Deux formes pour un
+ *  seul prédicat, parce que les passes travaillent à deux granularités — pas deux règles. */
+function jourIntouchable(d                                                                )          {
+  return (d.sessions || []).some((s) => s.d !== "rs" && estIntouchable(s));
+}
+
 // ===== src/engine/measured.ts =====
 /**
  * `measured` — L'INSTANTANÉ DE CE QUE L'ATHLÈTE A RÉELLEMENT FAIT (décisions produit R6, §2-§3).
@@ -9383,7 +9432,7 @@ function reconcileDeclaredVolume(
       for (let g = 0; g < 4 && weekMinOf(wk) >= prev; g++) {
         // R15.7-B — le jour de la VEILLE (Déverrouillage) est exclu en ABSOLU, comme la
         // course : la plus courte par conception, victime idéale d'un min(dayMin).
-        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race || /Déverrouillage/i.test(s.name || "")));
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !jourIntouchable(d));
         if (active.length <= 1) break; // une semaine de récup garde au moins un contact avec le sport
         const victim = active.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
         victim.charge = "off";
@@ -9436,7 +9485,7 @@ function reconcileDeclaredVolume(
         if (before - weekMinOf(wk) < 0.5) break; // plus rien à réduire : la fréquence prend le relais
       }
       for (let g = 0; g < 4 && weekMinOf(wk) > cap; g++) {
-        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race || /Déverrouillage/i.test(s.name || "")));
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !jourIntouchable(d));
         if (active.length <= 1) break;
         // R13.3 — la nage d'affûtage (souvent la séance la plus courte, donc la victime
         // désignée de toutes les coupes) est ÉVITÉE tant qu'une autre victime existe : les
@@ -9553,6 +9602,8 @@ function reconcileDeclaredVolume(
         for (const d of wk.days) for (const sx of d.sessions) {
           if (sx.d === "rs" || sx.race || !sx.steps) continue;
           if (/Déverrouillage/i.test(sx.name)) continue; // R15.7-B — jamais la veille
+          // (le point unique n'est PAS employé ici : il ajouterait `rs`/`race`, que cette passe
+          //  traverse volontairement — équivalence stricte, mesurée sur le golden.)
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
             scaleStepDose(st, f, { repsMode: "floor", durFloor: 5, distFloor: 150, clampToOriginal: true });
@@ -9562,7 +9613,7 @@ function reconcileDeclaredVolume(
       };
       const floorHere = raceFloor > 0 ? raceFloor : 0;
       for (let g = 0; g < 6 && weekMinOf(wk) > prev && weekMinOf(wk) > floorHere; g++) {
-        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race || /Déverrouillage/i.test(s.name || "")));
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !jourIntouchable(d));
         // Une seule séance restante : on ne peut plus RETIRER, il faut RÉDUIRE. Sans ce repli,
         // la décroissance de l'affûtage s'arrêtait net dès qu'une semaine tombait à une séance
         // (mesuré : 48 → 56 min sur un Full à 3 séances/semaine). Réduire est toujours dans le
@@ -9584,7 +9635,7 @@ function reconcileDeclaredVolume(
         // idéale) — une séance courte par CONCEPTION doit être protégée comme telle, sinon
         // toute règle « retirer la plus petite » la supprime. R13.4-C2 plafonnait la veille
         // à 25 min sans jamais exiger qu'elle existe : un plafond sans plancher.
-        let cand = active.filter((d) => !d.sessions.some((s) => s.long || s.brick || /Déverrouillage|avant course/i.test(s.name)));
+        let cand = active.filter((d) => !d.sessions.some((s) => s.long || s.brick || estIntouchable(s) || /avant course/i.test(s.name || "")));
         if (!cand.length) cand = active.filter((d) => !d.sessions.some((s) => s.long || s.brick));
         // R13 — même orientation que partout : ne pas orpheliner une discipline du sport.
         // Et si TOUTE victime en orphelinerait une (2 jours actifs, 2 disciplines), on ne
@@ -9666,7 +9717,7 @@ function reconcileDeclaredVolume(
               // Jamais la LONGUE ni le brick : regonfler la sortie longue en semaine de course
               // contredirait l'affûtage — et sans bornes de bloc, elle repassait au-dessus de
               // C23 (sortie CAP débutant > 3 h, régression D7 du banc v6).
-              if (sx.race || sx.d === "rs" || !sx.steps || sx.long || sx.brick || /Déverrouillage/.test(sx.name)) continue;
+              if (estIntouchable(sx) || !sx.steps || sx.long || sx.brick) continue;
               const corps = sx.steps.filter((x) => x.role === "body")
                 .reduce((t, x) => t + (x.durationMin ? (x.reps || 1) * x.durationMin : 0), 0);
               // C13e s'exprime aussi en MÈTRES en bassin : sans cette borne, l'échauffement
@@ -9887,7 +9938,7 @@ function reconcileDeclaredVolume(
       if (rendus > 0 && weekMinOf(wk) > cible) {
         const f = cible / weekMinOf(wk);
         for (const d of wk.days) for (const sx of d.sessions) {
-          if (sx.d === "rs" || sx.race || !sx.steps || /Déverrouillage/i.test(sx.name)) continue;
+          if (estIntouchable(sx) || !sx.steps) continue;
           for (const st of sx.steps) {
             if (st.role !== "body") continue;
             scaleStepDose(st, f, { repsMode: "round", durFloor: 10, distFloor: 150, clampToOriginal: true });
@@ -11417,7 +11468,7 @@ function generatePlan(profile                , opts                             
     if (active.length <= minActive) return false;
     // R15.7-B — le jour de la VEILLE (Déverrouillage) est exclu en ABSOLU, comme la course :
     // même raison que dans cutSmallestSessionIn, la veille est la plus courte par conception.
-    const cand0 = active.filter((d) => (d.charge === "facile" || d.charge === "recup") && !d.forced && !d.sessions.some((s) => s.long || s.brick || /Déverrouillage/i.test(s.name || "")));
+    const cand0 = active.filter((d) => (d.charge === "facile" || d.charge === "recup") && !d.forced && !jourIntouchable(d) && !d.sessions.some((s) => s.long || s.brick));
     if (!cand0.length) return false;
     // La couverture de discipline oriente le choix ; elle ne l'INTERDIT jamais. Si le seul jour
     // coupable porte la discipline principale, la coupe a lieu quand même : la hiérarchie du
@@ -11468,7 +11519,7 @@ function generatePlan(profile                , opts                             
               // petite ». Elle survivait ici par CHANCE (une autre séance était plus petite) ;
               // l'orientation « qui paie » a protégé cette autre séance et la coupe est tombée
               // sur la veille — trou de 3 jours avant la course, banc r15 rouge sur 1/648.
-              if (s.d === "rs" || s.long || s.brick || s.race || /Déverrouillage/i.test(s.name || "")) return;
+              if (estIntouchable(s) || s.long || s.brick) return;
               if (skipProtege && estCreneauProtege(s, r.profile.sport          )) return;
               if (keepMain && _sportDiscs.includes(s.d) && !wd2.some((o) => o.sessions.some((x) => x !== s && (x.d === s.d || x.d === "br")))) return;
               // R13.3 — en affûtage, la seule nage de la semaine est traitée comme la discipline
@@ -11771,7 +11822,7 @@ function generatePlan(profile                , opts                             
         // semaine avant un 5k, c'est un affûtage normal — trois séances mal réduites, non.
         // `keepsMainDiscipline` continue d'orienter la victime : on ne vide pas la discipline.
         if (active.length <= 2) break;
-        const cand0 = active.filter((d) => d.charge === "facile" && !d.forced && !d.sessions.some((s) => s.long || s.brick || /Déverrouillage/i.test(s.name || "")));
+        const cand0 = active.filter((d) => d.charge === "facile" && !d.forced && !d.sessions.some((s) => s.long || s.brick || estIntouchable(s)));
         if (!cand0.length) break;
         const candK = cand0.filter((d) => keepsMainDiscipline(wd, d));
         let cand = candK.length ? candK : cand0;
@@ -13390,6 +13441,7 @@ function sealPlan(plan        , opts                                        )   
 
 
 
+
 const MAX_ITERATIONS = 3;
 
 /** Minutes d'une semaine mesurées avec le MODÈLE DE L'AUDITEUR (récup inter-répétitions
@@ -13458,7 +13510,7 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
       // 2) si les planchers bloquent encore : la fréquence cède (R3.13)
       for (let g = 0; g < 4 && wMinOf(w) > chargeMax * R313_TAPER_MAX_VS_PEAK; g++) {
         // R15.7-B — jamais le jour de la VEILLE (Déverrouillage) : exclusion absolue, comme la course.
-        const cand = w.days.filter((d) => d.charge === "facile" && !d.forced && d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.long || s.brick || /Déverrouillage/i.test(s.name || "")));
+        const cand = w.days.filter((d) => d.charge === "facile" && !d.forced && d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.long || s.brick || estIntouchable(s)));
         if (!cand.length) break;
         const dayMin = (d                  ) => d.sessions.reduce((t, s) => t + (s.min || 0), 0);
         const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
@@ -13543,7 +13595,7 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
           if (d.forced) continue;
           d.sessions.forEach((s, si) => {
             // R13.4 : une course (min=0) n'est jamais une victime de coupe — la VEILLE non plus (R15.7-B).
-            if (s.d === "rs" || s.long || s.brick || s.race || /Déverrouillage/i.test(s.name || "")) return;
+            if (estIntouchable(s) || s.long || s.brick) return;
             const m = s.min || 0;
             if (!victim || m < victim.min) victim = { d, si, min: m };
           });
@@ -13592,7 +13644,8 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
             for (const d of wk.days) {
               if (d.forced) continue;
               d.sessions.forEach((x, si) => {
-                if (x.d === "rs" || x.long || x.brick) return;
+                // §3 INVENTAIRE DES PLANCHERS — le plancher absolu passe par le point unique.
+                if (estIntouchable(x) || x.long || x.brick) return;
                 const m = x.min || 0;
                 if (!victim || m < victim.min) victim = { d, si, min: m };
               });
@@ -13642,7 +13695,8 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
         let victim                                                                       = null;
         for (const d of w.days)
           d.sessions.forEach((s, si) => {
-            if (s.d === "rs" || s.long || s.brick || s.race) return; // R13.4 : une course (min=0) n'est jamais une victime de coupe
+            // R13.4 + §3 INVENTAIRE DES PLANCHERS : le plancher absolu (repos · course · veille) vit en UN endroit.
+            if (estIntouchable(s) || s.long || s.brick) return;
             const m = s.min || 0;
             if (!victim || m < victim.min) victim = { d, si, min: m };
           });

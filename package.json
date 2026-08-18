@@ -56,6 +56,7 @@
     "mesure:score-alertes": "node scripts/mesureScoreAlertes.mjs",
     "mesure:c22": "node scripts/mesureC22.mjs",
     "ventile:o42": "node scripts/ventilationO42.mjs",
+    "inventaire:planchers": "node scripts/inventairePlanchers.mjs",
     "registry:check": "node scripts/registryCheck.mjs",
     "demo:faisabilite": "node src/audit/feasibilityDemo.ts",
     "demo:proactif": "node src/audit/proactiveDemo.ts",

@@ -404,6 +404,27 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   en tuile pleine). **Avant de toucher une propriété visuelle, lister celles qui partagent son
   token ou son fond, et les mesurer d'un bloc** — la sonde coûte le même prix pour une ou pour
   cinq grandeurs.
+- **Poser un plancher est un acte de priorisation GLOBALE, jamais une protection locale**
+  (arbitrage du fondateur, 18/08/2026, « L'INVENTAIRE DES PLANCHERS *EST* LA POLITIQUE ») :
+  *« qui a un plancher ne paie pas, qui n'en a pas paie tout »*. L'ordre de compression du
+  moteur n'est écrit nulle part et il est pourtant complet — il se lit dans la liste des
+  protections. Chaque plancher posé pour une bonne raison LOCALE a déprioritisé en silence tout
+  ce qui n'en avait pas, et personne ne l'a décidé. Avant d'en poser un : `npm run
+  inventaire:planchers` dit qui paie aujourd'hui ; après, il doit dire ce qu'on a voulu.
+  **Deux canaux, jamais un** — un plancher de MINUTES ne protège pas des OCCURRENCES : mesuré,
+  « Footing facile » garde 100 % de sa taille et perd 83 % de ses occurrences, parce qu'un type
+  qui ne peut plus rétrécir ne peut plus que disparaître. Un plancher ne supprime pas le
+  paiement, il en change la MONNAIE.
+
+- **Une protection qui vit dans les conditions de N passes n'est pas une protection, c'est une
+  coïncidence** (même arbitrage, §3) : *protégé par le chemin, pas par la borne*. Mesuré —
+  **onze sites élisent une victime par minimum de minutes**, chacun portait sa propre liste
+  d'exclusions, deux pouvaient encore supprimer le déverrouillage de la veille. Le plancher
+  absolu (repos · course · veille) vit désormais en UN point,
+  `src/engine/prioriteFinancement.ts`, et **T-46** refuse toute élection qui ne passe pas par
+  lui. Le mode de défaillance est asymétrique dans le temps : une séance perdue en semaine 5 se
+  rattrape sur trente-cinq semaines, une séance perdue la veille du départ, jamais.
+
 - **Le moteur réfléchit avant de générer, se vérifie, se corrige** — jamais l'inverse. Toute
   nouvelle contrainte de génération suit le cycle : mesurer d'abord (l'auditeur dit qui viole
   quoi), corriger dans le générateur, re-mesurer, garder le vert.

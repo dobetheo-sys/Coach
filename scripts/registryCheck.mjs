@@ -6,11 +6,17 @@
  * exécute les vérifications que le registre porte et range chaque entrée dans une des trois
  * colonnes que le handoff R15.9 demande.
  *
- *   REPRODUIT        la mesure retrouve ce que l'entrée décrit → l'entrée est à jour
- *   NE REPRODUIT PLUS la commande tourne mais le motif attendu a disparu → l'entrée est
- *                     devenue fausse, elle doit passer au §4 (c'est un RÉSULTAT, pas un
- *                     échec : §4 a été rempli à la main jusqu'ici, par heureux accident)
- *   COMMANDE CASSÉE   la commande ne tourne plus → le registre pointe dans le vide
+ * TROIS ÉTATS, jamais deux (retour fondateur « INVENTAIRE DES PLANCHERS » §4, 18/08/2026) :
+ *
+ *   motif ABSENT      la commande tourne JUSQU'AU BOUT et le motif a disparu → l'entrée est
+ *                     devenue fausse, elle passe au §4. C'est un VERDICT.
+ *   motif INVALIDE    l'`attendu` n'est pas une regex lisible → le contrôle est CASSÉ.
+ *                     (Il tuait le balayage entier avant le 18/08 : erreur d'OUTIL.)
+ *   commande EN ÉCHEC le processus meurt (code ≠ 0) sans imprimer son motif → le contrôle
+ *                     n'a PAS TOURNÉ. Erreur d'EXÉCUTION, jamais un verdict.
+ *
+ * Les deux derniers sortent en 1. Le premier sort en 0 — c'est une bonne nouvelle. Ce qu'il
+ * ne faut jamais, c'est qu'une commande en échec et un motif absent rendent le même vert.
  *
  * Format des blocs, dans `BUGS_OUVERTS.md` :
  *
@@ -24,9 +30,9 @@
  * signifie « le défaut est encore là, tel que décrit ». Une entrée FERMÉE écrit donc le motif
  * de sa CORRECTION : elle « reproduit » son état corrigé.
  *
- * Code de sortie : 1 dès qu'une commande est cassée. Une entrée qui ne reproduit plus n'est PAS
- * une erreur — c'est une bonne nouvelle qui demande une mise à jour du document ; elle est
- * signalée en clair et sort en 0, sauf avec `--strict`.
+ * Code de sortie : 1 dès qu'un contrôle est cassé ou en échec. Une entrée qui ne reproduit plus
+ * n'est PAS une erreur — elle est signalée en clair et sort en 0, sauf avec `--strict`.
+ * `--seul=<id>` n'exécute qu'une entrée (contre-preuves).
  */
 import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
@@ -36,6 +42,9 @@ import { dirname, join } from "node:path";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DOC = join(ROOT, "BUGS_OUVERTS.md");
 const STRICT = process.argv.includes("--strict");
+// `--seul <id>` : n'exécute qu'une entrée. Sert aux CONTRE-PREUVES (une garde qui ne peut se
+// vérifier qu'en 10 minutes ne se vérifie pas) — jamais en CI, qui les veut toutes.
+const SEUL = (process.argv.find((x) => x.startsWith("--seul=")) || "").slice(7);
 
 function blocs(md) {
   const out = [];
@@ -55,7 +64,7 @@ function blocs(md) {
 }
 
 const md = readFileSync(DOC, "utf8");
-const items = blocs(md);
+const items = blocs(md).filter((it) => !SEUL || it.id === SEUL);
 if (!items.length) {
   console.error("✖ Aucun bloc ```verify``` trouvé dans BUGS_OUVERTS.md — le registre n'est pas exécutable.");
   process.exit(1);
@@ -69,15 +78,12 @@ for (const it of items) {
     console.log("  ✖ " + (it.id || "?").padEnd(12) + "bloc verify incomplet");
     continue;
   }
-  let sortie = "", ok = true;
+  let sortie = "", sortiOK = true;
   try {
     sortie = execSync(it.cmd, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024 });
   } catch (e) {
-    // Une commande qui sort en code ≠ 0 n'est pas forcément cassée : `audit:v6` sort en 1
-    // quand il trouve une régression, et c'est justement ce qu'on veut pouvoir observer.
-    // Cassé = pas de sortie exploitable du tout.
     sortie = String((e.stdout || "") + (e.stderr || ""));
-    if (!sortie.trim()) ok = false;
+    sortiOK = false;
   }
   const m = it.attendu.match(/^\/(.*)\/([a-z]*)$/);
   // Une regex INVALIDE dans un bloc `verify` classe l'ENTRÉE en cassée, elle ne tue pas le
@@ -92,10 +98,25 @@ for (const it of items) {
     console.log("  ✖ " + it.id.padEnd(12) + "ATTENDU ILLISIBLE — " + e.message);
     continue;
   }
-  if (!ok) {
-    cols.casse.push(it.id + " : « " + it.cmd + " » ne produit plus rien");
-    console.log("  ✖ " + it.id.padEnd(12) + "COMMANDE CASSÉE — " + it.cmd);
-  } else if (re.test(sortie)) {
+  const trouve = re.test(sortie);
+  // LE TROISIÈME ÉTAT (retour fondateur « INVENTAIRE DES PLANCHERS » §4, 18/08/2026) —
+  // « une commande qui échoue et une entrée qui ne reproduit plus ne doivent jamais rendre le
+  // même vert ». Elles le rendaient : seule une sortie VIDE était classée cassée, donc une
+  // commande qui MEURT en crachant une trace (le cas de `mesureO43`, sauvé par hasard par son
+  // `2>/dev/null`) partait au filtre regex, n'y trouvait pas son motif, et sortait en
+  // « ne reproduit plus » — c'est-à-dire en VERT, avec le sens « le défaut est réparé ».
+  //
+  // La règle est asymétrique parce que la preuve l'est : sur un processus MORT, l'absence du
+  // motif ne prouve rien (le contrôle n'a pas rendu de verdict), tandis que sa PRÉSENCE prouve
+  // encore quelque chose (le motif a été imprimé avant la sortie). Un code ≠ 0 n'autorise donc
+  // qu'un verdict POSITIF ; il ne peut jamais produire un « ne reproduit plus ».
+  // Ce qui reste servi : `audit:v6` sort en 1 quand il trouve une régression et son motif est
+  // justement ce qu'on cherche — il continue de rendre « reproduit ».
+  if (!sortiOK && !trouve) {
+    cols.casse.push(it.id + " : « " + it.cmd + " » a ÉCHOUÉ (code ≠ 0) sans imprimer le motif — verdict impossible"
+      + (sortie.trim() ? " · " + sortie.trim().split("\n").pop().slice(0, 120) : " (aucune sortie)"));
+    console.log("  ✖ " + it.id.padEnd(12) + "COMMANDE EN ÉCHEC — le contrôle n'a pas rendu de verdict");
+  } else if (trouve) {
     cols.reproduit.push(it.id);
     console.log("  ✔ " + it.id.padEnd(12) + "reproduit" + (it.quoi ? " — " + it.quoi : ""));
   } else {
