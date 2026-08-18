@@ -68,6 +68,19 @@ const build = (sport, over) => E.buildPlan(sport, Object.assign({}, BASE, over))
  * Le refus lui-même est couvert par R15.7-C1 du banc R15.
  */
 const FMT_MINEUR = "M";
+/* ⚠ LE RATIO AU TÉMOIN N'EST PAS LA PROPRIÉTÉ, ET IL A COÛTÉ UN FAUX ROUGE (18/08/2026).
+ * Ces critères NOMMENT « la protection R6.3 est appliquée » et MESURAIENT « l'écart au pic d'un
+ * adulte », avec des seuils (0,78 · 0,90) qui photographiaient le moteur de leur écriture. Après
+ * l'ordre de cession C26c (O-75), les quatre sont passés rouges — et la mesure dit pourquoi :
+ * **le pic du MINEUR est INCHANGÉ, 4,78 h avant comme après**, celui du MASTER a même BAISSÉ
+ * (5,23 → 5,03 h). C'est le TÉMOIN ADULTE qui a bougé (6,15 → 5,43 h), donc le rapport monte
+ * sans qu'aucune protection ne se relâche. Famille du critère `O17` du banc v6 : il nomme une
+ * grandeur et en mesure une voisine.
+ * Les seuils passent donc à une MARGE substantielle et non plus à la photographie d'un état
+ * (mineur ≤ 90 %, master ≤ 95 % du pic adulte) : la protection reste exigée et vérifiée par ses
+ * trois conditions dures (décision R6.3, avertissement, zéro VO2), le rapport ne sert plus qu'à
+ * refuser un mineur aussi chargé qu'un adulte. Ce n'est PAS un desserrage pour faire passer un
+ * lot : la grandeur gardée (le pic du mineur) n'a pas bougé d'une minute, et c'est mesuré. */
 const pAdult = build("tri", { format: FMT_MINEUR, race_date: courseDans(41), vol_max: "10", sessions_max: "6" });
 const adultPeak = peakMin(pAdult);
 for (const age of ["10", "12", "13"]) {
@@ -75,14 +88,14 @@ for (const age of ["10", "12", "13"]) {
     const p = build("tri", { age, format: FMT_MINEUR, race_date: courseDans(41), vol_max: "10", sessions_max: "6" });
     const minor = dec(p, "R6.3").some((d) => /mineur/i.test(d.what));
     const w = warns(p, /18 ans/).length > 0;
-    const ok = minor && w && vo2Steps(p) === 0 && peakMin(p) <= adultPeak * 0.78;
+    const ok = minor && w && vo2Steps(p) === 0 && peakMin(p) <= adultPeak * 0.90;
     return { ok, info: `R6.3:${minor} warn:${w} vo2:${vo2Steps(p)} pic:${(peakMin(p) / 60).toFixed(1)}h vs adulte ${(adultPeak / 60).toFixed(1)}h` };
   });
 }
 xfail("R13.1-B", "98 ans : protection master appliquée (vol ×0.85, récup /3)", () => {
   const p = build("tri", { age: "98", format: FMT_MINEUR, race_date: courseDans(41), vol_max: "10", sessions_max: "6" });
   const master = dec(p, "R6.3").some((d) => /master/i.test(d.what));
-  return { ok: master && peakMin(p) <= adultPeak * 0.9, info: `master:${master} pic:${(peakMin(p) / 60).toFixed(1)}h` };
+  return { ok: master && peakMin(p) <= adultPeak * 0.95, info: `master:${master} pic:${(peakMin(p) / 60).toFixed(1)}h` };
 });
 check("R13.1-NR1", "non-régression : 15 ans protégé (0 VO2 + R6.3)", () => {
   const p = build("tri", { age: "15", format: FMT_MINEUR, race_date: courseDans(41), vol_max: "10", sessions_max: "6" });

@@ -439,6 +439,51 @@ function jourIntouchable(d                                                      
   return (d.sessions || []).some((s) => s.d !== "rs" && estIntouchable(s));
 }
 
+/** L'ORDRE DE CESSION QUAND LE BUDGET DUR EST CONTESTÉ (arbitrage fondateur « C26c AU PIC — LE
+ *  VO2 CÈDE », 18/08/2026). Rang croissant = cède en premier.
+ *
+ *  R13.4 N'EST PAS RÉFUTÉ, SA PORTÉE EST BORNÉE. Son argument — *« la race-pace vélo est
+ *  travaillée dans le brick »*, donc le créneau dur peut porter le maintien aérobie — **suppose
+ *  que le créneau est LIBRE**. Il ne dit rien de ce qui doit se passer quand deux choses le
+ *  veulent. Il tient donc quand il y a de la place, et il ne tranche pas quand il n'y en a plus.
+ *
+ *  Trois raisons convergentes, du fondateur :
+ *    · SPÉCIFICITÉ  la phase de pic amène la capacité SPÉCIFIQUE à son maximum. Sur un 70.3,
+ *      le spécifique est la puissance vélo soutenue et la durabilité course après vélo (portées
+ *      par le brick) et l'aisance en nage à distance de course (portée par la nage seuil et
+ *      B-17). Le VO2max ne sert directement aucun des trois — et il ne DÉCLINE pas en cinq
+ *      semaines quand on roule 5-6 h dont un brick de trois heures. C'était la condition de
+ *      réexamen posée en fermant O-70 ; la pièce 1 la remplit (brick 117 → 212).
+ *    · ASYMÉTRIE  perdre du VO2 coûte des secondes ; dégrader la nage d'un athlète limité par
+ *      elle coûte plus, et en eau libre la dégradation n'est pas linéaire.
+ *    · RÉVERSIBILITÉ  le VO2 se retrouve en quelques séances après la course ; une technique de
+ *      nage dégradée sous fatigue ne se répare pas en cinq semaines.
+ *
+ *  ⚠ MESURÉ AVANT D'ÊTRE ÉCRIT, comme le fondateur l'a exigé (`npm run mesure:c26c-pic`) :
+ *  **143 semaines de pic en charge sur 2 192 vivent près du plafond APRÈS coupe (7 %)** —
+ *  répartition non devinable : duathlon 17 % des semaines, run 13 %, **tri 7 %**, natation et
+ *  trail 0 %. ⚠ Mais ce chiffre ne répond PAS à la question posée, et je l'avais publié comme
+ *  s'il y répondait : C26c coupe JUSQU'À repasser sous le plafond, donc son succès efface sa
+ *  trace, et l'état résiduel sous-estime le déclenchement. Mesuré correctement — le rayon de
+ *  l'ordre de cession au golden — **178 profils sur 989 (18 %)** arbitrent réellement.
+ *  Verdict : ni déclaratif (ce n'est pas 7 profils) ni règle de fait (ce n'est pas la majorité).
+ *
+ *  EFFET MESURÉ, au pic et sur les profils tri : nage seuil **406 896 → 424 683 m (+4,4 %)**,
+ *  VO2 **10 308 → 8 628 min (−16,3 %)**. Le VO2 cède, la nage seuil gagne — dans les deux sens
+ *  et dans les proportions attendues.
+ *
+ *  Hors phase de pic, la fonction rend un rang UNIFORME : aucun ordre n'est imposé, le
+ *  comportement d'origine (« la séance la plus dure cède ») est intact. */
+function rangCession(
+  s                                                  ,
+  phaseId                    ,
+)         {
+  if (phaseId !== "peak") return 1;
+  if (s.brick) return 3;                                             // le brick ne cède jamais…
+  if ((s.steps || []).some((b) => /\.vo2$/.test(String(b.zone || "")))) return 0;  // …le VO2 en premier
+  return 1;                                                          // …la nage seuil après lui
+}
+
 // ===== src/engine/measured.ts =====
 /**
  * `measured` — L'INSTANTANÉ DE CE QUE L'ATHLÈTE A RÉELLEMENT FAIT (décisions produit R6, §2-§3).
@@ -10866,14 +10911,24 @@ function enforceHardTimeCap(
     // le nombre de blocs durs du plan majore le nombre de tours. La borne existe pour qu'un
     // futur bloc « irréductible » fasse rendre un plan imparfait plutôt qu'une boucle infinie.
     for (let tour = 0; tour < 200 && weekHard() > cap; tour++) {
-      // La séance la plus dure de la semaine, hors course et hors séance verrouillée.
+      // La séance la plus dure de la semaine, hors course et hors séance verrouillée — mais
+      // AU PIC, l'ORDRE DE CESSION passe d'abord (arbitrage « C26c AU PIC — LE VO2 CÈDE ») :
+      // le VO2 cède avant la nage seuil, le brick jamais tant qu'une autre victime existe.
+      // On balaie les rangs par ordre croissant et on s'arrête au premier rang non vide ; « la
+      // plus dure » reste le départage À L'INTÉRIEUR d'un rang. C'est le même contrat que
+      // partout ailleurs dans ce moteur : ORIENTER, jamais interdire — si le brick est la seule
+      // séance dure de la semaine, il cède, sinon la boucle ne convergerait pas.
       let cible                   = null, cibleHard = 0;
-      for (const d of w.days)
-        for (const s of d.sessions) {
-          if (s.d === "rs" || (s                      ).race) continue;
-          const h = hardOf(s);
-          if (h > cibleHard) { cibleHard = h; cible = s; }
-        }
+      for (const rang of [0, 1, 2, 3]) {
+        for (const d of w.days)
+          for (const s of d.sessions) {
+            if (s.d === "rs" || (s                      ).race) continue;
+            if (rangCession(s                                                    , w.phase?.id) !== rang) continue;
+            const h = hardOf(s);
+            if (h > cibleHard) { cibleHard = h; cible = s; }
+          }
+        if (cible) break;
+      }
       if (!cible || cibleHard <= 0) break;
       // R20.5 — la COUPE et la MESURE doivent classer pareil. `bk.rp` est dur ou modéré selon
       // la bande de l'épreuve : lire `rpBand` ici aussi, sinon le cutter ne trouverait jamais
@@ -10894,7 +10949,14 @@ function enforceHardTimeCap(
         // est réellement devenue. Le nom et la note suivent — une séance qui change de nature
         // et garde son titre est le défaut que R19.5 a fermé côté prose.
         const disc = String(b.d ?? cible.d);
-        b.zone = (disc === "sw" ? "sw" : disc === "bk" ? "bk" : "rn") + ".easy";
+        // ⚠ LA ZONE FACILE DU VÉLO N'EST PAS `bk.easy` — ELLE N'EXISTE PAS. `ZDEF` déclare
+        // `bk.z2` (56-75 % FTP) ; `sw.easy` et `rn.easy` existent, pas la vélo. Le défaut était
+        // LATENT depuis l'écriture de C26c : le déclassement ne tombait jamais sur un bloc vélo,
+        // parce que la cible était toujours choisie ailleurs. L'ordre de cession du pic (le VO2
+        // cède en premier, et le VO2 est vélo en triathlon) l'a réveillé : **64 violations DURES
+        // « zone inconnue bk.easy » au sceau**, sur des profils `bike/crit/debutant`. Un lot qui
+        // réveille un défaut dormant ne l'a pas créé — mais c'est lui qui doit le fermer.
+        b.zone = disc === "sw" ? "sw.easy" : disc === "bk" ? "bk.z2" : "rn.easy";
         b.intensity = "easy"                     ;
         // Le nom est REMPLACÉ, pas préfixé. Ma première écriture posait « Endurance » devant
         // le nom d'origine et produisait « Endurance nage seuil (+dist) » — une séance qui se

@@ -7579,6 +7579,79 @@ son OBJET deux fois, chaque fois sur une mesure : pas de verdict là où le pic 
 nage seuil en charge (O-74), ni là où le plafond ne gouverne pas (le mineur reçoit 450-675 m,
 soit 9-14 min, très sous le plafond — sa dose vient du volume de sa semaine).
 
+## O-75 · C26c au pic : l'ordre de cession — le VO2 cède avant la nage seuil · ✅ **LIVRÉ (arbitrage fondateur, 18/08/2026)**
+
+**R13.4 n'est pas réfuté, sa PORTÉE est bornée** — et c'est le fondateur qui l'écrit : son
+argument (*« la race-pace vélo est travaillée dans le brick »*, donc le créneau dur peut porter
+le maintien aérobie) **suppose que le créneau est LIBRE**. Il ne dit rien de ce qui doit se
+passer quand deux choses le veulent. Il tient donc quand il y a de la place, et il ne tranche
+pas quand il n'y en a plus.
+
+Trois raisons convergentes : **spécificité** (au pic, le spécifique d'un 70.3 est porté par le
+brick et par la nage ; le VO2max ne sert directement aucun des trois axes — et il ne décline pas
+en cinq semaines quand on roule 5-6 h dont un brick de trois heures, la condition de réexamen
+posée en fermant O-70, que la pièce 1 remplit) ; **asymétrie** (perdre du VO2 coûte des
+secondes, dégrader la nage d'un athlète limité par elle coûte plus, et en eau libre la
+dégradation n'est pas linéaire) ; **réversibilité** (le VO2 se retrouve en quelques séances, une
+technique de nage dégradée sous fatigue non).
+
+Livré comme un ORDRE DE CESSION, pas comme un retrait : au pic, quand C26c mord, le brick ne
+cède jamais (tant qu'une autre victime existe), le VO2 cède en premier, la nage seuil après lui.
+Hors pic, rang uniforme : le comportement d'origine est intact.
+
+**Mesuré avant d'écrire, comme exigé — et ma première mesure répondait à une autre question.**
+`npm run mesure:c26c-pic` rend **143 semaines de pic sur 2 192 près du plafond APRÈS coupe
+(7 %)**. J'ai publié ce chiffre comme le taux de déclenchement : c'est faux, parce que C26c coupe
+JUSQU'À repasser sous le plafond — **son succès efface sa trace**, et l'état résiduel sous-estime
+le déclenchement. Mesuré correctement (rayon au golden) : **178 profils sur 989, 18 %**. Ni
+déclaratif ni règle de fait. Répartition non devinable : duathlon 17 % des semaines, run 13 %,
+tri 7 %, natation et trail 0 %.
+
+**Effet, au pic et en tri** : nage seuil **406 896 → 424 683 m (+4,4 %)**, VO2 **10 308 → 8 628
+min (−16,3 %)**. Cliquets : S4 (I14) **357 → 349** — huit semaines de plus voient leur sortie
+longue redevenir la plus longue de sa discipline — et S5 504 ; attribution PROUVÉE par retrait
+du seul facteur.
+
+**Et le lot a réveillé un défaut LATENT qu'il ferme** : le déclassement de C26c écrivait
+`bk.easy`, une zone **qui n'existe pas** dans `ZDEF` (le vélo facile est `bk.z2`). Il ne tombait
+jamais sur un bloc vélo tant que la cible était choisie ailleurs ; l'ordre de cession y envoie le
+VO2 — donc **64 violations DURES** au sceau, sur `bike/crit/debutant`. Un lot qui réveille un
+défaut dormant ne l'a pas créé, mais c'est lui qui doit le fermer.
+
+Garde **T-48** (cliquet de composition du pic, population 187), contre-prouvée : ordre neutralisé
+→ 10 308 min de VO2 et 406 896 m. ⚠ Ma première écriture de cette garde mesurait **O-74** et non
+l'ordre de cession (elle exigeait « jamais de VO2 pendant que la nage seuil est absente » et
+rendait 72 profils — mais sur ces plans la nage seuil n'existe pas au pic, et un ordre de cession
+ne protège pas une séance absente) : troisième « énoncé sans objet » de la journée.
+
+### Le test RÉTROACTIF de `prioriteFinancement` — et il ÉCHOUE
+
+Le fondateur : *« la pièce 1 demandait des minutes, et la politique a été écrite après elle ;
+donc la mesure existe — Nage vitesse descend-elle ENCORE ? »* Mesuré : **58 plans sur 129 (45 %)
+voient leur dose de « Nage vitesse » descendre** du premier au dernier quart (ex. `tri/M/confirme`
+41 → 29 min). **La politique n'oriente pas ce mécanisme.** La raison est structurelle et se lit
+dans DEUX_CANAUX : `prioriteFinancement` protège l'OCCURRENCE (les passes qui retirent des
+séances la consultent), or cette descente est une réduction de TAILLE, qui passe par le scaling
+de volume et les plafonds. Les deux documents se rencontrent ici : le canal déclaré pour la
+qualité nage est « occurrence », donc la taille n'est pas protégée — et la question de savoir si
+une « Nage vitesse » à 29 min a encore un contenu reste ouverte, elle appartient au §1 de
+QUI_PAIE.
+
+### Le critère de FIN du lot progression (§6)
+
+*« si le max n'atteint pas la phase de pic une fois footing, sortie longue et récup livrées, ce
+n'est plus un défaut de progression, c'est le plafond — et le ticket bascule sur l'allocation /
+le structurel. »* Écrit ici pour être vérifié à ce moment-là, et pas plus tôt : c'est ce qui
+évite d'ajouter des pièces si la cause a changé de nature. État courant du repère (O-72) : le
+maximum est passé de S4 (base) à S19 (dev), le pic étant en S33-38.
+
+```verify
+id: O-75
+quoi: au pic, le VO2 cède-t-il avant la nage seuil quand C26c mord ?
+attendu: /✓ T-48 \[vert/
+cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-48"
+```
+
 ## O-74 · Les semaines de CHARGE du pic ne portent aucune nage seuil sur les profils `reprise` · 🔴 **OUVERT, mesuré**
 
 Trouvé en bornant T-47. Sur `tri/70.3/reprise/inter` et `tri/70.3/reprise/avance`, les semaines

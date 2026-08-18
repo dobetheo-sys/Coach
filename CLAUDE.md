@@ -404,6 +404,18 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   en tuile pleine). **Avant de toucher une propriété visuelle, lister celles qui partagent son
   token ou son fond, et les mesurer d'un bloc** — la sonde coûte le même prix pour une ou pour
   cinq grandeurs.
+- **Toute protection qui dépend d'une SÉANCE SURVIVANTE rate le profil qui a le moins de
+  séances** (arbitrage du fondateur, 18/08/2026, « C26c AU PIC » §5) — cinq occurrences, une
+  seule cause : `sonde:b17` sans débutant · 53 titres menteurs sur C15 · zéro palier sur M à
+  budget serré · la coupe qui retire 98 % de nage (O-66) · et O-74, la nage seuil absente des
+  semaines de charge du pic en `reprise`. Le profil le plus PLAFONNÉ — moins de séances, budget
+  dur plus serré, capacité la plus basse — tombe dans TOUTES les coupes à la fois, et c'est
+  structurel, pas accidentel. Une règle formulée « la séance X est protégée » ne protège rien
+  chez qui n'a pas de séance X : elle doit se formuler sur ce qui doit EXISTER, pas sur ce qui
+  doit survivre. Corollaire de test : tout critère écrit sur un type de séance déclare ce qu'il
+  fait quand ce type est ABSENT — sinon il mesure l'absence et l'appelle un défaut (trois
+  occurrences le 18/08 dans les gardes T-47 et T-48 elles-mêmes).
+
 - **Tout script qui MUTE une source pour mesurer passe par `npm run casser`, jamais par un `sed`
   ad hoc** (arbitrage du fondateur, 18/08/2026, « DEUX CANAUX » §4). Le harnais possède le cycle
   de vie de la mutation (mute · lance · restaure dans un `finally`, Ctrl-C compris) et refuse de

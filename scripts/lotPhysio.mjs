@@ -967,7 +967,17 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // plancher C21b des legs vit dans `blockBounds` — la famille exacte de la moitié « brick » de
 // la dette D2 du banc v6. Les 4 restantes sont toutes des bricks d'AFFÛTAGE sous leur plancher
 // de 40 min (le résidu O-37a d'origine) — une autre passe, pas encore identifiée, à suivre là.
-const SCEAU_ATTENDU = { S1: 4, S4: 357, S5: 505 };
+// PUIS S4 357 → **349** et S5 505 → **504** (ordre de cession C26c au pic, 18/08/2026) : le
+// MOTEUR, volontairement, et l'attribution est PROUVÉE PAR RETRAIT DU SEUL FACTEUR (mutation de
+// `rangCession` neutralisée → les deux compteurs reviennent à 357/505, restaurée → 349/504).
+// Les deux BAISSENT : au pic, le VO2 cède avant la nage seuil, donc huit semaines de plus
+// voient leur sortie longue redevenir la plus longue de sa discipline (S4 = I14). Une baisse
+// s'épingle avec la même rigueur qu'une hausse.
+// ⚠ Ce lot a aussi réveillé un défaut LATENT et l'a fermé : le déclassement de C26c écrivait
+// `bk.easy`, une zone qui N'EXISTE PAS dans `ZDEF` (le vélo facile est `bk.z2`). Il ne tombait
+// jamais sur un bloc vélo avant que l'ordre de cession n'y envoie le VO2 — **64 violations
+// DURES** au sceau, sur des profils `bike/crit/debutant`. Corrigé dans le même commit.
+const SCEAU_ATTENDU = { S1: 4, S4: 349, S5: 504 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1653,20 +1663,49 @@ T("T-44", "rouge", "PROPRIÉTÉ — la coupe par sessions_max ne retire pas d'un
 //     jamais le faire MONTER. Population épinglée (un zéro/compte a besoin de sa population).
 // Contre-preuve post-commit : `npm run casser` sur le filtre `skipProtege` → (1) rougit.
 /**
- * T-47 — LA DOSE DE SEUIL NAGE EST UNE TRAJECTOIRE, PAS UNE TAILLE (lot progression, pièce 2).
+ * T-48 — AU PIC, LE VO2 CÈDE AVANT LA NAGE SEUIL (arbitrage « C26c AU PIC », 18/08/2026).
  *
- * Mesuré avant d'écrire : « Nage seuil » livrait **1975 m au CSS = 40,2 min — le plafond de dose
- * au mètre près — dès la SEMAINE 1 de base**, et y restait jusqu'à S38 ; les seules variations
- * étaient vers le BAS, quand une coupe passait. La borne atteinte d'emblée était un plafond de
- * SÉCURITÉ employé comme cible.
+ * R13.4 tient QUAND IL Y A DE LA PLACE ; il ne tranche pas quand deux choses veulent le même
+ * créneau dur. Quand `C26c` sature au pic, l'ordre est : le brick ne cède jamais, le VO2 cède
+ * en premier, la nage seuil après lui. Trois raisons — spécificité, asymétrie du coût,
+ * réversibilité (le VO2 se retrouve en quelques séances, une technique de nage dégradée non).
  *
- * Le critère porte sur la PROPRIÉTÉ et sur le LIVRÉ (règle 15) : le plafond n'est atteint qu'en
- * phase de PIC, et la première occurrence vaut la fraction de départ à la quantification près.
- * Il déclare sa POPULATION — un « zéro violation » sur un corpus vide serait indiscernable d'un
- * succès (« un zéro a besoin de sa population »), et le correctif le moins coûteux qui le ferait
- * passer serait de ne plus prescrire de nage seuil du tout (règle 19) : c'est ce que le compte
- * de profils examinés interdit.
+ * ⚠ MA PREMIÈRE ÉCRITURE MESURAIT O-74, PAS L'ORDRE DE CESSION. Elle exigeait « jamais de VO2
+ * au pic pendant que la nage seuil est absente » et rendait 72 profils — mais sur ces plans la
+ * nage seuil N'EXISTE PAS en charge de pic (c'est O-74, un défaut distinct et non traité), et un
+ * ordre de cession ne peut pas protéger une séance qui n'est pas là. Troisième « énoncé sans
+ * objet » de la journée, la famille que R20.6 a retirée du banc d'invariants.
+ *
+ * Ce qui EST observable sans trace, c'est la COMPOSITION du pic livré, et elle se garde en
+ * cliquet — deux totaux et leur population. La contre-preuve est directe : retirer l'ordre de
+ * cession ramène 10 308 min de VO2 et 406 896 m de nage seuil.
  */
+// ⚠ POPULATION 187, PAS 148 : ma sonde ad hoc filtrait sur `sport`, le critère lit la CLÉ du
+// golden (qui porte aussi les passes B17/allure/…). Les deux TOTAUX sont pourtant identiques —
+// c'est le DÉNOMINATEUR qui différait, pas la mesure : un ratio se lit en cherchant sa base.
+// Sans ordre de cession, les mêmes 187 profils rendent vo2 10 308 min et nage seuil 406 896 m.
+const PIC_ATTENDU = { vo2Min: 8628, seuilM: 424683, profils: 187 };
+T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
+  let vo2 = 0, seuil = 0, profils = 0;
+  for (const { key, plan } of goldenAvecMoteur()) {
+    if (!key.includes("/tri/") && !key.startsWith("tri/")) continue;
+    const pics = (plan.weeks ?? []).filter((w) => w.phase?.id === "peak" && !w.isRecup);
+    if (!pics.length) continue;
+    profils++;
+    for (const w of pics) for (const d of w.days ?? []) for (const sx of d.sessions ?? []) {
+      vo2 += (sx.steps || []).filter((b) => /\.vo2$/.test(String(b.zone || ""))).reduce((t, b) => t + (b.reps || 1) * (b.durationMin || 0), 0);
+      if (sx.d === "sw" && /seuil/i.test(sx.name || "")) {
+        seuil += (sx.steps || []).filter((b) => b.zone === "sw.css").reduce((t, b) => t + (b.reps || 1) * (b.distanceM || 0), 0);
+      }
+    }
+  }
+  const pb = [];
+  if (profils !== PIC_ATTENDU.profils) pb.push(`POPULATION ${profils} au lieu de ${PIC_ATTENDU.profils}`);
+  if (Math.abs(vo2 - PIC_ATTENDU.vo2Min) > 1) pb.push(`VO2 ${Math.round(vo2)} au lieu de ${PIC_ATTENDU.vo2Min} min`);
+  if (Math.abs(seuil - PIC_ATTENDU.seuilM) > 25) pb.push(`nage seuil ${seuil} au lieu de ${PIC_ATTENDU.seuilM} m`);
+  return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `${profils} profils tri · VO2 ${Math.round(vo2)} min · nage seuil ${seuil} m au pic` };
+});
+
 T("T-47", "vert", "la dose de seuil nage n'atteint son plafond qu'en phase de PIC (pièce 2)", () => {
   const pb = [];
   let profils = 0, doses = 0;

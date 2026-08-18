@@ -136,3 +136,48 @@ export function estIntouchable(s: { d?: string; race?: boolean; name?: string })
 export function jourIntouchable(d: { sessions?: { d?: string; race?: boolean; name?: string }[] }): boolean {
   return (d.sessions || []).some((s) => s.d !== "rs" && estIntouchable(s));
 }
+
+/** L'ORDRE DE CESSION QUAND LE BUDGET DUR EST CONTESTÉ (arbitrage fondateur « C26c AU PIC — LE
+ *  VO2 CÈDE », 18/08/2026). Rang croissant = cède en premier.
+ *
+ *  R13.4 N'EST PAS RÉFUTÉ, SA PORTÉE EST BORNÉE. Son argument — *« la race-pace vélo est
+ *  travaillée dans le brick »*, donc le créneau dur peut porter le maintien aérobie — **suppose
+ *  que le créneau est LIBRE**. Il ne dit rien de ce qui doit se passer quand deux choses le
+ *  veulent. Il tient donc quand il y a de la place, et il ne tranche pas quand il n'y en a plus.
+ *
+ *  Trois raisons convergentes, du fondateur :
+ *    · SPÉCIFICITÉ  la phase de pic amène la capacité SPÉCIFIQUE à son maximum. Sur un 70.3,
+ *      le spécifique est la puissance vélo soutenue et la durabilité course après vélo (portées
+ *      par le brick) et l'aisance en nage à distance de course (portée par la nage seuil et
+ *      B-17). Le VO2max ne sert directement aucun des trois — et il ne DÉCLINE pas en cinq
+ *      semaines quand on roule 5-6 h dont un brick de trois heures. C'était la condition de
+ *      réexamen posée en fermant O-70 ; la pièce 1 la remplit (brick 117 → 212).
+ *    · ASYMÉTRIE  perdre du VO2 coûte des secondes ; dégrader la nage d'un athlète limité par
+ *      elle coûte plus, et en eau libre la dégradation n'est pas linéaire.
+ *    · RÉVERSIBILITÉ  le VO2 se retrouve en quelques séances après la course ; une technique de
+ *      nage dégradée sous fatigue ne se répare pas en cinq semaines.
+ *
+ *  ⚠ MESURÉ AVANT D'ÊTRE ÉCRIT, comme le fondateur l'a exigé (`npm run mesure:c26c-pic`) :
+ *  **143 semaines de pic en charge sur 2 192 vivent près du plafond APRÈS coupe (7 %)** —
+ *  répartition non devinable : duathlon 17 % des semaines, run 13 %, **tri 7 %**, natation et
+ *  trail 0 %. ⚠ Mais ce chiffre ne répond PAS à la question posée, et je l'avais publié comme
+ *  s'il y répondait : C26c coupe JUSQU'À repasser sous le plafond, donc son succès efface sa
+ *  trace, et l'état résiduel sous-estime le déclenchement. Mesuré correctement — le rayon de
+ *  l'ordre de cession au golden — **178 profils sur 989 (18 %)** arbitrent réellement.
+ *  Verdict : ni déclaratif (ce n'est pas 7 profils) ni règle de fait (ce n'est pas la majorité).
+ *
+ *  EFFET MESURÉ, au pic et sur les profils tri : nage seuil **406 896 → 424 683 m (+4,4 %)**,
+ *  VO2 **10 308 → 8 628 min (−16,3 %)**. Le VO2 cède, la nage seuil gagne — dans les deux sens
+ *  et dans les proportions attendues.
+ *
+ *  Hors phase de pic, la fonction rend un rang UNIFORME : aucun ordre n'est imposé, le
+ *  comportement d'origine (« la séance la plus dure cède ») est intact. */
+export function rangCession(
+  s: { brick?: boolean; steps?: { zone?: string }[] },
+  phaseId: string | undefined,
+): number {
+  if (phaseId !== "peak") return 1;
+  if (s.brick) return 3;                                             // le brick ne cède jamais…
+  if ((s.steps || []).some((b) => /\.vo2$/.test(String(b.zone || "")))) return 0;  // …le VO2 en premier
+  return 1;                                                          // …la nage seuil après lui
+}

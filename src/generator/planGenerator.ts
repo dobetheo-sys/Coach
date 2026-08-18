@@ -30,7 +30,7 @@ import { guard, sportModule } from "../sports/registry.ts";
 import { arbitrateVolRecent } from "../engine/measured.ts";
 import { record as traceRecord, traceEnabled } from "../engine/trace.ts";
 import { enforceMedicalHold } from "../engine/medicalHold.ts";
-import { estCreneauProtege, estIntouchable, jourIntouchable } from "../engine/prioriteFinancement.ts";
+import { estCreneauProtege, estIntouchable, jourIntouchable, rangCession } from "../engine/prioriteFinancement.ts";
 import { longRunSpecificityFloor, C31_MIN_JOUR2_MIN, C30_PART_SEMAINE_PIC } from "../engine/longRunSpecificity.ts";
 import { swimSessionCapAtWeek } from "../engine/swimContinuity.ts";
 
@@ -1830,14 +1830,24 @@ function enforceHardTimeCap(
     // le nombre de blocs durs du plan majore le nombre de tours. La borne existe pour qu'un
     // futur bloc « irréductible » fasse rendre un plan imparfait plutôt qu'une boucle infinie.
     for (let tour = 0; tour < 200 && weekHard() > cap; tour++) {
-      // La séance la plus dure de la semaine, hors course et hors séance verrouillée.
+      // La séance la plus dure de la semaine, hors course et hors séance verrouillée — mais
+      // AU PIC, l'ORDRE DE CESSION passe d'abord (arbitrage « C26c AU PIC — LE VO2 CÈDE ») :
+      // le VO2 cède avant la nage seuil, le brick jamais tant qu'une autre victime existe.
+      // On balaie les rangs par ordre croissant et on s'arrête au premier rang non vide ; « la
+      // plus dure » reste le départage À L'INTÉRIEUR d'un rang. C'est le même contrat que
+      // partout ailleurs dans ce moteur : ORIENTER, jamais interdire — si le brick est la seule
+      // séance dure de la semaine, il cède, sinon la boucle ne convergerait pas.
       let cible: V1Session | null = null, cibleHard = 0;
-      for (const d of w.days)
-        for (const s of d.sessions) {
-          if (s.d === "rs" || (s as { race?: boolean }).race) continue;
-          const h = hardOf(s);
-          if (h > cibleHard) { cibleHard = h; cible = s; }
-        }
+      for (const rang of [0, 1, 2, 3]) {
+        for (const d of w.days)
+          for (const s of d.sessions) {
+            if (s.d === "rs" || (s as { race?: boolean }).race) continue;
+            if (rangCession(s as { brick?: boolean; steps?: { zone?: string }[] }, w.phase?.id) !== rang) continue;
+            const h = hardOf(s);
+            if (h > cibleHard) { cibleHard = h; cible = s; }
+          }
+        if (cible) break;
+      }
       if (!cible || cibleHard <= 0) break;
       // R20.5 — la COUPE et la MESURE doivent classer pareil. `bk.rp` est dur ou modéré selon
       // la bande de l'épreuve : lire `rpBand` ici aussi, sinon le cutter ne trouverait jamais
@@ -1858,7 +1868,14 @@ function enforceHardTimeCap(
         // est réellement devenue. Le nom et la note suivent — une séance qui change de nature
         // et garde son titre est le défaut que R19.5 a fermé côté prose.
         const disc = String(b.d ?? cible.d);
-        b.zone = (disc === "sw" ? "sw" : disc === "bk" ? "bk" : "rn") + ".easy";
+        // ⚠ LA ZONE FACILE DU VÉLO N'EST PAS `bk.easy` — ELLE N'EXISTE PAS. `ZDEF` déclare
+        // `bk.z2` (56-75 % FTP) ; `sw.easy` et `rn.easy` existent, pas la vélo. Le défaut était
+        // LATENT depuis l'écriture de C26c : le déclassement ne tombait jamais sur un bloc vélo,
+        // parce que la cible était toujours choisie ailleurs. L'ordre de cession du pic (le VO2
+        // cède en premier, et le VO2 est vélo en triathlon) l'a réveillé : **64 violations DURES
+        // « zone inconnue bk.easy » au sceau**, sur des profils `bike/crit/debutant`. Un lot qui
+        // réveille un défaut dormant ne l'a pas créé — mais c'est lui qui doit le fermer.
+        b.zone = disc === "sw" ? "sw.easy" : disc === "bk" ? "bk.z2" : "rn.easy";
         b.intensity = "easy" as unknown as string;
         // Le nom est REMPLACÉ, pas préfixé. Ma première écriture posait « Endurance » devant
         // le nom d'origine et produisait « Endurance nage seuil (+dist) » — une séance qui se
