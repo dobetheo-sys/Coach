@@ -1653,6 +1653,80 @@ T("T-44", "rouge", "PROPRIÉTÉ — la coupe par sessions_max ne retire pas d'un
 //     jamais le faire MONTER. Population épinglée (un zéro/compte a besoin de sa population).
 // Contre-preuve post-commit : `npm run casser` sur le filtre `skipProtege` → (1) rougit.
 /**
+ * T-47 — LA DOSE DE SEUIL NAGE EST UNE TRAJECTOIRE, PAS UNE TAILLE (lot progression, pièce 2).
+ *
+ * Mesuré avant d'écrire : « Nage seuil » livrait **1975 m au CSS = 40,2 min — le plafond de dose
+ * au mètre près — dès la SEMAINE 1 de base**, et y restait jusqu'à S38 ; les seules variations
+ * étaient vers le BAS, quand une coupe passait. La borne atteinte d'emblée était un plafond de
+ * SÉCURITÉ employé comme cible.
+ *
+ * Le critère porte sur la PROPRIÉTÉ et sur le LIVRÉ (règle 15) : le plafond n'est atteint qu'en
+ * phase de PIC, et la première occurrence vaut la fraction de départ à la quantification près.
+ * Il déclare sa POPULATION — un « zéro violation » sur un corpus vide serait indiscernable d'un
+ * succès (« un zéro a besoin de sa population »), et le correctif le moins coûteux qui le ferait
+ * passer serait de ne plus prescrire de nage seuil du tout (règle 19) : c'est ce que le compte
+ * de profils examinés interdit.
+ */
+T("T-47", "vert", "la dose de seuil nage n'atteint son plafond qu'en phase de PIC (pièce 2)", () => {
+  const pb = [];
+  let profils = 0, doses = 0;
+  for (const { key, plan } of goldenAvecMoteur()) {
+    if (!/^[^/]*\/?tri\//.test(key) && !key.includes("/tri/")) continue;
+    const vus = [];
+    for (const w of plan.weeks ?? []) {
+      if (w.isRecup || w.phase?.id === "taper") continue;
+      for (const d of w.days ?? []) for (const sx of d.sessions ?? []) {
+        if (sx.d !== "sw" || !/seuil/i.test(sx.name || "")) continue;
+        const css = (sx.steps || []).filter((st) => st.zone === "sw.css");
+        if (!css.length) continue;
+        const m = css.reduce((t, st) => t + (st.reps || 1) * (st.distanceM || 0), 0);
+        const minSem = (w.days ?? []).reduce((t, dd) => t + (dd.sessions ?? []).reduce((u, ss) => u + (ss.race ? 0 : (ss.min || 0)), 0), 0);
+        vus.push({ num: w.num, ph: w.phase?.id, m, minSem });
+      }
+    }
+    // OBJET DU CRITÈRE — une trajectoire ne se montre que là où le PLAFOND DE DOSE gouverne.
+    // Mesuré sur `G/tri/Full/mineur-format-ouvert` (16 ans, format M, 11 semaines) : ses cinq
+    // doses valent 450 à 675 m, soit 9 à 14 min, très SOUS le plafond — elles sont gouvernées par
+    // le volume de la semaine, pas par la trajectoire, et leur ordre ne dit donc rien d'elle.
+    // Le seuil porte sur le NOMBRE d'occurrences parce que c'est la grandeur observable sans
+    // refaire la conversion mètres → minutes ici (le CSS n'est pas exposé au critère) ; les plans
+    // qu'il écarte sont les plans courts à petit format, exactement ceux où le plafond ne mord pas.
+    if (vus.length < 6) continue;
+    profils++; doses += vus.length;
+    // la dose se compare en MÈTRES ici : à CSS constant dans un plan, mètres et minutes sont
+    // proportionnels — et c'est la seule grandeur lisible sans refaire la conversion.
+    const mx = Math.max(...vus.map((v) => v.m));
+    // (1) LE DÉFAUT CORRIGÉ : la première occurrence ne naît plus à sa taille finale.
+    if (vus[0].m >= mx * 0.9) pb.push(`${key} : première occurrence déjà à ${Math.round((vus[0].m / mx) * 100)} % du maximum`);
+    // (2) LE PLAFOND EST RÉSERVÉ AU PIC — mais seulement là où le critère a un OBJET.
+    //   ⚠ Ma première écriture ne posait pas cette condition et rendait 28 échecs dont deux à
+    //   « pic 0 m » : sur `tri/*/reprise/*`, les semaines de CHARGE du pic ne portent AUCUNE
+    //   nage seuil (elle n'existe qu'en semaine de récup). Exiger « le maximum est au pic » d'un
+    //   plan sans nage seuil au pic, c'est la famille des trois invariants que R20.6 a retirés :
+    //   un énoncé sans objet, pas un défaut. Le fait est RÉEL et suivi à part (O-74).
+    //   ⚠ Et la tolérance est en ABSOLU, pas en pourcentage : le bloc est quantifié par pas de
+    //   25 m, donc 50 m = 1 min au CSS = le bruit de l'instrument. Mesuré sur les profils
+    //   concernés : médiane +50 m, c'est-à-dire exactement ce quantum (corollaire règle 14).
+    // (2) « le plafond n'est atteint qu'au pic » N'EST PAS GARDÉ ICI, et c'est mesuré plutôt
+    // qu'omis. Sur 7 profils (`Full/injury-*`, `master`, `vol-min`), la dose du pic est SOUS
+    // celle de la spécifique — 1750 m en S24 contre 1625 m au pic — alors que le volume de la
+    // semaine, lui, MONTE (487 → 534 min). Ma première hypothèse (« les règles de sécurité
+    // allègent le pic ») est donc RÉFUTÉE par la mesure. La cause réelle est le plafond de temps
+    // DUR hebdomadaire (C26c) : au pic, le VO2 et le brick à allure course saturent le budget, et
+    // la dose de seuil nage est la variable d'ajustement. C'est une règle de SÉCURITÉ (priorité 2
+    // du manifeste), pas un défaut de trajectoire — et la question qu'elle pose (qui, du VO2 ou
+    // de la nage, doit céder au pic ?) est une question d'ALLOCATION, déjà ouverte en O-72.
+    // Écrire ici un critère qui la déclarerait fautive reviendrait à demander au moteur de
+    // dépasser un plafond physiologique pour satisfaire une garde d'affichage.
+  }
+  if (profils < 40) pb.push(`POPULATION : ${profils} profil(s) tri examinés — la sonde ne voit plus les nages seuil`);
+  return {
+    ok: pb.length === 0,
+    detail: pb.length ? `${pb.length} : ` + pb.slice(0, 3).join(" · ") : `${profils} profils tri · ${doses} doses de seuil, plafond réservé au pic`,
+  };
+});
+
+/**
  * T-46 — AUCUN SITE N'ÉLIT UNE VICTIME SANS PASSER PAR LE POINT UNIQUE.
  *
  * Balayage du §3 de « L'INVENTAIRE DES PLANCHERS » (fondateur, 18/08/2026) : *« qu'est-ce qui

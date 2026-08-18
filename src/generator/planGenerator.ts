@@ -2229,9 +2229,17 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     // refusé pour ses 70 min de seuil, pas pour ses récupérations.
     {
       const z = String(b.zone || "");
-      const doseCap = /\.vo2$/.test(z) || z === "tr.vam" ? DOSE_CAP_MIN.vo2
+      const doseCapNom = /\.vo2$/.test(z) || z === "tr.vam" ? DOSE_CAP_MIN.vo2
         : /\.thr$|\.css$/.test(z) || z === "tr.asc" || z === "tr.flatthr" ? DOSE_CAP_MIN.thr
         : null;
+      // LOT PROGRESSION — LE PLAFOND DE DOSE SUIT LA POSITION DANS LE PLAN (pièce 2, nage).
+      // `progCap` est le MÊME champ que la pièce 1 pose sur les legs de brick (un seul concept :
+      // « le plafond d'un type interpole de sa taille d'entrée à sa taille de pic »), et les deux
+      // usages ne se croisent pas — les legs de brick vivent en `bk.z2`/`bk.rp`, qui ne sont pas
+      // des zones à plafond de dose. La monnaie est ici la MINUTE, et c'est ce qui compte : le
+      // bloc est prescrit en mètres, la conversion ci-dessous dérive la distance de la dose, donc
+      // un nageur dont le CSS s'améliore garde sa dose et voit sa distance grandir.
+      const doseCap = doseCapNom == null ? null : doseCapNom * (b.progCap ?? 1);
       // O-53 — UN BLOC ÉPINGLÉ N'EST JAMAIS ÉCRÊTÉ PAR CE PLAFOND.
       //
       // `bnd.pinned` dit « la distance EST le stimulus » : c'est la leçon I14, et c'est ce qui

@@ -4,7 +4,7 @@
  * lissage sur métrique nage) : elles sont désormais des garde-fous DÉCLARÉS.
  */
 import type { V1Session, V1Step } from "../../engine/types.ts";
-import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS } from "../../engine/constraintMatrix.ts";
+import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS, PROG_DOSE_DEPART } from "../../engine/constraintMatrix.ts";
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { TRI_SWIM, TRI_BIKE, TRI_RUN, TRI_BIKE_KM, TRI_TRANSITION } from "../../engine/predictor.ts";
@@ -15,6 +15,35 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
   const runInj = inj.list.includes("course");
   const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] } as Record<string, [number, number]>)[phase] || [0.5, 0.8];
   const PT = (lo: number, hi: number) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
+  // LOT PROGRESSION (pièce 2) — LA DOSE DE SEUIL NAGE A UNE TRAJECTOIRE, PAS UNE TAILLE.
+  //
+  // Mesuré sur le profil du fondateur : « Nage seuil » livre **1975 m au CSS = 40,2 min, soit
+  // le plafond de dose `DOSE_CAP_MIN.thr` au mètre près, dès la SEMAINE 1 de base**, et y reste
+  // de S1 à S38 — les seules variations sont vers le BAS (1525-1875 m les semaines où une coupe
+  // passe), jamais une montée. C'est le défaut de la pièce 1 (naître à taille finale) sur la
+  // nage, avec une aggravation : la taille finale y est un plafond de SÉCURITÉ, employé de fait
+  // comme cible dès le premier jour.
+  //
+  // TROIS CHOIX, chacun tranché et écrit :
+  //  · la CIBLE de pic ne bouge pas — 40 min au seuil a été arbitré en fermant O-55 ;
+  //  · la MONNAIE est la MINUTE, la distance se dérive. Le bloc est prescrit en mètres, mais le
+  //    CSS de l'athlète S'AMÉLIORE sur le plan (modèle de gain O-68) : une cible en mètres
+  //    donnerait MOINS de dose à un nageur qui progresse — l'inverse exact de ce qu'on veut. Le
+  //    plafond de dose étant déjà en minutes, la trajectoire s'y applique et la distance suit
+  //    (effet secondaire vrai et lisible : la distance affichée monte quand le CSS s'améliore) ;
+  //  · la POSITION court sur TOUT le plan (base → pic), là où le brick n'existe qu'en spec+peak.
+  //    Une nage seuil est prescrite dès la semaine 1 : sa trajectoire doit partir de là.
+  const _ORD = ["base", "dev", "spec", "peak"];
+  const _iPh = _ORD.indexOf(phase);
+  const _wTot = _ORD.reduce((t, id) => t + (r.phases.find((p) => p.id === id)?.weeks || 0), 0);
+  const _wAvant = _ORD.slice(0, Math.max(0, _iPh)).reduce((t, id) => t + (r.phases.find((p) => p.id === id)?.weeks || 0), 0);
+  const _wIci = _iPh >= 0 ? (r.phases.find((p) => p.id === phase)?.weeks || 0) : 0;
+  // Hors des quatre phases de construction (affûtage), la trajectoire ne s'applique pas : la
+  // décroissance de l'affûtage a ses propres règles (R3.13) et pousser y serait une seconde
+  // autorité sur la même grandeur.
+  const _tSw = _iPh < 0 || _wTot <= 0 ? 1
+    : Math.max(0, Math.min(1, (_wAvant + prog * Math.max(1, _wIci)) / Math.max(1, _wTot)));
+  const _gSw = Math.pow(PROG_DOSE_DEPART, 1 - _tSw);
   const swimDistCaps = ({ S: { lo: 300, hi: 750 }, M: { lo: 600, hi: 1500 }, "70.3": { lo: 950, hi: 1900 }, Full: { lo: 1600, hi: 3000 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 600, hi: 1500 };
   const swimDist = PT(swimDistCaps.lo, swimDistCaps.hi);
   const triSwimVolCap = ({ S: 1050, M: 2100, "70.3": 3000, Full: 4500 } as Record<string, number>)[fmt] || 2100;
@@ -22,12 +51,12 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
   const swShortDist = beginner ? Math.min(600, Math.max(200, Math.round((swimDist * 0.4) / 50) * 50)) : Math.min(1100, Math.max(750, Math.round((swimDist * 0.6) / 50) * 50));
   const swTechDist = Math.max(beginner ? 300 : 750, Math.round((swimDist * 0.5) / 50) * 50);
   let swMain = beginner
-    ? { name: "Nage seuil technique (+dist)", note: "Technique d'abord, mais quelques 100m à allure seuil contrôlée pour préparer la course.", steps: [Wm(200, "souple"), Object.assign(Bd(1, swimDist, "sw.css", [0.33, "repos libre entre séries (~20s)"], ", fractionné en séries régulières, éducatifs entre", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap } }), Cm(100, "relâché")] }
+    ? { name: "Nage seuil technique (+dist)", note: "Technique d'abord, mais quelques 100m à allure seuil contrôlée pour préparer la course.", steps: [Wm(200, "souple"), Object.assign(Bd(1, swimDist, "sw.css", [0.33, "repos libre entre séries (~20s)"], ", fractionné en séries régulières, éducatifs entre", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: triSwimVolCap }, progCap: _gSw }), Cm(100, "relâché")] }
     // R13 — une séance de seuil nage n'est pas 100 % seuil : le corps se répartit ~70 % au CSS
     // et ~30 % en aérobie (retour actif, éducatifs entre les séries). Compter tout le corps en
     // dur surchargeait l'intensité hebdomadaire de 6-8 min — ce qui faisait passer 10
     // combinaisons tri sous le plancher de temps facile une fois la nage mono-séance branchée.
-    : { name: "Nage seuil (+dist)", note: "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.", steps: [Wm(300, "+ 4×50m éducatifs"), Object.assign(Bd(1, Math.max(200, Math.round((swimDist * 0.7) / 50) * 50), "sw.css", "15-20s", ", fractionné en séries régulières si besoin", false, "sw"), { bnd: { floor: Math.max(200, Math.round((swimDistCaps.lo * 0.7) / 50) * 50), cap: Math.round(triSwimVolCap * 0.7) } }), Object.assign(Bd(1, Math.max(150, Math.round((swimDist * 0.3) / 50) * 50), "sw.aero", "", " souple, technique relâchée entre les séries", false, "sw"), { bnd: { floor: 150, cap: Math.round(triSwimVolCap * 0.3) } }), Cm(200, "souple")] };
+    : { name: "Nage seuil (+dist)", note: "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.", steps: [Wm(300, "+ 4×50m éducatifs"), Object.assign(Bd(1, Math.max(200, Math.round((swimDist * 0.7) / 50) * 50), "sw.css", "15-20s", ", fractionné en séries régulières si besoin", false, "sw"), { bnd: { floor: Math.max(200, Math.round((swimDistCaps.lo * 0.7) / 50) * 50), cap: Math.round(triSwimVolCap * 0.7) }, progCap: _gSw }), Object.assign(Bd(1, Math.max(150, Math.round((swimDist * 0.3) / 50) * 50), "sw.aero", "", " souple, technique relâchée entre les séries", false, "sw"), { bnd: { floor: 150, cap: Math.round(triSwimVolCap * 0.3) } }), Cm(200, "souple")] };
   let swTech = beginner
     ? { name: "Nage éducatifs", note: "Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force.", steps: [Wm(100, "souple"), Bd(1, swTechDist, "sw.easy", "20-30s", ", par 50m, 1 point technique à la fois — " + swimDrillGlossary, false, "sw"), Cm(100, "dos souple")] }
     : { name: "Nage vitesse", note: "Fréquence et vitesse contrôlées : la technique ne doit pas se dégrader sur les derniers 50m.", steps: [Wm(200, "+ 4×25m accélérations progressives"), Bd(1, swTechDist, "sw.aero", "30-40s sur les 50m rapides", ", dont la moitié en accélérations de 50m", false, "sw"), Cm(150, "souple")] };
@@ -36,7 +65,7 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
   // Ici : mêmes substitutions que le nageur, au budget de la séance remplacée (bnd).
   if (inj.shoulder) {
     const shoulderDist = Math.max(swimDistCaps.lo, Math.round((swimDist * 0.8) / 50) * 50);
-    swMain = { name: "Nage seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute. Arrêt au moindre signal articulaire.", steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(1, shoulderDist, "sw.css", "20-30s", ", fractionné en 100m, amplitude confortable", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: shoulderDist } }), Cm(100, "souple")] };
+    swMain = { name: "Nage seuil contrôlé (épaule)", note: "Volume modéré, technique soignée : on épargne l'épaule, on ne cherche pas la performance brute. Arrêt au moindre signal articulaire.", steps: [Wm(200, "souple + éducatifs doux"), Object.assign(Bd(1, shoulderDist, "sw.css", "20-30s", ", fractionné en 100m, amplitude confortable", false, "sw"), { bnd: { floor: swimDistCaps.lo, cap: shoulderDist }, progCap: _gSw }), Cm(100, "souple")] };
     swTech = { name: "Jambes + technique (épaule épargnée)", note: "Le travail passe par les jambes (battements planche) et la technique : la charge articulaire de l'épaule reste minimale.", steps: [Object.assign(Bd(1, swTechDist, null, "", " séries battements planche + éducatifs · épargne épaule", false, "sw"), { bnd: { floor: 300, cap: swTechDist } })] };
   }
   // B-17 — LA NAGE CONTINUE À LA DISTANCE DE COURSE, sur les paliers de la phase SPÉCIFIQUE.

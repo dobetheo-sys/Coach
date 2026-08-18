@@ -331,6 +331,23 @@ export const BRICK_TAPER_BIKE_BOUNDS: Record<string, [number, number]> = rule(
  * retire des RÉPÉTITIONS, jamais la durée d'une répétition ») : dans un intervalle, la durée EST
  * le stimulus, donc la relever change la nature de la séance au lieu de l'allonger.
  */
+/**
+ * LOT PROGRESSION (pièce 2, nage) — LA FRACTION DE DÉPART D'UNE TRAJECTOIRE DE DOSE.
+ *
+ * Le brick (pièce 1) partait de `C21b`, un plancher AUDITÉ qui existait : la taille d'entrée
+ * conçue du format. **La nage n'en a pas pour son bloc de seuil** — `C24b` borne la SÉANCE à
+ * 600 m, pas le bloc de qualité. Il faut donc une origine, et l'arbitrage du fondateur
+ * (PIECE_NAGE §2, 18/08/2026) prend la forme (a) : *« une fraction du pic, comme le brick l'a
+ * fait de fait ; répéter une géométrie éprouvée coûte moins qu'en inventer une seconde, et ça
+ * garde les deux pièces comparables »*. La forme (b) — dériver de la continuité déclarée de
+ * l'athlète — est REFUSÉE ici : elle introduirait une dépendance que le brick n'a pas.
+ *
+ * La valeur est MESURÉE, pas choisie : c'est le rapport que la pièce 1 produit de fait sur le
+ * profil du fondateur — brick d'entrée 117 min pour un pic à 212, soit 0,552. On reprend ce
+ * rapport plutôt qu'un chiffre rond, pour que les deux pièces soient la MÊME géométrie et non
+ * deux réglages voisins.
+ */
+export const PROG_DOSE_DEPART = rule("lot-progression", "fraction de la dose de pic atteinte à la PREMIÈRE occurrence d'un type de qualité (géométrie de la pièce 1 : brick 117/212)", 0.55);
 export const DOSE_CAP_MIN = rule(
   "C25",
   "au-delà de ~40 min de seuil ou ~25 min de VO2max dans une séance, ce n'est plus un entraînement dur mais une course : personne ne l'enchaîne semaine après semaine sans casser",

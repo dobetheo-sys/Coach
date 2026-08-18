@@ -2914,7 +2914,7 @@ valait 40, et elle correspond à ce que tu aurais tranché. Reste `rp`, et la r�
 id: O-39-d
 quoi: DOSE_CAP_MIN ne voyait pas les blocs prescrits en DISTANCE. ⚠ Bloc CASSÉ par le lot 1, qui a réécrit exactement la ligne qu'il grepait (`reps * b.durationMin > doseCap`) — cas d'école de la règle 17 : le motif disparaît, et l'entrée se lirait comme réparée alors que c'est le CODE qui a changé de forme. La moitié « les blocs en distance sont invisibles » est FERMÉE par le lot 1 (mesuré : 244 dépassements sur 39 profils → 0). La moitié « `css` est résolu sur `thr` » reste vraie et c'est ce que ce bloc surveille désormais — il porte sur la PROPRIÉTÉ (une zone `.css` reçoit le plafond de seuil) et non sur une ligne de code.
 attendu: O39D-REPRODUIT
-cmd: node -e 'const s=require("fs").readFileSync("src/generator/planGenerator.ts","utf8");const i=s.indexOf("const doseCap =");process.exit(i>=0&&s.slice(i,i+400).includes(".css")?0:1)' && echo "O39D-REPRODUIT"
+cmd: node -e 'const s=require("fs").readFileSync("src/generator/planGenerator.ts","utf8");const i=s.indexOf("DOSE_CAP_MIN.vo2");process.exit(i>=0&&s.slice(i,i+300).includes(".css")?0:1)' && echo "O39D-REPRODUIT"
 ```
 
 ---
@@ -7200,9 +7200,9 @@ témoins C30-A et les cliquets du sceau — l'épisode est écrit dans `lotPhysi
 
 ```verify
 id: O-69
-quoi: le départ est-il ancré sur vol_recent (plancher ×0,85) au-dessus du départ naturel de la courbe ?
+quoi: le départ SUIT-il vol_recent ? (rapport S1@13h / S1@6h, propriété — pas une valeur épinglée qu'un lot voisin déplace)
 attendu: O69-FERME
-cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const s1=(a)=>{const p=globalThis.EBV2.buildPlan('tri',a);return p.weeks[0].days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.d!=='rs'?(s.min||0):0),0),0)/60;};const a13=s1(B),a6=s1({...B,vol_recent:'6'});console.log('S1@13h='+a13.toFixed(1)+' S1@6h='+a6.toFixed(1));if(!(a13>=9.4&&Math.abs(a13-a6)>0.5))process.exit(1);" && echo "O69-FERME"
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const s1=(a)=>{const p=globalThis.EBV2.buildPlan('tri',a);return p.weeks[0].days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.d!=='rs'?(s.min||0):0),0),0)/60;};const a13=s1(B),a6=s1({...B,vol_recent:'6'});console.log('S1@13h='+a13.toFixed(1)+' S1@6h='+a6.toFixed(1));if(!(a13/a6>=1.4&&a13>=9))process.exit(1);" && echo "O69-FERME"
 ```
 
 ## O-69 (archive) · L'entrée d'origine · 🔴 ~~OUVERT, arbitrage à rendre~~
@@ -7428,9 +7428,9 @@ fondateur).
 
 ```verify
 id: O-72
-quoi: le maximum du plan (hors récup) du profil fondateur est-il encore en phase de base ?
+quoi: le maximum du plan (hors récup) est-il encore HORS de la phase de pic ? (⚠ la pièce 2 l'a déplacé de S4/base à S19/dev — le critère porte sur la propriété, pas sur le nom de la phase)
 attendu: O72-REPRODUIT
-cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const p=globalThis.EBV2.buildPlan('tri',B);let mx={h:-1,num:0,ph:''};for(const w of p.weeks){if(w.isRecup)continue;const h=w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:(s.min||0)),0),0)/60;if(h>mx.h)mx={h,num:w.num,ph:w.phase.id};}console.log('max '+mx.h.toFixed(1)+'h en S'+mx.num+' ('+mx.ph+')');if(mx.ph==='base')console.log('O72-REPRODUIT');"
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const p=globalThis.EBV2.buildPlan('tri',B);let mx={h:-1,num:0,ph:''};for(const w of p.weeks){if(w.isRecup)continue;const h=w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:(s.min||0)),0),0)/60;if(h>mx.h)mx={h,num:w.num,ph:w.phase.id};}console.log('max '+mx.h.toFixed(1)+'h en S'+mx.num+' ('+mx.ph+')');if(mx.ph!=='peak')console.log('O72-REPRODUIT');"
 ```
 
 ## O-73 · L'inventaire des planchers — l'ordre de compression, mesuré · ✅ **LECTURE FAITE (fondateur, « L'INVENTAIRE DES PLANCHERS *EST* LA POLITIQUE », 18/08/2026)**
@@ -7519,6 +7519,79 @@ id: O-73
 quoi: l'inventaire est-il exécutable, et le point unique tient-il les onze élections ?
 attendu: /✓ T-46 \[vert/
 cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-46"
+```
+
+## Lot progression, PIÈCE 2 (nage) · ✅ **LIVRÉE (arbitrages PIECE_NAGE + DEUX_CANAUX, 18/08/2026)**
+
+**Le défaut** : « Nage seuil » livrait **1975 m au CSS = 40,2 min — `DOSE_CAP_MIN.thr` au mètre
+près — dès la SEMAINE 1 de base**, et y restait jusqu'à S38 ; les seules variations allaient vers
+le BAS, quand une coupe passait. C'est la pièce 1 sur la nage, avec une aggravation : la taille
+finale y est un plafond de **SÉCURITÉ** employé de fait comme cible dès le premier jour.
+
+**Livré, sur le profil du fondateur** : `21,9 min (S1) → 40,2 min (S38, pic)`, et **0 semaine
+hors pic n'atteint 40**. Trois choix, chacun tranché :
+la CIBLE ne bouge pas (40 min, arbitré en fermant O-55) ; la MONNAIE est la **minute**, la
+distance se dérive — le CSS s'améliore sur le plan (O-68), donc une cible en mètres donnerait
+MOINS de dose à un nageur qui progresse ; la POSITION court sur **tout** le plan (base → pic),
+là où le brick n'existe qu'en spec+peak. Départ = `PROG_DOSE_DEPART = 0,55`, forme (a) de
+l'arbitrage — et la valeur est MESURÉE, pas choisie : c'est le rapport que la pièce 1 produit de
+fait (brick 117/212 = 0,552), pour que les deux pièces soient la même géométrie.
+
+### QUI PAIE ? La réponse est : personne — et c'est publié plutôt que revendiqué
+
+Le fondateur attendait de cette pièce le premier vrai test de `prioriteFinancement`. **Elle ne le
+lui donne pas, et il faut le dire** : le pic était DÉJÀ au plafond, donc la trajectoire ne fait
+pas CROÎTRE le sommet — elle abaisse le début. Mesuré (29 semaines de charge) : « Nage seuil »
+**1614 → 1370 min (−244)**, dont **+117 vers « Nage vitesse »**, +10 sortie longue, +8 endurance
+vélo, et **−117 min de total** (−0,7 %). La pièce LIBÈRE des minutes au lieu d'en consommer : le
+contraire du brick. `prioriteFinancement` reste donc non exercé par ce lot.
+
+### Le résidu, mesuré, et ma première hypothèse RÉFUTÉE
+
+7 profils (`Full/injury-*`, `master`, `vol-min`) livrent au pic une dose SOUS celle de la
+spécifique (1625 contre 1750 m). J'ai d'abord écrit que « les règles de sécurité allègent le
+pic » — **faux, mesuré** : le volume de la semaine MONTE (487 → 534 min) pendant que la dose
+baisse. La cause est le **plafond de temps DUR hebdomadaire (C26c)** : au pic, le VO2 et le brick
+à allure course saturent le budget, et la dose de seuil nage est la variable d'ajustement. C'est
+une règle de SÉCURITÉ (priorité 2), pas un défaut de trajectoire — et la question qu'elle pose
+(du VO2 ou de la nage, qui doit céder au pic ?) est une question d'ALLOCATION, déjà ouverte au
+constat 1 d'O-72. Aucune garde n'est écrite pour la déclarer fautive : ce serait demander au
+moteur de dépasser un plafond physiologique pour satisfaire un critère d'affichage.
+
+### Le CANAL (DEUX_CANAUX §2) — et pourquoi il est un ENSEMBLE
+
+`canauxProteges()` déclare, pour un type, sur quel AXE il doit être protégé : *la valeur du type
+est sa DURÉE → la taille* (brick, sortie longue, continuité B-17 — une simulation amputée ne
+simule plus rien) ; *sa valeur est sa FRÉQUENCE → l'occurrence* (qualité nage — quatre séances de
+vingt minutes valent mieux que deux de quarante). `estCreneauProtege` en devient la lecture du
+canal « occurrence » : un seul point, une seule règle, et **aucune douzième liste d'exclusion**.
+**Ma première écriture rendait UN canal et testait la taille d'abord** : une continuité de nage
+devenait « taille » et perdait du même coup sa protection d'occurrence — **84 profils du golden
+déplacés**. Le modèle du fondateur le disait déjà (« la sortie longue est protégée sur les DEUX
+axes ») ; le canal est donc un ensemble. Vérifié NEUTRE : 83 écarts avec et sans.
+
+**Aucun plancher de TAILLE n'a été posé sur la qualité nage** (DEUX_CANAUX §1) : l'inventaire
+O-73 a montré qu'un plancher de minutes redirige le paiement vers l'occurrence — sur la nage ce
+serait le pire échange possible, puisque c'est la fréquence qui construit la technique.
+
+Garde **T-47** (lotPhysio), contre-prouvée : trajectoire retirée → 5 profils rouges. Elle borne
+son OBJET deux fois, chaque fois sur une mesure : pas de verdict là où le pic ne porte aucune
+nage seuil en charge (O-74), ni là où le plafond ne gouverne pas (le mineur reçoit 450-675 m,
+soit 9-14 min, très sous le plafond — sa dose vient du volume de sa semaine).
+
+## O-74 · Les semaines de CHARGE du pic ne portent aucune nage seuil sur les profils `reprise` · 🔴 **OUVERT, mesuré**
+
+Trouvé en bornant T-47. Sur `tri/70.3/reprise/inter` et `tri/70.3/reprise/avance`, les semaines
+de charge du pic (S16, S18) portent « Nage vitesse » et « Nage endurance » — **la seule « Nage
+seuil » de la phase vit en semaine de RÉCUP (S17)**. La qualité au seuil de la discipline
+limitante disparaît donc des semaines où la spécificité compte le plus. Même famille que le
+constat 1 d'O-72 (l'allocation du créneau dur au pic) ; non traité ici, aucune décision prise.
+
+```verify
+id: O-74
+quoi: les semaines de charge du pic d'un profil tri/reprise portent-elles une nage seuil ?
+attendu: /aucune nage seuil en charge de pic : [1-9]/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let n=0;for(const{key,sport,a}of profiles()){if(sport!=='tri'||!String(key).includes('reprise'))continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const w=p.weeks.filter(x=>x.phase.id==='peak'&&!x.isRecup);if(!w.length)continue;const s=w.some(x=>x.days.some(d=>d.sessions.some(y=>y.d==='sw'&&/seuil/i.test(y.name||''))));if(!s)n++;}console.log('aucune nage seuil en charge de pic : '+n);"
 ```
 
 ## §6 · L'onglet Semaine collé sur une semaine consultée · ✅ **FERMÉ**

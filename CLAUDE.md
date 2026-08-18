@@ -404,6 +404,16 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   en tuile pleine). **Avant de toucher une propriété visuelle, lister celles qui partagent son
   token ou son fond, et les mesurer d'un bloc** — la sonde coûte le même prix pour une ou pour
   cinq grandeurs.
+- **Tout script qui MUTE une source pour mesurer passe par `npm run casser`, jamais par un `sed`
+  ad hoc** (arbitrage du fondateur, 18/08/2026, « DEUX CANAUX » §4). Le harnais possède le cycle
+  de vie de la mutation (mute · lance · restaure dans un `finally`, Ctrl-C compris) et refuse de
+  muter un fichier déjà modifié — mais **il ne protège que le chemin qu'il couvre** : la
+  contre-preuve vacueuse du 18/08 (un `|` non échappé, rien muté, verdict VERT) était un `sed`
+  écrit à la main, hors du harnais. Même conclusion que pour le `git checkout` : la classe se
+  referme d'un côté et rouvre de l'autre tant qu'un chemin reste à la discipline. À défaut,
+  toute mutation manuelle ASSERTE que son motif existe avant de remplacer — un remplacement qui
+  ne trouve rien doit LEVER, jamais rendre vert.
+
 - **Poser un plancher est un acte de priorisation GLOBALE, jamais une protection locale**
   (arbitrage du fondateur, 18/08/2026, « L'INVENTAIRE DES PLANCHERS *EST* LA POLITIQUE ») :
   *« qui a un plancher ne paie pas, qui n'en a pas paie tout »*. L'ordre de compression du

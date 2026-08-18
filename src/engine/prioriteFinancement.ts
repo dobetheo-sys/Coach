@@ -38,16 +38,54 @@ export function disciplineLimitante(sport: string): string | null {
   return sport === "tri" ? "sw" : sport === "duathlon" ? "rn" : null;
 }
 
+/** LE CANAL — sur QUEL AXE un type doit être protégé (arbitrage fondateur « DEUX CANAUX »,
+ *  18/08/2026). L'inventaire des planchers (O-73) a montré qu'un plancher de MINUTES ne protège
+ *  pas : il change la MONNAIE du paiement — « Footing facile » garde 100 % de sa taille et perd
+ *  83 % de ses occurrences, parce qu'un type qui ne peut plus rétrécir ne peut plus que
+ *  disparaître. Protéger « la qualité de la discipline limitante » sans dire SUR QUEL AXE laisse
+ *  donc le mécanisme choisir, et il choisira celui qui l'arrange.
+ *
+ *      la valeur du type est sa DURÉE      → protéger la TAILLE
+ *        brick, sortie longue, continuité B-17 — une simulation de course amputée
+ *        ne simule plus rien
+ *
+ *      la valeur du type est sa FRÉQUENCE  → protéger l'OCCURRENCE
+ *        qualité nage, éducatifs, renforcement — une compétence se construit par la
+ *        répétition : quatre séances de vingt minutes valent mieux que deux de quarante
+ *
+ *  La sortie longue de la course est protégée sur les DEUX axes, et c'est cohérent : sa valeur
+ *  est sa durée ET elle doit avoir lieu. */
+export type CanalProtection = "taille" | "occurrence";
+
+/** ⚠ UN ENSEMBLE, PAS UN CHOIX — et c'est une mesure qui l'a imposé. Ma première écriture
+ *  rendait UN canal et testait la taille d'abord : une continuité de nage devenait « taille » et
+ *  PERDAIT du même coup sa protection d'occurrence — **84 profils du golden déplacés**. Le
+ *  modèle du fondateur le disait déjà : la sortie longue est protégée sur les DEUX axes, « sa
+ *  valeur est sa durée ET elle doit avoir lieu ». Un type peut donc porter les deux, et les
+ *  deux tests sont indépendants. */
+export function canauxProteges(
+  s: { d?: string; recovery?: boolean; race?: boolean; long?: boolean; brick?: boolean; name?: string },
+  sport: string,
+): CanalProtection[] {
+  const out: CanalProtection[] = [];
+  // la durée EST le stimulus (I14) · une continuité amputée n'est plus une continuité (B-17)
+  if (s.long || s.brick || /continu/i.test(s.name || "")) out.push("taille");
+  const disc = disciplineLimitante(sport);
+  if (disc && s.d === disc && !s.recovery && !s.race) out.push("occurrence");
+  return out;
+}
+
 /** Un créneau PROTÉGÉ par la politique : une séance non-récupération de la discipline
  *  limitante (« Nage vitesse », « Nage seuil », les continuités B-17… — jamais « Nage récup
  *  courte », qui est précisément ce qui doit payer en premier). La course objectif n'entre
  *  pas dans le raisonnement. */
 export function estCreneauProtege(
-  s: { d?: string; recovery?: boolean; race?: boolean },
+  s: { d?: string; recovery?: boolean; race?: boolean; long?: boolean; brick?: boolean; name?: string },
   sport: string,
 ): boolean {
-  const disc = disciplineLimitante(sport);
-  return !!disc && s.d === disc && !s.recovery && !s.race;
+  // Les passes qui l'appellent retirent des SÉANCES : c'est le canal OCCURRENCE, et il se lit
+  // désormais sur `canalProtege` au lieu d'être réécrit ici — un seul point, une seule règle.
+  return canauxProteges(s, sport).includes("occurrence");
 }
 
 /** CE QUI N'EST JAMAIS UNE VICTIME — le PLANCHER ABSOLU de la politique, en UN endroit.
