@@ -17,7 +17,7 @@ le nombre d'alertes et le score, écarts-types 5,6 à 10,6 — les moyennes se r
 aucune ne se cite seule comme un effet.
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Récup+lourde | Longue >55% | Sans volume/plan | Couverture | Score STRUCTUREL moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| tri | 108 | 0.97 | 0.93–0.99 | 0 | 0 | 0 | 0.43 | 0 | 0 | 0.0 | 100% | 96 |
+| tri | 108 | 0.97 | 0.92–0.99 | 0 | 0 | 0 | 0.44 | 0 | 0 | 0.0 | 100% | 96 |
 | run | 108 | 0.98 | 0.94–0.99 | 0 | 0 | 0 | 0.47 | 0 | 0 | 0.0 | 100% | 100 |
 | bike | 135 | 0.99 | 0.97–1.00 | 0 | 0 | 0 | 0.44 | 0 | 0 | 0.0 | 100% | 99 |
 | swim | 108 | 0.97 | 0.91–1.00 | 0 | 0 | 0 | 0.49 | 0 | 0 | 0.0 | 100% | 98 |
@@ -44,7 +44,7 @@ Recoupement d'estimateurs : écart médian |nos minutes − s.min du générateu
 
 ## Pires cas (ratio pic le plus extrême par sport)
 
-- **tri** : S/reprise/inter/competition → ratio 0.92 (déclaré 4.0h, prescrit 3.7h), longue 32%
+- **tri** : S/ancien/debutant/finir → ratio 0.89 (déclaré 4.0h, prescrit 3.6h), longue 26%
 - **run** : 5k/confirme/debutant/competition → ratio 0.89 (déclaré 3.0h, prescrit 2.7h), longue 41%
 - **bike** : route/confirme/debutant/competition → ratio 0.97 (déclaré 10.0h, prescrit 9.8h), longue 30%
 - **swim** : demifond/ancien/debutant/competition → ratio 0.83 (déclaré 0.8h, prescrit 0.7h), longue 35%

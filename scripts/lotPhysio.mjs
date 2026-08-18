@@ -949,7 +949,25 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // contenu (VO2max course → spécifique, 0 VO2 en décharge, C3 rejoué au point fixe sur
 // l'enveloppe). S4 INCHANGÉ à 357, corpus inchangé (985) : cinq profils de MOINS dont la chaîne
 // déclarée diverge du pic livré — une BAISSE, ré-épinglée avec la même rigueur qu'une hausse.
-const SCEAU_ATTENDU = { S1: 5, S4: 357, S5: 503 };
+// PUIS S5 503 → **509** (QUI PAIE §2, 18/08/2026) : l'orientation de la politique de
+// financement déplace la VICTIME des coupes sur 57 profils du corpus (mesuré au golden :
+// le reste du lot rend 0 écart, l'orientation seule rend 57 — l'attribution est
+// ensembliste, pas devinée). Le livré bouge, la chaîne déclarée non : six profils de plus
+// rejoignent la famille T-25, dont la cause est OUVERTE et nommée depuis O-35 (« ce que le
+// point fixe retire n'est déclaré par aucun maillon »). Hausse à raison honnête — le
+// contraire d'un relèvement pour faire passer un lot : la politique protège des séances
+// que la coupe prenait, et le diagnostic déclaré n'a pas encore appris à le dire.
+// (509 était l'épingle de l'état intermédiaire, orientation swimrun comprise — retirée le
+// jour même après réfutation par v7 : le périmètre final tri+duathlon rend 505.)
+// PUIS S1 5 → **4** (QUI PAIE §3, 18/08/2026) : le MOTEUR, attribution prouvée par RETRAIT DU
+// SEUL FACTEUR (leçon de l'épisode « 1bis » ci-dessus) — stash de `repairLoop.ts` seul, la
+// sonde rend 5 ; restauré, elle rend 4. La violation payée est un brick de CHARGE
+// (`tri/Full/vol-min`, « Brick vélo+CAP » à 118 min pour un plancher audité à 150) : trois
+// écrivains de `repairLoop` réduisaient les legs de brick SOUS `bnd.floor ?? 10` alors que le
+// plancher C21b des legs vit dans `blockBounds` — la famille exacte de la moitié « brick » de
+// la dette D2 du banc v6. Les 4 restantes sont toutes des bricks d'AFFÛTAGE sous leur plancher
+// de 40 min (le résidu O-37a d'origine) — une autre passe, pas encore identifiée, à suivre là.
+const SCEAU_ATTENDU = { S1: 4, S4: 357, S5: 505 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1349,7 +1367,9 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   // bricks de début de spécifique PLUS PETITS (117 min au lieu de 212 en première occurrence),
   // les semaines saturées de vol-min retrouvent des minutes, et une continuité de plus est
   // payée. Un raboté de MOINS est le sens attendu du lot — ré-épinglé à la baisse.
-  const RABOTES_ATTENDUS = 25;
+  // PUIS 25 → **24** (QUI PAIE §2, 18/08/2026) : l'orientation épargne des jours de nage —
+  // une continuité de plus est payée. Même attribution ensembliste que S5 ci-dessus.
+  const RABOTES_ATTENDUS = 24;
   let n = 0, ko = 0; const zones = {}, ex = [];
   for (const { key, plan } of goldenAvecMoteur()) {
     for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
@@ -1620,6 +1640,49 @@ T("T-44", "rouge", "PROPRIÉTÉ — la coupe par sessions_max ne retire pas d'un
   // le moins coûteux qui le ferait passer.
   if (!mordu) bad.push("VACUEUX : la coupe ne mord sur aucun profil du jeu — le critère est satisfait par construction");
   return { ok: !bad.length, detail: bad.length ? bad.slice(0, 5).join(" · ") : vus.join(" · ") };
+});
+
+// QUI PAIE §2 (18/08/2026) — LA POLITIQUE DE FINANCEMENT, GARDÉE SUR SES DEUX MOITIÉS.
+// (1) le TÉMOIN comportemental : la famille que le golden a montrée déplacée par l'orientation
+//     (57 profils, duathlon/S en tête) — un jour qui porte un créneau protégé et qui était
+//     COUPÉ (« off ») survit dès qu'une autre victime existe. Le témoin épingle UN profil de
+//     cette famille avec sa raison ; il suit l'état du moteur (famille C30-A/O-51).
+// (2) le CLIQUET de présence : le balayage tri serré rend 48 semaines de charge sans nage
+//     non-récup sur 324 — un chiffre qui appartient à O-66 (budgets sessions_max minuscules),
+//     PAS à l'orientation (vérifié inerte dessus, un facteur à la fois) ; la politique ne doit
+//     jamais le faire MONTER. Population épinglée (un zéro/compte a besoin de sa population).
+// Contre-preuve post-commit : `npm run casser` sur le filtre `skipProtege` → (1) rougit.
+T("T-45", "vert", "PROPRIÉTÉ — l'orientation « qui paie » épargne les créneaux protégés quand une autre victime existe (QUI_PAIE §2)", () => {
+  const bad = [];
+  // (1) témoin : duathlon/S/ancien/avance/finir — golden : weeks[4].days[2] « off » → « facile »
+  const a = { sport: "duathlon", intent: "finir", format: "S", history: "ancien", level: "avance",
+    vol_max: "10", vol_recent: "5", sessions_max: "7", dispo: "quotidienne", shift_ok: "oui",
+    off_days: "non", doubles: "oui", injury: "aucune", age: "32", sex: "H", weight: "75", height: "178",
+    terrain: "plat", ftp_known: "non", pace_known: "non", css_known: "non",
+    med_pain: "non", med_dizzy: "non", med_treat: "non" };
+  const p = EBV2.buildPlan("duathlon", a);
+  const j = p.weeks[4] && p.weeks[4].days[2];
+  if (!j) bad.push("témoin introuvable (weeks[4].days[2])");
+  else if (!j.sessions.some((s) => s.d !== "rs")) bad.push(`témoin : le jour protégé est redevenu OFF (charge=${j.charge})`);
+  // (2) cliquet de présence — même balayage que la mesure du 18/08, compte épinglé
+  let sans = 0, tot = 0;
+  for (const format of ["S", "M", "70.3", "Full"]) for (const sm of ["3", "5", "7"]) for (const dbl of ["non", "oui"]) {
+    const b = { sport: "tri", intent: "competition", format, history: "confirme", level: "inter",
+      vol_max: "10", vol_recent: "5", sessions_max: sm, dispo: "partielle", off_days: "non", doubles: dbl,
+      injury: "aucune", age: "35", sex: "H", weight: "75", med_pain: "non", med_dizzy: "non", med_treat: "non",
+      terrain: "vallonne", milieu: "bassin", longest_swim_m: "1000", longest_swim_known: "oui",
+      css_known: "non", ftp_known: "non", pace_known: "non" };
+    let q; try { q = EBV2.buildPlan("tri", b); } catch { continue; }
+    for (const w of q.weeks) {
+      if (w.isRecup || w.phase.id === "taper") continue;
+      if (w.days.length < 7 || w.days.some((d) => d.sessions.some((s) => s.race))) continue;
+      tot++;
+      if (!w.days.some((d) => d.sessions.some((s) => s.d === "sw" && !s.recovery && s.d !== "rs"))) sans++;
+    }
+  }
+  if (tot !== 324) bad.push(`population du cliquet : ${tot} semaines balayées, 324 attendues — le compte ne prouve rien sans elle`);
+  if (sans > 48) bad.push(`cliquet : ${sans} semaines de charge sans nage non-récup (épinglé 48) — la politique a fait MONTER ce qu'elle devait tenir`);
+  return { ok: !bad.length, detail: bad.length ? bad.join(" · ") : `témoin vivant · cliquet ${sans}/48 sur ${tot} semaines` };
 });
 
 const ROUGES_ATTENDUS = {

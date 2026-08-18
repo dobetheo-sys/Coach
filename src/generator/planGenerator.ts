@@ -30,6 +30,7 @@ import { guard, sportModule } from "../sports/registry.ts";
 import { arbitrateVolRecent } from "../engine/measured.ts";
 import { record as traceRecord, traceEnabled } from "../engine/trace.ts";
 import { enforceMedicalHold } from "../engine/medicalHold.ts";
+import { estCreneauProtege } from "../engine/prioriteFinancement.ts";
 import { longRunSpecificityFloor, C31_MIN_JOUR2_MIN, C30_PART_SEMAINE_PIC } from "../engine/longRunSpecificity.ts";
 import { swimSessionCapAtWeek } from "../engine/swimContinuity.ts";
 
@@ -413,6 +414,13 @@ export function reconcileDeclaredVolume(
         let touched = false;
         for (const st of sx.steps) {
           if (st.role !== "body") continue;
+          // §3 QUI_PAIE (18/08/2026) — les LEGS DE BRICK sont exclus, comme dans les deux
+          // passes sœurs (lignes « les legs de brick ont leurs bornes de format ») : leur
+          // plancher C21b vit dans `blockBounds`, pas dans `bnd`, et `floor ?? 5` passait
+          // DESSOUS — mesuré : brick vélo à 44 min pour une borne basse auditée à 45 sur
+          // tri/S/debutant, la moitié « brick hors bornes » de la dette D2 du banc v6,
+          // antérieure au lot (vérifiée identique sur le moteur d'avant, worktree).
+          if (st.leg) continue;
           const floor = (st as { bnd?: { floor?: number } }).bnd?.floor;
           if ((st.reps || 1) > 1) {
             const next = Math.max(1, Math.round((st.reps || 1) * f));
@@ -470,7 +478,9 @@ export function reconcileDeclaredVolume(
         }
       }
       for (let g = 0; g < 4 && weekMinOf(wk) >= prev; g++) {
-        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
+        // R15.7-B — le jour de la VEILLE (Déverrouillage) est exclu en ABSOLU, comme la
+        // course : la plus courte par conception, victime idéale d'un min(dayMin).
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race || /Déverrouillage/i.test(s.name || "")));
         if (active.length <= 1) break; // une semaine de récup garde au moins un contact avec le sport
         const victim = active.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
         victim.charge = "off";
@@ -523,7 +533,7 @@ export function reconcileDeclaredVolume(
         if (before - weekMinOf(wk) < 0.5) break; // plus rien à réduire : la fréquence prend le relais
       }
       for (let g = 0; g < 4 && weekMinOf(wk) > cap; g++) {
-        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race || /Déverrouillage/i.test(s.name || "")));
         if (active.length <= 1) break;
         // R13.3 — la nage d'affûtage (souvent la séance la plus courte, donc la victime
         // désignée de toutes les coupes) est ÉVITÉE tant qu'une autre victime existe : les
@@ -649,7 +659,7 @@ export function reconcileDeclaredVolume(
       };
       const floorHere = raceFloor > 0 ? raceFloor : 0;
       for (let g = 0; g < 6 && weekMinOf(wk) > prev && weekMinOf(wk) > floorHere; g++) {
-        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race || /Déverrouillage/i.test(s.name || "")));
         // Une seule séance restante : on ne peut plus RETIRER, il faut RÉDUIRE. Sans ce repli,
         // la décroissance de l'affûtage s'arrêtait net dès qu'une semaine tombait à une séance
         // (mesuré : 48 → 56 min sur un Full à 3 séances/semaine). Réduire est toujours dans le
@@ -2502,7 +2512,9 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   const cutLightestEasyDay = (wd2: GenDay[], why: string, minActive = 3): boolean => {
     const active = wd2.filter((d) => d.charge !== "off" && d.sessions.some((s) => s.d !== "rs"));
     if (active.length <= minActive) return false;
-    const cand0 = active.filter((d) => (d.charge === "facile" || d.charge === "recup") && !d.forced && !d.sessions.some((s) => s.long || s.brick));
+    // R15.7-B — le jour de la VEILLE (Déverrouillage) est exclu en ABSOLU, comme la course :
+    // même raison que dans cutSmallestSessionIn, la veille est la plus courte par conception.
+    const cand0 = active.filter((d) => (d.charge === "facile" || d.charge === "recup") && !d.forced && !d.sessions.some((s) => s.long || s.brick || /Déverrouillage/i.test(s.name || "")));
     if (!cand0.length) return false;
     // La couverture de discipline oriente le choix ; elle ne l'INTERDIT jamais. Si le seul jour
     // coupable porte la discipline principale, la coupe a lieu quand même : la hiérarchie du
@@ -2513,6 +2525,14 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       const spared = cand.filter((d) => !(d.sessions.some((s) => s.d === "sw")
         && !wd2.some((o) => o !== d && o.sessions.some((s) => s.d === "sw"))));
       if (spared.length) cand = spared;
+    }
+    // QUI PAIE §2 (18/08/2026) — la politique de financement oriente aussi la coupe par JOUR :
+    // « Nage vitesse » vit sur des jours `facile2` (charge « facile »), donc coupables ici — un
+    // jour qui porte un créneau protégé (qualité de la discipline limitante) ne devient victime
+    // que s'il n'existe aucun autre jour coupable. Oriente, n'interdit jamais.
+    {
+      const candP = cand.filter((d) => !d.sessions.some((s) => estCreneauProtege(s, r.profile.sport as string)));
+      if (candP.length) cand = candP;
     }
     const dayMin = (d2: GenDay) => d2.sessions.reduce((t, s) => t + (s.min || 0), 0);
     const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
@@ -2531,21 +2551,34 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     // ce garde si c'était la seule coupe possible : orienter, jamais interdire.
     for (const keepMain of [true, false]) {
       const mainD = sportModule(r.profile.sport as string).mainDiscipline;
-      for (const skipForced of [true, false]) {
-        for (const d of wd2) {
-          if (skipForced && d.forced) continue;
-          d.sessions.forEach((s, si) => {
-            if (s.d === "rs" || s.long || s.brick || s.race) return; // R13.4 : min=0 faisait de la COURSE la « plus petite séance » — jamais une victime
-            if (keepMain && _sportDiscs.includes(s.d) && !wd2.some((o) => o.sessions.some((x) => x !== s && (x.d === s.d || x.d === "br")))) return;
-            // R13.3 — en affûtage, la seule nage de la semaine est traitée comme la discipline
-            // principale : préférée à la coupe, jamais interdite (le repli keepMain=false coupe).
-            if (keepMain && _keepTaperSwim && wd2[0]?.phaseId === "taper" && s.d === "sw"
-              && !wd2.some((o) => o.sessions.some((x) => x !== s && x.d === "sw"))) return;
-            const m = s.min || 0;
-            if (!victim || m < victim.min) victim = { d, si, min: m };
-          });
+      // QUI PAIE §2 (18/08/2026) — LA POLITIQUE DE FINANCEMENT ORIENTE LA VICTIME : un créneau
+      // protégé (qualité de la discipline limitante, `prioriteFinancement`) ne paie que s'il
+      // n'existe AUCUNE autre victime. Oriente, n'interdit jamais — même contrat que keepMain.
+      for (const skipProtege of [true, false]) {
+        for (const skipForced of [true, false]) {
+          for (const d of wd2) {
+            if (skipForced && d.forced) continue;
+            d.sessions.forEach((s, si) => {
+              // R13.4 : min=0 faisait de la COURSE la « plus petite séance » — jamais une victime.
+              // R15.7-B (18/08/2026) : la VEILLE aussi, en ABSOLU — elle est la plus courte par
+              // CONCEPTION (≤ 25 min), donc la victime idéale de toute règle « retirer la plus
+              // petite ». Elle survivait ici par CHANCE (une autre séance était plus petite) ;
+              // l'orientation « qui paie » a protégé cette autre séance et la coupe est tombée
+              // sur la veille — trou de 3 jours avant la course, banc r15 rouge sur 1/648.
+              if (s.d === "rs" || s.long || s.brick || s.race || /Déverrouillage/i.test(s.name || "")) return;
+              if (skipProtege && estCreneauProtege(s, r.profile.sport as string)) return;
+              if (keepMain && _sportDiscs.includes(s.d) && !wd2.some((o) => o.sessions.some((x) => x !== s && (x.d === s.d || x.d === "br")))) return;
+              // R13.3 — en affûtage, la seule nage de la semaine est traitée comme la discipline
+              // principale : préférée à la coupe, jamais interdite (le repli keepMain=false coupe).
+              if (keepMain && _keepTaperSwim && wd2[0]?.phaseId === "taper" && s.d === "sw"
+                && !wd2.some((o) => o.sessions.some((x) => x !== s && x.d === "sw"))) return;
+              const m = s.min || 0;
+              if (!victim || m < victim.min) victim = { d, si, min: m };
+            });
+          }
+          if (victim) break; // repli : si tous les jours candidats sont « forcés », on coupe quand même une séance (jamais longue/brick)
         }
-        if (victim) break; // repli : si tous les jours candidats sont « forcés », on coupe quand même une séance (jamais longue/brick)
+        if (victim) break;
       }
       if (victim) break;
     }
@@ -2835,7 +2868,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         // semaine avant un 5k, c'est un affûtage normal — trois séances mal réduites, non.
         // `keepsMainDiscipline` continue d'orienter la victime : on ne vide pas la discipline.
         if (active.length <= 2) break;
-        const cand0 = active.filter((d) => d.charge === "facile" && !d.forced && !d.sessions.some((s) => s.long || s.brick));
+        const cand0 = active.filter((d) => d.charge === "facile" && !d.forced && !d.sessions.some((s) => s.long || s.brick || /Déverrouillage/i.test(s.name || "")));
         if (!cand0.length) break;
         const candK = cand0.filter((d) => keepsMainDiscipline(wd, d));
         let cand = candK.length ? candK : cand0;
@@ -3401,6 +3434,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     }
   }
 
+
   // R20.2 (DOC_UNIQUE §2) — le record de décision : l'énumération complète plafonds/facteurs,
   // émise sur le plan pour que T-25/T-26/T-23 la vérifient de dehors.
   let _r202rec: V1Plan["_r202"] = undefined;
@@ -3856,9 +3890,12 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // O69-plat (retour fondateur, 18/08/2026) — UN PLAN PLAT SE DIT, IL NE SE DEVINE PAS.
       // Quand le départ ancré rejoint un plafond immobile, il ne reste plus d'espace entre les
       // deux : l'affichage « 10,3 → 10,3 » est exact, mais sans explication l'athlète conclut
-      // que l'app est cassée. Le seuil (< 8 %) est celui d'un plan dont la construction en
-      // volume est imperceptible à l'œil sur le graphique — mesuré sur le profil fondateur :
-      // charges de 8,2 à 10,3 h, pic ex æquo avec la semaine 1.
+      // que l'app est cassée. PROVENANCE DU SEUIL (§4 QUI_PAIE) : les 8 % sont POSÉS SANS
+      // MESURE — un jugement de perception (« une amplitude sous ~8 % paraît plate sur un
+      // graphique de 40 semaines »), pas une constante fondée. C'est un seuil d'AFFICHAGE à
+      // faible enjeu ; le dire vaut mieux que le justifier après coup, et il est révocable
+      // à la première mesure qui le contredit. (Le profil fondateur, charges 8,2-10,3 h et
+      // pic ex æquo avec S1, tombe largement dedans — c'est une illustration, pas une base.)
       if (dAncre && plan.volBase > 0 && volPeak > 0 && volPeak - plan.volBase < volPeak * 0.08) {
         r.decisions.push({
           id: "O69-plat", what: "Ton volume ne montera presque pas — et c'est un choix informé",

@@ -299,6 +299,59 @@ function enforceMedicalHold(plan        , medHold         )         {
   return fixed;
 }
 
+// ===== src/engine/prioriteFinancement.ts =====
+/**
+ * QUI PAIE — LA POLITIQUE DE FINANCEMENT, ÉCRITE UNE FOIS (arbitrage fondateur, 18/08/2026,
+ * QUI_PAIE_LA_CROISSANCE §2).
+ *
+ * Trois mécanismes d'arbitrage ont tapé la nage du triathlète sans qu'aucune règle ne l'ait
+ * décidé : la coupe par `sessions_max` (O-66), le routage `doubles` qui remplit `facile2` de
+ * récup, et l'équilibre des semaines à brick (mesuré : le brick porte un plancher audité haut,
+ * la qualité nage n'a que des répétitions et des mètres compressibles — à cible fixe, c'est
+ * TOUJOURS elle qui paie ; une politique de financement ACCIDENTELLE, « qui a un plancher ne
+ * paie pas, qui n'en a pas paie tout »).
+ *
+ * La politique se pose donc UNE fois, ici, et s'applique en deux points étagés par rayon
+ * d'explosion : le financement de la croissance et l'orientation des coupes (maintenant,
+ * périmètre étroit), puis la coupe par `sessions_max` (O-66, 98 % des retraits sur sept
+ * sports). Contrainte de fond, verbatim : *« la croissance d'un type ne se finance jamais sur
+ * un créneau de qualité de la discipline limitante. Si le brick doit grandir et que seule la
+ * nage peut payer, c'est que le volume total est trop bas — et c'est le plafond structurel
+ * qu'il faut lever, pas la nage qu'il faut vider. »*
+ *
+ * L'ordre du fondateur (déjà au registre, O-66) : *ne se coupe jamais* — séance principale de
+ * la discipline limitante, séances spécifiques de course, paliers B-17 ; *se coupe en
+ * premier* — récupération, mobilité, complément dans une discipline non limitante.
+ */
+
+/** La discipline LIMITANTE d'un sport multi-discipline — celle dont la faiblesse coûte le plus
+ *  cher en risque, pas en chrono (ALLOCATION_PAR_SPORT §3 : les deux sens de « limitant »).
+ *  tri : la nage — la discipline de la CONTINUITÉ (B-17) et du risque en eau libre, celle où
+ *  « une mauvaise nage ne coûte pas trois minutes, elle peut coûter la course ».
+ *  duathlon : la course — l'épreuve commence et finit à pied (R5.2, D-DISC).
+ *  swimrun : NULL, mesuré — ma première écriture disait « sw » et le banc v7 l'a réfutée en
+ *  naissant (S-RUN-STARVED 5 → 8 : protéger la nage y affame la course). En swimrun la
+ *  répartition suit l'ÉPREUVE (S13 : 45 à 94 % de course selon la course visée), une constante
+ *  de discipline y est la faute exacte que S13 a corrigée. Le jour où la politique doit y
+ *  exister, elle se dérive de `raceRunShare`, jamais d'une table.
+ *  Mono-sport : null — « limitante » n'a de sens qu'en multi-discipline ; la protection des
+ *  séances d'un mono-sport passe par d'autres règles (C13d, planchers de séance). */
+function disciplineLimitante(sport        )                {
+  return sport === "tri" ? "sw" : sport === "duathlon" ? "rn" : null;
+}
+
+/** Un créneau PROTÉGÉ par la politique : une séance non-récupération de la discipline
+ *  limitante (« Nage vitesse », « Nage seuil », les continuités B-17… — jamais « Nage récup
+ *  courte », qui est précisément ce qui doit payer en premier). La course objectif n'entre
+ *  pas dans le raisonnement. */
+function estCreneauProtege(
+  s                                                    ,
+  sport        ,
+)          {
+  const disc = disciplineLimitante(sport);
+  return !!disc && s.d === disc && !s.recovery && !s.race;
+}
+
 // ===== src/engine/measured.ts =====
 /**
  * `measured` — L'INSTANTANÉ DE CE QUE L'ATHLÈTE A RÉELLEMENT FAIT (décisions produit R6, §2-§3).
@@ -8887,6 +8940,7 @@ function applyPolarizationGuard(r              , days          , ctx            
 
 
 
+
 /**
  * Une zone de QUALITÉ — source unique. Le prédicat vivait en local dans `scaleBlock` (V2.2 :
  * un bloc de qualité ne grandit pas tout seul) ; C13d en a besoin aussi, et deux copies d'une
@@ -9263,6 +9317,13 @@ function reconcileDeclaredVolume(
         let touched = false;
         for (const st of sx.steps) {
           if (st.role !== "body") continue;
+          // §3 QUI_PAIE (18/08/2026) — les LEGS DE BRICK sont exclus, comme dans les deux
+          // passes sœurs (lignes « les legs de brick ont leurs bornes de format ») : leur
+          // plancher C21b vit dans `blockBounds`, pas dans `bnd`, et `floor ?? 5` passait
+          // DESSOUS — mesuré : brick vélo à 44 min pour une borne basse auditée à 45 sur
+          // tri/S/debutant, la moitié « brick hors bornes » de la dette D2 du banc v6,
+          // antérieure au lot (vérifiée identique sur le moteur d'avant, worktree).
+          if (st.leg) continue;
           const floor = (st                                ).bnd?.floor;
           if ((st.reps || 1) > 1) {
             const next = Math.max(1, Math.round((st.reps || 1) * f));
@@ -9320,7 +9381,9 @@ function reconcileDeclaredVolume(
         }
       }
       for (let g = 0; g < 4 && weekMinOf(wk) >= prev; g++) {
-        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
+        // R15.7-B — le jour de la VEILLE (Déverrouillage) est exclu en ABSOLU, comme la
+        // course : la plus courte par conception, victime idéale d'un min(dayMin).
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race || /Déverrouillage/i.test(s.name || "")));
         if (active.length <= 1) break; // une semaine de récup garde au moins un contact avec le sport
         const victim = active.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
         victim.charge = "off";
@@ -9373,7 +9436,7 @@ function reconcileDeclaredVolume(
         if (before - weekMinOf(wk) < 0.5) break; // plus rien à réduire : la fréquence prend le relais
       }
       for (let g = 0; g < 4 && weekMinOf(wk) > cap; g++) {
-        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race || /Déverrouillage/i.test(s.name || "")));
         if (active.length <= 1) break;
         // R13.3 — la nage d'affûtage (souvent la séance la plus courte, donc la victime
         // désignée de toutes les coupes) est ÉVITÉE tant qu'une autre victime existe : les
@@ -9499,7 +9562,7 @@ function reconcileDeclaredVolume(
       };
       const floorHere = raceFloor > 0 ? raceFloor : 0;
       for (let g = 0; g < 6 && weekMinOf(wk) > prev && weekMinOf(wk) > floorHere; g++) {
-        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race));
+        const active = wk.days.filter((d) => d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.race || /Déverrouillage/i.test(s.name || "")));
         // Une seule séance restante : on ne peut plus RETIRER, il faut RÉDUIRE. Sans ce repli,
         // la décroissance de l'affûtage s'arrêtait net dès qu'une semaine tombait à une séance
         // (mesuré : 48 → 56 min sur un Full à 3 séances/semaine). Réduire est toujours dans le
@@ -11352,7 +11415,9 @@ function generatePlan(profile                , opts                             
   const cutLightestEasyDay = (wd2          , why        , minActive = 3)          => {
     const active = wd2.filter((d) => d.charge !== "off" && d.sessions.some((s) => s.d !== "rs"));
     if (active.length <= minActive) return false;
-    const cand0 = active.filter((d) => (d.charge === "facile" || d.charge === "recup") && !d.forced && !d.sessions.some((s) => s.long || s.brick));
+    // R15.7-B — le jour de la VEILLE (Déverrouillage) est exclu en ABSOLU, comme la course :
+    // même raison que dans cutSmallestSessionIn, la veille est la plus courte par conception.
+    const cand0 = active.filter((d) => (d.charge === "facile" || d.charge === "recup") && !d.forced && !d.sessions.some((s) => s.long || s.brick || /Déverrouillage/i.test(s.name || "")));
     if (!cand0.length) return false;
     // La couverture de discipline oriente le choix ; elle ne l'INTERDIT jamais. Si le seul jour
     // coupable porte la discipline principale, la coupe a lieu quand même : la hiérarchie du
@@ -11363,6 +11428,14 @@ function generatePlan(profile                , opts                             
       const spared = cand.filter((d) => !(d.sessions.some((s) => s.d === "sw")
         && !wd2.some((o) => o !== d && o.sessions.some((s) => s.d === "sw"))));
       if (spared.length) cand = spared;
+    }
+    // QUI PAIE §2 (18/08/2026) — la politique de financement oriente aussi la coupe par JOUR :
+    // « Nage vitesse » vit sur des jours `facile2` (charge « facile »), donc coupables ici — un
+    // jour qui porte un créneau protégé (qualité de la discipline limitante) ne devient victime
+    // que s'il n'existe aucun autre jour coupable. Oriente, n'interdit jamais.
+    {
+      const candP = cand.filter((d) => !d.sessions.some((s) => estCreneauProtege(s, r.profile.sport          )));
+      if (candP.length) cand = candP;
     }
     const dayMin = (d2        ) => d2.sessions.reduce((t, s) => t + (s.min || 0), 0);
     const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
@@ -11381,21 +11454,34 @@ function generatePlan(profile                , opts                             
     // ce garde si c'était la seule coupe possible : orienter, jamais interdire.
     for (const keepMain of [true, false]) {
       const mainD = sportModule(r.profile.sport          ).mainDiscipline;
-      for (const skipForced of [true, false]) {
-        for (const d of wd2) {
-          if (skipForced && d.forced) continue;
-          d.sessions.forEach((s, si) => {
-            if (s.d === "rs" || s.long || s.brick || s.race) return; // R13.4 : min=0 faisait de la COURSE la « plus petite séance » — jamais une victime
-            if (keepMain && _sportDiscs.includes(s.d) && !wd2.some((o) => o.sessions.some((x) => x !== s && (x.d === s.d || x.d === "br")))) return;
-            // R13.3 — en affûtage, la seule nage de la semaine est traitée comme la discipline
-            // principale : préférée à la coupe, jamais interdite (le repli keepMain=false coupe).
-            if (keepMain && _keepTaperSwim && wd2[0]?.phaseId === "taper" && s.d === "sw"
-              && !wd2.some((o) => o.sessions.some((x) => x !== s && x.d === "sw"))) return;
-            const m = s.min || 0;
-            if (!victim || m < victim.min) victim = { d, si, min: m };
-          });
+      // QUI PAIE §2 (18/08/2026) — LA POLITIQUE DE FINANCEMENT ORIENTE LA VICTIME : un créneau
+      // protégé (qualité de la discipline limitante, `prioriteFinancement`) ne paie que s'il
+      // n'existe AUCUNE autre victime. Oriente, n'interdit jamais — même contrat que keepMain.
+      for (const skipProtege of [true, false]) {
+        for (const skipForced of [true, false]) {
+          for (const d of wd2) {
+            if (skipForced && d.forced) continue;
+            d.sessions.forEach((s, si) => {
+              // R13.4 : min=0 faisait de la COURSE la « plus petite séance » — jamais une victime.
+              // R15.7-B (18/08/2026) : la VEILLE aussi, en ABSOLU — elle est la plus courte par
+              // CONCEPTION (≤ 25 min), donc la victime idéale de toute règle « retirer la plus
+              // petite ». Elle survivait ici par CHANCE (une autre séance était plus petite) ;
+              // l'orientation « qui paie » a protégé cette autre séance et la coupe est tombée
+              // sur la veille — trou de 3 jours avant la course, banc r15 rouge sur 1/648.
+              if (s.d === "rs" || s.long || s.brick || s.race || /Déverrouillage/i.test(s.name || "")) return;
+              if (skipProtege && estCreneauProtege(s, r.profile.sport          )) return;
+              if (keepMain && _sportDiscs.includes(s.d) && !wd2.some((o) => o.sessions.some((x) => x !== s && (x.d === s.d || x.d === "br")))) return;
+              // R13.3 — en affûtage, la seule nage de la semaine est traitée comme la discipline
+              // principale : préférée à la coupe, jamais interdite (le repli keepMain=false coupe).
+              if (keepMain && _keepTaperSwim && wd2[0]?.phaseId === "taper" && s.d === "sw"
+                && !wd2.some((o) => o.sessions.some((x) => x !== s && x.d === "sw"))) return;
+              const m = s.min || 0;
+              if (!victim || m < victim.min) victim = { d, si, min: m };
+            });
+          }
+          if (victim) break; // repli : si tous les jours candidats sont « forcés », on coupe quand même une séance (jamais longue/brick)
         }
-        if (victim) break; // repli : si tous les jours candidats sont « forcés », on coupe quand même une séance (jamais longue/brick)
+        if (victim) break;
       }
       if (victim) break;
     }
@@ -11685,7 +11771,7 @@ function generatePlan(profile                , opts                             
         // semaine avant un 5k, c'est un affûtage normal — trois séances mal réduites, non.
         // `keepsMainDiscipline` continue d'orienter la victime : on ne vide pas la discipline.
         if (active.length <= 2) break;
-        const cand0 = active.filter((d) => d.charge === "facile" && !d.forced && !d.sessions.some((s) => s.long || s.brick));
+        const cand0 = active.filter((d) => d.charge === "facile" && !d.forced && !d.sessions.some((s) => s.long || s.brick || /Déverrouillage/i.test(s.name || "")));
         if (!cand0.length) break;
         const candK = cand0.filter((d) => keepsMainDiscipline(wd, d));
         let cand = candK.length ? candK : cand0;
@@ -12251,6 +12337,7 @@ function generatePlan(profile                , opts                             
     }
   }
 
+
   // R20.2 (DOC_UNIQUE §2) — le record de décision : l'énumération complète plafonds/facteurs,
   // émise sur le plan pour que T-25/T-26/T-23 la vérifient de dehors.
   let _r202rec                  = undefined;
@@ -12706,9 +12793,12 @@ function generatePlan(profile                , opts                             
       // O69-plat (retour fondateur, 18/08/2026) — UN PLAN PLAT SE DIT, IL NE SE DEVINE PAS.
       // Quand le départ ancré rejoint un plafond immobile, il ne reste plus d'espace entre les
       // deux : l'affichage « 10,3 → 10,3 » est exact, mais sans explication l'athlète conclut
-      // que l'app est cassée. Le seuil (< 8 %) est celui d'un plan dont la construction en
-      // volume est imperceptible à l'œil sur le graphique — mesuré sur le profil fondateur :
-      // charges de 8,2 à 10,3 h, pic ex æquo avec la semaine 1.
+      // que l'app est cassée. PROVENANCE DU SEUIL (§4 QUI_PAIE) : les 8 % sont POSÉS SANS
+      // MESURE — un jugement de perception (« une amplitude sous ~8 % paraît plate sur un
+      // graphique de 40 semaines »), pas une constante fondée. C'est un seuil d'AFFICHAGE à
+      // faible enjeu ; le dire vaut mieux que le justifier après coup, et il est révocable
+      // à la première mesure qui le contredit. (Le profil fondateur, charges 8,2-10,3 h et
+      // pic ex æquo avec S1, tombe largement dedans — c'est une illustration, pas une base.)
       if (dAncre && plan.volBase > 0 && volPeak > 0 && volPeak - plan.volBase < volPeak * 0.08) {
         r.decisions.push({
           id: "O69-plat", what: "Ton volume ne montera presque pas — et c'est un choix informé",
@@ -13351,6 +13441,12 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
             if (!s.steps || !s.steps.length) continue;
             for (const st of s.steps) {
               if (st.role !== "body") continue;
+              // §3 QUI_PAIE (18/08/2026) — les LEGS DE BRICK ont leurs bornes de format (C21b),
+              // portées par `blockBounds` et non par `bnd` : les raboter ici avec un plancher
+              // de 3 min passait SOUS la borne auditée. C'est l'écrivain du « brick vélo hors
+              // bornes » de la dette D2 (44 et 41 min pour une borne basse à 45), antérieur au
+              // lot — même doctrine que les passes sœurs de reconcileDeclaredVolume.
+              if (st.leg) continue;
               if (st.durationMin) st.durationMin = Math.max(3, Math.round(st.durationMin * f));
               if (st.distanceM) st.distanceM = Math.max(100, Math.round((st.distanceM * f) / 25) * 25);
             }
@@ -13361,7 +13457,8 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
       }
       // 2) si les planchers bloquent encore : la fréquence cède (R3.13)
       for (let g = 0; g < 4 && wMinOf(w) > chargeMax * R313_TAPER_MAX_VS_PEAK; g++) {
-        const cand = w.days.filter((d) => d.charge === "facile" && !d.forced && d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.long || s.brick));
+        // R15.7-B — jamais le jour de la VEILLE (Déverrouillage) : exclusion absolue, comme la course.
+        const cand = w.days.filter((d) => d.charge === "facile" && !d.forced && d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.long || s.brick || /Déverrouillage/i.test(s.name || "")));
         if (!cand.length) break;
         const dayMin = (d                  ) => d.sessions.reduce((t, s) => t + (s.min || 0), 0);
         const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
@@ -13424,6 +13521,12 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
           if (!s.steps || !s.steps.length) continue;
           for (const st of s.steps) {
             if (st.role !== "body") continue;
+            // §3 QUI_PAIE (18/08/2026) — troisième site du même raboteur : les legs de brick
+            // portent leurs bornes de format (C21b) dans `blockBounds`, et `durFloor: 10`
+            // passait dessous (45 → 38 min mesuré, « brick hors bornes »). Si la réduction ne
+            // suffit plus sans le brick, le repli ci-dessous (retrait d'une séance, qui
+            // épargne déjà longue/brick/course) prend le relais.
+            if (st.leg) continue;
             scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200, clampToOriginal: true });
           }
           fixSwimBounds(s);
@@ -13439,7 +13542,8 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
         for (const d of offender.days) {
           if (d.forced) continue;
           d.sessions.forEach((s, si) => {
-            if (s.d === "rs" || s.long || s.brick || s.race) return; // R13.4 : une course (min=0) n'est jamais une victime de coupe
+            // R13.4 : une course (min=0) n'est jamais une victime de coupe — la VEILLE non plus (R15.7-B).
+            if (s.d === "rs" || s.long || s.brick || s.race || /Déverrouillage/i.test(s.name || "")) return;
             const m = s.min || 0;
             if (!victim || m < victim.min) victim = { d, si, min: m };
           });
@@ -13525,6 +13629,7 @@ function applyTargetedRepairs(plan        , audit           , refs      , hz    
             if (!s.steps || !s.steps.length) continue;
             for (const st of s.steps) {
               if (st.role !== "body") continue;
+              if (st.leg) continue; // §3 QUI_PAIE — même exclusion que ci-dessus (bornes C21b)
               if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
               else if (st.durationMin) st.durationMin = Math.max(3, Math.round(st.durationMin * f));
               else if (st.distanceM) st.distanceM = Math.max(100, Math.round((st.distanceM * f) / 25) * 25);

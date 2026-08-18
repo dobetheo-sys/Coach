@@ -21,7 +21,6 @@ import { writeFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os"; import { join } from "node:path";
 import { createRequire } from "node:module";
 import { profiles as P } from "./goldenMaster.mjs";
-import { join } from "node:path";
 // ⚠ CHEMIN DÉRIVÉ, JAMAIS ABSOLU. Ce fichier portait « /home/user/Coach/… » codé en dur : il
 // tournait dans le bac à sable où il a été écrit et NULLE PART AILLEURS — ni en CI, ni chez le
 // fondateur. Mesuré le 17/08/2026, sur le premier passage en CI après le merge : ENOENT sur

@@ -21,6 +21,7 @@ const ORDER = [
   "src/engine/types.ts",
   "src/engine/trace.ts",
   "src/engine/medicalHold.ts",
+  "src/engine/prioriteFinancement.ts",
   "src/engine/measured.ts",
   // R22 — la règle de troncature, lue par le schéma (pour proposer la sortie) et par
   // le pont (pour l'appliquer). Doit précéder answerSchema, qui l'importe.

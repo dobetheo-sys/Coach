@@ -80,7 +80,18 @@ for (const it of items) {
     if (!sortie.trim()) ok = false;
   }
   const m = it.attendu.match(/^\/(.*)\/([a-z]*)$/);
-  const re = m ? new RegExp(m[1], m[2]) : new RegExp(it.attendu.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  // Une regex INVALIDE dans un bloc `verify` classe l'ENTRÉE en cassée, elle ne tue pas le
+  // balayage : un crash ici tronquait toutes les entrées suivantes en silence — la forme
+  // exacte du défaut que ce script existe pour empêcher (règle 17, mesuré le 18/08/2026 sur
+  // `attendu: /rabotés (O-54/`, parenthèse non fermée).
+  let re;
+  try {
+    re = m ? new RegExp(m[1], m[2]) : new RegExp(it.attendu.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  } catch (e) {
+    cols.casse.push(it.id + " : attendu illisible — " + e.message);
+    console.log("  ✖ " + it.id.padEnd(12) + "ATTENDU ILLISIBLE — " + e.message);
+    continue;
+  }
   if (!ok) {
     cols.casse.push(it.id + " : « " + it.cmd + " » ne produit plus rien");
     console.log("  ✖ " + it.id.padEnd(12) + "COMMANDE CASSÉE — " + it.cmd);

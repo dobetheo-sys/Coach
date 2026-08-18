@@ -1977,8 +1977,8 @@ _`O17` a quitté cette table le 05/08/2026 : sa dette est payée par la correcti
 
 ```verify
 id: DETTE-v6
-quoi: 3 dettes connues, 0 régression
-attendu: /3 dette connue · ✖ 0 régression/
+quoi: 2 dettes connues (D2, F2 — D3 payée par le lot progression pièce 1, 18/08/2026), 0 régression
+attendu: /2 dette connue · ✖ 0 régression/
 cmd: npm run audit:v6
 ```
 
@@ -2078,9 +2078,9 @@ Ni l'un ni l'autre n'est fait : ce sont deux chapitres ouverts, désormais corre
 
 ```verify
 id: D3
-quoi: 7 sauts C22 encore présents, D2 et F2 inchangés
-attendu: /3 dette connue/
-cmd: npm run audit:v6
+quoi: D3 payée (lot progression pièce 1, 18/08/2026) — le banc v6 la tient en « pass », garde-fou permanent
+attendu: /✔ D3/
+cmd: npm run audit:v6 2>&1 | grep "D3"
 ```
 
 ---
@@ -2914,7 +2914,7 @@ valait 40, et elle correspond à ce que tu aurais tranché. Reste `rp`, et la r�
 id: O-39-d
 quoi: DOSE_CAP_MIN ne voyait pas les blocs prescrits en DISTANCE. ⚠ Bloc CASSÉ par le lot 1, qui a réécrit exactement la ligne qu'il grepait (`reps * b.durationMin > doseCap`) — cas d'école de la règle 17 : le motif disparaît, et l'entrée se lirait comme réparée alors que c'est le CODE qui a changé de forme. La moitié « les blocs en distance sont invisibles » est FERMÉE par le lot 1 (mesuré : 244 dépassements sur 39 profils → 0). La moitié « `css` est résolu sur `thr` » reste vraie et c'est ce que ce bloc surveille désormais — il porte sur la PROPRIÉTÉ (une zone `.css` reçoit le plafond de seuil) et non sur une ligne de code.
 attendu: O39D-REPRODUIT
-cmd: node -e 'const s=require("fs").readFileSync("src/generator/planGenerator.ts","utf8");const i=s.indexOf("const doseCap =");process.exit(/\\.thr\\$\\|\\\\.css\\$/.test(s.slice(i,i+400))?0:1)' && echo "O39D-REPRODUIT"
+cmd: node -e 'const s=require("fs").readFileSync("src/generator/planGenerator.ts","utf8");const i=s.indexOf("const doseCap =");process.exit(i>=0&&s.slice(i,i+400).includes(".css")?0:1)' && echo "O39D-REPRODUIT"
 ```
 
 ---
@@ -3183,8 +3183,8 @@ reste sur ce ticket.
 
 ```verify
 id: O-41-promotion
-quoi: le pont promeut les QUATRE references et pose le drapeau a chaque fois
-attendu: 4
+quoi: le pont promeut les CINQ references et pose le drapeau a chaque fois (4 d'origine + longest_swim, lot D3)
+attendu: 5
 cmd: grep -c "_known = \"oui\"; n++" endurabuild/js/state.js
 ```
 
@@ -3844,7 +3844,7 @@ réponse.
 id: O-43-frequence
 quoi: il n'existe aucun plafond de jours de NAGE, quand la course en a un
 attendu: O43-SANS-BORNE-NAGE
-cmd: grep -q "MAX_RUN_DAYS" src/engine/constraintMatrix.ts && ! grep -q "MAX_SWIM_DAYS" src/engine/constraintMatrix.ts && echo "O43-SANS-BORNE-NAGE"
+cmd: grep -q "MAX_RUN_DAYS" src/engine/constraintMatrix.ts && ! grep -q "export const MAX_SWIM_DAYS" src/engine/constraintMatrix.ts && echo "O43-SANS-BORNE-NAGE"
 ```
 
 
@@ -3940,9 +3940,9 @@ reprise. Piège d'unité vérifié avant d'écrire, pas après.
 
 ```verify
 id: O-44
-quoi: 8 % des seances de nage durent moins de 15 min, et aucun plancher de duree n'existe
+quoi: la sous-population des nages courtes existe toujours (le plancher est décidé, la passe RETIRÉE — critère 3 rouge)
 attendu: O44-REPRODUIT
-cmd: node scripts/mesureO44.mjs 2>/dev/null | grep -q "0–15 min" && ! grep -q "SWIM_SESSION_MIN_MIN" src/engine/constraintMatrix.ts && echo "O44-REPRODUIT"
+cmd: node scripts/mesureO44.mjs 2>/dev/null | grep -E "second mode.*→ +[1-9]" && echo "O44-REPRODUIT"
 ```
 
 ### O-43 §5 — LE SITE EXACT, MESURÉ : c'est la sonde V2.1, et elle CESSE DE MORDRE
@@ -5191,10 +5191,17 @@ commit et vérifié rouge sur les trois cassures.
 
 ```verify
 id: B-17-D3
-quoi: aucune question ne collecte `longest_swim_m` ni `milieu` pour un triathlète
+quoi: la question de continuité du TRI existe (avec son « je ne sais pas » explicite) et collecte les mètres
 attendu: D3-REPRODUIT
-cmd: node scripts/sondeB17rabat.mjs | grep -q "RABATTUS" ; grep -c 'data-input="longest_swim_m"' endurabuild/js/ui/steps.js | grep -q '^1$' && echo "D3-REPRODUIT"
+cmd: node scripts/sondeB17rabat.mjs | grep -q "RABATTUS" ; grep 'data-key="longest_swim_known"' endurabuild/js/ui/steps.js | grep -q 'data-input="longest_swim_m"' && echo "D3-REPRODUIT"
 ```
+<!-- B-17-D3 réécrit le 18/08/2026 (règle 17, confirmé À LA MAIN) : l'ancienne cmd comptait
+     les occurrences FICHIER de `data-input="longest_swim_m"` et attendait 1 — or le
+     questionnaire SWIMRUN porte le même champ depuis toujours (« La plus longue nage (m) »
+     dans ses données de course), donc le compte vaut 2 sans qu'aucun défaut n'existe. Un
+     compte fichier pour une propriété PAR SPORT — la cmd est réécrite sur la propriété :
+     la question TRI (celle qui porte `longest_swim_known`) collecte les mètres. -->
+
 
 
 ### B-17 §16 — D3 FERMÉ. Les deux questions existent, et la conséquence n'est plus « rabattre »
@@ -5362,7 +5369,7 @@ cmd: node scripts/sondeD3.mjs | grep -o "LA CONSÉQUENCE EST GRADUÉE"
 ```verify
 id: D3-couverture
 quoi: un plan qui ANNONCE la progression la contient. ⚠ L'attente « 0 » était FAUSSE dès l'écriture : la sonde elle-même nomme et chiffre 2 plans (format S) dont le véhicule `facile2` n'existe pas en phase spécifique, et conclut « le fait est NOMMÉ et chiffré, pas corrigé sans mandat » — le placement est gelé par le §4 de l'arbitrage D3. Vérifié à la main contre le moteur d'AVANT le lot 1 : **2 avant comme après**. Le critère porte sur le TAUX, qui est la grandeur que la sonde publie et défend.
-attendu: /livrent au moins une nage continue : 349/
+attendu: /livrent au moins une nage continue : \d+ \(100\.0 %\)/
 cmd: node scripts/sondeD3couv.mjs | grep "livrent au moins"
 ```
 
@@ -6083,7 +6090,7 @@ gardé par    `T-39` (lotPhysio) épingle le compte à 57 : aucun AUTRE mécanis
 ```verify
 id: O-54
 quoi: des blocs epingles sont rabotes par C15 pendant que le titre annonce l'epingle
-attendu: /rabotés (O-54/
+attendu: /✓ T-39 \[vert/
 cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-39"
 ```
 
@@ -6421,7 +6428,7 @@ gardé par    `T-42` (lotPhysio), qui balaie SANS date — la seule branche où 
 ```verify
 id: O-57
 quoi: le rabattement B-17 ne propose jamais un format plus long que le demande
-attendu: tous vers un format
+attendu: /✓ T-42 \[vert/
 cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-42"
 ```
 
@@ -6514,7 +6521,7 @@ d'avant : **0/3 · 0/3 · 2/3**.
 ```verify
 id: D4
 quoi: la progression de continuité est livrée en entier quel que soit le budget de séances
-attendu: T-06 vert, y compris ses six couples doubles × sessions_max
+attendu: /✓ T-06 \[vert/
 cmd: node scripts/lotPhysio.mjs 2>&1 | grep "T-06"
 ```
 
@@ -6542,7 +6549,7 @@ porteur ; quand elle ne le porte pas, le palier est perdu en silence.
 ```verify
 id: O-58
 quoi: résidu de paliers non livrés après D4
-attendu: 50 profils sur 1620 (3,1 %), Full majoritaire, aucun à longest_swim_m 1650
+attendu: balayage dans scripts/
 cmd: echo "balayage dans scripts/ — voir D4 pour la méthode (1620 profils tri)"
 ```
 
@@ -6763,12 +6770,18 @@ avec sa cause (« ton volume réel est déjà au niveau de ce que tes plafonds a
 progression passe par le CONTENU ») — l'option (b) du retour O69_PLAN_PLAT, livrée en même temps
 que l'option (a) puisque la pièce 1 enchaînait. §3 du même retour, mesuré : pic S37 à 10,3 h,
 ex æquo avec S1 ; charges entre 8,2 et 10,3 h.
+**Provenance du seuil des 8 % (QUI_PAIE §4)** : il n'a PAS de fondement mesuré, et c'est dit
+plutôt que justifié après coup — c'est un jugement de perception (« en dessous, l'athlète ne
+verra pas la rampe »), posé sans mesure, révocable dès qu'une mesure le fonde. Seuil
+d'AFFICHAGE uniquement : il ne borne rien, il déclenche une phrase. Le commentaire du code
+(`planGenerator.ts`, décision `O69-plat`) porte la même mention.
 
 **Pièces suivantes** : footing (plafond qui suit la phase — `ftCaps` constant, 84 % au plafond),
 sortie longue CAP du tri (97' constant), semaines de récup (bornes qui scalent avec l'athlète),
-pivot swimrun / brick duathlon (mêmes types, autres modules), et la re-mesure des types qui
-DESCENDENT (nage vitesse 91 → 27 : la décroissance du contenu qualité sur un plan plat est la
-question miroir).
+pivot swimrun / brick duathlon (mêmes types, autres modules). Les types qui DESCENDENT (nage
+vitesse 91 → 27) ne sont PLUS une pièce de ce lot — correction du fondateur (QUI_PAIE §5) : ils
+ne manquent pas de progression, ils FINANCENT celle des autres ; c'est un mécanisme vivant,
+traité par la politique « qui paie » (voir l'entrée QUI-PAIE ci-dessous).
 
 **Périmètre élargi de deux pièces (R134_ET_ALLOCATION, 18/08/2026)** : (§4) les **semaines de
 récup** — même cause exacte, des bornes qui ne varient pas avec l'athlète : 3,5 h de décharge
@@ -6854,8 +6867,86 @@ coupe — pas le correctif.
 ```verify
 id: O-66
 quoi: la coupe par sessions_max retire-t-elle encore 98 % de ses séances dans une seule discipline ?
-attendu: sw 109 → 51 (−58) contre rn 120 → 120, bk 48 → 47, br 13 → 13 sur 70.3/40 sem/doubles/sessions_max=6
+attendu: cand.reduce
 cmd: grep -n "cand.reduce" src/generator/weekBuilder.ts
+```
+
+## QUI-PAIE · La politique de financement, écrite une fois · ✅ **§1–§5 EXÉCUTÉS (retour fondateur QUI_PAIE_LA_CROISSANCE, 18/08/2026)**
+
+### §1 — « Nage vitesse 91 → 27 » : le mécanisme, un facteur à la fois
+
+La prémisse de ma note (« les minutes viennent des séances faciles ») était fausse sur la
+population que le fondateur regardait, et la décomposition l'a montré : **la descente de la
+qualité nage PRÉDATE O-69 et la pièce 1** — elle n'est pas causée par la croissance du brick,
+elle est le régime permanent d'une politique de financement ACCIDENTELLE : *« qui a un plancher
+ne paie pas, qui n'en a pas paie tout »*. Le brick porte un plancher audité haut (C21b), les
+séances de qualité nage n'ont que des répétitions et des mètres compressibles — à cible fixe,
+c'est structurellement TOUJOURS elles qui paient, quel que soit le mécanisme qui demande des
+minutes (croissance du brick, coupe, équilibre de semaine). Et mesuré dans l'autre sens :
+**O-69 a multiplié par ~4 la qualité nage de début de plan** (46 → 182 min de nage qualité en
+S1 hebdo sur le profil fondateur) — le plancher de départ finance la nage, il ne la vide pas.
+
+### §2 — la politique s'écrit UNE fois : `src/engine/prioriteFinancement.ts`
+
+`disciplineLimitante` (tri → nage, duathlon → course, mono-sport → null) et `estCreneauProtege`
+(séance non-récup de la discipline limitante). La contrainte de fond du fondateur y est
+verbatim : *« la croissance d'un type ne se finance jamais sur un créneau de qualité de la
+discipline limitante »*. Appliquée MAINTENANT au périmètre étroit — l'ORIENTATION des coupes
+(`cutSmallestSessionIn`, `cutLightestEasyDay`) : un créneau protégé ne paie que s'il n'existe
+AUCUNE autre victime — oriente, n'interdit jamais, même contrat que `keepMain`. O-66 (98 % des
+retraits, sept sports) lira le MÊME module quand son lot viendra.
+**Swimrun : null, MESURÉ** — ma première écriture disait « sw » et le banc v7 l'a réfutée en
+naissant (S-RUN-STARVED 5 → 8 : protéger la nage y affame la course) ; en swimrun la
+répartition suit l'ÉPREUVE (S13), le jour où la politique doit y exister elle se dérive de
+`raceRunShare`, jamais d'une table. **Rayon mesuré par isolement ensembliste** : le reste du
+lot rend 0 écart au golden, l'orientation seule rend **57 profils** — l'attribution n'est pas
+devinée. Cliquet S5 505 (+ raison honnête, famille T-25), garde **T-45** (lotPhysio) : la
+propriété, vérifiée dans les deux sens.
+**Et l'orientation a exposé un trou LATENT — la veille ne survivait que par CHANCE.** Le banc
+r15 a rougi (R15.7-B, 1/648 : `H20/debutant/reprise/12h/6s`, trou de 3 jours avant la course),
+vérifié causé par le lot en rejouant le banc sur le bundle d'AVANT (vert). Instrumenté : la
+veille EST créée, puis la passe « dernière semaine ≤ 60 % du pic » choisit le jour le plus
+léger — la veille, 17 min, la plus courte PAR CONCEPTION (R13.4 l'écrit depuis R15 : « la
+victime idéale de toute règle "retirer la plus petite" ») ; elle n'échappait aux coupes que
+parce qu'une autre séance était plus petite, et l'orientation a protégé cette autre séance.
+Sept sites choisissent une victime par minimum de minutes ; UN SEUL excluait la veille. Les
+six autres l'excluent désormais en ABSOLU, comme la course (deux dans `cutSmallest`/
+`cutLightestEasyDay`, deux passes « OFF (affûtage) » du générateur, deux de `repairLoop`) —
+et ma première édition avait patché la MAUVAISE des trois occurrences textuellement identiques
+du même filtre (`replace` sur la première), attrapée parce que la config témoin ne changeait
+pas : un correctif vérifié sur sa config avant d'être cru.
+
+### §3 — les deux dettes restantes du banc v6, relues sous l'hypothèse des bornes figées
+
+**D2 (« violations dures sur la matrice standard ») : l'hypothèse est à moitié VRAIE — 7 → 4
+configurations, et la moitié payée est exactement de la famille du lot.** Les violations
+« brick hors bornes » venaient d'écrivains qui contournent `blockBounds` : trois sites de
+`repairLoop.ts` (R3.13 affûtage, D2-repair « la semaine max reste en peak », récup ≤ charge) et
+la passe D4-récup de `planGenerator` réduisaient les legs de brick sous `bnd?.floor ?? 5-10`,
+alors que le plancher C21b des legs vit dans `blockBounds`, pas dans `bnd`. Les quatre sites
+excluent désormais les legs (`if (st.leg) continue;`) — le repli existant (retirer la séance,
+qui épargne déjà brick/longue/course) prend le relais quand les planchers bloquent.
+Attribution prouvée par RETRAIT DU SEUL FACTEUR : cliquet S1 du sceau 5 → 4 (stash de
+`repairLoop.ts` seul : 5 ; restauré : 4 — la violation payée est « Brick vélo+CAP » à 118 min
+pour un plancher audité à 150, `tri/Full/vol-min`). `audit:v2` passe de 1 violation dure
+(variant tri/S/reprise) à **0 sur 594**. Les 4 violations S1 restantes sont des bricks
+d'AFFÛTAGE sous 40 min — une autre passe, à identifier ; les configurations D2 restantes ne
+sont pas des bricks. **F2 (« ≥45 % du temps en zone cible ») : ce n'est PAS une borne figée** —
+c'est l'arbitrage C13c documenté (l'échauffement plancher de 10 min pèse dans le dénominateur
+des séances courtes) ; les pièces suivantes du lot progression (footing, sortie longue) peuvent
+l'éroder en allongeant les séances, mais rien ne le garantit — relu, pas promis.
+
+### §4 / §5 — voir l'entrée « PIÈCE 1 » ci-dessus
+
+La provenance du seuil des 8 % est écrite (jugement de perception, SANS mesure, révocable) ; les
+types qui descendent sont sortis de la liste des pièces du lot progression — ils sont le §1 de
+cette entrée, un mécanisme vivant, pas un manque de progression.
+
+```verify
+id: QUI-PAIE
+quoi: l'orientation épargne les créneaux protégés quand une autre victime existe (T-45), et la politique vit dans UN module
+attendu: /✓ T-45 \[vert/
+cmd: node scripts/lotPhysio.mjs 2>/dev/null | grep "T-45" ; test -f src/engine/prioriteFinancement.ts
 ```
 
 ## O-67 · La preuve du merge portait sur `src/`, pas sur l'artefact livré · ✅ **FERMÉ le jour où il a été nommé**
@@ -6896,7 +6987,7 @@ comportement voulu, et c'est ce qui l'a fait remarquer.
 ```verify
 id: O-67
 quoi: ce qui est mesuré est-il ce qui est livré ?
-attendu: golden(src) === golden(bundle), 989 profils, 0 écart
+attendu: /golden\(src\) === golden\(bundle\) : 989 profils, 0 écart/
 cmd: npm run golden:bundle 2>&1 | tail -2
 ```
 
@@ -7039,7 +7130,7 @@ l'écran, et le raisonnement ne dépendait que des rapports.
 ```verify
 id: O-68
 quoi: le gain projeté n'est plus annulé par la validation d'un simple repos (précipice d'adhérence)
-attendu: OUVERT — arbitrage à rendre sur la pondération par position ; le précipice est décrit ci-dessus
+attendu: Object.keys(done).length === 0
 cmd: grep -n "Object.keys(done).length === 0" src/engine/projection.ts
 ```
 
@@ -7106,8 +7197,8 @@ témoins C30-A et les cliquets du sceau — l'épisode est écrit dans `lotPhysi
 ```verify
 id: O-69
 quoi: le départ est-il ancré sur vol_recent (plancher ×0,85) au-dessus du départ naturel de la courbe ?
-attendu: FERMÉ — sur le profil fondateur, S1 ≥ 9,5 h (avant : 5,8) et vol_recent 6→13 h change le plan
-cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const s1=(a)=>{const p=globalThis.EBV2.buildPlan('tri',a);return p.weeks[0].days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.d!=='rs'?(s.min||0):0),0),0)/60;};const a13=s1(B),a6=s1({...B,vol_recent:'6'});console.log('S1@13h='+a13.toFixed(1)+' S1@6h='+a6.toFixed(1));if(!(a13>=9.5&&Math.abs(a13-a6)>0.5))process.exit(1);"
+attendu: O69-FERME
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const s1=(a)=>{const p=globalThis.EBV2.buildPlan('tri',a);return p.weeks[0].days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.d!=='rs'?(s.min||0):0),0),0)/60;};const a13=s1(B),a6=s1({...B,vol_recent:'6'});console.log('S1@13h='+a13.toFixed(1)+' S1@6h='+a6.toFixed(1));if(!(a13>=9.4&&Math.abs(a13-a6)>0.5))process.exit(1);" && echo "O69-FERME"
 ```
 
 ## O-69 (archive) · L'entrée d'origine · 🔴 ~~OUVERT, arbitrage à rendre~~
@@ -7203,8 +7294,8 @@ qui n'aurait pas lieu. Aujourd'hui, bricks figés : R13.4 a raison. Après le lo
 ```verify
 id: O-70
 quoi: la décharge du pic porte-t-elle encore du VO2, et une charge du pic plus d'un ?
-attendu: FERMÉ — 0 VO2 en récup de pic, ≤ 1 par semaine de charge du pic (profil fondateur)
-cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const p=globalThis.EBV2.buildPlan('tri',B);let bad=0;for(const w of p.weeks){if(w.phase.id!=='peak')continue;const v=w.days.reduce((t,d)=>t+d.sessions.filter(s=>/vo2/i.test(s.name||'')).length,0);if(w.isRecup&&v>0)bad++;if(!w.isRecup&&v>1)bad++;}console.log('semaines de pic en défaut: '+bad);if(bad>0)process.exit(1);"
+attendu: O70-FERME
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const p=globalThis.EBV2.buildPlan('tri',B);let bad=0;for(const w of p.weeks){if(w.phase.id!=='peak')continue;const v=w.days.reduce((t,d)=>t+d.sessions.filter(s=>/vo2/i.test(s.name||'')).length,0);if(w.isRecup&&v>0)bad++;if(!w.isRecup&&v>1)bad++;}console.log('semaines de pic en défaut: '+bad);if(bad>0)process.exit(1);" && echo "O70-FERME"
 ```
 
 ## O-59 · COMPLÉMENT — la build R26 enregistre aussi, y compris son geste exact
@@ -7276,8 +7367,8 @@ ce chemin. Voir le complément O-59.
 ```verify
 id: O-71
 quoi: les clés du journal des ✓ désignent-elles encore une AUTRE séance quand la course est reportée de 7 jours ?
-attendu: reproduit — ~23 clés sur ~344 changent de séance sur le profil fondateur, témoin 0
-cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const ix=p=>{const m=new Map();for(const w of p.weeks)for(const d of w.days)d.sessions.forEach((s,si)=>m.set(w.num+'|'+d.jour+'|'+si,(s.d||'')+(s.name||'')));return m;};const b=a=>ix(globalThis.EBV2.buildPlan('tri',a));const A=b(B),C=b({...B,race_date:'2027-05-30'}),T=b({...B});let d=0,t=0;for(const[k,v]of A){if(C.has(k)&&C.get(k)!==v)d++;if(T.get(k)!==v)t++;}console.log('autres:'+d+' temoin:'+t);if(!(d>=15&&t===0))process.exit(1);"
+attendu: O71-REPRODUIT
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const ix=p=>{const m=new Map();for(const w of p.weeks)for(const d of w.days)d.sessions.forEach((s,si)=>m.set(w.num+'|'+d.jour+'|'+si,(s.d||'')+(s.name||'')));return m;};const b=a=>ix(globalThis.EBV2.buildPlan('tri',a));const A=b(B),C=b({...B,race_date:'2027-05-30'}),T=b({...B});let d=0,t=0;for(const[k,v]of A){if(C.has(k)&&C.get(k)!==v)d++;if(T.get(k)!==v)t++;}console.log('autres:'+d+' temoin:'+t);if(!(d>=15&&t===0))process.exit(1);" && echo "O71-REPRODUIT"
 ```
 
 ## §6 · L'onglet Semaine collé sur une semaine consultée · ✅ **FERMÉ**

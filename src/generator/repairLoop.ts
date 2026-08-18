@@ -76,6 +76,12 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
             if (!s.steps || !s.steps.length) continue;
             for (const st of s.steps) {
               if (st.role !== "body") continue;
+              // §3 QUI_PAIE (18/08/2026) — les LEGS DE BRICK ont leurs bornes de format (C21b),
+              // portées par `blockBounds` et non par `bnd` : les raboter ici avec un plancher
+              // de 3 min passait SOUS la borne auditée. C'est l'écrivain du « brick vélo hors
+              // bornes » de la dette D2 (44 et 41 min pour une borne basse à 45), antérieur au
+              // lot — même doctrine que les passes sœurs de reconcileDeclaredVolume.
+              if (st.leg) continue;
               if (st.durationMin) st.durationMin = Math.max(3, Math.round(st.durationMin * f));
               if (st.distanceM) st.distanceM = Math.max(100, Math.round((st.distanceM * f) / 25) * 25);
             }
@@ -86,7 +92,8 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
       }
       // 2) si les planchers bloquent encore : la fréquence cède (R3.13)
       for (let g = 0; g < 4 && wMinOf(w) > chargeMax * R313_TAPER_MAX_VS_PEAK; g++) {
-        const cand = w.days.filter((d) => d.charge === "facile" && !d.forced && d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.long || s.brick));
+        // R15.7-B — jamais le jour de la VEILLE (Déverrouillage) : exclusion absolue, comme la course.
+        const cand = w.days.filter((d) => d.charge === "facile" && !d.forced && d.sessions.some((s) => s.d !== "rs") && !d.sessions.some((s) => s.long || s.brick || /Déverrouillage/i.test(s.name || "")));
         if (!cand.length) break;
         const dayMin = (d: (typeof cand)[0]) => d.sessions.reduce((t, s) => t + (s.min || 0), 0);
         const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
@@ -149,6 +156,12 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
           if (!s.steps || !s.steps.length) continue;
           for (const st of s.steps) {
             if (st.role !== "body") continue;
+            // §3 QUI_PAIE (18/08/2026) — troisième site du même raboteur : les legs de brick
+            // portent leurs bornes de format (C21b) dans `blockBounds`, et `durFloor: 10`
+            // passait dessous (45 → 38 min mesuré, « brick hors bornes »). Si la réduction ne
+            // suffit plus sans le brick, le repli ci-dessous (retrait d'une séance, qui
+            // épargne déjà longue/brick/course) prend le relais.
+            if (st.leg) continue;
             scaleStepDose(st, f, { repsMode: "floor", durFloor: 10, distFloor: 200, clampToOriginal: true });
           }
           fixSwimBounds(s);
@@ -164,7 +177,8 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
         for (const d of offender.days) {
           if (d.forced) continue;
           d.sessions.forEach((s, si) => {
-            if (s.d === "rs" || s.long || s.brick || s.race) return; // R13.4 : une course (min=0) n'est jamais une victime de coupe
+            // R13.4 : une course (min=0) n'est jamais une victime de coupe — la VEILLE non plus (R15.7-B).
+            if (s.d === "rs" || s.long || s.brick || s.race || /Déverrouillage/i.test(s.name || "")) return;
             const m = s.min || 0;
             if (!victim || m < victim.min) victim = { d, si, min: m };
           });
@@ -250,6 +264,7 @@ export function applyTargetedRepairs(plan: V1Plan, audit: PlanAudit, refs: Refs,
             if (!s.steps || !s.steps.length) continue;
             for (const st of s.steps) {
               if (st.role !== "body") continue;
+              if (st.leg) continue; // §3 QUI_PAIE — même exclusion que ci-dessus (bornes C21b)
               if (st.reps && st.reps > 1) st.reps = Math.max(1, Math.floor(st.reps * f));
               else if (st.durationMin) st.durationMin = Math.max(3, Math.round(st.durationMin * f));
               else if (st.distanceM) st.distanceM = Math.max(100, Math.round((st.distanceM * f) / 25) * 25);
