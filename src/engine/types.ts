@@ -91,6 +91,12 @@ export interface Decision {
   what: string;
   val: string | number;
   why: string;
+  /** O-87 — le pendant LIVRÉ d'une valeur PRESCRITE, quand les deux existent. Posé par le
+   *  générateur APRÈS le point fixe (une valeur figée au milieu du pipeline ne décrit que
+   *  l'avant-dernier état) ; absent = la décision n'a qu'une lecture. Un compte se publie avec
+   *  ce qu'il compte — « 11 séances par semaine » et « une semaine ne contient que 10 séances »
+   *  sur la même carte étaient tous deux vrais, et illisibles ensemble. */
+  livre?: number;
 }
 
 export interface Phase {

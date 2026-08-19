@@ -4170,6 +4170,19 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       const h = (x: number) => (Math.round(x * 10) / 10).toString().replace(".", ",") + " h";
       const nSess = Math.max(0, ...wl.filter((w) => !w.isRecup)
         .map((w) => (w.days as GenDay[]).reduce((t, d) => t + d.sessions.filter((s) => s.d !== "rs").length, 0)));
+      // O-87 — LA CARTE PORTAIT DEUX COMPTES DE SÉANCES SANS ÉTIQUETTE, et c'était la grandeur
+      // qui BORNE le plan (constaté par le fondateur sur son profil réel, build déployée) :
+      // le bloc BUDGET affichait « 11 séances par semaine » — la décision du RAISONNEMENT,
+      // `min(sessions_max, budget implicite du volume)`, calculée AVANT génération — et le bloc
+      // VOLUME MAX « une semaine ne contient que 10 séances » — ce `nSess`, le maximum LIVRÉ
+      // recompté ici, après le point fixe. Deux grandeurs, toutes deux vraies, illisibles
+      // ensemble. « Un compte se publie avec ce qu'il compte » : la décision `budget` reçoit
+      // donc son pendant livré, LE MÊME `nSess` que le message structurel — une seule
+      // dérivation pour les deux blocs de la carte (R11.1), elles ne peuvent plus diverger.
+      {
+        const dBudget = r.decisions.find((x) => x.id === "budget");
+        if (dBudget) dBudget.livre = nSess;
+      }
       const peutDoubler = guard(a.sport as string, "doublesAddVolume") && !r.dbl;
       const dblRepondu = String(a.doubles ?? "");
       const sante = r.medHold || r.loadFactor < 1;

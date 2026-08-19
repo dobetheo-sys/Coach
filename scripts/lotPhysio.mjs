@@ -2150,6 +2150,50 @@ T("T-53", "vert", "le volume hebdomadaire de nage tient sa borne de charge d'ép
   };
 });
 
+/**
+ * T-54 (carte « Pourquoi ce plan », arbitrage du fondateur 19/08/2026) — LA CARTE DIT LE VRAI,
+ * ET SES DEUX COMPTES DE SÉANCES SONT ÉTIQUETÉS.
+ *
+ * Constaté sur le profil réel, build déployée : le bloc BUDGET disait « 11 séances par semaine »
+ * (le PRESCRIT du raisonnement) et le bloc VOLUME MAX « une semaine ne contient que 10 séances »
+ * (le maximum LIVRÉ) — deux vérités sans étiquette, trois lignes d'écart, **sur la grandeur qui
+ * borne le plan**. Le §3 du même document demande de protéger ce qui MARCHE sur cette carte :
+ * c'est la seule sortie du produit qui dise ce que le moteur ne sait pas faire.
+ *
+ * Quatre propriétés, toutes sur la fixture `REEL` (l'athlète réel du produit) :
+ *   (1) le maillon mordant est nommé AVEC son ampleur chiffrée (« (−7,6 h/sem) ») ;
+ *   (2) la contrainte de secours est nommée (« Si tu levais cette contrainte, X te
+ *       plafonnerait à Y ») ;
+ *   (3) le message B-17 « peut construire la distance, pas le milieu » est dans les warnings —
+ *       la fixture déclare `milieu: bassin` pour une course en lac, exactement le cas spécifié ;
+ *   (4) le compte LIVRÉ de la décision `budget` se REDÉRIVE du plan livré (famille T-16d : ce
+ *       qui est affiché se redérive du livré), et il est ≤ au prescrit — un livré au-dessus du
+ *       budget serait un dépassement, pas une étiquette.
+ */
+T("T-54", "vert", "la carte « Pourquoi ce plan » : maillon chiffré, secours nommé, limite dite, comptes étiquetés", () => {
+  const pb = [];
+  const row = goldenAvecMoteur().find((x) => x.key.startsWith("REEL"));
+  if (!row) return { ok: false, detail: "fixture REEL absente du corpus" };
+  const v2 = row.plan._v2 ?? {};
+  const dR = (v2.decisions ?? []).find((x) => x.id === "R20.2");
+  if (!dR) pb.push("(1) décision R20.2 absente");
+  else {
+    if (!/ce qui borne/.test(String(dR.val ?? ""))) pb.push("(1) le maillon mordant n'est plus nommé");
+    if (!/\(−[\d,]+\s*h\/sem\)/.test(String(dR.val ?? ""))) pb.push(`(1) l'ampleur chiffrée a disparu : « ${dR.val} »`);
+    if (!/te plafonnerait à/.test(String(dR.why ?? ""))) pb.push("(2) la contrainte de secours n'est plus nommée");
+  }
+  if (!(v2.warnings ?? []).some((w) => /pas le milieu/.test(String(w)))) pb.push("(3) le message « peut construire la distance, pas le milieu » a disparu des warnings");
+  const dB = (v2.decisions ?? []).find((x) => x.id === "budget");
+  if (!dB || dB.livre == null) pb.push("(4) la décision budget ne porte plus son compte LIVRÉ");
+  else {
+    const livre = Math.max(0, ...(row.plan.weeks ?? []).filter((w) => !w.isRecup)
+      .map((w) => (w.days ?? []).reduce((t, d) => t + (d.sessions ?? []).filter((sx) => sx.d !== "rs").length, 0)));
+    if (dB.livre !== livre) pb.push(`(4) livré annoncé ${dB.livre} ≠ livré recompté ${livre}`);
+    if (+dB.val < dB.livre) pb.push(`(4) le livré (${dB.livre}) dépasse le prescrit (${dB.val})`);
+  }
+  return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `R20.2 « ${String(dR.val).slice(0, 60)} » · secours ✓ · limite dite ✓ · budget ${dB.val} prescrites / ${dB.livre} livrées ✓` };
+});
+
 const ROUGES_ATTENDUS = {
   "T-06": "O-84 — le plan ANNONCE N paliers de continuité et en livre N−1 : **29 profils tri sur 187**, mesuré IDENTIQUE avant et après O-82 (c'est ce qui prouve que ce lot n'en est pas la cause). Le palier est élu victime par une coupe qui ne passe pas par `prioriteFinancement` — cinquième mécanisme de la prédiction « la nage est la victime par défaut ». Une promesse affichée n'est pas un créneau comme un autre.",
   "T-44": "O-66 — la coupe classe en MINUTES une contrainte qui compte des SÉANCES : arbitrage rendu le 17/08, à faire APRÈS le merge et en premier",

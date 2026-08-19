@@ -580,6 +580,24 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-87 FERMÉ — la carte « Pourquoi ce plan » portait deux comptes de séances sans étiquette, sur
+la grandeur qui BORNE le plan** (constat du fondateur sur son profil réel, build déployée,
+19/08/2026 — voir `BUGS_OUVERTS.md` « O-87 », garde **T-54**) : « 11 séances par semaine »
+(bloc BUDGET) contre « une semaine ne contient que 10 séances » (bloc VOLUME MAX). Mesuré :
+**11 = le PRESCRIT du raisonnement** (`min(12 déclarées, 13,0 h ÷ 1,2 h/séance)`), **10 = le
+maximum LIVRÉ** après le point fixe. La décision `budget` gagne un champ `livre`, posé par le
+générateur après le point fixe et alimenté par **le même `nSess`** que le message structurel —
+une dérivation pour les deux blocs (R11.1). Affiché : *« 11 séances par semaine prescrites — ta
+semaine la plus fournie en livre 10 »*. **§2 confirmé** : le plafond visé après le lot
+progression est **13 h** (la contrainte de secours), pas 9,7 — et la validation la plus directe
+du lot sera le maillon qui change de NOM à l'écran. **T-54** protège les trois choses que le
+fondateur demandait de ne pas casser (maillon chiffré · secours nommé · le message B-17 « peut
+construire la distance, pas le milieu » — la seule sortie du produit qui dise ce qu'il ne sait
+pas faire) plus la cohérence du nouveau champ (le livré se redérive du plan, famille T-16d) —
+**contre-prouvée sur deux cassures, deux rouges**. Golden 990 recapturé (986 empreintes,
+décisions seules). **`audit:v1` 459 à 0, invariants 22×54, v6 74 · 0 régression, `lotPhysio`
+27 verts · 23 rouges attendus · 0 régression.**
+
 **O-85 FERMÉ — la charge d'ÉPAULE a sa borne, et son multiplicateur suit l'expérience en NAGE**
 (arbitrage « O-85 AVANT LE LOT PROGRESSION », 19/08/2026 — voir `BUGS_OUVERTS.md` « O-85 », garde
 **T-53**, mesure `npm run mesure:epaule`) : *« ce qui fait le risque n'est pas la distance seule,

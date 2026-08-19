@@ -471,7 +471,12 @@ function whyPlanCardHTML(plan){
   // attend un effet. La phrase nomme le maillon qui a le plus retiré et, quand il en existe
   // un, le levier qui le débloquerait.
   if(D["R20.2"])add("<b>"+D["R20.2"].val+"</b>. "+D["R20.2"].why,"volume max");
-  if(D.budget)add("<b>"+D.budget.val+"</b> séances par semaine"+(D["R10-depart"]?"" : "")+(D.recup?", avec une semaine allégée "+D.recup.val:"")+".","budget");
+  // O-87 — un compte se publie avec ce qu'il compte : `val` est le budget PRESCRIT (décision du
+  // raisonnement), `livre` le maximum réellement LIVRÉ (posé par le générateur après le point
+  // fixe, la même dérivation que « une semaine ne contient que N séances » trois blocs plus
+  // haut). Quand les deux diffèrent, les deux se disent — sinon la carte porte deux vérités
+  // sans étiquette, et c'est sur la grandeur qui BORNE le plan.
+  if(D.budget){const _liv=D.budget.livre;add("<b>"+D.budget.val+"</b> séances par semaine"+(_liv!=null&&_liv!==+D.budget.val?" prescrites — ta semaine la plus fournie en livre <b>"+_liv+"</b>":"")+(D["R10-depart"]?"" : "")+(D.recup?", avec une semaine allégée "+D.recup.val:"")+".","budget");}
   if(D["R10-depart"])add("Le départ est calé sur ton volume RÉEL des derniers mois, pas sur ta cible : <b>"+D["R10-depart"].val+"</b>. C'est la marche la plus souvent trop haute.","reprise");
   if(D.impact)add("Pas plus de <b>"+D.impact.val+"</b> jours d'appui : c'est l'impact qui blesse, pas le volume.","impact");
   // R22 — LE BANDEAU DE PRÉPARATION TRONQUÉE, EN TÊTE ET HORS DU REPLIABLE.

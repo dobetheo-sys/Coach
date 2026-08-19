@@ -9087,3 +9087,57 @@ C'est donc la **FORME** qui est couverte, pas l'état exact — et l'écart le p
 part de COURSE (13 % contre 24 %). La règle de fixture du dépôt interdit de combler : *on ne
 remplit pas un champ vide, on le demande.* **La fixture deviendra littérale quand les réponses
 réelles seront relevées dans l'app** ; d'ici là elle ferme l'angle mort structurel, pas l'écart.
+
+## O-87 · La carte « Pourquoi ce plan » portait DEUX comptes de séances sans étiquette — sur la grandeur qui BORNE le plan · ✅ **FERMÉ (constat du fondateur sur le profil réel, 19/08/2026)**
+
+*« bloc VOLUME MAX : "une semaine ne contient que 10 séances" · bloc BUDGET : "11 séances par
+semaine" — trois lignes d'écart, deux valeurs, et c'est la grandeur qui borne le plan. »*
+
+**Mesuré avant de corriger, comme le document le demandait — c'est l'hypothèse 1 :**
+
+```
+  11  =  la décision `budget` du RAISONNEMENT : min(sessions_max déclarées = 12,
+         budget implicite du volume = 13,0 h ÷ 1,2 h/séance ≈ 11) — calculée AVANT génération
+  10  =  `nSess`, le maximum LIVRÉ recompté sur les semaines de charge APRÈS le point fixe
+         (la fixture REEL livre 6×1 · 7×7 · 8×12 · 9×9 · 10×3)
+```
+
+Deux grandeurs, toutes deux vraies, illisibles ensemble. Consommateurs listés avant de toucher
+(la règle du dépôt) : la décision `budget` n'a QU'UN lecteur, l'affichage (`plan-view.js:474`).
+
+**Le correctif est celui du document — « un compte se publie avec ce qu'il compte » :** la
+décision `budget` gagne un champ `livre`, posé par le générateur **après le point fixe** et
+alimenté par **LE MÊME `nSess`** que le message structurel — une seule dérivation pour les deux
+blocs de la carte (R11.1), ils ne peuvent plus diverger. L'affichage devient, quand les deux
+diffèrent : *« 11 séances par semaine prescrites — ta semaine la plus fournie en livre 10, avec
+une semaine allégée toutes les 4 semaines. »* Quand ils coïncident, la phrase d'origine ne bouge
+pas. Vérifié au passage : `nSess` avec et sans la course rendent le même compte (10) sur la
+fixture — pas de redéfinition cachée.
+
+**§2 du document, CONFIRMÉ par la chaîne de la fixture** : plafonds `declared 20 · caps 13,0 ·
+util 14,0 · structurel 12,4` — l'argmin est le structurel, et la contrainte de secours est
+**13 h** (l'historique). Donc oui : le plafond visé APRÈS le lot progression est **13 h, pas
+9,7** — c'est le budget dans lequel l'allocation devra statuer (les estimations faites sur
+10,4 h sont à rebaser) — et la validation la plus directe du lot sera **le maillon qui change de
+nom à l'écran** (« le nombre de séances » → « ton historique »).
+
+**§3 — les trois protections demandées existent désormais en garde : T-54**, sur la fixture
+`REEL` : (1) le maillon mordant nommé AVEC son ampleur chiffrée (« (−7,6 h/sem) ») ; (2) la
+contrainte de secours nommée (« Si tu levais cette contrainte, X te plafonnerait à Y ») ; (3) le
+message B-17 « peut construire la distance, pas le milieu » présent dans les warnings — *la seule
+sortie du produit qui dise ce que le moteur ne sait pas faire* ; (4) le compte LIVRÉ se REDÉRIVE
+du plan (famille T-16d) et ne dépasse jamais le prescrit. **Contre-prouvée sur deux cassures,
+deux rouges** (livré faussé de +3 → « 13 ≠ 10 · dépasse le prescrit » ; message B-17 retiré →
+rouge (3)), restaurée verte.
+
+Golden : **990 profils recapturés, 986 empreintes** — le champ `livre` apparaît sur toute
+décision `budget`, donc sur presque tous les plans ; décisions seules, aucune séance, aucune
+minute. `audit:v1` 459 à 0 · invariants 22×54 · v6 74 · 0 régression · `lotPhysio` **27 verts ·
+23 rouges attendus · 0 régression**.
+
+```verify
+id: O-87
+quoi: la décision budget porte-t-elle son compte livré, égal au nSess du message structurel ?
+attendu: /val=11 · livre=10/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const d=(p._v2?.decisions??[]).find(x=>x.id==='budget');console.log('val='+d?.val+' · livre='+d?.livre);break;}"
+```
