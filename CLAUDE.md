@@ -427,6 +427,27 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   paie parmi le reste**, et quand plus personne ne peut payer ce n'est pas un défaut d'arbitrage
   mais **le plafond structurel qui est trop bas** — un signal différent, à traiter comme tel.
 
+- **Un puits non borné ne cache pas un EXCÈS, il cache un MANQUE — et le borner déplace le
+  défaut tant que la cause n'est pas levée** (arbitrage « UN PUITS NON BORNÉ », 19/08/2026,
+  `npm run mesure:puits`). Un créneau sans plafond garantit que le plan atteint toujours son
+  volume, en mentant sur la façon : 4 025 m de nage VITESSE sur un sprint, et le total est juste.
+  Mesuré, borner ne révèle rien et déplace tout — quatre fois de suite : la nage vers le
+  sweetspot, le sweetspot vers la nage, et l'ensemble vers le brick, qui tombe alors **SOUS son
+  plancher audité** (116 min pour 150 — direction vérifiée avant de conclure, 0 dépassement).
+  Ce que le puits dissimulait n'était donc pas du volume mal placé : c'était que **le plan ne
+  peut pas placer son volume dans ses bornes de séance**. Corollaire opérationnel : avant de
+  borner un puits, vérifier que la CIBLE ne suit pas le livré — si elle le suit (O-43), le
+  manque déclaré vaudra zéro par construction, et la mesure sera vacueuse.
+
+- **Un facteur de TAILLE ne multiplie jamais un COMPTE** (même arbitrage, la règle 14 sur un
+  troisième objet). `PT(lo, hi)` multiplie par `sessionScale` — juste pour une durée ou une
+  distance, faux pour un nombre de répétitions : `B(PT(2, 3), …)` naît à UNE répétition dès que
+  l'enveloppe se resserre, et **37 % des blocs de qualité du golden sont dans ce cas** (course
+  55 %, vélo 72 %). La conséquence n'est pas cosmétique : `repCap` (R4.1) ne vit que dans la
+  branche `reps > 1`, donc ces blocs sortent de leur protection et croissent en durée sous un
+  plafond de 9999 — 19 → 67 min mesuré sur un profil. Une séance d'intervalles réduite à une
+  répétition n'est plus une séance d'intervalles, c'est un bloc continu qui en porte le nom.
+
 - **Un objet qui MODIFIE le plan et un objet qui le DÉCRIT ne se calculent pas au même moment,
   même quand c'est le même objet** (arbitrage T-16c, 19/08/2026). Ce qui modifie va DANS la boucle
   du point fixe, sinon le total bouge sans rééquilibrage ; ce qui décrit va APRÈS convergence,
@@ -527,6 +548,31 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
+
+**O-78 mesuré, moteur INCHANGÉ — le puits ne cache pas un excès, il cache un manque**
+(arbitrage « UN PUITS NON BORNÉ CACHE CE QU'IL ABSORBE », 19/08/2026 — voir `BUGS_OUVERTS.md`
+« O-78 », instrument `npm run mesure:puits`) : le §1 posait trois issues et en retenait une —
+déclarer le manque. **La mesure valide l'analyse et en durcit la conclusion.** `blockBounds` rend
+`cap: 9999` pour tout bloc de corps sans `bnd` hors brick et hors `long` : **17 types de séance
+tri l'atteignent, sur 38 % des séances**, dont « Nage vitesse » à **4 025 m sur un SPRINT** (course
+de 750 m), soit ×3,8 le plafond de la nage principale du format. La porte d'entrée est une faute
+d'unité : `PT(lo,hi)` multiplie par `sessionScale` — un facteur de TAILLE — un NOMBRE DE
+RÉPÉTITIONS, donc **37 % des blocs de qualité naissent à `reps = 1`** (course 55 %, vélo 72 %),
+sortent de `repCap` qui ne vit que dans la branche `reps > 1`, et croissent en durée sans borne
+(19 → 67 min mesuré). **Trois correctifs essayés, trois déplacements** : borner la nage envoie la
+queue sur le sweetspot (96 → 144 min), geler la durée des blocs mono-répétition la renvoie sur la
+nage (144 → 206), et tout borner fait tomber le brick **SOUS son plancher audité** — `audit:v1`
+0 → **18 violations DURES**, direction vérifiée (116 min pour un plancher à 150, 0 dépassement).
+Le puits dissimulait donc que **le plan ne peut pas placer son volume dans ses bornes de séance**.
+**Une prémisse à moi corrigée et publiée** : `sw.aero` n'est pas une zone de QUALITÉ pour le
+moteur — « Nage vitesse » est classée facile, et le déversement y est conforme à R4.1 ; le défaut
+est qu'une séance NOMMÉE « vitesse » sert de déversoir (famille T-40, sur l'intensité).
+**Rien n'est livré côté moteur** (`src/` byte-identique) : les bornes transforment un manque
+silencieux en violations d'un plancher de SÉCURITÉ, ce qui est plus grave que le défaut. Et la
+moitié « déclarer le manque » est **bloquée par O-43** — mesuré, la cible déclarée SUIT le livré
+(23 164 → 22 447 h quand on borne), donc le maillon lirait ≈ 0 par construction. L'ordre juste
+s'inverse : **O-43 d'abord, le plafond structurel ensuite, les bornes après, les pièces en
+dernier.** **31 gates verts, `audit:v1` 459 à 0 violation dure, golden 989 inchangé.**
 
 **T-16d livré — le descripteur décrivait un autre plan que celui qu'il accompagne** (arbitrage
 « T-16c — MESURER LE RAYON AVANT DE L'APPELER UN CHANTIER », 19/08/2026 — voir `BUGS_OUVERTS.md`

@@ -7723,6 +7723,114 @@ attendu: /C26c — plafond de temps dur\s+1[0-9][0-9] \/ 98[0-9]/
 cmd: npm run --silent mesure:morsure
 ```
 
+## O-78 — LE PUITS NE CACHE PAS UN EXCÈS, IL CACHE UN MANQUE : borner révèle 18 violations DURES
+
+Le §1 de « UN PUITS NON BORNÉ CACHE CE QU'IL ABSORBE » pose trois issues et en retient une :
+*« déverser dans le puits suivant déplace le défaut · un puits plus gros est la même famille ·
+DÉCLARER le manque est le seul qui produise de l'information »*. **La mesure valide l'analyse et
+en durcit la conclusion : le manque n'est pas déclarable en l'état, parce qu'il n'existe pas
+là où on le croyait.**
+
+### La chaîne, mesurée de bout en bout
+
+```
+`blockBounds` rend `cap: 9999` pour tout bloc de corps sans `bnd`, hors brick et hors `long`
+   → 17 types de séance tri l'atteignent, sur 38 % des séances
+      → le plus visible : « Nage vitesse », 4 025 m sur un SPRINT (course de 750 m),
+        soit ×3,8 le plafond de la nage principale du format
+```
+
+Et la porte d'entrée est une **faute d'unité, la famille de la règle 14** :
+
+```
+PT(lo, hi) = max(1, round((lo + (hi−lo)·x) · sessionScale))
+                                              ^^^^^^^^^^^^
+`sessionScale` est un facteur de TAILLE, et il multiplie aussi un NOMBRE DE RÉPÉTITIONS :
+`B(PT(2, 3), PT(12, 18), "bk.ss")` naît à UNE répétition dès que l'enveloppe se resserre.
+
+   37 % des blocs de qualité du golden naissent à `reps = 1`
+   (course 55 % · vélo 72 % · tri 33 % · duathlon 11 % · swimrun 1 % · trail 0 %)
+      → `repCap` (R4.1) ne vit que dans la branche `reps > 1` : ils en sortent
+         → `scaleBlock` met alors la DURÉE à l'échelle, bornée par `cap: 9999`
+            → croissance cumulée mesurée sur un profil : 19 → 21 → 31 → 43 → 57 → 67 min
+```
+
+« Protégé par le chemin, pas par la borne », dans sa forme exacte.
+
+### Trois correctifs essayés, trois DÉPLACEMENTS mesurés — le §1(a) confirmé quatre fois
+
+```
+borner « Nage vitesse » seule       « Sweetspot vélo » max  96 → 144 min   (le puits suivant)
+geler la durée d'un bloc de qualité
+  mono-répétition (branche durée)   « Nage vitesse »  max 144 → 206 min   (l'autre branche)
++ la branche distance               aucun changement — `sw.aero` n'est PAS une zone de qualité
+borner les 6 créneaux vélo + nage   le brick tombe SOUS son plancher audité : 18 violations DURES
+```
+
+**La troisième ligne corrige ma propre prémisse et elle est publiée** : `sw.aero` est une zone
+AÉROBIE pour le moteur, donc « Nage vitesse » est classée FACILE — le moteur y déverse
+*conformément* à R4.1 (« le déversement doit aller vers les séances faciles »). Le défaut n'est
+pas qu'un bloc de qualité déborde : c'est qu'une séance **nommée « vitesse » sert de déversoir**,
+et que son nom ment sur ce qu'elle contient. Famille de T-40, sur l'INTENSITÉ au lieu de la
+distance.
+
+### Le résultat qui décide : le manque tombe sur un PLANCHER DE SÉCURITÉ
+
+Bornes posées partout, `audit:v1` passe de 0 à **18 combinaisons en violation DURE**, toutes
+« brick vélo hors bornes format ». **Direction vérifiée avant de conclure : SOUS le plancher, 0
+au-dessus** — sur `tri/Full/confirme/inter/plaisir`, un leg vélo de brick livré à **116 min pour
+un plancher audité à 150**.
+
+Le puits ne dissimulait donc pas un excès de volume mal placé : il dissimulait que **le plan ne
+peut pas placer son volume dans ses bornes de séance**, et il payait la différence en la parquant
+dans une séance qui n'a pas de plafond. C'est la phrase du §1 — *« le plafond structurel est trop
+bas, et le puits le dissimule depuis toujours »* — devenue une mesure.
+
+### Pourquoi « déclarer le manque » ne peut pas s'écrire aujourd'hui
+
+Le §1 propose de placer ce qui rentre et de déclarer le reste en maillon. **Mesuré, le maillon
+lirait ≈ 0**, et pour une raison connue :
+
+```
+                                   HEAD          « Nage vitesse » bornée
+  livré (semaines de charge)       22 543 h      21 903 h
+  cible DÉCLARÉE                   23 164 h      22 447 h      ← elle SUIT le livré
+  écart                              2,7 %          2,4 %
+```
+
+La sonde de capacité V2.1 lit ce que le moteur parvient à placer : borner un créneau abaisse la
+PROMESSE au lieu de révéler le manque. C'est **O-43**, et il passe donc du statut « ouvert » à
+celui de **bloqueur de la moitié instrumentation de ce lot** — sans lui, la mesure que le §1
+demande est vacueuse par construction.
+
+### Ce qui est livré, et ce qui ne l'est pas
+
+**Livré** : `npm run mesure:puits` — l'inventaire des puits avec ce que chacun absorbe, sur le
+corpus. C'est l'instrument que le §1 réclame (« rendre visible la contrainte que le lot
+progression existe pour lever »). Il publie aussi sa limite : `Footing facile` est BORNÉ et
+disperse à ×2,4, donc la dispersion seule ne sépare pas « libre » de « gros » — le signal qui
+décide reste l'absence de plafond, pas la queue.
+
+**Non livré, délibérément** : les bornes. Elles transforment un manque silencieux en **18
+violations d'un plancher de SÉCURITÉ**, ce qui est plus grave que le défaut qu'elles corrigent
+(priorité 2 du manifeste). L'ordre juste est donc l'inverse de celui qu'on croyait :
+
+```
+1. O-43   que la cible cesse de suivre le livré     ← sans lui, le manque est indéclarable
+2. le plafond structurel : pourquoi le plan ne peut-il pas placer son volume ?
+3. borner les puits, le manque devenant lisible
+4. les pièces du lot vélo
+```
+
+```verify
+id: O-78
+quoi: 17 types de séance tri atteignent `cap: 9999`, sur 38 % des séances
+attendu: /Nage vitesse/
+cmd: npm run mesure:puits
+```
+
+---
+
 ## T-16d — LE DESCRIPTEUR DÉCRIVAIT UN AUTRE PLAN QUE CELUI QU'IL ACCOMPAGNE · ✅ **LIVRÉ** (19/08/2026)
 
 Le §1 de « T-16c — MESURER LE RAYON AVANT DE L'APPELER UN CHANTIER » posait la question qui

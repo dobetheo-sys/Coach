@@ -89,6 +89,7 @@
     "mesure:progression": "node scripts/mesureProgression.mjs",
     "check:chemins": "node scripts/checkChemins.mjs",
     "mesure:longue-volmax": "node scripts/mesureLongueVolMax.mjs",
+    "mesure:puits": "node scripts/mesurePuits.mjs",
     "casser": "node scripts/casser.mjs"
   },
   "devDependencies": {
