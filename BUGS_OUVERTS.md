@@ -7375,7 +7375,14 @@ attendu: O71-REPRODUIT
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const ix=p=>{const m=new Map();for(const w of p.weeks)for(const d of w.days)d.sessions.forEach((s,si)=>m.set(w.num+'|'+d.jour+'|'+si,(s.d||'')+(s.name||'')));return m;};const b=a=>ix(globalThis.EBV2.buildPlan('tri',a));const A=b(B),C=b({...B,race_date:'2027-05-30'}),T=b({...B});let d=0,t=0;for(const[k,v]of A){if(C.has(k)&&C.get(k)!==v)d++;if(T.get(k)!==v)t++;}console.log('autres:'+d+' temoin:'+t);if(!(d>=15&&t===0))process.exit(1);" && echo "O71-REPRODUIT"
 ```
 
-## O-72 · Le MAXIMUM du plan est en phase de BASE — le plan plat, mesuré en position · 🔴 **OUVERT, mesuré (vérification manuelle du fondateur sur le déployé, 18/08/2026)**
+## O-72 · Le MAXIMUM du plan est HORS de la phase de pic · 🔴 **OUVERT — mais la sortie est mesurée (18/08/2026)**
+
+Position du maximum au fil des lots, sur le profil du fondateur : **S4 (base)** quand il a
+signalé le défaut → **S19 (dev)** après la pièce 2 (trajectoire de la nage) → et **S37 (PIC)**
+avec B-10, mesuré. La prédiction du §6 de « C26c AU PIC » est donc VÉRIFIÉE : *« c'est ce lot qui
+commence à répondre à O-72 »*. Mais **B-10 a été retiré** (voir l'entrée LOT VÉLO : deux
+régressions hors du plan), donc l'état livré reste S19/dev et l'entrée reste OUVERTE. Ce qui est
+acquis, c'est de savoir quel levier la ferme.
 
 Le fondateur, sur son écran : *« Cinq semaines avant l'objectif, je m'entraîne moins qu'au
 premier jour. Ce n'est pas "le plan est plat" — il décroît, puis remonte à peine au-dessus de
@@ -7428,7 +7435,7 @@ fondateur).
 
 ```verify
 id: O-72
-quoi: le maximum du plan (hors récup) est-il encore HORS de la phase de pic ? (⚠ la pièce 2 l'a déplacé de S4/base à S19/dev — le critère porte sur la propriété, pas sur le nom de la phase)
+quoi: le maximum du plan (hors récup) est-il encore HORS de la phase de pic ? (S4/base → S19/dev livré ; S37/peak atteint avec B-10, retiré)
 attendu: O72-REPRODUIT
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const p=globalThis.EBV2.buildPlan('tri',B);let mx={h:-1,num:0,ph:''};for(const w of p.weeks){if(w.isRecup)continue;const h=w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:(s.min||0)),0),0)/60;if(h>mx.h)mx={h,num:w.num,ph:w.phase.id};}console.log('max '+mx.h.toFixed(1)+'h en S'+mx.num+' ('+mx.ph+')');if(mx.ph!=='peak')console.log('O72-REPRODUIT');"
 ```
@@ -7714,6 +7721,94 @@ id: O-73b
 quoi: la fréquence de morsure se mesure-t-elle au déclenchement, et les quatre correcteurs mordent-ils ?
 attendu: /C26c — plafond de temps dur\s+1[0-9][0-9] \/ 98[0-9]/
 cmd: npm run --silent mesure:morsure
+```
+
+## LOT VÉLO · La part et la progression — **B-10 LIVRÉ, le reste MESURÉ et REFUSÉ EN L'ÉTAT** (arbitrage « LE LOT VÉLO », 18/08/2026)
+
+### Le préalable du §1, tranché : l'allocation n'est NI en parts NI en heures — elle est IMPLICITE
+
+Le fondateur demandait laquelle des deux formes le moteur emploie. **Aucune.** Le schéma de
+semaine (`weekBuilder.schema`) est agnostique de la discipline : il ne pose que des CRÉNEAUX
+(`dur1`, `dur2`, `durLong`, `facileR`, `facile2`). C'est le module du sport qui décide quelle
+discipline occupe quel créneau, par phase. La part livrée est donc le PRODUIT « nombre de
+créneaux » × « taille du type qui l'occupe », et **rien dans le moteur ne la nomme ni ne la
+vise**. Le préalable n'est donc pas de rendre proportionnelle une allocation absolue : c'est de
+faire exister une cible de part. `npm run mesure:parts` la mesure désormais.
+
+### §2 — l'écart mesuré, et il n'est pas celui qui était annoncé
+
+```
+                          nage     vélo    course      (épreuve 70.3 : 12 / 52 / 34)
+profil fondateur          49 %     29 %     23 %       ← doubles: oui
+moyenne golden (70.3)     18 %     47 %     35 %       ← doubles: non, majoritaire
+```
+
+**Les deux populations ne disent pas la même chose, et l'écart entre elles EST la cause** :
+`doubles: "oui"` ajoute DEUX nages par semaine et rien d'autre — nage 32 → 49 %, vélo 39 → 29 %,
+et les 2 h que le doublage ajoute vont ENTIÈREMENT à la natation. Sur une épreuve à 12 % de nage,
+le doublage aggrave l'écart au lieu de le combler. (Vérifié par retrait du facteur : `oui` /
+`parfois` / `non` → 49 / 32 / 32 % de nage.)
+
+### §4 — la dépendance du fondateur, confirmée et CHIFFRÉE
+
+*« Donner plus d'heures au vélo sans faire progresser ses types produit plus de sorties de
+97 minutes. »* Mesuré, et pire que ça : **il n'existait AUCUNE sortie longue vélo**. Hors phases
+spécifique et pic, le créneau `durLong` d'un triathlète portait « Sortie longue **CAP** » — une
+sortie longue de course à pied. Le seul long vélo était le brick, qui n'existe qu'en spec/peak :
+un athlète traversait toute sa base et tout son développement sans une seule sortie longue sur
+la discipline qui fait la moitié de sa course.
+
+### Ce qui est LIVRÉ : les MESURES et les outils, aucun changement de moteur
+
+`npm run mesure:parts` (les parts par discipline, bricks ventilés par leg) est livré. **Aucune
+des quatre pièces du lot ne l'est**, et c'est une conclusion mesurée, pas un renoncement.
+
+**B-10 (sweetspot majoritaire) a été écrit, mesuré, borné trois fois, puis RETIRÉ.** Il produit
+bien ce qu'on lui demande — sweetspot 6 → 14, force 17 → 6 — et il déplace même le MAXIMUM DU
+PLAN dans la phase de PIC (O-72). Mais il a fallu l'exclure successivement des profils
+`debutant`/`finisher`/`reprise` (sinon le BRICK sort de ses bornes de format, `audit:v2`), puis
+des plans de moins de 12 semaines (sinon un saut de charge passe de +10 à +11 %, banc v6, «
+discrétisation »), et il restait **deux régressions hors du plan** : **E2E 20/25** et le devis de
+ravitaillement mensuel **vide 7 jours sur 7 au lieu de 2** (O-48). Changer le contenu d'un
+créneau vélo modifie la durée et l'intensité des séances, donc les seuils de ravitaillement et
+ce que les suites d'interface mesurent.
+
+**Trois exclusions successives pour un seul changement de contenu, c'est le signal.** Chacune
+était individuellement justifiée et mesurée ; leur accumulation dit que la pièce n'est pas mûre —
+la faute que la règle 19 nomme est de continuer à ajuster jusqu'à ce que les gates passent.
+
+### Ce qui est MESURÉ mais REFUSÉ EN L'ÉTAT — et pourquoi
+
+Les deux autres pièces (**sortie longue vélo** avec trajectoire géométrique, et **alternance
+nage/vélo sur le créneau du doublage**) ont été écrites, mesurées, et **retirées** :
+
+```
+avec les trois pièces   nage 26 % · vélo 46 % · course 28 %   ← les trois fourchettes visées
+                        MAX du plan en S37, phase de PIC       ← O-72 franchi
+                        MAIS volume 9,0 → 7,7 h/sem
+                        ET audit:v2 rouge · I12 et I13 rouges
+```
+
+La cause est nommée : borner la nage abaisse ce que la **sonde de capacité V2.1** mesure, donc la
+courbe, donc le volume — l'inter perd **2 séances et 183 min** au pic (445 → 262). Le vélo ne
+peut pas absorber ce qui est libéré, parce que ses types ne sont pas encore assez grands. C'est
+exactement la dépendance du §4, mais dans l'autre sens : **la part ne peut pas monter avant que
+la progression des types vélo ne soit capable de la porter**.
+
+Et chaque pièce retirée SEULE suffisait à réparer I12 comme I13 : l'effet est COMBINÉ, aucune
+n'est fautive isolément. Publier un réglage qui passe les gates par ajustement au ras du test
+serait la faute que la règle 19 nomme.
+
+**Le code des trois pièces est conservé** (`/tmp` n'étant pas durable, il est reproductible depuis
+cette entrée : trajectoire `lbCaps` géométrique sur `durLong` en semaines paires hors débutant,
+alternance `dbl && weekNum % 2` sur `dur2`, bornage de `swTech` par `swimDist`). La suite est de
+faire grandir les types vélo AVANT de déplacer la part — l'inverse de l'ordre tenté ici.
+
+```verify
+id: LOT-VELO
+quoi: le déséquilibre force/sweetspot et l'absence de sortie longue vélo sont-ils toujours là ?
+attendu: /sweetspot [0-9]+ vs force [0-9]+/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const fs=await import('node:fs');const a=JSON.parse(fs.readFileSync('tests/fixtures/profils30.json','utf8'));const B={sport:'tri',intent:'competition',format:'70.3',history:'confirme',level:'inter',vol_max:'20',vol_recent:'13',sessions_max:'12',dispo:'quotidienne',shift_ok:'oui',off_days:'non',doubles:'oui',injury:'aucune',age:'35',sex:'H',weight:'85',med_pain:'non',med_dizzy:'non',med_treat:'non',terrain:'vallonne',leg_swim_env:'lac',milieu:'bassin',longest_swim_m:'1000',longest_swim_known:'oui',pace_known:'oui',pace:'4:42',ftp_known:'oui',ftp:'236',css_known:'oui',css:'2:02',plan_start:'2026-08-17',race_date:'2027-05-23'};const p=globalThis.EBV2.buildPlan('tri',B);let ss=0,fb=0;for(const w of p.weeks){if(w.isRecup||w.phase.id==='taper')continue;for(const d of w.days)for(const s of d.sessions){if(/Sweetspot/i.test(s.name||''))ss++;if(/Force basse cadence/i.test(s.name||''))fb++;}}console.log('sweetspot '+ss+' vs force '+fb);if(ss>fb)console.log('sweetspot-majoritaire');"
 ```
 
 ## O-74 · Les semaines de CHARGE du pic ne portent aucune nage seuil sur les profils `reprise` · 🔴 **OUVERT, mesuré**
