@@ -8927,7 +8927,7 @@ attendu: /: 2[0-9]$/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let tot=0,ko=0;for(const{sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const d=(p._v2?.decisions??[]).find(x=>x.id==='B17-paliers');const n=+(String(d?.val??'').match(/(\\d+)\\s*palier/)?.[1]??0);if(!n)continue;tot++;const liv=(p.weeks??[]).flatMap(w=>(w.days??[]).flatMap(x=>x.sessions??[])).filter(s=>s.d==='sw'&&/^Nage continue/.test(String(s.name??''))).length;if(liv!==n)ko++;}console.log('sur '+tot+' profils, livré != annoncé : '+ko);"
 ```
 
-## O-85 · La charge d'ÉPAULE n'est bornée NULLE PART — ce qui ressemble à une borne est le nombre de créneaux · 🔴 **OUVERT — ticket de SÉCURITÉ, mesuré (`npm run mesure:epaule`)**
+## O-85 · La charge d'ÉPAULE n'est bornée NULLE PART — ce qui ressemble à une borne est le nombre de créneaux · ✅ **FERMÉ (arbitrage du fondateur, 19/08/2026 — la borne suit l'expérience en NAGE)**
 
 Question du fondateur (19/08/2026, §3) : *« 12,1 km de nage en une semaine, pour un athlète qui
 nage depuis un an en autodidacte et dont la technique se dégrade sous fatigue. `MAX_RUN_DAYS`
@@ -9004,3 +9004,86 @@ au lieu de la raison de l'athlète.
 **JOURNÉE**, affiché sous un titre de **SÉANCE** : il se lit comme la durée de la séance nommée.
 *« Un nombre en tête doit dire sa portée. »* Même famille qu'O-61 (la barre de zones qui portait
 des grandeurs sans dire de quoi elles étaient la mesure).
+
+## O-85 — FERMETURE (arbitrage « O-85 AVANT LE LOT PROGRESSION », 19/08/2026)
+
+**La forme retenue** : `volume hebdomadaire de nage ≤ k × distance de course`, **`k` dérivé de
+l'expérience en NAGE, pas du niveau général** — *« un nageur de club fait 25 km par semaine sans
+dommage ; un autodidacte d'un an dont la technique cède sous fatigue n'a pas la même tolérance à
+12 »*. Trois décisions encodées dans `swimWeeklyLoadCapM` :
+
+1. **Le multiplicateur se lit sur une grandeur MESURÉE** — la continuité déclarée rapportée à la
+   distance de course — jamais sur un adjectif auto-déclaré. Leçon R14.1, payée quatre fois :
+   `level` et `history` décrivent le triathlète, pas son épaule.
+2. **La borne est plus SERRÉE chez le débutant**, l'inverse du réflexe.
+3. **Elle se lève avec la position (O-56)** : le multiplicateur lit la continuité PROJETÉE à la
+   semaine, même patron que `swimSessionCapAtWeek`. Le fondateur, à 1 000 m déclarés pour un
+   70.3 : **7,6 km en semaine 1 → 11,4 km au pic**.
+
+**⚠ UNE ERREUR CORRIGÉE EN L'ÉCRIVANT, PAR LA MESURE.** Ma première version plafonnait le ratio à
+la distance de course, comme le fait la borne de SÉANCE — et **la bande « nageur de formation »
+devenait inatteignable** : un athlète déclarant 4 000 m continus recevait le multiplicateur de
+l'âge-groupe. Les deux bornes lisent la même grandeur pour deux questions différentes : *« jusqu'où
+faire nager d'un trait »* se plafonne à la course, *« quelle épaule a-t-il »* ne se plafonne pas.
+
+**LE DOMAINE EST DÉRIVÉ, PAS UNE LISTE DE SPORTS** : la formule n'a de sens que si la nage est un
+LEG (`disciplines.length > 1`). Un sprinteur qui prépare un 100 m nage trente fois sa distance —
+lui appliquer la formule rendrait 400 m/semaine. Vérifié par T-53 §3 plutôt qu'exclu en silence.
+
+**CE QUE LA PASSE PREND, et l'ordre EST la politique** (`prioriteFinancement` vue depuis le
+donneur) : jamais un bloc ÉPINGLÉ, jamais la sortie longue, **les DÉVERSOIRS d'abord** (blocs
+faciles non épinglés, du plus gros au plus petit — c'est là que le volume s'est accumulé, O-78),
+la qualité ensuite, **jamais sous le plancher de séance** — auquel cas on s'arrête et on le DIT
+(`warnings`). **La FRÉQUENCE n'est jamais la monnaie** : retirer une séance de nage pour tenir une
+borne de volume serait la prédiction du 19/08 commise par la garde censée protéger.
+
+**MESURES.** `mesure:epaule` §C : le plateau passe de **14,68 à 11,41 km** et c'est désormais la
+borne O-85 qui le tient, plus l'artefact de créneaux. **Rayon : 37 profils bougent de plus de 2 %,
+TOUS en tri**, médiane 0,00 %, aucun effet hors des sports où la nage est un leg — et la plus
+forte baisse (`PW/tri/S`, 310 → 293 min) gagne une séance en perdant des mètres : la fréquence
+n'a pas payé. **Sur la fixture de l'athlète réel : nage 54 % → 35 %, vélo 33 % → 39 %, course
+13 % → 25 %** — borner le volume de nage rapproche à lui seul la répartition de la cible
+(20-25 / 45-50 / 25-30), sans qu'aucune règle d'allocation n'ait été touchée.
+
+**Garde T-53**, trois moitiés (invariance sur 3 000+ semaines avec sa population assertée ·
+sensibilité à l'expérience en nage · **domaine vérifié** au lieu d'exclu), **contre-prouvée** :
+neutraliser la borne la fait rougir sur la sensibilité (600 m et 4 000 m rendent 17,1 km tous les
+deux). **Cliquets ré-épinglés avec leurs causes SÉPARÉES par expérience contrôlée** : S5 511 → 512
+et T-48 (population 188, VO2 8 676, seuil 431 633) viennent **entièrement de la fixture** ;
+T-39 25 → **22** vient **entièrement de la borne** — elle prend dans les déversoirs, donc les
+passes aval n'ont plus à raboter d'épinglés pour tenir leurs bornes.
+
+**PROVENANCE, dite franchement** : les bandes (`×4 · ×6 · ×8`) viennent du fondateur et sont des
+ordres de grandeur d'entraîneur, pas une publication. La FORME et la DIRECTION sont ce qui est
+défendable ; les valeurs sont révocables sans toucher au mécanisme.
+
+`audit:v1` 459 à **0 violation dure** · invariants 22×54 · v6 **74 · 0 régression** · `lotPhysio`
+**25 verts · 23 rouges attendus · 0 régression** · golden **990** (28 empreintes + la fixture).
+
+---
+
+## O-85 §2 — LE CORPUS NE CONTENAIT PAS L'UTILISATEUR · ✅ **FIXTURE AJOUTÉE, avec son écart PUBLIÉ**
+
+*« Ma configuration — `sessions_max` élevé, `doubles`, 70.3, nage limitante — n'existe dans aucun
+des 989 profils. C'est la neuvième A-2, et c'est la seule qui compte vraiment : le corpus couvre
+des formats et des niveaux, pas l'utilisateur qui existe. »*
+
+Passe `REEL/tri/70.3/nage-limitante` ajoutée au golden (**989 → 990**). Le trou n'était pas une
+valeur extrême mais un CROISEMENT que rien ne produisait : beaucoup de séances × jours doubles ×
+format long × nage limitante.
+
+**⚠ LA FIXTURE EST RECONSTITUÉE, PAS RELEVÉE, ET L'ÉCART EST PUBLIÉ.** Le dépôt portait **DEUX**
+« profils du fondateur » divergents — le bloc `verify` d'O-71 et le défaut de
+`mesureProgression.mjs` — et **aucun ne reproduit les chiffres publiés** (S1 9,8 h · nage 48 % ·
+vélo 28 % · course 24 %) :
+
+```
+  bloc O-71            S1 9,4 h · nage 54 % · vélo 33 % · course 13 %   ← le plus proche, retenu
+  mesureProgression    S1 5,0 h · nage 16 % · vélo 50 % · course 34 %
+  chiffres publiés     S1 9,8 h · nage 48 % · vélo 28 % · course 24 %
+```
+
+C'est donc la **FORME** qui est couverte, pas l'état exact — et l'écart le plus visible est la
+part de COURSE (13 % contre 24 %). La règle de fixture du dépôt interdit de combler : *on ne
+remplit pas un champ vide, on le demande.* **La fixture deviendra littérale quand les réponses
+réelles seront relevées dans l'app** ; d'ici là elle ferme l'angle mort structurel, pas l'écart.

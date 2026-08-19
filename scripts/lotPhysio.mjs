@@ -36,6 +36,7 @@ import { traceOn, traceDump } from "../src/engine/trace.ts";
 import { toProfile } from "../src/app/bridge.ts";
 import { riegelExponent, riegelSecWith, RUN_KM, marathonPaceBand, RN_MARA_RATIO_PLANCHER, TRI_SWIM, SWIM_RACE } from "../src/engine/predictor.ts";
 import { plancherDeDignite } from "../src/generator/planGenerator.ts";
+import { swimWeeklyLoadCapM } from "../src/engine/swimContinuity.ts";
 import { profiles as goldenProfiles } from "./goldenMaster.mjs";
 import { estCharge } from "./lib/planMetrics.mjs";
 
@@ -1002,7 +1003,10 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // de dignité en décharge (jusqu'au plafond déclaré) rend les semaines d'affûtage plus légères,
 // donc moins de sorties longues dépassées (S4 = I14) et moins de dérives de l'identité R20.2
 // (S5). Une baisse s'épingle avec la même rigueur qu'une hausse.
-const SCEAU_ATTENDU = { S1: 4, S4: 356, S5: 511 };
+// O-85 §2 (19/08/2026) — S5 511 → **512**, et la cause est la FIXTURE, pas la borne : le corpus
+// gagne le profil `REEL/tri/70.3/nage-limitante` (l'athlète réel du produit, absent des 989).
+// Vérifié par expérience contrôlée — fixture SANS la borne d'épaule : S5 vaut déjà 512.
+const SCEAU_ATTENDU = { S1: 4, S4: 356, S5: 512 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1410,7 +1414,11 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   // de semaine. Ce lot a par ailleurs RETIRÉ deux rabotages en rejouant O-53 sur
   // `enforceC22Final` (27 → 25) : le solde est +1 contre le point de départ, −2 contre l'état
   // intermédiaire. Le reste appartient à O-54 §2, arbitré et ouvert.
-  const RABOTES_ATTENDUS = 25;
+  // O-85 (19/08/2026) — 25 → **22**, une BAISSE, et elle est ENTIÈREMENT la borne d'épaule
+  // (vérifié : avec la fixture REEL mais sans la borne, ce test est VERT à 25). Le mécanisme est
+  // la politique de la passe : elle prend dans les DÉVERSOIRS d'abord, donc le volume excédentaire
+  // part avant que les passes aval n'aient à raboter un bloc épinglé pour tenir leurs bornes.
+  const RABOTES_ATTENDUS = 22;
   let n = 0, ko = 0; const zones = {}, ex = [];
   for (const { key, plan } of goldenAvecMoteur()) {
     for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
@@ -1842,7 +1850,12 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // 427 773 → 426 708 m (−0,25 %). Le pic n'est pas touché par O-82 (les planchers ne cèdent
 // qu'en DÉCHARGE) : ces deux dixièmes viennent des cliquets de semaine, que l'affûtage plus
 // léger décale d'un cran. Épinglés parce qu'ils ont bougé, pas parce qu'ils comptent.
-const PIC_ATTENDU = { vo2Min: 8636, seuilM: 426708, profils: 187 };
+// O-85 §2 (19/08/2026) — 187 → **188 profils**, VO2 8 636 → 8 676, nage seuil 426 708 → 431 633 m.
+// **Tout vient de la FIXTURE, rien de la borne d'épaule** : mesuré avec la fixture et SANS la
+// borne, les trois chiffres sont déjà ceux-là. C'est cohérent avec la politique de la passe —
+// elle prend dans les déversoirs (`sw.aero`, `sw.easy`) et ne touche la QUALITÉ qu'en dernier,
+// donc les mètres de nage seuil du pic ne bougent pas.
+const PIC_ATTENDU = { vo2Min: 8676, seuilM: 431633, profils: 188 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {
@@ -2058,6 +2071,82 @@ T("T-52", "vert", "aucun plafond de type n'est inférieur à son plancher de dig
   return {
     ok: pb.length === 0,
     detail: pb.length ? pb.join(" · ") : `${blocs} blocs de corps, ${avecBnd} porteurs de bnd, 0 couple plancher ≥ plafond`,
+  };
+});
+
+/**
+ * T-53 (O-85) — LE VOLUME HEBDOMADAIRE DE NAGE TIENT SA BORNE DE CHARGE, ET LA BORNE EST SENSIBLE
+ * À CE QUI LA CONCERNE.
+ *
+ * Le jumeau complet (leçon O-44 §4) : un test qui vérifierait seulement « aucune semaine ne
+ * dépasse » serait satisfait par une borne posée si haut qu'elle ne mord jamais — et c'est
+ * exactement l'état d'AVANT (14,7 km, bornés par un artefact de créneaux). Il porte donc deux
+ * moitiés, et la seconde nomme son DOMAINE :
+ *
+ *   INVARIANCE   aucune semaine de charge ne dépasse `k × distance de course` là où la nage est
+ *                un LEG — et la population est assertée (un zéro a besoin de sa population).
+ *   SENSIBILITÉ  faire varier l'EXPÉRIENCE EN NAGE (la continuité déclarée) doit déplacer la
+ *                borne ET le livré. Un `k` qui ne bougerait pas serait une constante gelée.
+ *   DOMAINE      les sports où la nage EST l'épreuve sont hors périmètre, et le test le VÉRIFIE
+ *                au lieu de les exclure en silence : un nageur pur doit rester au-dessus de ce
+ *                que la formule lui donnerait, sinon la borne a débordé de son domaine.
+ */
+T("T-53", "vert", "le volume hebdomadaire de nage tient sa borne de charge d'épaule (O-85)", () => {
+  const pb = [];
+  // ── (1) INVARIANCE, sur le corpus, là où la nage est un LEG ────────────────────────────
+  let semaines = 0, depasse = 0, pire = null;
+  for (const { key, sport, a, plan } of goldenAvecMoteur()) {
+    if (!["tri", "duathlon", "swimrun"].includes(String(sport))) continue;
+    const gate = _moteur.analyze(toProfile(sport, a))?.b17Gate ?? null;
+    if (!gate) continue;
+    for (const w of plan.weeks ?? []) {
+      const cap = swimWeeklyLoadCapM(gate, w.num);
+      if (!cap) continue;
+      semaines++;
+      const m = (w.days ?? []).reduce((t, d) => t + (d.sessions ?? []).reduce((u, sx) =>
+        u + (sx.d === "sw" ? (sx.steps ?? []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0) : 0), 0), 0);
+      // tolérance : les planchers de séance peuvent empêcher de descendre, et le moteur le DIT
+      // alors dans `warnings` plutôt que de les franchir. On borne le dépassement TOLÉRÉ à une
+      // séance-plancher, au-delà c'est la garde qui a échoué.
+      if (m > cap + 750) { depasse++; if (!pire || m - cap > pire.d) pire = { key, w: w.num, m, cap, d: m - cap }; }
+    }
+  }
+  if (semaines < 3000) pb.push(`POPULATION : ${semaines} semaine(s) sous borne — le corpus s'est effondré`);
+  if (depasse) pb.push(`${depasse} semaine(s) au-dessus de la borne + un plancher · pire ${pire.key} S${pire.w} : ${(pire.m / 1000).toFixed(1)} km pour ${(pire.cap / 1000).toFixed(1)}`);
+
+  // ── (2) SENSIBILITÉ — l'expérience en NAGE déplace la borne ET le livré ────────────────
+  const base = { sport: "tri", intent: "competition", format: "70.3", history: "confirme", level: "inter",
+    vol_max: "20", vol_recent: "13", sessions_max: "12", dispo: "quotidienne", shift_ok: "oui",
+    off_days: "non", doubles: "oui", injury: "aucune", age: "35", sex: "H", weight: "85",
+    terrain: "plat", leg_swim_env: "lac", milieu: "bassin", pace_known: "oui", pace: "4:42",
+    ftp_known: "oui", ftp: "236", css_known: "oui", css: "2:02", med_pain: "non", med_dizzy: "non", med_treat: "non" };
+  const pic = (over) => {
+    const p = globalThis.EBV2.buildPlan("tri", { ...base, ...over });
+    const ch = (p.weeks ?? []).filter((w) => !w.isRecup && w.phase.id !== "taper");
+    return Math.max(0, ...ch.map((w) => (w.days ?? []).reduce((t, d) => t + (d.sessions ?? []).reduce((u, sx) =>
+      u + (sx.d === "sw" ? (sx.steps ?? []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0) : 0), 0), 0)));
+  };
+  const debut = pic({ longest_swim_known: "oui", longest_swim_m: "600" });
+  const nageur = pic({ longest_swim_known: "oui", longest_swim_m: "4000" });
+  if (!(nageur > debut * 1.15)) pb.push(`SENSIBILITÉ : continuité 600 m → ${(debut / 1000).toFixed(1)} km, 4 000 m → ${(nageur / 1000).toFixed(1)} km — la borne ne suit pas l'expérience en nage`);
+
+  // ── (3) DOMAINE — la nage EST l'épreuve : la formule n'y a pas cours, et on le VÉRIFIE ──
+  const pur = globalThis.EBV2.buildPlan("swim", { sport: "swim", format: "fond", history: "confirme",
+    level: "inter", intent: "competition", sessions_max: "6", dispo: "quotidienne", doubles: "non",
+    age: "35", sex: "H", css: "1:30", css_known: "oui", vol_max: "10", vol_recent: "8",
+    injury: "aucune", med_pain: "non", med_dizzy: "non", med_treat: "non", milieu: "bassin", swim_limit: "endurance" });
+  const picPur = Math.max(0, ...(pur.weeks ?? []).filter((w) => !w.isRecup && w.phase.id !== "taper")
+    .map((w) => (w.days ?? []).reduce((t, d) => t + (d.sessions ?? []).reduce((u, sx) =>
+      u + (sx.steps ?? []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0), 0), 0)));
+  // `SWIM_RACE.fond` vaut 1 500 m : la formule rendrait au mieux 12 km et au pire 6. Un nageur de
+  // fond qui s'entraîne sérieusement dépasse le multiplicateur le plus large — c'est la preuve que
+  // le domaine tient, et elle rougirait si la borne débordait sur les sports mono-discipline.
+  if (picPur < 4 * 1500) pb.push(`DOMAINE : le nageur PUR est à ${(picPur / 1000).toFixed(1)} km — la borne des LEGS a débordé sur son épreuve`);
+
+  return {
+    ok: pb.length === 0,
+    detail: pb.length ? pb.join(" · ")
+      : `${semaines} semaines sous borne, 0 dépassement · sensibilité ${(debut / 1000).toFixed(1)} → ${(nageur / 1000).toFixed(1)} km · nageur pur ${(picPur / 1000).toFixed(1)} km (hors domaine)`,
   };
 });
 

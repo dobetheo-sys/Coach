@@ -149,6 +149,76 @@ export function swimSessionCapAtWeek(g: ContinuityGate | null, base: number, wkN
 }
 
 /**
+ * O-85 — LA CHARGE D'ÉPAULE : LE VOLUME HEBDOMADAIRE DE NAGE A UNE BORNE, ET SON MULTIPLICATEUR
+ * SUIT L'EXPÉRIENCE EN NAGE.
+ *
+ * *« Ce qui fait le risque n'est pas la distance seule — c'est le volume × la qualité du geste.
+ * Un nageur de club fait 25 km par semaine sans dommage ; un autodidacte d'un an dont la
+ * technique cède sous fatigue n'a pas la même tolérance à 12. »* (fondateur, 19/08/2026.)
+ *
+ * Mesuré avant d'écrire (`npm run mesure:epaule`) : **rien ne bornait ce volume**. Ce qui y
+ * ressemblait était un artefact — le NOMBRE DE CRÉNEAUX de nage du schéma de semaine — et il
+ * laissait passer 14,7 km/sem avec une « Nage récup courte » de 2 625 m. `MAX_RUN_DAYS` borne les
+ * jours d'impact en course ; l'argument qui avait écarté un `MAX_SWIM_DAYS` portait sur la
+ * FRÉQUENCE (bénigne, voire souhaitable en nage) et ne s'applique pas au VOLUME.
+ *
+ * TROIS DÉCISIONS ENCODÉES ICI :
+ *
+ * 1. **LE MULTIPLICATEUR SUIT L'EXPÉRIENCE EN NAGE, PAS LE NIVEAU GÉNÉRAL** — et il est LU sur
+ *    une grandeur MESURÉE (la continuité déclarée rapportée à la distance de course), jamais sur
+ *    un adjectif auto-déclaré. C'est la leçon R14.1, payée quatre fois : `level` et `history`
+ *    décrivent le triathlète, pas son épaule. Un athlète qui ne nage pas encore la distance de
+ *    son épreuve est un nageur récréatif quel que soit son niveau à vélo.
+ *
+ * 2. **LA BORNE EST PLUS SERRÉE CHEZ LE DÉBUTANT — l'inverse du réflexe.** C'est le point que le
+ *    fondateur souligne : on protège le moins expérimenté davantage, alors que l'intuition
+ *    voudrait « il en fait moins, donc il risque moins ».
+ *
+ * 3. **ELLE SE LÈVE AVEC LA POSITION (O-56).** Le multiplicateur lit la continuité PROJETÉE À LA
+ *    SEMAINE, pas la déclaration du premier jour : le même patron que `swimSessionCapAtWeek`
+ *    ci-dessus, pour la même raison — une borne gelée sur la déclaration initiale empêche le plan
+ *    de construire ce qu'il existe pour construire.
+ *
+ * PROVENANCE DES CHIFFRES, dite franchement : les bandes viennent du fondateur (« triathlète
+ * récréatif ×2-4 · âge-groupe compétitif ×4-6 · nageur de formation ×8 et plus ») et sont des
+ * ordres de grandeur d'entraîneur, pas une publication. Ce qui est défendable et ce qui compte,
+ * c'est la FORME et la DIRECTION ; les valeurs sont révocables sans changer le mécanisme.
+ *
+ * DOMAINE — la formule n'a de sens que si la nage est un LEG, pas l'ÉPREUVE. Un sprinteur qui
+ * prépare un 100 m nage trente fois sa distance de course, et c'est correct. La condition est
+ * donc portée par l'appelant sous forme DÉRIVÉE (« le sport a-t-il plus d'une discipline ? »),
+ * jamais par une liste de sports.
+ *
+ * @param wkNum semaine du plan, 1-indexée — LA POSITION EST UN PARAMÈTRE (règle 20)
+ * @returns le plafond hebdomadaire en mètres, ou `null` quand la borne n'a pas d'objet
+ */
+export const O85_MULT_EPAULE = [
+  { jusqua: 1.0, k: 4 },   // ne nage pas encore la distance de course : récréatif, HAUT de sa bande
+  { jusqua: 2.0, k: 6 },   // nage la distance et au-delà : âge-groupe compétitif
+  { jusqua: Infinity, k: 8 }, // formation de nageur
+];
+
+export function swimWeeklyLoadCapM(g: ContinuityGate | null, wkNum: number): number | null {
+  if (!g || !g.courseM) return null;
+  // Continuité INCONNUE → branche prudente, la plus serrée. Un défaut tacite va vers la sécurité
+  // (U14) : ne pas savoir nager 1 900 m d'affilée est le cas le plus fréquent, pas le plus rare.
+  const k = Math.max(0, (wkNum || 1) - 1);
+  // ⚠ LE RATIO NE SE PLAFONNE PAS À LA DISTANCE DE COURSE, contrairement à la borne de SÉANCE
+  // ci-dessus, et c'est une mesure qui l'a corrigé : avec le plafond, `ratio` ne dépassait jamais
+  // 1,0 et **la bande « formation de nageur » était inatteignable** — un athlète déclarant 4 000 m
+  // continus pour un 70.3 recevait le multiplicateur de l'âge-groupe. Les deux bornes lisent la
+  // même grandeur pour deux questions différentes : « jusqu'où faire nager d'un trait » se
+  // plafonne à la course (au-delà on fait du volume, pas de la continuité) ; « quelle épaule
+  // a-t-il » ne se plafonne pas — savoir nager 4 km d'affilée EST de l'expérience.
+  const continuite = g.source === "mesure"
+    ? Math.max(g.departM, Math.min(g.courseM, g.departM * Math.pow(C22_MAX_WEEKLY_GROWTH, k)))
+    : 0;
+  const ratio = continuite / g.courseM;
+  const mult = (O85_MULT_EPAULE.find((b) => ratio < b.jusqua) ?? O85_MULT_EPAULE[0]).k;
+  return Math.round(mult * g.courseM);
+}
+
+/**
  * O-56 §2 — **L'ÉVIDENCE : le plus haut palier de continuité que l'athlète a VALIDÉ.**
  *
  * Trois décisions du fondateur sont encodées ici, et chacune ferme un mode de défaillance :

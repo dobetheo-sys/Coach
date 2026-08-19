@@ -580,6 +580,30 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-85 FERMÉ — la charge d'ÉPAULE a sa borne, et son multiplicateur suit l'expérience en NAGE**
+(arbitrage « O-85 AVANT LE LOT PROGRESSION », 19/08/2026 — voir `BUGS_OUVERTS.md` « O-85 », garde
+**T-53**, mesure `npm run mesure:epaule`) : *« ce qui fait le risque n'est pas la distance seule,
+c'est le volume × la qualité du geste »*. `volume hebdo de nage ≤ k × distance de course`, `k` lu
+sur une grandeur **MESURÉE** (la continuité rapportée à la distance de course), jamais sur un
+adjectif — leçon R14.1 ; **plus SERRÉ chez le débutant**, l'inverse du réflexe ; et il **se lève
+avec la position** (O-56, même patron que `swimSessionCapAtWeek`) : 7,6 km en semaine 1 → 11,4 au
+pic pour 1 000 m déclarés sur un 70.3. **Le domaine est DÉRIVÉ** (`disciplines.length > 1`), pas
+une liste de sports — un sprinteur qui prépare un 100 m nage trente fois sa distance, et T-53 §3
+le VÉRIFIE au lieu de l'exclure en silence. La passe prend dans les **déversoirs d'abord**, jamais
+un bloc épinglé, jamais la sortie longue, jamais sous le plancher — et **jamais la FRÉQUENCE** :
+la retirer serait la prédiction du 19/08 commise par la garde censée protéger. **Mesuré** : le
+plateau passe de **14,68 à 11,41 km** ; rayon **37 profils, tous en tri**, médiane 0,00 %, et la
+plus forte baisse gagne une séance en perdant des mètres. **Sur la fixture de l'athlète réel :
+nage 54 % → 35 %, vélo 33 % → 39 %, course 13 % → 25 %** — borner le volume de nage rapproche à
+lui seul la répartition de la cible, sans toucher à aucune règle d'allocation. **Une erreur
+corrigée en l'écrivant** : plafonner le ratio à la distance de course rendait la bande « nageur de
+formation » inatteignable. **§2 : le corpus contenait 989 profils et pas l'utilisateur** — passe
+`REEL/tri/70.3/nage-limitante` ajoutée (990), **reconstituée et non relevée, avec son écart
+publié** (le dépôt portait DEUX « profils du fondateur » divergents, aucun ne reproduisant ses
+chiffres ; l'écart le plus visible est la part de course, 13 % contre 24 %). **`audit:v1` 459 à 0,
+invariants 22×54, v6 74 · 0 régression, `lotPhysio` 25 verts · 23 rouges attendus · 0 régression,
+golden 990.**
+
 **§3 de « LA RÉPARTITION » mesuré — la charge d'ÉPAULE n'est bornée nulle part, et ce qui
 ressemble à une borne est le nombre de créneaux** (`npm run mesure:epaule`, voir `BUGS_OUVERTS.md`
 « O-85 ») : sur les 989 profils, 458 nagent, médiane 2,6 km/sem, p99 11,2 km, **0 profil au-dessus

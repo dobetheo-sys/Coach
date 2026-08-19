@@ -32,7 +32,7 @@ import { record as traceRecord, traceEnabled } from "../engine/trace.ts";
 import { enforceMedicalHold } from "../engine/medicalHold.ts";
 import { estCreneauProtege, estIntouchable, jourIntouchable, rangCession } from "../engine/prioriteFinancement.ts";
 import { longRunSpecificityFloor, C31_MIN_JOUR2_MIN, C30_PART_SEMAINE_PIC } from "../engine/longRunSpecificity.ts";
-import { swimSessionCapAtWeek } from "../engine/swimContinuity.ts";
+import { swimSessionCapAtWeek, swimWeeklyLoadCapM, type ContinuityGate } from "../engine/swimContinuity.ts";
 
 interface BoundedSession extends V1Session {
   social?: boolean;
@@ -87,6 +87,9 @@ export const _c30b: { id: string; what: string; val: string; why: string; wk: nu
  *  durée. La passe de regroupement n'est PAS branchée (voir `BUGS_OUVERTS.md` « O-44 ») : ce
  *  compteur ne sert qu'à décider si le plan doit NOMMER la tension à l'athlète. */
 export const _o44 = { semainesCourtes: 0, semainesCharge: 0 };
+/** O-85 — ce que la borne de charge d'épaule a réellement écrêté, pour que la mesure le lise
+ *  au DÉCLENCHEMENT et non sur le livré (« un correcteur qui réussit efface sa propre trace »). */
+export let _o85: { semaines: number; metres: number } | null = null;
 
 /**
  * O-81 / T-52 — LE PLANCHER DE DIGNITÉ, EN UN SEUL POINT.
@@ -159,6 +162,9 @@ export function reconcileDeclaredVolume(
    *  `keepTaperSwim` (R13.3) : le sport déclare que l'affûtage garde une nage par semaine —
    *  les coupes de fréquence l'évitent tant qu'une autre victime existe. */
   ctx?: { swimFloors?: boolean; beginner?: boolean; swimCapM?: number; medHold?: boolean; keepTaperSwim?: boolean; mainDiscipline?: string; disciplines?: string[];
+    /** O-85 — la porte de continuité B-17, d'où la borne de charge d'épaule dérive son
+     *  multiplicateur ET sa position. `null` quand la nage n'est pas un LEG de l'épreuve. */
+    swimGate?: ContinuityGate | null;
     /** O-44 — le plafond de distance par séance dépend du FORMAT pour un non-débutant. */
     format?: string;
     /** R15.7-A — budget de séances DÉCLARÉ par l'athlète (`sessions_max`), pas le budget
@@ -183,6 +189,7 @@ export function reconcileDeclaredVolume(
   // prochain producteur de séances n'ait pas besoin de connaître la règle pour la respecter.
   _c30b.length = 0;
   _o44.semainesCourtes = 0; _o44.semainesCharge = 0;
+  _o85 = null;
   enforceMedicalHold(plan, !!ctx?.medHold);
   // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
   // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
@@ -441,6 +448,81 @@ export function reconcileDeclaredVolume(
         victim.sessions = [{ d: "rs", name: "OFF (la semaine de pic reste la plus grosse)", det: "repos — une phase de développement ne dépasse pas la phase de pic : c'est la périodisation, pas un réglage", steps: [], min: 0 }];
       }
     }
+  }
+
+  // O-85 — LA CHARGE D'ÉPAULE : LE VOLUME HEBDOMADAIRE DE NAGE A UNE BORNE.
+  //
+  // Elle vit ICI, au point de convergence, et pas dans la boucle de volume : c'est une garantie
+  // sur le LIVRÉ, et la leçon a été payée douze fois — une garantie vérifiée au milieu du
+  // pipeline ne vérifie que l'avant-dernier état.
+  //
+  // CE QU'ELLE PREND, et l'ordre est la politique (`prioriteFinancement` vue depuis le donneur) :
+  //   · JAMAIS un bloc ÉPINGLÉ (O-53/B-17 : la distance EST le stimulus, et le plan l'a annoncé) ;
+  //   · JAMAIS la sortie longue (le pivot de la semaine) ;
+  //   · les DÉVERSOIRS d'abord — les blocs faciles non épinglés, du plus gros au plus petit —
+  //     parce que c'est là que le volume s'est accumulé sans que rien ne le veuille (O-78 : une
+  //     « Nage récup courte » de 2 625 m) ;
+  //   · la qualité ENSUITE, et seulement si les déversoirs n'ont pas suffi ;
+  //   · JAMAIS sous le plancher de séance : si la borne n'est pas atteignable sans le franchir,
+  //     on s'arrête et on le DIT (`warnings`) — informer plutôt que casser un plancher (O-17).
+  //
+  // La FRÉQUENCE n'est jamais la monnaie : l'argument qui avait écarté un `MAX_SWIM_DAYS` tient
+  // toujours — nager souvent est bénin, voire souhaitable ; c'est le VOLUME qui charge l'épaule.
+  // Retirer une séance de nage pour tenir une borne de volume serait la prédiction du 19/08
+  // (« la nage est la victime par défaut ») commise par la garde censée la protéger.
+  if (ctx?.swimGate) {
+    let ecrete = 0, semaines = 0;
+    for (const wk of plan.weeks) {
+      const cap = swimWeeklyLoadCapM(ctx.swimGate, wk.num);
+      if (!cap) continue;
+      const metres = () => wk.days.reduce((t, d) => t + d.sessions.reduce((u, sx) =>
+        u + (sx.d === "sw" ? (sx.steps || []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0) : 0), 0), 0);
+      if (metres() <= cap) continue;
+      semaines++;
+      const avant = metres();
+      for (const qualite of [false, true]) {
+        for (let g = 0; g < 6 && metres() > cap; g++) {
+          const cands: { sx: V1Session; st: V1Step; m: number }[] = [];
+          for (const d of wk.days) for (const sx of d.sessions) {
+            if (sx.d !== "sw" || sx.long || !sx.steps) continue;
+            for (const st of sx.steps) {
+              if (st.role !== "body" || st.distanceM == null || st.bnd?.pinned) continue;
+              if (IS_QUALITY_ZONE(String(st.zone || "")) !== qualite) continue;
+              cands.push({ sx, st, m: (st.reps || 1) * st.distanceM });
+            }
+          }
+          if (!cands.length) break;
+          cands.sort((x, y) => y.m - x.m);
+          const trop = metres() - cap;
+          let pris = 0;
+          for (const c of cands) {
+            if (pris >= trop) break;
+            const seance = (c.sx.steps || []).reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+            const plancher = ctx.beginner ? C24B_MIN_SWIM_SESSION_BEGINNER_M : 750;
+            const marge = Math.max(0, seance - plancher);
+            if (marge < 25) continue;
+            const cible = Math.min(trop - pris, marge, c.m - 100);
+            if (cible < 25) continue;
+            if ((c.st.reps || 1) > 1) {
+              const next = Math.max(1, Math.floor((c.m - cible) / c.st.distanceM!));
+              pris += (c.st.reps! - next) * c.st.distanceM!;
+              c.st.reps = next;
+            } else {
+              const next = Math.max(100, Math.round((c.st.distanceM! - cible) / 25) * 25);
+              pris += c.st.distanceM! - next;
+              c.st.distanceM = next;
+            }
+            if (render) render(c.sx);
+          }
+          if (pris <= 0) break;
+        }
+      }
+      ecrete += avant - metres();
+      if (metres() > cap) warnings.push("Semaine " + wk.num + " : " + (metres() / 1000).toFixed(1)
+        + " km de natation, au-dessus des " + (cap / 1000).toFixed(1)
+        + " km que ton expérience en nage rend prudents — les planchers de séance empêchent de descendre plus bas sans supprimer une séance, et la fréquence en nage n'est pas ce qui charge l'épaule. Réduis une séance à la main si ton épaule parle.");
+    }
+    if (semaines > 0) _o85 = { semaines, metres: Math.round(ecrete) };
   }
 
   // D4 (banc v6) — UNE SEMAINE DE RÉCUP N'EST JAMAIS PLUS LOURDE QUE CELLE QU'ELLE ASSIMILE.
@@ -3905,7 +3987,13 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   const _spec30 = String(a.sport) === "run"
     ? longRunSpecificityFloor(fmt, r.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(a.vol_max ?? "")) || undefined)
     : null;
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport as string, "swimSessionFloors"), format: a.format, beginner: r.beginner, swimCapM: r.swimSessionCapM, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 } });
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport as string, "swimSessionFloors"), format: a.format, beginner: r.beginner, swimCapM: r.swimSessionCapM, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 },
+    // O-85 — LE DOMAINE EST DÉRIVÉ, PAS UNE LISTE DE SPORTS : la borne « k × distance de course »
+    // n'a de sens que si la nage est un LEG d'une épreuve multi-discipline. Un sprinteur qui
+    // prépare un 100 m nage trente fois sa distance, et c'est correct — lui appliquer la formule
+    // rendrait 400 m par semaine. La condition est donc « le sport a-t-il plus d'une
+    // discipline ? », ce qui la fera valoir d'office pour tout sport multi-discipline futur.
+    swimGate: sportModule(a.sport as string).disciplines.length > 1 ? (r.b17Gate ?? null) : null });
 
   for (const d of _c30b) r.decisions.push(d);
 

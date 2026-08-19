@@ -379,6 +379,36 @@ function* profiles() {
       dispo: "quotidienne", shift_ok: "oui", off_days: "non", doubles: "oui", terrain: "route" };
     yield { key: ["O-21b", "run", "10k", p].join("/"), sport: "run", a };
   }
+
+  // ---- Passe « ATHLÈTE RÉEL » (O-85 §2, 19/08/2026) -------------------------------------
+  //
+  // *« Ma configuration — `sessions_max` élevé, `doubles`, 70.3, nage limitante — n'existe dans
+  // aucun des 989 profils. C'est la neuvième A-2, et c'est la seule qui compte vraiment : le
+  // corpus couvre des formats et des niveaux, pas l'utilisateur qui existe. »* (fondateur)
+  //
+  // Mesuré avant d'écrire : sur les 989, **458 profils nagent, médiane 2,6 km/sem, p99 11,2 km,
+  // ZÉRO au-dessus de 12** — pendant que le plan réellement suivi en délivre 12,1. Le trou n'est
+  // pas une valeur extrême, c'est un CROISEMENT que rien ne produisait : beaucoup de séances ×
+  // jours doubles × format long × nage limitante. Tant qu'il n'y est pas, chaque garde peut être
+  // verte sur 989 profils et fausse sur le seul plan que quelqu'un suit.
+  //
+  // ⚠ CE PROFIL EST RECONSTITUÉ, PAS RELEVÉ, ET L'ÉCART EST PUBLIÉ. Le dépôt portait DEUX
+  // « profils du fondateur » divergents (le bloc `verify` d'O-71 et le défaut de
+  // `mesureProgression`) ; aucun ne reproduit les chiffres publiés (S1 9,8 h · nage 48 % · vélo
+  // 28 % · course 24 %). Celui-ci reprend le plus proche — le bloc O-71, seul à porter la
+  // STRUCTURE décrite — et rend S1 9,4 h · nage 54 % · vélo 33 % · course 13 %. C'est donc la
+  // FORME qui est couverte, pas l'état exact : la fixture deviendra littérale quand les champs
+  // manquants seront relevés dans l'app plutôt que devinés (règle de fixture : on ne remplit
+  // pas un champ vide, on le demande).
+  {
+    const a = { ...base(), format: "70.3", history: "confirme", level: "inter", intent: "competition",
+      vol_max: "20", vol_recent: "13", sessions_max: "12", dispo: "quotidienne", shift_ok: "oui",
+      off_days: "non", doubles: "oui", age: "35", sex: "H", weight: "85", terrain: "vallonne",
+      leg_swim_env: "lac", milieu: "bassin", longest_swim_m: "1000", longest_swim_known: "oui",
+      pace_known: "oui", pace: "4:42", ftp_known: "oui", ftp: "236", css_known: "oui", css: "2:02",
+      race_date: RACE_PASS_DATES[0] };
+    yield { key: ["REEL", "tri", "70.3", "nage-limitante"].join("/"), sport: "tri", a };
+  }
 }
 
 // ---- Normalisation canonique --------------------------------------------
