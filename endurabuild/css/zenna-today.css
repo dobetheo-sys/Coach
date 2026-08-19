@@ -456,8 +456,12 @@ body.theme-zenna #screen .zbar { display: flex; height: 36px; border-radius: 6px
 body.theme-zenna #screen .zseg {
   min-width: 14px; display: flex; align-items: center; justify-content: center; position: relative;
   clip-path: var(--cut-bevel);
+  /* O-61 — le libellé se TRONQUE plutôt que d'élargir son segment : la largeur est une
+     information (proportionnelle à la durée du bloc), le texte complet vit dans `title`
+     et le déroulé sous la barre (O-60). */
+  overflow: hidden;
 }
-body.theme-zenna #screen .znum { font-family: var(--zn-mono); font-size: 9px; font-weight: 700; color: rgba(0, 0, 0, .6); position: relative; z-index: 2; }
+body.theme-zenna #screen .znum { font-family: var(--zn-mono); font-size: 9px; font-weight: 700; color: rgba(0, 0, 0, .6); position: relative; z-index: 2; white-space: nowrap; }
 body.theme-zenna #screen .znum.light { color: rgba(255, 255, 255, .9); }
 body.theme-zenna #screen .zlabels { display: flex; justify-content: space-between; margin-top: 10px; gap: 8px; }
 body.theme-zenna #screen .zlabels span { font-family: var(--zn-mono); font-size: 9.5px; color: var(--zn-muted); }

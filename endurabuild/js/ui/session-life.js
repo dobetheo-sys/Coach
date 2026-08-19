@@ -421,9 +421,18 @@ export function heroSessionHTML(plan, todayIso) {
           // Le héros, un écran plus haut, l'affiche déjà : mesuré, les TROIS blocs sur trois
           // étaient communs mot pour mot (« Échauffement 10min montée progressive · 18min @
           // 147-160 bpm · Retour au calme 4min »).
-          // Sur une journée à PLUSIEURS séances, le héros ne détaille que la première : les
-          // suivantes gardent leur déroulé ici, sinon l'information n'existerait nulle part.
-          + (actives.length > 1 && x !== actives[0] ? techListHTML(techOf(x)) : "")
+          // ⚠ O-60 — CETTE PRÉMISSE N'EST VRAIE QU'EN MONO-SÉANCE, et la condition d'origine
+          // (`x !== actives[0]`) la supposait vraie partout. Sur un jour à PLUSIEURS séances,
+          // le héros affiche « puis <2e séance> » À LA PLACE du déroulé de la première — donc
+          // le déroulé de la 1re séance n'existait NULLE PART à l'écran. Mesuré sur le profil
+          // qui l'a trouvé (70.3, doubles) : 66 jours multi sur 66, et la 1re séance est la
+          // NAGE 66 fois sur 66 — d'où le constat « seule la nage n'a pas de détail » : la
+          // corrélation avec l'unité (mètres) était accidentelle, le mécanisme est la POSITION.
+          // L'hypothèse « le rendu teste durationMin » a été mesurée et RÉFUTÉE : 0 séance à
+          // det vide sur le plan entier. En multi-séances, la carte porte donc le déroulé de
+          // TOUTES les séances, la première comprise — c'est exactement le motif que la
+          // décision du 11/08 énonçait (« sinon l'information n'existerait nulle part »).
+          + (actives.length > 1 ? techListHTML(techOf(x)) : "")
           + "</div>";
       }).join("")
       + "</div>";

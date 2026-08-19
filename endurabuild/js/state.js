@@ -28,7 +28,10 @@ function ebNewPlanEntry(label){
 function ebSyncActive(){
   let e=S.plans.find(p=>p.id===S.activePlanId);
   if(!e){e=ebNewPlanEntry("");S.plans.push(e);S.activePlanId=e.id;}
-  e.sport=S.sport;e.answers=S.answers;e.tier=S.tier;e.step=S.step;e.started=S.started;e.onPlan=!!S.onPlan;
+  // O-59 — l'IDENTITÉ de l'étape est persistée à côté de l'indice : `step` seul est un
+  // ordinal dans une liste que chaque déploiement peut recomposer, et la restauration
+  // atterrissait alors sur un AUTRE écran. L'indice reste (repli quand l'id a disparu).
+  e.sport=S.sport;e.answers=S.answers;e.tier=S.tier;e.step=S.step;e.stepId=S.stepId||null;e.started=S.started;e.onPlan=!!S.onPlan;
   return e;
 }
 // Charge une entrée dans l'état de travail. Le plan généré est invalidé : il sera
@@ -37,7 +40,7 @@ function ebSyncActive(){
 function ebActivate(id){
   const e=S.plans.find(p=>p.id===id);if(!e)return false;
   S.activePlanId=id;S.sport=e.sport;S.answers=e.answers||{};S.tier=e.tier||"free";
-  S.step=e.step||0;S.started=!!e.started;S.onPlan=!!e.onPlan;S.currentPlan=null;S.showAllWeeks=false;
+  S.step=e.step||0;S.stepId=e.stepId||null;S.started=!!e.started;S.onPlan=!!e.onPlan;S.currentPlan=null;S.showAllWeeks=false;
   overlayShared(); // l'état corporel (forme du jour, douleur…) suit la personne, pas le plan
   return true;
 }

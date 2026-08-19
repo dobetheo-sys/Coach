@@ -895,8 +895,19 @@ function renderStep(){
   else p=Array.from({length:fT},()=>'<div class="pstep done"></div>').join("")+'<div class="psep">★</div>'+Array.from({length:pT},(_,i)=>'<div class="pstep prem '+(i<S.step?"done":i===S.step?"cur":"")+'"></div>').join("");
   $("progress").innerHTML=p;
   if($("tierBadge")){$("tierBadge").className="tier-badge "+(S.tier==="free"?"free":"premium");$("tierBadge").textContent=(S.tier==="free"?"● ":"★ ")+SPORTS[S.sport].nom+(S.tier==="free"?" · l'essentiel":" · réglage fin");}
+  // O-59 — LA POSITION SE RÉSOUT PAR IDENTITÉ AVANT D'AFFICHER : `S.stepId` survit au
+  // rechargement (state.js) et aux recompositions de la liste ; l'indice n'est que le repli
+  // quand l'id a disparu de la liste (étape retirée par un déploiement).
+  if(S.stepId){const i=steps.findIndex(x=>x.id===S.stepId);if(i>=0)S.step=i;}
   if(S.step>=steps.length){renderBlueprint();return;}
   const st=steps[S.step];
+  // O-59 — L'ÉTAPE AFFICHÉE EST IDENTIFIÉE PAR SON `id`, JAMAIS PAR SA POSITION. Les étapes
+  // sont DYNAMIQUES depuis U14 : `curSteps()` recompose la liste à partir des réponses, donc
+  // `S.step` est un indice dans une collection qui bouge — « un ordinal n'est une position que
+  // si la collection est stable ». Répondre pouvait insérer/retirer une étape en amont, et
+  // « suivant puis précédent » ne revenait pas sur le même écran. On enregistre l'IDENTITÉ au
+  // rendu ; les boutons de navigation la résolvent en indice AU MOMENT du clic (ci-dessous).
+  S.stepId=st.id;
   $("screen").innerHTML='<div class="card"><div class="eyebrow">'+st.eyebrow+'</div><h2>'+st.title+'</h2><div class="why">'+st.why+'</div>'+st.render()
     +'<div class="nav"><button class="btn" id="prevBtn" type="button" '+(S.step===0&&S.tier==="free"?'style="visibility:hidden"':'')+'>← Retour</button><button class="btn primary" id="nextBtn" type="button">Continuer →</button></div>'
     // U19 — ce que le bouton désactivé ne disait pas. `aria-live` parce que le message apparaît
@@ -921,8 +932,12 @@ function renderStep(){
   bindBackToPlan();
   { const g=$("genNowBtn"); if(g) g.onclick=()=>renderPlan(); }
   bindInputs($("screen"));if(st.branches)st.branches(S.answers);
-  $("prevBtn").onclick=()=>{if(S.step===0&&S.tier==="premium"){S.tier="free";S.step=buildFreeSteps().length;}else if(S.step===0){S.sport=null;S.started=false;document.body.dataset.sport="";}else S.step--;renderStep();};
-  $("nextBtn").onclick=()=>{S.step++;renderStep();};
+  // O-59 — la navigation résout l'indice PAR IDENTITÉ au moment du clic : entre le rendu et le
+  // clic, une réponse a pu recomposer la liste, et l'indice mémorisé pointerait ailleurs.
+  const stepIdx=()=>{const l=curSteps();const i=S.stepId?l.findIndex(x=>x.id===S.stepId):-1;return i>=0?i:Math.min(S.step,l.length-1);};
+  const allerA=(i)=>{const l=curSteps();S.step=i;S.stepId=l[i]?l[i].id:null;renderStep();};
+  $("prevBtn").onclick=()=>{const i=stepIdx();if(i===0&&S.tier==="premium"){S.tier="free";S.step=buildFreeSteps().length;S.stepId=null;renderStep();}else if(i===0){S.sport=null;S.started=false;document.body.dataset.sport="";renderStep();}else allerA(i-1);};
+  $("nextBtn").onclick=()=>allerA(stepIdx()+1);
   refreshNav();refreshTrail();
 }
 function rulesGrouped(rules){let h="";const hs=HEROS.map(id=>rules.find(r=>r.id===id)).filter(Boolean);
@@ -952,13 +967,15 @@ function renderBlueprint(){
       +'<div class="gate" style="background:var(--bg2)"><h3>★ Aller plus loin</h3><p>Sommeil, contraintes de semaine, tests, nutrition, courses intermédiaires : quelques écrans de plus pour calibrer plus finement. <b>Tout est inclus</b> — il n\'y a rien à payer, ici ni ailleurs.</p><button class="btn" id="goPremium" type="button">Affiner mon plan →</button></div>'
       +'<div class="nav"><button class="btn" id="prevBtn" type="button">← Modifier</button><button class="btn" id="restartBtn" type="button">Changer de sport</button></div></div>';
     $("screen").innerHTML=html;$("genBtn").onclick=()=>renderPlan();$("goPremium").onclick=()=>{S.tier="premium";S.step=0;renderStep();};
-    $("prevBtn").onclick=()=>{S.step--;renderStep();};$("restartBtn").onclick=()=>reset();
+    // O-59 — retour depuis le récapitulatif : la DERNIÈRE étape de la liste COURANTE, pas
+    // « l'indice d'avant moins un » — la liste a pu changer de longueur depuis.
+    $("prevBtn").onclick=()=>{S.step=curSteps().length-1;S.stepId=null;renderStep();};$("restartBtn").onclick=()=>reset();
   } else {
     // premium : on va DIRECT au plan, pas d'écran intermédiaire
     renderPlan();return;
   }
 }
-function reset(){S.sport=null;S.answers={};S.step=0;S.tier="free";S.started=false;S.showAllWeeks=false;S.onPlan=false;invalidatePlan();ebClear();document.body.dataset.intent="";document.body.dataset.sport="";renderStep();}
+function reset(){S.sport=null;S.answers={};S.step=0;S.stepId=null;S.tier="free";S.started=false;S.showAllWeeks=false;S.onPlan=false;invalidatePlan();ebClear();document.body.dataset.intent="";document.body.dataset.sport="";renderStep();}
 
 // `bestRollingMean` est exportée pour être MESURÉE (O-25) : c'est le cœur des deux
 // références lues dans un flux, et une fenêtre fausse se voit sur un chiffre plausible.

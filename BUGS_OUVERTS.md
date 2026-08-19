@@ -7723,6 +7723,110 @@ attendu: /C26c — plafond de temps dur\s+1[0-9][0-9] \/ 98[0-9]/
 cmd: npm run --silent mesure:morsure
 ```
 
+## LOT INTERFACE — O-60 · O-61 · O-59 · balayage moteur→affiché · ✅ **LIVRÉ** (19/08/2026)
+
+Les trois défauts d'usage du fondateur, spécifiés depuis une semaine, plus la pièce 4. Périmètre
+gelé, tenu.
+
+### O-60 — le détail de séance « ne s'affiche pas en natation » : l'hypothèse RÉFUTÉE, le mécanisme est la POSITION
+
+L'hypothèse du ticket (« le rendu teste `durationMin`, un bloc en mètres rend le vide ») a été
+mesurée AVANT d'écrire, comme le ticket le demandait — et **réfutée** : 0 séance à `det` vide sur
+le plan entier du profil concerné. Le vrai mécanisme :
+
+```
+jour MULTI-séances :  héros    → « puis <2e séance> » À LA PLACE du déroulé de la 1re
+                      carte    → sautait actives[0] au motif « le héros l'affiche déjà »
+                                 (vrai seulement en mono-séance)
+   ⇒ le déroulé de la PREMIÈRE séance n'existait NULLE PART à l'écran
+```
+
+Et sous `doubles`, la première séance du jour est **la nage 66 fois sur 66** (profil 70.3 du
+constat) : la corrélation avec l'unité était accidentelle — la discipline limitante du fondateur
+occupait simplement toujours la position perdante. *« Il doit ouvrir le plan HTML pour savoir
+quoi faire dans l'eau »* : c'était ça.
+
+Correctif : en multi-séances, la carte de détail porte le déroulé de TOUTES les séances, la
+première comprise — le motif même de la décision du 11/08 (« sinon l'information n'existerait
+nulle part »). Garde `§1quater` de `smoke-zenna` : un jour double est TROUVÉ DANS LE PLAN (pas
+deviné — la semaine ancrée est en début de rampe et n'en a pas), et chaque séance de la carte a
+son déroulé, la première en tête.
+
+**Trois fautes d'instrument, publiées — deux fois la même.** (1) Mon pipeline `| grep` a masqué
+le code de sortie de la suite — la faute exacte que ce registre venait de me voir corriger sur
+`run-all`. (2) et (3) : deux surcharges de profil déclarées par un canal qui ne les lit pas.
+`sessions_max` passé en champ de SAISIE alors que c'est un groupe d'OPTIONS → le répondeur
+générique prenait « 3 » en silence ; corrigé, le plan restait sans jour double — parce que
+`vol_max` et `vol_recent` sont AUSSI des options et retombaient sur « ≤4h » et « <2h ». Le plan
+mesuré était minuscule et n'était jamais celui que je croyais déclarer. À chaque fois, c'est le
+TÉMOIN (« AUCUN dans le plan ») qui l'a dit, au lieu de laisser le critère mesurer l'absence.
+
+### O-61 — la barre de zones porte ses libellés et ses grandeurs
+
+`1 │ 2 │ 1` était le résumé d'un détail qui manquait (O-60) — un résumé seul est incompréhensible
+par construction, et *« un numéro de zone est une convention que l'athlète n'a pas »*. Chaque
+segment porte désormais son libellé et sa grandeur, lus sur le BLOC : le rôle nomme l'échauffement
+(« Éch 300m ») et le retour au calme (« RC 200m »), le niveau nomme le corps (« Aéro 1975m »,
+« Seuil 4×6min »). Les cinq mots (Récup/Aéro/Tempo/Seuil/VO2) sont la LÉGENDE de l'axe que la
+barre affichait déjà (`ZONE_LEVEL`, dérivé des ancrages FC du moteur) — pas une table de zones
+parallèle. Un segment étroit TRONQUE son texte (la largeur est une information — proportionnelle
+à la durée) ; le libellé complet vit dans `title` et le déroulé sous la barre. Le contraste est
+revérifié par la garde WCAG existante de `smoke-zenna` : les libellés sont des nœuds texte, elle
+les balaie d'office.
+
+### O-59 — la navigation du questionnaire passe par l'IDENTITÉ
+
+Le constat (« après suivant puis précédent, on ne revient pas sur le même écran ») avait sa cause
+dans `state.js` : **`e.step = S.step` — l'INDICE est persisté et restauré**, contre une liste que
+chaque déploiement peut recomposer (les étapes sont dynamiques depuis U14). *« Un ordinal n'est
+une position que si la collection est stable »*, et sur ce produit — déployé à chaque push — elle
+ne l'est jamais longtemps.
+
+Correctif : `S.stepId` (l'`id` que chaque étape porte déjà) est enregistré au rendu, persisté à
+côté de l'indice, et **la position se résout par identité** — au rendu (restauration), et au clic
+(la liste a pu se recomposer entre le rendu et le clic). L'indice ne reste que comme repli quand
+l'id a disparu (étape retirée par un déploiement). Le retour depuis le récapitulatif vise « la
+dernière étape de la liste COURANTE », plus « l'indice d'avant moins un ».
+
+Garde dans `smoke-questionnaires`, trois volets : le geste du constat (suivant puis précédent,
+marques comprises — ma première écriture lisait la marque AVANT de répondre et comparait null à
+la réponse, rouge à raison) ; le rechargement en plein questionnaire ; et la contre-preuve du
+mécanisme — **l'indice persisté est corrompu (+3), l'identité intacte, l'écran restauré doit
+suivre l'identité**. C'est exactement ce qu'un déploiement produit : l'indice devient faux, l'id
+reste.
+
+**La famille, balayée** (le ticket le demandait) : `answers.done` indexé `"sem|jour|si"` (O-71,
+déjà enregistré), positions de paliers (O-58, déjà enregistré), `answers.tests` — EXEMPTÉ, la
+collection est append-only donc stable. Aucune autre occurrence trouvée dans `endurabuild/js`.
+
+### Contre-preuves — les deux mécanismes, vérifiés rouges par `npm run casser`
+
+```
+O-60  condition d'origine remise (x !== actives[0])
+      → « la PREMIÈRE séance a son déroulé » ROUGE (« VIDE »), « CHACUNE » 1/2,
+        le témoin (jour double trouvé, séances nommées) reste VERT
+
+O-59  ré-ancrage par identité neutralisé (la restauration redevient un indice nu)
+      → le volet 3 ROUGIT : l'écran restauré est « Tes niveaux (3 disciplines) » —
+        trois écrans plus loin, exactement le +3 injecté. Les volets 1-2 restent
+        VERTS, et c'est cohérent : l'indice suffit tant que la liste ne bouge pas —
+        le défaut ne vit que dans la recomposition, là où le volet 3 le cherche.
+```
+
+### Pièce 4 — le balayage moteur→affiché, et son unique instance mesurée
+
+Le balayage des modules UI (arithmétique sur css/ftp/pace, conversions locales) a rendu **une
+seule instance** de la famille « recalculé à l'affichage plutôt que lu depuis le livré » :
+`_blkMin` (plan-view.js), qui convertissait les mètres en minutes à **2 min/100 m** quel que soit
+l'athlète — la barre de zones d'une nage était donc fausse en proportions pour tout CSS ≠ 2:00.
+Sa propre dette (« à brancher », 14/08) attendait une mesure de sémantique : faite — **2 088
+blocs multi-répétitions sur 2 088, `_min` = reps × durée + récup (le TOTAL, R5.6a), 0 bloc sans
+`_min`**. Branché : `_blkMin` lit `st._min` d'abord, l'estimation ne survit qu'en repli pour un
+step d'avant-rendu. Le reste du balayage est propre : les autres hits lisent le livré (parseur
+d'affichage de la prédiction) ou sont des chemins d'import, pas des recalculs.
+
+---
+
 ## O-43 §5 — L'ISSUE 1 ÉCRITE, MESURÉE, ET **RETIRÉE** : elle échange une faute d'unité contre une autre
 
 Le §4 avait retenu l'issue 1 — *« borner la sonde sur une grandeur invariante par la conversion

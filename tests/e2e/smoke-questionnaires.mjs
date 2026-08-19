@@ -126,6 +126,80 @@ for (const sport of SPORTS) {
   await page.context().close();
 }
 
+// ── O-59 — LA NAVIGATION DU QUESTIONNAIRE PASSE PAR L'IDENTITÉ, JAMAIS PAR L'INDICE ─────────
+// Constat du fondateur (sur l'app DÉPLOYÉE) : « après suivant puis précédent, on ne revient pas
+// sur le même écran ». Les étapes sont dynamiques depuis U14, et `S.step` — un indice — était
+// PERSISTÉ tel quel (`e.step` dans state.js) : chaque déploiement qui recompose la liste faisait
+// atterrir la restauration sur un AUTRE écran. « Un ordinal n'est une position que si la
+// collection est stable. » Trois volets :
+//   1. le geste du constat : répondre → suivant → précédent revient sur le même écran, marques
+//      comprises ;
+//   2. la persistance : recharger en plein questionnaire revient sur le même écran ;
+//   3. la recomposition FORCÉE : on corrompt l'INDICE persisté (+3) en gardant l'identité —
+//      c'est exactement ce qu'un déploiement produit (l'indice devient faux, l'id reste) — et
+//      l'écran restauré doit suivre l'IDENTITÉ. Sans O-59 (indice seul), ce volet atterrit
+//      trois écrans plus loin : contre-preuve du mécanisme, pas d'un détail d'écriture.
+{
+  const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR" })).newPage();
+  const errs = [];
+  page.on("pageerror", (e) => errs.push(String(e)));
+  await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
+  for (let essai = 1; ; essai++) {
+    try { await page.evaluate(() => localStorage.clear()); break; }
+    catch (e) { if (essai >= 3) throw e; await page.waitForLoadState("networkidle"); }
+  }
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+  await page.click('.sport-card[data-sport="tri"]');
+  await page.waitForTimeout(250);
+  const titre = () => page.evaluate(() => (document.querySelector("#screen h2") || {}).textContent || "");
+  // avancer de deux écrans en répondant (le répondeur générique de la boucle principale)
+  const repondre = () => page.evaluate(async ({ r, s, fmt }) => {
+    const attendre = (ms) => new Promise((res) => setTimeout(res, ms));
+    for (const g of document.querySelectorAll(".opts[data-key]")) {
+      if (g.querySelector(".opt.sel")) continue;
+      const b = ((g.dataset.key === "format" ? fmt : r[g.dataset.key]) && g.querySelector('.opt[data-val="' + (g.dataset.key === "format" ? fmt : r[g.dataset.key]) + '"]')) || g.querySelector(".opt");
+      if (b) { b.click(); await attendre(25); }
+    }
+    for (const i of document.querySelectorAll("[data-input]")) {
+      if (i.value) continue;
+      let v = s[i.dataset.input];
+      if (v == null) { if (i.type === "date") v = new Date(Date.now() + 300 * 864e5).toISOString().slice(0, 10); else if (i.type === "number") { const lo = parseFloat(i.min), hi = parseFloat(i.max); v = String(isFinite(lo) && isFinite(hi) ? Math.round((lo + hi) / 2) : 10); } else v = "10"; }
+      i.value = v; i.dispatchEvent(new Event("input", { bubbles: true })); i.dispatchEvent(new Event("change", { bubbles: true })); await attendre(25);
+    }
+  }, { r: REPONSES, s: SAISIES, fmt: FORMAT.tri });
+  for (let i = 0; i < 2; i++) { await repondre(); await page.waitForTimeout(150); await page.click("#nextBtn"); await page.waitForTimeout(200); }
+  const ici = await titre();
+  // 1 — suivant puis précédent. La marque se lit APRÈS avoir répondu : la lire avant, c'est
+  // lire un écran vierge et comparer null à la réponse (ma première écriture, rouge à raison).
+  await repondre(); await page.waitForTimeout(150);
+  const marque = await page.evaluate(() => { const o = document.querySelector(".opts[data-key] .opt.sel"); return o ? o.dataset.val : null; });
+  await page.click("#nextBtn"); await page.waitForTimeout(200);
+  await page.click("#prevBtn"); await page.waitForTimeout(200);
+  const retour = await titre();
+  const marqueRetour = await page.evaluate(() => { const o = document.querySelector(".opts[data-key] .opt.sel"); return o ? o.dataset.val : null; });
+  ok(retour === ici, "O-59 — suivant puis précédent revient sur le même écran (« " + ici + " » → « " + retour + " »)");
+  ok(marqueRetour === marque, "…avec ses marques (option « " + marque + " » → « " + marqueRetour + " »)");
+  // 2 — rechargement en plein questionnaire
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  const apresReload = await titre();
+  ok(apresReload === ici, "O-59 — recharger revient sur le même écran (« " + apresReload + " »)");
+  // 3 — recomposition forcée : l'indice devient faux, l'identité reste — l'identité gagne
+  await page.evaluate(() => {
+    const st = JSON.parse(localStorage.getItem("eb_state_v2"));
+    const ap = st.plans.find((x) => x.id === st.activePlanId);
+    ap.step = (ap.step || 0) + 3;                      // ce qu'un déploiement produit
+    localStorage.setItem("eb_state_v2", JSON.stringify(st));
+  });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  const apresDecalage = await titre();
+  ok(apresDecalage === ici, "O-59 — indice corrompu (+3), identité intacte : l'écran restauré suit l'IDENTITÉ (« " + apresDecalage + " »)");
+  ok(errs.length === 0, "O-59 — aucune erreur JS" + (errs.length ? " : " + errs[0].slice(0, 100) : ""));
+  await page.context().close();
+}
+
 // ── U19 — LE BOUTON DÉSACTIVÉ DIT CE QU'IL ATTEND ────────────────────────────────────────
 //
 // Retour du fondateur (06/08/2026) : « questionnaire pour avancer ». Mesuré avant correction :

@@ -169,7 +169,7 @@ const SAI = { age: "35", weight: "78", height: "180", vol_max: "10", vol_recent:
 const JOUR_SEANCE = "2026-08-11"; // mardi — Sweetspot vélo, 24 min
 const JOUR_REPOS  = "2026-08-12"; // mercredi — Repos
 
-async function boot(reducedMotion, jour = JOUR_SEANCE) {
+async function boot(reducedMotion, jour = JOUR_SEANCE, repOver = null, saiOver = null) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR", isMobile: true, hasTouch: true, reducedMotion });
   const page = await ctx.newPage();
   const errors = [];
@@ -200,7 +200,7 @@ async function boot(reducedMotion, jour = JOUR_SEANCE) {
         if (v == null) { if (inp.type === "date") v = new Date(Date.now() + 300 * 864e5).toISOString().slice(0, 10); else if (inp.type === "number") { const lo = parseFloat(inp.min), hi = parseFloat(inp.max); v = String(isFinite(lo) && isFinite(hi) ? Math.round((lo + hi) / 2) : 10); } else v = "10"; }
         inp.value = v; inp.dispatchEvent(new Event("input", { bubbles: true })); inp.dispatchEvent(new Event("change", { bubbles: true })); await a(15);
       }
-    }, { r: REP, s: SAI });
+    }, { r: repOver ? { ...REP, ...repOver } : REP, s: saiOver ? { ...SAI, ...saiOver } : SAI });
     await page.waitForTimeout(120);
     if (await page.locator("#genBtn").count()) { await page.click("#genBtn"); break; }
     const n = page.locator("#nextBtn");
@@ -325,6 +325,84 @@ async function boot(reducedMotion, jour = JOUR_SEANCE) {
   await page.waitForTimeout(2600);
   const after = await page.evaluate(() => document.querySelectorAll(".zn-confetti,.zn-xp-float").length);
   ok(after === 0, "…et les particules se nettoient toutes seules (reste " + after + ")");
+  ok(errors.length === 0, "aucune erreur console" + (errors.length ? " — " + errors[0] : ""));
+  await ctx.close();
+}
+
+// ─────────── 1quater. JOUR À DEUX SÉANCES : chaque déroulé existe à l'écran (O-60) ───────────
+// Le constat du fondateur : « Nage vitesse affiche sa barre et RIEN », sur son plan déployé,
+// pendant que la séance vélo du même jour affiche ses blocs. L'hypothèse du ticket (« le rendu
+// teste durationMin ») a été MESURÉE ET RÉFUTÉE — 0 séance à det vide sur le plan entier. Le
+// mécanisme est la POSITION : sur un jour multi-séances, le héros affiche « puis <2e> » À LA
+// PLACE du déroulé de la première, et la carte de détail sautait `actives[0]` au motif que « le
+// héros l'affiche déjà » — vrai seulement en mono-séance. Et sous `doubles`, la 1re séance est
+// la NAGE 66 jours sur 66 : la corrélation avec l'unité (mètres) était accidentelle, la
+// discipline limitante du fondateur occupait simplement toujours la position perdante.
+// Le critère porte sur la PROPRIÉTÉ : chaque séance du jour a son déroulé à l'écran.
+{
+  // L'ENVELOPPE DU CONSTAT, par le canal OPTIONS : un jour double n'EXISTE que si le nombre de
+  // séances dépasse les jours (sessions_max « 8-9 ») ET que le volume le remplit (vol_max
+  // « 11-13h », vol_recent « 8-12h » — le profil du fondateur). ⚠ Ces trois clés sont des
+  // groupes d'OPTIONS, pas des champs libres : mes deux premières surcharges passaient par la
+  // SAISIE ou omettaient le volume, le répondeur générique prenait la PREMIÈRE option (« 3
+  // séances », « ≤4h ») en silence, et le plan mesuré — minuscule — n'avait aucun jour double.
+  // Deux fois le même défaut d'instrument : déclarer une valeur par un canal qui ne la lit pas.
+  const { ctx, page, errors } = await boot("no-preference", JOUR_SEANCE,
+    { doubles: "oui", sessions_max: "9", vol_max: "13", vol_recent: "10" });
+  const lireCarte = () => page.evaluate(() => {
+    const carte = [...document.querySelectorAll("#screen .card")]
+      .find((c) => /détail de la séance/i.test((c.querySelector(".eyebrow") || {}).textContent || ""));
+    if (!carte) return null;
+    // chaque <b> est une séance ; son déroulé est le .gd-det/.gd-steps qui suit dans SON bloc
+    return [...carte.querySelectorAll("b")].map((b) => {
+      const blocSeance = b.parentElement;
+      const det = blocSeance.querySelector(".gd-det, .gd-steps");
+      return { nom: b.textContent.trim(), detail: det ? det.textContent.trim().slice(0, 60) : "" };
+    });
+  });
+  // La date cible se LIT DANS LE PLAN, elle n'est pas devinée : la semaine ancrée est en début
+  // de rampe (3 séances), les doubles n'arrivent qu'avec le volume. On rejoue le plan depuis
+  // les réponses persistées (fonction pure, `plan_start` ancré) et on prend le premier jour à
+  // deux séances actives — puis on y déplace l'horloge : le plan persiste, seule la date bouge.
+  const jourDouble = await page.evaluate(() => {
+    const st = JSON.parse(localStorage.getItem("eb_state_v2") || "null");
+    const ap = st && st.plans && st.plans.find((x) => x.id === st.activePlanId);
+    const plan = ap && globalThis.EBV2 ? EBV2.buildPlan(ap.sport, ap.answers) : null;
+    if (!plan) return null;
+    for (const w of plan.weeks) for (const d of w.days)
+      if (d.date && d.sessions.filter((x) => x.d !== "rs" && !x.race).length >= 2) return d.date;
+    return null;
+  });
+  let seances = null;
+  if (jourDouble === JOUR_SEANCE) {
+    // le jour ancré EST un jour double : on lit l'écran tel que `boot` l'a laissé — recharger
+    // ici perdait l'onglet (ma première écriture : carte introuvable, témoin « () »).
+    seances = await lireCarte();
+  } else if (jourDouble) {
+    await page.clock.setFixedTime(new Date(jourDouble + "T09:00:00"));
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForTimeout(900);
+    await page.click('#ebTabbar .tabbtn[data-tab="today"]');   // le rechargement ne garantit pas l'onglet
+    await page.waitForTimeout(400);
+    for (let i = 0; i < 6; i++) {           // le check-in du nouveau jour
+      const n = await page.locator(".ck-opt").count();
+      if (!n) break;
+      await page.locator(".ck-opt").nth(Math.min(1, n - 1)).click();
+      await page.waitForTimeout(340);
+    }
+    await page.waitForTimeout(1400);
+    seances = await lireCarte();
+  }
+  // LE TÉMOIN AVANT LE CRITÈRE : sans jour double, le critère mesurerait l'absence (leçon T-47).
+  ok(seances && seances.length >= 2,
+    "1quater — un jour à DEUX séances existe (" + (jourDouble || "AUCUN dans le plan") + ") et la carte les nomme ("
+    + (seances || []).map((x) => x.nom).join(" · ") + ")");
+  if (seances && seances.length >= 2) {
+    ok(!!seances[0].detail,
+      "…la PREMIÈRE séance a son déroulé (O-60 : c'était elle qui n'en avait nulle part) — « " + (seances[0].detail || "VIDE") + " »");
+    ok(seances.every((x) => x.detail),
+      "…et CHACUNE a le sien (" + seances.filter((x) => x.detail).length + "/" + seances.length + ")");
+  }
   ok(errors.length === 0, "aucune erreur console" + (errors.length ? " — " + errors[0] : ""));
   await ctx.close();
 }

@@ -433,12 +433,26 @@ const ZONE_LEVEL = {
   // Z5 — VO2max / vitesse (hr null, RPE 9-10)
   "bk.vo2": 5, "rn.vo2": 5, "sw.speed": 5, "sw.vo2": 5, "tr.vam": 5,
 };
+// O-61 — LES CINQ MOTS DE LA BARRE. Ce n'est PAS une table de zones parallèle : c'est la
+// LÉGENDE de l'axe que la barre affiche déjà (`ZONE_LEVEL`, dérivé des ancrages FC du moteur).
+// Le fondateur : « un numéro de zone est une convention que l'athlète n'a pas » — `1 │ 2 │ 1`
+// n'était lisible que par qui connaissait la table. Cinq mots, un par niveau, même vocabulaire
+// que les zones du moteur (récup / aérobie / tempo / seuil / VO2).
+const ZONE_WORD = { 1: "Récup", 2: "Aéro", 3: "Tempo", 4: "Seuil", 5: "VO2" };
 export function znZoneBar(session, blkMin) {
   if (!session || !Array.isArray(session.steps) || !session.steps.length) return "";
   const segs = session.steps.map((st) => {
     const min = blkMin(st) || 0;
     const lvl = st.role === "warmup" || st.role === "cooldown" ? 1 : (ZONE_LEVEL[st.zone] || 2);
-    return { min, lvl };
+    // O-61 — le segment porte son libellé et sa GRANDEUR, tous deux lus sur le BLOC (jamais
+    // une table à côté) : le rôle nomme l'échauffement et le retour au calme, le niveau nomme
+    // le corps, et la grandeur est celle de la prescription (mètres ou minutes, reps comprises).
+    const reps = st.reps || 1;
+    const qty = st.durationMin != null ? Math.round(st.durationMin) + "min"
+      : st.distanceM != null ? Math.round(st.distanceM) + "m" : "";
+    const grandeur = qty ? (reps > 1 ? reps + "×" + qty : qty) : "";
+    const mot = st.role === "warmup" ? "Éch" : st.role === "cooldown" ? "RC" : (ZONE_WORD[lvl] || "");
+    return { min, lvl, label: (mot + " " + grandeur).trim() };
   }).filter((x) => x.min > 0);
   if (segs.length < 2) return "";
   const total = segs.reduce((t, x) => t + x.min, 0);
@@ -447,8 +461,12 @@ export function znZoneBar(session, blkMin) {
     // `flex` proportionnel à la durée, avec un plancher visuel : un bloc de 30 s doit rester
     // visible, sinon la barre ment par omission sur une séance à récup courtes.
     const pct = Math.max(3, Math.round((x.min / total) * 100));
-    return '<div class="zseg grow-x" style="flex:' + pct + ' 0 auto;background:var(--z' + x.lvl + ')">'
-      + '<span class="znum' + (x.lvl === 1 ? " light" : "") + '">' + x.lvl + "</span></div>";
+    // `title` porte le libellé complet : un segment étroit tronque son texte plutôt que de
+    // s'élargir (la LARGEUR est une information — proportionnelle à la durée), et le déroulé
+    // complet vit juste en dessous depuis O-60. La barre reste `aria-hidden` : elle est le
+    // résumé visuel d'un détail que le lecteur d'écran reçoit en toutes lettres.
+    return '<div class="zseg grow-x" style="flex:' + pct + ' 0 auto;background:var(--z' + x.lvl + ')" title="' + x.label + '">'
+      + '<span class="znum' + (x.lvl === 1 ? " light" : "") + '">' + x.label + "</span></div>";
   }).join("");
   return '<div class="zbar" aria-hidden="true">' + bar + "</div>";
 }

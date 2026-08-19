@@ -29,17 +29,15 @@ import { DISC, CHARGE } from "./icons.js";
 
 // Le MÊME vocabulaire que la carte « Répartition des intensités », quelques lignes plus bas —
 // une écriture de plus de ces trois hex serait la dette que Z-01 traque ; ici on les partage.
-/** Minutes d'un step (durée directe, ou distance convertie grossièrement). SURVIT à B1 :
- *  ce n'est pas le modèle TSS, c'est l'estimateur de LARGEUR de la barre de zones
- *  (session-life/znZoneBar) — proportionnel, donc tolérant à sa propre grossièreté.
- *  DETTE « À BRANCHER » (§6.2 du DOC_UNIQUE, tranché par MESURE le 14/08/2026) : le moteur
- *  ÉMET la durée des blocs à distance — chaque step porte `_min` (R5.6a : récup inter-blocs
- *  comprise ; sondé sur swim/demifond, 71 steps à distance, 71 `_min`). La conversion UI
- *  (2 min/100 m nage, 5 min/km course) ré-estime donc une sortie que le moteur possède —
- *  occurrence suivante de la RÈGLE 12, portée par l'UI et non par le moteur. Le branchement
- *  (`st._min` d'abord) attend sa propre mesure : la sémantique reps × `_min` doit être
- *  vérifiée avant de changer une proportion rendue. */
-function _blkMin(st){const r=st.reps||1;if(st.durationMin!=null)return r*st.durationMin;if(st.distanceM!=null)return st.d==="sw"?r*st.distanceM/100*2:r*st.distanceM/1000*5;return 0;}
+/** Minutes d'un step — LUES sur ce que le moteur émet, jamais ré-estimées (lot interface,
+ *  pièce 4). La dette « à brancher » du 14/08 attendait sa mesure : faite le 19/08/2026 sur
+ *  le golden — **2 088 blocs multi-répétitions sur 2 088, `_min` = reps × durée + récup**
+ *  (le TOTAL du bloc, R5.6a), 0 bloc sans `_min`. La sémantique est établie, on branche.
+ *  Le repli (durée × reps, puis la conversion grossière 2 min/100 m · 5 min/km) ne sert plus
+ *  qu'un step d'AVANT le rendu — un step rendu porte toujours `_min`. La conversion UI
+ *  ré-estimait une sortie que le moteur possède (règle 12 portée par l'UI) : la barre de
+ *  zones d'une nage était fausse pour tout athlète dont le CSS n'est pas 2:00/100 m. */
+function _blkMin(st){if(st._min!=null)return st._min;const r=st.reps||1;if(st.durationMin!=null)return r*st.durationMin;if(st.distanceM!=null)return st.d==="sw"?r*st.distanceM/100*2:r*st.distanceM/1000*5;return 0;}
 
 const CHARGE_CLASSES = [
   { k: "e", label: "facile", col: "#00a376" },

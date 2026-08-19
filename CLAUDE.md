@@ -560,6 +560,29 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**LOT INTERFACE livré — trois défauts d'usage, et l'hypothèse du premier était fausse** (document
+« LOT INTERFACE », 19/08/2026 — voir `BUGS_OUVERTS.md` « LOT INTERFACE », gardes `§1quater` de
+`smoke-zenna` et le bloc O-59 de `smoke-questionnaires`) : **O-60** — le détail de séance
+« absent en natation » : l'hypothèse du ticket (« le rendu teste `durationMin` ») MESURÉE AVANT
+D'ÉCRIRE et **réfutée** (0 det vide). Le mécanisme est la POSITION : sur un jour multi-séances, le
+héros affiche « puis X » à la place du déroulé de la 1re, et la carte sautait `actives[0]` — le
+déroulé de la première séance n'existait NULLE PART, et sous doubles la première est la NAGE
+66/66. La carte porte désormais le déroulé de toutes les séances. **O-61** — la barre de zones
+porte libellés et grandeurs lus sur le BLOC (« Éch 300m │ Aéro 1975m │ RC 200m ») ; les cinq mots
+sont la légende de l'axe `ZONE_LEVEL` déjà affiché, pas une table parallèle ; un segment étroit
+tronque, le déroulé vit dessous. **O-59** — la cause du constat était `e.step = S.step` dans
+`state.js` : l'INDICE persisté et restauré contre une liste que chaque déploiement recompose.
+`S.stepId` est enregistré au rendu, persisté, et la position se résout par IDENTITÉ (rendu et
+clic) ; l'indice n'est qu'un repli. Contre-preuve du mécanisme : indice corrompu (+3), identité
+intacte → l'écran suit l'identité ; sans le correctif, il atterrit trois écrans plus loin.
+**Pièce 4** — balayage moteur→affiché : une seule instance, `_blkMin` (2 min/100 m pour tout
+athlète) ; sémantique de `st._min` mesurée (2 088/2 088 = total du bloc, récup comprise) puis
+branchée — la barre de zones d'une nage était fausse en proportions pour tout CSS ≠ 2:00.
+**Quatre fautes d'instrument publiées**, dont deux fois la même : une valeur déclarée par un canal
+qui ne la lit pas (`sessions_max` en saisie alors que c'est une OPTION → « 3 » pris en silence ;
+puis `vol_max`/`vol_recent`, aussi des options → plan minuscule sans jour double). À chaque fois
+c'est le TÉMOIN qui l'a dit. Moteur INTACT (`src/` byte-identique, golden 0 écart).
+
 **O-43 §5 + O-79 — l'issue 1 écrite puis RETIRÉE, et une séance qui mentait sur son intensité**
 (arbitrage « O-43 EST SUR LE CHEMIN CRITIQUE », 19/08/2026 — voir `BUGS_OUVERTS.md` « O-43 §5 »
 et « O-79 », mesures `npm run mesure:manque`) : le §4 d'O-43 avait retenu l'issue 1 comme la seule
