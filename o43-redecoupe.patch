@@ -1,0 +1,346 @@
+diff --git a/src/generator/planGenerator.ts b/src/generator/planGenerator.ts
+index d509167..0279fd5 100644
+--- a/src/generator/planGenerator.ts
++++ b/src/generator/planGenerator.ts
+@@ -19,7 +19,7 @@ import {
+   hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS,
+ } from "../engine/constraintMatrix.ts";
+ import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
+-import { renderSess, stepMeters, stepWorkMin, zoneSpeedRatio, type PaceRefs, type Refs } from "./renderer.ts";
++import { renderSess, stepAccountMin, stepMeters, stepWorkMin, zoneSpeedRatio, type PaceRefs, type Refs } from "./renderer.ts";
+ import { sessionLoad, intensitySplit, zoneClass, type AthleteRefs } from "../engine/loadModel.ts";
+ import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS, syncReturnRecovery } from "../engine/trailModel.ts";
+ import { buildDays, type GenDay } from "./weekBuilder.ts";
+@@ -150,7 +150,18 @@ export function reconcileDeclaredVolume(
+    */
+   const _labelCut = new Map<number, number>();
+   const MIN_WORTH_MIN = 15;
+-  const dayMin = (d: V1Day) => d.sessions.reduce((u, sx) => u + (sx.min || 0), 0);
++  // O-43 (redécoupe) — LE VOLUME HEBDOMADAIRE SE COMPARE EN MONNAIE DE COMPTE, ICI AUSSI.
++  // La boucle de construction égalise les semaines au COMPTE (blocs en distance au repère
++  // déclaré) ; re-juger ces mêmes semaines au prix RÉEL des zones re-litige ses décisions avec
++  // une autre unité — mesuré sur swim/sprint/debutant : l'écart d'unité (~10 %) traversait les
++  // coupes tout-ou-rien de dominance (A2/I1, D2, R3.13) et rendait un plan à 2 séances de
++  // 15 min pour une cible de 0,9 h. Sans `ctx.refs`, on retombe sur `sx.min` (réel), le
++  // comportement historique. Les règles de SÉANCE (planchers, doses, I14) restent en réel :
++  // elles sont physiologiques, pas comptables.
++  const _acctRefs = ctx?.refs ? { css: ctx.refs.cssSecPer100m, thrPace: ctx.refs.thrPaceSecPerKm } : null;
++  const sessAcct = (sx: V1Session): number =>
++    _acctRefs && sx.steps && sx.steps.length ? sx.steps.reduce((t, st) => t + stepAccountMin(st, sx.d, _acctRefs), 0) : (sx.min || 0);
++  const dayMin = (d: V1Day) => d.sessions.reduce((u, sx) => u + sessAcct(sx), 0);
+   const weekMinOf = (wk: V1Week) => wk.days.reduce((t, d) => t + dayMin(d), 0);
+   const weekH = (wk: V1Week) => Math.round((weekMinOf(wk) / 60) * 10) / 10;
+ 
+@@ -363,7 +374,7 @@ export function reconcileDeclaredVolume(
+       for (let g = 0; g < 3 && wm(wk) > peakBest; g++) {
+         const cand = wk.days.filter((d) => d.sessions.some((sx) => sx.d !== "rs" && !sx.long && !sx.race && !sx.brick));
+         if (cand.length <= 2) break;
+-        const dayMinOf = (d: V1Day) => d.sessions.reduce((t, sx) => t + (sx.min || 0), 0);
++        const dayMinOf = dayMin; // O-43 — élection au compte, comme partout
+         const victim = cand.reduce((x, y) => (dayMinOf(y) < dayMinOf(x) ? y : x));
+         victim.charge = "off";
+         victim.slot = "off";
+@@ -2325,6 +2336,16 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+   }
+ 
+   const weekMin = (wd: GenDay[]) => wd.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0);
++  // O-43 (redécoupe) — LA MONNAIE DE COMPTE. Tout ce qui COMPARE une semaine à une cible dérivée
++  // des DÉCLARATIONS (courbe, cliquets de croissance sur le livré, sondes de capacité) mesure en
++  // minutes de COMPTE : les blocs prescrits en distance au repère déclaré, jamais au prix de
++  // zone. Les DESCRIPTEURS (volReal, volPeak, s.min affiché) restent en minutes RÉELLES — un
++  // descripteur décrit, il ne pilote pas (T-16c). Les passes semaine↔semaine de
++  // `reconcileDeclaredVolume` restent réelles : leurs deux côtés sont dans la même unité quelle
++  // que soit la base, et les laisser en réel les garde alignées sur ce que l'auditeur compte.
++  const sessionAccountMin = (s: V1Session) =>
++    s.steps && s.steps.length ? s.steps.reduce((t, b) => t + stepAccountMin(b, s.d, r.baseRefs), 0) : (s.min || 0);
++  const weekAccount = (wd: GenDay[]) => wd.reduce((t, d) => t + d.sessions.reduce((u, s) => u + sessionAccountMin(s), 0), 0);
+   // D3 (audit v6) — en NATATION, la métrique de charge de l'auditeur (récup entre
+   // répétitions comprise) diverge fortement de s.min : sur la fenêtre saturée du débutant,
+   // le générateur croyait la semaine lisse là où l'auditeur voyait un saut. Les passes de
+@@ -2376,13 +2397,16 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+       _capScale = 1;
+       for (let it = 0; it < 4; it++) {
+         renderWeek(clone);
+-        const cur = weekMin(clone) / 60;
++        const cur = weekAccount(clone) / 60;
+         if (cur <= 0) break;
+         scaleWeekBody(clone, (peakH * 2) / cur); // pousser vers un cible inatteignable → saturation aux caps
+       }
+       clampWeekBody(clone);
+       renderWeek(clone);
+-      let capacityH = weekMin(clone) / 60;
++      // O-43 — la capacité se mesure en monnaie de COMPTE : les plafonds de nage sont des
++      // MÈTRES, la re-tarification d'une zone ne doit pas déplacer ce que la sonde annonce.
++      // La comparaison en face (`peakH`) vient des déclarations : même monnaie des deux côtés.
++      let capacityH = weekAccount(clone) / 60;
+       // R13.5 — LA SONDE MESURE AUSSI LE CHEMIN, PAS SEULEMENT LE SOMMET. Elle sondait la
+       // semaine de PIC seule : avec une épaule déclarée, les séances de substitution des
+       // phases base/dev/spec plafonnent ~40 % plus bas que celles du pic, et la progression
+@@ -2401,13 +2425,13 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+           _capScale = 0.9;
+           for (let it = 0; it < 4; it++) {
+             renderWeek(clone2);
+-            const cur = weekMin(clone2) / 60;
++            const cur = weekAccount(clone2) / 60;
+             if (cur <= 0) break;
+             scaleWeekBody(clone2, (peakH * 2) / cur);
+           }
+           clampWeekBody(clone2);
+           renderWeek(clone2);
+-          const specCapH = weekMin(clone2) / 60;
++          const specCapH = weekAccount(clone2) / 60;
+           if (specCapH > 0) capacityH = Math.min(capacityH, specCapH * 1.15);
+           _capScale = 1;
+         }
+@@ -2561,7 +2585,8 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+       const candP = cand.filter((d) => !d.sessions.some((s) => estCreneauProtege(s, r.profile.sport as string)));
+       if (candP.length) cand = candP;
+     }
+-    const dayMin = (d2: GenDay) => d2.sessions.reduce((t, s) => t + (s.min || 0), 0);
++    // O-43 — l'élection est au COMPTE : « le plus léger » ne dépend pas de la tarification.
++    const dayMin = (d2: GenDay) => d2.sessions.reduce((t, s) => t + sessionAccountMin(s), 0);
+     const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
+     victim.charge = "off";
+     victim.slot = "off";
+@@ -2572,7 +2597,9 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+   // minRemainMin : ne jamais couper en-dessous (une coupe trop profonde crée le saut
+   // de charge qu'elle voulait éviter, mesuré +87% sur bike/crit).
+   const cutSmallestSessionIn = (wd2: GenDay[], minRemainMin = 0): boolean => {
+-    const cur = weekMin(wd2);
++    // O-43 — `minRemainMin` arrive des appelants en monnaie de COMPTE (D2 compare des semaines
++    // au compte) : la garde « ne pas couper en dessous » se mesure dans la même monnaie.
++    const cur = weekAccount(wd2);
+     let victim: { d: GenDay; si: number; min: number } | null = null;
+     // R5.2 — on ÉVITE d'orpheliner la discipline principale (`keepMain`), puis on repasse sans
+     // ce garde si c'était la seule coupe possible : orienter, jamais interdire.
+@@ -2599,7 +2626,9 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+               // principale : préférée à la coupe, jamais interdite (le repli keepMain=false coupe).
+               if (keepMain && _keepTaperSwim && wd2[0]?.phaseId === "taper" && s.d === "sw"
+                 && !wd2.some((o) => o.sessions.some((x) => x !== s && x.d === "sw"))) return;
+-              const m = s.min || 0;
++              // O-43 — `min` est l'ordre d'élection ET la valeur de la garde `minRemainMin`,
++              // en monnaie de COMPTE comme les bornes des appelants (règle 14).
++              const m = sessionAccountMin(s);
+               if (!victim || m < victim.min) victim = { d, si, min: m };
+             });
+           }
+@@ -2700,10 +2729,11 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+       // seulement : une semaine proratisée N2 ne peut pas porter le pic)
+       if (wd.length >= 7 && (!_cibleMax || targetH > _cibleMax.h)) _cibleMax = { h: targetH, src: _srcW };
+     }
+-    // R3.3 — ajuster le corps des séances à la cible (itératif)
++    // R3.3 — ajuster le corps des séances à la cible (itératif). O-43 : la cible vient des
++    // déclarations, la semaine se mesure donc en monnaie de COMPTE — même unité des deux côtés.
+     for (let it = 0; it < 5; it++) {
+       renderWeek(wd);
+-      const cur = weekMin(wd) / 60;
++      const cur = weekAccount(wd) / 60;
+       if (cur <= 0 || targetH <= 0) break;
+       const f = targetH / cur;
+       if (f > 0.99 && f < 1.01) break;
+@@ -2711,11 +2741,12 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+     }
+     clampWeekBody(wd);
+     renderWeek(wd);
+-    // C3 — si les planchers longue débordent, réduire le corps non-longue
++    // C3 — si les planchers longue débordent, réduire le corps non-longue (capH est déclaré :
++    // les deux côtés en monnaie de compte, O-43)
+     for (let g = 0; g < 3; g++) {
+-      const vh = weekMin(wd) / 60;
++      const vh = weekAccount(wd) / 60;
+       if (vh <= capH * 1.03) break;
+-      const longH = wd.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.long && s.d !== "rs" ? s.min || 0 : 0), 0), 0) / 60;
++      const longH = wd.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.long && s.d !== "rs" ? sessionAccountMin(s) : 0), 0), 0) / 60;
+       const nlH = vh - longH, room = Math.max(0, capH * 1.0 - longH);
+       if (nlH <= 0) break;
+       wd.forEach((d) => d.sessions.forEach((s) => {
+@@ -2786,8 +2817,8 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+       // derrière. On rend d'abord les mètres que le plancher a ajoutés, en réduisant les
+       // séances AU-DESSUS du plancher (jamais en dessous, jamais la longue) ; la fréquence ne
+       // cède que si les mètres ne suffisent pas.
+-      for (let g = 0; g < 3 && ph.id !== "peak" && raised.length && weekMin(wd) > targetH * 60 * 1.03; g++) {
+-        const overM = ((weekMin(wd) - targetH * 60 * 1.01) / 60) * 3000; // minutes → ~mètres (css ~2min/100m)
++      for (let g = 0; g < 3 && ph.id !== "peak" && raised.length && weekAccount(wd) > targetH * 60 * 1.03; g++) {
++        const overM = ((weekAccount(wd) - targetH * 60 * 1.01) / 60) * 3000; // minutes → ~mètres (css ~2min/100m)
+         const cands = wd.flatMap((d) => d.sessions)
+           .filter((s) => s.d === "sw" && !s.long && s.steps && !raised.some((x) => x.s === s))
+           .map((s) => ({ s, m: (s.steps || []).reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0) }))
+@@ -2805,7 +2836,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+           gaveM += give;
+         }
+         if (gaveM > 0) renderWeek(wd);
+-        if (weekMin(wd) <= targetH * 60 * 1.03) break;
++        if (weekAccount(wd) <= targetH * 60 * 1.03) break;
+         // Cette coupe ne prend JAMAIS une séance de qualité. Elle existe pour absorber le
+         // gonflement dû au plancher piscine (C24), et elle prenait la plus COURTE des séances
+         // remontées — qui se trouve être la VO2max en nage (8×50 m, la seule assez petite pour
+@@ -2819,7 +2850,11 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+         const easyRaised = raised.filter((x) => !(x.s.steps || []).some((b) => b.role === "body" && IS_QUALITY_ZONE(String(b.zone || ""))));
+         if (!easyRaised.length) break;
+         raised = easyRaised;
+-        raised.sort((x, y) => (x.s.min || 0) - (y.s.min || 0));
++        // O-43 — élection au COMPTE : après remontée au plancher, toutes les candidates portent
++        // ~600 m et seul le prix de leur mix de zones les départageait — une re-tarification
++        // pure échangeait la victime (« Récup eau » ↔ « Volume aérobie »), et la composition
++        // de la semaine 1 cascadait sur tout le plan via le cliquet de croissance.
++        raised.sort((x, y) => sessionAccountMin(x.s) - sessionAccountMin(y.s));
+         const victim = raised.shift()!;
+         if (victim.d.forced || victim.s.long) continue;
+         const idx = victim.d.sessions.indexOf(victim.s);
+@@ -2886,7 +2921,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+     // R3.13 — affûtage : si les planchers bloquent, la fréquence cède
+     if (ph.id === "taper" && _maxChargeMin > 0) {
+       for (let g = 0; g < 3; g++) {
+-        if (weekMin(wd) <= _maxChargeMin * R313_TAPER_MAX_VS_PEAK) break;
++        if (weekAccount(wd) <= _maxChargeMin * R313_TAPER_MAX_VS_PEAK) break;
+         const active = wd.filter((d) => d.charge !== "off" && d.sessions.some((s) => s.d !== "rs"));
+         // C13c — le plancher d'échauffement de 10 min alourdit mécaniquement les séances
+         // d'affûtage (qui sont courtes : rappels d'allure, lignes droites). Sur les petits
+@@ -2906,7 +2941,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+             && !wd.some((o) => o !== d && o.sessions.some((s) => s.d === "sw"))));
+           if (spared.length) cand = spared;
+         }
+-        const dayMin = (d2: GenDay) => d2.sessions.reduce((t, s) => t + (s.min || 0), 0);
++        const dayMin = (d2: GenDay) => d2.sessions.reduce((t, s) => t + sessionAccountMin(s), 0); // O-43 — élection au compte
+         const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
+         victim.charge = "off";
+         victim.slot = "off";
+@@ -2919,11 +2954,11 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+     // si les planchers bloquent, une séance (pas un jour) cède — en tri, les jours
+     // d'affûtage sont tous « dur », la coupe par jour ne trouvait aucun candidat.
+     if (ph.id === "taper" && _lastWeekMin > 0) {
+-      for (let g = 0; g < 6 && weekMin(wd) > _lastWeekMin; g++) {
+-        scaleWeekBody(wd, Math.max(0.6, (_lastWeekMin * 0.97) / weekMin(wd)));
++      for (let g = 0; g < 6 && weekAccount(wd) > _lastWeekMin; g++) {
++        scaleWeekBody(wd, Math.max(0.6, (_lastWeekMin * 0.97) / weekAccount(wd)));
+         renderWeek(wd);
+       }
+-      for (let g = 0; g < 3 && weekMin(wd) > _lastWeekMin && nSessIn(wd) > 2; g++) {
++      for (let g = 0; g < 3 && weekAccount(wd) > _lastWeekMin && nSessIn(wd) > 2; g++) {
+         if (!cutSmallestSessionIn(wd)) break;
+         renderWeek(wd);
+       }
+@@ -2938,16 +2973,16 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+         : (_prevChargeMin > 0 ? _prevChargeMin * C22_MAX_WEEKLY_GROWTH : Infinity);
+       // 1) réduire les corps de séance vers le cap livré (D3 — sur les petites semaines à
+       // 3 jours, il n'y a rien à couper : la réduction doit mordre d'abord)
+-      for (let g = 0; g < 3 && Number.isFinite(delivCapMin) && weekMin(wd) > delivCapMin + 1; g++) {
+-        const before = weekMin(wd);
++      for (let g = 0; g < 3 && Number.isFinite(delivCapMin) && weekAccount(wd) > delivCapMin + 1; g++) {
++        const before = weekAccount(wd);
+         scaleWeekBody(wd, Math.max(0.8, delivCapMin / before));
+         renderWeek(wd);
+-        if (before - weekMin(wd) < 0.5) break;
++        if (before - weekAccount(wd) < 0.5) break;
+       }
+       // 2) récup/affûtage : la fréquence peut descendre à 2 jours actifs (la fraîcheur
+       // prime) ; semaine de charge : jamais sous 3 (la régularité prime).
+       const minActive = isRW || ph.id === "taper" ? 2 : 3;
+-      for (let g = 0; g < 4 && weekMin(wd) > delivCapMin + 1; g++) {
++      for (let g = 0; g < 4 && weekAccount(wd) > delivCapMin + 1; g++) {
+         if (!cutLightestEasyDay(wd, isRW ? "une semaine de récupération n'est jamais plus chargée que la précédente" : ph.id === "taper" ? "l'affûtage ne remonte jamais" : "la progression reste ≤ +10% de semaine en semaine", minActive)) break;
+         renderWeek(wd);
+       }
+@@ -2965,19 +3000,21 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+       // Le plafond `min(cible, semaine précédente)` préserve la décroissance R5.3 et D4.
+       {
+         const refillCap = Math.min(Number.isFinite(delivCapMin) ? delivCapMin : Infinity, targetH * 60);
+-        for (let it = 0; it < 3 && Number.isFinite(refillCap) && weekMin(wd) < refillCap * 0.97; it++) {
+-          const cur = weekMin(wd);
++        for (let it = 0; it < 3 && Number.isFinite(refillCap) && weekAccount(wd) < refillCap * 0.97; it++) {
++          const cur = weekAccount(wd);
+           if (cur <= 0) break;
+           scaleWeekBody(wd, (refillCap * 0.99) / cur);
+           renderWeek(wd);
+-          if (weekMin(wd) - cur < 0.5) break; // les plafonds de séance bloquent : on s'arrête là
++          if (weekAccount(wd) - cur < 0.5) break; // les plafonds de séance bloquent : on s'arrête là
+         }
+       }
+     }
+ 
+     const volReal = Math.round((weekMin(wd) / 60) * 10) / 10;
+-    if (!isRW && ph.id !== "taper") _maxChargeMin = Math.max(_maxChargeMin, weekMin(wd));
+-    _lastWeekMin = weekMin(wd);
++    // O-43 — les cliquets re-entrent dans targetH (croissance ≤ +10 % sur le LIVRÉ, décroissance
++    // de récup/affûtage) : ils se mesurent en monnaie de COMPTE, comme la cible qu'ils bornent.
++    if (!isRW && ph.id !== "taper") _maxChargeMin = Math.max(_maxChargeMin, weekAccount(wd));
++    _lastWeekMin = weekAccount(wd);
+     if (!isRW && ph.id !== "taper") _prevChargeMin = _lastWeekMin;
+     
+     wl.push({ num: w + 1, phase: ph, vol: volReal, vol_declared: Math.round(targetH * 10) / 10, vol_real: volReal, days: wd, isRecup: isRW });
+@@ -2989,7 +3026,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+   // chasse (mauvaise semaine, nouvelles violations). Ici : la fréquence de la semaine
+   // fautive cède, jamais celle du peak ; et l'affûtage repasse sous R3.13 du pic re-mesuré.
+   {
+-    const wmW = (w: V1Week) => weekMin(w.days as GenDay[]);
++    const wmW = (w: V1Week) => weekAccount(w.days as GenDay[]); // O-43 — dominance jugée au compte
+     const nSess = (w: V1Week) => nSessIn(w.days as GenDay[]);
+     // Sur les petits plans, la cadence de récup peut tomber PILE sur la semaine de phase
+     // peak : la référence devient alors la meilleure semaine peak tout court — sinon la
+@@ -4086,16 +4123,17 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
+             > (x.days as GenDay[]).reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0) ? y : x), null);
+         if (wPic) {
+           const clone = structuredClone(wPic.days as GenDay[]);
+-          const avant = weekMin(clone);
++          const avant = weekAccount(clone);
+           for (let it = 0; it < 4; it++) {
+             renderWeek(clone);
+-            const cur = weekMin(clone) / 60;
++            const cur = weekAccount(clone) / 60;
+             if (cur <= 0) break;
+             scaleWeekBody(clone, (Math.max(peakH, cur) * 2) / cur); // cible inatteignable → saturation aux plafonds
+           }
+           clampWeekBody(clone);
+           renderWeek(clone);
+-          const rendu = weekMin(clone) / 60;
++          // O-43 — même monnaie que `_sondeCapH`, qu'elle vient plafonner : le COMPTE.
++          const rendu = weekAccount(clone) / 60;
+           // la re-sonde ne peut que DESCENDRE le plafond structurel : si la semaine livrée porte
+           // plus que ce que la première sonde annonçait, c'est la première qui sous-estimait, et
+           // l'écart relève du même ticket — on ne remonte pas un plafond avec une mesure aval.
+diff --git a/src/generator/renderer.ts b/src/generator/renderer.ts
+index fbe8ff5..7176c63 100644
+--- a/src/generator/renderer.ts
++++ b/src/generator/renderer.ts
+@@ -248,6 +248,41 @@ export function stepMin(st: V1Step, disc: string, baseRefs: PaceRefs): number {
+   return stepWorkMin(st, disc, baseRefs) + rec;
+ }
+ 
++/**
++ * O-43 (redécoupe) — LES MINUTES DE COMPTE d'un bloc : la monnaie de la COMPTABILITÉ de volume,
++ * jamais celle de l'affichage.
++ *
++ * Le miroir exact de `stepMin`, à UNE différence près : un bloc prescrit en DISTANCE est
++ * converti UNE FOIS au repère déclaré de l'athlète (CSS, allure seuil), JAMAIS à l'allure
++ * ajustée par zone. 2 000 m pèsent donc le même nombre de minutes qu'ils soient nagés facile
++ * ou au seuil — la composition n'entre plus dans la mesure.
++ *
++ * Pourquoi deux monnaies (arbitrage O-43, cadrage mesuré par `npm run mesure:circularite`) :
++ * `stepMin` rend la durée RÉELLE (zone-ajustée, O-42) — c'est ce que l'athlète vit, ce que
++ * l'auditeur compte, ce que `s.min` affiche. Mais la sonde de capacité et la boucle de volume
++ * COMPARENT des semaines à des cibles dérivées des DÉCLARATIONS, et une déclaration ne connaît
++ * pas la composition en zones : elle ne s'ancre que sur le repère. Mesurer le livré au prix des
++ * zones contre une cible au repère faisait de la re-tarification d'une zone un levier sur le
++ * plan (T-34 : +16 % sur `sw.easy` déplaçait un jour d'entraînement). La leçon de la première
++ * écriture (O-43 §5, RETIRÉE) est que corriger UN SEUL côté de la comparaison est une faute
++ * d'unité : ici les DEUX côtés — la cible ET la mesure du livré — parlent la même monnaie.
++ *
++ * La condition porte sur la PROPRIÉTÉ (bloc prescrit en distance), pas sur la discipline :
++ * la course prescrit 2 % de ses minutes en mètres (783 blocs mesurés), et un lot futur qui en
++ * prescrirait davantage doit tomber dans la même règle sans qu'on y revienne.
++ */
++export function stepAccountMin(st: V1Step, disc: string, baseRefs: PaceRefs): number {
++  const reps = st.reps || 1;
++  const rec = st.role === "body" && reps > 1 ? (reps - 1) * (st.recoveryMin || 0) : 0;
++  if (st.durationMin) return reps * st.durationMin + rec;
++  if (st.distanceM) {
++    const d = st.d || disc;
++    if (d === "sw") return ((reps * st.distanceM) / 100) * ((baseRefs.css || 130) / 60) + rec;
++    return ((reps * st.distanceM) / 1000) * ((baseRefs.thrPace || 330) / 60) + rec;
++  }
++  return rec;
++}
++
+ interface RenderableSession extends V1Session {
+   plainBody?: boolean;
+   runInj?: boolean;

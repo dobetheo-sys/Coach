@@ -8569,3 +8569,86 @@ correctif est celui déjà appliqué à `smoke-r4` et `smoke-avatar` en V5/R27 :
 n'identifie jamais sa cible par un LIBELLÉ**, il la trouve par une propriété (une zone, un
 marqueur de sortie) et publie le nom qu'il a trouvé. Un libellé est une chaîne d'interface : il
 change pour de bonnes raisons, et il changera encore.
+
+## O-43 §6 — LA REDÉCOUPE ÉCRITE EN TROIS TEMPS, MESURÉE, ET **ARRÊTÉE PAR LA RÈGLE D'ARRÊT** : la tarification réelle FINANÇAIT le manque structurel · 🔴 **LOT 1 BLOQUÉ — l'ordre s'inverse, le plafond structurel d'abord** (19/08/2026)
+
+Le lot 1 de la file (« la nage entre dans la capacité par ses MÈTRES, convertis une fois au
+repère déclaré ») a été écrit dans sa forme complète, en trois incréments mesurés chacun par
+`mesure:circularite` §B (re-tarifer `sw.easy` +16 %, une comptabilité pure) et bissectés par la
+trace. **Le moteur est RETIRÉ (`src/` byte-identique) ; le diff complet des trois écritures est
+conservé dans `o43-redecoupe.patch`** (346 lignes : `stepAccountMin` dans `renderer.ts`, la
+monnaie de compte dans les cibles, sondes, cliquets, élections et `reconcileDeclaredVolume`).
+
+**Ce que la forme complète OBTIENT — la contre-preuve du §1.3 passe, pour sa moitié capacité :**
+
+```
+                        avant le lot          écriture complète
+  courbe / declared /   BOUGENT (courbe       INVARIANTS — tous les maillons
+  caps / ramp / sonde   2,21→2,46, jour       de la chaîne R20.2 immobiles
+                        d'entraînement ±1)    sous re-tarification
+  jours d'entraînement  5 → 4                 5 → 5
+  mètres livrés         9 sem/12 divergent    9 sem/12 IDENTIQUES au mètre près
+  pic livré (heures     1,1 → 1,2             1,2 → 1,3 — le DESCRIPTEUR suit le
+  réelles, volPeak)                           prix, et c'est correct (mêmes mètres)
+```
+
+**Les trois écritures, et le mur que chacune a trouvé :**
+
+1. **Sondes + cibles au compte** (la V2.1, la re-sonde, `targetH`, les cliquets
+   `_prevChargeMin`/`_lastWeekMin`/`_maxChargeMin`, la boucle R3.3). La courbe devient
+   invariante — et la semaine 1 du nageur débutant **sous-livre sa cible de 15 %** (46 min de
+   compte pour 54), parce que les plafonds de séance en MÈTRES (600-650 m sur les créneaux
+   techniques) ne peuvent pas la remplir en unités de compte. Le cliquet de croissance
+   (« ≤ +10 % sur le LIVRÉ ») propage la sous-livraison : toutes les cibles s'aplatissent
+   à ~0,9 h, le pic ne monte jamais.
+2. **Les élections au compte** (les DOUZE électeurs : `cutSmallestSessionIn`,
+   `cutLightestEasyDay`, l'élection inline de R3.13, et `raised.sort` — un 12ᵉ site hors du
+   point unique T-46, trouvé par la trace : après remontée au plancher les candidates portent
+   toutes ~600 m et seul le PRIX de leur mix de zones les départageait ; une re-tarification
+   échangeait la victime « Récup eau » ↔ « Volume aérobie » et la composition cascadait).
+   Les jours redeviennent invariants — et les passes de DOMINANCE trouvent un pic (39 min de
+   compte) SOUS les semaines de dev (41) : la faiblesse structurelle du pic (famille O-72/O-74,
+   les séances de qualité plafonnées plus bas que les planchers des faciles) déclenche
+   « OFF (la semaine de pic reste la plus grosse) » ×5 et « OFF (équilibre du bloc) » ×9 —
+   le plan sprint/débutant tombe à **2 séances de 15 min par semaine** (0,7 h contre 1,1).
+3. **`reconcileDeclaredVolume` au compte** (D4, C22-final, A2/I1, R3.13 — pour que les passes
+   post-boucle ne re-litigent pas en RÉEL ce que la boucle a égalisé en COMPTE).
+   `audit:v1` passe de 0 à **6 violations DURES** : « semaine de récup plus chargée que la
+   précédente » — D4 tient désormais la règle en compte, l'AUDITEUR la vérifie en RÉEL, et un
+   mix de zones différent entre deux semaines voisines (récup facile ×1,12 contre charge à
+   ~×1,0) les fait diverger. **O-36 mot pour mot : la coupe et l'auditeur ne comptent pas dans
+   la même unité, et les aligner casse autre chose.**
+
+**Le rayon, mesuré sur les 985 profils du golden** (séances et minutes par semaine de charge,
+avant ↔ après la forme complète) : médiane **0,0 %**, 105 profils bougent de plus de 2 %,
+**9 s'effondrent** (−24 à −54 %, tous swim/débutant) et **4 se réparent** (+39 à +108 %) — dont
+`swim/demifond/ancien/debutant`, qui livre **aujourd'hui, en production, 2,4 séances de 15 min
+par semaine** : la cascade d'effondrement EXISTE avant le lot, la tarification décide seulement
+qui tombe dedans.
+
+**Le verdict, et pourquoi l'ordre s'inverse.** La tarification réelle n'était pas un simple
+biais de mesure : elle SERVAIT DE FINANCEMENT au manque structurel — les mètres faciles et
+techniques, comptés plus chers, « remplissaient » la courbe que les plafonds de séance ne
+peuvent pas tenir. La redécoupe retire ce financement, le manque apparaît (la semaine 1 débutant
+sous-livre de 15 % par construction), et trois familles de cascades l'amplifient : le cliquet de
+croissance sur le livré, la dominance sur un pic structurellement faible (O-72/O-74), et les
+seuils tout-ou-rien des coupes de fréquence. C'est la conclusion d'O-78 (« le puits ne cache pas
+un excès, il cache un manque ») un étage plus haut. **La file d'exécution s'inverse donc : le
+lot PROGRESSION (lever le plafond structurel — les caps des types figés, le pic redevenu la
+plus grosse semaine) vient AVANT la redécoupe**, parce que tant que le pic ne peut pas dominer
+et que les caps ne peuvent pas tenir la courbe, toute comptabilité honnête fera tomber les
+profils les plus plafonnés — et ce sont les mêmes qui tombent dans toutes les coupes (« C26c AU
+PIC » §5).
+
+Ce qui RESTE acquis : le cadrage §5bis (la circularité est propre à la nage — une conversion,
+pas une réarchitecture), l'inventaire exact des sites (`o43-redecoupe.patch`), le 12ᵉ électeur
+hors point unique (`raised.sort`, à couvrir par T-46 le jour où l'élection au compte revient),
+et la contre-preuve que la forme complète REND la capacité et le contenu invariants — le
+correctif est juste, c'est le terrain qui ne le porte pas encore.
+
+```verify
+id: O-43-§6
+quoi: le moteur est bien revenu à l'état d'avant la redécoupe (retrait complet), et le patch des trois écritures est conservé
+attendu: PATCH-CONSERVE-MOTEUR-INTACT
+cmd: git diff --quiet HEAD -- src/ && test -s o43-redecoupe.patch && grep -q "stepAccountMin" o43-redecoupe.patch && echo "PATCH-CONSERVE-MOTEUR-INTACT"
+```

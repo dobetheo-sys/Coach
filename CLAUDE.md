@@ -580,6 +580,27 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**LOT 1 (redécoupe O-43) écrit en trois temps, mesuré, et ARRÊTÉ par la règle d'arrêt — la
+tarification réelle FINANÇAIT le manque structurel** (file « O-43 ET LA SUITE », 19/08/2026 —
+voir `BUGS_OUVERTS.md` « O-43 §6 », diff complet conservé dans `o43-redecoupe.patch`, moteur
+RETIRÉ, `src/` byte-identique) : la forme complète (monnaie de COMPTE — blocs en distance au
+repère déclaré — dans les sondes, les cibles, les cliquets, les DOUZE électeurs et
+`reconcileDeclaredVolume`) rend la contre-preuve verte pour sa moitié capacité : sous
+re-tarification de `sw.easy` +16 %, **tous les maillons R20.2 immobiles, jours 5→5, 9 semaines
+sur 12 identiques au mètre près** — seul le descripteur d'heures réelles suit le prix, et c'est
+correct. Mais chaque incrément a trouvé un mur : la semaine 1 débutant **sous-livre sa cible de
+15 % par construction** (les caps de séance en mètres ne tiennent pas la courbe en unités de
+compte) et le cliquet de croissance aplatit tout ; la dominance trouve un pic structurellement
+SOUS ses semaines de dev (O-72/O-74) et rabote le plan à 2 séances de 15 min ; et `audit:v1`
+passe à **6 violations DURES** quand D4 tient « récup ≤ charge » en compte pendant que
+l'auditeur la vérifie en réel (O-36 mot pour mot). Rayon : médiane 0,0 %, 9 profils s'effondrent
+(−24 à −54 %, tous swim/débutant), 4 se réparent (+39 à +108 % — `demifond/ancien/debutant`
+livre AUJOURD'HUI 2,4 séances de 15 min : la cascade existe avant le lot, la tarification décide
+qui tombe dedans). **L'ordre de la file s'inverse : le lot PROGRESSION (plafond structurel, pic
+dominant) vient AVANT la redécoupe.** Trouvé en chemin : `raised.sort` est un 12ᵉ électeur hors
+du point unique T-46. Cadrage §5bis acquis (la circularité est propre à la nage — mesuré,
+`npm run mesure:circularite`). **Gates verts sur le moteur rétabli, `audit:v1` 459 à 0.**
+
 **LOT INTERFACE livré — trois défauts d'usage, et l'hypothèse du premier était fausse** (document
 « LOT INTERFACE », 19/08/2026 — voir `BUGS_OUVERTS.md` « LOT INTERFACE », gardes `§1quater` de
 `smoke-zenna` et le bloc O-59 de `smoke-questionnaires`) : **O-60** — le détail de séance
