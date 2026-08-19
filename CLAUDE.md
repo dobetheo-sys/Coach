@@ -601,6 +601,18 @@ dominant) vient AVANT la redécoupe.** Trouvé en chemin : `raised.sort` est un 
 du point unique T-46. Cadrage §5bis acquis (la circularité est propre à la nage — mesuré,
 `npm run mesure:circularite`). **Gates verts sur le moteur rétabli, `audit:v1` 459 à 0.**
 
+**Pièce « trajectoire du footing » (lot PROGRESSION) écrite, mesurée, RETIRÉE le même jour —
+et le pincement O-81 nommé** (voir `BUGS_OUVERTS.md` « O-81 ») : la géométrie du brick posée sur
+la borne du footing est INERTE là où le type est réellement figé (M/70.3 : `ftCaps.hi × 1,3` =
+34 et 29, au ras ou SOUS le plancher de dignité de 30 min — plancher ≥ plafond, contradiction
+statique, le type vaut 30 min sur tout le plan) et NOCIVE là où il ne l'est pas (S/Full : le
+footing progressait déjà avec la courbe, sa liberté est l'élasticité de la semaine — la borner
+donne −28 % sur tout le plan tri/S via le cliquet de croissance). Cinquième occurrence de la
+leçon O-78. Le levier du footing est la résolution du pincement — décision de VALEURS,
+fondateur. Acquis pour la suite du lot : la pente d'une trajectoire de borne respecte C22
+semaine par semaine (la position par PHASE saute aux frontières), et une semaine de DÉCHARGE
+garde le plafond de départ. Moteur byte-identique, v6 74 verts · 0 régression.
+
 **LOT INTERFACE livré — trois défauts d'usage, et l'hypothèse du premier était fausse** (document
 « LOT INTERFACE », 19/08/2026 — voir `BUGS_OUVERTS.md` « LOT INTERFACE », gardes `§1quater` de
 `smoke-zenna` et le bloc O-59 de `smoke-questionnaires`) : **O-60** — le détail de séance

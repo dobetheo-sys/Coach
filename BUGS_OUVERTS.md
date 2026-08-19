@@ -8652,3 +8652,62 @@ quoi: le moteur est bien revenu à l'état d'avant la redécoupe (retrait comple
 attendu: PATCH-CONSERVE-MOTEUR-INTACT
 cmd: git diff --quiet HEAD -- src/ && test -s o43-redecoupe.patch && grep -q "stepAccountMin" o43-redecoupe.patch && echo "PATCH-CONSERVE-MOTEUR-INTACT"
 ```
+
+## O-81 · Le footing tri de M et 70.3 est ÉPINGLÉ par une contradiction plancher > plafond · 🔴 **OUVERT — décision de VALEURS, fondateur**
+
+Trouvé en appliquant la géométrie du lot PROGRESSION au footing (pièce footing, 19/08/2026).
+La mesure (`npm run mesure:progression`, profil fondateur 70.3) : **« Footing facile »,
+75 occurrences, UNE valeur, 30 min, « au plafond ×75 »** — et la trajectoire géométrique posée
+sur sa borne n'y change RIEN, parce que le type est épinglé par une contradiction STATIQUE :
+
+```
+  format   ftCaps        borne R13 (hi × 1,3)   plancher de dignité (blockBounds)
+  S        25..45        58                     30      → trajectoire 30 → 58   AGIT
+  M        15..26        34                     30      → trajectoire 30 → 34   marginale
+  70.3     14..22        29                     30      → plancher ≥ plafond   ÉPINGLÉ
+  Full     50..100       130                    30      → trajectoire 30 → 130  AGIT
+```
+
+Pour 70.3, la table du format dit « footing ≤ 29 min » et le plancher de dignité C8/C16 dit
+« ≥ 30 min » : le plafond est SOUS le plancher, `Math.max(fl, cap)` tranche en silence, et le
+type vaut exactement 30 min sur tout le plan, pour tout athlète — c'est le « 84 % au plafond
+constant » de la file. Résoudre le pincement est une décision d'ENTRAÎNEMENT, pas de code : soit
+les `ftCaps` de M/70.3 montent (le footing du 70.3 a-t-il le droit d'atteindre 40-45 min au pic,
+maintenant que le brick et la longue progressent et que I14 borne toute séance par la sortie
+longue ?), soit le plancher de dignité cède pour ce type (un footing de 22 min vaut-il le
+déplacement ?). Les deux branches se mesurent (`mesure:progression`) avant d'être crues.
+
+Au passage, de la même famille : le footing du sport COURSE pur (`src/sports/run/index.ts`,
+`B(1, P(30, 50))`) ne porte AUCUN `bnd` — dans `blockBounds` il tombe sur `{floor: 3,
+cap: 9999}` : c'est un PUITS (famille O-78), le pendant course du déversoir que R13 a fermé
+en tri.
+
+```verify
+id: O-81
+quoi: le footing tri 70.3 est-il toujours épinglé à 30 min sur tout le plan du profil fondateur ?
+attendu: /Footing facile\s+75\s+1 val\./
+cmd: npm run mesure:progression
+```
+
+**COMPLÉMENT (même jour) — la pièce « trajectoire du footing » a été ÉCRITE, MESURÉE, et
+RETIRÉE : elle est inerte là où le défaut existe, et NOCIVE là où il n'existe pas.** La
+trajectoire géométrique du brick, posée sur la borne du footing (position uniforme par semaine,
+pente bornée par C22, plafond de départ en décharge), a produit sur `tri/S` un plan à **−28 %
+sur toutes ses semaines** (245 → 178 min), un jour d'entraînement en moins — parce que la
+mesure d'avant retrait dit ce que la prémisse ratait : **sur S et Full, le footing n'était PAS
+figé** (33' → 59' sur la travée, « libre » à `mesure:progression`) — sa borne statique ne
+mordait pas, et sa liberté ÉTAIT l'élasticité de la semaine (c'est le receveur R4.1). La borner
+tôt ferme le déversoir, la semaine 1 sous-livre, et le cliquet de croissance sur le livré
+propage la perte à tout le plan — **cinquième occurrence de la leçon O-78** (« borner un puits
+ne révèle rien et déplace tout tant que la cause n'est pas levée »), et le même mécanisme de
+propagation que la redécoupe O-43 §6 a trouvé le même jour : *toute réduction de la semaine 1,
+quelle qu'en soit la cause, est amplifiée plan-entier par `_prevChargeMin × 1,1`.*
+Le « 84 % au plafond constant » de la file ne vit donc QUE là où le pincement vit (M et 70.3,
+le profil du fondateur) — et là, une trajectoire de borne est inerte par construction : le
+plancher de dignité écrase tout. **Le seul levier du footing est la résolution du pincement
+ci-dessus — une décision de valeurs, pas de géométrie.** Au passage, la pose de la trajectoire
+a fait mordre v6 `D3` (saut de courbe +17 % sur tri/S 8 semaines : la position par PHASE saute
+aux frontières — une phase de 2 semaines fait Δt double, +21 % de plafond en une semaine) —
+la contrainte « la pente d'une trajectoire de borne respecte C22 semaine par semaine » est
+acquise pour la prochaine pièce du lot, celle des semaines de récup. Moteur RETIRÉ,
+`src/` byte-identique, v6 74 verts · 0 régression re-vérifié.
