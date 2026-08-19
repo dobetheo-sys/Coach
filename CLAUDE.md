@@ -427,6 +427,17 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   paie parmi le reste**, et quand plus personne ne peut payer ce n'est pas un défaut d'arbitrage
   mais **le plafond structurel qui est trop bas** — un signal différent, à traiter comme tel.
 
+- **Rendre une mesure invariante à une tarification et lui faire rendre une grandeur PHYSIQUE
+  sont deux exigences qui peuvent être incompatibles — et c'est la GRANDEUR BORNÉE qu'il faut
+  alors changer, pas la mesure** (arbitrage O-43 §5, 19/08/2026). La sonde de capacité doit être
+  aveugle à la façon dont le moteur tarife une allure (sinon re-tarifer ajoute des séances) ET
+  rendre des heures réelles (sinon elle ment sur ce que la semaine prend) ; or les mêmes mètres
+  prennent des heures différentes selon la tarification. Écrit et mesuré : neutraliser le ratio
+  de zone dans la sonde découple bien la chaîne (`courbe` cesse de bouger) et **casse I14 23 fois
+  de plus** — la capacité se lit alors en heures-REPÈRE et se compare à un plafond en heures
+  RÉELLES. **Règle 14 commise dans le correctif d'une règle 12.** Le test qui l'attrape en amont :
+  *les deux côtés de la comparaison sont-ils dans la même unité APRÈS le correctif ?*
+
 - **Un puits non borné ne cache pas un EXCÈS, il cache un MANQUE — et le borner déplace le
   défaut tant que la cause n'est pas levée** (arbitrage « UN PUITS NON BORNÉ », 19/08/2026,
   `npm run mesure:puits`). Un créneau sans plafond garantit que le plan atteint toujours son
@@ -548,6 +559,27 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
+
+**O-43 §5 + O-79 — l'issue 1 écrite puis RETIRÉE, et une séance qui mentait sur son intensité**
+(arbitrage « O-43 EST SUR LE CHEMIN CRITIQUE », 19/08/2026 — voir `BUGS_OUVERTS.md` « O-43 §5 »
+et « O-79 », mesures `npm run mesure:manque`) : le §4 d'O-43 avait retenu l'issue 1 comme la seule
+à survivre au filtre. **Écrite, elle atteint la moitié visée et casse l'autre.** `stepWorkMin`
+gagne un drapeau `auRepere` (la même formule, ratio de zone neutralisé) et la sonde V2.1 pèse la
+semaine au repère mesuré de l'athlète : le maillon `courbe` cesse de bouger sous re-tarification
+— **la sonde est découplée**. Mais le sceau `S4` passe de **349 à 372** (+23 violations d'I14) sur
+**579 profils**, parce que `sw.easy` vaut 0,893 × CSS : au repère, un bloc facile pèse MOINS de
+minutes qu'il n'en prendra, la sonde sous-estime, la promesse descend, les plans tombent sur leurs
+planchers. **Faute d'unité commise dans le correctif d'une faute de circularité.** Retiré, `src/`
+byte-identique. Ce qu'on en apprend est écrit : ce n'est pas la MESURE de la sonde qu'il faut
+rendre invariante mais la GRANDEUR qu'elle borne — la nage doit entrer par ses MÈTRES, le plafond
+en heures venant des déclarations. **§2 mesuré et il confirme la prédiction du fondateur** :
+**58 % des plans** laissent plus de 0,5 h non plaçable (38 % plus d'1 h, 14 % plus de 3 h ; méd
+0,6 h, p90 4,2 h, **max 36,6 h**) — c'est la majorité, donc le manque se déclare **une fois par
+plan avec son ampleur totale**, jamais par semaine. **O-79** : « Nage vitesse » a un corps en
+`sw.aero`, une zone que le moteur classe FACILE — le nom annonçait une intensité absente et il a
+trompé le fondateur dans son propre compte (46 % de facile lu par les noms, **78 %** lu par les
+zones). Renommée « Nage aérobie + accélérations » ; contenu inchangé, mesuré : 129 profils,
+9 516 champs, **plus grand écart numérique 0**. **31 gates verts, golden 989 recapturé.**
 
 **O-78 mesuré, moteur INCHANGÉ — le puits ne cache pas un excès, il cache un manque**
 (arbitrage « UN PUITS NON BORNÉ CACHE CE QU'IL ABSORBE », 19/08/2026 — voir `BUGS_OUVERTS.md`

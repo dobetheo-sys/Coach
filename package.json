@@ -90,6 +90,7 @@
     "check:chemins": "node scripts/checkChemins.mjs",
     "mesure:longue-volmax": "node scripts/mesureLongueVolMax.mjs",
     "mesure:puits": "node scripts/mesurePuits.mjs",
+    "mesure:manque": "node scripts/mesureManque.mjs",
     "casser": "node scripts/casser.mjs"
   },
   "devDependencies": {

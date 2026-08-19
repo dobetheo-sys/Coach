@@ -7723,6 +7723,121 @@ attendu: /C26c — plafond de temps dur\s+1[0-9][0-9] \/ 98[0-9]/
 cmd: npm run --silent mesure:morsure
 ```
 
+## O-43 §5 — L'ISSUE 1 ÉCRITE, MESURÉE, ET **RETIRÉE** : elle échange une faute d'unité contre une autre
+
+Le §4 avait retenu l'issue 1 — *« borner la sonde sur une grandeur invariante par la conversion
+(mètres pour la nage) »* — comme la seule à survivre au filtre. **Écrite et mesurée, elle ne tient
+pas dans la forme la plus directe**, et la raison est instructive.
+
+### Ce qui a été écrit
+
+`stepWorkMin(st, disc, refs, auRepere)` : la MÊME formule, le ratio de zone neutralisé. La sonde
+V2.1 pèse alors la semaine saturée au repère mesuré de l'athlète (CSS, allure seuil) au lieu de
+l'allure de chaque zone. Une seule dérivation, paramétrée — pas une seconde table.
+
+### Ce que la mesure a rendu
+
+```
+maillon `courbe` de la chaîne R20.2      2,21 → 2,46   →   NE BOUGE PLUS   ✔ la sonde est découplée
+sceau S4 (I14, la longue est la plus longue)   349 → 372   +23 violations   ✖
+sceau S5                                       504 → 511    +7 violations   ✖
+golden                                    579 profils, 29 942 champs, écarts NUMÉRIQUES
+audit:v1                                  vert (0 violation dure)
+```
+
+**La moitié visée est atteinte** — la sonde ne se nourrit plus de la tarification. **L'autre moitié
+casse**, et c'est une faute d'unité que j'ai commise en corrigeant une faute de circularité :
+
+```
+capacité mesurée      en heures-REPÈRE  (les mètres comptés au CSS)
+comparée à `peakH`    en heures RÉELLES (le temps que la semaine prendra)
+```
+
+`sw.easy` vaut 0,893 × CSS : au repère, un bloc facile pèse MOINS de minutes qu'il n'en prendra.
+La sonde sous-estime donc la semaine, la promesse descend, les plans rétrécissent, tombent sur
+leurs planchers — et I14 casse 23 fois de plus. **Règle 14, dans le correctif d'une règle 12.**
+
+### Ce que ça apprend sur la forme du correctif
+
+La contradiction est structurelle et elle mérite d'être écrite :
+
+```
+la sonde doit être INVARIANTE à la tarification   (sinon O-43 : re-tarifer ajoute des séances)
+la sonde doit rendre des HEURES RÉELLES           (sinon elle ment sur ce que la semaine prend)
+les mêmes mètres prennent des heures DIFFÉRENTES  selon la tarification
+   ⇒ les deux exigences sont incompatibles tant que la sonde produit un plafond en HEURES
+```
+
+L'issue 1 est donc juste dans son intention et incomplète dans sa cible : **ce n'est pas la
+MESURE de la sonde qu'il faut rendre invariante, c'est la GRANDEUR qu'elle borne.** La nage doit
+entrer dans la capacité par ses MÈTRES (invariants), et le plafond en heures doit venir des
+déclarations — `vol_max`, `sessions_max`, `dispo`, `doubles` —, exactement le §1 du fondateur.
+C'est un redécoupage de la sonde, pas un drapeau sur une conversion.
+
+**Rien n'est livré côté moteur** : `src/` byte-identique. La mesure et la raison le sont.
+
+### §2 — LA MESURE PRÉALABLE, FAITE : `npm run mesure:manque`
+
+Le fondateur la conditionnait à l'écriture — elle ne l'exige pas, elle se fait sur le moteur
+actuel, et **elle confirme sa prédiction**.
+
+```
+manque TOTAL du plan > 0,5 h   568 / 985   (58 %)
+                     > 1 h     374         (38 %)
+                     > 2 h     191         (19 %)
+                     > 3 h     135         (14 %)
+
+par plan : méd 0,6 h · p90 4,2 h · max 36,6 h        en part de la cible : méd 1,7 % · p90 3,9 %
+
+part de la cible non placée, par sport :
+  tri 2,7 %  ·  swimrun 2,6 %  ·  run 2,0 %  ·  swim 1,9 %  ·  trail 1,0 %  ·  duathlon 1,0 %  ·  bike 0,4 %
+```
+
+**C'est la majorité** : le maillon ne peut donc pas être hebdomadaire. Il se déclare **une fois par
+plan, avec son ampleur totale** — un diagnostic de conception, pas une alerte. Et le chiffre qui
+justifie le lot progression existe désormais : **la médiane d'un plan laisse 0,6 h sur la table,
+le décile supérieur 4,2 h, et le pire cas 36,6 h.**
+
+Les disciplines les plus touchées sont celles qui prescrivent en MÈTRES ou qui empilent le plus de
+créneaux courts (tri, swimrun, nage) — cohérent avec la chaîne d'O-78.
+
+```verify
+id: O-43-manque
+quoi: la majorité des plans laisse du volume non plaçable — le manque se déclare par PLAN
+attendu: /la MAJORITÉ des plans est concernée/
+cmd: npm run mesure:manque
+```
+
+---
+
+## O-79 — « Nage vitesse » ne contenait pas de vitesse · ✅ **RENOMMÉE** (19/08/2026)
+
+Suite directe de la correction de prémisse d'O-78 : le corps de cette séance est en **`sw.aero`**,
+une zone AÉROBIE — le moteur la classe FACILE, et y déverse conformément à R4.1. Le nom annonçait
+une intensité que la séance ne contient pas.
+
+Le fondateur a refait le compte sur son propre plan avec la bonne classification :
+
+```
+compté avec le nom          60 récup + 42 vitesse + 27 seuil   →  46 % de facile
+compté avec les ZONES       60 récup + 42 aérobie = 102 / 130  →  78 % de facile, 21 % de qualité
+```
+
+*« Ma discipline limitante reçoit 78 % de volume facile »* — et pour un nageur autodidacte dont la
+technique se dégrade sous fatigue, du volume facile est le pire investissement : il grave le geste
+imparfait au lieu de le corriger. **Le nom a trompé le fondateur exactement comme il trompe
+l'athlète** : famille T-40, sur l'INTENSITÉ au lieu de la distance.
+
+`« Nage vitesse » → « Nage aérobie + accélérations »`, et la note dit ce que la séance est : *« le
+gros du volume est aérobie, avec des accélérations de 50 m pour tenir la fréquence : c'est du
+volume nagé propre, pas une séance de vitesse »*. Le CONTENU ne change pas — c'est un renommage,
+et il est mesuré comme tel : **129 profils du golden, 9 516 champs, plus grand écart numérique 0.**
+
+Ce que ça ne corrige PAS, et qui reste ouvert : cette séance est le déversoir du plan tri (O-78).
+La renommer la rend honnête, elle ne la borne pas.
+
+---
+
 ## O-78 — LE PUITS NE CACHE PAS UN EXCÈS, IL CACHE UN MANQUE : borner révèle 18 violations DURES
 
 Le §1 de « UN PUITS NON BORNÉ CACHE CE QU'IL ABSORBE » pose trois issues et en retient une :
