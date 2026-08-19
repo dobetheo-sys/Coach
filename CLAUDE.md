@@ -206,6 +206,13 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   invalidé le bloc d'O-23 du même coup ; un refactor est un producteur de MASSE de ce défaut — il
   peut retirer dix entrées du registre en une fois sans que rien ne le signale. (Six blocs à `cmd`
   muet avaient déjà été rangés à tort en « ne reproduit plus » alors qu'ils reproduisaient.)
+  **Un RENOMMAGE de donnée produit est le même producteur de masse, en plus discret** (19/08/2026,
+  troisième occurrence) : O-79 a renommé « Nage vitesse » pour de bonnes raisons, et deux entrées
+  du registre — O-76 et O-78 — ont basculé en « ne reproduit plus » alors que les deux défauts
+  étaient intacts (59/130 et `∞` toujours là). Un renommage ne touche aucune structure et passe
+  tous les gates. D'où la forme correcte, déjà appliquée à `smoke-r4` et `smoke-avatar` :
+  **un critère n'identifie jamais sa cible par un LIBELLÉ** — il la trouve par une propriété
+  (une zone, un marqueur de sortie) et PUBLIE le nom qu'il a trouvé.
 
 - **Règle 12, forme nouvelle (arbitrage O-43, 16/08/2026) — une sortie calculée ne se relit jamais
   comme une entrée.** Si une contrainte se dérive du contenu GÉNÉRÉ, elle mesure le générateur et
@@ -511,6 +518,19 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   « Footing facile » garde 100 % de sa taille et perd 83 % de ses occurrences, parce qu'un type
   qui ne peut plus rétrécir ne peut plus que disparaître. Un plancher ne supprime pas le
   paiement, il en change la MONNAIE.
+
+- **Tout mécanisme qui sélectionne par POSITION, TAILLE ou ORDRE frappe la natation par défaut**
+  (arbitrage du fondateur, 19/08/2026, « LA NAGE EST LA VICTIME PAR DÉFAUT DE TOUT MÉCANISME QUI
+  CHOISIT ») — c'est une PRÉDICTION, pas une observation rétrospective : quatre mécanismes l'ont
+  déjà fait, aucun ne l'a décidé. `applySessionBudget` coupe par minimum de minutes, et la nage a
+  les séances les plus courtes (50' contre 68' et 203') · le routage des doubles ajoute deux
+  séances par semaine, toutes en natation, sur une épreuve qui en demande 12 % · le financement
+  fait payer qui n'a pas de plancher, et la qualité nage n'en a aucun · l'affichage repliait la
+  première séance du jour, qui sous doubles est la nage 66 jours sur 66 (O-60). Chacun choisit par
+  une propriété STRUCTURELLE et la nage est à l'extrémité perdante des quatre.
+  C'est aussi pourquoi `prioriteFinancement` était nécessaire et pas suffisante : **elle oriente UN
+  mécanisme**, les trois autres choisissent sans elle. Avant d'écrire une élection, une coupe, un
+  routage ou un repli, se demander où tombe la natation — la réponse par défaut est « elle paie ».
 
 - **Une protection qui vit dans les conditions de N passes n'est pas une protection, c'est une
   coïncidence** (même arbitrage, §3) : *protégé par le chemin, pas par la borne*. Mesuré —

@@ -7368,6 +7368,17 @@ pour son cas, par le moteur lui-même** : « Cycles 10j » exige `shift_ok === "
 clic sur « quotidienne ». Le plan qui porte des cycles 10j prouve DEUX réponses volontaires sur
 ce chemin. Voir le complément O-59.
 
+**PRIORITÉ RELEVÉE (arbitrage du fondateur, 19/08/2026, §3)** — le mécanisme d'O-59 n'est pas
+« la collection change quand on répond » (réfuté, 0 recomposition en cours de questionnaire) :
+c'est que **chaque DÉPLOIEMENT recompose la liste**, donc un état persisté qui référence une
+structure DÉRIVÉE DU CODE se casse au déploiement suivant. `answers.done` a **exactement la même
+exposition**, et elle est pire : ses trois coordonnées sont positionnelles dans un plan régénéré,
+et sur un produit poussé plusieurs fois par jour l'instabilité est permanente. **Aucun test
+mono-build ne peut le voir** — c'est ce qui explique qu'un harnais le déclare sain pendant que le
+fondateur le rencontre ; le pendant, côté persistance, de ce que le test de rollback a montré côté
+service worker. La migration du format `eb_state_v2` est donc un peu plus urgente à chaque
+déploiement, et elle ne se rattrape pas : les ✓ mal adressés sont déjà écrits chez l'utilisateur.
+
 ```verify
 id: O-71
 quoi: les clés du journal des ✓ désignent-elles encore une AUTRE séance quand la course est reportée de 7 jours ?
@@ -7685,9 +7696,9 @@ R3.3, la coupe par `sessions_max` d'O-66, le gabarit `PB`/`PT` par phase).
 
 ```verify
 id: O-76
-quoi: la dose de « Nage vitesse » descend-elle encore entre le premier et le dernier quart du plan ?
-attendu: /[1-9][0-9]*\/129/
-cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let t=0,d=0;for(const{key,sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const nv=[];for(const w of p.weeks||[]){if(w.isRecup||w.phase?.id==='taper')continue;for(const x of w.days||[])for(const s of x.sessions||[])if(/Nage vitesse/i.test(s.name||''))nv.push(s.min||0);}if(nv.length<6)continue;t++;const q=Math.max(1,Math.floor(nv.length/4));const a1=nv.slice(0,q).reduce((u,v)=>u+v,0)/q,b1=nv.slice(-q).reduce((u,v)=>u+v,0)/q;if(b1<a1-1)d++;}console.log(d+'/'+t);"
+quoi: la dose du créneau de nage aérobie dominant descend-elle encore entre le premier et le dernier quart du plan ? (le type est TROUVÉ par sa structure — corps en `sw.aero` — et PUBLIÉ, jamais nommé : le nom a déjà cassé ce bloc une fois, O-79)
+attendu: /[1-9][0-9]*\/1[0-9][0-9]/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let t=0,d=0;const vus=new Map();for(const{sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const par=new Map();for(const w of p.weeks||[]){if(w.isRecup||w.phase?.id==='taper')continue;for(const x of w.days||[])for(const s of x.sessions||[]){if(s.d!=='sw')continue;if(!(s.steps||[]).some(b=>b.role==='body'&&b.zone==='sw.aero'))continue;const k=s.name||'';(par.get(k)||par.set(k,[]).get(k)).push(s.min||0);}}let nom=null,nv=[];for(const[k,v]of par)if(v.length>nv.length){nom=k;nv=v;}if(nv.length<6)continue;t++;vus.set(nom,(vus.get(nom)||0)+1);const q=Math.max(1,Math.floor(nv.length/4));const a1=nv.slice(0,q).reduce((u,v)=>u+v,0)/q,b1=nv.slice(-q).reduce((u,v)=>u+v,0)/q;if(b1<a1-1)d++;}console.log(d+'/'+t+' — type dominant : '+[...vus].sort((x,y)=>y[1]-x[1]).map(([k,v])=>k+' x'+v).join(' · '));"
 ```
 
 ## O-73b · Le balayage des mesures « est-ce que X mord ? » — B-02 sous-comptait d'un facteur 20 · ✅ **RECTIFIÉ**
@@ -8043,8 +8054,8 @@ violations d'un plancher de SÉCURITÉ**, ce qui est plus grave que le défaut q
 
 ```verify
 id: O-78
-quoi: 17 types de séance tri atteignent `cap: 9999`, sur 38 % des séances
-attendu: /Nage vitesse/
+quoi: des types de séance de NAGE atteignent-ils encore `cap: 9999` ? (le marqueur `∞` de la sortie, pas un nom de séance — O-79 a renommé le type et fait basculer ce bloc à tort)
+attendu: /∞.* sw /
 cmd: npm run mesure:puits
 ```
 
@@ -8448,3 +8459,113 @@ ce que rien n'implémentait (la règle du dépôt sur les commentaires-invariant
 délit). `resetWeekView()` est appelée par `setTab` à chaque entrée dans l'onglet depuis un autre —
 jamais sur un re-rendu interne, les flèches restent fluides. Vérifié dans les deux sens, et le
 témoin est parlant : **quatre flèches = « Semaine 5 »**, exactement son écran.
+
+## O-43 §5bis — CADRAGE MESURÉ (19/08/2026) : **la circularité est propre à la NAGE**, donc c'est une conversion, pas une réarchitecture
+
+Question de cadrage du fondateur, posée AVANT d'écrire O-43 : *« la sonde pèse-t-elle le vélo et
+la course par leurs minutes prescrites (pas de conversion, pas de circularité), ou par une
+grandeur ajustée à l'intensité (même circularité) ? »* — une réponse, et elle décide entre « une
+conversion » et « une réarchitecture ». Instrument : `npm run mesure:circularite`, deux moitiés,
+parce qu'une seule ne tranche pas (règle 15 : ce qui est ÉCRIT ≠ ce qui s'EXÉCUTE).
+
+**§A — la STRUCTURE**, sur les 989 profils du golden. `stepWorkMin` ne convertit que les blocs
+prescrits en MÈTRES (`distance ÷ (repère × ratio de zone)`) ; un bloc prescrit en minutes est
+compté tel quel.
+
+```
+  disc   blocs   dont en mètres      minutes   dont converties
+  course  53931      783 (  1 %)      51441 h      935 h (  2 %)
+  vélo    32384        0 (  0 %)      30383 h        0 h (  0 %)
+  nage    24992    23342 ( 93 %)      10713 h     9819 h ( 92 %)
+  brick    3839        0 (  0 %)       7139 h        0 h (  0 %)
+```
+
+**§B — le COMPORTEMENT** : on perturbe UNE définition de zone de +16 % — une re-tarification
+PURE, aucun changement d'entraînement — et on regarde si le plan LIVRÉ bouge. C'est l'expérience
+de `T-34`, étendue aux trois disciplines.
+
+```
+  swim    sw.easy    1.1 → 1.1 h    5 → 4 jours   courbe 2.21→2.46 · boucle-growth 1.23→1.59
+                                                  · structurel 1.73→1.68      ← BOUGE
+  bike    bk.z2      9.9 → 9.9 h    6 → 6         aucun
+  run     rn.easy    9.4 → 9.4 h    5 → 5         aucun
+```
+
+**Verdict : la branche « conversion » du fondateur.** Le vélo est prescrit en minutes à une zone
+de puissance, la course en minutes à une zone d'allure : ni l'un ni l'autre ne traverse la
+conversion, et re-tarifer leur zone facile ne déplace **rien** — ni le pic livré, ni le nombre de
+jours, ni un seul maillon de la chaîne R20.2. La nage y passe à **92 % de ses minutes de corps**,
+et la même perturbation lui coûte **un jour d'entraînement**. La redécoupe d'O-43 est donc une
+**conversion unique au repère déclaré** — la nage entre par ses MÈTRES, le plafond en heures
+venant des déclarations — et non une réarchitecture de la sonde.
+
+**Une nuance publiée plutôt que tue** : la course n'est pas à zéro. 783 blocs (2 % de ses minutes)
+sont prescrits en mètres et traversent donc le MÊME chemin — la circularité y existe, elle ne
+s'exprime pas. « Propre à la nage » est un fait de PROPORTION, pas d'architecture : si un lot
+futur prescrivait la course majoritairement en distance, la conclusion changerait de camp, et
+c'est la mesure — pas le code — qu'il faudrait alors rejouer.
+
+```verify
+id: O-43-§5bis
+quoi: re-tarifer une zone FACILE de +16 % déplace-t-il le plan livré ? (nage oui, vélo et course non)
+attendu: CIRCULARITE-PROPRE-A-LA-NAGE
+cmd: npm run mesure:circularite 2>&1 | grep -q "LA CIRCULARITÉ EST PROPRE À LA NAGE" && echo "CIRCULARITE-PROPRE-A-LA-NAGE"
+```
+
+## O-80 · Le format de fixture a DEUX CANAUX et rien ne vérifie qu'une valeur atterrit dans le bon · 🔴 **OUVERT — mécanique, ferme une classe à quatre occurrences**
+
+Quatrième occurrence de la famille du **138 kg** (PW : le harnais E2E remplissait tout champ libre
+non déclaré par le MILIEU de ses bornes, fabriquant un athlète de 138 kg dont le modèle avait
+raison). Les trois dernières sont du même jour : `sessions_max`, puis `vol_max` et `vol_recent`,
+passés en **saisie** alors que ce sont des **options** — le répondeur générique a pris la première
+option en silence (« 3 », « ≤4h », « <2h ») et a produit un athlète minuscule sans jour double,
+pendant que la mesure croyait interroger un triathlète à 12 séances. **À chaque fois c'est le
+TÉMOIN qui l'a dit, jamais le critère.**
+
+Cause commune, et elle est mécanique : **le format de fixture a deux canaux — clé d'option et
+valeur brute — et rien ne vérifie qu'une valeur atterrit dans le bon.** Un canal qui ne route pas
+retombe sur un défaut au lieu de lever.
+
+```
+un validateur de fixture lit ANSWER_SCHEMA et REFUSE une valeur non routable
+  clé de type option + valeur brute  →  erreur nommée, jamais repli silencieux
+```
+
+Même leçon que le `?? []` de la sonde d'adhérence : **un repli dans un instrument transforme une
+erreur en résultat** — et un résultat faux dans le sens rassurant. Le correctif ferme la classe au
+lieu de demander de la vigilance une cinquième fois ; c'est le même geste que `npm run casser`
+pour les mutations de source (le harnais possède le cycle de vie, la discipline ne suffit pas).
+
+**Portée à couvrir** : le harnais E2E (`traverserQuestionnaire`) ET les fixtures des scripts de
+mesure, qui construisent des `answers` à la main — c'est là que les trois occurrences du jour ont
+eu lieu. Non écrit à ce stade : il vient après la redécoupe d'O-43 dans l'ordre du fondateur.
+
+## Règle 17, troisième occurrence mesurée (19/08/2026) — **un renommage a fait basculer DEUX entrées en « ne reproduit plus », et les deux reproduisaient**
+
+Trouvé en rejouant `npm run registry:check` après l'écriture d'O-43 §5bis : **O-76** et **O-78**
+sont sortis en « ne reproduit plus → à passer au §4 ». Confirmés **à la main** avant d'être crus,
+comme la règle l'exige — et les deux étaient des **faux positifs d'instrument**.
+
+Cause unique : les deux blocs cherchaient le littéral **« Nage vitesse »**, et O-79 a renommé ce
+type en « Nage aérobie + accélérations » la veille (commit `779838e`), parce que son nom annonçait
+une intensité absente. Le renommage était juste ; il a rendu **muets** deux critères qui
+mesuraient des défauts encore vivants. Le mode de défaillance est exactement celui que la règle
+nomme : *un `grep` qui ne trouve plus son motif se lit comme un défaut réparé.*
+
+```
+O-76   la dose du créneau de nage aérobie dominant descend entre le 1er et le dernier quart
+       → identité STRUCTURELLE (corps en `sw.aero`), type TROUVÉ et PUBLIÉ, jamais nommé
+       59/130   (l'ancien bloc mesurait 58/129 — le défaut n'avait pas bougé)
+
+O-78   des types de séance atteignent `cap: 9999`
+       → marqueur `∞` de la sortie de `mesure:puits`, sur une ligne de NAGE
+       ∞  3172  méd 38  max 144  ×3,8  ← le puits est là, il a seulement changé de nom
+```
+
+**Ce que ça ajoute à la règle 17** : elle visait jusqu'ici le *déplacement de code* (« un refactor
+est un producteur de MASSE de ce défaut »). Un **renommage de donnée produit** l'est tout autant —
+et il est plus discret, parce qu'il ne touche aucune structure et passe tous les gates. Le
+correctif est celui déjà appliqué à `smoke-r4` et `smoke-avatar` en V5/R27 : **un critère
+n'identifie jamais sa cible par un LIBELLÉ**, il la trouve par une propriété (une zone, un
+marqueur de sortie) et publie le nom qu'il a trouvé. Un libellé est une chaîne d'interface : il
+change pour de bonnes raisons, et il changera encore.
