@@ -35,6 +35,7 @@ import { TrainingReasoningEngine } from "../src/engine/reasoningEngine.ts";
 import { traceOn, traceDump } from "../src/engine/trace.ts";
 import { toProfile } from "../src/app/bridge.ts";
 import { riegelExponent, riegelSecWith, RUN_KM, marathonPaceBand, RN_MARA_RATIO_PLANCHER, TRI_SWIM, SWIM_RACE } from "../src/engine/predictor.ts";
+import { plancherDeDignite } from "../src/generator/planGenerator.ts";
 import { profiles as goldenProfiles } from "./goldenMaster.mjs";
 import { estCharge } from "./lib/planMetrics.mjs";
 
@@ -684,7 +685,7 @@ function goldenAvecMoteur() {
       // Le format EFFECTIF, et non celui demandé : B-17 rabat un Full sur un 70.3, et c'est le
       // format rabattu que le plan met en œuvre (`reasoned.profile.format`). Lire `a.format` ici
       // ferait juger le plan livré contre l'intention de l'athlète — la faute que T-50 mesure.
-      _goldenCache.rows.push({ key, sport, a, plan, fmtEff: r.profile?.format ?? a.format, L: r.volLimits, lf: r.loadFactor });
+      _goldenCache.rows.push({ key, sport, a, plan, fmtEff: r.profile?.format ?? a.format, L: r.volLimits, lf: r.loadFactor, beginner: !!r.beginner });
     } catch { /* refus typés : hors population, comme au golden */ }
   }
   _goldenCache.fait = true;
@@ -984,7 +985,20 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // descripteur ne modifie pas le plan qu'il décrit. Les pièces du lot vélo, elles, feraient
 // descendre S4 à 342 (sept violations de moins) — elles ne sont pas livrées, voir l'entrée
 // « LOT VÉLO (3ᵉ passe) » du registre.
-const SCEAU_ATTENDU = { S1: 4, S4: 349, S5: 504 };
+// O-81 (19/08/2026) — RÉ-ÉPINGLÉS APRÈS ARBITRAGE, AVEC LEUR CAUSE, comme le §2.4 de la file
+// l'exige. Les deux mouvements ont été attribués par EXPÉRIENCE CONTRÔLÉE (jeu de violations
+// dumpé avant/après, un seul facteur : le plafond du footing) — jamais lus sur un diff de lot.
+//   · S4 349 → 357 : les 8 apparitions sont TOUTES `Rappel allure course CAP 34 min > Sortie
+//     longue CAP 30`, en semaine d'AFFÛTAGE. Ce n'est pas le footing qui dépasse une longue —
+//     il compte pour **0 des 357** violations : c'est O-82 (le plancher de dignité pousse à
+//     30 min un bloc dont le plafond déclaré vaut 8), et la hausse du footing a seulement fait
+//     franchir le seuil à 8 semaines qui en étaient proches.
+//   · S5 504 → 513 : 9 profils tri de plus, tous avec un pic livré qui MONTE. La chaîne R20.2
+//     énumère des plafonds de l'ATHLÈTE (déclaré, caps, util, rampe, courbe, croissance,
+//     structurel) — **aucun maillon ne déclare un plafond de TYPE**, donc lever celui du
+//     footing déplace le livré sans déplacer un seul maillon. C'est la moitié ouverte d'O-35
+//     (« ce que le point fixe retire n'est porté par aucun maillon »), vue dans l'autre sens.
+const SCEAU_ATTENDU = { S1: 4, S4: 357, S5: 513 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1809,7 +1823,12 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // T-16d (19/08/2026) ne déplace NI l'un NI l'autre — vérifié : un descripteur ne modifie pas le
 // plan qu'il décrit. Les pièces du lot vélo les porteraient à 8 632 min et 426 883 m ; elles ne
 // sont pas livrées (voir « LOT VÉLO (3ᵉ passe) »).
-const PIC_ATTENDU = { vo2Min: 8628, seuilM: 424683, profils: 187 };
+// O-81 (19/08/2026) — la nage seuil monte de 424 683 à 427 773 m au pic. Cause mesurée : lever
+// le plafond du footing rend de la marge aux semaines de pic tri (76 profils dont le pic livré
+// monte), et la nage seuil est le type que l'ordre de cession C26c protège en dernier — elle
+// récupère donc la marge rendue. Le VO2, lui, ne bouge PAS d'une minute (8 628) : c'est ce qui
+// prouve que le mouvement vient de la marge et non d'un ré-arbitrage de la cession.
+const PIC_ATTENDU = { vo2Min: 8628, seuilM: 427773, profils: 187 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {
@@ -1964,7 +1983,65 @@ T("T-45", "vert", "PROPRIÉTÉ — l'orientation « qui paie » épargne les cr�
   return { ok: !bad.length, detail: bad.length ? bad.join(" · ") : `témoin vivant · cliquet ${sans}/48 sur ${tot} semaines` };
 });
 
+
+/**
+ * T-52 (O-81 §2 — arbitrage du fondateur, 19/08/2026) — AUCUN PLAFOND DE TYPE N'EST INFÉRIEUR
+ * À SON PLANCHER.
+ *
+ * *« Plancher ≥ plafond mérite un invariant, pas un correctif. »* Sur un 70.3, le footing
+ * déclarait un plafond de 29 min face au plancher de dignité de 30 : `blockBounds` tranche par
+ * `Math.max(fl, cap)`, **en silence**, et le type valait exactement 30 min sur tout le plan pour
+ * tout athlète — un état où AUCUNE pièce de progression ne peut rien, et qui a vécu depuis R13.
+ *
+ * Trois décisions d'écriture, chacune contre une faute que ce dépôt a déjà commise :
+ *   · **il ne nomme aucun FORMAT** — c'est la faute des deux gardes indexées sur le sport où le
+ *     code a été écrit (R20.1) ; le balayage porte sur les couples (plancher, plafond) livrés,
+ *     quel que soit le sport, le format et le type ;
+ *   · **il ne nomme aucun LIBELLÉ de séance** — règle 17 : il TROUVE les couples fautifs par
+ *     leur propriété et PUBLIE le nom qu'il a trouvé ;
+ *   · **il lit `plancherDeDignite`, pas une copie de sa règle** (R11.1) — une garde qui
+ *     re-modélise la règle qu'elle vérifie photographie une divergence au lieu de l'interdire
+ *     (règle 15 : mesurer ce qui s'EXÉCUTE).
+ *
+ * ⚠ SA POPULATION EST ASSERTÉE (« un zéro a besoin de sa population ») : le succès de ce test
+ * est « 0 couple fautif », indiscernable d'un balayage qui ne regarde rien. Il publie donc le
+ * nombre de blocs examinés et le nombre qui portent un `bnd`, et rougit si le corpus s'effondre.
+ *
+ * La DIRECTION du correctif est dans l'invariant : le plancher est une contrainte de DIGNITÉ,
+ * le plafond une contrainte de DOSAGE. Quand les deux se croisent c'est le plafond qui a tort —
+ * un plancher qui cède rend la séance indigne, un plafond qui monte rend la dose plus grande.
+ */
+T("T-52", "rouge", "aucun plafond de type n'est inférieur à son plancher de dignité (O-81)", () => {
+  const fautifs = new Map();
+  let blocs = 0, avecBnd = 0;
+  for (const { key, plan, beginner } of goldenAvecMoteur()) {
+    for (const w of plan.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? []) {
+      for (const b of s.steps ?? []) {
+        if (b.role !== "body") continue;
+        blocs++;
+        if (!b.bnd) continue;
+        avecBnd++;
+        const pl = plancherDeDignite(b, s, beginner);
+        if (pl == null || pl < b.bnd.cap) continue;
+        // La clé identifie le COUPLE, pas le plan : un même type fautif est le même défaut sur
+        // les 40 semaines et les N profils qui le portent — on compte les types, pas les copies.
+        const k = `${key.split("/").slice(0, 2).join("/")} · ${s.name} · plancher ${pl} ≥ plafond ${b.bnd.cap}`;
+        fautifs.set(k, (fautifs.get(k) ?? 0) + 1);
+      }
+    }
+  }
+  const pb = [];
+  if (blocs < 20000) pb.push(`POPULATION : ${blocs} bloc(s) de corps balayé(s) — le corpus s'est effondré`);
+  if (avecBnd < 2000) pb.push(`POPULATION : ${avecBnd} bloc(s) porteur(s) de bnd — la sonde ne voit plus les bornes`);
+  for (const [k, n] of [...fautifs].sort((x, y) => y[1] - x[1])) pb.push(`${k} (${n}×)`);
+  return {
+    ok: pb.length === 0,
+    detail: pb.length ? pb.join(" · ") : `${blocs} blocs de corps, ${avecBnd} porteurs de bnd, 0 couple plancher ≥ plafond`,
+  };
+});
+
 const ROUGES_ATTENDUS = {
+  "T-52": "O-82 — le plancher de dignité écrase les plafonds VOULUS de l'affûtage (brick de rappel, allure course) : 269 blocs livrés jusqu'à ×3,8 leur plafond. La famille FOOTING d'O-81 est fermée ; celle-ci demande un arbitrage (la direction « c'est le plafond qui a tort » ne vaut pas quand le plafond EST une règle de sécurité)",
   "T-44": "O-66 — la coupe classe en MINUTES une contrainte qui compte des SÉANCES : arbitrage rendu le 17/08, à faire APRÈS le merge et en premier",
   "T-34": "O-43 — la conversion déplace ce qui est prescrit (pic +9 %, fréquence) : filtre du fondateur, une seule issue le passe",
   "T-01": "A-01 — sessionIntensity() importe zoneClass() au lieu de sa copie (+ V-08 pour sw.aero)",

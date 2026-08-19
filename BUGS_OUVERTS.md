@@ -8653,7 +8653,7 @@ attendu: PATCH-CONSERVE-MOTEUR-INTACT
 cmd: git diff --quiet HEAD -- src/ && test -s o43-redecoupe.patch && grep -q "stepAccountMin" o43-redecoupe.patch && echo "PATCH-CONSERVE-MOTEUR-INTACT"
 ```
 
-## O-81 · Le footing tri de M et 70.3 est ÉPINGLÉ par une contradiction plancher > plafond · 🔴 **OUVERT — décision de VALEURS, fondateur**
+## O-81 · Le footing tri de M et 70.3 est ÉPINGLÉ par une contradiction plancher > plafond · ✅ **FERMÉ (arbitrage du fondateur, 19/08/2026 — issue (a) : le plafond monte, le plancher ne cède pas)**
 
 Trouvé en appliquant la géométrie du lot PROGRESSION au footing (pièce footing, 19/08/2026).
 La mesure (`npm run mesure:progression`, profil fondateur 70.3) : **« Footing facile »,
@@ -8711,3 +8711,130 @@ aux frontières — une phase de 2 semaines fait Δt double, +21 % de plafond en
 la contrainte « la pente d'une trajectoire de borne respecte C22 semaine par semaine » est
 acquise pour la prochaine pièce du lot, celle des semaines de récup. Moteur RETIRÉ,
 `src/` byte-identique, v6 74 verts · 0 régression re-vérifié.
+
+## O-81 — FERMETURE (arbitrage « LE PLAFOND MONTE, LE PLANCHER NE CÈDE PAS », 19/08/2026)
+
+**Issue (a) retenue, avec son argument structurel** : *« baisser le plancher ABAISSE le plafond
+structurel (`nSess × durée`), le lever le MONTE — l'issue (b) irait exactement contre l'objet du
+lot progression, dont O-81 fait partie. »* Et le refus de l'issue (b) est motivé sur deux points
+qui se cumulent : le rapport dérangement/stimulus (l'argument logistique d'O-44 sur la nage, qui
+pointe dans le même sens) et le fait que **la fréquence n'est pas le manque** (le plan porte déjà
+85 footings). `O81_FOOTING_CIBLE_PIC_MIN = 50` porte la décision et sa provenance.
+
+**LA PIÈCE N'EST PAS UNIFORME, et c'est le §3 de l'arbitrage** — la mesure de la veille avait
+montré que borner le footing là où il est LIBRE coûte **−28 % sur tout un plan `tri/S`** (il y
+est le seul type qui absorbe, receveur R4.1). La condition est donc **DÉRIVÉE** — *le plafond du
+format dégage-t-il le plancher de dignité ?* — jamais une liste de formats : `Math.max` ne touche
+ni S (58 min) ni Full (130). La trajectoire (plancher → cible, position uniforme par SEMAINE,
+pente bornée par C22, plafond de départ gardé en décharge) ne vit que sur les formats levés.
+
+**MESURE, sur le profil du fondateur** : « Footing facile » passe de **1 valeur / 75 occurrences
+/ au plafond 100 %** à **16 valeurs, 30 → 50 min, « libre » à 84 %** ; pic annoncé **8,4 → 8,9 h**.
+**RAYON, sur les 985 profils** : **70 profils bougent de plus de 2 %, TOUS en tri, TOUS vers le
+haut** (+9 à +11 % sur `70.3/reprise/debutant`), médiane 0,00 %, **76 profils dont le pic monte**,
+0 profil qui baisse. Golden : 187 empreintes recapturées — exactement la population tri.
+
+**Les deux cliquets ont été ré-épinglés APRÈS arbitrage, avec leur cause ATTRIBUÉE par expérience
+contrôlée** (jeu de violations dumpé avant/après, un seul facteur) :
+· **S4 349 → 357** — les 8 apparitions sont TOUTES `Rappel allure course CAP 34 min > Sortie
+longue CAP 30`, en semaine d'AFFÛTAGE. **Ce n'est pas le footing** : il compte pour **0 des 357**
+violations. C'est O-82, et la hausse du footing a seulement fait franchir le seuil à 8 semaines
+qui en étaient proches.
+· **S5 504 → 513** — 9 profils tri, tous avec un pic livré qui monte. La chaîne R20.2 énumère des
+plafonds de l'ATHLÈTE ; **aucun maillon ne déclare un plafond de TYPE**, donc lever celui du
+footing déplace le livré sans déplacer un seul maillon — la moitié ouverte d'O-35, vue dans
+l'autre sens.
+· **T-48 424 683 → 427 773 m** de nage seuil au pic, **VO2 inchangé à la minute près (8 628)** :
+c'est ce qui prouve que le mouvement vient de la marge rendue et non d'un ré-arbitrage de l'ordre
+de cession C26c.
+
+`audit:v1` 459 à **0 violation dure**, invariants 22×54, v6 **74 verts · 0 régression**,
+`lotPhysio` **25 verts · 23 rouges attendus · 0 régression**.
+
+---
+
+## O-82 · Le plancher de DIGNITÉ écrase les plafonds VOULUS de l'affûtage · 🔴 **OUVERT — arbitrage, et il RÉFUTE la direction générale du §2**
+
+Trouvé par **T-52**, l'invariant que le fondateur a demandé au §2 (« plancher ≥ plafond mérite un
+invariant, pas un correctif »). Il a trouvé **trois familles, pas une** — la famille footing est
+fermée par O-81, les deux autres sont **en affûtage** et sont plus graves :
+
+```
+  Brick d'affûtage (rappel de transition)  164× · plafond   16 → livré jusqu'à 30 min  (×1,9)
+  Brick d'affûtage (rappel vélo → R2)       94× · plafond    9 → livré jusqu'à 30 min  (×3,3)
+  Rappel allure course CAP  [rn.mara]        6× · plafond    8 → livré jusqu'à 30 min  (×3,8)
+                                           ───
+                                           269 blocs d'affûtage AU-DESSUS de leur plafond déclaré
+```
+
+**Le mécanisme** : `blockBounds` impose un « plancher digne » de 30 min à tout bloc en minutes,
+non épinglé, sans pente et à UNE répétition — et il résout le croisement par `Math.max(fl, cap)`,
+**en silence**. Un brick de rappel dont C21c fixe délibérément le plafond à 16 min est donc livré
+à 30. Pour `Rappel allure course CAP`, le bloc est construit `2 × 7-10 min` avec `repCap: 2` :
+c'est la réduction à **une seule répétition** (famille `PT(lo,hi)` d'O-78, 37 % des blocs de
+qualité) qui le fait tomber dans la branche du plancher — et il devient **30 min continues à
+l'allure du jour J**, quatre fois la dose conçue, dans la semaine où l'on affûte.
+
+**⚠ CE QUI RÉFUTE LA DIRECTION DU §2.** L'arbitrage pose : *« quand les deux se croisent, c'est le
+plafond qui a tort — un plancher qui cède rend la séance indigne, un plafond qui monte rend
+seulement la dose plus grande. »* **Cette règle a un DOMAINE, et l'affûtage en sort** : ici le
+plafond n'est pas une contrainte de dosage mais une règle de SÉCURITÉ (C21c : *« le plafond du
+brick d'affûtage EST le plancher de la bande de charge »*), et le monter à 30 min alourdirait
+l'affûtage — contre R3.13 et Bosquet 2007. **C'est le PLANCHER qui doit céder là**, et la décision
+existe déjà dans le dépôt sous le nom **A3** : *« les planchers de séance sont SUSPENDUS en
+récupération et en affûtage — une semaine de décharge a pour objet de RETIRER »*. A3 n'a jamais
+été rejouée sur le plancher de dignité de `blockBounds` ; c'est la forme exacte de la famille
+fermée douze fois (« une règle écrite pour un site, jamais rejouée sur le suivant »).
+
+Non écrit ici : appliquer A3 au plancher de dignité change le contenu de l'affûtage sur ~269
+blocs et demande ton arbitrage. Conséquence déjà mesurée si on ne le fait pas : **les 8 nouvelles
+violations S4** du cliquet sont exactement ce défaut (`Rappel allure course CAP` 34 min dépassant
+la sortie longue de 30).
+
+```verify
+id: O-82
+quoi: des blocs d'affûtage sont-ils encore livrés au-dessus de leur plafond déclaré, par le plancher de dignité ?
+attendu: /[1-9][0-9]* blocs? d'affûtage/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let n=0;for(const{sport,a}of profiles()){if(sport!=='tri'&&sport!=='duathlon')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}for(const w of p.weeks){if(w.phase.id!=='taper')continue;for(const d of w.days)for(const s of d.sessions)for(const b of s.steps||[]){if(b.role!=='body'||!b.bnd||b.durationMin==null||(b.reps||1)>1||b.gradient)continue;if(b.durationMin>b.bnd.cap)n++;}}}console.log(n+\" blocs d'affûtage au-dessus de leur plafond\");"
+```
+
+---
+
+## O-83 · 92 plans de NAGE débutant livrent 2 à 5 séances de 15 min pour 10 h déclarées · 🔴 **OUVERT — priorité propre, hors file**
+
+*« Le constat le plus dur de ton rapport n'est pas dans le lot : c'est un profil réel qui reçoit
+un plan qui n'en est pas un, maintenant, et personne ne l'avait vu. »* (fondateur, §5.)
+
+Mesuré sur les 985 profils du golden — **92 profils dont la séance moyenne fait moins de 25 min
+OU la semaine moins de 60 min. TOUS en natation, TOUS `debutant`** :
+
+```
+  swim/demifond/ancien/debutant/finir        37 min/sem · 2,4 séances de 15 min · déclaré 10 h · pic annoncé 0,8 h
+  swim/demifond/ancien/debutant/plaisir      37 min/sem · 2,4 séances de 15 min · déclaré 10 h · pic annoncé 0,8 h
+  swim/demifond/ancien/debutant/competition  39 min/sem · 2,6 séances de 15 min · déclaré 10 h · pic annoncé 0,8 h
+  swim/demifond/reprise/debutant/competition 54 min/sem · 3,6 séances de 15 min · déclaré 10 h · pic annoncé 1,1 h
+  swim/sprint/reprise/debutant/competition   74 min/sem · 5,0 séances de 15 min · déclaré 10 h · pic annoncé 1,4 h
+```
+
+Le plan du pire cas, en entier : 10 semaines, **34 · 40 · 18 · 34 · 32 · 30 · 34 · 39 · 43 ·
+18 min**. Deux à trois séances de 13 à 21 minutes. L'athlète a déclaré **10 h/semaine**.
+
+**La chaîne est cohérente et le résultat ne l'est pas** — c'est ce qui rend le ticket difficile :
+`C20` plafonne la promesse du nageur débutant à `sessions_max × 25 min`, `C15` borne sa séance à
+850 m, `C24b` la plancher à 600 m, et la sonde V2.1 abaisse la promesse à ce que ces plafonds
+permettent. Chaque règle est défendable seule ; leur composition rend un plan qui n'entraîne
+personne. **Les 15 minutes sont le tell** : la séance vit exactement sur son PLANCHER, donc ce
+n'est pas la courbe qui manque de volume — c'est que rien, dans la chaîne, ne dit qu'un plan doit
+être un plan. Deux directions possibles, aucune tranchée : soit le plafond débutant progresse
+avec le plan (c'est le lot PROGRESSION appliqué à `C20`/`C15`, qui sont aujourd'hui des CONSTANTES
+alors que le débutant de la semaine 30 ne l'est plus — la famille O-56, « une valeur qui varie
+avec la position »), soit le moteur REFUSE de livrer et le dit (P7/P8), comme il refuse déjà une
+course trop proche. Un plan de 37 min/semaine pour 10 h déclarées n'informe pas l'athlète : il le
+laisse croire qu'il s'entraîne.
+
+```verify
+id: O-83
+quoi: combien de profils livrent une séance moyenne < 25 min ou une semaine < 60 min ?
+attendu: /9[0-9] \/ 985/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let n=0,t=0;for(const{sport,a}of profiles()){let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}t++;const ch=p.weeks.filter(w=>!w.isRecup&&w.phase.id!=='taper');if(!ch.length)continue;const min=ch.reduce((x,w)=>x+w.days.reduce((u,d)=>u+d.sessions.reduce((v,s)=>v+(s.min||0),0),0),0)/ch.length;const ses=ch.reduce((x,w)=>x+w.days.reduce((u,d)=>u+d.sessions.filter(s=>s.d!=='rs').length,0),0)/ch.length;if(min/Math.max(1,ses)<25||min<60)n++;}console.log(n+' / '+t);"
+```

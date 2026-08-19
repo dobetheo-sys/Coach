@@ -348,6 +348,24 @@ export const BRICK_TAPER_BIKE_BOUNDS: Record<string, [number, number]> = rule(
  * deux réglages voisins.
  */
 export const PROG_DOSE_DEPART = rule("lot-progression", "fraction de la dose de pic atteinte à la PREMIÈRE occurrence d'un type de qualité (géométrie de la pièce 1 : brick 117/212)", 0.55);
+/**
+ * O-81 (arbitrage du fondateur, 19/08/2026) — LE PLAFOND DU FOOTING MONTE, LE PLANCHER NE CÈDE PAS.
+ *
+ * *« Un footing de 30 minutes est une séance d'entretien, pas une séance de construction. Pour
+ * préparer un semi-marathon en fin de triathlon, la sortie facile de référence fait 45 à
+ * 60 minutes — c'est là que se construit l'endurance aérobie de base. »*
+ *
+ * L'issue symétrique (faire céder le plancher de dignité à 22 min) a été REFUSÉE, sur deux
+ * arguments qui se cumulent : le rapport dérangement/stimulus (l'argument logistique d'O-44 sur
+ * la nage, qui pointe dans le même sens — plus court n'est pas mieux, c'est seulement moins) et
+ * le fait que la fréquence n'est pas le manque (le plan porte déjà 85 footings). Et l'argument
+ * qui tranche est structurel : **baisser le plancher ABAISSE le plafond structurel
+ * (`nSess × durée`), le lever le MONTE** — l'issue (b) irait exactement contre l'objet du lot
+ * progression, dont O-81 fait partie.
+ *
+ * La valeur porte sur le PIC : c'est la borne haute de la trajectoire, pas la dose de départ.
+ */
+export const O81_FOOTING_CIBLE_PIC_MIN = rule("O-81", "plafond du footing au pic quand la table du format le laisse au ras du plancher de dignité : la sortie facile de référence d'une préparation à leg course long", 50);
 export const DOSE_CAP_MIN = rule(
   "C25",
   "au-delà de ~40 min de seuil ou ~25 min de VO2max dans une séance, ce n'est plus un entraînement dur mais une course : personne ne l'enchaîne semaine après semaine sans casser",

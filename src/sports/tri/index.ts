@@ -4,7 +4,7 @@
  * lissage sur métrique nage) : elles sont désormais des garde-fous DÉCLARÉS.
  */
 import type { V1Session, V1Step } from "../../engine/types.ts";
-import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS, PROG_DOSE_DEPART } from "../../engine/constraintMatrix.ts";
+import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS, C22_MAX_WEEKLY_GROWTH, O81_FOOTING_CIBLE_PIC_MIN, PROG_DOSE_DEPART } from "../../engine/constraintMatrix.ts";
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { TRI_SWIM, TRI_BIKE, TRI_RUN, TRI_BIKE_KM, TRI_TRANSITION } from "../../engine/predictor.ts";
@@ -375,7 +375,38 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     // seul bloc sans plafond de la semaine, donc le déversoir de toutes les passes de
     // remplissage — mesuré : « Footing facile 213 min » en semaine de peak (D7, banc v6).
     // Un footing de 3 h 33 est une seconde sortie longue déguisée, pas un footing.
-    else S2.push({ d: "rn", name: "Footing facile", note: "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.", det: "", steps: [Object.assign(B(1, PT(ftCaps.lo, ftCaps.hi), "rn.easy", "", runInj ? " · surface souple" : ""), { bnd: { floor: ftCaps.lo, cap: Math.round(ftCaps.hi * 1.3) } })], ...( { plainBody: true } as object) });
+    // O-81 (arbitrage du fondateur, 19/08/2026) — LE PLAFOND MONTE, LE PLANCHER NE CÈDE PAS,
+    // ET LA PIÈCE N'EST PAS UNIFORME.
+    //
+    // Mesuré (T-52) : sur un 70.3, la table du format donne un plafond de `22 × 1,3 = 29` min
+    // face au plancher de dignité de 30 — `blockBounds` tranche par `Math.max` EN SILENCE, et
+    // le footing vaut exactement 30 min sur tout le plan, pour tout athlète. Aucune pièce de
+    // progression ne pouvait rien y faire.
+    //
+    // Le plafond monte donc à la sortie facile de référence (`O81_FOOTING_CIBLE_PIC_MIN`) —
+    // **et SEULEMENT là où la table le laissait au ras** : `Math.max` ne touche pas les formats
+    // dont le plafond dégage déjà (S 58 min, Full 130). C'est le §3 de l'arbitrage, et il est
+    // la conclusion d'une mesure : borner le footing là où il est LIBRE coûte −28 % sur tout un
+    // plan `tri/S`, parce que ce type y est le seul qui absorbe (receveur R4.1) — *on ne borne
+    // un type que si quelqu'un d'autre peut absorber*. La condition est donc DÉRIVÉE (le
+    // plafond dégage-t-il ?), jamais une liste de formats.
+    //
+    // La TRAJECTOIRE ne vit que sur les formats levés : elle interpole géométriquement du
+    // plancher de dignité à la cible, sur la position uniforme par SEMAINE (jamais par phase :
+    // une phase de 2 semaines fait Δt double, +21 % de plafond en une semaine — mesuré, saut de
+    // courbe +17 % au banc v6 D3), avec la pente bornée par C22 et le plafond de DÉPART gardé
+    // en décharge (une récup en position de pic héritait des plus hauts plafonds).
+    else {
+      const _capFtR13 = Math.round(ftCaps.hi * 1.3);          // R13 — le déversoir reste fermé
+      const _capFtPic = Math.max(_capFtR13, O81_FOOTING_CIBLE_PIC_MIN);
+      const _wTotFt = Math.max(2, _wTot);
+      // La trajectoire part du plancher de dignité — en dessous, elle serait sans effet.
+      const _departFt = Math.max(30 / _capFtPic, Math.pow(C22_MAX_WEEKLY_GROWTH, -(_wTotFt - 1)));
+      const _tFt = kit.isRecup || phase === "taper" || _iPh < 0 ? 0
+        : Math.max(0, Math.min(1, (weekNum - 1) / (_wTotFt - 1)));
+      const _progFt = _capFtPic > _capFtR13 ? Math.pow(_departFt, 1 - _tFt) : 1;
+      S2.push({ d: "rn", name: "Footing facile", note: "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.", det: "", steps: [Object.assign(B(1, PT(ftCaps.lo, ftCaps.hi), "rn.easy", "", runInj ? " · surface souple" : ""), { bnd: { floor: ftCaps.lo, cap: _capFtPic }, progCap: _progFt })], ...( { plainBody: true } as object) });
+    }
   } else if (slot === "facile2") {
     // R13.3 — EN MONO-SÉANCE, LA NAGE DU TRI EXISTE. `swMain` et `swTech` n'étaient poussées
     // que sous `dbl` (doubles séances) : pour la majorité des athlètes (`doubles` non/parfois),

@@ -88,6 +88,38 @@ export const _c30b: { id: string; what: string; val: string; why: string; wk: nu
  *  compteur ne sert qu'à décider si le plan doit NOMMER la tension à l'athlète. */
 export const _o44 = { semainesCourtes: 0, semainesCharge: 0 };
 
+/**
+ * O-81 / T-52 — LE PLANCHER DE DIGNITÉ, EN UN SEUL POINT.
+ *
+ * `blockBounds` remplace le plancher DÉCLARÉ d'un bloc par un « plancher digne » de son cru
+ * (décision de l'audit v6, D3-D7/D10 : « les planchers de séance ne gagnent plus contre la
+ * courbe »). Trois familles de blocs y échappent — un bloc ÉPINGLÉ (`pinned` : la dimension EST
+ * le stimulus, B-17/I14), un bloc en PENTE (un intervalle de côte dure 45 s), un bloc RÉPÉTÉ
+ * (le plancher gonflerait un segment de 8 min d'un facteur 4) — et rendent `null` : elles
+ * gardent leurs propres bornes.
+ *
+ * Extrait ici parce que **`blockBounds` résout un croisement plancher/plafond en SILENCE**
+ * (`Math.max(fl, cap)`), et que ce silence a laissé vivre O-81 : sur un 70.3 le footing déclare
+ * un plafond de 29 min face à un plancher de 30, donc il vaut 30 sur tout le plan, pour tout
+ * athlète, et AUCUNE pièce de progression ne pouvait rien y faire. `T-52` (banc `lotPhysio`)
+ * balaie les blocs LIVRÉS et refuse tout couple où le plancher atteint le plafond ; il lit cette
+ * fonction, pas une copie de sa règle (R11.1) — sans quoi il photographierait une divergence au
+ * lieu de l'interdire.
+ *
+ * @returns le plancher imposé, ou `null` quand le bloc garde ses bornes déclarées.
+ */
+export function plancherDeDignite(
+  b: Pick<V1Step, "bnd" | "distanceM" | "gradient" | "reps">,
+  s: { d?: string; long?: boolean },
+  beginner: boolean,
+): number | null {
+  if (!b.bnd || b.bnd.pinned) return null;
+  if (b.distanceM != null) return s.long ? 800 : Math.min(b.bnd.floor, beginner ? 600 : 750); // C24
+  if (b.gradient) return null;
+  if ((b.reps || 1) > 1) return null;
+  return s.d === "bk" ? 35 : 30; // C8/C16 — plancher digne, pas la borne basse du format
+}
+
 export function reconcileDeclaredVolume(
   plan: V1Plan, warnings: string[],
   /** Rendu : nécessaire pour que le texte d'une séance RÉDUITE ne mente pas sur sa durée. */
@@ -2145,7 +2177,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // repartait dans la sortie longue et faisait sauter C23 (193 min pour un débutant).
       const sc = b.bnd.hard ? 1 : _capScale;
       if (b.distanceM != null) {
-        const fl = s.long ? 800 : Math.min(b.bnd.floor, r.beginner ? 600 : 750); // C24
+        const fl = plancherDeDignite(b, s, !!r.beginner)!; // C24 — point unique, lu par T-52
         return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
       }
       // R7 TRAIL — un bloc de côtes dure 45 s à 12 min : le plancher « séance digne » de
@@ -2158,7 +2190,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // gonflerait d'un facteur 4. Un bloc répété garde ses propres bornes, comme un bloc
       // porteur de pente.
       if ((b.reps || 1) > 1) return { floor: Math.max(1, b.bnd.floor), cap: Math.max(1, Math.round(b.bnd.cap * sc)) };
-      const fl = s.d === "bk" ? 35 : 30; // C8/C16 — plancher digne, pas la borne basse du format
+      const fl = plancherDeDignite(b, s, !!r.beginner)!; // C8/C16 — point unique, lu par T-52
       return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
     }
     if (s.brick) {

@@ -580,6 +580,37 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-81 FERMÉ — le plafond du footing monte, le plancher ne cède pas ; et l'invariant demandé a
+trouvé DEUX familles de plus** (arbitrage « LE PLAFOND MONTE, LE PLANCHER NE CÈDE PAS »,
+19/08/2026 — voir `BUGS_OUVERTS.md` « O-81 », « O-82 », « O-83 », garde **T-52** au banc
+`lotPhysio`) : sur un 70.3 le footing déclarait `22 × 1,3 = 29` min face au plancher de dignité
+de 30 — `blockBounds` tranchait par `Math.max` **en silence**, et le type valait exactement
+30 min sur tout le plan, pour tout athlète. **Issue (a)** : le plafond monte à la sortie facile
+de référence (`O81_FOOTING_CIBLE_PIC_MIN = 50`), le plancher ne bouge pas — *« baisser le
+plancher ABAISSE le plafond structurel, le lever le MONTE »*. **La pièce n'est pas uniforme** :
+la condition est DÉRIVÉE (le plafond du format dégage-t-il ?), jamais une liste de formats — S et
+Full, où le footing est LIBRE et absorbe (receveur R4.1), ne sont pas touchés, la mesure de la
+veille ayant chiffré à **−28 % sur tout un plan `tri/S`** ce que coûte de les borner. Mesuré :
+footing **1 valeur / 75 occurrences → 16 valeurs, 30 → 50 min** ; **70 profils bougent, tous en
+tri, tous vers le HAUT**, 76 pics qui montent, 0 baisse. **T-52** (« aucun plafond de type n'est
+inférieur à son plancher », non indexé sur le format, lisant `plancherDeDignite` — point unique
+extrait, R11.1) a fermé la famille footing (1 931 → 0) et **en a trouvé deux autres, en
+AFFÛTAGE** : **269 blocs livrés jusqu'à ×3,8 leur plafond déclaré** — un brick de rappel à 30 min
+pour un plafond C21c de 16, et `Rappel allure course CAP` à **30 min continues à l'allure du jour
+J** pour une dose conçue de 2×7-10. **Elles RÉFUTENT la direction générale du §2** (« c'est le
+plafond qui a tort ») : en affûtage le plafond EST une règle de sécurité, c'est le plancher qui
+doit céder — et cette décision existe déjà sous le nom **A3**, jamais rejouée sur le plancher de
+dignité (O-82, arbitrage en attente). Les deux cliquets sont ré-épinglés avec leur cause
+**attribuée par expérience contrôlée** : S4 349 → 357 vient d'O-82 et non du footing (**0 des 357**
+violations I14 le concernent), S5 504 → 513 parce qu'**aucun maillon de la chaîne R20.2 ne déclare
+un plafond de TYPE** (moitié ouverte d'O-35). Et le §5 du fondateur devient **O-83** : **92 profils
+sur 985, tous en natation débutant, livrent 2 à 5 séances de 15 min pour 10 h déclarées** — chaque
+règle de la chaîne est défendable seule, leur composition rend un plan qui n'entraîne personne.
+**Ton profil répond au §4 : max en S38, la dernière semaine de charge, en phase de pic** — dans
+les 72 %, pas dans les 28 % ; la seule semaine de pic sous ta semaine 1 est une RÉCUP (R18.5).
+**`audit:v1` 459 à 0, invariants 22×54, v6 74 verts · 0 régression, `lotPhysio` 25 verts ·
+23 rouges attendus · 0 régression, golden 989 recapturé (187 empreintes = la population tri).**
+
 **LOT 1 (redécoupe O-43) écrit en trois temps, mesuré, et ARRÊTÉ par la règle d'arrêt — la
 tarification réelle FINANÇAIT le manque structurel** (file « O-43 ET LA SUITE », 19/08/2026 —
 voir `BUGS_OUVERTS.md` « O-43 §6 », diff complet conservé dans `o43-redecoupe.patch`, moteur
