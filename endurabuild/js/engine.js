@@ -9324,12 +9324,43 @@ function plancherDeDignite(
   b                                                         ,
   s                                ,
   beginner         ,
+  /** O-82 — la semaine est-elle une DÉCHARGE (récup ou affûtage) ? Voir A3 ci-dessous. */
+  decharge = false,
 )                {
   if (!b.bnd || b.bnd.pinned) return null;
-  if (b.distanceM != null) return s.long ? 800 : Math.min(b.bnd.floor, beginner ? 600 : 750); // C24
-  if (b.gradient) return null;
-  if ((b.reps || 1) > 1) return null;
-  return s.d === "bk" ? 35 : 30; // C8/C16 — plancher digne, pas la borne basse du format
+  // O-82 (arbitrage du fondateur, 19/08/2026) — **A3 REJOUÉE ICI** : « les planchers de séance
+  // sont SUSPENDUS en récupération et en affûtage ». La décision existait depuis l'audit v6,
+  // écrite pour le plancher piscine, et n'avait jamais été rejouée sur le plancher de dignité —
+  // la famille fermée douze fois dans ce dépôt (« une règle écrite pour un site, jamais rejouée
+  // sur le suivant »).
+  //
+  // L'argument qui décide est LE REMÈDE, pas la borne. Hors affûtage, le plancher dit « cette
+  // séance est trop petite pour valoir le déplacement » et son remède est de l'allonger : bénin.
+  // En affûtage, le même remède livrait `Rappel allure course CAP` à **30 min CONTINUES à
+  // l'allure du jour J** pour une dose conçue à 2×7-10 min, et un brick de rappel à 30 min pour
+  // un plafond C21c de 16 — 269 blocs mesurés, jusqu'à ×3,8. Trente minutes à allure de course
+  // compromettent la fraîcheur que l'affûtage existe pour construire : **un plancher dont le
+  // remède nuit ne doit pas s'appliquer.**
+  //
+  // La seconde cause du même défaut est connue et NON traitée ici : la réduction à UNE
+  // répétition (famille `PT(lo, hi)`, O-78) est ce qui fait tomber un bloc `2 × 7-10 min` dans
+  // la branche du plancher. Corriger l'une OU l'autre suffit ; la suspension est la moins chère
+  // et elle était déjà décidée.
+  //
+  // ⚠ LA SUSPENSION EST BORNÉE AU DÉFAUT, ET C'EST UNE MESURE QUI L'A DÉCIDÉ. Ma première
+  // écriture retirait le plancher PARTOUT en décharge (`return null`) : plus large que le
+  // remède nuisible, et `audit:v1` est passé à **16 violations DURES** (des nages facile/récup
+  // devenues plus longues que la « longue » de leur semaine, des continues B-17 rabotées) —
+  // un plancher de dignité fait aussi un travail LÉGITIME en décharge, celui d'empêcher une
+  // séance de fondre à rien. Ce qui nuit n'est pas le plancher : c'est qu'il DÉPASSE un plafond
+  // délibérément bas. En décharge il cède donc jusqu'au plafond déclaré, jamais en dessous —
+  // `min(dignité, plafond)`. Les 269 blocs se ferment, le reste ne bouge pas.
+  const digne = b.distanceM != null
+    ? (s.long ? 800 : Math.min(b.bnd.floor, beginner ? 600 : 750)) // C24
+    : b.gradient || (b.reps || 1) > 1 ? null
+      : s.d === "bk" ? 35 : 30; // C8/C16 — plancher digne, pas la borne basse du format
+  if (digne == null) return null;
+  return decharge ? Math.min(digne, b.bnd.cap) : digne;
 }
 
 function reconcileDeclaredVolume(
@@ -9500,6 +9531,14 @@ function reconcileDeclaredVolume(
             let touched = false;
             for (const st of sx.steps) {
               if (st.role !== "body" || st.leg) continue; // les legs de brick ont leurs bornes de format
+              // O-84 — **O-53 REJOUÉE ICI** : « un bloc ÉPINGLÉ n'est jamais écrêté ». `pinned`
+              // dit « la DIMENSION EST le stimulus » (B-17/I14) : une nage continue de 1 550 m
+              // ramenée à 1 500 n'est pas une continue plus facile, c'est une autre séance — et
+              // le plan avait ANNONCÉ le palier. La règle était écrite pour le plafond de dose
+              // et jamais rejouée sur ce clamp ; famille fermée treize fois (« une règle écrite
+              // pour un site, jamais rejouée sur le suivant »). Trouvée en livrant O-82, qui
+              // déplace les cliquets C22 et a rendu le rabotage visible sur 3 blocs de plus.
+              if ((st                                  ).bnd?.pinned) continue;
               const floor = (st                                ).bnd?.floor;
               if ((st.reps || 1) > 1) {
                 const next = Math.max(1, Math.round((st.reps || 1) * f));
@@ -10049,8 +10088,17 @@ function reconcileDeclaredVolume(
                 // J-5. Les blocs durs gardent leur dose, seuls les blocs faciles portent le
                 // plancher.
                 if (st.zone && IS_QUALITY_ZONE(String(st.zone))) continue;
-                if (st.durationMin) { st.durationMin = Math.round(st.durationMin * f); touched = true; }
-                else if (st.distanceM) { st.distanceM = Math.round((st.distanceM * f) / 25) * 25; touched = true; }
+                // O-82 §2 — LE PLAFOND DÉCLARÉ DU BLOC GARDE LE DERNIER MOT, comme dans
+                // `refillEasyAfterLabelCap` : ce regonflage était le seul des trois qui ne
+                // lisait pas `bnd.cap`, donc le seul à pouvoir livrer un footing de 68 min pour
+                // un plafond de 50. Il n'apparaissait pas tant que le plancher de dignité
+                // clampait ces blocs par le bas ; le suspendre en décharge (A3) l'a découvert —
+                // 2 profils sur 989, tous deux en dernière semaine d'affûtage. Un bloc sans
+                // `bnd` reste non borné ici, comme là-bas : la boucle est dominée par le
+                // plancher de semaine qu'elle sert.
+                const capB = st.bnd ? st.bnd.cap : Infinity;
+                if (st.durationMin) { const v = Math.min(capB, Math.round(st.durationMin * f)); if (v !== st.durationMin) { st.durationMin = v; touched = true; } }
+                else if (st.distanceM) { const v = Math.min(capB, Math.round((st.distanceM * f) / 25) * 25); if (v !== st.distanceM) { st.distanceM = v; touched = true; } }
               }
               if (render) render(sx);
             }
@@ -11370,6 +11418,13 @@ function generatePlan(profile                , opts                             
   // le point (règle 20) : `swimSessionCapM` rendait une borne gelée sur la semaine 1, donc un
   // nageur à 2 000 m ne construisait jamais les 3 800 m d'un Ironman.
   let _swimCapW = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M;
+  // O-82 — LA SEMAINE COURANTE EST-ELLE UNE DÉCHARGE ? Même patron que `_capScale` et
+  // `_swimCapW` : une valeur posée par la boucle de semaines et lue par `blockBounds`, faute de
+  // quoi il faudrait threader la position dans une demi-douzaine de signatures. Les deux SONDES
+  // (V2.1 et la re-sonde d'O-35) la remettent explicitement à `false` : elles clonent des
+  // semaines de CHARGE, et une sonde qui hériterait du drapeau de l'affûtage mesurerait une
+  // capacité qui n'est celle d'aucune semaine réelle.
+  let _dechargeW = false;
   const brickRF = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1; // C21
   function blockBounds(b        , s                )                                 {
     if (b.bnd) {
@@ -11389,7 +11444,7 @@ function generatePlan(profile                , opts                             
       // repartait dans la sortie longue et faisait sauter C23 (193 min pour un débutant).
       const sc = b.bnd.hard ? 1 : _capScale;
       if (b.distanceM != null) {
-        const fl = plancherDeDignite(b, s, !!r.beginner) ; // C24 — point unique, lu par T-52
+        const fl = plancherDeDignite(b, s, !!r.beginner, _dechargeW) ?? b.bnd.floor; // C24 — point unique, lu par T-52
         return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
       }
       // R7 TRAIL — un bloc de côtes dure 45 s à 12 min : le plancher « séance digne » de
@@ -11402,8 +11457,14 @@ function generatePlan(profile                , opts                             
       // gonflerait d'un facteur 4. Un bloc répété garde ses propres bornes, comme un bloc
       // porteur de pente.
       if ((b.reps || 1) > 1) return { floor: Math.max(1, b.bnd.floor), cap: Math.max(1, Math.round(b.bnd.cap * sc)) };
-      const fl = plancherDeDignite(b, s, !!r.beginner) ; // C8/C16 — point unique, lu par T-52
-      return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc)) };
+      const fl = plancherDeDignite(b, s, !!r.beginner, _dechargeW) ?? Math.max(1, b.bnd.floor); // C8/C16 — point unique, lu par T-52
+      // LOT PROGRESSION — le plafond suit la trajectoire déclarée par le module (`progCap` ≤ 1 :
+      // il ne peut que partir plus bas, jamais dépasser la borne du format). ⚠ CETTE LIGNE
+      // MANQUAIT quand O-81 a été livré : le module posait `progCap` sur le footing et cette
+      // branche ne le lisait pas — la trajectoire était INERTE, et le mouvement mesuré (30 → 50)
+      // venait de la seule hausse du plafond. Un champ posé que personne ne lit est la forme
+      // exacte du défaut que ce dépôt appelle « un correctif qu'on croit avoir » (R18.1).
+      return { floor: fl, cap: Math.max(fl, Math.round(b.bnd.cap * sc * (b.progCap ?? 1))) };
     }
     if (s.brick) {
       // C21b — le PLANCHER du leg vélo est la borne basse auditée du format : le scaling R3.3
@@ -11618,6 +11679,7 @@ function generatePlan(profile                , opts                             
     if (probeWeek) {
       const clone = structuredClone(days.filter((d) => d.week === probeWeek))            ;
       _capScale = 1;
+      _dechargeW = false; // O-82 — la sonde clone une semaine de CHARGE
       for (let it = 0; it < 4; it++) {
         renderWeek(clone);
         const cur = weekMin(clone) / 60;
@@ -11893,6 +11955,7 @@ function generatePlan(profile                , opts                             
     // sa taille normale : c'est la réduction 40-60 % de Bosquet, pas un arrêt.
     _swimCapW = r.beginner ? swimSessionCapAtWeek(r.b17Gate ?? null, C15_BEGINNER_SWIM_SESSION_CAP_M, w + 1) : Number.MAX_SAFE_INTEGER;
     _capScale = ph.id === "taper" ? Math.max(0.3, Math.min(1, Lw + 0.25)) : Math.max(0.4, Math.min(1, (Lw - 0.5) * 1.2 + 0.4));
+    _dechargeW = isRW || ph.id === "taper"; // O-82 (A3) — les planchers sont suspendus en décharge
     let targetH = Lw * peakH;
     // R20.2 (T-25) — la cause de chaque écrêtage est notée AU MOMENT où il se produit.
     let _srcW                                               = Lw < 0.999 ? "courbe" : "pic";
@@ -12235,6 +12298,14 @@ function generatePlan(profile                , opts                             
   {
     const wmW = (w        ) => weekMin(w.days            );
     const nSess = (w        ) => nSessIn(w.days            );
+    // O-82 — ⚠ CE BLOC TOURNE APRÈS LA BOUCLE DE SEMAINES ET REJOUE `scaleWeekBody` SUR TOUTES
+    // LES SEMAINES. `_dechargeW` (comme `_capScale` et `_swimCapW`) y garde la valeur de la
+    // DERNIÈRE semaine — l'affûtage — donc sans ce point les planchers de dignité étaient
+    // suspendus partout, y compris en charge : mesuré sur `tri/S`, la semaine 4 (`dev`) tombait
+    // de 219 à 118 min et le banc v6 rougissait sur C22. La position est le point (règle 20) :
+    // toute passe qui traverse les semaines APRÈS la boucle repose le drapeau à la semaine
+    // qu'elle traite.
+    const posDecharge = (w        ) => { _dechargeW = !!w.isRecup || w.phase.id === "taper"; };
     // Sur les petits plans, la cadence de récup peut tomber PILE sur la semaine de phase
     // peak : la référence devient alors la meilleure semaine peak tout court — sinon la
     // passe se désactivait et la réparation aval détruisait la semaine max (mesuré S4 → 0min).
@@ -12247,6 +12318,7 @@ function generatePlan(profile                , opts                             
       const domCap = 1.02;
       for (const w of wl) {
         if (w.phase.id === "peak" || w.phase.id === "taper" || w.isRecup) continue;
+        posDecharge(w);
         // 1) réduire les corps de séance vers ≤ pic (les séances au plancher ne bougent pas)
         for (let g = 0; g < 4 && wmW(w) > peakBest * domCap; g++) {
           const before = wmW(w);
@@ -12263,6 +12335,7 @@ function generatePlan(profile                , opts                             
         if (vr < w.vol) { w.vol = vr; w.vol_real = vr; }
       }
       for (const w of wl.filter((x) => x.phase.id === "taper")) {
+        posDecharge(w);
         for (let g = 0; g < 3 && wmW(w) > peakBest * R313_TAPER_MAX_VS_PEAK && nSess(w) > 2; g++) {
           if (!cutSmallestSessionIn(w.days            )) break;
           renderWeek(w.days            );
@@ -12274,6 +12347,7 @@ function generatePlan(profile                , opts                             
       // semaine pouvaient inverser deux semaines d'affûtage voisines)
       let prevT = 0;
       for (const w of wl) {
+        posDecharge(w);
         const m0 = wmW(w);
         if (w.phase.id !== "taper") { prevT = m0; continue; }
         if (prevT > 0 && m0 > prevT) {
@@ -12312,6 +12386,7 @@ function generatePlan(profile                , opts                             
       // 20 % plus petit, sans qu'aucune règle ne « penche » : c'est le seuil qui est brutal.
       let prevM = 0;
       for (const w of wl) {
+        posDecharge(w);
         if (w.isRecup && prevM > 0) {
           // 1) le corps des séances cède d'abord — même écriture que la monotonie d'affûtage
           for (let g = 0; g < 4 && wmW(w) > prevM; g++) {
@@ -13330,6 +13405,7 @@ function generatePlan(profile                , opts                             
             > (x.days            ).reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0) ? y : x), null);
         if (wPic) {
           const clone = structuredClone(wPic.days            );
+          _dechargeW = false; // O-82 — `wPic` est une semaine de charge (filtre `!w.isRecup`)
           const avant = weekMin(clone);
           for (let it = 0; it < 4; it++) {
             renderWeek(clone);

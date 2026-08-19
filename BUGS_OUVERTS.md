@@ -8753,7 +8753,7 @@ de cession C26c.
 
 ---
 
-## O-82 · Le plancher de DIGNITÉ écrase les plafonds VOULUS de l'affûtage · 🔴 **OUVERT — arbitrage, et il RÉFUTE la direction générale du §2**
+## O-82 · Le plancher de DIGNITÉ écrase les plafonds VOULUS de l'affûtage · ✅ **FERMÉ (arbitrage du fondateur, 19/08/2026 — A3 rejouée, bornée au défaut)**
 
 Trouvé par **T-52**, l'invariant que le fondateur a demandé au §2 (« plancher ≥ plafond mérite un
 invariant, pas un correctif »). Il a trouvé **trois familles, pas une** — la famille footing est
@@ -8837,4 +8837,92 @@ id: O-83
 quoi: combien de profils livrent une séance moyenne < 25 min ou une semaine < 60 min ?
 attendu: /9[0-9] \/ 985/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let n=0,t=0;for(const{sport,a}of profiles()){let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}t++;const ch=p.weeks.filter(w=>!w.isRecup&&w.phase.id!=='taper');if(!ch.length)continue;const min=ch.reduce((x,w)=>x+w.days.reduce((u,d)=>u+d.sessions.reduce((v,s)=>v+(s.min||0),0),0),0)/ch.length;const ses=ch.reduce((x,w)=>x+w.days.reduce((u,d)=>u+d.sessions.filter(s=>s.d!=='rs').length,0),0)/ch.length;if(min/Math.max(1,ses)<25||min<60)n++;}console.log(n+' / '+t);"
+```
+
+## O-82 — FERMETURE (arbitrage « LE PLANCHER CÈDE EN AFFÛTAGE, ET A3 LE DISAIT DÉJÀ », 19/08/2026)
+
+*« Ma direction avait un domaine et je ne l'avais pas nommé. »* Le fondateur tranche : hors
+affûtage, le remède du plancher (allonger la séance) est **bénin** ; en affûtage il devient
+« 30 min CONTINUES à l'allure du jour J pour une dose conçue à 2×7-10 » — **nuisible**. *« Un
+plancher dont le remède nuit ne doit pas s'appliquer. »* `A3` porte déjà la décision et n'avait
+jamais été rejouée sur le plancher de dignité : **extension d'une décision existante, pas un
+arbitrage neuf.**
+
+**⚠ MA PREMIÈRE ÉCRITURE ÉTAIT PLUS LARGE QUE LE REMÈDE, ET C'EST UNE MESURE QUI L'A DIT.** Elle
+retirait le plancher PARTOUT en décharge (`return null`) : `audit:v1` est passé à **16 violations
+DURES** (des nages facile/récup devenues plus longues que la « longue » de leur semaine). Un
+plancher de dignité fait aussi un travail LÉGITIME en décharge — empêcher une séance de fondre à
+rien. Ce qui nuit n'est pas le plancher : c'est qu'il **DÉPASSE** un plafond délibérément bas. Il
+cède donc **jusqu'au plafond déclaré, jamais en dessous** — `min(dignité, plafond)`.
+**269 blocs → 0**, sur 21 950 blocs bornés (population assertée).
+
+**Une FUITE D'ÉTAT trouvée en chemin, et c'est elle qui faisait rougir v6.** Le drapeau de
+décharge suit le patron documenté de `_capScale`/`_swimCapW` (une valeur posée par la boucle de
+semaines) — mais le bloc de dominance **D2 tourne APRÈS la boucle et rejoue `scaleWeekBody` sur
+TOUTES les semaines**, où le drapeau garde la valeur de la DERNIÈRE (l'affûtage). Les planchers
+étaient donc suspendus partout, y compris en charge : mesuré sur `tri/S`, **la semaine 4 (`dev`)
+tombait de 219 à 118 min**, et le banc v6 rougissait sur C22 (D3) et sur C30-A. **L'attribution a
+été faite par expérience à facteur unique** — retirer le câblage `progCap` laissait les deux
+rouges, donc ce n'était pas lui. Corrigé par `posDecharge(w)` dans les quatre boucles du bloc :
+S1-S7 redeviennent identiques au bit près, seule l'affûtage bouge (119 → 118 min). C'est la
+règle 20 sur un troisième objet : *toute passe qui traverse les semaines APRÈS la boucle repose
+le drapeau à la semaine qu'elle traite.*
+
+**Deux défauts de mon propre lot précédent, publiés.** (1) **`progCap` n'était pas consommé** sur
+la branche C8/C16 de `blockBounds` : la trajectoire du footing livrée dans O-81 était **INERTE**,
+et le mouvement mesuré (30 → 50 min) venait de la seule hausse du plafond. Un champ posé que
+personne ne lit est « un correctif qu'on croit avoir » (R18.1) — câblé ici. (2) **Le plancher de
+semaine de course regonflait les blocs faciles sans lire leur plafond déclaré** — le seul des
+trois regonflages à ne pas le faire, alors que `refillEasyAfterLabelCap` le fait depuis toujours.
+Invisible tant que le plancher de dignité clampait ces blocs par le bas ; le suspendre l'a
+découvert (2 profils, footing à 68 min pour un plafond de 50). Borné.
+
+**Et O-53 est rejouée sur un troisième site** : `enforceC22Final` rabotait des blocs **ÉPINGLÉS**
+— une nage continue de 1 550 m ramenée à 1 500, alors que le plan a ANNONCÉ le palier. La règle
+« un bloc épinglé n'est jamais écrêté » était écrite pour le plafond de dose et jamais rejouée
+ici. Rabotages d'épinglés **27 → 25** (24 au point de départ : le solde du lot est +1, et il
+appartient à O-54 §2).
+
+**Les cliquets, ré-épinglés avec leur cause** : **S4 357 → 356** et **S5 513 → 511**, deux
+BAISSES (un affûtage plus léger dépasse moins sa sortie longue et dérive moins de l'identité
+R20.2) ; **T-48** VO2 8 628 → 8 636 (+0,09 %) et nage seuil 427 773 → 426 708 m (−0,25 %), deux
+dixièmes venus des cliquets de semaine — le pic lui-même n'est pas touché, les planchers ne
+cédant qu'en décharge.
+
+**T-52 est PROMU garde permanente**, et son critère est rectifié : il testait `plancher >= plafond`
+et rougissait donc sur l'état RÉPARÉ (après correctif le plancher vaut EXACTEMENT le plafond).
+Le défaut est le **dépassement**, pas l'égalité — un bloc qui tient exactement son plafond le
+respecte. Ce n'est pas un affaiblissement pour coller au comportement : le correctif le moins
+coûteux qui satisfait `plancher > plafond` EST `min(dignité, plafond)`, c'est-à-dire la propriété
+(règle 19).
+
+`audit:v1` 459 à **0 violation dure** · invariants 22×54 · v6 **74 verts · 0 régression** ·
+`lotPhysio` **25 verts · 23 rouges attendus · 0 régression** · golden 989 recapturé (231 empreintes).
+
+---
+
+## O-84 · Le plan ANNONCE N paliers de continuité et en livre N−1 · 🔴 **OUVERT — préexistant, mesuré, et c'est une PROMESSE**
+
+Trouvé en livrant O-82, **et mesuré identique des deux côtés** — c'est ce qui prouve que ce lot
+n'en est pas la cause : **29 profils tri sur 187 (15,5 %) avant, 29 après.** La décision
+`B17-paliers` annonce « 3 paliers en phase spécifique » et le plan en livre 2.
+
+Le mécanisme est le cinquième de la prédiction du 19/08 (« tout mécanisme qui sélectionne par
+POSITION, TAILLE ou ORDRE frappe la natation par défaut ») : le palier est élu victime par une
+coupe **qui ne passe pas par `prioriteFinancement`**. Vérifié en écrivant le correctif évident et
+en le mesurant INERTE : déclarer le canal `occurrence` sur les continuités dans `canauxProteges`
+**ne change rien** — donc le site fautif est l'un des trois qui choisissent sans elle, et il reste
+à identifier. Le correctif a été RETIRÉ plutôt que livré : une modification inerte ne part pas.
+
+Ce qui rend ce ticket différent d'un simple créneau perdu : **le plan a AFFICHÉ la promesse**.
+Supprimer le palier ne rend pas le plan plus léger, il le rend MENTEUR — et `canauxProteges`
+porte déjà la règle qui décide (*« protéger un seul canal ne protège pas un type : ça choisit
+seulement de quelle façon il meurt »*), appliquée à moitié ici : la TAILLE d'une continuité est
+protégée, son OCCURRENCE non.
+
+```verify
+id: O-84
+quoi: combien de profils tri livrent un nombre de paliers de continuité différent de celui annoncé ?
+attendu: /: 2[0-9]$/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let tot=0,ko=0;for(const{sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const d=(p._v2?.decisions??[]).find(x=>x.id==='B17-paliers');const n=+(String(d?.val??'').match(/(\\d+)\\s*palier/)?.[1]??0);if(!n)continue;tot++;const liv=(p.weeks??[]).flatMap(w=>(w.days??[]).flatMap(x=>x.sessions??[])).filter(s=>s.d==='sw'&&/^Nage continue/.test(String(s.name??''))).length;if(liv!==n)ko++;}console.log('sur '+tot+' profils, livré != annoncé : '+ko);"
 ```

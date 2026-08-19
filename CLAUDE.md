@@ -580,6 +580,36 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-82 FERMÉ — le plancher cède en affûtage, borné au défaut ; une FUITE D'ÉTAT et deux défauts
+de mon lot précédent trouvés en chemin** (arbitrage « LE PLANCHER CÈDE EN AFFÛTAGE, ET A3 LE
+DISAIT DÉJÀ », 19/08/2026 — voir `BUGS_OUVERTS.md` « O-82 », « O-84 », garde **T-52** promue) :
+*« un plancher dont le remède nuit ne doit pas s'appliquer »* — hors affûtage le remède est
+d'allonger la séance (bénin), en affûtage c'était **30 min continues à l'allure du jour J** pour
+une dose conçue à 2×7-10. `A3` portait déjà la décision, jamais rejouée sur le plancher de
+dignité. **Ma première écriture était plus large que le remède** (suspension totale en décharge)
+et `audit:v1` est passé à **16 violations DURES** : le plancher fait aussi un travail légitime en
+décharge, ce qui nuit est qu'il DÉPASSE un plafond délibérément bas — il cède donc **jusqu'au
+plafond, jamais en dessous** (`min(dignité, plafond)`). **269 blocs → 0**, sur 21 950 bornés.
+**La fuite d'état est la vraie leçon** : le bloc de dominance D2 tourne APRÈS la boucle de
+semaines et rejoue `scaleWeekBody` sur toutes, où le drapeau gardait la valeur de la DERNIÈRE
+(l'affûtage) — planchers suspendus partout, `tri/S` semaine 4 (`dev`) **219 → 118 min**, v6 rouge
+sur C22 et C30-A. Attribution par **expérience à facteur unique** (retirer le câblage `progCap`
+laissait les deux rouges : ce n'était pas lui). Règle 20 sur un troisième objet : *toute passe qui
+traverse les semaines APRÈS la boucle repose le drapeau à la semaine qu'elle traite.* **Deux
+défauts de mon lot O-81, publiés** : `progCap` n'était **pas consommé** sur la branche C8/C16, donc
+la trajectoire du footing était **INERTE** (le 30 → 50 venait de la seule hausse du plafond) ; et
+le plancher de semaine de course regonflait les blocs faciles **sans lire leur plafond déclaré**,
+seul des trois regonflages à ne pas le faire. **O-53 rejouée sur un troisième site** :
+`enforceC22Final` rabotait des blocs ÉPINGLÉS (une continue de 1 550 m ramenée à 1 500, alors que
+le plan a annoncé le palier) — rabotages 27 → 25. **O-84 ouvert** : le plan annonce N paliers et
+en livre N−1 sur **29 profils tri sur 187, mesuré IDENTIQUE avant et après** — le palier est élu
+par une coupe qui ne passe pas par `prioriteFinancement` (5ᵉ mécanisme de la prédiction « la nage
+est la victime par défaut ») ; le correctif évident a été écrit, mesuré **INERTE**, et RETIRÉ.
+**T-52 promu garde permanente**, critère rectifié : il testait `plancher >= plafond` et rougissait
+sur l'état RÉPARÉ — le défaut est le DÉPASSEMENT, pas l'égalité. **`audit:v1` 459 à 0, invariants
+22×54, v6 74 verts · 0 régression, `lotPhysio` 25 verts · 23 rouges attendus · 0 régression,
+golden 989 recapturé (231 empreintes).**
+
 **O-81 FERMÉ — le plafond du footing monte, le plancher ne cède pas ; et l'invariant demandé a
 trouvé DEUX familles de plus** (arbitrage « LE PLAFOND MONTE, LE PLANCHER NE CÈDE PAS »,
 19/08/2026 — voir `BUGS_OUVERTS.md` « O-81 », « O-82 », « O-83 », garde **T-52** au banc

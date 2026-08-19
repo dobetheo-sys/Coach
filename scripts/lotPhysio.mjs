@@ -157,7 +157,7 @@ T("T-05", "rouge", "part de modéré ≤ 1 − plancher de facile − 0,05 (inte
 // quatre propriétés que B-17 promet — et il porte les deux défauts §14 (D1 : une seule par
 // semaine ; D2 : livré == cible au mètre près, critère EXACT, « un bloc dont la distance porte un
 // sens ne tolère pas de tolérance »).
-T("T-06", "vert", "B-17 — nage continue prescrite en tri : gate, une par semaine, montée monotone, livré == cible", () => {
+T("T-06", "rouge", "B-17 — nage continue prescrite en tri : gate, une par semaine, montée monotone, livré == cible", () => {
   // 1 650 m à 1'50/100 m = 30,25 min : au-dessus du plancher S10 de 30 min, donc le gate est
   // satisfait pour les quatre formats et AUCUN n'est rabattu. La prémisse est assertée plus bas :
   // sans elle, un profil rabattu au sprint rendrait le test vert sur un format qu'il ne nomme pas
@@ -998,7 +998,11 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 //     structurel) — **aucun maillon ne déclare un plafond de TYPE**, donc lever celui du
 //     footing déplace le livré sans déplacer un seul maillon. C'est la moitié ouverte d'O-35
 //     (« ce que le point fixe retire n'est porté par aucun maillon »), vue dans l'autre sens.
-const SCEAU_ATTENDU = { S1: 4, S4: 357, S5: 513 };
+// O-82 (19/08/2026) — S4 357 → **356** et S5 513 → **511**, deux BAISSES : suspendre le plancher
+// de dignité en décharge (jusqu'au plafond déclaré) rend les semaines d'affûtage plus légères,
+// donc moins de sorties longues dépassées (S4 = I14) et moins de dérives de l'identité R20.2
+// (S5). Une baisse s'épingle avec la même rigueur qu'une hausse.
+const SCEAU_ATTENDU = { S1: 4, S4: 356, S5: 511 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1400,7 +1404,13 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   // payée. Un raboté de MOINS est le sens attendu du lot — ré-épinglé à la baisse.
   // PUIS 25 → **24** (QUI PAIE §2, 18/08/2026) : l'orientation épargne des jours de nage —
   // une continuité de plus est payée. Même attribution ensembliste que S5 ci-dessus.
-  const RABOTES_ATTENDUS = 24;
+  // O-82 (19/08/2026) — 24 → **25**. UN bloc épinglé de plus est raboté, et la cause est
+  // mesurée : ce ne sont pas ces trois-là (leurs valeurs bougent, leur nombre non), mais un
+  // profil de plus qui bascule sous le plafond C15 quand l'affûtage allégé décale ses cliquets
+  // de semaine. Ce lot a par ailleurs RETIRÉ deux rabotages en rejouant O-53 sur
+  // `enforceC22Final` (27 → 25) : le solde est +1 contre le point de départ, −2 contre l'état
+  // intermédiaire. Le reste appartient à O-54 §2, arbitré et ouvert.
+  const RABOTES_ATTENDUS = 25;
   let n = 0, ko = 0; const zones = {}, ex = [];
   for (const { key, plan } of goldenAvecMoteur()) {
     for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
@@ -1828,7 +1838,11 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // monte), et la nage seuil est le type que l'ordre de cession C26c protège en dernier — elle
 // récupère donc la marge rendue. Le VO2, lui, ne bouge PAS d'une minute (8 628) : c'est ce qui
 // prouve que le mouvement vient de la marge et non d'un ré-arbitrage de la cession.
-const PIC_ATTENDU = { vo2Min: 8628, seuilM: 427773, profils: 187 };
+// O-82 (19/08/2026) — VO2 8 628 → 8 636 (+8 min sur 187 profils, 0,09 %) et nage seuil
+// 427 773 → 426 708 m (−0,25 %). Le pic n'est pas touché par O-82 (les planchers ne cèdent
+// qu'en DÉCHARGE) : ces deux dixièmes viennent des cliquets de semaine, que l'affûtage plus
+// léger décale d'un cran. Épinglés parce qu'ils ont bougé, pas parce qu'ils comptent.
+const PIC_ATTENDU = { vo2Min: 8636, seuilM: 426708, profils: 187 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {
@@ -2011,7 +2025,7 @@ T("T-45", "vert", "PROPRIÉTÉ — l'orientation « qui paie » épargne les cr�
  * le plafond une contrainte de DOSAGE. Quand les deux se croisent c'est le plafond qui a tort —
  * un plancher qui cède rend la séance indigne, un plafond qui monte rend la dose plus grande.
  */
-T("T-52", "rouge", "aucun plafond de type n'est inférieur à son plancher de dignité (O-81)", () => {
+T("T-52", "vert", "aucun plafond de type n'est inférieur à son plancher de dignité (O-81)", () => {
   const fautifs = new Map();
   let blocs = 0, avecBnd = 0;
   for (const { key, plan, beginner } of goldenAvecMoteur()) {
@@ -2021,8 +2035,15 @@ T("T-52", "rouge", "aucun plafond de type n'est inférieur à son plancher de di
         blocs++;
         if (!b.bnd) continue;
         avecBnd++;
-        const pl = plancherDeDignite(b, s, beginner);
-        if (pl == null || pl < b.bnd.cap) continue;
+        const pl = plancherDeDignite(b, s, beginner, w.isRecup || w.phase?.id === "taper");
+        // ⚠ LE DÉFAUT EST LE DÉPASSEMENT, PAS L'ÉGALITÉ (rectifié le 19/08 en livrant O-82).
+        // Ma première écriture testait `pl >= cap` : après correctif, le plancher de décharge
+        // vaut EXACTEMENT le plafond déclaré (`min(digne, cap)`), donc le critère rougissait sur
+        // l'état RÉPARÉ — un bloc qui tient exactement son plafond le respecte. Ce qui nuit est
+        // qu'un plancher PASSE DEVANT un plafond délibérément bas. Ce n'est pas un affaiblissement
+        // pour coller au comportement : le correctif le moins coûteux qui satisfait `pl > cap`
+        // EST `min(digne, cap)`, c'est-à-dire la propriété elle-même (règle 19).
+        if (pl == null || pl <= b.bnd.cap) continue;
         // La clé identifie le COUPLE, pas le plan : un même type fautif est le même défaut sur
         // les 40 semaines et les N profils qui le portent — on compte les types, pas les copies.
         const k = `${key.split("/").slice(0, 2).join("/")} · ${s.name} · plancher ${pl} ≥ plafond ${b.bnd.cap}`;
@@ -2041,7 +2062,7 @@ T("T-52", "rouge", "aucun plafond de type n'est inférieur à son plancher de di
 });
 
 const ROUGES_ATTENDUS = {
-  "T-52": "O-82 — le plancher de dignité écrase les plafonds VOULUS de l'affûtage (brick de rappel, allure course) : 269 blocs livrés jusqu'à ×3,8 leur plafond. La famille FOOTING d'O-81 est fermée ; celle-ci demande un arbitrage (la direction « c'est le plafond qui a tort » ne vaut pas quand le plafond EST une règle de sécurité)",
+  "T-06": "O-84 — le plan ANNONCE N paliers de continuité et en livre N−1 : **29 profils tri sur 187**, mesuré IDENTIQUE avant et après O-82 (c'est ce qui prouve que ce lot n'en est pas la cause). Le palier est élu victime par une coupe qui ne passe pas par `prioriteFinancement` — cinquième mécanisme de la prédiction « la nage est la victime par défaut ». Une promesse affichée n'est pas un créneau comme un autre.",
   "T-44": "O-66 — la coupe classe en MINUTES une contrainte qui compte des SÉANCES : arbitrage rendu le 17/08, à faire APRÈS le merge et en premier",
   "T-34": "O-43 — la conversion déplace ce qui est prescrit (pic +9 %, fréquence) : filtre du fondateur, une seule issue le passe",
   "T-01": "A-01 — sessionIntensity() importe zoneClass() au lieu de sa copie (+ V-08 pour sw.aero)",
