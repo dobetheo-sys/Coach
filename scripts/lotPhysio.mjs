@@ -2094,21 +2094,28 @@ T("T-52", "vert", "aucun plafond de type n'est inférieur à son plancher de dig
 T("T-53", "vert", "le volume hebdomadaire de nage tient sa borne de charge d'épaule (O-85)", () => {
   const pb = [];
   // ── (1) INVARIANCE, sur le corpus, là où la nage est un LEG ────────────────────────────
+  // O-89 — la borne CLIQUETTE sur le livré des semaines précédentes : le critère refait la même
+  // lecture ARRIÈRE que la passe (cap de la semaine w depuis le max livré AVANT w, puis le max
+  // avance), jamais une projection. Un moteur qui relirait une projection livrerait des semaines
+  // au-dessus de ce que cette marche autorise — c'est exactement ce que le critère verrait.
   let semaines = 0, depasse = 0, pire = null;
   for (const { key, sport, a, plan } of goldenAvecMoteur()) {
     if (!["tri", "duathlon", "swimrun"].includes(String(sport))) continue;
     const gate = _moteur.analyze(toProfile(sport, a))?.b17Gate ?? null;
     if (!gate) continue;
+    let livreMax = 0;
     for (const w of plan.weeks ?? []) {
-      const cap = swimWeeklyLoadCapM(gate, w.num);
-      if (!cap) continue;
-      semaines++;
+      const cap = swimWeeklyLoadCapM(gate, livreMax);
       const m = (w.days ?? []).reduce((t, d) => t + (d.sessions ?? []).reduce((u, sx) =>
         u + (sx.d === "sw" ? (sx.steps ?? []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0) : 0), 0), 0);
-      // tolérance : les planchers de séance peuvent empêcher de descendre, et le moteur le DIT
-      // alors dans `warnings` plutôt que de les franchir. On borne le dépassement TOLÉRÉ à une
-      // séance-plancher, au-delà c'est la garde qui a échoué.
-      if (m > cap + 750) { depasse++; if (!pire || m - cap > pire.d) pire = { key, w: w.num, m, cap, d: m - cap }; }
+      if (cap) {
+        semaines++;
+        // tolérance : les planchers de séance peuvent empêcher de descendre, et le moteur le DIT
+        // alors dans `warnings` plutôt que de les franchir. On borne le dépassement TOLÉRÉ à une
+        // séance-plancher, au-delà c'est la garde qui a échoué.
+        if (m > cap + 750) { depasse++; if (!pire || m - cap > pire.d) pire = { key, w: w.num, m, cap, d: m - cap }; }
+      }
+      livreMax = Math.max(livreMax, m);
     }
   }
   if (semaines < 3000) pb.push(`POPULATION : ${semaines} semaine(s) sous borne — le corpus s'est effondré`);
@@ -2240,6 +2247,101 @@ T("T-55", "vert", "le compte d'accélérations est borné en absolu, jamais une 
     detail: pb.length ? pb.join(" · ")
       : `${porteuses} séances porteuses · compte max ${pireCompte} ≤ 12 · 0 fraction · blocs ${mLo}-${mHi} m (×${(mHi / mLo).toFixed(1)})`,
   };
+});
+
+/**
+ * T-56 (O-93, arbitrage du fondateur 19/08/2026) — AUCUNE SEMAINE DE RÉCUP NE PORTE, POUR UN
+ * TYPE OU UNE DISCIPLINE DONNÉE, UNE DOSE SUPÉRIEURE AUX SEMAINES DE CHARGE ADJACENTES.
+ *
+ * *« Une décharge existe pour absorber la fatigue accumulée. Si elle porte les plus grosses
+ * doses du plan, ce n'est pas une décharge — la périodisation entière s'inverse. »* Trois
+ * instances trouvées par la relecture REEL, trois disciplines, trois types : VO2max 6×4 en
+ * récup contre 5×4 en charge · nage seuil max du plan (1 625 m) en récup · les trois seules
+ * vraies sorties vélo (156-225 min) toutes en récup. Quatrième inversion de monotonie du dépôt
+ * (I13 niveau · O-21 allure · O-77 volume déclaré · O-93 phase).
+ *
+ * Formulé sur l'ADJACENCE (les charges qui encadrent, en sautant les autres décharges), parce
+ * que c'est la comparaison que l'athlète vit. Deux axes, comme l'arbitrage :
+ *   · DISCIPLINE — minutes par discipline, legs de brick attribués (sans quoi le vélo de
+ *     couverture n'aurait aucun référent : corollaire « le critère déclare ce qu'il fait quand
+ *     le type est absent ») ;
+ *   · TYPE — dose comparable par nom de séance, dans sa MONNAIE (mètres en nage, minutes
+ *     ailleurs — règle 14), seulement quand le type existe chez au moins une voisine.
+ * Tolérance : ×1,05 + un quantum (50 m / 3 min) — l'inversion se juge sur du signal, pas sur
+ * l'arrondi (corollaire règle 14 : le pas est absolu).
+ */
+T("T-56", "vert", "aucune récup ne dépasse ses charges adjacentes, par type ni par discipline (O-93)", () => {
+  const pb = [];
+  let recups = 0, violDisc = 0, violType = 0;
+  let pireD = null, pireT = null;
+  // une séance ÉPINGLÉE (palier B-17 : la distance EST le stimulus, et le plan l'a ANNONCÉE)
+  // n'est pas une dose inversée : c'est un TEST, qui se place précisément dans une semaine
+  // allégée — la passe la protège, le critère la met HORS CHAMP et la COMPTE (jamais en
+  // silence). `epingle` ne s'applique qu'au côté RÉCUP : chez les voisines de charge, la
+  // séance compte comme référence normalement.
+  const estEpinglee = (s) => (s.steps ?? []).some((st) => st.bnd && st.bnd.pinned);
+  const discMin = (w, sansEpinglees) => {
+    const t = { sw: 0, bk: 0, rn: 0 };
+    for (const d of w.days ?? []) for (const s of d.sessions ?? []) {
+      if (s.d === "rs" || s.race) continue;
+      if (sansEpinglees && estEpinglee(s)) continue;
+      if (s.d in t) t[s.d] += s.min || 0;
+      else for (const st of s.steps ?? []) { const leg = st.leg === "bike" ? "bk" : st.leg === "run" ? "rn" : null; if (leg) t[leg] += st._min || 0; }
+    }
+    return t;
+  };
+  const typeDose = (w) => {
+    const t = new Map();
+    for (const d of w.days ?? []) for (const s of d.sessions ?? []) {
+      if (s.d === "rs" || s.race) continue;
+      const nom = String(s.name || "").replace(/\s*\((matin|midi|soir)\)\s*/g, "").trim();
+      const dose = s.d === "sw"
+        ? (s.steps ?? []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0)
+        : (s.min || 0);
+      t.set(nom, Math.max(t.get(nom) || 0, dose));
+    }
+    return t;
+  };
+  let exemptes = 0, epinglees = 0;
+  for (const { key, sport, plan } of goldenAvecMoteur()) {
+    const wl = plan.weeks ?? [];
+    // même exemption DÉRIVÉE que la passe : quand aucune semaine de pic n'est en charge, la
+    // récup de pic est la référence de dominance du plan (« dev ≤ pic », repli peakAny) — la
+    // réduire raboterait tout le plan (désastre O-21, mesuré sur tri/S : dev 3,7 h → 1,5 h).
+    // L'exemption est COMPTÉE, jamais silencieuse (leçon O-15).
+    const peakCharge = wl.some((x) => x.phase.id === "peak" && !x.isRecup);
+    for (let i = 0; i < wl.length; i++) {
+      const w = wl[i];
+      if (!w.isRecup || w.phase.id === "taper") continue;
+      if (w.phase.id === "peak" && !peakCharge) { exemptes++; continue; }
+      const charge = (from, pas) => { for (let j = from; j >= 0 && j < wl.length; j += pas) { const x = wl[j]; if (!x.isRecup && x.phase.id !== "taper" && !(x.days ?? []).some((d) => (d.sessions ?? []).some((s) => s.race))) return x; } return null; };
+      const av = charge(i - 1, -1), ap = charge(i + 1, +1);
+      if (!av && !ap) continue;
+      recups++;
+      for (const d of w.days ?? []) for (const s of d.sessions ?? []) if (s.d !== "rs" && !s.race && estEpinglee(s)) epinglees++;
+      const dR = discMin(w, true), dAv = av ? discMin(av) : { sw: 0, bk: 0, rn: 0 }, dAp = ap ? discMin(ap) : { sw: 0, bk: 0, rn: 0 };
+      for (const k of ["sw", "bk", "rn"]) {
+        const ref = Math.max(av ? dAv[k] : 0, ap ? dAp[k] : 0);
+        if (dR[k] > ref * 1.05 + 3) { violDisc++; if (!pireD || dR[k] - ref > pireD.d) pireD = { key, w: w.num, k, val: Math.round(dR[k]), ref: Math.round(ref), d: dR[k] - ref }; }
+      }
+      const tR = typeDose(w), tAv = av ? typeDose(av) : new Map(), tAp = ap ? typeDose(ap) : new Map();
+      const tEp = new Set();
+      for (const d of w.days ?? []) for (const s of d.sessions ?? []) if (s.d !== "rs" && !s.race && estEpinglee(s)) tEp.add(String(s.name || "").replace(/\s*\((matin|midi|soir)\)\s*/g, "").trim());
+      for (const [nom, dose] of tR) {
+        if (tEp.has(nom)) continue; // séance épinglée côté récup : hors champ, comptée plus haut
+        const a1 = tAv.get(nom), a2 = tAp.get(nom);
+        if (a1 == null && a2 == null) continue; // type absent des charges voisines : axe DISCIPLINE
+        const ref = Math.max(a1 ?? 0, a2 ?? 0);
+        const quantum = /^Nage/.test(nom) ? 50 : 3;
+        if (dose > ref * 1.05 + quantum) { violType++; if (!pireT || dose - ref > pireT.d) pireT = { key, w: w.num, nom, val: Math.round(dose), ref: Math.round(ref), d: dose - ref }; }
+      }
+    }
+  }
+  if (recups < 2000) pb.push(`POPULATION : ${recups} semaine(s) de récup encadrées — le corpus s'est effondré`);
+  if (violDisc) pb.push(`${violDisc} inversion(s) de DISCIPLINE · pire ${pireD.key} S${pireD.w} ${pireD.k} : ${pireD.val}' pour ${pireD.ref}' en charge voisine`);
+  if (violType) pb.push(`${violType} inversion(s) de TYPE · pire ${pireT.key} S${pireT.w} « ${pireT.nom} » : ${pireT.val} pour ${pireT.ref}`);
+  const horsChamp = ` · hors champ : ${exemptes} récup(s) de pic (référence de dominance) + ${epinglees} séance(s) épinglée(s) B-17`;
+  return { ok: pb.length === 0, detail: (pb.length ? pb.join(" · ") : `${recups} récups encadrées · 0 inversion de discipline · 0 inversion de type`) + horsChamp };
 });
 
 const ROUGES_ATTENDUS = {

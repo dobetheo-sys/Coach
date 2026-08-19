@@ -222,7 +222,13 @@ function runChecks(sport, a, plan, fail) {
   // prévention (2) passent avant performance (5) — donc un plan qui s'écarte de la course
   // POUR CETTE RAISON est conforme, pas défaillant. Même famille de défaut d'instrument que
   // `U-STRUCT` en R15.1 : le banc mesurait, mais pas ce qu'il croyait.
-  const injRun = /tibia|genou|dos|cheville|pied|itb|achille/i.test(inj);
+  // O-93 (19/08/2026) — « hanche » et « course » manquaient : le moteur les classe IMPACT depuis
+  // toujours (`INJURY_RULES.hanche = { forbid: ["rn"] }` — la course est INTERDITE, pas réduite),
+  // et le check punissait donc cette règle de sécurité (sa propre famille R16.10). Découvert
+  // quand la passe O-93 a resserré les récups d'un profil hanche/reprise/72 ans : l'écart de
+  // part de course a franchi les 15 pts que la protection créait déjà. Le regex s'aligne sur
+  // l'ensemble d'impact du moteur (constraintMatrix, `impact`).
+  const injRun = /tibia|genou|dos|cheville|pied|itb|achille|hanche|course/i.test(inj);
   const injSwim = /epaule|épaule/i.test(inj);
 
   let peak = 0;

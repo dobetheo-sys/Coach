@@ -90,6 +90,9 @@ export const _o44 = { semainesCourtes: 0, semainesCharge: 0 };
 /** O-85 — ce que la borne de charge d'épaule a réellement écrêté, pour que la mesure le lise
  *  au DÉCLENCHEMENT et non sur le livré (« un correcteur qui réussit efface sa propre trace »). */
 export let _o85: { semaines: number; metres: number } | null = null;
+/** O-93 — ce que la passe anti-inversion des décharges a réellement réduit (même raison),
+ *  et les récups de pic EXEMPTÉES (référence de dominance des prépas courtes — comptées). */
+export let _o93: { semaines: number; types: number; disciplines: number; exemptes?: number } | null = null;
 
 /**
  * O-81 / T-52 — LE PLANCHER DE DIGNITÉ, EN UN SEUL POINT.
@@ -189,7 +192,10 @@ export function reconcileDeclaredVolume(
   // prochain producteur de séances n'ait pas besoin de connaître la règle pour la respecter.
   _c30b.length = 0;
   _o44.semainesCourtes = 0; _o44.semainesCharge = 0;
-  _o85 = null;
+  // _o85/_o93 ne se réinitialisent PAS ici : `repairLoop` rappelle cette fonction sur un plan
+  // DÉJÀ écrêté, et le second appel — ne trouvant plus rien — effaçait la trace du premier
+  // (mesuré : `_o85 = null` sur un plan aux semaines assises sur la borne). Le reset vit au
+  // point d'entrée du build (`generatePlan`, avant le premier appel), les appels ACCUMULENT.
   enforceMedicalHold(plan, !!ctx?.medHold);
   // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
   // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
@@ -472,12 +478,17 @@ export function reconcileDeclaredVolume(
   // (« la nage est la victime par défaut ») commise par la garde censée la protéger.
   if (ctx?.swimGate) {
     let ecrete = 0, semaines = 0;
+    // O-89 — LE CLIQUET LIT LES SEMAINES DÉJÀ FIXÉES. La borne de la semaine w dérive du plus
+    // haut volume de nage LIVRÉ par les semaines qui la précèdent (après leur propre écrêtage) —
+    // lecture ARRIÈRE, comme la rampe C22 : chaque semaine lit un état fixé, pas une projection.
+    // Une semaine qui sous-livre (récup, coupe) n'avance pas le cliquet, et c'est correct.
+    let livreMaxM = 0;
     for (const wk of plan.weeks) {
-      const cap = swimWeeklyLoadCapM(ctx.swimGate, wk.num);
-      if (!cap) continue;
+      const cap = swimWeeklyLoadCapM(ctx.swimGate, livreMaxM);
       const metres = () => wk.days.reduce((t, d) => t + d.sessions.reduce((u, sx) =>
         u + (sx.d === "sw" ? (sx.steps || []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0) : 0), 0), 0);
-      if (metres() <= cap) continue;
+      if (!cap) { livreMaxM = Math.max(livreMaxM, metres()); continue; }
+      if (metres() <= cap) { livreMaxM = Math.max(livreMaxM, metres()); continue; }
       semaines++;
       const avant = metres();
       for (const qualite of [false, true]) {
@@ -521,8 +532,9 @@ export function reconcileDeclaredVolume(
       if (metres() > cap) warnings.push("Semaine " + wk.num + " : " + (metres() / 1000).toFixed(1)
         + " km de natation, au-dessus des " + (cap / 1000).toFixed(1)
         + " km que ton expérience en nage rend prudents — les planchers de séance empêchent de descendre plus bas sans supprimer une séance, et la fréquence en nage n'est pas ce qui charge l'épaule. Réduis une séance à la main si ton épaule parle.");
+      livreMaxM = Math.max(livreMaxM, metres()); // O-89 — le cliquet avance sur le LIVRÉ écrêté
     }
-    if (semaines > 0) _o85 = { semaines, metres: Math.round(ecrete) };
+    if (semaines > 0) _o85 = { semaines: (_o85?.semaines || 0) + semaines, metres: (_o85?.metres || 0) + Math.round(ecrete) };
   }
 
   // D4 (banc v6) — UNE SEMAINE DE RÉCUP N'EST JAMAIS PLUS LOURDE QUE CELLE QU'ELLE ASSIMILE.
@@ -723,37 +735,10 @@ export function reconcileDeclaredVolume(
   // comme R3.13 : la semaine d'une course A− pèse au plus 60 % de la semaine PRÉCÉDENTE
   // (hors jour de course) — un mini-affûtage réel, réduit par les CORPS de séance, jamais
   // par la fréquence (C29).
-  {
-    const A_MOINS_FACTOR = 0.60;
-    const TAPER_BODY_FLOOR_MIN = 10;
-    for (let wi = 1; wi < plan.weeks.length; wi++) {
-      const wk = plan.weeks[wi] as V1Week & { race?: string };
-      if (wk.race !== "A-") continue;
-      const horsCourse = () => wk.days.reduce((t, d) => t + d.sessions.reduce((u, sx) => u + (sx.race ? 0 : sx.min || 0), 0), 0);
-      const cap = weekMinOf(plan.weeks[wi - 1]) * A_MOINS_FACTOR;
-      if (cap <= 0) continue;
-      for (let g = 0; g < 6 && horsCourse() > cap; g++) {
-        const before = horsCourse();
-        const f = cap / before;
-        for (const d of wk.days) for (const sx of d.sessions) {
-          if (sx.d === "rs" || sx.race || !sx.steps) continue;
-          let touched = false;
-          for (const st of sx.steps) {
-            if (st.role !== "body") continue;
-            if (st.durationMin) {
-              const next = Math.max(TAPER_BODY_FLOOR_MIN, Math.round(st.durationMin * f));
-              if (next < st.durationMin) { st.durationMin = next; touched = true; }
-            } else if (st.distanceM) {
-              const next = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
-              if (next < st.distanceM) { st.distanceM = next; touched = true; }
-            }
-          }
-          if (touched && render) render(sx);
-        }
-        if (before - horsCourse() < 0.5) break; // tout est au plancher : on livre ce qui reste
-      }
-    }
-  }
+  // (extrait en fonction : O-93 réduit des semaines de récup APRÈS ce point, et une semaine A−
+  // qui suit une récup réduite doit être re-plafonnée — la garantie se REJOUE, elle ne se
+  // duplique pas, R11.1.)
+  enforceMiniTaperAMoins(plan, render);
 
   // R5.3 — L'AFFÛTAGE DÉCROÎT, POINT. La décroissance était jusqu'ici ÉMERGENTE (courbe + coupe
   // R3.13) : sur un cycle de 10 jours, la dérive des créneaux d'une semaine calendaire à l'autre
@@ -1869,8 +1854,38 @@ export function reconcileDeclaredVolume(
   // ANX-C22 — LE POINT FIXE, EN TOUT DERNIER (définition plus haut). Placé un cran trop tôt,
   // le 2e passage du plafond de libellé pouvait encore réduire une semaine N et recréer le
   // saut N→N+1 qu'on venait de fermer (mesuré : 3 sauts à +11 % survivaient). Rien ne réduit
-  // ni ne gonfle après cette ligne.
+  // ni ne gonfle après cette ligne — deux exceptions JUSTIFIÉES une à une : C30b (neutre en
+  // volume, ci-dessous) et O-93 (ne réduit QUE des semaines de RÉCUP, qu'aucune garantie aval
+  // n'empêche de descendre — et qui doit lire les doses FINALES des charges voisines pour
+  // comparer honnêtement, règle 15).
   for (let p = 0; p < 3 && enforceC22Final(); p++);
+
+  // O-93 (arbitrage du fondateur, 19/08/2026) — L'INVERSION DES DÉCHARGES : AUCUNE SEMAINE DE
+  // RÉCUP NE PORTE, POUR UN TYPE OU UNE DISCIPLINE, UNE DOSE SUPÉRIEURE AUX CHARGES ADJACENTES.
+  //
+  // *« Une décharge existe pour absorber la fatigue accumulée. Si elle porte les plus grosses
+  // doses du plan, ce n'est pas une décharge — la périodisation entière s'inverse. »* Mesuré
+  // (T-56, avant cette passe) : 1 724 inversions de discipline et 2 596 de type sur le corpus —
+  // VO2max 6×4 en récup contre 5×4 en charge, la plus longue nage seuil du plan (1 625 m) dans
+  // une récup, les trois seules vraies sorties vélo (156-225 min) toutes en récup. Le mécanisme
+  // présumé : le budget et le déversoir COMPRIMENT les semaines de charge, pas les décharges —
+  // les doses de qualité y restent à leur taille de naissance. Quatrième inversion de monotonie
+  // du dépôt (I13 niveau · O-21 allure · O-77 volume déclaré · O-93 phase).
+  //
+  // Deux axes, formulés sur l'ADJACENCE (les charges qui ENCADRENT, en sautant les autres
+  // décharges — c'est la comparaison que l'athlète vit) :
+  //   · TYPE (nom de séance), dans sa MONNAIE (mètres en nage, minutes ailleurs — règle 14),
+  //     seulement quand le type existe chez au moins une voisine de charge ;
+  //   · DISCIPLINE (minutes, legs de brick attribués — sans quoi le vélo de couverture n'aurait
+  //     aucun référent : le critère déclare ce qu'il fait quand le type est absent).
+  // La coupe retire des RÉPÉTITIONS d'abord (I14 : la durée d'une répétition EST le stimulus),
+  // la durée/distance des blocs continus ensuite, jamais un bloc ÉPINGLÉ (B-17), jamais la
+  // FRÉQUENCE (C29 : on réduit le volume, pas les jours), et vise l'ÉGALITÉ avec la meilleure
+  // voisine — une récup égale à sa charge voisine est déjà le maximum défendable.
+  enforceRecupSousCharges(plan, render);
+  // …et la garantie A− se REJOUE : O-93 peut réduire la semaine qui précède une course A−,
+  // ce qui invalide le « ≤ 60 % de la précédente » posé plus haut (mesuré : R23.18-D à 63 %).
+  enforceMiniTaperAMoins(plan, render);
 
 
   // C30b — LA SORTIE LONGUE ATTEINT SA CIBLE DE SPÉCIFICITÉ, ET C'EST ICI QU'ELLE LE PEUT.
@@ -1949,6 +1964,156 @@ export function shiftedBikeRp(sport: string, format: string | undefined, a: Athl
   if (!b) return undefined;
   const shift = bikeIFShift(legProfileOf(a as never, "bike"));
   return { lo: b.lo + shift, hi: b.hi + shift };
+}
+
+/**
+ * R23.18 — le mini-affûtage A− (≤ 60 % de la semaine précédente, hors jour de course), en
+ * FONCTION parce qu'il se rejoue : une fois à sa place historique, une fois après O-93 —
+ * qui peut réduire la semaine précédant une A− et invalider la relation posée avant.
+ */
+function enforceMiniTaperAMoins(plan: V1Plan, render?: (s: V1Session) => void): void {
+  const A_MOINS_FACTOR = 0.60;
+  const TAPER_BODY_FLOOR_MIN = 10;
+  const weekMinOfW = (w: V1Week) => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.race ? 0 : s.min || 0), 0), 0);
+  for (let wi = 1; wi < plan.weeks.length; wi++) {
+    const wk = plan.weeks[wi] as V1Week & { race?: string };
+    if (wk.race !== "A-") continue;
+    const horsCourse = () => wk.days.reduce((t, d) => t + d.sessions.reduce((u, sx) => u + (sx.race ? 0 : sx.min || 0), 0), 0);
+    const cap = weekMinOfW(plan.weeks[wi - 1]) * A_MOINS_FACTOR;
+    if (cap <= 0) continue;
+    for (let g = 0; g < 6 && horsCourse() > cap; g++) {
+      const before = horsCourse();
+      const f = cap / before;
+      for (const d of wk.days) for (const sx of d.sessions) {
+        if (sx.d === "rs" || sx.race || !sx.steps) continue;
+        let touched = false;
+        for (const st of sx.steps) {
+          if (st.role !== "body") continue;
+          if (st.durationMin) {
+            const next = Math.max(TAPER_BODY_FLOOR_MIN, Math.round(st.durationMin * f));
+            if (next < st.durationMin) { st.durationMin = next; touched = true; }
+          } else if (st.distanceM) {
+            const next = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+            if (next < st.distanceM) { st.distanceM = next; touched = true; }
+          }
+        }
+        if (touched && render) render(sx);
+      }
+      if (before - horsCourse() < 0.5) break; // tout est au plancher : on livre ce qui reste
+    }
+  }
+}
+
+/**
+ * O-93 — la passe anti-inversion des décharges. Voir le commentaire à son point d'appel (après
+ * le point fixe C22) pour l'arbitrage et la mesure ; ici la mécanique seule.
+ */
+function enforceRecupSousCharges(plan: V1Plan, render?: (s: V1Session) => void): void {
+  const wl = plan.weeks;
+  const estCharge = (w: V1Week) => !w.isRecup && w.phase.id !== "taper"
+    && !w.days.some((d) => d.sessions.some((s) => s.race));
+  const voisine = (i: number, pas: number): V1Week | null => {
+    for (let j = i + pas; j >= 0 && j < wl.length; j += pas) if (estCharge(wl[j])) return wl[j];
+    return null;
+  };
+  const nomDe = (s: V1Session) => String(s.name || "").replace(/\s*\((matin|midi|soir)\)\s*/g, "").trim();
+  // la dose d'un TYPE se compte dans sa monnaie (règle 14) : mètres en nage, minutes de corps
+  // (récup inter-blocs comprise, R5.6a) ailleurs.
+  const doseDe = (s: V1Session) => s.d === "sw"
+    ? (s.steps || []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0)
+    : (s.steps || []).filter((st) => st.role === "body").reduce((v, st) => v + (st._min || 0), 0);
+  const discMin = (w: V1Week) => {
+    const t: Record<string, number> = { sw: 0, bk: 0, rn: 0 };
+    for (const d of w.days) for (const s of d.sessions) {
+      if (s.d === "rs" || s.race) continue;
+      if (s.d in t) t[s.d] += s.min || 0;
+      else for (const st of s.steps || []) { const leg = st.leg === "bike" ? "bk" : st.leg === "run" ? "rn" : null; if (leg) t[leg] += st._min || 0; }
+    }
+    return t;
+  };
+  // Réduire une séance vers une dose CIBLE : répétitions d'abord (I14 — la durée d'une
+  // répétition est le stimulus), blocs continus ensuite, jamais un bloc épinglé.
+  const reduire = (s: V1Session, cible: number): boolean => {
+    let bouge = false;
+    for (let g = 0; g < 6 && doseDe(s) > cible + 1; g++) {
+      let fait = false;
+      for (const st of s.steps || []) {
+        if (st.role !== "body" || st.bnd?.pinned) continue;
+        const trop = doseDe(s) - cible;
+        if (trop <= 0) break;
+        if (s.d === "sw" && st.distanceM) {
+          if ((st.reps || 1) > 1) {
+            const next = Math.max(1, Math.floor(((st.reps || 1) * st.distanceM - trop) / st.distanceM));
+            if (next < (st.reps || 1)) { st.reps = next; fait = bouge = true; }
+          } else {
+            const next = Math.max(100, Math.round((st.distanceM - trop) / 25) * 25);
+            if (next < st.distanceM) { st.distanceM = next; fait = bouge = true; }
+          }
+        } else if (st.durationMin) {
+          if ((st.reps || 1) > 1) {
+            const parRep = st.durationMin + (st.recoveryMin || 0);
+            const next = Math.max(1, (st.reps || 1) - Math.ceil(trop / Math.max(1, parRep)));
+            if (next < (st.reps || 1)) { st.reps = next; fait = bouge = true; }
+          } else {
+            const next = Math.max(4, Math.round(st.durationMin - trop));
+            if (next < st.durationMin) { st.durationMin = next; fait = bouge = true; }
+          }
+        }
+      }
+      if (!fait) break;
+      if (render) render(s);
+    }
+    return bouge;
+  };
+  // EXEMPTION DÉRIVÉE, PUBLIÉE PAR LE COMPTEUR — quand AUCUNE semaine de pic n'est en charge
+  // (prépas courtes : la cadence de récup tombe sur la phase peak), la récup de pic EST la
+  // référence de dominance du plan (`peakAny`, le repli documenté de « dev ≤ pic »). La
+  // réduire rejoue le désastre d'O-21 : mesuré sur tri/S (8 sem), la passe la rétrécissait,
+  // la réparation rabotait TOUT le plan vers elle (semaine de dev 3,7 h → 1,5 h, footings de
+  // 16 min). Sur ces plans, la protection anti-inversion CÈDE à la référence structurelle —
+  // et l'exemption est comptée (`exemptes`), jamais silencieuse (leçon O-15).
+  const peakChargeExiste = wl.some((x) => x.phase.id === "peak" && !x.isRecup);
+  let semaines = 0, types = 0, disciplines = 0, exemptes = 0;
+  for (let i = 0; i < wl.length; i++) {
+    const w = wl[i];
+    if (!w.isRecup || w.phase.id === "taper") continue;
+    if (w.phase.id === "peak" && !peakChargeExiste) { exemptes++; continue; }
+    const av = voisine(i, -1), ap = voisine(i, +1);
+    if (!av && !ap) continue;
+    let touchee = false;
+    // ── axe TYPE : la dose d'un type en récup ≤ la meilleure dose du MÊME type chez les
+    // charges qui l'encadrent. Un type absent des deux voisines n'a pas de référent : il
+    // relève de l'axe DISCIPLINE (déclaré, pas silencieux).
+    const refT = new Map<string, number>();
+    for (const vw of [av, ap]) if (vw) for (const d of vw.days) for (const s of d.sessions) {
+      if (s.d === "rs" || s.race) continue;
+      const n = nomDe(s);
+      refT.set(n, Math.max(refT.get(n) || 0, doseDe(s)));
+    }
+    for (const d of w.days) for (const s of d.sessions) {
+      if (s.d === "rs" || s.race) continue;
+      const ref = refT.get(nomDe(s));
+      if (ref == null || doseDe(s) <= ref) continue;
+      if (reduire(s, ref)) { types++; touchee = true; }
+    }
+    // ── axe DISCIPLINE : minutes par discipline (legs de brick attribués) ≤ la meilleure
+    // voisine. Réduction PROPORTIONNELLE des séances de la discipline — le même facteur pour
+    // toutes, la structure de la semaine ne change pas.
+    const dR = discMin(w), dAv = av ? discMin(av) : { sw: 0, bk: 0, rn: 0 }, dAp = ap ? discMin(ap) : { sw: 0, bk: 0, rn: 0 };
+    for (const k of ["sw", "bk", "rn"]) {
+      const ref = Math.max(dAv[k] || 0, dAp[k] || 0);
+      if (!(dR[k] > ref + 1)) continue;
+      const f = ref / dR[k];
+      let une = false;
+      for (const d of w.days) for (const s of d.sessions) {
+        if (s.d !== k || s.race) continue;
+        if (reduire(s, doseDe(s) * f)) une = true;
+      }
+      if (une) { disciplines++; touchee = true; }
+    }
+    if (touchee) semaines++;
+  }
+  if (semaines > 0 || exemptes > 0) _o93 = { semaines: (_o93?.semaines || 0) + semaines, types: (_o93?.types || 0) + types, disciplines: (_o93?.disciplines || 0) + disciplines, exemptes: (_o93?.exemptes || 0) + exemptes };
 }
 
 /**
@@ -3991,6 +4156,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
   const _spec30 = String(a.sport) === "run"
     ? longRunSpecificityFloor(fmt, r.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(a.vol_max ?? "")) || undefined)
     : null;
+  _o85 = null; _o93 = null; // les compteurs de déclenchement repartent au PREMIER reconcile du build
   reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport as string, "swimSessionFloors"), format: a.format, beginner: r.beginner, swimCapM: r.swimSessionCapM, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 },
     // O-85 — LE DOMAINE EST DÉRIVÉ, PAS UNE LISTE DE SPORTS : la borne « k × distance de course »
     // n'a de sens que si la nage est un LEG d'une épreuve multi-discipline. Un sprinteur qui

@@ -234,6 +234,14 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     else if (phase === "taper") S2.push({ d: "rn", name: "Rappel allure course CAP", note: "Affûtage : on réveille l'allure du jour J sans générer de fatigue. Deux blocs courts, précis, puis on range les chaussures.", det: "", steps: [W(10, "footing progressif"), Object.assign(B(2, 8, "rn.mara", "3min trot"), { repCap: 2, bnd: { floor: 6, cap: 8, hard: true } }), C(5, "footing souple")] });
     else S2.push({ d: "bk", name: "Force basse cadence", note: "Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.", det: "", steps: [W(15, "+ montée en intensité"), Object.assign(B(PT(4, 6), ({ S: 5, M: 5, "70.3": 6, Full: 7 } as Record<string, number>)[fmt] || 5, "bk.frc", "3min souple", " à 50-60 rpm"), { repCap: 8 }), C(10, "moulinage")] });
   } else if (slot === "durLong") {
+    // O-91 (relecture REEL, 19/08/2026) — LA DÉCISION QUE PERSONNE N'AVAIT ÉCRITE : en spécifique
+    // et en pic, le créneau long EST le brick — la « Sortie longue CAP » n'existe qu'en base/dev,
+    // et s'arrête donc à la fin du dev (S22 sur le plan réel : 20 semaines sans course > 68 min
+    // avant un semi, la CAP longue ne survivant que dans les 23-30 min de fin de brick). C'est un
+    // choix de construction (la séance la plus spécifique du tri est l'enchaînement, pas la
+    // course sèche), pas un oubli — mais SA CONSÉQUENCE (aucune sortie longue course sèche en
+    // 2ᵉ moitié de prépa) n'a jamais été arbitrée : c'est la pièce « sortie longue » du lot
+    // progression (O-91), qui devra inclure la PRÉSENCE, pas seulement la taille.
     if (phase === "spec" || phase === "peak") {
       // C21 — brick borné par format, ×0.8 en reprise (appliqué aussi dans blockBounds)
       const rf = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1;

@@ -1,6 +1,14 @@
 # RELECTURE COMPLÈTE DU PLAN REEL — le livrable d'O88_ET_RELECTURE §3
 
-**Date : 19/08/2026 · moteur : celui de ce commit (O-88 inclus) · profil : `REEL/tri/70.3/nage-limitante`**
+**Date : 19/08/2026 · moteur : celui du commit O-88 · profil : `REEL/tri/70.3/nage-limitante`**
+
+> **P.S. (même jour, lot O-89/O-93)** — les chiffres de ce rapport décrivent le moteur AU MOMENT
+> de la relecture ; le lot suivant (O-89 : la borne d'épaule cliquette sur le livré · O-93 :
+> l'inversion des décharges fermée) a changé quatre d'entre eux, et les annexes `relecture/`
+> sont régénérées sur le moteur courant : répartition nage 44,3 → 45,5 % · vélo 28,6 → 27,4 %
+> (couvertures de récup clampées) · semaines assises sur la borne 27 → 16 · couverture vélo en
+> récup 225' → 112' · sortie longue de récup 85' → 66'. Les §3.B (inversions récup/charge) sont
+> FERMÉS par O-93 ; le §3.F est FERMÉ par O-89. Détail : `BUGS_OUVERTS.md`.
 
 Le plan complet est en annexe, dans les deux formes demandées :
 

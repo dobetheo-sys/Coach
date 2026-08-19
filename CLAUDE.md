@@ -580,6 +580,43 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-89 + O-93 FERMÉS — la borne d'épaule CLIQUETTE sur le LIVRÉ, et l'inversion des décharges
+tombe de 4 320 à 0** (arbitrage O89_ET_INVERSION_DECHARGES, 19/08/2026 — voir `BUGS_OUVERTS.md`
+« O-89 FERMETURE », « O-93 », « O-91 §3 », « R20.2/REEL », « O-94 », gardes **T-53 réécrit** et
+**T-56**, mécanisme `npm run batterie`) : **O-89** — *« une borne de sécurité ne projette pas »* —
+le plafond hebdo de nage devient `min(bande suivante, max(départ déclaré, maxLivré × C22))`,
+lecture ARRIÈRE comme la rampe C22 ; l'escalier est GAGNÉ (7 600 → 8 347 → 9 172 → 10 079,
+marches ≤ +10 % du démontré contre un saut calendaire de +50 % à S8), les récups GÈLENT le
+cliquet, semaines assises 27 → 16 ; **le rayon a resserré la tête deux fois en l'écrivant**
+(la bande ×8 ne s'ouvre que sous ratio < 1 ET source mesurée — un sprint gagnait +36,6 km, les
+continuités inconnues passaient ×6) : 471 profils multi, **1 touché — REEL** (+11 km, nage
+44,3 → 45,5 %, publié : direction inverse de la cible d'allocation, à peser au lot allocation).
+**O-93** — T-56 écrit ROUGE d'abord (1 724 inversions de discipline + 2 596 de type : VO2 6×4 en
+récup vs 5×4 en charge, seuil nage max du plan en récup, les 3 seules vraies sorties vélo toutes
+en récup — 4ᵉ inversion de monotonie, axe PHASE), passe `enforceRecupSousCharges` au point fixe
+(type puis discipline, adjacence, répétitions d'abord, jamais un épinglé, jamais la fréquence,
+cible = égalité voisine) ; **deux interactions fermées avec leur raison** (la récup-référence de
+dominance des prépas courtes EXEMPTÉE et comptée — le désastre O-21 rejoué sinon, dev 3,7 h →
+1,5 h mesuré ; le plafond A− extrait en fonction et REJOUÉ après la passe) ; le résidu est une
+CLASSE : les continues B-17 épinglées en récup sont un TEST annoncé, hors champ et comptées.
+**Sur REEL : couverture vélo en récup 225' → 112', sortie longue de récup 85' → 66'.** **Le
+diagnostic des 2,7 h demandé mi-lot est au registre** (« R20.2/REEL ») : cible de pic 13,0 h ·
+construit 10,8-12,6 · livré 8,0-9,4 — chaque passe aval neutralisée UNE PAR UNE (growth 0 ·
+rampe 0 · C22Final 0 · C26c 0 · I14 0 · budget 0 · **O-85 −1,7 h**, le reste interactionnel),
+la cible affichée rabattue sur le livré efface la trace, et le « structurel 12,4 » de la carte
+IGNORE la borne O-85 (**O-94** ouvert — la sonde sature sans elle) ; le manque réel de REEL au
+pic vaut 3,6-5,0 h/sem, queue haute de la mesure d'époque — pas de fuite de volume non nommée.
+**O-91 §3 mesuré** : le brick PREND le créneau `durLong` en spec/pic — décision délibérée jamais
+écrite, désormais écrite à la branche ; la pièce sortie-longue devra inclure la PRÉSENCE.
+**Trois fautes d'instrument publiées** : mes probes « bundle HEAD » écrasées par le bridge de
+`goldenMaster` (le rayon comparait la source à elle-même — 0 touché par construction), les
+compteurs `_o85`/`_o93` effacés par le second reconcile de `repairLoop`, et le batch au `;` —
+fermé par un MÉCANISME, `npm run batterie` (chaque gate son code de sortie, rouge si un seul
+l'est). **`audit:v1` 459 à 0 · invariants 22×54 · v6 74 · 0 régression · v7 · r13/r14/r14.1/r18 ·
+lotPhysio 29 verts · 23 rouges attendus · 0 régression · T-53/T-56 contre-prouvés (2 cassures,
+2 rouges) · golden 990 recapturé (734 empreintes : les récups de tous les sports + la nage
+multi) · E2E.**
+
 **RELECTURE COMPLÈTE DU PLAN REEL livrée + O-88 FERMÉ — le compte d'accélérations est borné en
 absolu, et la relecture a trouvé ce que personne n'avait nommé** (O88_ET_RELECTURE, 19/08/2026 —
 voir `RAPPORT_RELECTURE_REEL.md`, annexes `relecture/REEL-plan.{json,rendu.txt}`, gardes **T-55**,

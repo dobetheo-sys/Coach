@@ -174,22 +174,43 @@ export function swimSessionCapAtWeek(g: ContinuityGate | null, base: number, wkN
  *    fondateur souligne : on protège le moins expérimenté davantage, alors que l'intuition
  *    voudrait « il en fait moins, donc il risque moins ».
  *
- * 3. **ELLE SE LÈVE AVEC LA POSITION (O-56).** Le multiplicateur lit la continuité PROJETÉE À LA
- *    SEMAINE, pas la déclaration du premier jour : le même patron que `swimSessionCapAtWeek`
- *    ci-dessus, pour la même raison — une borne gelée sur la déclaration initiale empêche le plan
- *    de construire ce qu'il existe pour construire.
+ * 3. **ELLE CLIQUETTE SUR LE LIVRÉ, JAMAIS SUR UNE PROJECTION (O-89, arbitrage du fondateur,
+ *    19/08/2026).** Ma première écriture levait le multiplicateur sur la continuité PROJETÉE
+ *    (`C22^semaine`) : la bande passait à ×6 dès S8 pendant que les paliers B-17 du même plan
+ *    posaient la première continue en S25 — deux courbes pour la même grandeur, et la borne
+ *    lisait la plus optimiste. L'argument qui tranche est l'asymétrie des erreurs : *« le
+ *    cliquet de capacité projette trop haut → l'athlète sous-livre → récupérable ; la borne
+ *    d'épaule projette trop haut → il nage 11 km/sem avec une épaule conditionnée pour 7 →
+ *    blessure. Une borne de sécurité ne projette pas : une projection est une hypothèse sur
+ *    l'avenir, une protection doit tenir sur le présent. »* La tolérance tissulaire suit la
+ *    CHARGE ACCUMULÉE, pas la capacité à nager d'un trait — la borne se lève donc au plus
+ *    ×C22 au-dessus du volume hebdomadaire de nage RÉELLEMENT LIVRÉ par les semaines déjà
+ *    fixées (lecture ARRIÈRE, comme la rampe C22 : pas de circularité O-43), plafonnée à la
+ *    bande SUIVANT celle que la continuité déclarée justifie — le « 7,6 km en S1 → 11,4 au
+ *    pic » arbitré en fermant O-85 ne bouge pas, seule la RAMPE change : chaque palier est
+ *    désormais GAGNÉ par le volume effectivement porté, jamais accordé par le calendrier. Si
+ *    le plan sous-livre en nage, la borne s'ouvre plus lentement — et c'est correct.
  *
  * PROVENANCE DES CHIFFRES, dite franchement : les bandes viennent du fondateur (« triathlète
  * récréatif ×2-4 · âge-groupe compétitif ×4-6 · nageur de formation ×8 et plus ») et sont des
  * ordres de grandeur d'entraîneur, pas une publication. Ce qui est défendable et ce qui compte,
  * c'est la FORME et la DIRECTION ; les valeurs sont révocables sans changer le mécanisme.
+ * `C22_MAX_WEEKLY_GROWTH` est la seule constante de croissance sourcée du dépôt — aucune
+ * constante nouvelle (forme demandée par O-85 §1, reconduite ici).
  *
  * DOMAINE — la formule n'a de sens que si la nage est un LEG, pas l'ÉPREUVE. Un sprinteur qui
  * prépare un 100 m nage trente fois sa distance de course, et c'est correct. La condition est
  * donc portée par l'appelant sous forme DÉRIVÉE (« le sport a-t-il plus d'une discipline ? »),
  * jamais par une liste de sports.
  *
- * @param wkNum semaine du plan, 1-indexée — LA POSITION EST UN PARAMÈTRE (règle 20)
+ * NOTE (O-89, périmètre) : `swimSessionCapAtWeek` ci-dessus garde sa projection `C22^semaine` —
+ * c'est une borne de SÉANCE dont la levée pilote la construction des paliers (B-17), pas une
+ * protection articulaire ; l'arbitrage O-89 nomme la borne d'ÉPAULE. Si « une borne de sécurité
+ * ne projette pas » doit s'étendre à C15, c'est une décision à part.
+ *
+ * @param livreMaxPrecM le plus haut volume hebdomadaire de nage (mètres) LIVRÉ par les semaines
+ *   déjà fixées — 0 ou absent en semaine 1. Le producteur est la passe O-85 elle-même, qui
+ *   parcourt les semaines dans l'ordre et lit ce qu'elle vient d'écrêter (lecture arrière).
  * @returns le plafond hebdomadaire en mètres, ou `null` quand la borne n'a pas d'objet
  */
 export const O85_MULT_EPAULE = [
@@ -198,11 +219,11 @@ export const O85_MULT_EPAULE = [
   { jusqua: Infinity, k: 8 }, // formation de nageur
 ];
 
-export function swimWeeklyLoadCapM(g: ContinuityGate | null, wkNum: number): number | null {
+export function swimWeeklyLoadCapM(g: ContinuityGate | null, livreMaxPrecM?: number | null): number | null {
   if (!g || !g.courseM) return null;
   // Continuité INCONNUE → branche prudente, la plus serrée. Un défaut tacite va vers la sécurité
   // (U14) : ne pas savoir nager 1 900 m d'affilée est le cas le plus fréquent, pas le plus rare.
-  const k = Math.max(0, (wkNum || 1) - 1);
+  //
   // ⚠ LE RATIO NE SE PLAFONNE PAS À LA DISTANCE DE COURSE, contrairement à la borne de SÉANCE
   // ci-dessus, et c'est une mesure qui l'a corrigé : avec le plafond, `ratio` ne dépassait jamais
   // 1,0 et **la bande « formation de nageur » était inatteignable** — un athlète déclarant 4 000 m
@@ -210,12 +231,29 @@ export function swimWeeklyLoadCapM(g: ContinuityGate | null, wkNum: number): num
   // même grandeur pour deux questions différentes : « jusqu'où faire nager d'un trait » se
   // plafonne à la course (au-delà on fait du volume, pas de la continuité) ; « quelle épaule
   // a-t-il » ne se plafonne pas — savoir nager 4 km d'affilée EST de l'expérience.
-  const continuite = g.source === "mesure"
-    ? Math.max(g.departM, Math.min(g.courseM, g.departM * Math.pow(C22_MAX_WEEKLY_GROWTH, k)))
-    : 0;
-  const ratio = continuite / g.courseM;
-  const mult = (O85_MULT_EPAULE.find((b) => ratio < b.jusqua) ?? O85_MULT_EPAULE[0]).k;
-  return Math.round(mult * g.courseM);
+  const ratio = (g.source === "mesure" ? g.departM : 0) / g.courseM;
+  const iDep = O85_MULT_EPAULE.findIndex((b) => ratio < b.jusqua);
+  const bande = O85_MULT_EPAULE[iDep < 0 ? O85_MULT_EPAULE.length - 1 : iDep];
+  const capDepart = Math.round(bande.k * g.courseM);
+  // O-89 — le cliquet : au plus ×C22 au-dessus du plus haut volume déjà LIVRÉ, plafonné à la
+  // bande SUIVANTE **seulement quand la continuité déclarée est SOUS la distance de course** :
+  // le plan construit alors lui-même cette continuité (paliers B-17), et l'athlète qui la
+  // gagnera au fil des semaines gagne la bande avec elle — c'est le « 7,6 km en S1 → 11,4 au
+  // pic » arbitré en fermant O-85, la rampe en plus. Au-dessus (déclaré ≥ course), la bande
+  // d'au-dessus ne se gagne QUE par une nouvelle continuité VALIDÉE (O-56), jamais par
+  // l'accumulation seule — ma première écriture ouvrait ×8 à tout déclaré ≥ course, et le
+  // rayon l'a attrapée : un SPRINT (course 750 m) gagnait +36,6 km de nage sur son plan, le
+  // déversoir exploitant la marge. Sans historique livré (semaine 1), le départ seul.
+  // …et la marge exige une continuité MESURÉE : sur une continuité INCONNUE (ratio 0, branche
+  // prudente U14), la bande ne se lève pas par accumulation — l'ancienne forme la laissait à ×4
+  // statique, la nouvelle ne doit pas être plus lâche sur un défaut tacite. Le rayon l'a
+  // attrapée aussi : les 10 profils touchés restants étaient tous des continuités non déclarées
+  // qui gagnaient ×6 par le seul déversoir.
+  const iBande = iDep < 0 ? O85_MULT_EPAULE.length - 1 : iDep;
+  const iPlafond = g.source === "mesure" && ratio < 1.0 ? Math.min(O85_MULT_EPAULE.length - 1, iBande + 1) : iBande;
+  const plafondCliquet = Math.round(O85_MULT_EPAULE[iPlafond].k * g.courseM);
+  if (!(livreMaxPrecM != null && livreMaxPrecM > 0)) return capDepart;
+  return Math.min(plafondCliquet, Math.max(capDepart, Math.round(livreMaxPrecM * C22_MAX_WEEKLY_GROWTH)));
 }
 
 /**

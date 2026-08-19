@@ -9173,7 +9173,7 @@ attendu: /compte max 10 · fractions 0/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);let mx=0,fr=0;for(const w of p.weeks)for(const d of w.days)for(const s of d.sessions){const t=String(s.det||'');if(!/accélérations/.test(t))continue;if(/(moitié|tiers|quart)[^·]{0,40}accélérations/.test(t))fr++;for(const m of t.matchAll(/(\d+)\s*(?:×\s*\d+\s*m\s*)?accélérations/g))mx=Math.max(mx,+m[1]);}console.log('compte max '+mx+' · fractions '+fr);break;}"
 ```
 
-## O-89 · La borne d'épaule O-85 lit une PROJECTION de continuité que le MÊME plan contredit · 🔴 **OUVERT — décision de valeurs, fondateur**
+## O-89 · La borne d'épaule O-85 lit une PROJECTION de continuité que le MÊME plan contredit · ✅ **FERMÉ (arbitrage du fondateur, 19/08/2026 — « une borne de sécurité ne projette pas ») — voir la FERMETURE plus bas**
 
 Trouvé par la relecture complète (RAPPORT_RELECTURE_REEL.md §3.F). Le multiplicateur
 d'expérience de `swimWeeklyLoadCapM` se lève avec `C22^semaine` : la continuité PROJETÉE d'un
@@ -9198,9 +9198,9 @@ lequel des deux protège l'athlète réel est une décision d'entraîneur.
 
 ```verify
 id: O-89
-quoi: la borne passe-t-elle à ×6 avant la première continue prescrite ?
-attendu: /borne S8 11400 · première continue S25/
-cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');const {swimWeeklyLoadCapM}=await import('./src/engine/swimContinuity.ts');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);let s1=null;for(const w of p.weeks){for(const d of w.days)for(const s of d.sessions)if(/continue/i.test(s.name)&&s1==null)s1=w.num;}console.log('borne S8 '+swimWeeklyLoadCapM({departM:1000,courseM:1900,source:'mesure'},8)+' · première continue S'+s1);break;}"
+quoi: la borne est-elle un cliquet sur le LIVRÉ (départ = bande déclarée, marche ≤ ×C22 du max livré, plafond = bande suivante) et jamais une projection ?
+attendu: /S1 7600 · S2 8347 · plafond 11400/
+cmd: node --input-type=module -e "const {swimWeeklyLoadCapM}=await import('./src/engine/swimContinuity.ts');const g={departM:1000,courseM:1900,source:'mesure'};console.log('S1 '+swimWeeklyLoadCapM(g,0)+' · S2 '+swimWeeklyLoadCapM(g,7588)+' · plafond '+swimWeeklyLoadCapM(g,999999));"
 ```
 
 ## O-90 · La qualité COULE là où le volume SATURE, et les décharges portent des doses plus grosses que les charges · 🔴 **OUVERT — mécanisme à attribuer par expérience contrôlée, périmètre du lot progression**
@@ -9301,3 +9301,158 @@ quoi: R14.1-G passe-t-il par sa branche « refuse → projection collée » sur 
 attendu: /branche refuse → projection collée|branche livre plus → projette plus/
 cmd: node bench_r14_1.cjs endurabuild/js/engine.js 2>&1 | grep "R14.1-G"
 ```
+
+## R20.2/REEL — LES 2,7 h ENTRE LE STRUCTUREL (12,4) ET LE LIVRÉ (9,6), LOCALISÉES UN FACTEUR À LA FOIS · ✅ **MESURÉ (19/08/2026, demande du fondateur) — cause connue + une fuite diagnostique nommée (O-94)**
+
+*« Si elles ne se réduisent pas au manque déjà mesuré, il y a une fuite non nommée entre le
+plafond calculé et le plan produit. »* — Réponse : **les deux à la fois.** Le volume manquant est
+le manque structurel connu + la borne O-85 (postérieure à la mesure du manque) ; la fuite qui
+restait est DIAGNOSTIQUE : le « 12,4 » lui-même surestime, parce que la sonde qui le mesure
+ignore O-85 (→ **O-94**).
+
+**(1) Semaine par semaine.** Cible de boucle au pic : **13,0 h** (`targetH = Lw × peakH`,
+observé Lw = 1,00 et peakH = 13,00 sur les 41 semaines — la sonde V2.1 n'a PAS mordu : sa mesure
+12,4 > 95 % de 13, pas de décision V2.1). Construit par la boucle R3.3 : **10,8-12,6 h** (les
+bornes de séance laissent 0,4-2,2 h — le mécanisme que la décision `O69-ancrage` nomme déjà pour
+S1 : « les bornes de séance absorbent 3,1 h »). Livré final : **8,0-9,4 h**. La cible affichée
+est ensuite RABATTUE sur le livré, ce qui efface la trace pour toute mesure aval — c'est
+pourquoi « courbe − livré » rend 0,2 h et `mesure:manque` une médiane de 0,6 : le manque réel de
+REEL au pic est **3,6-5,0 h/sem**, dans la queue haute de la mesure d'époque (p90 4,2) — REEL
+est exactement le croisement (beaucoup de séances × doubles × format long) que la médiane ne
+représente pas.
+
+**(2) Le structurel 12,43 n'est ni le prescrit (11) ni le livré (10) :** c'est
+`min(sonde V2.1, re-sonde)` — un clone SATURÉ de la semaine de pic LIVRÉE (chaque séance à son
+plafond). Le « 11 » ne vit que dans la décision `budget` ; la prose du maillon cite le nSess
+livré (O-87).
+
+**(3) Les passes aval, neutralisées UNE PAR UNE** (harnais assert-motif + finally, pic livré
+final comme juge, témoin 9,4 h) : croissance D3/D4 sur le livré → **0** (hypothèse du diagnostic
+initial RÉFUTÉE, publiée) · rampe O-69 → **0** · enforceC22Final → **0** · C26c → **0** · I14
+(2ᵉ appel) → **0** · applySessionBudget → **0** · dominance dev ≤ pic → ne touche pas le pic
+(elle coupe les non-pic). **O-85 → −1,7 h (9,4 → 11,1)** — la borne d'épaule, qui fait son
+travail. Et RIEN ne bouge entre la construction et l'appel de reconcile (snapshot identique) :
+tout le retrait aval vit dans `reconcileDeclaredVolume` ; le solde au-delà d'O-85 (−1 à −1,7
+selon la semaine) n'appartient à aucun facteur seul — interactions du point fixe (la famille
+T-25/O-35, « ce que le point fixe retire n'est déclaré par aucun maillon », déjà au registre).
+
+**(4) Donc : oui, c'est le manque connu — décomposé.** 12,4 − 9,6 = (a) la boucle n'atteint pas
+sa cible (bornes de séance, O-43 §2/O-78) + (b) O-85, postérieure à la mesure du manque, une
+protection et non une fuite + (c) le résidu interactionnel du point fixe. **Aucune fuite de
+volume non nommée.** La fuite NOMMABLE est diagnostique → O-94.
+
+## O-94 · Les sondes structurelles (V2.1 + re-sonde) saturent un clone SANS la borne O-85 — le « structurel 12,4 » de la carte ignore une borne que le plan applique · 🔴 **OUVERT — court, diagnostic seul**
+
+La re-sonde (planGenerator ~4294) sature chaque séance du clone à son plafond de SÉANCE, mais
+n'applique pas `swimWeeklyLoadCapM` : elle compte des mètres de nage que la borne d'épaule
+interdira. Mesuré sur REEL : sonde 12,4 h · livré 9,4-9,6 · dont −1,7 h = O-85 seule. La carte
+« Pourquoi ce plan » annonce donc un plafond structurel dont ~1,7 h ne sont livrables sous
+aucune configuration — et le message R20.2 (« le nombre de séances te plafonne à 12,4 »)
+surestime le levier réel des doubles/séances. À corriger avec O-89 (la borne change de rampe) :
+la sonde applique la borne du moment où elle sature. Diagnostic seul — `peakH` a déjà piloté la
+construction, aucune séance ne bouge.
+
+```verify
+id: O-94
+quoi: le maillon structurel dépasse-t-il encore ce que la borne O-85 laisse livrer ? (écart sonde − pic livré, REEL)
+attendu: /structurel 12\.4 · pic livré 9\.[0-9]/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const st=(p._r202?.plafonds||[]).find(x=>x.id==='structurel');let pic=0;for(const w of p.weeks){if(w.isRecup||w.phase.id==='taper')continue;let l=0;for(const d of w.days)for(const s of d.sessions)if(s.d!=='rs'&&!s.race)l+=s.min||0;pic=Math.max(pic,l/60);}console.log('structurel '+(+st.brut).toFixed(1)+' · pic livré '+pic.toFixed(1));break;}"
+```
+
+## O-89 — FERMETURE (arbitrage « O-89 ARBITRÉ », 19/08/2026) : la borne d'épaule CLIQUETTE sur le LIVRÉ
+
+*« Le cliquet de capacité projette trop haut → l'athlète sous-livre → récupérable. La borne
+d'épaule projette trop haut → il nage 11 km/sem avec une épaule conditionnée pour 7 → blessure.
+Une borne de sécurité ne projette pas. »*
+
+**Forme livrée** : départ = bande de la continuité DÉCLARÉE (inchangé) ; ensuite le plafond de
+la semaine w vaut `min(bande suivante, max(départ, maxLivré(semaines < w) × C22))` — lecture
+ARRIÈRE, comme la rampe C22 (pas de circularité O-43 : chaque semaine lit un état fixé). Le
+producteur du `maxLivré` est la passe O-85 elle-même, qui parcourt les semaines dans l'ordre et
+avance le cliquet sur ce qu'elle vient d'écrêter. **Deux resserrages trouvés par le RAYON en
+l'écrivant, publiés** : (1) ma première tête de cliquet ouvrait la bande ×8 à tout déclaré ≥
+distance de course — un SPRINT gagnait +36,6 km de nage ; la marge +1 bande n'a de sens que
+SOUS ratio 1 (le plan construit lui-même cette continuité, B-17) ; (2) elle s'ouvrait aussi aux
+continuités INCONNUES (ratio 0) — plus lâche que l'ancien ×4 statique sur un défaut tacite
+(U14). Après les deux : **rayon 471 profils multi-disciplines, 1 seul touché — REEL lui-même.**
+
+**Sur REEL, mesuré** : l'escalier est GAGNÉ — 7 600 → 8 347 → 9 172 → 10 079 (chaque marche
+≤ +10 % du volume DÉMONTRÉ, contre un saut +50 % du calendrier à S8 avant) ; **les récups S5-S6
+gèlent le cliquet** (sous-livrer ralentit l'ouverture — la propriété demandée) ; plateau 11 400
+en S10 ; **semaines de charge assises sur la borne : 27 → 16** (le « signal » du fondateur
+baisse déjà) ; 3 warnings de plancher. **Et l'effet net est PUBLIÉ : +11 km de nage sur le plan
+(l'escalier monte plus tôt que l'ancien plat), répartition nage 44,3 → 45,5 %** — la direction
+inverse de la cible d'allocation, à peser dans le lot allocation : la borne est une protection,
+pas un outil de répartition. **T-53 réécrit sur la même lecture arrière, contre-prouvé** (cliquet
+auto-gonflé ×1,5 → rouge). **Fautes d'instrument publiées** : trois de mes probes « bundle HEAD »
+important `goldenMaster.mjs` APRÈS le bundle mesuraient la source courante (goldenMaster:60
+importe bridge.ts et écrase EBV2) — le premier rayon rendait « 0 touché » en comparant la source
+à elle-même ; et le compteur `_o85`/`_o93` était effacé par le second reconcile de `repairLoop`
+(le correcteur qui réussit effaçait sa trace, dans l'instrument anti-effacement lui-même) —
+reset déplacé à l'entrée du build, les appels accumulent.
+
+**Périmètre, dit** : `swimSessionCapAtWeek` (C15, borne de SÉANCE) garde sa projection C22^k —
+sa levée pilote la construction des paliers, ce n'est pas une protection articulaire. Si « une
+borne de sécurité ne projette pas » doit s'y étendre, c'est une décision à part.
+
+## O-93 · L'INVERSION DES DÉCHARGES — les récups portaient des doses plus grosses que les charges · ✅ **FERMÉ (arbitrage du fondateur, 19/08/2026) — garde T-56 + passe, 4 320 → 0 inversions**
+
+*« Une décharge existe pour absorber la fatigue accumulée. Si elle porte les plus grosses doses
+du plan, ce n'est pas une décharge — la périodisation entière s'inverse. »* Quatrième inversion
+de monotonie du dépôt : I13 (niveau) · O-21 (allure) · O-77 (volume déclaré) · **O-93 (phase)**
+— T-51, le balayage de monotonie, gagne cet axe dans son périmètre.
+
+**Mesuré AVANT (T-56 écrit rouge d'abord)** : **1 724 inversions de DISCIPLINE + 2 596 de TYPE**
+sur le corpus — pire discipline : une récup à 294' de course pour 42' en charge voisine ; pire
+type : « Nage aérobie + accélérations » à 6 000 m en récup pour 2 675 en charge. Systématique,
+pas accidentel — le mécanisme présumé (le budget et le déversoir compriment les CHARGES, pas les
+décharges) reste une hypothèse à attribution contrôlée, la passe corrige le SYMPTÔME mesurable.
+
+**La passe (`enforceRecupSousCharges`, après le point fixe — elle doit lire les doses FINALES
+des voisines)** : par récup encadrée, axe TYPE (dose ≤ max du même type chez les charges qui
+encadrent, dans sa monnaie — mètres en nage, minutes ailleurs) puis axe DISCIPLINE (minutes,
+legs de brick attribués) ; réductions par RÉPÉTITIONS d'abord (I14), jamais un bloc épinglé,
+jamais la fréquence (C29), cible = l'égalité avec la meilleure voisine. Sur REEL : couverture
+vélo 225' → 112', sortie longue de récup 85' → 66', VO2 de récup 6×4 → dose voisine.
+
+**Deux interactions trouvées par les gates, chacune fermée avec sa raison** :
+- **v6 D3** — sur tri/S (8 sem), la seule semaine de PIC est une récup : la réduire en faisait
+  la référence de dominance (`peakAny`) et la réparation rabotait TOUT le plan (dev 3,7 h →
+  1,5 h, footings de 16 min — le désastre O-21 rejoué par la protection). Exemption DÉRIVÉE
+  (aucun pic en charge → la récup de pic est hors champ), COMPTÉE des deux côtés (passe et
+  garde), jamais silencieuse (leçon O-15).
+- **v6 R23.18-D** — réduire la semaine qui précède une course A− invalidait le « ≤ 60 % de la
+  précédente » posé plus haut (mesuré : 63 %). Le plafond A− est extrait en FONCTION
+  (`enforceMiniTaperAMoins`) et REJOUÉ après la passe — la garantie se rejoue, elle ne se
+  duplique pas (R11.1, la leçon payée quinze fois).
+
+**Et le banc v7 a trouvé un membre manquant de sa propre exemption** : la passe a resserré les
+récups d'un profil `hanche/reprise/72 ans/eau 16 °C` et `S-MIX` a rougi (19 pts d'écart) — or le
+moteur INTERDIT la course avec une hanche blessée (`INJURY_RULES.hanche = { forbid: ["rn"] }`),
+et le regex `injRun` du harnais omettait « hanche » et « course » : l'instrument punissait une
+règle de sécurité, sa propre famille documentée (R16.10 : 71/73 hits portaient un drapeau).
+Regex aligné sur l'ensemble d'impact du moteur ; v7 revient dans ses budgets (swimrun 89 %).
+
+**Le résidu mesuré est une CLASSE, pas un raté** : les 29 dernières « inversions » étaient
+toutes des **« Nage continue » ÉPINGLÉES (paliers B-17) posées dans une récup** — un TEST
+annoncé, qui se place précisément dans une semaine allégée (le patron d'une course B). La passe
+les protège (jamais un bloc épinglé), le critère les met HORS CHAMP et les COMPTE. **T-56 vert :
+0 inversion de discipline, 0 de type · contre-prouvé (passe retirée → rouge, 1 724+).**
+
+```verify
+id: O-93
+quoi: la passe déclenche-t-elle encore, et combien d'inversions restent sur REEL ?
+attendu: /_o93 .*semaines.*:[1-9]/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const pg=await import('./src/generator/planGenerator.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;globalThis.EBV2.buildPlan(sport,a);console.log('_o93 '+JSON.stringify(pg._o93));break;}"
+```
+
+## O-91 §3 — LA CAUSE EST LA TROISIÈME HYPOTHÈSE : le brick PREND le créneau, décision jamais écrite · **mesuré, décision désormais ÉCRITE dans le code**
+
+Le document demandait de mesurer avant d'écrire la pièce : c'est la branche `slot === "durLong"`
+de `src/sports/tri/index.ts` — **en spécifique et en pic, le créneau long CONSTRUIT le brick** ;
+la « Sortie longue CAP » n'existe qu'en base/dev, d'où l'arrêt à S22. Ni créneau capté ni
+condition accidentelle : un choix de construction (la séance la plus spécifique du tri est
+l'enchaînement), délibéré et jamais écrit. **La décision est maintenant écrite à la branche**
+(commentaire O-91) ; sa CONSÉQUENCE — aucune course sèche > 68 min sur les 20 dernières semaines
+d'une prépa qui finit par un semi — reste l'objet de la pièce « sortie longue » du lot
+progression, qui devra inclure la PRÉSENCE, pas seulement la taille.

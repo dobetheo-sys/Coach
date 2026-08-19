@@ -6666,6 +6666,14 @@ function buildTriSessions(kit            )              {
     else if (phase === "taper") S2.push({ d: "rn", name: "Rappel allure course CAP", note: "Affûtage : on réveille l'allure du jour J sans générer de fatigue. Deux blocs courts, précis, puis on range les chaussures.", det: "", steps: [W(10, "footing progressif"), Object.assign(B(2, 8, "rn.mara", "3min trot"), { repCap: 2, bnd: { floor: 6, cap: 8, hard: true } }), C(5, "footing souple")] });
     else S2.push({ d: "bk", name: "Force basse cadence", note: "Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.", det: "", steps: [W(15, "+ montée en intensité"), Object.assign(B(PT(4, 6), ({ S: 5, M: 5, "70.3": 6, Full: 7 }                          )[fmt] || 5, "bk.frc", "3min souple", " à 50-60 rpm"), { repCap: 8 }), C(10, "moulinage")] });
   } else if (slot === "durLong") {
+    // O-91 (relecture REEL, 19/08/2026) — LA DÉCISION QUE PERSONNE N'AVAIT ÉCRITE : en spécifique
+    // et en pic, le créneau long EST le brick — la « Sortie longue CAP » n'existe qu'en base/dev,
+    // et s'arrête donc à la fin du dev (S22 sur le plan réel : 20 semaines sans course > 68 min
+    // avant un semi, la CAP longue ne survivant que dans les 23-30 min de fin de brick). C'est un
+    // choix de construction (la séance la plus spécifique du tri est l'enchaînement, pas la
+    // course sèche), pas un oubli — mais SA CONSÉQUENCE (aucune sortie longue course sèche en
+    // 2ᵉ moitié de prépa) n'a jamais été arbitrée : c'est la pièce « sortie longue » du lot
+    // progression (O-91), qui devra inclure la PRÉSENCE, pas seulement la taille.
     if (phase === "spec" || phase === "peak") {
       // C21 — brick borné par format, ×0.8 en reprise (appliqué aussi dans blockBounds)
       const rf = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1;
@@ -9333,6 +9341,9 @@ const _o44 = { semainesCourtes: 0, semainesCharge: 0 };
 /** O-85 — ce que la borne de charge d'épaule a réellement écrêté, pour que la mesure le lise
  *  au DÉCLENCHEMENT et non sur le livré (« un correcteur qui réussit efface sa propre trace »). */
 let _o85                                              = null;
+/** O-93 — ce que la passe anti-inversion des décharges a réellement réduit (même raison),
+ *  et les récups de pic EXEMPTÉES (référence de dominance des prépas courtes — comptées). */
+let _o93                                                                                     = null;
 
 /**
  * O-81 / T-52 — LE PLANCHER DE DIGNITÉ, EN UN SEUL POINT.
@@ -9432,7 +9443,10 @@ function reconcileDeclaredVolume(
   // prochain producteur de séances n'ait pas besoin de connaître la règle pour la respecter.
   _c30b.length = 0;
   _o44.semainesCourtes = 0; _o44.semainesCharge = 0;
-  _o85 = null;
+  // _o85/_o93 ne se réinitialisent PAS ici : `repairLoop` rappelle cette fonction sur un plan
+  // DÉJÀ écrêté, et le second appel — ne trouvant plus rien — effaçait la trace du premier
+  // (mesuré : `_o85 = null` sur un plan aux semaines assises sur la borne). Le reset vit au
+  // point d'entrée du build (`generatePlan`, avant le premier appel), les appels ACCUMULENT.
   enforceMedicalHold(plan, !!ctx?.medHold);
   // R5.3 (audit v7 bis) — AUCUNE SEMAINE HORS DU CHAMP DES DEUX RÈGLES. La bande [0.5–1.4] est
   // évaluée sur les semaines de charge (`!isRecup && phase !== taper`) ; l'affûtage a sa propre
@@ -9715,12 +9729,17 @@ function reconcileDeclaredVolume(
   // (« la nage est la victime par défaut ») commise par la garde censée la protéger.
   if (ctx?.swimGate) {
     let ecrete = 0, semaines = 0;
+    // O-89 — LE CLIQUET LIT LES SEMAINES DÉJÀ FIXÉES. La borne de la semaine w dérive du plus
+    // haut volume de nage LIVRÉ par les semaines qui la précèdent (après leur propre écrêtage) —
+    // lecture ARRIÈRE, comme la rampe C22 : chaque semaine lit un état fixé, pas une projection.
+    // Une semaine qui sous-livre (récup, coupe) n'avance pas le cliquet, et c'est correct.
+    let livreMaxM = 0;
     for (const wk of plan.weeks) {
-      const cap = swimWeeklyLoadCapM(ctx.swimGate, wk.num);
-      if (!cap) continue;
+      const cap = swimWeeklyLoadCapM(ctx.swimGate, livreMaxM);
       const metres = () => wk.days.reduce((t, d) => t + d.sessions.reduce((u, sx) =>
         u + (sx.d === "sw" ? (sx.steps || []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0) : 0), 0), 0);
-      if (metres() <= cap) continue;
+      if (!cap) { livreMaxM = Math.max(livreMaxM, metres()); continue; }
+      if (metres() <= cap) { livreMaxM = Math.max(livreMaxM, metres()); continue; }
       semaines++;
       const avant = metres();
       for (const qualite of [false, true]) {
@@ -9764,8 +9783,9 @@ function reconcileDeclaredVolume(
       if (metres() > cap) warnings.push("Semaine " + wk.num + " : " + (metres() / 1000).toFixed(1)
         + " km de natation, au-dessus des " + (cap / 1000).toFixed(1)
         + " km que ton expérience en nage rend prudents — les planchers de séance empêchent de descendre plus bas sans supprimer une séance, et la fréquence en nage n'est pas ce qui charge l'épaule. Réduis une séance à la main si ton épaule parle.");
+      livreMaxM = Math.max(livreMaxM, metres()); // O-89 — le cliquet avance sur le LIVRÉ écrêté
     }
-    if (semaines > 0) _o85 = { semaines, metres: Math.round(ecrete) };
+    if (semaines > 0) _o85 = { semaines: (_o85?.semaines || 0) + semaines, metres: (_o85?.metres || 0) + Math.round(ecrete) };
   }
 
   // D4 (banc v6) — UNE SEMAINE DE RÉCUP N'EST JAMAIS PLUS LOURDE QUE CELLE QU'ELLE ASSIMILE.
@@ -9966,37 +9986,10 @@ function reconcileDeclaredVolume(
   // comme R3.13 : la semaine d'une course A− pèse au plus 60 % de la semaine PRÉCÉDENTE
   // (hors jour de course) — un mini-affûtage réel, réduit par les CORPS de séance, jamais
   // par la fréquence (C29).
-  {
-    const A_MOINS_FACTOR = 0.60;
-    const TAPER_BODY_FLOOR_MIN = 10;
-    for (let wi = 1; wi < plan.weeks.length; wi++) {
-      const wk = plan.weeks[wi]                              ;
-      if (wk.race !== "A-") continue;
-      const horsCourse = () => wk.days.reduce((t, d) => t + d.sessions.reduce((u, sx) => u + (sx.race ? 0 : sx.min || 0), 0), 0);
-      const cap = weekMinOf(plan.weeks[wi - 1]) * A_MOINS_FACTOR;
-      if (cap <= 0) continue;
-      for (let g = 0; g < 6 && horsCourse() > cap; g++) {
-        const before = horsCourse();
-        const f = cap / before;
-        for (const d of wk.days) for (const sx of d.sessions) {
-          if (sx.d === "rs" || sx.race || !sx.steps) continue;
-          let touched = false;
-          for (const st of sx.steps) {
-            if (st.role !== "body") continue;
-            if (st.durationMin) {
-              const next = Math.max(TAPER_BODY_FLOOR_MIN, Math.round(st.durationMin * f));
-              if (next < st.durationMin) { st.durationMin = next; touched = true; }
-            } else if (st.distanceM) {
-              const next = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
-              if (next < st.distanceM) { st.distanceM = next; touched = true; }
-            }
-          }
-          if (touched && render) render(sx);
-        }
-        if (before - horsCourse() < 0.5) break; // tout est au plancher : on livre ce qui reste
-      }
-    }
-  }
+  // (extrait en fonction : O-93 réduit des semaines de récup APRÈS ce point, et une semaine A−
+  // qui suit une récup réduite doit être re-plafonnée — la garantie se REJOUE, elle ne se
+  // duplique pas, R11.1.)
+  enforceMiniTaperAMoins(plan, render);
 
   // R5.3 — L'AFFÛTAGE DÉCROÎT, POINT. La décroissance était jusqu'ici ÉMERGENTE (courbe + coupe
   // R3.13) : sur un cycle de 10 jours, la dérive des créneaux d'une semaine calendaire à l'autre
@@ -11112,8 +11105,38 @@ function reconcileDeclaredVolume(
   // ANX-C22 — LE POINT FIXE, EN TOUT DERNIER (définition plus haut). Placé un cran trop tôt,
   // le 2e passage du plafond de libellé pouvait encore réduire une semaine N et recréer le
   // saut N→N+1 qu'on venait de fermer (mesuré : 3 sauts à +11 % survivaient). Rien ne réduit
-  // ni ne gonfle après cette ligne.
+  // ni ne gonfle après cette ligne — deux exceptions JUSTIFIÉES une à une : C30b (neutre en
+  // volume, ci-dessous) et O-93 (ne réduit QUE des semaines de RÉCUP, qu'aucune garantie aval
+  // n'empêche de descendre — et qui doit lire les doses FINALES des charges voisines pour
+  // comparer honnêtement, règle 15).
   for (let p = 0; p < 3 && enforceC22Final(); p++);
+
+  // O-93 (arbitrage du fondateur, 19/08/2026) — L'INVERSION DES DÉCHARGES : AUCUNE SEMAINE DE
+  // RÉCUP NE PORTE, POUR UN TYPE OU UNE DISCIPLINE, UNE DOSE SUPÉRIEURE AUX CHARGES ADJACENTES.
+  //
+  // *« Une décharge existe pour absorber la fatigue accumulée. Si elle porte les plus grosses
+  // doses du plan, ce n'est pas une décharge — la périodisation entière s'inverse. »* Mesuré
+  // (T-56, avant cette passe) : 1 724 inversions de discipline et 2 596 de type sur le corpus —
+  // VO2max 6×4 en récup contre 5×4 en charge, la plus longue nage seuil du plan (1 625 m) dans
+  // une récup, les trois seules vraies sorties vélo (156-225 min) toutes en récup. Le mécanisme
+  // présumé : le budget et le déversoir COMPRIMENT les semaines de charge, pas les décharges —
+  // les doses de qualité y restent à leur taille de naissance. Quatrième inversion de monotonie
+  // du dépôt (I13 niveau · O-21 allure · O-77 volume déclaré · O-93 phase).
+  //
+  // Deux axes, formulés sur l'ADJACENCE (les charges qui ENCADRENT, en sautant les autres
+  // décharges — c'est la comparaison que l'athlète vit) :
+  //   · TYPE (nom de séance), dans sa MONNAIE (mètres en nage, minutes ailleurs — règle 14),
+  //     seulement quand le type existe chez au moins une voisine de charge ;
+  //   · DISCIPLINE (minutes, legs de brick attribués — sans quoi le vélo de couverture n'aurait
+  //     aucun référent : le critère déclare ce qu'il fait quand le type est absent).
+  // La coupe retire des RÉPÉTITIONS d'abord (I14 : la durée d'une répétition EST le stimulus),
+  // la durée/distance des blocs continus ensuite, jamais un bloc ÉPINGLÉ (B-17), jamais la
+  // FRÉQUENCE (C29 : on réduit le volume, pas les jours), et vise l'ÉGALITÉ avec la meilleure
+  // voisine — une récup égale à sa charge voisine est déjà le maximum défendable.
+  enforceRecupSousCharges(plan, render);
+  // …et la garantie A− se REJOUE : O-93 peut réduire la semaine qui précède une course A−,
+  // ce qui invalide le « ≤ 60 % de la précédente » posé plus haut (mesuré : R23.18-D à 63 %).
+  enforceMiniTaperAMoins(plan, render);
 
 
   // C30b — LA SORTIE LONGUE ATTEINT SA CIBLE DE SPÉCIFICITÉ, ET C'EST ICI QU'ELLE LE PEUT.
@@ -11192,6 +11215,156 @@ function shiftedBikeRp(sport        , format                    , a             
   if (!b) return undefined;
   const shift = bikeIFShift(legProfileOf(a         , "bike"));
   return { lo: b.lo + shift, hi: b.hi + shift };
+}
+
+/**
+ * R23.18 — le mini-affûtage A− (≤ 60 % de la semaine précédente, hors jour de course), en
+ * FONCTION parce qu'il se rejoue : une fois à sa place historique, une fois après O-93 —
+ * qui peut réduire la semaine précédant une A− et invalider la relation posée avant.
+ */
+function enforceMiniTaperAMoins(plan        , render                         )       {
+  const A_MOINS_FACTOR = 0.60;
+  const TAPER_BODY_FLOOR_MIN = 10;
+  const weekMinOfW = (w        ) => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.race ? 0 : s.min || 0), 0), 0);
+  for (let wi = 1; wi < plan.weeks.length; wi++) {
+    const wk = plan.weeks[wi]                              ;
+    if (wk.race !== "A-") continue;
+    const horsCourse = () => wk.days.reduce((t, d) => t + d.sessions.reduce((u, sx) => u + (sx.race ? 0 : sx.min || 0), 0), 0);
+    const cap = weekMinOfW(plan.weeks[wi - 1]) * A_MOINS_FACTOR;
+    if (cap <= 0) continue;
+    for (let g = 0; g < 6 && horsCourse() > cap; g++) {
+      const before = horsCourse();
+      const f = cap / before;
+      for (const d of wk.days) for (const sx of d.sessions) {
+        if (sx.d === "rs" || sx.race || !sx.steps) continue;
+        let touched = false;
+        for (const st of sx.steps) {
+          if (st.role !== "body") continue;
+          if (st.durationMin) {
+            const next = Math.max(TAPER_BODY_FLOOR_MIN, Math.round(st.durationMin * f));
+            if (next < st.durationMin) { st.durationMin = next; touched = true; }
+          } else if (st.distanceM) {
+            const next = Math.max(200, Math.round((st.distanceM * f) / 25) * 25);
+            if (next < st.distanceM) { st.distanceM = next; touched = true; }
+          }
+        }
+        if (touched && render) render(sx);
+      }
+      if (before - horsCourse() < 0.5) break; // tout est au plancher : on livre ce qui reste
+    }
+  }
+}
+
+/**
+ * O-93 — la passe anti-inversion des décharges. Voir le commentaire à son point d'appel (après
+ * le point fixe C22) pour l'arbitrage et la mesure ; ici la mécanique seule.
+ */
+function enforceRecupSousCharges(plan        , render                         )       {
+  const wl = plan.weeks;
+  const estCharge = (w        ) => !w.isRecup && w.phase.id !== "taper"
+    && !w.days.some((d) => d.sessions.some((s) => s.race));
+  const voisine = (i        , pas        )                => {
+    for (let j = i + pas; j >= 0 && j < wl.length; j += pas) if (estCharge(wl[j])) return wl[j];
+    return null;
+  };
+  const nomDe = (s           ) => String(s.name || "").replace(/\s*\((matin|midi|soir)\)\s*/g, "").trim();
+  // la dose d'un TYPE se compte dans sa monnaie (règle 14) : mètres en nage, minutes de corps
+  // (récup inter-blocs comprise, R5.6a) ailleurs.
+  const doseDe = (s           ) => s.d === "sw"
+    ? (s.steps || []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0)
+    : (s.steps || []).filter((st) => st.role === "body").reduce((v, st) => v + (st._min || 0), 0);
+  const discMin = (w        ) => {
+    const t                         = { sw: 0, bk: 0, rn: 0 };
+    for (const d of w.days) for (const s of d.sessions) {
+      if (s.d === "rs" || s.race) continue;
+      if (s.d in t) t[s.d] += s.min || 0;
+      else for (const st of s.steps || []) { const leg = st.leg === "bike" ? "bk" : st.leg === "run" ? "rn" : null; if (leg) t[leg] += st._min || 0; }
+    }
+    return t;
+  };
+  // Réduire une séance vers une dose CIBLE : répétitions d'abord (I14 — la durée d'une
+  // répétition est le stimulus), blocs continus ensuite, jamais un bloc épinglé.
+  const reduire = (s           , cible        )          => {
+    let bouge = false;
+    for (let g = 0; g < 6 && doseDe(s) > cible + 1; g++) {
+      let fait = false;
+      for (const st of s.steps || []) {
+        if (st.role !== "body" || st.bnd?.pinned) continue;
+        const trop = doseDe(s) - cible;
+        if (trop <= 0) break;
+        if (s.d === "sw" && st.distanceM) {
+          if ((st.reps || 1) > 1) {
+            const next = Math.max(1, Math.floor(((st.reps || 1) * st.distanceM - trop) / st.distanceM));
+            if (next < (st.reps || 1)) { st.reps = next; fait = bouge = true; }
+          } else {
+            const next = Math.max(100, Math.round((st.distanceM - trop) / 25) * 25);
+            if (next < st.distanceM) { st.distanceM = next; fait = bouge = true; }
+          }
+        } else if (st.durationMin) {
+          if ((st.reps || 1) > 1) {
+            const parRep = st.durationMin + (st.recoveryMin || 0);
+            const next = Math.max(1, (st.reps || 1) - Math.ceil(trop / Math.max(1, parRep)));
+            if (next < (st.reps || 1)) { st.reps = next; fait = bouge = true; }
+          } else {
+            const next = Math.max(4, Math.round(st.durationMin - trop));
+            if (next < st.durationMin) { st.durationMin = next; fait = bouge = true; }
+          }
+        }
+      }
+      if (!fait) break;
+      if (render) render(s);
+    }
+    return bouge;
+  };
+  // EXEMPTION DÉRIVÉE, PUBLIÉE PAR LE COMPTEUR — quand AUCUNE semaine de pic n'est en charge
+  // (prépas courtes : la cadence de récup tombe sur la phase peak), la récup de pic EST la
+  // référence de dominance du plan (`peakAny`, le repli documenté de « dev ≤ pic »). La
+  // réduire rejoue le désastre d'O-21 : mesuré sur tri/S (8 sem), la passe la rétrécissait,
+  // la réparation rabotait TOUT le plan vers elle (semaine de dev 3,7 h → 1,5 h, footings de
+  // 16 min). Sur ces plans, la protection anti-inversion CÈDE à la référence structurelle —
+  // et l'exemption est comptée (`exemptes`), jamais silencieuse (leçon O-15).
+  const peakChargeExiste = wl.some((x) => x.phase.id === "peak" && !x.isRecup);
+  let semaines = 0, types = 0, disciplines = 0, exemptes = 0;
+  for (let i = 0; i < wl.length; i++) {
+    const w = wl[i];
+    if (!w.isRecup || w.phase.id === "taper") continue;
+    if (w.phase.id === "peak" && !peakChargeExiste) { exemptes++; continue; }
+    const av = voisine(i, -1), ap = voisine(i, +1);
+    if (!av && !ap) continue;
+    let touchee = false;
+    // ── axe TYPE : la dose d'un type en récup ≤ la meilleure dose du MÊME type chez les
+    // charges qui l'encadrent. Un type absent des deux voisines n'a pas de référent : il
+    // relève de l'axe DISCIPLINE (déclaré, pas silencieux).
+    const refT = new Map                ();
+    for (const vw of [av, ap]) if (vw) for (const d of vw.days) for (const s of d.sessions) {
+      if (s.d === "rs" || s.race) continue;
+      const n = nomDe(s);
+      refT.set(n, Math.max(refT.get(n) || 0, doseDe(s)));
+    }
+    for (const d of w.days) for (const s of d.sessions) {
+      if (s.d === "rs" || s.race) continue;
+      const ref = refT.get(nomDe(s));
+      if (ref == null || doseDe(s) <= ref) continue;
+      if (reduire(s, ref)) { types++; touchee = true; }
+    }
+    // ── axe DISCIPLINE : minutes par discipline (legs de brick attribués) ≤ la meilleure
+    // voisine. Réduction PROPORTIONNELLE des séances de la discipline — le même facteur pour
+    // toutes, la structure de la semaine ne change pas.
+    const dR = discMin(w), dAv = av ? discMin(av) : { sw: 0, bk: 0, rn: 0 }, dAp = ap ? discMin(ap) : { sw: 0, bk: 0, rn: 0 };
+    for (const k of ["sw", "bk", "rn"]) {
+      const ref = Math.max(dAv[k] || 0, dAp[k] || 0);
+      if (!(dR[k] > ref + 1)) continue;
+      const f = ref / dR[k];
+      let une = false;
+      for (const d of w.days) for (const s of d.sessions) {
+        if (s.d !== k || s.race) continue;
+        if (reduire(s, doseDe(s) * f)) une = true;
+      }
+      if (une) { disciplines++; touchee = true; }
+    }
+    if (touchee) semaines++;
+  }
+  if (semaines > 0 || exemptes > 0) _o93 = { semaines: (_o93?.semaines || 0) + semaines, types: (_o93?.types || 0) + types, disciplines: (_o93?.disciplines || 0) + disciplines, exemptes: (_o93?.exemptes || 0) + exemptes };
 }
 
 /**
@@ -13234,6 +13407,7 @@ function generatePlan(profile                , opts                             
   const _spec30 = String(a.sport) === "run"
     ? longRunSpecificityFloor(fmt, r.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(a.vol_max ?? "")) || undefined)
     : null;
+  _o85 = null; _o93 = null; // les compteurs de déclenchement repartent au PREMIER reconcile du build
   reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport          , "swimSessionFloors"), format: a.format, beginner: r.beginner, swimCapM: r.swimSessionCapM, medHold: r.medHold, keepTaperSwim: guard(a.sport          , "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport          ).mainDiscipline, disciplines: sportModule(a.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 },
     // O-85 — LE DOMAINE EST DÉRIVÉ, PAS UNE LISTE DE SPORTS : la borne « k × distance de course »
     // n'a de sens que si la nage est un LEG d'une épreuve multi-discipline. Un sprinteur qui
@@ -16264,22 +16438,43 @@ function swimSessionCapAtWeek(g                       , base        , wkNum     
  *    fondateur souligne : on protège le moins expérimenté davantage, alors que l'intuition
  *    voudrait « il en fait moins, donc il risque moins ».
  *
- * 3. **ELLE SE LÈVE AVEC LA POSITION (O-56).** Le multiplicateur lit la continuité PROJETÉE À LA
- *    SEMAINE, pas la déclaration du premier jour : le même patron que `swimSessionCapAtWeek`
- *    ci-dessus, pour la même raison — une borne gelée sur la déclaration initiale empêche le plan
- *    de construire ce qu'il existe pour construire.
+ * 3. **ELLE CLIQUETTE SUR LE LIVRÉ, JAMAIS SUR UNE PROJECTION (O-89, arbitrage du fondateur,
+ *    19/08/2026).** Ma première écriture levait le multiplicateur sur la continuité PROJETÉE
+ *    (`C22^semaine`) : la bande passait à ×6 dès S8 pendant que les paliers B-17 du même plan
+ *    posaient la première continue en S25 — deux courbes pour la même grandeur, et la borne
+ *    lisait la plus optimiste. L'argument qui tranche est l'asymétrie des erreurs : *« le
+ *    cliquet de capacité projette trop haut → l'athlète sous-livre → récupérable ; la borne
+ *    d'épaule projette trop haut → il nage 11 km/sem avec une épaule conditionnée pour 7 →
+ *    blessure. Une borne de sécurité ne projette pas : une projection est une hypothèse sur
+ *    l'avenir, une protection doit tenir sur le présent. »* La tolérance tissulaire suit la
+ *    CHARGE ACCUMULÉE, pas la capacité à nager d'un trait — la borne se lève donc au plus
+ *    ×C22 au-dessus du volume hebdomadaire de nage RÉELLEMENT LIVRÉ par les semaines déjà
+ *    fixées (lecture ARRIÈRE, comme la rampe C22 : pas de circularité O-43), plafonnée à la
+ *    bande SUIVANT celle que la continuité déclarée justifie — le « 7,6 km en S1 → 11,4 au
+ *    pic » arbitré en fermant O-85 ne bouge pas, seule la RAMPE change : chaque palier est
+ *    désormais GAGNÉ par le volume effectivement porté, jamais accordé par le calendrier. Si
+ *    le plan sous-livre en nage, la borne s'ouvre plus lentement — et c'est correct.
  *
  * PROVENANCE DES CHIFFRES, dite franchement : les bandes viennent du fondateur (« triathlète
  * récréatif ×2-4 · âge-groupe compétitif ×4-6 · nageur de formation ×8 et plus ») et sont des
  * ordres de grandeur d'entraîneur, pas une publication. Ce qui est défendable et ce qui compte,
  * c'est la FORME et la DIRECTION ; les valeurs sont révocables sans changer le mécanisme.
+ * `C22_MAX_WEEKLY_GROWTH` est la seule constante de croissance sourcée du dépôt — aucune
+ * constante nouvelle (forme demandée par O-85 §1, reconduite ici).
  *
  * DOMAINE — la formule n'a de sens que si la nage est un LEG, pas l'ÉPREUVE. Un sprinteur qui
  * prépare un 100 m nage trente fois sa distance de course, et c'est correct. La condition est
  * donc portée par l'appelant sous forme DÉRIVÉE (« le sport a-t-il plus d'une discipline ? »),
  * jamais par une liste de sports.
  *
- * @param wkNum semaine du plan, 1-indexée — LA POSITION EST UN PARAMÈTRE (règle 20)
+ * NOTE (O-89, périmètre) : `swimSessionCapAtWeek` ci-dessus garde sa projection `C22^semaine` —
+ * c'est une borne de SÉANCE dont la levée pilote la construction des paliers (B-17), pas une
+ * protection articulaire ; l'arbitrage O-89 nomme la borne d'ÉPAULE. Si « une borne de sécurité
+ * ne projette pas » doit s'étendre à C15, c'est une décision à part.
+ *
+ * @param livreMaxPrecM le plus haut volume hebdomadaire de nage (mètres) LIVRÉ par les semaines
+ *   déjà fixées — 0 ou absent en semaine 1. Le producteur est la passe O-85 elle-même, qui
+ *   parcourt les semaines dans l'ordre et lit ce qu'elle vient d'écrêter (lecture arrière).
  * @returns le plafond hebdomadaire en mètres, ou `null` quand la borne n'a pas d'objet
  */
 const O85_MULT_EPAULE = [
@@ -16288,11 +16483,11 @@ const O85_MULT_EPAULE = [
   { jusqua: Infinity, k: 8 }, // formation de nageur
 ];
 
-function swimWeeklyLoadCapM(g                       , wkNum        )                {
+function swimWeeklyLoadCapM(g                       , livreMaxPrecM                )                {
   if (!g || !g.courseM) return null;
   // Continuité INCONNUE → branche prudente, la plus serrée. Un défaut tacite va vers la sécurité
   // (U14) : ne pas savoir nager 1 900 m d'affilée est le cas le plus fréquent, pas le plus rare.
-  const k = Math.max(0, (wkNum || 1) - 1);
+  //
   // ⚠ LE RATIO NE SE PLAFONNE PAS À LA DISTANCE DE COURSE, contrairement à la borne de SÉANCE
   // ci-dessus, et c'est une mesure qui l'a corrigé : avec le plafond, `ratio` ne dépassait jamais
   // 1,0 et **la bande « formation de nageur » était inatteignable** — un athlète déclarant 4 000 m
@@ -16300,12 +16495,29 @@ function swimWeeklyLoadCapM(g                       , wkNum        )            
   // même grandeur pour deux questions différentes : « jusqu'où faire nager d'un trait » se
   // plafonne à la course (au-delà on fait du volume, pas de la continuité) ; « quelle épaule
   // a-t-il » ne se plafonne pas — savoir nager 4 km d'affilée EST de l'expérience.
-  const continuite = g.source === "mesure"
-    ? Math.max(g.departM, Math.min(g.courseM, g.departM * Math.pow(C22_MAX_WEEKLY_GROWTH, k)))
-    : 0;
-  const ratio = continuite / g.courseM;
-  const mult = (O85_MULT_EPAULE.find((b) => ratio < b.jusqua) ?? O85_MULT_EPAULE[0]).k;
-  return Math.round(mult * g.courseM);
+  const ratio = (g.source === "mesure" ? g.departM : 0) / g.courseM;
+  const iDep = O85_MULT_EPAULE.findIndex((b) => ratio < b.jusqua);
+  const bande = O85_MULT_EPAULE[iDep < 0 ? O85_MULT_EPAULE.length - 1 : iDep];
+  const capDepart = Math.round(bande.k * g.courseM);
+  // O-89 — le cliquet : au plus ×C22 au-dessus du plus haut volume déjà LIVRÉ, plafonné à la
+  // bande SUIVANTE **seulement quand la continuité déclarée est SOUS la distance de course** :
+  // le plan construit alors lui-même cette continuité (paliers B-17), et l'athlète qui la
+  // gagnera au fil des semaines gagne la bande avec elle — c'est le « 7,6 km en S1 → 11,4 au
+  // pic » arbitré en fermant O-85, la rampe en plus. Au-dessus (déclaré ≥ course), la bande
+  // d'au-dessus ne se gagne QUE par une nouvelle continuité VALIDÉE (O-56), jamais par
+  // l'accumulation seule — ma première écriture ouvrait ×8 à tout déclaré ≥ course, et le
+  // rayon l'a attrapée : un SPRINT (course 750 m) gagnait +36,6 km de nage sur son plan, le
+  // déversoir exploitant la marge. Sans historique livré (semaine 1), le départ seul.
+  // …et la marge exige une continuité MESURÉE : sur une continuité INCONNUE (ratio 0, branche
+  // prudente U14), la bande ne se lève pas par accumulation — l'ancienne forme la laissait à ×4
+  // statique, la nouvelle ne doit pas être plus lâche sur un défaut tacite. Le rayon l'a
+  // attrapée aussi : les 10 profils touchés restants étaient tous des continuités non déclarées
+  // qui gagnaient ×6 par le seul déversoir.
+  const iBande = iDep < 0 ? O85_MULT_EPAULE.length - 1 : iDep;
+  const iPlafond = g.source === "mesure" && ratio < 1.0 ? Math.min(O85_MULT_EPAULE.length - 1, iBande + 1) : iBande;
+  const plafondCliquet = Math.round(O85_MULT_EPAULE[iPlafond].k * g.courseM);
+  if (!(livreMaxPrecM != null && livreMaxPrecM > 0)) return capDepart;
+  return Math.min(plafondCliquet, Math.max(capDepart, Math.round(livreMaxPrecM * C22_MAX_WEEKLY_GROWTH)));
 }
 
 /**

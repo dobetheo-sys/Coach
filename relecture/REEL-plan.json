@@ -577,9 +577,9 @@
     "end": 13,
     "weeks": 13
    },
-   "vol": 7.8,
-   "vol_declared": 7.8,
-   "vol_real": 7.8,
+   "vol": 8,
+   "vol_declared": 8,
+   "vol_real": 8,
    "days": [
     {
      "week": 2,
@@ -608,12 +608,12 @@
        "recovery": true,
        "name": "Nage récup courte",
        "note": "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
-       "det": "1875m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
+       "det": "2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 1875,
+         "distanceM": 2625,
          "unitKm": false,
          "zone": "sw.easy",
          "intensity": {
@@ -626,11 +626,11 @@
          "suffix": " souple, en blocs de 50m, respiration 3 temps · relâchement total",
          "prefix": "",
          "d": "sw",
-         "_min": 42.7
+         "_min": 59.78
         }
        ],
        "plainBody": true,
-       "min": 43
+       "min": 60
       }
      ],
      "date": "2026-08-24"
@@ -1078,9 +1078,9 @@
     "end": 13,
     "weeks": 13
    },
-   "vol": 8.2,
-   "vol_declared": 8.2,
-   "vol_real": 8.2,
+   "vol": 8.8,
+   "vol_declared": 8.8,
+   "vol_real": 8.8,
    "days": [
     {
      "week": 3,
@@ -1220,7 +1220,7 @@
        "d": "sw",
        "name": "Nage aérobie + accélérations",
        "note": "Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
-       "det": "Échauffement 200m + 4×25m accélérations progressives · 2250m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
+       "det": "Échauffement 200m + 4×25m accélérations progressives · 3825m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
        "steps": [
         {
          "role": "warmup",
@@ -1231,7 +1231,7 @@
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 2250,
+         "distanceM": 3825,
          "unitKm": false,
          "zone": "sw.aero",
          "intensity": {
@@ -1244,7 +1244,7 @@
          "suffix": ", en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu",
          "prefix": "",
          "d": "sw",
-         "_min": 48.495000000000005
+         "_min": 82.4415
         },
         {
          "role": "cooldown",
@@ -1253,7 +1253,7 @@
          "_min": 3.05
         }
        ],
-       "min": 56
+       "min": 90
       },
       {
        "d": "bk",
@@ -1581,9 +1581,9 @@
     "end": 13,
     "weeks": 13
    },
-   "vol": 5.8,
-   "vol_declared": 5.8,
-   "vol_real": 5.8,
+   "vol": 6.8,
+   "vol_declared": 6.8,
+   "vol_real": 6.8,
    "days": [
     {
      "week": 4,
@@ -1770,12 +1770,12 @@
        "recovery": true,
        "name": "Nage récup courte",
        "note": "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
-       "det": "1100m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
+       "det": "2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 1100,
+         "distanceM": 2625,
          "unitKm": false,
          "zone": "sw.easy",
          "intensity": {
@@ -1788,11 +1788,11 @@
          "suffix": " souple, en blocs de 50m, respiration 3 temps · relâchement total",
          "prefix": "",
          "d": "sw",
-         "_min": 25.050666666666668
+         "_min": 59.78
         }
        ],
        "plainBody": true,
-       "min": 25
+       "min": 60
       }
      ],
      "date": "2026-09-09"
@@ -1935,7 +1935,7 @@
        "d": "sw",
        "name": "Nage aérobie + accélérations",
        "note": "Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
-       "det": "Échauffement 200m + 4×25m accélérations progressives · 400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
+       "det": "Échauffement 200m + 4×25m accélérations progressives · 1375m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
        "steps": [
         {
          "role": "warmup",
@@ -1946,7 +1946,7 @@
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 400,
+         "distanceM": 1375,
          "unitKm": false,
          "zone": "sw.aero",
          "intensity": {
@@ -1959,7 +1959,7 @@
          "suffix": ", en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu",
          "prefix": "",
          "d": "sw",
-         "_min": 8.621333333333334
+         "_min": 29.635833333333334
         },
         {
          "role": "cooldown",
@@ -1968,7 +1968,7 @@
          "_min": 3.05
         }
        ],
-       "min": 16
+       "min": 37
       },
       {
        "d": "sw",
@@ -2107,9 +2107,9 @@
     "end": 13,
     "weeks": 13
    },
-   "vol": 5.8,
-   "vol_declared": 5.8,
-   "vol_real": 5.8,
+   "vol": 5.2,
+   "vol_declared": 5.2,
+   "vol_real": 5.2,
    "days": [
     {
      "week": 5,
@@ -2138,12 +2138,12 @@
        "long": true,
        "name": "Sortie longue CAP",
        "note": "Endurance fondamentale, allure facile et conversationnelle.",
-       "det": "70min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.",
+       "det": "76min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "durationMin": 70,
+         "durationMin": 76,
          "zone": "rn.easy",
          "intensity": {
           "ref": "thrPace",
@@ -2158,11 +2158,11 @@
           "floor": 50,
           "cap": 100
          },
-         "_min": 70
+         "_min": 76
         }
        ],
        "plainBody": true,
-       "min": 70
+       "min": 76
       }
      ],
      "date": "2026-09-14"
@@ -2225,22 +2225,22 @@
        "d": "bk",
        "name": "Endurance vélo (couverture discipline)",
        "note": "Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.",
-       "det": "156min @ 132-177W — 💡 Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.",
+       "det": "94min @ 132-177W — 💡 Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.",
        "steps": [
         {
          "role": "body",
-         "durationMin": 156,
+         "durationMin": 94,
          "zone": "bk.z2",
          "intensity": {
           "ref": "ftp",
           "lo": 0.56,
           "hi": 0.75
          },
-         "_min": 156
+         "_min": 94
         }
        ],
        "plainBody": true,
-       "min": 156
+       "min": 94
       }
      ],
      "date": "2026-09-16"
@@ -2272,12 +2272,12 @@
        "recovery": true,
        "name": "Nage récup courte",
        "note": "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
-       "det": "2125m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
+       "det": "2475m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 2125,
+         "distanceM": 2475,
          "unitKm": false,
          "zone": "sw.easy",
          "intensity": {
@@ -2290,11 +2290,11 @@
          "suffix": " souple, en blocs de 50m, respiration 3 temps · relâchement total",
          "prefix": "",
          "d": "sw",
-         "_min": 48.39333333333333
+         "_min": 56.364
         }
        ],
        "plainBody": true,
-       "min": 48
+       "min": 56
       }
      ],
      "date": "2026-09-17"
@@ -2357,12 +2357,12 @@
        "d": "rn",
        "name": "Footing facile",
        "note": "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
-       "det": "26min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
+       "det": "30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "durationMin": 26,
+         "durationMin": 30,
          "zone": "rn.easy",
          "intensity": {
           "ref": "thrPace",
@@ -2378,11 +2378,11 @@
           "cap": 50
          },
          "progCap": 0.6,
-         "_min": 26
+         "_min": 30
         }
        ],
        "plainBody": true,
-       "min": 26
+       "min": 30
       }
      ],
      "date": "2026-09-19"
@@ -2414,12 +2414,12 @@
        "recovery": true,
        "name": "Nage récup courte",
        "note": "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
-       "det": "2125m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
+       "det": "2475m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 2125,
+         "distanceM": 2475,
          "unitKm": false,
          "zone": "sw.easy",
          "intensity": {
@@ -2432,11 +2432,11 @@
          "suffix": " souple, en blocs de 50m, respiration 3 temps · relâchement total",
          "prefix": "",
          "d": "sw",
-         "_min": 48.39333333333333
+         "_min": 56.364
         }
        ],
        "plainBody": true,
-       "min": 48
+       "min": 56
       }
      ],
      "date": "2026-09-20"
@@ -2455,9 +2455,9 @@
     "end": 13,
     "weeks": 13
    },
-   "vol": 4.9,
+   "vol": 4.6,
    "vol_declared": 4.9,
-   "vol_real": 4.9,
+   "vol_real": 4.6,
    "days": [
     {
      "week": 6,
@@ -2715,7 +2715,7 @@
        "d": "sw",
        "name": "Nage seuil (+dist) (matin)",
        "note": "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
-       "det": "Échauffement 300m + 4×50m éducatifs · 1175m @ 2'02/100m, fractionné en séries régulières si besoin · 738m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
+       "det": "Échauffement 300m + 4×50m éducatifs · 1125m @ 2'02/100m, fractionné en séries régulières si besoin · 738m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
        "steps": [
         {
          "role": "warmup",
@@ -2726,7 +2726,7 @@
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 1175,
+         "distanceM": 1125,
          "unitKm": false,
          "zone": "sw.css",
          "intensity": {
@@ -2744,7 +2744,7 @@
           "cap": 2100
          },
          "progCap": 0.5952019792190338,
-         "_min": 23.891666666666666
+         "_min": 22.875
         },
         {
          "role": "body",
@@ -2775,13 +2775,13 @@
          "_min": 4.066666666666666
         }
        ],
-       "min": 50
+       "min": 49
       },
       {
        "d": "bk",
        "name": "Sweetspot vélo",
        "note": "Cadence 85-95 rpm, soutenu mais maîtrisé.",
-       "det": "Échauffement 15min montée progressive · 4×14min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~15min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.",
+       "det": "Échauffement 15min montée progressive · 3×14min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~10min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.",
        "steps": [
         {
          "role": "warmup",
@@ -2791,7 +2791,7 @@
         },
         {
          "role": "body",
-         "reps": 4,
+         "reps": 3,
          "durationMin": 14,
          "zone": "bk.ss",
          "intensity": {
@@ -2804,7 +2804,7 @@
          "suffix": "",
          "prefix": "",
          "repCap": 4,
-         "_min": 71
+         "_min": 52
         },
         {
          "role": "cooldown",
@@ -2813,7 +2813,7 @@
          "_min": 10
         }
        ],
-       "min": 96
+       "min": 77
       }
      ],
      "date": "2026-09-26"
@@ -2888,9 +2888,9 @@
     "end": 13,
     "weeks": 13
    },
-   "vol": 6.4,
-   "vol_declared": 6.7,
-   "vol_real": 6.4,
+   "vol": 7.4,
+   "vol_declared": 8,
+   "vol_real": 7.4,
    "days": [
     {
      "week": 7,
@@ -2957,7 +2957,7 @@
        "d": "bk",
        "name": "Force basse cadence",
        "note": "Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.",
-       "det": "Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.",
+       "det": "Échauffement 15min + montée en intensité · 7×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~18min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.",
        "steps": [
         {
          "role": "warmup",
@@ -2967,7 +2967,7 @@
         },
         {
          "role": "body",
-         "reps": 8,
+         "reps": 7,
          "durationMin": 6,
          "zone": "bk.frc",
          "intensity": {
@@ -2980,7 +2980,7 @@
          "suffix": " à 50-60 rpm",
          "prefix": "",
          "repCap": 8,
-         "_min": 69
+         "_min": 60
         },
         {
          "role": "cooldown",
@@ -2989,7 +2989,7 @@
          "_min": 10
         }
        ],
-       "min": 94
+       "min": 85
       }
      ],
      "date": "2026-09-28"
@@ -3021,12 +3021,12 @@
        "recovery": true,
        "name": "Nage récup courte",
        "note": "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
-       "det": "950m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
+       "det": "2425m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 950,
+         "distanceM": 2425,
          "unitKm": false,
          "zone": "sw.easy",
          "intensity": {
@@ -3039,11 +3039,11 @@
          "suffix": " souple, en blocs de 50m, respiration 3 temps · relâchement total",
          "prefix": "",
          "d": "sw",
-         "_min": 21.634666666666668
+         "_min": 55.22533333333333
         }
        ],
        "plainBody": true,
-       "min": 22
+       "min": 55
       }
      ],
      "date": "2026-09-29"
@@ -3186,7 +3186,7 @@
        "d": "sw",
        "name": "Nage aérobie + accélérations",
        "note": "Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
-       "det": "Échauffement 200m + 4×25m accélérations progressives · 400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
+       "det": "Échauffement 200m + 4×25m accélérations progressives · 2125m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
        "steps": [
         {
          "role": "warmup",
@@ -3197,7 +3197,7 @@
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 400,
+         "distanceM": 2125,
          "unitKm": false,
          "zone": "sw.aero",
          "intensity": {
@@ -3210,7 +3210,7 @@
          "suffix": ", en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu",
          "prefix": "",
          "d": "sw",
-         "_min": 8.621333333333334
+         "_min": 45.80083333333333
         },
         {
          "role": "cooldown",
@@ -3219,13 +3219,13 @@
          "_min": 3.05
         }
        ],
-       "min": 16
+       "min": 53
       },
       {
        "d": "sw",
        "name": "Nage seuil (+dist) (matin)",
        "note": "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
-       "det": "Échauffement 300m + 4×50m éducatifs · 1125m @ 2'02/100m, fractionné en séries régulières si besoin · 675m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
+       "det": "Échauffement 300m + 4×50m éducatifs · 1100m @ 2'02/100m, fractionné en séries régulières si besoin · 675m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
        "steps": [
         {
          "role": "warmup",
@@ -3236,7 +3236,7 @@
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 1125,
+         "distanceM": 1100,
          "unitKm": false,
          "zone": "sw.css",
          "intensity": {
@@ -3254,7 +3254,7 @@
           "cap": 2100
          },
          "progCap": 0.6046787437490778,
-         "_min": 22.875
+         "_min": 22.366666666666667
         },
         {
          "role": "body",
@@ -3285,7 +3285,7 @@
          "_min": 4.066666666666666
         }
        ],
-       "min": 48
+       "min": 47
       }
      ],
      "date": "2026-10-02"
@@ -3317,12 +3317,12 @@
        "recovery": true,
        "name": "Nage récup courte",
        "note": "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
-       "det": "2450m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
+       "det": "2425m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 2450,
+         "distanceM": 2425,
          "unitKm": false,
          "zone": "sw.easy",
          "intensity": {
@@ -3335,11 +3335,11 @@
          "suffix": " souple, en blocs de 50m, respiration 3 temps · relâchement total",
          "prefix": "",
          "d": "sw",
-         "_min": 55.794666666666664
+         "_min": 55.22533333333333
         }
        ],
        "plainBody": true,
-       "min": 56
+       "min": 55
       }
      ],
      "date": "2026-10-03"
@@ -3414,9 +3414,9 @@
     "end": 13,
     "weeks": 13
    },
-   "vol": 7,
-   "vol_declared": 7,
-   "vol_real": 7,
+   "vol": 8.1,
+   "vol_declared": 8.8,
+   "vol_real": 8.1,
    "days": [
     {
      "week": 8,
@@ -3476,7 +3476,7 @@
        "d": "sw",
        "name": "Nage seuil (+dist) (matin)",
        "note": "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
-       "det": "Échauffement 300m + 4×50m éducatifs · 925m @ 2'02/100m, fractionné en séries régulières si besoin · 600m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
+       "det": "Échauffement 300m + 4×50m éducatifs · 1050m @ 2'02/100m, fractionné en séries régulières si besoin · 675m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
        "steps": [
         {
          "role": "warmup",
@@ -3487,7 +3487,7 @@
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 925,
+         "distanceM": 1050,
          "unitKm": false,
          "zone": "sw.css",
          "intensity": {
@@ -3505,12 +3505,12 @@
           "cap": 2100
          },
          "progCap": 0.6143063966650706,
-         "_min": 18.808333333333334
+         "_min": 21.349999999999998
         },
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 600,
+         "distanceM": 675,
          "unitKm": false,
          "zone": "sw.aero",
          "intensity": {
@@ -3527,7 +3527,7 @@
           "floor": 150,
           "cap": 900
          },
-         "_min": 12.932
+         "_min": 14.5485
         },
         {
          "role": "cooldown",
@@ -3536,13 +3536,13 @@
          "_min": 4.066666666666666
         }
        ],
-       "min": 42
+       "min": 46
       },
       {
        "d": "bk",
        "name": "Sweetspot vélo",
        "note": "Cadence 85-95 rpm, soutenu mais maîtrisé.",
-       "det": "Échauffement 15min montée progressive · 3×14min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~10min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.",
+       "det": "Échauffement 15min montée progressive · 4×14min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~15min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.",
        "steps": [
         {
          "role": "warmup",
@@ -3552,7 +3552,7 @@
         },
         {
          "role": "body",
-         "reps": 3,
+         "reps": 4,
          "durationMin": 14,
          "zone": "bk.ss",
          "intensity": {
@@ -3565,7 +3565,7 @@
          "suffix": "",
          "prefix": "",
          "repCap": 4,
-         "_min": 52
+         "_min": 71
         },
         {
          "role": "cooldown",
@@ -3574,7 +3574,7 @@
          "_min": 10
         }
        ],
-       "min": 77
+       "min": 96
       }
      ],
      "date": "2026-10-06"
@@ -3605,12 +3605,12 @@
        "d": "rn",
        "name": "Footing facile",
        "note": "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
-       "det": "24min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
+       "det": "28min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "durationMin": 24,
+         "durationMin": 28,
          "zone": "rn.easy",
          "intensity": {
           "ref": "thrPace",
@@ -3626,11 +3626,11 @@
           "cap": 50
          },
          "progCap": 0.6561071666354251,
-         "_min": 24
+         "_min": 28
         }
        ],
        "plainBody": true,
-       "min": 24
+       "min": 28
       }
      ],
      "date": "2026-10-07"
@@ -3661,7 +3661,7 @@
        "d": "sw",
        "name": "Nage aérobie + accélérations",
        "note": "Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
-       "det": "Échauffement 200m + 4×25m accélérations progressives · 4700m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
+       "det": "Échauffement 200m + 4×25m accélérations progressives · 5325m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
        "steps": [
         {
          "role": "warmup",
@@ -3672,7 +3672,7 @@
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 4700,
+         "distanceM": 5325,
          "unitKm": false,
          "zone": "sw.aero",
          "intensity": {
@@ -3685,7 +3685,7 @@
          "suffix": ", en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu",
          "prefix": "",
          "d": "sw",
-         "_min": 101.30066666666667
+         "_min": 114.7715
         },
         {
          "role": "cooldown",
@@ -3694,13 +3694,13 @@
          "_min": 3.05
         }
        ],
-       "min": 108
+       "min": 122
       },
       {
        "d": "bk",
        "name": "Force basse cadence",
        "note": "Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.",
-       "det": "Échauffement 15min + montée en intensité · 6×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~15min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.",
+       "det": "Échauffement 15min + montée en intensité · 7×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~18min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.",
        "steps": [
         {
          "role": "warmup",
@@ -3710,7 +3710,7 @@
         },
         {
          "role": "body",
-         "reps": 6,
+         "reps": 7,
          "durationMin": 6,
          "zone": "bk.frc",
          "intensity": {
@@ -3723,7 +3723,7 @@
          "suffix": " à 50-60 rpm",
          "prefix": "",
          "repCap": 8,
-         "_min": 51
+         "_min": 60
         },
         {
          "role": "cooldown",
@@ -3732,7 +3732,7 @@
          "_min": 10
         }
        ],
-       "min": 76
+       "min": 85
       }
      ],
      "date": "2026-10-08"
@@ -3764,12 +3764,12 @@
        "recovery": true,
        "name": "Nage récup courte",
        "note": "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
-       "det": "2075m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
+       "det": "2350m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 2075,
+         "distanceM": 2350,
          "unitKm": false,
          "zone": "sw.easy",
          "intensity": {
@@ -3782,11 +3782,11 @@
          "suffix": " souple, en blocs de 50m, respiration 3 temps · relâchement total",
          "prefix": "",
          "d": "sw",
-         "_min": 47.254666666666665
+         "_min": 53.51733333333333
         }
        ],
        "plainBody": true,
-       "min": 47
+       "min": 54
       }
      ],
      "date": "2026-10-09"
@@ -3817,12 +3817,12 @@
        "d": "rn",
        "name": "Footing facile",
        "note": "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
-       "det": "24min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
+       "det": "28min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "durationMin": 24,
+         "durationMin": 28,
          "zone": "rn.easy",
          "intensity": {
           "ref": "thrPace",
@@ -3838,11 +3838,11 @@
           "cap": 50
          },
          "progCap": 0.6561071666354251,
-         "_min": 24
+         "_min": 28
         }
        ],
        "plainBody": true,
-       "min": 24
+       "min": 28
       }
      ],
      "date": "2026-10-10"
@@ -3873,12 +3873,12 @@
        "d": "rn",
        "name": "Footing facile",
        "note": "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
-       "det": "24min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
+       "det": "28min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "durationMin": 24,
+         "durationMin": 28,
          "zone": "rn.easy",
          "intensity": {
           "ref": "thrPace",
@@ -3894,11 +3894,11 @@
           "cap": 50
          },
          "progCap": 0.6561071666354251,
-         "_min": 24
+         "_min": 28
         }
        ],
        "plainBody": true,
-       "min": 24
+       "min": 28
       }
      ],
      "date": "2026-10-11"
@@ -3917,9 +3917,9 @@
     "end": 13,
     "weeks": 13
    },
-   "vol": 7.8,
-   "vol_declared": 7.8,
-   "vol_real": 7.8,
+   "vol": 8.9,
+   "vol_declared": 9.5,
+   "vol_real": 8.9,
    "days": [
     {
      "week": 9,
@@ -3947,7 +3947,7 @@
        "d": "sw",
        "name": "Nage aérobie + accélérations",
        "note": "Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
-       "det": "Échauffement 200m + 4×25m accélérations progressives · 1900m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
+       "det": "Échauffement 200m + 4×25m accélérations progressives · 2175m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
        "steps": [
         {
          "role": "warmup",
@@ -3958,7 +3958,7 @@
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 1900,
+         "distanceM": 2175,
          "unitKm": false,
          "zone": "sw.aero",
          "intensity": {
@@ -3971,7 +3971,7 @@
          "suffix": ", en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu",
          "prefix": "",
          "d": "sw",
-         "_min": 40.95133333333334
+         "_min": 46.878499999999995
         },
         {
          "role": "cooldown",
@@ -3980,13 +3980,13 @@
          "_min": 3.05
         }
        ],
-       "min": 48
+       "min": 54
       },
       {
        "d": "bk",
        "name": "Force basse cadence",
        "note": "Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.",
-       "det": "Échauffement 15min + montée en intensité · 6×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~15min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.",
+       "det": "Échauffement 15min + montée en intensité · 7×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~18min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.",
        "steps": [
         {
          "role": "warmup",
@@ -3996,7 +3996,7 @@
         },
         {
          "role": "body",
-         "reps": 6,
+         "reps": 7,
          "durationMin": 6,
          "zone": "bk.frc",
          "intensity": {
@@ -4009,7 +4009,7 @@
          "suffix": " à 50-60 rpm",
          "prefix": "",
          "repCap": 8,
-         "_min": 51
+         "_min": 60
         },
         {
          "role": "cooldown",
@@ -4018,7 +4018,7 @@
          "_min": 10
         }
        ],
-       "min": 76
+       "min": 85
       }
      ],
      "date": "2026-10-12"
@@ -4050,12 +4050,12 @@
        "recovery": true,
        "name": "Nage récup courte",
        "note": "Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
-       "det": "2000m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
+       "det": "2275m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 2000,
+         "distanceM": 2275,
          "unitKm": false,
          "zone": "sw.easy",
          "intensity": {
@@ -4068,11 +4068,11 @@
          "suffix": " souple, en blocs de 50m, respiration 3 temps · relâchement total",
          "prefix": "",
          "d": "sw",
-         "_min": 45.54666666666667
+         "_min": 51.809333333333335
         }
        ],
        "plainBody": true,
-       "min": 46
+       "min": 52
       }
      ],
      "date": "2026-10-13"
@@ -4104,12 +4104,12 @@
        "long": true,
        "name": "Sortie longue CAP",
        "note": "Endurance fondamentale, allure facile et conversationnelle.",
-       "det": "62min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.",
+       "det": "71min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "durationMin": 62,
+         "durationMin": 71,
          "zone": "rn.easy",
          "intensity": {
           "ref": "thrPace",
@@ -4124,11 +4124,11 @@
           "floor": 50,
           "cap": 100
          },
-         "_min": 62
+         "_min": 71
         }
        ],
        "plainBody": true,
-       "min": 62
+       "min": 71
       }
      ],
      "date": "2026-10-14"
@@ -4191,7 +4191,7 @@
        "d": "sw",
        "name": "Nage seuil (+dist) (matin)",
        "note": "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
-       "det": "Échauffement 300m + 4×50m éducatifs · 925m @ 2'02/100m, fractionné en séries régulières si besoin · 575m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
+       "det": "Échauffement 300m + 4×50m éducatifs · 1075m @ 2'02/100m, fractionné en séries régulières si besoin · 650m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
        "steps": [
         {
          "role": "warmup",
@@ -4202,7 +4202,7 @@
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 925,
+         "distanceM": 1075,
          "unitKm": false,
          "zone": "sw.css",
          "intensity": {
@@ -4220,12 +4220,12 @@
           "cap": 2100
          },
          "progCap": 0.6240873404014023,
-         "_min": 18.808333333333334
+         "_min": 21.85833333333333
         },
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 575,
+         "distanceM": 650,
          "unitKm": false,
          "zone": "sw.aero",
          "intensity": {
@@ -4242,7 +4242,7 @@
           "floor": 150,
           "cap": 900
          },
-         "_min": 12.393166666666668
+         "_min": 14.009666666666666
         },
         {
          "role": "cooldown",
@@ -4251,13 +4251,13 @@
          "_min": 4.066666666666666
         }
        ],
-       "min": 41
+       "min": 46
       },
       {
        "d": "bk",
        "name": "Sweetspot vélo",
        "note": "Cadence 85-95 rpm, soutenu mais maîtrisé.",
-       "det": "Échauffement 15min montée progressive · 3×14min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~10min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.",
+       "det": "Échauffement 15min montée progressive · 4×14min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~15min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.",
        "steps": [
         {
          "role": "warmup",
@@ -4267,7 +4267,7 @@
         },
         {
          "role": "body",
-         "reps": 3,
+         "reps": 4,
          "durationMin": 14,
          "zone": "bk.ss",
          "intensity": {
@@ -4280,7 +4280,7 @@
          "suffix": "",
          "prefix": "",
          "repCap": 4,
-         "_min": 52
+         "_min": 71
         },
         {
          "role": "cooldown",
@@ -4289,7 +4289,7 @@
          "_min": 10
         }
        ],
-       "min": 77
+       "min": 96
       }
      ],
      "date": "2026-10-16"
@@ -4320,12 +4320,12 @@
        "d": "rn",
        "name": "Footing facile",
        "note": "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
-       "det": "23min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
+       "det": "27min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "durationMin": 23,
+         "durationMin": 27,
          "zone": "rn.easy",
          "intensity": {
           "ref": "thrPace",
@@ -4341,11 +4341,11 @@
           "cap": 50
          },
          "progCap": 0.664539805948974,
-         "_min": 23
+         "_min": 27
         }
        ],
        "plainBody": true,
-       "min": 23
+       "min": 27
       }
      ],
      "date": "2026-10-17"
@@ -4376,7 +4376,7 @@
        "d": "sw",
        "name": "Nage aérobie + accélérations",
        "note": "Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
-       "det": "Échauffement 200m + 4×25m accélérations progressives · 2850m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
+       "det": "Échauffement 200m + 4×25m accélérations progressives · 3275m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.",
        "steps": [
         {
          "role": "warmup",
@@ -4387,7 +4387,7 @@
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 2850,
+         "distanceM": 3275,
          "unitKm": false,
          "zone": "sw.aero",
          "intensity": {
@@ -4400,7 +4400,7 @@
          "suffix": ", en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu",
          "prefix": "",
          "d": "sw",
-         "_min": 61.427
+         "_min": 70.58716666666668
         },
         {
          "role": "cooldown",
@@ -4409,18 +4409,18 @@
          "_min": 3.05
         }
        ],
-       "min": 69
+       "min": 78
       },
       {
        "d": "rn",
        "name": "Footing facile",
        "note": "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
-       "det": "23min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
+       "det": "27min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "durationMin": 23,
+         "durationMin": 27,
          "zone": "rn.easy",
          "intensity": {
           "ref": "thrPace",
@@ -4436,11 +4436,11 @@
           "cap": 50
          },
          "progCap": 0.664539805948974,
-         "_min": 23
+         "_min": 27
         }
        ],
        "plainBody": true,
-       "min": 23
+       "min": 27
       }
      ],
      "date": "2026-10-18"
@@ -10103,9 +10103,9 @@
     "end": 24,
     "weeks": 11
    },
-   "vol": 6.8,
-   "vol_declared": 7,
-   "vol_real": 6.8,
+   "vol": 5.3,
+   "vol_declared": 5.3,
+   "vol_real": 5.3,
    "days": [
     {
      "week": 22,
@@ -10133,22 +10133,22 @@
        "d": "bk",
        "name": "Endurance vélo (couverture discipline)",
        "note": "Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.",
-       "det": "200min @ 132-177W — 💡 Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.",
+       "det": "147min @ 132-177W — 💡 Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.",
        "steps": [
         {
          "role": "body",
-         "durationMin": 200,
+         "durationMin": 147,
          "zone": "bk.z2",
          "intensity": {
           "ref": "ftp",
           "lo": 0.56,
           "hi": 0.75
          },
-         "_min": 200
+         "_min": 147
         }
        ],
        "plainBody": true,
-       "min": 200
+       "min": 147
       }
      ],
      "date": "2027-01-11"
@@ -10180,12 +10180,12 @@
        "long": true,
        "name": "Sortie longue CAP",
        "note": "Endurance fondamentale, allure facile et conversationnelle.",
-       "det": "85min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.",
+       "det": "66min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "durationMin": 85,
+         "durationMin": 66,
          "zone": "rn.easy",
          "intensity": {
           "ref": "thrPace",
@@ -10200,11 +10200,11 @@
           "floor": 50,
           "cap": 100
          },
-         "_min": 85
+         "_min": 66
         }
        ],
        "plainBody": true,
-       "min": 85
+       "min": 66
       }
      ],
      "date": "2027-01-12"
@@ -10267,12 +10267,12 @@
        "d": "rn",
        "name": "Footing facile",
        "note": "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
-       "det": "30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
+       "det": "23min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "durationMin": 30,
+         "durationMin": 23,
          "zone": "rn.easy",
          "intensity": {
           "ref": "thrPace",
@@ -10288,11 +10288,11 @@
           "cap": 50
          },
          "progCap": 0.6,
-         "_min": 30
+         "_min": 23
         }
        ],
        "plainBody": true,
-       "min": 30
+       "min": 23
       }
      ],
      "date": "2027-01-14"
@@ -10409,12 +10409,12 @@
        "d": "rn",
        "name": "Footing facile",
        "note": "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
-       "det": "30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
+       "det": "23min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.",
        "steps": [
         {
          "role": "body",
          "reps": 1,
-         "durationMin": 30,
+         "durationMin": 23,
          "zone": "rn.easy",
          "intensity": {
           "ref": "thrPace",
@@ -10430,11 +10430,11 @@
           "cap": 50
          },
          "progCap": 0.6,
-         "_min": 30
+         "_min": 23
         }
        ],
        "plainBody": true,
-       "min": 30
+       "min": 23
       }
      ],
      "date": "2027-01-17"
@@ -10453,9 +10453,9 @@
     "end": 24,
     "weeks": 11
    },
-   "vol": 5.1,
+   "vol": 5,
    "vol_declared": 5.1,
-   "vol_real": 5.1,
+   "vol_real": 5,
    "days": [
     {
      "week": 23,
@@ -10833,7 +10833,7 @@
        "d": "bk",
        "name": "VO2max vélo",
        "note": "Intensité max tenable 4min, récup quasi complète entre.",
-       "det": "Échauffement 16min progressif + 3 sprints · 6×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~20min de récup entre les blocs — 💡 Intensité max tenable 4min, récup quasi complète entre.",
+       "det": "Échauffement 16min progressif + 3 sprints · 5×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~16min de récup entre les blocs — 💡 Intensité max tenable 4min, récup quasi complète entre.",
        "steps": [
         {
          "role": "warmup",
@@ -10843,7 +10843,7 @@
         },
         {
          "role": "body",
-         "reps": 6,
+         "reps": 5,
          "durationMin": 4,
          "zone": "bk.vo2",
          "intensity": {
@@ -10856,7 +10856,7 @@
          "suffix": "",
          "prefix": "",
          "repCap": 8,
-         "_min": 44
+         "_min": 36
         },
         {
          "role": "cooldown",
@@ -10865,7 +10865,7 @@
          "_min": 10
         }
        ],
-       "min": 70
+       "min": 62
       }
      ],
      "date": "2027-01-24"
@@ -13044,9 +13044,9 @@
     "end": 36,
     "weeks": 12
    },
-   "vol": 6.8,
-   "vol_declared": 6.8,
-   "vol_real": 6.8,
+   "vol": 4.9,
+   "vol_declared": 4.9,
+   "vol_real": 4.9,
    "days": [
     {
      "week": 28,
@@ -13106,22 +13106,22 @@
        "d": "bk",
        "name": "Endurance vélo (couverture discipline)",
        "note": "Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.",
-       "det": "225min @ 132-177W — 💡 Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.",
+       "det": "112min @ 132-177W — 💡 Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.",
        "steps": [
         {
          "role": "body",
-         "durationMin": 225,
+         "durationMin": 112,
          "zone": "bk.z2",
          "intensity": {
           "ref": "ftp",
           "lo": 0.56,
           "hi": 0.75
          },
-         "_min": 225
+         "_min": 112
         }
        ],
        "plainBody": true,
-       "min": 225
+       "min": 112
       }
      ],
      "date": "2027-02-23"
@@ -13596,7 +13596,7 @@
        "d": "sw",
        "name": "Nage seuil (+dist) (matin)",
        "note": "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
-       "det": "Échauffement 300m + 4×50m éducatifs · 1625m @ 2'02/100m, fractionné en séries régulières si besoin · 859m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
+       "det": "Échauffement 300m + 4×50m éducatifs · 1575m @ 2'02/100m, fractionné en séries régulières si besoin · 850m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.",
        "steps": [
         {
          "role": "warmup",
@@ -13607,7 +13607,7 @@
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 1625,
+         "distanceM": 1575,
          "unitKm": false,
          "zone": "sw.css",
          "intensity": {
@@ -13625,12 +13625,12 @@
           "cap": 2100
          },
          "progCap": 0.8317230637175261,
-         "_min": 33.041666666666664
+         "_min": 32.025
         },
         {
          "role": "body",
          "reps": 1,
-         "distanceM": 859,
+         "distanceM": 850,
          "unitKm": false,
          "zone": "sw.aero",
          "intensity": {
@@ -13647,7 +13647,7 @@
           "floor": 150,
           "cap": 900
          },
-         "_min": 18.514313333333334
+         "_min": 18.320333333333334
         },
         {
          "role": "cooldown",
@@ -13656,7 +13656,7 @@
          "_min": 4.066666666666666
         }
        ],
-       "min": 62
+       "min": 61
       },
       {
        "d": "bk",
@@ -20466,6 +20466,7 @@
    "En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, tu déclares 20 min de nage en continu (1000 m) pour un seuil de 30 min, pour 1900 m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de 1000 m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue.",
    "Ta course se nage en eau libre et tu t'entraînes en bassin. Ton plan peut construire la distance, pas le milieu — pas de mur, pas de ligne, pas de fond visible, et il faut lever la tête pour se repérer. Une seule sortie en eau libre avant le jour J change tout, et plus elle est tôt, mieux c'est.",
    "Sur 1 semaine(s), ton enveloppe de jours disponibles ne permet pas de faire tenir toutes les disciplines de ce sport (jours bloqués + disponibilité déclarée). Le plan fait au mieux, mais deux options le rendraient meilleur : viser un format plus court, ou passer sur un cycle de 10 jours (Profil → disponibilité) pour espacer les séances clés au lieu de les entasser sur 7 jours.",
+   "Semaine 4 : 10.1 km de natation, au-dessus des 10.1 km que ton expérience en nage rend prudents — les planchers de séance empêchent de descendre plus bas sans supprimer une séance, et la fréquence en nage n'est pas ce qui charge l'épaule. Réduis une séance à la main si ton épaule parle.",
    "Semaine 25 : 11.4 km de natation, au-dessus des 11.4 km que ton expérience en nage rend prudents — les planchers de séance empêchent de descendre plus bas sans supprimer une séance, et la fréquence en nage n'est pas ce qui charge l'épaule. Réduis une séance à la main si ton épaule parle.",
    "Semaine 32 : 11.4 km de natation, au-dessus des 11.4 km que ton expérience en nage rend prudents — les planchers de séance empêchent de descendre plus bas sans supprimer une séance, et la fréquence en nage n'est pas ce qui charge l'épaule. Réduis une séance à la main si ton épaule parle."
   ],
@@ -20473,7 +20474,7 @@
   "score": 85,
   "hardViolations": [],
   "intensity": {
-   "easyPct": 78,
+   "easyPct": 79,
    "modPct": 15,
    "hardPct": 6,
    "weekly": [
@@ -20485,51 +20486,51 @@
     },
     {
      "num": 2,
-     "e": 352,
+     "e": 370,
      "m": 100,
      "h": 24
     },
     {
      "num": 3,
-     "e": 379,
+     "e": 415,
      "m": 100,
      "h": 24
     },
     {
      "num": 4,
-     "e": 288,
+     "e": 347,
      "m": 48,
      "h": 24
     },
     {
      "num": 5,
-     "e": 355,
+     "e": 320,
      "m": 0,
      "h": 0
     },
     {
      "num": 6,
-     "e": 221,
-     "m": 56,
-     "h": 25
+     "e": 216,
+     "m": 42,
+     "h": 24
     },
     {
      "num": 7,
-     "e": 320,
-     "m": 48,
+     "e": 392,
+     "m": 42,
      "h": 24
     },
     {
      "num": 8,
-     "e": 337,
-     "m": 78,
-     "h": 20
+     "e": 380,
+     "m": 98,
+     "h": 23
     },
     {
      "num": 9,
-     "e": 380,
-     "m": 78,
-     "h": 20
+     "e": 429,
+     "m": 98,
+     "h": 23
     },
     {
      "num": 10,
@@ -20605,15 +20606,15 @@
     },
     {
      "num": 22,
-     "e": 409,
+     "e": 323,
      "m": 0,
      "h": 0
     },
     {
      "num": 23,
-     "e": 262,
+     "e": 258,
      "m": 0,
-     "h": 57
+     "h": 53
     },
     {
      "num": 24,
@@ -20641,15 +20642,15 @@
     },
     {
      "num": 28,
-     "e": 412,
+     "e": 299,
      "m": 0,
      "h": 0
     },
     {
      "num": 29,
-     "e": 314,
+     "e": 313,
      "m": 43,
-     "h": 59
+     "h": 58
     },
     {
      "num": 30,
