@@ -580,6 +580,20 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**§3 de « LA RÉPARTITION » mesuré — la charge d'ÉPAULE n'est bornée nulle part, et ce qui
+ressemble à une borne est le nombre de créneaux** (`npm run mesure:epaule`, voir `BUGS_OUVERTS.md`
+« O-85 ») : sur les 989 profils, 458 nagent, médiane 2,6 km/sem, p99 11,2 km, **0 profil au-dessus
+de 12 km** — mais le corpus ne contient PAS la configuration du fondateur (`sessions_max` élevé +
+`doubles`), angle mort de couverture A-2. Cherchée par SATURATION plutôt que lue dans une table,
+la borne existe à **14,68 km et ne bouge plus de 14 à 30 h déclarées** : ce n'est pas une règle de
+charge articulaire, c'est **le nombre de créneaux de nage du schéma (5)**. Les cinq séances de la
+semaine saturée pèsent 3 075 · 2 625 · 3 075 · 3 275 · 2 625 m, toutes très au-dessus de
+`CAP_SWIM[70.3] = 1 900` (qui ne borne qu'un BLOC de la sortie longue, réfutation O-46) — et
+**« Nage récup courte » y vaut 2 625 m**, O-78 exprimé en natation. **La conséquence à ne pas
+manquer** : le lot PROGRESSION existe pour lever le plafond structurel, or **la seule chose qui
+protège l'épaule aujourd'hui est précisément ce que ce lot a pour objet de retirer.** O-86 ouvert
+pour les deux nombres d'interface du §4.
+
 **O-82 FERMÉ — le plancher cède en affûtage, borné au défaut ; une FUITE D'ÉTAT et deux défauts
 de mon lot précédent trouvés en chemin** (arbitrage « LE PLANCHER CÈDE EN AFFÛTAGE, ET A3 LE
 DISAIT DÉJÀ », 19/08/2026 — voir `BUGS_OUVERTS.md` « O-82 », « O-84 », garde **T-52** promue) :

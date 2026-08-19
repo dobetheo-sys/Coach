@@ -8926,3 +8926,81 @@ quoi: combien de profils tri livrent un nombre de paliers de continuité différ
 attendu: /: 2[0-9]$/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let tot=0,ko=0;for(const{sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const d=(p._v2?.decisions??[]).find(x=>x.id==='B17-paliers');const n=+(String(d?.val??'').match(/(\\d+)\\s*palier/)?.[1]??0);if(!n)continue;tot++;const liv=(p.weeks??[]).flatMap(w=>(w.days??[]).flatMap(x=>x.sessions??[])).filter(s=>s.d==='sw'&&/^Nage continue/.test(String(s.name??''))).length;if(liv!==n)ko++;}console.log('sur '+tot+' profils, livré != annoncé : '+ko);"
 ```
+
+## O-85 · La charge d'ÉPAULE n'est bornée NULLE PART — ce qui ressemble à une borne est le nombre de créneaux · 🔴 **OUVERT — ticket de SÉCURITÉ, mesuré (`npm run mesure:epaule`)**
+
+Question du fondateur (19/08/2026, §3) : *« 12,1 km de nage en une semaine, pour un athlète qui
+nage depuis un an en autodidacte et dont la technique se dégrade sous fatigue. `MAX_RUN_DAYS`
+borne les jours d'impact en course ; il n'existe pas d'équivalent pour l'épaule. On a écarté
+`MAX_SWIM_DAYS` en son temps, mais l'argument portait sur la FRÉQUENCE — et il ne s'applique pas
+au VOLUME. »* Trois mesures demandées avant toute décision, les voici.
+
+**§A/§B — la distribution sur les 989 profils.** 458 profils nagent. Semaine de nage la plus
+chargée : **médiane 2,6 km · p90 8,4 km · p99 11,2 km · max 11,2 km**.
+
+```
+  > 8 km  :  65 profils (14,2 %)   swim 62 · tri 3
+  > 10 km :  38 profils ( 8,3 %)   swim 38 — tous des nageurs PURS
+  > 12 km :   0 profils
+```
+
+**Le corpus ne contient donc PAS la configuration du fondateur** (tri, `sessions_max` élevé,
+`doubles: oui`) : c'est un angle mort de couverture, famille A-2, et il explique que ses 12,1 km
+n'apparaissent nulle part dans le golden.
+
+**§C — une borne existe-t-elle ? Cherchée par SATURATION, pas lue dans une table** (règle 15) :
+on fait varier `vol_max` et on regarde si le volume de nage livré plafonne.
+
+```
+  vol_max    nage max/sem   séances   jours
+      8 h        9,35 km       3        3
+     10 h       12,66 km       4        4
+     12 h       14,72 km       5        4
+     14 h …  30 h  14,68 km    5        4      ← plateau, identique jusqu'à 30 h déclarées
+```
+
+**Une borne existe, et ce n'est pas une borne de charge articulaire : c'est le NOMBRE DE CRÉNEAUX
+de nage du schéma de semaine (5).** Vérifié en ouvrant la semaine saturée — les cinq séances
+pèsent 3 075 · 2 625 · 3 075 · 3 275 · 2 625 m, toutes **très au-dessus de `CAP_SWIM[70.3] = 1 900`**
+(qui ne borne qu'UN BLOC de la sortie longue, réfutation O-46). Et le détail qui tranche :
+
+```
+  « Nage récup courte »  →  2 625 m
+```
+
+Une « récup courte » de 2,6 km n'est pas une récupération : c'est O-78 (le puits sans borne)
+exprimé en natation. **Rien ne borne la TAILLE d'une séance de nage hors sortie longue ; ce qui
+tient le total est un artefact de structure.**
+
+**Conséquence à ne pas manquer** : le lot PROGRESSION existe pour LEVER le plafond structurel
+(`nSess × durée`). Le lever sans borne d'épaule fera monter le volume de nage exactement par le
+mécanisme qui le retient aujourd'hui — **la seule chose qui protège l'épaule est ce que le lot
+progression a pour objet de retirer.** Ce ticket vient donc AVANT, ou avec, la suite du lot.
+
+Non tranché ici (décision d'entraînement) : la borne porte-t-elle sur les MÈTRES hebdomadaires,
+sur la taille de séance hors sortie longue, ou sur les deux ? Et son seuil doit-il dépendre de
+l'ancienneté de pratique (l'autodidacte d'un an et le nageur de club n'ont pas la même épaule) —
+ce qui est `history`/`swim_limit`, déjà collectés.
+
+```verify
+id: O-85
+quoi: le volume de nage livré sature-t-il sur un artefact de structure plutôt que sur une borne de charge ?
+attendu: UNE-BORNE-EXISTE
+cmd: npm run mesure:epaule 2>&1 | grep -q "UNE BORNE EXISTE quelque part" && echo "UNE-BORNE-EXISTE"
+```
+
+---
+
+## O-86 · Deux nombres d'interface qui ne disent pas leur portée · 🔴 **OUVERT — court, avec le prochain passage sur l'interface**
+
+Relevé par le fondateur (19/08/2026, §4), à traiter avec le prochain lot d'interface :
+
+**(a)** `OFF (la semaine de pic reste la plus grosse)` — la note explique une propriété du PLAN sur
+la case d'une JOURNÉE. *« Sur un OFF, on attend "pourquoi je ne fais rien aujourd'hui", pas un
+fait sur S38. »* Le libellé vient d'une passe de dominance (A2/I1) qui nomme sa raison technique
+au lieu de la raison de l'athlète.
+
+**(b)** Le nombre en tête de la carte 🎯 Aujourd'hui — `2h50`, `3h09` — est le total de la
+**JOURNÉE**, affiché sous un titre de **SÉANCE** : il se lit comme la durée de la séance nommée.
+*« Un nombre en tête doit dire sa portée. »* Même famille qu'O-61 (la barre de zones qui portait
+des grandeurs sans dire de quoi elles étaient la mesure).

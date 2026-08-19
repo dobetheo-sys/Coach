@@ -92,7 +92,8 @@
     "mesure:puits": "node scripts/mesurePuits.mjs",
     "mesure:manque": "node scripts/mesureManque.mjs",
     "mesure:circularite": "node scripts/mesureCircularite.mjs",
-    "casser": "node scripts/casser.mjs"
+    "casser": "node scripts/casser.mjs",
+    "mesure:epaule": "node scripts/mesureChargeEpaule.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"
